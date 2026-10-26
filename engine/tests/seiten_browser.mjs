@@ -8,7 +8,7 @@ import fs from "node:fs";
 const [, , modul, basis, domDatei] = process.argv;
 const pw = await import(modul);
 const b = await pw[process.env.RH_BROWSER || "chromium"].launch();
-const fehler = [], leer = [], dom = {};
+const fehler = [], leer = [], dom = {}, vergleich = {};
 for (const breite of [390, 1200]) {
   const ctx = await b.newContext({viewport: {width: breite, height: 900}, serviceWorkers: "block"});
   await ctx.route("**/api/**", r => r.abort());   // ohne Rückmeldedienst: Seite muss trotzdem vollständig sein
@@ -41,8 +41,23 @@ for (const breite of [390, 1200]) {
     if (!html) leer.push(`${breite}#${h}`);
     dom[`${breite}#${h}`] = html;
   }
+  // Wahl-Modul bedienen: erste Stelle mit „Alternativen vergleichen“ öffnen, „nur Unterschiede“ umschalten
+  for (const h of routen) {
+    await p.evaluate(h => { location.hash = h; }, h);
+    await p.waitForTimeout(15);
+    const knopf = p.locator('#main [data-vgl-auf][aria-expanded="false"]:visible').first();
+    if (!await knopf.count()) continue;
+    const id = await knopf.getAttribute("data-vgl-auf");
+    await knopf.click();
+    const box = p.locator(`#main [data-vgl="${id}"]`).first();
+    const sichtbar = await box.isVisible();
+    const spalten = await box.locator(breite < 700 ? ".wm-karte" : "thead th").count();
+    await box.locator("[data-vgl-nur]").check();
+    vergleich[breite] = {route: h, sichtbar, spalten: breite < 700 ? spalten : spalten - 1, offen: await p.locator(`[data-vgl-auf="${id}"]`).first().getAttribute("aria-expanded")};
+    break;
+  }
   await ctx.close();
 }
 await b.close();
 if (domDatei) fs.writeFileSync(domDatei, JSON.stringify(dom));
-console.log(JSON.stringify({routen: Object.keys(dom).length, leer, fehler}));
+console.log(JSON.stringify({routen: Object.keys(dom).length, leer, fehler, vergleich}));

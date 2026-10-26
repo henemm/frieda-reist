@@ -36,7 +36,10 @@ unterkuenfte:
     hinweis: "erfundenes Beispielhotel in der Altstadt"
     quelle: "erfunden (Beispiel)"
     merkmale:
-      preis: {wert: "120 €", notiz: "Beispielwert, erfunden"}
+      # Wert je Datum (docs/alternativen.md): ein Eintrag ohne „gilt“ für alle übrigen Tage
+      preis:
+        - {wert: "120 €", notiz: "Beispielwert, erfunden"}
+        - {wert: "140 €", gilt: 2027-05-15, notiz: "Beispielwert, erfunden: Samstag teurer"}
       fruehstueck: {wert: inklusive, notiz: "Beispielwert, erfunden"}
   U-02:
     name: Pension Burgblick
