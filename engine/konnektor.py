@@ -273,9 +273,10 @@ def datum_de(iso):
 class Handbuch:
     """Alles, was eine Reise-Seite zeigt, nach ID nachschlagbar."""
 
-    def __init__(self, d, aufgaben=None, offene_entscheidungen=None, antworten=None):
+    def __init__(self, d, aufgaben=None, offene_entscheidungen=None, antworten=None, meldungen=None):
         self.d = d
         self.aufgaben = aufgaben
+        self.meldungen = meldungen or []   # Meldungen an die sprechende Person (Wächter, Erinnerer, Konflikte)
         self.offene_entscheidungen = offene_entscheidungen or {}   # Option-ID -> eingetragene, noch nicht eingearbeitete Entscheidungen
         self.antworten = antworten or {}                            # F-ID -> Antworten aus dem Eingang
         self.r = d.get("route") or {}
@@ -518,6 +519,9 @@ class Handbuch:
             z.append(f"## Offene Aufgaben: {len(offene_ag)}" + (f", davon {len(ueber)} überfällig" if ueber else "")
                      + " (Werkzeug aufgaben)")
             z += [f"- {a['id']} Frist {a['frist']}: {a['titel']}" for a in ueber]
+        if self.meldungen:
+            z.append("## Meldungen an dich")
+            z += [f"- {m['erstellt'][:10]}: {m['text']}" for m in self.meldungen[:10]]
         if self.r.get("mahnungen"):
             z.append("## Mahnungen (die Reise ist fest oder unterwegs)")
             z += [f"- {m['text']}" for m in self.r["mahnungen"]]
@@ -1120,14 +1124,23 @@ def einladen(reise, d, wer, args):
     return "\n".join(z), False
 
 
-def liste_text(reise, mit_auftraegen, name=None):
+def meldungen_fuer(reise, name, d):
+    """Meldungen, die für diese Person noch gelten (nicht erledigt, nicht zu alt, Baustein waechter an)."""
+    o = rm.ordner(reise)
+    if o is None or not name:
+        return []
+    status, bausteine = zustand_von(d)
+    return rm.meldungen_aktuell(o, name, rm.aufgaben(o), status, bausteine)
+
+
+def liste_text(reise, mit_auftraegen, name=None, d=None):
     o = rm.ordner(reise)
     if o is None:
         return "Für diese Reise gibt es noch keine Rückmeldungen."
     es = rm.eintraege(o) + (rm.auftraege(o) if mit_auftraegen else [])
     es.sort(key=lambda e: e.get("erstellt", ""), reverse=True)
     z = []
-    ms = rm.meldungen(o, name)[:10] if name else []
+    ms = meldungen_fuer(reise, name, d)[:10]
     if ms:
         z.append("## Meldungen an dich")
         z += [f"- {m['erstellt'][:10]} {m['art']} zu {m['ziel']}: {m['text']}" for m in ms]
@@ -1364,6 +1377,10 @@ def anleitung(zugang, d):
     if bausteine is None or "varianten" in bausteine:
         z.append("Alternativen (eine weitere Unterkunft, Strecke, Route): erst merkmale aufrufen, die Merkmale selbst "
                  "recherchieren, dann gezielt nur nach Lücken fragen, dann mit alternative_vorschlagen weitergeben.")
+    if bausteine is None or "waechter" in bausteine:
+        z.append("Wächter und Erinnerer sind an: Meldungen an die Person (Fristen, ab-Termine, Statuswechsel, Prüfungen "
+                 "veränderlicher Angaben) stehen im ueberblick unter „Meldungen an dich“. Nenne sie zu Beginn und frag, ob "
+                 "etwas davon erledigt werden soll. Den Reisestatus wechselt nur ein Bestimmer, nie du.")
     if "wuensche" in (bausteine or []):
         z.append("Ideen und Wünsche für die Reise (ein Ort, ein Erlebnis, ein Essen, auch vage) hältst du mit "
                  "rueckmeldung_geben, art Wunsch, fest. Sie stehen auf der Seite im Reiter „Wünsche“. Ein Wunsch ist ein "
@@ -1390,7 +1407,7 @@ def werkzeug(zugang, name, args):
     if aktion and (nein := recht(wer["rolle"], d, aktion, str(args.get("ziel") or "").strip() or None)):
         return nein, True
     if name == "rueckmeldungen":
-        return liste_text(reise, bestimmer, wer["name"]), False
+        return liste_text(reise, bestimmer, wer["name"], d), False
     if name == "rueckmeldung_geben":
         e = {k: args.get(k, "") for k in rm.INHALT}
         if wer["name"]:
@@ -1433,7 +1450,8 @@ def werkzeug(zugang, name, args):
     d = daten(reise)
     if d is None:
         return "Die Seite dieser Reise ist noch nicht veröffentlicht.", True
-    h = Handbuch(d, aufgaben_von(reise), offene_entscheidungen(reise), antworten_von(reise))
+    h = Handbuch(d, aufgaben_von(reise), offene_entscheidungen(reise), antworten_von(reise),
+                 meldungen_fuer(reise, wer["name"], d))
     if name == "entscheiden":
         return entscheiden(reise, d, h, wer, args)
     if name == "frage_beantworten":
