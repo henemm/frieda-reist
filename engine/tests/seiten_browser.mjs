@@ -72,7 +72,7 @@ for (const [breite, schema] of [[390, "light"], [390, "dark"], [1200, "light"], 
   await p.waitForSelector("#titel:not(:empty)");
   await p.waitForTimeout(300);
   if (process.env.RH_BILDER) {
-    const datei = `${process.env.RH_BILDER}/bausteine-${breite}-${schema === "dark" ? "dunkel" : "hell"}.png`;
+    const datei = `${process.env.RH_BILDER}/bausteine-${process.env.RH_BROWSER || "chromium"}-${breite}-${schema === "dark" ? "dunkel" : "hell"}.png`;
     await p.addStyleTag({content: ".leiste,body::after{display:none!important}"});
     await p.screenshot({path: datei, fullPage: true});
     bilder.push(datei);

@@ -20,7 +20,8 @@ PLAYWRIGHT = Path(os.environ.get("PLAYWRIGHT_MODUL") or Path.home() / "playwrigh
 
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
-def test_alle_ansichten_der_beispielreise(tmp_path):
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])   # webkit = Safari auf iPhone und iPad
+def test_alle_ansichten_der_beispielreise(tmp_path, browser):
     ziel = tmp_path / "web" / "beispiel"
     if os.environ.get("RH_BILDER"):   # Bilder der Bausteinseite zur Durchsicht (in GitHub Actions als Artefakt)
         Path(os.environ["RH_BILDER"]).mkdir(parents=True, exist_ok=True)
@@ -35,7 +36,7 @@ def test_alle_ansichten_der_beispielreise(tmp_path):
     try:
         aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_browser.mjs"), str(PLAYWRIGHT),
                               f"http://127.0.0.1:{s.server_address[1]}/beispiel/", str(tmp_path / "dom.json")],
-                             capture_output=True, text=True, timeout=300)
+                             capture_output=True, text=True, timeout=300, env={**os.environ, "RH_BROWSER": browser})
     finally:
         s.shutdown()
     assert aus.returncode == 0, aus.stderr[-2000:]

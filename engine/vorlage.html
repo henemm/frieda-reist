@@ -50,7 +50,7 @@ a.karte:active{background:var(--acc2)}
 .karte .z b{color:var(--mut);font-weight:600}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 /* Lange Etiketten und Code brechen um, statt auf dem Handy seitlich überzustehen (Bildprüfung 2e) */
-.chip{font-size:13px;background:var(--acc2);color:var(--acc);border-radius:99px;padding:2px 10px;max-width:100%;overflow-wrap:anywhere}
+.chip{font-size:13px;background:var(--acc2);color:var(--acc);border-radius:99px;padding:2px 10px;max-width:100%;overflow-wrap:break-word}
 main code{overflow-wrap:anywhere}
 .chip.plan{background:var(--acc);color:var(--bg);font-weight:700}
 .chip.neben{background:var(--warnbg);color:var(--warn)}
@@ -600,7 +600,8 @@ function chips(a) {
   if (a.nebenroute) c.append(chip("neben", "Nebenroute"));
   for (const oid of a.optionen || []) {
     const [w, o] = optionZu.get(oid) || [];
-    if (w) c.append(chip(weg(o.status) ? "weg" : "unterwegs", `Variante: ${o.titel}`));
+    // Zustand aus der Wahlstelle: unterwegs nur bei Unterwegs-Wahl, offen solange die Planung offen ist
+    if (w) c.append(chip(weg(o.status) ? "weg" : w.art === "unterwegs" ? "unterwegs" : w.offen ? "offen" : "", `Variante: ${o.titel}`));
   }
   return c.childNodes.length ? c : null;
 }
@@ -872,7 +873,7 @@ function wahlVergleich(w, liste, datum) {
   const s = vglSchluessel(w, liste, datum), z = vglZustand(w, liste, datum), box = el("div", {class: "wm", "data-vgl": s, "data-ansicht": z.ansicht, hidden: !z.offen});
   if (!z.offen) return box;
   const max = schmal() ? 2 : 4, opts = z.wahl.map(id => g.find(o => o.id === id)).filter(Boolean);
-  const text = v => v ? String(v.wert) : "";
+  const text = v => { const x = datum && v && v.je_datum ? giltAm(v, datum) : v; return x ? String(x.wert) : ""; };
   // Auslöser (bei Unterwegs-Wahlstellen) als erste Zeile „Wann“, dann die Merkmale
   const werte = o => ({...o.merkmale, _wann: o.ausloeser ? {wert: o.ausloeser} : null});
   const belegt = [{id: "_wann", name: "Wann"}, ...w.kriterien].filter(k => opts.some(o => werte(o)[k.id]));
