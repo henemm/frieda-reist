@@ -13,6 +13,8 @@ Fehler brechen den Bau ab (wie beim Routenmodell). Fehlt reise.yaml, kommen Eckd
 reise.json (alte Form) mit einem Hinweis; Status ist dann „planung“, Personen gibt es keine.
 """
 import datetime
+import re
+import unicodedata
 
 STATUS = ("idee", "planung", "fest", "unterwegs", "danach", "archiv")
 ROLLEN = ("reisend", "einbringer", "bestimmer")          # aufsteigend: jede Stufe enthält die darunter
@@ -58,6 +60,11 @@ AKTIONEN = {
     "aufgabe":      {"rolle": "einbringer", "baustein": "aufgaben", "ab": ("alles", "nachlese")},
     "alternative":  {"rolle": "einbringer", "baustein": "varianten", "ab": ("alles",)},
     "auftrag":      {"rolle": "bestimmer", "baustein": None, "ab": ("alles",)},
+    # Paket C: Gespräch für alle. Entscheiden gilt für Wahlstellen (Baustein varianten); eine Antwort auf eine Frage
+    # braucht den Baustein fragen; wer einladen darf, steht je Reise in regeln.einladen (hier nur die Vorgabe).
+    "entscheiden":  {"rolle": "bestimmer", "baustein": "varianten", "ab": ("alles",)},
+    "antwort":      {"rolle": "einbringer", "baustein": "fragen", "ab": ("alles", "nachlese")},
+    "einladen":     {"rolle": "bestimmer", "baustein": None, "ab": ("alles", "nachlese")},
 }
 # Lesende Konnektor-Werkzeuge, die zu einem zuschaltbaren Baustein gehören
 LESE_BAUSTEIN = {"offene_fragen": "fragen", "varianten": "varianten", "merkmale": "varianten",
@@ -70,13 +77,22 @@ def verhalten(status):
     return dict(VERHALTEN.get(status) or VERHALTEN["planung"])
 
 
-def erlaubt(aktion, rolle, status, bausteine, ziel=None):
+def mindestrolle(aktion, regeln=None):
+    """Mindestrolle einer Aktion; „einladen“ richtet sich nach regeln.einladen der Reise."""
+    if aktion == "einladen":
+        return (regeln or {}).get("einladen") or VORGABEN["einladen"]
+    return AKTIONEN[aktion]["rolle"]
+
+
+def erlaubt(aktion, rolle, status, bausteine, ziel=None, regeln=None):
     """Darf diese Rolle jetzt schreiben? -> (True, "") oder (False, Begründung in einfachen Worten).
-    bausteine: eingeschaltete Bausteine der Reise (None: nicht bekannt, nicht prüfen)."""
+    bausteine: eingeschaltete Bausteine der Reise (None: nicht bekannt, nicht prüfen).
+    regeln: Spielregeln der Reise (nur für „einladen“ nötig)."""
     a = AKTIONEN[aktion]
-    if not darf(rolle, a["rolle"]):
+    mind = mindestrolle(aktion, regeln)
+    if not darf(rolle, mind):
         return False, (f"Mit diesem Zugang kann man nur lesen (Rolle {rolle or 'unbekannt'}). Dafür braucht man die Rolle "
-                       "einbringer." if a["rolle"] == "einbringer" else "Das dürfen nur Bestimmer.")
+                       "einbringer." if mind == "einbringer" else "Das dürfen nur Bestimmer.")
     if a["baustein"] and bausteine is not None and a["baustein"] not in bausteine:
         return False, f"Der Baustein „{a['baustein']}“ ist bei dieser Reise ausgeschaltet."
     schreiben = verhalten(status)["schreiben"]
@@ -86,6 +102,15 @@ def erlaubt(aktion, rolle, status, bausteine, ziel=None):
                  "nichts": "Die Reise ist archiviert: Es kann nur gelesen werden."}[schreiben]
         return False, grund + " Ein Bestimmer kann den Status zurücksetzen (Auftrag an „reise“)."
     return True, ""
+
+
+def schluessel_aus_name(name):
+    """Vorname -> Schlüssel für reise.yaml personen und den Zugang: klein, ohne Umlaute und Sonderzeichen."""
+    t = (name or "").strip().casefold()
+    for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+        t = t.replace(a, b)
+    t = unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]+", "-", t).strip("-")[:40]
 
 
 def stelle(ziel):

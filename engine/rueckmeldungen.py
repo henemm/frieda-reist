@@ -99,13 +99,46 @@ def seiten():
 
 
 def zustand(reise):
-    """Status, Bausteine und Personen aus der veröffentlichten Seite (<seiten>/<reise>/daten.json) oder None, wenn sie
-    nicht lesbar ist (dann gelten nur die technischen Prüfungen, wie bisher)."""
+    """Status, Bausteine, Personen und Regeln aus der veröffentlichten Seite (<seiten>/<reise>/daten.json) oder None,
+    wenn sie nicht lesbar ist (dann gelten nur die technischen Prüfungen, wie bisher). Eingeladene Personen, die noch
+    nicht in reise.yaml stehen, zählen schon (einladungen.json)."""
     try:
         d = json.loads((seiten() / reise / "daten.json").read_text(encoding="utf-8"))["reise"]
-        return {"status": d["status"]["wert"], "bausteine": d["bausteine"], "personen": d["personen"]}
+        return {"status": d["status"]["wert"], "bausteine": d["bausteine"], "regeln": d.get("regeln") or {},
+                "personen": personen_mit_einladungen(d["personen"], ordner(reise))}
     except (OSError, ValueError, KeyError, TypeError):
         return None
+
+
+# ---------- Einladungen (Paket C): Personen, die in der Claude-App eingeladen wurden ----------
+# Sie liegen live in <ablage>/<reise>/einladungen.json, weil der Dienst das Repo nicht ändert. Zugang und Rolle gelten
+# sofort; Claude Code übernimmt die Person beim Einarbeiten nach reise.yaml (Auftrag mit daten.einladung). Steht sie dort,
+# gilt die Angabe aus reise.yaml.
+MAX_EINLADUNGEN = 50
+
+
+def einladungen_lesen(o):
+    """-> {schluessel: {name, rolle, reist, notiz, eingeladen_von, datum}}; fehlt die Datei oder ist sie kaputt: leer."""
+    if o is None:
+        return {}
+    try:
+        roh = json.loads((o / "einladungen.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return roh if isinstance(roh, dict) else {}
+
+
+def personen_mit_einladungen(personen, o):
+    """Personen aus reise.yaml plus Eingeladene, die dort (nach Schlüssel oder Namen) noch fehlen."""
+    aus = list(personen or [])
+    schluessel = {p.get("schluessel") for p in aus}
+    namen = {str(p.get("name", "")).casefold() for p in aus}
+    for k, e in einladungen_lesen(o).items():
+        if isinstance(e, dict) and k not in schluessel and str(e.get("name", "")).casefold() not in namen \
+                and e.get("rolle") in rg.ROLLEN:
+            aus.append({"schluessel": k, "name": e["name"], "rolle": e["rolle"], "reist": bool(e.get("reist", True)),
+                        "notiz": e.get("notiz", ""), "eingeladen": True})
+    return aus
 
 
 def rolle_von(z, name):
@@ -122,7 +155,7 @@ def schreibrecht(reise, aktion, name):
     z = zustand(reise)
     if z is None:
         return None
-    ok, grund = rg.erlaubt(aktion, rolle_von(z, name), z["status"], z["bausteine"])
+    ok, grund = rg.erlaubt(aktion, rolle_von(z, name), z["status"], z["bausteine"], regeln=z.get("regeln"))
     return None if ok else grund
 
 
@@ -565,7 +598,14 @@ def liste(reise, alle):
     titel = titel_zu(reise)
     for e in reversed(es):
         print(f"{e['id']}  {e['erstellt'][:16].replace('T', ' ')} UTC  {e.get('name')}  [{e['status']}]")
-        if e["art"] == "Auftrag":
+        daten = e.get("daten") or {}
+        if daten.get("weg") == "direkt":
+            print(f"  ENTSCHEIDUNG von {e.get('name')} im Gespräch (Claude-App), Weg direkt: bereits geprüft (Rolle, Option, "
+                  f"Konflikte). Einarbeiten, nicht neu entscheiden.")
+        elif daten.get("einladung"):
+            print(f"  EINLADUNG von {e.get('name')} (Claude-App): Zugang und Rolle gelten schon. In reise.yaml unter personen "
+                  f"eintragen (Schlüssel, name, rolle, reist, notiz wie im Text).")
+        elif e["art"] == "Auftrag":
             print(f"  ÄNDERUNGSAUFTRAG von {e.get('name')} (Bestimmer, Claude-App) – zählt als Entscheidung:")
         if e["status"] == "konflikt":
             print("  KONFLIKT: widerspricht einer anderen Entscheidung. Nichts übernehmen. Offene Frage (F-…) anlegen, "
