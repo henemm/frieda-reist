@@ -13,7 +13,7 @@ engine/            bauen.py (Generator), routen.py (Routenmodell), reise.py (rei
                    vorlage.html, sw.vorlage.js, rueckmeldungen.py (Dienst), konnektor.py (MCP), merkmale.yaml,
                    vendor/ (Fremdbibliotheken, siehe THIRD_PARTY.md), tests/
 beispiel/reisen/   erfundene Beispielreise, Demo und Testgrundlage
-docs/              Produktbild, Alternativen und Merkmale, Konnektor
+docs/              Produktbild, Alternativen und Merkmale, Design und Bausteine, Konnektor
 ```
 
 Der Generator sucht Reisen in `./reisen/` des aktuellen Ordners (`--reisen`, `--ziel` zum Ändern).

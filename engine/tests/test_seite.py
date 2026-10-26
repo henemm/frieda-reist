@@ -2,6 +2,7 @@
 import functools
 import http.server
 import json
+import re
 import os
 import shutil
 import subprocess
@@ -21,6 +22,8 @@ PLAYWRIGHT = Path(os.environ.get("PLAYWRIGHT_MODUL") or Path.home() / "playwrigh
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 def test_alle_ansichten_der_beispielreise(tmp_path):
     ziel = tmp_path / "web" / "beispiel"
+    if os.environ.get("RH_BILDER"):   # Bilder der Bausteinseite zur Durchsicht (in GitHub Actions als Artefakt)
+        Path(os.environ["RH_BILDER"]).mkdir(parents=True, exist_ok=True)
     bauen.bauen(WURZEL / "beispiel/reisen/beispielreise", ziel)
 
     class Handler(http.server.SimpleHTTPRequestHandler):
@@ -40,6 +43,7 @@ def test_alle_ansichten_der_beispielreise(tmp_path):
     assert e["routen"] > 100
     assert e["fehler"] == []
     assert e["leer"] == []
+    assert e["breit"] == []          # keine Ansicht steht auf dem Handy seitlich über
     # Wahl-Modul: öffnet an der Stelle, zeigt mindestens 2 Möglichkeiten (Handy höchstens 2, Rechner höchstens 4)
     for breite, v in e["vergleich"].items():
         assert v["sichtbar"] and v["offen"] == "true", (breite, v)
@@ -50,3 +54,9 @@ def test_alle_ansichten_der_beispielreise(tmp_path):
     u01 = dom["1200#U-01"]
     assert "15.5.: " in u01 and "sonst: " in u01 and "140 €" in u01
     assert 'class="mk-i"' in u01 and '<span class="mk-q" hidden="">Beispielwert, erfunden' in u01
+    # Bausteinseite: alle Ebenen, keine Sprungziele (die echten Stellen bleiben eindeutig), kein „null“
+    b = dom["1200#bausteine"]
+    for teil in ("Atom · Zustand", "Atom · Wert", "Molekül · Kennzahlenleiste", "Organismus · Wahl-Modul", "Vorlage · Tag"):
+        assert teil in b, teil
+    assert ' id="' not in b.split(">", 1)[1]
+    assert "null" not in re.sub(r"<[^>]+>", " ", b)

@@ -34,7 +34,7 @@ mein-reisen-repo/
   reisen/<reise>/  reise.yaml, reise.json, plan/routen.yaml, inhalt/, medien/
 ```
 
-Aufbau einer Reise: `beispiel/reisen/beispielreise/`, Modell in `engine/routen.py` und `engine/reise.py`, Produktbild in `docs/produkt.md`, Alternativen und Merkmale in `docs/alternativen.md`, Claude-App in `docs/konnektor.md`.
+Aufbau einer Reise: `beispiel/reisen/beispielreise/`, Modell in `engine/routen.py` und `engine/reise.py`, Produktbild in `docs/produkt.md`, Alternativen und Merkmale in `docs/alternativen.md`, Design und Bausteine in `docs/design.md`, Claude-App in `docs/konnektor.md`.
 
 ## Tests
 

@@ -38,5 +38,14 @@ jobs:
           echo "PLAYWRIGHT_MODUL=$PWD/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
       - name: Tests
         run: python -m pytest -q -rs engine/tests
+        env:
+          RH_BILDER: ${{ github.workspace }}/bilder
+      - name: Bilder der Bausteinseite (Handy und Rechner, hell und dunkel) zur Durchsicht
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bausteine
+          path: bilder/
+          if-no-files-found: ignore
       - name: Browser-Prüfung darf nicht übersprungen worden sein
         run: python -m pytest -q engine/tests/test_pwa.py -k offline_im_browser -rs | tee /tmp/pwa.txt; ! grep -qi skipped /tmp/pwa.txt
