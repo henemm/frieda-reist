@@ -24,6 +24,8 @@ Aufrufe:
   python3 engine/rueckmeldungen.py setze <reise> R-…|A-… STATUS [KOMMENTAR]
         STATUS: uebernommen | verworfen | rueckfrage | neu
   python3 engine/rueckmeldungen.py aufgaben <reise> [--alle]       offene (bzw. alle) Aufgaben zeigen
+  python3 engine/rueckmeldungen.py laeufe [<reise>] [--alle]       Läufe des automatischen Einarbeitens: Wartezeit,
+        Dauer, Kosten (Protokoll einarbeiten-laeufe.jsonl, geschrieben vom Betriebsskript; RM_LAEUFE überschreibt den Ort)
   python3 engine/rueckmeldungen.py dienst                          Dienst starten
         Umgebung: RM_ABLAGE (Standard /srv/reisehandbuch/_rueckmeldungen),
                   RM_HOST (127.0.0.1), RM_PORT (8771)
@@ -511,6 +513,66 @@ def setze(reise, rid, status, kommentar):
     print(f"{rid}: {status}" + (f" – {kommentar}" if kommentar else ""))
 
 
+def laeufe_datei():
+    """Protokoll der Einarbeitungsläufe: Standard <Ablage>/../_dienst/einarbeiten-laeufe.jsonl."""
+    return Path(os.environ.get("RM_LAEUFE") or ablage().parent / "_dienst" / "einarbeiten-laeufe.jsonl")
+
+
+def laeufe_lesen(reise=None):
+    """Läufe, neueste zuletzt; mit reise nur die, an denen diese Reise beteiligt war. Kaputte Zeilen werden übersprungen."""
+    try:
+        zeilen = laeufe_datei().read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    liste = []
+    for z in zeilen:
+        try:
+            lauf = json.loads(z)
+        except ValueError:
+            continue
+        if isinstance(lauf, dict) and (reise is None or reise in str(lauf.get("reisen", "")).split()):
+            liste.append(lauf)
+    return liste
+
+
+def minuten_text(sekunden):
+    if not isinstance(sekunden, (int, float)):
+        return "?"
+    return f"{sekunden / 60:.0f} min" if sekunden >= 90 else f"{sekunden:.0f} s"
+
+
+def laeufe_text(liste, mit_kosten=True, tage=30, jetzt=None):
+    """Zusammenfassung der Läufe. mit_kosten=False: nur ‚zuletzt eingearbeitet‘ (für Personen ohne Bestimmerrolle)."""
+    jetzt = jetzt or datetime.datetime.now(datetime.timezone.utc)
+    ok = [x for x in liste if x.get("ergebnis") == "ok"]
+    z = []
+    if not ok:
+        z.append("Noch nichts automatisch eingearbeitet.")
+    else:
+        l = ok[-1]
+        z.append(f"Zuletzt eingearbeitet: {l.get('zeit', '?')[:16].replace('T', ' ')} UTC, {l.get('anzahl', '?')} Eingabe(n)"
+                 + ("" if l.get("online") == "ja" else " (noch nicht online)"))
+    if not mit_kosten:
+        return "\n".join(z)
+    if liste and liste[-1].get("ergebnis") != "ok":
+        z.append(f"Der letzte Lauf ist fehlgeschlagen ({liste[-1].get('zeit', '?')[:16].replace('T', ' ')} UTC).")
+    grenze = (jetzt - datetime.timedelta(days=tage)).isoformat(timespec="seconds")
+    neu = [x for x in liste if str(x.get("zeit", "")) >= grenze]
+    warte = [x["eingabe_bis_ende_s"] for x in neu if x.get("ergebnis") == "ok" and isinstance(x.get("eingabe_bis_ende_s"), (int, float))]
+    kosten = [x["kosten_usd"] for x in neu if isinstance(x.get("kosten_usd"), (int, float))]
+    z.append(f"Letzte {tage} Tage: {len(neu)} Läufe, davon {sum(1 for x in neu if x.get('ergebnis') != 'ok')} fehlgeschlagen")
+    if warte:
+        z.append(f"- Von der Eingabe bis fertig: im Schnitt {minuten_text(sum(warte) / len(warte))}, "
+                 f"am längsten {minuten_text(max(warte))}")
+    if kosten:
+        z.append(f"- Kosten: {sum(kosten):.2f} USD insgesamt, im Schnitt {sum(kosten) / len(kosten):.2f} USD je Lauf"
+                 + (f", letzter Lauf {liste[-1]['kosten_usd']:.2f} USD" if isinstance(liste[-1].get("kosten_usd"), (int, float)) else ""))
+    if ok and isinstance(ok[-1].get("eingabe_bis_ende_s"), (int, float)):
+        z.append(f"- Letzter erfolgreicher Lauf: {minuten_text(ok[-1]['eingabe_bis_ende_s'])} von der Eingabe bis fertig, "
+                 f"Lauf selbst {minuten_text(ok[-1].get('dauer_s'))}")
+    return "\n".join(z)
+
+
 def aufgaben_text(liste, titel=None):
     """Lesbare Aufgabenliste (Kommandozeile und Konnektor). titel: ID -> Titel."""
     heute = datetime.date.today().isoformat()
@@ -561,6 +623,15 @@ def main(a):
         liste(a[1], "--alle" in a)
     elif a[:1] == ["aufgaben"] and len(a) >= 2:
         aufgaben_liste(a[1], "--alle" in a)
+    elif a[:1] == ["laeufe"]:
+        reise = next((x for x in a[1:] if not x.startswith("--")), None)
+        gelaufen = laeufe_lesen(reise)
+        print(laeufe_text(gelaufen))
+        if "--alle" in a:
+            for l in gelaufen:
+                print(f"{l.get('zeit', '?')[:16]}  {l.get('ergebnis')}  {l.get('reisen')}  {l.get('anzahl')} Eingabe(n)  "
+                      f"Wartezeit {minuten_text(l.get('eingabe_bis_ende_s'))}  Dauer {minuten_text(l.get('dauer_s'))}  "
+                      f"Kosten {l.get('kosten_usd', '?')} USD  online {l.get('online')}")
     elif a[:1] == ["setze"] and len(a) >= 4:
         setze(a[1], a[2], a[3], " ".join(a[4:]))
     else:

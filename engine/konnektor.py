@@ -219,6 +219,12 @@ def stand_text(reise):
     return "\n".join(z)
 
 
+def einarbeiten_text(reise, bestimmer):
+    """Stand des automatischen Einarbeitens. Kosten und Wartezeiten sehen nur Bestimmer (Henning, 26.10.2026)."""
+    liste = rm.laeufe_lesen(reise if not bestimmer else None)
+    return "## Einarbeiten" + (" (alle Reisen zusammen)" if bestimmer else "") + "\n" + rm.laeufe_text(liste, mit_kosten=bestimmer)
+
+
 def stunden(minuten):
     return f"{minuten // 60}:{minuten % 60:02d} h" if minuten else ""
 
@@ -946,7 +952,7 @@ def werkzeug(zugang, name, args):
             return f"Nicht gespeichert: {fehler}", True
         return "Gespeichert (gilt sofort):\n" + aufgabe_text(a, h.titel()), False
     if name == "ueberblick":
-        return h.ueberblick() + "\n" + stand_text(reise), False
+        return h.ueberblick() + "\n" + stand_text(reise) + "\n" + einarbeiten_text(reise, bestimmer), False
     if name == "zeige":
         t, fehler = h.zeige(str(args.get("id", "")).strip())
         return (fehler, True) if fehler else (t, False)
