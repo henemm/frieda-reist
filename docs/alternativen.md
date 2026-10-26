@@ -76,8 +76,13 @@ Erlaubte Felder je Wert: `wert`, `quelle`, `geprueft` (Datum), `notiz`, `gilt` (
 
 ## Darstellung auf der Seite
 
-- Ab 700 px Breite (Tablet, Desktop) zeigt eine Wahlstelle mit mindestens zwei gültigen Optionen eine **Vergleichstabelle**: Optionen als Spalten, Merkmale als Zeilen. Es erscheinen nur Merkmale, die bei mindestens einer Option einen Wert haben.
-- Auf dem Handy stehen die Merkmale als **Karte** in jeder Option.
+Jede Wahlstelle mit mindestens zwei gültigen Optionen hat dasselbe **Wahl-Modul** (Designsystem, Issue #18), überall wo sie vorkommt: an der Nacht und am Weg eines Tages, beim Reiseteil im Plan und in der Liste der Entscheidungen.
+
+- Der Knopf **„Alternativen vergleichen“** mit der Zahl der Möglichkeiten öffnet den Vergleich an Ort und Stelle. In der Liste der Entscheidungen ist er gleich offen.
+- Verglichen werden höchstens 4 Möglichkeiten nebeneinander, auf dem Handy 2 (Richtwerte der Nielsen Norman Group für Vergleichstabellen). Vorgewählt sind die Option im Plan und die mit den meisten Werten; weitere wählt man über die Knöpfe darüber, die zeigen, wie viele Merkmale schon belegt sind (z. B. 3/7). Die Option im Plan bleibt im Vergleich, wenn eine weitere dazukommt.
+- **„nur Unterschiede“** blendet Zeilen aus, in denen alle gezeigten Optionen denselben Wert haben. Zeilen ohne jeden Wert erscheinen nie.
+- Ab 700 px Breite eine **Tabelle** (Optionen als Spalten, Merkmale als Zeilen, erste Spalte bleibt beim Wischen stehen), auf dem Handy **Karten** je Option mit Umschalter auf die Tabelle.
+- Der Vergleich ist nur zum Lesen. Entschieden wird über Rückmeldung oder die Claude-App.
 - Veränderliche Werte ohne Prüfdatum tragen „ungeprüft“.
 - An offenen Planungs-Wahlstellen steht bei jeder Option „Fehlt noch: …“.
 

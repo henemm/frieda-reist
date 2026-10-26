@@ -39,3 +39,8 @@ def test_alle_ansichten_der_beispielreise(tmp_path):
     assert e["routen"] > 100
     assert e["fehler"] == []
     assert e["leer"] == []
+    # Wahl-Modul: öffnet an der Stelle, zeigt mindestens 2 Möglichkeiten (Handy höchstens 2, Rechner höchstens 4)
+    for breite, v in e["vergleich"].items():
+        assert v["sichtbar"] and v["offen"] == "true", (breite, v)
+        assert 2 <= v["spalten"] <= (2 if int(breite) < 700 else 4), (breite, v)
+    assert set(e["vergleich"]) == {"390", "1200"}
