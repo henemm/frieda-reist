@@ -14,12 +14,12 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 
 | Werkzeug | Wer | Was |
 |---|---|---|
-| `ueberblick` | alle | Eckdaten, Tagesplan mit IDs, Wahlstellen, Inhaltsverzeichnis |
+| `ueberblick` | alle | Eckdaten, Tagesplan mit IDs, Wahlstellen, Inhaltsverzeichnis, Meldungen an die Person (Wächter und Erinnerer, wenn der Baustein `waechter` an ist) |
 | `zeige` | alle | Volltext zu einer ID (T-, E-, O-, U-, V-, P-, F-, W-) |
 | `suche` | alle | Volltextsuche |
 | `offene_fragen` | alle | F-Liste mit Frist und Status |
 | `varianten` | alle | Pläne und Wahlstellen mit Dafür/Dagegen und Summen |
-| `rueckmeldungen` | alle | bisherige Rückmeldungen mit Status und Antwort; bei Bestimmern auch die Aufträge; vorn die Meldungen an die Person (z. B. Konflikte) |
+| `rueckmeldungen` | alle | bisherige Rückmeldungen mit Status und Antwort; bei Bestimmern auch die Aufträge; vorn die Meldungen an die Person (Konflikte, Fristen, Statuswechsel; siehe `docs/waechter.md`) |
 | `rueckmeldung_geben` | alle | landet im selben Eingang wie die Rückmeldungen von der Webseite; Art `Wunsch` für Ideen ohne feste Stelle (ziel leer), sichtbar im Reiter „Wünsche“ |
 | `aufgaben` | alle | Aufgaben, Standard nur offene; Filter nach Bezug, Zuständig, Status |
 | `aufgabe_anlegen` | alle | neue Aufgabe, gilt sofort |

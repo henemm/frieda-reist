@@ -38,7 +38,7 @@ Personen und Rollen stehen je Reise in `reisen/<reise>/reise.yaml` unter `person
 
 ## Einstellungen je Reise (`reise.yaml`)
 
-- **Bausteine, an oder aus** (`bausteine:`). Immer da: Plan, Wissen, Suche, Personen. Zuschaltbar: `varianten`, `karte`, `tagesseiten`, `rueckmeldungen`, `fragen`, `aufgaben`, `wuensche`, `waechter`, `profile`. Ein ausgeschalteter Baustein verschwindet aus Seite und App, seine Daten bleiben. (`waechter` und `profile` sind angelegt, aber noch nicht gebaut: Ausbaustufen 2 und 3.)
+- **Bausteine, an oder aus** (`bausteine:`). Immer da: Plan, Wissen, Suche, Personen. Zuschaltbar: `varianten`, `karte`, `tagesseiten`, `rueckmeldungen`, `fragen`, `aufgaben`, `wuensche`, `waechter`, `profile`. Ein ausgeschalteter Baustein verschwindet aus Seite und App, seine Daten bleiben. (`waechter` ist seit Paket E gebaut, `profile` ist angelegt, aber noch nicht gebaut: Ausbaustufe 3.)
 - **Spielregeln, mit Wert** (`regeln:`), Vorgaben in `engine/reise.py`: `entscheidungsweg` (direkt im Gespräch oder als Auftrag mit Prüfung), `konflikt` (offene_frage), `kontingent` beim Brett (Art `punkte` oder `anzahl`, `je_person`), `einladen` (bestimmer), `sammelzeit_minuten` vor dem Einarbeiten.
 - **Darstellung** (`darstellung:`): Startreiter, Namen der Reiter, Tiefe der Ansicht, Gruppen.
 
@@ -87,6 +87,15 @@ Details und Eingaben der Werkzeuge: `docs/konnektor.md`, Abschnitt „Entscheide
 - `person_einladen` (`regeln.einladen`): legt die Person mit Rolle an und stellt den Link aus, ohne Handarbeit auf dem Server. Rolle und Zugang gelten sofort (`einladungen.json`), `reise.yaml` wird beim Einarbeiten nachgezogen.
 - Die Anleitung des Konnektors nennt die Rolle, den Reisestatus und die Grenzen der sprechenden Person.
 
+### Wächter und Erinnerer (Paket E, 26.10.2026)
+
+Details: `docs/waechter.md`. Neue Regeln mit Vorgabe: `waechter_frist_tage` (60), `erinnerung_vorlauf_tage` (3), `meldekanal` (`app`, `nachricht`).
+
+- Der Wächter sucht veränderliche Angaben ohne oder mit altem Prüfdatum und gibt sie dem Einarbeiten als Prüfauftrag; Abweichungen werden als offene Frage gemeldet, nie still übernommen.
+- Der Erinnerer meldet Fristen und „ab“-Termine an die Zuständigen und den fälligen Statuswechsel an die Bestimmer; die KI wechselt den Status nie selbst.
+- Beides gilt nur bei eingeschaltetem Baustein `waechter` und im Status `fest` oder `unterwegs`.
+- Die Meldungen erscheinen in der Claude-App (Überblick) und als Sammelnachricht an den Betreiber. E-Mail an alle gibt es nicht; Meldungen auf dem Handy über die Webseite sind Issue #21.
+
 ## Vorgaben für neue Reisen
 
 - Konfliktregel: offene Frage, Meldung an alle beteiligten Bestimmer.
@@ -118,3 +127,4 @@ Stufe 1 „Rollen und sofort“: A, B, C, D. Stufe 2 „Wünsche und Wächter“
 - 26.10.2026, Paket A begonnen: `reise.yaml` je Reise mit Status, Personen, Bausteinen, Regeln und Darstellung (`engine/reise.py` prüft); `entscheider` kommt aus den Personen; Konnektor kennt Rollen `bestimmer`, `einbringer`, `reisend` und Zugänge je Person; der Schalter `funktionen` in `reise.json` ist durch `bausteine` in `reise.yaml` ersetzt.
 - 26.10.2026, Paket B: Rechte, Verhalten je Status, Bausteine und Konflikt werden im Code geprüft (siehe „Was die Maschine daraus macht“); Tests in `engine/tests/test_regeln.py`.
 - 26.10.2026, Paket C: Werkzeuge `entscheiden`, `frage_beantworten`, `person_einladen`; beide Entscheidungswege getestet (`engine/tests/test_gespraech.py`). Offen: Links sperren geht noch von Hand.
+- 26.10.2026, Paket E: Wächter und Erinnerer (`engine/waechter.py`, `docs/waechter.md`), Baustein `waechter`; Tests in `engine/tests/test_waechter.py` mit simuliertem Datum.

@@ -10,7 +10,8 @@ Echte Reisen, Namen echter Personen, Serveradressen, geheime Pfade, Zugangsdaten
 
 ```
 engine/            bauen.py (Generator), routen.py (Routenmodell), reise.py (reise.yaml), gpx.py,
-                   vorlage.html, sw.vorlage.js, rueckmeldungen.py (Dienst), konnektor.py (MCP), merkmale.yaml,
+                   vorlage.html, sw.vorlage.js, rueckmeldungen.py (Dienst), konnektor.py (MCP), waechter.py (Wächter und
+                   Erinnerer, läuft täglich), merkmale.yaml,
                    vendor/ (Fremdbibliotheken, siehe THIRD_PARTY.md), tests/
 beispiel/reisen/   erfundene Beispielreise, Demo und Testgrundlage
 docs/              Produktbild, Alternativen und Merkmale, Konnektor

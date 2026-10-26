@@ -380,7 +380,7 @@ def test_reise_yaml_fehler(reise, tmp_path, aendere, text):
 
 
 def test_reise_yaml_hinweise(reise, tmp_path, capsys):
-    mit_reise_yaml(reise, lambda r: r.update(bausteine=["plan", "waechter"]))
+    mit_reise_yaml(reise, lambda r: r.update(bausteine=["plan", "profile"]))
     b = bauen.Bauer(reise, tmp_path / "dist")
     b.daten()
     assert any("„plan“ ist Kern" in h for h in b.hinweise) and any("noch nicht gebaut" in h for h in b.hinweise)
