@@ -31,6 +31,7 @@ HTTP (hinter nginx, Präfix /reisehandbuch-mcp/ -> /):
   POST /<token>     MCP (JSON-RPC, Streamable HTTP ohne Sitzung, Antwort als JSON)
   GET  /gesund      Readiness (Zugänge lesbar, verlinkte Reisen veröffentlicht), ohne Token
 """
+import base64
 import datetime
 import hmac
 import json
@@ -52,7 +53,7 @@ from reise import ROLLEN, darf  # noqa: E402
 ALTE_ROLLEN = {"mitreisend": "einbringer"}   # Links von vor dem 26.10.2026
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "alternative_vorschlagen"}
-PROTOKOLLE = ("2025-06-18", "2025-03-26", "2024-11-05")
+PROTOKOLLE = ("2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05")
 MAX_BODY = 64 * 1024
 MAX_AUFTRAG = 4000
 TOKEN_MUSTER = re.compile(r"^[A-Za-z0-9_-]{20,100}$")
@@ -165,6 +166,20 @@ def daten(reise):
         return json.loads((seiten() / reise / "daten.json").read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
         return None
+
+
+def symbole(reise):
+    """Symbol der Reise (dasselbe wie auf der Seite) als MCP-Icons für serverInfo; die Claude-App zeigt es beim
+    Konnektor. Data-URIs, damit kein weiterer Abruf und kein weiterer Pfad nötig ist. Fehlt es: keine Icons."""
+    liste = []
+    for g in (32, 192):
+        try:
+            roh = (seiten() / reise / f"icon-{g}.png").read_bytes()
+        except OSError:
+            continue
+        liste.append({"src": "data:image/png;base64," + base64.b64encode(roh).decode("ascii"),
+                      "mimeType": "image/png", "sizes": [f"{g}x{g}"]})
+    return liste
 
 
 def stunden(minuten):
@@ -946,7 +961,7 @@ def antwort_auf(zugang, nachricht):
         return ok({"protocolVersion": gewuenscht if gewuenscht in PROTOKOLLE else PROTOKOLLE[0],
                    "capabilities": {"tools": {}},
                    "serverInfo": {"name": f"reisehandbuch-{zugang['reise']}", "title": rs.get("titel", "Reisehandbuch"),
-                                  "version": "1"},
+                                  "version": "1", **({"icons": ik} if (ik := symbole(zugang["reise"])) else {})},
                    "instructions": anleitung(zugang, daten(zugang["reise"]))})
     if methode == "ping":
         return ok({})

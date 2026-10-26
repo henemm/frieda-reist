@@ -105,6 +105,32 @@ def test_initialize_und_protokoll(dienst):
     assert a["error"]["code"] == -32601
 
 
+def test_initialize_meldet_symbol_der_reise(dienst, seiten):
+    """Die Claude-App zeigt beim Konnektor das Symbol der Reise (serverInfo.icons), dasselbe wie die Seite."""
+    import base64
+    basis, _ = dienst
+    icons = rpc(basis, MITREISEND, "initialize", {"protocolVersion": "2025-11-25"})["serverInfo"]["icons"]
+    assert {i["sizes"][0] for i in icons} == {"32x32", "192x192"}
+    for i in icons:
+        assert i["mimeType"] == "image/png" and i["src"].startswith("data:image/png;base64,")
+        g = i["sizes"][0].split("x")[0]
+        assert base64.b64decode(i["src"].split(",", 1)[1]) == (seiten / "beispielreise" / f"icon-{g}.png").read_bytes()
+
+
+def test_initialize_ohne_symbol_geht_trotzdem(dienst, seiten):
+    basis, _ = dienst
+    versteckt = [(seiten / "beispielreise" / f"icon-{g}.png") for g in (32, 192)]
+    inhalte = [f.read_bytes() for f in versteckt]
+    try:
+        for f in versteckt:
+            f.unlink()
+        r = rpc(basis, MITREISEND, "initialize", {"protocolVersion": "2025-11-25"})
+        assert "icons" not in r["serverInfo"] and "Beispielreise" in r["serverInfo"]["title"]
+    finally:
+        for f, b in zip(versteckt, inhalte):
+            f.write_bytes(b)
+
+
 def test_stapel(dienst):
     basis, _ = dienst
     code, a = anfrage(f"{basis}/{MITREISEND}", [{"jsonrpc": "2.0", "id": 1, "method": "ping"},
