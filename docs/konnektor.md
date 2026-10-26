@@ -71,3 +71,5 @@ Der Konnektor meldet beim Verbinden das Symbol der Reise (`serverInfo.icons`, da
 - Über den Konnektor ändert sich nichts direkt. Rückmeldungen und Aufträge sind Eingaben. Was übernommen wird, entscheidet die Prüfung in Claude Code. Status `gewaehlt`/`verworfen` setzen nur Bestimmer.
 - Drossel im Reverse-Proxy. Der Dienst protokolliert weder Tokens noch Inhalte.
 - Überwachung: `GET /gesund` (ohne Token) meldet `{"gesund": true}`, wenn die Zugänge lesbar und alle verlinkten Reisen veröffentlicht sind.
+
+Darunter steht der Abschnitt „Einarbeiten“ (Paket D): wann zuletzt automatisch eingearbeitet wurde. Bestimmer sehen zusätzlich, wie lange es von der Eingabe bis zum fertigen Stand dauert (Schnitt, Maximum) und was die Läufe kosten (Summe, Schnitt, letzter Lauf) über alle Reisen zusammen, dazu fehlgeschlagene Läufe; alle anderen sehen keine Beträge. Quelle ist das Protokoll `einarbeiten-laeufe.jsonl`, das das Betriebsskript je Lauf schreibt (Ort: Ordner `_dienst` neben der Rückmelde-Ablage, `RM_LAEUFE` überschreibt ihn). Auf der Kommandozeile: `python3 engine/rueckmeldungen.py laeufe [<reise>] [--alle]`.

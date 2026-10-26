@@ -142,6 +142,40 @@ def test_ueberblick_zeigt_stand(dienst, monkeypatch):
     assert "braucht einen Neustart" in t
 
 
+def test_ueberblick_zeigt_einarbeiten_kosten_nur_bestimmern(dienst, tmp_path, monkeypatch):
+    """Wartezeit und Kosten des automatischen Einarbeitens sehen nur Bestimmer; alle sehen, wann zuletzt eingearbeitet wurde."""
+    basis, _ = dienst
+    t, _ = werkzeug(basis, MITREISEND, "ueberblick")
+    assert "## Einarbeiten" in t and "Noch nichts automatisch eingearbeitet" in t
+    protokoll = tmp_path / "laeufe.jsonl"
+    zeilen = [{"zeit": "2026-10-26T10:00:00+00:00", "ergebnis": "ok", "reisen": "beispielreise", "anzahl": 2,
+               "eingabe_bis_ende_s": 400, "kosten_usd": 0.8, "online": "ja"},
+              {"zeit": "2026-10-26T11:00:00+00:00", "ergebnis": "ok", "reisen": "andere", "anzahl": 1,
+               "eingabe_bis_ende_s": 200, "kosten_usd": 0.4, "online": "ja"},
+              {"zeit": "2026-10-26T12:00:00+00:00", "ergebnis": "fehler", "reisen": "beispielreise", "anzahl": 1}]
+    protokoll.write_text("\n".join(json.dumps(z) for z in zeilen) + "\nkaputt\n")
+    monkeypatch.setenv("RM_LAEUFE", str(protokoll))
+    monkeypatch.setattr(rm.datetime, "datetime", type("D", (rm.datetime.datetime,), {
+        "now": classmethod(lambda cls, tz=None: rm.datetime.datetime(2026, 10, 27, tzinfo=rm.datetime.timezone.utc))}))
+    t, _ = werkzeug(basis, MITREISEND, "ueberblick")
+    assert "Zuletzt eingearbeitet: 2026-10-26 10:00 UTC, 2 Eingabe(n)" in t      # nur Läufe dieser Reise
+    assert "USD" not in t and "Kosten" not in t and "im Schnitt" not in t
+    t, _ = werkzeug(basis, ALT_BESTIMMER, "ueberblick")
+    assert "(alle Reisen zusammen)" in t and "1.20 USD insgesamt" in t and "im Schnitt 5 min" in t
+    assert "Der letzte Lauf ist fehlgeschlagen" in t and "3 Läufe, davon 1 fehlgeschlagen" in t
+
+
+def test_status_mit_kommentar_erscheint_beim_absender(dienst):
+    """Was das Einarbeiten per setze einträgt, sieht der Absender sofort im Werkzeug rueckmeldungen (die Seite liest dieselbe Datei)."""
+    basis, _ = dienst
+    t, f = werkzeug(basis, KARL, "rueckmeldung_geben", ziel="T-03", art="Kommentar", text="Schön!")
+    assert not f
+    rid = t.split()[2]
+    rm.setze("beispielreise", rid, "uebernommen", "Steht jetzt im Text von T-03.")
+    t, f = werkzeug(basis, KARL, "rueckmeldungen")
+    assert not f and rid in t and "Steht jetzt im Text von T-03." in t
+
+
 def test_stapel(dienst):
     basis, _ = dienst
     code, a = anfrage(f"{basis}/{MITREISEND}", [{"jsonrpc": "2.0", "id": 1, "method": "ping"},
