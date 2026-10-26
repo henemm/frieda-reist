@@ -431,6 +431,15 @@ for (const a of abschnitte) {
 }
 for (const z of D.fragen.zeilen) zeileZu.set(z.id, "fragen");
 const R = D.route;
+// Bausteine und Verhalten je Status (reise.yaml, docs/produkt.md, Paket B): Ausgeschaltetes verschwindet aus der Seite,
+// die Daten bleiben. schreiben: alles | nachlese (Plan gesperrt, Rückmeldungen und Aufgaben gehen) | nichts.
+const BAUSTEINE = new Set(D.reise.bausteine || []);
+const B = n => BAUSTEINE.has(n);
+const V = D.reise.verhalten || {schreiben: "alles", fristen: true};
+const KANN_RM = B("rueckmeldungen") && V.schreiben !== "nichts";
+const KANN_AG = B("aufgaben") && V.schreiben !== "nichts";
+const KANN_WUNSCH = B("wuensche") && V.schreiben === "alles";
+if (R && !B("karte")) { R.karte = null; R.punkte = {}; }
 if (R) {
   for (const t of R.tage) zeileZu.set(t.id, "plan");
   for (const id of Object.keys(R.weitere_tage)) zeileZu.set(id, "plan");
@@ -448,17 +457,16 @@ const VARIANTEN_TITEL = PLAN_FEST && R.karte ? "Karte" : D.reise.varianten_titel
 
 const G = Object.assign({wissen: "Wissen", praxis: "Praxis", quelle: "Quellen"}, D.reise.gruppen || {});
 const hat = typ => abschnitte.some(a => a.typ === typ);
-const HAT_VARIANTEN = !!(D.route && (D.route.plaene.length || D.route.karte));
+const HAT_VARIANTEN = B("varianten") && !!(D.route && (D.route.plaene.length || D.route.karte));
 const PLAN_TITEL = Array.isArray(D.reise.plan_reiter) && D.reise.plan_reiter.length ? "Überblick" : "Plan";
 // Gewählter Plan: Etappe -> Tag, an dem sie gegangen wird. Die Tagesseite zeigt dann die ganze Etappe mit Karte,
 // der Reiter „Etappen“ entfällt, übrige Wege stehen unter Wissen (25.10.2026)
 const ETAPPE_TAG = new Map();
-if (PLAN_FEST) for (const t of PLAN_FEST.tage) for (const s of t.strecken)
+const PLAN_TAGE = B("tagesseiten") ? PLAN_FEST : null;   // Tagesseiten nur, wenn der Baustein an ist
+if (PLAN_TAGE) for (const t of PLAN_TAGE.tage) for (const s of t.strecken)
   if ((proId.get(s.id) || {}).typ === "etappe" && !ETAPPE_TAG.has(s.id)) ETAPPE_TAG.set(s.id, t.id);
-const ETAPPEN_REITER = hat("etappe") && !PLAN_FEST;
-// Bausteine je Reise (reise.yaml bausteine, docs/produkt.md); heute wirkt nur „wuensche“, die anderen blenden sich ab Paket B aus
-const BAUSTEINE = new Set(D.reise.bausteine || []);
-const WUENSCHE = BAUSTEINE.has("wuensche");
+const ETAPPEN_REITER = hat("etappe") && !PLAN_TAGE;
+const WUENSCHE = B("wuensche");
 const REITER = [
   // Zeigt der Reiter nur den Rahmen (Route noch offen), heißt er „Überblick“, sonst neben „Pläne“ verwirrend (25.10.2026)
   ["plan", PLAN_TITEL, true], ["varianten", VARIANTEN_TITEL, HAT_VARIANTEN], ["etappen", "Etappen", ETAPPEN_REITER],
@@ -466,10 +474,12 @@ const REITER = [
   // Quellen stehen seit dem 25.10.2026 ebenfalls im Reiter Wissen; ihr Platz in der Leiste gehört der Suche
   ["wissen", G.wissen, hat("wissen") || hat("praxis") || hat("quelle") || (hat("etappe") && !ETAPPEN_REITER)],
   // Wünsche der Mitreisenden: eigener Reiter, wenn die Reise ihn einschaltet (reise.yaml bausteine; 25.10.2026)
-  ["wuensche", "Wünsche", WUENSCHE], ["offen", "Offen", true],
+  ["wuensche", "Wünsche", WUENSCHE], ["offen", "Offen", B("aufgaben") || B("fragen") || B("rueckmeldungen")],
 ].filter(r => r[2]);
 // Startreiter steht vorn und öffnet ohne Sprungziel: reise.json „start“, sonst bei gewähltem Plan die Karte
-const START = REITER.some(r => r[0] === D.reise.start) ? D.reise.start
+// Unterwegs beginnt die Seite mit „Heute“ und der Karte (Verhalten je Status), sonst gilt „start“ der Reise
+const START = V.start === "heute" && REITER.some(r => r[0] === "varianten") ? "varianten"
+  : REITER.some(r => r[0] === D.reise.start) ? D.reise.start
   : PLAN_FEST && REITER.some(r => r[0] === "varianten") ? "varianten" : "plan";
 REITER.sort((a, b) => (b[0] === START) - (a[0] === START));
 const TYP_REITER = {plan: "plan", etappe: ETAPPEN_REITER ? "etappen" : "wissen", uebersicht: ETAPPEN_REITER ? "etappen" : "wissen", wissen: "wissen", praxis: "wissen", quelle: "wissen", ort: "varianten"};
@@ -482,6 +492,7 @@ function symbol(name) {
   return t.content.firstChild;
 }
 function zid(id) {
+  if (!B("rueckmeldungen") && !B("aufgaben")) return el("span", {class: "zid"}, id);
   const n = rmZu(id).length, a = agZu(id).filter(agOffen).length;
   return el("button", {type: "button", class: "zid" + (n || a ? " hat" : ""), "data-rm": id,
     title: "Rückmeldungen und Aufgaben zu " + id}, id, n ? ` 💬${n}` : " 💬", a ? ` ☐${a}` : "");
@@ -618,7 +629,7 @@ function tagKarte(t, ohneKopf) {
   const k = el("div", {class: "karte ziel", id: ohneKopf ? null : t.id, "data-ziel": ohneKopf ? null : t.id});
   if (!ohneKopf) k.append(tagKopf("div", {}, t.nr, t.datum, t.wochentag, t.titel, t.id));
   for (const f of t.fixpunkte || []) k.append(el("div", {class: "chips"}, el("span", {class: "chip plan"}, f)));
-  if (t.strecken.length) k.append(wegVerlauf(t));
+  const wahlZeilen = [];   // [Wahlstelle, Zeile]
   for (const vid of t.wahlstellen) {
     const w = wahlZu.get(vid);
     if (!w) continue;
@@ -627,8 +638,13 @@ function tagKarte(t, ohneKopf) {
     for (const o of w.optionen.filter(o => !weg(o.status)))
       ul.append(el("li", {}, o.titel, o.ausloeser ? ` – ${o.ausloeser}` : "", o.aktiv && w.art !== "unterwegs" ? (w.offen ? " (vorläufig)" : " (gewählt)") : ""));
     z.append(ul);
-    k.append(z);
+    wahlZeilen.push([w, z]);
   }
+  // Unterwegs rücken Wahlstellen mit Auslöser nach vorn (Verhalten je Status)
+  const vorn = V.ausloeser_vor ? wahlZeilen.filter(([w]) => w.art === "unterwegs") : [];
+  for (const [, z] of vorn) k.append(z);
+  if (t.strecken.length) k.append(wegVerlauf(t));
+  for (const [w, z] of wahlZeilen) if (!vorn.some(([x]) => x === w)) k.append(z);
   const n = t.nacht;
   if (n) {
     const z = el("div", {class: "z"}, el("b", {}, "Übernachtung: "), n.an_bord ? "an Bord" : ortName(n.ort));
@@ -646,7 +662,7 @@ function tagKarte(t, ohneKopf) {
   }
   if (t.text) k.append(el("div", {class: "z"}, t.text));
   // Plan entschieden (ohne Plan-Baum): die Tagesseite hat den ganzen Weg mit Karte
-  if (!ohneKopf && !D.reise.tiefe && PLAN_FEST && PLAN_FEST.tage.some(x => x.id === t.id))
+  if (!ohneKopf && !D.reise.tiefe && PLAN_TAGE && PLAN_TAGE.tage.some(x => x.id === t.id))
     k.append(el("a", {class: "weiter", href: "#" + t.id}, t.strecken.some(s => ETAPPE_TAG.get(s.id) === t.id) ? "Ganzer Tag: Weg, Karte, Einkehr →" : "Ganzer Tag →"));
   return k;
 }
@@ -957,7 +973,7 @@ function karteZeichnen(plaene, info, box) {
   if (alleLinien && plaene.length > 1) for (const p of plaene) for (const sid of new Set(p.tage.flatMap(d => d.strecken.map(st => st.id)))) inPlaenen[sid] = (inPlaenen[sid] || 0) + 1;
   // Linie oder Tagesnummer antippen öffnet die Etappe, bei anderen Strecken den Tag (25.10.2026).
   // Eine unsichtbare breite Linie darüber fängt den Finger; die sichtbaren Linien bleiben unberührt.
-  const tagOffen = id => TIEFE ? tagBekannt(id) : !!PLAN_FEST && PLAN_FEST.tage.some(t => t.id === id);
+  const tagOffen = id => TIEFE ? tagBekannt(id) : !!PLAN_TAGE && PLAN_TAGE.tage.some(t => t.id === id);
   const zielVon = (sid, d) => (proId.get(sid) || {}).typ === "etappe" ? sid : tagOffen(d.id) ? d.id : null;
   const titelVon = (sid, d, p) => (proId.get(sid) || {}).typ === "etappe" ? proId.get(sid).titel
     : `${plaene.length > 1 ? p.kurz + ", " : ""}Tag ${d.nr}: ${d.titel || ""}`;
@@ -1252,6 +1268,7 @@ function etappeTeil(a, mitTitel) {
 }
 
 function ansichtVarianten(m) {
+  heuteBlock(m);
   const alle = R.plaene;
   if (VARIANTE === null) VARIANTE = (alle.find(planFest) || {}).id || "";
   if (!alle.some(p => p.id === VARIANTE)) VARIANTE = "";
@@ -1321,9 +1338,25 @@ document.addEventListener("click", e => {
 });
 
 /* ---------- Ansichten ---------- */
+// Mahnungen ab Status „fest“: offene Planungs-Wahlstellen, ungeprüfte veränderliche Angaben (vom Generator, Paket B)
+function mahnungen(m) {
+  const l = (R && R.mahnungen) || [];
+  if (l.length) m.append(el("div", {class: "warnungen mahnung"}, el("b", {}, `Mahnung (${l.length}):`),
+    el("ul", {}, l.map(x => el("li", {}, x.text, " ", link(x.bezug, "→"))))));
+}
+// Status „unterwegs“: der heutige Tag steht ganz oben (Plan und Karte)
+function heuteBlock(m) {
+  if (V.start !== "heute" || !R) return;
+  const t = R.tage.find(x => x.datum === heute());
+  const s = el("section", {class: "heute"}, el("h2", {}, t ? `Heute · Tag ${t.nr}: ${t.titel}` : "Heute"));
+  s.append(t ? tagKarte(t, true) : el("div", {class: "leer"}, "Heute ist kein Tag im Plan."));
+  m.append(s);
+}
 function ansichtPlan(m) {
+  heuteBlock(m);
   if (PLAN_REITER) return ansichtRahmen(m);
   m.append(el("h2", {}, "Plan"));
+  mahnungen(m);
   if (D.plan_kopf) m.append(el("div", {html: D.plan_kopf}));
   for (const a of abschnitte.filter(x => x.typ === "plan")) m.append(abschnittInhalt(a));
   if (R) entscheidungen(m);
@@ -1331,7 +1364,7 @@ function ansichtPlan(m) {
 }
 function fragenKarte(m) {
   const offen = D.fragen.zeilen.filter(z => !/^(erledigt|geklärt|beantwortet)/i.test(z.status || z.zellen[z.zellen.length - 1] || ""));
-  if (D.fragen.zeilen.length) m.append(el("a", {class: "karte", href: "#fragen"},
+  if (B("fragen") && D.fragen.zeilen.length) m.append(el("a", {class: "karte", href: "#fragen"},
     el("div", {class: "k"}, `Offene Fragen: ${offen.length} →`), el("div", {class: "z klein"}, "im Reiter Offen")));
 }
 
@@ -1339,6 +1372,7 @@ function fragenKarte(m) {
 const PLAN_REITER = Array.isArray(D.reise.plan_reiter) && D.reise.plan_reiter.length ? D.reise.plan_reiter : null;
 function ansichtRahmen(m) {
   m.append(el("h2", {}, PLAN_TITEL));
+  mahnungen(m);
   if (D.plan_kopf) m.append(el("div", {html: D.plan_kopf}));
   for (const id of PLAN_REITER) if (proId.has(id)) m.append(abschnittInhalt(proId.get(id)));
   if (R && R.plaene.length) m.append(el("a", {class: "karte", href: "#varianten"},
@@ -1629,9 +1663,9 @@ function wissenZeile(a) {
     zid(a.id));
 }
 function ansichtOffen(m) {
-  const a = el("section", {class: "ziel", id: "aufgaben"}); ansichtAufgaben(a); m.append(a);
-  ansichtFragen(m);
-  const r = el("section", {class: "ziel", id: "rueckmeldungen"}); ansichtRueckmeldungen(r); m.append(r);
+  if (B("aufgaben")) { const a = el("section", {class: "ziel", id: "aufgaben"}); ansichtAufgaben(a); m.append(a); }
+  if (B("fragen")) ansichtFragen(m);
+  if (B("rueckmeldungen")) { const r = el("section", {class: "ziel", id: "rueckmeldungen"}); ansichtRueckmeldungen(r); m.append(r); }
 }
 
 function ansichtGruppe(m, typ, titel) {
@@ -1794,12 +1828,12 @@ function rmFormular(id) {
       el("div", {}, el("div", {class: "k"}, (id === "allgemein" ? "Allgemein" : "Zu " + id)), titel ? el("div", {class: "meldung"}, titel) : null),
       el("button", {type: "button", class: "outline klein", "data-schliessen": "1"}, "Schließen")),
     el("div", {class: "rminhalt"},
-      el("h4", {}, "Aufgaben"),
-      el("div", {}, agZu(id).sort(agSortierung).map(a => agEintrag(a))),
-      el("button", {type: "button", class: "outline klein", "data-ag-neu": id}, "+ Aufgabe"),
-      el("h4", {}, "Rückmeldungen"),
-      liste.length ? el("div", {}, liste.map(e => rmEintrag(e))) : null,
-      el("form", {id: "rmForm"},
+      B("aufgaben") ? [el("h4", {}, "Aufgaben"),
+        el("div", {}, agZu(id).sort(agSortierung).map(a => agEintrag(a))),
+        KANN_AG ? el("button", {type: "button", class: "outline klein", "data-ag-neu": id}, "+ Aufgabe") : null] : null,
+      B("rueckmeldungen") ? el("h4", {}, "Rückmeldungen") : null,
+      B("rueckmeldungen") && liste.length ? el("div", {}, liste.map(e => rmEintrag(e))) : null,
+      !KANN_RM ? el("p", {class: "meldung"}, V.schreiben === "nichts" ? "Die Reise ist archiviert: Hier kann nur noch gelesen werden." : "") : el("form", {id: "rmForm"},
         el("label", {for: "rmArt"}, "Art"), sel,
         el("label", {for: "rmText"}, "Text"),
         el("textarea", {id: "rmText", required: true, maxlength: 4000,
@@ -1815,7 +1849,7 @@ function rmFormular(id) {
   dlg.dataset.ziel = id;
   dlg.dataset.ag = "";
   if (!dlg.open) dlg.showModal();
-  if (!liste.length && !agZu(id).length) { if (!NAME) $("#rmName").focus(); else $("#rmText").focus(); }
+  if (KANN_RM && !liste.length && !agZu(id).length) { if (!NAME) $("#rmName").focus(); else $("#rmText").focus(); }
 }
 
 // Senden oder ohne Netz in den Ausgang legen. -> Fehlertext, wenn der Dienst ablehnt, sonst null
@@ -1865,7 +1899,7 @@ function rmNeuZeichnen() {
 function ansichtRueckmeldungen(m) {
   m.append(el("h2", {}, "Rückmeldungen"));
   m.append(el("p", {class: "meldung"}, "Zu jedem Eintrag mit Nummer (z. B. T-01) kann man über das 💬 an der Nummer etwas anmerken, fragen oder korrigieren. Claude Code prüft jede Rückmeldung, arbeitet sie ein (meist innerhalb einer Stunde) und schreibt hier dazu, was daraus geworden ist."));
-  m.append(el("button", {type: "button", class: "outline", "data-rm": "allgemein"}, "Allgemeine Rückmeldung zur Reise"));
+  if (KANN_RM) m.append(el("button", {type: "button", class: "outline", "data-rm": "allgemein"}, "Allgemeine Rückmeldung zur Reise"));
   if (API_OK === false) m.append(el("p", {class: "meldung"}, "Gerade keine Verbindung zum Rückmeldedienst – angezeigt wird der zuletzt geladene Stand."));
   if (AUSGANG.length) {
     m.append(el("h3", {}, `Noch nicht gesendet (${AUSGANG.length})`));
@@ -1892,7 +1926,7 @@ function ansichtWuensche(m) {
   m.append(el("h2", {}, "Wünsche"));
   m.append(el("p", {}, "Was möchtest du auf dieser Reise erleben? Ein Ort, ein Erlebnis, ein Essen – auch eine vage Idee ist willkommen. " +
     "Claude Code prüft jeden Wunsch, meist innerhalb einer Stunde, ob und wo er in die Reise passt, und schreibt hier dazu, was daraus geworden ist."));
-  m.append(el("form", {id: "wuForm"},
+  if (KANN_WUNSCH) m.append(el("form", {id: "wuForm"},
     el("label", {for: "wuText"}, "Dein Wunsch"),
     el("textarea", {id: "wuText", required: true, maxlength: 4000,
       placeholder: "z. B. einmal in einem Ryokan mit eigenem Onsen schlafen, Rehe in Nara, ein Ramen-Laden, den Freunde empfohlen haben …"}, WU_ENTWURF.text),
@@ -1966,7 +2000,7 @@ function agWert(k, v) {
 }
 const agOffen = a => a.status === "offen" || a.status === "in_arbeit";
 function heute() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
-const ueberfaellig = a => agOffen(a) && a.frist && a.frist < heute();
+const ueberfaellig = a => V.fristen && agOffen(a) && a.frist && a.frist < heute();   // Fristen zählen ab Status „fest“
 const spaeter = a => agOffen(a) && a.ab && a.ab > heute();
 function agZu(id) { return AG.filter(a => (a.bezug || []).includes(id)); }
 function agSortierung(a, b) {
@@ -2010,7 +2044,7 @@ function agKnopf() { offenZahl(); }
 function agEintrag(a, mitBezug) {
   const zu = !agOffen(a);
   const d = el("div", {class: "rmeintrag ag" + (zu ? " zu" : "")});
-  d.append(el("button", {type: "button", class: "haken" + (a.status === "erledigt" ? " an" : ""), "data-ag-haken": a.id,
+  d.append(el(KANN_AG ? "button" : "span", {type: KANN_AG ? "button" : false, class: "haken" + (a.status === "erledigt" ? " an" : ""), "data-ag-haken": KANN_AG ? a.id : false,
     "aria-label": a.status === "erledigt" ? `${a.id} wieder öffnen` : `${a.id} abhaken`}, a.status === "erledigt" ? "✓" : ""));
   const t = el("div", {class: "ag-text"});
   t.append(el("div", {}, el("span", {class: "titel"}, a.titel), " ", el("span", {class: "zid"}, a.id)));
@@ -2026,7 +2060,7 @@ function agEintrag(a, mitBezug) {
   if (mitBezug && (a.bezug || []).length) t.append(el("div", {class: "kopfzeile"}, "an: ",
     a.bezug.map((b, i) => [i ? ", " : "", el("a", {href: "#" + b}, b + (titelZu(b) ? " " + titelZu(b) : ""))])));
   if (a.notiz) t.append(el("div", {class: "text"}, a.notiz));
-  t.append(el("button", {type: "button", class: "outline klein", "data-ag-edit": a.id}, "Bearbeiten"));
+  if (KANN_AG) t.append(el("button", {type: "button", class: "outline klein", "data-ag-edit": a.id}, "Bearbeiten"));
   d.append(t);
   return d;
 }
@@ -2107,7 +2141,7 @@ async function agHaken(agid) {
 function ansichtAufgaben(m) {
   m.append(el("h2", {}, "Aufgaben"));
   m.append(el("p", {class: "meldung"}, "Aufgaben hängen an einer Stelle im Handbuch (z. B. U-13 oder T-07) oder an der Reise allgemein. Alle können sie anlegen, abhaken und ändern; jede Änderung steht im Verlauf. Auch über das ☐ an jeder Nummer."));
-  m.append(el("button", {type: "button", class: "outline", "data-ag-neu": ""}, "+ Neue Aufgabe"));
+  if (KANN_AG) m.append(el("button", {type: "button", class: "outline", "data-ag-neu": ""}, "+ Neue Aufgabe"));
   if (AG_OK === false) m.append(el("p", {class: "meldung"}, "Gerade keine Verbindung – angezeigt wird der zuletzt geladene Stand."));
   const f = el("div", {class: "agfilter"});
   const filter = [["alle", "Alle"], ...(NAME ? [["meine", "Meine (" + NAME + ")"]] : []), ["ohne", "Ohne Zuständige"]];
@@ -2194,15 +2228,15 @@ function route(behalten) {
   // Etappe des gewählten Plans (oder ein Block daraus): zum Tag, an dem sie gegangen wird
   else if (ETAPPE_TAG.has(h) || (blockZu.has(h) && ETAPPE_TAG.has(blockZu.get(h).id))) {
     zeigeReiter(TIEFE ? "varianten" : "plan"); ansichtTag(m, ETAPPE_TAG.get(ETAPPE_TAG.has(h) ? h : blockZu.get(h).id)); ziel = h; }
-  else if (!TIEFE && PLAN_FEST && PLAN_FEST.tage.some(t => t.id === h)) { zeigeReiter("plan"); ansichtTag(m, h); }
+  else if (!TIEFE && PLAN_TAGE && PLAN_TAGE.tage.some(t => t.id === h)) { zeigeReiter("plan"); ansichtTag(m, h); }
   else if (h === "wissen") { zeigeReiter("wissen"); ansichtWissen(m); }
   else if (h === "orte") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "orte"; }
   else if (h === "praxis") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "praxis"; }
   else if (h === "quellen") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "quellen"; }
   else if (h === "offen") { zeigeReiter("offen"); ansichtOffen(m); }
   else if (h === "wuensche" && WUENSCHE) { zeigeReiter("wuensche"); ansichtWuensche(m); }
-  else if (h === "rueckmeldungen" || h === "aufgaben" || h === "fragen") { zeigeReiter("offen"); ansichtOffen(m); ziel = h; }
-  else if (/^F-\d+$/.test(h) && zeileZu.get(h) === "fragen") { zeigeReiter("offen"); ansichtOffen(m); ziel = h; }
+  else if ((h === "rueckmeldungen" || h === "aufgaben" || h === "fragen") && B(h)) { zeigeReiter("offen"); ansichtOffen(m); ziel = h; }
+  else if (/^F-\d+$/.test(h) && zeileZu.get(h) === "fragen" && B("fragen")) { zeigeReiter("offen"); ansichtOffen(m); ziel = h; }
   else if (h === "varianten" && HAT_VARIANTEN) { zeigeReiter("varianten"); ansichtVarianten(m); }
   else if (TIEFE && planZu(h)) { zeigeReiter("varianten"); ansichtPlanDetail(m, planZu(h)); }
   else if (TIEFE && tagBekannt(h)) { zeigeReiter("varianten"); ansichtTag(m, h); }
