@@ -24,7 +24,7 @@ IDA, MAX, KARL, KIM = "i" * 32, "x" * 32, "k" * 32, "q" * 32
 ALLE_BAUSTEINE = ["varianten", "karte", "tagesseiten", "rueckmeldungen", "fragen", "aufgaben", "wuensche"]
 
 
-def reise_bauen(tmp, status="planung", bausteine=None, luecke=False):
+def reise_bauen(tmp, status="planung", bausteine=None, luecke=False, regeln=None):
     """Beispielreise mit gewünschtem Status und Bausteinen bauen; Max als zweiter Bestimmer, Kim als Reisende.
     -> Seitenordner (<seiten>/beispielreise/daten.json)"""
     quelle = tmp / "quelle"
@@ -37,6 +37,8 @@ def reise_bauen(tmp, status="planung", bausteine=None, luecke=False):
             {"datum": datetime.date(2026, 10, 25), "wert": status, "wer": "Ida", "grund": "Test"}]}
     if bausteine is not None:
         y["bausteine"] = bausteine
+    if regeln:
+        y.setdefault("regeln", {}).update(regeln)
     (quelle / "reise.yaml").write_text(yaml.safe_dump(y, allow_unicode=True), encoding="utf-8")
     if luecke:   # Start in einem anderen Ort: der Plan geht nicht auf (Warnung)
         r = quelle / "plan" / "routen.yaml"
@@ -65,8 +67,8 @@ def anfrage(url, daten=None, methode="POST"):
 class Umgebung:
     """Rückmeldedienst und Konnektor gegen eine gebaute Beispielreise."""
 
-    def __init__(self, tmp, monkeypatch, status="planung", bausteine=None):
-        self.seiten = reise_bauen(tmp, status, bausteine)
+    def __init__(self, tmp, monkeypatch, status="planung", bausteine=None, regeln=None):
+        self.seiten = reise_bauen(tmp, status, bausteine, regeln=regeln)
         self.ablage = tmp / "ablage"
         (self.ablage / "beispielreise").mkdir(parents=True)
         zug = tmp / "zugaenge.json"
@@ -102,8 +104,8 @@ class Umgebung:
 def umgebung(tmp_path, monkeypatch):
     erzeugt = []
 
-    def neu(status="planung", bausteine=None):
-        u = Umgebung(tmp_path / f"u{len(erzeugt)}", monkeypatch, status, bausteine)
+    def neu(status="planung", bausteine=None, regeln=None):
+        u = Umgebung(tmp_path / f"u{len(erzeugt)}", monkeypatch, status, bausteine, regeln)
         erzeugt.append(u)
         return u
     yield neu
@@ -270,7 +272,9 @@ def test_konnektor_werkzeuge_je_status(umgebung):
     u = umgebung("planung")
     nur_lesen = u.werkzeuge(KIM)
     assert not nur_lesen & kn.SCHREIB_WERKZEUGE and "auftrag_geben" not in nur_lesen
-    assert kn.SCHREIB_WERKZEUGE <= u.werkzeuge(KARL) and "auftrag_geben" in u.werkzeuge(IDA)
+    nur_bestimmer = {"entscheiden", "person_einladen"}   # Paket C
+    assert kn.SCHREIB_WERKZEUGE - nur_bestimmer <= u.werkzeuge(KARL) and not nur_bestimmer & u.werkzeuge(KARL)
+    assert kn.SCHREIB_WERKZEUGE <= u.werkzeuge(IDA) and "auftrag_geben" in u.werkzeuge(IDA)
 
     danach = umgebung("danach")
     w = danach.werkzeuge(KARL)

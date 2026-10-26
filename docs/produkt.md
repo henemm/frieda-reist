@@ -72,11 +72,20 @@ Die Regeln stehen in `engine/reise.py` (`VERHALTEN`, `AKTIONEN`, `erlaubt`) und 
 
 Ein Auftrag an das Ziel `reise` (Status, Einstellungen) geht in jedem Status, damit ein Bestimmer eine gesperrte Reise wieder öffnen kann.
 
-Rechte: Der Rückmeldedienst kennt die Rolle über den Namen aus `reise.yaml` (veröffentlichte `daten.json`). Eine bekannte Person mit Rolle `reisend` kann nichts eintragen; ein unbekannter Name auf der Seite kommt über den geheimen Link und zählt als Einbringer. Genaue Zugänge je Person folgen mit Paket C.
+Rechte: Der Rückmeldedienst kennt die Rolle über den Namen aus `reise.yaml` (veröffentlichte `daten.json`). Eine bekannte Person mit Rolle `reisend` kann nichts eintragen; ein unbekannter Name auf der Seite kommt über den geheimen Link und zählt als Einbringer. Zugänge je Person gibt es seit Paket C (siehe unten).
 
 Bausteine: Ein ausgeschalteter Baustein verschwindet aus der Seite (Reiter, Knöpfe, Formulare), aus den Konnektor-Werkzeugen (Liste, Aufruf, Überblick, Anleitung) und blockiert das Schreiben im Dienst. Die Daten bleiben. Karte aus: `route.karte` wird auf der Seite nicht verwendet; Tagesseiten aus: die Etappen stehen wieder im Reiter „Etappen“.
 
 Konflikt (`regeln.konflikt: offene_frage`): Ein Auftrag mit `entscheidung` (gewaehlt, verworfen, ersetzt) und `ziel` wird gegen die stehenden Entscheidungen im Plan und gegen offene Aufträge anderer Bestimmer geprüft. Widerspruch heißt dasselbe Ziel verschieden entschieden oder zwei verschiedene Optionen derselben Wahlstelle gewählt. Dann bekommen die beteiligten Aufträge den Status `konflikt` (werden nicht eingearbeitet), `meldungen.jsonl` in der Ablage bekommt eine Meldung an alle beteiligten Bestimmer (der Konnektor zeigt sie unter `rueckmeldungen`), und die KI legt eine offene Frage (F-…) an. Zustellung der Meldung auf weiteren Wegen folgt mit Paket E.
+
+### Gespräch für alle (Paket C, 26.10.2026)
+
+Details und Eingaben der Werkzeuge: `docs/konnektor.md`, Abschnitt „Entscheiden, Fragen beantworten, Einladen“.
+
+- `entscheiden` (Bestimmer): Entscheidung über eine Option wird im selben Moment geprüft (Option, Status, Grund, Doppelungen, Konflikt mit anderen Bestimmern) und mit Datum, Person und Grund festgehalten. `regeln.entscheidungsweg` bestimmt, ob das genügt (`direkt`) oder Claude Code vor der Geltung noch prüft (`auftrag`). Eingearbeitet wird in beiden Fällen beim nächsten Lauf.
+- `frage_beantworten` (Einbringer): Die Antwort hängt an der Frage; ob die Frage geklärt ist, entscheidet der Bestimmer.
+- `person_einladen` (`regeln.einladen`): legt die Person mit Rolle an und stellt den Link aus, ohne Handarbeit auf dem Server. Rolle und Zugang gelten sofort (`einladungen.json`), `reise.yaml` wird beim Einarbeiten nachgezogen.
+- Die Anleitung des Konnektors nennt die Rolle, den Reisestatus und die Grenzen der sprechenden Person.
 
 ## Vorgaben für neue Reisen
 
@@ -108,3 +117,4 @@ Stufe 1 „Rollen und sofort“: A, B, C, D. Stufe 2 „Wünsche und Wächter“
 
 - 26.10.2026, Paket A begonnen: `reise.yaml` je Reise mit Status, Personen, Bausteinen, Regeln und Darstellung (`engine/reise.py` prüft); `entscheider` kommt aus den Personen; Konnektor kennt Rollen `bestimmer`, `einbringer`, `reisend` und Zugänge je Person; der Schalter `funktionen` in `reise.json` ist durch `bausteine` in `reise.yaml` ersetzt.
 - 26.10.2026, Paket B: Rechte, Verhalten je Status, Bausteine und Konflikt werden im Code geprüft (siehe „Was die Maschine daraus macht“); Tests in `engine/tests/test_regeln.py`.
+- 26.10.2026, Paket C: Werkzeuge `entscheiden`, `frage_beantworten`, `person_einladen`; beide Entscheidungswege getestet (`engine/tests/test_gespraech.py`). Offen: Links sperren geht noch von Hand.

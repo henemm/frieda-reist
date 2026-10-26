@@ -189,7 +189,8 @@ def test_werkzeuge_je_rolle(dienst):
     m = {t["name"] for t in rpc(basis, MITREISEND, "tools/list")["tools"]}
     h = {t["name"] for t in rpc(basis, ALT_BESTIMMER, "tools/list")["tools"]}
     assert "auftrag_geben" not in m and "rueckmeldung_geben" in m
-    assert h == m | {"auftrag_geben"}
+    assert h == m | {"auftrag_geben", "entscheiden", "person_einladen"}
+    assert "frage_beantworten" in m and not {"entscheiden", "person_einladen"} & m   # Paket C
     assert {t["name"] for t in rpc(basis, KARL, "tools/list")["tools"]} == m
     r = {t["name"] for t in rpc(basis, REISEND, "tools/list")["tools"]}
     assert r == m - kn.SCHREIB_WERKZEUGE and "zeige" in r

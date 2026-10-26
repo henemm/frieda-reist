@@ -1,0 +1,386 @@
+"""Tests für Paket C: Gespräch für alle (entscheiden, frage_beantworten, person_einladen) gegen die Beispielreise.
+Personen: Ida und Max Bestimmer, Karl Einbringer, Kim reisend (siehe test_regeln.reise_bauen)."""
+import json
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import konnektor as kn  # noqa: E402
+import reise as rg  # noqa: E402
+import rueckmeldungen as rm  # noqa: E402
+from test_regeln import IDA, KARL, KIM, MAX, anfrage, umgebung  # noqa: E402,F401  (umgebung: Fixture)
+
+BASIS = "https://beispiel.invalid/mcp"
+
+
+@pytest.fixture(autouse=True)
+def link_adresse(monkeypatch):
+    monkeypatch.setenv("KN_BASIS", BASIS)
+
+
+def token_aus(text):
+    """Den Link aus der Antwort von person_einladen lesen -> Token."""
+    link = next(z for z in text.splitlines() if z.startswith(BASIS + "/"))
+    return link.rsplit("/", 1)[1]
+
+
+def ruf(u, token, werkzeug, **args):
+    """Wie u.werkzeug, aber mit dem Argument „name“ (u.werkzeug belegt den Parameter name selbst)."""
+    r = u.rpc(token, "tools/call", {"name": werkzeug, "arguments": args})
+    return r["content"][0]["text"], r["isError"]
+
+
+def auftraege(u):
+    return rm.auftraege(u.o)
+
+
+# ---------- entscheiden ----------
+
+def test_entscheiden_direkt_prueft_und_haelt_fest(umgebung, capsys):
+    u = umgebung("planung")
+    t, f = u.werkzeug(IDA, "entscheiden", option="V-01.b", status="gewaehlt",
+                      grund="Karl möchte einmal mit der Kirnitzschtalbahn fahren")
+    assert not f and "geprüft und festgehalten" in t and "Sie gilt ab jetzt" in t
+    (a,) = auftraege(u)
+    assert a["name"] == "Ida" and a["ziel"] == "V-01.b" and a["status"] == "neu"
+    d = a["daten"]
+    assert (d["entscheidung"], d["option"], d["wahlstelle"], d["weg"], d["geprueft"]) == \
+        ("gewaehlt", "V-01.b", "V-01", "direkt", True)
+    assert d["datum"] == kn.datetime.date.today().isoformat() and "Kirnitzschtalbahn" in d["grund"]
+    assert "Herkunft: Entscheidung von Ida im Gespräch in der Claude-App" in a["text"]
+    assert "status: gewaehlt, wer: Ida" in a["text"] and "Frage F-01 als geklärt" in a["text"]
+    # sofort sichtbar, bevor es eingearbeitet ist
+    t, _ = u.werkzeug(KARL, "zeige", id="V-01.b")
+    assert "Eingetragen, noch nicht auf der Seite: gewählt von Ida" in t and "im Gespräch geprüft" in t
+    t, _ = u.werkzeug(KARL, "varianten")
+    assert "Eingetragen, noch nicht auf der Seite" in t
+    # die Liste für das Einarbeiten sagt, dass nichts mehr zu entscheiden ist
+    rm.liste("beispielreise", False)
+    assert "ENTSCHEIDUNG von Ida im Gespräch" in capsys.readouterr().out
+    # dieselbe Entscheidung noch einmal: abgelehnt, liegt schon vor
+    t, f = u.werkzeug(IDA, "entscheiden", option="V-01.b", status="gewaehlt", grund="noch einmal")
+    assert f and "liegt schon vor" in t and len(auftraege(u)) == 1
+
+
+def test_entscheiden_ueber_auftrag_prueft_erst_claude_code(umgebung):
+    u = umgebung("planung", regeln={"entscheidungsweg": "auftrag"})
+    t, f = u.werkzeug(IDA, "entscheiden", option="V-01.b", status="gewaehlt", grund="Karl will die Bahn")
+    assert not f and "Weg auftrag" in t and "vorher ist nichts entschieden" in t
+    (a,) = auftraege(u)
+    assert a["daten"]["weg"] == "auftrag" and a["daten"]["geprueft"] is False and a["status"] == "neu"
+    t, _ = u.werkzeug(KARL, "zeige", id="V-01.b")
+    assert "als Auftrag, wird noch geprüft" in t
+    # die formale Prüfung gilt auf beiden Wegen
+    t, f = u.werkzeug(IDA, "entscheiden", option="V-99.a", status="gewaehlt", grund="x")
+    assert f and "gibt es nicht" in t
+    assert len(auftraege(u)) == 1
+
+
+def test_entscheiden_lehnt_unstimmiges_mit_begruendung_ab(umgebung):
+    u = umgebung("planung")
+    fall = [({"option": "V-99.a", "status": "gewaehlt", "grund": "x"}, "gibt es nicht"),
+            ({"option": "V-01", "status": "gewaehlt", "grund": "x"}, "eine Wahlstelle"),
+            ({"option": "V-01.b", "status": "gewaehlt", "grund": ""}, "Der Grund fehlt"),
+            ({"option": "V-01.b", "status": "favorisiert", "grund": "x"}, "status muss einer von"),
+            ({"option": "V-03.a", "status": "gewaehlt", "grund": "x"}, "schon gewählt"),
+            ({"option": "V-03.b", "status": "verworfen", "grund": "x"}, "schon verworfen"),
+            ({"option": "V-01.a", "status": "ersetzt", "grund": "x"}, "wodurch die Option ersetzt wird"),
+            ({"option": "V-01.a", "status": "ersetzt", "ersetzt_durch": "V-03.a", "grund": "x"}, "derselben Wahlstelle"),
+            ({"option": "V-03.a", "status": "ersetzt", "ersetzt_durch": "V-03.b", "grund": "x"}, "selbst verworfen"),
+            ({"option": "V-01.a", "status": "verworfen", "ersetzt_durch": "V-01.b", "grund": "x"}, "nur beim Status ersetzt"),
+            ({"option": "V-01.a", "status": "verworfen", "grund": "Zeile eins\nZeile zwei"}, "eine Zeile")]
+    for args, soll in fall:
+        t, f = u.werkzeug(IDA, "entscheiden", **args)
+        assert f and soll in t, (args, t)
+    assert auftraege(u) == []   # nichts davon wurde festgehalten
+    t, f = u.werkzeug(IDA, "entscheiden", option="V-01.a", status="ersetzt", ersetzt_durch="V-01.b", grund="Bahnfahrt gewünscht")
+    assert not f and auftraege(u)[0]["daten"]["ersetzt_durch"] == "V-01.b"
+
+
+def test_entscheiden_hinweise_ersetzen_und_offene_wahlstelle(umgebung):
+    u = umgebung("planung")
+    # Ida hat V-03.a gewählt; V-03.b zu wählen ersetzt sie (gleiche Person: kein Widerspruch)
+    t, f = u.werkzeug(IDA, "entscheiden", option="V-03.b", status="gewaehlt", grund="doch lieber abends im Haus essen")
+    assert not f and "V-03.a ist bisher gewählt und wird dadurch ersetzt" in t
+    assert "bisher gewählt: V-03.a bekommt ersetzt" in auftraege(u)[0]["text"]
+    # Die gewählte Option verwerfen: Wahlstelle danach offen
+    u2 = umgebung("planung")
+    t, f = u2.werkzeug(IDA, "entscheiden", option="V-03.a", status="verworfen", grund="Pension ist ausgebucht")
+    assert not f and "danach offen" in t
+    # Unterwegs-Wahlstelle vor der Reise
+    t, f = u2.werkzeug(IDA, "entscheiden", option="V-02.b", status="gewaehlt", grund="Wolfsschlucht klingt gut")
+    assert not f and "für unterwegs" in t and "Auslöser" in t
+
+
+def test_entscheiden_widerspruch_wird_offene_frage(umgebung):
+    u = umgebung("planung")
+    assert not u.werkzeug(IDA, "entscheiden", option="V-01.b", status="gewaehlt", grund="Bahn")[1]
+    t, f = u.werkzeug(MAX, "entscheiden", option="V-01.a", status="gewaehlt", grund="kürzer")
+    assert not f and "Nicht entschieden" in t and "offene Frage" in t and "Sag nie" in t
+    a = {x["name"]: x for x in auftraege(u)}
+    assert {x["status"] for x in a.values()} == {"konflikt"}
+    meldung = rm.meldungen(u.o, "Ida")
+    assert meldung and meldung[0]["art"] == "konflikt" and rm.meldungen(u.o, "Max")
+    t, _ = u.werkzeug(IDA, "rueckmeldungen")
+    assert "Meldungen an dich" in t
+    # derselbe Bestimmer ändert seine Meinung selbst: kein Widerspruch
+    u2 = umgebung("planung")
+    assert not u2.werkzeug(IDA, "entscheiden", option="V-01.a", status="gewaehlt", grund="kurz")[1]
+    t, f = u2.werkzeug(IDA, "entscheiden", option="V-01.b", status="gewaehlt", grund="doch Bahn")
+    assert not f and "Nicht entschieden" not in t and {x["status"] for x in auftraege(u2)} == {"neu"}
+
+
+def test_entscheiden_nur_bestimmer_mit_persoenlichem_link(umgebung):
+    u = umgebung("planung")
+    args = dict(option="V-01.b", status="gewaehlt", grund="Bahn")
+    for token, soll in ((KARL, "nur Bestimmer"), (KIM, "nur Bestimmer")):
+        t, f = u.werkzeug(token, "entscheiden", **args)
+        assert f and soll in t, token
+    assert auftraege(u) == []
+    # Link nur mit Rolle (kein Name): keine Entscheidung, sie gehört genau einer Person
+    kn.zugaenge_pfad().write_text(json.dumps({**kn.zugaenge(), "b" * 32: {"reise": "beispielreise", "rolle": "bestimmer"}}))
+    t, f = u.werkzeug("b" * 32, "entscheiden", **args)
+    assert f and "persönlichen Link" in t and auftraege(u) == []
+    assert "entscheiden" in u.werkzeuge(IDA) and "entscheiden" not in u.werkzeuge(KARL) | u.werkzeuge(KIM)
+
+
+@pytest.mark.parametrize("status,geht", [("idee", True), ("planung", True), ("fest", True), ("unterwegs", True),
+                                          ("danach", False), ("archiv", False)])
+def test_entscheiden_je_status(umgebung, status, geht):
+    u = umgebung(status)
+    t, f = u.werkzeug(IDA, "entscheiden", option="V-01.b", status="gewaehlt", grund="Bahn")
+    assert (not f) == geht, t
+    assert ("entscheiden" in u.werkzeuge(IDA)) == geht
+    if not geht:
+        assert "schreibgeschützt" in t or "archiviert" in t
+
+
+def test_entscheiden_braucht_baustein_varianten(umgebung):
+    u = umgebung(bausteine=["rueckmeldungen", "fragen"])
+    t, f = u.werkzeug(IDA, "entscheiden", option="V-01.b", status="gewaehlt", grund="Bahn")
+    assert f and "ausgeschaltet" in t and "entscheiden" not in u.werkzeuge(IDA)
+
+
+# ---------- frage_beantworten ----------
+
+def test_frage_beantworten_landet_an_der_frage(umgebung):
+    u = umgebung("planung")
+    t, f = u.werkzeug(KARL, "frage_beantworten", frage="F-01", antwort="Die Bahn fährt sonntags alle 30 Minuten",
+                      quelle="https://beispiel.invalid/fahrplan")
+    assert not f and "hängt an F-01" in t and "entscheidet Ida und Max" in t and "V-01" in t
+    (e,) = rm.eintraege(u.o)
+    assert (e["name"], e["art"], e["ziel"], e["status"]) == ("Karl", "Antwort", "F-01", "neu")
+    assert e["quelle"] == "https://beispiel.invalid/fahrplan"
+    # die Frage selbst bleibt offen, die Antwort steht dabei (Eingabe, keine Entscheidung)
+    t, _ = u.werkzeug(IDA, "zeige", id="F-01")
+    assert "Antworten (Eingaben, keine Entscheidung)" in t and "Karl: Die Bahn fährt" in t
+    assert "F-01" in u.werkzeug(IDA, "offene_fragen")[0]
+    # Bestimmer dürfen auch antworten und werden auf die Entscheidung hingewiesen
+    t, f = u.werkzeug(IDA, "frage_beantworten", frage="F-01", antwort="Ich habe angerufen")
+    assert not f and "mit entscheiden entscheiden" in t
+
+
+def test_frage_beantworten_prueft(umgebung):
+    u = umgebung("planung")
+    t, f = u.werkzeug(KARL, "frage_beantworten", frage="F-99", antwort="x")
+    assert f and "gibt es nicht" in t
+    t, f = u.werkzeug(KARL, "frage_beantworten", frage="F-02", antwort="x")   # geklärt
+    assert f and "nicht mehr offen" in t
+    t, f = u.werkzeug(KARL, "frage_beantworten", frage="F-01", antwort="  ")
+    assert f and "Antwort fehlt" in t
+    t, f = u.werkzeug(KARL, "frage_beantworten", frage="V-01", antwort="x")
+    assert f and "gibt es nicht" in t
+    t, f = u.werkzeug(KIM, "frage_beantworten", frage="F-01", antwort="x")
+    assert f and "nur lesen" in t
+    assert "frage_beantworten" not in u.werkzeuge(KIM) and "frage_beantworten" in u.werkzeuge(KARL)
+    assert rm.eintraege(u.o) == []
+
+
+def test_frage_beantworten_ohne_namen_fragt_nach(umgebung):
+    u = umgebung("planung")
+    kn.zugaenge_pfad().write_text(json.dumps({**kn.zugaenge(), "e" * 32: {"reise": "beispielreise", "rolle": "einbringer"}}))
+    t, f = u.werkzeug("e" * 32, "frage_beantworten", frage="F-01", antwort="Bahn")
+    assert f and "Name fehlt" in t
+    t, f = ruf(u, "e" * 32, "frage_beantworten", frage="F-01", antwort="Bahn", name="Lena")
+    assert not f and rm.eintraege(u.o)[0]["name"] == "Lena"
+
+
+@pytest.mark.parametrize("status,geht", [("planung", True), ("fest", True), ("danach", True), ("archiv", False)])
+def test_frage_beantworten_je_status(umgebung, status, geht):
+    u = umgebung(status)
+    t, f = u.werkzeug(KARL, "frage_beantworten", frage="F-01", antwort="Bahn")
+    assert (not f) == geht, t
+    assert ("frage_beantworten" in u.werkzeuge(KARL)) == geht
+
+
+def test_frage_beantworten_braucht_bausteine(umgebung):
+    for bausteine in (["rueckmeldungen"], ["fragen"]):   # ohne fragen bzw. ohne rueckmeldungen
+        u = umgebung(bausteine=bausteine)
+        t, f = u.werkzeug(KARL, "frage_beantworten", frage="F-01", antwort="Bahn")
+        assert f and "ausgeschaltet" in t
+        assert "frage_beantworten" not in u.werkzeuge(KARL)
+
+
+# ---------- person_einladen ----------
+
+def test_einladen_legt_person_an_und_stellt_zugang_aus(umgebung, capsys):
+    u = umgebung("planung")
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="Jörg", rolle="einbringer", notiz="Karls Bruder")
+    assert not f and "Jörg ist eingeladen" in t and "Rolle einbringer" in t
+    token = token_aus(t)
+    assert kn.zugang_zu(token)["person"] == "joerg"
+    assert (kn.zugaenge_pfad().stat().st_mode & 0o777) == 0o600
+    e = rm.einladungen_lesen(u.o)["joerg"]
+    assert (e["name"], e["rolle"], e["reist"], e["eingeladen_von"], e["notiz"]) == ("Jörg", "einbringer", True, "Ida", "Karls Bruder")
+    (a,) = auftraege(u)
+    assert a["ziel"] == "reise" and a["daten"]["einladung"]["schluessel"] == "joerg" and "reise.yaml" in a["text"]
+    rm.liste("beispielreise", False)
+    assert "EINLADUNG von Ida" in capsys.readouterr().out
+    # Der Link funktioniert sofort: Name und Rolle stehen fest, ohne dass reise.yaml schon geändert ist
+    t, f = ruf(u, token, "rueckmeldung_geben", ziel="T-03", art="Kommentar", text="Schön!", name="Jemand")
+    assert not f and rm.eintraege(u.o)[0]["name"] == "Jörg"
+    assert "Du sprichst mit Jörg (Einbringer)" in u.rpc(token, "initialize")["instructions"]
+    assert "frage_beantworten" in u.werkzeuge(token) and "entscheiden" not in u.werkzeuge(token)
+    assert "person_einladen" not in u.werkzeuge(token)   # Vorgabe: nur Bestimmer laden ein
+    # Auch der Rückmeldedienst kennt ihn jetzt als Einbringer
+    assert rm.rolle_von(rm.zustand("beispielreise"), "Jörg") == "einbringer"
+    # Die Kommandozeile findet die Person ebenfalls
+    kn.zugang_anlegen("beispielreise", "joerg")
+    assert "Jörg, einbringer" in capsys.readouterr().out
+
+
+def test_einladen_reisend_darf_nur_lesen(umgebung):
+    u = umgebung("planung")
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="Mia", rolle="reisend", reist=False)
+    assert not f and "nur lesen" in t
+    token = token_aus(t)
+    assert rm.einladungen_lesen(u.o)["mia"]["reist"] is False
+    assert not u.werkzeuge(token) & kn.SCHREIB_WERKZEUGE
+    t, f = ruf(u, token, "rueckmeldung_geben", ziel="T-03", art="Kommentar", text="x", name="Mia")
+    assert f and "nur lesen" in t
+    # der Dienst lehnt die Person auch über die Webseite ab (Name bekannt, Rolle reisend)
+    code, a = anfrage(f"{u.rurl}/beispielreise/rueckmeldungen", {"name": "Mia", "art": "Kommentar", "ziel": "T-03", "text": "x"})
+    assert code == 403 and "nur lesen" in a["fehler"]
+
+
+def test_einladen_rolle_nie_hoeher_als_die_eigene(umgebung):
+    u = umgebung("planung", regeln={"einladen": "einbringer"})
+    assert "person_einladen" in u.werkzeuge(KARL) and "person_einladen" not in u.werkzeuge(KIM)
+    t, f = u.werkzeug(KARL, "person_einladen", vorname="Nora", rolle="bestimmer")
+    assert f and "höchstens eine Rolle" in t and rm.einladungen_lesen(u.o) == {}
+    t, f = u.werkzeug(KARL, "person_einladen", vorname="Nora")   # Standard einbringer
+    assert not f and rm.einladungen_lesen(u.o)["nora"]["rolle"] == "einbringer"
+    assert "Karl" in rm.einladungen_lesen(u.o)["nora"]["eingeladen_von"]
+    t, f = u.werkzeug(KIM, "person_einladen", vorname="Olga")
+    assert f and "nur lesen" in t
+    # Bestimmer vergeben jede Rolle, auch bestimmer
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="Paul", rolle="bestimmer")
+    assert not f
+    t, _ = u.werkzeug(token_aus(t), "entscheiden", option="V-01.b", status="gewaehlt", grund="Bahn")
+    assert "nur Bestimmer" not in t and rm.rolle_von(rm.zustand("beispielreise"), "Paul") == "bestimmer"
+
+
+def test_einladen_nur_bestimmer_ist_die_vorgabe(umgebung):
+    u = umgebung("planung")
+    t, f = u.werkzeug(KARL, "person_einladen", vorname="Nora")
+    assert f and "nur Bestimmer" in t and rm.einladungen_lesen(u.o) == {}
+
+
+def test_einladen_pruefungen(umgebung, monkeypatch, tmp_path):
+    u = umgebung("planung")
+    for args, soll in (({"vorname": ""}, "vorname fehlt"), ({"vorname": "A\nB"}, "vorname fehlt"),
+                       ({"vorname": "Nora", "rolle": "chef"}, "Rolle muss"),
+                       ({"vorname": "Nora", "notiz": "x" * 301}, "Notiz"),
+                       ({"vorname": "???"}, "Schlüssel")):
+        t, f = u.werkzeug(IDA, "person_einladen", **args)
+        assert f and soll in t, (args, t)
+    assert rm.einladungen_lesen(u.o) == {} and auftraege(u) == []
+    # Link ohne Namen kann nicht einladen
+    kn.zugaenge_pfad().write_text(json.dumps({**kn.zugaenge(), "b" * 32: {"reise": "beispielreise", "rolle": "bestimmer"}}))
+    t, f = u.werkzeug("b" * 32, "person_einladen", vorname="Nora")
+    assert f and "persönlichen Link" in t
+    # ohne eingerichtete Link-Adresse
+    monkeypatch.delenv("KN_BASIS")
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="Nora")
+    assert f and "KN_BASIS" in t and rm.einladungen_lesen(u.o) == {}
+
+
+def test_einladen_vorhandene_person_bekommt_nur_einen_neuen_link(umgebung):
+    u = umgebung("planung")
+    vorher = set(kn.zugaenge())
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="karl")   # Schreibweise egal
+    assert not f and "Neuer Link für Karl" in t and "Rolle einbringer" in t
+    neu = set(kn.zugaenge()) - vorher
+    assert len(neu) == 1 and kn.zugaenge()[neu.pop()]["person"] == "karl"
+    assert rm.einladungen_lesen(u.o) == {} and auftraege(u) == []   # keine zweite Person, kein Auftrag
+    # Rolle ändern ist eine Einstellung, kein Einladen
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="Karl", rolle="bestimmer")
+    assert f and "Einstellung" in t and "auftrag_geben" in t
+    # ein Einbringer (bei einladen: einbringer) kann keinen Link für einen Bestimmer ausstellen
+    u2 = umgebung("planung", regeln={"einladen": "einbringer"})
+    t, f = u2.werkzeug(KARL, "person_einladen", vorname="Ida")
+    assert f and "mindestens dieser Rolle" in t
+
+
+def test_einladen_doppelter_name_nach_einladung(umgebung):
+    u = umgebung("planung")
+    assert not u.werkzeug(IDA, "person_einladen", vorname="Nora")[1]
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="NORA", rolle="bestimmer")
+    assert f and "ist schon dabei" in t and len(rm.einladungen_lesen(u.o)) == 1
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="Nora")   # weiterer Link für dieselbe Person
+    assert not f and "Neuer Link für Nora" in t and len(rm.einladungen_lesen(u.o)) == 1
+
+
+def test_einladen_zugaenge_nicht_beschreibbar(umgebung, monkeypatch):
+    u = umgebung("planung")
+    def nicht_schreibbar(z):
+        raise PermissionError("Dateisystem ist schreibgeschützt")
+    monkeypatch.setattr(kn, "zugang_ausstellen", nicht_schreibbar)
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="Nora")
+    assert f and "nicht schreiben" in t and rm.einladungen_lesen(u.o) == {} and auftraege(u) == []
+
+
+def test_einladung_gilt_nicht_mehr_doppelt_sobald_reise_yaml_die_person_kennt():
+    d = [{"schluessel": "karl", "name": "Karl", "rolle": "einbringer"}]
+    # kaputte oder fehlende Datei ist kein Fehler
+    assert rm.personen_mit_einladungen(d, None) == d
+    assert rm.einladungen_lesen(Path("/gibt/es/nicht")) == {}
+
+
+def test_einladen_wird_nach_dem_einarbeiten_von_reise_yaml_abgeloest(umgebung):
+    u = umgebung("planung")
+    assert not u.werkzeug(IDA, "person_einladen", vorname="Karl")[1]
+    # Eine Einladung, die reise.yaml schon enthält (hier: von Hand in die Datei geschrieben), überschreibt die Rolle nicht
+    u.o.joinpath("einladungen.json").write_text(json.dumps({"karl": {"name": "Karl", "rolle": "bestimmer"}}))
+    assert rm.rolle_von(rm.zustand("beispielreise"), "Karl") == "einbringer"
+
+
+# ---------- Anleitung und Regeln ----------
+
+def test_anleitung_nennt_rolle_status_und_grenzen(umgebung):
+    u = umgebung("fest")
+    ida = u.rpc(IDA, "initialize")["instructions"]
+    assert "Du sprichst mit Ida (Bestimmer)" in ida and "Status fest" in ida
+    assert "mit entscheiden ein (Option" in ida and "der Weg direkt" in ida and "person_einladen" in ida
+    karl = u.rpc(KARL, "initialize")["instructions"]
+    assert "Du sprichst mit Karl (Einbringer)" in karl and "Entscheiden und Aufträge geben kann sie nicht" in karl
+    assert "frage_beantworten" in karl and "person_einladen" not in karl
+    assert "nur lesen" in u.rpc(KIM, "initialize")["instructions"]
+    auftrag = umgebung("planung", regeln={"entscheidungsweg": "auftrag", "einladen": "einbringer"})
+    assert "der Weg auftrag" in auftrag.rpc(IDA, "initialize")["instructions"]
+    assert "darf Personen einladen" in auftrag.rpc(KARL, "initialize")["instructions"]
+
+
+def test_regeln_einladen_und_schluessel():
+    assert rg.mindestrolle("einladen") == "bestimmer"
+    assert rg.mindestrolle("einladen", {"einladen": "einbringer"}) == "einbringer"
+    assert rg.mindestrolle("entscheiden") == "bestimmer" and rg.mindestrolle("antwort") == "einbringer"
+    assert rg.erlaubt("einladen", "einbringer", "planung", None)[0] is False
+    assert rg.erlaubt("einladen", "einbringer", "planung", None, regeln={"einladen": "einbringer"})[0] is True
+    assert rg.erlaubt("einladen", "reisend", "planung", None, regeln={"einladen": "einbringer"})[0] is False
+    assert rg.erlaubt("einladen", "bestimmer", "danach", None)[0] is True and rg.erlaubt("einladen", "bestimmer", "archiv", None)[0] is False
+    assert rg.erlaubt("entscheiden", "bestimmer", "planung", ["rueckmeldungen"])[0] is False   # Baustein varianten fehlt
+    assert [rg.schluessel_aus_name(n) for n in ("Jörg", "Zoë", "Anna Lena", "  Max ", "???")] == \
+        ["joerg", "zoe", "anna-lena", "max", ""]

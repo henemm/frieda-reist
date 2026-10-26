@@ -4,7 +4,7 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 
 ## Grundsätze (24.10.2026)
 
-- Ändern geht nur als **Auftrag** (Variante B). Ein Auftrag aus der App ändert nichts sofort. Er wird in Claude Code mit „Rückmeldungen einarbeiten“ geprüft und dann übernommen.
+- Der Plan ändert sich nie in der App selbst, sondern beim Einarbeiten (Claude Code). Ein **Auftrag** aus der App wird dort geprüft und dann übernommen. Eine **Entscheidung** (`entscheiden`) prüft der Dienst dagegen im selben Moment (siehe „Entscheiden“) und hält sie mit Datum fest; eingearbeitet wird sie trotzdem.
 - Nutzen dürfen ihn **alle Personen der Reise** (`reise.yaml personen`). Seit 26.10.2026 gehört ein Link zu einer Person; ihre Rolle entscheidet: `reisend` liest, `einbringer` gibt Rückmeldungen, Wünsche, Vorschläge und Aufgaben, `bestimmer` dazu Aufträge. Alte Links mit Rolle `mitreisend` gelten als `einbringer`.
 - **Ein Link pro Reise und Person.**
 - Gehört der Link zu einer Person, steht der Name fest. Bei einem Link ohne Person (nur Rolle) fragt Claude einmal nach dem Vornamen.
@@ -27,8 +27,11 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `merkmale` | alle | welche Merkmale eine Alternative braucht (mit Hinweis zum Recherchieren und Nachfragen), was jede Option hat und was fehlt; siehe `docs/alternativen.md` |
 | `alternative_vorschlagen` | alle | neue Option mit Merkmalen; von Bestimmern als Auftrag (mit strukturierten `daten`), von Einbringern als Rückmeldung der Art `Ergänzung` |
 | `auftrag_geben` | Bestimmer | Änderungsauftrag, abgelegt in `auftraege.jsonl` |
+| `entscheiden` | Bestimmer | Option wählen, verwerfen oder ersetzen: wird sofort geprüft und mit Datum, Person und Grund festgehalten (Paket C) |
+| `frage_beantworten` | Einbringer | Antwort auf eine offene Frage (F-…); hängt an der Frage, die Entscheidung bleibt beim Bestimmer (Paket C) |
+| `person_einladen` | je nach `regeln.einladen` (Vorgabe Bestimmer) | legt eine Person mit Rolle an und stellt ihren persönlichen Link aus (Paket C) |
 
-Schreibende Werkzeuge (`rueckmeldung_geben`, `aufgabe_*`, `alternative_vorschlagen`) sehen nur Einbringer und Bestimmer. Welche Werkzeuge es gibt und was sie dürfen, hängt zusätzlich vom Status der Reise und den eingeschalteten Bausteinen ab (Paket B, `docs/produkt.md`): `danach` sperrt Wünsche, Alternativen und Aufträge, `archiv` alles Schreiben; ein ausgeschalteter Baustein nimmt seine Werkzeuge mit (`aufgaben`, `varianten`, `offene_fragen`, `rueckmeldungen`). Geprüft wird bei jedem Aufruf, nicht nur in der Liste; der Dienst nennt den Grund.
+Schreibende Werkzeuge (`rueckmeldung_geben`, `frage_beantworten`, `aufgabe_*`, `alternative_vorschlagen`) sehen nur Einbringer und Bestimmer; `entscheiden` und `auftrag_geben` nur Bestimmer, `person_einladen` wer `regeln.einladen` erreicht. Welche Werkzeuge es gibt und was sie dürfen, hängt zusätzlich vom Status der Reise und den eingeschalteten Bausteinen ab (Paket B, `docs/produkt.md`): `danach` sperrt Wünsche, Alternativen und Aufträge, `archiv` alles Schreiben; ein ausgeschalteter Baustein nimmt seine Werkzeuge mit (`aufgaben`, `varianten`, `offene_fragen`, `rueckmeldungen`). Geprüft wird bei jedem Aufruf, nicht nur in der Liste; der Dienst nennt den Grund.
 
 `auftrag_geben` nimmt optional `entscheidung` (gewaehlt, verworfen, ersetzt) mit `ziel`. Widerspricht sie einer Entscheidung eines anderen Bestimmers, wird der Auftrag nicht eingearbeitet, es entsteht eine offene Frage, und alle beteiligten Bestimmer sehen eine Meldung unter `rueckmeldungen`.
 
@@ -38,11 +41,34 @@ Gelesen wird die veröffentlichte Seite (`<seiten>/<reise>/daten.json`). Der Kon
 
 Aufgaben liegen live in `<ablage>/<reise>/aufgaben.json`, nicht im Repo. Der Rückmeldedienst ist ihr einziger Schreiber (`GET/POST /<reise>/aufgaben`, `PATCH /<reise>/aufgaben/<AG-id>`). Der Konnektor und die Webseite schreiben beide über ihn. In Claude Code zeigt `python3 engine/rueckmeldungen.py aufgaben <reise> [--alle]` sie an.
 
+## Entscheiden, Fragen beantworten, Einladen (Paket C, 26.10.2026)
+
+**`entscheiden`** (nur Bestimmer, Baustein `varianten`, nicht in `danach` und `archiv`): Eingaben sind `option` (V-01.b), `status` (`gewaehlt`, `verworfen`, `ersetzt`; bei `ersetzt` auch `ersetzt_durch`), `grund` und optional `quelle`. Nur mit persönlichem Link, denn jede Entscheidung gehört genau einer Person. Der Dienst prüft sofort und lehnt mit Begründung ab, wenn die Option oder Wahlstelle fehlt, der Status unbekannt ist, der Grund fehlt, die Option schon so entschieden ist, `ersetzt_durch` nicht zur selben Wahlstelle gehört oder dieselbe Entscheidung schon vorliegt. Hinweise, die nichts verhindern: bisher gewählte Option wird ersetzt, Wahlstelle ist danach offen, fehlende Merkmale, ungeprüfte veränderliche Angaben, Wahlstelle für unterwegs. Widerspricht die Entscheidung einem anderen Bestimmer, gilt `regeln.konflikt` (Meldung an beide, offene Frage, nichts wird übernommen).
+
+Der Weg steht in `regeln.entscheidungsweg`:
+
+| Weg | Was passiert |
+|---|---|
+| `direkt` | Die Prüfung im Gespräch genügt. Die Entscheidung gilt ab jetzt, ist als geprüfter Auftrag mit Datum, Person und Grund festgehalten (`daten.weg: direkt`, `geprueft: true`) und wird in der Konnektor-Ansicht der Option sofort als „eingetragen, noch nicht auf der Seite“ gezeigt. Claude Code trägt sie beim Einarbeiten nur noch in `routen.yaml` und `CLAUDE.md` ein, ohne neu zu entscheiden. |
+| `auftrag` | Dieselbe Prüfung, aber die Entscheidung ist ein Auftrag (`daten.weg: auftrag`) und gilt erst, wenn Claude Code sie geprüft und eingearbeitet hat. Die KI sagt das so, bis dahin ist nichts entschieden. |
+
+**`frage_beantworten`** (Einbringer und Bestimmer, Bausteine `fragen` und `rueckmeldungen`): Die Antwort wird eine Rückmeldung der Art `Antwort` an die Frage und steht danach unter `zeige F-…`. Die Frage muss es geben und noch offen sein. Geklärt ist sie damit nicht: Das entscheidet ein Bestimmer.
+
+**`person_einladen`** (`regeln.einladen`: `bestimmer` oder `einbringer`): Eingaben `vorname`, `rolle` (Standard `einbringer`), `reist`, `notiz`. Man kann höchstens die eigene Rolle vergeben. Der Dienst
+1. stellt den persönlichen Link aus (`zugaenge.json`, Rechte 600) und gibt ihn dem Einladenden im Gespräch,
+2. legt die Person live in `<ablage>/<reise>/einladungen.json` an, damit Rolle und Zugang sofort gelten (Konnektor und Rückmeldedienst kennen sie),
+3. legt einen Auftrag an, damit Claude Code sie beim Einarbeiten in `reise.yaml` (`personen`) übernimmt. Steht sie dort, gilt `reise.yaml`.
+
+Gibt es die Person schon, bekommt sie nur einen weiteren Link; ihre Rolle zu ändern ist eine Einstellung der Reise (Auftrag an `reise`). Einen Link zu sperren geht noch von Hand (Eintrag aus `zugaenge.json` löschen).
+
+**Anleitung:** Beim Verbinden bekommt die KI Rolle, Reisestatus, Entscheidungsweg und die Grenzen der sprechenden Person (Einbringer: kann nicht entscheiden; Link ohne Person: kein Entscheiden und Einladen).
+
 ## Einrichten (einmalig)
 
 1. Seite bauen und veröffentlichen, sodass `<seiten>/<reise>/daten.json` existiert. Der Konnektor braucht `konnektor.py`, `reise.py` und `rueckmeldungen.py` im selben Ordner.
 2. Den Dienst starten (`python3 engine/konnektor.py dienst`, z. B. als systemd-Dienst). Umgebung: `KN_SEITEN`, `KN_ZUGAENGE`, `KN_RUECKMELDEDIENST`, `KN_HOST`, `KN_PORT`, `KN_BASIS` (siehe Kopf von `engine/konnektor.py`).
 3. Einen Reverse-Proxy mit HTTPS davorsetzen, mit geheimem Pfad und Drossel.
+   Soll `person_einladen` Links ausstellen, braucht der Dienst `KN_BASIS` und Schreibrecht auf den Ordner von `KN_ZUGAENGE` (bei systemd `ReadWritePaths`, siehe `ops/reisehandbuch-konnektor.service` des Reisen-Repos). Ohne beides lehnt das Werkzeug mit einem Hinweis ab.
 4. Links anlegen:
    ```
    KN_BASIS=https://<domain>/<pfad> python3 engine/konnektor.py zugang <reise> <person>
@@ -67,7 +93,7 @@ Der Konnektor meldet beim Verbinden das Symbol der Reise (`serverInfo.icons`, da
 
 ## Sicherheit
 
-- Wer einen Link kennt, kann die Reise lesen und Rückmeldungen schicken. Das ist dasselbe Prinzip wie bei der Webseite. Ein Mitreisenden-Link kann keine Aufträge geben.
+- Wer einen Link kennt, kann die Reise lesen und Rückmeldungen schicken. Das ist dasselbe Prinzip wie bei der Webseite. Ein Mitreisenden-Link kann keine Aufträge geben und nicht entscheiden. Der Link gehört zu einer Person: Wer ihn weitergibt, gibt ihre Rolle weiter.
 - Über den Konnektor ändert sich nichts direkt. Rückmeldungen und Aufträge sind Eingaben. Was übernommen wird, entscheidet die Prüfung in Claude Code. Status `gewaehlt`/`verworfen` setzen nur Bestimmer.
 - Drossel im Reverse-Proxy. Der Dienst protokolliert weder Tokens noch Inhalte.
 - Überwachung: `GET /gesund` (ohne Token) meldet `{"gesund": true}`, wenn die Zugänge lesbar und alle verlinkten Reisen veröffentlicht sind.
