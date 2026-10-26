@@ -19,7 +19,7 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `suche` | alle | Volltextsuche |
 | `offene_fragen` | alle | F-Liste mit Frist und Status |
 | `varianten` | alle | Pläne und Wahlstellen mit Dafür/Dagegen und Summen |
-| `rueckmeldungen` | alle | bisherige Rückmeldungen mit Status und Antwort; bei Bestimmern auch die Aufträge |
+| `rueckmeldungen` | alle | bisherige Rückmeldungen mit Status und Antwort; bei Bestimmern auch die Aufträge; vorn die Meldungen an die Person (z. B. Konflikte) |
 | `rueckmeldung_geben` | alle | landet im selben Eingang wie die Rückmeldungen von der Webseite; Art `Wunsch` für Ideen ohne feste Stelle (ziel leer), sichtbar im Reiter „Wünsche“ |
 | `aufgaben` | alle | Aufgaben, Standard nur offene; Filter nach Bezug, Zuständig, Status |
 | `aufgabe_anlegen` | alle | neue Aufgabe, gilt sofort |
@@ -28,7 +28,9 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `alternative_vorschlagen` | alle | neue Option mit Merkmalen; von Bestimmern als Auftrag (mit strukturierten `daten`), von Einbringern als Rückmeldung der Art `Ergänzung` |
 | `auftrag_geben` | Bestimmer | Änderungsauftrag, abgelegt in `auftraege.jsonl` |
 
-Schreibende Werkzeuge (`rueckmeldung_geben`, `aufgabe_*`, `alternative_vorschlagen`) sehen nur Einbringer und Bestimmer.
+Schreibende Werkzeuge (`rueckmeldung_geben`, `aufgabe_*`, `alternative_vorschlagen`) sehen nur Einbringer und Bestimmer. Welche Werkzeuge es gibt und was sie dürfen, hängt zusätzlich vom Status der Reise und den eingeschalteten Bausteinen ab (Paket B, `docs/produkt.md`): `danach` sperrt Wünsche, Alternativen und Aufträge, `archiv` alles Schreiben; ein ausgeschalteter Baustein nimmt seine Werkzeuge mit (`aufgaben`, `varianten`, `offene_fragen`, `rueckmeldungen`). Geprüft wird bei jedem Aufruf, nicht nur in der Liste; der Dienst nennt den Grund.
+
+`auftrag_geben` nimmt optional `entscheidung` (gewaehlt, verworfen, ersetzt) mit `ziel`. Widerspricht sie einer Entscheidung eines anderen Bestimmers, wird der Auftrag nicht eingearbeitet, es entsteht eine offene Frage, und alle beteiligten Bestimmer sehen eine Meldung unter `rueckmeldungen`.
 
 Gelesen wird die veröffentlichte Seite (`<seiten>/<reise>/daten.json`). Der Konnektor zeigt also denselben Stand wie die Webseite nach dem letzten Veröffentlichen.
 

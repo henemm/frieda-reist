@@ -57,6 +57,27 @@ Ausdrücklich gesetzt, nicht abgeleitet; der Bestimmer setzt ihn, die KI erinner
 | `danach` | Nachlese, Profile lernen aus Erlebtem, Plan schreibgeschützt. Ausbau später. |
 | `archiv` | Nur noch lesen. |
 
+### Was die Maschine daraus macht (Paket B, 26.10.2026)
+
+Die Regeln stehen in `engine/reise.py` (`VERHALTEN`, `AKTIONEN`, `erlaubt`) und gelten an jeder Stelle, an der geschrieben wird: im Rückmeldedienst (HTTP, 403 mit Begründung) und im Konnektor (bei jedem Aufruf, nicht nur in der Werkzeugliste).
+
+| Status | Schreiben | Seite und Konnektor |
+|---|---|---|
+| `idee` | alles | keine Warnungen des Plans |
+| `planung` | alles | Lücken und offene Wahlstellen sind Zwischenstand; Aufgabenfristen zählen noch nicht |
+| `fest` | alles | offene Planungs-Wahlstellen und ungeprüfte veränderliche Angaben der gewählten Optionen sind eine **Mahnung** (`route.mahnungen`); Aufgabenfristen zählen (überfällig) |
+| `unterwegs` | alles | wie `fest`; die Seite startet mit „Heute“ und der Karte, Wahlstellen mit Auslöser stehen vorn |
+| `danach` | Nachlese: Rückmeldungen und Aufgaben ja; Wünsche, Alternativen, Aufträge nein | Plan schreibgeschützt |
+| `archiv` | nichts | nur lesen |
+
+Ein Auftrag an das Ziel `reise` (Status, Einstellungen) geht in jedem Status, damit ein Bestimmer eine gesperrte Reise wieder öffnen kann.
+
+Rechte: Der Rückmeldedienst kennt die Rolle über den Namen aus `reise.yaml` (veröffentlichte `daten.json`). Eine bekannte Person mit Rolle `reisend` kann nichts eintragen; ein unbekannter Name auf der Seite kommt über den geheimen Link und zählt als Einbringer. Genaue Zugänge je Person folgen mit Paket C.
+
+Bausteine: Ein ausgeschalteter Baustein verschwindet aus der Seite (Reiter, Knöpfe, Formulare), aus den Konnektor-Werkzeugen (Liste, Aufruf, Überblick, Anleitung) und blockiert das Schreiben im Dienst. Die Daten bleiben. Karte aus: `route.karte` wird auf der Seite nicht verwendet; Tagesseiten aus: die Etappen stehen wieder im Reiter „Etappen“.
+
+Konflikt (`regeln.konflikt: offene_frage`): Ein Auftrag mit `entscheidung` (gewaehlt, verworfen, ersetzt) und `ziel` wird gegen die stehenden Entscheidungen im Plan und gegen offene Aufträge anderer Bestimmer geprüft. Widerspruch heißt dasselbe Ziel verschieden entschieden oder zwei verschiedene Optionen derselben Wahlstelle gewählt. Dann bekommen die beteiligten Aufträge den Status `konflikt` (werden nicht eingearbeitet), `meldungen.jsonl` in der Ablage bekommt eine Meldung an alle beteiligten Bestimmer (der Konnektor zeigt sie unter `rueckmeldungen`), und die KI legt eine offene Frage (F-…) an. Zustellung der Meldung auf weiteren Wegen folgt mit Paket E.
+
 ## Vorgaben für neue Reisen
 
 - Konfliktregel: offene Frage, Meldung an alle beteiligten Bestimmer.
@@ -86,3 +107,4 @@ Stufe 1 „Rollen und sofort“: A, B, C, D. Stufe 2 „Wünsche und Wächter“
 ## Stand
 
 - 26.10.2026, Paket A begonnen: `reise.yaml` je Reise mit Status, Personen, Bausteinen, Regeln und Darstellung (`engine/reise.py` prüft); `entscheider` kommt aus den Personen; Konnektor kennt Rollen `bestimmer`, `einbringer`, `reisend` und Zugänge je Person; der Schalter `funktionen` in `reise.json` ist durch `bausteine` in `reise.yaml` ersetzt.
+- 26.10.2026, Paket B: Rechte, Verhalten je Status, Bausteine und Konflikt werden im Code geprüft (siehe „Was die Maschine daraus macht“); Tests in `engine/tests/test_regeln.py`.
