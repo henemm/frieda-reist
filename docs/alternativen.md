@@ -83,6 +83,8 @@ Jede Wahlstelle mit mindestens zwei gültigen Optionen hat dasselbe **Wahl-Modul
 - **„nur Unterschiede“** blendet Zeilen aus, in denen alle gezeigten Optionen denselben Wert haben. Zeilen ohne jeden Wert erscheinen nie.
 - Ab 700 px Breite eine **Tabelle** (Optionen als Spalten, Merkmale als Zeilen, erste Spalte bleibt beim Wischen stehen), auf dem Handy **Karten** je Option mit Umschalter auf die Tabelle.
 - Der Vergleich ist nur zum Lesen. Entschieden wird über Rückmeldung oder die Claude-App.
+- Jeder Wert zeigt vorn nur den Wert; Notiz, Prüfdatum und Quelle stehen hinter dem „i“. „unklar“ ist hervorgehoben, ein fehlender Wert heißt „offen“.
+- Werte je Datum: Im Tag und im Vergleich an einer Nacht gilt der Wert für dieses Datum (mit „am …“), in der Unterkunft und in Listen stehen alle Einträge untereinander („15.5.: 140 €“, „sonst: 120 €“).
 - Veränderliche Werte ohne Prüfdatum tragen „ungeprüft“.
 - An offenen Planungs-Wahlstellen steht bei jeder Option „Fehlt noch: …“.
 

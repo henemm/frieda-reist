@@ -74,7 +74,7 @@ mark{background:var(--mark);color:inherit;border-radius:3px}
 .karte .z.klein,.verlauf{font-size:13px;color:var(--mut)}
 .chip.offen{background:var(--warnbg);color:var(--warn)}
 .chip.weg{background:transparent;color:var(--mut);border:1px solid var(--line);text-decoration:line-through}
-.chip.unterwegs{background:transparent;color:var(--acc);border:1px solid var(--acc)}
+.chip.unterwegs{background:transparent;color:var(--ocker);border:1px solid var(--ocker)}
 .warnungen{background:var(--warnbg);color:var(--warn);border-radius:12px;padding:10px 14px;margin:0 0 12px}
 .warnungen ul{margin:.3em 0 0;padding-left:20px}
 .option{border-top:1px solid var(--line);padding:8px 0 4px;margin-top:8px}
@@ -204,7 +204,20 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .vergleich.mk th[scope=row]{text-align:left;color:var(--mut);font-weight:600;white-space:nowrap}
 .vergleich.mk td{vertical-align:top;min-width:9em}
 .mk-chip{margin-left:6px;font-size:11px;padding:1px 7px}
-.mk-leer{color:var(--mut)}
+.mk-leer{color:var(--mut);border-bottom:1px dashed var(--line)}
+/* Atom Wert (Designsystem 2d): Wert vorn, Herkunft (Notiz, Prüfdatum, Quelle) hinter dem i; je Datum als Liste */
+.mk-unklar{color:var(--warn);font-weight:700}
+.pico button.mk-i{position:relative;width:20px;height:20px;min-height:0;padding:0;margin:0 0 0 6px;border-radius:50%;border:1px solid var(--line);
+  background:var(--card);color:var(--mut);font:italic 700 12px/18px var(--font-titel);text-align:center;vertical-align:1px;box-shadow:none;cursor:pointer}
+.pico button.mk-i::after{content:"";position:absolute;inset:-12px}
+.pico button.mk-i[aria-expanded="true"]{background:var(--acc2);color:var(--acc);border-color:var(--acc)}
+.mk-q{display:block;font-size:13px;line-height:1.35;color:var(--mut);margin:3px 0 0;overflow-wrap:anywhere}
+.mk-q[hidden]{display:none}
+.mk-datum{display:block}
+.mk-am{font-size:12.5px;font-weight:700;color:var(--ocker)}
+.mk-am-tag{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;color:var(--ocker);border:1px solid var(--ocker);border-radius:4px;padding:0 5px;vertical-align:1px}
+/* Kontext unterwegs: Wahlen mit Auslöser stehen oben im Tag, mit Rahmen in Ocker */
+.ding.wahl.vorn{border:2px solid var(--ocker);border-radius:12px;padding:10px 12px;margin:4px 0 10px}
 /* Wahl-Modul (Designsystem 2c): Einstieg an der Stelle, Vergleich darunter; ab 700 px Tabelle, darunter Karten oder Tabelle */
 .pico .wm-knopf{width:auto;margin:0;box-shadow:none;font:600 14px/1.2 var(--font-text);display:inline-flex;align-items:center;gap:8px;min-height:40px;
   padding:6px 8px 6px 14px;border-radius:99px;border:1px solid var(--acc);background:var(--acc);color:var(--bg);cursor:pointer}
@@ -218,6 +231,7 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .pico .wm-steuer input[type=checkbox]{margin:0}
 .wm-wahl,.wm-ansicht{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;padding:0;border:0;min-width:0}
 .ding .chips{align-items:center}
+.pico .ding ul{margin:4px 0 0}
 .pico :is(.wm-wahl,.wm-ansicht) button{width:auto;margin:0;box-shadow:none;font:600 13.5px/1.2 var(--font-text);border-radius:99px;border:1px solid var(--line);
   background:var(--card);color:var(--fg);padding:6px 12px;min-height:40px;cursor:pointer}
 .pico :is(.wm-wahl,.wm-ansicht) button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--bg)}
@@ -645,7 +659,7 @@ function dingEtikett(text, kat) {
 }
 // Aufenthalt als Zeile: die Nacht eines Tages. Offene Wahl zeigt die vorläufige Unterkunft und wie viele zur Wahl stehen.
 // ohneLinks: in Kacheln, die selbst ein Link sind
-function nachtZeile(n, ohneLinks) {
+function nachtZeile(n, ohneLinks, datum) {
   const w = n.wahl && wahlZu.get(n.wahl);
   const kand = w ? w.optionen.filter(o => !weg(o.status)) : [];
   const akt = w && (kand.find(o => o.aktiv) || kand[0]);
@@ -658,14 +672,14 @@ function nachtZeile(n, ohneLinks) {
   const offen = w && w.art === "planung" && w.offen && kand.length > 1;
   const zustand = !w || w.art !== "planung" ? null : offen ? chip("offen", ohneLinks ? `offen · ${kand.length} Möglichkeiten` : "offen") : chip("plan", "gewählt");
   const kennung = ohneLinks ? null : w ? zid(w.id) : uid ? zid(uid) : null;
-  const einstieg = w && !ohneLinks ? wahlEinstieg(w) : null;
+  const einstieg = w && !ohneLinks ? wahlEinstieg(w, false, datum) : null;
   const zeile = el("div", {class: "ding nacht"},
     el("div", {class: "ding-text"}, dingEtikett("Nacht", kat !== "offen" ? kat : null),
       el("span", {class: "ding-titel"}, !ohneLinks && u ? link(uid, titel) : titel),
       unter.length ? el("span", {class: "ding-unter"}, unter.join(" · ")) : null,
       zustand || einstieg ? el("span", {class: "chips"}, zustand, einstieg) : null),
     kennung);
-  return einstieg ? [zeile, wahlVergleich(w)] : zeile;
+  return einstieg ? [zeile, wahlVergleich(w, false, datum)] : zeile;
 }
 function streckeZeile(id, wahl) {
   const s = R.strecken[id] || {titel: id};
@@ -726,11 +740,11 @@ function tagKarte(t, ohneKopf) {
   }
   // Unterwegs rücken Wahlstellen mit Auslöser nach vorn (Verhalten je Status)
   const vorn = V.ausloeser_vor ? wahlZeilen.filter(([w]) => w.art === "unterwegs") : [];
-  for (const [, z] of vorn) k.append(...z.filter(Boolean));
+  for (const [, z] of vorn) { z[0].classList.add("vorn"); k.append(...z.filter(Boolean)); }
   if (t.strecken.length) k.append(wegVerlauf(t));
   for (const [w, z] of wahlZeilen) if (!vorn.some(([x]) => x === w)) k.append(...z.filter(Boolean));
   if (t.text) k.append(el("div", {class: "z"}, t.text));
-  if (t.nacht) k.append(...[].concat(nachtZeile(t.nacht)).filter(Boolean));
+  if (t.nacht) k.append(...[].concat(nachtZeile(t.nacht, false, t.datum)).filter(Boolean));
   // Plan entschieden (ohne Plan-Baum): die Tagesseite hat den ganzen Weg mit Karte
   if (!ohneKopf && !D.reise.tiefe && PLAN_TAGE && PLAN_TAGE.tage.some(x => x.id === t.id))
     k.append(el("a", {class: "weiter", href: "#" + t.id}, t.strecken.some(s => ETAPPE_TAG.get(s.id) === t.id) ? "Ganzer Tag: Weg, Karte, Einkehr →" : "Ganzer Tag →"));
@@ -782,15 +796,39 @@ function unterkuenfte(s) {
 }
 
 function mkDatum(iso) { const [j, m, d] = iso.split("-"); return `${+d}.${+m}.${j.slice(2)}`; }
-function merkmalWert(v, knapp) {
-  if (!v) return el("span", {class: "mk-leer"}, "–");
-  const zusatz = [v.notiz, v.geprueft ? "geprüft " + mkDatum(v.geprueft) : "", v.quelle && !knapp ? "Quelle: " + v.quelle : ""].filter(Boolean).join(" · ");
-  return el("span", v.quelle && knapp ? {title: "Quelle: " + v.quelle} : {}, v.wert, v.ungeprueft ? chip("offen", "ungeprüft", {class: "mk-chip"}) : null,
-    zusatz ? el("div", {class: "z klein"}, zusatz) : null);
+// Wert je Datum (wie routen.gilt_am): Eintrag mit passendem „gilt“, sonst der ohne Datum, sonst nichts
+function giltAm(v, datum) {
+  if (!v) return null;
+  for (const e of v.je_datum || []) if ((e.gilt || []).includes(datum)) return e;
+  return v.gilt ? null : v;
 }
-function merkmalListe(kriterien, werte) {
+const tagKurz = iso => { const [, m, d] = iso.split("-"); return `${+d}.${+m}.`; };
+// Atom Wert: der Wert, „ungeprüft“, Herkunft hinter dem i. Mit Datum (Nacht im Tag) nur der Wert für dieses Datum,
+// ohne Datum bei Werten je Datum alle Einträge untereinander.
+function merkmalWert(v, datum) {
+  if (v && v.je_datum && datum) {
+    const e = giltAm(v, datum);
+    return merkmalWert(e && {...e, je_datum: null, gilt: null, am: v.je_datum.includes(e) ? datum : null});
+  }
+  if (v && v.je_datum) return el("span", {}, [...v.je_datum.map(e => [e.gilt.map(tagKurz).join(", "), e]), ...(v.gilt ? [] : [["sonst", v]])]
+    .map(([wann, e]) => el("span", {class: "mk-datum"}, el("span", {class: "mk-am"}, wann + ": "), merkmalWert({...e, je_datum: null, gilt: null}))));
+  if (!v) return el("span", {class: "mk-leer"}, "offen");
+  const herkunft = [v.notiz, v.geprueft ? "geprüft " + mkDatum(v.geprueft) : "", v.quelle ? "Quelle: " + v.quelle : ""].filter(Boolean).join(" · ");
+  return el("span", {}, el("span", {class: /^unklar$/i.test(String(v.wert)) ? "mk-unklar" : null}, v.wert),
+    v.am ? el("span", {class: "mk-am-tag"}, "am " + tagKurz(v.am)) : null,
+    v.ungeprueft ? chip("offen", "ungeprüft", {class: "mk-chip"}) : null,
+    herkunft ? [el("button", {type: "button", class: "mk-i", "data-mk-i": "", "aria-expanded": "false", "aria-label": "Herkunft zeigen"}, "i"),
+      el("span", {class: "mk-q", hidden: true}, herkunft)] : null);
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-mk-i]");
+  if (!b) return;
+  const q = b.nextElementSibling, auf = b.getAttribute("aria-expanded") !== "true";
+  b.setAttribute("aria-expanded", String(auf)); q.hidden = !auf;
+});
+function merkmalListe(kriterien, werte, datum) {
   const zeilen = (kriterien || []).filter(k => werte && werte[k.id]);
-  return zeilen.length ? el("dl", {class: "mliste"}, zeilen.flatMap(k => [el("dt", {}, k.name), el("dd", {}, merkmalWert(werte[k.id]))])) : null;
+  return zeilen.length ? el("dl", {class: "mliste"}, zeilen.flatMap(k => [el("dt", {}, k.name), el("dd", {}, merkmalWert(werte[k.id], datum))])) : null;
 }
 function fehltZeile(w, o) {
   if (w.art !== "planung" || !w.offen || weg(o.status) || !o.fehlt.length) return null;
@@ -805,29 +843,31 @@ function fehltZeile(w, o) {
    wird über Rückmeldung oder die Claude-App. */
 // Zustand je Stelle: im Tag „V-…“, in der Liste der Entscheidungen „V-…~liste“ (dort gleich offen)
 const VGL = new Map();   // Schlüssel -> {offen, wahl: [Options-IDs], nur, ansicht}
-const vglSchluessel = (w, liste) => w.id + (liste ? "~liste" : "");
+// Zeigt die Stelle eine bestimmte Nacht, kommt das Datum dazu („V-…@2027-02-27“): Werte je Datum gelten dann für sie
+const vglSchluessel = (w, liste, datum) => w.id + (liste ? "~liste" : "") + (datum ? "@" + datum : "");
+const vglTeile = s => ({w: wahlZu.get(s.split(/[~@]/)[0]), liste: s.includes("~"), datum: (s.split("@")[1] || null)});
 const schmal = () => matchMedia("(max-width: 699px)").matches;
 const gueltigeOptionen = w => w.optionen.filter(o => !weg(o.status));
 const gefuellt = (w, o) => w.kriterien.filter(k => o.merkmale[k.id]).length;
-function vglZustand(w, liste) {
-  const s = vglSchluessel(w, liste);
+function vglZustand(w, liste, datum) {
+  const s = vglSchluessel(w, liste, datum);
   if (!VGL.has(s)) {
     const g = gueltigeOptionen(w).slice().sort((a, b) => (b.aktiv - a.aktiv) || (gefuellt(w, b) - gefuellt(w, a)));
     VGL.set(s, {offen: !!liste, wahl: g.slice(0, schmal() ? 2 : 4).map(o => o.id), nur: false, ansicht: "karten"});
   }
   return VGL.get(s);
 }
-function wahlEinstieg(w, liste) {
+function wahlEinstieg(w, liste, datum) {
   const g = gueltigeOptionen(w);
   if (g.length < 2) return null;
-  const z = vglZustand(w, liste);
-  return el("button", {type: "button", class: "wm-knopf", "data-vgl-auf": vglSchluessel(w, liste), "aria-expanded": String(z.offen)},
+  const z = vglZustand(w, liste, datum);
+  return el("button", {type: "button", class: "wm-knopf", "data-vgl-auf": vglSchluessel(w, liste, datum), "aria-expanded": String(z.offen)},
     z.offen ? "Vergleich schließen" : "Alternativen vergleichen", el("span", {class: "wm-n", "aria-label": `${g.length} Möglichkeiten`}, String(g.length)));
 }
-function wahlVergleich(w, liste) {
+function wahlVergleich(w, liste, datum) {
   const g = gueltigeOptionen(w);
   if (g.length < 2) return null;
-  const s = vglSchluessel(w, liste), z = vglZustand(w, liste), box = el("div", {class: "wm", "data-vgl": s, "data-ansicht": z.ansicht, hidden: !z.offen});
+  const s = vglSchluessel(w, liste, datum), z = vglZustand(w, liste, datum), box = el("div", {class: "wm", "data-vgl": s, "data-ansicht": z.ansicht, hidden: !z.offen});
   if (!z.offen) return box;
   const max = schmal() ? 2 : 4, opts = z.wahl.map(id => g.find(o => o.id === id)).filter(Boolean);
   const text = v => v ? String(v.wert) : "";
@@ -838,7 +878,8 @@ function wahlVergleich(w, liste) {
   const kopf = o => [link(o.id, o.titel), optionChips(w, o)];
   box.append(el("div", {class: "wm-steuer"},
     el("label", {}, el("input", {type: "checkbox", "data-vgl-nur": s, checked: z.nur}), "nur Unterschiede"),
-    el("span", {class: "z klein"}, `${opts.length} von ${g.length} im Vergleich, höchstens ${max} nebeneinander`)));
+    el("span", {class: "z klein"}, `${opts.length} von ${g.length} im Vergleich, höchstens ${max} nebeneinander`
+      + (datum && opts.some(o => Object.values(o.merkmale).some(v => v.je_datum)) ? ` · Werte für die Nacht vom ${tagKurz(datum)}` : ""))));
   // Auswahl nur, wenn es mehr als zwei gibt; die Zahl sagt, wie viele Merkmale schon belegt sind
   if (g.length > 2) box.append(el("fieldset", {class: "wm-wahl"}, el("legend", {class: "unsichtbar"}, "Möglichkeiten im Vergleich"),
     g.map(o => el("button", {type: "button", "data-vgl-opt": s + "|" + o.id, "aria-pressed": String(z.wahl.includes(o.id))},
@@ -850,35 +891,34 @@ function wahlVergleich(w, liste) {
   const an = o => o.aktiv && !w.optionen.every(x => x.aktiv) ? "an" : null;
   if (zeilen.length) box.append(el("div", {class: "tabelle wm-tabelle"}, el("table", {class: "vergleich mk wm-tab"},
     el("thead", {}, el("tr", {}, el("th", {}, ""), opts.map(o => el("th", {class: an(o)}, kopf(o))))),
-    el("tbody", {}, zeilen.map(k => el("tr", {}, el("th", {scope: "row"}, k.name), opts.map(o => el("td", {class: an(o)}, merkmalWert(werte(o)[k.id], true)))))))));
+    el("tbody", {}, zeilen.map(k => el("tr", {}, el("th", {scope: "row"}, k.name), opts.map(o => el("td", {class: an(o)}, merkmalWert(werte(o)[k.id], datum)))))))));
   box.append(el("div", {class: "wm-karten"}, opts.map(o => el("div", {class: "wm-karte" + (an(o) ? " an" : "")},
-    el("div", {class: "k"}, link(o.id, o.titel)), optionChips(w, o), merkmalListe(zeilen, werte(o)) || el("div", {class: "z klein"}, belegt.length ? "Keine Unterschiede in den gezeigten Merkmalen." : "Noch keine Merkmale.")))));
+    el("div", {class: "k"}, link(o.id, o.titel)), optionChips(w, o), merkmalListe(zeilen, werte(o), datum) || el("div", {class: "z klein"}, belegt.length ? "Keine Unterschiede in den gezeigten Merkmalen." : "Noch keine Merkmale.")))));
   if (belegt.length > zeilen.length) box.append(el("p", {class: "z klein"}, `${belegt.length - zeilen.length} gleiche Zeilen ausgeblendet.`));
   return box;
 }
 // Neu zeichnen nur des Moduls (nicht der ganzen Seite); der Fokus bleibt auf dem bedienten Element
-const vglWahl = s => wahlZu.get(s.split("~")[0]);
 function vglNeu(id, fokus) {
-  const w = vglWahl(id), liste = id.includes("~");
-  document.querySelectorAll(`[data-vgl="${CSS.escape(id)}"]`).forEach(x => x.replaceWith(wahlVergleich(w, liste)));
-  document.querySelectorAll(`[data-vgl-auf="${CSS.escape(id)}"]`).forEach(x => x.replaceWith(wahlEinstieg(w, liste)));
+  const {w, liste, datum} = vglTeile(id);
+  document.querySelectorAll(`[data-vgl="${CSS.escape(id)}"]`).forEach(x => x.replaceWith(wahlVergleich(w, liste, datum)));
+  document.querySelectorAll(`[data-vgl-auf="${CSS.escape(id)}"]`).forEach(x => x.replaceWith(wahlEinstieg(w, liste, datum)));
   if (fokus) { const f = document.querySelector(fokus); if (f) f.focus(); }
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-vgl-auf], [data-vgl-opt], [data-vgl-ansicht]");
   if (!b) return;
   if (b.dataset.vglAuf) {
-    const id = b.dataset.vglAuf, z = vglZustand(vglWahl(id), id.includes("~"));
+    const id = b.dataset.vglAuf, z = VGL.get(id);
     z.offen = !z.offen;
     return vglNeu(id, `[data-vgl-auf="${CSS.escape(id)}"]`);
   }
-  const [id, wert] = (b.dataset.vglOpt || b.dataset.vglAnsicht).split("|"), z = vglZustand(vglWahl(id), id.includes("~"));
+  const [id, wert] = (b.dataset.vglOpt || b.dataset.vglAnsicht).split("|"), z = VGL.get(id);
   if (b.dataset.vglAnsicht) z.ansicht = wert;
   else if (z.wahl.includes(wert)) { if (z.wahl.length > 2) z.wahl = z.wahl.filter(x => x !== wert); }
   else {
     // Ist kein Platz mehr, weicht die am längsten gezeigte Möglichkeit, die nicht im Plan steht
     z.wahl.push(wert);
-    const w = vglWahl(id), imPlan = x => (w.optionen.find(o => o.id === x) || {}).aktiv;
+    const {w} = vglTeile(id), imPlan = x => (w.optionen.find(o => o.id === x) || {}).aktiv;
     if (z.wahl.length > (schmal() ? 2 : 4)) z.wahl.splice(Math.max(0, z.wahl.findIndex(x => !imPlan(x) && x !== wert)), 1);
   }
   vglNeu(id, `[${b.dataset.vglOpt ? "data-vgl-opt" : "data-vgl-ansicht"}="${CSS.escape(b.dataset.vglOpt || b.dataset.vglAnsicht)}"]`);
@@ -886,7 +926,7 @@ document.addEventListener("click", e => {
 document.addEventListener("change", e => {
   const c = e.target.closest("[data-vgl-nur]");
   if (!c) return;
-  vglZustand(vglWahl(c.dataset.vglNur), c.dataset.vglNur.includes("~")).nur = c.checked;
+  VGL.get(c.dataset.vglNur).nur = c.checked;
   vglNeu(c.dataset.vglNur, `[data-vgl-nur="${CSS.escape(c.dataset.vglNur)}"]`);
 });
 
@@ -948,8 +988,9 @@ function wahlKarte(w) {
     k.append(z);
   }
   // Liste der Entscheidungen: Vergleich gleich offen, die Optionen darunter ohne die Merkmale (stehen im Vergleich)
-  const vgl = wahlVergleich(w, true);
-  if (vgl) k.append(el("div", {class: "chips"}, wahlEinstieg(w, true)), vgl);
+  const tage = w.an.map(tid => R.tage.find(t => t.id === tid)).filter(Boolean), datum = tage.length === 1 ? tage[0].datum : null;
+  const vgl = wahlVergleich(w, true, datum);
+  if (vgl) k.append(el("div", {class: "chips"}, wahlEinstieg(w, true, datum)), vgl);
   for (const o of gueltig) k.append(optionBlock(w, o, !!vgl && gueltig.some(x => gefuellt(w, x))));
   const verw = w.optionen.filter(o => weg(o.status));
   if (verw.length) {
