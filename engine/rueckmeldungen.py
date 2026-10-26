@@ -567,6 +567,9 @@ def laeufe_text(liste, mit_kosten=True, tage=30, jetzt=None):
     if kosten:
         z.append(f"- Kosten: {sum(kosten):.2f} USD insgesamt, im Schnitt {sum(kosten) / len(kosten):.2f} USD je Lauf"
                  + (f", letzter Lauf {liste[-1]['kosten_usd']:.2f} USD" if isinstance(liste[-1].get("kosten_usd"), (int, float)) else ""))
+    if ok and isinstance(ok[-1].get("eingabe_bis_ende_s"), (int, float)):
+        z.append(f"- Letzter erfolgreicher Lauf: {minuten_text(ok[-1]['eingabe_bis_ende_s'])} von der Eingabe bis fertig, "
+                 f"Lauf selbst {minuten_text(ok[-1].get('dauer_s'))}")
     return "\n".join(z)
 
 
