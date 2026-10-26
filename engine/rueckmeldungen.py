@@ -20,7 +20,7 @@ Ein Dienst für alle Reisen. Eine Reise nimmt nur Rückmeldungen an, wenn ihr Or
 existiert (legt ops/deploy.sh an). Die Ablage liegt außerhalb des Repos und außerhalb der Web-Ordner.
 
 Aufrufe:
-  python3 engine/rueckmeldungen.py liste <reise> [--alle]          neue (bzw. alle) zeigen, mit Aufträgen
+  python3 engine/rueckmeldungen.py liste <reise> [--alle]          neue und Konflikte (bzw. alle) zeigen, mit Aufträgen
   python3 engine/rueckmeldungen.py setze <reise> R-…|A-… STATUS [KOMMENTAR]
         STATUS: uebernommen | verworfen | rueckfrage | konflikt | neu
   python3 engine/rueckmeldungen.py aufgaben <reise> [--alle]       offene (bzw. alle) Aufgaben zeigen
@@ -555,7 +555,7 @@ def muss_ordner(reise):
 
 def liste(reise, alle):
     o = muss_ordner(reise)
-    es = [e for e in eintraege(o) + auftraege(o) if alle or e["status"] == "neu"]
+    es = [e for e in eintraege(o) + auftraege(o) if alle or e["status"] in ("neu", "konflikt")]
     es.sort(key=lambda e: e.get("erstellt", ""), reverse=True)
     if not es:
         print("Keine neuen Rückmeldungen." if not alle else "Keine Rückmeldungen.")

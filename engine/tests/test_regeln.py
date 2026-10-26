@@ -420,7 +420,7 @@ def test_liste_zeigt_konflikt(umgebung, capsys):
     u = umgebung()
     u.werkzeug(IDA, "auftrag_geben", ziel="V-01.a", entscheidung="gewaehlt", auftrag="a")
     u.werkzeug(MAX, "auftrag_geben", ziel="V-01.b", entscheidung="gewaehlt", auftrag="b")
-    rm.liste("beispielreise", True)
+    rm.liste("beispielreise", False)    # Konflikte stehen auch ohne --alle in der Liste
     out = capsys.readouterr().out
     assert out.count("KONFLIKT") == 2 and "[konflikt]" in out and "Offene Frage (F-…) anlegen" in out
     rm.setze("beispielreise", rm.auftraege(u.o)[0]["id"], "rueckfrage", "siehe F-09")
