@@ -210,6 +210,16 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .vergleich .nacht{display:inline-block;font-size:12px;font-weight:600;border-radius:4px;padding:0 6px;margin-top:2px;color:var(--bg);background:var(--kat,var(--kat-sonstige))}
 .vergleich .nacht.offen{background:transparent;color:var(--mut);border:1px dashed var(--mut)}
 .punkt{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--farbe);margin-right:4px}
+/* Ding-Karte (Designsystem 2b, frieda-reist#18): Etikett sagt, was es ist (Nacht, Unterkunft …), Punkt in der Farbe der Kategorie */
+.ding-art{display:flex;align-items:center;gap:6px;font:700 10.5px/1.2 var(--font-text);letter-spacing:.08em;text-transform:uppercase;color:var(--ocker)}
+.ding-art .lg-k{width:9px;height:9px}
+.ding{display:flex;gap:10px;align-items:flex-start;margin:10px 0 2px;padding-top:9px;border-top:1px solid var(--line)}
+.ding-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ding-titel{font-weight:600;line-height:1.3}
+.ding-unter{font-size:14px;color:var(--mut);line-height:1.35}
+.ding .chips{margin:4px 0 0}
+.pico .ding>button.zid{margin:2px 0 0;flex:none}
+.karte>.ding-art{margin:0 0 3px}
 
 /* ---------- Pico CSS an die eigenen Farben binden (hell und dunkel folgen --bg/--fg/--acc) ---------- */
 :root:not([data-theme=dark]):not([data-theme=light]){
@@ -550,20 +560,13 @@ function chips(a) {
     const [w, o] = optionZu.get(oid) || [];
     if (w) c.append(chip(weg(o.status) ? "weg" : "unterwegs", `Variante: ${o.titel}`));
   }
-  const k = a.kennzahlen || {};
-  for (const [name, wert] of Object.entries(k)) {
-    const einheit = (name.match(/\(([^)]+)\)/) || [])[1];
-    const label = name.replace(/\s*\(.*\)/, "");
-    const text = /^[\d.,]+$/.test(wert) && einheit ? `${label} ${wert} ${einheit}` : wert;
-    c.append(chip("", text, {title: name}));
-  }
-  return c;
+  return c.childNodes.length ? c : null;
 }
 
 function abschnittKarte(a) {
   const titel = a.typ === "etappe" ? a.titel : a.titel;
   const k = el("a", {class: "karte", href: "#" + a.id}, el("div", {class: "k"}, titel, zid(a.id)));
-  if (a.typ === "etappe") k.append(chips(a));
+  if (a.typ === "etappe") k.append(...[chips(a), kennzahlLeiste(a.kennzahlen)].filter(Boolean));
   return k;
 }
 
@@ -603,11 +606,38 @@ function summeText(s) {
 // Molekül Kennzahlenleiste: Gehzeit, Aufstieg, Abstieg, Strecke mit Etikett; Namen aus routen.yaml werden vereinheitlicht
 function kennzahlPaar(n, v) {
   return /^aufstieg/i.test(n) ? ["Aufstieg", `↑ ${v} m`] : /^abstieg/i.test(n) ? ["Abstieg", `↓ ${v} m`]
-    : /^(gehzeit|dauer)/i.test(n) ? ["Gehzeit", v] : /^l(ä|ae)nge/i.test(n) ? ["Strecke", v] : [n, v];
+    : /^(gehzeit|dauer)/i.test(n) ? ["Gehzeit", v] : /^l(ä|ae)nge/i.test(n) ? ["Strecke", /^[\d.,]+$/.test(v) ? `${v} km` : v] : [n, v];
 }
 function kennzahlLeiste(kennzahlen) {
   const kz = Object.entries(kennzahlen || {}).map(([n, v]) => kennzahlPaar(n, v));
   return kz.length ? el("div", {class: "kz"}, kz.map(([n, v]) => el("div", {}, el("span", {class: "kzn"}, n), el("span", {class: "kzw"}, v)))) : null;
+}
+/* Organismus Ding (Designsystem 2b): ein Aufenthalt, eine Bewegung oder eine Folge sieht überall gleich aus.
+   Etikett oben (was es ist, Punkt in der Farbe der Kategorie), Titel, Unterzeile, Zustand, Kennung. */
+function dingEtikett(text, kat) {
+  return el("span", {class: "ding-art"}, kat ? el("i", {class: "lg-k" + katKlasse(kat), "aria-hidden": "true"}) : null, text);
+}
+// Aufenthalt als Zeile: die Nacht eines Tages. Offene Wahl zeigt die vorläufige Unterkunft und wie viele zur Wahl stehen.
+// ohneLinks: in Kacheln, die selbst ein Link sind
+function nachtZeile(n, ohneLinks) {
+  const w = n.wahl && wahlZu.get(n.wahl);
+  const kand = w ? w.optionen.filter(o => !weg(o.status)) : [];
+  const akt = w && (kand.find(o => o.aktiv) || kand[0]);
+  const uid = n.unterkunft && R.unterkuenfte[n.unterkunft] ? n.unterkunft : akt && (akt.unterkuenfte || []).find(x => R.unterkuenfte[x]);
+  const u = uid && R.unterkuenfte[uid];
+  const kat = nachtKat(n), ort = n.an_bord ? "" : ortName(n.ort);
+  const titel = n.an_bord ? "an Bord" : u ? u.name : akt ? akt.titel : n.hinweis || ort;
+  const unter = [(R.kategorien || {})[kat] || (nachtTyp(n) !== "offen" ? nachtTyp(n) : ""), ort !== titel ? ort : "",
+    titel !== n.hinweis ? n.hinweis : "", !u && !akt && !n.an_bord ? "Unterkunft noch offen" : ""].filter(Boolean);
+  const zustand = !w || w.art !== "planung" ? null : w.offen && kand.length > 1
+    ? chip("offen", `offen · ${kand.length} Möglichkeiten`, ohneLinks ? {} : {href: "#" + w.id}) : chip("plan", "gewählt");
+  const kennung = ohneLinks ? null : w ? zid(w.id) : uid ? zid(uid) : null;
+  return el("div", {class: "ding nacht"},
+    el("div", {class: "ding-text"}, dingEtikett("Nacht", kat !== "offen" ? kat : null),
+      el("span", {class: "ding-titel"}, !ohneLinks && u ? link(uid, titel) : titel),
+      unter.length ? el("span", {class: "ding-unter"}, unter.join(" · ")) : null,
+      zustand ? el("span", {class: "chips"}, zustand) : null),
+    kennung);
 }
 function streckeZeile(id, wahl) {
   const s = R.strecken[id] || {titel: id};
@@ -667,22 +697,8 @@ function tagKarte(t, ohneKopf) {
   for (const [, z] of vorn) k.append(z);
   if (t.strecken.length) k.append(wegVerlauf(t));
   for (const [w, z] of wahlZeilen) if (!vorn.some(([x]) => x === w)) k.append(z);
-  const n = t.nacht;
-  if (n) {
-    const z = el("div", {class: "z"}, el("b", {}, "Übernachtung: "), n.an_bord ? "an Bord" : ortName(n.ort));
-    if (n.wahl) {
-      const w = wahlZu.get(n.wahl);
-      // entschieden: gewählte Option zuerst, übrige gültige als Alternative
-      const kand = w.optionen.filter(o => !weg(o.status)).sort((a, b) => (b.status === "gewaehlt") - (a.status === "gewaehlt"));
-      const opt = o => { const u = (o.unterkuenfte || [])[0]; return u ? link(u, o.titel) : o.titel; };
-      z.append(" · ", w.offen && kand.length > 1 ? el("span", {}, `noch offen (${kand.length} Kandidaten): `) : "");
-      kand.forEach((o, i) => { if (i) z.append(!w.offen && i === 1 ? " · Alternative: " : ", "); z.append(opt(o)); });
-      z.append(zid(n.wahl));
-    } else if (n.unterkunft) z.append(" · ", link(n.unterkunft, R.unterkuenfte[n.unterkunft].name));
-    if (n.hinweis) z.append(` · ${n.hinweis}`);
-    k.append(z);
-  }
   if (t.text) k.append(el("div", {class: "z"}, t.text));
+  if (t.nacht) k.append(nachtZeile(t.nacht));
   // Plan entschieden (ohne Plan-Baum): die Tagesseite hat den ganzen Weg mit Karte
   if (!ohneKopf && !D.reise.tiefe && PLAN_TAGE && PLAN_TAGE.tage.some(x => x.id === t.id))
     k.append(el("a", {class: "weiter", href: "#" + t.id}, t.strecken.some(s => ETAPPE_TAG.get(s.id) === t.id) ? "Ganzer Tag: Weg, Karte, Einkehr →" : "Ganzer Tag →"));
@@ -702,10 +718,11 @@ function tagesplan(s) {
 
 function unterkunftKarte(id) {
   const u = R.unterkuenfte[id];
-  const k = el("div", {class: "karte ziel", id, "data-ziel": id}, el("div", {class: "k"}, u.name, zid(id)));
+  const k = el("div", {class: "karte ziel", id, "data-ziel": id},
+    dingEtikett(["Unterkunft", (R.kategorien || {})[u.kategorie]].filter(Boolean).join(" · "), u.kategorie), el("div", {class: "k"}, u.name, zid(id)));
   k.append(el("div", {class: "z"}, [u.typ, ortName(u.ort)].filter(Boolean).join(" · ")));
   if (u.kontakt) k.append(el("div", {class: "z"}, el("b", {}, "Kontakt: "), u.kontakt));
-  k.append(el("div", {class: "z"}, el("b", {}, "Buchung: "), u.buchung, u.frage ? [" · ", link(u.frage, u.frage)] : ""));
+  k.append(el("div", {class: "chips"}, chip(u.buchung === "offen" ? "offen" : "plan", "Buchung: " + u.buchung), u.frage ? chip("leise", u.frage, {href: "#" + u.frage}) : null));
   if (u.naechte.length) {
     const z = el("div", {class: "z"}, el("b", {}, "Nächte: "));
     u.naechte.forEach((tid, i) => { const t = R.tage.find(x => x.id === tid); if (i) z.append(", "); z.append(link(tid, datumText(t.datum, t.wochentag))); });
@@ -715,6 +732,8 @@ function unterkunftKarte(id) {
   if (mk) k.append(mk);
   if (u.hinweis) k.append(el("div", {class: "z"}, u.hinweis));
   if (u.quelle) k.append(el("div", {class: "z klein"}, "Quelle: " + u.quelle));
+  const name = Object.fromEntries((R.merkmale.unterkunft || []).map(x => [x.id, x.name]));
+  if ((u.fehlt || []).length) k.append(el("div", {class: "z klein"}, "Fehlt noch: " + u.fehlt.map(x => name[x] || x).join(", ")));
   return k;
 }
 
@@ -1281,7 +1300,8 @@ document.addEventListener("click", e => {
 function etappeTeil(a, mitTitel) {
   const s = el("div", {class: "etappe"});
   if (mitTitel) s.append(el("h3", {class: "gruppe"}, "Weg: " + a.titel));
-  s.append(chips(a));
+  // Auf der Tagesseite stehen die Kennzahlen schon im Wegverlauf
+  s.append(...[chips(a), mitTitel ? null : kennzahlLeiste(a.kennzahlen)].filter(Boolean));
   const k = etappenKarte(a.id);
   if (k) s.append(k);
   const inhalt = abschnittInhalt(a, true);
@@ -1469,7 +1489,7 @@ function tagKachel(t, datum, nr) {
   for (const s of t.strecken) if (s.wahl) c.append(chip("offen", "Wahl: " + ((wahlZu.get(s.wahl) || {}).titel || s.wahl)));
   if (c.childNodes.length) k.append(c);
   const n = t.nacht;
-  if (n) k.append(el("div", {class: "z klein"}, "Nacht: " + (n.an_bord ? "an Bord" : [ortName(n.ort), n.typ, n.hinweis].filter(Boolean).join(" · "))));
+  if (n) k.append(nachtZeile(n, true));
   return k;
 }
 function ansichtPlanDetail(m, p) {
