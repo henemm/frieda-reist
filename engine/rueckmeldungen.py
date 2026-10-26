@@ -168,11 +168,18 @@ def status_lesen(o):
 
 # ---------- Meldungen an Personen (Konflikte; Zustellung folgt mit Paket E) ----------
 
-def meldung_anlegen(o, an, art, ziel, text, auftraege=()):
-    """Meldung an Personen (Namen) in meldungen.jsonl. Der Konnektor zeigt sie der Person; weitere Wege folgen später."""
-    jetzt = datetime.datetime.now(datetime.timezone.utc)
+def meldung_anlegen(o, an, art, ziel, text, auftraege=(), schluessel=None, bezug=None, zeit=None, extra=None):
+    """Meldung an Personen (Namen) in meldungen.jsonl. Der Konnektor zeigt sie der Person (Überblick, rueckmeldungen).
+    schluessel: Kennung gegen doppelte Meldungen (Wächter und Erinnerer, Paket E); bezug: AG-… oder „reise“, damit eine
+    erledigte Meldung verschwindet (meldungen_aktuell); zeit: nur für Tests; extra: weitere Felder (status_bei)."""
+    jetzt = zeit or datetime.datetime.now(datetime.timezone.utc)
     m = {"id": f"M-{jetzt:%Y%m%d-%H%M%S}-{secrets.token_hex(2)}", "erstellt": jetzt.isoformat(timespec="seconds"),
          "an": sorted(set(an)), "art": art, "ziel": ziel, "text": text, "auftraege": list(auftraege)}
+    if schluessel:
+        m["schluessel"] = schluessel
+    if bezug:
+        m["bezug"] = bezug
+    m.update(extra or {})
     with (o / "meldungen.jsonl").open("a", encoding="utf-8") as f:
         f.write(json.dumps(m, ensure_ascii=False) + "\n")
         f.flush()
@@ -193,6 +200,35 @@ def meldungen(o, an=None):
             if an is None or an.casefold() in (x.casefold() for x in m.get("an", [])):
                 liste.append(m)
     return sorted(liste, key=lambda m: m.get("erstellt", ""), reverse=True)
+
+
+# Arten von Meldungen, die der Wächter und Erinnerer anlegt (Baustein waechter; ausgeschaltet verschwinden sie)
+WAECHTER_ARTEN = ("erinnerung", "status", "pruefung")
+MELDUNG_TAGE = 14   # so lange zeigt der Konnektor Meldungen; Konflikte bleiben stehen
+
+
+def meldungen_aktuell(o, an, aufgaben=None, status=None, bausteine=None, heute=None, tage=MELDUNG_TAGE):
+    """Meldungen an eine Person, die noch gelten: Erinnerungen zu erledigten Aufgaben, Statusmeldungen nach dem Wechsel
+    und Meldungen älter als <tage> Tage fallen weg (Konflikte nie); ohne Baustein waechter auch die des Wächters.
+    aufgaben: Liste aus aufgaben(o); status: Status der Reise jetzt."""
+    heute = heute or datetime.date.today()
+    offen = {a["id"] for a in aufgaben or [] if a["status"] in ("offen", "in_arbeit")}
+    aus = []
+    for m in meldungen(o, an):
+        if m.get("art") in WAECHTER_ARTEN and bausteine is not None and "waechter" not in bausteine:
+            continue
+        if m.get("art") != "konflikt":
+            try:
+                if (heute - datetime.date.fromisoformat(m["erstellt"][:10])).days > tage:
+                    continue
+            except (KeyError, ValueError):
+                pass
+        if str(m.get("bezug", "")).startswith("AG-") and aufgaben is not None and m["bezug"] not in offen:
+            continue
+        if m.get("art") == "status" and status and m.get("status_bei") and m["status_bei"] != status:
+            continue
+        aus.append(m)
+    return aus
 
 
 def schreiben(pfad, text):
@@ -599,7 +635,10 @@ def liste(reise, alle):
     for e in reversed(es):
         print(f"{e['id']}  {e['erstellt'][:16].replace('T', ' ')} UTC  {e.get('name')}  [{e['status']}]")
         daten = e.get("daten") or {}
-        if daten.get("weg") == "direkt":
+        if daten.get("pruefung"):
+            print(f"  PRÜFAUFTRAG des Wächters (keine Entscheidung eines Bestimmers): veränderliche Angaben nachschlagen, "
+                  f"Prüfdatum und Quelle eintragen; bei Abweichung nichts ändern, sondern eine offene Frage anlegen.")
+        elif daten.get("weg") == "direkt":
             print(f"  ENTSCHEIDUNG von {e.get('name')} im Gespräch (Claude-App), Weg direkt: bereits geprüft (Rolle, Option, "
                   f"Konflikte). Einarbeiten, nicht neu entscheiden.")
         elif daten.get("einladung"):

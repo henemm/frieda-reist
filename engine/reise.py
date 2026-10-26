@@ -21,14 +21,19 @@ ROLLEN = ("reisend", "einbringer", "bestimmer")          # aufsteigend: jede Stu
 BAUSTEINE = ("varianten", "karte", "tagesseiten", "rueckmeldungen", "fragen", "aufgaben", "wuensche",
              "waechter", "profile")
 KERN = ("plan", "wissen", "suche", "personen")           # immer da, nicht abschaltbar
-NOCH_NICHT_GEBAUT = {"waechter": "Stufe 2", "profile": "Stufe 3"}
+NOCH_NICHT_GEBAUT = {"profile": "Stufe 3"}
 VORGABEN = {
     "entscheidungsweg": "direkt",        # direkt (im Gespräch, geprüft) | auftrag (Prüfung vor Übernahme)
     "konflikt": "offene_frage",          # zwei Bestimmer entscheiden verschieden -> offene Frage, Meldung an beide
     "kontingent": {"art": "punkte", "je_person": 10},   # Wunsch-Brett: punkte | anzahl
     "einladen": "bestimmer",             # wer Personen einladen darf: bestimmer | einbringer
     "sammelzeit_minuten": 5,             # Eingaben sammeln, bevor das Einarbeiten startet
+    # Paket E (Wächter und Erinnerer, Baustein waechter)
+    "waechter_frist_tage": 60,           # veränderliche Angaben, deren Prüfdatum älter ist, prüft der Wächter neu
+    "erinnerung_vorlauf_tage": 3,        # Aufgabenfristen werden so viele Tage vorher gemeldet
+    "meldekanal": ["app", "nachricht"],  # app: beim Öffnen der Claude-App; nachricht: Sammelnachricht an den Betreiber
 }
+KANAELE = ("app", "nachricht")           # E-Mail an alle gibt es (noch) nicht
 REGEL_WERTE = {"entscheidungsweg": ("direkt", "auftrag"), "konflikt": ("offene_frage",),
                "einladen": ("bestimmer", "einbringer")}
 KONTINGENT_ARTEN = ("punkte", "anzahl")
@@ -41,17 +46,17 @@ ALTE_ECKDATEN = ("titel", "untertitel", "pfad", "kurz")
 # Verhalten je Status. schreiben: alles | nachlese (Plan gesperrt, Rückmeldungen und Aufgaben gehen) | nichts.
 VERHALTEN = {
     "idee":      {"warnungen": False, "luecken": False, "mahnung_planung": False, "fristen": False, "start": None,
-                  "ausloeser_vor": False, "schreiben": "alles"},
+                  "ausloeser_vor": False, "schreiben": "alles", "waechter": False},
     "planung":   {"warnungen": True, "luecken": True, "mahnung_planung": False, "fristen": False, "start": None,
-                  "ausloeser_vor": False, "schreiben": "alles"},
+                  "ausloeser_vor": False, "schreiben": "alles", "waechter": False},
     "fest":      {"warnungen": True, "luecken": True, "mahnung_planung": True, "fristen": True, "start": None,
-                  "ausloeser_vor": False, "schreiben": "alles"},
+                  "ausloeser_vor": False, "schreiben": "alles", "waechter": True},
     "unterwegs": {"warnungen": True, "luecken": True, "mahnung_planung": True, "fristen": True, "start": "heute",
-                  "ausloeser_vor": True, "schreiben": "alles"},
+                  "ausloeser_vor": True, "schreiben": "alles", "waechter": True},
     "danach":    {"warnungen": True, "luecken": True, "mahnung_planung": False, "fristen": False, "start": None,
-                  "ausloeser_vor": False, "schreiben": "nachlese"},
+                  "ausloeser_vor": False, "schreiben": "nachlese", "waechter": False},
     "archiv":    {"warnungen": True, "luecken": True, "mahnung_planung": False, "fristen": False, "start": None,
-                  "ausloeser_vor": False, "schreiben": "nichts"},
+                  "ausloeser_vor": False, "schreiben": "nichts", "waechter": False},
 }
 # Schreibende Aktionen: Mindestrolle, Baustein (None: immer da) und der Grad von „schreiben“, der sie noch erlaubt.
 AKTIONEN = {
@@ -290,6 +295,15 @@ class Reise:
         s = r["sammelzeit_minuten"]
         if not isinstance(s, int) or isinstance(s, bool) or s < 0:
             self.fehl("regeln.sammelzeit_minuten muss eine ganze Zahl ab 0 sein.")
+        for k, kleinste in (("waechter_frist_tage", 1), ("erinnerung_vorlauf_tage", 0)):
+            if not isinstance(r[k], int) or isinstance(r[k], bool) or r[k] < kleinste:
+                self.fehl(f"regeln.{k} muss eine ganze Zahl ab {kleinste} sein.")
+        kanal = r["meldekanal"]
+        if not isinstance(kanal, list) or not kanal or not all(isinstance(x, str) for x in kanal):
+            self.fehl(f"regeln.meldekanal muss eine Liste aus {', '.join(KANAELE)} sein.")
+        elif set(kanal) - set(KANAELE):
+            self.fehl(f"regeln.meldekanal: {', '.join(sorted(set(kanal) - set(KANAELE)))} gibt es nicht "
+                      f"(möglich: {', '.join(KANAELE)}; E-Mail an alle ist noch nicht gebaut).")
         return r
 
     def darstellung(self):
