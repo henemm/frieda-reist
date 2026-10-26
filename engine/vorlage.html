@@ -49,7 +49,9 @@ a.karte:active{background:var(--acc2)}
 .karte .z{margin-top:4px;font-size:15px}
 .karte .z b{color:var(--mut);font-weight:600}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
-.chip{font-size:13px;background:var(--acc2);color:var(--acc);border-radius:99px;padding:2px 10px;white-space:nowrap}
+/* Lange Etiketten und Code brechen um, statt auf dem Handy seitlich überzustehen (Bildprüfung 2e) */
+.chip{font-size:13px;background:var(--acc2);color:var(--acc);border-radius:99px;padding:2px 10px;max-width:100%;overflow-wrap:anywhere}
+main code{overflow-wrap:anywhere}
 .chip.plan{background:var(--acc);color:var(--bg);font-weight:700}
 .chip.neben{background:var(--warnbg);color:var(--warn)}
 details{margin:0 0 10px}
@@ -1937,6 +1939,52 @@ function markiert(text, begriffe, laenge) {
   return out;
 }
 
+/* ---------- Bausteinseite (#bausteine, Designsystem 2e, frieda-reist#18) ----------
+   Lebende Übersicht aller Bausteine, gezeichnet mit den Daten dieser Reise und mit denselben Funktionen wie die Seiten:
+   Sie kann deshalb nicht vom Design abweichen. Nicht in der Leiste; für die Entwicklung und die Bildprüfung
+   (engine/tests/test_seite.py). Wo die Reise einen Fall nicht hat, steht ein Muster, als solches benannt. */
+function ansichtBausteine(m) {
+  const teil = (ebene, titel, text, ...inhalt) => m.append(...[el("h3", {class: "teil"}, `${ebene} · ${titel}`),
+    text ? el("p", {class: "meldung"}, text) : null, ...inhalt.flat(Infinity)].filter(Boolean));
+  const fall = (name, inhalt) => el("div", {class: "z"}, el("b", {}, name + ": "), inhalt);
+  m.append(el("h2", {}, "Bausteine"), el("p", {class: "meldung"}, "Alle Bausteine dieser Seite mit den Daten der Reise, geordnet nach Ebenen "
+    + "(Atome, Moleküle, Organismen, Vorlagen). Nicht in der Leiste; Adresse #bausteine."));
+  teil("Atom", "Zustand", "Feste Namen; die Farbe folgt der Bedeutung, nicht dem Ort.",
+    el("div", {class: "chips"}, Object.keys(CHIP).map(z => chip(z, z)), chip("", "Hinweis")));
+  const alleWerte = R ? [...Object.values(R.unterkuenfte).map(u => u.merkmale), ...R.wahlstellen.flatMap(w => w.optionen.map(o => o.merkmale))]
+    .flatMap(x => Object.values(x || {})) : [];
+  const echt = (pruef, muster) => alleWerte.find(pruef) || {...muster, notiz: [muster.notiz, "Muster"].filter(Boolean).join(" · ")};
+  const jeDatum = echt(v => v.je_datum, {wert: "120 €", je_datum: [{wert: "140 €", gilt: ["2027-05-15"]}]});
+  teil("Atom", "Wert", "Vorn der Wert, Herkunft hinter dem i.",
+    fall("bekannt", merkmalWert(echt(v => v.quelle && !v.ungeprueft && !v.je_datum && !/^unklar$/i.test(v.wert), {wert: "inklusive", quelle: "Muster"}))),
+    fall("ungeprüft", merkmalWert(echt(v => v.ungeprueft && !v.je_datum, {wert: "85 €", ungeprueft: true}))),
+    fall("unklar", merkmalWert(echt(v => /^unklar$/i.test(v.wert), {wert: "unklar", notiz: "noch zu prüfen"}))),
+    fall("offen", merkmalWert(null)),
+    fall("je Datum", merkmalWert(jeDatum)),
+    fall("je Datum, an einer Nacht", merkmalWert(jeDatum, jeDatum.je_datum[0].gilt[0])));
+  teil("Atom", "Kennung", "Antippen öffnet Rückmeldungen und Aufgaben zu dieser Stelle.", el("div", {class: "z"}, zid(R ? R.tage[0].id : abschnitte[0].id)));
+  if (!R) return;
+  const strecken = Object.entries(R.strecken);
+  const mitKz = strecken.find(([, x]) => Object.keys(x.kennzahlen || {}).length);
+  const u = Object.entries(R.unterkuenfte).find(([, x]) => Object.keys(x.merkmale || {}).length);
+  teil("Molekül", "Kennzahlenleiste", null, mitKz ? kennzahlLeiste(mitKz[1].kennzahlen) : el("p", {class: "meldung"}, "Keine Strecke mit Kennzahlen."));
+  teil("Molekül", "Merkmalliste", null, u ? merkmalListe(R.merkmale.unterkunft, u[1].merkmale) : el("p", {class: "meldung"}, "Keine Unterkunft mit Merkmalen."));
+  // Organismus Ding: je Art der Nacht ein Beispiel aus der Reise
+  const naechte = [["Wahl offen", t => t.nacht.wahl && wahlZu.get(t.nacht.wahl).offen], ["Wahl entschieden", t => t.nacht.wahl && !wahlZu.get(t.nacht.wahl).offen],
+    ["Unterkunft fest", t => !t.nacht.wahl && t.nacht.unterkunft], ["an Bord", t => t.nacht.an_bord], ["noch offen", t => !t.nacht.wahl && !t.nacht.unterkunft && !t.nacht.an_bord]]
+    .map(([name, f]) => [name, R.tage.find(t => t.nacht && f(t))]).filter(([, t]) => t);
+  teil("Organismus", "Ding: Aufenthalt als Zeile", "Die Nacht eines Tages, je Fall ein Beispiel aus der Reise.",
+    naechte.map(([name, t]) => el("div", {class: "karte"}, el("div", {class: "z klein"}, `${name} (Tag ${t.nr})`), nachtZeile(t.nacht, false, t.datum))));
+  if (u) teil("Organismus", "Ding: Aufenthalt als Karte", null, unterkunftKarte(u[0]));
+  const fuss = strecken.find(([, x]) => (x.art || "wandern") === "wandern"), fahrt = strecken.find(([, x]) => x.art && x.art !== "wandern");
+  teil("Organismus", "Ding: Bewegung als Zeile", null, [fuss, fahrt].filter(Boolean).map(([id]) => el("div", {class: "karte"}, streckeZeile(id))));
+  const w = R.wahlstellen.find(x => gueltigeOptionen(x).length > 2) || R.wahlstellen.find(x => gueltigeOptionen(x).length > 1);
+  if (w) teil("Organismus", "Wahl-Modul", "Einstieg, Vergleich und Optionen; in der Liste der Entscheidungen gleich offen.", wahlKarte(w));
+  const tag = R.tage.find(t => t.wahlstellen.length && t.nacht) || R.tage.find(t => t.nacht) || R.tage[0];
+  if (tag) teil("Vorlage", "Tag", `Tag ${tag.nr} mit allen Bausteinen.`, tagKarte(tag));
+  // Kennungen sind auf dieser Seite nur Beispiele: keine Sprungziele, damit sie den echten Stellen nicht im Weg stehen
+  m.querySelectorAll("[id]").forEach(x => { x.removeAttribute("id"); x.removeAttribute("data-ziel"); });
+}
 function ansichtSuche(m, q) {
   if (!index) indexBauen();
   const begriffe = norm(q).split(/\s+/).filter(Boolean);
@@ -2438,6 +2486,7 @@ function route(behalten) {
     zeigeReiter(TIEFE ? "varianten" : "plan"); ansichtTag(m, ETAPPE_TAG.get(ETAPPE_TAG.has(h) ? h : blockZu.get(h).id)); ziel = h; }
   else if (!TIEFE && PLAN_TAGE && PLAN_TAGE.tage.some(t => t.id === h)) { zeigeReiter("plan"); ansichtTag(m, h); }
   else if (h === "wissen") { zeigeReiter("wissen"); ansichtWissen(m); }
+  else if (h === "bausteine") { zeigeReiter(""); ansichtBausteine(m); }
   else if (h === "orte") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "orte"; }
   else if (h === "praxis") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "praxis"; }
   else if (h === "quellen") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "quellen"; }
