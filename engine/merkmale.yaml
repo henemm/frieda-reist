@@ -89,4 +89,50 @@ route:
     veraenderlich: true
     hilfe: "Fahrplanauskunft für die Wochentage der Reise"
 
+# Arten von Bewegungen (Strecken mit art: faehre, flug, bahn, bus, mietwagen). Die Art einer Strecke bestimmt die Liste;
+# gemischte Optionen (z. B. Bahn und Fähre) nehmen die Liste „strecke“. Werte stehen an der Strecke (E-…) oder an der Option.
+faehre:
+  preis: {name: Preis, typ: geld, veraenderlich: true, hilfe: "Website der Reederei; Preis für das Reisedatum und die Personenzahl, mit Kabinenart", frage: "Hast du einen Preis für die Überfahrt?"}
+  dauer: {name: Dauer, typ: text, veraenderlich: true, hilfe: "Fahrplan der Reederei; Abfahrts- und Ankunftszeit"}
+  verkehrt: {name: Fährt, typ: text, veraenderlich: true, hilfe: "Fahrtage laut Fahrplan; nicht jede Linie fährt täglich", frage: "Weißt du, an welchen Tagen die Fähre fährt?"}
+  buchung: {name: Buchung, typ: auswahl, werte: [nötig, empfohlen, nicht nötig, unklar], veraenderlich: true, hilfe: "Website der Reederei; Kabinen sind oft früh ausgebucht"}
+  stornierung: {name: Stornierung, typ: text, veraenderlich: true, hilfe: "Bedingungen der Reederei"}
+flug:
+  preis: {name: Preis, typ: geld, veraenderlich: true, hilfe: "Flugsuche für das Reisedatum und die Personenzahl", frage: "Hast du einen Preis für den Flug?"}
+  abflughafen: {name: Abflughafen, typ: text, hilfe: "Flughafen und Weg dorthin"}
+  voraussetzung: {name: Voraussetzung, typ: text, hilfe: "z. B. Gabelflug (anderer Rückflughafen als Ankunft), Visum, Einreiseformular"}
+  gepaeck: {name: Gepäck, typ: text, veraenderlich: true, hilfe: "Freigepäck laut Tarif"}
+  umsteigen: {name: Umsteigen, typ: auswahl, werte: [direkt, mit Umstieg, unklar], veraenderlich: true, hilfe: "Flugsuche"}
+  stornierung: {name: Stornierung, typ: text, veraenderlich: true, hilfe: "Tarifbedingungen"}
+bahn:
+  preis: {name: Preis, typ: geld, veraenderlich: true, hilfe: "Fahrplanauskunft des Betreibers"}
+  dauer: {name: Dauer, typ: text, veraenderlich: true, hilfe: "Fahrplanauskunft für den Wochentag der Reise"}
+  verkehrt: {name: Fährt, typ: text, veraenderlich: true, hilfe: "Takt und Betriebstage; Saison beachten"}
+  reservierung: {name: Reservierung, typ: auswahl, werte: [Pflicht, empfohlen, nicht nötig, unklar], veraenderlich: true, hilfe: "Betreiber"}
+bus:
+  preis: {name: Preis, typ: geld, veraenderlich: true, hilfe: "Fahrplanauskunft des Betreibers"}
+  dauer: {name: Dauer, typ: text, veraenderlich: true, hilfe: "Fahrplanauskunft für den Wochentag der Reise"}
+  verkehrt: {name: Fährt, typ: text, veraenderlich: true, hilfe: "Takt und Betriebstage; Saison und Feiertage beachten"}
+  reservierung: {name: Reservierung, typ: auswahl, werte: [Pflicht, empfohlen, nicht nötig, unklar], veraenderlich: true, hilfe: "Betreiber"}
+mietwagen:
+  preis: {name: Preis, typ: geld, veraenderlich: true, hilfe: "Vermieter oder Vergleichsportal, für die Mietdauer"}
+  abholung: {name: Abholung, typ: text, hilfe: "Ort und Zeiten"}
+  rueckgabe: {name: Rückgabe, typ: text, hilfe: "Ort und Zeiten; Aufpreis bei anderem Ort"}
+  bedingung: {name: Bedingungen, typ: text, hilfe: "Führerschein, Mindestalter, Versicherung, Kaution"}
+
+# Arten von Aufenthalten außer der Unterkunft: Essen und Erlebnisse. Eine Wahlstelle dieser Art hat keinen eigenen Baustein,
+# sie sagt ihre Art mit „bereich: essen“ bzw. „bereich: erlebnis“ und hängt mit „an:“ an einen Tag, Ort oder eine Strecke.
+essen:
+  preis: {name: Preis, typ: geld, veraenderlich: true, hilfe: "Speisekarte oder Bewertungsportal; für zwei Personen mit Getränk"}
+  kueche: {name: Küche, typ: text, hilfe: "Website, Bewertungsportal"}
+  geoeffnet: {name: Geöffnet am Reisedatum, typ: auswahl, werte: [ja, nein, unklar], veraenderlich: true, hilfe: "Öffnungszeiten und Ruhetag; im Zweifel anrufen", frage: "Weißt du, ob es an dem Tag offen hat?"}
+  reservierung: {name: Reservierung, typ: auswahl, werte: [nötig, empfohlen, nicht nötig, unklar], veraenderlich: true, hilfe: "Website, Telefon"}
+  lage: {name: Lage, typ: text, hilfe: "Entfernung zur Unterkunft oder zum Weg"}
+erlebnis:
+  preis: {name: Preis, typ: geld, veraenderlich: true, hilfe: "Website des Anbieters; Eintritt oder Führung für zwei Personen"}
+  dauer: {name: Dauer, typ: text, hilfe: "Website, Reiseführer; inklusive Anfahrt"}
+  geoeffnet: {name: Geöffnet am Reisedatum, typ: auswahl, werte: [ja, nein, unklar], veraenderlich: true, hilfe: "Öffnungszeiten, Saison, Ruhetage", frage: "Weißt du, ob es an dem Tag offen hat?"}
+  reservierung: {name: Reservierung, typ: auswahl, werte: [nötig, empfohlen, nicht nötig, unklar], veraenderlich: true, hilfe: "Website, Telefon"}
+  lage: {name: Lage, typ: text, hilfe: "Entfernung zur Unterkunft oder zum Weg"}
+
 allgemein: {}

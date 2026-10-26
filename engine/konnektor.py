@@ -1186,8 +1186,9 @@ WERKZEUGE += [
      "schon hat und was fehlt. Vor alternative_vorschlagen aufrufen.",
      "inputSchema": {"type": "object", "properties": {
          "ziel": {"type": "string", "description": "Wahlstelle V-…, Option V-….a oder Unterkunft U-…"},
-         "bereich": {"type": "string", "enum": ["unterkunft", "strecke", "route", "allgemein"],
-                     "description": "nur ohne ziel: Liste für eine ganz neue Wahlstelle"}}},
+         "bereich": {"type": "string",
+                     "description": "nur ohne ziel: Art der Alternative für die Liste (unterkunft, strecke, route, faehre, flug, "
+                                    "bahn, bus, mietwagen, essen, erlebnis oder eine Art der Reise)"}}},
      "annotations": {"readOnlyHint": True}},
     {"name": "alternative_vorschlagen", "description": "Neue Alternative weitergeben (z. B. ein weiteres Hotel, eine andere "
      "Strecke, eine andere Route), mit Merkmalen nach der Liste aus merkmale. Erst selbst recherchieren, dann nur nach Lücken "
@@ -1196,8 +1197,9 @@ WERKZEUGE += [
      "inputSchema": {"type": "object", "properties": {
          "wahlstelle": {"type": "string", "description": "bestehende Wahlstelle V-…, zu der die Alternative gehört"},
          "an": {"type": "string", "description": "nur ohne wahlstelle: ID, an der eine neue Wahlstelle entsteht (T-…, U-…, E-…)"},
-         "bereich": {"type": "string", "enum": ["unterkunft", "strecke", "route", "allgemein"],
-                     "description": "nur ohne wahlstelle"},
+         "bereich": {"type": "string",
+                     "description": "nur ohne wahlstelle: Art der Alternative (unterkunft, strecke, route, faehre, flug, bahn, "
+                                    "bus, mietwagen, essen, erlebnis oder eine Art der Reise; Liste aus merkmale)"},
          "titel": {"type": "string", "description": "Name der Alternative, z. B. „Hotel Sa Plana“"},
          "merkmale": {"type": "object", "description": "{merkmal: {wert, quelle, geprueft (JJJJ-MM-TT), notiz}}; Schlüssel aus "
                       "merkmale. Eigene Kriterien der Person als neuer Schlüssel (z. B. pool) sind erlaubt.",

@@ -359,7 +359,8 @@ def test_laengster_tag_und_nacht_ohne_unterkunft():
 GRUND = {"unterkunft": {"preis": {"name": "Preis", "typ": "geld", "veraenderlich": True},
                         "fruehstueck": {"name": "Frühstück", "typ": "auswahl", "werte": ["inklusive", "keins"]}},
          "strecke": {"gehzeit": {"name": "Gehzeit", "auto": "gehzeit"}, "schwierigkeit": {"name": "Schwierigkeit"}},
-         "route": {"tage": {"name": "Tage", "auto": "tage"}}}
+         "route": {"tage": {"name": "Tage", "auto": "tage"}},
+         "faehre": {"preis": {"name": "Preis", "typ": "geld", "veraenderlich": True}, "dauer": {"name": "Dauer"}}}
 
 
 def mk_bauen(r):
@@ -443,3 +444,104 @@ def test_freie_nacht_bekommt_kategorie():
     assert kategorie({"an_bord": True}) == "unterwegs"
     assert kategorie({"typ": " berghütte "}) == "huette"
     assert kategorie({"typ": "Hotel", "kategorie": "privat"}) == "privat"
+
+
+# ---------- Arten, Werte je Datum, „an“ (Paket 1 der Alternativen, Issue frieda-reist#18) ----------
+def mit_faehren():
+    r = roh()
+    r["strecken"]["E-10"] = {"titel": "Fähre A", "von": "O-02", "nach": "O-03", "art": "faehre",
+                             "merkmale": {"dauer": {"wert": "ca. 11 h", "quelle": "Beispiel"}}}
+    r["strecken"]["E-11"] = {"titel": "Fähre B", "von": "O-02", "nach": "O-03", "art": "faehre"}
+    r["wahlstellen"]["V-04"] = {"titel": "Überfahrt", "art": "planung", "frage": "F-01", "an": ["T-02"], "optionen": [
+        {"id": "V-04.a", "titel": "Fähre A", "strecken": ["E-10"], "merkmale": {"preis": "80 €"}},
+        {"id": "V-04.b", "titel": "Fähre B", "strecken": ["E-11"], "merkmale": {"dauer": "ca. 10 h"}}]}
+    return r
+
+
+def test_art_der_strecken_bestimmt_die_liste_und_werte_stehen_an_strecke_oder_option():
+    erg, fehler = mk_bauen(mit_faehren())
+    assert fehler == []
+    w = next(x for x in erg["wahlstellen"] if x["id"] == "V-04")
+    assert w["bereich"] == "faehre" and [k["id"] for k in w["kriterien"]] == ["preis", "dauer"]
+    a, b = w["optionen"]
+    assert a["merkmale"]["dauer"]["wert"] == "ca. 11 h" and a["merkmale"]["preis"]["wert"] == "80 €"
+    assert b["merkmale"]["dauer"]["wert"] == "ca. 10 h" and b["fehlt"] == ["preis"]
+    # Wanderstrecken und gemischte Arten bleiben beim Bereich „strecke“
+    w3 = next(x for x in erg["wahlstellen"] if x["id"] == "V-03")
+    assert w3["bereich"] == "strecke"
+
+
+def test_gemischte_arten_nehmen_strecke():
+    r = mit_faehren()
+    r["wahlstellen"]["V-04"]["optionen"][1]["strecken"] = ["E-03"]
+    r["wahlstellen"]["V-04"]["optionen"][0]["merkmale"] = r["wahlstellen"]["V-04"]["optionen"][1]["merkmale"] = {}
+    erg, fehler = mk_bauen(r)
+    assert fehler == []
+    assert next(x for x in erg["wahlstellen"] if x["id"] == "V-04")["bereich"] == "strecke"
+
+
+def test_werte_je_datum():
+    r = roh()
+    r["unterkuenfte"]["U-01"]["merkmale"] = {"preis": [
+        {"wert": "100 €", "gilt": D(2027, 3, 1), "geprueft": D(2026, 10, 26)},
+        {"wert": "120 €", "gilt": [D(2027, 3, 3), D(2027, 3, 4)], "geprueft": D(2026, 10, 27)},
+        {"wert": "90 €"}]}
+    erg, fehler = mk_bauen(r)
+    assert fehler == []
+    m = next(x for x in erg["wahlstellen"] if x["id"] == "V-02")["optionen"][0]["merkmale"]["preis"]
+    assert m["wert"] == "90 €" and "gilt" not in m and len(m["je_datum"]) == 2
+    from routen import gilt_am
+    assert gilt_am(m, "2027-03-01")["wert"] == "100 €"
+    assert gilt_am(m, "2027-03-04")["wert"] == "120 €"
+    assert gilt_am(m, "2027-03-02")["wert"] == "90 €"
+
+
+def test_werte_je_datum_ohne_standardwert():
+    r = roh()
+    r["unterkuenfte"]["U-01"]["merkmale"] = {"preis": [{"wert": "100 €", "gilt": D(2027, 3, 1)}]}
+    erg, _ = mk_bauen(r)
+    m = next(x for x in erg["wahlstellen"] if x["id"] == "V-02")["optionen"][0]["merkmale"]["preis"]
+    from routen import gilt_am
+    assert gilt_am(m, "2027-03-02") is None and gilt_am(m, "2027-03-01")["wert"] == "100 €"
+    assert m["wert"] == "100 €" and m["gilt"] == ["2027-03-01"]   # für Ansichten ohne Datum
+
+
+@pytest.mark.parametrize("preis, meldung", [
+    ([{"wert": "1 €", "gilt": D(2027, 3, 1)}, {"wert": "2 €", "gilt": D(2027, 3, 1)}], "zwei Werten"),
+    ([{"wert": "1 €"}, {"wert": "2 €"}], "ohne „gilt“"),
+    ([{"wert": "1 €", "gilt": "morgen"}], "gilt muss"),
+    ([{"wert": "1 €", "gilt": []}], "gilt muss"),
+])
+def test_werte_je_datum_fehler(preis, meldung):
+    r = roh()
+    r["unterkuenfte"]["U-01"]["merkmale"] = {"preis": preis}
+    assert any(meldung in f for f in mk_bauen(r)[1])
+
+
+def test_neue_art_der_reise_und_wahlstelle_an_beliebiger_id():
+    r = roh()
+    r["merkmale"] = {"restaurant": {"kueche": {"name": "Küche"}, "preis": {"name": "Preis", "typ": "geld"}}}
+    r["wahlstellen"]["V-05"] = {"titel": "Abendessen in B", "art": "planung", "frage": "F-01", "bereich": "restaurant",
+                                "an": ["O-02", "U-01", "E-01"], "optionen": [
+        {"id": "V-05.a", "titel": "Gasthaus", "merkmale": {"kueche": "regional", "preis": "25 €"}},
+        {"id": "V-05.b", "titel": "Pizzeria", "merkmale": {"kueche": "italienisch"}}]}
+    erg, fehler = mk_bauen(r)
+    assert fehler == []
+    w = next(x for x in erg["wahlstellen"] if x["id"] == "V-05")
+    assert w["bereich"] == "restaurant" and w["an_ids"] == ["O-02", "U-01", "E-01"] and w["an"] == []
+    assert w["optionen"][1]["fehlt"] == ["preis"]
+    assert [k["id"] for k in erg["merkmale"]["restaurant"]] == ["kueche", "preis"]
+    assert not any("nirgends verwendet" in x["text"] for x in erg["warnungen"] if x["bezug"] == "V-05")
+
+
+@pytest.mark.parametrize("an, meldung", [(["T-99"], "gibt es nicht"), (["X-1"], "weder Tag"), ("T-01", "Liste")])
+def test_an_fehler(an, meldung):
+    r = roh()
+    r["wahlstellen"]["V-03"]["an"] = an
+    assert any(meldung in f for f in mk_bauen(r)[1])
+
+
+def test_neue_art_ohne_merkmale_ist_fehler():
+    r = roh()
+    r["merkmale"] = {"restaurant": {}}
+    assert any("Bereich" in f for f in mk_bauen(r)[1])

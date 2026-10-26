@@ -30,6 +30,10 @@ WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+",
           "tag": r"T-\d+", "wahl": r"V-\d+", "option": r"V-\d+\.[a-z]+"}
 BEREICHE = ("unterkunft", "strecke", "route", "allgemein")
+# Eine Wahlstelle hat einen Bereich oder eine Art: die vier Grundbereiche, dazu jede Art, die die Grundliste
+# (engine/merkmale.yaml) oder die Reise unter „merkmale:“ kennt (Fähre, Flug, Bahn, Essen, Erlebnis …).
+# Ding-Formen: Aufenthalt (unterkunft, essen, erlebnis), Bewegung (strecke, faehre, flug, bahn, bus, mietwagen), Folge (route).
+ART_MUSTER = r"[a-z][a-z0-9_]*"
 # Übernachtungskategorien (generisch, für Karte, Legende, Vergleich). typ bleibt die freie Bezeichnung der Reise;
 # fehlt kategorie, wird sie aus typ abgeleitet (TYP_KATEGORIE, klein geschrieben), sonst „sonstige“.
 KATEGORIEN = {"hotel": "Hotel", "gasthaus": "Gasthaus", "ferienwohnung": "Ferienwohnung", "huette": "Hütte",
@@ -61,7 +65,7 @@ def kategorie(eintrag):
     return TYP_KATEGORIE.get(str(eintrag.get("typ") or "").strip().lower(), "sonstige")
 TYPEN = {"text", "geld", "zahl", "auswahl"}
 DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage", "einheit"}
-WERT_FELDER = {"wert", "quelle", "geprueft", "notiz"}
+WERT_FELDER = {"wert", "quelle", "geprueft", "notiz", "gilt"}
 GRUNDLISTE = Path(__file__).with_name("merkmale.yaml")
 
 
@@ -72,6 +76,17 @@ def grundliste():
 
 def dauer(m):
     return f"{m // 60}:{m % 60:02d} h"
+
+
+def gilt_am(m, datum):
+    """Der Wert eines Merkmals für ein Datum (ISO-Text): der Eintrag mit passendem „gilt“, sonst der ohne Datum, sonst None.
+    m: ein Wert aus Option["merkmale"] (mit „je_datum“, wenn es Werte je Nacht gibt)."""
+    if not m:
+        return None
+    for e in m.get("je_datum") or []:
+        if datum in e["gilt"]:
+            return e
+    return None if m.get("gilt") else m
 
 
 def ist(art, wert):
@@ -150,6 +165,9 @@ class Routen:
         self.kriterien = {}       # V-ID -> (Bereich, {Merkmal: Definition})
         self.mk_option = {}       # V-01.a -> {Merkmal: Wert}
         self.mk_unterkunft = {}   # U-01 -> {Merkmal: Wert}
+        self.mk_strecke = {}      # E-01 -> {Merkmal: Wert} (Bewegungen: Fähre, Flug, Bahn …)
+        self.bereiche = tuple(BEREICHE) + tuple(k for k in (self.grund if isinstance(self.grund, dict) else {})
+                                                if k not in BEREICHE and isinstance(k, str))
         self.etappen = etappen
         self.fragen = fragen
         self.fehler = fehler
@@ -233,6 +251,7 @@ class Routen:
             opts = w.get("optionen") or []
             if not opts:
                 self.fehl(f"Wahlstelle {vid} hat keine Optionen.")
+            self.an_pruefen(vid, w)
             for o in opts:
                 oid = o.get("id", "")
                 if not ist("option", oid) or not oid.startswith(vid + "."):
@@ -243,6 +262,24 @@ class Routen:
                 self.verlauf_pruefen(oid, o)
             self.waehle(vid, w)
         self.merkmale_pruefen()
+
+    def an_pruefen(self, vid, w):
+        """„an:“ nennt die IDs, an denen die Wahlstelle hängt: Tag, Strecke, Unterkunft, Ort oder Wahlstelle."""
+        an = w.get("an")
+        if an is None:
+            return
+        if not isinstance(an, list):
+            self.fehl(f"Wahlstelle {vid}: an muss eine Liste von IDs sein.")
+            return
+        for x in an:
+            for art, menge in (("tag", self.tage), ("strecke", {**self.etappen, **self.strecken}),
+                               ("unterkunft", self.unterkuenfte), ("ort", self.orte), ("wahl", self.wahl)):
+                if ist(art, x):
+                    if x not in menge:
+                        self.fehl(f"Wahlstelle {vid}: an {x} gibt es nicht.")
+                    break
+            else:
+                self.fehl(f"Wahlstelle {vid}: an „{x}“ ist weder Tag, Strecke, Unterkunft, Ort noch Wahlstelle.")
 
     def verlauf_pruefen(self, oid, o):
         vorher = None
@@ -301,11 +338,26 @@ class Routen:
         opts = w.get("optionen") or []
         for feld, name in (("unterkuenfte", "unterkunft"), ("strecken", "strecke"), ("folge", "route")):
             if any(o.get(feld) for o in opts):
-                return name
+                return self.art_der_strecken(opts) if name == "strecke" else name
         return "allgemein"
 
+    def art_der_strecken(self, opts):
+        """Bereich für Optionen mit Strecken: die gemeinsame Art (faehre, flug …), wenn die Grundliste sie kennt, sonst strecke."""
+        arten = set()
+        for o in opts:
+            for sid in o.get("strecken") or []:
+                a = (self.strecken.get(sid) or {}).get("art", "wandern")
+                arten.add(a if isinstance(a, str) else None)
+        if len(arten) == 1:
+            a = next(iter(arten))
+            if a and a != "wandern" and a in self.bereiche:
+                return a
+        return "strecke"
+
     def werte(self, wo, roh, kriterien):
-        """Werte einer Option oder Unterkunft prüfen -> {Merkmal: {wert, quelle, geprueft, notiz, ungeprueft}}."""
+        """Werte einer Option, Unterkunft oder Strecke prüfen -> {Merkmal: {wert, quelle, geprueft, notiz, ungeprueft}}.
+        Ein Wert kann je Nacht oder Datum verschieden sein: eine Liste von Einträgen, jeder mit „gilt“ (Datum oder Liste
+        von Daten); ein Eintrag ohne „gilt“ ist der Wert für alle übrigen Tage. Das Ergebnis trägt dann „je_datum“."""
         aus = {}
         if roh is None:
             return aus
@@ -321,44 +373,76 @@ class Routen:
             if d.get("auto"):
                 self.fehl(f"{wo}: {d['name']} wird aus dem Plan berechnet und nicht eingetragen.")
                 continue
-            e = dict(v) if isinstance(v, dict) else {"wert": v}
-            if set(e) - WERT_FELDER:
-                self.fehl(f"{wo}: {k}: unbekannte Felder {', '.join(sorted(set(e) - WERT_FELDER))} "
-                          f"(erlaubt: wert, quelle, geprueft, notiz).")
-            w = e.get("wert")
-            w = {True: "ja", False: "nein"}.get(w, w) if isinstance(w, bool) else w
-            if w is None or str(w).strip() == "":
-                self.fehl(f"{wo}: {k} ohne Wert. Fehlt der Wert, das Merkmal weglassen.")
+            eintraege = [self.wert_eintrag(wo, k, d, x) for x in (v if isinstance(v, list) else [v])]
+            eintraege = [x for x in eintraege if x]
+            if not eintraege:
                 continue
-            if d["typ"] == "auswahl" and w not in d.get("werte", []):
-                self.fehl(f"{wo}: {k} = „{w}“, erlaubt: {', '.join(map(str, d['werte']))}.")
-            if d["typ"] == "zahl" and not isinstance(w, (int, float)):
-                self.fehl(f"{wo}: {k} muss eine Zahl sein.")
-            g = e.get("geprueft")
-            if g is not None and not isinstance(g, datetime.date):
-                self.fehl(f"{wo}: {k}: geprueft muss ein Datum sein (JJJJ-MM-TT).")
-                g = None
-            aus[k] = {"wert": str(w), "quelle": e.get("quelle"), "notiz": e.get("notiz"),
-                      "geprueft": g.isoformat() if g else None,
-                      "ungeprueft": bool(d.get("veraenderlich")) and g is None}
+            ohne = [x for x in eintraege if not x.get("gilt")]
+            if len(ohne) > 1:
+                self.fehl(f"{wo}: {k} hat mehrere Werte ohne „gilt“; je Datum angeben.")
+            tage = [t for x in eintraege for t in x.get("gilt") or []]
+            if len(tage) != len(set(tage)):
+                self.fehl(f"{wo}: {k}: ein Datum steht in zwei Werten.")
+            aus[k] = dict(ohne[0] if ohne else eintraege[0])
+            if any(x.get("gilt") for x in eintraege):
+                aus[k]["je_datum"] = [x for x in eintraege if x.get("gilt")]
         return aus
+
+    def wert_eintrag(self, wo, k, d, v):
+        """Ein Wert eines Merkmals prüfen -> Eintrag oder None (bei Fehlern, die schon gemeldet sind)."""
+        e = dict(v) if isinstance(v, dict) else {"wert": v}
+        if set(e) - WERT_FELDER:
+            self.fehl(f"{wo}: {k}: unbekannte Felder {', '.join(sorted(set(e) - WERT_FELDER))} "
+                      f"(erlaubt: {', '.join(sorted(WERT_FELDER))}).")
+        w = e.get("wert")
+        w = {True: "ja", False: "nein"}.get(w, w) if isinstance(w, bool) else w
+        if w is None or str(w).strip() == "":
+            self.fehl(f"{wo}: {k} ohne Wert. Fehlt der Wert, das Merkmal weglassen.")
+            return None
+        if d["typ"] == "auswahl" and w not in d.get("werte", []):
+            self.fehl(f"{wo}: {k} = „{w}“, erlaubt: {', '.join(map(str, d['werte']))}.")
+        if d["typ"] == "zahl" and not isinstance(w, (int, float)):
+            self.fehl(f"{wo}: {k} muss eine Zahl sein.")
+        g = e.get("geprueft")
+        if g is not None and not isinstance(g, datetime.date):
+            self.fehl(f"{wo}: {k}: geprueft muss ein Datum sein (JJJJ-MM-TT).")
+            g = None
+        gilt = e.get("gilt")
+        if gilt is not None:
+            liste = gilt if isinstance(gilt, list) else [gilt]
+            if not liste or not all(isinstance(x, datetime.date) for x in liste):
+                self.fehl(f"{wo}: {k}: gilt muss ein Datum oder eine Liste von Daten sein (JJJJ-MM-TT).")
+                gilt = None
+            else:
+                gilt = [x.isoformat() for x in liste]
+        out = {"wert": str(w), "quelle": e.get("quelle"), "notiz": e.get("notiz"),
+               "geprueft": g.isoformat() if g else None,
+               "ungeprueft": bool(d.get("veraenderlich")) and g is None}
+        if gilt:
+            out["gilt"] = gilt
+        return out
 
     def merkmale_pruefen(self):
         if not isinstance(self.grund, dict):
             self.grund = {}
-        for b in BEREICHE:
+        for b in self.bereiche:
             self.katalog[b] = self.definitionen(f"engine/merkmale.yaml {b}", self.grund.get(b) or {}, b, grund=True)
         eigen = self.r.get("merkmale") or {}
         for b, roh in (eigen.items() if isinstance(eigen, dict) else []):
-            if b not in BEREICHE:
-                self.fehl(f"merkmale: Bereich „{b}“ gibt es nicht (erlaubt: {', '.join(BEREICHE)}).")
-                continue
+            if b not in self.bereiche:
+                # eine Reise darf eine neue Art anlegen (z. B. restaurant), wenn sie ihre Merkmale gleich mitbringt
+                if not (re.fullmatch(ART_MUSTER, str(b)) and isinstance(roh, dict) and roh):
+                    self.fehl(f"merkmale: Bereich „{b}“ gibt es nicht (bekannt: {', '.join(self.bereiche)}). Eine neue Art "
+                              f"braucht einen Namen aus Kleinbuchstaben und mindestens ein Merkmal.")
+                    continue
+                self.bereiche += (b,)
+                self.katalog[b] = {}
             self.katalog[b].update(self.definitionen(f"merkmale.{b}", roh or {}, b))
-        u_extra = {}
+        u_extra, s_extra = {}, {}
         for vid, w in self.wahl.items():
             b = self.bereich(w)
-            if b not in BEREICHE:
-                self.fehl(f"Wahlstelle {vid}: bereich muss {', '.join(BEREICHE)} sein.")
+            if b not in self.bereiche:
+                self.fehl(f"Wahlstelle {vid}: bereich muss {', '.join(self.bereiche)} sein.")
                 b = "allgemein"
             krit = dict(self.katalog[b])
             krit.update(self.definitionen(f"Wahlstelle {vid}", w.get("merkmale") or {}, b))
@@ -369,9 +453,19 @@ class Routen:
                 if b == "unterkunft":
                     for u in o.get("unterkuenfte") or []:
                         u_extra.setdefault(u, {}).update(krit)
+                else:
+                    for sid in o.get("strecken") or []:
+                        s_extra.setdefault(sid, {}).update(krit)
         for uid, u in self.unterkuenfte.items():
             krit = {**self.katalog["unterkunft"], **u_extra.get(uid, {})}
             self.mk_unterkunft[uid] = self.werte(uid, u.get("merkmale"), krit)
+        # Bewegungen (Strecken mit Art Fähre, Flug …): Werte dürfen an der Strecke stehen, wie bei Unterkünften an U-…
+        for sid, st in self.strecken.items():
+            if st.get("merkmale") is None:
+                continue
+            a = st.get("art", "wandern")
+            basis = self.katalog.get(a if isinstance(a, str) and a in self.katalog and a != "wandern" else "strecke", {})
+            self.mk_strecke[sid] = self.werte(sid, st.get("merkmale"), {**basis, **s_extra.get(sid, {})})
 
     def auto_werte(self, bereich, o):
         """Berechnete Merkmale einer Option (Kennzahlen ihrer Strecken bzw. Tage)."""
@@ -396,6 +490,9 @@ class Routen:
         if b == "unterkunft":
             for u in (o.get("unterkuenfte") or [])[:1]:
                 mk.update(self.mk_unterkunft.get(u, {}))
+        elif b != "route":
+            for sid in (o.get("strecken") or [])[:1]:
+                mk.update(self.mk_strecke.get(sid, {}))
         mk.update(self.mk_option.get(o.get("id"), {}))
         auto = self.auto_werte(b, o)
         mk.update({k: auto[d["auto"]] for k, d in krit.items() if d.get("auto") in auto})
@@ -605,8 +702,8 @@ class Routen:
             if tid not in in_opt:
                 self.warne(tid, f"Tag {tid} kommt in keiner Option vor.")
         for vid, w in self.wahl.items():
-            frei = not any(vid in (t.get("strecken") or []) or vid == t.get("nacht") or vid in (t.get("wahl") or [])
-                           for t in self.tage.values())
+            frei = not w.get("an") and not any(vid in (t.get("strecken") or []) or vid == t.get("nacht")
+                                               or vid in (t.get("wahl") or []) for t in self.tage.values())
             if frei and not self.kommt_in_folge_vor(vid):
                 self.warne(vid, f"Wahlstelle {vid} wird nirgends verwendet.")
 
@@ -746,11 +843,12 @@ class Routen:
             })
         an = [tid for tid, t in self.tage.items()
               if vid in (t.get("strecken") or []) or vid == t.get("nacht") or vid in (t.get("wahl") or [])]
+        an_ids = [x for x in w.get("an") or [] if isinstance(x, str)]
         offen = not any(o["status"] == "gewaehlt" for o in opts)
         b, krit = self.kriterien.get(vid, ("allgemein", {}))
         return {"bereich": b, "kriterien": [{"id": k, **d} for k, d in krit.items()],
                 "id": vid, "titel": w.get("titel", vid), "art": w.get("art"), "frage": w.get("frage"),
-                "text": w.get("text", ""), "an": an, "offen": offen, "optionen": opts}
+                "text": w.get("text", ""), "an": an, "an_ids": an_ids, "offen": offen, "optionen": opts}
 
     def alle_strecken(self, o, tiefe=0):
         """Alle Strecken einer Option: eigene und die ihrer Tage, über alle Unteroptionen."""
