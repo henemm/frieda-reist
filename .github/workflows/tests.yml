@@ -1,0 +1,42 @@
+# Tests bei jeder Änderung: Engine-Tests und Browser-Prüfung (Chromium und WebKit).
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: engine/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Python-Pakete
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libcairo2
+          pip install -r engine/requirements.txt
+      - name: Playwright und Browser
+        run: |
+          mkdir -p "$RUNNER_TEMP/playwright-tool"
+          cd "$RUNNER_TEMP/playwright-tool"
+          npm init -y >/dev/null
+          npm install playwright
+          npx playwright install --with-deps chromium webkit
+          echo "PLAYWRIGHT_MODUL=$PWD/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+      - name: Tests
+        run: python -m pytest -q -rs engine/tests
+      - name: Browser-Prüfung darf nicht übersprungen worden sein
+        run: python -m pytest -q engine/tests/test_pwa.py -k offline_im_browser -rs | tee /tmp/pwa.txt; ! grep -qi skipped /tmp/pwa.txt
