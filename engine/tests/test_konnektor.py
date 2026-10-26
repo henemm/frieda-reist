@@ -131,6 +131,17 @@ def test_initialize_ohne_symbol_geht_trotzdem(dienst, seiten):
             f.write_bytes(b)
 
 
+def test_ueberblick_zeigt_stand(dienst, monkeypatch):
+    """Man sieht in der App, wann die Reise veröffentlicht wurde und ob der Dienst den neuen Code geladen hat."""
+    basis, _ = dienst
+    t, f = werkzeug(basis, MITREISEND, "ueberblick")
+    assert not f and "## Stand" in t and "Reise zuletzt veröffentlicht:" in t and f"Code {kn._CODE_START}" in t
+    assert "Neustart" not in t
+    monkeypatch.setattr(kn, "_CODE_START", "00000000")
+    t, _ = werkzeug(basis, MITREISEND, "ueberblick")
+    assert "braucht einen Neustart" in t
+
+
 def test_stapel(dienst):
     basis, _ = dienst
     code, a = anfrage(f"{basis}/{MITREISEND}", [{"jsonrpc": "2.0", "id": 1, "method": "ping"},

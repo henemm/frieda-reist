@@ -33,6 +33,7 @@ HTTP (hinter nginx, Präfix /reisehandbuch-mcp/ -> /):
 """
 import base64
 import datetime
+import hashlib
 import hmac
 import json
 import os
@@ -60,6 +61,23 @@ TOKEN_MUSTER = re.compile(r"^[A-Za-z0-9_-]{20,100}$")
 AID_MUSTER = re.compile(r"^A-\d{8}-\d{6}-[0-9a-f]{4}$")
 
 _sperre = threading.Lock()
+
+CODE_DATEIEN = ("konnektor.py", "reise.py", "rueckmeldungen.py")
+
+
+def code_stand():
+    """Kurzer Hash des Codes, den der Dienst von der Platte lädt (konnektor.py und die Module daneben)."""
+    h = hashlib.sha256()
+    for n in CODE_DATEIEN:
+        try:
+            h.update((Path(__file__).resolve().parent / n).read_bytes())
+        except OSError:
+            h.update(b"-")
+    return h.hexdigest()[:8]
+
+
+_START = datetime.datetime.now().astimezone()
+_CODE_START = code_stand()   # Stand des Codes beim Start; weicht er später von der Platte ab, fehlt ein Neustart
 
 
 def seiten():
@@ -180,6 +198,25 @@ def symbole(reise):
         liste.append({"src": "data:image/png;base64," + base64.b64encode(roh).decode("ascii"),
                       "mimeType": "image/png", "sizes": [f"{g}x{g}"]})
     return liste
+
+
+def zeit_de(t):
+    return t.astimezone().strftime("%d.%m.%Y %H:%M")
+
+
+def stand_text(reise):
+    """Woran man in der App sieht, ob das Veröffentlichen gelaufen ist: Bauzeit der Seite und Stand des Dienstes."""
+    z = ["## Stand"]
+    try:
+        gebaut = datetime.datetime.fromtimestamp((seiten() / reise / "daten.json").stat().st_mtime).astimezone()
+        z.append(f"- Reise zuletzt veröffentlicht: {zeit_de(gebaut)}")
+    except OSError:
+        z.append("- Reise: Zeitpunkt der Veröffentlichung unbekannt")
+    jetzt = code_stand()
+    z.append(f"- Konnektor gestartet: {zeit_de(_START)}, Code {_CODE_START}"
+             + ("" if jetzt == _CODE_START else f" – auf dem Server liegt neuerer Code ({jetzt}), der Dienst braucht einen Neustart"
+                " (sudo systemctl restart reisehandbuch-konnektor)"))
+    return "\n".join(z)
 
 
 def stunden(minuten):
@@ -909,7 +946,7 @@ def werkzeug(zugang, name, args):
             return f"Nicht gespeichert: {fehler}", True
         return "Gespeichert (gilt sofort):\n" + aufgabe_text(a, h.titel()), False
     if name == "ueberblick":
-        return h.ueberblick(), False
+        return h.ueberblick() + "\n" + stand_text(reise), False
     if name == "zeige":
         t, fehler = h.zeige(str(args.get("id", "")).strip())
         return (fehler, True) if fehler else (t, False)
