@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Beispielreise (von Hand, schematisch)" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata><name>Altendorf – Schrammsteine – Bad Schandau (schematisch)</name><desc>Von Hand gesetzte Näherung mit wenigen Punkten, kein aufgezeichneter Track. Nicht zur Navigation.</desc></metadata>
+  <trk>
+    <name>Altendorf – Schrammsteine – Bad Schandau</name>
+    <trkseg>
+      <trkpt lat="50.92750" lon="14.18700"><ele>330</ele></trkpt>
+      <trkpt lat="50.92588" lon="14.18900"><ele>320</ele></trkpt>
+      <trkpt lat="50.92425" lon="14.19100"><ele>310</ele></trkpt>
+      <trkpt lat="50.92262" lon="14.19300"><ele>300</ele></trkpt>
+      <trkpt lat="50.92100" lon="14.19500"><ele>290</ele></trkpt>
+      <trkpt lat="50.91900" lon="14.19750"><ele>270</ele></trkpt>
+      <trkpt lat="50.91700" lon="14.20000"><ele>250</ele></trkpt>
+      <trkpt lat="50.91583" lon="14.20350"><ele>306</ele></trkpt>
+      <trkpt lat="50.91467" lon="14.20700"><ele>361</ele></trkpt>
+      <trkpt lat="50.91350" lon="14.21050"><ele>417</ele></trkpt>
+      <trkpt lat="50.91262" lon="14.20737"><ele>375</ele></trkpt>
+      <trkpt lat="50.91175" lon="14.20425"><ele>334</ele></trkpt>
+      <trkpt lat="50.91087" lon="14.20113"><ele>292</ele></trkpt>
+      <trkpt lat="50.91000" lon="14.19800"><ele>250</ele></trkpt>
+      <trkpt lat="50.91075" lon="14.19425"><ele>258</ele></trkpt>
+      <trkpt lat="50.91150" lon="14.19050"><ele>265</ele></trkpt>
+      <trkpt lat="50.91225" lon="14.18675"><ele>272</ele></trkpt>
+      <trkpt lat="50.91300" lon="14.18300"><ele>280</ele></trkpt>
+      <trkpt lat="50.91387" lon="14.17975"><ele>278</ele></trkpt>
+      <trkpt lat="50.91475" lon="14.17650"><ele>275</ele></trkpt>
+      <trkpt lat="50.91562" lon="14.17325"><ele>272</ele></trkpt>
+      <trkpt lat="50.91650" lon="14.17000"><ele>270</ele></trkpt>
+      <trkpt lat="50.91687" lon="14.16625"><ele>234</ele></trkpt>
+      <trkpt lat="50.91725" lon="14.16250"><ele>198</ele></trkpt>
+      <trkpt lat="50.91763" lon="14.15875"><ele>161</ele></trkpt>
+      <trkpt lat="50.91800" lon="14.15500"><ele>125</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

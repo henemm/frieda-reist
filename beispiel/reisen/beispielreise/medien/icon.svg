@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- App-Symbol der Beispielreise: Sandsteinfelsen über dem Fluss (eigene Zeichnung). Motiv im inneren 80 %. -->
+  <rect width="512" height="512" fill="#f3efe6"/>
+  <circle cx="360" cy="150" r="48" fill="#d9a441"/>
+  <path d="M60 372 L60 220 L96 214 L100 372 Z M120 372 L124 180 L170 176 L176 372 Z M196 372 L200 236 L236 232 L240 372 Z M262 372 L268 160 L318 164 L322 372 Z M344 372 L348 210 L388 214 L392 372 Z M412 372 L416 250 L448 252 L452 372 Z" fill="#8a6f52"/>
+  <rect y="360" width="512" height="152" fill="#2c6a86"/>
+  <path d="M110 420 q20 -12 40 0 t40 0 M300 446 q20 -12 40 0 t40 0" fill="none" stroke="#f3efe6" stroke-width="10" stroke-linecap="round" opacity=".85"/>
+</svg>

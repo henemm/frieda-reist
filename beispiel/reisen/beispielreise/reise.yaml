@@ -1,0 +1,29 @@
+# Eckdaten, Status, Personen und Einstellungen der Beispielreise. Die Zuordnung der Inhalte (Überschrift -> ID)
+# steht getrennt davon in reise.json. Prüfung und Vorgaben: engine/reise.py.
+# Die Reise ist erfunden (Demo und Testdaten), die Gegend ist echt.
+
+titel: Beispielreise – Malerweg in vier Tagen
+untertitel: Dresden und Sächsische Schweiz, 13.–16.5.2027 · erfundenes Beispiel
+pfad: beispielreise
+kurz: Beispiel
+
+status:
+  wert: planung
+  verlauf:
+    - {datum: 2026-09-01, wert: idee, wer: Ida, grund: "Idee: ein langes Wochenende Wandern im Elbsandstein"}
+    - {datum: 2026-10-20, wert: planung, wer: Ida, grund: "Termin steht, Unterkunft in Hohnstein gewählt (V-03)"}
+
+personen:
+  ida: {name: Ida, rolle: bestimmer, reist: true}
+  karl: {name: Karl, rolle: einbringer, reist: true, notiz: "wünscht sich die Fahrt mit der Kirnitzschtalbahn"}
+
+# Immer da: Plan, Wissen, Suche, Personen. Zuschaltbar: varianten, karte, tagesseiten, rueckmeldungen,
+# fragen, aufgaben, wuensche (waechter und profile sind noch nicht gebaut).
+bausteine: [varianten, karte, tagesseiten, rueckmeldungen, fragen, aufgaben, wuensche]
+
+regeln:
+  entscheidungsweg: direkt
+  kontingent: {art: punkte, je_person: 10}
+
+darstellung:
+  gruppen: {wissen: Wissen, praxis: Praxis, quelle: Quellen}

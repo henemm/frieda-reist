@@ -1,0 +1,149 @@
+# Beispielreise – Routenmodell: alle Möglichkeiten, Entscheidungen und Kandidaten.
+# Aufbau und Regeln: engine/routen.py. Status gewaehlt, verworfen, ersetzt setzt nur ein Bestimmer
+# (reise.yaml, hier Ida); Vorschläge anderer höchstens vorgeschlagen oder favorisiert (mit Begründung).
+# Die Reise ist erfunden; Orte und Wege gibt es wirklich. Kennzahlen der Etappen stehen im Etappen-Dossier
+# (inhalt/etappen.md) und sind aus den schematischen Tracks gerechnet (Beispielwerte).
+
+start: {datum: 2027-05-13, ort: O-01}
+ende: {datum: 2027-05-16, ort: O-01}
+fixpunkte:
+  - {datum: 2027-05-13, ort: O-01, titel: "Ankunft mit dem Zug in Dresden (Beispiel)"}
+
+orte:
+  O-01: {name: Dresden}
+  O-02: {name: Stadt Wehlen}
+  O-03: {name: Hohnstein, hinweis: "Burgstadt über dem Polenztal"}
+  O-04: {name: Altendorf}
+  O-05: {name: Bad Schandau}
+  O-06: {name: Lichtenhainer Wasserfall, hinweis: "Endhaltestelle der Kirnitzschtalbahn"}
+
+# Wanderetappen kommen aus dem Etappen-Dossier (Titel, Kennzahlen); hier nur Anfang und Ende.
+strecken:
+  E-01: {von: O-02, nach: O-03, art: wandern}
+  E-02: {von: O-03, nach: O-04, art: wandern}
+  E-03: {von: O-04, nach: O-05, art: wandern}
+  E-04: {von: O-04, nach: O-06, art: wandern}
+  E-20: {titel: "S-Bahn Dresden → Stadt Wehlen, Fähre über die Elbe", von: O-01, nach: O-02, art: bahn, quelle: "Beispiel; Fahrplan nicht geprüft"}
+  E-21: {titel: "S-Bahn Bad Schandau → Dresden", von: O-05, nach: O-01, art: bahn, quelle: "Beispiel; Fahrplan nicht geprüft"}
+  E-22: {titel: "Kirnitzschtalbahn Lichtenhainer Wasserfall → Bad Schandau", von: O-06, nach: O-05, art: bahn, siehe: W-06, quelle: "Strecke laut Wikipedia (W-06); Fahrplan nicht geprüft"}
+
+unterkuenfte:
+  # Alle Unterkünfte sind erfunden. Preise und Angaben sind Beispielwerte, nicht nachschlagen.
+  U-01:
+    name: Hotel am Elbufer
+    ort: O-01
+    typ: Hotel
+    hinweis: "erfundenes Beispielhotel in der Altstadt"
+    quelle: "erfunden (Beispiel)"
+    merkmale:
+      preis: {wert: "120 €", notiz: "Beispielwert, erfunden"}
+      fruehstueck: {wert: inklusive, notiz: "Beispielwert, erfunden"}
+  U-02:
+    name: Pension Burgblick
+    ort: O-03
+    typ: Pension
+    frage: F-02
+    hinweis: "erfunden; Doppelzimmer mit Blick auf die Burg"
+    quelle: "erfunden (Beispiel)"
+    merkmale:
+      preis: {wert: "85 €", notiz: "Beispielwert, erfunden"}
+      fruehstueck: {wert: inklusive, notiz: "Beispielwert, erfunden"}
+      abendessen: {wert: im Ort, notiz: "Beispielwert, erfunden"}
+      lage: {wert: "am Markt, zwei Minuten vom Malerweg", quelle: "erfunden (Beispiel)"}
+  U-03:
+    name: Gasthof Polenztal
+    ort: O-03
+    typ: Gasthof
+    frage: F-02
+    hinweis: "erfunden; unten im Tal, morgens 15 Minuten Anstieg zurück zum Weg"
+    quelle: "erfunden (Beispiel)"
+    merkmale:
+      preis: {wert: "70 €", notiz: "Beispielwert, erfunden"}
+      abendessen: {wert: im Haus, notiz: "Beispielwert, erfunden"}
+  U-04:
+    name: Wanderherberge Altendorf
+    ort: O-04
+    typ: Herberge
+    hinweis: "erfunden; Mehrbettzimmer, Selbstversorgerküche"
+    quelle: "erfunden (Beispiel)"
+    merkmale:
+      preis: {wert: "35 € pro Person", notiz: "Beispielwert, erfunden"}
+      fruehstueck: {wert: gegen Aufpreis, notiz: "Beispielwert, erfunden"}
+      zimmer: {wert: "Vierbettzimmer", quelle: "erfunden (Beispiel)"}
+
+tage:
+  T-01: {titel: "Ankunft und Stadttag in Dresden", nacht: U-01,
+         text: "Ankunft mittags mit dem Zug, Nachmittag in der Altstadt (Frauenkirche, Elbufer). Siehe Ortsseite O-01."}
+  T-02: {titel: "Stadt Wehlen → Bastei → Hohnstein", strecken: [E-20, E-01], wahl: [V-02], nacht: V-03,
+         text: "Erster Wandertag. Früh fahren: An der Bastei ist es ab dem späten Vormittag voll (Annahme)."}
+  T-03: {titel: "Hohnstein → Brand → Altendorf", strecken: [E-02], nacht: U-04}
+  T-04: {titel: "Altendorf → Schrammsteine → Bad Schandau, Zug nach Dresden", strecken: [E-03, E-21]}
+  T-05: {titel: "Altendorf → Schrammsteine → Lichtenhainer Wasserfall, Kirnitzschtalbahn, Zug nach Dresden", strecken: [E-04, E-22, E-21]}
+
+route: [T-01, T-02, T-03, V-01]
+
+# Benannte Pläne: feste Kombinationen von Optionen (Ansicht „Varianten“).
+plaene:
+  - id: P-A
+    kurz: Plan A
+    titel: "Direkt hinunter nach Bad Schandau"
+    farbe: a
+    auswahl: [V-01.a, V-03.a]
+    plus: ["kürzester letzter Tag", "früh am Bahnhof"]
+    minus: ["ohne Kirnitzschtalbahn"]
+  - id: P-B
+    kurz: Plan B
+    titel: "Über die Affensteine zur Kirnitzschtalbahn"
+    farbe: b
+    auswahl: [V-01.b, V-03.a]
+    plus: ["Fahrt mit der historischen Straßenbahn", "mehr Felsen am letzten Tag"]
+    minus: ["Abfahrt hängt am Fahrplan der Bahn"]
+
+wahlstellen:
+  V-01:
+    titel: "Letzter Tag: Weg zum Zug"
+    art: planung
+    frage: F-01
+    text: "Beide Wege beginnen in Altendorf und führen über die Schrammsteinaussicht. Offen ist, wo der Abstieg endet."
+    optionen:
+      - id: V-01.a
+        titel: "Abstieg nach Bad Schandau (Plan A)"
+        folge: [T-04]
+        verlauf:
+          - {datum: 2026-10-20, status: vorgeschlagen, wer: Claude, grund: "kürzeste Verbindung zum Bahnhof"}
+      - id: V-01.b
+        titel: "Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück (Plan B)"
+        folge: [T-05]
+        verlauf:
+          - {datum: 2026-10-20, status: vorgeschlagen, wer: Claude}
+          - {datum: 2026-10-22, status: favorisiert, wer: Karl, grund: "Karl möchte einmal mit der Kirnitzschtalbahn fahren"}
+
+  V-02:
+    titel: "Tag 2: Zugang zum Hockstein"
+    art: unterwegs
+    text: "Der Hockstein hat zwei Zugänge: die Steinbrücke und die Wolfsschlucht (Wikipedia, siehe W-05)."
+    optionen:
+      - {id: V-02.a, titel: "Über die Steinbrücke"}
+      - id: V-02.b
+        titel: "Durch die Wolfsschlucht"
+        ausloeser: "nur bei trockenem Fels; Felsstufen bei Nässe vermutlich glatt (Annahme)"
+        siehe: W-05
+
+  V-03:
+    titel: Unterkunft in Hohnstein
+    art: planung
+    frage: F-02
+    optionen:
+      - id: V-03.a
+        titel: Pension Burgblick
+        unterkuenfte: [U-02]
+        plus: ["direkt am Weg"]
+        verlauf:
+          - {datum: 2026-10-20, status: gewaehlt, wer: Ida, grund: "liegt am Weg, kein Anstieg am Morgen"}
+      - id: V-03.b
+        titel: Gasthof Polenztal
+        unterkuenfte: [U-03]
+        plus: ["Abendessen im Haus"]
+        minus: ["morgens 15 Minuten Anstieg"]
+        verlauf:
+          - {datum: 2026-10-20, status: verworfen, wer: Ida, grund: "Anstieg am Morgen"}

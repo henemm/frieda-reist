@@ -1,0 +1,88 @@
+# Reisehandbuch als Produkt: Kern, AI first, Rollen, Ausbaustufen
+
+Entschieden vom Product Owner am 26.10.2026 (Gespräch in Claude Code). Dieses Dokument ist das gemeinsame Verständnis, an dem sich Engine, Regeln und Arbeitspakete ausrichten.
+
+## Zweck
+
+Das Reisehandbuch ist die eine Quelle der Wahrheit für eine Reise, von der ersten Idee bis zum Nachschlagen unterwegs. Es ist ein generisches Produkt: Es soll beliebigen Reisegruppen dienen, nicht nur einem Haushalt. Die Claude-App (Desktop und Handy) ist der Ort, an dem alle die Reise mitgestalten. Die Webseite ist das Nachschlagewerk unterwegs, offline, mit Karte und Brett.
+
+## Kern
+
+1. **Reisemodell.** Bausteine mit festen IDs: Tage, Strecken, Orte, Unterkünfte. Alternativen sind Teil des Modells: Wahlstellen mit Optionen auf jeder Ebene, benannte Pläne. Verworfenes wird nie gelöscht, sondern bekommt einen Verlaufseintrag. Drumherum das Wissen (Dossiers, Geschichte, Praxis, Quellen) und das Offene (Fragen, Aufgaben, Wünsche, Rückmeldungen).
+2. **Spielregeln.** Jede Aussage nennt ihre Herkunft, Annahmen sind markiert, Veränderliches trägt ein Prüfdatum. Bestimmer entscheiden, mit Datum und Verlauf. Einbringer geben Eingaben. Die KI recherchiert, prüft, schlägt vor, arbeitet ein, baut und veröffentlicht, entscheidet aber nie. IDs werden nie neu vergeben.
+3. **Kreislauf.** Eingabe über App oder Seite an eine ID, Eingang auf dem Server, Prüfung und Einarbeiten durch die KI, Veröffentlichung, Status mit Kommentar zurück an den Absender.
+
+Technik (Python-Generator, HTML-Vorlage, Service Worker, nginx, systemd, Git) ist Mittel, nicht Kern.
+
+## AI first
+
+1. Das Gespräch ist die Haupttür. Jede Rolle redet mit der Reise, die Webseite ist Ansicht und Eingabefläche.
+2. Das Modell ist für die KI gebaut: Reise, Personen, Rollen, Bausteine, Herkunft und Prüfdatum sind Felder mit Schema (`reise.yaml`, `routen.yaml`, Merkmale). Fließtext bleibt Fließtext.
+3. Die Regeln prüft die Maschine (Rechte, Pflichtfelder, Konflikte); die KI bekommt nur eine kurze Verfassung.
+4. Die KI handelt: Eingaben werden sofort eingearbeitet, Veränderliches wird überwacht, Fristen werden gemeldet, Optionen werden von selbst vorgeschlagen.
+5. Die KI kennt die Menschen: je Person ein Profil, über Reisen hinweg, einsehbar und korrigierbar.
+
+## Rollen
+
+Rollen gelten je Reise, nicht je Person. Rechte sind gestuft, jede Stufe enthält die darunter:
+
+| Rolle | Darf |
+|---|---|
+| `reisend` | lesen (Mitreisende, die nur wissen wollen, was wann ist; Gäste) |
+| `einbringer` | Wünsche, Rückmeldungen, Aufgaben, Antworten auf Fragen; auch für Nicht-Reisende (`reist: false`) |
+| `bestimmer` | entscheiden (gewählt, verworfen, ersetzt), Status und Einstellungen der Reise setzen, Personen einladen |
+
+Mehrere Bestimmer sind möglich. Jede Entscheidung hat genau eine Person und ein Datum. Zwei verschiedene Entscheidungen an derselben Stelle überschreiben sich nicht: Die KI macht daraus eine offene Frage und meldet den Konflikt beiden (Regel `konflikt: offene_frage`). Die KI selbst ist die vierte Rolle: Assistent, schlägt vor, prüft, arbeitet ein, entscheidet nie.
+
+Personen und Rollen stehen je Reise in `reisen/<reise>/reise.yaml` unter `personen:`. Der Konnektor-Link gehört zu einer Person (`konnektor.py zugang <reise> <person>`).
+
+## Einstellungen je Reise (`reise.yaml`)
+
+- **Bausteine, an oder aus** (`bausteine:`). Immer da: Plan, Wissen, Suche, Personen. Zuschaltbar: `varianten`, `karte`, `tagesseiten`, `rueckmeldungen`, `fragen`, `aufgaben`, `wuensche`, `waechter`, `profile`. Ein ausgeschalteter Baustein verschwindet aus Seite und App, seine Daten bleiben. (`waechter` und `profile` sind angelegt, aber noch nicht gebaut: Ausbaustufen 2 und 3.)
+- **Spielregeln, mit Wert** (`regeln:`), Vorgaben in `engine/reise.py`: `entscheidungsweg` (direkt im Gespräch oder als Auftrag mit Prüfung), `konflikt` (offene_frage), `kontingent` beim Brett (Art `punkte` oder `anzahl`, `je_person`), `einladen` (bestimmer), `sammelzeit_minuten` vor dem Einarbeiten.
+- **Darstellung** (`darstellung:`): Startreiter, Namen der Reiter, Tiefe der Ansicht, Gruppen.
+
+Einstellungen setzt der Bestimmer, auch im Gespräch. Jede Änderung bekommt einen Verlaufseintrag. Die Zuordnung der Inhalte (Überschrift zu ID) bleibt getrennt davon in `reise.json`.
+
+## Status einer Reise
+
+Ausdrücklich gesetzt, nicht abgeleitet; der Bestimmer setzt ihn, die KI erinnert am Start- und Enddatum, wechselt aber nie selbst. Jede Stufe hat Datum und Verlauf, rückwärts geht auch.
+
+| Status | Was gilt |
+|---|---|
+| `idee` | Eckdaten, Personen, Wünsche sammeln. Kein Plan nötig, keine Warnungen. |
+| `planung` | Alles offen. Lücken und offene Wahlstellen sind normaler Zwischenstand. |
+| `fest` | Plan gewählt, Buchen läuft. Offene Planungs-Wahlstellen werden zur Mahnung, Aufgabenfristen zählen, der Wächter prüft Veränderliches. |
+| `unterwegs` | Seite startet mit „Heute“ und Karte, Unterwegs-Wahlstellen rücken vor, Wünsche werden abgehakt, Rückmeldungen sind Notizen vom Weg. |
+| `danach` | Nachlese, Profile lernen aus Erlebtem, Plan schreibgeschützt. Ausbau später. |
+| `archiv` | Nur noch lesen. |
+
+## Vorgaben für neue Reisen
+
+- Konfliktregel: offene Frage, Meldung an alle beteiligten Bestimmer.
+- Einladen dürfen nur Bestimmer.
+- Sammelzeit vor dem Einarbeiten: 5 Minuten.
+- Brett-Kontingent: Punkte, 10 je Person.
+- Eigene Konnektoren gibt es nur in bezahlten Claude-Konten; jede Person, die mitgestalten soll, braucht so ein Konto (vor Stufe 1 noch einmal gegen den aktuellen Stand prüfen).
+
+Die Rollen und Status der laufenden Reisen stehen in deren `reise.yaml`, die Entscheidungen dazu in der `CLAUDE.md` des Reisen-Repos.
+
+## Ausbaustufen und Arbeitspakete
+
+| Paket | Inhalt | Sitzungen |
+|---|---|---|
+| A Modell | Personen, Rollen, Rechte, Kontingente, Einstellungen, Status als Daten; Herkunft und Prüfdatum als Felder, wo Regeln wirken; feste Namen raus aus Engine, Konnektor, Regeln | 3 bis 4 |
+| B Regeln im Code | Rechteprüfung beim Schreiben, Pflichtfelder, Konfliktmeldung, Verhalten je Status, Bausteine blenden sich aus | 1 bis 2 |
+| C Gespräch für alle | Zugang je Person mit Rolle; Werkzeuge entscheiden, Frage beantworten, Person einladen; Entscheidung wird im Moment geprüft | 2 |
+| D Sofort statt stündlich | Eingaben lösen das Einarbeiten aus (Sammelzeit), Veröffentlichung am Ende des Laufs | 2 |
+| E Wächter und Erinnerer | Prüfung veränderlicher Angaben, Meldung von Fristen und „ab“-Terminen | 2 |
+| F Profile | je Person, KI-gepflegt, einsehbar, reiseübergreifend | 2 |
+| G Wunsch-Brett | Spalten, Kontingent, Verknüpfung mit Tag oder Ort, Bilanz je Person, Abhaken unterwegs | 2 bis 3 |
+| H Neue Reise anlegen | Vorlage; Reise entsteht im Gespräch aus Eckdaten, Personen, Quellen | 2 |
+| I Mehrere Haushalte | eigene Instanz je Reisegruppe; später | 5 oder mehr |
+
+Stufe 1 „Rollen und sofort“: A, B, C, D. Stufe 2 „Wünsche und Wächter“: G, E. Stufe 3 „Lernen und neue Reisen“: F, H. Vorerst eine Instanz auf dem eigenen Server, der Code wird generisch. Die Software wird als „Ida Pfeiffer“ (AGPL-3.0) von den Reiseinhalten getrennt (Issue #78); Reiseinhalte bleiben privat.
+
+## Stand
+
+- 26.10.2026, Paket A begonnen: `reise.yaml` je Reise mit Status, Personen, Bausteinen, Regeln und Darstellung (`engine/reise.py` prüft); `entscheider` kommt aus den Personen; Konnektor kennt Rollen `bestimmer`, `einbringer`, `reisend` und Zugänge je Person; der Schalter `funktionen` in `reise.json` ist durch `bausteine` in `reise.yaml` ersetzt.

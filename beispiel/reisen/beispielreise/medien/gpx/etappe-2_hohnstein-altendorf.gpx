@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Beispielreise (von Hand, schematisch)" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata><name>Hohnstein – Brand – Altendorf (schematisch)</name><desc>Von Hand gesetzte Näherung mit wenigen Punkten, kein aufgezeichneter Track. Nicht zur Navigation.</desc></metadata>
+  <trk>
+    <name>Hohnstein – Brand – Altendorf</name>
+    <trkseg>
+      <trkpt lat="50.97900" lon="14.11250"><ele>320</ele></trkpt>
+      <trkpt lat="50.97725" lon="14.11438"><ele>302</ele></trkpt>
+      <trkpt lat="50.97550" lon="14.11625"><ele>285</ele></trkpt>
+      <trkpt lat="50.97375" lon="14.11812"><ele>268</ele></trkpt>
+      <trkpt lat="50.97200" lon="14.12000"><ele>250</ele></trkpt>
+      <trkpt lat="50.97000" lon="14.12063"><ele>260</ele></trkpt>
+      <trkpt lat="50.96800" lon="14.12125"><ele>270</ele></trkpt>
+      <trkpt lat="50.96600" lon="14.12187"><ele>280</ele></trkpt>
+      <trkpt lat="50.96400" lon="14.12250"><ele>290</ele></trkpt>
+      <trkpt lat="50.96200" lon="14.12288"><ele>296</ele></trkpt>
+      <trkpt lat="50.96000" lon="14.12325"><ele>302</ele></trkpt>
+      <trkpt lat="50.95800" lon="14.12363"><ele>309</ele></trkpt>
+      <trkpt lat="50.95600" lon="14.12400"><ele>315</ele></trkpt>
+      <trkpt lat="50.95600" lon="14.12767"><ele>270</ele></trkpt>
+      <trkpt lat="50.95600" lon="14.13133"><ele>225</ele></trkpt>
+      <trkpt lat="50.95600" lon="14.13500"><ele>180</ele></trkpt>
+      <trkpt lat="50.95663" lon="14.13825"><ele>200</ele></trkpt>
+      <trkpt lat="50.95725" lon="14.14150"><ele>220</ele></trkpt>
+      <trkpt lat="50.95788" lon="14.14475"><ele>240</ele></trkpt>
+      <trkpt lat="50.95850" lon="14.14800"><ele>260</ele></trkpt>
+      <trkpt lat="50.95867" lon="14.15200"><ele>283</ele></trkpt>
+      <trkpt lat="50.95883" lon="14.15600"><ele>307</ele></trkpt>
+      <trkpt lat="50.95900" lon="14.16000"><ele>330</ele></trkpt>
+      <trkpt lat="50.95675" lon="14.16125"><ele>302</ele></trkpt>
+      <trkpt lat="50.95450" lon="14.16250"><ele>275</ele></trkpt>
+      <trkpt lat="50.95225" lon="14.16375"><ele>248</ele></trkpt>
+      <trkpt lat="50.95000" lon="14.16500"><ele>220</ele></trkpt>
+      <trkpt lat="50.94800" lon="14.16600"><ele>201</ele></trkpt>
+      <trkpt lat="50.94600" lon="14.16700"><ele>182</ele></trkpt>
+      <trkpt lat="50.94400" lon="14.16800"><ele>164</ele></trkpt>
+      <trkpt lat="50.94200" lon="14.16900"><ele>145</ele></trkpt>
+      <trkpt lat="50.94040" lon="14.17100"><ele>168</ele></trkpt>
+      <trkpt lat="50.93880" lon="14.17300"><ele>191</ele></trkpt>
+      <trkpt lat="50.93720" lon="14.17500"><ele>214</ele></trkpt>
+      <trkpt lat="50.93560" lon="14.17700"><ele>237</ele></trkpt>
+      <trkpt lat="50.93400" lon="14.17900"><ele>260</ele></trkpt>
+      <trkpt lat="50.93238" lon="14.18100"><ele>278</ele></trkpt>
+      <trkpt lat="50.93075" lon="14.18300"><ele>295</ele></trkpt>
+      <trkpt lat="50.92912" lon="14.18500"><ele>312</ele></trkpt>
+      <trkpt lat="50.92750" lon="14.18700"><ele>330</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Beispielreise (von Hand, schematisch)" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata><name>Altendorf – Schrammsteine – Lichtenhainer Wasserfall (schematisch)</name><desc>Von Hand gesetzte Näherung mit wenigen Punkten, kein aufgezeichneter Track. Nicht zur Navigation.</desc></metadata>
+  <trk>
+    <name>Altendorf – Schrammsteine – Lichtenhainer Wasserfall</name>
+    <trkseg>
+      <trkpt lat="50.92750" lon="14.18700"><ele>330</ele></trkpt>
+      <trkpt lat="50.92588" lon="14.18900"><ele>320</ele></trkpt>
+      <trkpt lat="50.92425" lon="14.19100"><ele>310</ele></trkpt>
+      <trkpt lat="50.92262" lon="14.19300"><ele>300</ele></trkpt>
+      <trkpt lat="50.92100" lon="14.19500"><ele>290</ele></trkpt>
+      <trkpt lat="50.91900" lon="14.19750"><ele>270</ele></trkpt>
+      <trkpt lat="50.91700" lon="14.20000"><ele>250</ele></trkpt>
+      <trkpt lat="50.91583" lon="14.20350"><ele>306</ele></trkpt>
+      <trkpt lat="50.91467" lon="14.20700"><ele>361</ele></trkpt>
+      <trkpt lat="50.91350" lon="14.21050"><ele>417</ele></trkpt>
+      <trkpt lat="50.91387" lon="14.21412"><ele>413</ele></trkpt>
+      <trkpt lat="50.91425" lon="14.21775"><ele>408</ele></trkpt>
+      <trkpt lat="50.91463" lon="14.22138"><ele>404</ele></trkpt>
+      <trkpt lat="50.91500" lon="14.22500"><ele>400</ele></trkpt>
+      <trkpt lat="50.91633" lon="14.22767"><ele>387</ele></trkpt>
+      <trkpt lat="50.91767" lon="14.23033"><ele>373</ele></trkpt>
+      <trkpt lat="50.91900" lon="14.23300"><ele>360</ele></trkpt>
+      <trkpt lat="50.92100" lon="14.23400"><ele>370</ele></trkpt>
+      <trkpt lat="50.92300" lon="14.23500"><ele>380</ele></trkpt>
+      <trkpt lat="50.92500" lon="14.23533"><ele>337</ele></trkpt>
+      <trkpt lat="50.92700" lon="14.23567"><ele>293</ele></trkpt>
+      <trkpt lat="50.92900" lon="14.23600"><ele>250</ele></trkpt>
+      <trkpt lat="50.93125" lon="14.23500"><ele>208</ele></trkpt>
+      <trkpt lat="50.93350" lon="14.23400"><ele>165</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

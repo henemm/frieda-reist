@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Beispielreise (von Hand, schematisch)" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata><name>Stadt Wehlen – Bastei – Hohnstein (schematisch)</name><desc>Von Hand gesetzte Näherung mit wenigen Punkten, kein aufgezeichneter Track. Nicht zur Navigation.</desc></metadata>
+  <trk>
+    <name>Stadt Wehlen – Bastei – Hohnstein</name>
+    <trkseg>
+      <trkpt lat="50.95850" lon="14.03250"><ele>120</ele></trkpt>
+      <trkpt lat="50.95918" lon="14.03562"><ele>144</ele></trkpt>
+      <trkpt lat="50.95985" lon="14.03875"><ele>168</ele></trkpt>
+      <trkpt lat="50.96052" lon="14.04188"><ele>191</ele></trkpt>
+      <trkpt lat="50.96120" lon="14.04500"><ele>215</ele></trkpt>
+      <trkpt lat="50.96163" lon="14.04867"><ele>227</ele></trkpt>
+      <trkpt lat="50.96207" lon="14.05233"><ele>238</ele></trkpt>
+      <trkpt lat="50.96250" lon="14.05600"><ele>250</ele></trkpt>
+      <trkpt lat="50.96238" lon="14.05950"><ele>262</ele></trkpt>
+      <trkpt lat="50.96225" lon="14.06300"><ele>275</ele></trkpt>
+      <trkpt lat="50.96213" lon="14.06650"><ele>288</ele></trkpt>
+      <trkpt lat="50.96200" lon="14.07000"><ele>300</ele></trkpt>
+      <trkpt lat="50.96225" lon="14.07300"><ele>295</ele></trkpt>
+      <trkpt lat="50.96250" lon="14.07600"><ele>290</ele></trkpt>
+      <trkpt lat="50.96300" lon="14.07900"><ele>260</ele></trkpt>
+      <trkpt lat="50.96350" lon="14.08200"><ele>230</ele></trkpt>
+      <trkpt lat="50.96400" lon="14.08500"><ele>200</ele></trkpt>
+      <trkpt lat="50.96317" lon="14.08783"><ele>178</ele></trkpt>
+      <trkpt lat="50.96233" lon="14.09067"><ele>157</ele></trkpt>
+      <trkpt lat="50.96150" lon="14.09350"><ele>135</ele></trkpt>
+      <trkpt lat="50.96375" lon="14.09500"><ele>152</ele></trkpt>
+      <trkpt lat="50.96600" lon="14.09650"><ele>170</ele></trkpt>
+      <trkpt lat="50.96850" lon="14.09717"><ele>213</ele></trkpt>
+      <trkpt lat="50.97100" lon="14.09783"><ele>257</ele></trkpt>
+      <trkpt lat="50.97350" lon="14.09850"><ele>300</ele></trkpt>
+      <trkpt lat="50.97475" lon="14.10150"><ele>292</ele></trkpt>
+      <trkpt lat="50.97600" lon="14.10450"><ele>285</ele></trkpt>
+      <trkpt lat="50.97650" lon="14.10900"><ele>180</ele></trkpt>
+      <trkpt lat="50.97900" lon="14.11250"><ele>320</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

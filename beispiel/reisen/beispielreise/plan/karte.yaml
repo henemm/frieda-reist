@@ -1,0 +1,75 @@
+# Schematische Karte der Beispielreise (Ansicht „Karte“ und „Varianten“).
+# Ohne Grundkarte (keine PMTiles im Beispiel): Das Land ist ein einfaches Rechteck, die Elbe ist nur
+# beschriftet. Koordinaten Breite/Länge in Grad, von Hand auf etwa 0,005° gesetzt (eigene Schätzung).
+quelle: "Eigene Skizze, Lage ungefähr. Tracks schematisch (von Hand)."
+namensnennung: "Beispielreise · schematisch"
+rahmen:
+  nord: 51.08
+  sued: 50.88
+  west: 13.68
+  ost: 14.28
+# Land als Rechteck (es gibt keine Küste); muss da sein, die Seite zeichnet es als Hintergrund
+kueste:
+- [51.30, 13.40]
+- [51.30, 14.60]
+- [50.70, 14.60]
+- [50.70, 13.40]
+# Gipfel nur zur Orientierung; Höhen eigene Angabe, nicht nachgeprüft
+gipfel:
+- name: Lilienstein 415
+  lage: [50.935, 14.084]
+  label: [8, 4]
+- name: Großer Winterberg 556
+  lage: [50.919, 14.246]
+  label: [8, 4]
+meer:
+- name: Elbe
+  lage: [50.985, 13.93]
+orte:
+  O-01:
+    lage: [51.040, 13.732]
+    label: [8, 4]
+  O-02:
+    lage: [50.9585, 14.0325]
+    label: [-8, 4, end]
+  O-03:
+    lage: [50.979, 14.1125]
+    label: [8, -4]
+  O-04:
+    lage: [50.9275, 14.187]
+    label: [8, -4]
+  O-05:
+    lage: [50.918, 14.155]
+    label: [-8, 10, end]
+  O-06:
+    name: Lichtenhainer Wasserfall
+    lage: [50.9335, 14.234]
+    label: [8, 4]
+# Punkte auf der Übersichtskarte; sie rücken an den nächsten Punkt eines Tracks
+punkte:
+- name: Bastei
+  lage: [50.962, 14.07]
+  label: [0, -10, middle]
+  hinweis: Aussicht und Basteibrücke (siehe Wissen W-05).
+- name: Schrammsteinaussicht
+  lage: [50.9135, 14.2105]
+  label: [0, 14, middle]
+  hinweis: Höchster Punkt der Reise, ca. 417 m (aus dem schematischen Track).
+# Wege ohne GPX: gerade Linien (Bahnstrecken)
+wege:
+  E-20:
+  - [51.040, 13.732]
+  - [50.9585, 14.0325]
+  E-21:
+  - [50.918, 14.155]
+  - [51.040, 13.732]
+  E-22:
+  - [50.9335, 14.234]
+  - [50.925, 14.19]
+  - [50.918, 14.155]
+# Handgemachte, schematische Tracks; sie ersetzen die Wege der Wanderetappen
+gpx:
+  E-01: medien/gpx/etappe-1_wehlen-hohnstein.gpx
+  E-02: medien/gpx/etappe-2_hohnstein-altendorf.gpx
+  E-03: medien/gpx/etappe-3_altendorf-bad-schandau.gpx
+  E-04: medien/gpx/etappe-4_altendorf-lichtenhainer-wasserfall.gpx

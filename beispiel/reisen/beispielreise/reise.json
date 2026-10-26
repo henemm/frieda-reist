@@ -1,0 +1,40 @@
+{
+  "plan": "plan/plan.md",
+  "fragen": "offene-fragen.md",
+  "etappen_dossier": "inhalt/etappen.md",
+  "unterkuenfte_dossier": "inhalt/unterkuenfte.md",
+  "bilder_max_breite": 1600,
+  "abschnitte": {
+    "inhalt/etappen.md": {
+      "Übersicht": ["W-01", "uebersicht"]
+    },
+    "inhalt/unterkuenfte.md": {},
+    "plan/plan.md": {
+      "Eckdaten": ["W-02", "plan"],
+      "Tagesplan": ["W-03", "plan"],
+      "Unterkünfte": ["W-04", "plan"]
+    },
+    "inhalt/wissen.md": {
+      "Elbsandstein in Kürze": ["W-05", "wissen"],
+      "Praxis": ["W-06", "praxis"],
+      "Quellen": ["W-07", "quelle"]
+    }
+  },
+  "etappen_kennzahlen": [
+    "Gehzeit",
+    "Aufstieg (Hm)",
+    "Abstieg (Hm)",
+    "Länge (km)"
+  ],
+  "routen": {
+    "datei": "plan/routen.yaml",
+    "karte": "plan/karte.yaml",
+    "tagesplan": ["W-03", "Tagesplan"],
+    "unterkuenfte": ["W-04", "Unterkünfte"]
+  },
+  "orte_dossiers": [
+    "inhalt/orte.md"
+  ],
+  "orte_wissen": "inhalt/orte-wissen.yaml",
+  "wissen_punkte": "inhalt/wissen-punkte.yaml"
+}

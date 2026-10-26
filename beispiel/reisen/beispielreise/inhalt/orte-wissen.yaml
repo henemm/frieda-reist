@@ -1,0 +1,7 @@
+# Orte ↔ Wissen: welche Abschnitte zu welchem Ort gehören. Ziel ist eine Abschnitts-ID (W-…) oder
+# eine Block-ID (W-….<slug>); notiz sagt kurz, warum. Zuordnung: eigene Prüfung des Texts.
+O-01:   # Dresden
+  - {ziel: W-05.nationalpark-saechsische-schweiz, notiz: "Der Nationalpark beginnt etwa 30 km elbaufwärts von Dresden (eigene Schätzung)"}
+O-03:   # Hohnstein
+  - {ziel: W-05.der-hockstein, notiz: "Hockstein gegenüber von Hohnstein, Zugang über Brücke oder Wolfsschlucht"}
+  - {ziel: W-05.der-malerweg, notiz: "Hohnstein ist Etappenort des Malerwegs"}

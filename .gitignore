@@ -1,0 +1,10 @@
+# Programmumgebung und Werkzeuge (je Arbeitskopie, nie im Repo)
+.venv
+.bin
+__pycache__/
+.pytest_cache/
+node_modules/
+# Ergebnisse des Generators
+dist/
+# Große Grundkarten holt man sich selbst
+*.pmtiles

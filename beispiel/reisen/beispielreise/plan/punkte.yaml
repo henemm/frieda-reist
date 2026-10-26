@@ -1,0 +1,35 @@
+# Punkte der Etappen-Karten der Beispielreise, von Hand gesetzt (eigene Schätzung, 26.10.2026).
+# Lage ungefähr, auf den schematischen Track gelegt. Nicht zur Navigation.
+# kat: wegpunkt | unterkunft | einkehr | wasser | notfall; Aussichtspunkte sind nummerierte Wegpunkte.
+stand: 2026-10-26
+strecken:
+  E-01:
+  - {name: Stadt Wehlen, kat: wegpunkt, nr: 1, lage: [50.9585, 14.0325], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Basteibrücke, kat: wegpunkt, nr: 2, lage: [50.9625, 14.076], quelle: 'eigene Schätzung, 26.10.2026', auch: [Bastei]}
+  - {name: Schwedenlöcher, kat: wegpunkt, nr: 3, lage: [50.964, 14.085], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Amselsee, kat: wegpunkt, nr: 4, lage: [50.9615, 14.0935], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Brunnen am Amselsee, kat: wasser, art: quelle, lage: [50.9618, 14.0938], quelle: 'erfunden (Beispielwert), Trinkbarkeit ungeprüft'}
+  - {name: Hockstein, kat: wegpunkt, nr: 5, lage: [50.976, 14.1045], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Hohnstein, kat: wegpunkt, nr: 6, lage: [50.979, 14.1125], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Pension Burgblick, kat: unterkunft, art: guest_house, lage: [50.9792, 14.1128], quelle: 'erfunden (Beispiel)', id: U-02}
+  E-02:
+  - {name: Hohnstein, kat: wegpunkt, nr: 1, lage: [50.979, 14.1125], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Gautschgrotte, kat: wegpunkt, nr: 2, lage: [50.972, 14.12], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Brandaussicht, kat: wegpunkt, nr: 3, lage: [50.956, 14.124], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Gasthaus an der Brandaussicht, kat: einkehr, art: restaurant, lage: [50.9562, 14.1236], quelle: 'erfunden (Beispielwert), Öffnungszeiten nicht geprüft'}
+  - {name: Waitzdorf, kat: wegpunkt, nr: 4, lage: [50.959, 14.16], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Kohlmühle, kat: wegpunkt, nr: 5, lage: [50.942, 14.169], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Altendorf, kat: wegpunkt, nr: 6, lage: [50.9275, 14.187], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Wanderherberge Altendorf, kat: unterkunft, art: hostel, lage: [50.9278, 14.1873], quelle: 'erfunden (Beispiel)', id: U-04}
+  E-03:
+  - {name: Altendorf, kat: wegpunkt, nr: 1, lage: [50.9275, 14.187], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Schrammtor, kat: wegpunkt, nr: 2, lage: [50.917, 14.2], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Schrammsteinaussicht, kat: wegpunkt, nr: 3, lage: [50.9135, 14.2105], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Ostrau, kat: wegpunkt, nr: 4, lage: [50.9165, 14.17], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Bad Schandau, kat: wegpunkt, nr: 5, lage: [50.918, 14.155], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Kurpark (Kirnitzschtalbahn), kat: notfall, art: bus, lage: [50.9185, 14.1585], quelle: 'Endhaltestelle laut Wikipedia (W-06); Lage geschätzt, 26.10.2026'}
+  E-04:
+  - {name: Altendorf, kat: wegpunkt, nr: 1, lage: [50.9275, 14.187], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Schrammsteinaussicht, kat: wegpunkt, nr: 2, lage: [50.9135, 14.2105], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Gratweg, kat: wegpunkt, nr: 3, lage: [50.915, 14.225], quelle: 'eigene Schätzung, 26.10.2026'}
+  - {name: Lichtenhainer Wasserfall, kat: wegpunkt, nr: 4, lage: [50.9335, 14.234], quelle: 'eigene Schätzung, 26.10.2026'}

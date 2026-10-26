@@ -1,0 +1,2284 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex, nofollow">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f3efe6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#191c17" media="(prefers-color-scheme: dark)">
+<title>Reisehandbuch</title>
+<!-- Pico CSS 2.1.1 (MIT, picocss.com), lokal ausgeliefert und vorab gespeichert; gilt nur in .pico (main, Rückmeldefenster) -->
+<link rel="stylesheet" href="pico-2.1.1.min.css">
+<!-- Leaflet 1.9.4 (BSD-2, leafletjs.com), lokal ausgeliefert, nur für die Karte in „Varianten“ -->
+<link rel="stylesheet" href="leaflet-1.9.4.css">
+<style>
+/* Gestaltung „Wanderführer“ (25.10.2026; vorher #25): Papiergrund, Waldgrün, Ocker für Etiketten, dunkle Leiste.
+   Farb-Tokens: --bg Papier, --fg Tinte, --mut gedämpft, --ocker Etiketten, --line Linie, --card Fläche, --acc Akzent;
+   Plan- und Kartenfarben dataviz-geprüft. Schrift: Source Serif 4 für Titel, Source Sans 3 für Text (beide OFL, lokal
+   in engine/vendor/fonts, Lizenz dort), Zeichensätze latin und latin-ext (z. B. ō, ū). */
+@font-face{font-family:"Source Sans 3";font-style:normal;font-weight:200 900;font-display:swap;src:url(source-sans-3-latin-ext-wght-normal.woff2) format("woff2-variations");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Source Sans 3";font-style:normal;font-weight:200 900;font-display:swap;src:url(source-sans-3-latin-wght-normal.woff2) format("woff2-variations");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Source Serif 4";font-style:normal;font-weight:200 900;font-display:swap;src:url(source-serif-4-latin-ext-wght-normal.woff2) format("woff2-variations");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Source Serif 4";font-style:normal;font-weight:200 900;font-display:swap;src:url(source-serif-4-latin-wght-normal.woff2) format("woff2-variations");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+:root{--font-text:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;--font-titel:"Source Serif 4",Georgia,"Times New Roman",serif}
+:root{--plan-a:#c62a2a;--plan-b:#008a7e;--plan-c:#7a4db0;--plan-d:#b07800;--sea:#d9e6ea;--land:#eceadf;--land-edge:#b7b4a3;--peak:#8a8573;--water:#9cc3d1;--bus:#6f7772;--skip:#9a9a90;--kat-hotel:#1f3b57;--kat-gasthaus:#8a4b2a;--kat-ferienwohnung:#6a4c93;--kat-huette:#2c6e49;--kat-herberge:#3f7f8c;--kat-camping:#7a7a1f;--kat-unterwegs:#555a50;--kat-privat:#a0446a;--kat-sonstige:#6f7772;--bg:#f3efe6;--fg:#22281f;--mut:#555a50;--ocker:#6a5a3a;--card:#fffcf6;--line:#ddd5c4;--acc:#1e5a43;--acc2:#e3ede6;--warn:#8a5a00;--warnbg:#f6e9cf;--mark:#ffe58a;--bar:#22281f;--bar-fg:#c9cdbf;--bar-on:#f3efe6;--bar-on-fg:#22281f}
+@media (prefers-color-scheme:dark){:root{--plan-a:#e8507a;--plan-b:#2fa9a0;--plan-c:#a07ad6;--plan-d:#b98a00;--sea:#14232a;--land:#222823;--land-edge:#3d453e;--peak:#8d8a7c;--water:#2f5e70;--bus:#8d958f;--skip:#6d716c;--kat-hotel:#7fa9d6;--kat-gasthaus:#d39a6f;--kat-ferienwohnung:#b49ae0;--kat-huette:#5cbf86;--kat-herberge:#79c3cf;--kat-camping:#c9c96a;--kat-unterwegs:#a9ad9f;--kat-privat:#e08fb0;--kat-sonstige:#8d958f;--bg:#191c17;--fg:#ece8dd;--mut:#a9ad9f;--ocker:#cdb98e;--card:#22261f;--line:#363b31;--acc:#7fc4a4;--acc2:#233229;--warn:#f0c46a;--warnbg:#3a3017;--mark:#6b5a10;--bar:#2c3128;--bar-fg:#b9bdaf;--bar-on:#ece8dd;--bar-on-fg:#191c17}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.55 var(--font-text)}
+main{max-width:760px;margin:0 auto;padding:14px 14px 0}
+nav{display:flex}
+nav a{min-width:0;text-align:center;color:var(--mut);text-decoration:none;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+a{color:var(--acc)}
+.zid{font:11px ui-monospace,Menlo,monospace;color:var(--mut);margin-left:8px;white-space:nowrap}
+.zurueck{display:inline-block;margin:0 0 8px;padding:6px 0;text-decoration:none;font-weight:600}
+.karte{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 10px;color:inherit;text-decoration:none}
+a.karte:active{background:var(--acc2)}
+.karte .k{font-weight:700}
+.karte .z{margin-top:4px;font-size:15px}
+.karte .z b{color:var(--mut);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.chip{font-size:13px;background:var(--acc2);color:var(--acc);border-radius:99px;padding:2px 10px;white-space:nowrap}
+.chip.plan{background:var(--acc);color:var(--bg);font-weight:700}
+.chip.neben{background:var(--warnbg);color:var(--warn)}
+details{margin:0 0 10px}
+details.block{background:var(--card);border:1px solid var(--line);border-radius:12px}
+details.block>summary{padding:12px 14px;font-weight:600;cursor:pointer;min-height:44px}
+details.block>.inhalt{padding:0 14px 8px}
+details.neben>summary{font-weight:700;padding:10px 2px;color:var(--warn)}
+summary{cursor:pointer}
+.tabelle{overflow-x:auto;margin:.6em 0;-webkit-overflow-scrolling:touch}
+img{max-width:100%;height:auto;border-radius:6px}
+a.bild{display:block;margin:6px 0;list-style:none}
+a.bild span{display:block;font-size:13px;color:var(--mut)}
+ul li:has(>a.bild){list-style:none;margin-left:-22px;font-size:13px;color:var(--mut)}
+.ziel{scroll-margin-top:calc(70px + env(safe-area-inset-top))}
+.blitz{animation:blitz 2s}
+@keyframes blitz{0%,60%{outline:3px solid var(--acc)}100%{outline:3px solid transparent}}
+mark{background:var(--mark);color:inherit;border-radius:3px}
+.treffer .in{font-size:13px;color:var(--mut)}
+.treffer .s{font-size:15px;margin-top:3px}
+.leer{color:var(--mut);padding:20px 0;text-align:center}
+.teil{margin:1.4em 0 10px}
+.karte .z.klein,.verlauf{font-size:13px;color:var(--mut)}
+.chip.offen{background:var(--warnbg);color:var(--warn)}
+.chip.weg{background:transparent;color:var(--mut);border:1px solid var(--line);text-decoration:line-through}
+.chip.unterwegs{background:transparent;color:var(--acc);border:1px solid var(--acc)}
+.warnungen{background:var(--warnbg);color:var(--warn);border-radius:12px;padding:10px 14px;margin:0 0 12px}
+.warnungen ul{margin:.3em 0 0;padding-left:20px}
+.option{border-top:1px solid var(--line);padding:8px 0 4px;margin-top:8px}
+.option.aktiv{border-left:3px solid var(--acc);padding-left:10px;margin-left:-14px}
+.option .k{font-weight:600}
+.option ul{margin:.2em 0;padding-left:20px;font-size:15px}
+details.weg>summary{font-size:14px;color:var(--mut);padding:8px 0}
+button.zid{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:1px 7px;cursor:pointer;vertical-align:middle}
+button.zid.hat{border-color:var(--acc);color:var(--acc)}
+dialog#rm{border:0;border-radius:16px 16px 0 0;padding:0;margin:auto 0 0;width:100%;max-width:100%;max-height:88vh;background:var(--card);color:var(--fg);box-shadow:0 -4px 24px rgba(0,0,0,.25)}
+@media (min-width:700px){dialog#rm{margin:auto;max-width:600px;border-radius:16px}}
+dialog#rm::backdrop{background:rgba(0,0,0,.35)}
+#rm .rmkopf{position:sticky;top:0;background:var(--card);padding:14px 16px 8px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
+#rm .rmkopf>div{flex:1}
+#rm .rminhalt{padding:10px 16px calc(16px + env(safe-area-inset-bottom))}
+#rm textarea,#wuForm textarea{min-height:110px;resize:vertical}
+.rmeintrag{border-top:1px solid var(--line);padding:9px 0}
+.rmeintrag .kopfzeile{font-size:13px;color:var(--mut)}
+.rmeintrag .text{white-space:pre-wrap;margin:3px 0}
+.rmeintrag .antwort{font-size:15px;background:var(--acc2);border-radius:8px;padding:6px 9px;margin-top:5px}
+.chip.st-neu{background:var(--warnbg);color:var(--warn)}
+.chip.st-uebernommen{background:var(--acc);color:var(--bg)}
+.chip.st-rueckfrage{background:var(--warnbg);color:var(--warn);font-weight:700}
+.chip.st-ausstehend{background:transparent;color:var(--mut);border:1px dashed var(--mut)}
+.meldung{font-size:14px;color:var(--mut);margin:8px 0}
+.umschalter{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px;padding:0;border:0;min-width:0}
+.unsichtbar{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.umschalter button{font:inherit;font-size:14px;font-weight:600;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:8px 13px;min-height:40px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.umschalter button i{width:16px;border-top:4px solid currentColor;display:inline-block}
+.umschalter button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.kartenbox{isolation:isolate;height:min(68vh,620px);min-height:320px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--sea)}
+.kartenbox.leaflet-container{background:var(--sea);font:inherit}
+.kartenbox.klein{height:240px;min-height:0;margin:8px 0 4px}
+.rh-ort.rh-hier::after{width:14px;height:14px;border-radius:50%;background:var(--acc);border:2px solid var(--bg)}
+.ortchips{margin:2px 0 10px;align-items:center}
+details.block>.ortchips{padding:0 14px}
+.leaflet-container .rh-land{fill:var(--land);stroke:var(--land-edge)}
+.leaflet-container .rh-see{fill:var(--water)}
+.leaflet-container .rh-halo{stroke:var(--land)}
+.leaflet-container .rh-plan-a{stroke:var(--plan-a)} .leaflet-container .rh-plan-b{stroke:var(--plan-b)}
+.leaflet-container .rh-plan-c{stroke:var(--plan-c)} .leaflet-container .rh-plan-d{stroke:var(--plan-d)}
+.leaflet-container .rh-gemeinsam{stroke:var(--mut)} .leaflet-container .rh-bus{stroke:var(--bus)} .leaflet-container .rh-skip{stroke:var(--skip)}
+.rh-ort{background:none;border:0}
+/* Etappen-Karte: Track, Punkte nach Kategorie, Kartenlinks im Text (25.10.2026) */
+.ekarte{height:min(58vh,460px);min-height:280px}
+.leaflet-container .rh-etappe{stroke:var(--acc)}
+.rh-pw{background:none;border:0}
+.rh-p{width:100%;height:100%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--card);box-shadow:0 1px 3px rgba(0,0,0,.35);color:#fff;font-size:11px;font-weight:700;line-height:1}
+.rh-p .sym{width:14px;height:14px}
+.rh-p.kat-wegpunkt{background:var(--fg);color:var(--bg)} .rh-p.kat-unterkunft{background:#2f5d8a} .rh-p.kat-einkehr{background:#b0632b}
+.rh-p.kat-wasser{background:#1f86b5} .rh-p.kat-notfall{background:#6b4a8b}
+/* Recherche-Karten (Issue #64): Art des Orts als Farbe, Legende unter der Karte, Regionswahl darüber */
+.rh-p.kat-schauplatz{background:#c62a2a} .rh-p.kat-vorbild{background:#7a4db0} .rh-p.kat-biografie{background:#b07800}
+.rh-p.kat-sehenswert{background:#1e5a43} .rh-p.kat-onsen{background:#1f86b5} .rh-p.kat-verkehr{background:#5b6168}
+.wkarte{margin:8px 0 12px}
+.kartenlinks{display:flex;flex-direction:column;gap:2px;margin:4px 0}
+.legende{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;color:var(--mut);margin:6px 0 0}
+.legende i{display:inline-block;width:12px;height:12px;margin-right:4px;vertical-align:-1px;border-width:1px}
+.pico .regionen{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+.pico .regionen button{all:unset;cursor:pointer;font-size:14px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card)}
+.pico .regionen button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--bg)}
+.rh-p.kat-wasser.art-quelle{background:var(--card);color:#1f86b5;border-color:#1f86b5}
+.leaflet-popup-content{font:inherit;font-size:14px;margin:10px 12px;line-height:1.35}
+.leaflet-popup-content .pk{font-size:12px;color:var(--mut)} .leaflet-popup-content .pq{font-size:11px;color:var(--mut);margin-top:4px}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--card);color:var(--fg)}
+.pico .leaflet-popup-content button{font-size:13px;padding:4px 10px;margin:6px 0 0;width:auto}
+.pico .leaflet-container a.leaflet-control-layers-toggle{width:38px;height:38px;padding:0;margin:0;border:0;border-radius:10px;
+  background:var(--card) center/22px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322281f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z'/%3E%3Cpath d='m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65'/%3E%3Cpath d='m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65'/%3E%3C/svg%3E")}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .pico .leaflet-container a.leaflet-control-layers-toggle{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ece8dd' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z'/%3E%3Cpath d='m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65'/%3E%3Cpath d='m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65'/%3E%3C/svg%3E")}}
+[data-theme=dark] .pico .leaflet-container a.leaflet-control-layers-toggle{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ece8dd' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z'/%3E%3Cpath d='m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65'/%3E%3Cpath d='m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65'/%3E%3C/svg%3E")}
+.pico .leaflet-control-layers{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.pico .leaflet-control-layers label{display:flex;align-items:center;gap:6px;margin:2px 0;font-size:14px}
+.pico .leaflet-control-layers input{margin:0;width:18px;height:18px}
+a.kp{white-space:nowrap}
+a.kp::before{content:"";display:inline-block;width:.7em;height:.7em;margin-right:.18em;border-radius:50% 50% 50% 0;transform:rotate(-45deg) translateY(.05em);background:currentColor;opacity:.75}
+.kp-blink{animation:kpblink 1.6s ease-out}
+@keyframes kpblink{0%,40%{background:var(--warnbg)}100%{background:transparent}}
+.ziehhinweis{font-size:13px;color:var(--mut);margin:4px 0 0}
+/* Fußnoten: Nummer antippen zeigt den Nachweis an der Stelle; Liste am Blockende (25.10.2026) */
+.pico sup.fn{font-size:.72em;line-height:0}
+.pico sup.fn button{all:unset;display:inline-block;line-height:1.3;min-width:1.2em;text-align:center;cursor:pointer;color:var(--acc);font-weight:600;padding:.1em .2em;border-radius:4px}
+.pico sup.fn button[aria-expanded="true"]{background:var(--acc2)}
+.pico sup.fn button:focus-visible{outline:2px solid var(--acc)}
+.fnbox{display:block;margin:.3em 0 .5em;padding:.4em .6em;border-left:3px solid var(--acc);background:var(--card);font-size:14px;line-height:1.4;color:var(--mut)}
+ol.fussnoten{margin:1em 0 0;padding-top:.6em;border-top:1px solid var(--line);font-size:13px;line-height:1.4;color:var(--mut)}
+ol.fussnoten li{margin:0 0 .25em;overflow-wrap:anywhere}
+.rh-ort::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:1.5px solid var(--land)}
+.rh-ort.rh-unterkunft::after{width:12px;height:12px;border-radius:3px;background:var(--kat,var(--kat-sonstige))}
+.kat-hotel{--kat:var(--kat-hotel)}.kat-gasthaus{--kat:var(--kat-gasthaus)}.kat-ferienwohnung{--kat:var(--kat-ferienwohnung)}.kat-huette{--kat:var(--kat-huette)}.kat-herberge{--kat:var(--kat-herberge)}.kat-camping{--kat:var(--kat-camping)}.kat-unterwegs{--kat:var(--kat-unterwegs)}.kat-privat{--kat:var(--kat-privat)}.kat-sonstige{--kat:var(--kat-sonstige)}
+.rh-ort.rh-punkt::after{width:7px;height:7px;border-radius:50%;background:var(--fg);border:0}
+.rh-gipfel{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:11px solid var(--peak);background:none}
+.rh-meer{font-style:italic;font-size:13px;color:var(--mut);white-space:nowrap;transform:translate(-50%,-50%)}
+.rh-tag{display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:11px;font-weight:700;color:var(--bg);border:2px solid var(--land)}
+.rh-tag.rh-plan-a{background:var(--plan-a)} .rh-tag.rh-plan-b{background:var(--plan-b)} .rh-tag.rh-plan-c{background:var(--plan-c)} .rh-tag.rh-plan-d{background:var(--plan-d)}
+.leaflet-tooltip.rh-lbl{background:none;border:0;box-shadow:none;padding:0;font-size:12.5px;color:var(--fg);
+  text-shadow:0 0 2px var(--land),0 0 2px var(--land),0 0 3px var(--land),0 0 4px var(--land)}
+.leaflet-tooltip.rh-lbl.klein{font-size:11px;color:var(--mut)}
+.leaflet-tooltip.rh-lbl::before{display:none}
+/* Leaflet-Markierungen tragen role="button"; Pico würde sie als Knöpfe gestalten */
+.pico .leaflet-container .leaflet-marker-icon[role=button]{padding:0;margin:0;border:0;border-radius:0;background:none;box-shadow:none;width:auto;line-height:normal}
+.pico .leaflet-container .leaflet-control-zoom a{display:block;width:34px;height:34px;line-height:34px;padding:0;margin:0;border-radius:0;
+  background:var(--card);color:var(--fg);border:0;border-bottom:1px solid var(--line);text-decoration:none;font-size:20px;box-shadow:none}
+.pico .leaflet-container .leaflet-control-zoom{border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.pico .leaflet-container .leaflet-control-attribution{font-size:10px;line-height:1.3;background:color-mix(in srgb,var(--card) 75%,transparent);color:var(--mut);max-width:70%}
+.leaflet-tooltip.rh-lbl.verdeckt{visibility:hidden}
+.legende{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--mut);margin:6px 0}
+.legende span{display:inline-flex;align-items:center;gap:6px}
+.lg-k{width:11px;height:11px;border-radius:3px;background:var(--kat,var(--kat-sonstige))}
+.lg-u{width:16px;border-top:3px dotted var(--fg)}
+.lg-s{width:16px;border-top:3px dotted var(--skip)}
+.lg-b{width:16px;border-top:2px dashed var(--bus)}
+.lg-f{width:18px;border-top:3px dashed var(--fg)}
+.steckbriefe{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:12px 0}
+.steckbrief{border-top:4px solid var(--farbe);cursor:pointer}
+.steckbrief.an{box-shadow:0 0 0 2px var(--farbe)}
+.steckbrief dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:6px 0;font-size:14px}
+.steckbrief dt{color:var(--mut)}
+.steckbrief dd{margin:0}
+.steckbrief ul{margin:4px 0;padding-left:18px;font-size:14px}
+.vergleich td,.vergleich th{font-size:13.5px}
+.vergleich td.nr{font-weight:700;text-align:center}
+.vergleich tr.an td{background:var(--acc2)}
+/* Merkmale von Alternativen (docs/alternativen.md): ab 700 px Tabelle, darunter Karten je Option */
+dl.mliste{margin:6px 0;font-size:14.5px}
+dl.mliste dt{font-size:12.5px;color:var(--mut);margin-top:6px}
+dl.mliste dd{margin:0;overflow-wrap:anywhere}
+.vergleich.mk th[scope=row]{text-align:left;color:var(--mut);font-weight:600;white-space:nowrap}
+.vergleich.mk td{vertical-align:top;min-width:9em}
+.mk-chip{margin-left:6px;font-size:11px;padding:1px 7px}
+.mk-leer{color:var(--mut)}
+@media (max-width:699px){.mtabelle{display:none}}
+@media (min-width:700px){.hat-mtabelle>.option dl.mliste{display:none}}
+.vergleich .nacht{display:inline-block;font-size:12px;font-weight:600;border-radius:4px;padding:0 6px;margin-top:2px;color:var(--bg);background:var(--kat,var(--kat-sonstige))}
+.vergleich .nacht.offen{background:transparent;color:var(--mut);border:1px dashed var(--mut)}
+.punkt{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--farbe);margin-right:4px}
+
+/* ---------- Pico CSS an die eigenen Farben binden (hell und dunkel folgen --bg/--fg/--acc) ---------- */
+:root:not([data-theme=dark]):not([data-theme=light]){
+  --pico-font-family:var(--font-text);
+  --pico-background-color:var(--bg);--pico-color:var(--fg);--pico-muted-color:var(--mut);--pico-muted-border-color:var(--line);
+  --pico-h1-color:var(--fg);--pico-h2-color:var(--fg);--pico-h3-color:var(--fg);--pico-h4-color:var(--fg);--pico-h5-color:var(--fg);--pico-h6-color:var(--fg);
+  --pico-primary:var(--acc);--pico-primary-background:var(--acc);--pico-primary-border:var(--acc);--pico-primary-underline:color-mix(in srgb,var(--acc) 50%,transparent);
+  --pico-primary-hover:var(--fg);--pico-primary-hover-background:color-mix(in srgb,var(--acc) 85%,var(--fg));--pico-primary-hover-border:var(--pico-primary-hover-background);
+  --pico-primary-focus:color-mix(in srgb,var(--acc) 35%,transparent);--pico-primary-inverse:var(--bg);
+  --pico-card-background-color:var(--card);--pico-card-sectioning-background-color:var(--card);
+  --pico-form-element-background-color:var(--card);--pico-form-element-border-color:var(--line);--pico-form-element-color:var(--fg);
+  --pico-form-element-focus-color:var(--acc);--pico-table-border-color:var(--line);--pico-table-row-stripped-background-color:var(--acc2);
+  --pico-mark-background-color:var(--mark);--pico-mark-color:var(--fg);--pico-border-radius:10px}
+.pico th{background:var(--acc2);font-weight:600}
+.pico :is(h1,h2,h3,h4){font-family:var(--font-titel);font-weight:700;text-wrap:balance;letter-spacing:-.005em}
+.pico table{font-variant-numeric:tabular-nums}
+.pico .tabelle table{margin:0}
+.pico button.klein{font-size:14px;padding:6px 12px}
+/* Eigene Bedienelemente innerhalb von .pico behalten ihr Aussehen */
+.pico :is(button.zid,.umschalter button){width:auto;box-shadow:none;line-height:1.3;transition:none;
+  --pico-background-color:var(--card);--pico-border-color:var(--line);--pico-color:var(--fg);background-color:var(--card);border:1px solid var(--line);border-radius:99px}
+.pico button.zid{font:11px ui-monospace,Menlo,monospace;--pico-color:var(--mut);color:var(--mut);padding:1px 7px;margin:0 0 0 8px;vertical-align:middle}
+.pico button.zid.hat{--pico-color:var(--acc);color:var(--acc);border-color:var(--acc)}
+.pico .umschalter button{margin:0;font-size:14px;font-weight:600;color:var(--fg);padding:8px 13px}
+.pico .umschalter button[aria-pressed="true"]{--pico-background-color:var(--fg);background-color:var(--fg);color:var(--bg);border-color:var(--fg)}
+.pico details.block>summary,.pico details.neben>summary,.pico details.weg>summary{margin:0}
+.pico .karte .k{font-size:1rem}
+#rm .rmkopf .k{font-weight:700}
+
+/* ---------- Bedienung: Tippflächen, Fokus, Hover ---------- */
+button.zid{position:relative;max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:left}
+button.zid::after{content:"";position:absolute;inset:-9px -4px}   /* Tippfläche ≥ 44 px (Apple HIG) ohne größere Optik */
+/* In Titelzeilen sitzt der Knopf mit Abstand am rechten Rand, damit Tippen auf den Titel ihn nicht trifft */
+:is(summary,h2,.k):has(>button.zid){display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;line-height:1.3}
+:is(summary,h2,.k):has(>button.zid)>.punkt{margin-right:-8px}
+:is(summary,h2,.k)>button.zid,.pico :is(summary,h2,.k)>button.zid{margin:0 0 0 auto}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px;border-radius:4px}
+@media (hover:hover){
+  a.karte:hover{border-color:var(--acc)}
+  button.zid:hover,.umschalter button:hover{border-color:var(--acc)}
+}
+
+/* ---------- Glas (Liquid Glass: 35 %, Blur 8px, Sättigung 170 %) ----------
+   Leitbild: Inhalt läuft bis an die Ränder, Bedienelemente schweben als Glas darüber (iOS 26/27).
+   Ohne backdrop-filter bleibt das Glas deckend, sonst stünde Text auf Text. */
+.glas{background:var(--card);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.18);color:var(--fg)}
+@supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+  .glas{background:color-mix(in srgb,var(--card) 35%,transparent);-webkit-backdrop-filter:blur(8px) saturate(170%);backdrop-filter:blur(8px) saturate(170%);
+        border-color:color-mix(in srgb,var(--fg) 14%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--fg) 10%,transparent),0 10px 30px rgba(0,0,0,.25)}
+}
+.rund{display:inline-flex;align-items:center;justify-content:center;width:var(--knopf);height:var(--knopf);border-radius:50%;padding:0;cursor:pointer;text-decoration:none}
+.sym{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ---------- Kopf: großer Titel am Seitenanfang (iOS Large Title), scrollt mit ---------- */
+header{max-width:860px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px 2px 16px}
+header .t{font-family:var(--font-titel);font-size:32px;line-height:1.1;font-weight:700;letter-spacing:-.005em;margin:0;text-wrap:balance}
+header .u{font-size:15px;color:var(--mut);margin-top:4px;text-wrap:balance}
+a.weiter{display:inline-block;margin-top:8px;font-weight:600;color:var(--acc);text-decoration:none}
+.karte.tag .k{font-weight:600}
+details.alternative{margin:0 0 10px 14px;border-left:3px solid var(--warn);padding-left:8px}
+.blaettern{display:flex;justify-content:space-between;margin:14px 0}
+h2 .punkt,h2 i.punkt{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--farbe);margin-right:8px;vertical-align:middle}
+/* ---------- Stil „Wanderführer“: Listen in Wissen, Tageskopf, Kennzahlen ---------- */
+.pico h3.gruppe,.teil{font:700 12px/1.3 var(--font-text);letter-spacing:.1em;text-transform:uppercase;color:var(--ocker);margin:1.6em 0 0;padding:0 0 6px;border-bottom:1px solid var(--line)}
+.wliste{display:flex;flex-direction:column}
+.wzeile{display:flex;gap:14px;align-items:flex-start;padding:13px 0;border-bottom:1px solid var(--line);color:var(--fg);text-decoration:none}
+.wliste .wzeile:last-child{border-bottom:0}
+.wsym{flex:none;width:40px;height:40px;border-radius:50%;background:var(--acc2);color:var(--acc);display:flex;align-items:center;justify-content:center}
+.typ-praxis .wsym{background:var(--warnbg);color:var(--warn)}
+.typ-quelle .wsym{background:color-mix(in srgb,var(--mut) 16%,transparent);color:var(--mut)}
+.wtext{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.wt{font:600 19px/1.25 var(--font-titel);text-wrap:balance}
+.wu{font-size:14.5px;line-height:1.4;color:var(--mut)}
+.pico .wzeile>button.zid{margin:3px 0 0;flex:none}
+@media (hover:hover){.wzeile:hover .wt{color:var(--acc)}}
+.tagkopf{align-items:center!important;flex-wrap:nowrap!important}
+.tagnr{flex:none;font:700 40px/.9 var(--font-titel);color:var(--acc);min-width:1.1em}
+.tagtext{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.tagdatum{font:700 12px/1.3 var(--font-text);letter-spacing:.08em;text-transform:uppercase;color:var(--ocker)}
+.tagtitel{font:700 19px/1.25 var(--font-titel);text-wrap:balance}
+h2.tagkopf .tagnr{font-size:54px}
+h2.tagkopf .tagtitel{font-size:27px;line-height:1.15}
+.karte.tag .tagkopf .tagtitel{font-size:17px}
+.karte.tag .tagkopf .tagnr{font-size:32px}
+/* Wegverlauf: Punkte für Orte, gestrichelte Linie für Strecken, gepunktet für Bus/Bahn */
+.wv{margin:8px 0 4px}
+.wv-ort,.wv-strecke{position:relative;padding-left:26px}
+.wv-ort{min-height:22px;display:flex;align-items:center}
+.wv-punkt{position:absolute;left:3px;top:50%;width:12px;height:12px;margin-top:-6px;border-radius:50%;border:2.5px solid var(--acc);background:var(--card);box-sizing:border-box}
+.wv-ort.start .wv-punkt{background:var(--acc)}
+.wv-ort.ziel .wv-punkt{border-radius:3px;background:var(--fg);border-color:var(--fg)}
+.wv-name{font-weight:600;display:flex;align-items:baseline;gap:8px}
+.wv-etikett{font:700 10.5px/1.2 var(--font-text);letter-spacing:.08em;text-transform:uppercase;color:var(--ocker)}
+.wv-strecke{padding-top:2px;padding-bottom:6px}
+.wv-strecke::before{content:"";position:absolute;left:8px;top:-4px;bottom:-4px;border-left:2px dashed var(--acc)}
+.wv-strecke.fahrt::before{border-left-style:dotted;border-left-color:var(--mut)}
+.wv-strecke>.z{margin-top:0}
+.kz{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:8px 0 4px;border-top:2px solid var(--fg);border-bottom:1px solid var(--line)}
+.kz>div{padding:7px 0;display:flex;flex-direction:column;gap:1px}
+.kzn{font:700 10.5px/1.2 var(--font-text);letter-spacing:.06em;text-transform:uppercase;color:var(--ocker)}
+.kzw{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+/* Zahl am Reiter „Offen“: offene Aufgaben + nicht gesendete Rückmeldungen */
+nav a{position:relative}
+nav a .zahl{position:absolute;top:3px;left:calc(50% + 4px);box-shadow:0 0 0 2px var(--bar);min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--acc);color:var(--bg);font-size:10.5px;font-weight:700;line-height:17px;text-align:center;letter-spacing:0}
+nav a.warn .zahl{background:var(--warn)}
+.ag{display:flex;gap:10px;align-items:flex-start}
+.ag>.ag-text{flex:1;min-width:0}
+.ag .titel{font-weight:600}
+.ag.zu .titel{text-decoration:line-through;color:var(--mut)}
+.pico button.haken{width:30px;height:30px;flex:none;padding:0;margin:0;border-radius:8px;border:2px solid var(--acc);background:transparent;color:var(--acc);font-size:17px;line-height:1;box-shadow:none}
+.pico button.haken.an{background:var(--acc);color:var(--bg)}
+.chip.ag-hoch,.chip.ag-ueber{background:var(--warnbg);color:var(--warn);font-weight:700}
+.chip.ag-leise{background:transparent;color:var(--mut);border:1px solid var(--line)}
+.agfilter{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.agfilter button.on{background:var(--acc);color:var(--bg);border-color:var(--acc)}
+#agForm .zwei{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.meldungen{position:fixed;z-index:11;top:calc(10px + env(safe-area-inset-top));left:12px;right:12px;display:grid;justify-items:center;gap:8px;pointer-events:none}
+.hinweis{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:22px;font-size:13.5px;max-width:520px}
+.hinweis[hidden]{display:none}
+.hinweis button{font:inherit;font-weight:600;border:0;border-radius:99px;padding:6px 12px;background:var(--acc);color:var(--bg);cursor:pointer}
+#offline{color:var(--warn);padding-right:14px}
+
+/* ---------- Leiste: eine dunkle Fläche mit Reitern, die Suche ist der letzte Reiter (Stil „Wanderführer“) ---------- */
+:root{--tabbar-h:60px;--knopf:46px;--tabbar-gap:max(12px,calc(env(safe-area-inset-bottom,0px) - 10px));--tabbar-space:calc(var(--tabbar-h) + var(--tabbar-gap) + 24px)}
+.leiste{position:fixed;z-index:10;left:10px;right:10px;bottom:var(--tabbar-gap);max-width:700px;margin:0 auto;display:flex;align-items:stretch;gap:2px;
+  height:var(--tabbar-h);padding:5px;border-radius:16px;background:var(--bar);box-shadow:0 8px 24px rgba(0,0,0,.22)}
+nav{flex:1;min-width:0;display:flex;gap:2px}
+nav a,#suchKnopf{flex:1 1 0;min-width:0;padding:0 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:12px;border:0;background:none;cursor:pointer;
+      color:var(--bar-fg);text-decoration:none;font:600 10.5px/1.1 var(--font-text);letter-spacing:-.01em;white-space:nowrap}
+#suchKnopf{flex:0 1 calc(100% / 6)}
+nav a span,#suchKnopf span{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:380px){nav a,#suchKnopf{font-size:9.5px;letter-spacing:-.03em;padding:0 1px}}
+nav a.on{color:var(--bar-on-fg);background:var(--bar-on);font-weight:700}
+#suchfeld{flex:1;display:flex;align-items:center;gap:8px;padding:0 4px 0 14px;margin:0;color:var(--bar-fg)}
+#suchfeld[hidden]{display:none}
+#suchfeld input::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
+#suchfeld input{flex:1;min-width:0;border:0;background:none;color:var(--bar-on);font:inherit;font-size:17px;outline:none;padding:0}
+#suchfeld input::placeholder{color:var(--bar-fg);opacity:1}
+#suchZu{border:0;background:color-mix(in srgb,var(--bar-on) 16%,transparent);color:var(--bar-on);width:44px;height:44px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+body.sucht nav,body.sucht #suchKnopf{display:none}
+body::after{content:"";position:fixed;z-index:9;left:0;right:0;bottom:0;height:var(--tabbar-space);pointer-events:none;
+    background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg) 70%,transparent))}
+main{padding-bottom:calc(var(--tabbar-space) + 16px)}
+@media (hover:hover){nav a:hover,#suchKnopf:hover{color:var(--bar-on)} .rund:hover{border-color:var(--acc)}}
+
+@media (min-width:700px){
+  :root{--tabbar-h:68px;--knopf:50px}
+  nav a,#suchKnopf{font-size:12px;gap:3px}
+  .sym{width:24px;height:24px}
+  header .t{font-size:36px}
+}
+@media (min-width:760px){
+  header{padding-left:28px}
+  main{max-width:860px;padding-left:28px;padding-right:28px}
+  main.breit{max-width:1320px}
+  main.breit>p,main.breit>h2,main.breit>h3{max-width:820px}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<!--__SYMBOLE__-->
+<header>
+  <h1 class="t" id="titel"></h1><div class="u" id="untertitel"></div>
+</header>
+<div class="meldungen">
+  <div id="neu" class="hinweis glas" role="status" hidden>Neue Version des Handbuchs bereit. <button type="button" id="neuLaden">Aktualisieren</button></div>
+  <div id="offline" class="hinweis glas" role="status" hidden>Ohne Netz: gespeicherter Stand. Rückmeldungen werden nachgereicht, Aufgaben erst wieder mit Netz änderbar.</div>
+</div>
+<main id="main" class="pico"></main>
+<dialog id="rm" class="pico"></dialog>
+<div class="leiste">
+  <nav id="nav" aria-label="Kategorien"></nav>
+  <button type="button" id="suchKnopf" aria-label="Suchen (Taste /)" aria-expanded="false" aria-controls="suchfeld"><svg class="sym" aria-hidden="true"><use href="#i-suche"/></svg><span aria-hidden="true">Suche</span></button>
+  <form id="suchfeld" role="search" hidden>
+    <svg class="sym" aria-hidden="true"><use href="#i-suche"/></svg>
+    <input id="suche" type="search" placeholder="Ort, Stichwort, ID …" aria-label="Im Handbuch suchen" autocomplete="off" autocapitalize="off" enterkeyhint="search">
+    <button type="button" id="suchZu" aria-label="Suche schließen"><svg class="sym" aria-hidden="true"><use href="#i-zu"/></svg></button>
+  </form>
+</div>
+<script src="leaflet-1.9.4.js"></script>
+<!-- protomaps-leaflet 5.1.0 (BSD-3, protomaps.com) für die Offline-Grundkarte; nur mit Grundkarte eingefügt -->
+<!--__GRUNDKARTE__-->
+<script>
+"use strict";
+const D = /*__DATEN__*/null;
+
+/* ---------- Hilfen ---------- */
+const $ = (s, w = document) => w.querySelector(s);
+function el(tag, attrs, ...kinder) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === false || v == null) continue;
+    if (k === "html") e.innerHTML = v;
+    else if (k === "class") e.className = v;
+    else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kinder.flat(Infinity)) if (k != null && k !== false) e.append(k.nodeType ? k : document.createTextNode(k));
+  return e;
+}
+function norm(s) {
+  return Array.from(s).map(c => (c.normalize("NFD").replace(/[̀-ͯ]/g, "") || c).toLowerCase()).join("");
+}
+function klartext(html) {
+  const t = document.createElement("template");
+  t.innerHTML = html;
+  return t.content.textContent.replace(/\s+/g, " ").trim();
+}
+
+/* ---------- Daten ---------- */
+const abschnitte = D.abschnitte;
+const proId = new Map();      // Abschnitts-ID -> Abschnitt
+const blockZu = new Map();    // Block-ID -> Abschnitt
+const zeileZu = new Map();    // Zeilen-ID (T-, U-, F-) -> Abschnitt oder "fragen"
+for (const a of abschnitte) {
+  proId.set(a.id, a);
+  for (const b of a.bloecke) blockZu.set(b.id, a);
+  if (a.tabelle) for (const z of a.tabelle.zeilen) zeileZu.set(z.id, a);
+}
+for (const z of D.fragen.zeilen) zeileZu.set(z.id, "fragen");
+const R = D.route;
+if (R) {
+  for (const t of R.tage) zeileZu.set(t.id, "plan");
+  for (const id of Object.keys(R.weitere_tage)) zeileZu.set(id, "plan");
+  for (const u of Object.keys(R.unterkuenfte)) zeileZu.set(u, "plan");
+  for (const w of R.wahlstellen) { zeileZu.set(w.id, "plan"); for (const o of w.optionen) zeileZu.set(o.id, "plan"); }
+  for (const p of R.plaene) zeileZu.set(p.id, "varianten");
+}
+const wahlZu = new Map((R ? R.wahlstellen : []).map(w => [w.id, w]));
+const optionZu = new Map((R ? R.wahlstellen : []).flatMap(w => w.optionen.map(o => [o.id, [w, o]])));
+const optionFest = oid => ((optionZu.get(oid) || [])[1] || {}).status === "gewaehlt";
+const planFest = p => p.auswahl.length > 0 && p.auswahl.every(optionFest);
+// Ist ein Plan vollständig gewählt, wird die Karte mit diesem Plan zur Startseite (25.10.2026)
+const PLAN_FEST = (R ? R.plaene : []).find(planFest);
+const VARIANTEN_TITEL = PLAN_FEST && R.karte ? "Karte" : D.reise.varianten_titel || "Varianten";
+
+const G = Object.assign({wissen: "Wissen", praxis: "Praxis", quelle: "Quellen"}, D.reise.gruppen || {});
+const hat = typ => abschnitte.some(a => a.typ === typ);
+const HAT_VARIANTEN = !!(D.route && (D.route.plaene.length || D.route.karte));
+const PLAN_TITEL = Array.isArray(D.reise.plan_reiter) && D.reise.plan_reiter.length ? "Überblick" : "Plan";
+// Gewählter Plan: Etappe -> Tag, an dem sie gegangen wird. Die Tagesseite zeigt dann die ganze Etappe mit Karte,
+// der Reiter „Etappen“ entfällt, übrige Wege stehen unter Wissen (25.10.2026)
+const ETAPPE_TAG = new Map();
+if (PLAN_FEST) for (const t of PLAN_FEST.tage) for (const s of t.strecken)
+  if ((proId.get(s.id) || {}).typ === "etappe" && !ETAPPE_TAG.has(s.id)) ETAPPE_TAG.set(s.id, t.id);
+const ETAPPEN_REITER = hat("etappe") && !PLAN_FEST;
+// Bausteine je Reise (reise.yaml bausteine, docs/produkt.md); heute wirkt nur „wuensche“, die anderen blenden sich ab Paket B aus
+const BAUSTEINE = new Set(D.reise.bausteine || []);
+const WUENSCHE = BAUSTEINE.has("wuensche");
+const REITER = [
+  // Zeigt der Reiter nur den Rahmen (Route noch offen), heißt er „Überblick“, sonst neben „Pläne“ verwirrend (25.10.2026)
+  ["plan", PLAN_TITEL, true], ["varianten", VARIANTEN_TITEL, HAT_VARIANTEN], ["etappen", "Etappen", ETAPPEN_REITER],
+  // Praxis steht im Reiter Wissen; „Offen“ sammelt Aufgaben, Fragen und Rückmeldungen (25.10.2026)
+  // Quellen stehen seit dem 25.10.2026 ebenfalls im Reiter Wissen; ihr Platz in der Leiste gehört der Suche
+  ["wissen", G.wissen, hat("wissen") || hat("praxis") || hat("quelle") || (hat("etappe") && !ETAPPEN_REITER)],
+  // Wünsche der Mitreisenden: eigener Reiter, wenn die Reise ihn einschaltet (reise.yaml bausteine; 25.10.2026)
+  ["wuensche", "Wünsche", WUENSCHE], ["offen", "Offen", true],
+].filter(r => r[2]);
+// Startreiter steht vorn und öffnet ohne Sprungziel: reise.json „start“, sonst bei gewähltem Plan die Karte
+const START = REITER.some(r => r[0] === D.reise.start) ? D.reise.start
+  : PLAN_FEST && REITER.some(r => r[0] === "varianten") ? "varianten" : "plan";
+REITER.sort((a, b) => (b[0] === START) - (a[0] === START));
+const TYP_REITER = {plan: "plan", etappe: ETAPPEN_REITER ? "etappen" : "wissen", uebersicht: ETAPPEN_REITER ? "etappen" : "wissen", wissen: "wissen", praxis: "wissen", quelle: "wissen", ort: "varianten"};
+
+/* ---------- Bausteine ---------- */
+// Symbol aus dem eingebetteten Lucide-Satz (<symbol id="i-…">), für Screenreader ausgeblendet
+function symbol(name) {
+  const t = document.createElement("template");
+  t.innerHTML = `<svg class="sym" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+  return t.content.firstChild;
+}
+function zid(id) {
+  const n = rmZu(id).length, a = agZu(id).filter(agOffen).length;
+  return el("button", {type: "button", class: "zid" + (n || a ? " hat" : ""), "data-rm": id,
+    title: "Rückmeldungen und Aufgaben zu " + id}, id, n ? ` 💬${n}` : " 💬", a ? ` ☐${a}` : "");
+}
+
+function zeilenKarte(spalten, z) {
+  const k = el("div", {class: "karte ziel", id: z.id, "data-ziel": z.id});
+  const nr = /^\d+$/.test(z.zellen[0]) ? spalten[0] + " " : "";
+  k.append(el("div", {class: "k"}, nr + z.zellen[0] + (z.zellen[1] && z.zellen[1] !== "–" ? " · " + z.zellen[1] : ""), zid(z.id)));
+  if (z.zellen[2]) k.append(el("div", {}, z.zellen[2]));
+  for (let i = 3; i < spalten.length; i++) {
+    if (!z.zellen[i] || z.zellen[i] === "–") continue;
+    k.append(el("div", {class: "z"}, el("b", {}, spalten[i] + ": "), z.zellen[i]));
+  }
+  for (const ziel of z.ziele || []) {
+    const a = proId.get(ziel);
+    if (a) k.append(el("div", {class: "z"}, el("a", {href: "#" + ziel}, "→ " + a.titel)));
+  }
+  return k;
+}
+
+function block(b, offen) {
+  const d = el("details", {class: "block ziel", id: b.id, "data-ziel": b.id, open: offen},
+    el("summary", {}, b.titel, zid(b.id)),
+    b.orte ? ortChips(b.orte) : null,
+    wissenKarte(b.id),
+    el("div", {class: "inhalt", html: b.html}));
+  return d;
+}
+// Orte, zu denen ein Abschnitt der Recherche gehört (reise.json orte_wissen)
+function ortChips(liste) {
+  return el("div", {class: "chips ortchips"}, el("span", {class: "z klein"}, "Orte:"),
+    ...liste.map(o => el("a", {class: "chip", href: "#" + o}, (R && R.orte[o] || {}).name || o)));
+}
+
+function chips(a) {
+  const c = el("div", {class: "chips"});
+  if (a.im_plan) c.append(el("span", {class: "chip plan"}, "im Plan"));
+  if (a.nebenroute) c.append(el("span", {class: "chip neben"}, "Nebenroute"));
+  for (const oid of a.optionen || []) {
+    const [w, o] = optionZu.get(oid) || [];
+    if (w) c.append(el("span", {class: "chip " + (weg(o.status) ? "weg" : "unterwegs")}, `Variante: ${o.titel}`));
+  }
+  const k = a.kennzahlen || {};
+  for (const [name, wert] of Object.entries(k)) {
+    const einheit = (name.match(/\(([^)]+)\)/) || [])[1];
+    const label = name.replace(/\s*\(.*\)/, "");
+    const text = /^[\d.,]+$/.test(wert) && einheit ? `${label} ${wert} ${einheit}` : wert;
+    c.append(el("span", {class: "chip", title: name}, text));
+  }
+  return c;
+}
+
+function abschnittKarte(a) {
+  const titel = a.typ === "etappe" ? a.titel : a.titel;
+  const k = el("a", {class: "karte", href: "#" + a.id}, el("div", {class: "k"}, titel, zid(a.id)));
+  if (a.typ === "etappe") k.append(chips(a));
+  return k;
+}
+
+function abschnittInhalt(a, ohneTitel) {
+  const s = el("section", {class: "ziel", id: a.id, "data-ziel": a.id});
+  if (!ohneTitel) s.append(el("h2", {}, a.titel, zid(a.id)));
+  if (a.orte) s.append(ortChips(a.orte));
+  if (a.intro) s.append(el("div", {html: a.intro}));
+  if (a.tabelle) {
+    for (const z of a.tabelle.zeilen) s.append(zeilenKarte(a.tabelle.spalten, z));
+    if (a.nach) s.append(el("div", {html: a.nach}));
+  }
+  if (a.route_ansicht === "tagesplan") tagesplan(s);
+  if (a.route_ansicht === "unterkuenfte") unterkuenfte(s);
+  a.bloecke.forEach((b, i) => s.append(block(b, i === 0)));
+  return s;
+}
+
+/* ---------- Route: Tage, Unterkünfte, Wahlstellen ---------- */
+const STATUS_TEXT = {vorgeschlagen: "vorgeschlagen", favorisiert: "favorisiert", gewaehlt: "gewählt", verworfen: "verworfen", ersetzt: "ersetzt"};
+const ART_TEXT = {bus: "Bus", bahn: "Bahn", flug: "Flug", faehre: "Fähre", mietwagen: "Mietwagen", rad: "Rad", wandern: "zu Fuß"};
+const weg = s => s === "verworfen" || s === "ersetzt";
+const link = (id, text) => el("a", {href: "#" + id}, text);
+const ortName = id => (R.orte[id] || {}).name || id || "?";
+function datumText(iso, wt) { const [, m, d] = iso.split("-"); return `${wt} ${+d}.${+m}.`; }
+function dauer(min) { return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")} h`; }
+function summeText(s) {
+  if (!s) return "";
+  const t = [s.tage === 1 ? "1 Tag" : `${s.tage} Tage`];
+  if (s.km) t.push(`${String(s.km).replace(".", ",")} km`, `↑ ${s.auf} / ↓ ${s.ab} Hm`, `${dauer(s.min)} Gehzeit`);
+  const ty = Object.entries(s.unterkunftstypen || {}).map(([k, v]) => `${v}× ${k}`);
+  if (ty.length) t.push(ty.join(", "));
+  return t.join(" · ") + (s.unvollstaendig && s.km ? " (nicht alle Strecken mit Kennzahlen)" : "");
+}
+
+function streckeZeile(id, wahl) {
+  const s = R.strecken[id] || {titel: id};
+  // art: ein Verkehrsmittel oder eine Liste in Reihenfolge, z. B. [bahn, bus]
+  const art = s.art && s.art !== "wandern" ? [].concat(s.art).map(a => ART_TEXT[a] || a).join(" + ") : (s.art ? "" : "Verkehrsmittel offen");
+  const z = el("div", {class: "z"}, s.dossier || proId.has(id) ? link(id, s.titel) : s.titel, zid(id));
+  // Kennzahlen als Leiste mit Etiketten (Gehzeit, Aufstieg, Abstieg, Strecke); Verkehrsmittel als Textzeile
+  const kz = Object.entries(s.kennzahlen || {}).map(([n, v]) =>
+    /^aufstieg/i.test(n) ? ["Aufstieg", `↑ ${v} m`] : /^abstieg/i.test(n) ? ["Abstieg", `↓ ${v} m`]
+      : /^(gehzeit|dauer)/i.test(n) ? ["Gehzeit", v] : /^l(ä|ae)nge/i.test(n) ? ["Strecke", v] : [n, v]);
+  if (art) z.append(el("div", {class: "z klein"}, art));
+  if (kz.length) z.append(el("div", {class: "kz"}, kz.map(([n, v]) => el("div", {}, el("span", {class: "kzn"}, n), el("span", {class: "kzw"}, v)))));
+  if (s.text) z.append(el("div", {class: "z klein"}, s.text));
+  if (s.quelle) z.append(el("div", {class: "z klein"}, "Quelle: " + s.quelle));
+  if (s.siehe && proId.has(s.siehe)) z.append(el("div", {class: "z klein"}, link(s.siehe, "→ " + proId.get(s.siehe).titel)));
+  return z;
+}
+
+// Tageskopf im Stil „Wanderführer“: große Nummer, Datum als Etikett, Titel in Serif (Plan, Pläne, Tagesseite)
+function tagKopf(tag, attrs, nr, datum, wt, titel, id) {
+  if (!datum) return el(tag, {class: "k", ...attrs}, titel, zid(id));
+  return el(tag, {...attrs, class: ((attrs.class || "") + " k tagkopf").trim()},
+    nr ? el("span", {class: "tagnr", "aria-hidden": "true"}, nr) : null,
+    el("span", {class: "tagtext"}, el("span", {class: "tagdatum"}, (nr ? `Tag ${nr} · ` : "") + datumText(datum, wt)), el("span", {class: "tagtitel"}, titel)),
+    zid(id));
+}
+// Wegverlauf eines Tages: Start → Strecken → Ziel als Linie mit Punkten; ein Ort zwischen zwei Strecken steht einmal
+function wegVerlauf(t) {
+  const v = el("div", {class: "wv"});
+  const ort = (id, art) => el("div", {class: "wv-ort " + art}, el("span", {class: "wv-punkt", "aria-hidden": "true"}),
+    el("span", {class: "wv-name"}, art !== "mitte" ? el("span", {class: "wv-etikett"}, art === "start" ? "Start" : "Ziel") : null, ortName(id)));
+  let zuletzt = null;
+  t.strecken.forEach((x, i) => {
+    const s = R.strecken[x.id] || {};
+    if (s.von && s.von !== zuletzt) v.append(ort(s.von, i === 0 ? "start" : "mitte"));
+    v.append(el("div", {class: "wv-strecke" + (s.art && s.art !== "wandern" ? " fahrt" : "")}, streckeZeile(x.id, x.wahl)));
+    if (s.nach) { v.append(ort(s.nach, i === t.strecken.length - 1 ? "ziel" : "mitte")); zuletzt = s.nach; }
+    else zuletzt = null;
+  });
+  return v;
+}
+function tagKarte(t, ohneKopf) {
+  const k = el("div", {class: "karte ziel", id: ohneKopf ? null : t.id, "data-ziel": ohneKopf ? null : t.id});
+  if (!ohneKopf) k.append(tagKopf("div", {}, t.nr, t.datum, t.wochentag, t.titel, t.id));
+  for (const f of t.fixpunkte || []) k.append(el("div", {class: "chips"}, el("span", {class: "chip plan"}, f)));
+  if (t.strecken.length) k.append(wegVerlauf(t));
+  for (const vid of t.wahlstellen) {
+    const w = wahlZu.get(vid);
+    if (!w) continue;
+    const z = el("div", {class: "z"}, el("b", {}, (w.art === "unterwegs" ? "Unterwegs wählen: " : "Wahl: ")), link(vid, w.titel));
+    const ul = el("ul", {});
+    for (const o of w.optionen.filter(o => !weg(o.status)))
+      ul.append(el("li", {}, o.titel, o.ausloeser ? ` – ${o.ausloeser}` : "", o.aktiv && w.art !== "unterwegs" ? (w.offen ? " (vorläufig)" : " (gewählt)") : ""));
+    z.append(ul);
+    k.append(z);
+  }
+  const n = t.nacht;
+  if (n) {
+    const z = el("div", {class: "z"}, el("b", {}, "Übernachtung: "), n.an_bord ? "an Bord" : ortName(n.ort));
+    if (n.wahl) {
+      const w = wahlZu.get(n.wahl);
+      // entschieden: gewählte Option zuerst, übrige gültige als Alternative
+      const kand = w.optionen.filter(o => !weg(o.status)).sort((a, b) => (b.status === "gewaehlt") - (a.status === "gewaehlt"));
+      const opt = o => { const u = (o.unterkuenfte || [])[0]; return u ? link(u, o.titel) : o.titel; };
+      z.append(" · ", w.offen && kand.length > 1 ? el("span", {}, `noch offen (${kand.length} Kandidaten): `) : "");
+      kand.forEach((o, i) => { if (i) z.append(!w.offen && i === 1 ? " · Alternative: " : ", "); z.append(opt(o)); });
+      z.append(zid(n.wahl));
+    } else if (n.unterkunft) z.append(" · ", link(n.unterkunft, R.unterkuenfte[n.unterkunft].name));
+    if (n.hinweis) z.append(` · ${n.hinweis}`);
+    k.append(z);
+  }
+  if (t.text) k.append(el("div", {class: "z"}, t.text));
+  // Plan entschieden (ohne Plan-Baum): die Tagesseite hat den ganzen Weg mit Karte
+  if (!ohneKopf && !D.reise.tiefe && PLAN_FEST && PLAN_FEST.tage.some(x => x.id === t.id))
+    k.append(el("a", {class: "weiter", href: "#" + t.id}, t.strecken.some(s => ETAPPE_TAG.get(s.id) === t.id) ? "Ganzer Tag: Weg, Karte, Einkehr →" : "Ganzer Tag →"));
+  return k;
+}
+
+function tagesplan(s) {
+  const ws = R.warnungen.filter(w => w.bezug === "plan" || R.tage.some(t => t.id === w.bezug));
+  if (ws.length) s.append(warnungen(ws));
+  s.append(el("div", {class: "z klein"}, "Aktueller Plan: " + summeText(R.summe)));
+  let teil = null;
+  for (const t of R.tage) {
+    if (t.teil && t.teil !== teil) { teil = t.teil; s.append(el("h3", {class: "teil"}, teil)); }
+    s.append(tagKarte(t));
+  }
+}
+
+function unterkunftKarte(id) {
+  const u = R.unterkuenfte[id];
+  const k = el("div", {class: "karte ziel", id, "data-ziel": id}, el("div", {class: "k"}, u.name, zid(id)));
+  k.append(el("div", {class: "z"}, [u.typ, ortName(u.ort)].filter(Boolean).join(" · ")));
+  if (u.kontakt) k.append(el("div", {class: "z"}, el("b", {}, "Kontakt: "), u.kontakt));
+  k.append(el("div", {class: "z"}, el("b", {}, "Buchung: "), u.buchung, u.frage ? [" · ", link(u.frage, u.frage)] : ""));
+  if (u.naechte.length) {
+    const z = el("div", {class: "z"}, el("b", {}, "Nächte: "));
+    u.naechte.forEach((tid, i) => { const t = R.tage.find(x => x.id === tid); if (i) z.append(", "); z.append(link(tid, datumText(t.datum, t.wochentag))); });
+    k.append(z);
+  }
+  const mk = mkListe(R.merkmale.unterkunft, u.merkmale);
+  if (mk) k.append(mk);
+  if (u.hinweis) k.append(el("div", {class: "z"}, u.hinweis));
+  if (u.quelle) k.append(el("div", {class: "z klein"}, "Quelle: " + u.quelle));
+  return k;
+}
+
+function unterkuenfte(s) {
+  const ids = Object.keys(R.unterkuenfte);
+  const imPlan = ids.filter(i => R.unterkuenfte[i].naechte.length);
+  for (const i of imPlan) s.append(unterkunftKarte(i));
+  const rest = ids.filter(i => !imPlan.includes(i));
+  if (rest.length) {
+    const d = el("details", {class: "weg"}, el("summary", {}, `Nicht im aktuellen Plan (${rest.length})`));
+    for (const i of rest) d.append(unterkunftKarte(i));
+    s.append(d);
+  }
+}
+
+function mkDatum(iso) { const [j, m, d] = iso.split("-"); return `${+d}.${+m}.${j.slice(2)}`; }
+function mkWert(v, knapp) {
+  if (!v) return el("span", {class: "mk-leer"}, "–");
+  const zusatz = [v.notiz, v.geprueft ? "geprüft " + mkDatum(v.geprueft) : "", v.quelle && !knapp ? "Quelle: " + v.quelle : ""].filter(Boolean).join(" · ");
+  return el("span", v.quelle && knapp ? {title: "Quelle: " + v.quelle} : {}, v.wert, v.ungeprueft ? el("span", {class: "chip offen mk-chip"}, "ungeprüft") : null,
+    zusatz ? el("div", {class: "z klein"}, zusatz) : null);
+}
+function mkListe(kriterien, werte) {
+  const zeilen = (kriterien || []).filter(k => werte && werte[k.id]);
+  return zeilen.length ? el("dl", {class: "mliste"}, zeilen.flatMap(k => [el("dt", {}, k.name), el("dd", {}, mkWert(werte[k.id]))])) : null;
+}
+function mkFehlt(w, o) {
+  if (w.art !== "planung" || !w.offen || weg(o.status) || !o.fehlt.length) return null;
+  const name = Object.fromEntries(w.kriterien.map(k => [k.id, k.name]));
+  return el("div", {class: "z klein"}, "Fehlt noch: " + o.fehlt.map(k => name[k] || k).join(", "));
+}
+function mkTabelle(w, opts) {
+  const zeilen = w.kriterien.filter(k => opts.some(o => o.merkmale[k.id]));
+  if (opts.length < 2 || !zeilen.length) return null;
+  const t = el("table", {class: "vergleich mk"});
+  t.append(el("tr", {}, el("th", {}, ""), opts.map(o => el("th", {}, link(o.id, o.titel)))));
+  for (const k of zeilen) t.append(el("tr", {}, el("th", {scope: "row"}, k.name), opts.map(o => el("td", {}, mkWert(o.merkmale[k.id], true)))));
+  return el("div", {class: "tabelle mtabelle"}, t);
+}
+
+function optionBlock(w, o) {
+  const b = el("div", {class: "option ziel" + (o.aktiv ? " aktiv" : ""), id: o.id, "data-ziel": o.id});
+  const chips = el("span", {class: "chips"},
+    el("span", {class: "chip" + (weg(o.status) ? " weg" : o.status === "gewaehlt" ? " plan" : "")}, STATUS_TEXT[o.status] || o.status),
+    o.aktiv && !w.optionen.every(x => x.aktiv) ? el("span", {class: "chip"}, w.art === "unterwegs" ? "Standard" : (w.offen ? "vorläufig im Plan" : "im Plan")) : null);
+  b.append(el("div", {class: "k"}, o.titel, zid(o.id)), chips);
+  if (o.ausloeser) b.append(el("div", {class: "z"}, el("b", {}, "Wann: "), o.ausloeser));
+  if (o.text) b.append(el("div", {class: "z"}, o.text));
+  // Kennzahlen eigener Strecken stehen schon unter der Strecke
+  const mk = mkListe(w.kriterien.filter(k => !(k.auto && (o.strecken || []).length)), o.merkmale), luecke = mkFehlt(w, o);
+  if (mk) b.append(mk);
+  if (luecke) b.append(luecke);
+  if (o.summe && !mk) b.append(el("div", {class: "z klein"}, summeText(o.summe)));
+  if (o.plus.length) b.append(el("ul", {}, o.plus.map(x => el("li", {}, "+ " + x))));
+  if (o.minus.length) b.append(el("ul", {}, o.minus.map(x => el("li", {}, "– " + x))));
+  for (const sid of o.strecken || []) b.append(streckeZeile(sid));
+  for (const uid of o.unterkuenfte || []) if (R.unterkuenfte[uid]) b.append(el("div", {class: "z"}, link(uid, "→ " + R.unterkuenfte[uid].name)));
+  if (o.tage && o.tage.length) {
+    const aktivTage = o.tage.filter(tid => R.tage.some(t => t.id === tid));
+    if (aktivTage.length) {
+      const z = el("div", {class: "z klein"}, "Im Tagesplan: ");
+      aktivTage.forEach((tid, i) => { const t = R.tage.find(x => x.id === tid); if (i) z.append(", "); z.append(link(tid, `Tag ${t.nr}`)); });
+      b.append(z);
+    }
+    const andere = o.tage.filter(tid => R.weitere_tage[tid]);
+    if (andere.length) {
+      const d = el("details", {class: "weg"}, el("summary", {}, `Tage dieser Variante (${andere.length})`));
+      for (const tid of andere) d.append(tagKarte(R.weitere_tage[tid]));
+      b.append(d);
+    }
+  }
+  if (o.siehe && proId.has(o.siehe)) b.append(el("div", {class: "z klein"}, link(o.siehe, "→ " + proId.get(o.siehe).titel)));
+  if (o.quelle) b.append(el("div", {class: "z klein"}, "Quelle: " + o.quelle));
+  if (o.verlauf.length) b.append(el("div", {class: "verlauf"}, o.verlauf.map(v =>
+    `${v.datum.split("-").reverse().join(".")}: ${STATUS_TEXT[v.status] || v.status}${v.wer ? " (" + v.wer + ")" : ""}${v.grund ? " – " + v.grund : ""}${v.durch ? " → " + v.durch : ""}`).join(" · ")));
+  return b;
+}
+
+function wahlKarte(w) {
+  const k = el("div", {class: "karte ziel", id: w.id, "data-ziel": w.id});
+  const gueltig = w.optionen.filter(o => !weg(o.status));
+  const offen = w.art === "planung" && w.offen && gueltig.length > 1;
+  k.append(el("div", {class: "k"}, w.titel, zid(w.id)),
+    el("div", {class: "chips"},
+      el("span", {class: "chip" + (w.art === "unterwegs" ? " unterwegs" : "")}, w.art === "unterwegs" ? "unterwegs entscheiden" : "Planung"),
+      w.art === "planung" ? el("span", {class: "chip" + (offen ? " offen" : "")}, offen ? "offen" : "entschieden") : null,
+      w.frage ? link(w.frage, w.frage) : null));
+  if (w.text) k.append(el("div", {class: "z"}, w.text));
+  if (w.an.length) {
+    const z = el("div", {class: "z klein"}, "Betrifft: ");
+    w.an.forEach((tid, i) => { if (i) z.append(", "); const t = R.tage.find(x => x.id === tid); z.append(t ? link(tid, `Tag ${t.nr}`) : tid + " (nicht im aktuellen Plan)"); });
+    k.append(z);
+  }
+  const tab = mkTabelle(w, gueltig);
+  if (tab) { k.classList.add("hat-mtabelle"); k.append(tab); }
+  for (const o of gueltig) k.append(optionBlock(w, o));
+  const verw = w.optionen.filter(o => weg(o.status));
+  if (verw.length) {
+    const d = el("details", {class: "weg"}, el("summary", {}, `Verworfen (${verw.length})`));
+    for (const o of verw) d.append(optionBlock(w, o));
+    k.append(d);
+  }
+  return k;
+}
+
+function warnungen(liste) {
+  return el("div", {class: "warnungen"}, el("b", {}, "Geht noch nicht auf:"),
+    el("ul", {}, liste.map(w => el("li", {}, w.text, " ", /^[TV]-/.test(w.bezug) ? link(w.bezug, "→") : null))));
+}
+
+function entscheidungen(m) {
+  const offen = R.wahlstellen.filter(w => w.art === "planung" && w.offen && w.optionen.filter(o => !weg(o.status)).length > 1);
+  const s = el("section", {class: "ziel", id: "entscheidungen"}, el("h2", {}, "Entscheidungen und Varianten"));
+  const andere = R.warnungen.filter(w => /^V-/.test(w.bezug));
+  if (andere.length) s.append(warnungen(andere));
+  if (offen.length) {
+    s.append(el("h3", {}, `Noch zu entscheiden (${offen.length})`));
+    for (const w of offen) s.append(wahlKarte(w));
+  }
+  const unterwegs = R.wahlstellen.filter(w => w.art === "unterwegs");
+  if (unterwegs.length) {
+    s.append(el("h3", {}, "Unterwegs entscheiden"));
+    for (const w of unterwegs) s.append(wahlKarte(w));
+  }
+  const fest = R.wahlstellen.filter(w => !offen.includes(w) && !unterwegs.includes(w));
+  if (fest.length) {
+    const d = el("details", {class: "block"}, el("summary", {}, `Entschieden (${fest.length})`));
+    const inh = el("div", {class: "inhalt"});
+    for (const w of fest) inh.append(wahlKarte(w));
+    d.append(inh);
+    s.append(d);
+  }
+  m.append(s);
+}
+
+/* ---------- Varianten: Pläne nebeneinander, schematische Karte ----------
+    Pläne rechnet der Generator vollständig durch;
+   hier wird nur gezeichnet. Farben je Plan aus --plan-<farbe> (geprüft mit dataviz-Validator, hell und dunkel). */
+// null = noch nichts gewählt: dann zeigt die Karte den fest entschiedenen Plan (ansichtVarianten)
+let VARIANTE = (() => { try { return localStorage.getItem(SP + "variante"); } catch (e) { return null; } })();
+const planFarbe = p => `var(--plan-${p.farbe || "a"})`;
+const PLAN_BREITE = [8, 5, 2.6, 1.6];
+// Übernachtungskategorie (hotel, gasthaus, huette …; routen.py KATEGORIEN) bestimmt die Farbe auf Karte und im Vergleich
+function nachtKat(n) {
+  if (!n || n.an_bord) return n && n.an_bord ? "unterwegs" : "";
+  if (n.unterkunft && R.unterkuenfte[n.unterkunft]) return R.unterkuenfte[n.unterkunft].kategorie || "sonstige";
+  return n.kategorie || "offen";
+}
+const katKlasse = k => k && k !== "offen" ? " kat-" + k : "";
+function nachtTyp(n) {
+  if (!n || n.an_bord) return "";
+  if (n.unterkunft && R.unterkuenfte[n.unterkunft]) return R.unterkuenfte[n.unterkunft].typ || "";
+  return n.typ || "offen";
+}
+function nachtName(n) {
+  if (!n) return "";
+  if (n.an_bord) return "an Bord";
+  if (n.wahl) { const w = wahlZu.get(n.wahl); const k = w.optionen.filter(o => !weg(o.status)); return k.length > 1 ? `${ortName(n.ort)}: ${k.length} Kandidaten` : k[0].titel; }
+  if (n.unterkunft) return R.unterkuenfte[n.unterkunft].name;
+  return n.hinweis || ortName(n.ort);
+}
+function tagMin(t) {
+  let m = 0;
+  for (const s of t.strecken) { const st = R.strecken[s.id] || {}; if ((st.art || "wandern") !== "wandern") continue;
+    const g = Object.entries(st.kennzahlen || {}).find(([k]) => /^(gehzeit|dauer)/i.test(k));
+    const x = g && /(\d+):(\d{2})/.exec(g[1]); if (x) m += +x[1] * 60 + +x[2]; }
+  return m;
+}
+
+function steckbrief(p, imPlan) {
+  const s = p.summe, f = s.fehlend || [];
+  const k = imPlan ? el("div", {class: "karte steckbrief", style: `--farbe:${planFarbe(p)}`})
+    : el("div", {class: "karte steckbrief ziel" + (VARIANTE === p.id ? " an" : ""), id: p.id, "data-ziel": p.id, "data-variante": p.id, style: `--farbe:${planFarbe(p)}`});
+  if (!imPlan) k.append(el("div", {class: "k"}, p.kurz, zid(p.id)), el("div", {class: "z klein"}, p.titel));
+  if (TIEFE ? planFest(p) : p.aktuell) k.append(el("div", {class: "chips"}, el("span", {class: "chip plan"}, TIEFE ? "gewählt" : "entspricht dem aktuellen Plan")));
+  if (TIEFE && p.text && !imPlan) k.append(el("p", {class: "z klein"}, p.text.length > 220 ? p.text.slice(0, 220).replace(/\s\S*$/, "") + " …" : p.text));
+  const ty = Object.entries(s.unterkunftstypen).map(([a, n]) => `${n} ${a === "offen" ? "noch offen" : a}`).join(" · ");
+  // Gehzeit, Strecke, Höhenmeter nur bei Plänen mit Wanderdaten (Wanderung ja, Rundreise mit Bahn nein)
+  const wandern = s.min || s.km || s.auf;
+  const zeilen = [["Tage", `${s.tage}`], ["Gehzeit", f.includes("min") ? "unvollständig" : `${f.length ? "" : ""}${dauer(s.min)}`],
+    ["Strecke", f.includes("km") ? "– (Angaben fehlen)" : `${String(s.km).replace(".", ",")} km`],
+    ["Höhenmeter", f.includes("auf") ? "– (Angaben fehlen)" : `↑ ${s.auf} / ↓ ${s.ab}`],
+    ["Längster Tag", s.laengster ? `${dauer(s.laengster.min)} (Tag ${s.laengster.nr})` : "–"], ["Nächte", ty]]
+    .filter(([a]) => wandern || !["Gehzeit", "Strecke", "Höhenmeter", "Längster Tag"].includes(a));
+  k.append(el("dl", {}, zeilen.flatMap(([a, b]) => [el("dt", {}, a), el("dd", {}, b)])));
+  if (p.plus.length) k.append(el("ul", {}, p.plus.map(x => el("li", {}, "+ " + x))));
+  if (p.minus.length) k.append(el("ul", {}, p.minus.map(x => el("li", {}, "– " + x))));
+  if (p.warnungen.length) k.append(warnungen(p.warnungen));
+  const z = el("div", {class: "z klein"}, "Besteht aus: ");
+  p.auswahl.forEach((oid, i) => { if (i) z.append(", "); z.append(link(oid, (optionZu.get(oid) || [, {titel: oid}])[1].titel)); });
+  k.append(z);
+  if (TIEFE && !imPlan) k.append(el("a", {class: "weiter", href: "#" + p.id}, "Plan öffnen: Tage und Orte →"));
+  return k;
+}
+
+function vergleichTabelle(plaene) {
+  const t = el("table", {class: "vergleich"});
+  if (plaene.length === 1) {
+    const p = plaene[0];
+    t.append(el("tr", {}, ["Tag", "Datum", "Etappe", "Zeit", "Nacht"].map(x => el("th", {}, x))));
+    for (const d of p.tage) {
+      const m = tagMin(d), n = d.nacht;
+      const tr = el("tr", {"data-tag": d.id},
+        el("td", {class: "nr", style: `color:${planFarbe(p)}`}, String(d.nr)), el("td", {}, datumText(d.datum, d.wochentag)),
+        el("td", {}, link(d.id, d.titel)), el("td", {}, m ? dauer(m) : "–"),
+        el("td", {}, n ? el("span", {class: "nacht " + nachtKat(n) + katKlasse(nachtKat(n))}, nachtTyp(n) || "–") : "", n ? el("div", {class: "z klein"}, nachtName(n)) : ""));
+      t.append(tr);
+    }
+    return el("div", {class: "tabelle"}, t);
+  }
+  t.append(el("tr", {}, el("th", {}, "Tag"), plaene.map(p => el("th", {}, el("span", {class: "punkt", style: `--farbe:${planFarbe(p)}`}), p.kurz))));
+  const max = Math.max(...plaene.map(p => p.tage.length));
+  for (let i = 0; i < max; i++) {
+    const ds = plaene.map(p => p.tage[i]);
+    const zelle = d => d ? [link(d.id, d.titel), tagMin(d) ? ` · ${dauer(tagMin(d))}` : "",
+      d.nacht ? el("div", {}, el("span", {class: "nacht " + nachtKat(d.nacht) + katKlasse(nachtKat(d.nacht))}, nachtName(d.nacht))) : ""] : "–";
+    const tr = el("tr", {}, el("td", {class: "nr"}, String(i + 1), el("div", {class: "z klein"}, ds[0] ? datumText(ds[0].datum, ds[0].wochentag) : "")));
+    if (ds.every(d => d && d.id === ds[0].id)) tr.append(el("td", {colspan: plaene.length}, zelle(ds[0])));
+    else for (const d of ds) tr.append(el("td", {}, zelle(d)));
+    t.append(tr);
+  }
+  return el("div", {class: "tabelle"}, t);
+}
+
+/* Karte mit Leaflet 1.9.4 (BSD-2, leafletjs.com), lokal ausgeliefert (#27). Keine Kacheln aus dem Netz:
+   Küste, Orte und Wege kommen aus plan/karte.yaml. Zoomen: zwei Finger bzw. +/−; das Mausrad erst nach
+   einem Klick in die Karte, damit die Seite beim Scrollen nicht hängen bleibt. Farben über CSS-Klassen (rh-…). */
+let KARTE = null;
+function dunkel() { const t = document.documentElement.dataset.theme; return t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; }
+function karteZeichnen(plaene, info, box) {
+  const K = R.karte, rf = K.rahmen;
+  // Offline-Grundkarte: OpenStreetMap-Vektorkarte als PMTiles, gezeichnet von protomaps-leaflet (25.10.2026).
+  // Sie liegt im Speicher des Telefons; der Service Worker beantwortet die Bereichsanfragen. Ohne sie: schematische Küste.
+  const osm = !!(K.grundkarte && window.protomapsL);
+  const karte = KARTE = L.map(box, {zoomSnap: 0.25, scrollWheelZoom: false, dragging: osm || !L.Browser.mobile, tap: false,
+    maxZoom: osm ? 17 : 18, attributionControl: !!(K.namensnennung || K.quelle),
+    maxBounds: L.latLngBounds([rf.sued, rf.west], [rf.nord, rf.ost]).pad(0.15)});
+  if (K.namensnennung || K.quelle) karte.attributionControl.setPrefix(false).addAttribution(K.namensnennung || K.quelle);
+  karte.on("click", () => karte.scrollWheelZoom.enable());
+  box.addEventListener("mouseleave", () => karte.scrollWheelZoom.disable());
+  if (osm) {
+    box.classList.add("osm");
+    // Außerhalb des ausgeschnittenen Bereichs (breite Bildschirme) Meeresfarbe der Grundkarte statt grauer Fläche
+    box.style.background = dunkel() ? "#31353f" : "#80deea";
+    protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: "de", maxDataZoom: 15,
+      attribution: ""}).addTo(karte);
+  }
+  const land = {className: "rh-land", weight: 1.2, fillOpacity: 1, interactive: false};
+  if (!osm) L.polygon(K.kueste, land).addTo(karte);
+  if (!osm) for (const i of K.inseln || []) L.polygon(i, land).addTo(karte);
+  // Seen: Ellipsen aus der Artefakt-Vorlage (rx/ry in Pixeln bei 1400 px je Grad)
+  const cx = Math.cos((rf.nord + rf.sued) / 2 * Math.PI / 180);
+  for (const z of osm ? [] : K.seen || []) {
+    const w = (z.drehung || 0) * Math.PI / 180, pts = [];
+    for (let i = 0; i < 24; i++) { const t = i / 24 * 2 * Math.PI, x = z.rx * Math.cos(t), y = z.ry * Math.sin(t);
+      pts.push([z.lage[0] - (x * Math.sin(w) + y * Math.cos(w)) / 1400, z.lage[1] + (x * Math.cos(w) - y * Math.sin(w)) / 1400 / cx]); }
+    L.polygon(pts, {className: "rh-see", weight: 0, fillOpacity: 1, interactive: false}).addTo(karte);
+  }
+  const etikett = (lyr, text, label, klasse) => {
+    const [dx, dy, anker] = label || [8, 4];
+    const richtung = anker === "end" ? "left" : anker === "middle" ? (dy < 0 ? "top" : "bottom") : "right";
+    lyr.bindTooltip(text, {permanent: true, direction: richtung, className: "rh-lbl " + (klasse || ""), offset: [anker === "middle" ? dx : dx + (richtung === "left" ? 6 : -6), anker === "middle" ? dy : dy - 4]});
+  };
+  for (const g of osm ? [] : K.gipfel || []) etikett(L.marker(g.lage, {icon: L.divIcon({className: "rh-gipfel", iconSize: [12, 11]}), interactive: false, keyboard: false}).addTo(karte), g.name, g.label, "klein");
+  for (const m of osm ? [] : K.meer || []) L.marker(m.lage, {icon: L.divIcon({className: "rh-meer", html: m.name, iconSize: null}), interactive: false, keyboard: false}).addTo(karte);
+
+  const lage = o => (K.orte[o] || {}).lage;
+  // Weg einer Strecke: aus karte.yaml, sonst gerade Linie zwischen den Orten (Abstecher ohne Linie)
+  const wegVon = sid => { if (K.wege && K.wege[sid]) return K.wege[sid];
+    const x = R.strecken[sid] || {}; return x.von !== x.nach && lage(x.von) && lage(x.nach) ? [lage(x.von), lage(x.nach)] : null; };
+  // linien: alle -> jede Strecke in Planfarbe (Rundreise); sonst nur Wanderwege, Bus/Bahn grau (Wanderreise)
+  const alleLinien = K.linien === "alle";
+  const STRICH = {flug: "7 7", faehre: "2 6"};
+  const linie = (w, o) => L.polyline(w, {lineCap: "round", lineJoin: "round", interactive: false, ...o}).addTo(karte);
+  for (const sid of K.ausgelassen || []) if (K.wege[sid]) linie(K.wege[sid], {className: "rh-skip", weight: 2.5, dashArray: "1 6"});
+  // Rundreise mit mehreren Plänen: Strecken, die alle gezeigten Pläne fahren, einmal neutral zeichnen
+  const inPlaenen = {};
+  if (alleLinien && plaene.length > 1) for (const p of plaene) for (const sid of new Set(p.tage.flatMap(d => d.strecken.map(st => st.id)))) inPlaenen[sid] = (inPlaenen[sid] || 0) + 1;
+  // Linie oder Tagesnummer antippen öffnet die Etappe, bei anderen Strecken den Tag (25.10.2026).
+  // Eine unsichtbare breite Linie darüber fängt den Finger; die sichtbaren Linien bleiben unberührt.
+  const tagOffen = id => TIEFE ? tagBekannt(id) : !!PLAN_FEST && PLAN_FEST.tage.some(t => t.id === id);
+  const zielVon = (sid, d) => (proId.get(sid) || {}).typ === "etappe" ? sid : tagOffen(d.id) ? d.id : null;
+  const titelVon = (sid, d, p) => (proId.get(sid) || {}).typ === "etappe" ? proId.get(sid).titel
+    : `${plaene.length > 1 ? p.kurz + ", " : ""}Tag ${d.nr}: ${d.titel || ""}`;
+  const treffer = (w, sid, d, p) => { const z = zielVon(sid, d); if (!z) return;
+    L.polyline(w, {className: "rh-treffer", weight: 22, opacity: 0, lineCap: "round"}).addTo(karte)
+      .bindTooltip(titelVon(sid, d, p), {sticky: true, className: "rh-lbl"}).on("click", () => { location.hash = z; }); };
+  const segmente = {}, einmal = {}, bereich = L.latLngBounds([]);
+  const merke = (d, l, b) => (segmente[d.id] = segmente[d.id] || []).push([l, b]);
+  const marken = [];
+  plaene.forEach((p, pi) => {
+    const breite = plaene.length === 1 ? 5 : PLAN_BREITE[pi] || 1.6, farbe = "rh-plan-" + (p.farbe || "a");
+    for (const d of p.tage) {
+      const punkte = [];
+      for (const st of d.strecken) {
+        const w = wegVon(st.id); if (!w) continue;
+        const art = (R.strecken[st.id] || {}).art;
+        w.forEach(q => bereich.extend(q));
+        if (!alleLinien && art && art !== "wandern") {
+          if (!einmal["bus" + st.id]) { einmal["bus" + st.id] = linie(w, {className: "rh-bus", weight: 1.6, dashArray: "3 5"}); treffer(w, st.id, d, p); }
+          continue;
+        }
+        if (inPlaenen[st.id] === plaene.length) {
+          if (!einmal[st.id]) { einmal[st.id] = linie(w, {className: "rh-gemeinsam", weight: 2.5, dashArray: STRICH[art]}); treffer(w, st.id, d, p); }
+          merke(d, einmal[st.id], 2.5);
+          continue;
+        }
+        const um = (K.unmarkiert || {})[st.id];
+        linie(w, {className: "rh-halo", weight: breite + 3.5});
+        const l = linie(um ? w.slice(um.length - 1) : w, {className: farbe, weight: breite, dashArray: um ? null : (alleLinien && STRICH[art]) || null});
+        if (um) linie(um, {className: farbe, weight: Math.max(breite, 3), dashArray: "1 6"});
+        merke(d, l, breite);
+        treffer(w, st.id, d, p);
+        punkte.push(...w);
+      }
+      // Tagesnummer auf halber Strecke, nur bei einem gezeigten Plan
+      if (plaene.length === 1 && punkte.length > 1) {
+        let len = 0; const l = [];
+        for (let i = 1; i < punkte.length; i++) { const x = Math.hypot(punkte[i][0] - punkte[i - 1][0], (punkte[i][1] - punkte[i - 1][1]) * cx); l.push(x); len += x; }
+        let h = len / 2, i = 0; while (i < l.length && h > l[i]) { h -= l[i]; i++; }
+        const A = punkte[i], B = punkte[i + 1] || A, f = l[i] ? h / l[i] : 0;
+        const st = d.strecken.find(x => wegVon(x.id) && (alleLinien || ((R.strecken[x.id] || {}).art || "wandern") === "wandern"));
+        marken.push([[A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f], d.nr, farbe, st && zielVon(st.id, d)]);
+      }
+    }
+  });
+  for (const [ll, nr, farbe, z] of marken) {
+    const mk = L.marker(ll, {icon: L.divIcon({className: "rh-tag " + farbe, html: String(nr), iconSize: [20, 20]}), interactive: !!z, keyboard: false, zIndexOffset: 1000, title: z ? "Etappe öffnen" : ""}).addTo(karte);
+    if (z) mk.on("click", () => { location.hash = z; });
+  }
+  // Orte: Symbol nach Art der Nacht in den gezeigten Plänen; nur Orte, die ein gezeigter Plan berührt
+  const benutzt = new Map();
+  for (const p of plaene) for (const d of p.tage) {
+    const beruehrt = [d.start_ort, d.end_ort, ...d.strecken.flatMap(st => { const x = R.strecken[st.id] || {}; return [x.von, x.nach]; })];
+    for (const o of beruehrt) if (o && !benutzt.has(o)) benutzt.set(o, "");
+    const n = d.nacht; if (n && n.ort && !n.an_bord) { const k = nachtKat(n); if (k && k !== "offen" && !benutzt.get(n.ort)) benutzt.set(n.ort, k); }
+  }
+  const zeigeInfo = (titel, zeilen) => info.replaceChildren(el("div", {class: "k"}, titel), ...zeilen.map(z => el("div", {class: "z"}, z)));
+  for (const [oid, o] of Object.entries(K.orte || {})) {
+    if (!benutzt.has(oid) || !o.lage) continue;
+    const kat = benutzt.get(oid);
+    const art = kat ? "rh-unterkunft" + katKlasse(kat) : "rh-punkt";
+    const mk = L.marker(o.lage, {icon: L.divIcon({className: "rh-ort " + art, iconSize: [26, 26]}), title: ortName(oid), alt: ortName(oid)}).addTo(karte);
+    bereich.extend(o.lage);
+    etikett(mk, o.name || ortName(oid), o.label);
+    mk.on("click keypress", () => {
+      const z = [];
+      for (const p of plaene) for (const d of p.tage) if (d.nacht && d.nacht.ort === oid)
+        z.push(el("span", {}, el("span", {class: "punkt", style: `--farbe:${planFarbe(p)}`}), `${p.kurz}: Nacht ${d.nr} (${datumText(d.datum, d.wochentag)}) · `, link(d.id, nachtName(d.nacht))));
+      if ((R.orte[oid] || {}).hinweis) z.push(R.orte[oid].hinweis);
+      zeigeInfo(ortName(oid), z.length ? z : ["Keine Übernachtung in den gezeigten Plänen."]);
+    });
+  }
+  const linienPunkte = new Set(plaene.flatMap(p => p.tage.flatMap(d => d.strecken.flatMap(st => (wegVon(st.id) || []).map(q => q.join(","))))));
+  for (const pk of K.punkte || []) {
+    if (!linienPunkte.has(pk.lage.join(","))) continue;
+    const mk = L.marker(pk.lage, {icon: L.divIcon({className: "rh-ort rh-punkt", iconSize: [26, 26]}), title: pk.name, alt: pk.name}).addTo(karte);
+    etikett(mk, pk.name, pk.label, "klein");
+    mk.on("click keypress", () => zeigeInfo(pk.name, [pk.hinweis || ""]));
+  }
+  // Namen, die sich überdecken, ausblenden; Übernachtungsorte zuerst (danach Wegpunkte, Gipfel)
+  const namen = [];
+  karte.eachLayer(lyr => { const t = lyr.getTooltip && lyr.getTooltip(); if (t) namen.push([t, lyr.options.icon && /rh-unterkunft/.test(lyr.options.icon.options.className) ? 0 : /klein/.test(t.options.className) ? 2 : 1]); });
+  namen.sort((a, b) => a[1] - b[1]);
+  const entzerren = () => {
+    const frei = [];
+    for (const [t] of namen) {
+      const e = t.getElement(); if (!e) continue;
+      e.classList.remove("verdeckt");
+      const r = e.getBoundingClientRect();
+      if (frei.some(q => r.left < q.right + 2 && r.right > q.left - 2 && r.top < q.bottom && r.bottom > q.top)) e.classList.add("verdeckt"); else frei.push(r);
+    }
+  };
+  karte.on("zoomend moveend", entzerren);
+  // Startausschnitt: die gezeigten Wege, nicht der ganze Kartenrahmen
+  karte.fitBounds(bereich.isValid() ? bereich : L.latLngBounds([rf.sued, rf.west], [rf.nord, rf.ost]), {padding: [24, 24]});
+  karte.setMinZoom(Math.min(karte.getZoom(), karte.getBoundsZoom(L.latLngBounds([rf.sued, rf.west], [rf.nord, rf.ost]))));
+  entzerren();
+  return {segmente};
+}
+
+/* Etappen-Karte: Track einer Etappe auf der Offline-Grundkarte mit den Punkten aus plan/punkte.yaml
+   (Wegpunkte des Buchs, Unterkünfte, Einkehr, Wasser, Bus/Notfall), Kategorien ein- und ausblendbar.
+   Wird erst gezeichnet, wenn sie sichtbar ist (Leaflet braucht eine Größe). Auf dem Telefon verschiebt
+   ein Finger die Seite, nicht die Karte: Verschieben erst nach einem Tipp in die Karte. */
+const PUNKT_KAT = {wegpunkt: "Wegpunkte aus dem Buch", unterkunft: "Unterkünfte", einkehr: "Einkehr", wasser: "Wasser", notfall: "Bus und Notfall"};
+const PUNKT_ART = {trinkwasser: "Trinkwasser (laut OpenStreetMap)", quelle: "Quelle oder Brunnen, Trinkbarkeit ungeprüft",
+  bus: "Bushaltestelle", taxi: "Taxistand", pharmacy: "Apotheke", clinic: "Klinik", hospital: "Krankenhaus", doctors: "Arztpraxis",
+  restaurant: "Restaurant", cafe: "Café", bar: "Bar", pub: "Kneipe", fast_food: "Imbiss", biergarten: "Biergarten",
+  hotel: "Hotel", hostel: "Herberge", guest_house: "Pension", alpine_hut: "Hütte", wilderness_hut: "Schutzhütte",
+  schutzhuette: "Schutzhütte", apartment: "Ferienwohnung", chalet: "Ferienhaus"};
+const PUNKT_SYM = {unterkunft: "unterkunft", einkehr: "einkehr", wasser: "wasser", bus: "bus", taxi: "taxi", pharmacy: "apotheke"};
+let EKARTEN = [];
+const punktName = p => p.name || PUNKT_ART[p.art] || PUNKT_KAT[p.kat];
+function etappenKarte(sid) {
+  const K = R && R.karte, punkte = (R && R.punkte || {})[sid] || [], weg = K && K.wege && K.wege[sid];
+  if (!weg || !K.grundkarte || !window.protomapsL) return null;
+  const box = el("div", {class: "kartenbox ekarte", role: "region", "aria-label": "Karte der Etappe " + sid});
+  // Touch statt L.Browser.mobile: das iPad meldet sich als Mac, die Karte würde sonst das Scrollen der Seite schlucken
+  const touch = matchMedia("(pointer: coarse)").matches;
+  const hinweis = touch ? el("p", {class: "ziehhinweis"}, "In die Karte tippen, dann lässt sie sich verschieben. Punkte antippen für Details.") : null;
+  const eintrag = {sid, box, karte: null, marken: []};
+  EKARTEN.push(eintrag);
+  const zeichnen = () => {
+    if (eintrag.karte) return;
+    const karte = eintrag.karte = L.map(box, {zoomSnap: 0.25, scrollWheelZoom: false, dragging: !touch, tap: false, maxZoom: 17,
+      maxBounds: L.latLngBounds([K.rahmen.sued, K.rahmen.west], [K.rahmen.nord, K.rahmen.ost]).pad(0.15)});
+    karte.attributionControl.setPrefix(false).addAttribution(K.namensnennung || "");
+    box.style.background = dunkel() ? "#31353f" : "#80deea";
+    protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: "de", maxDataZoom: 15, attribution: ""}).addTo(karte);
+    karte.on("click", () => { karte.scrollWheelZoom.enable(); karte.dragging.enable(); if (hinweis) hinweis.hidden = true; });
+    box.addEventListener("mouseleave", () => karte.scrollWheelZoom.disable());
+    L.polyline(weg, {className: "rh-halo", weight: 7, interactive: false}).addTo(karte);
+    const linie = L.polyline(weg, {className: "rh-etappe", weight: 4, interactive: false}).addTo(karte);
+    const gruppen = {};
+    punkte.forEach((p, i) => {
+      const g = gruppen[p.kat] = gruppen[p.kat] || L.layerGroup().addTo(karte);
+      const s = p.kat === "wegpunkt" ? null : PUNKT_SYM[p.art] || PUNKT_SYM[p.kat];
+      // Farbe im inneren Element: Pico setzt den Hintergrund von Leaflet-Markierungen zurück
+      const icon = L.divIcon({className: "rh-pw", iconSize: p.kat === "wegpunkt" ? [22, 22] : [24, 24],
+        html: `<span class="rh-p kat-${p.kat} art-${p.art || ""}">${p.kat === "wegpunkt" ? p.nr : s ? symbol(s).outerHTML : ""}</span>`});
+      const mk = L.marker(p.lage, {icon, title: punktName(p), alt: punktName(p), riseOnHover: true, zIndexOffset: p.kat === "wegpunkt" ? 500 : 0}).addTo(g);
+      mk.bindPopup(() => punktPopup(sid, i, p), {maxWidth: 260});
+      eintrag.marken[i] = mk;
+    });
+    const ebenen = {};
+    for (const [k, titel] of Object.entries(PUNKT_KAT)) if (gruppen[k])
+      ebenen[`${titel} (${punkte.filter(p => p.kat === k).length})`] = gruppen[k];
+    if (Object.keys(ebenen).length) L.control.layers(null, ebenen, {collapsed: true, position: "topright"}).addTo(karte);
+    karte.fitBounds(linie.getBounds(), {padding: [18, 18]});
+  };
+  eintrag.zeichnen = zeichnen;
+  const sicht = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { sicht.disconnect(); zeichnen(); } });
+  sicht.observe(box);
+  eintrag.sicht = sicht;
+  return el("div", {class: "ekarte-rahmen"}, box, hinweis);
+}
+function punktPopup(sid, i, p) {
+  const d = el("div", {},
+    el("b", {}, p.kat === "wegpunkt" ? `${p.nr} · ${punktName(p)}` : punktName(p)),
+    el("div", {class: "pk"}, p.kat === "wegpunkt" ? "Wegpunkt im Buch" : [PUNKT_KAT[p.kat], p.name && PUNKT_ART[p.art]].filter(Boolean).join(" · ")));
+  if (p.kat === "wasser" && p.art === "quelle") d.append(el("div", {}, p.trinkbar === "yes" ? "laut OpenStreetMap trinkbar, nicht geprüft" : p.trinkbar === "no" ? "laut OpenStreetMap kein Trinkwasser" : "Trinkbarkeit ungeprüft"));
+  if (p.offen) d.append(el("div", {}, "Öffnungszeiten laut OpenStreetMap: " + p.offen));
+  if (p.id && R.unterkuenfte[p.id]) d.append(el("div", {}, link(p.id, R.unterkuenfte[p.id].name + " im Plan")));
+  const imText = document.querySelector(`a.kp[data-p="${sid}:${i}"]`);
+  if (imText) d.append(el("button", {type: "button"}, "Im Text zeigen"));
+  d.append(el("div", {class: "pq"}, p.quelle));
+  const b = d.querySelector("button");
+  if (b) b.addEventListener("click", () => { const z = document.querySelector(`a.kp[data-p="${sid}:${i}"]`); if (!z) return;
+    const blk = z.closest("details"); if (blk) blk.open = true;
+    z.scrollIntoView({block: "center", behavior: "smooth"}); z.classList.remove("kp-blink"); void z.offsetWidth; z.classList.add("kp-blink"); });
+  return d;
+}
+/* Karte zu einem Abschnitt der Recherche (Issue #64): nummerierte Punkte nach Art eingefärbt auf einer regionalen
+   Offline-Grundkarte. Liegen die Orte in mehreren Regionen (Sapporo und Matsumoto), wählt eine Tastenreihe die Region.
+   Jeder Punkt lässt sich zusätzlich in Google Maps öffnen (braucht Netz). */
+const WK = D.wissen_karte;
+const WISSEN_KAT = {schauplatz: "Schauplatz", vorbild: "Reales Vorbild", biografie: "Biografie", sehenswert: "Sehenswert",
+  einkehr: "Essen und Trinken", unterkunft: "Unterkunft", onsen: "Onsen und Bad", verkehr: "Bahnhof und Hafen"};
+function wissenKarte(bid) {
+  const punkte = WK && WK.punkte[bid];
+  if (!punkte || !window.protomapsL) return null;
+  const regionen = [...new Set(punkte.map(p => p.karte))];
+  const touch = matchMedia("(pointer: coarse)").matches;
+  const box = el("div", {class: "kartenbox ekarte", role: "region", "aria-label": "Karte der Orte in diesem Abschnitt"});
+  const hinweis = touch ? el("p", {class: "ziehhinweis"}, "In die Karte tippen, dann lässt sie sich verschieben. Punkte antippen für Details.") : null;
+  const tasten = regionen.length > 1 ? el("div", {class: "regionen", role: "toolbar", "aria-label": "Region der Karte"}) : null;
+  const kats = Object.keys(WISSEN_KAT).filter(k => punkte.some(p => p.kat === k));
+  const legende = el("p", {class: "legende"}, ...kats.map(k => el("span", {}, el("i", {class: "rh-p kat-" + k}), WISSEN_KAT[k])));
+  const eintrag = {sid: bid, box, karte: null, marken: [], region: null};
+  EKARTEN.push(eintrag);
+  let schicht = null;
+  const zeigeRegion = r => {
+    const karte = eintrag.karte, G = WK.grundkarten[r];
+    if (eintrag.region === r) return;
+    eintrag.region = r;
+    if (schicht) karte.removeLayer(schicht);
+    schicht = protomapsL.leafletLayer({url: G.url, flavor: dunkel() ? "dark" : "light", lang: "de", maxDataZoom: G.maxzoom, attribution: ""}).addTo(karte);
+    schicht.bringToBack();
+    karte.setMaxBounds(L.latLngBounds([G.rahmen.sued, G.rahmen.west], [G.rahmen.nord, G.rahmen.ost]).pad(0.1));
+    punkte.forEach((p, i) => { const mk = eintrag.marken[i]; if (p.karte === r) mk.addTo(karte); else mk.remove(); });
+    const hier = punkte.filter(p => p.karte === r).map(p => p.lage);
+    if (hier.length === 1) karte.setView(hier[0], 14); else karte.fitBounds(hier, {padding: [24, 24], maxZoom: 15});
+    if (tasten) for (const t of tasten.children) t.setAttribute("aria-pressed", String(t.dataset.r === r));
+  };
+  if (tasten) for (const r of regionen) {
+    const t = el("button", {type: "button", "data-r": r, "aria-pressed": "false"}, `${WK.grundkarten[r].titel} (${punkte.filter(p => p.karte === r).length})`);
+    t.addEventListener("click", () => { eintrag.zeichnen(); zeigeRegion(r); });
+    tasten.append(t);
+  }
+  const zeichnen = () => {
+    if (eintrag.karte) return;
+    const karte = eintrag.karte = L.map(box, {zoomSnap: 0.25, scrollWheelZoom: false, dragging: !touch, tap: false, maxZoom: 17});
+    karte.attributionControl.setPrefix(false).addAttribution(WK.namensnennung || "");
+    box.style.background = dunkel() ? "#31353f" : "#80deea";
+    karte.on("click", () => { karte.scrollWheelZoom.enable(); karte.dragging.enable(); if (hinweis) hinweis.hidden = true; });
+    box.addEventListener("mouseleave", () => karte.scrollWheelZoom.disable());
+    punkte.forEach((p, i) => {
+      const icon = L.divIcon({className: "rh-pw", iconSize: [24, 24], html: `<span class="rh-p kat-${p.kat}">${i + 1}</span>`});
+      const mk = L.marker(p.lage, {icon, title: p.name, alt: p.name, riseOnHover: true});
+      mk.bindPopup(() => wissenPopup(bid, i, p), {maxWidth: 260});
+      eintrag.marken[i] = mk;
+    });
+    zeigeRegion(regionen[0]);
+  };
+  eintrag.zeichnen = zeichnen;
+  // Text-Link auf einen Punkt in einer anderen Region: erst die Region wechseln
+  eintrag.vorPunkt = i => zeigeRegion(punkte[i].karte);
+  eintrag.punktZoom = i => Math.min(15, WK.grundkarten[punkte[i].karte].maxzoom + 2);
+  const sicht = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { sicht.disconnect(); zeichnen(); } });
+  sicht.observe(box);
+  eintrag.sicht = sicht;
+  return el("div", {class: "ekarte-rahmen wkarte"}, tasten, box, hinweis, legende);
+}
+function wissenPopup(bid, i, p) {
+  const d = el("div", {}, el("b", {}, `${i + 1} · ${p.name}`), el("div", {class: "pk"}, WISSEN_KAT[p.kat]));
+  if (p.hinweis) d.append(el("div", {}, p.hinweis));
+  // Apple Karten: von dort lässt sich der Ort in einen eigenen Reiseführer legen (25.10.2026)
+  d.append(el("div", {class: "kartenlinks"},
+    el("a", {href: `https://maps.apple.com/?ll=${p.lage[0]},${p.lage[1]}&q=${encodeURIComponent(p.name)}`, target: "_blank", rel: "noopener"}, "In Apple Karten öffnen"),
+    el("a", {href: `https://www.google.com/maps/search/?api=1&query=${p.lage[0]}%2C${p.lage[1]}`, target: "_blank", rel: "noopener"}, "In Google Maps öffnen")));
+  if (document.querySelector(`a.kp[data-p="${bid}:${i}"]`)) {
+    const b = el("button", {type: "button"}, "Im Text zeigen");
+    b.addEventListener("click", () => { const z = document.querySelector(`a.kp[data-p="${bid}:${i}"]`); if (!z) return;
+      z.scrollIntoView({block: "center", behavior: "smooth"}); z.classList.remove("kp-blink"); void z.offsetWidth; z.classList.add("kp-blink"); });
+    d.append(b);
+  }
+  d.append(el("div", {class: "pq"}, p.quelle));
+  return d;
+}
+// Name im Text antippen: zur Karte und den Punkt zeigen; steht keine Karte auf der Seite, folgt der Link zur Etappe
+document.addEventListener("click", e => {
+  const a = e.target.closest("a.kp");
+  if (!a) return;
+  const [sid, i] = a.dataset.p.split(":");
+  const k = EKARTEN.find(x => x.sid === sid);
+  if (!k) return;
+  e.preventDefault();
+  k.box.scrollIntoView({block: "center", behavior: "smooth"});
+  k.zeichnen();
+  if (k.vorPunkt) k.vorPunkt(+i);
+  const mk = k.marken[+i];
+  if (!mk) return;
+  for (const g of Object.values(k.karte._layers)) if (g instanceof L.LayerGroup && g.hasLayer(mk) && !k.karte.hasLayer(g)) g.addTo(k.karte);
+  // Recherche-Karten: nicht tiefer als die Daten der Grundkarte tragen (eine Übersichtskarte hat z. B. nur Zoom 8)
+  const zMax = k.punktZoom ? k.punktZoom(+i) : 15;
+  k.karte.setView(mk.getLatLng(), Math.min(Math.max(k.karte.getZoom(), 15), zMax));
+  mk.openPopup();
+});
+// Fußnote antippen: Nachweis aus der Liste am Blockende direkt hinter der Nummer zeigen, nochmal tippen schließt
+document.addEventListener("click", e => {
+  const b = e.target.closest("sup.fn button");
+  if (!b) return;
+  e.preventDefault();
+  const sup = b.parentElement, offen = sup.nextElementSibling;
+  if (offen && offen.classList.contains("fnbox")) { offen.remove(); b.setAttribute("aria-expanded", "false"); return; }
+  let li = null;
+  for (let p = sup.parentElement; p && !li; p = p.parentElement) li = p.querySelector(`ol.fussnoten li[data-fn="${b.dataset.fn}"]`);
+  if (!li) return;
+  sup.after(el("span", {class: "fnbox", role: "note", html: `${b.dataset.fn}. ${li.innerHTML}`}));
+  b.setAttribute("aria-expanded", "true");
+});
+// Ganze Etappe auf der Tages- oder Etappenseite: Kennzahlen, Karte, Beschreibung
+function etappeTeil(a, mitTitel) {
+  const s = el("div", {class: "etappe"});
+  if (mitTitel) s.append(el("h3", {class: "gruppe"}, "Weg: " + a.titel));
+  s.append(chips(a));
+  const k = etappenKarte(a.id);
+  if (k) s.append(k);
+  const inhalt = abschnittInhalt(a, true);
+  s.append(inhalt);
+  return s;
+}
+
+function ansichtVarianten(m) {
+  const alle = R.plaene;
+  if (VARIANTE === null) VARIANTE = (alle.find(planFest) || {}).id || "";
+  if (!alle.some(p => p.id === VARIANTE)) VARIANTE = "";
+  const gezeigt = VARIANTE ? alle.filter(p => p.id === VARIANTE) : alle;
+  const fest = alle.find(planFest);
+  const hinten = el("details", {class: "weg", open: VARIANTE !== fest?.id},
+    el("summary", {}, `Andere erwogene Pläne (${alle.length - 1})`));
+  m.append(el("h2", {}, VARIANTEN_TITEL));
+  m.append(el("p", {class: "meldung"}, fest && alle.length > 1
+    ? `${fest.kurz} ist gewählt. Die anderen erwogenen Pläne stehen zugeklappt am Ende.`
+    : TIEFE && alle.length > 1
+    ? `${alle.length} Pläne im Vergleich, keiner ist festgelegt, solange nichts gewählt ist. „Plan öffnen“ zeigt Übersicht, Karte und Tage; von jedem Tag geht es zu den Orten und ihren Highlights.`
+    : alle.length > 1
+    ? "Die erwogenen Pläne nebeneinander. Ein Plan setzt sich aus Entscheidungen zusammen; der aktuelle Plan ergibt sich aus dem, was gewählt ist."
+    : "Der Plan auf einen Blick."));
+  if (alle.length > 1) {
+    const u = el("fieldset", {class: "umschalter"}, el("legend", {class: "unsichtbar"}, "Plan wählen"));
+    u.append(el("button", {type: "button", "data-variante": "", "aria-pressed": String(!VARIANTE)}, `Alle ${alle.length}`));
+    for (const p of alle) u.append(el("button", {type: "button", "data-variante": p.id, "aria-pressed": String(VARIANTE === p.id)},
+      el("i", {style: `color:${planFarbe(p)}`}), `${p.kurz}${planFest(p) ? " (gewählt)" : !TIEFE && p.aktuell ? " (aktuell)" : ""}`));
+    // gewählter Plan: Umschalter und Alternativen zugeklappt ans Ende (25.10.2026)
+    if (fest) hinten.append(u); else m.append(u);
+  }
+  const info = el("div", {class: "karte", "aria-live": "polite"});
+  let segmente = {};
+  if (R.karte && window.L) {
+    const box = el("div", {class: "kartenbox", role: "region", "aria-label": "Karte mit den Plänen"});
+    m.append(box);
+    segmente = karteZeichnen(gezeigt, info, box).segmente;
+    // Legende nur mit dem, was auf dieser Karte vorkommt
+    const K = R.karte, arten = new Set(gezeigt.flatMap(p => p.tage.flatMap(d => d.strecken.map(st => (R.strecken[st.id] || {}).art))));
+    // Kategorien der Übernachtungen auf dieser Karte, in fester Reihenfolge
+    const katDa = new Set(gezeigt.flatMap(p => p.tage.map(d => nachtKat(d.nacht)).filter(k => k && k !== "offen" && k !== "unterwegs")));
+    const kats = Object.keys(R.kategorien || {}).filter(k => katDa.has(k));
+    m.append(el("div", {class: "legende"},
+      ...kats.map(k => el("span", {}, el("i", {class: "lg-k" + katKlasse(k)}), R.kategorien[k])),
+      Object.keys(K.unmarkiert || {}).length ? el("span", {}, el("i", {class: "lg-u"}), "nicht markiert") : null,
+      (K.ausgelassen || []).length ? el("span", {}, el("i", {class: "lg-s"}), "ausgelassen") : null,
+      K.linien !== "alle" ? el("span", {}, el("i", {class: "lg-b"}), "Bus") : null,
+      K.linien === "alle" && (arten.has("flug") || arten.has("faehre")) ? el("span", {}, el("i", {class: "lg-f"}), "Flug, Fähre") : null,
+      ...(gezeigt.length > 1 ? gezeigt.map(p => el("span", {}, el("i", {class: "punkt", style: `--farbe:${planFarbe(p)}`}), p.kurz)) : [])));
+    m.append(el("p", {class: "meldung"}, (R.karte.linien === "alle" ? "Übersichtskarte; gerade Linien verbinden die Orte und zeigen nicht den Fahrweg." : "Schematische Karte, Lage der Wege ungefähr.") + " Ort antippen zeigt die Übernachtungen, Linie antippen öffnet " + (hat("etappe") ? "die Etappe." : "den Tag.") + (gezeigt.length > 1 ? " Einen Plan wählen, um die Tagesnummern zu sehen." : "")));
+    info.append(el("div", {class: "z klein"}, gezeigt.length > 1 ? "Breite Linie = " + gezeigt[0].kurz + ", schmalste = " + gezeigt[gezeigt.length - 1].kurz + "; gemeinsame Abschnitte liegen übereinander." : `${gezeigt[0].kurz}: ${gezeigt[0].titel}`));
+    m.append(info);
+  }
+  // gezeigter Plan zuerst, die übrigen dahinter; bei gewähltem Plan die übrigen im zugeklappten Teil
+  const rest = alle.filter(p => !gezeigt.includes(p));
+  m.append(el("div", {class: "steckbriefe"}, [...gezeigt, ...(fest ? [] : rest)].map(p => steckbrief(p))));
+  if (fest && rest.length) hinten.append(el("div", {class: "steckbriefe"}, rest.map(p => steckbrief(p))));
+  m.append(el("h3", {}, gezeigt.length > 1 ? "Tagesplan im Vergleich" : `Tagesplan ${gezeigt[0].kurz}`));
+  const tab = vergleichTabelle(gezeigt);
+  m.append(tab);
+  tab.querySelectorAll("tr[data-tag]").forEach(tr => {
+    const segs = segmente[tr.dataset.tag] || [];
+    const an = on => { tr.classList.toggle("an", on); for (const [l, b] of segs) l.setStyle({weight: on ? b + 4 : b}); };
+    tr.addEventListener("pointerenter", () => an(true)); tr.addEventListener("pointerleave", () => an(false));
+  });
+  if (fest && alle.length > 1) m.append(hinten);
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-variante]");
+  if (!b || e.target.closest("[data-rm], a")) return;
+  VARIANTE = b.dataset.variante;
+  try { localStorage.setItem(SP + "variante", VARIANTE); } catch (x) {}
+  route(true);
+});
+
+/* ---------- Ansichten ---------- */
+function ansichtPlan(m) {
+  if (PLAN_REITER) return ansichtRahmen(m);
+  m.append(el("h2", {}, "Plan"));
+  if (D.plan_kopf) m.append(el("div", {html: D.plan_kopf}));
+  for (const a of abschnitte.filter(x => x.typ === "plan")) m.append(abschnittInhalt(a));
+  if (R) entscheidungen(m);
+  fragenKarte(m);
+}
+function fragenKarte(m) {
+  const offen = D.fragen.zeilen.filter(z => !/^(erledigt|geklärt|beantwortet)/i.test(z.status || z.zellen[z.zellen.length - 1] || ""));
+  if (D.fragen.zeilen.length) m.append(el("a", {class: "karte", href: "#fragen"},
+    el("div", {class: "k"}, `Offene Fragen: ${offen.length} →`), el("div", {class: "z klein"}, "im Reiter Offen")));
+}
+
+/* ---------- Reiter „Plan“ nur mit Rahmen (reise.json plan_reiter): Eckdaten, grober Zeitplan, Vorgaben ---------- */
+const PLAN_REITER = Array.isArray(D.reise.plan_reiter) && D.reise.plan_reiter.length ? D.reise.plan_reiter : null;
+function ansichtRahmen(m) {
+  m.append(el("h2", {}, PLAN_TITEL));
+  if (D.plan_kopf) m.append(el("div", {html: D.plan_kopf}));
+  for (const id of PLAN_REITER) if (proId.has(id)) m.append(abschnittInhalt(proId.get(id)));
+  if (R && R.plaene.length) m.append(el("a", {class: "karte", href: "#varianten"},
+    el("div", {class: "k"}, `${D.reise.varianten_titel || "Varianten"}: ${R.plaene.length} zur Wahl →`),
+    el("div", {class: "z klein"}, R.plaene.map(p => p.kurz).join(" · "))));
+  if (R) entscheidungen(m);
+  fragenKarte(m);
+}
+function ansichtFragen(m) {
+  const f = el("section", {class: "ziel", id: "fragen"}, el("h2", {}, "Offene Fragen"));
+  for (const z of D.fragen.zeilen) f.append(zeilenKarte(D.fragen.spalten, z));
+  m.append(f);
+}
+
+/* ---------- Pläne zum Aufklappen (reise.json „tiefe“, 24.10.2026): Plan → Tag → Ort ----------
+   Jede Ebene beginnt mit einer Übersicht. Der zuletzt geöffnete Plan gibt Tagen ihr Datum und „zurück“. */
+const TIEFE = !!(D.reise.tiefe && R);
+let PLAN_ZULETZT = null;
+const ortAbschnitt = id => { const a = proId.get(id); return a && a.typ === "ort" ? a : null; };
+const planZu = id => R && R.plaene.find(p => p.id === id);
+const tagBekannt = id => R && (R.tage.some(t => t.id === id) || id in R.weitere_tage);
+function tagOrte(t) {
+  const o = [];
+  const dazu = id => { if (id && !o.includes(id)) o.push(id); };
+  if (!t.strecken.length) dazu(t.start_ort);
+  for (const s of t.strecken) { const st = R.strecken[s.id] || {}; if (!t.start_ort) dazu(st.von); dazu(st.nach); }
+  if (t.nacht && !t.nacht.an_bord) dazu(t.nacht.ort);
+  return o;
+}
+function plusTage(iso, n) {
+  const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+const WT = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+const wochentag = iso => WT[new Date(iso + "T12:00:00Z").getUTCDay()];
+function ortKurz(id) {
+  const a = ortAbschnitt(id);
+  if (!a) return "";
+  const t = klartext(a.intro || "").replace(/^Übersicht:\s*/, "");
+  return t.length > 180 ? t.slice(0, 180).replace(/\s\S*$/, "") + " …" : t;
+}
+// Alternativen, die in einem Plan zur Wahl stehen (z. B. Kyūshū-Fassungen), verankert nach einem Tag des Plans
+function alternativen(p) {
+  const ids = p.tage.map(t => t.id), aus = new Map();
+  const imPlan = new Set(p.auswahl.map(oid => (optionZu.get(oid) || [])[0]).filter(Boolean));
+  for (const w of R.wahlstellen) {
+    if (imPlan.has(w)) continue;
+    const akt = w.optionen.find(o => o.aktiv);
+    const andere = w.optionen.filter(o => !o.aktiv && !weg(o.status) && (o.tage || []).length);
+    if (!andere.length) continue;
+    let anker = null, start = null;
+    const aktTage = ((akt && akt.tage) || []).filter(t => ids.includes(t));
+    if (aktTage.length) { anker = aktTage[aktTage.length - 1]; start = p.tage.find(t => t.id === aktTage[0]).datum; }
+    else {
+      const eltern = R.wahlstellen.flatMap(x => x.optionen).find(o => (o.folge || []).includes(w.id));
+      if (!eltern) continue;
+      const vor = eltern.folge.slice(0, eltern.folge.indexOf(w.id)).reverse().find(x => ids.includes(x));
+      if (!vor) continue;
+      anker = vor; start = plusTage(p.tage.find(t => t.id === vor).datum, 1);
+    }
+    if (!aus.has(anker)) aus.set(anker, []);
+    aus.get(anker).push({w, akt, andere, start});
+  }
+  return aus;
+}
+function tagKachel(t, datum, nr) {
+  const k = el("a", {class: "karte tag", href: "#" + t.id});
+  k.append(tagKopf("div", {}, nr, datum, datum ? wochentag(datum) : null, t.titel, t.id));
+  const c = el("div", {class: "chips"});
+  for (const f of t.fixpunkte || []) c.append(el("span", {class: "chip plan"}, f));
+  for (const o of tagOrte(t)) c.append(el("span", {class: "chip" + (ortAbschnitt(o) ? "" : " ag-leise")}, ortName(o)));
+  for (const s of t.strecken) if (s.wahl) c.append(el("span", {class: "chip offen"}, "Wahl: " + ((wahlZu.get(s.wahl) || {}).titel || s.wahl)));
+  if (c.childNodes.length) k.append(c);
+  const n = t.nacht;
+  if (n) k.append(el("div", {class: "z klein"}, "Nacht: " + (n.an_bord ? "an Bord" : [ortName(n.ort), n.typ, n.hinweis].filter(Boolean).join(" · "))));
+  return k;
+}
+function ansichtPlanDetail(m, p) {
+  PLAN_ZULETZT = p.id;
+  m.append(el("a", {class: "zurueck", href: "#varianten"}, "← Alle Pläne"));
+  m.append(el("h2", {class: "ziel", id: p.id, "data-ziel": p.id}, el("i", {class: "punkt", style: `--farbe:${planFarbe(p)}`}), `${p.kurz}: ${p.titel}`, zid(p.id)));
+  m.append(el("div", {class: "chips"}, el("span", {class: "chip " + (planFest(p) ? "plan" : "offen")}, planFest(p) ? "gewählt" : "zur Wahl")));
+  m.append(el("h3", {}, "Übersicht"));
+  if (p.text) m.append(el("p", {}, p.text));
+  m.append(steckbrief(p, true));
+  if (R.karte && window.L) {
+    const box = el("div", {class: "kartenbox", role: "region", "aria-label": "Karte " + p.kurz});
+    const info = el("div", {class: "karte", "aria-live": "polite"});
+    m.append(box, info);
+    karteZeichnen([p], info, box);
+  }
+  const alt = alternativen(p);
+  let teil = null;
+  m.append(el("h3", {}, "Tag für Tag"));
+  for (const t of p.tage) {
+    if (t.teil && t.teil !== teil) { teil = t.teil; m.append(el("h4", {}, teil)); }
+    m.append(tagKachel(t, t.datum, t.nr));
+    for (const {w, akt, andere, start} of alt.get(t.id) || []) {
+      for (const o of andere) {
+        const d = el("details", {class: "block alternative"}, el("summary", {}, `Statt „${akt ? akt.titel : "–"}“: ${o.titel}`, zid(o.id)));
+        const inh = el("div", {class: "inhalt"});
+        inh.append(el("div", {class: "z klein"}, `${w.titel}${w.offen ? " · noch offen" : ""}${w.frage ? " (" + w.frage + ")" : ""}`));
+        if (o.text) inh.append(el("p", {}, o.text));
+        if (o.plus.length) inh.append(el("ul", {}, o.plus.map(x => el("li", {}, "+ " + x))));
+        if (o.minus.length) inh.append(el("ul", {}, o.minus.map(x => el("li", {}, "– " + x))));
+        o.tage.forEach((tid, i) => { const x = R.weitere_tage[tid] || R.tage.find(y => y.id === tid); if (x) inh.append(tagKachel(x, plusTage(start, i), null)); });
+        d.append(inh);
+        m.append(d);
+      }
+    }
+  }
+}
+function ansichtTag(m, tid) {
+  const mit = R.plaene.filter(p => p.tage.some(t => t.id === tid));
+  const p = mit.find(x => x.id === PLAN_ZULETZT) || mit[0] || planZu(PLAN_ZULETZT);
+  let imPlan = p && p.tage.find(t => t.id === tid);
+  const t = imPlan || R.weitere_tage[tid] || R.tage.find(x => x.id === tid);
+  if (!imPlan && p) for (const liste of alternativen(p).values()) for (const {andere, start} of liste) for (const o of andere) {
+    const i = o.tage.indexOf(tid);
+    if (i >= 0) { const datum = plusTage(start, i); imPlan = {nr: null, datum, wochentag: wochentag(datum), alt: o}; }
+  }
+  m.append(TIEFE ? el("a", {class: "zurueck", href: "#" + (p ? p.id : "varianten")}, "← " + (p ? `${p.kurz}: ${p.titel}` : "Alle Pläne"))
+    : el("a", {class: "zurueck", href: "#plan"}, "← Plan"));
+  m.append(tagKopf("h2", {class: "ziel", id: tid, "data-ziel": tid}, imPlan && imPlan.nr, imPlan && imPlan.datum, imPlan && imPlan.wochentag, t.titel, tid));
+  const kopf = el("div", {class: "chips"});
+  if (imPlan && imPlan.alt) kopf.append(el("a", {class: "chip offen", href: "#" + imPlan.alt.id}, "Alternative: " + imPlan.alt.titel));
+  if (t.teil) kopf.append(el("span", {class: "chip ag-leise"}, t.teil));
+  for (const x of mit) kopf.append(el("a", {class: "chip ag-leise", href: "#" + x.id}, x.kurz));
+  if (!mit.length && !(imPlan && imPlan.alt)) kopf.append(el("span", {class: "chip offen"}, "Variante innerhalb der Pläne"));
+  m.append(kopf);
+  const mitEtappe = t.strecken.some(s => (proId.get(s.id) || {}).typ === "etappe");
+  if (t.text || !mitEtappe) {
+    m.append(el("h3", {}, "Übersicht"));
+    m.append(t.text ? el("p", {}, t.text) : el("p", {class: "meldung"}, "Noch kein Tagesprogramm."));
+  }
+  m.append(tagKarte({...t, text: "", wahlstellen: t.wahlstellen || []}, true));   // Kopf steht schon darüber
+  for (const s of t.strecken) {
+    const a = proId.get(s.id);
+    if (a && a.typ === "etappe") { m.append(etappeTeil(a, true)); continue; }
+    // Strecke ohne Buchetappe, aber mit Track (z. B. eigener GPX): Karte allein, Beschreibung über „siehe“
+    const st = R.strecken[s.id] || {}, k = (st.art || "wandern") === "wandern" ? etappenKarte(s.id) : null;
+    if (!k) continue;
+    m.append(el("h3", {class: "gruppe"}, "Weg: " + st.titel), k);
+    if (st.quelle) m.append(el("p", {class: "meldung"}, "Angaben: " + st.quelle));
+    if (st.siehe && proId.has(st.siehe)) m.append(el("p", {}, link(st.siehe, "Beschreibung: " + proId.get(st.siehe).titel + " →")));
+  }
+  const orte = tagOrte(t);
+  if (orte.length) {
+    m.append(el("h3", {}, orte.length > 1 ? "Orte des Tages" : "Ort des Tages"));
+    for (const o of orte) {
+      const a = ortAbschnitt(o);
+      const k = el(a ? "a" : "div", {class: "karte", href: a ? "#" + o : false}, el("div", {class: "k"}, ortName(o), zid(o)));
+      if (a) {
+        k.append(el("div", {class: "z klein"}, ortKurz(o)));
+        const hl = a.bloecke.filter(b => !/^(Essen|Unterkunft|Praktisch|Quellen)/.test(b.titel));
+        if (hl.length) k.append(el("div", {class: "chips"}, hl.map(b => el("span", {class: "chip"}, b.titel))));
+      } else k.append(el("div", {class: "z klein"}, "Noch keine Beschreibung."));
+      m.append(k);
+    }
+  }
+  if (imPlan && !imPlan.alt) {
+    const i = p.tage.indexOf(imPlan), vor = p.tage[i - 1], nach = p.tage[i + 1];
+    m.append(el("div", {class: "blaettern"},
+      vor ? el("a", {href: "#" + vor.id}, `← Tag ${vor.nr}`) : el("span", {}),
+      nach ? el("a", {href: "#" + nach.id}, `Tag ${nach.nr} →`) : el("span", {})));
+  }
+}
+const ortPlaene = oid => R.plaene.filter(x => x.tage.some(t => tagOrte(t).includes(oid)));
+function ansichtOrt(m, a) {
+  const p = planZu(PLAN_ZULETZT), inPlan = ortPlaene(a.id).length > 0;
+  m.append(inPlan || p ? el("a", {class: "zurueck", href: "#" + (p ? p.id : "varianten")}, "← " + (p ? `${p.kurz}: ${p.titel}` : "Alle Pläne"))
+    : el("a", {class: "zurueck", href: "#orte"}, "← Alle Orte"));
+  m.append(el("h2", {class: "ziel", id: a.id, "data-ziel": a.id}, a.titel, zid(a.id)));
+  ortKarte(m, a.id);
+  m.append(el("h3", {}, "Übersicht"));
+  if (a.intro) m.append(el("div", {html: a.intro}));
+  const wo = el("div", {class: "chips"});
+  for (const x of R.plaene) for (const t of x.tage) if (tagOrte(t).includes(a.id))
+    wo.append(el("a", {class: "chip ag-leise", href: "#" + t.id}, `${x.kurz}: Tag ${t.nr}, ${datumText(t.datum, t.wochentag)}`));
+  if (wo.childNodes.length) m.append(el("div", {class: "z klein"}, "Kommt vor in:"), wo);
+  if (a.bloecke.length) m.append(el("h3", {}, "Highlights und Praktisches"));
+  for (const b of a.bloecke) m.append(block(b, false));
+  // Abschnitte der Recherche zu diesem Ort (25.10.2026)
+  if (a.wissen) {
+    m.append(el("h3", {}, "Aus der Recherche"));
+    m.append(el("div", {class: "wliste"}, a.wissen.map(w => el("a", {class: "wzeile typ-wissen", href: "#" + w.id},
+      el("span", {class: "wsym"}, symbol("wissen")),
+      el("span", {class: "wtext"}, el("span", {class: "wt"}, w.titel),
+        el("span", {class: "wu"}, [w.in, w.notiz].filter(Boolean).join(" · ")))))));
+  }
+}
+// Kleine Lagekarte des Orts auf der Übersichtskarte, die anderen Orte als graue Punkte (25.10.2026)
+function ortKarte(m, oid) {
+  const K = R.karte, hier = K && (K.orte[oid] || {}).lage;
+  if (!hier || !window.L) return;
+  const box = el("div", {class: "kartenbox klein", role: "region", "aria-label": "Lage von " + ortName(oid)});
+  m.append(box);
+  const rf = K.rahmen;
+  const karte = KARTE = L.map(box, {zoomSnap: 0.5, scrollWheelZoom: false, dragging: !L.Browser.mobile, tap: false, zoomControl: true,
+    attributionControl: !!(K.namensnennung || K.quelle), maxBounds: L.latLngBounds([rf.sued, rf.west], [rf.nord, rf.ost]).pad(0.15)});
+  if (K.namensnennung || K.quelle) karte.attributionControl.setPrefix(false).addAttribution(K.namensnennung || K.quelle);
+  const osm = !!(K.grundkarte && window.protomapsL);
+  if (osm) protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: "de", maxDataZoom: 15, attribution: ""}).addTo(karte);
+  else for (const poly of [K.kueste, ...(K.inseln || [])]) L.polygon(poly, {className: "rh-land", weight: 1.2, fillOpacity: 1, interactive: false}).addTo(karte);
+  for (const [id, o] of Object.entries(K.orte)) {
+    if (id === oid || !o.lage || !ortAbschnitt(id)) continue;
+    const mk = L.marker(o.lage, {icon: L.divIcon({className: "rh-ort rh-punkt", iconSize: [18, 18]}), title: ortName(id), keyboard: false}).addTo(karte);
+    mk.bindTooltip(o.name || ortName(id), {direction: "right", className: "rh-lbl klein"});
+    mk.on("click", () => { location.hash = id; });
+  }
+  L.marker(hier, {icon: L.divIcon({className: "rh-ort rh-hier", iconSize: [26, 26]}), interactive: false, keyboard: false}).addTo(karte)
+    .bindTooltip(K.orte[oid].name || ortName(oid), {permanent: true, direction: "right", className: "rh-lbl"});
+  karte.setView(hier, 6);
+}
+
+function ansichtEtappen(m) {
+  m.append(el("h2", {}, "Etappen"));
+  for (const u of abschnitte.filter(x => x.typ === "uebersicht"))
+    m.append(el("details", {class: "block"}, el("summary", {}, u.titel, zid(u.id)),
+      el("div", {class: "inhalt", html: u.intro + u.bloecke.map(b => b.html).join("")})));
+  const et = abschnitte.filter(x => x.typ === "etappe");
+  for (const a of et.filter(x => !x.nebenroute)) m.append(abschnittKarte(a));
+  const neben = et.filter(x => x.nebenroute);
+  if (neben.length) {
+    const d = el("details", {class: "neben", id: "nebenrouten"}, el("summary", {}, `Nebenrouten (${neben.length}) – nicht im Plan`));
+    for (const a of neben) d.append(abschnittKarte(a));
+    m.append(d);
+  }
+}
+
+// Reiter Wissen: Wissen, Praxis und Quellen als Listen; jede Zeile mit Symbol und den Themen darin
+function ansichtWissen(m) {
+  m.append(el("h2", {}, G.wissen));
+  let leer = true;
+  for (const [typ, titel, anker] of [["wissen", "Hintergrund", "wissen-liste"], ["praxis", G.praxis, "praxis"], ["quelle", G.quelle, "quellen"]]) {
+    const l = abschnitte.filter(x => x.typ === typ);
+    if (!l.length) continue;
+    leer = false;
+    m.append(el("h3", {class: "gruppe ziel", id: anker}, typ === "wissen" && G.wissen !== "Wissen" ? G.wissen : titel));
+    m.append(el("div", {class: "wliste"}, l.map(wissenZeile)));
+  }
+  // Orte: die aus der Recherche ohne Plan sichtbar, alle Orte zum Aufklappen (25.10.2026)
+  const orte = abschnitte.filter(x => x.typ === "ort" && x.wissen);
+  if (TIEFE && orte.length) {
+    leer = false;
+    const zeile = a => { const pl = ortPlaene(a.id);
+      return el("a", {class: "wzeile typ-wissen", href: "#" + a.id}, el("span", {class: "wsym"}, symbol("karte")),
+        el("span", {class: "wtext"}, el("span", {class: "wt"}, a.titel), el("span", {class: "wu"},
+          [pl.length ? "in " + pl.map(p => p.kurz).join(", ") : "in keinem Plan", a.wissen ? `${a.wissen.length} ${a.wissen.length === 1 ? "Abschnitt" : "Abschnitte"} der Recherche` : ""].filter(Boolean).join(" · "))),
+        zid(a.id)); };
+    const alle = abschnitte.filter(x => x.typ === "ort").sort((a, b) => a.titel.localeCompare(b.titel, "de"));
+    m.append(el("h3", {class: "gruppe ziel", id: "orte"}, "Orte"));
+    m.append(el("p", {class: "meldung"}, "Orte, die nur in der Recherche vorkommen. Jede Ortsseite zeigt die passenden Abschnitte der Recherche."));
+    m.append(el("div", {class: "wliste"}, orte.filter(a => !ortPlaene(a.id).length).map(zeile)));
+    m.append(el("details", {class: "block"}, el("summary", {}, `Alle Orte (${alle.length})`), el("div", {class: "wliste"}, alle.map(zeile))));
+  }
+  // Plan entschieden: Etappen, die nicht im Plan stehen, als „Weitere Wege“ (die Plan-Etappen stehen am Tag)
+  if (!ETAPPEN_REITER && hat("etappe")) {
+    const weitere = abschnitte.filter(x => x.typ === "etappe" && !ETAPPE_TAG.has(x.id));
+    const ueb = abschnitte.filter(x => x.typ === "uebersicht");
+    if (weitere.length || ueb.length) {
+      leer = false;
+      m.append(el("h3", {class: "gruppe ziel", id: "weitere-wege"}, "Weitere Wege"));
+      m.append(el("p", {class: "meldung"}, "Etappen, die nicht im gewählten Plan stehen. Die Etappen des Plans stehen jeweils beim Tag."));
+      for (const u of ueb) m.append(el("details", {class: "block"}, el("summary", {}, u.titel, zid(u.id)),
+        el("div", {class: "inhalt", html: u.intro + u.bloecke.map(b => b.html).join("")})));
+      for (const a of weitere) m.append(abschnittKarte(a));
+    }
+  }
+  if (leer) m.append(el("div", {class: "leer"}, "Hier ist noch nichts."));
+}
+const SYM_TYP = {wissen: "wissen", praxis: "praxis", quelle: "quellen"};
+// Themen eines Abschnitts in einer Zeile: Titel der Unterabschnitte ohne Seitenangaben, sonst der erste Satz
+function wissenThemen(a) {
+  const ohne = t => t.replace(/\s*\((Buch )?S\.[^)]*\)/g, "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+  const b = a.bloecke.map(x => ohne(x.titel)).filter(t => t && !/^(überblick|einleitung)$/i.test(t));
+  if (b.length) return b.slice(0, 4).join(" · ") + (b.length > 4 ? ` und ${b.length - 4} weitere` : "");
+  const t = document.createElement("div"); t.innerHTML = a.intro || "";
+  const text = t.textContent.replace(/\s*\([^)]*\)/g, "").trim();   // Klammern (Seitenangaben) vor dem Satzende entfernen
+  const satz = (text.match(/^.*?[.!?](?=\s|$)/) || [text])[0];
+  return satz.replace(/[.!?]$/, "").slice(0, 140);
+}
+function wissenZeile(a) {
+  const th = wissenThemen(a);
+  return el("a", {class: "wzeile typ-" + a.typ, href: "#" + a.id},
+    el("span", {class: "wsym"}, symbol(SYM_TYP[a.typ] || "wissen")),
+    el("span", {class: "wtext"}, el("span", {class: "wt"}, a.titel), th ? el("span", {class: "wu"}, th) : null),
+    zid(a.id));
+}
+function ansichtOffen(m) {
+  const a = el("section", {class: "ziel", id: "aufgaben"}); ansichtAufgaben(a); m.append(a);
+  ansichtFragen(m);
+  const r = el("section", {class: "ziel", id: "rueckmeldungen"}); ansichtRueckmeldungen(r); m.append(r);
+}
+
+function ansichtGruppe(m, typ, titel) {
+  m.append(el("h2", {}, titel));
+  const liste = abschnitte.filter(x => x.typ === typ);
+  if (!liste.length) m.append(el("div", {class: "leer"}, "Hier ist noch nichts."));
+  for (const a of liste) m.append(abschnittKarte(a));
+}
+
+function ansichtAbschnitt(m, a) {
+  const zurueck = TYP_REITER[a.typ] || "plan";
+  m.append(el("a", {class: "zurueck", href: "#" + zurueck}, "← zurück"));
+  if (a.typ === "etappe") {
+    m.append(el("h2", {class: "ziel", id: a.id, "data-ziel": a.id}, a.titel, zid(a.id)));
+    const s = etappeTeil(a, false);
+    s.querySelector("section").removeAttribute("id");
+    m.append(s);
+  } else m.append(abschnittInhalt(a));
+}
+
+/* ---------- Suche ---------- */
+let index = null;
+function indexBauen() {
+  index = [];
+  const add = (id, titel, ort, text) => index.push({id, titel, ort, text, nt: norm(titel), nx: norm(text)});
+  for (const a of abschnitte) {
+    add(a.id, a.titel, "", klartext(a.intro || ""));
+    for (const b of a.bloecke) add(b.id, b.titel, a.titel, klartext(b.html));
+    if (a.tabelle) for (const z of a.tabelle.zeilen) add(z.id, z.zellen.slice(0, 2).join(" "), a.titel, z.zellen.join(" · "));
+  }
+  for (const z of D.fragen.zeilen) add(z.id, z.zellen[0], "Offene Fragen", z.zellen.join(" · "));
+  if (R) {
+    for (const t of R.tage) add(t.id, `Tag ${t.nr} · ${t.titel}`, "Tagesplan",
+      [t.text, ...t.strecken.map(s => (R.strecken[s.id] || {}).titel), t.nacht && ortName(t.nacht.ort)].filter(Boolean).join(" · "));
+    for (const [id, u] of Object.entries(R.unterkuenfte)) add(id, u.name, "Unterkünfte", [u.typ, ortName(u.ort), u.kontakt, u.hinweis, ...Object.values(u.merkmale || {}).map(v => v.wert)].filter(Boolean).join(" · "));
+    for (const p of R.plaene) add(p.id, `${p.kurz}: ${p.titel}`, "Varianten", [...p.plus, ...p.minus].join(" · "));
+    for (const w of R.wahlstellen) {
+      add(w.id, w.titel, "Entscheidungen", w.text || "");
+      for (const o of w.optionen) add(o.id, o.titel, w.titel, [STATUS_TEXT[o.status], o.text, o.ausloeser, ...Object.values(o.merkmale || {}).map(v => v.wert)].filter(Boolean).join(" · "));
+    }
+  }
+}
+
+function markiert(text, begriffe, laenge) {
+  const n = norm(text);
+  let pos = -1;
+  for (const b of begriffe) { const p = n.indexOf(b); if (p >= 0 && (pos < 0 || p < pos)) pos = p; }
+  let von = Math.max(0, pos - 40), bis = Math.min(text.length, von + laenge);
+  const stueck = text.slice(von, bis), ns = n.slice(von, bis);
+  const treffer = [];
+  for (const b of begriffe) for (let i = ns.indexOf(b); i >= 0; i = ns.indexOf(b, i + b.length)) treffer.push([i, i + b.length]);
+  treffer.sort((x, y) => x[0] - y[0]);
+  const out = el("span", {}, von > 0 ? "…" : "");
+  let c = 0;
+  for (const [s, e] of treffer) {
+    if (s < c) continue;
+    out.append(stueck.slice(c, s), el("mark", {}, stueck.slice(s, e)));
+    c = e;
+  }
+  out.append(stueck.slice(c), bis < text.length ? "…" : "");
+  return out;
+}
+
+function ansichtSuche(m, q) {
+  if (!index) indexBauen();
+  const begriffe = norm(q).split(/\s+/).filter(Boolean);
+  const treffer = index.filter(e => begriffe.every(b => e.nt.includes(b) || e.nx.includes(b)));
+  treffer.sort((x, y) => begriffe.every(b => y.nt.includes(b)) - begriffe.every(b => x.nt.includes(b)));
+  m.append(el("h2", {}, treffer.length ? `${treffer.length} Treffer` : "Keine Treffer"));
+  if (!treffer.length) m.append(el("div", {class: "leer"}, "Tipp: weniger oder kürzere Wörter versuchen."));
+  for (const e of treffer.slice(0, 40)) {
+    m.append(el("a", {class: "karte treffer", href: "#" + e.id},
+      el("div", {class: "k"}, e.titel, zid(e.id)),
+      e.ort ? el("div", {class: "in"}, e.ort) : null,
+      el("div", {class: "s"}, markiert(e.text || e.titel, begriffe, 140))));
+  }
+  if (treffer.length > 40) m.append(el("div", {class: "leer"}, "Weitere Treffer: Suche verfeinern."));
+}
+
+/* ---------- Rückmeldungen ----------
+   Vorbild flash-u_ontologie: Der Rückmeldedienst liegt unter api/ neben der Seite. Ist er nicht
+   erreichbar (offline, lokal geöffnet), sammelt der Browser die Rückmeldungen in einem Ausgang
+   (localStorage) und reicht sie beim nächsten Kontakt nach. Der Dienst erkennt doppelt Gesendetes. */
+const API = "api/rueckmeldungen";
+const SP = "rh-" + D.reise.pfad + "-";
+function lies(k, def) { try { return JSON.parse(localStorage.getItem(SP + k)) ?? def; } catch (e) { return def; } }
+function merke(k, v) { try { localStorage.setItem(SP + k, JSON.stringify(v)); } catch (e) {} }
+let RM = lies("zwischenstand", []);   // letzte Antwort des Dienstes (offline lesbar)
+let AUSGANG = lies("ausgang", []);    // noch nicht angekommen
+let MEINE = new Set(lies("meine", [])); // in diesem Browser geschrieben (zurückziehen erlaubt)
+let NAME = (() => { try { return localStorage.getItem("rh-name") || ""; } catch (e) { return ""; } })();
+let API_OK = null;
+const ART_STANDARD = id => /^F-/.test(id) ? "Antwort" : "Kommentar";
+const RM_STATUS = {neu: "neu", uebernommen: "übernommen", verworfen: "verworfen", rueckfrage: "Rückfrage", ausstehend: "noch nicht gesendet"};
+const WU_STATUS = {...RM_STATUS, uebernommen: "aufgenommen", verworfen: "passt nicht"};
+// Wünsche stehen im eigenen Reiter, nicht noch einmal unter „Rückmeldungen“
+const istWunsch = e => WUENSCHE && e.art === "Wunsch";
+
+function rmZu(id) { return [...AUSGANG.filter(e => e.ziel === id), ...RM.filter(e => e.ziel === id)]; }
+let TITEL = null;
+function titelZu(id) {
+  if (!TITEL) { if (!index) indexBauen(); TITEL = new Map(index.map(e => [e.id, e.titel])); }
+  return TITEL.get(id) || (id === "allgemein" ? "Allgemein zur Reise" : id === "wuensche" ? "Wunschliste" : "");
+}
+
+async function rmLaden() {
+  try {
+    const r = await fetch(API, {cache: "no-store"});
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    if (!Array.isArray(d)) throw 0;
+    RM = d; API_OK = true; merke("zwischenstand", RM);
+  } catch (e) { API_OK = false; }
+  if (API_OK && AUSGANG.length) await ausgangSenden();
+  rmKnopf();
+}
+
+async function senden(e) {
+  const r = await fetch(API, {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({name: e.name, art: e.art, ziel: e.ziel, text: e.text, quelle: e.quelle || ""})});
+  if (r.status === 400 || r.status === 413) { const f = await r.json().catch(() => ({})); throw {abgelehnt: f.fehler || "abgelehnt"}; }
+  if (!r.ok) throw {netz: true};
+  return r.json();
+}
+
+async function ausgangSenden() {
+  const rest = [];
+  for (const e of AUSGANG) {
+    try { const neu = await senden(e); MEINE.add(neu.id); RM = [neu, ...RM.filter(x => x.id !== neu.id)]; }
+    catch (f) { if (f && f.abgelehnt) continue; rest.push(e); API_OK = false; }
+  }
+  AUSGANG = rest; merke("ausgang", AUSGANG); merke("meine", [...MEINE]); merke("zwischenstand", RM);
+}
+
+function rmKnopf() { offenZahl(); }
+
+function rmEintrag(e, mitZiel) {
+  const st = e.status || "ausstehend";
+  const d = el("div", {class: "rmeintrag"});
+  d.append(el("div", {class: "kopfzeile"},
+    el("span", {class: "chip st-" + st}, (e.art === "Wunsch" ? WU_STATUS : RM_STATUS)[st] || st), " ",
+    `${e.name || "?"} · ${e.art === "Wunsch" ? "" : e.art + " · "}${(e.erstellt || "").slice(0, 10).split("-").reverse().join(".")}`,
+    mitZiel ? [" · ", el("a", {href: "#" + e.ziel}, e.ziel + (titelZu(e.ziel) ? " " + titelZu(e.ziel) : ""))] : ""));
+  d.append(el("div", {class: "text"}, e.text));
+  if (e.quelle) d.append(el("div", {class: "kopfzeile"}, "Quelle: " + e.quelle));
+  if (e.kommentar) d.append(el("div", {class: "antwort"}, el("b", {}, "Claude: "), e.kommentar));
+  if (st === "neu" && MEINE.has(e.id)) d.append(el("button", {type: "button", class: "outline klein", "data-zurueck": e.id}, "Zurückziehen"));
+  if (st === "ausstehend") d.append(el("button", {type: "button", class: "outline klein", "data-verwerfen": e.lokal}, "Nicht senden"));
+  return d;
+}
+
+function rmFormular(id) {
+  const dlg = $("#rm");
+  const liste = rmZu(id);
+  const titel = titelZu(id);
+  const arten = ["Kommentar", "Frage", "Korrektur", "Ergänzung", "Antwort"];
+  const sel = el("select", {id: "rmArt"}, arten.map(a => el("option", {value: a, selected: a === ART_STANDARD(id)}, a)));
+  dlg.replaceChildren(
+    el("div", {class: "rmkopf"},
+      el("div", {}, el("div", {class: "k"}, (id === "allgemein" ? "Allgemein" : "Zu " + id)), titel ? el("div", {class: "meldung"}, titel) : null),
+      el("button", {type: "button", class: "outline klein", "data-schliessen": "1"}, "Schließen")),
+    el("div", {class: "rminhalt"},
+      el("h4", {}, "Aufgaben"),
+      el("div", {}, agZu(id).sort(agSortierung).map(a => agEintrag(a))),
+      el("button", {type: "button", class: "outline klein", "data-ag-neu": id}, "+ Aufgabe"),
+      el("h4", {}, "Rückmeldungen"),
+      liste.length ? el("div", {}, liste.map(e => rmEintrag(e))) : null,
+      el("form", {id: "rmForm"},
+        el("label", {for: "rmArt"}, "Art"), sel,
+        el("label", {for: "rmText"}, "Text"),
+        el("textarea", {id: "rmText", required: true, maxlength: 4000,
+          placeholder: "Was soll ergänzt, geändert oder geklärt werden?"}),
+        el("label", {for: "rmQuelle"}, "Quelle (optional, z. B. Link)"),
+        el("input", {id: "rmQuelle", maxlength: 300, autocomplete: "off"}),
+        el("label", {for: "rmName"}, "Dein Name"),
+        el("input", {id: "rmName", required: true, maxlength: 80, value: NAME, autocomplete: "name"}),
+        el("p", {class: "meldung", id: "rmMeldung"},
+          API_OK === false ? "Gerade keine Verbindung: Die Rückmeldung wird hier gespeichert und später gesendet." :
+          "Geht an Claude Code, meist innerhalb einer Stunde eingearbeitet. Der Stand erscheint hier und unter „Rückmeldungen“."),
+        el("button", {type: "submit", class: ""}, "Senden"))));
+  dlg.dataset.ziel = id;
+  dlg.dataset.ag = "";
+  if (!dlg.open) dlg.showModal();
+  if (!liste.length && !agZu(id).length) { if (!NAME) $("#rmName").focus(); else $("#rmText").focus(); }
+}
+
+// Senden oder ohne Netz in den Ausgang legen. -> Fehlertext, wenn der Dienst ablehnt, sonst null
+async function rmSpeichern(name, art, ziel, text, quelle) {
+  NAME = name; try { localStorage.setItem("rh-name", NAME); } catch (e) {}
+  const e = {name, art, ziel, text, quelle,
+    erstellt: new Date().toISOString(), lokal: Date.now() + "-" + Math.random().toString(16).slice(2, 6)};
+  try {
+    const neu = await senden(e);
+    MEINE.add(neu.id); RM = [neu, ...RM.filter(x => x.id !== neu.id)];
+    API_OK = true; merke("meine", [...MEINE]); merke("zwischenstand", RM);
+  } catch (f) {
+    if (f && f.abgelehnt) return f.abgelehnt;
+    API_OK = false; AUSGANG.push(e); merke("ausgang", AUSGANG);
+  }
+  return null;
+}
+
+async function rmAbschicken() {
+  const ziel = $("#rm").dataset.ziel;
+  const text = $("#rmText").value.trim(), name = $("#rmName").value.trim();
+  if (!text || !name) return;
+  const fehler = await rmSpeichern(name, $("#rmArt").value, ziel, text, $("#rmQuelle").value.trim());
+  if (fehler) { $("#rmMeldung").textContent = "Nicht angenommen: " + fehler; return; }
+  rmKnopf(); route(true); rmFormular(ziel);
+  $("#rmMeldung").textContent = API_OK ? "Danke, angekommen." : "Gespeichert. Wird gesendet, sobald wieder Verbindung besteht.";
+}
+
+async function rmZurueckziehen(rid) {
+  if (!confirm("Diese Rückmeldung zurückziehen?")) return;
+  try {
+    const r = await fetch(API + "/" + encodeURIComponent(rid), {method: "DELETE"});
+    if (r.status === 409) { alert("Schon bearbeitet, kann nicht mehr zurückgezogen werden."); return; }
+    if (!r.ok && r.status !== 404) throw 0;
+    RM = RM.filter(e => e.id !== rid); merke("zwischenstand", RM);
+  } catch (e) { alert("Gerade keine Verbindung. Bitte später noch einmal."); return; }
+  rmNeuZeichnen();
+}
+
+function rmNeuZeichnen() {
+  rmKnopf(); agKnopf(); route(true);
+  const dlg = $("#rm");
+  if (dlg.open && dlg.dataset.ag) agFormular(dlg.dataset.ag, [], dlg.dataset.ziel);
+  else if (dlg.open) rmFormular(dlg.dataset.ziel);
+}
+
+function ansichtRueckmeldungen(m) {
+  m.append(el("h2", {}, "Rückmeldungen"));
+  m.append(el("p", {class: "meldung"}, "Zu jedem Eintrag mit Nummer (z. B. T-01) kann man über das 💬 an der Nummer etwas anmerken, fragen oder korrigieren. Claude Code prüft jede Rückmeldung, arbeitet sie ein (meist innerhalb einer Stunde) und schreibt hier dazu, was daraus geworden ist."));
+  m.append(el("button", {type: "button", class: "outline", "data-rm": "allgemein"}, "Allgemeine Rückmeldung zur Reise"));
+  if (API_OK === false) m.append(el("p", {class: "meldung"}, "Gerade keine Verbindung zum Rückmeldedienst – angezeigt wird der zuletzt geladene Stand."));
+  if (AUSGANG.length) {
+    m.append(el("h3", {}, `Noch nicht gesendet (${AUSGANG.length})`));
+    m.append(el("button", {type: "button", class: "klein", "data-nachreichen": "1"}, "Jetzt senden"));
+    for (const e of AUSGANG) m.append(rmEintrag(e, true));
+  }
+  const gruppen = [["Neu", e => e.status === "neu"], ["Rückfrage", e => e.status === "rueckfrage"],
+    ["Erledigt", e => e.status === "uebernommen" || e.status === "verworfen"]];
+  for (const [t, f] of gruppen) {
+    const l = RM.filter(e => f(e) && !istWunsch(e));
+    if (!l.length) continue;
+    m.append(el("h3", {}, `${t} (${l.length})`));
+    for (const e of l) m.append(rmEintrag(e, true));
+  }
+  if (!RM.some(e => !istWunsch(e)) && !AUSGANG.length) m.append(el("div", {class: "leer"}, "Noch keine Rückmeldungen."));
+}
+
+/* ---------- Wünsche (25.10.2026) ----------
+   Ideen der Mitreisenden ohne feste Stelle: ein Ort, ein Erlebnis, ein Essen. Technisch Rückmeldungen
+   der Art „Wunsch“ mit Ziel „wuensche“; Senden, Ausgang ohne Netz und Status wie bei Rückmeldungen. */
+// Entwurf übersteht das Neuzeichnen der Seite (z. B. wenn im Hintergrund neue Daten ankommen)
+let WU_ENTWURF = {text: "", quelle: ""};
+function ansichtWuensche(m) {
+  m.append(el("h2", {}, "Wünsche"));
+  m.append(el("p", {}, "Was möchtest du auf dieser Reise erleben? Ein Ort, ein Erlebnis, ein Essen – auch eine vage Idee ist willkommen. " +
+    "Claude Code prüft jeden Wunsch, meist innerhalb einer Stunde, ob und wo er in die Reise passt, und schreibt hier dazu, was daraus geworden ist."));
+  m.append(el("form", {id: "wuForm"},
+    el("label", {for: "wuText"}, "Dein Wunsch"),
+    el("textarea", {id: "wuText", required: true, maxlength: 4000,
+      placeholder: "z. B. einmal in einem Ryokan mit eigenem Onsen schlafen, Rehe in Nara, ein Ramen-Laden, den Freunde empfohlen haben …"}, WU_ENTWURF.text),
+    el("label", {for: "wuQuelle"}, "Link (optional, z. B. Instagram, Webseite, Karte)"),
+    el("input", {id: "wuQuelle", maxlength: 300, autocomplete: "off", inputmode: "url", value: WU_ENTWURF.quelle}),
+    el("label", {for: "wuName"}, "Dein Name"),
+    el("input", {id: "wuName", required: true, maxlength: 80, value: NAME, autocomplete: "name"}),
+    el("p", {class: "meldung", id: "wuMeldung"}, API_OK === false ? "Gerade keine Verbindung: Der Wunsch wird hier gespeichert und später gesendet." : ""),
+    el("button", {type: "submit"}, "Wunsch senden")));
+  const alle = [...AUSGANG.filter(e => e.art === "Wunsch"), ...RM.filter(e => e.art === "Wunsch")];
+  const gruppen = [["Noch nicht gesendet", e => !e.status], ["Neu – wird geprüft", e => e.status === "neu"],
+    ["Rückfrage", e => e.status === "rueckfrage"], ["Aufgenommen", e => e.status === "uebernommen"],
+    ["Passt nicht", e => e.status === "verworfen"]];
+  for (const [t, f] of gruppen) {
+    const l = alle.filter(f);
+    if (!l.length) continue;
+    m.append(el("h3", {}, `${t} (${l.length})`));
+    if (!l[0].status) m.append(el("button", {type: "button", class: "klein", "data-nachreichen": "1"}, "Jetzt senden"));
+    for (const e of l) m.append(rmEintrag(e));
+  }
+  if (!alle.length) m.append(el("div", {class: "leer"}, "Noch keine Wünsche. Der erste kann von dir sein."));
+}
+
+async function wuAbschicken() {
+  const text = $("#wuText").value.trim(), name = $("#wuName").value.trim();
+  if (!text || !name) return;
+  const fehler = await rmSpeichern(name, "Wunsch", "wuensche", text, $("#wuQuelle").value.trim());
+  if (fehler) { $("#wuMeldung").textContent = "Nicht angenommen: " + fehler; return; }
+  WU_ENTWURF = {text: "", quelle: ""};
+  rmKnopf(); route(true);
+  $("#wuMeldung").textContent = API_OK ? "Danke, dein Wunsch ist angekommen." : "Gespeichert. Wird gesendet, sobald wieder Verbindung besteht.";
+}
+document.addEventListener("submit", e => { if (e.target.id === "wuForm") { e.preventDefault(); wuAbschicken(); } });
+document.addEventListener("input", e => {
+  if (e.target.id === "wuText") WU_ENTWURF.text = e.target.value;
+  if (e.target.id === "wuQuelle") WU_ENTWURF.quelle = e.target.value;
+});
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-rm]");
+  if (b) { e.preventDefault(); e.stopPropagation(); rmFormular(b.dataset.rm); return; }
+  if (e.target.closest("[data-schliessen]")) { $("#rm").close(); return; }
+  const z = e.target.closest("[data-zurueck]");
+  if (z) { rmZurueckziehen(z.dataset.zurueck); return; }
+  const v = e.target.closest("[data-verwerfen]");
+  if (v) { if (confirm("Diese Rückmeldung nicht senden?")) { AUSGANG = AUSGANG.filter(x => x.lokal !== v.dataset.verwerfen); merke("ausgang", AUSGANG); rmNeuZeichnen(); } return; }
+  if (e.target.closest("[data-nachreichen]")) { ausgangSenden().then(rmNeuZeichnen); return; }
+}, true);
+$("#rm").addEventListener("submit", e => { e.preventDefault(); if (e.target.id === "agForm") agSpeichern(); else rmAbschicken(); });
+$("#rm").addEventListener("click", e => { if (e.target === $("#rm")) $("#rm").close(); });
+window.addEventListener("online", () => rmLaden().then(rmNeuZeichnen));
+
+/* ---------- Aufgaben (AG-…, 24.10.2026) ----------
+   Hängen an einer oder mehreren IDs. Alle dürfen sie sofort anlegen, ändern und abhaken; der Dienst
+   führt den Verlauf (wer, wann, was). Gelöscht wird nie: nicht mehr Nötiges „entfällt“. Ohne Netz
+   zeigt die Seite den zuletzt geladenen Stand; Änderungen gehen dann nicht (kein Ausgang wie bei
+   Rückmeldungen, weil sich gleichzeitige Änderungen sonst still überschreiben könnten). */
+const AG_API = "api/aufgaben";
+let AG = lies("aufgaben", []);
+let AG_OK = null;
+let AG_FILTER = "alle";
+const AG_STATUS = {offen: "offen", in_arbeit: "in Arbeit", erledigt: "erledigt", entfaellt: "entfällt"};
+const AG_PRIO = ["hoch", "normal", "niedrig"];
+const AG_FELD = {titel: "Titel", bezug: "Bezug", zustaendig: "Zuständig", prioritaet: "Priorität", ab: "Ab", frist: "Frist", notiz: "Notiz", status: "Status"};
+function agWert(k, v) {
+  if (v == null || v === "" || (Array.isArray(v) && !v.length)) return "–";
+  if (k === "status") return AG_STATUS[v] || v;
+  if (k === "ab" || k === "frist") return v.split("-").reverse().join(".");
+  if (k === "notiz") return v.length > 60 ? v.slice(0, 60) + "…" : v;
+  return [].concat(v).join(", ");
+}
+const agOffen = a => a.status === "offen" || a.status === "in_arbeit";
+function heute() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+const ueberfaellig = a => agOffen(a) && a.frist && a.frist < heute();
+const spaeter = a => agOffen(a) && a.ab && a.ab > heute();
+function agZu(id) { return AG.filter(a => (a.bezug || []).includes(id)); }
+function agSortierung(a, b) {
+  const s = x => Object.keys(AG_STATUS).indexOf(x.status), p = x => AG_PRIO.indexOf(x.prioritaet || "normal");
+  return s(a) - s(b) || p(a) - p(b) || (a.frist || "9999").localeCompare(b.frist || "9999") || a.id.localeCompare(b.id, "de", {numeric: true});
+}
+function tagMonat(iso) { const [j, m, d] = iso.split("-"); return `${+d}.${+m}.${j === String(new Date().getFullYear()) ? "" : j}`; }
+
+async function agLaden() {
+  try {
+    const r = await fetch(AG_API, {cache: "no-store"});
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    if (!Array.isArray(d)) throw 0;
+    AG = d; AG_OK = true; merke("aufgaben", AG);
+  } catch (e) { AG_OK = false; }
+  agKnopf();
+}
+
+async function agSenden(methode, url, body) {
+  let r;
+  try {
+    r = await fetch(url, {method: methode, headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  } catch (e) { throw "Gerade keine Verbindung. Aufgaben lassen sich nur mit Netz ändern."; }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw r.status >= 500 || r.status === 404 && !d.fehler ? "Dienst gerade nicht erreichbar." : (d.fehler || "abgelehnt");
+  AG = [...AG.filter(a => a.id !== d.id), d].sort((a, b) => a.id.localeCompare(b.id, "de", {numeric: true}));
+  AG_OK = true; merke("aufgaben", AG);
+  return d;
+}
+
+function nameHolen() {
+  if (NAME) return NAME;
+  const n = (prompt("Dein Vorname (steht im Verlauf der Aufgabe):") || "").trim().slice(0, 80);
+  if (n) { NAME = n; try { localStorage.setItem("rh-name", NAME); } catch (e) {} }
+  return n;
+}
+
+function agKnopf() { offenZahl(); }
+
+function agEintrag(a, mitBezug) {
+  const zu = !agOffen(a);
+  const d = el("div", {class: "rmeintrag ag" + (zu ? " zu" : "")});
+  d.append(el("button", {type: "button", class: "haken" + (a.status === "erledigt" ? " an" : ""), "data-ag-haken": a.id,
+    "aria-label": a.status === "erledigt" ? `${a.id} wieder öffnen` : `${a.id} abhaken`}, a.status === "erledigt" ? "✓" : ""));
+  const t = el("div", {class: "ag-text"});
+  t.append(el("div", {}, el("span", {class: "titel"}, a.titel), " ", el("span", {class: "zid"}, a.id)));
+  const c = el("div", {class: "chips"});
+  if (a.status === "in_arbeit" || a.status === "entfaellt") c.append(el("span", {class: "chip ag-leise"}, AG_STATUS[a.status]));
+  if (a.prioritaet === "hoch") c.append(el("span", {class: "chip ag-hoch"}, "wichtig"));
+  if (a.prioritaet === "niedrig") c.append(el("span", {class: "chip ag-leise"}, "kann warten"));
+  if (a.frist) c.append(el("span", {class: "chip" + (ueberfaellig(a) ? " ag-ueber" : "")}, (ueberfaellig(a) ? "überfällig seit " : "bis ") + tagMonat(a.frist)));
+  if (a.ab && agOffen(a)) c.append(el("span", {class: "chip ag-leise"}, "ab " + tagMonat(a.ab)));
+  if (a.zustaendig) c.append(el("span", {class: "chip ag-leise"}, a.zustaendig));
+  if (a.status === "erledigt" && a.erledigt) c.append(el("span", {class: "chip ag-leise"}, "erledigt " + tagMonat(a.erledigt)));
+  if (c.childNodes.length) t.append(c);
+  if (mitBezug && (a.bezug || []).length) t.append(el("div", {class: "kopfzeile"}, "an: ",
+    a.bezug.map((b, i) => [i ? ", " : "", el("a", {href: "#" + b}, b + (titelZu(b) ? " " + titelZu(b) : ""))])));
+  if (a.notiz) t.append(el("div", {class: "text"}, a.notiz));
+  t.append(el("button", {type: "button", class: "outline klein", "data-ag-edit": a.id}, "Bearbeiten"));
+  d.append(t);
+  return d;
+}
+
+function agFormular(agid, bezug, zurueck) {
+  const a = AG.find(x => x.id === agid);
+  const dlg = $("#rm");
+  const feld = (name, label, inhalt) => [el("label", {for: "ag-" + name}, label), inhalt];
+  const datum = (name, wert) => el("input", {id: "ag-" + name, type: "date", value: wert || ""});
+  const namen = [...new Set(AG.map(x => x.zustaendig).concat(RM.map(x => x.name), NAME).filter(Boolean))];
+  dlg.replaceChildren(
+    el("div", {class: "rmkopf"},
+      el("div", {}, el("div", {class: "k"}, a ? "Aufgabe " + a.id : "Neue Aufgabe"),
+        el("div", {class: "meldung"}, a ? a.titel : (bezug.length ? "an " + bezug.map(b => b + (titelZu(b) ? " " + titelZu(b) : "")).join(", ") : "allgemein zur Reise"))),
+      zurueck ? el("button", {type: "button", class: "outline klein", "data-rm": zurueck}, "Zurück") : null,
+      el("button", {type: "button", class: "outline klein", "data-schliessen": "1"}, "Schließen")),
+    el("div", {class: "rminhalt"},
+      el("form", {id: "agForm"},
+        ...feld("titel", "Was ist zu tun?", el("input", {id: "ag-titel", required: true, maxlength: 200, value: a ? a.titel : "", autocomplete: "off"})),
+        ...feld("bezug", "Gehört zu (IDs, mit Komma getrennt; leer = allgemein)",
+          el("input", {id: "ag-bezug", maxlength: 400, value: (a ? a.bezug : bezug).join(", "), autocomplete: "off", autocapitalize: "characters"})),
+        el("div", {class: "zwei"},
+          el("div", {}, ...feld("zustaendig", "Zuständig", el("input", {id: "ag-zustaendig", maxlength: 80, value: a ? a.zustaendig : "", list: "ag-namen", autocomplete: "off"}))),
+          el("div", {}, ...feld("prioritaet", "Priorität", el("select", {id: "ag-prioritaet"},
+            AG_PRIO.map(p => el("option", {value: p, selected: (a ? a.prioritaet : "normal") === p}, p))))),
+          el("div", {}, ...feld("ab", "Ab wann möglich", datum("ab", a && a.ab))),
+          el("div", {}, ...feld("frist", "Frist (erledigt bis)", datum("frist", a && a.frist)))),
+        el("datalist", {id: "ag-namen"}, namen.map(n => el("option", {value: n}))),
+        a ? feld("status", "Status", el("select", {id: "ag-status"},
+          Object.entries(AG_STATUS).map(([k, t]) => el("option", {value: k, selected: a.status === k}, t)))) : null,
+        ...feld("notiz", "Notiz (optional: Details, Link, Kontakt)", el("textarea", {id: "ag-notiz", maxlength: 2000}, a ? a.notiz : "")),
+        a ? feld("kommentar", "Kommentar für den Verlauf (optional)", el("input", {id: "ag-kommentar", maxlength: 500, autocomplete: "off",
+          placeholder: "z. B. angerufen, Rückruf am Montag"})) : null,
+        ...feld("name", "Dein Name", el("input", {id: "ag-name", required: true, maxlength: 80, value: NAME, autocomplete: "name"})),
+        el("p", {class: "meldung", id: "agMeldung"}, AG_OK === false ? "Gerade keine Verbindung: Ändern geht erst wieder mit Netz." :
+          "Gilt sofort für alle, auch in der Claude-App."),
+        el("button", {type: "submit"}, a ? "Speichern" : "Anlegen")),
+      a ? el("div", {class: "verlauf"}, el("h4", {}, "Verlauf"), a.verlauf.slice().reverse().map(v => el("div", {class: "rmeintrag"},
+        el("div", {class: "kopfzeile"}, `${(v.zeit || "").slice(0, 10).split("-").reverse().join(".")} · ${v.wer} · ${v.was}`),
+        v.felder ? el("div", {}, Object.entries(v.felder).map(([k, [alt, neu]]) => `${AG_FELD[k] || k}: ${agWert(k, alt)} → ${agWert(k, neu)}`).join("; ")) : null,
+        v.kommentar ? el("div", {class: "text"}, v.kommentar) : null))) : null));
+  dlg.dataset.ag = agid || "";
+  dlg.dataset.ziel = zurueck || "";   // leer: aus der Übersicht geöffnet, kein „Zurück“
+  if (!dlg.open) dlg.showModal();
+  if (!a) $("#ag-titel").focus();
+}
+
+async function agSpeichern() {
+  const dlg = $("#rm"), agid = dlg.dataset.ag, m = $("#agMeldung");
+  const name = $("#ag-name").value.trim();
+  if (!name) return;
+  NAME = name; try { localStorage.setItem("rh-name", NAME); } catch (e) {}
+  const body = {name, titel: $("#ag-titel").value.trim(), bezug: $("#ag-bezug").value.split(/[,\s]+/).filter(Boolean),
+    zustaendig: $("#ag-zustaendig").value.trim(), prioritaet: $("#ag-prioritaet").value,
+    ab: $("#ag-ab").value, frist: $("#ag-frist").value, notiz: $("#ag-notiz").value.trim()};
+  if (agid) { body.status = $("#ag-status").value; body.kommentar = $("#ag-kommentar").value.trim(); }
+  const fremd = body.bezug.filter(b => !titelZu(b));
+  if (fremd.length && !confirm(`Diese IDs kennt das Handbuch nicht: ${fremd.join(", ")}. Trotzdem speichern?`)) return;
+  try {
+    const a = await agSenden(agid ? "PATCH" : "POST", agid ? AG_API + "/" + encodeURIComponent(agid) : AG_API, body);
+    const zurueck = dlg.dataset.ziel;
+    agKnopf(); route(true);
+    if (zurueck && a.bezug.includes(zurueck)) rmFormular(zurueck); else agFormular(a.id, [], zurueck);
+    const ok = $("#agMeldung"); if (ok) ok.textContent = `Gespeichert als ${a.id}.`;
+  } catch (f) { m.textContent = "Nicht gespeichert: " + f; }
+}
+
+async function agHaken(agid) {
+  const a = AG.find(x => x.id === agid);
+  if (!a) return;
+  const name = nameHolen();
+  if (!name) return;
+  try { await agSenden("PATCH", AG_API + "/" + encodeURIComponent(agid), {name, status: a.status === "erledigt" ? "offen" : "erledigt"}); }
+  catch (f) { alert("Nicht gespeichert: " + f); return; }
+  rmNeuZeichnen();
+}
+
+function ansichtAufgaben(m) {
+  m.append(el("h2", {}, "Aufgaben"));
+  m.append(el("p", {class: "meldung"}, "Aufgaben hängen an einer Stelle im Handbuch (z. B. U-13 oder T-07) oder an der Reise allgemein. Alle können sie anlegen, abhaken und ändern; jede Änderung steht im Verlauf. Auch über das ☐ an jeder Nummer."));
+  m.append(el("button", {type: "button", class: "outline", "data-ag-neu": ""}, "+ Neue Aufgabe"));
+  if (AG_OK === false) m.append(el("p", {class: "meldung"}, "Gerade keine Verbindung – angezeigt wird der zuletzt geladene Stand."));
+  const f = el("div", {class: "agfilter"});
+  const filter = [["alle", "Alle"], ...(NAME ? [["meine", "Meine (" + NAME + ")"]] : []), ["ohne", "Ohne Zuständige"]];
+  if (!filter.some(([k]) => k === AG_FILTER)) AG_FILTER = "alle";
+  for (const [k, t] of filter) f.append(el("button", {type: "button", class: "outline klein" + (AG_FILTER === k ? " on" : ""), "data-ag-filter": k}, t));
+  m.append(f);
+  const passt = a => AG_FILTER === "alle" || (AG_FILTER === "meine" ? (a.zustaendig || "").toLowerCase() === NAME.toLowerCase() : !a.zustaendig);
+  const l = AG.filter(passt).sort(agSortierung);
+  const gruppen = [["Überfällig", ueberfaellig], ["Offen", a => agOffen(a) && !ueberfaellig(a) && !spaeter(a)],
+    ["Später möglich", a => spaeter(a) && !ueberfaellig(a)]];
+  for (const [t, g] of gruppen) {
+    const x = l.filter(g);
+    if (x.length) { m.append(el("h3", {}, `${t} (${x.length})`)); for (const a of x) m.append(agEintrag(a, true)); }
+  }
+  const zu = l.filter(a => !agOffen(a));
+  if (zu.length) m.append(el("details", {}, el("summary", {}, `Erledigt oder entfallen (${zu.length})`), zu.map(a => agEintrag(a, true))));
+  if (!l.length) m.append(el("div", {class: "leer"}, AG.length ? "Keine Aufgaben für diesen Filter." : "Noch keine Aufgaben."));
+}
+
+document.addEventListener("click", e => {
+  const n = e.target.closest("[data-ag-neu]");
+  if (n) { e.preventDefault(); const z = n.dataset.agNeu; agFormular(null, z && z !== "allgemein" ? [z] : [], z || null); return; }
+  const b = e.target.closest("[data-ag-edit]");
+  if (b) { e.preventDefault(); const dlg = $("#rm"); agFormular(b.dataset.agEdit, [], dlg.open && !dlg.dataset.ag ? dlg.dataset.ziel : null); return; }
+  const h = e.target.closest("[data-ag-haken]");
+  if (h) { e.preventDefault(); agHaken(h.dataset.agHaken); return; }
+  const f = e.target.closest("[data-ag-filter]");
+  if (f) { AG_FILTER = f.dataset.agFilter; route(true); }
+}, true);
+window.addEventListener("online", () => agLaden().then(rmNeuZeichnen));
+
+/* ---------- Router ---------- */
+let reiter = "plan";
+function zeigeReiter(name) {
+  reiter = name;
+  const nav = $("#nav");
+  nav.classList.toggle("viele", REITER.length > 5);
+  nav.style.flexGrow = REITER.length;   // jeder Reiter so breit wie der Suchknopf
+  nav.replaceChildren(...REITER.map(([k, t]) => el("a", {href: "#" + k, class: k === name ? "on" : false, "aria-current": k === name ? "page" : false},
+    symbol(k === "varianten" && START === "varianten" ? "karte" : k), el("span", {}, t), k === "offen" ? el("span", {class: "zahl", hidden: true}) : null)));
+  offenZahl();
+}
+// Zahl am Reiter „Offen“; Warnfarbe bei überfälligen Aufgaben oder nicht gesendeten Rückmeldungen
+function offenZahl() {
+  const k = document.querySelector('#nav a[href="#offen"]');
+  if (!k) return;
+  const z = k.querySelector(".zahl");
+  const ag = AG.filter(agOffen), ueber = ag.filter(ueberfaellig).length, aus = AUSGANG.length;
+  const n = ag.length + aus;
+  z.hidden = !n; z.textContent = n || "";
+  k.classList.toggle("warn", ueber > 0 || aus > 0);
+  const teile = [`${ag.length} Aufgaben offen`, ueber ? `${ueber} überfällig` : "", aus ? `${aus} Rückmeldungen noch nicht gesendet` : ""].filter(Boolean);
+  k.setAttribute("aria-label", "Offen: " + teile.join(", "));
+  k.title = k.getAttribute("aria-label");
+}
+
+function zumZiel(id) {
+  const e = document.getElementById(id);
+  if (!e) return;
+  for (let p = e.parentElement; p; p = p.parentElement) if (p.tagName === "DETAILS") p.open = true;
+  if (e.tagName === "DETAILS") e.open = true;
+  e.scrollIntoView({block: "start"});
+  e.classList.remove("blitz");
+  void e.offsetWidth;
+  e.classList.add("blitz");
+}
+
+function route(behalten) {
+  const q = $("#suche").value.trim();
+  const m = $("#main");
+  const y = window.scrollY;
+  if (KARTE) { KARTE.remove(); KARTE = null; }
+  for (const k of EKARTEN) { k.sicht.disconnect(); if (k.karte) k.karte.remove(); }
+  EKARTEN = [];
+  m.replaceChildren();
+  m.classList.remove("breit");
+  let ziel = null;
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (q.length >= 2) { zeigeReiter(reiter); ansichtSuche(m, q); window.scrollTo(0, 0); return; }
+  if (!h && START === "varianten") { zeigeReiter("varianten"); ansichtVarianten(m); }
+  else if (!h || h === "plan") { zeigeReiter("plan"); ansichtPlan(m); }
+  else if (h === "etappen" && ETAPPEN_REITER) { zeigeReiter("etappen"); ansichtEtappen(m); }
+  else if (h === "etappen") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "weitere-wege"; }
+  // Etappe des gewählten Plans (oder ein Block daraus): zum Tag, an dem sie gegangen wird
+  else if (ETAPPE_TAG.has(h) || (blockZu.has(h) && ETAPPE_TAG.has(blockZu.get(h).id))) {
+    zeigeReiter(TIEFE ? "varianten" : "plan"); ansichtTag(m, ETAPPE_TAG.get(ETAPPE_TAG.has(h) ? h : blockZu.get(h).id)); ziel = h; }
+  else if (!TIEFE && PLAN_FEST && PLAN_FEST.tage.some(t => t.id === h)) { zeigeReiter("plan"); ansichtTag(m, h); }
+  else if (h === "wissen") { zeigeReiter("wissen"); ansichtWissen(m); }
+  else if (h === "orte") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "orte"; }
+  else if (h === "praxis") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "praxis"; }
+  else if (h === "quellen") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "quellen"; }
+  else if (h === "offen") { zeigeReiter("offen"); ansichtOffen(m); }
+  else if (h === "wuensche" && WUENSCHE) { zeigeReiter("wuensche"); ansichtWuensche(m); }
+  else if (h === "rueckmeldungen" || h === "aufgaben" || h === "fragen") { zeigeReiter("offen"); ansichtOffen(m); ziel = h; }
+  else if (/^F-\d+$/.test(h) && zeileZu.get(h) === "fragen") { zeigeReiter("offen"); ansichtOffen(m); ziel = h; }
+  else if (h === "varianten" && HAT_VARIANTEN) { zeigeReiter("varianten"); ansichtVarianten(m); }
+  else if (TIEFE && planZu(h)) { zeigeReiter("varianten"); ansichtPlanDetail(m, planZu(h)); }
+  else if (TIEFE && tagBekannt(h)) { zeigeReiter("varianten"); ansichtTag(m, h); }
+  else if (TIEFE && ortAbschnitt(h)) { zeigeReiter("varianten"); ansichtOrt(m, ortAbschnitt(h)); }
+  else if (TIEFE && blockZu.has(h) && blockZu.get(h).typ === "ort") { zeigeReiter("varianten"); ansichtOrt(m, blockZu.get(h)); ziel = h; }
+  else if (proId.has(h)) { const a = proId.get(h); zeigeReiter(TYP_REITER[a.typ]); ansichtAbschnitt(m, a); }
+  else if (blockZu.has(h)) { const a = blockZu.get(h); zeigeReiter(TYP_REITER[a.typ]); ansichtAbschnitt(m, a); ziel = h; }
+  else if (zeileZu.get(h) === "varianten") { zeigeReiter("varianten"); ansichtVarianten(m); ziel = h; }
+  else if (zeileZu.has(h)) { zeigeReiter("plan"); ansichtPlan(m); ziel = h; }
+  else { zeigeReiter("plan"); ansichtPlan(m); }
+  m.classList.toggle("breit", reiter === "varianten");
+  if (behalten === true) window.scrollTo(0, y);
+  else if (ziel) zumZiel(ziel); else window.scrollTo(0, 0);
+}
+
+document.title = D.reise.titel;
+$("#titel").textContent = D.reise.titel;
+$("#untertitel").textContent = D.reise.untertitel;
+let wartet;
+$("#suche").addEventListener("input", () => { clearTimeout(wartet); wartet = setTimeout(route, 150); });
+$("#main").addEventListener("click", e => {
+  const a = e.target.closest("a[href^='#']");
+  if (a && document.body.classList.contains("sucht")) { $("#suche").value = ""; suche(false); }
+});
+// Suche: runder Knopf neben der Leiste öffnet das Suchfeld an ihrer Stelle; × oder Esc schließt, „/“ öffnet
+function suche(an) {
+  document.body.classList.toggle("sucht", an);
+  $("#suchfeld").hidden = !an;
+  $("#suchKnopf").setAttribute("aria-expanded", String(an));
+  if (an) $("#suche").focus();
+  else { const war = $("#suche").value; $("#suche").value = ""; if (war) route(); $("#suchKnopf").focus(); }
+}
+$("#suchKnopf").addEventListener("click", () => suche(true));
+$("#suchZu").addEventListener("click", () => suche(false));
+$("#suchfeld").addEventListener("submit", e => { e.preventDefault(); $("#suche").blur(); });
+$("#suche").addEventListener("keydown", e => { if (e.key === "Escape") suche(false); });
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && !document.body.classList.contains("sucht") && !e.target.closest("input, textarea, select, [contenteditable]") && !$("#rm").open) { e.preventDefault(); suche(true); }
+});
+window.addEventListener("hashchange", () => { if (document.body.classList.contains("sucht")) { $("#suche").value = ""; document.body.classList.remove("sucht"); $("#suchfeld").hidden = true; } route(); });
+route();
+rmKnopf();
+agKnopf();
+Promise.all([rmLaden(), agLaden()]).then(() => route(true));
+
+/* ---------- Offline (PWA, Issue #6): Service Worker sw.js im Pfad der Reise ----------
+   Neue Version wartet, bis „Aktualisieren“ getippt wird; danach einmal neu laden. */
+function netzAnzeigen() { $("#offline").hidden = navigator.onLine; }
+window.addEventListener("online", netzAnzeigen);
+window.addEventListener("offline", netzAnzeigen);
+netzAnzeigen();
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  // Neu laden nur bei einem Wechsel der Version, nicht beim ersten Besuch (da übernimmt der Worker nur die Kontrolle)
+  let neuGeladen = false, gewollt = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (neuGeladen || !gewollt) return; neuGeladen = true; location.reload();
+  });
+  // Offline-Karte und Bilder sollen nicht verdrängt werden, wenn das Telefon Platz braucht
+  if ((R && R.karte && R.karte.grundkarte || WK) && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  navigator.serviceWorker.register("sw.js").then(reg => {
+    const zeigen = () => { if (reg.waiting && navigator.serviceWorker.controller) $("#neu").hidden = false; };
+    zeigen();
+    reg.addEventListener("updatefound", () => {
+      const sw = reg.installing;
+      sw && sw.addEventListener("statechange", () => { if (sw.state === "installed") zeigen(); });
+    });
+    $("#neuLaden").addEventListener("click", () => {
+      gewollt = true;
+      if (reg.waiting) reg.waiting.postMessage({typ: "uebernehmen"}); else location.reload();
+    });
+    // Als App vom Home-Bildschirm prüft iOS selten von sich aus; beim Zurückholen selbst nachsehen.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && navigator.onLine) reg.update().catch(() => {});
+    });
+  }).catch(() => {});
+}
+</script>
+</body>
+</html>
