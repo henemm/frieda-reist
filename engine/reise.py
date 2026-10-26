@@ -35,6 +35,79 @@ PERSON_FELDER = {"name", "rolle", "reist", "notiz"}
 ALTE_ECKDATEN = ("titel", "untertitel", "pfad", "kurz")
 
 
+# ---------- Regeln, die die Maschine prüft (Paket B, docs/produkt.md) ----------
+# Verhalten je Status. schreiben: alles | nachlese (Plan gesperrt, Rückmeldungen und Aufgaben gehen) | nichts.
+VERHALTEN = {
+    "idee":      {"warnungen": False, "luecken": False, "mahnung_planung": False, "fristen": False, "start": None,
+                  "ausloeser_vor": False, "schreiben": "alles"},
+    "planung":   {"warnungen": True, "luecken": True, "mahnung_planung": False, "fristen": False, "start": None,
+                  "ausloeser_vor": False, "schreiben": "alles"},
+    "fest":      {"warnungen": True, "luecken": True, "mahnung_planung": True, "fristen": True, "start": None,
+                  "ausloeser_vor": False, "schreiben": "alles"},
+    "unterwegs": {"warnungen": True, "luecken": True, "mahnung_planung": True, "fristen": True, "start": "heute",
+                  "ausloeser_vor": True, "schreiben": "alles"},
+    "danach":    {"warnungen": True, "luecken": True, "mahnung_planung": False, "fristen": False, "start": None,
+                  "ausloeser_vor": False, "schreiben": "nachlese"},
+    "archiv":    {"warnungen": True, "luecken": True, "mahnung_planung": False, "fristen": False, "start": None,
+                  "ausloeser_vor": False, "schreiben": "nichts"},
+}
+# Schreibende Aktionen: Mindestrolle, Baustein (None: immer da) und der Grad von „schreiben“, der sie noch erlaubt.
+AKTIONEN = {
+    "rueckmeldung": {"rolle": "einbringer", "baustein": "rueckmeldungen", "ab": ("alles", "nachlese")},
+    "wunsch":       {"rolle": "einbringer", "baustein": "wuensche", "ab": ("alles",)},
+    "aufgabe":      {"rolle": "einbringer", "baustein": "aufgaben", "ab": ("alles", "nachlese")},
+    "alternative":  {"rolle": "einbringer", "baustein": "varianten", "ab": ("alles",)},
+    "auftrag":      {"rolle": "bestimmer", "baustein": None, "ab": ("alles",)},
+}
+# Lesende Konnektor-Werkzeuge, die zu einem zuschaltbaren Baustein gehören
+LESE_BAUSTEIN = {"offene_fragen": "fragen", "varianten": "varianten", "merkmale": "varianten",
+                 "aufgaben": "aufgaben", "rueckmeldungen": "rueckmeldungen"}
+ENTSCHEIDUNGEN = ("gewaehlt", "verworfen", "ersetzt")
+REISE_ZIEL = "reise"    # Aufträge an dieses Ziel (Status, Einstellungen) gehen in jedem Status
+
+
+def verhalten(status):
+    return dict(VERHALTEN.get(status) or VERHALTEN["planung"])
+
+
+def erlaubt(aktion, rolle, status, bausteine, ziel=None):
+    """Darf diese Rolle jetzt schreiben? -> (True, "") oder (False, Begründung in einfachen Worten).
+    bausteine: eingeschaltete Bausteine der Reise (None: nicht bekannt, nicht prüfen)."""
+    a = AKTIONEN[aktion]
+    if not darf(rolle, a["rolle"]):
+        return False, (f"Mit diesem Zugang kann man nur lesen (Rolle {rolle or 'unbekannt'}). Dafür braucht man die Rolle "
+                       "einbringer." if a["rolle"] == "einbringer" else "Das dürfen nur Bestimmer.")
+    if a["baustein"] and bausteine is not None and a["baustein"] not in bausteine:
+        return False, f"Der Baustein „{a['baustein']}“ ist bei dieser Reise ausgeschaltet."
+    schreiben = verhalten(status)["schreiben"]
+    if schreiben not in a["ab"] and not (aktion == "auftrag" and ziel == REISE_ZIEL):
+        grund = {"nachlese": "Die Reise ist vorbei (Status danach): Der Plan ist schreibgeschützt, nur Rückmeldungen und "
+                             "Aufgaben gehen noch.",
+                 "nichts": "Die Reise ist archiviert: Es kann nur gelesen werden."}[schreiben]
+        return False, grund + " Ein Bestimmer kann den Status zurücksetzen (Auftrag an „reise“)."
+    return True, ""
+
+
+def stelle(ziel):
+    """Wahlstelle, zu der ein Ziel gehört: V-01.a -> V-01, sonst das Ziel selbst."""
+    return str(ziel).split(".")[0]
+
+
+def widerspruch(a, b):
+    """Zwei Entscheidungen {wer, ziel, entscheidung} von verschiedenen Personen widersprechen sich, wenn sie dasselbe
+    Ziel verschieden entscheiden oder an einer Wahlstelle zwei verschiedene Optionen wählen."""
+    if a["wer"] == b["wer"] or stelle(a["ziel"]) != stelle(b["ziel"]):
+        return False
+    if a["ziel"] == b["ziel"]:
+        return a["entscheidung"] != b["entscheidung"]
+    return a["entscheidung"] == b["entscheidung"] == "gewaehlt"
+
+
+def konflikte(neu, bisherige):
+    """Entscheidungen aus bisherige, die neu widersprechen."""
+    return [b for b in bisherige if widerspruch(neu, b)]
+
+
 def darf(rolle, mindestens):
     """Rolle erreicht die Stufe? darf("bestimmer", "einbringer") -> True."""
     return rolle in ROLLEN and mindestens in ROLLEN and ROLLEN.index(rolle) >= ROLLEN.index(mindestens)
@@ -219,4 +292,5 @@ class Reise:
         d["personen"] = self.personen()
         d["bausteine"] = self.bausteine()
         d["regeln"] = self.regeln()
+        d["verhalten"] = verhalten(d["status"]["wert"])
         return d

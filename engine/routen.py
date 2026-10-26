@@ -107,6 +107,36 @@ def kennwerte(k):
             "ab": zahl(such("abstieg")), "km": zahl(such("länge", "km"))}
 
 
+def verhalten_anwenden(route, v):
+    """Status der Reise wirkt auf das fertige Routenmodell (docs/produkt.md, Paket B). v: reise.verhalten(status).
+    idee ohne Warnungen; ab fest werden offene Planungs-Wahlstellen und ungeprüfte veränderliche Angaben der aktiven
+    Optionen zur Mahnung (route["mahnungen"], Liste {bezug, text}). Der Plan bleibt vollständig, nichts wird versteckt."""
+    if not route:
+        return route
+    if not v.get("warnungen"):
+        route["warnungen"] = []
+    mahnungen = []
+    if v.get("mahnung_planung"):
+        for w in route.get("wahlstellen") or []:
+            gueltig = [o for o in w["optionen"] if o["status"] not in UNGUELTIG]
+            if w.get("art") == "planung" and w["offen"] and len(gueltig) > 1:
+                mahnungen.append({"bezug": w["id"], "text": f"{w['id']} {w['titel']}: noch offen, obwohl die Reise fest ist "
+                                  f"({len(gueltig)} Kandidaten). Bitte entscheiden."})
+            for o in w["optionen"]:
+                if o["aktiv"]:
+                    namen = {k["id"]: k["name"] for k in w["kriterien"]}
+                    ung = [namen.get(k, k) for k, m in o["merkmale"].items() if m.get("ungeprueft")]
+                    if ung:
+                        mahnungen.append({"bezug": o["id"], "text": f"{o['id']} {o['titel']}: {', '.join(ung)} "
+                                          "ohne Prüfdatum. Veränderliche Angaben bitte nachschlagen und mit Datum eintragen."})
+        for uid, u in (route.get("unterkuenfte") or {}).items():
+            ung = [k for k, m in (u.get("merkmale") or {}).items() if m.get("ungeprueft")]
+            if ung and u.get("naechte"):
+                mahnungen.append({"bezug": uid, "text": f"{uid} {u.get('name')}: {', '.join(ung)} ohne Prüfdatum."})
+    route["mahnungen"] = mahnungen
+    return route
+
+
 class Routen:
     def __init__(self, roh, etappen, fragen, fehler, id_anlegen, quelle="plan/routen.yaml", zwang=None, grund=None,
                  entscheider=None):

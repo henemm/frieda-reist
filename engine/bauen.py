@@ -36,7 +36,7 @@ except ImportError:
              "  python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt\n"
              "Danach läuft:  python3 engine/bauen.py <reise>")
 from reise import Reise  # noqa: E402
-from routen import Routen  # noqa: E402
+from routen import Routen, verhalten_anwenden  # noqa: E402
 import gpx  # noqa: E402
 
 ZIEL_ID = re.compile(r"^[A-Za-z0-9][\w.\-]{0,79}$", re.ASCII)
@@ -452,6 +452,7 @@ class Bauer:
             bestimmer = [p["name"] for p in self.eck["personen"] if p["rolle"] == "bestimmer"]
             route = Routen(roh, etappen, status, self.fehler, self.id_anlegen, r_rel,
                            entscheider=bestimmer if self.reise_roh is not None else None).bauen()
+            verhalten_anwenden(route, self.eck["verhalten"])
             for uid, u in ((route or {}).get("unterkuenfte") or {}).items():
                 if u.get("kategorie") == "sonstige":
                     self.hinweise.append(f"{uid} ({u.get('typ') or 'ohne typ'}): Kategorie unbekannt; in routen.yaml "

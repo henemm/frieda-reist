@@ -353,7 +353,8 @@ def test_aufgaben_ueber_konnektor(dienst):
     t, _ = werkzeug(basis, MITREISEND, "zeige", id="T-02")
     assert "Aufgaben hier" in t and "AG-01" in t
     t, _ = werkzeug(basis, MITREISEND, "ueberblick")
-    assert "Offene Aufgaben: 2, davon 1 überfällig" in t
+    # Fristen zählen erst ab Status fest (test_regeln.py): in der Planung steht die Zahl, aber nichts ist überfällig
+    assert "Offene Aufgaben: 2" in t and "überfällig" not in t
     t, f = werkzeug(basis, MITREISEND, "aufgabe_aendern", id="AG-01", status="erledigt", kommentar="gebucht", name="Anna")
     assert not f and "[erledigt]" in t
     t, _ = werkzeug(basis, MITREISEND, "zeige", id="AG-01")

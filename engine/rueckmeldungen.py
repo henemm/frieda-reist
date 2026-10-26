@@ -22,7 +22,7 @@ existiert (legt ops/deploy.sh an). Die Ablage liegt außerhalb des Repos und au�
 Aufrufe:
   python3 engine/rueckmeldungen.py liste <reise> [--alle]          neue (bzw. alle) zeigen, mit Aufträgen
   python3 engine/rueckmeldungen.py setze <reise> R-…|A-… STATUS [KOMMENTAR]
-        STATUS: uebernommen | verworfen | rueckfrage | neu
+        STATUS: uebernommen | verworfen | rueckfrage | konflikt | neu
   python3 engine/rueckmeldungen.py aufgaben <reise> [--alle]       offene (bzw. alle) Aufgaben zeigen
   python3 engine/rueckmeldungen.py dienst                          Dienst starten
         Umgebung: RM_ABLAGE (Standard /srv/reisehandbuch/_rueckmeldungen),
@@ -48,11 +48,15 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import reise as rg  # noqa: E402
+
 WURZEL = Path(__file__).resolve().parent.parent
 # Wunsch: Idee für die Reise (Ort, Erlebnis, Essen) ohne feste Stelle, ziel = WUNSCH_ZIEL (25.10.2026)
 ARTEN = {"Kommentar", "Frage", "Korrektur", "Ergänzung", "Antwort", "Wunsch"}
 WUNSCH_ZIEL = "wuensche"
-STATUSWERTE = {"neu", "uebernommen", "verworfen", "rueckfrage"}
+# konflikt: Entscheidung widerspricht einer anderen (reise.konflikte); wartet auf eine offene Frage, wird nicht eingearbeitet
+STATUSWERTE = {"neu", "uebernommen", "verworfen", "rueckfrage", "konflikt"}
 LAENGE = {"ziel": 80, "text": 4000, "quelle": 300, "name": 80}
 ZIEL_MUSTER = re.compile(r"^[A-Za-z0-9][\w.\-]{0,79}$", re.ASCII)
 REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
@@ -86,11 +90,74 @@ def ordner(reise):
     return p if p.is_dir() else None
 
 
+# ---------- Regeln der Reise (Rolle, Status, Bausteine) ----------
+
+def seiten():
+    return Path(os.environ.get("RM_SEITEN") or os.environ.get("KN_SEITEN") or "/srv/reisehandbuch")
+
+
+def zustand(reise):
+    """Status, Bausteine und Personen aus der veröffentlichten Seite (<seiten>/<reise>/daten.json) oder None, wenn sie
+    nicht lesbar ist (dann gelten nur die technischen Prüfungen, wie bisher)."""
+    try:
+        d = json.loads((seiten() / reise / "daten.json").read_text(encoding="utf-8"))["reise"]
+        return {"status": d["status"]["wert"], "bausteine": d["bausteine"], "personen": d["personen"]}
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def rolle_von(z, name):
+    """Rolle einer Person aus reise.yaml nach Namen. Wer auf der Seite einen unbekannten Namen eintippt, kommt über den
+    geheimen Link der Reise und gilt als Einbringer; eine bekannte Person hat die Rolle aus reise.yaml (reisend: nur lesen)."""
+    for p in (z or {}).get("personen") or []:
+        if p["name"].casefold() == (name or "").strip().casefold():
+            return p["rolle"]
+    return "einbringer"
+
+
+def schreibrecht(reise, aktion, name):
+    """Darf diese Person jetzt schreiben? -> Fehlertext oder None. Aufrufer: der HTTP-Dienst bei jedem Schreiben."""
+    z = zustand(reise)
+    if z is None:
+        return None
+    ok, grund = rg.erlaubt(aktion, rolle_von(z, name), z["status"], z["bausteine"])
+    return None if ok else grund
+
+
 def status_lesen(o):
     try:
         return json.loads((o / "status.json").read_text(encoding="utf-8"))
     except FileNotFoundError:
         return {}
+
+
+# ---------- Meldungen an Personen (Konflikte; Zustellung folgt mit Paket E) ----------
+
+def meldung_anlegen(o, an, art, ziel, text, auftraege=()):
+    """Meldung an Personen (Namen) in meldungen.jsonl. Der Konnektor zeigt sie der Person; weitere Wege folgen später."""
+    jetzt = datetime.datetime.now(datetime.timezone.utc)
+    m = {"id": f"M-{jetzt:%Y%m%d-%H%M%S}-{secrets.token_hex(2)}", "erstellt": jetzt.isoformat(timespec="seconds"),
+         "an": sorted(set(an)), "art": art, "ziel": ziel, "text": text, "auftraege": list(auftraege)}
+    with (o / "meldungen.jsonl").open("a", encoding="utf-8") as f:
+        f.write(json.dumps(m, ensure_ascii=False) + "\n")
+        f.flush()
+        os.fsync(f.fileno())
+    return m
+
+
+def meldungen(o, an=None):
+    """Meldungen, neueste zuerst; an: nur die an diese Person."""
+    p = o / "meldungen.jsonl"
+    liste = []
+    if p.exists():
+        for zeile in p.read_text(encoding="utf-8").splitlines():
+            try:
+                m = json.loads(zeile)
+            except json.JSONDecodeError:
+                continue
+            if an is None or an.casefold() in (x.casefold() for x in m.get("an", [])):
+                liste.append(m)
+    return sorted(liste, key=lambda m: m.get("erstellt", ""), reverse=True)
 
 
 def schreiben(pfad, text):
@@ -364,6 +431,8 @@ class Dienst(BaseHTTPRequestHandler):
         roh, fehlt = self._json()
         if fehlt:
             return
+        if (nein := schreibrecht(t[0].name, "aufgabe", roh.get("name") if isinstance(roh, dict) else None)):
+            return self._antwort(403, {"fehler": nein})
         with _sperre:
             if gedrosselt(t[0]):
                 return self._antwort(429, {"fehler": "zu viele Änderungen, bitte kurz warten"})
@@ -379,6 +448,8 @@ class Dienst(BaseHTTPRequestHandler):
         if fehlt:
             return
         if t[1] == "aufgaben":
+            if (nein := schreibrecht(o.name, "aufgabe", roh.get("name") if isinstance(roh, dict) else None)):
+                return self._antwort(403, {"fehler": nein})
             with _sperre:
                 if gedrosselt(o):
                     return self._antwort(429, {"fehler": "zu viele Änderungen, bitte kurz warten"})
@@ -387,6 +458,8 @@ class Dienst(BaseHTTPRequestHandler):
         e, fehler = pruefen(roh)
         if fehler:
             return self._antwort(400, {"fehler": fehler})
+        if (nein := schreibrecht(o.name, "wunsch" if e["art"] == "Wunsch" else "rueckmeldung", e["name"])):
+            return self._antwort(403, {"fehler": nein})
         with _sperre:
             grenze = (datetime.datetime.now(datetime.timezone.utc)
                       - datetime.timedelta(seconds=DOPPELT_SEKUNDEN)).isoformat(timespec="seconds")
@@ -408,6 +481,9 @@ class Dienst(BaseHTTPRequestHandler):
         if not t or t[1] != "rueckmeldungen" or not RID_MUSTER.match(t[2] or ""):
             return self._antwort(404, {"fehler": "unbekannt"})
         o, _, rid = t
+        z = zustand(o.name)
+        if z and rg.verhalten(z["status"])["schreiben"] == "nichts":
+            return self._antwort(403, {"fehler": "Die Reise ist archiviert: Es kann nur gelesen werden."})
         with _sperre:
             eingang = o / "eingang.jsonl"
             if not eingang.exists():
@@ -489,6 +565,9 @@ def liste(reise, alle):
         print(f"{e['id']}  {e['erstellt'][:16].replace('T', ' ')} UTC  {e.get('name')}  [{e['status']}]")
         if e["art"] == "Auftrag":
             print(f"  ÄNDERUNGSAUFTRAG von {e.get('name')} (Bestimmer, Claude-App) – zählt als Entscheidung:")
+        if e["status"] == "konflikt":
+            print("  KONFLIKT: widerspricht einer anderen Entscheidung. Nichts übernehmen. Offene Frage (F-…) anlegen, "
+                  "beide Seiten darin nennen, dann mit „setze … rueckfrage“ auf die Frage verweisen.")
         print(f"  {e['ziel']} ({titel.get(e['ziel'], 'ID nicht auf der Seite')}) [{e['art']}]:")
         print("    " + e["text"].replace("\n", "\n    "))
         if e.get("quelle"):
@@ -511,8 +590,9 @@ def setze(reise, rid, status, kommentar):
     print(f"{rid}: {status}" + (f" – {kommentar}" if kommentar else ""))
 
 
-def aufgaben_text(liste, titel=None):
-    """Lesbare Aufgabenliste (Kommandozeile und Konnektor). titel: ID -> Titel."""
+def aufgaben_text(liste, titel=None, fristen=True):
+    """Lesbare Aufgabenliste (Kommandozeile und Konnektor). titel: ID -> Titel. fristen: False vor dem Status „fest“,
+    dann steht die Frist da, aber nichts ist überfällig (Verhalten je Status)."""
     heute = datetime.date.today().isoformat()
     z = []
     for a in liste:
@@ -520,7 +600,7 @@ def aufgaben_text(liste, titel=None):
         if a.get("prioritaet") and a["prioritaet"] != "normal":
             teile.append(f"Priorität {a['prioritaet']}")
         if a.get("frist"):
-            teile.append(f"Frist {a['frist']}" + (" ÜBERFÄLLIG" if a["frist"] < heute and a["status"] in ("offen", "in_arbeit") else ""))
+            teile.append(f"Frist {a['frist']}" + (" ÜBERFÄLLIG" if fristen and a["frist"] < heute and a["status"] in ("offen", "in_arbeit") else ""))
         if a.get("ab"):
             teile.append(f"ab {a['ab']}")
         if a.get("zustaendig"):
@@ -550,7 +630,8 @@ def aufgaben_liste(reise, alle):
     if not es:
         print("Keine offenen Aufgaben." if not alle else "Keine Aufgaben.")
         return
-    print(aufgaben_text(es, titel_zu(reise)))
+    z = zustand(reise)
+    print(aufgaben_text(es, titel_zu(reise), rg.verhalten(z["status"])["fristen"] if z else True))
     print(f"\n{len(es)} Aufgabe(n).")
 
 
