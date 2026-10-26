@@ -9,9 +9,12 @@ Wissen) und Rückmeldungen abgeben. Ein Link gehört zu genau einer Reise und ei
   reisend      lesen
   einbringer   dazu Rückmeldungen, Wünsche, Alternativen vorschlagen (landen im Eingang wie die von der Seite),
                Aufgaben (AG-…) anlegen, ändern, abhaken – wirkt sofort, auch auf der Webseite (24.10.2026)
-  bestimmer    dazu Änderungsaufträge (24.10.2026: Ändern nur als Auftrag, Variante B; „direkt“ folgt
-               mit Paket C). Aufträge ändern nichts sofort; sie liegen in <ablage>/<reise>/auftraege.jsonl und
-               werden von Claude Code geprüft und übernommen, seit 25.10.2026 stündlich automatisch (ops/einarbeiten.sh).
+  bestimmer    dazu Änderungsaufträge, Entscheidungen (entscheiden) und Einladungen (person_einladen). Aufträge
+               ändern nichts sofort; sie liegen in <ablage>/<reise>/auftraege.jsonl und werden von Claude Code
+               geprüft und übernommen (ops/einarbeiten.sh). Eine Entscheidung wird je nach regeln.entscheidungsweg
+               sofort vom Dienst geprüft und festgehalten (direkt) oder als Auftrag in Claude Code geprüft (auftrag).
+  Paket C (26.10.2026): Einbringer beantworten Fragen (frage_beantworten); einladen darf, wer regeln.einladen
+               erlaubt (Vorgabe: Bestimmer); person_einladen legt die Person an und stellt ihren Zugang aus.
 
 Alte Links mit rolle mitreisend (vor dem 26.10.2026) gelten weiter als einbringer ohne festen Namen. Ein Link ohne Person (zugang <reise> einbringer) fragt nach dem Vornamen.
 
@@ -21,7 +24,8 @@ nur dieser Dienst.
 
 Aufrufe:
   python3 engine/konnektor.py dienst                       Dienst starten
-  python3 engine/konnektor.py zugang <reise> <person>|<rolle>      neuen geheimen Link anlegen (person aus reise.yaml)
+  python3 engine/konnektor.py zugang <reise> <person>|<rolle>      neuen geheimen Link anlegen (person aus reise.yaml
+                                                           oder eingeladen; in der App geht das mit person_einladen)
   python3 engine/konnektor.py zugaenge                     angelegte Links zeigen
         Umgebung: KN_SEITEN (Standard /srv/reisehandbuch), KN_ZUGAENGE (/srv/reisehandbuch/_konnektor/zugaenge.json),
                   KN_RUECKMELDEDIENST (http://127.0.0.1:8771), KN_HOST (127.0.0.1), KN_PORT (8772),
@@ -49,15 +53,21 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import rueckmeldungen as rm  # noqa: E402
-from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, REISE_ZIEL, ROLLEN, darf, erlaubt, konflikte,  # noqa: E402
-                   verhalten)
+from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, REISE_ZIEL, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
+                   konflikte, schluessel_aus_name, verhalten)
 
 ALTE_ROLLEN = {"mitreisend": "einbringer"}   # Links von vor dem 26.10.2026
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
-SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "alternative_vorschlagen"}
+SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "alternative_vorschlagen",
+                     "frage_beantworten", "entscheiden", "person_einladen"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe",
-                  "alternative_vorschlagen": "alternative", "auftrag_geben": "auftrag"}
+                  "alternative_vorschlagen": "alternative", "auftrag_geben": "auftrag", "entscheiden": "entscheiden",
+                  "frage_beantworten": "antwort", "person_einladen": "einladen"}
+# Werkzeuge, die zusätzlich eine zweite Aktion brauchen: eine Antwort landet als Rückmeldung (Art Antwort) im Eingang
+ZUSATZ_AKTION = {"frage_beantworten": "rueckmeldung"}
+WORT = {"gewaehlt": "gewählt", "verworfen": "verworfen", "ersetzt": "ersetzt"}
+MAX_GRUND = 500
 PROTOKOLLE = ("2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05")
 MAX_BODY = 64 * 1024
 MAX_AUFTRAG = 4000
@@ -117,10 +127,15 @@ def zugang_zu(token):
     return None
 
 
+def personen_der_reise(reise, d):
+    """Personen aus reise.yaml (veröffentlichte Seite) plus Eingeladene, die dort noch fehlen (einladungen.json)."""
+    return rm.personen_mit_einladungen(((d or {}).get("reise") or {}).get("personen") or [], rm.ordner(reise))
+
+
 def wer_spricht(zugang, d):
     """Zugang + veröffentlichte Daten -> {"rolle", "name"} (name None: im Gespräch nach dem Vornamen fragen)
     oder None, wenn der Zugang zu keiner Person der Reise mehr gehört."""
-    personen = ((d or {}).get("reise") or {}).get("personen") or []
+    personen = personen_der_reise(zugang.get("reise"), d)
     if zugang.get("person"):
         p = next((x for x in personen if x.get("schluessel") == zugang["person"]), None)
         return {"rolle": p["rolle"], "name": p["name"]} if p else None
@@ -134,10 +149,14 @@ def zustand_von(d):
     return (rs.get("status") or {}).get("wert"), rs.get("bausteine")
 
 
+def regeln_von(d):
+    return ((d or {}).get("reise") or {}).get("regeln") or {}
+
+
 def recht(rolle, d, aktion, ziel=None):
     """Regelprüfung beim Schreiben (reise.erlaubt) mit dem Stand der Reise -> Fehlertext oder None."""
     status, bausteine = zustand_von(d)
-    ok, grund = erlaubt(aktion, rolle, status or "planung", bausteine, ziel)
+    ok, grund = erlaubt(aktion, rolle, status or "planung", bausteine, ziel, regeln_von(d))
     return None if ok else grund
 
 
@@ -254,9 +273,11 @@ def datum_de(iso):
 class Handbuch:
     """Alles, was eine Reise-Seite zeigt, nach ID nachschlagbar."""
 
-    def __init__(self, d, aufgaben=None):
+    def __init__(self, d, aufgaben=None, offene_entscheidungen=None, antworten=None):
         self.d = d
         self.aufgaben = aufgaben
+        self.offene_entscheidungen = offene_entscheidungen or {}   # Option-ID -> eingetragene, noch nicht eingearbeitete Entscheidungen
+        self.antworten = antworten or {}                            # F-ID -> Antworten aus dem Eingang
         self.r = d.get("route") or {}
         rs = d.get("reise") or {}
         self.v = rs.get("verhalten") or verhalten((rs.get("status") or {}).get("wert"))
@@ -367,7 +388,16 @@ class Handbuch:
         for v in o.get("verlauf") or []:
             z.append(f"Verlauf {v.get('datum')}: {v.get('status')}" + (f" ({v['wer']})" if v.get("wer") else "")
                      + (f" – {v['grund']}" if v.get("grund") else ""))
+        z += self.offen_zeilen(o["id"])
         return "\n".join(z)
+
+    def offen_zeilen(self, oid):
+        """Entscheidungen zu dieser Option, die eingetragen, aber noch nicht in der Seite eingearbeitet sind."""
+        return [f"Eingetragen, noch nicht auf der Seite: {WORT.get(e['entscheidung'], e['entscheidung'])} von {e['wer']} "
+                f"am {datum_de(e['datum'])} ({e['auftrag']}, "
+                + ("im Gespräch geprüft" if e["weg"] == "direkt" else "als Auftrag, wird noch geprüft")
+                + (", WIDERSPRUCH – wartet auf eine offene Frage" if e["status"] == "konflikt" else "") + ")"
+                for e in self.offene_entscheidungen.get(oid, [])]
 
     def sammeln(self):
         e = self.eintraege
@@ -512,6 +542,10 @@ class Handbuch:
             return None, ("Diese ID gibt es nicht." + (f" Meinst du: {', '.join(nah)}?" if nah else ""))
         titel, t = self.eintraege[id_]
         aus = f"{id_} – {titel}\n\n{t}".strip()
+        if self.antworten.get(id_):
+            aus += "\n\n## Antworten (Eingaben, keine Entscheidung)\n" + "\n".join(
+                f"- {a['erstellt'][:10]} {a.get('name')}: {a['text']}" + (f" (Quelle: {a['quelle']})" if a.get("quelle") else "")
+                for a in self.antworten[id_])
         dran = aufgaben_filter(self.aufgaben or [], {"bezug": id_, "status": "alle"})
         if dran:
             aus += "\n\n## Aufgaben hier\n" + rm.aufgaben_text(dran, self.titel(), self.v["fristen"])
@@ -585,6 +619,89 @@ class Handbuch:
             z.append(f"## {ziel} {u.get('name')}")
             z += self.merkmal_zeilen(krit, u.get("merkmale"), u.get("fehlt")) or ["(keine Merkmale)"]
         return "\n".join(z), None
+
+    def option(self, oid):
+        """-> (Wahlstelle, Option) zu einer Option-ID V-01.a oder (None, None)."""
+        for w in self.r.get("wahlstellen", []):
+            for o in w["optionen"]:
+                if o["id"] == oid:
+                    return w, o
+        return None, None
+
+    def entscheidung_pruefen(self, args, wer, heute=None):
+        """Eine Entscheidung im Gespräch prüfen (Paket C). Die Maschine lehnt Unstimmiges ab (Rückgabe fehler) und gibt
+        Hinweise mit, die die Person wissen soll, die aber nichts verhindern. Widersprüche zwischen Bestimmern prüft
+        danach konflikt_melden. -> (daten, hinweise, fehler); bei fehler ist daten None."""
+        fehler, hinweise = [], []
+        oid = str(args.get("option") or "").strip()
+        status = str(args.get("status") or "").strip()
+        grund = str(args.get("grund") or "").strip()
+        durch = str(args.get("ersetzt_durch") or "").strip()
+        quelle = str(args.get("quelle") or "").strip()
+        w, o = self.option(oid)
+        if o is None:
+            stelle = next((x for x in self.r.get("wahlstellen", []) if x["id"] == oid), None)
+            if stelle:
+                return None, [], [f"{oid} ist eine Wahlstelle. Entschieden wird über eine Option: "
+                                  + ", ".join(f"{x['id']} {x['titel']}" for x in stelle["optionen"]) + "."]
+            return None, [], [f"Die Option „{oid}“ gibt es nicht. Mit varianten die Wahlstellen und ihre Optionen (V-01.a) ansehen."]
+        if status not in ENTSCHEIDUNGEN:
+            fehler.append(f"status muss einer von {', '.join(ENTSCHEIDUNGEN)} sein.")
+        if not grund:
+            fehler.append("Der Grund fehlt: jede Entscheidung hat einen Grund (in den Worten der Person), der in den Verlauf kommt.")
+        elif len(grund) > MAX_GRUND or "\n" in grund:
+            fehler.append(f"Der Grund passt in eine Zeile mit höchstens {MAX_GRUND} Zeichen.")
+        if status == "ersetzt":
+            wd, od = self.option(durch)
+            if not durch:
+                fehler.append("Bei „ersetzt“ gehört dazu, wodurch die Option ersetzt wird (ersetzt_durch, z. B. V-01.b).")
+            elif od is None or wd is not w or durch == oid:
+                fehler.append(f"ersetzt_durch muss eine andere Option derselben Wahlstelle {w['id']} sein "
+                              f"({', '.join(x['id'] for x in w['optionen'] if x['id'] != oid)}).")
+            elif od["status"] in ("verworfen", "ersetzt"):
+                fehler.append(f"{durch} ist selbst {WORT[od['status']]} und kann nichts ersetzen.")
+        elif durch:
+            fehler.append("ersetzt_durch gibt es nur beim Status ersetzt.")
+        if status in ENTSCHEIDUNGEN and o["status"] == status:
+            fehler.append(f"{oid} ist schon {WORT[status]}; daran ändert sich nichts.")
+        for e in self.offene_entscheidungen.get(oid, []):
+            if e["wer"] == wer and e["entscheidung"] == status and e["status"] != "konflikt":
+                fehler.append(f"Dieselbe Entscheidung liegt schon vor ({e['auftrag']}); sie wird noch eingearbeitet.")
+        if fehler:
+            return None, [], fehler
+        andere = [x for x in w["optionen"] if x["id"] != oid and x["status"] == "gewaehlt"]
+        if status == "gewaehlt" and andere:
+            hinweise.append(f"{', '.join(x['id'] for x in andere)} ist bisher gewählt und wird dadurch ersetzt "
+                            "(mit eigenem Verlaufseintrag).")
+        if status in ("verworfen", "ersetzt") and o["status"] == "gewaehlt" and not andere:
+            hinweise.append(f"{oid} war die gewählte Option: {w['id']} ist danach offen"
+                            + (f" (Frage {w['frage']})" if w.get("frage") else "") + ".")
+        if status == "gewaehlt":
+            namen = {k["id"]: k["name"] for k in w.get("kriterien") or []}
+            if o.get("fehlt"):
+                hinweise.append("Es fehlen noch Merkmale: " + ", ".join(namen.get(k, k) for k in o["fehlt"])
+                                + ". Sie werden beim Einarbeiten recherchiert und ergänzt.")
+            offen = [namen.get(k, k) for k, v in (o.get("merkmale") or {}).items() if v.get("ungeprueft")]
+            if offen:
+                hinweise.append("Ungeprüfte veränderliche Angaben: " + ", ".join(offen) + " – vor dem Buchen nachschlagen.")
+        if w.get("art") == "unterwegs" and not self.v["ausloeser_vor"]:
+            hinweise.append(f"{w['id']} ist eine Wahlstelle für unterwegs"
+                            + (f" (Auslöser: {o['ausloeser']})" if o.get("ausloeser") else "")
+                            + ": Sie wird normalerweise erst unterwegs entschieden.")
+        heute = heute or datetime.date.today()
+        text_ = (f"Entscheidung von {wer} am {datum_de(heute.isoformat())}: {oid} „{o['titel']}“ ({w['id']} {w['titel']}) "
+                 f"ist {WORT[status]}" + (f", ersetzt durch {durch}" if durch else "") + f".\nGrund: {grund}\n"
+                 f"Herkunft: Entscheidung von {wer} im Gespräch in der Claude-App" + (f"; Quelle: {quelle}" if quelle else "")
+                 + ".\nEinzutragen: Verlaufseintrag an der Option "
+                 f"{{datum: {heute.isoformat()}, status: {status}, wer: {wer}, grund: …}}"
+                 + (f"; bisher gewählt: {', '.join(x['id'] for x in andere)} bekommt ersetzt" if status == "gewaehlt" and andere else "")
+                 + (f"; Frage {w['frage']} als geklärt eintragen" if w.get("frage") and status == "gewaehlt" else "") + ".")
+        if hinweise:
+            text_ += "\nHinweise der Vorprüfung:\n" + "\n".join(f"- {x}" for x in hinweise)
+        daten = {"entscheidung": status, "option": oid, "wahlstelle": w["id"], "grund": grund, "datum": heute.isoformat(),
+                 **({"ersetzt_durch": durch} if durch else {}), **({"quelle": quelle} if quelle else {}),
+                 "hinweise": hinweise}
+        return (text_, daten), hinweise, None
 
     def vorschlag(self, args):
         """Neue Alternative prüfen -> (Text für Auftrag/Rückmeldung, Ziel, Daten) oder Fehler."""
@@ -675,6 +792,7 @@ class Handbuch:
                          + (f"; {self.summe(o['summe'])}" if o.get("summe") else ""))
                 z += ["  " + x for x in self.merkmal_zeilen(w.get("kriterien"), o.get("merkmale"))
                       if not x.startswith("Fehlt")]
+                z += ["  " + x for x in self.offen_zeilen(o["id"])]
         return "\n".join(z)
 
 
@@ -803,6 +921,203 @@ def konflikt_melden(reise, auftrag, d):
                        f"{neu['wer']} will {neu['entscheidung']} {neu['ziel']}, aber {beschr}. Beides gilt nicht, bis ihr euch "
                        f"einig seid; Claude legt dafür eine offene Frage an.", betroffen)
     return beschr
+
+
+def offene_entscheidungen(reise):
+    """Entscheidungen im Gespräch, die eingetragen, aber noch nicht eingearbeitet sind: Option-ID -> Liste."""
+    o = rm.ordner(reise)
+    aus = {}
+    for a in rm.auftraege(o) if o else []:
+        dt = a.get("daten") or {}
+        if dt.get("option") and dt.get("entscheidung") in ENTSCHEIDUNGEN and a["status"] in ("neu", "rueckfrage", "konflikt"):
+            aus.setdefault(dt["option"], []).append({"wer": a.get("name"), "entscheidung": dt["entscheidung"], "auftrag": a["id"],
+                                                     "datum": dt.get("datum") or a["erstellt"][:10], "status": a["status"],
+                                                     "weg": dt.get("weg", "auftrag")})
+    return aus
+
+
+def antworten_von(reise):
+    """Antworten (Rückmeldungen der Art Antwort) je Frage-ID, älteste zuerst."""
+    o = rm.ordner(reise)
+    aus = {}
+    for e in reversed(rm.eintraege(o) if o else []):
+        if e.get("art") == "Antwort" and e.get("status") != "verworfen":
+            aus.setdefault(e["ziel"], []).append(e)
+    return aus
+
+
+# ---------- Entscheiden und Fragen beantworten (Paket C) ----------
+
+def entscheiden(reise, d, h, wer, args):
+    """Werkzeug entscheiden. Rolle, Status und Baustein sind schon geprüft. Der Dienst prüft die Entscheidung im Moment
+    (Handbuch.entscheidung_pruefen) und hält sie als geprüften Auftrag fest; bei regeln.entscheidungsweg = direkt gilt sie
+    damit, bei auftrag prüft sie zusätzlich Claude Code, bevor sie gilt. Ein Widerspruch zu einem anderen Bestimmer wird nicht
+    übernommen, sondern zur offenen Frage (konflikt_melden). -> (Text, ist_fehler)"""
+    if not wer["name"]:
+        return ("Entscheiden geht nur mit dem persönlichen Link: Jede Entscheidung gehört genau einer Person, und dieser Link "
+                "kennt keinen Namen. Ein Bestimmer kann mit person_einladen einen persönlichen Link ausstellen."), True
+    if not all(isinstance(args.get(k) or "", str) for k in ("option", "status", "grund", "ersetzt_durch", "quelle")):
+        return "Alle Angaben müssen Text sein.", True
+    ergebnis, hinweise, fehler = h.entscheidung_pruefen(args, wer["name"])
+    if fehler:
+        return "Nicht entschieden:\n" + "\n".join(f"- {f}" for f in fehler), True
+    text_, daten_ = ergebnis
+    regeln = regeln_von(d)
+    weg = regeln.get("entscheidungsweg") or VORGABEN["entscheidungsweg"]
+    daten_.update({"weg": weg, "geprueft": weg == "direkt"})
+    e, fehler = auftrag_anlegen(reise, daten_["option"], text_, daten_, name=wer["name"])
+    if fehler:
+        return f"Nicht gespeichert: {fehler}", True
+    wort = WORT[daten_["entscheidung"]]
+    k = konflikt_melden(reise, e, d)
+    if k:
+        return (f"Nicht entschieden: {daten_['option']} {wort} zu setzen widerspricht einer anderen Entscheidung ({k}). Nichts wird "
+                f"übernommen, bis ihr euch einig seid: Daraus wird eine offene Frage, und alle beteiligten Bestimmer bekommen "
+                f"eine Meldung (festgehalten als {e['id']}). Sag nie, etwas sei schon entschieden."), False
+    z = []
+    if weg == "direkt":
+        z.append(f"Entscheidung {e['id']} geprüft und festgehalten: {daten_['option']} ist {wort} ({wer['name']}, "
+                 f"{datum_de(daten_['datum'])}, Grund: {daten_['grund']}). Sie gilt ab jetzt. Auf der Seite steht sie, sobald "
+                 "eingearbeitet ist (Sammelzeit, dann ein Lauf; den Stand zeigt rueckmeldungen).")
+    else:
+        z.append(f"Entscheidungsauftrag {e['id']} gespeichert: {daten_['option']} {wort} ({wer['name']}, "
+                 f"{datum_de(daten_['datum'])}). Auf dieser Reise gilt der Weg auftrag: Er wird erst in Claude Code geprüft und "
+                 "eingearbeitet, vorher ist nichts entschieden. Den Stand zeigt rueckmeldungen.")
+    if hinweise:
+        z.append("Hinweise:\n" + "\n".join(f"- {x}" for x in hinweise))
+    return "\n".join(z), False
+
+
+def frage_beantworten(reise, d, h, wer, args):
+    """Werkzeug frage_beantworten: Die Antwort geht als Rückmeldung (Art Antwort) an die Frage. Sie ist eine Eingabe;
+    ob die Frage geklärt ist, entscheidet ein Bestimmer. -> (Text, ist_fehler)"""
+    if (nein := recht(wer["rolle"], d, "rueckmeldung")):
+        return nein, True
+    fid = args.get("frage")
+    antwort = args.get("antwort")
+    if not isinstance(fid, str) or not isinstance(antwort, str) or not isinstance(args.get("quelle") or "", str):
+        return "frage, antwort und quelle müssen Text sein.", True
+    fid, antwort = fid.strip(), antwort.strip()
+    zeile = next((z for z in (h.d.get("fragen") or {}).get("zeilen", []) if z["id"] == fid), None)
+    if zeile is None:
+        return f"Die Frage „{fid}“ gibt es nicht. Mit offene_fragen die richtige F-… finden.", True
+    if not zeile.get("status", "").lower().startswith("offen"):
+        return (f"{fid} ist nicht mehr offen ({zeile.get('status')}). Neue Erkenntnisse dazu gibst du mit rueckmeldung_geben "
+                "(Art Kommentar oder Korrektur) weiter."), True
+    if not antwort:
+        return "Die Antwort fehlt.", True
+    name_ = wer["name"] or args.get("name")
+    if not isinstance(name_, str) or not name_.strip():
+        return "Name fehlt: bitte die Person nach ihrem Vornamen fragen.", True
+    e, fehler = rueckmeldung_senden(reise, {"name": name_, "art": "Antwort", "ziel": fid, "text": antwort,
+                                            "quelle": str(args.get("quelle") or "über Claude")})
+    if fehler:
+        return f"Nicht gespeichert: {fehler}", True
+    stelle = next((w for w in h.r.get("wahlstellen", []) if w.get("frage") == fid), None)
+    bestimmer = " und ".join(bestimmer_namen(d)) or "ein Bestimmer"
+    z = [f"Antwort {e['id']} gespeichert, sie hängt an {fid} (zeige {fid} listet sie). Die Frage bleibt offen: Eine Antwort ist "
+         f"eine Eingabe, ob damit geklärt ist und was daraus folgt, entscheidet {bestimmer}."]
+    if stelle:
+        z.append(f"Die Frage gehört zur Wahlstelle {stelle['id']} {stelle['titel']}."
+                 + (" Als Bestimmer kannst du dort mit entscheiden entscheiden." if darf(wer["rolle"], "bestimmer") else ""))
+    return " ".join(z), False
+
+
+# ---------- Personen einladen (Paket C) ----------
+
+def zugang_ausstellen(z):
+    """Neuen geheimen Link anlegen -> Token. z: {"reise", "person"} oder {"reise", "rolle"}. Schreibt zugaenge.json
+    (Rechte 600); der Dienst braucht dafür Schreibrecht auf den Ordner (ops/reisehandbuch-konnektor.service)."""
+    p = zugaenge_pfad()
+    with _sperre:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        alle = zugaenge()
+        token = secrets.token_urlsafe(24)
+        alle[token] = {**z, "angelegt": datetime.date.today().isoformat()}
+        rm.schreiben(p, json.dumps(alle, ensure_ascii=False, indent=1) + "\n")
+        os.chmod(p, 0o600)
+    return token
+
+
+def einladen(reise, d, wer, args):
+    """person_einladen: Person mit Rolle anlegen und ihren Zugang ausstellen. Eine Person, die es schon gibt, bekommt
+    einen weiteren Link (ihre Rolle ändert sich dabei nie: das ist eine Einstellung der Reise). -> (Text, ist_fehler)"""
+    vorname = args.get("vorname")
+    rolle = args.get("rolle") or "einbringer"
+    notiz = args.get("notiz") or ""
+    if not isinstance(vorname, str) or not isinstance(rolle, str) or not isinstance(notiz, str) \
+            or not isinstance(args.get("schluessel") or "", str):
+        return "Vorname, Rolle, Schlüssel und Notiz müssen Text sein.", True
+    vorname, notiz = vorname.strip(), notiz.strip()
+    if not vorname or "\n" in vorname or len(vorname) > rm.LAENGE["name"]:
+        return "vorname fehlt (eine Zeile, höchstens 80 Zeichen): wen soll ich einladen?", True
+    if len(notiz) > 300 or "\n" in notiz:
+        return "Die Notiz passt in eine Zeile mit höchstens 300 Zeichen.", True
+    if rolle not in ROLLEN:
+        return f"Rolle muss eine von {', '.join(ROLLEN)} sein.", True
+    name_von = wer["name"]
+    if not name_von:
+        return ("Einladen geht nur mit dem persönlichen Link: Der Link ohne Person kennt deinen Namen nicht. "
+                "Bitte einen Bestimmer um einen persönlichen Link."), True
+    if not os.environ.get("KN_BASIS"):
+        return "Die Adresse für Links ist auf dem Server nicht eingerichtet (KN_BASIS). Das muss der Betreiber ergänzen.", True
+    o = rm.ordner(reise)
+    if o is None:
+        return "Diese Reise nimmt noch keine Eingaben an.", True
+    personen = personen_der_reise(reise, d)
+    vorhanden = next((p for p in personen if p["name"].casefold() == vorname.casefold()
+                      or p["schluessel"] == (args.get("schluessel") or "").strip()), None)
+    if vorhanden:
+        if args.get("rolle") and rolle != vorhanden["rolle"]:
+            return (f"{vorhanden['name']} ist schon dabei, mit der Rolle {vorhanden['rolle']}. Die Rolle ändern ist eine "
+                    "Einstellung der Reise: auftrag_geben (ziel reise)."), True
+        rolle, neu = vorhanden["rolle"], False
+        schluessel = vorhanden["schluessel"]
+    else:
+        schluessel = (args.get("schluessel") or "").strip() or schluessel_aus_name(vorname)
+        if not PERSON_MUSTER.match(schluessel):
+            return ("Aus dem Namen lässt sich kein Schlüssel bilden (klein, ohne Umlaute, Buchstaben und Ziffern). "
+                    "Bitte schluessel angeben, z. B. „anna“."), True
+        neu = True
+    if neu and not darf(wer["rolle"], rolle):
+        return (f"Du kannst höchstens eine Rolle vergeben, die du selbst hast (du: {wer['rolle']}, gewünscht: {rolle}). "
+                "Für mehr Rechte muss ein Bestimmer einladen."), True
+    if not neu and not darf(wer["rolle"], rolle):
+        return f"Einen Link für {vorhanden['name']} (Rolle {rolle}) kann nur jemand mit mindestens dieser Rolle ausstellen.", True
+    if neu:
+        with _sperre:
+            if len(rm.einladungen_lesen(o)) >= rm.MAX_EINLADUNGEN:
+                return "Es sind schon sehr viele Einladungen offen; bitte zuerst einarbeiten lassen.", True
+    try:
+        token = zugang_ausstellen({"reise": reise, "person": schluessel})
+    except OSError:
+        return ("Der Link konnte nicht angelegt werden: Der Dienst darf die Zugänge nicht schreiben. Das muss der "
+                "Betreiber einrichten (ops/README.md)."), True
+    link = f"{basis()}/{token}"
+    heute = datetime.date.today().isoformat()
+    if neu:
+        eintrag = {"name": vorname, "rolle": rolle, "reist": args.get("reist", True) is not False,
+                   "notiz": notiz or f"eingeladen von {name_von} am {datum_de(heute)} über die Claude-App",
+                   "eingeladen_von": name_von, "datum": heute}
+        with _sperre:
+            alle = rm.einladungen_lesen(o)
+            alle[schluessel] = eintrag
+            rm.schreiben(o / "einladungen.json", json.dumps(alle, ensure_ascii=False, indent=1) + "\n")
+        text_ = (f"Einladung von {name_von}: {vorname} als {rolle} in reise.yaml unter personen aufnehmen, Schlüssel "
+                 f"{schluessel}, reist: {'ja' if eintrag['reist'] else 'nein'}, notiz: „{eintrag['notiz']}“. "
+                 "Zugang und Rolle gelten schon (einladungen.json); der Link ist ausgestellt.")
+        auftrag_anlegen(reise, REISE_ZIEL, text_, {"einladung": {"schluessel": schluessel, **eintrag}}, name=name_von)
+    z = [(f"{vorname} ist eingeladen" if neu else f"Neuer Link für {vorhanden['name']}") + f" (Rolle {rolle}). Der Link:",
+         link, "",
+         "Den Link nur an diese Person geben, am besten privat: Wer ihn kennt, spricht in der Reise als " + vorname + ". "
+         "Sie trägt ihn in der Claude-App ein (Einstellungen → Konnektoren → Eigenen Konnektor hinzufügen, ohne Anmeldung); "
+         "dafür braucht sie ein Claude-Konto, in dem eigene Konnektoren erlaubt sind.",
+         {"reisend": "Mit der Rolle reisend kann sie nur lesen.",
+          "einbringer": "Als Einbringer gibt sie Wünsche, Rückmeldungen, Aufgaben und Antworten; entscheiden kann sie nicht.",
+          "bestimmer": "Als Bestimmer entscheidet sie mit, setzt Status und Einstellungen und lädt Personen ein."}[rolle]]
+    if neu:
+        z.append("Auf der Seite steht die Person, sobald eingearbeitet ist.")
+    return "\n".join(z), False
 
 
 def liste_text(reise, mit_auftraegen, name=None):
@@ -941,6 +1256,45 @@ AUFTRAG = {"name": "auftrag_geben", "description": "Nur für Bestimmer: Änderun
                "required": ["auftrag"]}}
 
 
+ENTSCHEIDEN = {"name": "entscheiden", "description": "Nur für Bestimmer: im Gespräch über eine Option einer Wahlstelle entscheiden "
+               "(gewaehlt, verworfen oder ersetzt). Erst varianten/zeige ansehen und den Grund mit der Person klären, dann kurz "
+               "bestätigen lassen. Der Dienst prüft sofort: Gibt es die Option, ist der Status stimmig, ist ein Grund da, "
+               "widerspricht es einem anderen Bestimmer? Unstimmiges lehnt er mit Begründung ab, Hinweise (fehlende oder "
+               "ungeprüfte Merkmale) gibt er mit. Auf dieser Reise gilt der Entscheidungsweg direkt (geprüft und mit Datum "
+               "festgehalten, sofort gültig) oder auftrag (wird zusätzlich in Claude Code geprüft, bevor es gilt); die Antwort "
+               "sagt, welcher. Auf die Seite kommt es mit dem nächsten Einarbeiten.",
+               "inputSchema": {"type": "object", "properties": {
+                   "option": {"type": "string", "description": "Option, über die entschieden wird, z. B. V-01.b (aus varianten)"},
+                   "status": {"type": "string", "enum": list(ENTSCHEIDUNGEN),
+                              "description": "gewaehlt = diese Option nehmen; verworfen = nicht nehmen; ersetzt = durch eine andere Option ersetzt"},
+                   "grund": {"type": "string", "description": "Warum, in den Worten der Person, eine Zeile (kommt in den Verlauf)"},
+                   "ersetzt_durch": {"type": "string", "description": "nur bei ersetzt: die andere Option derselben Wahlstelle"},
+                   "quelle": {"type": "string", "description": "woran sich die Entscheidung stützt (Link, Gespräch), falls vorhanden"}},
+                   "required": ["option", "status", "grund"]}}
+FRAGE_BEANTWORTEN = {"name": "frage_beantworten", "description": "Eine offene Frage (F-…) beantworten. Die Antwort hängt an der Frage "
+                     "(zeige F-… listet sie) und ist eine Eingabe: ob die Frage damit geklärt ist und was daraus folgt, "
+                     "entscheidet ein Bestimmer. Vorher die Antwort mit der Person abstimmen; Herkunft nennen, Annahmen markieren.",
+                     "inputSchema": {"type": "object", "properties": {
+                         "frage": {"type": "string", "description": "F-… aus offene_fragen"},
+                         "antwort": {"type": "string", "description": "die Antwort in den Worten der Person, max. 4000 Zeichen"},
+                         "quelle": {"type": "string", "description": "woher die Angabe stammt (Link, Buch mit Seite), falls vorhanden"},
+                         "name": NAME_FELD}, "required": ["frage", "antwort"]}}
+PERSON_EINLADEN = {"name": "person_einladen", "description": "Eine Person zur Reise einladen: legt sie mit Rolle an und stellt ihren "
+                   "persönlichen Link für die Claude-App aus (gilt sofort). Wer einladen darf, regelt die Reise "
+                   "(regeln.einladen); man kann höchstens die eigene Rolle vergeben. Vorher Vorname und Rolle mit der Person "
+                   "abstimmen und den Link danach nur an diese Person weitergeben lassen. Gibt es die Person schon, bekommt sie "
+                   "einen weiteren Link; ihre Rolle ändert sich dabei nicht.",
+                   "inputSchema": {"type": "object", "properties": {
+                       "vorname": {"type": "string", "description": "Vorname der einzuladenden Person"},
+                       "rolle": {"type": "string", "enum": list(ROLLEN),
+                                 "description": "reisend liest; einbringer gibt Wünsche, Rückmeldungen, Aufgaben, Antworten; "
+                                 "bestimmer entscheidet und lädt ein. Standard einbringer."},
+                       "reist": {"type": "boolean", "description": "reist die Person mit? Standard ja (nein: gestaltet nur mit)"},
+                       "notiz": {"type": "string", "description": "kurze Notiz zur Person, eine Zeile"},
+                       "schluessel": {"type": "string", "description": "nur wenn nötig: Kurzname für den Zugang (klein, ohne Umlaute)"},
+                       "name": NAME_FELD}, "required": ["vorname"]}}
+
+
 STATUS_SATZ = {
     "idee": "Die Reise ist erst eine Idee: Eckdaten, Personen und Wünsche sammeln, kein Plan nötig, keine Warnungen.",
     "planung": "Alles ist offen; Lücken und offene Wahlstellen sind normaler Zwischenstand.",
@@ -968,25 +1322,41 @@ def anleitung(zugang, d):
          "bestätigen lassen, was genau eingetragen wird. Die Regeln prüft der Dienst; lehnt er etwas ab, gib den Grund weiter.",
          "IDs: T- Tag, E- Etappe/Strecke, O- Ort, U- Unterkunft, V- Wahlstelle mit Optionen V-01.a, P- Plan, F- offene Frage, "
          "W- Wissen, AG- Aufgabe. Mit ueberblick beginnen, dann zeige/suche; IDs in Antworten nennen.",
-         "Rollen: reisend liest; einbringer gibt dazu Rückmeldungen, Aufgaben und Vorschläge; bestimmer entscheidet dazu (über "
-         "Aufträge) und setzt Status und Einstellungen."]
+         "Rollen: reisend liest; einbringer gibt dazu Rückmeldungen, Antworten, Aufgaben und Vorschläge; bestimmer entscheidet "
+         "dazu, setzt Status und Einstellungen und lädt ein."]
     name = f"Du sprichst mit {wer['name']}" if wer["name"] else "Du sprichst mit einer Person ohne festen Namen"
+    regeln = rs.get("regeln") or {}
+    weg = regeln.get("entscheidungsweg") or VORGABEN["entscheidungsweg"]
+    einladen_ab = regeln.get("einladen") or VORGABEN["einladen"]
+    kann_einladen = darf(wer["rolle"], einladen_ab)
     if wer["rolle"] == "bestimmer":
-        z.append(f"{name} (Bestimmer). Wünsche zu Änderungen oder Entscheidungen gibst du mit auftrag_geben weiter; bei einer "
-                 "Entscheidung setzt du entscheidung und ziel. Widerspricht sie der eines anderen Bestimmers, wird daraus eine "
-                 "offene Frage, und alle Beteiligten bekommen eine Meldung. Der Auftrag wird automatisch geprüft und in der Regel "
-                 "innerhalb einer Stunde eingearbeitet; den Stand zeigt rueckmeldungen.")
+        z.append(f"{name} (Bestimmer). Entscheidungen über Optionen einer Wahlstelle trägst du mit entscheiden ein (Option, "
+                 "Status, Grund; vorher kurz bestätigen lassen). "
+                 + ("Auf dieser Reise gilt der Weg direkt: Der Dienst prüft im selben Moment, lehnt Unstimmiges mit Begründung ab "
+                    "und hält die Entscheidung mit Datum fest; sie gilt dann, auf der Seite steht sie nach dem nächsten "
+                    "Einarbeiten. " if weg == "direkt" else
+                    "Auf dieser Reise gilt der Weg auftrag: Eine Entscheidung ist ein Auftrag und gilt erst, wenn sie in Claude "
+                    "Code geprüft und eingearbeitet ist; sag nie, es sei schon entschieden. ")
+                 + "Widerspricht sie der eines anderen Bestimmers, wird daraus eine offene Frage, und alle Beteiligten bekommen "
+                 "eine Meldung. Andere Wünsche zu Änderungen gibst du mit auftrag_geben weiter. Personen lädst du mit "
+                 "person_einladen ein (Rolle und Link gelten sofort). Fragen (F-…) kannst du mit frage_beantworten beantworten. "
+                 "Den Stand zeigt rueckmeldungen.")
     elif wer["rolle"] == "einbringer":
-        z.append(f"{name} (Einbringer). Ihre Hinweise sind Vorschläge, keine Entscheidungen. "
+        z.append(f"{name} (Einbringer). Ihre Hinweise sind Vorschläge, keine Entscheidungen: Entscheiden und Aufträge geben "
+                 f"kann sie nicht, das bleibt bei {namen}. Offene Fragen beantwortet sie mit frage_beantworten. "
+                 + ("Sie darf Personen einladen (person_einladen), höchstens mit der Rolle einbringer. " if kann_einladen else "")
                  + ("" if wer["name"] else "Für Rückmeldungen und Aufgaben brauchst du ihren Vornamen: einmal fragen, "
                     "nicht raten, dann im Gespräch beibehalten. ")
                  + "„Meine Aufgaben“ = aufgaben mit zustaendig = dieser Vorname.")
     else:
-        z.append(f"{name} (Rolle reisend): nur lesen. Rückmeldungen, Aufgaben und Vorschläge gehen mit diesem Zugang nicht; "
-                 "wer mitgestalten will, bittet einen Bestimmer um einen eigenen Zugang.")
+        z.append(f"{name} (Rolle reisend): nur lesen. Rückmeldungen, Antworten, Aufgaben und Vorschläge gehen mit diesem Zugang "
+                 "nicht; wer mitgestalten will, bittet einen Bestimmer um eine andere Rolle."
+)
     if status in STATUS_SATZ:
         z.append("Status: " + STATUS_SATZ[status])
     aus = [b for b in ("varianten", "fragen", "aufgaben", "rueckmeldungen", "wuensche") if bausteine is not None and b not in bausteine]
+    if wer["name"] is None and wer["rolle"] != "reisend":
+        z.append("Dieser Link gehört keiner Person: Entscheiden und Einladen gehen nur mit einem persönlichen Link.")
     if aus:
         z.append("Bei dieser Reise ausgeschaltet (Werkzeuge fehlen, Daten bleiben): " + ", ".join(aus) + ".")
     if bausteine is None or "varianten" in bausteine:
@@ -1061,7 +1431,13 @@ def werkzeug(zugang, name, args):
     d = daten(reise)
     if d is None:
         return "Die Seite dieser Reise ist noch nicht veröffentlicht.", True
-    h = Handbuch(d, aufgaben_von(reise))
+    h = Handbuch(d, aufgaben_von(reise), offene_entscheidungen(reise), antworten_von(reise))
+    if name == "entscheiden":
+        return entscheiden(reise, d, h, wer, args)
+    if name == "frage_beantworten":
+        return frage_beantworten(reise, d, h, wer, args)
+    if name == "person_einladen":
+        return einladen(reise, d, wer, args)
     if name == "aufgaben":
         liste = aufgaben_filter(h.aufgaben, args)
         return (rm.aufgaben_text(liste, h.titel(), h.v["fristen"]) if liste else "Keine passenden Aufgaben."), False
@@ -1146,13 +1522,15 @@ def antwort_auf(zugang, nachricht):
         _, bausteine = zustand_von(d)
         # Sichtbar ist, was diese Rolle bei diesem Status und diesen Bausteinen darf (aufgerufen wird trotzdem noch einmal geprüft)
         werkzeuge = []
-        for w in WERKZEUGE + [AUFTRAG]:
+        for w in WERKZEUGE + [AUFTRAG, ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN]:
             n = w["name"]
             if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:
                 continue
             if n in SCHREIB_AKTION:
                 aktionen = ["rueckmeldung", "wunsch"] if n == "rueckmeldung_geben" else [SCHREIB_AKTION[n]]
                 if not any(recht(wer["rolle"], d, a) is None for a in aktionen) and not (n == "auftrag_geben" and darf(wer["rolle"], "bestimmer")):
+                    continue
+                if n in ZUSATZ_AKTION and recht(wer["rolle"], d, ZUSATZ_AKTION[n]) is not None:
                     continue
             if n == "rueckmeldung_geben" and recht(wer["rolle"], d, "wunsch") is not None:
                 art = {**w["inputSchema"]["properties"]["art"], "enum": [a for a in rm.ARTEN if a != "Wunsch"]}
@@ -1251,7 +1629,7 @@ def zugang_anlegen(reise, wen):
     d = daten(reise)
     if d is None:
         sys.exit(f"Reise „{reise}“ ist unter {seiten()} nicht veröffentlicht (erst ops/deploy.sh {reise}).")
-    personen = {p["schluessel"]: p for p in (d.get("reise") or {}).get("personen") or []}
+    personen = {p["schluessel"]: p for p in personen_der_reise(reise, d)}
     if wen in personen:
         z = {"reise": reise, "person": wen}
         wer = f"{personen[wen]['name']}, {personen[wen]['rolle']}"
@@ -1261,13 +1639,7 @@ def zugang_anlegen(reise, wen):
     else:
         sys.exit(f"„{wen}“ ist weder eine Person der Reise ({', '.join(personen) or 'keine in reise.yaml'}) "
                  f"noch eine Rolle ({', '.join(ROLLEN)}).")
-    p = zugaenge_pfad()
-    p.parent.mkdir(parents=True, exist_ok=True)
-    alle = zugaenge()
-    token = secrets.token_urlsafe(24)
-    alle[token] = {**z, "angelegt": datetime.date.today().isoformat()}
-    rm.schreiben(p, json.dumps(alle, ensure_ascii=False, indent=1) + "\n")
-    os.chmod(p, 0o600)
+    token = zugang_ausstellen(z)
     print(f"{reise} ({wer}): {basis()}/{token}")
 
 
