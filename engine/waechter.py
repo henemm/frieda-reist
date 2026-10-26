@@ -87,13 +87,17 @@ def zu_pruefen(d, heute, frist_tage):
         for k, m in (merkmale or {}).items():
             if not defs.get(k, {}).get("veraenderlich") or m.get("auto"):
                 continue
-            g = m.get("geprueft")
-            alter = tage_zwischen(datetime.date.fromisoformat(g), heute) if g else None
-            if alter is not None and alter <= frist_tage:
-                continue
-            treffer.append({"bezug": bezug, "titel": titel, "merkmal": k, "name": defs[k]["name"], "wert": m.get("wert"),
-                            "geprueft": g, "quelle": m.get("quelle"), "alter_tage": alter,
-                            "grund": "noch nie geprüft" if g is None else f"zuletzt geprüft {datum_de(g)} (vor {alter} Tagen)"})
+            # Werte je Datum (docs/alternativen.md): der Hauptwert und jeder Eintrag mit „gilt“ hat sein eigenes Prüfdatum
+            for e in [m] + list(m.get("je_datum") or []):
+                g = e.get("geprueft")
+                alter = tage_zwischen(datetime.date.fromisoformat(g), heute) if g else None
+                if alter is not None and alter <= frist_tage:
+                    continue
+                gilt = ", ".join(datum_de(x) for x in e.get("gilt") or [])
+                treffer.append({"bezug": bezug, "titel": titel, "merkmal": k,
+                                "name": defs[k]["name"] + (f" am {gilt}" if gilt else ""), "wert": e.get("wert"),
+                                "geprueft": g, "quelle": e.get("quelle"), "alter_tage": alter,
+                                "grund": "noch nie geprüft" if g is None else f"zuletzt geprüft {datum_de(g)} (vor {alter} Tagen)"})
 
     for w in r.get("wahlstellen") or []:
         for o in w["optionen"]:

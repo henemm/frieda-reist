@@ -39,9 +39,11 @@ class Reise:
         (quelle / "reise.yaml").write_text(yaml.safe_dump(y, allow_unicode=True), encoding="utf-8")
         if geprueft:   # Prüfdatum für den Preis von U-01 (veränderliche Angabe)
             r = quelle / "plan" / "routen.yaml"
-            r.write_text(r.read_text(encoding="utf-8").replace(
-                'preis: {wert: "120 €", notiz: "Beispielwert, erfunden"}',
-                f'preis: {{wert: "120 €", notiz: "Beispielwert, erfunden", geprueft: {geprueft}, quelle: "https://beispiel.invalid/u1"}}'),
+            text = r.read_text(encoding="utf-8")
+            alt = '- {wert: "120 €", notiz: "Beispielwert, erfunden"}'    # Hauptwert; der Eintrag für den 15.5. bleibt ungeprüft
+            assert alt in text
+            r.write_text(text.replace(
+                alt, f'- {{wert: "120 €", notiz: "Beispielwert, erfunden", geprueft: {geprueft}, quelle: "https://beispiel.invalid/u1"}}'),
                 encoding="utf-8")
         self.seiten = tmp / "seiten"
         bauen.bauen(quelle, self.seiten / "beispielreise")
@@ -99,18 +101,22 @@ def test_zu_pruefen_findet_nie_und_lange_nicht_gepruefte(reise):
     # 12 Tage später ist die Angabe frisch, alles andere Veränderliche wurde nie geprüft
     items = wa.zu_pruefen(d, D(2026, 11, 1), 60)
     gefunden = {(t["bezug"], t["merkmal"]) for t in items}
-    assert ("U-01", "preis") not in gefunden and ("U-01", "fruehstueck") in gefunden
+    assert ("U-01", "fruehstueck") in gefunden
+    assert {t["wert"] for t in items if (t["bezug"], t["merkmal"]) == ("U-01", "preis")} == {"140 €"}   # der Hauptwert ist frisch
     assert all(t["geprueft"] is None and t["grund"] == "noch nie geprüft" for t in items)
     # nicht veränderlich (Abendessen, Lage) und nicht im Plan (verworfene Option V-03.b) stehen nicht dabei
     assert not any(t["merkmal"] in ("abendessen", "lage", "zimmer") for t in items)
     assert not any(t["bezug"] == "V-03.b" for t in items)
+    # Werte je Datum haben ein eigenes Prüfdatum: der Preis für den 15.5. ist nie geprüft und steht dabei
+    je_datum = next(t for t in items if (t["bezug"], t["merkmal"]) == ("U-01", "preis"))
+    assert je_datum["wert"] == "140 €" and "am 15.5.2027" in je_datum["name"] and je_datum["geprueft"] is None
     # 87 Tage später ist sie zu alt; die nie geprüften stehen trotzdem vorn
     spaeter = wa.zu_pruefen(d, D(2027, 1, 15), 60)
-    alt = next(t for t in spaeter if (t["bezug"], t["merkmal"]) == ("U-01", "preis"))
+    alt = next(t for t in spaeter if (t["bezug"], t["merkmal"], t["wert"]) == ("U-01", "preis", "120 €"))
     assert alt["alter_tage"] == 87 and "vor 87 Tagen" in alt["grund"] and alt["quelle"] == "https://beispiel.invalid/u1"
     assert spaeter[-1] is alt
     # eine längere Frist lässt sie wieder zu
-    assert ("U-01", "preis") not in {(t["bezug"], t["merkmal"]) for t in wa.zu_pruefen(d, D(2027, 1, 15), 90)}
+    assert "120 €" not in {t["wert"] for t in wa.zu_pruefen(d, D(2027, 1, 15), 90) if t["merkmal"] == "preis"}
 
 
 def test_pruefauftrag_einmal_und_mit_abstand(reise):
@@ -152,7 +158,7 @@ def test_pruefauftrag_begrenzt_die_menge(reise, monkeypatch):
 def test_frist_ist_einstellbar(reise):
     r = reise(geprueft="2026-10-20", regeln={"waechter_frist_tage": 10})
     erg = r.lauf(D(2026, 11, 1), trocken=True)
-    assert ("U-01", "preis") in {(t["bezug"], t["merkmal"]) for t in erg["zu_pruefen"]}
+    assert "120 €" in {t["wert"] for t in erg["zu_pruefen"] if (t["bezug"], t["merkmal"]) == ("U-01", "preis")}
 
 
 # ---------- Erinnerer ----------
