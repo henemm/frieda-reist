@@ -1618,7 +1618,7 @@ document.addEventListener("click", e => {
 /* ---------- Ansichten ---------- */
 // Mahnungen ab Status „fest“: offene Planungs-Wahlstellen, ungeprüfte veränderliche Angaben (vom Generator, Paket B)
 function mahnungen(m) {
-  const l = (R && R.mahnungen) || [];
+  const l = D.reise.mahnungen === false ? [] : (R && R.mahnungen) || [];
   if (l.length) m.append(el("div", {class: "warnungen mahnung"}, el("b", {}, `Mahnung (${l.length}):`),
     el("ul", {}, l.map(x => el("li", {}, x.text, " ", link(x.bezug, "→"))))));
 }
