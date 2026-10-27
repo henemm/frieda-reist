@@ -43,14 +43,18 @@ Farben als CSS-Variablen in `:root` (hell, dunkel per `prefers-color-scheme`): `
 - **Breite.** Kopf und alle Ansichten teilen die Breite `--breite` (Handy voll, ab 760 px 920 px, ab 1100 px 1280 px, ab 1700 px 1400 px). Eine Ansicht ist nie schmaler oder breiter als die andere. Fließtext bleibt auf Lesebreite `--lese` (44 rem), damit Zeilen nicht zu lang werden; Karten, Tabellen und die Karte nutzen die ganze Breite.
 - **Spalten.** Ab 1100 px stehen die Tage des Plans in zwei Spalten, ein Tag mit geöffnetem Vergleich nimmt die ganze Breite. Der Vergleich zeigt am Handy 2, bis 1099 px 4 und ab 1100 px 5 Möglichkeiten nebeneinander (`vglMax`).
 
-## Kennung und Rückmeldung (27.10.2026)
+## Kennung und Rückmeldung (B2, 27.10.2026)
 
-Die Kennung (Atom `zid`: T-01, V-05 …) ist die Anschrift jeder Rückmeldung. Im Alltag braucht niemand sie, deshalb steht sie nie laut im Text (Entscheidung vom 27.10.2026 nach drei Vorschlägen). Der Baustein hat zwei Gestalten:
+Die Kennung (Atom `zid`: T-01, V-05 …) ist die Anschrift jeder Rückmeldung. Im Alltag braucht niemand sie, deshalb steht sie nie in der Seite. Es gilt **„Symbol oder Wort, nie beides“**: Bedienelemente, die man nur vielleicht braucht, sind ein Symbol mit Tooltip; was man oft braucht, ist ein Wort ohne Symbol („Alternativen vergleichen“, Reiter, „← Plan“, „Tag 3 →“).
 
-- **B, Wortmarke:** ein Info-Zeichen „i“ (nicht kursiv) und ein Wortknopf „Anmerken“, bei Einträgen „2 Rückmeldungen“ mit Zahl, dazu „1 Aufgabe offen“. Tippen auf das „i“ zeigt die Kennung mit „Kopieren“. Gilt bei genug Platz (ab 700 px) und **in Karten immer**.
-- **A, Sprechblase:** nur das Symbol, mit Zahl und einem Warnpunkt bei offener Aufgabe. Gilt bei wenig Platz (unter 700 px) außerhalb von Karten, etwa an Überschriften am Handy. Die Kennung steht dort oben im Fenster, das sich öffnet.
+- **Anmerken** ist deshalb überall nur die Sprechblase: Tippfläche 44 × 44 px, Symbol 1,25 rem, leer blass (Deckkraft 0,7; bei Hover und Fokus voll), mit Rückmeldungen grün gefüllt mit der Zahl oben rechts, eine offene Aufgabe als Warnpunkt unten rechts.
+- Der Tooltip (`title`) sagt es in Klartext: „Anmerken“ oder „2 Rückmeldungen · 1 Aufgabe offen“. `aria-label` nennt dazu die Kennung („Anmerken zu T-01, 2 Rückmeldungen“).
+- Die Kennung selbst steht im Fenster, das sich öffnet („Zu T-01“), mit einem Knopf „Kopieren“, um im Gespräch auf eine Stelle zu zeigen. Ein Info-Zeichen „i“ gibt es nicht.
+- In Titelzeilen sitzt die Sprechblase mit Abstand am rechten Rand, damit Tippen auf den Titel sie nicht trifft.
 
-Als Karte zählen `.karte`, `details.block`, `.option`, `.wm-karte` und `.ding`; die Regel steht in der Vorlage im Abschnitt „Kennung (Atom zid)“. Ohne die Bausteine Rückmeldungen und Aufgaben bleibt die Kennung als schlichter Text.
+Die Deckkraft ist 0,7 statt der im Versuch gezeigten 0,55: Erst so erreicht das Symbol den Kontrast 3:1, den Bedienelemente brauchen (WCAG 1.4.11), hell und dunkel. Ohne die Bausteine Rückmeldungen und Aufgaben bleibt die Kennung als schlichter Text.
+
+Das ersetzt die Festlegung vom selben Tag (Wortmarke „Anmerken“ mit „i“ bei genug Platz und in Karten, Sprechblase nur bei wenig Platz).
 
 ## Bausteinseite und Prüfung
 

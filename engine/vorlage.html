@@ -144,49 +144,33 @@ ol.fussnoten li{margin:0 0 .25em;overflow-wrap:anywhere}
 .plan-linie{width:16px;border-top:4px solid var(--farbe);display:inline-block}
 .punkt{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--farbe);margin-right:4px}
 h2 .punkt,h2 i.punkt{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--farbe);margin-right:8px;vertical-align:middle}
-/* ---------- Kennung (Atom zid): Rückmeldung und Aufgaben zu einer Stelle (Entscheidung 27.10.2026) ----------
-   Zwei Gestalten desselben Bausteins:
-   B (Wortmarke): Info-Zeichen „i“ (zeigt die Kennung mit „Kopieren“) und ein Wortknopf „Anmerken“ oder „2 Rückmeldungen“.
-      Gilt bei genug Platz (ab 700 px) und in Karten immer.
-   A (Sprechblase): nur das Symbol mit Zahl und Warnpunkt, bei wenig Platz außerhalb von Karten. Die Kennung steht dort im Fenster. */
-.zid-box{position:relative;display:inline-flex;align-items:center;gap:2px;max-width:100%;vertical-align:middle}
-.zid{font:0.6875rem ui-monospace,Menlo,monospace;color:var(--mut);margin-left:8px;white-space:nowrap}
-.pico button.zid,.pico button.zid-i,.pico button.zid-kop{width:auto;margin:0;box-shadow:none;transition:none;background:none;border:0;--pico-background-color:transparent;--pico-border-color:transparent}
+/* ---------- Atom Kennung (zid): Rückmeldungen und Aufgaben zu einer Stelle (B2, frieda-reist#56, 27.10.2026) ----------
+   „Symbol oder Wort, nie beides“: Anmerken braucht man nur vielleicht, deshalb nur die Sprechblase mit Tooltip, überall
+   gleich. Leer blass (bei Hover und Fokus voll), mit Rückmeldungen grün gefüllt mit Zahl, offene Aufgabe als Warnpunkt.
+   Tippfläche 44 × 44 px. Die Kennung selbst (T-01 …) steht im Fenster, das sich öffnet, mit „Kopieren“.
+   Deckkraft leer 0,7 statt der erprobten 0,55: so hat das Symbol 3:1 Kontrast (WCAG 1.4.11), hell und dunkel. */
+.zid-box{position:relative;display:inline-flex;align-items:center;max-width:100%;vertical-align:middle}
+.zid{font:0.6875rem ui-monospace,Menlo,monospace;color:var(--mut);margin-left:8px;white-space:nowrap}   /* ohne Rückmeldungen: Kennung als Text */
 /* .pico davor: sonst gewinnt Pico CSS mit hellem Text auf hellem Grund */
-.pico button.zid,.pico button.zid-i{position:relative;display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 4px;cursor:pointer;color:var(--mut);font:600 0.9375rem/1.2 var(--font-text);--pico-color:var(--mut);border-radius:8px;text-align:left}
-.pico button.zid.hat{color:var(--acc);--pico-color:var(--acc)}
-button.zid .sym{width:1.05em;height:1.05em}
-button.zid .zid-blase{display:none}   /* Symbol der Gestalt A */
-.zid-wort{text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--acc) 40%,transparent);text-underline-offset:4px}
-.zid:not(.hat) .zid-wort{text-decoration-color:color-mix(in srgb,var(--mut) 40%,transparent)}
-.zid-n{display:inline-flex;align-items:center;justify-content:center;min-width:1.4em;height:1.4em;padding:0 .4em;border-radius:99px;background:var(--acc);color:var(--card);font-size:0.78rem;font-weight:700;font-variant-numeric:tabular-nums;text-decoration:none}
-.zid-ag{display:inline-flex;align-items:center;font-size:0.82rem;font-weight:600;color:var(--warn);background:var(--warnbg);border-radius:99px;padding:2px 9px;text-decoration:none}
-.zid-o{display:none;width:.6em;height:.6em;border-radius:50%;background:var(--warn)}
-.pico button.zid-i{width:44px;justify-content:center;padding:0;margin:0 -6px 0 0;font:700 0.95rem var(--font-titel);font-style:normal}
-button.zid-i::before{content:"";position:absolute;width:22px;height:22px;border-radius:50%;border:1.5px solid currentColor}
-button.zid-i span{position:relative;font-style:normal}
-.pico button.zid-i[aria-expanded="true"]{color:var(--acc);--pico-color:var(--acc)}
-.zid-kennung{display:none;align-items:center;gap:10px;position:absolute;z-index:5;right:0;top:calc(100% - 8px);background:var(--fg);color:var(--bg);padding:3px 4px 3px 10px;border-radius:9px;white-space:nowrap;font-size:0.82rem;font-variant-numeric:tabular-nums;box-shadow:0 6px 18px rgba(0,0,0,.25)}
-.zid-box.offen .zid-kennung{display:inline-flex}
-.zid-kennung::before{content:"Kennung";opacity:.7}
-.pico button.zid-kop{display:inline-flex;align-items:center;min-height:28px;padding:4px 10px;border-radius:6px;background:color-mix(in srgb,var(--bg) 20%,transparent);color:var(--bg);--pico-color:var(--bg);font:700 0.78rem var(--font-text);cursor:pointer}
-/* Gestalt A: wenig Platz, nicht in Karten */
-@media (max-width:699px){
-  .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) :is(.zid-i,.zid-wort,.zid-ag){display:none}
-  .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) button.zid{width:44px;justify-content:center;padding:0;margin-right:-8px}
-  .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) button.zid .zid-blase{width:1.35rem;height:1.35rem;display:inline-block}
-  .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) button.zid .zid-stift{display:none}
-  .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) button.zid.hat .zid-blase{fill:var(--acc2)}
-  .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) .zid-n{position:absolute;top:3px;right:0;min-width:1.2rem;height:1.2rem;font-size:0.72rem;box-shadow:0 0 0 2px var(--bg)}
-  .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) .zid-o{display:block;position:absolute;bottom:8px;right:6px;box-shadow:0 0 0 2px var(--bg)}
-}
+.pico button.zid{position:relative;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-height:44px;padding:0;margin:0 -10px 0 0;
+  border:0;border-radius:var(--r-klein);background:none;box-shadow:none;transition:none;cursor:pointer;opacity:.7;
+  color:var(--mut);--pico-color:var(--mut);--pico-background-color:transparent;--pico-border-color:transparent}
+.pico button.zid:focus-visible{opacity:1}
+.pico button.zid:is(.hat-rm,.hat-ag){opacity:1}
+.pico button.zid.hat-rm{color:var(--acc);--pico-color:var(--acc)}
+button.zid .zid-blase{width:1.25rem;height:1.25rem}
+button.zid.hat-rm .zid-blase{fill:var(--acc2)}
+.zid-n{position:absolute;top:3px;right:1px;display:inline-flex;align-items:center;justify-content:center;min-width:1.2rem;height:1.2rem;padding:0 .3em;
+  border-radius:var(--r-pille);background:var(--acc);color:var(--card);font:700 0.72rem/1 var(--font-text);font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px var(--card)}
+.zid-o{position:absolute;bottom:9px;right:8px;width:.6rem;height:.6rem;border-radius:50%;background:var(--warn);box-shadow:0 0 0 2px var(--card)}
 /* In Titelzeilen sitzt die Kennung mit Abstand am rechten Rand, damit Tippen auf den Titel sie nicht trifft */
-:is(summary,h2,.k):has(>.zid-box){display:flex;flex-wrap:wrap;align-items:center;gap:2px 16px;line-height:1.3}
-:is(summary,h2,.k):has(>.zid-box)>.punkt{margin-right:-8px}
-:is(summary,h2,.k)>.zid-box{margin:0 0 0 auto}
+:is(summary,h2,.k,.titelzeile):has(>.zid-box){display:flex;flex-wrap:wrap;align-items:center;gap:2px 16px;line-height:1.3}
+:is(summary,h2,.k,.titelzeile):has(>.zid-box)>.punkt{margin-right:-8px}
+:is(summary,h2,.k,.titelzeile)>.zid-box{margin:0 0 0 auto}
+.titelzeile:has(>.zid-box){flex-wrap:nowrap}
+.titelzeile>:first-child{flex:1;min-width:0}
 @media (hover:hover){
-  button.zid:hover .zid-wort{text-decoration-color:var(--acc)}
-  button.zid-i:hover{color:var(--acc)}
+  .pico button.zid:hover{opacity:1;color:var(--acc);--pico-color:var(--acc)}
 }
 
 /* ==================== 4 Moleküle ==================== */
@@ -421,6 +405,7 @@ dialog#rm::backdrop{background:rgba(0,0,0,.35)}
 #rm .rminhalt{padding:10px 16px calc(16px + env(safe-area-inset-bottom))}
 #rm textarea,#wuForm textarea{min-height:110px;resize:vertical}
 #rm .rmkopf .k{font-weight:700}
+#rm .rmkopf .kennung{font-variant-numeric:tabular-nums}
 /* Wunsch-Brett (Paket G): am Handy Spalten untereinander, leere weg; ab 700 px eine Reihe wie ein Brett, leere Spalten
    schmal, bei vielen Wünschen seitlich blättern (nur das Brett, nie die Seite) */
 .brett{display:flex;flex-direction:column;margin-top:6px}
@@ -661,19 +646,16 @@ function symbol(name, klasse) {
   t.innerHTML = `<svg class="sym${klasse ? " " + klasse : ""}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
   return t.content.firstChild;
 }
+// Atom Kennung: Sprechblase mit Tooltip („Anmerken“ oder „2 Rückmeldungen · 1 Aufgabe offen“), Zahl und Warnpunkt.
+// Ohne die Bausteine Rückmeldungen und Aufgaben bleibt die Kennung als schlichter Text.
 function zid(id) {
   if (!B("rueckmeldungen") && !B("aufgaben")) return el("span", {class: "zid"}, id);
   const n = rmZu(id).length, a = agZu(id).filter(agOffen).length;
-  const wort = n ? (n === 1 ? "1 Rückmeldung" : `${n} Rückmeldungen`) : "Anmerken";
-  const ag = a ? (a === 1 ? "1 Aufgabe offen" : `${a} Aufgaben offen`) : "";
-  const knopf = el("button", {type: "button", class: "zid" + (n || a ? " hat" : "") + (n ? "" : " zid-leer"), "data-rm": id, title: "Rückmeldungen und Aufgaben zu " + id,
-    "aria-label": [`Anmerken zu ${id}`, n ? wort : "", ag].filter(Boolean).join(", ")},
-    n ? null : symbol("anmerken", "zid-stift"), symbol("rueckmeldungen", "zid-blase"), n ? el("span", {class: "zid-n"}, String(n)) : null, a ? el("span", {class: "zid-o"}) : null,
-    el("span", {class: "zid-wort"}, n ? wort.replace(/^\d+ /, "") : wort), a ? el("span", {class: "zid-ag"}, ag) : null);
-  const info = el("button", {type: "button", class: "zid-i", "data-kennung": id, "aria-label": `Kennung ${id} anzeigen`, "aria-expanded": "false"}, el("span", {}, "i"));
-  const kennung = el("span", {class: "zid-kennung", role: "status"}, el("span", {class: "zid-wert"}, id),
-    el("button", {type: "button", class: "zid-kop", "data-kopieren": id}, "Kopieren"));
-  return el("span", {class: "zid-box"}, info, knopf, kennung);
+  const rm = n === 1 ? "1 Rückmeldung" : `${n} Rückmeldungen`, ag = a === 1 ? "1 Aufgabe offen" : `${a} Aufgaben offen`;
+  const knopf = el("button", {type: "button", class: "zid" + (n ? " hat-rm" : "") + (a ? " hat-ag" : ""), "data-rm": id,
+    title: [n ? rm : "Anmerken", a ? ag : ""].filter(Boolean).join(" · "), "aria-label": [`Anmerken zu ${id}`, n ? rm : "", a ? ag : ""].filter(Boolean).join(", ")},
+    symbol("rueckmeldungen", "zid-blase"), n ? el("span", {class: "zid-n", "aria-hidden": "true"}, String(n)) : null, a ? el("span", {class: "zid-o", "aria-hidden": "true"}) : null);
+  return el("span", {class: "zid-box"}, knopf);
 }
 /* Bausteine nach Ebenen (Designsystem, frieda-reist#18). Jede Ansicht setzt sich aus ihnen zusammen,
    statt dieselbe Sache selbst zu zeichnen.
@@ -822,7 +804,7 @@ function streckeZeile(id, wahl) {
   const s = R.strecken[id] || {titel: id};
   // art: ein Verkehrsmittel oder eine Liste in Reihenfolge, z. B. [bahn, bus]
   const art = s.art && s.art !== "wandern" ? [].concat(s.art).map(a => ART_TEXT[a] || a).join(" + ") : (s.art ? "" : "Verkehrsmittel offen");
-  const z = el("div", {class: "z"}, s.dossier || proId.has(id) ? link(id, s.titel) : s.titel, zid(id));
+  const z = el("div", {class: "z"}, el("div", {class: "titelzeile"}, el("span", {}, s.dossier || proId.has(id) ? link(id, s.titel) : s.titel), zid(id)));
   // Kennzahlen als Leiste mit Etiketten (Gehzeit, Aufstieg, Abstieg, Strecke); Verkehrsmittel als Textzeile
   const kz = kennzahlLeiste(s.kennzahlen);
   if (art) z.append(el("div", {class: "z klein"}, art));
@@ -2309,7 +2291,8 @@ function rmFormular(id) {
   const sel = el("select", {id: "rmArt"}, arten.map(a => el("option", {value: a, selected: a === ART_STANDARD(id)}, a)));
   dlg.replaceChildren(
     el("div", {class: "rmkopf"},
-      el("div", {}, el("div", {class: "k"}, (id === "allgemein" ? "Allgemein" : "Zu " + id)), titel ? el("div", {class: "meldung"}, titel) : null),
+      el("div", {}, el("div", {class: "k"}, id === "allgemein" ? "Allgemein" : ["Zu ", el("span", {class: "kennung"}, id)]), titel ? el("div", {class: "meldung"}, titel) : null),
+      id === "allgemein" ? null : el("button", {type: "button", class: "outline klein", "data-kopieren": id, title: "Kennung kopieren"}, "Kopieren"),
       el("button", {type: "button", class: "outline klein", "data-schliessen": "1"}, "Schließen")),
     el("div", {class: "rminhalt"},
       B("aufgaben") ? [el("h4", {}, "Aufgaben"),
@@ -2395,7 +2378,7 @@ function eintragGruppen(m, gruppen, alle, zeichne, davor) {
 const jetztSenden = () => el("button", {type: "button", class: "klein", "data-nachreichen": "1"}, "Jetzt senden");
 function ansichtRueckmeldungen(m) {
   m.append(el("h2", {}, "Rückmeldungen"));
-  m.append(el("p", {class: "meldung"}, "Zu jedem Eintrag mit Nummer (z. B. T-01) kann man über das 💬 an der Nummer etwas anmerken, fragen oder korrigieren. Claude Code prüft jede Rückmeldung, arbeitet sie ein (meist in wenigen Minuten) und schreibt hier dazu, was daraus geworden ist."));
+  m.append(el("p", {class: "meldung"}, "Zu jeder Stelle kann man über die Sprechblase daneben etwas anmerken, fragen oder korrigieren. Claude Code prüft jede Rückmeldung, arbeitet sie ein (meist in wenigen Minuten) und schreibt hier dazu, was daraus geworden ist."));
   if (KANN_RM) m.append(el("button", {type: "button", class: "outline", "data-rm": "allgemein"}, "Allgemeine Rückmeldung zur Reise"));
   if (API_OK === false) m.append(el("p", {class: "meldung"}, "Gerade keine Verbindung zum Rückmeldedienst – angezeigt wird der zuletzt geladene Stand."));
   eintragGruppen(m, [["Noch nicht gesendet", () => true]], AUSGANG, e => rmEintrag(e, true), jetztSenden);
@@ -2624,21 +2607,14 @@ document.addEventListener("click", e => {
 }, true);
 window.addEventListener("online", () => brLaden().then(rmNeuZeichnen));
 
-// Kennung zeigen („i“) und kopieren; ein Tipp daneben oder Esc schließt sie
-const kennungZu = () => document.querySelectorAll(".zid-box.offen").forEach(x => { x.classList.remove("offen"); x.querySelector(".zid-i").setAttribute("aria-expanded", "false"); });
+// Kennung kopieren (Knopf im Rückmeldefenster), um im Gespräch auf eine Stelle zu zeigen
 document.addEventListener("click", e => {
-  const i = e.target.closest(".zid-i"), k = e.target.closest("[data-kopieren]");
-  if (k) {
-    e.preventDefault(); e.stopPropagation();
-    const fertig = t => { k.textContent = t; setTimeout(() => { k.textContent = "Kopieren"; }, 1500); };
-    try { navigator.clipboard.writeText(k.dataset.kopieren).then(() => fertig("Kopiert"), () => fertig(k.dataset.kopieren)); } catch (x) { fertig(k.dataset.kopieren); }
-    return;
-  }
-  const offen = i && i.parentNode.classList.contains("offen");
-  if (!e.target.closest(".zid-kennung")) kennungZu();
-  if (i) { e.preventDefault(); e.stopPropagation(); if (!offen) { i.parentNode.classList.add("offen"); i.setAttribute("aria-expanded", "true"); } }
+  const k = e.target.closest("[data-kopieren]");
+  if (!k) return;
+  e.preventDefault(); e.stopPropagation();
+  const fertig = t => { k.textContent = t; setTimeout(() => { k.textContent = "Kopieren"; }, 1500); };
+  try { navigator.clipboard.writeText(k.dataset.kopieren).then(() => fertig("Kopiert"), () => fertig(k.dataset.kopieren)); } catch (x) { fertig(k.dataset.kopieren); }
 }, true);
-document.addEventListener("keydown", e => { if (e.key === "Escape") kennungZu(); });
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-rm]");
   if (b) { e.preventDefault(); e.stopPropagation(); rmFormular(b.dataset.rm); return; }
@@ -2814,7 +2790,7 @@ async function agHaken(agid) {
 
 function ansichtAufgaben(m) {
   m.append(el("h2", {}, "Aufgaben"));
-  m.append(el("p", {class: "meldung"}, "Aufgaben hängen an einer Stelle im Handbuch (z. B. U-13 oder T-07) oder an der Reise allgemein. Alle können sie anlegen, abhaken und ändern; jede Änderung steht im Verlauf. Auch über das ☐ an jeder Nummer."));
+  m.append(el("p", {class: "meldung"}, "Aufgaben hängen an einer Stelle im Handbuch (z. B. U-13 oder T-07) oder an der Reise allgemein. Alle können sie anlegen, abhaken und ändern; jede Änderung steht im Verlauf. Auch über die Sprechblase an jeder Stelle."));
   if (KANN_AG) m.append(el("button", {type: "button", class: "outline", "data-ag-neu": ""}, "+ Neue Aufgabe"));
   if (AG_OK === false) m.append(el("p", {class: "meldung"}, "Gerade keine Verbindung – angezeigt wird der zuletzt geladene Stand."));
   const f = el("div", {class: "agfilter"});

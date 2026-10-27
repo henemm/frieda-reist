@@ -1009,8 +1009,6 @@ SYMBOLE = {"plan": "calendar-days", "varianten": "split", "etappen": "footprints
            # Kategorien der Etappen-Karten
            "einkehr": "utensils", "wasser": "droplet", "bus": "bus", "unterkunft": "bed-double", "apotheke": "pill",
            "taxi": "car-taxi-front",
-           # Kennung (Anmerken)
-           "anmerken": "pencil",
            # Kennzahlen und Orte (Gesicht „Freundlich“, #52)
            "gehzeit": "clock", "aufstieg": "trending-up", "abstieg": "trending-down", "strecke": "route", "ort": "map-pin"}
 
