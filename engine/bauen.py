@@ -1009,7 +1009,9 @@ SYMBOLE = {"plan": "calendar-days", "varianten": "split", "etappen": "footprints
            "aufgaben": "list-checks", "karte": "map", "offen": "list-checks", "wuensche": "sparkles",
            # Kategorien der Etappen-Karten
            "einkehr": "utensils", "wasser": "droplet", "bus": "bus", "unterkunft": "bed-double", "apotheke": "pill",
-           "taxi": "car-taxi-front"}
+           "taxi": "car-taxi-front",
+           # Kennung (Anmerken)
+           "anmerken": "pencil"}
 
 
 def symbole():
