@@ -45,7 +45,7 @@ Farben als CSS-Variablen in `:root` (hell, dunkel per `prefers-color-scheme`): `
 
 ## Kennung und Rückmeldung (27.10.2026)
 
-Die Kennung (Atom `zid`: T-01, V-05 …) ist die Anschrift jeder Rückmeldung. Im Alltag braucht niemand sie, deshalb steht sie nie laut im Text (Henning, 27.10.2026, nach drei Vorschlägen im Artefakt „Rückmeldung-Kennzeichen“). Der Baustein hat zwei Gestalten:
+Die Kennung (Atom `zid`: T-01, V-05 …) ist die Anschrift jeder Rückmeldung. Im Alltag braucht niemand sie, deshalb steht sie nie laut im Text (Entscheidung vom 27.10.2026 nach drei Vorschlägen). Der Baustein hat zwei Gestalten:
 
 - **B, Wortmarke:** ein Info-Zeichen „i“ (nicht kursiv) und ein Wortknopf „Anmerken“, bei Einträgen „2 Rückmeldungen“ mit Zahl, dazu „1 Aufgabe offen“. Tippen auf das „i“ zeigt die Kennung mit „Kopieren“. Gilt bei genug Platz (ab 700 px) und **in Karten immer**.
 - **A, Sprechblase:** nur das Symbol, mit Zahl und einem Warnpunkt bei offener Aufgabe. Gilt bei wenig Platz (unter 700 px) außerhalb von Karten, etwa an Überschriften am Handy. Die Kennung steht dort oben im Fenster, das sich öffnet.
