@@ -269,6 +269,11 @@ SYNONYME = [{"geoeffnet", "oeffnung", "oeffnungszeit", "oeffnungszeiten", "offen
             {"dauer", "fahrzeit", "reisezeit", "flugzeit"}, {"gepaeck", "koffer", "freigepaeck"}]
 
 
+def regel_stand(x):
+    """Stand einer Option, auf die eine Regel zeigt (erfordert, schliesst_aus)."""
+    return "verworfen" if not x.get("gueltig", True) else "im Plan" if x.get("im_plan") else "nicht im Plan"
+
+
 def merkmal_norm(s):
     s = str(s).lower()
     for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
@@ -462,6 +467,9 @@ class Handbuch:
             z.append("Dagegen: " + "; ".join(o["minus"]))
         if o.get("tage"):
             z.append("Tage: " + ", ".join(o["tage"]))
+        for k, name in (("erfordert", "Setzt voraus"), ("schliesst_aus", "Schließt aus")):
+            if o.get(k):
+                z.append(f"{name}: " + "; ".join(f"{x['id']} „{x['titel']}“ ({regel_stand(x)})" for x in o[k]))
         if o.get("summe"):
             z.append("Summe: " + self.summe(o["summe"]))
         for v in o.get("verlauf") or []:
@@ -776,6 +784,21 @@ class Handbuch:
             offen = [namen.get(k, k) for k, v in (o.get("merkmale") or {}).items() if v.get("ungeprueft")]
             if offen:
                 hinweise.append("Ungeprüfte veränderliche Angaben: " + ", ".join(offen) + " – vor dem Buchen nachschlagen.")
+        # Regeln zwischen Optionen (Paket 4): nichts verhindern, aber sagen, was dann nicht mehr zusammenpasst
+        if status == "gewaehlt":
+            for x in o.get("erfordert") or []:
+                if not x["im_plan"]:
+                    hinweise.append(f"{oid} setzt {x['id']} „{x['titel']}“ voraus; das steht derzeit nicht im Plan"
+                                    + ("" if x["gueltig"] else " und ist verworfen") + ".")
+            for x in o.get("schliesst_aus") or []:
+                if x["im_plan"]:
+                    hinweise.append(f"{oid} und {x['id']} „{x['titel']}“ schließen sich aus; {x['id']} steht derzeit im Plan.")
+        if status in ("verworfen", "ersetzt"):
+            for w2 in self.r.get("wahlstellen", []):
+                for o2 in w2["optionen"]:
+                    if o2.get("im_plan") and o2["status"] not in ("verworfen", "ersetzt") and \
+                            any(x["id"] == oid for x in o2.get("erfordert") or []):
+                        hinweise.append(f"{o2['id']} „{o2['titel']}“ steht im Plan und setzt {oid} voraus.")
         if w.get("art") == "unterwegs" and not self.v["ausloeser_vor"]:
             hinweise.append(f"{w['id']} ist eine Wahlstelle für unterwegs"
                             + (f" (Auslöser: {o['ausloeser']})" if o.get("ausloeser") else "")

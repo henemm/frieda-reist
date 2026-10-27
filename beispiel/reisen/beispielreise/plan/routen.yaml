@@ -25,6 +25,7 @@ strecken:
   E-04: {von: O-04, nach: O-06, art: wandern}
   E-20: {titel: "S-Bahn Dresden → Stadt Wehlen, Fähre über die Elbe", von: O-01, nach: O-02, art: bahn, quelle: "Beispiel; Fahrplan nicht geprüft"}
   E-21: {titel: "S-Bahn Bad Schandau → Dresden", von: O-05, nach: O-01, art: bahn, quelle: "Beispiel; Fahrplan nicht geprüft"}
+  E-23: {titel: "Bus Bad Schandau → Dresden", von: O-05, nach: O-01, art: bus, quelle: "erfunden (Beispiel)"}
   E-22: {titel: "Kirnitzschtalbahn Lichtenhainer Wasserfall → Bad Schandau", von: O-06, nach: O-05, art: bahn, siehe: W-06, quelle: "Strecke laut Wikipedia (W-06); Fahrplan nicht geprüft"}
 
 unterkuenfte:
@@ -82,6 +83,7 @@ tage:
   T-03: {titel: "Hohnstein → Brand → Altendorf", strecken: [E-02], nacht: U-04}
   T-04: {titel: "Altendorf → Schrammsteine → Bad Schandau, Zug nach Dresden", strecken: [E-03, E-21]}
   T-05: {titel: "Altendorf → Schrammsteine → Lichtenhainer Wasserfall, Kirnitzschtalbahn, Zug nach Dresden", strecken: [E-04, E-22, E-21]}
+  T-06: {titel: "Mit dem Bus von Bad Schandau nach Dresden (erfundenes Beispiel)", strecken: [E-23]}
 
 route: [T-01, T-02, T-03, V-01]
 
@@ -120,6 +122,16 @@ wahlstellen:
         verlauf:
           - {datum: 2026-10-20, status: vorgeschlagen, wer: Claude}
           - {datum: 2026-10-22, status: favorisiert, wer: Karl, grund: "Karl möchte einmal mit der Kirnitzschtalbahn fahren"}
+      # Erfundenes Beispiel für Regeln und Anschluss: Der Bus fährt ab Bad Schandau, der Weg von Altendorf dorthin
+      # fehlt (der Vergleich zeigt „Lücke am Anfang“). Die Regeln sind ebenfalls erfunden.
+      - id: V-01.c
+        titel: "Mit dem Bus zurück (erfundenes Beispiel)"
+        text: "Gepäck bleibt in der Pension Burgblick und wird unterwegs abgeholt (erfunden)."
+        folge: [T-06]
+        erfordert: [V-03.a]
+        schliesst_aus: [V-02.b]
+        verlauf:
+          - {datum: 2026-10-23, status: vorgeschlagen, wer: Claude}
 
   V-02:
     titel: "Tag 2: Zugang zum Hockstein"

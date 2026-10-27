@@ -184,6 +184,11 @@ class Routen:
         self.auswahl = {}         # V-01 -> aktive Option-ID
         self.tag_benutzt = {}     # T-ID -> Fundstelle
         self.zwang = zwang or {}
+        self.erfordert = {}       # V-01.a -> [Option-IDs], die im Plan stehen müssen
+        self.schliesst = {}       # V-01.a -> {Option-IDs}, die nicht zugleich im Plan stehen dürfen (beidseitig)
+        self.grenzen = {}         # V-ID -> (Index erster Tag, Index Tag danach) im aktuellen Plan
+        self.im_plan = None       # Option-IDs, die der aktuelle Plan erreicht (nach bauen)
+        self.plan_tage = []
         self.ist_plan = zwang is not None   # Unterlauf für einen benannten Plan: keine Pläne darin
 
     # ---------- Hilfen ----------
@@ -261,6 +266,7 @@ class Routen:
                 self.option[oid] = (vid, o)
                 self.verlauf_pruefen(oid, o)
             self.waehle(vid, w)
+        self.regeln_pruefen()
         self.merkmale_pruefen()
 
     def an_pruefen(self, vid, w):
@@ -280,6 +286,87 @@ class Routen:
                     break
             else:
                 self.fehl(f"Wahlstelle {vid}: an „{x}“ ist weder Tag, Strecke, Unterkunft, Ort noch Wahlstelle.")
+
+    def regeln_pruefen(self):
+        """Voraussetzungen zwischen Optionen verschiedener Wahlstellen (Paket 4, #18): erfordert (diese Option geht nur
+        zusammen mit jener) und schliesst_aus (nie beide zugleich; gilt in beide Richtungen)."""
+        for oid, (vid, o) in self.option.items():
+            gesehen = {}
+            for feld in ("erfordert", "schliesst_aus"):
+                liste = o.get(feld)
+                if liste is None:
+                    continue
+                if not isinstance(liste, list):
+                    self.fehl(f"{oid}: {feld} muss eine Liste von Optionen sein (z. B. [V-02.b]).")
+                    continue
+                gut = []
+                for x in liste:
+                    if x not in self.option:
+                        self.fehl(f"{oid}: {feld} {x} – diese Option gibt es nicht.")
+                    elif self.option[x][0] == vid:
+                        self.fehl(f"{oid}: {feld} {x} gehört zur selben Wahlstelle {vid}; dort gilt ohnehin nur eine Option.")
+                    elif x in gesehen:
+                        self.fehl(f"{oid}: {x} steht unter {gesehen[x]} und {feld}.")
+                    else:
+                        gesehen[x] = feld
+                        gut.append(x)
+                if feld == "erfordert":
+                    je = {}
+                    for x in gut:
+                        je.setdefault(self.option[x][0], []).append(x)
+                    for v, xs in je.items():
+                        if len(xs) > 1:
+                            self.fehl(f"{oid}: erfordert {', '.join(xs)} – von {v} kann nur eine Option im Plan stehen.")
+                    self.erfordert[oid] = gut
+                    if self.status(o) not in UNGUELTIG:
+                        for x in gut:
+                            if self.status(self.option[x][1]) in UNGUELTIG:
+                                self.warne(oid, f"{oid} setzt {x} voraus, aber {x} ist {self.status(self.option[x][1])}.")
+                else:
+                    for x in gut:
+                        self.schliesst.setdefault(oid, set()).add(x)
+                        self.schliesst.setdefault(x, set()).add(oid)
+
+    def regeln_im_plan(self, tage, orte):
+        """Welche Optionen der aktuelle Plan erreicht, und ob er die Voraussetzungen erfüllt. Erreicht ist eine Wahlstelle,
+        wenn die Folge durch sie läuft, ein Tag im Plan sie nennt (Strecke, Nacht, unterwegs) oder ihr „an“ auf etwas
+        im Plan zeigt. Die Auswahl allein reicht nicht: Jede Wahlstelle hat eine, auch wenn der Plan nie hinkommt."""
+        erreicht = set(self.grenzen)
+        for t in tage:
+            erreicht |= set(t["wahlstellen"])
+            if t["nacht"] and t["nacht"].get("wahl"):
+                erreicht.add(t["nacht"]["wahl"])
+        im_plan = {t["id"] for t in tage} | {s["id"] for t in tage for s in t["strecken"]} | set(orte) \
+            | {t["nacht"]["unterkunft"] for t in tage if t["nacht"] and t["nacht"].get("unterkunft")}
+        neu = True
+        while neu:
+            neu = False
+            for vid, w in self.wahl.items():
+                if vid not in erreicht and any(x in im_plan or x in erreicht for x in w.get("an") or []
+                                               if isinstance(x, str)):
+                    erreicht.add(vid)
+                    neu = True
+        self.im_plan = {self.auswahl[v] for v in erreicht if v in self.auswahl}
+        titel = lambda x: f"{x} „{self.option[x][1].get('titel', x)}“"
+        for oid in sorted(self.im_plan):
+            for x in self.erfordert.get(oid, []):
+                if x in self.im_plan:
+                    continue
+                vx = self.option[x][0]
+                wo = f"im Plan ist {self.auswahl[vx]}" if vx in erreicht and vx in self.auswahl else f"{vx} liegt nicht im Plan"
+                self.warne("plan", f"{titel(oid)} setzt {titel(x)} voraus, {wo}.")
+            for x in sorted(self.schliesst.get(oid, ())):
+                if x in self.im_plan and oid < x:
+                    self.warne("plan", f"{titel(oid)} und {titel(x)} schließen sich aus, stehen aber beide im Plan.")
+
+    def regel_aus(self, oid):
+        """Voraussetzungen einer Option für die Seite: mit Titel, ob sie im Plan stehen und ob sie noch gelten."""
+        def zeile(x):
+            v, o = self.option[x]
+            return {"id": x, "titel": o.get("titel", x), "wahl": v, "im_plan": x in (self.im_plan or ()),
+                    "gueltig": self.status(o) not in UNGUELTIG}
+        return {"im_plan": oid in (self.im_plan or ()), "erfordert": [zeile(x) for x in self.erfordert.get(oid, [])],
+                "schliesst_aus": [zeile(x) for x in sorted(self.schliesst.get(oid, ()))]}
 
     def verlauf_pruefen(self, oid, o):
         vorher = None
@@ -484,6 +571,40 @@ class Routen:
                  "unterkuenfte": ", ".join(f"{n}× {k}" for k, n in s["unterkunftstypen"].items()) or None}
         return {k: {"wert": v, "auto": True} for k, v in werte.items() if v}
 
+    def anschluss(self, vid, o):
+        """Passt die Option an ihre Stelle im aktuellen Plan? Vergleicht, wo der Plan davor endet, mit ihrem ersten Tag,
+        und ihr Ende mit dem, was danach kommt (Paket 4, #18). Nur für ausgearbeitete Optionen (mit „folge“, auch leer)
+        an Wahlstellen, durch die der aktuelle Plan läuft. Lücken heißen wie die Warnungen des Plans."""
+        if vid not in self.grenzen or o.get("folge") is None:
+            return {}
+        a, e = self.grenzen[vid]
+        tage, start, ende = self.plan_tage, self.r.get("start") or {}, self.r.get("ende") or {}
+        davor = tage[a - 1]["end_ort"] if a else start.get("ort")
+        danach = self.tag_lauf(tage[e]["id"], None)[3] if e < len(tage) else ende.get("ort")
+        luecken, pos, anfang = [], davor, None
+        tids = [t for t, _ in self.folge(o.get("folge"), o.get("id"))]
+        for i, tid in enumerate(tids):
+            _, _, pos, anf = self.tag_lauf(tid, pos)
+            if i == 0:
+                anfang = anf
+        if tids:
+            if davor and anfang and davor != anfang:
+                luecken.append(f"Lücke am Anfang: {self.ort_name(davor)} → {self.ort_name(anfang)}")
+            if pos and danach and pos != danach:
+                luecken.append(f"Lücke am Ende: {self.ort_name(pos)} → {self.ort_name(danach)}")
+            bekannt = davor and anfang and pos and (danach or e >= len(tage))
+        else:
+            if davor and danach and davor != danach:
+                luecken.append(f"Lücke: {self.ort_name(davor)} → {self.ort_name(danach)}")
+            bekannt = davor and danach
+        if not luecken and not bekannt:
+            return {}
+        notiz = "Berechnet aus dem aktuellen Plan: davor " + (
+            f"in {self.ort_name(davor)}" if a else f"Reisebeginn in {self.ort_name(davor)}") + (
+            ", danach " + (f"weiter ab {self.ort_name(danach)}" if e < len(tage) else f"Reiseende in {self.ort_name(danach)}")
+            if danach else ", danach Reiseende") + "."
+        return {"anschluss": {"wert": "; ".join(luecken) or "nahtlos", "auto": True, "notiz": notiz}}
+
     def merkmale_aus(self, vid, o):
         b, krit = self.kriterien.get(vid, ("allgemein", {}))
         mk = {}
@@ -495,6 +616,8 @@ class Routen:
                 mk.update(self.mk_strecke.get(sid, {}))
         mk.update(self.mk_option.get(o.get("id"), {}))
         auto = self.auto_werte(b, o)
+        if b == "route":
+            auto.update(self.anschluss(vid, o))
         mk.update({k: auto[d["auto"]] for k, d in krit.items() if d.get("auto") in auto})
         return {k: mk[k] for k in krit if k in mk}, [k for k, d in krit.items() if not d.get("auto") and k not in mk]
 
@@ -618,6 +741,51 @@ class Routen:
         self.fehl(f"{tid}: Übernachtung „{n}“ ist weder Unterkunft, Wahlstelle noch Ort.")
         return None
 
+    def tag_lauf(self, tid, pos, warnen=False):
+        """Ein Tag im aktuellen Plan: (Strecken, Nacht, Ort am Abend, Ort am Anfang). Der Anfang ist der Start der
+        ersten Strecke, an einem Tag ohne Strecke der Ort der Nacht. warnen: Lücken melden (nur der Plan selbst)."""
+        t = self.tage[tid]
+        strecken = self.strecken_des_tages(tid, t.get("strecken"))
+        anfang = None
+        for i, (sid, _) in enumerate(strecken):
+            s = self.strecke(sid)
+            von = s.get("von")
+            z = s.get("zweig_von")
+            if z:  # Teilstück-Alternative: zweigt von einer anderen Strecke ab und ersetzt deren Rest
+                von = self.strecke(z).get("von")
+            if i == 0:
+                anfang = von
+            if warnen and von and pos and von != pos:
+                self.warne(tid, f"{tid}: Lücke – der Tag steht in {self.ort_name(pos)}, "
+                                f"{sid} beginnt in {self.ort_name(von)}.")
+            pos = s.get("nach") or pos
+        n = self.nacht(tid, t.get("nacht"))
+        if n and n.get("ort") and not n.get("an_bord"):
+            if not strecken:
+                anfang = n["ort"]
+            if warnen and pos and n["ort"] != pos:
+                self.warne(tid, f"{tid}: Der Weg von {self.ort_name(pos)} nach {self.ort_name(n['ort'])} fehlt.")
+            pos = n["ort"]
+        return strecken, n, pos, anfang
+
+    def grenzen_suchen(self, liste, n=0, tiefe=0):
+        """Wo jede Wahlstelle im aktuellen Plan steht: self.grenzen[V-ID] = (Index ihres ersten Tags, Index des Tags
+        danach); bei einer Option ohne Tage sind beide gleich. Zählt wie folge()."""
+        if tiefe > 20:
+            return n
+        for el in liste or []:
+            if isinstance(el, dict) and "teil" in el:
+                n = self.grenzen_suchen(el.get("folge"), n, tiefe + 1)
+            elif ist("tag", el):
+                n += el in self.tage
+            elif ist("wahl", el) and el in self.wahl:
+                a = n
+                oid = self.auswahl.get(el)
+                if oid:
+                    n = self.grenzen_suchen(self.option[oid][1].get("folge"), n, tiefe + 1)
+                self.grenzen[el] = (a, n)
+        return n
+
     # ---------- Ergebnis ----------
     def bauen(self):
         self.bausteine()
@@ -627,6 +795,7 @@ class Routen:
             self.fehl("start.datum fehlt (JJJJ-MM-TT).")
             return None
         folge = self.folge(self.r.get("route"), "route")
+        self.grenzen_suchen(self.r.get("route"))
 
         tage, pos = [], start.get("ort")
         for i, (tid, teil) in enumerate(folge):
@@ -635,23 +804,8 @@ class Routen:
             self.tag_benutzt[tid] = True
             t = self.tage[tid]
             datum = start["datum"] + datetime.timedelta(days=i)
-            strecken = self.strecken_des_tages(tid, t.get("strecken"))
             start_ort = pos
-            for sid, _ in strecken:
-                s = self.strecke(sid)
-                von = s.get("von")
-                z = s.get("zweig_von")
-                if z:  # Teilstück-Alternative: zweigt von einer anderen Strecke ab und ersetzt deren Rest
-                    von = self.strecke(z).get("von")
-                if von and pos and von != pos:
-                    self.warne(tid, f"{tid}: Lücke – der Tag steht in {self.ort_name(pos)}, "
-                                    f"{sid} beginnt in {self.ort_name(von)}.")
-                pos = s.get("nach") or pos
-            n = self.nacht(tid, t.get("nacht"))
-            if n and n.get("ort") and pos and n["ort"] != pos and not n.get("an_bord"):
-                self.warne(tid, f"{tid}: Der Weg von {self.ort_name(pos)} nach {self.ort_name(n['ort'])} fehlt.")
-            if n and n.get("ort") and not n.get("an_bord"):
-                pos = n["ort"]
+            strecken, n, pos, _ = self.tag_lauf(tid, pos, warnen=True)
             unterwegs = [el for el in t.get("strecken") or [] if ist("wahl", el)]
             unterwegs += [el for el in t.get("wahl") or []]
             for el in t.get("wahl") or []:
@@ -691,6 +845,9 @@ class Routen:
                 self.warne(tage[-1]["id"], f"Der Plan endet in {self.ort_name(tage[-1]['end_ort'])}, "
                                            f"die Reise endet in {self.ort_name(ende['ort'])}.")
 
+        self.plan_tage = tage
+        self.regeln_im_plan(tage, {o for t in tage for o in (t["start_ort"], t["end_ort"])}
+                            | {self.strecke(s["id"]).get(k) for t in tage for s in t["strecken"] for k in ("von", "nach")})
         # Was kommt wo vor
         in_opt = {}
         self.alle_tage_in(self.r.get("route"), in_opt, "route")
@@ -840,6 +997,7 @@ class Routen:
                 "folge": list(o.get("folge") or []),
                 "alle_strecken": sorted(self.alle_strecken(o)),
                 "summe": self.option_summe(o) if o.get("folge") else None,
+                **self.regel_aus(oid),
             })
         an = [tid for tid, t in self.tage.items()
               if vid in (t.get("strecken") or []) or vid == t.get("nacht") or vid in (t.get("wahl") or [])]

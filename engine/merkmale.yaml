@@ -74,6 +74,7 @@ route:
   tage: {name: Tage, typ: text, auto: tage}
   gehzeit: {name: Gehzeit zusammen, typ: text, auto: gehzeit}
   unterkuenfte: {name: Unterkünfte, typ: text, auto: unterkuenfte}
+  anschluss: {name: Anschluss, typ: text, auto: anschluss}
   kosten:
     name: Kosten grob
     typ: geld

@@ -545,3 +545,125 @@ def test_neue_art_ohne_merkmale_ist_fehler():
     r = roh()
     r["merkmale"] = {"restaurant": {}}
     assert any("Bereich" in f for f in mk_bauen(r)[1])
+
+
+# ---------- Regeln zwischen Optionen und Anschluss (Paket 4, #18) ----------
+def opt_aus(erg, oid):
+    return next(o for w in erg["wahlstellen"] for o in w["optionen"] if o["id"] == oid)
+
+
+def test_erfordert_verletzt_im_plan_und_in_benanntem_plan():
+    r = roh()
+    option(r, "V-03.b")["erfordert"] = ["V-02.b"]
+    r["plaene"] = [{"id": "P-A", "auswahl": ["V-01.a", "V-03.b"]}]
+    erg = ok(r)
+    # V-03.b steht nicht im Plan: keine Verletzung, aber die Seite kennt die Regel
+    assert not [t for t in texte(erg) if "voraus" in t]
+    assert opt_aus(erg, "V-03.b")["erfordert"] == [{"id": "V-02.b", "titel": "B2", "wahl": "V-02", "im_plan": False,
+                                                    "gueltig": True}]
+    # im benannten Plan schon: die Warnung geht nicht im Filter für Wahlstellen-Hinweise verloren
+    p = erg["plaene"][0]
+    assert any("V-03.b „Abzweig“ setzt V-02.b „B2“ voraus, im Plan ist V-02.a." == w["text"] for w in p["warnungen"])
+    option(r, "V-03.b")["verlauf"] = verlauf(("gewaehlt", "Ida", {}))
+    erg = ok(r)
+    assert "V-03.b „Abzweig“ setzt V-02.b „B2“ voraus, im Plan ist V-02.a." in texte(erg)
+    assert next(w for w in erg["warnungen"] if "voraus" in w["text"])["bezug"] == "plan"
+    assert opt_aus(erg, "V-03.b")["im_plan"] and not opt_aus(erg, "V-03.a")["im_plan"]
+
+
+def test_erfordert_wahlstelle_ausserhalb_des_plans():
+    r = roh()
+    option(r, "V-01.b")["erfordert"] = ["V-02.b"]
+    option(r, "V-01.b")["verlauf"] = verlauf(("gewaehlt", "Ida", {}))
+    erg = ok(r)
+    # V-02 hängt an T-01, das mit V-01.b nicht im Plan ist: dort zählt die Auswahl nicht
+    assert "V-01.b „Mit Bus“ setzt V-02.b „B2“ voraus, V-02 liegt nicht im Plan." in texte(erg)
+    assert not opt_aus(erg, "V-02.a")["im_plan"] and not opt_aus(erg, "V-03.a")["im_plan"]
+
+
+def test_schliesst_aus_gilt_in_beide_richtungen():
+    r = roh()
+    option(r, "V-02.a")["schliesst_aus"] = ["V-03.a"]
+    erg = ok(r)
+    assert "V-02.a „B1“ und V-03.a „Hauptweg“ schließen sich aus, stehen aber beide im Plan." in texte(erg)
+    assert [x["id"] for x in opt_aus(erg, "V-03.a")["schliesst_aus"]] == ["V-02.a"]
+    option(r, "V-02.b")["verlauf"] = verlauf(("gewaehlt", "Ida", {}))
+    assert not [t for t in texte(ok(r)) if "schließen sich aus" in t]
+
+
+def test_regeln_fehler_und_hinweise():
+    r = roh()
+    option(r, "V-01.a")["erfordert"] = ["V-09.a", "V-01.b", "V-02.a", "V-02.b"]
+    option(r, "V-01.b")["schliesst_aus"] = "V-02.a"
+    option(r, "V-03.a")["erfordert"] = ["V-02.a"]
+    option(r, "V-03.a")["schliesst_aus"] = ["V-02.a"]
+    f = nur_fehler(r)
+    assert "V-01.a: erfordert V-09.a – diese Option gibt es nicht." in f
+    assert "V-01.a: erfordert V-01.b gehört zur selben Wahlstelle V-01" in f
+    assert "V-01.a: erfordert V-02.a, V-02.b – von V-02 kann nur eine Option im Plan stehen." in f
+    assert "V-01.b: schliesst_aus muss eine Liste" in f
+    assert "V-03.a: V-02.a steht unter erfordert und schliesst_aus." in f
+    r = roh()
+    option(r, "V-03.b")["erfordert"] = ["V-02.b"]
+    option(r, "V-02.b")["verlauf"] = verlauf(("verworfen", "Ida", {}))
+    erg = ok(r)
+    assert {"bezug": "V-03.b", "text": "V-03.b setzt V-02.b voraus, aber V-02.b ist verworfen."} in erg["warnungen"]
+    assert opt_aus(erg, "V-03.b")["erfordert"][0]["gueltig"] is False
+
+
+def anschluss(erg, oid):
+    return (opt_aus(erg, oid)["merkmale"].get("anschluss") or {}).get("wert")
+
+
+def test_anschluss_zeigt_luecken_wie_der_plan():
+    r = roh()
+    r["wahlstellen"]["V-01"]["optionen"] += [{"id": "V-01.c", "titel": "Gleich nach C", "folge": []},
+                                            {"id": "V-01.d", "titel": "Noch nicht ausgearbeitet"}]
+    erg = ok(r)
+    assert anschluss(erg, "V-01.a") == "nahtlos"
+    # T-04 beginnt mit dem Bus in B, der Plan steht davor in A (Reisebeginn)
+    assert anschluss(erg, "V-01.b") == "Lücke am Anfang: A → B"
+    assert anschluss(erg, "V-01.c") == "Lücke: A → C"          # ohne Tage: davor A, danach Reiseende in C
+    assert anschluss(erg, "V-01.d") is None                      # ohne folge: nichts zu berechnen
+    assert opt_aus(erg, "V-01.a")["merkmale"]["anschluss"]["notiz"] == \
+        "Berechnet aus dem aktuellen Plan: davor Reisebeginn in A, danach Reiseende in C."
+    assert "anschluss" not in opt_aus(erg, "V-01.d")["fehlt"]
+    # Dieselbe Lücke meldet der Plan, sobald die Option gilt
+    option(r, "V-01.b")["verlauf"] = verlauf(("gewaehlt", "Ida", {}))
+    erg = ok(r)
+    assert anschluss(erg, "V-01.b") == "Lücke am Anfang: A → B"
+    assert "T-04: Lücke – der Tag steht in A, E-03 beginnt in B." in texte(erg)
+
+
+def test_anschluss_verschachtelt_und_nur_im_plan():
+    r = roh()
+    r["tage"]["T-05"]["nacht"] = None
+    r["tage"]["T-06"] = {"titel": "Ruhetag in C", "nacht": "U-03"}
+    r["wahlstellen"]["V-01"]["optionen"][1]["folge"] = ["T-04", "V-04"]
+    r["wahlstellen"]["V-04"] = {"titel": "Noch ein Tag?", "art": "planung", "frage": "F-01", "optionen": [
+        {"id": "V-04.a", "titel": "Ruhetag", "folge": ["T-06"]},
+        {"id": "V-04.b", "titel": "Weiter nach B", "folge": ["T-05"]}]}
+    r["tage"]["T-05"] = {"titel": "Zurück nach B", "nacht": "U-01"}
+    erg = ok(r)
+    # V-04 liegt in V-01.b; mit V-01.a im Plan gibt es dort keinen Anschluss
+    assert anschluss(erg, "V-04.a") is None and anschluss(erg, "V-04.b") is None
+    option(r, "V-01.b")["verlauf"] = verlauf(("gewaehlt", "Ida", {}))
+    erg = ok(r)
+    assert anschluss(erg, "V-04.a") == "nahtlos"
+    assert anschluss(erg, "V-04.b") == "Lücke am Anfang: C → B; Lücke am Ende: B → C"
+
+
+def test_anschluss_stimmt_mit_den_warnungen_der_beispielreise():
+    """Für die Optionen im Plan: „Lücke am Anfang“ genau dann, wenn der Plan am ersten Tag eine Lücke meldet."""
+    import yaml
+    wurzel = Path(__file__).resolve().parent.parent.parent / "beispiel/reisen/beispielreise"
+    roh_ = yaml.safe_load((wurzel / "plan/routen.yaml").read_text(encoding="utf-8"))
+    for oid in ("V-01.a", "V-01.b", "V-01.c"):
+        r = copy.deepcopy(roh_)
+        v = next(o for o in r["wahlstellen"]["V-01"]["optionen"] if o["id"] == oid)
+        v["verlauf"] = (v.get("verlauf") or []) + [{"datum": D(2026, 10, 30), "status": "gewaehlt", "wer": "Ida"}]
+        fehler = []
+        erg = Routen(r, {}, {"F-01": "offen", "F-02": "geklärt"}, fehler, lambda *a: None, entscheider=["Ida"]).bauen()
+        erster = opt_aus(erg, oid)["tage"][0]
+        luecke = any(w["bezug"] == erster and ("Lücke" in w["text"] or "fehlt" in w["text"]) for w in erg["warnungen"])
+        assert ("Lücke am Anfang" in anschluss(erg, oid)) == luecke, (oid, erg["warnungen"])

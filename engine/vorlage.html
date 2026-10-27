@@ -207,8 +207,10 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .vergleich.mk td{vertical-align:top;min-width:9em}
 .mk-chip{margin-left:6px;font-size:11px;padding:1px 7px}
 .mk-leer{color:var(--mut);border-bottom:1px dashed var(--line)}
+.mk-nichts{color:var(--mut)}
 /* Atom Wert (Designsystem 2d): Wert vorn, Herkunft (Notiz, Prüfdatum, Quelle) hinter dem i; je Datum als Liste */
 .mk-unklar{color:var(--warn);font-weight:700}
+.mk-luecke{color:var(--warn)}
 .pico button.mk-i{position:relative;width:20px;height:20px;min-height:0;padding:0;margin:0 0 0 6px;border-radius:50%;border:1px solid var(--line);
   background:var(--card);color:var(--mut);font:italic 700 12px/18px var(--font-titel);text-align:center;vertical-align:1px;box-shadow:none;cursor:pointer}
 .pico button.mk-i::after{content:"";position:absolute;inset:-12px}
@@ -817,7 +819,9 @@ function merkmalWert(v, datum) {
     .map(([wann, e]) => el("span", {class: "mk-datum"}, el("span", {class: "mk-am"}, wann + ": "), merkmalWert({...e, je_datum: null, gilt: null}))));
   if (!v) return el("span", {class: "mk-leer"}, "offen");
   const herkunft = [v.notiz, v.geprueft ? "geprüft " + mkDatum(v.geprueft) : "", v.quelle ? "Quelle: " + v.quelle : ""].filter(Boolean).join(" · ");
-  return el("span", {}, el("span", {class: /^unklar$/i.test(String(v.wert)) ? "mk-unklar" : null}, v.wert),
+  // „unklar“ und berechnete Lücken (Anschluss) fallen auf
+  const auffaellig = /^unklar$/i.test(String(v.wert)) ? "mk-unklar" : v.auto && /^Lücke/.test(String(v.wert)) ? "mk-luecke" : null;
+  return el("span", {}, el("span", {class: auffaellig}, v.wert),
     v.am ? el("span", {class: "mk-am-tag"}, "am " + tagKurz(v.am)) : null,
     v.ungeprueft ? chip("offen", "ungeprüft", {class: "mk-chip"}) : null,
     herkunft ? [el("button", {type: "button", class: "mk-i", "data-mk-i": "", "aria-expanded": "false", "aria-label": "Herkunft zeigen"}, "i"),
@@ -874,11 +878,14 @@ function wahlVergleich(w, liste, datum) {
   if (!z.offen) return box;
   const max = schmal() ? 2 : 4, opts = z.wahl.map(id => g.find(o => o.id === id)).filter(Boolean);
   const text = v => { const x = datum && v && v.je_datum ? giltAm(v, datum) : v; return x ? String(x.wert) : ""; };
-  // Auslöser (bei Unterwegs-Wahlstellen) als erste Zeile „Wann“, dann die Merkmale
-  const werte = o => ({...o.merkmale, _wann: o.ausloeser ? {wert: o.ausloeser} : null});
-  const belegt = [{id: "_wann", name: "Wann"}, ...w.kriterien].filter(k => opts.some(o => werte(o)[k.id]));
+  // Auslöser (bei Unterwegs-Wahlstellen) als erste Zeile „Wann“, dann die Merkmale, zuletzt die Regeln
+  const werte = o => ({...o.merkmale, _wann: o.ausloeser ? {wert: o.ausloeser} : null,
+    _erfordert: regelWert(o.erfordert), _schliesst: regelWert(o.schliesst_aus)});
+  const belegt = [{id: "_wann", name: "Wann"}, ...w.kriterien, ...REGEL_ZEILEN].filter(k => opts.some(o => werte(o)[k.id]));
   const zeilen = z.nur ? belegt.filter(k => new Set(opts.map(o => text(werte(o)[k.id]))).size > 1) : belegt;
   const kopf = o => [link(o.id, o.titel), optionChips(w, o)];
+  // Zeilen ohne Merkmal (Wann, Regeln): fehlt der Eintrag, gibt es nichts, und nicht „offen“
+  const zelle = (k, v) => v || !k.id.startsWith("_") ? merkmalWert(v, datum) : el("span", {class: "mk-nichts", "aria-label": "keine"}, "–");
   box.append(el("div", {class: "wm-steuer"},
     el("label", {}, el("input", {type: "checkbox", "data-vgl-nur": s, checked: z.nur}), "nur Unterschiede"),
     el("span", {class: "z klein"}, `${opts.length} von ${g.length} im Vergleich, höchstens ${max} nebeneinander`
@@ -894,7 +901,7 @@ function wahlVergleich(w, liste, datum) {
   const an = o => o.aktiv && !w.optionen.every(x => x.aktiv) ? "an" : null;
   if (zeilen.length) box.append(el("div", {class: "tabelle wm-tabelle"}, el("table", {class: "vergleich mk wm-tab"},
     el("thead", {}, el("tr", {}, el("th", {}, ""), opts.map(o => el("th", {class: an(o)}, kopf(o))))),
-    el("tbody", {}, zeilen.map(k => el("tr", {}, el("th", {scope: "row"}, k.name), opts.map(o => el("td", {class: an(o)}, merkmalWert(werte(o)[k.id], datum)))))))));
+    el("tbody", {}, zeilen.map(k => el("tr", {}, el("th", {scope: "row"}, k.name), opts.map(o => el("td", {class: an(o)}, zelle(k, werte(o)[k.id])))))))));
   box.append(el("div", {class: "wm-karten"}, opts.map(o => el("div", {class: "wm-karte" + (an(o) ? " an" : "")},
     el("div", {class: "k"}, link(o.id, o.titel)), optionChips(w, o), merkmalListe(zeilen, werte(o), datum) || el("div", {class: "z klein"}, belegt.length ? "Keine Unterschiede in den gezeigten Merkmalen." : "Noch keine Merkmale.")))));
   if (belegt.length > zeilen.length) box.append(el("p", {class: "z klein"}, `${belegt.length - zeilen.length} gleiche Zeilen ausgeblendet.`));
@@ -933,6 +940,15 @@ document.addEventListener("change", e => {
   vglNeu(c.dataset.vglNur, `[data-vgl-nur="${CSS.escape(c.dataset.vglNur)}"]`);
 });
 
+/* Regeln zwischen Optionen (Paket 4, #18): „setzt voraus“ (geht nur zusammen mit jener) und „schließt aus“ (nie beide).
+   Jede Zeile sagt, ob die andere Option im Plan steht. */
+const REGEL_ZEILEN = [{id: "_erfordert", name: "Setzt voraus"}, {id: "_schliesst", name: "Schließt aus"}];
+const regelStand = x => !x.gueltig ? "verworfen" : x.im_plan ? "im Plan" : "nicht im Plan";
+const regelWert = liste => (liste || []).length ? {wert: liste.map(x => `${x.id} ${x.titel} (${regelStand(x)})`).join("; ")} : null;
+function regelZeilen(o) {
+  return [["Setzt voraus: ", o.erfordert], ["Schließt aus: ", o.schliesst_aus]].filter(([, l]) => (l || []).length).map(([t, l]) =>
+    el("div", {class: "z klein"}, el("b", {}, t), l.flatMap((x, i) => [i ? "; " : "", link(x.id, x.titel), ` (${regelStand(x)})`])));
+}
 // Zustand einer Option und ob sie im Plan steht (Option im Wahl-Modul und in der Liste)
 function optionChips(w, o) {
   return el("span", {class: "chips"},
@@ -949,6 +965,7 @@ function optionBlock(w, o, ohneMerkmale) {
   const mk = ohneMerkmale ? null : merkmalListe(w.kriterien.filter(k => !(k.auto && (o.strecken || []).length)), o.merkmale), luecke = fehltZeile(w, o);
   if (mk) b.append(mk);
   if (luecke) b.append(luecke);
+  b.append(...regelZeilen(o));
   if (o.summe && !mk) b.append(el("div", {class: "z klein"}, summeText(o.summe)));
   if (o.plus.length) b.append(el("ul", {}, o.plus.map(x => el("li", {}, "+ " + x))));
   if (o.minus.length) b.append(el("ul", {}, o.minus.map(x => el("li", {}, "– " + x))));

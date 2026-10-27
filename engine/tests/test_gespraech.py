@@ -384,3 +384,28 @@ def test_regeln_einladen_und_schluessel():
     assert rg.erlaubt("entscheiden", "bestimmer", "planung", ["rueckmeldungen"])[0] is False   # Baustein varianten fehlt
     assert [rg.schluessel_aus_name(n) for n in ("Jörg", "Zoë", "Anna Lena", "  Max ", "???")] == \
         ["joerg", "zoe", "anna-lena", "max", ""]
+
+
+def test_entscheiden_hinweise_zu_regeln(tmp_path):
+    """Paket 4 (#18): Regeln zwischen Optionen verhindern nichts, aber die Entscheidung sagt, was nicht mehr passt."""
+    from test_regeln import reise_bauen
+    d = json.loads((reise_bauen(tmp_path) / "beispielreise" / "daten.json").read_text(encoding="utf-8"))
+    h = kn.Handbuch(d)
+    _, c = h.option("V-01.c")
+    # Die Beispielreise: V-01.c setzt V-03.a voraus (im Plan) und schließt V-02.b aus (nicht im Plan)
+    assert [(x["id"], x["im_plan"]) for x in c["erfordert"]] == [("V-03.a", True)]
+    text = h.option_text(c)
+    assert "Setzt voraus: V-03.a „Pension Burgblick“ (im Plan)" in text
+    assert "Schließt aus: V-02.b „Durch die Wolfsschlucht“ (nicht im Plan)" in text
+    _, hinweise, fehler = h.entscheidung_pruefen({"option": "V-01.c", "status": "gewaehlt", "grund": "Test"}, "Ida")
+    assert not fehler and not [x for x in hinweise if "voraus" in x or "schließen" in x]
+    # Stünde V-03.a nicht im Plan und V-02.b schon, sagt die Entscheidung beides
+    c["erfordert"][0]["im_plan"] = False
+    c["schliesst_aus"][0]["im_plan"] = True
+    _, hinweise, _ = h.entscheidung_pruefen({"option": "V-01.c", "status": "gewaehlt", "grund": "Test"}, "Ida")
+    assert "V-01.c setzt V-03.a „Pension Burgblick“ voraus; das steht derzeit nicht im Plan." in hinweise
+    assert "V-01.c und V-02.b „Durch die Wolfsschlucht“ schließen sich aus; V-02.b steht derzeit im Plan." in hinweise
+    # Verwerfen, was eine Option im Plan voraussetzt
+    c["im_plan"] = True
+    _, hinweise, _ = h.entscheidung_pruefen({"option": "V-03.a", "status": "verworfen", "grund": "ausgebucht"}, "Ida")
+    assert "V-01.c „Mit dem Bus zurück (erfundenes Beispiel)“ steht im Plan und setzt V-03.a voraus." in hinweise

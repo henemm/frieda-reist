@@ -74,6 +74,26 @@ Im Ergebnis trägt der Wert dann `je_datum`; `routen.gilt_am(wert, "2027-03-05")
 
 Erlaubte Felder je Wert: `wert`, `quelle`, `geprueft` (Datum), `notiz`, `gilt` (Datum oder Liste von Daten). Ein fehlender Wert wird weggelassen, nicht leer eingetragen. Bei Widerspruch zwischen Quellen gilt `unklar` mit Notiz, sofern das Merkmal eine Auswahl ist. Unbekannte Merkmale, falsche Auswahlwerte und eingetragene `auto`-Merkmale sind Fehler. Die Seite wird dann nicht gebaut.
 
+## Regeln zwischen Optionen
+
+Manche Optionen gehen nur zusammen mit einer anderen (der Bus fährt nur, wenn das Gepäck in der Pension bleibt) oder nie zusammen mit ihr. Das steht an der Option:
+
+```yaml
+- id: V-01.c
+  titel: "Mit dem Bus zurück"
+  erfordert: [V-03.a]       # geht nur, wenn V-03.a im Plan steht
+  schliesst_aus: [V-02.b]   # nie zusammen mit V-02.b; gilt in beide Richtungen
+```
+
+- Ziele sind Optionen anderer Wahlstellen. Unbekannte Optionen, Ziele in derselben Wahlstelle, zwei Optionen derselben Wahlstelle unter `erfordert` und dasselbe Ziel unter beiden Feldern sind Fehler.
+- Verletzt der aktuelle Plan oder ein benannter Plan (`P-…`) eine Regel, steht das bei „Geht noch nicht auf“ (Bezug `plan`). Gezählt werden nur Optionen, die der Plan wirklich erreicht: Eine Wahlstelle in einer Variante, die nicht im Plan ist, zählt nicht mit, auch wenn sie eine Auswahl hat.
+- Setzt eine gültige Option eine verworfene voraus, gibt es einen Hinweis an der Option.
+- Die Seite zeigt „Setzt voraus“ und „Schließt aus“ an der Option und als Zeilen im Vergleich, jeweils mit „im Plan“, „nicht im Plan“ oder „verworfen“. Die Claude-App nennt beides in der Option und gibt beim Entscheiden Hinweise (wählen, obwohl die Voraussetzung fehlt; verwerfen, was eine Option im Plan voraussetzt). Verhindert wird nichts: Entscheiden bleibt Sache der Bestimmer.
+
+## Anschluss (berechnet)
+
+Bei Reiseteilen (Bereich `route`) berechnet der Generator das Merkmal **Anschluss**: Passt die Option an ihre Stelle im aktuellen Plan? Verglichen wird, wo der Plan davor endet, mit dem Anfang ihres ersten Tages (Start der ersten Strecke, sonst Ort der Nacht), und wo sie endet, mit dem, was danach kommt (nächster Tag oder Reiseende). Werte: „nahtlos“, „Lücke am Anfang: A → B“, „Lücke am Ende: A → B“, bei einer Option ohne Tage „Lücke: A → B“. Hinter dem „i“ steht, wovon die Rechnung ausgeht. Die Lücken sind dieselben, die der Plan als Warnung meldet, sobald die Option gilt; so sieht man vor der Entscheidung, welche Variante einen fehlenden Weg mitbringt. Optionen ohne `folge` (noch nicht ausgearbeitet) und Wahlstellen außerhalb des aktuellen Plans bekommen keinen Wert.
+
 ## Darstellung auf der Seite
 
 Jede Wahlstelle mit mindestens zwei gültigen Optionen hat dasselbe **Wahl-Modul** (Designsystem, Issue #18), überall wo sie vorkommt: an der Nacht und am Weg eines Tages, beim Reiseteil im Plan und in der Liste der Entscheidungen.
@@ -86,6 +106,7 @@ Jede Wahlstelle mit mindestens zwei gültigen Optionen hat dasselbe **Wahl-Modul
 - Jeder Wert zeigt vorn nur den Wert; Notiz, Prüfdatum und Quelle stehen hinter dem „i“. „unklar“ ist hervorgehoben, ein fehlender Wert heißt „offen“.
 - Werte je Datum: Im Tag und im Vergleich an einer Nacht gilt der Wert für dieses Datum (mit „am …“), in der Unterkunft und in Listen stehen alle Einträge untereinander („15.5.: 140 €“, „sonst: 120 €“).
 - Veränderliche Werte ohne Prüfdatum tragen „ungeprüft“.
+- Eine berechnete Lücke (Anschluss) ist hervorgehoben wie „unklar“.
 - An offenen Planungs-Wahlstellen steht bei jeder Option „Fehlt noch: …“.
 
 ## Ablauf, wenn eine neue Alternative dazukommt

@@ -55,6 +55,10 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
     u01 = dom["1200#U-01"]
     assert "15.5.: " in u01 and "sonst: " in u01 and "140 €" in u01
     assert 'class="mk-i"' in u01 and '<span class="mk-q" hidden="">Beispielwert, erfunden' in u01
+    # Regeln und Anschluss (Paket 4): an der Wahlstelle stehen „Setzt voraus“ und die berechnete Lücke der erfundenen V-01.c
+    v01 = dom["1200#V-01"]
+    assert "Setzt voraus: " in v01 and "Schließt aus: " in v01 and "(im Plan)" in v01
+    assert '<span class="mk-luecke">Lücke am Anfang: Altendorf → Bad Schandau</span>' in v01
     # Bausteinseite: alle Ebenen, keine Sprungziele (die echten Stellen bleiben eindeutig), kein „null“
     b = dom["1200#bausteine"]
     for teil in ("Atom · Zustand", "Atom · Wert", "Molekül · Kennzahlenleiste", "Organismus · Wahl-Modul", "Vorlage · Tag"):
