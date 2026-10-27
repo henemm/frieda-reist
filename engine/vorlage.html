@@ -129,7 +129,7 @@ details.wu-neu summary{cursor:pointer;font-weight:600}
 .umschalter{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px;padding:0;border:0;min-width:0}
 .unsichtbar{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .umschalter button{font:inherit;font-size:14px;font-weight:600;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:8px 13px;min-height:40px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
-.umschalter button i{width:16px;border-top:4px solid currentColor;display:inline-block}
+.plan-linie{width:16px;border-top:4px solid var(--farbe);display:inline-block}
 .umschalter button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .kartenbox{isolation:isolate;height:min(68vh,620px);min-height:320px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--sea)}
 .kartenbox.leaflet-container{background:var(--sea);font:inherit}
@@ -157,7 +157,6 @@ details.block>.ortchips{padding:0 14px}
 .rh-p.kat-sehenswert{background:#1e5a43} .rh-p.kat-onsen{background:#1f86b5} .rh-p.kat-verkehr{background:#5b6168}
 .wkarte{margin:8px 0 12px}
 .kartenlinks{display:flex;flex-direction:column;gap:2px;margin:4px 0}
-.legende{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;color:var(--mut);margin:6px 0 0}
 .legende i{display:inline-block;width:12px;height:12px;margin-right:4px;vertical-align:-1px;border-width:1px}
 .pico .regionen{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
 .pico .regionen button{all:unset;cursor:pointer;font-size:14px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card)}
@@ -222,6 +221,7 @@ ol.fussnoten li{margin:0 0 .25em;overflow-wrap:anywhere}
 .steckbrief ul{margin:4px 0;padding-left:18px;font-size:14px}
 .vergleich td,.vergleich th{font-size:13.5px}
 .vergleich td.nr{font-weight:700;text-align:center}
+.vergleich td.plan-nr{color:var(--farbe)}
 .vergleich tr.an td{background:var(--acc2)}
 /* Merkmale von Alternativen (docs/alternativen.md): ab 700 px Tabelle, darunter Karten je Option */
 dl.mliste{margin:6px 0;font-size:14.5px}
@@ -1086,6 +1086,15 @@ function entscheidungen(m) {
 // null = noch nichts gewählt: dann zeigt die Karte den fest entschiedenen Plan (ansichtVarianten)
 let VARIANTE = (() => { try { return localStorage.getItem(SP + "variante"); } catch (e) { return null; } })();
 const planFarbe = p => `var(--plan-${p.farbe || "a"})`;
+// Atom Planfarbe: als Punkt (Legende, Tabelle, Überschrift) oder als Linie (Umschalter, wie die Linien auf der Karte)
+const planMarke = (p, form = "punkt") => el("i", {class: form === "linie" ? "plan-linie" : "punkt", style: `--farbe:${planFarbe(p)}`});
+// Molekül Legende: je Eintrag [Zeichen, Wort]; leere Einträge fallen weg
+const kartenLegende = (eintraege, tag = "div") => el(tag, {class: "legende"}, ...eintraege.filter(Boolean).map(([zeichen, wort]) => el("span", {}, zeichen, wort)));
+// Molekül Umschalter: Knöpfe, von denen einer gedrückt ist; je Knopf [Daten-Attribute, gedrückt, Inhalt …]
+const umschalter = (titel, knoepfe) => el("fieldset", {class: "umschalter"}, el("legend", {class: "unsichtbar"}, titel),
+  ...knoepfe.map(([daten, an, ...inhalt]) => el("button", {type: "button", ...daten, "aria-pressed": String(an)}, ...inhalt)));
+const planUmschalter = alle => umschalter("Plan wählen", [[{"data-variante": ""}, !VARIANTE, `Alle ${alle.length}`],
+  ...alle.map(p => [{"data-variante": p.id}, VARIANTE === p.id, planMarke(p, "linie"), `${p.kurz}${planFest(p) ? " (gewählt)" : !TIEFE && p.aktuell ? " (aktuell)" : ""}`])]);
 const PLAN_BREITE = [8, 5, 2.6, 1.6];
 // Übernachtungskategorie (hotel, gasthaus, huette …; routen.py KATEGORIEN) bestimmt die Farbe auf Karte und im Vergleich
 function nachtKat(n) {
@@ -1148,14 +1157,14 @@ function vergleichTabelle(plaene) {
     for (const d of p.tage) {
       const m = tagMin(d), n = d.nacht;
       const tr = el("tr", {"data-tag": d.id},
-        el("td", {class: "nr", style: `color:${planFarbe(p)}`}, String(d.nr)), el("td", {}, datumText(d.datum, d.wochentag)),
+        el("td", {class: "nr plan-nr", style: `--farbe:${planFarbe(p)}`}, String(d.nr)), el("td", {}, datumText(d.datum, d.wochentag)),
         el("td", {}, link(d.id, d.titel)), el("td", {}, m ? dauer(m) : "–"),
         el("td", {}, n ? el("span", {class: "nacht " + nachtKat(n) + katKlasse(nachtKat(n))}, nachtTyp(n) || "–") : "", n ? el("div", {class: "z klein"}, nachtName(n)) : ""));
       t.append(tr);
     }
     return el("div", {class: "tabelle"}, t);
   }
-  t.append(el("tr", {}, el("th", {}, "Tag"), plaene.map(p => el("th", {}, el("span", {class: "punkt", style: `--farbe:${planFarbe(p)}`}), p.kurz))));
+  t.append(el("tr", {}, el("th", {}, "Tag"), plaene.map(p => el("th", {}, planMarke(p), p.kurz))));
   const max = Math.max(...plaene.map(p => p.tage.length));
   for (let i = 0; i < max; i++) {
     const ds = plaene.map(p => p.tage[i]);
@@ -1293,7 +1302,7 @@ function karteZeichnen(plaene, info, box) {
     mk.on("click keypress", () => {
       const z = [];
       for (const p of plaene) for (const d of p.tage) if (d.nacht && d.nacht.ort === oid)
-        z.push(el("span", {}, el("span", {class: "punkt", style: `--farbe:${planFarbe(p)}`}), `${p.kurz}: Nacht ${d.nr} (${datumText(d.datum, d.wochentag)}) · `, link(d.id, nachtName(d.nacht))));
+        z.push(el("span", {}, planMarke(p), `${p.kurz}: Nacht ${d.nr} (${datumText(d.datum, d.wochentag)}) · `, link(d.id, nachtName(d.nacht))));
       if ((R.orte[oid] || {}).hinweis) z.push(R.orte[oid].hinweis);
       zeigeInfo(ortName(oid), z.length ? z : ["Keine Übernachtung in den gezeigten Plänen."]);
     });
@@ -1413,7 +1422,7 @@ function wissenKarte(bid) {
   const hinweis = touch ? el("p", {class: "ziehhinweis"}, "In die Karte tippen, dann lässt sie sich verschieben. Punkte antippen für Details.") : null;
   const tasten = regionen.length > 1 ? el("div", {class: "regionen", role: "toolbar", "aria-label": "Region der Karte"}) : null;
   const kats = Object.keys(WISSEN_KAT).filter(k => punkte.some(p => p.kat === k));
-  const legende = el("p", {class: "legende"}, ...kats.map(k => el("span", {}, el("i", {class: "rh-p kat-" + k}), WISSEN_KAT[k])));
+  const legende = kartenLegende(kats.map(k => [el("i", {class: "rh-p kat-" + k}), WISSEN_KAT[k]]), "p");
   const eintrag = {sid: bid, box, karte: null, marken: [], region: null};
   EKARTEN.push(eintrag);
   let schicht = null;
@@ -1538,10 +1547,7 @@ function ansichtVarianten(m) {
     ? "Die erwogenen Pläne nebeneinander. Ein Plan setzt sich aus Entscheidungen zusammen; der aktuelle Plan ergibt sich aus dem, was gewählt ist."
     : "Der Plan auf einen Blick."));
   if (alle.length > 1) {
-    const u = el("fieldset", {class: "umschalter"}, el("legend", {class: "unsichtbar"}, "Plan wählen"));
-    u.append(el("button", {type: "button", "data-variante": "", "aria-pressed": String(!VARIANTE)}, `Alle ${alle.length}`));
-    for (const p of alle) u.append(el("button", {type: "button", "data-variante": p.id, "aria-pressed": String(VARIANTE === p.id)},
-      el("i", {style: `color:${planFarbe(p)}`}), `${p.kurz}${planFest(p) ? " (gewählt)" : !TIEFE && p.aktuell ? " (aktuell)" : ""}`));
+    const u = planUmschalter(alle);
     // gewählter Plan: Umschalter und Alternativen zugeklappt ans Ende (25.10.2026)
     if (fest) hinten.append(u); else m.append(u);
   }
@@ -1556,13 +1562,13 @@ function ansichtVarianten(m) {
     // Kategorien der Übernachtungen auf dieser Karte, in fester Reihenfolge
     const katDa = new Set(gezeigt.flatMap(p => p.tage.map(d => nachtKat(d.nacht)).filter(k => k && k !== "offen" && k !== "unterwegs")));
     const kats = Object.keys(R.kategorien || {}).filter(k => katDa.has(k));
-    m.append(el("div", {class: "legende"},
-      ...kats.map(k => el("span", {}, el("i", {class: "lg-k" + katKlasse(k)}), R.kategorien[k])),
-      Object.keys(K.unmarkiert || {}).length ? el("span", {}, el("i", {class: "lg-u"}), "nicht markiert") : null,
-      (K.ausgelassen || []).length ? el("span", {}, el("i", {class: "lg-s"}), "ausgelassen") : null,
-      K.linien !== "alle" ? el("span", {}, el("i", {class: "lg-b"}), "Bus") : null,
-      K.linien === "alle" && (arten.has("flug") || arten.has("faehre")) ? el("span", {}, el("i", {class: "lg-f"}), "Flug, Fähre") : null,
-      ...(gezeigt.length > 1 ? gezeigt.map(p => el("span", {}, el("i", {class: "punkt", style: `--farbe:${planFarbe(p)}`}), p.kurz)) : [])));
+    m.append(kartenLegende([
+      ...kats.map(k => [el("i", {class: "lg-k" + katKlasse(k)}), R.kategorien[k]]),
+      Object.keys(K.unmarkiert || {}).length ? [el("i", {class: "lg-u"}), "nicht markiert"] : null,
+      (K.ausgelassen || []).length ? [el("i", {class: "lg-s"}), "ausgelassen"] : null,
+      K.linien !== "alle" ? [el("i", {class: "lg-b"}), "Bus"] : null,
+      K.linien === "alle" && (arten.has("flug") || arten.has("faehre")) ? [el("i", {class: "lg-f"}), "Flug, Fähre"] : null,
+      ...(gezeigt.length > 1 ? gezeigt.map(p => [planMarke(p), p.kurz]) : [])]));
     m.append(el("p", {class: "meldung"}, (R.karte.linien === "alle" ? "Übersichtskarte; gerade Linien verbinden die Orte und zeigen nicht den Fahrweg." : "Schematische Karte, Lage der Wege ungefähr.") + " Ort antippen zeigt die Übernachtungen, Linie antippen öffnet " + (hat("etappe") ? "die Etappe." : "den Tag.") + (gezeigt.length > 1 ? " Einen Plan wählen, um die Tagesnummern zu sehen." : "")));
     info.append(el("div", {class: "z klein"}, gezeigt.length > 1 ? "Breite Linie = " + gezeigt[0].kurz + ", schmalste = " + gezeigt[gezeigt.length - 1].kurz + "; gemeinsame Abschnitte liegen übereinander." : `${gezeigt[0].kurz}: ${gezeigt[0].titel}`));
     m.append(info);
@@ -1706,7 +1712,7 @@ function tagKachel(t, datum, nr) {
 function ansichtPlanDetail(m, p) {
   PLAN_ZULETZT = p.id;
   m.append(el("a", {class: "zurueck", href: "#varianten"}, "← Alle Pläne"));
-  m.append(el("h2", {class: "ziel", id: p.id, "data-ziel": p.id}, el("i", {class: "punkt", style: `--farbe:${planFarbe(p)}`}), `${p.kurz}: ${p.titel}`, zid(p.id)));
+  m.append(el("h2", {class: "ziel", id: p.id, "data-ziel": p.id}, planMarke(p), `${p.kurz}: ${p.titel}`, zid(p.id)));
   m.append(el("div", {class: "chips"}, chip(planFest(p) ? "plan" : "offen", planFest(p) ? "gewählt" : "zur Wahl")));
   m.append(el("h3", {}, "Übersicht"));
   if (p.text) m.append(el("p", {}, p.text));
@@ -2010,6 +2016,8 @@ function ansichtBausteine(m) {
     fall("je Datum", merkmalWert(jeDatum)),
     fall("je Datum, an einer Nacht", merkmalWert(jeDatum, jeDatum.je_datum[0].gilt[0])));
   teil("Atom", "Kennung", "Antippen öffnet Rückmeldungen und Aufgaben zu dieser Stelle.", el("div", {class: "z"}, zid(R ? R.tage[0].id : abschnitte[0].id)));
+  if (R && R.plaene.length) teil("Atom", "Planfarbe", "Jeder Plan hat eine Farbe: als Punkt in Legende, Tabelle und Überschrift, als Linie im Umschalter wie auf der Karte.",
+    R.plaene.map(p => fall(p.kurz, [planMarke(p), " ", planMarke(p, "linie")])));
   const wz = abschnitte.find(x => x.typ === "wissen" || x.typ === "praxis" || x.typ === "quelle");
   teil("Molekül", "Listenzeile", "Symbol, Titel, Unterzeile und Kennung; für Wissen, Praxis, Quellen und Orte.",
     wz ? el("div", {class: "wliste"}, wissenZeile(wz)) : el("p", {class: "meldung"}, "Kein Abschnitt für Wissen, Praxis oder Quellen."));
@@ -2038,6 +2046,14 @@ function ansichtBausteine(m) {
   const u = Object.entries(R.unterkuenfte).find(([, x]) => Object.keys(x.merkmale || {}).length);
   teil("Molekül", "Kennzahlenleiste", null, mitKz ? kennzahlLeiste(mitKz[1].kennzahlen) : el("p", {class: "meldung"}, "Keine Strecke mit Kennzahlen."));
   teil("Molekül", "Merkmalliste", null, u ? merkmalListe(R.merkmale.unterkunft, u[1].merkmale) : el("p", {class: "meldung"}, "Keine Unterkunft mit Merkmalen."));
+  teil("Molekül", "Legende", "Zeichen und Wort; unter einer Karte steht nur, was auf ihr vorkommt.",
+    kartenLegende([...Object.entries(R.kategorien || {}).map(([k, t]) => [el("i", {class: "lg-k" + katKlasse(k)}), t]),
+      ...R.plaene.map(p => [planMarke(p), p.kurz])]));
+  if (R.plaene.length > 1) {
+    const us = planUmschalter(R.plaene);
+    us.querySelectorAll("button").forEach(k => { k.disabled = true; });
+    teil("Molekül", "Umschalter", "Genau ein Knopf ist gedrückt; in „Varianten“ wählt er den gezeigten Plan.", us);
+  }
   // Organismus Ding: je Art der Nacht ein Beispiel aus der Reise
   const naechte = [["Wahl offen", t => t.nacht.wahl && wahlZu.get(t.nacht.wahl).offen], ["Wahl entschieden", t => t.nacht.wahl && !wahlZu.get(t.nacht.wahl).offen],
     ["Unterkunft fest", t => !t.nacht.wahl && t.nacht.unterkunft], ["an Bord", t => t.nacht.an_bord], ["noch offen", t => !t.nacht.wahl && !t.nacht.unterkunft && !t.nacht.an_bord]]

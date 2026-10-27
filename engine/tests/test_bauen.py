@@ -256,6 +256,20 @@ def test_fehler_bildlink_ohne_datei(reise, tmp_path):
     assert "fehlt.jpg" in meldungen(reise, tmp_path)
 
 
+def test_fehler_html_im_text(reise, tmp_path):
+    # Reisetexte sind Fließtext: eigenes HTML mit Stil, Klasse oder Skript umgeht das Designsystem (docs/design.md)
+    (reise / "inhalt/e.md").write_text(DOSSIER.replace("Kurz.", 'Kurz <span class="rot" onclick="x()">rot</span>.\n\n'
+                                                       '<div style="color:red">Kasten</div>'), encoding="utf-8")
+    m = meldungen(reise, tmp_path)
+    assert "e.md: HTML im Text" in m
+    assert all(x in m for x in ["<span>", "<span class>", "<span onclick>", "<div>", "<div style>"]), m
+
+
+def test_markdown_tabelle_mit_ausrichtung_ist_erlaubt(reise, tmp_path):
+    (reise / "inhalt/e.md").write_text(DOSSIER.replace("Kurz.", "Kurz.\n\n| a | b |\n|:--|--:|\n| 1 | 2 |\n"), encoding="utf-8")
+    baue(reise, tmp_path)
+
+
 def test_pfad_in_backticks_ist_kein_bildlink(reise, tmp_path):
     (reise / "inhalt/e.md").write_text(DOSSIER.replace("Vorspann", "Siehe `../medien/karten/` hier."), encoding="utf-8")
     baue(reise, tmp_path)

@@ -13,6 +13,7 @@ der Plan mit allen Alternativen in reisen/<reise>/plan/routen.yaml (siehe routen
 import datetime
 import hashlib
 import html as htmlmod
+from html.parser import HTMLParser
 import json
 import os
 import shutil
@@ -97,6 +98,28 @@ def fussnote_html(definition):
     if datum:
         aus.append(htmlmod.escape(datum))
     return " · ".join(aus)
+
+
+class TextPruefung(HTMLParser):
+    """Reisetexte sind Fließtext (docs/design.md, Reisetexte): nur, was Markdown selbst erzeugt. Eigenes HTML mit
+    Stilen, Klassen oder Bausteinen umgeht das Designsystem. Sammelt, was nicht vorgesehen ist."""
+    TAGS = {"p", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "a", "img", "em", "strong", "code", "pre",
+            "blockquote", "hr", "br", "table", "thead", "tbody", "tr", "th", "td"}
+    ATTRIBUTE = {"a": {"href", "title"}, "img": {"src", "alt", "title"}, "th": {"style"}, "td": {"style"}}
+
+    def __init__(self):
+        super().__init__()
+        self.fremd = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag not in self.TAGS:
+            self.fremd.append(f"<{tag}>")
+        for k, v in attrs:
+            # Spaltenausrichtung der Tabellen-Erweiterung ist das einzige erlaubte style
+            if k == "style" and re.fullmatch(r"text-align: (left|right|center);", v or ""):
+                continue
+            if k not in self.ATTRIBUTE.get(tag, ()):
+                self.fremd.append(f"<{tag} {k}>")
 
 
 def trenner_entfernen(text):
@@ -259,6 +282,11 @@ class Bauer:
         md_text = self.bilder_umschreiben(md_text, quelldatei)
         self.md.reset()
         h = self.md.convert(normalisieren(md_text))
+        pruefung = TextPruefung()
+        pruefung.feed(h)
+        if pruefung.fremd:
+            self.fehler.append(f"{Path(quelldatei).name}: HTML im Text, das die Seite nicht vorsieht "
+                               f"({', '.join(dict.fromkeys(pruefung.fremd))}). Bitte als Markdown schreiben.")
         h = h.replace("<table>", '<div class="tabelle"><table>').replace("</table>", "</table></div>")
         h = re.sub(r'<a href="(https?://)', r'<a target="_blank" rel="noopener" href="\1', h)
         h = re.sub(r'<img ', '<img loading="lazy" ', h)
