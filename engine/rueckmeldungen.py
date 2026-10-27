@@ -17,7 +17,7 @@ Sie liegen live in <ablage>/<reise>/aufgaben.json, nicht im Repo; dieser Dienst 
 Nichts wird gelöscht: nicht mehr Nötiges bekommt den Status „entfaellt“.
 
 Ein Dienst für alle Reisen. Eine Reise nimmt nur Rückmeldungen an, wenn ihr Ordner in der Ablage
-existiert (legt ops/deploy.sh an). Die Ablage liegt außerhalb des Repos und außerhalb der Web-Ordner.
+existiert (legt das Veröffentlichen an). Die Ablage liegt außerhalb des Repos und außerhalb der Web-Ordner.
 
 Aufrufe:
   python3 engine/rueckmeldungen.py liste <reise> [--alle]          neue und Konflikte (bzw. alle) zeigen, mit Aufträgen

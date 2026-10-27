@@ -505,7 +505,7 @@ class Bauer:
         }
 
     def wissen_karte(self, rel, abschnitte):
-        """Punkte je Wissens-Block (W-….<slug>) mit regionalen Grundkarten. Erzeugt von ops/wissen-punkte-holen.py,
+        """Punkte je Wissens-Block (W-….<slug>) mit regionalen Grundkarten. Erzeugt vom Betrieb (Punkte aus OpenStreetMap),
         von Hand geprüft. Punkte ohne Lage (nicht gefunden) oder außerhalb jeder Grundkarte kommen nicht auf die
         Karte und werden gemeldet; Namen der gezeigten Punkte werden im Blocktext zu Kartenlinks."""
         try:
@@ -528,7 +528,7 @@ class Bauer:
                             "maxzoom": pmtiles_maxzoom(datei)}
         if fehlen:
             self.hinweise.append(f"Grundkarten fehlen: {', '.join(fehlen)}; diese Orte bleiben ohne Karte "
-                                 f"(holen mit ops/karte-holen.sh {self.reise_dir.name} <name>).")
+                                 f"(je Name eine PMTiles-Datei unter medien/karte/<name>.pmtiles ablegen).")
         bloecke = {b["id"]: b for a in abschnitte if a["typ"] != "ort" for b in a["bloecke"]}
         aus, ohne = {}, []
         for bid, liste in (roh.get("bloecke") or {}).items():
@@ -647,7 +647,7 @@ class Bauer:
             else:
                 k["namensnennung"] = " · ".join(x for x in (k.get("namensnennung"), "Küste schematisch") if x)
                 self.hinweise.append(f"Grundkarte {g['datei']} fehlt, die Karte bleibt schematisch "
-                                     f"(holen mit ops/karte-holen.sh {self.reise_dir.name}).")
+                                     f"(PMTiles-Datei unter {g['datei']} ablegen).")
         return k
 
     def orte_wissen(self, rel, abschnitte):

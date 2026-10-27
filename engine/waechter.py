@@ -5,7 +5,7 @@ Die KI wacht über das, was sich ändern kann, und meldet, was ansteht. Niemand 
 
 Wächter   Findet veränderliche Angaben (Merkmale mit veraenderlich: true) der Optionen im Plan und der Unterkünfte mit
           Nächten, die noch nie geprüft wurden oder deren Prüfdatum älter ist als regeln.waechter_frist_tage. Daraus
-          wird ein Prüfauftrag (auftraege.jsonl, Name „Wächter“): Das Einarbeiten (Claude Code, ops/einarbeiten.sh)
+          wird ein Prüfauftrag (auftraege.jsonl, Name „Wächter“): Das Einarbeiten (Claude Code, im Betrieb)
           schlägt die Angaben nach und trägt Prüfdatum und Quelle ein. Weicht ein Wert ab, wird er NICHT still
           übernommen, sondern als offene Frage (F-…) gemeldet.
 Erinnerer Meldet Fristen und „ab“-Termine der Aufgaben an die Zuständigen und erinnert die Bestimmer an den

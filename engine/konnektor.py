@@ -11,7 +11,7 @@ Wissen) und Rückmeldungen abgeben. Ein Link gehört zu genau einer Reise und ei
                Aufgaben (AG-…) anlegen, ändern, abhaken – wirkt sofort, auch auf der Webseite (24.10.2026)
   bestimmer    dazu Änderungsaufträge, Entscheidungen (entscheiden) und Einladungen (person_einladen). Aufträge
                ändern nichts sofort; sie liegen in <ablage>/<reise>/auftraege.jsonl und werden von Claude Code
-               geprüft und übernommen (ops/einarbeiten.sh). Eine Entscheidung wird je nach regeln.entscheidungsweg
+               geprüft und übernommen (Einarbeiten im Betrieb). Eine Entscheidung wird je nach regeln.entscheidungsweg
                sofort vom Dienst geprüft und festgehalten (direkt) oder als Auftrag in Claude Code geprüft (auftrag).
   Paket C (26.10.2026): Einbringer beantworten Fragen (frage_beantworten); einladen darf, wer regeln.einladen
                erlaubt (Vorgabe: Bestimmer); person_einladen legt die Person an und stellt ihren Zugang aus.
@@ -250,8 +250,7 @@ def stand_text(reise):
         z.append("- Reise: Zeitpunkt der Veröffentlichung unbekannt")
     jetzt = code_stand()
     z.append(f"- Konnektor gestartet: {zeit_de(_START)}, Code {_CODE_START}"
-             + ("" if jetzt == _CODE_START else f" – auf dem Server liegt neuerer Code ({jetzt}), der Dienst braucht einen Neustart"
-                " (sudo systemctl restart reisehandbuch-konnektor)"))
+             + ("" if jetzt == _CODE_START else f" – auf dem Server liegt neuerer Code ({jetzt}), der Dienst braucht einen Neustart"))
     return "\n".join(z)
 
 
@@ -1163,7 +1162,7 @@ def frage_beantworten(reise, d, h, wer, args):
 
 def zugang_ausstellen(z):
     """Neuen geheimen Link anlegen -> Token. z: {"reise", "person"} oder {"reise", "rolle"}. Schreibt zugaenge.json
-    (Rechte 600); der Dienst braucht dafür Schreibrecht auf den Ordner (ops/reisehandbuch-konnektor.service)."""
+    (Rechte 600); der Dienst braucht dafür Schreibrecht auf den Ordner (Einstellung des Dienstes im Betrieb)."""
     p = zugaenge_pfad()
     with _sperre:
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -1228,7 +1227,7 @@ def einladen(reise, d, wer, args):
         token = zugang_ausstellen({"reise": reise, "person": schluessel})
     except OSError:
         return ("Der Link konnte nicht angelegt werden: Der Dienst darf die Zugänge nicht schreiben. Das muss der "
-                "Betreiber einrichten (ops/README.md)."), True
+                "Betreiber einrichten (Schreibrecht auf die Datei KN_ZUGAENGE, docs/konnektor.md)."), True
     link = f"{basis()}/{token}"
     heute = datetime.date.today().isoformat()
     if neu:
@@ -1785,7 +1784,7 @@ def zugang_anlegen(reise, wen):
         sys.exit("Aufruf: zugang <reise> <person>|<rolle>")
     d = daten(reise)
     if d is None:
-        sys.exit(f"Reise „{reise}“ ist unter {seiten()} nicht veröffentlicht (erst ops/deploy.sh {reise}).")
+        sys.exit(f"Reise „{reise}“ ist unter {seiten()} nicht veröffentlicht (erst bauen und veröffentlichen).")
     personen = {p["schluessel"]: p for p in personen_der_reise(reise, d)}
     if wen in personen:
         z = {"reise": reise, "person": wen}
