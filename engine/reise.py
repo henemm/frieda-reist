@@ -8,7 +8,7 @@ Hintergrund und Entscheidungen: docs/produkt.md (26.10.2026). Die Zuordnung der 
   personen    {schluessel: {name, rolle, reist, notiz}}; Rollen reisend < einbringer < bestimmer
   bausteine   zuschaltbare Teile (Liste); Plan, Wissen, Suche und Personen sind immer da
   regeln      Spielregeln mit Wert, fehlende kommen aus VORGABEN
-  darstellung Startreiter, Reiternamen, Tiefe, Gruppen, Mahnungen im Plan (mahnungen: false blendet sie dort aus)
+  darstellung Startreiter, Reiternamen, Tiefe, Gruppen, Mahnungen im Plan (mahnungen: false blendet sie dort aus), Ansicht der Tagesseite (tagesseite: fluss | reiter | magazin)
 
 Fehler brechen den Bau ab (wie beim Routenmodell). Fehlt reise.yaml, kommen Eckdaten und Darstellung aus
 reise.json (alte Form) mit einem Hinweis; Status ist dann „planung“, Personen gibt es keine.
@@ -38,7 +38,8 @@ KANAELE = ("app", "nachricht")           # E-Mail an alle gibt es (noch) nicht
 REGEL_WERTE = {"entscheidungsweg": ("direkt", "auftrag"), "konflikt": ("offene_frage",),
                "einladen": ("bestimmer", "einbringer")}
 KONTINGENT_ARTEN = ("punkte", "anzahl")
-DARSTELLUNG = ("start", "tiefe", "varianten_titel", "plan_reiter", "gruppen", "mahnungen")
+DARSTELLUNG = ("start", "tiefe", "varianten_titel", "plan_reiter", "gruppen", "mahnungen", "tagesseite")
+TAGESSEITEN = ("fluss", "reiter", "magazin")          # Ansichten der Tagesseite; Vorgabe „reiter“
 PERSON_FELDER = {"name", "rolle", "reist", "notiz"}
 ALTE_ECKDATEN = ("titel", "untertitel", "pfad", "kurz")
 
@@ -418,9 +419,12 @@ class Reise:
             for k in quelle:
                 if k not in DARSTELLUNG:
                     self.fehl(f"darstellung: unbekannter Schlüssel „{k}“ (bekannt: {', '.join(DARSTELLUNG)}).")
+            if quelle.get("tagesseite", "reiter") not in TAGESSEITEN:
+                self.fehl(f"darstellung.tagesseite: „{quelle['tagesseite']}“ gibt es nicht (möglich: {', '.join(TAGESSEITEN)}).")
         return {"gruppen": quelle.get("gruppen") or {}, "tiefe": bool(quelle.get("tiefe")),
                 "plan_reiter": quelle.get("plan_reiter"), "varianten_titel": quelle.get("varianten_titel", "Varianten"),
-                "start": quelle.get("start"), "mahnungen": quelle.get("mahnungen", True) is not False}
+                "start": quelle.get("start"), "mahnungen": quelle.get("mahnungen", True) is not False,
+                "tagesseite": quelle.get("tagesseite") or "reiter"}
 
     def daten(self):
         """-> Eintrag „reise“ für daten.json; Fehler stehen danach in self.fehler."""

@@ -316,6 +316,8 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .pico details.block>summary,.pico details.neben>summary,.pico details.weg>summary{margin:0}
 .pico .karte .k{font-size:1rem}
 #rm .rmkopf .k{font-weight:700}
+#rm .rmkopf .kennung{font-variant-numeric:tabular-nums}
+#rm .rmkopf .kopieren{margin-top:6px}
 
 /* ---------- Kennung (Atom zid): Rückmeldung und Aufgaben zu einer Stelle (Entscheidung 27.10.2026) ----------
    Zwei Gestalten desselben Bausteins:
@@ -323,9 +325,9 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
       Gilt bei genug Platz (ab 700 px) und in Karten immer.
    A (Sprechblase): nur das Symbol mit Zahl und Warnpunkt, bei wenig Platz außerhalb von Karten. Die Kennung steht dort im Fenster. */
 .zid-box{position:relative;display:inline-flex;align-items:center;gap:2px;max-width:100%;vertical-align:middle}
-.pico button.zid,.pico button.zid-i,.pico button.zid-kop{width:auto;margin:0;box-shadow:none;transition:none;background:none;border:0;--pico-background-color:transparent;--pico-border-color:transparent}
+.pico button.zid{width:auto;margin:0;box-shadow:none;transition:none;background:none;border:0;--pico-background-color:transparent;--pico-border-color:transparent}
 /* .pico davor: sonst gewinnt Pico CSS mit hellem Text auf hellem Grund */
-.pico button.zid,.pico button.zid-i{position:relative;display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 4px;cursor:pointer;color:var(--mut);font:600 0.9375rem/1.2 var(--font-text);--pico-color:var(--mut);border-radius:8px;text-align:left}
+.pico button.zid{position:relative;display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 4px;cursor:pointer;color:var(--mut);font:600 0.9375rem/1.2 var(--font-text);--pico-color:var(--mut);border-radius:8px;text-align:left}
 .pico button.zid.hat{color:var(--acc);--pico-color:var(--acc)}
 button.zid .sym{width:1.05em;height:1.05em}
 button.zid .zid-blase{display:none}   /* Symbol der Gestalt A */
@@ -334,23 +336,56 @@ button.zid .zid-blase{display:none}   /* Symbol der Gestalt A */
 .zid-n{display:inline-flex;align-items:center;justify-content:center;min-width:1.4em;height:1.4em;padding:0 .4em;border-radius:99px;background:var(--acc);color:var(--card);font-size:0.78rem;font-weight:700;font-variant-numeric:tabular-nums;text-decoration:none}
 .zid-ag{display:inline-flex;align-items:center;font-size:0.82rem;font-weight:600;color:var(--warn);background:var(--warnbg);border-radius:99px;padding:2px 9px;text-decoration:none}
 .zid-o{display:none;width:.6em;height:.6em;border-radius:50%;background:var(--warn)}
-.pico button.zid-i{width:44px;justify-content:center;padding:0;margin:0 -6px 0 0;font:700 0.95rem var(--font-titel);font-style:normal}
-button.zid-i::before{content:"";position:absolute;width:22px;height:22px;border-radius:50%;border:1.5px solid currentColor}
-button.zid-i span{position:relative;font-style:normal}
-.pico button.zid-i[aria-expanded="true"]{color:var(--acc);--pico-color:var(--acc)}
-.zid-kennung{display:none;align-items:center;gap:10px;position:absolute;z-index:5;right:0;top:calc(100% - 8px);background:var(--fg);color:var(--bg);padding:3px 4px 3px 10px;border-radius:9px;white-space:nowrap;font-size:0.82rem;font-variant-numeric:tabular-nums;box-shadow:0 6px 18px rgba(0,0,0,.25)}
-.zid-box.offen .zid-kennung{display:inline-flex}
-.zid-kennung::before{content:"Kennung";opacity:.7}
-.pico button.zid-kop{display:inline-flex;align-items:center;min-height:28px;padding:4px 10px;border-radius:6px;background:color-mix(in srgb,var(--bg) 20%,transparent);color:var(--bg);--pico-color:var(--bg);font:700 0.78rem var(--font-text);cursor:pointer}
 /* Gestalt A: wenig Platz, nicht in Karten */
 @media (max-width:699px){
-  .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) :is(.zid-i,.zid-wort,.zid-ag){display:none}
+  .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) :is(.zid-wort,.zid-ag){display:none}
   .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) button.zid{width:44px;justify-content:center;padding:0;margin-right:-8px}
   .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) button.zid .zid-blase{width:1.35rem;height:1.35rem;display:inline-block}
   .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) button.zid .zid-stift{display:none}
   .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) button.zid.hat .zid-blase{fill:var(--acc2)}
   .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) .zid-n{position:absolute;top:3px;right:0;min-width:1.2rem;height:1.2rem;font-size:0.72rem;box-shadow:0 0 0 2px var(--bg)}
   .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) .zid-o{display:block;position:absolute;bottom:8px;right:6px;box-shadow:0 0 0 2px var(--bg)}
+}
+
+/* ---------- Tagesseite: drei Ansichten (Fluss, Reiter, Magazin) ---------- */
+.tagesumschalter{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:4px 0 10px}
+.tagesumschalter .umschalter{margin:0}
+.sh{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px}
+.sh h3,.tag-ansicht .gruppe{margin:0}
+.sh h3{font-size:1.1rem}
+.tag-ansicht>.karte,.tag-ansicht .tag-rechts>*{margin-bottom:0}
+.tag-ansicht{display:flex;flex-direction:column;gap:14px}
+.tag-ansicht .karte.themen details.block{border:0;border-top:1px solid var(--line);border-radius:0;margin:0;background:none}
+.tag-ansicht .karte.orte .ortzeile{display:block;color:inherit;text-decoration:none;padding:10px 0;border-top:1px solid var(--line)}
+.tag-ansicht .karte.orte .ortzeile .k{font-weight:700}
+.tag-spalten{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.tag-rechts{display:flex;flex-direction:column;gap:12px;min-width:0}
+@media (min-width:900px){.tag-spalten{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}}
+.marken{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.marke{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:5px 12px;text-decoration:none;color:var(--fg);font-weight:600}
+a.marke:hover{border-color:var(--acc)}
+.reiterleiste{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);margin:-4px -6px 6px;padding:0 6px;scrollbar-width:thin}
+.pico .reiterleiste button{flex:none;width:auto;margin:0;min-height:44px;border:0;border-bottom:3px solid transparent;border-radius:0;background:none;box-shadow:none;color:var(--mut);--pico-color:var(--mut);font:600 0.9375rem var(--font-text);padding:0 12px;white-space:nowrap;cursor:pointer}
+.pico .reiterleiste button[aria-selected="true"]{color:var(--fg);--pico-color:var(--fg);border-bottom-color:var(--acc)}
+.panel[hidden]{display:none}
+.panel .inhalt{max-width:var(--lese)}
+.panel .inhalt table,.tag-magazin .inhalt table{display:block;overflow-x:auto}
+.tag-seitenindex{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+.tag-magazin .fluss{display:flex;flex-direction:column;min-width:0}
+.tag-magazin .fluss>.karte,.tag-magazin .fluss>div>.karte{background:none;border:0;padding:0;border-radius:0}
+.tag-magazin .abs{padding:6px 0 16px;border-top:1px solid var(--line);scroll-margin-top:12px}
+.tag-magazin .abs h4{font-size:1rem;margin:14px 0 4px}
+.tag-magazin .index{display:none;font-size:0.9375rem}
+.tag-magazin .index ol{list-style:none;margin:6px 0 0;padding:0;border-left:2px solid var(--line)}
+.tag-magazin .index a{display:block;padding:5px 12px;text-decoration:none;color:var(--mut)}
+.tag-magazin .index a:hover{color:var(--acc)}
+.index-m{border:1px solid var(--line);border-radius:10px;background:var(--card);padding:0 12px}
+.index-m summary{min-height:44px;display:flex;align-items:center;font-weight:600}
+.index-m ol{margin:0;padding:0 0 8px 18px}
+@media (min-width:900px){
+  .tag-seitenindex{grid-template-columns:200px minmax(0,1fr)}
+  .tag-magazin .index{display:block;position:sticky;top:12px}
+  .index-m{display:none}
 }
 
 /* ---------- Bedienung: Tippflächen, Fokus, Hover ---------- */
@@ -363,7 +398,6 @@ button.zid-i span{position:relative;font-style:normal}
   a.karte:hover{border-color:var(--acc)}
   .umschalter button:hover{border-color:var(--acc)}
   button.zid:hover .zid-wort{text-decoration-color:var(--acc)}
-  button.zid-i:hover{color:var(--acc)}
 }
 
 /* ---------- Glas (Liquid Glass: 35 %, Blur 8px, Sättigung 170 %) ----------
@@ -630,10 +664,7 @@ function zid(id) {
     "aria-label": [`Anmerken zu ${id}`, n ? wort : "", ag].filter(Boolean).join(", ")},
     n ? null : symbol("anmerken", "zid-stift"), symbol("rueckmeldungen", "zid-blase"), n ? el("span", {class: "zid-n"}, String(n)) : null, a ? el("span", {class: "zid-o"}) : null,
     el("span", {class: "zid-wort"}, n ? wort.replace(/^\d+ /, "") : wort), a ? el("span", {class: "zid-ag"}, ag) : null);
-  const info = el("button", {type: "button", class: "zid-i", "data-kennung": id, "aria-label": `Kennung ${id} anzeigen`, "aria-expanded": "false"}, el("span", {}, "i"));
-  const kennung = el("span", {class: "zid-kennung", role: "status"}, el("span", {class: "zid-wert"}, id),
-    el("button", {type: "button", class: "zid-kop", "data-kopieren": id}, "Kopieren"));
-  return el("span", {class: "zid-box"}, info, knopf, kennung);
+  return el("span", {class: "zid-box"}, knopf);
 }
 /* Bausteine nach Ebenen (Designsystem, frieda-reist#18). Jede Ansicht setzt sich aus ihnen zusammen,
    statt dieselbe Sache selbst zu zeichnen.
@@ -1807,6 +1838,121 @@ function ansichtPlanDetail(m, p) {
     }
   }
 }
+/* ---------- Tagesseite in drei Ansichten (27.10.2026) ----------
+   Dieselben Teile (Tageskasten mit Strecke, Wahl und Nacht, Karte, Abschnitte der Etappe, Orte), dreimal geordnet:
+   fluss    Tageskasten, Karte, ein Kasten „Mehr zur Etappe“ mit aufklappbaren Abschnitten, ein Kasten mit den Orten
+   reiter   Tageskasten neben der Karte, die Abschnitte als Reiter in einem Kasten, die Orte als Marken
+   magazin  durchgehender Text mit Seitenindex, ohne Kästen
+   Die Reise stellt die Vorgabe in reise.yaml (darstellung.tagesseite); der Schalter über dem Tag merkt sich die Wahl im Browser. */
+const TAGESANSICHTEN = [["fluss", "Fluss"], ["reiter", "Reiter"], ["magazin", "Magazin"]];
+let TAGESANSICHT = (() => { const v = lies("tagesansicht", null); return TAGESANSICHTEN.some(([k]) => k === v) ? v : D.reise.tagesseite || "reiter"; })();
+const tagesUmschalter = () => el("div", {class: "tagesumschalter"}, el("span", {class: "lab"}, "Ansicht"),
+  umschalter("Ansicht der Tagesseite", TAGESANSICHTEN.map(([k, n]) => [{"data-tagesansicht": k}, TAGESANSICHT === k, n])));
+const REITER = {};   // Etappe -> gewählter Reiter, bleibt beim Neuzeichnen
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-tagesansicht]");
+  if (b) { TAGESANSICHT = b.dataset.tagesansicht; merke("tagesansicht", TAGESANSICHT); route(true); return; }
+  const r = e.target.closest("[data-reiter]");
+  if (r) {
+    const box = r.closest(".reiter"), i = +r.dataset.reiter;
+    REITER[box.dataset.etappe] = i;
+    box.querySelectorAll("[data-reiter]").forEach(x => x.setAttribute("aria-selected", String(+x.dataset.reiter === i)));
+    box.querySelectorAll(".panel").forEach(x => { x.hidden = +x.dataset.panel !== i; });
+    r.scrollIntoView({block: "nearest", inline: "center", behavior: "smooth"});
+    return;
+  }
+  const s = e.target.closest("[data-sprung]");
+  if (s) { e.preventDefault(); const z = document.getElementById(s.dataset.sprung); if (z) { z.scrollIntoView({behavior: "smooth", block: "start"}); const d = s.closest("details"); if (d) d.open = false; } }
+});
+const blockInhalt = b => [b.orte ? ortChips(b.orte) : null, wissenKarte(b.id), el("div", {class: "inhalt", html: b.html})];
+const abschnittKopf = (titel, id) => el("div", {class: "sh"}, el("h3", {}, titel), id ? zid(id) : null);
+function ortEintrag(o) {
+  const a = ortAbschnitt(o);
+  const k = el(a ? "a" : "div", {class: "ortzeile", href: a ? "#" + o : false}, el("div", {class: "k"}, ortName(o), zid(o)));
+  if (a) {
+    k.append(el("div", {class: "z klein"}, ortKurz(o)));
+    const hl = a.bloecke.filter(b => !/^(Essen|Unterkunft|Praktisch|Quellen)/.test(b.titel));
+    if (hl.length) k.append(el("div", {class: "chips"}, hl.map(b => chip("", b.titel))));
+  } else k.append(el("div", {class: "z klein"}, "Noch keine Beschreibung."));
+  return k;
+}
+function etappenKopf(a, nur) { return nur ? null : el("h3", {class: "gruppe"}, "Weg: " + a.titel); }
+function tagInhalt(m, t) {
+  const etappen = t.strecken.map(s => proId.get(s.id)).filter(a => a && a.typ === "etappe");
+  const tageskasten = tagKarte({...t, text: "", wahlstellen: t.wahlstellen || []}, true);   // Kopf steht schon darüber
+  const orte = tagOrte(t);
+  const karten = a => [chips(a), etappenKarte(a.id)].filter(Boolean);
+  const ohneBuch = () => {
+    // Strecke ohne Buchetappe, aber mit Track (z. B. eigener GPX): Karte allein, Beschreibung über „siehe“
+    for (const s of t.strecken) {
+      const a = proId.get(s.id);
+      if (a && a.typ === "etappe") continue;
+      const st = R.strecken[s.id] || {}, k = (st.art || "wandern") === "wandern" ? etappenKarte(s.id) : null;
+      if (!k) continue;
+      return [el("h3", {class: "gruppe"}, "Weg: " + st.titel), k, st.quelle ? el("p", {class: "meldung"}, "Angaben: " + st.quelle) : null,
+        st.siehe && proId.has(st.siehe) ? el("p", {}, link(st.siehe, "Beschreibung: " + proId.get(st.siehe).titel + " →")) : null].filter(Boolean);
+    }
+    return [];
+  };
+  const wurzel = el("div", {class: "tag-ansicht tag-" + TAGESANSICHT});
+  m.append(wurzel);
+  if (TAGESANSICHT === "reiter") {
+    wurzel.append(el("div", {class: "tag-spalten"}, tageskasten, el("div", {class: "tag-rechts"},
+      ...etappen.flatMap(karten), ...ohneBuch(),
+      orte.length ? el("div", {class: "marken"}, el("span", {class: "lab"}, orte.length > 1 ? "Orte des Tages" : "Ort des Tages"),
+        ...orte.map(o => el(ortAbschnitt(o) ? "a" : "span", {class: "marke", href: ortAbschnitt(o) ? "#" + o : false}, ortName(o)))) : null)));
+    for (const a of etappen) {
+      const bl = a.bloecke;
+      if (!bl.length) continue;
+      const sel = Math.min(REITER[a.id] || 0, bl.length - 1);
+      wurzel.append(el("div", {class: "karte reiter", "data-etappe": a.id},
+        etappen.length > 1 ? el("h3", {class: "gruppe"}, a.titel) : null,
+        el("div", {role: "tablist", class: "reiterleiste", "aria-label": "Abschnitte der Etappe"},
+          bl.map((b, i) => el("button", {type: "button", role: "tab", "data-reiter": i, "aria-selected": String(i === sel)}, b.titel.replace(/\s*\(.*$/, "")))),
+        ...bl.map((b, i) => el("div", {class: "panel ziel", role: "tabpanel", "data-panel": i, id: b.id, "data-ziel": b.id, hidden: i !== sel},
+          abschnittKopf(b.titel, b.id), ...blockInhalt(b)))));
+    }
+  } else if (TAGESANSICHT === "magazin") {
+    const eintraege = [["tagkasten", "Strecke und Nacht"]];
+    const fluss = el("div", {class: "fluss"}, el("div", {id: "tagkasten"}, tageskasten));
+    for (const a of etappen) {
+      const k = karten(a);
+      if (k.length) { const kb = el("div", {id: "karte-" + a.id}, ...k); fluss.append(kb); eintraege.push(["karte-" + a.id, "Karte"]); }
+      if (a.intro) fluss.append(el("div", {class: "inhalt", html: a.intro}));
+      for (const b of a.bloecke) {
+        fluss.append(el("section", {class: "abs ziel", id: b.id, "data-ziel": b.id}, abschnittKopf(b.titel, b.id), ...blockInhalt(b)));
+        eintraege.push([b.id, b.titel.replace(/\s*\(.*$/, "")]);
+      }
+    }
+    fluss.append(...ohneBuch());
+    if (orte.length) {
+      fluss.append(el("h3", {class: "gruppe", id: "orte-des-tages"}, orte.length > 1 ? "Orte des Tages" : "Ort des Tages"));
+      eintraege.push(["orte-des-tages", orte.length > 1 ? "Orte des Tages" : "Ort des Tages"]);
+      for (const o of orte) {
+        const a = ortAbschnitt(o);
+        const s = el("section", {class: "abs ziel", id: "tag-" + o}, abschnittKopf(ortName(o), o));
+        if (a) {
+          if (a.intro) s.append(el("div", {class: "inhalt", html: a.intro}));
+          for (const b of a.bloecke) s.append(el("h4", {}, b.titel), el("div", {class: "inhalt", html: b.html}));
+        } else s.append(el("p", {class: "meldung"}, "Noch keine Beschreibung."));
+        fluss.append(s);
+      }
+    }
+    const liste = el("ol", {}, eintraege.map(([id, n]) => el("li", {}, el("a", {href: "#" + id, "data-sprung": id}, n))));
+    wurzel.append(el("details", {class: "index-m"}, el("summary", {}, "Auf dieser Seite"), liste.cloneNode(true)),
+      el("div", {class: "tag-seitenindex"}, el("aside", {class: "index", "aria-label": "Auf dieser Seite"}, el("span", {class: "lab"}, "Auf dieser Seite"), liste), fluss));
+  } else {
+    wurzel.append(tageskasten);
+    for (const a of etappen) {
+      wurzel.append(...karten(a));
+      if (a.intro) wurzel.append(el("div", {html: a.intro}));
+      if (a.bloecke.length) wurzel.append(el("div", {class: "karte themen"}, el("div", {class: "sh"}, el("h3", {}, "Mehr zur Etappe")),
+        ...a.bloecke.map((b, i) => block(b, i === 0))));
+    }
+    wurzel.append(...ohneBuch());
+    if (orte.length) wurzel.append(el("div", {class: "karte orte"}, el("div", {class: "sh"}, el("h3", {}, orte.length > 1 ? "Orte des Tages" : "Ort des Tages")), ...orte.map(ortEintrag)));
+  }
+}
 function ansichtTag(m, tid) {
   const mit = R.plaene.filter(p => p.tage.some(t => t.id === tid));
   const p = mit.find(x => x.id === PLAN_ZULETZT) || mit[0] || planZu(PLAN_ZULETZT);
@@ -1830,31 +1976,8 @@ function ansichtTag(m, tid) {
     m.append(el("h3", {}, "Übersicht"));
     m.append(t.text ? el("p", {}, t.text) : el("p", {class: "meldung"}, "Noch kein Tagesprogramm."));
   }
-  m.append(tagKarte({...t, text: "", wahlstellen: t.wahlstellen || []}, true));   // Kopf steht schon darüber
-  for (const s of t.strecken) {
-    const a = proId.get(s.id);
-    if (a && a.typ === "etappe") { m.append(etappeTeil(a, true)); continue; }
-    // Strecke ohne Buchetappe, aber mit Track (z. B. eigener GPX): Karte allein, Beschreibung über „siehe“
-    const st = R.strecken[s.id] || {}, k = (st.art || "wandern") === "wandern" ? etappenKarte(s.id) : null;
-    if (!k) continue;
-    m.append(el("h3", {class: "gruppe"}, "Weg: " + st.titel), k);
-    if (st.quelle) m.append(el("p", {class: "meldung"}, "Angaben: " + st.quelle));
-    if (st.siehe && proId.has(st.siehe)) m.append(el("p", {}, link(st.siehe, "Beschreibung: " + proId.get(st.siehe).titel + " →")));
-  }
-  const orte = tagOrte(t);
-  if (orte.length) {
-    m.append(el("h3", {}, orte.length > 1 ? "Orte des Tages" : "Ort des Tages"));
-    for (const o of orte) {
-      const a = ortAbschnitt(o);
-      const k = el(a ? "a" : "div", {class: "karte", href: a ? "#" + o : false}, el("div", {class: "k"}, ortName(o), zid(o)));
-      if (a) {
-        k.append(el("div", {class: "z klein"}, ortKurz(o)));
-        const hl = a.bloecke.filter(b => !/^(Essen|Unterkunft|Praktisch|Quellen)/.test(b.titel));
-        if (hl.length) k.append(el("div", {class: "chips"}, hl.map(b => chip("", b.titel))));
-      } else k.append(el("div", {class: "z klein"}, "Noch keine Beschreibung."));
-      m.append(k);
-    }
-  }
+  m.append(tagesUmschalter());
+  tagInhalt(m, t);
   if (imPlan && !imPlan.alt) {
     const i = p.tage.indexOf(imPlan), vor = p.tage[i - 1], nach = p.tage[i + 1];
     m.append(el("div", {class: "blaettern"},
@@ -2225,7 +2348,8 @@ function rmFormular(id) {
   const sel = el("select", {id: "rmArt"}, arten.map(a => el("option", {value: a, selected: a === ART_STANDARD(id)}, a)));
   dlg.replaceChildren(
     el("div", {class: "rmkopf"},
-      el("div", {}, el("div", {class: "k"}, (id === "allgemein" ? "Allgemein" : "Zu " + id)), titel ? el("div", {class: "meldung"}, titel) : null),
+      el("div", {}, el("div", {class: "k"}, id === "allgemein" ? "Allgemein" : ["Zu ", el("span", {class: "kennung"}, id)]), titel ? el("div", {class: "meldung"}, titel) : null,
+        id === "allgemein" ? null : el("button", {type: "button", class: "outline klein kopieren", "data-kopieren": id}, "Kopieren")),
       el("button", {type: "button", class: "outline klein", "data-schliessen": "1"}, "Schließen")),
     el("div", {class: "rminhalt"},
       B("aufgaben") ? [el("h4", {}, "Aufgaben"),
@@ -2538,21 +2662,14 @@ document.addEventListener("click", e => {
 }, true);
 window.addEventListener("online", () => brLaden().then(rmNeuZeichnen));
 
-// Kennung zeigen („i“) und kopieren; ein Tipp daneben oder Esc schließt sie
-const kennungZu = () => document.querySelectorAll(".zid-box.offen").forEach(x => { x.classList.remove("offen"); x.querySelector(".zid-i").setAttribute("aria-expanded", "false"); });
+// Kennung kopieren (Knopf im Fenster)
 document.addEventListener("click", e => {
-  const i = e.target.closest(".zid-i"), k = e.target.closest("[data-kopieren]");
-  if (k) {
-    e.preventDefault(); e.stopPropagation();
-    const fertig = t => { k.textContent = t; setTimeout(() => { k.textContent = "Kopieren"; }, 1500); };
-    try { navigator.clipboard.writeText(k.dataset.kopieren).then(() => fertig("Kopiert"), () => fertig(k.dataset.kopieren)); } catch (x) { fertig(k.dataset.kopieren); }
-    return;
-  }
-  const offen = i && i.parentNode.classList.contains("offen");
-  if (!e.target.closest(".zid-kennung")) kennungZu();
-  if (i) { e.preventDefault(); e.stopPropagation(); if (!offen) { i.parentNode.classList.add("offen"); i.setAttribute("aria-expanded", "true"); } }
+  const k = e.target.closest("[data-kopieren]");
+  if (!k) return;
+  e.preventDefault(); e.stopPropagation();
+  const fertig = x => { k.textContent = x; setTimeout(() => { k.textContent = "Kopieren"; }, 1500); };
+  try { navigator.clipboard.writeText(k.dataset.kopieren).then(() => fertig("Kopiert"), () => fertig(k.dataset.kopieren)); } catch (x) { fertig(k.dataset.kopieren); }
 }, true);
-document.addEventListener("keydown", e => { if (e.key === "Escape") kennungZu(); });
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-rm]");
   if (b) { e.preventDefault(); e.stopPropagation(); rmFormular(b.dataset.rm); return; }
