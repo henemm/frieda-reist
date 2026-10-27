@@ -71,3 +71,42 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
         assert teil in b, teil
     assert ' id="' not in b.split(">", 1)[1]
     assert "null" not in re.sub(r"<[^>]+>", " ", b)
+
+
+def seite_der_variante(tmp_path, browser, datum="2027-05-13", **variante):
+    """Beispielreise mit anderem Status oder anderen Bausteinen bauen (wie test_regeln) und im Browser ansehen."""
+    from test_regeln import reise_bauen
+    seiten = reise_bauen(tmp_path, **variante)
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(seiten)))
+    threading.Thread(target=s.serve_forever, daemon=True).start()
+    try:
+        aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_variante.mjs"), str(PLAYWRIGHT),
+                              f"http://127.0.0.1:{s.server_address[1]}/beispielreise/", datum],
+                             capture_output=True, text=True, timeout=120, env={**os.environ, "RH_BROWSER": browser})
+    finally:
+        s.shutdown()
+    assert aus.returncode == 0, aus.stderr[-2000:]
+    e = json.loads(aus.stdout.strip().splitlines()[-1])
+    assert e["fehler"] == []
+    return e
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_seite_je_status_und_baustein(tmp_path, browser):
+    """Paket B auf der Seite: unterwegs beginnt mit Heute und der Karte; ausgeschaltete Bausteine verschwinden."""
+    planung = seite_der_variante(tmp_path / "planung", browser)
+    assert planung["heute"] is None
+    assert {"wuensche", "offen"} <= set(planung["reiter"]) and planung["knoepfe"] > 0
+    unterwegs = seite_der_variante(tmp_path / "unterwegs", browser, status="unterwegs")
+    assert unterwegs["aktiv"] == "varianten" and unterwegs["heute"].startswith("Heute · Tag 1: "), unterwegs
+    kein_tag = seite_der_variante(tmp_path / "kein_tag", browser, datum="2027-06-30", status="unterwegs")
+    assert kein_tag["heute"] == "Heute"
+    wenig = seite_der_variante(tmp_path / "wenig", browser, bausteine=["varianten"])
+    assert "wuensche" not in wenig["reiter"] and "offen" not in wenig["reiter"], wenig
+    assert wenig["knoepfe"] == 0 and wenig["kennungen"] > 0   # IDs stehen da, aber ohne Rückmeldeknopf

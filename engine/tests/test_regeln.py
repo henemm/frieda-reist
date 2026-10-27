@@ -192,7 +192,11 @@ def test_mahnungen_erst_ab_fest(tmp_path):
         ids[status] = [m["bezug"] for m in r["mahnungen"]]
     assert ids["idee"] == ids["planung"] == ids["danach"] == []
     assert "V-01" in ids["fest"] and ids["fest"] == ids["unterwegs"]
-    assert "offen, obwohl die Reise fest ist" in next(m["text"] for m in daten_von(reise_bauen(tmp_path / "x", "fest"))["route"]["mahnungen"] if m["bezug"] == "V-01")
+    fest = {m["bezug"]: m["text"] for m in daten_von(reise_bauen(tmp_path / "x", "fest"))["route"]["mahnungen"]}
+    assert "offen, obwohl die Reise fest ist" in fest["V-01"]
+    # Veränderliche Angabe ohne Prüfdatum (Preis der Beispiel-Unterkunft U-01) ist ab fest eine Mahnung, kein Fehler
+    assert "U-01" in fest and "preis" in fest["U-01"] and "ohne Prüfdatum" in fest["U-01"]
+    assert "U-01" in ids["unterwegs"] and "U-01" not in ids["planung"]
 
 
 def test_idee_ohne_warnungen(tmp_path):
@@ -243,6 +247,23 @@ def test_dienst_zurueckziehen_im_archiv_gesperrt(umgebung):
     (u.o / "eingang.jsonl").write_text(json.dumps({"id": "R-20261026-120000-abcd", "name": "Karl"}) + "\n")
     code, a = anfrage(f"{u.rurl}/beispielreise/rueckmeldungen/R-20261026-120000-abcd", methode="DELETE")
     assert code == 403 and "archiviert" in a["fehler"]
+
+
+def test_dienst_zurueckziehen_prueft_wie_absenden(umgebung):
+    """Zurückziehen ist Schreiben: Rolle des Absenders, Baustein und Status gelten wie beim Absenden."""
+    u = umgebung(bausteine=["varianten", "rueckmeldungen"])   # Wünsche ausgeschaltet
+    zeilen = [{"id": "R-20261026-120000-aaaa", "name": "Kim", "art": "Kommentar"},     # Kim reist nur mit (liest)
+              {"id": "R-20261026-120000-bbbb", "name": "Karl", "art": "Wunsch"},
+              {"id": "R-20261026-120000-cccc", "name": "Karl", "art": "Kommentar"}]
+    (u.o / "eingang.jsonl").write_text("".join(json.dumps(z) + "\n" for z in zeilen))
+    url = f"{u.rurl}/beispielreise/rueckmeldungen/"
+    code, a = anfrage(url + "R-20261026-120000-aaaa", methode="DELETE")
+    assert code == 403 and "nur lesen" in a["fehler"]
+    code, a = anfrage(url + "R-20261026-120000-bbbb", methode="DELETE")
+    assert code == 403 and "wuensche" in a["fehler"]
+    assert anfrage(url + "R-20261026-120000-cccc", methode="DELETE")[0] == 200
+    assert [json.loads(z)["id"] for z in (u.o / "eingang.jsonl").read_text().splitlines()] == [
+        "R-20261026-120000-aaaa", "R-20261026-120000-bbbb"]
 
 
 def test_dienst_ausgeschalteter_baustein(umgebung):

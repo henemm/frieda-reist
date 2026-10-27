@@ -640,6 +640,8 @@ const weg = s => s === "verworfen" || s === "ersetzt";
 const optionZustand = s => weg(s) ? "weg" : s === "gewaehlt" ? "plan" : "";
 const link = (id, text) => el("a", {href: "#" + id}, text);
 const ortName = id => (R.orte[id] || {}).name || id || "?";
+// Herkunft eines Kartenpunkts: Quelle und Prüfdatum (Feld geprueft oder stand der Punktdatei)
+function punktHerkunft(p) { return [p.quelle, p.geprueft && "geprüft " + p.geprueft.split("-").reverse().map(Number).join(".")].filter(Boolean).join(" · "); }
 function datumText(iso, wt) { const [, m, d] = iso.split("-"); return `${wt} ${+d}.${+m}.`; }
 function dauer(min) { return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")} h`; }
 function summeText(s) {
@@ -1365,7 +1367,7 @@ function punktPopup(sid, i, p) {
   if (p.id && R.unterkuenfte[p.id]) d.append(el("div", {}, link(p.id, R.unterkuenfte[p.id].name + " im Plan")));
   const imText = document.querySelector(`a.kp[data-p="${sid}:${i}"]`);
   if (imText) d.append(el("button", {type: "button"}, "Im Text zeigen"));
-  d.append(el("div", {class: "pq"}, p.quelle));
+  d.append(el("div", {class: "pq"}, punktHerkunft(p)));
   const b = d.querySelector("button");
   if (b) b.addEventListener("click", () => { const z = document.querySelector(`a.kp[data-p="${sid}:${i}"]`); if (!z) return;
     const blk = z.closest("details"); if (blk) blk.open = true;
@@ -1446,7 +1448,7 @@ function wissenPopup(bid, i, p) {
       z.scrollIntoView({block: "center", behavior: "smooth"}); z.classList.remove("kp-blink"); void z.offsetWidth; z.classList.add("kp-blink"); });
     d.append(b);
   }
-  d.append(el("div", {class: "pq"}, p.quelle));
+  d.append(el("div", {class: "pq"}, punktHerkunft(p)));
   return d;
 }
 // Name im Text antippen: zur Karte und den Punkt zeigen; steht keine Karte auf der Seite, folgt der Link zur Etappe

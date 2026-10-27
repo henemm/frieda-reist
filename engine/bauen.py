@@ -10,6 +10,7 @@ Eckdaten, Status, Personen und Einstellungen stehen in reisen/<reise>/reise.yaml
 die Zuordnung der Inhalte (Abschnitt -> ID, Kennzahlen) in reisen/<reise>/reise.json,
 der Plan mit allen Alternativen in reisen/<reise>/plan/routen.yaml (siehe routen.py).
 """
+import datetime
 import hashlib
 import html as htmlmod
 import json
@@ -154,6 +155,27 @@ def tabelle_lesen(text, quelle, fehler):
             continue
         zeilen_aus.append(werte)
     return "\n".join(zeilen[:start]), kopf, zeilen_aus, "\n".join(zeilen[ende:])
+
+
+def als_datum(x):
+    """Datum aus YAML (Datum oder Text JJJJ-MM-TT) -> datetime.date oder None, wenn es keins ist."""
+    if isinstance(x, datetime.date):
+        return x
+    try:
+        return datetime.date.fromisoformat(x) if isinstance(x, str) else None
+    except ValueError:
+        return None
+
+
+def punkt_geprueft(p, stand, wo, fehler):
+    """Prüfdatum eines Kartenpunkts: eigenes „geprueft“ oder der „stand“ der Datei (JJJJ-MM-TT) -> ISO-Text oder None."""
+    g = p.get("geprueft", stand)
+    if g is None:
+        return None
+    if als_datum(g) is None:
+        fehler.append(f"{wo}: geprueft muss ein Datum sein (JJJJ-MM-TT).")
+        return None
+    return als_datum(g).isoformat()
 
 
 class Bauer:
@@ -505,7 +527,7 @@ class Bauer:
         }
 
     def wissen_karte(self, rel, abschnitte):
-        """Punkte je Wissens-Block (W-….<slug>) mit regionalen Grundkarten. Erzeugt von ops/wissen-punkte-holen.py,
+        """Punkte je Wissens-Block (W-….<slug>) mit regionalen Grundkarten. Erzeugt vom Betrieb (Punkte aus OpenStreetMap),
         von Hand geprüft. Punkte ohne Lage (nicht gefunden) oder außerhalb jeder Grundkarte kommen nicht auf die
         Karte und werden gemeldet; Namen der gezeigten Punkte werden im Blocktext zu Kartenlinks."""
         try:
@@ -513,6 +535,10 @@ class Bauer:
         except yaml.YAMLError as e:
             self.fehler.append(f"{rel}: kein gültiges YAML ({e}).")
             return None
+        stand = roh.get("stand")
+        if stand is not None and als_datum(stand) is None:
+            self.fehler.append(f"{rel}: stand muss ein Datum sein (JJJJ-MM-TT).")
+            stand = None
         karten, fehlen = {}, []
         for name, g in (roh.get("grundkarten") or {}).items():
             r = (g or {}).get("rahmen") or {}
@@ -528,7 +554,7 @@ class Bauer:
                             "maxzoom": pmtiles_maxzoom(datei)}
         if fehlen:
             self.hinweise.append(f"Grundkarten fehlen: {', '.join(fehlen)}; diese Orte bleiben ohne Karte "
-                                 f"(holen mit ops/karte-holen.sh {self.reise_dir.name} <name>).")
+                                 f"(je Name eine PMTiles-Datei unter medien/karte/<name>.pmtiles ablegen).")
         bloecke = {b["id"]: b for a in abschnitte if a["typ"] != "ort" for b in a["bloecke"]}
         aus, ohne = {}, []
         for bid, liste in (roh.get("bloecke") or {}).items():
@@ -559,7 +585,9 @@ class Bauer:
                     if karten:
                         ohne.append(f"{p.get('name')} ({bid.split('.')[0]}, außerhalb der Grundkarten)")
                     continue
-                zeigen.append({x: p[x] for x in ("name", "auch", "kat", "lage", "quelle", "hinweis") if p.get(x)} | {"karte": k})
+                g = punkt_geprueft(p, stand, wo, self.fehler)
+                zeigen.append({x: p[x] for x in ("name", "auch", "kat", "lage", "quelle", "hinweis") if p.get(x)} | {"karte": k}
+                              | ({"geprueft": g} if g else {}))
             if zeigen:
                 aus[bid] = zeigen
                 bloecke[bid]["html"] = punkte_verlinken(bloecke[bid]["html"], bid, zeigen)
@@ -578,6 +606,10 @@ class Bauer:
             self.fehler.append(f"{rel}: kein gültiges YAML ({e}).")
             return {}
         aus = {}
+        stand = roh.get("stand")
+        if stand is not None and als_datum(stand) is None:
+            self.fehler.append(f"{rel}: stand muss ein Datum sein (JJJJ-MM-TT).")
+            stand = None
         for sid, liste in (roh.get("strecken") or {}).items():
             if sid not in route["strecken"] and sid not in etappen:
                 self.fehler.append(f"{rel}: Strecke {sid} gibt es nicht.")
@@ -593,6 +625,9 @@ class Bauer:
                     self.fehler.append(f"{wo}: quelle fehlt (Herkunft und Prüfdatum).")
                 if p.get("id") and p["id"] not in self.ids and p["id"] not in route.get("unterkuenfte", {}):
                     self.fehler.append(f"{wo}: ID {p['id']} gibt es nicht.")
+                p["geprueft"] = punkt_geprueft(p, stand, wo, self.fehler)
+                if p["geprueft"] is None:
+                    del p["geprueft"]
             aus[sid] = liste or []
             if sid in etappen:
                 e = etappen[sid]
@@ -647,7 +682,7 @@ class Bauer:
             else:
                 k["namensnennung"] = " · ".join(x for x in (k.get("namensnennung"), "Küste schematisch") if x)
                 self.hinweise.append(f"Grundkarte {g['datei']} fehlt, die Karte bleibt schematisch "
-                                     f"(holen mit ops/karte-holen.sh {self.reise_dir.name}).")
+                                     f"(PMTiles-Datei unter {g['datei']} ablegen).")
         return k
 
     def orte_wissen(self, rel, abschnitte):
