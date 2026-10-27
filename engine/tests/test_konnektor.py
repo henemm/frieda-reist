@@ -445,13 +445,13 @@ def test_alternativen_paket3(dienst):
     t, f = werkzeug(basis, ALT_BESTIMMER, "alternative_vorschlagen", wahlstelle="V-03", titel="Hotel Saison",
                     merkmale={"oeffnung": {"wert": "ganzjährig"}, "pool": {"wert": "ja"}})
     assert not f and "„oeffnung“ ähnelt dem Merkmal geoeffnet" in t and "„pool“ ähnelt" not in t
-    a = rm.auftraege(ablage / "beispielreise")[-1]
+    a = next(x for x in rm.auftraege(ablage / "beispielreise") if x["daten"].get("titel") == "Hotel Saison")
     assert a["daten"]["doppelt"] == {"oeffnung": "geoeffnet"}
     # Werte je Datum: Liste mit gilt; Regeln wie im Routenmodell
     t, f = werkzeug(basis, ALT_BESTIMMER, "alternative_vorschlagen", wahlstelle="V-03", titel="Hotel Wochenende",
                     merkmale={"preis": [{"wert": "120 €"}, {"wert": "140 €", "gilt": "2027-05-15"}]})
     assert not f and "120 €; 140 € (gilt 15.5.2027)" in t
-    a = rm.auftraege(ablage / "beispielreise")[-1]
+    a = next(x for x in rm.auftraege(ablage / "beispielreise") if x["daten"].get("titel") == "Hotel Wochenende")
     assert a["daten"]["merkmale"]["preis"] == [{"wert": "120 €"}, {"wert": "140 €", "gilt": ["2027-05-15"]}]
     t, f = werkzeug(basis, ALT_BESTIMMER, "alternative_vorschlagen", wahlstelle="V-03", titel="X",
                     merkmale={"preis": [{"wert": "120 €"}, {"wert": "130 €"}]})
