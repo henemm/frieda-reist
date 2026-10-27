@@ -42,6 +42,7 @@ import smtplib
 import sqlite3
 import sys
 import time
+import urllib.parse
 from contextlib import closing
 from pathlib import Path
 
@@ -231,8 +232,9 @@ def code_anfordern(roh, ip="", zweck="anmelden", konto=None):
     lesbar = f"{code[:3]} {code[3:]}"
     zeilen = [f"Dein Code für Frieda: {lesbar}", "",
               f"Gib ihn dort ein, wo du dich gerade anmeldest. Er gilt {CODE_MINUTEN} Minuten.", ""]
-    if zweck == "anmelden" and basis():
-        zeilen += ["Oder auf diesem Gerät direkt anmelden:", f"{basis()}/anmelden?email={e}&code={code}", ""]
+    if zweck == "anmelden" and basis():   # Link ohne Code: der Code gehört nicht in Protokolle und Verläufe
+        zeilen += ["Zur Code-Eingabe auf diesem Gerät:",
+                   f"{basis()}/anmelden?{urllib.parse.urlencode({'schritt': 'code', 'email': e})}", ""]
     zeilen += ["Hast du keinen Code angefordert, kannst du diese Mail einfach löschen."]
     betreff = f"Frieda: dein Code {lesbar}" if zweck == "anmelden" else f"Frieda: neue Adresse bestätigen ({lesbar})"
     mail_senden(e, betreff, "\n".join(zeilen))

@@ -110,13 +110,17 @@ def test_aenderungen_nur_von_friedas_adresse(welt):
     assert not u.mails.exists()
 
 
-def test_link_aus_der_mail_meldet_nicht_von_selbst_an(welt):
+def test_link_aus_der_mail_ohne_code(welt):
     u = welt()
-    abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "adresse", "email": IDA})
-    code = code_aus(u, IDA)
-    s, h, t = abruf(f"{u.kurl}/anmelden?email={IDA}&code={code}")
-    assert s == 200 and f'value="{code}"' in t and not kopf(h, "Set-Cookie")
-    s, h, _ = abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "code", "email": IDA, "code": code, "name": "Ida"})
+    abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "adresse", "email": "ida+reise@beispiel.invalid"})
+    m = json.loads(u.mails.read_text().splitlines()[-1])["text"]
+    link = re.search(r"https://frieda\.beispiel\.invalid(/anmelden\?\S+)", m).group(1)
+    code = re.search(r"(\d{3}) (\d{3})", m).expand(r"\1\2")
+    assert code not in link and "ida%2Breise%40beispiel.invalid" in link
+    s, h, t = abruf(f"{u.kurl}{link}")
+    assert s == 200 and "Code eingeben" in t and "ida+reise@beispiel.invalid" in t and not kopf(h, "Set-Cookie")
+    s, h, _ = abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "code", "email": "ida+reise@beispiel.invalid",
+                                                    "code": code, "name": "Ida"})
     assert s == 303 and kopf(h, "Set-Cookie")
 
 

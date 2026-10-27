@@ -246,3 +246,32 @@ def test_anmeldung_auf_der_seite(tmp_path, monkeypatch, browser):
     assert "Danke" in ohne["meldung"] and "Danke" in mit["meldung"]
     namen = [json.loads(z)["name"] for z in (tmp_path / "ablage/beispielreise/eingang.jsonl").read_text().splitlines()]
     assert namen == ["Hanna", "Karl"]
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_anmeldeseiten_im_browser(tmp_path, monkeypatch, browser):
+    """Paket J2: Formulare so abschicken, wie ein Browser es tut (er setzt Origin selbst). Fängt Einstellungen ab, bei
+    denen Browser „Origin: null“ schicken und die Herkunftsprüfung jede Anmeldung ablehnen würde."""
+    from test_regeln import starten
+    import konnektor as kn
+    monkeypatch.setenv("RM_ABLAGE", str(tmp_path / "ablage"))
+    monkeypatch.setenv("KN_SEITEN", str(tmp_path / "seiten"))
+    monkeypatch.setenv("KN_ZUGAENGE", str(tmp_path / "zugaenge.json"))
+    monkeypatch.setenv("FR_MAIL_DATEI", str(tmp_path / "mails.jsonl"))
+    k, kurl = starten(kn.Dienst)
+    monkeypatch.setenv("FR_BASIS", kurl)
+    email = "neu@beispiel.invalid"
+    try:
+        proc = subprocess.Popen(["node", str(Path(__file__).parent / "seiten_anmelden.mjs"), str(PLAYWRIGHT), kurl, email],
+                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                                env={**os.environ, "RH_BROWSER": browser})
+        assert json.loads(proc.stdout.readline()) == {"bereit": True}, proc.stderr.read()[-2000:]
+        code = re.search(r"(\d{3}) (\d{3})", json.loads((tmp_path / "mails.jsonl").read_text().splitlines()[-1])["text"])
+        out, err = proc.communicate(code.expand(r"\1\2") + "\n", timeout=60)
+    finally:
+        k.shutdown()
+    assert proc.returncode == 0, err[-2000:]
+    e = json.loads(out.strip().splitlines()[-1])
+    assert e["nachAdresse"] == "Code eingeben", e
+    assert e["antworten"][0] == 200 and e["nachCode"] == "Code eingeben", e   # neues Konto: jetzt fragt sie den Namen

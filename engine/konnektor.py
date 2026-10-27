@@ -2028,7 +2028,7 @@ class Dienst(BaseHTTPRequestHandler):
         code, kopf, inhalt = anmeldung.bearbeiten(self.command, self.path, self.headers, body, ip, reise_kurz)
         self.send_response(code)
         for k, v in [("Cache-Control", "no-store"), ("X-Content-Type-Options", "nosniff"),
-                     ("Referrer-Policy", "no-referrer"),
+                     ("Referrer-Policy", "same-origin"),   # nicht no-referrer: dann schicken Browser „Origin: null“
                      ("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; "
                                                  "frame-ancestors 'none'; base-uri 'none'"), *kopf]:
             self.send_header(k, v)

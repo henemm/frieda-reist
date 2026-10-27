@@ -2,8 +2,8 @@
 Adresse aus (FR_BASIS): /anmelden, /einladung/<token>, /konto, /abmelden.
 
 Ablauf: E-Mail-Adresse eingeben -> Code per Mail -> Code eingeben (beim ersten Mal auch den Namen) -> angemeldet.
-Der Code ist der Hauptweg; der Link aus der Mail öffnet nur die Code-Seite mit ausgefülltem Code und meldet erst nach
-einem Klick an (Mailprogramme rufen Links vorab auf). Die Sitzung steht im Cookie __Host-frieda (HttpOnly, Secure,
+Der Code ist der Hauptweg; der Link aus der Mail enthält keinen Code und öffnet nur die Code-Seite (Mailprogramme rufen
+Links vorab auf, und Codes gehören nicht in Protokolle). Die Sitzung steht im Cookie __Host-frieda (HttpOnly, Secure,
 SameSite=Lax, ein Jahr, rollierend). Jede Änderung (POST) muss von Friedas eigener Adresse kommen (Origin), sonst
 403 (CSRF; SameSite trennt nicht von Nachbar-Subdomains). Rückkehradressen sind nur Pfade auf Friedas Adresse.
 
@@ -256,8 +256,8 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
     if weg == "/anmelden":
         zurueck, einl = rueckweg(f.get("zurueck") or q.get("zurueck")), f.get("einladung") or q.get("einladung", "")
         if methode == "GET":
-            if q.get("email") and q.get("code"):
-                return antwort(200, code_seite(q["email"], zurueck, einl, code=q["code"]))
+            if q.get("schritt") == "code" and q.get("email"):    # Link aus der Mail: nur die Code-Seite
+                return antwort(200, code_seite(q["email"], zurueck, einl))
             if k and not einl:
                 return weiter(zurueck)
             return antwort(200, adress_seite(zurueck, einl, q.get("email", "")))

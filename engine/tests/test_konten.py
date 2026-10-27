@@ -44,7 +44,7 @@ def einloggen(umgebung, an, name=None, **kw):
 def test_szenario1_neu_ohne_einladung(umgebung):
     konten.code_anfordern("  Ida@Beispiel.INVALID ")
     m = mails(umgebung, IDA)[0]
-    assert "Dein Code für Frieda" in m["text"] and "https://frieda.beispiel.invalid/anmelden?email=" in m["text"]
+    assert "Dein Code für Frieda" in m["text"] and "https://frieda.beispiel.invalid/anmelden?schritt=code&email=" in m["text"]
     code = letzter_code(umgebung, IDA)
     with pytest.raises(konten.NameNoetig):
         konten.anmelden(IDA, code)                      # neues Konto braucht einen Namen …
@@ -237,7 +237,8 @@ def test_keine_auskunft_ueber_adressen(umgebung):
     einloggen(umgebung, IDA, "Ida")
     assert konten.code_anfordern(IDA) is None and konten.code_anfordern(MO) is None
     a, b = mails(umgebung, IDA)[-1], mails(umgebung, MO)[-1]
-    assert re.sub(r"\d", "0", a["text"]).replace(IDA, "X") == re.sub(r"\d", "0", b["text"]).replace(MO, "X")
+    gleich = lambda m, e: re.sub(r"\d", "0", m["text"].replace(e, "X").replace(e.replace("@", "%40"), "X"))
+    assert gleich(a, IDA) == gleich(b, MO)
 
 
 def test_geheimnisse_nur_als_hash(umgebung):
