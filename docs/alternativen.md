@@ -51,10 +51,10 @@ Bei Unterkünften stehen die Werte an der Unterkunft (`U-…`), damit sie auch o
 
 ```yaml
 U-01:
-  name: Hotel Born
+  name: Hotel am Elbufer
   ort: O-02
   merkmale:
-    preis: {wert: "179 €", geprueft: 2026-10-23, quelle: Ida}
+    preis: {wert: "120 €", geprueft: 2026-10-23, quelle: Ida}
     fruehstueck: inklusive          # Kurzform ohne Quelle und Datum
 ```
 
