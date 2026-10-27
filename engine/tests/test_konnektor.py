@@ -231,7 +231,7 @@ def test_lesen(dienst):
     t, f = werkzeug(basis, MITREISEND, "zeige", id="E-01")
     assert not f and "Bastei" in t and "E-01.eckdaten" in t
     t, f = werkzeug(basis, MITREISEND, "zeige", id="E-01.eckdaten")
-    assert "| Gehzeit | ca. 3:40 h |" in t
+    assert "- Gehzeit: ca. 3:40 h" in t   # zweispaltige Tabelle als Merkmalliste (#54)
     t, f = werkzeug(basis, MITREISEND, "zeige", id="V-03.a")
     assert "gewaehlt" in t and "Ida" in t
     t, f = werkzeug(basis, MITREISEND, "zeige", id="T-99")
@@ -381,6 +381,9 @@ def test_text_aus_html():
     assert kn.text('<p>Hallo <a href="https://x.de">Link</a></p><ul><li>a</li><li>b</li></ul>') == \
         "Hallo [Link](https://x.de)\n\n- a\n- b"
     assert kn.text("<table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table>") == "| A | B |\n| 1 | 2 |"
+    # Merkmalliste aus einer zweispaltigen Tabelle (B2, #54)
+    assert kn.text('<p>Vor</p><div class="tabelle merkmale"><dl class="textmerkmale"><div><dt>Ein-/<wbr>Aus</dt><dd>3</dd></div>'
+                   '<div><dt>B</dt><dd>2</dd></div></dl></div><p>Nach</p>') == "Vor\n\n- Ein-/Aus: 3\n- B: 2\n\nNach"
 
 
 def test_gesund_ohne_token(dienst, tmp_path, monkeypatch):

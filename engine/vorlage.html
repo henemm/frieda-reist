@@ -86,7 +86,29 @@ mark{background:var(--mark);color:inherit;border-radius:3px}
 .pico button.klein{font-size:0.875rem;padding:6px 12px}
 .pico details.block>summary,.pico details.neben>summary,.pico details.weg>summary{margin:0}
 /* ---------- Reisetexte: Tabellen, Bilder, Kartenpunkte im Text, Fußnoten (docs/design.md, Reisetexte) ---------- */
-.tabelle{overflow-x:auto;margin:.6em 0;-webkit-overflow-scrolling:touch}
+/* Tabellen (bauen.tabellen_ordnen): zweispaltig als Merkmalliste, breiter als Tabelle. Die Hülle .tabelle ist der
+   Behälter: Ist sie schmal (unter 700 px, am Handy oder in der rechten Spalte), steht das Merkmal über dem Wert und jede
+   Tabellenzeile wird ein Eintrag (erste Spalte fett, übrige „Spalte: Wert“, leere entfallen). Nichts steht seitlich über. */
+.tabelle{container-type:inline-size;overflow-x:auto;margin:.6em 0;-webkit-overflow-scrolling:touch}
+dl.textmerkmale{margin:0}
+dl.textmerkmale>div{display:grid;grid-template-columns:minmax(9rem,14rem) minmax(0,1fr);border-top:1px solid var(--line)}
+dl.textmerkmale>div:last-child{border-bottom:1px solid var(--line)}
+dl.textmerkmale dt{padding:8px 14px 8px 0;hyphens:auto;overflow-wrap:normal}
+dl.textmerkmale dd{margin:0;padding:8px 0;overflow-wrap:break-word;min-width:0}
+@container (max-width:699px){
+  dl.textmerkmale>div{grid-template-columns:minmax(0,1fr);padding:8px 0}
+  dl.textmerkmale dt{padding:0}
+  dl.textmerkmale dd{padding:2px 0 0}
+  .pico .tabelle.stapel :is(table,tbody,tr,td){display:block;width:auto}
+  .pico .tabelle.stapel thead{display:none}
+  .pico .tabelle.stapel tr{border-top:1px solid var(--line);padding:8px 0}
+  .pico .tabelle.stapel tr:last-child{border-bottom:1px solid var(--line)}
+  /* !important: Spaltenausrichtung aus dem Markdown steht als style an der Zelle */
+  .pico .tabelle.stapel td{border:0;padding:1px 0;background:none;--pico-background-color:transparent;text-align:start!important}
+  .pico .tabelle.stapel td:first-child{font-weight:700}
+  .pico .tabelle.stapel td:not(:first-child)[data-spalte]::before{content:attr(data-spalte) ": ";color:var(--mut);font-size:0.85rem;font-weight:600}
+  .pico .tabelle.stapel td.leer{display:none}
+}
 img{max-width:100%;height:auto;border-radius:6px}
 a.bild{display:block;margin:6px 0;list-style:none}
 a.bild span{display:block;font-size:0.8125rem;color:var(--mut)}
@@ -138,7 +160,7 @@ ol.fussnoten li{margin:0 0 .25em;overflow-wrap:anywhere}
 .mk-nichts{color:var(--mut)}
 /* ---------- Atom Etikett: sagt, was etwas ist (Nacht, Gehzeit, Start …); normale Schreibweise, gedämpft ----------
    Ein Symbol davor (.etikett-sym) nur, wo es die Art sofort zeigt (Nacht, Wahl, Ort, Kennzahlen). */
-:is(.etikett,.ding-art,.tagdatum,.kzn,.wv-etikett){font:600 0.85rem/1.3 var(--font-text);letter-spacing:0;text-transform:none;color:var(--mut)}
+:is(.etikett,.ding-art,.tagdatum,.kzn,.wv-etikett),dl.textmerkmale dt{font:600 0.85rem/1.3 var(--font-text);letter-spacing:0;text-transform:none;color:var(--mut)}
 .etikett-sym{width:1rem;height:1rem;color:var(--acc)}
 /* ---------- Atom Planfarbe: Punkt oder Linie ---------- */
 .plan-linie{width:16px;border-top:4px solid var(--farbe);display:inline-block}
@@ -164,10 +186,9 @@ button.zid.hat-rm .zid-blase{fill:var(--acc2)}
   border-radius:var(--r-pille);background:var(--acc);color:var(--card);font:700 0.72rem/1 var(--font-text);font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px var(--card)}
 .zid-o{position:absolute;bottom:9px;right:8px;width:.6rem;height:.6rem;border-radius:50%;background:var(--warn);box-shadow:0 0 0 2px var(--card)}
 /* In Titelzeilen sitzt die Kennung mit Abstand am rechten Rand, damit Tippen auf den Titel sie nicht trifft */
-:is(summary,h2,.k,.titelzeile):has(>.zid-box){display:flex;flex-wrap:wrap;align-items:center;gap:2px 16px;line-height:1.3}
+:is(summary,h2,.k,.titelzeile):has(>.zid-box){display:flex;align-items:center;gap:2px 16px;line-height:1.3}
 :is(summary,h2,.k,.titelzeile):has(>.zid-box)>.punkt{margin-right:-8px}
 :is(summary,h2,.k,.titelzeile)>.zid-box{margin:0 0 0 auto}
-.titelzeile:has(>.zid-box){flex-wrap:nowrap}
 .titelzeile>:first-child{flex:1;min-width:0}
 @media (hover:hover){
   .pico button.zid:hover{opacity:1;color:var(--acc);--pico-color:var(--acc)}
@@ -688,12 +709,31 @@ function zeilenKarte(spalten, z) {
   return k;
 }
 
-function block(b, offen) {
+// Molekül Reisetext: HTML eines Abschnitts. Steht die Kennzahlenleiste auf derselben Seite, entfallen in den
+// Merkmallisten die Zeilen, die sie schon zeigt (ein Wert steht einmal; kennzahlen = die gezeigten, wie in routen.yaml).
+const normKz = t => t.toLowerCase().replace(/\s+/g, " ").trim();
+function reiseText(html, kennzahlen) {
+  const d = el("div", {class: "inhalt", html});
+  const kz = new Set(Object.keys(kennzahlen || {}).map(normKz));
+  if (kz.size) for (const z of d.querySelectorAll("dl.textmerkmale>div")) {
+    if (!kz.has(normKz(z.querySelector("dt").textContent))) continue;
+    const dl = z.parentNode;
+    z.remove();
+    if (!dl.children.length) dl.closest(".tabelle").remove();
+  }
+  return d;
+}
+// Gleicher Text an einer Stelle steht einmal (z. B. dieselbe Tabelle aus Etappen- und Unterkünfte-Dossier)
+function einmal(bloecke) {
+  const da = new Set();
+  return bloecke.filter(b => !da.has(b.html) && da.add(b.html));
+}
+function block(b, offen, kennzahlen) {
   const d = el("details", {class: "block ziel", id: b.id, "data-ziel": b.id, open: offen},
     el("summary", {}, b.titel, zid(b.id)),
     b.orte ? ortChips(b.orte) : null,
     wissenKarte(b.id),
-    el("div", {class: "inhalt", html: b.html}));
+    reiseText(b.html, kennzahlen));
   return d;
 }
 // Orte, zu denen ein Abschnitt der Recherche gehört (reise.json orte_wissen)
@@ -721,7 +761,8 @@ function abschnittKarte(a) {
   return k;
 }
 
-function abschnittInhalt(a, ohneTitel) {
+// kennzahlen: die Kennzahlen, die die Seite schon in der Leiste zeigt
+function abschnittInhalt(a, ohneTitel, kennzahlen) {
   const s = el("section", {class: "ziel", id: a.id, "data-ziel": a.id});
   if (!ohneTitel) s.append(el("h2", {}, a.titel, zid(a.id)));
   if (a.orte) s.append(ortChips(a.orte));
@@ -732,7 +773,7 @@ function abschnittInhalt(a, ohneTitel) {
   }
   if (a.route_ansicht === "tagesplan") tagesplan(s);
   if (a.route_ansicht === "unterkuenfte") unterkuenfte(s);
-  a.bloecke.forEach((b, i) => s.append(block(b, i === 0)));
+  einmal(a.bloecke).forEach((b, i) => s.append(block(b, i === 0, kennzahlen)));
   return s;
 }
 
@@ -1611,7 +1652,7 @@ function etappeTeil(a, mitTitel) {
   s.append(...[chips(a), mitTitel ? null : kennzahlLeiste(a.kennzahlen)].filter(Boolean));
   const k = etappenKarte(a.id);
   if (k) s.append(k);
-  const inhalt = abschnittInhalt(a, true);
+  const inhalt = abschnittInhalt(a, true, mitTitel ? null : a.kennzahlen);
   s.append(inhalt);
   return s;
 }

@@ -182,19 +182,24 @@ def bestimmer_namen(d):
 # ---------- Seite lesen und in Text verwandeln ----------
 
 class Text(HTMLParser):
-    """HTML der Seite -> schlichter Text (Absätze, Listen, Tabellenzeilen mit |, Links als [Text](URL))."""
+    """HTML der Seite -> schlichter Text (Absätze, Listen, Merkmallisten als „- Merkmal: Wert“, Tabellenzeilen mit |,
+    Links als [Text](URL))."""
     BLOCK = {"p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "table", "br", "blockquote", "pre"}
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.teile, self.link, self.zelle = [], None, False
+        self.teile, self.link, self.zelle, self.dl = [], None, False, False
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
-        if tag in self.BLOCK or tag == "tr":
+        if tag == "dl":
+            self.dl = True
+        if (tag in self.BLOCK and not (tag == "div" and self.dl)) or tag == "tr":   # Zeilen einer Merkmalliste ohne Leerzeile
             self.teile.append("\n")
-        if tag == "li":
+        if tag in ("li", "dt"):
             self.teile.append("\n- ")
+        elif tag == "dd":
+            self.teile.append(": ")
         elif tag in ("td", "th"):
             self.teile.append(" | " if self.zelle else "| ")
             self.zelle = True
@@ -212,7 +217,10 @@ class Text(HTMLParser):
             self.link = None
         elif tag == "tr":
             self.teile.append(" |")
-        elif tag in self.BLOCK:
+        elif tag == "dl":
+            self.dl = False
+            self.teile.append("\n")
+        elif tag in self.BLOCK and not (tag == "div" and self.dl):
             self.teile.append("\n")
 
     def handle_data(self, data):

@@ -33,6 +33,13 @@ Was in den Markdown-Dateien einer Reise steht (Wissen, Praxis, Etappen, Unterkü
 
 Der Generator prüft das: Ein Text darf nur enthalten, was Markdown selbst erzeugt (`TextPruefung` in `engine/bauen.py`). Eigenes HTML, Stile, Klassen oder Skripte im Text sind ein Fehler beim Bauen. Erlaubt ist allein die Spaltenausrichtung von Tabellen. Was der Generator danach selbst ergänzt (Tabellenrahmen, Fußnoten, Bildlisten, Links in neuem Fenster), gehört zur Seite und nicht zum Text.
 
+**Tabellen (B2, 27.10.2026).** Etappentexte bestehen oft aus Tabellen; roh sind sie am Handy breiter als der Bildschirm. Der Generator ordnet sie deshalb für alle Reisen gleich (`tabellen_ordnen` in `engine/bauen.py`), der Text bleibt reines Markdown:
+
+- **Zweispaltig** (Merkmal | Wert) wird eine Merkmalliste `dl.textmerkmale` ohne Kopfzeile: bei genug Platz Merkmal und Wert nebeneinander, in schmalem Behälter (unter 700 px, Container-Query auf die Hülle `.tabelle`) das Merkmal als Etikett über dem Wert. Ein „/“ im Merkmal darf umbrechen.
+- **Breiter** bleibt eine Tabelle (`.tabelle.stapel`). In schmalem Behälter wird jede Zeile ein Eintrag: erste Spalte fett, die übrigen als „Spalte: Wert“, leere Zellen („–“) entfallen. Nichts steht seitlich über.
+- **Ein Wert steht einmal.** Zeigt die Seite die Kennzahlenleiste (Tag, Etappe), entfallen in der Merkmalliste die Zeilen, die sie schon zeigt (gleicher Name wie in `kennzahlen`). Derselbe Text zweimal an einer Stelle (etwa dieselbe Tabelle aus Etappen- und Unterkünfte-Dossier) steht einmal. Das Höhenprofil behält Bild und Tabelle.
+- Der Konnektor liest Merkmallisten als „- Merkmal: Wert“.
+
 ## Gestaltung „Wanderführer“
 
 Farben als CSS-Variablen in `:root` (hell, dunkel per `prefers-color-scheme`): `--bg` Papier, `--card` Fläche, `--fg` Tinte, `--mut` gedämpft, `--line` Linie, `--acc`/`--acc2` Akzent, `--warn`/`--warnbg` offen, `--ocker` Etiketten und unterwegs, `--kat-*` Art der Unterkunft. Schrift: Source Serif 4 für Titel, Source Sans 3 für Text. Tippflächen mindestens 44 px. Pico CSS 2.1.1 ist die Grundlage.

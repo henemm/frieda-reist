@@ -186,7 +186,21 @@ def test_tabellen_und_listen_werden_html(reise, tmp_path):
     d = baue(reise, tmp_path)
     uebersicht = next(a for a in d["abschnitte"] if a["id"] == "W-01")
     html = uebersicht["intro"]
-    assert html.count("<table>") == 1 and html.count("<li>") == 2
+    assert html.count('<dl class="textmerkmale">') == 1 and html.count("<li>") == 2
+
+
+def test_tabellen_aus_text_lesbar():
+    """B2 (#54): zweispaltig wird Merkmalliste ohne Kopf, „/“ darf umbrechen (nicht im Link); breit bleibt Tabelle mit
+    Spaltenkopf je Zelle, leere Zellen heißen „leer“; Sonderzeichen im Kopf werden nicht doppelt maskiert."""
+    md = bauen.markdown.Markdown(extensions=["tables"])
+    zwei = bauen.tabellen_ordnen(md.convert("| Merkmal | Wert |\n|---|---|\n| Ein-/Ausstieg | [hier](https://x.de/a/b) |\n| Gehzeit | 3:40 h |"))
+    assert zwei == ('<div class="tabelle merkmale"><dl class="textmerkmale"><div><dt>Ein-/<wbr>Ausstieg</dt>'
+                    '<dd><a href="https://x.de/a/b">hier</a></dd></div><div><dt>Gehzeit</dt><dd>3:40 h</dd></div></dl></div>')
+    breit = bauen.tabellen_ordnen(md.reset().convert("| Name | Typ & Art | Preis |\n|:--|---|--:|\n| A | – | 85 € |\n| B | Hütte | |"))
+    assert breit.startswith('<div class="tabelle stapel"><table><thead><tr><th style="text-align: left;">Name</th>')
+    assert '<td data-spalte="Typ &amp; Art" class="leer">–</td>' in breit
+    assert '<td style="text-align: right;" data-spalte="Preis" class="leer"></td>' in breit
+    assert '<td data-spalte="Typ &amp; Art">Hütte</td>' in breit and "<th" not in breit.split("<tbody>")[1]
 
 
 def test_bilder_verkleinert_und_umgeschrieben(reise, tmp_path):

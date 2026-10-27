@@ -122,6 +122,41 @@ class TextPruefung(HTMLParser):
                 self.fremd.append(f"<{tag} {k}>")
 
 
+TABELLE = re.compile(r"<table>(.*?)</table>", re.S)
+ZEILE = re.compile(r"<tr>(.*?)</tr>", re.S)
+ZELLE = re.compile(r"<t([hd])([^>]*)>(.*?)</t\1>", re.S)
+LEER = re.compile(r"\s*[–—-]?\s*")
+
+
+def ohne_tags(h):
+    return re.sub(r"<[^>]+>", "", h).strip()
+
+
+def tabellen_ordnen(h):
+    """Tabellen aus Reisetexten lesbar machen (B2, docs/design.md, Reisetexte). Der Text bleibt reines Markdown,
+    die Seite ordnet: zweispaltig (Merkmal | Wert) wird eine Merkmalliste <dl class="textmerkmale"> ohne Kopfzeile,
+    ein „/“ im Merkmal darf umbrechen. Breitere Tabellen bleiben Tabellen (.tabelle.stapel); jede Zelle trägt ihren
+    Spaltenkopf (data-spalte), leere Zellen („–“) heißen „leer“, damit die Seite sie bei wenig Platz je Zeile stapeln kann."""
+    def ordne(m):
+        zeilen = [ZELLE.findall(z) for z in ZEILE.findall(m.group(1))]
+        kopf = [ohne_tags(c[2]) for c in zeilen[0]] if zeilen and all(c[0] == "h" for c in zeilen[0]) else []
+        rumpf = zeilen[1:] if kopf else zeilen
+        if len(kopf) == 2 and all(len(z) == 2 for z in rumpf):
+            def merkmal(c):   # „/“ nur im Text, nicht in Links oder Attributen
+                return "".join(t if t.startswith("<") else t.replace("/", "/<wbr>") for t in re.split(r"(<[^>]+>)", c.strip()))
+            return '<div class="tabelle merkmale"><dl class="textmerkmale">' + "".join(
+                f"<div><dt>{merkmal(z[0][2])}</dt><dd>{z[1][2].strip()}</dd></div>" for z in rumpf) + "</dl></div>"
+        def zelle(c, i):
+            spalte = f' data-spalte="{htmlmod.escape(htmlmod.unescape(kopf[i]))}"' if c[0] == "d" and i < len(kopf) and kopf[i] else ""
+            leer = ' class="leer"' if LEER.fullmatch(ohne_tags(c[2])) else ""
+            return f"<t{c[0]}{c[1]}{spalte}{leer}>{c[2]}</t{c[0]}>"
+        def tr(z):
+            return "<tr>" + "".join(zelle(c, i) for i, c in enumerate(z)) + "</tr>"
+        thead = "<thead>" + tr(zeilen[0]) + "</thead>" if kopf else ""
+        return f'<div class="tabelle stapel"><table>{thead}<tbody>{"".join(tr(z) for z in rumpf)}</tbody></table></div>'
+    return TABELLE.sub(ordne, h)
+
+
 def trenner_entfernen(text):
     zeilen = text.rstrip().splitlines()
     while zeilen and zeilen[-1].strip() in ("---", ""):
@@ -287,7 +322,7 @@ class Bauer:
         if pruefung.fremd:
             self.fehler.append(f"{Path(quelldatei).name}: HTML im Text, das die Seite nicht vorsieht "
                                f"({', '.join(dict.fromkeys(pruefung.fremd))}). Bitte als Markdown schreiben.")
-        h = h.replace("<table>", '<div class="tabelle"><table>').replace("</table>", "</table></div>")
+        h = tabellen_ordnen(h)
         h = re.sub(r'<a href="(https?://)', r'<a target="_blank" rel="noopener" href="\1', h)
         h = re.sub(r'<img ', '<img loading="lazy" ', h)
         h = re.sub(r'<li><a href="(medien/[^"]+\.(?:jpe?g|png|webp|gif))">([^<]*)</a>',
