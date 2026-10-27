@@ -348,6 +348,7 @@ button.zid .zid-blase{display:none}   /* Symbol der Gestalt A */
 }
 
 /* ---------- Tagesseite: drei Ansichten (Fluss, Reiter, Magazin) ---------- */
+.lab{font-size:0.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ocker)}
 .tagesumschalter{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:4px 0 10px}
 .tagesumschalter .umschalter{margin:0}
 .sh{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px}
@@ -385,7 +386,7 @@ a.marke:hover{border-color:var(--acc)}
 @media (min-width:900px){
   .tag-seitenindex{grid-template-columns:200px minmax(0,1fr)}
   .tag-magazin .index{display:block;position:sticky;top:12px}
-  .index-m{display:none}
+  .pico .index-m{display:none}
 }
 
 /* ---------- Bedienung: Tippflächen, Fokus, Hover ---------- */
@@ -1848,14 +1849,14 @@ const TAGESANSICHTEN = [["fluss", "Fluss"], ["reiter", "Reiter"], ["magazin", "M
 let TAGESANSICHT = (() => { const v = lies("tagesansicht", null); return TAGESANSICHTEN.some(([k]) => k === v) ? v : D.reise.tagesseite || "reiter"; })();
 const tagesUmschalter = () => el("div", {class: "tagesumschalter"}, el("span", {class: "lab"}, "Ansicht"),
   umschalter("Ansicht der Tagesseite", TAGESANSICHTEN.map(([k, n]) => [{"data-tagesansicht": k}, TAGESANSICHT === k, n])));
-const REITER = {};   // Etappe -> gewählter Reiter, bleibt beim Neuzeichnen
+const TAGREITER = {};   // Etappe -> gewählter Reiter, bleibt beim Neuzeichnen
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-tagesansicht]");
   if (b) { TAGESANSICHT = b.dataset.tagesansicht; merke("tagesansicht", TAGESANSICHT); route(true); return; }
   const r = e.target.closest("[data-reiter]");
   if (r) {
     const box = r.closest(".reiter"), i = +r.dataset.reiter;
-    REITER[box.dataset.etappe] = i;
+    TAGREITER[box.dataset.etappe] = i;
     box.querySelectorAll("[data-reiter]").forEach(x => x.setAttribute("aria-selected", String(+x.dataset.reiter === i)));
     box.querySelectorAll(".panel").forEach(x => { x.hidden = +x.dataset.panel !== i; });
     r.scrollIntoView({block: "nearest", inline: "center", behavior: "smooth"});
@@ -1904,11 +1905,11 @@ function tagInhalt(m, t) {
     for (const a of etappen) {
       const bl = a.bloecke;
       if (!bl.length) continue;
-      const sel = Math.min(REITER[a.id] || 0, bl.length - 1);
+      const sel = Math.min(TAGREITER[a.id] || 0, bl.length - 1);
       wurzel.append(el("div", {class: "karte reiter", "data-etappe": a.id},
         etappen.length > 1 ? el("h3", {class: "gruppe"}, a.titel) : null,
         el("div", {role: "tablist", class: "reiterleiste", "aria-label": "Abschnitte der Etappe"},
-          bl.map((b, i) => el("button", {type: "button", role: "tab", "data-reiter": i, "aria-selected": String(i === sel)}, b.titel.replace(/\s*\(.*$/, "")))),
+          bl.map((b, i) => el("button", {type: "button", role: "tab", "data-reiter": i, "aria-selected": String(i === sel)}, b.titel.replace(/\s*[(–].*$/, "")))),
         ...bl.map((b, i) => el("div", {class: "panel ziel", role: "tabpanel", "data-panel": i, id: b.id, "data-ziel": b.id, hidden: i !== sel},
           abschnittKopf(b.titel, b.id), ...blockInhalt(b)))));
     }
@@ -1921,7 +1922,7 @@ function tagInhalt(m, t) {
       if (a.intro) fluss.append(el("div", {class: "inhalt", html: a.intro}));
       for (const b of a.bloecke) {
         fluss.append(el("section", {class: "abs ziel", id: b.id, "data-ziel": b.id}, abschnittKopf(b.titel, b.id), ...blockInhalt(b)));
-        eintraege.push([b.id, b.titel.replace(/\s*\(.*$/, "")]);
+        eintraege.push([b.id, b.titel.replace(/\s*[(–].*$/, "")]);
       }
     }
     fluss.append(...ohneBuch());
@@ -2906,6 +2907,8 @@ function offenZahl() {
 function zumZiel(id) {
   const e = document.getElementById(id);
   if (!e) return;
+  // Abschnitt in einem Reiter: erst den Reiter wählen
+  if (e.matches(".panel[hidden]")) { const r = e.closest(".reiter").querySelector(`[data-reiter="${e.dataset.panel}"]`); if (r) r.click(); }
   for (let p = e.parentElement; p; p = p.parentElement) if (p.tagName === "DETAILS") p.open = true;
   if (e.tagName === "DETAILS") e.open = true;
   e.scrollIntoView({block: "start"});

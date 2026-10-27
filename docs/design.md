@@ -45,12 +45,22 @@ Farben als CSS-Variablen in `:root` (hell, dunkel per `prefers-color-scheme`): `
 
 ## Kennung und Rückmeldung (27.10.2026)
 
-Die Kennung (Atom `zid`: T-01, V-05 …) ist die Anschrift jeder Rückmeldung. Im Alltag braucht niemand sie, deshalb steht sie nie laut im Text (Entscheidung vom 27.10.2026 nach drei Vorschlägen). Der Baustein hat zwei Gestalten:
+Die Kennung (Atom `zid`: T-01, V-05 …) ist die Anschrift jeder Rückmeldung. Im Alltag braucht niemand sie, deshalb steht sie nie in der Seite: Der Knopf „Anmerken“ öffnet das Fenster, und dort stehen die Kennung und ein Knopf „Kopieren“ (um im Gespräch auf eine Stelle zu zeigen). Ein Info-Zeichen „i“ gibt es nicht; es wurde als zusätzliches Bedienelement an jedem Abschnitt abgelehnt. Der Baustein hat zwei Gestalten:
 
-- **B, Wortmarke:** ein Info-Zeichen „i“ (nicht kursiv) und ein Wortknopf „Anmerken“, bei Einträgen „2 Rückmeldungen“ mit Zahl, dazu „1 Aufgabe offen“. Tippen auf das „i“ zeigt die Kennung mit „Kopieren“. Gilt bei genug Platz (ab 700 px) und **in Karten immer**.
-- **A, Sprechblase:** nur das Symbol, mit Zahl und einem Warnpunkt bei offener Aufgabe. Gilt bei wenig Platz (unter 700 px) außerhalb von Karten, etwa an Überschriften am Handy. Die Kennung steht dort oben im Fenster, das sich öffnet.
+- **B, Wortmarke:** ein Wortknopf „Anmerken“, bei Einträgen „2 Rückmeldungen“ mit Zahl, dazu „1 Aufgabe offen“. Gilt bei genug Platz (ab 700 px) und **in Karten immer**.
+- **A, Sprechblase:** nur das Symbol, mit Zahl und einem Warnpunkt bei offener Aufgabe. Gilt bei wenig Platz (unter 700 px) außerhalb von Karten, etwa an Überschriften am Handy.
 
 Als Karte zählen `.karte`, `details.block`, `.option`, `.wm-karte` und `.ding`; die Regel steht in der Vorlage im Abschnitt „Kennung (Atom zid)“. Ohne die Bausteine Rückmeldungen und Aufgaben bleibt die Kennung als schlichter Text.
+
+## Tagesseite in drei Ansichten (27.10.2026)
+
+Die Tagesseite besteht aus dem Tageskasten (Strecke, Wahl, Nacht), der Karte, den Abschnitten der Etappe und den Orten des Tages. Drei Anordnungen derselben Teile; ein Schalter über dem Tag wählt (und merkt sich die Wahl im Browser), die Reise stellt die Vorgabe (`darstellung.tagesseite` in `reise.yaml`, Vorgabe `reiter`):
+
+- **Fluss:** Tageskasten, Karte, ein Kasten „Mehr zur Etappe“ mit aufklappbaren Abschnitten, ein Kasten mit den Orten.
+- **Reiter:** Tageskasten neben der Karte (am Handy untereinander), die Abschnitte als waagerecht wischbare Reiter in einem Kasten, die Orte als Marken unter der Karte.
+- **Magazin:** durchgehender Text mit Seitenindex („Auf dieser Seite“, am Rechner an der Seite, am Handy eine Aufklappzeile), ohne Kästen.
+
+Links auf einen Abschnitt (`#E-01.eckdaten`) wählen in jeder Ansicht den passenden Reiter oder springen zum Abschnitt.
 
 ## Bausteinseite und Prüfung
 

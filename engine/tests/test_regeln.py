@@ -221,6 +221,23 @@ def test_mahnungen_auf_der_seite_abschaltbar(tmp_path):
     assert aus["route"]["mahnungen"] == standard["route"]["mahnungen"] != []
 
 
+def test_tagesseite_ansicht_je_reise(tmp_path):
+    """darstellung.tagesseite: Vorgabe reiter; fluss, reiter, magazin gelten; anderes ist ein Baufehler."""
+    def bauen_mit(ziel, wert):
+        quelle = ziel / "quelle"
+        shutil.copytree(BEISPIEL, quelle)
+        y = yaml.safe_load((quelle / "reise.yaml").read_text(encoding="utf-8"))
+        if wert is not None:
+            y["darstellung"]["tagesseite"] = wert
+        (quelle / "reise.yaml").write_text(yaml.safe_dump(y, allow_unicode=True), encoding="utf-8")
+        bauen.bauen(quelle, ziel / "seiten" / "beispielreise")
+        return daten_von(ziel / "seiten")["reise"]["tagesseite"]
+    assert bauen_mit(tmp_path / "a", None) == "reiter"
+    assert bauen_mit(tmp_path / "b", "magazin") == "magazin"
+    with pytest.raises(bauen.BauFehler, match="tagesseite"):
+        bauen_mit(tmp_path / "c", "spalten")
+
+
 def test_idee_ohne_warnungen(tmp_path):
     assert daten_von(reise_bauen(tmp_path / "a", "planung", luecke=True))["route"]["warnungen"]
     assert daten_von(reise_bauen(tmp_path / "b", "idee", luecke=True))["route"]["warnungen"] == []

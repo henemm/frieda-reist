@@ -40,7 +40,7 @@ Personen und Rollen stehen je Reise in `reisen/<reise>/reise.yaml` unter `person
 
 - **Bausteine, an oder aus** (`bausteine:`). Immer da: Plan, Wissen, Suche, Personen. Zuschaltbar: `varianten`, `karte`, `tagesseiten`, `rueckmeldungen`, `fragen`, `aufgaben`, `wuensche`, `waechter`, `profile`. Ein ausgeschalteter Baustein verschwindet aus Seite und App, seine Daten bleiben. (`waechter` ist seit Paket E gebaut, `profile` ist angelegt, aber noch nicht gebaut: Ausbaustufe 3.)
 - **Spielregeln, mit Wert** (`regeln:`), Vorgaben in `engine/reise.py`: `entscheidungsweg` (direkt im Gespräch oder als Auftrag mit Prüfung), `konflikt` (offene_frage), `kontingent` beim Brett (Art `punkte` oder `anzahl`, `je_person`), `einladen` (bestimmer), `sammelzeit_minuten` vor dem Einarbeiten.
-- **Darstellung** (`darstellung:`): Startreiter, Namen der Reiter, Tiefe der Ansicht, Gruppen, Mahnungen im Plan (`mahnungen: false` blendet den Kasten „Mahnung“ dort aus; berechnet wird sie weiter und steht im Konnektor).
+- **Darstellung** (`darstellung:`): Startreiter, Namen der Reiter, Tiefe der Ansicht, Gruppen, Mahnungen im Plan (`mahnungen: false` blendet den Kasten „Mahnung“ dort aus; berechnet wird sie weiter und steht im Konnektor), Ansicht der Tagesseite (`tagesseite: fluss | reiter | magazin`, Vorgabe `reiter`).
 
 Einstellungen setzt der Bestimmer, auch im Gespräch. Jede Änderung bekommt einen Verlaufseintrag. Die Zuordnung der Inhalte (Überschrift zu ID) bleibt getrennt davon in `reise.json`.
 
