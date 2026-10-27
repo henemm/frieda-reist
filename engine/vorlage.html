@@ -86,7 +86,7 @@ mark{background:var(--mark);color:inherit;border-radius:3px}
 details.weg>summary{font-size:14px;color:var(--mut);padding:8px 0}
 button.zid{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:1px 7px;cursor:pointer;vertical-align:middle}
 button.zid.hat{border-color:var(--acc);color:var(--acc)}
-dialog#rm{border:0;border-radius:16px 16px 0 0;padding:0;margin:auto 0 0;width:100%;max-width:100%;max-height:88vh;background:var(--card);color:var(--fg);box-shadow:0 -4px 24px rgba(0,0,0,.25)}
+dialog#rm{border:0;border-radius:16px 16px 0 0;padding:0;margin:auto 0 0;bottom:calc(0px - var(--hoehe-fehlt,0px));width:100%;max-width:100%;max-height:88vh;background:var(--card);color:var(--fg);box-shadow:0 -4px 24px rgba(0,0,0,.25)}
 @media (min-width:700px){dialog#rm{margin:auto;max-width:600px;border-radius:16px}}
 dialog#rm::backdrop{background:rgba(0,0,0,.35)}
 #rm .rmkopf{position:sticky;top:0;background:var(--card);padding:14px 16px 8px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
@@ -387,8 +387,11 @@ nav a.warn .zahl{background:var(--warn)}
 #offline{color:var(--warn);padding-right:14px}
 
 /* ---------- Leiste: eine dunkle Fläche mit Reitern, die Suche ist der letzte Reiter (Stil „Wanderführer“) ---------- */
-:root{--tabbar-h:60px;--knopf:46px;--tabbar-gap:max(12px,calc(env(safe-area-inset-bottom,0px) - 10px));--tabbar-space:calc(var(--tabbar-h) + var(--tabbar-gap) + 24px)}
-.leiste{position:fixed;z-index:10;left:10px;right:10px;bottom:var(--tabbar-gap);max-width:700px;margin:0 auto;display:flex;align-items:stretch;gap:2px;
+:root{--tabbar-h:60px;--knopf:46px;--tabbar-gap:max(12px,calc(env(safe-area-inset-bottom,0px) - 10px));--tabbar-space:calc(var(--tabbar-h) + var(--tabbar-gap) + 24px);--hoehe-fehlt:0px}
+/* --hoehe-fehlt: Als App vom Home-Bildschirm vergisst iOS nach dem Schließen der Tastatur manchmal die volle Höhe,
+   bis die App neu startet; der untere Rand für „fixed“ liegt dann mitten im Bild. Das Skript („Höhe als App“) setzt
+   den Fehlbetrag, die Leiste und alles, was unten sitzt, rücken um ihn nach unten. Sonst 0. */
+.leiste{position:fixed;z-index:10;left:10px;right:10px;bottom:calc(var(--tabbar-gap) - var(--hoehe-fehlt));max-width:700px;margin:0 auto;display:flex;align-items:stretch;gap:2px;
   height:var(--tabbar-h);padding:5px;border-radius:16px;background:var(--bar);box-shadow:0 8px 24px rgba(0,0,0,.22)}
 nav{flex:1;min-width:0;display:flex;gap:2px}
 nav a,#suchKnopf{flex:1 1 0;min-width:0;padding:0 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:12px;border:0;background:none;cursor:pointer;
@@ -404,7 +407,7 @@ nav a.on{color:var(--bar-on-fg);background:var(--bar-on);font-weight:700}
 #suchfeld input::placeholder{color:var(--bar-fg);opacity:1}
 #suchZu{border:0;background:color-mix(in srgb,var(--bar-on) 16%,transparent);color:var(--bar-on);width:44px;height:44px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 body.sucht nav,body.sucht #suchKnopf{display:none}
-body::after{content:"";position:fixed;z-index:9;left:0;right:0;bottom:0;height:var(--tabbar-space);pointer-events:none;
+body::after{content:"";position:fixed;z-index:9;left:0;right:0;bottom:calc(0px - var(--hoehe-fehlt));height:var(--tabbar-space);pointer-events:none;
     background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg) 70%,transparent))}
 main{padding-bottom:calc(var(--tabbar-space) + 16px)}
 @media (hover:hover){nav a:hover,#suchKnopf:hover{color:var(--bar-on)} .rund:hover{border-color:var(--acc)}}
@@ -2556,6 +2559,36 @@ route();
 rmKnopf();
 agKnopf();
 Promise.all([rmLaden(), agLaden()]).then(() => route(true));
+
+/* ---------- Höhe als App vom Home-Bildschirm (iOS) ----------
+   Nach dem Schließen der Tastatur bleibt die Höhe des Fensters manchmal auf dem Stand mit Tastatur stehen, bis die App
+   neu startet: Die Leiste schwebt dann in der Mitte (WebKit, iOS 26, in Safari selbst nicht). Gemerkt wird die größte
+   Höhe je Breite (die Breite trennt Hoch- und Querformat); ohne Eingabefeld im Fokus rückt alles Untere um den
+   Fehlbetrag nach unten. Ein zu kleiner Messwert zur falschen Zeit schadet nicht, das Maximum übergeht ihn. Mit Fokus
+   ist die Tastatur wirklich offen, dann bleibt die Leiste über ihr (die Suche steht in der Leiste). */
+(function () {
+  const alsApp = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+  if (!alsApp) return;
+  const hoechste = new Map();   // Breite in px -> größte gesehene Höhe
+  const tippt = () => {
+    const e = document.activeElement;
+    return !!e && (e.isContentEditable || e.matches("textarea, select, input:not([type=checkbox],[type=radio],[type=button],[type=submit],[type=reset],[type=range],[type=color],[type=file])"));
+  };
+  function messen() {
+    const breite = window.innerWidth, hoehe = window.innerHeight;
+    if (!breite || !hoehe) return;   // im Hintergrund kann 0 kommen, das ist keine Messung
+    const max = Math.max(hoechste.get(breite) || 0, hoehe);
+    hoechste.set(breite, max);
+    const fehlt = tippt() ? 0 : max - hoehe;
+    document.documentElement.style.setProperty("--hoehe-fehlt", (fehlt > 1 ? fehlt : 0) + "px");
+  }
+  messen();
+  for (const ev of ["resize", "orientationchange", "pageshow", "focusin"]) window.addEventListener(ev, messen);
+  // Beim Verlassen eines Felds erst messen, wenn der Fokus angekommen ist und die Tastatur zu
+  window.addEventListener("focusout", () => { setTimeout(messen, 50); setTimeout(messen, 400); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) messen(); });
+  if (window.visualViewport) visualViewport.addEventListener("resize", messen);
+})();
 
 /* ---------- Offline (PWA, Issue #6): Service Worker sw.js im Pfad der Reise ----------
    Neue Version wartet, bis „Aktualisieren“ getippt wird; danach einmal neu laden. */

@@ -79,6 +79,34 @@ for (const [breite, schema] of [[390, "light"], [390, "dark"], [1200, "light"], 
   }
   await ctx.close();
 }
+// Höhe als App vom Home-Bildschirm: iOS vergisst nach der Tastatur die volle Höhe. Nachgestellt durch ein kleineres
+// Fenster; gemessen wird der untere Rand der Leiste (soll: ganz unten, außer mit Tastatur, und nur als App).
+const leiste = {};
+for (const app of [true, false]) {
+  const ctx = await b.newContext({viewport: {width: 390, height: 800}, serviceWorkers: "block"});
+  await ctx.route("**/api/**", r => r.abort());
+  if (app) await ctx.addInitScript(() => {
+    const mm = window.matchMedia.bind(window);
+    window.matchMedia = q => /display-mode:\s*standalone/.test(q) ? {matches: true, media: q, addEventListener() {}, removeEventListener() {}} : mm(q);
+  });
+  const p = await ctx.newPage();
+  p.on("pageerror", e => fehler.push(`Leiste app=${app}: ${e}`));
+  await p.goto(basis);
+  await p.waitForSelector("#titel:not(:empty)");
+  const unten = () => p.evaluate(() => Math.round(document.querySelector(".leiste").getBoundingClientRect().bottom));
+  const m = {start: await unten()};
+  await p.setViewportSize({width: 390, height: 500}); await p.waitForTimeout(100);
+  m.klein = await unten();
+  await p.evaluate(() => document.querySelector("#suchKnopf").click()); await p.waitForTimeout(100);
+  m.tippt = await unten();
+  await p.evaluate(() => document.activeElement && document.activeElement.blur());
+  await p.waitForTimeout(500);
+  m.zu = await unten();
+  await p.setViewportSize({width: 390, height: 800}); await p.waitForTimeout(100);
+  m.voll = await unten();
+  leiste[app ? "app" : "browser"] = m;
+  await ctx.close();
+}
 await b.close();
 if (domDatei) fs.writeFileSync(domDatei, JSON.stringify(dom));
-console.log(JSON.stringify({routen: Object.keys(dom).length, leer, breit, fehler, vergleich, bilder}));
+console.log(JSON.stringify({routen: Object.keys(dom).length, leer, breit, fehler, vergleich, bilder, leiste}));

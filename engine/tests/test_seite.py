@@ -50,6 +50,12 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
         assert v["sichtbar"] and v["offen"] == "true", (breite, v)
         assert 2 <= v["spalten"] <= (2 if int(breite) < 700 else 4), (breite, v)
     assert set(e["vergleich"]) == {"390", "1200"}
+    # Leiste als App: bleibt unten, wenn iOS die Höhe nach der Tastatur vergisst (800 statt 500 px), mit Tastatur über
+    # ihr; im Browser ändert sich nichts (Abstand unten 12 px)
+    a, w = e["leiste"]["app"], e["leiste"]["browser"]
+    assert a["start"] == a["klein"] == a["zu"] == a["voll"] == 788, a
+    assert a["tippt"] == 488, a
+    assert w == {"start": 788, "klein": 488, "tippt": 488, "zu": 488, "voll": 788}, w
     dom = json.loads((tmp_path / "dom.json").read_text(encoding="utf-8"))
     # Wert je Datum: die Unterkunft zeigt beide Einträge; Herkunft steht hinter dem i, nicht im Text
     u01 = dom["1200#U-01"]
