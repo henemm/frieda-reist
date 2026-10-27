@@ -1990,6 +1990,15 @@ function ansichtBausteine(m) {
   const fr = D.fragen.zeilen[0];
   teil("Molekül", "Fragenkarte", "Eine offene Frage mit Kennung und Verweisen.",
     fr ? zeilenKarte(D.fragen.spalten, fr) : el("p", {class: "meldung"}, "Keine offenen Fragen."));
+  // Rückmeldung und Aufgabe: Beispiele sind als Muster benannt; die Knöpfe sind abgeschaltet
+  const eintraege = [
+    rmEintrag(RM.find(e => e.kommentar) || {status: "uebernommen", art: "Frage", name: "Muster", erstellt: "2027-01-02T00:00:00Z",
+      text: "Beispieltext einer Rückmeldung (Muster).", kommentar: "Beispielantwort, wohin die Rückmeldung geführt hat (Muster)."}, false),
+    agEintrag({id: "AG-00", titel: "Beispielaufgabe (Muster)", status: "offen", prioritaet: "hoch", frist: "2099-12-31", zustaendig: "Muster",
+      notiz: "Beispielnotiz einer Aufgabe."}, false)];
+  eintraege.forEach(x => x.querySelectorAll("button").forEach(k => { k.disabled = true; }));
+  teil("Molekül", "Rückmeldung", "Eine Rückmeldung oder ein Wunsch mit Status und Antwort.", eintraege[0]);
+  teil("Molekül", "Aufgabe", "Eine Aufgabe mit Haken, Frist und Zuständigem.", eintraege[1]);
   if (!R) return;
   const strecken = Object.entries(R.strecken);
   const mitKz = strecken.find(([, x]) => Object.keys(x.kennzahlen || {}).length);
@@ -2179,24 +2188,27 @@ function rmNeuZeichnen() {
   else if (dlg.open) rmFormular(dlg.dataset.ziel);
 }
 
+// Molekül Eintragsgruppen: „Titel (n)“ und darunter die Einträge; davor optional ein Knopf (z. B. „Jetzt senden“)
+function eintragGruppen(m, gruppen, alle, zeichne, davor) {
+  for (const [t, f] of gruppen) {
+    const l = alle.filter(f);
+    if (!l.length) continue;
+    m.append(el("h3", {}, `${t} (${l.length})`));
+    const vor = davor && davor(l);
+    if (vor) m.append(vor);
+    for (const e of l) m.append(zeichne(e));
+  }
+}
+const jetztSenden = () => el("button", {type: "button", class: "klein", "data-nachreichen": "1"}, "Jetzt senden");
 function ansichtRueckmeldungen(m) {
   m.append(el("h2", {}, "Rückmeldungen"));
   m.append(el("p", {class: "meldung"}, "Zu jedem Eintrag mit Nummer (z. B. T-01) kann man über das 💬 an der Nummer etwas anmerken, fragen oder korrigieren. Claude Code prüft jede Rückmeldung, arbeitet sie ein (meist in wenigen Minuten) und schreibt hier dazu, was daraus geworden ist."));
   if (KANN_RM) m.append(el("button", {type: "button", class: "outline", "data-rm": "allgemein"}, "Allgemeine Rückmeldung zur Reise"));
   if (API_OK === false) m.append(el("p", {class: "meldung"}, "Gerade keine Verbindung zum Rückmeldedienst – angezeigt wird der zuletzt geladene Stand."));
-  if (AUSGANG.length) {
-    m.append(el("h3", {}, `Noch nicht gesendet (${AUSGANG.length})`));
-    m.append(el("button", {type: "button", class: "klein", "data-nachreichen": "1"}, "Jetzt senden"));
-    for (const e of AUSGANG) m.append(rmEintrag(e, true));
-  }
+  eintragGruppen(m, [["Noch nicht gesendet", () => true]], AUSGANG, e => rmEintrag(e, true), jetztSenden);
   const gruppen = [["Neu", e => e.status === "neu"], ["Rückfrage", e => e.status === "rueckfrage"],
     ["Erledigt", e => e.status === "uebernommen" || e.status === "verworfen"]];
-  for (const [t, f] of gruppen) {
-    const l = RM.filter(e => f(e) && !istWunsch(e));
-    if (!l.length) continue;
-    m.append(el("h3", {}, `${t} (${l.length})`));
-    for (const e of l) m.append(rmEintrag(e, true));
-  }
+  eintragGruppen(m, gruppen, RM.filter(e => !istWunsch(e)), e => rmEintrag(e, true));
   if (!RM.some(e => !istWunsch(e)) && !AUSGANG.length) m.append(el("div", {class: "leer"}, "Noch keine Rückmeldungen."));
 }
 
@@ -2223,13 +2235,7 @@ function ansichtWuensche(m) {
   const gruppen = [["Noch nicht gesendet", e => !e.status], ["Neu – wird geprüft", e => e.status === "neu"],
     ["Rückfrage", e => e.status === "rueckfrage"], ["Aufgenommen", e => e.status === "uebernommen"],
     ["Passt nicht", e => e.status === "verworfen"]];
-  for (const [t, f] of gruppen) {
-    const l = alle.filter(f);
-    if (!l.length) continue;
-    m.append(el("h3", {}, `${t} (${l.length})`));
-    if (!l[0].status) m.append(el("button", {type: "button", class: "klein", "data-nachreichen": "1"}, "Jetzt senden"));
-    for (const e of l) m.append(rmEintrag(e));
-  }
+  eintragGruppen(m, gruppen, alle, e => rmEintrag(e), l => l[0].status ? null : jetztSenden());
   if (!alle.length) m.append(el("div", {class: "leer"}, "Noch keine Wünsche. Der erste kann von dir sein."));
 }
 

@@ -67,7 +67,7 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
     assert '<span class="mk-luecke">Lücke am Anfang: Altendorf → Bad Schandau</span>' in v01
     # Bausteinseite: alle Ebenen, keine Sprungziele (die echten Stellen bleiben eindeutig), kein „null“
     b = dom["1200#bausteine"]
-    for teil in ("Atom · Zustand", "Atom · Wert", "Molekül · Listenzeile", "Molekül · Fragenkarte", "Molekül · Kennzahlenleiste", "Organismus · Wahl-Modul", "Vorlage · Tag"):
+    for teil in ("Atom · Zustand", "Atom · Wert", "Molekül · Listenzeile", "Molekül · Fragenkarte", "Molekül · Rückmeldung", "Molekül · Aufgabe", "Molekül · Kennzahlenleiste", "Organismus · Wahl-Modul", "Vorlage · Tag"):
         assert teil in b, teil
     assert ' id="' not in b.split(">", 1)[1]
     assert "null" not in re.sub(r"<[^>]+>", " ", b)
