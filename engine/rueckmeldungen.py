@@ -896,9 +896,9 @@ def liste(reise, alle):
             print(f"  ENTSCHEIDUNG von {e.get('name')} im Gespräch (Claude-App), Weg direkt: bereits geprüft (Rolle, Option, "
                   f"Konflikte). Einarbeiten, nicht neu entscheiden.")
         elif daten.get("neue_reise"):
-            print(f"  NEUE REISE von {e.get('name')} (Claude-App), schon geprüft: Das Skript legt reisen/"
-                  f"{daten['neue_reise']['pfad']} aus der Vorlage an. Notiz in eigenen Worten mit Herkunft in den Überblick "
-                  f"(inhalt/wissen.md) übertragen, nichts erfinden; Status übernommen.")
+            print(f"  NEUE REISE von {e.get('name')} (Claude-App, Konto-Link), schon geprüft: Der Betrieb legt reisen/"
+                  f"{daten['neue_reise']['pfad']} aus der Vorlage an (neu.aus_auftrag, die Notiz wird der Überblick), "
+                  f"veröffentlicht, schaltet frei und meldet der Person die Links.")
         elif daten.get("einladung"):
             print(f"  EINLADUNG von {e.get('name')} (Claude-App): Zugang und Rolle gelten schon. In reise.yaml unter personen "
                   f"eintragen (Schlüssel, name, rolle, reist, notiz wie im Text).")
