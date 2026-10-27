@@ -256,7 +256,7 @@ def stand_text(reise):
 
 
 def einarbeiten_text(reise, bestimmer):
-    """Stand des automatischen Einarbeitens. Wartezeiten und Fehlschläge sehen nur Bestimmer; Kosten niemand (Henning, 26.10.2026)."""
+    """Stand des automatischen Einarbeitens. Wartezeiten und Fehlschläge sehen nur Bestimmer; Kosten niemand (Entscheidung vom 26.10.2026)."""
     liste = rm.laeufe_lesen(reise if not bestimmer else None)
     return "## Einarbeiten" + (" (alle Reisen zusammen)" if bestimmer else "") + "\n" + rm.laeufe_text(liste, ausfuehrlich=bestimmer)
 
@@ -1338,7 +1338,7 @@ WERKZEUGE += [
          "bereich": {"type": "string",
                      "description": "nur ohne wahlstelle und wenn an ein Tag ist: Art der Alternative (unterkunft, strecke, "
                                     "route, faehre, flug, bahn, bus, mietwagen, essen, erlebnis oder eine Art der Reise; Liste aus merkmale)"},
-         "titel": {"type": "string", "description": "Name der Alternative, z. B. „Hotel Sa Plana“"},
+         "titel": {"type": "string", "description": "Name der Alternative, z. B. „Pension Burgblick“"},
          "merkmale": {"type": "object", "description": "{merkmal: {wert, quelle, geprueft (JJJJ-MM-TT), notiz}}; Schlüssel aus "
                       "merkmale. Ist der Wert je Datum verschieden, eine Liste solcher Werte mit gilt (JJJJ-MM-TT oder Liste), "
                       "einer ohne gilt für alle übrigen Tage. Eigene Kriterien der Person als neuer Schlüssel (z. B. pool) nur, "

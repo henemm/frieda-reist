@@ -701,7 +701,7 @@ def minuten_text(sekunden):
 
 def laeufe_text(liste, ausfuehrlich=True, tage=30, jetzt=None):
     """Zusammenfassung der Läufe. ausfuehrlich=False: nur ‚zuletzt eingearbeitet‘ (für Personen ohne Bestimmerrolle).
-    Kosten stehen nur im Protokoll, nicht in der Anzeige (Henning, 26.10.2026: „Kosten: brauche ich nicht“)."""
+    Kosten stehen nur im Protokoll, nicht in der Anzeige (Entscheidung vom 26.10.2026: Kosten werden nicht gebraucht)."""
     jetzt = jetzt or datetime.datetime.now(datetime.timezone.utc)
     ok = [x for x in liste if x.get("ergebnis") == "ok"]
     z = []
