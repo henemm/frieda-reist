@@ -784,6 +784,18 @@ class Handbuch:
             offen = [namen.get(k, k) for k, v in (o.get("merkmale") or {}).items() if v.get("ungeprueft")]
             if offen:
                 hinweise.append("Ungeprüfte veränderliche Angaben: " + ", ".join(offen) + " – vor dem Buchen nachschlagen.")
+            # Quellen prüfen: geprüft, aber älter als die Frist des Wächters (regeln.waechter_frist_tage)
+            frist = ((self.d.get("reise") or {}).get("regeln") or {}).get("waechter_frist_tage", VORGABEN["waechter_frist_tage"])
+            veraenderlich = {k["id"] for k in w.get("kriterien") or [] if k.get("veraenderlich")}
+            stichtag = heute or datetime.date.today()
+            alt = []
+            for k, v in (o.get("merkmale") or {}).items():
+                for e in [v] + list(v.get("je_datum") or []):
+                    g = e.get("geprueft")
+                    if k in veraenderlich and g and (stichtag - datetime.date.fromisoformat(g)).days > frist:
+                        alt.append(f"{namen.get(k, k)} (geprüft {datum_de(g)}, Quelle {e.get('quelle') or 'unbekannt'})")
+            if alt:
+                hinweise.append(f"Älter als {frist} Tage: " + ", ".join(alt) + " – vor dem Buchen neu nachschlagen.")
         # Regeln zwischen Optionen (Paket 4): nichts verhindern, aber sagen, was dann nicht mehr zusammenpasst
         if status == "gewaehlt":
             for x in o.get("erfordert") or []:

@@ -1,5 +1,6 @@
 """Tests für Paket C: Gespräch für alle (entscheiden, frage_beantworten, person_einladen) gegen die Beispielreise.
 Personen: Ida und Max Bestimmer, Karl Einbringer, Kim reisend (siehe test_regeln.reise_bauen)."""
+import datetime
 import json
 import sys
 from pathlib import Path
@@ -409,3 +410,22 @@ def test_entscheiden_hinweise_zu_regeln(tmp_path):
     c["im_plan"] = True
     _, hinweise, _ = h.entscheidung_pruefen({"option": "V-03.a", "status": "verworfen", "grund": "ausgebucht"}, "Ida")
     assert "V-01.c „Mit dem Bus zurück (erfundenes Beispiel)“ steht im Plan und setzt V-03.a voraus." in hinweise
+
+
+def test_entscheiden_meldet_alte_quellen(tmp_path):
+    """Quellen prüfen (#9): Ist eine veränderliche Angabe der gewählten Option älter als die Frist des Wächters,
+    sagt die Vorprüfung es mit Datum und Quelle; verhindert wird nichts."""
+    from test_regeln import reise_bauen
+    d = json.loads((reise_bauen(tmp_path) / "beispielreise" / "daten.json").read_text(encoding="utf-8"))
+    h = kn.Handbuch(d)
+    w = next(w for w in h.r["wahlstellen"] if any(k["id"] == "preis" and k.get("veraenderlich") for k in w["kriterien"]))
+    o = next(x for x in w["optionen"] if x["status"] != "gewaehlt")
+    o["merkmale"]["preis"] = {"wert": "99 €", "geprueft": "2026-01-10", "quelle": "Beispielseite"}
+    args = {"option": o["id"], "status": "gewaehlt", "grund": "Test"}
+    _, hinweise, fehler = h.entscheidung_pruefen(args, "Ida", heute=datetime.date(2026, 10, 27))
+    assert not fehler
+    assert any(x.startswith("Älter als 60 Tage: ") and "geprüft 10.1.2026" in x and "Beispielseite" in x for x in hinweise), hinweise
+    # Innerhalb der Frist kein Hinweis
+    o["merkmale"]["preis"]["geprueft"] = "2026-10-01"
+    _, hinweise, _ = h.entscheidung_pruefen(args, "Ida", heute=datetime.date(2026, 10, 27))
+    assert not any(x.startswith("Älter als") for x in hinweise)

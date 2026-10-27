@@ -248,6 +248,8 @@ class Reise:
 
     def bestimmer_namen(self):
         roh = self.r.get("personen") or {}
+        if not isinstance(roh, dict):   # Fehlermeldung kommt aus personen()
+            return set()
         return {p.get("name") for p in roh.values() if isinstance(p, dict) and p.get("rolle") == "bestimmer"}
 
     def bausteine(self):

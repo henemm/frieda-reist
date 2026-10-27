@@ -373,10 +373,41 @@ def test_reise_yaml(reise, tmp_path):
     (lambda r: r.update(darstellung={"farbe": "rot"}), "darstellung: unbekannter Schlüssel „farbe“"),
     (lambda r: r.update(bonus=1), "unbekannter Schlüssel „bonus“"),
     (lambda r: r.pop("titel"), "„titel“ fehlt"),
+    (lambda r: r.pop("pfad"), "„pfad“ fehlt"),
+    # Verlauf des Status
+    (lambda r: r["status"].update(verlauf=["gestern"]), "Eintrag muss {datum, wert, wer, grund} sein"),
+    (lambda r: r["status"]["verlauf"][0].update(wert="zauber"), "Status „zauber“ unbekannt"),
+    (lambda r: r["status"]["verlauf"][0].update(datum="gestern"), "Eintrag ohne gültiges Datum"),
+    (lambda r: r["status"].update(verlauf=[
+        {"datum": datetime.date(2026, 10, 26), "wert": "idee", "wer": "Hanna"},
+        {"datum": datetime.date(2026, 10, 20), "wert": "planung", "wer": "Hanna"}]), "nicht zeitlich sortiert"),
+    # Personen
+    (lambda r: r.update(personen=["Hanna"]), "personen muss"),
+    (lambda r: r["personen"]["ben"].pop("name"), "Person „ben“ braucht einen Namen"),
+    # Bausteine
+    (lambda r: r.update(bausteine="fragen"), "bausteine muss eine Liste sein"),
+    (lambda r: r.update(bausteine=["fragen", "fragen"]), "Baustein „fragen“ steht zweimal"),
+    # Spielregeln
+    (lambda r: r.update(regeln=["konflikt"]), "regeln muss „regel: wert“ sein"),
+    (lambda r: r.update(regeln={"entscheidungsweg": "zufall"}), "regeln.entscheidungsweg muss eines von"),
+    (lambda r: r.update(regeln={"einladen": "alle"}), "regeln.einladen muss eines von"),
+    (lambda r: r.update(regeln={"kontingent": {"je_person": -1}}), "kontingent.je_person muss eine ganze Zahl ab 0"),
+    (lambda r: r.update(regeln={"waechter_frist_tage": 0}), "regeln.waechter_frist_tage muss eine ganze Zahl ab 1"),
+    (lambda r: r.update(regeln={"meldekanal": "app"}), "regeln.meldekanal muss eine Liste"),
+    (lambda r: r.update(regeln={"meldekanal": ["email"]}), "email gibt es nicht"),
+    (lambda r: r.update(darstellung="bunt"), "darstellung muss „schluessel: wert“ sein"),
 ])
 def test_reise_yaml_fehler(reise, tmp_path, aendere, text):
     mit_reise_yaml(reise, aendere)
     assert text in meldungen(reise, tmp_path)
+
+
+@pytest.mark.parametrize("schluessel", ["titel", "untertitel", "pfad", "gruppen", "funktionen"])
+def test_reise_yaml_alte_eckdaten_in_reise_json(reise, tmp_path, schluessel):
+    """Mit reise.yaml dürfen Eckdaten, Darstellung und funktionen nicht mehr zusätzlich in reise.json stehen."""
+    mit_reise_yaml(reise)
+    setze(reise, lambda c: c.update({schluessel: "alt"}))
+    assert f"„{schluessel}“ steht noch in reise.json" in meldungen(reise, tmp_path)
 
 
 def test_reise_yaml_hinweise(reise, tmp_path, capsys):

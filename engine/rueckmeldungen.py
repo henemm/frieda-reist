@@ -562,16 +562,21 @@ class Dienst(BaseHTTPRequestHandler):
             if status_lesen(o).get(rid, {}).get("status", "neu") != "neu":
                 return self._antwort(409, {"fehler": "schon bearbeitet, kann nicht mehr zurückgezogen werden"})
             zeilen = eingang.read_text(encoding="utf-8").splitlines(keepends=True)
-            rest = []
+            rest, weg = [], None
             for z in zeilen:
                 try:
-                    if json.loads(z).get("id") == rid:
+                    e = json.loads(z)
+                    if e.get("id") == rid:
+                        weg = e
                         continue
                 except json.JSONDecodeError:
                     pass
                 rest.append(z)
-            if len(rest) == len(zeilen):
+            if weg is None:
                 return self._antwort(404, {"fehler": "nicht gefunden"})
+            # Zurückziehen ist Schreiben: dieselbe Prüfung wie beim Absenden (Rolle des Absenders, Baustein, Status)
+            if (nein := schreibrecht(o.name, "wunsch" if weg.get("art") == "Wunsch" else "rueckmeldung", weg.get("name"))):
+                return self._antwort(403, {"fehler": nein})
             schreiben(eingang, "".join(rest))
         self._antwort(200, {"geloescht": rid})
 
