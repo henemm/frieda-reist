@@ -62,6 +62,9 @@ VERHALTEN = {
 AKTIONEN = {
     "rueckmeldung": {"rolle": "einbringer", "baustein": "rueckmeldungen", "ab": ("alles", "nachlese")},
     "wunsch":       {"rolle": "einbringer", "baustein": "wuensche", "ab": ("alles",)},
+    # Paket G (Wunsch-Brett): abhaken dürfen alle Einbringer, auch in der Nachlese; einplanen nur Bestimmer
+    "wunsch_erlebt":    {"rolle": "einbringer", "baustein": "wuensche", "ab": ("alles", "nachlese")},
+    "wunsch_einplanen": {"rolle": "bestimmer", "baustein": "wuensche", "ab": ("alles",)},
     "aufgabe":      {"rolle": "einbringer", "baustein": "aufgaben", "ab": ("alles", "nachlese")},
     "alternative":  {"rolle": "einbringer", "baustein": "varianten", "ab": ("alles",)},
     "auftrag":      {"rolle": "bestimmer", "baustein": None, "ab": ("alles",)},

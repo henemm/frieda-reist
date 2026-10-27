@@ -1,0 +1,10 @@
+# Vorschläge zu Wünschen (Wunsch-Brett, engine/bauen.py wunsch_vorschlaege). Claude trägt sie beim Einarbeiten ein:
+# je Wunsch (R-…) die Stellen, an die er passt, eine kurze Notiz mit Herkunft und, wenn daraus eine Option wurde, deren ID.
+# Der Wunschtext steht nicht hier, sondern in der Rückmelde-Ablage. Eingeplant ist ein Wunsch erst, wenn ein Bestimmer
+# die Option wählt oder ihn auf dem Brett bestätigt. Erfundenes Beispiel.
+
+R-20261021-091500-a1b2:
+  bezug: [T-05, V-01]
+  notiz: "Passt zum letzten Tag: Plan B fährt mit der Kirnitzschtalbahn zurück (Option V-01.b). Fahrplan vor der Reise
+    prüfen (erfunden)."
+  option: V-01.b

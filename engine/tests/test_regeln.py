@@ -129,6 +129,9 @@ def test_rechte_je_rolle_und_status(rolle, status):
     assert erlaubt["wunsch"] == erlaubt["alternative"] == (schreiben == "alles")
     # Aufträge: nur Bestimmer, und nur solange der Plan nicht gesperrt ist
     assert erlaubt["auftrag"] == (rolle == "bestimmer" and schreiben == "alles")
+    # Wunsch-Brett: abhaken auch in der Nachlese, einplanen nur Bestimmer bei vollem Schreibrecht
+    assert erlaubt["wunsch_erlebt"] == (schreiben != "nichts")
+    assert erlaubt["wunsch_einplanen"] == (rolle == "bestimmer" and schreiben == "alles")
 
 
 def test_auftrag_an_die_reise_geht_in_jedem_status():

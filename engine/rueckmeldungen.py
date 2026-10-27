@@ -16,6 +16,9 @@ Aufgaben (AG-01 …, 24.10.2026): hängen an einer oder mehreren IDs, haben Zust
 Sie liegen live in <ablage>/<reise>/aufgaben.json, nicht im Repo; dieser Dienst ist ihr einziger Schreiber.
 Nichts wird gelöscht: nicht mehr Nötiges bekommt den Status „entfaellt“.
 
+Wunsch-Brett (Paket G, 27.10.2026): Punkte, „eingeplant“ und „erlebt“ zu jedem Wunsch liegen live in
+<ablage>/<reise>/brett.json (siehe wunsch_aendern); die Spalte des Bretts wird berechnet.
+
 Ein Dienst für alle Reisen. Eine Reise nimmt nur Rückmeldungen an, wenn ihr Ordner in der Ablage
 existiert (legt das Veröffentlichen an). Die Ablage liegt außerhalb des Repos und außerhalb der Web-Ordner.
 
@@ -37,6 +40,8 @@ HTTP (hinter nginx, Präfix /<reise>-<token>/api/ -> /<reise>/):
   GET    /<reise>/aufgaben                alle Aufgaben
   POST   /<reise>/aufgaben                neue Aufgabe (JSON, name = wer sie anlegt) -> AG-…
   PATCH  /<reise>/aufgaben/<AG-id>        Felder ändern, Status setzen, Kommentar in den Verlauf (name = wer)
+  GET    /<reise>/brett                   Wunsch-Brett: Wünsche mit Spalte, Punkten, Vorschlag; Bilanz je Person
+  PATCH  /<reise>/rueckmeldungen/<R-id>   Wunsch auf dem Brett: punkte, erlebt, eingeplant (+ bezug), kommentar (name = wer)
   GET    /<reise>/gesund                  200, wenn die Ablage beschreibbar ist (für die Überwachung)
 """
 import datetime
@@ -103,9 +108,11 @@ def zustand(reise):
     wenn sie nicht lesbar ist (dann gelten nur die technischen Prüfungen, wie bisher). Eingeladene Personen, die noch
     nicht in reise.yaml stehen, zählen schon (einladungen.json)."""
     try:
-        d = json.loads((seiten() / reise / "daten.json").read_text(encoding="utf-8"))["reise"]
+        alles = json.loads((seiten() / reise / "daten.json").read_text(encoding="utf-8"))
+        d = alles["reise"]
         return {"status": d["status"]["wert"], "bausteine": d["bausteine"], "regeln": d.get("regeln") or {},
-                "personen": personen_mit_einladungen(d["personen"], ordner(reise))}
+                "personen": personen_mit_einladungen(d["personen"], ordner(reise)),
+                "wunsch_vorschlaege": alles.get("wunsch_vorschlaege") or {}}
     except (OSError, ValueError, KeyError, TypeError):
         return None
 
@@ -432,6 +439,199 @@ def aufgabe_aendern(o, agid, roh):
     return a, None, 200
 
 
+# ---------- Wunsch-Brett (Paket G) ----------
+# Zu jedem Wunsch (Rückmeldung der Art Wunsch) hält brett.json fest, was nicht von Claude kommt: die Punkte der Person,
+# die ihn eingebracht hat (wie wichtig er ihr ist), „eingeplant“ (nur Bestimmer) und „erlebt“ (alle Einbringer, unterwegs
+# und danach), je mit Verlauf. Claudes Vorschlag (passt zu Tag …, daraus wurde Option …) steht im Repo
+# (plan/wuensche.yaml) und kommt über daten.json. Die Spalte des Bretts wird daraus berechnet, nie gespeichert.
+# Nichts wird gelöscht; ein Wunsch, der nicht passt, gibt seine Punkte frei.
+SPALTEN = ("eingebracht", "geprueft", "eingeplant", "erlebt", "passt_nicht")
+SPALTEN_TITEL = {"eingebracht": "Eingebracht", "geprueft": "Geprüft", "eingeplant": "Eingeplant", "erlebt": "Erlebt",
+                 "passt_nicht": "Passt nicht"}
+MAX_PUNKTE = 100
+ERLEBT_AB = ("unterwegs", "danach")
+
+
+def brett_lesen(o):
+    try:
+        roh = json.loads((o / "brett.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return roh if isinstance(roh, dict) else {}
+
+
+def kontingent(z):
+    """regeln.kontingent der Reise mit Vorgaben: {art: punkte|anzahl, je_person}."""
+    k = dict(rg.VORGABEN["kontingent"])
+    k.update(((z or {}).get("regeln") or {}).get("kontingent") or {})
+    return k
+
+
+def wuensche(o):
+    """Alle Wünsche einer Reise (Rückmeldungen der Art Wunsch), neueste zuerst."""
+    return [e for e in eintraege(o) if e.get("art") == "Wunsch"]
+
+
+def spalte(e, b, vorschlag=None):
+    """Spalte eines Wunsches. passt nicht: Claude hat ihn verworfen; erlebt: abgehakt; eingeplant: ein Bestimmer hat ihn
+    bestätigt oder die Option, die aus ihm wurde, gewählt; geprüft: Claude hat ihn aufgenommen; sonst eingebracht."""
+    if e.get("status") == "verworfen":
+        return "passt_nicht"
+    if (b or {}).get("erlebt"):
+        return "erlebt"
+    if (b or {}).get("eingeplant") or (vorschlag or {}).get("gewaehlt"):
+        return "eingeplant"
+    return "geprueft" if e.get("status") == "uebernommen" else "eingebracht"
+
+
+def _schluessel(name):
+    return (name or "").strip().casefold()
+
+
+def vergeben(liste, brett_, name, ohne=None):
+    """Punkte, die eine Person auf ihre Wünsche verteilt hat (Wünsche, die nicht passen, zählen nicht)."""
+    return sum(int((brett_.get(e["id"]) or {}).get("punkte") or 0) for e in liste
+               if _schluessel(e.get("name")) == _schluessel(name) and e["id"] != ohne and e.get("status") != "verworfen")
+
+
+def aktive_wuensche(liste, name):
+    return sum(1 for e in liste if _schluessel(e.get("name")) == _schluessel(name) and e.get("status") != "verworfen")
+
+
+def brett(o, z=None):
+    """Das Brett zum Anzeigen (Seite und Claude-App): Wünsche mit Spalte, Punkten, Vorschlag, eingeplant und erlebt;
+    Bilanz je Person (alle sehen sie); Kontingent der Reise."""
+    k = kontingent(z)
+    b = brett_lesen(o)
+    vorschlaege = (z or {}).get("wunsch_vorschlaege") or {}
+    liste = wuensche(o)
+    aus = []
+    for e in liste:
+        be = b.get(e["id"]) or {}
+        v = vorschlaege.get(e["id"])
+        aus.append({**{x: e.get(x, "") for x in ("id", "name", "text", "quelle", "erstellt", "status", "kommentar")},
+                    "spalte": spalte(e, be, v), "punkte": int(be.get("punkte") or 0) if k["art"] == "punkte" else 0,
+                    "eingeplant": be.get("eingeplant"), "erlebt": be.get("erlebt"), "vorschlag": v,
+                    "verlauf": be.get("verlauf", [])})
+    # Bilanz: alle, die Wünsche einbringen dürfen, und alle, die schon welche haben
+    namen = {}
+    for p in (z or {}).get("personen") or []:
+        if rg.darf(p.get("rolle"), "einbringer"):
+            namen.setdefault(_schluessel(p["name"]), p["name"])
+    for e in liste:
+        namen.setdefault(_schluessel(e.get("name")), e.get("name", ""))
+    bilanz = []
+    for s, name in namen.items():
+        eigene = [w for w in aus if _schluessel(w["name"]) == s]
+        zeile = {"name": name, "wuensche": len(eigene), **{sp: sum(1 for w in eigene if w["spalte"] == sp) for sp in SPALTEN}}
+        if k["art"] == "punkte":
+            zeile["punkte"] = vergeben(liste, b, name)
+            zeile["frei"] = max(0, k["je_person"] - zeile["punkte"])
+        else:
+            zeile["frei"] = max(0, k["je_person"] - aktive_wuensche(liste, name))
+        bilanz.append(zeile)
+    return {"kontingent": k, "spalten": [{"id": s, "titel": SPALTEN_TITEL[s]} for s in SPALTEN], "wuensche": aus,
+            "bilanz": sorted(bilanz, key=lambda x: x["name"].casefold())}
+
+
+def wunsch_annehmen(o, z, name):
+    """Darf diese Person noch einen Wunsch einbringen (regeln.kontingent art anzahl)? -> Fehlertext oder None."""
+    k = kontingent(z)
+    if k["art"] == "anzahl" and aktive_wuensche(wuensche(o), name) >= k["je_person"]:
+        return (f"Höchstens {k['je_person']} Wünsche je Person. Erst einen eigenen Wunsch zurückziehen, oder er wird "
+                "geprüft und passt nicht.")
+    return None
+
+
+def wunsch_aendern(o, rid, roh, z):
+    """Wunsch auf dem Brett ändern: punkte (nur wer ihn eingebracht hat, im Kontingent), erlebt (alle Einbringer,
+    unterwegs und danach), eingeplant mit bezug (nur Bestimmer); kommentar geht in den Verlauf.
+    z: zustand(reise) oder None (dann nur die technischen Prüfungen). -> (wunsch, fehler, code). Aufrufer hält _sperre."""
+    if not isinstance(roh, dict):
+        return None, "kein Objekt", 400
+    name, fehler = wer(roh)
+    if fehler:
+        return None, fehler, 400
+    e = next((x for x in wuensche(o) if x["id"] == rid), None)
+    if e is None:
+        return None, "Diesen Wunsch gibt es nicht.", 404
+    felder = {}
+    aktionen = []
+    if "punkte" in roh:
+        p = roh["punkte"]
+        if not isinstance(p, int) or isinstance(p, bool) or not 0 <= p <= MAX_PUNKTE:
+            return None, f"punkte muss eine ganze Zahl von 0 bis {MAX_PUNKTE} sein", 400
+        felder["punkte"] = p
+        aktionen.append("wunsch")
+    for f in ("erlebt", "eingeplant"):
+        if f in roh:
+            if not isinstance(roh[f], bool):
+                return None, f"{f} muss ja oder nein sein (true/false)", 400
+            aktionen.append("wunsch_erlebt" if f == "erlebt" else "wunsch_einplanen")
+    bezug = []
+    if "bezug" in roh:
+        bezug, fehler = ag_felder({"bezug": roh["bezug"]}, False)
+        if fehler:
+            return None, fehler, 400
+        bezug = bezug["bezug"]
+        if roh.get("eingeplant") is not True:
+            return None, "bezug gehört zu eingeplant: true", 400
+    kommentar = roh.get("kommentar", "")
+    if not isinstance(kommentar, str) or len(kommentar.strip()) > AG_LAENGE["kommentar"]:
+        return None, "Kommentar zu lang (max. 500 Zeichen)", 400
+    kommentar = kommentar.strip()
+    if not aktionen and not kommentar:
+        return None, "Nichts zu ändern (punkte, erlebt, eingeplant oder kommentar).", 400
+    if z is not None:
+        for a in aktionen or ["wunsch_erlebt"]:   # nur ein Kommentar: darf, wer auch abhaken darf
+            ok, grund = rg.erlaubt(a, rolle_von(z, name), z["status"], z["bausteine"], regeln=z.get("regeln"))
+            if not ok:
+                return None, grund, 403
+    if aktionen and e.get("status") == "verworfen":
+        return None, "Dieser Wunsch passt nicht (so geprüft); er bleibt so stehen.", 409
+    alle = brett_lesen(o)
+    b = alle.setdefault(rid, {"punkte": 0, "eingeplant": None, "erlebt": None, "verlauf": []})
+    if "punkte" in felder:
+        k = kontingent(z)
+        if k["art"] != "punkte":
+            return None, "Diese Reise zählt Wünsche, keine Punkte.", 400
+        if _schluessel(e.get("name")) != _schluessel(name):
+            return None, f"Punkte verteilt nur, wer den Wunsch eingebracht hat ({e.get('name')}).", 403
+        frei = k["je_person"] - vergeben(wuensche(o), alle, name, ohne=rid)
+        if felder["punkte"] > frei:
+            return None, f"So viele Punkte sind nicht mehr frei: noch {max(0, frei)} von {k['je_person']}.", 409
+    heute = datetime.date.today().isoformat()
+    if "erlebt" in roh:
+        if z is not None and z["status"] not in ERLEBT_AB:
+            return None, "Abhaken geht erst, wenn die Reise läuft (Status unterwegs) und danach.", 409
+        felder["erlebt"] = {"wer": name, "datum": heute} if roh["erlebt"] else None
+    if "eingeplant" in roh:
+        felder["eingeplant"] = {"wer": name, "datum": heute, "bezug": bezug} if roh["eingeplant"] else None
+    # Nur echte Änderungen zählen; wer etwas schon Abgehaktes noch einmal abhakt, ändert nichts (Nachreichen ohne Netz)
+    diff = {}
+    for f, v in felder.items():
+        alt = b.get(f)
+        gleich = (alt == v) if f == "punkte" else (bool(alt) == bool(v) and (f != "eingeplant" or not v
+                                                                              or (alt or {}).get("bezug") == v["bezug"]))
+        if not gleich:
+            diff[f] = [alt, v]
+    if not diff and not kommentar:
+        if not b["verlauf"]:
+            del alle[rid]
+        return {"id": rid, **b}, None, 200
+    zeit = jetzt_iso()
+    for f, (_, v) in diff.items():
+        b[f] = v
+    eintrag = {"zeit": zeit, "wer": name, "was": "geändert" if diff else "Kommentar"}
+    if diff:
+        eintrag["felder"] = {f: [a, v] if f == "punkte" else [bool(a), bool(v)] for f, (a, v) in diff.items()}
+    if kommentar:
+        eintrag["kommentar"] = kommentar
+    b["verlauf"].append(eintrag)
+    schreiben(o / "brett.json", json.dumps(alle, ensure_ascii=False, indent=1) + "\n")
+    return {"id": rid, **b}, None, 200
+
+
 def gedrosselt(o):
     """True, wenn diese Reise in der letzten Minute schon MAX_JE_MINUTE Schreibzugriffe hatte. Aufrufer hält _sperre."""
     jetzt = time.monotonic()
@@ -476,6 +676,8 @@ class Dienst(BaseHTTPRequestHandler):
             return self._antwort(200 if ok else 503, {"gesund": ok})
         if was == "aufgaben":
             return self._antwort(200, aufgaben(o))
+        if was == "brett":
+            return self._antwort(200, brett(o, zustand(o.name)))
         if was != "rueckmeldungen":
             return self._antwort(404, {"fehler": "unbekannt"})
         self._antwort(200, eintraege(o))
@@ -497,11 +699,20 @@ class Dienst(BaseHTTPRequestHandler):
 
     def do_PATCH(self):
         t = self._teile()
-        if not t or t[1] != "aufgaben" or not AG_MUSTER.match(t[2] or ""):
+        wunsch = bool(t) and t[1] == "rueckmeldungen" and bool(RID_MUSTER.match(t[2] or ""))
+        if not t or not wunsch and (t[1] != "aufgaben" or not AG_MUSTER.match(t[2] or "")):
             return self._antwort(404, {"fehler": "unbekannt"})
         roh, fehlt = self._json()
         if fehlt:
             return
+        if wunsch:
+            # Wunsch-Brett: Rechte, Kontingent und Status prüft wunsch_aendern (auch für den Konnektor)
+            z = zustand(t[0].name)
+            with _sperre:
+                if gedrosselt(t[0]):
+                    return self._antwort(429, {"fehler": "zu viele Änderungen, bitte kurz warten"})
+                w, fehler, code = wunsch_aendern(t[0], t[2], roh, z)
+            return self._antwort(code, {"fehler": fehler} if fehler else w)
         if (nein := schreibrecht(t[0].name, "aufgabe", roh.get("name") if isinstance(roh, dict) else None)):
             return self._antwort(403, {"fehler": nein})
         with _sperre:
@@ -539,6 +750,8 @@ class Dienst(BaseHTTPRequestHandler):
                     break
                 if all(alt.get(k, "") == e.get(k, "") for k in INHALT):
                     return self._antwort(200, alt)
+            if e["art"] == "Wunsch" and (nein := wunsch_annehmen(o, zustand(o.name), e["name"])):
+                return self._antwort(409, {"fehler": nein})
             if gedrosselt(o):
                 return self._antwort(429, {"fehler": "zu viele Rückmeldungen, bitte kurz warten"})
             with (o / "eingang.jsonl").open("a", encoding="utf-8") as f:
@@ -561,6 +774,8 @@ class Dienst(BaseHTTPRequestHandler):
                 return self._antwort(404, {"fehler": "nicht gefunden"})
             if status_lesen(o).get(rid, {}).get("status", "neu") != "neu":
                 return self._antwort(409, {"fehler": "schon bearbeitet, kann nicht mehr zurückgezogen werden"})
+            if any((brett_lesen(o).get(rid) or {}).get(f) for f in ("erlebt", "eingeplant")):
+                return self._antwort(409, {"fehler": "steht auf dem Brett schon als eingeplant oder erlebt"})
             zeilen = eingang.read_text(encoding="utf-8").splitlines(keepends=True)
             rest, weg = [], None
             for z in zeilen:

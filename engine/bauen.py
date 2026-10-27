@@ -507,6 +507,11 @@ class Bauer:
                                      if e["id"] in o["alle_strecken"] and not o["aktiv"]]
                     e["nebenroute"] = not e["im_plan"] and not e["optionen"]
 
+        # Claudes Vorschläge zu Wünschen (Wunsch-Brett, Paket G): plan/wuensche.yaml neben routen.yaml
+        wunsch_vorschlaege = {}
+        if route and (self.reise_dir / Path(r_cfg["datei"]).parent / "wuensche.yaml").exists():
+            wunsch_vorschlaege = self.wunsch_vorschlaege(str(Path(r_cfg["datei"]).parent / "wuensche.yaml"), route)
+
         # Orte und Wissen in beide Richtungen verknüpfen (reise.json orte_wissen -> YAML; 25.10.2026)
         if c.get("orte_wissen"):
             self.orte_wissen(c["orte_wissen"], abschnitte)
@@ -524,7 +529,53 @@ class Bauer:
             "fragen": fragen,
             "route": route,
             "wissen_karte": wissen_karte,
+            "wunsch_vorschlaege": wunsch_vorschlaege,
         }
+
+    def wunsch_vorschlaege(self, rel, route):
+        """Claudes Vorschläge zu Wünschen (Paket G): je Wunsch (R-…) die Stellen, an die er passt (bezug), eine kurze
+        Notiz mit Herkunft und, wenn daraus eine Option wurde, deren ID. Der Wunschtext steht nicht hier, sondern in der
+        Rückmelde-Ablage. Eingeplant ist ein Wunsch erst, wenn ein Bestimmer diese Option wählt (gewaehlt) oder ihn auf dem
+        Brett bestätigt; Claude kann ihn nicht einplanen."""
+        try:
+            roh = yaml.safe_load(self.lesen(rel)) or {}
+        except yaml.YAMLError as e:
+            self.fehler.append(f"{rel}: kein gültiges YAML ({e}).")
+            return {}
+        if not isinstance(roh, dict):
+            self.fehler.append(f"{rel}: erwartet je Wunsch-ID (R-…) einen Eintrag mit bezug, notiz, option.")
+            return {}
+        optionen = {o["id"]: o for w in route.get("wahlstellen") or [] for o in w["optionen"]}
+        bekannt = set(self.ids) | set(route.get("unterkuenfte") or {}) | set(route.get("orte") or {}) | set(optionen)
+        aus = {}
+        for rid, v in roh.items():
+            wo = f"{rel}: {rid}"
+            if not re.match(r"^R-\d{8}-\d{6}-[0-9a-f]{4}$", str(rid)):
+                self.fehler.append(f"{wo}: Schlüssel muss eine Wunsch-ID sein (R-JJJJMMTT-HHMMSS-xxxx).")
+                continue
+            if not isinstance(v, dict) or set(v) - {"bezug", "notiz", "option"}:
+                self.fehler.append(f"{wo}: erlaubt sind bezug (Liste von IDs), notiz (Text) und option (V-….x).")
+                continue
+            bezug = v.get("bezug") or []
+            if isinstance(bezug, str):
+                bezug = [bezug]
+            if not isinstance(bezug, list) or not all(isinstance(x, str) for x in bezug):
+                self.fehler.append(f"{wo}: bezug muss eine Liste von IDs sein.")
+                continue
+            for x in bezug:
+                if x not in bekannt:
+                    self.fehler.append(f"{wo}: {x} gibt es nicht.")
+            notiz = v.get("notiz") or ""
+            if not isinstance(notiz, str):
+                self.fehler.append(f"{wo}: notiz muss Text sein.")
+                notiz = ""
+            option = v.get("option")
+            if option is not None and option not in optionen:
+                self.fehler.append(f"{wo}: Option {option} gibt es an keiner Wahlstelle.")
+                option = None
+            aus[rid] = {"bezug": bezug, "notiz": notiz.strip(), "option": option,
+                        "gewaehlt": bool(option) and optionen[option]["status"] == "gewaehlt"}
+        return aus
 
     def wissen_karte(self, rel, abschnitte):
         """Punkte je Wissens-Block (W-….<slug>) mit regionalen Grundkarten. Erzeugt vom Betrieb (Punkte aus OpenStreetMap),
