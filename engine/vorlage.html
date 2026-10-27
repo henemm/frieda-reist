@@ -723,10 +723,15 @@ function zid(id) {
     symbol("rueckmeldungen", "zid-blase"), n ? el("span", {class: "zid-n", "aria-hidden": "true"}, String(n)) : null, a ? el("span", {class: "zid-o", "aria-hidden": "true"}) : null);
   return el("span", {class: "zid-box"}, knopf);
 }
-/* Bausteine nach Ebenen (Designsystem, frieda-reist#18). Jede Ansicht setzt sich aus ihnen zusammen,
-   statt dieselbe Sache selbst zu zeichnen.
-   Atome:    zid (Kennung mit Rückmeldeknopf), chip (Zustand), merkmalWert (eine Aussage mit Quelle und Prüfdatum)
-   Moleküle: kennzahlLeiste (Gehzeit, Aufstieg …), merkmalListe (Merkmale einer Option), fehltZeile (Lücken)
+/* Bausteine nach Ebenen (Designsystem, frieda-reist#18, docs/design.md). Jede Ansicht setzt sich aus ihnen zusammen,
+   statt dieselbe Sache selbst zu zeichnen; die Stile stehen im <style> in derselben Ordnung.
+   Atome:     symbol, chip (Zustand), Etikett (CSS), merkmalWert (Wert mit Herkunft), zid (Kennung), planMarke
+   Moleküle:  kennzahlLeiste, merkmalListe, reiseText (Reisetext mit Merkmallisten), reiterGruppe, ebeneKopf, dingEtikett,
+              listenZeile, zeilenKarte, rmEintrag, agEintrag, eintragGruppen, kartenLegende, umschalter, kontoKnopf,
+              nameFeld, fehltZeile, optionChips
+   Organismen: Ding (nachtZeile, unterkunftKarte, streckeZeile), Wahl-Modul (wahlEinstieg, wahlVergleich, wahlKarte),
+              tagKarte (Tageskasten mit wegVerlauf), tagEbenen, tagOrteZeilen
+   Vorlagen:  tagKachel, Ansichten (ansichtTag = Tagesseite, ansichtPlan …)
    Zustände haben feste Namen, die Farbe folgt der Bedeutung, nicht dem Ort:
      plan      entschieden oder im Plan (Akzent)       offen  braucht noch eine Entscheidung (Warnfarbe)
      unterwegs erst unterwegs zu entscheiden           weg    verworfen oder ersetzt (durchgestrichen)
@@ -1940,11 +1945,11 @@ function reiterGruppe(schluessel, titel, teile, gewaehlt) {
     el("div", {role: "tablist", class: "reiterleiste", "aria-label": titel},
       teile.map(x => el("button", {type: "button", role: "tab", id: "reiter-" + x.id, "aria-controls": x.id, "data-teil": x.id,
         "aria-selected": String(x.id === sel), tabindex: x.id === sel ? "0" : "-1"}, x.name))),
-    teile.map(x => el("div", {class: "teil ziel", role: "tabpanel", id: x.id, "data-ziel": x.id, "aria-labelledby": "reiter-" + x.id, hidden: x.id !== sel}, x.inhalt)));
+    teile.map(x => el("div", {class: "teil ziel", role: "tabpanel", id: x.id, "data-ziel": x.id, "data-teil": x.id, "aria-labelledby": "reiter-" + x.id, hidden: x.id !== sel}, x.inhalt)));
 }
 function reiterWaehlen(box, id) {
   box.querySelectorAll("[role=tab]").forEach(x => { const an = x.dataset.teil === id; x.setAttribute("aria-selected", String(an)); x.tabIndex = an ? 0 : -1; });
-  box.querySelectorAll("[role=tabpanel]").forEach(x => { x.hidden = x.id !== id; });
+  box.querySelectorAll("[role=tabpanel]").forEach(x => { x.hidden = x.dataset.teil !== id; });
   TAGREITER[box.dataset.reiter] = id;
   // Die Kennung des offenen Teils steht rechts im Kopf der Ebene
   const platz = box.closest(".ebene") && box.closest(".ebene").querySelector(".ebene-kopf .reiter-kennung");
@@ -1981,7 +1986,7 @@ function tagEbenen(t, etappen) {
     ebeneKopf("Unterwegs nachschlagen", el("span", {class: "reiter-kennung"})),
     reiterGruppe(t.id, "Unterwegs nachschlagen", teile.unterwegs.map(([a, b]) => ({id: b.id, name: reiterName(b.titel) + (mehrere ? ` · Etappe ${a.nr}` : ""),
       inhalt: [wissenKarte(b.id), reiseText(b.html, kz(a))]})), TAGREITER[t.id])) : null;
-  if (unterwegs) { const r = unterwegs.querySelector(".reiter"); unterwegs.querySelector(".reiter-kennung").append(zid(r.querySelector("[role=tabpanel]:not([hidden])").id)); }
+  if (unterwegs) unterwegs.querySelector(".reiter-kennung").append(zid(unterwegs.querySelector("[role=tabpanel]:not([hidden])").dataset.teil));
   const hintergrund = teile.hintergrund.length ? el("section", {class: "ebene ebene-hintergrund"}, ebeneKopf("Hintergrund"),
     teile.hintergrund.map(([a, b]) => leseAbschnitt(b, kz(a)))) : null;
   const quellen = teile.quellen.length ? el("section", {class: "ebene ebene-quellen"}, el("details", {class: "quellen"},
@@ -2254,7 +2259,14 @@ function ansichtBausteine(m) {
     fall("offen", merkmalWert(null)),
     fall("je Datum", merkmalWert(jeDatum)),
     fall("je Datum, an einer Nacht", merkmalWert(jeDatum, jeDatum.je_datum[0].gilt[0])));
-  teil("Atom", "Kennung", "Antippen öffnet Rückmeldungen und Aufgaben zu dieser Stelle.", el("div", {class: "z"}, zid(R ? R.tage[0].id : abschnitte[0].id)));
+  // Kennung in ihren Zuständen: leer, mit Rückmeldungen, mit offener Aufgabe (Muster, die Daten der Seite bleiben unberührt)
+  const kennungMuster = (rm, ag) => { const r0 = RM, a0 = AG; RM = rm; AG = ag; try { return zid("Muster"); } finally { RM = r0; AG = a0; } };
+  const rmMuster = {ziel: "Muster", status: "neu"}, agMuster = {id: "AG-00", status: "offen", bezug: ["Muster"]};
+  teil("Atom", "Kennung", "Nur die Sprechblase mit Tooltip („Symbol oder Wort, nie beides“). Antippen öffnet Rückmeldungen und Aufgaben zu dieser Stelle; dort stehen die Kennung und „Kopieren“.",
+    fall("leer", zid(R ? R.tage[0].id : abschnitte[0].id)), fall("2 Rückmeldungen (Muster)", kennungMuster([rmMuster, rmMuster], [])),
+    fall("Aufgabe offen (Muster)", kennungMuster([], [agMuster])), fall("beides (Muster)", kennungMuster([rmMuster], [agMuster])));
+  teil("Atom", "Etikett", "Sagt, was etwas ist; normale Schreibweise, gedämpft. Ein Symbol nur, wo es die Art sofort zeigt.",
+    el("div", {class: "chips"}, dingEtikett("Nacht", null, "nacht"), dingEtikett("Wahl", null, "wahl"), el("span", {class: "etikett"}, "Etikett ohne Symbol")));
   if (R && R.plaene.length) teil("Atom", "Planfarbe", "Jeder Plan hat eine Farbe: als Punkt in Legende, Tabelle und Überschrift, als Linie im Umschalter wie auf der Karte.",
     R.plaene.map(p => fall(p.kurz, [planMarke(p), " ", planMarke(p, "linie")])));
   const wz = abschnitte.find(x => x.typ === "wissen" || x.typ === "praxis" || x.typ === "quelle");
@@ -2285,6 +2297,18 @@ function ansichtBausteine(m) {
   const u = Object.entries(R.unterkuenfte).find(([, x]) => Object.keys(x.merkmale || {}).length);
   teil("Molekül", "Kennzahlenleiste", null, mitKz ? kennzahlLeiste(mitKz[1].kennzahlen) : el("p", {class: "meldung"}, "Keine Strecke mit Kennzahlen."));
   teil("Molekül", "Merkmalliste", null, u ? merkmalListe(R.merkmale.unterkunft, u[1].merkmale) : el("p", {class: "meldung"}, "Keine Unterkunft mit Merkmalen."));
+  // Reisetext: Tabellen aus dem Text, geordnet vom Generator (zweispaltig als Merkmalliste, breit gestapelt bei wenig Platz)
+  const etappenBloecke = abschnitte.filter(a => a.typ === "etappe").flatMap(a => a.bloecke.map(b => [a, b]));
+  const mitTabelle = art => etappenBloecke.find(([, b]) => b.html.includes(art));
+  const zwei = mitTabelle('class="textmerkmale"'), breit = mitTabelle('class="tabelle stapel"');
+  teil("Molekül", "Reisetext: Tabellen", "Zweispaltig als Merkmalliste, breiter als Tabelle; in schmalem Behälter steht das Merkmal über dem Wert und jede Zeile wird ein Eintrag.",
+    zwei ? fall(zwei[1].titel, reiseText(zwei[1].html)) : null, breit ? fall(breit[1].titel, reiseText(breit[1].html)) : null,
+    !zwei && !breit ? el("p", {class: "meldung"}, "Kein Etappentext mit Tabelle.") : null);
+  // Reiter: mit den Abschnitten „Unterwegs nachschlagen“ der ersten Etappe, die welche hat
+  const nachschlagen = etappenBloecke.filter(([, b]) => b.ebene === "unterwegs"), erste = nachschlagen.length && nachschlagen[0][0];
+  teil("Molekül", "Reiter", "Segmentleiste mit Pillen, genau ein Teil offen; Pfeiltasten wechseln. Auf der Tagesseite für „Unterwegs nachschlagen“.",
+    erste ? reiterGruppe("bausteine", "Muster: Reiter", nachschlagen.filter(([a]) => a === erste).map(([, b]) => ({id: b.id, name: reiterName(b.titel), inhalt: reiseText(b.html)})))
+      : el("p", {class: "meldung"}, "Keine Etappe mit Abschnitten zum Nachschlagen."));
   teil("Molekül", "Konto-Knopf", "Oben rechts im Kopf: „Anmelden“ oder der eigene Name (zur Kontoseite). Nur auf Friedas eigener Adresse.",
     el("div", {}, kontoKnopf(null), " ", kontoKnopf({konto: {name: "Ida"}})));
   teil("Molekül", "Legende", "Zeichen und Wort; unter einer Karte steht nur, was auf ihr vorkommt.",
@@ -2307,7 +2331,8 @@ function ansichtBausteine(m) {
   const w = R.wahlstellen.find(x => gueltigeOptionen(x).length > 2) || R.wahlstellen.find(x => gueltigeOptionen(x).length > 1);
   if (w) teil("Organismus", "Wahl-Modul", "Einstieg, Vergleich und Optionen; in der Liste der Entscheidungen gleich offen.", wahlKarte(w));
   const tag = R.tage.find(t => t.wahlstellen.length && t.nacht) || R.tage.find(t => t.nacht) || R.tage[0];
-  if (tag) teil("Vorlage", "Tag", `Tag ${tag.nr} mit allen Bausteinen.`, tagKarte(tag));
+  if (tag) teil("Vorlage", "Tag", `Tag ${tag.nr} mit allen Bausteinen, wie im Plan.`, tagKarte(tag));
+  if (tag) teil("Vorlage", "Tageskasten", "Auf der Tagesseite die einzige Fläche: weiß, ohne Rahmen, weicher Schatten.", tagKarte({...tag, text: ""}, true));
   // Kennungen sind auf dieser Seite nur Beispiele: keine Sprungziele, damit sie den echten Stellen nicht im Weg stehen
   m.querySelectorAll("[id]").forEach(x => { x.removeAttribute("id"); x.removeAttribute("data-ziel"); });
 }
@@ -3004,7 +3029,7 @@ function zumZiel(id) {
   const e = document.getElementById(id);
   if (!e) return;
   // Teil eines Reiters (Tagesseite): erst den Reiter wählen
-  if (e.matches("[role=tabpanel][hidden]")) reiterWaehlen(e.closest(".reiter"), id);
+  if (e.matches("[role=tabpanel][hidden]")) reiterWaehlen(e.closest(".reiter"), e.dataset.teil);
   for (let p = e.parentElement; p; p = p.parentElement) if (p.tagName === "DETAILS") p.open = true;
   if (e.tagName === "DETAILS") e.open = true;
   e.scrollIntoView({block: "start"});

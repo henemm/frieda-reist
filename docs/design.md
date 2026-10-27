@@ -1,31 +1,35 @@
 # Design: Grundregeln und Bausteine
 
-Die Seite folgt einem Designsystem (Issue #18): wenige Bausteine, die jede Ansicht zusammensetzt, statt dass jede Ansicht dieselbe Sache selbst zeichnet. So bekommt eine neue Art von Alternative (Fähre, Restaurant, Flug) kein neues Design, sondern bringt nur ihre Merkmale mit.
+Die Seite folgt einem Designsystem (Issue #18): wenige Bausteine, die jede Ansicht zusammensetzt, statt dass jede Ansicht dieselbe Sache selbst zeichnet. So bekommt eine neue Art von Alternative (Fähre, Restaurant, Flug) kein neues Design, sondern bringt nur ihre Merkmale mit. Seit dem 27.10.2026 gilt das Gesicht **„Freundlich“ (B2)**, erarbeitet an echten Seiten (frieda-reist#52).
 
 ## Aufbau: Atomic Design und drei Achsen
 
-Die Ebenen folgen Brad Frosts Atomic Design:
+Die Ebenen folgen Brad Frosts Atomic Design. Skript und Stile in `engine/vorlage.html` sind gleich geordnet: Der Stilblock beginnt mit den Tokens, dann Grundlagen (Seite, Text, Pico CSS, Reisetexte), Atome, Moleküle, Organismen, Vorlagen, der Rahmen der Seite (Kopf, Meldungen, Glas, Leiste) und zuletzt die Breiten. Jede Regel steht bei dem Baustein, zu dem sie gehört; was ein Baustein in einem anderen anders macht, steht beim umfassenden.
 
 | Ebene | Bausteine in `engine/vorlage.html` |
 |---|---|
-| Atome | `chip` (Zustand), `merkmalWert` (Wert mit Herkunft), `zid` (Kennung mit Rückmeldeknopf), `planMarke` (Farbe eines Plans als Punkt oder Linie) |
-| Moleküle | `kennzahlLeiste`, `merkmalListe`, `fehltZeile`, `optionChips`, `dingEtikett`, `listenZeile` (Wissen, Praxis, Quellen, Orte), `zeilenKarte` (offene Frage), `rmEintrag` (Rückmeldung, Wunsch), `agEintrag` (Aufgabe), `eintragGruppen` („Titel (n)“ mit Einträgen), `kartenLegende` (Zeichen und Wort unter einer Karte), `umschalter` (ein Knopf gedrückt, z. B. `planUmschalter`), `kontoKnopf` („Anmelden“ oder eigener Name oben rechts, nur auf Friedas eigener Adresse), `nameFeld` (ohne Konto „Dein Name“, angemeldet nur „Du schreibst als …“) |
-| Organismen | Ding: `nachtZeile` (Aufenthalt als Zeile), `unterkunftKarte` (als Karte), `streckeZeile` (Bewegung); Wahl-Modul: `wahlEinstieg`, `wahlVergleich`, `wahlKarte` |
-| Vorlagen | `tagKarte`, `tagKachel`, die Ansichten (`ansichtTag`, `ansichtPlan` …) |
+| Tokens | Farben (`--bg`, `--card`, `--fg`, `--mut`, `--line`, `--acc`, `--acc2`, `--warn`, `--warnbg`, `--ocker`, `--kat-*`, `--plan-*`), Schrift (`--font-text`), Formen (`--r-klein`, `--r`, `--r-kachel`, `--r-gross`, `--r-pille`, `--schatten`, `--schatten-klein`), Breiten (`--breite`, `--lese`) |
+| Atome | `symbol` (Lucide), `chip` (Zustand), Etikett (`.etikett`, sagt, was etwas ist), `merkmalWert` (Wert mit Herkunft), `zid` (Kennung als Sprechblase), `planMarke` (Farbe eines Plans als Punkt oder Linie) |
+| Moleküle | Fläche (`.karte`, `.karte.flaeche`, `details.block`), `kennzahlLeiste` (Kacheln), `merkmalListe`, `reiseText` (Reisetext, Merkmallisten ohne doppelte Kennzahlen), `reiterGruppe` (Reiter als Pillen), `ebeneKopf`, `dingEtikett`, `listenZeile` (Wissen, Praxis, Quellen, Orte), `zeilenKarte` (offene Frage), `rmEintrag` (Rückmeldung, Wunsch), `agEintrag` (Aufgabe), `eintragGruppen` („Titel (n)“ mit Einträgen), `kartenLegende`, `umschalter` (ein Knopf gedrückt, z. B. `planUmschalter`), `kontoKnopf`, `nameFeld`, `fehltZeile`, `optionChips` |
+| Organismen | Ding: `nachtZeile` (Aufenthalt als Zeile), `unterkunftKarte` (als Karte), `streckeZeile` (Bewegung); Wahl-Modul: `wahlEinstieg`, `wahlVergleich`, `wahlKarte`; Tageskasten: `tagKarte` mit `wegVerlauf`; Tagesseite: `tagEbenen`, `tagOrteZeilen` |
+| Vorlagen | `tagKachel`, die Ansichten (`ansichtTag` = Tagesseite, `ansichtPlan` …) |
 
 Atomic Design allein sagt nicht, wie sich ein Baustein verhält. Dafür gibt es drei Achsen:
 
 - **Zustand.** Feste Namen in `CHIP`: `plan` (entschieden, im Plan), `offen` (braucht eine Entscheidung), `unterwegs` (erst unterwegs zu entscheiden), `weg` (verworfen, ersetzt), `leise` (Nebenangabe), `neben` (Nebenroute). Ein Wert ist bekannt, ungeprüft, unklar, offen oder gilt je Datum.
 - **Dichte.** Ein Ding gibt es als Zeile (im Tag, in Listen) und als Karte (Übersicht), mit demselben Etikett.
-- **Kontext.** Planung oder unterwegs (`verhalten.ausloeser_vor` je Status), Handy oder Rechner, offline. Der Kontext ändert Reihenfolge und Betonung, nie die Bausteine.
+- **Kontext.** Planung oder unterwegs (`verhalten.ausloeser_vor` je Status), Handy oder Rechner, offline. Der Kontext ändert Reihenfolge und Betonung, nie die Bausteine. Grundsatz: **Rechner = planen, Handy und Tablet = unterwegs.**
 
-## Fünf Regeln
+## Regeln
 
 1. **Ein Ding, ein Baustein.** Aufenthalt, Bewegung und Folge sehen überall gleich aus.
 2. **Eine Wahl, ein Modul.** Jede Stelle mit Alternativen hat denselben Einstieg „Alternativen vergleichen“ und denselben Vergleich (Regeln in `docs/alternativen.md`).
-3. **Ein Wert, ein Atom.** Notiz, Prüfdatum und Quelle stehen hinter dem „i“, nicht im Fließtext.
-4. **Farbe trägt Bedeutung.** Akzentgrün heißt entschieden, Warnfarbe heißt offen, Ocker als Rahmen heißt unterwegs. Sonst nichts. Ausnahme sind Erkennungsfarben aus den Daten (Plan, Art der Unterkunft, Art eines Orts); sie kommen als CSS-Variable (`--farbe`, `--kat`), nie als `style="color:…"`.
+3. **Ein Wert steht einmal.** Notiz, Prüfdatum und Quelle stehen hinter dem „i“ des Werts, nicht im Fließtext. Was die Kennzahlenleiste zeigt, wiederholt keine Merkmalliste; derselbe Text steht an einer Stelle einmal.
+4. **Farbe trägt Bedeutung.** Akzentgrün heißt entschieden, Warnfarbe heißt offen, ein dünner Rand heißt unterwegs. Sonst nichts. Ausnahme sind Erkennungsfarben aus den Daten (Plan, Art der Unterkunft, Art eines Orts); sie kommen als CSS-Variable (`--farbe`, `--kat`), nie als `style="color:…"`.
 5. **Aus Daten, nicht aus Einstellungen.** Was eine Ansicht zeigt, ergibt sich aus dem Planungsstand, für alle Reisen gleich.
+6. **Ein Kasten nur, wo man handelt.** Flächen mit Rand oder Schatten tragen Bedienelemente (Tageskasten); Lesetext steht ohne Rahmen.
+7. **Symbol oder Wort, nie beides.** Was man nur vielleicht braucht, ist ein Symbol mit Tooltip (Anmerken); was man oft braucht, ist ein Wort ohne Symbol („Alternativen vergleichen“, Reiter, „← Plan“). Etiketten dürfen ein Symbol tragen, wenn es die Art sofort zeigt (Nacht, Wahl, Ort, Kennzahlen); sie sind keine Bedienelemente.
+8. **Das Gerät bestimmt die Reihenfolge.** Dieselben Bausteine, am Rechner zum Planen nebeneinander, am Handy zum Nachschlagen untereinander (Tagesseite).
 
 ## Reisetexte
 
@@ -40,9 +44,20 @@ Der Generator prüft das: Ein Text darf nur enthalten, was Markdown selbst erzeu
 - **Ein Wert steht einmal.** Zeigt die Seite die Kennzahlenleiste (Tag, Etappe), entfallen in der Merkmalliste die Zeilen, die sie schon zeigt (gleicher Name wie in `kennzahlen`). Derselbe Text zweimal an einer Stelle (etwa dieselbe Tabelle aus Etappen- und Unterkünfte-Dossier) steht einmal. Das Höhenprofil behält Bild und Tabelle.
 - Der Konnektor liest Merkmallisten als „- Merkmal: Wert“.
 
-## Gestaltung „Wanderführer“
+## Gestaltung „Freundlich“ (B2, 27.10.2026)
 
-Farben als CSS-Variablen in `:root` (hell, dunkel per `prefers-color-scheme`): `--bg` Papier, `--card` Fläche, `--fg` Tinte, `--mut` gedämpft, `--line` Linie, `--acc`/`--acc2` Akzent, `--warn`/`--warnbg` offen, `--ocker` Etiketten und unterwegs, `--kat-*` Art der Unterkunft. Schrift: Source Serif 4 für Titel, Source Sans 3 für Text. Tippflächen mindestens 44 px. Pico CSS 2.1.1 ist die Grundlage.
+Vorher „Wanderführer“ (Papiergrund, Waldgrün, Serifen, Etiketten in Großbuchstaben). Gewählt nach vier Runden an echten Seiten (#52, #55):
+
+- **Farben** (hell / dunkel): Grund `#f8f8f5` / `#151816`, Fläche `#ffffff` / `#1d211e`, Text `#1d2420` / `#eceee9`, gedämpft `#5b645e` / `#a5aca6`, Linie `#e4e5df` / `#2c312d`, Akzent `#1f7a57` / `#6fd0a5`, helle Akzentfläche `#e3f1ea` / `#1f3329`, offen `#9a5b00` auf `#fbeed6` / `#f0c46a` auf `#3a3017`. Text auf Grund und Fläche hat hell und dunkel mindestens 4,5:1 (WCAG AA), der Akzent auf der hellen Akzentfläche 4,5:1.
+- **Schrift:** Source Sans 3 für Titel und Text (keine Serifen mehr), Tagesnummer 800, Titel mit leicht engerem Abstand.
+- **Etiketten** (Atom Etikett: Ding-Etikett, Tagesdatum, Kennzahl, Start und Ziel, Merkmal einer Merkmalliste) in normaler Schreibweise, 0,85 rem, halbfett, gedämpft. Titel einer Ebene oder Gruppe 1,2 rem fett.
+- **Kennzahlen** als hellgrüne Kacheln (Radius 14 px) mit Symbol im Etikett: Gehzeit (Uhr), Aufstieg, Abstieg, Strecke; am Handy 2 × 2.
+- **Symbole an Etiketten:** Nacht und Unterkunft (Bett), Wahl (Abzweig), Orte (Nadel).
+- **Flächen:** die Fläche, an der man handelt, weiß, ohne Rahmen, weicher Schatten, Radius 18 px; übrige Karten (Plan, Listen) vorerst mit feiner Linie.
+- **Pillen:** Reiter als Segmentleiste (gewählter Reiter weiß mit kleinem Schatten), „Alternativen vergleichen“ hellgrün mit Zahl, „offen“ als Marke, „unterwegs entscheiden“ mit dünnem Rand.
+- Tippflächen mindestens 44 px (Reiter 40 px in einer 48 px hohen Leiste). Pico CSS 2.1.1 ist die Grundlage.
+
+**Noch offen:** Die Leiste unten (Karte, Plan, Wissen, Offen, Suche) ist noch dunkel im alten Gesicht; dazu kommt ein eigener Vorschlag mit Fotos (#55, #58). Ebenso das Übertragen auf Plan, Orte, Wissen und Vergleich (#58).
 
 ## Schrift und Breite (27.10.2026)
 
@@ -97,4 +112,9 @@ Das ersetzt die Festlegung vom selben Tag (Wortmarke „Anmerken“ mit „i“ 
 
 `engine/tests/test_seite.py` öffnet jede Ansicht der Beispielreise bei 390 und 1200 px. Er meldet Skriptfehler, leere Ansichten und Ansichten, die auf dem Handy seitlich überstehen, bedient das Wahl-Modul und prüft die Bausteinseite. Mit `RH_BILDER=<ordner>` entstehen Bilder der Bausteinseite (Handy und Rechner, hell und dunkel, Chromium und WebKit, also auch Safari auf iPhone und iPad); GitHub Actions legt sie bei jedem Lauf als Artefakt „bausteine“ ab. Pixelvergleiche mit Referenzbildern gibt es bewusst nicht, weil die Schriftglättung je Rechner abweicht und solche Tests ohne echten Fehler rot werden.
 
-Für Umbauten ohne sichtbare Änderung: `node engine/tests/seiten_browser.mjs <playwright> <url> vorher.json` vor und nach dem Umbau, dann die beiden Dateien vergleichen; jede Abweichung ist eine sichtbare Änderung.
+Für Umbauten ohne sichtbare Änderung:
+
+- **Inhalt:** `node engine/tests/seiten_browser.mjs <playwright> <url> vorher.json` vor und nach dem Umbau, dann die beiden Dateien vergleichen; jede Abweichung ist eine sichtbare Änderung.
+- **Stile:** `node engine/tests/stil_abzug.mjs <playwright> <url> vorher.json` vor und nach dem Umbau, dann `node engine/tests/stil_abzug.mjs vergleich vorher.json nachher.json`. Der Abzug hält für jedes Element jeder Route (390 und 1200 px, hell und dunkel) Lage, Größe und rund 50 berechnete Eigenschaften fest; so wurde das Ordnen des Stilblocks nach Atomic Design als Umbau ohne sichtbare Änderung belegt.
+
+`engine/tests/test_tagesseite.py` prüft die Tagesseite bei 390 und 1300 px: kein Überstand, genau ein Kasten, Reihenfolge der Ebenen je Gerät, Reiter mit Klick und Pfeiltasten, Tiefenlinks in einen Reiter und in die Quellen, Kennung und Fenster, Merkmallisten ohne doppelte Kennzahlen, gestapelte Tabellen.
