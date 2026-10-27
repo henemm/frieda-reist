@@ -88,8 +88,6 @@ mark{background:var(--mark);color:inherit;border-radius:3px}
 .option .k{font-weight:600}
 .option ul{margin:.2em 0;padding-left:20px;font-size:0.9375rem}
 details.weg>summary{font-size:0.875rem;color:var(--mut);padding:8px 0}
-button.zid{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:1px 7px;cursor:pointer;vertical-align:middle}
-button.zid.hat{border-color:var(--acc);color:var(--acc)}
 dialog#rm{border:0;border-radius:16px 16px 0 0;padding:0;margin:auto 0 0;bottom:calc(0px - var(--hoehe-fehlt,0px));width:100%;max-width:100%;max-height:88vh;background:var(--card);color:var(--fg);box-shadow:0 -4px 24px rgba(0,0,0,.25)}
 @media (min-width:700px){dialog#rm{margin:auto;max-width:600px;border-radius:16px}}
 dialog#rm::backdrop{background:rgba(0,0,0,.35)}
@@ -290,7 +288,7 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .ding-titel{font-weight:600;line-height:1.3}
 .ding-unter{font-size:0.875rem;color:var(--mut);line-height:1.35}
 .ding .chips{margin:4px 0 0}
-.pico .ding>button.zid{margin:2px 0 0;flex:none}
+.pico .ding>.zid-box{margin:2px 0 0;flex:none}
 .karte>.ding-art{margin:0 0 3px}
 
 /* ---------- Pico CSS an die eigenen Farben binden (hell und dunkel folgen --bg/--fg/--acc) ---------- */
@@ -311,27 +309,61 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .pico .tabelle table{margin:0}
 .pico button.klein{font-size:0.875rem;padding:6px 12px}
 /* Eigene Bedienelemente innerhalb von .pico behalten ihr Aussehen */
-.pico :is(button.zid,.umschalter button){width:auto;box-shadow:none;line-height:1.3;transition:none;
+.pico :is(.umschalter button){width:auto;box-shadow:none;line-height:1.3;transition:none;
   --pico-background-color:var(--card);--pico-border-color:var(--line);--pico-color:var(--fg);background-color:var(--card);border:1px solid var(--line);border-radius:99px}
-.pico button.zid{font:0.6875rem ui-monospace,Menlo,monospace;--pico-color:var(--mut);color:var(--mut);padding:1px 7px;margin:0 0 0 8px;vertical-align:middle}
-.pico button.zid.hat{--pico-color:var(--acc);color:var(--acc);border-color:var(--acc)}
 .pico .umschalter button{margin:0;font-size:0.875rem;font-weight:600;color:var(--fg);padding:8px 13px}
 .pico .umschalter button[aria-pressed="true"]{--pico-background-color:var(--fg);background-color:var(--fg);color:var(--bg);border-color:var(--fg)}
 .pico details.block>summary,.pico details.neben>summary,.pico details.weg>summary{margin:0}
 .pico .karte .k{font-size:1rem}
 #rm .rmkopf .k{font-weight:700}
 
+/* ---------- Kennung (Atom zid): Rückmeldung und Aufgaben zu einer Stelle (Henning, 27.10.2026) ----------
+   Zwei Gestalten desselben Bausteins:
+   B (Wortmarke): Info-Zeichen „i“ (zeigt die Kennung mit „Kopieren“) und ein Wortknopf „Anmerken“ oder „2 Rückmeldungen“.
+      Gilt bei genug Platz (ab 700 px) und in Karten immer.
+   A (Sprechblase): nur das Symbol mit Zahl und Warnpunkt, bei wenig Platz außerhalb von Karten. Die Kennung steht dort im Fenster. */
+.zid-box{position:relative;display:inline-flex;align-items:center;gap:2px;max-width:100%;vertical-align:middle}
+.pico button.zid,.pico button.zid-i,.pico button.zid-kop{width:auto;margin:0;box-shadow:none;transition:none;background:none;border:0;--pico-background-color:transparent;--pico-border-color:transparent}
+/* .pico davor: sonst gewinnt Pico CSS mit hellem Text auf hellem Grund */
+.pico button.zid,.pico button.zid-i{position:relative;display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 4px;cursor:pointer;color:var(--mut);font:600 0.9375rem/1.2 var(--font-text);--pico-color:var(--mut);border-radius:8px;text-align:left}
+.pico button.zid.hat{color:var(--acc);--pico-color:var(--acc)}
+button.zid .sym{width:1.05em;height:1.05em}
+button.zid .zid-blase{display:none}   /* Symbol der Gestalt A */
+.zid-wort{text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--acc) 40%,transparent);text-underline-offset:4px}
+.zid:not(.hat) .zid-wort{text-decoration-color:color-mix(in srgb,var(--mut) 40%,transparent)}
+.zid-n{display:inline-flex;align-items:center;justify-content:center;min-width:1.4em;height:1.4em;padding:0 .4em;border-radius:99px;background:var(--acc);color:var(--card);font-size:0.78rem;font-weight:700;font-variant-numeric:tabular-nums;text-decoration:none}
+.zid-ag{display:inline-flex;align-items:center;font-size:0.82rem;font-weight:600;color:var(--warn);background:var(--warnbg);border-radius:99px;padding:2px 9px;text-decoration:none}
+.zid-o{display:none;width:.6em;height:.6em;border-radius:50%;background:var(--warn)}
+.pico button.zid-i{width:44px;justify-content:center;padding:0;margin:0 -6px 0 0;font:700 0.95rem var(--font-titel);font-style:normal}
+button.zid-i::before{content:"";position:absolute;width:22px;height:22px;border-radius:50%;border:1.5px solid currentColor}
+button.zid-i span{position:relative;font-style:normal}
+.pico button.zid-i[aria-expanded="true"]{color:var(--acc);--pico-color:var(--acc)}
+.zid-kennung{display:none;align-items:center;gap:10px;position:absolute;z-index:5;right:0;top:calc(100% - 8px);background:var(--fg);color:var(--bg);padding:3px 4px 3px 10px;border-radius:9px;white-space:nowrap;font-size:0.82rem;font-variant-numeric:tabular-nums;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.zid-box.offen .zid-kennung{display:inline-flex}
+.zid-kennung::before{content:"Kennung";opacity:.7}
+.pico button.zid-kop{display:inline-flex;align-items:center;min-height:28px;padding:4px 10px;border-radius:6px;background:color-mix(in srgb,var(--bg) 20%,transparent);color:var(--bg);--pico-color:var(--bg);font:700 0.78rem var(--font-text);cursor:pointer}
+/* Gestalt A: wenig Platz, nicht in Karten */
+@media (max-width:699px){
+  .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) :is(.zid-i,.zid-wort,.zid-ag){display:none}
+  .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) button.zid{width:44px;justify-content:center;padding:0;margin-right:-8px}
+  .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) button.zid .zid-blase{width:1.35rem;height:1.35rem;display:inline-block}
+  .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) button.zid .zid-stift{display:none}
+  .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) button.zid.hat .zid-blase{fill:var(--acc2)}
+  .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) .zid-n{position:absolute;top:3px;right:0;min-width:1.2rem;height:1.2rem;font-size:0.72rem;box-shadow:0 0 0 2px var(--bg)}
+  .pico .zid-box:not(:where(.karte,details.block,.option,.wm-karte,.ding,#rm) *) .zid-o{display:block;position:absolute;bottom:8px;right:6px;box-shadow:0 0 0 2px var(--bg)}
+}
+
 /* ---------- Bedienung: Tippflächen, Fokus, Hover ---------- */
-button.zid{position:relative;max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:left}
-button.zid::after{content:"";position:absolute;inset:-9px -4px}   /* Tippfläche ≥ 44 px (Apple HIG) ohne größere Optik */
-/* In Titelzeilen sitzt der Knopf mit Abstand am rechten Rand, damit Tippen auf den Titel ihn nicht trifft */
-:is(summary,h2,.k):has(>button.zid){display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;line-height:1.3}
-:is(summary,h2,.k):has(>button.zid)>.punkt{margin-right:-8px}
-:is(summary,h2,.k)>button.zid,.pico :is(summary,h2,.k)>button.zid{margin:0 0 0 auto}
+/* In Titelzeilen sitzt die Kennung mit Abstand am rechten Rand, damit Tippen auf den Titel sie nicht trifft */
+:is(summary,h2,.k):has(>.zid-box){display:flex;flex-wrap:wrap;align-items:center;gap:2px 16px;line-height:1.3}
+:is(summary,h2,.k):has(>.zid-box)>.punkt{margin-right:-8px}
+:is(summary,h2,.k)>.zid-box{margin:0 0 0 auto}
 :focus-visible{outline:3px solid var(--acc);outline-offset:2px;border-radius:4px}
 @media (hover:hover){
   a.karte:hover{border-color:var(--acc)}
-  button.zid:hover,.umschalter button:hover{border-color:var(--acc)}
+  .umschalter button:hover{border-color:var(--acc)}
+  button.zid:hover .zid-wort{text-decoration-color:var(--acc)}
+  button.zid-i:hover{color:var(--acc)}
 }
 
 /* ---------- Glas (Liquid Glass: 35 %, Blur 8px, Sättigung 170 %) ----------
@@ -365,7 +397,7 @@ h2 .punkt,h2 i.punkt{display:inline-block;width:12px;height:12px;border-radius:5
 .wtext{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .wt{font:600 1.1875rem/1.25 var(--font-titel);text-wrap:balance}
 .wu{font-size:0.9062rem;line-height:1.4;color:var(--mut)}
-.pico .wzeile>button.zid{margin:3px 0 0;flex:none}
+.pico .wzeile>.zid-box{margin:3px 0 0;flex:none}
 @media (hover:hover){.wzeile:hover .wt{color:var(--acc)}}
 .tagkopf{align-items:center!important;flex-wrap:nowrap!important}
 .tagnr{flex:none;font:700 2.5rem/.9 var(--font-titel);color:var(--acc);min-width:1.1em}
@@ -584,16 +616,24 @@ const TYP_REITER = {plan: "plan", etappe: ETAPPEN_REITER ? "etappen" : "wissen",
 
 /* ---------- Bausteine ---------- */
 // Symbol aus dem eingebetteten Lucide-Satz (<symbol id="i-…">), für Screenreader ausgeblendet
-function symbol(name) {
+function symbol(name, klasse) {
   const t = document.createElement("template");
-  t.innerHTML = `<svg class="sym" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+  t.innerHTML = `<svg class="sym${klasse ? " " + klasse : ""}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
   return t.content.firstChild;
 }
 function zid(id) {
   if (!B("rueckmeldungen") && !B("aufgaben")) return el("span", {class: "zid"}, id);
   const n = rmZu(id).length, a = agZu(id).filter(agOffen).length;
-  return el("button", {type: "button", class: "zid" + (n || a ? " hat" : ""), "data-rm": id,
-    title: "Rückmeldungen und Aufgaben zu " + id}, id, n ? ` 💬${n}` : " 💬", a ? ` ☐${a}` : "");
+  const wort = n ? (n === 1 ? "1 Rückmeldung" : `${n} Rückmeldungen`) : "Anmerken";
+  const ag = a ? (a === 1 ? "1 Aufgabe offen" : `${a} Aufgaben offen`) : "";
+  const knopf = el("button", {type: "button", class: "zid" + (n || a ? " hat" : "") + (n ? "" : " zid-leer"), "data-rm": id, title: "Rückmeldungen und Aufgaben zu " + id,
+    "aria-label": [`Anmerken zu ${id}`, n ? wort : "", ag].filter(Boolean).join(", ")},
+    n ? null : symbol("anmerken", "zid-stift"), symbol("rueckmeldungen", "zid-blase"), n ? el("span", {class: "zid-n"}, String(n)) : null, a ? el("span", {class: "zid-o"}) : null,
+    el("span", {class: "zid-wort"}, n ? wort.replace(/^\d+ /, "") : wort), a ? el("span", {class: "zid-ag"}, ag) : null);
+  const info = el("button", {type: "button", class: "zid-i", "data-kennung": id, "aria-label": `Kennung ${id} anzeigen`, "aria-expanded": "false"}, el("span", {}, "i"));
+  const kennung = el("span", {class: "zid-kennung", role: "status"}, el("span", {class: "zid-wert"}, id),
+    el("button", {type: "button", class: "zid-kop", "data-kopieren": id}, "Kopieren"));
+  return el("span", {class: "zid-box"}, info, knopf, kennung);
 }
 /* Bausteine nach Ebenen (Designsystem, frieda-reist#18). Jede Ansicht setzt sich aus ihnen zusammen,
    statt dieselbe Sache selbst zu zeichnen.
@@ -2498,6 +2538,21 @@ document.addEventListener("click", e => {
 }, true);
 window.addEventListener("online", () => brLaden().then(rmNeuZeichnen));
 
+// Kennung zeigen („i“) und kopieren; ein Tipp daneben oder Esc schließt sie
+const kennungZu = () => document.querySelectorAll(".zid-box.offen").forEach(x => { x.classList.remove("offen"); x.querySelector(".zid-i").setAttribute("aria-expanded", "false"); });
+document.addEventListener("click", e => {
+  const i = e.target.closest(".zid-i"), k = e.target.closest("[data-kopieren]");
+  if (k) {
+    e.preventDefault(); e.stopPropagation();
+    const fertig = t => { k.textContent = t; setTimeout(() => { k.textContent = "Kopieren"; }, 1500); };
+    try { navigator.clipboard.writeText(k.dataset.kopieren).then(() => fertig("Kopiert"), () => fertig(k.dataset.kopieren)); } catch (x) { fertig(k.dataset.kopieren); }
+    return;
+  }
+  const offen = i && i.parentNode.classList.contains("offen");
+  if (!e.target.closest(".zid-kennung")) kennungZu();
+  if (i) { e.preventDefault(); e.stopPropagation(); if (!offen) { i.parentNode.classList.add("offen"); i.setAttribute("aria-expanded", "true"); } }
+}, true);
+document.addEventListener("keydown", e => { if (e.key === "Escape") kennungZu(); });
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-rm]");
   if (b) { e.preventDefault(); e.stopPropagation(); rmFormular(b.dataset.rm); return; }
