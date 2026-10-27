@@ -240,10 +240,11 @@ def meldungen_aktuell(o, an, aufgaben=None, status=None, bausteine=None, heute=N
 
 
 def anstossen(o):
-    """Neue Eingabe (eingang.jsonl, auftraege.jsonl): <ablage>/.neu berühren. Der Betrieb beobachtet nur diese eine Datei,
-    damit eine neue Reise keinen eigenen Eintrag im Pfad-Wächter braucht (Paket H)."""
+    """Neue Eingabe (eingang.jsonl, auftraege.jsonl): <ablage>/.neu neu schreiben. Der Betrieb beobachtet nur diese eine
+    Datei, damit eine neue Reise keinen eigenen Eintrag im Pfad-Wächter braucht (Paket H). Geschrieben statt nur berührt,
+    damit jeder Datei-Wächter es sicher sieht (Schreiben und Schließen, nicht nur ein neuer Zeitstempel)."""
     try:
-        (o.parent / ".neu").touch()
+        (o.parent / ".neu").write_text(f"{o.name} {jetzt_iso()}\n", encoding="utf-8")
     except OSError:
         pass
 

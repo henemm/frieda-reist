@@ -61,4 +61,4 @@ IDs werden nie neu vergeben. `engine/neu.py id <reise> <W|F|O|U|E|T|V>` gibt die
 
 Damit die Reise erreichbar ist, braucht der Betrieb drei Dinge: die veröffentlichte Seite unter einem geheimen Link, eine Ablage für Rückmeldungen und einen Link für die Claude-App je Person (`konnektor.py zugang <reise> <person>`). Wie das auf dem eigenen Server ohne Handarbeit geschieht, regelt das Reisen-Repo, nicht die Software. Den Konnektor trägt jede Person einmal selbst in der Claude-App ein (Einstellungen → Konnektoren → Eigenen Konnektor hinzufügen). Das kann kein Server für sie tun.
 
-Der Betrieb soll das Einarbeiten über eine einzige Datei anstoßen: Jede neue Eingabe berührt `<ablage>/.neu` (`rueckmeldungen.anstossen`). So braucht eine neue Reise keinen eigenen Eintrag im Pfad-Wächter.
+Der Betrieb soll das Einarbeiten über eine einzige Datei anstoßen: Jede neue Eingabe berührt `<ablage>/.neu` (`rueckmeldungen.anstossen` schreibt sie neu). So braucht eine neue Reise keinen eigenen Eintrag im Pfad-Wächter.
