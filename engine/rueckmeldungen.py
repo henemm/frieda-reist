@@ -41,7 +41,8 @@ HTTP (hinter nginx, Präfix /<reise>-<token>/api/ -> /<reise>/):
   POST   /<reise>/aufgaben                neue Aufgabe (JSON, name = wer sie anlegt) -> AG-…
   PATCH  /<reise>/aufgaben/<AG-id>        Felder ändern, Status setzen, Kommentar in den Verlauf (name = wer)
   GET    /<reise>/brett                   Wunsch-Brett: Wünsche mit Spalte, Punkten, Vorschlag; Bilanz je Person
-  PATCH  /<reise>/rueckmeldungen/<R-id>   Wunsch auf dem Brett: punkte, erlebt, eingeplant (+ bezug), kommentar (name = wer)
+  PATCH  /<reise>/rueckmeldungen/<R-id>   Wunsch auf dem Brett: punkte, erlebt, eingeplant (+ bezug), kommentar (name = wer);
+                                          eingeplant nur ohne X-Forwarded-For (vom Konnektor, nicht über nginx von der Seite)
   GET    /<reise>/gesund                  200, wenn die Ablage beschreibbar ist (für die Überwachung)
 """
 import datetime
@@ -706,7 +707,12 @@ class Dienst(BaseHTTPRequestHandler):
         if fehlt:
             return
         if wunsch:
-            # Wunsch-Brett: Rechte, Kontingent und Status prüft wunsch_aendern (auch für den Konnektor)
+            # Wunsch-Brett: Rechte, Kontingent und Status prüft wunsch_aendern (auch für den Konnektor). Einplanen ist eine
+            # Entscheidung: Auf der Seite tippt man den Namen nur ein, deshalb geht es nur über den Konnektor (persönlicher
+            # Link). Anfragen von der Seite kommen über nginx und tragen immer X-Forwarded-For, der Konnektor ruft direkt.
+            if isinstance(roh, dict) and "eingeplant" in roh and self.headers.get("X-Forwarded-For"):
+                return self._antwort(403, {"fehler": "Einplanen geht nur in der Claude-App mit dem persönlichen Link eines "
+                                                     "Bestimmers."})
             z = zustand(t[0].name)
             with _sperre:
                 if gedrosselt(t[0]):

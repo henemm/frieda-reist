@@ -1692,6 +1692,9 @@ def werkzeug(zugang, name, args):
         if not rm.RID_MUSTER.match(rid):
             return "ID muss R-… sein (aus wuensche).", True
         roh = {k: args[k] for k in ("punkte", "erlebt", "eingeplant", "bezug", "kommentar") if k in args}
+        if "eingeplant" in roh and not (wer["name"] and bestimmer):
+            return ("Einplanen geht nur für Bestimmer mit dem persönlichen Link: Es ist eine Entscheidung, und dieser Link "
+                    "kennt keinen Namen." if bestimmer else "Einplanen dürfen nur Bestimmer."), True
         roh["name"] = wer["name"] or args.get("name", "")
         if not isinstance(roh["name"], str) or not roh["name"].strip():
             return "Name fehlt: bitte die Person nach ihrem Vornamen fragen.", True

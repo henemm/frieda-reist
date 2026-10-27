@@ -7,13 +7,14 @@ const [, , modul, basis, dienst, name] = process.argv;
 const pw = await import(modul);
 const b = await pw[process.env.RH_BROWSER || "chromium"].launch();
 const fehler = [], aus = {};
-let netz = true;
+let netz = true, einmal429 = false;
 const reise = new URL(basis).pathname.split("/").filter(Boolean)[0];
 
 async function seite(breite) {
   const ctx = await b.newContext({viewport: {width: breite, height: 900}, serviceWorkers: "block"});
   await ctx.route("**/api/**", async r => {
     if (!netz) return r.abort();
+    if (einmal429 && r.request().method() === "PATCH") { einmal429 = false; return r.fulfill({status: 429, contentType: "text/html", body: "<html>429</html>"}); }
     const pfad = new URL(r.request().url()).pathname.split("/api/")[1];
     r.fulfill({response: await r.fetch({url: `${dienst}/${reise}/${pfad}`})});
   });
@@ -53,8 +54,18 @@ netz = false;
 await karte(p, "Kirnitzschtalbahn").locator("[data-wu-erlebt]").click();
 await warte(p, () => document.querySelectorAll('[data-spalte="erlebt"] .wu-karte').length === 2);
 aus.offline = await stand(p);
-aus.offline.ausgang = await p.evaluate(r => JSON.parse(localStorage.getItem(`rh-${r}-brett-ausgang`)).length, reise);
-netz = true;
+const ausgang = () => p.evaluate(r => JSON.parse(localStorage.getItem(`rh-${r}-brett-ausgang`) || "[]").length, reise);
+aus.offline.ausgang = await ausgang();
+// Ohne Netz einen Haken zurücknehmen, der schon auf dem Server ist: geht nicht (sonst löscht das Nachreichen fremde Haken)
+await karte(p, "Hohnstein").locator("[data-wu-erlebt]").click();
+await p.waitForTimeout(200);
+aus.offline.zuruecknehmen = (await stand(p)).spalten;
+// Wieder Netz, aber der Server meldet einmal „zu viele“ (429): der Haken bleibt gemerkt und kommt beim nächsten Mal an
+netz = true; einmal429 = true;
+await p.evaluate(() => dispatchEvent(new Event("online")));
+for (let i = 0; i < 50 && einmal429; i++) await p.waitForTimeout(100);
+await p.waitForTimeout(300);
+aus.nach429 = await ausgang();
 await p.evaluate(() => dispatchEvent(new Event("online")));
 await warte(p, r => localStorage.getItem(`rh-${r}-brett-ausgang`) === "[]", reise);
 await p.waitForTimeout(200);

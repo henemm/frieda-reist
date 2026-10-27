@@ -104,13 +104,13 @@ Wünsche sind Ideen ohne feste Stelle (ein Ort, ein Erlebnis, ein Essen). Das Br
 |---|---|
 | eingebracht | gesendet, noch nicht geprüft (oder Rückfrage) |
 | geprüft | Claude hat ihn aufgenommen, oft mit Vorschlag „passt zu T-…“ oder einer Option an einer Wahlstelle |
-| eingeplant | ein Bestimmer hat ihn auf dem Brett eingeplant oder die Option gewählt, die aus ihm entstand |
+| eingeplant | ein Bestimmer hat ihn in der Claude-App eingeplant oder die Option gewählt, die aus ihm entstand |
 | erlebt | abgehakt, unterwegs oder in der Nachlese |
 | passt nicht | Claude hat ihn geprüft und verworfen, mit Begründung |
 
 - **Punkte** heißen „wie wichtig mir das ist“. Jede Person verteilt ihr Kontingent (`regeln.kontingent`, Vorgabe 10 Punkte) nur auf ihre eigenen Wünsche und darf umverteilen. Ein Wunsch, der nicht passt, gibt seine Punkte frei. Claude nutzt Punkte beim Prüfen als Priorität, nie als Entscheidung. Mit Art `anzahl` gibt es keine Punkte, dann begrenzt das Kontingent die Zahl offener Wünsche je Person.
-- **Abhaken** (erlebt) dürfen alle Einbringer, auch fremde Wünsche, im Status `unterwegs` und `danach`. Die Seite merkt sich Abgehaktes ohne Netz und reicht es nach. Wer abgehakt hat, steht mit Datum im Verlauf.
-- **Einplanen** setzt nur ein Bestimmer, ab Status `danach` nicht mehr. Claude schlägt nur vor (`plan/wuensche.yaml`: Bezug, Notiz mit Herkunft, Option), plant aber nie selbst ein.
+- **Abhaken** (erlebt) dürfen alle Einbringer, auch fremde Wünsche, im Status `unterwegs` und `danach`. Die Seite merkt sich Abgehaktes ohne Netz und reicht es nach; einen Haken zurücknehmen geht nur mit Netz. Wer abgehakt hat, steht mit Datum im Verlauf.
+- **Einplanen** ist eine Entscheidung: nur ein Bestimmer, mit dem persönlichen Link in der Claude-App (auf der Webseite ist der Name nur eingetippt), ab Status `danach` nicht mehr. Die Seite zeigt, wer eingeplant hat. Claude schlägt nur vor (`plan/wuensche.yaml`: Bezug, Notiz mit Herkunft, Option), plant aber nie selbst ein.
 - Die **Bilanz** je Person (Wünsche, eingeplant, erlebt, freie Punkte) sehen alle.
 - Technik: Punkte, eingeplant und erlebt liegen live in `brett.json` der Rückmelde-Ablage, mit Verlauf; gelöscht wird nichts. Seite: Reiter „Wünsche“. Claude-App: `wuensche` und `wunsch_aendern`.
 

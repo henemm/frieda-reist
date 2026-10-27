@@ -125,6 +125,16 @@ def test_einplanen_nur_bestimmer(umgebung):
     assert w["spalte"] == "eingeplant" and w["eingeplant"] == {"wer": "Ida", "datum": w["eingeplant"]["datum"],
                                                                "bezug": ["T-02"]}
     assert aendern(u, a, name="Ida", eingeplant=True, bezug=["T-03"])[0] == 200   # andere Stelle: geändert
+    # Von der Seite (über nginx, mit X-Forwarded-For) geht Einplanen nie: dort ist der Name nur eingetippt
+    import urllib.error
+    import urllib.request
+    req = urllib.request.Request(f"{u.rurl}/beispielreise/rueckmeldungen/{a}", method="PATCH",
+                                 data=json.dumps({"name": "Ida", "eingeplant": False}).encode(),
+                                 headers={"Content-Type": "application/json", "X-Forwarded-For": "203.0.113.5"})
+    with pytest.raises(urllib.error.HTTPError) as f:
+        urllib.request.urlopen(req)
+    assert f.value.code == 403 and "Claude-App" in json.loads(f.value.read())["fehler"]
+    assert brett(u)["wuensche"][0]["eingeplant"]["bezug"] == ["T-03"]
     assert len(brett(u)["wuensche"][0]["verlauf"]) == 2
     assert aendern(u, "R-20991231-000000-0000", name="Ida", eingeplant=True)[0] == 404
     assert aendern(u, a, name="Ida")[0] == 400                        # nichts zu ändern
@@ -208,6 +218,11 @@ def test_brett_in_der_claude_app(umgebung):
     assert f and "T-99" in t
     t, f = u.werkzeug(IDA, "wunsch_aendern", id=rid, eingeplant=True, bezug=["T-03"])
     assert not f and "eingeplant" in t, t
+    # Link ohne Person: Einplanen ist eine Entscheidung und gehört genau einer Person
+    import konnektor as kn
+    kn.zugaenge_pfad().write_text(json.dumps({**kn.zugaenge(), "b" * 32: {"reise": "beispielreise", "rolle": "bestimmer"}}))
+    t, f = u.werkzeug("b" * 32, "wunsch_aendern", id=rid, eingeplant=False)
+    assert f and "persönlichen Link" in t
     t, f = u.werkzeug(KARL, "wunsch_aendern", id="R-1", punkte=1)
     assert f and "R-…" in t
     t, _ = u.werkzeug(KIM, "wuensche")

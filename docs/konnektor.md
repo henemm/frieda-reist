@@ -25,7 +25,7 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `aufgabe_anlegen` | alle | neue Aufgabe, gilt sofort |
 | `aufgabe_aendern` | alle | abhaken, Status, Felder, Kommentar in den Verlauf; gilt sofort |
 | `wuensche` | alle | Wunsch-Brett: Wünsche nach Spalten mit Punkten, Vorschlag, eingeplant, erlebt; Bilanz je Person (Baustein `wuensche`) |
-| `wunsch_aendern` | Einbringer, Bestimmer | Punkte auf eigene Wünsche, abhaken (unterwegs und danach), einplanen (nur Bestimmer); gilt sofort, Regeln prüft der Rückmeldedienst (siehe `docs/produkt.md`, Wunsch-Brett) |
+| `wunsch_aendern` | Einbringer, Bestimmer | Punkte auf eigene Wünsche, abhaken (unterwegs und danach), einplanen (nur Bestimmer mit persönlichem Link; auf der Webseite gibt es das nicht); gilt sofort, Regeln prüft der Rückmeldedienst (siehe `docs/produkt.md`, Wunsch-Brett) |
 | `merkmale` | alle | welche Merkmale eine Alternative braucht (mit Hinweis zum Recherchieren und Nachfragen), was jede Option hat und was fehlt; zu einer Wahlstelle `V-…`, einer Strecke `E-…` oder einer Art (`bereich`); siehe `docs/alternativen.md` |
 | `alternative_vorschlagen` | alle | neue Option mit Merkmalen; Art aus der Stelle (`V-…`, `U-…`, `E-…`), Werte je Datum mit `gilt`, Hinweis auf ähnliche vorhandene Merkmale (`daten.doppelt`); von Bestimmern als Auftrag (mit strukturierten `daten`), von Einbringern als Rückmeldung der Art `Ergänzung` |
 | `auftrag_geben` | Bestimmer | Änderungsauftrag, abgelegt in `auftraege.jsonl` |

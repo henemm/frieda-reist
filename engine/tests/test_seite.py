@@ -157,6 +157,8 @@ def test_wunsch_brett(tmp_path, monkeypatch, browser):
     assert e["punkte"] == "1" and e["fremdePunkte"] == 0               # Punkte nur auf eigene Wünsche
     assert e["erlebt"]["spalten"][essen] == "erlebt"                   # fremden Wunsch abgehakt
     assert e["offline"]["spalten"][bahn] == "erlebt" and e["offline"]["ausgang"] == 1 and e["offline"]["nachreichen"] >= 1
+    assert e["offline"]["zuruecknehmen"][essen] == "erlebt"            # ohne Netz kein Zurücknehmen fremder Haken
+    assert e["nach429"] == 1                                           # „zu viele“: Haken bleibt im Ausgang
     assert e["nachgereicht"]["spalten"][bahn] == "erlebt" and e["nachgereicht"]["nachreichen"] == 0
     assert any(z.startswith("Karl") and "9 von 10 Punkten frei" in z for z in e["nachgereicht"]["bilanz"]), e["nachgereicht"]
     assert not any(x["breit"] for x in (e["start"], e["erlebt"], e["offline"], e["nachgereicht"]))
