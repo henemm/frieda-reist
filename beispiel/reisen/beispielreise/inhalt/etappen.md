@@ -43,6 +43,13 @@ Von der Fähre in Stadt Wehlen steigt der Weg durch Wald zur Hochfläche und err
 
 Eigene Zeichnung, kein Foto. Sie zeigt das Motiv der Gegend: Sandsteinfelsen, eine Bogenbrücke, darunter der Fluss.
 
+### Tipps
+An der Bastei ist es ab dem späten Vormittag voll; wer mit der ersten S-Bahn fährt, hat die Brücke fast für sich (Annahme, Beispielwert). In den Schwedenlöchern sind die Stufen nach Regen rutschig.
+
+### Quellen und Prüfung
+- Verlauf: Wikipedia, Artikel „Malerweg“ (gelesen am 20.10.2026), Beispielangabe
+- Kennzahlen: eigene Rechnung aus dem schematischen Track, nicht vor Ort geprüft (Beispielwerte)
+
 ## Etappe 2: Hohnstein – Brand – Altendorf
 *Über die Brandaussicht und durch zwei Täler*
 

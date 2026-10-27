@@ -50,6 +50,34 @@ Farben als CSS-Variablen in `:root` (hell, dunkel per `prefers-color-scheme`): `
 - **Breite.** Kopf und alle Ansichten teilen die Breite `--breite` (Handy voll, ab 760 px 920 px, ab 1100 px 1280 px, ab 1700 px 1400 px). Eine Ansicht ist nie schmaler oder breiter als die andere. Fließtext bleibt auf Lesebreite `--lese` (44 rem), damit Zeilen nicht zu lang werden; Karten, Tabellen und die Karte nutzen die ganze Breite.
 - **Spalten.** Ab 1100 px stehen die Tage des Plans in zwei Spalten, ein Tag mit geöffnetem Vergleich nimmt die ganze Breite. Der Vergleich zeigt am Handy 2, bis 1099 px 4 und ab 1100 px 5 Möglichkeiten nebeneinander (`vglMax`).
 
+## Tagesseite (B2 „Freundlich“, 27.10.2026)
+
+Am 27.10.2026 wurde das Grunddesign an einer echten Tagesseite überarbeitet (frieda-reist#52): Die Seite war eine Tabellenwüste aus Kästen ohne Rangfolge, mit doppelten Werten. Grundsatz: **Rechner = planen, Handy und Tablet = unterwegs.** Es sind dieselben Bausteine, Reihenfolge und Betonung folgen dem Gerät (Achse Kontext).
+
+- **Oben** der Tageskasten (Strecke mit Kennzahlen, Unterwegs-Wahl, Nacht) und die Karte der Etappe. Der Tageskasten ist die **einzige Fläche** der Seite (`.karte.flaeche`: weiß, ohne Rahmen, weicher Schatten, Radius 18 px), denn nur dort handelt man. Lesetext steht ohne Rahmen.
+- **Vier Ebenen** je Etappe:
+  - *Der Weg:* die Zusammenfassung als Lesetext, darunter die Unterzeile der Quelle; die Kennung der Etappe steht hier (im Tageskasten nicht noch einmal).
+  - *Unterwegs nachschlagen:* Eckdaten, Höhenprofil, Wegpunkte, Unterkünfte … als **Reiter** (Molekül `reiterGruppe`), immer einer offen, kein Aufklappen. Die Wahl merkt sich die Seite je Tag; die Sprechblase des offenen Reiters steht rechts im Kopf der Ebene. Pfeiltasten wechseln den Reiter.
+  - *Hintergrund:* Tipps, Geschichte und alles Übrige, offen, Überschrift und Text.
+  - *Quellen und Prüfung:* das einzige Aufklappen, ganz unten.
+- **Orte des Tages** als Zeilen: Name als Link, Kurztext, Kennung; keine Marken.
+- **Reihenfolge.** Handy und Tablet (`max-width:1099px` oder `pointer:coarse`): untereinander Tageskasten, Karte, Der Weg, Unterwegs nachschlagen, Orte, Hintergrund, Quellen. Rechner (`min-width:1100px` und `pointer:fine`): Tageskasten neben der Karte, darunter zwei Spalten, links lesen (Der Weg, Hintergrund, Quellen), rechts nachschlagen (Unterwegs, Orte).
+- **Weniger Lärm.** „im Plan“ und die Orte-Marken unter der Etappe entfallen; ist ein Plan gewählt, nennt der Tag keine Pläne.
+- **Tiefenlinks** (`#E-01.eckdaten`) wählen den Reiter, öffnen die Quellen oder springen zum Abschnitt.
+
+**Welche Ebene?** Der Generator ordnet jeden Abschnitt einer Etappe nach dem Anfang seines Titels (`EBENEN_VORGABE` in `engine/bauen.py`, Groß- und Kleinschreibung egal), für alle Reisen gleich:
+
+| Ebene | Titel beginnt mit |
+|---|---|
+| Der Weg | Zusammenfassung |
+| Unterwegs nachschlagen | Eckdaten, Höhenprofil, Wegpunkte, Unterkünfte, Unterkunft, Kontakte, Wasser, Einkehr, Verpflegung, Anfahrt, Abfahrt, Praktisch |
+| Quellen und Prüfung | Quellen, Prüfung, Karten |
+| Hintergrund | alles andere |
+
+Eine Reise kann eigene Titelanfänge ergänzen, die vor der Vorgabe gelten: in `reise.json` `"etappen_ebenen": {"unterwegs": ["Fahrplan"], "hintergrund": ["Höhenprofil"]}`. Eine unbekannte Ebene ist ein Fehler beim Bauen.
+
+Ergebnis an einem echten Etappentag (Handy, 390 px): Weg zu den Unterkünften 2,2 statt 7,5 Bildschirme, 17 statt 35 Knöpfe, 1 statt 14 Kästen, keine Tabelle mehr breiter als der Bildschirm.
+
 ## Kennung und Rückmeldung (B2, 27.10.2026)
 
 Die Kennung (Atom `zid`: T-01, V-05 …) ist die Anschrift jeder Rückmeldung. Im Alltag braucht niemand sie, deshalb steht sie nie in der Seite. Es gilt **„Symbol oder Wort, nie beides“**: Bedienelemente, die man nur vielleicht braucht, sind ein Symbol mit Tooltip; was man oft braucht, ist ein Wort ohne Symbol („Alternativen vergleichen“, Reiter, „← Plan“, „Tag 3 →“).

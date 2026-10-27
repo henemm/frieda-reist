@@ -45,6 +45,16 @@ ZIEL_ID = re.compile(r"^[A-Za-z0-9][\w.\-]{0,79}$", re.ASCII)
 BILD_ENDUNGEN = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 ETAPPEN_MUSTER = r"^Etappe\s+(\d+[A-Za-z]?)\s*:\s*(.+)$"
 UMLAUTE = {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"}
+# Ebenen der Tagesseite (B2, docs/design.md „Tagesseite“): Jeder Abschnitt einer Etappe gehört zu einer Ebene, erkannt am
+# Anfang seines Titels (Groß- und Kleinschreibung egal). reise.json „etappen_ebenen“ ergänzt das je Reise mit eigenen
+# Titelanfängen ({"unterwegs": ["Fahrplan"], …}), die vor der Vorgabe gelten. Was nirgends passt, ist Hintergrund.
+EBENEN = ("weg", "unterwegs", "hintergrund", "quellen")
+EBENEN_VORGABE = {
+    "weg": ("Zusammenfassung",),
+    "unterwegs": ("Eckdaten", "Höhenprofil", "Wegpunkte", "Unterkünfte", "Unterkunft", "Kontakte", "Wasser", "Einkehr",
+                  "Verpflegung", "Anfahrt", "Abfahrt", "Praktisch"),
+    "quellen": ("Quellen", "Prüfung", "Karten"),
+}
 BILD_LINK = re.compile(r"(!?)\[([^\]]*)\]\(([^)\s]+)\)")
 
 
@@ -383,6 +393,7 @@ class Bauer:
 
     def daten(self):
         c = self.cfg
+        self.ebenen_pruefen()
         abschnitte, etappen = [], {}
         benutzt = {}
         d_rel, u_rel, p_rel = c.get("etappen_dossier"), c.get("unterkuenfte_dossier"), c.get("plan")
@@ -398,6 +409,8 @@ class Bauer:
                 eid = self.etappen_id(m.group(1))
                 self.id_anlegen(eid, wo)
                 intro, bl = self.bloecke(eid, body, self.reise_dir / d_rel, wo)
+                for b in bl:
+                    b["ebene"] = self.ebene(b["titel"])
                 etappen[eid] = {"id": eid, "typ": "etappe", "nr": m.group(1), "titel": titel,
                                 "name": m.group(2), "intro": intro, "bloecke": bl,
                                 "kennzahlen": self.kennzahlen(body, wo)}
@@ -425,8 +438,9 @@ class Bauer:
                     continue
                 bid = f"{eid}.unterkuenfte-liste"
                 self.id_anlegen(bid, wo)
+                titel_u = "Unterkünfte & Einkehr (Unterkünfte-Dossier)"
                 etappen[eid]["bloecke"].append(
-                    {"id": bid, "titel": "Unterkünfte & Einkehr (Unterkünfte-Dossier)",
+                    {"id": bid, "titel": titel_u, "ebene": self.ebene(titel_u),
                      "html": self.html(body, self.reise_dir / u_rel)})
                 continue
             if self.ignoriert(u_rel, titel):
@@ -833,6 +847,27 @@ class Bauer:
         self.id_anlegen(sid, wo)
         intro, bl = self.bloecke(sid, body, self.reise_dir / rel, wo)
         return {"id": sid, "typ": typ, "titel": titel, "intro": intro, "bloecke": bl}
+
+    def ebene(self, titel):
+        """Ebene eines Etappen-Abschnitts auf der Tagesseite: zuerst die Titelanfänge der Reise, dann die Vorgabe."""
+        t = titel.strip().lower()
+        for quelle in (self.cfg.get("etappen_ebenen") or {}, EBENEN_VORGABE):
+            for ebene, anfaenge in quelle.items():
+                if any(t.startswith(a.lower()) for a in anfaenge):
+                    return ebene
+        return "hintergrund"
+
+    def ebenen_pruefen(self):
+        e = self.cfg.get("etappen_ebenen")
+        if e is None:
+            return
+        if not isinstance(e, dict) or any(not isinstance(v, list) or not all(isinstance(x, str) and x.strip() for x in v)
+                                          for v in e.values()):
+            self.fehler.append("reise.json etappen_ebenen: erwartet {Ebene: [Titelanfang, …]}.")
+            return
+        for k in e:
+            if k not in EBENEN:
+                self.fehler.append(f"reise.json etappen_ebenen: Ebene „{k}“ gibt es nicht (möglich: {', '.join(EBENEN)}).")
 
     def kennzahlen(self, body, wo):
         gewuenscht = self.cfg.get("etappen_kennzahlen", [])

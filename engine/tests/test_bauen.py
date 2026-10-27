@@ -565,3 +565,18 @@ def test_unbekannte_unterkunftsart_gibt_hinweis(tmp_path):
     assert any("Kategorie unbekannt" in h and "Baumhaus" in h for h in b.hinweise)
     assert {u["kategorie"] for u in d["route"]["unterkuenfte"].values()} == {"hotel", "gasthaus", "sonstige"}
     assert d["route"]["kategorien"]["huette"] == "Hütte"
+
+
+def test_ebenen_der_etappen(reise, tmp_path):
+    """B2 (#53): Jeder Abschnitt einer Etappe gehört zu einer Ebene der Tagesseite, nach dem Titelanfang; reise.json
+    etappen_ebenen gilt vor der Vorgabe; eine unbekannte Ebene ist ein Baufehler."""
+    ebene = lambda d: {b["id"]: b["ebene"] for a in d["abschnitte"] if a["typ"] == "etappe" for b in a["bloecke"]}
+    assert ebene(baue(reise, tmp_path)) == {"E-01.eckdaten": "unterwegs", "E-01.hoehenprofil": "unterwegs", "E-01.karten": "quellen",
+                                            "E-01.unterkuenfte-liste": "unterwegs", "E-02V.zusammenfassung": "weg"}
+    setze(reise, lambda c: c.update({"etappen_ebenen": {"hintergrund": ["höhen"], "unterwegs": ["Karten"]}}))
+    e = ebene(baue(reise, tmp_path / "b"))
+    assert e["E-01.hoehenprofil"] == "hintergrund" and e["E-01.karten"] == "unterwegs"
+    setze(reise, lambda c: c.update({"etappen_ebenen": {"lesen": ["Eckdaten"]}}))
+    assert "Ebene „lesen“ gibt es nicht" in meldungen(reise, tmp_path / "c")
+    setze(reise, lambda c: c.update({"etappen_ebenen": {"weg": "Eckdaten"}}))
+    assert "etappen_ebenen: erwartet" in meldungen(reise, tmp_path / "d")

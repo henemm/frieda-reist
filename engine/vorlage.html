@@ -206,6 +206,9 @@ details.block{background:var(--card);border:1px solid var(--line);border-radius:
 details.block>summary{padding:12px 14px;font-weight:600;cursor:pointer;min-height:44px}
 details.block>.inhalt{padding:0 14px 8px}
 details.weg>summary{font-size:0.875rem;color:var(--mut);padding:8px 0}
+/* Fläche, an der man handelt (Tageskasten): weiß, ohne Rahmen, weicher Schatten, großer Radius. Sonst gibt es auf der
+   Tagesseite keine Kästen; Lesetext steht ohne Rahmen. */
+.karte.flaeche{border:0;border-radius:var(--r-gross);box-shadow:var(--schatten);padding:16px 18px}
 .pico .karte .k{font-size:1rem}
 @media (hover:hover){
   a.karte:hover{border-color:var(--acc)}
@@ -226,6 +229,16 @@ details.block>.ortchips{padding:0 14px}
 @media (hover:hover){
   .umschalter button:hover{border-color:var(--acc)}
 }
+/* ---------- Reiter: Segmentleiste mit Pillen, genau ein Teil offen (Tagesseite: Unterwegs nachschlagen) ---------- */
+.reiterleiste{display:flex;gap:4px;overflow-x:auto;padding:4px;margin:0 0 6px;border-radius:var(--r-pille);background:color-mix(in srgb,var(--line) 60%,transparent);
+  width:max-content;max-width:100%;scrollbar-width:none}
+.pico .reiterleiste button{flex:none;width:auto;margin:0;min-height:40px;padding:0 16px;border:0;border-radius:var(--r-pille);background:none;box-shadow:none;transition:none;
+  color:var(--mut);--pico-color:var(--mut);--pico-background-color:transparent;font:600 0.9375rem/1 var(--font-text);white-space:nowrap;cursor:pointer}
+.pico .reiterleiste button[aria-selected="true"]{background:var(--card);color:var(--fg);--pico-color:var(--fg);box-shadow:var(--schatten-klein)}
+@media (hover:hover){.pico .reiterleiste button:hover{color:var(--fg);--pico-color:var(--fg)}}
+/* ---------- Ebenenkopf: Titel einer Ebene, rechts die Kennung ---------- */
+.ebene-kopf{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px}
+.pico .ebene-kopf h3{margin:0;font-size:1.2rem}
 /* ---------- Etikett eines Dings: was es ist, Punkt in der Farbe der Kategorie ---------- */
 .ding-art{display:flex;align-items:center;gap:6px}
 .ding-art .lg-k{width:9px;height:9px}
@@ -343,6 +356,23 @@ h2.tagkopf .tagtitel{font-size:1.6875rem;line-height:1.15}
 .wv-strecke::before{content:"";position:absolute;left:8px;top:-4px;bottom:-4px;border-left:2px dashed var(--acc)}
 .wv-strecke.fahrt::before{border-left-style:dotted;border-left-color:var(--mut)}
 .wv-strecke>.z{margin-top:0}
+/* ---------- Ebenen der Tagesseite: Der Weg, Unterwegs nachschlagen, Hintergrund, Quellen und Prüfung, Orte ---------- */
+.ebene{display:flex;flex-direction:column;gap:6px;min-width:0}
+.weg-text{font-size:1.08rem;line-height:1.6}
+.weg-text p{margin:.4em 0}
+.weg-unter{font-size:0.9rem;color:var(--mut)}
+.weg-unter p{margin:0}
+.lese-abschnitt{padding:2px 0 8px}
+.lese-abschnitt+.lese-abschnitt{padding-top:16px}
+.lese-kopf{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px}
+.pico .lese-kopf h4{margin:0;font-size:1.05rem}
+.lese-abschnitt .inhalt :is(h4,h5){font-size:1rem;margin:1.1em 0 .3em}
+details.quellen{border-top:1px solid var(--line);margin:0}
+details.quellen>summary{min-height:44px;display:flex;align-items:center;font-weight:600;color:var(--mut)}
+.ortzeile{padding:10px 0}
+.ortzeile .titelzeile a{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:1.05rem;text-decoration:none}
+.ortzeile-text{color:var(--mut);font-size:0.92rem}
+.tag-karte{display:flex;flex-direction:column;gap:6px}
 /* ---------- Steckbrief eines Plans und Tagesplan im Vergleich ---------- */
 .steckbriefe{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:12px 0}
 .steckbrief{border-top:4px solid var(--farbe);cursor:pointer}
@@ -465,6 +495,21 @@ details.neben>summary{font-weight:700;padding:10px 2px;color:var(--warn)}
 .agfilter{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
 .agfilter button.on{background:var(--acc);color:var(--bg);border-color:var(--acc)}
 #agForm .zwei{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+/* ---------- Tagesseite (B2): Reihenfolge je Gerät ----------
+   Handy und Tablet (unterwegs): untereinander Tageskasten, Karte, Der Weg, Unterwegs nachschlagen, Orte, Hintergrund,
+   Quellen. Rechner (planen; breit und mit Maus): Tageskasten neben der Karte, darunter links lesen, rechts nachschlagen. */
+.tagseite{display:flex;flex-direction:column;gap:36px;margin-top:8px}
+.tagseite>*,.tag-oben>*{margin:0;min-width:0}
+.tag-oben{display:flex;flex-direction:column;gap:14px;order:1}
+.tag-lesen,.tag-spalte{display:contents}
+.ebene-weg{order:2}.ebene-unterwegs{order:3}.ebene-orte{order:4}.ebene-hintergrund{order:5}.ebene-quellen{order:6}.tagseite>.blaettern{order:7}
+@media (min-width:1100px) and (pointer:fine){
+  .tagseite{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,25rem);gap:36px 44px;align-items:start}
+  .tag-oben{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:20px;align-items:start}
+  .tag-oben,.tagseite>.blaettern{grid-column:1/-1}
+  .tag-lesen,.tag-spalte{display:flex;flex-direction:column;gap:36px;order:2}
+  .tagseite:not(:has(>.tag-lesen))>.tag-spalte{grid-column:1/-1}
+}
 
 /* ==================== 7 Rahmen der Seite: Kopf, Meldungen, Glas, Leiste ==================== */
 /* ---------- Kopf: großer Titel am Seitenanfang (iOS Large Title), scrollt mit ---------- */
@@ -841,11 +886,12 @@ function nachtZeile(n, ohneLinks, datum) {
     kennung);
   return einstieg ? [zeile, wahlVergleich(w, false, datum)] : zeile;
 }
-function streckeZeile(id, wahl) {
+// ohneKennung: die Kennung steht schon an anderer Stelle der Seite (Etappe auf der Tagesseite)
+function streckeZeile(id, wahl, ohneKennung) {
   const s = R.strecken[id] || {titel: id};
   // art: ein Verkehrsmittel oder eine Liste in Reihenfolge, z. B. [bahn, bus]
   const art = s.art && s.art !== "wandern" ? [].concat(s.art).map(a => ART_TEXT[a] || a).join(" + ") : (s.art ? "" : "Verkehrsmittel offen");
-  const z = el("div", {class: "z"}, el("div", {class: "titelzeile"}, el("span", {}, s.dossier || proId.has(id) ? link(id, s.titel) : s.titel), zid(id)));
+  const z = el("div", {class: "z"}, el("div", {class: "titelzeile"}, el("span", {}, s.dossier || proId.has(id) ? link(id, s.titel) : s.titel), ohneKennung ? null : zid(id)));
   // Kennzahlen als Leiste mit Etiketten (Gehzeit, Aufstieg, Abstieg, Strecke); Verkehrsmittel als Textzeile
   const kz = kennzahlLeiste(s.kennzahlen);
   if (art) z.append(el("div", {class: "z klein"}, art));
@@ -865,7 +911,7 @@ function tagKopf(tag, attrs, nr, datum, wt, titel, id) {
     zid(id));
 }
 // Wegverlauf eines Tages: Start → Strecken → Ziel als Linie mit Punkten; ein Ort zwischen zwei Strecken steht einmal
-function wegVerlauf(t) {
+function wegVerlauf(t, ohneKennung) {
   const v = el("div", {class: "wv"});
   const ort = (id, art) => el("div", {class: "wv-ort " + art}, el("span", {class: "wv-punkt", "aria-hidden": "true"}),
     el("span", {class: "wv-name"}, art !== "mitte" ? el("span", {class: "wv-etikett"}, art === "start" ? "Start" : "Ziel") : null, ortName(id)));
@@ -873,14 +919,15 @@ function wegVerlauf(t) {
   t.strecken.forEach((x, i) => {
     const s = R.strecken[x.id] || {};
     if (s.von && s.von !== zuletzt) v.append(ort(s.von, i === 0 ? "start" : "mitte"));
-    v.append(el("div", {class: "wv-strecke" + (s.art && s.art !== "wandern" ? " fahrt" : "")}, streckeZeile(x.id, x.wahl)));
+    v.append(el("div", {class: "wv-strecke" + (s.art && s.art !== "wandern" ? " fahrt" : "")}, streckeZeile(x.id, x.wahl, ohneKennung && ohneKennung(x.id))));
     if (s.nach) { v.append(ort(s.nach, i === t.strecken.length - 1 ? "ziel" : "mitte")); zuletzt = s.nach; }
     else zuletzt = null;
   });
   return v;
 }
+// ohneKopf: auf der Tagesseite (der Kopf steht darüber); dort ist der Tageskasten die Fläche, an der man handelt
 function tagKarte(t, ohneKopf) {
-  const k = el("div", {class: "karte ziel", id: ohneKopf ? null : t.id, "data-ziel": ohneKopf ? null : t.id});
+  const k = el("div", {class: "karte ziel" + (ohneKopf ? " flaeche" : ""), id: ohneKopf ? null : t.id, "data-ziel": ohneKopf ? null : t.id});
   if (!ohneKopf) k.append(tagKopf("div", {}, t.nr, t.datum, t.wochentag, t.titel, t.id));
   for (const f of t.fixpunkte || []) k.append(el("div", {class: "chips"}, chip("plan", f)));
   const wahlZeilen = [];   // [Wahlstelle, Zeile]
@@ -901,7 +948,7 @@ function tagKarte(t, ohneKopf) {
   // Unterwegs rücken Wahlstellen mit Auslöser nach vorn (Verhalten je Status)
   const vorn = V.ausloeser_vor ? wahlZeilen.filter(([w]) => w.art === "unterwegs") : [];
   for (const [, z] of vorn) { z[0].classList.add("vorn"); k.append(...z.filter(Boolean)); }
-  if (t.strecken.length) k.append(wegVerlauf(t));
+  if (t.strecken.length) k.append(wegVerlauf(t, ohneKopf ? id => (proId.get(id) || {}).typ === "etappe" : null));
   for (const [w, z] of wahlZeilen) if (!vorn.some(([x]) => x === w)) k.append(...z.filter(Boolean));
   if (t.text) k.append(el("div", {class: "z"}, t.text));
   if (t.nacht) k.append(...[].concat(nachtZeile(t.nacht, false, t.datum)).filter(Boolean));
@@ -1644,16 +1691,13 @@ document.addEventListener("click", e => {
   sup.after(el("span", {class: "fnbox", role: "note", html: `${b.dataset.fn}. ${li.innerHTML}`}));
   b.setAttribute("aria-expanded", "true");
 });
-// Ganze Etappe auf der Tages- oder Etappenseite: Kennzahlen, Karte, Beschreibung
-function etappeTeil(a, mitTitel) {
+// Ganze Etappe auf ihrer eigenen Seite: Kennzahlen, Karte, Beschreibung (am Tag: Vorlage Tagesseite)
+function etappeTeil(a) {
   const s = el("div", {class: "etappe"});
-  if (mitTitel) s.append(el("h3", {class: "gruppe"}, "Weg: " + a.titel));
-  // Auf der Tagesseite stehen die Kennzahlen schon im Wegverlauf
-  s.append(...[chips(a), mitTitel ? null : kennzahlLeiste(a.kennzahlen)].filter(Boolean));
+  s.append(...[chips(a), kennzahlLeiste(a.kennzahlen)].filter(Boolean));
   const k = etappenKarte(a.id);
   if (k) s.append(k);
-  const inhalt = abschnittInhalt(a, true, mitTitel ? null : a.kennzahlen);
-  s.append(inhalt);
+  s.append(abschnittInhalt(a, true, a.kennzahlen));
   return s;
 }
 
@@ -1876,6 +1920,82 @@ function ansichtPlanDetail(m, p) {
     }
   }
 }
+/* ---------- Vorlage Tagesseite (B2 „Freundlich“, frieda-reist#53) ----------
+   Rechner = planen, Handy und Tablet = unterwegs: dieselben Bausteine, die Reihenfolge folgt dem Gerät (CSS order).
+   Oben der Tageskasten (die einzige Fläche: Strecke, Wahl, Nacht) und die Karte, dann je Etappe vier Ebenen:
+     weg          Der Weg: Zusammenfassung als Lesetext, Unterzeile der Quelle
+     unterwegs    Unterwegs nachschlagen: Eckdaten, Höhenprofil, Wegpunkte, Unterkünfte … als Reiter, immer einer offen
+     hintergrund  Hintergrund: Überschrift und Text, offen
+     quellen      Quellen und Prüfung: das einzige Aufklappen, ganz unten
+   dazu die Orte des Tages als Zeilen. Die Ebene eines Abschnitts setzt der Generator (bauen.EBENEN_VORGABE, reise.json). */
+const TAGREITER = {};   // Tag -> Kennung des gewählten Reiters, bleibt beim Neuzeichnen
+// Molekül Ebenenkopf: Titel der Ebene, rechts die Kennung (oder ein Platz für die Kennung des offenen Reiters)
+const ebeneKopf = (titel, kennung) => el("div", {class: "ebene-kopf"}, el("h3", {}, titel), kennung || null);
+const reiterName = t => t.replace(/\s*[(–].*$/, "").replace(/\s+&.*$/, "").trim() || t;
+/* Molekül Reiter: Segmentleiste mit Pillen, darunter genau ein offener Teil (ARIA tabs; Pfeiltasten wechseln).
+   teile: [{id, name, inhalt}]; die id ist zugleich Sprungziel des Teils (#E-01.eckdaten). */
+function reiterGruppe(schluessel, titel, teile, gewaehlt) {
+  const sel = teile.some(x => x.id === gewaehlt) ? gewaehlt : teile[0].id;
+  return el("div", {class: "reiter", "data-reiter": schluessel},
+    el("div", {role: "tablist", class: "reiterleiste", "aria-label": titel},
+      teile.map(x => el("button", {type: "button", role: "tab", id: "reiter-" + x.id, "aria-controls": x.id, "data-teil": x.id,
+        "aria-selected": String(x.id === sel), tabindex: x.id === sel ? "0" : "-1"}, x.name))),
+    teile.map(x => el("div", {class: "teil ziel", role: "tabpanel", id: x.id, "data-ziel": x.id, "aria-labelledby": "reiter-" + x.id, hidden: x.id !== sel}, x.inhalt)));
+}
+function reiterWaehlen(box, id) {
+  box.querySelectorAll("[role=tab]").forEach(x => { const an = x.dataset.teil === id; x.setAttribute("aria-selected", String(an)); x.tabIndex = an ? 0 : -1; });
+  box.querySelectorAll("[role=tabpanel]").forEach(x => { x.hidden = x.id !== id; });
+  TAGREITER[box.dataset.reiter] = id;
+  // Die Kennung des offenen Teils steht rechts im Kopf der Ebene
+  const platz = box.closest(".ebene") && box.closest(".ebene").querySelector(".ebene-kopf .reiter-kennung");
+  if (platz) platz.replaceChildren(zid(id));
+}
+document.addEventListener("click", e => {
+  const t = e.target.closest(".reiterleiste [role=tab]");
+  if (t) reiterWaehlen(t.closest(".reiter"), t.dataset.teil);
+});
+document.addEventListener("keydown", e => {
+  const t = e.target.closest(".reiterleiste [role=tab]");
+  if (!t || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+  const alle = [...t.parentNode.children], i = alle.indexOf(t);
+  const z = alle[e.key === "Home" ? 0 : e.key === "End" ? alle.length - 1 : (i + (e.key === "ArrowRight" ? 1 : -1) + alle.length) % alle.length];
+  e.preventDefault(); z.focus(); reiterWaehlen(t.closest(".reiter"), z.dataset.teil);
+});
+// Abschnitt einer Ebene mit Überschrift und Kennung (Hintergrund, Quellen)
+const leseAbschnitt = (b, kz) => el("div", {class: "lese-abschnitt ziel", id: b.id, "data-ziel": b.id},
+  el("div", {class: "lese-kopf"}, el("h4", {}, b.titel), zid(b.id)), reiseText(b.html, kz));
+// Organismus Ebenen einer Etappe am Tag -> {weg, unterwegs, hintergrund, quellen} (fehlende Ebenen: null)
+function tagEbenen(t, etappen) {
+  const teile = {weg: [], unterwegs: [], hintergrund: [], quellen: []};
+  for (const a of etappen) for (const b of einmal(a.bloecke)) teile[b.ebene in teile ? b.ebene : "hintergrund"].push([a, b]);
+  // Kennzahlen, die der Tageskasten schon zeigt (Leiste der Strecke): entfallen in den Merkmallisten
+  const kz = a => (R.strecken[a.id] || {}).kennzahlen;
+  const weg = el("section", {class: "ebene ebene-weg"});
+  for (const a of etappen) {
+    weg.append(ebeneKopf(a.name || a.titel, zid(a.id)));
+    for (const [, b] of teile.weg.filter(([x]) => x === a)) weg.append(el("div", {class: "weg-text ziel", id: b.id, "data-ziel": b.id}, reiseText(b.html, kz(a))));
+    if (a.intro) weg.append(el("div", {class: "weg-unter", html: a.intro}));
+  }
+  const mehrere = etappen.length > 1;
+  const unterwegs = teile.unterwegs.length ? el("section", {class: "ebene ebene-unterwegs"},
+    ebeneKopf("Unterwegs nachschlagen", el("span", {class: "reiter-kennung"})),
+    reiterGruppe(t.id, "Unterwegs nachschlagen", teile.unterwegs.map(([a, b]) => ({id: b.id, name: reiterName(b.titel) + (mehrere ? ` · Etappe ${a.nr}` : ""),
+      inhalt: [wissenKarte(b.id), reiseText(b.html, kz(a))]})), TAGREITER[t.id])) : null;
+  if (unterwegs) { const r = unterwegs.querySelector(".reiter"); unterwegs.querySelector(".reiter-kennung").append(zid(r.querySelector("[role=tabpanel]:not([hidden])").id)); }
+  const hintergrund = teile.hintergrund.length ? el("section", {class: "ebene ebene-hintergrund"}, ebeneKopf("Hintergrund"),
+    teile.hintergrund.map(([a, b]) => leseAbschnitt(b, kz(a)))) : null;
+  const quellen = teile.quellen.length ? el("section", {class: "ebene ebene-quellen"}, el("details", {class: "quellen"},
+    el("summary", {}, `Quellen und Prüfung (${teile.quellen.length})`), teile.quellen.map(([a, b]) => leseAbschnitt(b, kz(a))))) : null;
+  return {weg, unterwegs, hintergrund, quellen};
+}
+// Organismus Orte des Tages: je Ort eine Zeile (Name als Link, Kurztext, Kennung), ohne Kasten und ohne Marken
+function tagOrteZeilen(orte) {
+  return el("section", {class: "ebene ebene-orte"}, ebeneKopf(orte.length > 1 ? "Orte des Tages" : "Ort des Tages"),
+    orte.map(o => { const a = ortAbschnitt(o);
+      return el("div", {class: "ortzeile"},
+        el("div", {class: "titelzeile"}, a ? el("a", {href: "#" + o}, symbol("ort", "etikett-sym"), ortName(o) + " →") : el("span", {}, ortName(o)), zid(o)),
+        el("div", {class: "ortzeile-text"}, a ? ortKurz(o) : "Noch keine Beschreibung.")); }));
+}
 function ansichtTag(m, tid) {
   const mit = R.plaene.filter(p => p.tage.some(t => t.id === tid));
   const p = mit.find(x => x.id === PLAN_ZULETZT) || mit[0] || planZu(PLAN_ZULETZT);
@@ -1891,45 +2011,36 @@ function ansichtTag(m, tid) {
   const kopf = el("div", {class: "chips"});
   if (imPlan && imPlan.alt) kopf.append(chip("offen", "Alternative: " + imPlan.alt.titel, {href: "#" + imPlan.alt.id}));
   if (t.teil) kopf.append(chip("leise", t.teil));
-  for (const x of mit) kopf.append(chip("leise", x.kurz, {href: "#" + x.id}));
+  // Ist ein Plan gewählt, nennt der Tag keine Pläne
+  if (!mit.some(planFest)) for (const x of mit) kopf.append(chip("leise", x.kurz, {href: "#" + x.id}));
   if (!mit.length && !(imPlan && imPlan.alt)) kopf.append(chip("offen", "Variante innerhalb der Pläne"));
-  m.append(kopf);
-  const mitEtappe = t.strecken.some(s => (proId.get(s.id) || {}).typ === "etappe");
-  if (t.text || !mitEtappe) {
-    m.append(el("h3", {}, "Übersicht"));
-    m.append(t.text ? el("p", {}, t.text) : el("p", {class: "meldung"}, "Noch kein Tagesprogramm."));
-  }
-  m.append(tagKarte({...t, text: "", wahlstellen: t.wahlstellen || []}, true));   // Kopf steht schon darüber
-  for (const s of t.strecken) {
-    const a = proId.get(s.id);
-    if (a && a.typ === "etappe") { m.append(etappeTeil(a, true)); continue; }
-    // Strecke ohne Buchetappe, aber mit Track (z. B. eigener GPX): Karte allein, Beschreibung über „siehe“
-    const st = R.strecken[s.id] || {}, k = (st.art || "wandern") === "wandern" ? etappenKarte(s.id) : null;
-    if (!k) continue;
-    m.append(el("h3", {class: "gruppe"}, "Weg: " + st.titel), k);
-    if (st.quelle) m.append(el("p", {class: "meldung"}, "Angaben: " + st.quelle));
-    if (st.siehe && proId.has(st.siehe)) m.append(el("p", {}, link(st.siehe, "Beschreibung: " + proId.get(st.siehe).titel + " →")));
-  }
+  if (kopf.childNodes.length) m.append(kopf);
+  const etappen = t.strecken.map(s => proId.get(s.id)).filter(a => a && a.typ === "etappe");
+  if (t.text || !etappen.length) m.append(el("h3", {}, "Übersicht"), t.text ? el("p", {}, t.text) : el("p", {class: "meldung"}, "Noch kein Tagesprogramm."));
+  const seite = el("div", {class: "tagseite"});
+  // Oben: Tageskasten und Karte (Etappen; sonst Strecken mit eigenem Track, Beschreibung über „siehe“)
+  const karten = t.strecken.flatMap(s => {
+    const a = proId.get(s.id), st = R.strecken[s.id] || {};
+    if (a && a.typ === "etappe") return [etappenKarte(s.id)];
+    const k = (st.art || "wandern") === "wandern" ? etappenKarte(s.id) : null;
+    return k ? [el("div", {class: "tag-karte"}, el("div", {class: "etikett"}, "Weg: " + st.titel), k,
+      st.quelle ? el("p", {class: "meldung"}, "Angaben: " + st.quelle) : null,
+      st.siehe && proId.has(st.siehe) ? el("p", {}, link(st.siehe, "Beschreibung: " + proId.get(st.siehe).titel + " →")) : null)] : [];
+  }).filter(Boolean);
+  seite.append(el("div", {class: "tag-oben"}, tagKarte({...t, text: "", wahlstellen: t.wahlstellen || []}, true), ...karten));
+  const e = etappen.length ? tagEbenen(t, etappen) : {};
   const orte = tagOrte(t);
-  if (orte.length) {
-    m.append(el("h3", {}, orte.length > 1 ? "Orte des Tages" : "Ort des Tages"));
-    for (const o of orte) {
-      const a = ortAbschnitt(o);
-      const k = el(a ? "a" : "div", {class: "karte", href: a ? "#" + o : false}, el("div", {class: "k"}, ortName(o), zid(o)));
-      if (a) {
-        k.append(el("div", {class: "z klein"}, ortKurz(o)));
-        const hl = a.bloecke.filter(b => !/^(Essen|Unterkunft|Praktisch|Quellen)/.test(b.titel));
-        if (hl.length) k.append(el("div", {class: "chips"}, hl.map(b => chip("", b.titel))));
-      } else k.append(el("div", {class: "z klein"}, "Noch keine Beschreibung."));
-      m.append(k);
-    }
-  }
+  // Links lesen (Weg, Hintergrund, Quellen), rechts nachschlagen (Unterwegs, Orte); am Handy untereinander
+  const lesen = [e.weg, e.hintergrund, e.quellen].filter(Boolean), nachschlagen = [e.unterwegs, orte.length ? tagOrteZeilen(orte) : null].filter(Boolean);
+  if (lesen.length) seite.append(el("div", {class: "tag-lesen"}, lesen));
+  if (nachschlagen.length) seite.append(el("div", {class: "tag-spalte"}, nachschlagen));
   if (imPlan && !imPlan.alt) {
     const i = p.tage.indexOf(imPlan), vor = p.tage[i - 1], nach = p.tage[i + 1];
-    m.append(el("div", {class: "blaettern"},
+    seite.append(el("div", {class: "blaettern"},
       vor ? el("a", {href: "#" + vor.id}, `← Tag ${vor.nr}`) : el("span", {}),
       nach ? el("a", {href: "#" + nach.id}, `Tag ${nach.nr} →`) : el("span", {})));
   }
+  m.append(seite);
 }
 const ortPlaene = oid => R.plaene.filter(x => x.tage.some(t => tagOrte(t).includes(oid)));
 function ansichtOrt(m, a) {
@@ -2071,7 +2182,7 @@ function ansichtAbschnitt(m, a) {
   m.append(el("a", {class: "zurueck", href: "#" + zurueck}, "← zurück"));
   if (a.typ === "etappe") {
     m.append(el("h2", {class: "ziel", id: a.id, "data-ziel": a.id}, a.titel, zid(a.id)));
-    const s = etappeTeil(a, false);
+    const s = etappeTeil(a);
     s.querySelector("section").removeAttribute("id");
     m.append(s);
   } else m.append(abschnittInhalt(a));
@@ -2892,6 +3003,8 @@ function offenZahl() {
 function zumZiel(id) {
   const e = document.getElementById(id);
   if (!e) return;
+  // Teil eines Reiters (Tagesseite): erst den Reiter wählen
+  if (e.matches("[role=tabpanel][hidden]")) reiterWaehlen(e.closest(".reiter"), id);
   for (let p = e.parentElement; p; p = p.parentElement) if (p.tagName === "DETAILS") p.open = true;
   if (e.tagName === "DETAILS") e.open = true;
   e.scrollIntoView({block: "start"});
