@@ -42,8 +42,14 @@ HTTP (hinter nginx, Präfix /<reise>-<token>/api/ -> /<reise>/):
   PATCH  /<reise>/aufgaben/<AG-id>        Felder ändern, Status setzen, Kommentar in den Verlauf (name = wer)
   GET    /<reise>/brett                   Wunsch-Brett: Wünsche mit Spalte, Punkten, Vorschlag; Bilanz je Person
   PATCH  /<reise>/rueckmeldungen/<R-id>   Wunsch auf dem Brett: punkte, erlebt, eingeplant (+ bezug), kommentar (name = wer);
-                                          eingeplant nur ohne X-Forwarded-For (vom Konnektor, nicht über nginx von der Seite)
+                                          eingeplant nur vom Konnektor oder angemeldeten Bestimmern
+  GET    /<reise>/ich                     angemeldet als (Konto, Person der Reise), Regel anmeldung, Basis-Adresse
   GET    /<reise>/gesund                  200, wenn die Ablage beschreibbar ist (für die Überwachung)
+
+Wer schreibt (Paket J, docs/konten.md): Der Konnektor schickt das Dienst-Geheimnis (X-Frieda-Dienst) und den Namen der
+Person, die er erkannt hat. Alles andere gilt als Seite: Name und Rolle kommen aus der Sitzung (Cookie __Host-frieda,
+Origin muss Friedas Adresse sein) und der Mitgliedschaft; ohne Sitzung 401, ohne Mitgliedschaft 403. Solange die Reise
+die Regel anmeldung: uebergang hat, geht auf der Seite auch ein eingetippter Name (wie bisher).
 """
 import datetime
 import json
@@ -57,6 +63,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import konten  # noqa: E402
 import reise as rg  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent
@@ -653,6 +660,65 @@ def wunsch_aendern(o, rid, roh, z):
     return {"id": rid, **b}, None, 200
 
 
+# ---------- Wer schreibt? (Paket J, Konten) ----------
+# Nur der Konnektor kennt das Dienst-Geheimnis (Header X-Frieda-Dienst); er hat die Person schon selbst erkannt und
+# schickt ihren Namen mit. Alles andere ist die Seite (fail-closed, auch ohne X-Forwarded-For). Auf der Seite kommt der
+# Name aus der Sitzung (Cookie) und der Mitgliedschaft in der Reise; ein eingetippter Name zählt nur, solange die Reise
+# die Regel anmeldung: uebergang hat.
+COOKIE = "__Host-frieda"
+
+
+def sitzungs_token(cookie_kopf):
+    import http.cookies
+    c = http.cookies.SimpleCookie()
+    try:
+        c.load(cookie_kopf or "")
+    except http.cookies.CookieError:
+        return None
+    return c[COOKIE].value if COOKIE in c else None
+
+
+def wer_ist(headers, reise, z=None, lesen=False):
+    """-> {"art": "dienst"} | {"art": "konto", "konto", "person"|None} | {"art": "seite"} | {"art": "fremd"}.
+    „fremd“: Sitzung, aber die Anfrage kommt nicht von Friedas eigener Adresse (Origin) – kein Schreiben (CSRF).
+    lesen: nur lesende Anfrage (GET, der Browser schickt kein Origin; fremde Seiten können die Antwort nicht lesen)."""
+    if hmac_gleich(headers.get("X-Frieda-Dienst", ""), konten.dienst_geheimnis()):
+        return {"art": "dienst"}
+    token = sitzungs_token(headers.get("Cookie"))
+    k = konten.sitzung(token) if token else None
+    if not k:
+        return {"art": "seite"}
+    if not lesen and (not konten.basis() or headers.get("Origin") != konten.basis()):
+        return {"art": "fremd"}
+    schl = konten.mitglied(k["id"], reise)
+    z = z if z is not None else zustand(reise)
+    person = next((p for p in (z or {}).get("personen") or [] if p.get("schluessel") == schl), None) if schl else None
+    return {"art": "konto", "konto": k, "person": person}
+
+
+def hmac_gleich(a, b):
+    return bool(a) and bool(b) and secrets.compare_digest(a.encode(), b.encode())
+
+
+def anmeldung_regel(z):
+    return ((z or {}).get("regeln") or {}).get("anmeldung") or rg.VORGABEN["anmeldung"]
+
+
+def name_fuer(ident, z, getippt):
+    """Name, unter dem geschrieben wird. -> (name, None) oder (None, (code, fehler))."""
+    if ident["art"] == "dienst":
+        return getippt, None
+    if ident["art"] == "fremd":
+        return None, (403, "Diese Anfrage kommt nicht von Frieda selbst.")
+    if ident["art"] == "konto" and ident["person"]:
+        return ident["person"]["name"], None
+    if anmeldung_regel(z) == "uebergang" or z is None:
+        return getippt, None
+    if ident["art"] == "konto":
+        return None, (403, "Du bist bei dieser Reise nicht eingeladen. Bitte die Person fragen, die die Reise bestimmt.")
+    return None, (401, "Bitte melde dich an, um mitzumachen.")
+
+
 def gedrosselt(o):
     """True, wenn diese Reise in der letzten Minute schon MAX_JE_MINUTE Schreibzugriffe hatte. Aufrufer hält _sperre."""
     jetzt = time.monotonic()
@@ -699,6 +765,15 @@ class Dienst(BaseHTTPRequestHandler):
             return self._antwort(200, aufgaben(o))
         if was == "brett":
             return self._antwort(200, brett(o, zustand(o.name)))
+        if was == "ich":
+            z = zustand(o.name)
+            i = wer_ist(self.headers, o.name, z, lesen=True)
+            k = i.get("konto") if i["art"] == "konto" else None
+            p = i.get("person") if k else None
+            return self._antwort(200, {
+                "basis": konten.basis(), "anmeldung": anmeldung_regel(z),
+                "konto": {"name": k["name"], "email": k["email"]} if k else None,
+                "person": {f: p.get(f) for f in ("schluessel", "name", "rolle")} if p else None})
         if was != "rueckmeldungen":
             return self._antwort(404, {"fehler": "unbekannt"})
         self._antwort(200, eintraege(o))
@@ -726,20 +801,28 @@ class Dienst(BaseHTTPRequestHandler):
         roh, fehlt = self._json()
         if fehlt:
             return
+        if not isinstance(roh, dict):
+            return self._antwort(400, {"fehler": "kein Objekt"})
+        z = zustand(t[0].name)
+        ident = wer_ist(self.headers, t[0].name, z)
+        name, nein = name_fuer(ident, z, roh.get("name"))
+        if nein:
+            return self._antwort(nein[0], {"fehler": nein[1]})
+        roh = {**roh, "name": name}
         if wunsch:
             # Wunsch-Brett: Rechte, Kontingent und Status prüft wunsch_aendern (auch für den Konnektor). Einplanen ist eine
-            # Entscheidung: Auf der Seite tippt man den Namen nur ein, deshalb geht es nur über den Konnektor (persönlicher
-            # Link). Anfragen von der Seite kommen über nginx und tragen immer X-Forwarded-For, der Konnektor ruft direkt.
-            if isinstance(roh, dict) and "eingeplant" in roh and self.headers.get("X-Forwarded-For"):
-                return self._antwort(403, {"fehler": "Einplanen geht nur in der Claude-App mit dem persönlichen Link eines "
-                                                     "Bestimmers."})
-            z = zustand(t[0].name)
+            # Entscheidung: nur der Konnektor (Person erkannt) oder eine angemeldete Person, die die Reise bestimmt; ein
+            # eingetippter Name genügt nicht.
+            bestimmt = ident["art"] == "konto" and (ident["person"] or {}).get("rolle") == "bestimmer"
+            if "eingeplant" in roh and ident["art"] != "dienst" and not bestimmt:
+                return self._antwort(403, {"fehler": "Einplanen dürfen nur Bestimmer: in der Claude-App oder angemeldet "
+                                                     "auf der Seite."})
             with _sperre:
                 if gedrosselt(t[0]):
                     return self._antwort(429, {"fehler": "zu viele Änderungen, bitte kurz warten"})
                 w, fehler, code = wunsch_aendern(t[0], t[2], roh, z)
             return self._antwort(code, {"fehler": fehler} if fehler else w)
-        if (nein := schreibrecht(t[0].name, "aufgabe", roh.get("name") if isinstance(roh, dict) else None)):
+        if (nein := schreibrecht(t[0].name, "aufgabe", roh.get("name"))):
             return self._antwort(403, {"fehler": nein})
         with _sperre:
             if gedrosselt(t[0]):
@@ -755,8 +838,14 @@ class Dienst(BaseHTTPRequestHandler):
         roh, fehlt = self._json()
         if fehlt:
             return
+        if not isinstance(roh, dict):
+            return self._antwort(400, {"fehler": "kein Objekt"})
+        name, nein = name_fuer(wer_ist(self.headers, o.name), zustand(o.name), roh.get("name"))
+        if nein:
+            return self._antwort(nein[0], {"fehler": nein[1]})
+        roh = {**roh, "name": name}
         if t[1] == "aufgaben":
-            if (nein := schreibrecht(o.name, "aufgabe", roh.get("name") if isinstance(roh, dict) else None)):
+            if (nein := schreibrecht(o.name, "aufgabe", roh.get("name"))):
                 return self._antwort(403, {"fehler": nein})
             with _sperre:
                 if gedrosselt(o):
@@ -793,6 +882,10 @@ class Dienst(BaseHTTPRequestHandler):
             return self._antwort(404, {"fehler": "unbekannt"})
         o, _, rid = t
         z = zustand(o.name)
+        ident = wer_ist(self.headers, o.name, z)
+        ich, nein = name_fuer(ident, z, None)
+        if nein:
+            return self._antwort(nein[0], {"fehler": nein[1]})
         if z and rg.verhalten(z["status"])["schreiben"] == "nichts":
             return self._antwort(403, {"fehler": "Die Reise ist archiviert: Es kann nur gelesen werden."})
         with _sperre:
@@ -816,6 +909,8 @@ class Dienst(BaseHTTPRequestHandler):
                 rest.append(z)
             if weg is None:
                 return self._antwort(404, {"fehler": "nicht gefunden"})
+            if ident["art"] == "konto" and str(weg.get("name", "")).casefold() != (ich or "").casefold():
+                return self._antwort(403, {"fehler": "Zurückziehen kann nur, wer die Rückmeldung geschrieben hat."})
             # Zurückziehen ist Schreiben: dieselbe Prüfung wie beim Absenden (Rolle des Absenders, Baustein, Status)
             if (nein := schreibrecht(o.name, "wunsch" if weg.get("art") == "Wunsch" else "rueckmeldung", weg.get("name"))):
                 return self._antwort(403, {"fehler": nein})

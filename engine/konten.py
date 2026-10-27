@@ -127,6 +127,29 @@ def db():
     return v
 
 
+def dienst_geheimnis():
+    """Gemeinsames Geheimnis von Konnektor und Rückmeldedienst (Header X-Frieda-Dienst). Nur wer es mitschickt, gilt
+    beim Rückmeldedienst als Konnektor; alles andere als Seite (fail-closed). Liegt neben der Datenbank (600) und
+    entsteht beim ersten Aufruf; beide Dienste laufen unter demselben Benutzer und lesen dieselbe Datei."""
+    p = pfad().parent / "dienst-geheimnis"
+    try:
+        return p.read_text(encoding="ascii").strip()
+    except FileNotFoundError:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        os.chmod(p.parent, 0o700)
+        tmp = p.with_name(f"dienst-geheimnis.{os.getpid()}.tmp")
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="ascii") as f:
+            f.write(secrets.token_urlsafe(32))
+        try:
+            os.link(tmp, p)          # atomar und nur, wenn noch keiner zuvorgekommen ist
+        except FileExistsError:
+            pass
+        finally:
+            tmp.unlink()
+        return p.read_text(encoding="ascii").strip()
+
+
 # ---------------------------------------------------------------- Adressen und Mail
 
 def adresse(roh):
