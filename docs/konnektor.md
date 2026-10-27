@@ -32,6 +32,7 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `entscheiden` | Bestimmer | Option wählen, verwerfen oder ersetzen: wird sofort geprüft und mit Datum, Person und Grund festgehalten (Paket C) |
 | `frage_beantworten` | Einbringer | Antwort auf eine offene Frage (F-…); hängt an der Frage, die Entscheidung bleibt beim Bestimmer (Paket C) |
 | `person_einladen` | je nach `regeln.einladen` (Vorgabe Bestimmer) | legt eine Person mit Rolle an und stellt ihren persönlichen Link aus (Paket C) |
+| `reise_anlegen` | Bestimmer mit persönlichem Link | neue Reise aus Titel, Zeitraum, Ziel, Personen und Notiz: sofort geprüft (`reise.neue_reise_pruefen`), als Auftrag abgelegt, beim Einarbeiten angelegt; geht aus jeder Reise, in jedem Status (Paket H, `docs/neue-reise.md`) |
 
 Schreibende Werkzeuge (`rueckmeldung_geben`, `frage_beantworten`, `aufgabe_*`, `alternative_vorschlagen`, `wunsch_aendern`) sehen nur Einbringer und Bestimmer; `entscheiden` und `auftrag_geben` nur Bestimmer, `person_einladen` wer `regeln.einladen` erreicht. Welche Werkzeuge es gibt und was sie dürfen, hängt zusätzlich vom Status der Reise und den eingeschalteten Bausteinen ab (Paket B, `docs/produkt.md`): `danach` sperrt neue Wünsche, Punkte, Alternativen und Aufträge (Abhaken geht noch), `archiv` alles Schreiben; ein ausgeschalteter Baustein nimmt seine Werkzeuge mit (`aufgaben`, `varianten`, `offene_fragen`, `rueckmeldungen`, `wuensche`). Geprüft wird bei jedem Aufruf, nicht nur in der Liste; der Dienst nennt den Grund.
 
@@ -64,6 +65,10 @@ Der Weg steht in `regeln.entscheidungsweg`:
 Gibt es die Person schon, bekommt sie nur einen weiteren Link; ihre Rolle zu ändern ist eine Einstellung der Reise (Auftrag an `reise`). Einen Link zu sperren geht noch von Hand (Eintrag aus `zugaenge.json` löschen).
 
 **Anleitung:** Beim Verbinden bekommt die KI Rolle, Reisestatus, Entscheidungsweg und die Grenzen der sprechenden Person (Einbringer: kann nicht entscheiden; Link ohne Person: kein Entscheiden und Einladen).
+
+## Neue Reise (Paket H, 27.10.2026)
+
+**`reise_anlegen`** (Bestimmer, nur mit persönlichem Link): Eingaben `titel`, `von`, `bis` (JJJJ-MM-TT), optional `ziel`, `personen` (je `vorname`, `rolle`, `reist`, `notiz`), `notiz` (Bekanntes in eigenen Worten mit Herkunft) und `pfad`. Wer anlegt, ist Bestimmer der neuen Reise. Der Dienst lehnt sofort ab, wenn Angaben fehlen oder nicht passen oder wenn es den Ordnernamen schon gibt, als veröffentlichte Reise, als Ablage oder als offene Anfrage. Sonst legt er in der Reise, aus der gefragt wird, einen Auftrag mit `daten.neue_reise` an. Das Einarbeiten legt daraus die Reise an (`neu.aus_auftrag`) und überträgt die Notiz in eigenen Worten. Danach schaltet der Betrieb sie frei und schickt der Person eine Meldung mit dem Link zur Seite und dem Link für die Claude-App.
 
 ## Einrichten (einmalig)
 

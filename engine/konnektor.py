@@ -54,16 +54,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import rueckmeldungen as rm  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, REISE_ZIEL, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
-                   konflikte, schluessel_aus_name, verhalten)
+                   konflikte, neue_reise_pruefen, schluessel_aus_name, verhalten)
 
 ALTE_ROLLEN = {"mitreisend": "einbringer"}   # Links von vor dem 26.10.2026
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "alternative_vorschlagen",
-                     "frage_beantworten", "entscheiden", "person_einladen", "wunsch_aendern"}
+                     "frage_beantworten", "entscheiden", "person_einladen", "wunsch_aendern", "reise_anlegen"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe",
                   "alternative_vorschlagen": "alternative", "auftrag_geben": "auftrag", "entscheiden": "entscheiden",
-                  "frage_beantworten": "antwort", "person_einladen": "einladen",
+                  "frage_beantworten": "antwort", "person_einladen": "einladen", "reise_anlegen": "reise_anlegen",
                   # Wunsch-Brett: sichtbar für alle, die abhaken dürfen; Punkte und Einplanen prüft der Dienst genauer
                   "wunsch_aendern": "wunsch_erlebt"}
 # Werkzeuge, die zusätzlich eine zweite Aktion brauchen: eine Antwort landet als Rückmeldung (Art Antwort) im Eingang
@@ -1058,6 +1058,7 @@ def auftrag_anlegen(reise, ziel, auftrag, daten=None, name="Bestimmer"):
             f.write(json.dumps(e, ensure_ascii=False) + "\n")
             f.flush()
             os.fsync(f.fileno())
+        rm.anstossen(o)
     return e, None
 
 
@@ -1305,6 +1306,42 @@ def einladen(reise, d, wer, args):
     return "\n".join(z), False
 
 
+def vergebene_pfade():
+    """Ordner veröffentlichter Reisen und neuer Reisen, die schon angefragt sind (offene Aufträge in irgendeiner Reise)."""
+    pfade = {p.name for p in seiten().iterdir() if p.is_dir() and not p.name.startswith("_")} if seiten().is_dir() else set()
+    if rm.ablage().is_dir():
+        for o in rm.ablage().iterdir():
+            if o.is_dir() and rm.REISE_MUSTER.match(o.name):
+                pfade.add(o.name)
+                pfade |= {e["daten"]["neue_reise"]["pfad"] for e in rm.auftraege(o)
+                          if (e.get("daten") or {}).get("neue_reise") and e["status"] not in ("verworfen", "rueckfrage")}
+    return pfade
+
+
+def reise_anlegen(reise, wer, args):
+    """reise_anlegen: prüft die Eingaben sofort und legt einen Auftrag an; die Reise entsteht beim Einarbeiten, danach
+    bekommt die anlegende Person eine Meldung mit den Links (ops des Betriebs). -> (Text, ist_fehler)"""
+    if not wer["name"]:
+        return ("Eine Reise anlegen geht nur mit dem persönlichen Link eines Bestimmers: Dieser Link kennt keinen Namen. "
+                "Ein Bestimmer kann mit person_einladen einen persönlichen Link ausstellen."), True
+    with _sperre:
+        neu, fehler = neue_reise_pruefen(args, wer["name"], vergebene_pfade())
+        if fehler:
+            return f"Nicht angelegt: {fehler}", True
+        wer_text = ", ".join(f"{p['name']} ({p['rolle']}{'' if p.get('reist', True) else ', reist nicht mit'})"
+                             for p in neu["personen"].values())
+        text_ = (f"Neue Reise anlegen: „{neu['titel']}“, {datum_de(neu['von'])} bis {datum_de(neu['bis'])}"
+                 + (f", Ziel {neu['ziel']}" if neu["ziel"] else "") + f". Personen: {wer_text}. Ordner reisen/{neu['pfad']}."
+                 + (f"\nNotiz: {neu['notiz']}" if neu["notiz"] else ""))
+    e, fehler = auftrag_anlegen(reise, "", text_[:MAX_AUFTRAG], {"neue_reise": neu}, name=wer["name"])
+    if fehler:
+        return f"Nicht gespeichert: {fehler}", True
+    return (f"Auftrag {e['id']} gespeichert: Die Reise „{neu['titel']}“ wird in der Regel in wenigen Minuten angelegt "
+            f"(Status Idee, Ordner {neu['pfad']}). Danach stehen hier im ueberblick unter „Meldungen an dich“ der Link zur "
+            "Seite und der Link für die Claude-App; den trägst du einmal als eigenen Konnektor ein (Einstellungen → "
+            "Konnektoren → Eigenen Konnektor hinzufügen). Bis dahin gibt es die Reise noch nicht."), False
+
+
 def meldungen_fuer(reise, name, d):
     """Meldungen, die für diese Person noch gelten (nicht erledigt, nicht zu alt, Baustein waechter an)."""
     o = rm.ordner(reise)
@@ -1515,6 +1552,31 @@ PERSON_EINLADEN = {"name": "person_einladen", "description": "Eine Person zur Re
                        "name": NAME_FELD}, "required": ["vorname"]}}
 
 
+REISE_ANLEGEN = {"name": "reise_anlegen", "description": "Nur für Bestimmer mit persönlichem Link: eine neue Reise anlegen. "
+                 "Vorher im Gespräch Titel, Zeitraum, Ziel und Personen mit Rollen klären und bestätigen lassen; wer anlegt, "
+                 "bestimmt auf der neuen Reise. Was schon bekannt ist (Ideen, Unterkunft, Quellen), kommt in notiz: Bücher, "
+                 "Fotos und PDFs in eigenen Worten zusammenfassen, mit Herkunft (Buch und Seite, Link), nie abschreiben. "
+                 "Die Reise entsteht beim nächsten Einarbeiten im Status idee; danach bekommt die Person eine Meldung mit dem "
+                 "Link zur Seite und dem Link für die Claude-App. Sag nie, die Reise sei schon angelegt.",
+                 "inputSchema": {"type": "object", "properties": {
+                     "titel": {"type": "string", "description": "Titel der Reise, z. B. „Winterwoche im Allgäu“"},
+                     "von": {"type": "string", "description": "erster Tag, JJJJ-MM-TT"},
+                     "bis": {"type": "string", "description": "letzter Tag, JJJJ-MM-TT"},
+                     "ziel": {"type": "string", "description": "Ziel oder Gegend, eine Zeile"},
+                     "personen": {"type": "array", "description": "weitere Personen (die anlegende Person kommt von selbst "
+                                  "als bestimmer dazu)", "items": {"type": "object", "properties": {
+                                      "vorname": {"type": "string"},
+                                      "rolle": {"type": "string", "enum": list(ROLLEN),
+                                                "description": "reisend liest; einbringer gibt Wünsche, Rückmeldungen, "
+                                                "Aufgaben, Antworten; bestimmer entscheidet mit. Standard einbringer."},
+                                      "reist": {"type": "boolean", "description": "reist mit? Standard ja"},
+                                      "notiz": {"type": "string", "description": "kurze Notiz zur Person, eine Zeile"}},
+                                      "required": ["vorname"]}},
+                     "notiz": {"type": "string", "description": "was schon bekannt ist, in eigenen Worten mit Herkunft"},
+                     "pfad": {"type": "string", "description": "nur wenn nötig: Ordnername (klein, Bindestriche)"}},
+                     "required": ["titel", "von", "bis"]}}
+
+
 STATUS_SATZ = {
     "idee": "Die Reise ist erst eine Idee: Eckdaten, Personen und Wünsche sammeln, kein Plan nötig, keine Warnungen.",
     "planung": "Alles ist offen; Lücken und offene Wahlstellen sind normaler Zwischenstand.",
@@ -1560,7 +1622,7 @@ def anleitung(zugang, d):
                  + "Widerspricht sie der eines anderen Bestimmers, wird daraus eine offene Frage, und alle Beteiligten bekommen "
                  "eine Meldung. Andere Wünsche zu Änderungen gibst du mit auftrag_geben weiter. Personen lädst du mit "
                  "person_einladen ein (Rolle und Link gelten sofort). Fragen (F-…) kannst du mit frage_beantworten beantworten. "
-                 "Den Stand zeigt rueckmeldungen.")
+                 "Eine ganz neue Reise legst du mit reise_anlegen an. Den Stand zeigt rueckmeldungen.")
     elif wer["rolle"] == "einbringer":
         z.append(f"{name} (Einbringer). Ihre Hinweise sind Vorschläge, keine Entscheidungen: Entscheiden und Aufträge geben "
                  f"kann sie nicht, das bleibt bei {namen}. Offene Fragen beantwortet sie mit frage_beantworten. "
@@ -1626,6 +1688,8 @@ def werkzeug(zugang, name, args):
         if fehler:
             return f"Nicht gespeichert: {fehler}", True
         return f"Gespeichert als {antwort['id']} (Status neu). Wird beim nächsten Einarbeiten geprüft.", False
+    if name == "reise_anlegen":
+        return reise_anlegen(reise, wer, args)
     if name == "auftrag_geben":
         if not bestimmer:
             return "Aufträge können nur Bestimmer geben. Bitte rueckmeldung_geben nutzen.", True
@@ -1770,7 +1834,7 @@ def antwort_auf(zugang, nachricht):
         _, bausteine = zustand_von(d)
         # Sichtbar ist, was diese Rolle bei diesem Status und diesen Bausteinen darf (aufgerufen wird trotzdem noch einmal geprüft)
         werkzeuge = []
-        for w in WERKZEUGE + [AUFTRAG, ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN]:
+        for w in WERKZEUGE + [AUFTRAG, ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, REISE_ANLEGEN]:
             n = w["name"]
             if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:
                 continue
