@@ -67,7 +67,7 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
     assert '<span class="mk-luecke">Lücke am Anfang: Altendorf → Bad Schandau</span>' in v01
     # Bausteinseite: alle Ebenen, keine Sprungziele (die echten Stellen bleiben eindeutig), kein „null“
     b = dom["1200#bausteine"]
-    for teil in ("Atom · Zustand", "Atom · Wert", "Molekül · Listenzeile", "Molekül · Fragenkarte", "Molekül · Rückmeldung", "Molekül · Aufgabe", "Molekül · Kennzahlenleiste", "Organismus · Wahl-Modul", "Vorlage · Tag"):
+    for teil in ("Atom · Zustand", "Atom · Wert", "Molekül · Listenzeile", "Molekül · Fragenkarte", "Molekül · Rückmeldung", "Molekül · Aufgabe", "Molekül · Wunschkarte", "Molekül · Kennzahlenleiste", "Organismus · Wahl-Modul", "Vorlage · Tag"):
         assert teil in b, teil
     assert ' id="' not in b.split(">", 1)[1]
     assert "null" not in re.sub(r"<[^>]+>", " ", b)
@@ -110,3 +110,57 @@ def test_seite_je_status_und_baustein(tmp_path, browser):
     wenig = seite_der_variante(tmp_path / "wenig", browser, bausteine=["varianten"])
     assert "wuensche" not in wenig["reiter"] and "offen" not in wenig["reiter"], wenig
     assert wenig["knoepfe"] == 0 and wenig["kennungen"] > 0   # IDs stehen da, aber ohne Rückmeldeknopf
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_wunsch_brett(tmp_path, monkeypatch, browser):
+    """Paket G auf der Seite, unterwegs, mit dem echten Rückmeldedienst: Spalten, Punkte nur auf eigene Wünsche, abhaken
+    (auch fremde), ohne Netz abhaken und nachreichen, Bilanz; nichts steht am Handy über, am Rechner Spalten nebeneinander."""
+    from test_regeln import reise_bauen, starten
+    import rueckmeldungen as rm
+    seiten = reise_bauen(tmp_path, status="unterwegs")
+    o = tmp_path / "ablage" / "beispielreise"
+    o.mkdir(parents=True)
+    wuensche = [("R-20261021-091500-a1b2", "Karl", "Einmal mit der Kirnitzschtalbahn fahren", "uebernommen"),
+                ("R-20261022-100000-0001", "Ida", "Abends in Hohnstein essen", "neu"),
+                ("R-20261023-100000-0002", "Karl", "Baden in der Elbe", "verworfen")]
+    (o / "eingang.jsonl").write_text("".join(json.dumps({"id": i, "name": n, "art": "Wunsch", "ziel": "wuensche", "text": t,
+                                                         "quelle": "", "erstellt": f"2026-10-2{k}T10:00:00+00:00"}) + "\n"
+                                             for k, (i, n, t, _) in enumerate(wuensche)), encoding="utf-8")
+    (o / "status.json").write_text(json.dumps({i: {"status": s, "kommentar": "Test"} for i, _, _, s in wuensche if s != "neu"}),
+                                   encoding="utf-8")
+    monkeypatch.setenv("RM_ABLAGE", str(tmp_path / "ablage"))
+    monkeypatch.setenv("KN_SEITEN", str(seiten))
+    rm._zeiten.clear()
+    dienst, durl = starten(rm.Dienst)
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(seiten)))
+    threading.Thread(target=s.serve_forever, daemon=True).start()
+    try:
+        aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_brett.mjs"), str(PLAYWRIGHT),
+                              f"http://127.0.0.1:{s.server_address[1]}/beispielreise/", durl, "Karl"],
+                             capture_output=True, text=True, timeout=180, env={**os.environ, "RH_BROWSER": browser})
+    finally:
+        s.shutdown()
+        dienst.shutdown()
+    assert aus.returncode == 0, aus.stderr[-2000:]
+    e = json.loads(aus.stdout.strip().splitlines()[-1])
+    assert e["fehler"] == []
+    bahn, essen, baden = (t for _, _, t, _ in wuensche)
+    assert e["start"]["spalten"] == {bahn: "geprueft", essen: "eingebracht", baden: "passt_nicht"}
+    assert any(z.startswith("Karl") and "1 Wunsch" not in z for z in e["start"]["bilanz"])
+    assert e["punkte"] == "1" and e["fremdePunkte"] == 0               # Punkte nur auf eigene Wünsche
+    assert e["erlebt"]["spalten"][essen] == "erlebt"                   # fremden Wunsch abgehakt
+    assert e["offline"]["spalten"][bahn] == "erlebt" and e["offline"]["ausgang"] == 1 and e["offline"]["nachreichen"] >= 1
+    assert e["nachgereicht"]["spalten"][bahn] == "erlebt" and e["nachgereicht"]["nachreichen"] == 0
+    assert any(z.startswith("Karl") and "9 von 10 Punkten frei" in z for z in e["nachgereicht"]["bilanz"]), e["nachgereicht"]
+    assert not any(x["breit"] for x in (e["start"], e["erlebt"], e["offline"], e["nachgereicht"]))
+    assert e["breit"] >= 2                                             # am Rechner Spalten nebeneinander
+    b = json.loads((o / "brett.json").read_text(encoding="utf-8"))
+    assert b[bahn_id := wuensche[0][0]]["erlebt"]["wer"] == "Karl" and b[bahn_id]["punkte"] == 1
+    assert b[wuensche[1][0]]["erlebt"]["wer"] == "Karl"

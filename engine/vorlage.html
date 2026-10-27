@@ -97,6 +97,30 @@ dialog#rm::backdrop{background:rgba(0,0,0,.35)}
 .rmeintrag .kopfzeile{font-size:13px;color:var(--mut)}
 .rmeintrag .text{white-space:pre-wrap;margin:3px 0}
 .rmeintrag .antwort{font-size:15px;background:var(--acc2);border-radius:8px;padding:6px 9px;margin-top:5px}
+/* Wunsch-Brett (Paket G): am Handy Spalten untereinander, leere weg; ab 700 px eine Reihe wie ein Brett, leere Spalten
+   schmal, bei vielen Wünschen seitlich blättern (nur das Brett, nie die Seite) */
+.brett{display:flex;flex-direction:column;margin-top:6px}
+.brett .spalte{min-width:0}
+.brett .spalte h3{font-size:17px;margin:12px 0 6px}
+.brett .leer-spalte h3{color:var(--mut);font-weight:500}
+@media (max-width:699px){.brett .leer-spalte{display:none}}
+@media (min-width:700px){.brett{flex-direction:row;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:6px}
+  .brett .spalte{flex:1 1 220px;min-width:180px}.brett .leer-spalte{flex:0 0 auto;min-width:0}}
+.wu-karte{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 8px;overflow-wrap:anywhere}
+.wu-karte.erlebt{border-color:var(--acc)}
+.wu-karte.weg .text{color:var(--mut)}
+.wu-kopf{display:flex;gap:10px;align-items:flex-start}
+.wu-kopf .text{white-space:pre-wrap;flex:1;min-width:0}
+.wu-karte .kopfzeile{font-size:13px;color:var(--mut)}
+.wu-karte .antwort{font-size:15px;background:var(--acc2);border-radius:8px;padding:6px 9px;margin-top:5px}
+.wu-vorschlag{font-size:15px;border-left:3px solid var(--acc);padding:2px 0 2px 9px;margin-top:6px}
+.wu-knoepfe{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+.pico .wu-knoepfe button{margin:0}
+.wu-zahl{min-width:1.6em;text-align:center;font-weight:600}
+.wu-bilanz{margin:6px 0 4px}
+.wu-person{padding:3px 0}
+details.wu-neu{margin:8px 0}
+details.wu-neu summary{cursor:pointer;font-weight:600}
 .chip.st-neu{background:var(--warnbg);color:var(--warn)}
 .chip.st-uebernommen{background:var(--acc);color:var(--bg)}
 .chip.st-rueckfrage{background:var(--warnbg);color:var(--warn);font-weight:700}
@@ -2001,6 +2025,13 @@ function ansichtBausteine(m) {
   eintraege.forEach(x => x.querySelectorAll("button").forEach(k => { k.disabled = true; }));
   teil("Molekül", "Rückmeldung", "Eine Rückmeldung oder ein Wunsch mit Status und Antwort.", eintraege[0]);
   teil("Molekül", "Aufgabe", "Eine Aufgabe mit Haken, Frist und Zuständigem.", eintraege[1]);
+  if (WUENSCHE) {
+    const wk = wuKarte({id: "", name: "Muster", text: "Beispielwunsch (Muster).", status: "uebernommen", erstellt: "2027-01-02T00:00:00Z",
+      spalte: "geprueft", punkte: 3, kommentar: "Beispielantwort, wo der Wunsch hinpasst (Muster).",
+      vorschlag: {bezug: [R ? R.tage[0].id : abschnitte[0].id], notiz: "Beispielnotiz mit Herkunft (Muster).", option: null, gewaehlt: false}});
+    wk.querySelectorAll("button").forEach(k => { k.disabled = true; });
+    teil("Molekül", "Wunschkarte", "Ein Wunsch auf dem Brett mit Punkten, Vorschlag von Claude und Haken (unterwegs).", wk);
+  }
   if (!R) return;
   const strecken = Object.entries(R.strecken);
   const mitKz = strecken.find(([, x]) => Object.keys(x.kennzahlen || {}).length);
@@ -2214,31 +2245,173 @@ function ansichtRueckmeldungen(m) {
   if (!RM.some(e => !istWunsch(e)) && !AUSGANG.length) m.append(el("div", {class: "leer"}, "Noch keine Rückmeldungen."));
 }
 
-/* ---------- Wünsche (25.10.2026) ----------
-   Ideen der Mitreisenden ohne feste Stelle: ein Ort, ein Erlebnis, ein Essen. Technisch Rückmeldungen
-   der Art „Wunsch“ mit Ziel „wuensche“; Senden, Ausgang ohne Netz und Status wie bei Rückmeldungen. */
+/* ---------- Wunsch-Brett (Wünsche 25.10.2026, Brett Paket G 27.10.2026) ----------
+   Ideen der Mitreisenden ohne feste Stelle: ein Ort, ein Erlebnis, ein Essen. Technisch Rückmeldungen der Art „Wunsch“
+   mit Ziel „wuensche“; Senden und Ausgang ohne Netz wie bei Rückmeldungen. Das Brett (api/brett) ordnet sie in Spalten:
+   eingebracht, geprüft (Claude hat sie aufgenommen, oft mit Vorschlag „passt zu …“), eingeplant (nur Bestimmer),
+   erlebt (alle, unterwegs und danach), passt nicht. Punkte: wie wichtig der eigene Wunsch ist, im Kontingent je Person.
+   Punkte und Einplanen gehen nur mit Netz; Abhaken wird ohne Netz gemerkt und nachgereicht. */
+const BR_API = "api/brett";
+let BR = lies("brett", null);                 // letzte Antwort von api/brett (offline lesbar)
+let BR_AUSGANG = lies("brett-ausgang", []);   // abgehakt ohne Netz: [{rid, name, erlebt}]
+const KONTINGENT = (D.reise.regeln || {}).kontingent || {art: "punkte", je_person: 10};
+const KANN_ERLEBT = WUENSCHE && V.schreiben !== "nichts" && ["unterwegs", "danach"].includes((D.reise.status || {}).wert);
+const WU_SPALTEN = [["eingebracht", "Eingebracht"], ["geprueft", "Geprüft"], ["eingeplant", "Eingeplant"], ["erlebt", "Erlebt"], ["passt_nicht", "Passt nicht"]];
+const gleicherName = (a, b) => (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
+const istBestimmer = n => (D.reise.personen || []).some(p => p.rolle === "bestimmer" && gleicherName(p.name, n));
+const datumKurz = iso => (iso || "").slice(0, 10).split("-").reverse().join(".");
+
+async function brLaden() {
+  if (!WUENSCHE) return;
+  try {
+    const r = await fetch(BR_API, {cache: "no-store"});
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    if (!d || !Array.isArray(d.wuensche)) throw 0;
+    BR = d; merke("brett", BR);
+  } catch (e) { return; }
+  if (BR_AUSGANG.length) await brAusgangSenden();
+}
+
+// Ein Wunsch auf dem Brett ändern (PATCH). -> Antwort; wirft {netz} oder {abgelehnt: Text}
+async function brAendern(rid, body) {
+  let r;
+  try { r = await fetch(API + "/" + encodeURIComponent(rid), {method: "PATCH", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)}); }
+  catch (e) { throw {netz: true}; }
+  const d = await r.json().catch(() => ({}));
+  if (r.status >= 500 || (r.status === 404 && !d.fehler)) throw {netz: true};
+  if (!r.ok) throw {abgelehnt: d.fehler || "abgelehnt"};
+  if (BR) { const w = BR.wuensche.find(x => x.id === rid); if (w) Object.assign(w, {punkte: d.punkte, eingeplant: d.eingeplant, erlebt: d.erlebt, verlauf: d.verlauf}); merke("brett", BR); }
+  return d;
+}
+
+async function brAusgangSenden() {
+  const rest = [];
+  for (const a of BR_AUSGANG) {
+    try { await brAendern(a.rid, {name: a.name, erlebt: a.erlebt}); }
+    catch (f) { if (!(f && f.abgelehnt)) rest.push(a); }
+  }
+  BR_AUSGANG = rest; merke("brett-ausgang", BR_AUSGANG);
+  if (!rest.length) await brLaden();
+}
+
+// Spalte wie im Dienst (rueckmeldungen.spalte): passt nicht, erlebt, eingeplant, geprüft, eingebracht
+function wuSpalte(w) {
+  if (w.status === "verworfen") return "passt_nicht";
+  if (w.erlebt) return "erlebt";
+  if (w.eingeplant || (w.vorschlag && w.vorschlag.gewaehlt)) return "eingeplant";
+  return w.status === "uebernommen" ? "geprueft" : "eingebracht";
+}
+
+// Alle Wünsche mit Brett-Angaben: nicht Gesendete, dann der Dienst-Stand; Abgehaktes ohne Netz schon eingerechnet
+function wuAlle() {
+  const br = new Map(((BR || {}).wuensche || []).map(w => [w.id, w]));
+  const alle = [...AUSGANG.filter(e => e.art === "Wunsch").map(e => ({...e, status: ""})),
+    ...RM.filter(e => e.art === "Wunsch").map(e => ({punkte: 0, eingeplant: null, erlebt: null, vorschlag: null, verlauf: [], ...br.get(e.id), ...e}))];
+  for (const a of BR_AUSGANG) {
+    const w = alle.find(x => x.id === a.rid);
+    if (w) { w.erlebt = a.erlebt ? {wer: a.name, datum: heute()} : null; w.nachreichen = true; }
+  }
+  for (const w of alle) w.spalte = w.status ? wuSpalte(w) : "eingebracht";
+  return alle;
+}
+
+function wuBilanz(alle) {
+  const namen = new Map();
+  for (const p of D.reise.personen || []) if (p.rolle !== "reisend") namen.set(p.name.toLowerCase(), p.name);
+  for (const w of alle) if (w.name && !namen.has(w.name.toLowerCase())) namen.set(w.name.toLowerCase(), w.name);
+  const punkte = KONTINGENT.art === "punkte";
+  return [...namen.values()].sort((a, b) => a.localeCompare(b, "de")).map(n => {
+    const eigene = alle.filter(w => gleicherName(w.name, n));
+    const aktiv = eigene.filter(w => w.status !== "verworfen");
+    const vergeben = aktiv.reduce((s, w) => s + (w.punkte || 0), 0);
+    const z = s => eigene.filter(w => w.spalte === s).length;
+    return {name: n, wuensche: eigene.length, eingeplant: z("eingeplant"), erlebt: z("erlebt"), passt_nicht: z("passt_nicht"),
+      frei: Math.max(0, KONTINGENT.je_person - (punkte ? vergeben : aktiv.length)), vergeben};
+  });
+}
+
+function wuKarte(w) {
+  const k = el("div", {class: "wu-karte" + (w.spalte === "erlebt" ? " erlebt" : "") + (w.spalte === "passt_nicht" ? " weg" : ""), id: w.id ? "wu-" + w.id : false});
+  const gesendet = !!w.status, offen = gesendet && w.status !== "verworfen";
+  const kopf = el("div", {class: "wu-kopf"});
+  if (KANN_ERLEBT && offen) kopf.append(el("button", {type: "button", class: "haken" + (w.erlebt ? " an" : ""), "data-wu-erlebt": w.id,
+    "aria-label": w.erlebt ? "Nicht erlebt" : "Erlebt abhaken"}, w.erlebt ? "✓" : ""));
+  kopf.append(el("div", {class: "text"}, w.text));
+  k.append(kopf);
+  const c = el("div", {class: "chips"});
+  if (!gesendet) c.append(chip("offen", "noch nicht gesendet"));
+  else if (w.status === "neu") c.append(chip("leise", "wird geprüft"));
+  else if (w.status === "rueckfrage") c.append(chip("offen", "Rückfrage"));
+  if (KONTINGENT.art === "punkte" && w.punkte) c.append(chip("plan", "●".repeat(Math.min(w.punkte, 5)) + " " + w.punkte + (w.punkte === 1 ? " Punkt" : " Punkte"), {title: "So wichtig ist der Wunsch der Person"}));
+  if (w.nachreichen) c.append(chip("offen", "wird nachgereicht"));
+  k.append(c);
+  k.append(el("div", {class: "kopfzeile"}, `${w.name || "?"} · ${datumKurz(w.erstellt)}`,
+    w.quelle ? [" · ", /^https?:\/\//.test(w.quelle) ? el("a", {href: w.quelle, target: "_blank", rel: "noopener"}, "Link") : w.quelle] : ""));
+  const links = ids => ids.map((b, i) => [i ? ", " : "", el("a", {href: "#" + b}, b + (titelZu(b) ? " " + titelZu(b) : ""))]);
+  if (w.kommentar) k.append(el("div", {class: "antwort"}, el("b", {}, "Claude: "), w.kommentar));
+  const v = w.vorschlag;
+  if (v && w.status !== "verworfen" && ((v.bezug || []).length || v.notiz)) k.append(el("div", {class: "wu-vorschlag"},
+    el("b", {}, "Vorschlag: "), (v.bezug || []).length ? ["passt zu ", links(v.bezug)] : "", v.notiz ? el("div", {}, v.notiz) : null,
+    v.option ? el("div", {class: "kopfzeile"}, v.gewaehlt ? "Option gewählt: " : "Als Option zur Wahl: ", links([v.option])) : null));
+  if (w.eingeplant) k.append(el("div", {class: "kopfzeile"}, `Eingeplant von ${w.eingeplant.wer} am ${datumKurz(w.eingeplant.datum)}`,
+    (w.eingeplant.bezug || []).length ? [": ", links(w.eingeplant.bezug)] : ""));
+  if (w.erlebt) k.append(el("div", {class: "kopfzeile"}, `Erlebt ✓ ${w.erlebt.wer} am ${datumKurz(w.erlebt.datum)}`));
+  const knoepfe = el("div", {class: "wu-knoepfe"});
+  const eigen = gleicherName(w.name, NAME);
+  if (KANN_WUNSCH && offen && eigen && KONTINGENT.art === "punkte") knoepfe.append(
+    el("span", {class: "kopfzeile"}, "Punkte "),
+    el("button", {type: "button", class: "outline klein", "data-wu-punkte": w.id, "data-delta": "-1", disabled: !w.punkte, "aria-label": "Ein Punkt weniger"}, "−"),
+    el("span", {class: "wu-zahl"}, String(w.punkte || 0)),
+    el("button", {type: "button", class: "outline klein", "data-wu-punkte": w.id, "data-delta": "1", "aria-label": "Ein Punkt mehr"}, "+"));
+  if (KANN_WUNSCH && offen && istBestimmer(NAME)) knoepfe.append(el("button", {type: "button", class: "outline klein", "data-wu-einplanen": w.id},
+    w.eingeplant ? "Nicht mehr eingeplant" : "Einplanen"));
+  if (w.status === "neu" && MEINE.has(w.id) && !w.erlebt && !w.eingeplant) knoepfe.append(el("button", {type: "button", class: "outline klein", "data-zurueck": w.id}, "Zurückziehen"));
+  if (!gesendet) knoepfe.append(el("button", {type: "button", class: "outline klein", "data-verwerfen": w.lokal}, "Nicht senden"));
+  if (knoepfe.childNodes.length) k.append(knoepfe);
+  return k;
+}
+
 // Entwurf übersteht das Neuzeichnen der Seite (z. B. wenn im Hintergrund neue Daten ankommen)
 let WU_ENTWURF = {text: "", quelle: ""};
 function ansichtWuensche(m) {
   m.append(el("h2", {}, "Wünsche"));
+  const punkte = KONTINGENT.art === "punkte";
   m.append(el("p", {}, "Was möchtest du auf dieser Reise erleben? Ein Ort, ein Erlebnis, ein Essen – auch eine vage Idee ist willkommen. " +
-    "Claude Code prüft jeden Wunsch, meist in wenigen Minuten, ob und wo er in die Reise passt, und schreibt hier dazu, was daraus geworden ist."));
-  if (KANN_WUNSCH) m.append(el("form", {id: "wuForm"},
-    el("label", {for: "wuText"}, "Dein Wunsch"),
-    el("textarea", {id: "wuText", required: true, maxlength: 4000,
-      placeholder: "z. B. einmal in einem Ryokan mit eigenem Onsen schlafen, Rehe in Nara, ein Ramen-Laden, den Freunde empfohlen haben …"}, WU_ENTWURF.text),
-    el("label", {for: "wuQuelle"}, "Link (optional, z. B. Instagram, Webseite, Karte)"),
-    el("input", {id: "wuQuelle", maxlength: 300, autocomplete: "off", inputmode: "url", value: WU_ENTWURF.quelle}),
-    el("label", {for: "wuName"}, "Dein Name"),
-    el("input", {id: "wuName", required: true, maxlength: 80, value: NAME, autocomplete: "name"}),
-    el("p", {class: "meldung", id: "wuMeldung"}, API_OK === false ? "Gerade keine Verbindung: Der Wunsch wird hier gespeichert und später gesendet." : ""),
-    el("button", {type: "submit"}, "Wunsch senden")));
-  const alle = [...AUSGANG.filter(e => e.art === "Wunsch"), ...RM.filter(e => e.art === "Wunsch")];
-  const gruppen = [["Noch nicht gesendet", e => !e.status], ["Neu – wird geprüft", e => e.status === "neu"],
-    ["Rückfrage", e => e.status === "rueckfrage"], ["Aufgenommen", e => e.status === "uebernommen"],
-    ["Passt nicht", e => e.status === "verworfen"]];
-  eintragGruppen(m, gruppen, alle, e => rmEintrag(e), l => l[0].status ? null : jetztSenden());
-  if (!alle.length) m.append(el("div", {class: "leer"}, "Noch keine Wünsche. Der erste kann von dir sein."));
+    "Claude Code prüft jeden Wunsch, meist in wenigen Minuten, ob und wo er in die Reise passt. Einplanen entscheidet ein Bestimmer. " +
+    (punkte ? `Jede Person hat ${KONTINGENT.je_person} Punkte für die eigenen Wünsche: je mehr Punkte, desto wichtiger.` :
+      `Jede Person kann bis zu ${KONTINGENT.je_person} Wünsche gleichzeitig einbringen.`)));
+  if (KANN_WUNSCH) m.append(el("details", {class: "wu-neu", open: !RM.some(e => e.art === "Wunsch") || !!WU_ENTWURF.text},
+    el("summary", {}, "Neuer Wunsch"),
+    el("form", {id: "wuForm"},
+      el("label", {for: "wuText"}, "Dein Wunsch"),
+      el("textarea", {id: "wuText", required: true, maxlength: 4000,
+        placeholder: "z. B. eine bestimmte Aussicht, ein Bad im See, ein Lokal, das Freunde empfohlen haben …"}, WU_ENTWURF.text),
+      el("label", {for: "wuQuelle"}, "Link (optional, z. B. Instagram, Webseite, Karte)"),
+      el("input", {id: "wuQuelle", maxlength: 300, autocomplete: "off", inputmode: "url", value: WU_ENTWURF.quelle}),
+      el("label", {for: "wuName"}, "Dein Name"),
+      el("input", {id: "wuName", required: true, maxlength: 80, value: NAME, autocomplete: "name"}),
+      el("p", {class: "meldung", id: "wuMeldung"}, API_OK === false ? "Gerade keine Verbindung: Der Wunsch wird hier gespeichert und später gesendet." : ""),
+      el("button", {type: "submit"}, "Wunsch senden"))));
+  if (KANN_ERLEBT) m.append(el("p", {class: "meldung"}, "Unterwegs: Was ihr erlebt habt, hier abhaken (☐). Das geht auch ohne Netz und wird nachgereicht."));
+  const alle = wuAlle();
+  if (API_OK === false || BR_AUSGANG.length) m.append(el("p", {class: "meldung"}, "Gerade keine Verbindung – angezeigt wird der zuletzt geladene Stand."));
+  if (AUSGANG.some(e => e.art === "Wunsch")) m.append(jetztSenden());
+  if (!alle.length) { m.append(el("div", {class: "leer"}, "Noch keine Wünsche. Der erste kann von dir sein.")); return; }
+  // Bilanz je Person: alle sehen sie
+  const bl = wuBilanz(alle);
+  m.append(el("div", {class: "wu-bilanz"}, el("h3", {}, "Bilanz"), bl.map(b => el("div", {class: "wu-person"},
+    el("b", {}, b.name), " ",
+    el("span", {class: "kopfzeile"}, [`${b.wuensche} ${b.wuensche === 1 ? "Wunsch" : "Wünsche"}`, b.eingeplant ? `${b.eingeplant} eingeplant` : "",
+      b.erlebt ? `${b.erlebt} erlebt` : "", punkte ? `${b.frei} von ${KONTINGENT.je_person} Punkten frei` : `noch ${b.frei} frei`].filter(Boolean).join(" · "))))));
+  const brett = el("div", {class: "brett"});
+  const sortiert = (a, b) => (b.punkte || 0) - (a.punkte || 0) || (b.erstellt || "").localeCompare(a.erstellt || "");
+  for (const [s, t] of WU_SPALTEN) {
+    const l = alle.filter(w => w.spalte === s).sort(sortiert);
+    brett.append(el("section", {class: "spalte" + (l.length ? "" : " leer-spalte"), "data-spalte": s},
+      el("h3", {}, `${t} (${l.length})`), l.map(wuKarte)));
+  }
+  m.append(brett);
 }
 
 async function wuAbschicken() {
@@ -2247,14 +2420,62 @@ async function wuAbschicken() {
   const fehler = await rmSpeichern(name, "Wunsch", "wuensche", text, $("#wuQuelle").value.trim());
   if (fehler) { $("#wuMeldung").textContent = "Nicht angenommen: " + fehler; return; }
   WU_ENTWURF = {text: "", quelle: ""};
+  await brLaden();
   rmKnopf(); route(true);
   $("#wuMeldung").textContent = API_OK ? "Danke, dein Wunsch ist angekommen." : "Gespeichert. Wird gesendet, sobald wieder Verbindung besteht.";
 }
+
+async function wuPunkte(rid, delta) {
+  const w = wuAlle().find(x => x.id === rid);
+  if (!w || !NAME) return;
+  try { await brAendern(rid, {name: NAME, punkte: Math.max(0, (w.punkte || 0) + delta)}); }
+  catch (f) { alert(f && f.abgelehnt ? f.abgelehnt : "Gerade keine Verbindung. Punkte lassen sich nur mit Netz ändern."); return; }
+  route(true);
+}
+
+async function wuErlebt(rid) {
+  const w = wuAlle().find(x => x.id === rid);
+  const name = nameHolen();
+  if (!w || !name) return;
+  const body = {name, erlebt: !w.erlebt};
+  try { await brAendern(rid, body); BR_AUSGANG = BR_AUSGANG.filter(a => a.rid !== rid); }
+  catch (f) {
+    if (f && f.abgelehnt) { alert("Nicht gespeichert: " + f.abgelehnt); return; }
+    BR_AUSGANG = [...BR_AUSGANG.filter(a => a.rid !== rid), {rid, ...body}];   // ohne Netz: merken, später nachreichen
+  }
+  merke("brett-ausgang", BR_AUSGANG);
+  route(true);
+}
+
+async function wuEinplanen(rid) {
+  const w = wuAlle().find(x => x.id === rid);
+  if (!w) return;
+  let body = {name: NAME, eingeplant: !w.eingeplant};
+  if (!w.eingeplant) {
+    const vor = ((w.vorschlag || {}).bezug || []).join(", ");
+    const ein = prompt("Wo eingeplant? IDs mit Komma (z. B. T-03), leer lassen = ohne feste Stelle", vor);
+    if (ein === null) return;
+    body.bezug = ein.split(/[,\s]+/).filter(Boolean);
+  }
+  try { await brAendern(rid, body); }
+  catch (f) { alert(f && f.abgelehnt ? "Nicht gespeichert: " + f.abgelehnt : "Gerade keine Verbindung. Einplanen geht nur mit Netz."); return; }
+  route(true);
+}
+
 document.addEventListener("submit", e => { if (e.target.id === "wuForm") { e.preventDefault(); wuAbschicken(); } });
 document.addEventListener("input", e => {
   if (e.target.id === "wuText") WU_ENTWURF.text = e.target.value;
   if (e.target.id === "wuQuelle") WU_ENTWURF.quelle = e.target.value;
 });
+document.addEventListener("click", e => {
+  const p = e.target.closest("[data-wu-punkte]");
+  if (p) { e.preventDefault(); wuPunkte(p.dataset.wuPunkte, +p.dataset.delta); return; }
+  const h = e.target.closest("[data-wu-erlebt]");
+  if (h) { e.preventDefault(); wuErlebt(h.dataset.wuErlebt); return; }
+  const g = e.target.closest("[data-wu-einplanen]");
+  if (g) { e.preventDefault(); wuEinplanen(g.dataset.wuEinplanen); }
+}, true);
+window.addEventListener("online", () => brLaden().then(rmNeuZeichnen));
 
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-rm]");
@@ -2572,7 +2793,7 @@ window.addEventListener("hashchange", () => { if (document.body.classList.contai
 route();
 rmKnopf();
 agKnopf();
-Promise.all([rmLaden(), agLaden()]).then(() => route(true));
+Promise.all([rmLaden(), agLaden(), brLaden()]).then(() => route(true));
 
 /* ---------- Höhe als App vom Home-Bildschirm (iOS) ----------
    Nach dem Schließen der Tastatur bleibt die Höhe des Fensters manchmal auf dem Stand mit Tastatur stehen, bis die App
