@@ -37,6 +37,12 @@ Der Generator prüft das: Ein Text darf nur enthalten, was Markdown selbst erzeu
 
 Farben als CSS-Variablen in `:root` (hell, dunkel per `prefers-color-scheme`): `--bg` Papier, `--card` Fläche, `--fg` Tinte, `--mut` gedämpft, `--line` Linie, `--acc`/`--acc2` Akzent, `--warn`/`--warnbg` offen, `--ocker` Etiketten und unterwegs, `--kat-*` Art der Unterkunft. Schrift: Source Serif 4 für Titel, Source Sans 3 für Text. Tippflächen mindestens 44 px. Pico CSS 2.1.1 ist die Grundlage.
 
+## Schrift und Breite (27.10.2026)
+
+- **Schrift.** Alle Schriftgrößen stehen in `rem`, nichts in `px` (Ausnahme: Beschriftung und Zeichen auf der Karte). Die Wurzelgröße wächst mit dem Bildschirm: Handy 16 px, ab 760 px 17 px, ab 1100 px 19 px, ab 1700 px 20 px. So wird der Text am Rechner größer, ohne dass das Handy sich ändert, und jede Größe ändert man an einer Stelle.
+- **Breite.** Kopf und alle Ansichten teilen die Breite `--breite` (Handy voll, ab 760 px 920 px, ab 1100 px 1280 px, ab 1700 px 1400 px). Eine Ansicht ist nie schmaler oder breiter als die andere. Fließtext bleibt auf Lesebreite `--lese` (44 rem), damit Zeilen nicht zu lang werden; Karten, Tabellen und die Karte nutzen die ganze Breite.
+- **Spalten.** Ab 1100 px stehen die Tage des Plans in zwei Spalten, ein Tag mit geöffnetem Vergleich nimmt die ganze Breite. Der Vergleich zeigt am Handy 2, bis 1099 px 4 und ab 1100 px 5 Möglichkeiten nebeneinander (`vglMax`).
+
 ## Bausteinseite und Prüfung
 
 `#bausteine` zeigt alle Bausteine mit den Daten der jeweiligen Reise, gezeichnet mit denselben Funktionen wie die Seiten. Sie steht nicht in der Leiste. Wo die Reise einen Fall nicht hat, steht ein als „Muster“ benannter Wert.
