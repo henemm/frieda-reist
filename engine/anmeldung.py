@@ -23,17 +23,17 @@ DATENSCHUTZ = ("Frieda speichert deine E-Mail-Adresse und deinen Namen nur, um d
                "einzuladen. Du kannst dein Konto jederzeit selbst löschen.")
 
 CSS = """
-:root{--bg:#f3efe6;--fg:#22281f;--mut:#555a50;--card:#fffcf6;--line:#ddd5c4;--acc:#1e5a43;--acc2:#e3ede6;
---warn:#8a5a00;--warnbg:#f6e9cf;--bar:#22281f;--bar-fg:#c9cdbf}
-@media (prefers-color-scheme:dark){:root{--bg:#191c17;--fg:#ece8dd;--mut:#a9ad9f;--card:#22261f;--line:#363b31;
---acc:#7fc4a4;--acc2:#233229;--warn:#f0c46a;--warnbg:#3a3017;--bar:#2c3128;--bar-fg:#b9bdaf}}
+:root{--bg:#f8f8f5;--fg:#1d2420;--mut:#5b645e;--card:#ffffff;--line:#e4e5df;--acc:#1f7a57;--acc2:#e3f1ea;
+--warn:#9a5b00;--warnbg:#fbeed6;--bar:#22281f;--bar-fg:#c9cdbf}
+@media (prefers-color-scheme:dark){:root{--bg:#151816;--fg:#eceee9;--mut:#a5aca6;--card:#1d211e;--line:#2c312d;
+--acc:#6fd0a5;--acc2:#1f3329;--warn:#f0c46a;--warnbg:#3a3017;--bar:#2c3128;--bar-fg:#b9bdaf}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:1.0625rem/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",
 Roboto,sans-serif}
-header{background:var(--bar);color:var(--bar-fg);padding:.75rem 1rem;font:600 1.25rem Georgia,serif}
+header{background:var(--bar);color:var(--bar-fg);padding:.75rem 1rem;font:700 1.25rem -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
 main{max-width:30rem;margin:1.5rem auto;padding:0 1rem}
-.karte{background:var(--card);border:1px solid var(--line);border-radius:.5rem;padding:1.25rem;margin-bottom:1rem}
-h1{font:600 1.4rem Georgia,serif;margin:0 0 .75rem}h2{font:600 1.1rem Georgia,serif;margin:0 0 .5rem}
+.karte{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1.25rem;margin-bottom:1rem}
+h1{font-size:1.4rem;margin:0 0 .75rem}h2{font-size:1.1rem;margin:0 0 .5rem}
 label{display:block;margin:.75rem 0 .25rem;font-weight:600}
 input[type=email],input[type=text]{width:100%;min-height:2.75rem;padding:.5rem .75rem;font:inherit;color:var(--fg);
 background:var(--bg);border:1px solid var(--line);border-radius:.375rem}

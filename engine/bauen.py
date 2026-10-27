@@ -946,9 +946,8 @@ class Bauer:
 
 VENDOR = {"pico-2.1.1.conditional.jade.min.css": "pico-2.1.1.min.css",   # Pico CSS (MIT), Issue #25
           "leaflet-1.9.4.js": "leaflet-1.9.4.js", "leaflet-1.9.4.css": "leaflet-1.9.4.css",   # Leaflet (BSD-2), Issue #27
-          # Schriften Source Sans 3 und Source Serif 4 (OFL, @fontsource-variable 5.3.1), Stil „Wanderführer“ 25.10.2026
-          **{f"fonts/{n}-{z}-wght-normal.woff2": f"{n}-{z}-wght-normal.woff2"
-             for n in ("source-sans-3", "source-serif-4") for z in ("latin", "latin-ext")}}
+          # Schrift Source Sans 3 (OFL, @fontsource-variable 5.3.1) für Titel und Text, Gesicht „Freundlich“ (#52)
+          **{f"fonts/source-sans-3-{z}-wght-normal.woff2": f"source-sans-3-{z}-wght-normal.woff2" for z in ("latin", "latin-ext")}}
 # Offline-Grundkarte: protomaps-leaflet zeichnet die PMTiles-Vektorkarte in Leaflet (BSD-3), nur wenn eine Grundkarte da ist
 VENDOR_GRUNDKARTE = {"protomaps-leaflet-5.1.0.js": "protomaps-leaflet-5.1.0.js"}
 # Symbole: Lucide (ISC, lucide.dev), lokal in engine/vendor; beim Bauen als <symbol> in die Seite (Issue #25)
@@ -1011,7 +1010,9 @@ SYMBOLE = {"plan": "calendar-days", "varianten": "split", "etappen": "footprints
            "einkehr": "utensils", "wasser": "droplet", "bus": "bus", "unterkunft": "bed-double", "apotheke": "pill",
            "taxi": "car-taxi-front",
            # Kennung (Anmerken)
-           "anmerken": "pencil"}
+           "anmerken": "pencil",
+           # Kennzahlen und Orte (Gesicht „Freundlich“, #52)
+           "gehzeit": "clock", "aufstieg": "trending-up", "abstieg": "trending-down", "strecke": "route", "ort": "map-pin"}
 
 
 def symbole():
@@ -1025,8 +1026,8 @@ def symbole():
     return "".join(teile) + "</svg>"
 
 
-PWA_FARBE = "#1e5a43"       # = --acc der Vorlage
-PWA_HINTERGRUND = "#f3efe6"  # = --bg der Vorlage
+PWA_FARBE = "#1f7a57"       # = --acc der Vorlage
+PWA_HINTERGRUND = "#f8f8f5"  # = --bg der Vorlage
 
 
 ICON_GROESSEN = (32, 180, 192, 512)  # Browser-Tab, iPhone-Homebildschirm, Android/Manifest

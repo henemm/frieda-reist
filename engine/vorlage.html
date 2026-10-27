@@ -11,8 +11,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#f3efe6" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#191c17" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f8f8f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151816" media="(prefers-color-scheme: dark)">
 <title>Reisehandbuch</title>
 <!-- Pico CSS 2.1.1 (MIT, picocss.com), lokal ausgeliefert und vorab gespeichert; gilt nur in .pico (main, Rückmeldefenster) -->
 <link rel="stylesheet" href="pico-2.1.1.min.css">
@@ -22,24 +22,25 @@
 /* Designsystem nach Atomic Design (docs/design.md): Tokens, Grundlagen, Atome, Moleküle, Organismen, Vorlagen,
    Rahmen der Seite, zuletzt die Breiten. Jeder Baustein steht einmal; was ein Baustein in einem anderen anders macht,
    steht beim umfassenden Baustein. Funktionen gleichen Namens im Skript zeichnen die Bausteine.
-   Gestaltung „Wanderführer“ (25.10.2026; vorher #25): Papiergrund, Waldgrün, Ocker für Etiketten, dunkle Leiste.
-   Schrift: Source Serif 4 für Titel, Source Sans 3 für Text (beide OFL, lokal in engine/vendor/fonts, Lizenz dort),
-   Zeichensätze latin und latin-ext (z. B. ō, ū). */
+   Gesicht „Freundlich“ (B2, frieda-reist#52, 27.10.2026; vorher „Wanderführer“): heller Grund, frisches Grün, weiche
+   Flächen ohne Rahmen, Etiketten in normaler Schreibweise, Kennzahlen als Kacheln. Schrift: Source Sans 3 für Titel und
+   Text (OFL, lokal in engine/vendor/fonts, Lizenz dort), Zeichensätze latin und latin-ext (z. B. ō, ū). */
 @font-face{font-family:"Source Sans 3";font-style:normal;font-weight:200 900;font-display:swap;src:url(source-sans-3-latin-ext-wght-normal.woff2) format("woff2-variations");
   unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
 @font-face{font-family:"Source Sans 3";font-style:normal;font-weight:200 900;font-display:swap;src:url(source-sans-3-latin-wght-normal.woff2) format("woff2-variations");
   unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
-@font-face{font-family:"Source Serif 4";font-style:normal;font-weight:200 900;font-display:swap;src:url(source-serif-4-latin-ext-wght-normal.woff2) format("woff2-variations");
-  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
-@font-face{font-family:"Source Serif 4";font-style:normal;font-weight:200 900;font-display:swap;src:url(source-serif-4-latin-wght-normal.woff2) format("woff2-variations");
-  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 
 /* ==================== 1 Tokens: Farben, Schrift, Breiten, Maße der Leiste ==================== */
-/* Farb-Tokens: --bg Papier, --fg Tinte, --mut gedämpft, --ocker Etiketten, --line Linie, --card Fläche, --acc Akzent,
-   --warn/--warnbg offen; Plan- und Kartenfarben dataviz-geprüft; --kat-* Art der Unterkunft. */
-:root{--font-text:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;--font-titel:"Source Serif 4",Georgia,"Times New Roman",serif}
-:root{--plan-a:#c62a2a;--plan-b:#008a7e;--plan-c:#7a4db0;--plan-d:#b07800;--sea:#d9e6ea;--land:#eceadf;--land-edge:#b7b4a3;--peak:#8a8573;--water:#9cc3d1;--bus:#6f7772;--skip:#9a9a90;--kat-hotel:#1f3b57;--kat-gasthaus:#8a4b2a;--kat-ferienwohnung:#6a4c93;--kat-huette:#2c6e49;--kat-herberge:#3f7f8c;--kat-camping:#7a7a1f;--kat-unterwegs:#555a50;--kat-privat:#a0446a;--kat-sonstige:#6f7772;--bg:#f3efe6;--fg:#22281f;--mut:#555a50;--ocker:#6a5a3a;--card:#fffcf6;--line:#ddd5c4;--acc:#1e5a43;--acc2:#e3ede6;--warn:#8a5a00;--warnbg:#f6e9cf;--mark:#ffe58a;--bar:#22281f;--bar-fg:#c9cdbf;--bar-on:#f3efe6;--bar-on-fg:#22281f}
-@media (prefers-color-scheme:dark){:root{--plan-a:#e8507a;--plan-b:#2fa9a0;--plan-c:#a07ad6;--plan-d:#b98a00;--sea:#14232a;--land:#222823;--land-edge:#3d453e;--peak:#8d8a7c;--water:#2f5e70;--bus:#8d958f;--skip:#6d716c;--kat-hotel:#7fa9d6;--kat-gasthaus:#d39a6f;--kat-ferienwohnung:#b49ae0;--kat-huette:#5cbf86;--kat-herberge:#79c3cf;--kat-camping:#c9c96a;--kat-unterwegs:#a9ad9f;--kat-privat:#e08fb0;--kat-sonstige:#8d958f;--bg:#191c17;--fg:#ece8dd;--mut:#a9ad9f;--ocker:#cdb98e;--card:#22261f;--line:#363b31;--acc:#7fc4a4;--acc2:#233229;--warn:#f0c46a;--warnbg:#3a3017;--mark:#6b5a10;--bar:#2c3128;--bar-fg:#b9bdaf;--bar-on:#ece8dd;--bar-on-fg:#191c17}}
+/* Farb-Tokens: --bg Grund, --card Fläche, --fg Text, --mut gedämpft (Etiketten, Nebentext), --line Linie, --acc/--acc2
+   Akzent und helle Akzentfläche, --warn/--warnbg offen, --ocker Rand für „unterwegs“; Plan- und Kartenfarben
+   dataviz-geprüft; --kat-* Art der Unterkunft; --bar* Leiste (noch im alten Gesicht, frieda-reist#55).
+   Kontrast (WCAG): Text auf Grund und Fläche mindestens 4,5:1, hell und dunkel (geprüft 27.10.2026). */
+:root{--font-text:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+:root{--plan-a:#c62a2a;--plan-b:#008a7e;--plan-c:#7a4db0;--plan-d:#b07800;--sea:#d9e6ea;--land:#eceadf;--land-edge:#b7b4a3;--peak:#8a8573;--water:#9cc3d1;--bus:#6f7772;--skip:#9a9a90;--kat-hotel:#1f3b57;--kat-gasthaus:#8a4b2a;--kat-ferienwohnung:#6a4c93;--kat-huette:#2c6e49;--kat-herberge:#3f7f8c;--kat-camping:#7a7a1f;--kat-unterwegs:#555a50;--kat-privat:#a0446a;--kat-sonstige:#6f7772;--bg:#f8f8f5;--fg:#1d2420;--mut:#5b645e;--ocker:#6a756e;--card:#ffffff;--line:#e4e5df;--acc:#1f7a57;--acc2:#e3f1ea;--warn:#9a5b00;--warnbg:#fbeed6;--mark:#ffe58a;--bar:#22281f;--bar-fg:#c9cdbf;--bar-on:#f3efe6;--bar-on-fg:#22281f}
+@media (prefers-color-scheme:dark){:root{--plan-a:#e8507a;--plan-b:#2fa9a0;--plan-c:#a07ad6;--plan-d:#b98a00;--sea:#14232a;--land:#222823;--land-edge:#3d453e;--peak:#8d8a7c;--water:#2f5e70;--bus:#8d958f;--skip:#6d716c;--kat-hotel:#7fa9d6;--kat-gasthaus:#d39a6f;--kat-ferienwohnung:#b49ae0;--kat-huette:#5cbf86;--kat-herberge:#79c3cf;--kat-camping:#c9c96a;--kat-unterwegs:#a9ad9f;--kat-privat:#e08fb0;--kat-sonstige:#8d958f;--bg:#151816;--fg:#eceee9;--mut:#a5aca6;--ocker:#a5aca6;--card:#1d211e;--line:#2c312d;--acc:#6fd0a5;--acc2:#1f3329;--warn:#f0c46a;--warnbg:#3a3017;--mark:#6b5a10;--bar:#2c3128;--bar-fg:#b9bdaf;--bar-on:#ece8dd;--bar-on-fg:#191c17}}
+/* Formen: Radien (klein für Knöpfe, normal für Karten, Kachel, groß für die Fläche, an der man handelt, Pille) und Schatten */
+:root{--r-klein:8px;--r:12px;--r-kachel:14px;--r-gross:18px;--r-pille:99px;
+  --schatten:0 1px 2px rgba(20,30,25,.05),0 6px 24px rgba(20,30,25,.06);--schatten-klein:0 1px 3px rgba(20,30,25,.12)}
 /* Breite: Kopf und alle Ansichten teilen --breite, Fließtext bleibt auf Lesebreite (--lese); Werte je Breite unten */
 :root{--breite:860px;--lese:44rem}
 :root{--tabbar-h:60px;--knopf:46px;--tabbar-gap:max(12px,calc(env(safe-area-inset-bottom,0px) - 10px));--tabbar-space:calc(var(--tabbar-h) + var(--tabbar-gap) + 24px);--hoehe-fehlt:0px}
@@ -79,7 +80,7 @@ mark{background:var(--mark);color:inherit;border-radius:3px}
   --pico-form-element-focus-color:var(--acc);--pico-table-border-color:var(--line);--pico-table-row-stripped-background-color:var(--acc2);
   --pico-mark-background-color:var(--mark);--pico-mark-color:var(--fg);--pico-border-radius:10px}
 .pico th{background:var(--acc2);font-weight:600}
-.pico :is(h1,h2,h3,h4){font-family:var(--font-titel);font-weight:700;text-wrap:balance;letter-spacing:-.005em}
+.pico :is(h1,h2,h3,h4){font-family:var(--font-text);font-weight:700;text-wrap:balance;letter-spacing:-.01em}
 .pico table{font-variant-numeric:tabular-nums}
 .pico .tabelle table{margin:0}
 .pico button.klein{font-size:0.875rem;padding:6px 12px}
@@ -124,7 +125,7 @@ ol.fussnoten li{margin:0 0 .25em;overflow-wrap:anywhere}
 .mk-unklar{color:var(--warn);font-weight:700}
 .mk-luecke{color:var(--warn)}
 .pico button.mk-i{position:relative;width:20px;height:20px;min-height:0;padding:0;margin:0 0 0 6px;border-radius:50%;border:1px solid var(--line);
-  background:var(--card);color:var(--mut);font:italic 700 0.75rem/18px var(--font-titel);text-align:center;vertical-align:1px;box-shadow:none;cursor:pointer}
+  background:var(--card);color:var(--mut);font:italic 700 0.75rem/18px var(--font-text);text-align:center;vertical-align:1px;box-shadow:none;cursor:pointer}
 .pico button.mk-i::after{content:"";position:absolute;inset:-12px}
 .pico button.mk-i[aria-expanded="true"]{background:var(--acc2);color:var(--acc);border-color:var(--acc)}
 .mk-q{display:block;font-size:0.8125rem;line-height:1.35;color:var(--mut);margin:3px 0 0;overflow-wrap:anywhere}
@@ -135,6 +136,10 @@ ol.fussnoten li{margin:0 0 .25em;overflow-wrap:anywhere}
 .mk-chip{margin-left:6px;font-size:0.6875rem;padding:1px 7px}
 .mk-leer{color:var(--mut);border-bottom:1px dashed var(--line)}
 .mk-nichts{color:var(--mut)}
+/* ---------- Atom Etikett: sagt, was etwas ist (Nacht, Gehzeit, Start …); normale Schreibweise, gedämpft ----------
+   Ein Symbol davor (.etikett-sym) nur, wo es die Art sofort zeigt (Nacht, Wahl, Ort, Kennzahlen). */
+:is(.etikett,.ding-art,.tagdatum,.kzn,.wv-etikett){font:600 0.85rem/1.3 var(--font-text);letter-spacing:0;text-transform:none;color:var(--mut)}
+.etikett-sym{width:1rem;height:1rem;color:var(--acc)}
 /* ---------- Atom Planfarbe: Punkt oder Linie ---------- */
 .plan-linie{width:16px;border-top:4px solid var(--farbe);display:inline-block}
 .punkt{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--farbe);margin-right:4px}
@@ -217,13 +222,15 @@ details.block>.ortchips{padding:0 14px}
   .umschalter button:hover{border-color:var(--acc)}
 }
 /* ---------- Etikett eines Dings: was es ist, Punkt in der Farbe der Kategorie ---------- */
-.ding-art{display:flex;align-items:center;gap:6px;font:700 0.6562rem/1.2 var(--font-text);letter-spacing:.08em;text-transform:uppercase;color:var(--ocker)}
+.ding-art{display:flex;align-items:center;gap:6px}
 .ding-art .lg-k{width:9px;height:9px}
-/* ---------- Kennzahlenleiste: Gehzeit, Aufstieg, Abstieg, Strecke ---------- */
-.kz{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:8px 0 4px;border-top:2px solid var(--fg);border-bottom:1px solid var(--line)}
-.kz>div{padding:7px 0;display:flex;flex-direction:column;gap:1px}
-.kzn{font:700 0.6562rem/1.2 var(--font-text);letter-spacing:.06em;text-transform:uppercase;color:var(--ocker)}
-.kzw{font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums}
+/* ---------- Kennzahlenleiste: Gehzeit, Aufstieg, Abstieg, Strecke als hellgrüne Kacheln mit Symbol; am Handy 2 × 2 ---------- */
+.kz{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;margin:10px 0}
+.kz>div{background:var(--acc2);border-radius:var(--r-kachel);padding:10px 12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kzn{display:flex;align-items:center;gap:6px;color:var(--acc)}
+.kzn .sym{width:1.05rem;height:1.05rem}
+.kzw{font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+@media (max-width:520px){.kz{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* ---------- Merkmalliste (docs/alternativen.md) ---------- */
 dl.mliste{margin:6px 0;font-size:0.9062rem}
 dl.mliste dt{font-size:0.7812rem;color:var(--mut);margin-top:6px}
@@ -245,7 +252,7 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .typ-praxis .wsym{background:var(--warnbg);color:var(--warn)}
 .typ-quelle .wsym{background:color-mix(in srgb,var(--mut) 16%,transparent);color:var(--mut)}
 .wtext{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.wt{font:600 1.1875rem/1.25 var(--font-titel);text-wrap:balance}
+.wt{font:600 1.1875rem/1.25 var(--font-text);letter-spacing:-.01em;text-wrap:balance}
 .wu{font-size:0.9062rem;line-height:1.4;color:var(--mut)}
 .pico .wzeile>.zid-box{margin:3px 0 0;flex:none}
 @media (hover:hover){.wzeile:hover .wt{color:var(--acc)}}
@@ -279,10 +286,11 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 /* ---------- Wahl-Modul (Designsystem 2c): Einstieg an der Stelle, Vergleich darunter; ab 700 px Tabelle, darunter Karten oder Tabelle ---------- */
 .vergleich.mk th[scope=row]{text-align:left;color:var(--mut);font-weight:600;white-space:nowrap}
 .vergleich.mk td{vertical-align:top;min-width:9em}
+/* Einstieg „Alternativen vergleichen“: hellgrüne Pille mit Zahl; offen mit Rand statt Fläche */
 .pico .wm-knopf{width:auto;margin:0;box-shadow:none;font:600 0.875rem/1.2 var(--font-text);display:inline-flex;align-items:center;gap:8px;min-height:40px;
-  padding:6px 8px 6px 14px;border-radius:99px;border:1px solid var(--acc);background:var(--acc);color:var(--bg);cursor:pointer}
-.pico .wm-knopf[aria-expanded="true"]{background:transparent;color:var(--acc)}
-.wm-n{background:var(--bg);color:var(--acc);border-radius:99px;min-width:22px;padding:1px 7px;font-size:0.7812rem;text-align:center}
+  padding:6px 8px 6px 14px;border-radius:var(--r-pille);border:1px solid transparent;background:var(--acc2);color:var(--acc);--pico-color:var(--acc);cursor:pointer}
+.pico .wm-knopf[aria-expanded="true"]{background:transparent;border-color:var(--acc)}
+.wm-n{background:var(--card);color:var(--acc);border-radius:var(--r-pille);min-width:22px;padding:1px 7px;font-size:0.7812rem;font-weight:700;text-align:center}
 .wm-knopf[aria-expanded="true"] .wm-n{background:var(--acc2)}
 .wm{margin:10px 0 4px;padding-top:10px;border-top:2px solid var(--acc)}
 .wm[hidden]{display:none}
@@ -311,10 +319,9 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .option ul{margin:.2em 0;padding-left:20px;font-size:0.9375rem}
 /* ---------- Tageskopf: große Nummer, Datum als Etikett, Titel ---------- */
 .tagkopf{align-items:center!important;flex-wrap:nowrap!important}
-.tagnr{flex:none;font:700 2.5rem/.9 var(--font-titel);color:var(--acc);min-width:1.1em}
+.tagnr{flex:none;font:800 2.5rem/.9 var(--font-text);letter-spacing:-.02em;color:var(--acc);min-width:1.1em}
 .tagtext{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.tagdatum{font:700 0.75rem/1.3 var(--font-text);letter-spacing:.08em;text-transform:uppercase;color:var(--ocker)}
-.tagtitel{font:700 1.1875rem/1.25 var(--font-titel);text-wrap:balance}
+.tagtitel{font:700 1.1875rem/1.25 var(--font-text);letter-spacing:-.01em;text-wrap:balance}
 h2.tagkopf .tagnr{font-size:3.375rem}
 h2.tagkopf .tagtitel{font-size:1.6875rem;line-height:1.15}
 .karte.tag .tagkopf .tagtitel{font-size:1.0625rem}
@@ -327,7 +334,6 @@ h2.tagkopf .tagtitel{font-size:1.6875rem;line-height:1.15}
 .wv-ort.start .wv-punkt{background:var(--acc)}
 .wv-ort.ziel .wv-punkt{border-radius:3px;background:var(--fg);border-color:var(--fg)}
 .wv-name{font-weight:600;display:flex;align-items:baseline;gap:8px}
-.wv-etikett{font:700 0.6562rem/1.2 var(--font-text);letter-spacing:.08em;text-transform:uppercase;color:var(--ocker)}
 .wv-strecke{padding-top:2px;padding-bottom:6px}
 .wv-strecke::before{content:"";position:absolute;left:8px;top:-4px;bottom:-4px;border-left:2px dashed var(--acc)}
 .wv-strecke.fahrt::before{border-left-style:dotted;border-left-color:var(--mut)}
@@ -449,7 +455,7 @@ details.alternative{margin:0 0 10px 14px;border-left:3px solid var(--warn);paddi
 details.neben>summary{font-weight:700;padding:10px 2px;color:var(--warn)}
 .treffer .in{font-size:0.8125rem;color:var(--mut)}
 .treffer .s{font-size:0.9375rem;margin-top:3px}
-.pico h3.gruppe,.teil{font:700 0.75rem/1.3 var(--font-text);letter-spacing:.1em;text-transform:uppercase;color:var(--ocker);margin:1.6em 0 0;padding:0 0 6px;border-bottom:1px solid var(--line)}
+.pico h3.gruppe,.teil{font:700 1.2rem/1.3 var(--font-text);letter-spacing:-.01em;color:var(--fg);margin:1.6em 0 .2em}
 .agfilter{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
 .agfilter button.on{background:var(--acc);color:var(--bg);border-color:var(--acc)}
 #agForm .zwei{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
@@ -457,7 +463,7 @@ details.neben>summary{font-weight:700;padding:10px 2px;color:var(--warn)}
 /* ==================== 7 Rahmen der Seite: Kopf, Meldungen, Glas, Leiste ==================== */
 /* ---------- Kopf: großer Titel am Seitenanfang (iOS Large Title), scrollt mit ---------- */
 header{max-width:var(--breite);margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px 2px 16px}
-header .t{font-family:var(--font-titel);font-size:2rem;line-height:1.1;font-weight:700;letter-spacing:-.005em;margin:0;text-wrap:balance}
+header .t{font-family:var(--font-text);font-size:2rem;line-height:1.1;font-weight:700;letter-spacing:-.015em;margin:0;text-wrap:balance}
 header .u{font-size:0.9375rem;color:var(--mut);margin-top:4px;text-wrap:balance}
 header{position:relative}
 header:has(.konto) .t{padding-right:6rem}
@@ -477,7 +483,7 @@ header .konto{position:absolute;top:calc(10px + env(safe-area-inset-top));right:
         border-color:color-mix(in srgb,var(--fg) 14%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--fg) 10%,transparent),0 10px 30px rgba(0,0,0,.25)}
 }
 .rund{display:inline-flex;align-items:center;justify-content:center;width:var(--knopf);height:var(--knopf);border-radius:50%;padding:0;cursor:pointer;text-decoration:none}
-/* ---------- Leiste: eine dunkle Fläche mit Reitern, die Suche ist der letzte Reiter (Stil „Wanderführer“) ---------- */
+/* ---------- Leiste: eine dunkle Fläche mit Reitern, die Suche ist der letzte Reiter (noch im Gesicht „Wanderführer“; der Vorschlag für B2 steht aus, frieda-reist#55) ---------- */
 nav{display:flex}
 nav a{min-width:0;text-align:center;color:var(--mut);text-decoration:none;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .leiste{position:fixed;z-index:10;left:10px;right:10px;bottom:calc(var(--tabbar-gap) - var(--hoehe-fehlt));max-width:700px;margin:0 auto;display:flex;align-items:stretch;gap:2px;
@@ -773,14 +779,20 @@ function kennzahlPaar(n, v) {
   return /^aufstieg/i.test(n) ? ["Aufstieg", `↑ ${v} m`] : /^abstieg/i.test(n) ? ["Abstieg", `↓ ${v} m`]
     : /^(gehzeit|dauer)/i.test(n) ? ["Gehzeit", v] : /^l(ä|ae)nge/i.test(n) ? ["Strecke", /^[\d.,]+$/.test(v) ? `${v} km` : v] : [n, v];
 }
+// Je Kennzahl eine Kachel; die bekannten tragen ihr Symbol im Etikett
+const KZ_SYM = {Gehzeit: "gehzeit", Aufstieg: "aufstieg", Abstieg: "abstieg", Strecke: "strecke"};
 function kennzahlLeiste(kennzahlen) {
   const kz = Object.entries(kennzahlen || {}).map(([n, v]) => kennzahlPaar(n, v));
-  return kz.length ? el("div", {class: "kz"}, kz.map(([n, v]) => el("div", {}, el("span", {class: "kzn"}, n), el("span", {class: "kzw"}, v)))) : null;
+  return kz.length ? el("div", {class: "kz"}, kz.map(([n, v]) => el("div", {},
+    el("span", {class: "kzn"}, KZ_SYM[n] ? symbol(KZ_SYM[n]) : null, n), el("span", {class: "kzw"}, v)))) : null;
 }
 /* Organismus Ding (Designsystem 2b): ein Aufenthalt, eine Bewegung oder eine Folge sieht überall gleich aus.
-   Etikett oben (was es ist, Punkt in der Farbe der Kategorie), Titel, Unterzeile, Zustand, Kennung. */
-function dingEtikett(text, kat) {
-  return el("span", {class: "ding-art"}, kat ? el("i", {class: "lg-k" + katKlasse(kat), "aria-hidden": "true"}) : null, text);
+   Etikett oben (was es ist, mit Symbol der Art und Punkt in der Farbe der Kategorie), Titel, Unterzeile, Zustand, Kennung. */
+// Symbol je Art eines Dings: Nacht und Unterkunft ein Bett, eine Wahl ein Abzweig
+const DING_SYM = {nacht: "unterkunft", unterkunft: "unterkunft", wahl: "varianten"};
+function dingEtikett(text, kat, art) {
+  return el("span", {class: "ding-art"}, DING_SYM[art] ? symbol(DING_SYM[art], "etikett-sym") : null,
+    kat ? el("i", {class: "lg-k" + katKlasse(kat), "aria-hidden": "true"}) : null, text);
 }
 // Aufenthalt als Zeile: die Nacht eines Tages. Offene Wahl zeigt die vorläufige Unterkunft und wie viele zur Wahl stehen.
 // ohneLinks: in Kacheln, die selbst ein Link sind
@@ -799,7 +811,7 @@ function nachtZeile(n, ohneLinks, datum) {
   const kennung = ohneLinks ? null : w ? zid(w.id) : uid ? zid(uid) : null;
   const einstieg = w && !ohneLinks ? wahlEinstieg(w, false, datum) : null;
   const zeile = el("div", {class: "ding nacht"},
-    el("div", {class: "ding-text"}, dingEtikett("Nacht", kat !== "offen" ? kat : null),
+    el("div", {class: "ding-text"}, dingEtikett("Nacht", kat !== "offen" ? kat : null, "nacht"),
       el("span", {class: "ding-titel"}, !ohneLinks && u ? link(uid, titel) : titel),
       unter.length ? el("span", {class: "ding-unter"}, unter.join(" · ")) : null,
       zustand || einstieg ? el("span", {class: "chips"}, zustand, einstieg) : null),
@@ -821,7 +833,7 @@ function streckeZeile(id, wahl) {
   return z;
 }
 
-// Tageskopf im Stil „Wanderführer“: große Nummer, Datum als Etikett, Titel in Serif (Plan, Pläne, Tagesseite)
+// Tageskopf: große Nummer, Datum als Etikett, Titel (Plan, Pläne, Tagesseite)
 function tagKopf(tag, attrs, nr, datum, wt, titel, id) {
   if (!datum) return el(tag, {class: "k", ...attrs}, titel, zid(id));
   return el(tag, {...attrs, class: ((attrs.class || "") + " k tagkopf").trim()},
@@ -857,7 +869,7 @@ function tagKarte(t, ohneKopf) {
       ul.append(el("li", {}, o.titel, o.ausloeser ? ` – ${o.ausloeser}` : "", o.aktiv && w.art !== "unterwegs" ? (w.offen ? " (vorläufig)" : " (gewählt)") : ""));
     const offen = w.art === "planung" && w.offen && gueltigeOptionen(w).length > 1, einstieg = wahlEinstieg(w);
     const z = el("div", {class: "ding wahl"},
-      el("div", {class: "ding-text"}, dingEtikett(w.art === "unterwegs" ? "Unterwegs wählen" : "Wahl"),
+      el("div", {class: "ding-text"}, dingEtikett(w.art === "unterwegs" ? "Unterwegs wählen" : "Wahl", null, "wahl"),
         el("span", {class: "ding-titel"}, link(vid, w.titel)), ul,
         el("span", {class: "chips"}, w.art === "unterwegs" ? chip("unterwegs", "unterwegs entscheiden") : chip(offen ? "offen" : "plan", offen ? "offen" : "entschieden"), einstieg)),
       zid(vid));
@@ -890,7 +902,7 @@ function tagesplan(s) {
 function unterkunftKarte(id) {
   const u = R.unterkuenfte[id];
   const k = el("div", {class: "karte ziel", id, "data-ziel": id},
-    dingEtikett(["Unterkunft", (R.kategorien || {})[u.kategorie]].filter(Boolean).join(" · "), u.kategorie), el("div", {class: "k"}, u.name, zid(id)));
+    dingEtikett(["Unterkunft", (R.kategorien || {})[u.kategorie]].filter(Boolean).join(" · "), u.kategorie, "unterkunft"), el("div", {class: "k"}, u.name, zid(id)));
   k.append(el("div", {class: "z"}, [u.typ, ortName(u.ort)].filter(Boolean).join(" · ")));
   if (u.kontakt) k.append(el("div", {class: "z"}, el("b", {}, "Kontakt: "), u.kontakt));
   k.append(el("div", {class: "chips"}, chip(u.buchung === "offen" ? "offen" : "plan", "Buchung: " + u.buchung), u.frage ? chip("leise", u.frage, {href: "#" + u.frage}) : null));
@@ -1825,7 +1837,7 @@ function ansichtPlanDetail(m, p) {
     for (const {w, akt, andere, start} of alt.get(t.id) || []) {
       // Reiseteil zur Wahl: derselbe Einstieg wie am Tag, Vergleich darunter
       const einstieg = wahlEinstieg(w);
-      if (einstieg) m.append(el("div", {class: "ding wahl"}, el("div", {class: "ding-text"}, dingEtikett("Wahl"),
+      if (einstieg) m.append(el("div", {class: "ding wahl"}, el("div", {class: "ding-text"}, dingEtikett("Wahl", null, "wahl"),
         el("span", {class: "ding-titel"}, link(w.id, w.titel)), el("span", {class: "chips"}, chip(w.offen ? "offen" : "plan", w.offen ? "offen" : "entschieden"), einstieg)), zid(w.id)), wahlVergleich(w));
       for (const o of andere) {
         const d = el("details", {class: "block alternative"}, el("summary", {}, `Statt „${akt ? akt.titel : "–"}“: ${o.titel}`, zid(o.id)));
