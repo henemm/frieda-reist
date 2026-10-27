@@ -296,7 +296,7 @@ def test_konnektor_werkzeuge_je_status(umgebung):
     u = umgebung("planung")
     nur_lesen = u.werkzeuge(KIM)
     assert not nur_lesen & kn.SCHREIB_WERKZEUGE and "auftrag_geben" not in nur_lesen
-    nur_bestimmer = {"entscheiden", "person_einladen"}   # Paket C
+    nur_bestimmer = {"entscheiden", "person_einladen", "reise_anlegen"}   # Paket C, Paket H
     assert kn.SCHREIB_WERKZEUGE - nur_bestimmer <= u.werkzeuge(KARL) and not nur_bestimmer & u.werkzeuge(KARL)
     assert kn.SCHREIB_WERKZEUGE <= u.werkzeuge(IDA) and "auftrag_geben" in u.werkzeuge(IDA)
 
@@ -310,6 +310,7 @@ def test_konnektor_werkzeuge_je_status(umgebung):
     archiv = umgebung("archiv")
     assert not archiv.werkzeuge(KARL) & kn.SCHREIB_WERKZEUGE
     assert "zeige" in archiv.werkzeuge(KARL)
+    assert archiv.werkzeuge(IDA) & kn.SCHREIB_WERKZEUGE == {"reise_anlegen"}   # eine neue Reise geht aus jeder Reise
 
 
 def test_konnektor_prueft_beim_aufruf_auch_ohne_werkzeugliste(umgebung):
@@ -452,3 +453,39 @@ def test_liste_zeigt_konflikt(umgebung, capsys):
     out = capsys.readouterr().out
     assert out.count("KONFLIKT") == 2 and "[konflikt]" in out and "Offene Frage (F-…) anlegen" in out
     rm.setze("beispielreise", rm.auftraege(u.o)[0]["id"], "rueckfrage", "siehe F-09")
+
+
+# ---------- Paket H: neue Reise ----------
+@pytest.mark.parametrize("args, text", [
+    ({}, "titel fehlt"),
+    ({"titel": "a\nb"}, "eine Zeile"),
+    ({"titel": "Ski", "von": "8.1.2027", "bis": "2027-02-13"}, "JJJJ-MM-TT"),
+    ({"titel": "Ski", "von": "2027-02-06", "bis": "2028-03-01"}, "höchstens ein Jahr"),
+    ({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13", "personen": [{"vorname": "Karl", "rolle": "chef"}]}, "Rolle muss"),
+    ({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13", "personen": [{"rolle": "einbringer"}]}, "Vornamen"),
+    ({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13", "personen": [{"vorname": "Karl"}, {"vorname": "karl"}]},
+     "zweimal"),
+    ({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13", "personen": [{"vorname": "Ida", "rolle": "einbringer"}]},
+     "bestimmt deshalb mit"),
+    ({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13", "pfad": "Ski Urlaub"}, "pfad: nur Kleinbuchstaben"),
+    ({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13", "pfad": "x" * 41}, "2 bis 40"),
+    ({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13", "pfad": "alt"}, "gibt es schon"),
+])
+def test_neue_reise_pruefen_lehnt_ab(args, text):
+    from reise import neue_reise_pruefen
+    d, f = neue_reise_pruefen(args, "Ida", {"alt"})
+    assert d is None and text in f, f
+
+
+def test_neue_reise_pruefen():
+    from reise import neue_reise_pruefen, reise_pfad
+    d, f = neue_reise_pruefen({"titel": " Winterwoche Allgäu ", "von": "2027-02-06", "bis": "2027-02-13",
+                               "personen": [{"vorname": "Ida", "rolle": "bestimmer"}, {"vorname": "Jörg", "notiz": "fährt"}]},
+                              "Ida")
+    assert f is None and d["pfad"] == "winterwoche-allgaeu-2027" and d["titel"] == "Winterwoche Allgäu"
+    assert d["personen"] == {"ida": {"name": "Ida", "rolle": "bestimmer"},
+                             "joerg": {"name": "Jörg", "rolle": "einbringer", "notiz": "fährt"}}
+    assert neue_reise_pruefen({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13"}, None)[1].startswith(
+        "Eine Reise anlegen geht nur mit dem persönlichen Link")
+    assert reise_pfad("Japan 2027 – Charlotte", 2027) == "japan-2027-charlotte"
+    assert len(reise_pfad("Eine sehr lange Reise durch viele Länder und Städte am Mittelmeer", 2027)) <= 40

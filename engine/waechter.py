@@ -143,6 +143,7 @@ def pruefauftrag(reise, o, items, frist_tage, jetzt, trocken=False):
             f.write(json.dumps(e, ensure_ascii=False) + "\n")
             f.flush()
             os.fsync(f.fileno())
+        rm.anstossen(o)
     return e
 
 

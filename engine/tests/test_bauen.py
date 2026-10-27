@@ -361,6 +361,9 @@ def test_reise_yaml(reise, tmp_path):
     r = baue(reise, tmp_path)["reise"]
     assert r["titel"] == "Test" and r["varianten_titel"] == "Pläne" and r["gruppen"] == {"wissen": "Wissen"}
     assert r["status"]["wert"] == "planung" and r["status"]["verlauf"][0]["datum"] == "2026-10-26"
+    assert r["zeitraum"] is None
+    mit_reise_yaml(reise, lambda x: x.update(zeitraum={"von": datetime.date(2027, 2, 6), "bis": datetime.date(2027, 2, 13)}))
+    assert baue(reise, tmp_path)["reise"]["zeitraum"] == {"von": "2027-02-06", "bis": "2027-02-13"}
     assert [(p["schluessel"], p["rolle"], p["reist"]) for p in r["personen"]] == \
         [("hanna", "bestimmer", True), ("ben", "einbringer", False), ("kim", "reisend", True)]
     assert r["bausteine"] == ["varianten", "fragen", "wuensche"]
@@ -388,6 +391,10 @@ def test_reise_yaml(reise, tmp_path):
     (lambda r: r.update(bonus=1), "unbekannter Schlüssel „bonus“"),
     (lambda r: r.pop("titel"), "„titel“ fehlt"),
     (lambda r: r.pop("pfad"), "„pfad“ fehlt"),
+    # Zeitraum (Paket H)
+    (lambda r: r.update(zeitraum={"von": datetime.date(2027, 2, 6)}), "zeitraum muss {von: JJJJ-MM-TT, bis: JJJJ-MM-TT} sein"),
+    (lambda r: r.update(zeitraum={"von": "8.1.", "bis": "17.1."}), "zeitraum muss"),
+    (lambda r: r.update(zeitraum={"von": datetime.date(2027, 2, 6), "bis": datetime.date(2027, 2, 1)}), "liegt vor von"),
     # Verlauf des Status
     (lambda r: r["status"].update(verlauf=["gestern"]), "Eintrag muss {datum, wert, wer, grund} sein"),
     (lambda r: r["status"]["verlauf"][0].update(wert="zauber"), "Status „zauber“ unbekannt"),

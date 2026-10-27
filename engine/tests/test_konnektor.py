@@ -189,7 +189,7 @@ def test_werkzeuge_je_rolle(dienst):
     m = {t["name"] for t in rpc(basis, MITREISEND, "tools/list")["tools"]}
     h = {t["name"] for t in rpc(basis, ALT_BESTIMMER, "tools/list")["tools"]}
     assert "auftrag_geben" not in m and "rueckmeldung_geben" in m
-    assert h == m | {"auftrag_geben", "entscheiden", "person_einladen"}
+    assert h == m | {"auftrag_geben", "entscheiden", "person_einladen", "reise_anlegen"}
     assert "frage_beantworten" in m and not {"entscheiden", "person_einladen"} & m   # Paket C
     assert {t["name"] for t in rpc(basis, KARL, "tools/list")["tools"]} == m
     r = {t["name"] for t in rpc(basis, REISEND, "tools/list")["tools"]}
@@ -299,6 +299,41 @@ def test_auftrag(dienst, capsys):
     t, _ = werkzeug(basis, MITREISEND, "rueckmeldungen")
     assert a[0]["id"] not in t
     t, f = werkzeug(basis, ALT_BESTIMMER, "auftrag_geben", ziel="kein gültiges ziel!", auftrag="x")
+    assert f
+
+
+def test_reise_anlegen(dienst, capsys):
+    """Paket H: Eine Bestimmerin legt in der Claude-App eine neue Reise an. Der Dienst prüft sofort, legt einen Auftrag mit
+    den geprüften Daten an und stößt das Einarbeiten an; die Reise selbst gibt es erst danach."""
+    basis, ablage = dienst
+    for token in (KARL, REISEND):
+        t, f = werkzeug(basis, token, "reise_anlegen", titel="Ski", von="2027-02-06", bis="2027-02-13")
+        assert f and "nur Bestimmer" in t
+    t, f = werkzeug(basis, ALT_BESTIMMER, "reise_anlegen", titel="Ski", von="2027-02-13", bis="2027-02-06")
+    assert f and "Ende liegt vor dem Anfang" in t
+    t, f = werkzeug(basis, ALT_BESTIMMER, "reise_anlegen", titel="Beispielreise", von="2027-02-06", bis="2027-02-13",
+                    pfad="beispielreise")
+    assert f and "gibt es schon" in t
+    t, f = werkzeug(basis, ALT_BESTIMMER, "reise_anlegen", titel="Winterwoche im Allgäu", von="2027-02-06",
+                    bis="2027-02-13", ziel="Oberstdorf",
+                    personen=[{"vorname": "Karl", "rolle": "einbringer"}, {"vorname": "Mo", "rolle": "reisend", "reist": False}],
+                    notiz="Hotel schon gebucht (Bestätigung vom 1.10.2026).")
+    assert not f and "wenigen Minuten angelegt" in t and "Bis dahin gibt es die Reise noch nicht" in t
+    a = rm.auftraege(ablage / "beispielreise")[-1]
+    assert a["name"] == "Ida" and a["status"] == "neu" and a["ziel"] == "allgemein"
+    assert a["daten"]["neue_reise"] == {
+        "titel": "Winterwoche im Allgäu", "von": "2027-02-06", "bis": "2027-02-13", "ziel": "Oberstdorf",
+        "pfad": "winterwoche-im-allgaeu-2027", "wer": "Ida", "notiz": "Hotel schon gebucht (Bestätigung vom 1.10.2026).",
+        "personen": {"ida": {"name": "Ida", "rolle": "bestimmer"}, "karl": {"name": "Karl", "rolle": "einbringer"},
+                     "mo": {"name": "Mo", "rolle": "reisend", "reist": False}}}
+    assert (ablage / ".neu").exists()                         # der Pfad-Wächter des Betriebs sieht nur diese Datei
+    rm.liste("beispielreise", False)
+    assert "NEUE REISE von Ida" in capsys.readouterr().out
+    # derselbe Ordnername ist jetzt angefragt
+    t, f = werkzeug(basis, ALT_BESTIMMER, "reise_anlegen", titel="Winterwoche im Allgäu", von="2027-02-06", bis="2027-02-13")
+    assert f and "angefragt" in t
+    # Ohne persönlichen Link kein Anlegen (Bestimmer ohne Namen gibt es nicht; ein Einbringer-Link ohne Person auch nicht)
+    t, f = werkzeug(basis, MITREISEND, "reise_anlegen", titel="X", von="2027-02-06", bis="2027-02-07")
     assert f
 
 

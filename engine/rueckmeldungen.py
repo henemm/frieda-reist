@@ -239,6 +239,15 @@ def meldungen_aktuell(o, an, aufgaben=None, status=None, bausteine=None, heute=N
     return aus
 
 
+def anstossen(o):
+    """Neue Eingabe (eingang.jsonl, auftraege.jsonl): <ablage>/.neu berühren. Der Betrieb beobachtet nur diese eine Datei,
+    damit eine neue Reise keinen eigenen Eintrag im Pfad-Wächter braucht (Paket H)."""
+    try:
+        (o.parent / ".neu").touch()
+    except OSError:
+        pass
+
+
 def schreiben(pfad, text):
     tmp = pfad.with_suffix(".tmp")
     tmp.write_text(text, encoding="utf-8")
@@ -764,6 +773,7 @@ class Dienst(BaseHTTPRequestHandler):
                 f.write(json.dumps(e, ensure_ascii=False) + "\n")
                 f.flush()
                 os.fsync(f.fileno())
+            anstossen(o)
         self._antwort(201, {**e, "status": "neu", "kommentar": ""})
 
     def do_DELETE(self):
@@ -874,6 +884,10 @@ def liste(reise, alle):
         elif daten.get("weg") == "direkt":
             print(f"  ENTSCHEIDUNG von {e.get('name')} im Gespräch (Claude-App), Weg direkt: bereits geprüft (Rolle, Option, "
                   f"Konflikte). Einarbeiten, nicht neu entscheiden.")
+        elif daten.get("neue_reise"):
+            print(f"  NEUE REISE von {e.get('name')} (Claude-App), schon geprüft: Das Skript legt reisen/"
+                  f"{daten['neue_reise']['pfad']} aus der Vorlage an. Notiz in eigenen Worten mit Herkunft in den Überblick "
+                  f"(inhalt/wissen.md) übertragen, nichts erfinden; Status übernommen.")
         elif daten.get("einladung"):
             print(f"  EINLADUNG von {e.get('name')} (Claude-App): Zugang und Rolle gelten schon. In reise.yaml unter personen "
                   f"eintragen (Schlüssel, name, rolle, reist, notiz wie im Text).")

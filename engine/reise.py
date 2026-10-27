@@ -3,6 +3,7 @@
 Hintergrund und Entscheidungen: docs/produkt.md (26.10.2026). Die Zuordnung der Inhalte (Überschrift
 -> ID) bleibt in reise.json; hier steht, was die KI sicher lesen und ändern soll, ohne Inhalte zu berühren:
 
+  zeitraum    {von, bis} als Datum; schon in der Idee bekannt, bevor es einen Plan gibt (Paket H)
   status      idee | planung | fest | unterwegs | danach | archiv, mit Verlauf (datum, wert, wer, grund)
   personen    {schluessel: {name, rolle, reist, notiz}}; Rollen reisend < einbringer < bestimmer
   bausteine   zuschaltbare Teile (Liste); Plan, Wissen, Suche und Personen sind immer da
@@ -73,6 +74,8 @@ AKTIONEN = {
     "entscheiden":  {"rolle": "bestimmer", "baustein": "varianten", "ab": ("alles",)},
     "antwort":      {"rolle": "einbringer", "baustein": "fragen", "ab": ("alles", "nachlese")},
     "einladen":     {"rolle": "bestimmer", "baustein": None, "ab": ("alles", "nachlese")},
+    # Paket H: eine neue Reise anlegen; der Status der Reise, aus der gefragt wird, spielt keine Rolle
+    "reise_anlegen": {"rolle": "bestimmer", "baustein": None, "ab": ("alles", "nachlese", "nichts")},
 }
 # Lesende Konnektor-Werkzeuge, die zu einem zuschaltbaren Baustein gehören
 LESE_BAUSTEIN = {"offene_fragen": "fragen", "varianten": "varianten", "merkmale": "varianten",
@@ -112,13 +115,96 @@ def erlaubt(aktion, rolle, status, bausteine, ziel=None, regeln=None):
     return True, ""
 
 
-def schluessel_aus_name(name):
-    """Vorname -> Schlüssel für reise.yaml personen und den Zugang: klein, ohne Umlaute und Sonderzeichen."""
-    t = (name or "").strip().casefold()
+def _klein(text, laenge):
+    t = (text or "").strip().casefold()
     for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
         t = t.replace(a, b)
     t = unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode("ascii")
-    return re.sub(r"[^a-z0-9]+", "-", t).strip("-")[:40]
+    return re.sub(r"[^a-z0-9]+", "-", t).strip("-")[:laenge].strip("-")
+
+
+def schluessel_aus_name(name):
+    """Vorname -> Schlüssel für reise.yaml personen und den Zugang: klein, ohne Umlaute und Sonderzeichen."""
+    return _klein(name, 40)
+
+
+# ---------- Neue Reise (Paket H, docs/neue-reise.md) ----------
+PFAD_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{1,39}$")   # passt in die Ablage (rueckmeldungen.REISE_MUSTER)
+MAX_NOTIZ = 4000
+MAX_PERSONEN = 20
+
+
+def reise_pfad(titel, jahr=None):
+    """Titel (und Jahr, falls nicht schon darin) -> Ordnername der Reise, z. B. „winterwoche-allgaeu-2027“."""
+    return _klein(titel if jahr is None or str(jahr) in (titel or "") else f"{titel} {jahr}", 40)
+
+
+def neue_reise_pruefen(args, wer, vergeben=()):
+    """Eingaben für eine neue Reise prüfen (Konnektor, Werkzeug reise_anlegen). wer: Name der anlegenden Person, sie wird
+    Bestimmer. vergeben: Ordnernamen, die es schon gibt. -> (daten, None) oder (None, Grund in einfachen Worten)."""
+    def zeile(k, laenge, pflicht=False):
+        v = args.get(k)
+        if v is None or v == "":
+            return (None, f"{k} fehlt.") if pflicht else ("", None)
+        if not isinstance(v, str) or "\n" in v.strip() or len(v.strip()) > laenge:
+            return None, f"{k}: eine Zeile Text, höchstens {laenge} Zeichen."
+        return v.strip(), None
+    titel, f = zeile("titel", 80, True)
+    if f:
+        return None, f
+    ziel, f = zeile("ziel", 80)
+    if f:
+        return None, f
+    try:
+        von, bis = (datetime.date.fromisoformat(str(args.get(k) or "")) for k in ("von", "bis"))
+    except ValueError:
+        return None, "von und bis als Datum angeben (JJJJ-MM-TT), z. B. 2027-02-06."
+    if bis < von:
+        return None, "Das Ende liegt vor dem Anfang."
+    if (bis - von).days > 366:
+        return None, "Eine Reise dauert hier höchstens ein Jahr."
+    notiz = args.get("notiz") or ""
+    if not isinstance(notiz, str) or len(notiz) > MAX_NOTIZ:
+        return None, f"notiz: Text mit höchstens {MAX_NOTIZ} Zeichen."
+    roh = args.get("personen") or []
+    if not isinstance(roh, list) or len(roh) > MAX_PERSONEN:
+        return None, f"personen: Liste mit höchstens {MAX_PERSONEN} Personen."
+    if not wer:
+        return None, "Eine Reise anlegen geht nur mit dem persönlichen Link eines Bestimmers."
+    personen = {}
+    for p in [{"vorname": wer, "rolle": "bestimmer"}] + roh:
+        if not isinstance(p, dict) or not isinstance(p.get("vorname"), str) or not p["vorname"].strip() \
+                or "\n" in p["vorname"].strip() or len(p["vorname"].strip()) > 80:
+            return None, "Jede Person braucht einen Vornamen (eine Zeile)."
+        name, rolle = p["vorname"].strip(), p.get("rolle") or "einbringer"
+        if rolle not in ROLLEN:
+            return None, f"{name}: Rolle muss eine von {', '.join(ROLLEN)} sein."
+        k = schluessel_aus_name(name)
+        if not k:
+            return None, f"{name}: Aus dem Namen lässt sich kein Schlüssel bilden."
+        if k in personen:
+            if name.casefold() == wer.casefold() and personen[k]["name"] == wer:
+                if rolle != "bestimmer":
+                    return None, f"{wer} legt die Reise an und bestimmt deshalb mit (Rolle bestimmer)."
+                eintrag = personen[k]
+            else:
+                return None, f"{name} steht zweimal in der Liste."
+        else:
+            eintrag = personen[k] = {"name": name, "rolle": rolle}
+        if p.get("reist") is False:
+            eintrag["reist"] = False
+        if isinstance(p.get("notiz"), str) and p["notiz"].strip():
+            if "\n" in p["notiz"].strip() or len(p["notiz"].strip()) > 300:
+                return None, f"{name}: Notiz in einer Zeile, höchstens 300 Zeichen."
+            eintrag["notiz"] = p["notiz"].strip()
+    pfad = args.get("pfad") or reise_pfad(titel, von.year)
+    if not isinstance(pfad, str) or not PFAD_MUSTER.match(pfad):
+        return None, "pfad: nur Kleinbuchstaben, Ziffern und Bindestrich, 2 bis 40 Zeichen."
+    if pfad in vergeben:
+        return None, (f"Eine Reise mit dem Ordnernamen „{pfad}“ gibt es schon oder ist angefragt. Bitte einen anderen "
+                      "Titel oder pfad wählen.")
+    return {"titel": titel, "von": von.isoformat(), "bis": bis.isoformat(), "ziel": ziel, "pfad": pfad,
+            "personen": personen, "wer": wer, "notiz": notiz.strip()}, None
 
 
 def stelle(ziel):
@@ -189,6 +275,20 @@ class Reise:
                 self.fehl(f"„{k}“ fehlt.")
         e["untertitel"] = e.get("untertitel") or ""
         return e
+
+    def zeitraum(self):
+        """Zeitraum der Reise {von, bis} (ISO), schon vor dem Plan; fehlt er, None."""
+        z = self.r.get("zeitraum")
+        if z is None:
+            return None
+        if not isinstance(z, dict) or set(z) != {"von", "bis"} \
+                or not all(isinstance(z[k], datetime.date) for k in ("von", "bis")):
+            self.fehl("zeitraum muss {von: JJJJ-MM-TT, bis: JJJJ-MM-TT} sein.")
+            return None
+        if z["bis"] < z["von"]:
+            self.fehl(f"zeitraum: bis ({z['bis']}) liegt vor von ({z['von']}).")
+            return None
+        return {"von": z["von"].isoformat(), "bis": z["bis"].isoformat()}
 
     def status(self):
         if self.alt:
@@ -328,10 +428,11 @@ class Reise:
         """-> Eintrag „reise“ für daten.json; Fehler stehen danach in self.fehler."""
         if not self.alt:
             for k in self.r:
-                if k not in ALTE_ECKDATEN + ("status", "personen", "bausteine", "regeln", "darstellung"):
+                if k not in ALTE_ECKDATEN + ("zeitraum", "status", "personen", "bausteine", "regeln", "darstellung"):
                     self.fehl(f"unbekannter Schlüssel „{k}“.")
         d = self.eckdaten()
         d.update(self.darstellung())
+        d["zeitraum"] = None if self.alt else self.zeitraum()
         d["status"] = self.status()
         d["personen"] = self.personen()
         d["bausteine"] = self.bausteine()

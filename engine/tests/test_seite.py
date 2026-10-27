@@ -1,4 +1,5 @@
 """Browser-Rundgang durch die Beispielreise (Designsystem, frieda-reist#18): jede Ansicht ohne Skriptfehler und nicht leer."""
+import datetime
 import functools
 import http.server
 import json
@@ -71,6 +72,35 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
         assert teil in b, teil
     assert ' id="' not in b.split(">", 1)[1]
     assert "null" not in re.sub(r"<[^>]+>", " ", b)
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_neue_reise_aus_der_vorlage(tmp_path, browser):
+    """Paket H: Eine frisch angelegte Reise (Status idee, ohne Plan) zeigt jede Ansicht ohne Fehler und ohne Leere."""
+    import neu
+    r = neu.anlegen(tmp_path / "reisen", "Skiurlaub im Tal", datetime.date(2027, 2, 6), datetime.date(2027, 2, 13),
+                    {"ida": {"name": "Ida", "rolle": "bestimmer"}, "karl": {"name": "Karl", "rolle": "einbringer"}},
+                    "Ida", ziel="Oberstdorf")
+    bauen.bauen(r, tmp_path / "web" / r.name)
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(tmp_path / "web")))
+    threading.Thread(target=s.serve_forever, daemon=True).start()
+    try:
+        aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_browser.mjs"), str(PLAYWRIGHT),
+                              f"http://127.0.0.1:{s.server_address[1]}/{r.name}/", str(tmp_path / "dom.json")],
+                             capture_output=True, text=True, timeout=300, env={**os.environ, "RH_BROWSER": browser})
+    finally:
+        s.shutdown()
+    assert aus.returncode == 0, aus.stderr[-2000:]
+    e = json.loads(aus.stdout.strip().splitlines()[-1])
+    assert e["routen"] > 20 and e["fehler"] == [] and e["leer"] == [] and e["breit"] == []
+    dom = json.loads((tmp_path / "dom.json").read_text(encoding="utf-8"))
+    assert "6.–13. Februar 2027" in dom["390#"] and "Offene Fragen: 1" in dom["390#"]
 
 
 def seite_der_variante(tmp_path, browser, datum="2027-05-13", **variante):
