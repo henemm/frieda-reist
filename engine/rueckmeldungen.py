@@ -852,8 +852,15 @@ def liste(reise, alle):
         print("Keine neuen Rückmeldungen." if not alle else "Keine Rückmeldungen.")
         return
     titel = titel_zu(reise)
+    br = brett_lesen(o)
     for e in reversed(es):
         print(f"{e['id']}  {e['erstellt'][:16].replace('T', ' ')} UTC  {e.get('name')}  [{e['status']}]")
+        if e.get("art") == "Wunsch":
+            b = br.get(e["id"]) or {}
+            print(f"  WUNSCH ({b.get('punkte') or 0} Punkte von {e.get('name')}): prüfen, ob und wo er passt; Vorschlag in "
+                  "plan/wuensche.yaml (bezug, notiz mit Herkunft, option), nie einplanen. Punkte = Priorität, keine Entscheidung."
+                  + (" Schon eingeplant von einem Bestimmer." if b.get("eingeplant") else "")
+                  + (" Schon erlebt." if b.get("erlebt") else ""))
         daten = e.get("daten") or {}
         if daten.get("pruefung"):
             print(f"  PRÜFAUFTRAG des Wächters (keine Entscheidung eines Bestimmers): veränderliche Angaben nachschlagen, "

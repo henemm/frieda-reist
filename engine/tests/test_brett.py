@@ -186,3 +186,51 @@ def test_vorschlaege_werden_geprueft(tmp_path):
     bauen.bauen(q, tmp_path / "s2")
     d = json.loads((tmp_path / "s2" / "daten.json").read_text(encoding="utf-8"))
     assert d["wunsch_vorschlaege"][VORSCHLAG] == {"bezug": ["T-03"], "notiz": "", "option": "V-03.a", "gewaehlt": True}
+
+
+# ---------- Claude-App (Konnektor) ----------
+
+def test_brett_in_der_claude_app(umgebung):
+    from test_regeln import IDA, KARL, KIM
+    u = umgebung()
+    assert {"wuensche", "wunsch_aendern"} <= u.werkzeuge(KARL)
+    assert "wuensche" in u.werkzeuge(KIM) and "wunsch_aendern" not in u.werkzeuge(KIM)   # reisend: nur lesen
+    t, f = u.werkzeug(KARL, "rueckmeldung_geben", art="Wunsch", text="Einmal Kirnitzschtalbahn fahren")
+    assert not f, t
+    rid = rm.wuensche(u.o)[0]["id"]
+    t, f = u.werkzeug(KARL, "wunsch_aendern", id=rid, punkte=4)
+    assert not f and "4 Punkte" in t, t
+    t, f = u.werkzeug(IDA, "wunsch_aendern", id=rid, punkte=1)
+    assert f and "Karl" in t                                           # fremde Punkte: nein
+    t, f = u.werkzeug(KARL, "wunsch_aendern", id=rid, eingeplant=True)
+    assert f and "Bestimmer" in t
+    t, f = u.werkzeug(IDA, "wunsch_aendern", id=rid, eingeplant=True, bezug=["T-99"])
+    assert f and "T-99" in t
+    t, f = u.werkzeug(IDA, "wunsch_aendern", id=rid, eingeplant=True, bezug=["T-03"])
+    assert not f and "eingeplant" in t, t
+    t, f = u.werkzeug(KARL, "wunsch_aendern", id="R-1", punkte=1)
+    assert f and "R-…" in t
+    t, _ = u.werkzeug(KIM, "wuensche")
+    assert "### Eingeplant (1)" in t and f"{rid} · Karl · 4 Punkte: Einmal Kirnitzschtalbahn fahren" in t
+    assert "Eingeplant von Ida" in t and "T-03 " in t and "- Karl: 1 Wünsche, 1 eingeplant, 0 erlebt, 6 von 10 Punkten frei" in t
+    t, _ = u.werkzeug(KARL, "ueberblick")
+    assert "## Wünsche: 1 (eingeplant 1) (Werkzeug wuensche)" in t
+
+
+def test_brett_in_der_claude_app_ausgeschaltet(umgebung):
+    from test_regeln import IDA
+    u = umgebung(bausteine=["varianten", "rueckmeldungen"])
+    assert not {"wuensche", "wunsch_aendern"} & u.werkzeuge(IDA)
+    t, f = u.werkzeug(IDA, "wuensche")
+    assert f and "ausgeschaltet" in t
+    assert "Wünsche" not in u.werkzeug(IDA, "ueberblick")[0]
+
+
+def test_liste_zeigt_punkte_fuer_das_einarbeiten(umgebung, capsys):
+    u = umgebung()
+    a = wunsch(u, "Karl", "Kirnitzschtalbahn")
+    assert aendern(u, a, name="Karl", punkte=7)[0] == 200
+    capsys.readouterr()
+    rm.liste("beispielreise", False)
+    t = capsys.readouterr().out
+    assert "WUNSCH (7 Punkte von Karl)" in t and "plan/wuensche.yaml" in t and "nie einplanen" in t

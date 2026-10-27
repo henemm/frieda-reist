@@ -67,7 +67,7 @@ Die Regeln stehen in `engine/reise.py` (`VERHALTEN`, `AKTIONEN`, `erlaubt`) und 
 | `planung` | alles | Lücken und offene Wahlstellen sind Zwischenstand; Aufgabenfristen zählen noch nicht |
 | `fest` | alles | offene Planungs-Wahlstellen und ungeprüfte veränderliche Angaben der gewählten Optionen sind eine **Mahnung** (`route.mahnungen`); Aufgabenfristen zählen (überfällig) |
 | `unterwegs` | alles | wie `fest`; die Seite startet mit „Heute“ und der Karte, Wahlstellen mit Auslöser stehen vorn |
-| `danach` | Nachlese: Rückmeldungen und Aufgaben ja; Wünsche, Alternativen, Aufträge nein | Plan schreibgeschützt |
+| `danach` | Nachlese: Rückmeldungen, Aufgaben und Abhaken von Wünschen ja; neue Wünsche, Punkte, Alternativen, Aufträge nein | Plan schreibgeschützt |
 | `archiv` | nichts | nur lesen |
 
 Ein Auftrag an das Ziel `reise` (Status, Einstellungen) geht in jedem Status, damit ein Bestimmer eine gesperrte Reise wieder öffnen kann.
@@ -95,6 +95,24 @@ Details: `docs/waechter.md`. Neue Regeln mit Vorgabe: `waechter_frist_tage` (60)
 - Der Erinnerer meldet Fristen und „ab“-Termine an die Zuständigen und den fälligen Statuswechsel an die Bestimmer; die KI wechselt den Status nie selbst.
 - Beides gilt nur bei eingeschaltetem Baustein `waechter` und im Status `fest` oder `unterwegs`.
 - Die Meldungen erscheinen in der Claude-App (Überblick) und als Sammelnachricht an den Betreiber. E-Mail an alle gibt es nicht; Meldungen auf dem Handy über die Webseite sind Issue #21.
+
+### Wunsch-Brett (Paket G, 27.10.2026)
+
+Wünsche sind Ideen ohne feste Stelle (ein Ort, ein Erlebnis, ein Essen). Das Brett ordnet sie in Spalten, die immer berechnet werden, nie gespeichert:
+
+| Spalte | Wann |
+|---|---|
+| eingebracht | gesendet, noch nicht geprüft (oder Rückfrage) |
+| geprüft | Claude hat ihn aufgenommen, oft mit Vorschlag „passt zu T-…“ oder einer Option an einer Wahlstelle |
+| eingeplant | ein Bestimmer hat ihn auf dem Brett eingeplant oder die Option gewählt, die aus ihm entstand |
+| erlebt | abgehakt, unterwegs oder in der Nachlese |
+| passt nicht | Claude hat ihn geprüft und verworfen, mit Begründung |
+
+- **Punkte** heißen „wie wichtig mir das ist“. Jede Person verteilt ihr Kontingent (`regeln.kontingent`, Vorgabe 10 Punkte) nur auf ihre eigenen Wünsche und darf umverteilen. Ein Wunsch, der nicht passt, gibt seine Punkte frei. Claude nutzt Punkte beim Prüfen als Priorität, nie als Entscheidung. Mit Art `anzahl` gibt es keine Punkte, dann begrenzt das Kontingent die Zahl offener Wünsche je Person.
+- **Abhaken** (erlebt) dürfen alle Einbringer, auch fremde Wünsche, im Status `unterwegs` und `danach`. Die Seite merkt sich Abgehaktes ohne Netz und reicht es nach. Wer abgehakt hat, steht mit Datum im Verlauf.
+- **Einplanen** setzt nur ein Bestimmer, ab Status `danach` nicht mehr. Claude schlägt nur vor (`plan/wuensche.yaml`: Bezug, Notiz mit Herkunft, Option), plant aber nie selbst ein.
+- Die **Bilanz** je Person (Wünsche, eingeplant, erlebt, freie Punkte) sehen alle.
+- Technik: Punkte, eingeplant und erlebt liegen live in `brett.json` der Rückmelde-Ablage, mit Verlauf; gelöscht wird nichts. Seite: Reiter „Wünsche“. Claude-App: `wuensche` und `wunsch_aendern`.
 
 ## Vorgaben für neue Reisen
 

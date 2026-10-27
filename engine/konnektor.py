@@ -59,11 +59,13 @@ from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, REISE_ZIEL, ROLLEN, VORGABEN, 
 ALTE_ROLLEN = {"mitreisend": "einbringer"}   # Links von vor dem 26.10.2026
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "alternative_vorschlagen",
-                     "frage_beantworten", "entscheiden", "person_einladen"}
+                     "frage_beantworten", "entscheiden", "person_einladen", "wunsch_aendern"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe",
                   "alternative_vorschlagen": "alternative", "auftrag_geben": "auftrag", "entscheiden": "entscheiden",
-                  "frage_beantworten": "antwort", "person_einladen": "einladen"}
+                  "frage_beantworten": "antwort", "person_einladen": "einladen",
+                  # Wunsch-Brett: sichtbar für alle, die abhaken dürfen; Punkte und Einplanen prüft der Dienst genauer
+                  "wunsch_aendern": "wunsch_erlebt"}
 # Werkzeuge, die zusätzlich eine zweite Aktion brauchen: eine Antwort landet als Rückmeldung (Art Antwort) im Eingang
 ZUSATZ_AKTION = {"frage_beantworten": "rueckmeldung"}
 WORT = {"gewaehlt": "gewählt", "verworfen": "verworfen", "ersetzt": "ersetzt"}
@@ -956,6 +958,54 @@ def dienst_anfrage(methode, pfad, daten):
         return None, "Rückmeldedienst nicht erreichbar, bitte später noch einmal"
 
 
+def brett_text(b, titel=None):
+    """Wunsch-Brett als Text für die Claude-App: Spalten mit Wünschen, dann Bilanz je Person."""
+    titel = titel or {}
+    k = b["kontingent"]
+    punkte = k["art"] == "punkte"
+    stelle = lambda ids: ", ".join(f"{x} {titel[x]}" if titel.get(x) else x for x in ids)
+    z = ["## Wunsch-Brett (" + (f"je Person {k['je_person']} Punkte für die eigenen Wünsche" if punkte else
+                                f"je Person höchstens {k['je_person']} Wünsche") + ")"]
+    for sp in b["spalten"]:
+        liste = [w for w in b["wuensche"] if w["spalte"] == sp["id"]]
+        z.append(f"### {sp['titel']} ({len(liste)})")
+        for w in sorted(liste, key=lambda w: -w["punkte"]):
+            z.append(f"- {w['id']} · {w['name']}" + (f" · {w['punkte']} Punkte" if punkte and w["punkte"] else "") + f": {w['text']}")
+            if w["status"] == "rueckfrage":
+                z.append(f"  Rückfrage: {w['kommentar']}")
+            elif w["kommentar"]:
+                z.append(f"  Claude: {w['kommentar']}")
+            v = w.get("vorschlag") or {}
+            if v.get("bezug") or v.get("notiz") or v.get("option"):
+                z.append("  Vorschlag: " + "; ".join(x for x in (
+                    f"passt zu {stelle(v['bezug'])}" if v.get("bezug") else "",
+                    f"Option {v['option']}" + (" (gewählt)" if v.get("gewaehlt") else " (zur Wahl)") if v.get("option") else "",
+                    v.get("notiz") or "") if x))
+            if w.get("eingeplant"):
+                e = w["eingeplant"]
+                z.append(f"  Eingeplant von {e['wer']} am {e['datum']}" + (f": {stelle(e['bezug'])}" if e.get("bezug") else ""))
+            if w.get("erlebt"):
+                z.append(f"  Erlebt ✓ {w['erlebt']['wer']} am {w['erlebt']['datum']}")
+    z.append("### Bilanz je Person")
+    for p in b["bilanz"]:
+        z.append(f"- {p['name']}: {p['wuensche']} Wünsche, {p['eingeplant']} eingeplant, {p['erlebt']} erlebt, "
+                 + (f"{p['frei']} von {k['je_person']} Punkten frei" if punkte else f"noch {p['frei']} Wünsche frei"))
+    return "\n".join(z)
+
+
+def wuensche_kurz(reise):
+    """Eine Zeile für den Überblick: wie viele Wünsche in welcher Spalte."""
+    o = rm.ordner(reise)
+    if o is None:
+        return ""
+    b = rm.brett(o, rm.zustand(reise))
+    if not b["wuensche"]:
+        return "\n## Wünsche: noch keine (Werkzeug wuensche)"
+    zahl = {s["titel"]: sum(1 for w in b["wuensche"] if w["spalte"] == s["id"]) for s in b["spalten"]}
+    return (f"\n## Wünsche: {len(b['wuensche'])} (" + ", ".join(f"{t.lower()} {n}" for t, n in zahl.items() if n)
+            + ") (Werkzeug wuensche)")
+
+
 def aufgaben_von(reise):
     o = rm.ordner(reise)
     return sorted(rm.aufgaben(o), key=rm.ag_sortierung) if o else []
@@ -1393,6 +1443,25 @@ WERKZEUGE += [
          "kommentar": {"type": "string", "description": "kurze Notiz für den Verlauf, z. B. „gebucht, Bestätigung per Mail“"},
          "name": NAME_FELD}, "required": ["id"]}},
 ]
+WERKZEUGE += [
+    {"name": "wuensche", "description": "Wunsch-Brett: alle Wünsche (R-…) nach Spalten (eingebracht, geprüft, eingeplant, "
+     "erlebt, passt nicht) mit Punkten, Vorschlag von Claude (passt zu …), wer eingeplant und wer abgehakt hat; dazu die "
+     "Bilanz je Person und das Kontingent.",
+     "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}},
+    {"name": "wunsch_aendern", "description": "Wunsch auf dem Brett ändern, wirkt sofort (auch auf der Webseite): punkte = "
+     "wie wichtig der Person ihr eigener Wunsch ist (nur eigene Wünsche, im Kontingent, umverteilen erlaubt); erlebt = "
+     "abhaken (unterwegs und danach, alle Einbringer); eingeplant mit bezug (nur Bestimmer); kommentar für den Verlauf. "
+     "Nur angegebene Felder ändern sich. Vorher kurz bestätigen lassen.",
+     "inputSchema": {"type": "object", "properties": {
+         "id": {"type": "string", "description": "R-… (aus wuensche)"},
+         "punkte": {"type": "integer", "minimum": 0, "description": "neue Punktzahl dieses Wunsches"},
+         "erlebt": {"type": "boolean"},
+         "eingeplant": {"type": "boolean"},
+         "bezug": {"type": "array", "items": {"type": "string"},
+                   "description": "nur mit eingeplant true: wo eingeplant (z. B. [\"T-03\"]); leer = ohne feste Stelle"},
+         "kommentar": {"type": "string", "description": "kurze Notiz für den Verlauf"},
+         "name": NAME_FELD}, "required": ["id"]}},
+]
 AUFTRAG = {"name": "auftrag_geben", "description": "Nur für Bestimmer: Änderungsauftrag ans Reisehandbuch, z. B. eine Option "
            "wählen oder verwerfen, eine offene Frage schließen, einen Tag ändern. Ändert NICHTS sofort: Der Auftrag wird "
            "automatisch geprüft (Quellen, Regeln) und in der Regel in wenigen Minuten übernommen; den Stand zeigt rueckmeldungen. Klar und vollständig "
@@ -1518,9 +1587,9 @@ def anleitung(zugang, d):
                  "veränderlicher Angaben) stehen im ueberblick unter „Meldungen an dich“. Nenne sie zu Beginn und frag, ob "
                  "etwas davon erledigt werden soll. Den Reisestatus wechselt nur ein Bestimmer, nie du.")
     if "wuensche" in (bausteine or []):
-        z.append("Ideen und Wünsche für die Reise (ein Ort, ein Erlebnis, ein Essen, auch vage) hältst du mit "
-                 "rueckmeldung_geben, art Wunsch, fest. Sie stehen auf der Seite im Reiter „Wünsche“. Ein Wunsch ist ein "
-                 "Vorschlag, keine Entscheidung.")
+        z.append("Wünsche (Ort, Erlebnis, Essen, auch vage) hältst du mit rueckmeldung_geben, art Wunsch, fest; wuensche zeigt "
+                 "das Brett. Mit wunsch_aendern: Punkte (wie wichtig) nur auf eigene Wünsche, abhaken unterwegs alle, "
+                 "einplanen nur Bestimmer. Ein Wunsch ist ein Vorschlag, keine Entscheidung.")
     return " ".join(z)
 
 
@@ -1615,8 +1684,28 @@ def werkzeug(zugang, name, args):
         if fehler:
             return f"Nicht gespeichert: {fehler}", True
         return "Gespeichert (gilt sofort):\n" + aufgabe_text(a, h.titel()), False
+    if name == "wuensche":
+        o = rm.ordner(reise)
+        return (brett_text(rm.brett(o, rm.zustand(reise)), h.titel()) if o else "Noch keine Wünsche."), False
+    if name == "wunsch_aendern":
+        rid = str(args.get("id", "")).strip()
+        if not rm.RID_MUSTER.match(rid):
+            return "ID muss R-… sein (aus wuensche).", True
+        roh = {k: args[k] for k in ("punkte", "erlebt", "eingeplant", "bezug", "kommentar") if k in args}
+        roh["name"] = wer["name"] or args.get("name", "")
+        if not isinstance(roh["name"], str) or not roh["name"].strip():
+            return "Name fehlt: bitte die Person nach ihrem Vornamen fragen.", True
+        unbekannt = [b for b in (roh.get("bezug") or []) if isinstance(b, str) and b not in h.eintraege]
+        if unbekannt:
+            return f"Diese IDs gibt es nicht: {', '.join(unbekannt)}. Mit suche die richtige ID finden.", True
+        w, fehler = dienst_anfrage("PATCH", f"{reise}/rueckmeldungen/{rid}", roh)
+        if fehler:
+            return f"Nicht gespeichert: {fehler}", True
+        teile = [f"{w['punkte']} Punkte"] + (["eingeplant"] if w.get("eingeplant") else []) + (["erlebt"] if w.get("erlebt") else [])
+        return f"Gespeichert (gilt sofort): {rid} – " + ", ".join(teile) + ".", False
     if name == "ueberblick":
-        return h.ueberblick() + "\n" + stand_text(reise) + "\n" + einarbeiten_text(reise, bestimmer), False
+        return (h.ueberblick() + "\n" + stand_text(reise) + "\n" + einarbeiten_text(reise, bestimmer)
+                + (wuensche_kurz(reise) if "wuensche" in (zustand_von(d)[1] or []) else "")), False
     if name == "zeige":
         t, fehler = h.zeige(str(args.get("id", "")).strip())
         return (fehler, True) if fehler else (t, False)

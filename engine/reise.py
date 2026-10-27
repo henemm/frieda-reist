@@ -76,7 +76,7 @@ AKTIONEN = {
 }
 # Lesende Konnektor-Werkzeuge, die zu einem zuschaltbaren Baustein gehören
 LESE_BAUSTEIN = {"offene_fragen": "fragen", "varianten": "varianten", "merkmale": "varianten",
-                 "aufgaben": "aufgaben", "rueckmeldungen": "rueckmeldungen"}
+                 "aufgaben": "aufgaben", "rueckmeldungen": "rueckmeldungen", "wuensche": "wuensche"}
 ENTSCHEIDUNGEN = ("gewaehlt", "verworfen", "ersetzt")
 REISE_ZIEL = "reise"    # Aufträge an dieses Ziel (Status, Einstellungen) gehen in jedem Status
 

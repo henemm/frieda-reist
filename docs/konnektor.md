@@ -24,6 +24,8 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `aufgaben` | alle | Aufgaben, Standard nur offene; Filter nach Bezug, Zuständig, Status |
 | `aufgabe_anlegen` | alle | neue Aufgabe, gilt sofort |
 | `aufgabe_aendern` | alle | abhaken, Status, Felder, Kommentar in den Verlauf; gilt sofort |
+| `wuensche` | alle | Wunsch-Brett: Wünsche nach Spalten mit Punkten, Vorschlag, eingeplant, erlebt; Bilanz je Person (Baustein `wuensche`) |
+| `wunsch_aendern` | Einbringer, Bestimmer | Punkte auf eigene Wünsche, abhaken (unterwegs und danach), einplanen (nur Bestimmer); gilt sofort, Regeln prüft der Rückmeldedienst (siehe `docs/produkt.md`, Wunsch-Brett) |
 | `merkmale` | alle | welche Merkmale eine Alternative braucht (mit Hinweis zum Recherchieren und Nachfragen), was jede Option hat und was fehlt; zu einer Wahlstelle `V-…`, einer Strecke `E-…` oder einer Art (`bereich`); siehe `docs/alternativen.md` |
 | `alternative_vorschlagen` | alle | neue Option mit Merkmalen; Art aus der Stelle (`V-…`, `U-…`, `E-…`), Werte je Datum mit `gilt`, Hinweis auf ähnliche vorhandene Merkmale (`daten.doppelt`); von Bestimmern als Auftrag (mit strukturierten `daten`), von Einbringern als Rückmeldung der Art `Ergänzung` |
 | `auftrag_geben` | Bestimmer | Änderungsauftrag, abgelegt in `auftraege.jsonl` |
@@ -31,7 +33,7 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `frage_beantworten` | Einbringer | Antwort auf eine offene Frage (F-…); hängt an der Frage, die Entscheidung bleibt beim Bestimmer (Paket C) |
 | `person_einladen` | je nach `regeln.einladen` (Vorgabe Bestimmer) | legt eine Person mit Rolle an und stellt ihren persönlichen Link aus (Paket C) |
 
-Schreibende Werkzeuge (`rueckmeldung_geben`, `frage_beantworten`, `aufgabe_*`, `alternative_vorschlagen`) sehen nur Einbringer und Bestimmer; `entscheiden` und `auftrag_geben` nur Bestimmer, `person_einladen` wer `regeln.einladen` erreicht. Welche Werkzeuge es gibt und was sie dürfen, hängt zusätzlich vom Status der Reise und den eingeschalteten Bausteinen ab (Paket B, `docs/produkt.md`): `danach` sperrt Wünsche, Alternativen und Aufträge, `archiv` alles Schreiben; ein ausgeschalteter Baustein nimmt seine Werkzeuge mit (`aufgaben`, `varianten`, `offene_fragen`, `rueckmeldungen`). Geprüft wird bei jedem Aufruf, nicht nur in der Liste; der Dienst nennt den Grund.
+Schreibende Werkzeuge (`rueckmeldung_geben`, `frage_beantworten`, `aufgabe_*`, `alternative_vorschlagen`, `wunsch_aendern`) sehen nur Einbringer und Bestimmer; `entscheiden` und `auftrag_geben` nur Bestimmer, `person_einladen` wer `regeln.einladen` erreicht. Welche Werkzeuge es gibt und was sie dürfen, hängt zusätzlich vom Status der Reise und den eingeschalteten Bausteinen ab (Paket B, `docs/produkt.md`): `danach` sperrt neue Wünsche, Punkte, Alternativen und Aufträge (Abhaken geht noch), `archiv` alles Schreiben; ein ausgeschalteter Baustein nimmt seine Werkzeuge mit (`aufgaben`, `varianten`, `offene_fragen`, `rueckmeldungen`, `wuensche`). Geprüft wird bei jedem Aufruf, nicht nur in der Liste; der Dienst nennt den Grund.
 
 `auftrag_geben` nimmt optional `entscheidung` (gewaehlt, verworfen, ersetzt) mit `ziel`. Widerspricht sie einer Entscheidung eines anderen Bestimmers, wird der Auftrag nicht eingearbeitet, es entsteht eine offene Frage, und alle beteiligten Bestimmer sehen eine Meldung unter `rueckmeldungen`.
 
