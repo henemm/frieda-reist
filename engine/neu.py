@@ -195,12 +195,14 @@ def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, un
 
 def aus_auftrag(reisen_dir, auftrag, heute=None):
     """Reise aus einem Auftrag „reise_anlegen“ der Claude-App (daten.neue_reise, vom Konnektor geprüft) -> Ordner.
-    Die Notiz übernimmt das Einarbeiten in eigenen Worten in den Überblick; hier steht nur, woher die Reise kommt."""
+    Die Notiz (in der App schon in eigenen Worten mit Herkunft) wird der Überblick, mit Name und Datum davor."""
     n = (auftrag.get("daten") or {}).get("neue_reise")
     if not n:
         raise Fehler(f"{auftrag.get('id')}: kein Auftrag für eine neue Reise.")
+    datum = datum_text(datetime.date.fromisoformat(str(auftrag.get("erstellt", ""))[:10] or (heute or datetime.date.today()).isoformat()))
+    ueberblick = f"Notiz von {n['wer']} aus der Claude-App ({datum}):\n\n{n['notiz']}" if n.get("notiz") else None
     return anlegen(reisen_dir, n["titel"], datetime.date.fromisoformat(n["von"]), datetime.date.fromisoformat(n["bis"]),
-                   n["personen"], n["wer"], ziel=n.get("ziel") or None, pfad=n["pfad"],
+                   n["personen"], n["wer"], ziel=n.get("ziel") or None, pfad=n["pfad"], ueberblick=ueberblick,
                    herkunft=f"Auftrag {auftrag['id']} aus der Claude-App", heute=heute)
 
 

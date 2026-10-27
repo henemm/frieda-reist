@@ -16,6 +16,9 @@ Wissen) und Rückmeldungen abgeben. Ein Link gehört zu genau einer Reise und ei
   Paket C (26.10.2026): Einbringer beantworten Fragen (frage_beantworten); einladen darf, wer regeln.einladen
                erlaubt (Vorgabe: Bestimmer); person_einladen legt die Person an und stellt ihren Zugang aus.
 
+Paket H (27.10.2026): Ein Konto-Link gehört zu einer Person, nicht zu einer Reise („Frieda – meine Reisen“). Er zeigt die
+eigenen Reisen (meine_reisen) und legt neue an (reise_anlegen); Anfragen und Meldungen liegen in <ablage>/_neu/.
+
 Alte Links mit rolle mitreisend (vor dem 26.10.2026) gelten weiter als einbringer ohne festen Namen. Ein Link ohne Person (zugang <reise> einbringer) fragt nach dem Vornamen.
 
 Gelesen wird die veröffentlichte Seite (<seiten>/<reise>/daten.json), also genau der Stand der Webseite.
@@ -26,10 +29,13 @@ Aufrufe:
   python3 engine/konnektor.py dienst                       Dienst starten
   python3 engine/konnektor.py zugang <reise> <person>|<rolle>      neuen geheimen Link anlegen (person aus reise.yaml
                                                            oder eingeladen; in der App geht das mit person_einladen)
+  python3 engine/konnektor.py konto <schluessel> <Name>    persönlichen Konto-Link anlegen (meine Reisen, neue Reise)
   python3 engine/konnektor.py zugaenge                     angelegte Links zeigen
         Umgebung: KN_SEITEN (Standard /srv/reisehandbuch), KN_ZUGAENGE (/srv/reisehandbuch/_konnektor/zugaenge.json),
                   KN_RUECKMELDEDIENST (http://127.0.0.1:8771), KN_HOST (127.0.0.1), KN_PORT (8772),
-                  KN_BASIS (öffentliche Adresse des Dienstes, für die Links), RM_ABLAGE wie beim Rückmeldedienst
+                  KN_BASIS (öffentliche Adresse des Dienstes, für die Links), RM_ABLAGE wie beim Rückmeldedienst,
+                  KN_SEITENLINKS (Links zu den Seiten je Reise, vom Betrieb geschrieben; Standard seiten.json neben
+                  KN_ZUGAENGE)
 
 HTTP (hinter nginx, Präfix /reisehandbuch-mcp/ -> /):
   POST /<token>     MCP (JSON-RPC, Streamable HTTP ohne Sitzung, Antwort als JSON)
@@ -59,11 +65,11 @@ from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, REISE_ZIEL, ROLLEN, VORGABEN, 
 ALTE_ROLLEN = {"mitreisend": "einbringer"}   # Links von vor dem 26.10.2026
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "alternative_vorschlagen",
-                     "frage_beantworten", "entscheiden", "person_einladen", "wunsch_aendern", "reise_anlegen"}
+                     "frage_beantworten", "entscheiden", "person_einladen", "wunsch_aendern"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe",
                   "alternative_vorschlagen": "alternative", "auftrag_geben": "auftrag", "entscheiden": "entscheiden",
-                  "frage_beantworten": "antwort", "person_einladen": "einladen", "reise_anlegen": "reise_anlegen",
+                  "frage_beantworten": "antwort", "person_einladen": "einladen",
                   # Wunsch-Brett: sichtbar für alle, die abhaken dürfen; Punkte und Einplanen prüft der Dienst genauer
                   "wunsch_aendern": "wunsch_erlebt"}
 # Werkzeuge, die zusätzlich eine zweite Aktion brauchen: eine Antwort landet als Rückmeldung (Art Antwort) im Eingang
@@ -121,6 +127,10 @@ def zugang_zu(token):
         return None
     for t, z in alle:
         if hmac.compare_digest(t, token):
+            if isinstance(z, dict) and "konto" in z:
+                ok = isinstance(z["konto"], str) and PERSON_MUSTER.match(z["konto"]) and isinstance(z.get("name"), str) \
+                    and z["name"].strip() and "reise" not in z
+                return z if ok else None
             if not isinstance(z, dict) or not rm.REISE_MUSTER.match(z.get("reise", "")):
                 return None
             if isinstance(z.get("person"), str) and PERSON_MUSTER.match(z["person"]):
@@ -1306,26 +1316,84 @@ def einladen(reise, d, wer, args):
     return "\n".join(z), False
 
 
+# ---------- Konto: meine Reisen und neue Reise (Paket H) ----------
+def seitenlinks():
+    """Links zu den Seiten je Reise {reise: url}; schreibt der Betrieb beim Freischalten (fehlt die Datei: keine)."""
+    p = Path(os.environ.get("KN_SEITENLINKS") or zugaenge_pfad().with_name("seiten.json"))
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+        return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
 def vergebene_pfade():
-    """Ordner veröffentlichter Reisen und neuer Reisen, die schon angefragt sind (offene Aufträge in irgendeiner Reise)."""
+    """Ordner veröffentlichter Reisen, vorhandene Ablagen und neue Reisen, die schon angefragt sind."""
     pfade = {p.name for p in seiten().iterdir() if p.is_dir() and not p.name.startswith("_")} if seiten().is_dir() else set()
     if rm.ablage().is_dir():
-        for o in rm.ablage().iterdir():
-            if o.is_dir() and rm.REISE_MUSTER.match(o.name):
-                pfade.add(o.name)
-                pfade |= {e["daten"]["neue_reise"]["pfad"] for e in rm.auftraege(o)
-                          if (e.get("daten") or {}).get("neue_reise") and e["status"] not in ("verworfen", "rueckfrage")}
+        pfade |= {o.name for o in rm.ablage().iterdir() if o.is_dir() and rm.REISE_MUSTER.match(o.name)}
+    o = rm.ordner_neu()
+    if o:
+        pfade |= {e["daten"]["neue_reise"]["pfad"] for e in rm.auftraege(o)
+                  if (e.get("daten") or {}).get("neue_reise") and e["status"] not in ("verworfen", "rueckfrage")}
     return pfade
 
 
-def reise_anlegen(reise, wer, args):
-    """reise_anlegen: prüft die Eingaben sofort und legt einen Auftrag an; die Reise entsteht beim Einarbeiten, danach
-    bekommt die anlegende Person eine Meldung mit den Links (ops des Betriebs). -> (Text, ist_fehler)"""
-    if not wer["name"]:
-        return ("Eine Reise anlegen geht nur mit dem persönlichen Link eines Bestimmers: Dieser Link kennt keinen Namen. "
-                "Ein Bestimmer kann mit person_einladen einen persönlichen Link ausstellen."), True
+def reisen_von(konto):
+    """Veröffentlichte Reisen, auf denen die Person des Kontos dabei ist (Schlüssel oder Name) -> Liste von Einträgen."""
+    name = konto["name"].casefold()
+    links, zug = seitenlinks(), zugaenge()
+    aus = []
+    for f in sorted(seiten().glob("*/daten.json")) if seiten().is_dir() else []:
+        reise = f.parent.name
+        d = daten(reise)
+        if not d:
+            continue
+        p = next((x for x in personen_der_reise(reise, d)
+                  if x.get("schluessel") == konto["konto"] or str(x.get("name", "")).casefold() == name), None)
+        if not p:
+            continue
+        rs = d.get("reise") or {}
+        apps = [t for t, z in zug.items() if z.get("reise") == reise and z.get("person") == p["schluessel"]]
+        aus.append({"reise": reise, "titel": rs.get("titel", reise), "untertitel": rs.get("untertitel", ""),
+                    "status": (rs.get("status") or {}).get("wert"), "rolle": p["rolle"], "seite": links.get(reise),
+                    "app": f"{basis()}/{apps[-1]}" if apps and os.environ.get("KN_BASIS") else None})
+    return aus
+
+
+def meine_reisen(konto):
+    """Text für das Werkzeug meine_reisen: Meldungen, eigene Reisen mit Links, angefragte neue Reisen."""
+    z = []
+    o = rm.ordner_neu()
+    if o:
+        ms = rm.meldungen_aktuell(o, konto["name"])
+        if ms:
+            z.append("Meldungen an dich:")
+            z += [f"- {datum_de(m['erstellt'][:10])}: {m['text']}" for m in ms]
+            z.append("")
+    reisen = reisen_von(konto)
+    z.append(f"Deine Reisen ({len(reisen)}):" if reisen else "Noch keine Reise, auf der du dabei bist.")
+    for r in reisen:
+        z.append(f"- {r['titel']} ({r['untertitel']}), Status {r['status']}, du: {r['rolle']}")
+        z.append(f"  Seite: {r['seite'] or 'Link liegt beim Betreiber'}")
+        z.append(f"  Claude-App: {r['app'] or 'noch kein persönlicher Link (beim Betreiber oder einem Bestimmer der Reise erfragen)'}")
+    if o:
+        offen = [e for e in rm.auftraege(o) if e.get("name") == konto["name"] and (e.get("daten") or {}).get("neue_reise")
+                 and e["status"] in ("neu", "rueckfrage")]
+        if offen:
+            z += ["", "Angefragte neue Reisen:"]
+            z += [f"- {e['daten']['neue_reise']['titel']} ({e['id']}): "
+                  + ("wird angelegt" if e["status"] == "neu" else f"Rückfrage: {e.get('kommentar') or 'siehe Betreiber'}")
+                  for e in offen]
+    return "\n".join(z)
+
+
+def reise_anlegen(konto, args):
+    """reise_anlegen: prüft die Eingaben sofort und legt in <ablage>/_neu einen Auftrag an. Die Reise entsteht im Betrieb,
+    danach bekommt die Person eine Meldung mit den Links (meine_reisen). -> (Text, ist_fehler)"""
+    o = rm.ordner_neu(anlegen=True)
     with _sperre:
-        neu, fehler = neue_reise_pruefen(args, wer["name"], vergebene_pfade())
+        neu, fehler = neue_reise_pruefen(args, konto["name"], vergebene_pfade())
         if fehler:
             return f"Nicht angelegt: {fehler}", True
         wer_text = ", ".join(f"{p['name']} ({p['rolle']}{'' if p.get('reist', True) else ', reist nicht mit'})"
@@ -1333,13 +1401,58 @@ def reise_anlegen(reise, wer, args):
         text_ = (f"Neue Reise anlegen: „{neu['titel']}“, {datum_de(neu['von'])} bis {datum_de(neu['bis'])}"
                  + (f", Ziel {neu['ziel']}" if neu["ziel"] else "") + f". Personen: {wer_text}. Ordner reisen/{neu['pfad']}."
                  + (f"\nNotiz: {neu['notiz']}" if neu["notiz"] else ""))
-    e, fehler = auftrag_anlegen(reise, "", text_[:MAX_AUFTRAG], {"neue_reise": neu}, name=wer["name"])
-    if fehler:
-        return f"Nicht gespeichert: {fehler}", True
+        jetzt = datetime.datetime.now(datetime.timezone.utc)
+        e = {"id": f"A-{jetzt:%Y%m%d-%H%M%S}-{secrets.token_hex(2)}", "erstellt": jetzt.isoformat(timespec="seconds"),
+             "name": konto["name"], "konto": konto["konto"], "art": "Auftrag", "ziel": "allgemein",
+             "text": text_[:MAX_AUFTRAG], "quelle": "Claude-App", "daten": {"neue_reise": neu}}
+        with (o / "auftraege.jsonl").open("a", encoding="utf-8") as f:
+            f.write(json.dumps(e, ensure_ascii=False) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+        rm.anstossen(o)
     return (f"Auftrag {e['id']} gespeichert: Die Reise „{neu['titel']}“ wird in der Regel in wenigen Minuten angelegt "
-            f"(Status Idee, Ordner {neu['pfad']}). Danach stehen hier im ueberblick unter „Meldungen an dich“ der Link zur "
-            "Seite und der Link für die Claude-App; den trägst du einmal als eigenen Konnektor ein (Einstellungen → "
-            "Konnektoren → Eigenen Konnektor hinzufügen). Bis dahin gibt es die Reise noch nicht."), False
+            f"(Status Idee, Ordner {neu['pfad']}). Danach zeigt meine_reisen unter „Meldungen an dich“ den Link zur Seite "
+            "und den Link für die Claude-App; den trägst du einmal als eigenen Konnektor ein (Einstellungen → Konnektoren "
+            "→ Eigenen Konnektor hinzufügen). Bis dahin gibt es die Reise noch nicht."), False
+
+
+MEINE_REISEN = {"name": "meine_reisen", "description": "Deine Reisen mit Rolle, Status, Link zur Seite und Link für die "
+                "Claude-App; dazu Meldungen an dich (z. B. eine neu angelegte Reise) und angefragte neue Reisen.",
+                "inputSchema": {"type": "object", "properties": {}}}
+
+
+def anleitung_konto(konto):
+    return (f"Aufgabe: Du bist Frieda, die Reiseplanung von {konto['name']}. Mit diesem Zugang siehst du die Reisen der "
+            "Person (meine_reisen) und legst neue an (reise_anlegen). Für eine einzelne Reise gibt es eigene Konnektoren; "
+            "Plan, Wissen und Rückmeldungen laufen dort. Beginne mit meine_reisen und nenne Meldungen zuerst. "
+            "Neue Reise: Titel, Zeitraum, Ziel und Personen mit Rollen im Gespräch klären (reisend liest, einbringer gibt "
+            "Wünsche, Rückmeldungen und Aufgaben, bestimmer entscheidet mit), vor dem Anlegen bestätigen lassen. Bekanntes "
+            "(Ideen, schon Gebuchtes, Quellen wie Bücher, Fotos, PDFs) in eigenen Worten mit Herkunft in die Notiz, nie "
+            "abschreiben, nichts erfinden. Die Reise entsteht erst im Betrieb, sag nie, sie sei schon angelegt. Links sind "
+            "persönlich: nur dieser Person zeigen.")
+
+
+def konto_antwort(konto, nid, methode, p, ok):
+    if methode == "initialize":
+        gewuenscht = p.get("protocolVersion") if isinstance(p, dict) else None
+        return ok({"protocolVersion": gewuenscht if gewuenscht in PROTOKOLLE else PROTOKOLLE[0],
+                   "capabilities": {"tools": {}},
+                   "serverInfo": {"name": "frieda", "title": "Frieda – meine Reisen", "version": "1"},
+                   "instructions": anleitung_konto(konto)})
+    if methode == "ping":
+        return ok({})
+    if methode == "tools/list":
+        return ok({"tools": [MEINE_REISEN, REISE_ANLEGEN]})
+    if methode == "tools/call":
+        name, args = p.get("name"), p.get("arguments") if isinstance(p.get("arguments"), dict) else {}
+        if name == "meine_reisen":
+            t, fehler = meine_reisen(konto), False
+        elif name == "reise_anlegen":
+            t, fehler = reise_anlegen(konto, args)
+        else:
+            t, fehler = f"Unbekanntes Werkzeug {name}.", True
+        return ok({"content": [{"type": "text", "text": t}], "isError": fehler})
+    return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 
 def meldungen_fuer(reise, name, d):
@@ -1552,12 +1665,12 @@ PERSON_EINLADEN = {"name": "person_einladen", "description": "Eine Person zur Re
                        "name": NAME_FELD}, "required": ["vorname"]}}
 
 
-REISE_ANLEGEN = {"name": "reise_anlegen", "description": "Nur für Bestimmer mit persönlichem Link: eine neue Reise anlegen. "
+REISE_ANLEGEN = {"name": "reise_anlegen", "description": "Eine neue Reise anlegen. "
                  "Vorher im Gespräch Titel, Zeitraum, Ziel und Personen mit Rollen klären und bestätigen lassen; wer anlegt, "
                  "bestimmt auf der neuen Reise. Was schon bekannt ist (Ideen, Unterkunft, Quellen), kommt in notiz: Bücher, "
                  "Fotos und PDFs in eigenen Worten zusammenfassen, mit Herkunft (Buch und Seite, Link), nie abschreiben. "
-                 "Die Reise entsteht beim nächsten Einarbeiten im Status idee; danach bekommt die Person eine Meldung mit dem "
-                 "Link zur Seite und dem Link für die Claude-App. Sag nie, die Reise sei schon angelegt.",
+                 "Die Reise entsteht in wenigen Minuten im Status idee; danach zeigt meine_reisen eine Meldung mit dem Link "
+                 "zur Seite und dem Link für die Claude-App. Sag nie, die Reise sei schon angelegt.",
                  "inputSchema": {"type": "object", "properties": {
                      "titel": {"type": "string", "description": "Titel der Reise, z. B. „Winterwoche im Allgäu“"},
                      "von": {"type": "string", "description": "erster Tag, JJJJ-MM-TT"},
@@ -1622,7 +1735,7 @@ def anleitung(zugang, d):
                  + "Widerspricht sie der eines anderen Bestimmers, wird daraus eine offene Frage, und alle Beteiligten bekommen "
                  "eine Meldung. Andere Wünsche zu Änderungen gibst du mit auftrag_geben weiter. Personen lädst du mit "
                  "person_einladen ein (Rolle und Link gelten sofort). Fragen (F-…) kannst du mit frage_beantworten beantworten. "
-                 "Eine ganz neue Reise legst du mit reise_anlegen an. Den Stand zeigt rueckmeldungen.")
+                 "Den Stand zeigt rueckmeldungen.")
     elif wer["rolle"] == "einbringer":
         z.append(f"{name} (Einbringer). Ihre Hinweise sind Vorschläge, keine Entscheidungen: Entscheiden und Aufträge geben "
                  f"kann sie nicht, das bleibt bei {namen}. Offene Fragen beantwortet sie mit frage_beantworten. "
@@ -1688,8 +1801,6 @@ def werkzeug(zugang, name, args):
         if fehler:
             return f"Nicht gespeichert: {fehler}", True
         return f"Gespeichert als {antwort['id']} (Status neu). Wird beim nächsten Einarbeiten geprüft.", False
-    if name == "reise_anlegen":
-        return reise_anlegen(reise, wer, args)
     if name == "auftrag_geben":
         if not bestimmer:
             return "Aufträge können nur Bestimmer geben. Bitte rueckmeldung_geben nutzen.", True
@@ -1818,6 +1929,8 @@ def antwort_auf(zugang, nachricht):
     def ok(ergebnis):
         return {"jsonrpc": "2.0", "id": nid, "result": ergebnis}
 
+    if "konto" in zugang:
+        return konto_antwort(zugang, nid, methode, p, ok)
     if methode == "initialize":
         gewuenscht = p.get("protocolVersion") if isinstance(p, dict) else None
         rs = (daten(zugang["reise"]) or {}).get("reise", {})
@@ -1834,7 +1947,7 @@ def antwort_auf(zugang, nachricht):
         _, bausteine = zustand_von(d)
         # Sichtbar ist, was diese Rolle bei diesem Status und diesen Bausteinen darf (aufgerufen wird trotzdem noch einmal geprüft)
         werkzeuge = []
-        for w in WERKZEUGE + [AUFTRAG, ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, REISE_ANLEGEN]:
+        for w in WERKZEUGE + [AUFTRAG, ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN]:
             n = w["name"]
             if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:
                 continue
@@ -1859,7 +1972,7 @@ def antwort_auf(zugang, nachricht):
 def gesund():
     """-> (HTTP-Code, Antwort). Verrät weder Tokens noch Reisen."""
     try:
-        reisen = {z.get("reise") for z in zugaenge().values()}
+        reisen = {z.get("reise") for z in zugaenge().values() if "konto" not in z}
     except (OSError, ValueError, AttributeError):
         return 503, {"gesund": False}
     if not reisen or any(daten(r) is None for r in reisen):
@@ -1955,11 +2068,22 @@ def zugang_anlegen(reise, wen):
     print(f"{reise} ({wer}): {basis()}/{token}")
 
 
+def konto_anlegen(schluessel, name):
+    """Persönlicher Konto-Link: meine Reisen und neue Reise anlegen (Paket H). Wer einen hat, darf Reisen anlegen."""
+    if not PERSON_MUSTER.match(schluessel) or not name.strip() or "\n" in name:
+        sys.exit("Aufruf: konto <schluessel> <Name>  (Schlüssel klein, ohne Umlaute, z. B. hanna)")
+    token = zugang_ausstellen({"konto": schluessel, "name": name.strip()})
+    print(f"Konto {schluessel} ({name.strip()}): {basis()}/{token}")
+
+
 def zugaenge_zeigen():
     alle = zugaenge()
     if not alle:
         print("Keine Zugänge angelegt.")
     for t, z in alle.items():
+        if "konto" in z:
+            print(f"Konto {z['konto']} ({z.get('name')}, {z.get('angelegt', '?')}): {basis()}/{t}")
+            continue
         wer = z.get("person") or f"Rolle {z.get('rolle')}"
         print(f"{z.get('reise')} ({wer}, {z.get('angelegt', '?')}): {basis()}/{t}")
 
@@ -1969,6 +2093,8 @@ def main(a):
         dienst()
     elif a[:1] == ["zugang"] and len(a) == 3:
         zugang_anlegen(a[1], a[2])
+    elif a[:1] == ["konto"] and len(a) == 3:
+        konto_anlegen(a[1], a[2])
     elif a[:1] == ["zugaenge"]:
         zugaenge_zeigen()
     else:

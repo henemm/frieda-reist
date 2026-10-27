@@ -90,6 +90,16 @@ def ablage():
     return Path(os.environ.get("RM_ABLAGE", "/srv/reisehandbuch/_rueckmeldungen"))
 
 
+NEU = "_neu"   # Ablage für Anfragen nach neuen Reisen und Meldungen an Konten (gehört zu keiner Reise, Paket H)
+
+
+def ordner_neu(anlegen=False):
+    p = ablage() / NEU
+    if anlegen:
+        p.mkdir(parents=True, exist_ok=True)
+    return p if p.is_dir() else None
+
+
 def ordner(reise):
     """Ordner einer Reise oder None, wenn die Reise keine Rückmeldungen annimmt."""
     if not REISE_MUSTER.match(reise or ""):
@@ -855,7 +865,7 @@ def titel_zu(reise):
 
 
 def muss_ordner(reise):
-    o = ordner(reise)
+    o = ordner_neu() if reise == NEU else ordner(reise)
     if o is None:
         sys.exit(f"Reise „{reise}“ nimmt keine Rückmeldungen an (Ordner {ablage() / reise} fehlt).")
     return o

@@ -296,7 +296,7 @@ def test_konnektor_werkzeuge_je_status(umgebung):
     u = umgebung("planung")
     nur_lesen = u.werkzeuge(KIM)
     assert not nur_lesen & kn.SCHREIB_WERKZEUGE and "auftrag_geben" not in nur_lesen
-    nur_bestimmer = {"entscheiden", "person_einladen", "reise_anlegen"}   # Paket C, Paket H
+    nur_bestimmer = {"entscheiden", "person_einladen"}   # Paket C
     assert kn.SCHREIB_WERKZEUGE - nur_bestimmer <= u.werkzeuge(KARL) and not nur_bestimmer & u.werkzeuge(KARL)
     assert kn.SCHREIB_WERKZEUGE <= u.werkzeuge(IDA) and "auftrag_geben" in u.werkzeuge(IDA)
 
@@ -310,7 +310,6 @@ def test_konnektor_werkzeuge_je_status(umgebung):
     archiv = umgebung("archiv")
     assert not archiv.werkzeuge(KARL) & kn.SCHREIB_WERKZEUGE
     assert "zeige" in archiv.werkzeuge(KARL)
-    assert archiv.werkzeuge(IDA) & kn.SCHREIB_WERKZEUGE == {"reise_anlegen"}   # eine neue Reise geht aus jeder Reise
 
 
 def test_konnektor_prueft_beim_aufruf_auch_ohne_werkzeugliste(umgebung):
@@ -486,6 +485,6 @@ def test_neue_reise_pruefen():
     assert d["personen"] == {"ida": {"name": "Ida", "rolle": "bestimmer"},
                              "joerg": {"name": "Jörg", "rolle": "einbringer", "notiz": "fährt"}}
     assert neue_reise_pruefen({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13"}, None)[1].startswith(
-        "Eine Reise anlegen geht nur mit dem persönlichen Link")
+        "Eine Reise anlegen geht nur mit einem persönlichen Konto-Link")
     assert reise_pfad("Island 2028 – Hochland", 2028) == "island-2028-hochland"
     assert len(reise_pfad("Eine sehr lange Reise durch viele Länder und Städte am Mittelmeer", 2027)) <= 40

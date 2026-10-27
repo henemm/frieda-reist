@@ -74,8 +74,6 @@ AKTIONEN = {
     "entscheiden":  {"rolle": "bestimmer", "baustein": "varianten", "ab": ("alles",)},
     "antwort":      {"rolle": "einbringer", "baustein": "fragen", "ab": ("alles", "nachlese")},
     "einladen":     {"rolle": "bestimmer", "baustein": None, "ab": ("alles", "nachlese")},
-    # Paket H: eine neue Reise anlegen; der Status der Reise, aus der gefragt wird, spielt keine Rolle
-    "reise_anlegen": {"rolle": "bestimmer", "baustein": None, "ab": ("alles", "nachlese", "nichts")},
 }
 # Lesende Konnektor-Werkzeuge, die zu einem zuschaltbaren Baustein gehören
 LESE_BAUSTEIN = {"offene_fragen": "fragen", "varianten": "varianten", "merkmale": "varianten",
@@ -140,8 +138,8 @@ def reise_pfad(titel, jahr=None):
 
 
 def neue_reise_pruefen(args, wer, vergeben=()):
-    """Eingaben für eine neue Reise prüfen (Konnektor, Werkzeug reise_anlegen). wer: Name der anlegenden Person, sie wird
-    Bestimmer. vergeben: Ordnernamen, die es schon gibt. -> (daten, None) oder (None, Grund in einfachen Worten)."""
+    """Eingaben für eine neue Reise prüfen (Konnektor mit Konto-Link, Werkzeug reise_anlegen). wer: Name der anlegenden
+    Person, sie wird Bestimmer. vergeben: Ordnernamen, die es schon gibt. -> (daten, None) oder (None, Grund in einfachen Worten)."""
     def zeile(k, laenge, pflicht=False):
         v = args.get(k)
         if v is None or v == "":
@@ -170,7 +168,7 @@ def neue_reise_pruefen(args, wer, vergeben=()):
     if not isinstance(roh, list) or len(roh) > MAX_PERSONEN:
         return None, f"personen: Liste mit höchstens {MAX_PERSONEN} Personen."
     if not wer:
-        return None, "Eine Reise anlegen geht nur mit dem persönlichen Link eines Bestimmers."
+        return None, "Eine Reise anlegen geht nur mit einem persönlichen Konto-Link."
     personen = {}
     for p in [{"vorname": wer, "rolle": "bestimmer"}] + roh:
         if not isinstance(p, dict) or not isinstance(p.get("vorname"), str) or not p["vorname"].strip() \

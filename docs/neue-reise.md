@@ -3,7 +3,7 @@
 Eine neue Reise entsteht im Gespräch. Niemand legt Dateien von Hand an. Es gibt zwei Wege:
 
 - **In Claude Code:** Die Person sagt „neue Reise“. Claude fragt Eckdaten und Personen ab und ruft `engine/neu.py reise` auf. Quellen wie Buchfotos, PDFs und Links übernimmt Claude danach in eigenen Worten.
-- **In der Claude-App:** Ein Bestimmer einer beliebigen Reise nutzt mit seinem persönlichen Link das Werkzeug `reise_anlegen`. Der Dienst prüft die Angaben sofort und legt einen Auftrag an. Beim nächsten Einarbeiten entsteht die Reise aus denselben Bausteinen (`neu.aus_auftrag`). Danach bekommt die Person die Links als Meldung.
+- **In der Claude-App:** Über den persönlichen Konto-Link „Frieda – meine Reisen“, der zu einer Person und zu keiner Reise gehört (`docs/konnektor.md`), nutzt man das Werkzeug `reise_anlegen`. Der Dienst prüft die Angaben sofort und legt einen Auftrag an. Der Betrieb legt die Reise aus denselben Bausteinen an (`neu.aus_auftrag`), veröffentlicht sie und schaltet sie frei. Danach zeigt `meine_reisen` der Person die Links.
 
 In beiden Fällen steht die Reise danach im Status `idee` und baut sofort: mit Eckdaten, Wissen, Wünschen und einer ersten offenen Frage.
 
@@ -59,6 +59,6 @@ IDs werden nie neu vergeben. `engine/neu.py id <reise> <W|F|O|U|E|T|V>` gibt die
 
 ## Freischalten im Betrieb
 
-Damit die Reise erreichbar ist, braucht der Betrieb drei Dinge: die veröffentlichte Seite unter einem geheimen Link, eine Ablage für Rückmeldungen und einen Link für die Claude-App je Person (`konnektor.py zugang <reise> <person>`). Wie das auf dem eigenen Server ohne Handarbeit geschieht, regelt das Reisen-Repo, nicht die Software. Den Konnektor trägt jede Person einmal selbst in der Claude-App ein (Einstellungen → Konnektoren → Eigenen Konnektor hinzufügen). Das kann kein Server für sie tun.
+Damit die Reise erreichbar ist, braucht der Betrieb drei Dinge: die veröffentlichte Seite unter einem geheimen Link, eine Ablage für Rückmeldungen und einen Link für die Claude-App je Person (`konnektor.py zugang <reise> <person>`). Den Link zur Seite trägt er in `seiten.json` neben den Zugängen ein, damit `meine_reisen` ihn zeigt. Aufträge aus der App liegen in `<ablage>/_neu/`; der Betrieb arbeitet sie ohne KI ab, weil alles geprüft ist, und meldet der Person die Links über `rueckmeldungen.meldung_anlegen` in derselben Ablage. Wie das auf dem eigenen Server ohne Handarbeit geschieht, regelt das Reisen-Repo, nicht die Software. Den Konnektor trägt jede Person einmal selbst in der Claude-App ein (Einstellungen → Konnektoren → Eigenen Konnektor hinzufügen). Das kann kein Server für sie tun.
 
 Der Betrieb soll das Einarbeiten über eine einzige Datei anstoßen: Jede neue Eingabe berührt `<ablage>/.neu` (`rueckmeldungen.anstossen` schreibt sie neu). So braucht eine neue Reise keinen eigenen Eintrag im Pfad-Wächter.

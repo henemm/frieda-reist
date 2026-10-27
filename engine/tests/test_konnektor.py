@@ -21,6 +21,7 @@ MITREISEND = "m" * 32    # alter Link (rolle mitreisend) -> Einbringer ohne fest
 KARL = "f" * 32          # Link einer Person (reise.yaml personen: karl, einbringer)
 REISEND = "r" * 32       # Link mit Rolle reisend, nur lesen
 WEG = "w" * 32           # Link einer Person, die es in reise.yaml nicht (mehr) gibt
+KONTO = "c" * 32         # Konto-Link von Ida: meine Reisen, neue Reise (Paket H)
 
 
 @pytest.fixture(scope="module")
@@ -189,7 +190,7 @@ def test_werkzeuge_je_rolle(dienst):
     m = {t["name"] for t in rpc(basis, MITREISEND, "tools/list")["tools"]}
     h = {t["name"] for t in rpc(basis, ALT_BESTIMMER, "tools/list")["tools"]}
     assert "auftrag_geben" not in m and "rueckmeldung_geben" in m
-    assert h == m | {"auftrag_geben", "entscheiden", "person_einladen", "reise_anlegen"}
+    assert h == m | {"auftrag_geben", "entscheiden", "person_einladen"}
     assert "frage_beantworten" in m and not {"entscheiden", "person_einladen"} & m   # Paket C
     assert {t["name"] for t in rpc(basis, KARL, "tools/list")["tools"]} == m
     r = {t["name"] for t in rpc(basis, REISEND, "tools/list")["tools"]}
@@ -302,39 +303,57 @@ def test_auftrag(dienst, capsys):
     assert f
 
 
-def test_reise_anlegen(dienst, capsys):
-    """Paket H: Eine Bestimmerin legt in der Claude-App eine neue Reise an. Der Dienst prüft sofort, legt einen Auftrag mit
-    den geprüften Daten an und stößt das Einarbeiten an; die Reise selbst gibt es erst danach."""
+def test_konto_meine_reisen_und_reise_anlegen(dienst, seiten, capsys, monkeypatch, tmp_path):
+    """Paket H: Ein Konto-Link gehört zu einer Person, nicht zu einer Reise. Er zeigt ihre Reisen mit Links und legt neue an;
+    der Dienst prüft sofort, die Reise entsteht erst im Betrieb. Reise-Links können keine Reise anlegen."""
     basis, ablage = dienst
-    for token in (KARL, REISEND):
-        t, f = werkzeug(basis, token, "reise_anlegen", titel="Ski", von="2027-02-06", bis="2027-02-13")
-        assert f and "nur Bestimmer" in t
-    t, f = werkzeug(basis, ALT_BESTIMMER, "reise_anlegen", titel="Ski", von="2027-02-13", bis="2027-02-06")
+    zug = Path(kn.os.environ["KN_ZUGAENGE"])
+    alle = json.loads(zug.read_text())
+    alle[KONTO] = {"konto": "ida", "name": "Ida"}
+    alle["k" * 32] = {"konto": "x y", "name": "Kaputt"}
+    zug.write_text(json.dumps(alle))
+    (zug.parent / "seiten.json").write_text(json.dumps({"beispielreise": "https://example.invalid/beispielreise-geheim/"}))
+    monkeypatch.setenv("KN_BASIS", "https://example.invalid/mcp")
+    assert anfrage(f"{basis}/{'k' * 32}", {"jsonrpc": "2.0", "id": 1, "method": "ping"})[0] == 404
+    init = rpc(basis, KONTO, "initialize")
+    assert init["serverInfo"]["title"] == "Frieda – meine Reisen" and "Frieda, die Reiseplanung von Ida" in init["instructions"]
+    assert {t["name"] for t in rpc(basis, KONTO, "tools/list")["tools"]} == {"meine_reisen", "reise_anlegen"}
+    assert "reise_anlegen" not in {t["name"] for t in rpc(basis, ALT_BESTIMMER, "tools/list")["tools"]}
+    t, f = werkzeug(basis, KONTO, "meine_reisen")
+    assert not f and "Deine Reisen (1):" in t and "Status planung, du: bestimmer" in t
+    assert "Seite: https://example.invalid/beispielreise-geheim/" in t and f"Claude-App: https://example.invalid/mcp/{ALT_BESTIMMER}" in t
+    t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Ski", von="2027-02-13", bis="2027-02-06")
     assert f and "Ende liegt vor dem Anfang" in t
-    t, f = werkzeug(basis, ALT_BESTIMMER, "reise_anlegen", titel="Beispielreise", von="2027-02-06", bis="2027-02-13",
-                    pfad="beispielreise")
+    t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Beispielreise", von="2027-02-06", bis="2027-02-13", pfad="beispielreise")
     assert f and "gibt es schon" in t
-    t, f = werkzeug(basis, ALT_BESTIMMER, "reise_anlegen", titel="Winterwoche im Allgäu", von="2027-02-06",
-                    bis="2027-02-13", ziel="Oberstdorf",
+    t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Winterwoche im Allgäu", von="2027-02-06", bis="2027-02-13",
+                    ziel="Oberstdorf",
                     personen=[{"vorname": "Karl", "rolle": "einbringer"}, {"vorname": "Mo", "rolle": "reisend", "reist": False}],
                     notiz="Hotel schon gebucht (Bestätigung vom 1.10.2026).")
     assert not f and "wenigen Minuten angelegt" in t and "Bis dahin gibt es die Reise noch nicht" in t
-    a = rm.auftraege(ablage / "beispielreise")[-1]
-    assert a["name"] == "Ida" and a["status"] == "neu" and a["ziel"] == "allgemein"
+    o = ablage / rm.NEU
+    a = rm.auftraege(o)[-1]
+    assert a["name"] == "Ida" and a["konto"] == "ida" and a["status"] == "neu"
     assert a["daten"]["neue_reise"] == {
         "titel": "Winterwoche im Allgäu", "von": "2027-02-06", "bis": "2027-02-13", "ziel": "Oberstdorf",
         "pfad": "winterwoche-im-allgaeu-2027", "wer": "Ida", "notiz": "Hotel schon gebucht (Bestätigung vom 1.10.2026).",
         "personen": {"ida": {"name": "Ida", "rolle": "bestimmer"}, "karl": {"name": "Karl", "rolle": "einbringer"},
                      "mo": {"name": "Mo", "rolle": "reisend", "reist": False}}}
     assert (ablage / ".neu").exists()                         # der Pfad-Wächter des Betriebs sieht nur diese Datei
-    rm.liste("beispielreise", False)
+    assert not (ablage / "beispielreise" / "auftraege.jsonl").exists()   # gehört zu keiner Reise
+    rm.liste(rm.NEU, False)
     assert "NEUE REISE von Ida" in capsys.readouterr().out
-    # derselbe Ordnername ist jetzt angefragt
-    t, f = werkzeug(basis, ALT_BESTIMMER, "reise_anlegen", titel="Winterwoche im Allgäu", von="2027-02-06", bis="2027-02-13")
+    t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Winterwoche im Allgäu", von="2027-02-06", bis="2027-02-13")
     assert f and "angefragt" in t
-    # Ohne persönlichen Link kein Anlegen (Bestimmer ohne Namen gibt es nicht; ein Einbringer-Link ohne Person auch nicht)
-    t, f = werkzeug(basis, MITREISEND, "reise_anlegen", titel="X", von="2027-02-06", bis="2027-02-07")
-    assert f
+    t, _ = werkzeug(basis, KONTO, "meine_reisen")
+    assert "Angefragte neue Reisen:\n- Winterwoche im Allgäu" in t and "wird angelegt" in t
+    # Nach dem Anlegen: Meldung mit den Links (schreibt der Betrieb), der Auftrag ist übernommen
+    rm.meldung_anlegen(o, ["Ida"], "neue_reise", "winterwoche-im-allgaeu-2027", "Deine neue Reise ist angelegt: Seite …")
+    rm.setze(rm.NEU, a["id"], "uebernommen", "angelegt")
+    t, _ = werkzeug(basis, KONTO, "meine_reisen")
+    assert t.startswith("Meldungen an dich:\n- ") and "Deine neue Reise ist angelegt" in t and "Angefragte" not in t
+    # Ein Konto-Link hält den Dienst gesund, auch ohne Reise
+    assert kn.gesund()[0] == 200
 
 
 def test_zugang_anlegen(seiten, tmp_path, monkeypatch, capsys):

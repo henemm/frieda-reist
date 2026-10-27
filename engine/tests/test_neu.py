@@ -179,13 +179,15 @@ def test_aufruf(tmp_path, capsys):
 def test_aus_auftrag_der_claude_app(tmp_path):
     from reise import neue_reise_pruefen
     daten, _ = neue_reise_pruefen({"titel": "Ski im Tal", "von": "2027-02-06", "bis": "2027-02-13", "ziel": "Oberstdorf",
-                                   "personen": [{"vorname": "Karl"}]}, "Ida")
-    a = {"id": "A-20261027-120000-ab12", "daten": {"neue_reise": daten}}
+                                   "personen": [{"vorname": "Karl"}], "notiz": "Hütte am Ort, laut Karl schön."}, "Ida")
+    a = {"id": "A-20261027-120000-ab12", "erstellt": "2026-10-27T12:00:00+00:00", "daten": {"neue_reise": daten}}
     r = neu.aus_auftrag(tmp_path, a, heute=datetime.date(2026, 10, 27))
     assert r.name == "ski-im-tal-2027"
     e = bauen.bauen(r, tmp_path / "dist")["reise"]
     assert e["status"]["verlauf"][0]["grund"] == "Reise angelegt (Auftrag A-20261027-120000-ab12 aus der Claude-App)"
     assert [(p["name"], p["rolle"]) for p in e["personen"]] == [("Ida", "bestimmer"), ("Karl", "einbringer")]
+    assert "Notiz von Ida aus der Claude-App (27.10.2026):\n\nHütte am Ort, laut Karl schön." in \
+        (r / "inhalt/wissen.md").read_text(encoding="utf-8")
     with pytest.raises(neu.Fehler, match="gibt es schon"):
         neu.aus_auftrag(tmp_path, a)
     with pytest.raises(neu.Fehler, match="kein Auftrag"):
