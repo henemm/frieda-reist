@@ -1789,10 +1789,8 @@ function ansichtOrt(m, a) {
   // Abschnitte der Recherche zu diesem Ort (25.10.2026)
   if (a.wissen) {
     m.append(el("h3", {}, "Aus der Recherche"));
-    m.append(el("div", {class: "wliste"}, a.wissen.map(w => el("a", {class: "wzeile typ-wissen", href: "#" + w.id},
-      el("span", {class: "wsym"}, symbol("wissen")),
-      el("span", {class: "wtext"}, el("span", {class: "wt"}, w.titel),
-        el("span", {class: "wu"}, [w.in, w.notiz].filter(Boolean).join(" · ")))))));
+    m.append(el("div", {class: "wliste"}, a.wissen.map(w =>
+      listenZeile("wissen", "wissen", w.titel, [w.in, w.notiz].filter(Boolean).join(" · "), w.id))));
   }
 }
 // Kleine Lagekarte des Orts auf der Übersichtskarte, die anderen Orte als graue Punkte (25.10.2026)
@@ -1850,10 +1848,9 @@ function ansichtWissen(m) {
   if (TIEFE && orte.length) {
     leer = false;
     const zeile = a => { const pl = ortPlaene(a.id);
-      return el("a", {class: "wzeile typ-wissen", href: "#" + a.id}, el("span", {class: "wsym"}, symbol("karte")),
-        el("span", {class: "wtext"}, el("span", {class: "wt"}, a.titel), el("span", {class: "wu"},
-          [pl.length ? "in " + pl.map(p => p.kurz).join(", ") : "in keinem Plan", a.wissen ? `${a.wissen.length} ${a.wissen.length === 1 ? "Abschnitt" : "Abschnitte"} der Recherche` : ""].filter(Boolean).join(" · "))),
-        zid(a.id)); };
+      return listenZeile("wissen", "karte", a.titel,
+        [pl.length ? "in " + pl.map(p => p.kurz).join(", ") : "in keinem Plan", a.wissen ? `${a.wissen.length} ${a.wissen.length === 1 ? "Abschnitt" : "Abschnitte"} der Recherche` : ""].filter(Boolean).join(" · "),
+        a.id, a.id); };
     const alle = abschnitte.filter(x => x.typ === "ort").sort((a, b) => a.titel.localeCompare(b.titel, "de"));
     m.append(el("h3", {class: "gruppe ziel", id: "orte"}, "Orte"));
     m.append(el("p", {class: "meldung"}, "Orte, die nur in der Recherche vorkommen. Jede Ortsseite zeigt die passenden Abschnitte der Recherche."));
@@ -1886,12 +1883,15 @@ function wissenThemen(a) {
   const satz = (text.match(/^.*?[.!?](?=\s|$)/) || [text])[0];
   return satz.replace(/[.!?]$/, "").slice(0, 140);
 }
+// Molekül Listenzeile: Symbol, Titel, Unterzeile und optional Kennung; für Wissen, Praxis, Quellen und Orte
+function listenZeile(typ, sym, titel, unter, href, kennung) {
+  return el("a", {class: "wzeile typ-" + typ, href: "#" + href},
+    el("span", {class: "wsym"}, symbol(sym)),
+    el("span", {class: "wtext"}, el("span", {class: "wt"}, titel), unter === null ? null : el("span", {class: "wu"}, unter)),
+    kennung ? zid(kennung) : null);
+}
 function wissenZeile(a) {
-  const th = wissenThemen(a);
-  return el("a", {class: "wzeile typ-" + a.typ, href: "#" + a.id},
-    el("span", {class: "wsym"}, symbol(SYM_TYP[a.typ] || "wissen")),
-    el("span", {class: "wtext"}, el("span", {class: "wt"}, a.titel), th ? el("span", {class: "wu"}, th) : null),
-    zid(a.id));
+  return listenZeile(a.typ, SYM_TYP[a.typ] || "wissen", a.titel, wissenThemen(a) || null, a.id, a.id);
 }
 function ansichtOffen(m) {
   if (B("aufgaben")) { const a = el("section", {class: "ziel", id: "aufgaben"}); ansichtAufgaben(a); m.append(a); }
@@ -1984,6 +1984,12 @@ function ansichtBausteine(m) {
     fall("je Datum", merkmalWert(jeDatum)),
     fall("je Datum, an einer Nacht", merkmalWert(jeDatum, jeDatum.je_datum[0].gilt[0])));
   teil("Atom", "Kennung", "Antippen öffnet Rückmeldungen und Aufgaben zu dieser Stelle.", el("div", {class: "z"}, zid(R ? R.tage[0].id : abschnitte[0].id)));
+  const wz = abschnitte.find(x => x.typ === "wissen" || x.typ === "praxis" || x.typ === "quelle");
+  teil("Molekül", "Listenzeile", "Symbol, Titel, Unterzeile und Kennung; für Wissen, Praxis, Quellen und Orte.",
+    wz ? el("div", {class: "wliste"}, wissenZeile(wz)) : el("p", {class: "meldung"}, "Kein Abschnitt für Wissen, Praxis oder Quellen."));
+  const fr = D.fragen.zeilen[0];
+  teil("Molekül", "Fragenkarte", "Eine offene Frage mit Kennung und Verweisen.",
+    fr ? zeilenKarte(D.fragen.spalten, fr) : el("p", {class: "meldung"}, "Keine offenen Fragen."));
   if (!R) return;
   const strecken = Object.entries(R.strecken);
   const mitKz = strecken.find(([, x]) => Object.keys(x.kennzahlen || {}).length);
