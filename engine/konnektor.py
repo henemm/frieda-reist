@@ -256,9 +256,9 @@ def stand_text(reise):
 
 
 def einarbeiten_text(reise, bestimmer):
-    """Stand des automatischen Einarbeitens. Kosten und Wartezeiten sehen nur Bestimmer (Henning, 26.10.2026)."""
+    """Stand des automatischen Einarbeitens. Wartezeiten und Fehlschläge sehen nur Bestimmer; Kosten niemand (Henning, 26.10.2026)."""
     liste = rm.laeufe_lesen(reise if not bestimmer else None)
-    return "## Einarbeiten" + (" (alle Reisen zusammen)" if bestimmer else "") + "\n" + rm.laeufe_text(liste, mit_kosten=bestimmer)
+    return "## Einarbeiten" + (" (alle Reisen zusammen)" if bestimmer else "") + "\n" + rm.laeufe_text(liste, ausfuehrlich=bestimmer)
 
 
 def stunden(minuten):
@@ -1181,7 +1181,7 @@ WERKZEUGE = [
     {"name": "rueckmeldung_geben", "description": "Rückmeldung zu einer ID abgeben: Kommentar, Frage, Korrektur, Ergänzung "
      "oder Antwort (auf eine offene Frage F-…). Oder ein Wunsch: eine Idee für die Reise (Ort, Erlebnis, Essen), auch "
      "ohne passende ID; dann ziel leer lassen. Landet im Eingang und wird automatisch geprüft und "
-     "eingearbeitet, in der Regel innerhalb einer Stunde; sie ändert nichts sofort. Vorher den Text mit der Person abstimmen.",
+     "eingearbeitet, in der Regel in wenigen Minuten; sie ändert nichts sofort. Vorher den Text mit der Person abstimmen.",
      "inputSchema": {"type": "object", "properties": {
          "ziel": {**ZIEL_FELD, "description": ZIEL_FELD["description"] + "; bei art Wunsch leer lassen"},
          "art": {"type": "string", "enum": sorted(rm.ARTEN)},
@@ -1206,7 +1206,7 @@ WERKZEUGE += [
     {"name": "alternative_vorschlagen", "description": "Neue Alternative weitergeben (z. B. ein weiteres Hotel, eine andere "
      "Strecke, eine andere Route), mit Merkmalen nach der Liste aus merkmale. Erst selbst recherchieren, dann nur nach Lücken "
      "fragen, dann den Vorschlag kurz bestätigen lassen. Ändert nichts sofort: Er wird automatisch geprüft und als Option "
-     "mit Status vorgeschlagen eingearbeitet, in der Regel innerhalb einer Stunde.",
+     "mit Status vorgeschlagen eingearbeitet, in der Regel in wenigen Minuten.",
      "inputSchema": {"type": "object", "properties": {
          "wahlstelle": {"type": "string", "description": "bestehende Wahlstelle V-…, zu der die Alternative gehört"},
          "an": {"type": "string", "description": "nur ohne wahlstelle: ID, an der eine neue Wahlstelle entsteht (T-…, U-…, E-…)"},
@@ -1259,7 +1259,7 @@ WERKZEUGE += [
 ]
 AUFTRAG = {"name": "auftrag_geben", "description": "Nur für Bestimmer: Änderungsauftrag ans Reisehandbuch, z. B. eine Option "
            "wählen oder verwerfen, eine offene Frage schließen, einen Tag ändern. Ändert NICHTS sofort: Der Auftrag wird "
-           "automatisch geprüft (Quellen, Regeln) und in der Regel innerhalb einer Stunde übernommen; den Stand zeigt rueckmeldungen. Klar und vollständig "
+           "automatisch geprüft (Quellen, Regeln) und in der Regel in wenigen Minuten übernommen; den Stand zeigt rueckmeldungen. Klar und vollständig "
            "formulieren, bei Entscheidungen auch den Grund.",
            "inputSchema": {"type": "object", "properties": {
                "ziel": {**ZIEL_FELD, "description": ZIEL_FELD["description"] + "; leer lassen, wenn es um mehreres geht"},
@@ -1438,7 +1438,7 @@ def werkzeug(zugang, name, args):
         if fehler:
             return f"Nicht gespeichert: {fehler}", True
         text_ = (f"Auftrag {e['id']} gespeichert. Er wird automatisch geprüft und in der Regel "
-                 "innerhalb einer Stunde eingearbeitet, bis dahin bleibt das Reisehandbuch unverändert.")
+                 "in wenigen Minuten eingearbeitet, bis dahin bleibt das Reisehandbuch unverändert.")
         if entscheidung:
             k = konflikt_melden(reise, e, d)
             if k:
@@ -1510,7 +1510,7 @@ def werkzeug(zugang, name, args):
                                                     "quelle": str(args.get("quelle") or "über Claude")[:rm.LAENGE["quelle"]]})
         if fehler:
             return f"Nicht gespeichert: {fehler}", True
-        return (f"Vorschlag {e['id']} gespeichert. Er wird automatisch geprüft und in der Regel innerhalb einer Stunde als "
+        return (f"Vorschlag {e['id']} gespeichert. Er wird automatisch geprüft und in der Regel in wenigen Minuten als "
                 "Option (Status vorgeschlagen) eingearbeitet, bis dahin bleibt das Reisehandbuch unverändert.\n\n" + text_), False
     return f"Unbekanntes Werkzeug {name}.", True
 

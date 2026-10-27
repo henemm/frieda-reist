@@ -227,7 +227,7 @@ def test_laeufe_kommandozeile_und_summen(tmp_path, monkeypatch, capsys):
     assert len(rm.laeufe_lesen()) == 2 and len(rm.laeufe_lesen("b")) == 1 and rm.laeufe_lesen("c") == []
     assert rm.main(["laeufe", "a", "--alle"]) == 0
     aus = capsys.readouterr().out
-    assert "2 Läufe, davon 1 fehlgeschlagen" in aus and "1.50 USD insgesamt" in aus and "im Schnitt 10 min" in aus
-    assert "Der letzte Lauf ist fehlgeschlagen" in aus and aus.count("USD") >= 3
+    assert "2 Läufe, davon 1 fehlgeschlagen" in aus and "im Schnitt 10 min" in aus
+    assert "Der letzte Lauf ist fehlgeschlagen" in aus and "USD" not in aus and "Kosten" not in aus   # Kosten nur im Protokoll
     assert "Letzter erfolgreicher Lauf: 10 min von der Eingabe bis fertig" in aus
-    assert "USD" not in rm.laeufe_text(rm.laeufe_lesen(), mit_kosten=False)
+    assert "USD" not in rm.laeufe_text(rm.laeufe_lesen(), ausfuehrlich=False)

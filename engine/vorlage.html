@@ -2101,7 +2101,7 @@ function rmFormular(id) {
         el("input", {id: "rmName", required: true, maxlength: 80, value: NAME, autocomplete: "name"}),
         el("p", {class: "meldung", id: "rmMeldung"},
           API_OK === false ? "Gerade keine Verbindung: Die Rückmeldung wird hier gespeichert und später gesendet." :
-          "Geht an Claude Code, meist innerhalb einer Stunde eingearbeitet. Der Stand erscheint hier und unter „Rückmeldungen“."),
+          "Geht an Claude Code, meist in wenigen Minuten eingearbeitet. Der Stand erscheint hier und unter „Rückmeldungen“."),
         el("button", {type: "submit", class: ""}, "Senden"))));
   dlg.dataset.ziel = id;
   dlg.dataset.ag = "";
@@ -2155,7 +2155,7 @@ function rmNeuZeichnen() {
 
 function ansichtRueckmeldungen(m) {
   m.append(el("h2", {}, "Rückmeldungen"));
-  m.append(el("p", {class: "meldung"}, "Zu jedem Eintrag mit Nummer (z. B. T-01) kann man über das 💬 an der Nummer etwas anmerken, fragen oder korrigieren. Claude Code prüft jede Rückmeldung, arbeitet sie ein (meist innerhalb einer Stunde) und schreibt hier dazu, was daraus geworden ist."));
+  m.append(el("p", {class: "meldung"}, "Zu jedem Eintrag mit Nummer (z. B. T-01) kann man über das 💬 an der Nummer etwas anmerken, fragen oder korrigieren. Claude Code prüft jede Rückmeldung, arbeitet sie ein (meist in wenigen Minuten) und schreibt hier dazu, was daraus geworden ist."));
   if (KANN_RM) m.append(el("button", {type: "button", class: "outline", "data-rm": "allgemein"}, "Allgemeine Rückmeldung zur Reise"));
   if (API_OK === false) m.append(el("p", {class: "meldung"}, "Gerade keine Verbindung zum Rückmeldedienst – angezeigt wird der zuletzt geladene Stand."));
   if (AUSGANG.length) {
@@ -2182,7 +2182,7 @@ let WU_ENTWURF = {text: "", quelle: ""};
 function ansichtWuensche(m) {
   m.append(el("h2", {}, "Wünsche"));
   m.append(el("p", {}, "Was möchtest du auf dieser Reise erleben? Ein Ort, ein Erlebnis, ein Essen – auch eine vage Idee ist willkommen. " +
-    "Claude Code prüft jeden Wunsch, meist innerhalb einer Stunde, ob und wo er in die Reise passt, und schreibt hier dazu, was daraus geworden ist."));
+    "Claude Code prüft jeden Wunsch, meist in wenigen Minuten, ob und wo er in die Reise passt, und schreibt hier dazu, was daraus geworden ist."));
   if (KANN_WUNSCH) m.append(el("form", {id: "wuForm"},
     el("label", {for: "wuText"}, "Dein Wunsch"),
     el("textarea", {id: "wuText", required: true, maxlength: 4000,

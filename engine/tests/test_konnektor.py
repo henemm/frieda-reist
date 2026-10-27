@@ -143,7 +143,7 @@ def test_ueberblick_zeigt_stand(dienst, monkeypatch):
 
 
 def test_ueberblick_zeigt_einarbeiten_kosten_nur_bestimmern(dienst, tmp_path, monkeypatch):
-    """Wartezeit und Kosten des automatischen Einarbeitens sehen nur Bestimmer; alle sehen, wann zuletzt eingearbeitet wurde."""
+    """Wartezeit des automatischen Einarbeitens sehen nur Bestimmer, Kosten niemand; alle sehen, wann zuletzt eingearbeitet wurde."""
     basis, _ = dienst
     t, _ = werkzeug(basis, MITREISEND, "ueberblick")
     assert "## Einarbeiten" in t and "Noch nichts automatisch eingearbeitet" in t
@@ -161,7 +161,7 @@ def test_ueberblick_zeigt_einarbeiten_kosten_nur_bestimmern(dienst, tmp_path, mo
     assert "Zuletzt eingearbeitet: 2026-10-26 10:00 UTC, 2 Eingabe(n)" in t      # nur Läufe dieser Reise
     assert "USD" not in t and "Kosten" not in t and "im Schnitt" not in t
     t, _ = werkzeug(basis, ALT_BESTIMMER, "ueberblick")
-    assert "(alle Reisen zusammen)" in t and "1.20 USD insgesamt" in t and "im Schnitt 5 min" in t
+    assert "(alle Reisen zusammen)" in t and "USD" not in t and "im Schnitt 5 min" in t
     assert "Der letzte Lauf ist fehlgeschlagen" in t and "3 Läufe, davon 1 fehlgeschlagen" in t
 
 
