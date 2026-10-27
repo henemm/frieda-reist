@@ -202,6 +202,25 @@ def test_mahnungen_erst_ab_fest(tmp_path):
     assert "U-01" in ids["unterwegs"] and "U-01" not in ids["planung"]
 
 
+def test_mahnungen_auf_der_seite_abschaltbar(tmp_path):
+    """darstellung.mahnungen: false blendet die Mahnungen im Plan aus; berechnet und im Konnektor bleiben sie."""
+    def bauen_mit(ziel, wert):
+        quelle = ziel / "quelle"
+        shutil.copytree(BEISPIEL, quelle)
+        y = yaml.safe_load((quelle / "reise.yaml").read_text(encoding="utf-8"))
+        y["status"] = {"wert": "fest", "verlauf": y["status"]["verlauf"] + [
+            {"datum": datetime.date(2026, 10, 25), "wert": "fest", "wer": "Ida", "grund": "Test"}]}
+        if wert is not None:
+            y["darstellung"]["mahnungen"] = wert
+        (quelle / "reise.yaml").write_text(yaml.safe_dump(y, allow_unicode=True), encoding="utf-8")
+        bauen.bauen(quelle, ziel / "seiten" / "beispielreise")
+        return daten_von(ziel / "seiten")
+    standard = bauen_mit(tmp_path / "a", None)
+    aus = bauen_mit(tmp_path / "b", False)
+    assert standard["reise"]["mahnungen"] is True and aus["reise"]["mahnungen"] is False
+    assert aus["route"]["mahnungen"] == standard["route"]["mahnungen"] != []
+
+
 def test_idee_ohne_warnungen(tmp_path):
     assert daten_von(reise_bauen(tmp_path / "a", "planung", luecke=True))["route"]["warnungen"]
     assert daten_von(reise_bauen(tmp_path / "b", "idee", luecke=True))["route"]["warnungen"] == []

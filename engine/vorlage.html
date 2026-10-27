@@ -35,22 +35,26 @@
 :root{--plan-a:#c62a2a;--plan-b:#008a7e;--plan-c:#7a4db0;--plan-d:#b07800;--sea:#d9e6ea;--land:#eceadf;--land-edge:#b7b4a3;--peak:#8a8573;--water:#9cc3d1;--bus:#6f7772;--skip:#9a9a90;--kat-hotel:#1f3b57;--kat-gasthaus:#8a4b2a;--kat-ferienwohnung:#6a4c93;--kat-huette:#2c6e49;--kat-herberge:#3f7f8c;--kat-camping:#7a7a1f;--kat-unterwegs:#555a50;--kat-privat:#a0446a;--kat-sonstige:#6f7772;--bg:#f3efe6;--fg:#22281f;--mut:#555a50;--ocker:#6a5a3a;--card:#fffcf6;--line:#ddd5c4;--acc:#1e5a43;--acc2:#e3ede6;--warn:#8a5a00;--warnbg:#f6e9cf;--mark:#ffe58a;--bar:#22281f;--bar-fg:#c9cdbf;--bar-on:#f3efe6;--bar-on-fg:#22281f}
 @media (prefers-color-scheme:dark){:root{--plan-a:#e8507a;--plan-b:#2fa9a0;--plan-c:#a07ad6;--plan-d:#b98a00;--sea:#14232a;--land:#222823;--land-edge:#3d453e;--peak:#8d8a7c;--water:#2f5e70;--bus:#8d958f;--skip:#6d716c;--kat-hotel:#7fa9d6;--kat-gasthaus:#d39a6f;--kat-ferienwohnung:#b49ae0;--kat-huette:#5cbf86;--kat-herberge:#79c3cf;--kat-camping:#c9c96a;--kat-unterwegs:#a9ad9f;--kat-privat:#e08fb0;--kat-sonstige:#8d958f;--bg:#191c17;--fg:#ece8dd;--mut:#a9ad9f;--ocker:#cdb98e;--card:#22261f;--line:#363b31;--acc:#7fc4a4;--acc2:#233229;--warn:#f0c46a;--warnbg:#3a3017;--mark:#6b5a10;--bar:#2c3128;--bar-fg:#b9bdaf;--bar-on:#ece8dd;--bar-on-fg:#191c17}}
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.55 var(--font-text)}
-main{max-width:760px;margin:0 auto;padding:14px 14px 0;overflow-wrap:break-word}
+/* Schriftgröße: alle Größen sind rem, am Rechner wächst die Wurzel (Handy 16 px, ab 760 px 17 px, ab 1100 px 19 px, ab 1700 px 20 px).
+   Breite: Kopf und alle Ansichten teilen --breite, Fließtext bleibt auf Lesebreite (--lese). */
+html{-webkit-text-size-adjust:100%;font-size:100%}
+:root{--breite:860px;--lese:44rem}
+body{margin:0;background:var(--bg);color:var(--fg);font:1.0625rem/1.55 var(--font-text)}
+main{max-width:var(--breite);margin:0 auto;padding:14px 14px 0;overflow-wrap:break-word}
+main :is(p,ul,ol,blockquote,dl):not(:where(.karte,.ding,.wm,.option,.steckbrief,.wm-karte,.fnbox) *){max-width:var(--lese)}
 nav{display:flex}
 nav a{min-width:0;text-align:center;color:var(--mut);text-decoration:none;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 a{color:var(--acc)}
-.zid{font:11px ui-monospace,Menlo,monospace;color:var(--mut);margin-left:8px;white-space:nowrap}
+.zid{font:0.6875rem ui-monospace,Menlo,monospace;color:var(--mut);margin-left:8px;white-space:nowrap}
 .zurueck{display:inline-block;margin:0 0 8px;padding:6px 0;text-decoration:none;font-weight:600}
 .karte{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 10px;color:inherit;text-decoration:none}
 a.karte:active{background:var(--acc2)}
 .karte .k{font-weight:700}
-.karte .z{margin-top:4px;font-size:15px}
+.karte .z{margin-top:4px;font-size:0.9375rem}
 .karte .z b{color:var(--mut);font-weight:600}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 /* Lange Etiketten und Code brechen um, statt auf dem Handy seitlich überzustehen (Bildprüfung 2e) */
-.chip{font-size:13px;background:var(--acc2);color:var(--acc);border-radius:99px;padding:2px 10px;max-width:100%;overflow-wrap:break-word}
+.chip{font-size:0.8125rem;background:var(--acc2);color:var(--acc);border-radius:99px;padding:2px 10px;max-width:100%;overflow-wrap:break-word}
 main code{overflow-wrap:anywhere}
 .chip.plan{background:var(--acc);color:var(--bg);font-weight:700}
 .chip.neben{background:var(--warnbg);color:var(--warn)}
@@ -63,17 +67,17 @@ summary{cursor:pointer}
 .tabelle{overflow-x:auto;margin:.6em 0;-webkit-overflow-scrolling:touch}
 img{max-width:100%;height:auto;border-radius:6px}
 a.bild{display:block;margin:6px 0;list-style:none}
-a.bild span{display:block;font-size:13px;color:var(--mut)}
-ul li:has(>a.bild){list-style:none;margin-left:-22px;font-size:13px;color:var(--mut)}
+a.bild span{display:block;font-size:0.8125rem;color:var(--mut)}
+ul li:has(>a.bild){list-style:none;margin-left:-22px;font-size:0.8125rem;color:var(--mut)}
 .ziel{scroll-margin-top:calc(70px + env(safe-area-inset-top))}
 .blitz{animation:blitz 2s}
 @keyframes blitz{0%,60%{outline:3px solid var(--acc)}100%{outline:3px solid transparent}}
 mark{background:var(--mark);color:inherit;border-radius:3px}
-.treffer .in{font-size:13px;color:var(--mut)}
-.treffer .s{font-size:15px;margin-top:3px}
+.treffer .in{font-size:0.8125rem;color:var(--mut)}
+.treffer .s{font-size:0.9375rem;margin-top:3px}
 .leer{color:var(--mut);padding:20px 0;text-align:center}
 .teil{margin:1.4em 0 10px}
-.karte .z.klein,.verlauf{font-size:13px;color:var(--mut)}
+.karte .z.klein,.verlauf{font-size:0.8125rem;color:var(--mut)}
 .chip.offen{background:var(--warnbg);color:var(--warn)}
 .chip.weg{background:transparent;color:var(--mut);border:1px solid var(--line);text-decoration:line-through}
 .chip.unterwegs{background:transparent;color:var(--ocker);border:1px solid var(--ocker)}
@@ -82,8 +86,8 @@ mark{background:var(--mark);color:inherit;border-radius:3px}
 .option{border-top:1px solid var(--line);padding:8px 0 4px;margin-top:8px}
 .option.aktiv{border-left:3px solid var(--acc);padding-left:10px;margin-left:-14px}
 .option .k{font-weight:600}
-.option ul{margin:.2em 0;padding-left:20px;font-size:15px}
-details.weg>summary{font-size:14px;color:var(--mut);padding:8px 0}
+.option ul{margin:.2em 0;padding-left:20px;font-size:0.9375rem}
+details.weg>summary{font-size:0.875rem;color:var(--mut);padding:8px 0}
 button.zid{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:1px 7px;cursor:pointer;vertical-align:middle}
 button.zid.hat{border-color:var(--acc);color:var(--acc)}
 dialog#rm{border:0;border-radius:16px 16px 0 0;padding:0;margin:auto 0 0;bottom:calc(0px - var(--hoehe-fehlt,0px));width:100%;max-width:100%;max-height:88vh;background:var(--card);color:var(--fg);box-shadow:0 -4px 24px rgba(0,0,0,.25)}
@@ -94,14 +98,14 @@ dialog#rm::backdrop{background:rgba(0,0,0,.35)}
 #rm .rminhalt{padding:10px 16px calc(16px + env(safe-area-inset-bottom))}
 #rm textarea,#wuForm textarea{min-height:110px;resize:vertical}
 .rmeintrag{border-top:1px solid var(--line);padding:9px 0}
-.rmeintrag .kopfzeile{font-size:13px;color:var(--mut)}
+.rmeintrag .kopfzeile{font-size:0.8125rem;color:var(--mut)}
 .rmeintrag .text{white-space:pre-wrap;margin:3px 0}
-.rmeintrag .antwort{font-size:15px;background:var(--acc2);border-radius:8px;padding:6px 9px;margin-top:5px}
+.rmeintrag .antwort{font-size:0.9375rem;background:var(--acc2);border-radius:8px;padding:6px 9px;margin-top:5px}
 /* Wunsch-Brett (Paket G): am Handy Spalten untereinander, leere weg; ab 700 px eine Reihe wie ein Brett, leere Spalten
    schmal, bei vielen Wünschen seitlich blättern (nur das Brett, nie die Seite) */
 .brett{display:flex;flex-direction:column;margin-top:6px}
 .brett .spalte{min-width:0}
-.brett .spalte h3{font-size:17px;margin:12px 0 6px}
+.brett .spalte h3{font-size:1.0625rem;margin:12px 0 6px}
 .brett .leer-spalte h3{color:var(--mut);font-weight:500}
 @media (max-width:699px){.brett .leer-spalte{display:none}}
 @media (min-width:700px){.brett{flex-direction:row;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:6px}
@@ -111,9 +115,9 @@ dialog#rm::backdrop{background:rgba(0,0,0,.35)}
 .wu-karte.weg .text{color:var(--mut)}
 .wu-kopf{display:flex;gap:10px;align-items:flex-start}
 .wu-kopf .text{white-space:pre-wrap;flex:1;min-width:0}
-.wu-karte .kopfzeile{font-size:13px;color:var(--mut)}
-.wu-karte .antwort{font-size:15px;background:var(--acc2);border-radius:8px;padding:6px 9px;margin-top:5px}
-.wu-vorschlag{font-size:15px;border-left:3px solid var(--acc);padding:2px 0 2px 9px;margin-top:6px}
+.wu-karte .kopfzeile{font-size:0.8125rem;color:var(--mut)}
+.wu-karte .antwort{font-size:0.9375rem;background:var(--acc2);border-radius:8px;padding:6px 9px;margin-top:5px}
+.wu-vorschlag{font-size:0.9375rem;border-left:3px solid var(--acc);padding:2px 0 2px 9px;margin-top:6px}
 .wu-knoepfe{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
 .pico .wu-knoepfe button{margin:0}
 .wu-zahl{min-width:1.6em;text-align:center;font-weight:600}
@@ -125,10 +129,10 @@ details.wu-neu summary{cursor:pointer;font-weight:600}
 .chip.st-uebernommen{background:var(--acc);color:var(--bg)}
 .chip.st-rueckfrage{background:var(--warnbg);color:var(--warn);font-weight:700}
 .chip.st-ausstehend{background:transparent;color:var(--mut);border:1px dashed var(--mut)}
-.meldung{font-size:14px;color:var(--mut);margin:8px 0}
+.meldung{font-size:0.875rem;color:var(--mut);margin:8px 0}
 .umschalter{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px;padding:0;border:0;min-width:0}
 .unsichtbar{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.umschalter button{font:inherit;font-size:14px;font-weight:600;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:8px 13px;min-height:40px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.umschalter button{font:inherit;font-size:0.875rem;font-weight:600;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:8px 13px;min-height:40px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
 .plan-linie{width:16px;border-top:4px solid var(--farbe);display:inline-block}
 .umschalter button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .kartenbox{isolation:isolate;height:min(68vh,620px);min-height:320px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--sea)}
@@ -159,7 +163,7 @@ details.block>.ortchips{padding:0 14px}
 .kartenlinks{display:flex;flex-direction:column;gap:2px;margin:4px 0}
 .legende i{display:inline-block;width:12px;height:12px;margin-right:4px;vertical-align:-1px;border-width:1px}
 .pico .regionen{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
-.pico .regionen button{all:unset;cursor:pointer;font-size:14px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card)}
+.pico .regionen button{all:unset;cursor:pointer;font-size:0.875rem;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card)}
 .pico .regionen button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--bg)}
 .rh-p.kat-wasser.art-quelle{background:var(--card);color:#1f86b5;border-color:#1f86b5}
 .leaflet-popup-content{font:inherit;font-size:14px;margin:10px 12px;line-height:1.35}
@@ -177,14 +181,14 @@ a.kp{white-space:nowrap}
 a.kp::before{content:"";display:inline-block;width:.7em;height:.7em;margin-right:.18em;border-radius:50% 50% 50% 0;transform:rotate(-45deg) translateY(.05em);background:currentColor;opacity:.75}
 .kp-blink{animation:kpblink 1.6s ease-out}
 @keyframes kpblink{0%,40%{background:var(--warnbg)}100%{background:transparent}}
-.ziehhinweis{font-size:13px;color:var(--mut);margin:4px 0 0}
+.ziehhinweis{font-size:0.8125rem;color:var(--mut);margin:4px 0 0}
 /* Fußnoten: Nummer antippen zeigt den Nachweis an der Stelle; Liste am Blockende (25.10.2026) */
 .pico sup.fn{font-size:.72em;line-height:0}
 .pico sup.fn button{all:unset;display:inline-block;line-height:1.3;min-width:1.2em;text-align:center;cursor:pointer;color:var(--acc);font-weight:600;padding:.1em .2em;border-radius:4px}
 .pico sup.fn button[aria-expanded="true"]{background:var(--acc2)}
 .pico sup.fn button:focus-visible{outline:2px solid var(--acc)}
-.fnbox{display:block;margin:.3em 0 .5em;padding:.4em .6em;border-left:3px solid var(--acc);background:var(--card);font-size:14px;line-height:1.4;color:var(--mut)}
-ol.fussnoten{margin:1em 0 0;padding-top:.6em;border-top:1px solid var(--line);font-size:13px;line-height:1.4;color:var(--mut)}
+.fnbox{display:block;margin:.3em 0 .5em;padding:.4em .6em;border-left:3px solid var(--acc);background:var(--card);font-size:0.875rem;line-height:1.4;color:var(--mut)}
+ol.fussnoten{margin:1em 0 0;padding-top:.6em;border-top:1px solid var(--line);font-size:0.8125rem;line-height:1.4;color:var(--mut)}
 ol.fussnoten li{margin:0 0 .25em;overflow-wrap:anywhere}
 .rh-ort::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:1.5px solid var(--land)}
 .rh-ort.rh-unterkunft::after{width:12px;height:12px;border-radius:3px;background:var(--kat,var(--kat-sonstige))}
@@ -201,11 +205,11 @@ ol.fussnoten li{margin:0 0 .25em;overflow-wrap:anywhere}
 /* Leaflet-Markierungen tragen role="button"; Pico würde sie als Knöpfe gestalten */
 .pico .leaflet-container .leaflet-marker-icon[role=button]{padding:0;margin:0;border:0;border-radius:0;background:none;box-shadow:none;width:auto;line-height:normal}
 .pico .leaflet-container .leaflet-control-zoom a{display:block;width:34px;height:34px;line-height:34px;padding:0;margin:0;border-radius:0;
-  background:var(--card);color:var(--fg);border:0;border-bottom:1px solid var(--line);text-decoration:none;font-size:20px;box-shadow:none}
+  background:var(--card);color:var(--fg);border:0;border-bottom:1px solid var(--line);text-decoration:none;font-size:1.25rem;box-shadow:none}
 .pico .leaflet-container .leaflet-control-zoom{border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .pico .leaflet-container .leaflet-control-attribution{font-size:10px;line-height:1.3;background:color-mix(in srgb,var(--card) 75%,transparent);color:var(--mut);max-width:70%}
 .leaflet-tooltip.rh-lbl.verdeckt{visibility:hidden}
-.legende{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--mut);margin:6px 0}
+.legende{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:0.8125rem;color:var(--mut);margin:6px 0}
 .legende span{display:inline-flex;align-items:center;gap:6px}
 .lg-k{width:11px;height:11px;border-radius:3px;background:var(--kat,var(--kat-sonstige))}
 .lg-u{width:16px;border-top:3px dotted var(--fg)}
@@ -215,52 +219,52 @@ ol.fussnoten li{margin:0 0 .25em;overflow-wrap:anywhere}
 .steckbriefe{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:12px 0}
 .steckbrief{border-top:4px solid var(--farbe);cursor:pointer}
 .steckbrief.an{box-shadow:0 0 0 2px var(--farbe)}
-.steckbrief dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:6px 0;font-size:14px}
+.steckbrief dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:6px 0;font-size:0.875rem}
 .steckbrief dt{color:var(--mut)}
 .steckbrief dd{margin:0}
-.steckbrief ul{margin:4px 0;padding-left:18px;font-size:14px}
-.vergleich td,.vergleich th{font-size:13.5px}
+.steckbrief ul{margin:4px 0;padding-left:18px;font-size:0.875rem}
+.vergleich td,.vergleich th{font-size:0.8438rem}
 .vergleich td.nr{font-weight:700;text-align:center}
 .vergleich td.plan-nr{color:var(--farbe)}
 .vergleich tr.an td{background:var(--acc2)}
 /* Merkmale von Alternativen (docs/alternativen.md): ab 700 px Tabelle, darunter Karten je Option */
-dl.mliste{margin:6px 0;font-size:14.5px}
-dl.mliste dt{font-size:12.5px;color:var(--mut);margin-top:6px}
+dl.mliste{margin:6px 0;font-size:0.9062rem}
+dl.mliste dt{font-size:0.7812rem;color:var(--mut);margin-top:6px}
 dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .vergleich.mk th[scope=row]{text-align:left;color:var(--mut);font-weight:600;white-space:nowrap}
 .vergleich.mk td{vertical-align:top;min-width:9em}
-.mk-chip{margin-left:6px;font-size:11px;padding:1px 7px}
+.mk-chip{margin-left:6px;font-size:0.6875rem;padding:1px 7px}
 .mk-leer{color:var(--mut);border-bottom:1px dashed var(--line)}
 .mk-nichts{color:var(--mut)}
 /* Atom Wert (Designsystem 2d): Wert vorn, Herkunft (Notiz, Prüfdatum, Quelle) hinter dem i; je Datum als Liste */
 .mk-unklar{color:var(--warn);font-weight:700}
 .mk-luecke{color:var(--warn)}
 .pico button.mk-i{position:relative;width:20px;height:20px;min-height:0;padding:0;margin:0 0 0 6px;border-radius:50%;border:1px solid var(--line);
-  background:var(--card);color:var(--mut);font:italic 700 12px/18px var(--font-titel);text-align:center;vertical-align:1px;box-shadow:none;cursor:pointer}
+  background:var(--card);color:var(--mut);font:italic 700 0.75rem/18px var(--font-titel);text-align:center;vertical-align:1px;box-shadow:none;cursor:pointer}
 .pico button.mk-i::after{content:"";position:absolute;inset:-12px}
 .pico button.mk-i[aria-expanded="true"]{background:var(--acc2);color:var(--acc);border-color:var(--acc)}
-.mk-q{display:block;font-size:13px;line-height:1.35;color:var(--mut);margin:3px 0 0;overflow-wrap:anywhere}
+.mk-q{display:block;font-size:0.8125rem;line-height:1.35;color:var(--mut);margin:3px 0 0;overflow-wrap:anywhere}
 .mk-q[hidden]{display:none}
 .mk-datum{display:block}
-.mk-am{font-size:12.5px;font-weight:700;color:var(--ocker)}
-.mk-am-tag{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;color:var(--ocker);border:1px solid var(--ocker);border-radius:4px;padding:0 5px;vertical-align:1px}
+.mk-am{font-size:0.7812rem;font-weight:700;color:var(--ocker)}
+.mk-am-tag{display:inline-block;margin-left:6px;font-size:0.6875rem;font-weight:700;color:var(--ocker);border:1px solid var(--ocker);border-radius:4px;padding:0 5px;vertical-align:1px}
 /* Kontext unterwegs: Wahlen mit Auslöser stehen oben im Tag, mit Rahmen in Ocker */
 .ding.wahl.vorn{border:2px solid var(--ocker);border-radius:12px;padding:10px 12px;margin:4px 0 10px}
 /* Wahl-Modul (Designsystem 2c): Einstieg an der Stelle, Vergleich darunter; ab 700 px Tabelle, darunter Karten oder Tabelle */
-.pico .wm-knopf{width:auto;margin:0;box-shadow:none;font:600 14px/1.2 var(--font-text);display:inline-flex;align-items:center;gap:8px;min-height:40px;
+.pico .wm-knopf{width:auto;margin:0;box-shadow:none;font:600 0.875rem/1.2 var(--font-text);display:inline-flex;align-items:center;gap:8px;min-height:40px;
   padding:6px 8px 6px 14px;border-radius:99px;border:1px solid var(--acc);background:var(--acc);color:var(--bg);cursor:pointer}
 .pico .wm-knopf[aria-expanded="true"]{background:transparent;color:var(--acc)}
-.wm-n{background:var(--bg);color:var(--acc);border-radius:99px;min-width:22px;padding:1px 7px;font-size:12.5px;text-align:center}
+.wm-n{background:var(--bg);color:var(--acc);border-radius:99px;min-width:22px;padding:1px 7px;font-size:0.7812rem;text-align:center}
 .wm-knopf[aria-expanded="true"] .wm-n{background:var(--acc2)}
 .wm{margin:10px 0 4px;padding-top:10px;border-top:2px solid var(--acc)}
 .wm[hidden]{display:none}
 .wm-steuer{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;margin:0 0 8px}
-.pico .wm-steuer label{display:flex;align-items:center;gap:6px;font-size:14.5px;min-height:40px;margin:0}
+.pico .wm-steuer label{display:flex;align-items:center;gap:6px;font-size:0.9062rem;min-height:40px;margin:0}
 .pico .wm-steuer input[type=checkbox]{margin:0}
 .wm-wahl,.wm-ansicht{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;padding:0;border:0;min-width:0}
 .ding .chips{align-items:center}
 .pico .ding ul{margin:4px 0 0}
-.pico :is(.wm-wahl,.wm-ansicht) button{width:auto;margin:0;box-shadow:none;font:600 13.5px/1.2 var(--font-text);border-radius:99px;border:1px solid var(--line);
+.pico :is(.wm-wahl,.wm-ansicht) button{width:auto;margin:0;box-shadow:none;font:600 0.8438rem/1.2 var(--font-text);border-radius:99px;border:1px solid var(--line);
   background:var(--card);color:var(--fg);padding:6px 12px;min-height:40px;cursor:pointer}
 .pico :is(.wm-wahl,.wm-ansicht) button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--bg)}
 .wm-wahl small{font-weight:400;opacity:.8;margin-left:4px}
@@ -273,18 +277,18 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .wm-karte.an{border-color:var(--acc);box-shadow:inset 3px 0 0 var(--acc)}
 @media (min-width:700px){.wm-karten,.wm-ansicht{display:none}.wm.ohne-tabelle .wm-karten{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
 @media (max-width:699px){.wm[data-ansicht=karten] .wm-tabelle,.wm[data-ansicht=tabelle] .wm-karten{display:none}
-  .pico .wm-tab th[scope=row]{white-space:normal;min-width:5.5em;max-width:6.5em;font-size:12.5px;padding-left:6px;padding-right:6px}
+  .pico .wm-tab th[scope=row]{white-space:normal;min-width:5.5em;max-width:6.5em;font-size:0.7812rem;padding-left:6px;padding-right:6px}
   .pico .wm-tab td,.pico .wm-tab thead th{min-width:7.5em;padding-left:7px;padding-right:7px}}
-.vergleich .nacht{display:inline-block;font-size:12px;font-weight:600;border-radius:4px;padding:0 6px;margin-top:2px;color:var(--bg);background:var(--kat,var(--kat-sonstige))}
+.vergleich .nacht{display:inline-block;font-size:0.75rem;font-weight:600;border-radius:4px;padding:0 6px;margin-top:2px;color:var(--bg);background:var(--kat,var(--kat-sonstige))}
 .vergleich .nacht.offen{background:transparent;color:var(--mut);border:1px dashed var(--mut)}
 .punkt{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--farbe);margin-right:4px}
 /* Ding-Karte (Designsystem 2b, frieda-reist#18): Etikett sagt, was es ist (Nacht, Unterkunft …), Punkt in der Farbe der Kategorie */
-.ding-art{display:flex;align-items:center;gap:6px;font:700 10.5px/1.2 var(--font-text);letter-spacing:.08em;text-transform:uppercase;color:var(--ocker)}
+.ding-art{display:flex;align-items:center;gap:6px;font:700 0.6562rem/1.2 var(--font-text);letter-spacing:.08em;text-transform:uppercase;color:var(--ocker)}
 .ding-art .lg-k{width:9px;height:9px}
 .ding{display:flex;gap:10px;align-items:flex-start;margin:10px 0 2px;padding-top:9px;border-top:1px solid var(--line)}
 .ding-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .ding-titel{font-weight:600;line-height:1.3}
-.ding-unter{font-size:14px;color:var(--mut);line-height:1.35}
+.ding-unter{font-size:0.875rem;color:var(--mut);line-height:1.35}
 .ding .chips{margin:4px 0 0}
 .pico .ding>button.zid{margin:2px 0 0;flex:none}
 .karte>.ding-art{margin:0 0 3px}
@@ -305,13 +309,13 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .pico :is(h1,h2,h3,h4){font-family:var(--font-titel);font-weight:700;text-wrap:balance;letter-spacing:-.005em}
 .pico table{font-variant-numeric:tabular-nums}
 .pico .tabelle table{margin:0}
-.pico button.klein{font-size:14px;padding:6px 12px}
+.pico button.klein{font-size:0.875rem;padding:6px 12px}
 /* Eigene Bedienelemente innerhalb von .pico behalten ihr Aussehen */
 .pico :is(button.zid,.umschalter button){width:auto;box-shadow:none;line-height:1.3;transition:none;
   --pico-background-color:var(--card);--pico-border-color:var(--line);--pico-color:var(--fg);background-color:var(--card);border:1px solid var(--line);border-radius:99px}
-.pico button.zid{font:11px ui-monospace,Menlo,monospace;--pico-color:var(--mut);color:var(--mut);padding:1px 7px;margin:0 0 0 8px;vertical-align:middle}
+.pico button.zid{font:0.6875rem ui-monospace,Menlo,monospace;--pico-color:var(--mut);color:var(--mut);padding:1px 7px;margin:0 0 0 8px;vertical-align:middle}
 .pico button.zid.hat{--pico-color:var(--acc);color:var(--acc);border-color:var(--acc)}
-.pico .umschalter button{margin:0;font-size:14px;font-weight:600;color:var(--fg);padding:8px 13px}
+.pico .umschalter button{margin:0;font-size:0.875rem;font-weight:600;color:var(--fg);padding:8px 13px}
 .pico .umschalter button[aria-pressed="true"]{--pico-background-color:var(--fg);background-color:var(--fg);color:var(--bg);border-color:var(--fg)}
 .pico details.block>summary,.pico details.neben>summary,.pico details.weg>summary{margin:0}
 .pico .karte .k{font-size:1rem}
@@ -342,16 +346,16 @@ button.zid::after{content:"";position:absolute;inset:-9px -4px}   /* Tippfläche
 .sym{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
 
 /* ---------- Kopf: großer Titel am Seitenanfang (iOS Large Title), scrollt mit ---------- */
-header{max-width:860px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px 2px 16px}
-header .t{font-family:var(--font-titel);font-size:32px;line-height:1.1;font-weight:700;letter-spacing:-.005em;margin:0;text-wrap:balance}
-header .u{font-size:15px;color:var(--mut);margin-top:4px;text-wrap:balance}
+header{max-width:var(--breite);margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px 2px 16px}
+header .t{font-family:var(--font-titel);font-size:2rem;line-height:1.1;font-weight:700;letter-spacing:-.005em;margin:0;text-wrap:balance}
+header .u{font-size:0.9375rem;color:var(--mut);margin-top:4px;text-wrap:balance}
 a.weiter{display:inline-block;margin-top:8px;font-weight:600;color:var(--acc);text-decoration:none}
 .karte.tag .k{font-weight:600}
 details.alternative{margin:0 0 10px 14px;border-left:3px solid var(--warn);padding-left:8px}
 .blaettern{display:flex;justify-content:space-between;margin:14px 0}
 h2 .punkt,h2 i.punkt{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--farbe);margin-right:8px;vertical-align:middle}
 /* ---------- Stil „Wanderführer“: Listen in Wissen, Tageskopf, Kennzahlen ---------- */
-.pico h3.gruppe,.teil{font:700 12px/1.3 var(--font-text);letter-spacing:.1em;text-transform:uppercase;color:var(--ocker);margin:1.6em 0 0;padding:0 0 6px;border-bottom:1px solid var(--line)}
+.pico h3.gruppe,.teil{font:700 0.75rem/1.3 var(--font-text);letter-spacing:.1em;text-transform:uppercase;color:var(--ocker);margin:1.6em 0 0;padding:0 0 6px;border-bottom:1px solid var(--line)}
 .wliste{display:flex;flex-direction:column}
 .wzeile{display:flex;gap:14px;align-items:flex-start;padding:13px 0;border-bottom:1px solid var(--line);color:var(--fg);text-decoration:none}
 .wliste .wzeile:last-child{border-bottom:0}
@@ -359,19 +363,19 @@ h2 .punkt,h2 i.punkt{display:inline-block;width:12px;height:12px;border-radius:5
 .typ-praxis .wsym{background:var(--warnbg);color:var(--warn)}
 .typ-quelle .wsym{background:color-mix(in srgb,var(--mut) 16%,transparent);color:var(--mut)}
 .wtext{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.wt{font:600 19px/1.25 var(--font-titel);text-wrap:balance}
-.wu{font-size:14.5px;line-height:1.4;color:var(--mut)}
+.wt{font:600 1.1875rem/1.25 var(--font-titel);text-wrap:balance}
+.wu{font-size:0.9062rem;line-height:1.4;color:var(--mut)}
 .pico .wzeile>button.zid{margin:3px 0 0;flex:none}
 @media (hover:hover){.wzeile:hover .wt{color:var(--acc)}}
 .tagkopf{align-items:center!important;flex-wrap:nowrap!important}
-.tagnr{flex:none;font:700 40px/.9 var(--font-titel);color:var(--acc);min-width:1.1em}
+.tagnr{flex:none;font:700 2.5rem/.9 var(--font-titel);color:var(--acc);min-width:1.1em}
 .tagtext{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.tagdatum{font:700 12px/1.3 var(--font-text);letter-spacing:.08em;text-transform:uppercase;color:var(--ocker)}
-.tagtitel{font:700 19px/1.25 var(--font-titel);text-wrap:balance}
-h2.tagkopf .tagnr{font-size:54px}
-h2.tagkopf .tagtitel{font-size:27px;line-height:1.15}
-.karte.tag .tagkopf .tagtitel{font-size:17px}
-.karte.tag .tagkopf .tagnr{font-size:32px}
+.tagdatum{font:700 0.75rem/1.3 var(--font-text);letter-spacing:.08em;text-transform:uppercase;color:var(--ocker)}
+.tagtitel{font:700 1.1875rem/1.25 var(--font-titel);text-wrap:balance}
+h2.tagkopf .tagnr{font-size:3.375rem}
+h2.tagkopf .tagtitel{font-size:1.6875rem;line-height:1.15}
+.karte.tag .tagkopf .tagtitel{font-size:1.0625rem}
+.karte.tag .tagkopf .tagnr{font-size:2rem}
 /* Wegverlauf: Punkte für Orte, gestrichelte Linie für Strecken, gepunktet für Bus/Bahn */
 .wv{margin:8px 0 4px}
 .wv-ort,.wv-strecke{position:relative;padding-left:26px}
@@ -380,24 +384,24 @@ h2.tagkopf .tagtitel{font-size:27px;line-height:1.15}
 .wv-ort.start .wv-punkt{background:var(--acc)}
 .wv-ort.ziel .wv-punkt{border-radius:3px;background:var(--fg);border-color:var(--fg)}
 .wv-name{font-weight:600;display:flex;align-items:baseline;gap:8px}
-.wv-etikett{font:700 10.5px/1.2 var(--font-text);letter-spacing:.08em;text-transform:uppercase;color:var(--ocker)}
+.wv-etikett{font:700 0.6562rem/1.2 var(--font-text);letter-spacing:.08em;text-transform:uppercase;color:var(--ocker)}
 .wv-strecke{padding-top:2px;padding-bottom:6px}
 .wv-strecke::before{content:"";position:absolute;left:8px;top:-4px;bottom:-4px;border-left:2px dashed var(--acc)}
 .wv-strecke.fahrt::before{border-left-style:dotted;border-left-color:var(--mut)}
 .wv-strecke>.z{margin-top:0}
 .kz{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:8px 0 4px;border-top:2px solid var(--fg);border-bottom:1px solid var(--line)}
 .kz>div{padding:7px 0;display:flex;flex-direction:column;gap:1px}
-.kzn{font:700 10.5px/1.2 var(--font-text);letter-spacing:.06em;text-transform:uppercase;color:var(--ocker)}
-.kzw{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.kzn{font:700 0.6562rem/1.2 var(--font-text);letter-spacing:.06em;text-transform:uppercase;color:var(--ocker)}
+.kzw{font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums}
 /* Zahl am Reiter „Offen“: offene Aufgaben + nicht gesendete Rückmeldungen */
 nav a{position:relative}
-nav a .zahl{position:absolute;top:3px;left:calc(50% + 4px);box-shadow:0 0 0 2px var(--bar);min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--acc);color:var(--bg);font-size:10.5px;font-weight:700;line-height:17px;text-align:center;letter-spacing:0}
+nav a .zahl{position:absolute;top:3px;left:calc(50% + 4px);box-shadow:0 0 0 2px var(--bar);min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--acc);color:var(--bg);font-size:0.6562rem;font-weight:700;line-height:17px;text-align:center;letter-spacing:0}
 nav a.warn .zahl{background:var(--warn)}
 .ag{display:flex;gap:10px;align-items:flex-start}
 .ag>.ag-text{flex:1;min-width:0}
 .ag .titel{font-weight:600}
 .ag.zu .titel{text-decoration:line-through;color:var(--mut)}
-.pico button.haken{width:30px;height:30px;flex:none;padding:0;margin:0;border-radius:8px;border:2px solid var(--acc);background:transparent;color:var(--acc);font-size:17px;line-height:1;box-shadow:none}
+.pico button.haken{width:30px;height:30px;flex:none;padding:0;margin:0;border-radius:8px;border:2px solid var(--acc);background:transparent;color:var(--acc);font-size:1.0625rem;line-height:1;box-shadow:none}
 .pico button.haken.an{background:var(--acc);color:var(--bg)}
 .chip.ag-hoch,.chip.ag-ueber{background:var(--warnbg);color:var(--warn);font-weight:700}
 .chip.ag-leise{background:transparent;color:var(--mut);border:1px solid var(--line)}
@@ -405,7 +409,7 @@ nav a.warn .zahl{background:var(--warn)}
 .agfilter button.on{background:var(--acc);color:var(--bg);border-color:var(--acc)}
 #agForm .zwei{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
 .meldungen{position:fixed;z-index:11;top:calc(10px + env(safe-area-inset-top));left:12px;right:12px;display:grid;justify-items:center;gap:8px;pointer-events:none}
-.hinweis{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:22px;font-size:13.5px;max-width:520px}
+.hinweis{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:22px;font-size:0.8438rem;max-width:520px}
 .hinweis[hidden]{display:none}
 .hinweis button{font:inherit;font-weight:600;border:0;border-radius:99px;padding:6px 12px;background:var(--acc);color:var(--bg);cursor:pointer}
 #offline{color:var(--warn);padding-right:14px}
@@ -419,15 +423,15 @@ nav a.warn .zahl{background:var(--warn)}
   height:var(--tabbar-h);padding:5px;border-radius:16px;background:var(--bar);box-shadow:0 8px 24px rgba(0,0,0,.22)}
 nav{flex:1;min-width:0;display:flex;gap:2px}
 nav a,#suchKnopf{flex:1 1 0;min-width:0;padding:0 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:12px;border:0;background:none;cursor:pointer;
-      color:var(--bar-fg);text-decoration:none;font:600 10.5px/1.1 var(--font-text);letter-spacing:-.01em;white-space:nowrap}
+      color:var(--bar-fg);text-decoration:none;font:600 0.6562rem/1.1 var(--font-text);letter-spacing:-.01em;white-space:nowrap}
 #suchKnopf{flex:0 1 calc(100% / 6)}
 nav a span,#suchKnopf span{max-width:100%;overflow:hidden;text-overflow:ellipsis}
-@media (max-width:380px){nav a,#suchKnopf{font-size:9.5px;letter-spacing:-.03em;padding:0 1px}}
+@media (max-width:380px){nav a,#suchKnopf{font-size:0.5938rem;letter-spacing:-.03em;padding:0 1px}}
 nav a.on{color:var(--bar-on-fg);background:var(--bar-on);font-weight:700}
 #suchfeld{flex:1;display:flex;align-items:center;gap:8px;padding:0 4px 0 14px;margin:0;color:var(--bar-fg)}
 #suchfeld[hidden]{display:none}
 #suchfeld input::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
-#suchfeld input{flex:1;min-width:0;border:0;background:none;color:var(--bar-on);font:inherit;font-size:17px;outline:none;padding:0}
+#suchfeld input{flex:1;min-width:0;border:0;background:none;color:var(--bar-on);font:inherit;font-size:1.0625rem;outline:none;padding:0}
 #suchfeld input::placeholder{color:var(--bar-fg);opacity:1}
 #suchZu{border:0;background:color-mix(in srgb,var(--bar-on) 16%,transparent);color:var(--bar-on);width:44px;height:44px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 body.sucht nav,body.sucht #suchKnopf{display:none}
@@ -438,15 +442,28 @@ main{padding-bottom:calc(var(--tabbar-space) + 16px)}
 
 @media (min-width:700px){
   :root{--tabbar-h:68px;--knopf:50px}
-  nav a,#suchKnopf{font-size:12px;gap:3px}
+  nav a,#suchKnopf{font-size:0.75rem;gap:3px}
   .sym{width:24px;height:24px}
-  header .t{font-size:36px}
+  header .t{font-size:2.25rem}
 }
 @media (min-width:760px){
-  header{padding-left:28px}
-  main{max-width:860px;padding-left:28px;padding-right:28px}
-  main.breit{max-width:1320px}
-  main.breit>p,main.breit>h2,main.breit>h3{max-width:820px}
+  :root{--breite:920px}
+  html{font-size:106.25%}
+  header{padding-left:28px;padding-right:28px}
+  main{padding-left:28px;padding-right:28px}
+}
+@media (min-width:1100px){
+  :root{--breite:1280px}
+  html{font-size:118.75%}
+  /* Tage des Plans in zwei Spalten; ein Tag mit offenem Vergleich nimmt die ganze Breite */
+  section.ziel:has(>.karte.ziel[id^="T-"]){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px;align-items:start}
+  section.ziel:has(>.karte.ziel[id^="T-"])>*{grid-column:1/-1;margin-top:0;margin-bottom:0}
+  section.ziel:has(>.karte.ziel[id^="T-"])>.karte.ziel{grid-column:auto;margin:0}
+  section.ziel:has(>.karte.ziel[id^="T-"])>.karte.ziel:has(.wm:not([hidden])){grid-column:1/-1}
+}
+@media (min-width:1700px){
+  :root{--breite:1400px}
+  html{font-size:125%}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
@@ -883,13 +900,15 @@ const VGL = new Map();   // Schlüssel -> {offen, wahl: [Options-IDs], nur, ansi
 const vglSchluessel = (w, liste, datum) => w.id + (liste ? "~liste" : "") + (datum ? "@" + datum : "");
 const vglTeile = s => ({w: wahlZu.get(s.split(/[~@]/)[0]), liste: s.includes("~"), datum: (s.split("@")[1] || null)});
 const schmal = () => matchMedia("(max-width: 699px)").matches;
+// Möglichkeiten nebeneinander im Vergleich: Handy 2, schmaler Rechner 4, breiter Rechner 5
+const vglMax = () => schmal() ? 2 : matchMedia("(min-width: 1100px)").matches ? 5 : 4;
 const gueltigeOptionen = w => w.optionen.filter(o => !weg(o.status));
 const gefuellt = (w, o) => w.kriterien.filter(k => o.merkmale[k.id]).length;
 function vglZustand(w, liste, datum) {
   const s = vglSchluessel(w, liste, datum);
   if (!VGL.has(s)) {
     const g = gueltigeOptionen(w).slice().sort((a, b) => (b.aktiv - a.aktiv) || (gefuellt(w, b) - gefuellt(w, a)));
-    VGL.set(s, {offen: !!liste, wahl: g.slice(0, schmal() ? 2 : 4).map(o => o.id), nur: false, ansicht: "karten"});
+    VGL.set(s, {offen: !!liste, wahl: g.slice(0, vglMax()).map(o => o.id), nur: false, ansicht: "karten"});
   }
   return VGL.get(s);
 }
@@ -905,7 +924,7 @@ function wahlVergleich(w, liste, datum) {
   if (g.length < 2) return null;
   const s = vglSchluessel(w, liste, datum), z = vglZustand(w, liste, datum), box = el("div", {class: "wm", "data-vgl": s, "data-ansicht": z.ansicht, hidden: !z.offen});
   if (!z.offen) return box;
-  const max = schmal() ? 2 : 4, opts = z.wahl.map(id => g.find(o => o.id === id)).filter(Boolean);
+  const max = vglMax(), opts = z.wahl.map(id => g.find(o => o.id === id)).filter(Boolean);
   const text = v => { const x = datum && v && v.je_datum ? giltAm(v, datum) : v; return x ? String(x.wert) : ""; };
   // Auslöser (bei Unterwegs-Wahlstellen) als erste Zeile „Wann“, dann die Merkmale, zuletzt die Regeln
   const werte = o => ({...o.merkmale, _wann: o.ausloeser ? {wert: o.ausloeser} : null,
@@ -958,7 +977,7 @@ document.addEventListener("click", e => {
     // Ist kein Platz mehr, weicht die am längsten gezeigte Möglichkeit, die nicht im Plan steht
     z.wahl.push(wert);
     const {w} = vglTeile(id), imPlan = x => (w.optionen.find(o => o.id === x) || {}).aktiv;
-    if (z.wahl.length > (schmal() ? 2 : 4)) z.wahl.splice(Math.max(0, z.wahl.findIndex(x => !imPlan(x) && x !== wert)), 1);
+    if (z.wahl.length > vglMax()) z.wahl.splice(Math.max(0, z.wahl.findIndex(x => !imPlan(x) && x !== wert)), 1);
   }
   vglNeu(id, `[${b.dataset.vglOpt ? "data-vgl-opt" : "data-vgl-ansicht"}="${CSS.escape(b.dataset.vglOpt || b.dataset.vglAnsicht)}"]`);
 });
@@ -1599,7 +1618,7 @@ document.addEventListener("click", e => {
 /* ---------- Ansichten ---------- */
 // Mahnungen ab Status „fest“: offene Planungs-Wahlstellen, ungeprüfte veränderliche Angaben (vom Generator, Paket B)
 function mahnungen(m) {
-  const l = (R && R.mahnungen) || [];
+  const l = D.reise.mahnungen === false ? [] : (R && R.mahnungen) || [];
   if (l.length) m.append(el("div", {class: "warnungen mahnung"}, el("b", {}, `Mahnung (${l.length}):`),
     el("ul", {}, l.map(x => el("li", {}, x.text, " ", link(x.bezug, "→"))))));
 }
@@ -2731,7 +2750,6 @@ function route(behalten) {
   for (const k of EKARTEN) { k.sicht.disconnect(); if (k.karte) k.karte.remove(); }
   EKARTEN = [];
   m.replaceChildren();
-  m.classList.remove("breit");
   let ziel = null;
   const h = decodeURIComponent(location.hash.slice(1));
   if (q.length >= 2) { zeigeReiter(reiter); ansichtSuche(m, q); window.scrollTo(0, 0); return; }
@@ -2762,7 +2780,6 @@ function route(behalten) {
   else if (zeileZu.get(h) === "varianten") { zeigeReiter("varianten"); ansichtVarianten(m); ziel = h; }
   else if (zeileZu.has(h)) { zeigeReiter("plan"); ansichtPlan(m); ziel = h; }
   else { zeigeReiter("plan"); ansichtPlan(m); }
-  m.classList.toggle("breit", reiter === "varianten");
   if (behalten === true) window.scrollTo(0, y);
   else if (ziel) zumZiel(ziel); else window.scrollTo(0, 0);
 }
