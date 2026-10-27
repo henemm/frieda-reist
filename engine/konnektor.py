@@ -1296,6 +1296,14 @@ def einladen(reise, d, wer, args, mit_konto=False):
             if len(rm.einladungen_lesen(o)) >= rm.MAX_EINLADUNGEN:
                 return "Es sind schon sehr viele Einladungen offen; bitte zuerst einarbeiten lassen.", True
     if mit_konto:
+        # Eine Person, die schon in der Reise steht, mit einem Konto verknüpfen heißt: wer die Adresse hat, spricht als sie.
+        # Deshalb nur durch Bestimmer, und Bestimmer selbst verknüpft nur der Betreiber (konten.py einladen), sonst könnte
+        # man sich per eigener Adresse als ein anderer Bestimmer ausgeben (Prüfung J3, 27.10.2026).
+        if not neu and not darf(wer["rolle"], "bestimmer"):
+            return ("Eine Person, die schon in der Reise steht, mit einem Konto verknüpfen darf nur ein Bestimmer."), True
+        if not neu and vorhanden["rolle"] == "bestimmer":
+            return (f"{vorhanden['name']} bestimmt die Reise mit. Bestimmer verknüpft der Betreiber mit ihrem Konto, "
+                    "nicht das Gespräch."), True
         return einladen_per_mail(reise, d, o, wer, args, vorname if neu else vorhanden["name"], rolle, schluessel, neu,
                                  notiz, email)
     try:
@@ -1585,7 +1593,7 @@ def anleitung_frieda(k):
          "nenne Meldungen zuerst. Personen lädst du per E-Mail-Adresse ein (person_einladen mit email); Links gibt es "
          "nicht mehr. Neue Reisen: reise_anlegen, wenn die Person das darf, sonst reisen_anlegen_anfragen."]
     for reise, schl, d in reisen:
-        z += ["", f"## Reise {reise}", anleitung({"reise": reise, "person": schl}, d)]
+        z += ["", f"## Reise {reise}", anleitung({"reise": reise, "person": schl, "konto_id": k["id"]}, d)]
     if not reisen:
         z += ["", "Die Person hat noch keine Reisen. Wer eine Reise bestimmt, kann sie mit ihrer Adresse einladen."]
     return "\n".join(z)
@@ -2025,7 +2033,10 @@ def anleitung(zugang, d):
                     "Code geprüft und eingearbeitet ist; sag nie, es sei schon entschieden. ")
                  + "Widerspricht sie der eines anderen Bestimmers, wird daraus eine offene Frage, und alle Beteiligten bekommen "
                  "eine Meldung. Andere Wünsche zu Änderungen gibst du mit auftrag_geben weiter. Personen lädst du mit "
-                 "person_einladen ein (Rolle und Link gelten sofort). Fragen (F-…) kannst du mit frage_beantworten beantworten. "
+                 + ("person_einladen und ihrer E-Mail-Adresse ein (die Rolle gilt sofort, die Einladung kommt per Mail); "
+                    "mit person_entfernen nimmst du jemanden heraus. " if "konto_id" in zugang else
+                    "person_einladen ein (Rolle und Link gelten sofort). ")
+                 + "Fragen (F-…) kannst du mit frage_beantworten beantworten. "
                  "Den Stand zeigt rueckmeldungen.")
     elif wer["rolle"] == "einbringer":
         z.append(f"{name} (Einbringer). Ihre Hinweise sind Vorschläge, keine Entscheidungen: Entscheiden und Aufträge geben "

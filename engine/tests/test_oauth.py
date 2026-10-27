@@ -328,3 +328,22 @@ def test_person_entfernen(welt):
     assert KARL_LINK not in json.loads(Path(__import__("os").environ["KN_ZUGAENGE"]).read_text())   # alter Link weg
     a = [json.loads(z) for z in (u.o / "auftraege.jsonl").read_text().splitlines()]
     assert a[-1]["daten"] == {"entfernen": {"schluessel": "karl"}} and "fährt nicht mit" in a[-1]["text"]
+
+
+def test_niemand_uebernimmt_eine_bestehende_person(welt):
+    """Prüfung J3: Wer eine bestehende, noch nicht verknüpfte Person mit der eigenen Adresse „einlädt“, spräche danach als
+    sie. Bestimmer verknüpft nur der Betreiber; bestehende Personen verknüpfen nur Bestimmer."""
+    u = welt(regeln={"einladen": "einbringer"})
+    konten.einladen("beispielreise", "max", "max@beispiel.invalid", "bestimmer", "Max", "Ida")
+    konten.einladen("beispielreise", "karl", KARL, "einbringer", "Karl", "Ida")
+    maxe, _ = verbinden(u, "max@beispiel.invalid")
+    karl, _ = verbinden(u, KARL)
+    text, fehler = aufruf(u, maxe["access_token"], "person_einladen", vorname="Ida", email="max.zwei@beispiel.invalid")
+    assert fehler and "Betreiber" in text
+    assert konten.konto_von_person("beispielreise", "ida") is None
+    text, fehler = aufruf(u, karl["access_token"], "person_einladen", vorname="Kim", email="karl.zwei@beispiel.invalid")
+    assert fehler and "nur ein Bestimmer" in text
+    assert konten.konto_von_person("beispielreise", "kim") is None
+    # neue Personen einladen darf ein Einbringer hier weiterhin (höchstens die eigene Rolle)
+    text, fehler = aufruf(u, karl["access_token"], "person_einladen", vorname="Lea", email="lea@beispiel.invalid")
+    assert not fehler, text

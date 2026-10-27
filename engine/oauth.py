@@ -27,6 +27,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import sys
 
 import anmeldung
 import konten
@@ -112,6 +113,9 @@ class _KeineWeiterleitung(urllib.request.HTTPRedirectHandler):
 def cimd_laden(client_id):
     """Client ID Metadata Document holen (nur von freigegebenen Hosts, ohne Weiterleitungen, höchstens 64 KB)."""
     if not cimd_erlaubt(client_id):
+        # Nur den Host protokollieren: zeigt bei der ersten echten Verbindung, ob FR_CIMD_HOSTS passt
+        print(f"OAuth: Client-Dokument von nicht freigegebenem Host abgelehnt: "
+              f"{urllib.parse.urlsplit(client_id or '').hostname}", file=sys.stderr, flush=True)
         return None
     alt = konten.oauth_client(client_id)
     if alt and alt["art"] == "cimd" and time.time() - alt["erstellt"] < CIMD_CACHE_SEKUNDEN:
@@ -206,7 +210,11 @@ def csp_fuer(uri):
 def zustimmung(q, c, k, meldung=""):
     e = html.escape
     host = urllib.parse.urlsplit(q["redirect_uri"]).hostname or "?"
-    wer = c["name"] or ("Claude" if q["redirect_uri"] in _feste_redirects() else "ein Programm")
+    # Wer fragt: bei einem Client-Dokument dessen Host (der Name darin ist nur behauptet), sonst der behauptete Name
+    if c["art"] == "cimd":
+        wer = urllib.parse.urlsplit(c["client_id"]).hostname
+    else:
+        wer = f"Ein Programm, das sich „{c['name']}“ nennt," if c["name"] else "Ein Programm"
     warnung = (anmeldung.fehler("Achtung: Der Code geht an ein Programm auf diesem Gerät (localhost). Erlaube das nur, "
                                 "wenn du es gerade selbst gestartet hast, z. B. Claude Code.") if loopback(q["redirect_uri"])
                else "")
@@ -215,7 +223,8 @@ def zustimmung(q, c, k, meldung=""):
         "<h1>Zugriff erlauben?</h1>",
         f"<p><strong>{e(wer)}</strong> möchte als <strong>{e(k['name'])}</strong> ({e(k['email'])}) auf deine Reisen "
         f"bei Frieda zugreifen: lesen und in deinem Namen Rückmeldungen, Wünsche und Aufträge geben, wie es deine Rolle "
-        f"in jeder Reise erlaubt.</p><p class=\"klein\">Weiter geht es zu <strong>{e(host)}</strong>.</p>",
+        f"in jeder Reise erlaubt.</p><p class=\"klein\">Weiter geht es zu <strong>{e(host)}</strong>. Nur erlauben, "
+        "wenn du gerade selbst in deiner Claude-App verbindest.</p>",
         warnung, anmeldung.fehler(meldung),
         anmeldung.formular("/authorize", verdeckt + anmeldung.verdeckt(aktion="erlauben"), "Erlauben"),
         anmeldung.formular("/authorize", verdeckt + anmeldung.verdeckt(aktion="abbrechen"), "Abbrechen", "leise"),
