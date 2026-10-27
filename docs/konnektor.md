@@ -24,8 +24,8 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `aufgaben` | alle | Aufgaben, Standard nur offene; Filter nach Bezug, Zuständig, Status |
 | `aufgabe_anlegen` | alle | neue Aufgabe, gilt sofort |
 | `aufgabe_aendern` | alle | abhaken, Status, Felder, Kommentar in den Verlauf; gilt sofort |
-| `merkmale` | alle | welche Merkmale eine Alternative braucht (mit Hinweis zum Recherchieren und Nachfragen), was jede Option hat und was fehlt; siehe `docs/alternativen.md` |
-| `alternative_vorschlagen` | alle | neue Option mit Merkmalen; von Bestimmern als Auftrag (mit strukturierten `daten`), von Einbringern als Rückmeldung der Art `Ergänzung` |
+| `merkmale` | alle | welche Merkmale eine Alternative braucht (mit Hinweis zum Recherchieren und Nachfragen), was jede Option hat und was fehlt; zu einer Wahlstelle `V-…`, einer Strecke `E-…` oder einer Art (`bereich`); siehe `docs/alternativen.md` |
+| `alternative_vorschlagen` | alle | neue Option mit Merkmalen; Art aus der Stelle (`V-…`, `U-…`, `E-…`), Werte je Datum mit `gilt`, Hinweis auf ähnliche vorhandene Merkmale (`daten.doppelt`); von Bestimmern als Auftrag (mit strukturierten `daten`), von Einbringern als Rückmeldung der Art `Ergänzung` |
 | `auftrag_geben` | Bestimmer | Änderungsauftrag, abgelegt in `auftraege.jsonl` |
 | `entscheiden` | Bestimmer | Option wählen, verwerfen oder ersetzen: wird sofort geprüft und mit Datum, Person und Grund festgehalten (Paket C) |
 | `frage_beantworten` | Einbringer | Antwort auf eine offene Frage (F-…); hängt an der Frage, die Entscheidung bleibt beim Bestimmer (Paket C) |

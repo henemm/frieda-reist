@@ -868,10 +868,17 @@ class Routen:
 
     def strecke_aus(self, sid):
         s = self.strecke(sid)
+        # Bewegungen mit eigener Merkmalliste (Fähre, Flug …): Werte und Lücken wie bei Unterkünften (Paket 3, #18)
+        a = s.get("art")
+        b = a if isinstance(a, str) and a != "wandern" and a in self.katalog else None
+        mk = self.mk_strecke.get(sid, {})
+        merkmale = {"bereich": b, "merkmale": mk,
+                    "fehlt": [k for k, d in self.katalog[b].items() if not d.get("auto") and k not in mk]} if b else \
+            ({"merkmale": mk, "fehlt": []} if mk else {})
         return {"titel": s.get("titel", sid), "von": s.get("von"), "nach": s.get("nach"), "art": s.get("art"),
                 "rolle": s.get("rolle", "haupt"), "zweig_von": s.get("zweig_von"), "kennzahlen": s.get("kennzahlen") or {},
                 "quelle": s.get("quelle"), "siehe": s.get("siehe"), "text": s.get("text", ""),
-                "dossier": bool(s.get("dossier"))}
+                "dossier": bool(s.get("dossier")), **merkmale}
 
     def unterkuenfte_aus(self, tage):
         naechte = {}

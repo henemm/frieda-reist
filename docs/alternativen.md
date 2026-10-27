@@ -92,10 +92,12 @@ Jede Wahlstelle mit mindestens zwei gültigen Optionen hat dasselbe **Wahl-Modul
 
 Ida sagt zum Beispiel: „Es gibt noch eine Pension in Hohnstein.“
 
-1. Claude ruft die Merkmalliste ab, in der Claude-App mit `merkmale` (zu `V-…` oder mit `bereich`), in Claude Code aus `engine/merkmale.yaml` und `routen.yaml`.
+1. Claude ruft die Merkmalliste ab, in der Claude-App mit `merkmale` (zu `V-…`, zu einer Strecke `E-…` oder mit `bereich`), in Claude Code aus `engine/merkmale.yaml` und `routen.yaml`.
 2. Claude **recherchiert zuerst selbst** (Website, Buchungsportal, Wanderführer) und trägt veränderliche Werte mit Prüfdatum ein.
 3. Claude **fragt nur nach den Lücken**, gezielt nach dem Hinweis `frage`, zum Beispiel: „Hast du einen Preis? Ist Frühstück drin?“ In Claude Code geschieht das mit dem Fragewerkzeug (AskUserQuestion).
 4. In der Claude-App geht der Vorschlag mit `alternative_vorschlagen` weiter: von Bestimmern als Auftrag, von Einbringern als Rückmeldung der Art `Ergänzung`. Beim Einarbeiten entsteht daraus eine neue Option mit Status `vorgeschlagen`. Fehlt die Wahlstelle, legt Claude sie an der genannten ID neu an (planung braucht eine F-Frage). Neue Merkmale aus dem Vorschlag kommen unter `merkmale:` der Wahlstelle oder der Reise.
+5. Die Art der neuen Option ergibt sich aus der Stelle: an einer Wahlstelle aus ihrem `bereich`, an `U-…` Unterkunft, an `E-…` die Art der Strecke. Werte, die vom Datum abhängen, gehen als Liste mit `gilt` (ISO-Datum oder Liste von Daten), höchstens ein Eintrag ohne `gilt`, kein Datum doppelt; Fehler lehnt der Dienst sofort ab.
+6. Ähnelt ein neues Merkmal einem vorhandenen („oeffnung“ neben „geoeffnet“, „kosten“ neben „preis“), meldet der Dienst einen Hinweis und legt die Paare unter `daten.doppelt` ab. Beim Einarbeiten gilt: Meint es dasselbe, kommt der Wert unter das vorhandene Merkmal, kein neues entsteht. Abgelehnt wird nichts, eigene Merkmale bleiben erlaubt.
 
 ## Empfehlung
 

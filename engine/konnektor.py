@@ -261,6 +261,80 @@ def einarbeiten_text(reise, bestimmer):
     return "## Einarbeiten" + (" (alle Reisen zusammen)" if bestimmer else "") + "\n" + rm.laeufe_text(liste, ausfuehrlich=bestimmer)
 
 
+# Doppelte Merkmale erkennen (Paket 3, #18): Ein neuer Schlüssel aus einem Vorschlag, der einem bestehenden Merkmal der
+# Liste entspricht (z. B. „oeffnung“ neben „geoeffnet“), soll beim Einarbeiten zusammengeführt statt neu angelegt werden.
+SYNONYME = [{"geoeffnet", "oeffnung", "oeffnungszeit", "oeffnungszeiten", "offen", "saison", "betriebsferien"},
+            {"preis", "kosten", "preispronacht", "price", "tarif"}, {"fruehstueck", "breakfast"},
+            {"abendessen", "dinner", "essen", "halbpension"}, {"stornierung", "storno", "kuendigung", "cancel"},
+            {"dauer", "fahrzeit", "reisezeit", "flugzeit"}, {"gepaeck", "koffer", "freigepaeck"}]
+
+
+def merkmal_norm(s):
+    s = str(s).lower()
+    for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+        s = s.replace(a, b)
+    return re.sub(r"[^a-z0-9]", "", s)
+
+
+def gemeinsam(a, b):
+    """Länge des längsten gemeinsamen Teilstücks zweier Wörter."""
+    best = 0
+    for i in range(len(a)):
+        for j in range(i + best + 1, len(a) + 1):
+            if a[i:j] in b:
+                best = j - i
+            else:
+                break
+    return best
+
+
+def aehnliches_merkmal(schluessel, kriterien):
+    """Bestehendes Merkmal (Definition) zu einem neuen Schlüssel, wenn es vermutlich dasselbe meint, sonst None:
+    gleich nach Umlauten und Zeichen, gleiche Synonymgruppe oder ein gemeinsamer Wortstamm von mindestens 5 Zeichen."""
+    k = merkmal_norm(schluessel)
+    for d in kriterien or []:
+        for name in (d["id"], d.get("name", "")):
+            n = merkmal_norm(name)
+            if not n:
+                continue
+            if k == n or any(k in g and n in g for g in SYNONYME) or gemeinsam(k, n) >= 5:
+                return d
+    return None
+
+
+def vorschlag_werte(k, v, d):
+    """Wert(e) eines Merkmals aus alternative_vorschlagen prüfen, nach denselben Regeln wie routen.werte: ein Wert oder
+    eine Liste von Werten je Datum (gilt), höchstens einer ohne gilt, kein Datum doppelt. -> (Liste, None) oder (None, Fehler)."""
+    aus = []
+    for x in v if isinstance(v, list) else [v]:
+        x = x if isinstance(x, dict) else {"wert": x}
+        wert = str(x.get("wert", "")).strip()
+        if not wert:
+            continue
+        if d and d.get("werte") and wert not in d["werte"]:
+            return None, f"{k} = „{wert}“ geht nicht, erlaubt: {', '.join(d['werte'])}."
+        try:
+            g = str(x.get("geprueft") or "").strip()
+            if g:
+                datetime.date.fromisoformat(g)
+        except ValueError:
+            return None, f"{k}: geprueft als JJJJ-MM-TT angeben."
+        gilt = x.get("gilt")
+        try:
+            tage = [datetime.date.fromisoformat(str(t).strip()).isoformat()
+                    for t in (gilt if isinstance(gilt, list) else [gilt] if gilt else [])]
+        except ValueError:
+            return None, f"{k}: gilt als Datum JJJJ-MM-TT oder Liste solcher Daten angeben."
+        aus.append({"wert": wert, **{f: str(x[f]).strip() for f in ("quelle", "notiz") if x.get(f)},
+                    **({"geprueft": g} if g else {}), **({"gilt": tage} if tage else {})})
+    if sum(1 for e in aus if not e.get("gilt")) > 1:
+        return None, f"{k}: mehrere Werte ohne gilt; je Datum angeben (gilt: JJJJ-MM-TT), höchstens einer gilt für alle übrigen Tage."
+    tage = [t for e in aus for t in e.get("gilt", [])]
+    if len(tage) != len(set(tage)):
+        return None, f"{k}: ein Datum steht in zwei Werten."
+    return aus, None
+
+
 def stunden(minuten):
     return f"{minuten // 60}:{minuten % 60:02d} h" if minuten else ""
 
@@ -368,6 +442,10 @@ class Handbuch:
                 return w, w.get("bereich", "allgemein"), w.get("kriterien") or []
         if id_ in (self.r.get("unterkuenfte") or {}):
             return None, "unterkunft", (self.r.get("merkmale") or {}).get("unterkunft") or []
+        st = (self.r.get("strecken") or {}).get(id_)
+        if st is not None:   # Bewegung: Liste ihrer Art (Fähre, Flug …), sonst die allgemeine für Strecken
+            b = st.get("bereich") or "strecke"
+            return None, b, (self.r.get("merkmale") or {}).get(b) or []
         return None, None, None
 
     def option_text(self, o, w=None):
@@ -447,6 +525,9 @@ class Handbuch:
             for k in ("text", "quelle", "siehe"):
                 if s.get(k):
                     z.append(("Quelle: " if k == "quelle" else "Siehe: " if k == "siehe" else "") + str(s[k]))
+            if s.get("merkmale") or s.get("fehlt"):
+                z.append("Merkmale:")
+                z += self.merkmal_zeilen((r.get("merkmale") or {}).get(s.get("bereich") or "strecke"), s.get("merkmale"), s.get("fehlt"))
             if sid in e:  # Etappe aus dem Dossier: Text dort, Strecke ergänzt
                 titel, alt = e[sid]
                 e[sid] = (titel, "\n".join(z) + "\n\n" + alt)
@@ -592,15 +673,18 @@ class Handbuch:
         if ziel:
             w, b, krit = self.kriterien_von(ziel)
             if krit is None:
-                return None, "Zu dieser ID gibt es keine Merkmale. Erlaubt: Wahlstelle V-…, Option V-….a, Unterkunft U-…."
+                return None, "Zu dieser ID gibt es keine Merkmale. Erlaubt: Wahlstelle V-…, Option V-….a, Unterkunft U-… oder Strecke E-…."
         elif bereich in katalog:
             w, b, krit = None, bereich, katalog[bereich]
         else:
-            return None, f"ziel (V-…, U-…) oder bereich ({', '.join(katalog) or 'unterkunft, strecke, route'}) angeben."
+            return None, f"ziel (V-…, U-…, E-…) oder bereich ({', '.join(katalog) or 'unterkunft, strecke, route'}) angeben."
         z = [f"# Merkmale für Bereich {b}" + (f" – {w['id']} {w['titel']}" if w else f" – {ziel}" if ziel else ""),
              "Vorgehen: Erst selbst recherchieren (Hinweis „so finden“), dann die Person nur nach dem fragen, was offen "
              "bleibt (Hinweis „fragen“). Veränderliche Werte mit Prüfdatum. Eine neue Alternative mit "
-             "alternative_vorschlagen weitergeben, vorher kurz bestätigen lassen.", "## Liste"]
+             "alternative_vorschlagen weitergeben, vorher kurz bestätigen lassen. Ist ein Wert je Datum verschieden (z. B. "
+             "Preis je Nacht), mehrere Werte mit gilt (JJJJ-MM-TT) angeben; einer ohne gilt steht für alle übrigen Tage. "
+             "Nur Schlüssel aus dieser Liste verwenden; ein eigenes Kriterium der Person nur, wenn es hier nichts Passendes gibt.",
+             "## Liste"]
         for k in krit:
             art = k.get("typ", "text") + (f" ({' | '.join(k['werte'])})" if k.get("werte") else "")
             zeile = f"- {k['id']} – {k['name']}: {art}"
@@ -618,10 +702,14 @@ class Handbuch:
                 z.append(f"## {o['id']} {o['titel']} ({o.get('status')})")
                 z += self.merkmal_zeilen(krit, o.get("merkmale"), [] if o.get("status") in ("verworfen", "ersetzt")
                                          else o.get("fehlt")) or ["(keine Merkmale)"]
-        elif ziel:
+        elif ziel in (self.r.get("unterkuenfte") or {}):
             u = self.r["unterkuenfte"][ziel]
             z.append(f"## {ziel} {u.get('name')}")
             z += self.merkmal_zeilen(krit, u.get("merkmale"), u.get("fehlt")) or ["(keine Merkmale)"]
+        elif ziel:
+            s = self.r["strecken"][ziel]
+            z.append(f"## {ziel} {s.get('titel') or ziel}")
+            z += self.merkmal_zeilen(krit, s.get("merkmale"), s.get("fehlt")) or ["(keine Merkmale)"]
         return "\n".join(z), None
 
     def option(self, oid):
@@ -721,48 +809,56 @@ class Handbuch:
                 return None, f"Wahlstelle {vid} gibt es nicht. Mit varianten die richtige finden oder leer lassen."
             b, krit = w.get("bereich", "allgemein"), w.get("kriterien") or []
         else:
-            w, b = None, str(args.get("bereich") or "")
-            if b not in katalog:
-                return None, f"Ohne Wahlstelle bitte bereich angeben ({', '.join(katalog)})."
             if not an or an not in self.eintraege:
-                return None, "Ohne Wahlstelle bitte an angeben: die ID, an der die Alternative hängt (z. B. T-05, U-11)."
+                return None, "Ohne Wahlstelle bitte an angeben: die ID, an der die Alternative hängt (z. B. T-05, U-11, E-14)."
+            # Art aus der Stelle, wenn nicht angegeben: an einer Strecke deren Art (Fähre, Flug …), an einer Unterkunft unterkunft
+            w, b = None, str(args.get("bereich") or "").strip()
+            st = (self.r.get("strecken") or {}).get(an)
+            if not b and st is not None:
+                b = st.get("bereich") or "strecke"
+            elif not b and an in (self.r.get("unterkuenfte") or {}):
+                b = "unterkunft"
+            if b not in katalog:
+                return None, f"Ohne Wahlstelle bitte bereich angeben, die Art der Alternative ({', '.join(katalog)})."
             krit = katalog[b]
         defs = {k["id"]: k for k in krit}
         roh = args.get("merkmale") or {}
         if not isinstance(roh, dict):
             return None, "merkmale muss ein Objekt {merkmal: {wert, quelle, geprueft, notiz}} sein."
-        werte, neu = {}, []
+        werte, neu, doppelt = {}, [], {}
         for k, v in roh.items():
-            v = v if isinstance(v, dict) else {"wert": v}
-            wert = str(v.get("wert", "")).strip()
-            if not wert:
-                continue
             d = defs.get(k)
             if d and d.get("auto"):
                 continue
-            if d and d.get("werte") and wert not in d["werte"]:
-                return None, f"{k} = „{wert}“ geht nicht, erlaubt: {', '.join(d['werte'])}."
-            g = str(v.get("geprueft") or "").strip()
-            if g:
-                try:
-                    datetime.date.fromisoformat(g)
-                except ValueError:
-                    return None, f"{k}: geprueft als JJJJ-MM-TT angeben."
-            werte[k] = {"wert": wert, **{f: str(v[f]).strip() for f in ("quelle", "notiz") if v.get(f)},
-                        **({"geprueft": g} if g else {})}
+            eintraege, fehler = vorschlag_werte(k, v, d)
+            if fehler:
+                return None, fehler
+            if not eintraege:
+                continue
+            werte[k] = eintraege[0] if len(eintraege) == 1 and not eintraege[0].get("gilt") else eintraege
             if not d:
                 neu.append(k)
+                gleich = aehnliches_merkmal(k, krit)
+                if gleich:
+                    doppelt[k] = gleich
         listen = {f: [str(x) for x in args.get(f) or [] if str(x).strip()] for f in ("plus", "minus")}
         z = [f"Neue Alternative „{titel}“ " + (f"für {vid} ({w['titel']})" if w else f"an {an}, neue Wahlstelle")
-             + f", Bereich {b}. Standard: docs/alternativen.md; Status höchstens vorgeschlagen."]
+             + f", Art {b}. Standard: docs/alternativen.md; Status höchstens vorgeschlagen."]
+        for k, d in doppelt.items():
+            z.append(f"Hinweis: „{k}“ ähnelt dem Merkmal {d['id']} („{d['name']}“). Beim Einarbeiten prüfen: Meint es "
+                     f"dasselbe, unter {d['id']} eintragen statt ein neues Merkmal anzulegen.")
+
+        def eintrag_text(v):
+            zusatz = [f"gilt {', '.join(datum_de(t) for t in v['gilt'])}"] if v.get("gilt") else []
+            zusatz += [f"geprüft {v['geprueft']}"] if v.get("geprueft") else []
+            zusatz += [f"Quelle: {v['quelle']}"] if v.get("quelle") else []
+            zusatz += [v["notiz"]] if v.get("notiz") else []
+            return v["wert"] + (f" ({'; '.join(zusatz)})" if zusatz else "")
         if werte:
             z.append("Merkmale:")
             for k, v in werte.items():
-                zusatz = [f"geprüft {v['geprueft']}"] if v.get("geprueft") else []
-                zusatz += [f"Quelle: {v['quelle']}"] if v.get("quelle") else []
-                zusatz += [v["notiz"]] if v.get("notiz") else []
-                z.append(f"- {k}{' (neues Merkmal)' if k in neu else ''}: {v['wert']}"
-                         + (f" ({'; '.join(zusatz)})" if zusatz else ""))
+                z.append(f"- {k}{' (neues Merkmal)' if k in neu else ''}: "
+                         + ("; ".join(eintrag_text(x) for x in v) if isinstance(v, list) else eintrag_text(v)))
         fehlt = [d["name"] for d in krit if not d.get("auto") and d["id"] not in werte]
         if fehlt:
             z.append("Fehlt noch: " + ", ".join(fehlt))
@@ -773,7 +869,8 @@ class Handbuch:
         for f, name in (("text", ""), ("quelle", "Quelle: ")):
             if str(args.get(f) or "").strip():
                 z.append(name + str(args[f]).strip())
-        daten = {"wahlstelle": vid or None, "an": an or None, "bereich": b, "titel": titel, "merkmale": werte, **listen}
+        daten = {"wahlstelle": vid or None, "an": an or None, "bereich": b, "titel": titel, "merkmale": werte, **listen,
+                 **({"doppelt": {k: d["id"] for k, d in doppelt.items()}} if doppelt else {})}
         return ("\n".join(z), vid or an, daten), None
 
     def varianten(self):
@@ -1193,12 +1290,16 @@ WERKZEUGE = [
 ]
 NAME_FELD = {"type": "string", "description": "Vorname der Person, die gerade spricht (für den Verlauf). Wenn unbekannt: "
              "einmal fragen, nicht raten. Gehört der Link zu einer Person, entfällt das."}
+WERT_SCHEMA = {"type": "object", "properties": {
+    "wert": {"type": "string"}, "quelle": {"type": "string"}, "geprueft": {"type": "string"}, "notiz": {"type": "string"},
+    "gilt": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}],
+             "description": "nur bei Werten je Datum: Datum JJJJ-MM-TT oder Liste solcher Daten"}}, "required": ["wert"]}
 WERKZEUGE += [
     {"name": "merkmale", "description": "Welche Merkmale eine Alternative braucht (z. B. bei Unterkünften Preis, Frühstück, "
      "Öffnung), je mit Hinweis zum Recherchieren und zum gezielten Nachfragen; zu einer Wahlstelle auch, was jede Option "
      "schon hat und was fehlt. Vor alternative_vorschlagen aufrufen.",
      "inputSchema": {"type": "object", "properties": {
-         "ziel": {"type": "string", "description": "Wahlstelle V-…, Option V-….a oder Unterkunft U-…"},
+         "ziel": {"type": "string", "description": "Wahlstelle V-…, Option V-….a, Unterkunft U-… oder Strecke E-… (z. B. eine Fähre)"},
          "bereich": {"type": "string",
                      "description": "nur ohne ziel: Art der Alternative für die Liste (unterkunft, strecke, route, faehre, flug, "
                                     "bahn, bus, mietwagen, essen, erlebnis oder eine Art der Reise)"}}},
@@ -1209,16 +1310,17 @@ WERKZEUGE += [
      "mit Status vorgeschlagen eingearbeitet, in der Regel in wenigen Minuten.",
      "inputSchema": {"type": "object", "properties": {
          "wahlstelle": {"type": "string", "description": "bestehende Wahlstelle V-…, zu der die Alternative gehört"},
-         "an": {"type": "string", "description": "nur ohne wahlstelle: ID, an der eine neue Wahlstelle entsteht (T-…, U-…, E-…)"},
+         "an": {"type": "string", "description": "nur ohne wahlstelle: ID, an der eine neue Wahlstelle entsteht (T-…, U-…, E-…); "
+                "an einer Strecke oder Unterkunft ergibt sich die Art daraus"},
          "bereich": {"type": "string",
-                     "description": "nur ohne wahlstelle: Art der Alternative (unterkunft, strecke, route, faehre, flug, bahn, "
-                                    "bus, mietwagen, essen, erlebnis oder eine Art der Reise; Liste aus merkmale)"},
+                     "description": "nur ohne wahlstelle und wenn an ein Tag ist: Art der Alternative (unterkunft, strecke, "
+                                    "route, faehre, flug, bahn, bus, mietwagen, essen, erlebnis oder eine Art der Reise; Liste aus merkmale)"},
          "titel": {"type": "string", "description": "Name der Alternative, z. B. „Hotel Sa Plana“"},
          "merkmale": {"type": "object", "description": "{merkmal: {wert, quelle, geprueft (JJJJ-MM-TT), notiz}}; Schlüssel aus "
-                      "merkmale. Eigene Kriterien der Person als neuer Schlüssel (z. B. pool) sind erlaubt.",
-                      "additionalProperties": {"type": "object", "properties": {
-                          "wert": {"type": "string"}, "quelle": {"type": "string"}, "geprueft": {"type": "string"},
-                          "notiz": {"type": "string"}}, "required": ["wert"]}},
+                      "merkmale. Ist der Wert je Datum verschieden, eine Liste solcher Werte mit gilt (JJJJ-MM-TT oder Liste), "
+                      "einer ohne gilt für alle übrigen Tage. Eigene Kriterien der Person als neuer Schlüssel (z. B. pool) nur, "
+                      "wenn die Liste nichts Passendes hat; ähnliche Schlüssel werden als vermutlich doppelt gemeldet.",
+                      "additionalProperties": {"anyOf": [WERT_SCHEMA, {"type": "array", "items": WERT_SCHEMA}]}},
          "plus": {"type": "array", "items": {"type": "string"}, "description": "was dafür spricht"},
          "minus": {"type": "array", "items": {"type": "string"}, "description": "was dagegen spricht"},
          "text": {"type": "string", "description": "kurze Beschreibung"},

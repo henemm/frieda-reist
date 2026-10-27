@@ -430,3 +430,44 @@ def test_merkmale_und_alternative(dienst):
     assert not f
     e = rm.eintraege(ablage / "beispielreise")[0]
     assert e["art"] == "Ergänzung" and e["ziel"] == "V-03" and "Hotel Test" in e["text"]
+
+
+def test_alternativen_paket3(dienst):
+    """Paket 3 (#18): Merkmale einer Strecke, Art aus der Stelle, Hinweis auf doppelte Merkmale, Werte je Datum."""
+    basis, ablage = dienst
+    # Strecke als Ziel: Liste ihrer Art (E-20 ist eine Bahnfahrt)
+    t, f = werkzeug(basis, MITREISEND, "merkmale", ziel="E-20")
+    assert not f and "Bereich bahn" in t and "## E-20" in t and "Fehlt noch" in t and "gilt" in t
+    # Art aus der Stelle: an einer Strecke ohne bereich
+    t, f = werkzeug(basis, ALT_BESTIMMER, "alternative_vorschlagen", an="E-20", titel="Bus statt Bahn")
+    assert not f and "Art bahn" in t
+    # „oeffnung“ ähnelt „geoeffnet“: Hinweis, kein Fehler (eigene Kriterien bleiben erlaubt)
+    t, f = werkzeug(basis, ALT_BESTIMMER, "alternative_vorschlagen", wahlstelle="V-03", titel="Hotel Saison",
+                    merkmale={"oeffnung": {"wert": "ganzjährig"}, "pool": {"wert": "ja"}})
+    assert not f and "„oeffnung“ ähnelt dem Merkmal geoeffnet" in t and "„pool“ ähnelt" not in t
+    a = rm.auftraege(ablage / "beispielreise")[-1]
+    assert a["daten"]["doppelt"] == {"oeffnung": "geoeffnet"}
+    # Werte je Datum: Liste mit gilt; Regeln wie im Routenmodell
+    t, f = werkzeug(basis, ALT_BESTIMMER, "alternative_vorschlagen", wahlstelle="V-03", titel="Hotel Wochenende",
+                    merkmale={"preis": [{"wert": "120 €"}, {"wert": "140 €", "gilt": "2027-05-15"}]})
+    assert not f and "120 €; 140 € (gilt 15.5.2027)" in t
+    a = rm.auftraege(ablage / "beispielreise")[-1]
+    assert a["daten"]["merkmale"]["preis"] == [{"wert": "120 €"}, {"wert": "140 €", "gilt": ["2027-05-15"]}]
+    t, f = werkzeug(basis, ALT_BESTIMMER, "alternative_vorschlagen", wahlstelle="V-03", titel="X",
+                    merkmale={"preis": [{"wert": "120 €"}, {"wert": "130 €"}]})
+    assert f and "mehrere Werte ohne gilt" in t
+    t, f = werkzeug(basis, ALT_BESTIMMER, "alternative_vorschlagen", wahlstelle="V-03", titel="X",
+                    merkmale={"preis": {"wert": "120 €", "gilt": "15.5."}})
+    assert f and "gilt als Datum" in t
+
+
+def test_aehnliches_merkmal():
+    from konnektor import aehnliches_merkmal
+    liste = [{"id": "geoeffnet", "name": "Geöffnet am Reisedatum"}, {"id": "preis", "name": "Preis pro Nacht"},
+             {"id": "fruehstueck", "name": "Frühstück"}]
+    assert aehnliches_merkmal("oeffnung", liste)["id"] == "geoeffnet"
+    assert aehnliches_merkmal("Öffnungszeiten", liste)["id"] == "geoeffnet"
+    assert aehnliches_merkmal("preis_pro_nacht", liste)["id"] == "preis"
+    assert aehnliches_merkmal("kosten", liste)["id"] == "preis"
+    assert aehnliches_merkmal("frühstück", liste)["id"] == "fruehstueck"
+    assert aehnliches_merkmal("pool", liste) is None and aehnliches_merkmal("sauna", liste) is None
