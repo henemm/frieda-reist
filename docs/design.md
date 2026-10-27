@@ -9,7 +9,7 @@ Die Ebenen folgen Brad Frosts Atomic Design:
 | Ebene | Bausteine in `engine/vorlage.html` |
 |---|---|
 | Atome | `chip` (Zustand), `merkmalWert` (Wert mit Herkunft), `zid` (Kennung mit Rückmeldeknopf), `planMarke` (Farbe eines Plans als Punkt oder Linie) |
-| Moleküle | `kennzahlLeiste`, `merkmalListe`, `fehltZeile`, `optionChips`, `dingEtikett`, `listenZeile` (Wissen, Praxis, Quellen, Orte), `zeilenKarte` (offene Frage), `rmEintrag` (Rückmeldung, Wunsch), `agEintrag` (Aufgabe), `eintragGruppen` („Titel (n)“ mit Einträgen), `kartenLegende` (Zeichen und Wort unter einer Karte), `umschalter` (ein Knopf gedrückt, z. B. `planUmschalter`) |
+| Moleküle | `kennzahlLeiste`, `merkmalListe`, `fehltZeile`, `optionChips`, `dingEtikett`, `listenZeile` (Wissen, Praxis, Quellen, Orte), `zeilenKarte` (offene Frage), `rmEintrag` (Rückmeldung, Wunsch), `agEintrag` (Aufgabe), `eintragGruppen` („Titel (n)“ mit Einträgen), `kartenLegende` (Zeichen und Wort unter einer Karte), `umschalter` (ein Knopf gedrückt, z. B. `planUmschalter`), `kontoKnopf` („Anmelden“ oder eigener Name oben rechts, nur auf Friedas eigener Adresse), `nameFeld` (ohne Konto „Dein Name“, angemeldet nur „Du schreibst als …“) |
 | Organismen | Ding: `nachtZeile` (Aufenthalt als Zeile), `unterkunftKarte` (als Karte), `streckeZeile` (Bewegung); Wahl-Modul: `wahlEinstieg`, `wahlVergleich`, `wahlKarte` |
 | Vorlagen | `tagKarte`, `tagKachel`, die Ansichten (`ansichtTag`, `ansichtPlan` …) |
 

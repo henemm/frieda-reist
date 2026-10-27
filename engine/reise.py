@@ -33,10 +33,12 @@ VORGABEN = {
     "waechter_frist_tage": 60,           # veränderliche Angaben, deren Prüfdatum älter ist, prüft der Wächter neu
     "erinnerung_vorlauf_tage": 3,        # Aufgabenfristen werden so viele Tage vorher gemeldet
     "meldekanal": ["app", "nachricht"],  # app: beim Öffnen der Claude-App; nachricht: Sammelnachricht an den Betreiber
+    # Paket J (Konten): uebergang = auf der Seite geht auch ein eingetippter Name; noetig = Mitmachen nur angemeldet
+    "anmeldung": "uebergang",
 }
 KANAELE = ("app", "nachricht")           # E-Mail an alle gibt es (noch) nicht
 REGEL_WERTE = {"entscheidungsweg": ("direkt", "auftrag"), "konflikt": ("offene_frage",),
-               "einladen": ("bestimmer", "einbringer")}
+               "einladen": ("bestimmer", "einbringer"), "anmeldung": ("uebergang", "noetig")}
 KONTINGENT_ARTEN = ("punkte", "anzahl")
 DARSTELLUNG = ("start", "tiefe", "varianten_titel", "plan_reiter", "gruppen", "mahnungen", "tagesseite")
 TAGESSEITEN = ("fluss", "reiter", "magazin")          # Ansichten der Tagesseite; Vorgabe „reiter“

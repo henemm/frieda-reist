@@ -58,6 +58,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import anmeldung  # noqa: E402
+import konten  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, REISE_ZIEL, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, schluessel_aus_name, verhalten)
@@ -955,7 +957,8 @@ def dienst_anfrage(methode, pfad, daten):
     basis = os.environ.get("KN_RUECKMELDEDIENST", "http://127.0.0.1:8771").rstrip("/")
     req = urllib.request.Request(f"{basis}/{pfad}", method=methode,
                                  data=json.dumps(daten, ensure_ascii=False).encode("utf-8"),
-                                 headers={"Content-Type": "application/json"})
+                                 headers={"Content-Type": "application/json",
+                                          "X-Frieda-Dienst": konten.dienst_geheimnis()})
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
             return json.loads(r.read()), None
@@ -1337,6 +1340,14 @@ def vergebene_pfade():
         pfade |= {e["daten"]["neue_reise"]["pfad"] for e in rm.auftraege(o)
                   if (e.get("daten") or {}).get("neue_reise") and e["status"] not in ("verworfen", "rueckfrage")}
     return pfade
+
+
+def reise_kurz(reise):
+    """Titel und Seitenlink einer veröffentlichten Reise (für die Anmeldeseiten) oder None."""
+    d = daten(reise)
+    if not d:
+        return None
+    return {"titel": (d.get("reise") or {}).get("titel", reise), "seite": seitenlinks().get(reise)}
 
 
 def reisen_von(konto):
@@ -2000,10 +2011,37 @@ class Dienst(BaseHTTPRequestHandler):
         teile = self.path.split("?", 1)[0].strip("/").split("/")
         return zugang_zu(teile[0]) if len(teile) == 1 else None
 
+    def _anmeldung(self):
+        """Friedas Anmeldeseiten (engine/anmeldung.py, Paket J2)."""
+        body = b""
+        if self.command == "POST":
+            try:
+                laenge = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                laenge = 0
+            if laenge < 0 or laenge > MAX_BODY:
+                return self._senden(413, {"fehler": "zu groß"})
+            body = self.rfile.read(laenge)
+        ip = self.client_address[0]
+        if ip in ("127.0.0.1", "::1") and self.headers.get("X-Real-IP"):
+            ip = self.headers["X-Real-IP"].strip()      # hinter nginx: echte Adresse für die Begrenzung
+        code, kopf, inhalt = anmeldung.bearbeiten(self.command, self.path, self.headers, body, ip, reise_kurz)
+        self.send_response(code)
+        for k, v in [("Cache-Control", "no-store"), ("X-Content-Type-Options", "nosniff"),
+                     ("Referrer-Policy", "same-origin"),   # nicht no-referrer: dann schicken Browser „Origin: null“
+                     ("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; "
+                                                 "frame-ancestors 'none'; base-uri 'none'"), *kopf]:
+            self.send_header(k, v)
+        self.send_header("Content-Length", str(len(inhalt)))
+        self.end_headers()
+        self.wfile.write(inhalt)
+
     def do_GET(self):
         # Readiness für BetterStack ohne geheimen Link: Zugänge lesbar und jede verlinkte Reise veröffentlicht
         if self.path.split("?", 1)[0] == "/gesund":
             return self._senden(*gesund())
+        if anmeldung.ist_unsere(self.path):
+            return self._anmeldung()
         # Kein SSE-Kanal: der Dienst schickt nie von sich aus etwas (Streamable HTTP erlaubt 405).
         if self._zugang() is None:
             return self._senden(404, {"fehler": "unbekannt"})
@@ -2012,6 +2050,8 @@ class Dienst(BaseHTTPRequestHandler):
     do_DELETE = do_GET
 
     def do_POST(self):
+        if anmeldung.ist_unsere(self.path):
+            return self._anmeldung()
         zugang = self._zugang()
         if zugang is None:
             return self._senden(404, {"fehler": "unbekannt"})

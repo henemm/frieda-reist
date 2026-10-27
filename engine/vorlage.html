@@ -416,6 +416,10 @@ a.marke:hover{border-color:var(--acc)}
 header{max-width:var(--breite);margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px 2px 16px}
 header .t{font-family:var(--font-titel);font-size:2rem;line-height:1.1;font-weight:700;letter-spacing:-.005em;margin:0;text-wrap:balance}
 header .u{font-size:0.9375rem;color:var(--mut);margin-top:4px;text-wrap:balance}
+header{position:relative}
+header:has(.konto) .t{padding-right:6rem}
+.konto{display:inline-flex;align-items:center;min-height:44px;padding:0 .25rem;font-size:0.875rem;color:var(--acc);text-decoration:none;max-width:9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+header .konto{position:absolute;top:calc(10px + env(safe-area-inset-top));right:12px}
 a.weiter{display:inline-block;margin-top:8px;font-weight:600;color:var(--acc);text-decoration:none}
 .karte.tag .k{font-weight:600}
 details.alternative{margin:0 0 10px 14px;border-left:3px solid var(--warn);padding-left:8px}
@@ -2229,6 +2233,8 @@ function ansichtBausteine(m) {
   const u = Object.entries(R.unterkuenfte).find(([, x]) => Object.keys(x.merkmale || {}).length);
   teil("Molekül", "Kennzahlenleiste", null, mitKz ? kennzahlLeiste(mitKz[1].kennzahlen) : el("p", {class: "meldung"}, "Keine Strecke mit Kennzahlen."));
   teil("Molekül", "Merkmalliste", null, u ? merkmalListe(R.merkmale.unterkunft, u[1].merkmale) : el("p", {class: "meldung"}, "Keine Unterkunft mit Merkmalen."));
+  teil("Molekül", "Konto-Knopf", "Oben rechts im Kopf: „Anmelden“ oder der eigene Name (zur Kontoseite). Nur auf Friedas eigener Adresse.",
+    el("div", {}, kontoKnopf(null), " ", kontoKnopf({konto: {name: "Ida"}})));
   teil("Molekül", "Legende", "Zeichen und Wort; unter einer Karte steht nur, was auf ihr vorkommt.",
     kartenLegende([...Object.entries(R.kategorien || {}).map(([k, t]) => [el("i", {class: "lg-k" + katKlasse(k)}), t]),
       ...R.plaene.map(p => [planMarke(p), p.kurz])]));
@@ -2282,6 +2288,37 @@ let AUSGANG = lies("ausgang", []);    // noch nicht angekommen
 let MEINE = new Set(lies("meine", [])); // in diesem Browser geschrieben (zurückziehen erlaubt)
 let NAME = (() => { try { return localStorage.getItem("rh-name") || ""; } catch (e) { return ""; } })();
 let API_OK = null;
+/* Konto (Paket J, docs/konten.md): Angemeldet schreibt man unter dem Namen aus dem Konto (der Dienst setzt ihn selbst).
+   Lesen geht ohne Anmeldung. Den Knopf gibt es nur auf Friedas eigener Adresse (dort liegen die Anmeldeseiten). */
+let ICH = null;
+let ANMELDEN_FEHLT = false;
+const ANMELDEN = () => "/anmelden?zurueck=" + encodeURIComponent(location.pathname + location.hash);
+const KONTO_HIER = () => !!(ICH && ICH.basis && ICH.basis === location.origin);
+const MIT_KONTO = () => !!(ICH && ICH.person);
+async function ichLaden() {
+  try { const r = await fetch("api/ich", {cache: "no-store"}); if (r.ok) ICH = await r.json(); } catch (e) {}
+  if (MIT_KONTO()) NAME = ICH.person.name;
+  const alt = $("#konto");
+  if (alt) alt.remove();
+  if (KONTO_HIER()) $("header").append(kontoKnopf(ICH));
+}
+// Molekül Konto-Knopf: angemeldet der eigene Name (zur Kontoseite), sonst „Anmelden“
+function kontoKnopf(ich) {
+  return ich && ich.konto ? el("a", {id: "konto", class: "konto", href: "/konto", title: "Mein Konto"}, ich.konto.name)
+    : el("a", {id: "konto", class: "konto", href: ANMELDEN()}, "Anmelden");
+}
+// Molekül Namensfeld: ohne Konto „Dein Name“, angemeldet nur der Hinweis, unter welchem Namen man schreibt
+function nameFeld(id) {
+  if (MIT_KONTO()) return [el("input", {id, type: "hidden", value: ICH.person.name}),
+    el("p", {class: "meldung"}, "Du schreibst als " + ICH.person.name + ".")];
+  if (ICH && ICH.anmeldung === "noetig") return el("p", {class: "meldung"}, "Zum Mitmachen bitte ",
+    KONTO_HIER() ? el("a", {href: ANMELDEN()}, "anmelden") : "anmelden", ".");
+  return [el("label", {for: id}, "Dein Name"), el("input", {id, required: true, maxlength: 80, value: NAME, autocomplete: "name"}),
+    KONTO_HIER() ? el("p", {class: "meldung"}, "Oder ", el("a", {href: ANMELDEN()}, "anmelden"), ", dann steht dein Name von selbst da.") : null];
+}
+function anmeldeHinweis(ziel) {
+  $(ziel).replaceChildren("Gespeichert. Bitte ", el("a", {href: ANMELDEN()}, "anmelden"), ", dann wird es gesendet.");
+}
 const ART_STANDARD = id => /^F-/.test(id) ? "Antwort" : "Kommentar";
 const RM_STATUS = {neu: "neu", uebernommen: "übernommen", verworfen: "verworfen", rueckfrage: "Rückfrage", ausstehend: "noch nicht gesendet"};
 const WU_STATUS = {...RM_STATUS, uebernommen: "aufgenommen", verworfen: "passt nicht"};
@@ -2310,7 +2347,8 @@ async function rmLaden() {
 async function senden(e) {
   const r = await fetch(API, {method: "POST", headers: {"Content-Type": "application/json"},
     body: JSON.stringify({name: e.name, art: e.art, ziel: e.ziel, text: e.text, quelle: e.quelle || ""})});
-  if (r.status === 400 || r.status === 413) { const f = await r.json().catch(() => ({})); throw {abgelehnt: f.fehler || "abgelehnt"}; }
+  if (r.status === 401) throw {anmelden: true};
+  if (r.status === 400 || r.status === 403 || r.status === 413) { const f = await r.json().catch(() => ({})); throw {abgelehnt: f.fehler || "abgelehnt"}; }
   if (!r.ok) throw {netz: true};
   return r.json();
 }
@@ -2319,7 +2357,11 @@ async function ausgangSenden() {
   const rest = [];
   for (const e of AUSGANG) {
     try { const neu = await senden(e); MEINE.add(neu.id); RM = [neu, ...RM.filter(x => x.id !== neu.id)]; }
-    catch (f) { if (f && f.abgelehnt) continue; rest.push(e); API_OK = false; }
+    catch (f) {
+      if (f && f.abgelehnt) continue;
+      rest.push(e);
+      if (f && f.anmelden) ANMELDEN_FEHLT = true; else API_OK = false;
+    }
   }
   AUSGANG = rest; merke("ausgang", AUSGANG); merke("meine", [...MEINE]); merke("zwischenstand", RM);
 }
@@ -2365,8 +2407,7 @@ function rmFormular(id) {
           placeholder: "Was soll ergänzt, geändert oder geklärt werden?"}),
         el("label", {for: "rmQuelle"}, "Quelle (optional, z. B. Link)"),
         el("input", {id: "rmQuelle", maxlength: 300, autocomplete: "off"}),
-        el("label", {for: "rmName"}, "Dein Name"),
-        el("input", {id: "rmName", required: true, maxlength: 80, value: NAME, autocomplete: "name"}),
+        nameFeld("rmName"),
         el("p", {class: "meldung", id: "rmMeldung"},
           API_OK === false ? "Gerade keine Verbindung: Die Rückmeldung wird hier gespeichert und später gesendet." :
           "Geht an Claude Code, meist in wenigen Minuten eingearbeitet. Der Stand erscheint hier und unter „Rückmeldungen“."),
@@ -2379,7 +2420,7 @@ function rmFormular(id) {
 
 // Senden oder ohne Netz in den Ausgang legen. -> Fehlertext, wenn der Dienst ablehnt, sonst null
 async function rmSpeichern(name, art, ziel, text, quelle) {
-  NAME = name; try { localStorage.setItem("rh-name", NAME); } catch (e) {}
+  if (!MIT_KONTO()) { NAME = name; try { localStorage.setItem("rh-name", NAME); } catch (e) {} }
   const e = {name, art, ziel, text, quelle,
     erstellt: new Date().toISOString(), lokal: Date.now() + "-" + Math.random().toString(16).slice(2, 6)};
   try {
@@ -2388,18 +2429,20 @@ async function rmSpeichern(name, art, ziel, text, quelle) {
     API_OK = true; merke("meine", [...MEINE]); merke("zwischenstand", RM);
   } catch (f) {
     if (f && f.abgelehnt) return f.abgelehnt;
-    API_OK = false; AUSGANG.push(e); merke("ausgang", AUSGANG);
+    if (f && f.anmelden) ANMELDEN_FEHLT = true; else API_OK = false;
+    AUSGANG.push(e); merke("ausgang", AUSGANG);
   }
   return null;
 }
 
 async function rmAbschicken() {
   const ziel = $("#rm").dataset.ziel;
-  const text = $("#rmText").value.trim(), name = $("#rmName").value.trim();
+  const text = $("#rmText").value.trim(), name = ($("#rmName") || {value: ""}).value.trim();
   if (!text || !name) return;
   const fehler = await rmSpeichern(name, $("#rmArt").value, ziel, text, $("#rmQuelle").value.trim());
   if (fehler) { $("#rmMeldung").textContent = "Nicht angenommen: " + fehler; return; }
   rmKnopf(); route(true); rmFormular(ziel);
+  if (ANMELDEN_FEHLT) return anmeldeHinweis("#rmMeldung");
   $("#rmMeldung").textContent = API_OK ? "Danke, angekommen." : "Gespeichert. Wird gesendet, sobald wieder Verbindung besteht.";
 }
 
@@ -2481,6 +2524,7 @@ async function brAendern(rid, body) {
   catch (e) { throw {netz: true}; }
   const d = await r.json().catch(() => ({}));
   if (r.status >= 500 || r.status === 429 || (r.status === 404 && !d.fehler)) throw {netz: true};   // 429: kurz zu viele, später noch einmal
+  if (r.status === 401) throw {anmelden: true, abgelehnt: d.fehler || "Bitte melde dich an."};
   if (!r.ok) throw {abgelehnt: d.fehler || "abgelehnt"};
   if (BR) { const w = BR.wuensche.find(x => x.id === rid); if (w) Object.assign(w, {punkte: d.punkte, eingeplant: d.eingeplant, erlebt: d.erlebt, verlauf: d.verlauf}); merke("brett", BR); }
   return d;
@@ -2491,7 +2535,7 @@ async function brAusgangSenden() {
   for (const a of BR_AUSGANG) {
     if (rest.length) { rest.push(a); continue; }   // nach dem ersten Fehlschlag später weiter, in derselben Reihenfolge
     try { await brAendern(a.rid, {name: a.name, erlebt: true}); }
-    catch (f) { if (!(f && f.abgelehnt)) rest.push(a); }
+    catch (f) { if (!(f && f.abgelehnt) || f.anmelden) rest.push(a); }
   }
   BR_AUSGANG = rest; merke("brett-ausgang", BR_AUSGANG);
   if (!rest.length) await brLaden();
@@ -2589,8 +2633,7 @@ function ansichtWuensche(m) {
         placeholder: "z. B. eine bestimmte Aussicht, ein Bad im See, ein Lokal, das Freunde empfohlen haben …"}, WU_ENTWURF.text),
       el("label", {for: "wuQuelle"}, "Link (optional, z. B. Instagram, Webseite, Karte)"),
       el("input", {id: "wuQuelle", maxlength: 300, autocomplete: "off", inputmode: "url", value: WU_ENTWURF.quelle}),
-      el("label", {for: "wuName"}, "Dein Name"),
-      el("input", {id: "wuName", required: true, maxlength: 80, value: NAME, autocomplete: "name"}),
+      nameFeld("wuName"),
       el("p", {class: "meldung", id: "wuMeldung"}, API_OK === false ? "Gerade keine Verbindung: Der Wunsch wird hier gespeichert und später gesendet." : ""),
       el("button", {type: "submit"}, "Wunsch senden"))));
   if (KANN_ERLEBT) m.append(el("p", {class: "meldung"}, "Unterwegs: Was ihr erlebt habt, hier abhaken (☐). Das geht auch ohne Netz und wird nachgereicht."));
@@ -2615,13 +2658,14 @@ function ansichtWuensche(m) {
 }
 
 async function wuAbschicken() {
-  const text = $("#wuText").value.trim(), name = $("#wuName").value.trim();
+  const text = $("#wuText").value.trim(), name = ($("#wuName") || {value: ""}).value.trim();
   if (!text || !name) return;
   const fehler = await rmSpeichern(name, "Wunsch", "wuensche", text, $("#wuQuelle").value.trim());
   if (fehler) { $("#wuMeldung").textContent = "Nicht angenommen: " + fehler; return; }
   WU_ENTWURF = {text: "", quelle: ""};
   await brLaden();
   rmKnopf(); route(true);
+  if (ANMELDEN_FEHLT) return anmeldeHinweis("#wuMeldung");
   $("#wuMeldung").textContent = API_OK ? "Danke, dein Wunsch ist angekommen." : "Gespeichert. Wird gesendet, sobald wieder Verbindung besteht.";
 }
 
@@ -2800,7 +2844,7 @@ function agFormular(agid, bezug, zurueck) {
         ...feld("notiz", "Notiz (optional: Details, Link, Kontakt)", el("textarea", {id: "ag-notiz", maxlength: 2000}, a ? a.notiz : "")),
         a ? feld("kommentar", "Kommentar für den Verlauf (optional)", el("input", {id: "ag-kommentar", maxlength: 500, autocomplete: "off",
           placeholder: "z. B. angerufen, Rückruf am Montag"})) : null,
-        ...feld("name", "Dein Name", el("input", {id: "ag-name", required: true, maxlength: 80, value: NAME, autocomplete: "name"})),
+        nameFeld("ag-name"),
         el("p", {class: "meldung", id: "agMeldung"}, AG_OK === false ? "Gerade keine Verbindung: Ändern geht erst wieder mit Netz." :
           "Gilt sofort für alle, auch in der Claude-App."),
         el("button", {type: "submit"}, a ? "Speichern" : "Anlegen")),
@@ -2816,9 +2860,9 @@ function agFormular(agid, bezug, zurueck) {
 
 async function agSpeichern() {
   const dlg = $("#rm"), agid = dlg.dataset.ag, m = $("#agMeldung");
-  const name = $("#ag-name").value.trim();
+  const name = ($("#ag-name") || {value: ""}).value.trim();
   if (!name) return;
-  NAME = name; try { localStorage.setItem("rh-name", NAME); } catch (e) {}
+  if (!MIT_KONTO()) { NAME = name; try { localStorage.setItem("rh-name", NAME); } catch (e) {} }
   const body = {name, titel: $("#ag-titel").value.trim(), bezug: $("#ag-bezug").value.split(/[,\s]+/).filter(Boolean),
     zustaendig: $("#ag-zustaendig").value.trim(), prioritaet: $("#ag-prioritaet").value,
     ab: $("#ag-ab").value, frist: $("#ag-frist").value, notiz: $("#ag-notiz").value.trim()};
@@ -2987,7 +3031,7 @@ window.addEventListener("hashchange", () => { if (document.body.classList.contai
 route();
 rmKnopf();
 agKnopf();
-Promise.all([rmLaden(), agLaden(), brLaden()]).then(() => route(true));
+Promise.all([ichLaden(), rmLaden(), agLaden(), brLaden()]).then(() => route(true));
 
 /* ---------- Höhe als App vom Home-Bildschirm (iOS) ----------
    Nach dem Schließen der Tastatur bleibt die Höhe des Fensters manchmal auf dem Stand mit Tastatur stehen, bis die App

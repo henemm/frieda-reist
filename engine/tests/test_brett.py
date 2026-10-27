@@ -10,6 +10,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bauen  # noqa: E402
+import konten  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from test_regeln import BEISPIEL, anfrage, umgebung  # noqa: E402,F401  (umgebung: Fixture)
 
@@ -23,7 +24,17 @@ def wunsch(u, name, text):
 
 
 def aendern(u, rid, **roh):
-    return anfrage(f"{u.rurl}/beispielreise/rueckmeldungen/{rid}", roh, "PATCH")
+    """Wie der Konnektor: mit dem Dienst-Geheimnis, der Name ist die erkannte Person."""
+    import urllib.error
+    import urllib.request
+    req = urllib.request.Request(f"{u.rurl}/beispielreise/rueckmeldungen/{rid}", data=json.dumps(roh).encode(),
+                                 method="PATCH", headers={"Content-Type": "application/json",
+                                                          "X-Frieda-Dienst": konten.dienst_geheimnis()})
+    try:
+        with urllib.request.urlopen(req) as r:
+            return r.status, json.loads(r.read() or b"null")
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read() or b"null")
 
 
 def brett(u):
@@ -125,15 +136,16 @@ def test_einplanen_nur_bestimmer(umgebung):
     assert w["spalte"] == "eingeplant" and w["eingeplant"] == {"wer": "Ida", "datum": w["eingeplant"]["datum"],
                                                                "bezug": ["T-02"]}
     assert aendern(u, a, name="Ida", eingeplant=True, bezug=["T-03"])[0] == 200   # andere Stelle: geändert
-    # Von der Seite (über nginx, mit X-Forwarded-For) geht Einplanen nie: dort ist der Name nur eingetippt
-    import urllib.error
-    import urllib.request
-    req = urllib.request.Request(f"{u.rurl}/beispielreise/rueckmeldungen/{a}", method="PATCH",
-                                 data=json.dumps({"name": "Ida", "eingeplant": False}).encode(),
-                                 headers={"Content-Type": "application/json", "X-Forwarded-For": "203.0.113.5"})
-    with pytest.raises(urllib.error.HTTPError) as f:
-        urllib.request.urlopen(req)
-    assert f.value.code == 403 and "Claude-App" in json.loads(f.value.read())["fehler"]
+    # Ohne Dienst-Geheimnis ist es die Seite (auch ohne X-Forwarded-For): ein eingetippter Name plant nie ein
+    for kopf in ({}, {"X-Forwarded-For": "203.0.113.5"}, {"X-Frieda-Dienst": "falsch"}):
+        import urllib.error
+        import urllib.request
+        req = urllib.request.Request(f"{u.rurl}/beispielreise/rueckmeldungen/{a}", method="PATCH",
+                                     data=json.dumps({"name": "Ida", "eingeplant": False}).encode(),
+                                     headers={"Content-Type": "application/json", **kopf})
+        with pytest.raises(urllib.error.HTTPError) as f:
+            urllib.request.urlopen(req)
+        assert f.value.code == 403 and "Bestimmer" in json.loads(f.value.read())["fehler"]
     assert brett(u)["wuensche"][0]["eingeplant"]["bezug"] == ["T-03"]
     assert len(brett(u)["wuensche"][0]["verlauf"]) == 2
     assert aendern(u, "R-20991231-000000-0000", name="Ida", eingeplant=True)[0] == 404

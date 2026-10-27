@@ -42,6 +42,7 @@ import smtplib
 import sqlite3
 import sys
 import time
+import urllib.parse
 from contextlib import closing
 from pathlib import Path
 
@@ -127,6 +128,29 @@ def db():
     return v
 
 
+def dienst_geheimnis():
+    """Gemeinsames Geheimnis von Konnektor und Rückmeldedienst (Header X-Frieda-Dienst). Nur wer es mitschickt, gilt
+    beim Rückmeldedienst als Konnektor; alles andere als Seite (fail-closed). Liegt neben der Datenbank (600) und
+    entsteht beim ersten Aufruf; beide Dienste laufen unter demselben Benutzer und lesen dieselbe Datei."""
+    p = pfad().parent / "dienst-geheimnis"
+    try:
+        return p.read_text(encoding="ascii").strip()
+    except FileNotFoundError:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        os.chmod(p.parent, 0o700)
+        tmp = p.with_name(f"dienst-geheimnis.{os.getpid()}.tmp")
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="ascii") as f:
+            f.write(secrets.token_urlsafe(32))
+        try:
+            os.link(tmp, p)          # atomar und nur, wenn noch keiner zuvorgekommen ist
+        except FileExistsError:
+            pass
+        finally:
+            tmp.unlink()
+        return p.read_text(encoding="ascii").strip()
+
+
 # ---------------------------------------------------------------- Adressen und Mail
 
 def adresse(roh):
@@ -208,8 +232,9 @@ def code_anfordern(roh, ip="", zweck="anmelden", konto=None):
     lesbar = f"{code[:3]} {code[3:]}"
     zeilen = [f"Dein Code für Frieda: {lesbar}", "",
               f"Gib ihn dort ein, wo du dich gerade anmeldest. Er gilt {CODE_MINUTEN} Minuten.", ""]
-    if zweck == "anmelden" and basis():
-        zeilen += ["Oder auf diesem Gerät direkt anmelden:", f"{basis()}/anmelden?email={e}&code={code}", ""]
+    if zweck == "anmelden" and basis():   # Link ohne Code: der Code gehört nicht in Protokolle und Verläufe
+        zeilen += ["Zur Code-Eingabe auf diesem Gerät:",
+                   f"{basis()}/anmelden?{urllib.parse.urlencode({'schritt': 'code', 'email': e})}", ""]
     zeilen += ["Hast du keinen Code angefordert, kannst du diese Mail einfach löschen."]
     betreff = f"Frieda: dein Code {lesbar}" if zweck == "anmelden" else f"Frieda: neue Adresse bestätigen ({lesbar})"
     mail_senden(e, betreff, "\n".join(zeilen))

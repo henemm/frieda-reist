@@ -1,7 +1,7 @@
 # Konten: Anmeldung mit E-Mail-Adresse
 
-Paket J (Issue #43). Stand: Schritt J1 (Grundlage, `engine/konten.py`). Anmeldeseiten im Web (J2) und der Konnektor
-„Frieda“ mit OAuth für alle Reisen (J3) folgen.
+Paket J (Issue #43). Stand: J1 (Grundlage, `engine/konten.py`) und J2 (Anmeldung im Web, `engine/anmeldung.py`,
+Rückmeldedienst mit Sitzung, Reiseseite). Der Konnektor „Frieda“ mit OAuth für alle Reisen (J3) folgt.
 
 ## Warum
 
@@ -62,6 +62,32 @@ erkannt und bekommt darüber jederzeit wieder Zugang.
   - je Reise 50 Einladungen am Tag
 - **Sitzungen:** je Gerät, 365 Tage gültig und rollierend (jede Nutzung verlängert). Abmelden geht je Gerät oder
   überall.
+
+## Anmeldung im Web (J2)
+
+- **Seiten:** Der Konnektor-Dienst liefert sie unter Friedas eigener Adresse aus (`FR_BASIS`).
+  - `/anmelden`: Adresse, dann Code, beim ersten Mal auch der Name
+  - `/einladung/<token>`: Einladung ansehen, annehmen oder mit einer anderen Adresse anmelden
+  - `/konto`: Name, Adresse, Reisen, Bitte „Reisen anlegen“, Geräte, Konto löschen; für Betreiber die offenen Bitten
+  - `/abmelden`
+- **Sitzung:** Cookie `__Host-frieda` (HttpOnly, Secure, SameSite=Lax, ein Jahr, rollierend).
+- **Herkunft:** Jede Änderung muss von Friedas eigener Adresse kommen (`Origin`), sonst 403. SameSite trennt nicht von
+  Nachbar-Subdomains. Rückkehradressen sind nur Pfade auf Friedas Adresse.
+- **Link aus der Mail:** öffnet nur die Code-Seite mit ausgefülltem Code. Angemeldet wird erst nach einem Klick, weil
+  Mailprogramme Links vorab aufrufen.
+- **Rückmeldedienst, wer schreibt:**
+  - Der Konnektor schickt das Dienst-Geheimnis (`X-Frieda-Dienst`, Datei `dienst-geheimnis` neben der Datenbank).
+  - Alles andere gilt als Seite (fail-closed). Name und Rolle kommen aus Sitzung und Mitgliedschaft, ein eingetippter
+    Name wird überschrieben.
+- **Regel `anmeldung` je Reise:**
+  - `uebergang` (Vorgabe, solange umgestellt wird): ohne Anmeldung geht weiter ein eingetippter Name.
+  - `noetig`: ohne Sitzung 401, ohne Mitgliedschaft 403.
+- **Einplanen** auf dem Wunsch-Brett: auch angemeldet auf der Seite, aber nur als Bestimmer.
+- **Zurückziehen:** Angemeldet geht es nur bei eigenen Rückmeldungen.
+- **Reiseseite:** `GET api/ich` sagt, wer angemeldet ist.
+  - Oben rechts steht „Anmelden“ oder der eigene Name (Molekül `kontoKnopf`, nur auf Friedas eigener Adresse).
+  - Angemeldet entfällt das Namensfeld (`nameFeld`).
+  - Antwortet der Dienst mit 401, bleibt der Eintrag im Ausgang und geht nach dem Anmelden los.
 
 ## Betrieb
 
