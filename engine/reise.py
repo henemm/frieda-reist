@@ -76,6 +76,8 @@ AKTIONEN = {
     "entscheiden":  {"rolle": "bestimmer", "baustein": "varianten", "ab": ("alles",)},
     "antwort":      {"rolle": "einbringer", "baustein": "fragen", "ab": ("alles", "nachlese")},
     "einladen":     {"rolle": "bestimmer", "baustein": None, "ab": ("alles", "nachlese")},
+    # Paket J: eine Person aus der Reise nehmen (Konto-Verknüpfung und alte Links enden sofort)
+    "entfernen":    {"rolle": "bestimmer", "baustein": None, "ab": ("alles", "nachlese")},
 }
 # Lesende Konnektor-Werkzeuge, die zu einem zuschaltbaren Baustein gehören
 LESE_BAUSTEIN = {"offene_fragen": "fragen", "varianten": "varianten", "merkmale": "varianten",

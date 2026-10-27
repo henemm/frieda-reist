@@ -65,6 +65,39 @@ Gibt es die Person schon, bekommt sie nur einen weiteren Link; ihre Rolle zu än
 
 **Anleitung:** Beim Verbinden bekommt die KI Rolle, Reisestatus, Entscheidungsweg und die Grenzen der sprechenden Person (Einbringer: kann nicht entscheiden; Link ohne Person: kein Entscheiden und Einladen).
 
+## Konnektor „Frieda“ mit Anmeldung (Paket J3, 27.10.2026)
+
+Ein Konnektor für alle Reisen einer Person. Er ersetzt nach der Umstellung die Konnektoren je Reise und den Konto-Link.
+Die Adresse ist für alle gleich, `<FR_BASIS>/mcp`, und enthält kein Geheimnis.
+
+**Anmelden:** Beim Hinzufügen in der Claude-App öffnet sich Friedas Anmeldeseite. Man gibt die E-Mail-Adresse und
+den Code aus der Mail ein und stimmt dem Zugriff zu. Technisch ist das OAuth 2.1 mit PKCE (S256) und Refresh-Token mit
+Rotation. Einzelheiten stehen in `engine/oauth.py` und [konten.md](konten.md).
+
+**Werkzeuge:**
+- `meine_reisen`
+- `reise_anlegen`, wenn das Konto freigeschaltet ist; sonst `reisen_anlegen_anfragen`
+- für den Betreiber `anfrage_entscheiden`
+- alle Reise-Werkzeuge mit der Angabe `reise`. Bei nur einer Reise darf sie fehlen.
+
+Die Rechte prüft der Konnektor je Reise wie bisher (Rolle aus `reise.yaml` und `einladungen.json`). Den Namen kennt
+er aus dem Konto.
+
+**Einladen:** `person_einladen` verlangt hier eine E-Mail-Adresse und verschickt die Einladung per Mail. Einen Link gibt
+es nicht. Auch eine Person, die schon in der Reise steht, lässt sich so mit ihrem Konto verknüpfen.
+
+**Entfernen:** `person_entfernen` (Bestimmer) nimmt eine Person heraus. Konto-Verknüpfung und alte Links enden sofort,
+aus `reise.yaml` streicht sie das Einarbeiten.
+
+**Neue Reise:** Das Konto wird nach dem Anlegen mit der Reise verknüpft. Personen mit Adresse bekommen eine Einladung
+per Mail. Die Adressen stehen im Auftrag (`einladen`), nie in den Reisedaten.
+
+**Wer darf fragen:**
+- Redirect-URIs: nur `https://claude.ai/api/mcp/auth_callback` (dazu `FR_OAUTH_REDIRECTS`) und Loopback mit
+  beliebigem Port (Claude Code, MCP Inspector, mit Warnung auf der Zustimmungsseite)
+- Clients per DCR oder per Client ID Metadata Document von einem freigegebenen Host (`FR_CIMD_HOSTS`, Vorgabe
+  `claude.ai`)
+
 ## Konto-Link: meine Reisen und neue Reise (Paket H, 27.10.2026)
 
 Eine neue Reise legt eine Person an, keine Reise. Deshalb gibt es neben den Links je Reise einen persönlichen **Konto-Link** („Frieda – meine Reisen“), angelegt vom Betreiber: `python3 engine/konnektor.py konto <schluessel> <Name>`. Wer einen hat, darf Reisen anlegen. In der Claude-App wird er wie jeder Konnektor eingetragen. Er hat zwei Werkzeuge:

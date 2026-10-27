@@ -1,7 +1,11 @@
 # Konten: Anmeldung mit E-Mail-Adresse
 
-Paket J (Issue #43). Stand: J1 (Grundlage, `engine/konten.py`) und J2 (Anmeldung im Web, `engine/anmeldung.py`,
-Rückmeldedienst mit Sitzung, Reiseseite). Der Konnektor „Frieda“ mit OAuth für alle Reisen (J3) folgt.
+Paket J (Issue #43). Stand:
+- J1: Grundlage, `engine/konten.py`
+- J2: Anmeldung im Web, `engine/anmeldung.py`, Rückmeldedienst mit Sitzung, Reiseseite
+- J3: Konnektor „Frieda“ mit OAuth für alle Reisen, `engine/oauth.py`, [konnektor.md](konnektor.md)
+
+Es folgen Betrieb (eigene Adresse, Mail) und Umstellung.
 
 ## Warum
 
@@ -89,6 +93,25 @@ erkannt und bekommt darüber jederzeit wieder Zugang.
   - Angemeldet entfällt das Namensfeld (`nameFeld`).
   - Antwortet der Dienst mit 401, bleibt der Eintrag im Ausgang und geht nach dem Anmelden los.
 
+## Claude-App (J3)
+
+**Ablauf beim Hinzufügen** von `<FR_BASIS>/mcp` als Konnektor:
+1. Ohne Token antwortet der Konnektor mit 401 und zeigt auf die Metadaten.
+2. Die Claude-App registriert sich (DCR oder Client ID Metadata Document).
+3. Sie öffnet `/authorize`. Wer nicht angemeldet ist, meldet sich an (wie im Web).
+4. Die Zustimmungsseite zeigt, wer fragt und wohin der Code geht.
+5. „Erlauben“ schickt einen Code an die Claude-App. Sie tauscht ihn mit dem PKCE-Verifier gegen Tokens.
+
+**Fristen der Tokens:**
+- Code: 5 Minuten, nur einmal
+- Access-Token: 1 Stunde
+- Refresh-Token: 90 Tage mit Rotation
+
+**Missbrauch:**
+- Ein zweimal eingelöster Code widerruft alles, was aus ihm entstand.
+- Ein schon benutzter Refresh-Token widerruft die ganze Familie.
+- „Überall abmelden“, Sperren und Löschen beenden auch den Zugriff der Claude-App.
+
 ## Betrieb
 
 Umgebung:
@@ -98,6 +121,8 @@ Umgebung:
 | `FR_BASIS` | Öffentliche Adresse von Frieda (für Links in Mails) |
 | `FR_SMTP_HOST`, `FR_SMTP_PORT` (587), `FR_SMTP_USER`, `FR_SMTP_PASS`, `FR_ABSENDER` | Mailversand mit STARTTLS |
 | `FR_MAIL_DATEI` | Mails stattdessen als JSON-Zeilen in diese Datei (Tests, Probebetrieb) |
+| `FR_OAUTH_REDIRECTS` | weitere erlaubte Redirect-URIs der Claude-App (durch Komma getrennt) |
+| `FR_CIMD_HOSTS` | Hosts, von denen Client ID Metadata Documents geladen werden (Vorgabe `claude.ai`) |
 
 Befehle für den Betreiber: `python3 engine/konten.py liste | anfragen | freischalten <email> [--nein] |
 betreiber <email> | sperren <email> | entsperren <email> | loeschen <email> | zusammenfuehren <von> <nach> |

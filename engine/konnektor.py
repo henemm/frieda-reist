@@ -60,6 +60,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import anmeldung  # noqa: E402
 import konten  # noqa: E402
+import oauth  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, REISE_ZIEL, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, schluessel_aus_name, verhalten)
@@ -67,11 +68,11 @@ from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, REISE_ZIEL, ROLLEN, VORGABEN, 
 ALTE_ROLLEN = {"mitreisend": "einbringer"}   # Links von vor dem 26.10.2026
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "alternative_vorschlagen",
-                     "frage_beantworten", "entscheiden", "person_einladen", "wunsch_aendern"}
+                     "frage_beantworten", "entscheiden", "person_einladen", "person_entfernen", "wunsch_aendern"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe",
                   "alternative_vorschlagen": "alternative", "auftrag_geben": "auftrag", "entscheiden": "entscheiden",
-                  "frage_beantworten": "antwort", "person_einladen": "einladen",
+                  "frage_beantworten": "antwort", "person_einladen": "einladen", "person_entfernen": "entfernen",
                   # Wunsch-Brett: sichtbar für alle, die abhaken dürfen; Punkte und Einplanen prüft der Dienst genauer
                   "wunsch_aendern": "wunsch_erlebt"}
 # Werkzeuge, die zusätzlich eine zweite Aktion brauchen: eine Antwort landet als Rückmeldung (Art Antwort) im Eingang
@@ -1238,9 +1239,16 @@ def zugang_ausstellen(z):
     return token
 
 
-def einladen(reise, d, wer, args):
+def einladen(reise, d, wer, args, mit_konto=False):
     """person_einladen: Person mit Rolle anlegen und ihren Zugang ausstellen. Eine Person, die es schon gibt, bekommt
-    einen weiteren Link (ihre Rolle ändert sich dabei nie: das ist eine Einstellung der Reise). -> (Text, ist_fehler)"""
+    einen weiteren Link (ihre Rolle ändert sich dabei nie: das ist eine Einstellung der Reise). -> (Text, ist_fehler)
+    mit_konto (Konnektor „Frieda“, Paket J): statt eines Links geht eine Einladung an die E-Mail-Adresse; sie gilt beim
+    Anmelden (docs/konten.md). Auch eine Person, die es schon gibt, lässt sich so mit ihrem Konto verknüpfen."""
+    if mit_konto:
+        try:
+            email = konten.adresse(args.get("email"))
+        except konten.KontoFehler:
+            return "email fehlt oder ist keine E-Mail-Adresse: An welche Adresse soll die Einladung gehen?", True
     vorname = args.get("vorname")
     rolle = args.get("rolle") or "einbringer"
     notiz = args.get("notiz") or ""
@@ -1258,7 +1266,7 @@ def einladen(reise, d, wer, args):
     if not name_von:
         return ("Einladen geht nur mit dem persönlichen Link: Der Link ohne Person kennt deinen Namen nicht. "
                 "Bitte einen Bestimmer um einen persönlichen Link."), True
-    if not os.environ.get("KN_BASIS"):
+    if not mit_konto and not os.environ.get("KN_BASIS"):
         return "Die Adresse für Links ist auf dem Server nicht eingerichtet (KN_BASIS). Das muss der Betreiber ergänzen.", True
     o = rm.ordner(reise)
     if o is None:
@@ -1287,6 +1295,9 @@ def einladen(reise, d, wer, args):
         with _sperre:
             if len(rm.einladungen_lesen(o)) >= rm.MAX_EINLADUNGEN:
                 return "Es sind schon sehr viele Einladungen offen; bitte zuerst einarbeiten lassen.", True
+    if mit_konto:
+        return einladen_per_mail(reise, d, o, wer, args, vorname if neu else vorhanden["name"], rolle, schluessel, neu,
+                                 notiz, email)
     try:
         token = zugang_ausstellen({"reise": reise, "person": schluessel})
     except OSError:
@@ -1340,6 +1351,70 @@ def vergebene_pfade():
         pfade |= {e["daten"]["neue_reise"]["pfad"] for e in rm.auftraege(o)
                   if (e.get("daten") or {}).get("neue_reise") and e["status"] not in ("verworfen", "rueckfrage")}
     return pfade
+
+
+def person_entfernen(reise, d, wer, args):
+    """person_entfernen (Bestimmer): Verknüpfung mit dem Konto und alte Links enden sofort; aus reise.yaml streicht die
+    Person das Einarbeiten (Auftrag). Bestimmer und sich selbst nimmt man so nicht heraus. -> (Text, ist_fehler)"""
+    gesucht = str(args.get("person") or "").strip()
+    p = next((x for x in personen_der_reise(reise, d)
+              if x["schluessel"] == gesucht or x["name"].casefold() == gesucht.casefold()), None) if gesucht else None
+    if not p:
+        return "Wen? Bitte person angeben (Vorname oder Schlüssel aus dem Überblick).", True
+    if not wer["name"] or p["name"].casefold() == wer["name"].casefold():
+        return "Dich selbst nimmst du so nicht aus der Reise.", True
+    if p["rolle"] == "bestimmer":
+        return (f"{p['name']} bestimmt die Reise mit. Einen Bestimmer nimmt man nicht im Gespräch heraus; das ist eine "
+                "Einstellung der Reise (auftrag_geben, ziel reise)."), True
+    grund = str(args.get("grund") or "").strip()[:300]
+    konten.entfernen(reise, p["schluessel"])
+    with _sperre:
+        alle = zugaenge()
+        rest = {t: z for t, z in alle.items() if not (z.get("reise") == reise and z.get("person") == p["schluessel"])}
+        if len(rest) != len(alle):
+            rm.schreiben(zugaenge_pfad(), json.dumps(rest, ensure_ascii=False, indent=1) + "\n")
+            os.chmod(zugaenge_pfad(), 0o600)
+    o = rm.ordner(reise)
+    if p.get("eingeladen") and o is not None:
+        with _sperre:
+            alle = rm.einladungen_lesen(o)
+            alle.pop(p["schluessel"], None)
+            rm.schreiben(o / "einladungen.json", json.dumps(alle, ensure_ascii=False, indent=1) + "\n")
+    else:
+        auftrag_anlegen(reise, REISE_ZIEL, f"Person entfernen ({wer['name']}): {p['name']} (Schlüssel {p['schluessel']}) "
+                        "aus reise.yaml unter personen streichen; Verlauf und Beiträge bleiben."
+                        + (f" Grund: {grund}" if grund else ""), {"entfernen": {"schluessel": p["schluessel"]}},
+                        name=wer["name"])
+    return (f"{p['name']} ist aus der Reise genommen: Zugang über Konto und Links endet sofort. "
+            + ("" if p.get("eingeladen") else "Auf der Seite verschwindet die Person nach dem nächsten Einarbeiten.")), False
+
+
+def einladen_per_mail(reise, d, o, wer, args, name, rolle, schluessel, neu, notiz, email):
+    """Teil von einladen für den Konnektor „Frieda“: Person (falls neu) in einladungen.json und als Auftrag, dann die
+    Einladung über engine/konten.py (Mail mit Hinweis zum Anmelden, gilt sofort, wenn die Adresse ein Konto hat)."""
+    try:
+        r = konten.einladen(reise, schluessel, email, rolle, name, wer["name"],
+                            titel=((d or {}).get("reise") or {}).get("titel"), seite=seitenlinks().get(reise))
+    except konten.KontoFehler as f:
+        return f"Nicht eingeladen: {f}", True
+    if neu:
+        heute = datetime.date.today().isoformat()
+        eintrag = {"name": name, "rolle": rolle, "reist": args.get("reist", True) is not False,
+                   "notiz": notiz or f"eingeladen von {wer['name']} am {datum_de(heute)} über die Claude-App",
+                   "eingeladen_von": wer["name"], "datum": heute}
+        with _sperre:
+            alle = rm.einladungen_lesen(o)
+            alle[schluessel] = eintrag
+            rm.schreiben(o / "einladungen.json", json.dumps(alle, ensure_ascii=False, indent=1) + "\n")
+        auftrag_anlegen(reise, REISE_ZIEL, f"Einladung von {wer['name']}: {name} als {rolle} in reise.yaml unter personen "
+                        f"aufnehmen, Schlüssel {schluessel}, reist: {'ja' if eintrag['reist'] else 'nein'}, notiz: "
+                        f"„{eintrag['notiz']}“. Rolle gilt schon (einladungen.json); die Einladung ging per Mail.",
+                        {"einladung": {"schluessel": schluessel, **eintrag}}, name=wer["name"])
+    return ((f"{name} ist eingeladen (Rolle {rolle})." if neu else f"Einladung für {name} (Rolle {rolle}) verschickt.")
+            + f" Eine Mail ist an {email} unterwegs. "
+            + ("Die Adresse hat schon ein Konto: Die Reise steht ab jetzt bei ihren Reisen."
+               if r["sofort"] else "Sobald sie sich mit dieser Adresse bei Frieda anmeldet (oder über den Link in der "
+               "Mail), ist sie dabei.")), False
 
 
 def reise_kurz(reise):
@@ -1416,15 +1491,197 @@ def reise_anlegen(konto, args):
         e = {"id": f"A-{jetzt:%Y%m%d-%H%M%S}-{secrets.token_hex(2)}", "erstellt": jetzt.isoformat(timespec="seconds"),
              "name": konto["name"], "konto": konto["konto"], "art": "Auftrag", "ziel": "allgemein",
              "text": text_[:MAX_AUFTRAG], "quelle": "Claude-App", "daten": {"neue_reise": neu}}
+        if konto.get("konto_id"):
+            # Konnektor „Frieda“: wer anlegt, wird nach dem Anlegen mit seinem Konto verknüpft; wer eine Adresse hat,
+            # bekommt eine Einladung per Mail (im Betrieb, sobald die Seite online ist). Adressen nie ins Repo.
+            e["konto_id"] = konto["konto_id"]
+            mails = []
+            for x in args.get("personen") or []:
+                if isinstance(x, dict) and x.get("email"):
+                    try:
+                        adr = konten.adresse(x["email"])
+                    except konten.KontoFehler:
+                        return f"Nicht angelegt: „{x.get('vorname')}“ hat keine gültige E-Mail-Adresse.", True
+                    schl = next((k_ for k_, p_ in neu["personen"].items() if p_["name"] == str(x.get("vorname")).strip()),
+                                None)
+                    if schl:
+                        mails.append({"schluessel": schl, "email": adr, "rolle": neu["personen"][schl]["rolle"],
+                                      "name": neu["personen"][schl]["name"]})
+            e["einladen"] = mails
         with (o / "auftraege.jsonl").open("a", encoding="utf-8") as f:
             f.write(json.dumps(e, ensure_ascii=False) + "\n")
             f.flush()
             os.fsync(f.fileno())
         rm.anstossen(o)
+    if konto.get("konto_id"):
+        return (f"Auftrag {e['id']} gespeichert: Die Reise „{neu['titel']}“ wird in der Regel in wenigen Minuten angelegt "
+                f"(Status Idee, Ordner {neu['pfad']}). Danach steht sie in meine_reisen"
+                + (", und die Personen mit Adresse bekommen eine Einladung per Mail" if e.get("einladen") else "")
+                + ". Bis dahin gibt es die Reise noch nicht."), False
     return (f"Auftrag {e['id']} gespeichert: Die Reise „{neu['titel']}“ wird in der Regel in wenigen Minuten angelegt "
             f"(Status Idee, Ordner {neu['pfad']}). Danach zeigt meine_reisen unter „Meldungen an dich“ den Link zur Seite "
             "und den Link für die Claude-App; den trägst du einmal als eigenen Konnektor ein (Einstellungen → Konnektoren "
             "→ Eigenen Konnektor hinzufügen). Bis dahin gibt es die Reise noch nicht."), False
+
+
+# ---------- Konnektor „Frieda“ (Paket J3): ein Zugang für alle Reisen, angemeldet mit dem Konto (OAuth) ----------
+
+REISEN_ANLEGEN_ANFRAGEN = {"name": "reisen_anlegen_anfragen", "description": "Bitten, Reisen anlegen zu dürfen. Das "
+                           "entscheidet der Betreiber; bis dahin kann die Person bei Reisen mitmachen, zu denen sie "
+                           "eingeladen ist.", "inputSchema": {"type": "object", "properties": {}}}
+ANFRAGE_ENTSCHEIDEN = {"name": "anfrage_entscheiden", "description": "Nur für den Betreiber: eine Bitte „Reisen anlegen“ "
+                       "annehmen oder ablehnen (offene Bitten stehen in meine_reisen). Vorher bestätigen lassen.",
+                       "inputSchema": {"type": "object", "properties": {
+                           "email": {"type": "string", "description": "Adresse des Kontos aus der Liste der Bitten"},
+                           "erlauben": {"type": "boolean", "description": "true: darf Reisen anlegen; false: abgelehnt"}},
+                           "required": ["email", "erlauben"]}}
+EMAIL_FELD = {"type": "string", "description": "E-Mail-Adresse der Person: Sie bekommt die Einladung per Mail und meldet "
+              "sich damit bei Frieda an. Vorher mit der einladenden Person abstimmen."}
+
+
+def reisen_des_kontos(k):
+    """[(reise, schluessel, daten)] der Reisen, mit denen das Konto verknüpft ist und die veröffentlicht sind."""
+    aus = []
+    for m in konten.mitgliedschaften(k["id"]):
+        d = daten(m["reise"])
+        if d:
+            aus.append((m["reise"], m["schluessel"], d))
+    return aus
+
+
+def frieda_werkzeuge(k):
+    """Konto-Werkzeuge plus alle Reise-Werkzeuge, die auf mindestens einer Reise des Kontos gehen, je mit Angabe reise."""
+    eigene = [MEINE_REISEN, REISE_ANLEGEN_MIT_MAIL if konten.recht(k, "reise_anlegen") else REISEN_ANLEGEN_ANFRAGEN]
+    if konten.recht(k, "betreiber"):
+        eigene.append(ANFRAGE_ENTSCHEIDEN)
+    reisen = reisen_des_kontos(k)
+    je_name, wo = {}, {}
+    for reise, schl, _ in reisen:
+        for w in werkzeuge_fuer({"reise": reise, "person": schl}):
+            je_name.setdefault(w["name"], w)
+            wo.setdefault(w["name"], []).append(reise)
+    aus = list(eigene)
+    for n, w in je_name.items():
+        schema = dict(w["inputSchema"])
+        eig = {k_: v for k_, v in schema.get("properties", {}).items() if k_ != "name"}   # der Name kommt aus dem Konto
+        if n == "person_einladen":
+            eig["email"] = EMAIL_FELD
+        eig["reise"] = {"type": "string", "enum": wo[n],
+                        "description": "Ordner der Reise (aus meine_reisen)" + ("" if len(reisen) > 1 else "; optional")}
+        pflicht = [x for x in schema.get("required", []) if x != "name"]
+        if n == "person_einladen":
+            pflicht.append("email")
+        if len(reisen) > 1:
+            pflicht.append("reise")
+        aus.append({**w, "inputSchema": {**schema, "properties": eig, "required": pflicht}})
+    return aus
+
+
+def anleitung_frieda(k):
+    reisen = reisen_des_kontos(k)
+    z = [f"Aufgabe: Du bist Frieda, der Reiseassistent von {k['name']} (angemeldet als {k['email']}). Dieser Konnektor "
+         "gilt für alle Reisen der Person; jedes Reise-Werkzeug braucht die Angabe reise (Ordner, siehe meine_reisen"
+         + (")" if len(reisen) > 1 else "; bei nur einer Reise darf sie fehlen)") + ". Beginne mit meine_reisen und "
+         "nenne Meldungen zuerst. Personen lädst du per E-Mail-Adresse ein (person_einladen mit email); Links gibt es "
+         "nicht mehr. Neue Reisen: reise_anlegen, wenn die Person das darf, sonst reisen_anlegen_anfragen."]
+    for reise, schl, d in reisen:
+        z += ["", f"## Reise {reise}", anleitung({"reise": reise, "person": schl}, d)]
+    if not reisen:
+        z += ["", "Die Person hat noch keine Reisen. Wer eine Reise bestimmt, kann sie mit ihrer Adresse einladen."]
+    return "\n".join(z)
+
+
+def meine_reisen_konto(k):
+    z = []
+    o = rm.ordner_neu()
+    if o:
+        ms = rm.meldungen_aktuell(o, k["name"])
+        if ms:
+            z += ["Meldungen an dich:", *[f"- {datum_de(m['erstellt'][:10])}: {m['text']}" for m in ms], ""]
+    reisen = reisen_des_kontos(k)
+    z.append(f"Deine Reisen ({len(reisen)}):" if reisen else
+             "Noch keine Reise. Wer eine Reise bestimmt, kann dich mit deiner E-Mail-Adresse einladen.")
+    links = seitenlinks()
+    for reise, schl, d in reisen:
+        rs = d.get("reise") or {}
+        p = next((x for x in personen_der_reise(reise, d) if x.get("schluessel") == schl), {})
+        z.append(f"- {rs.get('titel', reise)} ({rs.get('untertitel', '')}), reise: {reise}, Status "
+                 f"{(rs.get('status') or {}).get('wert')}, du: {p.get('rolle', '?')}")
+        z.append(f"  Seite: {links.get(reise) or 'Link liegt beim Betreiber'}")
+    if konten.recht(k, "reise_anlegen"):
+        z += ["", "Du darfst neue Reisen anlegen (reise_anlegen)."]
+    if o:
+        offen = [e for e in rm.auftraege(o) if e.get("konto_id") == k["id"] and (e.get("daten") or {}).get("neue_reise")
+                 and e["status"] in ("neu", "rueckfrage")]
+        if offen:
+            z += ["", "Angefragte neue Reisen:"]
+            z += [f"- {e['daten']['neue_reise']['titel']} ({e['id']}): "
+                  + ("wird angelegt" if e["status"] == "neu" else f"Rückfrage: {e.get('kommentar') or 'siehe Betreiber'}")
+                  for e in offen]
+    if konten.recht(k, "betreiber"):
+        bitten = konten.anfragen()
+        if bitten:
+            z += ["", "Offene Bitten „Reisen anlegen“ (anfrage_entscheiden):",
+                  *[f"- {a['name']} ({a['email']}), seit {a['erstellt'][:10]}" for a in bitten]]
+    return "\n".join(z)
+
+
+def frieda_werkzeug(k, name, args):
+    args = dict(args) if isinstance(args, dict) else {}
+    if name == "meine_reisen":
+        return meine_reisen_konto(k), False
+    if name == "reise_anlegen":
+        if not konten.recht(k, "reise_anlegen"):
+            return "Reisen anlegen darfst du noch nicht. Mit reisen_anlegen_anfragen kannst du darum bitten.", True
+        return reise_anlegen({"konto": schluessel_aus_name(k["name"]) or "person", "name": k["name"],
+                              "konto_id": k["id"]}, args)
+    if name == "reisen_anlegen_anfragen":
+        st = konten.reisen_anlegen_anfragen(k["id"])
+        if st == "offen":
+            anmeldung.betreiber_melden(k)
+        return {"offen": "Deine Bitte liegt beim Betreiber. Du bekommst Bescheid in meine_reisen.",
+                "schon_erlaubt": "Du darfst schon Reisen anlegen (reise_anlegen).",
+                "abgelehnt": "Deine Bitte wurde abgelehnt. Bei Fragen wende dich an den Betreiber."}[st], False
+    if name == "anfrage_entscheiden":
+        if not konten.recht(k, "betreiber"):
+            return "Das darf nur der Betreiber.", True
+        try:
+            wer = konten.konto_per_email(args.get("email"))
+        except konten.KontoFehler as f:
+            return str(f), True
+        if not wer:
+            return "Kein Konto mit dieser Adresse.", True
+        konten.freischalten(wer["id"], ja=args.get("erlauben") is True)
+        return f"{wer['name']} darf {'jetzt' if args.get('erlauben') is True else 'weiterhin keine'} Reisen anlegen.", False
+    reisen = reisen_des_kontos(k)
+    reise = args.pop("reise", None) or (reisen[0][0] if len(reisen) == 1 else None)
+    if not reise:
+        return "Welche Reise? Bitte reise angeben (Ordner aus meine_reisen).", True
+    schl = next((s_ for r, s_, _ in reisen if r == reise), None)
+    if not schl:
+        return "Bei dieser Reise bist du nicht dabei (oder sie ist nicht veröffentlicht).", True
+    args.pop("name", None)
+    return werkzeug({"reise": reise, "person": schl, "konto_id": k["id"]}, name, args)
+
+
+def frieda_antwort(zugang, nid, methode, p, ok):
+    k = konten.konto(zugang["konto_id"])
+    if not k or k["gesperrt"]:
+        return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32001, "message": "Konto gesperrt oder gelöscht"}}
+    if methode == "initialize":
+        gewuenscht = p.get("protocolVersion") if isinstance(p, dict) else None
+        return ok({"protocolVersion": gewuenscht if gewuenscht in PROTOKOLLE else PROTOKOLLE[0],
+                   "capabilities": {"tools": {}},
+                   "serverInfo": {"name": "frieda", "title": "Frieda", "version": "1"},
+                   "instructions": anleitung_frieda(k)})
+    if methode == "ping":
+        return ok({})
+    if methode == "tools/list":
+        return ok({"tools": frieda_werkzeuge(k)})
+    if methode == "tools/call":
+        t, fehler = frieda_werkzeug(k, p.get("name"), p.get("arguments"))
+        return ok({"content": [{"type": "text", "text": t}], "isError": fehler})
+    return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 
 MEINE_REISEN = {"name": "meine_reisen", "description": "Deine Reisen mit Rolle, Status, Link zur Seite und Link für die "
@@ -1676,6 +1933,15 @@ PERSON_EINLADEN = {"name": "person_einladen", "description": "Eine Person zur Re
                        "name": NAME_FELD}, "required": ["vorname"]}}
 
 
+PERSON_ENTFERNEN = {"name": "person_entfernen", "description": "Nur für Bestimmer: eine Person aus der Reise nehmen. Ihr "
+                    "Zugang (Konto und Links) endet sofort; Beiträge und Verlauf bleiben mit ihrem Namen stehen. Bestimmer "
+                    "und sich selbst nimmt man so nicht heraus. Vorher bestätigen lassen.",
+                    "inputSchema": {"type": "object", "properties": {
+                        "person": {"type": "string", "description": "Vorname oder Schlüssel der Person"},
+                        "grund": {"type": "string", "description": "kurz, warum (optional, eine Zeile)"},
+                        "name": NAME_FELD}, "required": ["person"]}}
+
+
 REISE_ANLEGEN = {"name": "reise_anlegen", "description": "Eine neue Reise anlegen. "
                  "Vorher im Gespräch Titel, Zeitraum, Ziel und Personen mit Rollen klären und bestätigen lassen; wer anlegt, "
                  "bestimmt auf der neuen Reise. Was schon bekannt ist (Ideen, Unterkunft, Quellen), kommt in notiz: Bücher, "
@@ -1699,6 +1965,20 @@ REISE_ANLEGEN = {"name": "reise_anlegen", "description": "Eine neue Reise anlege
                      "notiz": {"type": "string", "description": "was schon bekannt ist, in eigenen Worten mit Herkunft"},
                      "pfad": {"type": "string", "description": "nur wenn nötig: Ordnername (klein, Bindestriche)"}},
                      "required": ["titel", "von", "bis"]}}
+
+
+def _mit_mail(w):
+    """reise_anlegen im Konnektor „Frieda“: Personen mit E-Mail-Adresse, die eine Einladung bekommen."""
+    import copy
+    w = copy.deepcopy(w)
+    w["description"] = w["description"].replace(
+        "danach zeigt meine_reisen eine Meldung mit dem Link zur Seite und dem Link für die Claude-App",
+        "danach steht sie in meine_reisen, und Personen mit E-Mail-Adresse bekommen eine Einladung per Mail")
+    w["inputSchema"]["properties"]["personen"]["items"]["properties"]["email"] = EMAIL_FELD
+    return w
+
+
+REISE_ANLEGEN_MIT_MAIL = _mit_mail(REISE_ANLEGEN)
 
 
 STATUS_SATZ = {
@@ -1848,7 +2128,9 @@ def werkzeug(zugang, name, args):
     if name == "frage_beantworten":
         return frage_beantworten(reise, d, h, wer, args)
     if name == "person_einladen":
-        return einladen(reise, d, wer, args)
+        return einladen(reise, d, wer, args, mit_konto="konto_id" in zugang)
+    if name == "person_entfernen":
+        return person_entfernen(reise, d, wer, args)
     if name == "aufgaben":
         liste = aufgaben_filter(h.aufgaben, args)
         return (rm.aufgaben_text(liste, h.titel(), h.v["fristen"]) if liste else "Keine passenden Aufgaben."), False
@@ -1940,6 +2222,8 @@ def antwort_auf(zugang, nachricht):
     def ok(ergebnis):
         return {"jsonrpc": "2.0", "id": nid, "result": ergebnis}
 
+    if "konto_id" in zugang:
+        return frieda_antwort(zugang, nid, methode, p, ok)
     if "konto" in zugang:
         return konto_antwort(zugang, nid, methode, p, ok)
     if methode == "initialize":
@@ -1953,31 +2237,36 @@ def antwort_auf(zugang, nachricht):
     if methode == "ping":
         return ok({})
     if methode == "tools/list":
-        d = daten(zugang["reise"])
-        wer = wer_spricht(zugang, d) or {"rolle": "reisend"}
-        _, bausteine = zustand_von(d)
-        # Sichtbar ist, was diese Rolle bei diesem Status und diesen Bausteinen darf (aufgerufen wird trotzdem noch einmal geprüft)
-        werkzeuge = []
-        for w in WERKZEUGE + [AUFTRAG, ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN]:
-            n = w["name"]
-            if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:
-                continue
-            if n in SCHREIB_AKTION:
-                aktionen = ["rueckmeldung", "wunsch"] if n == "rueckmeldung_geben" else [SCHREIB_AKTION[n]]
-                if not any(recht(wer["rolle"], d, a) is None for a in aktionen) and not (n == "auftrag_geben" and darf(wer["rolle"], "bestimmer")):
-                    continue
-                if n in ZUSATZ_AKTION and recht(wer["rolle"], d, ZUSATZ_AKTION[n]) is not None:
-                    continue
-            if n == "rueckmeldung_geben" and recht(wer["rolle"], d, "wunsch") is not None:
-                art = {**w["inputSchema"]["properties"]["art"], "enum": [a for a in rm.ARTEN if a != "Wunsch"]}
-                w = {**w, "inputSchema": {**w["inputSchema"], "properties": {**w["inputSchema"]["properties"], "art": art}}}
-                w["inputSchema"]["properties"]["art"]["enum"].sort()
-            werkzeuge.append(w)
-        return ok({"tools": werkzeuge})
+        return ok({"tools": werkzeuge_fuer(zugang)})
     if methode == "tools/call":
         t, fehler = werkzeug(zugang, p.get("name"), p.get("arguments"))
         return ok({"content": [{"type": "text", "text": t}], "isError": fehler})
     return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
+
+
+def werkzeuge_fuer(zugang):
+    """Werkzeuge, die dieser Zugang sieht: was die Rolle bei diesem Status und diesen Bausteinen darf (aufgerufen wird
+    trotzdem noch einmal geprüft)."""
+    d = daten(zugang["reise"])
+    wer = wer_spricht(zugang, d) or {"rolle": "reisend"}
+    _, bausteine = zustand_von(d)
+    werkzeuge = []
+    for w in WERKZEUGE + [AUFTRAG, ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN]:
+        n = w["name"]
+        if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:
+            continue
+        if n in SCHREIB_AKTION:
+            aktionen = ["rueckmeldung", "wunsch"] if n == "rueckmeldung_geben" else [SCHREIB_AKTION[n]]
+            if not any(recht(wer["rolle"], d, a) is None for a in aktionen) and not (n == "auftrag_geben" and darf(wer["rolle"], "bestimmer")):
+                continue
+            if n in ZUSATZ_AKTION and recht(wer["rolle"], d, ZUSATZ_AKTION[n]) is not None:
+                continue
+        if n == "rueckmeldung_geben" and recht(wer["rolle"], d, "wunsch") is not None:
+            art = {**w["inputSchema"]["properties"]["art"], "enum": [a for a in rm.ARTEN if a != "Wunsch"]}
+            w = {**w, "inputSchema": {**w["inputSchema"], "properties": {**w["inputSchema"]["properties"], "art": art}}}
+            w["inputSchema"]["properties"]["art"]["enum"].sort()
+        werkzeuge.append(w)
+    return werkzeuge
 
 
 def gesund():
@@ -2012,7 +2301,7 @@ class Dienst(BaseHTTPRequestHandler):
         return zugang_zu(teile[0]) if len(teile) == 1 else None
 
     def _anmeldung(self):
-        """Friedas Anmeldeseiten (engine/anmeldung.py, Paket J2)."""
+        """Friedas Anmeldeseiten (engine/anmeldung.py, Paket J2) und OAuth-Endpunkte (engine/oauth.py, J3)."""
         body = b""
         if self.command == "POST":
             try:
@@ -2025,12 +2314,17 @@ class Dienst(BaseHTTPRequestHandler):
         ip = self.client_address[0]
         if ip in ("127.0.0.1", "::1") and self.headers.get("X-Real-IP"):
             ip = self.headers["X-Real-IP"].strip()      # hinter nginx: echte Adresse für die Begrenzung
-        code, kopf, inhalt = anmeldung.bearbeiten(self.command, self.path, self.headers, body, ip, reise_kurz)
+        if oauth.ist_unsere(self.path):
+            code, kopf, inhalt = oauth.bearbeiten(self.command, self.path, self.headers, body, ip)
+        else:
+            code, kopf, inhalt = anmeldung.bearbeiten(self.command, self.path, self.headers, body, ip, reise_kurz)
         self.send_response(code)
-        for k, v in [("Cache-Control", "no-store"), ("X-Content-Type-Options", "nosniff"),
-                     ("Referrer-Policy", "same-origin"),   # nicht no-referrer: dann schicken Browser „Origin: null“
-                     ("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; "
-                                                 "frame-ancestors 'none'; base-uri 'none'"), *kopf]:
+        grund = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+                 "Referrer-Policy": "same-origin",   # nicht no-referrer: dann schicken Browser „Origin: null“
+                 "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; "
+                                            "frame-ancestors 'none'; base-uri 'none'"}
+        eigene = {k for k, _ in kopf}
+        for k, v in [*((k, v) for k, v in grund.items() if k not in eigene), *kopf]:
             self.send_header(k, v)
         self.send_header("Content-Length", str(len(inhalt)))
         self.end_headers()
@@ -2040,8 +2334,12 @@ class Dienst(BaseHTTPRequestHandler):
         # Readiness für BetterStack ohne geheimen Link: Zugänge lesbar und jede verlinkte Reise veröffentlicht
         if self.path.split("?", 1)[0] == "/gesund":
             return self._senden(*gesund())
-        if anmeldung.ist_unsere(self.path):
+        if anmeldung.ist_unsere(self.path) or oauth.ist_unsere(self.path):
             return self._anmeldung()
+        if self.path.split("?", 1)[0] == "/mcp":
+            if not oauth.basis() or not konten.oauth_konto(oauth.bearer(self.headers) or ""):
+                return self._senden(401, {"fehler": "Anmeldung nötig"}, {"WWW-Authenticate": oauth.www_authenticate()})
+            return self._senden(405, {"fehler": "nur POST"}, {"Allow": "POST"})
         # Kein SSE-Kanal: der Dienst schickt nie von sich aus etwas (Streamable HTTP erlaubt 405).
         if self._zugang() is None:
             return self._senden(404, {"fehler": "unbekannt"})
@@ -2050,9 +2348,18 @@ class Dienst(BaseHTTPRequestHandler):
     do_DELETE = do_GET
 
     def do_POST(self):
-        if anmeldung.ist_unsere(self.path):
+        if anmeldung.ist_unsere(self.path) or oauth.ist_unsere(self.path):
             return self._anmeldung()
-        zugang = self._zugang()
+        if self.path.split("?", 1)[0] == "/mcp":
+            # Konnektor „Frieda“ (Paket J3): Bearer-Token aus OAuth; ohne gültiges 401 mit Zeiger auf die Metadaten
+            t = oauth.bearer(self.headers)
+            k = konten.oauth_konto(t) if t and oauth.basis() else None
+            if not k:
+                return self._senden(401, {"fehler": "Anmeldung nötig"},
+                                    {"WWW-Authenticate": oauth.www_authenticate(fehler=bool(t))})
+            zugang = {"konto_id": k["id"]}
+        else:
+            zugang = self._zugang()
         if zugang is None:
             return self._senden(404, {"fehler": "unbekannt"})
         try:

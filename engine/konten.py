@@ -106,6 +106,16 @@ CREATE TABLE IF NOT EXISTS einladungen (
 CREATE TABLE IF NOT EXISTS anfragen (
   konto TEXT PRIMARY KEY, erstellt TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'offen', entschieden TEXT);
 CREATE TABLE IF NOT EXISTS versand (schluessel TEXT NOT NULL, zeit REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS oauth_clients (
+  client_id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', redirect_uris TEXT NOT NULL, art TEXT NOT NULL,
+  erstellt REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS oauth_codes (
+  hash TEXT PRIMARY KEY, client_id TEXT NOT NULL, redirect_uri TEXT NOT NULL, challenge TEXT NOT NULL,
+  scope TEXT NOT NULL, konto TEXT NOT NULL, ablauf REAL NOT NULL, benutzt REAL, familie TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS oauth_tokens (
+  hash TEXT PRIMARY KEY, art TEXT NOT NULL, konto TEXT NOT NULL, client_id TEXT NOT NULL, scope TEXT NOT NULL,
+  familie TEXT NOT NULL, ablauf REAL NOT NULL, benutzt REAL);
+CREATE INDEX IF NOT EXISTS oauth_tokens_konto ON oauth_tokens (konto);
 CREATE INDEX IF NOT EXISTS versand_schluessel ON versand (schluessel, zeit);
 CREATE INDEX IF NOT EXISTS sitzungen_konto ON sitzungen (konto);
 """
@@ -355,6 +365,8 @@ def alle_abmelden(kid):
 
 def _widerrufen(v, kid):
     v.execute("DELETE FROM sitzungen WHERE konto = ?", (kid,))
+    v.execute("DELETE FROM oauth_tokens WHERE konto = ?", (kid,))
+    v.execute("DELETE FROM oauth_codes WHERE konto = ?", (kid,))
 
 
 def geraete(kid):
@@ -493,6 +505,20 @@ def konto_von_person(reise, schluessel):
         return z["konto"] if z else None
 
 
+def verknuepfen(kid, reise, schluessel):
+    """Konto direkt mit einer Person der Reise verknüpfen (z. B. wer eine Reise anlegt, ist dort Bestimmer)."""
+    if not REISE_MUSTER.match(reise or "") or not PERSON_MUSTER.match(schluessel or ""):
+        raise KontoFehler("Reise oder Person ungültig.")
+    with closing(db()) as v, v:
+        if not v.execute("SELECT id FROM konten WHERE id = ?", (kid,)).fetchone():
+            raise KontoFehler("Konto nicht gefunden.")
+        belegt = v.execute("SELECT konto FROM mitgliedschaften WHERE reise = ? AND schluessel = ?",
+                           (reise, schluessel)).fetchone()
+        if belegt and belegt["konto"] != kid:
+            raise KontoFehler("Diese Person ist in der Reise schon mit einem anderen Konto verknüpft.")
+        v.execute("INSERT OR IGNORE INTO mitgliedschaften VALUES (?,?,?,?)", (kid, reise, schluessel, _datum()))
+
+
 def entfernen(reise, schluessel):
     """Nimmt die Person aus der Reise (Verknüpfung weg, offene Einladungen ungültig). -> ob es etwas gab."""
     with closing(db()) as v, v:
@@ -579,6 +605,104 @@ def einladen(reise, schluessel, roh, rolle, name, von, titel=None, seite=None):
     zeilen += ["", "Frieda ist der Reiseassistent eurer Reisegruppe. Kennst du die Person nicht, lösche diese Mail."]
     mail_senden(e, f"Frieda: Einladung zu „{titel}“", "\n".join(zeilen))
     return {"sofort": sofort}
+
+
+# ---------------------------------------------------------------- OAuth für die Claude-App (Paket J3)
+# Die Endpunkte stehen in engine/oauth.py; hier nur die Ablage. Codes 5 Minuten, Access-Tokens 1 Stunde, Refresh-Tokens
+# 90 Tage mit Rotation: Wird ein schon benutzter Refresh-Token noch einmal vorgelegt (gestohlen?), endet die ganze
+# Familie. Ein zweimal eingelöster Code widerruft ebenso alles, was aus ihm entstand.
+OAUTH_CODE_SEKUNDEN = 300
+ACCESS_SEKUNDEN = 3600
+REFRESH_TAGE = 90
+
+
+def oauth_client(client_id):
+    with closing(db()) as v:
+        z = v.execute("SELECT * FROM oauth_clients WHERE client_id = ?", (client_id or "",)).fetchone()
+        return {"client_id": z["client_id"], "name": z["name"], "redirect_uris": json.loads(z["redirect_uris"]),
+                "art": z["art"], "erstellt": z["erstellt"]} if z else None
+
+
+def oauth_client_speichern(client_id, name, redirect_uris, art):
+    with closing(db()) as v, v:
+        v.execute("INSERT OR REPLACE INTO oauth_clients VALUES (?,?,?,?,?)",
+                  (client_id, (name or "")[:200], json.dumps(redirect_uris), art, _jetzt()))
+
+
+def oauth_registrierung_erlaubt(ip):
+    """Begrenzung der Client-Registrierung je IP (20 in der Stunde)."""
+    with closing(db()) as v, v:
+        if _begrenzt(v, "register:" + (ip or "?"), (20, 3600)):
+            return False
+        v.execute("INSERT INTO versand VALUES (?, ?)", ("register:" + (ip or "?"), _jetzt()))
+        return True
+
+
+def oauth_code_anlegen(client_id, redirect_uri, challenge, scope, kid):
+    code = secrets.token_urlsafe(32)
+    with closing(db()) as v, v:
+        v.execute("INSERT INTO oauth_codes VALUES (?,?,?,?,?,?,?,NULL,?)",
+                  (_hash("code", code), client_id, redirect_uri, challenge, scope, kid,
+                   _jetzt() + OAUTH_CODE_SEKUNDEN, secrets.token_hex(8)))
+    return code
+
+
+def _tokens_ausstellen(v, kid, client_id, scope, familie):
+    access, refresh = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
+    t = _jetzt()
+    v.execute("INSERT INTO oauth_tokens VALUES (?,?,?,?,?,?,?,NULL)",
+              (_hash("access", access), "access", kid, client_id, scope, familie, t + ACCESS_SEKUNDEN))
+    v.execute("INSERT INTO oauth_tokens VALUES (?,?,?,?,?,?,?,NULL)",
+              (_hash("refresh", refresh), "refresh", kid, client_id, scope, familie, t + REFRESH_TAGE * 86400))
+    return {"access_token": access, "token_type": "Bearer", "expires_in": ACCESS_SEKUNDEN, "refresh_token": refresh,
+            "scope": scope}
+
+
+def oauth_code_einloesen(code, client_id, redirect_uri, pruefen):
+    """Code gegen Tokens tauschen. pruefen(challenge) -> bool prüft den PKCE-Verifier. -> Antwort oder None (invalid_grant)."""
+    with closing(db()) as v, v:
+        z = v.execute("SELECT * FROM oauth_codes WHERE hash = ?", (_hash("code", code or ""),)).fetchone()
+        if not z:
+            return None
+        if z["benutzt"] is not None:                     # zweites Einlösen: alles aus diesem Code widerrufen
+            v.execute("DELETE FROM oauth_tokens WHERE familie = ?", (z["familie"],))
+            return None
+        v.execute("UPDATE oauth_codes SET benutzt = ? WHERE hash = ?", (_jetzt(), z["hash"]))
+        k = v.execute("SELECT gesperrt FROM konten WHERE id = ?", (z["konto"],)).fetchone()
+        if (z["ablauf"] < _jetzt() or z["client_id"] != client_id or z["redirect_uri"] != redirect_uri
+                or not pruefen(z["challenge"]) or not k or k["gesperrt"]):
+            return None
+        return _tokens_ausstellen(v, z["konto"], client_id, z["scope"], z["familie"])
+
+
+def oauth_erneuern(refresh, client_id):
+    """Refresh-Token einlösen (Rotation). -> neue Tokens oder None (invalid_grant)."""
+    with closing(db()) as v, v:
+        z = v.execute("SELECT * FROM oauth_tokens WHERE hash = ? AND art = 'refresh'",
+                      (_hash("refresh", refresh or ""),)).fetchone()
+        if not z:
+            return None
+        if z["benutzt"] is not None:                     # schon rotiert: Diebstahl angenommen, Familie widerrufen
+            v.execute("DELETE FROM oauth_tokens WHERE familie = ?", (z["familie"],))
+            return None
+        k = v.execute("SELECT gesperrt FROM konten WHERE id = ?", (z["konto"],)).fetchone()
+        if z["ablauf"] < _jetzt() or z["client_id"] != client_id or not k or k["gesperrt"]:
+            return None
+        v.execute("UPDATE oauth_tokens SET benutzt = ? WHERE hash = ?", (_jetzt(), z["hash"]))
+        v.execute("DELETE FROM oauth_tokens WHERE familie = ? AND art = 'access'", (z["familie"],))
+        return _tokens_ausstellen(v, z["konto"], client_id, z["scope"], z["familie"])
+
+
+def oauth_konto(access):
+    """Konto zu einem Access-Token oder None (unbekannt, abgelaufen, gesperrt)."""
+    if not isinstance(access, str) or not 20 <= len(access) <= 200:
+        return None
+    with closing(db()) as v:
+        z = v.execute("SELECT t.ablauf AS t_ablauf, k.* FROM oauth_tokens t JOIN konten k ON k.id = t.konto "
+                      "WHERE t.hash = ? AND t.art = 'access'", (_hash("access", access),)).fetchone()
+        if not z or z["t_ablauf"] < _jetzt() or z["gesperrt"]:
+            return None
+        return _konto_dict(z)
 
 
 # ---------------------------------------------------------------- Befehle für den Betreiber

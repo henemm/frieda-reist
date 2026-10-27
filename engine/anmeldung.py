@@ -93,9 +93,9 @@ def cookie_loeschen():
 
 
 def rueckweg(roh):
-    """Nur Pfade auf Friedas eigener Adresse (kein offener Umleiter)."""
+    """Nur Pfade auf Friedas eigener Adresse (kein offener Umleiter). Lang genug für /authorize mit allen Angaben."""
     r = roh or ""
-    if not r.startswith("/") or r.startswith("//") or "\\" in r or len(r) > 300 or re.search(r"[\x00-\x1f]", r):
+    if not r.startswith("/") or r.startswith("//") or "\\" in r or len(r) > 2000 or re.search(r"[\x00-\x1f]", r):
         return "/konto"
     return r
 
