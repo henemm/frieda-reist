@@ -31,6 +31,7 @@ def test_verlinken_nicht_in_tags():
     ("  E-04:\n  - {name: X, kat: kneipe, lage: [50.95, 14.1], quelle: q}", "kat muss"),
     ("  E-04:\n  - {name: X, kat: einkehr, lage: [50.95], quelle: q}", "lage braucht"),
     ("  E-04:\n  - {name: X, kat: einkehr, lage: [50.95, 14.1]}", "quelle fehlt"),
+    ("  E-04:\n  - {name: X, kat: einkehr, lage: [50.95, 14.1], quelle: q, geprueft: gestern}", "geprueft muss ein Datum sein"),
 ])
 def test_punkte_pruefung(tmp_path, zeile, meldung):
     import shutil
@@ -40,3 +41,20 @@ def test_punkte_pruefung(tmp_path, zeile, meldung):
     with pytest.raises(bauen.BauFehler) as e:
         bauen.Bauer(r, tmp_path / "dist").daten()
     assert meldung in str(e.value)
+
+
+def test_punkte_pruefdatum_aus_stand_oder_eigenem_feld(tmp_path):
+    """Herkunft und Prüfdatum als Felder (#7): stand der Datei gilt für alle Punkte, geprueft am Punkt hat Vorrang."""
+    import shutil
+    r = tmp_path / "beispielreise"
+    shutil.copytree(WURZEL / "beispiel/reisen/beispielreise", r)
+    (r / "plan/punkte.yaml").write_text(
+        "stand: 2026-10-26\nstrecken:\n  E-04:\n"
+        "  - {name: A, kat: einkehr, lage: [50.95, 14.1], quelle: q}\n"
+        "  - {name: B, kat: einkehr, lage: [50.95, 14.1], quelle: q, geprueft: 2026-10-27}\n", encoding="utf-8")
+    d = bauen.Bauer(r, tmp_path / "dist").daten()
+    assert [(p["name"], p.get("geprueft")) for p in d["route"]["punkte"]["E-04"]] == [("A", "2026-10-26"), ("B", "2026-10-27")]
+    (r / "plan/punkte.yaml").write_text("stand: neulich\nstrecken: {}\n", encoding="utf-8")
+    with pytest.raises(bauen.BauFehler) as e:
+        bauen.Bauer(r, tmp_path / "dist2").daten()
+    assert "stand muss ein Datum sein" in str(e.value)
