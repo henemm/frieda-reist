@@ -17,7 +17,7 @@ betrieb/           Betrieb einer Instanz: Einarbeiten (KI je Reise), Veröffentl
                    Einrichten, Vorlagen für systemd und nginx, KI-Anweisung, einstellungen.beispiel
 werkzeuge/         Werkzeuge für Inhalte aus dem Netz: Grundkarte, Punkte aus OpenStreetMap, Wasserstellen
 beispiel/reisen/   erfundene Beispielreise, Demo und Testgrundlage
-docs/              Produktbild, Alternativen und Merkmale, Design und Bausteine, Konnektor, Betrieb, Werkzeuge
+docs/              Produktbild, Alternativen und Merkmale, Design und Bausteine, Architekturentscheidungen (adr/), Konnektor, Betrieb, Werkzeuge
 ```
 
 Der Generator sucht Reisen in `./reisen/` des aktuellen Ordners (`--reisen`, `--ziel` zum Ändern).
@@ -26,6 +26,7 @@ Der Generator sucht Reisen in `./reisen/` des aktuellen Ordners (`--reisen`, `--
 
 - Änderungen gelten für alle Reisen: nichts Reisespezifisches in die Engine, Einstellungen gehören in `reise.yaml` der Reise.
 - Änderungen gelten für alle Instanzen: nichts Instanzspezifisches in `betrieb/`, `werkzeuge/` oder die Engine (Pfade, Adressen, Benutzer, Meldeweg, Kennung kommen aus `betrieb/einstellungen.env` des Reisen-Repos, `docs/betrieb.md`; Vorgaben der Engine in `engine/instanz.py`).
+- Oberfläche nach Atomic Design ([ADR 0001](docs/adr/0001-atomic-design.md)): vorhandene Bausteine nutzen; ein neuer Baustein kommt in den Kopfkommentar der Vorlage, in die Stile seiner Ebene, auf die Bausteinseite und in `docs/design.md` (zeigt er eine Art, auch in `ONTOLOGIE`). Grundsatzentscheidungen stehen als ADR in `docs/adr/`.
 - Bibliotheken statt Eigenbau; neue Fremdbestandteile mit Lizenz in `engine/vendor/` und `THIRD_PARTY.md`.
 - Tests: `engine/.venv/bin/python -m pytest -q engine/tests` muss ohne echte Reisen grün sein. Neue Funktionen bekommen Tests, wenn nötig mit Ergänzungen der Beispielreise (erfunden, als Beispielwert markiert).
 - Braucht der Konnektor oder der Rückmeldedienst ein neues eigenes Modul, gehört es in die Liste in `betrieb/deploy.sh` (ein Test prüft das).
