@@ -117,7 +117,7 @@ Die Skripte setzen daraus die Umgebung der Software (`RM_ABLAGE`, `KN_SEITEN`, `
 
 ## Überwachung
 
-Nach fachlichem Erfolg berühren die Läufe Stempel in `<FR_DIENST>/`: `einarbeiten-erfolg` (nichts Neues oder alles online) und `waechter-erfolg`. Ein Monitor der Instanz meldet, wenn ein Stempel zu alt ist (etwa 3 h beim Einarbeiten, 36 h beim Wächter) oder ein Dienst `failed` ist. Das Veröffentlichen ruft nach Erfolg `FR_HEARTBEAT_VEROEFFENTLICHEN` ab, übersprungene oder gescheiterte Läufe rufen sie nicht ab. Seiten, `api/gesund` und der Konnektor unter `/gesund` lassen sich von außen prüfen.
+Nach fachlichem Erfolg berühren die Läufe Stempel in `<FR_DIENST>/`: `einarbeiten-erfolg` (nichts Neues oder alles online), `veroeffentlichen-erfolg` (nichts Neues oder alles veröffentlicht) und `waechter-erfolg`. Ein Monitor der Instanz meldet, wenn ein Stempel zu alt ist (etwa 3 h beim Einarbeiten, 2 h beim Veröffentlichen, 36 h beim Wächter) oder ein Dienst `failed` ist. Wer einen Heartbeat-Dienst hat, setzt `FR_HEARTBEAT_VEROEFFENTLICHEN`: Die Adresse wird nur nach Erfolg zusätzlich abgerufen. Seiten, `api/gesund` und der Konnektor unter `/gesund` lassen sich von außen prüfen.
 
 ## Neue Instanz einrichten
 

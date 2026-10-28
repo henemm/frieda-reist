@@ -207,6 +207,23 @@ def test_veroeffentlichen_heartbeat_nur_bei_erfolg(vf):
     assert vf["pings"]() == 0                                  # übersprungen
 
 
+def test_veroeffentlichen_stempel_nur_bei_erfolg(vf):
+    stempel = vf["tmp"] / "dienst" / "veroeffentlichen-erfolg"
+    (vf["tmp"] / "kaputt").touch()
+    assert vf["lauf"]().returncode == 1
+    assert not stempel.exists()                                # Deploy fehlgeschlagen
+    (vf["tmp"] / "kaputt").unlink()
+    assert vf["lauf"]().returncode == 0
+    assert stempel.exists()                                    # veröffentlicht
+    stempel.unlink()
+    (vf["arbeit"] / "entwurf.md").write_text("halb fertig")
+    assert vf["lauf"]().returncode == 0
+    assert not stempel.exists()                                # übersprungen
+    (vf["arbeit"] / "entwurf.md").unlink()
+    assert vf["lauf"]().returncode == 0
+    assert stempel.exists()                                    # nichts Neues, Abruf gelungen
+
+
 def test_veroeffentlichen_sperre_je_instanz(vf):
     """Zwei Instanzen auf einem Server stören sich nicht: die Sperre trägt den Namen der Instanz."""
     import fcntl

@@ -7,16 +7,19 @@
 #                   frieda/betrieb/veroeffentlichen.sh --immer  (auch ohne neuen Stand)
 # Ist der Veröffentlichungsordner nicht auf main oder nicht sauber, wird nichts angefasst (jemand arbeitet gerade dort).
 # Ein fehlgeschlagener Deploy wird beim nächsten Lauf wiederholt, weil nur ein gelungener Lauf den Stand merkt.
-# Überwachung: Ist FR_HEARTBEAT_VEROEFFENTLICHEN gesetzt (Adresse, in <FR_DIENST>/betrieb.env), wird sie nur nach
-# fachlichem Erfolg abgerufen: nichts Neues oder alles veröffentlicht. Übersprungene Läufe und Fehler rufen sie nicht ab.
+# Überwachung: Nach fachlichem Erfolg (nichts Neues oder alles veröffentlicht) wird <FR_DIENST>/veroeffentlichen-erfolg
+# berührt; ist FR_HEARTBEAT_VEROEFFENTLICHEN gesetzt (Adresse, in <FR_DIENST>/betrieb.env), wird sie zusätzlich abgerufen.
+# Übersprungene Läufe und Fehler tun beides nicht.
 # Neue Reisen: Nach dem Veröffentlichen ruft das Skript freischalten.sh für jede Reise auf (legt einer neuen Reise ihren
 # geheimen Link an, prüft die Seite, schreibt seiten.json) und stellt bei jedem Lauf ausstehende Links neuer Reisen aus
 # der Claude-App zu. Links stehen nie im Protokoll.
-# Für Tests überschreibbar: VF_STAND, VF_DEPLOY, VF_FREISCHALTEN, VF_AUSSTEHEND, VF_SPERRE, VF_HEARTBEAT.
+# Für Tests überschreibbar: VF_STAND, VF_DEPLOY, VF_FREISCHALTEN, VF_AUSSTEHEND, VF_SPERRE, VF_STEMPEL, VF_HEARTBEAT.
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
 
 erfolg_melden() {
+  mkdir -p "$FR_DIENST"
+  touch "${VF_STEMPEL:-$FR_DIENST/veroeffentlichen-erfolg}"
   local hb="${VF_HEARTBEAT:-${FR_HEARTBEAT_VEROEFFENTLICHEN:-}}"
   [ -n "$hb" ] || return 0
   curl -fsS -m 10 --retry 3 -o /dev/null "$hb" || echo "Warnung: Heartbeat nicht erreicht."
