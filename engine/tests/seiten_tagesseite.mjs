@@ -14,6 +14,8 @@ for (const breite of [390, 1300]) {
   p.on("pageerror", e => fehler.push(`${breite}: ${e}`));
   await p.goto(basis + "#T-02");
   await p.waitForSelector(".tagseite");
+  // „Weiterlesen“ misst die Höhe des Texts im nächsten Bild: zwei Bilder abwarten
+  await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
   const a = aus[breite] = await p.evaluate(() => {
     const oben = s => { const e = document.querySelector(s); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : null; };
     const links = s => { const e = document.querySelector(s); return e ? Math.round(e.getBoundingClientRect().left) : null; };
