@@ -22,11 +22,11 @@ Nur wenn der Baustein `waechter` eingeschaltet ist und der Status es zulässt: `
 
 Geprüft werden Merkmale mit `veraenderlich: true` (Preis, Öffnungszeiten, Fahrzeiten …) der Optionen im Plan (nicht verworfene) und der Unterkünfte mit Nächten. Zu prüfen sind Angaben ohne Prüfdatum und solche, deren Prüfdatum älter ist als `regeln.waechter_frist_tage` (Vorgabe 60). Gibt es Werte je Datum (z. B. Samstag teurer, `docs/alternativen.md`), zählt jeder Eintrag mit eigenem Prüfdatum für sich und steht im Prüfauftrag mit „am …“.
 
-Daraus entsteht höchstens ein **Prüfauftrag** (Name „Wächter“, Art Prüfung, `daten.pruefung`) in `auftraege.jsonl`:
+Daraus entsteht je Angabe eine **Meldung** (Art `pruefung`) an die Organisator:innen, seit dem 28.10.2026 (ADR-0001, Paket O-4: Frieda enthält keine eigene KI; bis dahin ein Prüfauftrag für das Einarbeiten):
 
-- Nie mehr als ein offener Prüfauftrag, frühestens 7 Tage nach dem letzten, höchstens 15 Angaben je Auftrag (die ältesten zuerst). So bleibt ein KI-Lauf klein.
-- Das Einarbeiten (Claude Code) schlägt die Angaben nach. Stimmt der Wert, trägt es Prüfdatum und Quelle ein. **Weicht er ab, wird er nicht still übernommen**: Es legt eine offene Frage mit altem und neuem Wert, Quelle und Datum an, und die Organisator:innen entscheiden.
-- Ein Prüfauftrag ist keine Entscheidung einer Organisator:in und nimmt an keinem Konflikt teil.
+- Höchstens 15 Meldungen je Lauf, die ältesten Angaben zuerst; dieselbe Angabe wird frühestens nach `waechter_frist_tage` wieder gemeldet.
+- Der AI-Client schlägt die Angabe im Gespräch nach. Stimmt der Wert, bekommt sie Prüfdatum und Quelle. **Weicht er ab, wird er nicht still übernommen**: Ein:e Organisator:in entscheidet; bis dahin bleibt der alte Wert stehen.
+- Die Meldung steht im `ueberblick` der Claude-App unter „Meldungen an dich“ und in der Sammelnachricht an den Betreiber; sie verschwindet nach 14 Tagen oder wird nach der Frist erneuert, solange die Angabe ungeprüft ist.
 
 ## Meldekanäle (`regeln.meldekanal`)
 

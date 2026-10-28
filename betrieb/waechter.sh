@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Täglicher Lauf des Wächters und Erinnerers (docs/waechter.md): legt Meldungen an Personen an (Fristen, ab-Termine,
-# Statuswechsel) und, wenn veränderliche Angaben zu lange nicht geprüft wurden, einen Prüfauftrag für das Einarbeiten
+# Statuswechsel) und je zu lange ungeprüfter veränderlicher Angabe eine Meldung an die Organisator:innen (ADR-0001, O-4)
 # (der Pfad-Wächter <instanz>-einarbeiten.path startet es). Gestartet vom Timer <instanz>-waechter.timer. Reisen ohne
 # Baustein waechter und mit Status vor „fest“ werden übersprungen. Ohne Neues kostet der Lauf nichts.
 # Nachricht an den Betreiber über FR_MELDEN: eine Sammelnachricht, wenn es etwas zu melden gibt (erledigt), und bei einem

@@ -81,7 +81,8 @@ def test_waechter_arbeitet_nur_mit_baustein_und_ab_fest(reise):
     aus = reise(bausteine=[b for b in BAUSTEINE if b != "waechter"]).lauf(D(2026, 11, 1))
     assert not aus["aktiv"] and "ausgeschaltet" in aus["grund"]
     trocken = reise()
-    assert trocken.lauf(D(2026, 11, 1), trocken=True)["auftrag"]    # würde angelegt, wird aber nicht geschrieben
+    probe = trocken.lauf(D(2026, 11, 1), trocken=True)
+    assert [m for m in probe["meldungen"] if m["art"] == "pruefung"]    # würde angelegt, wird aber nicht geschrieben
     assert rm.auftraege(trocken.o) == [] and not trocken.o.joinpath("meldungen.jsonl").exists()
 
 
@@ -119,40 +120,34 @@ def test_zu_pruefen_findet_nie_und_lange_nicht_gepruefte(reise):
     assert "120 €" not in {t["wert"] for t in wa.zu_pruefen(d, D(2027, 1, 15), 90) if t["merkmal"] == "preis"}
 
 
-def test_pruefauftrag_einmal_und_mit_abstand(reise):
+def test_pruefmeldungen_je_angabe_an_organisatorinnen_und_wiederholung_nach_frist(reise):
+    """ADR-0001, Paket O-4: Der Wächter legt keinen Prüfauftrag für eine KI an, sondern je Angabe eine Meldung an die
+    Organisator:innen; der AI-Client schlägt im Gespräch nach. Dieselbe Angabe frühestens nach der Frist noch einmal."""
     r = reise(geprueft="2026-10-20")
     heute = D(2027, 1, 15)
     erg = r.lauf(heute)
-    a = erg["auftrag"]
-    assert a and a["name"] == "Wächter" and a["art"] == "Prüfung" and a["daten"]["frist_tage"] == 60
-    assert 0 < len(a["daten"]["pruefung"]) <= wa.MAX_PRUEFUNGEN
-    assert "NICHT ändern" in a["text"] and "offene Frage" in a["text"] and "U-01 " in a["text"]
-    (gespeichert,) = rm.auftraege(r.o)
-    assert gespeichert["id"] == a["id"] and gespeichert["status"] == "neu"
-    # solange der Auftrag offen ist und danach eine Woche lang kommt kein zweiter
-    assert r.lauf(heute)["auftrag"] is None
-    rm.setze("beispielreise", a["id"], "uebernommen", "geprüft")
-    assert r.lauf(heute + datetime.timedelta(days=3))["auftrag"] is None
-    zweiter = r.lauf(heute + datetime.timedelta(days=8))["auftrag"]
-    assert zweiter and zweiter["id"] != a["id"]
-    assert len(rm.auftraege(r.o)) == 2
-
-
-def test_pruefauftrag_ist_kein_entscheidungsauftrag(reise, capsys):
-    r = reise()
-    r.lauf(D(2026, 11, 1))
-    rm.liste("beispielreise", False)
-    aus = capsys.readouterr().out
-    assert "PRÜFAUFTRAG des Wächters" in aus and "keine Entscheidung einer Organisator:in" in aus
+    pr = [m for m in erg["meldungen"] if m["art"] == "pruefung"]
+    assert 0 < len(pr) <= wa.MAX_PRUEFUNGEN and all(m["an"] == ["Ida"] for m in pr)
+    u01 = next(m for m in pr if m["bezug"] == "U-01")
+    assert "nachschlagen" in u01["text"] and "nichts wird still übernommen" in u01["text"] and u01["ziel"] == "U-01"
+    assert rm.auftraege(r.o) == []                      # kein Auftrag, keine KI
+    assert len({m["schluessel"] for m in pr}) == len(pr)
+    gespeichert = [m for m in rm.meldungen(r.o) if m["art"] == "pruefung"]
+    assert len(gespeichert) == len(pr) and "U-01" in {m["bezug"] for m in gespeichert}
+    # am selben Tag und innerhalb der Frist nichts Neues, nach der Frist wieder
+    assert not [m for m in r.lauf(heute)["meldungen"] if m["art"] == "pruefung"]
+    assert not [m for m in r.lauf(heute + datetime.timedelta(days=30))["meldungen"] if m["art"] == "pruefung"]
+    assert [m for m in r.lauf(heute + datetime.timedelta(days=61))["meldungen"] if m["art"] == "pruefung"]
     # kein Material für Widersprüche: nur die Entscheidungen im Plan stehen, kein Auftrag
     assert not [e for e in kn.stehende_entscheidungen("beispielreise", kn.daten("beispielreise")) if e.get("auftrag")]
 
 
-def test_pruefauftrag_begrenzt_die_menge(reise, monkeypatch):
+def test_pruefmeldungen_begrenzt_die_menge_und_im_bericht(reise, monkeypatch):
     r = reise()
     monkeypatch.setattr(wa, "MAX_PRUEFUNGEN", 2)
-    a = r.lauf(D(2026, 11, 1))["auftrag"]
-    assert len(a["daten"]["pruefung"]) == 2 and a["text"].count("\n- U-") + a["text"].count("\n- V-") >= 2
+    erg = r.lauf(D(2026, 11, 1))
+    assert len([m for m in erg["meldungen"] if m["art"] == "pruefung"]) == 2
+    assert len(erg["zu_pruefen"]) > 2 and "weitere veränderliche Angaben" in erg["bericht"]
 
 
 def test_frist_ist_einstellbar(reise):
@@ -177,7 +172,7 @@ def test_erinnerer_meldet_frist_einmal_und_ueberfaellig_woechentlich(reise):
     wieder = [x for x in r.lauf(D(2026, 11, 19))["meldungen"] if x["art"] == "erinnerung"]
     assert len(wieder) == 1 and "Überfällig seit 9 Tag(en)" in wieder[0]["text"]
     # Karl sieht seine Meldungen, Ida nicht
-    assert len(rm.meldungen(r.o, "Karl")) == 3 and rm.meldungen(r.o, "Ida") == []
+    assert len(rm.meldungen(r.o, "Karl")) == 3 and [m for m in rm.meldungen(r.o, "Ida") if m["art"] != "pruefung"] == []
 
 
 def test_erinnerer_ab_termin_und_wer_zustaendig_ist(reise):
@@ -276,9 +271,9 @@ def test_lauf_schreibt_sammelnachricht_nur_fuer_den_kanal_nachricht(reise, tmp_p
     datei = tmp_path / "bericht.txt"
     assert wa.main(["lauf", "beispielreise", "--heute", "2026-11-09", "--bericht", str(datei)]) == 0
     aus = capsys.readouterr().out
-    assert "beispielreise: 1 neue Meldung(en)" in aus and "Prüfauftrag A-" in aus
+    assert "beispielreise: 11 neue Meldung(en), 10 Angabe(n) zu prüfen" in aus and "Prüfauftrag" not in aus
     text = datei.read_text(encoding="utf-8")
-    assert "Karl: Frist in 1 Tag(en)" in text and "veränderliche Angaben werden nachgeschlagen" in text
+    assert "Karl: Frist in 1 Tag(en)" in text and "Ida: U-01 " in text and "nachschlagen" in text
     # zweiter Lauf am selben Tag: nichts Neues, keine Nachricht
     datei.unlink()
     wa.main(["lauf", "--heute", "2026-11-09", "--bericht", str(datei)])
@@ -317,7 +312,7 @@ def test_konnektor_zeigt_meldungen_im_ueberblick(umgebung):
                        schluessel="test")
     text, f = u.werkzeug(KARL, "ueberblick")
     assert not f and "## Meldungen an dich" in text and "Frist morgen" in text
-    assert "Meldungen an dich" not in u.werkzeug(IDA, "ueberblick")[0]      # Ida bekommt Karls Meldung nicht
+    assert "Frist morgen" not in u.werkzeug(IDA, "ueberblick")[0]      # Ida bekommt Karls Meldung nicht
     text, _ = u.werkzeug(KARL, "rueckmeldungen")
     assert "Meldungen an dich" in text and "Frist morgen" in text
     # erledigt -> verschwindet

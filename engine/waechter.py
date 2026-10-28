@@ -4,10 +4,9 @@
 Die KI wacht über das, was sich ändern kann, und meldet, was ansteht. Niemand muss selbst daran denken.
 
 Wächter   Findet veränderliche Angaben (Merkmale mit veraenderlich: true) der Optionen im Plan und der Unterkünfte mit
-          Nächten, die noch nie geprüft wurden oder deren Prüfdatum älter ist als regeln.waechter_frist_tage. Daraus
-          wird ein Prüfauftrag (auftraege.jsonl, Name „Wächter“): Das Einarbeiten (Claude Code, im Betrieb)
-          schlägt die Angaben nach und trägt Prüfdatum und Quelle ein. Weicht ein Wert ab, wird er NICHT still
-          übernommen, sondern als offene Frage (F-…) gemeldet.
+          Nächten, die noch nie geprüft wurden oder deren Prüfdatum älter ist als regeln.waechter_frist_tage, und
+          meldet jede den Organisator:innen (Art pruefung). Nachschlagen tut der AI-Client im Gespräch; Frieda hat
+          keine eigene KI (ADR-0001, Paket O-4). Weicht ein Wert ab, wird er NICHT still übernommen.
 Erinnerer Meldet Fristen und „ab“-Termine der Aufgaben an die Zuständigen und erinnert die Organisator:innen an den
           Wechsel des Reisestatus am Start- und Enddatum (die KI wechselt nie selbst).
 
@@ -19,7 +18,7 @@ Gleiche Meldungen werden nicht doppelt angelegt (schluessel).
 Aufrufe:
   python3 engine/waechter.py zeige <reise> [--heute JJJJ-MM-TT]           zeigt, was anstünde, ändert nichts
   python3 engine/waechter.py lauf [<reise>…] [--heute JJJJ-MM-TT] [--bericht DATEI]
-        legt Meldungen und den Prüfauftrag an (ohne Reise: alle Reisen der Ablage); --bericht schreibt die
+        legt Meldungen an (ohne Reise: alle Reisen der Ablage); --bericht schreibt die
         Sammelnachricht für den Betreiber in DATEI, falls es etwas zu melden gibt und eine Reise den Kanal
         nachricht hat
 Umgebung: RM_ABLAGE, RM_SEITEN oder KN_SEITEN (Standard aus engine/instanz.py)
@@ -36,8 +35,7 @@ import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 
 UNGUELTIG = ("verworfen", "ersetzt")      # Optionen, die niemand mehr nachschlagen muss
-MAX_PRUEFUNGEN = 15                       # Angaben je Prüfauftrag (ein KI-Lauf kostet Geld)
-PRUEF_ABSTAND_TAGE = 7                    # frühestens so lange nach dem letzten Prüfauftrag kommt der nächste
+MAX_PRUEFUNGEN = 15                       # Prüfmeldungen je Lauf, damit der Überblick lesbar bleibt
 WIEDERHOLEN_TAGE = 7                      # überfällige Aufgaben und ein verpasster Statuswechsel melden sich so oft neu
 
 
@@ -114,40 +112,20 @@ def zu_pruefen(d, heute, frist_tage):
     return treffer
 
 
-def pruefauftrag_text(items, frist_tage, heute):
-    z = [f"Prüfauftrag des Wächters vom {datum_de(heute.isoformat())}: Diese veränderlichen Angaben sind noch nie geprüft "
-         f"oder älter als {frist_tage} Tage. Jede nachschlagen (offizielle Quelle bevorzugen), danach:",
-         "- Stimmt der Wert: Prüfdatum (heute) und Quelle (Link) an der Angabe eintragen.",
-         "- Weicht er ab oder ist er nicht mehr zu finden: den bisherigen Wert NICHT ändern. Stattdessen eine offene Frage "
-         "(F-…) anlegen, die alten und neuen Wert, Quelle und Datum nennt; die Organisator:innen entscheiden. Status rueckfrage.",
-         "Angaben:"]
-    z += [f"- {t['bezug']} {t['titel']}, {t['name']}: {t['wert']} ({t['grund']}"
-          + (f"; bisherige Quelle: {t['quelle']}" if t.get("quelle") else "") + ")" for t in items]
-    return "\n".join(z)
-
-
-def pruefauftrag(reise, o, items, frist_tage, jetzt, trocken=False):
-    """Prüfauftrag anlegen -> Auftrag oder None. Es gibt immer nur einen offenen Prüfauftrag, und frühestens
-    PRUEF_ABSTAND_TAGE nach dem letzten."""
-    if not items:
-        return None
-    frueher = [a for a in rm.auftraege(o) if (a.get("daten") or {}).get("pruefung")]
-    if any(a["status"] == "neu" for a in frueher):
-        return None
-    if frueher and tage_zwischen(datetime.date.fromisoformat(frueher[0]["erstellt"][:10]), jetzt.date()) < PRUEF_ABSTAND_TAGE:
-        return None
-    items = items[:MAX_PRUEFUNGEN]
-    e = {"id": f"A-{jetzt:%Y%m%d-%H%M%S}-{secrets.token_hex(2)}", "erstellt": jetzt.isoformat(timespec="seconds"),
-         "name": "Wächter", "art": "Prüfung", "ziel": "allgemein", "text": pruefauftrag_text(items, frist_tage, jetzt.date()),
-         "quelle": "Wächter", "daten": {"pruefung": [{k: t[k] for k in ("bezug", "merkmal", "wert", "geprueft", "quelle")}
-                                                      for t in items], "frist_tage": frist_tage}}
-    if not trocken:
-        with (o / "auftraege.jsonl").open("a", encoding="utf-8") as f:
-            f.write(json.dumps(e, ensure_ascii=False) + "\n")
-            f.flush()
-            os.fsync(f.fileno())
-        rm.anstossen(o)
-    return e
+def pruefmeldungen(d, items, frist_tage):
+    """Je zu prüfender Angabe eine Meldung an die Organisator:innen (ADR-0001, Paket O-4: der Wächter meldet, der
+    AI-Client schlägt nach; kein KI-Lauf in Frieda). Höchstens MAX_PRUEFUNGEN je Lauf, die ältesten zuerst; dieselbe
+    Angabe wird frühestens nach frist_tage wieder gemeldet."""
+    an = organisator_von(d)
+    aus = []
+    for t in items[:MAX_PRUEFUNGEN]:
+        text = (f"{t['bezug']} {t['titel']}, {t['name']}: {t['wert']} ist {t['grund']}"
+                + (f"; bisherige Quelle: {t['quelle']}" if t.get("quelle") else "")
+                + ". Bitte im Gespräch nachschlagen und mit Prüfdatum und Quelle eintragen. Weicht der Wert ab, "
+                "entscheidet ein:e Organisator:in; nichts wird still übernommen.")
+        aus.append({"an": an, "art": "pruefung", "ziel": t["bezug"], "bezug": t["bezug"], "text": text,
+                    "schluessel": f"pruefung:{t['bezug']}:{t['merkmal']}:{t['name']}", "wiederholen": frist_tage})
+    return aus
 
 
 # ---------- Erinnerer: Fristen, „ab“-Termine, Statuswechsel ----------
@@ -235,24 +213,24 @@ def neue_meldungen(o, meldungen, jetzt, trocken=False):
 
 # ---------- Lauf ----------
 
-def bericht_text(reise, d, neu, auftrag, items):
+def bericht_text(reise, d, neu, items):
     titel = ((d or {}).get("reise") or {}).get("titel") or reise
     z = [f"{titel}:"]
     for m in neu:
         z.append(f"- {', '.join(m['an'])}: {m['text']}")
-    if auftrag:
-        z.append(f"- Wächter: {len(auftrag['daten']['pruefung'])} veränderliche Angaben werden nachgeschlagen"
-                 + (f" (von {len(items)} zu prüfenden)" if len(items) > len(auftrag['daten']['pruefung']) else "") + ".")
+    offen = len(items) - sum(1 for m in neu if m["art"] == "pruefung")
+    if offen > 0 and any(m["art"] == "pruefung" for m in neu):
+        z.append(f"- Wächter: {offen} weitere veränderliche Angaben sind zu prüfen (gemeldet oder folgen im nächsten Lauf).")
     return "\n".join(z)
 
 
 def lauf_reise(reise, heute=None, trocken=False):
-    """Einen Durchgang für eine Reise -> {"aktiv", "grund", "meldungen", "auftrag", "zu_pruefen", "bericht", "nachricht"}."""
+    """Einen Durchgang für eine Reise -> {"aktiv", "grund", "meldungen", "zu_pruefen", "bericht", "nachricht"}."""
     jetzt = datetime.datetime.combine(heute, datetime.datetime.now().time(), datetime.timezone.utc) if heute \
         else datetime.datetime.now(datetime.timezone.utc)
     heute = heute or jetzt.date()
     d, o = veroeffentlicht(reise), rm.ordner(reise)
-    ergebnis = {"aktiv": False, "grund": "", "meldungen": [], "auftrag": None, "zu_pruefen": [], "bericht": "", "nachricht": False}
+    ergebnis = {"aktiv": False, "grund": "", "meldungen": [], "zu_pruefen": [], "bericht": "", "nachricht": False}
     if d is None or o is None:
         ergebnis["grund"] = "Reise ist nicht veröffentlicht oder nimmt keine Eingaben an."
         return ergebnis
@@ -264,12 +242,12 @@ def lauf_reise(reise, heute=None, trocken=False):
     frist = regel(d, "waechter_frist_tage")
     items = zu_pruefen(d, heute, frist)
     ergebnis["zu_pruefen"] = items
-    wunsch = erinnerungen(d, rm.aufgaben(o), heute, regel(d, "erinnerung_vorlauf_tage")) + statuswechsel(d, heute)
+    wunsch = (erinnerungen(d, rm.aufgaben(o), heute, regel(d, "erinnerung_vorlauf_tage")) + statuswechsel(d, heute)
+              + pruefmeldungen(d, items, frist))
     ergebnis["meldungen"] = neue_meldungen(o, wunsch, jetzt, trocken)
-    ergebnis["auftrag"] = pruefauftrag(reise, o, items, frist, jetzt, trocken)
     ergebnis["nachricht"] = "nachricht" in regel(d, "meldekanal")
-    if ergebnis["meldungen"] or ergebnis["auftrag"]:
-        ergebnis["bericht"] = bericht_text(reise, d, ergebnis["meldungen"], ergebnis["auftrag"], items)
+    if ergebnis["meldungen"]:
+        ergebnis["bericht"] = bericht_text(reise, d, ergebnis["meldungen"], items)
     return ergebnis
 
 
@@ -303,8 +281,7 @@ def lauf(reisen, heute, bericht):
         if not r["aktiv"]:
             print(f"{reise}: {r['grund']}")
             continue
-        print(f"{reise}: {len(r['meldungen'])} neue Meldung(en), {len(r['zu_pruefen'])} Angabe(n) zu prüfen"
-              + (f", Prüfauftrag {r['auftrag']['id']}" if r["auftrag"] else ""))
+        print(f"{reise}: {len(r['meldungen'])} neue Meldung(en), {len(r['zu_pruefen'])} Angabe(n) zu prüfen")
         if r["bericht"] and r["nachricht"]:
             texte.append(r["bericht"])
     if bericht and texte:
