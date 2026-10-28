@@ -112,8 +112,16 @@ def naechste_id(reise_dir, art):
     datei = reise_dir / "ids.yaml"
     marken = (yaml.safe_load(datei.read_text(encoding="utf-8")) or {}) if datei.exists() else {}
     n = max(int(marken.get(art) or 0), _nummern(reise_dir, art)) + 1
-    marken[art] = n
-    schreib_marken(reise_dir, marken)
+    if isinstance(marken.get("ids"), dict):
+        # Reise mit ID-Liste (je Art alle vergebenen IDs): die neue ID kommt dazu, Liste und Kopfkommentar bleiben
+        marken["ids"].setdefault(art, []).append(f"{art}-{n:02d}")
+        kopf = "".join(z for z in datei.read_text(encoding="utf-8").splitlines(keepends=True)
+                       if z.startswith("#"))
+        datei.write_text(kopf + yaml.safe_dump(marken, sort_keys=False, allow_unicode=True, default_flow_style=None,
+                                               width=10**6), encoding="utf-8")
+    else:
+        marken[art] = n
+        schreib_marken(reise_dir, marken)
     return f"{art}-{n:02d}"
 
 

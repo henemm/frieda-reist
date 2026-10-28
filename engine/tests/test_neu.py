@@ -105,6 +105,19 @@ def test_ids_werden_nie_neu_vergeben(tmp_path):
         neu.naechste_id(r, "P")
 
 
+def test_ids_in_reise_mit_id_liste(tmp_path):
+    """Führt eine Reise in ids.yaml alle IDs als Liste je Art, kommt die neue ID dazu; nichts geht verloren."""
+    r = tmp_path / "liste"
+    r.mkdir()
+    (r / "ids.yaml").write_text("# Feste IDs der Reise\n# W-09 wird nicht neu vergeben.\nids:\n"
+                                "  T: [T-01, T-02]\n  W: [W-01, W-08, W-10]\n", encoding="utf-8")
+    assert neu.naechste_id(r, "W") == "W-11" and neu.naechste_id(r, "F") == "F-01"
+    text = (r / "ids.yaml").read_text(encoding="utf-8")
+    assert text.startswith("# Feste IDs der Reise\n# W-09 wird nicht neu vergeben.\n")
+    assert yaml.safe_load(text) == {"ids": {"T": ["T-01", "T-02"], "W": ["W-01", "W-08", "W-10", "W-11"], "F": ["F-01"]}}
+    assert "  T: [T-01, T-02]\n" in text
+
+
 def test_ids_in_bestehender_reise_ohne_marke(tmp_path):
     """Für Reisen von vor Paket H: ohne ids.yaml zählt die höchste Nummer im Text; Fotos zählen nicht."""
     r = tmp_path / "alt"

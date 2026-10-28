@@ -51,7 +51,7 @@ Texte sind Markdown. Eigenes HTML lehnt der Generator ab (`docs/design.md`, Reis
 
 ## IDs
 
-IDs werden nie neu vergeben. `engine/neu.py id <reise> <W|F|O|U|E|T|V>` gibt die nächste freie Nummer aus und vermerkt sie sofort in `ids.yaml`. Die Nummer liegt über der Marke und über jeder Nummer, die irgendwo in der Reise steht, auch im Verlauf von Verworfenem. Ein gelöschter Abschnitt gibt seine Nummer deshalb nicht frei. Für Reisen von vor Paket H entsteht `ids.yaml` beim ersten Aufruf.
+IDs werden nie neu vergeben. `engine/neu.py id <reise> <W|F|O|U|E|T|V>` gibt die nächste freie Nummer aus und vermerkt sie sofort in `ids.yaml`. Die Nummer liegt über der Marke und über jeder Nummer, die irgendwo in der Reise steht, auch im Verlauf von Verworfenem. Ein gelöschter Abschnitt gibt seine Nummer deshalb nicht frei. Für Reisen von vor Paket H entsteht `ids.yaml` beim ersten Aufruf. Führt eine Reise in `ids.yaml` alle IDs als Liste je Art (`ids:`), kommt die neue ID dort dazu; Liste und Kommentare bleiben erhalten.
 
 ## Prüfung vor dem Bau
 
