@@ -77,9 +77,10 @@ Vorher „Wanderführer“ (Papiergrund, Waldgrün, Serifen, Etiketten in Großb
 - **Symbole an Etiketten:** Nacht und Unterkunft (Bett), Wahl (Abzweig), Orte (Nadel).
 - **Flächen:** die Fläche, an der man handelt, weiß, ohne Rahmen, weicher Schatten, Radius 18 px; übrige Karten (Plan, Listen) vorerst mit feiner Linie.
 - **Pillen:** Reiter als Segmentleiste (gewählter Reiter weiß mit kleinem Schatten), „Alternativen vergleichen“ hellgrün mit Zahl, „offen“ als Marke, „unterwegs entscheiden“ mit dünnem Rand.
+- **Leiste unten** (Plan, Karte, Wissen, Offen, Suche) als **Glas** über dem Inhalt (Fassung 2, Entscheidung 28.10.2026, #55): Fläche zu 58 % deckend mit 14 px Unschärfe, der Inhalt läuft sichtbar darunter durch; Radius 22 px, feiner Rand als Schatten; Reiter gedämpft, der gewählte als hellgrüne Pille mit grüner Schrift. Ohne `backdrop-filter` bleibt sie deckend. Die Anmeldeseiten haben statt der dunklen Kopfleiste eine helle mit feiner Linie.
 - Tippflächen mindestens 44 px (Reiter 40 px in einer 48 px hohen Leiste). Pico CSS 2.1.1 ist die Grundlage.
 
-**Noch offen:** Die Leiste unten (Karte, Plan, Wissen, Offen, Suche) ist noch dunkel im alten Gesicht; dazu kommt ein eigener Vorschlag mit Fotos (#55, #58). Ebenso das Übertragen auf Plan, Orte, Wissen und Vergleich (#58).
+**Noch offen:** das Übertragen auf Plan, Orte, Wissen und Vergleich (#58).
 
 ## Schrift und Breite (27.10.2026)
 
