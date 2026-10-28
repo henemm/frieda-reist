@@ -133,7 +133,7 @@ Das ersetzt die Festlegung vom selben Tag (Wortmarke „Anmerken“ mit „i“ 
 
 ## Friedas Symbol (28.10.2026)
 
-Ein Wegweiser mit zwei Richtungsschildern, weiß und gelb auf dem Akzentgrün (`engine/marke/frieda.svg`). Er steht für Reisen und für Entscheiden zwischen Wegen und bleibt auch in 16 Pixeln erkennbar. Buchstaben sind bewusst nicht im Symbol: Ein einzelnes F liegt zu nah an bekannten Markenzeichen. Der Konnektor-Dienst liefert es unter Friedas Adresse als Favicon und App-Symbol aus und gibt es der Claude-App in `serverInfo.icons` mit. Nach einer Änderung am SVG: `engine/.venv/bin/python engine/marke/erzeugen.py`. Die Reiseseiten behalten ihr eigenes Symbol je Reise.
+Ein Wegweiser mit zwei Richtungsschildern, weiß und gelb auf dem Akzentgrün (`engine/marke/frieda.svg`). Er steht für Reisen und für Entscheiden zwischen Wegen und bleibt auch in 16 Pixeln erkennbar. Buchstaben sind bewusst nicht im Symbol: Ein einzelnes F liegt zu nah an bekannten Markenzeichen. Der Konnektor-Dienst liefert es unter Friedas Adresse als Favicon und App-Symbol aus und gibt es der Claude-App in `serverInfo.icons` mit. claude.ai beachtet diese Angabe bei eigenen Konnektoren bisher nicht. Es zeigt das Google-Favicon der Hauptdomain (anthropics/claude-ai-mcp#152, offen, Stand 28.10.2026). Sobald Claude die Angabe liest, erscheint das Symbol ohne weitere Änderung. Nach einer Änderung am SVG: `engine/.venv/bin/python engine/marke/erzeugen.py`. Die Reiseseiten behalten ihr eigenes Symbol je Reise.
 
 ## Bausteinseite und Prüfung
 

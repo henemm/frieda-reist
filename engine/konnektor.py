@@ -253,7 +253,15 @@ MARKE_DATEIEN = {"/favicon.ico": ("favicon.ico", "image/x-icon"), "/favicon.svg"
 
 
 def frieda_symbole():
-    """Friedas Symbol als MCP-Icons (Data-URIs wie bei symbole()); fehlen die Dateien: keine Icons."""
+    """Friedas Symbol als MCP-Icons (serverInfo.icons, MCP 2025-11-25). Mit Friedas Adresse als HTTPS-Links, wie der
+    Standard es vorsieht (Data-URIs lehnen manche Clients ab); ohne Adresse als Data-URIs; fehlen die Dateien: keine.
+    claude.ai zeigt bei eigenen Konnektoren bisher das Google-Favicon der Hauptdomain statt dieser Icons
+    (anthropics/claude-ai-mcp#152, offen, Stand 28.10.2026)."""
+    b = oauth.basis()
+    if b and (MARKE / "icon-192.png").exists():
+        return [{"src": f"{b}/icon-192.png", "mimeType": "image/png", "sizes": ["192x192"]},
+                {"src": f"{b}/icon-512.png", "mimeType": "image/png", "sizes": ["512x512"]},
+                {"src": f"{b}/favicon.svg", "mimeType": "image/svg+xml", "sizes": ["any"]}]
     liste = []
     for g in (32, 192):
         try:

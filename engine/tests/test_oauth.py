@@ -106,7 +106,7 @@ def test_symbol_von_frieda(welt):
     t_, _ = verbinden(u, IDA, "Ida")
     s, _, a = mcp(u, t_["access_token"], "initialize", {"protocolVersion": "2025-06-18"})
     icons = a["result"]["serverInfo"]["icons"]
-    assert [i["sizes"] for i in icons] == [["32x32"], ["192x192"]] and icons[0]["src"].startswith("data:image/png;base64,")
+    assert [i["src"] for i in icons] == [BASIS + "/icon-192.png", BASIS + "/icon-512.png", BASIS + "/favicon.svg"]
 
 
 def test_ohne_token_401_mit_zeiger(welt):
