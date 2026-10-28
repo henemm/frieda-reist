@@ -20,6 +20,17 @@ Festgelegt am 26.10.2026.
        onsen: {name: Onsen im Haus, typ: auswahl, werte: [ja, nein, unklar]}
    ```
 3. **Wahlstelle** ergänzt für sich allein, ebenfalls mit `merkmale:`.
+4. **Stufe je Reise** (ADR-0001, Paket O-0, 28.10.2026): Jedes Merkmal hat eine Stufe `pflicht`, `empfohlen` (Vorgabe), `angeboten` oder `aus`. Nur `pflicht` und `empfohlen` erscheinen als „Fehlt noch“, zählen im Vergleich („3/7“), werden ab Status `fest` gemahnt und vom Wächter geprüft; `angeboten` wird nur gezeigt, wenn ein Wert da ist; `aus` gilt für diese Reise nicht und fehlt in der Liste der Claude-App. Eine Reise setzt die Stufe eines Grundlisten-Merkmals, indem sie unter `merkmale:` nur die Stufe angibt, auch je Unterkunftstyp (`typ` der Unterkunft, klein geschrieben, `"*"` für alle übrigen); eine Wahlstelle kann sie für sich wieder ändern:
+   ```yaml
+   merkmale:
+     unterkunft:
+       stornierung: {stufe: {"*": aus, refugi: empfohlen}}   # bei Hotels nicht relevant, bei Refugis schon
+       abendessen: {stufe: aus}
+   wahlstellen:
+     V-10:
+       merkmale: {abendessen: {stufe: empfohlen}}             # an dieser Stelle doch
+   ```
+   Das ist eine Brücke: Mit Paket O-1 entfällt die Grundliste, und jede Reise definiert ihre Arten und Merkmale selbst (`docs/adr/0001-kern.md`).
 
 Die Liste gilt für alle Mitreisenden gemeinsam. Vorlieben Einzelner stehen als Notiz oder unter Dafür/Dagegen, nicht als eigene Gewichtung.
 

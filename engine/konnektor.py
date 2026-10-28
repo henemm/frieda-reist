@@ -744,8 +744,17 @@ class Handbuch:
              "Nur Schlüssel aus dieser Liste verwenden; ein eigenes Kriterium der Person nur, wenn es hier nichts Passendes gibt.",
              "## Liste"]
         for k in krit:
+            st = k.get("stufe", "empfohlen")   # Stufe je Reise (routen.yaml merkmale: {…: {stufe: …}}); je Unterkunftstyp als Objekt
+            if st == "aus":   # gilt für diese Reise nicht
+                continue
             art = k.get("typ", "text") + (f" ({' | '.join(k['werte'])})" if k.get("werte") else "")
             zeile = f"- {k['id']} – {k['name']}: {art}"
+            if isinstance(st, dict):
+                zeile += "; Stufe je Unterkunftstyp: " + ", ".join(f"{t}: {s}" for t, s in st.items())
+            elif st == "pflicht":
+                zeile += "; Pflicht"
+            elif st == "angeboten":
+                zeile += "; nur eintragen, wenn es die Person interessiert (wird nicht als fehlend gemeldet)"
             if k.get("auto"):
                 zeile += "; wird aus dem Plan berechnet, nicht eintragen"
             if k.get("veraenderlich"):
@@ -944,7 +953,10 @@ class Handbuch:
             for k, v in werte.items():
                 z.append(f"- {k}{' (neues Merkmal)' if k in neu else ''}: "
                          + ("; ".join(eintrag_text(x) for x in v) if isinstance(v, list) else eintrag_text(v)))
-        fehlt = [d["name"] for d in krit if not d.get("auto") and d["id"] not in werte]
+        def stufe(d):   # wie routen.stufe_von ohne Typ (die Alternative hat noch keinen)
+            s = d.get("stufe", "empfohlen")
+            return s.get("*", "empfohlen") if isinstance(s, dict) else s
+        fehlt = [d["name"] for d in krit if not d.get("auto") and stufe(d) in ("pflicht", "empfohlen") and d["id"] not in werte]
         if fehlt:
             z.append("Fehlt noch: " + ", ".join(fehlt))
         if listen["plus"]:

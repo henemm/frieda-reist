@@ -82,10 +82,14 @@ def zu_pruefen(d, heute, frist_tage):
     r = (d or {}).get("route") or {}
     treffer = []
 
-    def pruefe(bezug, titel, merkmale, kriterien):
+    def stufe(d, typ):   # wie routen.stufe_von: Stufe je Reise, ggf. je Unterkunftstyp („*“ für alle übrigen)
+        s = d.get("stufe", "empfohlen")
+        return s.get(str(typ or "").strip().lower(), s.get("*", "empfohlen")) if isinstance(s, dict) else s
+
+    def pruefe(bezug, titel, merkmale, kriterien, typ=None):
         defs = {k["id"]: k for k in kriterien or []}
         for k, m in (merkmale or {}).items():
-            if not defs.get(k, {}).get("veraenderlich") or m.get("auto"):
+            if not defs.get(k, {}).get("veraenderlich") or m.get("auto") or stufe(defs[k], typ) == "aus":
                 continue
             # Werte je Datum (docs/alternativen.md): der Hauptwert und jeder Eintrag mit „gilt“ hat sein eigenes Prüfdatum
             for e in [m] + list(m.get("je_datum") or []):
@@ -106,7 +110,7 @@ def zu_pruefen(d, heute, frist_tage):
     kriterien = (r.get("merkmale") or {}).get("unterkunft")
     for uid, u in (r.get("unterkuenfte") or {}).items():
         if u.get("naechte"):
-            pruefe(uid, u.get("name") or uid, u.get("merkmale"), kriterien)
+            pruefe(uid, u.get("name") or uid, u.get("merkmale"), kriterien, u.get("typ"))
     treffer.sort(key=lambda t: (t["alter_tage"] is not None, -(t["alter_tage"] or 0), t["bezug"], t["merkmal"]))
     return treffer
 
