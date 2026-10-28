@@ -23,7 +23,10 @@ if ! git -C "$WURZEL" diff --quiet HEAD -- engine "reisen/$REISE" || [ -n "$(git
   echo "FEHLER: ungesicherte Änderungen in engine/ oder reisen/$REISE. Erst committen, dann veröffentlichen."; exit 1
 fi
 "$FR_PYTHON" "$WURZEL/engine/bauen.py" --reisen "$WURZEL/reisen" --ziel "$WURZEL/dist" "$REISE"
-"$FR_PYTHON" -m pytest "$WURZEL/engine/tests" $( [ -d "$WURZEL/tests" ] && echo "$WURZEL/tests" ) -q
+# Prüfungen; veroeffentlichen.sh prüft einmal für alle Reisen und setzt FR_GEPRUEFT auf den geprüften Stand
+if [ "${FR_GEPRUEFT:-}" != "$(git -C "$WURZEL" rev-parse HEAD)" ]; then
+  "$FR_PYTHON" -m pytest "$WURZEL/engine/tests" $( [ -d "$WURZEL/tests" ] && echo "$WURZEL/tests" ) -q
+fi
 
 mkdir -p "$ZIEL"
 

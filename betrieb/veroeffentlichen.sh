@@ -13,7 +13,9 @@
 # Neue Reisen: Nach dem Veröffentlichen ruft das Skript freischalten.sh für jede Reise auf (legt einer neuen Reise ihren
 # geheimen Link an, prüft die Seite, schreibt seiten.json) und stellt bei jedem Lauf ausstehende Links neuer Reisen aus
 # der Claude-App zu. Links stehen nie im Protokoll.
-# Für Tests überschreibbar: VF_STAND, VF_DEPLOY, VF_FREISCHALTEN, VF_AUSSTEHEND, VF_SPERRE, VF_STEMPEL, VF_HEARTBEAT.
+# Die Prüfungen (pytest) laufen einmal je Lauf vor allen Reisen; deploy.sh überspringt sie dann für genau diesen Stand
+# (FR_GEPRUEFT). Sonst liefen sie je Reise einmal, und der Lauf stieße bei drei Reisen an die Zeitgrenze der Unit.
+# Für Tests überschreibbar: VF_PRUEFEN, VF_STAND, VF_DEPLOY, VF_FREISCHALTEN, VF_AUSSTEHEND, VF_SPERRE, VF_STEMPEL, VF_HEARTBEAT.
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
 
@@ -33,10 +35,11 @@ zustellen() {  # ausstehende Links neuer Reisen (nur wenn welche anstehen)
 
 # Alles steckt in main(), damit bash das Skript ganz einliest, bevor git es mit dem Submodul eventuell ersetzt.
 main() {
-  local stand deploy immer="" alt neu reise fehler="" freischalten aus
+  local stand deploy pruefen immer="" alt neu reise fehler="" freischalten aus
   wurzel="$FR_WURZEL"
   stand="${VF_STAND:-$FR_DIENST/veroeffentlicht}"
   deploy="${VF_DEPLOY:-$FR_BETRIEB/deploy.sh}"
+  pruefen="${VF_PRUEFEN:-}"
   freischalten="${VF_FREISCHALTEN:-$FR_BETRIEB/freischalten.sh}"
   ausstehend="${VF_AUSSTEHEND:-$FR_DIENST/neue-reisen-ausstehend.jsonl}"
   [ "${1:-}" = "--immer" ] && immer=1
@@ -61,6 +64,9 @@ main() {
   # Software (Submodul) auf den Stand bringen, den main festhält
   git submodule update --init --quiet || { echo "FEHLER: Submodul der Software lässt sich nicht holen."; return 1; }
   echo "Veröffentliche $(git log -1 --format='%h %s')"
+  if [ -n "$pruefen" ]; then "$pruefen"; else "$FR_PYTHON" -m pytest engine/tests $( [ -d tests ] && echo tests ) -q; fi \
+    || { echo "FEHLER: Prüfungen rot, nichts veröffentlicht."; return 1; }
+  FR_GEPRUEFT="$(git rev-parse HEAD)"; export FR_GEPRUEFT
   for reise in reisen/*/reise.json; do
     [ -e "$reise" ] || continue
     reise="$(basename "$(dirname "$reise")")"

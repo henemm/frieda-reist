@@ -60,7 +60,7 @@ Eine Änderung aus einer Sitzung (Claude Code im Reisen-Repo) geht über einen P
 |---|---|
 | KI-Lauf einer Reise bricht ab | Ihre halben Änderungen werden verworfen. Ihre Einträge bleiben „neu“, der Versuch zählt nur für sie. Die anderen Reisen gehen online. Meldung „Einarbeiten fehlgeschlagen“. |
 | Derselbe Eintrag scheitert `FR_MAX_VERSUCHE`-mal | Er wird aufgegeben: Rückfrage auf der Seite („<FR_BETREIBER> schaut es sich in der nächsten Sitzung an“), Meldung, kein automatischer Versuch mehr. Spätere Eingaben hält er nicht auf. |
-| Regel verletzt oder Tests rot | Nichts geht online, die Status bleiben „neu“. Der Branch `auto/einarbeiten-…` wartet zum Nachsehen in einer Sitzung, die Einträge gelten als gesehen. |
+| Regel verletzt oder Tests rot | Nichts geht online, die Status bleiben „neu“. Der Branch `auto/einarbeiten-…` wartet zum Nachsehen in einer Sitzung, die Einträge gelten als gesehen. Nach der Behebung die ID aus `<FR_DIENST>/einarbeiten-gesehen` streichen, dann läuft der Eintrag erneut. |
 | PR nicht zusammengeführt | Meldung, nichts online, Einträge gesehen. |
 
 **Messen:** Jeder Durchgang mit Neuem schreibt eine Zeile nach `<FR_DIENST>/einarbeiten-laeufe.jsonl`: Ergebnis (`ok`, `teilweise`, `fehler`), Reisen, Anzahl, Dauer, KI-Dauer, Kosten in USD, Zeit von der ältesten Eingabe bis zum Ende, online ja/nein. Ansehen mit `python3 engine/rueckmeldungen.py laeufe [<reise>] [--alle]`. Die Claude-App zeigt den Abschnitt „Einarbeiten“ im Überblick, Kosten zeigt sie nicht.
@@ -69,9 +69,9 @@ Eine Änderung aus einer Sitzung (Claude Code im Reisen-Repo) geht über einen P
 
 ## Veröffentlichen
 
-`betrieb/veroeffentlichen.sh` holt `origin/main`, spult den Veröffentlichungsordner vor und bringt das Submodul auf den festgehaltenen Stand. Danach ruft es `deploy.sh` für jede Reise mit `reise.json` auf. Gemerkt wird der Stand in `<FR_DIENST>/veroeffentlicht`. Nur ein gelungener Lauf merkt ihn, ein fehlgeschlagener wird also beim nächsten Mal wiederholt. Ist der Ordner nicht auf `main` oder nicht sauber, überspringt es den Lauf. `--immer` veröffentlicht auch ohne neuen Stand.
+`betrieb/veroeffentlichen.sh` holt `origin/main`, spult den Veröffentlichungsordner vor und bringt das Submodul auf den festgehaltenen Stand. Danach laufen die Tests einmal (Software und `tests/` des Reisen-Repos); sind sie rot, wird keine Reise angefasst. Dann ruft es `deploy.sh` für jede Reise mit `reise.json` auf und gibt ihm den geprüften Stand mit (`FR_GEPRUEFT`), damit die Tests nicht je Reise erneut laufen. Gemerkt wird der Stand in `<FR_DIENST>/veroeffentlicht`. Nur ein gelungener Lauf merkt ihn, ein fehlgeschlagener wird also beim nächsten Mal wiederholt. Ist der Ordner nicht auf `main` oder nicht sauber, überspringt es den Lauf. `--immer` veröffentlicht auch ohne neuen Stand.
 
-`betrieb/deploy.sh <reise>` baut, führt die Tests aus und kopiert die Seite nach `<FR_SEITEN>/<reise>/`. Es legt die Ablage der Reise an und kopiert den Code der Dienste nach `<FR_DIENST>/`. Die Liste der Module steht im Skript, ein Test prüft sie gegen die Importe. Bei geändertem Code startet es die Dienste neu (`sudo -n systemctl restart`). Am Ende prüft es Seite, Rückmeldedienst und Konnektor.
+`betrieb/deploy.sh <reise>` baut, führt die Tests aus (außer der Stand ist schon geprüft) und kopiert die Seite nach `<FR_SEITEN>/<reise>/`. Es legt die Ablage der Reise an und kopiert den Code der Dienste nach `<FR_DIENST>/`. Die Liste der Module steht im Skript, ein Test prüft sie gegen die Importe. Bei geändertem Code startet es die Dienste neu (`sudo -n systemctl restart`). Am Ende prüft es Seite, Rückmeldedienst und Konnektor.
 
 ## Neue Reise freischalten
 

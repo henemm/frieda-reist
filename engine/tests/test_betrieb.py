@@ -105,7 +105,8 @@ def test_beispiel_einstellungen_sind_vollstaendig():
     gelesen = set()
     for f in BETRIEB.glob("*.sh"):
         gelesen |= set(re.findall(r"\$\{?(FR_[A-Z0-9_]+)", f.read_text(encoding="utf-8")))
-    intern = {"FR_WURZEL", "FR_BETRIEB", "FR_EINSTELLUNGEN", "FR_PFAD", "FR_GRUPPE", "FR_HEARTBEAT_VEROEFFENTLICHEN"}
+    intern = {"FR_WURZEL", "FR_BETRIEB", "FR_EINSTELLUNGEN", "FR_PFAD", "FR_GRUPPE", "FR_HEARTBEAT_VEROEFFENTLICHEN",
+              "FR_GEPRUEFT"}  # FR_GEPRUEFT reicht veroeffentlichen.sh an deploy.sh weiter
     assert gelesen - intern - erklaert == set()
 
 
@@ -126,14 +127,16 @@ def vf(tmp_path):
     arbeit = tmp_path / "arbeit"
     subprocess.run(["git", "clone", "-q", str(quelle), str(arbeit)], check=True)
     protokoll = tmp_path / "deploy.log"
-    attrappe = ausfuehrbar(tmp_path / "deploy.sh", f'#!/bin/sh\necho "$1" >> {protokoll}\n[ -e {tmp_path}/kaputt ] && exit 1\nexit 0\n')
+    attrappe = ausfuehrbar(tmp_path / "deploy.sh", f'#!/bin/sh\necho "$1" >> {protokoll}\necho "$FR_GEPRUEFT" >> {tmp_path}/gepreuft.log\n'
+                                                   f'[ -e {tmp_path}/kaputt ] && exit 1\nexit 0\n')
+    pruefen = ausfuehrbar(tmp_path / "pruefen.sh", f'#!/bin/sh\necho p >> {tmp_path}/pruefen.log\n[ ! -e {tmp_path}/rot ]\n')
     # curl-Attrappe: protokolliert Heartbeat-Abrufe statt ins Netz zu gehen
     pings = tmp_path / "pings.log"
     ausfuehrbar(tmp_path / "bin/curl", f'#!/bin/sh\necho ping >> {pings}\n')
     frei = ausfuehrbar(tmp_path / "freischalten.sh",
                        f'#!/bin/sh\necho "$1" >> {tmp_path}/frei.log\necho "Seite: https://example.invalid/$1-geheim/"\n')
     env = {**SAUBER, "FR_WURZEL": str(arbeit), "FR_INSTANZ": "probe", "FR_DIENST": str(tmp_path / "dienst"),
-           "FR_SPERREN": str(tmp_path), "VF_DEPLOY": str(attrappe), "VF_FREISCHALTEN": str(frei),
+           "FR_SPERREN": str(tmp_path), "VF_DEPLOY": str(attrappe), "VF_PRUEFEN": str(pruefen), "VF_FREISCHALTEN": str(frei),
            "FR_HEARTBEAT_VEROEFFENTLICHEN": "https://example.invalid/hb", "PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}"}
 
     def lauf(*args, **extra):
@@ -179,6 +182,23 @@ def test_veroeffentlichen_fehlschlag_wird_wiederholt(vf):
     (vf["tmp"] / "kaputt").unlink()
     assert vf["lauf"]().returncode == 0
     assert vf["deploys"]() == ["beispielreise", "zweitreise"]
+
+
+def test_veroeffentlichen_prueft_einmal_fuer_alle_reisen(vf):
+    """Die Prüfungen laufen einmal je Lauf, nicht je Reise; deploy.sh bekommt den geprüften Stand und prüft nicht nochmal.
+    Rote Prüfungen: keine Reise wird angefasst, der Stand bleibt ungemerkt, der nächste Lauf versucht es wieder."""
+    (vf["tmp"] / "rot").touch()
+    r = vf["lauf"]()
+    assert r.returncode == 1 and "Prüfungen rot" in r.stdout and vf["deploys"]() == []
+    assert not (vf["tmp"] / "dienst/veroeffentlicht").exists()
+    (vf["tmp"] / "rot").unlink()
+    assert vf["lauf"]().returncode == 0
+    assert vf["deploys"]() == ["beispielreise", "zweitreise"]
+    assert (vf["tmp"] / "pruefen.log").read_text().split() == ["p", "p"]
+    kopf = git(vf["arbeit"], "rev-parse", "HEAD").strip()
+    assert (vf["tmp"] / "gepreuft.log").read_text().split() == [kopf, kopf]
+    deploy = (BETRIEB / "deploy.sh").read_text(encoding="utf-8")
+    assert 'if [ "${FR_GEPRUEFT:-}" != "$(git -C "$WURZEL" rev-parse HEAD)" ]; then' in deploy
 
 
 def test_veroeffentlichen_laesst_laufende_arbeit_in_ruhe(vf):
