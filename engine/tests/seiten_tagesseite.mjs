@@ -30,6 +30,9 @@ for (const breite of [390, 1300]) {
       merkmale: [...document.querySelectorAll(".ebene-unterwegs dl.textmerkmale dt")].map(x => x.textContent),
       kennungImKopf: [...document.querySelectorAll(".ebene-unterwegs .ebene-kopf [data-rm]")].map(x => x.dataset.rm),
       textInEtappe: document.querySelectorAll(".wv-strecke [data-rm='E-01']").length,
+      // Regel 9: unterwegs keine Sprechblase in Vorschauen (Orte des Tages) und an Zugeklapptem (Quellen)
+      sichtbarVorschau: [...document.querySelectorAll(".vorschau .zid-box, details:not([open]) > summary .zid-box")].filter(x => getComputedStyle(x).display !== "none").length,
+      vorschauen: document.querySelectorAll(".vorschau .zid-box").length,
     };
   });
   a.offen = await p.evaluate(offen);

@@ -46,6 +46,7 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
     assert e["fehler"] == []
     assert e["leer"] == []
     assert e["breit"] == []          # keine Ansicht steht auf dem Handy seitlich über
+    assert e["ohneArt"] == []        # jede Kennung gehört einer Art der Ontologie mit Bausteinen an
     # Wahl-Modul: öffnet an der Stelle, zeigt mindestens 2 Möglichkeiten (Handy höchstens 2, Rechner höchstens 4, ab 1100 px höchstens 5)
     for breite, v in e["vergleich"].items():
         assert v["sichtbar"] and v["offen"] == "true", (breite, v)
@@ -69,7 +70,7 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
     # Bausteinseite: alle Ebenen, keine Sprungziele (die echten Stellen bleiben eindeutig), kein „null“
     b = dom["1200#bausteine"]
     for teil in ("Atom · Zustand", "Atom · Wert", "Molekül · Listenzeile", "Molekül · Fragenkarte", "Molekül · Rückmeldung", "Molekül · Aufgabe", "Molekül · Wunschkarte", "Molekül · Kennzahlenleiste", "Organismus · Wahl-Modul", "Vorlage · Tag",
-                 "Atom · Etikett", "Molekül · Reisetext: Tabellen", "Molekül · Reiter", "Vorlage · Tageskasten"):
+                 "Ontologie · Art → Bausteine", "Atom · Etikett", "Molekül · Reisetext: Tabellen", "Molekül · Reiter", "Vorlage · Tageskasten"):
         assert teil in b, teil
     assert ' id="' not in b.split(">", 1)[1]
     assert "null" not in re.sub(r"<[^>]+>", " ", b)

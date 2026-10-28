@@ -10,7 +10,7 @@ import fs from "node:fs";
 const [, , modul, basis, domDatei] = process.argv;
 const pw = await import(modul);
 const b = await pw[process.env.RH_BROWSER || "chromium"].launch();
-const fehler = [], leer = [], breit = [], dom = {}, vergleich = {}, bilder = [];
+const fehler = [], leer = [], breit = [], dom = {}, vergleich = {}, bilder = [], ohneArt = [];
 for (const breite of [390, 1200]) {
   const ctx = await b.newContext({viewport: {width: breite, height: 900}, serviceWorkers: "block"});
   await ctx.route("**/api/**", r => r.abort());   // ohne Rückmeldedienst: Seite muss trotzdem vollständig sein
@@ -44,6 +44,14 @@ for (const breite of [390, 1200]) {
     if (breite < 700 && await p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) breit.push(h);
     dom[`${breite}#${h}`] = html;
   }
+  // Ontologie: jede Kennung der Reise gehört einer Art mit Bausteinen an
+  if (breite === 390) ohneArt.push(...await p.evaluate(() => {
+    const ids = [...abschnitte.flatMap(a => [a.id, ...a.bloecke.map(x => x.id)]), ...D.fragen.zeilen.map(z => z.id),
+      ...(R ? [...R.tage.map(t => t.id), ...Object.keys(R.weitere_tage), ...Object.keys(R.unterkuenfte), ...Object.keys(R.strecken), ...Object.keys(R.orte),
+        ...R.wahlstellen.flatMap(v => [v.id, ...v.optionen.map(o => o.id)]), ...R.plaene.map(x => x.id)] : [])];
+    const arten = new Set(ONTOLOGIE.map(o => o[0]));
+    return ids.filter(i => !arten.has(artVon(i)));
+  }));
   // Wahl-Modul bedienen: erste Stelle mit „Alternativen vergleichen“ öffnen, „nur Unterschiede“ umschalten
   for (const h of routen) {
     await p.evaluate(h => { location.hash = h; }, h);
@@ -109,4 +117,4 @@ for (const app of [true, false]) {
 }
 await b.close();
 if (domDatei) fs.writeFileSync(domDatei, JSON.stringify(dom));
-console.log(JSON.stringify({routen: Object.keys(dom).length, leer, breit, fehler, vergleich, bilder, leiste}));
+console.log(JSON.stringify({routen: Object.keys(dom).length, leer, breit, fehler, vergleich, bilder, leiste, ohneArt}));

@@ -193,6 +193,12 @@ button.zid.hat-rm .zid-blase{fill:var(--acc2)}
 @media (hover:hover){
   .pico button.zid:hover{opacity:1;color:var(--acc);--pico-color:var(--acc)}
 }
+/* Unterwegs (Handy und Tablet) trägt nur, was man schon gelesen hat, eine Sprechblase: nicht der Kopf eines
+   zugeklappten Blocks und nicht eine Vorschau (.vorschau: Karte oder Zeile, die zur ganzen Seite führt). Niemand merkt
+   etwas an, bevor er den Inhalt gesehen hat; so wird die Seite ruhiger (Entscheidung 28.10.2026). Am Rechner bleibt sie. */
+@media (max-width:1099px),(pointer:coarse){
+  details:not([open])>summary .zid-box,.vorschau .zid-box{display:none}
+}
 
 /* ==================== 4 Moleküle ==================== */
 /* ---------- Fläche: Karte und aufklappbarer Block ---------- */
@@ -806,7 +812,7 @@ function chips(a) {
 
 function abschnittKarte(a) {
   const titel = a.typ === "etappe" ? a.titel : a.titel;
-  const k = el("a", {class: "karte", href: "#" + a.id}, el("div", {class: "k"}, titel, zid(a.id)));
+  const k = el("a", {class: "karte vorschau", href: "#" + a.id}, el("div", {class: "k"}, titel, zid(a.id)));
   if (a.typ === "etappe") k.append(...[chips(a), kennzahlLeiste(a.kennzahlen)].filter(Boolean));
   return k;
 }
@@ -931,6 +937,18 @@ function wegVerlauf(t, ohneKennung) {
   return v;
 }
 // ohneKopf: auf der Tagesseite (der Kopf steht darüber); dort ist der Tageskasten die Fläche, an der man handelt
+// Organismus Ding: Wahlstelle als Zeile (Etikett, Titel, auf Wunsch die Möglichkeiten, Zustand, Einstieg in den Vergleich,
+// Kennung); im Tageskasten mit den Möglichkeiten, im Plan ohne (dort folgen sie als Alternativen)
+function wahlZeile(w, mitOptionen) {
+  const ul = mitOptionen ? el("ul", {}, w.optionen.filter(o => !weg(o.status)).map(o => el("li", {}, o.titel, o.ausloeser ? ` – ${o.ausloeser}` : "",
+    o.aktiv && w.art !== "unterwegs" ? (w.offen ? " (vorläufig)" : " (gewählt)") : ""))) : null;
+  const offen = w.art === "planung" && w.offen && gueltigeOptionen(w).length > 1;
+  return el("div", {class: "ding wahl"},
+    el("div", {class: "ding-text"}, dingEtikett(w.art === "unterwegs" ? "Unterwegs wählen" : "Wahl", null, "wahl"),
+      el("span", {class: "ding-titel"}, link(w.id, w.titel)), ul,
+      el("span", {class: "chips"}, w.art === "unterwegs" ? chip("unterwegs", "unterwegs entscheiden") : chip(offen ? "offen" : "plan", offen ? "offen" : "entschieden"), wahlEinstieg(w))),
+    zid(w.id));
+}
 function tagKarte(t, ohneKopf) {
   const k = el("div", {class: "karte ziel" + (ohneKopf ? " flaeche" : ""), id: ohneKopf ? null : t.id, "data-ziel": ohneKopf ? null : t.id});
   if (!ohneKopf) k.append(tagKopf("div", {}, t.nr, t.datum, t.wochentag, t.titel, t.id));
@@ -939,16 +957,7 @@ function tagKarte(t, ohneKopf) {
   for (const vid of t.wahlstellen) {
     const w = wahlZu.get(vid);
     if (!w) continue;
-    const ul = el("ul", {});
-    for (const o of w.optionen.filter(o => !weg(o.status)))
-      ul.append(el("li", {}, o.titel, o.ausloeser ? ` – ${o.ausloeser}` : "", o.aktiv && w.art !== "unterwegs" ? (w.offen ? " (vorläufig)" : " (gewählt)") : ""));
-    const offen = w.art === "planung" && w.offen && gueltigeOptionen(w).length > 1, einstieg = wahlEinstieg(w);
-    const z = el("div", {class: "ding wahl"},
-      el("div", {class: "ding-text"}, dingEtikett(w.art === "unterwegs" ? "Unterwegs wählen" : "Wahl", null, "wahl"),
-        el("span", {class: "ding-titel"}, link(vid, w.titel)), ul,
-        el("span", {class: "chips"}, w.art === "unterwegs" ? chip("unterwegs", "unterwegs entscheiden") : chip(offen ? "offen" : "plan", offen ? "offen" : "entschieden"), einstieg)),
-      zid(vid));
-    wahlZeilen.push([w, [z, wahlVergleich(w)]]);
+    wahlZeilen.push([w, [wahlZeile(w, true), wahlVergleich(w)]]);
   }
   // Unterwegs rücken Wahlstellen mit Auslöser nach vorn (Verhalten je Status)
   const vorn = V.ausloeser_vor ? wahlZeilen.filter(([w]) => w.art === "unterwegs") : [];
@@ -1875,7 +1884,7 @@ function alternativen(p) {
   return aus;
 }
 function tagKachel(t, datum, nr) {
-  const k = el("a", {class: "karte tag", href: "#" + t.id});
+  const k = el("a", {class: "karte tag vorschau", href: "#" + t.id});
   k.append(tagKopf("div", {}, nr, datum, datum ? wochentag(datum) : null, t.titel, t.id));
   const c = el("div", {class: "chips"});
   for (const f of t.fixpunkte || []) c.append(chip("plan", f));
@@ -1908,9 +1917,7 @@ function ansichtPlanDetail(m, p) {
     m.append(tagKachel(t, t.datum, t.nr));
     for (const {w, akt, andere, start} of alt.get(t.id) || []) {
       // Reiseteil zur Wahl: derselbe Einstieg wie am Tag, Vergleich darunter
-      const einstieg = wahlEinstieg(w);
-      if (einstieg) m.append(el("div", {class: "ding wahl"}, el("div", {class: "ding-text"}, dingEtikett("Wahl", null, "wahl"),
-        el("span", {class: "ding-titel"}, link(w.id, w.titel)), el("span", {class: "chips"}, chip(w.offen ? "offen" : "plan", w.offen ? "offen" : "entschieden"), einstieg)), zid(w.id)), wahlVergleich(w));
+      if (gueltigeOptionen(w).length > 1) m.append(wahlZeile(w, false), wahlVergleich(w));
       for (const o of andere) {
         const d = el("details", {class: "block alternative"}, el("summary", {}, `Statt „${akt ? akt.titel : "–"}“: ${o.titel}`, zid(o.id)));
         const inh = el("div", {class: "inhalt"});
@@ -1997,7 +2004,7 @@ function tagEbenen(t, etappen) {
 function tagOrteZeilen(orte) {
   return el("section", {class: "ebene ebene-orte"}, ebeneKopf(orte.length > 1 ? "Orte des Tages" : "Ort des Tages"),
     orte.map(o => { const a = ortAbschnitt(o);
-      return el("div", {class: "ortzeile"},
+      return el("div", {class: "ortzeile vorschau"},
         el("div", {class: "titelzeile"}, a ? el("a", {href: "#" + o}, symbol("ort", "etikett-sym"), ortName(o) + " →") : el("span", {}, ortName(o)), zid(o)),
         el("div", {class: "ortzeile-text"}, a ? ortKurz(o) : "Noch keine Beschreibung.")); }));
 }
@@ -2161,7 +2168,7 @@ function wissenThemen(a) {
 }
 // Molekül Listenzeile: Symbol, Titel, Unterzeile und optional Kennung; für Wissen, Praxis, Quellen und Orte
 function listenZeile(typ, sym, titel, unter, href, kennung) {
-  return el("a", {class: "wzeile typ-" + typ, href: "#" + href},
+  return el("a", {class: "wzeile vorschau typ-" + typ, href: "#" + href},
     el("span", {class: "wsym"}, symbol(sym)),
     el("span", {class: "wtext"}, el("span", {class: "wt"}, titel), unter === null ? null : el("span", {class: "wu"}, unter)),
     kennung ? zid(kennung) : null);
@@ -2236,6 +2243,48 @@ function markiert(text, begriffe, laenge) {
   return out;
 }
 
+/* ---------- Ontologie → Bausteine (docs/design.md, „Ontologie und Bausteine“) ----------
+   Jede Art im Datenmodell (an der Kennung erkennbar) hat ihre Bausteine je Dichte: Zeile (in einem größeren Ganzen),
+   Vorschau (führt zur ganzen Seite; unterwegs ohne Kennung), Karte (für sich), Seite oder Teil einer Seite. Eine Art
+   bekommt keinen weiteren Baustein, sondern nutzt diese. Die Bausteinseite zeigt die Tabelle, test_seite prüft, dass
+   jede Kennung der Reise einer Art angehört. */
+const ONTOLOGIE = [
+  ["tag", "Tag", "T-01", {zeile: [], vorschau: [tagKachel], karte: [tagKarte], seite: [ansichtTag]}],
+  ["etappe", "Etappe, Strecke", "E-01", {zeile: [streckeZeile], vorschau: [abschnittKarte], karte: [], seite: [ansichtAbschnitt, tagEbenen]}],
+  ["ort", "Ort", "O-01", {zeile: [wegVerlauf], vorschau: [tagOrteZeilen, listenZeile], karte: [], seite: [ansichtOrt]}],
+  ["unterkunft", "Unterkunft", "U-01", {zeile: [nachtZeile], vorschau: [], karte: [unterkunftKarte], seite: []}],
+  ["wahlstelle", "Wahlstelle", "V-01", {zeile: [wahlZeile], vorschau: [], karte: [wahlKarte], seite: [wahlEinstieg, wahlVergleich]}],
+  ["option", "Option einer Wahl", "V-01.a", {zeile: [optionBlock], vorschau: [], karte: [wahlVergleich], seite: []}],
+  ["plan", "Plan", "P-A", {zeile: [planMarke], vorschau: [steckbrief], karte: [], seite: [ansichtPlanDetail]}],
+  ["frage", "Offene Frage", "F-01", {zeile: [], vorschau: [], karte: [zeilenKarte], seite: [ansichtFragen]}],
+  ["wissen", "Wissen, Praxis, Quelle, Plantext", "W-01", {zeile: [], vorschau: [listenZeile], karte: [], seite: [ansichtAbschnitt]}],
+  ["abschnitt", "Abschnitt eines Textes", "E-01.eckdaten", {zeile: [], vorschau: [], karte: [block], seite: [reiseText, reiterGruppe, leseAbschnitt]}],
+  ["aufgabe", "Aufgabe", "AG-01", {zeile: [agEintrag], vorschau: [], karte: [], seite: [ansichtAufgaben, agFormular]}],
+  ["rueckmeldung", "Rückmeldung, Wunsch", "R-…", {zeile: [rmEintrag], vorschau: [], karte: [wuKarte], seite: [rmFormular, ansichtWuensche]}],
+];
+// Art einer Kennung aus den Daten (nicht aus dem Muster der Kennung)
+function artVon(id) {
+  if (optionZu.has(id)) return "option";
+  if (wahlZu.has(id)) return "wahlstelle";
+  if (R && R.unterkuenfte[id]) return "unterkunft";
+  if (planZu(id)) return "plan";
+  if (R && tagBekannt(id)) return "tag";
+  if (blockZu.has(id)) return "abschnitt";
+  if (proId.has(id)) return {etappe: "etappe", ort: "ort"}[proId.get(id).typ] || "wissen";
+  if (R && R.strecken[id]) return "etappe";
+  if (R && R.orte[id]) return "ort";
+  if (zeileZu.get(id) === "fragen") return "frage";
+  return /^AG-/.test(id) ? "aufgabe" : /^R-/.test(id) ? "rueckmeldung" : null;
+}
+function ontologieTabelle() {
+  const spalten = [["zeile", "Zeile"], ["vorschau", "Vorschau"], ["karte", "Karte"], ["seite", "Seite und Teile"]];
+  const zelle = (n, f) => el("td", {"data-spalte": n, class: f.length ? null : "leer"}, f.length ? f.map(x => el("code", {}, x.name)).flatMap((c, i) => i ? [", ", c] : [c]) : "–");
+  return el("div", {class: "tabelle stapel"}, el("table", {},
+    el("thead", {}, el("tr", {}, el("th", {}, "Art"), el("th", {}, "Kennung"), spalten.map(([, n]) => el("th", {}, n)))),
+    el("tbody", {}, ONTOLOGIE.map(([, name, beispiel, b]) => el("tr", {}, el("td", {}, name), el("td", {"data-spalte": "Kennung"}, beispiel),
+      spalten.map(([k, n]) => zelle(n, b[k])))))));
+}
+
 /* ---------- Bausteinseite (#bausteine, Designsystem 2e, frieda-reist#18) ----------
    Lebende Übersicht aller Bausteine, gezeichnet mit den Daten dieser Reise und mit denselben Funktionen wie die Seiten:
    Sie kann deshalb nicht vom Design abweichen. Nicht in der Leiste; für die Entwicklung und die Bildprüfung
@@ -2246,6 +2295,8 @@ function ansichtBausteine(m) {
   const fall = (name, inhalt) => el("div", {class: "z"}, el("b", {}, name + ": "), inhalt);
   m.append(el("h2", {}, "Bausteine"), el("p", {class: "meldung"}, "Alle Bausteine dieser Seite mit den Daten der Reise, geordnet nach Ebenen "
     + "(Atome, Moleküle, Organismen, Vorlagen). Nicht in der Leiste; Adresse #bausteine."));
+  teil("Ontologie", "Art → Bausteine", "Jede Art im Datenmodell nutzt dieselben Bausteine, je nach Dichte. Die Kennung (Atom) trägt jede Art; "
+    + "unterwegs nicht in einer Vorschau und nicht im Kopf von Zugeklapptem.", ontologieTabelle());
   teil("Atom", "Zustand", "Feste Namen; die Farbe folgt der Bedeutung, nicht dem Ort.",
     el("div", {class: "chips"}, Object.keys(CHIP).map(z => chip(z, z)), chip("", "Hinweis")));
   const alleWerte = R ? [...Object.values(R.unterkuenfte).map(u => u.merkmale), ...R.wahlstellen.flatMap(w => w.optionen.map(o => o.merkmale))]
@@ -2344,7 +2395,7 @@ function ansichtSuche(m, q) {
   m.append(el("h2", {}, treffer.length ? `${treffer.length} Treffer` : "Keine Treffer"));
   if (!treffer.length) m.append(el("div", {class: "leer"}, "Tipp: weniger oder kürzere Wörter versuchen."));
   for (const e of treffer.slice(0, 40)) {
-    m.append(el("a", {class: "karte treffer", href: "#" + e.id},
+    m.append(el("a", {class: "karte treffer vorschau", href: "#" + e.id},
       el("div", {class: "k"}, e.titel, zid(e.id)),
       e.ort ? el("div", {class: "in"}, e.ort) : null,
       el("div", {class: "s"}, markiert(e.text || e.titel, begriffe, 140))));

@@ -14,10 +14,31 @@ Die Ebenen folgen Brad Frosts Atomic Design. Skript und Stile in `engine/vorlage
 | Organismen | Ding: `nachtZeile` (Aufenthalt als Zeile), `unterkunftKarte` (als Karte), `streckeZeile` (Bewegung); Wahl-Modul: `wahlEinstieg`, `wahlVergleich`, `wahlKarte`; Tageskasten: `tagKarte` mit `wegVerlauf`; Tagesseite: `tagEbenen`, `tagOrteZeilen` |
 | Vorlagen | `tagKachel`, die Ansichten (`ansichtTag` = Tagesseite, `ansichtPlan` …) |
 
+## Ontologie und Bausteine (28.10.2026)
+
+Die Bausteine sind auf das Datenmodell der Reise abgebildet: Jede Art (an ihrer Kennung erkennbar) hat ihre festen Bausteine je Dichte. Eine neue Ansicht bekommt keinen eigenen Baustein für eine Art, sondern nutzt diese. Im Code steht die Zuordnung als `ONTOLOGIE` in `engine/vorlage.html`; die Bausteinseite zeigt sie als Tabelle, und `test_seite.py` prüft, dass jede Kennung der Beispielreise einer Art angehört (`artVon`).
+
+| Art | Kennung | Zeile | Vorschau | Karte | Seite und Teile |
+|---|---|---|---|---|---|
+| Tag | T-01 | – | `tagKachel` | `tagKarte` (im Plan; auf der Tagesseite der Tageskasten) | `ansichtTag` |
+| Etappe, Strecke | E-01 | `streckeZeile` | `abschnittKarte` | – | `ansichtAbschnitt`, `tagEbenen` |
+| Ort | O-01 | im `wegVerlauf` | `tagOrteZeilen`, `listenZeile` | – | `ansichtOrt` |
+| Unterkunft | U-01 | `nachtZeile` | – | `unterkunftKarte` | – |
+| Wahlstelle | V-01 | `wahlZeile` | – | `wahlKarte` | `wahlEinstieg`, `wahlVergleich` |
+| Option einer Wahl | V-01.a | `optionBlock` | – | Karte im `wahlVergleich` | – |
+| Plan | P-A | `planMarke` | `steckbrief` | – | `ansichtPlanDetail` |
+| Offene Frage | F-01 | – | – | `zeilenKarte` | `ansichtFragen` |
+| Wissen, Praxis, Quelle, Plantext | W-01 | – | `listenZeile` | – | `ansichtAbschnitt` |
+| Abschnitt eines Textes | E-01.eckdaten | – | – | `block` (aufklappbar) | `reiseText`, `reiterGruppe`, `leseAbschnitt` |
+| Aufgabe | AG-01 | `agEintrag` | – | – | `ansichtAufgaben`, `agFormular` |
+| Rückmeldung, Wunsch | R-… | `rmEintrag` | – | `wuKarte` | `rmFormular`, `ansichtWuensche` |
+
+Dichten: **Zeile** steht in einem größeren Ganzen (im Tag, in einer Liste), **Vorschau** führt zur ganzen Seite, **Karte** steht für sich, **Seite** zeigt alles. Jede Art trägt die Kennung (Atom `zid`).
+
 Atomic Design allein sagt nicht, wie sich ein Baustein verhält. Dafür gibt es drei Achsen:
 
 - **Zustand.** Feste Namen in `CHIP`: `plan` (entschieden, im Plan), `offen` (braucht eine Entscheidung), `unterwegs` (erst unterwegs zu entscheiden), `weg` (verworfen, ersetzt), `leise` (Nebenangabe), `neben` (Nebenroute). Ein Wert ist bekannt, ungeprüft, unklar, offen oder gilt je Datum.
-- **Dichte.** Ein Ding gibt es als Zeile (im Tag, in Listen) und als Karte (Übersicht), mit demselben Etikett.
+- **Dichte.** Zeile, Vorschau, Karte, Seite (siehe Tabelle oben); ein Ding hat in jeder Dichte dasselbe Etikett.
 - **Kontext.** Planung oder unterwegs (`verhalten.ausloeser_vor` je Status), Handy oder Rechner, offline. Der Kontext ändert Reihenfolge und Betonung, nie die Bausteine. Grundsatz: **Rechner = planen, Handy und Tablet = unterwegs.**
 
 ## Regeln
@@ -30,6 +51,7 @@ Atomic Design allein sagt nicht, wie sich ein Baustein verhält. Dafür gibt es 
 6. **Ein Kasten nur, wo man handelt.** Flächen mit Rand oder Schatten tragen Bedienelemente (Tageskasten); Lesetext steht ohne Rahmen.
 7. **Symbol oder Wort, nie beides.** Was man nur vielleicht braucht, ist ein Symbol mit Tooltip (Anmerken); was man oft braucht, ist ein Wort ohne Symbol („Alternativen vergleichen“, Reiter, „← Plan“). Etiketten dürfen ein Symbol tragen, wenn es die Art sofort zeigt (Nacht, Wahl, Ort, Kennzahlen); sie sind keine Bedienelemente.
 8. **Das Gerät bestimmt die Reihenfolge.** Dieselben Bausteine, am Rechner zum Planen nebeneinander, am Handy zum Nachschlagen untereinander (Tagesseite).
+9. **Anmerken erst nach dem Lesen.** Unterwegs (Handy und Tablet) trägt eine Vorschau (`.vorschau`) und der Kopf eines zugeklappten Blocks keine Sprechblase; sie erscheint, sobald der Inhalt offen oder die Seite geöffnet ist. Niemand merkt etwas an, bevor er den Inhalt gesehen hat. Am Rechner (Planen) bleibt sie überall (Entscheidung 28.10.2026).
 
 ## Reisetexte
 
@@ -101,6 +123,8 @@ Die Kennung (Atom `zid`: T-01, V-05 …) ist die Anschrift jeder Rückmeldung. I
 - Der Tooltip (`title`) sagt es in Klartext: „Anmerken“ oder „2 Rückmeldungen · 1 Aufgabe offen“. `aria-label` nennt dazu die Kennung („Anmerken zu T-01, 2 Rückmeldungen“).
 - Die Kennung selbst steht im Fenster, das sich öffnet („Zu T-01“), mit einem Knopf „Kopieren“, um im Gespräch auf eine Stelle zu zeigen. Ein Info-Zeichen „i“ gibt es nicht.
 - In Titelzeilen sitzt die Sprechblase mit Abstand am rechten Rand, damit Tippen auf den Titel sie nicht trifft.
+- Unterwegs fehlt sie in Vorschauen und an Zugeklapptem (Regel 9).
+- Das „i“ an einem Wert (Notiz, Prüfdatum, Quelle; Atom `merkmalWert`) ist etwas anderes und bleibt.
 
 Die Deckkraft ist 0,7 statt der im Versuch gezeigten 0,55: Erst so erreicht das Symbol den Kontrast 3:1, den Bedienelemente brauchen (WCAG 1.4.11), hell und dunkel. Ohne die Bausteine Rückmeldungen und Aufgaben bleibt die Kennung als schlichter Text.
 

@@ -64,6 +64,8 @@ def test_tagesseite_in_ebenen(tmp_path, browser):
         assert a["info"] == 0 and a["knoepfe"] and all(t in ("Anmerken",) and l.startswith("Anmerken zu ") for t, l in a["knoepfe"])
         assert a["fenster"] == {"offen": True, "kennung": "E-01", "kopieren": True}
         assert all(a["tiefe"].values()) and len(a["tiefe"]) == 3, a["tiefe"]
+        # Anmerken erst nach dem Lesen: unterwegs ohne Sprechblase in Vorschauen, am Rechner mit
+        assert a["vorschauen"] > 0 and a["sichtbarVorschau"] == (0 if breite == "390" else a["vorschauen"]), a
         lage = {n: (o, l) for n, o, l in a["ebenen"]}
         if breite == "390":   # unterwegs: Weg, Nachschlagen, Orte, Hintergrund, Quellen untereinander
             assert [n for n, o, _ in sorted(a["ebenen"], key=lambda x: x[1])] == ["weg", "unterwegs", "orte", "hintergrund", "quellen"]
