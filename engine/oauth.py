@@ -99,6 +99,9 @@ def redirect_passt(registriert, uri):
     return False
 
 
+USER_AGENT = "Frieda-Reist/1 (OAuth client metadata; +https://github.com/henemm/frieda-reist)"
+
+
 def cimd_erlaubt(client_id):
     hosts = [h.strip() for h in os.environ.get("FR_CIMD_HOSTS", "claude.ai").split(",") if h.strip()]
     u = urllib.parse.urlsplit(client_id or "")
@@ -122,9 +125,13 @@ def cimd_laden(client_id):
         return alt
     try:
         oeffner = urllib.request.build_opener(_KeineWeiterleitung)
-        with oeffner.open(urllib.request.Request(client_id, headers={"Accept": "application/json"}), timeout=5) as r:
+        # Eigene Kennung: claude.ai (Cloudflare) weist die Standardkennung „Python-urllib“ mit 403 ab (28.10.2026)
+        anfrage = urllib.request.Request(client_id, headers={"Accept": "application/json", "User-Agent": USER_AGENT})
+        with oeffner.open(anfrage, timeout=5) as r:
             doc = json.loads(r.read(65536 + 1)[:65536])
-    except (urllib.error.URLError, OSError, ValueError):
+    except (urllib.error.URLError, OSError, ValueError) as f:
+        print(f"OAuth: Client-Dokument von {urllib.parse.urlsplit(client_id).hostname} nicht lesbar: "
+              f"{getattr(f, 'code', '') or type(f).__name__}", file=sys.stderr, flush=True)
         return alt
     uris = doc.get("redirect_uris") if isinstance(doc, dict) else None
     if not isinstance(doc, dict) or doc.get("client_id") != client_id or not isinstance(uris, list) \

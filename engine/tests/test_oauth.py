@@ -240,6 +240,8 @@ def test_client_id_metadata_document(welt, monkeypatch):
     class Oeffner:
         def open(self, req, timeout):
             abrufe.append(req.full_url)
+            # claude.ai weist die Standardkennung von Python ab (403); ohne eigene Kennung scheitert jede Verbindung
+            assert req.get_header("User-agent", "").startswith("Frieda-Reist/")
             return _Antwort(json.dumps({"client_id": cid, "client_name": "Claude", "redirect_uris": [CALLBACK]}).encode())
     monkeypatch.setattr(oauth.urllib.request, "build_opener", lambda *a: Oeffner())
     assert not oauth.cimd_erlaubt("https://boese.invalid/meta") and not oauth.cimd_erlaubt("http://claude.ai/x")
