@@ -944,8 +944,8 @@ class Bauer:
         vorlage = (Path(__file__).parent / "vorlage.html").read_text(encoding="utf-8")
         vorlage = vorlage.replace("<!--__SYMBOLE__-->", symbole(), 1)
         if self.umzug:   # Seite ist umgezogen: gleicher Pfad auf der neuen Adresse (alte Browser-Speicher räumt sw.js auf)
-            vorlage = vorlage.replace("<head>", "<head>\n<script>location.replace(" + json.dumps(self.umzug) +
-                                      " + location.pathname + location.search + location.hash)</script>", 1)
+            vorlage = vorlage.replace("<head>", "<head>\n<script>if (location.origin !== " + json.dumps(self.umzug) + ") location.replace(" +
+                                      json.dumps(self.umzug) + " + location.pathname + location.search + location.hash)</script>", 1)
         vorlage = vorlage.replace("<!--__GRUNDKARTE__-->", "".join(
             f'<script src="{n}"></script>' for n in VENDOR_GRUNDKARTE.values()) if self.grundkarte or self.grundkarten else "", 1)
         if vorlage.count("/*__DATEN__*/null") != 1:

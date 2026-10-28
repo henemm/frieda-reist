@@ -16,7 +16,8 @@
 const VERSION = "__VERSION__";
 const DATEIEN = __DATEIEN__;
 const STAND = __STAND__;  // Datei -> Inhalts-Hash; gespeichert wird unter „Datei?v=Hash“
-const UMZUG = __UMZUG__;  // null oder neue Adresse (Ursprung): Die Seiten sind umgezogen, dieser Worker räumt nur noch auf
+const UMZUG_NACH = __UMZUG__;  // null oder neue Adresse (Ursprung), wenn die Seiten umgezogen sind
+const UMZUG = UMZUG_NACH && UMZUG_NACH !== self.location.origin ? UMZUG_NACH : null;  // auf der neuen Adresse selbst gilt der Umzug nicht
 
 const scope = new URL("./", self.location).pathname;
 const PREFIX = "rh:" + scope + ":";
