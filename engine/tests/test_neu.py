@@ -12,8 +12,8 @@ import bauen  # noqa: E402
 import neu  # noqa: E402
 
 VON, BIS = datetime.date(2027, 2, 6), datetime.date(2027, 2, 13)
-PERSONEN = {"ida": {"name": "Ida", "rolle": "bestimmer"}, "karl": {"name": "Karl", "rolle": "einbringer"},
-            "mo": {"name": "Mo", "rolle": "reisend", "reist": False}}
+PERSONEN = {"ida": {"name": "Ida", "rolle": "organisator"}, "karl": {"name": "Karl", "rolle": "mitwirkend"},
+            "mo": {"name": "Mo", "rolle": "gast", "reist": False}}
 
 
 def anlegen(tmp_path, **kw):
@@ -32,7 +32,7 @@ def test_neue_reise_baut_im_status_idee(tmp_path):
     assert e["status"]["wert"] == "idee" and e["status"]["verlauf"] == [
         {"datum": "2026-10-27", "wert": "idee", "wer": "Ida", "grund": "Reise angelegt (Gespräch in Claude Code)"}]
     assert [(p["name"], p["rolle"], p["reist"]) for p in e["personen"]] == \
-        [("Ida", "bestimmer", True), ("Karl", "einbringer", True), ("Mo", "reisend", False)]
+        [("Ida", "organisator", True), ("Karl", "mitwirkend", True), ("Mo", "gast", False)]
     assert e["bausteine"] == neu.BAUSTEINE_IDEE and e["verhalten"]["warnungen"] is False
     ids = [a["id"] for a in d["abschnitte"]]
     assert ids == ["W-01", "W-02", "W-03"] and [z["id"] for z in d["fragen"]["zeilen"]] == ["F-01"]
@@ -40,7 +40,7 @@ def test_neue_reise_baut_im_status_idee(tmp_path):
     # Vorlage ausgefüllt, nichts bleibt als Platzhalter stehen
     for f in r.rglob("*.md"):
         assert "$" not in f.read_text(encoding="utf-8"), f
-    assert "Ida (bestimmt), Karl (bringt ein), Mo (liest mit, reist nicht mit)" in (r / "plan/plan.md").read_text(encoding="utf-8")
+    assert "Ida (organisiert), Karl (bringt ein), Mo (liest mit, reist nicht mit)" in (r / "plan/plan.md").read_text(encoding="utf-8")
     assert yaml.safe_load((r / "ids.yaml").read_text(encoding="utf-8")) == {"W": 3, "F": 1}
     assert (r / "medien").is_dir() and (r / "kontext/herkunft.md").exists()
 
@@ -58,7 +58,7 @@ def test_eigener_pfad_herkunft_und_ueberblick(tmp_path):
 @pytest.mark.parametrize("kw, text", [
     ({"titel": " "}, "braucht einen Titel"),
     ({"bis": datetime.date(2027, 2, 1)}, "liegt vor dem Anfang"),
-    ({"personen": {"karl": {"name": "Karl", "rolle": "einbringer"}}}, "Rolle bestimmer"),
+    ({"personen": {"karl": {"name": "Karl", "rolle": "mitwirkend"}}}, "Rolle organisator"),
     ({"wer": "Karl"}, "Anlegen darf nur, wer auf der Reise bestimmt"),
     ({"pfad": "Ski Urlaub"}, "nur Kleinbuchstaben"),
 ])
@@ -76,15 +76,15 @@ def test_vorhandene_reise_wird_nie_ueberschrieben(tmp_path):
 
 
 @pytest.mark.parametrize("text, erwartet", [
-    ("Hanna:einbringer", ("hanna", {"name": "Hanna", "rolle": "einbringer"})),
-    ("b=Ben:reisend:nicht", ("b", {"name": "Ben", "rolle": "reisend", "reist": False})),
-    ("Jörg:bestimmer:reist", ("joerg", {"name": "Jörg", "rolle": "bestimmer", "reist": True})),
+    ("Hanna:mitwirkend", ("hanna", {"name": "Hanna", "rolle": "mitwirkend"})),
+    ("b=Ben:gast:nicht", ("b", {"name": "Ben", "rolle": "gast", "reist": False})),
+    ("Jörg:organisator:reist", ("joerg", {"name": "Jörg", "rolle": "organisator", "reist": True})),
 ])
 def test_person_aus_text(text, erwartet):
     assert neu.person_aus_text(text) == erwartet
 
 
-@pytest.mark.parametrize("text", ["Hanna", "Hanna:chef", "Hanna:einbringer:vielleicht"])
+@pytest.mark.parametrize("text", ["Hanna", "Hanna:chef", "Hanna:mitwirkend:vielleicht"])
 def test_person_aus_text_fehler(text):
     with pytest.raises(neu.Fehler):
         neu.person_aus_text(text)
@@ -174,7 +174,7 @@ def test_pruefen(tmp_path):
 
 def test_aufruf(tmp_path, capsys):
     rc = neu.main(["neu.py", "reise", str(tmp_path), "--titel", "Ski", "--von", "2027-02-06", "--bis", "2027-02-13",
-                   "--person", "Ida:bestimmer", "--person", "Karl:einbringer", "--wer", "Ida", "--ziel", "Oberstdorf"])
+                   "--person", "Ida:organisator", "--person", "Karl:mitwirkend", "--wer", "Ida", "--ziel", "Oberstdorf"])
     assert rc == 0 and "Angelegt: " in capsys.readouterr().out
     r = tmp_path / "ski-2027"
     assert neu.main(["neu.py", "id", str(r), "O"]) == 0 and capsys.readouterr().out.strip() == "O-01"
@@ -185,7 +185,7 @@ def test_aufruf(tmp_path, capsys):
     (r / "reise.json").write_text("{", encoding="utf-8")
     assert neu.main(["neu.py", "pruefen", str(r)]) == 1 and "1 Punkt zu beheben" in capsys.readouterr().out
     assert neu.main(["neu.py", "reise", str(tmp_path), "--titel", "Ski", "--von", "2027-02-06", "--bis", "2027-02-13",
-                     "--person", "Ida:bestimmer", "--wer", "Ida"]) == 2
+                     "--person", "Ida:organisator", "--wer", "Ida"]) == 2
     assert "Nicht möglich: Eine Reise „ski-2027“ gibt es schon" in capsys.readouterr().out
 
 
@@ -198,7 +198,7 @@ def test_aus_auftrag_der_claude_app(tmp_path):
     assert r.name == "ski-im-tal-2027"
     e = bauen.bauen(r, tmp_path / "dist")["reise"]
     assert e["status"]["verlauf"][0]["grund"] == "Reise angelegt (Auftrag A-20261027-120000-ab12 aus der Claude-App)"
-    assert [(p["name"], p["rolle"]) for p in e["personen"]] == [("Ida", "bestimmer"), ("Karl", "einbringer")]
+    assert [(p["name"], p["rolle"]) for p in e["personen"]] == [("Ida", "organisator"), ("Karl", "mitwirkend")]
     assert "Notiz von Ida aus der Claude-App (27.10.2026):\n\nHütte am Ort, laut Karl schön." in \
         (r / "inhalt/wissen.md").read_text(encoding="utf-8")
     with pytest.raises(neu.Fehler, match="gibt es schon"):

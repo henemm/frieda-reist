@@ -7,10 +7,10 @@
 ## Was es kann
 
 - **Tagesplan, Etappen, Orte, Unterkünfte** mit festen IDs (T-, E-, O-, U-, W- …), damit sich jede Rückmeldung genau zuordnen lässt.
-- **Alternativen im Modell:** Wahlstellen mit Optionen auf jeder Ebene, benannte Pläne mit Summen (Gehzeit, Strecke, Höhenmeter, Nächte nach Kategorie) und ein Verlauf. Verworfenes wird nie gelöscht, entscheiden dürfen nur Bestimmer.
+- **Alternativen im Modell:** Wahlstellen mit Optionen auf jeder Ebene, benannte Pläne mit Summen (Gehzeit, Strecke, Höhenmeter, Nächte nach Kategorie) und ein Verlauf. Verworfenes wird nie gelöscht, entscheiden dürfen nur Organisator:innen.
 - **Quellen und Prüfdaten:** Fußnoten mit Titel, Link und Datum; Merkmale wie Preise tragen ein Prüfdatum.
 - **Offline:** Die Seite ist eine PWA mit Vorab-Speicher, Update-Hinweis und Ausgang für Rückmeldungen ohne Netz. Karten mit nummerierten Orten (Leaflet, optional OpenStreetMap-Vektorkarten als PMTiles).
-- **Mitreisende:** Rückmeldungen, Wünsche und Aufgaben zu jeder ID, über die Seite oder über die Claude-App (MCP-Konnektor). Personen haben Rollen: `reisend` (lesen), `einbringer` (Eingaben) und `bestimmer` (entscheiden).
+- **Mitreisende:** Rückmeldungen, Wünsche und Aufgaben zu jeder ID, über die Seite oder über die Claude-App (MCP-Konnektor). Personen haben Rollen: `gast` (lesen), `mitwirkend` (Eingaben) und `organisator` (entscheiden).
 - **Die KI arbeitet ein:** Eingaben werden geprüft, mit Quelle eingearbeitet, gebaut, getestet und veröffentlicht. Der Status geht an den Absender zurück.
 
 ## Ausprobieren

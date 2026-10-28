@@ -14,8 +14,8 @@ status:
     - {datum: 2026-10-20, wert: planung, wer: Ida, grund: "Termin steht, Unterkunft in Hohnstein gewählt (V-03)"}
 
 personen:
-  ida: {name: Ida, rolle: bestimmer, reist: true}
-  karl: {name: Karl, rolle: einbringer, reist: true, von: 2027-05-14, notiz: "wünscht sich die Fahrt mit der Kirnitzschtalbahn; kommt erst am zweiten Tag dazu (Beispielwert)"}
+  ida: {name: Ida, rolle: organisator, reist: true}
+  karl: {name: Karl, rolle: mitwirkend, reist: true, von: 2027-05-14, notiz: "wünscht sich die Fahrt mit der Kirnitzschtalbahn; kommt erst am zweiten Tag dazu (Beispielwert)"}
 
 # Immer da: Plan, Wissen, Suche, Personen. Zuschaltbar: varianten, karte, tagesseiten, rueckmeldungen,
 # fragen, aufgaben, wuensche (waechter und profile sind noch nicht gebaut).

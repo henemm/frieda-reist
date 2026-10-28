@@ -77,7 +77,7 @@ def test_punkte_nur_eigene_und_im_kontingent(umgebung):
     code, f = aendern(u, b, name="Karl", punkte=5)
     assert code == 409 and "noch 4 von 10" in f["fehler"]
     assert aendern(u, b, name="karl", punkte=4)[0] == 200          # Name ohne Rücksicht auf Groß/klein
-    code, f = aendern(u, a, name="Ida", punkte=1)                   # fremde Wünsche: nein, auch nicht als Bestimmer
+    code, f = aendern(u, a, name="Ida", punkte=1)                   # fremde Wünsche: nein, auch nicht als Organisator:in
     assert code == 403 and "Karl" in f["fehler"]
     assert aendern(u, a, name="Karl", punkte=2)[0] == 200          # umverteilen
     bl = {z["name"]: z for z in brett(u)["bilanz"]}
@@ -100,11 +100,11 @@ def test_erlebt_alle_unterwegs_und_danach(umgebung):
 
     u = umgebung("unterwegs")
     a = wunsch(u, "Ida", "Kirnitzschtalbahn")
-    assert aendern(u, a, name="Karl", erlebt=True)[0] == 200        # alle Einbringer, auch fremde Wünsche
+    assert aendern(u, a, name="Karl", erlebt=True)[0] == 200        # alle Mitwirkenden, auch fremde Wünsche
     assert aendern(u, a, name="Karl", erlebt=True)[0] == 200        # noch einmal (Nachreichen ohne Netz): keine Änderung
     w = brett(u)["wuensche"][0]
     assert w["spalte"] == "erlebt" and w["erlebt"]["wer"] == "Karl" and len(w["verlauf"]) == 1
-    assert aendern(u, a, name="Kim", erlebt=False)[0] == 403        # reisend: nur lesen
+    assert aendern(u, a, name="Kim", erlebt=False)[0] == 403        # gast: nur lesen
     code, f = anfrage(f"{u.rurl}/beispielreise/rueckmeldungen/{a}", methode="DELETE")
     assert code == 409 and "Brett" in f["fehler"]                   # Abgehaktes wird nicht zurückgezogen
     assert aendern(u, a, name="Ida", erlebt=False, kommentar="doch nicht gefahren")[0] == 200
@@ -125,11 +125,11 @@ def test_erlebt_alle_unterwegs_und_danach(umgebung):
     assert aendern(u, VORSCHLAG, name="Karl", erlebt=True)[0] == 403
 
 
-def test_einplanen_nur_bestimmer(umgebung):
+def test_einplanen_nur_organisator(umgebung):
     u = umgebung()
     a = wunsch(u, "Karl", "Abends in Hohnstein essen")
     code, f = aendern(u, a, name="Karl", eingeplant=True)
-    assert code == 403 and "Bestimmer" in f["fehler"]
+    assert code == 403 and "Organisator:in" in f["fehler"]
     assert aendern(u, a, name="Ida", bezug=["T-02"])[0] == 400       # bezug nur zusammen mit eingeplant
     assert aendern(u, a, name="Ida", eingeplant=True, bezug=["T-02"])[0] == 200
     w = brett(u)["wuensche"][0]
@@ -145,7 +145,7 @@ def test_einplanen_nur_bestimmer(umgebung):
                                      headers={"Content-Type": "application/json", **kopf})
         with pytest.raises(urllib.error.HTTPError) as f:
             urllib.request.urlopen(req)
-        assert f.value.code == 403 and "Bestimmer" in json.loads(f.value.read())["fehler"]
+        assert f.value.code == 403 and "Organisator:in" in json.loads(f.value.read())["fehler"]
     assert brett(u)["wuensche"][0]["eingeplant"]["bezug"] == ["T-03"]
     assert len(brett(u)["wuensche"][0]["verlauf"]) == 2
     assert aendern(u, "R-20991231-000000-0000", name="Ida", eingeplant=True)[0] == 404
@@ -160,7 +160,7 @@ def test_vorschlag_aus_dem_repo(umgebung):
     w = brett(u)["wuensche"][0]
     assert w["vorschlag"]["bezug"] == ["T-05", "V-01"] and w["vorschlag"]["option"] == "V-01.b"
     assert w["vorschlag"]["gewaehlt"] is False and w["spalte"] == "eingebracht"
-    # Wählt ein Bestimmer die Option, die aus dem Wunsch wurde, ist er eingeplant
+    # Wählt ein:e Organisator:in die Option, die aus dem Wunsch wurde, ist er eingeplant
     assert rm.spalte({"status": "uebernommen"}, {}, {**w["vorschlag"], "gewaehlt": True}) == "eingeplant"
     assert rm.spalte({"status": "verworfen"}, {"erlebt": {"wer": "Karl"}}, None) == "passt_nicht"
 
@@ -216,7 +216,7 @@ def test_brett_in_der_claude_app(umgebung):
     from test_regeln import IDA, KARL, KIM
     u = umgebung()
     assert {"wuensche", "wunsch_aendern"} <= u.werkzeuge(KARL)
-    assert "wuensche" in u.werkzeuge(KIM) and "wunsch_aendern" not in u.werkzeuge(KIM)   # reisend: nur lesen
+    assert "wuensche" in u.werkzeuge(KIM) and "wunsch_aendern" not in u.werkzeuge(KIM)   # gast: nur lesen
     t, f = u.werkzeug(KARL, "rueckmeldung_geben", art="Wunsch", text="Einmal Kirnitzschtalbahn fahren")
     assert not f, t
     rid = rm.wuensche(u.o)[0]["id"]
@@ -225,14 +225,14 @@ def test_brett_in_der_claude_app(umgebung):
     t, f = u.werkzeug(IDA, "wunsch_aendern", id=rid, punkte=1)
     assert f and "Karl" in t                                           # fremde Punkte: nein
     t, f = u.werkzeug(KARL, "wunsch_aendern", id=rid, eingeplant=True)
-    assert f and "Bestimmer" in t
+    assert f and "Organisator:in" in t
     t, f = u.werkzeug(IDA, "wunsch_aendern", id=rid, eingeplant=True, bezug=["T-99"])
     assert f and "T-99" in t
     t, f = u.werkzeug(IDA, "wunsch_aendern", id=rid, eingeplant=True, bezug=["T-03"])
     assert not f and "eingeplant" in t, t
     # Link ohne Person: Einplanen ist eine Entscheidung und gehört genau einer Person
     import konnektor as kn
-    kn.zugaenge_pfad().write_text(json.dumps({**kn.zugaenge(), "b" * 32: {"reise": "beispielreise", "rolle": "bestimmer"}}))
+    kn.zugaenge_pfad().write_text(json.dumps({**kn.zugaenge(), "b" * 32: {"reise": "beispielreise", "rolle": "organisator"}}))
     t, f = u.werkzeug("b" * 32, "wunsch_aendern", id=rid, eingeplant=False)
     assert f and "persönlichen Link" in t
     t, f = u.werkzeug(KARL, "wunsch_aendern", id="R-1", punkte=1)

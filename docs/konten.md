@@ -51,7 +51,7 @@ erkannt und bekommt darüber jederzeit wieder Zugang.
 | 6 | Adresse ändern | Code an die neue Adresse. Gehört sie schon einem Konto, wird abgelehnt |
 | 7 | Nur Leselink | Lesen geht, Schreiben verlangt die Anmeldung (J2) |
 | 8 | Bisherige Personen | Einladung per Mail. Alte Links gelten bis zur Umstellung |
-| 9 | Freigeschaltet | Legt eine Reise an, ist dort Bestimmer und lädt per Mail ein (J3) |
+| 9 | Freigeschaltet | Legt eine Reise an, ist dort Organisator:in und lädt per Mail ein (J3) |
 | 10 | Aus der Reise nehmen, Konto sperren | Die Verknüpfung entfällt. Sperren meldet alle Geräte ab |
 | 11 | Konto selbst löschen | Konto und Adresse sind weg. Verlaufseinträge behalten den Namen. Die Adresse ist danach wieder frei |
 
@@ -86,7 +86,7 @@ erkannt und bekommt darüber jederzeit wieder Zugang.
 - **Regel `anmeldung` je Reise:**
   - `uebergang` (Vorgabe, solange umgestellt wird): ohne Anmeldung geht weiter ein eingetippter Name.
   - `noetig`: ohne Sitzung 401, ohne Mitgliedschaft 403.
-- **Einplanen** auf dem Wunsch-Brett: auch angemeldet auf der Seite, aber nur als Bestimmer.
+- **Einplanen** auf dem Wunsch-Brett: auch angemeldet auf der Seite, aber nur als Organisator:in.
 - **Zurückziehen:** Angemeldet geht es nur bei eigenen Rückmeldungen.
 - **Reiseseite:** `GET api/ich` sagt, wer angemeldet ist.
   - Oben rechts steht „Anmelden“ oder der eigene Name (Molekül `kontoKnopf`, nur auf Friedas eigener Adresse).

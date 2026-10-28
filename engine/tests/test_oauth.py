@@ -120,7 +120,7 @@ def test_ohne_token_401_mit_zeiger(welt):
 
 def test_ganzer_ablauf_wie_die_claude_app(welt):
     u = welt()
-    konten.einladen("beispielreise", "karl", KARL, "einbringer", "Karl", "Ida")
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
     s, c = registrieren(u)
     assert s == 201 and c["token_endpoint_auth_method"] == "none"
     v, ch = pkce()
@@ -152,7 +152,7 @@ def test_ganzer_ablauf_wie_die_claude_app(welt):
     eig = werkzeuge["rueckmeldung_geben"]["inputSchema"]["properties"]
     assert eig["reise"]["enum"] == ["beispielreise"] and "name" not in eig
     text, fehler = aufruf(u, t["access_token"], "meine_reisen")
-    assert not fehler and "Beispielreise" in text and "reise: beispielreise" in text and "du: einbringer" in text
+    assert not fehler and "Beispielreise" in text and "reise: beispielreise" in text and "du: mitwirkend" in text
     text, fehler = aufruf(u, t["access_token"], "rueckmeldung_geben", art="Kommentar", ziel="T-01", text="Aus der App",
                           name="Jemand")
     assert not fehler, text
@@ -268,20 +268,20 @@ def test_sperren_und_ueberall_abmelden_beenden_den_zugriff(welt):
 
 def test_einladen_per_mail(welt):
     u = welt()
-    konten.einladen("beispielreise", "ida", IDA, "bestimmer", "Ida", "Ida")
+    konten.einladen("beispielreise", "ida", IDA, "organisator", "Ida", "Ida")
     t, _ = verbinden(u, IDA)
     s, _, a = mcp(u, t["access_token"], "tools/list")
     einl = next(w for w in a["result"]["tools"] if w["name"] == "person_einladen")
     assert "email" in einl["inputSchema"]["required"]
-    text, fehler = aufruf(u, t["access_token"], "person_einladen", vorname="Hanna", rolle="einbringer")
+    text, fehler = aufruf(u, t["access_token"], "person_einladen", vorname="Hanna", rolle="mitwirkend")
     assert fehler and "email" in text
-    text, fehler = aufruf(u, t["access_token"], "person_einladen", vorname="Hanna", rolle="einbringer",
+    text, fehler = aufruf(u, t["access_token"], "person_einladen", vorname="Hanna", rolle="mitwirkend",
                           email="Hanna@beispiel.invalid")
     assert not fehler and "hanna@beispiel.invalid" in text and "https://" not in text
     m = [json.loads(z) for z in u.mails.read_text().splitlines() if '"hanna@beispiel.invalid"' in z][-1]
     assert "Ida hat dich zur Reise „Beispielreise" in m["text"] and "/einladung/" in m["text"]
     einladungen = json.loads((u.o / "einladungen.json").read_text())
-    assert einladungen["hanna"]["rolle"] == "einbringer"
+    assert einladungen["hanna"]["rolle"] == "mitwirkend"
     # Karl gibt es schon in der Reise: wird mit seinem Konto verknüpft (Umstellung bisheriger Personen)
     text, fehler = aufruf(u, t["access_token"], "person_einladen", vorname="Karl", email=KARL)
     assert not fehler and "verschickt" in text
@@ -302,12 +302,12 @@ def test_reisen_anlegen_mit_recht(welt):
     assert "email" in w["inputSchema"]["properties"]["personen"]["items"]["properties"]
     text, fehler = aufruf(u, t["access_token"], "reise_anlegen", titel="Winterwoche im Allgäu", von="2027-02-06",
                           bis="2027-02-13", ziel="Oberstdorf",
-                          personen=[{"vorname": "Mo", "rolle": "einbringer", "email": "mo@beispiel.invalid"},
+                          personen=[{"vorname": "Mo", "rolle": "mitwirkend", "email": "mo@beispiel.invalid"},
                                     {"vorname": "Kai"}])
     assert not fehler and "Einladung per Mail" in text, text
     e = json.loads((u.ablage / "_neu" / "auftraege.jsonl").read_text().splitlines()[-1])
     assert e["konto_id"] == konten.konto_per_email(BEN)["id"] and e["name"] == "Ben"
-    assert e["einladen"] == [{"schluessel": "mo", "email": "mo@beispiel.invalid", "rolle": "einbringer", "name": "Mo"}]
+    assert e["einladen"] == [{"schluessel": "mo", "email": "mo@beispiel.invalid", "rolle": "mitwirkend", "name": "Mo"}]
     assert "mo@beispiel.invalid" not in json.dumps(e["daten"])              # Adressen nicht in den Reisedaten
     assert "Winterwoche im Allgäu" in aufruf(u, t["access_token"], "meine_reisen")[0]
 
@@ -335,8 +335,8 @@ def test_alter_link_geht_weiter(welt):
 
 def test_person_entfernen(welt):
     u = welt()
-    konten.einladen("beispielreise", "ida", IDA, "bestimmer", "Ida", "Ida")
-    konten.einladen("beispielreise", "karl", KARL, "einbringer", "Karl", "Ida")
+    konten.einladen("beispielreise", "ida", IDA, "organisator", "Ida", "Ida")
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
     ida, _ = verbinden(u, IDA)
     karl, _ = verbinden(u, KARL)
     from test_regeln import KARL as KARL_LINK
@@ -353,18 +353,18 @@ def test_person_entfernen(welt):
 
 def test_niemand_uebernimmt_eine_bestehende_person(welt):
     """Prüfung J3: Wer eine bestehende, noch nicht verknüpfte Person mit der eigenen Adresse „einlädt“, spräche danach als
-    sie. Bestimmer verknüpft nur der Betreiber; bestehende Personen verknüpfen nur Bestimmer."""
-    u = welt(regeln={"einladen": "einbringer"})
-    konten.einladen("beispielreise", "max", "max@beispiel.invalid", "bestimmer", "Max", "Ida")
-    konten.einladen("beispielreise", "karl", KARL, "einbringer", "Karl", "Ida")
+    sie. Organisator:innen verknüpft nur der Betreiber; bestehende Personen verknüpfen nur Organisator:innen."""
+    u = welt(regeln={"einladen": "mitwirkend"})
+    konten.einladen("beispielreise", "max", "max@beispiel.invalid", "organisator", "Max", "Ida")
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
     maxe, _ = verbinden(u, "max@beispiel.invalid")
     karl, _ = verbinden(u, KARL)
     text, fehler = aufruf(u, maxe["access_token"], "person_einladen", vorname="Ida", email="max.zwei@beispiel.invalid")
     assert fehler and "Betreiber" in text
     assert konten.konto_von_person("beispielreise", "ida") is None
     text, fehler = aufruf(u, karl["access_token"], "person_einladen", vorname="Kim", email="karl.zwei@beispiel.invalid")
-    assert fehler and "nur ein Bestimmer" in text
+    assert fehler and "nur ein:e Organisator:in" in text
     assert konten.konto_von_person("beispielreise", "kim") is None
-    # neue Personen einladen darf ein Einbringer hier weiterhin (höchstens die eigene Rolle)
+    # neue Personen einladen darf ein:e Mitwirkende:r hier weiterhin (höchstens die eigene Rolle)
     text, fehler = aufruf(u, karl["access_token"], "person_einladen", vorname="Lea", email="lea@beispiel.invalid")
     assert not fehler, text

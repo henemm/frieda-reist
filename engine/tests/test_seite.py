@@ -84,7 +84,7 @@ def test_neue_reise_aus_der_vorlage(tmp_path, browser):
     """Paket H: Eine frisch angelegte Reise (Status idee, ohne Plan) zeigt jede Ansicht ohne Fehler und ohne Leere."""
     import neu
     r = neu.anlegen(tmp_path / "reisen", "Skiurlaub im Tal", datetime.date(2027, 2, 6), datetime.date(2027, 2, 13),
-                    {"ida": {"name": "Ida", "rolle": "bestimmer"}, "karl": {"name": "Karl", "rolle": "einbringer"}},
+                    {"ida": {"name": "Ida", "rolle": "organisator"}, "karl": {"name": "Karl", "rolle": "mitwirkend"}},
                     "Ida", ziel="Oberstdorf")
     bauen.bauen(r, tmp_path / "web" / r.name)
 
@@ -226,7 +226,7 @@ def test_anmeldung_auf_der_seite(tmp_path, monkeypatch, browser):
     threading.Thread(target=s.serve_forever, daemon=True).start()
     basis = f"http://127.0.0.1:{s.server_address[1]}"
     monkeypatch.setenv("FR_BASIS", basis)          # die Seite liegt auf Friedas Adresse
-    konten.einladen("beispielreise", "karl", "karl@beispiel.invalid", "einbringer", "Karl", "Ida")
+    konten.einladen("beispielreise", "karl", "karl@beispiel.invalid", "mitwirkend", "Karl", "Ida")
     konten.code_anfordern("karl@beispiel.invalid")
     code = re.search(r"(\d{3}) (\d{3})", json.loads((tmp_path / "mails.jsonl").read_text().splitlines()[-1])["text"])
     token, _ = konten.anmelden("karl@beispiel.invalid", code.expand(r"\1\2"))

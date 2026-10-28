@@ -12,7 +12,7 @@ Festgelegt am 26.10.2026.
 
 ## Merkmale: Mischform
 
-1. **Grundliste** in `engine/merkmale.yaml`, je Bereich. Sie gilt für alle Reisen. Jedes Merkmal hat einen Namen und einen Typ (`text`, `geld`, `zahl`, `auswahl` mit `werte`). Es kann `veraenderlich` sein (dann braucht der Wert ein Prüfdatum). Dazu kommen Hinweise, wie Claude den Wert findet (`hilfe`) und wie Claude den Bestimmer fragt (`frage`). Merkmale mit `auto` berechnet der Generator (Gehzeit, Länge, Höhenmeter, Tage, Unterkünfte). Sie werden nie eingetragen.
+1. **Grundliste** in `engine/merkmale.yaml`, je Bereich. Sie gilt für alle Reisen. Jedes Merkmal hat einen Namen und einen Typ (`text`, `geld`, `zahl`, `auswahl` mit `werte`). Es kann `veraenderlich` sein (dann braucht der Wert ein Prüfdatum). Dazu kommen Hinweise, wie Claude den Wert findet (`hilfe`) und wie Claude die Organisator:in fragt (`frage`). Merkmale mit `auto` berechnet der Generator (Gehzeit, Länge, Höhenmeter, Tage, Unterkünfte). Sie werden nie eingetragen.
 2. **Reise** ergänzt die Liste in `plan/routen.yaml`:
    ```yaml
    merkmale:
@@ -88,7 +88,7 @@ Manche Optionen gehen nur zusammen mit einer anderen (der Bus fährt nur, wenn d
 - Ziele sind Optionen anderer Wahlstellen. Unbekannte Optionen, Ziele in derselben Wahlstelle, zwei Optionen derselben Wahlstelle unter `erfordert` und dasselbe Ziel unter beiden Feldern sind Fehler.
 - Verletzt der aktuelle Plan oder ein benannter Plan (`P-…`) eine Regel, steht das bei „Geht noch nicht auf“ (Bezug `plan`). Gezählt werden nur Optionen, die der Plan wirklich erreicht: Eine Wahlstelle in einer Variante, die nicht im Plan ist, zählt nicht mit, auch wenn sie eine Auswahl hat.
 - Setzt eine gültige Option eine verworfene voraus, gibt es einen Hinweis an der Option.
-- Die Seite zeigt „Setzt voraus“ und „Schließt aus“ an der Option und als Zeilen im Vergleich, jeweils mit „im Plan“, „nicht im Plan“ oder „verworfen“. Die Claude-App nennt beides in der Option und gibt beim Entscheiden Hinweise (wählen, obwohl die Voraussetzung fehlt; verwerfen, was eine Option im Plan voraussetzt). Verhindert wird nichts: Entscheiden bleibt Sache der Bestimmer.
+- Die Seite zeigt „Setzt voraus“ und „Schließt aus“ an der Option und als Zeilen im Vergleich, jeweils mit „im Plan“, „nicht im Plan“ oder „verworfen“. Die Claude-App nennt beides in der Option und gibt beim Entscheiden Hinweise (wählen, obwohl die Voraussetzung fehlt; verwerfen, was eine Option im Plan voraussetzt). Verhindert wird nichts: Entscheiden bleibt Sache der Organisator:innen.
 
 ## Anschluss (berechnet)
 
@@ -116,10 +116,10 @@ Ida sagt zum Beispiel: „Es gibt noch eine Pension in Hohnstein.“
 1. Claude ruft die Merkmalliste ab, in der Claude-App mit `merkmale` (zu `V-…`, zu einer Strecke `E-…` oder mit `bereich`), in Claude Code aus `engine/merkmale.yaml` und `routen.yaml`.
 2. Claude **recherchiert zuerst selbst** (Website, Buchungsportal, Wanderführer) und trägt veränderliche Werte mit Prüfdatum ein.
 3. Claude **fragt nur nach den Lücken**, gezielt nach dem Hinweis `frage`, zum Beispiel: „Hast du einen Preis? Ist Frühstück drin?“ In Claude Code geschieht das mit dem Fragewerkzeug (AskUserQuestion).
-4. In der Claude-App geht der Vorschlag mit `alternative_vorschlagen` weiter: von Bestimmern als Auftrag, von Einbringern als Rückmeldung der Art `Ergänzung`. Beim Einarbeiten entsteht daraus eine neue Option mit Status `vorgeschlagen`. Fehlt die Wahlstelle, legt Claude sie an der genannten ID neu an (planung braucht eine F-Frage). Neue Merkmale aus dem Vorschlag kommen unter `merkmale:` der Wahlstelle oder der Reise.
+4. In der Claude-App geht der Vorschlag mit `alternative_vorschlagen` weiter: von Organisator:innen als Auftrag, von Mitwirkenden als Rückmeldung der Art `Ergänzung`. Beim Einarbeiten entsteht daraus eine neue Option mit Status `vorgeschlagen`. Fehlt die Wahlstelle, legt Claude sie an der genannten ID neu an (planung braucht eine F-Frage). Neue Merkmale aus dem Vorschlag kommen unter `merkmale:` der Wahlstelle oder der Reise.
 5. Die Art der neuen Option ergibt sich aus der Stelle: an einer Wahlstelle aus ihrem `bereich`, an `U-…` Unterkunft, an `E-…` die Art der Strecke. Werte, die vom Datum abhängen, gehen als Liste mit `gilt` (ISO-Datum oder Liste von Daten), höchstens ein Eintrag ohne `gilt`, kein Datum doppelt; Fehler lehnt der Dienst sofort ab.
 6. Ähnelt ein neues Merkmal einem vorhandenen („oeffnung“ neben „geoeffnet“, „kosten“ neben „preis“), meldet der Dienst einen Hinweis und legt die Paare unter `daten.doppelt` ab. Beim Einarbeiten gilt: Meint es dasselbe, kommt der Wert unter das vorhandene Merkmal, kein neues entsteht. Abgelehnt wird nichts, eigene Merkmale bleiben erlaubt.
 
 ## Empfehlung
 
-Hat jede gültige Option die wichtigen Merkmale, darf Claude eine Option als `favorisiert` vorschlagen, immer mit `grund` im Verlauf. Ohne Begründung bricht der Bau ab. Entscheiden (`gewaehlt`, `verworfen`, `ersetzt`) können nur Bestimmer.
+Hat jede gültige Option die wichtigen Merkmale, darf Claude eine Option als `favorisiert` vorschlagen, immer mit `grund` im Verlauf. Ohne Begründung bricht der Bau ab. Entscheiden (`gewaehlt`, `verworfen`, `ersetzt`) können nur Organisator:innen.

@@ -3047,11 +3047,11 @@ function ansichtRueckmeldungen(m) {
 /* ---------- Wunsch-Brett (Wünsche 25.10.2026, Brett Paket G 27.10.2026) ----------
    Ideen der Mitreisenden ohne feste Stelle: ein Ort, ein Erlebnis, ein Essen. Technisch Rückmeldungen der Art „Wunsch“
    mit Ziel „wuensche“; Senden und Ausgang ohne Netz wie bei Rückmeldungen. Das Brett (api/brett) ordnet sie in Spalten:
-   eingebracht, geprüft (Claude hat sie aufgenommen, oft mit Vorschlag „passt zu …“), eingeplant (nur Bestimmer),
+   eingebracht, geprüft (Claude hat sie aufgenommen, oft mit Vorschlag „passt zu …“), eingeplant (nur Organisator:innen),
    erlebt (alle, unterwegs und danach), passt nicht. Punkte: wie wichtig der eigene Wunsch ist, im Kontingent je Person.
    Punkte gehen nur mit Netz; Abhaken wird ohne Netz gemerkt und nachgereicht (nur das Abhaken, nicht das Zurücknehmen,
    damit ein später nachgereichtes „nicht erlebt“ keinen fremden Haken löscht). Einplanen ist eine Entscheidung und geht
-   nur in der Claude-App mit dem persönlichen Link eines Bestimmers; die Karte zeigt, wer eingeplant hat. */
+   nur in der Claude-App mit dem persönlichen Link einer Organisator:in; die Karte zeigt, wer eingeplant hat. */
 const BR_API = "api/brett";
 let BR = lies("brett", null);                 // letzte Antwort von api/brett (offline lesbar)
 let BR_AUSGANG = lies("brett-ausgang", []);   // abgehakt ohne Netz: [{rid, name, erlebt}]
@@ -3120,7 +3120,7 @@ function wuAlle() {
 
 function wuBilanz(alle) {
   const namen = new Map();
-  for (const p of D.reise.personen || []) if (p.rolle !== "reisend") namen.set(p.name.toLowerCase(), p.name);
+  for (const p of D.reise.personen || []) if (p.rolle !== "gast") namen.set(p.name.toLowerCase(), p.name);
   for (const w of alle) if (w.name && !namen.has(w.name.toLowerCase())) namen.set(w.name.toLowerCase(), w.name);
   const punkte = KONTINGENT.art === "punkte";
   return [...namen.values()].sort((a, b) => a.localeCompare(b, "de")).map(n => {
@@ -3178,7 +3178,7 @@ function ansichtWuensche(m) {
   m.append(el("h2", {}, "Wünsche"));
   const punkte = KONTINGENT.art === "punkte";
   m.append(el("p", {class: "wu-intro"}, "Was möchtest du auf dieser Reise erleben? Ein Ort, ein Erlebnis, ein Essen – auch eine vage Idee ist willkommen. " +
-    "Frieda prüft jeden Wunsch, meist in wenigen Minuten, ob und wo er in die Reise passt. Einplanen entscheidet, wer die Reise bestimmt. " +
+    "Frieda prüft jeden Wunsch, meist in wenigen Minuten, ob und wo er in die Reise passt. Einplanen entscheidet, wer die Reise organisiert. " +
     (punkte ? `Jede Person hat ${KONTINGENT.je_person} Punkte für die eigenen Wünsche: je mehr Punkte, desto wichtiger.` :
       `Jede Person kann bis zu ${KONTINGENT.je_person} Wünsche gleichzeitig einbringen.`)));
   // Neuer Wunsch als Fläche (man handelt dort): Wunsch, darunter Link und Name nebeneinander, Senden rechts

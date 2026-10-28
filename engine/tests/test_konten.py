@@ -71,7 +71,7 @@ def test_abgelehnte_bitte_bleibt_abgelehnt(umgebung):
 
 
 def test_szenario2_eingeladen_gilt_beim_ersten_anmelden(umgebung):
-    r = konten.einladen("winterwoche", "karl", KARL, "einbringer", "Karl", "Ida", titel="Winterwoche im Allgäu",
+    r = konten.einladen("winterwoche", "karl", KARL, "mitwirkend", "Karl", "Ida", titel="Winterwoche im Allgäu",
                         seite="https://frieda.beispiel.invalid/winterwoche-x/")
     assert r == {"sofort": False}
     m = mails(umgebung, KARL)[0]
@@ -85,7 +85,7 @@ def test_szenario2_eingeladen_gilt_beim_ersten_anmelden(umgebung):
 
 
 def test_einladungslink_mit_anderer_adresse(umgebung):
-    konten.einladen("winterwoche", "karl", "karl.arbeit@beispiel.invalid", "einbringer", "Karl", "Ida")
+    konten.einladen("winterwoche", "karl", "karl.arbeit@beispiel.invalid", "mitwirkend", "Karl", "Ida")
     link = re.search(r"/einladung/(\S+)", mails(umgebung)[-1]["text"]).group(1)
     e = konten.einladung(link)
     assert e["reise"] == "winterwoche" and e["name"] == "Karl" and not e["eingeloest"]
@@ -100,13 +100,13 @@ def test_einladungslink_mit_anderer_adresse(umgebung):
 
 def test_einladung_einloesen_angemeldet(umgebung):
     _, k = einloggen(umgebung, KARL, "Karl")
-    konten.einladen("winterwoche", "karl", "karl.arbeit@beispiel.invalid", "einbringer", "Karl", "Ida")
+    konten.einladen("winterwoche", "karl", "karl.arbeit@beispiel.invalid", "mitwirkend", "Karl", "Ida")
     link = re.search(r"/einladung/(\S+)", mails(umgebung)[-1]["text"]).group(1)
     assert konten.einladung_einloesen(link, k["id"]) == "winterwoche"
     with pytest.raises(konten.KontoFehler):
         konten.einladung_einloesen(link, k["id"])
     umgebung["uhr"]["t"] += 31 * 86400
-    konten.einladen("sommer", "karl", "karl.arbeit@beispiel.invalid", "einbringer", "Karl", "Ida")
+    konten.einladen("sommer", "karl", "karl.arbeit@beispiel.invalid", "mitwirkend", "Karl", "Ida")
     alt = re.search(r"/einladung/(\S+)", mails(umgebung)[-1]["text"]).group(1)
     umgebung["uhr"]["t"] += 31 * 86400
     assert konten.einladung(alt) is None                # abgelaufen
@@ -114,7 +114,7 @@ def test_einladung_einloesen_angemeldet(umgebung):
 
 def test_szenario4_konto_und_zweite_reise_sofort(umgebung):
     _, k = einloggen(umgebung, KARL, "Karl")
-    r = konten.einladen("sommer", "karl", "KARL@beispiel.invalid", "reisend", "Karl", "Ida", titel="Sommer am See")
+    r = konten.einladen("sommer", "karl", "KARL@beispiel.invalid", "gast", "Karl", "Ida", titel="Sommer am See")
     assert r == {"sofort": True} and konten.mitglied(k["id"], "sommer") == "karl"
     m = mails(umgebung, KARL)[-1]
     assert "steht ab jetzt bei deinen Reisen" in m["text"] and "/einladung/" not in m["text"]
@@ -162,7 +162,7 @@ def test_hoechstens_ein_konto_je_adresse(umgebung):
 
 
 def test_szenario10_entfernen_und_sperren(umgebung):
-    konten.einladen("winterwoche", "karl", KARL, "einbringer", "Karl", "Ida")
+    konten.einladen("winterwoche", "karl", KARL, "mitwirkend", "Karl", "Ida")
     t, k = einloggen(umgebung, KARL)
     assert konten.entfernen("winterwoche", "karl") and konten.mitglied(k["id"], "winterwoche") is None
     assert konten.sitzung(t)                             # aus der Reise genommen, Konto bleibt
@@ -176,7 +176,7 @@ def test_szenario10_entfernen_und_sperren(umgebung):
 
 
 def test_szenario11_konto_selbst_loeschen(umgebung):
-    konten.einladen("winterwoche", "karl", KARL, "einbringer", "Karl", "Ida")
+    konten.einladen("winterwoche", "karl", KARL, "mitwirkend", "Karl", "Ida")
     t, k = einloggen(umgebung, KARL)
     konten.loeschen(k["id"])
     assert konten.konto(k["id"]) is None and konten.sitzung(t) is None
@@ -186,7 +186,7 @@ def test_szenario11_konto_selbst_loeschen(umgebung):
 
 
 def test_zusammenfuehren(umgebung):
-    konten.einladen("winterwoche", "karl", KARL, "einbringer", "Karl", "Ida")
+    konten.einladen("winterwoche", "karl", KARL, "mitwirkend", "Karl", "Ida")
     _, alt = einloggen(umgebung, KARL)
     konten.recht_setzen(alt["id"], "reise_anlegen")
     _, neu = einloggen(umgebung, "karl2@beispiel.invalid", "Karl")
@@ -242,7 +242,7 @@ def test_keine_auskunft_ueber_adressen(umgebung):
 
 
 def test_geheimnisse_nur_als_hash(umgebung):
-    konten.einladen("winterwoche", "karl", KARL, "einbringer", "Karl", "Ida")
+    konten.einladen("winterwoche", "karl", KARL, "mitwirkend", "Karl", "Ida")
     link = re.search(r"/einladung/(\S+)", mails(umgebung)[-1]["text"]).group(1)
     konten.code_anfordern(IDA)
     code = letzter_code(umgebung, IDA)
@@ -271,7 +271,7 @@ def test_eingaben_pruefen(umgebung):
         with pytest.raises(konten.KontoFehler):
             konten.code_anfordern(falsch)
     with pytest.raises(konten.KontoFehler):
-        konten.einladen("Böse Reise", "karl", KARL, "einbringer", "Karl", "Ida")
+        konten.einladen("Böse Reise", "karl", KARL, "mitwirkend", "Karl", "Ida")
     with pytest.raises(konten.KontoFehler):
         konten.einladen("winterwoche", "karl", KARL, "chef", "Karl", "Ida")
     _, k = einloggen(umgebung, IDA, "Ida")
@@ -281,10 +281,10 @@ def test_eingaben_pruefen(umgebung):
 
 
 def test_person_schon_mit_anderem_konto(umgebung):
-    konten.einladen("winterwoche", "karl", KARL, "einbringer", "Karl", "Ida")
+    konten.einladen("winterwoche", "karl", KARL, "mitwirkend", "Karl", "Ida")
     einloggen(umgebung, KARL)
     with pytest.raises(konten.KontoFehler, match="anderen Konto"):
-        konten.einladen("winterwoche", "karl", MO, "einbringer", "Karl", "Ida")
+        konten.einladen("winterwoche", "karl", MO, "mitwirkend", "Karl", "Ida")
 
 
 def test_mail_ohne_einrichtung(umgebung, monkeypatch):
@@ -332,7 +332,7 @@ def test_befehle(umgebung, capsys):
     assert konten.main(["anfragen"]) == 0 and IDA in capsys.readouterr().out
     assert konten.main(["freischalten", IDA]) == 0 and konten.recht(konten.konto(k["id"]), "reise_anlegen")
     assert konten.main(["betreiber", IDA]) == 0 and konten.recht(konten.konto(k["id"]), "betreiber")
-    assert konten.main(["einladen", "winterwoche", "karl", KARL, "einbringer", "Karl", "Ida"]) == 0
+    assert konten.main(["einladen", "winterwoche", "karl", KARL, "mitwirkend", "Karl", "Ida"]) == 0
     assert konten.main(["liste"]) == 0 and "rechte: betreiber,reise_anlegen" in capsys.readouterr().out
     assert konten.main(["sperren", "niemand@beispiel.invalid"]) == 2 and "FEHLER" in capsys.readouterr().out
     assert konten.main(["quatsch"]) == 1

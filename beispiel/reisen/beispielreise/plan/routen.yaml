@@ -1,5 +1,5 @@
 # Beispielreise – Routenmodell: alle Möglichkeiten, Entscheidungen und Kandidaten.
-# Aufbau und Regeln: engine/routen.py. Status gewaehlt, verworfen, ersetzt setzt nur ein Bestimmer
+# Aufbau und Regeln: engine/routen.py. Status gewaehlt, verworfen, ersetzt setzt nur ein:e Organisator:in
 # (reise.yaml, hier Ida); Vorschläge anderer höchstens vorgeschlagen oder favorisiert (mit Begründung).
 # Die Reise ist erfunden; Orte und Wege gibt es wirklich. Kennzahlen der Etappen stehen im Etappen-Dossier
 # (inhalt/etappen.md) und sind aus den schematischen Tracks gerechnet (Beispielwerte).

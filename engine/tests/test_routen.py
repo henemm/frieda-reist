@@ -310,7 +310,7 @@ def test_entscheider_liste_leer(status):
 
 
 def test_entscheider_von_aussen():
-    """Die Bestimmer aus reise.yaml kommen als Parameter und ersetzen „entscheider“ im YAML."""
+    """Die Organisator:innen aus reise.yaml kommen als Parameter und ersetzen „entscheider“ im YAML."""
     r = roh()
     option(r, "V-02.a")["verlauf"] = verlauf(("gewaehlt", "Hanna", {}))
     fehler = []

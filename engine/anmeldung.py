@@ -14,11 +14,12 @@ import re
 import urllib.parse
 
 import konten
+from reise import rolle_neu
 import rueckmeldungen as rm
 
 COOKIE = rm.COOKIE
 JAHR = 365 * 86400
-ROLLE_TEXT = {"reisend": "liest mit", "einbringer": "bringt ein", "bestimmer": "bestimmt"}
+ROLLE_TEXT = {"gast": "liest mit", "mitwirkend": "bringt ein", "organisator": "organisiert"}
 DATENSCHUTZ = ("Frieda speichert deine E-Mail-Adresse und deinen Namen nur, um dich anzumelden und dich zu Reisen "
                "einzuladen. Du kannst dein Konto jederzeit selbst löschen.")
 
@@ -143,7 +144,7 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu=""):
         z = rm.zustand(m["reise"]) or {}
         p = next((x for x in z.get("personen") or [] if x.get("schluessel") == m["schluessel"]), {})
         link = f' – <a href="{esc(info["seite"])}">öffnen</a>' if info.get("seite") else ""
-        reisen.append(f'<li>{esc(info.get("titel") or m["reise"])} ({esc(ROLLE_TEXT.get(p.get("rolle"), "dabei"))})'
+        reisen.append(f'<li>{esc(info.get("titel") or m["reise"])} ({esc(ROLLE_TEXT.get(rolle_neu(p.get("rolle")), "dabei"))})'
                       f"{link}</li>")
     reisen_html = f"<ul>{''.join(reisen)}</ul>" if reisen else (
         '<p class="hinweis">Noch keine Reisen. Wer eine Reise bestimmt, kann dich mit deiner Adresse einladen.</p>')
@@ -201,7 +202,7 @@ def einladungs_seite(e, token, k, reise_info, meldung=""):
     info = reise_info(e["reise"]) or {}
     titel = info.get("titel") or e["reise"]
     kopf = (f"<h1>Einladung</h1><p>{esc(e['von'])} hat {esc(e['name'])} zur Reise <strong>„{esc(titel)}“</strong> "
-            f"eingeladen ({esc(ROLLE_TEXT.get(e['rolle'], e['rolle']))}).</p>")
+            f"eingeladen ({esc(ROLLE_TEXT.get(rolle_neu(e['rolle']), e['rolle']))}).</p>")
     if e["eingeloest"]:
         return seite("Einladung", karte(kopf, '<p class="hinweis">Diese Einladung ist schon angenommen.</p>',
                                         '<p><a href="/konto">Zu meinem Konto</a></p>'))

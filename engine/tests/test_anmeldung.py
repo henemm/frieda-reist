@@ -134,7 +134,7 @@ def test_rueckweg_nur_auf_friedas_adresse(welt):
 
 def test_einladung_mit_anderer_adresse(welt):
     u = welt()
-    konten.einladen("beispielreise", "karl", "karl.arbeit@beispiel.invalid", "einbringer", "Karl", "Ida",
+    konten.einladen("beispielreise", "karl", "karl.arbeit@beispiel.invalid", "mitwirkend", "Karl", "Ida",
                     titel="Malerweg")
     link = re.search(r"/einladung/(\S+)", json.loads(u.mails.read_text().splitlines()[-1])["text"]).group(1)
     s, _, t = abruf(f"{u.kurl}/einladung/{link}")
@@ -151,7 +151,7 @@ def test_einladung_mit_anderer_adresse(welt):
 def test_einladung_angemeldet_annehmen(welt):
     u = welt()
     token, _ = anmelden(u, KARL, "Karl")
-    konten.einladen("beispielreise", "karl", "karl.arbeit@beispiel.invalid", "einbringer", "Karl", "Ida")
+    konten.einladen("beispielreise", "karl", "karl.arbeit@beispiel.invalid", "mitwirkend", "Karl", "Ida")
     link = re.search(r"/einladung/(\S+)", json.loads(u.mails.read_text().splitlines()[-1])["text"]).group(1)
     s, _, t = abruf(f"{u.kurl}/einladung/{link}", cookie=token)
     assert "Annehmen als Karl" in t
@@ -166,13 +166,13 @@ def mitmachen(u, token=None, origin=BASIS, kopf=None, **eintrag):
 
 def test_rueckmeldung_traegt_den_namen_aus_der_sitzung(welt):
     u = welt()
-    konten.einladen("beispielreise", "karl", KARL, "einbringer", "Karl", "Ida")
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
     token, _ = anmelden(u, KARL)
     s, _, t = mitmachen(u, token, name="Jemand anderes")
     assert s == 201 and json.loads(t)["name"] == "Karl"
     s, _, t = abruf(f"{u.rurl}/beispielreise/ich", cookie=token)
     ich = json.loads(t)
-    assert ich["person"] == {"schluessel": "karl", "name": "Karl", "rolle": "einbringer"}
+    assert ich["person"] == {"schluessel": "karl", "name": "Karl", "rolle": "mitwirkend"}
     assert ich["konto"]["email"] == KARL and ich["basis"] == BASIS and ich["anmeldung"] == "uebergang"
     assert json.loads(abruf(f"{u.rurl}/beispielreise/ich")[2])["konto"] is None
     # mit Sitzung, aber von fremder Adresse (CSRF): nein
@@ -190,10 +190,10 @@ def test_regel_noetig(welt):
     token, _ = anmelden(u, MO, "Mo")                            # angemeldet, aber nicht eingeladen
     s, _, t = mitmachen(u, token)
     assert s == 403 and "nicht eingeladen" in t
-    konten.einladen("beispielreise", "karl", KARL, "einbringer", "Karl", "Ida")
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
     karl, _ = anmelden(u, KARL)
     ida_t = None
-    konten.einladen("beispielreise", "ida", IDA, "bestimmer", "Ida", "Ida")
+    konten.einladen("beispielreise", "ida", IDA, "organisator", "Ida", "Ida")
     ida_t, _ = anmelden(u, IDA)
     s, _, t = mitmachen(u, ida_t)
     rid = json.loads(t)["id"]
@@ -210,10 +210,10 @@ def test_regel_noetig(welt):
     assert s == 201 and json.loads(t)["erstellt_von"] == "Karl"
 
 
-def test_einplanen_als_angemeldete_bestimmerin(welt):
+def test_einplanen_als_angemeldete_organisatorin(welt):
     u = welt()
-    konten.einladen("beispielreise", "ida", IDA, "bestimmer", "Ida", "Ida")
-    konten.einladen("beispielreise", "karl", KARL, "einbringer", "Karl", "Ida")
+    konten.einladen("beispielreise", "ida", IDA, "organisator", "Ida", "Ida")
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
     ida_t, _ = anmelden(u, IDA)
     karl_t, _ = anmelden(u, KARL)
     s, _, t = mitmachen(u, karl_t, art="Wunsch", ziel="wuensche", text="Bastei bei Sonnenaufgang")

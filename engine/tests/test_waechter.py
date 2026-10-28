@@ -1,5 +1,5 @@
 """Tests für Paket E: Wächter und Erinnerer gegen die Beispielreise, mit simuliertem Datum.
-Personen: Ida Bestimmerin, Karl Einbringer. Reisetage der Beispielreise: 13.–16.5.2027."""
+Personen: Ida Organisatorin, Karl Mitwirkender. Reisetage der Beispielreise: 13.–16.5.2027."""
 import datetime
 import json
 import shutil
@@ -143,7 +143,7 @@ def test_pruefauftrag_ist_kein_entscheidungsauftrag(reise, capsys):
     r.lauf(D(2026, 11, 1))
     rm.liste("beispielreise", False)
     aus = capsys.readouterr().out
-    assert "PRÜFAUFTRAG des Wächters" in aus and "keine Entscheidung eines Bestimmers" in aus
+    assert "PRÜFAUFTRAG des Wächters" in aus and "keine Entscheidung einer Organisator:in" in aus
     # kein Material für Widersprüche: nur die Entscheidungen im Plan stehen, kein Auftrag
     assert not [e for e in kn.stehende_entscheidungen("beispielreise", kn.daten("beispielreise")) if e.get("auftrag")]
 
@@ -183,8 +183,8 @@ def test_erinnerer_meldet_frist_einmal_und_ueberfaellig_woechentlich(reise):
 def test_erinnerer_ab_termin_und_wer_zustaendig_ist(reise):
     r = reise()
     r.aufgabe("Hütte buchen", ab="2026-11-05", zustaendig="Karl")
-    r.aufgabe("Zug buchen", ab="2026-11-05")                 # niemand zuständig -> Bestimmer
-    r.aufgabe("Fahrrad leihen", ab="2026-11-05", zustaendig="Unbekannt")   # keine Person der Reise -> Bestimmer
+    r.aufgabe("Zug buchen", ab="2026-11-05")                 # niemand zuständig -> Organisator:innen
+    r.aufgabe("Fahrrad leihen", ab="2026-11-05", zustaendig="Unbekannt")   # keine Person der Reise -> Organisator:innen
     r.aufgabe("Später", ab="2026-12-01", zustaendig="Karl")
     assert not [m for m in r.lauf(D(2026, 11, 4))["meldungen"] if m["art"] == "erinnerung"]
     ms = [m for m in r.lauf(D(2026, 11, 5))["meldungen"] if m["art"] == "erinnerung"]
@@ -230,11 +230,11 @@ def test_meldungen_verfallen_ausser_konflikten(reise):
 
 # ---------- Statuswechsel ----------
 
-def test_statuswechsel_wird_den_bestimmern_gemeldet(reise):
+def test_statuswechsel_wird_den_organisatoren_gemeldet(reise):
     r = reise(status="fest")
     assert not [m for m in r.lauf(D(2027, 5, 12))["meldungen"] if m["art"] == "status"]
     (m,) = [x for x in r.lauf(D(2027, 5, 13))["meldungen"] if x["art"] == "status"]
-    assert m["an"] == ["Ida"] and "begonnen" in m["text"] and "unterwegs" in m["text"] and "Bestimmer" in m["text"]
+    assert m["an"] == ["Ida"] and "begonnen" in m["text"] and "unterwegs" in m["text"] and "Organisator:in" in m["text"]
     assert not [x for x in r.lauf(D(2027, 5, 14))["meldungen"] if x["art"] == "status"]
     assert len([x for x in r.lauf(D(2027, 5, 20))["meldungen"] if x["art"] == "status"]) == 1   # danach (anderer Schlüssel)
     # nach dem Wechsel ist die Meldung nicht mehr aktuell

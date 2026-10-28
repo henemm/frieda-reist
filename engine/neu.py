@@ -25,12 +25,12 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bauen  # noqa: E402
-from reise import PFAD_MUSTER, ROLLEN, reise_pfad, schluessel_aus_name  # noqa: E402
+from reise import PFAD_MUSTER, ROLLEN, reise_pfad, rolle_neu, schluessel_aus_name  # noqa: E402
 
 VORLAGE = Path(__file__).with_name("reisevorlage")
 ARTEN = ("W", "F", "O", "U", "E", "T", "V")          # nummerierte IDs; Pläne (P-A) und Aufgaben (AG, live) nicht
 GRUPPEN = ("wissen", "praxis", "quelle")
-ROLLE_TEXT = {"bestimmer": "bestimmt", "einbringer": "bringt ein", "reisend": "liest mit"}
+ROLLE_TEXT = {"organisator": "organisiert", "mitwirkend": "bringt ein", "gast": "liest mit"}
 BAUSTEINE_IDEE = ["rueckmeldungen", "fragen", "aufgaben", "wuensche"]
 MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November",
           "Dezember"]
@@ -77,12 +77,12 @@ def schreib_json(pfad, obj):
 
 
 def person_aus_text(text):
-    """„hanna=Hanna:einbringer“ oder „Ben:reisend:nicht“ -> (schluessel, {name, rolle[, reist]})."""
+    """„hanna=Hanna:mitwirkend“ oder „Ben:gast:nicht“ -> (schluessel, {name, rolle[, reist]})."""
     schluessel, _, rest = text.rpartition("=") if "=" in text else ("", "", text)
     teile = [t.strip() for t in rest.split(":")]
     if len(teile) < 2 or not teile[0]:
-        raise Fehler(f"Person „{text}“: bitte als Name:rolle angeben, z. B. Hanna:einbringer.")
-    name, rolle = teile[0], teile[1]
+        raise Fehler(f"Person „{text}“: bitte als Name:rolle angeben, z. B. Hanna:mitwirkend.")
+    name, rolle = teile[0], rolle_neu(teile[1])
     if rolle not in ROLLEN:
         raise Fehler(f"Person {name}: Rolle „{rolle}“ gibt es nicht; möglich sind {', '.join(ROLLEN)}.")
     p = {"name": name, "rolle": rolle}
@@ -146,11 +146,11 @@ def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, un
         raise Fehler(f"Zeitraum: Das Ende ({datum_text(bis)}) liegt vor dem Anfang ({datum_text(von)}).")
     if not personen:
         raise Fehler("Die Reise braucht mindestens eine Person, die bestimmt.")
-    bestimmer = [p["name"] for p in personen.values() if p.get("rolle") == "bestimmer"]
-    if not bestimmer:
-        raise Fehler("Mindestens eine Person braucht die Rolle bestimmer: Sie entscheidet und setzt den Status.")
-    if wer not in bestimmer:
-        raise Fehler(f"Anlegen darf nur, wer auf der Reise bestimmt. {wer} steht nicht als bestimmer in den Personen.")
+    organisator = [p["name"] for p in personen.values() if p.get("rolle") == "organisator"]
+    if not organisator:
+        raise Fehler("Mindestens eine Person braucht die Rolle organisator: Sie entscheidet und setzt den Status.")
+    if wer not in organisator:
+        raise Fehler(f"Anlegen darf nur, wer auf der Reise bestimmt. {wer} steht nicht als organisator in den Personen.")
     pfad = pfad or reise_pfad(titel, von.year)
     if not PFAD_MUSTER.match(pfad):
         raise Fehler(f"Ordnername „{pfad}“: nur Kleinbuchstaben, Ziffern und Bindestrich.")
@@ -187,7 +187,7 @@ def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, un
     }
     (ziel_dir / "reise.yaml").write_text(
         "# Eckdaten, Zeitraum, Status, Personen und Einstellungen (engine/reise.py, docs/produkt.md).\n"
-        "# Status und Einstellungen ändert nur ein Bestimmer, mit Verlaufseintrag.\n\n"
+        "# Status und Einstellungen ändert nur ein:e Organisator:in, mit Verlaufseintrag.\n\n"
         + yaml.safe_dump(reise, sort_keys=False, allow_unicode=True, width=110), encoding="utf-8")
     schreib_json(ziel_dir / "reise.json", {
         "plan": "plan/plan.md",
@@ -309,7 +309,7 @@ def main(argv):
     r.add_argument("--von", required=True, type=datetime.date.fromisoformat)
     r.add_argument("--bis", required=True, type=datetime.date.fromisoformat)
     r.add_argument("--person", action="append", required=True, help="schluessel=Name:rolle[:reist|nicht]")
-    r.add_argument("--wer", required=True, help="Name der Person, die anlegt (bestimmer)")
+    r.add_argument("--wer", required=True, help="Name der Person, die anlegt (organisator)")
     r.add_argument("--ziel")
     r.add_argument("--pfad")
     r.add_argument("--untertitel")

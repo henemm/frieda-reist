@@ -8,7 +8,7 @@
 #   veraenderlich  true: Wert braucht ein Prüfdatum (geprueft), sonst steht „ungeprüft“ daneben
 #   auto           wird aus dem Plan berechnet (Kennzahlen der Strecken, Tage) und nie von Hand eingetragen
 #   hilfe          wie Claude den Wert selbst recherchiert
-#   frage          wie Claude den Bestimmer gezielt fragt, wenn die Recherche nichts ergibt
+#   frage          wie Claude die Organisator:in gezielt fragt, wenn die Recherche nichts ergibt
 
 unterkunft:
   preis:

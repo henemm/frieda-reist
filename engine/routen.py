@@ -156,7 +156,7 @@ class Routen:
     def __init__(self, roh, etappen, fragen, fehler, id_anlegen, quelle="plan/routen.yaml", zwang=None, grund=None,
                  entscheider=None):
         """roh: geladenes YAML. etappen: {E-ID: Etappe aus dem Dossier}. fragen: {F-ID: Status-Text}.
-        entscheider: Namen, die gewaehlt/verworfen/ersetzt setzen dürfen (Bestimmer aus reise.yaml); None: aus dem YAML.
+        entscheider: Namen, die gewaehlt/verworfen/ersetzt setzen dürfen (Organisator:innen aus reise.yaml); None: aus dem YAML.
         zwang: {V-ID: Option-ID} – für benannte Pläne; erzwingt eine Option, auch eine verworfene.
         grund: Grundliste der Merkmale (Standard: engine/merkmale.yaml)."""
         self.r = roh or {}

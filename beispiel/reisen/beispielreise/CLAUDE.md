@@ -5,7 +5,7 @@ Erfundene Reise als Beispiel und Testdaten für den Generator. Die Gegend (Dresd
 ## Eckdaten
 
 - Do 13.5. bis So 16.5.2027, An- und Abreise mit dem Zug über Dresden.
-- 2 Personen: Ida (Rolle bestimmer) und Karl (Rolle einbringer), siehe `reise.yaml`.
+- 2 Personen: Ida (Rolle organisator) und Karl (Rolle mitwirkend), siehe `reise.yaml`.
 - Tag 1 Stadttag in Dresden, Tage 2 bis 4 Wandern auf Abschnitten des Malerwegs: Stadt Wehlen → Hohnstein → Altendorf → Bad Schandau oder Lichtenhainer Wasserfall.
 - Ohne Auto; S-Bahn und Kirnitzschtalbahn.
 

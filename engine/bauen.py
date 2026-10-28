@@ -547,10 +547,10 @@ class Bauer:
                 roh = {}
             status = {z["id"]: z["status"] for z in fragen["zeilen"]}
             if "entscheider" in roh and self.reise_roh is not None:
-                self.fehler.append(f"{r_rel}: „entscheider“ steht jetzt in reise.yaml (personen mit rolle bestimmer).")
-            bestimmer = [p["name"] for p in self.eck["personen"] if p["rolle"] == "bestimmer"]
+                self.fehler.append(f"{r_rel}: „entscheider“ steht jetzt in reise.yaml (personen mit rolle organisator).")
+            organisator = [p["name"] for p in self.eck["personen"] if p["rolle"] == "organisator"]
             route = Routen(roh, etappen, status, self.fehler, self.id_anlegen, r_rel,
-                           entscheider=bestimmer if self.reise_roh is not None else None).bauen()
+                           entscheider=organisator if self.reise_roh is not None else None).bauen()
             verhalten_anwenden(route, self.eck["verhalten"])
             for uid, u in ((route or {}).get("unterkuenfte") or {}).items():
                 if u.get("kategorie") == "sonstige":
@@ -612,7 +612,7 @@ class Bauer:
     def wunsch_vorschlaege(self, rel, route):
         """Claudes Vorschläge zu Wünschen (Paket G): je Wunsch (R-…) die Stellen, an die er passt (bezug), eine kurze
         Notiz mit Herkunft und, wenn daraus eine Option wurde, deren ID. Der Wunschtext steht nicht hier, sondern in der
-        Rückmelde-Ablage. Eingeplant ist ein Wunsch erst, wenn ein Bestimmer diese Option wählt (gewaehlt) oder ihn auf dem
+        Rückmelde-Ablage. Eingeplant ist ein Wunsch erst, wenn ein:e Organisator:in diese Option wählt (gewaehlt) oder ihn auf dem
         Brett bestätigt; Claude kann ihn nicht einplanen."""
         try:
             roh = yaml.safe_load(self.lesen(rel)) or {}

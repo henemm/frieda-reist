@@ -47,11 +47,12 @@ from contextlib import closing
 from pathlib import Path
 
 import instanz
+from reise import rolle_neu
 
 EMAIL_MUSTER = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$")
 REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")          # wie rueckmeldungen.REISE_MUSTER
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")        # wie konnektor.PERSON_MUSTER
-ROLLEN = ("reisend", "einbringer", "bestimmer")
+ROLLEN = ("gast", "mitwirkend", "organisator")
 RECHTE = ("reise_anlegen", "betreiber")
 MAX_NAME = 80
 
@@ -508,7 +509,7 @@ def konto_von_person(reise, schluessel):
 
 
 def verknuepfen(kid, reise, schluessel):
-    """Konto direkt mit einer Person der Reise verknüpfen (z. B. wer eine Reise anlegt, ist dort Bestimmer)."""
+    """Konto direkt mit einer Person der Reise verknüpfen (z. B. wer eine Reise anlegt, ist dort Organisator:in)."""
     if not REISE_MUSTER.match(reise or "") or not PERSON_MUSTER.match(schluessel or ""):
         raise KontoFehler("Reise oder Person ungültig.")
     with closing(db()) as v, v:
@@ -555,7 +556,7 @@ def einladung(token):
         if not z:
             return None
         return {k: z[k] for k in ("reise", "schluessel", "name", "rolle", "email", "von")} | {
-            "eingeloest": z["eingeloest"] is not None}
+            "rolle": rolle_neu(z["rolle"]), "eingeloest": z["eingeloest"] is not None}
 
 
 def einladung_einloesen(token, kid):
@@ -573,6 +574,7 @@ def einladen(reise, schluessel, roh, rolle, name, von, titel=None, seite=None):
     Einladung sofort. -> {"sofort": bool}. Der Link in der Mail ist ein Nachweis und bleibt geheim."""
     if not REISE_MUSTER.match(reise or "") or not PERSON_MUSTER.match(schluessel or ""):
         raise KontoFehler("Reise oder Person ungültig.")
+    rolle = rolle_neu(rolle)
     if rolle not in ROLLEN:
         raise KontoFehler("Unbekannte Rolle.")
     e, n, von = adresse(roh), name_pruefen(name), name_pruefen(von)
@@ -593,7 +595,7 @@ def einladen(reise, schluessel, roh, rolle, name, von, titel=None, seite=None):
         if sofort:
             _einloesen(v, _hash("einladung", token), k["id"])
     titel = titel or reise
-    rolle_text = {"reisend": "liest mit", "einbringer": "bringst ein", "bestimmer": "bestimmst mit"}[rolle]
+    rolle_text = {"gast": "liest mit", "mitwirkend": "bringst ein", "organisator": "organisierst mit"}[rolle]
     zeilen = [f"Hallo {n},", "", f"{von} hat dich zur Reise „{titel}“ eingeladen (du {rolle_text}).", ""]
     if sofort:
         zeilen += ["Die Reise steht ab jetzt bei deinen Reisen, wenn du dich bei Frieda anmeldest."]

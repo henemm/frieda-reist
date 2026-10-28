@@ -14,7 +14,7 @@ In beiden Fällen steht die Reise danach im Status `idee` und baut sofort: mit E
 | Titel | ja | kurz, z. B. „Winterwoche im Allgäu“; daraus und aus dem Jahr wird der Ordnername (`reise_pfad`) |
 | Zeitraum | ja | erster und letzter Tag; steht in `reise.yaml` unter `zeitraum`, schon bevor es einen Plan gibt |
 | Ziel | nein | Ort oder Gegend; erscheint im Untertitel |
-| Personen | ja | je Person Vorname, Rolle (`reisend`, `einbringer`, `bestimmer`), ob sie mitreist; wer anlegt, ist Bestimmer |
+| Personen | ja | je Person Vorname, Rolle (`gast`, `mitwirkend`, `organisator`), ob sie mitreist; wer anlegt, ist Organisator:innen |
 | Bekanntes | nein | Ideen, schon Gebuchtes, Quellen; in eigenen Worten mit Herkunft |
 
 Claude fragt nur nach Lücken und lässt vor dem Anlegen bestätigen, was genau angelegt wird.
@@ -35,7 +35,7 @@ kontext/herkunft.md wann, von wem und auf welchem Weg die Reise angelegt wurde
 medien/             für Bilder, Karten, Tracks
 ```
 
-Eingeschaltet sind `rueckmeldungen`, `fragen`, `aufgaben` und `wuensche`. `varianten`, `karte`, `tagesseiten` und `waechter` schaltet ein Bestimmer zu, wenn die Planung beginnt. Ein Routenmodell (`plan/routen.yaml`, Aufbau in `engine/routen.py` und in der Beispielreise) kommt mit der Planung dazu: Start und Ende, Orte, Strecken, Unterkünfte, Wahlstellen. Dafür wird in `reise.json` der Eintrag `routen` ergänzt.
+Eingeschaltet sind `rueckmeldungen`, `fragen`, `aufgaben` und `wuensche`. `varianten`, `karte`, `tagesseiten` und `waechter` schaltet ein:e Organisator:in zu, wenn die Planung beginnt. Ein Routenmodell (`plan/routen.yaml`, Aufbau in `engine/routen.py` und in der Beispielreise) kommt mit der Planung dazu: Start und Ende, Orte, Strecken, Unterkünfte, Wahlstellen. Dafür wird in `reise.json` der Eintrag `routen` ergänzt.
 
 ## Quellen übernehmen
 

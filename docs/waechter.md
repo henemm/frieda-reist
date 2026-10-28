@@ -6,13 +6,13 @@ Beschlossen vom Product Owner am 26.10.2026 (Issue #11). Der Baustein `waechter`
 
 | Art | Wann | An wen |
 |---|---|---|
-| Frist | Aufgabe offen, Frist in höchstens `regeln.erinnerung_vorlauf_tage` Tagen (Vorgabe 3), einmal | Zuständige Person, sonst alle Bestimmer |
+| Frist | Aufgabe offen, Frist in höchstens `regeln.erinnerung_vorlauf_tage` Tagen (Vorgabe 3), einmal | Zuständige Person, sonst alle Organisator:innen |
 | Überfällig | Frist vorbei, alle 7 Tage neu, bis die Aufgabe erledigt ist | wie oben |
 | Ab-Termin | `ab` einer offenen Aufgabe ist erreicht („jetzt möglich“), einmal | wie oben |
-| Statuswechsel | Status `fest`, aber der erste Reisetag ist erreicht; Status `fest` oder `unterwegs`, aber der letzte Reisetag ist vorbei; alle 7 Tage neu, bis gewechselt ist | alle Bestimmer |
-| Prüfung | veränderliche Angaben werden neu nachgeschlagen (Prüfauftrag, siehe unten) | Bestimmer sehen den Auftrag, die Ergebnisse kommen als Rückfrage oder offene Frage |
+| Statuswechsel | Status `fest`, aber der erste Reisetag ist erreicht; Status `fest` oder `unterwegs`, aber der letzte Reisetag ist vorbei; alle 7 Tage neu, bis gewechselt ist | alle Organisator:innen |
+| Prüfung | veränderliche Angaben werden neu nachgeschlagen (Prüfauftrag, siehe unten) | Organisator:innen sehen den Auftrag, die Ergebnisse kommen als Rückfrage oder offene Frage |
 
-Die KI wechselt den Reisestatus nie selbst: Sie erinnert, ein Bestimmer entscheidet (Auftrag an `reise`).
+Die KI wechselt den Reisestatus nie selbst: Sie erinnert, ein:e Organisator:in entscheidet (Auftrag an `reise`).
 
 ## Wann der Wächter arbeitet
 
@@ -25,8 +25,8 @@ Geprüft werden Merkmale mit `veraenderlich: true` (Preis, Öffnungszeiten, Fahr
 Daraus entsteht höchstens ein **Prüfauftrag** (Name „Wächter“, Art Prüfung, `daten.pruefung`) in `auftraege.jsonl`:
 
 - Nie mehr als ein offener Prüfauftrag, frühestens 7 Tage nach dem letzten, höchstens 15 Angaben je Auftrag (die ältesten zuerst). So bleibt ein KI-Lauf klein.
-- Das Einarbeiten (Claude Code) schlägt die Angaben nach. Stimmt der Wert, trägt es Prüfdatum und Quelle ein. **Weicht er ab, wird er nicht still übernommen**: Es legt eine offene Frage mit altem und neuem Wert, Quelle und Datum an, und die Bestimmer entscheiden.
-- Ein Prüfauftrag ist keine Entscheidung eines Bestimmers und nimmt an keinem Konflikt teil.
+- Das Einarbeiten (Claude Code) schlägt die Angaben nach. Stimmt der Wert, trägt es Prüfdatum und Quelle ein. **Weicht er ab, wird er nicht still übernommen**: Es legt eine offene Frage mit altem und neuem Wert, Quelle und Datum an, und die Organisator:innen entscheiden.
+- Ein Prüfauftrag ist keine Entscheidung einer Organisator:in und nimmt an keinem Konflikt teil.
 
 ## Meldekanäle (`regeln.meldekanal`)
 

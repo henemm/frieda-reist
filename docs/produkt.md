@@ -9,7 +9,7 @@ Frieda ist die eine Quelle der Wahrheit für eine Reise, von der ersten Idee bis
 ## Kern
 
 1. **Reisemodell.** Bausteine mit festen IDs: Tage, Strecken, Orte, Unterkünfte. Alternativen sind Teil des Modells: Wahlstellen mit Optionen auf jeder Ebene, benannte Pläne. Verworfenes wird nie gelöscht, sondern bekommt einen Verlaufseintrag. Drumherum das Wissen (Dossiers, Geschichte, Praxis, Quellen) und das Offene (Fragen, Aufgaben, Wünsche, Rückmeldungen).
-2. **Spielregeln.** Jede Aussage nennt ihre Herkunft, Annahmen sind markiert, Veränderliches trägt ein Prüfdatum. Bestimmer entscheiden, mit Datum und Verlauf. Einbringer geben Eingaben. Die KI recherchiert, prüft, schlägt vor, arbeitet ein, baut und veröffentlicht, entscheidet aber nie. IDs werden nie neu vergeben.
+2. **Spielregeln.** Jede Aussage nennt ihre Herkunft, Annahmen sind markiert, Veränderliches trägt ein Prüfdatum. Organisator:innen entscheiden, mit Datum und Verlauf. Mitwirkende geben Eingaben. Die KI recherchiert, prüft, schlägt vor, arbeitet ein, baut und veröffentlicht, entscheidet aber nie. IDs werden nie neu vergeben.
 3. **Kreislauf.** Eingabe über App oder Seite an eine ID, Eingang auf dem Server, Prüfung und Einarbeiten durch die KI, Veröffentlichung, Status mit Kommentar zurück an den Absender.
 
 Technik (Python-Generator, HTML-Vorlage, Service Worker, nginx, systemd, Git) ist Mittel, nicht Kern.
@@ -28,25 +28,25 @@ Rollen gelten je Reise, nicht je Person. Rechte sind gestuft, jede Stufe enthäl
 
 | Rolle | Darf |
 |---|---|
-| `reisend` | lesen (Mitreisende, die nur wissen wollen, was wann ist; Gäste) |
-| `einbringer` | Wünsche, Rückmeldungen, Aufgaben, Antworten auf Fragen; auch für Nicht-Reisende (`reist: false`) |
-| `bestimmer` | entscheiden (gewählt, verworfen, ersetzt), Status und Einstellungen der Reise setzen, Personen einladen |
+| `gast` | lesen (Mitreisende, die nur wissen wollen, was wann ist; Gäste) |
+| `mitwirkend` | Wünsche, Rückmeldungen, Aufgaben, Antworten auf Fragen; auch für Nicht-Reisende (`reist: false`) |
+| `organisator` | entscheiden (gewählt, verworfen, ersetzt), Status und Einstellungen der Reise setzen, Personen einladen |
 
-Mehrere Bestimmer sind möglich. Jede Entscheidung hat genau eine Person und ein Datum. Zwei verschiedene Entscheidungen an derselben Stelle überschreiben sich nicht: Die KI macht daraus eine offene Frage und meldet den Konflikt beiden (Regel `konflikt: offene_frage`). Die KI selbst ist die vierte Rolle: Assistent, schlägt vor, prüft, arbeitet ein, entscheidet nie.
+Mehrere Organisator:innen sind möglich. Jede Entscheidung hat genau eine Person und ein Datum. Zwei verschiedene Entscheidungen an derselben Stelle überschreiben sich nicht: Die KI macht daraus eine offene Frage und meldet den Konflikt beiden (Regel `konflikt: offene_frage`). Die KI selbst ist die vierte Rolle: Assistent, schlägt vor, prüft, arbeitet ein, entscheidet nie.
 
 Personen und Rollen stehen je Reise in `reisen/<reise>/reise.yaml` unter `personen:`. Wer nur einen Teil der Reise mitreist, bekommt `von` und `bis` (Datum); der Reiseüberblick zeigt dann „ab“ und „bis“. Der Konnektor-Link gehört zu einer Person (`konnektor.py zugang <reise> <person>`).
 
 ## Einstellungen je Reise (`reise.yaml`)
 
 - **Bausteine, an oder aus** (`bausteine:`). Immer da: Plan, Wissen, Suche, Personen. Zuschaltbar: `varianten`, `karte`, `tagesseiten`, `rueckmeldungen`, `fragen`, `aufgaben`, `wuensche`, `waechter`, `profile`. Ein ausgeschalteter Baustein verschwindet aus Seite und App, seine Daten bleiben. (`waechter` ist seit Paket E gebaut, `profile` ist angelegt, aber noch nicht gebaut: Ausbaustufe 3.)
-- **Spielregeln, mit Wert** (`regeln:`), Vorgaben in `engine/reise.py`: `entscheidungsweg` (direkt im Gespräch oder als Auftrag mit Prüfung), `konflikt` (offene_frage), `kontingent` beim Brett (Art `punkte` oder `anzahl`, `je_person`), `einladen` (bestimmer), `sammelzeit_minuten` vor dem Einarbeiten.
+- **Spielregeln, mit Wert** (`regeln:`), Vorgaben in `engine/reise.py`: `entscheidungsweg` (direkt im Gespräch oder als Auftrag mit Prüfung), `konflikt` (offene_frage), `kontingent` beim Brett (Art `punkte` oder `anzahl`, `je_person`), `einladen` (organisator), `sammelzeit_minuten` vor dem Einarbeiten.
 - **Darstellung** (`darstellung:`): Startreiter, Namen der Reiter, Tiefe der Ansicht, Gruppen, Mahnungen im Plan (`mahnungen: false` blendet den Kasten „Mahnung“ dort aus; berechnet wird sie weiter und steht im Konnektor).
 
-Einstellungen setzt der Bestimmer, auch im Gespräch. Jede Änderung bekommt einen Verlaufseintrag. Die Zuordnung der Inhalte (Überschrift zu ID) bleibt getrennt davon in `reise.json`.
+Einstellungen setzt die Organisator:in, auch im Gespräch. Jede Änderung bekommt einen Verlaufseintrag. Die Zuordnung der Inhalte (Überschrift zu ID) bleibt getrennt davon in `reise.json`.
 
 ## Status einer Reise
 
-Ausdrücklich gesetzt, nicht abgeleitet; der Bestimmer setzt ihn, die KI erinnert am Start- und Enddatum, wechselt aber nie selbst. Jede Stufe hat Datum und Verlauf, rückwärts geht auch.
+Ausdrücklich gesetzt, nicht abgeleitet; die Organisator:in setzt ihn, die KI erinnert am Start- und Enddatum, wechselt aber nie selbst. Jede Stufe hat Datum und Verlauf, rückwärts geht auch.
 
 | Status | Was gilt |
 |---|---|
@@ -70,20 +70,20 @@ Die Regeln stehen in `engine/reise.py` (`VERHALTEN`, `AKTIONEN`, `erlaubt`) und 
 | `danach` | Nachlese: Rückmeldungen, Aufgaben und Abhaken von Wünschen ja; neue Wünsche, Punkte, Alternativen, Aufträge nein | Plan schreibgeschützt |
 | `archiv` | nichts | nur lesen |
 
-Ein Auftrag an das Ziel `reise` (Status, Einstellungen) geht in jedem Status, damit ein Bestimmer eine gesperrte Reise wieder öffnen kann.
+Ein Auftrag an das Ziel `reise` (Status, Einstellungen) geht in jedem Status, damit ein:e Organisator:in eine gesperrte Reise wieder öffnen kann.
 
-Rechte: Der Rückmeldedienst kennt die Rolle über den Namen aus `reise.yaml` (veröffentlichte `daten.json`). Eine bekannte Person mit Rolle `reisend` kann nichts eintragen; ein unbekannter Name auf der Seite kommt über den geheimen Link und zählt als Einbringer. Zugänge je Person gibt es seit Paket C (siehe unten).
+Rechte: Der Rückmeldedienst kennt die Rolle über den Namen aus `reise.yaml` (veröffentlichte `daten.json`). Eine bekannte Person mit Rolle `gast` kann nichts eintragen; ein unbekannter Name auf der Seite kommt über den geheimen Link und zählt als Mitwirkende:r. Zugänge je Person gibt es seit Paket C (siehe unten).
 
 Bausteine: Ein ausgeschalteter Baustein verschwindet aus der Seite (Reiter, Knöpfe, Formulare), aus den Konnektor-Werkzeugen (Liste, Aufruf, Überblick, Anleitung) und blockiert das Schreiben im Dienst. Die Daten bleiben. Karte aus: `route.karte` wird auf der Seite nicht verwendet; Tagesseiten aus: die Etappen stehen wieder im Reiter „Etappen“.
 
-Konflikt (`regeln.konflikt: offene_frage`): Ein Auftrag mit `entscheidung` (gewaehlt, verworfen, ersetzt) und `ziel` wird gegen die stehenden Entscheidungen im Plan und gegen offene Aufträge anderer Bestimmer geprüft. Widerspruch heißt dasselbe Ziel verschieden entschieden oder zwei verschiedene Optionen derselben Wahlstelle gewählt. Dann bekommen die beteiligten Aufträge den Status `konflikt` (werden nicht eingearbeitet), `meldungen.jsonl` in der Ablage bekommt eine Meldung an alle beteiligten Bestimmer (der Konnektor zeigt sie unter `rueckmeldungen`), und die KI legt eine offene Frage (F-…) an. Zustellung der Meldung auf weiteren Wegen folgt mit Paket E.
+Konflikt (`regeln.konflikt: offene_frage`): Ein Auftrag mit `entscheidung` (gewaehlt, verworfen, ersetzt) und `ziel` wird gegen die stehenden Entscheidungen im Plan und gegen offene Aufträge anderer Organisator:innen geprüft. Widerspruch heißt dasselbe Ziel verschieden entschieden oder zwei verschiedene Optionen derselben Wahlstelle gewählt. Dann bekommen die beteiligten Aufträge den Status `konflikt` (werden nicht eingearbeitet), `meldungen.jsonl` in der Ablage bekommt eine Meldung an alle beteiligten Organisator:innen (der Konnektor zeigt sie unter `rueckmeldungen`), und die KI legt eine offene Frage (F-…) an. Zustellung der Meldung auf weiteren Wegen folgt mit Paket E.
 
 ### Gespräch für alle (Paket C, 26.10.2026)
 
 Details und Eingaben der Werkzeuge: `docs/konnektor.md`, Abschnitt „Entscheiden, Fragen beantworten, Einladen“.
 
-- `entscheiden` (Bestimmer): Entscheidung über eine Option wird im selben Moment geprüft (Option, Status, Grund, Doppelungen, Konflikt mit anderen Bestimmern) und mit Datum, Person und Grund festgehalten. `regeln.entscheidungsweg` bestimmt, ob das genügt (`direkt`) oder Claude Code vor der Geltung noch prüft (`auftrag`). Eingearbeitet wird in beiden Fällen beim nächsten Lauf.
-- `frage_beantworten` (Einbringer): Die Antwort hängt an der Frage; ob die Frage geklärt ist, entscheidet der Bestimmer.
+- `entscheiden` (Organisator:in): Entscheidung über eine Option wird im selben Moment geprüft (Option, Status, Grund, Doppelungen, Konflikt mit anderen Organisator:innen) und mit Datum, Person und Grund festgehalten. `regeln.entscheidungsweg` bestimmt, ob das genügt (`direkt`) oder Claude Code vor der Geltung noch prüft (`auftrag`). Eingearbeitet wird in beiden Fällen beim nächsten Lauf.
+- `frage_beantworten` (Mitwirkende:r): Die Antwort hängt an der Frage; ob die Frage geklärt ist, entscheidet die Organisator:in.
 - `person_einladen` (`regeln.einladen`): legt die Person mit Rolle an und stellt den Link aus, ohne Handarbeit auf dem Server. Rolle und Zugang gelten sofort (`einladungen.json`), `reise.yaml` wird beim Einarbeiten nachgezogen.
 - Die Anleitung des Konnektors nennt die Rolle, den Reisestatus und die Grenzen der sprechenden Person.
 
@@ -92,7 +92,7 @@ Details und Eingaben der Werkzeuge: `docs/konnektor.md`, Abschnitt „Entscheide
 Details: `docs/waechter.md`. Neue Regeln mit Vorgabe: `waechter_frist_tage` (60), `erinnerung_vorlauf_tage` (3), `meldekanal` (`app`, `nachricht`).
 
 - Der Wächter sucht veränderliche Angaben ohne oder mit altem Prüfdatum und gibt sie dem Einarbeiten als Prüfauftrag; Abweichungen werden als offene Frage gemeldet, nie still übernommen.
-- Der Erinnerer meldet Fristen und „ab“-Termine an die Zuständigen und den fälligen Statuswechsel an die Bestimmer; die KI wechselt den Status nie selbst.
+- Der Erinnerer meldet Fristen und „ab“-Termine an die Zuständigen und den fälligen Statuswechsel an die Organisator:innen; die KI wechselt den Status nie selbst.
 - Beides gilt nur bei eingeschaltetem Baustein `waechter` und im Status `fest` oder `unterwegs`.
 - Die Meldungen erscheinen in der Claude-App (Überblick) und als Sammelnachricht an den Betreiber. E-Mail an alle gibt es nicht; Meldungen auf dem Handy über die Webseite sind Issue #21.
 
@@ -104,20 +104,20 @@ Wünsche sind Ideen ohne feste Stelle (ein Ort, ein Erlebnis, ein Essen). Das Br
 |---|---|
 | eingebracht | gesendet, noch nicht geprüft (oder Rückfrage) |
 | geprüft | Claude hat ihn aufgenommen, oft mit Vorschlag „passt zu T-…“ oder einer Option an einer Wahlstelle |
-| eingeplant | ein Bestimmer hat ihn in der Claude-App eingeplant oder die Option gewählt, die aus ihm entstand |
+| eingeplant | ein:e Organisator:in hat ihn in der Claude-App eingeplant oder die Option gewählt, die aus ihm entstand |
 | erlebt | abgehakt, unterwegs oder in der Nachlese |
 | passt nicht | Claude hat ihn geprüft und verworfen, mit Begründung |
 
 - **Punkte** heißen „wie wichtig mir das ist“. Jede Person verteilt ihr Kontingent (`regeln.kontingent`, Vorgabe 10 Punkte) nur auf ihre eigenen Wünsche und darf umverteilen. Ein Wunsch, der nicht passt, gibt seine Punkte frei. Claude nutzt Punkte beim Prüfen als Priorität, nie als Entscheidung. Mit Art `anzahl` gibt es keine Punkte, dann begrenzt das Kontingent die Zahl offener Wünsche je Person.
-- **Abhaken** (erlebt) dürfen alle Einbringer, auch fremde Wünsche, im Status `unterwegs` und `danach`. Die Seite merkt sich Abgehaktes ohne Netz und reicht es nach; einen Haken zurücknehmen geht nur mit Netz. Wer abgehakt hat, steht mit Datum im Verlauf.
-- **Einplanen** ist eine Entscheidung: nur ein Bestimmer, mit dem persönlichen Link in der Claude-App (auf der Webseite ist der Name nur eingetippt), ab Status `danach` nicht mehr. Die Seite zeigt, wer eingeplant hat. Claude schlägt nur vor (`plan/wuensche.yaml`: Bezug, Notiz mit Herkunft, Option), plant aber nie selbst ein.
+- **Abhaken** (erlebt) dürfen alle Mitwirkenden, auch fremde Wünsche, im Status `unterwegs` und `danach`. Die Seite merkt sich Abgehaktes ohne Netz und reicht es nach; einen Haken zurücknehmen geht nur mit Netz. Wer abgehakt hat, steht mit Datum im Verlauf.
+- **Einplanen** ist eine Entscheidung: nur ein:e Organisator:in, mit dem persönlichen Link in der Claude-App (auf der Webseite ist der Name nur eingetippt), ab Status `danach` nicht mehr. Die Seite zeigt, wer eingeplant hat. Claude schlägt nur vor (`plan/wuensche.yaml`: Bezug, Notiz mit Herkunft, Option), plant aber nie selbst ein.
 - Die **Bilanz** je Person (Wünsche, eingeplant, erlebt, freie Punkte) sehen alle.
 - Technik: Punkte, eingeplant und erlebt liegen live in `brett.json` der Rückmelde-Ablage, mit Verlauf; gelöscht wird nichts. Seite: Reiter „Wünsche“. Claude-App: `wuensche` und `wunsch_aendern`.
 
 ## Vorgaben für neue Reisen
 
-- Konfliktregel: offene Frage, Meldung an alle beteiligten Bestimmer.
-- Einladen dürfen nur Bestimmer.
+- Konfliktregel: offene Frage, Meldung an alle beteiligten Organisator:innen.
+- Einladen dürfen nur Organisator:innen.
 - Sammelzeit vor dem Einarbeiten: 5 Minuten.
 - Brett-Kontingent: Punkte, 10 je Person.
 - Eigene Konnektoren gibt es nur in bezahlten Claude-Konten; jede Person, die mitgestalten soll, braucht so ein Konto (vor Stufe 1 noch einmal gegen den aktuellen Stand prüfen).
@@ -142,7 +142,7 @@ Stufe 1 „Rollen und sofort“: A, B, C, D. Stufe 2 „Wünsche und Wächter“
 
 ## Stand
 
-- 26.10.2026, Paket A begonnen: `reise.yaml` je Reise mit Status, Personen, Bausteinen, Regeln und Darstellung (`engine/reise.py` prüft); `entscheider` kommt aus den Personen; Konnektor kennt Rollen `bestimmer`, `einbringer`, `reisend` und Zugänge je Person; der Schalter `funktionen` in `reise.json` ist durch `bausteine` in `reise.yaml` ersetzt.
+- 26.10.2026, Paket A begonnen: `reise.yaml` je Reise mit Status, Personen, Bausteinen, Regeln und Darstellung (`engine/reise.py` prüft); `entscheider` kommt aus den Personen; Konnektor kennt Rollen `organisator`, `mitwirkend`, `gast` und Zugänge je Person; der Schalter `funktionen` in `reise.json` ist durch `bausteine` in `reise.yaml` ersetzt.
 - 26.10.2026, Paket B: Rechte, Verhalten je Status, Bausteine und Konflikt werden im Code geprüft (siehe „Was die Maschine daraus macht“); Tests in `engine/tests/test_regeln.py`.
 - 26.10.2026, Paket C: Werkzeuge `entscheiden`, `frage_beantworten`, `person_einladen`; beide Entscheidungswege getestet (`engine/tests/test_gespraech.py`). Offen: Links sperren geht noch von Hand.
 - 27.10.2026, Paket H: neue Reise im Gespräch, in Claude Code (`engine/neu.py`) und in der Claude-App über einen persönlichen Konto-Link (`meine_reisen`, `reise_anlegen`); Vorlage `engine/reisevorlage/`, `zeitraum` in `reise.yaml`, IDs mit Marke in `ids.yaml`, Prüfung vor dem Bau, Anleitung `docs/neue-reise.md`.

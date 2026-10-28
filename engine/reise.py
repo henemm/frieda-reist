@@ -5,7 +5,7 @@ Hintergrund und Entscheidungen: docs/produkt.md (26.10.2026). Die Zuordnung der 
 
   zeitraum    {von, bis} als Datum; schon in der Idee bekannt, bevor es einen Plan gibt (Paket H)
   status      idee | planung | fest | unterwegs | danach | archiv, mit Verlauf (datum, wert, wer, grund)
-  personen    {schluessel: {name, rolle, reist, notiz}}; Rollen reisend < einbringer < bestimmer
+  personen    {schluessel: {name, rolle, reist, notiz}}; Rollen gast < mitwirkend < organisator
   bausteine   zuschaltbare Teile (Liste); Plan, Wissen, Suche und Personen sind immer da
   regeln      Spielregeln mit Wert, fehlende kommen aus VORGABEN
   darstellung Startreiter, Reiternamen, Tiefe, Gruppen, Mahnungen im Plan (mahnungen: false blendet sie dort aus)
@@ -18,16 +18,24 @@ import re
 import unicodedata
 
 STATUS = ("idee", "planung", "fest", "unterwegs", "danach", "archiv")
-ROLLEN = ("reisend", "einbringer", "bestimmer")          # aufsteigend: jede Stufe enthält die darunter
+ROLLEN = ("gast", "mitwirkend", "organisator")          # aufsteigend: jede Stufe enthält die darunter
+# Bis 28.10.2026 hießen die Rollen reisend, einbringer, bestimmer (mitreisend: noch älter). Gelesen werden sie weiter,
+# geschrieben wird nur noch ROLLEN.
+ROLLEN_ALT = {"reisend": "gast", "einbringer": "mitwirkend", "bestimmer": "organisator", "mitreisend": "mitwirkend"}
+
+
+def rolle_neu(rolle):
+    """Alter oder neuer Rollenschlüssel -> neuer Schlüssel (Unbekanntes bleibt unverändert)."""
+    return ROLLEN_ALT.get(rolle, rolle)
 BAUSTEINE = ("varianten", "karte", "tagesseiten", "rueckmeldungen", "fragen", "aufgaben", "wuensche",
              "waechter", "profile")
 KERN = ("plan", "wissen", "suche", "personen")           # immer da, nicht abschaltbar
 NOCH_NICHT_GEBAUT = {"profile": "Stufe 3"}
 VORGABEN = {
     "entscheidungsweg": "direkt",        # direkt (im Gespräch, geprüft) | auftrag (Prüfung vor Übernahme)
-    "konflikt": "offene_frage",          # zwei Bestimmer entscheiden verschieden -> offene Frage, Meldung an beide
+    "konflikt": "offene_frage",          # zwei Organisator:innen entscheiden verschieden -> offene Frage, Meldung an beide
     "kontingent": {"art": "punkte", "je_person": 10},   # Wunsch-Brett: punkte | anzahl
-    "einladen": "bestimmer",             # wer Personen einladen darf: bestimmer | einbringer
+    "einladen": "organisator",             # wer Personen einladen darf: organisator | mitwirkend
     "sammelzeit_minuten": 5,             # Eingaben sammeln, bevor das Einarbeiten startet
     # Paket E (Wächter und Erinnerer, Baustein waechter)
     "waechter_frist_tage": 60,           # veränderliche Angaben, deren Prüfdatum älter ist, prüft der Wächter neu
@@ -38,7 +46,7 @@ VORGABEN = {
 }
 KANAELE = ("app", "nachricht")           # E-Mail an alle gibt es (noch) nicht
 REGEL_WERTE = {"entscheidungsweg": ("direkt", "auftrag"), "konflikt": ("offene_frage",),
-               "einladen": ("bestimmer", "einbringer"), "anmeldung": ("uebergang", "noetig")}
+               "einladen": ("organisator", "mitwirkend"), "anmeldung": ("uebergang", "noetig")}
 KONTINGENT_ARTEN = ("punkte", "anzahl")
 DARSTELLUNG = ("start", "tiefe", "varianten_titel", "plan_reiter", "gruppen", "mahnungen")
 PERSON_FELDER = {"name", "rolle", "reist", "notiz", "von", "bis"}   # von/bis: reist nur einen Teil mit
@@ -63,21 +71,21 @@ VERHALTEN = {
 }
 # Schreibende Aktionen: Mindestrolle, Baustein (None: immer da) und der Grad von „schreiben“, der sie noch erlaubt.
 AKTIONEN = {
-    "rueckmeldung": {"rolle": "einbringer", "baustein": "rueckmeldungen", "ab": ("alles", "nachlese")},
-    "wunsch":       {"rolle": "einbringer", "baustein": "wuensche", "ab": ("alles",)},
-    # Paket G (Wunsch-Brett): abhaken dürfen alle Einbringer, auch in der Nachlese; einplanen nur Bestimmer
-    "wunsch_erlebt":    {"rolle": "einbringer", "baustein": "wuensche", "ab": ("alles", "nachlese")},
-    "wunsch_einplanen": {"rolle": "bestimmer", "baustein": "wuensche", "ab": ("alles",)},
-    "aufgabe":      {"rolle": "einbringer", "baustein": "aufgaben", "ab": ("alles", "nachlese")},
-    "alternative":  {"rolle": "einbringer", "baustein": "varianten", "ab": ("alles",)},
-    "auftrag":      {"rolle": "bestimmer", "baustein": None, "ab": ("alles",)},
+    "rueckmeldung": {"rolle": "mitwirkend", "baustein": "rueckmeldungen", "ab": ("alles", "nachlese")},
+    "wunsch":       {"rolle": "mitwirkend", "baustein": "wuensche", "ab": ("alles",)},
+    # Paket G (Wunsch-Brett): abhaken dürfen alle Mitwirkenden, auch in der Nachlese; einplanen nur Organisator:innen
+    "wunsch_erlebt":    {"rolle": "mitwirkend", "baustein": "wuensche", "ab": ("alles", "nachlese")},
+    "wunsch_einplanen": {"rolle": "organisator", "baustein": "wuensche", "ab": ("alles",)},
+    "aufgabe":      {"rolle": "mitwirkend", "baustein": "aufgaben", "ab": ("alles", "nachlese")},
+    "alternative":  {"rolle": "mitwirkend", "baustein": "varianten", "ab": ("alles",)},
+    "auftrag":      {"rolle": "organisator", "baustein": None, "ab": ("alles",)},
     # Paket C: Gespräch für alle. Entscheiden gilt für Wahlstellen (Baustein varianten); eine Antwort auf eine Frage
     # braucht den Baustein fragen; wer einladen darf, steht je Reise in regeln.einladen (hier nur die Vorgabe).
-    "entscheiden":  {"rolle": "bestimmer", "baustein": "varianten", "ab": ("alles",)},
-    "antwort":      {"rolle": "einbringer", "baustein": "fragen", "ab": ("alles", "nachlese")},
-    "einladen":     {"rolle": "bestimmer", "baustein": None, "ab": ("alles", "nachlese")},
+    "entscheiden":  {"rolle": "organisator", "baustein": "varianten", "ab": ("alles",)},
+    "antwort":      {"rolle": "mitwirkend", "baustein": "fragen", "ab": ("alles", "nachlese")},
+    "einladen":     {"rolle": "organisator", "baustein": None, "ab": ("alles", "nachlese")},
     # Paket J: eine Person aus der Reise nehmen (Konto-Verknüpfung und alte Links enden sofort)
-    "entfernen":    {"rolle": "bestimmer", "baustein": None, "ab": ("alles", "nachlese")},
+    "entfernen":    {"rolle": "organisator", "baustein": None, "ab": ("alles", "nachlese")},
 }
 # Lesende Konnektor-Werkzeuge, die zu einem zuschaltbaren Baustein gehören
 LESE_BAUSTEIN = {"offene_fragen": "fragen", "varianten": "varianten", "merkmale": "varianten",
@@ -93,7 +101,7 @@ def verhalten(status):
 def mindestrolle(aktion, regeln=None):
     """Mindestrolle einer Aktion; „einladen“ richtet sich nach regeln.einladen der Reise."""
     if aktion == "einladen":
-        return (regeln or {}).get("einladen") or VORGABEN["einladen"]
+        return rolle_neu((regeln or {}).get("einladen") or VORGABEN["einladen"])
     return AKTIONEN[aktion]["rolle"]
 
 
@@ -105,7 +113,7 @@ def erlaubt(aktion, rolle, status, bausteine, ziel=None, regeln=None):
     mind = mindestrolle(aktion, regeln)
     if not darf(rolle, mind):
         return False, (f"Mit diesem Zugang kann man nur lesen (Rolle {rolle or 'unbekannt'}). Dafür braucht man die Rolle "
-                       "einbringer." if mind == "einbringer" else "Das dürfen nur Bestimmer.")
+                       "mitwirkend." if mind == "mitwirkend" else "Das dürfen nur Organisator:innen.")
     if a["baustein"] and bausteine is not None and a["baustein"] not in bausteine:
         return False, f"Der Baustein „{a['baustein']}“ ist bei dieser Reise ausgeschaltet."
     schreiben = verhalten(status)["schreiben"]
@@ -113,7 +121,7 @@ def erlaubt(aktion, rolle, status, bausteine, ziel=None, regeln=None):
         grund = {"nachlese": "Die Reise ist vorbei (Status danach): Der Plan ist schreibgeschützt, nur Rückmeldungen und "
                              "Aufgaben gehen noch.",
                  "nichts": "Die Reise ist archiviert: Es kann nur gelesen werden."}[schreiben]
-        return False, grund + " Ein Bestimmer kann den Status zurücksetzen (Auftrag an „reise“)."
+        return False, grund + " Ein:e Organisator:in kann den Status zurücksetzen (Auftrag an „reise“)."
     return True, ""
 
 
@@ -143,7 +151,7 @@ def reise_pfad(titel, jahr=None):
 
 def neue_reise_pruefen(args, wer, vergeben=()):
     """Eingaben für eine neue Reise prüfen (Konnektor mit Konto-Link, Werkzeug reise_anlegen). wer: Name der anlegenden
-    Person, sie wird Bestimmer. vergeben: Ordnernamen, die es schon gibt. -> (daten, None) oder (None, Grund in einfachen Worten)."""
+    Person, sie wird Organisator:in. vergeben: Ordnernamen, die es schon gibt. -> (daten, None) oder (None, Grund in einfachen Worten)."""
     def zeile(k, laenge, pflicht=False):
         v = args.get(k)
         if v is None or v == "":
@@ -174,11 +182,11 @@ def neue_reise_pruefen(args, wer, vergeben=()):
     if not wer:
         return None, "Eine Reise anlegen geht nur mit einem persönlichen Konto-Link."
     personen = {}
-    for p in [{"vorname": wer, "rolle": "bestimmer"}] + roh:
+    for p in [{"vorname": wer, "rolle": "organisator"}] + roh:
         if not isinstance(p, dict) or not isinstance(p.get("vorname"), str) or not p["vorname"].strip() \
                 or "\n" in p["vorname"].strip() or len(p["vorname"].strip()) > 80:
             return None, "Jede Person braucht einen Vornamen (eine Zeile)."
-        name, rolle = p["vorname"].strip(), p.get("rolle") or "einbringer"
+        name, rolle = p["vorname"].strip(), rolle_neu(p.get("rolle") or "mitwirkend")
         if rolle not in ROLLEN:
             return None, f"{name}: Rolle muss eine von {', '.join(ROLLEN)} sein."
         k = schluessel_aus_name(name)
@@ -186,8 +194,8 @@ def neue_reise_pruefen(args, wer, vergeben=()):
             return None, f"{name}: Aus dem Namen lässt sich kein Schlüssel bilden."
         if k in personen:
             if name.casefold() == wer.casefold() and personen[k]["name"] == wer:
-                if rolle != "bestimmer":
-                    return None, f"{wer} legt die Reise an und bestimmt deshalb mit (Rolle bestimmer)."
+                if rolle != "organisator":
+                    return None, f"{wer} legt die Reise an und bestimmt deshalb mit (Rolle organisator)."
                 eintrag = personen[k]
             else:
                 return None, f"{name} steht zweimal in der Liste."
@@ -230,7 +238,8 @@ def konflikte(neu, bisherige):
 
 
 def darf(rolle, mindestens):
-    """Rolle erreicht die Stufe? darf("bestimmer", "einbringer") -> True."""
+    """Rolle erreicht die Stufe? darf("organisator", "mitwirkend") -> True."""
+    rolle, mindestens = rolle_neu(rolle), rolle_neu(mindestens)
     return rolle in ROLLEN and mindestens in ROLLEN and ROLLEN.index(rolle) >= ROLLEN.index(mindestens)
 
 
@@ -301,16 +310,16 @@ class Reise:
             return {"wert": "planung", "verlauf": []}
         verlauf = st.get("verlauf") or []
         vorher = None
-        bestimmer = self.bestimmer_namen()
+        organisator = self.organisator_namen()
         for e in verlauf:
             if not isinstance(e, dict):
                 self.fehl("status.verlauf: Eintrag muss {datum, wert, wer, grund} sein.")
                 continue
             if e.get("wert") not in STATUS:
                 self.fehl(f"status.verlauf: Status „{e.get('wert')}“ unbekannt.")
-            if e.get("wer") not in bestimmer:
-                self.fehl(f"status.verlauf: den Status darf nur ein Bestimmer setzen "
-                          f"({', '.join(sorted(bestimmer)) or 'keiner eingetragen'}), steht: {e.get('wer')}.")
+            if e.get("wer") not in organisator:
+                self.fehl(f"status.verlauf: den Status darf nur ein:e Organisator:in setzen "
+                          f"({', '.join(sorted(organisator)) or 'keiner eingetragen'}), steht: {e.get('wer')}.")
             d = e.get("datum")
             if not isinstance(d, datetime.date):
                 self.fehl("status.verlauf: Eintrag ohne gültiges Datum (JJJJ-MM-TT).")
@@ -336,7 +345,7 @@ class Reise:
             if not isinstance(p, dict) or not isinstance(p.get("name"), str) or not p["name"].strip():
                 self.fehl(f"Person „{k}“ braucht einen Namen.")
                 continue
-            if p.get("rolle") not in ROLLEN:
+            if rolle_neu(p.get("rolle")) not in ROLLEN:
                 self.fehl(f"Person „{k}“: rolle muss eines von {', '.join(ROLLEN)} sein.")
                 continue
             unbekannt = set(p) - PERSON_FELDER
@@ -353,17 +362,17 @@ class Reise:
                     teil[f] = p[f].isoformat()
                 else:
                     self.fehl(f"Person „{k}“: {f} muss ein Datum sein (JJJJ-MM-TT).")
-            aus.append({"schluessel": str(k), "name": p["name"], "rolle": p["rolle"],
+            aus.append({"schluessel": str(k), "name": p["name"], "rolle": rolle_neu(p["rolle"]),
                         "reist": bool(p.get("reist", True)), "notiz": p.get("notiz") or "", **teil})
-        if not self.alt and not any(p["rolle"] == "bestimmer" for p in aus):
-            self.fehl("Mindestens eine Person braucht die Rolle bestimmer.")
+        if not self.alt and not any(p["rolle"] == "organisator" for p in aus):
+            self.fehl("Mindestens eine Person braucht die Rolle organisator.")
         return aus
 
-    def bestimmer_namen(self):
+    def organisator_namen(self):
         roh = self.r.get("personen") or {}
         if not isinstance(roh, dict):   # Fehlermeldung kommt aus personen()
             return set()
-        return {p.get("name") for p in roh.values() if isinstance(p, dict) and p.get("rolle") == "bestimmer"}
+        return {p.get("name") for p in roh.values() if isinstance(p, dict) and rolle_neu(p.get("rolle")) == "organisator"}
 
     def bausteine(self):
         if self.alt:
@@ -399,6 +408,7 @@ class Reise:
             if k not in VORGABEN:
                 self.fehl(f"unbekannte Regel „{k}“ (bekannt: {', '.join(VORGABEN)}).")
         r = regeln_mit_vorgaben({k: v for k, v in eigen.items() if k in VORGABEN})
+        r["einladen"] = rolle_neu(r["einladen"])
         for k, erlaubt in REGEL_WERTE.items():
             if r[k] not in erlaubt:
                 self.fehl(f"regeln.{k} muss eines von {', '.join(erlaubt)} sein.")

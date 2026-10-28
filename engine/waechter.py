@@ -8,7 +8,7 @@ Wächter   Findet veränderliche Angaben (Merkmale mit veraenderlich: true) der 
           wird ein Prüfauftrag (auftraege.jsonl, Name „Wächter“): Das Einarbeiten (Claude Code, im Betrieb)
           schlägt die Angaben nach und trägt Prüfdatum und Quelle ein. Weicht ein Wert ab, wird er NICHT still
           übernommen, sondern als offene Frage (F-…) gemeldet.
-Erinnerer Meldet Fristen und „ab“-Termine der Aufgaben an die Zuständigen und erinnert die Bestimmer an den
+Erinnerer Meldet Fristen und „ab“-Termine der Aufgaben an die Zuständigen und erinnert die Organisator:innen an den
           Wechsel des Reisestatus am Start- und Enddatum (die KI wechselt nie selbst).
 
 Beides gilt nur, wenn der Baustein waechter eingeschaltet ist und der Status es zulässt (fest, unterwegs; Aufgabenfristen
@@ -116,7 +116,7 @@ def pruefauftrag_text(items, frist_tage, heute):
          f"oder älter als {frist_tage} Tage. Jede nachschlagen (offizielle Quelle bevorzugen), danach:",
          "- Stimmt der Wert: Prüfdatum (heute) und Quelle (Link) an der Angabe eintragen.",
          "- Weicht er ab oder ist er nicht mehr zu finden: den bisherigen Wert NICHT ändern. Stattdessen eine offene Frage "
-         "(F-…) anlegen, die alten und neuen Wert, Quelle und Datum nennt; die Bestimmer entscheiden. Status rueckfrage.",
+         "(F-…) anlegen, die alten und neuen Wert, Quelle und Datum nennt; die Organisator:innen entscheiden. Status rueckfrage.",
          "Angaben:"]
     z += [f"- {t['bezug']} {t['titel']}, {t['name']}: {t['wert']} ({t['grund']}"
           + (f"; bisherige Quelle: {t['quelle']}" if t.get("quelle") else "") + ")" for t in items]
@@ -149,16 +149,16 @@ def pruefauftrag(reise, o, items, frist_tage, jetzt, trocken=False):
 
 # ---------- Erinnerer: Fristen, „ab“-Termine, Statuswechsel ----------
 
-def bestimmer_von(d):
-    return [p["name"] for p in ((d or {}).get("reise") or {}).get("personen") or [] if p.get("rolle") == "bestimmer"]
+def organisator_von(d):
+    return [p["name"] for p in ((d or {}).get("reise") or {}).get("personen") or [] if rg.rolle_neu(p.get("rolle")) == "organisator"]
 
 
 def empfaenger(d, zustaendig):
-    """Zuständige Person (Vorname wie in reise.yaml) oder alle Bestimmer, wenn niemand oder jemand Unbekanntes zuständig ist."""
+    """Zuständige Person (Vorname wie in reise.yaml) oder alle Organisator:innen, wenn niemand oder jemand Unbekanntes zuständig ist."""
     for p in ((d or {}).get("reise") or {}).get("personen") or []:
         if zustaendig and p["name"].casefold() == zustaendig.strip().casefold():
             return [p["name"]]
-    return bestimmer_von(d)
+    return organisator_von(d)
 
 
 def erinnerungen(d, aufgaben, heute, vorlauf):
@@ -192,7 +192,7 @@ def erinnerungen(d, aufgaben, heute, vorlauf):
 
 
 def statuswechsel(d, heute):
-    """Erinnert die Bestimmer, wenn der Status nicht mehr zu den Reisetagen passt. Die KI wechselt den Status nie selbst."""
+    """Erinnert die Organisator:innen, wenn der Status nicht mehr zu den Reisetagen passt. Die KI wechselt den Status nie selbst."""
     tage = ((d or {}).get("route") or {}).get("tage") or []
     st = (((d or {}).get("reise") or {}).get("status") or {}).get("wert")
     if not tage or st not in ("fest", "unterwegs"):
@@ -204,9 +204,9 @@ def statuswechsel(d, heute):
         ziel, text = "unterwegs", f"Die Reise hat am {datum_de(start.isoformat())} begonnen, der Status steht noch auf fest."
     else:
         return []
-    return [{"schluessel": f"status:{st}:{ziel}", "wiederholen": WIEDERHOLEN_TAGE, "an": bestimmer_von(d), "art": "status",
+    return [{"schluessel": f"status:{st}:{ziel}", "wiederholen": WIEDERHOLEN_TAGE, "an": organisator_von(d), "art": "status",
              "ziel": rg.REISE_ZIEL, "bezug": rg.REISE_ZIEL, "extra": {"status_bei": st},
-             "text": f"{text} Soll er auf {ziel} wechseln? Das entscheidet ein Bestimmer (Auftrag an „reise“)."}]
+             "text": f"{text} Soll er auf {ziel} wechseln? Das entscheidet ein:e Organisator:in (Auftrag an „reise“)."}]
 
 
 def neue_meldungen(o, meldungen, jetzt, trocken=False):

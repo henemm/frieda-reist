@@ -8,7 +8,7 @@ an diesen Dienst. Er hängt sie an <ablage>/<reise>/eingang.jsonl an. Claude Cod
 in <ablage>/<reise>/status.json; die Seite zeigt Status und Kommentar an.
 Wünsche (Art „Wunsch“, Ziel „wuensche“) sind Ideen der Mitreisenden ohne feste Stelle; die Seite zeigt sie im
 Reiter „Wünsche“, wenn die Reise ihn einschaltet (reise.yaml bausteine).
-Änderungsaufträge (A-…) von Bestimmern aus der Claude-App legt engine/konnektor.py in auftraege.jsonl ab;
+Änderungsaufträge (A-…) von Organisator:innen aus der Claude-App legt engine/konnektor.py in auftraege.jsonl ab;
 liste und setze behandeln sie wie Rückmeldungen.
 
 Aufgaben (AG-01 …, 24.10.2026): hängen an einer oder mehreren IDs, haben Zuständig, Priorität,
@@ -42,7 +42,7 @@ HTTP (hinter nginx, Präfix /<reise>-<token>/api/ -> /<reise>/):
   PATCH  /<reise>/aufgaben/<AG-id>        Felder ändern, Status setzen, Kommentar in den Verlauf (name = wer)
   GET    /<reise>/brett                   Wunsch-Brett: Wünsche mit Spalte, Punkten, Vorschlag; Bilanz je Person
   PATCH  /<reise>/rueckmeldungen/<R-id>   Wunsch auf dem Brett: punkte, erlebt, eingeplant (+ bezug), kommentar (name = wer);
-                                          eingeplant nur vom Konnektor oder angemeldeten Bestimmern
+                                          eingeplant nur vom Konnektor oder angemeldeten Organisator:innen
   GET    /<reise>/ich                     angemeldet als (Konto, Person der Reise), Regel anmeldung, Basis-Adresse
   GET    /<reise>/gesund                  200, wenn die Ablage beschreibbar ist (für die Überwachung)
 
@@ -156,24 +156,24 @@ def einladungen_lesen(o):
 
 def personen_mit_einladungen(personen, o):
     """Personen aus reise.yaml plus Eingeladene, die dort (nach Schlüssel oder Namen) noch fehlen."""
-    aus = list(personen or [])
+    aus = [p | {"rolle": rg.rolle_neu(p.get("rolle"))} if isinstance(p, dict) else p for p in personen or []]
     schluessel = {p.get("schluessel") for p in aus}
     namen = {str(p.get("name", "")).casefold() for p in aus}
     for k, e in einladungen_lesen(o).items():
         if isinstance(e, dict) and k not in schluessel and str(e.get("name", "")).casefold() not in namen \
-                and e.get("rolle") in rg.ROLLEN:
-            aus.append({"schluessel": k, "name": e["name"], "rolle": e["rolle"], "reist": bool(e.get("reist", True)),
+                and rg.rolle_neu(e.get("rolle")) in rg.ROLLEN:
+            aus.append({"schluessel": k, "name": e["name"], "rolle": rg.rolle_neu(e["rolle"]), "reist": bool(e.get("reist", True)),
                         "notiz": e.get("notiz", ""), "eingeladen": True})
     return aus
 
 
 def rolle_von(z, name):
     """Rolle einer Person aus reise.yaml nach Namen. Wer auf der Seite einen unbekannten Namen eintippt, kommt über den
-    geheimen Link der Reise und gilt als Einbringer; eine bekannte Person hat die Rolle aus reise.yaml (reisend: nur lesen)."""
+    geheimen Link der Reise und gilt als Mitwirkende:r; eine bekannte Person hat die Rolle aus reise.yaml (gast: nur lesen)."""
     for p in (z or {}).get("personen") or []:
         if p["name"].casefold() == (name or "").strip().casefold():
             return p["rolle"]
-    return "einbringer"
+    return "mitwirkend"
 
 
 def schreibrecht(reise, aktion, name):
@@ -294,7 +294,7 @@ def eintraege(o, datei="eingang.jsonl"):
 
 
 def auftraege(o):
-    """Änderungsaufträge von Bestimmern aus der Claude-App (schreibt engine/konnektor.py). Nicht auf der Seite."""
+    """Änderungsaufträge von Organisator:innen aus der Claude-App (schreibt engine/konnektor.py). Nicht auf der Seite."""
     return eintraege(o, "auftraege.jsonl")
 
 
@@ -470,7 +470,7 @@ def aufgabe_aendern(o, agid, roh):
 
 # ---------- Wunsch-Brett (Paket G) ----------
 # Zu jedem Wunsch (Rückmeldung der Art Wunsch) hält brett.json fest, was nicht von Claude kommt: die Punkte der Person,
-# die ihn eingebracht hat (wie wichtig er ihr ist), „eingeplant“ (nur Bestimmer) und „erlebt“ (alle Einbringer, unterwegs
+# die ihn eingebracht hat (wie wichtig er ihr ist), „eingeplant“ (nur Organisator:innen) und „erlebt“ (alle Mitwirkenden, unterwegs
 # und danach), je mit Verlauf. Claudes Vorschlag (passt zu Tag …, daraus wurde Option …) steht im Repo
 # (plan/wuensche.yaml) und kommt über daten.json. Die Spalte des Bretts wird daraus berechnet, nie gespeichert.
 # Nichts wird gelöscht; ein Wunsch, der nicht passt, gibt seine Punkte frei.
@@ -502,7 +502,7 @@ def wuensche(o):
 
 
 def spalte(e, b, vorschlag=None):
-    """Spalte eines Wunsches. passt nicht: Claude hat ihn verworfen; erlebt: abgehakt; eingeplant: ein Bestimmer hat ihn
+    """Spalte eines Wunsches. passt nicht: Claude hat ihn verworfen; erlebt: abgehakt; eingeplant: ein:e Organisator:in hat ihn
     bestätigt oder die Option, die aus ihm wurde, gewählt; geprüft: Claude hat ihn aufgenommen; sonst eingebracht."""
     if e.get("status") == "verworfen":
         return "passt_nicht"
@@ -545,7 +545,7 @@ def brett(o, z=None):
     # Bilanz: alle, die Wünsche einbringen dürfen, und alle, die schon welche haben
     namen = {}
     for p in (z or {}).get("personen") or []:
-        if rg.darf(p.get("rolle"), "einbringer"):
+        if rg.darf(p.get("rolle"), "mitwirkend"):
             namen.setdefault(_schluessel(p["name"]), p["name"])
     for e in liste:
         namen.setdefault(_schluessel(e.get("name")), e.get("name", ""))
@@ -573,8 +573,8 @@ def wunsch_annehmen(o, z, name):
 
 
 def wunsch_aendern(o, rid, roh, z):
-    """Wunsch auf dem Brett ändern: punkte (nur wer ihn eingebracht hat, im Kontingent), erlebt (alle Einbringer,
-    unterwegs und danach), eingeplant mit bezug (nur Bestimmer); kommentar geht in den Verlauf.
+    """Wunsch auf dem Brett ändern: punkte (nur wer ihn eingebracht hat, im Kontingent), erlebt (alle Mitwirkenden,
+    unterwegs und danach), eingeplant mit bezug (nur Organisator:innen); kommentar geht in den Verlauf.
     z: zustand(reise) oder None (dann nur die technischen Prüfungen). -> (wunsch, fehler, code). Aufrufer hält _sperre."""
     if not isinstance(roh, dict):
         return None, "kein Objekt", 400
@@ -814,9 +814,9 @@ class Dienst(BaseHTTPRequestHandler):
             # Wunsch-Brett: Rechte, Kontingent und Status prüft wunsch_aendern (auch für den Konnektor). Einplanen ist eine
             # Entscheidung: nur der Konnektor (Person erkannt) oder eine angemeldete Person, die die Reise bestimmt; ein
             # eingetippter Name genügt nicht.
-            bestimmt = ident["art"] == "konto" and (ident["person"] or {}).get("rolle") == "bestimmer"
+            bestimmt = ident["art"] == "konto" and (ident["person"] or {}).get("rolle") == "organisator"
             if "eingeplant" in roh and ident["art"] != "dienst" and not bestimmt:
-                return self._antwort(403, {"fehler": "Einplanen dürfen nur Bestimmer: in der Claude-App oder angemeldet "
+                return self._antwort(403, {"fehler": "Einplanen dürfen nur Organisator:innen: in der Claude-App oder angemeldet "
                                                      "auf der Seite."})
             with _sperre:
                 if gedrosselt(t[0]):
@@ -982,11 +982,11 @@ def liste(reise, alle):
             b = br.get(e["id"]) or {}
             print(f"  WUNSCH ({b.get('punkte') or 0} Punkte von {e.get('name')}): prüfen, ob und wo er passt; Vorschlag in "
                   "plan/wuensche.yaml (bezug, notiz mit Herkunft, option), nie einplanen. Punkte = Priorität, keine Entscheidung."
-                  + (" Schon eingeplant von einem Bestimmer." if b.get("eingeplant") else "")
+                  + (" Schon eingeplant von einer Organisator:in." if b.get("eingeplant") else "")
                   + (" Schon erlebt." if b.get("erlebt") else ""))
         daten = e.get("daten") or {}
         if daten.get("pruefung"):
-            print(f"  PRÜFAUFTRAG des Wächters (keine Entscheidung eines Bestimmers): veränderliche Angaben nachschlagen, "
+            print(f"  PRÜFAUFTRAG des Wächters (keine Entscheidung einer Organisator:in): veränderliche Angaben nachschlagen, "
                   f"Prüfdatum und Quelle eintragen; bei Abweichung nichts ändern, sondern eine offene Frage anlegen.")
         elif daten.get("weg") == "direkt":
             print(f"  ENTSCHEIDUNG von {e.get('name')} im Gespräch (Claude-App), Weg direkt: bereits geprüft (Rolle, Option, "
@@ -999,7 +999,7 @@ def liste(reise, alle):
             print(f"  EINLADUNG von {e.get('name')} (Claude-App): Zugang und Rolle gelten schon. In reise.yaml unter personen "
                   f"eintragen (Schlüssel, name, rolle, reist, notiz wie im Text).")
         elif e["art"] == "Auftrag":
-            print(f"  ÄNDERUNGSAUFTRAG von {e.get('name')} (Bestimmer, Claude-App) – zählt als Entscheidung:")
+            print(f"  ÄNDERUNGSAUFTRAG von {e.get('name')} (Organisator:in, Claude-App) – zählt als Entscheidung:")
         if e["status"] == "konflikt":
             print("  KONFLIKT: widerspricht einer anderen Entscheidung. Nichts übernehmen. Offene Frage (F-…) anlegen, "
                   "beide Seiten darin nennen, dann mit „setze … rueckfrage“ auf die Frage verweisen.")
@@ -1054,7 +1054,7 @@ def minuten_text(sekunden):
 
 
 def laeufe_text(liste, ausfuehrlich=True, tage=30, jetzt=None):
-    """Zusammenfassung der Läufe. ausfuehrlich=False: nur ‚zuletzt eingearbeitet‘ (für Personen ohne Bestimmerrolle).
+    """Zusammenfassung der Läufe. ausfuehrlich=False: nur ‚zuletzt eingearbeitet‘ (für Personen ohne Rolle Organisator:in).
     Kosten stehen nur im Protokoll, nicht in der Anzeige (Entscheidung vom 26.10.2026: Kosten werden nicht gebraucht)."""
     jetzt = jetzt or datetime.datetime.now(datetime.timezone.utc)
     ok = [x for x in liste if x.get("ergebnis") == "ok"]

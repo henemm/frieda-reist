@@ -340,9 +340,9 @@ def test_reise_ohne_dossiers_und_plan_tabellen(reise, tmp_path):
 REISE_YAML = {
     "titel": "Test", "untertitel": "x", "pfad": "test",
     "status": {"wert": "planung", "verlauf": [{"datum": datetime.date(2026, 10, 26), "wert": "planung", "wer": "Hanna"}]},
-    "personen": {"hanna": {"name": "Hanna", "rolle": "bestimmer"},
-                 "ben": {"name": "Ben", "rolle": "einbringer", "reist": False, "notiz": "kennt die Gegend"},
-                 "kim": {"name": "Kim", "rolle": "reisend"}},
+    "personen": {"hanna": {"name": "Hanna", "rolle": "organisator"},
+                 "ben": {"name": "Ben", "rolle": "mitwirkend", "reist": False, "notiz": "kennt die Gegend"},
+                 "kim": {"name": "Kim", "rolle": "gast"}},
     "bausteine": ["varianten", "fragen", "wuensche"],
     "regeln": {"kontingent": {"je_person": 4}},
     "darstellung": {"gruppen": {"wissen": "Wissen"}, "varianten_titel": "Pläne"},
@@ -379,22 +379,22 @@ def test_reise_yaml(reise, tmp_path):
     mit_reise_yaml(reise, lambda x: x.update(zeitraum={"von": datetime.date(2027, 2, 6), "bis": datetime.date(2027, 2, 13)}))
     assert baue(reise, tmp_path)["reise"]["zeitraum"] == {"von": "2027-02-06", "bis": "2027-02-13"}
     assert [(p["schluessel"], p["rolle"], p["reist"]) for p in r["personen"]] == \
-        [("hanna", "bestimmer", True), ("ben", "einbringer", False), ("kim", "reisend", True)]
+        [("hanna", "organisator", True), ("ben", "mitwirkend", False), ("kim", "gast", True)]
     # Wer nur einen Teil mitreist, hat von/bis (Reiseüberblick: „Kim ab 8.2.“)
     mit_reise_yaml(reise, lambda x: x["personen"]["kim"].update(von=datetime.date(2027, 2, 8)))
     assert baue(reise, tmp_path)["reise"]["personen"][2]["von"] == "2027-02-08"
     assert r["bausteine"] == ["varianten", "fragen", "wuensche"]
-    assert r["regeln"]["kontingent"] == {"art": "punkte", "je_person": 4} and r["regeln"]["einladen"] == "bestimmer"
+    assert r["regeln"]["kontingent"] == {"art": "punkte", "je_person": 4} and r["regeln"]["einladen"] == "organisator"
     # Manifest nimmt den Titel aus reise.yaml
     assert json.loads((tmp_path / "dist" / "manifest.json").read_text(encoding="utf-8"))["name"] == "Test"
 
 
 @pytest.mark.parametrize("aendere, text", [
     (lambda r: r["status"].update(wert="fertig"), "status.wert muss eines von"),
-    (lambda r: r["status"]["verlauf"][0].update(wer="Ben"), "darf nur ein Bestimmer setzen"),
+    (lambda r: r["status"]["verlauf"][0].update(wer="Ben"), "darf nur ein:e Organisator:in setzen"),
     (lambda r: r["status"]["verlauf"][0].update(wert="fest"), "passt nicht zum letzten Verlaufseintrag"),
     (lambda r: r["status"].update(verlauf=[]), "braucht einen Verlauf"),
-    (lambda r: r["personen"]["hanna"].update(rolle="einbringer"), "Mindestens eine Person braucht die Rolle bestimmer"),
+    (lambda r: r["personen"]["hanna"].update(rolle="mitwirkend"), "Mindestens eine Person braucht die Rolle organisator"),
     (lambda r: r["personen"]["ben"].update(rolle="chef"), "rolle muss eines von"),
     (lambda r: r["personen"]["kim"].update(bis="Ende Mai"), "bis muss ein Datum sein"),
     (lambda r: r["personen"]["ben"].update(name="Hanna"), "kommt zweimal vor"),

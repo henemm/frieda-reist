@@ -19,19 +19,19 @@ import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
-BEISPIEL = WURZEL / "beispiel" / "reisen" / "beispielreise"   # ida bestimmer, karl einbringer
+BEISPIEL = WURZEL / "beispiel" / "reisen" / "beispielreise"   # ida organisator, karl mitwirkend
 IDA, MAX, KARL, KIM = "i" * 32, "x" * 32, "k" * 32, "q" * 32
 ALLE_BAUSTEINE = ["varianten", "karte", "tagesseiten", "rueckmeldungen", "fragen", "aufgaben", "wuensche"]
 
 
 def reise_bauen(tmp, status="planung", bausteine=None, luecke=False, regeln=None):
-    """Beispielreise mit gewünschtem Status und Bausteinen bauen; Max als zweiter Bestimmer, Kim als Reisende.
+    """Beispielreise mit gewünschtem Status und Bausteinen bauen; Max als zweite Organisator:in, Kim als Gast.
     -> Seitenordner (<seiten>/beispielreise/daten.json)"""
     quelle = tmp / "quelle"
     shutil.copytree(BEISPIEL, quelle)
     y = yaml.safe_load((quelle / "reise.yaml").read_text(encoding="utf-8"))
-    y["personen"]["max"] = {"name": "Max", "rolle": "bestimmer", "reist": False}
-    y["personen"]["kim"] = {"name": "Kim", "rolle": "reisend", "reist": True}
+    y["personen"]["max"] = {"name": "Max", "rolle": "organisator", "reist": False}
+    y["personen"]["kim"] = {"name": "Kim", "rolle": "gast", "reist": True}
     if status != "planung":
         y["status"] = {"wert": status, "verlauf": y["status"]["verlauf"] + [
             {"datum": datetime.date(2026, 10, 25), "wert": status, "wer": "Ida", "grund": "Test"}]}
@@ -120,25 +120,25 @@ def umgebung(tmp_path, monkeypatch):
 def test_rechte_je_rolle_und_status(rolle, status):
     erlaubt = {a: rg.erlaubt(a, rolle, status, ALLE_BAUSTEINE)[0] for a in rg.AKTIONEN}
     schreiben = rg.verhalten(status)["schreiben"]
-    if rolle == "reisend":
+    if rolle == "gast":
         assert not any(erlaubt.values())            # lesen, sonst nichts
         return
     # Rückmeldung und Aufgabe: in der Nachlese (danach) noch erlaubt, im Archiv nicht
     assert erlaubt["rueckmeldung"] == erlaubt["aufgabe"] == (schreiben != "nichts")
     # Wunsch und Alternative ändern den Plan: nur bei vollem Schreibrecht
     assert erlaubt["wunsch"] == erlaubt["alternative"] == (schreiben == "alles")
-    # Aufträge: nur Bestimmer, und nur solange der Plan nicht gesperrt ist
-    assert erlaubt["auftrag"] == (rolle == "bestimmer" and schreiben == "alles")
-    # Wunsch-Brett: abhaken auch in der Nachlese, einplanen nur Bestimmer bei vollem Schreibrecht
+    # Aufträge: nur Organisator:innen, und nur solange der Plan nicht gesperrt ist
+    assert erlaubt["auftrag"] == (rolle == "organisator" and schreiben == "alles")
+    # Wunsch-Brett: abhaken auch in der Nachlese, einplanen nur Organisator:innen bei vollem Schreibrecht
     assert erlaubt["wunsch_erlebt"] == (schreiben != "nichts")
-    assert erlaubt["wunsch_einplanen"] == (rolle == "bestimmer" and schreiben == "alles")
+    assert erlaubt["wunsch_einplanen"] == (rolle == "organisator" and schreiben == "alles")
 
 
 def test_auftrag_an_die_reise_geht_in_jedem_status():
     for status in rg.STATUS:
-        assert rg.erlaubt("auftrag", "bestimmer", status, [], "reise")[0]
-        assert not rg.erlaubt("auftrag", "einbringer", status, [], "reise")[0]
-    ok, grund = rg.erlaubt("auftrag", "bestimmer", "archiv", [], "V-01")
+        assert rg.erlaubt("auftrag", "organisator", status, [], "reise")[0]
+        assert not rg.erlaubt("auftrag", "mitwirkend", status, [], "reise")[0]
+    ok, grund = rg.erlaubt("auftrag", "organisator", "archiv", [], "V-01")
     assert not ok and "archiviert" in grund and "zurücksetzen" in grund
 
 
@@ -146,10 +146,10 @@ def test_ausgeschalteter_baustein_sperrt_schreiben():
     for aktion, baustein in (("rueckmeldung", "rueckmeldungen"), ("wunsch", "wuensche"), ("aufgabe", "aufgaben"),
                              ("alternative", "varianten")):
         rest = [b for b in ALLE_BAUSTEINE if b != baustein]
-        ok, grund = rg.erlaubt(aktion, "einbringer", "planung", rest)
+        ok, grund = rg.erlaubt(aktion, "mitwirkend", "planung", rest)
         assert not ok and baustein in grund
-        assert rg.erlaubt(aktion, "einbringer", "planung", ALLE_BAUSTEINE)[0]
-    assert rg.erlaubt("wunsch", "einbringer", "planung", None)[0]   # unbekannt: nicht prüfen
+        assert rg.erlaubt(aktion, "mitwirkend", "planung", ALLE_BAUSTEINE)[0]
+    assert rg.erlaubt("wunsch", "mitwirkend", "planung", None)[0]   # unbekannt: nicht prüfen
 
 
 def test_verhalten_je_status():
@@ -163,7 +163,7 @@ def test_verhalten_je_status():
     assert rg.verhalten("gibt-es-nicht") == rg.verhalten("planung")
 
 
-def test_widerspruch_zwischen_bestimmern():
+def test_widerspruch_zwischen_organisatoren():
     def e(wer, ziel, was):
         return {"wer": wer, "ziel": ziel, "entscheidung": was}
     assert rg.widerspruch(e("Ida", "V-01.a", "gewaehlt"), e("Max", "V-01.a", "verworfen"))
@@ -236,11 +236,11 @@ def aufgabe(u, name):
     return anfrage(f"{u.rurl}/beispielreise/aufgaben", {"name": name, "titel": "Etwas tun"})
 
 
-def test_dienst_reisende_person_darf_nichts_schreiben(umgebung):
+def test_dienst_gast_darf_nichts_schreiben(umgebung):
     u = umgebung()
     for code, a in (rueck(u, "Kim"), rueck(u, "kim", art="Wunsch", ziel=""), aufgabe(u, "Kim")):
         assert code == 403 and "nur lesen" in a["fehler"]
-    assert rueck(u, "Karl")[0] == 201 and rueck(u, "Eine Besucherin")[0] == 201   # Einbringer und unbekannte Namen
+    assert rueck(u, "Karl")[0] == 201 and rueck(u, "Eine Besucherin")[0] == 201   # Mitwirkende und unbekannte Namen
     assert aufgabe(u, "Karl")[0] == 201
     assert {e["name"] for e in rm.eintraege(u.o)} == {"Eine Besucherin", "Karl"}
 
@@ -315,8 +315,8 @@ def test_konnektor_werkzeuge_je_status(umgebung):
     u = umgebung("planung")
     nur_lesen = u.werkzeuge(KIM)
     assert not nur_lesen & kn.SCHREIB_WERKZEUGE and "auftrag_geben" not in nur_lesen
-    nur_bestimmer = {"entscheiden", "person_einladen", "person_entfernen"}   # Paket C, J
-    assert kn.SCHREIB_WERKZEUGE - nur_bestimmer <= u.werkzeuge(KARL) and not nur_bestimmer & u.werkzeuge(KARL)
+    nur_organisator = {"entscheiden", "person_einladen", "person_entfernen"}   # Paket C, J
+    assert kn.SCHREIB_WERKZEUGE - nur_organisator <= u.werkzeuge(KARL) and not nur_organisator & u.werkzeuge(KARL)
     assert kn.SCHREIB_WERKZEUGE <= u.werkzeuge(IDA) and "auftrag_geben" in u.werkzeuge(IDA)
 
     danach = umgebung("danach")
@@ -343,7 +343,7 @@ def test_konnektor_prueft_beim_aufruf_auch_ohne_werkzeugliste(umgebung):
     t, f = u.werkzeug(IDA, "auftrag_geben", ziel="reise", auftrag="Status wieder auf danach setzen")
     assert not f and (u.o / "auftraege.jsonl").exists()
     t, f = u.werkzeug(KIM, "auftrag_geben", ziel="reise", auftrag="x")
-    assert f and "nur Bestimmer" in t
+    assert f and "nur Organisator:innen" in t
     assert u.werkzeug(KARL, "auftrag_geben", ziel="reise", auftrag="x")[1]
 
 
@@ -407,14 +407,14 @@ def test_fristen_zaehlen_erst_ab_fest(umgebung):
 
 def test_verfassung_ist_kurz_und_nennt_aufgabe_grenzen_rollen(umgebung):
     u = umgebung("fest")
-    for token, rolle in ((IDA, "Bestimmer"), (KARL, "Einbringer"), (KIM, "reisend")):
+    for token, rolle in ((IDA, "Organisator:in"), (KARL, "Mitwirkende:r"), (KIM, "gast")):
         text = u.rpc(token, "initialize")["instructions"]
         assert len(text) < 2600, len(text)
         assert text.startswith("Aufgabe:") and "Grenzen:" in text and "Rollen:" in text and rolle in text
         assert "Status: Der Plan steht" in text
 
 
-# ---------- Konflikt zwischen Bestimmern ----------
+# ---------- Konflikt zwischen Organisator:innen ----------
 
 def test_konflikt_zwischen_zwei_auftraegen(umgebung):
     u = umgebung()
@@ -480,10 +480,10 @@ def test_liste_zeigt_konflikt(umgebung, capsys):
     ({"titel": "Ski", "von": "8.1.2027", "bis": "2027-02-13"}, "JJJJ-MM-TT"),
     ({"titel": "Ski", "von": "2027-02-06", "bis": "2028-03-01"}, "höchstens ein Jahr"),
     ({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13", "personen": [{"vorname": "Karl", "rolle": "chef"}]}, "Rolle muss"),
-    ({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13", "personen": [{"rolle": "einbringer"}]}, "Vornamen"),
+    ({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13", "personen": [{"rolle": "mitwirkend"}]}, "Vornamen"),
     ({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13", "personen": [{"vorname": "Karl"}, {"vorname": "karl"}]},
      "zweimal"),
-    ({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13", "personen": [{"vorname": "Ida", "rolle": "einbringer"}]},
+    ({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13", "personen": [{"vorname": "Ida", "rolle": "mitwirkend"}]},
      "bestimmt deshalb mit"),
     ({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13", "pfad": "Ski Urlaub"}, "pfad: nur Kleinbuchstaben"),
     ({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13", "pfad": "x" * 41}, "2 bis 40"),
@@ -498,11 +498,11 @@ def test_neue_reise_pruefen_lehnt_ab(args, text):
 def test_neue_reise_pruefen():
     from reise import neue_reise_pruefen, reise_pfad
     d, f = neue_reise_pruefen({"titel": " Winterwoche Allgäu ", "von": "2027-02-06", "bis": "2027-02-13",
-                               "personen": [{"vorname": "Ida", "rolle": "bestimmer"}, {"vorname": "Jörg", "notiz": "fährt"}]},
+                               "personen": [{"vorname": "Ida", "rolle": "organisator"}, {"vorname": "Jörg", "notiz": "fährt"}]},
                               "Ida")
     assert f is None and d["pfad"] == "winterwoche-allgaeu-2027" and d["titel"] == "Winterwoche Allgäu"
-    assert d["personen"] == {"ida": {"name": "Ida", "rolle": "bestimmer"},
-                             "joerg": {"name": "Jörg", "rolle": "einbringer", "notiz": "fährt"}}
+    assert d["personen"] == {"ida": {"name": "Ida", "rolle": "organisator"},
+                             "joerg": {"name": "Jörg", "rolle": "mitwirkend", "notiz": "fährt"}}
     assert neue_reise_pruefen({"titel": "Ski", "von": "2027-02-06", "bis": "2027-02-13"}, None)[1].startswith(
         "Eine Reise anlegen geht nur mit einem persönlichen Konto-Link")
     assert reise_pfad("Island 2028 – Hochland", 2028) == "island-2028-hochland"

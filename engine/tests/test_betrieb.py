@@ -464,7 +464,7 @@ def test_neue_reise_aus_dem_konnektor_frieda(fs, monkeypatch, capsys):
         "id": "A-1", "erstellt": "2026-10-27T10:00:00+00:00", "name": "Ida", "konto": "ida", "konto_id": ida["id"],
         "art": "Auftrag", "ziel": "allgemein", "text": "Neue Reise", "quelle": "Claude-App",
         "daten": {"neue_reise": {"titel": "x"}},
-        "einladen": [{"schluessel": "karl", "email": "karl@example.invalid", "rolle": "einbringer", "name": "Karl"}]}) + "\n")
+        "einladen": [{"schluessel": "karl", "email": "karl@example.invalid", "rolle": "mitwirkend", "name": "Karl"}]}) + "\n")
     datei = fs["tmp"] / "ausstehend.jsonl"
     datei.write_text(json.dumps({"ordner": "beispielreise", "aid": "A-1", "name": "Ida", "person": "ida"}) + "\n")
     assert hilfe.ausstehend(fs["repo"], datei) == 0
