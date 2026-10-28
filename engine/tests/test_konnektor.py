@@ -220,6 +220,9 @@ def test_rollen_aus_reise_yaml(dienst):
     assert "Du sprichst mit Karl (Einbringer)" in a and "Ida entscheidet" in a and "Status planung" in a
     assert "Vornamen" not in a
     assert "Du sprichst mit Ida (Bestimmer)" in kn.anleitung({"reise": "beispielreise", "person": "ida"}, d)
+    # Frieda spricht in Namen, nicht in Kennungen (28.10.2026)
+    assert "Namen statt Kennungen" in a and "IDs in Antworten nennen" not in a
+    assert "Namen statt Kennungen" in kn.anleitung_konto({"name": "Ida"})
     assert "nur lesen" in kn.anleitung({"reise": "beispielreise", "rolle": "reisend"}, d)
     assert "Vornamen" in kn.anleitung({"reise": "beispielreise", "rolle": "mitreisend"}, d)
 

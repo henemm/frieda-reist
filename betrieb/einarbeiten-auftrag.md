@@ -22,5 +22,7 @@ Grenzen:
 - Kein git, keine Status selbst setzen. Das erledigt das Skript nach grünen Tests.
 
 Ergebnis in zwei Dateien unter __AUS__/:
+Lesetext: Was auf der Seite steht (Texte in `inhalt/`, `text` und `notiz` in `plan/`, Kommentare in status.tsv), nennt Dinge mit Namen, nicht mit Kennung: „die Frage nach dem Skiverleih“ statt „F-05“, „Explorer Hotel“ statt „U-03“. Die Herkunft darf ihre Nummer behalten („Auftrag A-… von <Name>“); die Seite blendet Auftrags- und Rückmeldungsnummern aus. Kennungen gehören in die Felder, die sie verlangen (`bezug`, `option`, `erfordert`, Überschriften-Zuordnung, die Pflicht-ID bei Konflikten), nicht in den Fließtext.
+
 - `status.tsv`: je bearbeiteter Rückmeldung eine Zeile `__REISE__<TAB><ID><TAB><uebernommen|verworfen|rueckfrage><TAB><Kommentar>`. Der Kommentar steht auf der Seite: einfache Worte, ein bis zwei Sätze, wo es gelandet ist oder warum nicht.
 - `bericht.md`: erste Zeile ein kurzer Commit-Titel, danach eine Leerzeile und je Rückmeldung ein Stichpunkt, was geändert wurde.

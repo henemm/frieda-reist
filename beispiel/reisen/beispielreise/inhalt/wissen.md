@@ -22,7 +22,7 @@ Der Hockstein ist ein 291 m hoher Sandsteinberg über dem Polenztal, westlich da
 Im Nationalpark gilt eine Wegepflicht: In der Kernzone sind nur markierte Wege erlaubt, außerhalb alle Wege.[^1] Wer in der Kernzone unterwegs ist, bleibt also auf den markierten Wegen.
 
 ### Kirnitzschtalbahn
-Die Kirnitzschtalbahn ist eine Straßenbahn auf Meterspur. Sie fährt seit dem 27. Mai 1898 von Bad Schandau (Kurpark) zum Lichtenhainer Wasserfall, die Strecke ist heute 7,9 km lang.[^5] Fahrplan und Preise für Mai 2027 stehen noch aus (F-03).
+Die Kirnitzschtalbahn ist eine Straßenbahn auf Meterspur. Sie fährt seit dem 27. Mai 1898 von Bad Schandau (Kurpark) zum Lichtenhainer Wasserfall, die Strecke ist heute 7,9 km lang.[^5] Fahrplan und Preise für Mai 2027 stehen noch aus (F-03). Karl wünscht sich die Fahrt (Herkunft: Rückmeldung R-20261021-091500-a1b2 von Karl, Beispielwert).
 
 ### Anreise und Gepäck
 Wer mit leichtem Gepäck geht, braucht keinen Gepäcktransport. Ob es einen gibt und was er kostet, ist für dieses Beispiel nicht geprüft.

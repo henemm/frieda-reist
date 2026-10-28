@@ -2137,14 +2137,21 @@ function ansichtRahmen(m) {
 }
 // Kennungen in einem Text (aus Markdown-Tabellen der Reise) in Namen auflösen: eine Klammer, die nur Kennungen enthält,
 // entfällt (diese Stellen stehen als Pillen darunter); eine Kennung im Satz wird zum Namen mit Link. -> {teile, ids}
-const KENNUNG = /\b(?:AG-\d+|[TEOUVPFWR]-\d+(?:\.[a-z0-9-]+)?)\b/g;
+const KENNUNG = /\b(?:AG-\d+|P-[A-Z]\b|[TEOUVPFW]-\d+(?:\.[a-z0-9-]+)?)\b/g;
+// Auftrags- und Rückmeldungsnummern (A-20261028-145021-cbca) bleiben in den Dateien, auf der Seite entfallen sie
+const NUMMER = /\s*\b[AR]-\d{8}-\d{6}-[0-9a-z]{4}\b/g;
+// Name einer Kennung für den Lesetext: eine Frage mit ihren ersten Worten, eine Aufgabe mit ihrem Titel, sonst der Titel
+function kennungName(id) {
+  if (/^AG-/.test(id)) return (AG.find(a => a.id === id) || {}).titel || "eine Aufgabe";
+  if (/^F-/.test(id)) { const z = D.fragen.zeilen.find(x => x.id === id); const w = z && String(z.zellen[1] || "").replace(KENNUNG, "").replace(/\(\s*\)/g, "").trim();
+    return w ? "„" + (w.length > 48 ? w.slice(0, 48).replace(/\s\S*$/, "") + " …" : w) + "“" : ""; }
+  return titelZu(id);
+}
+const kennungZiel = id => /^AG-/.test(id) ? "aufgaben" : id;
 function kennungenAufloesen(text) {
-  // Name einer Stelle; eine andere Frage mit ihren ersten Worten, eine Aufgabe mit ihrem Titel
-  const frage = id => { const z = D.fragen.zeilen.find(x => x.id === id); const w = z && String(z.zellen[1] || "").replace(KENNUNG, "").trim();
-    return w ? "„" + (w.length > 48 ? w.slice(0, 48).replace(/\s\S*$/, "") + " …" : w) + "“" : ""; };
-  const ids = [], name = id => /^AG-/.test(id) ? ((AG.find(a => a.id === id) || {}).titel || "eine Aufgabe") : /^F-/.test(id) ? frage(id) : titelZu(id);
+  const ids = [], name = kennungName;
   // Code-Markierungen aus Markdown (`…`) gehören nicht in den Lesetext
-  const ohneKlammer = String(text || "").replace(/`([^`]*)`/g, "$1").replace(/\s*\(([^()]*)\)/g, (ganz, innen) => {
+  const ohneKlammer = String(text || "").replace(NUMMER, "").replace(/`([^`]*)`/g, "$1").replace(/\s*\(([^()]*)\)/g, (ganz, innen) => {
     const gefunden = innen.match(KENNUNG) || [];
     if (!gefunden.length || innen.replace(KENNUNG, "").replace(/[\s,;/]|und|oder/g, "")) return ganz;
     ids.push(...gefunden); return "";
@@ -2153,7 +2160,7 @@ function kennungenAufloesen(text) {
   for (const m of ohneKlammer.matchAll(KENNUNG)) {
     teile.push(ohneKlammer.slice(rest, m.index));
     const n = name(m[0]);
-    teile.push(n ? el("a", {href: "#" + (/^AG-/.test(m[0]) ? "aufgaben" : m[0]), title: m[0]}, n) : m[0]);
+    teile.push(n ? el("a", {href: "#" + kennungZiel(m[0]), title: m[0]}, n) : m[0]);
     rest = m.index + m[0].length;
   }
   teile.push(ohneKlammer.slice(rest));
@@ -2185,6 +2192,27 @@ function frageZeile(spalten, z) {
       meta.length ? el("div", {class: "ag-meta"}, meta.flatMap((x, i) => i ? [el("span", {class: "ag-punkt", "aria-hidden": "true"}, "·"), x] : [x])) : null,
       ids.length ? el("div", {class: "ag-bezug"}, ids.map(id => el("a", {href: "#" + id, title: id}, titelZu(id)))) : null,
       stand.rest ? el("div", {class: "ag-notiz"}, notiz.teile) : null));
+}
+// Kennungen in jedem Text einer Ansicht (Reisetexte, Notizen, Kommentare): Nummern von Aufträgen und Rückmeldungen
+// entfallen, jede andere Kennung wird zum Namen mit Link. Ausgenommen ist, was schon Link, Knopf, Code oder Eingabe ist.
+function kennungenImText(wurzel) {
+  const muster = new RegExp(KENNUNG.source + "|" + NUMMER.source.replace("\\s*", ""));
+  const gang = document.createTreeWalker(wurzel, NodeFilter.SHOW_TEXT, {acceptNode: n =>
+    n.parentElement.closest("a, button, code, pre, textarea, input, select, script, style, .zid, .zid-box, .kennung, summary .zid")
+      ? NodeFilter.FILTER_REJECT : muster.test(n.data) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP});
+  const knoten = [];
+  for (let n; (n = gang.nextNode());) knoten.push(n);
+  for (const n of knoten) {
+    const text = n.data.replace(NUMMER, ""), teile = []; let rest = 0;
+    for (const m of text.matchAll(KENNUNG)) {
+      const name = kennungName(m[0]);
+      if (!name) continue;
+      teile.push(text.slice(rest, m.index), el("a", {href: "#" + kennungZiel(m[0]), title: m[0]}, name));
+      rest = m.index + m[0].length;
+    }
+    teile.push(text.slice(rest));
+    n.replaceWith(...teile.filter(t => t !== ""));
+  }
 }
 function ansichtFragen(m) {
   const f = el("section", {class: "ziel", id: "fragen"}, el("h2", {}, "Offene Fragen"));
@@ -3535,6 +3563,8 @@ function route(behalten) {
   else if (zeileZu.get(h) === "varianten") { zeigeReiter("varianten"); ansichtStart(m); ziel = h; }
   else if (zeileZu.has(h)) { zeigeReiter("plan"); ansichtPlan(m); ziel = h; }
   else { zeigeReiter("plan"); ansichtPlan(m); }
+  // Lesetext ohne Kennungen (28.10.2026); die Bausteinseite zeigt Kennungen absichtlich
+  if (h !== "bausteine") kennungenImText(m);
   if (behalten === true) window.scrollTo(0, y);
   else if (ziel) zumZiel(ziel); else window.scrollTo(0, 0);
 }

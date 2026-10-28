@@ -70,6 +70,10 @@ def test_reiseueberblick(tmp_path, browser):
         assert [x[2] for x in a["tage"]] == ["gebucht", "nicht gebucht", "nicht gebucht", None], a["tage"]
         assert not a["breit"], breite
         assert a["planZiel"] and a["nachKlick"] == "#T-01", a
+        # Lesetext: „(F-03)“ wird zum Link mit den ersten Worten der Frage, „R-…“ entfällt
+        assert "F-03" not in a["lesetext"]["text"] and "R-2026" not in a["lesetext"]["text"], a["lesetext"]
+        assert a["lesetext"]["link"] and a["lesetext"]["link"][0].startswith("„Fahrplan"), a["lesetext"]
+        assert "(Herkunft: Rückmeldung von Karl" in a["lesetext"]["text"], a["lesetext"]
         # Offene Fragen sprechen ohne Kennungen: „(V-01.a)“ wird zur Pille mit dem Namen der Möglichkeit
         assert a["fragen"]["kennungen"] == [] and a["fragen"]["gruppen"] == ["Zu klären", "Geklärt"], a["fragen"]
         assert len(a["fragen"]["pillen"]) == 2 and all(a["fragen"]["pillen"]), a["fragen"]

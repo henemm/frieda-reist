@@ -1622,13 +1622,18 @@ def frieda_werkzeuge(k):
     return aus
 
 
+# Wie Frieda mit der Person spricht (28.10.2026): Kennungen sind für die Werkzeuge da, nicht für die Person
+SPRACHE = ("In Antworten Namen statt Kennungen: „Zugfahrt Münster → Duisburg am 8.1.“ statt „AG-01“. IDs nur für "
+           "die Werkzeuge oder auf Nachfrage, A-/R-Nummern nie.")
+
+
 def anleitung_frieda(k):
     reisen = reisen_des_kontos(k)
     z = [f"Aufgabe: Du bist Frieda, der Reiseassistent von {k['name']} (angemeldet als {k['email']}). Dieser Konnektor "
          "gilt für alle Reisen der Person; jedes Reise-Werkzeug braucht die Angabe reise (Ordner, siehe meine_reisen"
          + (")" if len(reisen) > 1 else "; bei nur einer Reise darf sie fehlen)") + ". Beginne mit meine_reisen und "
          "nenne Meldungen zuerst. Personen lädst du per E-Mail-Adresse ein (person_einladen mit email); Links gibt es "
-         "nicht mehr. Neue Reisen: reise_anlegen, wenn die Person das darf, sonst reisen_anlegen_anfragen."]
+         "nicht mehr. Neue Reisen: reise_anlegen, wenn die Person das darf, sonst reisen_anlegen_anfragen. " + SPRACHE]
     for reise, schl, d in reisen:
         z += ["", f"## Reise {reise}", anleitung({"reise": reise, "person": schl, "konto_id": k["id"]}, d)]
     if not reisen:
@@ -1742,7 +1747,7 @@ def anleitung_konto(konto):
             "Wünsche, Rückmeldungen und Aufgaben, bestimmer entscheidet mit), vor dem Anlegen bestätigen lassen. Bekanntes "
             "(Ideen, schon Gebuchtes, Quellen wie Bücher, Fotos, PDFs) in eigenen Worten mit Herkunft in die Notiz, nie "
             "abschreiben, nichts erfinden. Die Reise entsteht erst im Betrieb, sag nie, sie sei schon angelegt. Links sind "
-            "persönlich: nur dieser Person zeigen.")
+            "persönlich: nur dieser Person zeigen. " + SPRACHE)
 
 
 def konto_antwort(konto, nid, methode, p, ok):
@@ -2053,7 +2058,7 @@ def anleitung(zugang, d):
          "markieren, veränderliche Angaben (Fahrpläne, Öffnungszeiten, Preise) mit Prüfdatum. Vor jedem Eintragen kurz "
          "bestätigen lassen, was genau eingetragen wird. Die Regeln prüft der Dienst; lehnt er etwas ab, gib den Grund weiter.",
          "IDs: T- Tag, E- Etappe/Strecke, O- Ort, U- Unterkunft, V- Wahlstelle mit Optionen V-01.a, P- Plan, F- offene Frage, "
-         "W- Wissen, AG- Aufgabe. Mit ueberblick beginnen, dann zeige/suche; IDs in Antworten nennen.",
+         "W- Wissen, AG- Aufgabe. Mit ueberblick beginnen, dann zeige/suche. " + SPRACHE,
          "Rollen: reisend liest; einbringer gibt dazu Rückmeldungen, Antworten, Aufgaben und Vorschläge; bestimmer entscheidet "
          "dazu, setzt Status und Einstellungen und lädt ein."]
     name = f"Du sprichst mit {wer['name']}" if wer["name"] else "Du sprichst mit einer Person ohne festen Namen"

@@ -44,6 +44,11 @@ for (const breite of [390, 1300]) {
   await p.locator(".reise-tage .tz-titel").first().click();
   await p.waitForTimeout(200);
   a.nachKlick = await p.evaluate(() => location.hash);
+  // Lesetext: eine Kennung wird zum Namen mit Link, eine Rückmeldungsnummer entfällt
+  await p.evaluate(() => { location.hash = "W-06.kirnitzschtalbahn"; });
+  await p.waitForTimeout(200);
+  a.lesetext = await p.evaluate(() => { const b = document.getElementById("W-06.kirnitzschtalbahn");
+    return {text: b.textContent, link: [...b.querySelectorAll('a[href="#F-03"]')].map(x => x.textContent)}; });
   // Offene Fragen ohne Kennungen im Text, gruppiert nach Stand; die Stellen als Pillen mit Namen
   await p.evaluate(() => { location.hash = "fragen"; });
   await p.waitForSelector("#fragen .frage");
