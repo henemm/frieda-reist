@@ -337,7 +337,8 @@ def fs(tmp_path):
            "FR_ABLAGE": str(tmp_path / "ablage"), "FR_KONNEKTOR": str(tmp_path / "konnektor"), "FR_RM_PORT": "8871",
            "FR_ADRESSE": "https://example.invalid", "FR_KN_ADRESSE": "https://example.invalid/mcp",
            "FR_NGINX_SNIPPETS": str(snippets), "FR_SUDO": "",
-           "FS_NGINX_TEST": f"{nginx} -t", "FS_NGINX_LADEN": f"{nginx} reload", "FS_ABRUF": str(abruf)}
+           "FS_NGINX_TEST": f"{nginx} -t", "FS_NGINX_LADEN": f"{nginx} reload", "FS_ABRUF": str(abruf),
+           "FS_WARTEN": "0"}
 
     def lauf(*args):
         return subprocess.run([str(BETRIEB / "freischalten.sh"), *args], env=env, capture_output=True, text=True)
@@ -366,6 +367,20 @@ def test_freischalten_neue_reise_bekommt_link_einmal(fs):
     r = fs["lauf"]("beispielreise")
     assert r.returncode == 0 and "Freigeschaltet" not in r.stdout and sn.read_text() == inhalt
     assert (fs["tmp"] / "nginx.log").read_text().count("reload") == 1
+
+
+def test_freischalten_wartet_auf_das_neuladen_von_nginx(fs):
+    """Gleich nach dem Neuladen kennt nginx den neuen Pfad noch nicht (404); ein neuer Link wird mehrmals versucht."""
+    zaehler = fs["tmp"] / "zaehler"
+    fs["env"]["FS_ABRUF"] = str(ausfuehrbar(fs["tmp"] / "abruf-langsam.sh",
+        f'#!/bin/sh\necho x >> {zaehler}\n[ $(wc -l < {zaehler}) -le 2 ] && echo 404 || echo 200\n'))
+    r = fs["lauf"]("beispielreise")
+    assert r.returncode == 0 and "Freigeschaltet: beispielreise" in r.stdout, r.stdout
+    assert len(zaehler.read_text().split()) == 4        # zweimal 404, dann Seite und Rückmeldedienst
+    # Bestehender Link: kein Warten, ein Fehler ist sofort ein Fehler
+    zaehler.unlink()
+    fs["env"]["FS_ABRUF"] = str(ausfuehrbar(fs["tmp"] / "abruf-404.sh", f'#!/bin/sh\necho x >> {zaehler}\necho 404\n'))
+    assert fs["lauf"]("beispielreise").returncode == 1 and len(zaehler.read_text().split()) == 1
 
 
 def test_freischalten_link_fuer_die_claude_app(fs):
@@ -403,7 +418,7 @@ def test_freischalten_unbekannte_reise_und_fehlende_adresse(fs):
 
 def _zustellen_umgebung(fs, monkeypatch):
     for k in ("FR_WURZEL", "FR_INSTANZ", "FR_SEITEN", "FR_KONNEKTOR", "FR_ADRESSE", "FR_KN_ADRESSE", "FR_NGINX_SNIPPETS",
-              "FR_SUDO", "FR_RM_PORT", "FS_NGINX_TEST", "FS_NGINX_LADEN", "FS_ABRUF"):
+              "FR_SUDO", "FR_RM_PORT", "FS_NGINX_TEST", "FS_NGINX_LADEN", "FS_ABRUF", "FS_WARTEN"):
         monkeypatch.setenv(k, fs["env"][k])
     monkeypatch.setenv("RM_ABLAGE", fs["env"]["FR_ABLAGE"])
     monkeypatch.setenv("KN_SEITEN", str(fs["seiten"]))

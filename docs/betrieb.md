@@ -88,7 +88,7 @@ Eine Änderung aus einer Sitzung (Claude Code im Reisen-Repo) geht über einen P
 
 Ohne Handarbeit (`docs/neue-reise.md`): Nach dem Veröffentlichen ruft `veroeffentlichen.sh` für jede Reise `freischalten.sh <reise>` auf.
 
-- **Neue Reise:** Sie bekommt einen nginx-Baustein aus `vorlagen/nginx-reise.conf` mit einem neuen Zufalls-Token (root, 640). Dann `nginx -t`; bei einem Fehler wird der Baustein wieder entfernt. Danach lädt nginx neu.
+- **Neue Reise:** Sie bekommt einen nginx-Baustein aus `vorlagen/nginx-reise.conf` mit einem neuen Zufalls-Token (root, 640). Dann `nginx -t`; bei einem Fehler wird der Baustein wieder entfernt. Danach lädt nginx neu. Bis die neuen Pfade gelten, vergeht ein Moment; die Prüfung des neuen Links versucht es deshalb bis zu zehnmal im Sekundenabstand.
 - **Prüfung:** Seite und `api/gesund` müssen mit 200 antworten.
 - **Link:** Der Link zur Seite kommt nach `seiten.json` (für `meine_reisen`).
 - **Vorgemerkte Links:** Links neuer Reisen aus der App merkt das Einarbeiten in `<FR_DIENST>/neue-reisen-ausstehend.jsonl` vor. Das Veröffentlichen stellt sie zu, sobald die Seite online ist, als Meldung an die Person oder bei einem Konto als Einladung per Mail.

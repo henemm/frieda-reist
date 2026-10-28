@@ -56,8 +56,14 @@ fi
 pfad="$($SUDO cat "$snippet" | grep -oP '^location \^~ /\K[^/]+(?=/ \{)' | head -1)"
 [ -n "$pfad" ] || { echo "FEHLER: Im Snippet $snippet steht kein Pfad."; exit 1; }
 url="$BASIS/$pfad/"
+# Nach dem Neuladen braucht nginx einen Moment, bis die neuen Pfade gelten: Ein neuer Link wird deshalb mehrmals versucht.
+versuche=1; [ -n "$neu" ] && versuche="${FS_VERSUCHE:-10}"
 for teil in "Seite|" "Rückmeldedienst|api/gesund"; do
-  code="$(abruf "$url${teil#*|}" || true)"
+  for ((i = 1; ; i++)); do
+    code="$(abruf "$url${teil#*|}" || true)"
+    { [ "$code" = 200 ] || [ "$i" -ge "$versuche" ]; } && break
+    sleep "${FS_WARTEN:-1}"
+  done
   [ "$code" = 200 ] || { echo "FEHLER: ${teil%|*} von $REISE antwortet mit ${code:-nichts} statt 200${neu:+ (Link eben angelegt; fehlt das include in nginx?)}."; exit 1; }
 done
 [ -n "$neu" ] && echo "Freigeschaltet: $REISE"
