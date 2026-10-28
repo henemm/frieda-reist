@@ -534,6 +534,18 @@ def test_neue_art_der_reise_und_wahlstelle_an_beliebiger_id():
     assert not any("nirgends verwendet" in x["text"] for x in erg["warnungen"] if x["bezug"] == "V-05")
 
 
+def test_wahlstelle_an_wissensabschnitt():
+    """Jedes Element kann Alternativen tragen (28.10.2026), auch ein Abschnitt des Wissens (Essen, Ausflug)."""
+    r = roh()
+    r["wahlstellen"]["V-03"]["an"] = ["W-02"]
+    fehler = []
+    erg = Routen(r, {}, FRAGEN, fehler, lambda *a: None, grund=GRUND, wissen={"W-02"}).bauen()
+    assert fehler == [] and next(x for x in erg["wahlstellen"] if x["id"] == "V-03")["an_ids"] == ["W-02"]
+    fehler = []
+    Routen(r, {}, FRAGEN, fehler, lambda *a: None, grund=GRUND, wissen={"W-01"}).bauen()
+    assert any("an W-02 gibt es nicht" in f for f in fehler)
+
+
 @pytest.mark.parametrize("an, meldung", [(["T-99"], "gibt es nicht"), (["X-1"], "weder Tag"), ("T-01", "Liste")])
 def test_an_fehler(an, meldung):
     r = roh()

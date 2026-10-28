@@ -38,12 +38,12 @@ wahlstellen:
     art: planung
     frage: F-03
     bereich: restaurant
-    an: [O-05]          # beliebige IDs: Tag, Strecke, Unterkunft, Ort oder Wahlstelle
+    an: [O-05]          # beliebige IDs: Tag, Strecke, Unterkunft, Ort, Wahlstelle oder Abschnitt (W-…)
     optionen:
       - {id: V-07.a, titel: Gasthaus, merkmale: {kueche: regional}}
 ```
 
-`an:` nennt die IDs, an denen die Wahlstelle hängt (Tag, Strecke, Unterkunft, Ort, Wahlstelle). Tage, an denen die Wahlstelle als Übernachtung, Strecke oder `wahl:` eingetragen ist, werden weiter automatisch erkannt (`an`). Die ausdrücklichen IDs stehen im Ergebnis als `an_ids`.
+`an:` nennt die IDs, an denen die Wahlstelle hängt (Tag, Strecke, Unterkunft, Ort, Wahlstelle oder ein Abschnitt des Wissens `W-…`, etwa Essen oder Ausflug; seit 28.10.2026 kann so jedes Element Alternativen tragen). Die Seite zeigt die Wahlstelle an diesem Element (`docs/design.md`, Seitenordnung). Tage, an denen die Wahlstelle als Übernachtung, Strecke oder `wahl:` eingetragen ist, werden weiter automatisch erkannt (`an`). Die ausdrücklichen IDs stehen im Ergebnis als `an_ids`.
 
 ## Werte eintragen
 

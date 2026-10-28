@@ -550,7 +550,8 @@ class Bauer:
                 self.fehler.append(f"{r_rel}: „entscheider“ steht jetzt in reise.yaml (personen mit rolle organisator).")
             organisator = [p["name"] for p in self.eck["personen"] if p["rolle"] == "organisator"]
             route = Routen(roh, etappen, status, self.fehler, self.id_anlegen, r_rel,
-                           entscheider=organisator if self.reise_roh is not None else None).bauen()
+                           entscheider=organisator if self.reise_roh is not None else None,
+                           wissen={i for i in self.ids if i.startswith("W-")}).bauen()
             verhalten_anwenden(route, self.eck["verhalten"])
             for uid, u in ((route or {}).get("unterkuenfte") or {}).items():
                 if u.get("kategorie") == "sonstige":

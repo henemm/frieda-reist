@@ -28,7 +28,7 @@ UNGUELTIG = {"verworfen", "ersetzt"}
 ARTEN = {"planung", "unterwegs"}
 WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+",
-          "tag": r"T-\d+", "wahl": r"V-\d+", "option": r"V-\d+\.[a-z]+"}
+          "tag": r"T-\d+", "wahl": r"V-\d+", "option": r"V-\d+\.[a-z]+", "wissen": r"W-\d+"}
 BEREICHE = ("unterkunft", "strecke", "route", "allgemein")
 # Eine Wahlstelle hat einen Bereich oder eine Art: die vier Grundbereiche, dazu jede Art, die die Grundliste
 # (engine/merkmale.yaml) oder die Reise unter „merkmale:“ kennt (Fähre, Flug, Bahn, Essen, Erlebnis …).
@@ -154,11 +154,12 @@ def verhalten_anwenden(route, v):
 
 class Routen:
     def __init__(self, roh, etappen, fragen, fehler, id_anlegen, quelle="plan/routen.yaml", zwang=None, grund=None,
-                 entscheider=None):
+                 entscheider=None, wissen=None):
         """roh: geladenes YAML. etappen: {E-ID: Etappe aus dem Dossier}. fragen: {F-ID: Status-Text}.
         entscheider: Namen, die gewaehlt/verworfen/ersetzt setzen dürfen (Organisator:innen aus reise.yaml); None: aus dem YAML.
         zwang: {V-ID: Option-ID} – für benannte Pläne; erzwingt eine Option, auch eine verworfene.
-        grund: Grundliste der Merkmale (Standard: engine/merkmale.yaml)."""
+        grund: Grundliste der Merkmale (Standard: engine/merkmale.yaml).
+        wissen: bekannte W-IDs (Abschnitte wie Essen, Ausflug, Praxis), an denen eine Wahlstelle hängen darf; None: ungeprüft."""
         self.r = roh or {}
         self.grund = grundliste() if grund is None else grund
         self.katalog = {}         # Bereich -> {Merkmal: Definition}, Grundliste plus Reise
@@ -180,6 +181,7 @@ class Routen:
         self.unterkuenfte = self.r.get("unterkuenfte") or {}
         self.tage = self.r.get("tage") or {}
         self.wahl = self.r.get("wahlstellen") or {}
+        self.wissen = wissen
         self.option = {}          # V-01.a -> (V-01, Option)
         self.auswahl = {}         # V-01 -> aktive Option-ID
         self.tag_benutzt = {}     # T-ID -> Fundstelle
@@ -270,7 +272,8 @@ class Routen:
         self.merkmale_pruefen()
 
     def an_pruefen(self, vid, w):
-        """„an:“ nennt die IDs, an denen die Wahlstelle hängt: Tag, Strecke, Unterkunft, Ort oder Wahlstelle."""
+        """„an:“ nennt die IDs, an denen die Wahlstelle hängt: Tag, Strecke, Unterkunft, Ort, Wahlstelle oder ein Abschnitt
+        des Wissens (W-…, z. B. Essen, Ausflug). Jedes Element kann so Alternativen tragen (28.10.2026)."""
         an = w.get("an")
         if an is None:
             return
@@ -279,13 +282,14 @@ class Routen:
             return
         for x in an:
             for art, menge in (("tag", self.tage), ("strecke", {**self.etappen, **self.strecken}),
-                               ("unterkunft", self.unterkuenfte), ("ort", self.orte), ("wahl", self.wahl)):
+                               ("unterkunft", self.unterkuenfte), ("ort", self.orte), ("wahl", self.wahl),
+                               ("wissen", self.wissen)):
                 if ist(art, x):
-                    if x not in menge:
+                    if menge is not None and x not in menge:
                         self.fehl(f"Wahlstelle {vid}: an {x} gibt es nicht.")
                     break
             else:
-                self.fehl(f"Wahlstelle {vid}: an „{x}“ ist weder Tag, Strecke, Unterkunft, Ort noch Wahlstelle.")
+                self.fehl(f"Wahlstelle {vid}: an „{x}“ ist weder Tag, Strecke, Unterkunft, Ort, Wahlstelle noch Abschnitt (W-…).")
 
     def regeln_pruefen(self):
         """Voraussetzungen zwischen Optionen verschiedener Wahlstellen (Paket 4, #18): erfordert (diese Option geht nur
