@@ -346,7 +346,7 @@ class Reise:
                 self.fehl(f"Name „{p['name']}“ kommt zweimal vor; Namen müssen eindeutig sein.")
             namen.add(p["name"])
             teil = {}
-            for f in ("von", "bis"):   # reist nur einen Teil mit (Reiseüberblick: „Charlotte ab 23.5.“)
+            for f in ("von", "bis"):   # reist nur einen Teil mit (Reiseüberblick: „Karl ab 14.5.“)
                 if p.get(f) is None:
                     continue
                 if isinstance(p[f], datetime.date):

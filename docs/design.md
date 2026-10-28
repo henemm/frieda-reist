@@ -121,7 +121,7 @@ Ergebnis an einem echten Etappentag (Handy, 390 px): Weg zu den Unterkünften 2,
 Ist ein Plan gewählt, heißt der erste Reiter **„Reise“** und zeigt die Reise statt des Plans (Vorlage `ansichtReise`, Entscheidung 28.10.2026). Der Planname („Plan B“), sein Steckbrief und die anderen erwogenen Pläne kommen auf der Seite nicht mehr vor, auch nicht in der Suche; ihre Daten bleiben in `routen.yaml`, ein Link auf einen Plan (`#P-…`) führt zum Überblick. Ist noch kein Plan gewählt, bleibt der Vergleich der Pläne. Für alle Reisen gleich, alles aus den Daten, von oben nach unten:
 
 1. **Kopf:** „Reise“ mit Zähler: vor der Reise „noch n Tage“, unterwegs „Tag x von n“, danach nichts. Unterwegs steht der heutige Tag darüber.
-2. **Anreise:** der erste Tag mit seinen festen Terminen (`fixpunkte`) und Fahrten (Strecken, die keine Wanderung sind), z. B. „Landung 20:15 PMI“, „Bus A1 Flughafen → Palma“; führt zum Tag.
+2. **Anreise:** der erste Tag mit seinen festen Terminen (`fixpunkte`) und Fahrten (Strecken, die keine Wanderung sind), z. B. „Ankunft mit dem Zug in Dresden“ (Beispielreise); führt zum Tag.
 3. **Karte** der Reise mit Legende (`uebersichtKarte`). Der Kasten unter der Karte erscheint erst, wenn man einen Ort antippt.
 4. **Kennzahlen** als Kacheln (`kennzahlLeiste`): mit Wanderdaten Tage, Gehzeit, Strecke, Höhenmeter; ohne Tage, Nächte, Orte. Fehlt eine Angabe, entfällt die Kachel. Dazu **Übernachtungen**: Summe der Preise pro Nacht (Merkmal `preis` der Unterkunft, am Datum der Nacht), bei offener Wahl als Spanne der Kandidaten; je Währung getrennt. Fehlen Preise, sagt ein Satz darunter, für wie viele Nächte der Preis bekannt ist. Gelesen wird der erste Betrag oder die erste Spanne vor einer Klammer; „pro Person“ zählt nicht.
 5. **Mitreisende:** wer reist (`reist`), wer nur einen Teil mitreist mit „ab“ und „bis“ (`von`, `bis` an der Person in `reise.yaml`).
@@ -129,7 +129,7 @@ Ist ein Plan gewählt, heißt der erste Reiter **„Reise“** und zeigt die Rei
 7. **Nächste Fristen:** die drei offenen Aufgaben mit der frühesten Frist (`agEintrag`), mit Link auf alle.
 8. **Feste Termine** zwischen An- und Abreise (die am ersten und letzten Tag stehen schon dort), je Termin Tag und Titel.
 9. **Die Tage** als Zeilen (`tagZeile`): Nummer und Datum, Titel, Gehzeit, darunter die Nacht mit Stand: „gebucht“ (oder was in `buchung` steht), „nicht gebucht“, „noch wählen · n“ bei offener Wahl, „Unterkunft offen“. Zeigen auf eine Zeile hebt den Tag auf der Karte hervor, Tippen öffnet ihn. Teile einer Reise (`teil`) stehen als Etikett dazwischen.
-10. **Abreise:** der letzte Tag wie die Anreise, Fahrten vor den Terminen („Bus A1 Palma → Flughafen“, „Rückflug 10:30 ab PMI“).
+10. **Abreise:** der letzte Tag wie die Anreise, Fahrten vor den Terminen (Beispielreise: „S-Bahn Bad Schandau → Dresden“).
 
 **Buchung:** Gebucht ist eine Unterkunft, die in `routen.yaml` eine andere Buchung als `offen` trägt (`buchung: gebucht`); ohne Angabe gilt `offen`.
 
