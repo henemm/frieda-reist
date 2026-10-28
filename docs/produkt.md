@@ -1,10 +1,10 @@
-# Reisehandbuch als Produkt: Kern, AI first, Rollen, Ausbaustufen
+# Frieda Reist als Produkt: Kern, AI first, Rollen, Ausbaustufen
 
 Entschieden vom Product Owner am 26.10.2026 (Gespräch in Claude Code). Dieses Dokument ist das gemeinsame Verständnis, an dem sich Engine, Regeln und Arbeitspakete ausrichten.
 
 ## Zweck
 
-Das Reisehandbuch ist die eine Quelle der Wahrheit für eine Reise, von der ersten Idee bis zum Nachschlagen unterwegs. Es ist ein generisches Produkt: Es soll beliebigen Reisegruppen dienen, nicht nur einem Haushalt. Die Claude-App (Desktop und Handy) ist der Ort, an dem alle die Reise mitgestalten. Die Webseite ist das Nachschlagewerk unterwegs, offline, mit Karte und Brett.
+Frieda ist die eine Quelle der Wahrheit für eine Reise, von der ersten Idee bis zum Nachschlagen unterwegs. Es ist ein generisches Produkt: Es soll beliebigen Reisegruppen dienen, nicht nur einem Haushalt. Die Claude-App (Desktop und Handy) ist der Ort, an dem alle die Reise mitgestalten. Die Webseite ist das Nachschlagewerk unterwegs, offline, mit Karte und Brett.
 
 ## Kern
 

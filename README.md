@@ -1,6 +1,6 @@
 # Frieda Reist
 
-**Ein Reisehandbuch mit Lektorat, AI first.** Eine Reise liegt als Text und YAML in einem Git-Repo: Tage, Etappen, Orte, Unterkünfte, Alternativen und Wissen, jede Stelle mit fester ID. Ein KI-Assistent (heute Claude Code) recherchiert und pflegt die Inhalte, mit Quelle und Prüfdatum zu jeder veränderlichen Angabe. Ein Generator baut daraus ein Reisehandbuch als Webseite, das offline funktioniert.
+**Reiseplanung mit Lektorat, AI first.** Eine Reise liegt als Text und YAML in einem Git-Repo: Tage, Etappen, Orte, Unterkünfte, Alternativen und Wissen, jede Stelle mit fester ID. Ein KI-Assistent (heute Claude Code) recherchiert und pflegt die Inhalte, mit Quelle und Prüfdatum zu jeder veränderlichen Angabe. Ein Generator baut daraus eine Reiseseite, die offline funktioniert.
 
 *A travel handbook with an editor, AI first: trips live as text in Git, an AI assistant researches and maintains them with sources and check dates, and a generator builds an offline-capable web handbook. Fellow travellers comment on any item; the AI works their input in. Documentation is in German for now.*
 
