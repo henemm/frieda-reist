@@ -30,7 +30,7 @@ Aufrufe:
   python3 engine/rueckmeldungen.py laeufe [<reise>] [--alle]       Läufe des automatischen Einarbeitens: Wartezeit,
         Dauer (Protokoll einarbeiten-laeufe.jsonl, geschrieben vom Betriebsskript; RM_LAEUFE überschreibt den Ort)
   python3 engine/rueckmeldungen.py dienst                          Dienst starten
-        Umgebung: RM_ABLAGE (Standard /srv/reisehandbuch/_rueckmeldungen),
+        Umgebung: RM_ABLAGE (Standard aus engine/instanz.py: <Seiten>/_rueckmeldungen),
                   RM_HOST (127.0.0.1), RM_PORT (8771)
 
 HTTP (hinter nginx, Präfix /<reise>-<token>/api/ -> /<reise>/):
@@ -63,6 +63,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import instanz  # noqa: E402
 import konten  # noqa: E402
 import reise as rg  # noqa: E402
 
@@ -94,7 +95,7 @@ _zeiten = {}
 
 
 def ablage():
-    return Path(os.environ.get("RM_ABLAGE", "/srv/reisehandbuch/_rueckmeldungen"))
+    return instanz.ablage()
 
 
 NEU = "_neu"   # Ablage für Anfragen nach neuen Reisen und Meldungen an Konten (gehört zu keiner Reise, Paket H)
@@ -118,7 +119,7 @@ def ordner(reise):
 # ---------- Regeln der Reise (Rolle, Status, Bausteine) ----------
 
 def seiten():
-    return Path(os.environ.get("RM_SEITEN") or os.environ.get("KN_SEITEN") or "/srv/reisehandbuch")
+    return instanz.seiten()
 
 
 def zustand(reise):

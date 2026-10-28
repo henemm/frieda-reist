@@ -12,8 +12,8 @@ DIENST="$FR_DIENST"
 
 # Module, die Rückmeldedienst und Konnektor aus <FR_DIENST> laden. Neue Module, die einer davon (auch mittelbar)
 # importiert, hier ergänzen; engine/tests/test_betrieb.py prüft das.
-RM_MODULE="rueckmeldungen.py reise.py konten.py"
-KN_MODULE="konnektor.py reise.py konten.py anmeldung.py oauth.py"
+RM_MODULE="rueckmeldungen.py reise.py konten.py instanz.py"
+KN_MODULE="konnektor.py reise.py konten.py anmeldung.py oauth.py instanz.py"
 
 [ -d "$WURZEL/reisen/$REISE" ] || { echo "Reise '$REISE' gibt es nicht."; exit 1; }
 [ -d "$FR_SEITEN" ] && [ -w "$FR_SEITEN" ] || { echo "$FR_SEITEN fehlt oder ist nicht beschreibbar (einrichten.sh, docs/betrieb.md)."; exit 1; }

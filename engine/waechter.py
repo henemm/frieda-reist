@@ -22,7 +22,7 @@ Aufrufe:
         legt Meldungen und den Prüfauftrag an (ohne Reise: alle Reisen der Ablage); --bericht schreibt die
         Sammelnachricht für den Betreiber in DATEI, falls es etwas zu melden gibt und eine Reise den Kanal
         nachricht hat
-Umgebung: RM_ABLAGE (Standard /srv/reisehandbuch/_rueckmeldungen), RM_SEITEN oder KN_SEITEN (/srv/reisehandbuch)
+Umgebung: RM_ABLAGE, RM_SEITEN oder KN_SEITEN (Standard aus engine/instanz.py)
 """
 import datetime
 import json

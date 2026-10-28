@@ -31,13 +31,13 @@ Aufrufe:
                                                            oder eingeladen; in der App geht das mit person_einladen)
   python3 engine/konnektor.py konto <schluessel> <Name>    persönlichen Konto-Link anlegen (meine Reisen, neue Reise)
   python3 engine/konnektor.py zugaenge                     angelegte Links zeigen
-        Umgebung: KN_SEITEN (Standard /srv/reisehandbuch), KN_ZUGAENGE (/srv/reisehandbuch/_konnektor/zugaenge.json),
+        Umgebung: KN_SEITEN, KN_ZUGAENGE (Standard aus engine/instanz.py: <Seiten>/_konnektor/zugaenge.json),
                   KN_RUECKMELDEDIENST (http://127.0.0.1:8771), KN_HOST (127.0.0.1), KN_PORT (8772),
                   KN_BASIS (öffentliche Adresse des Dienstes, für die Links), RM_ABLAGE wie beim Rückmeldedienst,
                   KN_SEITENLINKS (Links zu den Seiten je Reise, vom Betrieb geschrieben; Standard seiten.json neben
                   KN_ZUGAENGE)
 
-HTTP (hinter nginx, Präfix /reisehandbuch-mcp/ -> /):
+HTTP (hinter nginx, Präfix /<instanz>-mcp/ -> /, docs/betrieb.md):
   POST /<token>     MCP (JSON-RPC, Streamable HTTP ohne Sitzung, Antwort als JSON)
   GET  /gesund      Readiness (Zugänge lesbar, verlinkte Reisen veröffentlicht), ohne Token
 """
@@ -59,6 +59,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import anmeldung  # noqa: E402
+import instanz  # noqa: E402
 import konten  # noqa: E402
 import oauth  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
@@ -106,11 +107,11 @@ _CODE_START = code_stand()   # Stand des Codes beim Start; weicht er später von
 
 
 def seiten():
-    return Path(os.environ.get("KN_SEITEN", "/srv/reisehandbuch"))
+    return instanz.seiten()
 
 
 def zugaenge_pfad():
-    return Path(os.environ.get("KN_ZUGAENGE", "/srv/reisehandbuch/_konnektor/zugaenge.json"))
+    return instanz.zugaenge()
 
 
 def zugaenge():

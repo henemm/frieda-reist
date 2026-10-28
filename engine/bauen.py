@@ -562,7 +562,7 @@ class Bauer:
                     self.fehler.append(f"{wo}: Ort {oid} gibt es in routen.yaml nicht.")
             if route and r_cfg.get("karte"):
                 route["karte"] = self.karte(r_cfg["karte"], route)
-                # Punkte der Etappen-Karten (ops/punkte-holen.py); Namen im Etappentext werden zu Kartenlinks
+                # Punkte der Etappen-Karten (werkzeuge/punkte_holen.py, docs/werkzeuge.md); Namen im Etappentext werden zu Kartenlinks
                 p_rel = str(Path(r_cfg["karte"]).parent / "punkte.yaml")
                 if (self.reise_dir / p_rel).exists():
                     route["punkte"] = self.punkte(p_rel, route, etappen)
@@ -799,7 +799,7 @@ class Bauer:
                 self.fehler.append(f"{rel}: gpx: Strecke {sid} gibt es nicht.")
         if k.get("gpx"):
             self.fehler += [f"{rel}: {m}" for m in gpx.einbauen(k, route["strecken"], lambda d: gpx.lesen(self.reise_dir / d))]
-        # Offline-Grundkarte (OpenStreetMap als PMTiles, ops/karte-holen.sh); fehlt sie, bleibt die Karte schematisch
+        # Offline-Grundkarte (OpenStreetMap als PMTiles, werkzeuge/karte-holen.sh); fehlt sie, bleibt die Karte schematisch
         g = k.pop("grundkarte", None)
         if g:
             datei = self.reise_dir / g["datei"]

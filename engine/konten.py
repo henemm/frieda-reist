@@ -46,6 +46,8 @@ import urllib.parse
 from contextlib import closing
 from pathlib import Path
 
+import instanz
+
 EMAIL_MUSTER = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$")
 REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")          # wie rueckmeldungen.REISE_MUSTER
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")        # wie konnektor.PERSON_MUSTER
@@ -83,7 +85,7 @@ def _hash(*teile):
 
 
 def pfad():
-    return Path(os.environ.get("RM_ABLAGE", "/srv/reisehandbuch/_rueckmeldungen")) / "_konten" / "konten.db"
+    return instanz.ablage() / "_konten" / "konten.db"
 
 
 SCHEMA = """
