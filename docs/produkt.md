@@ -142,8 +142,9 @@ Stufe 1 „Rollen und sofort“: A, B, C, D. Stufe 2 „Wünsche und Wächter“
 
 ## Stand
 
-- 26.10.2026, Paket A begonnen: `reise.yaml` je Reise mit Status, Personen, Bausteinen, Regeln und Darstellung (`engine/reise.py` prüft); `entscheider` kommt aus den Personen; Konnektor kennt Rollen `organisator`, `mitwirkend`, `gast` und Zugänge je Person; der Schalter `funktionen` in `reise.json` ist durch `bausteine` in `reise.yaml` ersetzt.
+- 26.10.2026, Paket A begonnen: `reise.yaml` je Reise mit Status, Personen, Bausteinen, Regeln und Darstellung (`engine/reise.py` prüft); `entscheider` kommt aus den Personen; Konnektor kennt Rollen `bestimmer`, `einbringer`, `reisend` und Zugänge je Person; der Schalter `funktionen` in `reise.json` ist durch `bausteine` in `reise.yaml` ersetzt.
 - 26.10.2026, Paket B: Rechte, Verhalten je Status, Bausteine und Konflikt werden im Code geprüft (siehe „Was die Maschine daraus macht“); Tests in `engine/tests/test_regeln.py`.
 - 26.10.2026, Paket C: Werkzeuge `entscheiden`, `frage_beantworten`, `person_einladen`; beide Entscheidungswege getestet (`engine/tests/test_gespraech.py`). Offen: Links sperren geht noch von Hand.
 - 27.10.2026, Paket H: neue Reise im Gespräch, in Claude Code (`engine/neu.py`) und in der Claude-App über einen persönlichen Konto-Link (`meine_reisen`, `reise_anlegen`); Vorlage `engine/reisevorlage/`, `zeitraum` in `reise.yaml`, IDs mit Marke in `ids.yaml`, Prüfung vor dem Bau, Anleitung `docs/neue-reise.md`.
 - 26.10.2026, Paket E: Wächter und Erinnerer (`engine/waechter.py`, `docs/waechter.md`), Baustein `waechter`; Tests in `engine/tests/test_waechter.py` mit simuliertem Datum.
+- 28.10.2026, Rollen umbenannt (#80): Gast (`gast`), Mitwirkende:r (`mitwirkend`), Organisator:in (`organisator`). Die alten Schlüssel `reisend`, `einbringer`, `bestimmer` und `mitreisend` liest der Code weiter (`reise.rolle_neu`), geschrieben werden nur die neuen.
