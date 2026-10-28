@@ -245,6 +245,26 @@ def daten(reise):
         return None
 
 
+# Friedas Symbol (Wegweiser, engine/marke/): Favicon und App-Symbol unter Friedas Adresse, Icons für serverInfo
+MARKE = Path(__file__).resolve().parent / "marke"
+MARKE_DATEIEN = {"/favicon.ico": ("favicon.ico", "image/x-icon"), "/favicon.svg": ("frieda.svg", "image/svg+xml"),
+                 "/apple-touch-icon.png": ("apple-touch-icon.png", "image/png"),
+                 "/icon-192.png": ("icon-192.png", "image/png"), "/icon-512.png": ("icon-512.png", "image/png")}
+
+
+def frieda_symbole():
+    """Friedas Symbol als MCP-Icons (Data-URIs wie bei symbole()); fehlen die Dateien: keine Icons."""
+    liste = []
+    for g in (32, 192):
+        try:
+            roh = (MARKE / f"icon-{g}.png").read_bytes()
+        except OSError:
+            continue
+        liste.append({"src": "data:image/png;base64," + base64.b64encode(roh).decode("ascii"),
+                      "mimeType": "image/png", "sizes": [f"{g}x{g}"]})
+    return liste
+
+
 def symbole(reise):
     """Symbol der Reise (dasselbe wie auf der Seite) als MCP-Icons für serverInfo; die Claude-App zeigt es beim
     Konnektor. Data-URIs, damit kein weiterer Abruf und kein weiterer Pfad nötig ist. Fehlt es: keine Icons."""
@@ -1688,7 +1708,7 @@ def frieda_antwort(zugang, nid, methode, p, ok):
         gewuenscht = p.get("protocolVersion") if isinstance(p, dict) else None
         return ok({"protocolVersion": gewuenscht if gewuenscht in PROTOKOLLE else PROTOKOLLE[0],
                    "capabilities": {"tools": {}},
-                   "serverInfo": {"name": "frieda", "title": "Frieda", "version": "1"},
+                   "serverInfo": {"name": "frieda", "title": "Frieda", "version": "1", "icons": frieda_symbole()},
                    "instructions": anleitung_frieda(k)})
     if methode == "ping":
         return ok({})
@@ -1721,7 +1741,8 @@ def konto_antwort(konto, nid, methode, p, ok):
         gewuenscht = p.get("protocolVersion") if isinstance(p, dict) else None
         return ok({"protocolVersion": gewuenscht if gewuenscht in PROTOKOLLE else PROTOKOLLE[0],
                    "capabilities": {"tools": {}},
-                   "serverInfo": {"name": "frieda", "title": "Frieda – meine Reisen", "version": "1"},
+                   "serverInfo": {"name": "frieda", "title": "Frieda – meine Reisen", "version": "1",
+                                  "icons": frieda_symbole()},
                    "instructions": anleitung_konto(konto)})
     if methode == "ping":
         return ok({})
@@ -2315,6 +2336,21 @@ class Dienst(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _marke(self, pfad):
+        name, art = MARKE_DATEIEN[pfad]
+        try:
+            body = (MARKE / name).read_bytes()
+        except OSError:
+            return self._senden(404, {"fehler": "unbekannt"})
+        self.send_response(200)
+        self.send_header("Content-Type", art)
+        self.send_header("Cache-Control", "public, max-age=86400")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(body)
+
     def _zugang(self):
         teile = self.path.split("?", 1)[0].strip("/").split("/")
         return zugang_zu(teile[0]) if len(teile) == 1 else None
@@ -2340,7 +2376,7 @@ class Dienst(BaseHTTPRequestHandler):
         self.send_response(code)
         grund = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
                  "Referrer-Policy": "same-origin",   # nicht no-referrer: dann schicken Browser „Origin: null“
-                 "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; "
+                 "Content-Security-Policy": "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; form-action 'self'; "
                                             "frame-ancestors 'none'; base-uri 'none'"}
         eigene = {k for k, _ in kopf}
         for k, v in [*((k, v) for k, v in grund.items() if k not in eigene), *kopf]:
@@ -2353,6 +2389,8 @@ class Dienst(BaseHTTPRequestHandler):
         # Readiness für BetterStack ohne geheimen Link: Zugänge lesbar und jede verlinkte Reise veröffentlicht
         if self.path.split("?", 1)[0] == "/gesund":
             return self._senden(*gesund())
+        if self.path.split("?", 1)[0] in MARKE_DATEIEN:
+            return self._marke(self.path.split("?", 1)[0])
         if anmeldung.ist_unsere(self.path) or oauth.ist_unsere(self.path):
             return self._anmeldung()
         if self.path.split("?", 1)[0] == "/mcp":

@@ -90,6 +90,25 @@ def test_metadaten(welt):
     assert "offline_access" in m["scopes_supported"] and m["registration_endpoint"] == BASIS + "/register"
 
 
+def test_symbol_von_frieda(welt):
+    """Favicon und App-Symbol unter Friedas Adresse (die Claude-App zeigt es beim Konnektor), Icons in serverInfo."""
+    import http.client
+    u = welt()
+    t = urllib.parse.urlsplit(u.kurl)
+    for pfad, art, anfang in (("/favicon.ico", "image/x-icon", b"\x00\x00\x01\x00"), ("/favicon.svg", "image/svg+xml", b"<svg"),
+                              ("/apple-touch-icon.png", "image/png", b"\x89PNG"), ("/icon-512.png", "image/png", b"\x89PNG")):
+        c = http.client.HTTPConnection(t.hostname, t.port, timeout=10)
+        c.request("GET", pfad)
+        r = c.getresponse()
+        assert r.status == 200 and r.getheader("Content-Type") == art and r.read().startswith(anfang), pfad
+    s, h, text = abruf(f"{u.kurl}/anmelden")
+    assert '<link rel="icon" href="/favicon.svg"' in text and "img-src 'self'" in kopf(h, "Content-Security-Policy")[0]
+    t_, _ = verbinden(u, IDA, "Ida")
+    s, _, a = mcp(u, t_["access_token"], "initialize", {"protocolVersion": "2025-06-18"})
+    icons = a["result"]["serverInfo"]["icons"]
+    assert [i["sizes"] for i in icons] == [["32x32"], ["192x192"]] and icons[0]["src"].startswith("data:image/png;base64,")
+
+
 def test_ohne_token_401_mit_zeiger(welt):
     u = welt()
     s, h, _ = mcp(u, None, "initialize")

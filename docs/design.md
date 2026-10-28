@@ -130,6 +130,10 @@ Die Deckkraft ist 0,7 statt der im Versuch gezeigten 0,55: Erst so erreicht das 
 
 Das ersetzt die Festlegung vom selben Tag (Wortmarke „Anmerken“ mit „i“ bei genug Platz und in Karten, Sprechblase nur bei wenig Platz).
 
+## Friedas Symbol (28.10.2026)
+
+Ein Wegweiser mit zwei Richtungsschildern, weiß und gelb auf dem Akzentgrün (`engine/marke/frieda.svg`). Er steht für Reisen und für Entscheiden zwischen Wegen und bleibt auch in 16 Pixeln erkennbar. Buchstaben sind bewusst nicht im Symbol: Ein einzelnes F liegt zu nah an bekannten Markenzeichen. Der Konnektor-Dienst liefert es unter Friedas Adresse als Favicon und App-Symbol aus und gibt es der Claude-App in `serverInfo.icons` mit. Nach einer Änderung am SVG: `engine/.venv/bin/python engine/marke/erzeugen.py`. Die Reiseseiten behalten ihr eigenes Symbol je Reise.
+
 ## Bausteinseite und Prüfung
 
 `#bausteine` zeigt alle Bausteine mit den Daten der jeweiligen Reise, gezeichnet mit denselben Funktionen wie die Seiten. Sie steht nicht in der Leiste. Wo die Reise einen Fall nicht hat, steht ein als „Muster“ benannter Wert.

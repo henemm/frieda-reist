@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Symbol von Frieda Reist: Wegweiser mit zwei Richtungen (eigene Zeichnung, AGPL-3.0 wie das Projekt).
+       Farben aus docs/design.md: Akzent, helle Akzentfläche, offen (dunkel). Erzeugte Größen: marke/erzeugen.py -->
+  <rect width="512" height="512" fill="#1f7a57"/>
+  <rect x="236" y="96" width="40" height="330" rx="12" fill="#e3f1ea"/>
+  <path d="M120 140 H352 L400 182 L352 224 H120 Z" fill="#fff" stroke="#fff" stroke-width="16" stroke-linejoin="round"/>
+  <path d="M392 262 H160 L112 304 L160 346 H392 Z" fill="#f0c46a" stroke="#f0c46a" stroke-width="16" stroke-linejoin="round"/>
+</svg>

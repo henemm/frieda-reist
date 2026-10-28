@@ -55,6 +55,8 @@ def seite(titel, *teile):
     rumpf = "".join(teile)
     return (f'<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" '
             f'content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
+            f'<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/favicon.ico" sizes="48x48">'
+            f'<link rel="apple-touch-icon" href="/apple-touch-icon.png">'
             f'<title>{esc(titel)} – Frieda</title><style>{CSS}</style></head><body><header>Frieda</header>'
             f'<main>{rumpf}</main></body></html>')
 

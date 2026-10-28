@@ -203,7 +203,7 @@ def csp_fuer(uri):
     else:
         u = urllib.parse.urlsplit(uri)
         ziel = f"{u.scheme}://{u.netloc}"
-    return ("Content-Security-Policy", f"default-src 'none'; style-src 'unsafe-inline'; form-action 'self' {ziel}; "
+    return ("Content-Security-Policy", f"default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; form-action 'self' {ziel}; "
                                        "frame-ancestors 'none'; base-uri 'none'")
 
 
