@@ -247,8 +247,9 @@ def punkt_geprueft(p, stand, wo, fehler):
 
 
 class Bauer:
-    def __init__(self, reise_dir, ziel_dir):
+    def __init__(self, reise_dir, ziel_dir, umzug=None):
         self.reise_dir = Path(reise_dir)
+        self.umzug = (umzug or os.environ.get("FR_UMZUG_NACH") or "").rstrip("/") or None  # neue Adresse (Ursprung), siehe sw.vorlage.js
         self.ziel_dir = Path(ziel_dir)
         self.fehler = []
         self.ids = {}
@@ -942,6 +943,9 @@ class Bauer:
     def schreiben(self, daten):
         vorlage = (Path(__file__).parent / "vorlage.html").read_text(encoding="utf-8")
         vorlage = vorlage.replace("<!--__SYMBOLE__-->", symbole(), 1)
+        if self.umzug:   # Seite ist umgezogen: gleicher Pfad auf der neuen Adresse (alte Browser-Speicher räumt sw.js auf)
+            vorlage = vorlage.replace("<head>", "<head>\n<script>location.replace(" + json.dumps(self.umzug) +
+                                      " + location.pathname + location.search + location.hash)</script>", 1)
         vorlage = vorlage.replace("<!--__GRUNDKARTE__-->", "".join(
             f'<script src="{n}"></script>' for n in VENDOR_GRUNDKARTE.values()) if self.grundkarte or self.grundkarten else "", 1)
         if vorlage.count("/*__DATEN__*/null") != 1:
@@ -1011,7 +1015,8 @@ class Bauer:
             h.update(f.encode() + b"\0" + stand[f].encode())
         sw = (Path(__file__).parent / "sw.vorlage.js").read_text(encoding="utf-8")
         sw = sw.replace("__VERSION__", h.hexdigest()[:12]).replace("__DATEIEN__", json.dumps(dateien, ensure_ascii=False)) \
-               .replace("__STAND__", json.dumps(stand, ensure_ascii=False))
+               .replace("__STAND__", json.dumps(stand, ensure_ascii=False)) \
+               .replace("__UMZUG__", json.dumps(self.umzug))
         (ziel / "sw.js").write_text(sw, encoding="utf-8")
 
 
@@ -1134,8 +1139,8 @@ def icon_zeichnen(text, groesse):
     return im
 
 
-def bauen(reise_dir, ziel_dir):
-    b = Bauer(reise_dir, ziel_dir)
+def bauen(reise_dir, ziel_dir, umzug=None):
+    b = Bauer(reise_dir, ziel_dir, umzug)
     daten = b.daten()
     b.schreiben(daten)
     for h in b.hinweise:
@@ -1149,10 +1154,12 @@ def main(argv):
     ap.add_argument("reise", help="Ordnername der Reise, z. B. beispielreise")
     ap.add_argument("--reisen", type=Path, default=Path.cwd() / "reisen", help="Ordner mit den Reisen (Vorgabe ./reisen)")
     ap.add_argument("--ziel", type=Path, default=Path.cwd() / "dist", help="Ausgabeordner (Vorgabe ./dist)")
+    ap.add_argument("--umzug-nach", default=None, help="Neue Adresse der Seiten (z. B. https://frieda.example): Der Service Worker "
+                    "räumt auf und leitet geöffnete Seiten dorthin (Vorgabe: Umgebung FR_UMZUG_NACH)")
     a = ap.parse_args(argv[1:])
     reise = a.reise
     try:
-        daten = bauen(a.reisen / reise, a.ziel / reise)
+        daten = bauen(a.reisen / reise, a.ziel / reise, a.umzug_nach)
     except BauFehler as e:
         print("Die Seite wurde NICHT gebaut. Das muss zuerst behoben werden:")
         for m in e.meldungen:
