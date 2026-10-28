@@ -17,7 +17,7 @@ Die Rollen selbst stehen weiter in reise.yaml und einladungen.json; dieses Modul
 Geheimnisse (Codes, Sitzungen, Einladungen) liegen nur als SHA-256 in der Datenbank. Antworten verraten nie, ob eine
 Adresse ein Konto hat. Begrenzung: je Adresse 3 Codes in 15 Minuten, je IP 10 in der Stunde.
 
-Ablage: <RM_ABLAGE>/_konten/konten.db (SQLite, WAL), nur für den Betreiber lesbar.
+Ablage: <FR_KONTEN, sonst Seiten>/_konten/konten.db (SQLite, WAL), nur für den Betreiber lesbar.
 Mail: FR_SMTP_HOST, FR_SMTP_PORT (587), FR_SMTP_USER, FR_SMTP_PASS, FR_ABSENDER; Links mit FR_BASIS.
       FR_MAIL_DATEI schreibt Mails stattdessen als JSON-Zeilen in eine Datei (Tests, Probebetrieb).
 
@@ -85,7 +85,7 @@ def _hash(*teile):
 
 
 def pfad():
-    return instanz.ablage() / "_konten" / "konten.db"
+    return instanz.konten() / "konten.db"
 
 
 SCHEMA = """

@@ -39,7 +39,7 @@ for m in $KN_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_KN=1; don
 for m in $(printf '%s\n' $RM_MODULE $KN_MODULE | sort -u); do install -m 644 "$WURZEL/engine/$m" "$DIENST/"; done
 # Friedas Symbol (Favicon, App-Symbol); der Konnektor liest die Dateien bei jedem Abruf, kein Neustart nötig
 rsync -a --delete --chmod=D755,F644 --exclude "*.py" "$WURZEL/engine/marke/" "$DIENST/marke/"
-mkdir -p "$FR_KONNEKTOR" && chmod 700 "$FR_KONNEKTOR"
+mkdir -p "$FR_KONNEKTOR" "$FR_KONTEN" && chmod 700 "$FR_KONNEKTOR" "$FR_KONTEN"
 neustart() {
   ${FR_SUDO-sudo -n} systemctl restart "$1" 2>/dev/null && echo "$2 neu gestartet." \
     || echo "$2: Code geändert, bitte: sudo systemctl restart $1"

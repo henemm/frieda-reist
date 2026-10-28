@@ -58,7 +58,7 @@ erkannt und bekommt darüber jederzeit wieder Zugang.
 ## Sicherheit
 
 - **Geheimnisse:** Codes, Sitzungen und Einladungen liegen nur als SHA-256 in der Datenbank.
-- **Datenbank:** `<RM_ABLAGE>/_konten/konten.db` (SQLite, WAL). Ordner 700, Datei 600.
+- **Datenbank:** `<FR_KONTEN>/konten.db` (SQLite, WAL), Standard `<FR_SEITEN>/_konten`. Ordner 700, Datei 600. Der Ordner gehört zum Dienst der Instanz und enthält Konten, Anmeldungen und das Dienst-Geheimnis aller Nutzer dieser Instanz, getrennt von den Reisen. Bis 28.10.2026 lag er unter `<FR_ABLAGE>/_konten/`; eine dort liegende Datenbank gilt weiter, solange am neuen Ort keine liegt.
 - **Keine Auskunft:** Antworten verraten nie, ob eine Adresse ein Konto hat. Mails an bekannte und unbekannte
   Adressen sind gleich.
 - **Begrenzung:**

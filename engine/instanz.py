@@ -7,6 +7,8 @@ leitet dieses Modul den Rest nach derselben Ordnung ab, ohne Werte einer bestimm
   Seiten   RM_SEITEN, KN_SEITEN, FR_SEITEN; sonst der Ordner über RM_ABLAGE; sonst aus den Einstellungen der Instanz
            (FR_SEITEN bzw. /srv/<FR_INSTANZ>); sonst /srv/frieda
   Ablage   RM_ABLAGE, FR_ABLAGE; sonst <Seiten>/_rueckmeldungen
+  Konten   FR_KONTEN; sonst <Seiten>/_konten (Konten-Datenbank des Dienstes, nicht Teil einer Reise); eine ältere Datenbank
+           unter <Ablage>/_konten/ gilt weiter, solange am neuen Ort keine liegt
   Zugänge  KN_ZUGAENGE; sonst <FR_KONNEKTOR bzw. <Seiten>/_konnektor>/zugaenge.json
 
 Einstellungen der Instanz: <FR_WURZEL bzw. aktueller Ordner>/betrieb/einstellungen.env, Zeilen NAME=wert wie in
@@ -63,6 +65,13 @@ def seiten():
 
 def ablage():
     return Path(os.environ.get("RM_ABLAGE") or wert("FR_ABLAGE") or seiten() / "_rueckmeldungen")
+
+
+def konten():
+    """Ordner der Konten-Datenbank (Konten und Anmeldungen aller Nutzer dieser Instanz, getrennt von den Reisen)."""
+    neu = Path(os.environ.get("FR_KONTEN") or wert("FR_KONTEN") or seiten() / "_konten")
+    alt = ablage() / "_konten"
+    return alt if not (neu / "konten.db").exists() and (alt / "konten.db").exists() else neu
 
 
 def zugaenge():

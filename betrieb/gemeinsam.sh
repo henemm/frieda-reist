@@ -45,6 +45,7 @@ fr_einlesen "${FR_EINSTELLUNGEN:-$FR_WURZEL/betrieb/einstellungen.env}"
 fr_einlesen "$FR_DIENST/betrieb.env"
 : "${FR_ABLAGE:=$FR_SEITEN/_rueckmeldungen}"
 : "${FR_KONNEKTOR:=$FR_SEITEN/_konnektor}"
+: "${FR_KONTEN:=$FR_SEITEN/_konten}"
 : "${FR_RM_PORT:=8771}"
 : "${FR_KN_PORT:=8772}"
 : "${FR_ADRESSE:=}"
@@ -54,7 +55,7 @@ fr_einlesen "$FR_DIENST/betrieb.env"
 : "${FR_BETREIBER:=}"
 : "${FR_SPERREN:=/tmp}"
 case "$FR_MELDEN" in ""|/*) ;; *) FR_MELDEN="$FR_WURZEL/$FR_MELDEN" ;; esac   # relativ zur Wurzel
-export FR_INSTANZ FR_TITEL FR_SEITEN FR_ABLAGE FR_DIENST FR_KONNEKTOR FR_RM_PORT FR_KN_PORT FR_ADRESSE FR_KN_ADRESSE \
+export FR_INSTANZ FR_TITEL FR_SEITEN FR_ABLAGE FR_DIENST FR_KONNEKTOR FR_KONTEN FR_RM_PORT FR_KN_PORT FR_ADRESSE FR_KN_ADRESSE \
   FR_PYTHON FR_MELDEN FR_BETREIBER FR_SPERREN
 
 # Was die Software (engine/) erwartet; ausdrücklich gesetzte Werte gelten weiter

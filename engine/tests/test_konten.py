@@ -336,3 +336,26 @@ def test_befehle(umgebung, capsys):
     assert konten.main(["liste"]) == 0 and "rechte: betreiber,reise_anlegen" in capsys.readouterr().out
     assert konten.main(["sperren", "niemand@beispiel.invalid"]) == 2 and "FEHLER" in capsys.readouterr().out
     assert konten.main(["quatsch"]) == 1
+
+
+def test_konten_ordner_alt_und_neu(tmp_path, monkeypatch):
+    """Die Datenbank liegt neben der Ablage in _konten; eine ältere unter <Ablage>/_konten gilt, bis am neuen Ort eine liegt."""
+    import instanz
+    for n in ("RM_SEITEN", "KN_SEITEN", "FR_SEITEN", "FR_KONTEN", "FR_EINSTELLUNGEN"):
+        monkeypatch.delenv(n, raising=False)
+    monkeypatch.setenv("RM_ABLAGE", str(tmp_path / "_rueckmeldungen"))
+    monkeypatch.chdir(tmp_path)
+    assert instanz.konten() == tmp_path / "_konten"                      # nichts vorhanden: neuer Ort
+    alt = tmp_path / "_rueckmeldungen" / "_konten"
+    alt.mkdir(parents=True)
+    (alt / "konten.db").write_text("alt")
+    (tmp_path / "_konten").mkdir()                                       # leerer neuer Ordner (deploy.sh legt ihn an)
+    assert instanz.konten() == alt                                       # die Datenbank geht nicht verloren
+    (tmp_path / "_konten" / "konten.db").write_text("neu")
+    assert instanz.konten() == tmp_path / "_konten"
+    (tmp_path / "_konten" / "konten.db").unlink()
+    monkeypatch.setenv("FR_KONTEN", str(tmp_path / "woanders"))
+    assert instanz.konten() == alt                                       # ausdrücklich gesetzter Ort ohne Datenbank: Rückfall
+    (tmp_path / "woanders").mkdir()
+    (tmp_path / "woanders" / "konten.db").write_text("x")
+    assert instanz.konten() == tmp_path / "woanders"

@@ -19,11 +19,12 @@ FR_ADRESSE=https://reisen.example.org
 # Adresse des Konnektors für die Claude-App. (<FR_ADRESSE>/<FR_INSTANZ>-mcp)
 #FR_KN_ADRESSE=https://reisen.example.org/beispiel-mcp
 
-# Ordner auf dem Server. (/srv/<FR_INSTANZ>; darunter _rueckmeldungen, _dienst, _konnektor)
+# Ordner auf dem Server. (/srv/<FR_INSTANZ>; darunter _rueckmeldungen, _dienst, _konnektor, _konten)
 #FR_SEITEN=/srv/beispiel
 #FR_ABLAGE=/srv/beispiel/_rueckmeldungen
 #FR_DIENST=/srv/beispiel/_dienst
 #FR_KONNEKTOR=/srv/beispiel/_konnektor
+#FR_KONTEN=/srv/beispiel/_konten
 
 # Ports von Rückmeldedienst und Konnektor auf 127.0.0.1. (8771, 8772)
 #FR_RM_PORT=8781

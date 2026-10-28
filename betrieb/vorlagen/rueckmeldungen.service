@@ -21,7 +21,7 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes
-ReadWritePaths=__ABLAGE__
+ReadWritePaths=__ABLAGE__ __KONTEN__
 ReadOnlyPaths=__DIENST__
 
 [Install]

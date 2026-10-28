@@ -13,13 +13,24 @@ Eine **Instanz** ist eine Reisegruppe mit eigenem Betreiber: ein Reisen-Repo, da
 | Veröffentlichungsordner | Klon des Reisen-Repos auf dem Server, immer auf `main` | von hier wird gebaut; nicht darin arbeiten |
 | Arbeitskopien | `<Klon>-auto` (Einarbeiten), `<Klon>-arbeit` (Sitzungen) | Git-Worktrees, `betrieb/arbeitskopie.sh` |
 | Seiten | `<FR_SEITEN>/<reise>/` | gebaute Seiten, nginx liefert sie aus |
-| Ablage | `<FR_ABLAGE>/<reise>/` (`eingang.jsonl`, `auftraege.jsonl`, `status.json`, …), `<FR_ABLAGE>/_neu/`, `<FR_ABLAGE>/_konten/` | Eingaben und Konten; nie im Repo |
+| Ablage | `<FR_ABLAGE>/<reise>/` (`eingang.jsonl`, `auftraege.jsonl`, `status.json`, …), `<FR_ABLAGE>/_neu/` (Anfragen nach neuen Reisen) | Eingaben der Mitreisenden; nie im Repo |
+| Konten | `<FR_KONTEN>/` (`konten.db`, Dienst-Geheimnis) | Konten, Anmeldungen und Einladungen aller Nutzer der Instanz; nie im Repo, nie in einer Reise |
 | Dienstordner | `<FR_DIENST>/` | Code der Dienste, Stände, Protokolle, Stempel, geheime Einstellungen |
 | Konnektor-Zugänge | `<FR_KONNEKTOR>/zugaenge.json`, `seiten.json` (600) | geheime Links; nie im Repo |
 | systemd | `<instanz>-rueckmeldungen`, `-konnektor`, `-veroeffentlichen.timer`, `-einarbeiten.path`/`.timer`, `-waechter.timer` | aus `betrieb/vorlagen/`, erzeugt von `einrichten.sh` |
 | nginx | `<FR_NGINX_SNIPPETS>/<instanz>-<reise>.conf` (mit Token), `<instanz>-konnektor.conf`, Zone in `conf.d/<instanz>-zone.conf` | aus `betrieb/vorlagen/` |
 
 Die Skripte rufen sich im Reisen-Repo als `frieda/betrieb/<skript>.sh` auf und finden die Instanz selbst (das Repo, das die Software einbindet; sonst `FR_WURZEL`).
+
+## Was wohin gehört
+
+Drei Gruppen, die sich nie mischen sollen:
+
+1. **Die Software** (dieses Repo): Code, Vorlagen, Werkzeuge. Auf dem Server liegt eine Kopie des Dienst-Codes in `<FR_DIENST>/*.py`, die `deploy.sh` anlegt. Sie ist für jede Instanz gleich und enthält nichts Eigenes.
+2. **Die Daten einer Reisegruppe** (das Reisen-Repo und seine Ordner): Reisen, Seiten, Ablage mit Rückmeldungen, Aufträgen und Aufgaben, Einstellungen und Meldeweg der Instanz.
+3. **Daten der Nutzer**: Konten und Anmeldungen (`<FR_KONTEN>/`), Zugänge zum Konnektor (`<FR_KONNEKTOR>/`), Anfragen nach neuen Reisen (`<FR_ABLAGE>/_neu/`) und der Mailzugang (`konten.env`). Sie gehören nicht in das Reisen-Repo und gehören nicht einer einzelnen Reise.
+
+Der Name der Instanz (`FR_INSTANZ`) steht vor Units, Zonen und nginx-Bausteinen und nennt nur diese Instanz, nicht die Software. Eine zweite Reisegruppe bekommt eine zweite Instanz mit eigenem Namen, eigenem Reisen-Repo und eigenen Ordnern, ihre Daten sind damit von denen der ersten getrennt (#15). Ein gemeinsamer Ort für mehrere Gruppen mit Trennung je Mandant ist #68.
 
 ## Der Kreislauf
 
@@ -99,7 +110,7 @@ Links von Hand: `freischalten.sh <reise>` für die Seite, `freischalten.sh <reis
 | `FR_BETREIBER` | leer | wer Rückfragen ansieht; steht im Kommentar aufgegebener Einträge |
 | `FR_ADRESSE` | – | öffentliche Adresse der Seiten (nötig zum Freischalten) |
 | `FR_KN_ADRESSE` | `<FR_ADRESSE>/<FR_INSTANZ>-mcp` | Adresse des Konnektors |
-| `FR_SEITEN`, `FR_ABLAGE`, `FR_DIENST`, `FR_KONNEKTOR` | `/srv/<instanz>`, darunter `_rueckmeldungen`, `_dienst`, `_konnektor` | Ordner auf dem Server |
+| `FR_SEITEN`, `FR_ABLAGE`, `FR_DIENST`, `FR_KONNEKTOR`, `FR_KONTEN` | `/srv/<instanz>`, darunter `_rueckmeldungen`, `_dienst`, `_konnektor`, `_konten` | Ordner auf dem Server |
 | `FR_RM_PORT`, `FR_KN_PORT` | `8771`, `8772` | Ports auf 127.0.0.1 |
 | `FR_PYTHON` | `<Wurzel>/engine/.venv/bin/python` | Python mit den Paketen der Software |
 | `FR_MELDEN` | leer | Meldeweg (unten) |
