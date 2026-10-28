@@ -1,7 +1,11 @@
-# Architekturentscheidungen (ADR)
+# Architektur-Entscheidungen (ADR)
 
-Festgehaltene Grundsatzentscheidungen der Software, je Entscheidung eine Datei: Kontext, Entscheidung, Folgen. Eine ADR wird nicht umgeschrieben; ändert sich die Entscheidung, kommt eine neue ADR, und die alte bekommt den Status „ersetzt durch …“.
+Hier stehen die Entscheidungen, die die Software als Ganzes prägen, je eine Datei, fortlaufend nummeriert, nie gelöscht. Eine Entscheidung wird nicht umgeschrieben, sondern durch eine neue ersetzt, die auf die alte verweist (Status „ersetzt durch ADR-…“). Aufbau je Datei: Status, Kontext, Entscheidung, Begründung, Konsequenzen, Verlauf (nach Michael Nygard, „Documenting Architecture Decisions“, 2011).
 
 | Nr. | Titel | Status |
 |---|---|---|
-| [0001](0001-atomic-design.md) | Oberfläche nach Atomic Design | angenommen, 28.10.2026 |
+| [0001](0001-kern.md) | Der Kern von Frieda Reist: AI first, Reise-Ontologie ohne Katalog, Frieda ohne eigene KI | gilt |
+| [0002](0002-atomic-design.md) | Oberfläche nach Atomic Design | gilt |
+| [0003](0003-heimat.md) | Seitenordnung: jede Grundform hat genau eine Heimat | gilt |
+
+ADR-0001 ist zugleich die **Prüfstelle**: Jedes Issue, jedes Paket und jeder Pull Request beantwortet die zehn Fragen am Ende des Dokuments. Das PR-Template (`.github/pull_request_template.md`) enthält sie.

@@ -4,7 +4,7 @@ Die Seite folgt einem Designsystem (Issue #18): wenige Bausteine, die jede Ansic
 
 ## Aufbau: Atomic Design und drei Achsen
 
-Die Ebenen folgen Brad Frosts Atomic Design; festgelegt in [ADR 0001](adr/0001-atomic-design.md) (mit der Pflicht, neue Bausteine an vier Stellen einzutragen). Skript und Stile in `engine/vorlage.html` sind gleich geordnet: Der Stilblock beginnt mit den Tokens, dann Grundlagen (Seite, Text, Pico CSS, Reisetexte), Atome, Moleküle, Organismen, Vorlagen, der Rahmen der Seite (Kopf, Meldungen, Glas, Leiste) und zuletzt die Breiten. Jede Regel steht bei dem Baustein, zu dem sie gehört; was ein Baustein in einem anderen anders macht, steht beim umfassenden.
+Die Ebenen folgen Brad Frosts Atomic Design; festgelegt in [ADR-0002](adr/0002-atomic-design.md) (mit der Pflicht, neue Bausteine an vier Stellen einzutragen). Skript und Stile in `engine/vorlage.html` sind gleich geordnet: Der Stilblock beginnt mit den Tokens, dann Grundlagen (Seite, Text, Pico CSS, Reisetexte), Atome, Moleküle, Organismen, Vorlagen, der Rahmen der Seite (Kopf, Meldungen, Glas, Leiste) und zuletzt die Breiten. Jede Regel steht bei dem Baustein, zu dem sie gehört; was ein Baustein in einem anderen anders macht, steht beim umfassenden.
 
 | Ebene | Bausteine in `engine/vorlage.html` |
 |---|---|
@@ -90,7 +90,7 @@ Vorher „Wanderführer“ (Papiergrund, Waldgrün, Serifen, Etiketten in Großb
 
 ## Seitenordnung (28.10.2026)
 
-Analyse, Konzept und grafische Ausarbeitung hat der Product Owner am 28.10.2026 Schritt für Schritt freigegeben (frieda-reist#58). Grundsatz aus der Ontologie: **Jede Art hat genau eine Heimat**, an der sie vollständig steht; überall sonst erscheint sie nur als Zeile mit **einem** Link dorthin. Sammelansichten gibt es nur mit eigener Aufgabe (entscheiden, buchen).
+Analyse, Konzept und grafische Ausarbeitung hat der Product Owner am 28.10.2026 Schritt für Schritt freigegeben (frieda-reist#58). Festgelegt in [ADR-0003](adr/0003-heimat.md). Grundsatz aus der Ontologie: **Jede Art hat genau eine Heimat**, an der sie vollständig steht; überall sonst erscheint sie nur als Zeile mit **einem** Link dorthin. Sammelansichten gibt es nur mit eigener Aufgabe (entscheiden, buchen).
 
 | Art | Heimat | als Zeile in |
 |---|---|---|

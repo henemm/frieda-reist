@@ -2,6 +2,8 @@
 
 Entschieden vom Product Owner am 26.10.2026 (Gespräch in Claude Code). Dieses Dokument ist das gemeinsame Verständnis, an dem sich Engine, Regeln und Arbeitspakete ausrichten.
 
+**Der Kern steht seit dem 28.10.2026 in [`docs/adr/0001-kern.md`](adr/0001-kern.md)** und geht diesem Dokument vor: Frieda hält die Reise als Ontologie ohne Katalog von Arten und Merkmalen, der AI-Client ist der Arbeitsplatz für alles Unstrukturierte, der Konnektor ist die Tür, Frieda enthält keine eigene KI, die PWA ist Ansicht und Eingabefläche, Claude Code baut nur die Software. Was unten davon abweicht (etwa „die KI arbeitet ein“ als Teil des Kreislaufs, der Einarbeiten-Lauf in Paket D, die Prüfaufträge des Wächters in Paket E), beschreibt den Stand bis zum 28.10.2026 und wird mit den Paketen zu frieda-reist #85 angepasst.
+
 ## Zweck
 
 Frieda ist die eine Quelle der Wahrheit für eine Reise, von der ersten Idee bis zum Nachschlagen unterwegs. Es ist ein generisches Produkt: Es soll beliebigen Reisegruppen dienen, nicht nur einem Haushalt. Die Claude-App (Desktop und Handy) ist der Ort, an dem alle die Reise mitgestalten. Die Webseite ist das Nachschlagewerk unterwegs, offline, mit Karte und Brett.

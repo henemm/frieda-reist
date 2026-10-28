@@ -1,6 +1,6 @@
 # Frieda Reist
 
-**Reiseplanung mit Lektorat, AI first.** Eine Reise liegt als Text und YAML in einem Git-Repo: Tage, Etappen, Orte, Unterkünfte, Alternativen und Wissen, jede Stelle mit fester ID. Ein KI-Assistent (heute Claude Code) recherchiert und pflegt die Inhalte, mit Quelle und Prüfdatum zu jeder veränderlichen Angabe. Ein Generator baut daraus eine Reiseseite, die offline funktioniert.
+**AI-first-Reiseplanung und Reisehandbuch.** Frieda hält eine Reise als strukturierte Wahrheit (Reise-Ontologie): Tage, Aufenthalte, Bewegungen, Orte, Alternativen mit Entscheidungsverlauf und Wissen, jede Stelle mit fester ID, jede Angabe mit Herkunft und Prüfdatum. Alles Unstrukturierte (Gespräch, Recherche, Abwägen) passiert im AI-Client der Reisenden (Claude Desktop oder Handy), der über einen MCP-Konnektor liest und strukturiert zurückschreibt. Ein Generator baut daraus eine Reiseseite, die offline funktioniert. Der Kern steht in [`docs/adr/0001-kern.md`](docs/adr/0001-kern.md).
 
 *A travel handbook with an editor, AI first: trips live as text in Git, an AI assistant researches and maintains them with sources and check dates, and a generator builds an offline-capable web handbook. Fellow travellers comment on any item; the AI works their input in. Documentation is in German for now.*
 
