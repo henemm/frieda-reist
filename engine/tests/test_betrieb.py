@@ -78,6 +78,10 @@ def test_geheime_werte_aus_dem_dienstordner(tmp_path):
     r = subprocess.run(["bash", "-c", f'. "{BETRIEB}/gemeinsam.sh"; echo "$FR_MELDEN"'], capture_output=True, text=True,
                        env={**SAUBER, "FR_WURZEL": str(tmp_path), "FR_DIENST": str(tmp_path / "dienst")})
     assert r.stdout.strip() == "/pfad/melden.sh"
+    (tmp_path / "dienst/betrieb.env").write_text("FR_MELDEN=betrieb/melden.sh\n")
+    r = subprocess.run(["bash", "-c", f'. "{BETRIEB}/gemeinsam.sh"; echo "$FR_MELDEN"'], capture_output=True, text=True,
+                       env={**SAUBER, "FR_WURZEL": str(tmp_path), "FR_DIENST": str(tmp_path / "dienst")})
+    assert r.stdout.strip() == f"{tmp_path}/betrieb/melden.sh"
 
 
 def test_ungueltiger_instanzname(tmp_path):

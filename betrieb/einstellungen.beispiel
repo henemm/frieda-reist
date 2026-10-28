@@ -38,8 +38,9 @@ FR_ADRESSE=https://reisen.example.org
 
 # Nachrichten an den Betreiber: ausführbare Datei, aufgerufen als
 #   <befehl> <normal|high> <betreff> <text> [erledigt]
-# „erledigt“ heißt: reiner Bericht, keine Handlung nötig. Leer: keine Nachrichten. (leer)
-#FR_MELDEN=/home/reisen/reisen/betrieb/melden.sh
+# „erledigt“ heißt: reiner Bericht, keine Handlung nötig. Ein relativer Pfad gilt ab der Wurzel des Reisen-Repos.
+# Leer: keine Nachrichten. (leer)
+#FR_MELDEN=betrieb/melden.sh
 
 # Einarbeiten: Befehl für Claude Code, Höchstdauer eines KI-Laufs je Reise in Minuten, Durchgänge je Start,
 # Fehlversuche bis zum Aufgeben, längste Sammelzeit in Minuten. (claude, 45, 3, 3, 20)
