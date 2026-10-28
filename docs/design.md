@@ -4,15 +4,15 @@ Die Seite folgt einem Designsystem (Issue #18): wenige Bausteine, die jede Ansic
 
 ## Aufbau: Atomic Design und drei Achsen
 
-Die Ebenen folgen Brad Frosts Atomic Design. Skript und Stile in `engine/vorlage.html` sind gleich geordnet: Der Stilblock beginnt mit den Tokens, dann Grundlagen (Seite, Text, Pico CSS, Reisetexte), Atome, Moleküle, Organismen, Vorlagen, der Rahmen der Seite (Kopf, Meldungen, Glas, Leiste) und zuletzt die Breiten. Jede Regel steht bei dem Baustein, zu dem sie gehört; was ein Baustein in einem anderen anders macht, steht beim umfassenden.
+Die Ebenen folgen Brad Frosts Atomic Design; festgelegt in [ADR 0001](adr/0001-atomic-design.md) (mit der Pflicht, neue Bausteine an vier Stellen einzutragen). Skript und Stile in `engine/vorlage.html` sind gleich geordnet: Der Stilblock beginnt mit den Tokens, dann Grundlagen (Seite, Text, Pico CSS, Reisetexte), Atome, Moleküle, Organismen, Vorlagen, der Rahmen der Seite (Kopf, Meldungen, Glas, Leiste) und zuletzt die Breiten. Jede Regel steht bei dem Baustein, zu dem sie gehört; was ein Baustein in einem anderen anders macht, steht beim umfassenden.
 
 | Ebene | Bausteine in `engine/vorlage.html` |
 |---|---|
 | Tokens | Farben (`--bg`, `--card`, `--fg`, `--mut`, `--line`, `--acc`, `--acc2`, `--warn`, `--warnbg`, `--ocker`, `--kat-*`, `--plan-*`), Schrift (`--font-text`), Formen (`--r-klein`, `--r`, `--r-kachel`, `--r-gross`, `--r-pille`, `--schatten`, `--schatten-klein`), Breiten (`--breite`, `--lese`) |
 | Atome | `symbol` (Lucide), `chip` (Zustand), Etikett (`.etikett`, sagt, was etwas ist), `merkmalWert` (Wert mit Herkunft), `zid` (Kennung als Sprechblase), `planMarke` (Farbe eines Plans als Punkt oder Linie) |
-| Moleküle | Fläche (`.karte`, `.karte.flaeche`, `details.block`), `kennzahlLeiste` (Kacheln), `merkmalListe`, `reiseText` (Reisetext, Merkmallisten ohne doppelte Kennzahlen), `reiterGruppe` (Reiter als Pillen), `ebeneKopf`, `kapitel` (zuklappbarer Abschnitt mit Vorschau), `dingEtikett`, `listenZeile` (Wissen, Praxis, Quellen, Orte), `zeilenKarte` (offene Frage), `rmEintrag` (Rückmeldung, Wunsch), `agEintrag` (Aufgabe), `eintragGruppen` („Titel (n)“ mit Einträgen), `kartenLegende`, `umschalter` (ein Knopf gedrückt, z. B. `planUmschalter`), `kontoKnopf`, `nameFeld`, `fehltZeile`, `optionChips`, `standLeiste` (Stand der Vorbereitung), `reiseEnde` (An- oder Abreise), `mitreisende` |
-| Organismen | Ding: `nachtZeile` (Aufenthalt als Zeile), `unterkunftKarte` (als Karte), `streckeZeile` (Bewegung); Wahl-Modul: `wahlEinstieg`, `wahlVergleich`, `wahlKarte`; Tageskasten: `tagKarte` mit `wegVerlauf`; Tagesseite: `tagEbenen`, `tagOrteZeilen`; Tag als Zeile: `tagZeile`; `uebersichtKarte` (Karte der Reise oder der Pläne mit Legende) |
-| Vorlagen | `tagKachel`, die Ansichten (`ansichtTag` = Tagesseite, `ansichtReise` = Reiseüberblick, `ansichtPlan` …) |
+| Moleküle | Fläche (`.karte`, `.karte.flaeche`, `details.block`), `kennzahlLeiste` (Kacheln), `merkmalListe`, `reiseText` (Reisetext, Merkmallisten ohne doppelte Kennzahlen), `reiterGruppe` (Reiter als Pillen), `ebeneKopf`, `kapitel` (zuklappbarer Abschnitt mit Vorschau), `dingEtikett`, `listenZeile` (Wissen, Praxis, Quellen, Orte, Listen in „Zu tun“; rechts Kennung oder Zustand), `zeilenKarte` (offene Frage), `rmEintrag` (Rückmeldung, Wunsch), `agEintrag` (Aufgabe), `eintragGruppen` („Titel (n)“ mit Einträgen), `kartenLegende`, `umschalter` (ein Knopf gedrückt, z. B. `planUmschalter`), `kontoKnopf`, `nameFeld`, `fehltZeile`, `optionChips`, `standLeiste` (Stand der Vorbereitung), `reiseEnde` (An- oder Abreise), `mitreisende` |
+| Organismen | Ding: `nachtZeile` (Aufenthalt als Zeile), `unterkunftKarte` (als Karte), `streckeZeile` (Bewegung); Wahl-Modul: `wahlEinstieg`, `wahlVergleich`, `wahlKarte`; Tageskasten: `tagKarte` mit `wegVerlauf`; Tagesseite: `tagEbenen`, `tagOrteZeilen`; Tag als Zeile der Zeitachse: `tagZeile`; Nacht der Tagesseite: `nachtAbschnitt`; Sammellisten „Zu tun“: `zuEntscheiden`, `zuBuchen` (aus `listenZeile`); `uebersichtKarte` (Karte der Reise oder der Pläne mit Legende) |
+| Vorlagen | `tagKachel`, die Ansichten (`ansichtTag` = Tagesseite, `ansichtReise` = Reiseüberblick, `ansichtOffen` = Zu tun, `ansichtWissen`, `ansichtPlan` …) mit ihren Rastern |
 
 ## Ontologie und Bausteine (28.10.2026)
 
@@ -23,12 +23,12 @@ Die Bausteine sind auf das Datenmodell der Reise abgebildet: Jede Art (an ihrer 
 | Tag | T-01 | `tagZeile` | `tagKachel` | `tagKarte` (im Plan; auf der Tagesseite der Tageskasten) | `ansichtTag`, `ansichtReise` |
 | Etappe, Strecke | E-01 | `streckeZeile` | `abschnittKarte` | – | `ansichtAbschnitt`, `tagEbenen` |
 | Ort | O-01 | im `wegVerlauf` | `tagOrteZeilen`, `listenZeile` | – | `ansichtOrt` |
-| Unterkunft | U-01 | `nachtZeile` | – | `unterkunftKarte` | – |
-| Wahlstelle | V-01 | `wahlZeile` | – | `wahlKarte` | `wahlEinstieg`, `wahlVergleich` |
+| Unterkunft | U-01 | `nachtZeile` | `listenZeile` (Zu buchen) | `unterkunftKarte` | `nachtAbschnitt` |
+| Wahlstelle | V-01 | `wahlZeile` | `listenZeile` (Zu entscheiden) | `wahlKarte` | `wahlEinstieg`, `wahlVergleich`, `nachtAbschnitt` |
 | Option einer Wahl | V-01.a | `optionBlock` | – | Karte im `wahlVergleich` | – |
 | Plan | P-A | `planMarke` | `steckbrief` | – | `ansichtPlanDetail` |
 | Offene Frage | F-01 | – | – | `zeilenKarte` | `ansichtFragen` |
-| Wissen, Praxis, Quelle, Plantext | W-01 | – | `listenZeile` | – | `ansichtAbschnitt` |
+| Wissen, Praxis, Quelle, Plantext | W-01 | – | `listenZeile` | – | `ansichtAbschnitt`, `ansichtWissen` |
 | Abschnitt eines Textes | E-01.eckdaten | – | – | `block` (aufklappbar) | `reiseText`, `reiterGruppe`, `leseAbschnitt` |
 | Aufgabe | AG-01 | `agEintrag` | – | – | `ansichtAufgaben`, `agFormular` |
 | Rückmeldung, Wunsch | R-… | `rmEintrag` | – | `wuKarte` | `rmFormular`, `ansichtWuensche` |

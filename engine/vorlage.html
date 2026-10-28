@@ -279,6 +279,9 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .wt{font:600 1.1875rem/1.25 var(--font-text);letter-spacing:-.01em;text-wrap:balance}
 .wu{font-size:0.9062rem;line-height:1.4;color:var(--mut)}
 .pico .wzeile>.zid-box{margin:3px 0 0;flex:none}
+.pico .wzeile>.chip{flex:none;margin:9px 0 0}
+.pico h2.listen-titel{display:flex;align-items:center;gap:10px}
+.pico h2.listen-titel>.chip{font-size:0.8125rem}
 @media (hover:hover){.wzeile:hover .wt{color:var(--acc)}}
 /* ---------- Hinweiskasten: geht nicht auf, Mahnung ---------- */
 .warnungen{background:var(--warnbg);color:var(--warn);border-radius:12px;padding:10px 14px;margin:0 0 12px}
@@ -440,8 +443,6 @@ details.quellen>summary{min-height:44px;display:flex;align-items:center;font-wei
 /* ---------- Reiseüberblick (28.10.2026): Kopf mit Zähler, Stand der Vorbereitung, Tag als Zeile ---------- */
 /* Abschnitte untereinander mit einem Abstand (gap); kein Abschnitt bringt eigenen Außenabstand mit */
 .reise{display:flex;flex-direction:column;gap:32px}
-/* Seite „Reise“: am Handy eine Spalte, am Rechner Überblick links, Zeitachse der Tage rechts (Seitenordnung 28.10.2026) */
-@media (min-width:1100px){.reise-seite{display:grid;grid-template-columns:minmax(0,24rem) minmax(0,1fr);gap:32px 56px;align-items:start}}
 .pico .reise>*,.pico .reise :is(.kz,.legende,.tagzeilen){margin:0}
 .reise>.reisekopf+.anab{margin-top:-16px}
 .pico .reise h3.reise-titel{font:700 1.2rem/1.3 var(--font-text);margin:0 0 6px}
@@ -467,22 +468,6 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .pico .anab li{list-style:none;font-weight:600;line-height:1.35;margin:2px 0;color:var(--fg)}
 
 .tz-teil{padding:14px 0 4px}
-/* Zu tun: Zeilen mit genau einem Link (Titel, Unterzeile, Zustand rechts); am Rechner Entscheiden und Buchen nebeneinander */
-.tun-raster{display:flex;flex-direction:column;gap:32px;margin-bottom:32px}
-@media (min-width:1100px){.tun-raster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px 48px;align-items:start}}
-.pico .tun-teil h2{display:flex;align-items:center;gap:10px}
-.zahl-marke{font:700 0.8125rem/1 var(--font-text);padding:4px 9px;border-radius:99px;background:var(--acc2);color:var(--acc)}
-.zahl-marke.offen{background:var(--warnbg);color:var(--warn)}
-.tunliste{display:flex;flex-direction:column}
-.tunzeile{display:flex;align-items:center;gap:12px;padding:11px 4px;border-top:1px solid var(--line);color:var(--fg);text-decoration:none}
-.tunliste>.tunzeile:first-child{border-top:0}
-.tun-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.tun-titel{font-weight:600;line-height:1.3}
-.tun-unter{font-size:0.875rem;color:var(--mut)}
-.tun-datum{width:4.6rem;flex:none;font-size:0.875rem;color:var(--mut);font-variant-numeric:tabular-nums}
-.pico .tunzeile>.chip{flex:none;margin:0}
-.tun-etikett{margin-top:14px}
-@media (hover:hover){.tunzeile:hover .tun-titel{color:var(--acc)}}
 .tagzeile{display:grid;grid-template-columns:3.5rem minmax(0,1fr) auto auto;gap:3px 12px;align-items:baseline;padding:11px 0;border-top:1px solid var(--line);color:var(--fg);text-decoration:none}
 .tagzeilen>.tagzeile:first-child{border-top:0}
 .tagzeile.an{background:var(--acc2)}
@@ -654,6 +639,13 @@ details.neben>summary{font-weight:700;padding:10px 2px;color:var(--warn)}
 .pico h3.gruppe,.teil{font:700 1.2rem/1.3 var(--font-text);letter-spacing:-.01em;color:var(--fg);margin:1.6em 0 .2em}
 
 #agForm .zwei{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+/* ---------- Reise und Zu tun (Seitenordnung 28.10.2026): am Handy eine Spalte; am Rechner Reise mit Überblick links und
+   Zeitachse rechts, Zu tun mit Entscheiden und Buchen nebeneinander ---------- */
+.tun-raster{display:flex;flex-direction:column;gap:32px;margin-bottom:32px}
+@media (min-width:1100px){
+  .reise-seite{display:grid;grid-template-columns:minmax(0,24rem) minmax(0,1fr);gap:32px 56px;align-items:start}
+  .tun-raster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px 48px;align-items:start}
+}
 /* ---------- Tagesseite (B2): Reihenfolge je Gerät ----------
    Handy und Tablet (unterwegs): untereinander Tageskasten, Karte, Der Weg, Unterwegs nachschlagen, Orte, Hintergrund,
    Quellen. Rechner (planen; breit und mit Maus): Tageskasten neben der Karte, darunter links lesen, rechts nachschlagen. */
@@ -907,8 +899,12 @@ function zid(id) {
               listenZeile, zeilenKarte, rmEintrag, agEintrag, eintragGruppen, kartenLegende, umschalter, kontoKnopf,
               nameFeld, fehltZeile, optionChips, standLeiste
    Organismen: Ding (nachtZeile, unterkunftKarte, streckeZeile), Wahl-Modul (wahlEinstieg, wahlVergleich, wahlKarte),
-              tagKarte (Tageskasten mit wegVerlauf), tagEbenen, tagOrteZeilen, tagZeile, uebersichtKarte
-   Vorlagen:  tagKachel, Ansichten (ansichtTag = Tagesseite, ansichtReise = Reiseüberblick, ansichtPlan …)
+              tagKarte (Tageskasten mit wegVerlauf), tagEbenen, tagOrteZeilen, nachtAbschnitt (Nacht der Tagesseite),
+              tagZeile (Zeitachse), uebersichtKarte, zuEntscheiden, zuBuchen (Listen aus listenZeile)
+   Vorlagen:  tagKachel, Ansichten (ansichtTag = Tagesseite, ansichtReise = Reiseüberblick, ansichtOffen = Zu tun,
+              ansichtPlan …)
+   Regeln: docs/adr/0001-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
+   Stile seiner Ebene, auf die Bausteinseite (#bausteine) und, wenn er eine Art zeigt, in ONTOLOGIE.
    Zustände haben feste Namen, die Farbe folgt der Bedeutung, nicht dem Ort:
      plan      entschieden oder im Plan (Akzent)       offen  braucht noch eine Entscheidung (Warnfarbe)
      unterwegs erst unterwegs zu entscheiden           weg    verworfen oder ersetzt (durchgestrichen)
@@ -2694,12 +2690,13 @@ function wissenThemen(a) {
   const satz = (text.match(/^.*?[.!?](?=\s|$)/) || [text])[0];
   return satz.replace(/[.!?]$/, "").slice(0, 140);
 }
-// Molekül Listenzeile: Symbol, Titel, Unterzeile und optional Kennung; für Wissen, Praxis, Quellen und Orte
-function listenZeile(typ, sym, titel, unter, href, kennung) {
+// Molekül Listenzeile: Symbol, Titel, Unterzeile und optional Kennung oder ein Zustand rechts (rechts); für Wissen,
+// Praxis, Quellen, Orte und die Listen in „Zu tun“. Genau ein Link: die ganze Zeile.
+function listenZeile(typ, sym, titel, unter, href, kennung, rechts) {
   return el("a", {class: "wzeile vorschau typ-" + typ, href: "#" + href},
     el("span", {class: "wsym"}, symbol(sym)),
     el("span", {class: "wtext"}, el("span", {class: "wt"}, titel), unter === null ? null : el("span", {class: "wu"}, unter)),
-    kennung ? zid(kennung) : null);
+    kennung ? zid(kennung) : null, rechts || null);
 }
 function wissenZeile(a) {
   return listenZeile(a.typ, SYM_TYP[a.typ] || "wissen", a.titel, wissenThemen(a) || null, a.id, a.id);
@@ -2716,24 +2713,26 @@ function wahlWo(w) {
   const namen = (w.an_ids || []).map(x => (R.unterkuenfte[x] || {}).name || (R.strecken[x] || {}).titel || (R.orte[x] || {}).name || (proId.get(x) || {}).titel).filter(Boolean);
   return namen.join(", ");
 }
-function wahlZeileZuTun(w) {
+// Wahlstelle als Listenzeile in „Zu entscheiden“: wo sie hängt, was vorläufig gilt, rechts „n zur Wahl“
+function wahlListenZeile(w) {
   const g = gueltigeOptionen(w), akt = g.find(o => o.aktiv);
   const unter = [wahlWo(w), w.art === "unterwegs" ? (akt ? "Standard: " + akt.titel : "") : akt ? "vorläufig " + akt.titel : ""].filter(Boolean).join(" · ");
-  return el("a", {class: "tunzeile vorschau", href: "#" + w.id},
-    el("span", {class: "tun-text"}, el("span", {class: "tun-titel"}, w.titel.replace(/^Tag \d+\s*:?\s*/, "")), unter ? el("span", {class: "tun-unter"}, unter) : null),
+  return listenZeile("wahl", "varianten", w.titel.replace(/^Tag \d+\s*:?\s*/, ""), unter || null, w.id, null,
     chip(w.art === "unterwegs" ? "unterwegs" : "offen", `${g.length} zur Wahl`));
 }
+// Titel einer Sammelliste mit Zahl als Zustand (Atom chip)
+const listenTitel = (titel, zahl, offen) => el("h2", {class: "listen-titel"}, titel, zahl ? chip(offen ? "offen" : "", zahl) : null);
 function zuEntscheiden(m) {
   if (!R) return;
   const offen = R.wahlstellen.filter(w => w.art === "planung" && w.offen && gueltigeOptionen(w).length > 1);
   const unterwegs = R.wahlstellen.filter(w => w.art === "unterwegs" && gueltigeOptionen(w).length > 1);
   const andere = R.warnungen.filter(w => /^V-/.test(w.bezug));
   if (!offen.length && !unterwegs.length && !andere.length) return;
-  const s = el("section", {class: "ziel tun-teil", id: "zu-entscheiden"}, el("h2", {}, "Zu entscheiden", offen.length ? el("span", {class: "zahl-marke offen"}, String(offen.length)) : null));
+  const s = el("section", {class: "ziel", id: "zu-entscheiden"}, listenTitel("Zu entscheiden", offen.length ? String(offen.length) : "", true));
   s.append(el("p", {class: "meldung"}, "Jede Wahl steht an dem Element, an dem sie hängt; hier gesammelt."));
   if (andere.length) s.append(warnungen(andere));
-  if (offen.length) s.append(el("div", {class: "tunliste"}, offen.map(wahlZeileZuTun)));
-  if (unterwegs.length) s.append(el("div", {class: "etikett tun-etikett"}, "Unterwegs entscheiden"), el("div", {class: "tunliste"}, unterwegs.map(wahlZeileZuTun)));
+  if (offen.length) s.append(el("div", {class: "wliste"}, offen.map(wahlListenZeile)));
+  if (unterwegs.length) s.append(el("h3", {class: "gruppe"}, "Unterwegs entscheiden"), el("div", {class: "wliste"}, unterwegs.map(wahlListenZeile)));
   m.append(s);
 }
 // Zu buchen je Nacht: Datum, Ort, Unterkunft (vorläufig, solange die Wahl offen ist) und Stand; führt zur Nacht des Tags
@@ -2742,16 +2741,13 @@ function zuBuchen(m) {
   const naechte = PLAN_FEST.tage.map(t => [t, nachtStand(t.nacht)]).filter(([, x]) => x && x.zaehlt);
   if (!naechte.length) return;
   const gebucht = naechte.filter(([, x]) => x.gebucht).length;
-  const s = el("section", {class: "ziel tun-teil", id: "zu-buchen"}, el("h2", {}, "Zu buchen · je Nacht",
-    el("span", {class: "zahl-marke" + (gebucht < naechte.length ? " offen" : "")}, `${gebucht} von ${naechte.length}`)));
-  s.append(el("div", {class: "tunliste buchen"}, naechte.map(([t, x]) => {
+  const s = el("section", {class: "ziel", id: "zu-buchen"}, listenTitel("Zu buchen · je Nacht", `${gebucht} von ${naechte.length}`, gebucht < naechte.length));
+  s.append(el("div", {class: "wliste"}, naechte.map(([t, x]) => {
     const n = t.nacht, w = n.wahl && wahlZu.get(n.wahl), offen = x.text && x.text.startsWith("noch wählen");
     const akt = w && gueltigeOptionen(w).find(o => o.aktiv);
     const name = offen ? (akt ? akt.titel + " (vorläufig)" : "noch offen") : x.name;
-    return el("a", {class: "tunzeile buchzeile vorschau", href: "#" + (offen ? w.id : n.unterkunft || (w ? w.id : t.id))},
-      el("span", {class: "tun-datum"}, datumText(t.datum, t.wochentag)),
-      el("span", {class: "tun-text"}, el("span", {class: "tun-titel"}, ortName(n.ort)), el("span", {class: "tun-unter"}, name)),
-      chip(x.zustand, x.text));
+    return listenZeile("nacht", "unterkunft", ortName(n.ort), `${datumText(t.datum, t.wochentag)} · ${name}`,
+      offen ? w.id : n.unterkunft || (w ? w.id : t.id), null, chip(x.zustand, x.text));
   })));
   m.append(s);
 }
@@ -2838,12 +2834,12 @@ const ONTOLOGIE = [
   ["tag", "Tag", "T-01", {zeile: [tagZeile], vorschau: [tagKachel], karte: [tagKarte], seite: [ansichtTag, ansichtReise]}],
   ["etappe", "Etappe, Strecke", "E-01", {zeile: [streckeZeile], vorschau: [abschnittKarte], karte: [], seite: [ansichtAbschnitt, tagEbenen]}],
   ["ort", "Ort", "O-01", {zeile: [wegVerlauf], vorschau: [tagOrteZeilen, listenZeile], karte: [], seite: [ansichtOrt]}],
-  ["unterkunft", "Unterkunft", "U-01", {zeile: [nachtZeile], vorschau: [], karte: [unterkunftKarte], seite: []}],
-  ["wahlstelle", "Wahlstelle", "V-01", {zeile: [wahlZeile], vorschau: [], karte: [wahlKarte], seite: [wahlEinstieg, wahlVergleich]}],
+  ["unterkunft", "Unterkunft", "U-01", {zeile: [nachtZeile], vorschau: [listenZeile], karte: [unterkunftKarte], seite: [nachtAbschnitt]}],
+  ["wahlstelle", "Wahlstelle", "V-01", {zeile: [wahlZeile], vorschau: [listenZeile], karte: [wahlKarte], seite: [wahlEinstieg, wahlVergleich, nachtAbschnitt]}],
   ["option", "Option einer Wahl", "V-01.a", {zeile: [optionBlock], vorschau: [], karte: [wahlVergleich], seite: []}],
   ["plan", "Plan", "P-A", {zeile: [planMarke], vorschau: [steckbrief], karte: [], seite: [ansichtPlanDetail]}],
   ["frage", "Offene Frage", "F-01", {zeile: [frageZeile], vorschau: [], karte: [], seite: [ansichtFragen]}],
-  ["wissen", "Wissen, Praxis, Quelle, Plantext", "W-01", {zeile: [], vorschau: [listenZeile], karte: [], seite: [ansichtAbschnitt]}],
+  ["wissen", "Wissen, Praxis, Quelle, Plantext", "W-01", {zeile: [], vorschau: [listenZeile], karte: [], seite: [ansichtAbschnitt, ansichtWissen]}],
   ["abschnitt", "Abschnitt eines Textes", "E-01.eckdaten", {zeile: [], vorschau: [], karte: [block], seite: [reiseText, reiterGruppe, leseAbschnitt]}],
   ["aufgabe", "Aufgabe", "AG-01", {zeile: [agEintrag], vorschau: [], karte: [], seite: [ansichtAufgaben, agFormular]}],
   ["rueckmeldung", "Rückmeldung, Wunsch", "R-…", {zeile: [rmEintrag], vorschau: [], karte: [wuKarte], seite: [rmFormular, ansichtWuensche]}],
@@ -2907,7 +2903,7 @@ function ansichtBausteine(m) {
   if (R && R.plaene.length) teil("Atom", "Planfarbe", "Jeder Plan hat eine Farbe: als Punkt in Legende, Tabelle und Überschrift, als Linie im Umschalter wie auf der Karte.",
     R.plaene.map(p => fall(p.kurz, [planMarke(p), " ", planMarke(p, "linie")])));
   const wz = abschnitte.find(x => x.typ === "wissen" || x.typ === "praxis" || x.typ === "quelle");
-  teil("Molekül", "Listenzeile", "Symbol, Titel, Unterzeile und Kennung; für Wissen, Praxis, Quellen und Orte.",
+  teil("Molekül", "Listenzeile", "Symbol, Titel, Unterzeile und Kennung oder rechts ein Zustand; für Wissen, Praxis, Quellen, Orte und die Listen in „Zu tun“. Die ganze Zeile ist der Link.",
     wz ? el("div", {class: "wliste"}, wissenZeile(wz)) : el("p", {class: "meldung"}, "Kein Abschnitt für Wissen, Praxis oder Quellen."));
   const fr = D.fragen.zeilen[0];
   teil("Molekül", "Fragenkarte", "Eine offene Frage mit Kennung und Verweisen.",
@@ -2971,8 +2967,17 @@ function ansichtBausteine(m) {
   const plan = PLAN_FEST || R.plaene[0];
   if (plan) teil("Molekül", "Stand der Vorbereitung", "Im Reiseüberblick bis zur Abreise; Zeilen ohne Offenes entfallen, die Unterkünfte bleiben.",
     standLeiste(plan) || el("p", {class: "meldung"}, "Nichts offen."));
-  if (plan) teil("Organismus", "Tag als Zeile", "Im Reiseüberblick: Datum, Titel, Gehzeit, die Nacht mit Stand (gebucht, nicht gebucht, noch wählen).",
-    el("div", {class: "tagzeilen"}, plan.tage.slice(0, 3).map(tagZeile)));
+  if (plan) teil("Organismus", "Tag als Zeile (Zeitachse)", "Im Reiseüberblick: Punkt und Linie, Datum, Titel mit Marken, Gehzeit und Strecke, die Nacht mit Stand. Genau ein Link, keine Kennung.",
+    el("div", {class: "tagzeilen achse"}, plan.tage.slice(0, 3).map(tagZeile)));
+  if (PLAN_FEST) {
+    const tun = el("div", {class: "tun-raster"});
+    zuEntscheiden(tun); zuBuchen(tun);
+    teil("Organismus", "Zu entscheiden, Zu buchen", "Sammellisten in „Zu tun“ aus Listenzeilen; jede Zeile führt an die Stelle, an der die Sache hängt.",
+      tun.childNodes.length ? tun : el("p", {class: "meldung"}, "Nichts zu entscheiden oder zu buchen."));
+  }
+  const tagNacht = PLAN_FEST && (PLAN_FEST.tage.find(t => t.nacht && t.nacht.wahl && wahlZu.get(t.nacht.wahl).offen) || PLAN_FEST.tage.find(t => t.nacht && !t.nacht.an_bord));
+  if (tagNacht) teil("Organismus", "Nacht der Tagesseite", `Heimat von Unterkunft und Wahl der Nacht (Tag ${tagNacht.nr}): offen mit Vergleich, sonst die Unterkunft vollständig.`,
+    nachtAbschnitt(tagNacht));
   if (tag) teil("Vorlage", "Tag", `Tag ${tag.nr} mit allen Bausteinen, wie im Plan.`, tagKarte(tag));
   if (tag) teil("Vorlage", "Tageskasten", "Auf der Tagesseite die einzige Fläche: weiß, ohne Rahmen, weicher Schatten.", tagKarte({...tag, text: ""}, true));
   // Kennungen sind auf dieser Seite nur Beispiele: keine Sprungziele, damit sie den echten Stellen nicht im Weg stehen

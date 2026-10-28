@@ -61,7 +61,7 @@ for (const breite of [390, 1300]) {
   a.unterkunft = await p.evaluate(() => ({inNacht: !!document.querySelector(".ebene-nacht #U-02"), reiter: document.querySelector("#nav a.on").textContent}));
   await p.evaluate(() => { location.hash = "offen"; });
   await p.waitForSelector("#zu-buchen");
-  a.buchen = await p.evaluate(() => [...document.querySelectorAll("#zu-buchen .buchzeile")].map(z => [z.getAttribute("href"), z.querySelector(".chip").textContent]));
+  a.buchen = await p.evaluate(() => [...document.querySelectorAll("#zu-buchen .wzeile")].map(z => [z.getAttribute("href"), z.querySelector(".chip").textContent]));
   await p.evaluate(() => { location.hash = "wissen"; });
   await p.waitForSelector("#ueber-plan");
   a.ueberPlan = await p.evaluate(() => document.querySelectorAll("#ueber-plan ~ .wliste .typ-plan").length);
