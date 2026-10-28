@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Konnektor fürs Reisehandbuch: macht eine Reise in der Claude-App nutzbar (MCP über HTTP).
+"""Konnektor für Frieda: macht eine Reise in der Claude-App nutzbar (MCP über HTTP).
 
 In der Claude-App (Einstellungen → Konnektoren → eigenen Konnektor hinzufügen) wird ein geheimer Link
 eingetragen. Danach kann Claude im Chat die Reise lesen (Tagesplan, Etappen, Varianten, offene Fragen,
@@ -1811,7 +1811,7 @@ WERKZEUGE = [
      "Wahlstelle (V-) oder Option (V-01.a), Plan (P-), offene Frage (F-), Wissens-Abschnitt (W-, auch W-06.unterabschnitt).",
      "inputSchema": {"type": "object", "properties": {"id": ZIEL_FELD}, "required": ["id"]},
      "annotations": {"readOnlyHint": True}},
-    {"name": "suche", "description": "Volltextsuche im ganzen Reisehandbuch. Alle Wörter müssen vorkommen. Liefert IDs mit Ausschnitt.",
+    {"name": "suche", "description": "Volltextsuche in der ganzen Reise. Alle Wörter müssen vorkommen. Liefert IDs mit Ausschnitt.",
      "inputSchema": {"type": "object", "properties": {"begriff": {"type": "string"}}, "required": ["begriff"]},
      "annotations": {"readOnlyHint": True}},
     {"name": "offene_fragen", "description": "Offene Fragen und To-dos (F-…) mit Frist und Status.",
@@ -1926,7 +1926,7 @@ WERKZEUGE += [
          "kommentar": {"type": "string", "description": "kurze Notiz für den Verlauf"},
          "name": NAME_FELD}, "required": ["id"]}},
 ]
-AUFTRAG = {"name": "auftrag_geben", "description": "Nur für Bestimmer: Änderungsauftrag ans Reisehandbuch, z. B. eine Option "
+AUFTRAG = {"name": "auftrag_geben", "description": "Nur für Bestimmer: Änderungsauftrag an die Reise, z. B. eine Option "
            "wählen oder verwerfen, eine offene Frage schließen, einen Tag ändern. Ändert NICHTS sofort: Der Auftrag wird "
            "automatisch geprüft (Quellen, Regeln) und in der Regel in wenigen Minuten übernommen; den Stand zeigt rueckmeldungen. Klar und vollständig "
            "formulieren, bei Entscheidungen auch den Grund.",
@@ -2158,7 +2158,7 @@ def werkzeug(zugang, name, args):
         if fehler:
             return f"Nicht gespeichert: {fehler}", True
         text_ = (f"Auftrag {e['id']} gespeichert. Er wird automatisch geprüft und in der Regel "
-                 "in wenigen Minuten eingearbeitet, bis dahin bleibt das Reisehandbuch unverändert.")
+                 "in wenigen Minuten eingearbeitet, bis dahin bleibt die Reise unverändert.")
         if entscheidung:
             k = konflikt_melden(reise, e, d)
             if k:
@@ -2256,7 +2256,7 @@ def werkzeug(zugang, name, args):
         if fehler:
             return f"Nicht gespeichert: {fehler}", True
         return (f"Vorschlag {e['id']} gespeichert. Er wird automatisch geprüft und in der Regel in wenigen Minuten als "
-                "Option (Status vorgeschlagen) eingearbeitet, bis dahin bleibt das Reisehandbuch unverändert.\n\n" + text_), False
+                "Option (Status vorgeschlagen) eingearbeitet, bis dahin bleibt die Reise unverändert.\n\n" + text_), False
     return f"Unbekanntes Werkzeug {name}.", True
 
 
@@ -2280,7 +2280,7 @@ def antwort_auf(zugang, nachricht):
         rs = (daten(zugang["reise"]) or {}).get("reise", {})
         return ok({"protocolVersion": gewuenscht if gewuenscht in PROTOKOLLE else PROTOKOLLE[0],
                    "capabilities": {"tools": {}},
-                   "serverInfo": {"name": f"reisehandbuch-{zugang['reise']}", "title": rs.get("titel", "Reisehandbuch"),
+                   "serverInfo": {"name": f"frieda-{zugang['reise']}", "title": rs.get("titel", "Frieda Reist"),
                                   "version": "1", **({"icons": ik} if (ik := symbole(zugang["reise"])) else {})},
                    "instructions": anleitung(zugang, daten(zugang["reise"]))})
     if methode == "ping":
@@ -2331,7 +2331,7 @@ def gesund():
 
 
 class Dienst(BaseHTTPRequestHandler):
-    server_version = "Reisehandbuch-Konnektor"
+    server_version = "Frieda-Konnektor"
     sys_version = ""
 
     def _senden(self, code, obj=None, extra=None):

@@ -2,7 +2,7 @@
 
 Dieser Ordner enthält eine erfundene, aber in einer echten Gegend spielende Reise: ein Stadttag in Dresden und drei Wandertage auf dem Malerweg in der Sächsischen Schweiz. Sie dient zwei Zwecken:
 
-- **Vorführung:** So sieht ein fertiges Reisehandbuch aus, mit Tagesplan, Etappen, Karte, Varianten, offenen Fragen und Wissen.
+- **Vorführung:** So sieht eine fertig geplante Reise aus, mit Tagesplan, Etappen, Karte, Varianten, offenen Fragen und Wissen.
 - **Testdaten:** Die Beispielreise nutzt die wichtigsten Teile des Generators (Status und Personen, Wahlstellen für Planung und Unterwegs, benannte Pläne, GPX-Tracks, Kartenpunkte, Fußnoten, Bilder, Ortsseiten).
 
 Reisende, Unterkünfte, Preise und die Kennzahlen der Etappen sind erfunden oder aus schematischen Tracks geschätzt und als Beispielwerte gekennzeichnet. Feste Tatsachen (etwa zur Basteibrücke oder zur Kirnitzschtalbahn) nennen ihre Quelle in einer Fußnote. Die GPX-Tracks sind von Hand gesetzt, mit wenigen Punkten: Sie zeigen den ungefähren Verlauf und taugen nicht zum Navigieren.
