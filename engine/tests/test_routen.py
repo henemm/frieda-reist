@@ -53,20 +53,41 @@ BASIS = {
     },
 }
 FRAGEN = {"F-01": "offen", "F-02": "offen"}
+# Arten und Merkmale der Testreise (plan/arten.yaml, docs/ontologie.md); erfunden
+ARTEN = {"arten": {
+    "hotel": {"grundform": "aufenthalt", "name": "Hotel", "farbe": "blau", "merkmale": {
+        "preis": {"name": "Preis", "typ": "geld", "veraenderlich": True},
+        "fruehstueck": {"name": "Frühstück", "typ": "auswahl", "werte": ["inklusive", "keins"]}}},
+    "huette": {"grundform": "aufenthalt", "name": "Hütte", "farbe": "gruen", "merkmale": {
+        "preis": {"name": "Preis", "typ": "geld", "veraenderlich": True}}},
+    "wandern": {"grundform": "bewegung", "name": "Wanderung", "summiert": True, "merkmale": {
+        "gehzeit": {"name": "Gehzeit", "auto": "gehzeit"}, "schwierigkeit": {"name": "Schwierigkeit"}}},
+    "bus": {"grundform": "bewegung", "name": "Bus"},
+    "faehre": {"grundform": "bewegung", "name": "Fähre", "merkmale": {
+        "preis": {"name": "Preis", "typ": "geld", "veraenderlich": True}, "dauer": {"name": "Dauer"}}},
+    "reiseteil": {"grundform": "folge", "name": "Reiseteil", "merkmale": {
+        "tage": {"name": "Tage", "auto": "tage"}, "anschluss": {"name": "Anschluss", "auto": "anschluss"}}},
+}}
 
 
 def roh():
     return copy.deepcopy(BASIS)
 
 
-def laufe(r, fragen=FRAGEN):
+def arten(**extra):
+    a = copy.deepcopy(ARTEN)
+    a["arten"].update(extra)
+    return a
+
+
+def laufe(r, fragen=FRAGEN, arten_=None):
     fehler, ids = [], {}
 
     def anlegen(i, wo):
         if i in ids:
             fehler.append(f"Doppelte ID {i}")
         ids[i] = wo
-    erg = Routen(r, {}, fragen, fehler, anlegen).bauen()
+    erg = Routen(r, {}, fragen, fehler, anlegen, arten=ARTEN if arten_ is None else arten_).bauen()
     return erg, fehler
 
 
@@ -356,16 +377,9 @@ def test_laengster_tag_und_nacht_ohne_unterkunft():
     assert s["unterkunftstypen"] == {"Hotel": 2}
 
 
-GRUND = {"unterkunft": {"preis": {"name": "Preis", "typ": "geld", "veraenderlich": True},
-                        "fruehstueck": {"name": "Frühstück", "typ": "auswahl", "werte": ["inklusive", "keins"]}},
-         "strecke": {"gehzeit": {"name": "Gehzeit", "auto": "gehzeit"}, "schwierigkeit": {"name": "Schwierigkeit"}},
-         "route": {"tage": {"name": "Tage", "auto": "tage"}},
-         "faehre": {"preis": {"name": "Preis", "typ": "geld", "veraenderlich": True}, "dauer": {"name": "Dauer"}}}
-
-
-def mk_bauen(r):
+def mk_bauen(r, arten_=None):
     fehler = []
-    erg = Routen(r, {}, FRAGEN, fehler, lambda *a: None, grund=GRUND).bauen()
+    erg = Routen(r, {}, FRAGEN, fehler, lambda *a: None, arten=ARTEN if arten_ is None else arten_).bauen()
     return erg, fehler
 
 
@@ -377,7 +391,8 @@ def test_merkmale_bereich_und_werte():
     erg, fehler = mk_bauen(r)
     assert fehler == []
     w = {x["id"]: x for x in erg["wahlstellen"]}
-    assert (w["V-01"]["bereich"], w["V-02"]["bereich"], w["V-03"]["bereich"]) == ("route", "unterkunft", "strecke")
+    assert (w["V-01"]["bereich"], w["V-02"]["bereich"], w["V-03"]["bereich"]) == ("reiseteil", "hotel", "wandern")
+    assert (w["V-01"]["grundform"], w["V-02"]["grundform"], w["V-03"]["grundform"]) == ("folge", "aufenthalt", "bewegung")
     a, b = w["V-02"]["optionen"]
     assert a["merkmale"]["preis"]["geprueft"] == "2026-10-26" and not a["merkmale"]["preis"]["ungeprueft"]
     assert b["merkmale"]["preis"]["ungeprueft"] and b["fehlt"] == ["fruehstueck"]
@@ -385,18 +400,25 @@ def test_merkmale_bereich_und_werte():
     assert w["V-03"]["optionen"][1]["merkmale"]["schwierigkeit"]["wert"] == "Kettenstelle"
     assert w["V-01"]["optionen"][0]["merkmale"]["tage"]["wert"] == "3 Tage"
     assert erg["unterkuenfte"]["U-01"]["merkmale"]["fruehstueck"]["wert"] == "inklusive"
-    assert [k["id"] for k in erg["merkmale"]["unterkunft"]] == ["preis", "fruehstueck"]
+    assert [k["id"] for k in erg["merkmale"]["hotel"]] == ["preis", "fruehstueck"]
+    assert erg["arten"]["hotel"] == {"name": "Hotel", "grundform": "aufenthalt", "farbe": "blau", "summiert": False, "beschreibung": None}
+    assert erg["kategorien"]["huette"] == "Hütte" and erg["unterkuenfte"]["U-03"]["art"] == "huette"
 
 
-def test_merkmale_ergaenzen_reise_und_wahlstelle():
+def test_merkmale_der_art_und_der_wahlstelle():
+    """Die Reise definiert Merkmale je Art in arten.yaml; eine Wahlstelle ergänzt für sich (docs/ontologie.md)."""
     r = roh()
-    r["merkmale"] = {"unterkunft": {"pool": {"name": "Pool", "typ": "auswahl", "werte": ["ja", "nein"]}}}
+    a = arten()
+    a["arten"]["hotel"]["merkmale"]["pool"] = {"name": "Pool", "typ": "auswahl", "werte": ["ja", "nein"]}
     r["wahlstellen"]["V-02"]["merkmale"] = {"laerm": {"name": "Lärm"}}
     r["unterkuenfte"]["U-01"]["merkmale"] = {"pool": True, "laerm": "Straße"}
-    erg, fehler = mk_bauen(r)
+    erg, fehler = mk_bauen(r, a)
     assert fehler == []
     o = next(x for x in erg["wahlstellen"] if x["id"] == "V-02")["optionen"][0]
     assert o["merkmale"]["pool"]["wert"] == "ja" and o["merkmale"]["laerm"]["wert"] == "Straße"
+    # merkmale: in routen.yaml gibt es nicht mehr
+    r["merkmale"] = {"hotel": {"pool": {"name": "Pool"}}}
+    assert any("gibt es nicht mehr" in f for f in mk_bauen(r, a)[1])
 
 
 @pytest.mark.parametrize("aendern, meldung", [
@@ -405,9 +427,13 @@ def test_merkmale_ergaenzen_reise_und_wahlstelle():
     (lambda r: r["unterkuenfte"]["U-01"].update(merkmale={"preis": {"wert": "1 €", "preis": 2}}), "unbekannte Felder"),
     (lambda r: r["unterkuenfte"]["U-01"].update(merkmale={"preis": {"wert": "1 €", "geprueft": "gestern"}}), "Datum"),
     (lambda r: r["wahlstellen"]["V-03"]["optionen"][0].update(merkmale={"gehzeit": "3 h"}), "berechnet"),
-    (lambda r: r.update(merkmale={"hotel": {}}), "Bereich"),
-    (lambda r: r.update(merkmale={"route": {"x": {"name": "X", "auto": "tage"}}}), "nur in der Grundliste"),
+    (lambda r: r.update(merkmale={"hotel": {}}), "gibt es nicht mehr"),
+    (lambda r: r["wahlstellen"]["V-03"].update(merkmale={"x": {"name": "X", "auto": "tage"}}), "für die Grundform bewegung nicht"),
     (lambda r: r["wahlstellen"]["V-02"].update(merkmale={"preis": {"name": "Preis"}}), "schon"),
+    (lambda r: r["unterkuenfte"]["U-01"].update(typ="Iglu"), "steht nicht in plan/arten.yaml"),
+    (lambda r: r["unterkuenfte"]["U-01"].update(art="wandern"), "braucht es einen Aufenthalt"),
+    (lambda r: r["strecken"]["E-03"].update(art="hotel"), "braucht eine Bewegung"),
+    (lambda r: r["wahlstellen"]["V-02"].update(bereich="schloss"), "steht nicht in plan/arten.yaml"),
     (lambda r: r["wahlstellen"]["V-02"]["optionen"][0].update(
         verlauf=[{"datum": D(2026, 10, 26), "status": "favorisiert", "wer": "Claude"}]), "Begründung"),
 ])
@@ -425,25 +451,40 @@ def test_favorisiert_mit_grund_ok():
     assert mk_bauen(r)[1] == []
 
 
-def test_unterkunft_kategorie_aus_typ_oder_ausdruecklich():
+def test_unterkunft_art_aus_typ_oder_ausdruecklich():
+    """Die Art kommt aus art: oder aus typ (klein, Umlaute aufgelöst) und muss in arten.yaml stehen (docs/ontologie.md)."""
     r = roh()
+    a = arten(refugi={"grundform": "aufenthalt", "name": "Refugi", "farbe": "gruen"},
+              nachtzug={"grundform": "aufenthalt", "name": "Nachtzug", "farbe": "schiefer"})
     r["unterkuenfte"]["U-02"].update(typ="Refugi")
-    r["unterkuenfte"]["U-03"].update(typ="Tempel", kategorie="gasthaus")
-    r["unterkuenfte"]["U-04"] = {"name": "Iglu", "ort": "O-03", "typ": "Iglu"}
-    r["tage"]["T-05"]["nacht"] = {"ort": "O-03", "typ": "Nachtzug"}
-    u = ok(r)["unterkuenfte"]
-    assert [u[k]["kategorie"] for k in ("U-01", "U-02", "U-03", "U-04")] == ["hotel", "huette", "gasthaus", "sonstige"]
+    r["unterkuenfte"]["U-03"].update(typ="Tempel", art="huette")   # art: geht vor typ
+    r["tage"]["T-03"]["nacht"] = {"ort": "O-03", "typ": "Nachtzug"}
+    erg, fehler = laufe(r, arten_=a)
+    assert fehler == [], fehler
+    u = erg["unterkuenfte"]
+    assert [u[k]["art"] for k in ("U-01", "U-02", "U-03")] == ["hotel", "refugi", "huette"]
     assert u["U-02"]["typ"] == "Refugi"   # die eigene Bezeichnung der Reise bleibt
-    r["unterkuenfte"]["U-01"]["kategorie"] = "schloss"
-    assert "kategorie muss" in nur_fehler(r)
+    t = {x["id"]: x for x in erg["tage"]}
+    assert t["T-03"]["nacht"]["art"] == "nachtzug"
+    assert erg["summe"]["unterkunftstypen"] == {"Hotel": 1, "Hütte": 1, "Nachtzug": 1}   # Nächte je Art, Name der Reise
+    r["tage"]["T-03"]["nacht"] = {"ort": "O-03", "an_bord": True}
+    erg, fehler = laufe(r, arten_=a)
+    assert fehler == [] and {x["id"]: x for x in erg["tage"]}["T-03"]["nacht"]["art"] == "unterwegs"
 
 
-def test_freie_nacht_bekommt_kategorie():
-    from routen import kategorie
-    assert kategorie({"typ": "Ryokan"}) == "gasthaus"
-    assert kategorie({"an_bord": True}) == "unterwegs"
-    assert kategorie({"typ": " berghütte "}) == "huette"
-    assert kategorie({"typ": "Hotel", "kategorie": "privat"}) == "privat"
+def test_art_schluessel():
+    from routen import art_schluessel
+    assert art_schluessel("Ryokan") == "ryokan" and art_schluessel(" Berghütte ") == "berghuette"
+    assert art_schluessel("Shukubō") == "shukubo" and art_schluessel("B&B") == "bundb" and art_schluessel("") is None
+
+
+def test_arten_yaml_fehler():
+    r = roh()
+    assert any("arten.yaml fehlt" in f for f in laufe(r, arten_={})[1])
+    assert any("grundform muss" in f for f in laufe(r, arten_=arten(x={"name": "X"}))[1])
+    assert any("farbe muss" in f for f in laufe(r, arten_=arten(x={"grundform": "folge", "farbe": "pink"}))[1])
+    assert any("unbekannte Felder" in f for f in laufe(r, arten_=arten(x={"grundform": "folge", "icon": "x"}))[1])
+    assert any("nicht unterwegs" in f for f in laufe(r, arten_=arten(unterwegs={"grundform": "aufenthalt"}))[1])
 
 
 # ---------- Arten, Werte je Datum, „an“ (Paket 1 der Alternativen, Issue frieda-reist#18) ----------
@@ -466,18 +507,26 @@ def test_art_der_strecken_bestimmt_die_liste_und_werte_stehen_an_strecke_oder_op
     a, b = w["optionen"]
     assert a["merkmale"]["dauer"]["wert"] == "ca. 11 h" and a["merkmale"]["preis"]["wert"] == "80 €"
     assert b["merkmale"]["dauer"]["wert"] == "ca. 10 h" and b["fehlt"] == ["preis"]
-    # Wanderstrecken und gemischte Arten bleiben beim Bereich „strecke“
+    # Wanderstrecken haben ihre eigene Art
     w3 = next(x for x in erg["wahlstellen"] if x["id"] == "V-03")
-    assert w3["bereich"] == "strecke"
+    assert w3["bereich"] == "wandern"
 
 
-def test_gemischte_arten_nehmen_strecke():
+def test_gemischte_arten_haben_keine_gemeinsamen_merkmale():
     r = mit_faehren()
     r["wahlstellen"]["V-04"]["optionen"][1]["strecken"] = ["E-03"]
     r["wahlstellen"]["V-04"]["optionen"][0]["merkmale"] = r["wahlstellen"]["V-04"]["optionen"][1]["merkmale"] = {}
     erg, fehler = mk_bauen(r)
     assert fehler == []
-    assert next(x for x in erg["wahlstellen"] if x["id"] == "V-04")["bereich"] == "strecke"
+    assert next(x for x in erg["wahlstellen"] if x["id"] == "V-04")["bereich"] == "allgemein"
+
+
+def test_strecke_mit_mehreren_arten_ist_kombiniert():
+    r = roh()
+    r["strecken"]["E-03"]["art"] = ["bus", "faehre"]
+    assert any("„kombiniert“ steht nicht" in f for f in mk_bauen(r)[1])
+    erg, fehler = mk_bauen(r, arten(kombiniert={"grundform": "bewegung", "name": "Bus und Fähre"}))
+    assert fehler == [] and erg["strecken"]["E-03"]["art"] == ["bus", "faehre"]
 
 
 def test_werte_je_datum():
@@ -520,12 +569,13 @@ def test_werte_je_datum_fehler(preis, meldung):
 
 def test_neue_art_der_reise_und_wahlstelle_an_beliebiger_id():
     r = roh()
-    r["merkmale"] = {"restaurant": {"kueche": {"name": "Küche"}, "preis": {"name": "Preis", "typ": "geld"}}}
+    a = arten(restaurant={"grundform": "aufenthalt", "name": "Restaurant", "merkmale": {
+        "kueche": {"name": "Küche"}, "preis": {"name": "Preis", "typ": "geld"}}})
     r["wahlstellen"]["V-05"] = {"titel": "Abendessen in B", "art": "planung", "frage": "F-01", "bereich": "restaurant",
                                 "an": ["O-02", "U-01", "E-01"], "optionen": [
         {"id": "V-05.a", "titel": "Gasthaus", "merkmale": {"kueche": "regional", "preis": "25 €"}},
         {"id": "V-05.b", "titel": "Pizzeria", "merkmale": {"kueche": "italienisch"}}]}
-    erg, fehler = mk_bauen(r)
+    erg, fehler = mk_bauen(r, a)
     assert fehler == []
     w = next(x for x in erg["wahlstellen"] if x["id"] == "V-05")
     assert w["bereich"] == "restaurant" and w["an_ids"] == ["O-02", "U-01", "E-01"] and w["an"] == []
@@ -539,10 +589,10 @@ def test_wahlstelle_an_wissensabschnitt():
     r = roh()
     r["wahlstellen"]["V-03"]["an"] = ["W-02"]
     fehler = []
-    erg = Routen(r, {}, FRAGEN, fehler, lambda *a: None, grund=GRUND, wissen={"W-02"}).bauen()
+    erg = Routen(r, {}, FRAGEN, fehler, lambda *a: None, arten=ARTEN, wissen={"W-02"}).bauen()
     assert fehler == [] and next(x for x in erg["wahlstellen"] if x["id"] == "V-03")["an_ids"] == ["W-02"]
     fehler = []
-    Routen(r, {}, FRAGEN, fehler, lambda *a: None, grund=GRUND, wissen={"W-01"}).bauen()
+    Routen(r, {}, FRAGEN, fehler, lambda *a: None, arten=ARTEN, wissen={"W-01"}).bauen()
     assert any("an W-02 gibt es nicht" in f for f in fehler)
 
 
@@ -553,10 +603,8 @@ def test_an_fehler(an, meldung):
     assert any(meldung in f for f in mk_bauen(r)[1])
 
 
-def test_neue_art_ohne_merkmale_ist_fehler():
-    r = roh()
-    r["merkmale"] = {"restaurant": {}}
-    assert any("Bereich" in f for f in mk_bauen(r)[1])
+def test_neue_art_braucht_grundform():
+    assert any("grundform muss" in f for f in mk_bauen(roh(), arten(restaurant={}))[1])
 
 
 # ---------- Regeln zwischen Optionen und Anschluss (Paket 4, #18) ----------
@@ -675,7 +723,9 @@ def test_anschluss_stimmt_mit_den_warnungen_der_beispielreise():
         v = next(o for o in r["wahlstellen"]["V-01"]["optionen"] if o["id"] == oid)
         v["verlauf"] = (v.get("verlauf") or []) + [{"datum": D(2026, 10, 30), "status": "gewaehlt", "wer": "Ida"}]
         fehler = []
-        erg = Routen(r, {}, {"F-01": "offen", "F-02": "geklärt"}, fehler, lambda *a: None, entscheider=["Ida"]).bauen()
+        arten_bsp = yaml.safe_load((wurzel / "plan/arten.yaml").read_text(encoding="utf-8"))
+        erg = Routen(r, {}, {"F-01": "offen", "F-02": "geklärt"}, fehler, lambda *a: None, entscheider=["Ida"],
+                     arten=arten_bsp).bauen()
         erster = opt_aus(erg, oid)["tage"][0]
         luecke = any(w["bezug"] == erster and ("Lücke" in w["text"] or "fehlt" in w["text"]) for w in erg["warnungen"])
         assert ("Lücke am Anfang" in anschluss(erg, oid)) == luecke, (oid, erg["warnungen"])
@@ -685,39 +735,34 @@ def w_opt(erg, vid):
     return next(w for w in erg["wahlstellen"] if w["id"] == vid)["optionen"]
 
 
-def test_stufe_je_reise_schaltet_merkmale_ab_und_wahlstelle_wieder_ein():
-    """ADR-0001, Paket O-0: Eine Reise setzt die Stufe eines Grundlisten-Merkmals (aus, angeboten, pflicht), auch je
-    Unterkunftstyp; nur pflicht und empfohlen zählen als „Fehlt noch“. Eine Wahlstelle ändert die Stufe für sich."""
+def test_stufe_eines_merkmals_und_wahlstelle_aendert_sie():
+    """docs/ontologie.md: Stufe pflicht, empfohlen (Vorgabe), angeboten, aus je Merkmal der Art; nur pflicht und
+    empfohlen zählen als „Fehlt noch“. Eine Wahlstelle ändert die Stufe für sich."""
     r = roh()
     r["unterkuenfte"]["U-01"]["merkmale"] = {"preis": "120 €"}
     r["unterkuenfte"]["U-02"]["merkmale"] = {"preis": "99 €"}
     erg, fehler = mk_bauen(r)
     assert fehler == [] and erg["unterkuenfte"]["U-02"]["fehlt"] == ["fruehstueck"]
-    # Reise: aus -> kein Fehlt; die Stufe steht im Export (Seite und Claude-App lesen sie)
-    r["merkmale"] = {"unterkunft": {"fruehstueck": {"stufe": "aus"}}}
-    erg, fehler = mk_bauen(r)
+    # aus -> kein Fehlt; die Stufe steht im Export (Seite und Claude-App lesen sie)
+    a = arten()
+    a["arten"]["hotel"]["merkmale"]["fruehstueck"]["stufe"] = "aus"
+    erg, fehler = mk_bauen(r, a)
     assert fehler == []
     assert erg["unterkuenfte"]["U-02"]["fehlt"] == [] and w_opt(erg, "V-02")[1]["fehlt"] == []
-    assert next(k for k in erg["merkmale"]["unterkunft"] if k["id"] == "fruehstueck")["stufe"] == "aus"
+    assert next(k for k in erg["merkmale"]["hotel"] if k["id"] == "fruehstueck")["stufe"] == "aus"
     # Wahlstelle schaltet für sich wieder ein
     r["wahlstellen"]["V-02"]["merkmale"] = {"fruehstueck": {"stufe": "empfohlen"}}
-    erg, fehler = mk_bauen(r)
+    erg, fehler = mk_bauen(r, a)
     assert fehler == [] and w_opt(erg, "V-02")[1]["fehlt"] == ["fruehstueck"]
     # angeboten zählt nicht als Lücke, ein Wert bleibt erlaubt
     r["wahlstellen"]["V-02"].pop("merkmale")
-    r["merkmale"] = {"unterkunft": {"fruehstueck": {"stufe": "angeboten"}}}
+    a["arten"]["hotel"]["merkmale"]["fruehstueck"]["stufe"] = "angeboten"
     r["unterkuenfte"]["U-01"]["merkmale"]["fruehstueck"] = "inklusive"
-    erg, fehler = mk_bauen(r)
+    erg, fehler = mk_bauen(r, a)
     assert fehler == [] and erg["unterkuenfte"]["U-02"]["fehlt"] == []
     assert erg["unterkuenfte"]["U-01"]["merkmale"]["fruehstueck"]["wert"] == "inklusive"
-    # je Unterkunftstyp: aus für alle, empfohlen für Refugis
-    r["unterkuenfte"]["U-02"]["typ"] = "Refugi"
-    r["merkmale"] = {"unterkunft": {"fruehstueck": {"stufe": {"*": "aus", "refugi": "empfohlen"}}}}
-    erg, fehler = mk_bauen(r)
-    assert fehler == []
-    assert erg["unterkuenfte"]["U-02"]["fehlt"] == ["fruehstueck"] and "fruehstueck" not in erg["unterkuenfte"]["U-01"]["fehlt"]
-    # Fehler: unbekannte Stufe; ein Grundlisten-Merkmal darf sonst nicht neu definiert werden
-    r["merkmale"] = {"unterkunft": {"fruehstueck": {"stufe": "egal"}}}
-    assert "stufe muss" in "\n".join(mk_bauen(r)[1])
-    r["merkmale"] = {"unterkunft": {"fruehstueck": {"name": "Brot", "stufe": "aus"}}}
-    assert "gibt es für unterkunft schon" in "\n".join(mk_bauen(r)[1])
+    # Fehler: unbekannte Stufe; eine Wahlstelle darf ein Merkmal der Art nicht neu definieren
+    a["arten"]["hotel"]["merkmale"]["fruehstueck"]["stufe"] = "egal"
+    assert "stufe muss" in "\n".join(mk_bauen(r, a)[1])
+    r["wahlstellen"]["V-02"]["merkmale"] = {"fruehstueck": {"name": "Brot", "stufe": "aus"}}
+    assert "gibt es für hotel schon" in "\n".join(mk_bauen(r)[1])

@@ -346,9 +346,9 @@ def test_json_der_meldungen_bleibt_lesbar(reise):
 def test_zu_pruefen_laesst_ausgeschaltete_merkmale_aus():
     """ADR-0001, Paket O-0: Merkmale mit Stufe aus (je Reise, auch je Unterkunftstyp) prüft der Wächter nicht."""
     preis = {"id": "preis", "name": "Preis", "veraenderlich": True, "stufe": {"*": "aus", "refugi": "empfohlen"}}
-    d = {"route": {"wahlstellen": [], "merkmale": {"unterkunft": [preis]},
-                   "unterkuenfte": {"U-1": {"typ": "Hotel", "naechte": ["T-01"], "merkmale": {"preis": {"wert": "1 €"}}},
-                                    "U-2": {"typ": "Refugi", "naechte": ["T-02"], "merkmale": {"preis": {"wert": "2 €"}}}}}}
+    d = {"route": {"wahlstellen": [], "merkmale": {"unterkunft": [preis]},   # Merkmale je Art (hier eine Art „unterkunft“)
+                   "unterkuenfte": {"U-1": {"art": "unterkunft", "typ": "Hotel", "naechte": ["T-01"], "merkmale": {"preis": {"wert": "1 €"}}},
+                                    "U-2": {"art": "unterkunft", "typ": "Refugi", "naechte": ["T-02"], "merkmale": {"preis": {"wert": "2 €"}}}}}}
     assert [t["bezug"] for t in wa.zu_pruefen(d, D(2026, 11, 1), 60)] == ["U-2"]
     preis["stufe"] = "aus"
     assert wa.zu_pruefen(d, D(2026, 11, 1), 60) == []

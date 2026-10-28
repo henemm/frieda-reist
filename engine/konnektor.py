@@ -312,11 +312,9 @@ def einarbeiten_text(reise, organisator):
 
 
 # Doppelte Merkmale erkennen (Paket 3, #18): Ein neuer Schlüssel aus einem Vorschlag, der einem bestehenden Merkmal der
-# Liste entspricht (z. B. „oeffnung“ neben „geoeffnet“), soll beim Einarbeiten zusammengeführt statt neu angelegt werden.
-SYNONYME = [{"geoeffnet", "oeffnung", "oeffnungszeit", "oeffnungszeiten", "offen", "saison", "betriebsferien"},
-            {"preis", "kosten", "preispronacht", "price", "tarif"}, {"fruehstueck", "breakfast"},
-            {"abendessen", "dinner", "essen", "halbpension"}, {"stornierung", "storno", "kuendigung", "cancel"},
-            {"dauer", "fahrzeit", "reisezeit", "flugzeit"}, {"gepaeck", "koffer", "freigepaeck"}]
+# Art entspricht (z. B. „oeffnung“ neben „geoeffnet“), soll zusammengeführt statt neu angelegt werden. Nur generisch
+# (Schreibweise, Wortstamm) und über die Zweitnamen „auch“, die die Reise in arten.yaml angibt; keine Wortliste in der
+# Software (ADR-0001: kein Katalog).
 
 
 def regel_stand(x):
@@ -345,14 +343,14 @@ def gemeinsam(a, b):
 
 def aehnliches_merkmal(schluessel, kriterien):
     """Bestehendes Merkmal (Definition) zu einem neuen Schlüssel, wenn es vermutlich dasselbe meint, sonst None:
-    gleich nach Umlauten und Zeichen, gleiche Synonymgruppe oder ein gemeinsamer Wortstamm von mindestens 5 Zeichen."""
+    gleich nach Umlauten und Zeichen, ein Zweitname der Reise (auch) oder ein gemeinsamer Wortstamm von mindestens 5 Zeichen."""
     k = merkmal_norm(schluessel)
     for d in kriterien or []:
-        for name in (d["id"], d.get("name", "")):
+        for name in (d["id"], d.get("name", ""), *(d.get("auch") or [])):
             n = merkmal_norm(name)
             if not n:
                 continue
-            if k == n or any(k in g and n in g for g in SYNONYME) or gemeinsam(k, n) >= 5:
+            if k == n or gemeinsam(k, n) >= 5:
                 return d
     return None
 
@@ -495,11 +493,12 @@ class Handbuch:
         for w in self.r.get("wahlstellen", []):
             if id_ == w["id"] or any(o["id"] == id_ for o in w["optionen"]):
                 return w, w.get("bereich", "allgemein"), w.get("kriterien") or []
-        if id_ in (self.r.get("unterkuenfte") or {}):
-            return None, "unterkunft", (self.r.get("merkmale") or {}).get("unterkunft") or []
+        if id_ in (self.r.get("unterkuenfte") or {}):   # Aufenthalt: Merkmale seiner Art (plan/arten.yaml)
+            b = self.r["unterkuenfte"][id_].get("art")
+            return None, b, (self.r.get("merkmale") or {}).get(b) or []
         st = (self.r.get("strecken") or {}).get(id_)
-        if st is not None:   # Bewegung: Liste ihrer Art (Fähre, Flug …), sonst die allgemeine für Strecken
-            b = st.get("bereich") or "strecke"
+        if st is not None:   # Bewegung: Merkmale ihrer Art
+            b = st.get("bereich")
             return None, b, (self.r.get("merkmale") or {}).get(b) or []
         return None, None, None
 
@@ -585,7 +584,7 @@ class Handbuch:
                     z.append(("Quelle: " if k == "quelle" else "Siehe: " if k == "siehe" else "") + str(s[k]))
             if s.get("merkmale") or s.get("fehlt"):
                 z.append("Merkmale:")
-                z += self.merkmal_zeilen((r.get("merkmale") or {}).get(s.get("bereich") or "strecke"), s.get("merkmale"), s.get("fehlt"))
+                z += self.merkmal_zeilen((r.get("merkmale") or {}).get(s.get("bereich")), s.get("merkmale"), s.get("fehlt"))
             if sid in e:  # Etappe aus dem Dossier: Text dort, Strecke ergänzt
                 titel, alt = e[sid]
                 e[sid] = (titel, "\n".join(z) + "\n\n" + alt)
@@ -601,7 +600,7 @@ class Handbuch:
                 z.append("Nächte: " + ", ".join(u["naechte"]))
             if u.get("merkmale") or u.get("fehlt"):
                 z.append("Merkmale:")
-                z += self.merkmal_zeilen((r.get("merkmale") or {}).get("unterkunft"), u.get("merkmale"), u.get("fehlt"))
+                z += self.merkmal_zeilen((r.get("merkmale") or {}).get(u.get("art")), u.get("merkmale"), u.get("fehlt"))
             e[uid] = (u.get("name") or uid, "\n".join(z))
         for p in r.get("plaene", []):
             z = [p.get("text") or "", "Auswahl: " + ", ".join(p.get("auswahl") or [])]
@@ -735,13 +734,14 @@ class Handbuch:
         elif bereich in katalog:
             w, b, krit = None, bereich, katalog[bereich]
         else:
-            return None, f"ziel (V-…, U-…, E-…) oder bereich ({', '.join(katalog) or 'unterkunft, strecke, route'}) angeben."
+            return None, f"ziel (V-…, U-…, E-…) oder bereich angeben: eine Art dieser Reise ({', '.join(katalog) or 'keine definiert'})."
         z = [f"# Merkmale für Bereich {b}" + (f" – {w['id']} {w['titel']}" if w else f" – {ziel}" if ziel else ""),
              "Vorgehen: Erst selbst recherchieren (Hinweis „so finden“), dann die Person nur nach dem fragen, was offen "
              "bleibt (Hinweis „fragen“). Veränderliche Werte mit Prüfdatum. Eine neue Alternative mit "
              "alternative_vorschlagen weitergeben, vorher kurz bestätigen lassen. Ist ein Wert je Datum verschieden (z. B. "
              "Preis je Nacht), mehrere Werte mit gilt (JJJJ-MM-TT) angeben; einer ohne gilt steht für alle übrigen Tage. "
-             "Nur Schlüssel aus dieser Liste verwenden; ein eigenes Kriterium der Person nur, wenn es hier nichts Passendes gibt.",
+             "Das sind die Merkmale dieser Reise für diese Art (plan/arten.yaml, von den Reisenden festgelegt). Ein neues "
+             "Merkmal nur, wenn es hier nichts Passendes gibt; es wird dann der Art der Reise vorgeschlagen.",
              "## Liste"]
         for k in krit:
             st = k.get("stufe", "empfohlen")   # Stufe je Reise (routen.yaml merkmale: {…: {stufe: …}}); je Unterkunftstyp als Objekt
@@ -905,15 +905,15 @@ class Handbuch:
         else:
             if not an or an not in self.eintraege:
                 return None, "Ohne Wahlstelle bitte an angeben: die ID, an der die Alternative hängt (z. B. T-05, U-11, E-14)."
-            # Art aus der Stelle, wenn nicht angegeben: an einer Strecke deren Art (Fähre, Flug …), an einer Unterkunft unterkunft
+            # Art aus der Stelle, wenn nicht angegeben: an einer Strecke oder Unterkunft deren Art (plan/arten.yaml)
             w, b = None, str(args.get("bereich") or "").strip()
             st = (self.r.get("strecken") or {}).get(an)
             if not b and st is not None:
-                b = st.get("bereich") or "strecke"
+                b = st.get("bereich")
             elif not b and an in (self.r.get("unterkuenfte") or {}):
-                b = "unterkunft"
+                b = self.r["unterkuenfte"][an].get("art")
             if b not in katalog:
-                return None, f"Ohne Wahlstelle bitte bereich angeben, die Art der Alternative ({', '.join(katalog)})."
+                return None, f"Ohne Wahlstelle bitte bereich angeben, die Art der Alternative auf dieser Reise ({', '.join(katalog)})."
             krit = katalog[b]
         defs = {k["id"]: k for k in krit}
         roh = args.get("merkmale") or {}
@@ -1865,8 +1865,8 @@ WERKZEUGE += [
      "inputSchema": {"type": "object", "properties": {
          "ziel": {"type": "string", "description": "Wahlstelle V-…, Option V-….a, Unterkunft U-… oder Strecke E-… (z. B. eine Fähre)"},
          "bereich": {"type": "string",
-                     "description": "nur ohne ziel: Art der Alternative für die Liste (unterkunft, strecke, route, faehre, flug, "
-                                    "bahn, bus, mietwagen, essen, erlebnis oder eine Art der Reise)"}}},
+                     "description": "nur ohne ziel: eine Art dieser Reise (ihre Arten und Merkmale stehen in plan/arten.yaml; "
+                                    "ohne Angabe nennt die Antwort die bekannten Arten)"}}},
      "annotations": {"readOnlyHint": True}},
     {"name": "alternative_vorschlagen", "description": "Neue Alternative weitergeben (z. B. ein weiteres Hotel, eine andere "
      "Strecke, eine andere Route), mit Merkmalen nach der Liste aus merkmale. Erst selbst recherchieren, dann nur nach Lücken "
@@ -1877,8 +1877,7 @@ WERKZEUGE += [
          "an": {"type": "string", "description": "nur ohne wahlstelle: ID, an der eine neue Wahlstelle entsteht (T-…, U-…, E-…); "
                 "an einer Strecke oder Unterkunft ergibt sich die Art daraus"},
          "bereich": {"type": "string",
-                     "description": "nur ohne wahlstelle und wenn an ein Tag ist: Art der Alternative (unterkunft, strecke, "
-                                    "route, faehre, flug, bahn, bus, mietwagen, essen, erlebnis oder eine Art der Reise; Liste aus merkmale)"},
+                     "description": "nur ohne wahlstelle und wenn an ein Tag ist: eine Art dieser Reise (Liste aus merkmale)"},
          "titel": {"type": "string", "description": "Name der Alternative, z. B. „Pension Burgblick“"},
          "merkmale": {"type": "object", "description": "{merkmal: {wert, quelle, geprueft (JJJJ-MM-TT), notiz}}; Schlüssel aus "
                       "merkmale. Ist der Wert je Datum verschieden, eine Liste solcher Werte mit gilt (JJJJ-MM-TT oder Liste), "

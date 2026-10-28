@@ -107,10 +107,9 @@ def zu_pruefen(d, heute, frist_tage):
         for o in w["optionen"]:
             if o["aktiv"] and o["status"] not in UNGUELTIG:
                 pruefe(o["id"], f"{w['titel']} › {o['titel']}", o.get("merkmale"), w.get("kriterien"))
-    kriterien = (r.get("merkmale") or {}).get("unterkunft")
     for uid, u in (r.get("unterkuenfte") or {}).items():
-        if u.get("naechte"):
-            pruefe(uid, u.get("name") or uid, u.get("merkmale"), kriterien, u.get("typ"))
+        if u.get("naechte"):   # Merkmale der Art der Unterkunft (plan/arten.yaml)
+            pruefe(uid, u.get("name") or uid, u.get("merkmale"), (r.get("merkmale") or {}).get(u.get("art")), u.get("typ"))
     treffer.sort(key=lambda t: (t["alter_tage"] is not None, -(t["alter_tage"] or 0), t["bezug"], t["merkmal"]))
     return treffer
 

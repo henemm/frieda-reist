@@ -1,0 +1,12 @@
+# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). Sie entstehen im Gespräch im AI-Client und werden dort
+# immer wieder geschärft; die Software liefert keine Liste. Sobald plan/routen.yaml Unterkünfte oder Strecken hat, braucht
+# jede ihrer Arten hier einen Eintrag. Anschauung: beispiel/reisen/beispielreise/plan/arten.yaml in der Software.
+#
+# arten:
+#   hotel:
+#     grundform: aufenthalt          # aufenthalt | bewegung | folge
+#     name: Hotel
+#     farbe: blau                    # blau, braun, lila, gruen, tuerkis, oliv, grau, rosa, schiefer
+#     merkmale:
+#       preis: {name: Preis pro Nacht, typ: geld, veraenderlich: true, stufe: empfohlen, hilfe: "…", frage: "…"}
+arten: {}

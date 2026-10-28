@@ -559,16 +559,18 @@ def test_volllauf_beispiel(tmp_path):
     assert (tmp_path / "beispiel/index.html").exists()
 
 
-def test_unbekannte_unterkunftsart_gibt_hinweis(tmp_path):
+def test_unbekannte_unterkunftsart_ist_fehler(tmp_path):
+    """Eine Art, die die Reise nicht in plan/arten.yaml definiert hat, ist ein Baufehler (docs/ontologie.md)."""
     kopie = tmp_path / "bsp"
     shutil.copytree(BEISPIEL, kopie)
     p = kopie / "plan" / "routen.yaml"
     p.write_text(p.read_text(encoding="utf-8").replace("typ: Herberge", "typ: Baumhaus", 1), encoding="utf-8")
-    b = bauen.Bauer(kopie, tmp_path / "aus")
-    d = b.daten()
-    assert any("Kategorie unbekannt" in h and "Baumhaus" in h for h in b.hinweise)
-    assert {u["kategorie"] for u in d["route"]["unterkuenfte"].values()} == {"hotel", "gasthaus", "sonstige"}
-    assert d["route"]["kategorien"]["huette"] == "Hütte"
+    with pytest.raises(bauen.BauFehler) as e:
+        bauen.Bauer(kopie, tmp_path / "aus").daten()
+    assert "Art „baumhaus“ steht nicht in plan/arten.yaml" in str(e.value) and "gibt es hier nicht" not in str(e.value)
+    d = bauen.Bauer(BEISPIEL, tmp_path / "aus2").daten()
+    assert d["route"]["arten"]["herberge"]["name"] == "Herberge" and d["route"]["kategorien"]["herberge"] == "Herberge"
+    assert {u["art"] for u in d["route"]["unterkuenfte"].values()} == {"hotel", "pension", "gasthof", "herberge"}
 
 
 def test_ebenen_der_etappen(reise, tmp_path):

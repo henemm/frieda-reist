@@ -298,6 +298,125 @@ def pruefen(reise_dir):
     return True, []
 
 
+# ---------- Arten aus Bestandsdaten ableiten (Paket O-2, docs/ontologie.md) ----------
+FARBEN_REIHE = ("blau", "gruen", "braun", "tuerkis", "lila", "oliv", "rosa", "schiefer", "grau")
+
+
+def arten_ableiten(reise_dir, namen=None, summiert=(), definitionen=None, schreiben=True):
+    """plan/arten.yaml aus plan/routen.yaml ableiten, ohne eine ID oder einen Wert zu ändern: jeder vorkommende typ einer
+    Unterkunft oder Nacht wird eine Art der Grundform aufenthalt, jede art einer Strecke eine Art der Grundform bewegung
+    (eine Liste mehrerer Arten: kombiniert), Wahlstellen mit Folge-Optionen bekommen die Art reiseteil. Belegte Merkmale
+    werden an der Art definiert (Stufe empfohlen, wenn bei mehr als der Hälfte der Dinge belegt, sonst angeboten); eine
+    Stufen-Vorgabe aus routen.yaml merkmale: (Brücke aus Paket O-0) gilt vor der Zählung. Unbelegte Merkmale kommen nicht
+    hinein. namen: {art: Anzeigename}; summiert: Arten aus eigener Kraft (Kennzahlen werden summiert); definitionen:
+    {merkmal: Definition} als Vorlage für Namen, Typ und Hilfetexte (sonst Name aus dem Schlüssel, Typ text).
+    Danach prüft die Organisator:in die Arten im Gespräch. -> Text der Datei."""
+    import yaml
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from routen import art_schluessel, AUTO_JE_GRUNDFORM
+    namen, definitionen = dict(namen or {}), dict(definitionen or {})
+    r = yaml.safe_load((reise_dir / "plan/routen.yaml").read_text(encoding="utf-8")) or {}
+    arten = {}      # art -> {grundform, name, dinge: [merkmale-dicts], typ_roh}
+
+    def art(key, grundform, name=None):
+        if key not in arten:
+            arten[key] = {"grundform": grundform, "name": namen.get(key) or name or key.capitalize(), "dinge": []}
+        return arten[key]
+
+    def stufe_vorgabe(k, typ):
+        s = (((r.get("merkmale") or {}).get("unterkunft") or {}).get(k) or {}).get("stufe")
+        if isinstance(s, dict):
+            return s.get(art_schluessel(typ) or "", s.get("*"))
+        return s
+
+    for u in (r.get("unterkuenfte") or {}).values():
+        a = art(u.get("art") or art_schluessel(u.get("typ")) or "unterkunft", "aufenthalt", u.get("typ"))
+        a["dinge"].append(("aufenthalt", u.get("typ"), u.get("merkmale") or {}))
+    for t in (r.get("tage") or {}).values():
+        n = t.get("nacht")
+        if isinstance(n, dict) and (n.get("typ") or n.get("art")) and not n.get("an_bord"):
+            art(n.get("art") or art_schluessel(n.get("typ")), "aufenthalt", n.get("typ"))["dinge"].append(("aufenthalt", n.get("typ"), {}))
+    for s in (r.get("strecken") or {}).values():
+        k = s.get("art", "wandern")
+        k = "kombiniert" if isinstance(k, list) else str(k)
+        art(k, "bewegung")["dinge"].append(("bewegung", None, s.get("merkmale") or {}))
+    wahl = r.get("wahlstellen") or {}
+    for vid, w in (wahl.items() if isinstance(wahl, dict) else ((x["id"], x) for x in wahl)):
+        opts = w.get("optionen") or []
+        b = w.get("bereich")
+        if b and b not in arten:
+            art(b, "bewegung" if any(o.get("strecken") for o in opts) else "aufenthalt")
+        if any(o.get("folge") is not None for o in opts):
+            b = b or "reiseteil"
+            art(b, "folge")
+        if not b:
+            for o in opts:
+                for uid in o.get("unterkuenfte") or []:
+                    u = (r.get("unterkuenfte") or {}).get(uid) or {}
+                    b = b or u.get("art") or art_schluessel(u.get("typ"))
+                for sid in o.get("strecken") or []:
+                    sa = ((r.get("strecken") or {}).get(sid) or {}).get("art", "wandern")
+                    b = b or ("kombiniert" if isinstance(sa, list) else str(sa))
+        if b in arten:
+            for o in opts:
+                if o.get("merkmale"):
+                    arten[b]["dinge"].append((arten[b]["grundform"], None, o["merkmale"]))
+    # definitionen darf auch die alte Grundliste (je Bereich) sein: dann je Art ihr Bereich oder der ihrer Grundform
+    gruppiert = definitionen and all(isinstance(v, dict) and all(isinstance(x, dict) for x in v.values()) for v in definitionen.values())
+    aus = {}
+    for key, a in arten.items():
+        g, dinge = a["grundform"], a["dinge"]
+        if gruppiert:
+            definitionen = (definitionen if "_alle" in definitionen else {"_alle": definitionen})
+            alle = definitionen["_alle"]
+            definitionen_art = alle.get(key) or alle.get({"aufenthalt": "unterkunft", "bewegung": "strecke", "folge": "route"}[g]) or {}
+        else:
+            definitionen_art = definitionen
+        zaehl = {}
+        for _, typ, mk in dinge:
+            for k in mk:
+                zaehl.setdefault(k, []).append(typ)
+        merkmale = {}
+        if g in AUTO_JE_GRUNDFORM and (g == "folge" or key in summiert):
+            for k in AUTO_JE_GRUNDFORM[g]:
+                d = dict(definitionen_art.get(k) or {"name": k.capitalize()})
+                merkmale[k] = {"name": d.get("name", k.capitalize()), "auto": k}
+        for k, typen in zaehl.items():
+            vor = stufe_vorgabe(k, typen[0]) if g == "aufenthalt" else None
+            # aus, aber belegt: Wert bleibt (nichts wird gelöscht), die Stufe aus sagt, dass es nicht zählt
+            d = {f: v for f, v in (definitionen_art.get(k) or {}).items() if f in ("name", "typ", "werte", "veraenderlich", "hilfe", "frage", "einheit")}
+            d.setdefault("name", k.capitalize())
+            d["stufe"] = vor or ("empfohlen" if len(typen) * 2 > max(len(dinge), 1) else "angeboten")
+            merkmale[k] = d
+        # Merkmale, die der Product Owner per Stufe ausdrücklich für diese Art verlangt (O-0-Brücke), auch ohne Wert
+        for k, dv in (((r.get("merkmale") or {}).get("unterkunft") or {}).items() if g == "aufenthalt" else []):
+            vor = stufe_vorgabe(k, dinge[0][1] if dinge else None)
+            if vor and vor != "aus" and k not in merkmale:
+                d = {f: v for f, v in (definitionen_art.get(k) or {}).items() if f in ("name", "typ", "werte", "veraenderlich", "hilfe", "frage", "einheit")}
+                d.setdefault("name", k.capitalize())
+                d["stufe"] = vor
+                merkmale[k] = d
+        eintrag = {"grundform": g, "name": a["name"]}
+        if g == "aufenthalt":
+            eintrag["farbe"] = FARBEN_REIHE[len([x for x in aus.values() if x["grundform"] == "aufenthalt"]) % len(FARBEN_REIHE)]
+        if key in summiert:
+            eintrag["summiert"] = True
+        if merkmale:
+            eintrag["merkmale"] = merkmale
+        aus[key] = eintrag
+    kopf = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). Abgeleitet aus plan/routen.yaml am "
+            f"{datetime.date.today().isoformat()} (engine/neu.py arten-ableiten); danach im Gespräch geprüft und geschärft.\n"
+            "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale; je Merkmal: name, typ,\n"
+            "# werte, veraenderlich, stufe (pflicht | empfohlen | angeboten | aus), auto, hilfe, frage, auch.\n")
+    class Ohne_Verweise(yaml.SafeDumper):   # gleiche Wertelisten je Merkmal ausschreiben statt als YAML-Anker
+        def ignore_aliases(self, data):
+            return True
+    text = kopf + yaml.dump({"arten": aus}, Dumper=Ohne_Verweise, allow_unicode=True, sort_keys=False, width=120)
+    if schreiben:
+        (reise_dir / "plan/arten.yaml").write_text(text, encoding="utf-8")
+    return text
+
+
 # ---------- Aufruf ----------
 def main(argv):
     import argparse
@@ -326,8 +445,18 @@ def main(argv):
     a.add_argument("--text-datei", type=Path)
     p = sub.add_parser("pruefen", help="vor dem Bau prüfen")
     p.add_argument("reise", type=Path)
+    g = sub.add_parser("arten-ableiten", help="plan/arten.yaml aus den Bestandsdaten der Reise ableiten (Paket O-2)")
+    g.add_argument("reise", type=Path)
+    g.add_argument("--name", action="append", default=[], help="art=Anzeigename, z. B. faehre=Fähre")
+    g.add_argument("--summiert", default="", help="Arten aus eigener Kraft, Komma-Liste, z. B. wandern,rad")
+    g.add_argument("--definitionen", type=Path, help="YAML {merkmal: {name, typ, …}} als Vorlage für Namen und Hilfetexte")
     x = ap.parse_args(argv[1:])
     try:
+        if x.befehl == "arten-ableiten":
+            import yaml
+            defs = yaml.safe_load(x.definitionen.read_text(encoding="utf-8")) if x.definitionen else {}
+            print(arten_ableiten(x.reise, dict(n.split("=", 1) for n in x.name), set(filter(None, x.summiert.split(","))), defs))
+            return 0
         if x.befehl == "reise":
             personen = dict(person_aus_text(t) for t in x.person)
             d = anlegen(x.reisen, x.titel, x.von, x.bis, personen, x.wer, ziel=x.ziel, pfad=x.pfad,

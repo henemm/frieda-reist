@@ -11,16 +11,16 @@ Unterschieden wird:
   Warnungen  – der Plan geht (noch) nicht auf (Lücke zwischen Orten, Fixpunkt verfehlt).
                In der Planung ein normaler Zwischenstand; die Seite zeigt sie an.
 
-Merkmale: Jede Wahlstelle hat einen Bereich (unterkunft, strecke, route, allgemein). Die Grundliste in
-engine/merkmale.yaml sagt, welche Merkmale eine Option dort braucht; die Reise (routen.yaml „merkmale:“) und die
-Wahlstelle („merkmale:“) können ergänzen. Werte stehen an der Option, bei Unterkünften an der Unterkunft (U-…).
-Was fehlt, zeigt die Seite. Standard und Ablauf: docs/alternativen.md.
+Merkmale: Jedes Ding hat eine Art, die die Reise in plan/arten.yaml definiert (docs/ontologie.md): Unterkunft über typ
+oder art, Strecke über art, Wahlstelle über bereich oder ihre Optionen. Die Art sagt, welche Merkmale es gibt; eine
+Wahlstelle kann für sich ergänzen. Werte stehen an der Option, bei Unterkünften an der Unterkunft (U-…), bei Bewegungen an
+der Strecke. Was fehlt, zeigt die Seite. Standard und Ablauf: docs/alternativen.md.
 
 Hintergrund und Entscheidung: GitHub-Issue #9.
 """
 import datetime
 import re
-from pathlib import Path
+import unicodedata
 
 STATUS = ("vorgeschlagen", "favorisiert", "gewaehlt", "verworfen", "ersetzt")
 NUR_ENTSCHEIDER = {"gewaehlt", "verworfen", "ersetzt"}
@@ -29,48 +29,35 @@ ARTEN = {"planung", "unterwegs"}
 WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+",
           "tag": r"T-\d+", "wahl": r"V-\d+", "option": r"V-\d+\.[a-z]+", "wissen": r"W-\d+"}
-BEREICHE = ("unterkunft", "strecke", "route", "allgemein")
-# Eine Wahlstelle hat einen Bereich oder eine Art: die vier Grundbereiche, dazu jede Art, die die Grundliste
-# (engine/merkmale.yaml) oder die Reise unter „merkmale:“ kennt (Fähre, Flug, Bahn, Essen, Erlebnis …).
-# Ding-Formen: Aufenthalt (unterkunft, essen, erlebnis), Bewegung (strecke, faehre, flug, bahn, bus, mietwagen), Folge (route).
+# Grundformen der Reise-Ontologie (docs/ontologie.md, ADR-0001): Aufenthalt (Unterkunft, Nacht), Bewegung (Strecke),
+# Folge (Tag, Reiseteil). Welche Arten es davon gibt (Hotel, Refugi, Wanderung, Bahn, Reiseteil …) und welche Merkmale
+# eine Art hat, sagt allein die Reise in plan/arten.yaml. Die Software kennt nur die Grundformen, die Form eines
+# Merkmals und die berechneten Kennzahlen je Grundform.
+GRUNDFORMEN = ("aufenthalt", "bewegung", "folge")
+AUTO_JE_GRUNDFORM = {"bewegung": ("gehzeit", "laenge", "hoehenmeter"), "folge": ("tage", "gehzeit", "unterkuenfte", "anschluss")}
 ART_MUSTER = r"[a-z][a-z0-9_]*"
-# Übernachtungskategorien (generisch, für Karte, Legende, Vergleich). typ bleibt die freie Bezeichnung der Reise;
-# fehlt kategorie, wird sie aus typ abgeleitet (TYP_KATEGORIE, klein geschrieben), sonst „sonstige“.
-KATEGORIEN = {"hotel": "Hotel", "gasthaus": "Gasthaus", "ferienwohnung": "Ferienwohnung", "huette": "Hütte",
-              "herberge": "Herberge", "camping": "Camping", "unterwegs": "Unterwegs", "privat": "Privat",
-              "sonstige": "Sonstige"}
-TYP_KATEGORIE = {
-    **dict.fromkeys(("hotel", "stadthotel", "businesshotel", "designhotel", "landhotel", "resort", "lodge",
-                     "berglodge", "motel", "onsen-hotel", "kapselhotel"), "hotel"),
-    **dict.fromkeys(("gasthaus", "gasthof", "pension", "b&b", "bed & breakfast", "guesthouse", "ryokan", "minshuku",
-                     "shukubō", "shukubo", "agriturismo", "finca", "landgasthof", "inn"), "gasthaus"),
-    **dict.fromkeys(("ferienwohnung", "apartment", "wohnung", "ferienhaus", "machiya", "kominka", "airbnb"),
-                    "ferienwohnung"),
-    **dict.fromkeys(("hütte", "huette", "berghütte", "alpenvereinshütte", "refugi", "refugio", "refuge", "yamagoya",
-                     "biwakschachtel"), "huette"),
-    **dict.fromkeys(("herberge", "wanderherberge", "jugendherberge", "pilgerherberge", "hostel", "albergue",
-                     "kokumin-shukusha"), "herberge"),
-    **dict.fromkeys(("camping", "zelt", "zeltplatz", "wohnmobil", "biwak"), "camping"),
-    **dict.fromkeys(("nachtzug", "schlafwagen", "fähre", "nachtfähre", "flug", "nachtbus"), "unterwegs"),
-    **dict.fromkeys(("privat", "freunde", "familie", "bei freunden"), "privat"),
-}
+ART_FELDER = {"grundform", "name", "farbe", "merkmale", "beschreibung", "summiert"}
+# Farben der Seite für Arten (engine/vorlage.html, --farbe-*); ohne Angabe grau
+FARBEN = ("blau", "braun", "lila", "gruen", "tuerkis", "oliv", "grau", "rosa", "schiefer")
+UNTERWEGS = "unterwegs"     # Nacht an Bord (Nachtfähre, Nachtzug): keine Art der Reise, feste Darstellung
+ALLGEMEIN = "allgemein"     # Wahlstelle ohne Art: keine Merkmale
+KOMBINIERT = "kombiniert"   # Strecke mit mehreren Arten (bahn und bus): die Reise definiert diese Art, wenn sie vorkommt
 
 
-def kategorie(eintrag):
-    """Kategorie einer Unterkunft oder Nacht: ausdrücklich, aus typ abgeleitet, „unterwegs“ an Bord, sonst „sonstige“."""
-    if eintrag.get("kategorie"):
-        return eintrag["kategorie"]
-    if eintrag.get("an_bord"):
-        return "unterwegs"
-    return TYP_KATEGORIE.get(str(eintrag.get("typ") or "").strip().lower(), "sonstige")
+def art_schluessel(text):
+    """Art aus einer freien Bezeichnung (typ einer Unterkunft): klein, Umlaute und Akzente aufgelöst, Rest zu _."""
+    t = str(text or "").strip().lower()
+    for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss"), ("&", "und")):
+        t = t.replace(a, b)
+    t = "".join(c for c in unicodedata.normalize("NFKD", t) if not unicodedata.combining(c))
+    return re.sub(r"[^a-z0-9]+", "_", t).strip("_") or None
 TYPEN = {"text", "geld", "zahl", "auswahl"}
-# Stufe eines Merkmals je Reise (ADR-0001, Paket O-0): pflicht und empfohlen zählen als „Fehlt noch“ und werden gemahnt,
-# angeboten wird nur gezeigt, wenn ein Wert da ist, aus gilt für diese Reise nicht (kein Fehlt, keine Mahnung, kein Wächter).
-# Ohne Angabe gilt empfohlen. Eine Reise setzt die Stufe eines Grundlisten-Merkmals unter merkmale: nur mit {stufe: …},
-# eine Wahlstelle kann sie für sich wieder ändern. Die Stufe darf je Unterkunftstyp verschieden sein:
-# stufe: {"*": aus, refugi: empfohlen} (Schlüssel: typ der Unterkunft, klein geschrieben; „*“ für alle übrigen).
+# Stufe eines Merkmals (docs/ontologie.md): pflicht und empfohlen zählen als „Fehlt noch“ und werden gemahnt, angeboten
+# wird nur gezeigt, wenn ein Wert da ist, aus gilt nicht (kein Fehlt, keine Mahnung, kein Wächter). Ohne Angabe gilt
+# empfohlen. Die Reise setzt sie in arten.yaml, eine Wahlstelle ändert sie für sich mit {stufe: …}. Die Stufe darf je
+# typ einer Unterkunft verschieden sein: stufe: {"*": aus, refugi: empfohlen} (klein geschrieben; „*“ für alle übrigen).
 STUFEN = ("pflicht", "empfohlen", "angeboten", "aus")
-DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage", "einheit", "stufe"}
+DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage", "einheit", "stufe", "auch"}
 
 
 def stufe_von(d, typ=None):
@@ -94,12 +81,6 @@ def stufe_fehler(s):
         return None
     return None if s in STUFEN else f"stufe muss {', '.join(STUFEN)} sein."
 WERT_FELDER = {"wert", "quelle", "geprueft", "notiz", "gilt"}
-GRUNDLISTE = Path(__file__).with_name("merkmale.yaml")
-
-
-def grundliste():
-    import yaml
-    return yaml.safe_load(GRUNDLISTE.read_text(encoding="utf-8")) or {}
 
 
 def dauer(m):
@@ -172,8 +153,8 @@ def verhalten_anwenden(route, v):
                     if ung:
                         mahnungen.append({"bezug": o["id"], "text": f"{o['id']} {o['titel']}: {', '.join(ung)} "
                                           "ohne Prüfdatum. Veränderliche Angaben bitte nachschlagen und mit Datum eintragen."})
-        defs = {k["id"]: k for k in (route.get("merkmale") or {}).get("unterkunft") or []}
         for uid, u in (route.get("unterkuenfte") or {}).items():
+            defs = {k["id"]: k for k in (route.get("merkmale") or {}).get(u.get("art")) or []}
             ung = [k for k, m in (u.get("merkmale") or {}).items()
                    if m.get("ungeprueft") and stufe_von(defs.get(k, {}), u.get("typ")) != "aus"]
             if ung and u.get("naechte"):
@@ -183,22 +164,22 @@ def verhalten_anwenden(route, v):
 
 
 class Routen:
-    def __init__(self, roh, etappen, fragen, fehler, id_anlegen, quelle="plan/routen.yaml", zwang=None, grund=None,
+    def __init__(self, roh, etappen, fragen, fehler, id_anlegen, quelle="plan/routen.yaml", zwang=None, arten=None,
                  entscheider=None, wissen=None):
         """roh: geladenes YAML. etappen: {E-ID: Etappe aus dem Dossier}. fragen: {F-ID: Status-Text}.
         entscheider: Namen, die gewaehlt/verworfen/ersetzt setzen dürfen (Organisator:innen aus reise.yaml); None: aus dem YAML.
         zwang: {V-ID: Option-ID} – für benannte Pläne; erzwingt eine Option, auch eine verworfene.
-        grund: Grundliste der Merkmale (Standard: engine/merkmale.yaml).
+        arten: geladenes plan/arten.yaml der Reise (Arten und Merkmale, docs/ontologie.md).
         wissen: bekannte W-IDs (Abschnitte wie Essen, Ausflug, Praxis), an denen eine Wahlstelle hängen darf; None: ungeprüft."""
         self.r = roh or {}
-        self.grund = grundliste() if grund is None else grund
-        self.katalog = {}         # Bereich -> {Merkmal: Definition}, Grundliste plus Reise
-        self.kriterien = {}       # V-ID -> (Bereich, {Merkmal: Definition})
+        self.arten_roh = arten
+        self.arten = {}           # Art -> {name, grundform, farbe, summiert}, aus plan/arten.yaml der Reise
+        self.katalog = {}         # Art -> {Merkmal: Definition}
+        self.u_art = {}           # U-01 -> Art
+        self.kriterien = {}       # V-ID -> (Art, {Merkmal: Definition})
         self.mk_option = {}       # V-01.a -> {Merkmal: Wert}
         self.mk_unterkunft = {}   # U-01 -> {Merkmal: Wert}
         self.mk_strecke = {}      # E-01 -> {Merkmal: Wert} (Bewegungen: Fähre, Flug, Bahn …)
-        self.bereiche = tuple(BEREICHE) + tuple(k for k in (self.grund if isinstance(self.grund, dict) else {})
-                                                if k not in BEREICHE and isinstance(k, str))
         self.etappen = etappen
         self.fragen = fragen
         self.fehler = fehler
@@ -269,14 +250,16 @@ class Routen:
             z = s.get("zweig_von")
             if z and z not in self.strecken and z not in self.etappen:
                 self.fehl(f"Strecke {sid}: zweig_von {z} gibt es nicht.")
+        self.arten_pruefen()
+        for sid, s in self.strecken.items():
+            self.strecken_art(s, f"Strecke {sid}")
         for uid, u in self.unterkuenfte.items():
             self.id_anlegen(uid, self.q)
             if u.get("ort") not in self.orte:
                 self.fehl(f"Unterkunft {uid}: Ort {u.get('ort')} gibt es nicht.")
             if u.get("frage") and u["frage"] not in self.fragen:
                 self.fehl(f"Unterkunft {uid}: Frage {u['frage']} gibt es nicht.")
-            if u.get("kategorie") and u["kategorie"] not in KATEGORIEN:
-                self.fehl(f"Unterkunft {uid}: kategorie muss {', '.join(KATEGORIEN)} sein.")
+            self.u_art[uid] = self.art_von(u, f"Unterkunft {uid}")
         for tid in self.tage:
             self.id_anlegen(tid, self.q)
         for vid, w in self.wahl.items():
@@ -423,9 +406,67 @@ class Routen:
             else:
                 vorher = d
 
-    # ---------- Merkmale ----------
-    def definitionen(self, wo, roh, bereich, grund=False):
-        """Merkmal-Definitionen prüfen -> {Merkmal: Definition}."""
+    # ---------- Arten und Merkmale (docs/ontologie.md) ----------
+    def arten_pruefen(self):
+        """plan/arten.yaml der Reise prüfen -> self.arten, self.katalog. Jede Art hat genau eine Grundform."""
+        if self.arten or self.katalog:
+            return
+        roh = self.arten_roh
+        if isinstance(roh, dict) and "arten" in roh:
+            roh = roh["arten"]
+        if not isinstance(roh, dict) or not roh:
+            self.fehl("plan/arten.yaml fehlt oder hat keine Arten („arten:“). Jede Reise legt ihre Arten und Merkmale selbst "
+                      "fest (docs/ontologie.md); aus Bestandsdaten ableiten: engine/neu.py arten-ableiten <reise>.")
+            return
+        for a, d in roh.items():
+            wo = f"arten.yaml {a}"
+            if not re.fullmatch(ART_MUSTER, str(a)) or a in (UNTERWEGS, ALLGEMEIN):
+                self.fehl(f"{wo}: Art „{a}“: nur Kleinbuchstaben, Ziffern und _ (nicht {UNTERWEGS}, {ALLGEMEIN}).")
+                continue
+            if not isinstance(d, dict) or d.get("grundform") not in GRUNDFORMEN:
+                self.fehl(f"{wo}: grundform muss {', '.join(GRUNDFORMEN)} sein.")
+                continue
+            if set(d) - ART_FELDER:
+                self.fehl(f"{wo}: unbekannte Felder {', '.join(sorted(set(d) - ART_FELDER))}.")
+            if d.get("farbe") and d["farbe"] not in FARBEN:
+                self.fehl(f"{wo}: farbe muss {', '.join(FARBEN)} sein.")
+            self.arten[a] = {"name": str(d.get("name") or a), "grundform": d["grundform"], "farbe": d.get("farbe") or "grau",
+                             "summiert": bool(d.get("summiert")), "beschreibung": d.get("beschreibung")}
+            self.katalog[a] = self.definitionen(wo, d.get("merkmale") or {}, a, grundform=d["grundform"], neu=True)
+
+    def grundform(self, art):
+        return (self.arten.get(art) or {}).get("grundform")
+
+    def art_von(self, eintrag, wo):
+        """Art einer Unterkunft oder Nacht: art:, sonst aus typ; an Bord ohne Angabe: unterwegs. Prüft gegen arten.yaml."""
+        a = eintrag.get("art") or art_schluessel(eintrag.get("typ"))
+        if not a:
+            if eintrag.get("an_bord"):
+                return UNTERWEGS
+            self.fehl(f"{wo}: braucht typ oder art (eine Art aus plan/arten.yaml).")
+            return None
+        if a not in self.arten:
+            self.fehl(f"{wo}: Art „{a}“ steht nicht in plan/arten.yaml. Im Gespräch anlegen (docs/ontologie.md), bekannt: "
+                      f"{', '.join(k for k, v in self.arten.items() if v['grundform'] == 'aufenthalt') or 'keine'}.")
+            return None
+        if self.grundform(a) != "aufenthalt":
+            self.fehl(f"{wo}: Art „{a}“ ist {self.grundform(a)}, hier braucht es einen Aufenthalt.")
+        return a
+
+    def strecken_art(self, s, wo=None):
+        """Art einer Strecke: art (Vorgabe wandern), eine Liste mehrerer Arten gilt als kombiniert. Prüft, wenn wo gegeben."""
+        a = s.get("art", "wandern")
+        a = KOMBINIERT if isinstance(a, list) else str(a)
+        if wo and self.arten:
+            if a not in self.arten:
+                self.fehl(f"{wo}: Art „{a}“ steht nicht in plan/arten.yaml (Grundform bewegung). Im Gespräch anlegen.")
+            elif self.grundform(a) != "bewegung":
+                self.fehl(f"{wo}: Art „{a}“ ist {self.grundform(a)}, eine Strecke braucht eine Bewegung.")
+        return a
+
+    def definitionen(self, wo, roh, art, grundform=None, neu=False):
+        """Merkmal-Definitionen prüfen -> {Merkmal: Definition}. neu: die Art selbst wird definiert (arten.yaml);
+        sonst ergänzt eine Wahlstelle die Art oder ändert nur die Stufe eines Merkmals."""
         aus = {}
         if not isinstance(roh, dict):
             self.fehl(f"{wo}: merkmale muss eine Liste „name: {{…}}“ sein.")
@@ -434,12 +475,12 @@ class Routen:
             if not re.fullmatch(r"[a-z][a-z0-9_]*", str(k)):
                 self.fehl(f"{wo}: Merkmal „{k}“: nur Kleinbuchstaben, Ziffern und _ (z. B. preis, onsen).")
                 continue
-            if isinstance(d, dict) and set(d) == {"stufe"} and k in self.katalog.get(bereich, {}):
-                # nur die Stufe eines bekannten Merkmals ändern (Reise: aus; Wahlstelle: wieder empfohlen)
+            if isinstance(d, dict) and set(d) == {"stufe"} and k in self.katalog.get(art, {}):
+                # nur die Stufe eines Merkmals der Art ändern (Wahlstelle: aus oder wieder empfohlen)
                 if stufe_fehler(d["stufe"]):
                     self.fehl(f"{wo}: Merkmal {k}: {stufe_fehler(d['stufe'])}")
                     continue
-                aus[k] = {**self.katalog[bereich][k], "stufe": d["stufe"]}
+                aus[k] = {**self.katalog[art][k], "stufe": d["stufe"]}
                 continue
             if not isinstance(d, dict) or not d.get("name"):
                 self.fehl(f"{wo}: Merkmal {k} braucht einen Namen (name: …).")
@@ -453,36 +494,37 @@ class Routen:
                 self.fehl(f"{wo}: Merkmal {k}: typ muss {', '.join(sorted(TYPEN))} sein.")
             if typ == "auswahl" and not (isinstance(d.get("werte"), list) and d["werte"]):
                 self.fehl(f"{wo}: Merkmal {k} ist eine Auswahl und braucht werte: […].")
-            if d.get("auto") and not grund:
-                self.fehl(f"{wo}: Merkmal {k}: auto gibt es nur in der Grundliste (engine/merkmale.yaml).")
-            if k in self.katalog.get(bereich, {}) and not grund:
-                self.fehl(f"{wo}: Merkmal {k} gibt es für {bereich} schon.")
+            if d.get("auto") and d["auto"] not in AUTO_JE_GRUNDFORM.get(grundform or "", ()):
+                self.fehl(f"{wo}: Merkmal {k}: auto „{d['auto']}“ gibt es für die Grundform {grundform or '–'} nicht; "
+                          f"berechnet werden {', '.join(f'{g}: {', '.join(v)}' for g, v in AUTO_JE_GRUNDFORM.items())}.")
+            if k in self.katalog.get(art, {}) and not neu:
+                self.fehl(f"{wo}: Merkmal {k} gibt es für {art} schon (nur {{stufe: …}} ändert die Stufe).")
             aus[k] = {"name": d["name"], "typ": typ, **{f: d[f] for f in ("werte", "veraenderlich", "auto", "hilfe",
-                                                                          "frage", "einheit", "stufe") if d.get(f)}}
+                                                                          "frage", "einheit", "stufe", "auch") if d.get(f)}}
         return aus
 
-    def bereich(self, w):
+    def art_der_wahl(self, w, vid):
+        """Art der Dinge, zwischen denen eine Wahlstelle wählt: bereich:, sonst aus den Optionen (erste Unterkunft, gemeinsame
+        Art der Strecken, die eine Folge-Art der Reise). Ohne Art: allgemein, keine Merkmale."""
         b = w.get("bereich")
         if b:
+            if b != ALLGEMEIN and b not in self.arten:
+                self.fehl(f"Wahlstelle {vid}: bereich „{b}“ steht nicht in plan/arten.yaml (bekannt: {', '.join(self.arten)}).")
+                return ALLGEMEIN
             return b
         opts = w.get("optionen") or []
-        for feld, name in (("unterkuenfte", "unterkunft"), ("strecken", "strecke"), ("folge", "route")):
-            if any(o.get(feld) for o in opts):
-                return self.art_der_strecken(opts) if name == "strecke" else name
-        return "allgemein"
-
-    def art_der_strecken(self, opts):
-        """Bereich für Optionen mit Strecken: die gemeinsame Art (faehre, flug …), wenn die Grundliste sie kennt, sonst strecke."""
-        arten = set()
         for o in opts:
-            for sid in o.get("strecken") or []:
-                a = (self.strecken.get(sid) or {}).get("art", "wandern")
-                arten.add(a if isinstance(a, str) else None)
-        if len(arten) == 1:
-            a = next(iter(arten))
-            if a and a != "wandern" and a in self.bereiche:
-                return a
-        return "strecke"
+            for u in o.get("unterkuenfte") or []:
+                if self.u_art.get(u):
+                    return self.u_art[u]
+        arten = {self.strecken_art(self.strecken[sid]) for o in opts for sid in o.get("strecken") or [] if sid in self.strecken}
+        if arten:
+            a = next(iter(arten)) if len(arten) == 1 else None
+            return a if a in self.arten else ALLGEMEIN
+        if any(o.get("folge") is not None for o in opts):
+            folgen = [a for a, d in self.arten.items() if d["grundform"] == "folge"]
+            return folgen[0] if len(folgen) == 1 else ALLGEMEIN
+        return ALLGEMEIN
 
     def werte(self, wo, roh, kriterien):
         """Werte einer Option, Unterkunft oder Strecke prüfen -> {Merkmal: {wert, quelle, geprueft, notiz, ungeprueft}}.
@@ -498,7 +540,7 @@ class Routen:
             d = kriterien.get(k)
             if d is None:
                 self.fehl(f"{wo}: Merkmal „{k}“ gibt es hier nicht (bekannt: {', '.join(kriterien) or 'keine'}). "
-                          f"Ein neues Merkmal unter merkmale: in routen.yaml oder an der Wahlstelle anlegen.")
+                          f"Ein neues Merkmal bei der Art in plan/arten.yaml oder an der Wahlstelle anlegen.")
                 continue
             if d.get("auto"):
                 self.fehl(f"{wo}: {d['name']} wird aus dem Plan berechnet und nicht eingetragen.")
@@ -553,56 +595,43 @@ class Routen:
         return out
 
     def merkmale_pruefen(self):
-        if not isinstance(self.grund, dict):
-            self.grund = {}
-        for b in self.bereiche:
-            self.katalog[b] = self.definitionen(f"engine/merkmale.yaml {b}", self.grund.get(b) or {}, b, grund=True)
-        eigen = self.r.get("merkmale") or {}
-        for b, roh in (eigen.items() if isinstance(eigen, dict) else []):
-            if b not in self.bereiche:
-                # eine Reise darf eine neue Art anlegen (z. B. restaurant), wenn sie ihre Merkmale gleich mitbringt
-                if not (re.fullmatch(ART_MUSTER, str(b)) and isinstance(roh, dict) and roh):
-                    self.fehl(f"merkmale: Bereich „{b}“ gibt es nicht (bekannt: {', '.join(self.bereiche)}). Eine neue Art "
-                              f"braucht einen Namen aus Kleinbuchstaben und mindestens ein Merkmal.")
-                    continue
-                self.bereiche += (b,)
-                self.katalog[b] = {}
-            self.katalog[b].update(self.definitionen(f"merkmale.{b}", roh or {}, b))
+        self.arten_pruefen()
+        if self.r.get("merkmale") is not None:
+            self.fehl("merkmale: in routen.yaml gibt es nicht mehr. Arten und Merkmale stehen je Art in plan/arten.yaml "
+                      "(docs/ontologie.md); eine Wahlstelle darf weiter eigene merkmale: ergänzen.")
         u_extra, s_extra = {}, {}
         for vid, w in self.wahl.items():
-            b = self.bereich(w)
-            if b not in self.bereiche:
-                self.fehl(f"Wahlstelle {vid}: bereich muss {', '.join(self.bereiche)} sein.")
-                b = "allgemein"
-            krit = dict(self.katalog[b])
-            krit.update(self.definitionen(f"Wahlstelle {vid}", w.get("merkmale") or {}, b))
+            b = self.art_der_wahl(w, vid)
+            krit = dict(self.katalog.get(b, {}))
+            krit.update(self.definitionen(f"Wahlstelle {vid}", w.get("merkmale") or {}, b, grundform=self.grundform(b)))
             self.kriterien[vid] = (b, krit)
             for o in w.get("optionen") or []:
                 if o.get("id") in self.option:
                     self.mk_option[o["id"]] = self.werte(o["id"], o.get("merkmale"), krit)
-                if b == "unterkunft":
+                if self.grundform(b) == "aufenthalt":
                     for u in o.get("unterkuenfte") or []:
                         u_extra.setdefault(u, {}).update(krit)
                 else:
                     for sid in o.get("strecken") or []:
                         s_extra.setdefault(sid, {}).update(krit)
         for uid, u in self.unterkuenfte.items():
-            krit = {**self.katalog["unterkunft"], **u_extra.get(uid, {})}
+            if self.u_art.get(uid) is None:   # Art unbekannt, schon gemeldet
+                continue
+            krit = {**self.katalog.get(self.u_art.get(uid), {}), **u_extra.get(uid, {})}
             self.mk_unterkunft[uid] = self.werte(uid, u.get("merkmale"), krit)
-        # Bewegungen (Strecken mit Art Fähre, Flug …): Werte dürfen an der Strecke stehen, wie bei Unterkünften an U-…
+        # Bewegungen: Werte dürfen an der Strecke stehen, wie bei Unterkünften an U-…
         for sid, st in self.strecken.items():
             if st.get("merkmale") is None:
                 continue
-            a = st.get("art", "wandern")
-            basis = self.katalog.get(a if isinstance(a, str) and a in self.katalog and a != "wandern" else "strecke", {})
+            basis = self.katalog.get(self.strecken_art(st), {})
             self.mk_strecke[sid] = self.werte(sid, st.get("merkmale"), {**basis, **s_extra.get(sid, {})})
 
-    def auto_werte(self, bereich, o):
-        """Berechnete Merkmale einer Option (Kennzahlen ihrer Strecken bzw. Tage)."""
-        s = None
-        if bereich == "strecke" and o.get("strecken"):
+    def auto_werte(self, art, o):
+        """Berechnete Merkmale einer Option (Kennzahlen ihrer Strecken bzw. Tage), je Grundform der Art."""
+        s, g = None, self.grundform(art)
+        if g == "bewegung" and o.get("strecken"):
             s = self.summe([{"strecken": o["strecken"], "nacht": None}])
-        elif bereich == "route" and o.get("folge"):
+        elif g == "folge" and o.get("folge"):
             s = self.option_summe(o)
         if not s:
             return {}
@@ -610,7 +639,7 @@ class Routen:
         werte = {"gehzeit": dauer(s["min"]) if s["min"] and "min" not in f else None,
                  "laenge": f"{s['km']:g} km".replace(".", ",") if s["km"] and "km" not in f else None,
                  "hoehenmeter": f"↑ {s['auf']:.0f} m, ↓ {s['ab']:.0f} m" if s["auf"] and not {"auf", "ab"} & f else None,
-                 "tage": (f"{s['tage']} Tage" if s["tage"] != 1 else "1 Tag") if bereich == "route" else None,
+                 "tage": (f"{s['tage']} Tage" if s["tage"] != 1 else "1 Tag") if g == "folge" else None,
                  "unterkuenfte": ", ".join(f"{n}× {k}" for k, n in s["unterkunftstypen"].items()) or None}
         return {k: {"wert": v, "auto": True} for k, v in werte.items() if v}
 
@@ -649,17 +678,18 @@ class Routen:
         return {"anschluss": {"wert": "; ".join(luecken) or "nahtlos", "auto": True, "notiz": notiz}}
 
     def merkmale_aus(self, vid, o):
-        b, krit = self.kriterien.get(vid, ("allgemein", {}))
+        b, krit = self.kriterien.get(vid, (ALLGEMEIN, {}))
+        g = self.grundform(b)
         mk = {}
-        if b == "unterkunft":
+        if g == "aufenthalt":
             for u in (o.get("unterkuenfte") or [])[:1]:
                 mk.update(self.mk_unterkunft.get(u, {}))
-        elif b != "route":
+        elif g == "bewegung":
             for sid in (o.get("strecken") or [])[:1]:
                 mk.update(self.mk_strecke.get(sid, {}))
         mk.update(self.mk_option.get(o.get("id"), {}))
         auto = self.auto_werte(b, o)
-        if b == "route":
+        if g == "folge":
             auto.update(self.anschluss(vid, o))
         mk.update({k: auto[d["auto"]] for k, d in krit.items() if d.get("auto") in auto})
         typ = next((self.unterkuenfte.get(u, {}).get("typ") for u in (o.get("unterkuenfte") or [])[:1]), None)
@@ -755,10 +785,9 @@ class Routen:
         if isinstance(n, dict):
             if n.get("ort") and n["ort"] not in self.orte:
                 self.fehl(f"{tid}: Ort {n['ort']} gibt es nicht.")
-            if n.get("kategorie") and n["kategorie"] not in KATEGORIEN:
-                self.fehl(f"{tid}: kategorie muss {', '.join(KATEGORIEN)} sein.")
+            a = self.art_von(n, f"{tid} nacht") if (n.get("typ") or n.get("art") or n.get("an_bord")) else None
             return {"ort": n.get("ort"), "hinweis": n.get("hinweis"), "typ": n.get("typ"), "an_bord": bool(n.get("an_bord")),
-                    "kategorie": kategorie(n) if (n.get("typ") or n.get("kategorie") or n.get("an_bord")) else None}
+                    "art": a, "kategorie": a}
         if ist("unterkunft", n):
             if n not in self.unterkuenfte:
                 self.fehl(f"{tid}: Unterkunft {n} gibt es nicht.")
@@ -927,7 +956,9 @@ class Routen:
             "orte": {k: {"name": v.get("name", k), "hinweis": v.get("hinweis")} for k, v in self.orte.items()},
             "strecken": {sid: self.strecke_aus(sid) for sid in sorted(set(self.strecken) | aktiv_strecken)},
             "unterkuenfte": self.unterkuenfte_aus(tage),
-            "kategorien": KATEGORIEN,
+            # Arten der Reise (plan/arten.yaml); „kategorien“ (Art -> Name) bleibt für die Seite bis Paket O-5
+            "arten": {a: dict(d) for a, d in self.arten.items()},
+            "kategorien": {**{a: d["name"] for a, d in self.arten.items()}, UNTERWEGS: "Unterwegs"},
             "aktiv_strecken": sorted(aktiv_strecken),
             "merkmale": {b: [{"id": k, **d} for k, d in krit.items()] for b, krit in self.katalog.items()},
             "warnungen": self.warnungen,
@@ -951,7 +982,7 @@ class Routen:
                 if vid in zwang:
                     self.fehl(f"Plan {pid}: zwei Optionen für {vid} ({zwang[vid]}, {oid}).")
                 zwang[vid] = oid
-            r = Routen(self.r, self.etappen, self.fragen, [], lambda *a: None, self.q, zwang, self.grund,
+            r = Routen(self.r, self.etappen, self.fragen, [], lambda *a: None, self.q, zwang, self.arten_roh,
                        entscheider=sorted(self.entscheider))
             erg = r.bauen()
             if not erg:
@@ -988,7 +1019,8 @@ class Routen:
             tag_min = 0
             for x in t["strecken"]:
                 st = self.strecke(x["id"] if isinstance(x, dict) else x)
-                if st.get("art", "wandern") != "wandern":
+                # Kennzahlen (Gehzeit, Höhenmeter, Länge) summieren nur Arten mit summiert: true (aus eigener Kraft)
+                if not (self.arten.get(self.strecken_art(st)) or {}).get("summiert"):
                     continue
                 w = kennwerte(st.get("kennzahlen"))
                 for k in ("min", "auf", "ab", "km"):
@@ -1000,9 +1032,9 @@ class Routen:
             if tag_min and (not s["laengster"] or tag_min > s["laengster"]["min"]):
                 s["laengster"] = {"min": tag_min, "nr": nr, "id": t.get("id")}
             n = t["nacht"] or {}
-            typ = self.unterkuenfte[n["unterkunft"]].get("typ") if n.get("unterkunft") in self.unterkuenfte else n.get("typ")
+            a = self.u_art.get(n["unterkunft"]) if n.get("unterkunft") in self.unterkuenfte else n.get("art")
             if n and not n.get("an_bord"):
-                typ = typ or "offen"
+                typ = (self.arten.get(a) or {}).get("name") or "offen"
                 s["unterkunftstypen"][typ] = s["unterkunftstypen"].get(typ, 0) + 1
         s["km"] = round(s["km"], 1)
         s["fehlend"] = sorted(s["fehlend"])
@@ -1047,8 +1079,8 @@ class Routen:
               if vid in (t.get("strecken") or []) or vid == t.get("nacht") or vid in (t.get("wahl") or [])]
         an_ids = [x for x in w.get("an") or [] if isinstance(x, str)]
         offen = not any(o["status"] == "gewaehlt" for o in opts)
-        b, krit = self.kriterien.get(vid, ("allgemein", {}))
-        return {"bereich": b, "kriterien": [{"id": k, **d} for k, d in krit.items()],
+        b, krit = self.kriterien.get(vid, (ALLGEMEIN, {}))
+        return {"bereich": b, "grundform": self.grundform(b), "kriterien": [{"id": k, **d} for k, d in krit.items()],
                 "id": vid, "titel": w.get("titel", vid), "art": w.get("art"), "frage": w.get("frage"),
                 "text": w.get("text", ""), "an": an, "an_ids": an_ids, "offen": offen, "optionen": opts}
 
@@ -1070,9 +1102,9 @@ class Routen:
 
     def strecke_aus(self, sid):
         s = self.strecke(sid)
-        # Bewegungen mit eigener Merkmalliste (Fähre, Flug …): Werte und Lücken wie bei Unterkünften (Paket 3, #18)
-        a = s.get("art")
-        b = a if isinstance(a, str) and a != "wandern" and a in self.katalog else None
+        # Bewegungen: Werte und Lücken nach der Art der Strecke (plan/arten.yaml), wie bei Unterkünften
+        b = self.strecken_art(s)
+        b = b if b in self.katalog else None
         mk = self.mk_strecke.get(sid, {})
         merkmale = {"bereich": b, "merkmale": mk,
                     "fehlt": [k for k, d in self.katalog[b].items() if zaehlt(d) and k not in mk]} if b else \
@@ -1094,10 +1126,12 @@ class Routen:
         aus = {}
         for uid, u in self.unterkuenfte.items():
             aus[uid] = {k: u.get(k) for k in ("name", "ort", "typ", "kontakt", "hinweis", "quelle", "frage")}
-            aus[uid]["kategorie"] = kategorie(u)
+            a = self.u_art.get(uid)
+            aus[uid]["art"] = a
+            aus[uid]["kategorie"] = a    # für die Seite bis Paket O-5
             aus[uid]["buchung"] = u.get("buchung", "offen")
             aus[uid]["naechte"] = naechte.get(uid, [])
             mk = self.mk_unterkunft.get(uid, {})
             aus[uid]["merkmale"] = mk
-            aus[uid]["fehlt"] = [k for k, d in self.katalog.get("unterkunft", {}).items() if zaehlt(d, u.get("typ")) and k not in mk]
+            aus[uid]["fehlt"] = [k for k, d in self.katalog.get(a, {}).items() if zaehlt(d, u.get("typ")) and k not in mk]
         return aus

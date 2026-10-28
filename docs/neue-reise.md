@@ -35,7 +35,7 @@ kontext/herkunft.md wann, von wem und auf welchem Weg die Reise angelegt wurde
 medien/             für Bilder, Karten, Tracks
 ```
 
-Eingeschaltet sind `rueckmeldungen`, `fragen`, `aufgaben` und `wuensche`. `varianten`, `karte`, `tagesseiten` und `waechter` schaltet ein:e Organisator:in zu, wenn die Planung beginnt. Ein Routenmodell (`plan/routen.yaml`, Aufbau in `engine/routen.py` und in der Beispielreise) kommt mit der Planung dazu: Start und Ende, Orte, Strecken, Unterkünfte, Wahlstellen. Dafür wird in `reise.json` der Eintrag `routen` ergänzt.
+Eingeschaltet sind `rueckmeldungen`, `fragen`, `aufgaben` und `wuensche`. `varianten`, `karte`, `tagesseiten` und `waechter` schaltet ein:e Organisator:in zu, wenn die Planung beginnt. Ein Routenmodell (`plan/routen.yaml`, Aufbau in `engine/routen.py` und in der Beispielreise) kommt mit der Planung dazu: Start und Ende, Orte, Strecken, Unterkünfte, Wahlstellen. Dafür wird in `reise.json` der Eintrag `routen` ergänzt. Dazu gehört `plan/arten.yaml`: die Arten der Reise (Hotel, Hütte, Zugfahrt, Reiseteil …) mit ihren Merkmalen, entwickelt im Gespräch (`docs/ontologie.md`; Anschauung in der Beispielreise). Die Vorlage legt sie leer an.
 
 ## Quellen übernehmen
 

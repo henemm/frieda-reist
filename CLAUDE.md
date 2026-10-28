@@ -11,7 +11,7 @@ Echte Reisen, Namen echter Personen, Serveradressen, geheime Pfade, Zugangsdaten
 ```
 engine/            bauen.py (Generator), routen.py (Routenmodell), reise.py (reise.yaml), gpx.py,
                    vorlage.html, sw.vorlage.js, rueckmeldungen.py (Dienst), konnektor.py (MCP), waechter.py (Wächter und
-                   Erinnerer, läuft täglich), merkmale.yaml,
+                   Erinnerer, läuft täglich), neu.py (neue Reise, IDs, arten-ableiten), reisevorlage/,
                    vendor/ (Fremdbibliotheken, siehe THIRD_PARTY.md), tests/
 betrieb/           Betrieb einer Instanz: Einarbeiten (KI je Reise), Veröffentlichen, Deploy, Freischalten, Wächter-Lauf,
                    Einrichten, Vorlagen für systemd und nginx, KI-Anweisung, einstellungen.beispiel

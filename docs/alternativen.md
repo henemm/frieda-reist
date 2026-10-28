@@ -7,32 +7,14 @@ Festgelegt am 26.10.2026.
 - **Wahlstelle** (`V-01`): eine Stelle im Plan mit mehreren Möglichkeiten. Wahlstellen gibt es auf jeder Ebene: ganze Route oder ein Reiseteil, eine Strecke, eine Unterkunft.
 - **Option** (`V-01.a`): eine Möglichkeit an einer Wahlstelle. Sie hat einen Status mit Verlauf (`vorgeschlagen`, `favorisiert`, `gewaehlt`, `verworfen`, `ersetzt`).
 - **Plan** (`P-A`): eine feste Kombination von Optionen über die ganze Reise (Reiter „Varianten“).
-- **Bereich oder Art** einer Wahlstelle: Er bestimmt, welche Merkmale verglichen werden. Grundbereiche sind `unterkunft`, `strecke`, `route` und `allgemein`, dazu kommen Arten: `faehre`, `flug`, `bahn`, `bus`, `mietwagen`, `essen`, `erlebnis` und jede Art, die eine Reise selbst anlegt. Der Generator leitet ihn aus den Optionen ab (`unterkuenfte` ergibt `unterkunft`, `folge` ergibt `route`, `strecken` ergibt die gemeinsame `art` der Strecken, wenn die Grundliste sie kennt, sonst `strecke`). Mit `bereich:` an der Wahlstelle lässt er sich festlegen (nötig für `essen`, `erlebnis` und eigene Arten, weil sie keinen eigenen Baustein haben).
+- **Art** der Dinge, zwischen denen eine Wahlstelle wählt (Feld `bereich:`): Sie bestimmt, welche Merkmale verglichen werden. Arten definiert allein die Reise in `plan/arten.yaml` (`docs/ontologie.md`). Fehlt `bereich:`, leitet der Generator die Art aus den Optionen ab: die Art der ersten Unterkunft, die gemeinsame Art der Strecken, die eine Folge-Art der Reise; sonst `allgemein` ohne Merkmale.
 - **Merkmal**: ein Vergleichskriterium mit Wert, zum Beispiel Preis pro Nacht oder Frühstück.
 
-## Merkmale: Mischform
+## Merkmale: je Reise, je Art
 
-1. **Grundliste** in `engine/merkmale.yaml`, je Bereich. Sie gilt für alle Reisen. Jedes Merkmal hat einen Namen und einen Typ (`text`, `geld`, `zahl`, `auswahl` mit `werte`). Es kann `veraenderlich` sein (dann braucht der Wert ein Prüfdatum). Dazu kommen Hinweise, wie Claude den Wert findet (`hilfe`) und wie Claude die Organisator:in fragt (`frage`). Merkmale mit `auto` berechnet der Generator (Gehzeit, Länge, Höhenmeter, Tage, Unterkünfte). Sie werden nie eingetragen.
-2. **Reise** ergänzt die Liste in `plan/routen.yaml`:
-   ```yaml
-   merkmale:
-     unterkunft:
-       onsen: {name: Onsen im Haus, typ: auswahl, werte: [ja, nein, unklar]}
-   ```
-3. **Wahlstelle** ergänzt für sich allein, ebenfalls mit `merkmale:`.
-4. **Stufe je Reise** (ADR-0001, Paket O-0, 28.10.2026): Jedes Merkmal hat eine Stufe `pflicht`, `empfohlen` (Vorgabe), `angeboten` oder `aus`. Nur `pflicht` und `empfohlen` erscheinen als „Fehlt noch“, zählen im Vergleich („3/7“), werden ab Status `fest` gemahnt und vom Wächter geprüft; `angeboten` wird nur gezeigt, wenn ein Wert da ist; `aus` gilt für diese Reise nicht und fehlt in der Liste der Claude-App. Eine Reise setzt die Stufe eines Grundlisten-Merkmals, indem sie unter `merkmale:` nur die Stufe angibt, auch je Unterkunftstyp (`typ` der Unterkunft, klein geschrieben, `"*"` für alle übrigen); eine Wahlstelle kann sie für sich wieder ändern:
-   ```yaml
-   merkmale:
-     unterkunft:
-       stornierung: {stufe: {"*": aus, refugi: empfohlen}}   # bei Hotels nicht relevant, bei Refugis schon
-       abendessen: {stufe: aus}
-   wahlstellen:
-     V-10:
-       merkmale: {abendessen: {stufe: empfohlen}}             # an dieser Stelle doch
-   ```
-   Das ist eine Brücke: Mit Paket O-1 entfällt die Grundliste, und jede Reise definiert ihre Arten und Merkmale selbst (`docs/adr/0001-kern.md`).
+Seit dem 28.10.2026 (ADR-0001, Paket O-1) gibt es keine Grundliste in der Software mehr. Jede Reise legt ihre Arten und deren Merkmale in `plan/arten.yaml` fest, entwickelt im Gespräch im AI-Client (Aufbau, Felder, Stufen, Zuordnung: `docs/ontologie.md`). Eine **Wahlstelle** ergänzt für sich allein mit `merkmale:` oder ändert die Stufe eines Merkmals ihrer Art (`merkmale: {abendessen: {stufe: empfohlen}}`). Nur `pflicht` und `empfohlen` erscheinen als „Fehlt noch“, zählen im Vergleich („3/7“), werden gemahnt und vom Wächter geprüft; `angeboten` wird nur gezeigt, wenn ein Wert da ist; `aus` gilt nicht.
 
-Die Liste gilt für alle Mitreisenden gemeinsam. Vorlieben Einzelner stehen als Notiz oder unter Dafür/Dagegen, nicht als eigene Gewichtung.
+Die Merkmale einer Art gelten für alle Mitreisenden gemeinsam. Vorlieben Einzelner stehen als Notiz oder unter Dafür/Dagegen, nicht als eigene Gewichtung.
 
 ## Arten statt eines festen Satzes von Bereichen
 
@@ -124,7 +106,7 @@ Jede Wahlstelle mit mindestens zwei gültigen Optionen hat dasselbe **Wahl-Modul
 
 Ida sagt zum Beispiel: „Es gibt noch eine Pension in Hohnstein.“
 
-1. Claude ruft die Merkmalliste ab, in der Claude-App mit `merkmale` (zu `V-…`, zu einer Strecke `E-…` oder mit `bereich`), in Claude Code aus `engine/merkmale.yaml` und `routen.yaml`.
+1. Claude ruft die Merkmalliste der Art ab, in der Claude-App mit `merkmale` (zu `V-…`, `U-…`, zu einer Strecke `E-…` oder mit `bereich`, einer Art der Reise), sonst aus `plan/arten.yaml` der Reise.
 2. Claude **recherchiert zuerst selbst** (Website, Buchungsportal, Wanderführer) und trägt veränderliche Werte mit Prüfdatum ein.
 3. Claude **fragt nur nach den Lücken**, gezielt nach dem Hinweis `frage`, zum Beispiel: „Hast du einen Preis? Ist Frühstück drin?“ In Claude Code geschieht das mit dem Fragewerkzeug (AskUserQuestion).
 4. In der Claude-App geht der Vorschlag mit `alternative_vorschlagen` weiter: von Organisator:innen als Auftrag, von Mitwirkenden als Rückmeldung der Art `Ergänzung`. Beim Einarbeiten entsteht daraus eine neue Option mit Status `vorgeschlagen`. Fehlt die Wahlstelle, legt Claude sie an der genannten ID neu an (planung braucht eine F-Frage). Neue Merkmale aus dem Vorschlag kommen unter `merkmale:` der Wahlstelle oder der Reise.

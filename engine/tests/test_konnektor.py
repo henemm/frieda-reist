@@ -474,7 +474,7 @@ def test_merkmale_und_alternative(dienst):
     basis, ablage = dienst
     t, f = werkzeug(basis, MITREISEND, "merkmale", ziel="V-03")
     assert not f and "Preis pro Nacht" in t and "85 €" in t and "Fehlt noch" in t and "fragen:" in t
-    t, f = werkzeug(basis, MITREISEND, "merkmale", bereich="strecke")
+    t, f = werkzeug(basis, MITREISEND, "merkmale", bereich="wandern")
     assert not f and "berechnet" in t
     t, f = werkzeug(basis, MITREISEND, "merkmale", ziel="T-01")
     assert f
@@ -531,7 +531,8 @@ def test_alternativen_paket3(dienst):
 
 def test_aehnliches_merkmal():
     from konnektor import aehnliches_merkmal
-    liste = [{"id": "geoeffnet", "name": "Geöffnet am Reisedatum"}, {"id": "preis", "name": "Preis pro Nacht"},
+    # generisch (Schreibweise, Wortstamm) und über Zweitnamen der Reise (auch); keine Wortliste in der Software (ADR-0001)
+    liste = [{"id": "geoeffnet", "name": "Geöffnet am Reisedatum"}, {"id": "preis", "name": "Preis pro Nacht", "auch": ["kosten"]},
              {"id": "fruehstueck", "name": "Frühstück"}]
     assert aehnliches_merkmal("oeffnung", liste)["id"] == "geoeffnet"
     assert aehnliches_merkmal("Öffnungszeiten", liste)["id"] == "geoeffnet"
@@ -539,3 +540,4 @@ def test_aehnliches_merkmal():
     assert aehnliches_merkmal("kosten", liste)["id"] == "preis"
     assert aehnliches_merkmal("frühstück", liste)["id"] == "fruehstueck"
     assert aehnliches_merkmal("pool", liste) is None and aehnliches_merkmal("sauna", liste) is None
+    assert aehnliches_merkmal("tarif", liste) is None   # kein Synonymwissen in der Software

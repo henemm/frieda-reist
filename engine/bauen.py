@@ -550,15 +550,17 @@ class Bauer:
             if "entscheider" in roh and self.reise_roh is not None:
                 self.fehler.append(f"{r_rel}: „entscheider“ steht jetzt in reise.yaml (personen mit rolle organisator).")
             organisator = [p["name"] for p in self.eck["personen"] if p["rolle"] == "organisator"]
-            route = Routen(roh, etappen, status, self.fehler, self.id_anlegen, r_rel,
+            # Arten und Merkmale der Reise (docs/ontologie.md): plan/arten.yaml neben routen.yaml
+            a_rel = str(Path(r_rel).with_name("arten.yaml"))
+            try:
+                arten = yaml.safe_load(self.lesen(a_rel)) if (self.reise_dir / a_rel).exists() else None
+            except yaml.YAMLError as e:
+                self.fehler.append(f"{a_rel}: kein gültiges YAML ({e}).")
+                arten = None
+            route = Routen(roh, etappen, status, self.fehler, self.id_anlegen, r_rel, arten=arten,
                            entscheider=organisator if self.reise_roh is not None else None,
                            wissen={i for i in self.ids if i.startswith("W-")}).bauen()
             verhalten_anwenden(route, self.eck["verhalten"])
-            for uid, u in ((route or {}).get("unterkuenfte") or {}).items():
-                if u.get("kategorie") == "sonstige":
-                    self.hinweise.append(f"{uid} ({u.get('typ') or 'ohne typ'}): Kategorie unbekannt; in routen.yaml "
-                                         "kategorie setzen (hotel, gasthaus, ferienwohnung, huette, herberge, camping, "
-                                         "unterwegs, privat).")
             for oid, wo in orte_inhalt.items():
                 if route and oid not in route["orte"]:
                     self.fehler.append(f"{wo}: Ort {oid} gibt es in routen.yaml nicht.")
