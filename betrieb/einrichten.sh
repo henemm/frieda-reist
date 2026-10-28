@@ -6,8 +6,9 @@
 #   frieda/betrieb/einrichten.sh --installieren  dasselbe, dann nach Rückfrage installieren (sudo, ändert /etc)
 #
 # Werte aus den Einstellungen der Instanz (einstellungen.beispiel); dazu FR_BENUTZER, FR_GRUPPE, FR_HOME (Vorgabe: wer das
-# Skript aufruft) und FR_PFAD (PATH der Dienste; claude, gh und node müssen darin liegen). Ohne --installieren ändert das
-# Skript nichts außerhalb des Ausgabeordners (EI_ZIEL, Vorgabe /tmp/<instanz>-einrichten).
+# Skript aufruft) und FR_PFAD (PATH der Dienste; claude, gh und node müssen darin liegen). Als Dienstbenutzer aufrufen,
+# damit die Anmeldung von Claude Code und gh geprüft wird. Ohne --installieren ändert das Skript nichts außerhalb des
+# Ausgabeordners (EI_ZIEL, Vorgabe /tmp/<instanz>-einrichten).
 # Zwei Instanzen auf einem Server: verschiedene FR_INSTANZ, FR_SEITEN und Ports; das Skript bricht ab, wenn eine andere
 # installierte Instanz dieselben Ports nutzt.
 set -euo pipefail
@@ -35,7 +36,11 @@ echo "Voraussetzungen:"
 if "$FR_PYTHON" -c 'import yaml' 2> /dev/null; then ok "Python $FR_PYTHON"; else problem "Python mit yaml: $FR_PYTHON (python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt)"; fi
 [ -n "$FR_ADRESSE" ] && ok "Adresse $FR_ADRESSE" || problem "FR_ADRESSE (öffentliche Adresse der Seiten) in den Einstellungen"
 git -C "$FR_WURZEL" ls-remote -q origin > /dev/null 2>&1 && ok "git erreicht origin" || problem "git -C $FR_WURZEL ls-remote origin geht nicht ohne Rückfrage"
-PATH="$FR_PFAD" command -v claude > /dev/null && ok "Claude Code im PATH der Dienste" || problem "claude nicht in FR_PFAD ($FR_PFAD)"
+if PATH="$FR_PFAD" command -v claude > /dev/null; then
+  # Ohne Anmeldung bricht jeder KI-Lauf ab; „claude auth status“ kostet nichts
+  PATH="$FR_PFAD" claude auth status --json 2> /dev/null | grep -q '"loggedIn": *true' && ok "Claude Code angemeldet" \
+    || problem "Claude Code ist nicht angemeldet (claude auth login als $FR_BENUTZER)"
+else problem "claude nicht in FR_PFAD ($FR_PFAD)"; fi
 if PATH="$FR_PFAD" command -v gh > /dev/null; then
   PATH="$FR_PFAD" gh auth status > /dev/null 2>&1 && ok "gh angemeldet" || problem "gh ist nicht angemeldet (gh auth login als $FR_BENUTZER)"
 else problem "gh nicht in FR_PFAD"; fi

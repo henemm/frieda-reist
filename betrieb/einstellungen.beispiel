@@ -56,3 +56,8 @@ FR_ADRESSE=https://reisen.example.org
 
 # Ordner für Sperrdateien. (/tmp)
 #FR_SPERREN=/tmp
+
+# Kennung mit Kontakt gegenüber OpenStreetMap (Werkzeuge für Inhalte, docs/werkzeuge.md) und Sprachen der Namen.
+# (Name der Software, de,en)
+#FR_KENNUNG=Beispiel-Reisen/1 (betrieb@example.org)
+#FR_SPRACHEN=de,en

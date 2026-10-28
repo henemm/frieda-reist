@@ -15,8 +15,9 @@ engine/            bauen.py (Generator), routen.py (Routenmodell), reise.py (rei
                    vendor/ (Fremdbibliotheken, siehe THIRD_PARTY.md), tests/
 betrieb/           Betrieb einer Instanz: Einarbeiten (KI je Reise), Veröffentlichen, Deploy, Freischalten, Wächter-Lauf,
                    Einrichten, Vorlagen für systemd und nginx, KI-Anweisung, einstellungen.beispiel
+werkzeuge/         Werkzeuge für Inhalte aus dem Netz: Grundkarte, Punkte aus OpenStreetMap, Wasserstellen
 beispiel/reisen/   erfundene Beispielreise, Demo und Testgrundlage
-docs/              Produktbild, Alternativen und Merkmale, Design und Bausteine, Konnektor, Betrieb
+docs/              Produktbild, Alternativen und Merkmale, Design und Bausteine, Konnektor, Betrieb, Werkzeuge
 ```
 
 Der Generator sucht Reisen in `./reisen/` des aktuellen Ordners (`--reisen`, `--ziel` zum Ändern).
@@ -24,7 +25,7 @@ Der Generator sucht Reisen in `./reisen/` des aktuellen Ordners (`--reisen`, `--
 ## Regeln
 
 - Änderungen gelten für alle Reisen: nichts Reisespezifisches in die Engine, Einstellungen gehören in `reise.yaml` der Reise.
-- Änderungen gelten für alle Instanzen: nichts Instanzspezifisches in `betrieb/` (Pfade, Adressen, Benutzer, Meldeweg kommen aus `betrieb/einstellungen.env` des Reisen-Repos, `docs/betrieb.md`).
+- Änderungen gelten für alle Instanzen: nichts Instanzspezifisches in `betrieb/`, `werkzeuge/` oder die Engine (Pfade, Adressen, Benutzer, Meldeweg, Kennung kommen aus `betrieb/einstellungen.env` des Reisen-Repos, `docs/betrieb.md`; Vorgaben der Engine in `engine/instanz.py`).
 - Bibliotheken statt Eigenbau; neue Fremdbestandteile mit Lizenz in `engine/vendor/` und `THIRD_PARTY.md`.
 - Tests: `engine/.venv/bin/python -m pytest -q engine/tests` muss ohne echte Reisen grün sein. Neue Funktionen bekommen Tests, wenn nötig mit Ergänzungen der Beispielreise (erfunden, als Beispielwert markiert).
 - Braucht der Konnektor oder der Rückmeldedienst ein neues eigenes Modul, gehört es in die Liste in `betrieb/deploy.sh` (ein Test prüft das).

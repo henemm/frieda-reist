@@ -565,3 +565,44 @@ def test_skripte_sind_ausfuehrbar():
     for p in BETRIEB.glob("*.sh"):
         if p.name != "gemeinsam.sh":
             assert os.access(p, os.X_OK), p.name
+
+
+# ---------- Vorgaben der Software ohne Instanzbezug (engine/instanz.py) ----------
+
+def test_instanz_vorgaben(tmp_path, monkeypatch):
+    import instanz
+    for k in list(os.environ):
+        if k.startswith(("FR_", "RM_", "KN_")):
+            monkeypatch.delenv(k)
+    monkeypatch.chdir(tmp_path)
+    # ohne alles: allgemeine Vorgabe, kein Name einer Instanz
+    assert instanz.seiten() == Path("/srv/frieda") and instanz.ablage() == Path("/srv/frieda/_rueckmeldungen")
+    assert instanz.zugaenge() == Path("/srv/frieda/_konnektor/zugaenge.json") and "frieda-reist" in instanz.kennung()
+    # Einstellungen der Instanz im aktuellen Ordner (Aufruf von Hand im Reisen-Repo)
+    (tmp_path / "betrieb").mkdir()
+    (tmp_path / "betrieb/einstellungen.env").write_text("# x\nFR_INSTANZ=probe\nFR_KENNUNG=\"Probe/1 (ida@example.org)\"\n")
+    assert instanz.seiten() == Path("/srv/probe") and instanz.ablage() == Path("/srv/probe/_rueckmeldungen")
+    assert instanz.kennung() == "Probe/1 (ida@example.org)"
+    # ein Dienst, der nur die Ablage kennt, findet die Seiten daneben
+    monkeypatch.chdir("/")
+    monkeypatch.setenv("RM_ABLAGE", "/srv/andere/_rueckmeldungen")
+    assert instanz.seiten() == Path("/srv/andere") and instanz.zugaenge() == Path("/srv/andere/_konnektor/zugaenge.json")
+    # ausdrücklich gesetzte Werte gelten
+    monkeypatch.setenv("KN_SEITEN", "/x/seiten")
+    monkeypatch.setenv("KN_ZUGAENGE", "/x/z.json")
+    assert instanz.seiten() == Path("/x/seiten") and instanz.zugaenge() == Path("/x/z.json")
+    assert instanz.ablage() == Path("/srv/andere/_rueckmeldungen")
+
+
+def test_software_ohne_pfade_einer_instanz():
+    """Keine Ordner oder Adressen einer echten Installation als Vorgabe in der Software (#67)."""
+    for p in ENGINE.glob("*.py"):
+        assert not re.search(r"/srv/(?!frieda\b)\w+|/home/\w+", p.read_text(encoding="utf-8")), p.name
+
+
+def test_einrichten_prueft_anmeldung_von_claude(tmp_path):
+    bin_ = tmp_path / "bin"
+    ausfuehrbar(bin_ / "claude", '#!/bin/sh\n[ "$1 $2" = "auth status" ] && echo \'{"loggedIn": \'"$ANGEMELDET"\'}\'\n')
+    pfad = f"{bin_}:/usr/bin:/bin"
+    assert "FEHLT   Claude Code ist nicht angemeldet" in einrichten(tmp_path, FR_PFAD=pfad, ANGEMELDET="false").stdout
+    assert "ok      Claude Code angemeldet" in einrichten(tmp_path, FR_PFAD=pfad, ANGEMELDET="true").stdout
