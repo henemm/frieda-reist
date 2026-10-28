@@ -41,7 +41,7 @@ REGEL_WERTE = {"entscheidungsweg": ("direkt", "auftrag"), "konflikt": ("offene_f
                "einladen": ("bestimmer", "einbringer"), "anmeldung": ("uebergang", "noetig")}
 KONTINGENT_ARTEN = ("punkte", "anzahl")
 DARSTELLUNG = ("start", "tiefe", "varianten_titel", "plan_reiter", "gruppen", "mahnungen")
-PERSON_FELDER = {"name", "rolle", "reist", "notiz"}
+PERSON_FELDER = {"name", "rolle", "reist", "notiz", "von", "bis"}   # von/bis: reist nur einen Teil mit
 ALTE_ECKDATEN = ("titel", "untertitel", "pfad", "kurz")
 
 
@@ -345,8 +345,16 @@ class Reise:
             if p["name"] in namen:
                 self.fehl(f"Name „{p['name']}“ kommt zweimal vor; Namen müssen eindeutig sein.")
             namen.add(p["name"])
+            teil = {}
+            for f in ("von", "bis"):   # reist nur einen Teil mit (Reiseüberblick: „Charlotte ab 23.5.“)
+                if p.get(f) is None:
+                    continue
+                if isinstance(p[f], datetime.date):
+                    teil[f] = p[f].isoformat()
+                else:
+                    self.fehl(f"Person „{k}“: {f} muss ein Datum sein (JJJJ-MM-TT).")
             aus.append({"schluessel": str(k), "name": p["name"], "rolle": p["rolle"],
-                        "reist": bool(p.get("reist", True)), "notiz": p.get("notiz") or ""})
+                        "reist": bool(p.get("reist", True)), "notiz": p.get("notiz") or "", **teil})
         if not self.alt and not any(p["rolle"] == "bestimmer" for p in aus):
             self.fehl("Mindestens eine Person braucht die Rolle bestimmer.")
         return aus

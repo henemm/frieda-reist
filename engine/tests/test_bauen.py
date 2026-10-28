@@ -380,6 +380,9 @@ def test_reise_yaml(reise, tmp_path):
     assert baue(reise, tmp_path)["reise"]["zeitraum"] == {"von": "2027-02-06", "bis": "2027-02-13"}
     assert [(p["schluessel"], p["rolle"], p["reist"]) for p in r["personen"]] == \
         [("hanna", "bestimmer", True), ("ben", "einbringer", False), ("kim", "reisend", True)]
+    # Wer nur einen Teil mitreist, hat von/bis (Reiseüberblick: „Kim ab 8.2.“)
+    mit_reise_yaml(reise, lambda x: x["personen"]["kim"].update(von=datetime.date(2027, 2, 8)))
+    assert baue(reise, tmp_path)["reise"]["personen"][2]["von"] == "2027-02-08"
     assert r["bausteine"] == ["varianten", "fragen", "wuensche"]
     assert r["regeln"]["kontingent"] == {"art": "punkte", "je_person": 4} and r["regeln"]["einladen"] == "bestimmer"
     # Manifest nimmt den Titel aus reise.yaml
@@ -393,6 +396,7 @@ def test_reise_yaml(reise, tmp_path):
     (lambda r: r["status"].update(verlauf=[]), "braucht einen Verlauf"),
     (lambda r: r["personen"]["hanna"].update(rolle="einbringer"), "Mindestens eine Person braucht die Rolle bestimmer"),
     (lambda r: r["personen"]["ben"].update(rolle="chef"), "rolle muss eines von"),
+    (lambda r: r["personen"]["kim"].update(bis="Ende Mai"), "bis muss ein Datum sein"),
     (lambda r: r["personen"]["ben"].update(name="Hanna"), "kommt zweimal vor"),
     (lambda r: r["personen"]["ben"].update(alter=40), "unbekannte Felder alter"),
     (lambda r: r.update(bausteine=["zauberei"]), "unbekannter Baustein „zauberei“"),
