@@ -70,6 +70,9 @@ def test_reiseueberblick(tmp_path, browser):
         assert [x[2] for x in a["tage"]] == ["gebucht", "nicht gebucht", "nicht gebucht", None], a["tage"]
         assert not a["breit"], breite
         assert a["planZiel"] and a["nachKlick"] == "#T-01", a
+        # Offene Fragen sprechen ohne Kennungen: „(V-01.a)“ wird zur Pille mit dem Namen der Möglichkeit
+        assert a["fragen"]["kennungen"] == [] and a["fragen"]["gruppen"] == ["Zu klären", "Geklärt"], a["fragen"]
+        assert len(a["fragen"]["pillen"]) == 2 and all(a["fragen"]["pillen"]), a["fragen"]
 
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
