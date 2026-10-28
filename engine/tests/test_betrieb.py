@@ -46,7 +46,7 @@ def einstellungen(tmp_path, datei_text, **umgebung):
     (tmp_path / "betrieb").mkdir(exist_ok=True)
     (tmp_path / "betrieb/einstellungen.env").write_text(datei_text)
     namen = ["FR_INSTANZ", "FR_TITEL", "FR_SEITEN", "FR_ABLAGE", "FR_DIENST", "FR_KN_ADRESSE", "FR_PYTHON", "RM_ABLAGE",
-             "KN_SEITEN", "KN_ZUGAENGE", "KN_BASIS", "FR_ADRESSE", "FR_BETREIBER"]
+             "KN_SEITEN", "KN_ZUGAENGE", "KN_BASIS", "FR_ADRESSE", "FR_BETREIBER", "FR_UMZUG_NACH"]
     skript = f'. "{BETRIEB}/gemeinsam.sh"; ' + "; ".join(f'echo "{n}=${{{n}:-}}"' for n in namen)
     r = subprocess.run(["bash", "-c", skript], capture_output=True, text=True,
                        env={**SAUBER, "FR_WURZEL": str(tmp_path), **umgebung})
@@ -61,6 +61,9 @@ def test_einstellungen_aus_datei_mit_vorgaben(tmp_path):
     assert w["RM_ABLAGE"] == "/srv/probe/_rueckmeldungen" and w["KN_ZUGAENGE"] == "/srv/probe/_konnektor/zugaenge.json"
     assert w["FR_KN_ADRESSE"] == w["KN_BASIS"] == "https://reisen.example.org/probe-mcp"
     assert w["FR_BETREIBER"] == "Ida und Karl" and w["FR_PYTHON"] == f"{tmp_path}/engine/.venv/bin/python"
+    assert w["FR_UMZUG_NACH"] == ""
+    r2, w2 = einstellungen(tmp_path, "FR_UMZUG_NACH=https://neu.example.org\n")   # wird an bauen.py weitergereicht (exportiert)
+    assert w2["FR_UMZUG_NACH"] == "https://neu.example.org"
     # keine Shell-Auswertung: der Wert bleibt Text, es wird nichts ausgeführt
     assert w["FR_TITEL"] == "$(touch boese)" and not (Path.cwd() / "boese").exists()
 

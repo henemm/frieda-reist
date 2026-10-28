@@ -16,6 +16,10 @@ FR_BETREIBER=Ida
 # Öffentliche Adresse, unter der nginx die Seiten ausliefert (ohne / am Ende). Nötig zum Freischalten.
 FR_ADRESSE=https://reisen.example.org
 
+# Nur bei einem Umzug der Seiten auf eine andere Domain: neue Adresse (ohne / am Ende). Dann leiten die gebauten Seiten dorthin
+# weiter und der Service Worker räumt den Speicher auf (docs/betrieb.md). (leer: kein Umzug)
+#FR_UMZUG_NACH=https://neu.example.org
+
 # Adresse des Konnektors für die Claude-App. (<FR_ADRESSE>/<FR_INSTANZ>-mcp)
 #FR_KN_ADRESSE=https://reisen.example.org/beispiel-mcp
 
