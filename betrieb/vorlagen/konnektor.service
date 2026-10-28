@@ -1,0 +1,31 @@
+# Konnektor der Instanz __INSTANZ__ (engine/konnektor.py): Reisen in der Claude-App, ein Prozess für alle Reisen.
+# Erzeugt von frieda/betrieb/einrichten.sh. Code aus __DIENST__ (legt deploy.sh an). Liest die veröffentlichten
+# Seiten und die Zugänge, schreibt in die Rückmelde-Ablage und neue Links nach __KONNEKTOR__.
+[Unit]
+Description=__TITEL__: Konnektor (Claude-App)
+After=network.target __INSTANZ__-rueckmeldungen.service
+
+[Service]
+User=__BENUTZER__
+Group=__GRUPPE__
+Environment=RM_ABLAGE=__ABLAGE__
+Environment=KN_SEITEN=__SEITEN__
+Environment=KN_ZUGAENGE=__KONNEKTOR__/zugaenge.json
+Environment=KN_RUECKMELDEDIENST=http://127.0.0.1:__RM_PORT__
+Environment=KN_HOST=127.0.0.1
+Environment=KN_PORT=__KN_PORT__
+Environment=KN_BASIS=__KN_ADRESSE__
+# Konten: FR_BASIS und Mailweg, Datei 600, nicht im Repo (docs/konten.md)
+EnvironmentFile=-__DIENST__/konten.env
+ExecStart=/usr/bin/python3 __DIENST__/konnektor.py dienst
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadOnlyPaths=__SEITEN__
+ReadWritePaths=__ABLAGE__ __KONNEKTOR__
+
+[Install]
+WantedBy=multi-user.target

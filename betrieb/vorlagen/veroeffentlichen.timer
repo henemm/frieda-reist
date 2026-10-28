@@ -1,0 +1,10 @@
+# Prüft alle 5 Minuten, ob main einen neuen Stand hat (__INSTANZ__-veroeffentlichen.service).
+[Unit]
+Description=__TITEL__: alle 5 Minuten auf neuen Stand prüfen
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

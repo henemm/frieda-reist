@@ -1,0 +1,28 @@
+# Rückmeldedienst der Instanz __INSTANZ__ (engine/rueckmeldungen.py), ein Prozess für alle Reisen.
+# Erzeugt von frieda/betrieb/einrichten.sh. Der Code läuft aus __DIENST__ (legt deploy.sh an), nicht aus dem
+# Repo, damit ein Branch im Repo nie den laufenden Dienst ändert. deploy.sh startet ihn bei neuem Code neu.
+[Unit]
+Description=__TITEL__: Rückmeldedienst
+After=network.target
+
+[Service]
+User=__BENUTZER__
+Group=__GRUPPE__
+Environment=RM_ABLAGE=__ABLAGE__
+Environment=RM_SEITEN=__SEITEN__
+Environment=RM_HOST=127.0.0.1
+Environment=RM_PORT=__RM_PORT__
+# Konten: FR_BASIS und Mailweg, Datei 600, nicht im Repo (docs/konten.md)
+EnvironmentFile=-__DIENST__/konten.env
+ExecStart=/usr/bin/python3 __DIENST__/rueckmeldungen.py dienst
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=__ABLAGE__
+ReadOnlyPaths=__DIENST__
+
+[Install]
+WantedBy=multi-user.target

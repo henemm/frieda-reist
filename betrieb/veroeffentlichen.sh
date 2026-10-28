@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# Veröffentlicht automatisch, was auf main liegt (docs/betrieb.md, Veröffentlichen): holt origin/main in den
+# Veröffentlichungsordner, bringt die Software (Submodul) auf den festgehaltenen Stand und ruft deploy.sh für jede Reise
+# auf, sobald main einen neuen Stand hat. Gestartet alle 5 Minuten vom Timer <instanz>-veroeffentlichen.timer und
+# gleich nach dem Einarbeiten.
+# Aufruf von Hand:  frieda/betrieb/veroeffentlichen.sh          (nur wenn main neu ist)
+#                   frieda/betrieb/veroeffentlichen.sh --immer  (auch ohne neuen Stand)
+# Ist der Veröffentlichungsordner nicht auf main oder nicht sauber, wird nichts angefasst (jemand arbeitet gerade dort).
+# Ein fehlgeschlagener Deploy wird beim nächsten Lauf wiederholt, weil nur ein gelungener Lauf den Stand merkt.
+# Überwachung: Ist FR_HEARTBEAT_VEROEFFENTLICHEN gesetzt (Adresse, in <FR_DIENST>/betrieb.env), wird sie nur nach
+# fachlichem Erfolg abgerufen: nichts Neues oder alles veröffentlicht. Übersprungene Läufe und Fehler rufen sie nicht ab.
+# Neue Reisen: Nach dem Veröffentlichen ruft das Skript freischalten.sh für jede Reise auf (legt einer neuen Reise ihren
+# geheimen Link an, prüft die Seite, schreibt seiten.json) und stellt bei jedem Lauf ausstehende Links neuer Reisen aus
+# der Claude-App zu. Links stehen nie im Protokoll.
+# Für Tests überschreibbar: VF_STAND, VF_DEPLOY, VF_FREISCHALTEN, VF_AUSSTEHEND, VF_SPERRE, VF_HEARTBEAT.
+set -euo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
+
+erfolg_melden() {
+  local hb="${VF_HEARTBEAT:-${FR_HEARTBEAT_VEROEFFENTLICHEN:-}}"
+  [ -n "$hb" ] || return 0
+  curl -fsS -m 10 --retry 3 -o /dev/null "$hb" || echo "Warnung: Heartbeat nicht erreicht."
+}
+
+zustellen() {  # ausstehende Links neuer Reisen (nur wenn welche anstehen)
+  [ -s "$ausstehend" ] || return 0
+  "$FR_PYTHON" "$FR_BETRIEB/einarbeiten_hilfe.py" ausstehend "$wurzel" "$ausstehend" \
+    || echo "Warnung: Links neuer Reisen nicht alle zugestellt, nächster Lauf versucht es wieder."
+}
+
+# Alles steckt in main(), damit bash das Skript ganz einliest, bevor git es mit dem Submodul eventuell ersetzt.
+main() {
+  local stand deploy immer="" alt neu reise fehler="" freischalten aus
+  wurzel="$FR_WURZEL"
+  stand="${VF_STAND:-$FR_DIENST/veroeffentlicht}"
+  deploy="${VF_DEPLOY:-$FR_BETRIEB/deploy.sh}"
+  freischalten="${VF_FREISCHALTEN:-$FR_BETRIEB/freischalten.sh}"
+  ausstehend="${VF_AUSSTEHEND:-$FR_DIENST/neue-reisen-ausstehend.jsonl}"
+  [ "${1:-}" = "--immer" ] && immer=1
+
+  exec 9>"${VF_SPERRE:-$FR_SPERREN/$FR_INSTANZ-veroeffentlichen.lock}"
+  flock -n 9 || { echo "Läuft schon, übersprungen."; return 0; }
+
+  cd "$wurzel"
+  if [ "$(git rev-parse --abbrev-ref HEAD)" != main ]; then
+    echo "Veröffentlichungsordner ist nicht auf main ($(git rev-parse --abbrev-ref HEAD)), übersprungen."; return 0
+  fi
+  if ! git diff --quiet HEAD || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+    echo "Ungesicherte Änderungen im Veröffentlichungsordner, übersprungen."; return 0
+  fi
+
+  git fetch -q origin main
+  neu="$(git rev-parse origin/main)"
+  alt="$(cat "$stand" 2>/dev/null || true)"
+  if [ -z "$immer" ] && [ "$neu" = "$alt" ]; then zustellen; erfolg_melden; return 0; fi
+
+  git merge -q --ff-only origin/main || { echo "FEHLER: main lässt sich nicht vorspulen (lokale Commits?)."; return 1; }
+  # Software (Submodul) auf den Stand bringen, den main festhält
+  git submodule update --init --quiet || { echo "FEHLER: Submodul der Software lässt sich nicht holen."; return 1; }
+  echo "Veröffentliche $(git log -1 --format='%h %s')"
+  for reise in reisen/*/reise.json; do
+    [ -e "$reise" ] || continue
+    reise="$(basename "$(dirname "$reise")")"
+    "$deploy" "$reise" || { echo "FEHLER: Deploy von $reise fehlgeschlagen."; fehler=1; }
+  done
+  [ -n "$fehler" ] && return 1
+  # Freischalten: neue Reisen bekommen ihren Link, alle werden geprüft (Ausgabe ohne Links, die sind geheim)
+  for reise in reisen/*/reise.json; do
+    [ -e "$reise" ] || continue
+    reise="$(basename "$(dirname "$reise")")"
+    aus="$("$freischalten" "$reise" 2>&1)" || echo "Warnung: $reise nicht freigeschaltet."
+    printf '%s\n' "$aus" | grep -E '^(FEHLER|Freigeschaltet)' || true
+  done
+  mkdir -p "$(dirname "$stand")"
+  echo "$neu" > "$stand"
+  zustellen
+  echo "Fertig: $(git log -1 --format='%h') ist online."
+  erfolg_melden
+}
+
+wurzel=""; ausstehend=""
+main "$@"
+exit

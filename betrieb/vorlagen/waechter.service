@@ -1,0 +1,15 @@
+# Wächter und Erinnerer (frieda/betrieb/waechter.sh, docs/waechter.md), täglich vom Timer daneben gestartet.
+# Erzeugt von frieda/betrieb/einrichten.sh. Log: journalctl -u __INSTANZ__-waechter -n 100
+[Unit]
+Description=__TITEL__: Wächter und Erinnerer
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=__BENUTZER__
+Group=__GRUPPE__
+Environment=PATH=__PFAD__
+Environment=FR_WURZEL=__WURZEL__
+EnvironmentFile=-__DIENST__/betrieb.env
+ExecStart=__WURZEL__/frieda/betrieb/waechter.sh
+TimeoutStartSec=10min

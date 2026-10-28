@@ -1,0 +1,11 @@
+# Stündlich nach neuen Rückmeldungen schauen (__INSTANZ__-einarbeiten.service), Sicherheitsnetz neben dem Pfad-Wächter.
+[Unit]
+Description=__TITEL__: stündlich Rückmeldungen einarbeiten
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

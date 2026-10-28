@@ -1,0 +1,12 @@
+# Täglicher Lauf des Wächters und Erinnerers (__INSTANZ__-waechter.service). Ein Lauf ohne Neues kostet nichts;
+# ein Prüfauftrag startet das Einarbeiten (höchstens einer pro Woche und Reise).
+[Unit]
+Description=__TITEL__: täglich Wächter und Erinnerer
+
+[Timer]
+OnCalendar=*-*-* 07:10:00
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
