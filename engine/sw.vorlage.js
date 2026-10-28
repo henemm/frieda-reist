@@ -16,12 +16,14 @@
 const VERSION = "__VERSION__";
 const DATEIEN = __DATEIEN__;
 const STAND = __STAND__;  // Datei -> Inhalts-Hash; gespeichert wird unter „Datei?v=Hash“
+const UMZUG = __UMZUG__;  // null oder neue Adresse (Ursprung): Die Seiten sind umgezogen, dieser Worker räumt nur noch auf
 
 const scope = new URL("./", self.location).pathname;
 const PREFIX = "rh:" + scope + ":";
 const SPEICHER = PREFIX + VERSION;
 
 self.addEventListener("install", event => {
+  if (UMZUG) { self.skipWaiting(); return; }  // nichts vorab speichern, sofort übernehmen
   event.waitUntil((async () => {
     const cache = await caches.open(SPEICHER);
     let fehlt = 0;
@@ -58,7 +60,16 @@ self.addEventListener("message", event => {
   if (event.data && event.data.typ === "uebernehmen") self.skipWaiting();
 });
 
+/* Umzug: gespeicherte Seiten verwerfen und den Worker abmelden. Ein Worker darf Fenster nicht auf eine andere Domain
+   schicken (Client.navigate nur im selben Ursprung); das übernimmt die frisch geladene Seite (bauen.py, Kopf von index.html).
+   Dass die Fenster neu laden, löst der Wechsel des Workers aus (controllerchange in vorlage.html). */
+async function umziehen() {
+  for (const name of await caches.keys()) if (name.startsWith(PREFIX)) await caches.delete(name);
+  await self.registration.unregister();
+}
+
 self.addEventListener("activate", event => {
+  if (UMZUG) { event.waitUntil(umziehen()); return; }
   event.waitUntil((async () => {
     for (const name of await caches.keys()) {
       if (name.startsWith(PREFIX) && name !== SPEICHER) await caches.delete(name);
@@ -68,6 +79,7 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("fetch", event => {
+  if (UMZUG) return;
   const req = event.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);

@@ -160,3 +160,21 @@ def test_gleicher_inhalt_gleiche_version(tmp_path):
                        env={**os.environ, "PYTHONHASHSEED": saat})
         versionen.append(sw_daten(ziel)[0])
     assert versionen[0] == versionen[1]
+
+
+def test_umzug_service_worker(tmp_path, monkeypatch):
+    """Ohne Umzug bleibt der Worker wie gehabt; mit Adresse räumt er auf und schickt Fenster zur neuen Domain."""
+    monkeypatch.delenv("FR_UMZUG_NACH", raising=False)
+    r = mini_reise(tmp_path)
+    bauen.bauen(r, tmp_path / "alt")
+    assert "const UMZUG = null;" in (tmp_path / "alt/sw.js").read_text(encoding="utf-8")
+    bauen.bauen(r, tmp_path / "neu", "https://neu.example/")
+    sw = (tmp_path / "neu/sw.js").read_text(encoding="utf-8")
+    assert 'const UMZUG = "https://neu.example";' in sw and "__UMZUG__" not in sw
+    assert "self.skipWaiting()" in sw and "registration.unregister()" in sw and "navigate" not in sw.split("function umziehen")[1].split("self.addEventListener")[0].replace("Client.navigate", "")
+    html = (tmp_path / "neu/index.html").read_text(encoding="utf-8")
+    assert html.count('location.replace("https://neu.example" + location.pathname') == 1
+    assert "location.replace(" not in (tmp_path / "alt/index.html").read_text(encoding="utf-8").split("</head>")[0]
+    monkeypatch.setenv("FR_UMZUG_NACH", "https://aus-umgebung.example")
+    bauen.bauen(r, tmp_path / "env")
+    assert 'const UMZUG = "https://aus-umgebung.example";' in (tmp_path / "env/sw.js").read_text(encoding="utf-8")
