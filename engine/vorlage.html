@@ -288,10 +288,30 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .rmeintrag .kopfzeile{font-size:0.8125rem;color:var(--mut)}
 .rmeintrag .text{white-space:pre-wrap;margin:3px 0}
 .rmeintrag .antwort{font-size:0.9375rem;background:var(--acc2);border-radius:8px;padding:6px 9px;margin-top:5px}
-.ag{display:flex;gap:10px;align-items:flex-start}
-.ag>.ag-text{flex:1;min-width:0}
-.ag .titel{font-weight:600}
+.ag{display:flex;gap:12px;align-items:flex-start;padding:12px 0}
+.ag>.ag-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.ag-kopf{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.ag .titel{font-weight:600;line-height:1.35}
 .ag.zu .titel{text-decoration:line-through;color:var(--mut)}
+.ag-meta{display:flex;flex-wrap:wrap;gap:2px 6px;font-size:0.875rem;color:var(--mut)}
+.ag-punkt{color:var(--line)}
+.ag-frist{color:var(--fg);font-weight:600}
+.ag-frist.ueber,.ag-wichtig{color:var(--warn);font-weight:600}
+.ag-bezug{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.ag-bezug a{font-size:0.8125rem;line-height:1.3;padding:3px 10px;border-radius:var(--r-pille);background:var(--acc2);color:var(--acc);text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ag-notiz{font-size:0.9375rem;color:var(--mut);line-height:1.45}
+.pico button.ag-bearbeiten{flex:none;width:auto;margin:0;padding:4px 0;min-height:32px;border:0;background:none;box-shadow:none;color:var(--acc);font-size:0.875rem;font-weight:600}
+.ag-liste{display:flex;flex-direction:column}
+.ag-liste>.ag+.ag{border-top:1px solid var(--line)}
+.ag-liste>.rmeintrag:first-child{border-top:0}
+.ag-gruppe{margin-top:22px}
+.ag-gruppe h3.reise-titel{display:flex;align-items:center;gap:8px;font-size:1.1rem;margin:0 0 2px}
+.ag-leiste{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 4px}
+.pico .ag-leiste .reiterleiste{margin:0;display:inline-flex;max-width:100%}
+.pico .reiterleiste button[aria-pressed="true"]{background:var(--card);color:var(--fg);--pico-color:var(--fg);box-shadow:var(--schatten-klein)}
+.pico button.neu-knopf{width:auto;margin:0;min-height:44px;padding:0 18px;border-radius:var(--r-pille);font-weight:600}
+.pico button.neu-knopf::before{content:"+";margin-right:6px;font-weight:700}
+details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
 .pico button.haken{width:30px;height:30px;flex:none;padding:0;margin:0;border-radius:8px;border:2px solid var(--acc);background:transparent;color:var(--acc);font-size:1.0625rem;line-height:1;box-shadow:none}
 .pico button.haken.an{background:var(--acc);color:var(--bg)}
 
@@ -532,12 +552,15 @@ dialog#rm::backdrop{background:rgba(0,0,0,.35)}
    schmal, bei vielen Wünschen seitlich blättern (nur das Brett, nie die Seite) */
 .brett{display:flex;flex-direction:column;margin-top:6px}
 .brett .spalte{min-width:0}
-.brett .spalte h3{font-size:1.0625rem;margin:12px 0 6px}
+.brett .spalte h3{display:flex;align-items:center;gap:8px;font-size:1rem;margin:18px 0 8px}
 .brett .leer-spalte h3{color:var(--mut);font-weight:500}
 @media (max-width:699px){.brett .leer-spalte{display:none}}
 @media (min-width:700px){.brett{flex-direction:row;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:6px}
   .brett .spalte{flex:1 1 220px;min-width:180px}.brett .leer-spalte{flex:0 0 auto;min-width:0}}
-.wu-karte{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 8px;overflow-wrap:anywhere}
+.wu-karte{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin:0 0 10px;overflow-wrap:anywhere;display:flex;flex-direction:column;gap:6px}
+.wu-karte .chips:empty{display:none}
+.pico .wu-karte .chips{margin:0}
+.wu-kopf .text{font-weight:600;line-height:1.4}
 .wu-karte.erlebt{border-color:var(--acc)}
 .wu-karte.weg .text{color:var(--mut)}
 .wu-kopf{display:flex;gap:10px;align-items:flex-start}
@@ -548,10 +571,29 @@ dialog#rm::backdrop{background:rgba(0,0,0,.35)}
 .wu-knoepfe{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
 .pico .wu-knoepfe button{margin:0}
 .wu-zahl{min-width:1.6em;text-align:center;font-weight:600}
-.wu-bilanz{margin:6px 0 4px}
-.wu-person{padding:3px 0}
-details.wu-neu{margin:8px 0}
-details.wu-neu summary{cursor:pointer;font-weight:600}
+.wu-intro{max-width:var(--lese);color:var(--mut);margin:4px 0 18px}
+.wu-bilanz{margin:24px 0 4px}
+.wu-person{padding:4px 0}
+/* Neuer Wunsch: Fläche, Wunsch über die ganze Breite, Link und Name nebeneinander, Senden rechts */
+.pico details.wu-neu{margin:0 0 8px;max-width:var(--lese)}
+.pico details.wu-neu>summary{display:flex;align-items:center;gap:8px;min-height:44px;font-weight:700;font-size:1.1rem;color:var(--fg);cursor:pointer}
+.pico details.wu-neu[open]>summary{color:var(--fg)}
+.pico details.wu-neu>summary .sym{width:1.2rem;height:1.2rem}
+.pico #wuForm{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+.pico #wuForm label{display:flex;flex-direction:column;gap:6px;margin:0;font-weight:600;font-size:0.9375rem}
+.pico #wuForm :is(textarea,input){margin:0;font-weight:400}
+.pico #wuForm .meldung{margin:0}
+.pico #wuForm .meldung:empty{display:none}
+.wu-optional{color:var(--mut);font-weight:400}
+.wu-felder{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:700px){.wu-felder{grid-template-columns:1fr 1fr}}
+.wu-name{display:flex;flex-direction:column;gap:6px}
+.pico .wu-name :is(input,.meldung){margin:0}
+.wu-senden{display:flex;justify-content:flex-end}
+.pico .wu-senden button{width:auto;margin:0;padding:0 22px;min-height:44px;border-radius:var(--r-pille)}
+.wu-leer{display:flex;flex-direction:column;align-items:center;gap:4px;max-width:var(--lese);margin:16px 0;padding:28px 16px;border:1.5px dashed color-mix(in srgb,var(--mut) 35%,transparent);border-radius:var(--r-gross)}
+.wu-leer .sym{width:1.6rem;height:1.6rem;color:var(--acc);margin-bottom:4px}
+.wu-leer b{color:var(--fg)}
 
 /* ==================== 6 Vorlagen: Teile der Ansichten ==================== */
 .zurueck{display:inline-block;margin:0 0 8px;padding:6px 0;text-decoration:none;font-weight:600}
@@ -563,8 +605,7 @@ details.neben>summary{font-weight:700;padding:10px 2px;color:var(--warn)}
 .treffer .in{font-size:0.8125rem;color:var(--mut)}
 .treffer .s{font-size:0.9375rem;margin-top:3px}
 .pico h3.gruppe,.teil{font:700 1.2rem/1.3 var(--font-text);letter-spacing:-.01em;color:var(--fg);margin:1.6em 0 .2em}
-.agfilter{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
-.agfilter button.on{background:var(--acc);color:var(--bg);border-color:var(--acc)}
+
 #agForm .zwei{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
 /* ---------- Tagesseite (B2): Reihenfolge je Gerät ----------
    Handy und Tablet (unterwegs): untereinander Tageskasten, Karte, Der Weg, Unterwegs nachschlagen, Orte, Hintergrund,
@@ -2831,7 +2872,7 @@ function rmFormular(id) {
         nameFeld("rmName"),
         el("p", {class: "meldung", id: "rmMeldung"},
           API_OK === false ? "Gerade keine Verbindung: Die Rückmeldung wird hier gespeichert und später gesendet." :
-          "Geht an Claude Code, meist in wenigen Minuten eingearbeitet. Der Stand erscheint hier und unter „Rückmeldungen“."),
+          "Geht an Frieda, meist in wenigen Minuten eingearbeitet. Der Stand erscheint hier und unter „Rückmeldungen“."),
         el("button", {type: "submit", class: ""}, "Senden"))));
   dlg.dataset.ziel = id;
   dlg.dataset.ag = "";
@@ -2899,7 +2940,7 @@ function eintragGruppen(m, gruppen, alle, zeichne, davor) {
 const jetztSenden = () => el("button", {type: "button", class: "klein", "data-nachreichen": "1"}, "Jetzt senden");
 function ansichtRueckmeldungen(m) {
   m.append(el("h2", {}, "Rückmeldungen"));
-  m.append(el("p", {class: "meldung"}, "Zu jeder Stelle kann man über die Sprechblase daneben etwas anmerken, fragen oder korrigieren. Claude Code prüft jede Rückmeldung, arbeitet sie ein (meist in wenigen Minuten) und schreibt hier dazu, was daraus geworden ist."));
+  m.append(el("p", {class: "meldung"}, "Zu jeder Stelle kann man über die Sprechblase daneben etwas anmerken, fragen oder korrigieren. Frieda prüft jede Rückmeldung, arbeitet sie ein (meist in wenigen Minuten) und schreibt hier dazu, was daraus geworden ist."));
   if (KANN_RM) m.append(el("button", {type: "button", class: "outline", "data-rm": "allgemein"}, "Allgemeine Rückmeldung zur Reise"));
   if (API_OK === false) m.append(el("p", {class: "meldung"}, "Gerade keine Verbindung zum Rückmeldedienst – angezeigt wird der zuletzt geladene Stand."));
   eintragGruppen(m, [["Noch nicht gesendet", () => true]], AUSGANG, e => rmEintrag(e, true), jetztSenden);
@@ -3010,13 +3051,13 @@ function wuKarte(w) {
   if (!gesendet) c.append(chip("offen", "noch nicht gesendet"));
   else if (w.status === "neu") c.append(chip("leise", "wird geprüft"));
   else if (w.status === "rueckfrage") c.append(chip("offen", "Rückfrage"));
-  if (KONTINGENT.art === "punkte" && w.punkte) c.append(chip("plan", "●".repeat(Math.min(w.punkte, 5)) + " " + w.punkte + (w.punkte === 1 ? " Punkt" : " Punkte"), {title: "So wichtig ist der Wunsch der Person"}));
+  if (KONTINGENT.art === "punkte" && w.punkte) c.append(chip("", "●".repeat(Math.min(w.punkte, 5)) + " " + w.punkte + (w.punkte === 1 ? " Punkt" : " Punkte"), {title: "So wichtig ist der Wunsch der Person"}));
   if (w.nachreichen) c.append(chip("offen", "wird nachgereicht"));
   k.append(c);
   k.append(el("div", {class: "kopfzeile"}, `${w.name || "?"} · ${datumKurz(w.erstellt)}`,
     w.quelle ? [" · ", /^https?:\/\//.test(w.quelle) ? el("a", {href: w.quelle, target: "_blank", rel: "noopener"}, "Link") : w.quelle] : ""));
-  const links = ids => ids.map((b, i) => [i ? ", " : "", el("a", {href: "#" + b}, b + (titelZu(b) ? " " + titelZu(b) : ""))]);
-  if (w.kommentar) k.append(el("div", {class: "antwort"}, el("b", {}, "Claude: "), w.kommentar));
+  const links = ids => ids.map((b, i) => [i ? ", " : "", el("a", {href: "#" + b, title: b}, titelZu(b) || "eine Stelle im Handbuch")]);
+  if (w.kommentar) k.append(el("div", {class: "antwort"}, el("b", {}, "Frieda: "), w.kommentar));
   const v = w.vorschlag;
   if (v && w.status !== "verworfen" && ((v.bezug || []).length || v.notiz)) k.append(el("div", {class: "wu-vorschlag"},
     el("b", {}, "Vorschlag: "), (v.bezug || []).length ? ["passt zu ", links(v.bezug)] : "", v.notiz ? el("div", {}, v.notiz) : null,
@@ -3042,29 +3083,31 @@ let WU_ENTWURF = {text: "", quelle: ""};
 function ansichtWuensche(m) {
   m.append(el("h2", {}, "Wünsche"));
   const punkte = KONTINGENT.art === "punkte";
-  m.append(el("p", {}, "Was möchtest du auf dieser Reise erleben? Ein Ort, ein Erlebnis, ein Essen – auch eine vage Idee ist willkommen. " +
-    "Claude Code prüft jeden Wunsch, meist in wenigen Minuten, ob und wo er in die Reise passt. Einplanen entscheidet ein Bestimmer (in der Claude-App). " +
+  m.append(el("p", {class: "wu-intro"}, "Was möchtest du auf dieser Reise erleben? Ein Ort, ein Erlebnis, ein Essen – auch eine vage Idee ist willkommen. " +
+    "Frieda prüft jeden Wunsch, meist in wenigen Minuten, ob und wo er in die Reise passt. Einplanen entscheidet, wer die Reise bestimmt. " +
     (punkte ? `Jede Person hat ${KONTINGENT.je_person} Punkte für die eigenen Wünsche: je mehr Punkte, desto wichtiger.` :
       `Jede Person kann bis zu ${KONTINGENT.je_person} Wünsche gleichzeitig einbringen.`)));
-  if (KANN_WUNSCH) m.append(el("details", {class: "wu-neu", open: !RM.some(e => e.art === "Wunsch") || !!WU_ENTWURF.text},
-    el("summary", {}, "Neuer Wunsch"),
+  // Neuer Wunsch als Fläche (man handelt dort): Wunsch, darunter Link und Name nebeneinander, Senden rechts
+  if (KANN_WUNSCH) m.append(el("details", {class: "wu-neu karte flaeche", open: !RM.some(e => e.art === "Wunsch") || !!WU_ENTWURF.text},
+    el("summary", {}, symbol("wuensche", "etikett-sym"), "Neuer Wunsch"),
     el("form", {id: "wuForm"},
-      el("label", {for: "wuText"}, "Dein Wunsch"),
-      el("textarea", {id: "wuText", required: true, maxlength: 4000,
-        placeholder: "z. B. eine bestimmte Aussicht, ein Bad im See, ein Lokal, das Freunde empfohlen haben …"}, WU_ENTWURF.text),
-      el("label", {for: "wuQuelle"}, "Link (optional, z. B. Instagram, Webseite, Karte)"),
-      el("input", {id: "wuQuelle", maxlength: 300, autocomplete: "off", inputmode: "url", value: WU_ENTWURF.quelle}),
-      nameFeld("wuName"),
+      el("label", {for: "wuText"}, "Dein Wunsch",
+        el("textarea", {id: "wuText", required: true, maxlength: 4000, rows: 3,
+          placeholder: "z. B. eine bestimmte Aussicht, ein Bad im See, ein Lokal, das Freunde empfohlen haben …"}, WU_ENTWURF.text)),
+      el("div", {class: "wu-felder"},
+        el("label", {for: "wuQuelle"}, el("span", {}, "Link ", el("span", {class: "wu-optional"}, "(optional)")),
+          el("input", {id: "wuQuelle", maxlength: 300, autocomplete: "off", inputmode: "url", placeholder: "Instagram, Webseite, Karte …", value: WU_ENTWURF.quelle})),
+        el("div", {class: "wu-name"}, nameFeld("wuName"))),
       el("p", {class: "meldung", id: "wuMeldung"}, API_OK === false ? "Gerade keine Verbindung: Der Wunsch wird hier gespeichert und später gesendet." : ""),
-      el("button", {type: "submit"}, "Wunsch senden"))));
+      el("div", {class: "wu-senden"}, el("button", {type: "submit"}, "Wunsch senden")))));
   if (KANN_ERLEBT) m.append(el("p", {class: "meldung"}, "Unterwegs: Was ihr erlebt habt, hier abhaken (☐). Das geht auch ohne Netz und wird nachgereicht."));
   const alle = wuAlle();
   if (API_OK === false || BR_AUSGANG.length) m.append(el("p", {class: "meldung"}, "Gerade keine Verbindung – angezeigt wird der zuletzt geladene Stand."));
   if (AUSGANG.some(e => e.art === "Wunsch")) m.append(jetztSenden());
-  if (!alle.length) { m.append(el("div", {class: "leer"}, "Noch keine Wünsche. Der erste kann von dir sein.")); return; }
+  if (!alle.length) { m.append(el("div", {class: "leer wu-leer"}, symbol("wuensche"), el("b", {}, "Noch keine Wünsche"), el("span", {}, "Der erste kann von dir sein."))); return; }
   // Bilanz je Person: alle sehen sie
   const bl = wuBilanz(alle);
-  m.append(el("div", {class: "wu-bilanz"}, el("h3", {}, "Bilanz"), bl.map(b => el("div", {class: "wu-person"},
+  m.append(el("div", {class: "wu-bilanz"}, el("h3", {class: "reise-titel"}, "Wer wünscht sich was"), bl.map(b => el("div", {class: "wu-person"},
     el("b", {}, b.name), " ",
     el("span", {class: "kopfzeile"}, [`${b.wuensche} ${b.wuensche === 1 ? "Wunsch" : "Wünsche"}`, b.eingeplant ? `${b.eingeplant} eingeplant` : "",
       b.erlebt ? `${b.erlebt} erlebt` : "", punkte ? `${b.frei} von ${KONTINGENT.je_person} Punkten frei` : `noch ${b.frei} frei`].filter(Boolean).join(" · "))))));
@@ -3073,7 +3116,7 @@ function ansichtWuensche(m) {
   for (const [s, t] of WU_SPALTEN) {
     const l = alle.filter(w => w.spalte === s).sort(sortiert);
     brett.append(el("section", {class: "spalte" + (l.length ? "" : " leer-spalte"), "data-spalte": s},
-      el("h3", {}, `${t} (${l.length})`), l.map(wuKarte)));
+      el("h3", {}, t, el("span", {class: "kap-zahl"}, String(l.length))), l.map(wuKarte)));
   }
   m.append(brett);
 }
@@ -3212,26 +3255,28 @@ function nameHolen() {
 
 function agKnopf() { offenZahl(); }
 
+// Molekül Aufgabe (überarbeitet 28.10.2026): Haken, Titel, darunter Frist, Zuständig und die Stellen mit ihrem Namen statt
+// der Kennung; die Notiz leise; „Bearbeiten“ als kleines Wort rechts. Die Kennung steht nur im Tooltip und im Formular.
 function agEintrag(a, mitBezug) {
   const zu = !agOffen(a);
-  const d = el("div", {class: "rmeintrag ag" + (zu ? " zu" : "")});
+  const d = el("div", {class: "rmeintrag ag" + (zu ? " zu" : "") + (ueberfaellig(a) ? " ueber" : ""), title: a.id});
   d.append(el(KANN_AG ? "button" : "span", {type: KANN_AG ? "button" : false, class: "haken" + (a.status === "erledigt" ? " an" : ""), "data-ag-haken": KANN_AG ? a.id : false,
-    "aria-label": a.status === "erledigt" ? `${a.id} wieder öffnen` : `${a.id} abhaken`}, a.status === "erledigt" ? "✓" : ""));
+    "aria-label": a.status === "erledigt" ? `„${a.titel}“ wieder öffnen` : `„${a.titel}“ abhaken`}, a.status === "erledigt" ? "✓" : ""));
   const t = el("div", {class: "ag-text"});
-  t.append(el("div", {}, el("span", {class: "titel"}, a.titel), " ", el("span", {class: "zid"}, a.id)));
-  const c = el("div", {class: "chips"});
-  if (a.status === "in_arbeit" || a.status === "entfaellt") c.append(chip("leise", AG_STATUS[a.status]));
-  if (a.prioritaet === "hoch") c.append(chip("ag-hoch", "wichtig"));
-  if (a.prioritaet === "niedrig") c.append(chip("leise", "kann warten"));
-  if (a.frist) c.append(chip(ueberfaellig(a) ? "ag-ueber" : "", (ueberfaellig(a) ? "überfällig seit " : "bis ") + tagMonat(a.frist)));
-  if (a.ab && agOffen(a)) c.append(chip("leise", "ab " + tagMonat(a.ab)));
-  if (a.zustaendig) c.append(chip("leise", a.zustaendig));
-  if (a.status === "erledigt" && a.erledigt) c.append(chip("leise", "erledigt " + tagMonat(a.erledigt)));
-  if (c.childNodes.length) t.append(c);
-  if (mitBezug && (a.bezug || []).length) t.append(el("div", {class: "kopfzeile"}, "an: ",
-    a.bezug.map((b, i) => [i ? ", " : "", el("a", {href: "#" + b}, b + (titelZu(b) ? " " + titelZu(b) : ""))])));
-  if (a.notiz) t.append(el("div", {class: "text"}, a.notiz));
-  if (KANN_AG) t.append(el("button", {type: "button", class: "outline klein", "data-ag-edit": a.id}, "Bearbeiten"));
+  t.append(el("div", {class: "ag-kopf"}, el("span", {class: "titel"}, a.titel),
+    KANN_AG ? el("button", {type: "button", class: "ag-bearbeiten", "data-ag-edit": a.id, "aria-label": `„${a.titel}“ bearbeiten`}, "Bearbeiten") : null));
+  const meta = [];
+  if (a.frist) meta.push(el("span", {class: "ag-frist" + (ueberfaellig(a) ? " ueber" : "")}, (ueberfaellig(a) ? "überfällig seit " : "bis ") + tagMonat(a.frist)));
+  if (a.ab && agOffen(a)) meta.push(el("span", {}, "ab " + tagMonat(a.ab)));
+  if (a.zustaendig) meta.push(el("span", {}, a.zustaendig));
+  if (a.prioritaet === "hoch") meta.push(el("span", {class: "ag-wichtig"}, "wichtig"));
+  if (a.prioritaet === "niedrig") meta.push(el("span", {}, "kann warten"));
+  if (a.status === "in_arbeit" || a.status === "entfaellt") meta.push(el("span", {}, AG_STATUS[a.status]));
+  if (a.status === "erledigt" && a.erledigt) meta.push(el("span", {}, "erledigt " + tagMonat(a.erledigt)));
+  if (meta.length) t.append(el("div", {class: "ag-meta"}, meta.flatMap((x, i) => i ? [el("span", {class: "ag-punkt", "aria-hidden": "true"}, "·"), x] : [x])));
+  if (mitBezug && (a.bezug || []).length) t.append(el("div", {class: "ag-bezug"},
+    a.bezug.map(b => el("a", {href: "#" + b, title: b}, titelZu(b) || "eine Stelle im Handbuch"))));
+  if (a.notiz) t.append(el("div", {class: "ag-notiz"}, a.notiz));
   d.append(t);
   return d;
 }
@@ -3311,24 +3356,26 @@ async function agHaken(agid) {
 
 function ansichtAufgaben(m) {
   m.append(el("h2", {}, "Aufgaben"));
-  m.append(el("p", {class: "meldung"}, "Aufgaben hängen an einer Stelle im Handbuch (z. B. U-13 oder T-07) oder an der Reise allgemein. Alle können sie anlegen, abhaken und ändern; jede Änderung steht im Verlauf. Auch über die Sprechblase an jeder Stelle."));
-  if (KANN_AG) m.append(el("button", {type: "button", class: "outline", "data-ag-neu": ""}, "+ Neue Aufgabe"));
+  m.append(el("p", {class: "meldung"}, "Was zu tun ist, für einen Tag, eine Unterkunft oder die ganze Reise. Alle können Aufgaben anlegen, abhaken und ändern; jede Änderung bleibt im Verlauf. Zu einer bestimmten Stelle geht es auch über die Sprechblase dort."));
   if (AG_OK === false) m.append(el("p", {class: "meldung"}, "Gerade keine Verbindung – angezeigt wird der zuletzt geladene Stand."));
-  const f = el("div", {class: "agfilter"});
-  const filter = [["alle", "Alle"], ...(NAME ? [["meine", "Meine (" + NAME + ")"]] : []), ["ohne", "Ohne Zuständige"]];
+  // Filter als Segmentleiste (wie die Reiter), daneben „Neue Aufgabe“
+  const f = el("div", {class: "agfilter reiterleiste", role: "toolbar", "aria-label": "Aufgaben filtern"});
+  const filter = [["alle", "Alle"], ...(NAME ? [["meine", "Meine"]] : []), ["ohne", "Ohne Zuständige"]];
   if (!filter.some(([k]) => k === AG_FILTER)) AG_FILTER = "alle";
-  for (const [k, t] of filter) f.append(el("button", {type: "button", class: "outline klein" + (AG_FILTER === k ? " on" : ""), "data-ag-filter": k}, t));
-  m.append(f);
+  for (const [k, t] of filter) f.append(el("button", {type: "button", "aria-pressed": String(AG_FILTER === k), "aria-selected": String(AG_FILTER === k), "data-ag-filter": k}, t));
+  m.append(el("div", {class: "ag-leiste"}, f, KANN_AG ? el("button", {type: "button", class: "neu-knopf", "data-ag-neu": ""}, "Neue Aufgabe") : null));
   const passt = a => AG_FILTER === "alle" || (AG_FILTER === "meine" ? (a.zustaendig || "").toLowerCase() === NAME.toLowerCase() : !a.zustaendig);
   const l = AG.filter(passt).sort(agSortierung);
   const gruppen = [["Überfällig", ueberfaellig], ["Offen", a => agOffen(a) && !ueberfaellig(a) && !spaeter(a)],
     ["Später möglich", a => spaeter(a) && !ueberfaellig(a)]];
   for (const [t, g] of gruppen) {
     const x = l.filter(g);
-    if (x.length) { m.append(el("h3", {}, `${t} (${x.length})`)); for (const a of x) m.append(agEintrag(a, true)); }
+    if (x.length) m.append(el("section", {class: "ag-gruppe"}, el("h3", {class: "reise-titel"}, t, el("span", {class: "kap-zahl"}, String(x.length))),
+      el("div", {class: "ag-liste"}, x.map(a => agEintrag(a, true)))));
   }
   const zu = l.filter(a => !agOffen(a));
-  if (zu.length) m.append(el("details", {}, el("summary", {}, `Erledigt oder entfallen (${zu.length})`), zu.map(a => agEintrag(a, true))));
+  if (zu.length) m.append(el("details", {class: "kapitel ag-erledigt"}, el("summary", {}, el("span", {class: "kap-text"}, el("span", {class: "kap-titel"}, "Erledigt oder entfallen")),
+    el("span", {class: "kap-zahl"}, String(zu.length))), el("div", {class: "ag-liste"}, zu.map(a => agEintrag(a, true)))));
   if (!l.length) m.append(el("div", {class: "leer"}, AG.length ? "Keine Aufgaben für diesen Filter." : "Noch keine Aufgaben."));
 }
 

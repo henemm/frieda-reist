@@ -133,6 +133,14 @@ Ist ein Plan gewählt, heißt der erste Reiter **„Reise“** und zeigt die Rei
 
 **Buchung:** Gebucht ist eine Unterkunft, die in `routen.yaml` eine andere Buchung als `offen` trägt (`buchung: gebucht`); ohne Angabe gilt `offen`.
 
+## Aufgaben und Wünsche (28.10.2026)
+
+Beide Ansichten sprechen die Sprache der Mitreisenden, nicht die des Systems:
+
+- **Keine Kennungen im Text.** Eine Aufgabe nennt ihre Stellen mit Namen („Tag 2 · Stadt Wehlen → Bastei → Hohnstein“, „Pension Burgblick“) als hellgrüne Pillen; die Kennung steht nur im Tooltip und im Formular. Ebenso der Vorschlag an einem Wunsch. Erklärtexte nennen „Frieda“ statt „Claude Code“.
+- **Aufgabe** (`agEintrag`): Haken, Titel, rechts das Wort „Bearbeiten“; darunter Frist (fett, überfällig in Warnfarbe), Zuständig und Wichtigkeit als eine Zeile mit Punkten; die Notiz leise. Gruppen („Überfällig“, „Offen“, „Später möglich“) mit Zahl als Marke; Erledigtes als zugeklapptes Kapitel. Filter als Segmentleiste wie die Reiter, daneben „+ Neue Aufgabe“ als Pille.
+- **Wünsche:** „Neuer Wunsch“ ist eine Fläche (man handelt dort) auf Lesebreite: Wunsch über die ganze Breite, darunter Link und Name nebeneinander (am Handy untereinander), „Wunsch senden“ rechts. Ohne Wünsche ein gestrichelter Hinweis mit Symbol. Spalten des Bretts mit Zahl als Marke, Karten mit fettem Wunsch, Punkte als leise Marke.
+
 ## Kennung und Rückmeldung (B2, 27.10.2026)
 
 Die Kennung (Atom `zid`: T-01, V-05 …) ist die Anschrift jeder Rückmeldung. Im Alltag braucht niemand sie, deshalb steht sie nie in der Seite. Es gilt **„Symbol oder Wort, nie beides“**: Bedienelemente, die man nur vielleicht braucht, sind ein Symbol mit Tooltip; was man oft braucht, ist ein Wort ohne Symbol („Alternativen vergleichen“, Reiter, „← Plan“, „Tag 3 →“).
