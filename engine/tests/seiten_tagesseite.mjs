@@ -33,6 +33,11 @@ for (const breite of [390, 1300]) {
       // Regel 9: unterwegs keine Sprechblase in Vorschauen (Orte des Tages) und an Zugeklapptem (Quellen)
       sichtbarVorschau: [...document.querySelectorAll(".vorschau .zid-box, details:not([open]) > summary .zid-box")].filter(x => getComputedStyle(x).display !== "none").length,
       vorschauen: document.querySelectorAll(".vorschau .zid-box").length,
+      zugeklappt: document.querySelectorAll("details:not([open]) > summary .zid-box").length,
+      // Hintergrund als Kapitel, alle zu; Unterwegs nachschlagen als getönte Fläche; Der Weg gekürzt mit „Weiterlesen“
+      kapitel: [document.querySelectorAll(".ebene-hintergrund details.kapitel").length, document.querySelectorAll(".ebene-hintergrund details.kapitel[open]").length],
+      getoent: getComputedStyle(document.querySelector(".ebene-unterwegs")).backgroundColor !== getComputedStyle(document.body).backgroundColor,
+      weiterlesen: [...document.querySelectorAll(".ebene-weg .weiterlesen")].filter(x => !x.hidden).length,
     };
   });
   a.offen = await p.evaluate(offen);
@@ -56,6 +61,12 @@ for (const breite of [390, 1300]) {
   a.fenster = await p.evaluate(() => ({offen: document.querySelector("#rm").open, kennung: (document.querySelector("#rm .kennung") || {}).textContent,
     kopieren: !!document.querySelector("#rm [data-kopieren]")}));
   await p.keyboard.press("Escape");
+  // Kapitel: immer nur eines offen; „Weiterlesen“ zeigt den ganzen Weg
+  const kap = p.locator(".ebene-hintergrund details.kapitel > summary .kap-titel");
+  await kap.nth(0).click(); await p.waitForTimeout(100); await kap.nth(1).click(); await p.waitForTimeout(100);
+  a.kapitelOffen = await p.evaluate(() => [...document.querySelectorAll(".ebene-hintergrund details.kapitel[open]")].map(x => x.id));
+  await p.locator(".ebene-weg .weiterlesen:not([hidden])").first().click();
+  a.nachWeiterlesen = await p.evaluate(() => document.querySelectorAll(".ebene-weg .weg-text.kurz").length);
   // Tiefenlinks: Abschnitt in einem Reiter, in den Quellen (aufgeklappt) und im Hintergrund
   a.tiefe = {};
   for (const id of ["E-01.wegpunkte", "E-01.quellen-und-pruefung", "E-01.tipps"]) {

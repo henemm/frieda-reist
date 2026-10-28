@@ -39,7 +39,7 @@
 :root{--plan-a:#c62a2a;--plan-b:#008a7e;--plan-c:#7a4db0;--plan-d:#b07800;--sea:#d9e6ea;--land:#eceadf;--land-edge:#b7b4a3;--peak:#8a8573;--water:#9cc3d1;--bus:#6f7772;--skip:#9a9a90;--kat-hotel:#1f3b57;--kat-gasthaus:#8a4b2a;--kat-ferienwohnung:#6a4c93;--kat-huette:#2c6e49;--kat-herberge:#3f7f8c;--kat-camping:#7a7a1f;--kat-unterwegs:#555a50;--kat-privat:#a0446a;--kat-sonstige:#6f7772;--bg:#f8f8f5;--fg:#1d2420;--mut:#5b645e;--ocker:#6a756e;--card:#ffffff;--line:#e4e5df;--acc:#1f7a57;--acc2:#e3f1ea;--warn:#9a5b00;--warnbg:#fbeed6;--mark:#ffe58a}
 @media (prefers-color-scheme:dark){:root{--plan-a:#e8507a;--plan-b:#2fa9a0;--plan-c:#a07ad6;--plan-d:#b98a00;--sea:#14232a;--land:#222823;--land-edge:#3d453e;--peak:#8d8a7c;--water:#2f5e70;--bus:#8d958f;--skip:#6d716c;--kat-hotel:#7fa9d6;--kat-gasthaus:#d39a6f;--kat-ferienwohnung:#b49ae0;--kat-huette:#5cbf86;--kat-herberge:#79c3cf;--kat-camping:#c9c96a;--kat-unterwegs:#a9ad9f;--kat-privat:#e08fb0;--kat-sonstige:#8d958f;--bg:#151816;--fg:#eceee9;--mut:#a5aca6;--ocker:#a5aca6;--card:#1d211e;--line:#2c312d;--acc:#6fd0a5;--acc2:#1f3329;--warn:#f0c46a;--warnbg:#3a3017;--mark:#6b5a10}}
 /* Formen: Radien (klein für Knöpfe, normal für Karten, Kachel, groß für die Fläche, an der man handelt, Pille) und Schatten */
-:root{--r-klein:8px;--r:12px;--r-kachel:14px;--r-gross:18px;--r-pille:99px;
+:root{--tint:color-mix(in srgb,var(--acc2) 60%,var(--bg));--r-klein:8px;--r:12px;--r-kachel:14px;--r-gross:18px;--r-pille:99px;
   --schatten:0 1px 2px rgba(20,30,25,.05),0 6px 24px rgba(20,30,25,.06);--schatten-klein:0 1px 3px rgba(20,30,25,.12)}
 /* Breite: Kopf und alle Ansichten teilen --breite, Fließtext bleibt auf Lesebreite (--lese); Werte je Breite unten */
 :root{--breite:860px;--lese:44rem}
@@ -373,6 +373,29 @@ h2.tagkopf .tagtitel{font-size:1.6875rem;line-height:1.15}
 .lese-kopf{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px}
 .pico .lese-kopf h4{margin:0;font-size:1.05rem}
 .lese-abschnitt .inhalt :is(h4,h5){font-size:1rem;margin:1.1em 0 .3em}
+/* Der Weg: nach gut vier Zeilen abgeschnitten, sanft ausgeblendet; „Weiterlesen“ zeigt alles */
+.weg-text.kurz{max-height:7.4em;overflow:hidden;-webkit-mask-image:linear-gradient(#000 60%,transparent);mask-image:linear-gradient(#000 60%,transparent)}
+.pico button.weiterlesen{align-self:flex-start;background:none;border:0;padding:6px 0;margin:0;min-height:44px;color:var(--acc);font-weight:600;box-shadow:none}
+/* Unterwegs nachschlagen (umschaltender Bereich): getönter Streifen über die ganze Breite des Handys, am Rechner als
+   getönte Fläche in der rechten Spalte; so ist sichtbar, was die Reiter umschalten */
+.ebene-unterwegs{background:var(--tint);border-block:1px solid var(--line);margin-inline:-14px;padding:14px 14px 18px}
+@media (min-width:760px){.ebene-unterwegs{margin-inline:-28px;padding-inline:28px}}
+@media (min-width:1100px) and (pointer:fine){.ebene-unterwegs{margin-inline:0;padding:16px 20px 20px;border:1px solid var(--line);border-radius:var(--r-gross)}}
+/* Hintergrund als Kapitel: zugeklappt, eine Zeile Vorschau, Zahl der Einträge */
+.kapitel-liste{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+details.kapitel{border-bottom:1px solid var(--line)}
+details.kapitel>summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 0;cursor:pointer}
+details.kapitel>summary::-webkit-details-marker{display:none}
+details.kapitel>summary::after{content:"";flex:none;width:8px;height:8px;margin:0 6px 4px 4px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(45deg);transition:transform .15s}
+details.kapitel[open]>summary::after{transform:rotate(-135deg);margin-bottom:-4px}
+.kap-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.kap-titel{font-weight:600;line-height:1.3;color:var(--fg)}
+.kap-vorschau{font-size:0.85rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+details.kapitel[open] .kap-vorschau{display:none}
+.kap-zahl{flex:none;font-size:0.75rem;font-weight:700;background:var(--acc2);color:var(--acc);border-radius:99px;padding:1px 8px;font-variant-numeric:tabular-nums}
+.pico details.kapitel>summary .zid-box{margin:0;flex:none}
+.kap-inhalt{padding:0 0 14px}
+.kap-inhalt :is(h4,h5){font-size:1rem;margin:1.1em 0 .3em}
 details.quellen{border-top:1px solid var(--line);margin:0}
 details.quellen>summary{min-height:44px;display:flex;align-items:center;font-weight:600;color:var(--mut)}
 .ortzeile{padding:10px 0}
@@ -2212,6 +2235,30 @@ document.addEventListener("keydown", e => {
   e.preventDefault(); z.focus(); reiterWaehlen(t.closest(".reiter"), z.dataset.teil);
 });
 // Abschnitt einer Ebene mit Überschrift und Kennung (Hintergrund, Quellen)
+// Molekül Kapitel (Tagesseite, Hintergrund; 28.10.2026): zugeklappt mit Titel, einer Zeile Vorschau und der Zahl der
+// Einträge; immer nur eines offen, die Seite merkt sich das offene je Tag
+const TAGKAPITEL = {};   // Tag -> Kennung des offenen Kapitels
+function kapitel(b, kz, tag) {
+  const n = (b.html.match(/<li[\s>]/g) || []).length;
+  const d = el("details", {class: "kapitel ziel", id: b.id, "data-ziel": b.id, "data-tag": tag, open: TAGKAPITEL[tag] === b.id},
+    el("summary", {}, el("span", {class: "kap-text"}, el("span", {class: "kap-titel"}, b.titel),
+      el("span", {class: "kap-vorschau"}, klartext(b.html).slice(0, 160))), n > 1 ? el("span", {class: "kap-zahl", title: `${n} Einträge`}, String(n)) : null, zid(b.id)),
+    el("div", {class: "kap-inhalt"}, reiseText(b.html, kz)));
+  d.addEventListener("toggle", () => {
+    if (!d.open) { if (TAGKAPITEL[tag] === b.id) delete TAGKAPITEL[tag]; return; }
+    TAGKAPITEL[tag] = b.id;
+    d.parentElement.querySelectorAll("details.kapitel[open]").forEach(x => { if (x !== d) x.open = false; });
+  });
+  return d;
+}
+// Der Weg mit „Weiterlesen“: nach einigen Zeilen abgeschnitten; der Knopf erscheint nur, wenn mehr Text da ist
+function wegKurz(inhalt) {
+  const knopf = el("button", {type: "button", class: "weiterlesen", hidden: true}, "Weiterlesen");
+  knopf.addEventListener("click", () => { inhalt.classList.remove("kurz"); knopf.hidden = true; });
+  inhalt.classList.add("kurz");
+  requestAnimationFrame(() => { if (inhalt.scrollHeight > inhalt.clientHeight + 4) knopf.hidden = false; else inhalt.classList.remove("kurz"); });
+  return knopf;
+}
 const leseAbschnitt = (b, kz) => el("div", {class: "lese-abschnitt ziel", id: b.id, "data-ziel": b.id},
   el("div", {class: "lese-kopf"}, el("h4", {}, b.titel), zid(b.id)), reiseText(b.html, kz));
 // Organismus Ebenen einer Etappe am Tag -> {weg, unterwegs, hintergrund, quellen} (fehlende Ebenen: null)
@@ -2223,7 +2270,10 @@ function tagEbenen(t, etappen) {
   const weg = el("section", {class: "ebene ebene-weg"});
   for (const a of etappen) {
     weg.append(ebeneKopf(a.name || a.titel, zid(a.id)));
-    for (const [, b] of teile.weg.filter(([x]) => x === a)) weg.append(el("div", {class: "weg-text ziel", id: b.id, "data-ziel": b.id}, reiseText(b.html, kz(a))));
+    for (const [, b] of teile.weg.filter(([x]) => x === a)) {
+      const text = el("div", {class: "weg-text ziel", id: b.id, "data-ziel": b.id}, reiseText(b.html, kz(a)));
+      weg.append(text, wegKurz(text));
+    }
     if (a.intro) weg.append(el("div", {class: "weg-unter", html: a.intro}));
   }
   const mehrere = etappen.length > 1;
@@ -2233,7 +2283,7 @@ function tagEbenen(t, etappen) {
       inhalt: [wissenKarte(b.id), reiseText(b.html, kz(a))]})), TAGREITER[t.id])) : null;
   if (unterwegs) unterwegs.querySelector(".reiter-kennung").append(zid(unterwegs.querySelector("[role=tabpanel]:not([hidden])").dataset.teil));
   const hintergrund = teile.hintergrund.length ? el("section", {class: "ebene ebene-hintergrund"}, ebeneKopf("Hintergrund"),
-    teile.hintergrund.map(([a, b]) => leseAbschnitt(b, kz(a)))) : null;
+    el("div", {class: "kapitel-liste"}, teile.hintergrund.map(([a, b]) => kapitel(b, kz(a), t.id)))) : null;
   const quellen = teile.quellen.length ? el("section", {class: "ebene ebene-quellen"}, el("details", {class: "quellen"},
     el("summary", {}, `Quellen und Prüfung (${teile.quellen.length})`), teile.quellen.map(([a, b]) => leseAbschnitt(b, kz(a))))) : null;
   return {weg, unterwegs, hintergrund, quellen};
@@ -3325,6 +3375,8 @@ function zumZiel(id) {
   // Teil eines Reiters (Tagesseite): erst den Reiter wählen
   if (e.matches("[role=tabpanel][hidden]")) reiterWaehlen(e.closest(".reiter"), e.dataset.teil);
   for (let p = e.parentElement; p; p = p.parentElement) if (p.tagName === "DETAILS") p.open = true;
+  const kurz = e.closest(".weg-text.kurz");
+  if (kurz) { kurz.classList.remove("kurz"); if (kurz.nextElementSibling && kurz.nextElementSibling.matches(".weiterlesen")) kurz.nextElementSibling.hidden = true; }
   if (e.tagName === "DETAILS") e.open = true;
   e.scrollIntoView({block: "start"});
   e.classList.remove("blitz");

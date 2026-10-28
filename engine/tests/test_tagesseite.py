@@ -64,8 +64,11 @@ def test_tagesseite_in_ebenen(tmp_path, browser):
         assert a["info"] == 0 and a["knoepfe"] and all(t in ("Anmerken",) and l.startswith("Anmerken zu ") for t, l in a["knoepfe"])
         assert a["fenster"] == {"offen": True, "kennung": "E-01", "kopieren": True}
         assert all(a["tiefe"].values()) and len(a["tiefe"]) == 3, a["tiefe"]
+        # Hintergrund als Kapitel: zu, immer nur eines offen; der umschaltende Bereich ist getönt; Der Weg mit „Weiterlesen“
+        assert a["kapitel"][0] >= 2 and a["kapitel"][1] == 0 and len(a["kapitelOffen"]) == 1, (a["kapitel"], a["kapitelOffen"])
+        assert a["getoent"] and a["weiterlesen"] == 1 and a["nachWeiterlesen"] == 0, a
         # Anmerken erst nach dem Lesen: unterwegs ohne Sprechblase in Vorschauen, am Rechner mit
-        assert a["vorschauen"] > 0 and a["sichtbarVorschau"] == (0 if breite == "390" else a["vorschauen"]), a
+        assert a["vorschauen"] > 0 and a["sichtbarVorschau"] == (0 if breite == "390" else a["vorschauen"] + a["zugeklappt"]), a
         lage = {n: (o, l) for n, o, l in a["ebenen"]}
         if breite == "390":   # unterwegs: Weg, Nachschlagen, Orte, Hintergrund, Quellen untereinander
             assert [n for n, o, _ in sorted(a["ebenen"], key=lambda x: x[1])] == ["weg", "unterwegs", "orte", "hintergrund", "quellen"]
