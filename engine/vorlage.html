@@ -387,6 +387,32 @@ details.quellen>summary{min-height:44px;display:flex;align-items:center;font-wei
 .steckbrief dt{color:var(--mut)}
 .steckbrief dd{margin:0}
 .steckbrief ul{margin:4px 0;padding-left:18px;font-size:0.875rem}
+/* ---------- Reiseüberblick (28.10.2026): Kopf mit Zähler, Stand der Vorbereitung, Tag als Zeile ---------- */
+.reisekopf{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin-bottom:10px}
+.reisekopf h2{margin:0}
+.stand{display:flex;flex-direction:column;padding-block:12px 4px}
+.standzeile{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:44px;border-top:1px solid var(--line);color:var(--fg);text-decoration:none}
+.stand .etikett+.standzeile{border-top:0}
+.standwert{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.standwert.offen{color:var(--warn)}
+a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
+@media (hover:hover){a.standzeile:hover>span:first-child{color:var(--acc)}}
+.tagzeilen{display:flex;flex-direction:column}
+.anab ul{margin:4px 0 0;padding:0}
+.pico .anab li{list-style:none;font-weight:600;line-height:1.35;margin:2px 0;color:var(--fg)}
+.mitreisende{margin:0 0 12px}
+.reisekopf+.anab{margin-bottom:14px}
+.tz-teil{padding:14px 0 4px}
+.tagzeile{display:grid;grid-template-columns:3.2rem minmax(0,1fr) auto auto;gap:3px 12px;align-items:baseline;padding:11px 0;border-top:1px solid var(--line);color:var(--fg);text-decoration:none}
+.tagzeilen>.tagzeile:first-child{border-top:0}
+.tagzeile.an{background:var(--acc2)}
+.tz-datum{grid-row:span 2;font-size:0.8125rem;line-height:1.25;color:var(--mut);font-variant-numeric:tabular-nums}
+.tz-datum b{display:block;font-size:1.25rem;font-weight:800;color:var(--fg)}
+.tz-titel{font-weight:600;line-height:1.3;text-wrap:pretty}
+.tz-zeit{font-size:0.875rem;color:var(--mut);white-space:nowrap;font-variant-numeric:tabular-nums}
+.tz-nacht{grid-column:2 / 4;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:0.875rem;color:var(--mut)}
+.pico .tagzeile>:is(.zid-box,span.zid){grid-column:4;grid-row:1 / span 2;align-self:center}
+@media (hover:hover){.tagzeile:hover .tz-titel{color:var(--acc)}}
 .vergleich td,.vergleich th{font-size:0.8438rem}
 .vergleich td.nr{font-weight:700;text-align:center}
 .vergleich td.plan-nr{color:var(--farbe)}
@@ -685,9 +711,10 @@ const wahlZu = new Map((R ? R.wahlstellen : []).map(w => [w.id, w]));
 const optionZu = new Map((R ? R.wahlstellen : []).flatMap(w => w.optionen.map(o => [o.id, [w, o]])));
 const optionFest = oid => ((optionZu.get(oid) || [])[1] || {}).status === "gewaehlt";
 const planFest = p => p.auswahl.length > 0 && p.auswahl.every(optionFest);
-// Ist ein Plan vollständig gewählt, wird die Karte mit diesem Plan zur Startseite (25.10.2026)
+// Ist ein Plan vollständig gewählt, wird die Karte mit diesem Plan zur Startseite (25.10.2026); seit dem 28.10.2026
+// als Reiseüberblick „Reise“ ohne Planname und ohne die anderen Pläne (ansichtReise)
 const PLAN_FEST = (R ? R.plaene : []).find(planFest);
-const VARIANTEN_TITEL = PLAN_FEST && R.karte ? "Karte" : D.reise.varianten_titel || "Varianten";
+const VARIANTEN_TITEL = PLAN_FEST ? "Reise" : D.reise.varianten_titel || "Varianten";
 
 const G = Object.assign({wissen: "Wissen", praxis: "Praxis", quelle: "Quellen"}, D.reise.gruppen || {});
 const hat = typ => abschnitte.some(a => a.typ === typ);
@@ -741,10 +768,10 @@ function zid(id) {
    Atome:     symbol, chip (Zustand), Etikett (CSS), merkmalWert (Wert mit Herkunft), zid (Kennung), planMarke
    Moleküle:  kennzahlLeiste, merkmalListe, reiseText (Reisetext mit Merkmallisten), reiterGruppe, ebeneKopf, dingEtikett,
               listenZeile, zeilenKarte, rmEintrag, agEintrag, eintragGruppen, kartenLegende, umschalter, kontoKnopf,
-              nameFeld, fehltZeile, optionChips
+              nameFeld, fehltZeile, optionChips, standLeiste
    Organismen: Ding (nachtZeile, unterkunftKarte, streckeZeile), Wahl-Modul (wahlEinstieg, wahlVergleich, wahlKarte),
-              tagKarte (Tageskasten mit wegVerlauf), tagEbenen, tagOrteZeilen
-   Vorlagen:  tagKachel, Ansichten (ansichtTag = Tagesseite, ansichtPlan …)
+              tagKarte (Tageskasten mit wegVerlauf), tagEbenen, tagOrteZeilen, tagZeile, uebersichtKarte
+   Vorlagen:  tagKachel, Ansichten (ansichtTag = Tagesseite, ansichtReise = Reiseüberblick, ansichtPlan …)
    Zustände haben feste Namen, die Farbe folgt der Bedeutung, nicht dem Ort:
      plan      entschieden oder im Plan (Akzent)       offen  braucht noch eine Entscheidung (Warnfarbe)
      unterwegs erst unterwegs zu entscheiden           weg    verworfen oder ersetzt (durchgestrichen)
@@ -866,7 +893,7 @@ function kennzahlPaar(n, v) {
     : /^(gehzeit|dauer)/i.test(n) ? ["Gehzeit", v] : /^l(ä|ae)nge/i.test(n) ? ["Strecke", /^[\d.,]+$/.test(v) ? `${v} km` : v] : [n, v];
 }
 // Je Kennzahl eine Kachel; die bekannten tragen ihr Symbol im Etikett
-const KZ_SYM = {Gehzeit: "gehzeit", Aufstieg: "aufstieg", Abstieg: "abstieg", Strecke: "strecke"};
+const KZ_SYM = {Gehzeit: "gehzeit", Aufstieg: "aufstieg", Abstieg: "abstieg", Strecke: "strecke", Tage: "plan", "Höhenmeter": "aufstieg", "Nächte": "unterkunft", Orte: "ort", "Übernachtungen": "unterkunft"};
 function kennzahlLeiste(kennzahlen) {
   const kz = Object.entries(kennzahlen || {}).map(([n, v]) => kennzahlPaar(n, v));
   return kz.length ? el("div", {class: "kz"}, kz.map(([n, v]) => el("div", {},
@@ -1487,7 +1514,7 @@ function karteZeichnen(plaene, info, box) {
     for (const o of beruehrt) if (o && !benutzt.has(o)) benutzt.set(o, "");
     const n = d.nacht; if (n && n.ort && !n.an_bord) { const k = nachtKat(n); if (k && k !== "offen" && !benutzt.get(n.ort)) benutzt.set(n.ort, k); }
   }
-  const zeigeInfo = (titel, zeilen) => info.replaceChildren(el("div", {class: "k"}, titel), ...zeilen.map(z => el("div", {class: "z"}, z)));
+  const zeigeInfo = (titel, zeilen) => (info.hidden = false, info.replaceChildren(el("div", {class: "k"}, titel), ...zeilen.map(z => el("div", {class: "z"}, z))));
   for (const [oid, o] of Object.entries(K.orte || {})) {
     if (!benutzt.has(oid) || !o.lage) continue;
     const kat = benutzt.get(oid);
@@ -1745,9 +1772,26 @@ function ansichtVarianten(m) {
     if (fest) hinten.append(u); else m.append(u);
   }
   const info = el("div", {class: "karte", "aria-live": "polite"});
+  const segmente = uebersichtKarte(m, gezeigt, info);
+  if (R.karte && window.L) {
+    info.append(el("div", {class: "z klein"}, gezeigt.length > 1 ? "Breite Linie = " + gezeigt[0].kurz + ", schmalste = " + gezeigt[gezeigt.length - 1].kurz + "; gemeinsame Abschnitte liegen übereinander." : `${gezeigt[0].kurz}: ${gezeigt[0].titel}`));
+    m.append(info);
+  }
+  // gezeigter Plan zuerst, die übrigen dahinter; bei gewähltem Plan die übrigen im zugeklappten Teil
+  const rest = alle.filter(p => !gezeigt.includes(p));
+  m.append(el("div", {class: "steckbriefe"}, [...gezeigt, ...(fest ? [] : rest)].map(p => steckbrief(p))));
+  if (fest && rest.length) hinten.append(el("div", {class: "steckbriefe"}, rest.map(p => steckbrief(p))));
+  m.append(el("h3", {}, gezeigt.length > 1 ? "Tagesplan im Vergleich" : `Tagesplan ${gezeigt[0].kurz}`));
+  const tab = vergleichTabelle(gezeigt);
+  m.append(tab);
+  kartenZeilen(tab, segmente);
+  if (fest && alle.length > 1) m.append(hinten);
+}
+// Organismus Übersichtskarte: Karte der gezeigten Pläne mit Legende und Hinweis; -> Linien je Tag (für kartenZeilen)
+function uebersichtKarte(m, gezeigt, info) {
   let segmente = {};
   if (R.karte && window.L) {
-    const box = el("div", {class: "kartenbox", role: "region", "aria-label": "Karte mit den Plänen"});
+    const box = el("div", {class: "kartenbox", role: "region", "aria-label": gezeigt.length > 1 ? "Karte mit den Plänen" : "Karte der Reise"});
     m.append(box);
     segmente = karteZeichnen(gezeigt, info, box).segmente;
     // Legende nur mit dem, was auf dieser Karte vorkommt
@@ -1763,22 +1807,186 @@ function ansichtVarianten(m) {
       K.linien === "alle" && (arten.has("flug") || arten.has("faehre")) ? [el("i", {class: "lg-f"}), "Flug, Fähre"] : null,
       ...(gezeigt.length > 1 ? gezeigt.map(p => [planMarke(p), p.kurz]) : [])]));
     m.append(el("p", {class: "meldung"}, (R.karte.linien === "alle" ? "Übersichtskarte; gerade Linien verbinden die Orte und zeigen nicht den Fahrweg." : "Schematische Karte, Lage der Wege ungefähr.") + " Ort antippen zeigt die Übernachtungen, Linie antippen öffnet " + (hat("etappe") ? "die Etappe." : "den Tag.") + (gezeigt.length > 1 ? " Einen Plan wählen, um die Tagesnummern zu sehen." : "")));
-    info.append(el("div", {class: "z klein"}, gezeigt.length > 1 ? "Breite Linie = " + gezeigt[0].kurz + ", schmalste = " + gezeigt[gezeigt.length - 1].kurz + "; gemeinsame Abschnitte liegen übereinander." : `${gezeigt[0].kurz}: ${gezeigt[0].titel}`));
-    m.append(info);
   }
-  // gezeigter Plan zuerst, die übrigen dahinter; bei gewähltem Plan die übrigen im zugeklappten Teil
-  const rest = alle.filter(p => !gezeigt.includes(p));
-  m.append(el("div", {class: "steckbriefe"}, [...gezeigt, ...(fest ? [] : rest)].map(p => steckbrief(p))));
-  if (fest && rest.length) hinten.append(el("div", {class: "steckbriefe"}, rest.map(p => steckbrief(p))));
-  m.append(el("h3", {}, gezeigt.length > 1 ? "Tagesplan im Vergleich" : `Tagesplan ${gezeigt[0].kurz}`));
-  const tab = vergleichTabelle(gezeigt);
-  m.append(tab);
-  tab.querySelectorAll("tr[data-tag]").forEach(tr => {
-    const segs = segmente[tr.dataset.tag] || [];
-    const an = on => { tr.classList.toggle("an", on); for (const [l, b] of segs) l.setStyle({weight: on ? b + 4 : b}); };
-    tr.addEventListener("pointerenter", () => an(true)); tr.addEventListener("pointerleave", () => an(false));
+  return segmente;
+}
+// Zeilen eines Tages (data-tag) heben beim Zeigen die Linien des Tages auf der Karte hervor
+function kartenZeilen(liste, segmente) {
+  liste.querySelectorAll("[data-tag]").forEach(z => {
+    const segs = segmente[z.dataset.tag] || [];
+    const an = on => { z.classList.toggle("an", on); for (const [l, b] of segs) l.setStyle({weight: on ? b + 4 : b}); };
+    z.addEventListener("pointerenter", () => an(true)); z.addEventListener("pointerleave", () => an(false));
   });
-  if (fest && alle.length > 1) m.append(hinten);
+}
+
+/* ---------- Vorlage Reiseüberblick (28.10.2026): erster Reiter „Reise“, sobald ein Plan gewählt ist ----------
+   Die Seite spricht dann von der Reise, nicht vom Plan: kein Planname, keine anderen Pläne (deren Daten bleiben). Kopf mit
+   Zähler, Karte, Kennzahlen, Stand der Vorbereitung und die Tage als Zeilen; alles aus den Daten, für jede Reise gleich. */
+// Stand einer Nacht: Name, Zustand und ob sie als Unterkunft zählt (an Bord nicht). Gebucht ist, was in routen.yaml
+// eine andere Buchung als „offen“ trägt (z. B. buchung: gebucht).
+function nachtStand(n) {
+  if (!n) return null;
+  if (n.an_bord) return {name: "an Bord", zaehlt: false};
+  const w = n.wahl && wahlZu.get(n.wahl);
+  const kand = w ? w.optionen.filter(o => !weg(o.status)) : [];
+  if (w && w.art === "planung" && w.offen && kand.length > 1)
+    return {name: ortName(n.ort), zustand: "offen", text: `noch wählen · ${kand.length}`, zaehlt: true, gebucht: false};
+  const akt = w && (kand.find(o => o.aktiv) || kand[0]);
+  const uid = n.unterkunft && R.unterkuenfte[n.unterkunft] ? n.unterkunft : akt && (akt.unterkuenfte || []).find(x => R.unterkuenfte[x]);
+  const u = uid && R.unterkuenfte[uid];
+  if (u) return u.buchung && u.buchung !== "offen" ? {name: u.name, zustand: "", text: u.buchung, zaehlt: true, gebucht: true}
+    : {name: u.name, zustand: "offen", text: "nicht gebucht", zaehlt: true, gebucht: false};
+  return {name: akt ? akt.titel : n.hinweis || ortName(n.ort), zustand: "offen", text: akt ? "nicht gebucht" : "Unterkunft offen", zaehlt: true, gebucht: false};
+}
+// Organismus Tag als Zeile: Nummer und Datum, Titel, Gehzeit, darunter die Nacht mit Stand; führt zum Tag
+function tagZeile(t) {
+  const m = tagMin(t), s = nachtStand(t.nacht);
+  return el("a", {class: "tagzeile vorschau", href: "#" + t.id, "data-tag": t.id},
+    el("span", {class: "tz-datum"}, el("b", {}, String(t.nr)), t.datum ? datumText(t.datum, t.wochentag) : null),
+    el("span", {class: "tz-titel"}, t.titel),
+    el("span", {class: "tz-zeit"}, m ? dauer(m) : ""),
+    s ? el("span", {class: "tz-nacht"}, symbol("unterkunft", "etikett-sym"), el("span", {}, s.name), s.text ? chip(s.zustand, s.text) : null) : null,
+    zid(t.id));
+}
+// Kennzahlen der ganzen Reise aus der Summe des Plans: mit Wanderdaten Tage, Gehzeit, Strecke, Höhenmeter; sonst Tage,
+// Nächte, Orte. Fehlende Angaben entfallen statt eine Lücke zu zeigen.
+function reiseKennzahlen(p) {
+  const s = p.summe, f = s.fehlend || [];
+  if (s.min || s.km || s.auf) return {Tage: String(s.tage), ...(f.includes("min") ? {} : {Gehzeit: dauer(s.min)}),
+    ...(f.includes("km") ? {} : {Strecke: `${String(s.km).replace(".", ",")} km`}), ...(f.includes("auf") ? {} : {"Höhenmeter": `↑ ${s.auf} ↓ ${s.ab}`})};
+  const n = p.tage.map(d => d.nacht).filter(x => x && !x.an_bord);
+  return {Tage: String(s.tage), "Nächte": String(n.length), Orte: String(new Set(n.map(x => x.ort).filter(Boolean)).size)};
+}
+// Molekül Stand der Vorbereitung: je Zeile Wort, Wert und Ziel; was nichts zu tun hat, entfällt (Unterkünfte bleiben)
+function standLeiste(p) {
+  const naechte = p.tage.map(d => [d, nachtStand(d.nacht)]).filter(([, x]) => x && x.zaehlt);
+  const offenN = naechte.filter(([, x]) => !x.gebucht);
+  const wahl = R.wahlstellen.filter(w => w.art === "planung" && w.offen && gueltigeOptionen(w).length > 1);
+  const fragen = B("fragen") ? D.fragen.zeilen.filter(z => !/^(erledigt|geklärt|beantwortet)/i.test(z.status || z.zellen[z.zellen.length - 1] || "")) : [];
+  const ag = B("aufgaben") ? AG.filter(agOffen) : [], ueber = ag.filter(ueberfaellig).length;
+  const zeilen = [
+    naechte.length && ["Unterkünfte gebucht", `${naechte.length - offenN.length} von ${naechte.length}`, offenN.length > 0, offenN.length ? offenN[0][0].id : null],
+    wahl.length && ["Noch zu entscheiden", String(wahl.length), true, wahl[0].id],
+    fragen.length && ["Offene Fragen", String(fragen.length), false, "fragen"],
+    ag.length && ["Aufgaben offen", ueber ? `${ag.length}, ${ueber} überfällig` : String(ag.length), ueber > 0, "aufgaben"],
+  ].filter(Boolean);
+  if (!zeilen.length) return null;
+  return el("div", {class: "karte flaeche stand"}, el("div", {class: "etikett"}, "Stand der Vorbereitung"),
+    zeilen.map(([wort, wert, offen, ziel]) => el(ziel ? "a" : "div", {class: "standzeile", href: ziel ? "#" + ziel : null},
+      el("span", {}, wort), el("span", {class: "standwert" + (offen ? " offen" : "")}, wert))));
+}
+// Geldbetrag aus einem Merkmal („120 €“, „ca. 150–180 €“, „¥23.610“, „181 € (Nacht 26.2.)“) -> {von, bis, waehrung};
+// gelesen wird nur der erste Betrag oder die erste Spanne vor einer Klammer; ohne Währung oder Zahl null, ebenso ein Preis
+// pro Person (das Merkmal ist der Preis der Nacht für alle zusammen)
+function betrag(text) {
+  const t = String(text).split("(")[0];
+  if (/pro Person|p\. ?P\./i.test(t)) return null;
+  const w = (/[€$£¥₩]|\b(EUR|USD|JPY|KRW|CHF|GBP)\b/.exec(t) || [])[0];
+  const m = /(\d[\d.,]*)(?:\s*[–-]\s*(\d[\d.,]*))?/.exec(t);
+  const zahl = x => +x.replace(/[.,](?=\d{3}(\D|$))/g, "").replace(",", ".");
+  const z = m ? [m[1], m[2]].filter(Boolean).map(zahl) : [];
+  return w && z.length && z.every(Number.isFinite) ? {von: Math.min(...z), bis: Math.max(...z), waehrung: w} : null;
+}
+// Kosten der Übernachtungen: Preis pro Nacht (Merkmal preis) am Datum der Nacht; bei offener Wahl die Spanne der
+// Kandidaten. -> {text, bekannt, naechte} oder null, wenn kein Preis bekannt ist
+function reiseKosten(p) {
+  const summe = {}; let bekannt = 0, naechte = 0;
+  for (const d of p.tage) {
+    const n = d.nacht, st = nachtStand(n);
+    if (!st || !st.zaehlt) continue;
+    naechte++;
+    const w = n.wahl && wahlZu.get(n.wahl);
+    const kand = w ? w.optionen.filter(o => !weg(o.status)) : [];
+    const offen = w && w.art === "planung" && w.offen && kand.length > 1;
+    const uids = n.unterkunft ? [n.unterkunft] : (offen ? kand : [kand.find(o => o.aktiv) || kand[0]].filter(Boolean)).flatMap(o => o.unterkuenfte || []);
+    const preise = uids.map(u => R.unterkuenfte[u] && betrag((giltAm(((R.unterkuenfte[u].merkmale || {}).preis), d.datum) || {}).wert || "")).filter(Boolean);
+    if (!preise.length || new Set(preise.map(x => x.waehrung)).size > 1) continue;
+    const g = summe[preise[0].waehrung] ||= {von: 0, bis: 0};
+    g.von += Math.min(...preise.map(x => x.von)); g.bis += Math.max(...preise.map(x => x.bis));
+    bekannt++;
+  }
+  if (!bekannt) return null;
+  const zahl = x => Math.round(x).toLocaleString("de-DE");
+  const text = Object.entries(summe).map(([w, g]) => (g.von === g.bis ? zahl(g.von) : `${zahl(g.von)}–${zahl(g.bis)}`) + " " + w).join(" + ");
+  return {text, bekannt, naechte};
+}
+// Anreise oder Abreise: erster oder letzter Tag mit seinen festen Terminen und Wegen; führt zum Tag
+function reiseEnde(art, t) {
+  if (!t) return null;
+  // Wege: nur Fahrten (Bahn, Bus, Flug …), die Wanderetappe des Tages gehört nicht zur An- oder Abreise
+  const termine = t.fixpunkte || [], wege = t.strecken.map(x => R.strecken[x.id] || {titel: x.id}).filter(x => x.art && x.art !== "wandern").map(x => x.titel);
+  const zeilen = art === "Anreise" ? [...termine, ...wege] : [...wege, ...termine];
+  return el("a", {class: "karte anab vorschau", href: "#" + t.id},
+    el("span", {class: "etikett"}, art, t.datum ? " · " + datumText(t.datum, t.wochentag) : ""),
+    el("ul", {}, (zeilen.length ? zeilen : [t.titel]).map(z => el("li", {}, z))));
+}
+// Mitreisende: wer reist, wer nur einen Teil (von/bis in reise.yaml)
+function mitreisende() {
+  const l = (D.reise.personen || []).filter(x => x.reist);
+  if (!l.length) return null;
+  return el("p", {class: "mitreisende"}, el("span", {class: "etikett"}, "Mitreisende "), l.map((x, i) => [i ? ", " : "", x.name,
+    x.von ? ` ab ${tagKurz(x.von)}` : "", x.bis ? ` bis ${tagKurz(x.bis)}` : ""]));
+}
+// Feste Termine zwischen An- und Abreise (die am ersten und letzten Tag stehen schon dort)
+function festeTermine(p) {
+  const l = p.tage.slice(1, -1).flatMap(t => (t.fixpunkte || []).map(f => [t, f]));
+  if (!l.length) return null;
+  return el("section", {class: "termine"}, el("h3", {}, "Feste Termine"), el("div", {class: "tagzeilen"}, l.map(([t, f]) =>
+    el("a", {class: "tagzeile vorschau", href: "#" + t.id}, el("span", {class: "tz-datum"}, el("b", {}, String(t.nr)), t.datum ? datumText(t.datum, t.wochentag) : null),
+      el("span", {class: "tz-titel"}, f)))));
+}
+// Nächste Fristen: offene Aufgaben mit Frist, die frühesten zuerst
+function naechsteFristen() {
+  if (!B("aufgaben")) return null;
+  const l = AG.filter(a => agOffen(a) && a.frist).sort((a, b) => a.frist.localeCompare(b.frist));
+  if (!l.length) return null;
+  return el("section", {class: "fristen"}, el("h3", {}, "Nächste Fristen"), l.slice(0, 3).map(a => agEintrag(a, true)),
+    l.length > 3 ? el("a", {class: "weiter", href: "#aufgaben"}, `Alle ${l.length} Aufgaben mit Frist →`) : null);
+}
+// Zähler im Kopf: vor der Reise „noch n Tage“, unterwegs „Tag x von n“, danach nichts
+function reiseZaehler(p) {
+  const d = p.tage.map(t => t.datum).filter(Boolean);
+  if (!d.length) return null;
+  const tag = iso => Date.UTC(...iso.split("-").map((x, i) => i === 1 ? x - 1 : +x)) / 864e5;
+  const h = tag(heute()), von = tag(d[0]), bis = tag(d[d.length - 1]);
+  if (h < von) return chip("", von - h === 1 ? "morgen geht es los" : `noch ${von - h} Tage`);
+  if (h <= bis) return chip("", `Tag ${h - von + 1} von ${bis - von + 1}`);
+  return null;
+}
+// Erster Reiter: mit gewähltem Plan der Reiseüberblick, sonst die Pläne im Vergleich
+const ansichtStart = m => PLAN_FEST ? ansichtReise(m, PLAN_FEST) : ansichtVarianten(m);
+function ansichtReise(m, p) {
+  heuteBlock(m);
+  m.append(el("div", {class: "reisekopf"}, el("h2", {}, VARIANTEN_TITEL), reiseZaehler(p)));
+  const an = reiseEnde("Anreise", p.tage[0]);
+  if (an) m.append(an);
+  const info = el("div", {class: "karte", "aria-live": "polite", hidden: true});
+  const segmente = uebersichtKarte(m, [p], info);
+  if (R.karte && window.L) m.append(info);
+  const kosten = reiseKosten(p);
+  const kz = kennzahlLeiste({...reiseKennzahlen(p), ...(kosten ? {"Übernachtungen": kosten.text} : {})});
+  if (kz) m.append(kz);
+  if (kosten && kosten.bekannt < kosten.naechte) m.append(el("p", {class: "meldung"}, `Übernachtungen: Preis bekannt für ${kosten.bekannt} von ${kosten.naechte} Nächten; bei offener Wahl die Spanne der Kandidaten.`));
+  const mit = mitreisende();
+  if (mit) m.append(mit);
+  // Stand der Vorbereitung bis zur Abreise; unterwegs und danach zählt der Tag, nicht die Vorbereitung
+  if (["idee", "planung", "fest"].includes((D.reise.status || {}).wert || "planung")) { const st = standLeiste(p); if (st) m.append(st); }
+  const fr = naechsteFristen(), ft = festeTermine(p);
+  if (fr) m.append(fr);
+  if (ft) m.append(ft);
+  const ws = R.warnungen.filter(w => w.bezug === "plan" || p.tage.some(t => t.id === w.bezug));
+  if (ws.length) m.append(warnungen(ws));
+  m.append(el("h3", {}, "Die Tage"));
+  const liste = el("div", {class: "tagzeilen"});
+  let teil = null;
+  for (const t of p.tage) {
+    if (t.teil && t.teil !== teil) { teil = t.teil; liste.append(el("div", {class: "etikett tz-teil"}, teil)); }
+    liste.append(tagZeile(t));
+  }
+  m.append(liste);
+  kartenZeilen(liste, segmente);
+  const ab = p.tage.length > 1 ? reiseEnde("Abreise", p.tage[p.tage.length - 1]) : null;
+  if (ab) m.append(ab);
 }
 
 document.addEventListener("click", e => {
@@ -1827,7 +2035,7 @@ function ansichtRahmen(m) {
   mahnungen(m);
   if (D.plan_kopf) m.append(el("div", {html: D.plan_kopf}));
   for (const id of PLAN_REITER) if (proId.has(id)) m.append(abschnittInhalt(proId.get(id)));
-  if (R && R.plaene.length) m.append(el("a", {class: "karte", href: "#varianten"},
+  if (R && R.plaene.length && !PLAN_FEST) m.append(el("a", {class: "karte", href: "#varianten"},
     el("div", {class: "k"}, `${D.reise.varianten_titel || "Varianten"}: ${R.plaene.length} zur Wahl →`),
     el("div", {class: "z klein"}, R.plaene.map(p => p.kurz).join(" · "))));
   if (R) entscheidungen(m);
@@ -2222,7 +2430,7 @@ function indexBauen() {
     for (const t of R.tage) add(t.id, `Tag ${t.nr} · ${t.titel}`, "Tagesplan",
       [t.text, ...t.strecken.map(s => (R.strecken[s.id] || {}).titel), t.nacht && ortName(t.nacht.ort)].filter(Boolean).join(" · "));
     for (const [id, u] of Object.entries(R.unterkuenfte)) add(id, u.name, "Unterkünfte", [u.typ, ortName(u.ort), u.kontakt, u.hinweis, ...Object.values(u.merkmale || {}).map(v => v.wert)].filter(Boolean).join(" · "));
-    for (const p of R.plaene) add(p.id, `${p.kurz}: ${p.titel}`, "Varianten", [...p.plus, ...p.minus].join(" · "));
+    for (const p of PLAN_FEST ? [] : R.plaene) add(p.id, `${p.kurz}: ${p.titel}`, "Varianten", [...p.plus, ...p.minus].join(" · "));
     for (const w of R.wahlstellen) {
       add(w.id, w.titel, "Entscheidungen", w.text || "");
       for (const o of w.optionen) add(o.id, o.titel, w.titel, [STATUS_TEXT[o.status], o.text, o.ausloeser, ...Object.values(o.merkmale || {}).map(v => v.wert)].filter(Boolean).join(" · "));
@@ -2256,7 +2464,7 @@ function markiert(text, begriffe, laenge) {
    bekommt keinen weiteren Baustein, sondern nutzt diese. Die Bausteinseite zeigt die Tabelle, test_seite prüft, dass
    jede Kennung der Reise einer Art angehört. */
 const ONTOLOGIE = [
-  ["tag", "Tag", "T-01", {zeile: [], vorschau: [tagKachel], karte: [tagKarte], seite: [ansichtTag]}],
+  ["tag", "Tag", "T-01", {zeile: [tagZeile], vorschau: [tagKachel], karte: [tagKarte], seite: [ansichtTag, ansichtReise]}],
   ["etappe", "Etappe, Strecke", "E-01", {zeile: [streckeZeile], vorschau: [abschnittKarte], karte: [], seite: [ansichtAbschnitt, tagEbenen]}],
   ["ort", "Ort", "O-01", {zeile: [wegVerlauf], vorschau: [tagOrteZeilen, listenZeile], karte: [], seite: [ansichtOrt]}],
   ["unterkunft", "Unterkunft", "U-01", {zeile: [nachtZeile], vorschau: [], karte: [unterkunftKarte], seite: []}],
@@ -2389,6 +2597,11 @@ function ansichtBausteine(m) {
   const w = R.wahlstellen.find(x => gueltigeOptionen(x).length > 2) || R.wahlstellen.find(x => gueltigeOptionen(x).length > 1);
   if (w) teil("Organismus", "Wahl-Modul", "Einstieg, Vergleich und Optionen; in der Liste der Entscheidungen gleich offen.", wahlKarte(w));
   const tag = R.tage.find(t => t.wahlstellen.length && t.nacht) || R.tage.find(t => t.nacht) || R.tage[0];
+  const plan = PLAN_FEST || R.plaene[0];
+  if (plan) teil("Molekül", "Stand der Vorbereitung", "Im Reiseüberblick bis zur Abreise; Zeilen ohne Offenes entfallen, die Unterkünfte bleiben.",
+    standLeiste(plan) || el("p", {class: "meldung"}, "Nichts offen."));
+  if (plan) teil("Organismus", "Tag als Zeile", "Im Reiseüberblick: Datum, Titel, Gehzeit, die Nacht mit Stand (gebucht, nicht gebucht, noch wählen).",
+    el("div", {class: "tagzeilen"}, plan.tage.slice(0, 3).map(tagZeile)));
   if (tag) teil("Vorlage", "Tag", `Tag ${tag.nr} mit allen Bausteinen, wie im Plan.`, tagKarte(tag));
   if (tag) teil("Vorlage", "Tageskasten", "Auf der Tagesseite die einzige Fläche: weiß, ohne Rahmen, weicher Schatten.", tagKarte({...tag, text: ""}, true));
   // Kennungen sind auf dieser Seite nur Beispiele: keine Sprungziele, damit sie den echten Stellen nicht im Weg stehen
@@ -3066,7 +3279,7 @@ function zeigeReiter(name) {
   nav.classList.toggle("viele", REITER.length > 5);
   nav.style.flexGrow = REITER.length;   // jeder Reiter so breit wie der Suchknopf
   nav.replaceChildren(...REITER.map(([k, t]) => el("a", {href: "#" + k, class: k === name ? "on" : false, "aria-current": k === name ? "page" : false},
-    symbol(k === "varianten" && START === "varianten" ? "karte" : k), el("span", {}, t), k === "offen" ? el("span", {class: "zahl", hidden: true}) : null)));
+    symbol(k === "varianten" && (PLAN_FEST || START === "varianten") ? "karte" : k), el("span", {}, t), k === "offen" ? el("span", {class: "zahl", hidden: true}) : null)));
   offenZahl();
 }
 // Zahl am Reiter „Offen“; Warnfarbe bei überfälligen Aufgaben oder nicht gesendeten Rückmeldungen
@@ -3107,7 +3320,7 @@ function route(behalten) {
   let ziel = null;
   const h = decodeURIComponent(location.hash.slice(1));
   if (q.length >= 2) { zeigeReiter(reiter); ansichtSuche(m, q); window.scrollTo(0, 0); return; }
-  if (!h && START === "varianten") { zeigeReiter("varianten"); ansichtVarianten(m); }
+  if (!h && START === "varianten") { zeigeReiter("varianten"); ansichtStart(m); }
   else if (!h || h === "plan") { zeigeReiter("plan"); ansichtPlan(m); }
   else if (h === "etappen" && ETAPPEN_REITER) { zeigeReiter("etappen"); ansichtEtappen(m); }
   else if (h === "etappen") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "weitere-wege"; }
@@ -3124,14 +3337,14 @@ function route(behalten) {
   else if (h === "wuensche" && WUENSCHE) { zeigeReiter("wuensche"); ansichtWuensche(m); }
   else if ((h === "rueckmeldungen" || h === "aufgaben" || h === "fragen") && B(h)) { zeigeReiter("offen"); ansichtOffen(m); ziel = h; }
   else if (/^F-\d+$/.test(h) && zeileZu.get(h) === "fragen" && B("fragen")) { zeigeReiter("offen"); ansichtOffen(m); ziel = h; }
-  else if (h === "varianten" && HAT_VARIANTEN) { zeigeReiter("varianten"); ansichtVarianten(m); }
+  else if (h === "varianten" && HAT_VARIANTEN) { zeigeReiter("varianten"); ansichtStart(m); }
   else if (TIEFE && planZu(h)) { zeigeReiter("varianten"); ansichtPlanDetail(m, planZu(h)); }
   else if (TIEFE && tagBekannt(h)) { zeigeReiter("varianten"); ansichtTag(m, h); }
   else if (TIEFE && ortAbschnitt(h)) { zeigeReiter("varianten"); ansichtOrt(m, ortAbschnitt(h)); }
   else if (TIEFE && blockZu.has(h) && blockZu.get(h).typ === "ort") { zeigeReiter("varianten"); ansichtOrt(m, blockZu.get(h)); ziel = h; }
   else if (proId.has(h)) { const a = proId.get(h); zeigeReiter(TYP_REITER[a.typ]); ansichtAbschnitt(m, a); }
   else if (blockZu.has(h)) { const a = blockZu.get(h); zeigeReiter(TYP_REITER[a.typ]); ansichtAbschnitt(m, a); ziel = h; }
-  else if (zeileZu.get(h) === "varianten") { zeigeReiter("varianten"); ansichtVarianten(m); ziel = h; }
+  else if (zeileZu.get(h) === "varianten") { zeigeReiter("varianten"); ansichtStart(m); ziel = h; }
   else if (zeileZu.has(h)) { zeigeReiter("plan"); ansichtPlan(m); ziel = h; }
   else { zeigeReiter("plan"); ansichtPlan(m); }
   if (behalten === true) window.scrollTo(0, y);

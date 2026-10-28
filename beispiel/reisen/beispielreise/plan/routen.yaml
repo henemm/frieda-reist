@@ -8,6 +8,7 @@ start: {datum: 2027-05-13, ort: O-01}
 ende: {datum: 2027-05-16, ort: O-01}
 fixpunkte:
   - {datum: 2027-05-13, ort: O-01, titel: "Ankunft mit dem Zug in Dresden (Beispiel)"}
+  - {datum: 2027-05-15, ort: O-04, titel: "Abendessen in Altendorf, Tisch um 19 Uhr reserviert (Beispiel)"}
 
 orte:
   O-01: {name: Dresden}
@@ -35,6 +36,7 @@ unterkuenfte:
     ort: O-01
     typ: Hotel
     hinweis: "erfundenes Beispielhotel in der Altstadt"
+    buchung: gebucht   # Beispielwert, erfunden; ohne Angabe gilt „offen“
     quelle: "erfunden (Beispiel)"
     merkmale:
       # Wert je Datum (docs/alternativen.md): ein Eintrag ohne „gilt“ für alle übrigen Tage

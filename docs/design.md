@@ -10,9 +10,9 @@ Die Ebenen folgen Brad Frosts Atomic Design. Skript und Stile in `engine/vorlage
 |---|---|
 | Tokens | Farben (`--bg`, `--card`, `--fg`, `--mut`, `--line`, `--acc`, `--acc2`, `--warn`, `--warnbg`, `--ocker`, `--kat-*`, `--plan-*`), Schrift (`--font-text`), Formen (`--r-klein`, `--r`, `--r-kachel`, `--r-gross`, `--r-pille`, `--schatten`, `--schatten-klein`), Breiten (`--breite`, `--lese`) |
 | Atome | `symbol` (Lucide), `chip` (Zustand), Etikett (`.etikett`, sagt, was etwas ist), `merkmalWert` (Wert mit Herkunft), `zid` (Kennung als Sprechblase), `planMarke` (Farbe eines Plans als Punkt oder Linie) |
-| Moleküle | Fläche (`.karte`, `.karte.flaeche`, `details.block`), `kennzahlLeiste` (Kacheln), `merkmalListe`, `reiseText` (Reisetext, Merkmallisten ohne doppelte Kennzahlen), `reiterGruppe` (Reiter als Pillen), `ebeneKopf`, `dingEtikett`, `listenZeile` (Wissen, Praxis, Quellen, Orte), `zeilenKarte` (offene Frage), `rmEintrag` (Rückmeldung, Wunsch), `agEintrag` (Aufgabe), `eintragGruppen` („Titel (n)“ mit Einträgen), `kartenLegende`, `umschalter` (ein Knopf gedrückt, z. B. `planUmschalter`), `kontoKnopf`, `nameFeld`, `fehltZeile`, `optionChips` |
-| Organismen | Ding: `nachtZeile` (Aufenthalt als Zeile), `unterkunftKarte` (als Karte), `streckeZeile` (Bewegung); Wahl-Modul: `wahlEinstieg`, `wahlVergleich`, `wahlKarte`; Tageskasten: `tagKarte` mit `wegVerlauf`; Tagesseite: `tagEbenen`, `tagOrteZeilen` |
-| Vorlagen | `tagKachel`, die Ansichten (`ansichtTag` = Tagesseite, `ansichtPlan` …) |
+| Moleküle | Fläche (`.karte`, `.karte.flaeche`, `details.block`), `kennzahlLeiste` (Kacheln), `merkmalListe`, `reiseText` (Reisetext, Merkmallisten ohne doppelte Kennzahlen), `reiterGruppe` (Reiter als Pillen), `ebeneKopf`, `dingEtikett`, `listenZeile` (Wissen, Praxis, Quellen, Orte), `zeilenKarte` (offene Frage), `rmEintrag` (Rückmeldung, Wunsch), `agEintrag` (Aufgabe), `eintragGruppen` („Titel (n)“ mit Einträgen), `kartenLegende`, `umschalter` (ein Knopf gedrückt, z. B. `planUmschalter`), `kontoKnopf`, `nameFeld`, `fehltZeile`, `optionChips`, `standLeiste` (Stand der Vorbereitung), `reiseEnde` (An- oder Abreise), `mitreisende` |
+| Organismen | Ding: `nachtZeile` (Aufenthalt als Zeile), `unterkunftKarte` (als Karte), `streckeZeile` (Bewegung); Wahl-Modul: `wahlEinstieg`, `wahlVergleich`, `wahlKarte`; Tageskasten: `tagKarte` mit `wegVerlauf`; Tagesseite: `tagEbenen`, `tagOrteZeilen`; Tag als Zeile: `tagZeile`; `uebersichtKarte` (Karte der Reise oder der Pläne mit Legende) |
+| Vorlagen | `tagKachel`, die Ansichten (`ansichtTag` = Tagesseite, `ansichtReise` = Reiseüberblick, `ansichtPlan` …) |
 
 ## Ontologie und Bausteine (28.10.2026)
 
@@ -20,7 +20,7 @@ Die Bausteine sind auf das Datenmodell der Reise abgebildet: Jede Art (an ihrer 
 
 | Art | Kennung | Zeile | Vorschau | Karte | Seite und Teile |
 |---|---|---|---|---|---|
-| Tag | T-01 | – | `tagKachel` | `tagKarte` (im Plan; auf der Tagesseite der Tageskasten) | `ansichtTag` |
+| Tag | T-01 | `tagZeile` | `tagKachel` | `tagKarte` (im Plan; auf der Tagesseite der Tageskasten) | `ansichtTag`, `ansichtReise` |
 | Etappe, Strecke | E-01 | `streckeZeile` | `abschnittKarte` | – | `ansichtAbschnitt`, `tagEbenen` |
 | Ort | O-01 | im `wegVerlauf` | `tagOrteZeilen`, `listenZeile` | – | `ansichtOrt` |
 | Unterkunft | U-01 | `nachtZeile` | – | `unterkunftKarte` | – |
@@ -115,6 +115,23 @@ Am 27.10.2026 wurde das Grunddesign an einer echten Tagesseite überarbeitet (fr
 Eine Reise kann eigene Titelanfänge ergänzen, die vor der Vorgabe gelten: in `reise.json` `"etappen_ebenen": {"unterwegs": ["Fahrplan"], "hintergrund": ["Höhenprofil"]}`. Eine unbekannte Ebene ist ein Fehler beim Bauen.
 
 Ergebnis an einem echten Etappentag (Handy, 390 px): Weg zu den Unterkünften 2,2 statt 7,5 Bildschirme, 17 statt 35 Knöpfe, 1 statt 14 Kästen, keine Tabelle mehr breiter als der Bildschirm.
+
+## Reiseüberblick (28.10.2026)
+
+Ist ein Plan gewählt, heißt der erste Reiter **„Reise“** und zeigt die Reise statt des Plans (Vorlage `ansichtReise`, Entscheidung 28.10.2026). Der Planname („Plan B“), sein Steckbrief und die anderen erwogenen Pläne kommen auf der Seite nicht mehr vor, auch nicht in der Suche; ihre Daten bleiben in `routen.yaml`, ein Link auf einen Plan (`#P-…`) führt zum Überblick. Ist noch kein Plan gewählt, bleibt der Vergleich der Pläne. Für alle Reisen gleich, alles aus den Daten, von oben nach unten:
+
+1. **Kopf:** „Reise“ mit Zähler: vor der Reise „noch n Tage“, unterwegs „Tag x von n“, danach nichts. Unterwegs steht der heutige Tag darüber.
+2. **Anreise:** der erste Tag mit seinen festen Terminen (`fixpunkte`) und Fahrten (Strecken, die keine Wanderung sind), z. B. „Landung 20:15 PMI“, „Bus A1 Flughafen → Palma“; führt zum Tag.
+3. **Karte** der Reise mit Legende (`uebersichtKarte`). Der Kasten unter der Karte erscheint erst, wenn man einen Ort antippt.
+4. **Kennzahlen** als Kacheln (`kennzahlLeiste`): mit Wanderdaten Tage, Gehzeit, Strecke, Höhenmeter; ohne Tage, Nächte, Orte. Fehlt eine Angabe, entfällt die Kachel. Dazu **Übernachtungen**: Summe der Preise pro Nacht (Merkmal `preis` der Unterkunft, am Datum der Nacht), bei offener Wahl als Spanne der Kandidaten; je Währung getrennt. Fehlen Preise, sagt ein Satz darunter, für wie viele Nächte der Preis bekannt ist. Gelesen wird der erste Betrag oder die erste Spanne vor einer Klammer; „pro Person“ zählt nicht.
+5. **Mitreisende:** wer reist (`reist`), wer nur einen Teil mitreist mit „ab“ und „bis“ (`von`, `bis` an der Person in `reise.yaml`).
+6. **Stand der Vorbereitung** (`standLeiste`), sichtbar für alle bis zur Abreise (Status idee, planung, fest): Unterkünfte gebucht (x von y, führt zum ersten Tag mit ungebuchter Nacht), noch zu entscheiden (offene Planungs-Wahlstellen), offene Fragen, offene Aufgaben (Warnfarbe bei überfälligen). Zeilen ohne Offenes entfallen, die Unterkünfte bleiben.
+7. **Nächste Fristen:** die drei offenen Aufgaben mit der frühesten Frist (`agEintrag`), mit Link auf alle.
+8. **Feste Termine** zwischen An- und Abreise (die am ersten und letzten Tag stehen schon dort), je Termin Tag und Titel.
+9. **Die Tage** als Zeilen (`tagZeile`): Nummer und Datum, Titel, Gehzeit, darunter die Nacht mit Stand: „gebucht“ (oder was in `buchung` steht), „nicht gebucht“, „noch wählen · n“ bei offener Wahl, „Unterkunft offen“. Zeigen auf eine Zeile hebt den Tag auf der Karte hervor, Tippen öffnet ihn. Teile einer Reise (`teil`) stehen als Etikett dazwischen.
+10. **Abreise:** der letzte Tag wie die Anreise, Fahrten vor den Terminen („Bus A1 Palma → Flughafen“, „Rückflug 10:30 ab PMI“).
+
+**Buchung:** Gebucht ist eine Unterkunft, die in `routen.yaml` eine andere Buchung als `offen` trägt (`buchung: gebucht`); ohne Angabe gilt `offen`.
 
 ## Kennung und Rückmeldung (B2, 27.10.2026)
 
