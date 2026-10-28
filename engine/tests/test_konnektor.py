@@ -399,6 +399,14 @@ def test_gesund_ohne_token(dienst, tmp_path, monkeypatch):
     assert (code, a) == (503, {"gesund": False})
     zug.write_text("{kaputt")
     assert anfrage(f"{basis}/gesund", methode="GET")[0] == 503
+    # Alte Links abgeschaltet: gesund, solange die freigeschalteten Reisen veröffentlicht sind
+    zug.write_text("{}")
+    assert anfrage(f"{basis}/gesund", methode="GET")[0] == 503
+    links = tmp_path / "seiten.json"
+    links.write_text(json.dumps({"beispielreise": "https://beispiel.invalid/beispielreise/"}))
+    assert anfrage(f"{basis}/gesund", methode="GET") == (200, {"gesund": True})
+    links.write_text(json.dumps({"beispielreise": "…", "gibtsnicht": "…"}))
+    assert anfrage(f"{basis}/gesund", methode="GET")[0] == 503
 
 
 def test_kaputte_zugaenge(tmp_path, monkeypatch):

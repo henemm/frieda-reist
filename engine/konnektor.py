@@ -2319,9 +2319,10 @@ def werkzeuge_fuer(zugang):
 
 
 def gesund():
-    """-> (HTTP-Code, Antwort). Verrät weder Tokens noch Reisen."""
+    """-> (HTTP-Code, Antwort). Verrät weder Tokens noch Reisen. Bereit, wenn jede freigeschaltete Reise (seiten.json) und
+    jede Reise mit altem Link veröffentlicht ist; ohne alte Links zählen nur die freigeschalteten."""
     try:
-        reisen = {z.get("reise") for z in zugaenge().values() if "konto" not in z}
+        reisen = {z.get("reise") for z in zugaenge().values() if "konto" not in z} | set(seitenlinks())
     except (OSError, ValueError, AttributeError):
         return 503, {"gesund": False}
     if not reisen or any(daten(r) is None for r in reisen):

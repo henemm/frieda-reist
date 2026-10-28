@@ -168,6 +168,6 @@ Im Veröffentlichungsordner wird nicht gearbeitet, sonst setzt der Timer aus. `f
 |---|---|
 | Seite antwortet nicht | `ls <FR_SEITEN>/<reise>/index.html`, `sudo nginx -t`, Fehlerlog von nginx |
 | `api/gesund` antwortet nicht | `systemctl status <instanz>-rueckmeldungen`, `journalctl -u <instanz>-rueckmeldungen -n 50` |
-| Konnektor `gesund` 503 | `zugaenge.json` unlesbar oder eine verlinkte Reise nicht veröffentlicht |
+| Konnektor `gesund` 503 | `zugaenge.json` unlesbar, keine Reise freigeschaltet (`seiten.json`) und kein alter Link, oder eine freigeschaltete oder verlinkte Reise nicht veröffentlicht |
 | Nichts geht online | `journalctl -u <instanz>-veroeffentlichen -n 50`; ist der Veröffentlichungsordner auf `main` und sauber? |
 | Eingaben bleiben „neu“ | `journalctl -u <instanz>-einarbeiten -n 100`, `rueckmeldungen.py laeufe`, offene Branches `auto/einarbeiten-…` |
