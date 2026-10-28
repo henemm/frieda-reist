@@ -69,7 +69,8 @@ def test_tagesseite_in_ebenen(tmp_path, browser):
         lage = {n: (o, l) for n, o, l in a["ebenen"]}
         if breite == "390":   # unterwegs: Weg, Nachschlagen, Orte, Hintergrund, Quellen untereinander
             assert [n for n, o, _ in sorted(a["ebenen"], key=lambda x: x[1])] == ["weg", "unterwegs", "orte", "hintergrund", "quellen"]
-            assert a["tabelle"]["display"] == "block" and a["tabelle"]["vor"] == '"Typ: "'
+            # WebKit gibt content: attr() ": " als '"Typ" ": "' aus, Chromium als '"Typ: "'
+            assert a["tabelle"]["display"] == "block" and a["tabelle"]["vor"].replace('" "', "") == '"Typ: "'
         else:                 # Rechner: links lesen, rechts nachschlagen
             assert lage["unterwegs"][1] > lage["weg"][1] and lage["orte"][1] == lage["unterwegs"][1]
             assert lage["hintergrund"][1] == lage["weg"][1] and lage["unterwegs"][0] == lage["weg"][0]
