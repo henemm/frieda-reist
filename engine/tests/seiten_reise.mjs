@@ -21,16 +21,16 @@ for (const breite of [390, 1300]) {
       planname: /\bPlan [A-Z]\b/.test(document.querySelector("#main").textContent),
       steckbriefe: document.querySelectorAll("#main .steckbrief, #main .umschalter").length,
       kopf: t(".reisekopf > *"),
-      kennzahlen: t("#main > .kz .kzn"),
+      kennzahlen: t(".reise-zahlen .kz .kzn"),
       stand: [...document.querySelectorAll(".stand .standzeile")].map(z => [z.children[0].textContent, z.children[1].textContent, z.getAttribute("href")]),
-      tage: [...document.querySelectorAll("#main > .tagzeilen > .tagzeile")].map(z => [z.getAttribute("href"), z.querySelector(".tz-titel").textContent,
+      tage: [...document.querySelectorAll(".reise-tage .tagzeile")].map(z => [z.getAttribute("href"), z.querySelector(".tz-titel").textContent,
         (z.querySelector(".tz-nacht .chip") || {}).textContent || null]),
       breit: document.documentElement.scrollWidth > innerWidth + 1,
       anab: [...document.querySelectorAll(".anab")].map(x => [x.querySelector(".etikett").textContent, x.getAttribute("href"), [...x.querySelectorAll("li")].map(l => l.textContent)]),
-      reihenfolge: [...document.querySelectorAll("#main > *")].map(x => x.matches(".anab") ? x.querySelector(".etikett").textContent.split(" ")[0]
-        : x.matches(".kartenbox") ? "Karte" : x.matches(".tagzeilen") ? "Tage" : null).filter(Boolean),
-      kosten: (document.querySelector("#main > .kz > div:last-child .kzw") || {}).textContent,
-      kostenHinweis: (document.querySelector("#main > .kz + .meldung") || {}).textContent || "",
+      reihenfolge: [...document.querySelectorAll(".reise > *")].map(x => x.matches(".anab") ? x.querySelector(".etikett").textContent.split(" ")[0]
+        : x.matches(".reise-karte") ? "Karte" : x.matches(".reise-tage") ? "Tage" : null).filter(Boolean),
+      kosten: (document.querySelector(".reise-zahlen .kz > div:last-child .kzw") || {}).textContent,
+      kostenHinweis: (document.querySelector(".reise-zahlen .meldung") || {}).textContent || "",
       mitreisende: (document.querySelector(".mitreisende") || {}).textContent || null,
       termine: t(".termine .tz-titel"),
     };
@@ -41,7 +41,7 @@ for (const breite of [390, 1300]) {
   a.planZiel = await p.evaluate(() => !!document.querySelector(".tagzeilen") && !document.querySelector(".steckbrief"));
   await p.evaluate(() => { location.hash = ""; });
   await p.waitForSelector(".tagzeilen");
-  await p.locator("#main > .tagzeilen .tz-titel").first().click();
+  await p.locator(".reise-tage .tz-titel").first().click();
   await p.waitForTimeout(200);
   a.nachKlick = await p.evaluate(() => location.hash);
   await ctx.close();

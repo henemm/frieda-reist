@@ -254,7 +254,7 @@ details.block>.ortchips{padding:0 14px}
 .kzn{display:flex;align-items:center;gap:6px;color:var(--acc)}
 .kzn .sym{width:1.05rem;height:1.05rem}
 .kzw{font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
-@media (max-width:520px){.kz{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.kz{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}.kz>div:last-child:nth-child(odd){grid-column:1 / -1}}
 /* ---------- Merkmalliste (docs/alternativen.md) ---------- */
 dl.mliste{margin:6px 0;font-size:0.9062rem}
 dl.mliste dt{font-size:0.7812rem;color:var(--mut);margin-top:6px}
@@ -388,9 +388,22 @@ details.quellen>summary{min-height:44px;display:flex;align-items:center;font-wei
 .steckbrief dd{margin:0}
 .steckbrief ul{margin:4px 0;padding-left:18px;font-size:0.875rem}
 /* ---------- Reiseüberblick (28.10.2026): Kopf mit Zähler, Stand der Vorbereitung, Tag als Zeile ---------- */
-.reisekopf{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin-bottom:10px}
+/* Abschnitte untereinander mit einem Abstand (gap); kein Abschnitt bringt eigenen Außenabstand mit */
+.reise{display:flex;flex-direction:column;gap:32px}
+.pico .reise>*,.pico .reise :is(.kz,.legende,.tagzeilen){margin:0}
+.reise>.reisekopf+.anab{margin-top:-16px}
+.pico .reise h3.reise-titel{font:700 1.2rem/1.3 var(--font-text);margin:0 0 6px}
+.reise-karte{display:flex;flex-direction:column;gap:8px}
+.pico .reise-karte .meldung{margin:0}
+.reise-zahlen{display:flex;flex-direction:column;gap:10px}
+.pico .reise-zahlen :is(.meldung,.mitreisende){margin:0}
+.mitreisende{font-size:0.9375rem}
+.mitreisende .etikett{margin-right:6px}
+.reisekopf{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
 .reisekopf h2{margin:0}
-.stand{display:flex;flex-direction:column;padding-block:12px 4px}
+.pico .karte.anab{padding:14px 18px}
+.stand{display:flex;flex-direction:column;padding:16px 20px 4px}
+.stand>.etikett{margin-bottom:2px}
 .standzeile{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:44px;border-top:1px solid var(--line);color:var(--fg);text-decoration:none}
 .stand .etikett+.standzeile{border-top:0}
 .standwert{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -400,12 +413,15 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .tagzeilen{display:flex;flex-direction:column}
 .anab ul{margin:4px 0 0;padding:0}
 .pico .anab li{list-style:none;font-weight:600;line-height:1.35;margin:2px 0;color:var(--fg)}
-.mitreisende{margin:0 0 12px}
-.reisekopf+.anab{margin-bottom:14px}
+
 .tz-teil{padding:14px 0 4px}
-.tagzeile{display:grid;grid-template-columns:3.2rem minmax(0,1fr) auto auto;gap:3px 12px;align-items:baseline;padding:11px 0;border-top:1px solid var(--line);color:var(--fg);text-decoration:none}
+.tagzeile{display:grid;grid-template-columns:3.5rem minmax(0,1fr) auto auto;gap:3px 12px;align-items:baseline;padding:11px 0;border-top:1px solid var(--line);color:var(--fg);text-decoration:none}
 .tagzeilen>.tagzeile:first-child{border-top:0}
 .tagzeile.an{background:var(--acc2)}
+.tagzeile.ueber .tz-datum{color:var(--warn)}
+.tagzeile.ueber .tz-datum b{color:var(--warn)}
+.fristen .tz-datum b{font-size:1rem;line-height:1.5}
+.fristen>.weiter{display:inline-block;margin-top:8px}
 .tz-datum{grid-row:span 2;font-size:0.8125rem;line-height:1.25;color:var(--mut);font-variant-numeric:tabular-nums}
 .tz-datum b{display:block;font-size:1.25rem;font-weight:800;color:var(--fg)}
 .tz-titel{font-weight:600;line-height:1.3;text-wrap:pretty}
@@ -1931,16 +1947,20 @@ function mitreisende() {
 function festeTermine(p) {
   const l = p.tage.slice(1, -1).flatMap(t => (t.fixpunkte || []).map(f => [t, f]));
   if (!l.length) return null;
-  return el("section", {class: "termine"}, el("h3", {}, "Feste Termine"), el("div", {class: "tagzeilen"}, l.map(([t, f]) =>
+  return el("section", {class: "termine"}, el("h3", {class: "reise-titel"}, "Feste Termine"), el("div", {class: "tagzeilen"}, l.map(([t, f]) =>
     el("a", {class: "tagzeile vorschau", href: "#" + t.id}, el("span", {class: "tz-datum"}, el("b", {}, String(t.nr)), t.datum ? datumText(t.datum, t.wochentag) : null),
       el("span", {class: "tz-titel"}, f)))));
 }
-// Nächste Fristen: offene Aufgaben mit Frist, die frühesten zuerst
+// Nächste Fristen: offene Aufgaben mit Frist, die frühesten zuerst, als Zeile (Frist, Titel, Zuständig); führt zu den Aufgaben
 function naechsteFristen() {
   if (!B("aufgaben")) return null;
   const l = AG.filter(a => agOffen(a) && a.frist).sort((a, b) => a.frist.localeCompare(b.frist));
   if (!l.length) return null;
-  return el("section", {class: "fristen"}, el("h3", {}, "Nächste Fristen"), l.slice(0, 3).map(a => agEintrag(a, true)),
+  const zeile = a => el("a", {class: "tagzeile vorschau" + (ueberfaellig(a) ? " ueber" : ""), href: "#aufgaben"},
+    el("span", {class: "tz-datum"}, el("b", {}, tagKurz(a.frist)), ueberfaellig(a) ? "überfällig" : "Frist"),
+    el("span", {class: "tz-titel"}, a.titel),
+    a.zustaendig ? el("span", {class: "tz-nacht"}, a.zustaendig) : null);
+  return el("section", {class: "fristen"}, el("h3", {class: "reise-titel"}, "Nächste Fristen"), el("div", {class: "tagzeilen"}, l.slice(0, 3).map(zeile)),
     l.length > 3 ? el("a", {class: "weiter", href: "#aufgaben"}, `Alle ${l.length} Aufgaben mit Frist →`) : null);
 }
 // Zähler im Kopf: vor der Reise „noch n Tage“, unterwegs „Tag x von n“, danach nichts
@@ -1957,36 +1977,39 @@ function reiseZaehler(p) {
 const ansichtStart = m => PLAN_FEST ? ansichtReise(m, PLAN_FEST) : ansichtVarianten(m);
 function ansichtReise(m, p) {
   heuteBlock(m);
-  m.append(el("div", {class: "reisekopf"}, el("h2", {}, VARIANTEN_TITEL), reiseZaehler(p)));
+  // Abschnitte untereinander mit gleichem Abstand (.reise: gap); innerhalb eines Abschnitts der engere Abstand
+  const r = el("div", {class: "reise"});
+  m.append(r);
+  r.append(el("div", {class: "reisekopf"}, el("h2", {}, VARIANTEN_TITEL), reiseZaehler(p)));
   const an = reiseEnde("Anreise", p.tage[0]);
-  if (an) m.append(an);
+  if (an) r.append(an);
+  const karte = el("section", {class: "reise-karte"});
   const info = el("div", {class: "karte", "aria-live": "polite", hidden: true});
-  const segmente = uebersichtKarte(m, [p], info);
-  if (R.karte && window.L) m.append(info);
+  const segmente = uebersichtKarte(karte, [p], info);
+  if (R.karte && window.L) { karte.append(info); r.append(karte); }
   const kosten = reiseKosten(p);
   const kz = kennzahlLeiste({...reiseKennzahlen(p), ...(kosten ? {"Übernachtungen": kosten.text} : {})});
-  if (kz) m.append(kz);
-  if (kosten && kosten.bekannt < kosten.naechte) m.append(el("p", {class: "meldung"}, `Übernachtungen: Preis bekannt für ${kosten.bekannt} von ${kosten.naechte} Nächten; bei offener Wahl die Spanne der Kandidaten.`));
   const mit = mitreisende();
-  if (mit) m.append(mit);
+  if (kz || mit) r.append(el("section", {class: "reise-zahlen"}, kz,
+    kosten && kosten.bekannt < kosten.naechte ? el("p", {class: "meldung"}, `Übernachtungen: Preis bekannt für ${kosten.bekannt} von ${kosten.naechte} Nächten; bei offener Wahl die Spanne der Kandidaten.`) : null,
+    mit));
   // Stand der Vorbereitung bis zur Abreise; unterwegs und danach zählt der Tag, nicht die Vorbereitung
-  if (["idee", "planung", "fest"].includes((D.reise.status || {}).wert || "planung")) { const st = standLeiste(p); if (st) m.append(st); }
+  if (["idee", "planung", "fest"].includes((D.reise.status || {}).wert || "planung")) { const st = standLeiste(p); if (st) r.append(st); }
   const fr = naechsteFristen(), ft = festeTermine(p);
-  if (fr) m.append(fr);
-  if (ft) m.append(ft);
+  if (fr) r.append(fr);
+  if (ft) r.append(ft);
   const ws = R.warnungen.filter(w => w.bezug === "plan" || p.tage.some(t => t.id === w.bezug));
-  if (ws.length) m.append(warnungen(ws));
-  m.append(el("h3", {}, "Die Tage"));
+  if (ws.length) r.append(warnungen(ws));
   const liste = el("div", {class: "tagzeilen"});
   let teil = null;
   for (const t of p.tage) {
     if (t.teil && t.teil !== teil) { teil = t.teil; liste.append(el("div", {class: "etikett tz-teil"}, teil)); }
     liste.append(tagZeile(t));
   }
-  m.append(liste);
+  r.append(el("section", {class: "reise-tage"}, el("h3", {class: "reise-titel"}, "Die Tage"), liste));
   kartenZeilen(liste, segmente);
   const ab = p.tage.length > 1 ? reiseEnde("Abreise", p.tage[p.tage.length - 1]) : null;
-  if (ab) m.append(ab);
+  if (ab) r.append(ab);
 }
 
 document.addEventListener("click", e => {
