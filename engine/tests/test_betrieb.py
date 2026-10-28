@@ -89,9 +89,12 @@ def test_ungueltiger_instanzname(tmp_path):
     assert r.returncode != 0 and "FR_INSTANZ" in r.stderr
 
 
-def test_ohne_wurzel_bricht_ab():
-    """Außerhalb eines Reisen-Repos (Software nicht als Submodul eingebunden) weiß der Betrieb nicht, wo er ist."""
-    r = subprocess.run(["bash", "-c", f'. "{BETRIEB}/gemeinsam.sh"'], capture_output=True, text=True, env=SAUBER)
+def test_ohne_wurzel_bricht_ab(tmp_path):
+    """Außerhalb eines Reisen-Repos (Software nicht als Submodul eingebunden) weiß der Betrieb nicht, wo er ist.
+    Geprüft an einer Kopie außerhalb jedes Repos, weil die Software in einer Instanz selbst Submodul ist."""
+    shutil.copy(BETRIEB / "gemeinsam.sh", tmp_path / "gemeinsam.sh")
+    r = subprocess.run(["bash", "-c", f'. "{tmp_path}/gemeinsam.sh"'], capture_output=True, text=True,
+                       env={**SAUBER, "GIT_CEILING_DIRECTORIES": str(tmp_path.parent)})
     assert r.returncode != 0 and "Wurzel der Instanz" in r.stderr
 
 
