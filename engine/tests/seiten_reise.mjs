@@ -23,8 +23,10 @@ for (const breite of [390, 1300]) {
       kopf: t(".reisekopf > *"),
       kennzahlen: t(".reise-zahlen .kz .kzn"),
       stand: [...document.querySelectorAll(".stand .standzeile")].map(z => [z.children[0].textContent, z.children[1].textContent, z.getAttribute("href")]),
-      tage: [...document.querySelectorAll(".reise-tage .tagzeile")].map(z => [z.getAttribute("href"), z.querySelector(".tz-titel").textContent,
+      tage: [...document.querySelectorAll(".reise-tage .tagzeile")].map(z => [z.getAttribute("href"), z.querySelector(".tz-name").textContent,
         (z.querySelector(".tz-nacht .chip") || {}).textContent || null]),
+      // genau ein Link je Tag: die Zeile selbst, darin weder Links noch Knöpfe noch Kennungen
+      inZeile: document.querySelectorAll(".reise-tage .tagzeile :is(a, button, .zid)").length,
       breit: document.documentElement.scrollWidth > innerWidth + 1,
       anab: [...document.querySelectorAll(".anab")].map(x => [x.querySelector(".etikett").textContent, x.getAttribute("href"), [...x.querySelectorAll("li")].map(l => l.textContent)]),
       reihenfolge: [...document.querySelectorAll(".reise > *")].map(x => x.matches(".anab") ? x.querySelector(".etikett").textContent.split(" ")[0]
@@ -44,6 +46,25 @@ for (const breite of [390, 1300]) {
   await p.locator(".reise-tage .tz-titel").first().click();
   await p.waitForTimeout(200);
   a.nachKlick = await p.evaluate(() => location.hash);
+  // Zurück an dieselbe Zeile: Tag 3 öffnen, „← Reise“ führt zur Zeile von Tag 3 mit Fokus, sichtbar
+  await p.evaluate(() => { location.hash = ""; });
+  await p.waitForSelector(".tagzeilen");
+  await p.locator('.reise-tage .tagzeile[data-tag="T-03"]').click();
+  await p.waitForSelector(".tagseite");
+  await p.locator("a.zurueck").click();
+  await p.waitForSelector(".tagzeilen");
+  a.zurueck = await p.evaluate(() => { const e = document.activeElement, r = e.getBoundingClientRect();
+    return {tag: e.dataset.tag || null, sichtbar: r.top >= 0 && r.bottom <= innerHeight, oben: scrollY}; });
+  // Heimat der Unterkunft: der Abschnitt „Nacht“ ihres Tags; Zu tun mit „Zu buchen“ je Nacht
+  await p.evaluate(() => { location.hash = "U-02"; });
+  await p.waitForSelector(".tagseite");
+  a.unterkunft = await p.evaluate(() => ({inNacht: !!document.querySelector(".ebene-nacht #U-02"), reiter: document.querySelector("#nav a.on").textContent}));
+  await p.evaluate(() => { location.hash = "offen"; });
+  await p.waitForSelector("#zu-buchen");
+  a.buchen = await p.evaluate(() => [...document.querySelectorAll("#zu-buchen .buchzeile")].map(z => [z.getAttribute("href"), z.querySelector(".chip").textContent]));
+  await p.evaluate(() => { location.hash = "wissen"; });
+  await p.waitForSelector("#ueber-plan");
+  a.ueberPlan = await p.evaluate(() => document.querySelectorAll("#ueber-plan ~ .wliste .typ-plan").length);
   // Lesetext: eine Kennung wird zum Namen mit Link, eine Rückmeldungsnummer entfällt
   await p.evaluate(() => { location.hash = "W-06.kirnitzschtalbahn"; });
   await p.waitForTimeout(200);

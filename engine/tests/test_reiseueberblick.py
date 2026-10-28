@@ -52,7 +52,8 @@ def ueberblick(tmp_path, browser, datum, status=None):
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
 def test_reiseueberblick(tmp_path, browser):
     for breite, a in ueberblick(tmp_path, browser, "2026-10-28").items():
-        assert a["reiter"][0] == "Reise" and a["aktiv"] == "Reise", a["reiter"]
+        # Seitenordnung (28.10.2026): Reise · Zu tun · Wissen · Wünsche, kein Reiter „Plan“
+        assert a["reiter"] == ["Reise", "Zu tun", "Wissen", "Wünsche"] and a["aktiv"] == "Reise", a["reiter"]
         assert not a["planname"] and a["steckbriefe"] == 0                      # kein Planname, keine anderen Pläne
         assert a["kopf"] == ["Reise", "noch 197 Tage"], a["kopf"]
         assert a["kennzahlen"] == ["Tage", "Gehzeit", "Strecke", "Höhenmeter", "Übernachtungen"], a["kennzahlen"]
@@ -64,8 +65,13 @@ def test_reiseueberblick(tmp_path, browser):
                              ["Abreise · So 16.5.", "#T-04", ["S-Bahn Bad Schandau → Dresden"]]], a["anab"]
         assert a["mitreisende"] == "Mitreisende Ida, Karl ab 14.5.", a["mitreisende"]
         assert a["termine"] == ["Abendessen in Altendorf, Tisch um 19 Uhr reserviert (Beispiel)"], a["termine"]
-        # gebucht ist nur U-01 (Beispielwert); offen führt zum ersten Tag mit ungebuchter Nacht
-        assert a["stand"] == [["Unterkünfte gebucht", "1 von 3", "#T-02"], ["Offene Fragen", "2", "#fragen"]], a["stand"]
+        # gebucht ist nur U-01 (Beispielwert); der Stand führt nach „Zu tun · Zu buchen“
+        assert a["stand"] == [["Unterkünfte gebucht", "1 von 3", "#zu-buchen"], ["Offene Fragen", "2", "#fragen"]], a["stand"]
+        assert a["inZeile"] == 0, a["inZeile"]
+        assert a["zurueck"]["tag"] == "T-03" and a["zurueck"]["sichtbar"], a["zurueck"]
+        assert a["unterkunft"] == {"inNacht": True, "reiter": "Reise"}, a["unterkunft"]
+        assert [x[1] for x in a["buchen"]] == ["gebucht", "nicht gebucht", "nicht gebucht"], a["buchen"]
+        assert a["ueberPlan"] > 0
         assert [x[0] for x in a["tage"]] == ["#T-01", "#T-02", "#T-03", "#T-04"]
         assert [x[2] for x in a["tage"]] == ["gebucht", "nicht gebucht", "nicht gebucht", None], a["tage"]
         assert not a["breit"], breite

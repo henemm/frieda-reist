@@ -22,7 +22,8 @@ for (const breite of [390, 1300]) {
     const breit = [...document.querySelectorAll("#main *")].filter(e => e.getBoundingClientRect().right > innerWidth + 1).map(e => e.className || e.tagName);
     return {
       breit: document.documentElement.scrollWidth > innerWidth + 1 ? breit.slice(0, 5) : [],
-      kaesten: document.querySelectorAll(".tagseite :is(.karte, details.block, .wm-karte)").length,
+      // Kästen außerhalb des Abschnitts „Nacht“ (dort stehen Unterkunft und Vergleich, Seitenordnung 28.10.2026)
+      kaesten: [...document.querySelectorAll(".tagseite :is(.karte, details.block, .wm-karte)")].filter(x => !x.closest(".ebene-nacht")).length,
       flaeche: !!document.querySelector(".tag-oben > .karte.flaeche"),
       ebenen: ["weg", "unterwegs", "orte", "hintergrund", "quellen"].map(n => [n, oben(".ebene-" + n), links(".ebene-" + n)]),
       reiter: [...document.querySelectorAll(".ebene-unterwegs [role=tab]")].map(x => x.textContent),

@@ -88,6 +88,30 @@ Vorher „Wanderführer“ (Papiergrund, Waldgrün, Serifen, Etiketten in Großb
 - **Breite.** Kopf und alle Ansichten teilen die Breite `--breite` (Handy voll, ab 760 px 920 px, ab 1100 px 1280 px, ab 1700 px 1400 px). Eine Ansicht ist nie schmaler oder breiter als die andere. Fließtext bleibt auf Lesebreite `--lese` (44 rem), damit Zeilen nicht zu lang werden; Karten, Tabellen und die Karte nutzen die ganze Breite.
 - **Spalten.** Ab 1100 px stehen die Tage des Plans in zwei Spalten, ein Tag mit geöffnetem Vergleich nimmt die ganze Breite. Der Vergleich zeigt am Handy 2, bis 1099 px 4 und ab 1100 px 5 Möglichkeiten nebeneinander (`vglMax`).
 
+## Seitenordnung (28.10.2026)
+
+Analyse, Konzept und grafische Ausarbeitung hat der Product Owner am 28.10.2026 Schritt für Schritt freigegeben (frieda-reist#58). Grundsatz aus der Ontologie: **Jede Art hat genau eine Heimat**, an der sie vollständig steht; überall sonst erscheint sie nur als Zeile mit **einem** Link dorthin. Sammelansichten gibt es nur mit eigener Aufgabe (entscheiden, buchen).
+
+| Art | Heimat | als Zeile in |
+|---|---|---|
+| Reise | Reiter „Reise“ (Überblick) | – |
+| Tag | Tagesseite | Zeitachse der Reise |
+| Nacht, Unterkunft | Abschnitt „Nacht“ der Tagesseite | Tageszeile, „Zu tun · Zu buchen“ |
+| Wahlstelle, Option | das Element, an dem sie hängt (Nacht, Strecke, Tag, Ort, Abschnitt des Wissens) | Marke in der Tageszeile, „Zu tun · Zu entscheiden“ |
+| Plantext | Wissen „Über diesen Plan“ | – |
+| Frage, Aufgabe, Rückmeldung | „Zu tun“ | Stand im Überblick, Sprechblase an der Stelle |
+
+- **Reiter.** Ist ein Plan gewählt und hat die Reise Tagesseiten, heißen die Reiter **Reise · Zu tun · Wissen** (+ Wünsche, Suche); der Reiter „Plan“ entfällt, `#plan` führt zur Reise. „Zu tun“ hieß bis dahin „Offen“. Solange kein Plan gewählt ist (oder ohne Tagesseiten), bleibt „Plan“ mit Tagesplan und Entscheidungen.
+- **Zeitachse.** Die Tage der Reise stehen in **einer Spalte** mit Punkt und Linie (`tagZeile` in `.achse`): Nummer und Datum, Titel, Marken (feste Termine zwischen An- und Abreise, „Wahl unterwegs: …“, offene Wahl am Tag), Gehzeit und Strecke, Nacht mit Stand. Die ganze Zeile ist der einzige Link, ohne Kennung. Am Rechner (ab 1100 px) steht der Überblick links, die Zeitachse rechts mit Spalten für Zeit und Nacht; am Handy untereinander.
+- **Zurück an dieselbe Stelle.** Kommt man von einem Tag (oder einem Element an ihm) zu einer Liste mit seiner Zeile zurück, über „← Reise“, die Zurück-Taste oder nach dem Blättern, steht die Zeile in der Mitte und hat den Fokus (`zurueckZurZeile`, `history.scrollRestoration = "manual"`).
+- **Heimat statt Seitenende.** Ein Link auf eine Unterkunft oder Wahlstelle (`#U-…`, `#V-…`, `#V-….a`) öffnet das Element, an dem sie hängt (`heimat`): die Nacht des ersten Tags im Plan, die Strecke, den Ort oder Abschnitt; was an keinem Element hängt, steht in „Zu tun“.
+- **Nacht auf der Tagesseite** (`nachtAbschnitt`): Ist die Wahl offen, die Möglichkeiten im Vergleich (Karten oder Tabelle) mit dem Hinweis, dass in der Claude-App entschieden wird; sonst die Unterkunft vollständig (Kontakt, Buchung, Nächte, Merkmale), die übrigen Möglichkeiten zugeklappt. Im Tageskasten steht die Nacht als Zeile mit „Alternativen vergleichen“, das zum Abschnitt führt. Reihenfolge am Handy wie im Wanderführer: Der Weg, Unterwegs nachschlagen, Nacht, Orte, Hintergrund, Quellen; am Rechner links lesen (Der Weg, Nacht, Hintergrund), rechts nachschlagen.
+- **Alternativen an jedem Element.** Eine Wahlstelle kann mit `an:` an Tag, Strecke, Unterkunft, Ort, Wahlstelle oder einem Abschnitt des Wissens hängen (`W-…`, etwa Essen oder Ausflug; `docs/alternativen.md`). Sie erscheint dort immer gleich: am Tag im Tageskasten, an Ort oder Abschnitt unter „Zur Wahl“, mit Vergleich.
+- **Zu tun.** Oben (am Rechner nebeneinander) **Zu entscheiden** (offene Planungs-Wahlstellen mit „n zur Wahl“, darunter „Unterwegs entscheiden“; je Zeile wo sie hängt und was vorläufig gilt) und **Zu buchen · je Nacht** (Datum, Ort, Unterkunft, Stand); darunter Aufgaben, offene Fragen und Rückmeldungen wie bisher. Mahnungen (ab Status `fest`) stehen ganz oben. Der Stand der Vorbereitung im Überblick führt zu „Zu buchen“ und „Zu entscheiden“.
+- **Wissen.** Neu oben „Über diesen Plan“: der Plantext der Reise (Abschnitte vom Typ `plan`, ohne Tagesplan und Unterkunftsliste, die an ihrer Heimat stehen). Was im Plantext Fakten (Überblick) oder Tageshinweise (Tag) sind, ordnet das Einarbeiten der Reise dort ein; die Software hat dafür keine Sonderregel.
+
+Entwurf und Konzept: Artefakte „Seitenordnung“ im Reisen-Repo der Instanz.
+
 ## Tagesseite (B2 „Freundlich“, 27.10.2026)
 
 Am 27.10.2026 wurde das Grunddesign an einer echten Tagesseite überarbeitet (frieda-reist#52): Die Seite war eine Tabellenwüste aus Kästen ohne Rangfolge, mit doppelten Werten. Grundsatz: **Rechner = planen, Handy und Tablet = unterwegs.** Es sind dieselben Bausteine, Reihenfolge und Betonung folgen dem Gerät (Achse Kontext).
@@ -125,10 +149,10 @@ Ist ein Plan gewählt, heißt der erste Reiter **„Reise“** und zeigt die Rei
 3. **Karte** der Reise mit Legende (`uebersichtKarte`). Der Kasten unter der Karte erscheint erst, wenn man einen Ort antippt.
 4. **Kennzahlen** als Kacheln (`kennzahlLeiste`): mit Wanderdaten Tage, Gehzeit, Strecke, Höhenmeter; ohne Tage, Nächte, Orte. Fehlt eine Angabe, entfällt die Kachel. Dazu **Übernachtungen**: Summe der Preise pro Nacht (Merkmal `preis` der Unterkunft, am Datum der Nacht), bei offener Wahl als Spanne der Kandidaten; je Währung getrennt. Fehlen Preise, sagt ein Satz darunter, für wie viele Nächte der Preis bekannt ist. Gelesen wird der erste Betrag oder die erste Spanne vor einer Klammer; „pro Person“ zählt nicht.
 5. **Mitreisende:** wer reist (`reist`), wer nur einen Teil mitreist mit „ab“ und „bis“ (`von`, `bis` an der Person in `reise.yaml`).
-6. **Stand der Vorbereitung** (`standLeiste`), sichtbar für alle bis zur Abreise (Status idee, planung, fest): Unterkünfte gebucht (x von y, führt zum ersten Tag mit ungebuchter Nacht), noch zu entscheiden (offene Planungs-Wahlstellen), offene Fragen, offene Aufgaben (Warnfarbe bei überfälligen). Zeilen ohne Offenes entfallen, die Unterkünfte bleiben.
+6. **Stand der Vorbereitung** (`standLeiste`), sichtbar für alle bis zur Abreise (Status idee, planung, fest): Unterkünfte gebucht (x von y, führt zu „Zu tun · Zu buchen“, mit Reiter „Plan“ zum ersten Tag mit ungebuchter Nacht), noch zu entscheiden (offene Planungs-Wahlstellen), offene Fragen, offene Aufgaben (Warnfarbe bei überfälligen). Zeilen ohne Offenes entfallen, die Unterkünfte bleiben.
 7. **Nächste Fristen:** die drei offenen Aufgaben mit der frühesten Frist (`agEintrag`), mit Link auf alle.
 8. **Feste Termine** zwischen An- und Abreise (die am ersten und letzten Tag stehen schon dort), je Termin Tag und Titel.
-9. **Die Tage** als Zeilen (`tagZeile`): Nummer und Datum, Titel, Gehzeit, darunter die Nacht mit Stand: „gebucht“ (oder was in `buchung` steht), „nicht gebucht“, „noch wählen · n“ bei offener Wahl, „Unterkunft offen“. Zeigen auf eine Zeile hebt den Tag auf der Karte hervor, Tippen öffnet ihn. Teile einer Reise (`teil`) stehen als Etikett dazwischen.
+9. **Die Tage** als Zeitachse (`tagZeile`, siehe Seitenordnung): Nummer und Datum, Titel, Gehzeit, die Nacht mit Stand: „gebucht“ (oder was in `buchung` steht), „nicht gebucht“, „noch wählen · n“ bei offener Wahl, „Unterkunft offen“. Zeigen auf eine Zeile hebt den Tag auf der Karte hervor, Tippen öffnet ihn. Teile einer Reise (`teil`) stehen als Etikett dazwischen.
 10. **Abreise:** der letzte Tag wie die Anreise, Fahrten vor den Terminen (Beispielreise: „S-Bahn Bad Schandau → Dresden“).
 
 **Buchung:** Gebucht ist eine Unterkunft, die in `routen.yaml` eine andere Buchung als `offen` trägt (`buchung: gebucht`); ohne Angabe gilt `offen`.

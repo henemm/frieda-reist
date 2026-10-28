@@ -440,6 +440,8 @@ details.quellen>summary{min-height:44px;display:flex;align-items:center;font-wei
 /* ---------- Reiseüberblick (28.10.2026): Kopf mit Zähler, Stand der Vorbereitung, Tag als Zeile ---------- */
 /* Abschnitte untereinander mit einem Abstand (gap); kein Abschnitt bringt eigenen Außenabstand mit */
 .reise{display:flex;flex-direction:column;gap:32px}
+/* Seite „Reise“: am Handy eine Spalte, am Rechner Überblick links, Zeitachse der Tage rechts (Seitenordnung 28.10.2026) */
+@media (min-width:1100px){.reise-seite{display:grid;grid-template-columns:minmax(0,24rem) minmax(0,1fr);gap:32px 56px;align-items:start}}
 .pico .reise>*,.pico .reise :is(.kz,.legende,.tagzeilen){margin:0}
 .reise>.reisekopf+.anab{margin-top:-16px}
 .pico .reise h3.reise-titel{font:700 1.2rem/1.3 var(--font-text);margin:0 0 6px}
@@ -465,6 +467,22 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .pico .anab li{list-style:none;font-weight:600;line-height:1.35;margin:2px 0;color:var(--fg)}
 
 .tz-teil{padding:14px 0 4px}
+/* Zu tun: Zeilen mit genau einem Link (Titel, Unterzeile, Zustand rechts); am Rechner Entscheiden und Buchen nebeneinander */
+.tun-raster{display:flex;flex-direction:column;gap:32px;margin-bottom:32px}
+@media (min-width:1100px){.tun-raster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px 48px;align-items:start}}
+.pico .tun-teil h2{display:flex;align-items:center;gap:10px}
+.zahl-marke{font:700 0.8125rem/1 var(--font-text);padding:4px 9px;border-radius:99px;background:var(--acc2);color:var(--acc)}
+.zahl-marke.offen{background:var(--warnbg);color:var(--warn)}
+.tunliste{display:flex;flex-direction:column}
+.tunzeile{display:flex;align-items:center;gap:12px;padding:11px 4px;border-top:1px solid var(--line);color:var(--fg);text-decoration:none}
+.tunliste>.tunzeile:first-child{border-top:0}
+.tun-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.tun-titel{font-weight:600;line-height:1.3}
+.tun-unter{font-size:0.875rem;color:var(--mut)}
+.tun-datum{width:4.6rem;flex:none;font-size:0.875rem;color:var(--mut);font-variant-numeric:tabular-nums}
+.pico .tunzeile>.chip{flex:none;margin:0}
+.tun-etikett{margin-top:14px}
+@media (hover:hover){.tunzeile:hover .tun-titel{color:var(--acc)}}
 .tagzeile{display:grid;grid-template-columns:3.5rem minmax(0,1fr) auto auto;gap:3px 12px;align-items:baseline;padding:11px 0;border-top:1px solid var(--line);color:var(--fg);text-decoration:none}
 .tagzeilen>.tagzeile:first-child{border-top:0}
 .tagzeile.an{background:var(--acc2)}
@@ -479,6 +497,28 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .tz-nacht{grid-column:2 / 4;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:0.875rem;color:var(--mut)}
 .pico .tagzeile>:is(.zid-box,span.zid){grid-column:4;grid-row:1 / span 2;align-self:center}
 @media (hover:hover){.tagzeile:hover .tz-titel{color:var(--acc)}}
+/* Zeitachse: Punkt und Linie links, je Tag eine Zeile mit genau einem Link (die ganze Zeile). Am Handy stehen Zeit und
+   Nacht unter dem Titel, am Rechner in eigenen Spalten. */
+.achse .tagzeile{grid-template-columns:20px 3.4rem minmax(0,1fr);position:relative;padding:12px 8px 12px 0;border-radius:10px;border-top:0}
+.achse .tagzeile::before{content:"";position:absolute;left:6px;top:0;bottom:0;border-left:2px solid var(--line)}
+.achse>.tagzeile:first-child::before{top:18px}
+.achse>.tagzeile:last-child::before{bottom:calc(100% - 18px)}
+.tz-punkt{grid-row:1 / span 3;align-self:start;width:14px;height:14px;margin-top:4px;border:2.5px solid var(--acc);border-radius:50%;background:var(--bg);position:relative}
+.achse .tz-datum{grid-row:1 / span 3}
+.achse .tz-titel,.achse .tz-zeit,.achse .tz-nacht{grid-column:3}
+.tz-name{display:block}
+.tz-marken{margin-top:4px}
+.pico .tz-marken .chip{font-size:0.75rem;white-space:normal;border-radius:8px;text-align:left}
+.achse .tagzeile:focus-visible,.achse .tagzeile.zurueck-hier{background:var(--acc2)}
+@media (min-width:1100px){
+  .achse .tagzeile{grid-template-columns:20px 3.4rem minmax(0,1.25fr) 8.5rem minmax(0,1fr);align-items:start}
+  .reise-links .kz{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .reise-links .kartenbox{height:24rem;min-height:0}
+  .reise-links .kz>div:last-child:nth-child(odd){grid-column:1 / -1}
+  .achse .tz-titel{grid-column:3}
+  .achse .tz-zeit{grid-column:4;grid-row:1;padding-top:1px}
+  .achse .tz-nacht{grid-column:5;grid-row:1}
+}
 .vergleich td,.vergleich th{font-size:0.8438rem}
 .vergleich td.nr{font-weight:700;text-align:center}
 .vergleich td.plan-nr{color:var(--farbe)}
@@ -621,7 +661,7 @@ details.neben>summary{font-weight:700;padding:10px 2px;color:var(--warn)}
 .tagseite>*,.tag-oben>*{margin:0;min-width:0}
 .tag-oben{display:flex;flex-direction:column;gap:14px;order:1}
 .tag-lesen,.tag-spalte{display:contents}
-.ebene-weg{order:2}.ebene-unterwegs{order:3}.ebene-orte{order:4}.ebene-hintergrund{order:5}.ebene-quellen{order:6}.tagseite>.blaettern{order:7}
+.ebene-weg{order:2}.ebene-unterwegs{order:3}.ebene-nacht{order:4}.ebene-orte{order:5}.ebene-hintergrund{order:6}.ebene-quellen{order:7}.tagseite>.blaettern{order:8}
 @media (min-width:1100px) and (pointer:fine){
   .tagseite{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,25rem);gap:36px 44px;align-items:start}
   .tag-oben{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:20px;align-items:start}
@@ -815,22 +855,32 @@ if (PLAN_TAGE) for (const t of PLAN_TAGE.tage) for (const s of t.strecken)
   if ((proId.get(s.id) || {}).typ === "etappe" && !ETAPPE_TAG.has(s.id)) ETAPPE_TAG.set(s.id, t.id);
 const ETAPPEN_REITER = hat("etappe") && !PLAN_TAGE;
 const WUENSCHE = B("wuensche");
+/* Seitenordnung (28.10.2026, docs/design.md „Seitenordnung“): Jede Art hat genau eine Heimat. Ist ein Plan gewählt, heißen
+   die Reiter Reise · Zu tun · Wissen (+ Wünsche, Suche); der Reiter „Plan“ entfällt: Tage stehen in der Zeitachse der Reise,
+   Unterkünfte und Wahlstellen am Element, an dem sie hängen, die Sammelansichten (entscheiden, buchen) in „Zu tun“,
+   der Plantext unter Wissen „Über diesen Plan“. Solange kein Plan gewählt ist, bleibt der Reiter „Plan“. */
+const PLAN_DA = !PLAN_TAGE || !!D.reise.tiefe;   // ohne Tagesseiten bleibt der Plan die Heimat der Tage
+// Ohne Reiter „Plan“ ist „Zu tun“ die Heimat von Entscheiden und Buchen; mit ihm stehen die Entscheidungen im Plan
+const ZU_TUN = B("aufgaben") || B("fragen") || B("rueckmeldungen") || !PLAN_DA;
 const REITER = [
   // Zeigt der Reiter nur den Rahmen (Route noch offen), heißt er „Überblick“, sonst neben „Pläne“ verwirrend (25.10.2026)
-  ["plan", PLAN_TITEL, true], ["varianten", VARIANTEN_TITEL, HAT_VARIANTEN], ["etappen", "Etappen", ETAPPEN_REITER],
-  // Praxis steht im Reiter Wissen; „Offen“ sammelt Aufgaben, Fragen und Rückmeldungen (25.10.2026)
+  ["plan", PLAN_TITEL, PLAN_DA], ["varianten", VARIANTEN_TITEL, HAT_VARIANTEN], ["etappen", "Etappen", ETAPPEN_REITER],
+  // Praxis steht im Reiter Wissen; „Zu tun“ (bis 28.10.2026 „Offen“) sammelt Entscheiden, Buchen, Aufgaben, Fragen, Rückmeldungen
   // Quellen stehen seit dem 25.10.2026 ebenfalls im Reiter Wissen; ihr Platz in der Leiste gehört der Suche
-  ["wissen", G.wissen, hat("wissen") || hat("praxis") || hat("quelle") || (hat("etappe") && !ETAPPEN_REITER)],
+  ["wissen", G.wissen, hat("wissen") || hat("praxis") || hat("quelle") || (hat("etappe") && !ETAPPEN_REITER) || (!PLAN_DA && hat("plan"))],
   // Wünsche der Mitreisenden: eigener Reiter, wenn die Reise ihn einschaltet (reise.yaml bausteine; 25.10.2026)
-  ["wuensche", "Wünsche", WUENSCHE], ["offen", "Offen", B("aufgaben") || B("fragen") || B("rueckmeldungen")],
+  ["wuensche", "Wünsche", WUENSCHE], ["offen", "Zu tun", ZU_TUN],
 ].filter(r => r[2]);
 // Startreiter steht vorn und öffnet ohne Sprungziel: reise.json „start“, sonst bei gewähltem Plan die Karte
 // Unterwegs beginnt die Seite mit „Heute“ und der Karte (Verhalten je Status), sonst gilt „start“ der Reise
 const START = V.start === "heute" && REITER.some(r => r[0] === "varianten") ? "varianten"
   : REITER.some(r => r[0] === D.reise.start) ? D.reise.start
-  : PLAN_FEST && REITER.some(r => r[0] === "varianten") ? "varianten" : "plan";
+  : PLAN_FEST && REITER.some(r => r[0] === "varianten") ? "varianten" : PLAN_DA ? "plan" : REITER[0][0];
+// Ohne Reiter „Plan“ gilt die Reihenfolge Reise · Zu tun · Wissen · Wünsche (Seitenordnung 28.10.2026)
+const REIHE = ["varianten", "offen", "wissen", "wuensche"];
+if (!PLAN_DA) REITER.sort((a, b) => REIHE.indexOf(a[0]) - REIHE.indexOf(b[0]));
 REITER.sort((a, b) => (b[0] === START) - (a[0] === START));
-const TYP_REITER = {plan: "plan", etappe: ETAPPEN_REITER ? "etappen" : "wissen", uebersicht: ETAPPEN_REITER ? "etappen" : "wissen", wissen: "wissen", praxis: "wissen", quelle: "wissen", ort: "varianten"};
+const TYP_REITER = {plan: PLAN_DA ? "plan" : "wissen", etappe: ETAPPEN_REITER ? "etappen" : "wissen", uebersicht: ETAPPEN_REITER ? "etappen" : "wissen", wissen: "wissen", praxis: "wissen", quelle: "wissen", ort: "varianten"};
 
 /* ---------- Bausteine ---------- */
 // Symbol aus dem eingebetteten Lucide-Satz (<symbol id="i-…">), für Screenreader ausgeblendet
@@ -948,8 +998,9 @@ function abschnittInhalt(a, ohneTitel, kennzahlen) {
     for (const z of a.tabelle.zeilen) s.append(zeilenKarte(a.tabelle.spalten, z));
     if (a.nach) s.append(el("div", {html: a.nach}));
   }
-  if (a.route_ansicht === "tagesplan") tagesplan(s);
-  if (a.route_ansicht === "unterkuenfte") unterkuenfte(s);
+  // Ohne Reiter „Plan“ stehen Tage und Unterkünfte an ihrer Heimat (Zeitachse, Tagesseite, Zu tun); hier nur der Text
+  if (a.route_ansicht === "tagesplan" && PLAN_DA) tagesplan(s);
+  if (a.route_ansicht === "unterkuenfte" && PLAN_DA) unterkuenfte(s);
   einmal(a.bloecke).forEach((b, i) => s.append(block(b, i === 0, kennzahlen)));
   return s;
 }
@@ -996,7 +1047,8 @@ function dingEtikett(text, kat, art) {
 }
 // Aufenthalt als Zeile: die Nacht eines Tages. Offene Wahl zeigt die vorläufige Unterkunft und wie viele zur Wahl stehen.
 // ohneLinks: in Kacheln, die selbst ein Link sind
-function nachtZeile(n, ohneLinks, datum) {
+// verweis: Tageskasten der Tagesseite; der Vergleich steht im Abschnitt „Nacht“ darunter, hier nur der Weg dorthin
+function nachtZeile(n, ohneLinks, datum, verweis) {
   const w = n.wahl && wahlZu.get(n.wahl);
   const kand = w ? w.optionen.filter(o => !weg(o.status)) : [];
   const akt = w && (kand.find(o => o.aktiv) || kand[0]);
@@ -1009,14 +1061,15 @@ function nachtZeile(n, ohneLinks, datum) {
   const offen = w && w.art === "planung" && w.offen && kand.length > 1;
   const zustand = !w || w.art !== "planung" ? null : offen ? chip("offen", ohneLinks ? `offen · ${kand.length} Möglichkeiten` : "offen") : chip("plan", "gewählt");
   const kennung = ohneLinks ? null : w ? zid(w.id) : uid ? zid(uid) : null;
-  const einstieg = w && !ohneLinks ? wahlEinstieg(w, false, datum) : null;
+  const einstieg = w && !ohneLinks ? (verweis ? (kand.length > 1 ? el("a", {class: "wm-knopf", href: "#" + w.id}, "Alternativen vergleichen",
+    el("span", {class: "wm-n", "aria-label": `${kand.length} Möglichkeiten`}, String(kand.length))) : null) : wahlEinstieg(w, false, datum)) : null;
   const zeile = el("div", {class: "ding nacht"},
     el("div", {class: "ding-text"}, dingEtikett("Nacht", kat !== "offen" ? kat : null, "nacht"),
       el("span", {class: "ding-titel"}, !ohneLinks && u ? link(uid, titel) : titel),
       unter.length ? el("span", {class: "ding-unter"}, unter.join(" · ")) : null,
       zustand || einstieg ? el("span", {class: "chips"}, zustand, einstieg) : null),
     kennung);
-  return einstieg ? [zeile, wahlVergleich(w, false, datum)] : zeile;
+  return einstieg && !verweis ? [zeile, wahlVergleich(w, false, datum)] : zeile;
 }
 // ohneKennung: die Kennung steht schon an anderer Stelle der Seite (Etappe auf der Tagesseite)
 function streckeZeile(id, wahl, ohneKennung) {
@@ -1075,7 +1128,10 @@ function tagKarte(t, ohneKopf) {
   if (!ohneKopf) k.append(tagKopf("div", {}, t.nr, t.datum, t.wochentag, t.titel, t.id));
   for (const f of t.fixpunkte || []) k.append(el("div", {class: "chips"}, chip("plan", f)));
   const wahlZeilen = [];   // [Wahlstelle, Zeile]
-  for (const vid of t.wahlstellen) {
+  // dazu Wahlstellen, die ausdrücklich an diesem Tag, seinen Strecken oder seiner Unterkunft hängen (an: […], 28.10.2026)
+  const amTag = ohneKopf && !PLAN_DA ? wahlAn([t.id, ...t.strecken.map(x => x.id), (t.nacht || {}).unterkunft].filter(Boolean),
+    [...t.wahlstellen, (t.nacht || {}).wahl]).map(w => w.id) : [];
+  for (const vid of [...t.wahlstellen, ...amTag]) {
     const w = wahlZu.get(vid);
     if (!w) continue;
     wahlZeilen.push([w, [wahlZeile(w, true), wahlVergleich(w)]]);
@@ -1086,7 +1142,7 @@ function tagKarte(t, ohneKopf) {
   if (t.strecken.length) k.append(wegVerlauf(t, ohneKopf ? id => (proId.get(id) || {}).typ === "etappe" : null));
   for (const [w, z] of wahlZeilen) if (!vorn.some(([x]) => x === w)) k.append(...z.filter(Boolean));
   if (t.text) k.append(el("div", {class: "z"}, t.text));
-  if (t.nacht) k.append(...[].concat(nachtZeile(t.nacht, false, t.datum)).filter(Boolean));
+  if (t.nacht) k.append(...[].concat(nachtZeile(t.nacht, false, t.datum, ohneKopf && !PLAN_DA)).filter(Boolean));
   // Plan entschieden (ohne Plan-Baum): die Tagesseite hat den ganzen Weg mit Karte
   if (!ohneKopf && !D.reise.tiefe && PLAN_TAGE && PLAN_TAGE.tage.some(x => x.id === t.id))
     k.append(el("a", {class: "weiter", href: "#" + t.id}, t.strecken.some(s => ETAPPE_TAG.get(s.id) === t.id) ? "Ganzer Tag: Weg, Karte, Einkehr →" : "Ganzer Tag →"));
@@ -1424,6 +1480,14 @@ function nachtName(n) {
   if (n.wahl) { const w = wahlZu.get(n.wahl); const k = w.optionen.filter(o => !weg(o.status)); return k.length > 1 ? `${ortName(n.ort)}: ${k.length} Kandidaten` : k[0].titel; }
   if (n.unterkunft) return R.unterkuenfte[n.unterkunft].name;
   return n.hinweis || ortName(n.ort);
+}
+// Wegstrecke eines Tages in km (Wanderstrecken, Kennzahl Länge oder Strecke); 0, wenn keine bekannt ist
+function tagKm(t) {
+  let km = 0;
+  for (const s of t.strecken) { const st = R.strecken[s.id] || {}; if ((st.art || "wandern") !== "wandern") continue;
+    const g = Object.entries(st.kennzahlen || {}).find(([k]) => /^(länge|strecke|km)/i.test(k));
+    const x = g && /(\d+(?:[.,]\d+)?)\s*km/.exec(g[1]); if (x) km += +x[1].replace(",", "."); }
+  return Math.round(km * 10) / 10;
 }
 function tagMin(t) {
   let m = 0;
@@ -1925,15 +1989,22 @@ function nachtStand(n) {
     : {name: u.name, zustand: "offen", text: "nicht gebucht", zaehlt: true, gebucht: false};
   return {name: akt ? akt.titel : n.hinweis || ortName(n.ort), zustand: "offen", text: akt ? "nicht gebucht" : "Unterkunft offen", zaehlt: true, gebucht: false};
 }
-// Organismus Tag als Zeile: Nummer und Datum, Titel, Gehzeit, darunter die Nacht mit Stand; führt zum Tag
+// Organismus Tag als Zeile der Zeitachse: Nummer und Datum, Titel mit Marken (feste Termine, Wahl am Tag), Gehzeit und
+// Strecke, Nacht mit Stand. Genau ein Link: die ganze Zeile führt zum Tag (Seitenordnung 28.10.2026), keine Kennung.
 function tagZeile(t) {
-  const m = tagMin(t), s = nachtStand(t.nacht);
+  const m = tagMin(t), s = nachtStand(t.nacht), km = tagKm(t);
+  const wahl = (t.wahlstellen || []).map(v => wahlZu.get(v)).filter(w => w && gueltigeOptionen(w).length > 1 && w.id !== (t.nacht || {}).wahl);
+  // Feste Termine des ersten und letzten Tags stehen schon bei An- und Abreise
+  const p = PLAN_FEST, rand = p && (t === p.tage[0] || t === p.tage[p.tage.length - 1]);
+  const marken = [...(rand ? [] : t.fixpunkte || []).map(f => chip("leise", f)),
+    ...wahl.map(w => chip(w.art === "unterwegs" ? "unterwegs" : w.offen ? "offen" : "plan",
+      (w.art === "unterwegs" ? "Wahl unterwegs: " : "Wahl: ") + w.titel.replace(/^Tag \d+\s*:?\s*/, "")))];
   return el("a", {class: "tagzeile vorschau", href: "#" + t.id, "data-tag": t.id},
+    el("span", {class: "tz-punkt", "aria-hidden": "true"}),
     el("span", {class: "tz-datum"}, el("b", {}, String(t.nr)), t.datum ? datumText(t.datum, t.wochentag) : null),
-    el("span", {class: "tz-titel"}, t.titel),
-    el("span", {class: "tz-zeit"}, m ? dauer(m) : ""),
-    s ? el("span", {class: "tz-nacht"}, symbol("unterkunft", "etikett-sym"), el("span", {}, s.name), s.text ? chip(s.zustand, s.text) : null) : null,
-    zid(t.id));
+    el("span", {class: "tz-titel"}, el("span", {class: "tz-name"}, t.titel), marken.length ? el("span", {class: "chips tz-marken"}, marken) : null),
+    el("span", {class: "tz-zeit"}, [m ? dauer(m) : "", km ? `${String(km).replace(".", ",")} km` : ""].filter(Boolean).join(" · ")),
+    s ? el("span", {class: "tz-nacht"}, symbol("unterkunft", "etikett-sym"), el("span", {class: "tz-unterkunft"}, s.name), s.text ? chip(s.zustand, s.text) : null) : null);
 }
 // Kennzahlen der ganzen Reise aus der Summe des Plans: mit Wanderdaten Tage, Gehzeit, Strecke, Höhenmeter; sonst Tage,
 // Nächte, Orte. Fehlende Angaben entfallen statt eine Lücke zu zeigen.
@@ -1952,8 +2023,8 @@ function standLeiste(p) {
   const fragen = B("fragen") ? D.fragen.zeilen.filter(z => !/^(erledigt|geklärt|beantwortet)/i.test(z.status || z.zellen[z.zellen.length - 1] || "")) : [];
   const ag = B("aufgaben") ? AG.filter(agOffen) : [], ueber = ag.filter(ueberfaellig).length;
   const zeilen = [
-    naechte.length && ["Unterkünfte gebucht", `${naechte.length - offenN.length} von ${naechte.length}`, offenN.length > 0, offenN.length ? offenN[0][0].id : null],
-    wahl.length && ["Noch zu entscheiden", String(wahl.length), true, wahl[0].id],
+    naechte.length && ["Unterkünfte gebucht", `${naechte.length - offenN.length} von ${naechte.length}`, offenN.length > 0, PLAN_DA ? (offenN.length ? offenN[0][0].id : null) : "zu-buchen"],
+    wahl.length && ["Noch zu entscheiden", String(wahl.length), true, PLAN_DA ? wahl[0].id : "zu-entscheiden"],
     fragen.length && ["Offene Fragen", String(fragen.length), false, "fragen"],
     ag.length && ["Aufgaben offen", ueber ? `${ag.length}, ${ueber} überfällig` : String(ag.length), ueber > 0, "aufgaben"],
   ].filter(Boolean);
@@ -2048,9 +2119,12 @@ function reiseZaehler(p) {
 const ansichtStart = m => PLAN_FEST ? ansichtReise(m, PLAN_FEST) : ansichtVarianten(m);
 function ansichtReise(m, p) {
   heuteBlock(m);
-  // Abschnitte untereinander mit gleichem Abstand (.reise: gap); innerhalb eines Abschnitts der engere Abstand
-  const r = el("div", {class: "reise"});
-  m.append(r);
+  // Abschnitte untereinander mit gleichem Abstand (.reise: gap); innerhalb eines Abschnitts der engere Abstand.
+  // Am Rechner links der Überblick, rechts die Zeitachse (Seitenordnung 28.10.2026); am Handy untereinander.
+  const aussen = el("div", {class: "reise reise-seite"});
+  const r = el("div", {class: "reise reise-links"}), rechts = el("div", {class: "reise reise-rechts"});
+  aussen.append(r, rechts);
+  m.append(aussen);
   r.append(el("div", {class: "reisekopf"}, el("h2", {}, VARIANTEN_TITEL), reiseZaehler(p)));
   const an = reiseEnde("Anreise", p.tage[0]);
   if (an) r.append(an);
@@ -2071,16 +2145,16 @@ function ansichtReise(m, p) {
   if (ft) r.append(ft);
   const ws = R.warnungen.filter(w => w.bezug === "plan" || p.tage.some(t => t.id === w.bezug));
   if (ws.length) r.append(warnungen(ws));
-  const liste = el("div", {class: "tagzeilen"});
+  const liste = el("div", {class: "tagzeilen achse"});
   let teil = null;
   for (const t of p.tage) {
     if (t.teil && t.teil !== teil) { teil = t.teil; liste.append(el("div", {class: "etikett tz-teil"}, teil)); }
     liste.append(tagZeile(t));
   }
-  r.append(el("section", {class: "reise-tage"}, el("h3", {class: "reise-titel"}, "Die Tage"), liste));
+  rechts.append(el("section", {class: "reise-tage"}, el("h3", {class: "reise-titel"}, "Die Tage"), liste));
   kartenZeilen(liste, segmente);
   const ab = p.tage.length > 1 ? reiseEnde("Abreise", p.tage[p.tage.length - 1]) : null;
-  if (ab) r.append(ab);
+  if (ab) rechts.append(ab);
 }
 
 document.addEventListener("click", e => {
@@ -2423,6 +2497,28 @@ function tagEbenen(t, etappen) {
     el("summary", {}, `Quellen und Prüfung (${teile.quellen.length})`), teile.quellen.map(([a, b]) => leseAbschnitt(b, kz(a))))) : null;
   return {weg, unterwegs, hintergrund, quellen};
 }
+/* Organismus Nacht der Tagesseite (Seitenordnung 28.10.2026): Heimat von Unterkunft und Wahl der Nacht. Ist die Wahl
+   offen, stehen die Möglichkeiten im Vergleich; sonst die Unterkunft vollständig (Adresse, Kontakt, Buchung), die übrigen
+   Möglichkeiten zugeklappt. */
+function nachtAbschnitt(t) {
+  const n = t.nacht;
+  if (!n || n.an_bord) return null;
+  const st = nachtStand(n), w = n.wahl && wahlZu.get(n.wahl);
+  const kand = w ? gueltigeOptionen(w) : [];
+  const akt = w && (kand.find(o => o.aktiv) || kand[0]);
+  const uid = n.unterkunft && R.unterkuenfte[n.unterkunft] ? n.unterkunft : akt && (akt.unterkuenfte || []).find(x => R.unterkuenfte[x]);
+  const offen = w && w.art === "planung" && w.offen && kand.length > 1;
+  const s = el("section", {class: "ebene ebene-nacht ziel", id: "nacht"},
+    el("div", {class: "ebene-kopf"}, el("h3", {}, symbol("unterkunft", "etikett-sym"), " Nacht in " + ortName(n.ort),
+      st && st.text ? chip(st.zustand, offen ? `noch wählen · ${kand.length}` : st.text) : null)));
+  if (offen) s.append(wahlKarte(w), el("p", {class: "meldung"}, "Entscheiden: in der Claude-App. Danach steht hier die gewählte Unterkunft mit Adresse, Kontakt und Buchungsstand."));
+  else {
+    if (uid) s.append(unterkunftKarte(uid));
+    else s.append(el("p", {class: "meldung"}, n.hinweis || "Unterkunft noch offen."));
+    if (w && w.optionen.length > 1) s.append(el("details", {class: "block"}, el("summary", {}, `Alle Möglichkeiten (${w.optionen.length})`), wahlKarte(w)));
+  }
+  return s;
+}
 // Organismus Orte des Tages: je Ort eine Zeile (Name als Link, Kurztext, Kennung), ohne Kasten und ohne Marken
 function tagOrteZeilen(orte) {
   return el("section", {class: "ebene ebene-orte"}, ebeneKopf(orte.length > 1 ? "Orte des Tages" : "Ort des Tages"),
@@ -2441,7 +2537,7 @@ function ansichtTag(m, tid) {
     if (i >= 0) { const datum = plusTage(start, i); imPlan = {nr: null, datum, wochentag: wochentag(datum), alt: o}; }
   }
   m.append(TIEFE ? el("a", {class: "zurueck", href: "#" + (p ? p.id : "varianten")}, "← " + (p ? `${p.kurz}: ${p.titel}` : "Alle Pläne"))
-    : el("a", {class: "zurueck", href: "#plan"}, "← Plan"));
+    : el("a", {class: "zurueck", href: PLAN_DA ? "#plan" : "#varianten"}, "← " + (PLAN_DA ? "Plan" : VARIANTEN_TITEL)));
   m.append(tagKopf("h2", {class: "ziel", id: tid, "data-ziel": tid}, imPlan && imPlan.nr, imPlan && imPlan.datum, imPlan && imPlan.wochentag, t.titel, tid));
   const kopf = el("div", {class: "chips"});
   if (imPlan && imPlan.alt) kopf.append(chip("offen", "Alternative: " + imPlan.alt.titel, {href: "#" + imPlan.alt.id}));
@@ -2451,7 +2547,7 @@ function ansichtTag(m, tid) {
   if (!mit.length && !(imPlan && imPlan.alt)) kopf.append(chip("offen", "Variante innerhalb der Pläne"));
   if (kopf.childNodes.length) m.append(kopf);
   const etappen = t.strecken.map(s => proId.get(s.id)).filter(a => a && a.typ === "etappe");
-  if (t.text || !etappen.length) m.append(el("h3", {}, "Übersicht"), t.text ? el("p", {}, t.text) : el("p", {class: "meldung"}, "Noch kein Tagesprogramm."));
+  if (t.text || !(PLAN_DA ? etappen : t.strecken).length) m.append(el("h3", {}, "Übersicht"), t.text ? el("p", {}, t.text) : el("p", {class: "meldung"}, "Noch kein Tagesprogramm."));
   const seite = el("div", {class: "tagseite"});
   // Oben: Tageskasten und Karte (Etappen; sonst Strecken mit eigenem Track, Beschreibung über „siehe“)
   const karten = t.strecken.flatMap(s => {
@@ -2466,7 +2562,8 @@ function ansichtTag(m, tid) {
   const e = etappen.length ? tagEbenen(t, etappen) : {};
   const orte = tagOrte(t);
   // Links lesen (Weg, Hintergrund, Quellen), rechts nachschlagen (Unterwegs, Orte); am Handy untereinander
-  const lesen = [e.weg, e.hintergrund, e.quellen].filter(Boolean), nachschlagen = [e.unterwegs, orte.length ? tagOrteZeilen(orte) : null].filter(Boolean);
+  const nacht = PLAN_DA ? null : nachtAbschnitt(t);
+  const lesen = [e.weg, nacht, e.hintergrund, e.quellen].filter(Boolean), nachschlagen = [e.unterwegs, orte.length ? tagOrteZeilen(orte) : null].filter(Boolean);
   if (lesen.length) seite.append(el("div", {class: "tag-lesen"}, lesen));
   if (nachschlagen.length) seite.append(el("div", {class: "tag-spalte"}, nachschlagen));
   if (imPlan && !imPlan.alt) {
@@ -2542,6 +2639,14 @@ function ansichtEtappen(m) {
 function ansichtWissen(m) {
   m.append(el("h2", {}, G.wissen));
   let leer = true;
+  // Über diesen Plan: Begründungen und Lesetext des gewählten Plans (bis 28.10.2026 im Reiter „Plan“)
+  const plan = PLAN_DA ? [] : abschnitte.filter(x => x.typ === "plan");
+  if (plan.length || (!PLAN_DA && D.plan_kopf)) {
+    leer = false;
+    m.append(el("h3", {class: "gruppe ziel", id: "ueber-plan"}, "Über diesen Plan"));
+    if (D.plan_kopf) m.append(el("div", {class: "inhalt plan-kopf", html: D.plan_kopf}));
+    if (plan.length) m.append(el("div", {class: "wliste"}, plan.map(a => listenZeile("plan", "plan", a.titel, wissenThemen(a) || null, a.id, a.id))));
+  }
   for (const [typ, titel, anker] of [["wissen", "Hintergrund", "wissen-liste"], ["praxis", G.praxis, "praxis"], ["quelle", G.quelle, "quellen"]]) {
     const l = abschnitte.filter(x => x.typ === typ);
     if (!l.length) continue;
@@ -2599,7 +2704,62 @@ function listenZeile(typ, sym, titel, unter, href, kennung) {
 function wissenZeile(a) {
   return listenZeile(a.typ, SYM_TYP[a.typ] || "wissen", a.titel, wissenThemen(a) || null, a.id, a.id);
 }
+/* ---------- Vorlage „Zu tun“ (bis 28.10.2026 „Offen“; Seitenordnung): Sammelansichten mit eigener Aufgabe ----------
+   Zu entscheiden (jede offene Wahl, an welchem Element sie auch hängt) · Zu buchen je Nacht · Aufgaben · Fragen ·
+   Rückmeldungen. Jede Zeile führt an die Stelle, an der die Sache hängt (heimat). */
+// Wo eine Wahlstelle hängt, in Worten: „Nacht Do 25.2., Fr 5.3.“, „am Weg von Tag 2“, „Tag 3“, sonst die Elemente
+function wahlWo(w) {
+  const tage = PLAN_FEST ? PLAN_FEST.tage.filter(t => w.an.includes(t.id) || (w.an_ids || []).includes(t.id)) : [];
+  const naechte = tage.filter(t => (t.nacht || {}).wahl === w.id);
+  if (naechte.length) return "Nacht " + naechte.map(t => datumText(t.datum, t.wochentag)).join(", ");
+  if (tage.length) return (w.art === "unterwegs" ? "am Weg von " : "") + tage.map(t => `Tag ${t.nr}`).join(", ");
+  const namen = (w.an_ids || []).map(x => (R.unterkuenfte[x] || {}).name || (R.strecken[x] || {}).titel || (R.orte[x] || {}).name || (proId.get(x) || {}).titel).filter(Boolean);
+  return namen.join(", ");
+}
+function wahlZeileZuTun(w) {
+  const g = gueltigeOptionen(w), akt = g.find(o => o.aktiv);
+  const unter = [wahlWo(w), w.art === "unterwegs" ? (akt ? "Standard: " + akt.titel : "") : akt ? "vorläufig " + akt.titel : ""].filter(Boolean).join(" · ");
+  return el("a", {class: "tunzeile vorschau", href: "#" + w.id},
+    el("span", {class: "tun-text"}, el("span", {class: "tun-titel"}, w.titel.replace(/^Tag \d+\s*:?\s*/, "")), unter ? el("span", {class: "tun-unter"}, unter) : null),
+    chip(w.art === "unterwegs" ? "unterwegs" : "offen", `${g.length} zur Wahl`));
+}
+function zuEntscheiden(m) {
+  if (!R) return;
+  const offen = R.wahlstellen.filter(w => w.art === "planung" && w.offen && gueltigeOptionen(w).length > 1);
+  const unterwegs = R.wahlstellen.filter(w => w.art === "unterwegs" && gueltigeOptionen(w).length > 1);
+  const andere = R.warnungen.filter(w => /^V-/.test(w.bezug));
+  if (!offen.length && !unterwegs.length && !andere.length) return;
+  const s = el("section", {class: "ziel tun-teil", id: "zu-entscheiden"}, el("h2", {}, "Zu entscheiden", offen.length ? el("span", {class: "zahl-marke offen"}, String(offen.length)) : null));
+  s.append(el("p", {class: "meldung"}, "Jede Wahl steht an dem Element, an dem sie hängt; hier gesammelt."));
+  if (andere.length) s.append(warnungen(andere));
+  if (offen.length) s.append(el("div", {class: "tunliste"}, offen.map(wahlZeileZuTun)));
+  if (unterwegs.length) s.append(el("div", {class: "etikett tun-etikett"}, "Unterwegs entscheiden"), el("div", {class: "tunliste"}, unterwegs.map(wahlZeileZuTun)));
+  m.append(s);
+}
+// Zu buchen je Nacht: Datum, Ort, Unterkunft (vorläufig, solange die Wahl offen ist) und Stand; führt zur Nacht des Tags
+function zuBuchen(m) {
+  if (!PLAN_FEST) return;
+  const naechte = PLAN_FEST.tage.map(t => [t, nachtStand(t.nacht)]).filter(([, x]) => x && x.zaehlt);
+  if (!naechte.length) return;
+  const gebucht = naechte.filter(([, x]) => x.gebucht).length;
+  const s = el("section", {class: "ziel tun-teil", id: "zu-buchen"}, el("h2", {}, "Zu buchen · je Nacht",
+    el("span", {class: "zahl-marke" + (gebucht < naechte.length ? " offen" : "")}, `${gebucht} von ${naechte.length}`)));
+  s.append(el("div", {class: "tunliste buchen"}, naechte.map(([t, x]) => {
+    const n = t.nacht, w = n.wahl && wahlZu.get(n.wahl), offen = x.text && x.text.startsWith("noch wählen");
+    const akt = w && gueltigeOptionen(w).find(o => o.aktiv);
+    const name = offen ? (akt ? akt.titel + " (vorläufig)" : "noch offen") : x.name;
+    return el("a", {class: "tunzeile buchzeile vorschau", href: "#" + (offen ? w.id : n.unterkunft || (w ? w.id : t.id))},
+      el("span", {class: "tun-datum"}, datumText(t.datum, t.wochentag)),
+      el("span", {class: "tun-text"}, el("span", {class: "tun-titel"}, ortName(n.ort)), el("span", {class: "tun-unter"}, name)),
+      chip(x.zustand, x.text));
+  })));
+  m.append(s);
+}
 function ansichtOffen(m) {
+  if (!PLAN_DA) mahnungen(m);
+  const oben = el("div", {class: "tun-raster"});
+  if (!PLAN_DA) { zuEntscheiden(oben); zuBuchen(oben); }
+  if (oben.childNodes.length) m.append(oben);
   if (B("aufgaben")) { const a = el("section", {class: "ziel", id: "aufgaben"}); ansichtAufgaben(a); m.append(a); }
   if (B("fragen")) ansichtFragen(m);
   if (B("rueckmeldungen")) { const r = el("section", {class: "ziel", id: "rueckmeldungen"}); ansichtRueckmeldungen(r); m.append(r); }
@@ -2621,6 +2781,9 @@ function ansichtAbschnitt(m, a) {
     s.querySelector("section").removeAttribute("id");
     m.append(s);
   } else m.append(abschnittInhalt(a));
+  // Alternativen, die an diesem Abschnitt hängen (an: [W-…] oder [O-…]): am Element, mit Vergleich
+  const ws = PLAN_DA ? [] : wahlAn([a.id]);
+  if (ws.length) m.append(el("section", {class: "am-element"}, el("h3", {}, "Zur Wahl"), ws.map(wahlKarte)));
 }
 
 /* ---------- Suche ---------- */
@@ -3485,6 +3648,35 @@ document.addEventListener("click", e => {
 }, true);
 window.addEventListener("online", () => agLaden().then(rmNeuZeichnen));
 
+/* ---------- Heimat eines Elements (Seitenordnung, 28.10.2026) ----------
+   Unterkunft und Wahlstelle haben keine eigene Seite: Ein Link darauf führt zu dem Element, an dem sie hängen (Nacht oder
+   Strecke eines Tages, Ort, Abschnitt des Wissens); was an keinem Element hängt, steht in „Zu tun“.
+   -> {tag, ziel} | {abschnitt, ziel} (Ort oder Wissen) | {offen: true, ziel} | null; ersatz: Ziel, falls ziel fehlt */
+function heimat(id, tiefe = 0) {
+  if (!R || !PLAN_TAGE || tiefe > 3) return null;
+  const imPlan = tid => PLAN_TAGE.tage.some(t => t.id === tid);
+  if (R.unterkuenfte[id]) {
+    const t = R.unterkuenfte[id].naechte.find(imPlan);
+    if (t) return {tag: t, ziel: id};
+    const o = R.wahlstellen.flatMap(w => w.optionen).find(x => (x.unterkuenfte || []).includes(id));
+    return o ? {...heimat(o.id, tiefe + 1), ziel: id} : null;
+  }
+  const w = wahlZu.get(id) || (optionZu.get(id) || [])[0];
+  if (!w) return null;
+  const t = w.an.find(imPlan);
+  if (t) return {tag: t, ziel: id, ersatz: w.id};
+  for (const x of w.an_ids || []) {
+    if (imPlan(x)) return {tag: x, ziel: id, ersatz: w.id};
+    if (ETAPPE_TAG.has(x)) return {tag: ETAPPE_TAG.get(x), ziel: id, ersatz: w.id};
+    if (proId.has(x)) return {abschnitt: x, ziel: id, ersatz: w.id};
+    const h = R.unterkuenfte[x] || wahlZu.has(x) ? heimat(x, tiefe + 1) : null;
+    if (h) return {...h, ziel: id, ersatz: w.id};
+  }
+  return {offen: true, ziel: id, ersatz: w.id};
+}
+// Wahlstellen, die an einem Element hängen (an_ids), ohne die, die der Tag schon über Nacht, Strecke oder wahl: zeigt
+const wahlAn = (ids, ohne) => R ? R.wahlstellen.filter(w => (w.an_ids || []).some(x => ids.includes(x)) && !(ohne || []).includes(w.id)) : [];
+
 /* ---------- Router ---------- */
 let reiter = "plan";
 function zeigeReiter(name) {
@@ -3506,7 +3698,7 @@ function offenZahl() {
   z.hidden = !n; z.textContent = n || "";
   k.classList.toggle("warn", ueber > 0 || aus > 0);
   const teile = [`${ag.length} Aufgaben offen`, ueber ? `${ueber} überfällig` : "", aus ? `${aus} Rückmeldungen noch nicht gesendet` : ""].filter(Boolean);
-  k.setAttribute("aria-label", "Offen: " + teile.join(", "));
+  k.setAttribute("aria-label", "Zu tun: " + teile.join(", "));
   k.title = k.getAttribute("aria-label");
 }
 
@@ -3537,19 +3729,21 @@ function route(behalten) {
   const h = decodeURIComponent(location.hash.slice(1));
   if (q.length >= 2) { zeigeReiter(reiter); ansichtSuche(m, q); window.scrollTo(0, 0); return; }
   if (!h && START === "varianten") { zeigeReiter("varianten"); ansichtStart(m); }
+  else if ((!h || h === "plan") && !PLAN_DA) { zeigeReiter(START); START === "varianten" ? ansichtStart(m) : ansichtOffen(m); }
   else if (!h || h === "plan") { zeigeReiter("plan"); ansichtPlan(m); }
   else if (h === "etappen" && ETAPPEN_REITER) { zeigeReiter("etappen"); ansichtEtappen(m); }
   else if (h === "etappen") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "weitere-wege"; }
   // Etappe des gewählten Plans (oder ein Block daraus): zum Tag, an dem sie gegangen wird
   else if (ETAPPE_TAG.has(h) || (blockZu.has(h) && ETAPPE_TAG.has(blockZu.get(h).id))) {
-    zeigeReiter(TIEFE ? "varianten" : "plan"); ansichtTag(m, ETAPPE_TAG.get(ETAPPE_TAG.has(h) ? h : blockZu.get(h).id)); ziel = h; }
-  else if (!TIEFE && PLAN_TAGE && PLAN_TAGE.tage.some(t => t.id === h)) { zeigeReiter("plan"); ansichtTag(m, h); }
+    zeigeReiter(TIEFE || !PLAN_DA ? "varianten" : "plan"); ansichtTag(m, ETAPPE_TAG.get(ETAPPE_TAG.has(h) ? h : blockZu.get(h).id)); ziel = h; }
+  else if (!TIEFE && PLAN_TAGE && PLAN_TAGE.tage.some(t => t.id === h)) { zeigeReiter(PLAN_DA ? "plan" : "varianten"); ansichtTag(m, h); }
   else if (h === "wissen") { zeigeReiter("wissen"); ansichtWissen(m); }
   else if (h === "bausteine") { zeigeReiter(""); ansichtBausteine(m); }
   else if (h === "orte") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "orte"; }
   else if (h === "praxis") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "praxis"; }
   else if (h === "quellen") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "quellen"; }
   else if (h === "offen") { zeigeReiter("offen"); ansichtOffen(m); }
+  else if (h === "zu-entscheiden" || h === "zu-buchen") { zeigeReiter("offen"); ansichtOffen(m); ziel = h; }
   else if (h === "wuensche" && WUENSCHE) { zeigeReiter("wuensche"); ansichtWuensche(m); }
   else if ((h === "rueckmeldungen" || h === "aufgaben" || h === "fragen") && B(h)) { zeigeReiter("offen"); ansichtOffen(m); ziel = h; }
   else if (/^F-\d+$/.test(h) && zeileZu.get(h) === "fragen" && B("fragen")) { zeigeReiter("offen"); ansichtOffen(m); ziel = h; }
@@ -3561,12 +3755,39 @@ function route(behalten) {
   else if (proId.has(h)) { const a = proId.get(h); zeigeReiter(TYP_REITER[a.typ]); ansichtAbschnitt(m, a); }
   else if (blockZu.has(h)) { const a = blockZu.get(h); zeigeReiter(TYP_REITER[a.typ]); ansichtAbschnitt(m, a); ziel = h; }
   else if (zeileZu.get(h) === "varianten") { zeigeReiter("varianten"); ansichtStart(m); ziel = h; }
-  else if (zeileZu.has(h)) { zeigeReiter("plan"); ansichtPlan(m); ziel = h; }
+  else if (!PLAN_DA && heimat(h)) {
+    const x = heimat(h);
+    if (x.tag) { zeigeReiter("varianten"); ansichtTag(m, x.tag); }
+    else if (x.abschnitt) { const a = proId.get(x.abschnitt); zeigeReiter(TYP_REITER[a.typ]); ansichtAbschnitt(m, a); }
+    else { zeigeReiter("offen"); ansichtOffen(m); }
+    ziel = document.getElementById(x.ziel) || !x.ersatz ? x.ziel : x.ersatz;
+  }
+  else if (zeileZu.has(h) && PLAN_DA) { zeigeReiter("plan"); ansichtPlan(m); ziel = h; }
+  else if (!PLAN_DA) { zeigeReiter(START); START === "varianten" ? ansichtStart(m) : ansichtOffen(m); }
   else { zeigeReiter("plan"); ansichtPlan(m); }
   // Lesetext ohne Kennungen (28.10.2026); die Bausteinseite zeigt Kennungen absichtlich
   if (h !== "bausteine") kennungenImText(m);
+  const vorher = VORHER;
+  VORHER = h;
   if (behalten === true) window.scrollTo(0, y);
-  else if (ziel) zumZiel(ziel); else window.scrollTo(0, 0);
+  else if (ziel) zumZiel(ziel);
+  else if (!zurueckZurZeile(m, vorher)) window.scrollTo(0, 0);
+}
+/* Zurück an dieselbe Stelle (Seitenordnung 28.10.2026): Führt der Weg von einem Tag (oder einem Element an ihm) zurück zu
+   einer Liste mit seiner Zeile, steht die Zeile wieder in der Mitte und hat den Fokus. Gilt für den Link „← Reise“, die
+   Zurück-Taste des Browsers und das Blättern (Tag 3 → Reise landet bei Tag 3). */
+let VORHER = null;
+if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+function zurueckZurZeile(m, vorher) {
+  if (!vorher || !R) return false;
+  const h = heimat(vorher);
+  const tid = ETAPPE_TAG.get(vorher) || (h && h.tag) || vorher;
+  const z = m.querySelector(`[data-tag="${CSS.escape(tid)}"]`);
+  if (!z) return false;
+  z.scrollIntoView({block: "center"});
+  z.focus({preventScroll: true});
+  z.classList.add("zurueck-hier");
+  return true;
 }
 
 document.title = D.reise.titel;
