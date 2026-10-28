@@ -33,7 +33,7 @@ Daraus entsteht höchstens ein **Prüfauftrag** (Name „Wächter“, Art Prüfu
 | Kanal | Wirkung | Stand |
 |---|---|---|
 | `app` | Meldungen stehen im `ueberblick` der Claude-App unter „Meldungen an dich“ und unter `rueckmeldungen`; erledigte Aufgaben, vollzogene Statuswechsel und Meldungen älter als 14 Tage verschwinden (Konflikte nie) | gebaut |
-| `nachricht` | Sammelnachricht an den Betreiber (`lauf --bericht`), versandt vom Betriebsskript `ops/waechter.sh` | gebaut |
+| `nachricht` | Sammelnachricht an den Betreiber (`lauf --bericht`), versandt vom Betriebsskript `betrieb/waechter.sh` (`docs/betrieb.md`) | gebaut |
 | E-Mail an alle | – | nicht gebaut |
 | Handy über die Webseite (PWA), Push | – | Issue #21 |
 

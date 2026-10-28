@@ -1,6 +1,6 @@
 # Frieda Reist – Arbeitsregeln für die Software
 
-Dieses Repo enthält nur die Software (Generator, Vorlage, Service Worker, Rückmeldedienst, Konnektor für die Claude-App) und eine erfundene Beispielreise. Es ist öffentlich (AGPL-3.0). Echte Reisen liegen in eigenen, privaten Repos, die dieses als Submodul `frieda/` einbinden.
+Dieses Repo enthält nur die Software (Generator, Vorlage, Service Worker, Rückmeldedienst, Konnektor für die Claude-App, Betrieb auf dem Server) und eine erfundene Beispielreise. Es ist öffentlich (AGPL-3.0). Echte Reisen liegen in eigenen, privaten Repos, die dieses als Submodul `frieda/` einbinden.
 
 ## Was nie hierher gehört
 
@@ -13,8 +13,10 @@ engine/            bauen.py (Generator), routen.py (Routenmodell), reise.py (rei
                    vorlage.html, sw.vorlage.js, rueckmeldungen.py (Dienst), konnektor.py (MCP), waechter.py (Wächter und
                    Erinnerer, läuft täglich), merkmale.yaml,
                    vendor/ (Fremdbibliotheken, siehe THIRD_PARTY.md), tests/
+betrieb/           Betrieb einer Instanz: Einarbeiten (KI je Reise), Veröffentlichen, Deploy, Freischalten, Wächter-Lauf,
+                   Einrichten, Vorlagen für systemd und nginx, KI-Anweisung, einstellungen.beispiel
 beispiel/reisen/   erfundene Beispielreise, Demo und Testgrundlage
-docs/              Produktbild, Alternativen und Merkmale, Design und Bausteine, Konnektor
+docs/              Produktbild, Alternativen und Merkmale, Design und Bausteine, Konnektor, Betrieb
 ```
 
 Der Generator sucht Reisen in `./reisen/` des aktuellen Ordners (`--reisen`, `--ziel` zum Ändern).
@@ -22,9 +24,10 @@ Der Generator sucht Reisen in `./reisen/` des aktuellen Ordners (`--reisen`, `--
 ## Regeln
 
 - Änderungen gelten für alle Reisen: nichts Reisespezifisches in die Engine, Einstellungen gehören in `reise.yaml` der Reise.
+- Änderungen gelten für alle Instanzen: nichts Instanzspezifisches in `betrieb/` (Pfade, Adressen, Benutzer, Meldeweg kommen aus `betrieb/einstellungen.env` des Reisen-Repos, `docs/betrieb.md`).
 - Bibliotheken statt Eigenbau; neue Fremdbestandteile mit Lizenz in `engine/vendor/` und `THIRD_PARTY.md`.
 - Tests: `engine/.venv/bin/python -m pytest -q engine/tests` muss ohne echte Reisen grün sein. Neue Funktionen bekommen Tests, wenn nötig mit Ergänzungen der Beispielreise (erfunden, als Beispielwert markiert).
-- Braucht der Konnektor ein neues eigenes Modul, muss es beim Veröffentlichen neben `konnektor.py` liegen; Repos, die es einbinden, kopieren es mit.
+- Braucht der Konnektor oder der Rückmeldedienst ein neues eigenes Modul, gehört es in die Liste in `betrieb/deploy.sh` (ein Test prüft das).
 - Sprache der Texte und Kommentare: Deutsch mit korrekten Umlauten.
 - Kleine, thematisch saubere Commits; Änderungen über Pull Requests.
 - Keine privaten E-Mail-Adressen in der Geschichte: lokal `user.email` auf die GitHub-noreply-Adresse setzen und Pull Requests lokal vorspulen statt auf GitHub zusammenführen (nach grünen Tests `git push origin HEAD:main`; GitHub markiert den PR dann selbst als gemergt). Jedes Zusammenführen über GitHub trägt sonst die Konto-Adresse als Committer ein.

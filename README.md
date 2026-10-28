@@ -36,6 +36,10 @@ mein-reisen-repo/
 
 Aufbau einer Reise: `beispiel/reisen/beispielreise/`, Modell in `engine/routen.py` und `engine/reise.py`, Produktbild in `docs/produkt.md`, Alternativen und Merkmale in `docs/alternativen.md`, Design und Bausteine in `docs/design.md`, Claude-App in `docs/konnektor.md`, neue Reise anlegen in `docs/neue-reise.md`.
 
+## Auf dem eigenen Server
+
+Seiten ausliefern, Rückmeldungen annehmen, von der KI einarbeiten lassen und veröffentlichen: `betrieb/` mit Anleitung in `docs/betrieb.md`. Eine Reisegruppe mit eigenem Betreiber ist eine Instanz (ein Reisen-Repo, eigene Ordner und Dienste); ihre Werte stehen in `betrieb/einstellungen.env` des Reisen-Repos, die Skripte kennen keine Instanz.
+
 ## Tests
 
 ```
