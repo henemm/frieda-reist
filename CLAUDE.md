@@ -17,13 +17,15 @@ betrieb/           Betrieb einer Instanz: Einarbeiten (KI je Reise), Veröffentl
                    Einrichten, Vorlagen für systemd und nginx, KI-Anweisung, einstellungen.beispiel
 werkzeuge/         Werkzeuge für Inhalte aus dem Netz: Grundkarte, Punkte aus OpenStreetMap, Wasserstellen
 beispiel/reisen/   erfundene Beispielreise, Demo und Testgrundlage
-docs/              Produktbild, Alternativen und Merkmale, Design und Bausteine, Konnektor, Betrieb, Werkzeuge
+docs/              Produktbild, Alternativen und Merkmale, Design und Bausteine, Konnektor, Betrieb, Werkzeuge;
+                   adr/ Architektur-Entscheidungen, ADR-0001 ist der Kern und die Prüfstelle
 ```
 
 Der Generator sucht Reisen in `./reisen/` des aktuellen Ordners (`--reisen`, `--ziel` zum Ändern).
 
 ## Regeln
 
+- **Zuerst der Kern:** Jedes Vorhaben wird vor dem Bauen an `docs/adr/0001-kern.md` gemessen (zehn Fragen der Prüfstelle, im PR-Template). Widerspricht es dem Kern, wird nicht gebaut, sondern der Product Owner gefragt. Die Software kennt nur die Grundformen der Reise-Ontologie und die Form eines Merkmals; Arten und Merkmale gehören der Reise. Frieda enthält keine eigene KI; Reiseinhalte entstehen im AI-Client über den Konnektor, nicht in Claude Code (Product Owner, 28.10.2026).
 - Änderungen gelten für alle Reisen: nichts Reisespezifisches in die Engine, Einstellungen gehören in `reise.yaml` der Reise.
 - Änderungen gelten für alle Instanzen: nichts Instanzspezifisches in `betrieb/`, `werkzeuge/` oder die Engine (Pfade, Adressen, Benutzer, Meldeweg, Kennung kommen aus `betrieb/einstellungen.env` des Reisen-Repos, `docs/betrieb.md`; Vorgaben der Engine in `engine/instanz.py`).
 - Bibliotheken statt Eigenbau; neue Fremdbestandteile mit Lizenz in `engine/vendor/` und `THIRD_PARTY.md`.
