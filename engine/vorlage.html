@@ -1250,7 +1250,10 @@ const schmal = () => matchMedia("(max-width: 699px)").matches;
 // Möglichkeiten nebeneinander im Vergleich: Handy 2, schmaler Rechner 4, breiter Rechner 5
 const vglMax = () => schmal() ? 2 : matchMedia("(min-width: 1100px)").matches ? 5 : 4;
 const gueltigeOptionen = w => w.optionen.filter(o => !weg(o.status));
-const gefuellt = (w, o) => w.kriterien.filter(k => o.merkmale[k.id]).length;
+// Zähler „3/7“: nur Merkmale, die für diese Reise zählen (Stufe pflicht oder empfohlen; angeboten und aus bleiben außen vor)
+const stufeVon = k => typeof k.stufe === "object" && k.stufe ? (k.stufe["*"] || "empfohlen") : (k.stufe || "empfohlen");
+const zaehlend = w => w.kriterien.filter(k => !["angeboten", "aus"].includes(stufeVon(k)));
+const gefuellt = (w, o) => zaehlend(w).filter(k => o.merkmale[k.id]).length;
 function vglZustand(w, liste, datum) {
   const s = vglSchluessel(w, liste, datum);
   if (!VGL.has(s)) {
@@ -1288,7 +1291,7 @@ function wahlVergleich(w, liste, datum) {
   // Auswahl nur, wenn es mehr als zwei gibt; die Zahl sagt, wie viele Merkmale schon belegt sind
   if (g.length > 2) box.append(el("fieldset", {class: "wm-wahl"}, el("legend", {class: "unsichtbar"}, "Möglichkeiten im Vergleich"),
     g.map(o => el("button", {type: "button", "data-vgl-opt": s + "|" + o.id, "aria-pressed": String(z.wahl.includes(o.id))},
-      o.titel, w.kriterien.length ? el("small", {}, `${gefuellt(w, o)}/${w.kriterien.length}`) : null))));
+      o.titel, zaehlend(w).length ? el("small", {}, `${gefuellt(w, o)}/${zaehlend(w).length}`) : null))));
   box.append(el("fieldset", {class: "wm-ansicht"}, el("legend", {class: "unsichtbar"}, "Darstellung"),
     [["karten", "Karten"], ["tabelle", "Tabelle"]].map(([a, t]) => el("button", {type: "button", "data-vgl-ansicht": s + "|" + a, "aria-pressed": String(z.ansicht === a)}, t))));
   if (!belegt.length) box.append(el("p", {class: "meldung"}, "Zu diesen Möglichkeiten sind noch keine Merkmale erfasst."));

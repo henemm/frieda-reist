@@ -679,3 +679,45 @@ def test_anschluss_stimmt_mit_den_warnungen_der_beispielreise():
         erster = opt_aus(erg, oid)["tage"][0]
         luecke = any(w["bezug"] == erster and ("Lücke" in w["text"] or "fehlt" in w["text"]) for w in erg["warnungen"])
         assert ("Lücke am Anfang" in anschluss(erg, oid)) == luecke, (oid, erg["warnungen"])
+
+
+def w_opt(erg, vid):
+    return next(w for w in erg["wahlstellen"] if w["id"] == vid)["optionen"]
+
+
+def test_stufe_je_reise_schaltet_merkmale_ab_und_wahlstelle_wieder_ein():
+    """ADR-0001, Paket O-0: Eine Reise setzt die Stufe eines Grundlisten-Merkmals (aus, angeboten, pflicht), auch je
+    Unterkunftstyp; nur pflicht und empfohlen zählen als „Fehlt noch“. Eine Wahlstelle ändert die Stufe für sich."""
+    r = roh()
+    r["unterkuenfte"]["U-01"]["merkmale"] = {"preis": "120 €"}
+    r["unterkuenfte"]["U-02"]["merkmale"] = {"preis": "99 €"}
+    erg, fehler = mk_bauen(r)
+    assert fehler == [] and erg["unterkuenfte"]["U-02"]["fehlt"] == ["fruehstueck"]
+    # Reise: aus -> kein Fehlt; die Stufe steht im Export (Seite und Claude-App lesen sie)
+    r["merkmale"] = {"unterkunft": {"fruehstueck": {"stufe": "aus"}}}
+    erg, fehler = mk_bauen(r)
+    assert fehler == []
+    assert erg["unterkuenfte"]["U-02"]["fehlt"] == [] and w_opt(erg, "V-02")[1]["fehlt"] == []
+    assert next(k for k in erg["merkmale"]["unterkunft"] if k["id"] == "fruehstueck")["stufe"] == "aus"
+    # Wahlstelle schaltet für sich wieder ein
+    r["wahlstellen"]["V-02"]["merkmale"] = {"fruehstueck": {"stufe": "empfohlen"}}
+    erg, fehler = mk_bauen(r)
+    assert fehler == [] and w_opt(erg, "V-02")[1]["fehlt"] == ["fruehstueck"]
+    # angeboten zählt nicht als Lücke, ein Wert bleibt erlaubt
+    r["wahlstellen"]["V-02"].pop("merkmale")
+    r["merkmale"] = {"unterkunft": {"fruehstueck": {"stufe": "angeboten"}}}
+    r["unterkuenfte"]["U-01"]["merkmale"]["fruehstueck"] = "inklusive"
+    erg, fehler = mk_bauen(r)
+    assert fehler == [] and erg["unterkuenfte"]["U-02"]["fehlt"] == []
+    assert erg["unterkuenfte"]["U-01"]["merkmale"]["fruehstueck"]["wert"] == "inklusive"
+    # je Unterkunftstyp: aus für alle, empfohlen für Refugis
+    r["unterkuenfte"]["U-02"]["typ"] = "Refugi"
+    r["merkmale"] = {"unterkunft": {"fruehstueck": {"stufe": {"*": "aus", "refugi": "empfohlen"}}}}
+    erg, fehler = mk_bauen(r)
+    assert fehler == []
+    assert erg["unterkuenfte"]["U-02"]["fehlt"] == ["fruehstueck"] and "fruehstueck" not in erg["unterkuenfte"]["U-01"]["fehlt"]
+    # Fehler: unbekannte Stufe; ein Grundlisten-Merkmal darf sonst nicht neu definiert werden
+    r["merkmale"] = {"unterkunft": {"fruehstueck": {"stufe": "egal"}}}
+    assert "stufe muss" in "\n".join(mk_bauen(r)[1])
+    r["merkmale"] = {"unterkunft": {"fruehstueck": {"name": "Brot", "stufe": "aus"}}}
+    assert "gibt es für unterkunft schon" in "\n".join(mk_bauen(r)[1])

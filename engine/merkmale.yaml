@@ -9,6 +9,10 @@
 #   auto           wird aus dem Plan berechnet (Kennzahlen der Strecken, Tage) und nie von Hand eingetragen
 #   hilfe          wie Claude den Wert selbst recherchiert
 #   frage          wie Claude die Organisator:in gezielt fragt, wenn die Recherche nichts ergibt
+#   stufe          pflicht | empfohlen (Vorgabe) | angeboten | aus. Eine Reise setzt sie für ein Merkmal dieser Liste in
+#                  routen.yaml mit „merkmale: {<bereich>: {<merkmal>: {stufe: aus}}}“, auch je Unterkunftstyp
+#                  ({"*": aus, refugi: empfohlen}); eine Wahlstelle ändert sie für sich. Nur pflicht und empfohlen zählen
+#                  als „Fehlt noch“ (ADR-0001, Paket O-0; diese Liste entfällt mit Paket O-1).
 
 unterkunft:
   preis:

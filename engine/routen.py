@@ -64,7 +64,35 @@ def kategorie(eintrag):
         return "unterwegs"
     return TYP_KATEGORIE.get(str(eintrag.get("typ") or "").strip().lower(), "sonstige")
 TYPEN = {"text", "geld", "zahl", "auswahl"}
-DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage", "einheit"}
+# Stufe eines Merkmals je Reise (ADR-0001, Paket O-0): pflicht und empfohlen zählen als „Fehlt noch“ und werden gemahnt,
+# angeboten wird nur gezeigt, wenn ein Wert da ist, aus gilt für diese Reise nicht (kein Fehlt, keine Mahnung, kein Wächter).
+# Ohne Angabe gilt empfohlen. Eine Reise setzt die Stufe eines Grundlisten-Merkmals unter merkmale: nur mit {stufe: …},
+# eine Wahlstelle kann sie für sich wieder ändern. Die Stufe darf je Unterkunftstyp verschieden sein:
+# stufe: {"*": aus, refugi: empfohlen} (Schlüssel: typ der Unterkunft, klein geschrieben; „*“ für alle übrigen).
+STUFEN = ("pflicht", "empfohlen", "angeboten", "aus")
+DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage", "einheit", "stufe"}
+
+
+def stufe_von(d, typ=None):
+    """Stufe eines Merkmals für ein Ding mit diesem typ (Unterkunft) oder ohne (None: „*“)."""
+    s = d.get("stufe", "empfohlen")
+    if isinstance(s, dict):
+        return s.get(str(typ or "").strip().lower(), s.get("*", "empfohlen"))
+    return s
+
+
+def zaehlt(d, typ=None):
+    """Zählt das Merkmal als Lücke (Fehlt noch, Mahnung)? Nur pflicht und empfohlen, nie berechnete."""
+    return not d.get("auto") and stufe_von(d, typ) in ("pflicht", "empfohlen")
+
+
+def stufe_fehler(s):
+    """Prüft eine Stufen-Angabe -> Fehlertext oder None."""
+    if isinstance(s, dict):
+        if not s or any(not re.fullmatch(r"\*|[a-z][a-z0-9_]*", str(k)) for k in s) or any(v not in STUFEN for v in s.values()):
+            return f"stufe je Typ muss {{\"*\": …, <typ>: …}} mit Werten {', '.join(STUFEN)} sein."
+        return None
+    return None if s in STUFEN else f"stufe muss {', '.join(STUFEN)} sein."
 WERT_FELDER = {"wert", "quelle", "geprueft", "notiz", "gilt"}
 GRUNDLISTE = Path(__file__).with_name("merkmale.yaml")
 
@@ -139,13 +167,15 @@ def verhalten_anwenden(route, v):
                                   f"({len(gueltig)} Kandidaten). Bitte entscheiden."})
             for o in w["optionen"]:
                 if o["aktiv"]:
-                    namen = {k["id"]: k["name"] for k in w["kriterien"]}
-                    ung = [namen.get(k, k) for k, m in o["merkmale"].items() if m.get("ungeprueft")]
+                    namen = {k["id"]: k["name"] for k in w["kriterien"] if stufe_von(k) != "aus"}
+                    ung = [namen[k] for k, m in o["merkmale"].items() if m.get("ungeprueft") and k in namen]
                     if ung:
                         mahnungen.append({"bezug": o["id"], "text": f"{o['id']} {o['titel']}: {', '.join(ung)} "
                                           "ohne Prüfdatum. Veränderliche Angaben bitte nachschlagen und mit Datum eintragen."})
+        defs = {k["id"]: k for k in (route.get("merkmale") or {}).get("unterkunft") or []}
         for uid, u in (route.get("unterkuenfte") or {}).items():
-            ung = [k for k, m in (u.get("merkmale") or {}).items() if m.get("ungeprueft")]
+            ung = [k for k, m in (u.get("merkmale") or {}).items()
+                   if m.get("ungeprueft") and stufe_von(defs.get(k, {}), u.get("typ")) != "aus"]
             if ung and u.get("naechte"):
                 mahnungen.append({"bezug": uid, "text": f"{uid} {u.get('name')}: {', '.join(ung)} ohne Prüfdatum."})
     route["mahnungen"] = mahnungen
@@ -404,11 +434,20 @@ class Routen:
             if not re.fullmatch(r"[a-z][a-z0-9_]*", str(k)):
                 self.fehl(f"{wo}: Merkmal „{k}“: nur Kleinbuchstaben, Ziffern und _ (z. B. preis, onsen).")
                 continue
+            if isinstance(d, dict) and set(d) == {"stufe"} and k in self.katalog.get(bereich, {}):
+                # nur die Stufe eines bekannten Merkmals ändern (Reise: aus; Wahlstelle: wieder empfohlen)
+                if stufe_fehler(d["stufe"]):
+                    self.fehl(f"{wo}: Merkmal {k}: {stufe_fehler(d['stufe'])}")
+                    continue
+                aus[k] = {**self.katalog[bereich][k], "stufe": d["stufe"]}
+                continue
             if not isinstance(d, dict) or not d.get("name"):
                 self.fehl(f"{wo}: Merkmal {k} braucht einen Namen (name: …).")
                 continue
             if set(d) - DEF_FELDER:
                 self.fehl(f"{wo}: Merkmal {k}: unbekannte Felder {', '.join(sorted(set(d) - DEF_FELDER))}.")
+            if d.get("stufe") and stufe_fehler(d["stufe"]):
+                self.fehl(f"{wo}: Merkmal {k}: {stufe_fehler(d['stufe'])}")
             typ = d.get("typ", "text")
             if typ not in TYPEN:
                 self.fehl(f"{wo}: Merkmal {k}: typ muss {', '.join(sorted(TYPEN))} sein.")
@@ -419,7 +458,7 @@ class Routen:
             if k in self.katalog.get(bereich, {}) and not grund:
                 self.fehl(f"{wo}: Merkmal {k} gibt es für {bereich} schon.")
             aus[k] = {"name": d["name"], "typ": typ, **{f: d[f] for f in ("werte", "veraenderlich", "auto", "hilfe",
-                                                                          "frage", "einheit") if d.get(f)}}
+                                                                          "frage", "einheit", "stufe") if d.get(f)}}
         return aus
 
     def bereich(self, w):
@@ -623,7 +662,8 @@ class Routen:
         if b == "route":
             auto.update(self.anschluss(vid, o))
         mk.update({k: auto[d["auto"]] for k, d in krit.items() if d.get("auto") in auto})
-        return {k: mk[k] for k in krit if k in mk}, [k for k, d in krit.items() if not d.get("auto") and k not in mk]
+        typ = next((self.unterkuenfte.get(u, {}).get("typ") for u in (o.get("unterkuenfte") or [])[:1]), None)
+        return {k: mk[k] for k in krit if k in mk}, [k for k, d in krit.items() if zaehlt(d, typ) and k not in mk]
 
     def waehle(self, vid, w):
         opts = [o for o in w.get("optionen") or [] if o.get("id") in self.option]
@@ -1035,7 +1075,7 @@ class Routen:
         b = a if isinstance(a, str) and a != "wandern" and a in self.katalog else None
         mk = self.mk_strecke.get(sid, {})
         merkmale = {"bereich": b, "merkmale": mk,
-                    "fehlt": [k for k, d in self.katalog[b].items() if not d.get("auto") and k not in mk]} if b else \
+                    "fehlt": [k for k, d in self.katalog[b].items() if zaehlt(d) and k not in mk]} if b else \
             ({"merkmale": mk, "fehlt": []} if mk else {})
         return {"titel": s.get("titel", sid), "von": s.get("von"), "nach": s.get("nach"), "art": s.get("art"),
                 "rolle": s.get("rolle", "haupt"), "zweig_von": s.get("zweig_von"), "kennzahlen": s.get("kennzahlen") or {},
@@ -1059,5 +1099,5 @@ class Routen:
             aus[uid]["naechte"] = naechte.get(uid, [])
             mk = self.mk_unterkunft.get(uid, {})
             aus[uid]["merkmale"] = mk
-            aus[uid]["fehlt"] = [k for k, d in self.katalog.get("unterkunft", {}).items() if k not in mk]
+            aus[uid]["fehlt"] = [k for k, d in self.katalog.get("unterkunft", {}).items() if zaehlt(d, u.get("typ")) and k not in mk]
         return aus
