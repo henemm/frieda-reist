@@ -302,6 +302,13 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .ag-notiz{font-size:0.9375rem;color:var(--mut);line-height:1.45}
 .pico button.ag-bearbeiten{flex:none;width:auto;margin:0;padding:4px 0;min-height:32px;border:0;background:none;box-shadow:none;color:var(--acc);font-size:0.875rem;font-weight:600}
 .ag-liste{display:flex;flex-direction:column}
+/* Offene Frage als Zeile: wie eine Aufgabe, ohne Haken; der Stand als Wort in seiner Farbe */
+.frage{padding:12px 0}
+.ag-liste>.frage+.frage{border-top:1px solid var(--line)}
+.frage .titel{font-weight:600;line-height:1.4}
+.frage.zu .titel{color:var(--mut)}
+.pico .frage .ag-kopf>.zid-box{margin:0;flex:none}
+
 .ag-liste>.ag+.ag{border-top:1px solid var(--line)}
 .ag-liste>.rmeintrag:first-child{border-top:0}
 .ag-gruppe{margin-top:22px}
@@ -2128,9 +2135,68 @@ function ansichtRahmen(m) {
   if (R) entscheidungen(m);
   fragenKarte(m);
 }
+// Kennungen in einem Text (aus Markdown-Tabellen der Reise) in Namen auflösen: eine Klammer, die nur Kennungen enthält,
+// entfällt (diese Stellen stehen als Pillen darunter); eine Kennung im Satz wird zum Namen mit Link. -> {teile, ids}
+const KENNUNG = /\b(?:AG-\d+|[TEOUVPFWR]-\d+(?:\.[a-z0-9-]+)?)\b/g;
+function kennungenAufloesen(text) {
+  // Name einer Stelle; eine andere Frage mit ihren ersten Worten, eine Aufgabe mit ihrem Titel
+  const frage = id => { const z = D.fragen.zeilen.find(x => x.id === id); const w = z && String(z.zellen[1] || "").replace(KENNUNG, "").trim();
+    return w ? "„" + (w.length > 48 ? w.slice(0, 48).replace(/\s\S*$/, "") + " …" : w) + "“" : ""; };
+  const ids = [], name = id => /^AG-/.test(id) ? ((AG.find(a => a.id === id) || {}).titel || "eine Aufgabe") : /^F-/.test(id) ? frage(id) : titelZu(id);
+  // Code-Markierungen aus Markdown (`…`) gehören nicht in den Lesetext
+  const ohneKlammer = String(text || "").replace(/`([^`]*)`/g, "$1").replace(/\s*\(([^()]*)\)/g, (ganz, innen) => {
+    const gefunden = innen.match(KENNUNG) || [];
+    if (!gefunden.length || innen.replace(KENNUNG, "").replace(/[\s,;/]|und|oder/g, "")) return ganz;
+    ids.push(...gefunden); return "";
+  });
+  const teile = []; let rest = 0;
+  for (const m of ohneKlammer.matchAll(KENNUNG)) {
+    teile.push(ohneKlammer.slice(rest, m.index));
+    const n = name(m[0]);
+    teile.push(n ? el("a", {href: "#" + (/^AG-/.test(m[0]) ? "aufgaben" : m[0]), title: m[0]}, n) : m[0]);
+    rest = m.index + m[0].length;
+  }
+  teile.push(ohneKlammer.slice(rest));
+  return {teile, ids: [...new Set(ids)]};
+}
+// Stand einer Frage aus der Spalte „Status“: geklärt, als Aufgabe weitergegeben oder offen; der Rest des Texts als Notiz
+function frageStand(text) {
+  const t = String(text || "").trim();
+  const zu = /^(erledigt|geklärt|beantwortet|entfällt)/i.exec(t);
+  if (zu) return {art: "zu", wort: zu[1].toLowerCase(), rest: t.slice(zu[0].length).replace(/^[\s:,–-]+/, "")};
+  if (/^→\s*Aufgabe/i.test(t)) return {art: "aufgabe", wort: "als Aufgabe", rest: t.replace(/^→\s*Aufgabe\s*/i, "")};
+  return {art: "offen", wort: "offen", rest: /^offen\b/i.test(t) ? t.replace(/^offen\b[\s:,–-]*/i, "") : t};
+}
+// Molekül offene Frage als Zeile (28.10.2026): die Frage in Worten ohne Kennungen, darunter bis wann, die
+// Stellen als Pillen, die Notiz zum Stand leise; die Kennung steht im Tooltip und in der Sprechblase
+function frageZeile(spalten, z) {
+  const sp = n => spalten.findIndex(k => k.toLowerCase() === n);
+  const iWas = sp("was") >= 0 ? sp("was") : 1, iBis = sp("bis"), iStand = sp("status");
+  const was = kennungenAufloesen(z.zellen[iWas]), stand = frageStand(iStand >= 0 ? z.zellen[iStand] : z.status);
+  const notiz = kennungenAufloesen(stand.rest);
+  const bis = iBis >= 0 && z.zellen[iBis] && z.zellen[iBis] !== "–" ? z.zellen[iBis] : "";
+  // Der Stand steht in der Gruppe („Zu klären“, „Als Aufgabe unterwegs“, „Geklärt“), nicht noch einmal an jeder Frage
+  const meta = [bis ? el("span", {}, /^(ab|bis|vor|nach|sobald|spätestens)\b/i.test(bis) ? "" : "bis ", kennungenAufloesen(bis).teile) : null,
+    ...spalten.map((k, i) => i > 0 && ![iWas, iBis, iStand].includes(i) && z.zellen[i] && z.zellen[i] !== "–" ? el("span", {}, `${k}: ${z.zellen[i]}`) : null)].filter(Boolean);
+  const ids = [...new Set([...was.ids, ...notiz.ids, ...(z.ziele || [])])].filter(id => titelZu(id));
+  return el("div", {class: "frage ziel" + (stand.art === "zu" ? " zu" : ""), id: z.id, "data-ziel": z.id, title: z.id},
+    el("div", {class: "ag-text"},
+      el("div", {class: "ag-kopf"}, el("span", {class: "titel"}, was.teile), zid(z.id)),
+      meta.length ? el("div", {class: "ag-meta"}, meta.flatMap((x, i) => i ? [el("span", {class: "ag-punkt", "aria-hidden": "true"}, "·"), x] : [x])) : null,
+      ids.length ? el("div", {class: "ag-bezug"}, ids.map(id => el("a", {href: "#" + id, title: id}, titelZu(id)))) : null,
+      stand.rest ? el("div", {class: "ag-notiz"}, notiz.teile) : null));
+}
 function ansichtFragen(m) {
   const f = el("section", {class: "ziel", id: "fragen"}, el("h2", {}, "Offene Fragen"));
-  for (const z of D.fragen.zeilen) f.append(zeilenKarte(D.fragen.spalten, z));
+  const alle = D.fragen.zeilen.map(z => [z, frageStand(z.zellen[D.fragen.spalten.findIndex(k => k.toLowerCase() === "status")] ?? z.status)]);
+  const gruppe = (titel, l) => el("section", {class: "ag-gruppe"}, el("h3", {class: "reise-titel"}, titel, el("span", {class: "kap-zahl"}, String(l.length))),
+    el("div", {class: "ag-liste"}, l.map(([z]) => frageZeile(D.fragen.spalten, z))));
+  const offen = alle.filter(([, x]) => x.art === "offen"), aufgabe = alle.filter(([, x]) => x.art === "aufgabe"), zu = alle.filter(([, x]) => x.art === "zu");
+  if (offen.length) f.append(gruppe("Zu klären", offen));
+  if (aufgabe.length) f.append(gruppe("Als Aufgabe unterwegs", aufgabe));
+  if (zu.length) f.append(el("details", {class: "kapitel ag-erledigt"}, el("summary", {}, el("span", {class: "kap-text"}, el("span", {class: "kap-titel"}, "Geklärt")),
+    el("span", {class: "kap-zahl"}, String(zu.length))), el("div", {class: "ag-liste"}, zu.map(([z]) => frageZeile(D.fragen.spalten, z)))));
+  if (!alle.length) f.append(el("div", {class: "leer"}, "Keine offenen Fragen."));
   m.append(f);
 }
 
@@ -2585,7 +2651,7 @@ const ONTOLOGIE = [
   ["wahlstelle", "Wahlstelle", "V-01", {zeile: [wahlZeile], vorschau: [], karte: [wahlKarte], seite: [wahlEinstieg, wahlVergleich]}],
   ["option", "Option einer Wahl", "V-01.a", {zeile: [optionBlock], vorschau: [], karte: [wahlVergleich], seite: []}],
   ["plan", "Plan", "P-A", {zeile: [planMarke], vorschau: [steckbrief], karte: [], seite: [ansichtPlanDetail]}],
-  ["frage", "Offene Frage", "F-01", {zeile: [], vorschau: [], karte: [zeilenKarte], seite: [ansichtFragen]}],
+  ["frage", "Offene Frage", "F-01", {zeile: [frageZeile], vorschau: [], karte: [], seite: [ansichtFragen]}],
   ["wissen", "Wissen, Praxis, Quelle, Plantext", "W-01", {zeile: [], vorschau: [listenZeile], karte: [], seite: [ansichtAbschnitt]}],
   ["abschnitt", "Abschnitt eines Textes", "E-01.eckdaten", {zeile: [], vorschau: [], karte: [block], seite: [reiseText, reiterGruppe, leseAbschnitt]}],
   ["aufgabe", "Aufgabe", "AG-01", {zeile: [agEintrag], vorschau: [], karte: [], seite: [ansichtAufgaben, agFormular]}],
@@ -2654,7 +2720,7 @@ function ansichtBausteine(m) {
     wz ? el("div", {class: "wliste"}, wissenZeile(wz)) : el("p", {class: "meldung"}, "Kein Abschnitt für Wissen, Praxis oder Quellen."));
   const fr = D.fragen.zeilen[0];
   teil("Molekül", "Fragenkarte", "Eine offene Frage mit Kennung und Verweisen.",
-    fr ? zeilenKarte(D.fragen.spalten, fr) : el("p", {class: "meldung"}, "Keine offenen Fragen."));
+    fr ? frageZeile(D.fragen.spalten, fr) : el("p", {class: "meldung"}, "Keine offenen Fragen."));
   // Rückmeldung und Aufgabe: Beispiele sind als Muster benannt; die Knöpfe sind abgeschaltet
   const eintraege = [
     rmEintrag(RM.find(e => e.kommentar) || {status: "uebernommen", art: "Frage", name: "Muster", erstellt: "2027-01-02T00:00:00Z",

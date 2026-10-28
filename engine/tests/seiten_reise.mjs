@@ -1,7 +1,7 @@
 // Reiseüberblick (gewählter Plan, 28.10.2026), aufgerufen von test_reiseueberblick.py.
 // Aufruf: node seiten_reise.mjs <playwright-modul> <basis-url> <datum JJJJ-MM-TT>
 // Meldet je Breite: Reiter, Planname auf der Seite, Kopf mit Zähler, An- und Abreise, Kennzahlen mit Kosten, Mitreisende,
-// Stand der Vorbereitung, feste Termine, Tage als Zeilen mit Nacht und Stand, Reihenfolge, Überstand, Ziel eines Plans (P-…) und eines Tages, Skriptfehler.
+// Stand der Vorbereitung, feste Termine, Tage als Zeilen mit Nacht und Stand, Reihenfolge, offene Fragen ohne Kennungen, Überstand, Ziel eines Plans (P-…) und eines Tages, Skriptfehler.
 const [, , modul, basis, datum] = process.argv;
 const pw = await import(modul);
 const b = await pw[process.env.RH_BROWSER || "chromium"].launch();
@@ -44,6 +44,14 @@ for (const breite of [390, 1300]) {
   await p.locator(".reise-tage .tz-titel").first().click();
   await p.waitForTimeout(200);
   a.nachKlick = await p.evaluate(() => location.hash);
+  // Offene Fragen ohne Kennungen im Text, gruppiert nach Stand; die Stellen als Pillen mit Namen
+  await p.evaluate(() => { location.hash = "fragen"; });
+  await p.waitForSelector("#fragen .frage");
+  a.fragen = await p.evaluate(() => ({
+    kennungen: (document.querySelector("#fragen").textContent.match(/\b(?:AG-\d+|[TEOUVPFW]-\d+(?:\.[a-z0-9-]+)?)\b/g) || []),
+    gruppen: [...document.querySelectorAll("#fragen :is(h3, summary .kap-titel)")].map(x => x.firstChild.textContent),
+    pillen: [...document.querySelectorAll("#F-01 .ag-bezug a")].map(x => x.textContent),
+  }));
   await ctx.close();
 }
 await b.close();
