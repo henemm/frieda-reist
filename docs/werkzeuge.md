@@ -26,3 +26,7 @@ Regionale Karten der Recherche: `frieda/werkzeuge/karte-holen.sh <reise> <name>`
 ## Wasserstellen prüfen
 
 `engine/.venv/bin/python frieda/werkzeuge/wasser_pruefen.py <reise>` holt die OSM-Wasserpunkte aus `plan/punkte.yaml` noch einmal mit allen Tags: Trinkwasser, saisonal, zeitweise, Zugang, Prüfdatum, Hinweise. Danach stuft es sie ein: gut belegt, mit Vorbehalt, unsicher. Das Ergebnis steht zur Durchsicht in `inhalt/recherche/wasserstellen-osm.md`; `punkte.yaml` bleibt unverändert. Die Einstufung beschreibt die Datenlage, nicht den Zustand vor Ort.
+
+## Seiten vor und nach einer Änderung vergleichen
+
+Wer die Vorlage oder den Generator umbaut, will wissen, ob sich der Inhalt der Seite dabei ändert. `node frieda/werkzeuge/seitenvergleich/dump.mjs <Adresse der Seite> vorher.json` rendert jede Route der Seite bei 390 und 1200 px Breite und speichert das DOM (Playwright als Paket `playwright`, sonst `PLAYWRIGHT=<Pfad zu index.mjs>`). Nach der Änderung mit `nachher.json` wiederholen und `python3 frieda/werkzeuge/seitenvergleich/vergleich.py vorher.json nachher.json` aufrufen: Es nennt die abweichenden Routen mit der ersten Stelle des Unterschieds.
