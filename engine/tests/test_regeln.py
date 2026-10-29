@@ -241,8 +241,9 @@ def test_lage_der_unterkunft(tmp_path):
     assert [x["bezug"] for x in m] == ["U-01"], m
 
 
-def test_mahnungen_auf_der_seite_abschaltbar(tmp_path):
-    """darstellung.mahnungen: false blendet die Mahnungen im Plan aus; berechnet und im Konnektor bleiben sie."""
+def test_mahnungen_ohne_kasten_auf_der_seite(tmp_path):
+    """Der Kasten „Mahnung“ auf der Seite ist weg (Product Owner 29.10.2026): kein Schalter mehr in den Seitendaten, der alte
+    Schlüssel darstellung.mahnungen baut weiter ohne Wirkung; berechnet (Konnektor, Wächter) bleiben die Mahnungen."""
     def bauen_mit(ziel, wert):
         quelle = ziel / "quelle"
         shutil.copytree(BEISPIEL, quelle)
@@ -253,11 +254,12 @@ def test_mahnungen_auf_der_seite_abschaltbar(tmp_path):
             y["darstellung"]["mahnungen"] = wert
         (quelle / "reise.yaml").write_text(yaml.safe_dump(y, allow_unicode=True), encoding="utf-8")
         bauen.bauen(quelle, ziel / "seiten" / "beispielreise")
-        return daten_von(ziel / "seiten")
-    standard = bauen_mit(tmp_path / "a", None)
-    aus = bauen_mit(tmp_path / "b", False)
-    assert standard["reise"]["mahnungen"] is True and aus["reise"]["mahnungen"] is False
-    assert aus["route"]["mahnungen"] == standard["route"]["mahnungen"] != []
+        return daten_von(ziel / "seiten"), (ziel / "seiten" / "beispielreise" / "index.html").read_text(encoding="utf-8")
+    standard, seite = bauen_mit(tmp_path / "a", None)
+    alt, _ = bauen_mit(tmp_path / "b", False)
+    assert "mahnungen" not in standard["reise"] and "mahnungen" not in alt["reise"]
+    assert alt["route"]["mahnungen"] == standard["route"]["mahnungen"] != []
+    assert "function mahnungen(" not in seite and "Mahnung (" not in seite
 
 
 def test_idee_ohne_warnungen(tmp_path):

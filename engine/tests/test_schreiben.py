@@ -173,18 +173,18 @@ def test_merkmal_anlegen_aendern_abschalten(repo):
         "art": "pension", "bezeichnung": "Stornierung", "typ": "auswahl", "werte": ["kostenlos", "gegen Gebühr", "nicht möglich", "unklar"],
         "veraenderlich": True, "hilfe": "Buchungsbedingungen auf der Website", "frage": "Bis wann kann man absagen?", "auch": ["Storno"]}})
     assert "Stornierung" in a["text"] and "auswahl (kostenlos | gegen Gebühr | nicht möglich | unklar)" in a["text"] \
-        and "veränderlich" in a["text"] and "Stufe empfohlen" in a["text"]
+        and "veränderlich" in a["text"] and "Stufe gut zu wissen (empfohlen)" in a["text"]
     arten, _ = arten_auf_main(origin)
     m = arten["pension"]["merkmale"]["stornierung"]
     assert m == {"name": "Stornierung", "typ": "auswahl", "werte": ["kostenlos", "gegen Gebühr", "nicht möglich", "unklar"],
                  "veraenderlich": True, "hilfe": "Buchungsbedingungen auf der Website", "frage": "Bis wann kann man absagen?", "auch": ["storno"]}
     assert "stufe" not in m                           # empfohlen ist die Vorgabe und steht nicht in der Datei
     assert arten["pension"]["merkmale"]["preis"]["typ"] == "geld" and arten["hotel"]["merkmale"]["lage"]["stufe"] == "angeboten"
-    # Umbenennen und Stufe
+    # Umbenennen und Stufe; die Stufe darf als Wort für Menschen kommen („nötig“), gespeichert wird der Schlüssel (29.10.2026)
     s.vorbereiten()
     a = s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "merkmal": "stornierung",
-                                                                             "bezeichnung": "Absagen", "stufe": "pflicht"}})
-    assert "Name „Stornierung“ → „Absagen“" in a["text"] and "Stufe pflicht" in a["text"]
+                                                                             "bezeichnung": "Absagen", "stufe": "Nötig"}})
+    assert "Name „Stornierung“ → „Absagen“" in a["text"] and "Stufe nötig (pflicht)" in a["text"]
     arten, _ = arten_auf_main(origin)
     assert arten["pension"]["merkmale"]["stornierung"]["name"] == "Absagen" and arten["pension"]["merkmale"]["stornierung"]["stufe"] == "pflicht"
     # Abschalten

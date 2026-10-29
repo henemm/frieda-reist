@@ -16,7 +16,7 @@ Die KI wechselt den Reisestatus nie selbst: Sie erinnert, ein:e Organisator:in e
 
 ## Wann der Wächter arbeitet
 
-Nur wenn der Baustein `waechter` eingeschaltet ist und der Status es zulässt: `fest` und `unterwegs`. In `idee`, `planung`, `danach` und `archiv` ruht er (Aufgabenfristen zählen erst ab `fest`, siehe `produkt.md`). Die Mahnungen der Seite (Paket B) bleiben davon unberührt.
+Nur wenn der Baustein `waechter` eingeschaltet ist und der Status es zulässt: `fest` und `unterwegs`. In `idee`, `planung`, `danach` und `archiv` ruht er (Aufgabenfristen zählen erst ab `fest`, siehe `produkt.md`). Die Mahnungen des Generators (Paket B, `route.mahnungen`, in der Claude-App) bleiben davon unberührt.
 
 ## Veränderliches prüfen
 

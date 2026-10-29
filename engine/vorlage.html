@@ -283,7 +283,7 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .pico h2.listen-titel{display:flex;align-items:center;gap:10px}
 .pico h2.listen-titel>.chip{font-size:0.8125rem}
 @media (hover:hover){.wzeile:hover .wt{color:var(--acc)}}
-/* ---------- Hinweiskasten: geht nicht auf, Mahnung ---------- */
+/* ---------- Hinweiskasten: geht nicht auf ---------- */
 .warnungen{background:var(--warnbg);color:var(--warn);border-radius:12px;padding:10px 14px;margin:0 0 12px}
 .warnungen ul{margin:.3em 0 0;padding-left:20px}
 /* ---------- Rückmeldung und Aufgabe als Eintrag ---------- */
@@ -1372,8 +1372,8 @@ function wahlVergleich(w, liste, datum) {
   const werte = o => ({...o.merkmale, _wann: o.ausloeser ? {wert: o.ausloeser} : null,
     _erfordert: regelWert(o.erfordert), _schliesst: regelWert(o.schliesst_aus)});
   // Welche Merkmale Spalten sind, bestimmt die Reise über die Stufe (in der Claude-App einstellbar; Product Owner
-  // 29.10.2026): pflicht und empfohlen stehen im Vergleich, angeboten nur in den Einzelheiten, aus gar nicht. Hat keines
-  // davon einen Wert, stehen alle belegten im Vergleich.
+  // 29.10.2026): pflicht („nötig“) und empfohlen („gut zu wissen“) stehen im Vergleich, angeboten („zusätzlich“) nur in
+  // den Einzelheiten, aus gar nicht. Hat keines davon einen Wert, stehen alle belegten im Vergleich.
   const istRegel = k => k.id.startsWith("_");
   const alleBelegt = [{id: "_wann", name: "Wann"}, ...w.kriterien.filter(k => stufeVon(k) !== "aus"), ...REGEL_ZEILEN].filter(k => g.some(o => werte(o)[k.id]));
   const vorn = alleBelegt.filter(k => istRegel(k) || ["pflicht", "empfohlen"].includes(stufeVon(k)));
@@ -1418,7 +1418,7 @@ function wahlVergleich(w, liste, datum) {
         zeilen.map(k => el("td", {}, zelle(k, werte(o)[k.id])))),
         auf ? el("tr", {class: "wm-mehr"}, el("td", {colspan: String(zeilen.length + 1)}, merkmalListe(nebenbei, werte(o), datum), optionBlock(w, o, true, true))) : null].filter(Boolean); })))));
   if (nebenbei.length) box.append(el("p", {class: "z klein"}, `Weitere Merkmale beim Aufklappen: ${nebenbei.map(k => k.name).join(", ")}. `
-    + "Welche Merkmale Spalten sind, legt die Stufe fest (in der Claude-App einstellbar)."));
+    + "Spalten sind die Merkmale, die der Reise nötig oder gut zu wissen sind; zusätzliche stehen hier (in der Claude-App einstellbar)."));
   box.append(el("div", {class: "wm-karten"}, opts.map(o => el("div", {class: "wm-karte" + (an(o) ? " an" : "")},
     el("div", {class: "k"}, o.titel), optionChips(w, o), merkmalListe(zeilen, werte(o), datum) || el("div", {class: "z klein"}, belegt.length ? "Keine Unterschiede in den gezeigten Merkmalen." : "Noch keine Merkmale."),
     webLink(o)))));
@@ -2343,12 +2343,9 @@ document.addEventListener("click", e => {
 });
 
 /* ---------- Ansichten ---------- */
-// Mahnungen ab Status „fest“: offene Planungs-Wahlstellen, ungeprüfte veränderliche Angaben (vom Generator, Paket B)
-function mahnungen(m) {
-  const l = D.reise.mahnungen === false ? [] : (R && R.mahnungen) || [];
-  if (l.length) m.append(el("div", {class: "warnungen mahnung"}, el("b", {}, `Mahnung (${l.length}):`),
-    el("ul", {}, l.map(x => el("li", {}, x.text, " ", link(x.bezug, "→"))))));
-}
+// Mahnungen ab Status „fest“ (offene Planungs-Wahlstellen, ungeprüfte veränderliche Angaben) berechnet der Generator
+// (route.mahnungen) für den Konnektor und den Wächter. Der Kasten „Mahnung“ auf der Seite ist seit dem 29.10.2026 weg
+// (Product Owner): Offenes steht in „Zu tun“ (Zu entscheiden, Zu buchen), Ungeprüftes am Wert, Mahnungen in der Claude-App.
 // Status „unterwegs“: der heutige Tag steht ganz oben (Plan und Karte)
 function heuteBlock(m) {
   if (V.start !== "heute" || !R) return;
@@ -2361,7 +2358,6 @@ function ansichtPlan(m) {
   heuteBlock(m);
   if (PLAN_REITER) return ansichtRahmen(m);
   m.append(el("h2", {}, "Plan"));
-  mahnungen(m);
   if (D.plan_kopf) m.append(el("div", {html: D.plan_kopf}));
   for (const a of abschnitte.filter(x => x.typ === "plan")) m.append(abschnittInhalt(a));
   if (R) entscheidungen(m);
@@ -2377,7 +2373,6 @@ function fragenKarte(m) {
 const PLAN_REITER = Array.isArray(D.reise.plan_reiter) && D.reise.plan_reiter.length ? D.reise.plan_reiter : null;
 function ansichtRahmen(m) {
   m.append(el("h2", {}, PLAN_TITEL));
-  mahnungen(m);
   if (D.plan_kopf) m.append(el("div", {html: D.plan_kopf}));
   for (const id of PLAN_REITER) if (proId.has(id)) m.append(abschnittInhalt(proId.get(id)));
   if (R && R.plaene.length && !PLAN_FEST) m.append(el("a", {class: "karte", href: "#varianten"},
@@ -2932,7 +2927,6 @@ function zuBuchen(m) {
   m.append(s);
 }
 function ansichtOffen(m) {
-  if (!PLAN_DA) mahnungen(m);
   const oben = el("div", {class: "tun-raster"});
   if (!PLAN_DA) { zuEntscheiden(oben); zuBuchen(oben); }
   if (oben.childNodes.length) m.append(oben);

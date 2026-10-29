@@ -65,7 +65,7 @@ import oauth  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, REISE_ZIEL, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
-from routen import FARBEN, GRUNDFORMEN, STUFEN, TYPEN, art_schluessel  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
+from routen import FARBEN, GRUNDFORMEN, STUFEN, TYPEN, art_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
 
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "rueckmeldung_erledigen",
@@ -756,12 +756,15 @@ class Handbuch:
                 continue
             art = k.get("typ", "text") + (f" ({' | '.join(k['werte'])})" if k.get("werte") else "")
             zeile = f"- {k['id']} – {k['name']}: {art}"
+            # Stufen für Menschen: nötig, gut zu wissen, zusätzlich (Product Owner 29.10.2026); Schlüssel in Klammern
             if isinstance(st, dict):
-                zeile += "; Stufe je Unterkunftstyp: " + ", ".join(f"{t}: {s}" for t, s in st.items())
+                zeile += "; Stufe je Unterkunftstyp: " + stufe_wort(st)
             elif st == "pflicht":
-                zeile += "; Pflicht"
+                zeile += "; nötig (pflicht): ohne Wert eine Lücke"
             elif st == "angeboten":
-                zeile += "; nur eintragen, wenn es die Person interessiert (wird nicht als fehlend gemeldet)"
+                zeile += "; zusätzlich (angeboten): nur eintragen, wenn es die Person interessiert, fehlt sonst nicht"
+            else:
+                zeile += "; gut zu wissen (empfohlen): ohne Wert keine Mahnung"
             if k.get("auto"):
                 zeile += "; wird aus dem Plan berechnet, nicht eintragen"
             if k.get("veraenderlich"):
@@ -2017,7 +2020,7 @@ ART_DEFINIEREN = {"name": "art_definieren", "description": "Eine Art dieser Reis
                       "grund": {"type": "string", "description": "warum (steht im Verlauf)"},
                       "name": NAME_FELD}}}
 MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "Ein Merkmal einer Art dieser Reise anlegen oder ändern: "
-                      "umbenennen, Typ und Werte, veränderlich (braucht dann ein Prüfdatum), Stufe (pflicht | empfohlen | angeboten; "
+                      "umbenennen, Typ und Werte, veränderlich (braucht dann ein Prüfdatum), Stufe (nötig | gut zu wissen | zusätzlich; "
                       "aus schaltet es für diese Reise ab), Hilfe zum Recherchieren, Frage an die Person, weitere Namen. "
                       "Organisator:innen schreiben damit direkt (gilt sofort, Seite in wenigen Minuten), Mitwirkende schlagen vor. "
                       "Vorher merkmale aufrufen (kein Doppeltes anlegen) und kurz bestätigen lassen, was genau eingetragen wird.",
@@ -2030,9 +2033,10 @@ MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "Ein Merkmal 
                           "werte": {"type": "array", "items": {"type": "string"}, "description": "mögliche Antworten bei typ auswahl, "
                                     "z. B. [kostenlos, gegen Gebühr, nicht möglich, unklar]"},
                           "veraenderlich": {"type": "boolean", "description": "Preise, Zeiten, Öffnungszeiten: der Wert braucht ein Prüfdatum"},
-                          "stufe": {"type": "string", "enum": list(STUFEN), "description": "pflicht und empfohlen (Vorgabe) zählen als "
-                                    "„fehlt noch“ und sind Spalten im Vergleich der Alternativen; angeboten nur, wenn es jemanden "
-                                    "interessiert (im Vergleich nur aufgeklappt); aus gilt für diese Reise nicht"},
+                          "stufe": {"type": "string", "enum": list(STUFEN), "description": "Für die Person heißen sie: pflicht = "
+                                    "„nötig“ (ohne Wert eine Lücke, „Fehlt noch“), empfohlen = „gut zu wissen“ (Vorgabe; Spalte im "
+                                    "Vergleich, ohne Wert keine Mahnung), angeboten = „zusätzlich“ (nur mit Wert sichtbar, im Vergleich "
+                                    "aufgeklappt); aus gilt für diese Reise nicht und wird nicht genannt"},
                           "einheit": {"type": "string", "description": "hinter Zahlen, z. B. km oder h"},
                           "hilfe": {"type": "string", "description": "wie man den Wert findet (Website, Buch, Anruf)"},
                           "frage": {"type": "string", "description": "wonach die Person gefragt wird, wenn der Wert fehlt"},

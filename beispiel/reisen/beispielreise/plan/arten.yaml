@@ -4,7 +4,8 @@
 # unterkunft, zelt, einkehr, ticket, museum, wandern, bus, bahn, schiff, flug, auto, rad, taxi; ohne Angabe das der Grundform),
 # buchbar (hat einen Buchungsstand; Vorgabe: Aufenthalte ja, Bewegungen nein), summiert (Bewegung
 # aus eigener Kraft: Gehzeit, Länge, Höhenmeter werden summiert), merkmale. Felder je Merkmal: name, typ (text | geld |
-# zahl | auswahl mit werte), veraenderlich (braucht Prüfdatum), stufe (pflicht | empfohlen | angeboten | aus), auto
+# zahl | auswahl mit werte), veraenderlich (braucht Prüfdatum), stufe (pflicht = nötig | empfohlen = gut zu wissen |
+# angeboten = zusätzlich | aus), auto
 # (berechnet: Bewegung gehzeit, laenge, hoehenmeter; Folge tage, gehzeit, unterkuenfte, anschluss), hilfe, frage, auch.
 arten:
   hotel:

@@ -249,7 +249,7 @@ def art_definieren(reise_dir, wer, args):
 
 def merkmal_definieren(reise_dir, wer, args):
     """Ein Merkmal einer Art anlegen oder ändern (umbenennen, Stufe, abschalten mit Stufe aus). -> (Titel, Text)."""
-    from routen import STUFEN, TYPEN, art_schluessel
+    from routen import STUFEN, TYPEN, art_schluessel, stufe_schluessel, stufe_wort
     arten = arten_laden(reise_dir)
     art = (text_wert(args, "art", pflicht=True, laenge=40) or "").lower()
     if art not in arten:
@@ -270,9 +270,12 @@ def merkmal_definieren(reise_dir, wer, args):
     if typ is not None and typ.lower() not in TYPEN:
         raise Ablehnung(f"„typ“ muss einer von {', '.join(sorted(TYPEN))} sein.")
     stufe = text_wert(args, "stufe", laenge=20)
-    if stufe is not None and stufe.lower() not in STUFEN:
-        raise Ablehnung(f"„stufe“ muss eine von {', '.join(STUFEN)} sein (pflicht und empfohlen zählen als „fehlt noch“, angeboten "
-                        "wird nur gezeigt, aus gilt für diese Reise nicht).")
+    if stufe is not None:   # Schlüssel oder Wort für Menschen (nötig, gut zu wissen, zusätzlich); gespeichert wird der Schlüssel
+        stufe = stufe_schluessel(stufe)
+        if stufe is None:
+            raise Ablehnung(f"„stufe“ muss eine von {', '.join(STUFEN)} sein: pflicht = nötig (ohne Wert eine Lücke), "
+                            "empfohlen = gut zu wissen (Vorgabe; ohne Wert keine Mahnung), angeboten = zusätzlich (nur mit Wert "
+                            "sichtbar), aus gilt für diese Reise nicht.")
     werte = liste_wert(args, "werte")
     veraenderlich = bool_wert(args, "veraenderlich")
     einheit, hilfe, frage, grund = (text_wert(args, f) for f in ("einheit", "hilfe", "frage", "grund"))
@@ -301,8 +304,8 @@ def merkmal_definieren(reise_dir, wer, args):
             d["veraenderlich"] = True
         if einheit:
             d["einheit"] = einheit
-        if stufe and stufe.lower() != "empfohlen":
-            d["stufe"] = stufe.lower()
+        if stufe and stufe != "empfohlen":
+            d["stufe"] = stufe
         for f, v in (("hilfe", hilfe), ("frage", frage), ("auch", auch)):
             if v:
                 d[f] = v
@@ -310,7 +313,7 @@ def merkmal_definieren(reise_dir, wer, args):
         titel = f"Merkmal „{name}“ ({key}) an {a.get('name', art)} angelegt"
         text = (f"Merkmal „{name}“ ({key}) an der Art {a.get('name', art)} angelegt: Typ {typ}"
                 + (f" ({' | '.join(werte)})" if werte else "") + (", veränderlich (braucht Prüfdatum)" if veraenderlich else "")
-                + f", Stufe {(stufe or 'empfohlen').lower()}.")
+                + f", Stufe {stufe_wort(stufe or 'empfohlen')}.")
     else:
         d = merkmale[key]
         if d.get("auto"):
@@ -339,12 +342,12 @@ def merkmal_definieren(reise_dir, wer, args):
                 d["veraenderlich"] = True
             else:
                 d.pop("veraenderlich", None)
-        if stufe is not None and stufe.lower() != (d.get("stufe") if isinstance(d.get("stufe"), str) else "empfohlen"):
-            geaendert.append("abgeschaltet (Stufe aus)" if stufe.lower() == "aus" else f"Stufe {stufe.lower()}")
-            if stufe.lower() == "empfohlen":
+        if stufe is not None and stufe != (d.get("stufe") if isinstance(d.get("stufe"), str) else "empfohlen"):
+            geaendert.append("abgeschaltet (Stufe aus)" if stufe == "aus" else f"Stufe {stufe_wort(stufe)}")
+            if stufe == "empfohlen":
                 d.pop("stufe", None)
             else:
-                d["stufe"] = stufe.lower()
+                d["stufe"] = stufe
         for f, v in (("einheit", einheit), ("hilfe", hilfe), ("frage", frage)):
             if v is not None and v != d.get(f):
                 geaendert.append(f.capitalize())

@@ -8,6 +8,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from routen import Routen  # noqa: E402
+import routen  # noqa: E402
 
 D = datetime.date
 
@@ -866,3 +867,14 @@ def test_aufenthalt_prueft_ort_art_herkunft_und_symbol():
     a["arten"]["museum"]["symbol"] = "regenbogen"
     _, fehler = laufe(staedtereise()[0], FRAGEN, a)
     assert any("symbol muss" in x for x in fehler)
+
+
+def test_stufen_worte_fuer_menschen():
+    """Stufen heißen für Menschen nötig, gut zu wissen, zusätzlich (Product Owner 29.10.2026); Schlüssel bleiben, Wörter
+    werden als Eingabe angenommen, „aus“ wird nicht benannt."""
+    assert routen.stufe_wort("pflicht") == "nötig (pflicht)" and routen.stufe_wort("empfohlen") == "gut zu wissen (empfohlen)"
+    assert routen.stufe_wort("angeboten") == "zusätzlich (angeboten)" and routen.stufe_wort("aus") == "aus"
+    assert routen.stufe_wort({"*": "aus", "refugi": "pflicht"}) == "*: aus, refugi: nötig (pflicht)"
+    for eingabe, erwartet in (("pflicht", "pflicht"), ("Nötig", "pflicht"), ("noetig", "pflicht"), ("gut zu  wissen", "empfohlen"),
+                              ("Zusätzlich", "angeboten"), ("AUS", "aus"), ("wichtig", None), ("", None), (None, None)):
+        assert routen.stufe_schluessel(eingabe) == erwartet, eingabe

@@ -8,7 +8,7 @@ Hintergrund und Entscheidungen: docs/produkt.md (26.10.2026). Die Zuordnung der 
   personen    {schluessel: {name, rolle, reist, notiz}}; Rollen gast < mitwirkend < organisator
   bausteine   zuschaltbare Teile (Liste); Plan, Wissen, Suche und Personen sind immer da
   regeln      Spielregeln mit Wert, fehlende kommen aus VORGABEN
-  darstellung Startreiter, Reiternamen, Tiefe, Gruppen, Mahnungen im Plan (mahnungen: false blendet sie dort aus)
+  darstellung Startreiter, Reiternamen, Tiefe, Gruppen (mahnungen: ohne Wirkung seit 29.10.2026, der Kasten ist weg)
 
 Fehler brechen den Bau ab (wie beim Routenmodell). Fehlt reise.yaml, kommen Eckdaten und Darstellung aus
 reise.json (alte Form) mit einem Hinweis; Status ist dann „planung“, Personen gibt es keine.
@@ -49,7 +49,10 @@ REGEL_WERTE = {"konflikt": ("offene_frage",),
 # mehr. Eine reise.yaml, die sie noch nennt, baut weiter; sie bekommt einen Hinweis und die Regeln sind ohne Wirkung.
 ALTE_REGELN = ("entscheidungsweg", "sammelzeit_minuten")
 KONTINGENT_ARTEN = ("punkte", "anzahl")
-DARSTELLUNG = ("start", "tiefe", "varianten_titel", "plan_reiter", "gruppen", "mahnungen")
+DARSTELLUNG = ("start", "tiefe", "varianten_titel", "plan_reiter", "gruppen")
+# Der Kasten „Mahnung“ auf der Seite ist seit dem 29.10.2026 weg (Product Owner); eine reise.yaml mit mahnungen: false
+# baut weiter, der Schlüssel ist ohne Wirkung. Berechnet werden die Mahnungen weiter (Konnektor, Wächter).
+ALTE_DARSTELLUNG = ("mahnungen",)
 PERSON_FELDER = {"name", "rolle", "reist", "notiz", "von", "bis"}   # von/bis: reist nur einen Teil mit
 ALTE_ECKDATEN = ("titel", "untertitel", "pfad", "kurz")
 
@@ -455,11 +458,11 @@ class Reise:
             quelle = {}
         if not self.alt:
             for k in quelle:
-                if k not in DARSTELLUNG:
+                if k not in DARSTELLUNG and k not in ALTE_DARSTELLUNG:
                     self.fehl(f"darstellung: unbekannter Schlüssel „{k}“ (bekannt: {', '.join(DARSTELLUNG)}).")
         return {"gruppen": quelle.get("gruppen") or {}, "tiefe": bool(quelle.get("tiefe")),
                 "plan_reiter": quelle.get("plan_reiter"), "varianten_titel": quelle.get("varianten_titel", "Varianten"),
-                "start": quelle.get("start"), "mahnungen": quelle.get("mahnungen", True) is not False}
+                "start": quelle.get("start")}
 
     def daten(self):
         """-> Eintrag „reise“ für daten.json; Fehler stehen danach in self.fehler."""

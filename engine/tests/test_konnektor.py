@@ -442,6 +442,8 @@ def test_merkmale_lesen(dienst):
     basis, ablage = dienst
     t, f = werkzeug(basis, MITREISEND, "merkmale", ziel="V-03")
     assert not f and "Preis pro Nacht" in t and "85 €" in t and "Fehlt noch" in t and "fragen:" in t
+    # Stufen in Worten für Menschen, Schlüssel in Klammern (Product Owner 29.10.2026); „aus“ steht nirgends
+    assert "nötig (pflicht)" in t and "gut zu wissen (empfohlen)" in t and "; Pflicht" not in t and "(aus)" not in t
     t, f = werkzeug(basis, MITREISEND, "merkmale", bereich="wandern")
     assert not f and "berechnet" in t
     t, f = werkzeug(basis, MITREISEND, "merkmale", ziel="T-01")

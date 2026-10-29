@@ -59,12 +59,33 @@ def art_schluessel(text):
     t = "".join(c for c in unicodedata.normalize("NFKD", t) if not unicodedata.combining(c))
     return re.sub(r"[^a-z0-9]+", "_", t).strip("_") or None
 TYPEN = {"text", "geld", "zahl", "auswahl"}
-# Stufe eines Merkmals (docs/ontologie.md): nur pflicht zählt als „Fehlt noch“ (Paket O-5); empfohlen ist Spalte im Vergleich
-# und wird ab Status fest gemahnt, angeboten
+# Stufe eines Merkmals (docs/ontologie.md): nur pflicht zählt als „Fehlt noch“ (Paket O-5); empfohlen ist Spalte im Vergleich,
+# ohne Wert keine Lücke und keine Mahnung (Product Owner 29.10.2026); angeboten
 # wird nur gezeigt, wenn ein Wert da ist, aus gilt nicht (kein Fehlt, keine Mahnung, kein Wächter). Ohne Angabe gilt
 # empfohlen. Die Reise setzt sie in arten.yaml, eine Wahlstelle ändert sie für sich mit {stufe: …}. Die Stufe darf je
 # typ einer Unterkunft verschieden sein: stufe: {"*": aus, refugi: empfohlen} (klein geschrieben; „*“ für alle übrigen).
+# Für Menschen heißen die Stufen „nötig“, „gut zu wissen“, „zusätzlich“ (Product Owner 29.10.2026); „aus“ bleibt unsichtbar.
+# In Dateien und Werkzeugen bleiben die Schlüssel; die Wörter nimmt der Schreibweg als Eingabe ebenfalls an (stufe_schluessel).
 STUFEN = ("pflicht", "empfohlen", "angeboten", "aus")
+STUFEN_WORTE = {"pflicht": "nötig", "empfohlen": "gut zu wissen", "angeboten": "zusätzlich", "aus": "aus"}
+
+
+def stufe_wort(s):
+    """Wort einer Stufe für Menschen: „nötig (pflicht)“; eine Stufe je Typ wird je Typ genannt."""
+    if isinstance(s, dict):
+        return ", ".join(f"{t}: {stufe_wort(v)}" for t, v in s.items())
+    return f"{STUFEN_WORTE.get(s, s)} ({s})" if s in STUFEN_WORTE and s != "aus" else str(s)
+
+
+def stufe_schluessel(text):
+    """Eingabe einer Stufe (Schlüssel oder Wort, beliebige Schreibung) -> Schlüssel oder None, wenn unbekannt."""
+    t = re.sub(r"\s+", " ", str(text or "").strip().lower())
+    if t in STUFEN:
+        return t
+    for k, w in STUFEN_WORTE.items():
+        if t == w or t == w.replace("ö", "oe"):
+            return k
+    return None
 DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage", "einheit", "stufe", "auch"}
 
 

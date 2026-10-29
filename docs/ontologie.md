@@ -87,7 +87,7 @@ Ein Merkmal ist eine Definition in `arten.yaml` und ein Wert am Ding.
 | `name` | Anzeige |
 | `typ` | `text` (Vorgabe), `geld`, `zahl`, `auswahl` (mit `werte`) |
 | `veraenderlich` | der Wert braucht ein Prüfdatum; ohne steht „ungeprüft“ daneben, ab Status `fest` eine Mahnung, der Wächter meldet alte Prüfdaten |
-| `stufe` | `pflicht`, `empfohlen` (Vorgabe), `angeboten`, `aus`. Pflicht und empfohlen sind die Spalten im Vergleich der Alternativen (angeboten steht dort nur in den Einzelheiten, `docs/design.md`); nur **pflicht** zählt als „Fehlt noch“ und im Zähler des Vergleichs (seit Paket O-5; empfohlen mahnt nichts an); angeboten erscheint nur mit Wert; aus gilt nicht. Eine Wahlstelle kann die Stufe für sich ändern (`merkmale: {abendessen: {stufe: empfohlen}}`) |
+| `stufe` | `pflicht`, `empfohlen` (Vorgabe), `angeboten`, `aus`. Für Menschen heißen sie **„nötig“**, **„gut zu wissen“** und **„zusätzlich“** (Product Owner 29.10.2026); `aus` bleibt unsichtbar. In Dateien und Werkzeugen bleiben die Schlüssel, der Schreibweg nimmt auch die Wörter an (`routen.stufe_schluessel`), Konnektor und Seite sagen die Wörter (`routen.stufe_wort`). Nötig und gut zu wissen sind die Spalten im Vergleich der Alternativen (zusätzlich steht dort nur in den Einzelheiten, `docs/design.md`); nur **nötig** zählt als „Fehlt noch“ und im Zähler des Vergleichs (seit Paket O-5); gut zu wissen ohne Wert ist keine Lücke und keine Mahnung (Product Owner 29.10.2026); zusätzlich erscheint nur mit Wert; aus gilt nicht. Eine Wahlstelle kann die Stufe für sich ändern (`merkmale: {abendessen: {stufe: empfohlen}}`) |
 | `auto` | berechnet, nie eingetragen (siehe Grundformen) |
 | `hilfe`, `frage` | wie der AI-Client den Wert recherchiert und wonach er fragt |
 | `einheit` | Anzeige hinter Zahlen |
@@ -135,4 +135,5 @@ Eine Art kann eine `farbe` aus der Palette der Seite tragen: `blau`, `braun`, `l
 - Paket O-3, Schritt 6 (29.10.2026): `reise_status_setzen`, `einstellung_setzen`, `reise_anlegen` über den Schreibweg; `auftrag_geben` entfällt.
 - Paket O-3, Abschalten (29.10.2026): Der Einarbeiten-Lauf mit Claude Code auf dem Server ist entfernt; es gibt keinen zweiten KI-Lauf in Frieda mehr (ADR-0001, Punkt 5). Alles Schreiben geht über den Schreibweg.
 - Paket O-5 (29.10.2026, frieda-reist #93): Aufenthalte ohne Nacht (`A-…`, `aufenthalte`, am Tag `aufenthalte:`), `symbol` und `buchbar` je Art, Buchungsstand an Unterkunft, Aufenthalt und Bewegung; „Fehlt noch“ und Zähler nur für `pflicht`; die Seite kennt keine Art mehr (`ART_TEXT`, `kategorien` entfallen), ihre Bausteintabelle nennt Grundformen.
+- 29.10.2026 (Product Owner): Die Stufen heißen für Menschen „nötig“, „gut zu wissen“, „zusätzlich“; nur „nötig“ ohne Wert ist eine Lücke; der Kasten „Mahnung“ auf der Seite ist weg.
 - Später: Buchung als eigenes Ding mit Beleg (#76).
