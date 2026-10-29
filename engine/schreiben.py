@@ -1494,6 +1494,10 @@ def buchung_fuer(args, roh, route):
 
 
 BUCHUNG_TEXTE = {"nummer": 80, "bei": 120, "preis": 120, "bezahlt": 200, "frist_was": 120, "storno": 400, "notiz": MAX_TEXT}
+# Felder einer Buchung in Worten für Antwort und Verlauf (Menschen lesen Wörter, keine Schlüssel; Product Owner 29.10.2026)
+BUCHUNG_WORTE = {"fuer": "Gehört zu", "status": "Status", "nummer": "Nummer", "bei": "Gebucht bei", "preis": "Preis", "bezahlt": "Bezahlt",
+                 "frist": "Frist", "frist_was": "Was bis zur Frist", "storno": "Stornoregel", "storno_bis": "Stornofrist",
+                 "gebucht_am": "Gebucht am", "quelle": "Herkunft", "notiz": "Notiz"}
 
 
 def buchung_anlegen(reise_dir, wer, args, heute=None):
@@ -1563,6 +1567,7 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
     geaendert, kurz = [], []   # ausführlich für die Antwort, kurz für den Verlauf
 
     def setze(feld, neu, wort=None):
+        wort = wort or BUCHUNG_WORTE.get(feld, feld)
         alt = knoten.get(feld)
         alt_t = alt.strftime("%-d.%-m.%Y") if isinstance(alt, datetime.date) else (", ".join(alt) if isinstance(alt, list) else alt)
         neu_t = neu.strftime("%-d.%-m.%Y") if isinstance(neu, datetime.date) else (", ".join(neu) if isinstance(neu, list) else neu)

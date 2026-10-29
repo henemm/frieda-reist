@@ -305,7 +305,8 @@ def zeige(reise, heute):
     for t in items:
         print(f"  {t['bezug']} {t['name']}: {t['wert']} – {t['grund']}")
     o = rm.ordner(reise)
-    for m in erinnerungen(d, rm.aufgaben(o) if o else [], heute, regel(d, "erinnerung_vorlauf_tage")) + statuswechsel(d, heute):
+    vorlauf = regel(d, "erinnerung_vorlauf_tage")
+    for m in erinnerungen(d, rm.aufgaben(o) if o else [], heute, vorlauf) + buchungsfristen(d, heute, vorlauf) + statuswechsel(d, heute):
         print(f"  Meldung an {', '.join(m['an']) or '–'}: {m['text']}")
 
 

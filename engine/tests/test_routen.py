@@ -921,6 +921,9 @@ def test_buchung_prueft_bezug_status_herkunft_und_datum():
     assert "Buchung B-01: U-99 gibt es nicht" in f and "status muss angefragt, gebucht, storniert" in f and "quelle fehlt" in f
     assert "frist muss ein Datum" in f and "Buchung B-02: fuer fehlt" in f and "Buchung B-03 muss Felder haben" in f
     assert "unbekanntes Feld „preis2“" in f
+    r["buchungen"] = {"B-05": {"fuer": ["U-01"], "quelle": "x", "verlauf": [{"was": "angelegt"}]}}
+    _, fehler = laufe(r, FRAGEN, a)
+    assert any("Buchung B-05: jeder Verlaufseintrag braucht datum" in x for x in fehler)
     r["buchungen"] = {"X-01": {"fuer": ["U-01"], "quelle": "x"}}
     _, fehler = laufe(r, FRAGEN, a)
     assert any("keine gültige ID für buchung" in x for x in fehler)

@@ -151,6 +151,18 @@ def test_seite_je_status_und_baustein(tmp_path, browser):
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_buchung_hat_eine_heimat_auch_ohne_tagesseiten(tmp_path, browser):
+    """Eine Buchung (B-…, #76) wohnt bei ihrem Ding (ADR-0003): mit Tagesseiten in der Unterkunftskarte des Abschnitts „Nacht“,
+    ohne Tagesseiten (darstellung.tiefe, wie bei einer Rundreise) im Tageskasten des Plans. #B-01 führt in beiden Fällen hin."""
+    mit = seite_der_variante(tmp_path / "mit", browser)
+    assert mit["buchung"] and mit["buchung"]["sichtbar"] and mit["buchung"]["nummer"] == "HE-2027-0415", mit
+    ohne = seite_der_variante(tmp_path / "ohne", browser, darstellung={"tiefe": True})
+    assert ohne["buchung"] and ohne["buchung"]["sichtbar"] and ohne["buchung"]["nummer"] == "HE-2027-0415", ohne
+    assert ohne["buchung"]["reiter"] == "plan"
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
 def test_wunsch_brett(tmp_path, monkeypatch, browser):
     """Paket G auf der Seite, unterwegs, mit dem echten Rückmeldedienst: Spalten, Punkte nur auf eigene Wünsche, abhaken
     (auch fremde), ohne Netz abhaken und nachreichen, Bilanz; nichts steht am Handy über, am Rechner Spalten nebeneinander."""

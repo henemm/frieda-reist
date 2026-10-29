@@ -1970,7 +1970,8 @@ WERKZEUGE = [
      "Wahlstellen und Inhaltsverzeichnis. Zuerst aufrufen.",
      "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}},
     {"name": "zeige", "description": "Volltext zu einer ID: Tag (T-), Etappe/Strecke (E-), Ort (O-), Unterkunft (U-), "
-     "Wahlstelle (V-) oder Option (V-01.a), Plan (P-), offene Frage (F-), Wissens-Abschnitt (W-, auch W-06.unterabschnitt).",
+     "Aufenthalt ohne Nacht (A-), Buchung (B-, mit Belegen), Wahlstelle (V-) oder Option (V-01.a), Plan (P-), offene Frage (F-), "
+     "Wissens-Abschnitt (W-, auch W-06.unterabschnitt).",
      "inputSchema": {"type": "object", "properties": {"id": ZIEL_FELD}, "required": ["id"]},
      "annotations": {"readOnlyHint": True}},
     {"name": "suche", "description": "Volltextsuche in der ganzen Reise. Alle Wörter müssen vorkommen. Liefert IDs mit Ausschnitt.",
@@ -2419,8 +2420,8 @@ def anleitung(zugang, d):
          + "Status gewählt/verworfen/ersetzt und Einstellungen setzen nur Organisator:innen. Nichts erfinden: Herkunft nennen, Annahmen "
          "markieren, veränderliche Angaben (Fahrpläne, Öffnungszeiten, Preise) mit Prüfdatum. Vor jedem Eintragen kurz "
          "bestätigen lassen, was genau eingetragen wird. Die Regeln prüft der Dienst; lehnt er etwas ab, gib den Grund weiter.",
-         "IDs: T- Tag, E- Etappe/Strecke, O- Ort, U- Unterkunft, V- Wahlstelle mit Optionen V-01.a, P- Plan, F- offene Frage, "
-         "W- Wissen, AG- Aufgabe. Mit ueberblick beginnen, dann zeige/suche. " + SPRACHE,
+         "IDs: T- Tag, E- Etappe/Strecke, O- Ort, U- Unterkunft, A- Aufenthalt ohne Nacht, B- Buchung, V- Wahlstelle mit "
+         "Optionen V-01.a, P- Plan, F- offene Frage, W- Wissen, AG- Aufgabe. Mit ueberblick beginnen, dann zeige/suche. " + SPRACHE,
          "Rollen: gast liest; mitwirkend gibt dazu Rückmeldungen, Antworten, Aufgaben und Vorschläge; organisator entscheidet "
          "dazu, setzt Status und Einstellungen und lädt ein."]
     name = f"Du sprichst mit {wer['name']}" if wer["name"] else "Du sprichst mit einer Person ohne festen Namen"

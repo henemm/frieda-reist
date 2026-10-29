@@ -928,8 +928,10 @@ function zid(id) {
    Atome:     symbol, chip (Zustand), Etikett (CSS), merkmalWert (Wert mit Herkunft), zid (Kennung), planMarke, webLink, kartenLinks
    Moleküle:  kennzahlLeiste, merkmalListe, reiseText (Reisetext mit Merkmallisten), reiterGruppe, ebeneKopf, dingEtikett,
               listenZeile, zeilenKarte, rmEintrag, agEintrag, eintragGruppen, kartenLegende, umschalter, kontoKnopf,
-              nameFeld, fehltZeile, optionChips, standLeiste, lageZeile
-   Organismen: Ding (nachtZeile, unterkunftKarte, streckeZeile), Wahl-Modul (wahlEinstieg, wahlVergleich, wahlKarte),
+              nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, buchungChip (Stand einer Buchung mit Link),
+              belegeListe (Belege einer Buchung mit Formular)
+   Organismen: Ding (nachtZeile, unterkunftKarte, aufenthaltZeile, streckeZeile), buchungBlock (Buchung am Ding, ihre Heimat),
+              Wahl-Modul (wahlEinstieg, wahlVergleich, wahlKarte),
               tagKarte (Tageskasten mit wegVerlauf), tagEbenen, tagOrteZeilen, nachtAbschnitt (Nacht der Tagesseite),
               tagZeile (Zeitachse), uebersichtKarte, zuEntscheiden, zuBuchen (Listen aus listenZeile)
    Vorlagen:  tagKachel, Ansichten (ansichtTag = Tagesseite, ansichtReise = Reiseüberblick, ansichtOffen = Zu tun,
@@ -1088,11 +1090,18 @@ function dingEtikett(text, kat, art) {
 // Aufenthalt als Zeile: die Nacht eines Tages. Offene Wahl zeigt die vorläufige Unterkunft und wie viele zur Wahl stehen.
 // ohneLinks: in Kacheln, die selbst ein Link sind
 // verweis: Tageskasten der Tagesseite; der Vergleich steht im Abschnitt „Nacht“ darunter, hier nur der Weg dorthin
+// Unterkunft einer Nacht: die feste oder die der gewählten (sonst ersten offenen) Option ihrer Wahlstelle
+function nachtUnterkunft(n) {
+  const w = n.wahl && wahlZu.get(n.wahl);
+  const kand = w ? w.optionen.filter(o => !weg(o.status)) : [];
+  const akt = w && (kand.find(o => o.aktiv) || kand[0]);
+  return n.unterkunft && R.unterkuenfte[n.unterkunft] ? n.unterkunft : akt && (akt.unterkuenfte || []).find(x => R.unterkuenfte[x]);
+}
 function nachtZeile(n, ohneLinks, datum, verweis) {
   const w = n.wahl && wahlZu.get(n.wahl);
   const kand = w ? w.optionen.filter(o => !weg(o.status)) : [];
   const akt = w && (kand.find(o => o.aktiv) || kand[0]);
-  const uid = n.unterkunft && R.unterkuenfte[n.unterkunft] ? n.unterkunft : akt && (akt.unterkuenfte || []).find(x => R.unterkuenfte[x]);
+  const uid = nachtUnterkunft(n);
   const u = uid && R.unterkuenfte[uid];
   const kat = nachtKat(n), ort = n.an_bord ? "" : ortName(n.ort);
   const titel = n.an_bord ? "an Bord" : u ? u.name : akt ? akt.titel : n.hinweis || ort;
@@ -1214,7 +1223,12 @@ function tagKarte(t, ohneKopf) {
   if (t.strecken.length || (t.aufenthalte || []).length) k.append(wegVerlauf(t, ohneKopf ? id => (proId.get(id) || {}).typ === "etappe" : null, !ohneKopf && PLAN_DA));
   for (const [w, z] of wahlZeilen) if (!vorn.some(([x]) => x === w)) k.append(...z.filter(Boolean));
   if (t.text) k.append(el("div", {class: "z"}, t.text));
-  if (t.nacht) k.append(...[].concat(nachtZeile(t.nacht, false, t.datum, ohneKopf && !PLAN_DA)).filter(Boolean));
+  if (t.nacht) {
+    k.append(...[].concat(nachtZeile(t.nacht, false, t.datum, ohneKopf && !PLAN_DA)).filter(Boolean));
+    // Ohne Tagesseiten ist der Tageskasten im Plan die Heimat der Nacht (ADR-0003): die Buchung der Unterkunft steht hier,
+    // sonst in der Unterkunftskarte des Abschnitts „Nacht“ der Tagesseite
+    if (!ohneKopf && PLAN_DA) { const uid = nachtUnterkunft(t.nacht); for (const b of uid ? buchungenZu(uid) : []) k.append(buchungBlock(b)); }
+  }
   // Plan entschieden (ohne Plan-Baum): die Tagesseite hat den ganzen Weg mit Karte
   if (!ohneKopf && !D.reise.tiefe && PLAN_TAGE && PLAN_TAGE.tage.some(x => x.id === t.id))
     k.append(el("a", {class: "weiter", href: "#" + t.id}, t.strecken.some(s => ETAPPE_TAG.get(s.id) === t.id) ? "Ganzer Tag: Weg, Karte, Einkehr →" : "Ganzer Tag →"));
@@ -1319,7 +1333,9 @@ function belegeListe(b) {
     el("input", {type: "file", name: "datei", accept: "application/pdf,image/jpeg,image/png,image/webp,image/heic", required: true, "aria-label": "Beleg wählen"}),
     MIT_KONTO() ? null : el("input", {name: "name", placeholder: "Dein Name", maxlength: 80, value: NAME, autocomplete: "name"}),
     el("button", {type: "submit", class: "outline klein"}, "Beleg anhängen"),
-    el("span", {class: "meldung bl-meldung"}, "PDF oder Bild, bis 10 MB; sichtbar für dich und die Organisator:innen.")));
+    el("span", {class: "meldung bl-meldung"}, MIT_KONTO() ? "PDF oder Bild, bis 10 MB; sichtbar für dich und die Organisator:innen."
+      // ohne Konto zählt nur der eingetippte Name: der Dienst zeigt den Beleg danach nur Organisator:innen (fail-closed)
+      : "PDF oder Bild, bis 10 MB; sichtbar für die Organisator:innen. Melde dich an, wenn du den Beleg danach selbst sehen oder zurückziehen willst.")));
   return box;
 }
 document.addEventListener("submit", async e => {
@@ -3153,6 +3169,7 @@ function grundformVon(id) {
   if (wahlZu.has(id)) return "wahlstelle";
   if (R && R.unterkuenfte[id]) return "unterkunft";
   if (R && (R.aufenthalte || {})[id]) return "aufenthalt";
+  if (R && (R.buchungen || {})[id]) return "buchung";
   if (planZu(id)) return "plan";
   if (R && tagBekannt(id)) return "tag";
   if (blockZu.has(id)) return "abschnitt";

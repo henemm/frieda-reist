@@ -838,11 +838,12 @@ def test_buchung_anlegen_und_aendern(repo):
     s.vorbereiten()
     a = s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-03", "status": "gebucht", "frist": "", "nummer": "P-7/2027",
                                                                           "grund": "Bestätigung ist da"}})
-    assert "Status „angefragt“ → „gebucht“" in a["text"] and "frist entfernt (war „15.1.2027“)" in a["text"] and "nummer „P-7“ → „P-7/2027“" in a["text"]
+    # Felder in Worten, nicht als Schlüssel (Product Owner 29.10.2026)
+    assert "Status „angefragt“ → „gebucht“" in a["text"] and "Frist entfernt (war „15.1.2027“)" in a["text"] and "Nummer „P-7“ → „P-7/2027“" in a["text"]
     r, _ = routen_auf_main(origin)
     b = r["buchungen"]["B-03"]
     assert b["status"] == "gebucht" and "frist" not in b and b["nummer"] == "P-7/2027"
-    assert b["verlauf"][-1] == {"datum": datetime.date.today(), "wer": "Ida", "was": "Status; nummer; frist entfernt", "grund": "Bestätigung ist da"}
+    assert b["verlauf"][-1] == {"datum": datetime.date.today(), "wer": "Ida", "was": "Status; Nummer; Frist entfernt", "grund": "Bestätigung ist da"}
     # Der Buchungsstand der Dinge folgt der Buchung (Probebau liest sie)
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="Nichts zu ändern"):

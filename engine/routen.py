@@ -381,6 +381,10 @@ class Routen:
                         datetime.date.fromisoformat(str(v))
                     except ValueError:
                         self.fehl(f"Buchung {bid}: {k} muss ein Datum JJJJ-MM-TT sein.")
+            for e in b.get("verlauf") or []:   # wie jeder Verlauf: wer hat wann (ADR-0001)
+                if not isinstance(e, dict) or not isinstance(e.get("datum"), datetime.date) or not e.get("wer"):
+                    self.fehl(f"Buchung {bid}: jeder Verlaufseintrag braucht datum (JJJJ-MM-TT) und wer.")
+                    break
             if b.get("status", "gebucht") != "storniert":
                 for x in fuer:
                     if x in self.buchung_je_ding and self.buchung_je_ding[x] != bid:

@@ -114,7 +114,8 @@ def ablegen(o, bid, name, dateiname, daten):
         return None, (415, "Erlaubt sind PDF, JPEG, PNG, WebP und HEIC; diese Datei ist keins davon.")
     d = lesen(o)
     if len(d["belege"]) >= MAX_ANZAHL:
-        return None, (409, f"Diese Reise hat schon {MAX_ANZAHL} Belege; bitte alte zurückziehen reicht nicht, der Betreiber muss aufräumen.")
+        return None, (409, f"Diese Reise hat schon {MAX_ANZAHL} Belege und nimmt keinen weiteren an; zurückgezogene zählen mit. "
+                           "Bitte den Betreiber, alte Belege aus der Ablage zu nehmen.")
     if sum(int(b.get("groesse") or 0) for b in d["belege"]) + len(daten) > MAX_REISE:
         return None, (409, f"Der Platz für Belege dieser Reise ({MAX_REISE // 1024 // 1024} MB) ist voll.")
     did = f"D-{d['naechste']:02d}"

@@ -24,8 +24,8 @@ IDA, MAX, KARL, KIM = "i" * 32, "x" * 32, "k" * 32, "q" * 32
 ALLE_BAUSTEINE = ["varianten", "karte", "tagesseiten", "rueckmeldungen", "fragen", "aufgaben", "wuensche"]
 
 
-def reise_bauen(tmp, status="planung", bausteine=None, luecke=False, regeln=None):
-    """Beispielreise mit gewünschtem Status und Bausteinen bauen; Max als zweite Organisator:in, Kim als Gast.
+def reise_bauen(tmp, status="planung", bausteine=None, luecke=False, regeln=None, darstellung=None):
+    """Beispielreise mit gewünschtem Status, Bausteinen und Darstellung bauen; Max als zweite Organisator:in, Kim als Gast.
     -> Seitenordner (<seiten>/beispielreise/daten.json)"""
     quelle = tmp / "quelle"
     shutil.copytree(BEISPIEL, quelle)
@@ -39,6 +39,8 @@ def reise_bauen(tmp, status="planung", bausteine=None, luecke=False, regeln=None
         y["bausteine"] = bausteine
     if regeln:
         y.setdefault("regeln", {}).update(regeln)
+    if darstellung:
+        y.setdefault("darstellung", {}).update(darstellung)
     (quelle / "reise.yaml").write_text(yaml.safe_dump(y, allow_unicode=True), encoding="utf-8")
     if luecke:   # Start in einem anderen Ort: der Plan geht nicht auf (Warnung)
         r = quelle / "plan" / "routen.yaml"

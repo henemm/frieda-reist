@@ -24,5 +24,14 @@ await p.evaluate(() => { location.hash = "plan"; });
 await p.waitForTimeout(200);
 start.knoepfe = await p.evaluate(() => document.querySelectorAll("#main button.zid").length);
 start.kennungen = await p.evaluate(() => document.querySelectorAll("#main .zid").length);
+// Buchung (B-…, #76): ihr Block ist unter #B-01 bei ihrem Ding erreichbar, auch bei einer Reise ohne Tagesseiten (ADR-0003)
+await p.evaluate(() => { location.hash = "B-01"; });
+await p.waitForTimeout(200);
+start.buchung = await p.evaluate(() => {
+  const z = document.querySelector("#main #B-01");
+  const nummer = [...z.querySelectorAll(".z")].map(x => x.textContent).find(t => t.startsWith("Nummer: "));
+  return z ? {sichtbar: !!z.offsetParent, nummer: nummer ? nummer.slice(8) : null,
+              reiter: (document.querySelector("#nav a.on") || {getAttribute: () => "#"}).getAttribute("href").slice(1)} : null;
+});
 await b.close();
 console.log(JSON.stringify({...start, fehler}));
