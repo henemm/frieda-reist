@@ -41,6 +41,7 @@ import secrets
 import smtplib
 import sqlite3
 import sys
+import threading
 import time
 import urllib.parse
 from contextlib import closing
@@ -151,7 +152,7 @@ def dienst_geheimnis():
     except FileNotFoundError:
         p.parent.mkdir(parents=True, exist_ok=True)
         os.chmod(p.parent, 0o700)
-        tmp = p.with_name(f"dienst-geheimnis.{os.getpid()}.tmp")
+        tmp = p.with_name(f"dienst-geheimnis.{os.getpid()}.{threading.get_ident()}.tmp")  # je Thread eigen: der Dienst arbeitet mit Threads
         fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w", encoding="ascii") as f:
             f.write(secrets.token_urlsafe(32))
@@ -160,7 +161,7 @@ def dienst_geheimnis():
         except FileExistsError:
             pass
         finally:
-            tmp.unlink()
+            tmp.unlink(missing_ok=True)
         return p.read_text(encoding="ascii").strip()
 
 

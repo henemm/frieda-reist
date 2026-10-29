@@ -359,3 +359,23 @@ def test_konten_ordner_alt_und_neu(tmp_path, monkeypatch):
     (tmp_path / "woanders").mkdir()
     (tmp_path / "woanders" / "konten.db").write_text("x")
     assert instanz.konten() == tmp_path / "woanders"
+
+
+def test_dienst_geheimnis_gleichzeitig_beim_ersten_Aufruf(umgebung):
+    """Der Dienst arbeitet mit Threads: Fragen mehrere gleichzeitig das noch nicht angelegte Geheimnis ab, bekommen
+    alle dasselbe und keiner stürzt über die Zwischendatei des anderen."""
+    import threading
+    ergebnisse, fehler = [], []
+
+    def hole():
+        try:
+            ergebnisse.append(konten.dienst_geheimnis())
+        except Exception as e:  # noqa: BLE001
+            fehler.append(e)
+
+    threads = [threading.Thread(target=hole) for _ in range(16)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert not fehler and len(ergebnisse) == 16 and len(set(ergebnisse)) == 1
