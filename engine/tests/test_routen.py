@@ -209,7 +209,12 @@ def test_f_status_passt_nicht_zur_wahl():
     assert any("V-02 ist noch offen, aber F-01" in t for t in texte(erg))
     option(r, "V-02.a")["verlauf"] = verlauf(("gewaehlt", "Ida", {}))
     erg = ok(r)
+    # F-01 hängt auch an V-01, das noch offen ist: die Frage bleibt zu Recht offen
+    assert not any("ist entschieden, aber F-01" in t for t in texte(erg))
+    option(r, "V-01.a")["verlauf"] = verlauf(("gewaehlt", "Ida", {}))
+    erg = ok(r)
     assert any("V-02 ist entschieden, aber F-01" in t for t in texte(erg))
+    assert any("V-01 ist entschieden, aber F-01" in t for t in texte(erg))
 
 
 # ---------- Ablauf: Lücken, Abzweig, Datum, Fixpunkte ----------
