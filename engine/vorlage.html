@@ -36,6 +36,11 @@
    dataviz-geprüft; --farbe-* Palette für die Arten der Reise (arten.yaml: farbe). Die Leiste ist Glas über dem Inhalt (Rahmen der Seite).
    Kontrast (WCAG): Text auf Grund und Fläche mindestens 4,5:1, hell und dunkel (geprüft 27.10.2026). */
 :root{--font-text:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+/* Schriftleiter (Product Owner 29.10.2026): fünf Stufen, jede Schriftgröße der Seite ist eine davon (Test). Titel einer
+   Ansicht oder eines Tags; Untertitel einer Ebene, Gruppe oder Kachel; Text für Fließtext, Werte und Tabellen; Nebentext
+   für Hinweise, Verlauf, Knöpfe; Etikett für Etiketten, Pillen, Datum. Ausnahmen mit eigener Größe: die Ziffer der
+   Tagesnummer, die Beschriftung der Leiste unten (Rahmen) und die Karte (px, Leaflet). */
+:root{--t-titel:1.75rem;--t-untertitel:1.2rem;--t-text:1.0625rem;--t-klein:0.875rem;--t-etikett:0.8125rem}
 :root{--plan-a:#c62a2a;--plan-b:#008a7e;--plan-c:#7a4db0;--plan-d:#b07800;--sea:#d9e6ea;--land:#eceadf;--land-edge:#b7b4a3;--peak:#8a8573;--water:#9cc3d1;--bus:#6f7772;--skip:#9a9a90;--farbe-blau:#1f3b57;--farbe-braun:#8a4b2a;--farbe-lila:#6a4c93;--farbe-gruen:#2c6e49;--farbe-tuerkis:#3f7f8c;--farbe-oliv:#7a7a1f;--farbe-schiefer:#555a50;--farbe-rosa:#a0446a;--farbe-grau:#6f7772;--bg:#f8f8f5;--fg:#1d2420;--mut:#5b645e;--ocker:#6a756e;--card:#ffffff;--line:#e4e5df;--acc:#1f7a57;--acc2:#e3f1ea;--warn:#9a5b00;--warnbg:#fbeed6;--mark:#ffe58a}
 @media (prefers-color-scheme:dark){:root{--plan-a:#e8507a;--plan-b:#2fa9a0;--plan-c:#a07ad6;--plan-d:#b98a00;--sea:#14232a;--land:#222823;--land-edge:#3d453e;--peak:#8d8a7c;--water:#2f5e70;--bus:#8d958f;--skip:#6d716c;--farbe-blau:#7fa9d6;--farbe-braun:#d39a6f;--farbe-lila:#b49ae0;--farbe-gruen:#5cbf86;--farbe-tuerkis:#79c3cf;--farbe-oliv:#c9c96a;--farbe-schiefer:#a9ad9f;--farbe-rosa:#e08fb0;--farbe-grau:#8d958f;--bg:#151816;--fg:#eceee9;--mut:#a5aca6;--ocker:#a5aca6;--card:#1d211e;--line:#2c312d;--acc:#6fd0a5;--acc2:#1f3329;--warn:#f0c46a;--warnbg:#3a3017;--mark:#6b5a10}}
 /* Formen: Radien (klein für Knöpfe, normal für Karten, Kachel, groß für die Fläche, an der man handelt, Pille) und Schatten */
@@ -52,7 +57,7 @@
 /* Schriftgröße: alle Größen sind rem, am Rechner wächst die Wurzel (Handy 16 px, ab 760 px 17 px, ab 1100 px 19 px, ab 1700 px 20 px). */
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;font-size:100%}
-body{margin:0;background:var(--bg);color:var(--fg);font:1.0625rem/1.55 var(--font-text)}
+body{margin:0;background:var(--bg);color:var(--fg);font:var(--t-text)/1.55 var(--font-text)}
 main{max-width:var(--breite);margin:0 auto;padding:14px 14px 0;overflow-wrap:break-word}
 main :is(p,ul,ol,blockquote,dl):not(:where(.karte,.ding,.wm,.option,.steckbrief,.wm-karte,.fnbox) *){max-width:var(--lese)}
 a{color:var(--acc)}
@@ -64,7 +69,7 @@ summary{cursor:pointer}
 @keyframes blitz{0%,60%{outline:3px solid var(--acc)}100%{outline:3px solid transparent}}
 mark{background:var(--mark);color:inherit;border-radius:3px}
 .leer{color:var(--mut);padding:20px 0;text-align:center}
-.meldung{font-size:0.875rem;color:var(--mut);margin:8px 0}
+.meldung{font-size:var(--t-klein);color:var(--mut);margin:8px 0}
 .unsichtbar{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 :focus-visible{outline:3px solid var(--acc);outline-offset:2px;border-radius:4px}
 /* ---------- Pico CSS an die eigenen Farben binden (hell und dunkel folgen --bg/--fg/--acc) ---------- */
@@ -81,9 +86,15 @@ mark{background:var(--mark);color:inherit;border-radius:3px}
   --pico-mark-background-color:var(--mark);--pico-mark-color:var(--fg);--pico-border-radius:10px}
 .pico th{background:var(--acc2);font-weight:600}
 .pico :is(h1,h2,h3,h4){font-family:var(--font-text);font-weight:700;text-wrap:balance;letter-spacing:-.01em}
+/* Pico bringt eigene Größen für Überschriften, Knöpfe und Felder mit; hier gelten die Stufen der Schriftleiter */
+.pico :is(h1,h2){--pico-font-size:var(--t-titel)}
+.pico :is(h3,h4){--pico-font-size:var(--t-untertitel)}
+.pico :is(h5,h6){--pico-font-size:var(--t-text)}
+.pico :is(button,[role=button],[type=button],[type=submit],[type=reset],input,select,textarea){font-size:var(--t-text)}
+.pico :is(code,kbd,samp,pre,small){font-size:var(--t-klein)}
 .pico table{font-variant-numeric:tabular-nums}
 .pico .tabelle table{margin:0}
-.pico button.klein{font-size:0.875rem;padding:6px 12px}
+.pico button.klein{font-size:var(--t-klein);padding:6px 12px}
 .pico details.block>summary,.pico details.neben>summary,.pico details.weg>summary{margin:0}
 /* ---------- Reisetexte: Tabellen, Bilder, Kartenpunkte im Text, Fußnoten (docs/design.md, Reisetexte) ---------- */
 /* Tabellen (bauen.tabellen_ordnen): zweispaltig als Merkmalliste, breiter als Tabelle. Die Hülle .tabelle ist der
@@ -106,13 +117,13 @@ dl.textmerkmale dd{margin:0;padding:8px 0;overflow-wrap:break-word;min-width:0}
   /* !important: Spaltenausrichtung aus dem Markdown steht als style an der Zelle */
   .pico .tabelle.stapel td{border:0;padding:1px 0;background:none;--pico-background-color:transparent;text-align:start!important}
   .pico .tabelle.stapel td:first-child{font-weight:700}
-  .pico .tabelle.stapel td:not(:first-child)[data-spalte]::before{content:attr(data-spalte) ": ";color:var(--mut);font-size:0.85rem;font-weight:600}
+  .pico .tabelle.stapel td:not(:first-child)[data-spalte]::before{content:attr(data-spalte) ": ";color:var(--mut);font-size:var(--t-klein);font-weight:600}
   .pico .tabelle.stapel td.leer{display:none}
 }
 img{max-width:100%;height:auto;border-radius:6px}
 a.bild{display:block;margin:6px 0;list-style:none}
-a.bild span{display:block;font-size:0.8125rem;color:var(--mut)}
-ul li:has(>a.bild){list-style:none;margin-left:-22px;font-size:0.8125rem;color:var(--mut)}
+a.bild span{display:block;font-size:var(--t-etikett);color:var(--mut)}
+ul li:has(>a.bild){list-style:none;margin-left:-22px;font-size:var(--t-etikett);color:var(--mut)}
 a.kp{white-space:nowrap}
 a.kp::before{content:"";display:inline-block;width:.7em;height:.7em;margin-right:.18em;border-radius:50% 50% 50% 0;transform:rotate(-45deg) translateY(.05em);background:currentColor;opacity:.75}
 .kp-blink{animation:kpblink 1.6s ease-out}
@@ -122,15 +133,15 @@ a.kp::before{content:"";display:inline-block;width:.7em;height:.7em;margin-right
 .pico sup.fn button{all:unset;display:inline-block;line-height:1.3;min-width:1.2em;text-align:center;cursor:pointer;color:var(--acc);font-weight:600;padding:.1em .2em;border-radius:4px}
 .pico sup.fn button[aria-expanded="true"]{background:var(--acc2)}
 .pico sup.fn button:focus-visible{outline:2px solid var(--acc)}
-.fnbox{display:block;margin:.3em 0 .5em;padding:.4em .6em;border-left:3px solid var(--acc);background:var(--card);font-size:0.875rem;line-height:1.4;color:var(--mut)}
-ol.fussnoten{margin:1em 0 0;padding-top:.6em;border-top:1px solid var(--line);font-size:0.8125rem;line-height:1.4;color:var(--mut)}
+.fnbox{display:block;margin:.3em 0 .5em;padding:.4em .6em;border-left:3px solid var(--acc);background:var(--card);font-size:var(--t-klein);line-height:1.4;color:var(--mut)}
+ol.fussnoten{margin:1em 0 0;padding-top:.6em;border-top:1px solid var(--line);font-size:var(--t-etikett);line-height:1.4;color:var(--mut)}
 ol.fussnoten li{margin:0 0 .25em;overflow-wrap:anywhere}
 
 /* ==================== 3 Atome ==================== */
 /* ---------- Atom Symbol (Lucide, eingebettet als <symbol>) ---------- */
 .sym{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
 /* ---------- Atom Zustand (chip): feste Namen, die Farbe folgt der Bedeutung ---------- */
-.chip{font-size:0.8125rem;background:var(--acc2);color:var(--acc);border-radius:99px;padding:2px 10px;max-width:100%;overflow-wrap:break-word}
+.chip{font-size:var(--t-etikett);background:var(--acc2);color:var(--acc);border-radius:99px;padding:2px 10px;max-width:100%;overflow-wrap:break-word}
 .chip.plan{background:var(--acc);color:var(--bg);font-weight:700}
 .chip.neben{background:var(--warnbg);color:var(--warn)}
 .chip.offen{background:var(--warnbg);color:var(--warn)}
@@ -147,23 +158,23 @@ ol.fussnoten li{margin:0 0 .25em;overflow-wrap:anywhere}
 .mk-unklar{color:var(--warn);font-weight:700}
 .mk-luecke{color:var(--warn)}
 .pico button.mk-i{position:relative;width:20px;height:20px;min-height:0;padding:0;margin:0 0 0 6px;border-radius:50%;border:1px solid var(--line);
-  background:var(--card);color:var(--mut);font:700 0.75rem/18px var(--font-text);font-style:normal;text-align:center;vertical-align:1px;box-shadow:none;cursor:pointer}
+  background:var(--card);color:var(--mut);font:700 var(--t-etikett)/18px var(--font-text);font-style:normal;text-align:center;vertical-align:1px;box-shadow:none;cursor:pointer}
 .pico button.mk-i::after{content:"";position:absolute;inset:-12px}
 .pico button.mk-i[aria-expanded="true"],.pico button.mk-i:hover{background:var(--acc2);color:var(--acc);border-color:var(--acc)}
 /* Herkunft schwebt über der Seite (auch über Tabellen mit seitlichem Rollen), Lage setzt mkZeige */
 .mk-q{position:fixed;z-index:60;width:max-content;max-width:min(22rem,calc(100vw - 32px));padding:7px 11px;border:1px solid var(--line);
   border-radius:10px;background:var(--card);color:var(--fg);box-shadow:var(--schatten,0 4px 18px rgba(0,0,0,.14));
-  font:400 0.8125rem/1.4 var(--font-text);white-space:normal;text-align:left;overflow-wrap:anywhere}
+  font:400 var(--t-klein)/1.4 var(--font-text);white-space:normal;text-align:left;overflow-wrap:anywhere}
 .mk-q[hidden]{display:none}
 .mk-datum{display:block}
-.mk-am{font-size:0.7812rem;font-weight:700;color:var(--ocker)}
-.mk-am-tag{display:inline-block;margin-left:6px;font-size:0.6875rem;font-weight:700;color:var(--ocker);border:1px solid var(--ocker);border-radius:4px;padding:0 5px;vertical-align:1px}
-.mk-chip{margin-left:6px;font-size:0.6875rem;padding:1px 7px}
+.mk-am{font-size:var(--t-etikett);font-weight:700;color:var(--ocker)}
+.mk-am-tag{display:inline-block;margin-left:6px;font-size:var(--t-etikett);font-weight:700;color:var(--ocker);border:1px solid var(--ocker);border-radius:4px;padding:0 5px;vertical-align:1px}
+.mk-chip{margin-left:6px;font-size:var(--t-etikett);padding:1px 7px}
 .mk-leer{color:var(--mut);border-bottom:1px dashed var(--line)}
 .mk-nichts{color:var(--mut)}
 /* ---------- Atom Etikett: sagt, was etwas ist (Nacht, Gehzeit, Start …); normale Schreibweise, gedämpft ----------
    Ein Symbol davor (.etikett-sym) nur, wo es die Art sofort zeigt (Nacht, Wahl, Ort, Kennzahlen). */
-:is(.etikett,.ding-art,.tagdatum,.kzn,.wv-etikett),dl.textmerkmale dt{font:600 0.85rem/1.3 var(--font-text);letter-spacing:0;text-transform:none;color:var(--mut)}
+:is(.etikett,.ding-art,.tagdatum,.kzn,.wv-etikett),dl.textmerkmale dt{font:600 var(--t-etikett)/1.3 var(--font-text);letter-spacing:0;text-transform:none;color:var(--mut)}
 .etikett-sym{width:1rem;height:1rem;color:var(--acc)}
 /* ---------- Atom Planfarbe: Punkt oder Linie ---------- */
 .plan-linie{width:16px;border-top:4px solid var(--farbe);display:inline-block}
@@ -175,7 +186,7 @@ h2 .punkt,h2 i.punkt{display:inline-block;width:12px;height:12px;border-radius:5
    Tippfläche 44 × 44 px. Die Kennung selbst (T-01 …) steht im Fenster, das sich öffnet, mit „Kopieren“.
    Deckkraft leer 0,7 statt der erprobten 0,55: so hat das Symbol 3:1 Kontrast (WCAG 1.4.11), hell und dunkel. */
 .zid-box{position:relative;display:inline-flex;align-items:center;max-width:100%;vertical-align:middle}
-.zid{font:0.6875rem ui-monospace,Menlo,monospace;color:var(--mut);margin-left:8px;white-space:nowrap}   /* ohne Rückmeldungen: Kennung als Text */
+.zid{font:var(--t-etikett) ui-monospace,Menlo,monospace;color:var(--mut);margin-left:8px;white-space:nowrap}   /* ohne Rückmeldungen: Kennung als Text */
 /* .pico davor: sonst gewinnt Pico CSS mit hellem Text auf hellem Grund */
 .pico button.zid{position:relative;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-height:44px;padding:0;margin:0 -10px 0 0;
   border:0;border-radius:var(--r-klein);background:none;box-shadow:none;transition:none;cursor:pointer;opacity:.7;
@@ -186,7 +197,7 @@ h2 .punkt,h2 i.punkt{display:inline-block;width:12px;height:12px;border-radius:5
 button.zid .zid-blase{width:1.25rem;height:1.25rem}
 button.zid.hat-rm .zid-blase{fill:var(--acc2)}
 .zid-n{position:absolute;top:3px;right:1px;display:inline-flex;align-items:center;justify-content:center;min-width:1.2rem;height:1.2rem;padding:0 .3em;
-  border-radius:var(--r-pille);background:var(--acc);color:var(--card);font:700 0.72rem/1 var(--font-text);font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px var(--card)}
+  border-radius:var(--r-pille);background:var(--acc);color:var(--card);font:700 var(--t-etikett)/1 var(--font-text);font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px var(--card)}
 .zid-o{position:absolute;bottom:9px;right:8px;width:.6rem;height:.6rem;border-radius:50%;background:var(--warn);box-shadow:0 0 0 2px var(--card)}
 /* In Titelzeilen sitzt die Kennung mit Abstand am rechten Rand, damit Tippen auf den Titel sie nicht trifft */
 :is(summary,h2,.k,.titelzeile):has(>.zid-box){display:flex;align-items:center;gap:2px 16px;line-height:1.3}
@@ -208,17 +219,17 @@ button.zid.hat-rm .zid-blase{fill:var(--acc2)}
 .karte{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 10px;color:inherit;text-decoration:none}
 a.karte:active{background:var(--acc2)}
 .karte .k{font-weight:700}
-.karte .z{margin-top:4px;font-size:0.9375rem}
+.karte .z{margin-top:4px;font-size:var(--t-text)}
 .karte .z b{color:var(--mut);font-weight:600}
-.karte .z.klein,.verlauf{font-size:0.8125rem;color:var(--mut)}
+.karte .z.klein,.verlauf{font-size:var(--t-etikett);color:var(--mut)}
 details.block{background:var(--card);border:1px solid var(--line);border-radius:12px}
 details.block>summary{padding:12px 14px;font-weight:600;cursor:pointer;min-height:44px}
 details.block>.inhalt{padding:0 14px 8px}
-details.weg>summary{font-size:0.875rem;color:var(--mut);padding:8px 0}
+details.weg>summary{font-size:var(--t-klein);color:var(--mut);padding:8px 0}
 /* Fläche, an der man handelt (Tageskasten): weiß, ohne Rahmen, weicher Schatten, großer Radius. Sonst gibt es auf der
    Tagesseite keine Kästen; Lesetext steht ohne Rahmen. */
 .karte.flaeche{border:0;border-radius:var(--r-gross);box-shadow:var(--schatten);padding:16px 18px}
-.pico .karte .k{font-size:1rem}
+.pico .karte .k{font-size:var(--t-text)}
 @media (hover:hover){
   a.karte:hover{border-color:var(--acc)}
 }
@@ -228,12 +239,12 @@ details.weg>summary{font-size:0.875rem;color:var(--mut);padding:8px 0}
 details.block>.ortchips{padding:0 14px}
 /* ---------- Umschalter: ein Knopf gedrückt ---------- */
 .umschalter{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px;padding:0;border:0;min-width:0}
-.umschalter button{font:inherit;font-size:0.875rem;font-weight:600;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:8px 13px;min-height:40px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.umschalter button{font:inherit;font-size:var(--t-klein);font-weight:600;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:8px 13px;min-height:40px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
 .umschalter button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 /* Eigene Bedienelemente innerhalb von .pico behalten ihr Aussehen */
 .pico :is(.umschalter button){width:auto;box-shadow:none;line-height:1.3;transition:none;
   --pico-background-color:var(--card);--pico-border-color:var(--line);--pico-color:var(--fg);background-color:var(--card);border:1px solid var(--line);border-radius:99px}
-.pico .umschalter button{margin:0;font-size:0.875rem;font-weight:600;color:var(--fg);padding:8px 13px}
+.pico .umschalter button{margin:0;font-size:var(--t-klein);font-weight:600;color:var(--fg);padding:8px 13px}
 .pico .umschalter button[aria-pressed="true"]{--pico-background-color:var(--fg);background-color:var(--fg);color:var(--bg);border-color:var(--fg)}
 @media (hover:hover){
   .umschalter button:hover{border-color:var(--acc)}
@@ -242,12 +253,12 @@ details.block>.ortchips{padding:0 14px}
 .reiterleiste{display:flex;gap:4px;overflow-x:auto;padding:4px;margin:0 0 6px;border-radius:var(--r-pille);background:color-mix(in srgb,var(--line) 60%,transparent);
   width:max-content;max-width:100%;scrollbar-width:none}
 .pico .reiterleiste button{flex:none;width:auto;margin:0;min-height:40px;padding:0 16px;border:0;border-radius:var(--r-pille);background:none;box-shadow:none;transition:none;
-  color:var(--mut);--pico-color:var(--mut);--pico-background-color:transparent;font:600 0.9375rem/1 var(--font-text);white-space:nowrap;cursor:pointer}
+  color:var(--mut);--pico-color:var(--mut);--pico-background-color:transparent;font:600 var(--t-text)/1 var(--font-text);white-space:nowrap;cursor:pointer}
 .pico .reiterleiste button[aria-selected="true"]{background:var(--card);color:var(--fg);--pico-color:var(--fg);box-shadow:var(--schatten-klein)}
 @media (hover:hover){.pico .reiterleiste button:hover{color:var(--fg);--pico-color:var(--fg)}}
 /* ---------- Ebenenkopf: Titel einer Ebene, rechts die Kennung ---------- */
 .ebene-kopf{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px}
-.pico .ebene-kopf h3{margin:0;font-size:1.2rem}
+.pico .ebene-kopf h3{margin:0;font-size:var(--t-untertitel)}
 /* ---------- Etikett eines Dings: was es ist, Punkt in der Farbe der Kategorie ---------- */
 .ding-art{display:flex;align-items:center;gap:6px}
 .ding-art .lg-k{width:9px;height:9px}
@@ -256,14 +267,14 @@ details.block>.ortchips{padding:0 14px}
 .kz>div{background:var(--acc2);border-radius:var(--r-kachel);padding:10px 12px;display:flex;flex-direction:column;gap:4px;min-width:0}
 .kzn{display:flex;align-items:center;gap:6px;color:var(--acc)}
 .kzn .sym{width:1.05rem;height:1.05rem}
-.kzw{font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kzw{font-size:var(--t-untertitel);font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 @media (max-width:520px){.kz{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}.kz>div:last-child:nth-child(odd){grid-column:1 / -1}}
 /* ---------- Merkmalliste (docs/alternativen.md) ---------- */
-dl.mliste{margin:6px 0;font-size:0.9062rem}
-dl.mliste dt{font-size:0.7812rem;color:var(--mut);margin-top:6px}
+dl.mliste{margin:6px 0;font-size:var(--t-text)}
+dl.mliste dt{font-size:var(--t-etikett);color:var(--mut);margin-top:6px}
 dl.mliste dd{margin:0;overflow-wrap:anywhere}
 /* ---------- Legende unter einer Karte ---------- */
-.legende{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:0.8125rem;color:var(--mut);margin:6px 0}
+.legende{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:var(--t-etikett);color:var(--mut);margin:6px 0}
 .legende span{display:inline-flex;align-items:center;gap:6px}
 .lg-k{width:11px;height:11px;border-radius:3px;background:var(--kat,var(--farbe-grau))}
 .lg-u{width:16px;border-top:3px dotted var(--fg)}
@@ -279,43 +290,43 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .typ-praxis .wsym{background:var(--warnbg);color:var(--warn)}
 .typ-quelle .wsym{background:color-mix(in srgb,var(--mut) 16%,transparent);color:var(--mut)}
 .wtext{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.wt{font:600 1.1875rem/1.25 var(--font-text);letter-spacing:-.01em;text-wrap:balance}
-.wu{font-size:0.9062rem;line-height:1.4;color:var(--mut)}
+.wt{font:600 var(--t-untertitel)/1.25 var(--font-text);letter-spacing:-.01em;text-wrap:balance}
+.wu{font-size:var(--t-text);line-height:1.4;color:var(--mut)}
 .pico .wzeile>.zid-box{margin:3px 0 0;flex:none}
 .pico .wzeile>.chip{flex:none;margin:9px 0 0}
 .pico h2.listen-titel{display:flex;align-items:center;gap:10px}
-.pico h2.listen-titel>.chip{font-size:0.8125rem}
+.pico h2.listen-titel>.chip{font-size:var(--t-etikett)}
 @media (hover:hover){.wzeile:hover .wt{color:var(--acc)}}
 /* ---------- Buchung (B-…, #76) als Block am Ding, Belege darunter ---------- */
 .buchung{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
 .buchung .z.ueber{color:var(--warn)}
 .buchung details.verlauf>summary{cursor:pointer}
-.beleg{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;padding:3px 0;font-size:0.9375rem}
+.beleg{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;padding:3px 0;font-size:var(--t-text)}
 .beleg.weg a{text-decoration:line-through;color:var(--mut)}
 .beleg-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
-.beleg-form input[type=file]{max-width:100%;font-size:0.875rem}
+.beleg-form input[type=file]{max-width:100%;font-size:var(--t-klein)}
 .beleg-form input[name=name]{max-width:12rem}
 /* ---------- Hinweiskasten: geht nicht auf ---------- */
 .warnungen{background:var(--warnbg);color:var(--warn);border-radius:12px;padding:10px 14px;margin:0 0 12px}
 .warnungen ul{margin:.3em 0 0;padding-left:20px}
 /* ---------- Rückmeldung und Aufgabe als Eintrag ---------- */
 .rmeintrag{border-top:1px solid var(--line);padding:9px 0}
-.rmeintrag .kopfzeile{font-size:0.8125rem;color:var(--mut)}
+.rmeintrag .kopfzeile{font-size:var(--t-etikett);color:var(--mut)}
 .rmeintrag .text{white-space:pre-wrap;margin:3px 0}
-.rmeintrag .antwort{font-size:0.9375rem;background:var(--acc2);border-radius:8px;padding:6px 9px;margin-top:5px}
+.rmeintrag .antwort{font-size:var(--t-text);background:var(--acc2);border-radius:8px;padding:6px 9px;margin-top:5px}
 .ag{display:flex;gap:12px;align-items:flex-start;padding:12px 0}
 .ag>.ag-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .ag-kopf{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .ag .titel{font-weight:600;line-height:1.35}
 .ag.zu .titel{text-decoration:line-through;color:var(--mut)}
-.ag-meta{display:flex;flex-wrap:wrap;gap:2px 6px;font-size:0.875rem;color:var(--mut)}
+.ag-meta{display:flex;flex-wrap:wrap;gap:2px 6px;font-size:var(--t-klein);color:var(--mut)}
 .ag-punkt{color:var(--line)}
 .ag-frist{color:var(--fg);font-weight:600}
 .ag-frist.ueber,.ag-wichtig{color:var(--warn);font-weight:600}
 .ag-bezug{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
-.ag-bezug a{font-size:0.8125rem;line-height:1.3;padding:3px 10px;border-radius:var(--r-pille);background:var(--acc2);color:var(--acc);text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ag-notiz{font-size:0.9375rem;color:var(--mut);line-height:1.45}
-.pico button.ag-bearbeiten{flex:none;width:auto;margin:0;padding:4px 0;min-height:32px;border:0;background:none;box-shadow:none;color:var(--acc);font-size:0.875rem;font-weight:600}
+.ag-bezug a{font-size:var(--t-etikett);line-height:1.3;padding:3px 10px;border-radius:var(--r-pille);background:var(--acc2);color:var(--acc);text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ag-notiz{font-size:var(--t-text);color:var(--mut);line-height:1.45}
+.pico button.ag-bearbeiten{flex:none;width:auto;margin:0;padding:4px 0;min-height:32px;border:0;background:none;box-shadow:none;color:var(--acc);font-size:var(--t-klein);font-weight:600}
 .ag-liste{display:flex;flex-direction:column}
 /* Offene Frage als Zeile: wie eine Aufgabe, ohne Haken; der Stand als Wort in seiner Farbe */
 .frage{padding:12px 0}
@@ -327,14 +338,14 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .ag-liste>.ag+.ag{border-top:1px solid var(--line)}
 .ag-liste>.rmeintrag:first-child{border-top:0}
 .ag-gruppe{margin-top:22px}
-.ag-gruppe h3.reise-titel{display:flex;align-items:center;gap:8px;font-size:1.1rem;margin:0 0 2px}
+.ag-gruppe h3.reise-titel{display:flex;align-items:center;gap:8px;font-size:var(--t-untertitel);margin:0 0 2px}
 .ag-leiste{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 4px}
 .pico .ag-leiste .reiterleiste{margin:0;display:inline-flex;max-width:100%}
 .pico .reiterleiste button[aria-pressed="true"]{background:var(--card);color:var(--fg);--pico-color:var(--fg);box-shadow:var(--schatten-klein)}
 .pico button.neu-knopf{width:auto;margin:0;min-height:44px;padding:0 18px;border-radius:var(--r-pille);font-weight:600}
 .pico button.neu-knopf::before{content:"+";margin-right:6px;font-weight:700}
 details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
-.pico button.haken{width:30px;height:30px;flex:none;padding:0;margin:0;border-radius:8px;border:2px solid var(--acc);background:transparent;color:var(--acc);font-size:1.0625rem;line-height:1;box-shadow:none}
+.pico button.haken{width:30px;height:30px;flex:none;padding:0;margin:0;border-radius:8px;border:2px solid var(--acc);background:transparent;color:var(--acc);font-size:var(--t-text);line-height:1;box-shadow:none}
 .pico button.haken.an{background:var(--acc);color:var(--bg)}
 
 /* ==================== 5 Organismen ==================== */
@@ -342,7 +353,7 @@ details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
 .ding{display:flex;gap:10px;align-items:flex-start;margin:10px 0 2px;padding-top:9px;border-top:1px solid var(--line)}
 .ding-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .ding-titel{font-weight:600;line-height:1.3}
-.ding-unter{font-size:0.875rem;color:var(--mut);line-height:1.35}
+.ding-unter{font-size:var(--t-klein);color:var(--mut);line-height:1.35}
 .ding .chips{align-items:center;margin:4px 0 0}
 .pico .ding ul{margin:4px 0 0}
 .pico .ding>.zid-box{margin:2px 0 0;flex:none}
@@ -353,18 +364,18 @@ details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
 .vergleich.mk th[scope=row]{text-align:left;color:var(--mut);font-weight:600;white-space:nowrap}
 .vergleich.mk td{vertical-align:top;min-width:9em}
 /* Einstieg „Alternativen vergleichen“: hellgrüne Pille mit Zahl; offen mit Rand statt Fläche */
-.pico .wm-knopf{width:auto;margin:0;box-shadow:none;font:600 0.875rem/1.2 var(--font-text);display:inline-flex;align-items:center;gap:8px;min-height:40px;
+.pico .wm-knopf{width:auto;margin:0;box-shadow:none;font:600 var(--t-klein)/1.2 var(--font-text);display:inline-flex;align-items:center;gap:8px;min-height:40px;
   padding:6px 8px 6px 14px;border-radius:var(--r-pille);border:1px solid transparent;background:var(--acc2);color:var(--acc);--pico-color:var(--acc);cursor:pointer}
 .pico .wm-knopf[aria-expanded="true"]{background:transparent;border-color:var(--acc)}
-.wm-n{background:var(--card);color:var(--acc);border-radius:var(--r-pille);min-width:22px;padding:1px 7px;font-size:0.7812rem;font-weight:700;text-align:center}
+.wm-n{background:var(--card);color:var(--acc);border-radius:var(--r-pille);min-width:22px;padding:1px 7px;font-size:var(--t-etikett);font-weight:700;text-align:center}
 .wm-knopf[aria-expanded="true"] .wm-n{background:var(--acc2)}
 .wm{margin:10px 0 4px;padding-top:10px;border-top:2px solid var(--acc)}
 .wm[hidden]{display:none}
 .wm-steuer{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;margin:0 0 8px}
-.pico .wm-steuer label{display:flex;align-items:center;gap:6px;font-size:0.9062rem;min-height:40px;margin:0}
+.pico .wm-steuer label{display:flex;align-items:center;gap:6px;font-size:var(--t-text);min-height:40px;margin:0}
 .pico .wm-steuer input[type=checkbox]{margin:0}
 .wm-wahl,.wm-ansicht{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;padding:0;border:0;min-width:0}
-.pico :is(.wm-wahl,.wm-ansicht) button{width:auto;margin:0;box-shadow:none;font:600 0.8438rem/1.2 var(--font-text);border-radius:99px;border:1px solid var(--line);
+.pico :is(.wm-wahl,.wm-ansicht) button{width:auto;margin:0;box-shadow:none;font:600 var(--t-klein)/1.2 var(--font-text);border-radius:99px;border:1px solid var(--line);
   background:var(--card);color:var(--fg);padding:6px 12px;min-height:40px;cursor:pointer}
 .pico :is(.wm-wahl,.wm-ansicht) button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--bg)}
 .wm-wahl small{font-weight:400;opacity:.8;margin-left:4px}
@@ -388,16 +399,16 @@ details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
 tr.auf .wm-pfeil{transform:rotate(90deg)}
 .wm-titel{display:block;font-weight:700}
 .wm-unter{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:4px 0 0 1em}
-.pico .wm-tab:has(.wm-zeile){font-size:0.875rem}
+.pico .wm-tab:has(.wm-zeile){font-size:var(--t-text)}
 .pico .wm-tab:has(.wm-zeile) :is(td,th){padding:9px 10px}
 .pico .wm-tab tr.wm-zeile.auf>:is(th,td){background:var(--tint);border-bottom:0}
 .pico .wm-tab tr.wm-mehr>td{background:var(--tint);padding:2px 14px 14px calc(10px + 1em)}
 .pico .wm-tab tr.wm-zeile.an.auf>:is(th,td),.pico .wm-tab tr.wm-mehr.an>td{background:var(--acc2)}
-.wm-einzelheiten{position:relative;display:flex;flex-direction:column;gap:6px;padding-right:44px;font-size:0.875rem}
+.wm-einzelheiten{position:relative;display:flex;flex-direction:column;gap:6px;padding-right:44px;font-size:var(--t-text)}
 .wm-einzelheiten>*{max-width:72ch}
 .wm-einzelheiten>.zid-box{position:absolute;top:0;right:0}
 .pico .wm-einzelheiten :is(dl.mliste,ul,.z){margin:0;font-size:inherit}
-.pico .wm-einzelheiten :is(.z.klein,.verlauf){font-size:0.8125rem}
+.pico .wm-einzelheiten :is(.z.klein,.verlauf){font-size:var(--t-klein)}
 .pico .wm-einzelheiten ul.pm{padding:0}
 .pico .wm-einzelheiten ul.pm li{list-style:none;margin:0}
 .web-link{font-weight:600;white-space:nowrap}
@@ -407,20 +418,20 @@ tr.auf .wm-pfeil{transform:rotate(90deg)}
 .wm-karte.an{border-color:var(--acc);box-shadow:inset 3px 0 0 var(--acc)}
 @media (min-width:700px){.wm-karten,.wm-ansicht,.wm-wahl,.wm-anzahl,.pico details.wm-einzeln{display:none}.wm.ohne-tabelle .wm-karten{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
 @media (max-width:699px){.wm[data-ansicht=karten] .wm-tabelle,.wm[data-ansicht=tabelle] .wm-karten{display:none}
-  .pico .wm-tab th[scope=row]{white-space:normal;min-width:5.5em;max-width:6.5em;font-size:0.7812rem;padding-left:6px;padding-right:6px}
+  .pico .wm-tab th[scope=row]{white-space:normal;min-width:5.5em;max-width:6.5em;font-size:var(--t-klein);padding-left:6px;padding-right:6px}
   .pico .wm-tab td,.pico .wm-tab thead th{min-width:7.5em;padding-left:7px;padding-right:7px}}
 .option{border-top:1px solid var(--line);padding:8px 0 4px;margin-top:8px}
 .option.aktiv{border-left:3px solid var(--acc);padding-left:10px;margin-left:-14px}
 .option .k{font-weight:600}
-.option ul{margin:.2em 0;padding-left:20px;font-size:0.9375rem}
+.option ul{margin:.2em 0;padding-left:20px;font-size:var(--t-text)}
 /* ---------- Tageskopf: große Nummer, Datum als Etikett, Titel ---------- */
 .tagkopf{align-items:center!important;flex-wrap:nowrap!important}
 .tagnr{flex:none;font:800 2.5rem/.9 var(--font-text);letter-spacing:-.02em;color:var(--acc);min-width:1.1em}
 .tagtext{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.tagtitel{font:700 1.1875rem/1.25 var(--font-text);letter-spacing:-.01em;text-wrap:balance}
+.tagtitel{font:700 var(--t-untertitel)/1.25 var(--font-text);letter-spacing:-.01em;text-wrap:balance}
 h2.tagkopf .tagnr{font-size:3.375rem}
-h2.tagkopf .tagtitel{font-size:1.6875rem;line-height:1.15}
-.karte.tag .tagkopf .tagtitel{font-size:1.0625rem}
+h2.tagkopf .tagtitel{font-size:var(--t-titel);line-height:1.15}
+.karte.tag .tagkopf .tagtitel{font-size:var(--t-text)}
 .karte.tag .tagkopf .tagnr{font-size:2rem}
 /* Wegverlauf: Punkte für Orte, gestrichelte Linie für Strecken, gepunktet für Bus/Bahn */
 .wv{margin:8px 0 4px}
@@ -438,15 +449,15 @@ h2.tagkopf .tagtitel{font-size:1.6875rem;line-height:1.15}
 .wv-strecke>.z{margin-top:0}
 /* ---------- Ebenen der Tagesseite: Der Weg, Unterwegs nachschlagen, Hintergrund, Quellen und Prüfung, Orte ---------- */
 .ebene{display:flex;flex-direction:column;gap:6px;min-width:0}
-.weg-text{font-size:1.08rem;line-height:1.6}
+.weg-text{font-size:var(--t-text);line-height:1.6}
 .weg-text p{margin:.4em 0}
-.weg-unter{font-size:0.9rem;color:var(--mut)}
+.weg-unter{font-size:var(--t-text);color:var(--mut)}
 .weg-unter p{margin:0}
 .lese-abschnitt{padding:2px 0 8px}
 .lese-abschnitt+.lese-abschnitt{padding-top:16px}
 .lese-kopf{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px}
-.pico .lese-kopf h4{margin:0;font-size:1.05rem}
-.lese-abschnitt .inhalt :is(h4,h5){font-size:1rem;margin:1.1em 0 .3em}
+.pico .lese-kopf h4{margin:0;font-size:var(--t-text)}
+.lese-abschnitt .inhalt :is(h4,h5){font-size:var(--t-text);margin:1.1em 0 .3em}
 /* Der Weg: nach gut vier Zeilen abgeschnitten, sanft ausgeblendet; „Weiterlesen“ zeigt alles */
 .weg-text.kurz{max-height:7.4em;overflow:hidden;-webkit-mask-image:linear-gradient(#000 60%,transparent);mask-image:linear-gradient(#000 60%,transparent)}
 .pico button.weiterlesen{align-self:flex-start;background:none;border:0;padding:6px 0;margin:0;min-height:44px;color:var(--acc);font-weight:600;box-shadow:none}
@@ -464,37 +475,37 @@ details.kapitel>summary::after{content:"";flex:none;width:8px;height:8px;margin:
 details.kapitel[open]>summary::after{transform:rotate(-135deg);margin-bottom:-4px}
 .kap-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .kap-titel{font-weight:600;line-height:1.3;color:var(--fg)}
-.kap-vorschau{font-size:0.85rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kap-vorschau{font-size:var(--t-klein);color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 details.kapitel[open] .kap-vorschau{display:none}
-.kap-zahl{flex:none;font-size:0.75rem;font-weight:700;background:var(--acc2);color:var(--acc);border-radius:99px;padding:1px 8px;font-variant-numeric:tabular-nums}
+.kap-zahl{flex:none;font-size:var(--t-etikett);font-weight:700;background:var(--acc2);color:var(--acc);border-radius:99px;padding:1px 8px;font-variant-numeric:tabular-nums}
 .pico details.kapitel>summary .zid-box{margin:0;flex:none}
 .kap-inhalt{padding:0 0 14px}
-.kap-inhalt :is(h4,h5){font-size:1rem;margin:1.1em 0 .3em}
+.kap-inhalt :is(h4,h5){font-size:var(--t-text);margin:1.1em 0 .3em}
 details.quellen{border-top:1px solid var(--line);margin:0}
 details.quellen>summary{min-height:44px;display:flex;align-items:center;font-weight:600;color:var(--mut)}
 .ortzeile{padding:10px 0}
-.ortzeile .titelzeile a{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:1.05rem;text-decoration:none}
-.ortzeile-text{color:var(--mut);font-size:0.92rem}
+.ortzeile .titelzeile a{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:var(--t-text);text-decoration:none}
+.ortzeile-text{color:var(--mut);font-size:var(--t-text)}
 .tag-karte{display:flex;flex-direction:column;gap:6px}
 /* ---------- Steckbrief eines Plans und Tagesplan im Vergleich ---------- */
 .steckbriefe{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:12px 0}
 .steckbrief{border-top:4px solid var(--farbe);cursor:pointer}
 .steckbrief.an{box-shadow:0 0 0 2px var(--farbe)}
-.steckbrief dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:6px 0;font-size:0.875rem}
+.steckbrief dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:6px 0;font-size:var(--t-klein)}
 .steckbrief dt{color:var(--mut)}
 .steckbrief dd{margin:0}
-.steckbrief ul{margin:4px 0;padding-left:18px;font-size:0.875rem}
+.steckbrief ul{margin:4px 0;padding-left:18px;font-size:var(--t-klein)}
 /* ---------- Reiseüberblick (28.10.2026): Kopf mit Zähler, Stand der Vorbereitung, Tag als Zeile ---------- */
 /* Abschnitte untereinander mit einem Abstand (gap); kein Abschnitt bringt eigenen Außenabstand mit */
 .reise{display:flex;flex-direction:column;gap:32px}
 .pico .reise>*,.pico .reise :is(.kz,.legende,.tagzeilen){margin:0}
 .reise>.reisekopf+.anab{margin-top:-16px}
-.pico .reise h3.reise-titel{font:700 1.2rem/1.3 var(--font-text);margin:0 0 6px}
+.pico .reise h3.reise-titel{font:700 var(--t-untertitel)/1.3 var(--font-text);margin:0 0 6px}
 .reise-karte{display:flex;flex-direction:column;gap:8px}
 .pico .reise-karte .meldung{margin:0}
 .reise-zahlen{display:flex;flex-direction:column;gap:10px}
 .pico .reise-zahlen :is(.meldung,.mitreisende){margin:0}
-.mitreisende{font-size:0.9375rem}
+.mitreisende{font-size:var(--t-text)}
 .mitreisende .etikett{margin-right:6px}
 .reisekopf{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
 .reisekopf h2{margin:0}
@@ -517,13 +528,13 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .tagzeile.an{background:var(--acc2)}
 .tagzeile.ueber .tz-datum{color:var(--warn)}
 .tagzeile.ueber .tz-datum b{color:var(--warn)}
-.fristen .tz-datum b{font-size:1rem;line-height:1.5}
+.fristen .tz-datum b{font-size:var(--t-text);line-height:1.5}
 .fristen>.weiter{display:inline-block;margin-top:8px}
-.tz-datum{grid-row:span 2;font-size:0.8125rem;line-height:1.25;color:var(--mut);font-variant-numeric:tabular-nums}
-.tz-datum b{display:block;font-size:1.25rem;font-weight:800;color:var(--fg)}
+.tz-datum{grid-row:span 2;font-size:var(--t-etikett);line-height:1.25;color:var(--mut);font-variant-numeric:tabular-nums}
+.tz-datum b{display:block;font-size:var(--t-untertitel);font-weight:800;color:var(--fg)}
 .tz-titel{font-weight:600;line-height:1.3;text-wrap:pretty}
-.tz-zeit{font-size:0.875rem;color:var(--mut);white-space:nowrap;font-variant-numeric:tabular-nums}
-.tz-nacht{grid-column:2 / 4;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:0.875rem;color:var(--mut)}
+.tz-zeit{font-size:var(--t-klein);color:var(--mut);white-space:nowrap;font-variant-numeric:tabular-nums}
+.tz-nacht{grid-column:2 / 4;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:var(--t-klein);color:var(--mut)}
 .pico .tagzeile>:is(.zid-box,span.zid){grid-column:4;grid-row:1 / span 2;align-self:center}
 @media (hover:hover){.tagzeile:hover .tz-titel{color:var(--acc)}}
 /* Zeitachse: Punkt und Linie links, je Tag eine Zeile mit genau einem Link (die ganze Zeile). Am Handy stehen Zeit und
@@ -537,7 +548,7 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .achse .tz-titel,.achse .tz-zeit,.achse .tz-nacht{grid-column:3}
 .tz-name{display:block}
 .tz-marken{margin-top:4px}
-.pico .tz-marken .chip{font-size:0.75rem;white-space:normal;border-radius:8px;text-align:left}
+.pico .tz-marken .chip{font-size:var(--t-etikett);white-space:normal;border-radius:8px;text-align:left}
 .achse .tagzeile:focus-visible,.achse .tagzeile.zurueck-hier{background:var(--acc2)}
 @media (min-width:1100px){
   .achse .tagzeile{grid-template-columns:20px 3.4rem minmax(0,1.25fr) 8.5rem minmax(0,1fr);align-items:start}
@@ -548,11 +559,11 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
   .achse .tz-zeit{grid-column:4;grid-row:1;padding-top:1px}
   .achse .tz-nacht{grid-column:5;grid-row:1}
 }
-.vergleich td,.vergleich th{font-size:0.8438rem}
+.vergleich td,.vergleich th{font-size:var(--t-text)}
 .vergleich td.nr{font-weight:700;text-align:center}
 .vergleich td.plan-nr{color:var(--farbe)}
 .vergleich tr.an td{background:var(--acc2)}
-.vergleich .nacht{display:inline-block;font-size:0.75rem;font-weight:600;border-radius:4px;padding:0 6px;margin-top:2px;color:var(--bg);background:var(--kat,var(--farbe-grau))}
+.vergleich .nacht{display:inline-block;font-size:var(--t-etikett);font-weight:600;border-radius:4px;padding:0 6px;margin-top:2px;color:var(--bg);background:var(--kat,var(--farbe-grau))}
 .vergleich .nacht.offen{background:transparent;color:var(--mut);border:1px dashed var(--mut)}
 /* ---------- Karte (Leaflet): Übersicht, Etappe, Recherche ---------- */
 .kartenbox{isolation:isolate;height:min(68vh,620px);min-height:320px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--sea)}
@@ -578,7 +589,7 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .wkarte{margin:8px 0 12px}
 .kartenlinks{display:flex;flex-direction:column;gap:2px;margin:4px 0}
 .pico .regionen{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
-.pico .regionen button{all:unset;cursor:pointer;font-size:0.875rem;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card)}
+.pico .regionen button{all:unset;cursor:pointer;font-size:var(--t-klein);padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card)}
 .pico .regionen button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--bg)}
 .rh-p.umriss{background:var(--card);color:var(--pk);border-color:var(--pk)}
 .leaflet-popup-content{font:inherit;font-size:14px;margin:10px 12px;line-height:1.35}
@@ -592,7 +603,7 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .pico .leaflet-control-layers{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .pico .leaflet-control-layers label{display:flex;align-items:center;gap:6px;margin:2px 0;font-size:14px}
 .pico .leaflet-control-layers input{margin:0;width:18px;height:18px}
-.ziehhinweis{font-size:0.8125rem;color:var(--mut);margin:4px 0 0}
+.ziehhinweis{font-size:var(--t-etikett);color:var(--mut);margin:4px 0 0}
 .rh-ort::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:1.5px solid var(--land)}
 .rh-ort.rh-unterkunft::after{width:12px;height:12px;border-radius:3px;background:var(--kat,var(--farbe-grau))}
 .farbe-blau{--kat:var(--farbe-blau)}.farbe-braun{--kat:var(--farbe-braun)}.farbe-lila{--kat:var(--farbe-lila)}.farbe-gruen{--kat:var(--farbe-gruen)}.farbe-tuerkis{--kat:var(--farbe-tuerkis)}.farbe-oliv{--kat:var(--farbe-oliv)}.farbe-schiefer{--kat:var(--farbe-schiefer)}.farbe-rosa{--kat:var(--farbe-rosa)}.farbe-grau{--kat:var(--farbe-grau)}
@@ -626,7 +637,7 @@ dialog#rm::backdrop{background:rgba(0,0,0,.35)}
    schmal, bei vielen Wünschen seitlich blättern (nur das Brett, nie die Seite) */
 .brett{display:flex;flex-direction:column;margin-top:6px}
 .brett .spalte{min-width:0}
-.brett .spalte h3{display:flex;align-items:center;gap:8px;font-size:1rem;margin:18px 0 8px}
+.brett .spalte h3{display:flex;align-items:center;gap:8px;font-size:var(--t-text);margin:18px 0 8px}
 .brett .leer-spalte h3{color:var(--mut);font-weight:500}
 @media (max-width:699px){.brett .leer-spalte{display:none}}
 @media (min-width:700px){.brett{flex-direction:row;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:6px}
@@ -639,9 +650,9 @@ dialog#rm::backdrop{background:rgba(0,0,0,.35)}
 .wu-karte.weg .text{color:var(--mut)}
 .wu-kopf{display:flex;gap:10px;align-items:flex-start}
 .wu-kopf .text{white-space:pre-wrap;flex:1;min-width:0}
-.wu-karte .kopfzeile{font-size:0.8125rem;color:var(--mut)}
-.wu-karte .antwort{font-size:0.9375rem;background:var(--acc2);border-radius:8px;padding:6px 9px;margin-top:5px}
-.wu-vorschlag{font-size:0.9375rem;border-left:3px solid var(--acc);padding:2px 0 2px 9px;margin-top:6px}
+.wu-karte .kopfzeile{font-size:var(--t-etikett);color:var(--mut)}
+.wu-karte .antwort{font-size:var(--t-text);background:var(--acc2);border-radius:8px;padding:6px 9px;margin-top:5px}
+.wu-vorschlag{font-size:var(--t-text);border-left:3px solid var(--acc);padding:2px 0 2px 9px;margin-top:6px}
 .wu-knoepfe{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
 .pico .wu-knoepfe button{margin:0}
 .wu-zahl{min-width:1.6em;text-align:center;font-weight:600}
@@ -650,11 +661,11 @@ dialog#rm::backdrop{background:rgba(0,0,0,.35)}
 .wu-person{padding:4px 0}
 /* Neuer Wunsch: Fläche, Wunsch über die ganze Breite, Link und Name nebeneinander, Senden rechts */
 .pico details.wu-neu{margin:0 0 8px;max-width:var(--lese)}
-.pico details.wu-neu>summary{display:flex;align-items:center;gap:8px;min-height:44px;font-weight:700;font-size:1.1rem;color:var(--fg);cursor:pointer}
+.pico details.wu-neu>summary{display:flex;align-items:center;gap:8px;min-height:44px;font-weight:700;font-size:var(--t-untertitel);color:var(--fg);cursor:pointer}
 .pico details.wu-neu[open]>summary{color:var(--fg)}
 .pico details.wu-neu>summary .sym{width:1.2rem;height:1.2rem}
 .pico #wuForm{display:flex;flex-direction:column;gap:12px;margin-top:8px}
-.pico #wuForm label{display:flex;flex-direction:column;gap:6px;margin:0;font-weight:600;font-size:0.9375rem}
+.pico #wuForm label{display:flex;flex-direction:column;gap:6px;margin:0;font-weight:600;font-size:var(--t-text)}
 .pico #wuForm :is(textarea,input){margin:0;font-weight:400}
 .pico #wuForm .meldung{margin:0}
 .pico #wuForm .meldung:empty{display:none}
@@ -676,9 +687,9 @@ a.weiter{display:inline-block;margin-top:8px;font-weight:600;color:var(--acc);te
 details.alternative{margin:0 0 10px 14px;border-left:3px solid var(--warn);padding-left:8px}
 .blaettern{display:flex;justify-content:space-between;margin:14px 0}
 details.neben>summary{font-weight:700;padding:10px 2px;color:var(--warn)}
-.treffer .in{font-size:0.8125rem;color:var(--mut)}
-.treffer .s{font-size:0.9375rem;margin-top:3px}
-.pico h3.gruppe,.teil{font:700 1.2rem/1.3 var(--font-text);letter-spacing:-.01em;color:var(--fg);margin:1.6em 0 .2em}
+.treffer .in{font-size:var(--t-etikett);color:var(--mut)}
+.treffer .s{font-size:var(--t-text);margin-top:3px}
+.pico h3.gruppe,.teil{font:700 var(--t-untertitel)/1.3 var(--font-text);letter-spacing:-.01em;color:var(--fg);margin:1.6em 0 .2em}
 
 #agForm .zwei{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
 /* ---------- Reise und Zu tun (Seitenordnung 28.10.2026): am Handy eine Spalte; am Rechner Reise mit Überblick links und
@@ -708,14 +719,14 @@ details.neben>summary{font-weight:700;padding:10px 2px;color:var(--warn)}
 /* ==================== 7 Rahmen der Seite: Kopf, Meldungen, Glas, Leiste ==================== */
 /* ---------- Kopf: großer Titel am Seitenanfang (iOS Large Title), scrollt mit ---------- */
 header{max-width:var(--breite);margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px 2px 16px}
-header .t{font-family:var(--font-text);font-size:2rem;line-height:1.1;font-weight:700;letter-spacing:-.015em;margin:0;text-wrap:balance}
-header .u{font-size:0.9375rem;color:var(--mut);margin-top:4px;text-wrap:balance}
+header .t{font-family:var(--font-text);font-size:var(--t-titel);line-height:1.1;font-weight:700;letter-spacing:-.015em;margin:0;text-wrap:balance}
+header .u{font-size:var(--t-text);color:var(--mut);margin-top:4px;text-wrap:balance}
 header{position:relative}
 header:has(.konto) .t{padding-right:6rem}
-.konto{display:inline-flex;align-items:center;min-height:44px;padding:0 .25rem;font-size:0.875rem;color:var(--acc);text-decoration:none;max-width:9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.konto{display:inline-flex;align-items:center;min-height:44px;padding:0 .25rem;font-size:var(--t-klein);color:var(--acc);text-decoration:none;max-width:9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 header .konto{position:absolute;top:calc(10px + env(safe-area-inset-top));right:12px}
 .meldungen{position:fixed;z-index:11;top:calc(10px + env(safe-area-inset-top));left:12px;right:12px;display:grid;justify-items:center;gap:8px;pointer-events:none}
-.hinweis{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:22px;font-size:0.8438rem;max-width:520px}
+.hinweis{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:22px;font-size:var(--t-klein);max-width:520px}
 .hinweis[hidden]{display:none}
 .hinweis button{font:inherit;font-weight:600;border:0;border-radius:99px;padding:6px 12px;background:var(--acc);color:var(--bg);cursor:pointer}
 #offline{color:var(--warn);padding-right:14px}
@@ -750,7 +761,7 @@ nav a.on{color:var(--acc);background:color-mix(in srgb,var(--acc2) 85%,transpare
 #suchfeld{flex:1;display:flex;align-items:center;gap:8px;padding:0 4px 0 14px;margin:0;color:var(--mut)}
 #suchfeld[hidden]{display:none}
 #suchfeld input::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
-#suchfeld input{flex:1;min-width:0;border:0;background:none;color:var(--fg);font:inherit;font-size:1.0625rem;outline:none;padding:0}
+#suchfeld input{flex:1;min-width:0;border:0;background:none;color:var(--fg);font:inherit;font-size:var(--t-text);outline:none;padding:0}
 #suchfeld input::placeholder{color:var(--mut);opacity:1}
 #suchZu{border:0;background:color-mix(in srgb,var(--fg) 8%,transparent);color:var(--fg);width:44px;height:44px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 body.sucht nav,body.sucht #suchKnopf{display:none}
@@ -768,7 +779,7 @@ nav a.warn .zahl{background:var(--warn)}
   :root{--tabbar-h:68px;--knopf:50px}
   nav a,#suchKnopf{font-size:0.75rem;gap:3px}
   .sym{width:24px;height:24px}
-  header .t{font-size:2.25rem}
+  header .t{font-size:var(--t-titel)}
 }
 @media (min-width:760px){
   :root{--breite:920px}
@@ -3269,6 +3280,9 @@ function ansichtBausteine(m) {
     + "(Atome, Moleküle, Organismen, Vorlagen). Nicht in der Leiste; Adresse #bausteine."));
   teil("Ontologie", "Art → Bausteine", "Jede Art im Datenmodell nutzt dieselben Bausteine, je nach Dichte. Die Kennung (Atom) trägt jede Art; "
     + "unterwegs nicht in einer Vorschau und nicht im Kopf von Zugeklapptem.", ontologieTabelle());
+  teil("Token", "Schriftleiter", "Fünf Stufen; jede Schrift der Seite ist eine davon (docs/design.md).",
+    [["titel", "Titel"], ["untertitel", "Untertitel"], ["text", "Text"], ["klein", "Nebentext"], ["etikett", "Etikett"]].map(([s, n]) =>
+      el("div", {class: "z", style: `font-size:var(--t-${s})`}, `${n} · --t-${s}`)));
   teil("Atom", "Zustand", "Feste Namen; die Farbe folgt der Bedeutung, nicht dem Ort.",
     el("div", {class: "chips"}, Object.keys(CHIP).map(z => chip(z, z)), chip("", "Hinweis")));
   const alleWerte = R ? [...Object.values(R.unterkuenfte).map(u => u.merkmale), ...R.wahlstellen.flatMap(w => w.optionen.map(o => o.merkmale))]

@@ -10,7 +10,7 @@ import fs from "node:fs";
 const [, , modul, basis, domDatei] = process.argv;
 const pw = await import(modul);
 const b = await pw[process.env.RH_BROWSER || "chromium"].launch();
-const fehler = [], leer = [], breit = [], dom = {}, vergleich = {}, bilder = [], ohneArt = [];
+const fehler = [], leer = [], breit = [], dom = {}, vergleich = {}, bilder = [], ohneArt = [], schrift = {};
 for (const breite of [390, 1200]) {
   const ctx = await b.newContext({viewport: {width: breite, height: 900}, serviceWorkers: "block"});
   await ctx.route("**/api/**", r => r.abort());   // ohne Rückmeldedienst: Seite muss trotzdem vollständig sein
@@ -44,6 +44,19 @@ for (const breite of [390, 1200]) {
     if (!html) leer.push(`${breite}#${h}`);
     if (breite < 700 && await p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) breit.push(h);
     dom[`${breite}#${h}`] = html;
+    // Schriftleiter: jeder sichtbare Text hat eine der fünf Stufen (Größe geteilt durch die Wurzel); Ausnahmen sind Karte,
+    // Leiste, Ziffer der Tagesnummer und Hochzahlen
+    for (const [v, wo] of Object.entries(await p.evaluate(() => {
+      const w = parseFloat(getComputedStyle(document.documentElement).fontSize), stufen = ["--t-titel", "--t-untertitel", "--t-text", "--t-klein", "--t-etikett"]
+        .map(t => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(t))), aus = {};
+      for (const e of document.querySelectorAll("body *")) {
+        if (e.closest(".leaflet-container, svg, nav, #suchKnopf, .tagnr, sup, script, style")) continue;
+        if (![...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) continue;
+        const r = e.getBoundingClientRect(); if (!r.width || !r.height) continue;
+        const v = parseFloat(getComputedStyle(e).fontSize) / w;
+        if (!stufen.some(s => Math.abs(s - v) < 0.002)) aus[v.toFixed(4)] = e.tagName.toLowerCase() + "." + [...e.classList].join(".");
+      }
+      return aus; }))) schrift[v] = `${breite}#${h} ${wo}`;
   }
   // Ontologie: jede Kennung der Reise gehört einer Art mit Bausteinen an
   if (breite === 390) ohneArt.push(...await p.evaluate(() => {
@@ -143,4 +156,4 @@ for (const app of [true, false]) {
 }
 await b.close();
 if (domDatei) fs.writeFileSync(domDatei, JSON.stringify(dom));
-console.log(JSON.stringify({routen: Object.keys(dom).length, leer, breit, fehler, vergleich, bilder, leiste, ohneArt}));
+console.log(JSON.stringify({routen: Object.keys(dom).length, leer, breit, fehler, vergleich, bilder, leiste, ohneArt, schrift}));
