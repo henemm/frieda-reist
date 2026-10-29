@@ -151,7 +151,8 @@ def dienst_geheimnis():
     except FileNotFoundError:
         p.parent.mkdir(parents=True, exist_ok=True)
         os.chmod(p.parent, 0o700)
-        tmp = p.with_name(f"dienst-geheimnis.{os.getpid()}.tmp")
+        # eigener Name je Aufruf: Gleichzeitige Anfragen eines Dienstes (Threads, gleiche pid) löschten sich sonst die Datei
+        tmp = p.with_name(f"dienst-geheimnis.{os.getpid()}.{secrets.token_hex(6)}.tmp")
         fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w", encoding="ascii") as f:
             f.write(secrets.token_urlsafe(32))

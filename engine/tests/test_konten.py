@@ -359,3 +359,27 @@ def test_konten_ordner_alt_und_neu(tmp_path, monkeypatch):
     (tmp_path / "woanders").mkdir()
     (tmp_path / "woanders" / "konten.db").write_text("x")
     assert instanz.konten() == tmp_path / "woanders"
+
+
+def test_dienst_geheimnis_bei_gleichzeitigen_anfragen(umgebung):
+    """Beim ersten Aufruf entsteht das Geheimnis; gleichzeitige Anfragen eines Dienstes (Threads, gleiche pid) bekommen
+    alle dasselbe, ohne Fehler und ohne übrig bleibende Zwischendateien."""
+    import threading
+    werte, fehler, start = [], [], threading.Barrier(16)
+
+    def holen():
+        start.wait()
+        try:
+            werte.append(konten.dienst_geheimnis())
+        except Exception as e:   # noqa: BLE001
+            fehler.append(e)
+    for _ in range(5):
+        (konten.pfad().parent / "dienst-geheimnis").unlink(missing_ok=True)
+        werte.clear()
+        laeufe = [threading.Thread(target=holen) for _ in range(16)]
+        for x in laeufe:
+            x.start()
+        for x in laeufe:
+            x.join()
+        assert fehler == [] and len(set(werte)) == 1 and len(werte) == 16
+    assert not list(konten.pfad().parent.glob("dienst-geheimnis.*.tmp"))
