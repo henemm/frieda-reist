@@ -27,7 +27,7 @@ Die Skripte rufen sich im Reisen-Repo als `frieda/betrieb/<skript>.sh` auf und f
 Drei Gruppen, die sich nie mischen sollen:
 
 1. **Die Software** (dieses Repo): Code, Vorlagen, Werkzeuge. Auf dem Server liegt eine Kopie des Dienst-Codes in `<FR_DIENST>/*.py`, die `deploy.sh` anlegt. Sie ist für jede Instanz gleich und enthält nichts Eigenes.
-2. **Die Daten einer Reisegruppe** (das Reisen-Repo und seine Ordner): Reisen, Seiten, Ablage mit Rückmeldungen, Aufträgen und Aufgaben, Einstellungen und Meldeweg der Instanz.
+2. **Die Daten einer Reisegruppe** (das Reisen-Repo und seine Ordner): Reisen, Seiten, Ablage mit Rückmeldungen, Aufträgen, Aufgaben und Belegen, Einstellungen und Meldeweg der Instanz.
 3. **Daten der Nutzer**: Konten und Anmeldungen (`<FR_KONTEN>/`), Zugänge zum Konnektor (`<FR_KONNEKTOR>/`), Anfragen nach neuen Reisen (`<FR_ABLAGE>/_neu/`) und der Mailzugang (`konten.env`). Sie gehören nicht in das Reisen-Repo und gehören nicht einer einzelnen Reise.
 
 Der Name der Instanz (`FR_INSTANZ`) steht vor Units, Zonen und nginx-Bausteinen und nennt nur diese Instanz, nicht die Software. Eine zweite Reisegruppe bekommt eine zweite Instanz mit eigenem Namen, eigenem Reisen-Repo und eigenen Ordnern, ihre Daten sind damit von denen der ersten getrennt (#15). Ein gemeinsamer Ort für mehrere Gruppen mit Trennung je Mandant ist #68.
@@ -58,6 +58,10 @@ Die Routendatei (`plan/routen.yaml`; neue IDs über `ids.yaml`, Fragen in `offen
 Der Dienst läuft als Dienstbenutzer mit dessen `git`-Anmeldung (`gh` als Credential-Helfer, `PATH` aus `FR_PFAD`), ohne `ProtectHome`, weil die Arbeitskopie neben dem Repo liegt. `GET /gesund` antwortet `{"gesund": true}`, wenn das Repo erreichbar ist. Von Hand: `frieda/betrieb/…`: `FR_WURZEL=<Klon> engine/.venv/bin/python engine/schreiben.py vorbereiten` legt die Arbeitskopie an. Protokoll: `journalctl -u <instanz>-schreiben`. Eine Instanz ohne diesen Dienst setzt `KN_SCHREIBDIENST` nicht; der Konnektor bietet die Schreibwerkzeuge dann nicht an, und neue Reisen lassen sich aus der Claude-App nicht anlegen.
 
 **Fehlerfälle:** Lehnt der Schreibweg ab (Rolle, Status, Form, Probebau), bleibt alles unverändert, und der AI-Client bekommt den Grund im Gespräch. Scheitert `git push` (Konflikt nach drei Versuchen, kein Netz), meldet er „bitte noch einmal“; nichts ist halb geschrieben. Bleibt der Dienst stehen (`failed`), sieht das der Monitor der Instanz (siehe „Überwachung“), der Konnektor meldet der Person „Schreibweg nicht erreichbar“.
+
+## Belege
+
+Belege zu Buchungen (Buchungsbestätigung, Ticket; `engine/belege.py`, #76, 29.10.2026) liegen in `<FR_ABLAGE>/<reise>/belege/` mit dem Verzeichnis `belege.json` daneben, nie im Repo und nie in den Web-Ordnern. Der Rückmeldedienst ist ihr einziger Schreiber (`POST /<reise>/belege/<B-id>`, Body ist die Datei, höchstens 10 MB, Typ am Inhalt geprüft: PDF, JPEG, PNG, WebP, HEIC; 100 MB und 200 Dateien je Reise) und liefert sie aus (`GET /<reise>/belege/<D-id>`), nur an die hochladende Person und Organisator:innen, oder an alle, wenn eine Organisator:in den Beleg freigegeben hat. Nichts wird gelöscht; zurückgezogene Belege bleiben als Datei. Der nginx-Baustein der Reise hat dafür einen eigenen `location`-Block (`api/belege/`, `client_max_body_size 11m`); `freischalten.sh` erneuert den Baustein jeder Reise, wenn sich die Vorlage ändert (gleicher Token, nginx geprüft). Belege gehören zur Sicherung der Ablage wie Rückmeldungen und Aufgaben.
 
 ## Veröffentlichen
 

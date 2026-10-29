@@ -26,6 +26,7 @@ Ursache war keine einzelne Änderung. Für jede Art von Ding gab es keine Regel,
    | Folge: Tag | Tagesseite | Zeitachse der Reise |
    | Bewegung | Teil der Tagesseite (Tageskasten, Der Weg) | Tageszeile |
    | Aufenthalt: Nacht, Unterkunft | Abschnitt „Nacht“ der Tagesseite | Tageszeile, „Zu tun · Zu buchen“ |
+   | Buchung (B-…, seit 29.10.2026, #76) | bei ihrem ersten gebuchten Ding (Unterkunftskarte, Aufenthalt oder Strecke der Tagesseite; ohne Tagesseiten im Tageskasten des Plans) | Chip am Ding, „Zu tun · Zu buchen“ |
    | Wahl mit Optionen | das Element, an dem sie hängt (`an:`), mit Vergleich | Marke in der Zeile des Elements, „Zu tun · Zu entscheiden“ |
    | Ort | Ortsseite | Tagesseite, Wissen |
    | Wissen, Plantext | Reiter „Wissen“ (Plantext unter „Über diesen Plan“) | Tagesseite (Kapitel) |

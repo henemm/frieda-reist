@@ -37,7 +37,7 @@ unterkuenfte:
     typ: Hotel
     hinweis: "erfundenes Beispielhotel in der Altstadt"
     adresse: {wert: "Terrassenufer 1, 01067 Dresden", quelle: "erfunden (Beispiel)", notiz: "Beispielwert"}
-    buchung: gebucht   # Beispielwert, erfunden; ohne Angabe gilt „offen“
+    # Buchungsstand: aus der Buchung B-01 (unten); ohne Buchung gilt „offen“, ein eigener Eintrag buchung: ginge auch
     quelle: "erfunden (Beispiel)"
     merkmale:
       # Wert je Datum (docs/alternativen.md): ein Eintrag ohne „gilt“ für alle übrigen Tage
@@ -91,6 +91,41 @@ aufenthalte:
     merkmale:
       geoeffnet: {wert: ja, quelle: "erfunden (Beispiel)", geprueft: 2026-10-29}
       eintritt: {wert: "6 €", quelle: "erfunden (Beispiel)", geprueft: 2026-10-29}
+
+# Buchungen (B-…, #76): eigenes Ding zu einer Unterkunft, einem Aufenthalt oder einer Strecke (fuer, auch mehrere).
+# Felder: status (angefragt | gebucht | storniert), nummer, bei, preis, bezahlt, frist (+ frist_was), storno (+ storno_bis),
+# gebucht_am, wer, quelle (Herkunft, Pflicht), notiz, verlauf. Der Beleg (PDF, Bild) liegt nie im Repo: Die Person hängt ihn
+# auf der Seite an die Buchung (Rückmeldedienst, docs/betrieb.md „Belege“). Alle Angaben hier sind erfunden.
+buchungen:
+  B-01:
+    fuer: [U-01]
+    status: gebucht
+    nummer: "HE-2027-0415"
+    bei: "direkt beim Hotel (Mail)"
+    preis: "120 € für eine Nacht"
+    bezahlt: "vor Ort"
+    storno: "kostenlos bis 3 Tage vorher, danach eine Nacht"
+    storno_bis: 2027-05-11
+    gebucht_am: 2026-10-29
+    wer: Ida
+    quelle: "Buchungsbestätigung per Mail vom 29.10.2026 (erfunden, Beispiel)"
+    verlauf:
+      - {datum: 2026-10-29, wer: Ida, was: angelegt}
+  B-02:
+    fuer: [E-20]
+    status: gebucht
+    nummer: "DB-ABC123"
+    bei: "bahn.de"
+    preis: "19,90 € für zwei Personen"
+    bezahlt: "ja, Kreditkarte"
+    frist: 2027-05-13
+    frist_was: "Ticket in die App laden"
+    storno: "Sparpreis, keine Erstattung"
+    gebucht_am: 2026-10-29
+    wer: Karl
+    quelle: "Buchungsbestätigung bahn.de vom 29.10.2026 (erfunden, Beispiel)"
+    verlauf:
+      - {datum: 2026-10-29, wer: Karl, was: angelegt}
 
 tage:
   T-01: {titel: "Ankunft und Stadttag in Dresden", nacht: U-01, text: "Ankunft mittags mit dem Zug, Nachmittag in der Altstadt (Frauenkirche, Elbufer). Siehe Ortsseite O-01."}

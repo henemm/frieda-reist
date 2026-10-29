@@ -353,7 +353,7 @@ def test_wert_eintragen_an_unterkunft_strecke_und_option(repo):
     r, text = routen_auf_main(origin)
     assert r["unterkuenfte"]["U-02"]["merkmale"]["preis"] == {"wert": "95 €", "geprueft": datetime.date(2026, 10, 29), "quelle": "Website der Pension"}
     assert r["unterkuenfte"]["U-02"]["merkmale"]["fruehstueck"] == {"wert": "inklusive", "notiz": "Beispielwert, erfunden"}   # Nachbarn unberührt
-    assert "# Alle Unterkünfte sind erfunden" in text and "buchung: gebucht   # Beispielwert" in text        # Kommentare bleiben
+    assert "# Alle Unterkünfte sind erfunden" in text and "# Buchungsstand: aus der Buchung B-01" in text        # Kommentare bleiben
     assert git(origin, "log", "-1", "--format=%s", "main") == "Beispielreise – Malerweg in vier Tagen: U-02 Pension Burgblick: Preis pro Nacht „85 €“ → „95 €“"
     assert "Karl (mitwirkend)" in git(origin, "log", "-1", "--format=%b", "main")
     # Nur die geänderte Stelle: der Rest der Datei ist zeichengleich
@@ -798,3 +798,47 @@ def test_aufenthalt_ohne_nacht_anlegen_an_den_tag_haengen_und_buchen(repo):
     with pytest.raises(Exception, match="Aufenthalts-Art"):
         s.vorbereiten()
         s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "aufenthalt", "titel": "x", "ort": "O-05", "art": "bahn", "quelle": "x"}})
+
+
+def test_buchung_anlegen_und_aendern(repo):
+    """#76: Buchung als eigenes Ding über den Schreibweg; Mitwirkende dürfen (wer bucht, trägt ein); Herkunft Pflicht; Verlauf."""
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    with pytest.raises(sb.Ablehnung, match="„quelle“ fehlt"):
+        s.schreiben("beispielreise", "buchung_anlegen", {**KARL, "args": {"fuer": ["U-02"], "nummer": "P-7"}})
+    with pytest.raises(sb.Ablehnung, match="U-99 gibt es in dieser Reise nicht"):
+        s.schreiben("beispielreise", "buchung_anlegen", {**KARL, "args": {"fuer": "U-99", "quelle": "Mail"}})
+    with pytest.raises(sb.Ablehnung, match="„frist“ muss ein Datum"):
+        s.schreiben("beispielreise", "buchung_anlegen", {**KARL, "args": {"fuer": "U-02", "quelle": "Mail", "frist": "bald"}})
+    a = s.schreiben("beispielreise", "buchung_anlegen", {**KARL, "args": {
+        "fuer": "U-02, E-21", "status": "angefragt", "nummer": "P-7", "bei": "telefonisch", "preis": "85 €", "frist": "2027-01-15",
+        "frist_was": "Anzahlung überweisen", "storno": "kostenlos bis 14 Tage vorher", "storno_bis": "2027-05-01",
+        "quelle": "Telefonat mit der Pension am 29.10.2026", "notiz": "Zimmer zur Burg"}}, )
+    assert a["ok"] and a["text"].startswith("Buchung B-03 angelegt (angefragt) für U-02 Pension Burgblick, E-21 S-Bahn Bad Schandau → Dresden, Nr. P-7, bei telefonisch")
+    assert "Frist 15.1.2027 (Anzahlung überweisen)" in a["text"] and "Storno: kostenlos bis 14 Tage vorher (bis 1.5.2027)" in a["text"]
+    r, text = routen_auf_main(origin)
+    b = r["buchungen"]["B-03"]
+    assert b["fuer"] == ["U-02", "E-21"] and b["status"] == "angefragt" and b["nummer"] == "P-7" and b["wer"] == "Karl"
+    assert b["frist"] == datetime.date(2027, 1, 15) and b["storno_bis"] == datetime.date(2027, 5, 1) and b["gebucht_am"] == datetime.date.today()
+    assert b["quelle"] == "Telefonat mit der Pension am 29.10.2026" and b["verlauf"] == [{"datum": datetime.date.today(), "wer": "Karl", "was": "angelegt"}]
+    assert "fuer: [U-02, E-21]" in text and "# Buchungen (B-…, #76)" in text   # Kommentare und Form bleiben
+    assert yaml.safe_load(datei_auf_main(origin, "ids.yaml"))["B"] == 3
+    # Ändern: Status gebucht, Frist weg, Nummer neu; Verlaufseintrag mit Person, Datum, Grund
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-03", "status": "gebucht", "frist": "", "nummer": "P-7/2027",
+                                                                          "grund": "Bestätigung ist da"}})
+    assert "Status „angefragt“ → „gebucht“" in a["text"] and "frist entfernt (war „15.1.2027“)" in a["text"] and "nummer „P-7“ → „P-7/2027“" in a["text"]
+    r, _ = routen_auf_main(origin)
+    b = r["buchungen"]["B-03"]
+    assert b["status"] == "gebucht" and "frist" not in b and b["nummer"] == "P-7/2027"
+    assert b["verlauf"][-1] == {"datum": datetime.date.today(), "wer": "Ida", "was": "Status; nummer; frist entfernt", "grund": "Bestätigung ist da"}
+    # Der Buchungsstand der Dinge folgt der Buchung (Probebau liest sie)
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="Nichts zu ändern"):
+        s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-03", "status": "gebucht"}})
+    with pytest.raises(sb.Ablehnung, match="gibt es nicht"):
+        s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-09", "status": "storniert"}})
+    with pytest.raises(sb.Ablehnung, match="„quelle“ darf nicht leer"):
+        s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-03", "quelle": ""}})
+    with pytest.raises(sb.Ablehnung, match="nur lesen"):
+        s.schreiben("beispielreise", "buchung_aendern", {"person": "gast", "name": "Gast", "rolle": "gast", "args": {"ziel": "B-03", "status": "storniert"}})

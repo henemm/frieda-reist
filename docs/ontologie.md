@@ -15,6 +15,7 @@ Die Software kennt genau diese Dinge. Sie gelten für jede Art von Reise (Hütte
 | **Folge** | ein geordneter Abschnitt aus Aufenthalten und Bewegungen: Tag, Reiseteil, benannter Plan | `T-`, `P-` | `plan/routen.yaml` |
 | **Wahl** | Wahlstelle mit Optionen (eine von mehreren, mit oder ohne, wie lange), Verlauf mit Person, Datum, Grund | `V-`, `V-01.a` | `plan/routen.yaml` |
 | **Aussage** | ein Merkmal eines Dings: Wert, Herkunft (`quelle`), Prüfdatum (`geprueft`), Gültigkeit (`gilt`), Notiz | am Ding | `plan/routen.yaml` |
+| **Buchung** | ein Aufenthalt oder eine Bewegung ist angefragt, gebucht oder storniert (seit 29.10.2026, #76): `fuer` (eine oder mehrere IDs), `status`, `nummer`, `bei`, `preis`, `bezahlt`, `frist` mit `frist_was`, `storno` mit `storno_bis`, `gebucht_am`, `wer`, `quelle` (Pflicht), `notiz`, `verlauf`. Der Buchungsstand des Dings folgt seiner geltenden Buchung. Der **Beleg** (PDF, Bild) ist eine Datei in der Ablage der Instanz, nie im Repo (`engine/belege.py`, `docs/betrieb.md` „Belege“) | `B-` | `plan/routen.yaml` (`buchungen:`), Beleg in `<ablage>/<reise>/belege/` |
 | **Offenes** | Frage, Aufgabe, Wunsch, Rückmeldung, jeweils an eine ID gehängt | `F-`, `AG-`, `R-` | `offene-fragen.md`, Ablage |
 | **Wissen** | Fließtext mit Herkunft: Geschichte, Praxis, Quellen | `W-` | `inhalt/` |
 
@@ -136,4 +137,4 @@ Eine Art kann eine `farbe` aus der Palette der Seite tragen: `blau`, `braun`, `l
 - Paket O-3, Abschalten (29.10.2026): Der Einarbeiten-Lauf mit Claude Code auf dem Server ist entfernt; es gibt keinen zweiten KI-Lauf in Frieda mehr (ADR-0001, Punkt 5). Alles Schreiben geht über den Schreibweg.
 - Paket O-5 (29.10.2026, frieda-reist #93): Aufenthalte ohne Nacht (`A-…`, `aufenthalte`, am Tag `aufenthalte:`), `symbol` und `buchbar` je Art, Buchungsstand an Unterkunft, Aufenthalt und Bewegung; „Fehlt noch“ und Zähler nur für `pflicht`; die Seite kennt keine Art mehr (`ART_TEXT`, `kategorien` entfallen), ihre Bausteintabelle nennt Grundformen.
 - 29.10.2026 (Product Owner): Die Stufen heißen für Menschen „nötig“, „gut zu wissen“, „zusätzlich“; nur „nötig“ ohne Wert ist eine Lücke; der Kasten „Mahnung“ auf der Seite ist weg.
-- Später: Buchung als eigenes Ding mit Beleg (#76).
+- 29.10.2026 (frieda-reist #76, Product Owner): Buchung als eigenes Ding `B-…` (`buchungen:` in `plan/routen.yaml`) mit Beleg-Datei in der Ablage; Konnektor `buchung_anlegen`, `buchung_aendern`; Wächter meldet Fristen und Stornofristen; die Seite zeigt die Buchung bei ihrem Ding und hängt Belege an.

@@ -347,3 +347,16 @@ def test_zu_pruefen_laesst_ausgeschaltete_merkmale_aus():
     assert [t["bezug"] for t in wa.zu_pruefen(d, D(2026, 11, 1), 60)] == ["U-2"]
     preis["stufe"] = "aus"
     assert wa.zu_pruefen(d, D(2026, 11, 1), 60) == []
+
+
+def test_erinnerer_meldet_fristen_von_buchungen(reise):
+    """#76: Frist und Stornofrist einer Buchung (B-…) wie Aufgabenfristen, an die Person, die gebucht hat. Beispielreise:
+    B-01 (Ida) kostenlos stornierbar bis 11.5.2027, B-02 (Karl) Frist 13.5.2027 „Ticket in die App laden“."""
+    r = reise()
+    ms = [m for m in r.lauf(D(2027, 5, 10))["meldungen"] if m["art"] == "erinnerung"]
+    assert sorted((m["an"][0], m["bezug"]) for m in ms) == [("Ida", "B-01"), ("Karl", "B-02")]
+    assert any("Kostenlos stornieren geht nur noch bis 11.5.2027: Buchung B-01 Hotel am Elbufer (kostenlos bis 3 Tage vorher" in m["text"] for m in ms)
+    assert any("Frist in 3 Tag(en): Ticket in die App laden zur Buchung B-02" in m["text"] for m in ms)
+    assert not [m for m in r.lauf(D(2027, 5, 11))["meldungen"] if m["art"] == "erinnerung"]   # nicht doppelt
+    ueber = [m for m in r.lauf(D(2027, 5, 15))["meldungen"] if m["art"] == "erinnerung"]
+    assert len(ueber) == 1 and "Überfällig seit 2 Tag(en): Ticket in die App laden zur Buchung B-02" in ueber[0]["text"] and ueber[0]["an"] == ["Karl"]

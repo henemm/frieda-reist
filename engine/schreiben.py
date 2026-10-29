@@ -54,7 +54,8 @@ AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "w
             "ding_anlegen": "ding", "ding_aendern": "ding", "option_anlegen": "alternative", "wahlstelle_anlegen": "alternative",
             "frage_anlegen": "frage", "entscheiden": "entscheiden", "tag_aendern": "plan", "wissen_schreiben": "wissen",
             "frage_schliessen": "frage_schliessen", "person_schreiben": "einladen", "lage_eintragen": "ding",
-            "reise_status_setzen": "einstellung", "einstellung_setzen": "einstellung"}   # reise.AKTIONEN
+            "reise_status_setzen": "einstellung", "einstellung_setzen": "einstellung",
+            "buchung_anlegen": "buchung", "buchung_aendern": "buchung"}   # reise.AKTIONEN
 ARTEN_KOPF = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). {herkunft}\n"
               "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (Gliederung des\n"
               "# Lesetexts: je Rubrik name und hilfe); je Merkmal: name, typ,\n"
@@ -605,11 +606,11 @@ def wert_eintragen(reise_dir, wer, args, heute=None):
 
 # ---------- Dinge, Wahlstellen, Optionen (plan/routen.yaml) ----------
 DING_ARTEN = {"unterkunft": ("U", "unterkuenfte"), "aufenthalt": ("A", "aufenthalte"), "strecke": ("E", "strecken"), "ort": ("O", "orte")}
-ID_MUSTER = re.compile(r"^(T-\d+|E-\d+[A-Za-z]?|U-\d+|A-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?|F-\d+)$")
+ID_MUSTER = re.compile(r"^(T-\d+|E-\d+[A-Za-z]?|U-\d+|A-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?|F-\d+|B-\d+)$")
 
 
 PLAIN_FELDER = {"id", "status", "wer", "art", "typ", "ort", "von", "nach", "frage", "siehe", "bereich", "an", "unterkuenfte",
-                "strecken", "folge", "erfordert", "schliesst_aus", "auswahl"}
+                "strecken", "folge", "erfordert", "schliesst_aus", "auswahl", "fuer"}
 PLAIN_MUSTER = re.compile(r"^[A-Za-zÄÖÜäöüß][\w .\-äöüÄÖÜß]*$")
 
 
@@ -1459,12 +1460,166 @@ def reise_anlegen(reisen_dir, wer, args, heute=None):
     return f"Neue Reise {ordner.name} angelegt", f"Die Reise „{n['titel']}“ ist angelegt (Ordner {ordner.name}, Status Idee).", ordner.name
 
 
+
+# ---------- Buchung (B-…, #76, Product Owner 29.10.2026): eigenes Ding zu Unterkunft, Aufenthalt oder Strecke ----------
+
+def datum_wert(args, feld):
+    """Datum JJJJ-MM-TT aus der Anfrage -> date, None (fehlt) oder "" (leer: entfernen)."""
+    v = args.get(feld)
+    if v is None:
+        return None
+    if isinstance(v, datetime.date):
+        return v
+    s = str(v).strip()
+    if s == "":
+        return ""
+    try:
+        return datetime.date.fromisoformat(s)
+    except ValueError:
+        raise Ablehnung(f"„{feld}“ muss ein Datum JJJJ-MM-TT sein.")
+
+
+def buchung_fuer(args, roh, route):
+    """fuer: eine oder mehrere IDs von Unterkünften, Aufenthalten oder Strecken, die es in der Reise gibt."""
+    v = args.get("fuer")
+    if isinstance(v, str):
+        v = [x.strip() for x in v.split(",") if x.strip()]
+    if not v or not isinstance(v, list) or not all(isinstance(x, str) for x in v):
+        raise Ablehnung("„fuer“ fehlt: welche Unterkunft (U-…), welcher Aufenthalt (A-…) oder welche Strecke (E-…) ist gebucht; eine oder mehrere IDs.")
+    bekannt = set(roh.get("unterkuenfte") or {}) | set(roh.get("aufenthalte") or {}) | set(roh.get("strecken") or {}) | set(route.get("strecken") or {})
+    for x in v:
+        if not re.fullmatch(r"(U|A)-\d+|E-\d+[A-Za-z]?", x) or x not in bekannt:
+            raise Ablehnung(f"„fuer“: {x} gibt es in dieser Reise nicht (Unterkunft U-…, Aufenthalt A-… oder Strecke E-…).")
+    return v
+
+
+BUCHUNG_TEXTE = {"nummer": 80, "bei": 120, "preis": 120, "bezahlt": 200, "frist_was": 120, "storno": 400, "notiz": MAX_TEXT}
+
+
+def buchung_anlegen(reise_dir, wer, args, heute=None):
+    """Eine Buchung anlegen (neue B-ID): zu welchen Dingen, Status, Nummer, Anbieter, Preis, Frist, Stornoregel, Herkunft. -> (Titel, Text)."""
+    from routen import BUCHUNG_STATUS
+    heute = heute or datetime.date.today()
+    route = route_stand(reise_dir)
+    roh = routen_laden(reise_dir)
+    fuer = buchung_fuer(args, roh, route)
+    status = (text_wert(args, "status", laenge=20) or "gebucht").lower()
+    if status not in BUCHUNG_STATUS:
+        raise Ablehnung(f"„status“ muss {', '.join(BUCHUNG_STATUS)} sein.")
+    quelle = text_wert(args, "quelle", pflicht=True, laenge=600)
+    d = {"fuer": fuer, "status": status}
+    for k, laenge in BUCHUNG_TEXTE.items():
+        if k == "notiz":
+            continue
+        if (v := text_wert(args, k, laenge=laenge)):
+            d[k] = v
+    for k in ("frist", "storno_bis", "gebucht_am"):
+        v = datum_wert(args, k)
+        if v:
+            d[k] = v
+    d.setdefault("gebucht_am", heute)
+    d["wer"] = wer["name"]
+    d["quelle"] = quelle
+    if (notiz := text_wert(args, "notiz")):
+        d["notiz"] = notiz
+    grund = text_wert(args, "grund")
+    bid = neue_id(reise_dir, "B")
+    knoten = block_map(d)
+    from ruamel.yaml.comments import CommentedSeq
+    verlauf = CommentedSeq()
+    verlauf.append(fliess_map({"datum": heute, "wer": wer["name"], "was": "angelegt", **({"grund": grund} if grund else {})}))
+    knoten["verlauf"] = verlauf
+    roh.setdefault("buchungen", type(roh)())
+    roh["buchungen"][bid] = knoten
+    routen_speichern(reise_dir, roh)
+    namen = ", ".join(f"{x} {buchung_dingname(roh, route, x)}" for x in fuer)
+    titel = f"{bid} Buchung {status}: {namen}"
+    text = (f"Buchung {bid} angelegt ({status}) für {namen}" + (f", Nr. {d['nummer']}" if d.get("nummer") else "")
+            + (f", bei {d['bei']}" if d.get("bei") else "") + (f", Preis {d['preis']}" if d.get("preis") else "")
+            + (f", Frist {d['frist'].strftime('%-d.%-m.%Y')}" + (f" ({d['frist_was']})" if d.get("frist_was") else "") if d.get("frist") else "")
+            + (f", Storno: {d['storno']}" if d.get("storno") else "") + (f" (bis {d['storno_bis'].strftime('%-d.%-m.%Y')})" if d.get("storno_bis") else "")
+            + f". Herkunft: {quelle}. Den Beleg (PDF, Bild) hängt die Person auf der Seite bei dieser Buchung an; er bleibt außerhalb des Repos.")
+    return titel, text
+
+
+def buchung_dingname(roh, route, x):
+    d = (roh.get("unterkuenfte") or {}).get(x) or (roh.get("aufenthalte") or {}).get(x) or {}
+    return d.get("name") or ((route.get("strecken") or {}).get(x) or {}).get("titel") or ((roh.get("strecken") or {}).get(x) or {}).get("titel") or ""
+
+
+def buchung_aendern(reise_dir, wer, args, heute=None):
+    """Felder einer Buchung ändern (Status, Nummer, Frist, Storno …); jede Änderung bekommt einen Verlaufseintrag mit Person,
+    Datum und Grund. Leerer Text entfernt ein Feld. -> (Titel, Text)."""
+    from routen import BUCHUNG_STATUS
+    heute = heute or datetime.date.today()
+    bid = (text_wert(args, "ziel", pflicht=True, laenge=10) or "").strip().upper()
+    if not re.fullmatch(r"B-\d+", bid):
+        raise Ablehnung("„ziel“ muss eine Buchung B-… sein.")
+    route = route_stand(reise_dir)
+    roh = routen_laden(reise_dir)
+    knoten = (roh.get("buchungen") or {}).get(bid)
+    if knoten is None:
+        raise Ablehnung(f"Die Buchung {bid} gibt es nicht.")
+    geaendert, kurz = [], []   # ausführlich für die Antwort, kurz für den Verlauf
+
+    def setze(feld, neu, wort=None):
+        alt = knoten.get(feld)
+        alt_t = alt.strftime("%-d.%-m.%Y") if isinstance(alt, datetime.date) else (", ".join(alt) if isinstance(alt, list) else alt)
+        neu_t = neu.strftime("%-d.%-m.%Y") if isinstance(neu, datetime.date) else (", ".join(neu) if isinstance(neu, list) else neu)
+        if neu in ("", None):
+            if feld in knoten:
+                geaendert.append(f"{wort or feld} entfernt (war „{alt_t}“)")
+                kurz.append(f"{wort or feld} entfernt")
+                del knoten[feld]
+            return
+        if alt_t == neu_t:
+            return
+        geaendert.append(f"{wort or feld} „{alt_t}“ → „{neu_t}“" if alt is not None else f"{wort or feld} „{neu_t}“")
+        kurz.append(wort or feld)
+        knoten[feld] = skalar(feld, neu) if isinstance(neu, str) else neu
+
+    if "fuer" in args and args.get("fuer") is not None:
+        setze("fuer", buchung_fuer(args, roh, route))
+    if (status := text_wert(args, "status", laenge=20)) is not None:
+        if status.lower() not in BUCHUNG_STATUS:
+            raise Ablehnung(f"„status“ muss {', '.join(BUCHUNG_STATUS)} sein.")
+        setze("status", status.lower(), "Status")
+    for k, laenge in BUCHUNG_TEXTE.items():
+        if k in args and args.get(k) is not None:
+            setze(k, text_wert(args, k, laenge=laenge) or "")
+    if "quelle" in args and args.get("quelle") is not None:
+        q = text_wert(args, "quelle", laenge=600)
+        if not q:
+            raise Ablehnung("„quelle“ darf nicht leer sein (Herkunft).")
+        setze("quelle", q, "Herkunft")
+    for k in ("frist", "storno_bis", "gebucht_am"):
+        v = datum_wert(args, k)
+        if v is not None:
+            setze(k, v)
+    if not geaendert:
+        raise Ablehnung(f"Nichts zu ändern an {bid} (änderbar: fuer, status, {', '.join(BUCHUNG_TEXTE)}, quelle, frist, storno_bis, gebucht_am).")
+    grund = text_wert(args, "grund")
+    from ruamel.yaml.comments import CommentedSeq
+    verlauf = knoten.get("verlauf")
+    if verlauf is None:
+        verlauf = CommentedSeq()
+        knoten["verlauf"] = verlauf
+    verlauf.append(fliess_map({"datum": heute, "wer": wer["name"], "was": "; ".join(kurz), **({"grund": grund} if grund else {})}))
+    routen_speichern(reise_dir, roh)
+    fuer = knoten.get("fuer")
+    fuer = [fuer] if isinstance(fuer, str) else list(fuer or [])
+    namen = ", ".join(f"{x} {buchung_dingname(roh, route, x)}" for x in fuer)
+    titel = f"{bid} geändert: " + "; ".join(kurz)
+    text = f"Buchung {bid} ({namen}): " + "; ".join(geaendert) + "." + (f" Grund: {grund}." if grund else "")
+    return titel, text
+
+
 WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_definieren, "wert_eintragen": wert_eintragen,
              "ding_anlegen": ding_anlegen, "ding_aendern": ding_aendern, "option_anlegen": option_anlegen,
              "wahlstelle_anlegen": wahlstelle_anlegen, "frage_anlegen": frage_anlegen, "entscheiden": entscheiden,
              "tag_aendern": tag_aendern, "wissen_schreiben": wissen_schreiben, "frage_schliessen": frage_schliessen,
              "person_schreiben": person_schreiben, "lage_eintragen": lage_eintragen, "reise_status_setzen": reise_status_setzen,
-             "einstellung_setzen": einstellung_setzen}
+             "einstellung_setzen": einstellung_setzen, "buchung_anlegen": buchung_anlegen, "buchung_aendern": buchung_aendern}
 REPO_WERKZEUGE = {"reise_anlegen": reise_anlegen}   # arbeiten auf reisen/, nicht in einer Reise
 
 

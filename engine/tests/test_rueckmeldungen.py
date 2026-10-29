@@ -26,9 +26,9 @@ def dienst(tmp_path, monkeypatch):
     s.shutdown()
 
 
-def anfrage(url, methode="GET", daten=None, roh=None):
+def anfrage(url, methode="GET", daten=None, roh=None, kopf=None):
     body = roh if roh is not None else (json.dumps(daten).encode() if daten is not None else None)
-    req = urllib.request.Request(url, data=body, method=methode, headers={"Content-Type": "application/json"})
+    req = urllib.request.Request(url, data=body, method=methode, headers={"Content-Type": "application/json", **(kopf or {})})
     try:
         with urllib.request.urlopen(req) as r:
             return r.status, json.loads(r.read() or b"null")
@@ -218,3 +218,88 @@ def test_aufgaben_cli(dienst, capsys):
 def test_kein_laeufe_befehl_mehr(capsys):
     """ADR-0001, O-3: Das Protokoll der Einarbeitungsläufe gibt es nicht mehr; der Befehl ist unbekannt."""
     assert rm.main(["laeufe"]) == 1 and "laeufe" not in capsys.readouterr().out
+
+
+# ---------- Belege zu Buchungen (engine/belege.py, #76) ----------
+
+def _dienst_anfrage(url, methode="GET", daten=None, roh=None, kopf=None):
+    import konten
+    body = roh if roh is not None else (json.dumps(daten).encode() if daten is not None else None)
+    req = urllib.request.Request(url, data=body, method=methode,
+                                 headers={"Content-Type": "application/json", "X-Frieda-Dienst": konten.dienst_geheimnis(), **(kopf or {})})
+    try:
+        with urllib.request.urlopen(req) as r:
+            ct = r.headers.get("Content-Type", "")
+            return r.status, (json.loads(r.read() or b"null") if ct.startswith("application/json") else r.read()), dict(r.headers)
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read() or b"null"), {}
+
+
+@pytest.fixture
+def belege_welt(dienst, tmp_path, monkeypatch):
+    """Dienst mit veröffentlichter Beispielreise (Buchungen B-01, B-02; Ida Organisatorin, Karl Mitwirkender)."""
+    import bauen
+    basis, ablage = dienst
+    seiten = tmp_path / "seiten"
+    bauen.bauen(Path(__file__).resolve().parent.parent.parent / "beispiel" / "reisen" / "beispielreise", seiten / "beispielreise")
+    monkeypatch.setenv("RM_SEITEN", str(seiten))
+    monkeypatch.setenv("FR_KONTEN", str(tmp_path / "konten"))
+    return basis, ablage
+
+
+PDF = b"%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer\n%%EOF\n"
+
+
+def test_beleg_hochladen_sehen_freigeben_zurueckziehen(belege_welt):
+    import belege as bl
+    basis, ablage = belege_welt
+    u = basis + "/beispielreise/belege"
+    # Hochladen über die Seite mit eingetipptem Namen (Regel anmeldung: uebergang), Typ am Inhalt
+    code, b = anfrage(u + "/B-01?name=Karl", "POST", roh=PDF)
+    assert code == 201 and b["id"] == "D-01" and b["buchung"] == "B-01" and b["wer"] == "Karl" and b["typ"] == "application/pdf"
+    assert b["sichtbar"] == "beteiligte" and b["groesse"] == len(PDF) and b["name"] == "Beleg" and b["datei"] == "D-01.pdf"
+    assert (ablage / "beispielreise" / "belege" / "D-01.pdf").read_bytes() == PDF
+    code, b2 = anfrage(u + "/B-02?name=Ida", "POST", roh=b"\x89PNG\r\n\x1a\n" + b"x" * 20, kopf={"X-Frieda-Datei": "Ticket%20Bahn.png"})
+    assert code == 201 and b2["id"] == "D-02" and b2["name"] == "Ticket Bahn.png" and b2["typ"] == "image/png"
+    # Sehen: die Seite ohne Anmeldung sieht nichts; der Konnektor nennt die Person: Ida (Organisatorin) alles, Karl seinen,
+    # Anna (eingetippt, Mitwirkende) nichts
+    assert anfrage(u) == (200, [])
+    assert [x["id"] for x in _dienst_anfrage(u + "?name=Ida")[1]] == ["D-01", "D-02"]
+    assert [x["id"] for x in _dienst_anfrage(u + "?name=Karl")[1]] == ["D-01"]
+    assert [x["id"] for x in _dienst_anfrage(u + "?name=Karl&buchung=B-02")[1]] == []
+    assert _dienst_anfrage(u + "?name=Anna")[1] == []
+    code, daten, kopf = _dienst_anfrage(u + "/D-01?name=Ida")
+    assert code == 200 and daten == PDF and kopf["Content-Type"] == "application/pdf" and "inline" in kopf["Content-Disposition"]
+    assert anfrage(u + "/D-01")[0] == 404 and _dienst_anfrage(u + "/D-01?name=Anna")[0] == 404
+    # Freigeben für alle: nur Organisator:innen; danach sieht auch die Seite ohne Anmeldung den Beleg
+    code, e, _ = _dienst_anfrage(u + "/D-01", "PATCH", {"name": "Karl", "sichtbar": "alle"})
+    assert code == 403 and "Organisator" in e["fehler"]
+    code, e, _ = _dienst_anfrage(u + "/D-01", "PATCH", {"name": "Ida", "sichtbar": "alle"})
+    assert code == 200 and e["sichtbar"] == "alle"
+    assert [x["id"] for x in anfrage(u)[1]] == ["D-01"] and urllib.request.urlopen(u + "/D-01").status == 200
+    assert anfrage(u + "/D-01", "PATCH", {"name": "Ida", "sichtbar": "beteiligte"})[0] == 401   # eingetippter Name genügt nicht
+    # Zurückziehen: wer hochlud oder Organisator:in; die Datei bleibt, Gäste sehen den Beleg nicht mehr
+    assert _dienst_anfrage(u + "/D-02", "PATCH", {"name": "Karl", "zurueckziehen": True})[0] == 403
+    code, e, _ = _dienst_anfrage(u + "/D-01", "PATCH", {"name": "Karl", "zurueckziehen": True})
+    assert code == 200 and e["zurueckgezogen"]["wer"] == "Karl"
+    assert anfrage(u)[1] == [] and (ablage / "beispielreise" / "belege" / "D-01.pdf").exists()
+    assert [x["id"] for x in _dienst_anfrage(u + "?name=Ida")[1]] == ["D-01", "D-02"]
+    assert _dienst_anfrage(u + "/D-01", "PATCH", {"name": "Ida"})[0] == 400
+    assert bl.lesen(ablage / "beispielreise")["naechste"] == 3
+
+
+def test_beleg_abgelehnt(belege_welt):
+    import belege as bl
+    basis, ablage = belege_welt
+    u = basis + "/beispielreise/belege"
+    assert anfrage(u + "/B-99?name=Karl", "POST", roh=PDF)[0] == 404
+    assert anfrage(u + "/B-01?name=Karl", "POST", roh=b"hallo, kein PDF")[0] == 415
+    assert anfrage(u + "/B-01?name=Karl", "POST", roh=b"")[0] == 400
+    code, e = anfrage(u + "/B-01", "POST", roh=PDF)
+    assert code == 400 and "Name fehlt" in e["fehler"]
+    code, e = anfrage(u + "/B-01?name=Karl", "POST", roh=b"%PDF-" + b"x" * (bl.MAX_DATEI + 1))
+    assert code == 413
+    assert anfrage(u + "/D-07", "PATCH", {"name": "Ida", "sichtbar": "alle"})[0] == 404
+    assert bl.typ_erkennen(b"RIFF\x00\x00\x00\x00WEBPVP8 ") == "image/webp" and bl.typ_erkennen(b"\x00\x00\x00\x18ftypheic") == "image/heic"
+    assert bl.typ_erkennen(b"\xff\xd8\xff\xe0") == "image/jpeg" and bl.typ_erkennen(b"GIF89a") is None
+    assert bl.name_saeubern("../../etc/passwd") == "passwd" and bl.name_saeubern("  ") == "Beleg" and bl.name_saeubern("a\x00b.pdf") == "ab.pdf"

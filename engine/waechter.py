@@ -172,6 +172,40 @@ def erinnerungen(d, aufgaben, heute, vorlauf):
     return aus
 
 
+def buchungsfristen(d, heute, vorlauf):
+    """Fristen und Stornofristen der Buchungen (B-…, #76) wie Aufgabenfristen: an die Person, die gebucht hat, sonst an die
+    Organisator:innen. Nur ab Status fest."""
+    if not rg.verhalten(((d or {}).get("reise") or {}).get("status", {}).get("wert"))["fristen"]:
+        return []
+    aus = []
+    for b in (((d or {}).get("route") or {}).get("buchungen") or {}).values():
+        if b.get("status") == "storniert":
+            continue
+        an = empfaenger(d, b.get("wer"))
+        titel = f"{b['id']} {b.get('titel') or ''}".strip()
+        neu = []
+        if b.get("frist"):
+            rest = tage_zwischen(heute, datetime.date.fromisoformat(b["frist"]))
+            was = b.get("frist_was") or "Frist"
+            if rest < 0:
+                neu.append({"schluessel": f"ueberfaellig:{b['id']}:{b['frist']}", "wiederholen": WIEDERHOLEN_TAGE,
+                            "text": f"Überfällig seit {-rest} Tag(en): {was} zur Buchung {titel} (Frist {datum_de(b['frist'])})."})
+            elif rest <= vorlauf:
+                neu.append({"schluessel": f"frist:{b['id']}:{b['frist']}", "wiederholen": None,
+                            "text": f"Frist {'heute' if rest == 0 else 'in ' + str(rest) + ' Tag(en)'}: {was} zur Buchung {titel} "
+                                    f"(Frist {datum_de(b['frist'])})."})
+        if b.get("storno_bis"):
+            rest = tage_zwischen(heute, datetime.date.fromisoformat(b["storno_bis"]))
+            if 0 <= rest <= vorlauf:
+                neu.append({"schluessel": f"storno:{b['id']}:{b['storno_bis']}", "wiederholen": None,
+                            "text": f"Kostenlos stornieren geht nur noch {'heute' if rest == 0 else 'bis ' + datum_de(b['storno_bis'])}: "
+                                    f"Buchung {titel}" + (f" ({b['storno']})" if b.get("storno") else "") + "."})
+        for m in neu:
+            m.update({"an": an, "art": "erinnerung", "ziel": b["id"], "bezug": b["id"]})
+        aus += neu
+    return aus
+
+
 def statuswechsel(d, heute):
     """Erinnert die Organisator:innen, wenn der Status nicht mehr zu den Reisetagen passt. Die KI wechselt den Status nie selbst."""
     tage = ((d or {}).get("route") or {}).get("tage") or []
@@ -242,7 +276,8 @@ def lauf_reise(reise, heute=None, trocken=False):
     frist = regel(d, "waechter_frist_tage")
     items = zu_pruefen(d, heute, frist)
     ergebnis["zu_pruefen"] = items
-    wunsch = (erinnerungen(d, rm.aufgaben(o), heute, regel(d, "erinnerung_vorlauf_tage")) + statuswechsel(d, heute)
+    wunsch = (erinnerungen(d, rm.aufgaben(o), heute, regel(d, "erinnerung_vorlauf_tage"))
+              + buchungsfristen(d, heute, regel(d, "erinnerung_vorlauf_tage")) + statuswechsel(d, heute)
               + pruefmeldungen(d, items, frist))
     ergebnis["meldungen"] = neue_meldungen(o, wunsch, jetzt, trocken)
     ergebnis["nachricht"] = "nachricht" in regel(d, "meldekanal")

@@ -878,3 +878,46 @@ def test_stufen_worte_fuer_menschen():
     for eingabe, erwartet in (("pflicht", "pflicht"), ("Nötig", "pflicht"), ("noetig", "pflicht"), ("gut zu  wissen", "empfohlen"),
                               ("Zusätzlich", "angeboten"), ("AUS", "aus"), ("wichtig", None), ("", None), (None, None)):
         assert routen.stufe_schluessel(eingabe) == erwartet, eingabe
+
+
+def test_buchung_als_eigenes_ding_bei_zwei_reisetypen():
+    """#76 (Product Owner 29.10.2026): Eine Buchung B-… gehört zu Unterkünften, Aufenthalten oder Strecken, setzt deren
+    Buchungsstand und steht mit allen Feldern in route.buchungen. Hüttentour (Nacht) und Städtereise (Flug, Museum)."""
+    r, a = staedtereise()
+    r["buchungen"] = {
+        "B-01": {"fuer": ["U-01"], "status": "gebucht", "nummer": "H-1", "storno": "bis 7 Tage vorher", "storno_bis": D(2027, 2, 22),
+                 "gebucht_am": D(2026, 10, 29), "wer": "Ida", "quelle": "Mail", "verlauf": [{"datum": D(2026, 10, 29), "wer": "Ida", "was": "angelegt"}]},
+        "B-02": {"fuer": ["E-10", "A-01"], "status": "angefragt", "frist": D(2027, 1, 15), "frist_was": "Anzahlung", "quelle": "Anfrage per Mail"},
+        "B-03": {"fuer": "A-02", "status": "storniert", "quelle": "Storno-Mail"},
+    }
+    erg, fehler = laufe(r, FRAGEN, a)
+    assert fehler == [], fehler
+    b = erg["buchungen"]
+    assert set(b) == {"B-01", "B-02", "B-03"}
+    assert b["B-01"]["titel"] == r["unterkuenfte"]["U-01"]["name"] and b["B-01"]["storno_bis"] == "2027-02-22" and b["B-01"]["frist"] is None
+    assert b["B-01"]["verlauf"] == [{"datum": "2026-10-29", "wer": "Ida", "was": "angelegt"}]
+    assert b["B-02"]["fuer"] == ["E-10", "A-01"] and b["B-02"]["status"] == "angefragt" and b["B-02"]["frist"] == "2027-01-15"
+    assert b["B-03"]["fuer"] == ["A-02"]
+    # Buchungsstand der Dinge kommt aus der geltenden Buchung; die stornierte zählt nicht, der alte Eintrag buchung: bleibt Rückfall
+    assert erg["unterkuenfte"]["U-01"]["buchung"] == "gebucht" and erg["unterkuenfte"]["U-01"]["buchung_id"] == "B-01"
+    assert erg["strecken"]["E-10"]["buchung"] == "angefragt" and erg["strecken"]["E-10"]["buchung_id"] == "B-02"
+    assert erg["aufenthalte"]["A-01"]["buchung"] == "angefragt" and erg["aufenthalte"]["A-01"]["buchung_id"] == "B-02"
+    assert erg["aufenthalte"]["A-02"]["buchung"] is None and erg["aufenthalte"]["A-02"]["buchung_id"] is None
+    assert not any("B-0" in w["text"] for w in erg["warnungen"])
+    # Zwei geltende Buchungen für dasselbe Ding sind eine Warnung, keine Ablehnung
+    r["buchungen"]["B-04"] = {"fuer": ["U-01"], "quelle": "x"}
+    erg, fehler = laufe(r, FRAGEN, a)
+    assert fehler == [] and any("B-04 und B-01 gelten beide für U-01" in w["text"] for w in erg["warnungen"])
+
+
+def test_buchung_prueft_bezug_status_herkunft_und_datum():
+    r, a = staedtereise()
+    r["buchungen"] = {"B-01": {"fuer": ["U-99"], "status": "vielleicht", "frist": "bald"}, "B-02": {}, "B-03": "gebucht", "B-04": {"fuer": ["U-01"], "quelle": "x", "preis2": 1}}
+    _, fehler = laufe(r, FRAGEN, a)
+    f = " ".join(fehler)
+    assert "Buchung B-01: U-99 gibt es nicht" in f and "status muss angefragt, gebucht, storniert" in f and "quelle fehlt" in f
+    assert "frist muss ein Datum" in f and "Buchung B-02: fuer fehlt" in f and "Buchung B-03 muss Felder haben" in f
+    assert "unbekanntes Feld „preis2“" in f
+    r["buchungen"] = {"X-01": {"fuer": ["U-01"], "quelle": "x"}}
+    _, fehler = laufe(r, FRAGEN, a)
+    assert any("keine gültige ID für buchung" in x for x in fehler)

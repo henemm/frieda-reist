@@ -697,3 +697,32 @@ def test_einrichten_prueft_gh_und_nicht_claude(tmp_path):
     aus = einrichten(tmp_path, FR_PFAD=pfad, ANGEMELDET="false").stdout
     assert "FEHLT   gh ist nicht angemeldet" in aus and "claude" not in aus.lower()
     assert "ok      gh angemeldet" in einrichten(tmp_path, FR_PFAD=pfad, ANGEMELDET="true").stdout
+
+
+def test_freischalten_erneuert_den_baustein_bei_neuer_vorlage(fs):
+    """Ändert sich vorlagen/nginx-reise.conf (etwa der Block für Belege, #76), bekommt jede Reise den neuen Baustein mit
+    ihrem alten Token; nginx wird geprüft, bei Ablehnung gilt der alte Stand weiter."""
+    r = fs["lauf"]("beispielreise")
+    assert r.returncode == 0, r.stdout + r.stderr
+    sn = fs["snippets"] / "probe-beispielreise.conf"
+    inhalt = sn.read_text()
+    pfad = inhalt.split("location ^~ /", 1)[1].split("/", 1)[0]
+    assert "api/belege/" in inhalt and "client_max_body_size 11m" in inhalt
+    # alter Baustein ohne den Belege-Block (wie vor dem 29.10.2026): wird erneuert, Token bleibt
+    alt = inhalt.split("# Belege zu Buchungen", 1)[0] + inhalt.split("# Rückmeldedienst.", 1)[1]
+    alt = "# Rückmeldedienst." + alt if "# Rückmeldedienst." not in alt else alt
+    sn.write_text(inhalt.replace(inhalt[inhalt.index("# Belege zu Buchungen"):inhalt.index("# Rückmeldedienst.")], ""))
+    assert "api/belege/" not in sn.read_text()
+    r = fs["lauf"]("beispielreise")
+    assert r.returncode == 0 and "Baustein erneuert: beispielreise" in r.stdout, r.stdout + r.stderr
+    assert sn.read_text() == inhalt and f"/{pfad}/" in sn.read_text()
+    assert (fs["tmp"] / "nginx.log").read_text().count("reload") == 2
+    # unverändert: nichts passiert
+    r = fs["lauf"]("beispielreise")
+    assert r.returncode == 0 and "erneuert" not in r.stdout and (fs["tmp"] / "nginx.log").read_text().count("reload") == 2
+    # nginx lehnt den neuen Stand ab: der alte bleibt
+    kaputt = inhalt.replace("client_max_body_size 11m", "client_max_body_size 9m")
+    sn.write_text(kaputt)
+    (fs["tmp"] / "nginx-kaputt").touch()
+    r = fs["lauf"]("beispielreise")
+    assert r.returncode == 1 and "alte Stand gilt weiter" in r.stdout and sn.read_text() == kaputt

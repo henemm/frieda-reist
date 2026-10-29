@@ -28,7 +28,15 @@ UNGUELTIG = {"verworfen", "ersetzt"}
 ARTEN = {"planung", "unterwegs"}
 WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+", "aufenthalt": r"A-\d+",
-          "tag": r"T-\d+", "wahl": r"V-\d+", "option": r"V-\d+\.[a-z]+", "wissen": r"W-\d+"}
+          "tag": r"T-\d+", "wahl": r"V-\d+", "option": r"V-\d+\.[a-z]+", "wissen": r"W-\d+", "buchung": r"B-\d+"}
+# Buchung (Product Owner 29.10.2026, frieda-reist #76): eigenes Ding B-… in routen.yaml unter buchungen:, gehört zu einem
+# oder mehreren Aufenthalten (U-, A-) oder Bewegungen (E-) („fuer“). Felder: status, nummer, bei, preis, bezahlt, frist,
+# frist_was, storno, storno_bis, gebucht_am, wer, quelle (Pflicht: Herkunft), notiz, verlauf. Der Beleg (PDF, Bild)
+# liegt nie im Repo, sondern in der Ablage der Instanz (Rückmeldedienst, docs/betrieb.md „Belege“).
+BUCHUNG_STATUS = ("angefragt", "gebucht", "storniert")
+BUCHUNG_FELDER = ("fuer", "status", "nummer", "bei", "preis", "bezahlt", "frist", "frist_was", "storno", "storno_bis", "gebucht_am",
+                  "wer", "quelle", "notiz", "verlauf")
+BUCHUNG_DATEN = ("frist", "storno_bis", "gebucht_am")
 # Grundformen der Reise-Ontologie (docs/ontologie.md, ADR-0001): Aufenthalt (Unterkunft, Nacht), Bewegung (Strecke),
 # Folge (Tag, Reiseteil). Welche Arten es davon gibt (Hotel, Refugi, Wanderung, Bahn, Reiseteil …) und welche Merkmale
 # eine Art hat, sagt allein die Reise in plan/arten.yaml. Die Software kennt nur die Grundformen, die Form eines
@@ -223,6 +231,8 @@ class Routen:
         self.strecken = self.r.get("strecken") or {}
         self.unterkuenfte = self.r.get("unterkuenfte") or {}
         self.aufenthalte = self.r.get("aufenthalte") or {}   # Aufenthalte ohne Nacht: Besichtigung, Essen, Besuch (A-…)
+        self.buchungen = self.r.get("buchungen") or {}       # Buchungen (B-…) zu Unterkünften, Aufenthalten, Strecken (#76)
+        self.buchung_je_ding = {}                            # U-01/A-01/E-01 -> B-ID der geltenden Buchung (nicht storniert)
         self.tage = self.r.get("tage") or {}
         self.wahl = self.r.get("wahlstellen") or {}
         self.wissen = wissen
@@ -266,7 +276,7 @@ class Routen:
     # ---------- Bausteine prüfen ----------
     def bausteine(self):
         for art, menge in (("ort", self.orte), ("strecke", self.strecken), ("unterkunft", self.unterkuenfte),
-                           ("aufenthalt", self.aufenthalte), ("tag", self.tage), ("wahl", self.wahl)):
+                           ("aufenthalt", self.aufenthalte), ("buchung", self.buchungen), ("tag", self.tage), ("wahl", self.wahl)):
             for i in menge:
                 if not ist(art, i):
                     self.fehl(f"„{i}“ ist keine gültige ID für {art}.")
@@ -306,6 +316,7 @@ class Routen:
                 self.fehl(f"Aufenthalt {aid}: quelle fehlt (Herkunft).")
             self.a_art[aid] = self.art_von(a, f"Aufenthalt {aid}")
             self.lage_pruefen(a, f"Aufenthalt {aid}")
+        self.buchungen_pruefen()
         for tid, t in self.tage.items():
             self.id_anlegen(tid, self.q)
             for aid in t.get("aufenthalte") or []:
@@ -332,6 +343,56 @@ class Routen:
             self.waehle(vid, w)
         self.regeln_pruefen()
         self.merkmale_pruefen()
+
+    def buchungen_pruefen(self):
+        """Buchungen (B-…, #76): gehören zu vorhandenen Dingen, haben Status, Herkunft und gültige Daten. Eine nicht
+        stornierte Buchung setzt den Buchungsstand ihrer Dinge (buchung_je_ding); zwei geltende für dasselbe Ding sind eine Warnung."""
+        for bid, b in self.buchungen.items():
+            self.id_anlegen(bid, self.q)
+            if not isinstance(b, dict):
+                self.fehl(f"Buchung {bid} muss Felder haben (fuer, status, quelle …).")
+                continue
+            for k in b:
+                if k not in BUCHUNG_FELDER:
+                    self.fehl(f"Buchung {bid}: unbekanntes Feld „{k}“ (möglich: {', '.join(BUCHUNG_FELDER)}).")
+            fuer = b.get("fuer")
+            fuer = [fuer] if isinstance(fuer, str) else list(fuer or [])
+            if not fuer:
+                self.fehl(f"Buchung {bid}: fuer fehlt (welche Unterkunft U-…, welcher Aufenthalt A-… oder welche Strecke E-… ist gebucht).")
+            for x in fuer:
+                if not (x in self.unterkuenfte or x in self.aufenthalte or x in self.strecken or x in self.etappen):
+                    self.fehl(f"Buchung {bid}: {x} gibt es nicht (fuer nennt Unterkünfte, Aufenthalte oder Strecken).")
+            if b.get("status", "gebucht") not in BUCHUNG_STATUS:
+                self.fehl(f"Buchung {bid}: status muss {', '.join(BUCHUNG_STATUS)} sein.")
+            if not b.get("quelle"):
+                self.fehl(f"Buchung {bid}: quelle fehlt (Herkunft, z. B. „Buchungsbestätigung per Mail vom …“).")
+            for k in BUCHUNG_DATEN:
+                v = b.get(k)
+                if v is not None and not isinstance(v, datetime.date):
+                    try:
+                        datetime.date.fromisoformat(str(v))
+                    except ValueError:
+                        self.fehl(f"Buchung {bid}: {k} muss ein Datum JJJJ-MM-TT sein.")
+            if b.get("status", "gebucht") != "storniert":
+                for x in fuer:
+                    if x in self.buchung_je_ding and self.buchung_je_ding[x] != bid:
+                        self.warne(bid, f"Buchung {bid} und {self.buchung_je_ding[x]} gelten beide für {x}.")
+                    self.buchung_je_ding.setdefault(x, bid)
+
+    def buchung_aus(self, bid):
+        """Eine Buchung für die Seite und den Konnektor: Felder als Text, Daten als ISO, Verlauf, Titel aus ihren Dingen."""
+        b = self.buchungen.get(bid)
+        b = b if isinstance(b, dict) else {}
+        iso = lambda v: v.isoformat() if isinstance(v, datetime.date) else (str(v) if v else None)
+        fuer = [b["fuer"]] if isinstance(b.get("fuer"), str) else list(b.get("fuer") or [])
+        namen = [(self.unterkuenfte.get(x) or self.aufenthalte.get(x) or {}).get("name") or self.strecke(x).get("titel") or x for x in fuer]
+        aus = {"id": bid, "fuer": fuer, "titel": ", ".join(namen), "status": str(b.get("status") or "gebucht")}
+        for k in ("nummer", "bei", "preis", "bezahlt", "frist_was", "storno", "wer", "quelle", "notiz"):
+            aus[k] = str(b[k]) if b.get(k) not in (None, "") else None
+        for k in BUCHUNG_DATEN:
+            aus[k] = iso(b.get(k))
+        aus["verlauf"] = [{**{kk: iso(vv) if kk == "datum" else vv for kk, vv in v.items()}} for v in b.get("verlauf") or [] if isinstance(v, dict)]
+        return aus
 
     def lage_pruefen(self, d, wo):
         """Lage eines Aufenthalts (ADR-0004): adresse und punkt, beide als Aussage mit Herkunft
@@ -1059,6 +1120,7 @@ class Routen:
             "strecken": {sid: self.strecke_aus(sid) for sid in sorted(set(self.strecken) | aktiv_strecken)},
             "unterkuenfte": self.unterkuenfte_aus(tage),
             "aufenthalte": self.aufenthalte_aus(tage),
+            "buchungen": {bid: self.buchung_aus(bid) for bid in self.buchungen},
             # Arten der Reise (plan/arten.yaml): Name, Grundform, Farbe, Symbol, buchbar; die Seite kennt keine Art selbst
             "arten": {a: dict(d) for a, d in self.arten.items()},
             "aktiv_strecken": sorted(aktiv_strecken),
@@ -1212,15 +1274,23 @@ class Routen:
                     "fehlt": [k for k, d in self.katalog[b].items() if zaehlt(d) and k not in mk]} if b else \
             ({"merkmale": mk, "fehlt": []} if mk else {})
         return {"titel": s.get("titel", sid), "von": s.get("von"), "nach": s.get("nach"), "art": s.get("art"),
-                "buchung": self.buchung_von(s, b), "rolle": s.get("rolle", "haupt"), "zweig_von": s.get("zweig_von"), "kennzahlen": s.get("kennzahlen") or {},
+                "buchung": self.buchung_von(s, b, sid), "buchung_id": self.buchung_id(sid),
+                "rolle": s.get("rolle", "haupt"), "zweig_von": s.get("zweig_von"), "kennzahlen": s.get("kennzahlen") or {},
                 "quelle": s.get("quelle"), "siehe": s.get("siehe"), "text": s.get("text", ""),
                 "dossier": bool(s.get("dossier")), **merkmale}
 
-    def buchung_von(self, d, art):
-        """Buchungsstand eines Dings: der Eintrag buchung:, sonst „offen“ bei einer buchbaren Art, sonst None (kein Stand)."""
+    def buchung_von(self, d, art, did=None):
+        """Buchungsstand eines Dings: der Status seiner geltenden Buchung (B-…, #76), sonst der Eintrag buchung:, sonst
+        „offen“ bei einer buchbaren Art, sonst None (kein Stand)."""
+        if did and did in self.buchung_je_ding:
+            return str(self.buchungen[self.buchung_je_ding[did]].get("status") or "gebucht")
         if d.get("buchung") is not None:
             return str(d["buchung"])
-        return "offen" if (self.arten.get(art) or {}).get("buchbar") else None
+        return "offen" if (self.arten.get(art) or {}).get("buchbar") or did in self.buchung_je_ding else None
+
+    def buchung_id(self, did):
+        """B-ID der geltenden Buchung eines Dings oder None."""
+        return self.buchung_je_ding.get(did)
 
     def lage_aus(self, d):
         for feld in ("adresse", "punkt"):
@@ -1241,7 +1311,8 @@ class Routen:
             art = self.a_art.get(aid)
             mk = self.mk_aufenthalt.get(aid, {})
             aus[aid] = {**{k: a.get(k) for k in ("name", "ort", "zeit", "kontakt", "hinweis", "quelle", "frage", "buchungslink")},
-                        **dict(self.lage_aus(a)), "art": art, "buchung": self.buchung_von(a, art), "tage": an_tagen.get(aid, []),
+                        **dict(self.lage_aus(a)), "art": art, "buchung": self.buchung_von(a, art, aid), "buchung_id": self.buchung_id(aid),
+                        "tage": an_tagen.get(aid, []),
                         "merkmale": mk, "fehlt": [k for k, d in self.katalog.get(art, {}).items() if zaehlt(d) and k not in mk]}
         return aus
 
@@ -1264,7 +1335,8 @@ class Routen:
                                   "geprueft": v["geprueft"].isoformat() if isinstance(v.get("geprueft"), datetime.date) else None} if v else None
             a = self.u_art.get(uid)
             aus[uid]["art"] = a
-            aus[uid]["buchung"] = self.buchung_von(u, a)
+            aus[uid]["buchung"] = self.buchung_von(u, a, uid)
+            aus[uid]["buchung_id"] = self.buchung_id(uid)
             aus[uid]["naechte"] = naechte.get(uid, [])
             mk = self.mk_unterkunft.get(uid, {})
             aus[uid]["merkmale"] = mk

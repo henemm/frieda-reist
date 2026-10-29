@@ -12,8 +12,8 @@ DIENST="$FR_DIENST"
 
 # Module, die Rückmeldedienst und Konnektor aus <FR_DIENST> laden. Neue Module, die einer davon (auch mittelbar)
 # importiert, hier ergänzen; engine/tests/test_betrieb.py prüft das.
-RM_MODULE="rueckmeldungen.py reise.py konten.py instanz.py"
-KN_MODULE="konnektor.py reise.py routen.py konten.py anmeldung.py oauth.py instanz.py"
+RM_MODULE="rueckmeldungen.py belege.py reise.py konten.py instanz.py"
+KN_MODULE="konnektor.py reise.py routen.py konten.py anmeldung.py oauth.py instanz.py belege.py"
 # Schreibweg (engine/schreiben.py dienst, ADR-0001 O-3): der Dienst selbst lädt nur diese Module; den Schreibvorgang führt er
 # mit dem Code der Arbeitskopie <Wurzel>-schreiben aus (dort liegt die ganze Engine auf dem Stand von main).
 SB_MODULE="schreiben.py konten.py reise.py instanz.py"

@@ -28,7 +28,7 @@ import bauen  # noqa: E402
 from reise import PFAD_MUSTER, ROLLEN, reise_pfad, rolle_neu, schluessel_aus_name  # noqa: E402
 
 VORLAGE = Path(__file__).with_name("reisevorlage")
-ARTEN = ("W", "F", "O", "U", "A", "E", "T", "V")     # nummerierte IDs (A = Aufenthalt ohne Nacht); Pläne (P-A) und Aufgaben (AG, live) nicht
+ARTEN = ("W", "F", "O", "U", "A", "E", "T", "V", "B")     # nummerierte IDs (A = Aufenthalt ohne Nacht, B = Buchung); Pläne (P-A) und Aufgaben (AG, live) nicht
 GRUPPEN = ("wissen", "praxis", "quelle")
 ROLLE_TEXT = {"organisator": "organisiert", "mitwirkend": "bringt ein", "gast": "liest mit"}
 BAUSTEINE_IDEE = ["rueckmeldungen", "fragen", "aufgaben", "wuensche"]

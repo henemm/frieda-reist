@@ -767,3 +767,48 @@ def test_neue_reise_ueber_den_schreibweg(schreibweg, tmp_path, monkeypatch):
     t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Skiwoche zwei", von="2027-02-06", bis="2027-02-13", personen=[])
     assert f and "Nicht angelegt" in t
     assert any(v["status"] == "rueckfrage" for v in rm.status_lesen(o).values())
+
+
+def test_buchung_werkzeuge_und_anzeige(schreibweg):
+    """#76: buchung_anlegen und buchung_aendern gehen über den Schreibweg (ab Mitwirkende:r); zeige B-… und ueberblick
+    zeigen Buchungen; Belege aus der Ablage sieht nur, wer darf."""
+    import belege as bl
+    basis, ablage = schreibweg
+    for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (GAST, False)):
+        namen = {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}
+        assert ({"buchung_anlegen", "buchung_aendern"} <= namen) is da, token
+    assert "buchung_anlegen" in rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
+    Schreibweg.antwort = (200, {"ok": True, "text": "Buchung B-03 angelegt (gebucht) für U-02 Pension Burgblick, Nr. P-7."})
+    t, f = werkzeug(basis, KARL, "buchung_anlegen", fuer=["U-02"], nummer="P-7", quelle="Mail vom 29.10.", frist="2027-01-15", frist_was="Anzahlung")
+    assert not f and t.startswith("Eingetragen und gesichert (Karl): Buchung B-03 angelegt")
+    pfad, _, body = Schreibweg.anfragen[-1]
+    assert pfad == "/beispielreise/buchung_anlegen" and body["args"]["fuer"] == ["U-02"] and body["args"]["frist_was"] == "Anzahlung"
+    t, f = werkzeug(basis, KARL, "buchung_anlegen", fuer="U-77", quelle="x")
+    assert f and "U-77 gibt es in dieser Reise nicht" in t
+    t, f = werkzeug(basis, KARL, "buchung_aendern", ziel="B-09", status="storniert")
+    assert f and "Die Buchung „B-09“ gibt es nicht" in t
+    Schreibweg.antwort = (200, {"ok": True, "text": "Buchung B-01 (U-01 Hotel am Elbufer): Status „gebucht“ → „storniert“."})
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "buchung_aendern", ziel="b-01", status="storniert", grund="Plan geändert")
+    assert not f and Schreibweg.anfragen[-1][2]["args"] == {"ziel": "b-01", "status": "storniert", "grund": "Plan geändert"}
+    # Anzeige: Beispielreise hat B-01 (Hotel, Ida) und B-02 (Bahn, Karl)
+    t, f = werkzeug(basis, KARL, "zeige", id="B-01")
+    assert not f and "Buchung gebucht: Hotel am Elbufer" in t and "Nummer: HE-2027-0415" in t and "Storno: kostenlos bis 3 Tage vorher, danach eine Nacht (bis 11.5.2027)" in t
+    assert "Quelle: Buchungsbestätigung per Mail" in t and "Belege: keine" in t and "29.10.2026 Ida: angelegt" in t
+    t, f = werkzeug(basis, KARL, "zeige", id="U-01")
+    assert not f and "Buchung: gebucht (B-01, zeige B-01)" in t
+    t, f = werkzeug(basis, KARL, "ueberblick")
+    assert not f and "## Buchungen: 2 gebucht (zeige B-…)" in t and "B-02" in t and "Frist 13.5.2027 (Ticket in die App laden)" in t \
+        and "kostenlos stornierbar bis 11.5.2027" in t
+    # Belege: Karl sieht seinen, Ida (Organisatorin) alle, ein Gast keinen (die Ablage ist die des Rückmeldedienstes)
+    o = ablage / "beispielreise"
+    b1, _ = bl.ablegen(o, "B-01", "Karl", "Bestätigung.pdf", b"%PDF-1.4 x")
+    b2, _ = bl.ablegen(o, "B-02", "Ida", "Ticket.png", b"\x89PNG\r\n\x1a\n" + b"x" * 8)
+    t, _ = werkzeug(basis, KARL, "zeige", id="B-01")
+    assert "Belege: Bestätigung.pdf (Karl, " in t
+    t, _ = werkzeug(basis, KARL, "zeige", id="B-02")
+    assert "Belege: keine" in t
+    t, _ = werkzeug(basis, ALT_ORGANISATOR, "zeige", id="B-02")
+    assert "Belege: Ticket.png (Ida, " in t
+    bl.aendern(o, b2["id"], {"sichtbar": "alle"}, "Ida", "organisator")
+    t, _ = werkzeug(basis, KARL, "zeige", id="B-02")
+    assert "Ticket.png (Ida, " in t and "für alle sichtbar" in t

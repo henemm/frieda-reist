@@ -44,6 +44,10 @@ HTTP (hinter nginx, Präfix /<reise>-<token>/api/ -> /<reise>/):
   PATCH  /<reise>/rueckmeldungen/<R-id|A-id>  nur vom Konnektor (Organisator:in erledigt im Gespräch): {status, kommentar} setzt
                                           uebernommen, verworfen oder rueckfrage mit Kommentar für die Seite (O-3)
   GET    /<reise>/ich                     angemeldet als (Konto, Person der Reise), Regel anmeldung, Basis-Adresse
+  GET    /<reise>/belege[?buchung=B-01]   Belege zu Buchungen, die die Person sehen darf (engine/belege.py, #76)
+  GET    /<reise>/belege/<D-id>           die Datei selbst (PDF, Bild), wenn die Person sie sehen darf
+  POST   /<reise>/belege/<B-id>           Datei hochladen (Body = Datei, X-Frieda-Datei = Name, ?name= bei eingetipptem Namen)
+  PATCH  /<reise>/belege/<D-id>           {sichtbar: beteiligte | alle} (Organisator:in), {zurueckziehen: true} (wer hochlud, Organisator:in)
   GET    /<reise>/gesund                  200, wenn die Ablage beschreibbar ist (für die Überwachung)
 
 Wer schreibt (Paket J, docs/konten.md): Der Konnektor schickt das Dienst-Geheimnis (X-Frieda-Dienst) und den Namen der
@@ -59,10 +63,12 @@ import secrets
 import sys
 import threading
 import time
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import belege as bl  # noqa: E402
 import instanz  # noqa: E402
 import konten  # noqa: E402
 import reise as rg  # noqa: E402
@@ -121,6 +127,26 @@ def ordner(reise):
 
 def seiten():
     return instanz.seiten()
+
+
+def buchung_bekannt(reise, bid):
+    """Gibt es die Buchung B-… in der veröffentlichten Seite der Reise (route.buchungen)?"""
+    try:
+        alles = json.loads((seiten() / reise / "daten.json").read_text(encoding="utf-8"))
+        return bid in ((alles.get("route") or {}).get("buchungen") or {})
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
+def seher(ident, z, getippt=None):
+    """Wer sieht Belege: -> (Name, Rolle). Angemeldet: Person der Reise; der Konnektor nennt den Namen; die Seite ohne
+    Anmeldung ist Gast (sieht nur für alle freigegebene Belege; ein eingetippter Name öffnet keine fremden Belege)."""
+    if ident["art"] == "dienst":
+        return getippt, rolle_von(z, getippt) if getippt else None
+    if ident["art"] == "konto":
+        p = ident.get("person")
+        return (p["name"], rg.rolle_neu(p.get("rolle"))) if p else (None, None)
+    return None, "gast"
 
 
 def zustand(reise):
@@ -745,8 +771,38 @@ class Dienst(BaseHTTPRequestHandler):
             return None
         return o, teile[1], teile[2] if len(teile) == 3 else None
 
+    def _datei(self, b, pfad):
+        """Einen Beleg ausliefern (zum Ansehen im Browser; der Name steht im Content-Disposition)."""
+        try:
+            daten = pfad.read_bytes()
+        except OSError:
+            return self._antwort(404, {"fehler": "Die Datei fehlt in der Ablage."})
+        self.send_response(200)
+        self.send_header("Content-Type", b["typ"])
+        self.send_header("Content-Length", str(len(daten)))
+        self.send_header("Content-Disposition", "inline; filename*=UTF-8''" + urllib.parse.quote(b["name"]))
+        self.send_header("Cache-Control", "private, no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(daten)
+
+    def _query(self):
+        return urllib.parse.parse_qs(self.path.split("?", 1)[1]) if "?" in self.path else {}
+
     def do_GET(self):
         t = self._teile()
+        if t and t[1] == "belege":
+            # Belege (#76): Liste oder Datei, nur was die Person sehen darf
+            o, _, did = t
+            z = zustand(o.name)
+            q = self._query()
+            name, rolle = seher(wer_ist(self.headers, o.name, z, lesen=True), z, (q.get("name") or [None])[0])
+            if did is None:
+                return self._antwort(200, bl.liste(o, name, rolle, (q.get("buchung") or [None])[0]))
+            b = bl.finden(o, did)
+            if b is None or not bl.darf_sehen(b, name, rolle):
+                return self._antwort(404, {"fehler": "Diesen Beleg gibt es nicht, oder er ist für dich nicht sichtbar."})
+            return self._datei(b, bl.datei_pfad(o, b))
         if not t or t[2] is not None:
             return self._antwort(404, {"fehler": "unbekannt"})
         o, was, _ = t
@@ -787,6 +843,27 @@ class Dienst(BaseHTTPRequestHandler):
 
     def do_PATCH(self):
         t = self._teile()
+        if t and t[1] == "belege":
+            # Beleg (#76): Sichtbarkeit (Organisator:in) oder zurückziehen (wer hochlud, Organisator:in)
+            o, _, did = t
+            if bl.finden(o, did or "") is None:
+                return self._antwort(404, {"fehler": "Diesen Beleg gibt es nicht."})
+            roh, fehlt = self._json()
+            if fehlt:
+                return
+            if not isinstance(roh, dict):
+                return self._antwort(400, {"fehler": "kein Objekt"})
+            z = zustand(o.name)
+            ident = wer_ist(self.headers, o.name, z)
+            name, nein = name_fuer(ident, z, roh.get("name"))
+            if nein:
+                return self._antwort(nein[0], {"fehler": nein[1]})
+            if ident["art"] == "seite":   # eingetippter Name genügt für Belege nicht (sie sind sensibel)
+                return self._antwort(401, {"fehler": "Bitte melde dich an, um Belege zu ändern."})
+            _, rolle = seher(ident, z, name)
+            with _sperre:
+                b, nein = bl.aendern(o, did, roh, name, rolle)
+            return self._antwort(nein[0], {"fehler": nein[1]}) if nein else self._antwort(200, b)
         wunsch = bool(t) and t[1] == "rueckmeldungen" and bool(RID_MUSTER.match(t[2] or ""))
         erledigen = bool(t) and t[1] == "rueckmeldungen" and bool(AID_MUSTER.match(t[2] or ""))
         if not t or not (wunsch or erledigen) and (t[1] != "aufgaben" or not AG_MUSTER.match(t[2] or "")):
@@ -831,8 +908,48 @@ class Dienst(BaseHTTPRequestHandler):
             a, fehler, code = aufgabe_aendern(t[0], t[2], roh)
         self._antwort(code, {"fehler": fehler} if fehler else a)
 
+    def _beleg_hochladen(self, o, bid):
+        """POST /<reise>/belege/<B-id>: Body ist die Datei (#76). Rolle wie beim Eintragen einer Buchung (Aktion buchung)."""
+        if not bl.BID_MUSTER.match(bid or "") or not buchung_bekannt(o.name, bid):
+            return self._antwort(404, {"fehler": f"Die Buchung {bid} gibt es nicht (oder sie ist noch nicht veröffentlicht)."})
+        try:
+            laenge = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            laenge = 0
+        if laenge <= 0:
+            return self._antwort(400, {"fehler": "Die Datei ist leer."})
+        if laenge > bl.MAX_DATEI:
+            # Etwas zu große Dateien lesen und verwerfen, damit der Browser die Antwort noch bekommt; nginx begrenzt den
+            # Body vorher (client_max_body_size), ganz große Anfragen werden ungelesen beendet
+            if laenge <= 2 * bl.MAX_DATEI:
+                self.rfile.read(laenge)
+            else:
+                self.close_connection = True
+            return self._antwort(413, {"fehler": f"Die Datei ist zu groß (höchstens {bl.MAX_DATEI // 1024 // 1024} MB)."})
+        z = zustand(o.name)
+        ident = wer_ist(self.headers, o.name, z)
+        name, nein = name_fuer(ident, z, (self._query().get("name") or [None])[0])
+        if nein:
+            self.close_connection = True
+            return self._antwort(nein[0], {"fehler": nein[1]})
+        if not name:
+            self.close_connection = True
+            return self._antwort(400, {"fehler": "Name fehlt (wer lädt den Beleg hoch?)."})
+        if (nein := schreibrecht(o.name, "buchung", name)):
+            self.close_connection = True
+            return self._antwort(403, {"fehler": nein})
+        daten = self.rfile.read(laenge)
+        dateiname = urllib.parse.unquote(self.headers.get("X-Frieda-Datei", ""))
+        with _sperre:
+            if gedrosselt(o):
+                return self._antwort(429, {"fehler": "zu viele Änderungen, bitte kurz warten"})
+            b, nein = bl.ablegen(o, bid, name, dateiname, daten)
+        return self._antwort(nein[0], {"fehler": nein[1]}) if nein else self._antwort(201, b)
+
     def do_POST(self):
         t = self._teile()
+        if t and t[1] == "belege" and t[2]:
+            return self._beleg_hochladen(t[0], t[2])
         if not t or t[1] not in ("rueckmeldungen", "aufgaben") or t[2] is not None:
             return self._antwort(404, {"fehler": "unbekannt"})
         o = t[0]

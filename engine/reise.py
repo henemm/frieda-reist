@@ -96,6 +96,8 @@ AKTIONEN = {
     "wert":         {"rolle": "mitwirkend", "baustein": None, "ab": ("alles",)},
     # O-3: Unterkünfte, Strecken, Orte anlegen und ändern (Eingaben mit Herkunft; die Art eines Dings ändern nur Organisator:innen)
     "ding":         {"rolle": "mitwirkend", "baustein": None, "ab": ("alles",)},
+    # #76 (29.10.2026): eine Buchung anlegen oder ändern (Eingabe einer Tatsache mit Herkunft; wer bucht, trägt ein)
+    "buchung":      {"rolle": "mitwirkend", "baustein": None, "ab": ("alles",)},
     # O-3: eine offene Frage anlegen (zu klären oder zu entscheiden); Baustein fragen
     "frage":        {"rolle": "mitwirkend", "baustein": "fragen", "ab": ("alles",)},
     # O-3: den Plan ändern (Tage: Nacht, Strecken, Wahlstellen) – nur Organisator:innen

@@ -67,7 +67,8 @@ def test_reiseueberblick(tmp_path, browser):
         assert a["termine"] == ["Abendessen in Altendorf, Tisch um 19 Uhr reserviert (Beispiel)"], a["termine"]
         # gebucht ist nur U-01 (Beispielwert); dazu zählen die Bahnfahrten (Art bahn buchbar) und die Burg (Aufenthalt ohne Nacht),
         # Paket O-5; der Stand führt nach „Zu tun · Zu buchen“
-        assert a["stand"] == [["Gebucht", "1 von 6", "#zu-buchen"], ["Offene Fragen", "2", "#fragen"]], a["stand"]
+        # Hotelnacht U-01 (B-01) und Bahnticket E-20 (B-02) sind gebucht (#76)
+        assert a["stand"] == [["Gebucht", "2 von 6", "#zu-buchen"], ["Offene Fragen", "2", "#fragen"]], a["stand"]
         assert a["inZeile"] == 0, a["inZeile"]
         assert a["karte"] and a["karte"]["breite"] == a["karte"]["kasten"] and a["karte"]["wege"] > 100, a["karte"]
         assert a["zurueck"]["tag"] == "T-03" and a["zurueck"]["sichtbar"], a["zurueck"]
@@ -76,9 +77,10 @@ def test_reiseueberblick(tmp_path, browser):
         # Google Maps immer, Apple Karten nur auf Apple-Geräten (WebKit meldet sich als Macintosh)
         assert karte[0] == "https://www.google.com/maps/search/?api=1&query=50.9792%2C14.1128", karte
         assert karte[1:] in ([], ["https://maps.apple.com/?q=Pension%20Burgblick&ll=50.9792,14.1128"]), karte
-        # je Tag: Nacht, dann Bewegungen und Aufenthalte mit Buchungsstand; Bewegung und Aufenthalt führen zum Tag
-        assert [x[1] for x in a["buchen"]] == ["gebucht"] + ["nicht gebucht"] * 5, a["buchen"]
-        assert [x[0] for x in a["buchen"]][1:4] == ["#U-02", "#T-02", "#T-02"], a["buchen"]
+        # je Tag: Nacht, dann Bewegungen und Aufenthalte mit Buchungsstand; eine Buchung (B-…, #76) ist das Ziel und nennt
+        # ihre Frist, sonst führen Bewegung und Aufenthalt zum Tag
+        assert [x[1] for x in a["buchen"]] == ["gebucht", "nicht gebucht", "gebucht · Frist 13.5.2027"] + ["nicht gebucht"] * 3, a["buchen"]
+        assert [x[0] for x in a["buchen"]][:4] == ["#B-01", "#U-02", "#B-02", "#T-02"], a["buchen"]
         assert a["ueberPlan"] > 0
         assert [x[0] for x in a["tage"]] == ["#T-01", "#T-02", "#T-03", "#T-04"]
         assert [x[2] for x in a["tage"]] == ["gebucht", "nicht gebucht", "nicht gebucht", None], a["tage"]

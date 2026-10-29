@@ -26,6 +26,7 @@ for (const breite of [390, 1200]) {
     if (R) {
       R.tage.forEach(t => r.add(t.id)); Object.keys(R.weitere_tage).forEach(t => r.add(t)); Object.keys(R.unterkuenfte).forEach(u => r.add(u));
       R.wahlstellen.forEach(v => { r.add(v.id); v.optionen.forEach(o => r.add(o.id)); }); R.plaene.forEach(x => r.add(x.id));
+      Object.keys(R.buchungen || {}).forEach(b => r.add(b));
     }
     D.fragen.zeilen.forEach(z => r.add(z.id));
     return [...r];

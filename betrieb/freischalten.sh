@@ -7,7 +7,8 @@
 # Gibt es noch kein nginx-Baustein <FR_NGINX_SNIPPETS>/<instanz>-<reise>.conf, entsteht er aus vorlagen/nginx-reise.conf
 # mit einem neuen Zufalls-Token (root, 640). nginx wird geprüft und neu geladen; schlägt die Prüfung fehl, wird der
 # Baustein wieder entfernt. Danach müssen Seite und Rückmeldedienst unter dem Link mit 200 antworten, sonst Abbruch.
-# Gibt es den Baustein schon, bleibt der Link, wie er ist (beliebig oft aufrufbar; veroeffentlichen.sh ruft es je Reise auf).
+# Gibt es den Baustein schon, bleibt der Link, wie er ist (beliebig oft aufrufbar; veroeffentlichen.sh ruft es je Reise auf);
+# hat sich nur die Vorlage geändert, wird der Baustein mit demselben Token erneuert (nginx geprüft, sonst alter Stand).
 # Der Link zur Seite kommt nach seiten.json neben den Konnektor-Zugängen (für das Werkzeug meine_reisen).
 #
 # Voraussetzung (einmalig, einrichten.sh): Im server-Block von FR_ADRESSE steht  include <FR_NGINX_SNIPPETS>/<instanz>-*.conf;
@@ -38,12 +39,15 @@ abruf() {  # <url> -> HTTP-Code
 [ -n "$BASIS" ] || { echo "FEHLER: FR_ADRESSE ist nicht gesetzt (Einstellungen der Instanz)."; exit 1; }
 
 snippet="$SNIPPETS/$FR_INSTANZ-$REISE.conf"
+rendern() {  # <token> -> Baustein aus der Vorlage
+  sed -e "s|__REISE__|$REISE|g" -e "s|__TOKEN__|$1|g" -e "s|__SEITEN__|$FR_SEITEN|g" -e "s|__RM_PORT__|$FR_RM_PORT|g" \
+    -e "s|__ZONE__|${FR_INSTANZ//-/_}_api|g" -e "s|__INSTANZ__|$FR_INSTANZ|g" "$FR_BETRIEB/vorlagen/nginx-reise.conf"
+}
+tmp="$(mktemp)"; trap 'rm -f "$tmp"' EXIT
 neu=""
 if ! $SUDO test -e "$snippet"; then
   token="$(python3 -c 'import secrets; print(secrets.token_hex(12))')"
-  tmp="$(mktemp)"; trap 'rm -f "$tmp"' EXIT
-  sed -e "s|__REISE__|$REISE|g" -e "s|__TOKEN__|$token|g" -e "s|__SEITEN__|$FR_SEITEN|g" -e "s|__RM_PORT__|$FR_RM_PORT|g" \
-    -e "s|__ZONE__|${FR_INSTANZ//-/_}_api|g" -e "s|__INSTANZ__|$FR_INSTANZ|g" "$FR_BETRIEB/vorlagen/nginx-reise.conf" > "$tmp"
+  rendern "$token" > "$tmp"
   $SUDO install -m 640 "$tmp" "$snippet"
   if ! $NGINX_TEST; then
     $SUDO rm -f "$snippet"
@@ -51,6 +55,25 @@ if ! $SUDO test -e "$snippet"; then
   fi
   $NGINX_LADEN
   neu=1
+else
+  # Hat sich die Vorlage geändert (z. B. ein neuer location-Block, 29.10.2026 Belege #76), bekommt der Baustein den neuen
+  # Stand mit demselben Token; der Link bleibt. Lehnt nginx ab, kommt der alte Stand zurück.
+  alt="$($SUDO cat "$snippet")"
+  token="$(printf '%s\n' "$alt" | grep -oP "^location \^~ /$REISE-\K[^/]+(?=/ \{)" | head -1)"
+  if [ -n "$token" ]; then
+    rendern "$token" > "$tmp"
+    if [ "$(cat "$tmp")" != "$alt" ]; then
+      sicher="$(mktemp)"; printf '%s\n' "$alt" > "$sicher"
+      $SUDO install -m 640 "$tmp" "$snippet"
+      if ! $NGINX_TEST; then
+        $SUDO install -m 640 "$sicher" "$snippet"; rm -f "$sicher"
+        echo "FEHLER: nginx lehnt den erneuerten Baustein für $REISE ab; der alte Stand gilt weiter."; exit 1
+      fi
+      rm -f "$sicher"
+      $NGINX_LADEN
+      echo "Baustein erneuert: $REISE"
+    fi
+  fi
 fi
 
 pfad="$($SUDO cat "$snippet" | grep -oP '^location \^~ /\K[^/]+(?=/ \{)' | head -1)"

@@ -283,6 +283,15 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .pico h2.listen-titel{display:flex;align-items:center;gap:10px}
 .pico h2.listen-titel>.chip{font-size:0.8125rem}
 @media (hover:hover){.wzeile:hover .wt{color:var(--acc)}}
+/* ---------- Buchung (B-…, #76) als Block am Ding, Belege darunter ---------- */
+.buchung{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.buchung .z.ueber{color:var(--warn)}
+.buchung details.verlauf>summary{cursor:pointer}
+.beleg{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;padding:3px 0;font-size:0.9375rem}
+.beleg.weg a{text-decoration:line-through;color:var(--mut)}
+.beleg-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
+.beleg-form input[type=file]{max-width:100%;font-size:0.875rem}
+.beleg-form input[name=name]{max-width:12rem}
 /* ---------- Hinweiskasten: geht nicht auf ---------- */
 .warnungen{background:var(--warnbg);color:var(--warn);border-radius:12px;padding:10px 14px;margin:0 0 12px}
 .warnungen ul{margin:.3em 0 0;padding-left:20px}
@@ -1026,13 +1035,17 @@ function abschnittInhalt(a, ohneTitel, kennzahlen) {
 /* ---------- Route: Tage, Unterkünfte, Wahlstellen ---------- */
 const STATUS_TEXT = {vorgeschlagen: "vorgeschlagen", favorisiert: "favorisiert", gewaehlt: "gewählt", verworfen: "verworfen", ersetzt: "ersetzt"};
 // Arten der Reise (plan/arten.yaml, docs/ontologie.md): Name, Farbe, Symbol, buchbar; die Seite kennt keine Art selbst (Paket O-5)
-const artDef = k => (R.arten || {})[k] || null;
+const artDef = k => ((R && R.arten) || {})[k] || null;
 const artName = k => (artDef(k) || {}).name || k || "";
 const artNamen = () => Object.fromEntries(Object.entries(R.arten || {}).map(([k, v]) => [k, v.name]));
 const GRUNDFORM_SYM = {aufenthalt: "unterkunft", bewegung: "strecke", folge: "plan"};
 const artSym = (k, grundform) => (artDef(k) || {}).symbol || GRUNDFORM_SYM[(artDef(k) || {}).grundform || grundform] || "strecke";
-// Atom Zustand Buchung: offen in Warnfarbe, alles andere als „im Plan“; null = kein Buchungsstand (Art nicht buchbar)
-const buchungChip = b => b ? chip(b === "offen" ? "offen" : "plan", "Buchung: " + b) : null;
+// Atom Zustand Buchung: offen und angefragt in Warnfarbe, alles andere als „im Plan“; null = kein Buchungsstand (Art nicht
+// buchbar). Kommt der Stand aus einer Buchung (B-…, #76), führt der Chip zu ihr.
+const buchungChip = (b, bid) => b ? chip(b === "offen" || b === "angefragt" ? "offen" : "plan", "Buchung: " + b, bid ? {href: "#" + bid} : null) : null;
+// Buchungen (B-…) eines Dings: geltende zuerst, stornierte danach
+const buchungenZu = id => Object.values(R && R.buchungen || {}).filter(b => (b.fuer || []).includes(id))
+  .sort((a, b) => (a.status === "storniert") - (b.status === "storniert"));
 const weg = s => s === "verworfen" || s === "ersetzt";
 const optionZustand = s => weg(s) ? "weg" : s === "gewaehlt" ? "plan" : "";
 const link = (id, text) => el("a", {href: "#" + id}, text);
@@ -1099,7 +1112,7 @@ function nachtZeile(n, ohneLinks, datum, verweis) {
   return einstieg && !verweis ? [zeile, wahlVergleich(w, false, datum)] : zeile;
 }
 // ohneKennung: die Kennung steht schon an anderer Stelle der Seite (Etappe auf der Tagesseite)
-function streckeZeile(id, wahl, ohneKennung) {
+function streckeZeile(id, wahl, ohneKennung, voll) {
   const s = R.strecken[id] || {titel: id};
   // art: ein Verkehrsmittel oder eine Liste in Reihenfolge, z. B. [bahn, bus]
   // Name der Art aus plan/arten.yaml; eine Bewegung aus eigener Kraft (summiert) zeigt stattdessen ihre Kennzahlen
@@ -1110,10 +1123,11 @@ function streckeZeile(id, wahl, ohneKennung) {
   const kz = kennzahlLeiste(s.kennzahlen);
   if (art) z.append(el("div", {class: "z klein"}, art));
   if (kz) z.append(kz);
-  if (s.buchung) z.append(el("div", {class: "chips"}, buchungChip(s.buchung)));
+  if (s.buchung) z.append(el("div", {class: "chips"}, buchungChip(s.buchung, s.buchung_id)));
   if (s.text) z.append(el("div", {class: "z klein"}, s.text));
   if (s.quelle) z.append(el("div", {class: "z klein"}, "Quelle: " + s.quelle));
   if (s.siehe && proId.has(s.siehe)) z.append(el("div", {class: "z klein"}, link(s.siehe, "→ " + proId.get(s.siehe).titel)));
+  if (voll) for (const b of buchungenZu(id)) z.append(buchungBlock(b));
   return z;
 }
 
@@ -1134,7 +1148,7 @@ function aufenthaltZeile(id, voll) {
   const z = el("div", {class: "z aufenthalt" + (voll ? " ziel" : ""), id: voll ? id : null, "data-ziel": voll ? id : null},
     dingEtikett([artName(a.art), a.zeit].filter(Boolean).join(" · "), a.art, a.art),
     el("div", {class: "titelzeile"}, el("span", {}, a.name), zid(id)));
-  if (a.buchung) z.append(el("div", {class: "chips"}, buchungChip(a.buchung)));
+  if (a.buchung) z.append(el("div", {class: "chips"}, buchungChip(a.buchung, a.buchung_id)));
   if (!voll) return z;
   const l = lageZeile(a, true);
   if (l) z.append(l);
@@ -1145,12 +1159,14 @@ function aufenthaltZeile(id, voll) {
   if (a.quelle) z.append(el("div", {class: "z klein"}, "Quelle: " + a.quelle));
   const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
   if ((a.fehlt || []).length) z.append(el("div", {class: "z klein"}, "Fehlt noch: " + a.fehlt.map(x => name[x] || x).join(", ")));
+  for (const b of buchungenZu(id)) z.append(buchungBlock(b));
   return z;
 }
 // Zeitleiste des Tags: Start → Bewegungen → Ziel, Aufenthalte ohne Nacht an ihrem Ort (nach der Ankunft dort); was an keinem
 // Ort des Wegs liegt, steht am Ende. voll (Tagesseite): Aufenthalte vollständig.
-function wegVerlauf(t, ohneKennung) {
-  const v = el("div", {class: "wv"}), voll = !!ohneKennung;
+// heimat: der Tageskasten ist die Heimat des Tags (ohne Tagesseiten, PLAN_DA): Aufenthalte und Strecken vollständig, mit Buchung
+function wegVerlauf(t, ohneKennung, heimat) {
+  const v = el("div", {class: "wv"}), voll = !!ohneKennung || !!heimat;
   const rest = new Set(t.aufenthalte || []);
   const bei = oid => { const z = []; for (const a of [...rest]) if (((R.aufenthalte || {})[a] || {}).ort === oid) { rest.delete(a); z.push(el("div", {class: "wv-aufenthalt"}, aufenthaltZeile(a, voll))); } return z; };
   const ort = (id, art) => el("div", {class: "wv-ort " + art}, el("span", {class: "wv-punkt", "aria-hidden": "true"}),
@@ -1159,7 +1175,7 @@ function wegVerlauf(t, ohneKennung) {
   t.strecken.forEach((x, i) => {
     const s = R.strecken[x.id] || {};
     if (s.von && s.von !== zuletzt) v.append(ort(s.von, i === 0 ? "start" : "mitte"), ...bei(s.von));
-    v.append(el("div", {class: "wv-strecke" + ([].concat(s.art || []).some(a => (artDef(a) || {}).summiert) ? "" : " fahrt")}, streckeZeile(x.id, x.wahl, ohneKennung && ohneKennung(x.id))));
+    v.append(el("div", {class: "wv-strecke" + ([].concat(s.art || []).some(a => (artDef(a) || {}).summiert) ? "" : " fahrt")}, streckeZeile(x.id, x.wahl, ohneKennung && ohneKennung(x.id), voll)));
     if (s.nach) { v.append(ort(s.nach, i === t.strecken.length - 1 ? "ziel" : "mitte"), ...bei(s.nach)); zuletzt = s.nach; }
     else zuletzt = null;
   });
@@ -1195,7 +1211,7 @@ function tagKarte(t, ohneKopf) {
   // Unterwegs rücken Wahlstellen mit Auslöser nach vorn (Verhalten je Status)
   const vorn = V.ausloeser_vor ? wahlZeilen.filter(([w]) => w.art === "unterwegs") : [];
   for (const [, z] of vorn) { z[0].classList.add("vorn"); k.append(...z.filter(Boolean)); }
-  if (t.strecken.length || (t.aufenthalte || []).length) k.append(wegVerlauf(t, ohneKopf ? id => (proId.get(id) || {}).typ === "etappe" : null));
+  if (t.strecken.length || (t.aufenthalte || []).length) k.append(wegVerlauf(t, ohneKopf ? id => (proId.get(id) || {}).typ === "etappe" : null, !ohneKopf && PLAN_DA));
   for (const [w, z] of wahlZeilen) if (!vorn.some(([x]) => x === w)) k.append(...z.filter(Boolean));
   if (t.text) k.append(el("div", {class: "z"}, t.text));
   if (t.nacht) k.append(...[].concat(nachtZeile(t.nacht, false, t.datum, ohneKopf && !PLAN_DA)).filter(Boolean));
@@ -1223,7 +1239,7 @@ function unterkunftKarte(id) {
   k.append(el("div", {class: "z"}, [u.typ, ortName(u.ort)].filter(Boolean).join(" · ")));
   k.append(lageZeile(u));
   if (u.kontakt || webVon(u)) k.append(el("div", {class: "z"}, el("b", {}, "Kontakt: "), (u.kontakt || "").replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ") || "–", " ", webLink(webVon(u), true)));
-  if (u.buchung || u.frage) k.append(el("div", {class: "chips"}, buchungChip(u.buchung), u.frage ? chip("leise", u.frage, {href: "#" + u.frage}) : null));
+  if (u.buchung || u.frage) k.append(el("div", {class: "chips"}, buchungChip(u.buchung, u.buchung_id), u.frage ? chip("leise", u.frage, {href: "#" + u.frage}) : null));
   if (u.naechte.length) {
     const z = el("div", {class: "z"}, el("b", {}, "Nächte: "));
     u.naechte.forEach((tid, i) => { const t = R.tage.find(x => x.id === tid); if (i) z.append(", "); z.append(link(tid, datumText(t.datum, t.wochentag))); });
@@ -1237,8 +1253,110 @@ function unterkunftKarte(id) {
   if (u.quelle) k.append(el("div", {class: "z klein"}, "Quelle: " + u.quelle));
   const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
   if ((u.fehlt || []).length) k.append(el("div", {class: "z klein"}, "Fehlt noch: " + u.fehlt.map(x => name[x] || x).join(", ")));
+  for (const b of buchungenZu(id)) k.append(buchungBlock(b));
   return k;
 }
+
+/* ---------- Buchung (B-…, #76, Product Owner 29.10.2026): eigenes Ding zu Unterkunft, Aufenthalt oder Strecke ----------
+   Heimat ist das Ding (ADR-0003): Unterkunftskarte, Aufenthalt und Strecke auf der Tagesseite zeigen die Buchung vollständig
+   mit Nummer, Anbieter, Preis, Frist, Stornoregel, Herkunft, Belegen und Verlauf. Überall sonst nur der Chip mit Link.
+   Belege (PDF, Bild) liegen beim Rückmeldedienst (api/belege), nie im Repo; sichtbar nur für Beteiligte, bis eine
+   Organisator:in sie freigibt. Ohne Netz bleibt die letzte Liste (localStorage), die Datei selbst braucht Netz. */
+const BL_API = "api/belege";
+let BL = lies("belege", []);
+let BL_OK = null;
+async function blLaden() {
+  try {
+    const r = await fetch(BL_API, {cache: "no-store"});
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    if (!Array.isArray(d)) throw 0;
+    BL = d; BL_OK = true; merke("belege", BL);
+  } catch (e) { BL_OK = false; }
+}
+const KANN_BELEG = () => V.schreiben === "alles" && !!ICH && (MIT_KONTO() || ICH.anmeldung === "uebergang");
+const BUCHUNG_STATUS = {gebucht: "gebucht", angefragt: "angefragt", storniert: "storniert"};
+const groesseText = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(n / 1024)) + " kB";
+// Molekül Buchung: Etikett mit Zustand, die Angaben als Zeilen, leise Herkunft, Belege, Verlauf zugeklappt
+function buchungBlock(b) {
+  const zu = b.status === "storniert";
+  const k = el("div", {class: "buchung ziel", id: b.id, "data-ziel": b.id},
+    el("div", {class: "titelzeile"}, el("span", {}, dingEtikett("Buchung", null, "ticket"), " ",
+      chip(zu ? "weg" : b.status === "gebucht" ? "plan" : "offen", BUCHUNG_STATUS[b.status] || b.status)), zid(b.id)));
+  const zeile = (name, wert, klasse) => wert ? el("div", {class: "z" + (klasse ? " " + klasse : "")}, el("b", {}, name + ": "), wert) : null;
+  if ((b.fuer || []).length > 1) k.append(zeile("Für", b.fuer.map(x => titelZu(x) || x).join(", ")));
+  k.append(...[zeile("Nummer", b.nummer), zeile("Gebucht bei", b.bei), zeile("Preis", b.preis), zeile("Bezahlt", b.bezahlt)].filter(Boolean));
+  if (b.frist) k.append(zeile("Frist", tagMonat(b.frist) + (b.frist_was ? " · " + b.frist_was : ""), !zu && V.fristen && b.frist < heute() ? "ueber" : null));
+  if (b.storno || b.storno_bis) k.append(zeile("Storno", [b.storno, b.storno_bis ? "bis " + tagMonat(b.storno_bis) : ""].filter(Boolean).join(" · ")));
+  if (b.notiz) k.append(el("div", {class: "z"}, b.notiz));
+  const leise = [b.gebucht_am ? "gebucht am " + tagMonat(b.gebucht_am) : "", b.wer ? "von " + b.wer : "", b.quelle ? "Quelle: " + b.quelle : ""].filter(Boolean);
+  if (leise.length) k.append(el("div", {class: "z klein"}, leise.join(" · ")));
+  k.append(belegeListe(b));
+  if ((b.verlauf || []).length > 1) k.append(el("details", {class: "verlauf"}, el("summary", {}, `Verlauf (${b.verlauf.length})`),
+    b.verlauf.slice().reverse().map(v => el("div", {}, `${tagMonat(v.datum)} ${v.wer || ""}: ${v.was || ""}${v.grund ? " (" + v.grund + ")" : ""}`))));
+  return k;
+}
+// Molekül Belege einer Buchung: je Datei Name (öffnet die Datei, nur mit Netz), Größe, wer und wann, Sichtbarkeit; Knöpfe
+// für Organisator:innen (freigeben) und die hochladende Person (zurückziehen); darunter das Formular zum Anhängen
+function belegeListe(b) {
+  const liste = BL.filter(x => x.buchung === b.id);
+  const box = el("div", {class: "belege"});
+  box.append(el("div", {class: "z"}, el("b", {}, "Belege: "), liste.length ? "" : BL_OK === false ? "nur mit Netz sichtbar" : "noch keiner"));
+  const ich = MIT_KONTO() ? ICH.person : null;
+  for (const x of liste) {
+    const z = el("div", {class: "beleg" + (x.zurueckgezogen ? " weg" : "")},
+      el("a", {href: BL_API + "/" + x.id, target: "_blank", rel: "noopener"}, x.name + " ↗"),
+      el("span", {class: "z klein"}, [groesseText(x.groesse), x.wer, x.hochgeladen ? tagMonat(x.hochgeladen.slice(0, 10)) : "",
+        x.sichtbar === "alle" ? "für alle" : "nur Beteiligte", x.zurueckgezogen ? "zurückgezogen" : ""].filter(Boolean).join(" · ")));
+    if (ich && !x.zurueckgezogen && V.schreiben === "alles") {
+      if (ich.rolle === "organisator") z.append(el("button", {type: "button", class: "outline klein", "data-bl-sichtbar": x.id,
+        "data-wert": x.sichtbar === "alle" ? "beteiligte" : "alle"}, x.sichtbar === "alle" ? "nur für Beteiligte" : "für alle freigeben"));
+      if (ich.rolle === "organisator" || ich.name === x.wer) z.append(el("button", {type: "button", class: "outline klein", "data-bl-weg": x.id}, "zurückziehen"));
+    }
+    box.append(z);
+  }
+  if (KANN_BELEG() && b.status !== "storniert") box.append(el("form", {class: "beleg-form", "data-bl-form": b.id},
+    el("input", {type: "file", name: "datei", accept: "application/pdf,image/jpeg,image/png,image/webp,image/heic", required: true, "aria-label": "Beleg wählen"}),
+    MIT_KONTO() ? null : el("input", {name: "name", placeholder: "Dein Name", maxlength: 80, value: NAME, autocomplete: "name"}),
+    el("button", {type: "submit", class: "outline klein"}, "Beleg anhängen"),
+    el("span", {class: "meldung bl-meldung"}, "PDF oder Bild, bis 10 MB; sichtbar für dich und die Organisator:innen.")));
+  return box;
+}
+document.addEventListener("submit", async e => {
+  const f = e.target.closest("form[data-bl-form]");
+  if (!f) return;
+  e.preventDefault();
+  const datei = f.querySelector("input[type=file]").files[0], m = f.querySelector(".bl-meldung");
+  if (!datei) return;
+  const name = MIT_KONTO() ? "" : ((f.querySelector("input[name=name]") || {}).value || "").trim();
+  if (!MIT_KONTO() && !name) { m.textContent = "Bitte deinen Namen angeben."; return; }
+  if (name) { NAME = name; try { localStorage.setItem("rh-name", NAME); } catch (x) {} }
+  m.textContent = "Wird hochgeladen …";
+  try {
+    const r = await fetch(BL_API + "/" + f.dataset.blForm + (name ? "?name=" + encodeURIComponent(name) : ""),
+      {method: "POST", body: datei, headers: {"Content-Type": datei.type || "application/octet-stream", "X-Frieda-Datei": encodeURIComponent(datei.name)}});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw d.fehler || "abgelehnt";
+    await blLaden();
+    route(true);
+  } catch (x) { m.textContent = typeof x === "string" ? x : "Gerade keine Verbindung; Belege lassen sich nur mit Netz anhängen."; }
+});
+document.addEventListener("click", async e => {
+  const s = e.target.closest("[data-bl-sichtbar]"), w = e.target.closest("[data-bl-weg]");
+  if (!s && !w) return;
+  e.preventDefault();
+  const id = s ? s.dataset.blSichtbar : w.dataset.blWeg;
+  if (w && !confirm("Diesen Beleg zurückziehen? Er bleibt gespeichert, ist aber für andere nicht mehr sichtbar.")) return;
+  try {
+    const r = await fetch(BL_API + "/" + id, {method: "PATCH", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(s ? {sichtbar: s.dataset.wert} : {zurueckziehen: true})});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw d.fehler || "abgelehnt";
+    await blLaden();
+    route(true);
+  } catch (x) { alert(typeof x === "string" ? x : "Gerade keine Verbindung."); }
+}, true);
+window.addEventListener("online", () => blLaden().then(() => route(true)));
 
 function unterkuenfte(s) {
   const ids = Object.keys(R.unterkuenfte);
@@ -2140,8 +2258,8 @@ function nachtStand(n) {
   const akt = w && (kand.find(o => o.aktiv) || kand[0]);
   const uid = n.unterkunft && R.unterkuenfte[n.unterkunft] ? n.unterkunft : akt && (akt.unterkuenfte || []).find(x => R.unterkuenfte[x]);
   const u = uid && R.unterkuenfte[uid];
-  if (u) return u.buchung && u.buchung !== "offen" ? {name: u.name, zustand: "", text: u.buchung, zaehlt: true, gebucht: true}
-    : {name: u.name, zustand: "offen", text: "nicht gebucht", zaehlt: true, gebucht: false};
+  if (u) return u.buchung && u.buchung !== "offen" && u.buchung !== "angefragt" ? {name: u.name, zustand: "", text: u.buchung, zaehlt: true, gebucht: true, bid: u.buchung_id}
+    : {name: u.name, zustand: "offen", text: u.buchung === "angefragt" ? "angefragt" : "nicht gebucht", zaehlt: true, gebucht: false, bid: u.buchung_id};
   return {name: akt ? akt.titel : n.hinweis || ortName(n.ort), zustand: "offen", text: akt ? "nicht gebucht" : "Unterkunft offen", zaehlt: true, gebucht: false};
 }
 // Organismus Tag als Zeile der Zeitachse: Nummer und Datum, Titel mit Marken (feste Termine, Wahl am Tag), Gehzeit und
@@ -2181,16 +2299,23 @@ function buchungen(p) {
       const akt = w && gueltigeOptionen(w).find(o => o.aktiv);
       aus.push({tag: t, id: n.unterkunft || (w ? w.id : t.id), titel: ortName(n.ort), sym: "unterkunft",
         unter: `${datumText(t.datum, t.wochentag)} · ${offen ? (akt ? akt.titel + " (vorläufig)" : "noch offen") : x.name}`,
-        zustand: x.zustand, text: x.text, gebucht: x.gebucht, href: offen ? w.id : n.unterkunft || (w ? w.id : t.id)});
+        zustand: x.zustand, text: buchungText(x.text, x.bid), gebucht: x.gebucht, href: offen ? w.id : x.bid || n.unterkunft || (w ? w.id : t.id)});
     }
+    // Bewegungen und Aufenthalte mit Buchungsstand; angefragt zählt noch nicht als gebucht; eine Buchung (B-…) ist das Ziel
+    const offenS = b => b === "offen" || b === "angefragt";
     for (const st of t.strecken) { const s = R.strecken[st.id]; if (s && s.buchung)
       aus.push({tag: t, id: st.id, titel: s.titel, sym: artSym([].concat(s.art || [])[0], "bewegung"), unter: datumText(t.datum, t.wochentag) + " · " + artName([].concat(s.art || [])[0]),
-        zustand: s.buchung === "offen" ? "offen" : "", text: s.buchung === "offen" ? "nicht gebucht" : s.buchung, gebucht: s.buchung !== "offen", href: t.id}); }
+        zustand: offenS(s.buchung) ? "offen" : "", text: buchungText(s.buchung === "offen" ? "nicht gebucht" : s.buchung, s.buchung_id), gebucht: !offenS(s.buchung), href: s.buchung_id || t.id}); }
     for (const aid of t.aufenthalte || []) { const a = (R.aufenthalte || {})[aid]; if (a && a.buchung)
       aus.push({tag: t, id: aid, titel: a.name, sym: artSym(a.art, "aufenthalt"), unter: [datumText(t.datum, t.wochentag), artName(a.art), a.zeit].filter(Boolean).join(" · "),
-        zustand: a.buchung === "offen" ? "offen" : "", text: a.buchung === "offen" ? "nicht gebucht" : a.buchung, gebucht: a.buchung !== "offen", href: t.id}); }
+        zustand: offenS(a.buchung) ? "offen" : "", text: buchungText(a.buchung === "offen" ? "nicht gebucht" : a.buchung, a.buchung_id), gebucht: !offenS(a.buchung), href: a.buchung_id || t.id}); }
   }
   return aus;
+}
+// Stand in Worten mit der Frist der Buchung, falls sie eine hat („gebucht · Frist 13.5.“)
+function buchungText(text, bid) {
+  const b = bid && R.buchungen && R.buchungen[bid];
+  return b && b.frist && b.status !== "storniert" ? `${text} · Frist ${tagMonat(b.frist)}` : text;
 }
 // Molekül Stand der Vorbereitung: je Zeile Wort, Wert und Ziel; was nichts zu tun hat, entfällt (Gebucht bleibt)
 function standLeiste(p) {
@@ -3011,6 +3136,7 @@ const GRUNDFORMEN = [
   ["ort", "Ort", "O-01", {zeile: [wegVerlauf], vorschau: [tagOrteZeilen, listenZeile], karte: [], seite: [ansichtOrt]}],
   ["unterkunft", "Aufenthalt mit Nacht: Unterkunft", "U-01", {zeile: [nachtZeile], vorschau: [listenZeile], karte: [unterkunftKarte], seite: [nachtAbschnitt]}],
   ["aufenthalt", "Aufenthalt ohne Nacht", "A-01", {zeile: [aufenthaltZeile], vorschau: [listenZeile], karte: [], seite: [tagEbenen]}],
+  ["buchung", "Buchung zu Aufenthalt oder Bewegung", "B-01", {zeile: [buchungChip], vorschau: [listenZeile], karte: [buchungBlock], seite: [unterkunftKarte, aufenthaltZeile, streckeZeile]}],
   ["wahlstelle", "Wahl: Wahlstelle", "V-01", {zeile: [wahlZeile], vorschau: [listenZeile], karte: [wahlKarte], seite: [wahlEinstieg, wahlVergleich, nachtAbschnitt]}],
   ["option", "Wahl: Option", "V-01.a", {zeile: [optionBlock], vorschau: [], karte: [wahlVergleich], seite: []}],
   ["plan", "Folge: Plan", "P-A", {zeile: [planMarke], vorschau: [steckbrief], karte: [], seite: [ansichtPlanDetail]}],
@@ -3102,6 +3228,13 @@ function ansichtBausteine(m) {
   eintraege.forEach(x => x.querySelectorAll("button").forEach(k => { k.disabled = true; }));
   teil("Molekül", "Rückmeldung", "Eine Rückmeldung oder ein Wunsch mit Status und Antwort.", eintraege[0]);
   teil("Molekül", "Aufgabe", "Eine Aufgabe mit Haken, Frist und Zuständigem.", eintraege[1]);
+  const bu = R && Object.values(R.buchungen || {})[0];
+  const buBlock = buchungBlock(bu || {id: "B-00", fuer: [], status: "gebucht", nummer: "MUSTER-123", bei: "Muster", preis: "100 € (Muster)",
+    frist: "2099-12-31", frist_was: "Restzahlung", storno: "kostenlos bis 7 Tage vorher (Muster)", gebucht_am: "2027-01-02", wer: "Muster",
+    quelle: "Muster", verlauf: [{datum: "2027-01-02", wer: "Muster", was: "angelegt"}]});
+  buBlock.querySelectorAll("button, form").forEach(k => { k.tagName === "FORM" ? k.remove() : (k.disabled = true); });
+  teil("Molekül", "Buchung", "Eine Buchung mit Stand, Nummer, Frist, Stornoregel, Herkunft, Belegen und Verlauf; ihre Heimat ist das gebuchte Ding."
+    + (bu ? "" : " (Muster)"), buBlock);
   if (WUENSCHE) {
     const wk = wuKarte({id: "", name: "Muster", text: "Beispielwunsch (Muster).", status: "uebernommen", erstellt: "2027-01-02T00:00:00Z",
       spalte: "geprueft", punkte: 3, kommentar: "Beispielantwort, wo der Wunsch hinpasst (Muster).",
@@ -3847,6 +3980,7 @@ window.addEventListener("online", () => agLaden().then(rmNeuZeichnen));
 function heimat(id, tiefe = 0) {
   if (!R || !PLAN_TAGE || tiefe > 3) return null;
   const imPlan = tid => PLAN_TAGE.tage.some(t => t.id === tid);
+
   if (R.unterkuenfte[id]) {
     const t = R.unterkuenfte[id].naechte.find(imPlan);
     if (t) return {tag: t, ziel: id};
@@ -3918,7 +4052,10 @@ function route(behalten) {
   EKARTEN = [];
   m.replaceChildren();
   let ziel = null;
-  const h = decodeURIComponent(location.hash.slice(1));
+  let h = decodeURIComponent(location.hash.slice(1));
+  // Eine Buchung (B-…, #76) wohnt bei ihrem ersten Ding (ADR-0003): dorthin, und der Block der Buchung ist das Ziel
+  const zielB = R && R.buchungen && R.buchungen[h] ? h : null;
+  if (zielB) h = (R.buchungen[h].fuer || [])[0] || "";
   if (q.length >= 2) { zeigeReiter(reiter); ansichtSuche(m, q); window.scrollTo(0, 0); return; }
   if (!h && START === "varianten") { zeigeReiter("varianten"); ansichtStart(m); }
   else if ((!h || h === "plan") && !PLAN_DA) { zeigeReiter(START); START === "varianten" ? ansichtStart(m) : ansichtOffen(m); }
@@ -3957,6 +4094,7 @@ function route(behalten) {
   else if (zeileZu.has(h) && PLAN_DA) { zeigeReiter("plan"); ansichtPlan(m); ziel = h; }
   else if (!PLAN_DA) { zeigeReiter(START); START === "varianten" ? ansichtStart(m) : ansichtOffen(m); }
   else { zeigeReiter("plan"); ansichtPlan(m); }
+  if (zielB && document.getElementById(zielB)) ziel = zielB;
   // Lesetext ohne Kennungen (28.10.2026); die Bausteinseite zeigt Kennungen absichtlich
   if (h !== "bausteine") kennungenImText(m);
   const vorher = VORHER;
@@ -4010,7 +4148,7 @@ window.addEventListener("hashchange", () => { if (document.body.classList.contai
 route();
 rmKnopf();
 agKnopf();
-Promise.all([ichLaden(), rmLaden(), agLaden(), brLaden()]).then(() => route(true));
+Promise.all([ichLaden(), rmLaden(), agLaden(), brLaden(), blLaden()]).then(() => route(true));
 
 /* ---------- Höhe als App vom Home-Bildschirm (iOS) ----------
    Nach dem Schließen der Tastatur bleibt die Höhe des Fensters manchmal auf dem Stand mit Tastatur stehen, bis die App

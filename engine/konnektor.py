@@ -62,6 +62,7 @@ import anmeldung  # noqa: E402
 import instanz  # noqa: E402
 import konten  # noqa: E402
 import oauth  # noqa: E402
+import belege as bl  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, REISE_ZIEL, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
@@ -74,12 +75,13 @@ SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern",
 # Schreibweg (KN_SCHREIBDIENST); Organisator:innen schreiben, Mitwirkende schlagen vor (Rückmeldung der Art Ergänzung)
 ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "wert_eintragen", "ding_anlegen", "ding_aendern", "lage_eintragen",
                        "option_anlegen", "wahlstelle_anlegen", "frage_anlegen", "tag_aendern", "wissen_schreiben", "frage_schliessen",
-                       "reise_status_setzen", "einstellung_setzen")
+                       "reise_status_setzen", "einstellung_setzen", "buchung_anlegen", "buchung_aendern")
 # Aktion der Regelprüfung je Werkzeug; art_definieren und merkmal_definieren gehen für Mitwirkende als Rückmeldung (Vorschlag)
 ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "wert_eintragen": "wert",
                     "ding_anlegen": "ding", "ding_aendern": "ding", "lage_eintragen": "ding", "option_anlegen": "alternative",
                     "wahlstelle_anlegen": "alternative", "frage_anlegen": "frage", "tag_aendern": "plan", "wissen_schreiben": "wissen",
-                    "frage_schliessen": "frage_schliessen", "reise_status_setzen": "einstellung", "einstellung_setzen": "einstellung"}
+                    "frage_schliessen": "frage_schliessen", "reise_status_setzen": "einstellung", "einstellung_setzen": "einstellung",
+                    "buchung_anlegen": "buchung", "buchung_aendern": "buchung"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe",
                   "entscheiden": "entscheiden", "rueckmeldung_erledigen": "rueckmeldung_erledigen",
@@ -372,9 +374,10 @@ def datum_de(iso):
 class Handbuch:
     """Alles, was eine Reise-Seite zeigt, nach ID nachschlagbar."""
 
-    def __init__(self, d, aufgaben=None, offene_entscheidungen=None, antworten=None, meldungen=None):
+    def __init__(self, d, aufgaben=None, offene_entscheidungen=None, antworten=None, meldungen=None, belege=None):
         self.d = d
         self.aufgaben = aufgaben
+        self.belege = belege or {}       # B-ID -> Belege aus der Ablage (Rückmeldedienst), soweit die Person sie sehen darf
         self.meldungen = meldungen or []   # Meldungen an die sprechende Person (Wächter, Erinnerer, Konflikte)
         self.offene_entscheidungen = offene_entscheidungen or {}   # Option-ID -> eingetragene, noch nicht eingearbeitete Entscheidungen
         self.antworten = antworten or {}                            # F-ID -> Antworten aus dem Eingang
@@ -405,6 +408,36 @@ class Handbuch:
         if n.get("wahl"):
             teile.append(f"Wahl {n['wahl']}")
         return ", ".join(teile)
+
+    def buchung_text(self, b):
+        """Eine Buchung (B-…, #76) für die Claude-App: Dinge, Status, Nummer, Anbieter, Preis, Frist, Storno, Herkunft, Belege, Verlauf."""
+        z = ["Für: " + "; ".join(f"{x} {self.titel_von(x)}" for x in b.get("fuer") or []), f"Status: {b.get('status')}"]
+        for k, name in (("nummer", "Nummer: "), ("bei", "Gebucht bei: "), ("preis", "Preis: "), ("bezahlt", "Bezahlt: ")):
+            if b.get(k):
+                z.append(name + str(b[k]))
+        if b.get("frist"):
+            z.append(f"Frist {datum_de(b['frist'])}" + (f": {b['frist_was']}" if b.get("frist_was") else ""))
+        if b.get("storno") or b.get("storno_bis"):
+            z.append("Storno: " + (b.get("storno") or "") + (f" (bis {datum_de(b['storno_bis'])})" if b.get("storno_bis") else ""))
+        if b.get("gebucht_am") or b.get("wer"):
+            z.append("Gebucht " + (f"am {datum_de(b['gebucht_am'])} " if b.get("gebucht_am") else "") + (f"von {b['wer']}" if b.get("wer") else ""))
+        if b.get("notiz"):
+            z.append(b["notiz"])
+        if b.get("quelle"):
+            z.append("Quelle: " + str(b["quelle"]))
+        belege = (self.belege or {}).get(b.get("id")) or []
+        z.append("Belege: " + ("; ".join(f"{x.get('name')} ({x.get('wer')}, {str(x.get('hochgeladen', ''))[:10]}"
+                                          + (", für alle sichtbar" if x.get("sichtbar") == "alle" else "") + ")" for x in belege)
+                               if belege else "keine (die Person hängt sie auf der Reiseseite bei der Buchung an)"))
+        if b.get("verlauf"):
+            z.append("Verlauf: " + "; ".join(f"{datum_de(v['datum'])} {v.get('wer')}: {v.get('was')}" + (f" ({v['grund']})" if v.get("grund") else "")
+                                             for v in b["verlauf"] if v.get("datum")))
+        return "\n".join(z)
+
+    def titel_von(self, x):
+        r = self.r
+        d = (r.get("unterkuenfte") or {}).get(x) or (r.get("aufenthalte") or {}).get(x)
+        return (d or {}).get("name") or ((r.get("strecken") or {}).get(x) or {}).get("titel") or ""
 
     def aufenthalt(self, aid):
         """Aufenthalt ohne Nacht (A-…): Name, Art, Zeit, Buchungsstand."""
@@ -582,7 +615,7 @@ class Handbuch:
             for k, name in (("hinweis", ""), ("kontakt", "Kontakt: "), ("buchung", "Buchung: "),
                             ("frage", "Offene Frage: "), ("quelle", "Quelle: ")):
                 if u.get(k):
-                    z.append(name + str(u[k]))
+                    z.append(name + str(u[k]) + (f" ({u['buchung_id']}, zeige {u['buchung_id']})" if k == "buchung" and u.get("buchung_id") else ""))
             # Lage (ADR-0004): Adresse und Koordinaten mit Herkunft; fehlt beides, trägt lage_eintragen sie nach
             for k, name in (("adresse", "Adresse: "), ("punkt", "Koordinaten: ")):
                 v = u.get(k)
@@ -597,6 +630,8 @@ class Handbuch:
                 z.append("Merkmale:")
                 z += self.merkmal_zeilen((r.get("merkmale") or {}).get(u.get("art")), u.get("merkmale"), u.get("fehlt"))
             e[uid] = (u.get("name") or uid, "\n".join(z))
+        for bid, b in (r.get("buchungen") or {}).items():   # Buchung als eigenes Ding (#76)
+            e[bid] = (f"Buchung {b.get('status')}: {b.get('titel') or bid}", self.buchung_text(b))
         for p in r.get("plaene", []):
             z = [p.get("text") or "", "Auswahl: " + ", ".join(p.get("auswahl") or [])]
             if p.get("aktuell"):
@@ -652,6 +687,16 @@ class Handbuch:
             z.append(f"## Offene Aufgaben: {len(offene_ag)}" + (f", davon {len(ueber)} überfällig" if ueber else "")
                      + " (Werkzeug aufgaben)")
             z += [f"- {a['id']} Frist {a['frist']}: {a['titel']}" for a in ueber]
+        if self.r.get("buchungen"):
+            bs = list(self.r["buchungen"].values())
+            gezaehlt = {s: len([b for b in bs if b.get("status") == s]) for s in ("gebucht", "angefragt", "storniert")}
+            z.append("## Buchungen: " + ", ".join(f"{n} {s}" for s, n in gezaehlt.items() if n) + " (zeige B-…)")
+            heute = datetime.date.today().isoformat()
+            fristen = sorted((b for b in bs if b.get("status") != "storniert" and (b.get("frist") or b.get("storno_bis"))),
+                             key=lambda b: min(x for x in (b.get("frist"), b.get("storno_bis")) if x))[:5]
+            z += [f"- {b['id']} {b.get('titel')}: " + ", ".join(x for x in (
+                f"Frist {datum_de(b['frist'])}" + (f" ({b['frist_was']})" if b.get("frist_was") else "") + (" überfällig" if b["frist"] < heute else "") if b.get("frist") else "",
+                f"kostenlos stornierbar bis {datum_de(b['storno_bis'])}" if b.get("storno_bis") else "") if x) for b in fristen]
         if self.meldungen:
             z.append("## Meldungen an dich")
             z += [f"- {m['erstellt'][:10]}: {m['text']}" for m in self.meldungen[:10]]
@@ -1041,6 +1086,16 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
         ziel = str(args.get("ziel") or "").strip()
         if ziel and ziel not in ids_der_reise(d):
             return f"„{ziel}“ gibt es in dieser Reise nicht. Mit suche oder ueberblick die ID finden.", True
+    if name == "buchung_anlegen":
+        fuer = args.get("fuer")
+        fuer = [x.strip() for x in fuer.split(",")] if isinstance(fuer, str) else list(fuer or [])
+        fremd = [x for x in fuer if not isinstance(x, str) or x not in ids_der_reise(d)]
+        if fremd:
+            return f"{', '.join(map(str, fremd))} gibt es in dieser Reise nicht (fuer: Unterkunft U-…, Aufenthalt A-… oder Strecke E-…).", True
+    if name == "buchung_aendern":
+        ziel = str(args.get("ziel") or "").strip().upper()
+        if ziel not in (route.get("buchungen") or {}):
+            return f"Die Buchung „{ziel}“ gibt es nicht (zeige U-…/E-… nennt die Buchung, ueberblick zählt sie).", True
     if name == "ding_anlegen":
         if (h := merkmal_hinweise(d, str(args.get("art") or "").lower(), args.get("merkmale"))):
             return h, True
@@ -1198,6 +1253,15 @@ def offene_entscheidungen(reise):
             aus.setdefault(dt["option"], []).append({"wer": a.get("name"), "entscheidung": dt["entscheidung"], "auftrag": a["id"],
                                                      "datum": dt.get("datum") or a["erstellt"][:10], "status": a["status"],
                                                      "weg": dt.get("weg", "auftrag")})
+    return aus
+
+
+def belege_von(reise, wer):
+    """Belege je Buchung aus der Ablage (engine/belege.py, #76), soweit diese Person sie sehen darf -> {B-ID: [Beleg]}."""
+    o = rm.ordner(reise)
+    aus = {}
+    for b in (bl.liste(o, wer.get("name"), wer.get("rolle")) if o else []):
+        aus.setdefault(b["buchung"], []).append(b)
     return aus
 
 
@@ -2182,6 +2246,37 @@ EINSTELLUNG_SETZEN = {"name": "einstellung_setzen", "description": "Nur für Org
                           "bausteine": {"type": "array", "items": {"type": "string"}},
                           "regeln": {"type": "object", "additionalProperties": True},
                           "grund": {"type": "string"}, "vorname": NAME_FELD}}}
+BUCHUNG_FELDER_SCHEMA = {
+    "status": {"type": "string", "enum": ["angefragt", "gebucht", "storniert"], "description": "Vorgabe gebucht"},
+    "nummer": {"type": "string", "description": "Buchungsnummer, Buchungscode, PNR"},
+    "bei": {"type": "string", "description": "wo gebucht: Anbieter oder Portal, z. B. booking.com, direkt per Mail, bahn.de"},
+    "preis": {"type": "string", "description": "Gesamtpreis mit Währung und wofür, z. B. „240 € für 2 Nächte“"},
+    "bezahlt": {"type": "string", "description": "was schon bezahlt ist, z. B. „Anzahlung 50 €, Rest vor Ort“"},
+    "frist": {"type": "string", "description": "JJJJ-MM-TT: bis wann etwas zu tun ist (Restzahlung, Ticket laden); der Wächter erinnert"},
+    "frist_was": {"type": "string", "description": "was bis zur Frist zu tun ist"},
+    "storno": {"type": "string", "description": "Stornoregel in Worten, z. B. „kostenlos bis 7 Tage vorher, danach 1 Nacht“"},
+    "storno_bis": {"type": "string", "description": "JJJJ-MM-TT: bis wann kostenlos stornierbar; der Wächter erinnert"},
+    "gebucht_am": {"type": "string", "description": "JJJJ-MM-TT (Vorgabe heute)"},
+    "notiz": {"type": "string"}}
+BUCHUNG_ANLEGEN = {"name": "buchung_anlegen", "description": "Eine Buchung als eigenes Ding (B-…) eintragen: für welche Unterkunft (U-…), "
+                   "welchen Aufenthalt (A-…) oder welche Strecke (E-…), Status, Buchungsnummer, Anbieter, Preis, Frist, Stornoregel. "
+                   "Schreibt sofort; Herkunft (quelle) ist Pflicht, z. B. „Buchungsbestätigung per Mail vom …“. Liest die Person dir eine "
+                   "Bestätigung vor oder zeigt sie dir, trägst du daraus Nummer, Frist und Stornoregel ein (vorher kurz bestätigen lassen). "
+                   "Den Beleg selbst (PDF, Bild) hängt die Person auf der Reiseseite bei der Buchung an; er liegt nie im Repo und ist nur "
+                   "für sie und Organisator:innen sichtbar, bis eine Organisator:in ihn für alle freigibt.",
+                   "inputSchema": {"type": "object", "properties": {
+                       "fuer": {"type": "array", "items": {"type": "string"}, "description": "U-…, A-… oder E-…, eine oder mehrere"},
+                       **BUCHUNG_FELDER_SCHEMA, "quelle": QUELLE_FELD, "grund": {"type": "string"}, "vorname": NAME_FELD},
+                       "required": ["fuer", "quelle"]}}
+BUCHUNG_AENDERN = {"name": "buchung_aendern", "description": "Felder einer Buchung B-… ändern (Status gebucht/storniert, Nummer, Frist, "
+                   "Stornoregel, Preis …); schreibt sofort, jede Änderung steht mit Person, Datum und Grund im Verlauf. Leerer Text "
+                   "entfernt ein Feld (z. B. frist: \"\" nach Erledigung). Vorher kurz bestätigen lassen.",
+                   "inputSchema": {"type": "object", "properties": {
+                       "ziel": {"type": "string", "description": "B-…"},
+                       "fuer": {"type": "array", "items": {"type": "string"}}, **BUCHUNG_FELDER_SCHEMA,
+                       "quelle": {"type": "string", "description": "neue Herkunft, falls sie sich ändert"},
+                       "grund": {"type": "string", "description": "warum (steht im Verlauf)"}, "vorname": NAME_FELD},
+                       "required": ["ziel"]}}
 WERT_SCHEMA_EINTRAG = {"type": "object", "properties": {
     "wert": {"type": "string"}, "gilt": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}],
              "description": "Datum JJJJ-MM-TT oder Liste, wenn der Wert nur für diese Tage gilt (Preis je Nacht)"},
@@ -2346,7 +2441,9 @@ def anleitung(zugang, d):
                     "neuen Art fragen, was zu jeder Sache bekannt sein muss und was sich ändern kann), Werte mit Herkunft und Prüfdatum "
                     "(wert_eintragen; erst selbst recherchieren, merkmale sagt wo), Unterkünfte, Strecken, Orte (ding_anlegen, ding_aendern), "
                     "Alternativen (option_anlegen, wahlstelle_anlegen), der Plan eines Tags (tag_aendern), Wissen in eigenen Worten mit "
-                    "Herkunft (wissen_schreiben), Fragen (frage_anlegen, frage_beantworten, frage_schliessen), Status und Einstellungen "
+                    "Herkunft (wissen_schreiben), Fragen (frage_anlegen, frage_beantworten, frage_schliessen), Buchungen als eigenes Ding "
+                    "mit Nummer, Frist und Stornoregel (buchung_anlegen, buchung_aendern; den Beleg hängt die Person auf der Reiseseite an), "
+                    "Status und Einstellungen "
                     "(reise_status_setzen, einstellung_setzen). Rückmeldungen der Seite arbeitest du ein: prüfen, eintragen, dann "
                     "rueckmeldung_erledigen mit Kommentar in einfachen Worten. Vor jedem Eintragen den Wortlaut bestätigen lassen."
                     if direkt else ""))
@@ -2355,7 +2452,8 @@ def anleitung(zugang, d):
                  f"kann sie nicht, das bleibt bei {namen}. Offene Fragen beantwortet sie mit frage_beantworten. "
                  + ("Sie schreibt direkt in die Reise: Werte mit Herkunft und Prüfdatum (wert_eintragen), Unterkünfte, Strecken, Orte "
                     "(ding_anlegen, ding_aendern), Alternativen als Vorschlag (option_anlegen, wahlstelle_anlegen), Wissen in eigenen Worten "
-                    "mit Herkunft (wissen_schreiben), Fragen (frage_anlegen). Arten und Merkmale schlägt sie mit art_definieren und "
+                    "mit Herkunft (wissen_schreiben), Fragen (frage_anlegen), Buchungen, die sie selbst gemacht hat (buchung_anlegen, "
+                    "buchung_aendern; den Beleg hängt sie auf der Reiseseite an). Arten und Merkmale schlägt sie mit art_definieren und "
                     "merkmal_definieren vor (wird eine Rückmeldung). " if direkt else "")
                  + ("Sie darf Personen einladen (person_einladen), höchstens mit der Rolle mitwirkend. " if kann_einladen else "")
                  + ("" if wer["name"] else "Für Rückmeldungen und Aufgaben brauchst du ihren Vornamen: einmal fragen, "
@@ -2443,7 +2541,7 @@ def werkzeug(zugang, name, args):
     if d is None:
         return "Die Seite dieser Reise ist noch nicht veröffentlicht.", True
     h = Handbuch(d, aufgaben_von(reise), offene_entscheidungen(reise), antworten_von(reise),
-                 meldungen_fuer(reise, wer["name"], d))
+                 meldungen_fuer(reise, wer["name"], d), belege_von(reise, wer))
     if name == "entscheiden":
         return entscheiden(reise, d, h, {**wer, "person": zugang.get("person")}, args)
     if name == "frage_beantworten":
@@ -2555,7 +2653,8 @@ def werkzeuge_fuer(zugang):
     _, bausteine = zustand_von(d)
     werkzeuge = []
     ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN, WERT_EINTRAGEN, DING_ANLEGEN, DING_AENDERN, LAGE_EINTRAGEN, OPTION_ANLEGEN, WAHLSTELLE_ANLEGEN,
-                 FRAGE_ANLEGEN, TAG_AENDERN, WISSEN_SCHREIBEN, FRAGE_SCHLIESSEN, REISE_STATUS_SETZEN, EINSTELLUNG_SETZEN] if schreibdienst() else []
+                 FRAGE_ANLEGEN, TAG_AENDERN, WISSEN_SCHREIBEN, FRAGE_SCHLIESSEN, REISE_STATUS_SETZEN, EINSTELLUNG_SETZEN,
+                 BUCHUNG_ANLEGEN, BUCHUNG_AENDERN] if schreibdienst() else []
     for w in WERKZEUGE + [ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN, RUECKMELDUNG_ERLEDIGEN] + ontologie:
         n = w["name"]
         if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:
