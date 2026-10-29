@@ -1564,6 +1564,11 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
     knoten = (roh.get("buchungen") or {}).get(bid)
     if knoten is None:
         raise Ablehnung(f"Die Buchung {bid} gibt es nicht.")
+    # Mitwirkende ändern nur, was sie selbst eingetragen haben (wer); Organisator:innen alles (Product Owner 29.10.2026, wie bei Belegen)
+    if wer["rolle"] != "organisator" and str(knoten.get("wer") or "").strip().casefold() != wer["name"].casefold():
+        raise Ablehnung(f"Die Buchung {bid} hat {knoten.get('wer') or 'jemand anderes'} eingetragen; ändern darf sie nur diese Person "
+                        "oder eine Organisator:in.")
+    grund = text_wert(args, "grund")
     geaendert, kurz = [], []   # ausführlich für die Antwort, kurz für den Verlauf
 
     def setze(feld, neu, wort=None):
@@ -1588,6 +1593,8 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
     if (status := text_wert(args, "status", laenge=20)) is not None:
         if status.lower() not in BUCHUNG_STATUS:
             raise Ablehnung(f"„status“ muss {', '.join(BUCHUNG_STATUS)} sein.")
+        if status.lower() == "storniert" and knoten.get("status", "gebucht") != "storniert" and not grund:
+            raise Ablehnung("Stornieren braucht einen Grund (grund), er steht im Verlauf.")
         setze("status", status.lower(), "Status")
     for k, laenge in BUCHUNG_TEXTE.items():
         if k in args and args.get(k) is not None:
@@ -1603,7 +1610,6 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
             setze(k, v)
     if not geaendert:
         raise Ablehnung(f"Nichts zu ändern an {bid} (änderbar: fuer, status, {', '.join(BUCHUNG_TEXTE)}, quelle, frist, storno_bis, gebucht_am).")
-    grund = text_wert(args, "grund")
     from ruamel.yaml.comments import CommentedSeq
     verlauf = knoten.get("verlauf")
     if verlauf is None:

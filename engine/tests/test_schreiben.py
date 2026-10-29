@@ -844,6 +844,13 @@ def test_buchung_anlegen_und_aendern(repo):
     b = r["buchungen"]["B-03"]
     assert b["status"] == "gebucht" and "frist" not in b and b["nummer"] == "P-7/2027"
     assert b["verlauf"][-1] == {"datum": datetime.date.today(), "wer": "Ida", "was": "Status; Nummer; Frist entfernt", "grund": "Bestätigung ist da"}
+    # Mitwirkende ändern nur, was sie selbst eingetragen haben; Stornieren braucht einen Grund (Product Owner 29.10.2026)
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="hat Ida eingetragen"):
+        s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-01", "notiz": "x"}})
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="Stornieren braucht einen Grund"):
+        s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-03", "status": "storniert"}})
     # Der Buchungsstand der Dinge folgt der Buchung (Probebau liest sie)
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="Nichts zu ändern"):
@@ -854,3 +861,9 @@ def test_buchung_anlegen_und_aendern(repo):
         s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-03", "quelle": ""}})
     with pytest.raises(sb.Ablehnung, match="nur lesen"):
         s.schreiben("beispielreise", "buchung_aendern", {"person": "gast", "name": "Gast", "rolle": "gast", "args": {"ziel": "B-03", "status": "storniert"}})
+    # Stornieren mit Grund durch die Person, die eingetragen hat (Karl); Organisator:innen dürfen jede Buchung
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-03", "status": "storniert", "grund": "Pension hat abgesagt"}})
+    assert "Status „gebucht“ → „storniert“" in a["text"] and "Grund: Pension hat abgesagt" in a["text"]
+    s.vorbereiten()
+    assert s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-03", "notiz": "von Ida"}})["ok"]

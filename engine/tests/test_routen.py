@@ -907,6 +907,16 @@ def test_buchung_als_eigenes_ding_bei_zwei_reisetypen():
     assert erg["aufenthalte"]["A-01"]["buchung"] == "angefragt" and erg["aufenthalte"]["A-01"]["buchung_id"] == "B-02"
     assert erg["aufenthalte"]["A-02"]["buchung"] is None and erg["aufenthalte"]["A-02"]["buchung_id"] is None
     assert not any("B-0" in w["text"] for w in erg["warnungen"])
+    # Welche gilt (Product Owner 29.10.2026): gebucht vor angefragt, dann die jüngste (gebucht_am), dann die spätere; stornierte nie
+    for buchungen, erwartet in (
+            ({"B-01": {"status": "angefragt", "gebucht_am": D(2026, 10, 20)}, "B-02": {"status": "gebucht", "gebucht_am": D(2026, 10, 10)}}, ("gebucht", "B-02")),
+            ({"B-01": {"status": "angefragt", "gebucht_am": D(2026, 10, 20)}, "B-02": {"status": "angefragt", "gebucht_am": D(2026, 10, 10)}}, ("angefragt", "B-01")),
+            ({"B-01": {"status": "gebucht"}, "B-02": {"status": "gebucht"}}, ("gebucht", "B-02")),
+            ({"B-01": {"status": "gebucht", "gebucht_am": D(2026, 10, 20)}, "B-02": {"status": "storniert", "gebucht_am": D(2026, 10, 25)}}, ("gebucht", "B-01"))):
+        r2, a2 = staedtereise()
+        r2["buchungen"] = {k: {"fuer": ["U-01"], "quelle": "x", **v} for k, v in buchungen.items()}
+        erg2, fehler2 = laufe(r2, FRAGEN, a2)
+        assert fehler2 == [] and (erg2["unterkuenfte"]["U-01"]["buchung"], erg2["unterkuenfte"]["U-01"]["buchung_id"]) == erwartet, buchungen
     # Zwei geltende Buchungen für dasselbe Ding sind eine Warnung, keine Ablehnung
     r["buchungen"]["B-04"] = {"fuer": ["U-01"], "quelle": "x"}
     erg, fehler = laufe(r, FRAGEN, a)

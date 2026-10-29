@@ -387,9 +387,24 @@ class Routen:
                     break
             if b.get("status", "gebucht") != "storniert":
                 for x in fuer:
-                    if x in self.buchung_je_ding and self.buchung_je_ding[x] != bid:
-                        self.warne(bid, f"Buchung {bid} und {self.buchung_je_ding[x]} gelten beide für {x}.")
-                    self.buchung_je_ding.setdefault(x, bid)
+                    alt = self.buchung_je_ding.get(x)
+                    if alt and alt != bid:
+                        self.warne(bid, f"Buchung {bid} und {alt} gelten beide für {x}.")
+                    # Welche gilt (Product Owner 29.10.2026): gebucht vor angefragt, dann die jüngste (gebucht_am), dann die spätere
+                    if alt is None or self.buchung_rang(bid) >= self.buchung_rang(alt):
+                        self.buchung_je_ding[x] = bid
+
+    def buchung_rang(self, bid):
+        """Vorrang einer Buchung für den Buchungsstand ihres Dings: (gebucht?, gebucht_am)."""
+        b = self.buchungen.get(bid)
+        b = b if isinstance(b, dict) else {}
+        am = b.get("gebucht_am")
+        if not isinstance(am, datetime.date):
+            try:
+                am = datetime.date.fromisoformat(str(am)) if am else datetime.date.min
+            except ValueError:
+                am = datetime.date.min
+        return (b.get("status", "gebucht") == "gebucht", am)
 
     def buchung_aus(self, bid):
         """Eine Buchung für die Seite und den Konnektor: Felder als Text, Daten als ISO, Verlauf, Titel aus ihren Dingen."""

@@ -145,7 +145,7 @@ def seher(ident, z, getippt=None):
         return getippt, rolle_von(z, getippt) if getippt else None
     if ident["art"] == "konto":
         p = ident.get("person")
-        return (p["name"], rg.rolle_neu(p.get("rolle"))) if p else (None, None)
+        return (p["name"], rg.rolle_neu(p.get("rolle"))) if p else (None, "gast")   # angemeldet, aber nicht in der Reise: wie ein Gast
     return None, "gast"
 
 
@@ -932,6 +932,9 @@ class Dienst(BaseHTTPRequestHandler):
         if nein:
             self.close_connection = True
             return self._antwort(nein[0], {"fehler": nein[1]})
+        if ident["art"] == "seite":   # Belege nur angemeldet (Product Owner 29.10.2026): ein eingetippter Name trägt „nur für dich
+            self.close_connection = True   # und Organisator:innen sichtbar“ nicht, auch nicht bei der Übergangsregel
+            return self._antwort(401, {"fehler": "Bitte melde dich an, um Belege anzuhängen; sie sind nur für dich und die Organisator:innen sichtbar."})
         if not name:
             self.close_connection = True
             return self._antwort(400, {"fehler": "Name fehlt (wer lädt den Beleg hoch?)."})

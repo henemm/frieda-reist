@@ -1288,7 +1288,9 @@ async function blLaden() {
     BL = d; BL_OK = true; merke("belege", BL);
   } catch (e) { BL_OK = false; }
 }
-const KANN_BELEG = () => V.schreiben === "alles" && !!ICH && (MIT_KONTO() || ICH.anmeldung === "uebergang");
+// Belege nur angemeldet (Product Owner 29.10.2026): der Dienst zeigt sie nur der hochladenden Person und Organisator:innen; ein
+// eingetippter Name (Übergangsregel) kann das nicht tragen, deshalb gibt es das Formular ohne Konto nicht
+const KANN_BELEG = () => V.schreiben === "alles" && MIT_KONTO();
 const BUCHUNG_STATUS = {gebucht: "gebucht", angefragt: "angefragt", storniert: "storniert"};
 const groesseText = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(n / 1024)) + " kB";
 // Molekül Buchung: Etikett mit Zustand, die Angaben als Zeilen, leise Herkunft, Belege, Verlauf zugeklappt
@@ -1329,13 +1331,13 @@ function belegeListe(b) {
     }
     box.append(z);
   }
+  if (b.status !== "storniert" && V.schreiben === "alles" && ICH && !MIT_KONTO())
+    box.append(el("div", {class: "z klein"}, KONTO_HIER() ? el("a", {href: ANMELDEN()}, "Anmelden") : "Anmelden",
+      ", um einen Beleg anzuhängen; er ist dann nur für dich und die Organisator:innen sichtbar."));
   if (KANN_BELEG() && b.status !== "storniert") box.append(el("form", {class: "beleg-form", "data-bl-form": b.id},
     el("input", {type: "file", name: "datei", accept: "application/pdf,image/jpeg,image/png,image/webp,image/heic", required: true, "aria-label": "Beleg wählen"}),
-    MIT_KONTO() ? null : el("input", {name: "name", placeholder: "Dein Name", maxlength: 80, value: NAME, autocomplete: "name"}),
     el("button", {type: "submit", class: "outline klein"}, "Beleg anhängen"),
-    el("span", {class: "meldung bl-meldung"}, MIT_KONTO() ? "PDF oder Bild, bis 10 MB; sichtbar für dich und die Organisator:innen."
-      // ohne Konto zählt nur der eingetippte Name: der Dienst zeigt den Beleg danach nur Organisator:innen (fail-closed)
-      : "PDF oder Bild, bis 10 MB; sichtbar für die Organisator:innen. Melde dich an, wenn du den Beleg danach selbst sehen oder zurückziehen willst.")));
+    el("span", {class: "meldung bl-meldung"}, "PDF oder Bild, bis 10 MB; sichtbar für dich und die Organisator:innen.")));
   return box;
 }
 document.addEventListener("submit", async e => {
@@ -1344,12 +1346,10 @@ document.addEventListener("submit", async e => {
   e.preventDefault();
   const datei = f.querySelector("input[type=file]").files[0], m = f.querySelector(".bl-meldung");
   if (!datei) return;
-  const name = MIT_KONTO() ? "" : ((f.querySelector("input[name=name]") || {}).value || "").trim();
-  if (!MIT_KONTO() && !name) { m.textContent = "Bitte deinen Namen angeben."; return; }
-  if (name) { NAME = name; try { localStorage.setItem("rh-name", NAME); } catch (x) {} }
+  if (!MIT_KONTO()) { m.textContent = "Bitte melde dich an, um Belege anzuhängen."; return; }
   m.textContent = "Wird hochgeladen …";
   try {
-    const r = await fetch(BL_API + "/" + f.dataset.blForm + (name ? "?name=" + encodeURIComponent(name) : ""),
+    const r = await fetch(BL_API + "/" + f.dataset.blForm,
       {method: "POST", body: datei, headers: {"Content-Type": datei.type || "application/octet-stream", "X-Frieda-Datei": encodeURIComponent(datei.name)}});
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw d.fehler || "abgelehnt";

@@ -254,13 +254,18 @@ def test_beleg_hochladen_sehen_freigeben_zurueckziehen(belege_welt):
     import belege as bl
     basis, ablage = belege_welt
     u = basis + "/beispielreise/belege"
-    # Hochladen über die Seite mit eingetipptem Namen (Regel anmeldung: uebergang), Typ am Inhalt
-    code, b = anfrage(u + "/B-01?name=Karl", "POST", roh=PDF)
+    # Hochladen nur angemeldet (Product Owner 29.10.2026): die Seite mit bloß eingetipptem Namen wird abgewiesen, auch bei der
+    # Übergangsregel; hier über den Dienst-Header mit genannter Person (wie der Konnektor), Typ am Inhalt
+    code, e = anfrage(u + "/B-01?name=Karl", "POST", roh=PDF)
+    assert code == 401 and "melde dich an" in e["fehler"]
+    code, b, _ = _dienst_anfrage(u + "/B-01?name=Karl", "POST", roh=PDF)
     assert code == 201 and b["id"] == "D-01" and b["buchung"] == "B-01" and b["wer"] == "Karl" and b["typ"] == "application/pdf"
     assert b["sichtbar"] == "beteiligte" and b["groesse"] == len(PDF) and b["name"] == "Beleg" and b["datei"] == "D-01.pdf"
     assert (ablage / "beispielreise" / "belege" / "D-01.pdf").read_bytes() == PDF
-    code, b2 = anfrage(u + "/B-02?name=Ida", "POST", roh=b"\x89PNG\r\n\x1a\n" + b"x" * 20, kopf={"X-Frieda-Datei": "Ticket%20Bahn.png"})
+    code, b2, _ = _dienst_anfrage(u + "/B-02?name=Ida", "POST", roh=b"\x89PNG\r\n\x1a\n" + b"x" * 20, kopf={"X-Frieda-Datei": "Ticket%20Bahn.png"})
     assert code == 201 and b2["id"] == "D-02" and b2["name"] == "Ticket Bahn.png" and b2["typ"] == "image/png"
+    # angemeldet, aber nicht in der Reise: sieht wie ein Gast (nur Freigegebenes), nicht weniger
+    assert rm.seher({"art": "konto", "person": None}, None) == (None, "gast")
     # Sehen: die Seite ohne Anmeldung sieht nichts; der Konnektor nennt die Person: Ida (Organisatorin) alles, Karl seinen,
     # Anna (eingetippt, Mitwirkende) nichts
     assert anfrage(u) == (200, [])
@@ -292,12 +297,12 @@ def test_beleg_abgelehnt(belege_welt):
     import belege as bl
     basis, ablage = belege_welt
     u = basis + "/beispielreise/belege"
-    assert anfrage(u + "/B-99?name=Karl", "POST", roh=PDF)[0] == 404
-    assert anfrage(u + "/B-01?name=Karl", "POST", roh=b"hallo, kein PDF")[0] == 415
-    assert anfrage(u + "/B-01?name=Karl", "POST", roh=b"")[0] == 400
-    code, e = anfrage(u + "/B-01", "POST", roh=PDF)
+    assert _dienst_anfrage(u + "/B-99?name=Karl", "POST", roh=PDF)[0] == 404
+    assert _dienst_anfrage(u + "/B-01?name=Karl", "POST", roh=b"hallo, kein PDF")[0] == 415
+    assert _dienst_anfrage(u + "/B-01?name=Karl", "POST", roh=b"")[0] == 400
+    code, e, _ = _dienst_anfrage(u + "/B-01", "POST", roh=PDF)
     assert code == 400 and "Name fehlt" in e["fehler"]
-    code, e = anfrage(u + "/B-01?name=Karl", "POST", roh=b"%PDF-" + b"x" * (bl.MAX_DATEI + 1))
+    code, e, _ = _dienst_anfrage(u + "/B-01?name=Karl", "POST", roh=b"%PDF-" + b"x" * (bl.MAX_DATEI + 1))
     assert code == 413
     assert anfrage(u + "/D-07", "PATCH", {"name": "Ida", "sichtbar": "alle"})[0] == 404
     assert bl.typ_erkennen(b"RIFF\x00\x00\x00\x00WEBPVP8 ") == "image/webp" and bl.typ_erkennen(b"\x00\x00\x00\x18ftypheic") == "image/heic"

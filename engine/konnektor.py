@@ -2266,15 +2266,16 @@ BUCHUNG_ANLEGEN = {"name": "buchung_anlegen", "description": "Eine Buchung als e
                    "welchen Aufenthalt (A-…) oder welche Strecke (E-…), Status, Buchungsnummer, Anbieter, Preis, Frist, Stornoregel. "
                    "Schreibt sofort; Herkunft (quelle) ist Pflicht, z. B. „Buchungsbestätigung per Mail vom …“. Liest die Person dir eine "
                    "Bestätigung vor oder zeigt sie dir, trägst du daraus Nummer, Frist und Stornoregel ein (vorher kurz bestätigen lassen). "
-                   "Den Beleg selbst (PDF, Bild) hängt die Person auf der Reiseseite bei der Buchung an; er liegt nie im Repo und ist nur "
-                   "für sie und Organisator:innen sichtbar, bis eine Organisator:in ihn für alle freigibt.",
+                   "Den Beleg selbst (PDF, Bild) hängt die Person angemeldet auf der Reiseseite bei der Buchung an; er liegt nie im Repo "
+                   "und ist nur für sie und Organisator:innen sichtbar, bis eine Organisator:in ihn für alle freigibt.",
                    "inputSchema": {"type": "object", "properties": {
                        "fuer": {"type": "array", "items": {"type": "string"}, "description": "U-…, A-… oder E-…, eine oder mehrere"},
                        **BUCHUNG_FELDER_SCHEMA, "quelle": QUELLE_FELD, "grund": {"type": "string"}, "vorname": NAME_FELD},
                        "required": ["fuer", "quelle"]}}
 BUCHUNG_AENDERN = {"name": "buchung_aendern", "description": "Felder einer Buchung B-… ändern (Status gebucht/storniert, Nummer, Frist, "
                    "Stornoregel, Preis …); schreibt sofort, jede Änderung steht mit Person, Datum und Grund im Verlauf. Leerer Text "
-                   "entfernt ein Feld (z. B. frist: \"\" nach Erledigung). Vorher kurz bestätigen lassen.",
+                   "entfernt ein Feld (z. B. frist: \"\" nach Erledigung). Mitwirkende ändern nur Buchungen, die sie selbst eingetragen "
+                   "haben, Organisator:innen alle; Stornieren braucht einen Grund. Vorher kurz bestätigen lassen.",
                    "inputSchema": {"type": "object", "properties": {
                        "ziel": {"type": "string", "description": "B-…"},
                        "fuer": {"type": "array", "items": {"type": "string"}}, **BUCHUNG_FELDER_SCHEMA,
