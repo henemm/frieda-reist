@@ -622,9 +622,12 @@ def test_wert_eintragen_ueber_den_schreibweg(schreibweg):
     assert pfad == "/beispielreise/wert_eintragen" and body["person"] == "karl" and body["rolle"] == "mitwirkend"
     assert body["args"] == {"ziel": "U-02", "merkmal": "preis", "wert": "95 €", "quelle": "Website", "geprueft": "2026-10-29"}
     assert rm.eintraege(ablage / "beispielreise") == []
-    # Unbekannte Stelle lehnt schon der Konnektor ab; ohne Namen braucht es den Vornamen
+    # Eine unbekannte Stelle prüft der Schreibweg mit dem Repo, nicht der Konnektor mit der veröffentlichten Seite (Issue #135:
+    # gerade Angelegtes ist sofort nutzbar); ohne Namen braucht es den Vornamen
+    Schreibweg.antwort = (422, {"ok": False, "fehler": "Die Unterkunft U-77 gibt es nicht."})
     t, f = werkzeug(basis, KARL, "wert_eintragen", ziel="U-77", merkmal="preis", wert="1 €", quelle="x")
-    assert f and "gibt es in dieser Reise nicht" in t
+    assert f and t == "Nicht eingetragen: Die Unterkunft U-77 gibt es nicht." and Schreibweg.anfragen[-1][0] == "/beispielreise/wert_eintragen"
+    Schreibweg.antwort = (200, {"ok": True, "text": "ok"})
     t, f = werkzeug(basis, MITREISEND, "wert_eintragen", ziel="U-02", merkmal="lage", wert="x", quelle="x")
     assert f and "Name fehlt" in t
     t, f = werkzeug(basis, MITREISEND, "wert_eintragen", ziel="U-02", merkmal="lage", wert="x", quelle="x", name="Anna")
@@ -656,18 +659,24 @@ def test_dinge_optionen_wahlstellen_fragen_ueber_den_schreibweg(schreibweg):
     assert not f and t.startswith("Eingetragen und gesichert (Karl): Unterkunft U-05")
     assert Schreibweg.anfragen[-1][0] == "/beispielreise/ding_anlegen" and Schreibweg.anfragen[-1][2]["args"]["merkmale"] == {"preis": "90 €"}
     # Option: Wahlstelle muss es geben; Merkmale werden gegen die Art der Wahlstelle geprüft
+    Schreibweg.antwort = (422, {"ok": False, "fehler": "Die Wahlstelle V-77 gibt es nicht (varianten zeigt alle); eine neue mit wahlstelle_anlegen."})
     t, f = werkzeug(basis, KARL, "option_anlegen", wahlstelle="V-77", titel="X")
     assert f and "gibt es nicht" in t and "wahlstelle_anlegen" in t
+    Schreibweg.antwort = (200, {"ok": True, "text": "ok"})
     t, f = werkzeug(basis, KARL, "option_anlegen", wahlstelle="V-03", titel="X", merkmale={"preise": "1 €"})
     assert f and "gemeint ist wohl preis" in t
     t, f = werkzeug(basis, KARL, "option_anlegen", wahlstelle="V-03", titel="Pension Elbblick", unterkuenfte=["U-05"])
     assert not f and Schreibweg.anfragen[-1][0] == "/beispielreise/option_anlegen"
+    Schreibweg.antwort = (422, {"ok": False, "fehler": "„an“: T-99 gibt es nicht."})
     t, f = werkzeug(basis, KARL, "wahlstelle_anlegen", titel="Anreise", an=["T-99"], optionen=[{"titel": "a"}])
-    assert f and "T-99 gibt es in dieser Reise nicht" in t
+    assert f and t == "Nicht eingetragen: „an“: T-99 gibt es nicht."
+    Schreibweg.antwort = (200, {"ok": True, "text": "ok"})
     t, f = werkzeug(basis, KARL, "wahlstelle_anlegen", titel="Anreise", an=["T-01"], optionen=[{"titel": "a", "strecken": ["E-20"]}])
     assert not f
+    Schreibweg.antwort = (422, {"ok": False, "fehler": "U-77 gibt es nicht."})
     t, f = werkzeug(basis, KARL, "ding_aendern", ziel="U-77", hinweis="x")
-    assert f and "gibt es in dieser Reise nicht" in t
+    assert f and t == "Nicht eingetragen: U-77 gibt es nicht."
+    Schreibweg.antwort = (200, {"ok": True, "text": "ok"})
     t, f = werkzeug(basis, KARL, "frage_anlegen", text="Offen?", bezug=["U-01"])
     assert not f and Schreibweg.anfragen[-1][0] == "/beispielreise/frage_anlegen"
     # Gast: nur lesen
@@ -709,8 +718,9 @@ def test_tag_aendern_nur_organisatoren_sehen_es(schreibweg):
     assert "tag_aendern" not in {t["name"] for t in rpc(basis, KARL, "tools/list")["tools"]}
     t, f = werkzeug(basis, KARL, "tag_aendern", ziel="T-03", nacht="V-03")
     assert f and "nur Organisator:innen" in t
+    Schreibweg.antwort = (422, {"ok": False, "fehler": "Den Tag T-99 gibt es nicht."})
     t, f = werkzeug(basis, ALT_ORGANISATOR, "tag_aendern", ziel="T-99", nacht="V-03")
-    assert f and "gibt es in dieser Reise nicht" in t
+    assert f and t == "Nicht eingetragen: Den Tag T-99 gibt es nicht."
     Schreibweg.antwort = (200, {"ok": True, "text": "T-03: nacht „U-04“ → „V-03“."})
     t, f = werkzeug(basis, ALT_ORGANISATOR, "tag_aendern", ziel="T-03", nacht="V-03", grund="Wahl")
     assert not f and Schreibweg.anfragen[-1][2]["args"] == {"ziel": "T-03", "nacht": "V-03", "grund": "Wahl"}
@@ -733,13 +743,15 @@ def test_rueckmeldung_erledigen_und_wissen_und_fragen(schreibweg):
     assert f and "gibt es nicht" in t
     t, f = werkzeug(basis, ALT_ORGANISATOR, "rueckmeldung_erledigen", id=rid, status="erledigt", kommentar="x")
     assert f and "Status muss" in t
-    # Wissen und Fragen über den Schreibweg; Vorprüfung kennt Abschnitte und Fragen der Seite
+    # Wissen und Fragen über den Schreibweg; unbekannte Abschnitte und Fragen prüft der Schreibweg mit dem Repo (Issue #135)
     Schreibweg.antwort = (200, {"ok": True, "text": "Neuer Abschnitt W-09 „Kirnitzschtalbahn“ in inhalt/wissen.md (Gruppe wissen). Herkunft: Wikipedia."})
     t, f = werkzeug(basis, KARL, "wissen_schreiben", titel="Kirnitzschtalbahn", text="Seit 1898.", quelle="Wikipedia")
     assert not f and Schreibweg.anfragen[-1][0] == "/beispielreise/wissen_schreiben"
+    Schreibweg.antwort = (422, {"ok": False, "fehler": "Den Abschnitt „W-99“ gibt es nicht (W-ID aus ueberblick oder zeige)."})
     t, f = werkzeug(basis, KARL, "wissen_schreiben", abschnitt="W-99", text="x", quelle="y")
     assert f and "gibt es nicht" in t
     assert "frage_schliessen" not in {t["name"] for t in rpc(basis, KARL, "tools/list")["tools"]}
+    Schreibweg.antwort = (422, {"ok": False, "fehler": "Die Frage F-77 gibt es nicht (offene_fragen zeigt alle)."})
     t, f = werkzeug(basis, ALT_ORGANISATOR, "frage_schliessen", frage="F-77", ergebnis="x")
     assert f and "gibt es nicht" in t
     Schreibweg.antwort = (200, {"ok": True, "text": "Frage F-03 ist geklärt (Ida, 29.10.2026): Fahrplan steht."})
@@ -817,10 +829,19 @@ def test_buchung_werkzeuge_und_anzeige(schreibweg):
     assert not f and t.startswith("Eingetragen und gesichert (Karl): Buchung B-03 angelegt")
     pfad, _, body = Schreibweg.anfragen[-1]
     assert pfad == "/beispielreise/buchung_anlegen" and body["args"]["fuer"] == ["U-02"] and body["args"]["frist_was"] == "Anzahlung"
+    # Unbekannte IDs prüft der Schreibweg (Issue #135: eine gerade angelegte Strecke ist sofort buchbar, auch vor dem Veröffentlichen)
+    Schreibweg.antwort = (422, {"ok": False, "fehler": "„fuer“: U-77 gibt es in dieser Reise nicht (Unterkunft U-…, Aufenthalt A-… oder Strecke E-…)."})
     t, f = werkzeug(basis, KARL, "buchung_anlegen", fuer="U-77", quelle="x")
-    assert f and "U-77 gibt es in dieser Reise nicht" in t
+    assert f and t.startswith("Nicht eingetragen: „fuer“: U-77 gibt es in dieser Reise nicht")
+    Schreibweg.antwort = (422, {"ok": False, "fehler": "Die Buchung B-09 gibt es nicht."})
     t, f = werkzeug(basis, KARL, "buchung_aendern", ziel="B-09", status="storniert")
-    assert f and "Die Buchung „B-09“ gibt es nicht" in t
+    assert f and t == "Nicht eingetragen: Die Buchung B-09 gibt es nicht."
+    # Reisende, Preise je Ding und der Ab-Termin gehen mit (Issue #135)
+    Schreibweg.antwort = (200, {"ok": True, "text": "Buchung B-04 angelegt (gebucht) für E-20, E-21, Nr. EW-7."})
+    t, f = werkzeug(basis, KARL, "buchung_anlegen", fuer=["E-20", "E-21"], nummer="EW-7", quelle="Mail", personen={"Ida": "Sitz 12A", "Karl": ""},
+                    preise={"E-20": "120 €", "E-21": "110 €"}, ab="2027-05-13", ab_was="Online-Check-in")
+    assert not f and Schreibweg.anfragen[-1][2]["args"]["personen"] == {"Ida": "Sitz 12A", "Karl": ""} \
+        and Schreibweg.anfragen[-1][2]["args"]["preise"]["E-21"] == "110 €" and Schreibweg.anfragen[-1][2]["args"]["ab_was"] == "Online-Check-in"
     Schreibweg.antwort = (200, {"ok": True, "text": "Buchung B-01 (U-01 Hotel am Elbufer): Status „gebucht“ → „storniert“."})
     t, f = werkzeug(basis, ALT_ORGANISATOR, "buchung_aendern", ziel="b-01", status="storniert", grund="Plan geändert")
     assert not f and Schreibweg.anfragen[-1][2]["args"] == {"ziel": "b-01", "status": "storniert", "grund": "Plan geändert"}
@@ -846,3 +867,42 @@ def test_buchung_werkzeuge_und_anzeige(schreibweg):
     bl.aendern(o, b2["id"], {"sichtbar": "alle"}, "Ida", "organisator")
     t, _ = werkzeug(basis, KARL, "zeige", id="B-02")
     assert "Ticket.png (Ida, " in t and "für alle sichtbar" in t
+
+
+def test_beleg_anlegen_ueber_den_konnektor(schreibweg, seiten, monkeypatch):
+    """Issue #135: Einen Beleg hängt die Person auch im Gespräch an, als Abschrift (Text) oder als Datei (Base64); der Konnektor
+    schickt ihn an den Rückmeldedienst, den einzigen Schreiber der Ablage. Sichtbar für sie und Organisator:innen; ein Gast hat das
+    Werkzeug nicht."""
+    import base64
+    import belege as bl
+    basis, ablage = schreibweg
+    monkeypatch.setenv("RM_SEITEN", str(seiten))
+    for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (GAST, False)):
+        assert ("beleg_anlegen" in {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}) is da, token
+    t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="U-01", text="x")
+    assert f and "B-…" in t
+    t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-02", dateiname="Bestätigung Bahn")
+    assert f and "text (Abschrift) oder daten_base64" in t
+    t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-02", dateiname="Bestätigung Bahn", text="Buchung DB-ABC123, 19,90 €, Dresden → Bad Schandau")
+    assert not f and t.startswith("Beleg D-01 „Bestätigung Bahn.txt“ an B-02 abgelegt") and "sichtbar für Karl und die Organisator:innen" in t
+    o = ablage / "beispielreise"
+    assert (o / "belege" / "D-01.txt").read_text(encoding="utf-8") == "Buchung DB-ABC123, 19,90 €, Dresden → Bad Schandau\n"
+    b = bl.liste(o, "Karl", "mitwirkend")
+    assert len(b) == 1 and b[0]["buchung"] == "B-02" and b[0]["typ"] == "text/plain; charset=utf-8" and b[0]["wer"] == "Karl"
+    t, _ = werkzeug(basis, KARL, "zeige", id="B-02")
+    assert "Belege: Bestätigung Bahn.txt (Karl, " in t
+    t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-02", dateiname="Ticket.png", daten_base64=base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"x" * 8).decode())
+    assert not f and "Beleg D-02 „Ticket.png“ an B-02 abgelegt" in t and (o / "belege" / "D-02.png").exists()
+    t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-02", dateiname="Ticket.png", daten_base64="%%%")
+    assert f and "kein gültiges Base64" in t
+    t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-02", dateiname="x.gif", daten_base64=base64.b64encode(b"GIF89a....").decode())
+    assert f and t.startswith("Nicht abgelegt:")
+    t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-99", text="x")
+    assert f and "B-99 gibt es nicht" in t
+    t, f = werkzeug(basis, GAST, "beleg_anlegen", buchung="B-02", text="x")
+    assert f
+    # Ida (Organisatorin) sieht Karls Beleg, der Gast keinen
+    t, _ = werkzeug(basis, ALT_ORGANISATOR, "zeige", id="B-02")
+    assert "Bestätigung Bahn.txt (Karl, " in t
+    t, _ = werkzeug(basis, GAST, "zeige", id="B-02")
+    assert "Belege: keine" in t

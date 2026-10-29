@@ -70,7 +70,7 @@ from routen import FARBEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, art_schlue
 
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "rueckmeldung_erledigen",
-                     "frage_beantworten", "entscheiden", "person_einladen", "person_entfernen", "wunsch_aendern"}
+                     "frage_beantworten", "entscheiden", "person_einladen", "person_entfernen", "wunsch_aendern", "beleg_anlegen"}
 # Werkzeuge, die direkt in die Ontologie der Reise schreiben (ADR-0001, O-3; engine/schreiben.py): nur bei Instanzen mit
 # Schreibweg (KN_SCHREIBDIENST); Organisator:innen schreiben, Mitwirkende schlagen vor (Rückmeldung der Art Ergänzung)
 ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "kategorie_definieren", "wert_eintragen", "ding_anlegen", "ding_aendern", "lage_eintragen",
@@ -89,7 +89,7 @@ ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontolo
                     "wissen_aendern": "wissen", "lesetext_schreiben": "wissen", "reise_aendern": "einstellung", "plan_anlegen": "plan",
                     "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
-SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe",
+SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe", "beleg_anlegen": "buchung",
                   "entscheiden": "entscheiden", "rueckmeldung_erledigen": "rueckmeldung_erledigen",
                   "frage_beantworten": "antwort", "person_einladen": "einladen", "person_entfernen": "entfernen",
                   # Wunsch-Brett: sichtbar für alle, die abhaken dürfen; Punkte und Einplanen prüft der Dienst genauer
@@ -421,6 +421,12 @@ class Handbuch:
         for k, name in (("nummer", "Nummer: "), ("bei", "Gebucht bei: "), ("preis", "Preis: "), ("bezahlt", "Bezahlt: ")):
             if b.get(k):
                 z.append(name + str(b[k]))
+        if b.get("preise"):
+            z.append("Preise je Ding: " + "; ".join(f"{x} {self.titel_von(x)}: {p}" for x, p in b["preise"].items()))
+        if b.get("personen"):
+            z.append("Reisende: " + "; ".join(f"{n}" + (f" ({a})" if a else "") for n, a in b["personen"].items()))
+        if b.get("ab"):
+            z.append(f"Ab {datum_de(b['ab'])}" + (f": {b['ab_was']}" if b.get("ab_was") else ""))
         if b.get("frist"):
             z.append(f"Frist {datum_de(b['frist'])}" + (f": {b['frist_was']}" if b.get("frist_was") else ""))
         if b.get("storno") or b.get("storno_bis"):
@@ -601,7 +607,8 @@ class Handbuch:
         for oid, o in self.orte.items():
             e.setdefault(oid, (o.get("name") or oid, o.get("hinweis") or ""))
         for sid, s in (r.get("strecken") or {}).items():
-            z = [f"{self.ort(s.get('von'))} → {self.ort(s.get('nach'))}" + (f" ({' + '.join(s['art']) if isinstance(s['art'], list) else s['art']})" if s.get("art") else "")]
+            z = [f"{self.ort(s.get('von'))} → {self.ort(s.get('nach'))}" + (f" ({' + '.join(s['art']) if isinstance(s['art'], list) else s['art']})" if s.get("art") else "")
+                 + (f", ab {s['ab']}" if s.get("ab") else "") + (f", an {s['an']}" if s.get("an") else "")]
             if s.get("kennzahlen") and sid not in e:  # bei Etappen stehen sie schon im Dossier
                 z.append("; ".join(f"{k}: {v}" for k, v in s["kennzahlen"].items()))
             for k in ("text", "quelle", "siehe"):
@@ -791,7 +798,9 @@ class Handbuch:
         elif bereich in katalog:
             w, b, krit = None, bereich, katalog[bereich]
         else:
-            return None, f"ziel (V-…, U-…, E-…) oder art angeben: eine Art dieser Reise ({', '.join(katalog) or 'keine definiert'})."
+            return None, (f"ziel (V-…, U-…, E-…) oder art angeben: eine Art dieser Reise ({', '.join(katalog) or 'keine definiert'}). "
+                          "Eine gerade angelegte Art kennt die Seite erst nach dem Veröffentlichen (wenige Minuten); eintragen geht schon jetzt, "
+                          "der Schreibweg kennt sie.")
         z = [f"# Merkmale der Art {b}" + (f" – {w['id']} {w['titel']}" if w else f" – {ziel}" if ziel else ""),
              "Vorgehen: Erst selbst recherchieren (Hinweis „so finden“), dann die Person nur nach dem fragen, was offen "
              "bleibt (Hinweis „fragen“). Veränderliche Werte mit Prüfdatum. Werte an einer vorhandenen Stelle trägst du mit "
@@ -1065,7 +1074,9 @@ def merkmal_hinweise(d, art, merkmale):
     """Unbekannte Merkmale in einer Anfrage -> Hinweistext (ähnliches Merkmal nennen) oder None."""
     if not isinstance(merkmale, dict) or not art:
         return None
-    krit = ((d.get("route") or {}).get("merkmale") or {}).get(art) or []
+    krit = ((d.get("route") or {}).get("merkmale") or {}).get(art)
+    if krit is None:   # die Art ist der Seite noch nicht bekannt (gerade angelegt): der Schreibweg prüft mit dem Repo
+        return None
     bekannt = {k["id"] for k in krit} | {x for k in krit for x in (k.get("auch") or [])}
     fremd = [str(k) for k in merkmale if str(k).lower() not in bekannt]
     if not fremd:
@@ -1118,12 +1129,8 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
                 return (f"Nicht angelegt: Bei der Art {art} gibt es schon ein ähnliches Merkmal, {aehnlich['id']} – {aehnlich['name']}. "
                         "Das vorhandene nutzen oder mit merkmal_definieren ändern; ist es wirklich ein anderes, noch einmal mit "
                         "trotzdem = true."), True
-    if name in ("wert_eintragen", "ding_aendern", "tag_aendern", "lage_eintragen", "wahlstelle_aendern", "option_aendern", "wissen_aendern",
-                "lesetext_schreiben", "plan_aendern"):
-        ziel = str(args.get("ziel") or "").strip()
-        bekannt = ids_der_reise(d) | {p["id"] for p in route.get("plaene") or []}
-        if ziel and ziel not in bekannt:
-            return f"„{ziel}“ gibt es in dieser Reise nicht. Mit suche oder ueberblick die ID finden.", True
+    # Was die veröffentlichte Seite noch nicht kennt (gerade angelegt, Issue #135), prüft der Schreibweg mit dem Repo: hier
+    # keine Ablehnung wegen einer unbekannten ID, nur Hinweise, die der veröffentlichte Stand sicher weiß
     if name == "arten_uebernehmen":
         # nur Reisen derselben Person (Product Owner 28.10.2026): Konto oder Zugang muss auf beiden Reisen stehen
         von = str(args.get("von_reise") or "").strip()
@@ -1136,39 +1143,14 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
         rid = str(args.get("wunsch") or "").strip()
         if not any(w.get("id") == rid for w in (wuensche_liste(reise) or [])):
             return f"Den Wunsch „{rid}“ gibt es nicht (wuensche zeigt alle).", True
-    if name == "buchung_anlegen":
-        fuer = args.get("fuer")
-        fuer = [x.strip() for x in fuer.split(",")] if isinstance(fuer, str) else list(fuer or [])
-        fremd = [x for x in fuer if not isinstance(x, str) or x not in ids_der_reise(d)]
-        if fremd:
-            return f"{', '.join(map(str, fremd))} gibt es in dieser Reise nicht (fuer: Unterkunft U-…, Aufenthalt A-… oder Strecke E-…).", True
-    if name == "buchung_aendern":
-        ziel = str(args.get("ziel") or "").strip().upper()
-        if ziel not in (route.get("buchungen") or {}):
-            return f"Die Buchung „{ziel}“ gibt es nicht (zeige U-…/E-… nennt die Buchung, ueberblick zählt sie).", True
     if name == "ding_anlegen":
         if (h := merkmal_hinweise(d, str(args.get("art") or "").lower(), args.get("merkmale"))):
             return h, True
     if name == "option_anlegen":
         vid = str(args.get("wahlstelle") or "").strip()
         w = next((w for w in route.get("wahlstellen") or [] if w["id"] == vid), None)
-        if w is None:
-            return f"Die Wahlstelle „{vid}“ gibt es nicht; varianten zeigt alle. Fehlt sie wirklich, wahlstelle_anlegen.", True
-        if (h := merkmal_hinweise(d, w.get("art"), args.get("merkmale"))):
+        if w is not None and (h := merkmal_hinweise(d, w.get("art"), args.get("merkmale"))):
             return h, True
-    if name == "frage_schliessen":
-        fid = str(args.get("frage") or "").strip().upper()
-        zeile = next((z for z in (d.get("fragen") or {}).get("zeilen", []) if z["id"] == fid), None)
-        if zeile is None:
-            return f"Die Frage „{fid}“ gibt es nicht. Mit offene_fragen die richtige F-… finden.", True
-    if name == "wissen_schreiben" and args.get("abschnitt"):
-        wid = str(args.get("abschnitt") or "").strip().upper()
-        if wid not in {a["id"] for a in d.get("abschnitte") or []}:
-            return f"Den Abschnitt „{wid}“ gibt es nicht (ueberblick zeigt das Inhaltsverzeichnis).", True
-    if name in ("wahlstelle_anlegen", "frage_anlegen"):
-        fremd = [x for x in (args.get("an" if name == "wahlstelle_anlegen" else "bezug") or []) if isinstance(x, str) and x not in ids_der_reise(d)]
-        if fremd:
-            return f"{', '.join(fremd)} gibt es in dieser Reise nicht.", True
     antwort, fehler = schreib_anfrage(reise, name, {"person": zugang.get("person"), "name": wer["name"], "rolle": wer["rolle"], "args": rest})
     if fehler:
         return f"Nicht eingetragen: {fehler}", True
@@ -1185,6 +1167,24 @@ def dienst_anfrage(methode, pfad, daten):
                                           "X-Frieda-Dienst": konten.dienst_geheimnis()})
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
+            return json.loads(r.read()), None
+    except urllib.error.HTTPError as e:
+        try:
+            return None, json.loads(e.read()).get("fehler", f"Fehler {e.code}")
+        except (json.JSONDecodeError, AttributeError):
+            return None, f"Fehler {e.code}"
+    except (urllib.error.URLError, OSError):
+        return None, "Rückmeldedienst nicht erreichbar, bitte später noch einmal"
+
+
+def beleg_senden(reise, bid, name, dateiname, daten):
+    """Datei an den Rückmeldedienst (einziger Schreiber der Ablage): POST /<reise>/belege/<B-id>, Body ist die Datei. -> (antwort, fehler)"""
+    basis = os.environ.get("KN_RUECKMELDEDIENST", "http://127.0.0.1:8771").rstrip("/")
+    req = urllib.request.Request(f"{basis}/{reise}/belege/{bid}?name={urllib.parse.quote(name)}", method="POST", data=daten,
+                                 headers={"Content-Type": "application/octet-stream", "X-Frieda-Dienst": konten.dienst_geheimnis(),
+                                          "X-Frieda-Datei": urllib.parse.quote(dateiname)})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
             return json.loads(r.read()), None
     except urllib.error.HTTPError as e:
         try:
@@ -2212,6 +2212,9 @@ DING_ANLEGEN = {"name": "ding_anlegen", "description": "Eine Unterkunft, einen A
                     "ort": {"type": "string", "description": "Unterkunft, Aufenthalt: Ort O-… (fehlt er, erst mit ding_anlegen was=ort anlegen)"},
                     "zeit": {"type": "string", "description": "Aufenthalt: wann, als Text („10–12 Uhr“, „abends“)"},
                     "von": {"type": "string", "description": "Strecke: Start O-…"}, "nach": {"type": "string", "description": "Strecke: Ziel O-…"},
+                    "ab": {"type": "string", "description": "Strecke: Abfahrt, HH:MM am Tag der Strecke oder JJJJ-MM-TTTHH:MM+HH:MM mit Zeitzone"},
+                    "an": {"type": "string", "description": "Strecke: Ankunft, ebenso; der Generator meldet, wenn die nächste Strecke abfährt, bevor diese ankommt"},
+                    "ausserhalb": {"type": "boolean", "description": "Ort: außerhalb der Reisegegend (Flughafen oder Bahnhof daheim, An- und Abreise)"},
                     "art": {"type": "string", "description": "Art dieser Reise (Schlüssel aus merkmale), z. B. pension oder bus"},
                     "hinweis": {"type": "string"}, "buchungslink": {"type": "string", "description": "Unterkunft: Adresse zum Buchen"},
                     "frage": {"type": "string", "description": "Unterkunft: offene Frage F-…, zu der sie gehört"},
@@ -2219,13 +2222,15 @@ DING_ANLEGEN = {"name": "ding_anlegen", "description": "Eine Unterkunft, einen A
                     "name": NAME_FELD},
                     "required": ["was", "titel", "quelle"]}}
 DING_AENDERN = {"name": "ding_aendern", "description": "Felder einer Unterkunft (neuer_name, ort, art, hinweis, quelle, buchungslink, frage), "
-                "eines Aufenthalts ohne Nacht (dazu zeit), einer Strecke (titel, von, nach, art, hinweis, quelle) oder eines Orts (neuer_name, "
-                "hinweis, quelle) ändern; schreibt sofort, der alte Wert bleibt im Verlauf. Merkmale ändert wert_eintragen, die Lage lage_eintragen, "
+                "eines Aufenthalts ohne Nacht (dazu zeit), einer Strecke (titel, von, nach, art, ab, an, hinweis, quelle) oder eines Orts (neuer_name, "
+                "hinweis, quelle, ausserhalb) ändern; schreibt sofort, der alte Wert bleibt im Verlauf. Merkmale ändert wert_eintragen, die Lage lage_eintragen, "
                 "eine Buchung buchung_anlegen. Die Art ändern dürfen nur Organisator:innen. Leerer Text entfernt hinweis, buchungslink, frage oder zeit.",
                 "inputSchema": {"type": "object", "properties": {
                     "ziel": {"type": "string", "description": "U-…, A-…, E-… oder O-…"}, "zeit": {"type": "string"},
                     "neuer_name": {"type": "string", "description": "neuer Name (Unterkunft, Aufenthalt, Ort)"}, "titel": {"type": "string", "description": "neuer Titel (Strecke)"},
                     "ort": {"type": "string"}, "von": {"type": "string"}, "nach": {"type": "string"}, "art": {"type": "string"},
+                    "ab": {"type": "string", "description": "Strecke: Abfahrt HH:MM oder Zeitpunkt mit Zeitzone; leer entfernt"},
+                    "an": {"type": "string", "description": "Strecke: Ankunft"}, "ausserhalb": {"type": "boolean", "description": "Ort außerhalb der Reisegegend"},
                     "hinweis": {"type": "string"}, "quelle": {"type": "string"}, "buchungslink": {"type": "string"}, "frage": {"type": "string"},
                     "grund": {"type": "string", "description": "warum (steht im Verlauf)"}, "vorname": NAME_FELD},
                     "required": ["ziel"]}}
@@ -2342,6 +2347,12 @@ BUCHUNG_FELDER_SCHEMA = {
     "storno": {"type": "string", "description": "Stornoregel in Worten, z. B. „kostenlos bis 7 Tage vorher, danach 1 Nacht“"},
     "storno_bis": {"type": "string", "description": "JJJJ-MM-TT: bis wann kostenlos stornierbar; der Wächter erinnert"},
     "gebucht_am": {"type": "string", "description": "JJJJ-MM-TT (Vorgabe heute)"},
+    "ab": {"type": "string", "description": "JJJJ-MM-TT: ab wann etwas geht (Check-in, Sitzplatzwahl); der Wächter erinnert; frist sagt bis wann"},
+    "ab_was": {"type": "string", "description": "was ab dann geht"},
+    "personen": {"type": "object", "additionalProperties": {"type": "string"},
+                 "description": "die Reisenden dieser Buchung (Namen aus der Reise) mit Angabe je Person, z. B. {\"Ida\": \"Sitz 12A, 23 kg Gepäck\", \"Karl\": \"\"}"},
+    "preise": {"type": "object", "additionalProperties": {"type": "string"},
+               "description": "bei mehreren Dingen in fuer der Preis je Ding, z. B. {\"E-28\": \"120 €\", \"E-29\": \"110 €\"}"},
     "notiz": {"type": "string"}}
 BUCHUNG_ANLEGEN = {"name": "buchung_anlegen", "description": "Eine Buchung als eigenes Ding (B-…) eintragen: für welche Unterkunft (U-…), "
                    "welchen Aufenthalt (A-…) oder welche Strecke (E-…), Status, Buchungsnummer, Anbieter, Preis, Frist, Stornoregel. "
@@ -2458,6 +2469,16 @@ WUNSCH_VORSCHLAGEN = {"name": "wunsch_vorschlagen", "description": "Nach dem Pr�
                           "notiz": {"type": "string", "description": "kurz, mit Herkunft (Website, Buch, Karte)"},
                           "option": {"type": "string", "description": "V-01.b, wenn eine Option daraus wurde"},
                           "vorname": NAME_FELD}, "required": ["wunsch", "notiz"]}}
+BELEG_ANLEGEN = {"name": "beleg_anlegen", "description": "Einen Beleg an eine Buchung hängen, ohne die Reiseseite: als Abschrift (text: der "
+                 "Inhalt der Bestätigung oder Mail, den die Person im Gespräch gezeigt oder vorgelesen hat, wörtlich, ohne Deutung) oder, wenn "
+                 "der Client die Datei liefern kann, als daten_base64 (PDF, JPEG, PNG, WebP, HEIC, höchstens 10 MB). Der Beleg liegt in der "
+                 "Ablage, nie im Repo, sichtbar für die Person und Organisator:innen. Mitwirkende und Organisator:innen. Vorher kurz bestätigen lassen.",
+                 "inputSchema": {"type": "object", "properties": {
+                     "buchung": {"type": "string", "description": "B-…"},
+                     "dateiname": {"type": "string", "description": "Anzeigename, z. B. „Bestätigung Eurowings.txt“ oder „Ticket.pdf“"},
+                     "text": {"type": "string", "description": "Abschrift als Text (wird als .txt abgelegt)"},
+                     "daten_base64": {"type": "string", "description": "die Datei Base64-kodiert, wenn der Client sie hat"},
+                     "vorname": NAME_FELD}, "required": ["buchung"]}}
 WERT_EINTRAGEN = {"name": "wert_eintragen", "description": "Einen Wert eines Merkmals an einer Unterkunft (U-…), Strecke (E-…) oder "
                   "Option (V-01.a) eintragen: Preis, Frühstück, Öffnung, Dauer … Schreibt sofort in die Reise (gilt ab jetzt, Seite in "
                   "wenigen Minuten) und ersetzt den bisherigen Wert für dieselben Tage; der alte bleibt im Verlauf. Jede Angabe braucht "
@@ -2619,7 +2640,7 @@ def anleitung(zugang, d):
                     "(wert_eintragen; erst selbst recherchieren, merkmale sagt wo), Unterkünfte, Strecken, Orte (ding_anlegen, ding_aendern), "
                     "Alternativen (option_anlegen, wahlstelle_anlegen), der Plan eines Tags (tag_aendern), Wissen in eigenen Worten mit "
                     "Herkunft (wissen_schreiben), Fragen (frage_anlegen, frage_beantworten, frage_schliessen), Buchungen als eigenes Ding "
-                    "mit Nummer, Frist und Stornoregel (buchung_anlegen, buchung_aendern; den Beleg hängt die Person auf der Reiseseite an), "
+                    "mit Nummer, Frist und Stornoregel (buchung_anlegen, buchung_aendern; Beleg: auf der Reiseseite oder beleg_anlegen), "
                     "Status und Einstellungen "
                     "(reise_status_setzen, einstellung_setzen). Rückmeldungen der Seite arbeitest du ein: prüfen, eintragen, dann "
                     "rueckmeldung_erledigen mit Kommentar in einfachen Worten. Vor jedem Eintragen den Wortlaut bestätigen lassen."
@@ -2700,6 +2721,33 @@ def werkzeug(zugang, name, args):
             return f"Nicht gesetzt: {fehler}", True
         return (f"{rid} ist jetzt {a['status']} („{kommentar}“). Die Seite zeigt es der Person nach dem nächsten Laden; nichts weiter zu tun, "
                 "wenn der Inhalt schon eingetragen ist."), False
+    if name == "beleg_anlegen":
+        bid = str(args.get("buchung") or "").strip().upper()
+        if not re.fullmatch(r"B-\d+", bid):
+            return "buchung muss eine B-… sein (zeige U-…/E-… nennt sie).", True
+        name_ = wer["name"] or args.get("vorname")
+        if not isinstance(name_, str) or not name_.strip():
+            return "Name fehlt: bitte die Person nach ihrem Vornamen fragen.", True
+        text, b64 = str(args.get("text") or ""), str(args.get("daten_base64") or "").strip()
+        if b64:
+            import base64, binascii
+            try:
+                inhalt = base64.b64decode(b64, validate=True)
+            except (binascii.Error, ValueError):
+                return "daten_base64 ist kein gültiges Base64.", True
+            dateiname = str(args.get("dateiname") or "Beleg").strip()
+        elif text.strip():
+            inhalt = text.strip().encode("utf-8") + b"\n"
+            dateiname = str(args.get("dateiname") or "Abschrift").strip()
+            if not dateiname.lower().endswith((".txt", ".md")):
+                dateiname += ".txt"
+        else:
+            return "text (Abschrift) oder daten_base64 (Datei) angeben.", True
+        a, fehler = beleg_senden(reise, bid, name_.strip(), dateiname, inhalt)
+        if fehler:
+            return f"Nicht abgelegt: {fehler}", True
+        return (f"Beleg {a['id']} „{a['name']}“ an {bid} abgelegt ({a.get('groesse', 0)} Bytes), sichtbar für {name_.strip()} und die Organisator:innen; "
+                "eine Organisator:in kann ihn auf der Reiseseite für alle freigeben."), False
     if name == "rueckmeldung_geben":
         e = {k: args.get(k, "") for k in rm.INHALT}
         if wer["name"]:
@@ -2836,7 +2884,7 @@ def werkzeuge_fuer(zugang):
                  BUCHUNG_ANLEGEN, BUCHUNG_AENDERN, TAG_ANLEGEN, TERMIN_SETZEN, WAHLSTELLE_AENDERN, OPTION_AENDERN, WISSEN_AENDERN,
                  LESETEXT_SCHREIBEN, REISE_AENDERN, PLAN_ANLEGEN, PLAN_AENDERN, MERKMAL_ZUSAMMENFUEHREN, ARTEN_UEBERNEHMEN,
                  WUNSCH_VORSCHLAGEN] if schreibdienst() else []
-    for w in WERKZEUGE + [ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN, RUECKMELDUNG_ERLEDIGEN] + ontologie:
+    for w in WERKZEUGE + [ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN, RUECKMELDUNG_ERLEDIGEN, BELEG_ANLEGEN] + ontologie:
         n = w["name"]
         if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:
             continue

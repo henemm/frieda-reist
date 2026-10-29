@@ -1401,3 +1401,57 @@ def test_anlegen_ohne_herkunft_wird_abgelehnt(repo, werkzeug, args):
     with pytest.raises(sb.Ablehnung, match="quelle"):
         s.schreiben("beispielreise", werkzeug, {**IDA, "args": args})
     assert not git(arbeit, "status", "--porcelain")
+
+
+def test_buchung_mit_reisenden_preisen_und_ab_termin(repo):
+    """Issue #135: Reisende je Buchung (nur Personen der Reise), Preis je Ding bei mehreren Dingen, Ab-Termin mit ab_was."""
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    with pytest.raises(sb.Ablehnung, match="steht nicht in der Reise"):
+        s.schreiben("beispielreise", "buchung_anlegen", {**KARL, "args": {"fuer": "E-20", "quelle": "Mail", "personen": {"Ida": "", "Anna": "Sitz 1A"}}})
+    with pytest.raises(sb.Ablehnung, match="„preise“: U-02 gehört nicht zu dieser Buchung"):
+        s.schreiben("beispielreise", "buchung_anlegen", {**KARL, "args": {"fuer": "E-20", "quelle": "Mail", "preise": {"U-02": "1 €"}}})
+    with pytest.raises(sb.Ablehnung, match="„ab“ muss ein Datum"):
+        s.schreiben("beispielreise", "buchung_anlegen", {**KARL, "args": {"fuer": "E-20", "quelle": "Mail", "ab": "bald"}})
+    a = s.schreiben("beispielreise", "buchung_anlegen", {**KARL, "args": {
+        "fuer": ["E-20", "E-21"], "status": "gebucht", "nummer": "EW-7", "preis": "230 €", "preise": {"E-20": "120 €", "E-21": "110 €"},
+        "personen": {"Ida": "Sitz 12A, 23 kg Gepäck", "Karl": ""}, "ab": "2027-05-13", "ab_was": "Online-Check-in", "quelle": "Mail vom 29.10.2026"}})
+    assert a["ok"] and "Reisende: Ida (Sitz 12A, 23 kg Gepäck), Karl" in a["text"] and "Preise: E-20 120 €, E-21 110 €" in a["text"] \
+        and "Ab 13.5.2027 (Online-Check-in)" in a["text"]
+    r, text = routen_auf_main(origin)
+    b = r["buchungen"]["B-03"]
+    assert b["personen"] == {"Ida": "Sitz 12A, 23 kg Gepäck", "Karl": ""} and b["preise"] == {"E-20": "120 €", "E-21": "110 €"}
+    assert b["ab"] == datetime.date(2027, 5, 13) and b["ab_was"] == "Online-Check-in"
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-03", "personen": ["Karl"], "ab": "", "grund": "Ida fliegt nicht mit"}})
+    assert "Reisende" in a["text"] and "Ab entfernt" in a["text"]
+    r, _ = routen_auf_main(origin)
+    assert r["buchungen"]["B-03"]["personen"] == {"Karl": ""} and "ab" not in r["buchungen"]["B-03"] and "ab_was" not in r["buchungen"]["B-03"]
+
+
+def test_strecke_mit_zeiten_und_ort_ausserhalb(repo):
+    """Issue #135: ding_anlegen und ding_aendern kennen ab/an an Strecken und ausserhalb an Orten."""
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "ort", "titel": "Flughafen Beispielstadt", "ausserhalb": True, "quelle": "Karte"}})
+    assert a["ok"]
+    r, _ = routen_auf_main(origin)
+    assert r["orte"]["O-07"] == {"name": "Flughafen Beispielstadt", "quelle": "Karte", "ausserhalb": True}
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="„ab“ ist eine Uhrzeit HH:MM"):
+        s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "strecke", "titel": "Flug", "von": "O-07", "nach": "O-01", "art": "bus", "ab": "morgens", "quelle": "x"}})
+    a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "strecke", "titel": "Bus vom Flughafen", "von": "O-07", "nach": "O-01", "art": "bus",
+                                                                       "ab": "2027-05-14T07:45+02:00", "an": "09:10", "quelle": "Fahrplan"}})
+    assert a["ok"]
+    r, text = routen_auf_main(origin)
+    e = r["strecken"]["E-24"]
+    assert e["ab"] == "2027-05-14T07:45+02:00" and e["an"] == "09:10" and 'an: "09:10"' in text
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "E-24", "an": "", "ab": "08:00"}})
+    assert "ab „2027-05-14T07:45+02:00“ → „08:00“" in a["text"] and "an entfernt" in a["text"]
+    r, _ = routen_auf_main(origin)
+    assert r["strecken"]["E-24"]["ab"] == "08:00" and "an" not in r["strecken"]["E-24"]
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "O-07", "ausserhalb": False}})
+    r, _ = routen_auf_main(origin)
+    assert "ausserhalb" not in r["orte"]["O-07"] or r["orte"]["O-07"]["ausserhalb"] is False

@@ -1004,6 +1004,11 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
             raise Ablehnung(f"„art“ muss eine Bewegungs-Art dieser Reise sein ({', '.join(k for k, a in arten.items() if a.get('grundform') == 'bewegung') or 'keine'}); "
                             "eine neue legt ein:e Organisator:in mit art_definieren an.")
         d["art"] = art
+        for k in ("ab", "an"):   # Zeitpunkte (Issue #135): HH:MM oder JJJJ-MM-TTTHH:MM+HH:MM
+            if (z := zeit_wert(args, k)):
+                d[k] = z
+    if was == "ort" and bool_wert(args, "ausserhalb"):
+        d["ausserhalb"] = True   # Ort der An- und Abreise außerhalb der Reisegegend (Issue #135)
     if hinweis:
         d["hinweis"] = hinweis
     d["quelle"] = quelle
@@ -1029,7 +1034,21 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
 
 AENDERBAR = {"unterkunft": ("name", "ort", "art", "hinweis", "quelle", "buchungslink", "frage"),
              "aufenthalt": ("name", "ort", "art", "zeit", "hinweis", "quelle", "buchungslink", "frage"),
-             "strecke": ("titel", "von", "nach", "art", "hinweis", "quelle"), "ort": ("name", "hinweis", "quelle")}
+             "strecke": ("titel", "von", "nach", "art", "ab", "an", "hinweis", "quelle"), "ort": ("name", "hinweis", "quelle", "ausserhalb")}
+
+
+def zeit_wert(args, feld):
+    """Zeitpunkt einer Bewegung aus der Anfrage -> Text in gültiger Form, "" (leer: entfernen) oder None (fehlt)."""
+    from routen import zeitpunkt
+    v = args.get(feld)
+    if v is None:
+        return None
+    v = str(v).strip()
+    if not v:
+        return ""
+    if zeitpunkt(v) is None:
+        raise Ablehnung(f"„{feld}“ ist eine Uhrzeit HH:MM (am Tag der Strecke) oder ein Zeitpunkt JJJJ-MM-TTTHH:MM+HH:MM (mit Zeitzone).")
+    return v
 
 
 def ding_aendern(reise_dir, wer, args, heute=None):
@@ -1076,10 +1095,23 @@ def ding_aendern(reise_dir, wer, args, heute=None):
             v = text_wert(args, feld, laenge=10) or ""
             if v and not re.fullmatch(r"F-\d+", v):
                 raise Ablehnung("„frage“ muss eine F-… sein.")
+        elif feld in ("ab", "an"):
+            v = zeit_wert(args, feld)
+        elif feld == "ausserhalb":
+            v = bool_wert(args, feld)
+            if v is False and feld in knoten:
+                geaendert.append("ausserhalb entfernt (Ort der Reisegegend)")
+                del knoten[feld]
+                continue
+            if not v or knoten.get(feld):
+                continue
+            geaendert.append("ausserhalb (Ort der An- und Abreise)")
+            knoten[feld] = True
+            continue
         else:
             v = text_wert(args, feld, laenge=600 if feld == "quelle" else MAX_TEXT) or ""
         alt = knoten.get(feld) if feld != "art" else (knoten.get("art") or art_schluessel(knoten.get("typ")))
-        if v == "" and feld in ("hinweis", "buchungslink", "frage", "zeit"):
+        if v == "" and feld in ("hinweis", "buchungslink", "frage", "zeit", "ab", "an"):
             if feld in knoten:
                 geaendert.append(f"{feld} entfernt (war „{alt}“)")
                 del knoten[feld]
@@ -1757,11 +1789,45 @@ def buchung_fuer(args, roh, route):
     return v
 
 
-BUCHUNG_TEXTE = {"nummer": 80, "bei": 120, "preis": 120, "bezahlt": 200, "frist_was": 120, "storno": 400, "notiz": MAX_TEXT}
+BUCHUNG_TEXTE = {"nummer": 80, "bei": 120, "preis": 120, "bezahlt": 200, "frist_was": 120, "storno": 400, "notiz": MAX_TEXT, "ab_was": 120}
 # Felder einer Buchung in Worten für Antwort und Verlauf (Menschen lesen Wörter, keine Schlüssel; Product Owner 29.10.2026)
 BUCHUNG_WORTE = {"fuer": "Gehört zu", "status": "Status", "nummer": "Nummer", "bei": "Gebucht bei", "preis": "Preis", "bezahlt": "Bezahlt",
                  "frist": "Frist", "frist_was": "Was bis zur Frist", "storno": "Stornoregel", "storno_bis": "Stornofrist",
-                 "gebucht_am": "Gebucht am", "quelle": "Herkunft", "notiz": "Notiz"}
+                 "gebucht_am": "Gebucht am", "quelle": "Herkunft", "notiz": "Notiz", "ab": "Ab", "ab_was": "Was ab dann geht",
+                 "personen": "Reisende", "preise": "Preise je Ding"}
+
+
+def buchung_personen(args, reise_dir):
+    """personen einer Buchung aus der Anfrage: Liste von Namen oder {Name: Angabe} -> dict oder None (nicht angegeben)."""
+    v = args.get("personen")
+    if v is None:
+        return None
+    if isinstance(v, str):
+        v = [x.strip() for x in v.split(",") if x.strip()]
+    if isinstance(v, list):
+        v = {str(x): "" for x in v}
+    if not isinstance(v, dict) or any(not str(k).strip() for k in v):
+        raise Ablehnung("„personen“ ist eine Liste von Namen oder {Name: Angabe} (z. B. {\"Ida\": \"Sitz 12A, 23 kg Gepäck\"}).")
+    import bauen, tempfile
+    with tempfile.TemporaryDirectory(prefix="frieda-probe-") as ziel:
+        bekannt = {p.get("name", "").casefold() for p in (bauen.Bauer(reise_dir, ziel).eck.get("personen") or [])}
+    fremd = [k for k in v if str(k).strip().casefold() not in bekannt]
+    if fremd:
+        raise Ablehnung(f"„personen“: {', '.join(fremd)} steht nicht in der Reise (reise.yaml personen); erst einladen (person_einladen).")
+    return {" ".join(str(k).split()): " ".join(str(x or "").split())[:200] for k, x in v.items()}
+
+
+def buchung_preise(args, fuer):
+    """preise einer Buchung: {ID aus fuer: Betrag} -> dict oder None."""
+    v = args.get("preise")
+    if v is None:
+        return None
+    if not isinstance(v, dict) or any(not isinstance(x, str) for x in v.values()):
+        raise Ablehnung("„preise“ ist {ID: Betrag}, z. B. {\"E-28\": \"120 €\", \"E-29\": \"110 €\"}.")
+    fremd = [k for k in v if k not in fuer]
+    if fremd:
+        raise Ablehnung(f"„preise“: {', '.join(fremd)} gehört nicht zu dieser Buchung (fuer: {', '.join(fuer)}).")
+    return {k: " ".join(x.split())[:120] for k, x in v.items() if x.strip()}
 
 
 def buchung_anlegen(reise_dir, wer, args, heute=None):
@@ -1781,11 +1847,16 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
             continue
         if (v := text_wert(args, k, laenge=laenge)):
             d[k] = v
-    for k in ("frist", "storno_bis", "gebucht_am"):
+    for k in ("frist", "storno_bis", "gebucht_am", "ab"):
         v = datum_wert(args, k)
         if v:
             d[k] = v
     d.setdefault("gebucht_am", heute)
+    pers, preise = buchung_personen(args, reise_dir), buchung_preise(args, fuer)
+    if pers:
+        d["personen"] = pers
+    if preise:
+        d["preise"] = preise
     d["wer"] = wer["name"]
     d["quelle"] = quelle
     if (notiz := text_wert(args, "notiz")):
@@ -1806,7 +1877,11 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
             + (f", bei {d['bei']}" if d.get("bei") else "") + (f", Preis {d['preis']}" if d.get("preis") else "")
             + (f", Frist {d['frist'].strftime('%-d.%-m.%Y')}" + (f" ({d['frist_was']})" if d.get("frist_was") else "") if d.get("frist") else "")
             + (f", Storno: {d['storno']}" if d.get("storno") else "") + (f" (bis {d['storno_bis'].strftime('%-d.%-m.%Y')})" if d.get("storno_bis") else "")
-            + f". Herkunft: {quelle}. Den Beleg (PDF, Bild) hängt die Person auf der Seite bei dieser Buchung an; er bleibt außerhalb des Repos.")
+            + (f", Ab {d['ab'].strftime('%-d.%-m.%Y')}" + (f" ({d['ab_was']})" if d.get("ab_was") else "") if d.get("ab") else "")
+            + (", Preise: " + ", ".join(f"{k} {v}" for k, v in preise.items()) if preise else "")
+            + (", Reisende: " + ", ".join(f"{k}{(' (' + v + ')') if v else ''}" for k, v in pers.items()) if pers else "")
+            + f". Herkunft: {quelle}. Den Beleg hängt die Person auf der Seite bei dieser Buchung an oder im Gespräch mit beleg_anlegen; "
+            "er bleibt außerhalb des Repos.")
     return titel, text
 
 
@@ -1868,12 +1943,27 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
         if not q:
             raise Ablehnung("„quelle“ darf nicht leer sein (Herkunft).")
         setze("quelle", q, "Herkunft")
-    for k in ("frist", "storno_bis", "gebucht_am"):
+    for k in ("frist", "storno_bis", "gebucht_am", "ab"):
         v = datum_wert(args, k)
         if v is not None:
             setze(k, v)
+            if k == "ab" and v == "" and "ab_was" in knoten:   # ohne Ab-Termin kein „was ab dann geht“
+                setze("ab_was", "")
+    pers = buchung_personen(args, reise_dir)
+    if pers is not None:
+        if dict(knoten.get("personen") or {}) != pers:
+            alt = knoten.get("personen")
+            geaendert.append(f"Reisende {', '.join(f'{k}{(' (' + v + ')') if v else ''}' for k, v in pers.items()) or '–'}")
+            kurz.append("Reisende")
+            (knoten.__setitem__("personen", block_map(pers)) if pers else knoten.pop("personen", None))
+    fuer_jetzt = [knoten["fuer"]] if isinstance(knoten.get("fuer"), str) else list(knoten.get("fuer") or [])
+    preise = buchung_preise(args, fuer_jetzt)
+    if preise is not None and dict(knoten.get("preise") or {}) != preise:
+        geaendert.append("Preise je Ding " + (", ".join(f"{k} {v}" for k, v in preise.items()) or "entfernt"))
+        kurz.append("Preise je Ding")
+        (knoten.__setitem__("preise", fliess_map(preise)) if preise else knoten.pop("preise", None))
     if not geaendert:
-        raise Ablehnung(f"Nichts zu ändern an {bid} (änderbar: fuer, status, {', '.join(BUCHUNG_TEXTE)}, quelle, frist, storno_bis, gebucht_am).")
+        raise Ablehnung(f"Nichts zu ändern an {bid} (änderbar: fuer, status, {', '.join(BUCHUNG_TEXTE)}, quelle, frist, storno_bis, gebucht_am, ab, personen, preise).")
     from ruamel.yaml.comments import CommentedSeq
     verlauf = knoten.get("verlauf")
     if verlauf is None:

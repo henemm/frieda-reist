@@ -307,4 +307,12 @@ def test_beleg_abgelehnt(belege_welt):
     assert anfrage(u + "/D-07", "PATCH", {"name": "Ida", "sichtbar": "alle"})[0] == 404
     assert bl.typ_erkennen(b"RIFF\x00\x00\x00\x00WEBPVP8 ") == "image/webp" and bl.typ_erkennen(b"\x00\x00\x00\x18ftypheic") == "image/heic"
     assert bl.typ_erkennen(b"\xff\xd8\xff\xe0") == "image/jpeg" and bl.typ_erkennen(b"GIF89a") is None
+    # Abschrift als Text (beleg_anlegen, Issue #135): nur mit Dateiname .txt/.md, UTF-8, ohne Steuerzeichen, nicht leer
+    assert bl.typ_erkennen("Buchung EW-7, 120 €\n".encode(), "Bestätigung.txt") == "text/plain; charset=utf-8"
+    assert bl.typ_erkennen(b"hallo", "Bestaetigung.md") == "text/plain; charset=utf-8" and bl.typ_erkennen(b"hallo") is None
+    assert bl.typ_erkennen(b"  \n", "x.txt") is None and bl.typ_erkennen(b"a\x00b", "x.txt") is None and bl.typ_erkennen(b"\xff\xfe", "x.txt") is None
+    code, b, _ = _dienst_anfrage(u + "/B-01?name=Karl", "POST", roh="Abschrift der Mail\n".encode(), kopf={"X-Frieda-Datei": "Mail.txt"})
+    assert code == 201 and b["typ"] == "text/plain; charset=utf-8" and b["datei"].endswith(".txt") and b["name"] == "Mail.txt"
+    assert (ablage / "beispielreise" / "belege" / b["datei"]).read_text(encoding="utf-8") == "Abschrift der Mail\n"
+    assert _dienst_anfrage(u + "/B-01?name=Karl", "POST", roh=b"hallo", kopf={"X-Frieda-Datei": "Mail.pdf"})[0] == 415
     assert bl.name_saeubern("../../etc/passwd") == "passwd" and bl.name_saeubern("  ") == "Beleg" and bl.name_saeubern("a\x00b.pdf") == "ab.pdf"
