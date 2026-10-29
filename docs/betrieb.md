@@ -1,23 +1,23 @@
 # Betrieb einer Instanz
 
-Wie Frieda auf einem eigenen Server läuft: Seiten ausliefern, Rückmeldungen annehmen, sie von der KI einarbeiten lassen, veröffentlichen, neue Reisen freischalten und an Fristen erinnern. Alles dafür liegt in dieser Software unter `betrieb/`. Eine Instanz liefert nur ihre Werte.
+Wie Frieda auf einem eigenen Server läuft: Seiten ausliefern, Rückmeldungen annehmen, was der AI-Client über den Konnektor festlegt sofort ins Reisen-Repo schreiben, veröffentlichen, neue Reisen freischalten und an Fristen erinnern. Alles dafür liegt in dieser Software unter `betrieb/`. Eine Instanz liefert nur ihre Werte. Frieda enthält keine eigene KI (ADR-0001): Auf dem Server läuft kein Claude Code; bis zum 29.10.2026 gab es einen Einarbeiten-Lauf, der Eingaben mit `claude -p` einarbeitete (Paket D), er ist mit Paket O-3 entfallen.
 
 ## Instanz
 
-Eine **Instanz** ist eine Reisegruppe mit eigenem Betreiber: ein Reisen-Repo, dazu Ordner, Dienste und Adresse auf einem Server. Mehrere Gruppen bedeuten mehrere Instanzen, gern auf demselben Server. Die Reisen einer Instanz teilen sich Ablage, Dienste, KI-Anmeldung und Meldeweg; getrennt sind die Gruppen nur über eigene Instanzen. Mandanten innerhalb einer Instanz sind ein späterer Schritt (Issue #68).
+Eine **Instanz** ist eine Reisegruppe mit eigenem Betreiber: ein Reisen-Repo, dazu Ordner, Dienste und Adresse auf einem Server. Mehrere Gruppen bedeuten mehrere Instanzen, gern auf demselben Server. Die Reisen einer Instanz teilen sich Ablage, Dienste und Meldeweg; getrennt sind die Gruppen nur über eigene Instanzen. Mandanten innerhalb einer Instanz sind ein späterer Schritt (Issue #68).
 
 | Teil | Ort | Inhalt |
 |---|---|---|
-| Software | dieses Repo, im Reisen-Repo als Submodul `frieda/` (`engine -> frieda/engine`) | Generator, Dienste, `betrieb/` mit Skripten, Vorlagen und KI-Anweisung |
-| Reisen-Repo | eigenes, privates Repo | `reisen/<reise>/`, `betrieb/einstellungen.env`, optional `betrieb/einarbeiten-ergaenzung.md`, ein Meldeskript, eigene Tests unter `tests/` |
+| Software | dieses Repo, im Reisen-Repo als Submodul `frieda/` (`engine -> frieda/engine`) | Generator, Dienste, `betrieb/` mit Skripten und Vorlagen |
+| Reisen-Repo | eigenes, privates Repo | `reisen/<reise>/`, `betrieb/einstellungen.env`, ein Meldeskript, eigene Tests unter `tests/` |
 | Veröffentlichungsordner | Klon des Reisen-Repos auf dem Server, immer auf `main` | von hier wird gebaut; nicht darin arbeiten |
-| Arbeitskopien | `<Klon>-auto` (Einarbeiten), `<Klon>-arbeit` (Sitzungen), `<Klon>-schreiben` (Schreibweg, legt der Dienst selbst an) | Git-Worktrees, `betrieb/arbeitskopie.sh` |
+| Arbeitskopien | `<Klon>-schreiben` (Schreibweg, legt der Dienst selbst an), `<Klon>-arbeit` (Sitzungen) | Git-Worktrees, `betrieb/arbeitskopie.sh` |
 | Seiten | `<FR_SEITEN>/<reise>/` | gebaute Seiten, nginx liefert sie aus |
-| Ablage | `<FR_ABLAGE>/<reise>/` (`eingang.jsonl`, `auftraege.jsonl`, `status.json`, …), `<FR_ABLAGE>/_neu/` (Anfragen nach neuen Reisen) | Eingaben der Mitreisenden; nie im Repo |
+| Ablage | `<FR_ABLAGE>/<reise>/` (`eingang.jsonl`, `status.json`, `aufgaben.json`, …), `<FR_ABLAGE>/_neu/` (Anfragen nach neuen Reisen) | Eingaben der Mitreisenden; nie im Repo |
 | Konten | `<FR_KONTEN>/` (`konten.db`, Dienst-Geheimnis) | Konten, Anmeldungen und Einladungen aller Nutzer der Instanz; nie im Repo, nie in einer Reise |
-| Dienstordner | `<FR_DIENST>/` | Code der Dienste, Stände, Protokolle, Stempel, geheime Einstellungen |
+| Dienstordner | `<FR_DIENST>/` | Code der Dienste, Stände, Stempel, vorgemerkte Links, geheime Einstellungen |
 | Konnektor-Zugänge | `<FR_KONNEKTOR>/zugaenge.json`, `seiten.json` (600) | geheime Links; nie im Repo |
-| systemd | `<instanz>-rueckmeldungen`, `-konnektor`, `-schreiben`, `-veroeffentlichen.timer`, `-einarbeiten.path`/`.timer`, `-waechter.timer` | aus `betrieb/vorlagen/`, erzeugt von `einrichten.sh` |
+| systemd | `<instanz>-rueckmeldungen`, `-konnektor`, `-schreiben`, `-veroeffentlichen.timer`, `-waechter.timer` | aus `betrieb/vorlagen/`, erzeugt von `einrichten.sh` |
 | nginx | `<FR_NGINX_SNIPPETS>/<instanz>-<reise>.conf` (mit Token), `<instanz>-konnektor.conf`, Zone in `conf.d/<instanz>-zone.conf` | aus `betrieb/vorlagen/` |
 
 Die Skripte rufen sich im Reisen-Repo als `frieda/betrieb/<skript>.sh` auf und finden die Instanz selbst (das Repo, das die Software einbindet; sonst `FR_WURZEL`).
@@ -34,15 +34,14 @@ Der Name der Instanz (`FR_INSTANZ`) steht vor Units, Zonen und nginx-Bausteinen 
 
 ## Der Kreislauf
 
-1. **Eingabe:** Rückmeldedienst (Webseite), Konnektor (Claude-App) und Wächter schreiben in die Ablage der Reise und berühren `<FR_ABLAGE>/.neu`.
-2. **Einarbeiten:** Der Pfad-Wächter `<instanz>-einarbeiten.path` sieht `.neu` und startet `einarbeiten.sh`. Nach der Sammelzeit arbeitet die KI je Reise ein. Das Skript prüft, baut, testet und führt in `main` zusammen.
-3. **Veröffentlichen:** `veroeffentlichen.sh` holt `main` in den Veröffentlichungsordner und ruft `deploy.sh` für jede Reise auf. Das geschieht gleich nach dem Einarbeiten und sonst alle 5 Minuten. Danach schaltet `freischalten.sh` neue Reisen frei.
-4. **Rückmeldung:** Erst wenn alles online ist, setzt das Einarbeiten die Status. Die Absender sehen „aufgenommen“, „passt nicht“ oder eine Rückfrage.
-5. **Erinnern:** `waechter.sh` läuft täglich, meldet Fristen und legt Prüfaufträge an, die wieder bei 1 eingehen.
+1. **Schreiben:** Was im AI-Client über den Konnektor festgelegt wird (Arten, Merkmale, Werte, Dinge, Optionen, Entscheidungen, Fragen, Wissen, Personen, Status, Einstellungen, neue Reisen), prüft der **Schreibweg** nach den Regeln der Reise und schreibt es sofort nach `main` (siehe „Schreibweg“).
+2. **Eingaben:** Rückmeldungen und Antworten von der Webseite und aus der Claude-App, Aufgaben und das Wunsch-Brett liegen live in der Ablage der Reise. Eine Organisator:in arbeitet Rückmeldungen im AI-Client ein (prüfen, mit den Schreibwerkzeugen eintragen, `rueckmeldung_erledigen` mit Kommentar); die Absender sehen „aufgenommen“, „passt nicht“ oder eine Rückfrage.
+3. **Veröffentlichen:** `veroeffentlichen.sh` holt `main` in den Veröffentlichungsordner und ruft `deploy.sh` für jede Reise auf. Das geschieht gleich nach jedem Schreibvorgang und sonst alle 5 Minuten. Danach schaltet `freischalten.sh` neue Reisen frei und `zustellen.py` meldet neuen Reisen ihre Links.
+4. **Erinnern:** `waechter.sh` läuft täglich, meldet Fristen, fällige Statuswechsel und zu alte Prüfdaten als Meldungen an die Personen; nachschlagen und eintragen tut der AI-Client im Gespräch.
 
-Eine Änderung aus einer Sitzung (Claude Code im Reisen-Repo) geht über einen PR nach `main` und von dort denselben Weg ab Schritt 3.
+Eine Änderung aus einer Sitzung (Claude Code im Reisen-Repo, nur Software und Betrieb) geht über einen PR nach `main` und von dort denselben Weg ab Schritt 3.
 
-**Direkt (ADR-0001, Paket O-3, seit 29.10.2026):** Was im AI-Client über den Konnektor festgelegt wird, schreibt der **Schreibweg** sofort nach `main` (Schritt 2 entfällt, es folgt sofort Schritt 3). Zuerst gilt das für Arten und Merkmale (`plan/arten.yaml`); die weiteren Schreibvorgänge folgen, bis das Einarbeiten mit KI entfällt. Siehe „Schreibweg“.
+Bis zum 29.10.2026 stand zwischen Eingabe und Veröffentlichen der **Einarbeiten-Lauf** (`einarbeiten.sh`, Pfad-Wächter `<instanz>-einarbeiten.path`, Sammelzeit, ein Lauf von Claude Code je Reise, Aufträge `A-…`). Er ist mit ADR-0001 (Paket O-3) entfallen: Es gibt keinen zweiten KI-Lauf in Frieda, der Eingaben nachträglich deutet.
 
 ## Schreibweg
 
@@ -56,43 +55,9 @@ Eine Änderung aus einer Sitzung (Claude Code im Reisen-Repo) geht über einen P
 
 Die Routendatei (`plan/routen.yaml`; neue IDs über `ids.yaml`, Fragen in `offene-fragen.md`) schreibt er mit ruamel.yaml rund (Kommentare und Form bleiben; `engine/requirements.txt`, bei einer bestehenden Instanz einmal `engine/.venv/bin/pip install -r engine/requirements.txt`). Beim ersten Schreiben zieht er von Hand umbrochene Fließ-Mappings in eine Zeile; `python engine/schreiben.py normalisieren <reise>` tut das vorab in einer Sitzung, damit der erste Commit aus dem Gespräch nur seine Stelle ändert.
 
-Der Dienst läuft als Dienstbenutzer mit dessen `git`-Anmeldung (`gh` als Credential-Helfer, `PATH` wie beim Einarbeiten), ohne `ProtectHome`, weil die Arbeitskopie neben dem Repo liegt. `GET /gesund` antwortet `{"gesund": true}`, wenn das Repo erreichbar ist. Von Hand: `frieda/betrieb/…`: `FR_WURZEL=<Klon> engine/.venv/bin/python engine/schreiben.py vorbereiten` legt die Arbeitskopie an. Protokoll: `journalctl -u <instanz>-schreiben`. Eine Instanz ohne diesen Dienst setzt `KN_SCHREIBDIENST` nicht; der Konnektor bietet die Werkzeuge dann nicht an.
+Der Dienst läuft als Dienstbenutzer mit dessen `git`-Anmeldung (`gh` als Credential-Helfer, `PATH` aus `FR_PFAD`), ohne `ProtectHome`, weil die Arbeitskopie neben dem Repo liegt. `GET /gesund` antwortet `{"gesund": true}`, wenn das Repo erreichbar ist. Von Hand: `frieda/betrieb/…`: `FR_WURZEL=<Klon> engine/.venv/bin/python engine/schreiben.py vorbereiten` legt die Arbeitskopie an. Protokoll: `journalctl -u <instanz>-schreiben`. Eine Instanz ohne diesen Dienst setzt `KN_SCHREIBDIENST` nicht; der Konnektor bietet die Schreibwerkzeuge dann nicht an, und neue Reisen lassen sich aus der Claude-App nicht anlegen.
 
-## Einarbeiten
-
-`betrieb/einarbeiten.sh` bearbeitet Rückmeldungen und Aufträge mit Status „neu“, die noch kein Lauf gesehen hat. Ohne Neues startet keine KI, ein leerer Lauf kostet nichts.
-
-**Ablauf eines Durchgangs:**
-
-1. **Sammelzeit:** Nach der letzten neuen Eingabe wartet der Lauf `regeln.sammelzeit_minuten` der Reise (`reise.yaml`), höchstens `FR_MAX_WARTEN_MIN` nach der ersten. So gehen mehrere Eingaben in einen Lauf.
-2. **Ein Lauf zur Zeit (Sperre):** Was währenddessen eingeht, bearbeitet derselbe Dienst in einem weiteren Durchgang, höchstens `FR_DURCHGAENGE`.
-3. **Arbeitskopie:** Eine eigene Arbeitskopie `<Klon>-auto` auf dem Branch `auto/einarbeiten-<zeit>`.
-4. **Neue Reisen** aus der Claude-App (`<FR_ABLAGE>/_neu`) legt das Skript ohne KI an, denn der Dienst hat sie schon geprüft (`einarbeiten_hilfe.py neue_reisen`).
-5. **Ein KI-Lauf je Reise** (`claude -p`, Modus `dontAsk`) mit der Anweisung `betrieb/einarbeiten-auftrag.md` und den IDs dieser Reise:
-   - Schreiben nur unter `reisen/<reise>/` und in die eigene Ergebnisdatei.
-   - Lesen verboten für die anderen Reisen (Arbeitskopie und Veröffentlichungsordner) und für die ganze Ablage.
-   - Befehle nur `rueckmeldungen.py liste <reise>` und `bauen.py <reise>`, dazu Websuche und Webabruf.
-   - Kein git, keine Status: Die KI schreibt `status.tsv` und `bericht.md`.
-   - Was sie trotzdem außerhalb ihrer Reise ändert, verwirft das Skript und nennt es im Bericht.
-6. **Regelprüfung** (`einarbeiten_hilfe.py regeln`): Ein Konflikt muss eine neue offene Frage mit der Auftrags-ID ergeben. Ein Prüfauftrag des Wächters darf keinen Wert ändern.
-7. **Bauen, Tests** (Software und `tests/` des Reisen-Repos), dann ein Commit und ein PR für alle Reisen des Durchgangs, zusammenführen (`gh`).
-8. **Sofort veröffentlichen:** Hält gerade der Timer die Sperre, holt er es nach. Die Nachricht sagt dann „Online in wenigen Minuten“.
-9. **Status setzen:** nur für Einträge dieses Laufs und nur aus der Datei der eigenen Reise.
-
-**Ergänzung der Instanz:** Was eine Instanz der KI zusätzlich sagen will (eigene Gepflogenheiten, Namen von Rollen), steht in `betrieb/einarbeiten-ergaenzung.md` des Reisen-Repos und wird angehängt. Die Anweisung der Software nennt keine Person und kein Repo.
-
-**Fehlerfälle:**
-
-| Fall | Folge |
-|---|---|
-| KI-Lauf einer Reise bricht ab | Ihre halben Änderungen werden verworfen. Ihre Einträge bleiben „neu“, der Versuch zählt nur für sie. Die anderen Reisen gehen online. Meldung „Einarbeiten fehlgeschlagen“. |
-| Derselbe Eintrag scheitert `FR_MAX_VERSUCHE`-mal | Er wird aufgegeben: Rückfrage auf der Seite („<FR_BETREIBER> schaut es sich in der nächsten Sitzung an“), Meldung, kein automatischer Versuch mehr. Spätere Eingaben hält er nicht auf. |
-| Regel verletzt oder Tests rot | Nichts geht online, die Status bleiben „neu“. Der Branch `auto/einarbeiten-…` wartet zum Nachsehen in einer Sitzung, die Einträge gelten als gesehen. Nach der Behebung die ID aus `<FR_DIENST>/einarbeiten-gesehen` streichen, dann läuft der Eintrag erneut. |
-| PR nicht zusammengeführt | Meldung, nichts online, Einträge gesehen. |
-
-**Messen:** Jeder Durchgang mit Neuem schreibt eine Zeile nach `<FR_DIENST>/einarbeiten-laeufe.jsonl`: Ergebnis (`ok`, `teilweise`, `fehler`), Reisen, Anzahl, Dauer, KI-Dauer, Kosten in USD, Zeit von der ältesten Eingabe bis zum Ende, online ja/nein. Ansehen mit `python3 engine/rueckmeldungen.py laeufe [<reise>] [--alle]`. Die Claude-App zeigt den Abschnitt „Einarbeiten“ im Überblick, Kosten zeigt sie nicht.
-
-**Von Hand:** `frieda/betrieb/einarbeiten.sh` im Veröffentlichungsordner. Ohne Kosten prüfen: `date > <FR_ABLAGE>/.neu`, dann zeigt `journalctl -u <instanz>-einarbeiten -n 20` „Nichts Neues.“
+**Fehlerfälle:** Lehnt der Schreibweg ab (Rolle, Status, Form, Probebau), bleibt alles unverändert, und der AI-Client bekommt den Grund im Gespräch. Scheitert `git push` (Konflikt nach drei Versuchen, kein Netz), meldet er „bitte noch einmal“; nichts ist halb geschrieben. Bleibt der Dienst stehen (`failed`), sieht das der Monitor der Instanz (siehe „Überwachung“), der Konnektor meldet der Person „Schreibweg nicht erreichbar“.
 
 ## Veröffentlichen
 
@@ -107,7 +72,7 @@ Ohne Handarbeit (`docs/neue-reise.md`): Nach dem Veröffentlichen ruft `veroeffe
 - **Neue Reise:** Sie bekommt einen nginx-Baustein aus `vorlagen/nginx-reise.conf` mit einem neuen Zufalls-Token (root, 640). Dann `nginx -t`; bei einem Fehler wird der Baustein wieder entfernt. Danach lädt nginx neu. Bis die neuen Pfade gelten, vergeht ein Moment; die Prüfung des neuen Links versucht es deshalb bis zu zehnmal im Sekundenabstand.
 - **Prüfung:** Seite und `api/gesund` müssen mit 200 antworten.
 - **Link:** Der Link zur Seite kommt nach `seiten.json` (für `meine_reisen`).
-- **Vorgemerkte Links:** Links neuer Reisen aus der App merkt das Einarbeiten in `<FR_DIENST>/neue-reisen-ausstehend.jsonl` vor. Das Veröffentlichen stellt sie zu, sobald die Seite online ist, als Meldung an die Person oder bei einem Konto als Einladung per Mail.
+- **Vorgemerkte Links:** Links neuer Reisen aus der App merkt der Konnektor in `<FR_DIENST>/neue-reisen-ausstehend.jsonl` vor. Das Veröffentlichen stellt sie zu (`betrieb/zustellen.py`), sobald die Seite online ist, als Meldung an die Person oder bei einem Konto als Verknüpfung mit der Reise und Einladung per Mail.
 
 Links von Hand: `freischalten.sh <reise>` für die Seite, `freischalten.sh <reise> --person <schlüssel>` für die Claude-App. Links stehen nie im Protokoll, im Repo, in Issues oder Nachrichten.
 
@@ -123,7 +88,6 @@ Links von Hand: `freischalten.sh <reise>` für die Seite, `freischalten.sh <reis
 |---|---|---|
 | `FR_INSTANZ` | `frieda` | Name der Instanz: Units, nginx-Bausteine, Sperren, Drossel-Zone |
 | `FR_TITEL` | `Frieda` | Kurzname in Nachrichten |
-| `FR_BETREIBER` | leer | wer Rückfragen ansieht; steht im Kommentar aufgegebener Einträge |
 | `FR_ADRESSE` | – | öffentliche Adresse der Seiten (nötig zum Freischalten) |
 | `FR_KN_ADRESSE` | `<FR_ADRESSE>/<FR_INSTANZ>-mcp` | Adresse des Konnektors |
 | `FR_UMZUG_NACH` | leer | neue Adresse der Seiten bei einem Umzug auf eine andere Domain: Der Generator baut dann einen Service Worker, der gespeicherte Seiten verwirft und sich abmeldet, und eine Seite, die auf denselben Pfad der neuen Adresse weiterleitet. Erst danach darf der Server von der alten Adresse umleiten (ein umgeleitetes `sw.js` lehnt der Browser als Update ab). Kann auch als `bauen.py --umzug-nach` übergeben werden |
@@ -132,32 +96,30 @@ Links von Hand: `freischalten.sh <reise>` für die Seite, `freischalten.sh <reis
 | `FR_SCHREIBKOPIE` | `<Wurzel>-schreiben` | Arbeitskopie des Schreibwegs (Git-Worktree, legt der Dienst an) |
 | `FR_PYTHON` | `<Wurzel>/engine/.venv/bin/python` | Python mit den Paketen der Software |
 | `FR_MELDEN` | leer | Meldeweg (unten) |
-| `FR_CLAUDE`, `FR_CLAUDE_MIN` | `claude`, `45` | Befehl und Höchstdauer eines KI-Laufs je Reise |
-| `FR_DURCHGAENGE`, `FR_MAX_VERSUCHE`, `FR_MAX_WARTEN_MIN` | `3`, `3`, `20` | Durchgänge je Start, Fehlversuche bis zum Aufgeben, längste Sammelzeit |
 | `FR_NGINX_SNIPPETS`, `FR_SUDO` | `/etc/nginx/snippets`, `sudo -n` | nginx-Bausteine und Rechte |
 | `FR_SPERREN` | `/tmp` | Ordner der Sperrdateien |
 | `FR_BENUTZER`, `FR_GRUPPE`, `FR_HOME`, `FR_PFAD` | aufrufender Benutzer | nur für `einrichten.sh`: Benutzer und `PATH` der Dienste |
 | `FR_HEARTBEAT_VEROEFFENTLICHEN` | leer | Überwachungsadresse, nur in `betrieb.env` |
 | `FR_KENNUNG`, `FR_SPRACHEN` | Name der Software, `de,en` | Kennung mit Kontakt gegenüber OpenStreetMap und Sprachen der Namen (`docs/werkzeuge.md`) |
 
-Die Skripte setzen daraus die Umgebung der Software (`RM_ABLAGE`, `KN_SEITEN`, `KN_ZUGAENGE`, `KN_BASIS`, `RM_LAEUFE`; die Unit des Konnektors zusätzlich `KN_SCHREIBDIENST`). Ausdrücklich gesetzte Werte bleiben. Fehlt etwas, etwa bei einem Aufruf von Hand wie `python3 engine/rueckmeldungen.py liste <reise>` in der Wurzel des Reisen-Repos, leitet `engine/instanz.py` die Ordner nach derselben Ordnung ab, notfalls aus der Einstellungsdatei. Die Software selbst kennt keine Instanz, ihre letzte Vorgabe ist `/srv/frieda`.
+Die Skripte setzen daraus die Umgebung der Software (`RM_ABLAGE`, `KN_SEITEN`, `KN_ZUGAENGE`, `KN_BASIS`; die Unit des Konnektors zusätzlich `KN_SCHREIBDIENST`). Ausdrücklich gesetzte Werte bleiben. Fehlt etwas, etwa bei einem Aufruf von Hand wie `python3 engine/rueckmeldungen.py liste <reise>` in der Wurzel des Reisen-Repos, leitet `engine/instanz.py` die Ordner nach derselben Ordnung ab, notfalls aus der Einstellungsdatei. Die Software selbst kennt keine Instanz, ihre letzte Vorgabe ist `/srv/frieda`.
 
 **Meldeweg:** `FR_MELDEN` ist eine ausführbare Datei der Instanz (ein relativer Pfad gilt ab der Wurzel des Reisen-Repos), aufgerufen als `<befehl> <normal|high> <betreff> <text> [erledigt]`. `erledigt` heißt: Das ist ein reiner Bericht, es ist nichts zu tun. Fehler kommen ohne `erledigt` und sollen offen bleiben, bis jemand sie ansieht. Wie die Nachricht ankommt (Mail, Telegram, eine Warteschlange), entscheidet die Instanz in ihrem Skript.
 
 ## Überwachung
 
-Nach fachlichem Erfolg berühren die Läufe Stempel in `<FR_DIENST>/`: `einarbeiten-erfolg` (nichts Neues oder alles online), `veroeffentlichen-erfolg` (nichts Neues oder alles veröffentlicht) und `waechter-erfolg`. Ein Monitor der Instanz meldet, wenn ein Stempel zu alt ist (etwa 3 h beim Einarbeiten, 2 h beim Veröffentlichen, 36 h beim Wächter) oder ein Dienst `failed` ist. Wer einen Heartbeat-Dienst hat, setzt `FR_HEARTBEAT_VEROEFFENTLICHEN`: Die Adresse wird nur nach Erfolg zusätzlich abgerufen. Seiten, `api/gesund` und der Konnektor unter `/gesund` lassen sich von außen prüfen.
+Nach fachlichem Erfolg berühren die Läufe Stempel in `<FR_DIENST>/`: `veroeffentlichen-erfolg` (nichts Neues oder alles veröffentlicht) und `waechter-erfolg`. Ein Monitor der Instanz meldet, wenn ein Stempel zu alt ist (etwa 2 h beim Veröffentlichen, 36 h beim Wächter), ein Dienst `failed` ist oder der Schreibweg auf `127.0.0.1:<FR_SB_PORT>/gesund` nicht mit `{"gesund": true}` antwortet. Wer einen Heartbeat-Dienst hat, setzt `FR_HEARTBEAT_VEROEFFENTLICHEN`: Die Adresse wird nur nach Erfolg zusätzlich abgerufen. Seiten, `api/gesund` und der Konnektor unter `/gesund` lassen sich von außen prüfen.
 
 ## Neue Instanz einrichten
 
-1. **Server:** Benutzer für die Dienste, nginx mit HTTPS für die Adresse, Python 3, `git`, `rsync`, `flock`, Node 22 (Browser-Prüfung in den Tests), [Claude Code](https://claude.com/claude-code) und `gh`, beide als dieser Benutzer angemeldet.
+1. **Server:** Benutzer für die Dienste, nginx mit HTTPS für die Adresse, Python 3, `git`, `rsync`, `flock`, Node 22 (Browser-Prüfung in den Tests) und `gh`, als dieser Benutzer angemeldet (Credential-Helfer für `git push` des Schreibwegs). Claude Code ist auf dem Server nicht nötig.
 2. **Reisen-Repo:** neues privates Repo mit der Software als Submodul:
    ```
    git submodule add https://github.com/henemm/frieda-reist frieda
    ln -s frieda/engine engine
    mkdir -p reisen betrieb && cp frieda/betrieb/einstellungen.beispiel betrieb/einstellungen.env
    ```
-   Werte eintragen; ein Meldeskript ist optional. In `.gitignore`: `.einarbeiten/`, `dist/`, `reisen/*/medien/karte`.
+   Werte eintragen; ein Meldeskript ist optional. In `.gitignore`: `dist/`, `reisen/*/medien/karte`.
 3. **Klon auf dem Server:** als Dienstbenutzer, `git submodule update --init`. Danach `python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt`. `git fetch` muss ohne Rückfrage gehen. Lokale Dateien, die nicht ins Repo gehören (etwa `.claude/settings.json`), kommen in `.git/info/exclude`, sonst gilt der Ordner als belegt und das Veröffentlichen setzt aus.
 4. **Einrichten:** `frieda/betrieb/einrichten.sh` prüft die Voraussetzungen. Es erzeugt Units und nginx-Bausteine in einem Ordner und zeigt die Befehle zum Aktivieren. Außerhalb dieses Ordners ändert es nichts. `--installieren` legt nach Rückfrage die Ordner an und kopiert Units und Bausteine nach `/etc`.
 5. **nginx:** Im server-Block der Adresse `include <FR_NGINX_SNIPPETS>/<instanz>-*.conf;` eintragen, `nginx -t`, neu laden.
@@ -165,8 +127,8 @@ Nach fachlichem Erfolg berühren die Läufe Stempel in `<FR_DIENST>/`: `einarbei
    - `systemctl restart <instanz>-rueckmeldungen <instanz>-konnektor <instanz>-schreiben`
    - `nginx -t` und `systemctl reload nginx`
    - `install`, `test`, `cat` und `rm` für Dateien in `<FR_NGINX_SNIPPETS>/<instanz>-*.conf`
-7. **Erste Reise** anlegen (`docs/neue-reise.md`), committen, `frieda/betrieb/deploy.sh <reise>` (legt den Code der Dienste an). Danach `sudo systemctl enable --now <instanz>-rueckmeldungen <instanz>-konnektor <instanz>-schreiben` und die Timer und den Pfad-Wächter, wie `einrichten.sh` sie nennt.
-8. **Prüfen:** `veroeffentlichen.sh --immer` zeigt „ist online“. Mit `freischalten.sh <reise> --person <schlüssel>` bekommt jede Person ihren Link, den sie in der Claude-App einträgt (`docs/konnektor.md`). `date > <FR_ABLAGE>/.neu` zeigt im Journal „Nichts Neues.“.
+7. **Erste Reise** anlegen (`docs/neue-reise.md`), committen, `frieda/betrieb/deploy.sh <reise>` (legt den Code der Dienste an). Danach `sudo systemctl enable --now <instanz>-rueckmeldungen <instanz>-konnektor <instanz>-schreiben` und die beiden Timer, wie `einrichten.sh` sie nennt.
+8. **Prüfen:** `veroeffentlichen.sh --immer` zeigt „ist online“. Mit `freischalten.sh <reise> --person <schlüssel>` bekommt jede Person ihren Link, den sie in der Claude-App einträgt (`docs/konnektor.md`). `curl -s 127.0.0.1:<FR_SB_PORT>/gesund` antwortet `{"gesund": true}`.
 
 **Zwei Instanzen auf einem Server** brauchen verschiedene `FR_INSTANZ`, `FR_SEITEN` (und damit Ablage und Dienstordner) und Ports. `einrichten.sh` bricht ab, wenn eine andere installierte Instanz dieselben Ports nutzt. Unit-Namen, nginx-Bausteine, Drossel-Zone und Sperrdateien tragen den Namen der Instanz. Jede Instanz braucht einen eigenen Konnektor-Pfad (`<instanz>-mcp`).
 
@@ -189,4 +151,5 @@ Im Veröffentlichungsordner wird nicht gearbeitet, sonst setzt der Timer aus. `f
 | Konnektor `gesund` 503 | `zugaenge.json` unlesbar, keine Reise freigeschaltet (`seiten.json`) und kein alter Link, oder eine freigeschaltete oder verlinkte Reise nicht veröffentlicht |
 | Konnektor meldet „Schreibweg nicht erreichbar“ oder „nicht eingerichtet“ | `systemctl status <instanz>-schreiben`, `journalctl -u <instanz>-schreiben -n 50`; steht `KN_SCHREIBDIENST` in der Unit des Konnektors? Geht `git push` als Dienstbenutzer ohne Rückfrage? |
 | Nichts geht online | `journalctl -u <instanz>-veroeffentlichen -n 50`; ist der Veröffentlichungsordner auf `main` und sauber? |
-| Eingaben bleiben „neu“ | `journalctl -u <instanz>-einarbeiten -n 100`, `rueckmeldungen.py laeufe`, offene Branches `auto/einarbeiten-…` |
+| Eingetragenes erscheint nicht auf der Seite | `journalctl -u <instanz>-schreiben -n 50` (Commit und Push da?), dann `journalctl -u <instanz>-veroeffentlichen -n 50` |
+| Rückmeldungen bleiben „neu“ | Das ist kein Fehler: Eine Organisator:in arbeitet sie im AI-Client ein (`rueckmeldungen`, dann `rueckmeldung_erledigen`); `python3 engine/rueckmeldungen.py liste <reise>` zeigt sie auf dem Server |

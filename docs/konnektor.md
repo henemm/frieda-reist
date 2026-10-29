@@ -4,11 +4,12 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 
 ## Grundsätze (24.10.2026)
 
-- **Der Konnektor schreibt direkt in die Reise** (seit 29.10.2026, ADR-0001 Paket O-3): Frieda enthält keine KI; was im Gespräch festgelegt wird, prüfen Regeln im Code (`engine/schreiben.py`, siehe „Ontologie im Gespräch“) und schreiben es sofort in das Reisen-Repo. Bis zum 28.10.2026 änderte sich der Plan nur beim Einarbeiten durch Claude Code (Aufträge, Rückmeldungen); dieser Weg läuft aus.
-- Nutzen dürfen ihn **alle Personen der Reise** (`reise.yaml personen`). Seit 26.10.2026 gehört ein Link zu einer Person; ihre Rolle entscheidet: `gast` liest, `mitwirkend` gibt Rückmeldungen, Wünsche, Vorschläge und Aufgaben, `organisator` dazu Aufträge. Alte Links mit Rolle `mitreisend` gelten als `mitwirkend`.
+- **Der Konnektor schreibt direkt in die Reise** (seit 29.10.2026, ADR-0001 Paket O-3): Frieda enthält keine KI; was im Gespräch festgelegt wird, prüfen Regeln im Code (`engine/schreiben.py`, siehe „Ontologie im Gespräch“) und schreiben es sofort in das Reisen-Repo. Bis zum 29.10.2026 änderte sich der Plan nur beim Einarbeiten durch Claude Code auf dem Server (Aufträge, Rückmeldungen); dieser Weg ist abgeschaltet.
+- Nutzen dürfen ihn **alle Personen der Reise** (`reise.yaml personen`). Seit 26.10.2026 gehört ein Link zu einer Person; ihre Rolle entscheidet: `gast` liest, `mitwirkend` gibt Rückmeldungen, Wünsche, Vorschläge und Aufgaben und schreibt Werte, Dinge, Optionen, Fragen und Wissen (Eingaben), `organisator` entscheidet dazu, legt Arten und Merkmale fest, setzt Status und Einstellungen und lädt ein. Alte Links mit Rolle `mitreisend` gelten als `mitwirkend`.
 - **Ein Link pro Reise und Person.**
 - Gehört der Link zu einer Person, steht der Name fest. Bei einem Link ohne Person (nur Rolle) fragt Claude einmal nach dem Vornamen.
-- **Aufgaben** (AG-01 …) sind die Ausnahme von „nur als Auftrag“: Alle dürfen sie über die App und über die Webseite sofort anlegen, ändern und abhaken. Eine Aufgabe hängt an einer oder mehreren IDs oder an der Reise allgemein. Sie hat Titel, Zuständig, Priorität, „ab wann möglich“, Frist, Notiz, Status (offen, in Arbeit, erledigt, entfällt) und einen Verlauf. Gelöscht wird nie.
+- **Rückmeldungen** (`rueckmeldung_geben`, `frage_beantworten`, die Formulare der Webseite) sind Eingaben: Sie liegen in der Ablage der Reise, bis eine Organisator:in sie im AI-Client prüft, mit den Schreibwerkzeugen einträgt und mit `rueckmeldung_erledigen` abschließt (Kommentar für die Seite in einfachen Worten).
+- **Aufgaben** (AG-01 …) darf jede:r über die App und über die Webseite sofort anlegen, ändern und abhaken. Eine Aufgabe hängt an einer oder mehreren IDs oder an der Reise allgemein. Sie hat Titel, Zuständig, Priorität, „ab wann möglich“, Frist, Notiz, Status (offen, in Arbeit, erledigt, entfällt) und einen Verlauf. Gelöscht wird nie.
 
 ## Was Claude damit kann
 
@@ -57,7 +58,7 @@ Aufgaben liegen live in `<ablage>/<reise>/aufgaben.json`, nicht im Repo. Der Rü
 
 **`entscheiden`** (nur Organisator:innen, Baustein `varianten`, nicht in `danach` und `archiv`): Eingaben sind `option` (V-01.b), `status` (`gewaehlt`, `verworfen`, `ersetzt`; bei `ersetzt` auch `ersetzt_durch`), `grund` und optional `quelle`. Nur mit persönlichem Link, denn jede Entscheidung gehört genau einer Person. Der Dienst prüft sofort und lehnt mit Begründung ab, wenn die Option oder Wahlstelle fehlt, der Status unbekannt ist, der Grund fehlt, die Option schon so entschieden ist, `ersetzt_durch` nicht zur selben Wahlstelle gehört oder dieselbe Entscheidung schon vorliegt. Hinweise, die nichts verhindern: bisher gewählte Option wird ersetzt, Wahlstelle ist danach offen, fehlende Merkmale, ungeprüfte veränderliche Angaben, Wahlstelle für unterwegs, Regeln zwischen Optionen (die gewählte setzt etwas voraus, das nicht im Plan steht, oder schließt etwas im Plan aus; die verworfene wird von einer Option im Plan vorausgesetzt; `docs/alternativen.md`). Widerspricht die Entscheidung einer anderen Organisator:in, gilt `regeln.konflikt` (Meldung an beide, offene Frage, nichts wird übernommen).
 
-**Seit 29.10.2026 (ADR-0001, O-3 Schritt 4)** schreibt der Konnektor die Entscheidung über den Schreibweg direkt in `plan/routen.yaml`: Verlaufseintrag an der Option (Datum, Status, Person, Grund, bei `ersetzt` auch `durch`), bisher gewählte Optionen derselben Wahlstelle bekommen `ersetzt`, die Frage der Wahlstelle wird in `offene-fragen.md` als geklärt eingetragen (verworfen ohne verbleibende Wahl öffnet sie wieder). Widerspricht die Entscheidung der einer anderen Organisator:in (`regeln.konflikt`), wird nichts geschrieben: Es entsteht eine offene Frage mit beiden Positionen, und alle beteiligten Organisator:innen bekommen eine Meldung. `regeln.entscheidungsweg` ist damit ohne Wirkung und entfällt mit dem Abschalten des Einarbeitens; ohne eingerichteten Schreibweg gilt übergangsweise noch der alte Weg (geprüfter Auftrag, Einarbeiten zieht nach).
+**Seit 29.10.2026 (ADR-0001, O-3 Schritt 4)** schreibt der Konnektor die Entscheidung über den Schreibweg direkt in `plan/routen.yaml`: Verlaufseintrag an der Option (Datum, Status, Person, Grund, bei `ersetzt` auch `durch`), bisher gewählte Optionen derselben Wahlstelle bekommen `ersetzt`, die Frage der Wahlstelle wird in `offene-fragen.md` als geklärt eingetragen (verworfen ohne verbleibende Wahl öffnet sie wieder). Widerspricht die Entscheidung der einer anderen Organisator:in (`regeln.konflikt`), wird nichts geschrieben: Es entsteht eine offene Frage mit beiden Positionen, und alle beteiligten Organisator:innen bekommen eine Meldung. Die frühere Regel `regeln.entscheidungsweg` (direkt oder als Auftrag mit Prüfung durch Claude Code) ist entfallen; ohne eingerichteten Schreibweg geht Entscheiden nicht.
 
 **`tag_aendern`** (nur Organisator:innen): Titel, Text, Nacht (`U-…`, `V-…`, `O-…` oder leer), Strecken (`E-…`, `V-…`) und Wahlstellen unterwegs eines Tags ändern; so wird eine feste Unterkunft zur Wahl zwischen mehreren (Nacht = neue Wahlstelle). Der Generator prüft, ob der Plan aufgeht.
 
@@ -66,11 +67,11 @@ Aufgaben liegen live in `<ablage>/<reise>/aufgaben.json`, nicht im Repo. Der Rü
 **`person_einladen`** (`regeln.einladen`: `organisator` oder `mitwirkend`): Eingaben `vorname`, `rolle` (Standard `mitwirkend`), `reist`, `notiz`. Man kann höchstens die eigene Rolle vergeben. Der Dienst
 1. stellt den persönlichen Link aus (`zugaenge.json`, Rechte 600) und gibt ihn dem Einladenden im Gespräch,
 2. legt die Person live in `<ablage>/<reise>/einladungen.json` an, damit Rolle und Zugang sofort gelten (Konnektor und Rückmeldedienst kennen sie),
-3. schreibt sie über den Schreibweg sofort nach `reise.yaml` (`personen`; ohne Schreibweg übergangsweise als Auftrag für das Einarbeiten). Steht sie dort, gilt `reise.yaml`.
+3. schreibt sie über den Schreibweg sofort nach `reise.yaml` (`personen`). Steht sie dort, gilt `reise.yaml`.
 
-Gibt es die Person schon, bekommt sie nur einen weiteren Link; ihre Rolle zu ändern ist eine Einstellung der Reise (Auftrag an `reise`). Einen Link zu sperren geht noch von Hand (Eintrag aus `zugaenge.json` löschen).
+Gibt es die Person schon, bekommt sie nur einen weiteren Link; ihre Rolle ändert `person_einladen` mit anderer Rolle (nur Organisator:innen, sofort in `reise.yaml`). Einen Link zu sperren geht noch von Hand (Eintrag aus `zugaenge.json` löschen).
 
-**Anleitung:** Beim Verbinden bekommt die KI Rolle, Reisestatus, Entscheidungsweg und die Grenzen der sprechenden Person (Mitwirkende:r: kann nicht entscheiden; Link ohne Person: kein Entscheiden und Einladen).
+**Anleitung:** Beim Verbinden bekommt die KI Rolle, Reisestatus und die Grenzen der sprechenden Person (Mitwirkende:r: kann nicht entscheiden; Link ohne Person: kein Entscheiden und Einladen) und den Hinweis, dass Eingetragenes sofort gilt und die Seite es in wenigen Minuten zeigt.
 
 ## Ontologie im Gespräch (ADR-0001, Paket O-3, Schritte 1 bis 6, 29.10.2026)
 
@@ -84,9 +85,10 @@ Welche Arten eine Reise hat (Hotel, Refugi, Ryokan, Zugfahrt, Reiseteil …) und
 - **Dinge, Optionen, Wahlstellen, Fragen** (Schritt 3, 29.10.2026): `ding_anlegen` legt eine Unterkunft (Ort, Art, Herkunft, Merkmale), Strecke (von, nach, Art) oder einen Ort an; die ID kommt aus `ids.yaml` der Reise (`neu.naechste_id`, nie neu vergeben). `ding_aendern` ändert Felder (Name, Ort, Hinweis, Quelle, Buchungslink, Frage; die Art nur Organisator:innen, weil sie bestimmt, welche Merkmale gelten), Merkmale ändert `wert_eintragen`. `option_anlegen` hängt eine Alternative an eine Wahlstelle, Status `vorgeschlagen` mit Verlauf (Datum, Person, Grund) und Herkunft; `erfordert`/`schliesst_aus` und Merkmale werden geprüft. `wahlstelle_anlegen` legt eine Wahlstelle mit Optionen an und hängt sie mit `an` an Tage, Strecken, Unterkünfte, Orte oder Abschnitte; eine Planungs-Wahlstelle ohne `frage` bekommt ihre offene Frage mit (`frage_anlegen` legt Fragen auch einzeln an). Den Plan selbst (welche Nacht welche Wahlstelle nutzt, Entscheidungen) ändern diese Werkzeuge nicht; das ist Schritt 4. `alternative_vorschlagen` ist entfallen.
 - **Entscheiden und Plan** (Schritt 4, 29.10.2026): `entscheiden` schreibt den Verlaufseintrag direkt (siehe oben), `tag_aendern` den Plan eines Tags.
 - **Wissen, Fragen, Rückmeldungen, Personen** (Schritt 5, 29.10.2026): `wissen_schreiben` legt einen W-Abschnitt an oder ergänzt einen (Herkunft am Absatz), `frage_schliessen` klärt eine Frage, `rueckmeldung_erledigen` setzt den Status einer Rückmeldung über den Rückmeldedienst (die KI im AI-Client arbeitet Rückmeldungen der Seite ein: Inhalt prüfen, mit den Werkzeugen eintragen, erledigen), `person_einladen`/`person_entfernen` schreiben die Person über `person_schreiben` sofort nach `reise.yaml` (ausscheiden = Gast, reist nicht; der Verlauf nennt die Person weiter).
-- **Status, Einstellungen, neue Reisen** (Schritt 6, 29.10.2026): `reise_status_setzen` (mit Grund und Verlauf, auch aus dem Archiv zurück) und `einstellung_setzen` (Bausteine, Spielregeln) schreiben `reise.yaml`; `reise_anlegen` legt die neue Reise sofort über den Schreibweg an (Werkzeug `reise_anlegen` auf Ebene des Repos), die Links kommen wie bisher, sobald die Seite online ist (`veroeffentlichen.sh`). `auftrag_geben` und die A-Ablage sind entfallen; der Einarbeiten-Lauf hat nichts mehr zu tun und wird abgeschaltet. Sie folgen in den nächsten Schritten von O-3 (frieda-reist #91). Bis dahin laufen beide Wege.
+- **Status, Einstellungen, neue Reisen** (Schritt 6, 29.10.2026): `reise_status_setzen` (mit Grund und Verlauf, auch aus dem Archiv zurück) und `einstellung_setzen` (Bausteine, Spielregeln) schreiben `reise.yaml`; `reise_anlegen` legt die neue Reise sofort über den Schreibweg an (Werkzeug `reise_anlegen` auf Ebene des Repos), die Links kommen wie bisher, sobald die Seite online ist (`veroeffentlichen.sh`). `auftrag_geben` und die A-Ablage sind entfallen.
+- **Abschalten** (letzter Schritt, 29.10.2026): Der Einarbeiten-Lauf auf dem Server (`einarbeiten.sh`, Pfad-Wächter, Timer, KI-Anweisung, Regeln `entscheidungsweg` und `sammelzeit_minuten`) ist entfernt. Der Überblick zeigt keinen Abschnitt „Einarbeiten“ mehr; die Anleitung sagt der KI, dass Eingetragenes sofort gilt.
 
-Betrieb: `docs/betrieb.md`, Abschnitt „Schreibweg“. Ohne eingerichteten Schreibweg (`KN_SCHREIBDIENST` leer) gibt es die beiden Werkzeuge nicht, und die Anleitung nennt sie nicht.
+Betrieb: `docs/betrieb.md`, Abschnitt „Schreibweg“. Ohne eingerichteten Schreibweg (`KN_SCHREIBDIENST` leer) gibt es die Schreibwerkzeuge nicht, die Anleitung nennt sie nicht, und `reise_anlegen` lehnt ab.
 
 ## Konnektor „Frieda“ mit Anmeldung (Paket J3, 27.10.2026)
 
@@ -110,10 +112,10 @@ er aus dem Konto.
 es nicht. Auch eine Person, die schon in der Reise steht, lässt sich so mit ihrem Konto verknüpfen.
 
 **Entfernen:** `person_entfernen` (Organisator:in) nimmt eine Person heraus. Konto-Verknüpfung und alte Links enden sofort,
-aus `reise.yaml` streicht sie das Einarbeiten.
+in `reise.yaml` wird sie über den Schreibweg zum Gast, der nicht mitreist (niemand wird gestrichen).
 
 **Neue Reise:** Das Konto wird nach dem Anlegen mit der Reise verknüpft. Personen mit Adresse bekommen eine Einladung
-per Mail. Die Adressen stehen im Auftrag (`einladen`), nie in den Reisedaten.
+per Mail. Die Adressen stehen in der Anfrage (`einladen`) in `<ablage>/_neu/`, nie in den Reisedaten.
 
 **Wer darf fragen:**
 - Redirect-URIs: nur `https://claude.ai/api/mcp/auth_callback` (dazu `FR_OAUTH_REDIRECTS`) und Loopback mit
@@ -130,7 +132,7 @@ Eine neue Reise legt eine Person an, keine Reise. Deshalb gibt es neben den Link
 | `meine_reisen` | die veröffentlichten Reisen, auf denen die Person dabei ist (Schlüssel oder Name in `reise.yaml`), mit Rolle, Status, Link zur Seite und ihrem Link für die Claude-App; davor die Meldungen an sie, danach ihre angefragten neuen Reisen |
 | `reise_anlegen` | Eingaben `titel`, `von`, `bis` (JJJJ-MM-TT), optional `ziel`, `personen` (je `vorname`, `rolle`, `reist`, `notiz`), `notiz` (Bekanntes in eigenen Worten mit Herkunft) und `pfad`; wer anlegt, ist Organisator:innen der neuen Reise |
 
-`reise_anlegen` lehnt sofort ab, wenn Angaben fehlen oder nicht passen oder wenn es den Ordnernamen schon gibt, als veröffentlichte Reise, als Ablage oder als offene Anfrage (`reise.neue_reise_pruefen`). Sonst entsteht ein Auftrag mit `daten.neue_reise` in `<ablage>/_neu/auftraege.jsonl`, der zu keiner Reise gehört. Der Betrieb legt daraus die Reise an (`neu.aus_auftrag`, die Notiz wird der Überblick), veröffentlicht und schaltet sie frei. Danach schreibt er der Person eine Meldung mit den Links nach `<ablage>/_neu/meldungen.jsonl`. Die Links zu den Seiten liest der Konnektor aus `KN_SEITENLINKS` (Standard `seiten.json` neben den Zugängen), die der Betrieb beim Freischalten schreibt. Den Stand der Anfragen zeigt `rueckmeldungen.py liste _neu`. Eine persönliche Startseite im Web mit derselben Übersicht ist geplant (Issue #41).
+`reise_anlegen` lehnt sofort ab, wenn Angaben fehlen oder nicht passen oder wenn es den Ordnernamen schon gibt, als veröffentlichte Reise, als Ablage oder als offene Anfrage (`reise.neue_reise_pruefen`). Sonst bleibt die Anfrage mit `daten.neue_reise` als Beleg in `<ablage>/_neu/auftraege.jsonl` (gehört zu keiner Reise), und der Schreibweg legt die Reise sofort an (`neu.aus_auftrag`, die Notiz wird der Überblick, Probebau, Commit nach `main`). Das Veröffentlichen schaltet sie frei und schreibt der Person eine Meldung mit den Links nach `<ablage>/_neu/meldungen.jsonl` (`betrieb/zustellen.py`). Die Links zu den Seiten liest der Konnektor aus `KN_SEITENLINKS` (Standard `seiten.json` neben den Zugängen), die der Betrieb beim Freischalten schreibt. Den Stand der Anfragen zeigt `rueckmeldungen.py liste _neu`. Eine persönliche Startseite im Web mit derselben Übersicht ist geplant (Issue #41).
 
 ## Einrichten (einmalig)
 
@@ -164,9 +166,7 @@ Der Konnektor meldet beim Verbinden das Symbol der Reise (`serverInfo.icons`, da
 
 ## Sicherheit
 
-- Wer einen Link kennt, kann die Reise lesen und Rückmeldungen schicken. Das ist dasselbe Prinzip wie bei der Webseite. Ein Mitreisenden-Link kann keine Aufträge geben und nicht entscheiden. Der Link gehört zu einer Person: Wer ihn weitergibt, gibt ihre Rolle weiter.
-- Über den Konnektor ändern sich Aufgaben sowie Arten, Merkmale, Werte, Dinge, Optionen, Wahlstellen und Fragen direkt (Letztere über den Schreibweg mit Rollen-, Status- und Formprüfung und einem Probebau, siehe „Ontologie im Gespräch“). Rückmeldungen und Aufträge sind Eingaben. Status `gewaehlt`/`verworfen` setzen nur Organisator:innen.
+- Wer einen Link kennt, kann die Reise lesen und Rückmeldungen schicken. Das ist dasselbe Prinzip wie bei der Webseite. Ein Mitwirkenden-Link kann nicht entscheiden und keine Arten, Status oder Einstellungen setzen. Der Link gehört zu einer Person: Wer ihn weitergibt, gibt ihre Rolle weiter.
+- Über den Konnektor ändern sich Aufgaben sowie alles, was die Schreibwerkzeuge eintragen, direkt (über den Schreibweg mit Rollen-, Status- und Formprüfung und einem Probebau, siehe „Ontologie im Gespräch“). Rückmeldungen sind Eingaben. Status `gewaehlt`/`verworfen` setzen nur Organisator:innen.
 - Drossel im Reverse-Proxy. Der Dienst protokolliert weder Tokens noch Inhalte.
 - Überwachung: `GET /gesund` (ohne Token) meldet `{"gesund": true}`, wenn die Zugänge lesbar und alle verlinkten Reisen veröffentlicht sind.
-
-Darunter steht der Abschnitt „Einarbeiten“ (Paket D): wann zuletzt automatisch eingearbeitet wurde. Organisator:innen sehen zusätzlich, wie lange es von der Eingabe bis zum fertigen Stand dauert (Schnitt, Maximum), über alle Reisen zusammen, dazu fehlgeschlagene Läufe. Kosten zeigt der Überblick nicht; sie stehen nur im Protokoll. Quelle ist das Protokoll `einarbeiten-laeufe.jsonl`, das das Betriebsskript je Lauf schreibt (Ort: Ordner `_dienst` neben der Rückmelde-Ablage, `RM_LAEUFE` überschreibt ihn). Auf der Kommandozeile: `python3 engine/rueckmeldungen.py laeufe [<reise>] [--alle]`.

@@ -10,9 +10,9 @@ Beschlossen vom Product Owner am 26.10.2026 (Issue #11). Der Baustein `waechter`
 | Überfällig | Frist vorbei, alle 7 Tage neu, bis die Aufgabe erledigt ist | wie oben |
 | Ab-Termin | `ab` einer offenen Aufgabe ist erreicht („jetzt möglich“), einmal | wie oben |
 | Statuswechsel | Status `fest`, aber der erste Reisetag ist erreicht; Status `fest` oder `unterwegs`, aber der letzte Reisetag ist vorbei; alle 7 Tage neu, bis gewechselt ist | alle Organisator:innen |
-| Prüfung | veränderliche Angaben werden neu nachgeschlagen (Prüfauftrag, siehe unten) | Organisator:innen sehen den Auftrag, die Ergebnisse kommen als Rückfrage oder offene Frage |
+| Prüfung | veränderliche Angaben sind zu lange ungeprüft (siehe unten) | Organisator:innen sehen die Meldung; der AI-Client schlägt im Gespräch nach und trägt Prüfdatum und Quelle mit `wert_eintragen` ein |
 
-Die KI wechselt den Reisestatus nie selbst: Sie erinnert, ein:e Organisator:in entscheidet (Auftrag an `reise`).
+Die KI wechselt den Reisestatus nie selbst: Sie erinnert, ein:e Organisator:in entscheidet (`reise_status_setzen`).
 
 ## Wann der Wächter arbeitet
 

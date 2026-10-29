@@ -3,15 +3,12 @@
 # Keine Geheimnisse hier, die Datei liegt im Repo: Überwachungsadressen und Meldeweg gehören nach <FR_DIENST>/betrieb.env.
 # Leer gelassene oder fehlende Werte bekommen die Vorgabe in Klammern.
 
-# Name der Instanz: Namen der systemd-Einheiten (<instanz>-einarbeiten …), nginx-Bausteine, Sperrdateien. (frieda)
+# Name der Instanz: Namen der systemd-Einheiten (<instanz>-schreiben …), nginx-Bausteine, Sperrdateien. (frieda)
 # Zwei Instanzen auf einem Server brauchen verschiedene Namen, Ordner und Ports.
 FR_INSTANZ=beispiel
 
 # Kurzname in Nachrichten an den Betreiber. (Frieda)
 FR_TITEL=Beispiel-Reisen
-
-# Wer Rückfragen in einer Sitzung ansieht; erscheint im Kommentar aufgegebener Einträge auf der Seite. (leer: ohne Namen)
-FR_BETREIBER=Ida
 
 # Öffentliche Adresse, unter der nginx die Seiten ausliefert (ohne / am Ende). Nötig zum Freischalten.
 FR_ADRESSE=https://reisen.example.org
@@ -51,14 +48,6 @@ FR_ADRESSE=https://reisen.example.org
 # „erledigt“ heißt: reiner Bericht, keine Handlung nötig. Ein relativer Pfad gilt ab der Wurzel des Reisen-Repos.
 # Leer: keine Nachrichten. (leer)
 #FR_MELDEN=betrieb/melden.sh
-
-# Einarbeiten: Befehl für Claude Code, Höchstdauer eines KI-Laufs je Reise in Minuten, Durchgänge je Start,
-# Fehlversuche bis zum Aufgeben, längste Sammelzeit in Minuten. (claude, 45, 3, 3, 20)
-#FR_CLAUDE=claude
-#FR_CLAUDE_MIN=45
-#FR_DURCHGAENGE=3
-#FR_MAX_VERSUCHE=3
-#FR_MAX_WARTEN_MIN=20
 
 # nginx: Ordner der Bausteine und Befehl für Rechte (leer = ohne sudo). (/etc/nginx/snippets, sudo -n)
 #FR_NGINX_SNIPPETS=/etc/nginx/snippets

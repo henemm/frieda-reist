@@ -3,7 +3,7 @@
 #
 # Der Veröffentlichungsordner (Hauptkopie des Reisen-Repos) steht immer auf main, der Timer (veroeffentlichen.sh) baut
 # von dort. Dort wird nicht gearbeitet, sonst setzt der Timer aus. Gearbeitet wird in einem Git-Worktree daneben, je
-# Änderung auf einem eigenen Branch; das Einarbeiten nutzt eine eigene (<Wurzel>-auto).
+# Änderung auf einem eigenen Branch; der Schreibweg nutzt eine eigene (<Wurzel>-schreiben, engine/schreiben.py).
 #
 # Aufruf:  frieda/betrieb/arbeitskopie.sh <branch>   legt <Wurzel>-arbeit an (oder ARBEITSKOPIE) bzw. wechselt dort auf <branch>
 #

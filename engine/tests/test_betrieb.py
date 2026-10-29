@@ -19,8 +19,8 @@ BEISPIEL = WURZEL / "beispiel" / "reisen" / "beispielreise"
 sys.path.insert(0, str(BETRIEB))
 sys.path.insert(0, str(ENGINE))
 import bauen  # noqa: E402
-import einarbeiten_hilfe as hilfe  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
+import zustellen  # noqa: E402
 
 GIT = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 # Umgebung ohne Werte einer echten Instanz, die die Prüfung verfälschen könnten
@@ -46,7 +46,7 @@ def einstellungen(tmp_path, datei_text, **umgebung):
     (tmp_path / "betrieb").mkdir(exist_ok=True)
     (tmp_path / "betrieb/einstellungen.env").write_text(datei_text)
     namen = ["FR_INSTANZ", "FR_TITEL", "FR_SEITEN", "FR_ABLAGE", "FR_DIENST", "FR_KN_ADRESSE", "FR_PYTHON", "RM_ABLAGE",
-             "KN_SEITEN", "KN_ZUGAENGE", "KN_BASIS", "FR_ADRESSE", "FR_BETREIBER", "FR_UMZUG_NACH"]
+             "KN_SEITEN", "KN_ZUGAENGE", "KN_BASIS", "FR_ADRESSE", "FR_UMZUG_NACH"]
     skript = f'. "{BETRIEB}/gemeinsam.sh"; ' + "; ".join(f'echo "{n}=${{{n}:-}}"' for n in namen)
     r = subprocess.run(["bash", "-c", skript], capture_output=True, text=True,
                        env={**SAUBER, "FR_WURZEL": str(tmp_path), **umgebung})
@@ -55,12 +55,12 @@ def einstellungen(tmp_path, datei_text, **umgebung):
 
 def test_einstellungen_aus_datei_mit_vorgaben(tmp_path):
     r, w = einstellungen(tmp_path, "# Kommentar\nFR_INSTANZ=probe\nFR_ADRESSE=\"https://reisen.example.org\"\n"
-                                   "FR_BETREIBER=Ida und Karl\nFR_TITEL=$(touch boese)\n")
+                                   "FR_TITEL=$(touch boese)\n")
     assert r.returncode == 0, r.stderr
     assert w["FR_INSTANZ"] == "probe" and w["FR_SEITEN"] == "/srv/probe" and w["FR_ABLAGE"] == "/srv/probe/_rueckmeldungen"
     assert w["RM_ABLAGE"] == "/srv/probe/_rueckmeldungen" and w["KN_ZUGAENGE"] == "/srv/probe/_konnektor/zugaenge.json"
     assert w["FR_KN_ADRESSE"] == w["KN_BASIS"] == "https://reisen.example.org/probe-mcp"
-    assert w["FR_BETREIBER"] == "Ida und Karl" and w["FR_PYTHON"] == f"{tmp_path}/engine/.venv/bin/python"
+    assert w["FR_PYTHON"] == f"{tmp_path}/engine/.venv/bin/python"
     assert w["FR_UMZUG_NACH"] == ""
     r2, w2 = einstellungen(tmp_path, "FR_UMZUG_NACH=https://neu.example.org\n")   # wird an bauen.py weitergereicht (exportiert)
     assert w2["FR_UMZUG_NACH"] == "https://neu.example.org"
@@ -269,7 +269,7 @@ def test_veroeffentlichen_freischalten_je_reise_ohne_links_im_protokoll(vf):
     (vf["tmp"] / "dienst/neue-reisen-ausstehend.jsonl").write_text('{"ordner": "neu"}\n')
     r = vf["lauf"](FR_PYTHON=str(py))
     assert r.returncode == 0, r.stdout + r.stderr
-    assert f"{BETRIEB}/einarbeiten_hilfe.py ausstehend" in (vf["tmp"] / "zustellen.log").read_text()
+    assert f"{BETRIEB}/zustellen.py" in (vf["tmp"] / "zustellen.log").read_text()
 
 
 # ---------- Deploy ----------
@@ -452,7 +452,7 @@ def test_ausstehende_links_zustellen(fs, monkeypatch, capsys):
     datei = fs["tmp"] / "ausstehend.jsonl"
     datei.write_text(json.dumps({"ordner": "beispielreise", "aid": "A-1", "name": "Ida", "person": "ida"}) + "\n"
                      + json.dumps({"ordner": "spaeter", "aid": "A-2", "name": "Ida", "person": "ida"}) + "\n")
-    assert hilfe.ausstehend(fs["repo"], datei) == 0
+    assert zustellen.ausstehend(fs["repo"], datei) == 0
     out = capsys.readouterr().out
     assert "Zugestellt: beispielreise an Ida" in out and "https://" not in out      # Links nie ins Protokoll
     assert [json.loads(z)["ordner"] for z in datei.read_text().splitlines()] == ["spaeter"]
@@ -463,7 +463,7 @@ def test_ausstehende_links_zustellen(fs, monkeypatch, capsys):
     # Freischalten scheitert: Eintrag bleibt, Fehlerzeile ohne Links
     (fs["seiten"] / "spaeter").mkdir()
     (fs["seiten"] / "spaeter" / "daten.json").write_text("{}")
-    assert hilfe.ausstehend(fs["repo"], datei) == 1
+    assert zustellen.ausstehend(fs["repo"], datei) == 1
     out = capsys.readouterr().out
     assert "FEHLER: spaeter nicht freigeschaltet" in out and "https://" not in out
     assert len(datei.read_text().splitlines()) == 1
@@ -487,7 +487,7 @@ def test_neue_reise_aus_dem_konnektor_frieda(fs, monkeypatch, capsys):
         "einladen": [{"schluessel": "karl", "email": "karl@example.invalid", "rolle": "mitwirkend", "name": "Karl"}]}) + "\n")
     datei = fs["tmp"] / "ausstehend.jsonl"
     datei.write_text(json.dumps({"ordner": "beispielreise", "aid": "A-1", "name": "Ida", "person": "ida"}) + "\n")
-    assert hilfe.ausstehend(fs["repo"], datei) == 0
+    assert zustellen.ausstehend(fs["repo"], datei) == 0
     out = capsys.readouterr().out
     assert "Zugestellt: beispielreise an Ida" in out and "@" not in out
     assert datei.read_text() == ""
@@ -566,19 +566,18 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     assert r.returncode in (0, 2), r.stdout + r.stderr          # 2: Voraussetzungen fehlen hier (kein Python, kein gh)
     aus = tmp_path / "aus"
     namen = sorted(p.name for p in (aus / "systemd").iterdir())
-    assert namen == ["probe-einarbeiten.path", "probe-einarbeiten.service", "probe-einarbeiten.timer",
-                     "probe-konnektor.service", "probe-rueckmeldungen.service", "probe-schreiben.service",
+    # kein Einarbeiten mehr (ADR-0001, O-3): keine Einheit ruft Claude Code auf, kein Pfad-Wächter auf die Ablage
+    assert namen == ["probe-konnektor.service", "probe-rueckmeldungen.service", "probe-schreiben.service",
                      "probe-veroeffentlichen.service", "probe-veroeffentlichen.timer", "probe-waechter.service",
                      "probe-waechter.timer"]
     for p in [*(aus / "systemd").iterdir(), *(aus / "nginx").iterdir()]:
         assert not re.search(r"__[A-Z_]+__", p.read_text()), p.name
+        assert "einarbeiten" not in p.read_text() and "claude -p" not in p.read_text(), p.name
     srv = tmp_path / "srv/probe"
     einh = {p.name: p.read_text() for p in (aus / "systemd").iterdir()}
-    assert f"PathModified={srv}/_rueckmeldungen/.neu" in einh["probe-einarbeiten.path"]
-    assert "Unit=probe-einarbeiten.service" in einh["probe-einarbeiten.path"]
-    assert f"ExecStart={tmp_path}/repo/frieda/betrieb/einarbeiten.sh" in einh["probe-einarbeiten.service"]
-    assert f"Environment=FR_WURZEL={tmp_path}/repo" in einh["probe-einarbeiten.service"]
-    assert "User=reisen" in einh["probe-einarbeiten.service"] and "/home/reisen/.local/bin" in einh["probe-einarbeiten.service"]
+    assert f"ExecStart={tmp_path}/repo/frieda/betrieb/veroeffentlichen.sh" in einh["probe-veroeffentlichen.service"]
+    assert f"Environment=FR_WURZEL={tmp_path}/repo" in einh["probe-veroeffentlichen.service"]
+    assert "User=reisen" in einh["probe-veroeffentlichen.service"] and "/home/reisen/.local/bin" in einh["probe-veroeffentlichen.service"]
     assert "Environment=KN_PORT=8772" in einh["probe-konnektor.service"]
     assert "Environment=KN_BASIS=https://example.invalid/probe-mcp" in einh["probe-konnektor.service"]
     assert f"ExecStart=/usr/bin/python3 {srv}/_dienst/konnektor.py dienst" in einh["probe-konnektor.service"]
@@ -639,11 +638,16 @@ def test_vorlagen_ohne_werte_einer_instanz():
             assert treffer == [], (p.name, treffer)
 
 
-def test_einarbeiten_auftrag_kennt_pruefauftraege_und_grenzen():
-    prompt = (BETRIEB / "einarbeiten-auftrag.md").read_text(encoding="utf-8")
-    assert "Prüfaufträge:" in prompt and "NICHT" in prompt and "offene Frage" in prompt
-    assert "__REISE__" in prompt and "__IDS__" in prompt and "__AUS__" in prompt
-    assert "Nur reisen/__REISE__/ ändern" in prompt and "test_reisen" not in prompt
+def test_betrieb_ohne_ki():
+    """ADR-0001: Frieda enthält keine eigene KI. Kein Betriebsskript und keine Vorlage ruft Claude Code auf, und die
+    Einstellungen kennen keinen KI-Lauf mehr (seit 29.10.2026, O-3 letzter Schritt)."""
+    for p in sorted(BETRIEB.rglob("*")):
+        if p.is_file() and p.suffix != ".pyc":
+            text = p.read_text(encoding="utf-8")
+            assert "claude -p" not in text and "einarbeiten" not in text.lower(), p.name
+    assert not (BETRIEB / "einarbeiten.sh").exists() and not (BETRIEB / "einarbeiten-auftrag.md").exists()
+    beispiel = (BETRIEB / "einstellungen.beispiel").read_text(encoding="utf-8")
+    assert "FR_CLAUDE" not in beispiel and "FR_BETREIBER" not in beispiel
 
 
 def test_skripte_sind_ausfuehrbar():
@@ -685,9 +689,11 @@ def test_software_ohne_pfade_einer_instanz():
         assert not re.search(r"/srv/(?!frieda\b)\w+|/home/\w+", p.read_text(encoding="utf-8")), p.name
 
 
-def test_einrichten_prueft_anmeldung_von_claude(tmp_path):
+def test_einrichten_prueft_gh_und_nicht_claude(tmp_path):
+    """Der Schreibweg pusht mit gh als Credential-Helfer; Claude Code braucht der Server nicht mehr (ADR-0001, O-3)."""
     bin_ = tmp_path / "bin"
-    ausfuehrbar(bin_ / "claude", '#!/bin/sh\n[ "$1 $2" = "auth status" ] && echo \'{"loggedIn": \'"$ANGEMELDET"\'}\'\n')
+    ausfuehrbar(bin_ / "gh", '#!/bin/sh\n[ "$1 $2" = "auth status" ] && [ "$ANGEMELDET" = true ]\n')
     pfad = f"{bin_}:/usr/bin:/bin"
-    assert "FEHLT   Claude Code ist nicht angemeldet" in einrichten(tmp_path, FR_PFAD=pfad, ANGEMELDET="false").stdout
-    assert "ok      Claude Code angemeldet" in einrichten(tmp_path, FR_PFAD=pfad, ANGEMELDET="true").stdout
+    aus = einrichten(tmp_path, FR_PFAD=pfad, ANGEMELDET="false").stdout
+    assert "FEHLT   gh ist nicht angemeldet" in aus and "claude" not in aus.lower()
+    assert "ok      gh angemeldet" in einrichten(tmp_path, FR_PFAD=pfad, ANGEMELDET="true").stdout

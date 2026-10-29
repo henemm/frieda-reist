@@ -257,7 +257,7 @@ def test_archivierte_reise_ist_schreibgeschuetzt(repo):
 def test_setzt_auf_zwischenzeitliche_aenderung_auf(repo, tmp_path):
     wurzel, origin, arbeit, _ = repo
     s = schreiber(repo)
-    # Jemand anderes schreibt inzwischen nach main (eine Sitzung, das Einarbeiten …)
+    # Jemand anderes schreibt inzwischen nach main (eine Sitzung in Claude Code …)
     andere = tmp_path / "andere"
     subprocess.run(["git", "clone", "-q", str(origin), str(andere)], check=True, capture_output=True)
     git(andere, "config", "user.email", "x@example.invalid")

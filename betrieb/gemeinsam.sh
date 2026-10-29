@@ -54,19 +54,17 @@ fr_einlesen "$FR_DIENST/betrieb.env"
 : "${FR_KN_ADRESSE:=${FR_ADRESSE:+$FR_ADRESSE/$FR_INSTANZ-mcp}}"
 : "${FR_PYTHON:=$FR_WURZEL/engine/.venv/bin/python}"
 : "${FR_MELDEN:=}"
-: "${FR_BETREIBER:=}"
 : "${FR_UMZUG_NACH:=}"
 : "${FR_SPERREN:=/tmp}"
 case "$FR_MELDEN" in ""|/*) ;; *) FR_MELDEN="$FR_WURZEL/$FR_MELDEN" ;; esac   # relativ zur Wurzel
 export FR_INSTANZ FR_TITEL FR_SEITEN FR_ABLAGE FR_DIENST FR_KONNEKTOR FR_KONTEN FR_RM_PORT FR_KN_PORT FR_SB_PORT FR_SCHREIBKOPIE \
-  FR_ADRESSE FR_KN_ADRESSE FR_PYTHON FR_MELDEN FR_BETREIBER FR_SPERREN FR_UMZUG_NACH
+  FR_ADRESSE FR_KN_ADRESSE FR_PYTHON FR_MELDEN FR_SPERREN FR_UMZUG_NACH
 
 # Was die Software (engine/) erwartet; ausdrücklich gesetzte Werte gelten weiter
 : "${RM_ABLAGE:=$FR_ABLAGE}"
 : "${KN_SEITEN:=$FR_SEITEN}"
 : "${KN_ZUGAENGE:=$FR_KONNEKTOR/zugaenge.json}"
-: "${RM_LAEUFE:=$FR_DIENST/einarbeiten-laeufe.jsonl}"
-export RM_ABLAGE KN_SEITEN KN_ZUGAENGE RM_LAEUFE
+export RM_ABLAGE KN_SEITEN KN_ZUGAENGE
 [ -z "$FR_KN_ADRESSE" ] || { : "${KN_BASIS:=$FR_KN_ADRESSE}"; export KN_BASIS; }
 
 fr_melden() {  # <normal|high> <betreff> <text> [erledigt]: Nachricht an den Betreiber über FR_MELDEN, sonst nichts

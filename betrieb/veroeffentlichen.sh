@@ -2,7 +2,7 @@
 # Veröffentlicht automatisch, was auf main liegt (docs/betrieb.md, Veröffentlichen): holt origin/main in den
 # Veröffentlichungsordner, bringt die Software (Submodul) auf den festgehaltenen Stand und ruft deploy.sh für jede Reise
 # auf, sobald main einen neuen Stand hat. Gestartet alle 5 Minuten vom Timer <instanz>-veroeffentlichen.timer und
-# gleich nach dem Einarbeiten.
+# gleich nach jedem Schreibvorgang des Schreibwegs (engine/schreiben.py).
 # Aufruf von Hand:  frieda/betrieb/veroeffentlichen.sh          (nur wenn main neu ist)
 #                   frieda/betrieb/veroeffentlichen.sh --immer  (auch ohne neuen Stand)
 # Ist der Veröffentlichungsordner nicht auf main oder nicht sauber, wird nichts angefasst (jemand arbeitet gerade dort).
@@ -12,7 +12,7 @@
 # Übersprungene Läufe und Fehler tun beides nicht.
 # Neue Reisen: Nach dem Veröffentlichen ruft das Skript freischalten.sh für jede Reise auf (legt einer neuen Reise ihren
 # geheimen Link an, prüft die Seite, schreibt seiten.json) und stellt bei jedem Lauf ausstehende Links neuer Reisen aus
-# der Claude-App zu. Links stehen nie im Protokoll.
+# der Claude-App zu (zustellen.py). Links stehen nie im Protokoll.
 # Die Prüfungen (pytest) laufen einmal je Lauf vor allen Reisen; deploy.sh überspringt sie dann für genau diesen Stand
 # (FR_GEPRUEFT). Sonst liefen sie je Reise einmal, und der Lauf stieße bei drei Reisen an die Zeitgrenze der Unit.
 # Für Tests überschreibbar: VF_PRUEFEN, VF_STAND, VF_DEPLOY, VF_FREISCHALTEN, VF_AUSSTEHEND, VF_SPERRE, VF_STEMPEL, VF_HEARTBEAT.
@@ -29,7 +29,7 @@ erfolg_melden() {
 
 zustellen() {  # ausstehende Links neuer Reisen (nur wenn welche anstehen)
   [ -s "$ausstehend" ] || return 0
-  "$FR_PYTHON" "$FR_BETRIEB/einarbeiten_hilfe.py" ausstehend "$wurzel" "$ausstehend" \
+  "$FR_PYTHON" "$FR_BETRIEB/zustellen.py" "$wurzel" "$ausstehend" \
     || echo "Warnung: Links neuer Reisen nicht alle zugestellt, nächster Lauf versucht es wieder."
 }
 

@@ -364,7 +364,7 @@ def test_alte_form_ohne_reise_yaml(reise, tmp_path):
     r = d["reise"]
     assert r["titel"] == "Test" and r["status"] == {"wert": "planung", "verlauf": []} and r["personen"] == []
     assert "wuensche" not in r["bausteine"] and "varianten" in r["bausteine"]
-    assert r["regeln"]["kontingent"] == {"art": "punkte", "je_person": 10} and r["regeln"]["sammelzeit_minuten"] == 5
+    assert r["regeln"]["kontingent"] == {"art": "punkte", "je_person": 10} and "sammelzeit_minuten" not in r["regeln"]
     setze(reise, lambda c: c.update(funktionen=["wuensche"]))
     mit_reise_yaml(reise)
     assert "„funktionen“ steht noch in reise.json" in meldungen(reise, tmp_path)
@@ -404,7 +404,6 @@ def test_reise_yaml(reise, tmp_path):
     (lambda r: r.update(regeln={"zauber": 1}), "unbekannte Regel „zauber“"),
     (lambda r: r.update(regeln={"konflikt": "münze"}), "regeln.konflikt muss eines von"),
     (lambda r: r.update(regeln={"kontingent": {"art": "sterne"}}), "kontingent.art muss"),
-    (lambda r: r.update(regeln={"sammelzeit_minuten": -1}), "sammelzeit_minuten muss"),
     (lambda r: r.update(darstellung={"farbe": "rot"}), "darstellung: unbekannter Schlüssel „farbe“"),
     (lambda r: r.update(bonus=1), "unbekannter Schlüssel „bonus“"),
     (lambda r: r.pop("titel"), "„titel“ fehlt"),
@@ -428,7 +427,6 @@ def test_reise_yaml(reise, tmp_path):
     (lambda r: r.update(bausteine=["fragen", "fragen"]), "Baustein „fragen“ steht zweimal"),
     # Spielregeln
     (lambda r: r.update(regeln=["konflikt"]), "regeln muss „regel: wert“ sein"),
-    (lambda r: r.update(regeln={"entscheidungsweg": "zufall"}), "regeln.entscheidungsweg muss eines von"),
     (lambda r: r.update(regeln={"einladen": "alle"}), "regeln.einladen muss eines von"),
     (lambda r: r.update(regeln={"kontingent": {"je_person": -1}}), "kontingent.je_person muss eine ganze Zahl ab 0"),
     (lambda r: r.update(regeln={"waechter_frist_tage": 0}), "regeln.waechter_frist_tage muss eine ganze Zahl ab 1"),
@@ -454,6 +452,16 @@ def test_reise_yaml_hinweise(reise, tmp_path, capsys):
     b = bauen.Bauer(reise, tmp_path / "dist")
     b.daten()
     assert any("„plan“ ist Kern" in h for h in b.hinweise) and any("noch nicht gebaut" in h for h in b.hinweise)
+
+
+def test_alte_regeln_des_einarbeitens_bauen_weiter(reise, tmp_path):
+    """ADR-0001, O-3: regeln.entscheidungsweg und sammelzeit_minuten gibt es nicht mehr. Eine reise.yaml, die sie noch
+    nennt, baut mit Hinweis; die Werte kommen nicht in die Seite."""
+    mit_reise_yaml(reise, lambda r: r.update(regeln={"entscheidungsweg": "auftrag", "sammelzeit_minuten": 5}))
+    b = bauen.Bauer(reise, tmp_path / "dist")
+    d = b.daten()
+    assert sum("gibt es seit dem 29.10.2026 nicht mehr" in h for h in b.hinweise) == 2
+    assert "entscheidungsweg" not in d["reise"]["regeln"] and "sammelzeit_minuten" not in d["reise"]["regeln"]
 
 
 def test_slug_ascii():

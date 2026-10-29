@@ -32,11 +32,9 @@ BAUSTEINE = ("varianten", "karte", "tagesseiten", "rueckmeldungen", "fragen", "a
 KERN = ("plan", "wissen", "suche", "personen")           # immer da, nicht abschaltbar
 NOCH_NICHT_GEBAUT = {"profile": "Stufe 3"}
 VORGABEN = {
-    "entscheidungsweg": "direkt",        # direkt (im Gespräch, geprüft) | auftrag (Prüfung vor Übernahme)
     "konflikt": "offene_frage",          # zwei Organisator:innen entscheiden verschieden -> offene Frage, Meldung an beide
     "kontingent": {"art": "punkte", "je_person": 10},   # Wunsch-Brett: punkte | anzahl
     "einladen": "organisator",             # wer Personen einladen darf: organisator | mitwirkend
-    "sammelzeit_minuten": 5,             # Eingaben sammeln, bevor das Einarbeiten startet
     # Paket E (Wächter und Erinnerer, Baustein waechter)
     "waechter_frist_tage": 60,           # veränderliche Angaben, deren Prüfdatum älter ist, prüft der Wächter neu
     "erinnerung_vorlauf_tage": 3,        # Aufgabenfristen werden so viele Tage vorher gemeldet
@@ -45,8 +43,11 @@ VORGABEN = {
     "anmeldung": "uebergang",
 }
 KANAELE = ("app", "nachricht")           # E-Mail an alle gibt es (noch) nicht
-REGEL_WERTE = {"entscheidungsweg": ("direkt", "auftrag"), "konflikt": ("offene_frage",),
+REGEL_WERTE = {"konflikt": ("offene_frage",),
                "einladen": ("organisator", "mitwirkend"), "anmeldung": ("uebergang", "noetig")}
+# Regeln des Einarbeiten-Laufs (bis 29.10.2026, ADR-0001 Paket O-3): der Konnektor schreibt direkt, es gibt keinen Lauf
+# mehr. Eine reise.yaml, die sie noch nennt, baut weiter; sie bekommt einen Hinweis und die Regeln sind ohne Wirkung.
+ALTE_REGELN = ("entscheidungsweg", "sammelzeit_minuten")
 KONTINGENT_ARTEN = ("punkte", "anzahl")
 DARSTELLUNG = ("start", "tiefe", "varianten_titel", "plan_reiter", "gruppen", "mahnungen")
 PERSON_FELDER = {"name", "rolle", "reist", "notiz", "von", "bis"}   # von/bis: reist nur einen Teil mit
@@ -421,7 +422,10 @@ class Reise:
             self.fehl("regeln muss „regel: wert“ sein.")
             eigen = {}
         for k in eigen:
-            if k not in VORGABEN:
+            if k in ALTE_REGELN:
+                self.hinweise.append(f"reise.yaml: regeln.{k} gibt es seit dem 29.10.2026 nicht mehr (der Konnektor schreibt "
+                                     "direkt, kein Einarbeiten-Lauf); der Eintrag ist ohne Wirkung und kann weg.")
+            elif k not in VORGABEN:
                 self.fehl(f"unbekannte Regel „{k}“ (bekannt: {', '.join(VORGABEN)}).")
         r = regeln_mit_vorgaben({k: v for k, v in eigen.items() if k in VORGABEN})
         r["einladen"] = rolle_neu(r["einladen"])
@@ -433,9 +437,6 @@ class Reise:
             self.fehl(f"regeln.kontingent.art muss {' oder '.join(KONTINGENT_ARTEN)} sein.")
         if not isinstance(kt.get("je_person"), int) or isinstance(kt.get("je_person"), bool) or kt["je_person"] < 0:
             self.fehl("regeln.kontingent.je_person muss eine ganze Zahl ab 0 sein.")
-        s = r["sammelzeit_minuten"]
-        if not isinstance(s, int) or isinstance(s, bool) or s < 0:
-            self.fehl("regeln.sammelzeit_minuten muss eine ganze Zahl ab 0 sein.")
         for k, kleinste in (("waechter_frist_tage", 1), ("erinnerung_vorlauf_tage", 0)):
             if not isinstance(r[k], int) or isinstance(r[k], bool) or r[k] < kleinste:
                 self.fehl(f"regeln.{k} muss eine ganze Zahl ab {kleinste} sein.")

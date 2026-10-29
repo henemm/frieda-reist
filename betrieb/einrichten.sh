@@ -6,8 +6,9 @@
 #   frieda/betrieb/einrichten.sh --installieren  dasselbe, dann nach Rückfrage installieren (sudo, ändert /etc)
 #
 # Werte aus den Einstellungen der Instanz (einstellungen.beispiel); dazu FR_BENUTZER, FR_GRUPPE, FR_HOME (Vorgabe: wer das
-# Skript aufruft) und FR_PFAD (PATH der Dienste; claude, gh und node müssen darin liegen). Als Dienstbenutzer aufrufen,
-# damit die Anmeldung von Claude Code und gh geprüft wird. Ohne --installieren ändert das Skript nichts außerhalb des
+# Skript aufruft) und FR_PFAD (PATH der Dienste; git, gh und node müssen darin liegen). Als Dienstbenutzer aufrufen,
+# damit die Anmeldung von gh (Credential-Helfer für git push des Schreibwegs) geprüft wird. Ohne --installieren ändert
+# das Skript nichts außerhalb des
 # Ausgabeordners (EI_ZIEL, Vorgabe /tmp/<instanz>-einrichten).
 # Zwei Instanzen auf einem Server: verschiedene FR_INSTANZ, FR_SEITEN und Ports; das Skript bricht ab, wenn eine andere
 # installierte Instanz dieselben Ports nutzt.
@@ -36,12 +37,8 @@ echo "Voraussetzungen:"
 if "$FR_PYTHON" -c 'import yaml, ruamel.yaml' 2> /dev/null; then ok "Python $FR_PYTHON"; else problem "Python mit yaml und ruamel.yaml: $FR_PYTHON (python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt)"; fi
 [ -n "$FR_ADRESSE" ] && ok "Adresse $FR_ADRESSE" || problem "FR_ADRESSE (öffentliche Adresse der Seiten) in den Einstellungen"
 git -C "$FR_WURZEL" ls-remote -q origin > /dev/null 2>&1 && ok "git erreicht origin" || problem "git -C $FR_WURZEL ls-remote origin geht nicht ohne Rückfrage"
-if PATH="$FR_PFAD" command -v claude > /dev/null; then
-  # Ohne Anmeldung bricht jeder KI-Lauf ab; „claude auth status“ kostet nichts
-  PATH="$FR_PFAD" claude auth status --json 2> /dev/null | grep -q '"loggedIn": *true' && ok "Claude Code angemeldet" \
-    || problem "Claude Code ist nicht angemeldet (claude auth login als $FR_BENUTZER)"
-else problem "claude nicht in FR_PFAD ($FR_PFAD)"; fi
 if PATH="$FR_PFAD" command -v gh > /dev/null; then
+  # Der Schreibweg pusht nach main mit gh als Credential-Helfer; ohne Anmeldung scheitert jeder Schreibvorgang
   PATH="$FR_PFAD" gh auth status > /dev/null 2>&1 && ok "gh angemeldet" || problem "gh ist nicht angemeldet (gh auth login als $FR_BENUTZER)"
 else problem "gh nicht in FR_PFAD"; fi
 command -v flock > /dev/null && ok "flock" || problem "flock (util-linux)"
@@ -69,7 +66,7 @@ ersetze() {  # <vorlage> <ziel>
       -e "s|__SB_PORT__|$FR_SB_PORT|g" -e "s|__PYTHON__|$FR_PYTHON|g" \
       -e "s|__KN_ADRESSE__|$FR_KN_ADRESSE|g" -e "s|__ZONE__|$ZONE|g" "$1" > "$2"
 }
-for v in "$FR_BETRIEB"/vorlagen/*.service "$FR_BETRIEB"/vorlagen/*.timer "$FR_BETRIEB"/vorlagen/*.path; do
+for v in "$FR_BETRIEB"/vorlagen/*.service "$FR_BETRIEB"/vorlagen/*.timer; do
   ersetze "$v" "$ZIEL/systemd/$FR_INSTANZ-$(basename "$v")"
 done
 ersetze "$FR_BETRIEB/vorlagen/nginx-konnektor.conf" "$ZIEL/nginx/$FR_INSTANZ-konnektor.conf"
@@ -97,8 +94,8 @@ cat <<TEXT
   $FR_WURZEL/frieda/betrieb/deploy.sh <erste reise>     (legt Code der Dienste an, Prüfung schlägt vor dem Start fehl)
   sudo systemctl enable --now $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben
   sudo nginx -t && sudo systemctl reload nginx
-  sudo systemctl enable --now $FR_INSTANZ-veroeffentlichen.timer $FR_INSTANZ-einarbeiten.path $FR_INSTANZ-einarbeiten.timer $FR_INSTANZ-waechter.timer
-Prüfen ohne Kosten:  date > $FR_ABLAGE/.neu;  journalctl -u $FR_INSTANZ-einarbeiten -n 20  zeigt „Nichts Neues.“
+  sudo systemctl enable --now $FR_INSTANZ-veroeffentlichen.timer $FR_INSTANZ-waechter.timer
+Prüfen:  curl -s 127.0.0.1:$FR_SB_PORT/gesund  antwortet {"gesund": true};  journalctl -u $FR_INSTANZ-veroeffentlichen -n 20
 Für deploy.sh braucht $FR_BENUTZER: sudo -n systemctl restart $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben;
 für freischalten.sh: sudo -n nginx -t, systemctl reload nginx, install/test/cat/rm in $SNIPPETS (sudoers, docs/betrieb.md).
 TEXT

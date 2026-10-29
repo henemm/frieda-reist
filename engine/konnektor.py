@@ -7,12 +7,12 @@ Wissen) und Rückmeldungen abgeben. Ein Link gehört zu genau einer Reise und ei
 (personen); die Rolle der Person entscheidet, was geht (docs/produkt.md, 26.10.2026):
 
   gast      lesen
-  mitwirkend   dazu Rückmeldungen, Wünsche, Alternativen vorschlagen (landen im Eingang wie die von der Seite),
-               Aufgaben (AG-…) anlegen, ändern, abhaken – wirkt sofort, auch auf der Webseite (24.10.2026)
-  organisator    dazu Änderungsaufträge, Entscheidungen (entscheiden) und Einladungen (person_einladen). Aufträge
-               ändern nichts sofort; sie liegen in <ablage>/<reise>/auftraege.jsonl und werden von Claude Code
-               geprüft und übernommen (Einarbeiten im Betrieb). Eine Entscheidung wird je nach regeln.entscheidungsweg
-               sofort vom Dienst geprüft und festgehalten (direkt) oder als Auftrag in Claude Code geprüft (auftrag).
+  mitwirkend   dazu Rückmeldungen, Wünsche, Aufgaben (AG-…) und über den Schreibweg Werte, Dinge, Optionen, Wahlstellen,
+               Fragen und Wissen (Eingaben, keine Entscheidungen); alles gilt sofort, auch auf der Webseite
+  organisator    dazu Entscheidungen (entscheiden), Arten und Merkmale, Plan eines Tags, Status und Einstellungen der
+               Reise, Einladungen (person_einladen). Seit 29.10.2026 (ADR-0001, Paket O-3) schreibt der Konnektor alles
+               über den Schreibweg (engine/schreiben.py, Rollen- und Regelprüfung, Probebau) sofort ins Reisen-Repo;
+               Änderungsaufträge (A-…, auftraege.jsonl) und der Einarbeiten-Lauf mit Claude Code sind entfallen.
   Paket C (26.10.2026): Mitwirkende beantworten Fragen (frage_beantworten); einladen darf, wer regeln.einladen
                erlaubt (Vorgabe: Organisator:innen); person_einladen legt die Person an und stellt ihren Zugang aus.
 
@@ -314,12 +314,6 @@ def stand_text(reise):
     z.append(f"- Konnektor gestartet: {zeit_de(_START)}, Code {_CODE_START}"
              + ("" if jetzt == _CODE_START else f" – auf dem Server liegt neuerer Code ({jetzt}), der Dienst braucht einen Neustart"))
     return "\n".join(z)
-
-
-def einarbeiten_text(reise, organisator):
-    """Stand des automatischen Einarbeitens. Wartezeiten und Fehlschläge sehen nur Organisator:innen; Kosten niemand (Entscheidung vom 26.10.2026)."""
-    liste = rm.laeufe_lesen(reise if not organisator else None)
-    return "## Einarbeiten" + (" (alle Reisen zusammen)" if organisator else "") + "\n" + rm.laeufe_text(liste, ausfuehrlich=organisator)
 
 
 # Doppelte Merkmale erkennen (Paket 3, #18): Ein neuer Schlüssel aus einem Vorschlag, der einem bestehenden Merkmal der
@@ -838,7 +832,7 @@ class Handbuch:
             namen = {k["id"]: k["name"] for k in w.get("kriterien") or []}
             if o.get("fehlt"):
                 hinweise.append("Es fehlen noch Merkmale: " + ", ".join(namen.get(k, k) for k in o["fehlt"])
-                                + ". Sie werden beim Einarbeiten recherchiert und ergänzt.")
+                                + ". Recherchieren und mit wert_eintragen (Herkunft, Prüfdatum) nachtragen.")
             offen = [namen.get(k, k) for k, v in (o.get("merkmale") or {}).items() if v.get("ungeprueft")]
             if offen:
                 hinweise.append("Ungeprüfte veränderliche Angaben: " + ", ".join(offen) + " – vor dem Buchen nachschlagen.")
@@ -915,8 +909,8 @@ class Handbuch:
 # ---------- Rückmeldungen und Aufträge ----------
 
 def ausstehend_datei():
-    """Links neuer Reisen, die veroeffentlichen.sh zustellt, sobald die Seite online ist (Dienstordner, wie einarbeiten.sh)."""
-    return Path(os.environ.get("KN_AUSSTEHEND") or rm.laeufe_datei().parent / "neue-reisen-ausstehend.jsonl")
+    """Links neuer Reisen, die veroeffentlichen.sh zustellt (betrieb/zustellen.py), sobald die Seite online ist (Dienstordner)."""
+    return Path(os.environ.get("KN_AUSSTEHEND") or rm.dienstordner() / "neue-reisen-ausstehend.jsonl")
 
 
 def rueckmeldung_senden(reise, eintrag):
@@ -1374,7 +1368,7 @@ def einladen(reise, d, wer, args, mit_konto=False):
     if neu:
         with _sperre:
             if len(rm.einladungen_lesen(o)) >= rm.MAX_EINLADUNGEN:
-                return "Es sind schon sehr viele Einladungen offen; bitte zuerst einarbeiten lassen.", True
+                return "Es sind schon sehr viele Einladungen vorgemerkt (einladungen.json); der Betreiber räumt sie auf.", True
     if mit_konto:
         # Eine Person, die schon in der Reise steht, mit einem Konto verknüpfen heißt: wer die Adresse hat, spricht als sie.
         # Deshalb nur durch Organisator:innen, und Organisator:innen selbst verknüpft nur der Betreiber (konten.py einladen), sonst könnte
@@ -1459,8 +1453,9 @@ def vergebene_pfade():
 
 
 def person_entfernen(reise, d, wer, args):
-    """person_entfernen (Organisator:in): Verknüpfung mit dem Konto und alte Links enden sofort; aus reise.yaml streicht die
-    Person das Einarbeiten (Auftrag). Organisator:innen und sich selbst nimmt man so nicht heraus. -> (Text, ist_fehler)"""
+    """person_entfernen (Organisator:in): Verknüpfung mit dem Konto und alte Links enden sofort; in reise.yaml wird die Person
+    über den Schreibweg zum Gast, der nicht mitreist (person_schreiben; niemand wird gestrichen). Organisator:innen und sich
+    selbst nimmt man so nicht heraus. -> (Text, ist_fehler)"""
     gesucht = str(args.get("person") or "").strip()
     p = next((x for x in personen_der_reise(reise, d)
               if x["schluessel"] == gesucht or x["name"].casefold() == gesucht.casefold()), None) if gesucht else None
@@ -1586,13 +1581,17 @@ def meine_reisen(konto):
 
 
 def reise_anlegen(konto, args):
-    """reise_anlegen: prüft die Eingaben sofort und legt in <ablage>/_neu einen Auftrag an. Die Reise entsteht im Betrieb,
-    danach bekommt die Person eine Meldung mit den Links (meine_reisen). -> (Text, ist_fehler)"""
+    """reise_anlegen: prüft die Eingaben sofort, legt in <ablage>/_neu die Anfrage als Beleg ab und lässt den Schreibweg die
+    Reise anlegen. Sobald die Seite online ist, bekommt die Person eine Meldung mit den Links (meine_reisen).
+    -> (Text, ist_fehler)"""
     o = rm.ordner_neu(anlegen=True)
     with _sperre:
         neu, fehler = neue_reise_pruefen(args, konto["name"], vergebene_pfade())
         if fehler:
             return f"Nicht angelegt: {fehler}", True
+        if not schreibdienst():
+            return ("Nicht angelegt: Der Schreibweg dieser Instanz ist nicht eingerichtet (KN_SCHREIBDIENST), ohne ihn kann der "
+                    "Dienst keine Reise anlegen. Das muss der Betreiber einrichten (docs/betrieb.md, Schreibweg)."), True
         wer_text = ", ".join(f"{p['name']} ({p['rolle']}{'' if p.get('reist', True) else ', reist nicht mit'})"
                              for p in neu["personen"].values())
         text_ = (f"Neue Reise anlegen: „{neu['titel']}“, {datum_de(neu['von'])} bis {datum_de(neu['bis'])}"
@@ -1623,35 +1622,24 @@ def reise_anlegen(konto, args):
             f.write(json.dumps(e, ensure_ascii=False) + "\n")
             f.flush()
             os.fsync(f.fileno())
-    if schreibdienst():
-        # ADR-0001, O-3: die Reise entsteht sofort über den Schreibweg; die Links kommen, sobald die Seite online ist
-        # (veroeffentlichen.sh stellt sie zu, Datei neue-reisen-ausstehend.jsonl im Dienstordner)
-        a, fehler = schreib_anfrage(neu["pfad"], "reise_anlegen", {"person": None, "name": konto["name"], "rolle": "organisator",
-                                                                   "args": {"auftrag": e}})
-        with _sperre:
-            rm.status_setzen(o, e["id"], "rueckfrage" if fehler else "uebernommen",
-                             f"Nicht angelegt: {fehler}" if fehler else f"Angelegt als {neu['pfad']}. Die Links stehen in meine_reisen, sobald die Seite online ist.")
-            if not fehler:
-                person = next(k_ for k_, p_ in neu["personen"].items() if p_["name"] == neu["wer"])
-                ausstehend_datei().parent.mkdir(parents=True, exist_ok=True)
-                with ausstehend_datei().open("a", encoding="utf-8") as f:
-                    f.write(json.dumps({"ordner": neu["pfad"], "aid": e["id"], "name": konto["name"], "person": person}, ensure_ascii=False) + "\n")
-        if fehler:
-            return f"Nicht angelegt: {fehler}", True
-        return (f"Die Reise „{neu['titel']}“ ist angelegt (Status Idee, Ordner {neu['pfad']}). In wenigen Minuten ist die Seite online; "
-                "dann steht die Reise in meine_reisen"
-                + (", und die Personen mit Adresse bekommen eine Einladung per Mail" if e.get("einladen") else
-                   ", mit dem Link zur Seite und dem Link für die Claude-App unter „Meldungen an dich“") + "."), False
-    rm.anstossen(o)
-    if konto.get("konto_id"):
-        return (f"Auftrag {e['id']} gespeichert: Die Reise „{neu['titel']}“ wird in der Regel in wenigen Minuten angelegt "
-                f"(Status Idee, Ordner {neu['pfad']}). Danach steht sie in meine_reisen"
-                + (", und die Personen mit Adresse bekommen eine Einladung per Mail" if e.get("einladen") else "")
-                + ". Bis dahin gibt es die Reise noch nicht."), False
-    return (f"Auftrag {e['id']} gespeichert: Die Reise „{neu['titel']}“ wird in der Regel in wenigen Minuten angelegt "
-            f"(Status Idee, Ordner {neu['pfad']}). Danach zeigt meine_reisen unter „Meldungen an dich“ den Link zur Seite "
-            "und den Link für die Claude-App; den trägst du einmal als eigenen Konnektor ein (Einstellungen → Konnektoren "
-            "→ Eigenen Konnektor hinzufügen). Bis dahin gibt es die Reise noch nicht."), False
+    # ADR-0001, O-3: die Reise entsteht sofort über den Schreibweg; die Links kommen, sobald die Seite online ist
+    # (veroeffentlichen.sh stellt sie zu, Datei neue-reisen-ausstehend.jsonl im Dienstordner)
+    a, fehler = schreib_anfrage(neu["pfad"], "reise_anlegen", {"person": None, "name": konto["name"], "rolle": "organisator",
+                                                               "args": {"auftrag": e}})
+    with _sperre:
+        rm.status_setzen(o, e["id"], "rueckfrage" if fehler else "uebernommen",
+                         f"Nicht angelegt: {fehler}" if fehler else f"Angelegt als {neu['pfad']}. Die Links stehen in meine_reisen, sobald die Seite online ist.")
+        if not fehler:
+            person = next(k_ for k_, p_ in neu["personen"].items() if p_["name"] == neu["wer"])
+            ausstehend_datei().parent.mkdir(parents=True, exist_ok=True)
+            with ausstehend_datei().open("a", encoding="utf-8") as f:
+                f.write(json.dumps({"ordner": neu["pfad"], "aid": e["id"], "name": konto["name"], "person": person}, ensure_ascii=False) + "\n")
+    if fehler:
+        return f"Nicht angelegt: {fehler}", True
+    return (f"Die Reise „{neu['titel']}“ ist angelegt (Status Idee, Ordner {neu['pfad']}). In wenigen Minuten ist die Seite online; "
+            "dann steht die Reise in meine_reisen"
+            + (", und die Personen mit Adresse bekommen eine Einladung per Mail" if e.get("einladen") else
+               ", mit dem Link zur Seite und dem Link für die Claude-App unter „Meldungen an dich“") + "."), False
 
 
 # ---------- Konnektor „Frieda“ (Paket J3): ein Zugang für alle Reisen, angemeldet mit dem Konto (OAuth) ----------
@@ -2198,9 +2186,8 @@ ENTSCHEIDEN = {"name": "entscheiden", "description": "Nur für Organisator:innen
                "(gewaehlt, verworfen oder ersetzt). Erst varianten/zeige ansehen und den Grund mit der Person klären, dann kurz "
                "bestätigen lassen. Der Dienst prüft sofort: Gibt es die Option, ist der Status stimmig, ist ein Grund da, "
                "widerspricht es einer anderen Organisator:in? Unstimmiges lehnt er mit Begründung ab, Hinweise (fehlende oder "
-               "ungeprüfte Merkmale) gibt er mit. Auf dieser Reise gilt der Entscheidungsweg direkt (geprüft und mit Datum "
-               "festgehalten, sofort gültig) oder auftrag (wird zusätzlich in Claude Code geprüft, bevor es gilt); die Antwort "
-               "sagt, welcher. Auf die Seite kommt es mit dem nächsten Einarbeiten.",
+               "ungeprüfte Merkmale) gibt er mit. Die Entscheidung steht sofort mit Datum, Person und Grund im Plan; die Seite "
+               "zeigt sie in wenigen Minuten.",
                "inputSchema": {"type": "object", "properties": {
                    "option": {"type": "string", "description": "Option, über die entschieden wird, z. B. V-01.b (aus varianten)"},
                    "status": {"type": "string", "enum": list(ENTSCHEIDUNGEN),
@@ -2302,12 +2289,12 @@ def anleitung(zugang, d):
     z = [f"Aufgabe: Du hilfst bei der Reise „{rs.get('titel', zugang['reise'])}“ ({rs.get('untertitel', '')})"
          + (f", Status {status}" if status else "") + ". Du liest vor, schlägst vor, prüfst und gibst Eingaben weiter; "
          f"{namen} {'entscheiden' if len(organisator) > 1 else 'entscheidet'}, du nie.",
-         "Grenzen: Über den Konnektor ändert sich nichts sofort (Ausnahmen: Aufgaben AG-…"
-         + (", Arten und Merkmale über art_definieren und merkmal_definieren, Werte über wert_eintragen, Unterkünfte, Strecken, Orte, "
-            "Wahlstellen, Optionen und offene Fragen über ding_anlegen, ding_aendern, option_anlegen, wahlstelle_anlegen und "
-            "frage_anlegen" if schreibdienst() else "")
-         + "); sag nie, etwas sei schon geändert. "
-         "Status gewählt/verworfen/ersetzt und Einstellungen setzen nur Organisator:innen. Nichts erfinden: Herkunft nennen, Annahmen "
+         "Grenzen: Was du mit den Werkzeugen einträgst, prüft der Dienst nach Regeln und schreibt es sofort in die Reise; "
+         "die Seite zeigt es in wenigen Minuten. Rückmeldungen (rueckmeldung_geben) und Antworten sind Eingaben, die eine "
+         "Organisator:in einarbeitet. "
+         + ("" if schreibdienst() else "Der Schreibweg dieser Instanz ist nicht eingerichtet: Eintragen geht nicht, nur Lesen, "
+            "Rückmeldungen und Aufgaben. ")
+         + "Status gewählt/verworfen/ersetzt und Einstellungen setzen nur Organisator:innen. Nichts erfinden: Herkunft nennen, Annahmen "
          "markieren, veränderliche Angaben (Fahrpläne, Öffnungszeiten, Preise) mit Prüfdatum. Vor jedem Eintragen kurz "
          "bestätigen lassen, was genau eingetragen wird. Die Regeln prüft der Dienst; lehnt er etwas ab, gib den Grund weiter.",
          "IDs: T- Tag, E- Etappe/Strecke, O- Ort, U- Unterkunft, V- Wahlstelle mit Optionen V-01.a, P- Plan, F- offene Frage, "
@@ -2316,7 +2303,6 @@ def anleitung(zugang, d):
          "dazu, setzt Status und Einstellungen und lädt ein."]
     name = f"Du sprichst mit {wer['name']}" if wer["name"] else "Du sprichst mit einer Person ohne festen Namen"
     regeln = rs.get("regeln") or {}
-    weg = regeln.get("entscheidungsweg") or VORGABEN["entscheidungsweg"]
     einladen_ab = regeln.get("einladen") or VORGABEN["einladen"]
     kann_einladen = darf(wer["rolle"], einladen_ab)
     direkt = schreibdienst()
@@ -2427,7 +2413,8 @@ def werkzeug(zugang, name, args):
         antwort, fehler = rueckmeldung_senden(reise, e)
         if fehler:
             return f"Nicht gespeichert: {fehler}", True
-        return f"Gespeichert als {antwort['id']} (Status neu). Wird beim nächsten Einarbeiten geprüft.", False
+        return (f"Gespeichert als {antwort['id']} (Status neu). Eine Organisator:in sieht es unter rueckmeldungen, trägt es ein "
+                "und schließt es mit rueckmeldung_erledigen ab."), False
     d = daten(reise)
     if d is None:
         return "Die Seite dieser Reise ist noch nicht veröffentlicht.", True
@@ -2485,7 +2472,7 @@ def werkzeug(zugang, name, args):
         teile = [f"{w['punkte']} Punkte"] + (["eingeplant"] if w.get("eingeplant") else []) + (["erlebt"] if w.get("erlebt") else [])
         return f"Gespeichert (gilt sofort): {rid} – " + ", ".join(teile) + ".", False
     if name == "ueberblick":
-        return (h.ueberblick() + "\n" + stand_text(reise) + "\n" + einarbeiten_text(reise, organisator)
+        return (h.ueberblick() + "\n" + stand_text(reise)
                 + (wuensche_kurz(reise) if "wuensche" in (zustand_von(d)[1] or []) else "")), False
     if name == "zeige":
         t, fehler = h.zeige(str(args.get("id", "")).strip())

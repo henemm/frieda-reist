@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Rückmeldungen von der Reise-Seite – Ablage für Claude Code.
+"""Rückmeldungen von der Reise-Seite – der Eingang der Reise.
 
 
 Die Seite schickt Kommentare, Fragen, Korrekturen und Ergänzungen zu einer ID (T-01, V-03.a, E-07 …)
-an diesen Dienst. Er hängt sie an <ablage>/<reise>/eingang.jsonl an. Claude Code liest sie auf Zuruf
-(„Rückmeldungen einarbeiten“), prüft sie, arbeitet sie ins Repo ein und setzt den Status mit Kommentar
-in <ablage>/<reise>/status.json; die Seite zeigt Status und Kommentar an.
+an diesen Dienst. Er hängt sie an <ablage>/<reise>/eingang.jsonl an. Eine Organisator:in arbeitet sie im AI-Client
+über den Konnektor ein (prüfen, mit den Schreibwerkzeugen eintragen, rueckmeldung_erledigen; ADR-0001) und setzt so
+den Status mit Kommentar in <ablage>/<reise>/status.json; die Seite zeigt Status und Kommentar an.
 Wünsche (Art „Wunsch“, Ziel „wuensche“) sind Ideen der Mitreisenden ohne feste Stelle; die Seite zeigt sie im
 Reiter „Wünsche“, wenn die Reise ihn einschaltet (reise.yaml bausteine).
-Änderungsaufträge (A-…) von Organisator:innen aus der Claude-App legt engine/konnektor.py in auftraege.jsonl ab;
-liste und setze behandeln sie wie Rückmeldungen.
+Änderungsaufträge (A-…, auftraege.jsonl) gab es bis zum 29.10.2026; alte bleiben lesbar, liste und setze behandeln
+sie wie Rückmeldungen.
 
 Aufgaben (AG-01 …, 24.10.2026): hängen an einer oder mehreren IDs, haben Zuständig, Priorität,
 „ab“ und Frist, Status und Verlauf. Alle dürfen sie sofort anlegen und ändern (Seite und Claude-App).
@@ -27,8 +27,6 @@ Aufrufe:
   python3 engine/rueckmeldungen.py setze <reise> R-…|A-… STATUS [KOMMENTAR]
         STATUS: uebernommen | verworfen | rueckfrage | konflikt | neu
   python3 engine/rueckmeldungen.py aufgaben <reise> [--alle]       offene (bzw. alle) Aufgaben zeigen
-  python3 engine/rueckmeldungen.py laeufe [<reise>] [--alle]       Läufe des automatischen Einarbeitens: Wartezeit,
-        Dauer (Protokoll einarbeiten-laeufe.jsonl, geschrieben vom Betriebsskript; RM_LAEUFE überschreibt den Ort)
   python3 engine/rueckmeldungen.py dienst                          Dienst starten
         Umgebung: RM_ABLAGE (Standard aus engine/instanz.py: <Seiten>/_rueckmeldungen),
                   RM_HOST (127.0.0.1), RM_PORT (8771)
@@ -141,8 +139,8 @@ def zustand(reise):
 
 # ---------- Einladungen (Paket C): Personen, die in der Claude-App eingeladen wurden ----------
 # Sie liegen live in <ablage>/<reise>/einladungen.json, weil der Dienst das Repo nicht ändert. Zugang und Rolle gelten
-# sofort; Claude Code übernimmt die Person beim Einarbeiten nach reise.yaml (Auftrag mit daten.einladung). Steht sie dort,
-# gilt die Angabe aus reise.yaml.
+# sofort; der Konnektor schreibt die Person zugleich über den Schreibweg nach reise.yaml (person_schreiben). Steht sie
+# dort, gilt die Angabe aus reise.yaml.
 MAX_EINLADUNGEN = 50
 
 
@@ -258,16 +256,6 @@ def meldungen_aktuell(o, an, aufgaben=None, status=None, bausteine=None, heute=N
             continue
         aus.append(m)
     return aus
-
-
-def anstossen(o):
-    """Neue Eingabe (eingang.jsonl, auftraege.jsonl): <ablage>/.neu neu schreiben. Der Betrieb beobachtet nur diese eine
-    Datei, damit eine neue Reise keinen eigenen Eintrag im Pfad-Wächter braucht (Paket H). Geschrieben statt nur berührt,
-    damit jeder Datei-Wächter es sicher sieht (Schreiben und Schließen, nicht nur ein neuer Zeitstempel)."""
-    try:
-        (o.parent / ".neu").write_text(f"{o.name} {jetzt_iso()}\n", encoding="utf-8")
-    except OSError:
-        pass
 
 
 def schreiben(pfad, text):
@@ -886,7 +874,6 @@ class Dienst(BaseHTTPRequestHandler):
                 f.write(json.dumps(e, ensure_ascii=False) + "\n")
                 f.flush()
                 os.fsync(f.fileno())
-            anstossen(o)
         self._antwort(201, {**e, "status": "neu", "kommentar": ""})
 
     def do_DELETE(self):
@@ -992,29 +979,24 @@ def liste(reise, alle):
         print(f"{e['id']}  {e['erstellt'][:16].replace('T', ' ')} UTC  {e.get('name')}  [{e['status']}]")
         if e.get("art") == "Wunsch":
             b = br.get(e["id"]) or {}
-            print(f"  WUNSCH ({b.get('punkte') or 0} Punkte von {e.get('name')}): prüfen, ob und wo er passt; Vorschlag in "
-                  "plan/wuensche.yaml (bezug, notiz mit Herkunft, option), nie einplanen. Punkte = Priorität, keine Entscheidung."
+            print(f"  WUNSCH ({b.get('punkte') or 0} Punkte von {e.get('name')}): Vorschlag in plan/wuensche.yaml (bezug, notiz "
+                  "mit Herkunft, option); einplanen nur Organisator:innen. Punkte = Priorität, keine Entscheidung."
                   + (" Schon eingeplant von einer Organisator:in." if b.get("eingeplant") else "")
                   + (" Schon erlebt." if b.get("erlebt") else ""))
         daten = e.get("daten") or {}
         if daten.get("pruefung"):
-            print(f"  PRÜFAUFTRAG des Wächters (keine Entscheidung einer Organisator:in): veränderliche Angaben nachschlagen, "
-                  f"Prüfdatum und Quelle eintragen; bei Abweichung nichts ändern, sondern eine offene Frage anlegen.")
+            print("  PRÜFAUFTRAG des Wächters (bis 28.10.2026; seitdem Meldungen): veränderliche Angaben, die nachzuschlagen waren.")
         elif daten.get("weg") == "direkt":
-            print(f"  ENTSCHEIDUNG von {e.get('name')} im Gespräch (Claude-App), Weg direkt: bereits geprüft (Rolle, Option, "
-                  f"Konflikte). Einarbeiten, nicht neu entscheiden.")
+            print(f"  ENTSCHEIDUNG von {e.get('name')} im Gespräch (Claude-App, bis 29.10.2026 als Auftrag): bereits geprüft.")
         elif daten.get("neue_reise"):
-            print(f"  NEUE REISE von {e.get('name')} (Claude-App, Konto-Link), schon geprüft: Der Betrieb legt reisen/"
-                  f"{daten['neue_reise']['pfad']} aus der Vorlage an (neu.aus_auftrag, die Notiz wird der Überblick), "
-                  f"veröffentlicht, schaltet frei und meldet der Person die Links.")
+            print(f"  NEUE REISE von {e.get('name')} (Claude-App): reisen/{daten['neue_reise']['pfad']}, legt der Schreibweg an.")
         elif daten.get("einladung"):
-            print(f"  EINLADUNG von {e.get('name')} (Claude-App): Zugang und Rolle gelten schon. In reise.yaml unter personen "
-                  f"eintragen (Schlüssel, name, rolle, reist, notiz wie im Text).")
+            print(f"  EINLADUNG von {e.get('name')} (Claude-App, bis 29.10.2026 als Auftrag): Zugang und Rolle gelten.")
         elif e["art"] == "Auftrag":
-            print(f"  ÄNDERUNGSAUFTRAG von {e.get('name')} (Organisator:in, Claude-App) – zählt als Entscheidung:")
+            print(f"  ÄNDERUNGSAUFTRAG von {e.get('name')} (Organisator:in, Claude-App, bis 29.10.2026) – zählt als Entscheidung; "
+                  "wird im AI-Client eingetragen und mit rueckmeldung_erledigen abgeschlossen:")
         if e["status"] == "konflikt":
-            print("  KONFLIKT: widerspricht einer anderen Entscheidung. Nichts übernehmen. Offene Frage (F-…) anlegen, "
-                  "beide Seiten darin nennen, dann mit „setze … rueckfrage“ auf die Frage verweisen.")
+            print("  KONFLIKT: widerspricht einer anderen Entscheidung; nichts davon gilt, bis die Organisator:innen es klären.")
         print(f"  {e['ziel']} ({titel.get(e['ziel'], 'ID nicht auf der Seite')}) [{e['art']}]:")
         print("    " + e["text"].replace("\n", "\n    "))
         if e.get("quelle"):
@@ -1045,61 +1027,9 @@ def setze(reise, rid, status, kommentar):
     print(f"{rid}: {status}" + (f" – {kommentar}" if kommentar else ""))
 
 
-def laeufe_datei():
-    """Protokoll der Einarbeitungsläufe: Standard <Ablage>/../_dienst/einarbeiten-laeufe.jsonl."""
-    return Path(os.environ.get("RM_LAEUFE") or ablage().parent / "_dienst" / "einarbeiten-laeufe.jsonl")
-
-
-def laeufe_lesen(reise=None):
-    """Läufe, neueste zuletzt; mit reise nur die, an denen diese Reise beteiligt war. Kaputte Zeilen werden übersprungen."""
-    try:
-        zeilen = laeufe_datei().read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return []
-    liste = []
-    for z in zeilen:
-        try:
-            lauf = json.loads(z)
-        except ValueError:
-            continue
-        if isinstance(lauf, dict) and (reise is None or reise in str(lauf.get("reisen", "")).split()):
-            liste.append(lauf)
-    return liste
-
-
-def minuten_text(sekunden):
-    if not isinstance(sekunden, (int, float)):
-        return "?"
-    return f"{sekunden / 60:.0f} min" if sekunden >= 90 else f"{sekunden:.0f} s"
-
-
-def laeufe_text(liste, ausfuehrlich=True, tage=30, jetzt=None):
-    """Zusammenfassung der Läufe. ausfuehrlich=False: nur ‚zuletzt eingearbeitet‘ (für Personen ohne Rolle Organisator:in).
-    Kosten stehen nur im Protokoll, nicht in der Anzeige (Entscheidung vom 26.10.2026: Kosten werden nicht gebraucht)."""
-    jetzt = jetzt or datetime.datetime.now(datetime.timezone.utc)
-    ok = [x for x in liste if x.get("ergebnis") == "ok"]
-    z = []
-    if not ok:
-        z.append("Noch nichts automatisch eingearbeitet.")
-    else:
-        l = ok[-1]
-        z.append(f"Zuletzt eingearbeitet: {l.get('zeit', '?')[:16].replace('T', ' ')} UTC, {l.get('anzahl', '?')} Eingabe(n)"
-                 + ("" if l.get("online") == "ja" else " (noch nicht online)"))
-    if not ausfuehrlich:
-        return "\n".join(z)
-    if liste and liste[-1].get("ergebnis") != "ok":
-        z.append(f"Der letzte Lauf ist fehlgeschlagen ({liste[-1].get('zeit', '?')[:16].replace('T', ' ')} UTC).")
-    grenze = (jetzt - datetime.timedelta(days=tage)).isoformat(timespec="seconds")
-    neu = [x for x in liste if str(x.get("zeit", "")) >= grenze]
-    warte = [x["eingabe_bis_ende_s"] for x in neu if x.get("ergebnis") == "ok" and isinstance(x.get("eingabe_bis_ende_s"), (int, float))]
-    z.append(f"Letzte {tage} Tage: {len(neu)} Läufe, davon {sum(1 for x in neu if x.get('ergebnis') != 'ok')} fehlgeschlagen")
-    if warte:
-        z.append(f"- Von der Eingabe bis fertig: im Schnitt {minuten_text(sum(warte) / len(warte))}, "
-                 f"am längsten {minuten_text(max(warte))}")
-    if ok and isinstance(ok[-1].get("eingabe_bis_ende_s"), (int, float)):
-        z.append(f"- Letzter erfolgreicher Lauf: {minuten_text(ok[-1]['eingabe_bis_ende_s'])} von der Eingabe bis fertig, "
-                 f"Lauf selbst {minuten_text(ok[-1].get('dauer_s'))}")
-    return "\n".join(z)
+def dienstordner():
+    """Ordner der Dienste neben der Ablage (<Seiten>/_dienst): Stände, Stempel, vorgemerkte Links neuer Reisen."""
+    return ablage().parent / "_dienst"
 
 
 def aufgaben_text(liste, titel=None, fristen=True):
@@ -1154,15 +1084,6 @@ def main(a):
         liste(a[1], "--alle" in a)
     elif a[:1] == ["aufgaben"] and len(a) >= 2:
         aufgaben_liste(a[1], "--alle" in a)
-    elif a[:1] == ["laeufe"]:
-        reise = next((x for x in a[1:] if not x.startswith("--")), None)
-        gelaufen = laeufe_lesen(reise)
-        print(laeufe_text(gelaufen))
-        if "--alle" in a:
-            for l in gelaufen:
-                print(f"{l.get('zeit', '?')[:16]}  {l.get('ergebnis')}  {l.get('reisen')}  {l.get('anzahl')} Eingabe(n)  "
-                      f"Wartezeit {minuten_text(l.get('eingabe_bis_ende_s'))}  Dauer {minuten_text(l.get('dauer_s'))}  "
-                      f"online {l.get('online')}")
     elif a[:1] == ["setze"] and len(a) >= 4:
         setze(a[1], a[2], a[3], " ".join(a[4:]))
     else:

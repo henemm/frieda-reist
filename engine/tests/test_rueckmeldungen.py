@@ -215,19 +215,6 @@ def test_aufgaben_cli(dienst, capsys):
     assert "Erledigtes" in capsys.readouterr().out
 
 
-def test_laeufe_kommandozeile_und_summen(tmp_path, monkeypatch, capsys):
-    """Protokoll der Einarbeitungsläufe: ohne Datei leer, kaputte Zeilen werden übersprungen, Summen stimmen."""
-    monkeypatch.setenv("RM_LAEUFE", str(tmp_path / "laeufe.jsonl"))
-    assert rm.laeufe_lesen() == []
-    assert rm.main(["laeufe"]) == 0 and "Noch nichts automatisch eingearbeitet" in capsys.readouterr().out
-    heute = rm.jetzt_iso()
-    zeilen = [{"zeit": heute, "ergebnis": "ok", "reisen": "a b", "anzahl": 3, "eingabe_bis_ende_s": 600, "kosten_usd": 1.0, "online": "ja"},
-              {"zeit": heute, "ergebnis": "fehler", "reisen": "a", "anzahl": 1, "kosten_usd": 0.5}]
-    (tmp_path / "laeufe.jsonl").write_text("\n".join(json.dumps(z) for z in zeilen) + "\n{kaputt\n")
-    assert len(rm.laeufe_lesen()) == 2 and len(rm.laeufe_lesen("b")) == 1 and rm.laeufe_lesen("c") == []
-    assert rm.main(["laeufe", "a", "--alle"]) == 0
-    aus = capsys.readouterr().out
-    assert "2 Läufe, davon 1 fehlgeschlagen" in aus and "im Schnitt 10 min" in aus
-    assert "Der letzte Lauf ist fehlgeschlagen" in aus and "USD" not in aus and "Kosten" not in aus   # Kosten nur im Protokoll
-    assert "Letzter erfolgreicher Lauf: 10 min von der Eingabe bis fertig" in aus
-    assert "USD" not in rm.laeufe_text(rm.laeufe_lesen(), ausfuehrlich=False)
+def test_kein_laeufe_befehl_mehr(capsys):
+    """ADR-0001, O-3: Das Protokoll der Einarbeitungsläufe gibt es nicht mehr; der Befehl ist unbekannt."""
+    assert rm.main(["laeufe"]) == 1 and "laeufe" not in capsys.readouterr().out

@@ -143,31 +143,19 @@ def test_ueberblick_zeigt_stand(dienst, monkeypatch):
     assert "braucht einen Neustart" in t
 
 
-def test_ueberblick_zeigt_einarbeiten_kosten_nur_organisatoren(dienst, tmp_path, monkeypatch):
-    """Wartezeit des automatischen Einarbeitens sehen nur Organisator:innen, Kosten niemand; alle sehen, wann zuletzt eingearbeitet wurde."""
+def test_ueberblick_ohne_einarbeiten(dienst):
+    """ADR-0001, O-3: Es gibt keinen Einarbeiten-Lauf mehr; der Überblick nennt ihn nicht, die Anleitung sagt, dass
+    Eingetragenes sofort gilt."""
     basis, _ = dienst
-    t, _ = werkzeug(basis, MITREISEND, "ueberblick")
-    assert "## Einarbeiten" in t and "Noch nichts automatisch eingearbeitet" in t
-    protokoll = tmp_path / "laeufe.jsonl"
-    zeilen = [{"zeit": "2026-10-26T10:00:00+00:00", "ergebnis": "ok", "reisen": "beispielreise", "anzahl": 2,
-               "eingabe_bis_ende_s": 400, "kosten_usd": 0.8, "online": "ja"},
-              {"zeit": "2026-10-26T11:00:00+00:00", "ergebnis": "ok", "reisen": "andere", "anzahl": 1,
-               "eingabe_bis_ende_s": 200, "kosten_usd": 0.4, "online": "ja"},
-              {"zeit": "2026-10-26T12:00:00+00:00", "ergebnis": "fehler", "reisen": "beispielreise", "anzahl": 1}]
-    protokoll.write_text("\n".join(json.dumps(z) for z in zeilen) + "\nkaputt\n")
-    monkeypatch.setenv("RM_LAEUFE", str(protokoll))
-    monkeypatch.setattr(rm.datetime, "datetime", type("D", (rm.datetime.datetime,), {
-        "now": classmethod(lambda cls, tz=None: rm.datetime.datetime(2026, 10, 27, tzinfo=rm.datetime.timezone.utc))}))
-    t, _ = werkzeug(basis, MITREISEND, "ueberblick")
-    assert "Zuletzt eingearbeitet: 2026-10-26 10:00 UTC, 2 Eingabe(n)" in t      # nur Läufe dieser Reise
-    assert "USD" not in t and "Kosten" not in t and "im Schnitt" not in t
     t, _ = werkzeug(basis, ALT_ORGANISATOR, "ueberblick")
-    assert "(alle Reisen zusammen)" in t and "USD" not in t and "im Schnitt 5 min" in t
-    assert "Der letzte Lauf ist fehlgeschlagen" in t and "3 Läufe, davon 1 fehlgeschlagen" in t
+    assert "Einarbeiten" not in t and "eingearbeitet" not in t and "## Stand" in t
+    anleitung = rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
+    assert "sag nie, etwas sei schon geändert" not in anleitung and "Einarbeiten" not in anleitung
+    assert "schreibt es sofort in die Reise" in anleitung
 
 
 def test_status_mit_kommentar_erscheint_beim_absender(dienst):
-    """Was das Einarbeiten per setze einträgt, sieht der Absender sofort im Werkzeug rueckmeldungen (die Seite liest dieselbe Datei)."""
+    """Was rueckmeldung_erledigen (oder setze) einträgt, sieht der Absender sofort im Werkzeug rueckmeldungen (die Seite liest dieselbe Datei)."""
     basis, _ = dienst
     t, f = werkzeug(basis, KARL, "rueckmeldung_geben", ziel="T-03", art="Kommentar", text="Schön!")
     assert not f
@@ -306,25 +294,28 @@ def test_konto_meine_reisen_und_reise_anlegen(dienst, seiten, capsys, monkeypatc
     assert f and "Ende liegt vor dem Anfang" in t
     t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Beispielreise", von="2027-02-06", bis="2027-02-13", pfad="beispielreise")
     assert f and "gibt es schon" in t
+    # Ohne eingerichteten Schreibweg legt der Dienst keine Reise an (ADR-0001, O-3): nichts wird gespeichert
     t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Winterwoche im Allgäu", von="2027-02-06", bis="2027-02-13",
                     ziel="Oberstdorf",
                     personen=[{"vorname": "Karl", "rolle": "mitwirkend"}, {"vorname": "Mo", "rolle": "gast", "reist": False}],
                     notiz="Hotel schon gebucht (Bestätigung vom 1.10.2026).")
-    assert not f and "wenigen Minuten angelegt" in t and "Bis dahin gibt es die Reise noch nicht" in t
-    o = ablage / rm.NEU
-    a = rm.auftraege(o)[-1]
-    assert a["name"] == "Ida" and a["konto"] == "ida" and a["status"] == "neu"
-    assert a["daten"]["neue_reise"] == {
-        "titel": "Winterwoche im Allgäu", "von": "2027-02-06", "bis": "2027-02-13", "ziel": "Oberstdorf",
-        "pfad": "winterwoche-im-allgaeu-2027", "wer": "Ida", "notiz": "Hotel schon gebucht (Bestätigung vom 1.10.2026).",
-        "personen": {"ida": {"name": "Ida", "rolle": "organisator"}, "karl": {"name": "Karl", "rolle": "mitwirkend"},
-                     "mo": {"name": "Mo", "rolle": "gast", "reist": False}}}
-    assert (ablage / ".neu").exists()                         # der Pfad-Wächter des Betriebs sieht nur diese Datei
-    assert not (ablage / "beispielreise" / "auftraege.jsonl").exists()   # gehört zu keiner Reise
+    assert f and "Schreibweg dieser Instanz ist nicht eingerichtet" in t
+    assert not (ablage / rm.NEU / "auftraege.jsonl").exists() and not (ablage / ".neu").exists()
+    # Die Anfrage, die der Schreibweg als Beleg in der Ablage hinterlässt (test_neue_reise_ueber_den_schreibweg), zeigt
+    # meine_reisen, bis die Seite online ist; sie gehört zu keiner Reise
+    from reise import neue_reise_pruefen
+    neu, fehler = neue_reise_pruefen({"titel": "Winterwoche im Allgäu", "von": "2027-02-06", "bis": "2027-02-13",
+                                      "ziel": "Oberstdorf", "notiz": "Hotel schon gebucht (Bestätigung vom 1.10.2026).",
+                                      "personen": [{"vorname": "Karl", "rolle": "mitwirkend"},
+                                                   {"vorname": "Mo", "rolle": "gast", "reist": False}]}, "Ida")
+    assert fehler is None and neu["pfad"] == "winterwoche-im-allgaeu-2027" and neu["personen"]["mo"]["reist"] is False
+    o = rm.ordner_neu(anlegen=True)
+    a = {"id": "A-20261027-100000-0001", "erstellt": rm.jetzt_iso(), "name": "Ida", "konto": "ida", "art": "Auftrag",
+         "ziel": "allgemein", "text": "Neue Reise", "quelle": "Claude-App", "daten": {"neue_reise": neu}}
+    (o / "auftraege.jsonl").write_text(json.dumps(a, ensure_ascii=False) + "\n")
+    assert not (ablage / "beispielreise" / "auftraege.jsonl").exists()
     rm.liste(rm.NEU, False)
     assert "NEUE REISE von Ida" in capsys.readouterr().out
-    t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Winterwoche im Allgäu", von="2027-02-06", bis="2027-02-13")
-    assert f and "angefragt" in t
     t, _ = werkzeug(basis, KONTO, "meine_reisen")
     assert "Angefragte neue Reisen:\n- Winterwoche im Allgäu" in t and "wird angelegt" in t
     # Nach dem Anlegen: Meldung mit den Links (schreibt der Betrieb), der Auftrag ist übernommen
@@ -533,7 +524,7 @@ def test_ontologie_organisator_schreibt_direkt(schreibweg):
         nur_org = {"tag_aendern", "frage_schliessen", "reise_status_setzen", "einstellung_setzen"}
         assert (set(kn.ONTOLOGIE_WERKZEUGE) - nur_org <= namen) is da, token
     anleitung = rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
-    assert "art_definieren, merkmal_definieren" in anleitung and "Ausnahmen: Aufgaben AG-…, Arten" in anleitung
+    assert "Arten und Merkmale (art_definieren, merkmal_definieren" in anleitung and "schreibt es sofort in die Reise" in anleitung
     t, f = werkzeug(basis, ALT_ORGANISATOR, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt", grund="Hütten am Weg")
     assert not f and t.startswith("Eingetragen und gesichert (Ida): Art „Refugi“ angelegt") and "wenige Minuten" in t
     pfad, geheim, body = Schreibweg.anfragen[-1]

@@ -13,8 +13,8 @@ engine/            bauen.py (Generator), routen.py (Routenmodell), reise.py (rei
                    vorlage.html, sw.vorlage.js, rueckmeldungen.py (Dienst), konnektor.py (MCP), schreiben.py (Schreibweg:
                    der Konnektor schreibt direkt in die Reise), waechter.py (Wächter und Erinnerer, läuft täglich),
                    neu.py (neue Reise, IDs, arten-ableiten), reisevorlage/, vendor/ (Fremdbibliotheken, siehe THIRD_PARTY.md), tests/
-betrieb/           Betrieb einer Instanz: Einarbeiten (KI je Reise, läuft aus mit O-3), Schreibweg, Veröffentlichen, Deploy,
-                   Freischalten, Wächter-Lauf, Einrichten, Vorlagen für systemd und nginx, KI-Anweisung, einstellungen.beispiel
+betrieb/           Betrieb einer Instanz: Schreibweg, Veröffentlichen, Deploy, Freischalten, Zustellen der Links neuer Reisen,
+                   Wächter-Lauf, Einrichten, Vorlagen für systemd und nginx, einstellungen.beispiel (keine KI auf dem Server)
 werkzeuge/         Werkzeuge für Inhalte aus dem Netz: Grundkarte, Punkte und Adressen aus OpenStreetMap, Wasserstellen
 beispiel/reisen/   erfundene Beispielreise, Demo und Testgrundlage
 docs/              Produktbild, Alternativen und Merkmale, Design und Bausteine, Konnektor, Betrieb, Werkzeuge;

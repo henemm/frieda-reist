@@ -1,5 +1,5 @@
-# Täglicher Lauf des Wächters und Erinnerers (__INSTANZ__-waechter.service). Ein Lauf ohne Neues kostet nichts;
-# ein Prüfauftrag startet das Einarbeiten (höchstens einer pro Woche und Reise).
+# Täglicher Lauf des Wächters und Erinnerers (__INSTANZ__-waechter.service). Er rechnet und meldet nur
+# (Fristen, alte Prüfdaten, fälliger Statuswechsel); nachschlagen tut der AI-Client im Gespräch (ADR-0001).
 [Unit]
 Description=__TITEL__: täglich Wächter und Erinnerer
 

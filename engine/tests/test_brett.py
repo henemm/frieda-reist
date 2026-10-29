@@ -253,11 +253,11 @@ def test_brett_in_der_claude_app_ausgeschaltet(umgebung):
     assert "Wünsche" not in u.werkzeug(IDA, "ueberblick")[0]
 
 
-def test_liste_zeigt_punkte_fuer_das_einarbeiten(umgebung, capsys):
+def test_liste_zeigt_punkte(umgebung, capsys):
     u = umgebung()
     a = wunsch(u, "Karl", "Kirnitzschtalbahn")
     assert aendern(u, a, name="Karl", punkte=7)[0] == 200
     capsys.readouterr()
     rm.liste("beispielreise", False)
     t = capsys.readouterr().out
-    assert "WUNSCH (7 Punkte von Karl)" in t and "plan/wuensche.yaml" in t and "nie einplanen" in t
+    assert "WUNSCH (7 Punkte von Karl)" in t and "plan/wuensche.yaml" in t and "einplanen nur Organisator:innen" in t

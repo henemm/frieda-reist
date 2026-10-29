@@ -317,7 +317,7 @@ def test_einladung_gilt_nicht_mehr_doppelt_sobald_reise_yaml_die_person_kennt():
     assert rm.einladungen_lesen(Path("/gibt/es/nicht")) == {}
 
 
-def test_einladen_wird_nach_dem_einarbeiten_von_reise_yaml_abgeloest(umgebung):
+def test_einladung_wird_von_reise_yaml_abgeloest(umgebung):
     u = umgebung("planung")
     assert not u.werkzeug(IDA, "person_einladen", vorname="Karl")[1]
     # Eine Einladung, die reise.yaml schon enthält (hier: von Hand in die Datei geschrieben), überschreibt die Rolle nicht
@@ -336,9 +336,9 @@ def test_anleitung_nennt_rolle_status_und_grenzen(umgebung):
     assert "Du sprichst mit Karl (Mitwirkende:r)" in karl and "Entscheiden kann sie nicht" in karl
     assert "frage_beantworten" in karl and "person_einladen" not in karl
     assert "nur lesen" in u.rpc(KIM, "initialize")["instructions"]
-    auftrag = umgebung("planung", regeln={"entscheidungsweg": "auftrag", "einladen": "mitwirkend"})
-    assert "in den Plan" in auftrag.rpc(IDA, "initialize")["instructions"]      # entscheidungsweg ist ohne Wirkung
-    assert "darf Personen einladen" in auftrag.rpc(KARL, "initialize")["instructions"]
+    offen = umgebung("planung", regeln={"einladen": "mitwirkend"})
+    assert "in den Plan" in offen.rpc(IDA, "initialize")["instructions"]
+    assert "darf Personen einladen" in offen.rpc(KARL, "initialize")["instructions"]
 
 
 def test_regeln_einladen_und_schluessel():

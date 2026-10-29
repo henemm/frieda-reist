@@ -22,7 +22,6 @@ personen:
 bausteine: [varianten, karte, tagesseiten, rueckmeldungen, fragen, aufgaben, wuensche]
 
 regeln:
-  entscheidungsweg: direkt
   kontingent: {art: punkte, je_person: 10}
 
 darstellung:
