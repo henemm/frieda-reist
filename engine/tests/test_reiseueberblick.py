@@ -70,8 +70,11 @@ def test_reiseueberblick(tmp_path, browser):
         assert a["inZeile"] == 0, a["inZeile"]
         assert a["karte"] and a["karte"]["breite"] == a["karte"]["kasten"] and a["karte"]["wege"] > 100, a["karte"]
         assert a["zurueck"]["tag"] == "T-03" and a["zurueck"]["sichtbar"], a["zurueck"]
-        assert a["unterkunft"] == {"inNacht": True, "reiter": "Reise", "web": "https://example.org/pension-burgblick", "selbst": 0,
-                                   "karte": ["https://www.google.com/maps/search/?api=1&query=50.9792%2C14.1128"]}, a["unterkunft"]
+        karte = a["unterkunft"].pop("karte")
+        assert a["unterkunft"] == {"inNacht": True, "reiter": "Reise", "web": "https://example.org/pension-burgblick", "selbst": 0}, a["unterkunft"]
+        # Google Maps immer, Apple Karten nur auf Apple-Geräten (WebKit meldet sich als Macintosh)
+        assert karte[0] == "https://www.google.com/maps/search/?api=1&query=50.9792%2C14.1128", karte
+        assert karte[1:] in ([], ["https://maps.apple.com/?q=Pension%20Burgblick&ll=50.9792,14.1128"]), karte
         assert [x[1] for x in a["buchen"]] == ["gebucht", "nicht gebucht", "nicht gebucht"], a["buchen"]
         assert a["ueberPlan"] > 0
         assert [x[0] for x in a["tage"]] == ["#T-01", "#T-02", "#T-03", "#T-04"]
