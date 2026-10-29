@@ -54,7 +54,7 @@
    den Fehlbetrag, die Leiste und alles, was unten sitzt, rücken um ihn nach unten. Sonst 0. */
 
 /* ==================== 2 Grundlagen: Seite, Text, Pico CSS, Reisetexte ==================== */
-/* Schriftgröße: alle Größen sind rem, am Rechner wächst die Wurzel (Handy 16 px, ab 760 px 17 px, ab 1100 px 19 px, ab 1700 px 20 px). */
+/* Schriftgröße: alle Größen sind rem, am Rechner wächst die Wurzel (Handy und ab 760 px 16 px, ab 1100 px 17 px; Text damit 17 bzw. 18 px, Product Owner 29.10.2026). */
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;font-size:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:var(--t-text)/1.55 var(--font-text)}
@@ -783,13 +783,12 @@ nav a.warn .zahl{background:var(--warn)}
 }
 @media (min-width:760px){
   :root{--breite:920px}
-  html{font-size:106.25%}
   header{padding-left:28px;padding-right:28px}
   main{padding-left:28px;padding-right:28px}
 }
 @media (min-width:1100px){
   :root{--breite:1280px}
-  html{font-size:118.75%}
+  html{font-size:106.25%}
   /* Tage des Plans in zwei Spalten; ein Tag mit offenem Vergleich nimmt die ganze Breite */
   section.ziel:has(>.karte.ziel[id^="T-"]){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px;align-items:start}
   section.ziel:has(>.karte.ziel[id^="T-"])>*{grid-column:1/-1;margin-top:0;margin-bottom:0}
@@ -798,7 +797,6 @@ nav a.warn .zahl{background:var(--warn)}
 }
 @media (min-width:1700px){
   :root{--breite:1400px}
-  html{font-size:125%}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>

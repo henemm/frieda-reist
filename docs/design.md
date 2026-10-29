@@ -86,7 +86,7 @@ Vorher „Wanderführer“ (Papiergrund, Waldgrün, Serifen, Etiketten in Großb
 
 ## Schrift und Breite (27.10.2026)
 
-- **Schrift.** Alle Schriftgrößen stehen in `rem`, nichts in `px` (Ausnahme: Beschriftung und Zeichen auf der Karte). Die Wurzelgröße wächst mit dem Bildschirm: Handy 16 px, ab 760 px 17 px, ab 1100 px 19 px, ab 1700 px 20 px. So wird der Text am Rechner größer, ohne dass das Handy sich ändert, und jede Größe ändert man an einer Stelle.
+- **Schrift.** Alle Schriftgrößen stehen in `rem`, nichts in `px` (Ausnahme: Beschriftung und Zeichen auf der Karte). Die Wurzelgröße wächst am Rechner leicht: Handy und ab 760 px 16 px, ab 1100 px 17 px. Lesetext (Stufe Text) ist damit 17 px am Handy und 18 px am Rechner, im Rahmen der üblichen 16–18 px (Product Owner 29.10.2026: vorher bis 21 px, zu groß). Jede Größe ändert man an einer Stelle.
 - **Schriftleiter** (Product Owner 29.10.2026): genau fünf Stufen als Tokens, jede Schriftgröße der Seite ist eine davon.
 
   | Stufe | Token | Größe | Wofür |
