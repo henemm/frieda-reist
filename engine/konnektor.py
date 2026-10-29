@@ -68,15 +68,19 @@ from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, REISE_ZIEL, ROLLEN, VORGABEN, 
 from routen import FARBEN, GRUNDFORMEN, STUFEN, TYPEN, art_schluessel  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
 
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
-SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "alternative_vorschlagen",
+SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern",
                      "frage_beantworten", "entscheiden", "person_einladen", "person_entfernen", "wunsch_aendern"}
 # Werkzeuge, die direkt in die Ontologie der Reise schreiben (ADR-0001, O-3; engine/schreiben.py): nur bei Instanzen mit
 # Schreibweg (KN_SCHREIBDIENST); Organisator:innen schreiben, Mitwirkende schlagen vor (Rückmeldung der Art Ergänzung)
-ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "wert_eintragen")
-ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "wert_eintragen": "wert"}
+ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "wert_eintragen", "ding_anlegen", "ding_aendern",
+                       "option_anlegen", "wahlstelle_anlegen", "frage_anlegen")
+# Aktion der Regelprüfung je Werkzeug; art_definieren und merkmal_definieren gehen für Mitwirkende als Rückmeldung (Vorschlag)
+ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "wert_eintragen": "wert",
+                    "ding_anlegen": "ding", "ding_aendern": "ding", "option_anlegen": "alternative", "wahlstelle_anlegen": "alternative",
+                    "frage_anlegen": "frage"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe",
-                  "alternative_vorschlagen": "alternative", "auftrag_geben": "auftrag", "entscheiden": "entscheiden",
+                  "auftrag_geben": "auftrag", "entscheiden": "entscheiden",
                   "frage_beantworten": "antwort", "person_einladen": "einladen", "person_entfernen": "entfernen",
                   # Wunsch-Brett: sichtbar für alle, die abhaken dürfen; Punkte und Einplanen prüft der Dienst genauer
                   "wunsch_aendern": "wunsch_erlebt"}
@@ -358,39 +362,6 @@ def aehnliches_merkmal(schluessel, kriterien):
             if k == n or gemeinsam(k, n) >= 5:
                 return d
     return None
-
-
-def vorschlag_werte(k, v, d):
-    """Wert(e) eines Merkmals aus alternative_vorschlagen prüfen, nach denselben Regeln wie routen.werte: ein Wert oder
-    eine Liste von Werten je Datum (gilt), höchstens einer ohne gilt, kein Datum doppelt. -> (Liste, None) oder (None, Fehler)."""
-    aus = []
-    for x in v if isinstance(v, list) else [v]:
-        x = x if isinstance(x, dict) else {"wert": x}
-        wert = str(x.get("wert", "")).strip()
-        if not wert:
-            continue
-        if d and d.get("werte") and wert not in d["werte"]:
-            return None, f"{k} = „{wert}“ geht nicht, erlaubt: {', '.join(d['werte'])}."
-        try:
-            g = str(x.get("geprueft") or "").strip()
-            if g:
-                datetime.date.fromisoformat(g)
-        except ValueError:
-            return None, f"{k}: geprueft als JJJJ-MM-TT angeben."
-        gilt = x.get("gilt")
-        try:
-            tage = [datetime.date.fromisoformat(str(t).strip()).isoformat()
-                    for t in (gilt if isinstance(gilt, list) else [gilt] if gilt else [])]
-        except ValueError:
-            return None, f"{k}: gilt als Datum JJJJ-MM-TT oder Liste solcher Daten angeben."
-        aus.append({"wert": wert, **{f: str(x[f]).strip() for f in ("quelle", "notiz") if x.get(f)},
-                    **({"geprueft": g} if g else {}), **({"gilt": tage} if tage else {})})
-    if sum(1 for e in aus if not e.get("gilt")) > 1:
-        return None, f"{k}: mehrere Werte ohne gilt; je Datum angeben (gilt: JJJJ-MM-TT), höchstens einer gilt für alle übrigen Tage."
-    tage = [t for e in aus for t in e.get("gilt", [])]
-    if len(tage) != len(set(tage)):
-        return None, f"{k}: ein Datum steht in zwei Werten."
-    return aus, None
 
 
 def stunden(minuten):
@@ -755,7 +726,7 @@ class Handbuch:
         z = [f"# Merkmale für Bereich {b}" + (f" – {w['id']} {w['titel']}" if w else f" – {ziel}" if ziel else ""),
              "Vorgehen: Erst selbst recherchieren (Hinweis „so finden“), dann die Person nur nach dem fragen, was offen "
              "bleibt (Hinweis „fragen“). Veränderliche Werte mit Prüfdatum. Werte an einer vorhandenen Stelle trägst du mit "
-             "wert_eintragen ein (sofort, mit Herkunft); eine neue Alternative mit alternative_vorschlagen weitergeben, vorher kurz bestätigen lassen. Ist ein Wert je Datum verschieden (z. B. "
+             "wert_eintragen ein (sofort, mit Herkunft); eine neue Alternative: ding_anlegen (Unterkunft, Strecke) und option_anlegen an der Wahlstelle, vorher kurz bestätigen lassen. Ist ein Wert je Datum verschieden (z. B. "
              "Preis je Nacht), mehrere Werte mit gilt (JJJJ-MM-TT) angeben; einer ohne gilt steht für alle übrigen Tage. "
              "Das sind die Merkmale dieser Reise für diese Art (plan/arten.yaml, von den Reisenden festgelegt). Ein neues "
              "Merkmal nur, wenn es hier nichts Passendes gibt; dann wird es an der Art der Reise definiert (merkmal_definieren: "
@@ -907,87 +878,6 @@ class Handbuch:
                  "hinweise": hinweise}
         return (text_, daten), hinweise, None
 
-    def vorschlag(self, args):
-        """Neue Alternative prüfen -> (Text für Auftrag/Rückmeldung, Ziel, Daten) oder Fehler."""
-        katalog = self.r.get("merkmale") or {}
-        vid = str(args.get("wahlstelle") or "").strip()
-        an = str(args.get("an") or "").strip()
-        titel = str(args.get("titel") or "").strip()
-        if not titel:
-            return None, "titel fehlt: Name der Alternative, z. B. das Hotel."
-        if vid:
-            w = next((x for x in self.r.get("wahlstellen", []) if x["id"] == vid), None)
-            if not w:
-                return None, f"Wahlstelle {vid} gibt es nicht. Mit varianten die richtige finden oder leer lassen."
-            b, krit = w.get("bereich", "allgemein"), w.get("kriterien") or []
-        else:
-            if not an or an not in self.eintraege:
-                return None, "Ohne Wahlstelle bitte an angeben: die ID, an der die Alternative hängt (z. B. T-05, U-11, E-14)."
-            # Art aus der Stelle, wenn nicht angegeben: an einer Strecke oder Unterkunft deren Art (plan/arten.yaml)
-            w, b = None, str(args.get("bereich") or "").strip()
-            st = (self.r.get("strecken") or {}).get(an)
-            if not b and st is not None:
-                b = st.get("bereich")
-            elif not b and an in (self.r.get("unterkuenfte") or {}):
-                b = self.r["unterkuenfte"][an].get("art")
-            if b not in katalog:
-                return None, f"Ohne Wahlstelle bitte bereich angeben, die Art der Alternative auf dieser Reise ({', '.join(katalog)})."
-            krit = katalog[b]
-        defs = {k["id"]: k for k in krit}
-        roh = args.get("merkmale") or {}
-        if not isinstance(roh, dict):
-            return None, "merkmale muss ein Objekt {merkmal: {wert, quelle, geprueft, notiz}} sein."
-        werte, neu, doppelt = {}, [], {}
-        for k, v in roh.items():
-            d = defs.get(k)
-            if d and d.get("auto"):
-                continue
-            eintraege, fehler = vorschlag_werte(k, v, d)
-            if fehler:
-                return None, fehler
-            if not eintraege:
-                continue
-            werte[k] = eintraege[0] if len(eintraege) == 1 and not eintraege[0].get("gilt") else eintraege
-            if not d:
-                neu.append(k)
-                gleich = aehnliches_merkmal(k, krit)
-                if gleich:
-                    doppelt[k] = gleich
-        listen = {f: [str(x) for x in args.get(f) or [] if str(x).strip()] for f in ("plus", "minus")}
-        z = [f"Neue Alternative „{titel}“ " + (f"für {vid} ({w['titel']})" if w else f"an {an}, neue Wahlstelle")
-             + f", Art {b}. Standard: docs/alternativen.md; Status höchstens vorgeschlagen."]
-        for k, d in doppelt.items():
-            z.append(f"Hinweis: „{k}“ ähnelt dem Merkmal {d['id']} („{d['name']}“). Beim Einarbeiten prüfen: Meint es "
-                     f"dasselbe, unter {d['id']} eintragen statt ein neues Merkmal anzulegen.")
-
-        def eintrag_text(v):
-            zusatz = [f"gilt {', '.join(datum_de(t) for t in v['gilt'])}"] if v.get("gilt") else []
-            zusatz += [f"geprüft {v['geprueft']}"] if v.get("geprueft") else []
-            zusatz += [f"Quelle: {v['quelle']}"] if v.get("quelle") else []
-            zusatz += [v["notiz"]] if v.get("notiz") else []
-            return v["wert"] + (f" ({'; '.join(zusatz)})" if zusatz else "")
-        if werte:
-            z.append("Merkmale:")
-            for k, v in werte.items():
-                z.append(f"- {k}{' (neues Merkmal)' if k in neu else ''}: "
-                         + ("; ".join(eintrag_text(x) for x in v) if isinstance(v, list) else eintrag_text(v)))
-        def stufe(d):   # wie routen.stufe_von ohne Typ (die Alternative hat noch keinen)
-            s = d.get("stufe", "empfohlen")
-            return s.get("*", "empfohlen") if isinstance(s, dict) else s
-        fehlt = [d["name"] for d in krit if not d.get("auto") and stufe(d) in ("pflicht", "empfohlen") and d["id"] not in werte]
-        if fehlt:
-            z.append("Fehlt noch: " + ", ".join(fehlt))
-        if listen["plus"]:
-            z.append("Dafür: " + "; ".join(listen["plus"]))
-        if listen["minus"]:
-            z.append("Dagegen: " + "; ".join(listen["minus"]))
-        for f, name in (("text", ""), ("quelle", "Quelle: ")):
-            if str(args.get(f) or "").strip():
-                z.append(name + str(args[f]).strip())
-        daten = {"wahlstelle": vid or None, "an": an or None, "bereich": b, "titel": titel, "merkmale": werte, **listen,
-                 **({"doppelt": {k: d["id"] for k, d in doppelt.items()}} if doppelt else {})}
-        return ("\n".join(z), vid or an, daten), None
-
     def varianten(self):
         z = []
         for p in self.r.get("plaene", []):
@@ -1055,67 +945,95 @@ def ontologie_text(name, args):
     return ("Art festlegen" if name == "art_definieren" else "Merkmal festlegen") + " – " + "; ".join(teile)
 
 
+def ids_der_reise(d):
+    """Alle IDs, an denen etwas hängen kann (für Vorprüfungen im Konnektor)."""
+    r = d.get("route") or {}
+    ids = set(r.get("unterkuenfte") or {}) | set(r.get("strecken") or {}) | set(r.get("orte") or {})
+    ids |= {t["id"] for t in r.get("tage") or []} | {w["id"] for w in r.get("wahlstellen") or []}
+    ids |= {o["id"] for w in r.get("wahlstellen") or [] for o in w["optionen"]} | {a["id"] for a in d.get("abschnitte") or []}
+    return ids
+
+
+def merkmal_hinweise(d, art, merkmale):
+    """Unbekannte Merkmale in einer Anfrage -> Hinweistext (ähnliches Merkmal nennen) oder None."""
+    if not isinstance(merkmale, dict) or not art:
+        return None
+    krit = ((d.get("route") or {}).get("merkmale") or {}).get(art) or []
+    bekannt = {k["id"] for k in krit} | {x for k in krit for x in (k.get("auch") or [])}
+    fremd = [str(k) for k in merkmale if str(k).lower() not in bekannt]
+    if not fremd:
+        return None
+    z = []
+    for k in fremd:
+        a = aehnliches_merkmal(k, krit)
+        z.append(f"„{k}“ gibt es an der Art {art} nicht" + (f"; gemeint ist wohl {a['id']} – {a['name']}" if a else
+                 "; ein neues Merkmal legt ein:e Organisator:in mit merkmal_definieren an (du kannst es damit vorschlagen)"))
+    return "Nicht eingetragen: " + "; ".join(z) + "."
+
+
 def ontologie_werkzeug(reise, d, wer, zugang, name, args):
-    """Werkzeuge art_definieren und merkmal_definieren (ADR-0001, O-3): Organisator:innen schreiben über den Schreibweg direkt in
-    plan/arten.yaml der Reise; Mitwirkende geben eine Rückmeldung der Art Ergänzung an die Art. -> (Text, ist_fehler)"""
-    if not schreibdienst():
-        return ("Bei dieser Instanz ist der Schreibweg nicht eingerichtet (engine/schreiben.py dienst, docs/betrieb.md); Arten und "
-                "Merkmale ändert bis dahin eine Sitzung im Reisen-Repo."), True
-    if not all(isinstance(v, (str, bool, list, type(None))) for v in args.values()):
-        return "Alle Angaben müssen Text, ja/nein oder Listen von Text sein.", True
-    if name == "wert_eintragen":
-        if (nein := recht(wer["rolle"], d, "wert")):
-            return nein, True
-        if not wer["name"]:
-            name_ = args.get("name")
-            if not isinstance(name_, str) or not name_.strip():
-                return "Name fehlt: bitte die Person nach ihrem Vornamen fragen.", True
-            wer = {**wer, "name": name_.strip()}
-        ziel = str(args.get("ziel") or "").strip()
-        if ziel and ziel not in (d.get("route") or {}).get("unterkuenfte", {}) and ziel not in (d.get("route") or {}).get("strecken", {}) \
-                and not any(o["id"] == ziel for w in (d.get("route") or {}).get("wahlstellen") or [] for o in w["optionen"]):
-            return f"„{ziel}“ ist keine Unterkunft, Strecke oder Option dieser Reise. Mit suche oder ueberblick die ID finden.", True
-        antwort, fehler = schreib_anfrage(reise, name, {"person": zugang.get("person"), "name": wer["name"], "rolle": wer["rolle"],
-                                                       "args": {k: v for k, v in args.items() if k != "name"}})
-        if fehler:
-            return f"Nicht eingetragen: {fehler}", True
-        return (f"Eingetragen und gesichert ({wer['name']}): {antwort.get('text', '')} Es gilt ab jetzt; die Seite und zeige/merkmale "
-                "zeigen den neuen Stand, sobald veröffentlicht ist (wenige Minuten)."), False
-    if darf(wer["rolle"], "organisator"):
-        if (nein := recht(wer["rolle"], d, "ontologie")):
-            return nein, True
-        if not wer["name"]:
-            return ("Das geht nur mit dem persönlichen Link: Jede Änderung an der Ontologie gehört genau einer Person, und dieser "
-                    "Link kennt keinen Namen."), True
-        if name == "merkmal_definieren" and not args.get("trotzdem"):
-            art = str(args.get("art") or "").strip().lower()
-            krit = ((d.get("route") or {}).get("merkmale") or {}).get(art) or []
-            key = art_schluessel(str(args.get("merkmal") or args.get("bezeichnung") or ""))
-            if key and key not in {k["id"] for k in krit}:
-                aehnlich = aehnliches_merkmal(key, krit)
-                if aehnlich:
-                    return (f"Nicht angelegt: Bei der Art {art} gibt es schon ein ähnliches Merkmal, {aehnlich['id']} – {aehnlich['name']}. "
-                            "Das vorhandene nutzen oder mit merkmal_definieren ändern; ist es wirklich ein anderes, noch einmal mit "
-                            "trotzdem = true."), True
-        antwort, fehler = schreib_anfrage(reise, name, {"person": zugang.get("person"), "name": wer["name"], "rolle": wer["rolle"],
-                                                       "args": {k: v for k, v in args.items() if k not in ("name", "trotzdem")}})
-        if fehler:
-            return f"Nicht eingetragen: {fehler}", True
-        return (f"Eingetragen und gesichert ({wer['name']}): {antwort.get('text', '')} Es gilt ab jetzt; die Seite und die "
-                "Werkzeuge merkmale und zeige zeigen den neuen Stand, sobald veröffentlicht ist (wenige Minuten)."), False
-    if (nein := recht(wer["rolle"], d, "rueckmeldung")):
+    """Werkzeuge, die direkt in die Reise schreiben (ADR-0001, O-3; engine/schreiben.py): Rolle und Status prüft der Konnektor vor dem
+    Senden, der Schreibweg noch einmal mit reise.yaml. art_definieren und merkmal_definieren gehen für Mitwirkende als Rückmeldung
+    der Art Ergänzung (Vorschlag). -> (Text, ist_fehler)"""
+    if not all(isinstance(v, (str, bool, int, float, list, dict, type(None))) for v in args.values()):
+        return "Alle Angaben müssen Text, Zahlen, ja/nein, Listen oder Objekte sein.", True
+    aktion = ONTOLOGIE_AKTION[name]
+    vorschlag = aktion == "ontologie" and not darf(wer["rolle"], "organisator")
+    if (nein := recht(wer["rolle"], d, "rueckmeldung" if vorschlag else aktion)):
         return nein, True
-    name_ = wer["name"] or args.get("name")
+    if not schreibdienst():
+        return ("Bei dieser Instanz ist der Schreibweg nicht eingerichtet (engine/schreiben.py dienst, docs/betrieb.md); bis dahin "
+                "ändert eine Sitzung im Reisen-Repo die Reise."), True
+    name_ = wer["name"] or args.get("name") or args.get("vorname")
     if not isinstance(name_, str) or not name_.strip():
-        return "Name fehlt: bitte die Person nach ihrem Vornamen fragen.", True
-    ziel = art_schluessel(str(args.get("art") or args.get("bezeichnung") or "")) or "allgemein"
-    e, fehler = rueckmeldung_senden(reise, {"name": name_, "art": "Ergänzung", "ziel": ziel[:rm.LAENGE["ziel"]],
-                                            "text": ontologie_text(name, args)[:rm.LAENGE["text"]], "quelle": "über Claude"})
+        return ("Das geht nur mit dem persönlichen Link: Jede Änderung gehört genau einer Person, und dieser Link kennt keinen Namen."
+                if aktion == "ontologie" and not vorschlag else "Name fehlt: bitte die Person nach ihrem Vornamen fragen."), True
+    wer = {**wer, "name": name_.strip()}
+    rest = {k: v for k, v in args.items() if k not in ("name", "vorname", "trotzdem")}
+    if vorschlag:
+        ziel = art_schluessel(str(args.get("art") or args.get("bezeichnung") or "")) or "allgemein"
+        e, fehler = rueckmeldung_senden(reise, {"name": wer["name"], "art": "Ergänzung", "ziel": ziel[:rm.LAENGE["ziel"]],
+                                                "text": ontologie_text(name, rest)[:rm.LAENGE["text"]], "quelle": "über Claude"})
+        if fehler:
+            return f"Nicht gespeichert: {fehler}", True
+        organisator = " und ".join(organisator_namen(d)) or "ein:e Organisator:in"
+        return (f"Vorschlag {e['id']} gespeichert. Arten und Merkmale legen Organisator:innen fest; {organisator} sieht den Vorschlag "
+                "unter rueckmeldungen und kann ihn im Gespräch übernehmen."), False
+    # Vorprüfungen mit dem veröffentlichten Stand (der Schreibweg prüft noch einmal mit dem Repo)
+    route = d.get("route") or {}
+    if name == "merkmal_definieren" and not args.get("trotzdem"):
+        art = str(args.get("art") or "").strip().lower()
+        krit = (route.get("merkmale") or {}).get(art) or []
+        key = art_schluessel(str(args.get("merkmal") or args.get("bezeichnung") or ""))
+        if key and key not in {k["id"] for k in krit}:
+            aehnlich = aehnliches_merkmal(key, krit)
+            if aehnlich:
+                return (f"Nicht angelegt: Bei der Art {art} gibt es schon ein ähnliches Merkmal, {aehnlich['id']} – {aehnlich['name']}. "
+                        "Das vorhandene nutzen oder mit merkmal_definieren ändern; ist es wirklich ein anderes, noch einmal mit "
+                        "trotzdem = true."), True
+    if name in ("wert_eintragen", "ding_aendern"):
+        ziel = str(args.get("ziel") or "").strip()
+        if ziel and ziel not in ids_der_reise(d):
+            return f"„{ziel}“ gibt es in dieser Reise nicht. Mit suche oder ueberblick die ID finden.", True
+    if name == "ding_anlegen":
+        if (h := merkmal_hinweise(d, str(args.get("art") or "").lower(), args.get("merkmale"))):
+            return h, True
+    if name == "option_anlegen":
+        vid = str(args.get("wahlstelle") or "").strip()
+        w = next((w for w in route.get("wahlstellen") or [] if w["id"] == vid), None)
+        if w is None:
+            return f"Die Wahlstelle „{vid}“ gibt es nicht; varianten zeigt alle. Fehlt sie wirklich, wahlstelle_anlegen.", True
+        if (h := merkmal_hinweise(d, w.get("bereich"), args.get("merkmale"))):
+            return h, True
+    if name in ("wahlstelle_anlegen", "frage_anlegen"):
+        fremd = [x for x in (args.get("an" if name == "wahlstelle_anlegen" else "bezug") or []) if isinstance(x, str) and x not in ids_der_reise(d)]
+        if fremd:
+            return f"{', '.join(fremd)} gibt es in dieser Reise nicht.", True
+    antwort, fehler = schreib_anfrage(reise, name, {"person": zugang.get("person"), "name": wer["name"], "rolle": wer["rolle"], "args": rest})
     if fehler:
-        return f"Nicht gespeichert: {fehler}", True
-    organisator = " und ".join(organisator_namen(d)) or "ein:e Organisator:in"
-    return (f"Vorschlag {e['id']} gespeichert. Arten und Merkmale legen Organisator:innen fest; {organisator} sieht den Vorschlag "
-            "unter rueckmeldungen und kann ihn im Gespräch übernehmen."), False
+        return f"Nicht eingetragen: {fehler}", True
+    return (f"Eingetragen und gesichert ({wer['name']}): {antwort.get('text', '')} Es gilt ab jetzt; die Seite und die Werkzeuge "
+            "zeige, merkmale und varianten zeigen den neuen Stand, sobald veröffentlicht ist (wenige Minuten)."), False
 
 
 def dienst_anfrage(methode, pfad, daten):
@@ -1978,34 +1896,13 @@ WERT_SCHEMA = {"type": "object", "properties": {
 WERKZEUGE += [
     {"name": "merkmale", "description": "Welche Merkmale eine Alternative braucht (z. B. bei Unterkünften Preis, Frühstück, "
      "Öffnung), je mit Hinweis zum Recherchieren und zum gezielten Nachfragen; zu einer Wahlstelle auch, was jede Option "
-     "schon hat und was fehlt. Vor alternative_vorschlagen aufrufen.",
+     "schon hat und was fehlt. Vor wert_eintragen, option_anlegen und ding_anlegen aufrufen.",
      "inputSchema": {"type": "object", "properties": {
          "ziel": {"type": "string", "description": "Wahlstelle V-…, Option V-….a, Unterkunft U-… oder Strecke E-… (z. B. eine Fähre)"},
          "bereich": {"type": "string",
                      "description": "nur ohne ziel: eine Art dieser Reise (ihre Arten und Merkmale stehen in plan/arten.yaml; "
                                     "ohne Angabe nennt die Antwort die bekannten Arten)"}}},
      "annotations": {"readOnlyHint": True}},
-    {"name": "alternative_vorschlagen", "description": "Neue Alternative weitergeben (z. B. ein weiteres Hotel, eine andere "
-     "Strecke, eine andere Route), mit Merkmalen nach der Liste aus merkmale. Erst selbst recherchieren, dann nur nach Lücken "
-     "fragen, dann den Vorschlag kurz bestätigen lassen. Ändert nichts sofort: Er wird automatisch geprüft und als Option "
-     "mit Status vorgeschlagen eingearbeitet, in der Regel in wenigen Minuten.",
-     "inputSchema": {"type": "object", "properties": {
-         "wahlstelle": {"type": "string", "description": "bestehende Wahlstelle V-…, zu der die Alternative gehört"},
-         "an": {"type": "string", "description": "nur ohne wahlstelle: ID, an der eine neue Wahlstelle entsteht (T-…, U-…, E-…); "
-                "an einer Strecke oder Unterkunft ergibt sich die Art daraus"},
-         "bereich": {"type": "string",
-                     "description": "nur ohne wahlstelle und wenn an ein Tag ist: eine Art dieser Reise (Liste aus merkmale)"},
-         "titel": {"type": "string", "description": "Name der Alternative, z. B. „Pension Burgblick“"},
-         "merkmale": {"type": "object", "description": "{merkmal: {wert, quelle, geprueft (JJJJ-MM-TT), notiz}}; Schlüssel aus "
-                      "merkmale. Ist der Wert je Datum verschieden, eine Liste solcher Werte mit gilt (JJJJ-MM-TT oder Liste), "
-                      "einer ohne gilt für alle übrigen Tage. Eigene Kriterien der Person als neuer Schlüssel (z. B. pool) nur, "
-                      "wenn die Liste nichts Passendes hat; ähnliche Schlüssel werden als vermutlich doppelt gemeldet.",
-                      "additionalProperties": {"anyOf": [WERT_SCHEMA, {"type": "array", "items": WERT_SCHEMA}]}},
-         "plus": {"type": "array", "items": {"type": "string"}, "description": "was dafür spricht"},
-         "minus": {"type": "array", "items": {"type": "string"}, "description": "was dagegen spricht"},
-         "text": {"type": "string", "description": "kurze Beschreibung"},
-         "quelle": {"type": "string", "description": "woher die Alternative stammt (Link, Gespräch)"},
-         "name": NAME_FELD}, "required": ["titel"]}},
 ]
 AG_EIGENSCHAFTEN = {
     "titel": {"type": "string", "description": "kurz, was zu tun ist (max. 200 Zeichen)"},
@@ -2115,6 +2012,74 @@ MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "Ein Merkmal 
                           "grund": {"type": "string", "description": "warum (steht im Verlauf)"},
                           "name": NAME_FELD},
                           "required": ["art"]}}
+MERKMALE_FELD = {"type": "object", "description": "{merkmal: wert | {wert, quelle, geprueft, gilt, notiz} | [solche je Datum]}; Schlüssel aus merkmale "
+                 "(ein unbekanntes Merkmal legt ein:e Organisator:in erst mit merkmal_definieren an); quelle und geprueft dürfen auch oben stehen",
+                 "additionalProperties": True}
+QUELLE_FELD = {"type": "string", "description": "Herkunft: Website mit Adresse, Buch mit Seite, Anruf, „Name im Gespräch“ (Pflicht)"}
+DING_ANLEGEN = {"name": "ding_anlegen", "description": "Eine Unterkunft, Strecke oder einen Ort in der Reise anlegen (neue ID). Schreibt "
+                "sofort; Herkunft (quelle) ist Pflicht. Eine Unterkunft braucht ort (O-…) und art (Aufenthalts-Art der Reise), eine Strecke "
+                "von, nach und art (Bewegungs-Art). Merkmale (Preis, Frühstück …) gleich mit; veränderliche mit geprueft. Als Alternative "
+                "danach mit option_anlegen an die Wahlstelle hängen. Vorher kurz bestätigen lassen.",
+                "inputSchema": {"type": "object", "properties": {
+                    "was": {"type": "string", "enum": ["unterkunft", "strecke", "ort"]},
+                    "titel": {"type": "string", "description": "Name der Unterkunft oder des Orts, Titel der Strecke"},
+                    "ort": {"type": "string", "description": "Unterkunft: Ort O-… (fehlt er, erst mit ding_anlegen was=ort anlegen)"},
+                    "von": {"type": "string", "description": "Strecke: Start O-…"}, "nach": {"type": "string", "description": "Strecke: Ziel O-…"},
+                    "art": {"type": "string", "description": "Art dieser Reise (Schlüssel aus merkmale), z. B. pension oder bus"},
+                    "hinweis": {"type": "string"}, "buchungslink": {"type": "string", "description": "Unterkunft: Adresse zum Buchen"},
+                    "frage": {"type": "string", "description": "Unterkunft: offene Frage F-…, zu der sie gehört"},
+                    "merkmale": MERKMALE_FELD, "quelle": QUELLE_FELD, "geprueft": {"type": "string", "description": "Prüfdatum für die Merkmale, JJJJ-MM-TT"},
+                    "name": NAME_FELD},
+                    "required": ["was", "titel", "quelle"]}}
+DING_AENDERN = {"name": "ding_aendern", "description": "Felder einer Unterkunft (name, ort, art, hinweis, quelle, buchungslink, frage), Strecke "
+                "(titel, von, nach, art, hinweis, quelle) oder eines Orts (name, hinweis, quelle) ändern; schreibt sofort, der alte Wert bleibt im "
+                "Verlauf. Merkmale ändert wert_eintragen. Die Art ändern dürfen nur Organisator:innen. Leerer Text entfernt hinweis, "
+                "buchungslink oder frage.",
+                "inputSchema": {"type": "object", "properties": {
+                    "ziel": {"type": "string", "description": "U-…, E-… oder O-…"},
+                    "name": {"type": "string", "description": "neuer Name (Unterkunft, Ort)"}, "titel": {"type": "string", "description": "neuer Titel (Strecke)"},
+                    "ort": {"type": "string"}, "von": {"type": "string"}, "nach": {"type": "string"}, "art": {"type": "string"},
+                    "hinweis": {"type": "string"}, "quelle": {"type": "string"}, "buchungslink": {"type": "string"}, "frage": {"type": "string"},
+                    "grund": {"type": "string", "description": "warum (steht im Verlauf)"}, "vorname": NAME_FELD},
+                    "required": ["ziel"]}}
+OPTION_FELDER = {"titel": {"type": "string", "description": "Name der Option, z. B. „Pension Elbblick“"},
+                 "text": {"type": "string", "description": "kurze Beschreibung"},
+                 "unterkuenfte": {"type": "array", "items": {"type": "string"}, "description": "U-… (Aufenthalt); fehlt die Unterkunft, erst ding_anlegen"},
+                 "strecken": {"type": "array", "items": {"type": "string"}, "description": "E-… (Bewegung)"},
+                 "folge": {"type": "array", "items": {"type": "string"}, "description": "T-… (Reiseteil aus Tagen)"},
+                 "plus": {"type": "array", "items": {"type": "string"}, "description": "was dafür spricht"},
+                 "minus": {"type": "array", "items": {"type": "string"}, "description": "was dagegen spricht"},
+                 "erfordert": {"type": "array", "items": {"type": "string"}, "description": "Optionen V-01.b anderer Wahlstellen, die dazu nötig sind"},
+                 "schliesst_aus": {"type": "array", "items": {"type": "string"}, "description": "Optionen, die nie zusammen mit dieser gehen"},
+                 "ausloeser": {"type": "string", "description": "bei Wahlstellen unterwegs: wann diese Option gilt"},
+                 "siehe": {"type": "string", "description": "ID mit mehr dazu, z. B. W-05"},
+                 "merkmale": MERKMALE_FELD, "quelle": {"type": "string", "description": "woher die Alternative stammt; Vorgabe: Vorschlag der Person im Gespräch"},
+                 "grund": {"type": "string", "description": "warum sie vorgeschlagen wird (Verlauf)"}}
+OPTION_ANLEGEN = {"name": "option_anlegen", "description": "Eine Alternative als Option an eine bestehende Wahlstelle hängen (ein weiteres Hotel, "
+                  "eine andere Strecke, eine andere Route), Status vorgeschlagen; schreibt sofort. Erst merkmale aufrufen und recherchieren, "
+                  "Unterkunft oder Strecke mit ding_anlegen anlegen, dann kurz bestätigen lassen. Entscheiden bleibt bei den Organisator:innen.",
+                  "inputSchema": {"type": "object", "properties": {"wahlstelle": {"type": "string", "description": "V-… (aus varianten)"},
+                                                                   **OPTION_FELDER, "name": NAME_FELD},
+                                  "required": ["wahlstelle", "titel"]}}
+WAHLSTELLE_ANLEGEN = {"name": "wahlstelle_anlegen", "description": "Eine neue Wahlstelle mit mindestens einer Option anlegen, wenn es noch keine "
+                      "gibt (varianten zeigt alle). Sie hängt mit an an Tagen, Strecken, Unterkünften, Orten oder Abschnitten; den Plan "
+                      "selbst ändert sie nicht. planung: vor der Abreise entscheiden (offen braucht eine Frage F-…); unterwegs: mit Auslöser. "
+                      "Schreibt sofort, alle Optionen vorgeschlagen.",
+                      "inputSchema": {"type": "object", "properties": {
+                          "titel": {"type": "string"}, "art": {"type": "string", "enum": ["planung", "unterwegs"]},
+                          "an": {"type": "array", "items": {"type": "string"}, "description": "IDs, an denen die Wahl hängt (T-…, E-…, U-…, O-…, W-…)"},
+                          "bereich": {"type": "string", "description": "Art der Dinge, zwischen denen gewählt wird (Schlüssel aus merkmale); sonst aus den Optionen"},
+                          "frage": {"type": "string", "description": "offene Frage F-… dazu"}, "text": {"type": "string"},
+                          "optionen": {"type": "array", "items": {"type": "object", "properties": OPTION_FELDER, "required": ["titel"]}},
+                          "name": NAME_FELD},
+                          "required": ["titel", "optionen"]}}
+FRAGE_ANLEGEN = {"name": "frage_anlegen", "description": "Eine offene Frage (F-…) anlegen: etwas, das noch zu klären oder zu entscheiden "
+                 "ist (Aufgaben sind Dinge, die zu tun sind: aufgabe_anlegen). Schreibt sofort nach offene-fragen.md. Vorher kurz bestätigen lassen.",
+                 "inputSchema": {"type": "object", "properties": {
+                     "text": {"type": "string", "description": "die Frage in einem Satz"},
+                     "bis": {"type": "string", "description": "bis wann zu klären, z. B. „vor Abreise“ oder ein Datum"},
+                     "bezug": {"type": "array", "items": {"type": "string"}, "description": "IDs, zu denen die Frage gehört (T-, U-, E-, V-, W-)"},
+                     "name": NAME_FELD}, "required": ["text"]}}
 WERT_SCHEMA_EINTRAG = {"type": "object", "properties": {
     "wert": {"type": "string"}, "gilt": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}],
              "description": "Datum JJJJ-MM-TT oder Liste, wenn der Wert nur für diese Tage gilt (Preis je Nacht)"},
@@ -2248,7 +2213,9 @@ def anleitung(zugang, d):
          + (f", Status {status}" if status else "") + ". Du liest vor, schlägst vor, prüfst und gibst Eingaben weiter; "
          f"{namen} {'entscheiden' if len(organisator) > 1 else 'entscheidet'}, du nie.",
          "Grenzen: Über den Konnektor ändert sich nichts sofort (Ausnahmen: Aufgaben AG-…"
-         + (", Arten und Merkmale über art_definieren und merkmal_definieren, Werte über wert_eintragen" if schreibdienst() else "")
+         + (", Arten und Merkmale über art_definieren und merkmal_definieren, Werte über wert_eintragen, Unterkünfte, Strecken, Orte, "
+            "Wahlstellen, Optionen und offene Fragen über ding_anlegen, ding_aendern, option_anlegen, wahlstelle_anlegen und "
+            "frage_anlegen" if schreibdienst() else "")
          + "); sag nie, etwas sei schon geändert. "
          "Status gewählt/verworfen/ersetzt und Einstellungen setzen nur Organisator:innen. Nichts erfinden: Herkunft nennen, Annahmen "
          "markieren, veränderliche Angaben (Fahrpläne, Öffnungszeiten, Preise) mit Prüfdatum. Vor jedem Eintragen kurz "
@@ -2290,7 +2257,8 @@ def anleitung(zugang, d):
                  + ("Arten und Merkmale der Reise kann sie mit art_definieren und merkmal_definieren vorschlagen (wird eine "
                     "Rückmeldung an die Organisator:innen). Werte zu einer Unterkunft, Strecke oder Option (Preis, Frühstück, "
                     "Öffnung, Dauer) trägt sie mit wert_eintragen direkt ein, immer mit Herkunft und bei Veränderlichem mit "
-                    "Prüfdatum. " if schreibdienst() else "")
+                    "Prüfdatum. Eine neue Alternative legt sie an: ding_anlegen (die Unterkunft oder Strecke) und option_anlegen an der "
+                    "Wahlstelle, Status vorgeschlagen. " if schreibdienst() else "")
                  + ("Sie darf Personen einladen (person_einladen), höchstens mit der Rolle mitwirkend. " if kann_einladen else "")
                  + ("" if wer["name"] else "Für Rückmeldungen und Aufgaben brauchst du ihren Vornamen: einmal fragen, "
                     "nicht raten, dann im Gespräch beibehalten. ")
@@ -2308,7 +2276,8 @@ def anleitung(zugang, d):
         z.append("Bei dieser Reise ausgeschaltet (Werkzeuge fehlen, Daten bleiben): " + ", ".join(aus) + ".")
     if bausteine is None or "varianten" in bausteine:
         z.append("Alternativen (eine weitere Unterkunft, Strecke, Route): erst merkmale aufrufen, die Merkmale selbst "
-                 "recherchieren, dann gezielt nur nach Lücken fragen, dann mit alternative_vorschlagen weitergeben.")
+                 "recherchieren, dann gezielt nur nach Lücken fragen, dann anlegen (ding_anlegen, option_anlegen; neue Wahlstelle: "
+                 "wahlstelle_anlegen).")
     if bausteine is None or "waechter" in bausteine:
         z.append("Wächter und Erinnerer sind an: Meldungen an die Person (Fristen, ab-Termine, Statuswechsel, Prüfungen "
                  "veränderlicher Angaben) stehen im ueberblick unter „Meldungen an dich“. Nenne sie zu Beginn und frag, ob "
@@ -2453,24 +2422,6 @@ def werkzeug(zugang, name, args):
     if name == "merkmale":
         t, fehler = h.merkmale(str(args.get("ziel") or "").strip(), str(args.get("bereich") or "").strip())
         return (fehler, True) if fehler else (t, False)
-    if name == "alternative_vorschlagen":
-        v, fehler = h.vorschlag(args)
-        if fehler:
-            return fehler, True
-        text_, ziel, daten_ = v
-        if organisator:
-            e, fehler = auftrag_anlegen(reise, ziel, text_, daten_, name=wer["name"] or "Organisator:in")
-        else:
-            name_ = wer["name"] or args.get("name")
-            if not isinstance(name_, str) or not name_.strip():
-                return "Name fehlt: bitte die Person nach ihrem Vornamen fragen.", True
-            e, fehler = rueckmeldung_senden(reise, {"name": name_, "art": "Ergänzung", "ziel": ziel,
-                                                    "text": text_[:rm.LAENGE["text"]],
-                                                    "quelle": str(args.get("quelle") or "über Claude")[:rm.LAENGE["quelle"]]})
-        if fehler:
-            return f"Nicht gespeichert: {fehler}", True
-        return (f"Vorschlag {e['id']} gespeichert. Er wird automatisch geprüft und in der Regel in wenigen Minuten als "
-                "Option (Status vorgeschlagen) eingearbeitet, bis dahin bleibt die Reise unverändert.\n\n" + text_), False
     return f"Unbekanntes Werkzeug {name}.", True
 
 
@@ -2514,17 +2465,15 @@ def werkzeuge_fuer(zugang):
     wer = wer_spricht(zugang, d) or {"rolle": "gast"}
     _, bausteine = zustand_von(d)
     werkzeuge = []
-    ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN, WERT_EINTRAGEN] if schreibdienst() else []
+    ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN, WERT_EINTRAGEN, DING_ANLEGEN, DING_AENDERN, OPTION_ANLEGEN, WAHLSTELLE_ANLEGEN,
+                 FRAGE_ANLEGEN] if schreibdienst() else []
     for w in WERKZEUGE + [AUFTRAG, ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN] + ontologie:
         n = w["name"]
         if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:
             continue
-        if n == "wert_eintragen":
-            if recht(wer["rolle"], d, "wert") is None:
-                werkzeuge.append(w)
-            continue
-        if n in ONTOLOGIE_WERKZEUGE:   # Organisator:innen schreiben, Mitwirkende schlagen vor (als Rückmeldung)
-            if recht(wer["rolle"], d, "ontologie") is None or recht(wer["rolle"], d, "rueckmeldung") is None:
+        if n in ONTOLOGIE_WERKZEUGE:   # direkt schreiben; Arten und Merkmale schlagen Mitwirkende vor (als Rückmeldung)
+            a = ONTOLOGIE_AKTION[n]
+            if recht(wer["rolle"], d, a) is None or (a == "ontologie" and recht(wer["rolle"], d, "rueckmeldung") is None):
                 werkzeuge.append(w)
             continue
         if n in SCHREIB_AKTION:

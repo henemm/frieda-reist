@@ -422,3 +422,103 @@ def test_beispielreise_ist_in_normalform():
     out = io.StringIO()
     sb.yaml_rund().dump(sb.yaml_rund().load(p.read_text(encoding="utf-8")), out)
     assert out.getvalue() == p.read_text(encoding="utf-8")
+
+
+# ---------- Dinge, Optionen, Wahlstellen, Fragen ----------
+
+def test_ding_option_wahlstelle_und_frage_anlegen(repo):
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "ort", "titel": "Rathen", "quelle": "Karte", "hinweis": "Kurort"}})
+    assert "O-07" in a["text"]
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {
+        "was": "unterkunft", "titel": "Pension Elbblick", "ort": "O-07", "art": "pension", "quelle": "Website pension-elbblick.example",
+        "geprueft": "2026-10-29", "buchungslink": "https://pension-elbblick.example/buchen", "merkmale": {"preis": "90 €", "fruehstueck": "inklusive"}}})
+    assert a["text"].startswith("Unterkunft U-05 „Pension Elbblick“ angelegt in Rathen, Art pension, Merkmale: preis, fruehstueck.")
+    r, text = routen_auf_main(origin)
+    u = r["unterkuenfte"]["U-05"]
+    assert u["ort"] == "O-07" and u["art"] == "pension" and u["typ"] == "Pension" and u["buchungslink"].startswith("https://")
+    assert u["merkmale"]["preis"] == {"wert": "90 €", "quelle": "Website pension-elbblick.example", "geprueft": datetime.date(2026, 10, 29)}
+    assert r["orte"]["O-07"] == {"name": "Rathen", "hinweis": "Kurort", "quelle": "Karte"}
+    ids = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/ids.yaml"], check=True,
+                                        capture_output=True, text=True).stdout)
+    assert ids["O"] == 7 and ids["U"] == 5                      # Marken steigen, IDs werden nie neu vergeben
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "strecke", "titel": "Fähre Rathen → Stadt Wehlen", "von": "O-07",
+                                                                       "nach": "O-02", "art": "bus", "quelle": "Fahrplan"}})
+    r, _ = routen_auf_main(origin)
+    assert r["strecken"]["E-24"] == {"titel": "Fähre Rathen → Stadt Wehlen", "von": "O-07", "nach": "O-02", "art": "bus", "quelle": "Fahrplan"}
+    # Option an bestehender Wahlstelle: Status vorgeschlagen, Verlauf mit Person und Datum
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-03", "titel": "Pension Elbblick", "unterkuenfte": ["U-05"],
+                                                                         "plus": ["Elbblick"], "grund": "Karl kennt sie"}})
+    assert "V-03.c" in a["text"] and "vorgeschlagen" in a["text"]
+    r, text = routen_auf_main(origin)
+    o = next(o for o in r["wahlstellen"]["V-03"]["optionen"] if o["id"] == "V-03.c")
+    assert o["unterkuenfte"] == ["U-05"] and o["plus"] == ["Elbblick"] and o["quelle"] == "Vorschlag von Karl im Gespräch (Claude-App)"
+    assert o["verlauf"] == [{"datum": datetime.date.today(), "status": "vorgeschlagen", "wer": "Karl", "grund": "Karl kennt sie"}]
+    assert "wer: Karl, grund:" in text and "&id" not in text
+    # Wahlstelle planung ohne Frage: die Frage entsteht mit (offene-fragen.md), Schlüssel bleiben gültig
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "wahlstelle_anlegen", {**KARL, "args": {"titel": "Anreise nach Stadt Wehlen", "an": ["T-01"], "bereich": "bahn",
+        "optionen": [{"titel": "S-Bahn wie bisher", "strecken": ["E-20"]}, {"titel": "Mit dem Auto", "text": "Parken in Wehlen", "minus": ["Auto steht vier Tage"]}]}})
+    assert "V-04" in a["text"] and "F-04" in a["text"]
+    r, _ = routen_auf_main(origin)
+    w = r["wahlstellen"]["V-04"]
+    assert w["art"] == "planung" and w["an"] == ["T-01"] and w["bereich"] == "bahn" and w["frage"] == "F-04"
+    assert [o["id"] for o in w["optionen"]] == ["V-04.a", "V-04.b"] and w["optionen"][1]["minus"] == ["Auto steht vier Tage"]
+    fragen = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/offene-fragen.md"], check=True, capture_output=True, text=True).stdout
+    assert "| F-04 | Anreise nach Stadt Wehlen: welche Option? (V-04) | vor Abreise | offen |" in fragen
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "frage_anlegen", {**KARL, "args": {"text": "Hat die Pension im Mai offen?", "bis": "März 2027", "bezug": ["U-05"]}})
+    assert a["text"].startswith("Offene Frage F-05 angelegt: Hat die Pension im Mai offen? (U-05), bis März 2027")
+    assert not git(arbeit, "status", "--porcelain")
+
+
+def test_ding_aendern_und_ablehnungen(repo):
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "U-02", "hinweis": "Zimmer zur Burg fragen", "buchungslink": "https://burgblick.example"}})
+    assert "hinweis „erfunden; Doppelzimmer mit Blick auf die Burg“ → „Zimmer zur Burg fragen“" in a["text"] and "buchungslink „https://burgblick.example“" in a["text"]
+    r, text = routen_auf_main(origin)
+    assert r["unterkuenfte"]["U-02"]["hinweis"] == "Zimmer zur Burg fragen" and r["unterkuenfte"]["U-02"]["merkmale"]["preis"]["wert"] == "85 €"
+    assert "# Alle Unterkünfte sind erfunden" in text
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="nur Organisator:innen"):
+        s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "U-02", "art": "hotel"}})
+    # Die neue Art muss zu den eingetragenen Werten passen (Hotel kennt kein Abendessen): der Probebau lehnt ab
+    with pytest.raises(sb.Ablehnung, match="abendessen"):
+        s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "U-02", "art": "hotel", "grund": "ist ein Hotel"}})
+    a = s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "U-03", "art": "pension", "grund": "eher eine Pension"}})
+    assert "art „Gasthof“ → „pension“" in a["text"] and "Grund: eher eine Pension" in a["text"]
+    r, _ = routen_auf_main(origin)
+    assert r["unterkuenfte"]["U-03"]["art"] == "pension" and r["unterkuenfte"]["U-03"]["typ"] == "Pension"
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "O-03", "name": "Hohnstein (Sächs. Schweiz)", "hinweis": ""}})
+    r, _ = routen_auf_main(origin)
+    assert r["orte"]["O-03"] == {"name": "Hohnstein (Sächs. Schweiz)"}
+    s.vorbereiten()
+    stand = git(origin, "rev-parse", "main")
+    for werkzeug, args, text in (
+        ("ding_aendern", {"ziel": "U-02"}, "Nichts zu ändern"),
+        ("ding_aendern", {"ziel": "T-01", "hinweis": "x"}, "muss eine Unterkunft"),
+        ("ding_aendern", {"ziel": "U-02", "ort": "O-99"}, "gibt es nicht"),
+        ("ding_anlegen", {"was": "unterkunft", "titel": "X", "ort": "O-01", "art": "bahn", "quelle": "x"}, "Aufenthalts-Art"),
+        ("ding_anlegen", {"was": "unterkunft", "titel": "X", "ort": "O-01", "art": "pension"}, "„quelle“ fehlt"),
+        ("ding_anlegen", {"was": "unterkunft", "titel": "X", "ort": "O-01", "art": "pension", "quelle": "x", "merkmale": {"preis": "1 €"}}, "veränderlich"),
+        ("ding_anlegen", {"was": "unterkunft", "titel": "X", "ort": "O-01", "art": "pension", "quelle": "x", "merkmale": {"pool": "ja"}}, "merkmal_definieren"),
+        ("ding_anlegen", {"was": "strecke", "titel": "X", "von": "O-01", "nach": "O-02", "art": "pension", "quelle": "x"}, "Bewegungs-Art"),
+        ("ding_anlegen", {"was": "zelt", "titel": "X", "quelle": "x"}, "unterkunft, strecke oder ort"),
+        ("option_anlegen", {"wahlstelle": "V-03", "titel": "X", "unterkuenfte": ["U-02"], "strecken": ["E-01"]}, "nur eines von"),
+        ("option_anlegen", {"wahlstelle": "V-03", "titel": "X", "erfordert": ["V-09.z"]}, "gibt es nicht"),
+        ("option_anlegen", {"wahlstelle": "V-99", "titel": "X"}, "gibt es nicht"),
+        ("wahlstelle_anlegen", {"titel": "X", "optionen": []}, "mindestens eine Option"),
+        ("wahlstelle_anlegen", {"titel": "X", "an": ["T-77"], "optionen": [{"titel": "a"}]}, "gibt es nicht"),
+        ("wahlstelle_anlegen", {"titel": "X", "art": "vielleicht", "optionen": [{"titel": "a"}]}, "planung"),
+        ("frage_anlegen", {"bis": "morgen"}, "„text“ fehlt"),
+    ):
+        with pytest.raises(sb.Ablehnung, match=text):
+            s.schreiben("beispielreise", werkzeug, {**IDA, "args": args})
+        assert not git(arbeit, "status", "--porcelain"), (werkzeug, args)
+    assert git(origin, "rev-parse", "main") == stand

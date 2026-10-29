@@ -321,7 +321,7 @@ def test_konnektor_werkzeuge_je_status(umgebung):
 
     danach = umgebung("danach")
     w = danach.werkzeuge(KARL)
-    assert {"rueckmeldung_geben", "aufgabe_anlegen"} <= w and "alternative_vorschlagen" not in w
+    assert {"rueckmeldung_geben", "aufgabe_anlegen"} <= w and "option_anlegen" not in w
     art = next(t for t in danach.rpc(KARL, "tools/list")["tools"] if t["name"] == "rueckmeldung_geben")
     assert "Wunsch" not in art["inputSchema"]["properties"]["art"]["enum"]
     assert "auftrag_geben" in danach.werkzeuge(IDA)      # bleibt sichtbar: Status zurücksetzen geht
@@ -335,7 +335,7 @@ def test_konnektor_prueft_beim_aufruf_auch_ohne_werkzeugliste(umgebung):
     u = umgebung("archiv")
     for name, args in (("rueckmeldung_geben", {"art": "Kommentar", "ziel": "T-01", "text": "x"}),
                        ("aufgabe_anlegen", {"titel": "x"}),
-                       ("alternative_vorschlagen", {"titel": "x", "wahlstelle": "V-03"})):
+                       ("option_anlegen", {"titel": "x", "wahlstelle": "V-03"})):
         t, f = u.werkzeug(KARL, name, **args)
         assert f and "archiviert" in t, name
     t, f = u.werkzeug(IDA, "auftrag_geben", ziel="V-01", auftrag="V-01.a wählen")
@@ -353,7 +353,7 @@ def test_konnektor_danach_nur_nachlese(umgebung):
     assert not f
     t, f = u.werkzeug(KARL, "rueckmeldung_geben", art="Wunsch", text="Nochmal hin")
     assert f and "schreibgeschützt" in t
-    t, f = u.werkzeug(KARL, "alternative_vorschlagen", titel="x", wahlstelle="V-03")
+    t, f = u.werkzeug(KARL, "option_anlegen", titel="x", wahlstelle="V-03")
     assert f and "schreibgeschützt" in t
     assert not u.werkzeug(KARL, "aufgabe_anlegen", titel="Fotos sortieren")[1]
 
@@ -362,7 +362,7 @@ def test_konnektor_bausteine_blenden_aus(umgebung):
     u = umgebung(bausteine=["rueckmeldungen", "karte"])
     w = u.werkzeuge(KARL)
     assert "aufgaben" not in w and "aufgabe_anlegen" not in w and "varianten" not in w
-    assert "alternative_vorschlagen" not in w and "merkmale" not in w and "offene_fragen" not in w
+    assert "option_anlegen" not in w and "merkmale" not in w and "offene_fragen" not in w
     assert {"ueberblick", "zeige", "suche", "rueckmeldungen", "rueckmeldung_geben"} <= w
     art = next(t for t in u.rpc(KARL, "tools/list")["tools"] if t["name"] == "rueckmeldung_geben")
     assert "Wunsch" not in art["inputSchema"]["properties"]["art"]["enum"]

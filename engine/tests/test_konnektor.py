@@ -471,7 +471,7 @@ def test_aufgaben_ueber_konnektor(dienst):
     assert f and "Datum" in t
 
 
-def test_merkmale_und_alternative(dienst):
+def test_merkmale_lesen(dienst):
     basis, ablage = dienst
     t, f = werkzeug(basis, MITREISEND, "merkmale", ziel="V-03")
     assert not f and "Preis pro Nacht" in t and "85 €" in t and "Fehlt noch" in t and "fragen:" in t
@@ -481,53 +481,16 @@ def test_merkmale_und_alternative(dienst):
     assert f
     t, _ = werkzeug(basis, MITREISEND, "zeige", id="U-01")
     assert "Preis pro Nacht: 120 €" in t
-    # Organisator:innen: Auftrag mit strukturierten Daten
-    t, f = werkzeug(basis, ALT_ORGANISATOR, "alternative_vorschlagen", wahlstelle="V-03", titel="Hotel Test",
-                    merkmale={"preis": {"wert": "150 €", "geprueft": "2026-10-26"}, "pool": {"wert": "ja"}})
-    assert not f and "Hotel Test" in t and "neues Merkmal" in t
-    a = rm.auftraege(ablage / "beispielreise")
-    assert a[0]["ziel"] == "V-03" and a[0]["daten"]["merkmale"]["preis"]["wert"] == "150 €"
-    t, f = werkzeug(basis, ALT_ORGANISATOR, "alternative_vorschlagen", wahlstelle="V-03", titel="X",
-                    merkmale={"fruehstueck": {"wert": "vielleicht"}})
-    assert f and "erlaubt" in t
-    t, f = werkzeug(basis, ALT_ORGANISATOR, "alternative_vorschlagen", titel="X", bereich="unterkunft")
-    assert f and "an angeben" in t
-    # Mitreisende: Rückmeldung der Art Ergänzung, mit Namen
-    t, f = werkzeug(basis, MITREISEND, "alternative_vorschlagen", wahlstelle="V-03", titel="Hotel Test")
-    assert f and "Name fehlt" in t
-    t, f = werkzeug(basis, MITREISEND, "alternative_vorschlagen", wahlstelle="V-03", titel="Hotel Test", name="Anna")
-    assert not f
-    e = rm.eintraege(ablage / "beispielreise")[0]
-    assert e["art"] == "Ergänzung" and e["ziel"] == "V-03" and "Hotel Test" in e["text"]
 
 
-def test_alternativen_paket3(dienst):
-    """Paket 3 (#18): Merkmale einer Strecke, Art aus der Stelle, Hinweis auf doppelte Merkmale, Werte je Datum."""
+def test_merkmale_einer_strecke(dienst):
+    """Paket 3 (#18): Merkmale einer Strecke (Liste ihrer Art). Vorschlagen und Werte je Datum gehen seit O-3 über den Schreibweg
+    (option_anlegen, wert_eintragen; test_schreiben.py)."""
     basis, ablage = dienst
     # Strecke als Ziel: Liste ihrer Art (E-20 ist eine Bahnfahrt)
     t, f = werkzeug(basis, MITREISEND, "merkmale", ziel="E-20")
     assert not f and "Bereich bahn" in t and "## E-20" in t and "Fehlt noch" in t and "gilt" in t
-    # Art aus der Stelle: an einer Strecke ohne bereich
-    t, f = werkzeug(basis, ALT_ORGANISATOR, "alternative_vorschlagen", an="E-20", titel="Bus statt Bahn")
-    assert not f and "Art bahn" in t
-    # „oeffnung“ ähnelt „geoeffnet“: Hinweis, kein Fehler (eigene Kriterien bleiben erlaubt)
-    t, f = werkzeug(basis, ALT_ORGANISATOR, "alternative_vorschlagen", wahlstelle="V-03", titel="Hotel Saison",
-                    merkmale={"oeffnung": {"wert": "ganzjährig"}, "pool": {"wert": "ja"}})
-    assert not f and "„oeffnung“ ähnelt dem Merkmal geoeffnet" in t and "„pool“ ähnelt" not in t
-    a = next(x for x in rm.auftraege(ablage / "beispielreise") if x["daten"].get("titel") == "Hotel Saison")
-    assert a["daten"]["doppelt"] == {"oeffnung": "geoeffnet"}
-    # Werte je Datum: Liste mit gilt; Regeln wie im Routenmodell
-    t, f = werkzeug(basis, ALT_ORGANISATOR, "alternative_vorschlagen", wahlstelle="V-03", titel="Hotel Wochenende",
-                    merkmale={"preis": [{"wert": "120 €"}, {"wert": "140 €", "gilt": "2027-05-15"}]})
-    assert not f and "120 €; 140 € (gilt 15.5.2027)" in t
-    a = next(x for x in rm.auftraege(ablage / "beispielreise") if x["daten"].get("titel") == "Hotel Wochenende")
-    assert a["daten"]["merkmale"]["preis"] == [{"wert": "120 €"}, {"wert": "140 €", "gilt": ["2027-05-15"]}]
-    t, f = werkzeug(basis, ALT_ORGANISATOR, "alternative_vorschlagen", wahlstelle="V-03", titel="X",
-                    merkmale={"preis": [{"wert": "120 €"}, {"wert": "130 €"}]})
-    assert f and "mehrere Werte ohne gilt" in t
-    t, f = werkzeug(basis, ALT_ORGANISATOR, "alternative_vorschlagen", wahlstelle="V-03", titel="X",
-                    merkmale={"preis": {"wert": "120 €", "gilt": "15.5."}})
-    assert f and "gilt als Datum" in t
+
 
 
 def test_aehnliches_merkmal():
@@ -657,7 +620,7 @@ def test_wert_eintragen_ueber_den_schreibweg(schreibweg):
     assert rm.eintraege(ablage / "beispielreise") == []
     # Unbekannte Stelle lehnt schon der Konnektor ab; ohne Namen braucht es den Vornamen
     t, f = werkzeug(basis, KARL, "wert_eintragen", ziel="U-77", merkmal="preis", wert="1 €", quelle="x")
-    assert f and "keine Unterkunft, Strecke oder Option" in t
+    assert f and "gibt es in dieser Reise nicht" in t
     t, f = werkzeug(basis, MITREISEND, "wert_eintragen", ziel="U-02", merkmal="lage", wert="x", quelle="x")
     assert f and "Name fehlt" in t
     t, f = werkzeug(basis, MITREISEND, "wert_eintragen", ziel="U-02", merkmal="lage", wert="x", quelle="x", name="Anna")
@@ -668,3 +631,42 @@ def test_wert_eintragen_ueber_den_schreibweg(schreibweg):
     t, f = werkzeug(basis, ALT_ORGANISATOR, "wert_eintragen", ziel="U-02", merkmal="preis", wert="1 €")
     assert f and t == "Nicht eingetragen: preis: „quelle“ fehlt."
     assert "wert_eintragen" in rpc(basis, KARL, "initialize")["instructions"]
+
+
+def test_dinge_optionen_wahlstellen_fragen_ueber_den_schreibweg(schreibweg):
+    basis, ablage = schreibweg
+    neu = {"ding_anlegen", "ding_aendern", "option_anlegen", "wahlstelle_anlegen", "frage_anlegen"}
+    for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (GAST, False)):
+        assert (neu <= {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}) is da, token
+    assert "alternative_vorschlagen" not in {t["name"] for t in rpc(basis, KARL, "tools/list")["tools"]}
+    Schreibweg.antwort = (200, {"ok": True, "text": "Unterkunft U-05 „Pension Elbblick“ angelegt."})
+    # Unbekanntes Merkmal: der Konnektor nennt das ähnliche, bevor etwas gesendet wird
+    t, f = werkzeug(basis, KARL, "ding_anlegen", was="unterkunft", titel="Pension Elbblick", ort="O-02", art="pension", quelle="Website",
+                    merkmale={"oeffnung": "ganzjährig"})
+    assert f and "gemeint ist wohl geoeffnet" in t and Schreibweg.anfragen == []
+    t, f = werkzeug(basis, KARL, "ding_anlegen", was="unterkunft", titel="Pension Elbblick", ort="O-02", art="pension", quelle="Website",
+                    merkmale={"pool": "ja"})
+    assert f and "merkmal_definieren" in t
+    t, f = werkzeug(basis, KARL, "ding_anlegen", was="unterkunft", titel="Pension Elbblick", ort="O-02", art="pension", quelle="Website",
+                    geprueft="2026-10-29", merkmale={"preis": "90 €"})
+    assert not f and t.startswith("Eingetragen und gesichert (Karl): Unterkunft U-05")
+    assert Schreibweg.anfragen[-1][0] == "/beispielreise/ding_anlegen" and Schreibweg.anfragen[-1][2]["args"]["merkmale"] == {"preis": "90 €"}
+    # Option: Wahlstelle muss es geben; Merkmale werden gegen die Art der Wahlstelle geprüft
+    t, f = werkzeug(basis, KARL, "option_anlegen", wahlstelle="V-77", titel="X")
+    assert f and "gibt es nicht" in t and "wahlstelle_anlegen" in t
+    t, f = werkzeug(basis, KARL, "option_anlegen", wahlstelle="V-03", titel="X", merkmale={"preise": "1 €"})
+    assert f and "gemeint ist wohl preis" in t
+    t, f = werkzeug(basis, KARL, "option_anlegen", wahlstelle="V-03", titel="Pension Elbblick", unterkuenfte=["U-05"])
+    assert not f and Schreibweg.anfragen[-1][0] == "/beispielreise/option_anlegen"
+    t, f = werkzeug(basis, KARL, "wahlstelle_anlegen", titel="Anreise", an=["T-99"], optionen=[{"titel": "a"}])
+    assert f and "T-99 gibt es in dieser Reise nicht" in t
+    t, f = werkzeug(basis, KARL, "wahlstelle_anlegen", titel="Anreise", an=["T-01"], optionen=[{"titel": "a", "strecken": ["E-20"]}])
+    assert not f
+    t, f = werkzeug(basis, KARL, "ding_aendern", ziel="U-77", hinweis="x")
+    assert f and "gibt es in dieser Reise nicht" in t
+    t, f = werkzeug(basis, KARL, "frage_anlegen", text="Offen?", bezug=["U-01"])
+    assert not f and Schreibweg.anfragen[-1][0] == "/beispielreise/frage_anlegen"
+    # Gast: nur lesen
+    t, f = werkzeug(basis, GAST, "ding_anlegen", was="ort", titel="X", quelle="x")
+    assert f and "nur lesen" in t
+    assert rm.eintraege(ablage / "beispielreise") == []

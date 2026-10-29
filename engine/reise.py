@@ -90,6 +90,10 @@ AKTIONEN = {
     "ontologie":    {"rolle": "organisator", "baustein": None, "ab": ("alles",)},
     # O-3: Werte an Unterkünften, Strecken und Optionen eintragen (mit Herkunft und Prüfdatum); Mitwirkende und Organisator:innen
     "wert":         {"rolle": "mitwirkend", "baustein": None, "ab": ("alles",)},
+    # O-3: Unterkünfte, Strecken, Orte anlegen und ändern (Eingaben mit Herkunft; die Art eines Dings ändern nur Organisator:innen)
+    "ding":         {"rolle": "mitwirkend", "baustein": None, "ab": ("alles",)},
+    # O-3: eine offene Frage anlegen (zu klären oder zu entscheiden); Baustein fragen
+    "frage":        {"rolle": "mitwirkend", "baustein": "fragen", "ab": ("alles",)},
 }
 # Lesende Konnektor-Werkzeuge, die zu einem zuschaltbaren Baustein gehören
 LESE_BAUSTEIN = {"offene_fragen": "fragen", "varianten": "varianten", "merkmale": "varianten",
