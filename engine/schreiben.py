@@ -1,7 +1,8 @@
 """Schreibweg: Der Konnektor schreibt direkt in die Ontologie der Reise (ADR-0001, Paket O-3).
 
 Frieda enthält keine KI. Was im AI-Client (Claude-App) erarbeitet wird, kommt über den Konnektor hierher und wird
-sofort geschrieben: in das Reisen-Repo (plan/arten.yaml: Arten und Merkmale; plan/routen.yaml: Werte, Dinge, Wahlstellen, Optionen; offene-fragen.md: Fragen), geprüft mit einem
+sofort geschrieben: in das Reisen-Repo (plan/arten.yaml: Arten und Merkmale; plan/routen.yaml: Werte, Dinge, Wahlstellen, Optionen, Entscheidungen, Plan;
+offene-fragen.md: Fragen; inhalt/*.md: Wissen; reise.yaml: Personen), geprüft mit einem
 Probebau, gesichert als Commit mit Person und Werkzeug, nach main gebracht und veröffentlicht. Dieses Modul ist die
 einzige Stelle, an der ein Dienst Reisedateien ändert.
 
@@ -51,7 +52,8 @@ MAX_WERTE = 20
 ZEIT_ANWENDEN = 150     # Sekunden für einen Schreibvorgang (fetch, Probebau, push)
 AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "wert_eintragen": "wert",
             "ding_anlegen": "ding", "ding_aendern": "ding", "option_anlegen": "alternative", "wahlstelle_anlegen": "alternative",
-            "frage_anlegen": "frage", "entscheiden": "entscheiden", "tag_aendern": "plan"}   # reise.AKTIONEN
+            "frage_anlegen": "frage", "entscheiden": "entscheiden", "tag_aendern": "plan", "wissen_schreiben": "wissen",
+            "frage_schliessen": "frage_schliessen", "person_schreiben": "einladen"}   # reise.AKTIONEN
 ARTEN_KOPF = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). {herkunft}\n"
               "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (Gliederung des\n"
               "# Lesetexts: je Rubrik name und hilfe); je Merkmal: name, typ,\n"
@@ -1163,10 +1165,139 @@ def tag_aendern(reise_dir, wer, args, heute=None):
         f"{tid} {t.get('titel', '')}: " + "; ".join(geaendert) + "." + (f" Grund: {grund}." if grund else "")
 
 
+# ---------- Wissen, Fragen schließen, Personen (inhalt/*.md, offene-fragen.md, reise.yaml) ----------
+PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
+
+
+def wissen_schreiben(reise_dir, wer, args, heute=None):
+    """Wissen in eigenen Worten mit Herkunft: ein neuer Abschnitt (W-ID aus ids.yaml, Zuordnung in reise.json) oder ein Absatz
+    unter einem vorhandenen Abschnitt (abschnitt = W-ID oder titel). Herkunft (quelle) ist Pflicht und steht am Absatz. -> (Titel, Text)."""
+    import json
+    import neu
+    heute = heute or datetime.date.today()
+    text = text_wert(args, "text", pflicht=True, laenge=6000)
+    quelle = text_wert(args, "quelle", pflicht=True)
+    gruppe = (text_wert(args, "gruppe", laenge=20) or "wissen").lower()
+    if gruppe not in neu.GRUPPEN:
+        raise Ablehnung(f"„gruppe“ muss eine von {', '.join(neu.GRUPPEN)} sein.")
+    datei = text_wert(args, "datei", laenge=80) or "inhalt/wissen.md"
+    if not re.fullmatch(r"inhalt/[a-z0-9_-]+\.md", datei):
+        raise Ablehnung("„datei“ muss eine Datei unter inhalt/ sein, z. B. inhalt/wissen.md.")
+    abschnitt = text_wert(args, "abschnitt", laenge=120)
+    titel = text_wert(args, "titel", laenge=120)
+    cfg = json.loads((Path(reise_dir) / "reise.json").read_text(encoding="utf-8"))
+    zu = cfg.get("abschnitte") or {}
+    absatz = f"{text}\n\n*Herkunft: {quelle}; eingetragen am {heute.strftime('%-d.%-m.%Y')} von {wer['name']} über den Konnektor.*"
+    # Vorhandener Abschnitt? (W-ID oder Titel in reise.json)
+    treffer = None
+    for d_, titel_zu in zu.items():
+        for t, (wid, _g) in titel_zu.items():
+            if (abschnitt and abschnitt.upper() == wid) or (titel and titel == t and (not abschnitt)):
+                treffer = (d_, t, wid)
+    if abschnitt and treffer is None:
+        raise Ablehnung(f"Den Abschnitt „{abschnitt}“ gibt es nicht (W-ID aus ueberblick oder zeige).")
+    if treffer:
+        d_, t, wid = treffer
+        f = Path(reise_dir) / d_
+        zeilen = f.read_text(encoding="utf-8").split("\n")
+        start = next((i for i, z in enumerate(zeilen) if re.fullmatch(rf"## {re.escape(t)}\s*", z)), None)
+        if start is None:
+            raise Ablehnung(f"Die Überschrift „{t}“ steht nicht in {d_}; das muss jemand in einer Sitzung richten.")
+        ende = next((i for i in range(start + 1, len(zeilen)) if zeilen[i].startswith("## ")), len(zeilen))
+        while ende > start + 1 and not zeilen[ende - 1].strip():
+            ende -= 1
+        zeilen[ende:ende] = ["", *absatz.split("\n")]
+        f.write_text("\n".join(zeilen).rstrip("\n") + "\n", encoding="utf-8")
+        return f"{wid} „{t}“ ergänzt", f"Abschnitt {wid} „{t}“ ({d_}) ergänzt. Herkunft: {quelle}."
+    if not titel:
+        raise Ablehnung("„titel“ (neuer Abschnitt) oder „abschnitt“ (W-ID eines vorhandenen) fehlt.")
+    try:
+        wid = neu.abschnitt(Path(reise_dir), titel, gruppe, datei, absatz)
+    except neu.Fehler as e:
+        raise Ablehnung(str(e))
+    return f"{wid} „{titel}“ angelegt", f"Neuer Abschnitt {wid} „{titel}“ in {datei} (Gruppe {gruppe}). Herkunft: {quelle}."
+
+
+def frage_schliessen(reise_dir, wer, args, heute=None):
+    """Eine offene Frage als geklärt oder entfallen eintragen (Organisator:innen), mit Ergebnis und Datum. -> (Titel, Text)."""
+    heute = heute or datetime.date.today()
+    fid = (text_wert(args, "frage", pflicht=True, laenge=10) or "").upper()
+    if not re.fullmatch(r"F-\d+", fid):
+        raise Ablehnung("„frage“ muss eine F-… sein.")
+    ergebnis = text_wert(args, "ergebnis", pflicht=True)
+    status = (text_wert(args, "status", laenge=20) or "geklaert").lower()
+    if status not in ("geklaert", "entfaellt"):
+        raise Ablehnung("„status“ ist geklaert oder entfaellt.")
+    wort = "geklärt" if status == "geklaert" else "entfällt"
+    if not frage_status_setzen(reise_dir, fid, f"{wort} {heute.strftime('%-d.%-m.%Y')}: {wer['name']}, {ergebnis}"):
+        raise Ablehnung(f"Die Frage {fid} gibt es nicht (offene_fragen zeigt alle).")
+    return f"{fid} {wort}", f"Frage {fid} ist {wort} ({wer['name']}, {heute.strftime('%-d.%-m.%Y')}): {ergebnis}"
+
+
+def person_schreiben(reise_dir, wer, args, heute=None):
+    """Eine Person in reise.yaml anlegen oder ändern (Name, Rolle, reist, Notiz, von, bis). Niemand wird gestrichen: Wer
+    ausscheidet, wird gast und reist nicht mehr (der Verlauf nennt ihn weiter). Höchstens die eigene Rolle vergeben. -> (Titel, Text)."""
+    from reise import ROLLEN, darf, rolle_neu
+    heute = heute or datetime.date.today()
+    schluessel = (text_wert(args, "schluessel", pflicht=True, laenge=40) or "").lower()
+    if not PERSON_MUSTER.match(schluessel):
+        raise Ablehnung("„schluessel“: klein, Buchstaben und Ziffern, z. B. anna.")
+    p = Path(reise_dir) / "reise.yaml"
+    if not p.exists():
+        raise Ablehnung("Diese Reise hat keine reise.yaml.")
+    roh = yaml_rund().load(p.read_text(encoding="utf-8"))
+    personen = roh.get("personen")
+    if personen is None:
+        from ruamel.yaml.comments import CommentedMap
+        personen = CommentedMap()
+        roh["personen"] = personen
+    vorhanden = personen.get(schluessel)
+    name = text_wert(args, "name_der_person", laenge=80) or text_wert(args, "vorname", laenge=80)
+    rolle = text_wert(args, "rolle", laenge=20)
+    if rolle is not None:
+        rolle = rolle_neu(rolle.lower())
+        if rolle not in ROLLEN:
+            raise Ablehnung(f"„rolle“ muss eine von {', '.join(ROLLEN)} sein.")
+        if not darf(wer["rolle"], rolle):
+            raise Ablehnung(f"Du kannst höchstens eine Rolle vergeben, die du selbst hast (du: {wer['rolle']}).")
+    reist = bool_wert(args, "reist")
+    notiz = text_wert(args, "notiz", laenge=300)
+    von, bis = (datum(args[f], f, "Person") if args.get(f) not in (None, "") else None for f in ("von", "bis"))
+    geaendert = []
+    if vorhanden is None:
+        if not name:
+            raise Ablehnung("„vorname“ fehlt (die Person braucht einen Namen).")
+        d = {"name": name, "rolle": rolle or "mitwirkend", "reist": True if reist is None else reist}
+        for k, v in (("notiz", notiz), ("von", von), ("bis", bis)):
+            if v is not None:
+                d[k] = v
+        personen[schluessel] = fliess_map(d)
+        titel = f"Person {name} ({schluessel}) aufgenommen, Rolle {d['rolle']}"
+        text = f"{name} steht jetzt in der Reise ({schluessel}, Rolle {d['rolle']}, reist {'mit' if d['reist'] else 'nicht mit'})."
+    else:
+        if vorhanden.get("rolle") == "organisator" and rolle not in (None, "organisator") and not darf(wer["rolle"], "organisator"):
+            raise Ablehnung("Die Rolle einer Organisator:in ändert nur ein:e Organisator:in.")
+        for k, v in (("name", name), ("rolle", rolle), ("reist", reist), ("notiz", notiz), ("von", von), ("bis", bis)):
+            if v is None or vorhanden.get(k) == v:
+                continue
+            geaendert.append(f"{k} „{vorhanden.get(k)}“ → „{v}“" if vorhanden.get(k) is not None else f"{k} „{v}“")
+            vorhanden[k] = skalar(k, v) if k != "name" else skalar("titel", v)
+        if not geaendert:
+            raise Ablehnung(f"Nichts zu ändern an {vorhanden.get('name', schluessel)}.")
+        titel = f"Person {vorhanden.get('name', schluessel)} ({schluessel}) geändert"
+        text = f"{vorhanden.get('name', schluessel)}: " + "; ".join(geaendert) + "."
+    import io
+    out = io.StringIO()
+    yaml_rund().dump(roh, out)
+    p.write_text(out.getvalue(), encoding="utf-8")
+    return titel, text
+
+
 WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_definieren, "wert_eintragen": wert_eintragen,
              "ding_anlegen": ding_anlegen, "ding_aendern": ding_aendern, "option_anlegen": option_anlegen,
              "wahlstelle_anlegen": wahlstelle_anlegen, "frage_anlegen": frage_anlegen, "entscheiden": entscheiden,
-             "tag_aendern": tag_aendern}
+             "tag_aendern": tag_aendern, "wissen_schreiben": wissen_schreiben, "frage_schliessen": frage_schliessen,
+             "person_schreiben": person_schreiben}
 
 
 # ---------- Der Schreibvorgang ----------
@@ -1212,7 +1343,7 @@ class Schreiber:
         if not isinstance(name, str) or not name.strip():
             raise Ablehnung("Schreiben geht nur mit einer Person (Name fehlt).")
         ok, grund = erlaubt(AKTIONEN[werkzeug], rolle, (eck.get("status") or {}).get("wert") or "planung", eck.get("bausteine"),
-                            None, eck.get("regeln"))
+                            None, eck.get("regeln"))   # einladen richtet sich nach regeln.einladen der Reise
         if not ok:
             raise Ablehnung(grund)
         return {"name": name.strip(), "rolle": rolle, "person": person, "titel": eck.get("titel") or reise_dir.name}

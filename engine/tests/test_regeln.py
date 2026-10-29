@@ -315,7 +315,7 @@ def test_konnektor_werkzeuge_je_status(umgebung):
     u = umgebung("planung")
     nur_lesen = u.werkzeuge(KIM)
     assert not nur_lesen & kn.SCHREIB_WERKZEUGE and "auftrag_geben" not in nur_lesen
-    nur_organisator = {"entscheiden", "person_einladen", "person_entfernen"}   # Paket C, J
+    nur_organisator = {"entscheiden", "person_einladen", "person_entfernen", "rueckmeldung_erledigen"}   # Paket C, J, O-3
     assert kn.SCHREIB_WERKZEUGE - nur_organisator <= u.werkzeuge(KARL) and not nur_organisator & u.werkzeuge(KARL)
     assert kn.SCHREIB_WERKZEUGE <= u.werkzeuge(IDA) and "auftrag_geben" in u.werkzeuge(IDA)
 

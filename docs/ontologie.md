@@ -127,4 +127,5 @@ Eine Art kann eine `farbe` aus der Palette der Seite tragen: `blau`, `braun`, `l
 - Paket O-3, Schritt 2 (29.10.2026): `wert_eintragen` schreibt Werte an Unterkünften, Strecken und Optionen sofort nach `plan/routen.yaml`; ein Wert ohne Herkunft wird abgelehnt, ein veränderlicher ohne Prüfdatum auch.
 - Paket O-3, Schritt 3 (29.10.2026): `ding_anlegen`, `ding_aendern`, `option_anlegen`, `wahlstelle_anlegen`, `frage_anlegen`; Dinge, Wahlstellen und Fragen entstehen im Gespräch mit fester ID aus `ids.yaml`, Herkunft und Verlauf. `alternative_vorschlagen` entfällt.
 - Paket O-3, Schritt 4 (29.10.2026): `entscheiden` schreibt den Verlauf der Wahl direkt (Person, Datum, Grund; Frage geklärt oder wieder offen), `tag_aendern` den Plan eines Tags.
-- Später: Aufenthalt ohne Nacht und Buchung als eigene Dinge (Paket O-5, O-7); Wissen und Rückmeldungen über den Schreibweg (O-3, weitere Schritte).
+- Paket O-3, Schritt 5 (29.10.2026): `wissen_schreiben` (W-Abschnitte mit Herkunft am Absatz), `frage_schliessen`, `rueckmeldung_erledigen`, Personen über `person_schreiben` direkt in `reise.yaml`.
+- Später: Aufenthalt ohne Nacht und Buchung als eigene Dinge (Paket O-5, O-7).

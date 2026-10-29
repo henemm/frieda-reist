@@ -43,6 +43,8 @@ HTTP (hinter nginx, Präfix /<reise>-<token>/api/ -> /<reise>/):
   GET    /<reise>/brett                   Wunsch-Brett: Wünsche mit Spalte, Punkten, Vorschlag; Bilanz je Person
   PATCH  /<reise>/rueckmeldungen/<R-id>   Wunsch auf dem Brett: punkte, erlebt, eingeplant (+ bezug), kommentar (name = wer);
                                           eingeplant nur vom Konnektor oder angemeldeten Organisator:innen
+  PATCH  /<reise>/rueckmeldungen/<R-id|A-id>  nur vom Konnektor (Organisator:in erledigt im Gespräch): {status, kommentar} setzt
+                                          uebernommen, verworfen oder rueckfrage mit Kommentar für die Seite (O-3)
   GET    /<reise>/ich                     angemeldet als (Konto, Person der Reise), Regel anmeldung, Basis-Adresse
   GET    /<reise>/gesund                  200, wenn die Ablage beschreibbar ist (für die Überwachung)
 
@@ -77,6 +79,7 @@ LAENGE = {"ziel": 80, "text": 4000, "quelle": 300, "name": 80}
 ZIEL_MUSTER = re.compile(r"^[A-Za-z0-9][\w.\-]{0,79}$", re.ASCII)
 REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
 RID_MUSTER = re.compile(r"^R-\d{8}-\d{6}-[0-9a-f]{4}$")
+AID_MUSTER = re.compile(r"^A-\d{8}-\d{6}-[0-9a-f]{4}$")   # Änderungsaufträge (Übergang, bis O-3 sie abschafft)
 MAX_BODY = 16 * 1024
 MAX_JE_MINUTE = 30
 DOPPELT_SEKUNDEN = 600   # identische Rückmeldung innerhalb dieser Zeit = Doppelklick / erneut gesendet
@@ -797,7 +800,8 @@ class Dienst(BaseHTTPRequestHandler):
     def do_PATCH(self):
         t = self._teile()
         wunsch = bool(t) and t[1] == "rueckmeldungen" and bool(RID_MUSTER.match(t[2] or ""))
-        if not t or not wunsch and (t[1] != "aufgaben" or not AG_MUSTER.match(t[2] or "")):
+        erledigen = bool(t) and t[1] == "rueckmeldungen" and bool(AID_MUSTER.match(t[2] or ""))
+        if not t or not (wunsch or erledigen) and (t[1] != "aufgaben" or not AG_MUSTER.match(t[2] or "")):
             return self._antwort(404, {"fehler": "unbekannt"})
         roh, fehlt = self._json()
         if fehlt:
@@ -806,6 +810,14 @@ class Dienst(BaseHTTPRequestHandler):
             return self._antwort(400, {"fehler": "kein Objekt"})
         z = zustand(t[0].name)
         ident = wer_ist(self.headers, t[0].name, z)
+        if erledigen or (wunsch and "status" in roh):
+            # Status setzen (O-3, rueckmeldung_erledigen): nur der Konnektor, der die Organisator:in erkannt hat
+            if ident["art"] != "dienst":
+                return self._antwort(403, {"fehler": "Den Status setzt nur ein:e Organisator:in in der Claude-App."})
+            kommentar = str(roh.get("kommentar") or "").strip()[:LAENGE["text"]]
+            with _sperre:
+                e, fehler = status_setzen(t[0], t[2], str(roh.get("status") or ""), kommentar, roh.get("name"))
+            return self._antwort(400 if fehler else 200, {"fehler": fehler} if fehler else {"id": t[2], **e})
         name, nein = name_fuer(ident, z, roh.get("name"))
         if nein:
             return self._antwort(nein[0], {"fehler": nein[1]})
@@ -1012,16 +1024,24 @@ def liste(reise, alle):
     print(f"\n{len(es)} Rückmeldung(en).")
 
 
+def status_setzen(o, rid, status, kommentar, wer=None):
+    """Status einer Rückmeldung oder eines Auftrags setzen -> (Eintrag, None) oder (None, Fehler). Aufrufer hält _sperre."""
+    if status not in STATUSWERTE:
+        return None, f"Status muss einer von {', '.join(sorted(STATUSWERTE))} sein."
+    if rid not in {e["id"] for e in eintraege(o) + auftraege(o)}:
+        return None, f"{rid} gibt es nicht."
+    alle = status_lesen(o)
+    alle[rid] = {"status": status, "kommentar": kommentar, "datum": datetime.date.today().isoformat(), **({"wer": wer} if wer else {})}
+    schreiben(o / "status.json", json.dumps(alle, ensure_ascii=False, indent=1) + "\n")
+    return alle[rid], None
+
+
 def setze(reise, rid, status, kommentar):
     o = muss_ordner(reise)
-    if status not in STATUSWERTE:
-        sys.exit(f"Status muss einer von {', '.join(sorted(STATUSWERTE))} sein.")
     with _sperre:
-        if rid not in {e["id"] for e in eintraege(o) + auftraege(o)}:
-            sys.exit(f"{rid} gibt es nicht.")
-        alle = status_lesen(o)
-        alle[rid] = {"status": status, "kommentar": kommentar, "datum": datetime.date.today().isoformat()}
-        schreiben(o / "status.json", json.dumps(alle, ensure_ascii=False, indent=1) + "\n")
+        _, fehler = status_setzen(o, rid, status, kommentar)
+    if fehler:
+        sys.exit(fehler)
     print(f"{rid}: {status}" + (f" – {kommentar}" if kommentar else ""))
 
 

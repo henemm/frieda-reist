@@ -190,7 +190,7 @@ def test_werkzeuge_je_rolle(dienst):
     m = {t["name"] for t in rpc(basis, MITREISEND, "tools/list")["tools"]}
     h = {t["name"] for t in rpc(basis, ALT_ORGANISATOR, "tools/list")["tools"]}
     assert "auftrag_geben" not in m and "rueckmeldung_geben" in m
-    assert h == m | {"auftrag_geben", "entscheiden", "person_einladen", "person_entfernen"}
+    assert h == m | {"auftrag_geben", "entscheiden", "person_einladen", "person_entfernen", "rueckmeldung_erledigen"}
     assert "frage_beantworten" in m and not {"entscheiden", "person_einladen"} & m   # Paket C
     assert {t["name"] for t in rpc(basis, KARL, "tools/list")["tools"]} == m
     r = {t["name"] for t in rpc(basis, GAST, "tools/list")["tools"]}
@@ -554,7 +554,7 @@ def test_ontologie_organisator_schreibt_direkt(schreibweg):
     basis, ablage = schreibweg
     for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (MITREISEND, True), (GAST, False)):
         namen = {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}
-        assert (set(kn.ONTOLOGIE_WERKZEUGE) - {"tag_aendern"} <= namen) is da, token   # tag_aendern nur Organisator:innen
+        assert (set(kn.ONTOLOGIE_WERKZEUGE) - {"tag_aendern", "frage_schliessen"} <= namen) is da, token   # die zwei: nur Organisator:innen
     anleitung = rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
     assert "art_definieren und merkmal_definieren schreiben sofort" in anleitung and "Ausnahmen: Aufgaben AG-…, Arten" in anleitung
     t, f = werkzeug(basis, ALT_ORGANISATOR, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt", grund="Hütten am Weg")
@@ -711,3 +711,46 @@ def test_tag_aendern_nur_organisatoren_sehen_es(schreibweg):
     t, f = werkzeug(basis, ALT_ORGANISATOR, "tag_aendern", ziel="T-03", nacht="V-03", grund="Wahl")
     assert not f and Schreibweg.anfragen[-1][2]["args"] == {"ziel": "T-03", "nacht": "V-03", "grund": "Wahl"}
     assert "tag_aendern" in rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
+
+
+def test_rueckmeldung_erledigen_und_wissen_und_fragen(schreibweg):
+    basis, ablage = schreibweg
+    # Rückmeldung von Karl, Ida erledigt sie mit Kommentar; der Status geht über den Rückmeldedienst
+    t, f = werkzeug(basis, KARL, "rueckmeldung_geben", art="Korrektur", ziel="U-02", text="Frühstück kostet extra")
+    rid = rm.eintraege(ablage / "beispielreise")[0]["id"]
+    assert "rueckmeldung_erledigen" not in {t["name"] for t in rpc(basis, KARL, "tools/list")["tools"]}
+    t, f = werkzeug(basis, KARL, "rueckmeldung_erledigen", id=rid, status="uebernommen", kommentar="x")
+    assert f and "nur Organisator:innen" in t
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "rueckmeldung_erledigen", id=rid, status="uebernommen", kommentar="Frühstück steht jetzt als „gegen Aufpreis“")
+    assert not f and f"{rid} ist jetzt uebernommen" in t
+    st = rm.status_lesen(ablage / "beispielreise")[rid]
+    assert st["status"] == "uebernommen" and st["kommentar"].startswith("Frühstück steht") and st["wer"] == "Ida"
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "rueckmeldung_erledigen", id="R-20260101-000000-abcd", status="verworfen", kommentar="x")
+    assert f and "gibt es nicht" in t
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "rueckmeldung_erledigen", id=rid, status="erledigt", kommentar="x")
+    assert f and "Status muss" in t
+    # Wissen und Fragen über den Schreibweg; Vorprüfung kennt Abschnitte und Fragen der Seite
+    Schreibweg.antwort = (200, {"ok": True, "text": "Neuer Abschnitt W-09 „Kirnitzschtalbahn“ in inhalt/wissen.md (Gruppe wissen). Herkunft: Wikipedia."})
+    t, f = werkzeug(basis, KARL, "wissen_schreiben", titel="Kirnitzschtalbahn", text="Seit 1898.", quelle="Wikipedia")
+    assert not f and Schreibweg.anfragen[-1][0] == "/beispielreise/wissen_schreiben"
+    t, f = werkzeug(basis, KARL, "wissen_schreiben", abschnitt="W-99", text="x", quelle="y")
+    assert f and "gibt es nicht" in t
+    assert "frage_schliessen" not in {t["name"] for t in rpc(basis, KARL, "tools/list")["tools"]}
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "frage_schliessen", frage="F-77", ergebnis="x")
+    assert f and "gibt es nicht" in t
+    Schreibweg.antwort = (200, {"ok": True, "text": "Frage F-03 ist geklärt (Ida, 29.10.2026): Fahrplan steht."})
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "frage_schliessen", frage="F-03", ergebnis="Fahrplan steht")
+    assert not f and Schreibweg.anfragen[-1][2]["args"] == {"frage": "F-03", "ergebnis": "Fahrplan steht"}
+
+
+def test_einladen_schreibt_person_direkt(schreibweg, monkeypatch):
+    basis, ablage = schreibweg
+    monkeypatch.setenv("KN_BASIS", "https://example.invalid/mcp")
+    Schreibweg.antwort = (200, {"ok": True, "text": "Anna steht jetzt in der Reise (anna, Rolle mitwirkend, reist mit)."})
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "person_einladen", vorname="Anna", rolle="mitwirkend")
+    assert not f and "Anna ist eingeladen" in t and "in wenigen Minuten" in t
+    pfad, _, body = Schreibweg.anfragen[-1]
+    assert pfad == "/beispielreise/person_schreiben" and body["person"] == "ida"
+    assert body["args"]["schluessel"] == "anna" and body["args"]["vorname"] == "Anna" and body["args"]["rolle"] == "mitwirkend" and body["args"]["reist"] is True
+    assert rm.auftraege(ablage / "beispielreise") == []          # kein Auftrag mehr
+    assert "anna" in rm.einladungen_lesen(ablage / "beispielreise")   # Zugang gilt sofort, bis reise.yaml veröffentlicht ist

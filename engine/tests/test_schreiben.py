@@ -605,3 +605,76 @@ def test_tag_aendern_nur_organisator(repo):
     # ein Plan, der nicht aufgeht (Strecke beginnt woanders): der Probebau meldet nur Warnungen, kein Fehler -> geht durch; aber
     # eine Nacht an einem Ort ohne Unterkunft bleibt erlaubt. Hier reicht: die Arbeitskopie ist sauber.
     assert not git(arbeit, "status", "--porcelain")
+
+
+# ---------- Wissen, Fragen schließen, Personen ----------
+
+def datei_auf_main(origin, rel):
+    return subprocess.run(["git", "-C", str(origin), "show", f"main:reisen/beispielreise/{rel}"], check=True, capture_output=True, text=True).stdout
+
+
+def test_wissen_schreiben_neu_und_ergaenzen(repo):
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    heute = datetime.date.today().strftime("%-d.%-m.%Y")
+    a = s.schreiben("beispielreise", "wissen_schreiben", {**KARL, "args": {"titel": "Kirnitzschtalbahn", "text": "Die Bahn fährt seit 1898 durch das Tal.",
+                                                                           "quelle": "Wikipedia, Artikel Kirnitzschtalbahn, gelesen heute", "gruppe": "wissen"}})
+    assert a["text"].startswith("Neuer Abschnitt W-") and "inhalt/wissen.md" in a["text"]
+    wissen = datei_auf_main(origin, "inhalt/wissen.md")
+    assert "\n## Kirnitzschtalbahn\n\nDie Bahn fährt seit 1898 durch das Tal.\n\n*Herkunft: Wikipedia, Artikel Kirnitzschtalbahn, gelesen heute; eingetragen am " + heute + " von Karl über den Konnektor.*" in wissen
+    cfg = json.loads(datei_auf_main(origin, "reise.json"))
+    wid = cfg["abschnitte"]["inhalt/wissen.md"]["Kirnitzschtalbahn"][0]
+    assert wid.startswith("W-") and cfg["abschnitte"]["inhalt/wissen.md"]["Kirnitzschtalbahn"][1] == "wissen"
+    # Ergänzen eines vorhandenen Abschnitts: der Absatz kommt ans Ende des Abschnitts, vor die nächste Überschrift
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "wissen_schreiben", {**IDA, "args": {"abschnitt": "W-05", "text": "Ergänzung zur Geologie.", "quelle": "Ida im Gespräch"}})
+    assert a["text"].startswith("Abschnitt W-05 „Elbsandstein in Kürze“ (inhalt/wissen.md) ergänzt.")
+    wissen = datei_auf_main(origin, "inhalt/wissen.md")
+    i = wissen.index("Ergänzung zur Geologie.")
+    start = wissen.index("\n## Elbsandstein in Kürze")
+    assert start < i < wissen.index("\n## ", start + 3)          # vor der nächsten Hauptüberschrift, nach den ###-Unterabschnitten
+    # Ein vorhandener Titel wird ergänzt statt doppelt angelegt
+    a = s.schreiben("beispielreise", "wissen_schreiben", {**IDA, "args": {"titel": "Elbsandstein in Kürze", "text": "Noch ein Absatz.", "quelle": "Ida"}})
+    assert a["text"].startswith("Abschnitt W-05 „Elbsandstein in Kürze“")
+    s.vorbereiten()
+    for args, text in (({"text": "x", "quelle": "y"}, "„titel“"),
+                       ({"abschnitt": "W-99", "text": "x", "quelle": "y"}, "gibt es nicht"), ({"titel": "Neu", "text": "x"}, "„quelle“ fehlt"),
+                       ({"titel": "Neu", "text": "x", "quelle": "y", "gruppe": "egal"}, "„gruppe“"), ({"titel": "Neu", "text": "x", "quelle": "y", "datei": "../x.md"}, "„datei“")):
+        with pytest.raises(sb.Ablehnung, match=text):
+            s.schreiben("beispielreise", "wissen_schreiben", {**IDA, "args": args})
+    assert not git(arbeit, "status", "--porcelain")
+
+
+def test_frage_schliessen_und_person_schreiben(repo):
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    heute = datetime.date.today().strftime("%-d.%-m.%Y")
+    with pytest.raises(sb.Ablehnung, match="nur Organisator:innen"):
+        s.schreiben("beispielreise", "frage_schliessen", {**KARL, "args": {"frage": "F-03", "ergebnis": "x"}})
+    a = s.schreiben("beispielreise", "frage_schliessen", {**IDA, "args": {"frage": "F-03", "ergebnis": "Fahrplan steht, Bahn fährt 9:10"}})
+    assert f"| F-03 | Fahrplan der S-Bahn" in datei_auf_main(origin, "offene-fragen.md")
+    assert f"| April 2027 | geklärt {heute}: Ida, Fahrplan steht, Bahn fährt 9:10 |" in datei_auf_main(origin, "offene-fragen.md")
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "frage_schliessen", {**IDA, "args": {"frage": "F-01", "ergebnis": "wird unterwegs entschieden", "status": "entfaellt"}})
+    assert "entfällt" in a["text"]
+    with pytest.raises(sb.Ablehnung, match="gibt es nicht"):
+        s.schreiben("beispielreise", "frage_schliessen", {**IDA, "args": {"frage": "F-77", "ergebnis": "x"}})
+    # Personen: anlegen (Rolle höchstens die eigene), ändern, ausscheiden als gast
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="nur Organisator:innen"):      # regeln.einladen (Vorgabe): nur Organisator:innen
+        s.schreiben("beispielreise", "person_schreiben", {**KARL, "args": {"schluessel": "anna", "vorname": "Anna", "rolle": "mitwirkend"}})
+    a = s.schreiben("beispielreise", "person_schreiben", {**IDA, "args": {"schluessel": "anna", "vorname": "Anna", "rolle": "mitwirkend", "notiz": "eingeladen"}})
+    r = yaml.safe_load(datei_auf_main(origin, "reise.yaml"))
+    assert r["personen"]["anna"] == {"name": "Anna", "rolle": "mitwirkend", "reist": True, "notiz": "eingeladen"}
+    assert "# Rollen" in datei_auf_main(origin, "reise.yaml") or "# Eckdaten" in datei_auf_main(origin, "reise.yaml")   # Kommentare bleiben
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "person_schreiben", {**IDA, "args": {"schluessel": "anna", "rolle": "gast", "reist": False, "notiz": "ausgeschieden"}})
+    assert "rolle „mitwirkend“ → „gast“" in a["text"]
+    r = yaml.safe_load(datei_auf_main(origin, "reise.yaml"))
+    assert r["personen"]["anna"]["rolle"] == "gast" and r["personen"]["anna"]["reist"] is False and "karl" in r["personen"]
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="Nichts zu ändern"):
+        s.schreiben("beispielreise", "person_schreiben", {**IDA, "args": {"schluessel": "anna", "rolle": "gast"}})
+    with pytest.raises(sb.Ablehnung, match="Name „Ida“ kommt zweimal"):
+        s.schreiben("beispielreise", "person_schreiben", {**IDA, "args": {"schluessel": "ida2", "vorname": "Ida"}})
+    assert not git(arbeit, "status", "--porcelain")
