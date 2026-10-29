@@ -1215,7 +1215,8 @@ def frage_status_setzen(reise_dir, fid, status):
 
 def entscheiden(reise_dir, wer, args, heute=None):
     """Entscheidung einer Organisator:in über eine Option: Verlaufseintrag (Datum, Status, Person, Grund) direkt in routen.yaml.
-    gewählt setzt bisher gewählte Optionen derselben Wahlstelle auf ersetzt und klärt die Frage der Wahlstelle; verworfen oder
+    gewählt setzt bisher gewählte Optionen derselben Wahlstelle auf ersetzt und klärt die Frage der Wahlstelle, sobald alle
+    Wahlstellen an dieser Frage etwas gewählt haben; verworfen oder
     ersetzt ohne verbleibende Wahl öffnet die Frage wieder. Widersprüche zwischen Organisator:innen prüft der Konnektor vorher
     (regeln.konflikt). -> (Titel, Text)."""
     heute = heute or datetime.date.today()
@@ -1271,7 +1272,12 @@ def entscheiden(reise_dir, wer, args, heute=None):
     frage_text = ""
     if wr.get("frage"):
         gewaehlt_danach = status == "gewaehlt" or any(x.get("status") == "gewaehlt" and x["id"] != oid for x in wr["optionen"])
-        if status == "gewaehlt":
+        # Hängen weitere Wahlstellen an derselben Frage und ist dort noch nichts gewählt, bleibt die Frage offen
+        noch_offen = [w["id"] for w in route.get("wahlstellen") or [] if w["id"] != vid and w.get("frage") == wr["frage"]
+                      and not any(x.get("status") == "gewaehlt" for x in w.get("optionen") or [])]
+        if status == "gewaehlt" and noch_offen:
+            frage_text = f" Frage {wr['frage']} bleibt offen, weil dort noch {', '.join(noch_offen)} zu entscheiden {'ist' if len(noch_offen) == 1 else 'sind'}."
+        elif status == "gewaehlt":
             ok = frage_status_setzen(reise_dir, wr["frage"], f"geklärt {heute.strftime('%-d.%-m.%Y')}: {wer['name']}, {o['titel']} ({oid})")
             frage_text = f" Frage {wr['frage']} ist damit geklärt." if ok else ""
         elif not gewaehlt_danach:
