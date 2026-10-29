@@ -83,14 +83,14 @@ import adressen_holen as ah  # noqa: E402
 
 
 def test_adresse_aus_osm_tags():
-    assert ah.adresse_aus({"addr:street": "Carrer de sa Lluna", "addr:housenumber": "21", "addr:postcode": "07100",
-                           "addr:city": "Sóller"}) == "Carrer de sa Lluna 21, 07100 Sóller"
-    assert ah.adresse_aus({"addr:place": "Biniaraix", "addr:postcode": "07100"}) == "Biniaraix, 07100"
-    assert ah.adresse_aus({"addr:city": "Sóller"}) is None   # ohne Straße keine Adresse
+    assert ah.adresse_aus({"addr:street": "Musterweg", "addr:housenumber": "21", "addr:postcode": "12345",
+                           "addr:city": "Musterort"}) == "Musterweg 21, 12345 Musterort"
+    assert ah.adresse_aus({"addr:place": "Musterhof", "addr:postcode": "12345"}) == "Musterhof, 12345"
+    assert ah.adresse_aus({"addr:city": "Musterort"}) is None   # ohne Straße keine Adresse
 
 
 def test_vorschlaege_aus_osm_bezug_und_suche():
-    """Erfundene Testdaten: U-1 mit OSM-Punkt (Overpass liefert eine Adresse), U-2 ohne Punkt (Nominatim findet ein Hotel),
+    """Erfundene Testdaten: U-1 mit OSM-Punkt (Nominatim schlägt ihn nach), U-2 ohne Punkt (Nominatim findet ein Hotel),
     U-3 hat schon eine Adresse, U-4 findet nichts."""
     roh = {"orte": {"O-1": {"name": "Musterort"}},
            "unterkuenfte": {"U-1": {"name": "Haus A", "ort": "O-1"}, "U-2": {"name": "Haus B", "ort": "O-1"},
@@ -100,10 +100,10 @@ def test_vorschlaege_aus_osm_bezug_und_suche():
     karte = {"orte": {"O-1": {"lage": [50.0, 14.0]}}}
 
     def abfragen(url, daten=None):
-        if url == ah.OVERPASS:
-            assert "way(id:11);" in daten["data"]
-            return {"elements": [{"type": "way", "id": 11, "tags": {"addr:street": "Hauptstraße", "addr:housenumber": "1",
-                                                                     "addr:postcode": "12345", "addr:city": "Musterort"}}]}
+        if url.startswith(ah.NACHSCHLAGEN):
+            assert "osm_ids=W11&" in url
+            return [{"osm_type": "way", "osm_id": 11, "address": {"road": "Hauptstraße", "house_number": "1",
+                                                                  "postcode": "12345", "town": "Musterort"}}]
         if "Haus+B" in url:
             return [{"category": "amenity", "type": "restaurant"},
                     {"category": "tourism", "type": "hotel", "osm_type": "node", "osm_id": 22, "lat": "50.001", "lon": "14.002",
