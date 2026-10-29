@@ -80,12 +80,33 @@ class Umgebung:
         rm._zeiten.clear()
         self.rs, self.rurl = starten(rm.Dienst)
         monkeypatch.setenv("KN_RUECKMELDEDIENST", self.rurl)
+        # Nachgestellter Schreibweg (engine/schreiben.py dienst): merkt sich, was der Konnektor schreiben will
+        monkeypatch.setenv("FR_KONTEN", str(tmp / "konten"))
+        self.schreibweg = []
+        umgebung = self
+
+        class Schreibweg(kn.BaseHTTPRequestHandler):
+            def do_POST(self):
+                body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+                umgebung.schreibweg.append((self.path, body))
+                daten = json.dumps({"ok": True, "text": f"geschrieben: {self.path}"}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(daten)))
+                self.end_headers()
+                self.wfile.write(daten)
+
+            def log_message(self, *a):
+                pass
+        self.ss, surl = starten(Schreibweg)
+        monkeypatch.setenv("KN_SCHREIBDIENST", surl)
         self.ks, self.kurl = starten(kn.Dienst)
         self.o = self.ablage / "beispielreise"
 
     def schliessen(self):
         self.ks.shutdown()
         self.rs.shutdown()
+        self.ss.shutdown()
 
     def rpc(self, token, methode, params=None):
         code, a = anfrage(f"{self.kurl}/{token}", {"jsonrpc": "2.0", "id": 1, "method": methode, "params": params or {}})
@@ -332,17 +353,17 @@ def test_dienst_ohne_veroeffentlichte_seite_wie_bisher(tmp_path, monkeypatch):
 def test_konnektor_werkzeuge_je_status(umgebung):
     u = umgebung("planung")
     nur_lesen = u.werkzeuge(KIM)
-    assert not nur_lesen & kn.SCHREIB_WERKZEUGE and "auftrag_geben" not in nur_lesen
+    assert not nur_lesen & kn.SCHREIB_WERKZEUGE
     nur_organisator = {"entscheiden", "person_einladen", "person_entfernen", "rueckmeldung_erledigen"}   # Paket C, J, O-3
     assert kn.SCHREIB_WERKZEUGE - nur_organisator <= u.werkzeuge(KARL) and not nur_organisator & u.werkzeuge(KARL)
-    assert kn.SCHREIB_WERKZEUGE <= u.werkzeuge(IDA) and "auftrag_geben" in u.werkzeuge(IDA)
+    assert kn.SCHREIB_WERKZEUGE <= u.werkzeuge(IDA) and "reise_status_setzen" in u.werkzeuge(IDA)
 
     danach = umgebung("danach")
     w = danach.werkzeuge(KARL)
     assert {"rueckmeldung_geben", "aufgabe_anlegen"} <= w and "option_anlegen" not in w
     art = next(t for t in danach.rpc(KARL, "tools/list")["tools"] if t["name"] == "rueckmeldung_geben")
     assert "Wunsch" not in art["inputSchema"]["properties"]["art"]["enum"]
-    assert "auftrag_geben" in danach.werkzeuge(IDA)      # bleibt sichtbar: Status zurücksetzen geht
+    assert "reise_status_setzen" in danach.werkzeuge(IDA)      # bleibt sichtbar: Status zurücksetzen geht
 
     archiv = umgebung("archiv")
     assert not archiv.werkzeuge(KARL) & kn.SCHREIB_WERKZEUGE
@@ -356,13 +377,13 @@ def test_konnektor_prueft_beim_aufruf_auch_ohne_werkzeugliste(umgebung):
                        ("option_anlegen", {"titel": "x", "wahlstelle": "V-03"})):
         t, f = u.werkzeug(KARL, name, **args)
         assert f and "archiviert" in t, name
-    t, f = u.werkzeug(IDA, "auftrag_geben", ziel="V-01", auftrag="V-01.a wählen")
-    assert f and "archiviert" in t and not (u.o / "auftraege.jsonl").exists()
-    t, f = u.werkzeug(IDA, "auftrag_geben", ziel="reise", auftrag="Status wieder auf danach setzen")
-    assert not f and (u.o / "auftraege.jsonl").exists()
-    t, f = u.werkzeug(KIM, "auftrag_geben", ziel="reise", auftrag="x")
-    assert f and "nur Organisator:innen" in t
-    assert u.werkzeug(KARL, "auftrag_geben", ziel="reise", auftrag="x")[1]
+    t, f = u.werkzeug(IDA, "entscheiden", option="V-01.a", status="gewaehlt", grund="x")
+    assert f and "archiviert" in t and u.schreibweg == []
+    t, f = u.werkzeug(IDA, "reise_status_setzen", status="danach", grund="Status wieder auf danach setzen")
+    assert not f and u.schreibweg[-1][0] == "/beispielreise/reise_status_setzen"
+    t, f = u.werkzeug(KIM, "reise_status_setzen", status="planung", grund="x")
+    assert f and ("nur lesen" in t or "nur Organisator:innen" in t)
+    assert u.werkzeug(KARL, "reise_status_setzen", status="planung", grund="x")[1]
 
 
 def test_konnektor_danach_nur_nachlese(umgebung):
@@ -427,69 +448,12 @@ def test_verfassung_ist_kurz_und_nennt_aufgabe_grenzen_rollen(umgebung):
     u = umgebung("fest")
     for token, rolle in ((IDA, "Organisator:in"), (KARL, "Mitwirkende:r"), (KIM, "gast")):
         text = u.rpc(token, "initialize")["instructions"]
-        assert len(text) < 2600, len(text)
+        assert len(text) < 3600, len(text)   # mit Schreibweg: alle Werkzeuge in einem Satz
         assert text.startswith("Aufgabe:") and "Grenzen:" in text and "Rollen:" in text and rolle in text
         assert "Status: Der Plan steht" in text
 
 
 # ---------- Konflikt zwischen Organisator:innen ----------
-
-def test_konflikt_zwischen_zwei_auftraegen(umgebung):
-    u = umgebung()
-    t, f = u.werkzeug(IDA, "auftrag_geben", ziel="V-01.a", entscheidung="gewaehlt", auftrag="Direktverbindung nehmen")
-    assert not f and "widerspricht" not in t
-    t, f = u.werkzeug(MAX, "auftrag_geben", ziel="V-01.b", entscheidung="gewaehlt", auftrag="Kirnitzschtalbahn nehmen")
-    assert not f and "widerspricht" in t and "offene Frage" in t and "Ida" in t
-    auf = {a["name"]: a for a in rm.auftraege(u.o)}
-    assert set(auf) == {"Ida", "Max"} and all(a["status"] == "konflikt" for a in auf.values())
-    assert all(a["daten"]["entscheidung"] == "gewaehlt" for a in auf.values())
-    ms = rm.meldungen(u.o)
-    assert len(ms) == 1 and ms[0]["an"] == ["Ida", "Max"] and ms[0]["art"] == "konflikt"
-    assert sorted(ms[0]["auftraege"]) == sorted(a["id"] for a in auf.values())
-    # Die Beteiligten sehen die Meldung in der Rückmeldeliste, Karl nicht
-    assert "Meldungen an dich" in u.werkzeug(IDA, "rueckmeldungen")[0]
-    assert "Meldungen an dich" in u.werkzeug(MAX, "rueckmeldungen")[0]
-    assert "Meldungen an dich" not in u.werkzeug(KARL, "rueckmeldungen")[0]
-    # Claude Code sieht sie in der Liste nicht als „neu“, sondern mit Hinweis
-    assert not [e for e in rm.auftraege(u.o) if e["status"] == "neu"]
-
-
-def test_konflikt_gegen_veroeffentlichte_entscheidung(umgebung):
-    u = umgebung()      # V-03.a ist im Plan von Ida gewählt
-    t, f = u.werkzeug(MAX, "auftrag_geben", ziel="V-03.a", entscheidung="verworfen", auftrag="Doch nicht dort schlafen")
-    assert not f and "widerspricht" in t and "Ida am 2026-10-20 im Plan" in t
-    assert rm.auftraege(u.o)[0]["status"] == "konflikt"
-    assert rm.meldungen(u.o)[0]["an"] == ["Ida", "Max"]
-
-
-def test_kein_konflikt_bei_vertraeglichem_und_bei_derselben_person(umgebung):
-    u = umgebung()
-    u.werkzeug(IDA, "auftrag_geben", ziel="V-01.a", entscheidung="gewaehlt", auftrag="a nehmen")
-    t, _ = u.werkzeug(MAX, "auftrag_geben", ziel="V-01.b", entscheidung="verworfen", auftrag="b verwerfen")   # verträgt sich
-    assert "widerspricht" not in t
-    t, _ = u.werkzeug(IDA, "auftrag_geben", ziel="V-01.a", entscheidung="verworfen", auftrag="Ich habe es mir anders überlegt")
-    assert "widerspricht" not in t                                                                              # dieselbe Person
-    t, _ = u.werkzeug(IDA, "auftrag_geben", auftrag="Nur ein Wunsch ohne Entscheidung")
-    assert "widerspricht" not in t
-    assert all(a["status"] == "neu" for a in rm.auftraege(u.o)) and rm.meldungen(u.o) == []
-
-
-def test_entscheidung_braucht_ziel_und_bekannten_wert(umgebung):
-    u = umgebung()
-    assert u.werkzeug(IDA, "auftrag_geben", entscheidung="gewaehlt", auftrag="x")[1]
-    assert u.werkzeug(IDA, "auftrag_geben", ziel="V-01.a", entscheidung="vielleicht", auftrag="x")[1]
-    assert not (u.o / "auftraege.jsonl").exists()
-
-
-def test_liste_zeigt_konflikt(umgebung, capsys):
-    u = umgebung()
-    u.werkzeug(IDA, "auftrag_geben", ziel="V-01.a", entscheidung="gewaehlt", auftrag="a")
-    u.werkzeug(MAX, "auftrag_geben", ziel="V-01.b", entscheidung="gewaehlt", auftrag="b")
-    rm.liste("beispielreise", False)    # Konflikte stehen auch ohne --alle in der Liste
-    out = capsys.readouterr().out
-    assert out.count("KONFLIKT") == 2 and "[konflikt]" in out and "Offene Frage (F-…) anlegen" in out
-    rm.setze("beispielreise", rm.auftraege(u.o)[0]["id"], "rueckfrage", "siehe F-09")
-
 
 # ---------- Paket H: neue Reise ----------
 @pytest.mark.parametrize("args, text", [

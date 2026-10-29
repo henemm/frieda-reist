@@ -190,7 +190,7 @@ def test_werkzeuge_je_rolle(dienst):
     m = {t["name"] for t in rpc(basis, MITREISEND, "tools/list")["tools"]}
     h = {t["name"] for t in rpc(basis, ALT_ORGANISATOR, "tools/list")["tools"]}
     assert "auftrag_geben" not in m and "rueckmeldung_geben" in m
-    assert h == m | {"auftrag_geben", "entscheiden", "person_einladen", "person_entfernen", "rueckmeldung_erledigen"}
+    assert h == m | {"entscheiden", "person_einladen", "person_entfernen", "rueckmeldung_erledigen"}
     assert "frage_beantworten" in m and not {"entscheiden", "person_einladen"} & m   # Paket C
     assert {t["name"] for t in rpc(basis, KARL, "tools/list")["tools"]} == m
     r = {t["name"] for t in rpc(basis, GAST, "tools/list")["tools"]}
@@ -202,7 +202,7 @@ def test_rollen_aus_reise_yaml(dienst):
     # Person mit Link: Name steht fest, auch wenn ein anderer genannt wird
     t, f = werkzeug(basis, KARL, "rueckmeldung_geben", ziel="T-03", art="Kommentar", text="Schön!", name="Jemand")
     assert not f and rm.eintraege(ablage / "beispielreise")[0]["name"] == "Karl"
-    t, f = werkzeug(basis, KARL, "auftrag_geben", auftrag="V-01.b wählen")
+    t, f = werkzeug(basis, KARL, "entscheiden", option="V-01.b", status="gewaehlt", grund="x")
     assert f and "nur Organisator:innen" in t
     # Rolle gast: nur lesen
     t, f = werkzeug(basis, GAST, "zeige", id="T-02")
@@ -281,30 +281,6 @@ def test_rueckmeldung_alter_organisator_name_fest(dienst):
     basis, ablage = dienst
     werkzeug(basis, ALT_ORGANISATOR, "rueckmeldung_geben", ziel="F-01", art="Antwort", text="Mit der Bahn", name="Jemand")
     assert rm.eintraege(ablage / "beispielreise")[0]["name"] == "Ida"
-
-
-def test_auftrag(dienst, capsys):
-    basis, ablage = dienst
-    t, f = werkzeug(basis, MITREISEND, "auftrag_geben", auftrag="V-01.b wählen")
-    assert f and "nur Organisator:innen" in t
-    assert not (ablage / "beispielreise" / "auftraege.jsonl").exists()
-    t, f = werkzeug(basis, ALT_ORGANISATOR, "auftrag_geben", ziel="V-01", auftrag="V-01.b wählen, weil Karl die Bahn möchte")
-    assert not f and "unverändert" in t
-    a = rm.auftraege(ablage / "beispielreise")
-    assert len(a) == 1 and a[0]["name"] == "Ida" and a[0]["art"] == "Auftrag" and a[0]["status"] == "neu"
-    assert kn.AID_MUSTER.match(a[0]["id"])
-    # Nicht auf der Seite (eingang), aber in liste und setze
-    assert rm.eintraege(ablage / "beispielreise") == []
-    rm.liste("beispielreise", False)
-    assert "ÄNDERUNGSAUFTRAG" in capsys.readouterr().out
-    rm.setze("beispielreise", a[0]["id"], "uebernommen", "erledigt")
-    assert rm.auftraege(ablage / "beispielreise")[0]["status"] == "uebernommen"
-    t, _ = werkzeug(basis, ALT_ORGANISATOR, "rueckmeldungen")
-    assert a[0]["id"] in t and "uebernommen" in t
-    t, _ = werkzeug(basis, MITREISEND, "rueckmeldungen")
-    assert a[0]["id"] not in t
-    t, f = werkzeug(basis, ALT_ORGANISATOR, "auftrag_geben", ziel="kein gültiges ziel!", auftrag="x")
-    assert f
 
 
 def test_konto_meine_reisen_und_reise_anlegen(dienst, seiten, capsys, monkeypatch, tmp_path):
@@ -554,9 +530,10 @@ def test_ontologie_organisator_schreibt_direkt(schreibweg):
     basis, ablage = schreibweg
     for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (MITREISEND, True), (GAST, False)):
         namen = {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}
-        assert (set(kn.ONTOLOGIE_WERKZEUGE) - {"tag_aendern", "frage_schliessen"} <= namen) is da, token   # die zwei: nur Organisator:innen
+        nur_org = {"tag_aendern", "frage_schliessen", "reise_status_setzen", "einstellung_setzen"}
+        assert (set(kn.ONTOLOGIE_WERKZEUGE) - nur_org <= namen) is da, token
     anleitung = rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
-    assert "art_definieren und merkmal_definieren schreiben sofort" in anleitung and "Ausnahmen: Aufgaben AG-…, Arten" in anleitung
+    assert "art_definieren, merkmal_definieren" in anleitung and "Ausnahmen: Aufgaben AG-…, Arten" in anleitung
     t, f = werkzeug(basis, ALT_ORGANISATOR, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt", grund="Hütten am Weg")
     assert not f and t.startswith("Eingetragen und gesichert (Ida): Art „Refugi“ angelegt") and "wenige Minuten" in t
     pfad, geheim, body = Schreibweg.anfragen[-1]
@@ -596,13 +573,13 @@ def test_ontologie_mitwirkende_schlagen_vor(schreibweg):
     assert e["text"] == "Art festlegen – bezeichnung: Refugi; grundform: aufenthalt"
     t, f = werkzeug(basis, KARL, "merkmal_definieren", art="hotel", bezeichnung="Stornierung", typ="auswahl", werte=["ja", "nein"], stufe="pflicht")
     assert not f
-    e = rm.eintraege(ablage / "beispielreise")[1]
-    assert e["ziel"] == "hotel" and e["text"] == "Merkmal festlegen – art: hotel; bezeichnung: Stornierung; typ: auswahl; werte: ja | nein; stufe: pflicht"
+    e = next(x for x in rm.eintraege(ablage / "beispielreise") if x["ziel"] == "hotel")
+    assert e["text"] == "Merkmal festlegen – art: hotel; bezeichnung: Stornierung; typ: auswahl; werte: ja | nein; stufe: pflicht"
     # Mitwirkende ohne Namen (alter Rollen-Link) brauchen den Vornamen
     t, f = werkzeug(basis, MITREISEND, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt")
     assert f and "Name fehlt" in t
     t, f = werkzeug(basis, MITREISEND, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt", name="Anna")
-    assert not f and rm.eintraege(ablage / "beispielreise")[2]["name"] == "Anna"
+    assert not f and "Anna" in {x["name"] for x in rm.eintraege(ablage / "beispielreise")}   # Reihenfolge bei gleicher Sekunde offen
     t, f = werkzeug(basis, GAST, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt")
     assert f and "nur lesen" in t
 
@@ -754,3 +731,46 @@ def test_einladen_schreibt_person_direkt(schreibweg, monkeypatch):
     assert body["args"]["schluessel"] == "anna" and body["args"]["vorname"] == "Anna" and body["args"]["rolle"] == "mitwirkend" and body["args"]["reist"] is True
     assert rm.auftraege(ablage / "beispielreise") == []          # kein Auftrag mehr
     assert "anna" in rm.einladungen_lesen(ablage / "beispielreise")   # Zugang gilt sofort, bis reise.yaml veröffentlicht ist
+
+
+def test_status_einstellungen_und_kein_auftrag_mehr(schreibweg):
+    basis, ablage = schreibweg
+    namen = {t["name"] for t in rpc(basis, ALT_ORGANISATOR, "tools/list")["tools"]}
+    assert {"reise_status_setzen", "einstellung_setzen"} <= namen and "auftrag_geben" not in namen
+    assert not {"reise_status_setzen", "einstellung_setzen"} & {t["name"] for t in rpc(basis, KARL, "tools/list")["tools"]}
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "auftrag_geben", auftrag="x")
+    assert f and "Unbekanntes Werkzeug" in t
+    Schreibweg.antwort = (200, {"ok": True, "text": "Die Reise hat jetzt den Status fest (vorher planung; Ida, 29.10.2026, Grund: steht)."})
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "reise_status_setzen", status="fest", grund="steht")
+    assert not f and Schreibweg.anfragen[-1][2]["args"] == {"status": "fest", "grund": "steht"}
+    t, f = werkzeug(basis, KARL, "reise_status_setzen", status="fest", grund="steht")
+    assert f and "nur Organisator:innen" in t
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "einstellung_setzen", regeln={"einladen": "mitwirkend"})
+    assert not f and Schreibweg.anfragen[-1][0] == "/beispielreise/einstellung_setzen"
+    assert "reise_status_setzen, einstellung_setzen" in rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
+    assert "auftrag_geben" not in rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
+    assert rm.auftraege(ablage / "beispielreise") == []
+
+
+def test_neue_reise_ueber_den_schreibweg(schreibweg, tmp_path, monkeypatch):
+    basis, ablage = schreibweg
+    zug = Path(kn.os.environ["KN_ZUGAENGE"])
+    zug.write_text(json.dumps({**json.loads(zug.read_text()), KONTO: {"konto": "ida", "name": "Ida"}}))
+    monkeypatch.setenv("KN_BASIS", "https://example.invalid/mcp")
+    ausstehend = tmp_path / "ausstehend.jsonl"
+    monkeypatch.setenv("KN_AUSSTEHEND", str(ausstehend))
+    Schreibweg.antwort = (200, {"ok": True, "text": "Die Reise „Skiwoche“ ist angelegt (Ordner skiwoche-2027, Status Idee)."})
+    t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Skiwoche", von="2027-02-06", bis="2027-02-13", personen=[{"vorname": "Karl", "rolle": "mitwirkend"}])
+    assert not f, t
+    assert "ist angelegt" in t and "in wenigen minuten ist die seite online" in t.lower()
+    pfad, _, body = Schreibweg.anfragen[-1]
+    assert pfad == "/skiwoche-2027/reise_anlegen" and body["args"]["auftrag"]["daten"]["neue_reise"]["titel"] == "Skiwoche"
+    zeile = json.loads(ausstehend.read_text().strip())
+    assert zeile["ordner"] == "skiwoche-2027" and zeile["name"] == "Ida" and zeile["person"] == "ida" and zeile["aid"].startswith("A-")
+    o = rm.ordner_neu()
+    assert rm.status_lesen(o)[zeile["aid"]]["status"] == "uebernommen"
+    # lehnt der Schreibweg ab, bleibt die Anfrage als Rückfrage stehen
+    Schreibweg.antwort = (422, {"ok": False, "fehler": "Den Ordner reisen/skiwoche-2027 gibt es schon."})
+    t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Skiwoche zwei", von="2027-02-06", bis="2027-02-13", personen=[])
+    assert f and "Nicht angelegt" in t
+    assert any(v["status"] == "rueckfrage" for v in rm.status_lesen(o).values())

@@ -73,14 +73,16 @@ SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern",
 # Werkzeuge, die direkt in die Ontologie der Reise schreiben (ADR-0001, O-3; engine/schreiben.py): nur bei Instanzen mit
 # Schreibweg (KN_SCHREIBDIENST); Organisator:innen schreiben, Mitwirkende schlagen vor (Rückmeldung der Art Ergänzung)
 ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "wert_eintragen", "ding_anlegen", "ding_aendern", "lage_eintragen",
-                       "option_anlegen", "wahlstelle_anlegen", "frage_anlegen", "tag_aendern", "wissen_schreiben", "frage_schliessen")
+                       "option_anlegen", "wahlstelle_anlegen", "frage_anlegen", "tag_aendern", "wissen_schreiben", "frage_schliessen",
+                       "reise_status_setzen", "einstellung_setzen")
 # Aktion der Regelprüfung je Werkzeug; art_definieren und merkmal_definieren gehen für Mitwirkende als Rückmeldung (Vorschlag)
 ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "wert_eintragen": "wert",
                     "ding_anlegen": "ding", "ding_aendern": "ding", "lage_eintragen": "ding", "option_anlegen": "alternative",
-                    "wahlstelle_anlegen": "alternative", "frage_anlegen": "frage", "tag_aendern": "plan", "wissen_schreiben": "wissen", "frage_schliessen": "frage_schliessen"}
+                    "wahlstelle_anlegen": "alternative", "frage_anlegen": "frage", "tag_aendern": "plan", "wissen_schreiben": "wissen",
+                    "frage_schliessen": "frage_schliessen", "reise_status_setzen": "einstellung", "einstellung_setzen": "einstellung"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe",
-                  "auftrag_geben": "auftrag", "entscheiden": "entscheiden", "rueckmeldung_erledigen": "rueckmeldung_erledigen",
+                  "entscheiden": "entscheiden", "rueckmeldung_erledigen": "rueckmeldung_erledigen",
                   "frage_beantworten": "antwort", "person_einladen": "einladen", "person_entfernen": "entfernen",
                   # Wunsch-Brett: sichtbar für alle, die abhaken dürfen; Punkte und Einplanen prüft der Dienst genauer
                   "wunsch_aendern": "wunsch_erlebt"}
@@ -912,6 +914,11 @@ class Handbuch:
 
 # ---------- Rückmeldungen und Aufträge ----------
 
+def ausstehend_datei():
+    """Links neuer Reisen, die veroeffentlichen.sh zustellt, sobald die Seite online ist (Dienstordner, wie einarbeiten.sh)."""
+    return Path(os.environ.get("KN_AUSSTEHEND") or rm.laeufe_datei().parent / "neue-reisen-ausstehend.jsonl")
+
+
 def rueckmeldung_senden(reise, eintrag):
     """An den Rückmeldedienst, damit eingang.jsonl nur einen Schreiber hat. -> (antwort, fehler)"""
     return dienst_anfrage("POST", f"{reise}/rueckmeldungen", eintrag)
@@ -1151,31 +1158,6 @@ def aufgaben_filter(liste, args):
     return liste
 
 
-def auftrag_anlegen(reise, ziel, auftrag, daten=None, name="Organisator:in"):
-    o = rm.ordner(reise)
-    if o is None:
-        return None, "Diese Reise nimmt noch keine Aufträge an."
-    ziel, auftrag = (ziel or "").strip(), (auftrag or "").strip()
-    if ziel and not rm.ZIEL_MUSTER.match(ziel):
-        return None, "ungültige ID"
-    if not auftrag:
-        return None, "Auftrag fehlt"
-    if len(auftrag) > MAX_AUFTRAG:
-        return None, f"Auftrag zu lang (max. {MAX_AUFTRAG} Zeichen)"
-    jetzt = datetime.datetime.now(datetime.timezone.utc)
-    e = {"id": f"A-{jetzt:%Y%m%d-%H%M%S}-{secrets.token_hex(2)}", "erstellt": jetzt.isoformat(timespec="seconds"),
-         "name": name, "art": "Auftrag", "ziel": ziel or "allgemein", "text": auftrag, "quelle": "Claude-App"}
-    if daten:
-        e["daten"] = daten
-    with _sperre:
-        with (o / "auftraege.jsonl").open("a", encoding="utf-8") as f:
-            f.write(json.dumps(e, ensure_ascii=False) + "\n")
-            f.flush()
-            os.fsync(f.fileno())
-        rm.anstossen(o)
-    return e, None
-
-
 def stehende_entscheidungen(reise, d):
     """Entscheidungen, gegen die eine neue geprüft wird: die letzte Entscheidung je Option im veröffentlichten Plan
     und alle noch nicht bearbeiteten Aufträge mit Entscheidung. -> [{wer, ziel, entscheidung, quelle}]"""
@@ -1193,34 +1175,6 @@ def stehende_entscheidungen(reise, d):
             aus.append({"wer": a.get("name"), "ziel": a.get("ziel"), "entscheidung": ent, "auftrag": a["id"],
                         "quelle": f"Auftrag {a['id']} von {a.get('name')}"})
     return aus
-
-
-def konflikt_melden(reise, auftrag, d):
-    """Widerspricht die Entscheidung im Auftrag einer anderen (Regel regeln.konflikt = offene_frage)? Dann bekommen
-    sie und die widersprechenden noch offenen Aufträge den Status „konflikt“ (nichts wird übernommen; Claude Code legt
-    die offene Frage an), und alle beteiligten Organisator:innen erhalten eine Meldung. -> Beschreibung oder None."""
-    regeln = ((d or {}).get("reise") or {}).get("regeln") or {}
-    if regeln.get("konflikt", "offene_frage") != "offene_frage":
-        return None
-    neu = {"wer": auftrag["name"], "ziel": auftrag["ziel"], "entscheidung": auftrag["daten"]["entscheidung"]}
-    alt = konflikte(neu, stehende_entscheidungen(reise, d))
-    alt = [a for a in alt if a.get("auftrag") != auftrag["id"]]
-    if not alt:
-        return None
-    o = rm.ordner(reise)
-    beschr = "; ".join(f"{a['quelle']}: {a['entscheidung']} {a['ziel']}" for a in alt)
-    betroffen = [auftrag["id"]] + [a["auftrag"] for a in alt if a.get("auftrag")]
-    with _sperre:
-        status = rm.status_lesen(o)
-        for aid in betroffen:
-            status[aid] = {"status": "konflikt", "datum": datetime.date.today().isoformat(),
-                           "kommentar": "Widerspruch zwischen Organisator:innen: wird zur offenen Frage, nichts wird übernommen."}
-        rm.schreiben(o / "status.json", json.dumps(status, ensure_ascii=False, indent=1) + "\n")
-    organisator = set(organisator_namen(d)) & ({neu["wer"]} | {a["wer"] for a in alt})
-    rm.meldung_anlegen(o, organisator or {neu["wer"]}, "konflikt", auftrag["ziel"],
-                       f"{neu['wer']} will {neu['entscheidung']} {neu['ziel']}, aber {beschr}. Beides gilt nicht, bis ihr euch "
-                       f"einig seid; Claude legt dafür eine offene Frage an.", betroffen)
-    return beschr
 
 
 def offene_entscheidungen(reise):
@@ -1263,7 +1217,7 @@ def entscheiden(reise, d, h, wer, args):
     """Werkzeug entscheiden. Rolle, Status und Baustein sind schon geprüft. Der Dienst prüft die Entscheidung im Moment
     (Handbuch.entscheidung_pruefen). Mit Schreibweg (ADR-0001, O-3) schreibt er den Verlaufseintrag sofort in routen.yaml der
     Reise; ein Widerspruch zu einer anderen Organisator:in wird nicht übernommen, sondern eine offene Frage mit Meldung an beide.
-    Ohne Schreibweg (Übergang) hält er die Entscheidung als geprüften Auftrag fest (regeln.entscheidungsweg). -> (Text, ist_fehler)"""
+    -> (Text, ist_fehler)"""
     if not wer["name"]:
         return ("Entscheiden geht nur mit dem persönlichen Link: Jede Entscheidung gehört genau einer Person, und dieser Link "
                 "kennt keinen Namen. Ein:e Organisator:in kann mit person_einladen einen persönlichen Link ausstellen."), True
@@ -1281,7 +1235,8 @@ def entscheiden(reise, d, h, wer, args):
                      f"{beschr}. Einigen, dann entscheiden.")
             antwort, fehler = schreib_anfrage(reise, "frage_anlegen", {"person": wer.get("person"), "name": wer["name"], "rolle": wer["rolle"],
                                                                        "args": {"text": frage, "bis": "vor Abreise", "bezug": [daten_["wahlstelle"]]}})
-            fid = (antwort or {}).get("text", "").split(" ")[2] if antwort else None
+            m_ = re.search(r"\bF-\d+\b", (antwort or {}).get("text", "")) if antwort else None
+            fid = m_.group(0) if m_ else None
             o = rm.ordner(reise)
             organisator = set(organisator_namen(d)) & ({wer["name"]} | {x["wer"] for x in alt})
             if o is not None:
@@ -1289,7 +1244,8 @@ def entscheiden(reise, d, h, wer, args):
                                    f"{wer['name']} will {daten_['entscheidung']} {daten_['option']}, aber {beschr}. Beides gilt nicht, bis ihr "
                                    f"euch einig seid" + (f"; offene Frage {fid}" if fid else "") + ".", [])
             return (f"Nicht entschieden: {daten_['option']} {wort} zu setzen widerspricht einer anderen Entscheidung ({beschr}). Nichts wird "
-                    f"übernommen, bis ihr euch einig seid: " + (f"Dafür steht jetzt die offene Frage {fid}, und" if fid else "Es gibt dafür eine Meldung, und")
+                    f"übernommen, bis ihr euch einig seid: " + (f"Dafür steht jetzt die offene Frage{' ' + fid if fid else ''}, und" if antwort and not fehler
+                                                               else "Es gibt dafür eine Meldung, und")
                     + " alle beteiligten Organisator:innen bekommen sie zu sehen. Sag nie, etwas sei schon entschieden."), False
         rest = {k: args[k] for k in ("option", "status", "grund", "ersetzt_durch", "quelle") if args.get(k)}
         antwort, fehler = schreib_anfrage(reise, "entscheiden", {"person": wer.get("person"), "name": wer["name"], "rolle": wer["rolle"], "args": rest})
@@ -1299,30 +1255,8 @@ def entscheiden(reise, d, h, wer, args):
         if hinweise:
             z.append("Hinweise:\n" + "\n".join(f"- {x}" for x in hinweise))
         return "\n".join(z), False
-    # Übergang ohne Schreibweg: geprüfter Auftrag, das Einarbeiten zieht nach
-    regeln = regeln_von(d)
-    weg = regeln.get("entscheidungsweg") or VORGABEN["entscheidungsweg"]
-    daten_.update({"weg": weg, "geprueft": weg == "direkt"})
-    e, fehler = auftrag_anlegen(reise, daten_["option"], text_, daten_, name=wer["name"])
-    if fehler:
-        return f"Nicht gespeichert: {fehler}", True
-    k = konflikt_melden(reise, e, d)
-    if k:
-        return (f"Nicht entschieden: {daten_['option']} {wort} zu setzen widerspricht einer anderen Entscheidung ({k}). Nichts wird "
-                f"übernommen, bis ihr euch einig seid: Daraus wird eine offene Frage, und alle beteiligten Organisator:innen bekommen "
-                f"eine Meldung (festgehalten als {e['id']}). Sag nie, etwas sei schon entschieden."), False
-    z = []
-    if weg == "direkt":
-        z.append(f"Entscheidung {e['id']} geprüft und festgehalten: {daten_['option']} ist {wort} ({wer['name']}, "
-                 f"{datum_de(daten_['datum'])}, Grund: {daten_['grund']}). Sie gilt ab jetzt. Auf der Seite steht sie, sobald "
-                 "eingearbeitet ist (Sammelzeit, dann ein Lauf; den Stand zeigt rueckmeldungen).")
-    else:
-        z.append(f"Entscheidungsauftrag {e['id']} gespeichert: {daten_['option']} {wort} ({wer['name']}, "
-                 f"{datum_de(daten_['datum'])}). Auf dieser Reise gilt der Weg auftrag: Er wird erst in Claude Code geprüft und "
-                 "eingearbeitet, vorher ist nichts entschieden. Den Stand zeigt rueckmeldungen.")
-    if hinweise:
-        z.append("Hinweise:\n" + "\n".join(f"- {x}" for x in hinweise))
-    return "\n".join(z), False
+    return ("Bei dieser Instanz ist der Schreibweg nicht eingerichtet (engine/schreiben.py dienst, docs/betrieb.md); entscheiden geht "
+            "erst damit."), True
 
 
 def frage_beantworten(reise, d, h, wer, args):
@@ -1413,8 +1347,17 @@ def einladen(reise, d, wer, args, mit_konto=False):
                       or p["schluessel"] == (args.get("schluessel") or "").strip()), None)
     if vorhanden:
         if args.get("rolle") and rolle != vorhanden["rolle"]:
-            return (f"{vorhanden['name']} ist schon dabei, mit der Rolle {vorhanden['rolle']}. Die Rolle ändern ist eine "
-                    "Einstellung der Reise: auftrag_geben (ziel reise)."), True
+            # Rolle ändern: eine Einstellung der Reise, nur Organisator:innen, direkt nach reise.yaml (person_schreiben)
+            if not darf(wer["rolle"], "organisator"):
+                return f"{vorhanden['name']} ist schon dabei, mit der Rolle {vorhanden['rolle']}. Die Rolle ändern nur Organisator:innen.", True
+            if not schreibdienst():
+                return f"{vorhanden['name']} ist schon dabei, mit der Rolle {vorhanden['rolle']}. Die Rolle ändern geht erst mit eingerichtetem Schreibweg.", True
+            a_, fehler = schreib_anfrage(reise, "person_schreiben", {"person": wer.get("person"), "name": wer["name"], "rolle": wer["rolle"],
+                                                                     "args": {"schluessel": vorhanden["schluessel"], "rolle": rolle}})
+            if fehler:
+                return f"Rolle nicht geändert: {fehler}", True
+            return (f"{vorhanden['name']} hat jetzt die Rolle {rolle} (vorher {vorhanden['rolle']}); die Seite zeigt es in wenigen Minuten. "
+                    "Der Link bleibt derselbe."), False
         rolle, neu = vorhanden["rolle"], False
         schluessel = vorhanden["schluessel"]
     else:
@@ -1471,21 +1414,25 @@ def einladen(reise, d, wer, args, mit_konto=False):
           "mitwirkend": "Als Mitwirkende:r gibt sie Wünsche, Rückmeldungen, Aufgaben und Antworten; entscheiden kann sie nicht.",
           "organisator": "Als Organisator:in entscheidet sie mit, setzt Status und Einstellungen und lädt Personen ein."}[rolle]]
     if neu:
-        z.append("Auf der Seite steht die Person in wenigen Minuten." if schreibdienst() else "Auf der Seite steht die Person, sobald eingearbeitet ist.")
+        z.append("Auf der Seite steht die Person in wenigen Minuten.")
     return "\n".join(z), False
 
 
 def person_sichern(reise, wer, text_, schluessel, eintrag, name_von):
-    """Neue Person nach reise.yaml: mit Schreibweg direkt (person_schreiben), sonst als Auftrag für das Einarbeiten (Übergang)."""
-    if schreibdienst():
-        a, fehler = schreib_anfrage(reise, "person_schreiben", {"person": wer.get("person"), "name": name_von, "rolle": wer["rolle"],
-                                                                "args": {"schluessel": schluessel, "vorname": eintrag["name"], "rolle": eintrag["rolle"],
-                                                                         "reist": eintrag.get("reist", True), "notiz": eintrag.get("notiz")}})
-        if fehler:
-            sys.stderr.write(f"person_schreiben {reise}/{schluessel}: {fehler}\n")
-            auftrag_anlegen(reise, REISE_ZIEL, text_ + f" (Schreibweg: {fehler})", {"einladung": {"schluessel": schluessel, **eintrag}}, name=name_von)
+    """Neue Person nach reise.yaml über den Schreibweg (person_schreiben). Scheitert das, gilt die Person trotzdem schon
+    (einladungen.json); der Fehler steht im Protokoll und als Meldung an die Organisator:innen."""
+    if not schreibdienst():
+        sys.stderr.write(f"person_schreiben {reise}/{schluessel}: kein Schreibweg (KN_SCHREIBDIENST)\n")
         return
-    auftrag_anlegen(reise, REISE_ZIEL, text_, {"einladung": {"schluessel": schluessel, **eintrag}}, name=name_von)
+    a, fehler = schreib_anfrage(reise, "person_schreiben", {"person": wer.get("person"), "name": name_von, "rolle": wer["rolle"],
+                                                            "args": {"schluessel": schluessel, "vorname": eintrag["name"], "rolle": eintrag["rolle"],
+                                                                     "reist": eintrag.get("reist", True), "notiz": eintrag.get("notiz")}})
+    if fehler:
+        sys.stderr.write(f"person_schreiben {reise}/{schluessel}: {fehler}\n")
+        o = rm.ordner(reise)
+        if o is not None:
+            rm.meldung_anlegen(o, [name_von], "technik", "reise", f"{eintrag['name']} ist eingeladen (Zugang gilt), steht aber noch nicht "
+                               f"in der Reise: {fehler} Bitte noch einmal mit person_einladen oder dem Betreiber sagen.")
 
 
 # ---------- Konto: meine Reisen und neue Reise (Paket H) ----------
@@ -1522,8 +1469,8 @@ def person_entfernen(reise, d, wer, args):
     if not wer["name"] or p["name"].casefold() == wer["name"].casefold():
         return "Dich selbst nimmst du so nicht aus der Reise.", True
     if p["rolle"] == "organisator":
-        return (f"{p['name']} organisiert die Reise mit. Ein:e Organisator:in nimmt man nicht im Gespräch heraus; das ist eine "
-                "Einstellung der Reise (auftrag_geben, ziel reise)."), True
+        return (f"{p['name']} organisiert die Reise mit. Ein:e Organisator:in nimmt man nicht im Gespräch heraus; dafür sprechen "
+                "die Organisator:innen miteinander und ändern die Rolle (person_einladen mit anderer Rolle geht nicht), sonst der Betreiber."), True
     grund = str(args.get("grund") or "").strip()[:300]
     konten.entfernen(reise, p["schluessel"])
     with _sperre:
@@ -1538,22 +1485,19 @@ def person_entfernen(reise, d, wer, args):
             alle = rm.einladungen_lesen(o)
             alle.pop(p["schluessel"], None)
             rm.schreiben(o / "einladungen.json", json.dumps(alle, ensure_ascii=False, indent=1) + "\n")
-    elif schreibdienst():
+    else:
         # Niemand wird gestrichen (der Verlauf nennt die Person weiter): sie wird gast und reist nicht mehr
+        if not schreibdienst():
+            return "Zugang beendet; in die Reise schreiben geht erst mit eingerichtetem Schreibweg (docs/betrieb.md).", True
         a, fehler = schreib_anfrage(reise, "person_schreiben", {"person": wer.get("person"), "name": wer["name"], "rolle": wer["rolle"],
                                                                 "args": {"schluessel": p["schluessel"], "rolle": "gast", "reist": False,
                                                                          "notiz": f"ausgeschieden am {datum_de(datetime.date.today().isoformat())} ({wer['name']})"
                                                                                   + (f": {grund}" if grund else "")}})
         if fehler:
             return f"Zugang beendet, aber nicht in die Reise geschrieben: {fehler}", True
-    else:
-        auftrag_anlegen(reise, REISE_ZIEL, f"Person entfernen ({wer['name']}): {p['name']} (Schlüssel {p['schluessel']}) "
-                        "aus reise.yaml unter personen streichen; Verlauf und Beiträge bleiben."
-                        + (f" Grund: {grund}" if grund else ""), {"entfernen": {"schluessel": p["schluessel"]}},
-                        name=wer["name"])
     return (f"{p['name']} ist aus der Reise genommen: Zugang über Konto und Links endet sofort. "
             + ("" if p.get("eingeladen") else "In der Reise steht die Person als Gast, die nicht mitreist (der Verlauf nennt sie weiter); "
-               "die Seite zeigt es in wenigen Minuten." if schreibdienst() else "Auf der Seite verschwindet die Person nach dem nächsten Einarbeiten.")), False
+               "die Seite zeigt es in wenigen Minuten.")), False
 
 
 def einladen_per_mail(reise, d, o, wer, args, name, rolle, schluessel, neu, notiz, email):
@@ -1679,7 +1623,26 @@ def reise_anlegen(konto, args):
             f.write(json.dumps(e, ensure_ascii=False) + "\n")
             f.flush()
             os.fsync(f.fileno())
-        rm.anstossen(o)
+    if schreibdienst():
+        # ADR-0001, O-3: die Reise entsteht sofort über den Schreibweg; die Links kommen, sobald die Seite online ist
+        # (veroeffentlichen.sh stellt sie zu, Datei neue-reisen-ausstehend.jsonl im Dienstordner)
+        a, fehler = schreib_anfrage(neu["pfad"], "reise_anlegen", {"person": None, "name": konto["name"], "rolle": "organisator",
+                                                                   "args": {"auftrag": e}})
+        with _sperre:
+            rm.status_setzen(o, e["id"], "rueckfrage" if fehler else "uebernommen",
+                             f"Nicht angelegt: {fehler}" if fehler else f"Angelegt als {neu['pfad']}. Die Links stehen in meine_reisen, sobald die Seite online ist.")
+            if not fehler:
+                person = next(k_ for k_, p_ in neu["personen"].items() if p_["name"] == neu["wer"])
+                ausstehend_datei().parent.mkdir(parents=True, exist_ok=True)
+                with ausstehend_datei().open("a", encoding="utf-8") as f:
+                    f.write(json.dumps({"ordner": neu["pfad"], "aid": e["id"], "name": konto["name"], "person": person}, ensure_ascii=False) + "\n")
+        if fehler:
+            return f"Nicht angelegt: {fehler}", True
+        return (f"Die Reise „{neu['titel']}“ ist angelegt (Status Idee, Ordner {neu['pfad']}). In wenigen Minuten ist die Seite online; "
+                "dann steht die Reise in meine_reisen"
+                + (", und die Personen mit Adresse bekommen eine Einladung per Mail" if e.get("einladen") else
+                   ", mit dem Link zur Seite und dem Link für die Claude-App unter „Meldungen an dich“") + "."), False
+    rm.anstossen(o)
     if konto.get("konto_id"):
         return (f"Auftrag {e['id']} gespeichert: Die Reise „{neu['titel']}“ wird in der Regel in wenigen Minuten angelegt "
                 f"(Status Idee, Ordner {neu['pfad']}). Danach steht sie in meine_reisen"
@@ -2031,18 +1994,6 @@ WERKZEUGE += [
          "kommentar": {"type": "string", "description": "kurze Notiz für den Verlauf"},
          "name": NAME_FELD}, "required": ["id"]}},
 ]
-AUFTRAG = {"name": "auftrag_geben", "description": "Nur für Organisator:innen: Änderungsauftrag an die Reise, z. B. eine Option "
-           "wählen oder verwerfen, eine offene Frage schließen, einen Tag ändern. Ändert NICHTS sofort: Der Auftrag wird "
-           "automatisch geprüft (Quellen, Regeln) und in der Regel in wenigen Minuten übernommen; den Stand zeigt rueckmeldungen. Klar und vollständig "
-           "formulieren, bei Entscheidungen auch den Grund.",
-           "inputSchema": {"type": "object", "properties": {
-               "ziel": {**ZIEL_FELD, "description": ZIEL_FELD["description"] + "; leer lassen, wenn es um mehreres geht"},
-               "entscheidung": {"type": "string", "enum": list(ENTSCHEIDUNGEN),
-                                "description": "nur wenn der Auftrag eine Entscheidung ist: gewaehlt, verworfen oder ersetzt "
-                                "(ziel = die Option oder Wahlstelle, über die entschieden wird). Widerspricht sie der "
-                                "Entscheidung einer anderen Organisator:in, wird daraus eine offene Frage; sonst leer lassen."},
-               "auftrag": {"type": "string", "description": "was geändert werden soll, max. 4000 Zeichen"}},
-               "required": ["auftrag"]}}
 # Ontologie der Reise im Gespräch (ADR-0001, O-3; docs/ontologie.md): die Software kennt nur die Form, die Reise ihre Arten
 ART_DEFINIEREN = {"name": "art_definieren", "description": "Eine Art dieser Reise anlegen oder ändern (Hotel, Refugi, Ryokan, "
                   "Zugfahrt, Reiseteil …). Organisator:innen schreiben damit direkt in die Ontologie der Reise (plan/arten.yaml): "
@@ -2206,6 +2157,19 @@ RUECKMELDUNG_ERLEDIGEN = {"name": "rueckmeldung_erledigen", "description": "Nur 
                               "status": {"type": "string", "enum": ["uebernommen", "verworfen", "rueckfrage"]},
                               "kommentar": {"type": "string", "description": "für die Person, die die Rückmeldung gab"},
                               "vorname": NAME_FELD}, "required": ["id", "status", "kommentar"]}}
+REISE_STATUS_SETZEN = {"name": "reise_status_setzen", "description": "Nur für Organisator:innen: den Status der Reise wechseln (idee, planung, "
+                       "fest, unterwegs, danach, archiv), mit Grund; schreibt sofort mit Verlauf in die Reise. Wächter und Seite melden den "
+                       "fälligen Wechsel, wechseln ihn aber nie selbst. Vorher kurz bestätigen lassen.",
+                       "inputSchema": {"type": "object", "properties": {
+                           "status": {"type": "string", "enum": ["idee", "planung", "fest", "unterwegs", "danach", "archiv"]},
+                           "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["status", "grund"]}}
+EINSTELLUNG_SETZEN = {"name": "einstellung_setzen", "description": "Nur für Organisator:innen: Bausteine der Reise (vollständige Liste, z. B. "
+                      "varianten, karte, tagesseiten, rueckmeldungen, fragen, aufgaben, wuensche, waechter) oder Spielregeln (regeln, z. B. einladen: "
+                      "mitwirkend, waechter_frist_tage: 45) setzen; schreibt sofort, der alte Wert steht im Verlauf.",
+                      "inputSchema": {"type": "object", "properties": {
+                          "bausteine": {"type": "array", "items": {"type": "string"}},
+                          "regeln": {"type": "object", "additionalProperties": True},
+                          "grund": {"type": "string"}, "vorname": NAME_FELD}}}
 WERT_SCHEMA_EINTRAG = {"type": "object", "properties": {
     "wert": {"type": "string"}, "gilt": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}],
              "description": "Datum JJJJ-MM-TT oder Liste, wenn der Wert nur für diese Tage gilt (Preis je Nacht)"},
@@ -2355,42 +2319,34 @@ def anleitung(zugang, d):
     weg = regeln.get("entscheidungsweg") or VORGABEN["entscheidungsweg"]
     einladen_ab = regeln.get("einladen") or VORGABEN["einladen"]
     kann_einladen = darf(wer["rolle"], einladen_ab)
+    direkt = schreibdienst()
     if wer["rolle"] == "organisator":
         z.append(f"{name} (Organisator:in). Entscheidungen über Optionen einer Wahlstelle trägst du mit entscheiden ein (Option, "
                  "Status, Grund; vorher kurz bestätigen lassen). "
                  + ("Der Dienst prüft im selben Moment, lehnt Unstimmiges mit Begründung ab und schreibt die Entscheidung mit Datum, "
-                    "Person und Grund in den Plan; sie gilt ab jetzt, die Seite zeigt sie in wenigen Minuten. Den Plan selbst (welche "
-                    "Nacht welche Wahlstelle nutzt, Strecken eines Tags) änderst du mit tag_aendern. " if schreibdienst() else
-                    "Auf dieser Reise gilt der Weg direkt: Der Dienst prüft im selben Moment, lehnt Unstimmiges mit Begründung ab "
-                    "und hält die Entscheidung mit Datum fest; sie gilt dann, auf der Seite steht sie nach dem nächsten "
-                    "Einarbeiten. " if weg == "direkt" else
-                    "Auf dieser Reise gilt der Weg auftrag: Eine Entscheidung ist ein Auftrag und gilt erst, wenn sie in Claude "
-                    "Code geprüft und eingearbeitet ist; sag nie, es sei schon entschieden. ")
+                    "Person und Grund in den Plan; sie gilt ab jetzt, die Seite zeigt sie in wenigen Minuten. " if direkt else
+                    "Ohne eingerichteten Schreibweg geht Entscheiden nicht; der Betreiber richtet ihn ein. ")
                  + "Widerspricht sie der einer anderen Organisator:in, wird daraus eine offene Frage, und alle Beteiligten bekommen "
-                 "eine Meldung. Andere Wünsche zu Änderungen gibst du mit auftrag_geben weiter. Personen lädst du mit "
+                 "eine Meldung. Personen lädst du mit "
                  + ("person_einladen und ihrer E-Mail-Adresse ein (die Rolle gilt sofort, die Einladung kommt per Mail); "
                     "mit person_entfernen nimmst du jemanden heraus. " if "konto_id" in zugang else
                     "person_einladen ein (Rolle und Link gelten sofort). ")
-                 + "Fragen (F-…) kannst du mit frage_beantworten beantworten. "
-                 "Den Stand zeigt rueckmeldungen."
-                 + (" Die Ontologie der Reise (welche Arten von Unterkünften, Strecken und Reiseteilen es gibt und was zu jeder "
-                    "bekannt sein muss) legt die Person im Gespräch fest und schärft sie: art_definieren und merkmal_definieren "
-                    "schreiben sofort in die Reise (merkmale zeigt den Stand). Frag bei einer neuen Art, was zu jeder Sache dieser "
-                    "Art bekannt sein muss und was davon sich ändern kann; bestätige vor dem Eintragen den Wortlaut. Werte zu einer "
-                    "Unterkunft, Strecke oder Option (Preis, Frühstück, Öffnung, Dauer) trägst du mit wert_eintragen ein, immer mit Herkunft "
-                    "und bei Veränderlichem mit Prüfdatum; recherchiere sie zuerst selbst (merkmale sagt, wo). Rückmeldungen von der "
-                    "Seite (rueckmeldungen) arbeitest du im Gespräch ein: Inhalt prüfen und mit den Werkzeugen eintragen, dann "
-                    "rueckmeldung_erledigen mit Kommentar in einfachen Worten. Wissen (Geschichte, Praxis) hältst du mit wissen_schreiben "
-                    "fest, in eigenen Worten mit Herkunft; Fragen schließt du mit frage_schliessen."
-                    if schreibdienst() else ""))
+                 + "Den Stand zeigt rueckmeldungen."
+                 + (" Du schreibst direkt in die Reise, geprüft von Regeln: Arten und Merkmale (art_definieren, merkmal_definieren; bei einer "
+                    "neuen Art fragen, was zu jeder Sache bekannt sein muss und was sich ändern kann), Werte mit Herkunft und Prüfdatum "
+                    "(wert_eintragen; erst selbst recherchieren, merkmale sagt wo), Unterkünfte, Strecken, Orte (ding_anlegen, ding_aendern), "
+                    "Alternativen (option_anlegen, wahlstelle_anlegen), der Plan eines Tags (tag_aendern), Wissen in eigenen Worten mit "
+                    "Herkunft (wissen_schreiben), Fragen (frage_anlegen, frage_beantworten, frage_schliessen), Status und Einstellungen "
+                    "(reise_status_setzen, einstellung_setzen). Rückmeldungen der Seite arbeitest du ein: prüfen, eintragen, dann "
+                    "rueckmeldung_erledigen mit Kommentar in einfachen Worten. Vor jedem Eintragen den Wortlaut bestätigen lassen."
+                    if direkt else ""))
     elif wer["rolle"] == "mitwirkend":
-        z.append(f"{name} (Mitwirkende:r). Ihre Hinweise sind Vorschläge, keine Entscheidungen: Entscheiden und Aufträge geben "
+        z.append(f"{name} (Mitwirkende:r). Ihre Hinweise sind Vorschläge, keine Entscheidungen: Entscheiden "
                  f"kann sie nicht, das bleibt bei {namen}. Offene Fragen beantwortet sie mit frage_beantworten. "
-                 + ("Arten und Merkmale der Reise kann sie mit art_definieren und merkmal_definieren vorschlagen (wird eine "
-                    "Rückmeldung an die Organisator:innen). Werte zu einer Unterkunft, Strecke oder Option (Preis, Frühstück, "
-                    "Öffnung, Dauer) trägt sie mit wert_eintragen direkt ein, immer mit Herkunft und bei Veränderlichem mit "
-                    "Prüfdatum; Wissen mit wissen_schreiben (eigene Worte, Herkunft). Eine neue Alternative legt sie an: ding_anlegen (die Unterkunft oder Strecke) und option_anlegen an der "
-                    "Wahlstelle, Status vorgeschlagen. " if schreibdienst() else "")
+                 + ("Sie schreibt direkt in die Reise: Werte mit Herkunft und Prüfdatum (wert_eintragen), Unterkünfte, Strecken, Orte "
+                    "(ding_anlegen, ding_aendern), Alternativen als Vorschlag (option_anlegen, wahlstelle_anlegen), Wissen in eigenen Worten "
+                    "mit Herkunft (wissen_schreiben), Fragen (frage_anlegen). Arten und Merkmale schlägt sie mit art_definieren und "
+                    "merkmal_definieren vor (wird eine Rückmeldung). " if direkt else "")
                  + ("Sie darf Personen einladen (person_einladen), höchstens mit der Rolle mitwirkend. " if kann_einladen else "")
                  + ("" if wer["name"] else "Für Rückmeldungen und Aufgaben brauchst du ihren Vornamen: einmal fragen, "
                     "nicht raten, dann im Gespräch beibehalten. ")
@@ -2472,32 +2428,6 @@ def werkzeug(zugang, name, args):
         if fehler:
             return f"Nicht gespeichert: {fehler}", True
         return f"Gespeichert als {antwort['id']} (Status neu). Wird beim nächsten Einarbeiten geprüft.", False
-    if name == "auftrag_geben":
-        if not organisator:
-            return "Aufträge können nur Organisator:innen geben. Bitte rueckmeldung_geben nutzen.", True
-        auftrag = args.get("auftrag", "")
-        ziel = args.get("ziel", "")
-        entscheidung = args.get("entscheidung") or ""
-        if not isinstance(auftrag, str) or not isinstance(ziel, str) or not isinstance(entscheidung, str):
-            return "Auftrag, ID und Entscheidung müssen Text sein.", True
-        if entscheidung and entscheidung not in ENTSCHEIDUNGEN:
-            return f"Entscheidung muss eine von {', '.join(ENTSCHEIDUNGEN)} sein (oder leer bleiben).", True
-        if entscheidung and not ziel.strip():
-            return "Eine Entscheidung braucht die ID, über die entschieden wird (ziel, z. B. V-01.b).", True
-        e, fehler = auftrag_anlegen(reise, ziel, auftrag, {"entscheidung": entscheidung} if entscheidung else None,
-                                    name=wer["name"] or "Organisator:in")
-        if fehler:
-            return f"Nicht gespeichert: {fehler}", True
-        text_ = (f"Auftrag {e['id']} gespeichert. Er wird automatisch geprüft und in der Regel "
-                 "in wenigen Minuten eingearbeitet, bis dahin bleibt die Reise unverändert.")
-        if entscheidung:
-            k = konflikt_melden(reise, e, d)
-            if k:
-                text_ = (f"Auftrag {e['id']} gespeichert, aber er widerspricht einer anderen Entscheidung ({k}). "
-                         "Nichts wird übernommen: Daraus wird eine offene Frage, und alle beteiligten Organisator:innen bekommen eine "
-                         "Meldung. Sag nie, etwas sei schon entschieden.")
-        return text_, False
-
     d = daten(reise)
     if d is None:
         return "Die Seite dieser Reise ist noch nicht veröffentlicht.", True
@@ -2614,8 +2544,8 @@ def werkzeuge_fuer(zugang):
     _, bausteine = zustand_von(d)
     werkzeuge = []
     ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN, WERT_EINTRAGEN, DING_ANLEGEN, DING_AENDERN, LAGE_EINTRAGEN, OPTION_ANLEGEN, WAHLSTELLE_ANLEGEN,
-                 FRAGE_ANLEGEN, TAG_AENDERN, WISSEN_SCHREIBEN, FRAGE_SCHLIESSEN] if schreibdienst() else []
-    for w in WERKZEUGE + [AUFTRAG, ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN, RUECKMELDUNG_ERLEDIGEN] + ontologie:
+                 FRAGE_ANLEGEN, TAG_AENDERN, WISSEN_SCHREIBEN, FRAGE_SCHLIESSEN, REISE_STATUS_SETZEN, EINSTELLUNG_SETZEN] if schreibdienst() else []
+    for w in WERKZEUGE + [ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN, RUECKMELDUNG_ERLEDIGEN] + ontologie:
         n = w["name"]
         if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:
             continue
@@ -2626,7 +2556,7 @@ def werkzeuge_fuer(zugang):
             continue
         if n in SCHREIB_AKTION:
             aktionen = ["rueckmeldung", "wunsch"] if n == "rueckmeldung_geben" else [SCHREIB_AKTION[n]]
-            if not any(recht(wer["rolle"], d, a) is None for a in aktionen) and not (n == "auftrag_geben" and darf(wer["rolle"], "organisator")):
+            if not any(recht(wer["rolle"], d, a) is None for a in aktionen):
                 continue
             if n in ZUSATZ_AKTION and recht(wer["rolle"], d, ZUSATZ_AKTION[n]) is not None:
                 continue
