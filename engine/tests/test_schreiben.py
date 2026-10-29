@@ -357,6 +357,54 @@ def test_dienst_nur_fuer_den_konnektor_und_mit_dem_code_der_arbeitskopie(repo):
         sb.Dienst.schreiber = None
 
 
+def test_sperre_je_reise_und_begrenzte_wartezeit(repo, monkeypatch):
+    import fcntl
+    wurzel, _, arbeit, _ = repo
+    s = sb.Schreiber(wurzel, arbeit)
+    monkeypatch.setattr(sb, "ZEIT_SPERRE", 0.2)
+    anfrage = {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}}
+    with open(sb.sperrdatei("beispielreise"), "w") as f:      # ein Vorgang dieser Reise hängt
+        fcntl.flock(f, fcntl.LOCK_EX)
+        code, a = sb.anwenden_extern(s, "beispielreise", "art_definieren", anfrage)
+        assert code == 429 and not a["ok"] and "gleich noch einmal" in a["fehler"]
+        # eine andere Reise wartet nicht darauf (hier: gibt es im Repo nicht, aber die Sperre hält sie nicht auf)
+        code, a = sb.anwenden_extern(s, "andere-reise", "art_definieren", anfrage)
+        assert code == 422 and "gibt es im Repo nicht" in a["fehler"]
+    code, a = sb.anwenden_extern(s, "beispielreise", "art_definieren", anfrage)
+    assert code == 200 and a["ok"]
+
+
+def test_ablehnungsgrund_steht_im_protokoll(repo, capsys):
+    wurzel, _, arbeit, _ = repo
+    s = sb.Schreiber(wurzel, arbeit)
+    code, a = sb.anwenden_extern(s, "beispielreise", "art_definieren", {**KARL, "args": {"bezeichnung": "X", "grundform": "aufenthalt"}})
+    assert code == 422
+    err = capsys.readouterr().err
+    zeile = next(z for z in err.splitlines() if z.startswith("Abgelehnt"))
+    assert zeile.startswith("Abgelehnt art_definieren 422: ") and "Organisator" in zeile and len(zeile) < 260
+
+
+def _abbruch_im_anwenden(repo, monkeypatch, capsys, origin_kaputt=True):
+    """Ein Vorgang, dessen Anwenden die Frist überschreitet (Arbeitskopie steht, Vorbereiten tut nichts). -> (Code, Antwort, Protokoll)"""
+    wurzel, _, arbeit, _ = repo
+    s = sb.Schreiber(wurzel, arbeit)
+    anfrage = {**IDA, "args": {"bezeichnung": "X", "grundform": "aufenthalt"}}
+    sb.anwenden_extern(s, "beispielreise", "art_definieren", {**anfrage, "args": {"bezeichnung": "Vorlauf", "grundform": "aufenthalt"}})
+    capsys.readouterr()
+    if origin_kaputt:
+        git(wurzel, "remote", "set-url", "origin", str(wurzel / "gibt-es-nicht.git"))   # die Ergebnisprüfung kommt nicht ans Ziel
+    monkeypatch.setattr(sb.Schreiber, "vorbereiten", lambda self: None)
+    monkeypatch.setattr(sb, "ZEIT_GESAMT", 0.05)
+    code, a = sb.anwenden_extern(s, "beispielreise", "art_definieren", anfrage)
+    return code, a, capsys.readouterr().err
+
+
+def test_zu_langsamer_vorgang_gibt_meldung_in_der_zeit(repo, monkeypatch, capsys):
+    code, a, err = _abbruch_im_anwenden(repo, monkeypatch, capsys)
+    assert code == 504 and not a["ok"] and "prüfen, ob es angekommen ist" in a["fehler"]
+    assert "Zeit art_definieren 504: abgebrochen, ungeprüft" in err
+
+
 def test_arten_text_ist_die_form_der_datei():
     text = sb.arten_text({"hotel": {"grundform": "aufenthalt", "name": "Hotel", "merkmale": {"preis": {"name": "Preis", "typ": "geld"}}}},
                          "Probe.")
@@ -927,3 +975,99 @@ def test_gemeinsame_frage_bleibt_offen_bis_alles_gewaehlt(repo):
     s.vorbereiten()
     a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-03.b", "status": "gewaehlt", "grund": "Abendessen"}})
     assert "Frage F-01 ist damit geklärt" in a["text"], a["text"]
+
+
+def test_zeitgrenzen_liegen_unter_der_des_konnektors():
+    import re
+    conf = (WURZEL / "betrieb" / "vorlagen" / "nginx-konnektor.conf").read_text()
+    grenze = int(re.search(r"proxy_read_timeout (\d+)s", conf).group(1))
+    assert sb.ZEIT_GESAMT + sb.ZEIT_PRUEFUNG < grenze
+    assert sb.ZEIT_SPERRE <= sb.ZEIT_GESAMT
+
+
+def test_haengendes_vorbereiten_gibt_504_in_der_zeit(repo, monkeypatch):
+    import time
+    wurzel, _, arbeit, _ = repo
+    s = sb.Schreiber(wurzel, arbeit)
+    git(wurzel, "config", "protocol.ext.allow", "always")
+    git(wurzel, "remote", "set-url", "origin", "ext::sleep 5")      # git fetch hängt
+    monkeypatch.setattr(sb, "ZEIT_GESAMT", 1)
+    start = time.monotonic()
+    code, a = sb.anwenden_extern(s, "beispielreise", "art_definieren", {**IDA, "args": {"bezeichnung": "X", "grundform": "aufenthalt"}})
+    assert time.monotonic() - start < 1 + sb.ZEIT_PRUEFUNG + 0.5
+    assert code == 504 and not a["ok"] and "nicht eingetragen" in a["fehler"]
+
+
+def test_veroeffentlichen_startet_mit_niedriger_prioritaet(repo, monkeypatch):
+    wurzel, _, arbeit, _ = repo
+    s = sb.Schreiber(wurzel, arbeit)
+    gerufen = []
+
+    class Stummel:
+        def __init__(self, argv, *a, **k):
+            gerufen.append(argv)
+
+    monkeypatch.setattr(sb.subprocess, "Popen", Stummel)
+    s.veroeffentlichen_anstossen()
+    argv = gerufen[0]
+    assert argv[0] == "nice" and "ionice" in argv and argv[-1] == s.veroeffentlichen
+
+
+def test_nach_abbruch_sagt_die_antwort_ob_eingetragen_wurde(repo, monkeypatch, capsys):
+    wurzel, _, arbeit, _ = repo
+    # Die Prüfung selbst: Kennung auf origin/main gefunden / nicht gefunden
+    monkeypatch.setenv("FR_VORGANG", "k4711")
+    monkeypatch.setattr(sb.Schreiber, "veroeffentlichen_anstossen", lambda self: None)   # sys.stderr hat unter capsys keinen Dateideskriptor
+    s = schreiber(repo)
+    s.schreiben("beispielreise", "art_definieren", {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}})
+    assert "Frieda-Vorgang: k4711" in git(wurzel, "log", "-1", "--format=%B", "origin/main")
+    assert sb.vorgang_eingetragen(s, "k4711") is True
+    assert sb.vorgang_eingetragen(s, "k0815") is False
+    # Die Antworten nach einem Abbruch im Anwenden
+    for ergebnis, code_soll, ok_soll, text, zeile in [(True, 200, True, "ist aber eingetragen", "eingetragen"),
+                                                      (False, 504, False, "nicht eingetragen", "nicht eingetragen"),
+                                                      (None, 504, False, "prüfen, ob es angekommen ist", "ungeprüft")]:
+        monkeypatch.setattr(sb, "vorgang_eingetragen", lambda s_, kennung, e=ergebnis: e)
+        code, a, err = _abbruch_im_anwenden(repo, monkeypatch, capsys, origin_kaputt=False)
+        assert code == code_soll and a["ok"] is ok_soll, (ergebnis, code, a)
+        assert text in (a.get("text") or a.get("fehler") or "")
+        assert f"Fertig art_definieren {code_soll} in " in err
+        assert f"Zeit art_definieren 504: abgebrochen, {zeile}" in err
+
+
+def test_kommando_mit_frist_beendet_die_ganze_prozessgruppe(tmp_path):
+    import time
+    pidfile = tmp_path / "enkel.pid"
+    with pytest.raises(subprocess.TimeoutExpired):
+        sb.befehl_mit_frist(["sh", "-c", f"sleep 30 & echo $! > {pidfile}; wait"], "", 0.5)
+    pid = int(pidfile.read_text())
+    for _ in range(40):
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return
+        time.sleep(0.05)
+    os.kill(pid, 9)
+    pytest.fail("Der Enkelprozess läuft nach der Frist weiter")
+
+
+def test_dauer_steht_im_protokoll(repo, monkeypatch, capsys):
+    import fcntl
+    import re
+    wurzel, _, arbeit, _ = repo
+    s = sb.Schreiber(wurzel, arbeit)
+    anfrage = {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}}
+    muster = re.compile(r"^Fertig art_definieren (\d{3}) in \d+\.\d s$", re.M)
+
+    def codes():
+        return muster.findall(capsys.readouterr().err)
+
+    sb.anwenden_extern(s, "beispielreise", "art_definieren", anfrage)                               # Erfolg
+    assert codes() == ["200"]
+    sb.anwenden_extern(s, "beispielreise", "art_definieren", {**KARL, "args": anfrage["args"]})      # abgelehnt
+    assert codes() == ["422"]
+    monkeypatch.setattr(sb, "ZEIT_SPERRE", 0.1)
+    with open(sb.sperrdatei("beispielreise"), "w") as f:                                             # Sperre belegt
+        fcntl.flock(f, fcntl.LOCK_EX)
+        sb.anwenden_extern(s, "beispielreise", "art_definieren", anfrage)
+    assert codes() == ["429"]
