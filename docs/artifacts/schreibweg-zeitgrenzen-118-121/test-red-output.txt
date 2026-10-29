@@ -1,6 +1,6 @@
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
-rootdir: /home/hem/frieda-reist/.claude/worktrees/hashed-noodling-crown
+rootdir: <arbeitskopie>/.claude/worktrees/hashed-noodling-crown
 collected 34 items / 25 deselected / 9 selected
 
 engine/tests/test_schreiben.py ..FFFFFFF                                 [100%]
@@ -35,7 +35,7 @@ origin_kaputt = True
             git(wurzel, "remote", "set-url", "origin", str(wurzel / "gibt-es-nicht.git"))   # die Ergebnisprüfung kommt nicht ans Ziel
         monkeypatch.setattr(sb.Schreiber, "vorbereiten", lambda self: None)
 >       monkeypatch.setattr(sb, "ZEIT_GESAMT", 0.05)
-E       AttributeError: <module 'schreiben' from '/home/hem/frieda-reist/.claude/worktrees/hashed-noodling-crown/engine/schreiben.py'> has no attribute 'ZEIT_GESAMT'
+E       AttributeError: <module 'schreiben' from '<arbeitskopie>/.claude/worktrees/hashed-noodling-crown/engine/schreiben.py'> has no attribute 'ZEIT_GESAMT'
 
 engine/tests/test_schreiben.py:352: AttributeError
 _______________ test_zeitgrenzen_liegen_unter_der_des_konnektors _______________
@@ -61,7 +61,7 @@ monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x73d06911fd40>
         git(wurzel, "config", "protocol.ext.allow", "always")
         git(wurzel, "remote", "set-url", "origin", "ext::sleep 5")      # git fetch hängt
 >       monkeypatch.setattr(sb, "ZEIT_GESAMT", 1)
-E       AttributeError: <module 'schreiben' from '/home/hem/frieda-reist/.claude/worktrees/hashed-noodling-crown/engine/schreiben.py'> has no attribute 'ZEIT_GESAMT'
+E       AttributeError: <module 'schreiben' from '<arbeitskopie>/.claude/worktrees/hashed-noodling-crown/engine/schreiben.py'> has no attribute 'ZEIT_GESAMT'
 
 engine/tests/test_schreiben.py:909: AttributeError
 ____________ test_veroeffentlichen_startet_mit_niedriger_prioritaet ____________
