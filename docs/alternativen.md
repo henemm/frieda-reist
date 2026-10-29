@@ -65,6 +65,8 @@ U-01:
 
 Im Ergebnis trägt der Wert dann `je_datum`; `routen.gilt_am(wert, "2027-03-05")` liefert den Eintrag für ein Datum. Ansichten ohne Datum zeigen den Wert ohne `gilt`, sonst den ersten.
 
+Seit 29.10.2026 (ADR-0001, O-3) trägt der AI-Client Werte mit `wert_eintragen` direkt ein (`docs/konnektor.md`): mit Herkunft, bei veränderlichen Merkmalen mit Prüfdatum; der Schreibweg ersetzt den Wert für dieselben Tage und hält den alten im Verlauf (Repo-Geschichte). Die Kurzform ohne Quelle gibt es für neue Werte nicht mehr.
+
 Erlaubte Felder je Wert: `wert`, `quelle`, `geprueft` (Datum), `notiz`, `gilt` (Datum oder Liste von Daten). Ein fehlender Wert wird weggelassen, nicht leer eingetragen. Bei Widerspruch zwischen Quellen gilt `unklar` mit Notiz, sofern das Merkmal eine Auswahl ist. Unbekannte Merkmale, falsche Auswahlwerte und eingetragene `auto`-Merkmale sind Fehler. Die Seite wird dann nicht gebaut.
 
 ## Regeln zwischen Optionen

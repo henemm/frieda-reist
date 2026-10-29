@@ -89,7 +89,7 @@ Ein Merkmal ist eine Definition in `arten.yaml` und ein Wert am Ding.
 | `einheit` | Anzeige hinter Zahlen |
 | `auch` | weitere Namen, unter denen dasselbe gemeint ist (Zuordnung ähnlicher Vorschläge innerhalb der Reise) |
 
-Ein **Wert** am Ding: `{wert, quelle, geprueft, notiz, gilt}`; mehrere Werte je Datum als Liste mit `gilt` (`docs/alternativen.md`). Ein Wert ohne Herkunft ist ein Fehler, sobald der Konnektor direkt schreibt (Paket O-3).
+Ein **Wert** am Ding: `{wert, quelle, geprueft, notiz, gilt}`; mehrere Werte je Datum als Liste mit `gilt` (`docs/alternativen.md`). Ein Wert ohne Herkunft wird abgelehnt, seit der Konnektor direkt schreibt (Paket O-3, `wert_eintragen`); Bestandswerte ohne Quelle bleiben lesbar.
 
 Die Software prüft nur die Form: bekannte Felder, erlaubte Typen und Stufen, Auswahlwerte, Prüfdatum bei Veränderlichem, dass jede Art genau eine Grundform hat und jedes Ding eine bekannte Art. Ob „Frühstück“ für ein Refugi sinnvoll ist, entscheidet die Reise.
 
@@ -124,4 +124,5 @@ Eine Art kann eine `farbe` aus der Palette der Seite tragen: `blau`, `braun`, `l
 - Paket O-0 (28.10.2026, frieda-reist #88): Stufen je Reise als Brücke.
 - Paket O-1 (frieda-reist #89): `arten.yaml` je Reise, Grundliste und Kategorien entfallen; Paket O-2 (#90): Ableitung der `arten.yaml` beider laufenden Reisen aus ihren Bestandsdaten ohne ID-Änderung (`neu.py arten-ableiten <reise>`), danach Prüfung im Gespräch.
 - Paket O-3, Schritt 1 (29.10.2026, frieda-reist #91): Schreibweg `engine/schreiben.py` und die Werkzeuge `art_definieren`, `merkmal_definieren`; Arten und Merkmale entstehen im Gespräch und landen sofort in `plan/arten.yaml` der Reise.
-- Später: Aufenthalt ohne Nacht und Buchung als eigene Dinge (Paket O-5, O-7); Werte, Dinge, Wahlstellen, Entscheidungen, Fragen und Wissen über den Schreibweg (O-3, weitere Schritte).
+- Paket O-3, Schritt 2 (29.10.2026): `wert_eintragen` schreibt Werte an Unterkünften, Strecken und Optionen sofort nach `plan/routen.yaml`; ein Wert ohne Herkunft wird abgelehnt, ein veränderlicher ohne Prüfdatum auch.
+- Später: Aufenthalt ohne Nacht und Buchung als eigene Dinge (Paket O-5, O-7); Dinge, Wahlstellen, Entscheidungen, Fragen und Wissen über den Schreibweg (O-3, weitere Schritte).

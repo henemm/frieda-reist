@@ -88,6 +88,8 @@ AKTIONEN = {
     "entfernen":    {"rolle": "organisator", "baustein": None, "ab": ("alles", "nachlese")},
     # ADR-0001, O-3: Arten und Merkmale der Reise (ihre Ontologie) im Gespräch festlegen; Mitwirkende schlagen vor (Rückmeldung)
     "ontologie":    {"rolle": "organisator", "baustein": None, "ab": ("alles",)},
+    # O-3: Werte an Unterkünften, Strecken und Optionen eintragen (mit Herkunft und Prüfdatum); Mitwirkende und Organisator:innen
+    "wert":         {"rolle": "mitwirkend", "baustein": None, "ab": ("alles",)},
 }
 # Lesende Konnektor-Werkzeuge, die zu einem zuschaltbaren Baustein gehören
 LESE_BAUSTEIN = {"offene_fragen": "fragen", "varianten": "varianten", "merkmale": "varianten",

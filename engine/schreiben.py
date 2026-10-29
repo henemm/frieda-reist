@@ -1,7 +1,7 @@
 """Schreibweg: Der Konnektor schreibt direkt in die Ontologie der Reise (ADR-0001, Paket O-3).
 
 Frieda enthält keine KI. Was im AI-Client (Claude-App) erarbeitet wird, kommt über den Konnektor hierher und wird
-sofort geschrieben: in das Reisen-Repo (zuerst plan/arten.yaml, die Arten und Merkmale der Reise), geprüft mit einem
+sofort geschrieben: in das Reisen-Repo (plan/arten.yaml: Arten und Merkmale; plan/routen.yaml: Werte an Dingen), geprüft mit einem
 Probebau, gesichert als Commit mit Person und Werkzeug, nach main gebracht und veröffentlicht. Dieses Modul ist die
 einzige Stelle, an der ein Dienst Reisedateien ändert.
 
@@ -22,6 +22,8 @@ nur mit dem, was der Konnektor sagt), Form der Arten und Merkmale (docs/ontologi
 alles andere, was der Generator prüft). Lehnt der Schreibweg ab, bleibt die Arbeitskopie unverändert und der AI-Client
 bekommt den Grund in einfachen Worten.
 
+Aufruf von Hand: `schreiben.py vorbereiten` (Arbeitskopie anlegen), `schreiben.py normalisieren <reise>` (Routendatei in die Form
+bringen, die der Schreibweg schreibt; in einer Sitzung im Reisen-Repo).
 Für Tests überschreibbar: SB_VEROEFFENTLICHEN (Skript statt betrieb/veroeffentlichen.sh), FR_SCHREIBKOPIE, FR_SB_PORT.
 """
 import datetime
@@ -47,7 +49,7 @@ MAX_BODY = 64 * 1024
 MAX_TEXT = 500          # Namen, Hilfe, Fragen, Beschreibungen
 MAX_WERTE = 20
 ZEIT_ANWENDEN = 150     # Sekunden für einen Schreibvorgang (fetch, Probebau, push)
-AKTION = "ontologie"    # Aktion der Regelprüfung (reise.AKTIONEN)
+AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "wert_eintragen": "wert"}   # reise.AKTIONEN
 ARTEN_KOPF = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). {herkunft}\n"
               "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (Gliederung des\n"
               "# Lesetexts: je Rubrik name und hilfe); je Merkmal: name, typ,\n"
@@ -357,7 +359,237 @@ def merkmal_definieren(reise_dir, wer, args):
     return titel, text + (f" Grund: {grund}." if grund else "")
 
 
-WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_definieren}
+# ---------- Werte an Dingen (plan/routen.yaml) ----------
+# Die Routendatei wird mit ruamel.yaml rund gelesen und geschrieben: Kommentare, Reihenfolge und Fließform bleiben; nur von
+# Hand umbrochene Fließ-Mappings werden in eine Zeile gezogen (einmalige Normalform, danach ändert ein Schreibvorgang nur seine Stelle).
+ZIEL_MUSTER = re.compile(r"^(U-\d+|E-\d+[A-Za-z]?|V-\d+\.[a-z])$")
+
+
+def yaml_rund():
+    from ruamel.yaml import YAML
+    y = YAML()
+    y.preserve_quotes = True
+    y.width = 4096
+    y.indent(mapping=2, sequence=4, offset=2)
+    return y
+
+
+def routen_laden(reise_dir):
+    p = Path(reise_dir) / "plan" / "routen.yaml"
+    if not p.exists():
+        raise Ablehnung("Diese Reise hat noch keinen Plan (plan/routen.yaml).")
+    try:
+        return yaml_rund().load(p.read_text(encoding="utf-8"))
+    except Exception as e:   # ruamel wirft verschiedene Fehlerklassen
+        raise Ablehnung(f"plan/routen.yaml lässt sich nicht lesen ({type(e).__name__}); das muss jemand in einer Sitzung richten.")
+
+
+def routen_speichern(reise_dir, roh):
+    import io
+    out = io.StringIO()
+    yaml_rund().dump(roh, out)
+    (Path(reise_dir) / "plan" / "routen.yaml").write_text(out.getvalue(), encoding="utf-8")
+
+
+def routen_normalisieren(reise_dir):
+    """Datei einmal rund schreiben (Normalform des Schreibwegs) -> True, wenn sich der Text geändert hat."""
+    p = Path(reise_dir) / "plan" / "routen.yaml"
+    alt = p.read_text(encoding="utf-8")
+    routen_speichern(reise_dir, routen_laden(reise_dir))
+    return p.read_text(encoding="utf-8") != alt
+
+
+def ding_finden(roh, ziel):
+    """-> (Knoten in der Routendatei, Beschreibung) für U-…, E-… oder eine Option V-01.a."""
+    if ziel.startswith("U-"):
+        k = (roh.get("unterkuenfte") or {}).get(ziel)
+        if k is None:
+            raise Ablehnung(f"Die Unterkunft {ziel} gibt es nicht.")
+        return k, f"{ziel} {k.get('name', '')}".strip()
+    if ziel.startswith("E-"):
+        k = (roh.get("strecken") or {}).get(ziel)
+        if k is None:
+            raise Ablehnung(f"Die Strecke {ziel} gibt es nicht.")
+        return k, f"{ziel} {k.get('titel', '')}".strip()
+    vid = ziel.split(".")[0]
+    w = (roh.get("wahlstellen") or {}).get(vid)
+    for o in (w or {}).get("optionen") or []:
+        if isinstance(o, dict) and o.get("id") == ziel:
+            return o, f"{ziel} {o.get('titel', '')}".strip()
+    raise Ablehnung(f"Die Option {ziel} gibt es nicht.")
+
+
+def datum(text, feld, k):
+    """ISO-Text -> datetime.date oder Ablehnung."""
+    try:
+        return datetime.date.fromisoformat(str(text).strip())
+    except (ValueError, TypeError):
+        raise Ablehnung(f"{k}: „{feld}“ als Datum JJJJ-MM-TT angeben.")
+
+
+def wert_eintraege(args, k, definition, heute):
+    """Die neuen Werte aus der Anfrage prüfen -> Liste von Einträgen {wert, quelle, geprueft?, notiz?, gilt?} (Daten als date).
+    Herkunftspflicht: jeder Wert braucht quelle; ein veränderliches Merkmal auch geprueft (nicht in der Zukunft)."""
+    roh = args.get("werte")
+    if roh in (None, "", []):
+        roh = [{f: args.get(f) for f in ("wert", "quelle", "geprueft", "notiz", "gilt")}]
+    if not isinstance(roh, list) or not all(isinstance(x, dict) for x in roh):
+        raise Ablehnung("„werte“ muss eine Liste von Einträgen {wert, quelle, geprueft, gilt, notiz} sein.")
+    aus = []
+    for x in roh:
+        x = {**{f: args.get(f) for f in ("quelle", "geprueft", "notiz") if args.get(f) not in (None, "")}, **x}
+        wert = x.get("wert")
+        if isinstance(wert, bool):
+            wert = "ja" if wert else "nein"
+        if wert is None or str(wert).strip() == "":
+            raise Ablehnung(f"{k}: „wert“ fehlt. Fehlt der Wert, nichts eintragen.")
+        wert = " ".join(str(wert).split()) if not isinstance(wert, (int, float)) else wert
+        if definition.get("typ") == "auswahl" and str(wert) not in [str(v) for v in definition.get("werte") or []]:
+            raise Ablehnung(f"{k} = „{wert}“ geht nicht, erlaubt: {', '.join(map(str, definition.get('werte') or []))}.")
+        if definition.get("typ") == "zahl":
+            try:
+                wert = float(str(wert).replace(",", "."))
+                wert = int(wert) if wert == int(wert) else wert
+            except ValueError:
+                raise Ablehnung(f"{k} muss eine Zahl sein.")
+        quelle = x.get("quelle")
+        if not isinstance(quelle, str) or not quelle.strip():
+            raise Ablehnung(f"{k}: „quelle“ fehlt. Jede Angabe nennt ihre Herkunft (Website mit Adresse, Buch mit Seite, Anruf, "
+                            "die Person im Gespräch); ohne Herkunft wird nichts eingetragen.")
+        e = {"wert": wert, "quelle": " ".join(quelle.split())[:MAX_TEXT]}
+        g = x.get("geprueft")
+        if g not in (None, ""):
+            e["geprueft"] = datum(g, "geprueft", k)
+            if e["geprueft"] > heute:
+                raise Ablehnung(f"{k}: das Prüfdatum liegt in der Zukunft.")
+        elif definition.get("veraenderlich"):
+            raise Ablehnung(f"{k} ist veränderlich (Preise, Zeiten, Öffnung): „geprueft“ mit dem Datum des Nachschlagens angeben "
+                            f"(heute: {heute.isoformat()}).")
+        if x.get("notiz") not in (None, ""):
+            e["notiz"] = " ".join(str(x["notiz"]).split())[:MAX_TEXT]
+        gilt = x.get("gilt")
+        if gilt not in (None, "", []):
+            tage = [datum(t, "gilt", k) for t in (gilt if isinstance(gilt, list) else [gilt])]
+            e["gilt"] = tage[0] if len(tage) == 1 else tage
+        aus.append(e)
+    ohne = [e for e in aus if "gilt" not in e]
+    if len(ohne) > 1:
+        raise Ablehnung(f"{k}: mehrere Werte ohne „gilt“; je Datum angeben, höchstens einer gilt für alle übrigen Tage.")
+    tage = [t for e in aus for t in (e["gilt"] if isinstance(e.get("gilt"), list) else [e["gilt"]] if "gilt" in e else [])]
+    if len(tage) != len(set(tage)):
+        raise Ablehnung(f"{k}: ein Datum steht in zwei Werten.")
+    return aus
+
+
+def gilt_tage(e):
+    g = e.get("gilt") if isinstance(e, dict) else None
+    return set(g if isinstance(g, list) else [g] if g is not None else [])
+
+
+def wert_text(e):
+    if not isinstance(e, dict):
+        return str(e)
+    t = str(e.get("wert"))
+    if e.get("gilt") is not None:
+        g = e["gilt"] if isinstance(e["gilt"], list) else [e["gilt"]]
+        t += " (am " + ", ".join(x.strftime("%d.%m.") if hasattr(x, "strftime") else str(x) for x in g) + ")"
+    return t
+
+
+def wert_eintragen(reise_dir, wer, args, heute=None):
+    """Einen oder mehrere Werte eines Merkmals an U-…, E-… oder einer Option eintragen (ersetzt den Wert für dieselben Tage,
+    der Verlauf steht in der Geschichte des Repos). -> (Titel, Text)."""
+    import bauen
+    from ruamel.yaml.comments import CommentedMap, CommentedSeq
+    from ruamel.yaml.scalarstring import DoubleQuotedScalarString
+    heute = heute or datetime.date.today()
+    ziel = (text_wert(args, "ziel", pflicht=True, laenge=20) or "").strip()
+    if not ZIEL_MUSTER.match(ziel):
+        raise Ablehnung("„ziel“ muss eine Unterkunft U-…, eine Strecke E-… oder eine Option V-01.a sein.")
+    k = (text_wert(args, "merkmal", pflicht=True, laenge=40) or "").lower()
+    with tempfile.TemporaryDirectory(prefix="frieda-probe-") as tmp:
+        try:
+            d = bauen.Bauer(reise_dir, tmp).daten()
+        except bauen.BauFehler as e:
+            raise Ablehnung("Die Reise lässt sich gerade nicht bauen; erst das richten: " + " ".join(e.meldungen))
+    route = d.get("route") or {}
+    # Merkmale, die an dieser Stelle gelten (wie der Generator sie zuordnet), und der heutige Wert
+    if ziel.startswith("V-"):
+        w = next((w for w in route.get("wahlstellen") or [] if any(o["id"] == ziel for o in w["optionen"])), None)
+        if w is None:
+            raise Ablehnung(f"Die Option {ziel} gibt es nicht.")
+        krit = w.get("kriterien") or []
+        heutige = next(o for o in w["optionen"] if o["id"] == ziel).get("merkmale") or {}
+    elif ziel.startswith("U-"):
+        u = (route.get("unterkuenfte") or {}).get(ziel)
+        if u is None:
+            raise Ablehnung(f"Die Unterkunft {ziel} gibt es nicht.")
+        krit = (route.get("merkmale") or {}).get(u.get("art")) or []
+        heutige = u.get("merkmale") or {}
+    else:
+        st = (route.get("strecken") or {}).get(ziel)
+        if st is None:
+            raise Ablehnung(f"Die Strecke {ziel} gibt es nicht.")
+        krit = (route.get("merkmale") or {}).get(st.get("art") or st.get("bereich")) or []
+        heutige = st.get("merkmale") or {}
+    definition = next((x for x in krit if x["id"] == k), None) or next((x for x in krit if k in (x.get("auch") or [])), None)
+    if definition is None:
+        raise Ablehnung(f"Das Merkmal „{k}“ gibt es an {ziel} nicht (bekannt: {', '.join(x['id'] for x in krit) or 'keine'}). "
+                        "Ein neues Merkmal legt ein:e Organisator:in mit merkmal_definieren an der Art an.")
+    k = definition["id"]
+    if definition.get("auto"):
+        raise Ablehnung(f"„{definition['name']}“ wird aus dem Plan berechnet und nicht eingetragen.")
+    if (definition.get("stufe") if isinstance(definition.get("stufe"), str) else None) == "aus":
+        raise Ablehnung(f"„{definition['name']}“ ist bei dieser Reise abgeschaltet (Stufe aus); erst mit merkmal_definieren einschalten.")
+    neue = wert_eintraege(args, k, definition, heute)
+    # In der Datei: vorhandene Einträge für dieselben Tage ersetzen, andere behalten
+    roh = routen_laden(reise_dir)
+    knoten, bezeichnung = ding_finden(roh, ziel)
+    merkmale = knoten.get("merkmale")
+    if merkmale is None:
+        merkmale = CommentedMap()
+        knoten["merkmale"] = merkmale
+    alt = merkmale.get(k)
+    alte = list(alt) if isinstance(alt, list) else [alt] if alt is not None else []
+    alte = [x if isinstance(x, dict) else {"wert": x} for x in alte]
+    ersetzt, bleibt = [], []
+    for e in alte:
+        tage = gilt_tage(e)
+        if any(gilt_tage(n) == tage or (tage and gilt_tage(n) & tage) for n in neue):
+            ersetzt.append(e)
+        else:
+            bleibt.append(e)
+
+    def fliess(e):
+        m = CommentedMap()
+        for f in ("wert", "gilt", "geprueft", "quelle", "notiz"):
+            if f in e:
+                m[f] = DoubleQuotedScalarString(e[f]) if isinstance(e[f], str) else e[f]   # wie von Hand geschrieben
+        if isinstance(m.get("gilt"), list):
+            g = CommentedSeq(m["gilt"])
+            g.fa.set_flow_style()
+            m["gilt"] = g
+        m.fa.set_flow_style()
+        return m
+    eintraege = bleibt + neue
+    if len(eintraege) == 1 and "gilt" not in eintraege[0]:
+        merkmale[k] = fliess(eintraege[0])
+    else:
+        liste = CommentedSeq([fliess(e) for e in eintraege])
+        merkmale[k] = liste
+    routen_speichern(reise_dir, roh)
+    name = definition.get("name") or k
+    neu_text = "; ".join(wert_text(e) for e in neue)
+    alt_text = "; ".join(wert_text(e) for e in ersetzt)
+    titel = f"{bezeichnung}: {name} {('„' + alt_text + '“ → ') if alt_text else ''}„{neu_text}“"
+    text = (f"{name} an {bezeichnung}: {neu_text}" + (f" (vorher: {alt_text})" if alt_text else "")
+            + f". Herkunft: {'; '.join(dict.fromkeys(e['quelle'] for e in neue))}"
+            + (f", geprüft {', '.join(dict.fromkeys(e['geprueft'].isoformat() for e in neue if 'geprueft' in e))}" if any('geprueft' in e for e in neue) else "")
+            + ".")
+    return titel, text
+
+
+WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_definieren, "wert_eintragen": wert_eintragen}
 
 
 # ---------- Der Schreibvorgang ----------
@@ -385,7 +617,7 @@ class Schreiber:
         if (self.arbeit / ".gitmodules").exists():
             git(self.arbeit, "submodule", "update", "--init", "--quiet")
 
-    def wer_pruefen(self, reise_dir, anfrage):
+    def wer_pruefen(self, reise_dir, anfrage, werkzeug):
         """Person, Rolle und Status mit reise.yaml der Arbeitskopie prüfen -> {"name", "rolle", "person"}."""
         from reise import erlaubt, rolle_neu
         import bauen
@@ -402,7 +634,7 @@ class Schreiber:
         name = (p or {}).get("name") or anfrage.get("name")
         if not isinstance(name, str) or not name.strip():
             raise Ablehnung("Schreiben geht nur mit einer Person (Name fehlt).")
-        ok, grund = erlaubt(AKTION, rolle, (eck.get("status") or {}).get("wert") or "planung", eck.get("bausteine"),
+        ok, grund = erlaubt(AKTIONEN[werkzeug], rolle, (eck.get("status") or {}).get("wert") or "planung", eck.get("bausteine"),
                             None, eck.get("regeln"))
         if not ok:
             raise Ablehnung(grund)
@@ -426,7 +658,7 @@ class Schreiber:
         if not (reise_dir / "reise.json").exists():
             raise Ablehnung(f"Die Reise „{reise}“ gibt es im Repo nicht.")
         args = anfrage.get("args") if isinstance(anfrage.get("args"), dict) else {}
-        wer = self.wer_pruefen(reise_dir, anfrage)
+        wer = self.wer_pruefen(reise_dir, anfrage, werkzeug)
         try:
             titel, text = WERKZEUGE[werkzeug](reise_dir, wer, args)
             self.probebau(reise_dir)
@@ -577,6 +809,10 @@ def main(a):
         anfrage = json.loads(sys.stdin.read() or "{}")
         code, antwort = anwenden(wurzel(), schreibkopie(), a[1], a[2], anfrage)
         print(json.dumps([code, antwort], ensure_ascii=False))
+    elif a[:1] == ["normalisieren"] and len(a) == 2:
+        # Routendatei einer Reise einmal rund schreiben (Normalform des Schreibwegs), in einer Sitzung im Reisen-Repo
+        geaendert = routen_normalisieren(wurzel() / "reisen" / a[1])
+        print(f"reisen/{a[1]}/plan/routen.yaml " + ("in Normalform gebracht." if geaendert else "war schon in Normalform."))
     elif a[:1] == ["vorbereiten"]:
         s = Schreiber(wurzel())
         s.vorbereiten()

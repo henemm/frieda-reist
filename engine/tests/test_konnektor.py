@@ -642,3 +642,29 @@ def test_ontologie_mitwirkende_schlagen_vor(schreibweg):
     assert not f and rm.eintraege(ablage / "beispielreise")[2]["name"] == "Anna"
     t, f = werkzeug(basis, GAST, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt")
     assert f and "nur lesen" in t
+
+
+def test_wert_eintragen_ueber_den_schreibweg(schreibweg):
+    basis, ablage = schreibweg
+    for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (MITREISEND, True), (GAST, False)):
+        assert ("wert_eintragen" in {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}) is da, token
+    Schreibweg.antwort = (200, {"ok": True, "text": "Preis pro Nacht an U-02 Pension Burgblick: 95 € (vorher: 85 €). Herkunft: Website."})
+    t, f = werkzeug(basis, KARL, "wert_eintragen", ziel="U-02", merkmal="preis", wert="95 €", quelle="Website", geprueft="2026-10-29")
+    assert not f and t.startswith("Eingetragen und gesichert (Karl): Preis pro Nacht an U-02")
+    pfad, _, body = Schreibweg.anfragen[-1]
+    assert pfad == "/beispielreise/wert_eintragen" and body["person"] == "karl" and body["rolle"] == "mitwirkend"
+    assert body["args"] == {"ziel": "U-02", "merkmal": "preis", "wert": "95 €", "quelle": "Website", "geprueft": "2026-10-29"}
+    assert rm.eintraege(ablage / "beispielreise") == []
+    # Unbekannte Stelle lehnt schon der Konnektor ab; ohne Namen braucht es den Vornamen
+    t, f = werkzeug(basis, KARL, "wert_eintragen", ziel="U-77", merkmal="preis", wert="1 €", quelle="x")
+    assert f and "keine Unterkunft, Strecke oder Option" in t
+    t, f = werkzeug(basis, MITREISEND, "wert_eintragen", ziel="U-02", merkmal="lage", wert="x", quelle="x")
+    assert f and "Name fehlt" in t
+    t, f = werkzeug(basis, MITREISEND, "wert_eintragen", ziel="U-02", merkmal="lage", wert="x", quelle="x", name="Anna")
+    assert not f and Schreibweg.anfragen[-1][2]["name"] == "Anna" and "name" not in Schreibweg.anfragen[-1][2]["args"]
+    t, f = werkzeug(basis, GAST, "wert_eintragen", ziel="U-02", merkmal="lage", wert="x", quelle="x")
+    assert f and "nur lesen" in t
+    Schreibweg.antwort = (422, {"ok": False, "fehler": "preis: „quelle“ fehlt."})
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "wert_eintragen", ziel="U-02", merkmal="preis", wert="1 €")
+    assert f and t == "Nicht eingetragen: preis: „quelle“ fehlt."
+    assert "wert_eintragen" in rpc(basis, KARL, "initialize")["instructions"]

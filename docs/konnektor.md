@@ -30,6 +30,7 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `alternative_vorschlagen` | alle | neue Option mit Merkmalen; Art aus der Stelle (`V-…`, `U-…`, `E-…`), Werte je Datum mit `gilt`, Hinweis auf ähnliche vorhandene Merkmale (`daten.doppelt`); von Organisator:innen als Auftrag (mit strukturierten `daten`), von Mitwirkenden als Rückmeldung der Art `Ergänzung` |
 | `art_definieren` | Organisator:innen schreiben, Mitwirkende schlagen vor | eine Art der Reise anlegen oder ändern (Bezeichnung, Grundform, Farbe, Beschreibung, summiert); schreibt über den Schreibweg direkt in `plan/arten.yaml` (siehe „Ontologie im Gespräch“); nur bei Instanzen mit Schreibweg |
 | `merkmal_definieren` | Organisator:innen schreiben, Mitwirkende schlagen vor | ein Merkmal einer Art anlegen oder ändern: umbenennen, Typ und Werte, veränderlich, Stufe (`aus` schaltet ab), Hilfe, Frage, weitere Namen; warnt vor einem ähnlichen vorhandenen Merkmal (`trotzdem` übergeht das) |
+| `wert_eintragen` | Mitwirkende, Organisator:innen | einen Wert eines Merkmals an `U-…`, `E-…` oder einer Option `V-01.a` eintragen (auch mehrere je Datum mit `gilt`); schreibt sofort in `plan/routen.yaml`, ersetzt den Wert für dieselben Tage, der alte bleibt im Verlauf; Herkunft (`quelle`) ist Pflicht, bei veränderlichen Merkmalen auch `geprueft` |
 | `auftrag_geben` | Organisator:innen | Änderungsauftrag, abgelegt in `auftraege.jsonl` |
 | `entscheiden` | Organisator:innen | Option wählen, verwerfen oder ersetzen: wird sofort geprüft und mit Datum, Person und Grund festgehalten (Paket C) |
 | `frage_beantworten` | Mitwirkende | Antwort auf eine offene Frage (F-…); hängt an der Frage, die Entscheidung bleibt bei der Organisator:in (Paket C) |
@@ -67,7 +68,7 @@ Gibt es die Person schon, bekommt sie nur einen weiteren Link; ihre Rolle zu än
 
 **Anleitung:** Beim Verbinden bekommt die KI Rolle, Reisestatus, Entscheidungsweg und die Grenzen der sprechenden Person (Mitwirkende:r: kann nicht entscheiden; Link ohne Person: kein Entscheiden und Einladen).
 
-## Ontologie im Gespräch (ADR-0001, Paket O-3, Schritt 1, 29.10.2026)
+## Ontologie im Gespräch (ADR-0001, Paket O-3, Schritte 1 und 2, 29.10.2026)
 
 Welche Arten eine Reise hat (Hotel, Refugi, Ryokan, Zugfahrt, Reiseteil …) und was zu jeder Sache einer Art bekannt sein muss, legt die Reise im Gespräch fest (`docs/ontologie.md`). Dafür gibt es `art_definieren` und `merkmal_definieren`:
 
@@ -75,7 +76,8 @@ Welche Arten eine Reise hat (Hotel, Refugi, Ryokan, Zugfahrt, Reiseteil …) und
 - **Mitwirkende** schlagen damit vor: Es entsteht eine Rückmeldung der Art `Ergänzung` an die Art („Art festlegen – bezeichnung: Refugi; grundform: aufenthalt“), die Organisator:innen unter `rueckmeldungen` sehen und im Gespräch übernehmen können.
 - Die Grundform einer Art lässt sich nicht ändern (neue Art anlegen); Schlüssel bleiben, nur die Bezeichnung ändert sich (IDs und Werte der Reise hängen am Schlüssel). Eine Bewegung „aus eigener Kraft“ (`summiert`) und eine Folge bekommen ihre berechneten Merkmale (Gehzeit, Länge, Höhenmeter; Tage, Gehzeit, Unterkünfte, Anschluss) beim Anlegen. Ein neues Merkmal, das einem vorhandenen ähnelt (gleicher Wortstamm, zweiter Name), wird erst mit `trotzdem` angelegt.
 - Der Verlauf steht in der Geschichte des Repos (ein Commit je Änderung: Reise, Titel, Text, Person, Werkzeug, Datum). Arten einer früheren Reise derselben Person übernimmt der AI-Client nur auf ausdrückliche Nachfrage, als Kopie (Product Owner, 28.10.2026); ein eigenes Werkzeug dafür folgt in O-3.
-- Noch über den alten Weg (Auftrag, Einarbeiten): Werte an Dingen, neue Dinge, Wahlstellen und Optionen, Entscheidungen in `routen.yaml`, Fragen, Wissen. Sie folgen in den nächsten Schritten von O-3 (frieda-reist #91). Bis dahin laufen beide Wege.
+- **Werte** (Schritt 2, 29.10.2026): `wert_eintragen` schreibt einen Wert eines Merkmals an eine Unterkunft, Strecke oder Option (`plan/routen.yaml`, Form in `docs/alternativen.md`). Der Schreibweg nimmt die Merkmale, die der Generator an dieser Stelle kennt (Art des Dings, Ergänzungen der Wahlstelle), prüft Auswahlwerte, Zahlen und Daten und verlangt die **Herkunft** (`quelle`) jeder Angabe sowie bei veränderlichen Merkmalen das **Prüfdatum** (`geprueft`, nicht in der Zukunft); berechnete und abgeschaltete Merkmale lehnt er ab. Ein neuer Wert ersetzt den bisherigen für dieselben Tage (Einträge mit `gilt` je Datum bleiben nebeneinander), der alte steht im Commit („Preis pro Nacht „85 €“ → „95 €““). Die Datei wird mit ruamel.yaml rund geschrieben: Kommentare und Form bleiben, nur die geänderte Stelle unterscheidet sich. Mitwirkende schreiben Werte direkt (Eingaben, keine Entscheidungen); Mitwirkende ohne persönlichen Link nennen ihren Vornamen.
+- Noch über den alten Weg (Auftrag, Einarbeiten): neue Dinge, Wahlstellen und Optionen, Entscheidungen in `routen.yaml`, Fragen, Wissen. Sie folgen in den nächsten Schritten von O-3 (frieda-reist #91). Bis dahin laufen beide Wege.
 
 Betrieb: `docs/betrieb.md`, Abschnitt „Schreibweg“. Ohne eingerichteten Schreibweg (`KN_SCHREIBDIENST` leer) gibt es die beiden Werkzeuge nicht, und die Anleitung nennt sie nicht.
 
@@ -156,7 +158,7 @@ Der Konnektor meldet beim Verbinden das Symbol der Reise (`serverInfo.icons`, da
 ## Sicherheit
 
 - Wer einen Link kennt, kann die Reise lesen und Rückmeldungen schicken. Das ist dasselbe Prinzip wie bei der Webseite. Ein Mitreisenden-Link kann keine Aufträge geben und nicht entscheiden. Der Link gehört zu einer Person: Wer ihn weitergibt, gibt ihre Rolle weiter.
-- Über den Konnektor ändern sich nur Aufgaben sowie Arten und Merkmale direkt (Letzteres über den Schreibweg mit Rollen-, Status- und Formprüfung und einem Probebau, siehe „Ontologie im Gespräch“). Rückmeldungen und Aufträge sind Eingaben. Status `gewaehlt`/`verworfen` setzen nur Organisator:innen.
+- Über den Konnektor ändern sich nur Aufgaben sowie Arten, Merkmale und Werte direkt (Letzteres über den Schreibweg mit Rollen-, Status- und Formprüfung und einem Probebau, siehe „Ontologie im Gespräch“). Rückmeldungen und Aufträge sind Eingaben. Status `gewaehlt`/`verworfen` setzen nur Organisator:innen.
 - Drossel im Reverse-Proxy. Der Dienst protokolliert weder Tokens noch Inhalte.
 - Überwachung: `GET /gesund` (ohne Token) meldet `{"gesund": true}`, wenn die Zugänge lesbar und alle verlinkten Reisen veröffentlicht sind.
 

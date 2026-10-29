@@ -78,10 +78,8 @@ unterkuenfte:
       zimmer: {wert: "Vierbettzimmer", quelle: "erfunden (Beispiel)"}
 
 tage:
-  T-01: {titel: "Ankunft und Stadttag in Dresden", nacht: U-01,
-         text: "Ankunft mittags mit dem Zug, Nachmittag in der Altstadt (Frauenkirche, Elbufer). Siehe Ortsseite O-01."}
-  T-02: {titel: "Stadt Wehlen → Bastei → Hohnstein", strecken: [E-20, E-01], wahl: [V-02], nacht: V-03,
-         text: "Erster Wandertag. Früh fahren: An der Bastei ist es ab dem späten Vormittag voll (Annahme)."}
+  T-01: {titel: "Ankunft und Stadttag in Dresden", nacht: U-01, text: "Ankunft mittags mit dem Zug, Nachmittag in der Altstadt (Frauenkirche, Elbufer). Siehe Ortsseite O-01."}
+  T-02: {titel: "Stadt Wehlen → Bastei → Hohnstein", strecken: [E-20, E-01], wahl: [V-02], nacht: V-03, text: "Erster Wandertag. Früh fahren: An der Bastei ist es ab dem späten Vormittag voll (Annahme)."}
   T-03: {titel: "Hohnstein → Brand → Altendorf", strecken: [E-02], nacht: U-04}
   T-04: {titel: "Altendorf → Schrammsteine → Bad Schandau, Zug nach Dresden", strecken: [E-03, E-21]}
   T-05: {titel: "Altendorf → Schrammsteine → Lichtenhainer Wasserfall, Kirnitzschtalbahn, Zug nach Dresden", strecken: [E-04, E-22, E-21]}

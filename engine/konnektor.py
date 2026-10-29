@@ -72,7 +72,8 @@ SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern",
                      "frage_beantworten", "entscheiden", "person_einladen", "person_entfernen", "wunsch_aendern"}
 # Werkzeuge, die direkt in die Ontologie der Reise schreiben (ADR-0001, O-3; engine/schreiben.py): nur bei Instanzen mit
 # Schreibweg (KN_SCHREIBDIENST); Organisator:innen schreiben, Mitwirkende schlagen vor (Rückmeldung der Art Ergänzung)
-ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren")
+ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "wert_eintragen")
+ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "wert_eintragen": "wert"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe",
                   "alternative_vorschlagen": "alternative", "auftrag_geben": "auftrag", "entscheiden": "entscheiden",
@@ -753,8 +754,8 @@ class Handbuch:
             return None, f"ziel (V-…, U-…, E-…) oder bereich angeben: eine Art dieser Reise ({', '.join(katalog) or 'keine definiert'})."
         z = [f"# Merkmale für Bereich {b}" + (f" – {w['id']} {w['titel']}" if w else f" – {ziel}" if ziel else ""),
              "Vorgehen: Erst selbst recherchieren (Hinweis „so finden“), dann die Person nur nach dem fragen, was offen "
-             "bleibt (Hinweis „fragen“). Veränderliche Werte mit Prüfdatum. Eine neue Alternative mit "
-             "alternative_vorschlagen weitergeben, vorher kurz bestätigen lassen. Ist ein Wert je Datum verschieden (z. B. "
+             "bleibt (Hinweis „fragen“). Veränderliche Werte mit Prüfdatum. Werte an einer vorhandenen Stelle trägst du mit "
+             "wert_eintragen ein (sofort, mit Herkunft); eine neue Alternative mit alternative_vorschlagen weitergeben, vorher kurz bestätigen lassen. Ist ein Wert je Datum verschieden (z. B. "
              "Preis je Nacht), mehrere Werte mit gilt (JJJJ-MM-TT) angeben; einer ohne gilt steht für alle übrigen Tage. "
              "Das sind die Merkmale dieser Reise für diese Art (plan/arten.yaml, von den Reisenden festgelegt). Ein neues "
              "Merkmal nur, wenn es hier nichts Passendes gibt; dann wird es an der Art der Reise definiert (merkmal_definieren: "
@@ -1062,6 +1063,24 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
                 "Merkmale ändert bis dahin eine Sitzung im Reisen-Repo."), True
     if not all(isinstance(v, (str, bool, list, type(None))) for v in args.values()):
         return "Alle Angaben müssen Text, ja/nein oder Listen von Text sein.", True
+    if name == "wert_eintragen":
+        if (nein := recht(wer["rolle"], d, "wert")):
+            return nein, True
+        if not wer["name"]:
+            name_ = args.get("name")
+            if not isinstance(name_, str) or not name_.strip():
+                return "Name fehlt: bitte die Person nach ihrem Vornamen fragen.", True
+            wer = {**wer, "name": name_.strip()}
+        ziel = str(args.get("ziel") or "").strip()
+        if ziel and ziel not in (d.get("route") or {}).get("unterkuenfte", {}) and ziel not in (d.get("route") or {}).get("strecken", {}) \
+                and not any(o["id"] == ziel for w in (d.get("route") or {}).get("wahlstellen") or [] for o in w["optionen"]):
+            return f"„{ziel}“ ist keine Unterkunft, Strecke oder Option dieser Reise. Mit suche oder ueberblick die ID finden.", True
+        antwort, fehler = schreib_anfrage(reise, name, {"person": zugang.get("person"), "name": wer["name"], "rolle": wer["rolle"],
+                                                       "args": {k: v for k, v in args.items() if k != "name"}})
+        if fehler:
+            return f"Nicht eingetragen: {fehler}", True
+        return (f"Eingetragen und gesichert ({wer['name']}): {antwort.get('text', '')} Es gilt ab jetzt; die Seite und zeige/merkmale "
+                "zeigen den neuen Stand, sobald veröffentlicht ist (wenige Minuten)."), False
     if darf(wer["rolle"], "organisator"):
         if (nein := recht(wer["rolle"], d, "ontologie")):
             return nein, True
@@ -2096,6 +2115,28 @@ MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "Ein Merkmal 
                           "grund": {"type": "string", "description": "warum (steht im Verlauf)"},
                           "name": NAME_FELD},
                           "required": ["art"]}}
+WERT_SCHEMA_EINTRAG = {"type": "object", "properties": {
+    "wert": {"type": "string"}, "gilt": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}],
+             "description": "Datum JJJJ-MM-TT oder Liste, wenn der Wert nur für diese Tage gilt (Preis je Nacht)"},
+    "geprueft": {"type": "string"}, "quelle": {"type": "string"}, "notiz": {"type": "string"}}, "required": ["wert"]}
+WERT_EINTRAGEN = {"name": "wert_eintragen", "description": "Einen Wert eines Merkmals an einer Unterkunft (U-…), Strecke (E-…) oder "
+                  "Option (V-01.a) eintragen: Preis, Frühstück, Öffnung, Dauer … Schreibt sofort in die Reise (gilt ab jetzt, Seite in "
+                  "wenigen Minuten) und ersetzt den bisherigen Wert für dieselben Tage; der alte bleibt im Verlauf. Jede Angabe braucht "
+                  "ihre Herkunft (quelle); veränderliche Merkmale (Preise, Zeiten, Öffnung) auch das Prüfdatum (geprueft, Datum des "
+                  "Nachschlagens). Vorher merkmale aufrufen (welche Merkmale es an dieser Stelle gibt, erlaubte Auswahlwerte) und "
+                  "kurz bestätigen lassen, was genau eingetragen wird. Mitwirkende und Organisator:innen.",
+                  "inputSchema": {"type": "object", "properties": {
+                      "ziel": {"type": "string", "description": "U-…, E-… oder V-01.a (aus ueberblick, zeige, merkmale)"},
+                      "merkmal": {"type": "string", "description": "Schlüssel des Merkmals, z. B. preis (aus merkmale)"},
+                      "wert": {"type": "string", "description": "der Wert, bei Auswahl einer der erlaubten Werte; bei Geld mit Währung"},
+                      "quelle": {"type": "string", "description": "Herkunft: Website mit Adresse, Buch mit Seite, Anruf, „Name im Gespräch“"},
+                      "geprueft": {"type": "string", "description": "Datum des Nachschlagens JJJJ-MM-TT (bei veränderlichen Merkmalen nötig)"},
+                      "gilt": WERT_SCHEMA_EINTRAG["properties"]["gilt"],
+                      "notiz": {"type": "string", "description": "Einschränkung, Rechnung, Widerspruch zwischen Quellen"},
+                      "werte": {"type": "array", "items": WERT_SCHEMA_EINTRAG,
+                                "description": "statt wert: mehrere Werte je Datum auf einmal (quelle und geprueft dürfen oben stehen)"},
+                      "name": NAME_FELD},
+                      "required": ["ziel", "merkmal"]}}
 
 
 ENTSCHEIDEN = {"name": "entscheiden", "description": "Nur für Organisator:innen: im Gespräch über eine Option einer Wahlstelle entscheiden "
@@ -2207,7 +2248,7 @@ def anleitung(zugang, d):
          + (f", Status {status}" if status else "") + ". Du liest vor, schlägst vor, prüfst und gibst Eingaben weiter; "
          f"{namen} {'entscheiden' if len(organisator) > 1 else 'entscheidet'}, du nie.",
          "Grenzen: Über den Konnektor ändert sich nichts sofort (Ausnahmen: Aufgaben AG-…"
-         + (", Arten und Merkmale über art_definieren und merkmal_definieren" if schreibdienst() else "")
+         + (", Arten und Merkmale über art_definieren und merkmal_definieren, Werte über wert_eintragen" if schreibdienst() else "")
          + "); sag nie, etwas sei schon geändert. "
          "Status gewählt/verworfen/ersetzt und Einstellungen setzen nur Organisator:innen. Nichts erfinden: Herkunft nennen, Annahmen "
          "markieren, veränderliche Angaben (Fahrpläne, Öffnungszeiten, Preise) mit Prüfdatum. Vor jedem Eintragen kurz "
@@ -2239,13 +2280,17 @@ def anleitung(zugang, d):
                  + (" Die Ontologie der Reise (welche Arten von Unterkünften, Strecken und Reiseteilen es gibt und was zu jeder "
                     "bekannt sein muss) legt die Person im Gespräch fest und schärft sie: art_definieren und merkmal_definieren "
                     "schreiben sofort in die Reise (merkmale zeigt den Stand). Frag bei einer neuen Art, was zu jeder Sache dieser "
-                    "Art bekannt sein muss und was davon sich ändern kann; bestätige vor dem Eintragen den Wortlaut."
+                    "Art bekannt sein muss und was davon sich ändern kann; bestätige vor dem Eintragen den Wortlaut. Werte zu einer "
+                    "Unterkunft, Strecke oder Option (Preis, Frühstück, Öffnung, Dauer) trägst du mit wert_eintragen ein, immer mit Herkunft "
+                    "und bei Veränderlichem mit Prüfdatum; recherchiere sie zuerst selbst (merkmale sagt, wo)."
                     if schreibdienst() else ""))
     elif wer["rolle"] == "mitwirkend":
         z.append(f"{name} (Mitwirkende:r). Ihre Hinweise sind Vorschläge, keine Entscheidungen: Entscheiden und Aufträge geben "
                  f"kann sie nicht, das bleibt bei {namen}. Offene Fragen beantwortet sie mit frage_beantworten. "
                  + ("Arten und Merkmale der Reise kann sie mit art_definieren und merkmal_definieren vorschlagen (wird eine "
-                    "Rückmeldung an die Organisator:innen). " if schreibdienst() else "")
+                    "Rückmeldung an die Organisator:innen). Werte zu einer Unterkunft, Strecke oder Option (Preis, Frühstück, "
+                    "Öffnung, Dauer) trägt sie mit wert_eintragen direkt ein, immer mit Herkunft und bei Veränderlichem mit "
+                    "Prüfdatum. " if schreibdienst() else "")
                  + ("Sie darf Personen einladen (person_einladen), höchstens mit der Rolle mitwirkend. " if kann_einladen else "")
                  + ("" if wer["name"] else "Für Rückmeldungen und Aufgaben brauchst du ihren Vornamen: einmal fragen, "
                     "nicht raten, dann im Gespräch beibehalten. ")
@@ -2469,10 +2514,14 @@ def werkzeuge_fuer(zugang):
     wer = wer_spricht(zugang, d) or {"rolle": "gast"}
     _, bausteine = zustand_von(d)
     werkzeuge = []
-    ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN] if schreibdienst() else []
+    ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN, WERT_EINTRAGEN] if schreibdienst() else []
     for w in WERKZEUGE + [AUFTRAG, ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN] + ontologie:
         n = w["name"]
         if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:
+            continue
+        if n == "wert_eintragen":
+            if recht(wer["rolle"], d, "wert") is None:
+                werkzeuge.append(w)
             continue
         if n in ONTOLOGIE_WERKZEUGE:   # Organisator:innen schreiben, Mitwirkende schlagen vor (als Rückmeldung)
             if recht(wer["rolle"], d, "ontologie") is None or recht(wer["rolle"], d, "rueckmeldung") is None:

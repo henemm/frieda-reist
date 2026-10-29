@@ -3,6 +3,7 @@
 Aufbau: ein erfundenes Reisen-Repo mit der Beispielreise und einem „origin“ daneben; die Software liegt als Verweis engine/
 im Repo (wie der Verweis engine -> frieda/engine einer Instanz). Veröffentlichen ist ein Stummel, der nur festhält, dass er
 gerufen wurde."""
+import datetime
 import json
 import os
 import shutil
@@ -332,3 +333,92 @@ def test_aufruf_anwenden(repo, capsys):
     assert "refugi" in arten_auf_main(origin)[0]
     assert sb.main(["vorbereiten"]) == 0 and "steht auf" in capsys.readouterr().out
     assert sb.main([]) == 1
+
+
+# ---------- Werte an Dingen (plan/routen.yaml) ----------
+
+def routen_auf_main(origin):
+    text = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/plan/routen.yaml"],
+                          check=True, capture_output=True, text=True).stdout
+    return yaml.safe_load(text), text
+
+
+def test_wert_eintragen_an_unterkunft_strecke_und_option(repo):
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    vorher = routen_auf_main(origin)[1]
+    a = s.schreiben("beispielreise", "wert_eintragen", {**KARL, "args": {"ziel": "U-02", "merkmal": "preis", "wert": "95 €",
+                                                                         "quelle": "Website der Pension", "geprueft": "2026-10-29"}})
+    assert a["ok"] and a["text"].startswith("Preis pro Nacht an U-02 Pension Burgblick: 95 € (vorher: 85 €). Herkunft: Website der Pension, geprüft 2026-10-29.")
+    r, text = routen_auf_main(origin)
+    assert r["unterkuenfte"]["U-02"]["merkmale"]["preis"] == {"wert": "95 €", "geprueft": datetime.date(2026, 10, 29), "quelle": "Website der Pension"}
+    assert r["unterkuenfte"]["U-02"]["merkmale"]["fruehstueck"] == {"wert": "inklusive", "notiz": "Beispielwert, erfunden"}   # Nachbarn unberührt
+    assert "# Alle Unterkünfte sind erfunden" in text and "buchung: gebucht   # Beispielwert" in text        # Kommentare bleiben
+    assert git(origin, "log", "-1", "--format=%s", "main") == "Beispielreise – Malerweg in vier Tagen: U-02 Pension Burgblick: Preis pro Nacht „85 €“ → „95 €“"
+    assert "Karl (mitwirkend)" in git(origin, "log", "-1", "--format=%b", "main")
+    # Nur die geänderte Stelle: der Rest der Datei ist zeichengleich
+    import difflib
+    diff = [z for z in difflib.unified_diff(vorher.splitlines(), text.splitlines(), lineterm="", n=0) if z[:1] in "+-" and z[:3] not in ("+++", "---")]
+    assert diff == ['-      preis: {wert: "85 €", notiz: "Beispielwert, erfunden"}',
+                    '+      preis: {wert: "95 €", geprueft: 2026-10-29, quelle: "Website der Pension"}']
+    # Werte je Datum: der Eintrag für den 15.5. wird ersetzt, der Eintrag ohne gilt bleibt
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "wert_eintragen", {**IDA, "args": {"ziel": "U-01", "merkmal": "preis", "quelle": "Booking", "geprueft": "2026-10-29",
+                                                                        "werte": [{"wert": "150 €", "gilt": ["2027-05-15", "2027-05-16"]}]}})
+    assert "150 € (am 15.05., 16.05.) (vorher: 140 € (am 15.05.))" in a["text"]
+    r, text = routen_auf_main(origin)
+    assert r["unterkuenfte"]["U-01"]["merkmale"]["preis"] == [
+        {"wert": "120 €", "notiz": "Beispielwert, erfunden"},
+        {"wert": "150 €", "gilt": [datetime.date(2027, 5, 15), datetime.date(2027, 5, 16)], "geprueft": datetime.date(2026, 10, 29), "quelle": "Booking"}]
+    assert '- {wert: "150 €", gilt: [2027-05-15, 2027-05-16], geprueft: 2026-10-29, quelle: "Booking"}' in text
+    # Strecke ohne bisherige Merkmale, Option einer Wahlstelle
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "wert_eintragen", {**IDA, "args": {"ziel": "E-22", "merkmal": "dauer", "wert": "ca. 25 min", "quelle": "Fahrplan 2027",
+                                                                        "geprueft": "2026-10-29", "notiz": "Sommerfahrplan"}})
+    r, _ = routen_auf_main(origin)
+    assert r["strecken"]["E-22"]["merkmale"] == {"dauer": {"wert": "ca. 25 min", "geprueft": datetime.date(2026, 10, 29), "quelle": "Fahrplan 2027", "notiz": "Sommerfahrplan"}}
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "wert_eintragen", {**IDA, "args": {"ziel": "V-03.a", "merkmal": "lage", "wert": "oben am Markt", "quelle": "Ida im Gespräch"}})
+    r, _ = routen_auf_main(origin)
+    o = next(o for o in r["wahlstellen"]["V-03"]["optionen"] if o["id"] == "V-03.a")
+    assert o["merkmale"]["lage"] == {"wert": "oben am Markt", "quelle": "Ida im Gespräch"}
+    assert not git(arbeit, "status", "--porcelain")
+
+
+def test_wert_eintragen_ablehnungen(repo):
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    stand = git(origin, "rev-parse", "main")
+    for args, text in (
+        ({"ziel": "U-02", "merkmal": "preis", "wert": "95 €", "geprueft": "2026-10-29"}, "„quelle“ fehlt"),
+        ({"ziel": "U-02", "merkmal": "preis", "wert": "95 €", "quelle": "x"}, "veränderlich"),
+        ({"ziel": "U-02", "merkmal": "preis", "wert": "95 €", "quelle": "x", "geprueft": "gestern"}, "JJJJ-MM-TT"),
+        ({"ziel": "U-02", "merkmal": "preis", "wert": "95 €", "quelle": "x", "geprueft": "2099-01-01"}, "Zukunft"),
+        ({"ziel": "U-02", "merkmal": "fruehstueck", "wert": "vielleicht", "quelle": "x"}, "erlaubt: inklusive"),
+        ({"ziel": "U-02", "merkmal": "pool", "wert": "ja", "quelle": "x"}, "gibt es an U-02 nicht"),
+        ({"ziel": "E-01", "merkmal": "gehzeit", "wert": "3 h", "quelle": "x"}, "berechnet"),
+        ({"ziel": "U-99", "merkmal": "preis", "wert": "1 €", "quelle": "x", "geprueft": "2026-10-29"}, "gibt es nicht"),
+        ({"ziel": "T-01", "merkmal": "preis", "wert": "1 €", "quelle": "x"}, "muss eine Unterkunft"),
+        ({"ziel": "U-02", "merkmal": "preis", "quelle": "x", "geprueft": "2026-10-29"}, "„wert“ fehlt"),
+        ({"ziel": "U-02", "merkmal": "preis", "quelle": "x", "geprueft": "2026-10-29",
+          "werte": [{"wert": "1 €"}, {"wert": "2 €"}]}, "mehrere Werte ohne „gilt“"),
+        ({"ziel": "U-02", "merkmal": "preis", "quelle": "x", "geprueft": "2026-10-29",
+          "werte": [{"wert": "1 €", "gilt": "2027-05-14"}, {"wert": "2 €", "gilt": ["2027-05-14"]}]}, "zwei Werten"),
+    ):
+        with pytest.raises(sb.Ablehnung, match=text):
+            s.schreiben("beispielreise", "wert_eintragen", {**IDA, "args": args})
+        assert not git(arbeit, "status", "--porcelain"), args
+    # Gäste schreiben nicht
+    with pytest.raises(sb.Ablehnung, match="nur lesen"):
+        s.schreiben("beispielreise", "wert_eintragen", {"person": "mo", "name": "Mo", "rolle": "gast",
+                                                        "args": {"ziel": "U-02", "merkmal": "lage", "wert": "x", "quelle": "x"}})
+    assert git(origin, "rev-parse", "main") == stand
+
+
+def test_beispielreise_ist_in_normalform():
+    """Die Routendatei der Beispielreise geht zeichengleich durch den Schreibweg; so ändert ein Schreibvorgang nur seine Stelle."""
+    import io
+    p = BEISPIEL / "plan" / "routen.yaml"
+    out = io.StringIO()
+    sb.yaml_rund().dump(sb.yaml_rund().load(p.read_text(encoding="utf-8")), out)
+    assert out.getvalue() == p.read_text(encoding="utf-8")

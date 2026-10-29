@@ -2,4 +2,5 @@ markdown
 Pillow
 pytest
 PyYAML
+ruamel.yaml
 CairoSVG

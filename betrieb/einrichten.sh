@@ -33,7 +33,7 @@ hinweis() { echo "  HINWEIS $*"; }
 echo "Instanz $FR_INSTANZ ($FR_TITEL), Reisen-Repo $FR_WURZEL"
 echo "Voraussetzungen:"
 [ -f "$FR_WURZEL/engine/bauen.py" ] && ok "Software unter engine/" || problem "engine/ fehlt (Submodul frieda und Verweis engine -> frieda/engine, docs/betrieb.md)"
-if "$FR_PYTHON" -c 'import yaml' 2> /dev/null; then ok "Python $FR_PYTHON"; else problem "Python mit yaml: $FR_PYTHON (python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt)"; fi
+if "$FR_PYTHON" -c 'import yaml, ruamel.yaml' 2> /dev/null; then ok "Python $FR_PYTHON"; else problem "Python mit yaml und ruamel.yaml: $FR_PYTHON (python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt)"; fi
 [ -n "$FR_ADRESSE" ] && ok "Adresse $FR_ADRESSE" || problem "FR_ADRESSE (öffentliche Adresse der Seiten) in den Einstellungen"
 git -C "$FR_WURZEL" ls-remote -q origin > /dev/null 2>&1 && ok "git erreicht origin" || problem "git -C $FR_WURZEL ls-remote origin geht nicht ohne Rückfrage"
 if PATH="$FR_PFAD" command -v claude > /dev/null; then
