@@ -64,7 +64,7 @@ import konten  # noqa: E402
 import oauth  # noqa: E402
 import belege as bl  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
-from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, REISE_ZIEL, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
+from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
 from routen import FARBEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, art_schluessel, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
 
@@ -75,13 +75,19 @@ SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern",
 # Schreibweg (KN_SCHREIBDIENST); Organisator:innen schreiben, Mitwirkende schlagen vor (Rückmeldung der Art Ergänzung)
 ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "kategorie_definieren", "wert_eintragen", "ding_anlegen", "ding_aendern", "lage_eintragen",
                        "option_anlegen", "wahlstelle_anlegen", "frage_anlegen", "tag_aendern", "wissen_schreiben", "frage_schliessen",
-                       "reise_status_setzen", "einstellung_setzen", "buchung_anlegen", "buchung_aendern")
+                       "reise_status_setzen", "einstellung_setzen", "buchung_anlegen", "buchung_aendern",
+                       # Abgleich 29.10.2026 (Paket 3): die Tür für alle Grundformen
+                       "tag_anlegen", "termin_setzen", "wahlstelle_aendern", "option_aendern", "wissen_aendern", "lesetext_schreiben",
+                       "reise_aendern", "plan_anlegen", "plan_aendern", "merkmal_zusammenfuehren", "arten_uebernehmen", "wunsch_vorschlagen")
 # Aktion der Regelprüfung je Werkzeug; art_definieren und merkmal_definieren gehen für Mitwirkende als Rückmeldung (Vorschlag)
 ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "kategorie_definieren": "ontologie", "wert_eintragen": "wert",
                     "ding_anlegen": "ding", "ding_aendern": "ding", "lage_eintragen": "ding", "option_anlegen": "alternative",
                     "wahlstelle_anlegen": "alternative", "frage_anlegen": "frage", "tag_aendern": "plan", "wissen_schreiben": "wissen",
                     "frage_schliessen": "frage_schliessen", "reise_status_setzen": "einstellung", "einstellung_setzen": "einstellung",
-                    "buchung_anlegen": "buchung", "buchung_aendern": "buchung"}
+                    "buchung_anlegen": "buchung", "buchung_aendern": "buchung",
+                    "tag_anlegen": "plan", "termin_setzen": "plan", "wahlstelle_aendern": "plan", "option_aendern": "alternative",
+                    "wissen_aendern": "wissen", "lesetext_schreiben": "wissen", "reise_aendern": "einstellung", "plan_anlegen": "plan",
+                    "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe",
                   "entscheiden": "entscheiden", "rueckmeldung_erledigen": "rueckmeldung_erledigen",
@@ -1112,10 +1118,24 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
                 return (f"Nicht angelegt: Bei der Art {art} gibt es schon ein ähnliches Merkmal, {aehnlich['id']} – {aehnlich['name']}. "
                         "Das vorhandene nutzen oder mit merkmal_definieren ändern; ist es wirklich ein anderes, noch einmal mit "
                         "trotzdem = true."), True
-    if name in ("wert_eintragen", "ding_aendern", "tag_aendern", "lage_eintragen"):
+    if name in ("wert_eintragen", "ding_aendern", "tag_aendern", "lage_eintragen", "wahlstelle_aendern", "option_aendern", "wissen_aendern",
+                "lesetext_schreiben", "plan_aendern"):
         ziel = str(args.get("ziel") or "").strip()
-        if ziel and ziel not in ids_der_reise(d):
+        bekannt = ids_der_reise(d) | {p["id"] for p in route.get("plaene") or []}
+        if ziel and ziel not in bekannt:
             return f"„{ziel}“ gibt es in dieser Reise nicht. Mit suche oder ueberblick die ID finden.", True
+    if name == "arten_uebernehmen":
+        # nur Reisen derselben Person (Product Owner 28.10.2026): Konto oder Zugang muss auf beiden Reisen stehen
+        von = str(args.get("von_reise") or "").strip()
+        dv = daten(von) if REISE_MUSTER.match(von) else None
+        if not dv or von == reise:
+            return f"Die Reise „{von}“ gibt es nicht (meine_reisen zeigt deine Reisen).", True
+        if wer_spricht({**zugang, "reise": von}, dv) is None:
+            return f"Auf der Reise „{von}“ bist du nicht dabei; Arten lassen sich nur aus eigenen Reisen übernehmen.", True
+    if name == "wunsch_vorschlagen":
+        rid = str(args.get("wunsch") or "").strip()
+        if not any(w.get("id") == rid for w in (wuensche_liste(reise) or [])):
+            return f"Den Wunsch „{rid}“ gibt es nicht (wuensche zeigt alle).", True
     if name == "buchung_anlegen":
         fuer = args.get("fuer")
         fuer = [x.strip() for x in fuer.split(",")] if isinstance(fuer, str) else list(fuer or [])
@@ -1208,6 +1228,12 @@ def brett_text(b, titel=None):
         z.append(f"- {p['name']}: {p['wuensche']} Wünsche, {p['eingeplant']} eingeplant, {p['erlebt']} erlebt, "
                  + (f"{p['frei']} von {k['je_person']} Punkten frei" if punkte else f"noch {p['frei']} Wünsche frei"))
     return "\n".join(z)
+
+
+def wuensche_liste(reise):
+    """Alle Wünsche der Reise (Brett), für Vorprüfungen -> Liste oder []."""
+    o = rm.ordner(reise)
+    return rm.brett(o, rm.zustand(reise))["wuensche"] if o else []
 
 
 def wuensche_kurz(reise):
@@ -1808,7 +1834,7 @@ def frieda_werkzeuge(k):
 
 # Wie Frieda mit der Person spricht (28.10.2026): Kennungen sind für die Werkzeuge da, nicht für die Person
 SPRACHE = ("In Antworten Namen statt Kennungen: „Zugfahrt Münster → Duisburg am 8.1.“ statt „AG-01“. IDs nur für "
-           "die Werkzeuge oder auf Nachfrage, A-/R-Nummern nie.")
+           "die Werkzeuge oder auf Nachfrage, die Nummern von Rückmeldungen (R-…) nie.")
 
 
 def anleitung_frieda(k):
@@ -1930,7 +1956,7 @@ def anleitung_konto(konto):
             "Neue Reise: Titel, Zeitraum, Ziel und Personen mit Rollen im Gespräch klären (gast liest, mitwirkend gibt "
             "Wünsche, Rückmeldungen und Aufgaben, organisator entscheidet mit), vor dem Anlegen bestätigen lassen. Bekanntes "
             "(Ideen, schon Gebuchtes, Quellen wie Bücher, Fotos, PDFs) in eigenen Worten mit Herkunft in die Notiz, nie "
-            "abschreiben, nichts erfinden. Die Reise entsteht erst im Betrieb, sag nie, sie sei schon angelegt. Links sind "
+            "abschreiben, nichts erfinden. Der Schreibweg legt die Reise sofort an; ihre Links kommen, sobald die Seite online ist. Links sind "
             "persönlich: nur dieser Person zeigen. " + SPRACHE)
 
 
@@ -2015,8 +2041,8 @@ WERKZEUGE = [
      "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}},
     {"name": "rueckmeldung_geben", "description": "Rückmeldung zu einer ID abgeben: Kommentar, Frage, Korrektur, Ergänzung "
      "oder Antwort (auf eine offene Frage F-…). Oder ein Wunsch: eine Idee für die Reise (Ort, Erlebnis, Essen), auch "
-     "ohne passende ID; dann ziel leer lassen. Landet im Eingang und wird automatisch geprüft und "
-     "eingearbeitet, in der Regel in wenigen Minuten; sie ändert nichts sofort. Vorher den Text mit der Person abstimmen.",
+     "ohne passende ID; dann ziel leer lassen. Landet im Eingang; eine Organisator:in prüft sie in der Claude-App, trägt sie "
+     "mit den Schreibwerkzeugen ein und schließt sie ab (kein Lauf in Frieda, ADR-0001). Vorher den Text mit der Person abstimmen.",
      "inputSchema": {"type": "object", "properties": {
          "ziel": {**ZIEL_FELD, "description": ZIEL_FELD["description"] + "; bei art Wunsch leer lassen"},
          "art": {"type": "string", "enum": sorted(rm.ARTEN)},
@@ -2341,6 +2367,97 @@ WERT_SCHEMA_EINTRAG = {"type": "object", "properties": {
     "wert": {"type": "string"}, "gilt": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}],
              "description": "Datum JJJJ-MM-TT oder Liste, wenn der Wert nur für diese Tage gilt (Preis je Nacht)"},
     "geprueft": {"type": "string"}, "quelle": {"type": "string"}, "notiz": {"type": "string"}}, "required": ["wert"]}
+# ---------- Abgleich 29.10.2026 (Paket 3): die Tür für alle Grundformen (docs/abgleich-2026-10-29.md) ----------
+TAG_ANLEGEN = {"name": "tag_anlegen", "description": "Nur für Organisator:innen: einen neuen Tag anlegen (neue T-ID) und in die Route stellen: "
+               "nach einem Tag (nach), vor einem (vor) oder am Ende; mit Titel, Text, Nacht, Strecken, Wahlstellen und Aufenthalten wie bei "
+               "tag_aendern. Das Datum ergibt sich aus der Reihenfolge. Für eine Variante (Tage, die nur in einer Option stehen) ohne_route: true "
+               "und dann option_aendern mit folge. Schreibt sofort; vorher kurz bestätigen lassen.",
+               "inputSchema": {"type": "object", "properties": {
+                   "titel": {"type": "string"}, "text": {"type": "string"}, "nach": {"type": "string", "description": "T-…, hinter dem der Tag steht"},
+                   "vor": {"type": "string", "description": "T-…, vor dem der Tag steht"}, "ohne_route": {"type": "boolean"},
+                   "nacht": {"type": "string", "description": "U-…, V-… oder O-…"}, "strecken": {"type": "array", "items": {"type": "string"}},
+                   "wahl": {"type": "array", "items": {"type": "string"}}, "aufenthalte": {"type": "array", "items": {"type": "string"}},
+                   "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["titel"]}}
+TERMIN_SETZEN = {"name": "termin_setzen", "description": "Nur für Organisator:innen: einen festen Termin der Reise (Ankunft, reservierter Tisch, "
+                 "Zeitfenster) anlegen, ändern oder entfernen. Anlegen: datum, titel, ort, quelle (Pflicht). Ändern: datum und titel des "
+                 "vorhandenen, dazu neuer_titel, ort oder quelle. Entfernen: entfernen true mit grund. Schreibt sofort nach plan/routen.yaml "
+                 "(fixpunkte); die Seite zeigt Termine am Tag und im Reiseüberblick.",
+                 "inputSchema": {"type": "object", "properties": {
+                     "datum": {"type": "string", "description": "JJJJ-MM-TT"}, "titel": {"type": "string"}, "neuer_titel": {"type": "string"},
+                     "ort": {"type": "string", "description": "O-…"}, "quelle": QUELLE_FELD, "entfernen": {"type": "boolean"},
+                     "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["datum", "titel"]}}
+WAHLSTELLE_AENDERN = {"name": "wahlstelle_aendern", "description": "Nur für Organisator:innen: Felder einer Wahlstelle ändern: titel, text, wann "
+                      "(planung | unterwegs), art (Art der Dinge, leer = aus den Optionen), an (IDs, an denen sie hängt), frage (F-… oder leer), "
+                      "stufen ({merkmal: nötig | gut zu wissen | zusätzlich | aus} nur für diese Wahlstelle). Optionen ändert option_aendern, "
+                      "entschieden wird mit entscheiden. Schreibt sofort; vorher kurz bestätigen lassen.",
+                      "inputSchema": {"type": "object", "properties": {
+                          "ziel": {"type": "string", "description": "V-…"}, "titel": {"type": "string"}, "text": {"type": "string"},
+                          "wann": {"type": "string", "enum": ["planung", "unterwegs"]}, "art": {"type": "string"},
+                          "an": {"type": "array", "items": {"type": "string"}}, "frage": {"type": "string"},
+                          "stufen": {"type": "object", "additionalProperties": True},
+                          "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["ziel"]}}
+OPTION_AENDERN = {"name": "option_aendern", "description": "Felder einer Option ändern (Mitwirkende und Organisator:innen): titel, text, plus, "
+                  "minus, erfordert, schliesst_aus, ausloeser, siehe, unterkuenfte, strecken, folge, quelle; oder sie favorisieren (favorisiert: "
+                  "true mit grund: ein Vorschlag mit Begründung, keine Entscheidung). Gewählt, verworfen und ersetzt setzt nur entscheiden. "
+                  "Merkmale ändert wert_eintragen. Schreibt sofort; vorher kurz bestätigen lassen.",
+                  "inputSchema": {"type": "object", "properties": {
+                      "ziel": {"type": "string", "description": "V-01.a"}, **{k: v for k, v in OPTION_FELDER.items() if k != "merkmale"},
+                      "favorisiert": {"type": "boolean"}, "vorname": NAME_FELD}, "required": ["ziel"]}}
+WISSEN_AENDERN = {"name": "wissen_aendern", "description": "Einen Abschnitt des Wissens berichtigen: text ersetzt den ganzen Inhalt des "
+                  "Abschnitts (in eigenen Worten, Herkunft quelle Pflicht), neuer_titel benennt ihn um (die W-ID bleibt). Grund ist Pflicht "
+                  "(steht im Verlauf). Ergänzen ohne Ersetzen: wissen_schreiben. Schreibt sofort; vorher kurz bestätigen lassen.",
+                  "inputSchema": {"type": "object", "properties": {
+                      "ziel": {"type": "string", "description": "W-…"}, "text": {"type": "string"}, "quelle": QUELLE_FELD,
+                      "neuer_titel": {"type": "string"}, "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["ziel", "grund"]}}
+LESETEXT_SCHREIBEN = {"name": "lesetext_schreiben", "description": "Den Lesetext einer Etappe schreiben oder ersetzen (Abschnitt „Zusammenfassung“ "
+                      "im Etappen-Dossier, auf der Seite „Der Weg“): je Rubrik der Art ein Absatz, der mit dem fetten Stichwort beginnt "
+                      "(zeige E-… nennt die Gliederung mit Hilfe je Rubrik), in eigenen Worten; Herkunft quelle Pflicht. Schreibt sofort.",
+                      "inputSchema": {"type": "object", "properties": {
+                          "ziel": {"type": "string", "description": "E-…"}, "text": {"type": "string", "description": "Absätze „**Rubrik.** …“, durch Leerzeilen getrennt"},
+                          "quelle": QUELLE_FELD, "vorname": NAME_FELD}, "required": ["ziel", "text", "quelle"]}}
+REISE_AENDERN = {"name": "reise_aendern", "description": "Nur für Organisator:innen: Eckdaten der Reise ändern: titel, untertitel, kurz "
+                 "(Kurzname), von und bis (Zeitraum, JJJJ-MM-TT). Mit grund (Pflicht, steht im Verlauf). Status: reise_status_setzen; "
+                 "Bausteine und Regeln: einstellung_setzen; Start und Ende des Plans stehen in den Tagen.",
+                 "inputSchema": {"type": "object", "properties": {
+                     "titel": {"type": "string"}, "untertitel": {"type": "string"}, "kurz": {"type": "string"},
+                     "von": {"type": "string"}, "bis": {"type": "string"}, "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["grund"]}}
+PLAN_FELDER_SCHEMA = {"kurz": {"type": "string", "description": "Kurzname, z. B. Plan B"}, "titel": {"type": "string"}, "text": {"type": "string"},
+                      "farbe": {"type": "string", "enum": ["a", "b", "c", "d"]},
+                      "auswahl": {"type": "array", "items": {"type": "string"}, "description": "je Wahlstelle die Option dieses Plans (V-01.b …)"},
+                      "plus": {"type": "array", "items": {"type": "string"}}, "minus": {"type": "array", "items": {"type": "string"}}}
+PLAN_ANLEGEN = {"name": "plan_anlegen", "description": "Nur für Organisator:innen: einen benannten Plan (P-A, P-B …) anlegen, eine feste "
+                "Kombination von Optionen über die Reise (Ansicht „Varianten“); Herkunft quelle Pflicht. Gewählt wird ein Plan, indem seine "
+                "Optionen gewählt werden (entscheiden). Schreibt sofort.",
+                "inputSchema": {"type": "object", "properties": {**PLAN_FELDER_SCHEMA, "quelle": QUELLE_FELD, "vorname": NAME_FELD},
+                                "required": ["titel", "auswahl", "quelle"]}}
+PLAN_AENDERN = {"name": "plan_aendern", "description": "Nur für Organisator:innen: Felder eines benannten Plans ändern (kurz, titel, text, farbe, "
+                "auswahl, plus, minus), mit grund. Schreibt sofort.",
+                "inputSchema": {"type": "object", "properties": {"ziel": {"type": "string", "description": "P-…"}, **PLAN_FELDER_SCHEMA,
+                                                                 "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["ziel"]}}
+MERKMAL_ZUSAMMENFUEHREN = {"name": "merkmal_zusammenfuehren", "description": "Nur für Organisator:innen: zwei Merkmale einer Art zusammenführen "
+                           "(z. B. oeffnung in geoeffnet): die Werte von „von“ hängen danach an „nach“ (wo beide einen Wert haben, bleibt der von "
+                           "„nach“, der andere steht in der Notiz), „von“ entfällt und wird ein weiterer Name von „nach“. Mit grund (Pflicht). "
+                           "Vorher merkmale aufrufen und kurz bestätigen lassen.",
+                           "inputSchema": {"type": "object", "properties": {
+                               "art": {"type": "string"}, "von": {"type": "string"}, "nach": {"type": "string"}, "grund": {"type": "string"},
+                               "vorname": NAME_FELD}, "required": ["art", "von", "nach", "grund"]}}
+ARTEN_UEBERNEHMEN = {"name": "arten_uebernehmen", "description": "Nur für Organisator:innen und nur, wenn die Person ausdrücklich danach fragt "
+                     "(Product Owner 28.10.2026): Arten mit ihren Merkmalen aus einer anderen Reise, auf der die Person dabei ist, als Kopie "
+                     "übernehmen (nur Arten, die es hier noch nicht gibt; arten nennt eine Auswahl). Die Kopie wird hier frei geändert. Schreibt sofort.",
+                     "inputSchema": {"type": "object", "properties": {
+                         "von_reise": {"type": "string", "description": "Ordner der anderen Reise (aus meine_reisen)"},
+                         "arten": {"type": "array", "items": {"type": "string"}, "description": "nur diese Arten; leer = alle fehlenden"},
+                         "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["von_reise"]}}
+WUNSCH_VORSCHLAGEN = {"name": "wunsch_vorschlagen", "description": "Nach dem Prüfen eines Wunschs (Wo liegt das, passt es in die Route, was kostet "
+                      "es an Zeit, Saison, Öffnungszeiten): den Vorschlag eintragen (plan/wuensche.yaml): an welche Stellen er passt (bezug), "
+                      "eine Notiz mit Herkunft, und wenn daraus eine Option wurde (option_anlegen), deren ID. Das Brett zeigt ihn unter "
+                      "„geprüft“; einplanen tut eine Organisator:in (wunsch_aendern eingeplant oder die Wahl der Option). Schreibt sofort.",
+                      "inputSchema": {"type": "object", "properties": {
+                          "wunsch": {"type": "string", "description": "R-… (aus wuensche)"},
+                          "bezug": {"type": "array", "items": {"type": "string"}, "description": "T-…, O-…, V-… …; leer = keine feste Stelle"},
+                          "notiz": {"type": "string", "description": "kurz, mit Herkunft (Website, Buch, Karte)"},
+                          "option": {"type": "string", "description": "V-01.b, wenn eine Option daraus wurde"},
+                          "vorname": NAME_FELD}, "required": ["wunsch", "notiz"]}}
 WERT_EINTRAGEN = {"name": "wert_eintragen", "description": "Einen Wert eines Merkmals an einer Unterkunft (U-…), Strecke (E-…) oder "
                   "Option (V-01.a) eintragen: Preis, Frühstück, Öffnung, Dauer … Schreibt sofort in die Reise (gilt ab jetzt, Seite in "
                   "wenigen Minuten) und ersetzt den bisherigen Wert für dieselben Tage; der alte bleibt im Verlauf. Jede Angabe braucht "
@@ -2410,7 +2527,7 @@ PERSON_ENTFERNEN = {"name": "person_entfernen", "description": "Nur für Organis
 
 REISE_ANLEGEN = {"name": "reise_anlegen", "description": "Eine neue Reise anlegen. "
                  "Vorher im Gespräch Titel, Zeitraum, Ziel und Personen mit Rollen klären und bestätigen lassen; wer anlegt, "
-                 "bestimmt auf der neuen Reise. Was schon bekannt ist (Ideen, Unterkunft, Quellen), kommt in notiz: Bücher, "
+                 "ist Organisator:in der neuen Reise. Was schon bekannt ist (Ideen, Unterkunft, Quellen), kommt in notiz: Bücher, "
                  "Fotos und PDFs in eigenen Worten zusammenfassen, mit Herkunft (Buch und Seite, Link), nie abschreiben. "
                  "Die Reise entsteht in wenigen Minuten im Status idee; danach zeigt meine_reisen eine Meldung mit dem Link "
                  "zur Seite und dem Link für die Claude-App. Sag nie, die Reise sei schon angelegt.",
@@ -2716,7 +2833,9 @@ def werkzeuge_fuer(zugang):
     werkzeuge = []
     ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN, KATEGORIE_DEFINIEREN, WERT_EINTRAGEN, DING_ANLEGEN, DING_AENDERN, LAGE_EINTRAGEN, OPTION_ANLEGEN, WAHLSTELLE_ANLEGEN,
                  FRAGE_ANLEGEN, TAG_AENDERN, WISSEN_SCHREIBEN, FRAGE_SCHLIESSEN, REISE_STATUS_SETZEN, EINSTELLUNG_SETZEN,
-                 BUCHUNG_ANLEGEN, BUCHUNG_AENDERN] if schreibdienst() else []
+                 BUCHUNG_ANLEGEN, BUCHUNG_AENDERN, TAG_ANLEGEN, TERMIN_SETZEN, WAHLSTELLE_AENDERN, OPTION_AENDERN, WISSEN_AENDERN,
+                 LESETEXT_SCHREIBEN, REISE_AENDERN, PLAN_ANLEGEN, PLAN_AENDERN, MERKMAL_ZUSAMMENFUEHREN, ARTEN_UEBERNEHMEN,
+                 WUNSCH_VORSCHLAGEN] if schreibdienst() else []
     for w in WERKZEUGE + [ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN, RUECKMELDUNG_ERLEDIGEN] + ontologie:
         n = w["name"]
         if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:

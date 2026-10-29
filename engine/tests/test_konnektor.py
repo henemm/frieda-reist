@@ -531,7 +531,10 @@ def test_ontologie_organisator_schreibt_direkt(schreibweg):
     basis, ablage = schreibweg
     for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (MITREISEND, True), (GAST, False)):
         namen = {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}
-        nur_org = {"tag_aendern", "frage_schliessen", "reise_status_setzen", "einstellung_setzen"}
+        nur_org = {"tag_aendern", "frage_schliessen", "reise_status_setzen", "einstellung_setzen",
+                   # Abgleich 29.10.2026: Plan, Eckdaten und Ontologie ändern nur Organisator:innen
+                   "tag_anlegen", "termin_setzen", "wahlstelle_aendern", "reise_aendern", "plan_anlegen", "plan_aendern",
+                   "merkmal_zusammenfuehren", "arten_uebernehmen"}
         assert (set(kn.ONTOLOGIE_WERKZEUGE) - nur_org <= namen) is da, token
     anleitung = rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
     assert "Arten und Merkmale (art_definieren, merkmal_definieren" in anleitung and "schreibt es sofort in die Reise" in anleitung

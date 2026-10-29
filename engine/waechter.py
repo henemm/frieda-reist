@@ -105,9 +105,32 @@ def zu_pruefen(d, heute, frist_tage):
         for o in w["optionen"]:
             if o["aktiv"] and o["status"] not in UNGUELTIG:
                 pruefe(o["id"], f"{w['titel']} › {o['titel']}", o.get("merkmale"), w.get("kriterien"))
+    def lage(bezug, titel, d):   # Lage (ADR-0004): Adresse und Punkt sind Aussagen mit Prüfdatum
+        for feld, name in (("adresse", "Adresse"), ("punkt", "Koordinaten")):
+            v = d.get(feld)
+            if not isinstance(v, dict) or not v.get("wert"):
+                continue
+            g = v.get("geprueft")
+            alter = tage_zwischen(datetime.date.fromisoformat(g), heute) if g else None
+            if alter is not None and alter <= frist_tage:
+                continue
+            treffer.append({"bezug": bezug, "titel": titel, "merkmal": feld, "name": name, "wert": str(v["wert"]), "geprueft": g,
+                            "quelle": v.get("quelle"), "alter_tage": alter,
+                            "grund": "noch nie geprüft" if g is None else f"zuletzt geprüft {datum_de(g)} (vor {alter} Tagen)"})
+
     for uid, u in (r.get("unterkuenfte") or {}).items():
         if u.get("naechte"):   # Merkmale der Art der Unterkunft (plan/arten.yaml)
             pruefe(uid, u.get("name") or uid, u.get("merkmale"), (r.get("merkmale") or {}).get(u.get("art")), u.get("art"))
+            lage(uid, u.get("name") or uid, u)
+    # Aufenthalte ohne Nacht und Strecken im Plan: dieselben Regeln (Abgleich 29.10.2026)
+    for aid, a in (r.get("aufenthalte") or {}).items():
+        if a.get("tage"):
+            pruefe(aid, a.get("name") or aid, a.get("merkmale"), (r.get("merkmale") or {}).get(a.get("art")), a.get("art"))
+            lage(aid, a.get("name") or aid, a)
+    for sid in r.get("aktiv_strecken") or []:
+        s_ = (r.get("strecken") or {}).get(sid) or {}
+        if s_.get("merkmale"):
+            pruefe(sid, s_.get("titel") or sid, s_.get("merkmale"), (r.get("merkmale") or {}).get(s_.get("art_schluessel")), s_.get("art_schluessel"))
     treffer.sort(key=lambda t: (t["alter_tage"] is not None, -(t["alter_tage"] or 0), t["bezug"], t["merkmal"]))
     return treffer
 
@@ -220,8 +243,8 @@ def statuswechsel(d, heute):
     else:
         return []
     return [{"schluessel": f"status:{st}:{ziel}", "wiederholen": WIEDERHOLEN_TAGE, "an": organisator_von(d), "art": "status",
-             "ziel": rg.REISE_ZIEL, "bezug": rg.REISE_ZIEL, "extra": {"status_bei": st},
-             "text": f"{text} Soll er auf {ziel} wechseln? Das entscheidet ein:e Organisator:in (Auftrag an „reise“)."}]
+             "ziel": "reise", "bezug": "reise", "extra": {"status_bei": st},
+             "text": f"{text} Soll er auf {ziel} wechseln? Das entscheidet ein:e Organisator:in (reise_status_setzen in der Claude-App)."}]
 
 
 def neue_meldungen(o, meldungen, jetzt, trocken=False):

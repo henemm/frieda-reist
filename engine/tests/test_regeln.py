@@ -150,19 +150,18 @@ def test_rechte_je_rolle_und_status(rolle, status):
     assert erlaubt["rueckmeldung"] == erlaubt["aufgabe"] == (schreiben != "nichts")
     # Wunsch und Alternative ändern den Plan: nur bei vollem Schreibrecht
     assert erlaubt["wunsch"] == erlaubt["alternative"] == (schreiben == "alles")
-    # Aufträge: nur Organisator:innen, und nur solange der Plan nicht gesperrt ist
-    assert erlaubt["auftrag"] == (rolle == "organisator" and schreiben == "alles")
     # Wunsch-Brett: abhaken auch in der Nachlese, einplanen nur Organisator:innen bei vollem Schreibrecht
     assert erlaubt["wunsch_erlebt"] == (schreiben != "nichts")
     assert erlaubt["wunsch_einplanen"] == (rolle == "organisator" and schreiben == "alles")
 
 
-def test_auftrag_an_die_reise_geht_in_jedem_status():
+def test_status_zuruecksetzen_geht_in_jedem_status():
+    """Aufträge gibt es seit O-3 nicht mehr; eine gesperrte Reise öffnet ein:e Organisator:in mit reise_status_setzen (Aktion einstellung)."""
     for status in rg.STATUS:
-        assert rg.erlaubt("auftrag", "organisator", status, [], "reise")[0]
-        assert not rg.erlaubt("auftrag", "mitwirkend", status, [], "reise")[0]
-    ok, grund = rg.erlaubt("auftrag", "organisator", "archiv", [], "V-01")
-    assert not ok and "archiviert" in grund and "zurücksetzen" in grund
+        assert rg.erlaubt("einstellung", "organisator", status, [])[0]
+        assert not rg.erlaubt("einstellung", "mitwirkend", status, [])[0]
+    ok, grund = rg.erlaubt("alternative", "organisator", "archiv", ALLE_BAUSTEINE, "V-01")
+    assert not ok and "archiviert" in grund and "reise_status_setzen" in grund
 
 
 def test_ausgeschalteter_baustein_sperrt_schreiben():
