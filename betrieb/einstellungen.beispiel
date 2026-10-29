@@ -30,9 +30,14 @@ FR_ADRESSE=https://reisen.example.org
 #FR_KONNEKTOR=/srv/beispiel/_konnektor
 #FR_KONTEN=/srv/beispiel/_konten
 
-# Ports von Rückmeldedienst und Konnektor auf 127.0.0.1. (8771, 8772)
+# Ports von Rückmeldedienst, Konnektor und Schreibweg auf 127.0.0.1. (8771, 8772, 8773)
 #FR_RM_PORT=8781
 #FR_KN_PORT=8782
+#FR_SB_PORT=8783
+
+# Arbeitskopie des Schreibwegs (engine/schreiben.py): ein Git-Worktree des Reisen-Repos, den der Dienst selbst anlegt und
+# auf main hält. (<Wurzel>-schreiben)
+#FR_SCHREIBKOPIE=/home/reisen/reisen-schreiben
 
 # Benutzer, unter dem die Dienste laufen, und sein Home (für einrichten.sh). (aufrufender Benutzer)
 #FR_BENUTZER=reisen
