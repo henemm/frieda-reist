@@ -1706,9 +1706,21 @@ function karteZeichnen(plaene, info, box) {
   };
   karte.on("zoomend moveend", entzerren);
   // Startausschnitt: die gezeigten Wege, nicht der ganze Kartenrahmen
-  karte.fitBounds(bereich.isValid() ? bereich : L.latLngBounds([rf.sued, rf.west], [rf.nord, rf.ost]), {padding: [24, 24]});
-  karte.setMinZoom(Math.min(karte.getZoom(), karte.getBoundsZoom(L.latLngBounds([rf.sued, rf.west], [rf.nord, rf.ost]))));
-  entzerren();
+  const anfangen = () => {
+    karte.fitBounds(bereich.isValid() ? bereich : L.latLngBounds([rf.sued, rf.west], [rf.nord, rf.ost]), {padding: [24, 24]});
+    karte.setMinZoom(Math.min(karte.getZoom(), karte.getBoundsZoom(L.latLngBounds([rf.sued, rf.west], [rf.nord, rf.ost]))));
+    entzerren();
+  };
+  anfangen();
+  // Der Kasten steht beim Zeichnen oft noch nicht im Dokument (Ansicht wird erst danach eingehängt) oder ändert seine
+  // Größe mit dem Raster der Seite: Leaflet misst dann 0 Pixel und zeichnet alle Wege in einen Punkt. Deshalb neu
+  // vermessen, sobald der Kasten seine Größe hat oder ändert; beim ersten echten Maß auch den Startausschnitt neu setzen.
+  let gemessen = box.clientWidth > 0 && box.clientHeight > 0;
+  if (window.ResizeObserver) new ResizeObserver(() => {
+    if (!box.isConnected || KARTE !== karte || !box.clientWidth || !box.clientHeight) return;
+    karte.invalidateSize();
+    if (!gemessen) { gemessen = true; anfangen(); }
+  }).observe(box);
   return {segmente};
 }
 
