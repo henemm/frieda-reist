@@ -380,3 +380,15 @@ def test_zu_pruefen_auch_strecken_aufenthalte_und_lage():
     assert next(x for x in t if x["bezug"] == "U-1")["name"] == "Adresse" and next(x for x in t if x["bezug"] == "E-1")["grund"] == "noch nie geprüft"
     # Punkt mit frischem Prüfdatum und Dinge außerhalb des Plans (A-2, E-2) bleiben still
     assert wa.zu_pruefen(d, D(2026, 12, 25), 60)[-1]["merkmal"] == "punkt"
+
+
+def test_erinnerer_meldet_ab_termin_einer_buchung(reise, tmp_path):
+    """Issue #135: „ab“ an einer Buchung (Check-in öffnet) meldet der Erinnerer einmal, sobald der Tag da ist, an die Person, die gebucht hat."""
+    r = reise()
+    d = json.loads((r.seiten / "beispielreise" / "daten.json").read_text(encoding="utf-8"))
+    d["route"]["buchungen"]["B-02"].update({"ab": "2027-05-12", "ab_was": "Online-Check-in"})
+    (r.seiten / "beispielreise" / "daten.json").write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    assert not [m for m in r.lauf(D(2027, 5, 11))["meldungen"] if "Jetzt möglich" in m["text"]]
+    ms = [m for m in r.lauf(D(2027, 5, 12))["meldungen"] if "Jetzt möglich" in m["text"]]
+    assert len(ms) == 1 and ms[0]["an"] == ["Karl"] and "Jetzt möglich (ab 12.5.2027): Online-Check-in zur Buchung B-02" in ms[0]["text"]
+    assert not [m for m in r.lauf(D(2027, 5, 13))["meldungen"] if "Jetzt möglich" in m["text"]]   # nicht doppelt

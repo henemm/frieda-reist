@@ -947,7 +947,7 @@ function zid(id) {
    statt dieselbe Sache selbst zu zeichnen; die Stile stehen im <style> in derselben Ordnung. Diese vier Zeilen sind die eine
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
-   Atome: symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zahlMarke, buchungChip
+   Atome: symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, buchungChip
    Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, wahlZustand, belegeListe
    Organismen: nachtZeile, unterkunftKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, nachtAbschnitt, tagZeile, uebersichtKarte, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
    Vorlagen: tagKachel, leseAbschnitt, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtOffen, ansichtWissen, ansichtPlan, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
@@ -1100,6 +1100,8 @@ function reiseJahre() {
   if (j.length) for (let y = Math.min(...j); y <= Math.max(...j); y++) aus.add(y);
   return aus;
 }
+// Atom Zeit: ein Zeitpunkt einer Bewegung (Issue #135): „18:05“ am Tag der Strecke, mit Datum „25.2. 18:05“, Zeitzone bleibt weg
+function zeitText(t) { const m = /^(?:(\d{4}-\d{2}-\d{2})T)?(\d{2}):(\d{2})/.exec(String(t || "")); return m ? (m[1] ? datumKurz(m[1]) + " " : "") + `${m[2]}:${m[3]}` : String(t || ""); }
 function datumKurz(iso) { const [j, m, d] = String(iso || "").slice(0, 10).split("-"); return d ? `${+d}.${+m}.${reiseJahre().has(+j) ? "" : j}` : ""; }
 function dauer(min) { return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")} h`; }
 function summeText(s) {
@@ -1178,7 +1180,7 @@ function streckeZeile(id, wahl, ohneKennung, voll) {
   const z = el("div", {class: "z"}, el("div", {class: "titelzeile"}, el("span", {}, symbol(artSym(arten[0], "bewegung"), "etikett-sym"), " ", s.dossier || proId.has(id) ? link(id, s.titel) : s.titel), ohneKennung ? null : zid(id)));
   // Kennzahlen als Leiste mit Etiketten (Gehzeit, Aufstieg, Abstieg, Strecke); Verkehrsmittel als Textzeile
   const kz = kennzahlLeiste(s.kennzahlen, !!s.art && !summiertArt(s));
-  if (art) z.append(el("div", {class: "z klein"}, art));
+  if (art || s.ab || s.an) z.append(el("div", {class: "z klein"}, [art, s.ab ? "ab " + zeitText(s.ab) : "", s.an ? "an " + zeitText(s.an) : ""].filter(Boolean).join(" · ")));
   if (kz) z.append(kz);
   if (s.buchung) z.append(el("div", {class: "chips"}, buchungChip(s)));
   if (s.text) z.append(el("div", {class: "z klein"}, s.text));
@@ -1352,6 +1354,10 @@ function buchungBlock(b) {
   const zeile = (name, wert, klasse) => wert ? el("div", {class: "z" + (klasse ? " " + klasse : "")}, el("b", {}, name + ": "), wert) : null;
   if ((b.fuer || []).length > 1) k.append(zeile("Für", b.fuer.map(x => titelZu(x) || x).join(", ")));
   k.append(...[zeile("Nummer", b.nummer), zeile("Gebucht bei", b.bei), zeile("Preis", b.preis), zeile("Bezahlt", b.bezahlt)].filter(Boolean));
+  const preise = Object.entries(b.preise || {}), personen = Object.entries(b.personen || {});
+  if (preise.length) k.append(zeile("Preise", preise.map(([x, p]) => `${titelZu(x) || x}: ${p}`).join(" · ")));
+  if (personen.length) k.append(zeile("Reisende", personen.map(([n, a]) => n + (a ? ` (${a})` : "")).join(", ")));
+  if (b.ab) k.append(zeile("Ab", datumKurz(b.ab) + (b.ab_was ? " · " + b.ab_was : "")));
   if (b.frist) k.append(zeile("Frist", datumKurz(b.frist) + (b.frist_was ? " · " + b.frist_was : ""), !zu && V.fristen && b.frist < heute() ? "ueber" : null));
   if (b.storno || b.storno_bis) k.append(zeile("Storno", [b.storno, b.storno_bis ? "bis " + datumKurz(b.storno_bis) : ""].filter(Boolean).join(" · ")));
   if (b.notiz) k.append(el("div", {class: "z"}, b.notiz));
@@ -3097,7 +3103,7 @@ function ansichtWissen(m) {
     leer = false;
     const zeile = a => { const pl = ortPlaene(a.id);
       return listenZeile("wissen", "karte", a.titel,
-        [pl.length ? "in " + pl.map(p => p.kurz).join(", ") : "in keinem Plan", a.wissen ? `${a.wissen.length} ${a.wissen.length === 1 ? "Abschnitt" : "Abschnitte"} der Recherche` : ""].filter(Boolean).join(" · "),
+        [R && (R.orte[a.id] || {}).ausserhalb ? "außerhalb der Reisegegend" : "", pl.length ? "in " + pl.map(p => p.kurz).join(", ") : "in keinem Plan", a.wissen ? `${a.wissen.length} ${a.wissen.length === 1 ? "Abschnitt" : "Abschnitte"} der Recherche` : ""].filter(Boolean).join(" · "),
         a.id, a.id); };
     const alle = abschnitte.filter(x => x.typ === "ort").sort((a, b) => a.titel.localeCompare(b.titel, "de"));
     m.append(el("h3", {class: "gruppe ziel", id: "orte"}, "Orte"));
@@ -3326,7 +3332,8 @@ function ansichtBausteine(m) {
   teil("Atom", "Zustand", "Feste Namen; die Farbe folgt der Bedeutung, nicht dem Ort.",
     el("div", {class: "chips"}, Object.keys(CHIP).map(z => chip(z, z)), chip("", "Hinweis")));
   teil("Atom", "Datum", "Zwei Formen: mit Wochentag für die Tage des Plans, kurz (mit Jahr, wenn es nicht das laufende ist) für Fristen, Prüfdaten und Verläufe.",
-    fall("mit Wochentag", datumText("2027-05-13", "Do")), fall("kurz", datumKurz("2027-05-13")), fall("kurz, laufendes Jahr", datumKurz(heute())));
+    fall("mit Wochentag", datumText("2027-05-13", "Do")), fall("kurz", datumKurz("2027-05-13")), fall("kurz, laufendes Jahr", datumKurz(heute())),
+    fall("Zeitpunkt einer Bewegung", [zeitText("18:05"), " · ", zeitText("2027-05-13T20:15+02:00")]));
   teil("Atom", "Zahlmarke", "Die Zahl der Einträge einer Gruppe oder eines Kapitels; im Gruppentitel (Molekül).",
     el("div", {class: "chips"}, zahlMarke(3)), gruppenTitel("Gruppe (Muster)", 2));
   teil("Atom", "Zustand Buchung", "Der Buchungsstand eines Dings als Chip (Molekül Buchungsstand: gebucht, nicht gebucht, angefragt; mit Buchung führt er zu ihr).",

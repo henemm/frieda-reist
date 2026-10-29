@@ -943,3 +943,59 @@ def test_buchung_prueft_bezug_status_herkunft_und_datum():
     r["buchungen"] = {"X-01": {"fuer": ["U-01"], "quelle": "x"}}
     _, fehler = laufe(r, FRAGEN, a)
     assert any("keine gültige ID für buchung" in x for x in fehler)
+
+
+def test_zeitpunkt_form():
+    """Issue #135: Zeiten an Bewegungen sind HH:MM (am Tag der Strecke) oder JJJJ-MM-TTTHH:MM mit Zeitzone; die Software kennt
+    keine Zeitzonen der Orte, sie prüft nur die Form und vergleicht gleiche Formen."""
+    from routen import zeitpunkt
+    assert zeitpunkt("07:45") == datetime.time(7, 45)
+    z = zeitpunkt("2027-02-25T07:45+01:00")
+    assert z == datetime.datetime(2027, 2, 25, 7, 45, tzinfo=datetime.timezone(datetime.timedelta(hours=1)))
+    assert zeitpunkt("2027-02-25T06:45Z") == z
+    assert zeitpunkt("2027-02-25T07:45") == datetime.datetime(2027, 2, 25, 7, 45)
+    for falsch in ("7:45", "25.2. 7 Uhr", "2027-02-30T07:45+01:00", "", None, "07:60"):
+        assert zeitpunkt(falsch) is None, falsch
+
+
+def test_buchung_reisende_preise_und_ab_termin():
+    """Issue #135: Eine Buchung nennt ihre Reisenden mit Angabe je Person (Sitz, Gepäck), bei mehreren Dingen den Preis je Ding und
+    einen Ab-Termin (Check-in öffnet) neben der Frist."""
+    r, a = staedtereise()
+    r["strecken"]["E-11"] = {"titel": "Flug zurück (erfunden)", "von": "O-01", "nach": "O-01", "art": "flug"}
+    r["buchungen"] = {"B-01": {"fuer": ["E-10", "E-11"], "status": "gebucht", "quelle": "x", "preis": "230 €",
+                               "preise": {"E-10": "120 €", "E-11": "110 €"}, "personen": {"Ida": "Sitz 12A, 23 kg Gepäck", "Karl": None},
+                               "ab": D(2027, 2, 28), "ab_was": "Online-Check-in"},
+                      "B-02": {"fuer": ["A-01"], "status": "gebucht", "quelle": "x", "personen": ["Ida", "Karl"]}}
+    erg, fehler = laufe(r, FRAGEN, a)
+    assert fehler == [], fehler
+    b = erg["buchungen"]["B-01"]
+    assert b["personen"] == {"Ida": "Sitz 12A, 23 kg Gepäck", "Karl": ""} and b["preise"] == {"E-10": "120 €", "E-11": "110 €"}
+    assert b["ab"] == "2027-02-28" and b["ab_was"] == "Online-Check-in"
+    assert erg["buchungen"]["B-02"]["personen"] == {"Ida": "", "Karl": ""} and erg["buchungen"]["B-02"]["preise"] == {}
+    r["buchungen"] = {"B-01": {"fuer": ["E-10"], "quelle": "x", "personen": "Ida", "preise": {"E-11": "1 €"}, "ab": "bald"}}
+    _, fehler = laufe(r, FRAGEN, a)
+    f = " ".join(fehler)
+    assert "Buchung B-01: personen ist eine Liste von Namen oder {Name: Angabe}" in f and "preise ist {ID aus fuer: Betrag}; E-11 passt nicht" in f
+    assert "ab muss ein Datum" in f
+
+
+def test_strecke_mit_zeiten_und_anschluss():
+    """Issue #135: Abfahrt und Ankunft an einer Bewegung; der Generator meldet, wenn die nächste Strecke des Tags abfährt, bevor die
+    vorige ankommt. Ein Ort der An- und Abreise kann außerhalb der Reisegegend liegen."""
+    r, a = staedtereise()
+    r["orte"]["O-09"] = {"name": "Flughafen daheim", "ausserhalb": True}
+    r["strecken"]["E-10"].update({"von": "O-09", "ab": "2027-03-02T07:45+01:00", "an": "2027-03-02T10:05+01:00"})
+    r["strecken"]["E-12"] = {"titel": "Bus vom Flughafen", "von": "O-01", "nach": "O-01", "art": "flug", "ab": "2027-03-02T09:50+01:00", "an": "11:00"}
+    r["tage"]["T-02"]["strecken"] = ["E-10", "E-12"]
+    erg, fehler = laufe(r, FRAGEN, a)
+    assert fehler == [], fehler
+    assert erg["strecken"]["E-10"]["ab"] == "2027-03-02T07:45+01:00" and erg["strecken"]["E-10"]["an"] == "2027-03-02T10:05+01:00"
+    assert erg["orte"]["O-09"]["ausserhalb"] is True and erg["orte"]["O-01"]["ausserhalb"] is False
+    assert any("T-02: Anschluss – E-10 kommt um 2027-03-02T10:05+01:00 an, E-12 fährt schon um 2027-03-02T09:50+01:00 ab" in w["text"] for w in erg["warnungen"])
+    r["strecken"]["E-12"]["ab"] = "10:30"        # andere Form (Uhrzeit ohne Datum): kein Vergleich, keine Meldung
+    erg, _ = laufe(r, FRAGEN, a)
+    assert not any("Anschluss" in w["text"] for w in erg["warnungen"])
+    r["strecken"]["E-12"]["ab"] = "morgens"
+    _, fehler = laufe(r, FRAGEN, a)
+    assert any("Strecke E-12: ab muss eine Uhrzeit HH:MM oder ein Zeitpunkt" in x for x in fehler)

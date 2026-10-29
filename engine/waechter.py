@@ -217,6 +217,9 @@ def buchungsfristen(d, heute, vorlauf):
                 neu.append({"schluessel": f"frist:{b['id']}:{b['frist']}", "wiederholen": None,
                             "text": f"Frist {'heute' if rest == 0 else 'in ' + str(rest) + ' Tag(en)'}: {was} zur Buchung {titel} "
                                     f"(Frist {datum_de(b['frist'])})."})
+        if b.get("ab") and datetime.date.fromisoformat(b["ab"]) <= heute:   # Issue #135: ab wann etwas geht (Check-in, Sitzplatzwahl)
+            neu.append({"schluessel": f"ab:{b['id']}:{b['ab']}", "wiederholen": None,
+                        "text": f"Jetzt möglich (ab {datum_de(b['ab'])}): {b.get('ab_was') or 'etwas'} zur Buchung {titel}."})
         if b.get("storno_bis"):
             rest = tage_zwischen(heute, datetime.date.fromisoformat(b["storno_bis"]))
             if 0 <= rest <= vorlauf:

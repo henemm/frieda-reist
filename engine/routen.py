@@ -37,9 +37,29 @@ MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+",
 # frist_was, storno, storno_bis, gebucht_am, wer, quelle (Pflicht: Herkunft), notiz, verlauf. Der Beleg (PDF, Bild)
 # liegt nie im Repo, sondern in der Ablage der Instanz (Rückmeldedienst, docs/betrieb.md „Belege“).
 BUCHUNG_STATUS = ("angefragt", "gebucht", "storniert")
+# Seit 29.10.2026 (Issue #135) dazu: personen (die Reisenden dieser Buchung, {Name: Angabe wie Sitzplatz, Gepäck, Vielfliegernummer}
+# oder Liste der Namen), preise ({ID aus fuer: Betrag}, wenn eine Buchung mehrere Dinge umfasst), ab mit ab_was (ab wann
+# etwas geht, etwa der Check-in; frist sagt bis wann).
 BUCHUNG_FELDER = ("fuer", "status", "nummer", "bei", "preis", "bezahlt", "frist", "frist_was", "storno", "storno_bis", "gebucht_am",
-                  "wer", "quelle", "notiz", "verlauf")
-BUCHUNG_DATEN = ("frist", "storno_bis", "gebucht_am")
+                  "wer", "quelle", "notiz", "verlauf", "personen", "preise", "ab", "ab_was")
+BUCHUNG_DATEN = ("frist", "storno_bis", "gebucht_am", "ab")
+# Zeitpunkt an einer Bewegung (ab, an; Issue #135): Uhrzeit HH:MM am Tag der Strecke oder JJJJ-MM-TTTHH:MM mit Zeitzone
+# (+01:00, Z); die Software prüft nur die Form und meldet, wenn eine Strecke abfährt, bevor die vorige ankommt (Anschluss)
+ZEIT_MUSTER = re.compile(r"^(?:(\d{4}-\d{2}-\d{2})T)?(\d{2}):(\d{2})(Z|[+-]\d{2}:\d{2})?$")
+
+
+def zeitpunkt(text):
+    """-> datetime (mit Zeitzone, wenn angegeben) oder time oder None (keine gültige Form)."""
+    m = ZEIT_MUSTER.match(str(text or "").strip())
+    if not m:
+        return None
+    datum, h, mi, tz = m.groups()
+    try:
+        if datum:
+            return datetime.datetime.fromisoformat(f"{datum}T{h}:{mi}" + ("+00:00" if tz == "Z" else tz or ""))
+        return datetime.time(int(h), int(mi))
+    except ValueError:
+        return None
 # Grundformen der Reise-Ontologie (docs/ontologie.md, ADR-0001): Aufenthalt (Unterkunft, Nacht), Bewegung (Strecke),
 # Folge (Tag, Reiseteil). Welche Arten es davon gibt (Hotel, Refugi, Wanderung, Bahn, Reiseteil …) und welche Merkmale
 # eine Art hat, sagt allein die Reise in plan/arten.yaml. Die Software kennt nur die Grundformen, die Form eines
@@ -327,6 +347,9 @@ class Routen:
         self.arten_pruefen()
         for sid, s in self.strecken.items():
             self.strecken_art(s, f"Strecke {sid}")
+            for k in ("ab", "an"):
+                if s.get(k) is not None and zeitpunkt(s[k]) is None:
+                    self.fehl(f"Strecke {sid}: {k} muss eine Uhrzeit HH:MM oder ein Zeitpunkt JJJJ-MM-TTTHH:MM+HH:MM sein.")
         for uid, u in self.unterkuenfte.items():
             self.id_anlegen(uid, self.q)
             if u.get("ort") not in self.orte:
@@ -404,6 +427,14 @@ class Routen:
                         datetime.date.fromisoformat(str(v))
                     except ValueError:
                         self.fehl(f"Buchung {bid}: {k} muss ein Datum JJJJ-MM-TT sein.")
+            pers = b.get("personen")
+            if pers is not None and not (isinstance(pers, list) and all(isinstance(x, str) for x in pers)) \
+                    and not (isinstance(pers, dict) and all(isinstance(k, str) and (v is None or isinstance(v, str)) for k, v in pers.items())):
+                self.fehl(f"Buchung {bid}: personen ist eine Liste von Namen oder {{Name: Angabe}} (Sitzplatz, Gepäck …).")
+            preise = b.get("preise")
+            if preise is not None:
+                if not isinstance(preise, dict) or any(k not in fuer for k in preise):
+                    self.fehl(f"Buchung {bid}: preise ist {{ID aus fuer: Betrag}}; {', '.join(k for k in (preise or {}) if k not in fuer) or 'Form'} passt nicht.")
             for e in b.get("verlauf") or []:   # wie jeder Verlauf: wer hat wann (ADR-0001)
                 if not isinstance(e, dict) or not isinstance(e.get("datum"), datetime.date) or not e.get("wer"):
                     self.fehl(f"Buchung {bid}: jeder Verlaufseintrag braucht datum (JJJJ-MM-TT) und wer.")
@@ -437,8 +468,11 @@ class Routen:
         fuer = [b["fuer"]] if isinstance(b.get("fuer"), str) else list(b.get("fuer") or [])
         namen = [(self.unterkuenfte.get(x) or self.aufenthalte.get(x) or {}).get("name") or self.strecke(x).get("titel") or x for x in fuer]
         aus = {"id": bid, "fuer": fuer, "titel": ", ".join(namen), "status": str(b.get("status") or "gebucht")}
-        for k in ("nummer", "bei", "preis", "bezahlt", "frist_was", "storno", "wer", "quelle", "notiz"):
+        for k in ("nummer", "bei", "preis", "bezahlt", "frist_was", "storno", "wer", "quelle", "notiz", "ab_was"):
             aus[k] = str(b[k]) if b.get(k) not in (None, "") else None
+        pers = b.get("personen")
+        aus["personen"] = {str(k): (str(v) if v else "") for k, v in pers.items()} if isinstance(pers, dict) else {str(x): "" for x in (pers or [])}
+        aus["preise"] = {str(k): str(v) for k, v in (b.get("preise") or {}).items()} if isinstance(b.get("preise"), dict) else {}
         for k in BUCHUNG_DATEN:
             aus[k] = iso(b.get(k))
         aus["verlauf"] = [{**{kk: iso(vv) if kk == "datum" else vv for kk, vv in v.items()}} for v in b.get("verlauf") or [] if isinstance(v, dict)]
@@ -1065,6 +1099,12 @@ class Routen:
             if warnen and von and pos and von != pos:
                 self.warne(tid, f"{tid}: Lücke – der Tag steht in {self.ort_name(pos)}, "
                                 f"{sid} beginnt in {self.ort_name(von)}.")
+            # Anschluss (Issue #135): fährt diese Strecke ab, bevor die vorige ankommt? Nur gleiche Form (beide mit Datum oder beide Uhrzeit)
+            if warnen and i > 0:
+                vorige = self.strecke(strecken[i - 1][0])
+                an_, ab_ = zeitpunkt(vorige.get("an")), zeitpunkt(s.get("ab"))
+                if an_ is not None and ab_ is not None and type(an_) is type(ab_) and (an_.tzinfo is None) == (ab_.tzinfo is None) and ab_ < an_:
+                    self.warne(tid, f"{tid}: Anschluss – {strecken[i - 1][0]} kommt um {vorige['an']} an, {sid} fährt schon um {s['ab']} ab.")
             pos = s.get("nach") or pos
         n = self.nacht(tid, t.get("nacht"))
         if n and n.get("ort") and not n.get("an_bord"):
@@ -1189,7 +1229,8 @@ class Routen:
             "summe": self.summe(tage),
             "plaene": [] if self.ist_plan else self.plaene(tage),
             "wahlstellen": [self.wahl_aus(vid, w) for vid, w in self.wahl.items()],
-            "orte": {k: {"name": v.get("name", k), "hinweis": v.get("hinweis")} for k, v in self.orte.items()},
+            # ausserhalb (Issue #135): ein Ort der An- und Abreise außerhalb der Reisegegend (Flughafen daheim), kein Ort der Reise selbst
+            "orte": {k: {"name": v.get("name", k), "hinweis": v.get("hinweis"), "ausserhalb": bool(v.get("ausserhalb"))} for k, v in self.orte.items()},
             "strecken": {sid: self.strecke_aus(sid) for sid in sorted(set(self.strecken) | aktiv_strecken)},
             "unterkuenfte": self.unterkuenfte_aus(tage),
             "aufenthalte": self.aufenthalte_aus(tage),
@@ -1349,6 +1390,7 @@ class Routen:
             ({"merkmale": mk, "fehlt": []} if mk else {})
         # art: wie in der Datei (eine Art oder eine Liste); art_schluessel: der Schlüssel in plan/arten.yaml (kombiniert bei Liste)
         return {"titel": s.get("titel", sid), "von": s.get("von"), "nach": s.get("nach"), "art": s.get("art"), "art_schluessel": b,
+                "ab": str(s["ab"]) if s.get("ab") is not None else None, "an": str(s["an"]) if s.get("an") is not None else None,
                 "summiert": bool((self.arten.get(b) or {}).get("summiert")),
                 "buchung": self.buchung_von(s, b, sid), "buchung_id": self.buchung_id(sid),
                 "rolle": s.get("rolle", "haupt"), "zweig_von": s.get("zweig_von"), "kennzahlen": s.get("kennzahlen") or {},
