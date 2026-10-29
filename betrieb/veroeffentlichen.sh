@@ -64,8 +64,12 @@ main() {
   # Software (Submodul) auf den Stand bringen, den main festhält
   git submodule update --init --quiet || { echo "FEHLER: Submodul der Software lässt sich nicht holen."; return 1; }
   echo "Veröffentliche $(git log -1 --format='%h %s')"
-  if [ -n "$pruefen" ]; then "$pruefen"; else "$FR_PYTHON" -m pytest engine/tests $( [ -d tests ] && echo tests ) -q; fi \
-    || { echo "FEHLER: Prüfungen rot, nichts veröffentlicht."; return 1; }
+  # Eigener Ordner für die Testdateien: Mit der Vorgabe (/tmp/pytest-of-<user>) räumt jeder weitere pytest-Lauf auf dem
+  # Rechner die Ordner älterer Läufe weg, auch die eines noch laufenden (roter Lauf 29.10.2026 bei gleichzeitigen Tests).
+  pruef_tmp="$(mktemp -d)"
+  if [ -n "$pruefen" ]; then "$pruefen"; else "$FR_PYTHON" -m pytest engine/tests $( [ -d tests ] && echo tests ) -q --basetemp "$pruef_tmp"; fi \
+    || { rm -rf "$pruef_tmp"; echo "FEHLER: Prüfungen rot, nichts veröffentlicht."; return 1; }
+  rm -rf "$pruef_tmp"
   FR_GEPRUEFT="$(git rev-parse HEAD)"; export FR_GEPRUEFT
   for reise in reisen/*/reise.json; do
     [ -e "$reise" ] || continue
@@ -77,8 +81,8 @@ main() {
   for reise in reisen/*/reise.json; do
     [ -e "$reise" ] || continue
     reise="$(basename "$(dirname "$reise")")"
-    aus="$("$freischalten" "$reise" 2>&1)" || echo "Warnung: $reise nicht freigeschaltet."
-    printf '%s\n' "$aus" | grep -E '^(FEHLER|Freigeschaltet)' || true
+    aus="$("$freischalten" "$reise" 2>&1)" || echo "Warnung: $reise nicht freigeschaltet (Grund in der Zeile darunter)."
+    printf '%s\n' "$aus" | grep -E '^(FEHLER|Freigeschaltet|Baustein erneuert)' || true
   done
   mkdir -p "$(dirname "$stand")"
   echo "$neu" > "$stand"

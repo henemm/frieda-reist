@@ -28,7 +28,10 @@ fi
 "$FR_PYTHON" "$WURZEL/engine/bauen.py" --reisen "$WURZEL/reisen" --ziel "$WURZEL/dist" "$REISE"
 # Prüfungen; veroeffentlichen.sh prüft einmal für alle Reisen und setzt FR_GEPRUEFT auf den geprüften Stand
 if [ "${FR_GEPRUEFT:-}" != "$(git -C "$WURZEL" rev-parse HEAD)" ]; then
-  "$FR_PYTHON" -m pytest "$WURZEL/engine/tests" $( [ -d "$WURZEL/tests" ] && echo "$WURZEL/tests" ) -q
+  pruef_tmp="$(mktemp -d)"   # eigener Ordner für die Testdateien, Grund in veroeffentlichen.sh
+  "$FR_PYTHON" -m pytest "$WURZEL/engine/tests" $( [ -d "$WURZEL/tests" ] && echo "$WURZEL/tests" ) -q --basetemp "$pruef_tmp" \
+    || { rm -rf "$pruef_tmp"; exit 1; }
+  rm -rf "$pruef_tmp"
 fi
 
 mkdir -p "$ZIEL"

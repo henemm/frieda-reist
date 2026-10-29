@@ -272,6 +272,28 @@ def test_veroeffentlichen_freischalten_je_reise_ohne_links_im_protokoll(vf):
     assert f"{BETRIEB}/zustellen.py" in (vf["tmp"] / "zustellen.log").read_text()
 
 
+def test_veroeffentlichen_nennt_erneuerte_bausteine_und_den_grund_eines_fehlschlags(vf):
+    """„Baustein erneuert“ steht im Protokoll; schlägt freischalten.sh fehl, steht sein FEHLER-Grund darunter, Links nie."""
+    frei = ausfuehrbar(vf["tmp"] / "freischalten2.sh",
+                       '#!/bin/sh\necho "Seite: https://example.invalid/$1-geheim/"\n'
+                       '[ "$1" = beispielreise ] && echo "Baustein erneuert: $1"\n'
+                       '[ "$1" = zweitreise ] && { echo "FEHLER: Im Baustein steht kein Pfad."; exit 1; }\nexit 0\n')
+    r = vf["lauf"](VF_FREISCHALTEN=str(frei))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "Baustein erneuert: beispielreise" in r.stdout
+    assert "Warnung: zweitreise nicht freigeschaltet" in r.stdout and "FEHLER: Im Baustein steht kein Pfad." in r.stdout
+    assert "geheim" not in r.stdout + r.stderr
+
+
+def test_veroeffentlichen_und_deploy_pruefen_in_eigenem_testordner():
+    """pytest räumt in /tmp/pytest-of-<user> die Ordner älterer Läufe weg, auch die eines noch laufenden; die Prüfungen
+    des Betriebs laufen deshalb in einem eigenen Ordner (--basetemp), der danach verschwindet."""
+    for datei in ("veroeffentlichen.sh", "deploy.sh"):
+        text = (BETRIEB / datei).read_text(encoding="utf-8")
+        assert re.search(r'pytest .*--basetemp "\$pruef_tmp"', text), datei
+        assert 'rm -rf "$pruef_tmp"' in text, datei
+
+
 # ---------- Deploy ----------
 
 def _deploy_liste(name):
@@ -726,3 +748,26 @@ def test_freischalten_erneuert_den_baustein_bei_neuer_vorlage(fs):
     (fs["tmp"] / "nginx-kaputt").touch()
     r = fs["lauf"]("beispielreise")
     assert r.returncode == 1 and "alte Stand gilt weiter" in r.stdout and sn.read_text() == kaputt
+
+
+def test_freischalten_erneuert_auch_einen_von_hand_benannten_baustein(fs):
+    """Ein von Hand angelegter Baustein kann einen Pfad tragen, der nicht mit dem Ordner der Reise beginnt (eine Reise
+    „japan-2027“ unter „/japan-<token>/“). Die Erneuerung liest den Pfad aus dem Baustein und lässt den Link, wie er ist;
+    bis zum 29.10.2026 brach sie hier stumm ab, und die Reise bekam den Belege-Block nie."""
+    sn = fs["snippets"] / "probe-beispielreise.conf"
+    pfad = "beispiel-0123456789abcdef01234567"
+    sn.write_text("# von Hand angelegt\n"
+                  f"location ^~ /{pfad}/ {{\n    alias {fs['seiten']}/beispielreise/;\n}}\n"
+                  f"location ^~ /{pfad}/api/ {{\n    proxy_pass http://127.0.0.1:8871/beispielreise/;\n}}\n")
+    r = fs["lauf"]("beispielreise")
+    assert r.returncode == 0 and "Baustein erneuert: beispielreise" in r.stdout, r.stdout + r.stderr
+    inhalt = sn.read_text()
+    assert f"location ^~ /{pfad}/ {{" in inhalt and f"location ^~ /{pfad}/api/belege/ {{" in inhalt
+    assert "beispielreise-" not in inhalt.replace("probe-beispielreise.conf", "")   # kein zweiter Pfad aus Ordner und Token
+    assert "proxy_pass http://127.0.0.1:8871/beispielreise/belege/;" in inhalt and not re.search(r"__[A-Z_]+__", inhalt)
+    assert f"Seite: https://example.invalid/{pfad}/" in r.stdout
+    assert json.loads((fs["tmp"] / "konnektor/seiten.json").read_text()) == {"beispielreise": f"https://example.invalid/{pfad}/"}
+    # ohne location-Block: klarer Fehler statt stummem Abbruch
+    sn.write_text("# leer\n")
+    r = fs["lauf"]("beispielreise")
+    assert r.returncode == 1 and "steht kein Pfad" in r.stdout
