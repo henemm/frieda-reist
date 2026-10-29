@@ -1,0 +1,155 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/hem/frieda-reist/.claude/worktrees/hashed-noodling-crown
+collected 34 items / 25 deselected / 9 selected
+
+engine/tests/test_schreiben.py ..FFFFFFF                                 [100%]
+
+=================================== FAILURES ===================================
+______________ test_zu_langsamer_vorgang_gibt_meldung_in_der_zeit ______________
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-5588/test_zu_langsamer_vorgang_gibt0/reisen'), PosixPath('/tmp/pytest-of-hem/pyt..._gibt0/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-5588/test_zu_langsamer_vorgang_gibt0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x73d0691a7500>
+capsys = <_pytest.capture.CaptureFixture object at 0x73d0691a75f0>
+
+    def test_zu_langsamer_vorgang_gibt_meldung_in_der_zeit(repo, monkeypatch, capsys):
+>       code, a, err = _abbruch_im_anwenden(repo, monkeypatch, capsys)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_schreiben.py:358: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-5588/test_zu_langsamer_vorgang_gibt0/reisen'), PosixPath('/tmp/pytest-of-hem/pyt..._gibt0/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-5588/test_zu_langsamer_vorgang_gibt0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x73d0691a7500>
+capsys = <_pytest.capture.CaptureFixture object at 0x73d0691a75f0>
+origin_kaputt = True
+
+    def _abbruch_im_anwenden(repo, monkeypatch, capsys, origin_kaputt=True):
+        """Ein Vorgang, dessen Anwenden die Frist überschreitet (Arbeitskopie steht, Vorbereiten tut nichts). -> (Code, Antwort, Protokoll)"""
+        wurzel, _, arbeit, _ = repo
+        s = sb.Schreiber(wurzel, arbeit)
+        anfrage = {**IDA, "args": {"bezeichnung": "X", "grundform": "aufenthalt"}}
+        sb.anwenden_extern(s, "beispielreise", "art_definieren", {**anfrage, "args": {"bezeichnung": "Vorlauf", "grundform": "aufenthalt"}})
+        capsys.readouterr()
+        if origin_kaputt:
+            git(wurzel, "remote", "set-url", "origin", str(wurzel / "gibt-es-nicht.git"))   # die Ergebnisprüfung kommt nicht ans Ziel
+        monkeypatch.setattr(sb.Schreiber, "vorbereiten", lambda self: None)
+>       monkeypatch.setattr(sb, "ZEIT_GESAMT", 0.05)
+E       AttributeError: <module 'schreiben' from '/home/hem/frieda-reist/.claude/worktrees/hashed-noodling-crown/engine/schreiben.py'> has no attribute 'ZEIT_GESAMT'
+
+engine/tests/test_schreiben.py:352: AttributeError
+_______________ test_zeitgrenzen_liegen_unter_der_des_konnektors _______________
+
+    def test_zeitgrenzen_liegen_unter_der_des_konnektors():
+        import re
+        conf = (WURZEL / "betrieb" / "vorlagen" / "nginx-konnektor.conf").read_text()
+        grenze = int(re.search(r"proxy_read_timeout (\d+)s", conf).group(1))
+>       assert sb.ZEIT_GESAMT + sb.ZEIT_PRUEFUNG < grenze
+               ^^^^^^^^^^^^^^
+E       AttributeError: module 'schreiben' has no attribute 'ZEIT_GESAMT'
+
+engine/tests/test_schreiben.py:899: AttributeError
+_______________ test_haengendes_vorbereiten_gibt_504_in_der_zeit _______________
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-5588/test_haengendes_vorbereiten_gi0/reisen'), PosixPath('/tmp/pytest-of-hem/pyt...en_gi0/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-5588/test_haengendes_vorbereiten_gi0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x73d06911fd40>
+
+    def test_haengendes_vorbereiten_gibt_504_in_der_zeit(repo, monkeypatch):
+        import time
+        wurzel, _, arbeit, _ = repo
+        s = sb.Schreiber(wurzel, arbeit)
+        git(wurzel, "config", "protocol.ext.allow", "always")
+        git(wurzel, "remote", "set-url", "origin", "ext::sleep 5")      # git fetch hängt
+>       monkeypatch.setattr(sb, "ZEIT_GESAMT", 1)
+E       AttributeError: <module 'schreiben' from '/home/hem/frieda-reist/.claude/worktrees/hashed-noodling-crown/engine/schreiben.py'> has no attribute 'ZEIT_GESAMT'
+
+engine/tests/test_schreiben.py:909: AttributeError
+____________ test_veroeffentlichen_startet_mit_niedriger_prioritaet ____________
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-5588/test_veroeffentlichen_startet_0/reisen'), PosixPath('/tmp/pytest-of-hem/pyt...rtet_0/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-5588/test_veroeffentlichen_startet_0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x73d0691a4470>
+
+    def test_veroeffentlichen_startet_mit_niedriger_prioritaet(repo, monkeypatch):
+        wurzel, _, arbeit, _ = repo
+        s = sb.Schreiber(wurzel, arbeit)
+        gerufen = []
+    
+        class Stummel:
+            def __init__(self, argv, *a, **k):
+                gerufen.append(argv)
+    
+        monkeypatch.setattr(sb.subprocess, "Popen", Stummel)
+        s.veroeffentlichen_anstossen()
+        argv = gerufen[0]
+>       assert argv[0] == "nice" and "ionice" in argv and argv[-1] == s.veroeffentlichen
+E       AssertionError: assert ('/tmp/pytest-...fentlichen.sh' == 'nice'
+E         
+E         - nice
+E         + /tmp/pytest-of-hem/pytest-5588/test_veroeffentlichen_startet_0/veroeffentlichen.sh)
+
+engine/tests/test_schreiben.py:928: AssertionError
+___________ test_nach_abbruch_sagt_die_antwort_ob_eingetragen_wurde ____________
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-5588/test_nach_abbruch_sagt_die_ant0/reisen'), PosixPath('/tmp/pytest-of-hem/pyt...e_ant0/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-5588/test_nach_abbruch_sagt_die_ant0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x73d0691a6900>
+capsys = <_pytest.capture.CaptureFixture object at 0x73d0691a7b60>
+
+    def test_nach_abbruch_sagt_die_antwort_ob_eingetragen_wurde(repo, monkeypatch, capsys):
+        wurzel, _, arbeit, _ = repo
+        # Die Prüfung selbst: Kennung auf origin/main gefunden / nicht gefunden
+        monkeypatch.setenv("FR_VORGANG", "k4711")
+        monkeypatch.setattr(sb.Schreiber, "veroeffentlichen_anstossen", lambda self: None)   # sys.stderr hat unter capsys keinen Dateideskriptor
+        s = schreiber(repo)
+        s.schreiben("beispielreise", "art_definieren", {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}})
+>       assert "Frieda-Vorgang: k4711" in git(wurzel, "log", "-1", "--format=%B", "origin/main")
+E       AssertionError: assert 'Frieda-Vorgang: k4711' in 'Beispielreise – Malerweg in vier Tagen: Art „Refugi“ (refugi) angelegt\n\nArt „Refugi“ angelegt: Schlüssel refugi, Gr...ktor (art_definieren) von Ida (organisator), 2026-10-29; Prüfung: Rolle, Status, Form, Probebau (engine/schreiben.py).'
+E        +  where 'Beispielreise – Malerweg in vier Tagen: Art „Refugi“ (refugi) angelegt\n\nArt „Refugi“ angelegt: Schlüssel refugi, Gr...ktor (art_definieren) von Ida (organisator), 2026-10-29; Prüfung: Rolle, Status, Form, Probebau (engine/schreiben.py).' = git(PosixPath('/tmp/pytest-of-hem/pytest-5588/test_nach_abbruch_sagt_die_ant0/reisen'), 'log', '-1', '--format=%B', 'origin/main')
+
+engine/tests/test_schreiben.py:938: AssertionError
+___________ test_kommando_mit_frist_beendet_die_ganze_prozessgruppe ____________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-5588/test_kommando_mit_frist_beende0')
+
+    def test_kommando_mit_frist_beendet_die_ganze_prozessgruppe(tmp_path):
+        import time
+        pidfile = tmp_path / "enkel.pid"
+        with pytest.raises(subprocess.TimeoutExpired):
+>           sb.befehl_mit_frist(["sh", "-c", f"sleep 30 & echo $! > {pidfile}; wait"], "", 0.5)
+            ^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'schreiben' has no attribute 'befehl_mit_frist'
+
+engine/tests/test_schreiben.py:957: AttributeError
+________________________ test_dauer_steht_im_protokoll _________________________
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-5588/test_dauer_steht_im_protokoll0/reisen'), PosixPath('/tmp/pytest-of-hem/pyte...tokoll0/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-5588/test_dauer_steht_im_protokoll0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x73d0689b8f20>
+capsys = <_pytest.capture.CaptureFixture object at 0x73d0689baea0>
+
+    def test_dauer_steht_im_protokoll(repo, monkeypatch, capsys):
+        import fcntl
+        import re
+        wurzel, _, arbeit, _ = repo
+        s = sb.Schreiber(wurzel, arbeit)
+        anfrage = {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}}
+        muster = re.compile(r"^Fertig art_definieren (\d{3}) in \d+\.\d s$", re.M)
+    
+        def codes():
+            return muster.findall(capsys.readouterr().err)
+    
+        sb.anwenden_extern(s, "beispielreise", "art_definieren", anfrage)                               # Erfolg
+>       assert codes() == ["200"]
+E       AssertionError: assert [] == ['200']
+E         
+E         Right contains one more item: '200'
+E         Use -v to get more diff
+
+engine/tests/test_schreiben.py:981: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_schreiben.py::test_zu_langsamer_vorgang_gibt_meldung_in_der_zeit
+FAILED engine/tests/test_schreiben.py::test_zeitgrenzen_liegen_unter_der_des_konnektors
+FAILED engine/tests/test_schreiben.py::test_haengendes_vorbereiten_gibt_504_in_der_zeit
+FAILED engine/tests/test_schreiben.py::test_veroeffentlichen_startet_mit_niedriger_prioritaet
+FAILED engine/tests/test_schreiben.py::test_nach_abbruch_sagt_die_antwort_ob_eingetragen_wurde
+FAILED engine/tests/test_schreiben.py::test_kommando_mit_frist_beendet_die_ganze_prozessgruppe
+FAILED engine/tests/test_schreiben.py::test_dauer_steht_im_protokoll - Assert...
+================== 7 failed, 2 passed, 25 deselected in 2.89s ==================
