@@ -108,9 +108,9 @@ Jede Wahlstelle mit mindestens zwei gültigen Optionen hat dasselbe **Wahl-Modul
 
 Ida sagt zum Beispiel: „Es gibt noch eine Pension in Hohnstein.“
 
-1. Claude ruft die Merkmalliste der Art ab, in der Claude-App mit `merkmale` (zu `V-…`, `U-…`, zu einer Strecke `E-…` oder mit `bereich`, einer Art der Reise), sonst aus `plan/arten.yaml` der Reise.
+1. Claude ruft die Merkmalliste der Art ab, mit `merkmale` (zu `V-…`, `U-…`, zu einer Strecke `E-…` oder mit `bereich`, einer Art der Reise); Quelle ist `plan/arten.yaml` der Reise.
 2. Claude **recherchiert zuerst selbst** (Website, Buchungsportal, Wanderführer) und trägt veränderliche Werte mit Prüfdatum ein.
-3. Claude **fragt nur nach den Lücken**, gezielt nach dem Hinweis `frage`, zum Beispiel: „Hast du einen Preis? Ist Frühstück drin?“ In Claude Code geschieht das mit dem Fragewerkzeug (AskUserQuestion).
+3. Claude **fragt nur nach den Lücken**, gezielt nach dem Hinweis `frage`, zum Beispiel: „Hast du einen Preis? Ist Frühstück drin?“
 4. In der Claude-App legt Claude die Alternative direkt an (seit 29.10.2026, ADR-0001 O-3): die Unterkunft oder Strecke mit `ding_anlegen` (Herkunft Pflicht, Merkmale gleich mit), dann `option_anlegen` an der Wahlstelle; es entsteht eine Option mit Status `vorgeschlagen` und Verlauf (Datum, Person, Grund). Fehlt die Wahlstelle, legt `wahlstelle_anlegen` sie an (planung bekommt ihre F-Frage mit). Ein Merkmal, das die Art noch nicht hat, legt ein:e Organisator:in erst mit `merkmal_definieren` an (Mitwirkende schlagen es damit vor); der Konnektor nennt ähnliche vorhandene Merkmale (`geoeffnet` statt `oeffnung`).
 5. Die Art der neuen Option ergibt sich aus der Stelle: an einer Wahlstelle aus ihrem `bereich`, an `U-…` Unterkunft, an `E-…` die Art der Strecke. Werte, die vom Datum abhängen, gehen als Liste mit `gilt` (ISO-Datum oder Liste von Daten), höchstens ein Eintrag ohne `gilt`, kein Datum doppelt; Fehler lehnt der Dienst sofort ab.
 6. Ähnelt ein genanntes Merkmal einem vorhandenen („oeffnung“ neben „geoeffnet“, „preise“ neben „preis“), nennt der Konnektor das vorhandene und trägt nichts ein; der Wert kommt dann unter das vorhandene Merkmal. Ein wirklich neues Merkmal entsteht nur über `merkmal_definieren` an der Art (kein stilles Wachsen der Merkmale).

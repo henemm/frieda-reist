@@ -20,7 +20,7 @@ Nur wenn der Baustein `waechter` eingeschaltet ist und der Status es zulässt: `
 
 ## Veränderliches prüfen
 
-Geprüft werden Merkmale mit `veraenderlich: true` (Preis, Öffnungszeiten, Fahrzeiten …) der Optionen im Plan (nicht verworfene) und der Unterkünfte mit Nächten. Zu prüfen sind Angaben ohne Prüfdatum und solche, deren Prüfdatum älter ist als `regeln.waechter_frist_tage` (Vorgabe 60). Gibt es Werte je Datum (z. B. Samstag teurer, `docs/alternativen.md`), zählt jeder Eintrag mit eigenem Prüfdatum für sich und steht im Prüfauftrag mit „am …“.
+Geprüft werden Merkmale mit `veraenderlich: true` (Preis, Öffnungszeiten, Fahrzeiten …) der Optionen im Plan (nicht verworfene) und der Unterkünfte mit Nächten. Zu prüfen sind Angaben ohne Prüfdatum und solche, deren Prüfdatum älter ist als `regeln.waechter_frist_tage` (Vorgabe 60). Gibt es Werte je Datum (z. B. Samstag teurer, `docs/alternativen.md`), zählt jeder Eintrag mit eigenem Prüfdatum für sich und steht in der Meldung mit „am …“.
 
 Daraus entsteht je Angabe eine **Meldung** (Art `pruefung`) an die Organisator:innen, seit dem 28.10.2026 (ADR-0001, Paket O-4: Frieda enthält keine eigene KI; bis dahin ein Prüfauftrag für das Einarbeiten):
 

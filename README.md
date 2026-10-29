@@ -2,16 +2,19 @@
 
 **AI-first-Reiseplanung und Reisehandbuch.** Frieda hält eine Reise als strukturierte Wahrheit (Reise-Ontologie): Tage, Aufenthalte, Bewegungen, Orte, Alternativen mit Entscheidungsverlauf und Wissen, jede Stelle mit fester ID, jede Angabe mit Herkunft und Prüfdatum. Alles Unstrukturierte (Gespräch, Recherche, Abwägen) passiert im AI-Client der Reisenden (Claude Desktop oder Handy), der über einen MCP-Konnektor liest und strukturiert zurückschreibt. Ein Generator baut daraus eine Reiseseite, die offline funktioniert. Der Kern steht in [`docs/adr/0001-kern.md`](docs/adr/0001-kern.md).
 
-*A travel handbook with an editor, AI first: trips live as text in Git, an AI assistant researches and maintains them with sources and check dates, and a generator builds an offline-capable web handbook. Fellow travellers comment on any item; the AI works their input in. Documentation is in German for now.*
+**Was Frieda anders macht:** Die Herkunft jeder Angabe wird beim Schreiben erzwungen, nicht nachträglich erbeten. Der Konnektor nimmt keinen Wert ohne Quelle an, Veränderliches nur mit Prüfdatum, Entscheidungen nur von Organisator:innen mit Person, Datum und Grund. Frieda enthält keine eigene KI: Sie prüft Regeln, hält die Wahrheit und zeigt sie; recherchiert, abgewogen und formuliert wird im AI-Client der Reisenden. Welche Arten von Dingen und welche Merkmale eine Reise kennt (Refugi, Ryokan, Zeitfenster-Ticket, Vorbestellung), legt jede Reise selbst im Gespräch fest; die Software liefert keinen Katalog.
+
+*A travel planner and handbook, AI first: a trip lives as a structured ontology in Git (days, stays, movements, places, choices with a decision log, knowledge), every statement with its source and check date. The travellers' own AI client (Claude Desktop or mobile) reads and writes it through an MCP connector; Frieda itself contains no AI, it enforces the rules: no value without a source, no decision without a named organiser. A generator builds an offline-capable web handbook. Documentation is in German for now.*
 
 ## Was es kann
 
 - **Tagesplan, Etappen, Orte, Unterkünfte** mit festen IDs (T-, E-, O-, U-, W- …), damit sich jede Rückmeldung genau zuordnen lässt.
-- **Alternativen im Modell:** Wahlstellen mit Optionen auf jeder Ebene, benannte Pläne mit Summen (Gehzeit, Strecke, Höhenmeter, Nächte nach Kategorie) und ein Verlauf. Verworfenes wird nie gelöscht, entscheiden dürfen nur Organisator:innen.
+- **Alternativen im Modell:** Wahlstellen mit Optionen auf jeder Ebene, benannte Pläne mit Summen (Gehzeit, Strecke, Höhenmeter, Nächte je Art) und ein Verlauf. Verworfenes wird nie gelöscht, entscheiden dürfen nur Organisator:innen.
+- **Arten und Merkmale je Reise:** Hotel, Refugi, Ryokan, Nachtfähre, Museum und was dazu bekannt sein muss, stehen in `plan/arten.yaml` der Reise, entwickelt im Gespräch; die Seite nimmt Name, Farbe und Symbol daraus (`docs/ontologie.md`).
 - **Quellen und Prüfdaten:** Fußnoten mit Titel, Link und Datum; Merkmale wie Preise tragen ein Prüfdatum.
 - **Offline:** Die Seite ist eine PWA mit Vorab-Speicher, Update-Hinweis und Ausgang für Rückmeldungen ohne Netz. Karten mit nummerierten Orten (Leaflet, optional OpenStreetMap-Vektorkarten als PMTiles).
 - **Mitreisende:** Rückmeldungen, Wünsche und Aufgaben zu jeder ID, über die Seite oder über die Claude-App (MCP-Konnektor). Personen haben Rollen: `gast` (lesen), `mitwirkend` (Eingaben) und `organisator` (entscheiden).
-- **Die KI arbeitet ein:** Eingaben werden geprüft, mit Quelle eingearbeitet, gebaut, getestet und veröffentlicht. Der Status geht an den Absender zurück.
+- **Der Konnektor schreibt direkt:** Was im Gespräch festgelegt wird (Werte, Dinge, Optionen, Entscheidungen, Fragen, Wissen, Personen, Status), prüft der Schreibweg nach den Regeln der Reise und sichert es sofort mit Person und Herkunft ins Repo; wenige Minuten später ist es auf der Seite. Rückmeldungen von der Seite arbeitet eine Organisator:in im Gespräch ein, der Status geht an den Absender zurück.
 
 ## Ausprobieren
 
