@@ -15,7 +15,7 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 
 | Werkzeug | Wer | Was |
 |---|---|---|
-| `ueberblick` | alle | Eckdaten, Tagesplan mit IDs, Wahlstellen, Inhaltsverzeichnis, Meldungen an die Person (Wächter und Erinnerer, wenn der Baustein `waechter` an ist) |
+| `ueberblick` | alle | Eckdaten, Tagesplan mit IDs, Wahlstellen, Inhaltsverzeichnis, Meldungen an die Person (Wächter und Erinnerer, wenn der Baustein `waechter` an ist); ab Status `fest` die Mahnungen der Reise (offene Planungs-Wahlstellen, ungeprüfte veränderliche Angaben, fehlende Lage), seit 29.10.2026 nur noch hier und nicht mehr als Kasten auf der Seite |
 | `zeige` | alle | Volltext zu einer ID (T-, E-, O-, U-, V-, P-, F-, W-) |
 | `suche` | alle | Volltextsuche |
 | `offene_fragen` | alle | F-Liste mit Frist und Status |

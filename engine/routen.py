@@ -79,10 +79,18 @@ STUFEN_WORTE = {"pflicht": "nötig", "empfohlen": "gut zu wissen", "angeboten": 
 
 
 def stufe_wort(s):
-    """Wort einer Stufe für Menschen: „nötig (pflicht)“; eine Stufe je Typ wird je Typ genannt."""
+    """Wort einer Stufe für Menschen: „nötig (pflicht)“; eine Stufe je Typ wird je Typ genannt („sonst“ für „*“,
+    „gilt nicht“ statt des Schlüssels aus, der für Menschen unsichtbar bleibt; Product Owner 29.10.2026)."""
     if isinstance(s, dict):
-        return ", ".join(f"{t}: {stufe_wort(v)}" for t, v in s.items())
+        return ", ".join(f"{'sonst' if t == '*' else t}: {'gilt nicht' if v == 'aus' else stufe_wort(v)}" for t, v in s.items())
     return f"{STUFEN_WORTE.get(s, s)} ({s})" if s in STUFEN_WORTE and s != "aus" else str(s)
+
+
+def stufe_gilt(s):
+    """Gilt das Merkmal für diese Reise überhaupt (Stufe nicht aus; bei Stufe je Typ nicht überall aus)?"""
+    if isinstance(s, dict):
+        return any(v != "aus" for v in s.values())
+    return s != "aus"
 
 
 def stufe_schluessel(text):

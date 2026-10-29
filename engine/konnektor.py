@@ -66,7 +66,7 @@ import belege as bl  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, REISE_ZIEL, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
-from routen import FARBEN, GRUNDFORMEN, STUFEN, TYPEN, art_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
+from routen import FARBEN, GRUNDFORMEN, STUFEN, TYPEN, art_schluessel, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
 
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "rueckmeldung_erledigen",
@@ -797,7 +797,7 @@ class Handbuch:
              "## Liste"]
         for k in krit:
             st = k.get("stufe", "empfohlen")   # Stufe je Reise (routen.yaml merkmale: {…: {stufe: …}}); je Unterkunftstyp als Objekt
-            if st == "aus":   # gilt für diese Reise nicht
+            if not stufe_gilt(st):   # gilt für diese Reise nicht (aus, auch je Typ überall aus): bleibt unsichtbar
                 continue
             art = k.get("typ", "text") + (f" ({' | '.join(k['werte'])})" if k.get("werte") else "")
             zeile = f"- {k['id']} – {k['name']}: {art}"
@@ -1012,6 +1012,9 @@ def ontologie_text(name, args):
         v = args.get(f)
         if v in (None, "", []):
             continue
+        if f == "stufe":   # für Menschen in Worten (nötig, gut zu wissen, zusätzlich; Product Owner 29.10.2026)
+            s = stufe_schluessel(v)
+            v = "abgeschaltet (aus)" if s == "aus" else stufe_wort(s) if s else v
         teile.append(f"{f}: {' | '.join(map(str, v)) if isinstance(v, list) else v}")
     return ("Art festlegen" if name == "art_definieren" else "Merkmal festlegen") + " – " + "; ".join(teile)
 

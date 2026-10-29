@@ -187,6 +187,17 @@ def test_merkmal_anlegen_aendern_abschalten(repo):
     assert "Name „Stornierung“ → „Absagen“" in a["text"] and "Stufe nötig (pflicht)" in a["text"]
     arten, _ = arten_auf_main(origin)
     assert arten["pension"]["merkmale"]["stornierung"]["name"] == "Absagen" and arten["pension"]["merkmale"]["stornierung"]["stufe"] == "pflicht"
+    # auch die anderen Wörter kommen als Eingabe an; ein unbekanntes Wort wird mit den Wörtern abgelehnt
+    for wort, schluessel, text in (("zusätzlich", "angeboten", "Stufe zusätzlich (angeboten)"),
+                                   ("Gut zu wissen", "empfohlen", "Stufe gut zu wissen (empfohlen)")):
+        s.vorbereiten()
+        a = s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "merkmal": "stornierung", "stufe": wort}})
+        assert text in a["text"], a["text"]
+        arten, _ = arten_auf_main(origin)
+        assert arten["pension"]["merkmale"]["stornierung"].get("stufe", "empfohlen") == schluessel
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="nötig"):
+        s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "merkmal": "stornierung", "stufe": "wichtig"}})
     # Abschalten
     s.vorbereiten()
     a = s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "merkmal": "lage", "stufe": "aus",

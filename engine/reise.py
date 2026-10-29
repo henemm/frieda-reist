@@ -51,7 +51,7 @@ ALTE_REGELN = ("entscheidungsweg", "sammelzeit_minuten")
 KONTINGENT_ARTEN = ("punkte", "anzahl")
 DARSTELLUNG = ("start", "tiefe", "varianten_titel", "plan_reiter", "gruppen")
 # Der Kasten „Mahnung“ auf der Seite ist seit dem 29.10.2026 weg (Product Owner); eine reise.yaml mit mahnungen: false
-# baut weiter, der Schlüssel ist ohne Wirkung. Berechnet werden die Mahnungen weiter (Konnektor, Wächter).
+# baut weiter, der Schlüssel ist ohne Wirkung. Berechnet werden die Mahnungen weiter (Konnektor: ueberblick).
 ALTE_DARSTELLUNG = ("mahnungen",)
 PERSON_FELDER = {"name", "rolle", "reist", "notiz", "von", "bis"}   # von/bis: reist nur einen Teil mit
 ALTE_ECKDATEN = ("titel", "untertitel", "pfad", "kurz")

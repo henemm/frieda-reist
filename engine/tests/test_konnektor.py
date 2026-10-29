@@ -567,7 +567,8 @@ def test_ontologie_mitwirkende_schlagen_vor(schreibweg):
     t, f = werkzeug(basis, KARL, "merkmal_definieren", art="hotel", bezeichnung="Stornierung", typ="auswahl", werte=["ja", "nein"], stufe="pflicht")
     assert not f
     e = next(x for x in rm.eintraege(ablage / "beispielreise") if x["ziel"] == "hotel")
-    assert e["text"] == "Merkmal festlegen – art: hotel; bezeichnung: Stornierung; typ: auswahl; werte: ja | nein; stufe: pflicht"
+    # die Stufe steht im Vorschlag als Wort für Menschen, nicht als Schlüssel (Product Owner 29.10.2026)
+    assert e["text"] == "Merkmal festlegen – art: hotel; bezeichnung: Stornierung; typ: auswahl; werte: ja | nein; stufe: nötig (pflicht)"
     # Mitwirkende ohne Namen (alter Rollen-Link) brauchen den Vornamen
     t, f = werkzeug(basis, MITREISEND, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt")
     assert f and "Name fehlt" in t

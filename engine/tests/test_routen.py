@@ -874,7 +874,10 @@ def test_stufen_worte_fuer_menschen():
     werden als Eingabe angenommen, „aus“ wird nicht benannt."""
     assert routen.stufe_wort("pflicht") == "nötig (pflicht)" and routen.stufe_wort("empfohlen") == "gut zu wissen (empfohlen)"
     assert routen.stufe_wort("angeboten") == "zusätzlich (angeboten)" and routen.stufe_wort("aus") == "aus"
-    assert routen.stufe_wort({"*": "aus", "refugi": "pflicht"}) == "*: aus, refugi: nötig (pflicht)"
+    # je Typ: „sonst“ statt „*“, „gilt nicht“ statt des Schlüssels aus
+    assert routen.stufe_wort({"*": "aus", "refugi": "pflicht"}) == "sonst: gilt nicht, refugi: nötig (pflicht)"
+    assert routen.stufe_gilt("pflicht") and not routen.stufe_gilt("aus")
+    assert routen.stufe_gilt({"*": "aus", "refugi": "pflicht"}) and not routen.stufe_gilt({"*": "aus", "hotel": "aus"})
     for eingabe, erwartet in (("pflicht", "pflicht"), ("Nötig", "pflicht"), ("noetig", "pflicht"), ("gut zu  wissen", "empfohlen"),
                               ("Zusätzlich", "angeboten"), ("AUS", "aus"), ("wichtig", None), ("", None), (None, None)):
         assert routen.stufe_schluessel(eingabe) == erwartet, eingabe

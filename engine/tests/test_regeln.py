@@ -243,7 +243,7 @@ def test_lage_der_unterkunft(tmp_path):
 
 def test_mahnungen_ohne_kasten_auf_der_seite(tmp_path):
     """Der Kasten „Mahnung“ auf der Seite ist weg (Product Owner 29.10.2026): kein Schalter mehr in den Seitendaten, der alte
-    Schlüssel darstellung.mahnungen baut weiter ohne Wirkung; berechnet (Konnektor, Wächter) bleiben die Mahnungen."""
+    Schlüssel darstellung.mahnungen baut weiter ohne Wirkung; berechnet (für den Konnektor, ueberblick) bleiben die Mahnungen."""
     def bauen_mit(ziel, wert):
         quelle = ziel / "quelle"
         shutil.copytree(BEISPIEL, quelle)
