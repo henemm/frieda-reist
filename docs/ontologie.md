@@ -126,4 +126,5 @@ Eine Art kann eine `farbe` aus der Palette der Seite tragen: `blau`, `braun`, `l
 - Paket O-3, Schritt 1 (29.10.2026, frieda-reist #91): Schreibweg `engine/schreiben.py` und die Werkzeuge `art_definieren`, `merkmal_definieren`; Arten und Merkmale entstehen im Gespräch und landen sofort in `plan/arten.yaml` der Reise.
 - Paket O-3, Schritt 2 (29.10.2026): `wert_eintragen` schreibt Werte an Unterkünften, Strecken und Optionen sofort nach `plan/routen.yaml`; ein Wert ohne Herkunft wird abgelehnt, ein veränderlicher ohne Prüfdatum auch.
 - Paket O-3, Schritt 3 (29.10.2026): `ding_anlegen`, `ding_aendern`, `option_anlegen`, `wahlstelle_anlegen`, `frage_anlegen`; Dinge, Wahlstellen und Fragen entstehen im Gespräch mit fester ID aus `ids.yaml`, Herkunft und Verlauf. `alternative_vorschlagen` entfällt.
-- Später: Aufenthalt ohne Nacht und Buchung als eigene Dinge (Paket O-5, O-7); Entscheidungen, Plan (Tage, Nächte) und Wissen über den Schreibweg (O-3, weitere Schritte).
+- Paket O-3, Schritt 4 (29.10.2026): `entscheiden` schreibt den Verlauf der Wahl direkt (Person, Datum, Grund; Frage geklärt oder wieder offen), `tag_aendern` den Plan eines Tags.
+- Später: Aufenthalt ohne Nacht und Buchung als eigene Dinge (Paket O-5, O-7); Wissen und Rückmeldungen über den Schreibweg (O-3, weitere Schritte).

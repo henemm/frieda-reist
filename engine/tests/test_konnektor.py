@@ -554,7 +554,7 @@ def test_ontologie_organisator_schreibt_direkt(schreibweg):
     basis, ablage = schreibweg
     for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (MITREISEND, True), (GAST, False)):
         namen = {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}
-        assert (set(kn.ONTOLOGIE_WERKZEUGE) <= namen) is da, token
+        assert (set(kn.ONTOLOGIE_WERKZEUGE) - {"tag_aendern"} <= namen) is da, token   # tag_aendern nur Organisator:innen
     anleitung = rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
     assert "art_definieren und merkmal_definieren schreiben sofort" in anleitung and "Ausnahmen: Aufgaben AG-…, Arten" in anleitung
     t, f = werkzeug(basis, ALT_ORGANISATOR, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt", grund="Hütten am Weg")
@@ -670,3 +670,44 @@ def test_dinge_optionen_wahlstellen_fragen_ueber_den_schreibweg(schreibweg):
     t, f = werkzeug(basis, GAST, "ding_anlegen", was="ort", titel="X", quelle="x")
     assert f and "nur lesen" in t
     assert rm.eintraege(ablage / "beispielreise") == []
+
+
+def test_entscheiden_ueber_den_schreibweg_und_widerspruch(schreibweg):
+    import konten
+    basis, ablage = schreibweg
+    Schreibweg.antwort = (200, {"ok": True, "text": "Entschieden: V-01.b „Plan B“ (V-01 Letzter Tag) ist gewählt (Ida, 29.10.2026, Grund: Bahn). Frage F-01 ist damit geklärt."})
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "entscheiden", option="V-01.b", status="gewaehlt", grund="Karl will die Bahn")
+    assert not f and t.startswith("Entschieden: V-01.b „Plan B“") and "es gilt ab jetzt" in t
+    pfad, geheim, body = Schreibweg.anfragen[-1]
+    assert pfad == "/beispielreise/entscheiden" and geheim == konten.dienst_geheimnis()
+    assert body == {"person": "ida", "name": "Ida", "rolle": "organisator", "args": {"option": "V-01.b", "status": "gewaehlt", "grund": "Karl will die Bahn"}}
+    assert rm.auftraege(ablage / "beispielreise") == []                 # kein Auftrag mehr, direkt geschrieben
+    # Formale Fehler lehnt der Konnektor ab, ohne den Schreibweg zu rufen
+    n = len(Schreibweg.anfragen)
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "entscheiden", option="V-99.a", status="gewaehlt", grund="x")
+    assert f and "gibt es nicht" in t and len(Schreibweg.anfragen) == n
+    # Widerspruch: V-03.a ist von Ida gewählt; eine zweite Organisatorin will sie verwerfen -> offene Frage und Meldung, nichts geschrieben
+    Schreibweg.antwort = (200, {"ok": True, "text": "Offene Frage F-04 angelegt: Widerspruch …"})
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "entscheiden", option="V-03.a", status="verworfen", grund="zu teuer")
+    assert not f and "Nicht entschieden" not in t                        # dieselbe Person darf ihre Wahl ändern
+    assert Schreibweg.anfragen[-1][0] == "/beispielreise/entscheiden"
+    # Zweite Organisatorin über die Rolle: konflikte() vergleicht Personen; wir stellen Idas Wahl als fremde dar, indem Karl Organisator wird
+    zug = json.loads(Path(kn.zugaenge_pfad()).read_text())
+    zug["o" * 32] = {"reise": "beispielreise", "rolle": "organisator"}   # Rollen-Link ohne Namen: kein Entscheiden
+    Path(kn.zugaenge_pfad()).write_text(json.dumps(zug))
+    t, f = werkzeug(basis, "o" * 32, "entscheiden", option="V-03.a", status="verworfen", grund="zu teuer")
+    assert f and "persönlichen Link" in t
+
+
+def test_tag_aendern_nur_organisatoren_sehen_es(schreibweg):
+    basis, _ = schreibweg
+    assert "tag_aendern" in {t["name"] for t in rpc(basis, ALT_ORGANISATOR, "tools/list")["tools"]}
+    assert "tag_aendern" not in {t["name"] for t in rpc(basis, KARL, "tools/list")["tools"]}
+    t, f = werkzeug(basis, KARL, "tag_aendern", ziel="T-03", nacht="V-03")
+    assert f and "nur Organisator:innen" in t
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "tag_aendern", ziel="T-99", nacht="V-03")
+    assert f and "gibt es in dieser Reise nicht" in t
+    Schreibweg.antwort = (200, {"ok": True, "text": "T-03: nacht „U-04“ → „V-03“."})
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "tag_aendern", ziel="T-03", nacht="V-03", grund="Wahl")
+    assert not f and Schreibweg.anfragen[-1][2]["args"] == {"ziel": "T-03", "nacht": "V-03", "grund": "Wahl"}
+    assert "tag_aendern" in rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
