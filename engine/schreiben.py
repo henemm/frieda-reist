@@ -33,10 +33,13 @@ import hmac
 import json
 import os
 import re
+import secrets
+import shutil
+import signal
 import subprocess
 import sys
 import tempfile
-import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -49,7 +52,12 @@ SCHLUESSEL_MUSTER = re.compile(r"^[a-z][a-z0-9_]*$")
 MAX_BODY = 64 * 1024
 MAX_TEXT = 500          # Namen, Hilfe, Fragen, Beschreibungen
 MAX_WERTE = 20
-ZEIT_ANWENDEN = 150     # Sekunden für einen Schreibvorgang (fetch, Probebau, push)
+# Zeitgrenzen in Sekunden: ZEIT_GESAMT + ZEIT_PRUEFUNG bleibt unter den 30 s von proxy_read_timeout
+# (betrieb/vorlagen/nginx-konnektor.conf), sonst erreicht die Meldung die App nie
+ZEIT_GESAMT = 25        # Sperre, Vorbereiten und Anwenden zusammen
+ZEIT_SPERRE = 3         # Wartezeit auf die Sperre der Reise (Teil von ZEIT_GESAMT)
+ZEIT_PRUEFUNG = 3       # nach einem Abbruch: ist der Vorgang trotzdem auf origin/main angekommen?
+LOG_LAENGE = 200        # Zeichen eines Ablehnungsgrunds im Protokoll
 AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "kategorie_definieren": "ontologie", "wert_eintragen": "wert",
             "ding_anlegen": "ding", "ding_aendern": "ding", "option_anlegen": "alternative", "wahlstelle_anlegen": "alternative",
             "frage_anlegen": "frage", "entscheiden": "entscheiden", "tag_aendern": "plan", "wissen_schreiben": "wissen",
@@ -61,7 +69,6 @@ ARTEN_KOPF = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). 
               "# Lesetexts: je Rubrik name und hilfe); je Merkmal: name, typ,\n"
               "# werte, veraenderlich, stufe (pflicht | empfohlen | angeboten | aus), auto, hilfe, frage, auch.\n")
 GRUNDFORM_WORT = {"aufenthalt": "Aufenthalt", "bewegung": "Bewegung", "folge": "Folge"}
-_sperre = threading.Lock()
 
 
 class Ablehnung(Exception):
@@ -70,8 +77,36 @@ class Ablehnung(Exception):
 
 # ---------- Hilfen ----------
 
-def git(ordner, *args, fehler=True):
-    r = subprocess.run(["git", "-C", str(ordner), *args], capture_output=True, text=True)
+def befehl_mit_frist(argv, eingabe, frist, env=None):
+    """Befehl in eigener Prozessgruppe ausführen -> CompletedProcess. Nach `frist` Sekunden wird die ganze Gruppe beendet
+    (auch Enkel wie ein git push unter dem Anwenden) und subprocess.TimeoutExpired geworfen."""
+    if frist <= 0:
+        raise subprocess.TimeoutExpired(argv, frist)
+    p = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env,
+                         start_new_session=True)
+    try:
+        out, err = p.communicate(eingabe, timeout=frist)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(p.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        p.wait()
+        for strom in (p.stdin, p.stdout, p.stderr):   # nicht leerlesen: ein abgelöster Prozess kann sie noch offen halten
+            try:
+                strom.close()
+            except OSError:
+                pass
+        raise subprocess.TimeoutExpired(argv, frist)
+    return subprocess.CompletedProcess(argv, p.returncode, out, err)
+
+
+def git(ordner, *args, fehler=True, frist=None):
+    """git-Aufruf -> stdout; mit `frist` (Sekunden) wird er danach samt Unterprozessen beendet (subprocess.TimeoutExpired)."""
+    if frist is None:
+        r = subprocess.run(["git", "-C", str(ordner), *args], capture_output=True, text=True)
+    else:
+        r = befehl_mit_frist(["git", "-C", str(ordner), *args], "", frist)
     if fehler and r.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)}: {r.stderr.strip() or r.stdout.strip()}")
     return r.stdout.strip()
@@ -1773,20 +1808,26 @@ class Schreiber:
         self.arbeit = Path(arbeit or schreibkopie(self.wurzel))
         self.veroeffentlichen = veroeffentlichen or os.environ.get("SB_VEROEFFENTLICHEN") \
             or str(self.wurzel / "frieda" / "betrieb" / "veroeffentlichen.sh")
+        self.ende = None     # time.monotonic(), bis zu der ein Vorgang fertig sein muss (anwenden_extern); None: ohne Frist
+
+    def rest(self):
+        """Sekunden bis self.ende (None: ohne Frist)."""
+        return None if self.ende is None else self.ende - time.monotonic()
 
     def vorbereiten(self):
-        """Arbeitskopie anlegen oder auf origin/main bringen; eigene Reste verwerfen."""
-        git(self.wurzel, "fetch", "-q", "origin", "main")
+        """Arbeitskopie anlegen oder auf origin/main bringen; eigene Reste verwerfen. Jeder git-Aufruf bekommt den Rest der
+        Frist (subprocess.TimeoutExpired, wenn sie abläuft)."""
+        git(self.wurzel, "fetch", "-q", "origin", "main", frist=self.rest())
         if not (self.arbeit / ".git").exists():
             self.arbeit.parent.mkdir(parents=True, exist_ok=True)
-            git(self.wurzel, "worktree", "prune")
-            git(self.wurzel, "worktree", "add", "-q", "--detach", str(self.arbeit), "origin/main")
+            git(self.wurzel, "worktree", "prune", frist=self.rest())
+            git(self.wurzel, "worktree", "add", "-q", "--detach", str(self.arbeit), "origin/main", frist=self.rest())
         else:
-            git(self.arbeit, "reset", "-q", "--hard")
-            git(self.arbeit, "clean", "-qfd", "--", "reisen")
-            git(self.arbeit, "checkout", "-q", "--detach", "origin/main")
+            git(self.arbeit, "reset", "-q", "--hard", frist=self.rest())
+            git(self.arbeit, "clean", "-qfd", "--", "reisen", frist=self.rest())
+            git(self.arbeit, "checkout", "-q", "--detach", "origin/main", frist=self.rest())
         if (self.arbeit / ".gitmodules").exists():
-            git(self.arbeit, "submodule", "update", "--init", "--quiet")
+            git(self.arbeit, "submodule", "update", "--init", "--quiet", frist=self.rest())
 
     def wer_pruefen(self, reise_dir, anfrage, werkzeug):
         """Person, Rolle und Status mit reise.yaml der Arbeitskopie prüfen -> {"name", "rolle", "person"}."""
@@ -1856,6 +1897,8 @@ class Schreiber:
             raise Ablehnung("Das ändert nichts.")
         nachricht = (f"{wer['titel']}: {titel}\n\n{text}\n\nÜber den Konnektor ({werkzeug}) von {wer['name']} ({wer['rolle']}), "
                      f"{datetime.date.today().isoformat()}; Prüfung: Rolle, Status, Form, Probebau (engine/schreiben.py).\n")
+        if os.environ.get("FR_VORGANG"):     # Kennung des Vorgangs: nach einem Abbruch findet vorgang_eingetragen den Eintrag
+            nachricht += f"\nFrieda-Vorgang: {os.environ['FR_VORGANG']}\n"
         git(self.arbeit, "add", "-A", "--", f"reisen/{reise}")
         git(self.arbeit, "commit", "-q", "-m", nachricht)
         commit = self.hochladen(reise)
@@ -1880,12 +1923,22 @@ class Schreiber:
 
     def veroeffentlichen_anstossen(self):
         """Veröffentlichen im Hintergrund (holt main in den Veröffentlichungsordner, baut, prüft). Hält der Timer die Sperre,
-        meldet das Skript „Läuft schon“, und der Timer holt es in wenigen Minuten nach."""
+        meldet das Skript „Läuft schon“, und der Timer holt es in wenigen Minuten nach. Niedrige Priorität wie im Dienst
+        veroeffentlichen.service, damit Schreibvorgänge während der Tests nicht warten (fehlen nice oder ionice, ohne sie).
+        Die Ausgabe geht nach /dev/null: Die Ausgabe des Anwendens ist die Leitung zum Dienst, die das Skript sonst bis zu
+        seinem Ende offen hielte. Ein fehlgeschlagener Lauf wiederholt der Timer, mit Protokoll. Wirft nie."""
         if not self.veroeffentlichen or not Path(self.veroeffentlichen).exists():
             return
         env = {**os.environ, "FR_WURZEL": str(self.wurzel)}
-        subprocess.Popen([self.veroeffentlichen], env=env, stdin=subprocess.DEVNULL, stdout=sys.stderr, stderr=sys.stderr,
-                         start_new_session=True)
+        prioritaet = (["nice", "-n", "10"] if shutil.which("nice") else []) + \
+                     (["ionice", "-c", "2", "-n", "7"] if shutil.which("ionice") else [])
+        for argv in ([*prioritaet, self.veroeffentlichen], [self.veroeffentlichen]):
+            try:
+                subprocess.Popen(argv, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                 start_new_session=True)
+                return
+            except OSError as e:
+                sys.stderr.write(f"Veröffentlichen nicht gestartet ({' '.join(argv[:1])}): {e}\n")
 
 
 def anwenden(wurzel_, arbeit, reise, werkzeug, anfrage):
@@ -1894,34 +1947,127 @@ def anwenden(wurzel_, arbeit, reise, werkzeug, anfrage):
     try:
         return 200, s.schreiben(reise, werkzeug, anfrage)
     except Ablehnung as e:
+        # Grund ins Protokoll (Werkzeug, Code, Regel; ein Zeilenumbruch oder Überlänge hat dort nichts zu suchen)
+        grund = " ".join(str(e).split())[:LOG_LAENGE]
+        sys.stderr.write(f"Abgelehnt {werkzeug} 422: {grund}\n")
         return 422, {"ok": False, "fehler": str(e)}
 
 
 # ---------- Dienst ----------
 
-def sperrdatei():
+def sperrdatei(reise):
     name = instanz.wert("FR_INSTANZ", instanz.VORGABE_INSTANZ)
-    return Path(instanz.wert("FR_SPERREN", "/tmp")) / f"{name}-schreiben.lock"
+    return Path(instanz.wert("FR_SPERREN", "/tmp")) / f"{name}-schreiben-{reise}.lock"
+
+
+def sperre_nehmen(f, frist=None):
+    """Sperre der Datei f nehmen; True, sobald sie da ist, False, wenn sie nach `frist` Sekunden noch belegt ist."""
+    ende = time.monotonic() + (ZEIT_SPERRE if frist is None else frist)
+    while True:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except BlockingIOError:
+            if time.monotonic() >= ende:
+                return False
+            time.sleep(0.05)
+
+
+def vorgang_eingetragen(s, kennung):
+    """Ist der Vorgang mit dieser Kennung auf origin/main angekommen? -> True, False oder None (Prüfung nicht möglich).
+    Holen und Suchen zusammen höchstens ZEIT_PRUEFUNG Sekunden; der alte Stand von origin/main gilt nicht als Antwort."""
+    ende = time.monotonic() + ZEIT_PRUEFUNG
+    try:
+        git(s.wurzel, "fetch", "-q", "origin", "main", frist=ende - time.monotonic())
+        return bool(git(s.wurzel, "log", "--format=%H", "--fixed-strings", f"--grep=Frieda-Vorgang: {kennung}", "origin/main",
+                        frist=ende - time.monotonic()))
+    except (RuntimeError, subprocess.TimeoutExpired):
+        return None
+
+
+def nicht_eingetragen(werkzeug):
+    sys.stderr.write(f"Zeit {werkzeug} 504: abgebrochen, nicht eingetragen\n")
+    return 504, {"ok": False, "fehler": "Das Schreiben hat zu lange gedauert und ist nicht eingetragen; bitte noch einmal versuchen."}
+
+
+def nach_abbruch(s, werkzeug, kennung):
+    """Antwort, nachdem das Anwenden von der Frist abgebrochen wurde: Ergebnis auf origin/main nachsehen."""
+    ergebnis = vorgang_eingetragen(s, kennung)
+    if ergebnis:
+        sys.stderr.write(f"Zeit {werkzeug} 504: abgebrochen, eingetragen\n")
+        text = "Es hat länger gedauert, ist aber eingetragen."
+        return 200, {"ok": True, "text": text, "hinweis": text}
+    if ergebnis is False:
+        return nicht_eingetragen(werkzeug)
+    sys.stderr.write(f"Zeit {werkzeug} 504: abgebrochen, ungeprüft\n")
+    return 504, {"ok": False, "fehler": "Das Schreiben hat zu lange gedauert; bitte prüfen, ob es angekommen ist."}
 
 
 def anwenden_extern(s, reise, werkzeug, anfrage):
-    """Arbeitskopie holen und `anwenden` mit dem Code der Arbeitskopie ausführen -> (Code, Antwort)."""
-    with _sperre, open(sperrdatei(), "w") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
+    """Arbeitskopie holen und `anwenden` mit dem Code der Arbeitskopie ausführen -> (Code, Antwort).
+    Sperre und Arbeitskopie gibt es je Reise: Was bei einer Reise hängt, hält die anderen nicht auf (flock gilt auch zwischen
+    Threads, jeder öffnet die Datei selbst). Alles zusammen dauert höchstens ZEIT_GESAMT + ZEIT_PRUEFUNG Sekunden; die Dauer
+    jedes Vorgangs steht im Protokoll, auch nach einem unerwarteten Fehler (500)."""
+    start = time.monotonic()
+    code, antwort = 500, {"ok": False, "fehler": "Schreiben fehlgeschlagen (Fehler im Dienst); der Betreiber sieht es im Protokoll."}
+    try:
+        code, antwort = vorgang(s, reise, werkzeug, anfrage, start)
+    except Exception as e:
+        grund = " ".join(f"{type(e).__name__}: {e}".split())[:LOG_LAENGE]
+        sys.stderr.write(f"Fehler {werkzeug} 500: {grund}\n")
+    finally:
+        sys.stderr.write(f"Fertig {werkzeug} {code} in {time.monotonic() - start:.1f} s\n")
+    return code, antwort
+
+
+def git_sperren_raeumen(arbeit):
+    """Veraltete Sperren von git (index.lock, HEAD.lock …) im eigenen git-Ordner der Arbeitskopie entfernen: Ein nach Fristablauf
+    beendetes git kann sie hinterlassen. Nur unter der Sperre der Reise aufrufen; der gemeinsame git-Ordner des Repos bleibt
+    unberührt (dort arbeiten andere Reisen und das Veröffentlichen). Die Arbeitskopie ist ein Worktree: .git ist eine Datei
+    „gitdir: <Repo>/.git/worktrees/<Name>“."""
+    punkt_git = Path(arbeit) / ".git"
+    if punkt_git.is_file():
+        zeile = punkt_git.read_text(encoding="utf-8").strip()
+        if not zeile.startswith("gitdir:"):
+            return
+        gitdir = Path(arbeit) / zeile[len("gitdir:"):].strip()     # absolut bleibt absolut
+    elif punkt_git.is_dir():
+        gitdir = punkt_git
+    else:
+        return
+    for f in gitdir.glob("*.lock"):
+        f.unlink(missing_ok=True)
+        sys.stderr.write(f"Arbeitskopie: veraltete Sperre {f.name} entfernt\n")
+
+
+def vorgang(s, reise, werkzeug, anfrage, start):
+    s = Schreiber(s.wurzel, Path(f"{s.arbeit}-{reise}"), s.veroeffentlichen)
+    s.ende = start + ZEIT_GESAMT
+    with open(sperrdatei(reise), "w") as f:
+        if not sperre_nehmen(f):
+            sys.stderr.write(f"Gesperrt {werkzeug} 429: Sperre der Reise nach {ZEIT_SPERRE} s noch belegt\n")
+            return 429, {"ok": False, "fehler": "Bei dieser Reise läuft gerade ein anderer Schreibvorgang; bitte gleich noch einmal versuchen."}
         try:
+            git_sperren_raeumen(s.arbeit)     # unter der Sperre der Reise: kein anderes git arbeitet in dieser Kopie
             s.vorbereiten()
+        except subprocess.TimeoutExpired:
+            return nicht_eingetragen(werkzeug)     # noch nichts angewendet, keine Prüfung nötig
         except RuntimeError as e:
             sys.stderr.write(f"Arbeitskopie: {e}\n")
             return 503, {"ok": False, "fehler": "Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal."}
         skript = s.arbeit / "engine" / "schreiben.py"
         if not skript.exists():
+            sys.stderr.write(f"Arbeitskopie: {skript} fehlt\n")
             return 503, {"ok": False, "fehler": "Die Software auf main kennt den Schreibweg noch nicht."}
+        if s.rest() <= 0:
+            return nicht_eingetragen(werkzeug)
+        kennung = secrets.token_hex(6)
         try:
-            r = subprocess.run([sys.executable, str(skript), "anwenden", reise, werkzeug], input=json.dumps(anfrage),
-                               capture_output=True, text=True, timeout=ZEIT_ANWENDEN,
-                               env={**os.environ, "FR_WURZEL": str(s.wurzel), "FR_SCHREIBKOPIE": str(s.arbeit)})
+            r = befehl_mit_frist([sys.executable, str(skript), "anwenden", reise, werkzeug], json.dumps(anfrage), s.rest(),
+                                 env={**os.environ, "FR_WURZEL": str(s.wurzel), "FR_SCHREIBKOPIE": str(s.arbeit),
+                                      "FR_VORGANG": kennung})
         except subprocess.TimeoutExpired:
-            return 504, {"ok": False, "fehler": "Das Schreiben hat zu lange gedauert; bitte prüfen, ob es angekommen ist."}
+            return nach_abbruch(s, werkzeug, kennung)
         if r.stderr:
             sys.stderr.write(r.stderr)
         try:

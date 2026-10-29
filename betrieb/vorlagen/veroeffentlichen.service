@@ -16,4 +16,8 @@ Environment=FR_WURZEL=__WURZEL__
 EnvironmentFile=-__DIENST__/betrieb.env
 EnvironmentFile=-__DIENST__/konten.env
 ExecStart=__WURZEL__/frieda/betrieb/veroeffentlichen.sh
+# Die Tests brauchen Minuten an Rechenzeit; Schreibvorgänge des Schreibwegs gehen vor
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
 TimeoutStartSec=15min
