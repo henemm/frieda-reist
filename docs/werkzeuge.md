@@ -25,7 +25,7 @@ Regionale Karten der Recherche: `frieda/werkzeuge/karte-holen.sh <reise> <name>`
 
 ## Adressen der Unterkünfte
 
-`engine/.venv/bin/python frieda/werkzeuge/adressen_holen.py <reise> [--suchen] [--trocken]` füllt die Lage der Unterkünfte vor (ADR-0004). Für Unterkünfte ohne Adresse, die in `plan/punkte.yaml` einen OSM-Punkt mit ihrer ID haben, holt es die Adress-Tags über Overpass. Mit `--suchen` fragt es für die übrigen Nominatim nach „Name, Ort“, begrenzt auf 3 km um den Ort aus `plan/karte.yaml`, und übernimmt nur Treffer, die eine Unterkunft mit Straße sind (dann auch die Koordinaten). Jede Adresse bekommt Quelle und Prüfdatum; was nichts liefert, nennt das Skript am Ende, ohne zu schätzen. `--trocken` zeigt nur an. Danach `plan/routen.yaml` durchsehen und einchecken; den Rest trägt Frieda im Gespräch ein (`lage_eintragen`).
+`engine/.venv/bin/python frieda/werkzeuge/adressen_holen.py <reise> [--suchen] [--trocken]` füllt die Lage der Unterkünfte vor (ADR-0004). Für Unterkünfte ohne Adresse, die in `plan/punkte.yaml` einen OSM-Punkt mit ihrer ID haben, schlägt Nominatim das OSM-Objekt nach. Mit `--suchen` fragt es für die übrigen Nominatim nach „Name, Ort“, begrenzt auf 3 km um den Ort aus `plan/karte.yaml`, und übernimmt nur Treffer, die eine Unterkunft mit Straße sind (dann auch die Koordinaten). Jede Adresse bekommt Quelle und Prüfdatum; was nichts liefert, nennt das Skript am Ende, ohne zu schätzen. `--trocken` zeigt nur an. Danach `plan/routen.yaml` durchsehen und einchecken; den Rest trägt Frieda im Gespräch ein (`lage_eintragen`).
 
 ## Wasserstellen prüfen
 

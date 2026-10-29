@@ -2,9 +2,8 @@
 """Lage der Unterkünfte aus OpenStreetMap vorfüllen (ADR-0004): Adresse und Koordinaten mit Quelle und Prüfdatum.
 
 Für jede Unterkunft in plan/routen.yaml ohne Adresse:
-  1. Hat plan/punkte.yaml einen Punkt mit ihrer ID (id: U-…) und einem OSM-Objekt als Quelle („OSM way/123“), werden dessen
-     Tags über Overpass geholt; aus addr:street, addr:housenumber, addr:postcode und addr:city (oder addr:place) wird die
-     Adresse.
+  1. Hat plan/punkte.yaml einen Punkt mit ihrer ID (id: U-…) und einem OSM-Objekt als Quelle („OSM way/123“), schlägt
+     Nominatim dieses Objekt nach (/lookup); aus Straße (oder Platz), Hausnummer, Postleitzahl und Ort wird die Adresse.
   2. Sonst (nur mit --suchen) fragt das Skript Nominatim nach „Name, Ort“, begrenzt auf 3 km um den Ort aus plan/karte.yaml.
      Übernommen wird nur ein Treffer, der eine Unterkunft ist (tourism=hotel, guest_house, hostel, alpine_hut, apartment …)
      und eine Straße hat; dann auch die Koordinaten, wenn die Unterkunft noch keine hat.
@@ -24,6 +23,7 @@ import re
 import sys
 import time
 import urllib.parse
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -33,20 +33,26 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "engine"))
 import instanz  # noqa: E402
 import schreiben  # noqa: E402  (routen.yaml formerhaltend lesen und schreiben)
 
-OVERPASS = "https://overpass-api.de/api/interpreter"
 NOMINATIM = "https://nominatim.openstreetmap.org/search"
+NACHSCHLAGEN = "https://nominatim.openstreetmap.org/lookup"
 UNTERKUNFT = {"hotel", "guest_house", "hostel", "alpine_hut", "apartment", "motel", "chalet", "wilderness_hut"}
 OSM_MUSTER = re.compile(r"OSM (node|way|relation)/(\d+)")
 SUCHRADIUS_KM = 3
 
 
-def holen(url, daten=None):
-    """GET oder POST -> JSON (Kennung der Instanz, eine Anfrage pro Sekunde)."""
+def holen(url, daten=None, versuche=6):
+    """GET oder POST -> JSON (Kennung der Instanz, eine Anfrage pro Sekunde; bei 429 „zu viele Anfragen“ mit wachsender Pause
+    erneut, etwa wenn sich mehrere Rechner eine Adresse teilen)."""
     req = urllib.request.Request(url, data=urllib.parse.urlencode(daten).encode() if daten else None,
                                  headers={"User-Agent": instanz.kennung()})
-    time.sleep(1.1)
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.load(r)
+    for n in range(versuche):
+        time.sleep(1.1 if n == 0 else 5 * 2 ** (n - 1))
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or n == versuche - 1:
+                raise
 
 
 def adresse_aus(tags):
@@ -70,13 +76,15 @@ def osm_bezuege(punkte):
     return aus
 
 
-def overpass_tags(bezuege, abfragen=holen):
-    """{U-…: (typ, nummer, lage)} -> {(typ, nummer): tags} mit einer Overpass-Abfrage."""
-    if not bezuege:
-        return {}
-    teile = "".join(f"{t}(id:{n});" for t, n, _ in bezuege.values())
-    d = abfragen(OVERPASS, {"data": f"[out:json][timeout:60];({teile});out tags;"})
-    return {(e["type"], e["id"]): e.get("tags") or {} for e in d.get("elements") or []}
+def nachschlagen(bezuege, abfragen=holen):
+    """{U-…: (typ, nummer, lage)} -> {(typ, nummer): Nominatim-Treffer}, je Anfrage bis zu 50 Objekte."""
+    ids = sorted({f"{t[0].upper()}{n}" for t, n, _ in bezuege.values()})
+    aus = {}
+    for i in range(0, len(ids), 50):
+        q = urllib.parse.urlencode({"osm_ids": ",".join(ids[i:i + 50]), "format": "jsonv2", "addressdetails": 1})
+        for t in abfragen(f"{NACHSCHLAGEN}?{q}") or []:
+            aus[(t.get("osm_type"), int(t.get("osm_id")))] = t
+    return aus
 
 
 def nominatim_suchen(name, ort_name, mitte, abfragen=holen):
@@ -105,12 +113,12 @@ def vorschlaege(roh, punkte, karte, suchen=False, heute=None, abfragen=holen):
     unterkuenfte = roh.get("unterkuenfte") or {}
     offen = {uid: u for uid, u in unterkuenfte.items() if not u.get("adresse")}
     bezuege = {uid: b for uid, b in osm_bezuege(punkte).items() if uid in offen}
-    tags = overpass_tags(bezuege, abfragen)
+    treffer = nachschlagen(bezuege, abfragen)
     neu, fehlt = {}, []
     for uid, u in offen.items():
         if uid in bezuege:
             typ, nr, _ = bezuege[uid]
-            a = adresse_aus(tags.get((typ, nr)) or {})
+            a = adresse_aus_nominatim(treffer.get((typ, nr)) or {})
             if a:
                 neu[uid] = {"adresse": {"wert": a, "quelle": f"OSM {typ}/{nr}, {stand}", "geprueft": heute}}
                 continue
