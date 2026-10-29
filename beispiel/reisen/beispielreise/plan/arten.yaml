@@ -1,6 +1,8 @@
 # Arten und Merkmale der Beispielreise (erfunden). Jede Reise legt ihre eigenen fest, im Gespräch im AI-Client;
 # diese Datei ist Anschauung, kein Katalog (docs/ontologie.md, ADR-0001). Felder je Art: grundform (aufenthalt |
-# bewegung | folge), name, farbe (blau, braun, lila, gruen, tuerkis, oliv, grau, rosa, schiefer), summiert (Bewegung
+# bewegung | folge), name, farbe (blau, braun, lila, gruen, tuerkis, oliv, grau, rosa, schiefer), symbol (Zeichen der Seite:
+# unterkunft, zelt, einkehr, ticket, museum, wandern, bus, bahn, schiff, flug, auto, rad, taxi; ohne Angabe das der Grundform),
+# buchbar (hat einen Buchungsstand; Vorgabe: Aufenthalte ja, Bewegungen nein), summiert (Bewegung
 # aus eigener Kraft: Gehzeit, Länge, Höhenmeter werden summiert), merkmale. Felder je Merkmal: name, typ (text | geld |
 # zahl | auswahl mit werte), veraenderlich (braucht Prüfdatum), stufe (pflicht | empfohlen | angeboten | aus), auto
 # (berechnet: Bewegung gehzeit, laenge, hoehenmeter; Folge tage, gehzeit, unterkuenfte, anschluss), hilfe, frage, auch.
@@ -9,6 +11,7 @@ arten:
     grundform: aufenthalt
     name: Hotel
     farbe: blau
+    symbol: unterkunft
     merkmale:
       preis:       {name: Preis pro Nacht, typ: geld, veraenderlich: true,
                     hilfe: "Website des Hauses oder Buchungsportal, für das Reisedatum und zwei Personen",
@@ -50,6 +53,7 @@ arten:
   wandern:
     grundform: bewegung
     name: Wanderung
+    symbol: wandern
     summiert: true
     merkmale:
       gehzeit:       {name: Gehzeit, auto: gehzeit}
@@ -70,6 +74,8 @@ arten:
     grundform: bewegung
     name: Bahn
     farbe: schiefer
+    symbol: bahn
+    buchbar: true
     merkmale:
       preis:        {name: Preis, typ: geld, veraenderlich: true, hilfe: "Fahrplanauskunft des Betreibers"}
       dauer:        {name: Dauer, typ: text, veraenderlich: true, hilfe: "Fahrplanauskunft für den Wochentag der Reise"}
@@ -82,10 +88,22 @@ arten:
     grundform: bewegung
     name: Bus
     farbe: schiefer
+    symbol: bus
     merkmale:
       preis:    {name: Preis, typ: geld, veraenderlich: true}
       dauer:    {name: Dauer, typ: text, veraenderlich: true}
       verkehrt: {name: Fährt, typ: text, veraenderlich: true, hilfe: "Fahrplan; nicht jede Linie fährt täglich"}
+  besichtigung:
+    grundform: aufenthalt
+    name: Besichtigung
+    farbe: lila
+    symbol: museum
+    beschreibung: "Aufenthalt ohne Nacht: Burg, Museum, Aussicht mit Zeitfenster (Beispiel)"
+    merkmale:
+      geoeffnet:    {name: Geöffnet am Reisedatum, typ: auswahl, werte: [ja, nein, unklar], veraenderlich: true, stufe: pflicht,
+                     hilfe: "Website; Winterpause und Ruhetage beachten"}
+      eintritt:     {name: Eintritt, typ: geld, veraenderlich: true, hilfe: "Website; Ermäßigungen"}
+      dauer:        {name: Dauer, typ: text, stufe: angeboten, hilfe: "Wie lange man etwa bleibt"}
   reiseteil:
     grundform: folge
     name: Reiseteil

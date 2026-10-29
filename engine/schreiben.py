@@ -367,7 +367,7 @@ def merkmal_definieren(reise_dir, wer, args):
 # ---------- Werte an Dingen (plan/routen.yaml) ----------
 # Die Routendatei wird mit ruamel.yaml rund gelesen und geschrieben: Kommentare, Reihenfolge und Fließform bleiben; nur von
 # Hand umbrochene Fließ-Mappings werden in eine Zeile gezogen (einmalige Normalform, danach ändert ein Schreibvorgang nur seine Stelle).
-ZIEL_MUSTER = re.compile(r"^(U-\d+|E-\d+[A-Za-z]?|V-\d+\.[a-z])$")
+ZIEL_MUSTER = re.compile(r"^(U-\d+|A-\d+|E-\d+[A-Za-z]?|V-\d+\.[a-z])$")
 
 
 def yaml_rund():
@@ -406,11 +406,16 @@ def routen_normalisieren(reise_dir):
 
 
 def ding_finden(roh, ziel):
-    """-> (Knoten in der Routendatei, Beschreibung) für U-…, E-… oder eine Option V-01.a."""
+    """-> (Knoten in der Routendatei, Beschreibung) für U-…, A-…, E-… oder eine Option V-01.a."""
     if ziel.startswith("U-"):
         k = (roh.get("unterkuenfte") or {}).get(ziel)
         if k is None:
             raise Ablehnung(f"Die Unterkunft {ziel} gibt es nicht.")
+        return k, f"{ziel} {k.get('name', '')}".strip()
+    if ziel.startswith("A-"):
+        k = (roh.get("aufenthalte") or {}).get(ziel)
+        if k is None:
+            raise Ablehnung(f"Den Aufenthalt {ziel} gibt es nicht.")
         return k, f"{ziel} {k.get('name', '')}".strip()
     if ziel.startswith("E-"):
         k = (roh.get("strecken") or {}).get(ziel)
@@ -526,10 +531,10 @@ def wert_eintragen(reise_dir, wer, args, heute=None):
             raise Ablehnung(f"Die Option {ziel} gibt es nicht.")
         krit = w.get("kriterien") or []
         heutige = next(o for o in w["optionen"] if o["id"] == ziel).get("merkmale") or {}
-    elif ziel.startswith("U-"):
-        u = (route.get("unterkuenfte") or {}).get(ziel)
+    elif ziel.startswith(("U-", "A-")):
+        u = (route.get("unterkuenfte" if ziel.startswith("U-") else "aufenthalte") or {}).get(ziel)
         if u is None:
-            raise Ablehnung(f"Die Unterkunft {ziel} gibt es nicht.")
+            raise Ablehnung(f"{'Die Unterkunft' if ziel.startswith('U-') else 'Den Aufenthalt'} {ziel} gibt es nicht.")
         krit = (route.get("merkmale") or {}).get(u.get("art")) or []
         heutige = u.get("merkmale") or {}
     else:
@@ -596,8 +601,8 @@ def wert_eintragen(reise_dir, wer, args, heute=None):
 
 
 # ---------- Dinge, Wahlstellen, Optionen (plan/routen.yaml) ----------
-DING_ARTEN = {"unterkunft": ("U", "unterkuenfte"), "strecke": ("E", "strecken"), "ort": ("O", "orte")}
-ID_MUSTER = re.compile(r"^(T-\d+|E-\d+[A-Za-z]?|U-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?|F-\d+)$")
+DING_ARTEN = {"unterkunft": ("U", "unterkuenfte"), "aufenthalt": ("A", "aufenthalte"), "strecke": ("E", "strecken"), "ort": ("O", "orte")}
+ID_MUSTER = re.compile(r"^(T-\d+|E-\d+[A-Za-z]?|U-\d+|A-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?|F-\d+)$")
 
 
 PLAIN_FELDER = {"id", "status", "wer", "art", "typ", "ort", "von", "nach", "frage", "siehe", "bereich", "an", "unterkuenfte",
@@ -721,7 +726,7 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
     heute = heute or datetime.date.today()
     was = (text_wert(args, "was", pflicht=True, laenge=20) or "").lower()
     if was not in DING_ARTEN:
-        raise Ablehnung("„was“ muss unterkunft, strecke oder ort sein.")
+        raise Ablehnung("„was“ muss unterkunft, aufenthalt (ohne Nacht: Besichtigung, Essen, Besuch), strecke oder ort sein.")
     kuerzel, abschnitt = DING_ARTEN[was]
     route = route_stand(reise_dir)
     roh = routen_laden(reise_dir)
@@ -731,15 +736,20 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
     d = {}
     if was == "ort":
         d["name"] = text_wert(args, "name_des_dings", laenge=120) or text_wert(args, "titel", pflicht=True, laenge=120)
-    elif was == "unterkunft":
+    elif was in ("unterkunft", "aufenthalt"):
         d["name"] = text_wert(args, "name_des_dings", laenge=120) or text_wert(args, "titel", pflicht=True, laenge=120)
         d["ort"] = (id_liste(args, "ort", r"O-\d+", roh, "orte", pflicht=True) or [None])[0]
         art = (text_wert(args, "art", pflicht=True, laenge=40) or "").lower()
         if art not in arten or arten[art].get("grundform") != "aufenthalt":
             raise Ablehnung(f"„art“ muss eine Aufenthalts-Art dieser Reise sein ({', '.join(k for k, a in arten.items() if a.get('grundform') == 'aufenthalt') or 'keine'}); "
                             "eine neue legt ein:e Organisator:in mit art_definieren an.")
-        d["typ"] = arten[art].get("name") or art
+        if was == "unterkunft":
+            d["typ"] = arten[art].get("name") or art
         d["art"] = art
+        if was == "aufenthalt" and (zeit := text_wert(args, "zeit", laenge=80)):
+            d["zeit"] = zeit
+        if (b := text_wert(args, "buchung", laenge=80)):
+            d["buchung"] = b
         if (link := text_wert(args, "buchungslink", laenge=600)):
             if not link.startswith(("http://", "https://")):
                 raise Ablehnung("„buchungslink“ muss mit http:// oder https:// beginnen.")
@@ -763,7 +773,7 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
     werte = merkmale_werte(args.get("merkmale"), (route.get("merkmale") or {}).get(d.get("art")) or [], heute,
                            {"quelle": quelle, "geprueft": args.get("geprueft")}) if was != "ort" else {}
     did = neue_id(reise_dir, kuerzel)
-    knoten = fliess_map(d) if was != "unterkunft" else block_map(d)
+    knoten = fliess_map(d) if was not in ("unterkunft", "aufenthalt") else block_map(d)
     if werte:
         if was == "strecke":
             knoten = block_map(d)
@@ -772,15 +782,17 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
     roh[abschnitt][did] = knoten
     name = d.get("name") or d.get("titel")
     titel = f"{did} {name} angelegt ({was})"
-    text = (f"{was.capitalize()} {did} „{name}“ angelegt" + (f" in {route.get('orte', {}).get(d['ort'], {}).get('name', d['ort'])}" if was == "unterkunft" else "")
+    text = (f"{was.capitalize()} {did} „{name}“ angelegt" + (f" in {route.get('orte', {}).get(d['ort'], {}).get('name', d['ort'])}" if was in ("unterkunft", "aufenthalt") else "")
             + (f", Art {d['art']}" if d.get("art") else "") + (f", Merkmale: {', '.join(werte)}" if werte else "") + f". Herkunft: {quelle}."
-            + (" Als Alternative gehört es noch in eine Wahlstelle (option_anlegen oder wahlstelle_anlegen)." if was == "unterkunft" else ""))
+            + (" Als Alternative gehört es noch in eine Wahlstelle (option_anlegen oder wahlstelle_anlegen)." if was == "unterkunft" else "")
+            + (" Er gehört noch an einen Tag (tag_aendern mit aufenthalte)." if was == "aufenthalt" else ""))
     routen_speichern(reise_dir, roh)
     return titel, text
 
 
-AENDERBAR = {"unterkunft": ("name", "ort", "art", "hinweis", "quelle", "buchungslink", "frage"),
-             "strecke": ("titel", "von", "nach", "art", "hinweis", "quelle"), "ort": ("name", "hinweis", "quelle")}
+AENDERBAR = {"unterkunft": ("name", "ort", "art", "hinweis", "quelle", "buchungslink", "frage", "buchung"),
+             "aufenthalt": ("name", "ort", "art", "zeit", "hinweis", "quelle", "buchungslink", "frage", "buchung"),
+             "strecke": ("titel", "von", "nach", "art", "hinweis", "quelle", "buchung"), "ort": ("name", "hinweis", "quelle")}
 
 
 def ding_aendern(reise_dir, wer, args, heute=None):
@@ -789,7 +801,7 @@ def ding_aendern(reise_dir, wer, args, heute=None):
     ziel = (text_wert(args, "ziel", pflicht=True, laenge=20) or "").strip()
     was = next((w for w, (k, _) in DING_ARTEN.items() if ziel.startswith(k + "-")), None)
     if was is None or not ID_MUSTER.match(ziel):
-        raise Ablehnung("„ziel“ muss eine Unterkunft U-…, eine Strecke E-… oder ein Ort O-… sein.")
+        raise Ablehnung("„ziel“ muss eine Unterkunft U-…, ein Aufenthalt A-…, eine Strecke E-… oder ein Ort O-… sein.")
     route = route_stand(reise_dir)
     roh = routen_laden(reise_dir)
     knoten, bezeichnung = ding_finden(roh, ziel) if was != "ort" else ((roh.get("orte") or {}).get(ziel), ziel)
@@ -810,7 +822,7 @@ def ding_aendern(reise_dir, wer, args, heute=None):
             if not darf(wer["rolle"], "organisator"):
                 raise Ablehnung("Die Art eines Dings ändern dürfen nur Organisator:innen (sie bestimmt, welche Merkmale gelten).")
             v = (text_wert(args, "art", pflicht=True, laenge=40) or "").lower()
-            g = "aufenthalt" if was == "unterkunft" else "bewegung"
+            g = "aufenthalt" if was in ("unterkunft", "aufenthalt") else "bewegung"
             if v not in arten or arten[v].get("grundform") != g:
                 raise Ablehnung(f"„art“ muss eine {g.capitalize()}s-Art dieser Reise sein ({', '.join(k for k, a in arten.items() if a.get('grundform') == g) or 'keine'}).")
         elif feld == "buchungslink":
@@ -824,7 +836,7 @@ def ding_aendern(reise_dir, wer, args, heute=None):
         else:
             v = text_wert(args, feld, laenge=600 if feld == "quelle" else MAX_TEXT) or ""
         alt = knoten.get(feld) if feld != "art" else (knoten.get("art") or knoten.get("typ"))
-        if v == "" and feld in ("hinweis", "buchungslink", "frage"):
+        if v == "" and feld in ("hinweis", "buchungslink", "frage", "zeit", "buchung"):
             if feld in knoten:
                 geaendert.append(f"{feld} entfernt (war „{alt}“)")
                 del knoten[feld]
@@ -848,8 +860,8 @@ def lage_eintragen(reise_dir, wer, args, heute=None):
     """Lage einer Unterkunft (ADR-0004): Adresse und/oder Koordinaten, je mit Herkunft (quelle) und Prüfdatum. -> (Titel, Text)."""
     heute = heute or datetime.date.today()
     ziel = (text_wert(args, "ziel", pflicht=True, laenge=20) or "").strip()
-    if not re.fullmatch(r"U-\d+", ziel):
-        raise Ablehnung("„ziel“ muss eine Unterkunft U-… sein.")
+    if not re.fullmatch(r"(U|A)-\d+", ziel):
+        raise Ablehnung("„ziel“ muss eine Unterkunft U-… oder ein Aufenthalt A-… sein.")
     roh = routen_laden(reise_dir)
     knoten, bezeichnung = ding_finden(roh, ziel)
     if knoten is None:
@@ -1153,7 +1165,8 @@ def entscheiden(reise_dir, wer, args, heute=None):
 
 
 def tag_aendern(reise_dir, wer, args, heute=None):
-    """Einen Tag des Plans ändern: Titel, Text, Nacht (U-…, V-… oder leer), Strecken (E-…/V-…), Wahlstellen unterwegs (V-…).
+    """Einen Tag des Plans ändern: Titel, Text, Nacht (U-…, V-… oder leer), Strecken (E-…/V-…), Wahlstellen unterwegs (V-…),
+    Aufenthalte ohne Nacht (A-…, in der Zeitleiste des Tags).
     Nur Organisator:innen (es ändert den Plan). -> (Titel, Text)."""
     tid = (text_wert(args, "ziel", pflicht=True, laenge=10) or "").strip()
     roh = routen_laden(reise_dir)
@@ -1184,7 +1197,7 @@ def tag_aendern(reise_dir, wer, args, heute=None):
             else:
                 t.pop("nacht", None)
     for feld, muster, mengen in (("strecken", r"(E-\d+[A-Za-z]?|V-\d+)", {"E": "strecken", "V": "wahlstellen"}),
-                                 ("wahl", r"V-\d+", {"V": "wahlstellen"})):
+                                 ("wahl", r"V-\d+", {"V": "wahlstellen"}), ("aufenthalte", r"A-\d+", {"A": "aufenthalte"})):
         if args.get(feld) is None:
             continue
         liste = id_liste(args, feld, muster, roh) or []
@@ -1198,7 +1211,7 @@ def tag_aendern(reise_dir, wer, args, heute=None):
             else:
                 t.pop(feld, None)
     if not geaendert:
-        raise Ablehnung(f"Nichts zu ändern an {tid} (titel, text, nacht, strecken, wahl).")
+        raise Ablehnung(f"Nichts zu ändern an {tid} (titel, text, nacht, strecken, wahl, aufenthalte).")
     grund = text_wert(args, "grund")
     routen_speichern(reise_dir, roh)
     return f"{tid} geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), \

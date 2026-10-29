@@ -577,7 +577,7 @@ def test_unbekannte_unterkunftsart_ist_fehler(tmp_path):
         bauen.Bauer(kopie, tmp_path / "aus").daten()
     assert "Art „baumhaus“ steht nicht in plan/arten.yaml" in str(e.value) and "gibt es hier nicht" not in str(e.value)
     d = bauen.Bauer(BEISPIEL, tmp_path / "aus2").daten()
-    assert d["route"]["arten"]["herberge"]["name"] == "Herberge" and d["route"]["kategorien"]["herberge"] == "Herberge"
+    assert d["route"]["arten"]["herberge"]["name"] == "Herberge" and "kategorien" not in d["route"]
     assert {u["art"] for u in d["route"]["unterkuenfte"].values()} == {"hotel", "pension", "gasthof", "herberge"}
 
 

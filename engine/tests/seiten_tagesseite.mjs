@@ -28,6 +28,8 @@ for (const breite of [390, 1300]) {
       ebenen: ["weg", "unterwegs", "orte", "hintergrund", "quellen"].map(n => [n, oben(".ebene-" + n), links(".ebene-" + n)]),
       reiter: [...document.querySelectorAll(".ebene-unterwegs [role=tab]")].map(x => x.textContent),
       planChips: [...document.querySelectorAll("#main > .chips .chip")].map(x => x.textContent),
+      // Aufenthalte ohne Nacht in der Zeitleiste des Tags (Paket O-5): Name und Buchungsstand
+      aufenthalte: [...document.querySelectorAll(".tagseite .wv-aufenthalt")].map(x => [x.querySelector(".titelzeile span").textContent, (x.querySelector(".chip") || {}).textContent || ""]),
       info: document.querySelectorAll(".zid-i, .zid-kennung, .zid-wort").length,
       knoepfe: [...document.querySelectorAll("#main button.zid")].map(x => [x.title, x.getAttribute("aria-label")]),
       merkmale: [...document.querySelectorAll(".ebene-unterwegs dl.textmerkmale dt")].map(x => x.textContent),

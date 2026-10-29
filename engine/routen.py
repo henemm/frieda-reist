@@ -27,7 +27,7 @@ NUR_ENTSCHEIDER = {"gewaehlt", "verworfen", "ersetzt"}
 UNGUELTIG = {"verworfen", "ersetzt"}
 ARTEN = {"planung", "unterwegs"}
 WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
-MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+",
+MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+", "aufenthalt": r"A-\d+",
           "tag": r"T-\d+", "wahl": r"V-\d+", "option": r"V-\d+\.[a-z]+", "wissen": r"W-\d+"}
 # Grundformen der Reise-Ontologie (docs/ontologie.md, ADR-0001): Aufenthalt (Unterkunft, Nacht), Bewegung (Strecke),
 # Folge (Tag, Reiseteil). Welche Arten es davon gibt (Hotel, Refugi, Wanderung, Bahn, Reiseteil …) und welche Merkmale
@@ -36,7 +36,11 @@ MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+",
 GRUNDFORMEN = ("aufenthalt", "bewegung", "folge")
 AUTO_JE_GRUNDFORM = {"bewegung": ("gehzeit", "laenge", "hoehenmeter"), "folge": ("tage", "gehzeit", "unterkuenfte", "anschluss")}
 ART_MUSTER = r"[a-z][a-z0-9_]*"
-ART_FELDER = {"grundform", "name", "farbe", "merkmale", "beschreibung", "summiert", "lesetext"}
+ART_FELDER = {"grundform", "name", "farbe", "symbol", "buchbar", "merkmale", "beschreibung", "summiert", "lesetext"}
+# Symbole der Seite, die eine Art tragen darf (engine/bauen.py SYMBOLE, Lucide); ohne Angabe das Symbol der Grundform
+SYMBOLE_ARTEN = ("unterkunft", "zelt", "einkehr", "ticket", "museum", "wandern", "bus", "bahn", "schiff", "flug", "auto", "rad",
+                 "taxi", "strecke", "ort", "karte", "plan")
+GRUNDFORM_SYMBOL = {"aufenthalt": "unterkunft", "bewegung": "strecke", "folge": "plan"}
 # Gliederung des Lesetexts einer Art (docs/ontologie.md „Lesetext“): Rubriken in ihrer Reihenfolge, jede mit Namen (das
 # Stichwort am Anfang eines Absatzes) und Hilfe für den AI-Client. Welche Rubriken es gibt, sagt allein die Reise.
 RUBRIK_FELDER = {"name", "hilfe"}
@@ -55,7 +59,8 @@ def art_schluessel(text):
     t = "".join(c for c in unicodedata.normalize("NFKD", t) if not unicodedata.combining(c))
     return re.sub(r"[^a-z0-9]+", "_", t).strip("_") or None
 TYPEN = {"text", "geld", "zahl", "auswahl"}
-# Stufe eines Merkmals (docs/ontologie.md): pflicht und empfohlen zählen als „Fehlt noch“ und werden gemahnt, angeboten
+# Stufe eines Merkmals (docs/ontologie.md): nur pflicht zählt als „Fehlt noch“ (Paket O-5); empfohlen ist Spalte im Vergleich
+# und wird ab Status fest gemahnt, angeboten
 # wird nur gezeigt, wenn ein Wert da ist, aus gilt nicht (kein Fehlt, keine Mahnung, kein Wächter). Ohne Angabe gilt
 # empfohlen. Die Reise setzt sie in arten.yaml, eine Wahlstelle ändert sie für sich mit {stufe: …}. Die Stufe darf je
 # typ einer Unterkunft verschieden sein: stufe: {"*": aus, refugi: empfohlen} (klein geschrieben; „*“ für alle übrigen).
@@ -72,8 +77,9 @@ def stufe_von(d, typ=None):
 
 
 def zaehlt(d, typ=None):
-    """Zählt das Merkmal als Lücke (Fehlt noch, Mahnung)? Nur pflicht und empfohlen, nie berechnete."""
-    return not d.get("auto") and stufe_von(d, typ) in ("pflicht", "empfohlen")
+    """Zählt das Merkmal als Lücke („Fehlt noch“, Zähler im Vergleich)? Nur pflicht (Paket O-5), nie berechnete."""
+    return not d.get("auto") and stufe_von(d, typ) == "pflicht"
+
 
 
 def stufe_fehler(s):
@@ -176,7 +182,9 @@ class Routen:
         wissen: bekannte W-IDs (Abschnitte wie Essen, Ausflug, Praxis), an denen eine Wahlstelle hängen darf; None: ungeprüft."""
         self.r = roh or {}
         self.arten_roh = arten
-        self.arten = {}           # Art -> {name, grundform, farbe, summiert}, aus plan/arten.yaml der Reise
+        self.arten = {}           # Art -> {name, grundform, farbe, symbol, buchbar, summiert}, aus plan/arten.yaml der Reise
+        self.a_art = {}           # A-01 -> Art (Aufenthalt ohne Nacht, Paket O-5)
+        self.mk_aufenthalt = {}   # A-01 -> {Merkmal: Wert}
         self.katalog = {}         # Art -> {Merkmal: Definition}
         self.u_art = {}           # U-01 -> Art
         self.kriterien = {}       # V-ID -> (Art, {Merkmal: Definition})
@@ -193,6 +201,7 @@ class Routen:
         self.orte = self.r.get("orte") or {}
         self.strecken = self.r.get("strecken") or {}
         self.unterkuenfte = self.r.get("unterkuenfte") or {}
+        self.aufenthalte = self.r.get("aufenthalte") or {}   # Aufenthalte ohne Nacht: Besichtigung, Essen, Besuch (A-…)
         self.tage = self.r.get("tage") or {}
         self.wahl = self.r.get("wahlstellen") or {}
         self.wissen = wissen
@@ -236,7 +245,7 @@ class Routen:
     # ---------- Bausteine prüfen ----------
     def bausteine(self):
         for art, menge in (("ort", self.orte), ("strecke", self.strecken), ("unterkunft", self.unterkuenfte),
-                           ("tag", self.tage), ("wahl", self.wahl)):
+                           ("aufenthalt", self.aufenthalte), ("tag", self.tage), ("wahl", self.wahl)):
             for i in menge:
                 if not ist(art, i):
                     self.fehl(f"„{i}“ ist keine gültige ID für {art}.")
@@ -264,8 +273,23 @@ class Routen:
                 self.fehl(f"Unterkunft {uid}: Frage {u['frage']} gibt es nicht.")
             self.u_art[uid] = self.art_von(u, f"Unterkunft {uid}")
             self.lage_pruefen(u, f"Unterkunft {uid}")
-        for tid in self.tage:
+        for aid, a in self.aufenthalte.items():
+            # Aufenthalt ohne Nacht (Paket O-5): Ort, Art (Grundform aufenthalt), Herkunft; zeit ist freier Text („10–12 Uhr“)
+            self.id_anlegen(aid, self.q)
+            if not isinstance(a, dict) or not a.get("name"):
+                self.fehl(f"Aufenthalt {aid} braucht einen Namen (name: …).")
+                continue
+            if a.get("ort") not in self.orte:
+                self.fehl(f"Aufenthalt {aid}: Ort {a.get('ort')} gibt es nicht.")
+            if not a.get("quelle"):
+                self.fehl(f"Aufenthalt {aid}: quelle fehlt (Herkunft).")
+            self.a_art[aid] = self.art_von(a, f"Aufenthalt {aid}")
+            self.lage_pruefen(a, f"Aufenthalt {aid}")
+        for tid, t in self.tage.items():
             self.id_anlegen(tid, self.q)
+            for aid in t.get("aufenthalte") or []:
+                if aid not in self.aufenthalte:
+                    self.fehl(f"{tid}: Aufenthalt {aid} gibt es nicht.")
         for vid, w in self.wahl.items():
             self.id_anlegen(vid, self.q)
             if w.get("art") not in ARTEN:
@@ -454,7 +478,12 @@ class Routen:
                 self.fehl(f"{wo}: unbekannte Felder {', '.join(sorted(set(d) - ART_FELDER))}.")
             if d.get("farbe") and d["farbe"] not in FARBEN:
                 self.fehl(f"{wo}: farbe muss {', '.join(FARBEN)} sein.")
+            if d.get("symbol") and d["symbol"] not in SYMBOLE_ARTEN:
+                self.fehl(f"{wo}: symbol muss {', '.join(SYMBOLE_ARTEN)} sein.")
+            # buchbar: das Ding dieser Art hat einen Buchungsstand (Zu buchen, Stand der Vorbereitung); Vorgabe: Aufenthalte ja
             self.arten[a] = {"name": str(d.get("name") or a), "grundform": d["grundform"], "farbe": d.get("farbe") or "grau",
+                             "symbol": d.get("symbol") or GRUNDFORM_SYMBOL[d["grundform"]],
+                             "buchbar": bool(d.get("buchbar", d["grundform"] == "aufenthalt")),
                              "summiert": bool(d.get("summiert")), "beschreibung": d.get("beschreibung")}
             if "lesetext" in d:
                 self.arten[a]["lesetext"] = self.lesetext_pruefen(wo, d["lesetext"])
@@ -666,6 +695,9 @@ class Routen:
                 continue
             krit = {**self.katalog.get(self.u_art.get(uid), {}), **u_extra.get(uid, {})}
             self.mk_unterkunft[uid] = self.werte(uid, u.get("merkmale"), krit)
+        for aid, a in self.aufenthalte.items():
+            if self.a_art.get(aid) is not None and isinstance(a, dict):
+                self.mk_aufenthalt[aid] = self.werte(aid, a.get("merkmale"), self.katalog.get(self.a_art[aid], {}))
         # Bewegungen: Werte dürfen an der Strecke stehen, wie bei Unterkünften an U-…
         for sid, st in self.strecken.items():
             if st.get("merkmale") is None:
@@ -834,7 +866,7 @@ class Routen:
                 self.fehl(f"{tid}: Ort {n['ort']} gibt es nicht.")
             a = self.art_von(n, f"{tid} nacht") if (n.get("typ") or n.get("art") or n.get("an_bord")) else None
             return {"ort": n.get("ort"), "hinweis": n.get("hinweis"), "typ": n.get("typ"), "an_bord": bool(n.get("an_bord")),
-                    "art": a, "kategorie": a}
+                    "art": a}
         if ist("unterkunft", n):
             if n not in self.unterkuenfte:
                 self.fehl(f"{tid}: Unterkunft {n} gibt es nicht.")
@@ -936,6 +968,7 @@ class Routen:
                          "titel": t.get("titel", ""), "text": t.get("text", ""),
                          "start_ort": start_ort, "end_ort": pos,
                          "strecken": [{"id": s, "wahl": v} for s, v in strecken],
+                         "aufenthalte": [a for a in t.get("aufenthalte") or [] if a in self.aufenthalte],
                          "wahlstellen": unterwegs, "nacht": n})
 
         # Fixpunkte und Ende
@@ -993,6 +1026,7 @@ class Routen:
             weitere[tid] = {"id": tid, "titel": t.get("titel", ""), "text": t.get("text", ""),
                             "strecken": [{"id": s, "wahl": v} for s, v in self.strecken_des_tages(tid, t.get("strecken"))],
                             "wahlstellen": [el for el in t.get("strecken") or [] if ist("wahl", el)] + list(t.get("wahl") or []),
+                            "aufenthalte": [a for a in t.get("aufenthalte") or [] if a in self.aufenthalte],
                             "nacht": self.nacht(tid, t.get("nacht"))}
         return {
             "tage": tage,
@@ -1003,9 +1037,9 @@ class Routen:
             "orte": {k: {"name": v.get("name", k), "hinweis": v.get("hinweis")} for k, v in self.orte.items()},
             "strecken": {sid: self.strecke_aus(sid) for sid in sorted(set(self.strecken) | aktiv_strecken)},
             "unterkuenfte": self.unterkuenfte_aus(tage),
-            # Arten der Reise (plan/arten.yaml); „kategorien“ (Art -> Name) bleibt für die Seite bis Paket O-5
+            "aufenthalte": self.aufenthalte_aus(tage),
+            # Arten der Reise (plan/arten.yaml): Name, Grundform, Farbe, Symbol, buchbar; die Seite kennt keine Art selbst
             "arten": {a: dict(d) for a, d in self.arten.items()},
-            "kategorien": {**{a: d["name"] for a, d in self.arten.items()}, UNTERWEGS: "Unterwegs"},
             "aktiv_strecken": sorted(aktiv_strecken),
             "merkmale": {b: [{"id": k, **d} for k, d in krit.items()] for b, krit in self.katalog.items()},
             "warnungen": self.warnungen,
@@ -1157,9 +1191,38 @@ class Routen:
                     "fehlt": [k for k, d in self.katalog[b].items() if zaehlt(d) and k not in mk]} if b else \
             ({"merkmale": mk, "fehlt": []} if mk else {})
         return {"titel": s.get("titel", sid), "von": s.get("von"), "nach": s.get("nach"), "art": s.get("art"),
-                "rolle": s.get("rolle", "haupt"), "zweig_von": s.get("zweig_von"), "kennzahlen": s.get("kennzahlen") or {},
+                "buchung": self.buchung_von(s, b), "rolle": s.get("rolle", "haupt"), "zweig_von": s.get("zweig_von"), "kennzahlen": s.get("kennzahlen") or {},
                 "quelle": s.get("quelle"), "siehe": s.get("siehe"), "text": s.get("text", ""),
                 "dossier": bool(s.get("dossier")), **merkmale}
+
+    def buchung_von(self, d, art):
+        """Buchungsstand eines Dings: der Eintrag buchung:, sonst „offen“ bei einer buchbaren Art, sonst None (kein Stand)."""
+        if d.get("buchung") is not None:
+            return str(d["buchung"])
+        return "offen" if (self.arten.get(art) or {}).get("buchbar") else None
+
+    def lage_aus(self, d):
+        for feld in ("adresse", "punkt"):
+            v = d.get(feld) if isinstance(d.get(feld), dict) else None
+            yield feld, ({"wert": v.get("wert"), "quelle": v.get("quelle"), "notiz": v.get("notiz"),
+                          "geprueft": v["geprueft"].isoformat() if isinstance(v.get("geprueft"), datetime.date) else None} if v else None)
+
+    def aufenthalte_aus(self, tage):
+        """Aufenthalte ohne Nacht (A-…): wie Unterkünfte, mit zeit (Text) und den Tagen, an denen sie stehen."""
+        an_tagen = {}
+        for t in tage:
+            for aid in t.get("aufenthalte") or []:
+                an_tagen.setdefault(aid, []).append(t["id"])
+        aus = {}
+        for aid, a in self.aufenthalte.items():
+            if not isinstance(a, dict):
+                continue
+            art = self.a_art.get(aid)
+            mk = self.mk_aufenthalt.get(aid, {})
+            aus[aid] = {**{k: a.get(k) for k in ("name", "ort", "zeit", "kontakt", "hinweis", "quelle", "frage", "buchungslink")},
+                        **dict(self.lage_aus(a)), "art": art, "buchung": self.buchung_von(a, art), "tage": an_tagen.get(aid, []),
+                        "merkmale": mk, "fehlt": [k for k, d in self.katalog.get(art, {}).items() if zaehlt(d) and k not in mk]}
+        return aus
 
     def unterkuenfte_aus(self, tage):
         naechte = {}
@@ -1180,8 +1243,7 @@ class Routen:
                                   "geprueft": v["geprueft"].isoformat() if isinstance(v.get("geprueft"), datetime.date) else None} if v else None
             a = self.u_art.get(uid)
             aus[uid]["art"] = a
-            aus[uid]["kategorie"] = a    # für die Seite bis Paket O-5
-            aus[uid]["buchung"] = u.get("buchung", "offen")
+            aus[uid]["buchung"] = self.buchung_von(u, a)
             aus[uid]["naechte"] = naechte.get(uid, [])
             mk = self.mk_unterkunft.get(uid, {})
             aus[uid]["merkmale"] = mk

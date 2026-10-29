@@ -456,7 +456,7 @@ def test_merkmale_einer_strecke(dienst):
     basis, ablage = dienst
     # Strecke als Ziel: Liste ihrer Art (E-20 ist eine Bahnfahrt)
     t, f = werkzeug(basis, MITREISEND, "merkmale", ziel="E-20")
-    assert not f and "Bereich bahn" in t and "## E-20" in t and "Fehlt noch" in t and "gilt" in t
+    assert not f and "Bereich bahn" in t and "## E-20" in t and "Fehlt noch" not in t and "gilt" in t   # bahn hat nur empfohlene Merkmale (O-5: kein Fehlt)
 
 
 

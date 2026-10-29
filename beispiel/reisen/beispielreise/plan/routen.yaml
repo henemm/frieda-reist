@@ -79,9 +79,22 @@ unterkuenfte:
       fruehstueck: {wert: gegen Aufpreis, notiz: "Beispielwert, erfunden"}
       zimmer: {wert: "Vierbettzimmer", quelle: "erfunden (Beispiel)"}
 
+# Aufenthalte ohne Nacht (Paket O-5): Besichtigung, Essen, Besuch; stehen am Tag unter aufenthalte: in der Zeitleiste
+aufenthalte:
+  A-01:
+    name: Burg Hohnstein
+    ort: O-03
+    art: besichtigung
+    zeit: "nach der Wanderung, 16–18 Uhr"
+    hinweis: "erfundenes Beispiel; Burg über dem Polenztal"
+    quelle: "erfunden (Beispiel)"
+    merkmale:
+      geoeffnet: {wert: ja, quelle: "erfunden (Beispiel)", geprueft: 2026-10-29}
+      eintritt: {wert: "6 €", quelle: "erfunden (Beispiel)", geprueft: 2026-10-29}
+
 tage:
   T-01: {titel: "Ankunft und Stadttag in Dresden", nacht: U-01, text: "Ankunft mittags mit dem Zug, Nachmittag in der Altstadt (Frauenkirche, Elbufer). Siehe Ortsseite O-01."}
-  T-02: {titel: "Stadt Wehlen → Bastei → Hohnstein", strecken: [E-20, E-01], wahl: [V-02], nacht: V-03, text: "Erster Wandertag. Früh fahren: An der Bastei ist es ab dem späten Vormittag voll (Annahme)."}
+  T-02: {titel: "Stadt Wehlen → Bastei → Hohnstein", strecken: [E-20, E-01], wahl: [V-02], aufenthalte: [A-01], nacht: V-03, text: "Erster Wandertag. Früh fahren: An der Bastei ist es ab dem späten Vormittag voll (Annahme)."}
   T-03: {titel: "Hohnstein → Brand → Altendorf", strecken: [E-02], nacht: U-04}
   T-04: {titel: "Altendorf → Schrammsteine → Bad Schandau, Zug nach Dresden", strecken: [E-03, E-21]}
   T-05: {titel: "Altendorf → Schrammsteine → Lichtenhainer Wasserfall, Kirnitzschtalbahn, Zug nach Dresden", strecken: [E-04, E-22, E-21]}

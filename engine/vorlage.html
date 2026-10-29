@@ -401,7 +401,9 @@ h2.tagkopf .tagtitel{font-size:1.6875rem;line-height:1.15}
 .karte.tag .tagkopf .tagnr{font-size:2rem}
 /* Wegverlauf: Punkte für Orte, gestrichelte Linie für Strecken, gepunktet für Bus/Bahn */
 .wv{margin:8px 0 4px}
-.wv-ort,.wv-strecke{position:relative;padding-left:26px}
+.wv-ort,.wv-strecke,.wv-aufenthalt{position:relative;padding-left:26px}
+.wv-aufenthalt{margin:.25rem 0 .35rem}
+.wv-aufenthalt .aufenthalt{padding:.35rem .6rem;border-left:3px solid var(--line);border-radius:var(--r-klein)}
 .wv-ort{min-height:22px;display:flex;align-items:center}
 .wv-punkt{position:absolute;left:3px;top:50%;width:12px;height:12px;margin-top:-6px;border-radius:50%;border:2.5px solid var(--acc);background:var(--card);box-sizing:border-box}
 .wv-ort.start .wv-punkt{background:var(--acc)}
@@ -924,7 +926,7 @@ function zid(id) {
    Vorlagen:  tagKachel, Ansichten (ansichtTag = Tagesseite, ansichtReise = Reiseüberblick, ansichtOffen = Zu tun,
               ansichtPlan …)
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
-   Stile seiner Ebene, auf die Bausteinseite (#bausteine) und, wenn er eine Art zeigt, in ONTOLOGIE.
+   Stile seiner Ebene, auf die Bausteinseite (#bausteine) und, wenn er eine Grundform zeigt, in GRUNDFORMEN.
    Zustände haben feste Namen, die Farbe folgt der Bedeutung, nicht dem Ort:
      plan      entschieden oder im Plan (Akzent)       offen  braucht noch eine Entscheidung (Warnfarbe)
      unterwegs erst unterwegs zu entscheiden           weg    verworfen oder ersetzt (durchgestrichen)
@@ -1023,7 +1025,14 @@ function abschnittInhalt(a, ohneTitel, kennzahlen) {
 
 /* ---------- Route: Tage, Unterkünfte, Wahlstellen ---------- */
 const STATUS_TEXT = {vorgeschlagen: "vorgeschlagen", favorisiert: "favorisiert", gewaehlt: "gewählt", verworfen: "verworfen", ersetzt: "ersetzt"};
-const ART_TEXT = {bus: "Bus", bahn: "Bahn", flug: "Flug", faehre: "Fähre", mietwagen: "Mietwagen", rad: "Rad", wandern: "zu Fuß"};
+// Arten der Reise (plan/arten.yaml, docs/ontologie.md): Name, Farbe, Symbol, buchbar; die Seite kennt keine Art selbst (Paket O-5)
+const artDef = k => (R.arten || {})[k] || null;
+const artName = k => (artDef(k) || {}).name || k || "";
+const artNamen = () => Object.fromEntries(Object.entries(R.arten || {}).map(([k, v]) => [k, v.name]));
+const GRUNDFORM_SYM = {aufenthalt: "unterkunft", bewegung: "strecke", folge: "plan"};
+const artSym = (k, grundform) => (artDef(k) || {}).symbol || GRUNDFORM_SYM[(artDef(k) || {}).grundform || grundform] || "strecke";
+// Atom Zustand Buchung: offen in Warnfarbe, alles andere als „im Plan“; null = kein Buchungsstand (Art nicht buchbar)
+const buchungChip = b => b ? chip(b === "offen" ? "offen" : "plan", "Buchung: " + b) : null;
 const weg = s => s === "verworfen" || s === "ersetzt";
 const optionZustand = s => weg(s) ? "weg" : s === "gewaehlt" ? "plan" : "";
 const link = (id, text) => el("a", {href: "#" + id}, text);
@@ -1057,8 +1066,10 @@ function kennzahlLeiste(kennzahlen) {
    Etikett oben (was es ist, mit Symbol der Art und Punkt in der Farbe der Kategorie), Titel, Unterzeile, Zustand, Kennung. */
 // Symbol je Art eines Dings: Nacht und Unterkunft ein Bett, eine Wahl ein Abzweig
 const DING_SYM = {nacht: "unterkunft", unterkunft: "unterkunft", wahl: "varianten"};
+// art: nacht, unterkunft, wahl oder eine Art der Reise (dann ihr Symbol)
 function dingEtikett(text, kat, art) {
-  return el("span", {class: "ding-art"}, DING_SYM[art] ? symbol(DING_SYM[art], "etikett-sym") : null,
+  const sym = DING_SYM[art] || (artDef(art) ? artSym(art) : null);
+  return el("span", {class: "ding-art"}, sym ? symbol(sym, "etikett-sym") : null,
     kat ? el("i", {class: "lg-k" + katKlasse(kat), "aria-hidden": "true"}) : null, text);
 }
 // Aufenthalt als Zeile: die Nacht eines Tages. Offene Wahl zeigt die vorläufige Unterkunft und wie viele zur Wahl stehen.
@@ -1072,7 +1083,7 @@ function nachtZeile(n, ohneLinks, datum, verweis) {
   const u = uid && R.unterkuenfte[uid];
   const kat = nachtKat(n), ort = n.an_bord ? "" : ortName(n.ort);
   const titel = n.an_bord ? "an Bord" : u ? u.name : akt ? akt.titel : n.hinweis || ort;
-  const unter = [(R.kategorien || {})[kat] || (nachtTyp(n) !== "offen" ? nachtTyp(n) : ""), ort !== titel ? ort : "",
+  const unter = [kat && kat !== "offen" && kat !== "unterwegs" ? artName(kat) : (nachtTyp(n) !== "offen" ? nachtTyp(n) : ""), ort !== titel ? ort : "",
     titel !== n.hinweis ? n.hinweis : "", !u && !akt && !n.an_bord ? "Unterkunft noch offen" : ""].filter(Boolean);
   const offen = w && w.art === "planung" && w.offen && kand.length > 1;
   const zustand = !w || w.art !== "planung" ? null : offen ? chip("offen", ohneLinks ? `offen · ${kand.length} Möglichkeiten` : "offen") : chip("plan", "gewählt");
@@ -1091,12 +1102,15 @@ function nachtZeile(n, ohneLinks, datum, verweis) {
 function streckeZeile(id, wahl, ohneKennung) {
   const s = R.strecken[id] || {titel: id};
   // art: ein Verkehrsmittel oder eine Liste in Reihenfolge, z. B. [bahn, bus]
-  const art = s.art && s.art !== "wandern" ? [].concat(s.art).map(a => ART_TEXT[a] || a).join(" + ") : (s.art ? "" : "Verkehrsmittel offen");
-  const z = el("div", {class: "z"}, el("div", {class: "titelzeile"}, el("span", {}, s.dossier || proId.has(id) ? link(id, s.titel) : s.titel), ohneKennung ? null : zid(id)));
+  // Name der Art aus plan/arten.yaml; eine Bewegung aus eigener Kraft (summiert) zeigt stattdessen ihre Kennzahlen
+  const arten = [].concat(s.art || []);
+  const art = !arten.length ? "Verkehrsmittel offen" : arten.some(a => (artDef(a) || {}).summiert) ? "" : arten.map(artName).join(" + ");
+  const z = el("div", {class: "z"}, el("div", {class: "titelzeile"}, el("span", {}, symbol(artSym(arten[0], "bewegung"), "etikett-sym"), " ", s.dossier || proId.has(id) ? link(id, s.titel) : s.titel), ohneKennung ? null : zid(id)));
   // Kennzahlen als Leiste mit Etiketten (Gehzeit, Aufstieg, Abstieg, Strecke); Verkehrsmittel als Textzeile
   const kz = kennzahlLeiste(s.kennzahlen);
   if (art) z.append(el("div", {class: "z klein"}, art));
   if (kz) z.append(kz);
+  if (s.buchung) z.append(el("div", {class: "chips"}, buchungChip(s.buchung)));
   if (s.text) z.append(el("div", {class: "z klein"}, s.text));
   if (s.quelle) z.append(el("div", {class: "z klein"}, "Quelle: " + s.quelle));
   if (s.siehe && proId.has(s.siehe)) z.append(el("div", {class: "z klein"}, link(s.siehe, "→ " + proId.get(s.siehe).titel)));
@@ -1112,18 +1126,44 @@ function tagKopf(tag, attrs, nr, datum, wt, titel, id) {
     zid(id));
 }
 // Wegverlauf eines Tages: Start → Strecken → Ziel als Linie mit Punkten; ein Ort zwischen zwei Strecken steht einmal
+// Organismus Ding: Aufenthalt ohne Nacht als Zeile der Zeitleiste (Besichtigung, Essen, Besuch; A-…, Paket O-5). Seine Heimat
+// ist die Tagesseite (voll: mit Lage, Merkmalen, Herkunft); im Plan und in der Kachel nur Etikett, Name, Zeit und Buchung.
+function aufenthaltZeile(id, voll) {
+  const a = (R.aufenthalte || {})[id];
+  if (!a) return null;
+  const z = el("div", {class: "z aufenthalt" + (voll ? " ziel" : ""), id: voll ? id : null, "data-ziel": voll ? id : null},
+    dingEtikett([artName(a.art), a.zeit].filter(Boolean).join(" · "), a.art, a.art),
+    el("div", {class: "titelzeile"}, el("span", {}, a.name), zid(id)));
+  if (a.buchung) z.append(el("div", {class: "chips"}, buchungChip(a.buchung)));
+  if (!voll) return z;
+  const l = lageZeile(a, true);
+  if (l) z.append(l);
+  const krit = (R.merkmale || {})[a.art] || [];
+  const mk = merkmalListe(krit, a.merkmale);
+  if (mk) z.append(mk);
+  if (a.hinweis) z.append(el("div", {class: "z klein"}, a.hinweis));
+  if (a.quelle) z.append(el("div", {class: "z klein"}, "Quelle: " + a.quelle));
+  const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
+  if ((a.fehlt || []).length) z.append(el("div", {class: "z klein"}, "Fehlt noch: " + a.fehlt.map(x => name[x] || x).join(", ")));
+  return z;
+}
+// Zeitleiste des Tags: Start → Bewegungen → Ziel, Aufenthalte ohne Nacht an ihrem Ort (nach der Ankunft dort); was an keinem
+// Ort des Wegs liegt, steht am Ende. voll (Tagesseite): Aufenthalte vollständig.
 function wegVerlauf(t, ohneKennung) {
-  const v = el("div", {class: "wv"});
+  const v = el("div", {class: "wv"}), voll = !!ohneKennung;
+  const rest = new Set(t.aufenthalte || []);
+  const bei = oid => { const z = []; for (const a of [...rest]) if (((R.aufenthalte || {})[a] || {}).ort === oid) { rest.delete(a); z.push(el("div", {class: "wv-aufenthalt"}, aufenthaltZeile(a, voll))); } return z; };
   const ort = (id, art) => el("div", {class: "wv-ort " + art}, el("span", {class: "wv-punkt", "aria-hidden": "true"}),
     el("span", {class: "wv-name"}, art !== "mitte" ? el("span", {class: "wv-etikett"}, art === "start" ? "Start" : "Ziel") : null, ortName(id)));
   let zuletzt = null;
   t.strecken.forEach((x, i) => {
     const s = R.strecken[x.id] || {};
-    if (s.von && s.von !== zuletzt) v.append(ort(s.von, i === 0 ? "start" : "mitte"));
-    v.append(el("div", {class: "wv-strecke" + (s.art && s.art !== "wandern" ? " fahrt" : "")}, streckeZeile(x.id, x.wahl, ohneKennung && ohneKennung(x.id))));
-    if (s.nach) { v.append(ort(s.nach, i === t.strecken.length - 1 ? "ziel" : "mitte")); zuletzt = s.nach; }
+    if (s.von && s.von !== zuletzt) v.append(ort(s.von, i === 0 ? "start" : "mitte"), ...bei(s.von));
+    v.append(el("div", {class: "wv-strecke" + ([].concat(s.art || []).some(a => (artDef(a) || {}).summiert) ? "" : " fahrt")}, streckeZeile(x.id, x.wahl, ohneKennung && ohneKennung(x.id))));
+    if (s.nach) { v.append(ort(s.nach, i === t.strecken.length - 1 ? "ziel" : "mitte"), ...bei(s.nach)); zuletzt = s.nach; }
     else zuletzt = null;
   });
+  for (const a of rest) v.append(el("div", {class: "wv-aufenthalt"}, aufenthaltZeile(a, voll)));
   return v;
 }
 // ohneKopf: auf der Tagesseite (der Kopf steht darüber); dort ist der Tageskasten die Fläche, an der man handelt
@@ -1155,7 +1195,7 @@ function tagKarte(t, ohneKopf) {
   // Unterwegs rücken Wahlstellen mit Auslöser nach vorn (Verhalten je Status)
   const vorn = V.ausloeser_vor ? wahlZeilen.filter(([w]) => w.art === "unterwegs") : [];
   for (const [, z] of vorn) { z[0].classList.add("vorn"); k.append(...z.filter(Boolean)); }
-  if (t.strecken.length) k.append(wegVerlauf(t, ohneKopf ? id => (proId.get(id) || {}).typ === "etappe" : null));
+  if (t.strecken.length || (t.aufenthalte || []).length) k.append(wegVerlauf(t, ohneKopf ? id => (proId.get(id) || {}).typ === "etappe" : null));
   for (const [w, z] of wahlZeilen) if (!vorn.some(([x]) => x === w)) k.append(...z.filter(Boolean));
   if (t.text) k.append(el("div", {class: "z"}, t.text));
   if (t.nacht) k.append(...[].concat(nachtZeile(t.nacht, false, t.datum, ohneKopf && !PLAN_DA)).filter(Boolean));
@@ -1179,11 +1219,11 @@ function tagesplan(s) {
 function unterkunftKarte(id) {
   const u = R.unterkuenfte[id];
   const k = el("div", {class: "karte ziel", id, "data-ziel": id},
-    dingEtikett(["Unterkunft", (R.kategorien || {})[u.kategorie]].filter(Boolean).join(" · "), u.kategorie, "unterkunft"), el("div", {class: "k"}, u.name, zid(id)));
+    dingEtikett(artName(u.art) || "Unterkunft", u.art, u.art), el("div", {class: "k"}, u.name, zid(id)));
   k.append(el("div", {class: "z"}, [u.typ, ortName(u.ort)].filter(Boolean).join(" · ")));
   k.append(lageZeile(u));
   if (u.kontakt || webVon(u)) k.append(el("div", {class: "z"}, el("b", {}, "Kontakt: "), (u.kontakt || "").replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ") || "–", " ", webLink(webVon(u), true)));
-  k.append(el("div", {class: "chips"}, chip(u.buchung === "offen" ? "offen" : "plan", "Buchung: " + u.buchung), u.frage ? chip("leise", u.frage, {href: "#" + u.frage}) : null));
+  if (u.buchung || u.frage) k.append(el("div", {class: "chips"}, buchungChip(u.buchung), u.frage ? chip("leise", u.frage, {href: "#" + u.frage}) : null));
   if (u.naechte.length) {
     const z = el("div", {class: "z"}, el("b", {}, "Nächte: "));
     u.naechte.forEach((tid, i) => { const t = R.tage.find(x => x.id === tid); if (i) z.append(", "); z.append(link(tid, datumText(t.datum, t.wochentag))); });
@@ -1257,7 +1297,7 @@ function fehltZeile(w, o) {
 /* ---------- Organismus Wahl-Modul (Designsystem 2c): Einstieg an der Stelle, Vergleich, Entscheidung ----------
    Jede Stelle mit Alternativen (Nacht, Weg, Reiseteil, Liste der Entscheidungen) zeigt denselben Einstieg; der Vergleich
    öffnet sich dort. Regeln nach Nielsen Norman Group („Comparison Tables“): höchstens 4 Möglichkeiten nebeneinander, auf
-   dem Handy 2, weitere über die Auswahl; vorgewählt sind die im Plan und die vollständigsten; „nur Unterschiede“ blendet
+   dem Handy 2, weitere über die Auswahl; vorgewählt sind die im Plan, dann die Reihenfolge der Reise; „nur Unterschiede“ blendet
    gleiche Zeilen aus. Ab 700 px Tabelle mit fester erster Spalte, darunter Karten (umschaltbar). Nur Lesen: entschieden
    wird über Rückmeldung oder die Claude-App. */
 // Zustand je Stelle: im Tag „V-…“, in der Liste der Entscheidungen „V-…~liste“ (dort gleich offen)
@@ -1269,9 +1309,9 @@ const schmal = () => matchMedia("(max-width: 699px)").matches;
 // Möglichkeiten nebeneinander im Vergleich: Handy 2, schmaler Rechner 4, breiter Rechner 5
 const vglMax = () => schmal() ? 2 : matchMedia("(min-width: 1100px)").matches ? 5 : 4;
 const gueltigeOptionen = w => w.optionen.filter(o => !weg(o.status));
-// Zähler „3/7“: nur Merkmale, die für diese Reise zählen (Stufe pflicht oder empfohlen; angeboten und aus bleiben außen vor)
+// Zähler „1/2“: nur Pflichtmerkmale der Reise (Paket O-5); empfohlen ist Spalte ohne Zähler, angeboten und aus bleiben außen vor
 const stufeVon = k => typeof k.stufe === "object" && k.stufe ? (k.stufe["*"] || "empfohlen") : (k.stufe || "empfohlen");
-const zaehlend = w => w.kriterien.filter(k => !["angeboten", "aus"].includes(stufeVon(k)));
+const zaehlend = w => w.kriterien.filter(k => stufeVon(k) === "pflicht");
 const gefuellt = (w, o) => zaehlend(w).filter(k => o.merkmale[k.id]).length;
 // Webseite aus einem Kontakt-Text („https://…“, „www.…“ oder „name.com“), sonst null; für Unterkunft und Möglichkeit
 const WEB = /https?:\/\/[^\s;,()<>]+|\bwww\.[^\s;,()<>]+|\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:com|net|org|es|de|eu|it|fr|at|ch|uk|jp|kr|info|travel|cat)(?:\/[^\s;,()<>]*)?/i;
@@ -1309,7 +1349,7 @@ const webLink = (x, ohneHinweis) => { const u = typeof x === "string" ? x : x ? 
 function vglZustand(w, liste, datum) {
   const s = vglSchluessel(w, liste, datum);
   if (!VGL.has(s)) {
-    const g = gueltigeOptionen(w).slice().sort((a, b) => (b.aktiv - a.aktiv) || (gefuellt(w, b) - gefuellt(w, a)));
+    const g = gueltigeOptionen(w).slice().sort((a, b) => b.aktiv - a.aktiv);   // die im Plan zuerst, sonst Reihenfolge der Reise (O-5: keine Sortierung nach Vollständigkeit)
     VGL.set(s, {offen: !!liste, wahl: g.slice(0, vglMax()).map(o => o.id), nur: false, ansicht: "karten", sort: null, auf: []});
   }
   return VGL.get(s);
@@ -2064,9 +2104,9 @@ function uebersichtKarte(m, gezeigt, info) {
     const K = R.karte, arten = new Set(gezeigt.flatMap(p => p.tage.flatMap(d => d.strecken.map(st => (R.strecken[st.id] || {}).art))));
     // Kategorien der Übernachtungen auf dieser Karte, in fester Reihenfolge
     const katDa = new Set(gezeigt.flatMap(p => p.tage.map(d => nachtKat(d.nacht)).filter(k => k && k !== "offen" && k !== "unterwegs")));
-    const kats = Object.keys(R.kategorien || {}).filter(k => katDa.has(k));
+    const kats = Object.keys(R.arten || {}).filter(k => katDa.has(k));
     m.append(kartenLegende([
-      ...kats.map(k => [el("i", {class: "lg-k" + katKlasse(k)}), R.kategorien[k]]),
+      ...kats.map(k => [el("i", {class: "lg-k" + katKlasse(k)}), artName(k)]),
       Object.keys(K.unmarkiert || {}).length ? [el("i", {class: "lg-u"}), "nicht markiert"] : null,
       (K.ausgelassen || []).length ? [el("i", {class: "lg-s"}), "ausgelassen"] : null,
       K.linien !== "alle" ? [el("i", {class: "lg-b"}), "Bus"] : null,
@@ -2130,15 +2170,37 @@ function reiseKennzahlen(p) {
   const n = p.tage.map(d => d.nacht).filter(x => x && !x.an_bord);
   return {Tage: String(s.tage), "Nächte": String(n.length), Orte: String(new Set(n.map(x => x.ort).filter(Boolean)).size)};
 }
-// Molekül Stand der Vorbereitung: je Zeile Wort, Wert und Ziel; was nichts zu tun hat, entfällt (Unterkünfte bleiben)
+// Alles Buchbare im Plan (Paket O-5): je Nacht die Unterkunft, dazu Bewegungen und Aufenthalte ohne Nacht, die einen Buchungs-
+// stand tragen (buchung: am Ding oder Art buchbar). -> [{tag, id, titel, unter, sym, zustand, text, gebucht, href}]
+function buchungen(p) {
+  const aus = [];
+  for (const t of p.tage) {
+    const x = nachtStand(t.nacht);
+    if (x && x.zaehlt) {
+      const n = t.nacht, w = n.wahl && wahlZu.get(n.wahl), offen = x.text && x.text.startsWith("noch wählen");
+      const akt = w && gueltigeOptionen(w).find(o => o.aktiv);
+      aus.push({tag: t, id: n.unterkunft || (w ? w.id : t.id), titel: ortName(n.ort), sym: "unterkunft",
+        unter: `${datumText(t.datum, t.wochentag)} · ${offen ? (akt ? akt.titel + " (vorläufig)" : "noch offen") : x.name}`,
+        zustand: x.zustand, text: x.text, gebucht: x.gebucht, href: offen ? w.id : n.unterkunft || (w ? w.id : t.id)});
+    }
+    for (const st of t.strecken) { const s = R.strecken[st.id]; if (s && s.buchung)
+      aus.push({tag: t, id: st.id, titel: s.titel, sym: artSym([].concat(s.art || [])[0], "bewegung"), unter: datumText(t.datum, t.wochentag) + " · " + artName([].concat(s.art || [])[0]),
+        zustand: s.buchung === "offen" ? "offen" : "", text: s.buchung === "offen" ? "nicht gebucht" : s.buchung, gebucht: s.buchung !== "offen", href: t.id}); }
+    for (const aid of t.aufenthalte || []) { const a = (R.aufenthalte || {})[aid]; if (a && a.buchung)
+      aus.push({tag: t, id: aid, titel: a.name, sym: artSym(a.art, "aufenthalt"), unter: [datumText(t.datum, t.wochentag), artName(a.art), a.zeit].filter(Boolean).join(" · "),
+        zustand: a.buchung === "offen" ? "offen" : "", text: a.buchung === "offen" ? "nicht gebucht" : a.buchung, gebucht: a.buchung !== "offen", href: t.id}); }
+  }
+  return aus;
+}
+// Molekül Stand der Vorbereitung: je Zeile Wort, Wert und Ziel; was nichts zu tun hat, entfällt (Gebucht bleibt)
 function standLeiste(p) {
-  const naechte = p.tage.map(d => [d, nachtStand(d.nacht)]).filter(([, x]) => x && x.zaehlt);
-  const offenN = naechte.filter(([, x]) => !x.gebucht);
+  const naechte = buchungen(p);
+  const offenN = naechte.filter(x => !x.gebucht);
   const wahl = R.wahlstellen.filter(w => w.art === "planung" && w.offen && gueltigeOptionen(w).length > 1);
   const fragen = B("fragen") ? D.fragen.zeilen.filter(z => !/^(erledigt|geklärt|beantwortet)/i.test(z.status || z.zellen[z.zellen.length - 1] || "")) : [];
   const ag = B("aufgaben") ? AG.filter(agOffen) : [], ueber = ag.filter(ueberfaellig).length;
   const zeilen = [
-    naechte.length && ["Unterkünfte gebucht", `${naechte.length - offenN.length} von ${naechte.length}`, offenN.length > 0, PLAN_DA ? (offenN.length ? offenN[0][0].id : null) : "zu-buchen"],
+    naechte.length && ["Gebucht", `${naechte.length - offenN.length} von ${naechte.length}`, offenN.length > 0, PLAN_DA ? (offenN.length ? offenN[0].tag.id : null) : "zu-buchen"],
     wahl.length && ["Noch zu entscheiden", String(wahl.length), true, PLAN_DA ? wahl[0].id : "zu-entscheiden"],
     fragen.length && ["Offene Fragen", String(fragen.length), false, "fragen"],
     ag.length && ["Aufgaben offen", ueber ? `${ag.length}, ${ueber} überfällig` : String(ag.length), ueber > 0, "aufgaben"],
@@ -2858,20 +2920,15 @@ function zuEntscheiden(m) {
   if (unterwegs.length) s.append(el("h3", {class: "gruppe"}, "Unterwegs entscheiden"), el("div", {class: "wliste"}, unterwegs.map(wahlListenZeile)));
   m.append(s);
 }
-// Zu buchen je Nacht: Datum, Ort, Unterkunft (vorläufig, solange die Wahl offen ist) und Stand; führt zur Nacht des Tags
+// Zu buchen: je Nacht die Unterkunft (vorläufig, solange die Wahl offen ist), dazu Bewegungen und Aufenthalte mit Buchungsstand;
+// jede Zeile führt zur Heimat (Nacht des Tags, Tagesseite)
 function zuBuchen(m) {
   if (!PLAN_FEST) return;
-  const naechte = PLAN_FEST.tage.map(t => [t, nachtStand(t.nacht)]).filter(([, x]) => x && x.zaehlt);
-  if (!naechte.length) return;
-  const gebucht = naechte.filter(([, x]) => x.gebucht).length;
-  const s = el("section", {class: "ziel", id: "zu-buchen"}, listenTitel("Zu buchen · je Nacht", `${gebucht} von ${naechte.length}`, gebucht < naechte.length));
-  s.append(el("div", {class: "wliste"}, naechte.map(([t, x]) => {
-    const n = t.nacht, w = n.wahl && wahlZu.get(n.wahl), offen = x.text && x.text.startsWith("noch wählen");
-    const akt = w && gueltigeOptionen(w).find(o => o.aktiv);
-    const name = offen ? (akt ? akt.titel + " (vorläufig)" : "noch offen") : x.name;
-    return listenZeile("nacht", "unterkunft", ortName(n.ort), `${datumText(t.datum, t.wochentag)} · ${name}`,
-      offen ? w.id : n.unterkunft || (w ? w.id : t.id), null, chip(x.zustand, x.text));
-  })));
+  const liste = buchungen(PLAN_FEST);
+  if (!liste.length) return;
+  const gebucht = liste.filter(x => x.gebucht).length;
+  const s = el("section", {class: "ziel", id: "zu-buchen"}, listenTitel("Zu buchen", `${gebucht} von ${liste.length}`, gebucht < liste.length));
+  s.append(el("div", {class: "wliste"}, liste.map(x => listenZeile("nacht", x.sym, x.titel, x.unter, x.href, null, chip(x.zustand, x.text)))));
   m.append(s);
 }
 function ansichtOffen(m) {
@@ -2948,30 +3005,33 @@ function markiert(text, begriffe, laenge) {
   return out;
 }
 
-/* ---------- Ontologie → Bausteine (docs/design.md, „Ontologie und Bausteine“) ----------
-   Jede Art im Datenmodell (an der Kennung erkennbar) hat ihre Bausteine je Dichte: Zeile (in einem größeren Ganzen),
-   Vorschau (führt zur ganzen Seite; unterwegs ohne Kennung), Karte (für sich), Seite oder Teil einer Seite. Eine Art
-   bekommt keinen weiteren Baustein, sondern nutzt diese. Die Bausteinseite zeigt die Tabelle, test_seite prüft, dass
-   jede Kennung der Reise einer Art angehört. */
-const ONTOLOGIE = [
-  ["tag", "Tag", "T-01", {zeile: [tagZeile], vorschau: [tagKachel], karte: [tagKarte], seite: [ansichtTag, ansichtReise]}],
-  ["etappe", "Etappe, Strecke", "E-01", {zeile: [streckeZeile], vorschau: [abschnittKarte], karte: [], seite: [ansichtAbschnitt, tagEbenen]}],
+/* ---------- Grundformen → Bausteine (docs/design.md, „Ontologie und Bausteine“; ADR-0002 Punkt 3) ----------
+   Jede Grundform der Reise-Ontologie (an der Kennung erkennbar) hat ihre Bausteine je Dichte: Zeile (in einem größeren
+   Ganzen), Vorschau (führt zur ganzen Seite; unterwegs ohne Kennung), Karte (für sich), Seite oder Teil einer Seite. Welche
+   Arten (Hotel, Refugi, Bahn, Museum …) eine Reise hat, sagt nur sie selbst (plan/arten.yaml); eine Art bekommt keinen
+   eigenen Baustein, sondern Name, Farbe und Symbol. Die Bausteinseite zeigt die Tabelle, test_seite prüft, dass jede
+   Kennung der Reise einer Grundform angehört. */
+const GRUNDFORMEN = [
+  ["tag", "Folge: Tag", "T-01", {zeile: [tagZeile], vorschau: [tagKachel], karte: [tagKarte], seite: [ansichtTag, ansichtReise]}],
+  ["etappe", "Bewegung: Etappe, Strecke", "E-01", {zeile: [streckeZeile], vorschau: [abschnittKarte], karte: [], seite: [ansichtAbschnitt, tagEbenen]}],
   ["ort", "Ort", "O-01", {zeile: [wegVerlauf], vorschau: [tagOrteZeilen, listenZeile], karte: [], seite: [ansichtOrt]}],
-  ["unterkunft", "Unterkunft", "U-01", {zeile: [nachtZeile], vorschau: [listenZeile], karte: [unterkunftKarte], seite: [nachtAbschnitt]}],
-  ["wahlstelle", "Wahlstelle", "V-01", {zeile: [wahlZeile], vorschau: [listenZeile], karte: [wahlKarte], seite: [wahlEinstieg, wahlVergleich, nachtAbschnitt]}],
-  ["option", "Option einer Wahl", "V-01.a", {zeile: [optionBlock], vorschau: [], karte: [wahlVergleich], seite: []}],
-  ["plan", "Plan", "P-A", {zeile: [planMarke], vorschau: [steckbrief], karte: [], seite: [ansichtPlanDetail]}],
-  ["frage", "Offene Frage", "F-01", {zeile: [frageZeile], vorschau: [], karte: [], seite: [ansichtFragen]}],
-  ["wissen", "Wissen, Praxis, Quelle, Plantext", "W-01", {zeile: [], vorschau: [listenZeile], karte: [], seite: [ansichtAbschnitt, ansichtWissen]}],
-  ["abschnitt", "Abschnitt eines Textes", "E-01.eckdaten", {zeile: [], vorschau: [], karte: [block], seite: [reiseText, reiterGruppe, leseAbschnitt]}],
-  ["aufgabe", "Aufgabe", "AG-01", {zeile: [agEintrag], vorschau: [], karte: [], seite: [ansichtAufgaben, agFormular]}],
-  ["rueckmeldung", "Rückmeldung, Wunsch", "R-…", {zeile: [rmEintrag], vorschau: [], karte: [wuKarte], seite: [rmFormular, ansichtWuensche]}],
+  ["unterkunft", "Aufenthalt mit Nacht: Unterkunft", "U-01", {zeile: [nachtZeile], vorschau: [listenZeile], karte: [unterkunftKarte], seite: [nachtAbschnitt]}],
+  ["aufenthalt", "Aufenthalt ohne Nacht", "A-01", {zeile: [aufenthaltZeile], vorschau: [listenZeile], karte: [], seite: [tagEbenen]}],
+  ["wahlstelle", "Wahl: Wahlstelle", "V-01", {zeile: [wahlZeile], vorschau: [listenZeile], karte: [wahlKarte], seite: [wahlEinstieg, wahlVergleich, nachtAbschnitt]}],
+  ["option", "Wahl: Option", "V-01.a", {zeile: [optionBlock], vorschau: [], karte: [wahlVergleich], seite: []}],
+  ["plan", "Folge: Plan", "P-A", {zeile: [planMarke], vorschau: [steckbrief], karte: [], seite: [ansichtPlanDetail]}],
+  ["frage", "Offenes: Frage", "F-01", {zeile: [frageZeile], vorschau: [], karte: [], seite: [ansichtFragen]}],
+  ["wissen", "Wissen: Praxis, Quelle, Plantext", "W-01", {zeile: [], vorschau: [listenZeile], karte: [], seite: [ansichtAbschnitt, ansichtWissen]}],
+  ["abschnitt", "Wissen: Abschnitt eines Textes", "E-01.eckdaten", {zeile: [], vorschau: [], karte: [block], seite: [reiseText, reiterGruppe, leseAbschnitt]}],
+  ["aufgabe", "Offenes: Aufgabe", "AG-01", {zeile: [agEintrag], vorschau: [], karte: [], seite: [ansichtAufgaben, agFormular]}],
+  ["rueckmeldung", "Offenes: Rückmeldung, Wunsch", "R-…", {zeile: [rmEintrag], vorschau: [], karte: [wuKarte], seite: [rmFormular, ansichtWuensche]}],
 ];
-// Art einer Kennung aus den Daten (nicht aus dem Muster der Kennung)
-function artVon(id) {
+// Grundform einer Kennung aus den Daten (nicht aus dem Muster der Kennung)
+function grundformVon(id) {
   if (optionZu.has(id)) return "option";
   if (wahlZu.has(id)) return "wahlstelle";
   if (R && R.unterkuenfte[id]) return "unterkunft";
+  if (R && (R.aufenthalte || {})[id]) return "aufenthalt";
   if (planZu(id)) return "plan";
   if (R && tagBekannt(id)) return "tag";
   if (blockZu.has(id)) return "abschnitt";
@@ -2985,8 +3045,8 @@ function ontologieTabelle() {
   const spalten = [["zeile", "Zeile"], ["vorschau", "Vorschau"], ["karte", "Karte"], ["seite", "Seite und Teile"]];
   const zelle = (n, f) => el("td", {"data-spalte": n, class: f.length ? null : "leer"}, f.length ? f.map(x => el("code", {}, x.name)).flatMap((c, i) => i ? [", ", c] : [c]) : "–");
   return el("div", {class: "tabelle stapel"}, el("table", {},
-    el("thead", {}, el("tr", {}, el("th", {}, "Art"), el("th", {}, "Kennung"), spalten.map(([, n]) => el("th", {}, n)))),
-    el("tbody", {}, ONTOLOGIE.map(([, name, beispiel, b]) => el("tr", {}, el("td", {}, name), el("td", {"data-spalte": "Kennung"}, beispiel),
+    el("thead", {}, el("tr", {}, el("th", {}, "Grundform"), el("th", {}, "Kennung"), spalten.map(([, n]) => el("th", {}, n)))),
+    el("tbody", {}, GRUNDFORMEN.map(([, name, beispiel, b]) => el("tr", {}, el("td", {}, name), el("td", {"data-spalte": "Kennung"}, beispiel),
       spalten.map(([k, n]) => zelle(n, b[k])))))));
 }
 
@@ -3076,7 +3136,7 @@ function ansichtBausteine(m) {
   teil("Molekül", "Konto-Knopf", "Oben rechts im Kopf: „Anmelden“ oder der eigene Name (zur Kontoseite). Nur auf Friedas eigener Adresse.",
     el("div", {}, kontoKnopf(null), " ", kontoKnopf({konto: {name: "Ida"}})));
   teil("Molekül", "Legende", "Zeichen und Wort; unter einer Karte steht nur, was auf ihr vorkommt.",
-    kartenLegende([...Object.entries(R.kategorien || {}).map(([k, t]) => [el("i", {class: "lg-k" + katKlasse(k)}), t]),
+    kartenLegende([...Object.entries(artNamen()).map(([k, t]) => [el("i", {class: "lg-k" + katKlasse(k)}), t]),
       ...R.plaene.map(p => [planMarke(p), p.kurz])]));
   if (R.plaene.length > 1) {
     const us = planUmschalter(R.plaene);
@@ -3090,6 +3150,8 @@ function ansichtBausteine(m) {
   teil("Organismus", "Ding: Aufenthalt als Zeile", "Die Nacht eines Tages, je Fall ein Beispiel aus der Reise.",
     naechte.map(([name, t]) => el("div", {class: "karte"}, el("div", {class: "z klein"}, `${name} (Tag ${t.nr})`), nachtZeile(t.nacht, false, t.datum))));
   if (u) teil("Organismus", "Ding: Aufenthalt als Karte", null, unterkunftKarte(u[0]));
+  const auf = Object.keys(R.aufenthalte || {});
+  if (auf.length) teil("Organismus", "Ding: Aufenthalt ohne Nacht", "Besichtigung, Essen, Besuch: in der Zeitleiste des Tags an seinem Ort, auf der Tagesseite vollständig (Heimat).", aufenthaltZeile(auf[0], true));
   const fuss = strecken.find(([, x]) => (x.art || "wandern") === "wandern"), fahrt = strecken.find(([, x]) => x.art && x.art !== "wandern");
   teil("Organismus", "Ding: Bewegung als Zeile", null, [fuss, fahrt].filter(Boolean).map(([id]) => el("div", {class: "karte"}, streckeZeile(id))));
   const w = R.wahlstellen.find(x => gueltigeOptionen(x).length > 2) || R.wahlstellen.find(x => gueltigeOptionen(x).length > 1);

@@ -28,7 +28,7 @@ import bauen  # noqa: E402
 from reise import PFAD_MUSTER, ROLLEN, reise_pfad, rolle_neu, schluessel_aus_name  # noqa: E402
 
 VORLAGE = Path(__file__).with_name("reisevorlage")
-ARTEN = ("W", "F", "O", "U", "E", "T", "V")          # nummerierte IDs; Pläne (P-A) und Aufgaben (AG, live) nicht
+ARTEN = ("W", "F", "O", "U", "A", "E", "T", "V")     # nummerierte IDs (A = Aufenthalt ohne Nacht); Pläne (P-A) und Aufgaben (AG, live) nicht
 GRUPPEN = ("wissen", "praxis", "quelle")
 ROLLE_TEXT = {"organisator": "organisiert", "mitwirkend": "bringt ein", "gast": "liest mit"}
 BAUSTEINE_IDEE = ["rueckmeldungen", "fragen", "aufgaben", "wuensche"]
@@ -95,7 +95,7 @@ def person_aus_text(text):
 
 # ---------- IDs ----------
 def _nummern(reise_dir, art):
-    muster = re.compile(rf"(?<![A-Za-z0-9]){art}-(\d+)")
+    muster = re.compile(rf"(?<![A-Za-z0-9]){art}-(\d+)(?![\d-])")   # A-01, nicht A-20261028-… (alte Aufträge)
     n = 0
     for f in reise_dir.rglob("*"):
         if f.is_file() and f.suffix in (".md", ".yaml", ".yml", ".json") and "medien" not in f.relative_to(reise_dir).parts:

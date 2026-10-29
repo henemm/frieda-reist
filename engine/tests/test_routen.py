@@ -395,14 +395,14 @@ def test_merkmale_bereich_und_werte():
     assert (w["V-01"]["grundform"], w["V-02"]["grundform"], w["V-03"]["grundform"]) == ("folge", "aufenthalt", "bewegung")
     a, b = w["V-02"]["optionen"]
     assert a["merkmale"]["preis"]["geprueft"] == "2026-10-26" and not a["merkmale"]["preis"]["ungeprueft"]
-    assert b["merkmale"]["preis"]["ungeprueft"] and b["fehlt"] == ["fruehstueck"]
+    assert b["merkmale"]["preis"]["ungeprueft"] and b["fehlt"] == []      # empfohlen fehlt still (O-5: nur pflicht zählt)
     assert w["V-03"]["optionen"][0]["merkmale"]["gehzeit"] == {"wert": "2:00 h", "auto": True}
     assert w["V-03"]["optionen"][1]["merkmale"]["schwierigkeit"]["wert"] == "Kettenstelle"
     assert w["V-01"]["optionen"][0]["merkmale"]["tage"]["wert"] == "3 Tage"
     assert erg["unterkuenfte"]["U-01"]["merkmale"]["fruehstueck"]["wert"] == "inklusive"
     assert [k["id"] for k in erg["merkmale"]["hotel"]] == ["preis", "fruehstueck"]
-    assert erg["arten"]["hotel"] == {"name": "Hotel", "grundform": "aufenthalt", "farbe": "blau", "summiert": False, "beschreibung": None}
-    assert erg["kategorien"]["huette"] == "Hütte" and erg["unterkuenfte"]["U-03"]["art"] == "huette"
+    assert erg["arten"]["hotel"] == {"name": "Hotel", "grundform": "aufenthalt", "farbe": "blau", "symbol": "unterkunft", "buchbar": True, "summiert": False, "beschreibung": None}
+    assert erg["arten"]["huette"]["name"] == "Hütte" and erg["unterkuenfte"]["U-03"]["art"] == "huette"
 
 
 def test_merkmale_der_art_und_der_wahlstelle():
@@ -523,7 +523,7 @@ def test_art_der_strecken_bestimmt_die_liste_und_werte_stehen_an_strecke_oder_op
     assert w["bereich"] == "faehre" and [k["id"] for k in w["kriterien"]] == ["preis", "dauer"]
     a, b = w["optionen"]
     assert a["merkmale"]["dauer"]["wert"] == "ca. 11 h" and a["merkmale"]["preis"]["wert"] == "80 €"
-    assert b["merkmale"]["dauer"]["wert"] == "ca. 10 h" and b["fehlt"] == ["preis"]
+    assert b["merkmale"]["dauer"]["wert"] == "ca. 10 h" and b["fehlt"] == []
     # Wanderstrecken haben ihre eigene Art
     w3 = next(x for x in erg["wahlstellen"] if x["id"] == "V-03")
     assert w3["bereich"] == "wandern"
@@ -596,7 +596,7 @@ def test_neue_art_der_reise_und_wahlstelle_an_beliebiger_id():
     assert fehler == []
     w = next(x for x in erg["wahlstellen"] if x["id"] == "V-05")
     assert w["bereich"] == "restaurant" and w["an_ids"] == ["O-02", "U-01", "E-01"] and w["an"] == []
-    assert w["optionen"][1]["fehlt"] == ["preis"]
+    assert w["optionen"][1]["fehlt"] == []
     assert [k["id"] for k in erg["merkmale"]["restaurant"]] == ["kueche", "preis"]
     assert not any("nirgends verwendet" in x["text"] for x in erg["warnungen"] if x["bezug"] == "V-05")
 
@@ -776,22 +776,25 @@ def w_opt(erg, vid):
 
 
 def test_stufe_eines_merkmals_und_wahlstelle_aendert_sie():
-    """docs/ontologie.md: Stufe pflicht, empfohlen (Vorgabe), angeboten, aus je Merkmal der Art; nur pflicht und
-    empfohlen zählen als „Fehlt noch“. Eine Wahlstelle ändert die Stufe für sich."""
+    """docs/ontologie.md: Stufe pflicht, empfohlen (Vorgabe), angeboten, aus je Merkmal der Art; seit Paket O-5 zählt nur
+    pflicht als „Fehlt noch“ (empfohlen ist Spalte im Vergleich, ohne Mahnung). Eine Wahlstelle ändert die Stufe für sich."""
     r = roh()
     r["unterkuenfte"]["U-01"]["merkmale"] = {"preis": "120 €"}
     r["unterkuenfte"]["U-02"]["merkmale"] = {"preis": "99 €"}
     erg, fehler = mk_bauen(r)
+    assert fehler == [] and erg["unterkuenfte"]["U-02"]["fehlt"] == []      # empfohlen: keine Lücke
+    a = arten()
+    a["arten"]["hotel"]["merkmale"]["fruehstueck"]["stufe"] = "pflicht"
+    erg, fehler = mk_bauen(r, a)
     assert fehler == [] and erg["unterkuenfte"]["U-02"]["fehlt"] == ["fruehstueck"]
     # aus -> kein Fehlt; die Stufe steht im Export (Seite und Claude-App lesen sie)
-    a = arten()
     a["arten"]["hotel"]["merkmale"]["fruehstueck"]["stufe"] = "aus"
     erg, fehler = mk_bauen(r, a)
     assert fehler == []
     assert erg["unterkuenfte"]["U-02"]["fehlt"] == [] and w_opt(erg, "V-02")[1]["fehlt"] == []
     assert next(k for k in erg["merkmale"]["hotel"] if k["id"] == "fruehstueck")["stufe"] == "aus"
     # Wahlstelle schaltet für sich wieder ein
-    r["wahlstellen"]["V-02"]["merkmale"] = {"fruehstueck": {"stufe": "empfohlen"}}
+    r["wahlstellen"]["V-02"]["merkmale"] = {"fruehstueck": {"stufe": "pflicht"}}
     erg, fehler = mk_bauen(r, a)
     assert fehler == [] and w_opt(erg, "V-02")[1]["fehlt"] == ["fruehstueck"]
     # angeboten zählt nicht als Lücke, ein Wert bleibt erlaubt
@@ -806,3 +809,60 @@ def test_stufe_eines_merkmals_und_wahlstelle_aendert_sie():
     assert "stufe muss" in "\n".join(mk_bauen(r, a)[1])
     r["wahlstellen"]["V-02"]["merkmale"] = {"fruehstueck": {"name": "Brot", "stufe": "aus"}}
     assert "gibt es für hotel schon" in "\n".join(mk_bauen(r)[1])
+
+
+# ---------- Aufenthalte ohne Nacht, Symbol und Buchbarkeit je Art (Paket O-5, docs/ontologie.md) ----------
+def staedtereise():
+    """Zweiter Reisetyp neben der Hüttentour (ADR-0001, Prüfstelle 1): zwei Nächte in A, dazwischen Museum und Essen."""
+    r = roh()
+    r["ende"] = {"datum": D(2027, 3, 3), "ort": "O-01"}
+    r["aufenthalte"] = {
+        "A-01": {"name": "Stadtmuseum", "ort": "O-01", "art": "museum", "zeit": "10–12 Uhr", "quelle": "erfunden",
+                 "buchung": "Zeitfenster gebucht", "merkmale": {"geoeffnet": "ja"}},
+        "A-02": {"name": "Trattoria", "ort": "O-01", "art": "essen", "zeit": "abends", "quelle": "erfunden"},
+    }
+    r["strecken"]["E-10"] = {"titel": "Flug A → A (Rundflug, erfunden)", "von": "O-01", "nach": "O-01", "art": "flug", "buchung": "gebucht"}
+    r["tage"] = {"T-01": {"titel": "Ankunft", "nacht": "U-01", "aufenthalte": ["A-02"]},
+                 "T-02": {"titel": "Museum", "strecken": ["E-10"], "nacht": "U-01", "aufenthalte": ["A-01", "A-02"]},
+                 "T-03": {"titel": "Abreise"}}
+    r["route"] = ["T-01", "T-02", "T-03"]
+    r["wahlstellen"] = {}
+    a = arten(museum={"grundform": "aufenthalt", "name": "Museum", "symbol": "museum", "merkmale": {
+                          "geoeffnet": {"name": "Geöffnet", "typ": "auswahl", "werte": ["ja", "nein"], "stufe": "pflicht"},
+                          "ticket": {"name": "Ticket", "typ": "text", "stufe": "pflicht"}}},
+              essen={"grundform": "aufenthalt", "name": "Essen", "symbol": "einkehr", "buchbar": False},
+              flug={"grundform": "bewegung", "name": "Flug", "symbol": "flug", "buchbar": True})
+    return r, a
+
+
+def test_aufenthalte_ohne_nacht_in_der_zeitleiste_des_tags():
+    r, a = staedtereise()
+    erg, fehler = laufe(r, FRAGEN, a)
+    assert fehler == [], fehler
+    assert [t["aufenthalte"] for t in erg["tage"]] == [["A-02"], ["A-01", "A-02"], []]
+    m = erg["aufenthalte"]["A-01"]
+    assert m["name"] == "Stadtmuseum" and m["art"] == "museum" and m["zeit"] == "10–12 Uhr" and m["tage"] == ["T-02"]
+    assert m["merkmale"]["geoeffnet"]["wert"] == "ja" and m["fehlt"] == ["ticket"]      # nur pflicht zählt
+    assert erg["aufenthalte"]["A-02"]["tage"] == ["T-01", "T-02"]
+    # Buchungsstand: buchung: am Ding; sonst „offen“ bei buchbarer Art, sonst keiner (Essen ohne Reservierung)
+    assert m["buchung"] == "Zeitfenster gebucht" and erg["aufenthalte"]["A-02"]["buchung"] is None
+    assert erg["strecken"]["E-10"]["buchung"] == "gebucht" and erg["strecken"]["E-01"]["buchung"] is None
+    assert erg["unterkuenfte"]["U-01"]["buchung"] == "offen"
+    # Symbol und buchbar stehen an der Art; ohne Angabe das Symbol der Grundform
+    assert erg["arten"]["museum"]["symbol"] == "museum" and erg["arten"]["hotel"]["symbol"] == "unterkunft"
+    assert erg["arten"]["wandern"]["symbol"] == "strecke" and erg["arten"]["reiseteil"]["symbol"] == "plan"
+    assert erg["arten"]["hotel"]["buchbar"] and not erg["arten"]["essen"]["buchbar"] and erg["arten"]["flug"]["buchbar"]
+    assert not erg["arten"]["wandern"]["buchbar"]
+
+
+def test_aufenthalt_prueft_ort_art_herkunft_und_symbol():
+    r, a = staedtereise()
+    r["aufenthalte"]["A-01"] = {"name": "x", "ort": "O-99", "art": "wandern"}
+    r["tage"]["T-02"]["aufenthalte"] = ["A-01", "A-77"]
+    _, fehler = laufe(r, FRAGEN, a)
+    f = " ".join(fehler)
+    assert "Aufenthalt A-01: Ort O-99 gibt es nicht" in f and "quelle fehlt" in f and "ist bewegung, hier braucht es einen Aufenthalt" in f
+    assert "T-02: Aufenthalt A-77 gibt es nicht" in f
+    a["arten"]["museum"]["symbol"] = "regenbogen"
+    _, fehler = laufe(staedtereise()[0], FRAGEN, a)
+    assert any("symbol muss" in x for x in fehler)

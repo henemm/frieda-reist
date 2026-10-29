@@ -406,6 +406,12 @@ class Handbuch:
             teile.append(f"Wahl {n['wahl']}")
         return ", ".join(teile)
 
+    def aufenthalt(self, aid):
+        """Aufenthalt ohne Nacht (A-…): Name, Art, Zeit, Buchungsstand."""
+        a = (self.r.get("aufenthalte") or {}).get(aid) or {}
+        art = ((self.r.get("arten") or {}).get(a.get("art")) or {}).get("name") or a.get("art") or ""
+        return ", ".join(x for x in [f"{a.get('name', aid)} ({aid})", art, a.get("zeit"), f"Buchung: {a['buchung']}" if a.get("buchung") else ""] if x)
+
     def strecke(self, sid):
         s = (self.r.get("strecken") or {}).get(sid) or {}
         return s.get("titel") or sid
@@ -418,6 +424,8 @@ class Handbuch:
             z.append("Wege: " + "; ".join(f"{self.strecke(s['id'])} ({s['id']}"
                                            + (f", Wahl {s['wahl']}" if s.get("wahl") else "") + ")"
                                            for s in t["strecken"]))
+        if t.get("aufenthalte"):
+            z.append("Aufenthalte: " + "; ".join(self.aufenthalt(a) for a in t["aufenthalte"]))
         if t.get("nacht"):
             z.append("Nacht: " + self.nacht(t["nacht"]))
         if t.get("fixpunkte"):
@@ -465,6 +473,12 @@ class Handbuch:
         for w in self.r.get("wahlstellen", []):
             if id_ == w["id"] or any(o["id"] == id_ for o in w["optionen"]):
                 return w, w.get("bereich", "allgemein"), w.get("kriterien") or []
+        if id_ in (self.r.get("aufenthalte") or {}):   # Aufenthalt ohne Nacht (A-…): Zeile wie im Tag, dann Merkmale
+            a = self.r["aufenthalte"][id_]
+            z = [self.aufenthalt(id_), "in " + self.ort(a.get("ort")), *( [a["hinweis"]] if a.get("hinweis") else []),
+                 *( ["an: " + ", ".join(a["tage"])] if a.get("tage") else []), *( ["Quelle: " + a["quelle"]] if a.get("quelle") else [])]
+            z += self.merkmal_zeilen((self.r.get("merkmale") or {}).get(a.get("art")), a.get("merkmale"), a.get("fehlt"))
+            return "\n".join(z)
         if id_ in (self.r.get("unterkuenfte") or {}):   # Aufenthalt: Merkmale seiner Art (plan/arten.yaml)
             b = self.r["unterkuenfte"][id_].get("art")
             return None, b, (self.r.get("merkmale") or {}).get(b) or []
@@ -957,7 +971,7 @@ def ontologie_text(name, args):
 def ids_der_reise(d):
     """Alle IDs, an denen etwas hängen kann (für Vorprüfungen im Konnektor)."""
     r = d.get("route") or {}
-    ids = set(r.get("unterkuenfte") or {}) | set(r.get("strecken") or {}) | set(r.get("orte") or {})
+    ids = set(r.get("unterkuenfte") or {}) | set(r.get("aufenthalte") or {}) | set(r.get("strecken") or {}) | set(r.get("orte") or {})
     ids |= {t["id"] for t in r.get("tage") or []} | {w["id"] for w in r.get("wahlstellen") or []}
     ids |= {o["id"] for w in r.get("wahlstellen") or [] for o in w["optionen"]} | {a["id"] for a in d.get("abschnitte") or []}
     return ids
@@ -2032,14 +2046,17 @@ MERKMALE_FELD = {"type": "object", "description": "{merkmal: wert | {wert, quell
                  "(ein unbekanntes Merkmal legt ein:e Organisator:in erst mit merkmal_definieren an); quelle und geprueft dürfen auch oben stehen",
                  "additionalProperties": True}
 QUELLE_FELD = {"type": "string", "description": "Herkunft: Website mit Adresse, Buch mit Seite, Anruf, „Name im Gespräch“ (Pflicht)"}
-DING_ANLEGEN = {"name": "ding_anlegen", "description": "Eine Unterkunft, Strecke oder einen Ort in der Reise anlegen (neue ID). Schreibt "
-                "sofort; Herkunft (quelle) ist Pflicht. Eine Unterkunft braucht ort (O-…) und art (Aufenthalts-Art der Reise), eine Strecke "
-                "von, nach und art (Bewegungs-Art). Merkmale (Preis, Frühstück …) gleich mit; veränderliche mit geprueft. Als Alternative "
-                "danach mit option_anlegen an die Wahlstelle hängen. Vorher kurz bestätigen lassen.",
+DING_ANLEGEN = {"name": "ding_anlegen", "description": "Eine Unterkunft, einen Aufenthalt ohne Nacht (Besichtigung, Essen, Besuch), eine "
+                "Strecke oder einen Ort in der Reise anlegen (neue ID). Schreibt sofort; Herkunft (quelle) ist Pflicht. Unterkunft und Aufenthalt "
+                "brauchen ort (O-…) und art (Aufenthalts-Art der Reise), eine Strecke von, nach und art (Bewegungs-Art). Merkmale (Preis, "
+                "Frühstück …) gleich mit; veränderliche mit geprueft. Ein Aufenthalt gehört danach an einen Tag (tag_aendern, aufenthalte), "
+                "eine Unterkunft als Alternative mit option_anlegen an die Wahlstelle. Vorher kurz bestätigen lassen.",
                 "inputSchema": {"type": "object", "properties": {
-                    "was": {"type": "string", "enum": ["unterkunft", "strecke", "ort"]},
-                    "titel": {"type": "string", "description": "Name der Unterkunft oder des Orts, Titel der Strecke"},
-                    "ort": {"type": "string", "description": "Unterkunft: Ort O-… (fehlt er, erst mit ding_anlegen was=ort anlegen)"},
+                    "was": {"type": "string", "enum": ["unterkunft", "aufenthalt", "strecke", "ort"]},
+                    "titel": {"type": "string", "description": "Name der Unterkunft, des Aufenthalts oder des Orts, Titel der Strecke"},
+                    "ort": {"type": "string", "description": "Unterkunft, Aufenthalt: Ort O-… (fehlt er, erst mit ding_anlegen was=ort anlegen)"},
+                    "zeit": {"type": "string", "description": "Aufenthalt: wann, als Text („10–12 Uhr“, „abends“)"},
+                    "buchung": {"type": "string", "description": "Buchungsstand, z. B. gebucht oder offen; Vorgabe offen bei buchbarer Art"},
                     "von": {"type": "string", "description": "Strecke: Start O-…"}, "nach": {"type": "string", "description": "Strecke: Ziel O-…"},
                     "art": {"type": "string", "description": "Art dieser Reise (Schlüssel aus merkmale), z. B. pension oder bus"},
                     "hinweis": {"type": "string"}, "buchungslink": {"type": "string", "description": "Unterkunft: Adresse zum Buchen"},
@@ -2047,12 +2064,13 @@ DING_ANLEGEN = {"name": "ding_anlegen", "description": "Eine Unterkunft, Strecke
                     "merkmale": MERKMALE_FELD, "quelle": QUELLE_FELD, "geprueft": {"type": "string", "description": "Prüfdatum für die Merkmale, JJJJ-MM-TT"},
                     "name": NAME_FELD},
                     "required": ["was", "titel", "quelle"]}}
-DING_AENDERN = {"name": "ding_aendern", "description": "Felder einer Unterkunft (name, ort, art, hinweis, quelle, buchungslink, frage), Strecke "
-                "(titel, von, nach, art, hinweis, quelle) oder eines Orts (name, hinweis, quelle) ändern; schreibt sofort, der alte Wert bleibt im "
-                "Verlauf. Merkmale ändert wert_eintragen. Die Art ändern dürfen nur Organisator:innen. Leerer Text entfernt hinweis, "
-                "buchungslink oder frage.",
+DING_AENDERN = {"name": "ding_aendern", "description": "Felder einer Unterkunft (name, ort, art, hinweis, quelle, buchungslink, frage, buchung), "
+                "eines Aufenthalts ohne Nacht (dazu zeit), einer Strecke (titel, von, nach, art, hinweis, quelle, buchung) oder eines Orts (name, "
+                "hinweis, quelle) ändern; schreibt sofort, der alte Wert bleibt im Verlauf. buchung ist der Buchungsstand („gebucht“, „offen“, "
+                "„Zeitfenster 10 Uhr“), er steht auf der Seite unter Zu buchen. Merkmale ändert wert_eintragen. Die Art ändern dürfen nur "
+                "Organisator:innen. Leerer Text entfernt hinweis, buchungslink, frage, zeit oder buchung.",
                 "inputSchema": {"type": "object", "properties": {
-                    "ziel": {"type": "string", "description": "U-…, E-… oder O-…"},
+                    "ziel": {"type": "string", "description": "U-…, A-…, E-… oder O-…"}, "zeit": {"type": "string"}, "buchung": {"type": "string"},
                     "name": {"type": "string", "description": "neuer Name (Unterkunft, Ort)"}, "titel": {"type": "string", "description": "neuer Titel (Strecke)"},
                     "ort": {"type": "string"}, "von": {"type": "string"}, "nach": {"type": "string"}, "art": {"type": "string"},
                     "hinweis": {"type": "string"}, "quelle": {"type": "string"}, "buchungslink": {"type": "string"}, "frage": {"type": "string"},
@@ -2108,13 +2126,15 @@ FRAGE_ANLEGEN = {"name": "frage_anlegen", "description": "Eine offene Frage (F-�
                      "bezug": {"type": "array", "items": {"type": "string"}, "description": "IDs, zu denen die Frage gehört (T-, U-, E-, V-, W-)"},
                      "name": NAME_FELD}, "required": ["text"]}}
 TAG_AENDERN = {"name": "tag_aendern", "description": "Nur für Organisator:innen: einen Tag des Plans ändern: Titel, Text, die Nacht (Unterkunft "
-               "U-…, Wahlstelle V-… oder leer), die Strecken (E-… oder Wahlstellen V-…), Wahlstellen unterwegs (wahl). So wird z. B. eine feste "
+               "U-…, Wahlstelle V-… oder leer), die Strecken (E-… oder Wahlstellen V-…), Wahlstellen unterwegs (wahl), Aufenthalte ohne Nacht "
+               "(aufenthalte: A-…, in der Zeitleiste des Tags). So wird z. B. eine feste "
                "Unterkunft zur Wahl zwischen mehreren (nacht = die neue Wahlstelle). Schreibt sofort; der Generator prüft, ob der Plan aufgeht. "
                "Vorher kurz bestätigen lassen.",
                "inputSchema": {"type": "object", "properties": {
                    "ziel": {"type": "string", "description": "T-…"}, "titel": {"type": "string"}, "text": {"type": "string"},
                    "nacht": {"type": "string", "description": "U-…, V-…, O-… oder leer"},
                    "strecken": {"type": "array", "items": {"type": "string"}}, "wahl": {"type": "array", "items": {"type": "string"}},
+                   "aufenthalte": {"type": "array", "items": {"type": "string"}, "description": "A-… in der Reihenfolge des Tags"},
                    "grund": {"type": "string", "description": "warum (steht im Verlauf)"}, "vorname": NAME_FELD},
                    "required": ["ziel"]}}
 WISSEN_SCHREIBEN = {"name": "wissen_schreiben", "description": "Wissen zur Reise festhalten (Geschichte, Natur, Praxis, Quellen): einen "

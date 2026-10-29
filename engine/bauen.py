@@ -1138,6 +1138,9 @@ SYMBOLE = {"plan": "calendar-days", "varianten": "split", "etappen": "footprints
            # Kategorien der Etappen-Karten
            "einkehr": "utensils", "wasser": "droplet", "bus": "bus", "unterkunft": "bed-double", "apotheke": "pill",
            "taxi": "car-taxi-front",
+           # Symbole, die eine Art der Reise tragen darf (routen.SYMBOLE_ARTEN, docs/ontologie.md „Darstellung“; Paket O-5)
+           "zelt": "tent", "ticket": "ticket", "museum": "landmark", "wandern": "footprints", "bahn": "train-front", "schiff": "ship",
+           "flug": "plane", "auto": "car", "rad": "bike",
            # Kennzahlen und Orte (Gesicht „Freundlich“, #52)
            "gehzeit": "clock", "aufstieg": "trending-up", "abstieg": "trending-down", "strecke": "route", "ort": "map-pin"}
 

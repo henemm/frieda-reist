@@ -527,7 +527,7 @@ def test_ding_aendern_und_ablehnungen(repo):
         ("ding_anlegen", {"was": "unterkunft", "titel": "X", "ort": "O-01", "art": "pension", "quelle": "x", "merkmale": {"preis": "1 €"}}, "veränderlich"),
         ("ding_anlegen", {"was": "unterkunft", "titel": "X", "ort": "O-01", "art": "pension", "quelle": "x", "merkmale": {"pool": "ja"}}, "merkmal_definieren"),
         ("ding_anlegen", {"was": "strecke", "titel": "X", "von": "O-01", "nach": "O-02", "art": "pension", "quelle": "x"}, "Bewegungs-Art"),
-        ("ding_anlegen", {"was": "zelt", "titel": "X", "quelle": "x"}, "unterkunft, strecke oder ort"),
+        ("ding_anlegen", {"was": "zelt", "titel": "X", "quelle": "x"}, "unterkunft, aufenthalt"),
         ("option_anlegen", {"wahlstelle": "V-03", "titel": "X", "unterkuenfte": ["U-02"], "strecken": ["E-01"]}, "nur eines von"),
         ("option_anlegen", {"wahlstelle": "V-03", "titel": "X", "erfordert": ["V-09.z"]}, "gibt es nicht"),
         ("option_anlegen", {"wahlstelle": "V-99", "titel": "X"}, "gibt es nicht"),
@@ -768,3 +768,33 @@ def test_neue_reise_aus_der_anfrage(repo):
     with pytest.raises(sb.Ablehnung, match="keine neue Reise"):
         s.schreiben("x-2027", "reise_anlegen", {"person": None, "name": "Ida", "rolle": "organisator", "args": {}})
     assert not git(arbeit, "status", "--porcelain")
+
+
+def test_aufenthalt_ohne_nacht_anlegen_an_den_tag_haengen_und_buchen(repo):
+    """Paket O-5: ding_anlegen was=aufenthalt (A-…, Ort, Aufenthalts-Art, Zeit), tag_aendern aufenthalte, Buchungsstand mit
+    ding_aendern buchung; die Seite zeigt ihn in der Zeitleiste des Tags."""
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {
+        "was": "aufenthalt", "titel": "Festung Königstein", "ort": "O-05", "art": "besichtigung", "zeit": "14–16 Uhr",
+        "quelle": "erfunden (Test)", "geprueft": "2026-10-29", "merkmale": {"geoeffnet": "ja"}}})
+    assert a["text"].startswith("Aufenthalt A-02 „Festung Königstein“ angelegt in Bad Schandau, Art besichtigung, Merkmale: geoeffnet.")
+    assert "tag_aendern" in a["text"]
+    r, _ = routen_auf_main(origin)
+    x = r["aufenthalte"]["A-02"]
+    assert x["ort"] == "O-05" and x["art"] == "besichtigung" and x["zeit"] == "14–16 Uhr" and "typ" not in x
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "tag_aendern", {**IDA, "args": {"ziel": "T-04", "aufenthalte": ["A-02"]}})
+    assert "aufenthalte [] → ['A-02']" in a["text"]
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "A-02", "buchung": "Zeitfenster 14 Uhr gebucht"}})
+    assert "buchung „Zeitfenster 14 Uhr gebucht“" in a["text"]
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "E-20", "buchung": "gebucht"}})
+    assert "buchung „offen“ → „gebucht“" not in a["text"] and "buchung „gebucht“" in a["text"]   # vorher kein Eintrag am Ding
+    r, _ = routen_auf_main(origin)
+    assert r["tage"]["T-04"]["aufenthalte"] == ["A-02"] and r["aufenthalte"]["A-02"]["buchung"] == "Zeitfenster 14 Uhr gebucht"
+    assert r["strecken"]["E-20"]["buchung"] == "gebucht"
+    with pytest.raises(Exception, match="Aufenthalts-Art"):
+        s.vorbereiten()
+        s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "aufenthalt", "titel": "x", "ort": "O-05", "art": "bahn", "quelle": "x"}})

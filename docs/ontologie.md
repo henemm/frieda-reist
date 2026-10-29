@@ -10,7 +10,7 @@ Die Software kennt genau diese Dinge. Sie gelten für jede Art von Reise (Hütte
 |---|---|---|---|
 | **Reise** | Rahmen: Titel, Zeitraum, Personen mit Rollen, Status, Bausteine, Regeln | – | `reise.yaml` |
 | **Ort** | ein Punkt oder Gebiet, an dem man ist oder das man passiert | `O-` | `plan/routen.yaml` |
-| **Aufenthalt** | an einem Ort sein: Übernachtung (heute `U-` und `nacht`), künftig auch ohne Nacht (Essen, Besichtigung) | `U-` | `plan/routen.yaml` |
+| **Aufenthalt** | an einem Ort sein: mit Nacht die Unterkunft (`U-`, `unterkuenfte`, am Tag `nacht`), ohne Nacht Besichtigung, Essen, Besuch (`A-`, `aufenthalte`, am Tag `aufenthalte: [A-01]`, mit `zeit` als Text; Paket O-5) | `U-`, `A-` | `plan/routen.yaml` |
 | **Bewegung** | von Ort zu Ort: Wanderung, Bahn, Bus, Fähre, Flug, Mietwagen … | `E-` | `plan/routen.yaml` |
 | **Folge** | ein geordneter Abschnitt aus Aufenthalten und Bewegungen: Tag, Reiseteil, benannter Plan | `T-`, `P-` | `plan/routen.yaml` |
 | **Wahl** | Wahlstelle mit Optionen (eine von mehreren, mit oder ohne, wie lange), Verlauf mit Person, Datum, Grund | `V-`, `V-01.a` | `plan/routen.yaml` |
@@ -33,6 +33,8 @@ arten:
     grundform: aufenthalt          # aufenthalt | bewegung | folge
     name: Hotel                    # Anzeige
     farbe: blau                    # Darstellung auf Karte, Legende, Vergleich (Palette der Seite, siehe unten)
+    symbol: unterkunft             # Zeichen der Seite (siehe Darstellung); ohne Angabe das der Grundform
+    buchbar: true                  # hat einen Buchungsstand (Zu buchen, Stand der Vorbereitung); Vorgabe: Aufenthalte ja
     merkmale:
       preis:       {name: Preis pro Nacht, typ: geld, veraenderlich: true, stufe: empfohlen,
                     hilfe: "Website des Hauses; für das Reisedatum und zwei Personen", frage: "Hast du einen Preis?"}
@@ -85,7 +87,7 @@ Ein Merkmal ist eine Definition in `arten.yaml` und ein Wert am Ding.
 | `name` | Anzeige |
 | `typ` | `text` (Vorgabe), `geld`, `zahl`, `auswahl` (mit `werte`) |
 | `veraenderlich` | der Wert braucht ein Prüfdatum; ohne steht „ungeprüft“ daneben, ab Status `fest` eine Mahnung, der Wächter meldet alte Prüfdaten |
-| `stufe` | `pflicht`, `empfohlen` (Vorgabe), `angeboten`, `aus`. Pflicht und empfohlen zählen als „Fehlt noch“ und im Vergleichszähler und sind die Spalten im Vergleich der Alternativen (angeboten steht dort nur in den Einzelheiten, `docs/design.md`); Pflicht fehlt ab Status `planung` als Mahnung, empfohlen ab `fest`; angeboten erscheint nur mit Wert; aus gilt nicht. Eine Wahlstelle kann die Stufe für sich ändern (`merkmale: {abendessen: {stufe: empfohlen}}`) |
+| `stufe` | `pflicht`, `empfohlen` (Vorgabe), `angeboten`, `aus`. Pflicht und empfohlen sind die Spalten im Vergleich der Alternativen (angeboten steht dort nur in den Einzelheiten, `docs/design.md`); nur **pflicht** zählt als „Fehlt noch“ und im Zähler des Vergleichs (seit Paket O-5; empfohlen mahnt nichts an); angeboten erscheint nur mit Wert; aus gilt nicht. Eine Wahlstelle kann die Stufe für sich ändern (`merkmale: {abendessen: {stufe: empfohlen}}`) |
 | `auto` | berechnet, nie eingetragen (siehe Grundformen) |
 | `hilfe`, `frage` | wie der AI-Client den Wert recherchiert und wonach er fragt |
 | `einheit` | Anzeige hinter Zahlen |
@@ -118,7 +120,7 @@ arten:
 
 ## Darstellung
 
-Eine Art kann eine `farbe` aus der Palette der Seite tragen: `blau`, `braun`, `lila`, `gruen`, `tuerkis`, `oliv`, `grau`, `rosa`, `schiefer` (`engine/vorlage.html`, `--farbe-*`); ohne Angabe `grau`. Die Legende der Karte und der Vergleich zeigen die Arten der Reise mit ihrem Namen. Summen („Nächte: 5× Hotel, 3× Refugi“) zählen je Art.
+Eine Art kann eine `farbe` aus der Palette der Seite tragen: `blau`, `braun`, `lila`, `gruen`, `tuerkis`, `oliv`, `grau`, `rosa`, `schiefer` (`engine/vorlage.html`, `--farbe-*`); ohne Angabe `grau`. Dazu ein `symbol` aus dem Zeichensatz der Seite (`engine/bauen.py` SYMBOLE, Lucide): `unterkunft`, `zelt`, `einkehr`, `ticket`, `museum`, `wandern`, `bus`, `bahn`, `schiff`, `flug`, `auto`, `rad`, `taxi`, `strecke`, `ort`, `karte`, `plan`; ohne Angabe das Zeichen der Grundform (Aufenthalt Bett, Bewegung Weg, Folge Plan). Die Seite zeigt Name, Farbe und Symbol der Art am Etikett jedes Dings, in der Zeitleiste des Tags, in der Legende der Karte und im Vergleich; sie kennt keine Art selbst (bis Paket O-5 trug `engine/vorlage.html` eine Liste von Verkehrsmitteln, `ART_TEXT`). `buchbar: true` gibt den Dingen der Art einen Buchungsstand (`buchung:` am Ding, sonst „offen“), der auf der Seite unter „Zu buchen“ und im Stand der Vorbereitung erscheint; Vorgabe: Aufenthalte ja, Bewegungen und Folgen nein. Summen („Nächte: 5× Hotel, 3× Refugi“) zählen je Art.
 
 ## Übergang
 
@@ -132,4 +134,5 @@ Eine Art kann eine `farbe` aus der Palette der Seite tragen: `blau`, `braun`, `l
 - Paket O-3, Schritt 5 (29.10.2026): `wissen_schreiben` (W-Abschnitte mit Herkunft am Absatz), `frage_schliessen`, `rueckmeldung_erledigen`, Personen über `person_schreiben` direkt in `reise.yaml`.
 - Paket O-3, Schritt 6 (29.10.2026): `reise_status_setzen`, `einstellung_setzen`, `reise_anlegen` über den Schreibweg; `auftrag_geben` entfällt.
 - Paket O-3, Abschalten (29.10.2026): Der Einarbeiten-Lauf mit Claude Code auf dem Server ist entfernt; es gibt keinen zweiten KI-Lauf in Frieda mehr (ADR-0001, Punkt 5). Alles Schreiben geht über den Schreibweg.
-- Später: Aufenthalt ohne Nacht und Buchung als eigene Dinge (Paket O-5, O-7).
+- Paket O-5 (29.10.2026, frieda-reist #93): Aufenthalte ohne Nacht (`A-…`, `aufenthalte`, am Tag `aufenthalte:`), `symbol` und `buchbar` je Art, Buchungsstand an Unterkunft, Aufenthalt und Bewegung; „Fehlt noch“ und Zähler nur für `pflicht`; die Seite kennt keine Art mehr (`ART_TEXT`, `kategorien` entfallen), ihre Bausteintabelle nennt Grundformen.
+- Später: Buchung als eigenes Ding mit Beleg (#76).
