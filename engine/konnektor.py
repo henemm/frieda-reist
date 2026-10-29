@@ -2455,7 +2455,8 @@ def anleitung(zugang, d):
     direkt = schreibdienst()
     if wer["rolle"] == "organisator":
         z.append(f"{name} (Organisator:in). Entscheidungen über Optionen einer Wahlstelle trägst du mit entscheiden ein (Option, "
-                 "Status, Grund; vorher kurz bestätigen lassen). "
+                 "Status, Grund; vorher kurz bestätigen lassen). Sind mehrere Wahlstellen offen, fragst du sie einzeln nacheinander, "
+                 "je Wahlstelle eine Frage mit den Möglichkeiten zur Auswahl (mit dem Fragewerkzeug der App, wenn es eins gibt). "
                  + ("Der Dienst prüft im selben Moment, lehnt Unstimmiges mit Begründung ab und schreibt die Entscheidung mit Datum, "
                     "Person und Grund in den Plan; sie gilt ab jetzt, die Seite zeigt sie in wenigen Minuten. " if direkt else
                     "Ohne eingerichteten Schreibweg geht Entscheiden nicht; der Betreiber richtet ihn ein. ")

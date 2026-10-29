@@ -1277,6 +1277,13 @@ def entscheiden(reise_dir, wer, args, heute=None):
                       and not any(x.get("status") == "gewaehlt" for x in w.get("optionen") or [])]
         if status == "gewaehlt" and noch_offen:
             frage_text = f" Frage {wr['frage']} bleibt offen, weil dort noch {', '.join(noch_offen)} zu entscheiden {'ist' if len(noch_offen) == 1 else 'sind'}."
+            # Die KI im AI-Client fragt die Person danach einzeln, je Wahlstelle eine Auswahlfrage (Product Owner 29.10.2026)
+            wahl = {w["id"]: w for w in route.get("wahlstellen") or []}
+            frage_text += (" Frag die Person jetzt einzeln nach, je Wahlstelle eine eigene Frage mit den Möglichkeiten zur Auswahl "
+                           "(mit dem Fragewerkzeug der App, wenn es eins gibt), eine nach der anderen: "
+                           + " · ".join(f"{v} {wahl[v].get('titel', '')}: " + ", ".join(
+                               f"{x['id']} {x.get('titel', '')}" for x in wahl[v].get("optionen") or []
+                               if x.get("status") not in ("verworfen", "ersetzt")) for v in noch_offen) + ".")
         elif status == "gewaehlt":
             ok = frage_status_setzen(reise_dir, wr["frage"], f"geklärt {heute.strftime('%-d.%-m.%Y')}: {wer['name']}, {o['titel']} ({oid})")
             frage_text = f" Frage {wr['frage']} ist damit geklärt." if ok else ""

@@ -923,6 +923,8 @@ def test_gemeinsame_frage_bleibt_offen_bis_alles_gewaehlt(repo):
     s = schreiber(repo)
     a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-01.b", "status": "gewaehlt", "grund": "Bahn"}})
     assert "Frage F-01 bleibt offen, weil dort noch V-03 zu entscheiden ist." in a["text"], a["text"]
+    # die KI fragt danach einzeln, mit den Möglichkeiten der offenen Wahlstelle zur Auswahl
+    assert "Frag die Person jetzt einzeln nach" in a["text"] and "V-03 Unterkunft in Hohnstein: V-03.a Pension Burgblick, V-03.b Gasthof Polenztal" in a["text"], a["text"]
     assert "| vor Abreise | offen |" in fragen_auf_main(origin)
     s.vorbereiten()
     a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-03.b", "status": "gewaehlt", "grund": "Abendessen"}})
