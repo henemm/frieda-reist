@@ -876,6 +876,20 @@ def neue_id(reise_dir, kuerzel):
         raise Ablehnung(str(e))
 
 
+def uhrzeit_wert(args, feld):
+    """beginn oder ende (#77, Kalender): Uhrzeit HH:MM (Ortszeit), leer -> "" (entfernen), fehlt -> None."""
+    from routen import UHRZEIT
+    v = text_wert(args, feld, laenge=5)
+    if v is None or v == "":
+        return v
+    v = v.strip()
+    if re.fullmatch(r"\d:\d\d", v):
+        v = "0" + v
+    if not UHRZEIT.match(v):
+        raise Ablehnung(f"„{feld}“ muss eine Uhrzeit HH:MM sein (z. B. 09:30).")
+    return v
+
+
 def ding_anlegen(reise_dir, wer, args, heute=None):
     """Eine Unterkunft, Strecke oder einen Ort anlegen (neue ID aus ids.yaml, nie neu vergeben). -> (Titel, Text)."""
     heute = heute or datetime.date.today()
@@ -922,6 +936,12 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
             raise Ablehnung(f"„art“ muss eine Bewegungs-Art dieser Reise sein ({', '.join(k for k, a in arten.items() if a.get('grundform') == 'bewegung') or 'keine'}); "
                             "eine neue legt ein:e Organisator:in mit art_definieren an.")
         d["art"] = art
+    if was in ("aufenthalt", "strecke"):
+        for feld in ("beginn", "ende"):
+            if (u := uhrzeit_wert(args, feld)):
+                d[feld] = u
+        if d.get("ende") and not d.get("beginn"):
+            raise Ablehnung("„ende“ nur zusammen mit „beginn“.")
     if hinweis:
         d["hinweis"] = hinweis
     d["quelle"] = quelle
@@ -946,8 +966,8 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
 
 
 AENDERBAR = {"unterkunft": ("name", "ort", "art", "hinweis", "quelle", "buchungslink", "frage", "buchung"),
-             "aufenthalt": ("name", "ort", "art", "zeit", "hinweis", "quelle", "buchungslink", "frage", "buchung"),
-             "strecke": ("titel", "von", "nach", "art", "hinweis", "quelle", "buchung"), "ort": ("name", "hinweis", "quelle")}
+             "aufenthalt": ("name", "ort", "art", "zeit", "beginn", "ende", "hinweis", "quelle", "buchungslink", "frage", "buchung"),
+             "strecke": ("titel", "von", "nach", "art", "beginn", "ende", "hinweis", "quelle", "buchung"), "ort": ("name", "hinweis", "quelle")}
 
 
 def ding_aendern(reise_dir, wer, args, heute=None):
@@ -988,10 +1008,12 @@ def ding_aendern(reise_dir, wer, args, heute=None):
             v = text_wert(args, feld, laenge=10) or ""
             if v and not re.fullmatch(r"F-\d+", v):
                 raise Ablehnung("„frage“ muss eine F-… sein.")
+        elif feld in ("beginn", "ende"):
+            v = uhrzeit_wert(args, feld) or ""
         else:
             v = text_wert(args, feld, laenge=600 if feld == "quelle" else MAX_TEXT) or ""
         alt = knoten.get(feld) if feld != "art" else (knoten.get("art") or knoten.get("typ"))
-        if v == "" and feld in ("hinweis", "buchungslink", "frage", "zeit", "buchung"):
+        if v == "" and feld in ("hinweis", "buchungslink", "frage", "zeit", "beginn", "ende", "buchung"):
             if feld in knoten:
                 geaendert.append(f"{feld} entfernt (war „{alt}“)")
                 del knoten[feld]
@@ -1004,6 +1026,8 @@ def ding_aendern(reise_dir, wer, args, heute=None):
             knoten["typ"] = skalar("typ", arten[v].get("name") or v)
     if not geaendert:
         raise Ablehnung(f"Nichts zu ändern an {bezeichnung} (änderbar: {', '.join(AENDERBAR[was])}; Merkmale mit wert_eintragen).")
+    if knoten.get("ende") and not knoten.get("beginn"):
+        raise Ablehnung("„ende“ nur zusammen mit „beginn“.")
     grund = text_wert(args, "grund")
     routen_speichern(reise_dir, roh)
     titel = f"{bezeichnung} geändert: " + "; ".join(g.split(" „")[0] for g in geaendert)

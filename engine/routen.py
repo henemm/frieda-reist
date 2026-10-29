@@ -27,6 +27,8 @@ NUR_ENTSCHEIDER = {"gewaehlt", "verworfen", "ersetzt"}
 UNGUELTIG = {"verworfen", "ersetzt"}
 ARTEN = {"planung", "unterwegs"}
 WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+# Uhrzeit einer Bewegung oder eines Aufenthalts (beginn, ende; #77 Kalender), Ortszeit am Ort des Dings
+UHRZEIT = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+", "aufenthalt": r"A-\d+",
           "tag": r"T-\d+", "wahl": r"V-\d+", "option": r"V-\d+\.[a-z]+", "wissen": r"W-\d+", "buchung": r"B-\d+"}
 # Buchung (Product Owner 29.10.2026, frieda-reist #76): eigenes Ding B-… in routen.yaml unter buchungen:, gehört zu einem
@@ -282,6 +284,14 @@ class Routen:
         return (self.orte.get(oid) or {}).get("name", oid)
 
     # ---------- Bausteine prüfen ----------
+    def uhrzeit_pruefen(self, d, wo):
+        """beginn und ende (#77, Kalender): Uhrzeit HH:MM als Text, ende nur mit beginn. Ende vor Beginn heißt: am Tag danach."""
+        for k in ("beginn", "ende"):
+            if d.get(k) is not None and not (isinstance(d[k], str) and UHRZEIT.match(d[k])):
+                self.fehl(f"{wo}: {k} muss eine Uhrzeit HH:MM in Anführungszeichen sein (z. B. \"09:30\").")
+        if d.get("ende") is not None and d.get("beginn") is None:
+            self.fehl(f"{wo}: ende ohne beginn.")
+
     def bausteine(self):
         for art, menge in (("ort", self.orte), ("strecke", self.strecken), ("unterkunft", self.unterkuenfte),
                            ("aufenthalt", self.aufenthalte), ("buchung", self.buchungen), ("tag", self.tage), ("wahl", self.wahl)):
@@ -298,6 +308,7 @@ class Routen:
             for k in ("von", "nach"):
                 if s.get(k) and s[k] not in self.orte:
                     self.fehl(f"Strecke {sid}: Ort {s[k]} gibt es nicht.")
+            self.uhrzeit_pruefen(s, f"Strecke {sid}")
             z = s.get("zweig_von")
             if z and z not in self.strecken and z not in self.etappen:
                 self.fehl(f"Strecke {sid}: zweig_von {z} gibt es nicht.")
@@ -322,6 +333,7 @@ class Routen:
                 self.fehl(f"Aufenthalt {aid}: Ort {a.get('ort')} gibt es nicht.")
             if not a.get("quelle"):
                 self.fehl(f"Aufenthalt {aid}: quelle fehlt (Herkunft).")
+            self.uhrzeit_pruefen(a, f"Aufenthalt {aid}")
             self.a_art[aid] = self.art_von(a, f"Aufenthalt {aid}")
             self.lage_pruefen(a, f"Aufenthalt {aid}")
         self.buchungen_pruefen()
@@ -1090,6 +1102,13 @@ class Routen:
                          "aufenthalte": [a for a in t.get("aufenthalte") or [] if a in self.aufenthalte],
                          "wahlstellen": unterwegs, "nacht": n})
 
+        # Tage unter einer offenen Planungs-Wahlstelle sind vorläufig (#77): der Kalender zeigt nur Entschiedenes
+        for vid, (a, e) in self.grenzen.items():
+            w = self.wahl.get(vid) or {}
+            if w.get("art") == "planung" and not any(self.status(o) == "gewaehlt" for o in w.get("optionen") or []):
+                for t in tage[a:e]:
+                    t.setdefault("vorlaeufig", []).append(vid)
+
         # Fixpunkte und Ende
         nach_datum = {t["datum"]: t for t in tage}
         for fp in self.r.get("fixpunkte") or []:
@@ -1314,7 +1333,7 @@ class Routen:
                 "buchung": self.buchung_von(s, b, sid), "buchung_id": self.buchung_id(sid),
                 "rolle": s.get("rolle", "haupt"), "zweig_von": s.get("zweig_von"), "kennzahlen": s.get("kennzahlen") or {},
                 "quelle": s.get("quelle"), "siehe": s.get("siehe"), "text": s.get("text", ""),
-                "dossier": bool(s.get("dossier")), **merkmale}
+                "beginn": s.get("beginn"), "ende": s.get("ende"), "dossier": bool(s.get("dossier")), **merkmale}
 
     def buchung_von(self, d, art, did=None):
         """Buchungsstand eines Dings: der Status seiner geltenden Buchung (B-…, #76), sonst der Eintrag buchung:, sonst
@@ -1347,7 +1366,7 @@ class Routen:
                 continue
             art = self.a_art.get(aid)
             mk = self.mk_aufenthalt.get(aid, {})
-            aus[aid] = {**{k: a.get(k) for k in ("name", "ort", "zeit", "kontakt", "hinweis", "quelle", "frage", "buchungslink")},
+            aus[aid] = {**{k: a.get(k) for k in ("name", "ort", "zeit", "beginn", "ende", "kontakt", "hinweis", "quelle", "frage", "buchungslink")},
                         **dict(self.lage_aus(a)), "art": art, "buchung": self.buchung_von(a, art, aid), "buchung_id": self.buchung_id(aid),
                         "tage": an_tagen.get(aid, []),
                         "merkmale": mk, "fehlt": [k for k, d in self.katalog.get(art, {}).items() if zaehlt(d) and k not in mk]}

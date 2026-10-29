@@ -587,6 +587,31 @@ def test_lage_eintragen(repo):
             s.schreiben("beispielreise", "lage_eintragen", {**KARL, "args": args})
 
 
+def test_uhrzeit_beginn_ende(repo):
+    """beginn und ende (#77, Kalender): Uhrzeit HH:MM an Strecke und Aufenthalt, leer entfernt, ende nur mit beginn."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "E-21", "beginn": "9:05", "ende": "09:52"}})
+    assert "beginn „09:05“" in a["text"] and "ende „09:52“" in a["text"]
+    r, text = routen_auf_main(origin)
+    assert (r["strecken"]["E-21"]["beginn"], r["strecken"]["E-21"]["ende"]) == ("09:05", "09:52") and 'beginn: "09:05"' in text
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "A-01", "beginn": "", "ende": ""}})
+    assert "beginn entfernt" in a["text"]
+    r, _ = routen_auf_main(origin)
+    assert "beginn" not in r["aufenthalte"]["A-01"] and "ende" not in r["aufenthalte"]["A-01"]
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "aufenthalt", "titel": "Abendessen", "ort": "O-04",
+                                                                        "art": "besichtigung", "beginn": "19:00", "quelle": "Beispiel"}})
+    r, _ = routen_auf_main(origin)
+    assert any(x.get("beginn") == "19:00" for x in r["aufenthalte"].values())
+    s.vorbereiten()
+    for args, text in (({"ziel": "E-21", "beginn": "25:00"}, "Uhrzeit HH:MM"), ({"ziel": "E-20", "beginn": ""}, "nur zusammen mit"),
+                       ({"ziel": "U-01", "beginn": "10:00"}, "Nichts zu ändern")):
+        with pytest.raises(sb.Ablehnung, match=text):
+            s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": args})
+
+
 def test_ding_aendern_und_ablehnungen(repo):
     _, origin, arbeit, _ = repo
     s = schreiber(repo)

@@ -10,8 +10,8 @@ Die Software kennt genau diese Dinge. Sie gelten für jede Art von Reise (Hütte
 |---|---|---|---|
 | **Reise** | Rahmen: Titel, Zeitraum, Personen mit Rollen, Status, Bausteine, Regeln | – | `reise.yaml` |
 | **Ort** | ein Punkt oder Gebiet, an dem man ist oder das man passiert | `O-` | `plan/routen.yaml` |
-| **Aufenthalt** | an einem Ort sein: mit Nacht die Unterkunft (`U-`, `unterkuenfte`, am Tag `nacht`), ohne Nacht Besichtigung, Essen, Besuch (`A-`, `aufenthalte`, am Tag `aufenthalte: [A-01]`, mit `zeit` als Text; Paket O-5) | `U-`, `A-` | `plan/routen.yaml` |
-| **Bewegung** | von Ort zu Ort: Wanderung, Bahn, Bus, Fähre, Flug, Mietwagen … | `E-` | `plan/routen.yaml` |
+| **Aufenthalt** | an einem Ort sein: mit Nacht die Unterkunft (`U-`, `unterkuenfte`, am Tag `nacht`), ohne Nacht Besichtigung, Essen, Besuch (`A-`, `aufenthalte`, am Tag `aufenthalte: [A-01]`, mit `zeit` als Text; Paket O-5; Uhrzeit für den Kalender in `beginn` und `ende`, #77) | `U-`, `A-` | `plan/routen.yaml` |
+| **Bewegung** | von Ort zu Ort: Wanderung, Bahn, Bus, Fähre, Flug, Mietwagen …; Uhrzeit für den Kalender in `beginn` und `ende` (#77) | `E-` | `plan/routen.yaml` |
 | **Folge** | ein geordneter Abschnitt aus Aufenthalten und Bewegungen: Tag, Reiseteil, benannter Plan | `T-`, `P-` | `plan/routen.yaml` |
 | **Wahl** | Wahlstelle mit Optionen (eine von mehreren, mit oder ohne, wie lange), Verlauf mit Person, Datum, Grund | `V-`, `V-01.a` | `plan/routen.yaml` |
 | **Aussage** | ein Merkmal eines Dings: Wert, Herkunft (`quelle`), Prüfdatum (`geprueft`), Gültigkeit (`gilt`), Notiz | am Ding | `plan/routen.yaml` |
@@ -20,6 +20,8 @@ Die Software kennt genau diese Dinge. Sie gelten für jede Art von Reise (Hütte
 | **Wissen** | Fließtext mit Herkunft: Geschichte, Praxis, Quellen | `W-` | `inhalt/` |
 
 Jedes Ding hat einen **Kern**: feste ID (nie neu vergeben, nie gelöscht), Grundform, **Art** (von der Reise vergeben), Titel, Herkunft, Zeit- oder Ortsbezug, Verweise auf andere Dinge, Merkmale, Verlauf.
+
+**Uhrzeit und Kalender** (frieda-reist #77, Product Owner 29.10.2026): Bewegungen und Aufenthalte ohne Nacht haben optional `beginn` und `ende` als Uhrzeit `"HH:MM"` (in Anführungszeichen, Ortszeit am Ort des Dings; `ende` nur mit `beginn`, ein Ende vor dem Beginn liegt am Tag danach, etwa bei einer Nachtfähre). Der freie Text `zeit` („nach der Wanderung“) bleibt daneben. Daraus und aus Tagen, Nächten und Fristen entsteht der Kalender der Reise (`engine/kalender.py`): als Datei auf der Seite („In den Kalender“, ganz oder je Ding) und als persönliches Abo (Mein Konto, Konnektor `kalender`). Er zeigt nur Entschiedenes: Tage unter einer offenen Planungs-Wahlstelle stehen in `route.tage[].vorlaeufig` und fehlen im Kalender, ebenso Nächte und Strecken aus einer offenen Planungs-Wahlstelle.
 
 **Lage eines Aufenthalts** ([ADR-0004](adr/0004-lage.md), Product Owner 29.10.2026): Ein Aufenthalt hat neben seinem Ort (`ort: O-…`, die Gegend) eine eigene Lage, nämlich `adresse` (Postadresse), `punkt` (Koordinaten) oder beides. Beide sind Aussagen mit Herkunft: `adresse: {wert: "Terrassenufer 1, 01067 Dresden", quelle: …, geprueft: 2026-10-29}`, `punkt: {wert: [50.9792, 14.1128], quelle: …}`. Ein Ort selbst hat keine Adresse. Fehlt der Punkt, nimmt der Bau ihn aus `plan/punkte.yaml` (Punkt mit `id: U-…`). Ab Status `fest` mahnt der Bau Unterkünfte im Plan ohne Lage. Die Seite verlinkt die Lage mit Google Maps, auf Apple-Geräten auch mit Apple Karten. Eintragen: `lage_eintragen` in der Claude-App; vorfüllen aus OpenStreetMap: `werkzeuge/adressen_holen.py` (`docs/werkzeuge.md`). Das Merkmal „Lage“ einer Reise („400 m vom Zentrum“) ist etwas anderes: eine Beschreibung, keine Adresse.
 

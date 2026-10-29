@@ -24,7 +24,8 @@ strecken:
   E-02: {von: O-03, nach: O-04, art: wandern}
   E-03: {von: O-04, nach: O-05, art: wandern}
   E-04: {von: O-04, nach: O-06, art: wandern}
-  E-20: {titel: "S-Bahn Dresden → Stadt Wehlen, Fähre über die Elbe", von: O-01, nach: O-02, art: bahn, quelle: "Beispiel; Fahrplan nicht geprüft"}
+  # beginn/ende (#77): Uhrzeit für den Kalender, Ortszeit; hier erfundene Beispielwerte
+  E-20: {titel: "S-Bahn Dresden → Stadt Wehlen, Fähre über die Elbe", von: O-01, nach: O-02, art: bahn, beginn: "08:12", ende: "08:40", quelle: "Beispiel; Fahrplan nicht geprüft"}
   E-21: {titel: "S-Bahn Bad Schandau → Dresden", von: O-05, nach: O-01, art: bahn, quelle: "Beispiel; Fahrplan nicht geprüft"}
   E-23: {titel: "Bus Bad Schandau → Dresden", von: O-05, nach: O-01, art: bus, quelle: "erfunden (Beispiel)"}
   E-22: {titel: "Kirnitzschtalbahn Lichtenhainer Wasserfall → Bad Schandau", von: O-06, nach: O-05, art: bahn, siehe: W-06, quelle: "Strecke laut Wikipedia (W-06); Fahrplan nicht geprüft"}
@@ -86,6 +87,8 @@ aufenthalte:
     ort: O-03
     art: besichtigung
     zeit: "nach der Wanderung, 16–18 Uhr"
+    beginn: "16:00"   # Beispielwert, erfunden (#77, Kalender)
+    ende: "18:00"
     hinweis: "erfundenes Beispiel; Burg über dem Polenztal"
     quelle: "erfunden (Beispiel)"
     merkmale:
