@@ -68,6 +68,7 @@ def test_reiseueberblick(tmp_path, browser):
         # gebucht ist nur U-01 (Beispielwert); der Stand führt nach „Zu tun · Zu buchen“
         assert a["stand"] == [["Unterkünfte gebucht", "1 von 3", "#zu-buchen"], ["Offene Fragen", "2", "#fragen"]], a["stand"]
         assert a["inZeile"] == 0, a["inZeile"]
+        assert a["karte"] and a["karte"]["breite"] == a["karte"]["kasten"] and a["karte"]["wege"] > 100, a["karte"]
         assert a["zurueck"]["tag"] == "T-03" and a["zurueck"]["sichtbar"], a["zurueck"]
         assert a["unterkunft"] == {"inNacht": True, "reiter": "Reise"}, a["unterkunft"]
         assert [x[1] for x in a["buchen"]] == ["gebucht", "nicht gebucht", "nicht gebucht"], a["buchen"]

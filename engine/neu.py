@@ -404,14 +404,9 @@ def arten_ableiten(reise_dir, namen=None, summiert=(), definitionen=None, schrei
         if merkmale:
             eintrag["merkmale"] = merkmale
         aus[key] = eintrag
-    kopf = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). Abgeleitet aus plan/routen.yaml am "
-            f"{datetime.date.today().isoformat()} (engine/neu.py arten-ableiten); danach im Gespräch geprüft und geschärft.\n"
-            "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (Gliederung des Lesetexts); je Merkmal: name, typ,\n"
-            "# werte, veraenderlich, stufe (pflicht | empfohlen | angeboten | aus), auto, hilfe, frage, auch.\n")
-    class Ohne_Verweise(yaml.SafeDumper):   # gleiche Wertelisten je Merkmal ausschreiben statt als YAML-Anker
-        def ignore_aliases(self, data):
-            return True
-    text = kopf + yaml.dump({"arten": aus}, Dumper=Ohne_Verweise, allow_unicode=True, sort_keys=False, width=120)
+    from schreiben import arten_text     # dieselbe Form wie beim Schreiben über den Konnektor (O-3)
+    text = arten_text(aus, f"Abgeleitet aus plan/routen.yaml am {datetime.date.today().isoformat()} (engine/neu.py arten-ableiten); "
+                      "danach im Gespräch geprüft und geschärft.")
     if schreiben:
         (reise_dir / "plan/arten.yaml").write_text(text, encoding="utf-8")
     return text

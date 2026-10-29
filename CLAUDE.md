@@ -10,11 +10,11 @@ Echte Reisen, Namen echter Personen, Serveradressen, geheime Pfade, Zugangsdaten
 
 ```
 engine/            bauen.py (Generator), routen.py (Routenmodell), reise.py (reise.yaml), gpx.py,
-                   vorlage.html, sw.vorlage.js, rueckmeldungen.py (Dienst), konnektor.py (MCP), waechter.py (Wächter und
-                   Erinnerer, läuft täglich), neu.py (neue Reise, IDs, arten-ableiten), reisevorlage/,
-                   vendor/ (Fremdbibliotheken, siehe THIRD_PARTY.md), tests/
-betrieb/           Betrieb einer Instanz: Einarbeiten (KI je Reise), Veröffentlichen, Deploy, Freischalten, Wächter-Lauf,
-                   Einrichten, Vorlagen für systemd und nginx, KI-Anweisung, einstellungen.beispiel
+                   vorlage.html, sw.vorlage.js, rueckmeldungen.py (Dienst), konnektor.py (MCP), schreiben.py (Schreibweg:
+                   der Konnektor schreibt direkt in die Reise), waechter.py (Wächter und Erinnerer, läuft täglich),
+                   neu.py (neue Reise, IDs, arten-ableiten), reisevorlage/, vendor/ (Fremdbibliotheken, siehe THIRD_PARTY.md), tests/
+betrieb/           Betrieb einer Instanz: Einarbeiten (KI je Reise, läuft aus mit O-3), Schreibweg, Veröffentlichen, Deploy,
+                   Freischalten, Wächter-Lauf, Einrichten, Vorlagen für systemd und nginx, KI-Anweisung, einstellungen.beispiel
 werkzeuge/         Werkzeuge für Inhalte aus dem Netz: Grundkarte, Punkte aus OpenStreetMap, Wasserstellen
 beispiel/reisen/   erfundene Beispielreise, Demo und Testgrundlage
 docs/              Produktbild, Alternativen und Merkmale, Design und Bausteine, Konnektor, Betrieb, Werkzeuge;

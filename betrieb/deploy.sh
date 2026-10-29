@@ -13,7 +13,10 @@ DIENST="$FR_DIENST"
 # Module, die Rückmeldedienst und Konnektor aus <FR_DIENST> laden. Neue Module, die einer davon (auch mittelbar)
 # importiert, hier ergänzen; engine/tests/test_betrieb.py prüft das.
 RM_MODULE="rueckmeldungen.py reise.py konten.py instanz.py"
-KN_MODULE="konnektor.py reise.py konten.py anmeldung.py oauth.py instanz.py"
+KN_MODULE="konnektor.py reise.py routen.py konten.py anmeldung.py oauth.py instanz.py"
+# Schreibweg (engine/schreiben.py dienst, ADR-0001 O-3): der Dienst selbst lädt nur diese Module; den Schreibvorgang führt er
+# mit dem Code der Arbeitskopie <Wurzel>-schreiben aus (dort liegt die ganze Engine auf dem Stand von main).
+SB_MODULE="schreiben.py konten.py reise.py instanz.py"
 
 [ -d "$WURZEL/reisen/$REISE" ] || { echo "Reise '$REISE' gibt es nicht."; exit 1; }
 [ -d "$FR_SEITEN" ] && [ -w "$FR_SEITEN" ] || { echo "$FR_SEITEN fehlt oder ist nicht beschreibbar (einrichten.sh, docs/betrieb.md)."; exit 1; }
@@ -33,10 +36,11 @@ mkdir -p "$ZIEL"
 # Rückmelde-Ablage der Reise (außerhalb Repo und Web-Ordner) und Code der Dienste
 mkdir -p "$FR_ABLAGE/$REISE" "$DIENST"
 chmod 750 "$FR_ABLAGE" "$FR_ABLAGE/$REISE"
-NEU_RM=""; NEU_KN=""
+NEU_RM=""; NEU_KN=""; NEU_SB=""
 for m in $RM_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_RM=1; done
 for m in $KN_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_KN=1; done
-for m in $(printf '%s\n' $RM_MODULE $KN_MODULE | sort -u); do install -m 644 "$WURZEL/engine/$m" "$DIENST/"; done
+for m in $SB_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_SB=1; done
+for m in $(printf '%s\n' $RM_MODULE $KN_MODULE $SB_MODULE | sort -u); do install -m 644 "$WURZEL/engine/$m" "$DIENST/"; done
 # Friedas Symbol (Favicon, App-Symbol); der Konnektor liest die Dateien bei jedem Abruf, kein Neustart nötig
 rsync -a --delete --chmod=D755,F644 --exclude "*.py" "$WURZEL/engine/marke/" "$DIENST/marke/"
 mkdir -p "$FR_KONNEKTOR" "$FR_KONTEN" && chmod 700 "$FR_KONNEKTOR" "$FR_KONTEN"
@@ -47,6 +51,10 @@ neustart() {
 # Der Konnektor lädt auch rueckmeldungen.py: ändert sich etwas am Rückmeldedienst, starten beide neu
 [ -n "$NEU_RM" ] && neustart "$FR_INSTANZ-rueckmeldungen" "Rückmeldedienst"
 [ -n "$NEU_RM$NEU_KN" ] && neustart "$FR_INSTANZ-konnektor" "Konnektor"
+# Der Schreibweg ist nur bei Instanzen aktiv, die ihn eingerichtet haben (einrichten.sh, docs/betrieb.md)
+if [ -n "$NEU_SB" ] && systemctl is-enabled --quiet "$FR_INSTANZ-schreiben" 2>/dev/null; then
+  neustart "$FR_INSTANZ-schreiben" "Schreibweg"
+fi
 rsync -a --delete --chmod=D755,F644 "$WURZEL/dist/$REISE/" "$ZIEL/"
 
 # Prüfung: Seite samt PWA-Hülle liegt da, die Dienste antworten (nach einem Neustart kurz warten)

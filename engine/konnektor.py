@@ -65,10 +65,14 @@ import oauth  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, REISE_ZIEL, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
+from routen import FARBEN, GRUNDFORMEN, STUFEN, TYPEN, art_schluessel  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
 
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "alternative_vorschlagen",
                      "frage_beantworten", "entscheiden", "person_einladen", "person_entfernen", "wunsch_aendern"}
+# Werkzeuge, die direkt in die Ontologie der Reise schreiben (ADR-0001, O-3; engine/schreiben.py): nur bei Instanzen mit
+# Schreibweg (KN_SCHREIBDIENST); Organisator:innen schreiben, Mitwirkende schlagen vor (Rückmeldung der Art Ergänzung)
+ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren")
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe",
                   "alternative_vorschlagen": "alternative", "auftrag_geben": "auftrag", "entscheiden": "entscheiden",
@@ -87,7 +91,7 @@ AID_MUSTER = re.compile(r"^A-\d{8}-\d{6}-[0-9a-f]{4}$")
 
 _sperre = threading.Lock()
 
-CODE_DATEIEN = ("konnektor.py", "reise.py", "rueckmeldungen.py")
+CODE_DATEIEN = ("konnektor.py", "reise.py", "rueckmeldungen.py", "routen.py")
 
 
 def code_stand():
@@ -753,7 +757,8 @@ class Handbuch:
              "alternative_vorschlagen weitergeben, vorher kurz bestätigen lassen. Ist ein Wert je Datum verschieden (z. B. "
              "Preis je Nacht), mehrere Werte mit gilt (JJJJ-MM-TT) angeben; einer ohne gilt steht für alle übrigen Tage. "
              "Das sind die Merkmale dieser Reise für diese Art (plan/arten.yaml, von den Reisenden festgelegt). Ein neues "
-             "Merkmal nur, wenn es hier nichts Passendes gibt; es wird dann der Art der Reise vorgeschlagen.",
+             "Merkmal nur, wenn es hier nichts Passendes gibt; dann wird es an der Art der Reise definiert (merkmal_definieren: "
+             "Organisator:innen legen fest, Mitwirkende schlagen vor).",
              "## Liste"]
         for k in krit:
             st = k.get("stufe", "empfohlen")   # Stufe je Reise (routen.yaml merkmale: {…: {stufe: …}}); je Unterkunftstyp als Objekt
@@ -1011,6 +1016,87 @@ class Handbuch:
 def rueckmeldung_senden(reise, eintrag):
     """An den Rückmeldedienst, damit eingang.jsonl nur einen Schreiber hat. -> (antwort, fehler)"""
     return dienst_anfrage("POST", f"{reise}/rueckmeldungen", eintrag)
+
+
+def schreibdienst():
+    """Adresse des Schreibwegs (engine/schreiben.py dienst), leer: bei dieser Instanz nicht eingerichtet."""
+    return os.environ.get("KN_SCHREIBDIENST", "").rstrip("/")
+
+
+def schreib_anfrage(reise, werkzeug_, anfrage):
+    """Direkt in die Ontologie der Reise schreiben (ADR-0001, O-3): der Schreibweg prüft Rolle, Status und Form, baut zur
+    Probe, sichert und veröffentlicht. -> (antwort, fehler)"""
+    req = urllib.request.Request(f"{schreibdienst()}/{reise}/{werkzeug_}", method="POST",
+                                 data=json.dumps(anfrage, ensure_ascii=False).encode("utf-8"),
+                                 headers={"Content-Type": "application/json", "X-Frieda-Dienst": konten.dienst_geheimnis()})
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return json.loads(r.read()), None
+    except urllib.error.HTTPError as e:
+        try:
+            return None, json.loads(e.read()).get("fehler", f"Fehler {e.code}")
+        except (json.JSONDecodeError, AttributeError):
+            return None, f"Fehler {e.code}"
+    except (urllib.error.URLError, OSError):
+        return None, "Der Schreibweg ist nicht erreichbar, bitte später noch einmal"
+
+
+def ontologie_text(name, args):
+    """Vorschlag oder Eintrag in Worten: welche Art, welches Merkmal, welche Felder."""
+    felder = ("art", "bezeichnung", "grundform", "farbe", "beschreibung", "summiert", "merkmal", "typ", "werte", "veraenderlich",
+              "stufe", "einheit", "hilfe", "frage", "auch", "grund")
+    teile = []
+    for f in felder:
+        v = args.get(f)
+        if v in (None, "", []):
+            continue
+        teile.append(f"{f}: {' | '.join(map(str, v)) if isinstance(v, list) else v}")
+    return ("Art festlegen" if name == "art_definieren" else "Merkmal festlegen") + " – " + "; ".join(teile)
+
+
+def ontologie_werkzeug(reise, d, wer, zugang, name, args):
+    """Werkzeuge art_definieren und merkmal_definieren (ADR-0001, O-3): Organisator:innen schreiben über den Schreibweg direkt in
+    plan/arten.yaml der Reise; Mitwirkende geben eine Rückmeldung der Art Ergänzung an die Art. -> (Text, ist_fehler)"""
+    if not schreibdienst():
+        return ("Bei dieser Instanz ist der Schreibweg nicht eingerichtet (engine/schreiben.py dienst, docs/betrieb.md); Arten und "
+                "Merkmale ändert bis dahin eine Sitzung im Reisen-Repo."), True
+    if not all(isinstance(v, (str, bool, list, type(None))) for v in args.values()):
+        return "Alle Angaben müssen Text, ja/nein oder Listen von Text sein.", True
+    if darf(wer["rolle"], "organisator"):
+        if (nein := recht(wer["rolle"], d, "ontologie")):
+            return nein, True
+        if not wer["name"]:
+            return ("Das geht nur mit dem persönlichen Link: Jede Änderung an der Ontologie gehört genau einer Person, und dieser "
+                    "Link kennt keinen Namen."), True
+        if name == "merkmal_definieren" and not args.get("trotzdem"):
+            art = str(args.get("art") or "").strip().lower()
+            krit = ((d.get("route") or {}).get("merkmale") or {}).get(art) or []
+            key = art_schluessel(str(args.get("merkmal") or args.get("bezeichnung") or ""))
+            if key and key not in {k["id"] for k in krit}:
+                aehnlich = aehnliches_merkmal(key, krit)
+                if aehnlich:
+                    return (f"Nicht angelegt: Bei der Art {art} gibt es schon ein ähnliches Merkmal, {aehnlich['id']} – {aehnlich['name']}. "
+                            "Das vorhandene nutzen oder mit merkmal_definieren ändern; ist es wirklich ein anderes, noch einmal mit "
+                            "trotzdem = true."), True
+        antwort, fehler = schreib_anfrage(reise, name, {"person": zugang.get("person"), "name": wer["name"], "rolle": wer["rolle"],
+                                                       "args": {k: v for k, v in args.items() if k not in ("name", "trotzdem")}})
+        if fehler:
+            return f"Nicht eingetragen: {fehler}", True
+        return (f"Eingetragen und gesichert ({wer['name']}): {antwort.get('text', '')} Es gilt ab jetzt; die Seite und die "
+                "Werkzeuge merkmale und zeige zeigen den neuen Stand, sobald veröffentlicht ist (wenige Minuten)."), False
+    if (nein := recht(wer["rolle"], d, "rueckmeldung")):
+        return nein, True
+    name_ = wer["name"] or args.get("name")
+    if not isinstance(name_, str) or not name_.strip():
+        return "Name fehlt: bitte die Person nach ihrem Vornamen fragen.", True
+    ziel = art_schluessel(str(args.get("art") or args.get("bezeichnung") or "")) or "allgemein"
+    e, fehler = rueckmeldung_senden(reise, {"name": name_, "art": "Ergänzung", "ziel": ziel[:rm.LAENGE["ziel"]],
+                                            "text": ontologie_text(name, args)[:rm.LAENGE["text"]], "quelle": "über Claude"})
+    if fehler:
+        return f"Nicht gespeichert: {fehler}", True
+    organisator = " und ".join(organisator_namen(d)) or "ein:e Organisator:in"
+    return (f"Vorschlag {e['id']} gespeichert. Arten und Merkmale legen Organisator:innen fest; {organisator} sieht den Vorschlag "
+            "unter rueckmeldungen und kann ihn im Gespräch übernehmen."), False
 
 
 def dienst_anfrage(methode, pfad, daten):
@@ -1965,6 +2051,51 @@ AUFTRAG = {"name": "auftrag_geben", "description": "Nur für Organisator:innen: 
                                 "Entscheidung einer anderen Organisator:in, wird daraus eine offene Frage; sonst leer lassen."},
                "auftrag": {"type": "string", "description": "was geändert werden soll, max. 4000 Zeichen"}},
                "required": ["auftrag"]}}
+# Ontologie der Reise im Gespräch (ADR-0001, O-3; docs/ontologie.md): die Software kennt nur die Form, die Reise ihre Arten
+ART_DEFINIEREN = {"name": "art_definieren", "description": "Eine Art dieser Reise anlegen oder ändern (Hotel, Refugi, Ryokan, "
+                  "Zugfahrt, Reiseteil …). Organisator:innen schreiben damit direkt in die Ontologie der Reise (plan/arten.yaml): "
+                  "gilt sofort, die Seite zeigt es in wenigen Minuten. Mitwirkende schlagen damit vor (wird eine Rückmeldung). "
+                  "Vorher kurz bestätigen lassen, was genau eingetragen wird; beim Anlegen fragen, was zu jeder Sache dieser Art "
+                  "bekannt sein muss, und die Merkmale danach mit merkmal_definieren anlegen. Eine Art hat genau eine Grundform: "
+                  "aufenthalt (an einem Ort sein, übernachten), bewegung (von Ort zu Ort), folge (ein Abschnitt aus mehreren Tagen). "
+                  "Die Grundform lässt sich später nicht ändern.",
+                  "inputSchema": {"type": "object", "properties": {
+                      "art": {"type": "string", "description": "Schlüssel der Art (klein, ohne Umlaute, z. B. refugi); leer: aus der "
+                              "Bezeichnung. Zum Ändern den vorhandenen Schlüssel (aus merkmale)"},
+                      "bezeichnung": {"type": "string", "description": "Anzeigename, z. B. Refugi (beim Anlegen nötig)"},
+                      "grundform": {"type": "string", "enum": list(GRUNDFORMEN), "description": "beim Anlegen nötig"},
+                      "farbe": {"type": "string", "enum": list(FARBEN),
+                                "description": "Farbe auf Karte, Legende und Vergleich; Aufenthalte bekommen sonst die nächste freie"},
+                      "beschreibung": {"type": "string", "description": "ein Satz, was diese Art bei dieser Reise meint"},
+                      "summiert": {"type": "boolean", "description": "nur Bewegung aus eigener Kraft (Wandern, Rad): Gehzeit, Länge, "
+                                   "Höhenmeter werden summiert und als berechnete Merkmale angelegt"},
+                      "grund": {"type": "string", "description": "warum (steht im Verlauf)"},
+                      "name": NAME_FELD}}}
+MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "Ein Merkmal einer Art dieser Reise anlegen oder ändern: "
+                      "umbenennen, Typ und Werte, veränderlich (braucht dann ein Prüfdatum), Stufe (pflicht | empfohlen | angeboten; "
+                      "aus schaltet es für diese Reise ab), Hilfe zum Recherchieren, Frage an die Person, weitere Namen. "
+                      "Organisator:innen schreiben damit direkt (gilt sofort, Seite in wenigen Minuten), Mitwirkende schlagen vor. "
+                      "Vorher merkmale aufrufen (kein Doppeltes anlegen) und kurz bestätigen lassen, was genau eingetragen wird.",
+                      "inputSchema": {"type": "object", "properties": {
+                          "art": {"type": "string", "description": "Schlüssel der Art, z. B. refugi (aus merkmale)"},
+                          "merkmal": {"type": "string", "description": "Schlüssel des Merkmals (klein, z. B. stornierung); leer: aus "
+                                      "der Bezeichnung. Zum Ändern den vorhandenen Schlüssel"},
+                          "bezeichnung": {"type": "string", "description": "Anzeigename, z. B. Stornierung (beim Anlegen nötig)"},
+                          "typ": {"type": "string", "enum": sorted(TYPEN), "description": "Vorgabe text; auswahl braucht werte"},
+                          "werte": {"type": "array", "items": {"type": "string"}, "description": "mögliche Antworten bei typ auswahl, "
+                                    "z. B. [kostenlos, gegen Gebühr, nicht möglich, unklar]"},
+                          "veraenderlich": {"type": "boolean", "description": "Preise, Zeiten, Öffnungszeiten: der Wert braucht ein Prüfdatum"},
+                          "stufe": {"type": "string", "enum": list(STUFEN), "description": "pflicht und empfohlen (Vorgabe) zählen als "
+                                    "„fehlt noch“; angeboten nur, wenn es jemanden interessiert; aus gilt für diese Reise nicht"},
+                          "einheit": {"type": "string", "description": "hinter Zahlen, z. B. km oder h"},
+                          "hilfe": {"type": "string", "description": "wie man den Wert findet (Website, Buch, Anruf)"},
+                          "frage": {"type": "string", "description": "wonach die Person gefragt wird, wenn der Wert fehlt"},
+                          "auch": {"type": "array", "items": {"type": "string"}, "description": "weitere Namen, unter denen dasselbe gemeint ist"},
+                          "trotzdem": {"type": "boolean", "description": "true, wenn ein ähnliches Merkmal gemeldet wurde und es wirklich "
+                                       "ein anderes ist"},
+                          "grund": {"type": "string", "description": "warum (steht im Verlauf)"},
+                          "name": NAME_FELD},
+                          "required": ["art"]}}
 
 
 ENTSCHEIDEN = {"name": "entscheiden", "description": "Nur für Organisator:innen: im Gespräch über eine Option einer Wahlstelle entscheiden "
@@ -2075,7 +2206,9 @@ def anleitung(zugang, d):
     z = [f"Aufgabe: Du hilfst bei der Reise „{rs.get('titel', zugang['reise'])}“ ({rs.get('untertitel', '')})"
          + (f", Status {status}" if status else "") + ". Du liest vor, schlägst vor, prüfst und gibst Eingaben weiter; "
          f"{namen} {'entscheiden' if len(organisator) > 1 else 'entscheidet'}, du nie.",
-         "Grenzen: Über den Konnektor ändert sich nichts sofort (Ausnahme Aufgaben AG-…); sag nie, etwas sei schon geändert. "
+         "Grenzen: Über den Konnektor ändert sich nichts sofort (Ausnahmen: Aufgaben AG-…"
+         + (", Arten und Merkmale über art_definieren und merkmal_definieren" if schreibdienst() else "")
+         + "); sag nie, etwas sei schon geändert. "
          "Status gewählt/verworfen/ersetzt und Einstellungen setzen nur Organisator:innen. Nichts erfinden: Herkunft nennen, Annahmen "
          "markieren, veränderliche Angaben (Fahrpläne, Öffnungszeiten, Preise) mit Prüfdatum. Vor jedem Eintragen kurz "
          "bestätigen lassen, was genau eingetragen wird. Die Regeln prüft der Dienst; lehnt er etwas ab, gib den Grund weiter.",
@@ -2102,10 +2235,17 @@ def anleitung(zugang, d):
                     "mit person_entfernen nimmst du jemanden heraus. " if "konto_id" in zugang else
                     "person_einladen ein (Rolle und Link gelten sofort). ")
                  + "Fragen (F-…) kannst du mit frage_beantworten beantworten. "
-                 "Den Stand zeigt rueckmeldungen.")
+                 "Den Stand zeigt rueckmeldungen."
+                 + (" Die Ontologie der Reise (welche Arten von Unterkünften, Strecken und Reiseteilen es gibt und was zu jeder "
+                    "bekannt sein muss) legt die Person im Gespräch fest und schärft sie: art_definieren und merkmal_definieren "
+                    "schreiben sofort in die Reise (merkmale zeigt den Stand). Frag bei einer neuen Art, was zu jeder Sache dieser "
+                    "Art bekannt sein muss und was davon sich ändern kann; bestätige vor dem Eintragen den Wortlaut."
+                    if schreibdienst() else ""))
     elif wer["rolle"] == "mitwirkend":
         z.append(f"{name} (Mitwirkende:r). Ihre Hinweise sind Vorschläge, keine Entscheidungen: Entscheiden und Aufträge geben "
                  f"kann sie nicht, das bleibt bei {namen}. Offene Fragen beantwortet sie mit frage_beantworten. "
+                 + ("Arten und Merkmale der Reise kann sie mit art_definieren und merkmal_definieren vorschlagen (wird eine "
+                    "Rückmeldung an die Organisator:innen). " if schreibdienst() else "")
                  + ("Sie darf Personen einladen (person_einladen), höchstens mit der Rolle mitwirkend. " if kann_einladen else "")
                  + ("" if wer["name"] else "Für Rückmeldungen und Aufgaben brauchst du ihren Vornamen: einmal fragen, "
                     "nicht raten, dann im Gespräch beibehalten. ")
@@ -2148,6 +2288,8 @@ def werkzeug(zugang, name, args):
     status, bausteine = zustand_von(d)
     if name in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[name] not in bausteine:
         return f"Der Baustein „{LESE_BAUSTEIN[name]}“ ist bei dieser Reise ausgeschaltet.", True
+    if name in ONTOLOGIE_WERKZEUGE:
+        return ontologie_werkzeug(reise, d, wer, zugang, name, args)
     aktion = SCHREIB_AKTION.get(name)
     if aktion == "rueckmeldung" and str(args.get("art")) == "Wunsch":
         aktion = "wunsch"
@@ -2327,9 +2469,14 @@ def werkzeuge_fuer(zugang):
     wer = wer_spricht(zugang, d) or {"rolle": "gast"}
     _, bausteine = zustand_von(d)
     werkzeuge = []
-    for w in WERKZEUGE + [AUFTRAG, ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN]:
+    ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN] if schreibdienst() else []
+    for w in WERKZEUGE + [AUFTRAG, ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN] + ontologie:
         n = w["name"]
         if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:
+            continue
+        if n in ONTOLOGIE_WERKZEUGE:   # Organisator:innen schreiben, Mitwirkende schlagen vor (als Rückmeldung)
+            if recht(wer["rolle"], d, "ontologie") is None or recht(wer["rolle"], d, "rueckmeldung") is None:
+                werkzeuge.append(w)
             continue
         if n in SCHREIB_AKTION:
             aktionen = ["rueckmeldung", "wunsch"] if n == "rueckmeldung_geben" else [SCHREIB_AKTION[n]]
