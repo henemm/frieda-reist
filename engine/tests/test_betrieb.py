@@ -600,6 +600,7 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     assert f"ExecStart={tmp_path}/repo/frieda/betrieb/veroeffentlichen.sh" in einh["probe-veroeffentlichen.service"]
     assert f"Environment=FR_WURZEL={tmp_path}/repo" in einh["probe-veroeffentlichen.service"]
     assert "User=reisen" in einh["probe-veroeffentlichen.service"] and "/home/reisen/.local/bin" in einh["probe-veroeffentlichen.service"]
+    assert "Nice=10" in einh["probe-veroeffentlichen.service"] and "IOSchedulingClass=best-effort" in einh["probe-veroeffentlichen.service"]
     assert "Environment=KN_PORT=8772" in einh["probe-konnektor.service"]
     assert "Environment=KN_BASIS=https://example.invalid/probe-mcp" in einh["probe-konnektor.service"]
     assert f"ExecStart=/usr/bin/python3 {srv}/_dienst/konnektor.py dienst" in einh["probe-konnektor.service"]
