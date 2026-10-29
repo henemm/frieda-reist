@@ -431,7 +431,7 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
     reise_dir = Path(reise_dir)
     strecken_arten = dict(strecken_arten or {})
     meldungen = []
-    roh = sb.routen_laden(reise_dir)
+    roh = sb.routen_laden(reise_dir) if (reise_dir / "plan" / "routen.yaml").exists() else None   # ohne Plan (Status idee): nur arten.yaml und reise.json
 
     def typ_zu_art(knoten, wo):
         if not isinstance(knoten, dict) or knoten.get("typ") is None:
@@ -444,19 +444,19 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
             meldungen.append(f"{wo}: typ „{knoten['typ']}“ entfernt (art {knoten['art']} steht schon)")
         del knoten["typ"]
 
-    for uid, u in (roh.get("unterkuenfte") or {}).items():
+    for uid, u in ((roh or {}).get("unterkuenfte") or {}).items():
         typ_zu_art(u, uid)
-    for tid, t in (roh.get("tage") or {}).items():
+    for tid, t in ((roh or {}).get("tage") or {}).items():
         if isinstance(t, dict):
             typ_zu_art(t.get("nacht"), f"{tid} nacht")
-    for sid, st in (roh.get("strecken") or {}).items():
+    for sid, st in ((roh or {}).get("strecken") or {}).items():
         if isinstance(st, dict) and not st.get("art"):
             if sid in strecken_arten:
                 st["art"] = strecken_arten[sid]
                 meldungen.append(f"{sid}: art {strecken_arten[sid]} (angegeben)")
             else:
                 meldungen.append(f"OFFEN {sid}: keine Art; mit --strecke {sid}=<art> angeben (der Bau verlangt sie)")
-    for vid, w in (roh.get("wahlstellen") or {}).items():
+    for vid, w in ((roh or {}).get("wahlstellen") or {}).items():
         if not isinstance(w, dict):
             continue
         alt_art, bereich = w.get("art"), w.get("bereich")
@@ -469,7 +469,7 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
                 w.insert(list(w.keys()).index("bereich"), "art", bereich)
                 meldungen.append(f"{vid}: bereich {bereich} → art {bereich}")
             del w["bereich"]
-    if schreiben:
+    if schreiben and roh is not None:
         sb.routen_speichern(reise_dir, roh)
 
     # arten.yaml: rolle kosten am Merkmal preis (Typ geld) der Aufenthalts-Arten
