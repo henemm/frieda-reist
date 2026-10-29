@@ -62,9 +62,17 @@ for (const breite of [390, 1200]) {
     await knopf.click();
     const box = p.locator(`#main [data-vgl="${id}"]`).first();
     const sichtbar = await box.isVisible();
-    const spalten = await box.locator(breite < 700 ? ".wm-karte" : "thead th").count();
-    await box.locator("[data-vgl-nur]").check();
-    vergleich[breite] = {route: h, sichtbar, spalten: breite < 700 ? spalten : spalten - 1, offen: await p.locator(`[data-vgl-auf="${id}"]`).first().getAttribute("aria-expanded")};
+    // Handy: Karten (höchstens 2); Rechner: Tabelle mit je Möglichkeit einer Zeile, alle gültigen (29.10.2026)
+    const spalten = await box.locator(breite < 700 ? ".wm-karte" : "tbody tr.wm-zeile").count();
+    let sortiert = null, aufgeklappt = null;
+    if (breite >= 700) {
+      await box.locator("[data-vgl-sort]").first().click();
+      sortiert = await p.locator(`#main [data-vgl="${id}"] th[aria-sort]`).count();
+      await p.locator(`#main [data-vgl="${id}"] tr.wm-zeile`).first().click();
+      aufgeklappt = await p.locator(`#main [data-vgl="${id}"] tr.wm-mehr`).count();
+    }
+    await p.locator(`#main [data-vgl="${id}"] [data-vgl-nur]`).first().check();
+    vergleich[breite] = {route: h, sichtbar, spalten, sortiert, aufgeklappt, offen: await p.locator(`[data-vgl-auf="${id}"]`).first().getAttribute("aria-expanded")};
     break;
   }
   await ctx.close();

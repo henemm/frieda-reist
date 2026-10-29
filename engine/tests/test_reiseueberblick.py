@@ -70,7 +70,7 @@ def test_reiseueberblick(tmp_path, browser):
         assert a["inZeile"] == 0, a["inZeile"]
         assert a["karte"] and a["karte"]["breite"] == a["karte"]["kasten"] and a["karte"]["wege"] > 100, a["karte"]
         assert a["zurueck"]["tag"] == "T-03" and a["zurueck"]["sichtbar"], a["zurueck"]
-        assert a["unterkunft"] == {"inNacht": True, "reiter": "Reise"}, a["unterkunft"]
+        assert a["unterkunft"] == {"inNacht": True, "reiter": "Reise", "web": "https://example.org/pension-burgblick", "selbst": 0}, a["unterkunft"]
         assert [x[1] for x in a["buchen"]] == ["gebucht", "nicht gebucht", "nicht gebucht"], a["buchen"]
         assert a["ueberPlan"] > 0
         assert [x[0] for x in a["tage"]] == ["#T-01", "#T-02", "#T-03", "#T-04"]

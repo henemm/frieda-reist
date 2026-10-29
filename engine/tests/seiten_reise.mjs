@@ -65,7 +65,10 @@ for (const breite of [390, 1300]) {
   // Heimat der Unterkunft: der Abschnitt „Nacht“ ihres Tags; Zu tun mit „Zu buchen“ je Nacht
   await p.evaluate(() => { location.hash = "U-02"; });
   await p.waitForSelector(".tagseite");
-  a.unterkunft = await p.evaluate(() => ({inNacht: !!document.querySelector(".ebene-nacht #U-02"), reiter: document.querySelector("#nav a.on").textContent}));
+  a.unterkunft = await p.evaluate(() => ({inNacht: !!document.querySelector(".ebene-nacht #U-02"), reiter: document.querySelector("#nav a.on").textContent,
+    // Webseite aus dem Kontakt nach außen, kein Link der Nacht auf sich selbst (29.10.2026)
+    web: (document.querySelector('.ebene-nacht a.web-link[target="_blank"]') || {}).href || null,
+    selbst: document.querySelectorAll('.ebene-nacht a[href="#U-02"]').length}));
   await p.evaluate(() => { location.hash = "offen"; });
   await p.waitForSelector("#zu-buchen");
   a.buchen = await p.evaluate(() => [...document.querySelectorAll("#zu-buchen .wzeile")].map(z => [z.getAttribute("href"), z.querySelector(".chip").textContent]));

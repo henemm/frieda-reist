@@ -361,9 +361,27 @@ details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
 .pico .wm-tab tbody th[scope=row]{position:sticky;left:0;z-index:1;background:var(--card);box-shadow:1px 0 0 var(--line)}
 .pico .wm-tab :is(th,td).an{background:var(--acc2)}
 .wm-karten{display:grid;gap:10px}
+/* Tabelle mit Möglichkeiten als Zeilen (Rechner): Kopf sortiert, Zeile klappt auf */
+.pico .wm-sort{all:unset;cursor:pointer;font-weight:700}
+.pico .wm-sort:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:4px}
+.pico .wm-tab th[aria-sort] .wm-sort::after{content:" ↑"}
+.pico .wm-tab tr.wm-zeile{cursor:pointer}
+.pico .wm-tab tr.wm-zeile:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
+@media (hover:hover){.pico .wm-tab tr.wm-zeile:hover>:is(th,td){background:var(--tint)}}
+.pico .wm-tab tr.wm-zeile.an>:is(th,td){background:var(--acc2)}
+.pico .wm-tab tbody th[scope=row]{white-space:normal;min-width:11em}
+.wm-pfeil{display:inline-block;width:1em;color:var(--mut);transition:transform .15s}
+tr.auf .wm-pfeil{transform:rotate(90deg)}
+.wm-titel{display:block;font-weight:700}
+.wm-unter{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:4px 0 0 1em}
+.pico .wm-tab:has(.wm-zeile){font-size:0.875rem}
+.pico .wm-tab:has(.wm-zeile) :is(td,th){padding:9px 10px}
+.pico .wm-tab tr.wm-mehr>td{background:var(--tint);padding:4px 14px 12px}
+.web-link{font-weight:600;white-space:nowrap}
+.wm-einzeln{margin-top:10px}
 .wm-karte{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card)}
 .wm-karte.an{border-color:var(--acc);box-shadow:inset 3px 0 0 var(--acc)}
-@media (min-width:700px){.wm-karten,.wm-ansicht{display:none}.wm.ohne-tabelle .wm-karten{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
+@media (min-width:700px){.wm-karten,.wm-ansicht,.wm-wahl,.wm-anzahl,.pico details.wm-einzeln{display:none}.wm.ohne-tabelle .wm-karten{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
 @media (max-width:699px){.wm[data-ansicht=karten] .wm-tabelle,.wm[data-ansicht=tabelle] .wm-karten{display:none}
   .pico .wm-tab th[scope=row]{white-space:normal;min-width:5.5em;max-width:6.5em;font-size:0.7812rem;padding-left:6px;padding-right:6px}
   .pico .wm-tab td,.pico .wm-tab thead th{min-width:7.5em;padding-left:7px;padding-right:7px}}
@@ -657,8 +675,9 @@ details.neben>summary{font-weight:700;padding:10px 2px;color:var(--warn)}
 @media (min-width:1100px) and (pointer:fine){
   .tagseite{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,25rem);gap:36px 44px;align-items:start}
   .tag-oben{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:20px;align-items:start}
-  .tag-oben,.tagseite>.blaettern{grid-column:1/-1}
-  .tag-lesen,.tag-spalte{display:flex;flex-direction:column;gap:36px;order:2}
+  .tag-oben,.tagseite>.blaettern,.tagseite>.nacht-voll{grid-column:1/-1}
+  .tag-lesen,.tag-spalte{display:flex;flex-direction:column;gap:36px;order:3}
+  .tagseite>.nacht-voll{order:2}
   .tagseite:not(:has(>.tag-lesen))>.tag-spalte{grid-column:1/-1}
 }
 
@@ -894,7 +913,7 @@ function zid(id) {
 }
 /* Bausteine nach Ebenen (Designsystem, frieda-reist#18, docs/design.md). Jede Ansicht setzt sich aus ihnen zusammen,
    statt dieselbe Sache selbst zu zeichnen; die Stile stehen im <style> in derselben Ordnung.
-   Atome:     symbol, chip (Zustand), Etikett (CSS), merkmalWert (Wert mit Herkunft), zid (Kennung), planMarke
+   Atome:     symbol, chip (Zustand), Etikett (CSS), merkmalWert (Wert mit Herkunft), zid (Kennung), planMarke, webLink
    Moleküle:  kennzahlLeiste, merkmalListe, reiseText (Reisetext mit Merkmallisten), reiterGruppe, ebeneKopf, dingEtikett,
               listenZeile, zeilenKarte, rmEintrag, agEintrag, eintragGruppen, kartenLegende, umschalter, kontoKnopf,
               nameFeld, fehltZeile, optionChips, standLeiste
@@ -1161,7 +1180,7 @@ function unterkunftKarte(id) {
   const k = el("div", {class: "karte ziel", id, "data-ziel": id},
     dingEtikett(["Unterkunft", (R.kategorien || {})[u.kategorie]].filter(Boolean).join(" · "), u.kategorie, "unterkunft"), el("div", {class: "k"}, u.name, zid(id)));
   k.append(el("div", {class: "z"}, [u.typ, ortName(u.ort)].filter(Boolean).join(" · ")));
-  if (u.kontakt) k.append(el("div", {class: "z"}, el("b", {}, "Kontakt: "), u.kontakt));
+  if (u.kontakt) k.append(el("div", {class: "z"}, el("b", {}, "Kontakt: "), u.kontakt.replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ") || "–", " ", webLink(webAus(u.kontakt), true)));
   k.append(el("div", {class: "chips"}, chip(u.buchung === "offen" ? "offen" : "plan", "Buchung: " + u.buchung), u.frage ? chip("leise", u.frage, {href: "#" + u.frage}) : null));
   if (u.naechte.length) {
     const z = el("div", {class: "z"}, el("b", {}, "Nächte: "));
@@ -1252,11 +1271,21 @@ const gueltigeOptionen = w => w.optionen.filter(o => !weg(o.status));
 const stufeVon = k => typeof k.stufe === "object" && k.stufe ? (k.stufe["*"] || "empfohlen") : (k.stufe || "empfohlen");
 const zaehlend = w => w.kriterien.filter(k => !["angeboten", "aus"].includes(stufeVon(k)));
 const gefuellt = (w, o) => zaehlend(w).filter(k => o.merkmale[k.id]).length;
+// Webseite aus einem Kontakt-Text („https://…“, „www.…“ oder „name.com“), sonst null; für Unterkunft und Möglichkeit
+const WEB = /https?:\/\/[^\s;,()<>]+|\bwww\.[^\s;,()<>]+|\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:com|net|org|es|de|eu|it|fr|at|ch|uk|jp|kr|info|travel|cat)(?:\/[^\s;,()<>]*)?/i;
+function webAus(text) {
+  const m = WEB.exec(String(text || "").replace(/\S+@\S+/g, ""));   // E-Mail-Adressen sind keine Webseite
+  return m ? (/^https?:/i.test(m[0]) ? m[0] : "https://" + m[0]).replace(/[.)]+$/, "") : null;
+}
+const webseite = o => (o.unterkuenfte || []).map(u => R.unterkuenfte[u] && webAus(R.unterkuenfte[u].kontakt)).find(Boolean) || null;
+// Atom Webseite: Link nach außen in neuem Fenster; fehlt sie, ein leiser Hinweis (ergänzen im Gespräch mit Frieda)
+const webLink = (x, ohneHinweis) => { const u = typeof x === "string" ? x : x ? webseite(x) : null;
+  return u ? el("a", {class: "web-link", href: u, target: "_blank", rel: "noopener"}, "Webseite ↗") : ohneHinweis ? null : el("span", {class: "z klein"}, "Webseite fehlt"); };
 function vglZustand(w, liste, datum) {
   const s = vglSchluessel(w, liste, datum);
   if (!VGL.has(s)) {
     const g = gueltigeOptionen(w).slice().sort((a, b) => (b.aktiv - a.aktiv) || (gefuellt(w, b) - gefuellt(w, a)));
-    VGL.set(s, {offen: !!liste, wahl: g.slice(0, vglMax()).map(o => o.id), nur: false, ansicht: "karten"});
+    VGL.set(s, {offen: !!liste, wahl: g.slice(0, vglMax()).map(o => o.id), nur: false, ansicht: "karten", sort: null, auf: []});
   }
   return VGL.get(s);
 }
@@ -1284,7 +1313,7 @@ function wahlVergleich(w, liste, datum) {
   const zelle = (k, v) => v || !k.id.startsWith("_") ? merkmalWert(v, datum) : el("span", {class: "mk-nichts", "aria-label": "keine"}, "–");
   box.append(el("div", {class: "wm-steuer"},
     el("label", {}, el("input", {type: "checkbox", "data-vgl-nur": s, checked: z.nur}), "nur Unterschiede"),
-    el("span", {class: "z klein"}, `${opts.length} von ${g.length} im Vergleich, höchstens ${max} nebeneinander`
+    el("span", {class: "z klein wm-anzahl"}, `${opts.length} von ${g.length} im Vergleich, höchstens ${max} nebeneinander`
       + (datum && opts.some(o => Object.values(o.merkmale).some(v => v.je_datum)) ? ` · Werte für die Nacht vom ${tagKurz(datum)}` : ""))));
   // Auswahl nur, wenn es mehr als zwei gibt; die Zahl sagt, wie viele Merkmale schon belegt sind
   if (g.length > 2) box.append(el("fieldset", {class: "wm-wahl"}, el("legend", {class: "unsichtbar"}, "Möglichkeiten im Vergleich"),
@@ -1295,11 +1324,30 @@ function wahlVergleich(w, liste, datum) {
   if (!belegt.length) box.append(el("p", {class: "meldung"}, "Zu diesen Möglichkeiten sind noch keine Merkmale erfasst."));
   if (!zeilen.length) box.classList.add("ohne-tabelle");   // nichts zu tabellieren: Karten auch am Rechner
   const an = o => o.aktiv && !w.optionen.every(x => x.aktiv) ? "an" : null;
+  // Tabelle (Rechner, Alternativen D1, Product Owner 29.10.2026): je Möglichkeit eine Zeile mit allen gültigen
+  // Möglichkeiten, Spalten für die Merkmale und die Webseite; Spaltenkopf sortiert, Klick auf die Zeile klappt die
+  // Einzelheiten der Möglichkeit auf. Die Zeile ist kein Link auf sich selbst.
+  const sortWert = (kid, o) => { if (kid === "_titel") return o.titel.toLowerCase();
+    const t = text(werte(o)[kid]); const b = t && betrag(t); return b ? b.von : t ? t.toLowerCase() : null; };
+  const reihe = z.sort ? g.slice().sort((a, b) => { const x = sortWert(z.sort, a), y = sortWert(z.sort, b);
+    if (x === null || y === null) return (x === null) - (y === null);
+    return typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), "de"); }) : g;
+  const spaltenKopf = (kid, name) => el("th", {scope: "col", "aria-sort": z.sort === kid ? "ascending" : null},
+    el("button", {type: "button", class: "wm-sort", "data-vgl-sort": s + "|" + kid}, name));
+  // Erste Spalte: Name, „vorläufig im Plan“ (nur dort ein Zustand, sonst stünde in jeder Zeile „vorgeschlagen“), Webseite
+  const imPlan = o => o.aktiv && !w.optionen.every(x => x.aktiv) ? chip("", w.art === "unterwegs" ? "Standard" : (w.offen ? "vorläufig im Plan" : "im Plan")) : null;
   if (zeilen.length) box.append(el("div", {class: "tabelle wm-tabelle"}, el("table", {class: "vergleich mk wm-tab"},
-    el("thead", {}, el("tr", {}, el("th", {}, ""), opts.map(o => el("th", {class: an(o)}, kopf(o))))),
-    el("tbody", {}, zeilen.map(k => el("tr", {}, el("th", {scope: "row"}, k.name), opts.map(o => el("td", {class: an(o)}, zelle(k, werte(o)[k.id])))))))));
+    el("thead", {}, el("tr", {}, spaltenKopf("_titel", "Möglichkeit"), zeilen.map(k => spaltenKopf(k.id, k.name)))),
+    el("tbody", {}, reihe.flatMap(o => { const auf = z.auf.includes(o.id);
+      return [el("tr", {class: ["wm-zeile", an(o), auf ? "auf" : ""].filter(Boolean).join(" "), id: o.id, "data-ziel": o.id, tabindex: "0",
+          "aria-expanded": String(auf), "data-vgl-zeile": s + "|" + o.id},
+        el("th", {scope: "row"}, el("span", {class: "wm-titel"}, el("span", {class: "wm-pfeil", "aria-hidden": "true"}, "›"), o.titel),
+          el("span", {class: "wm-unter"}, imPlan(o), webLink(o, true))),
+        zeilen.map(k => el("td", {}, zelle(k, werte(o)[k.id])))),
+        auf ? el("tr", {class: "wm-mehr"}, el("td", {colspan: String(zeilen.length + 1)}, optionBlock(w, o, true, true))) : null].filter(Boolean); })))));
   box.append(el("div", {class: "wm-karten"}, opts.map(o => el("div", {class: "wm-karte" + (an(o) ? " an" : "")},
-    el("div", {class: "k"}, link(o.id, o.titel)), optionChips(w, o), merkmalListe(zeilen, werte(o), datum) || el("div", {class: "z klein"}, belegt.length ? "Keine Unterschiede in den gezeigten Merkmalen." : "Noch keine Merkmale.")))));
+    el("div", {class: "k"}, o.titel), optionChips(w, o), merkmalListe(zeilen, werte(o), datum) || el("div", {class: "z klein"}, belegt.length ? "Keine Unterschiede in den gezeigten Merkmalen." : "Noch keine Merkmale."),
+    webLink(o)))));
   if (belegt.length > zeilen.length) box.append(el("p", {class: "z klein"}, `${belegt.length - zeilen.length} gleiche Zeilen ausgeblendet.`));
   return box;
 }
@@ -1311,6 +1359,13 @@ function vglNeu(id, fokus) {
   if (fokus) { const f = document.querySelector(fokus); if (f) f.focus(); }
 }
 document.addEventListener("click", e => {
+  const so = e.target.closest("[data-vgl-sort]");
+  if (so) { const [id, kid] = so.dataset.vglSort.split("|"), z = VGL.get(id); z.sort = z.sort === kid ? null : kid;
+    return vglNeu(id, `[data-vgl-sort="${CSS.escape(so.dataset.vglSort)}"]`); }
+  const ze = !e.target.closest("a, button, input, .wm-mehr") && e.target.closest("[data-vgl-zeile]");
+  if (ze) { const [id, oid] = ze.dataset.vglZeile.split("|"), z = VGL.get(id);
+    z.auf = z.auf.includes(oid) ? z.auf.filter(x => x !== oid) : [...z.auf, oid];
+    return vglNeu(id, `[data-vgl-zeile="${CSS.escape(ze.dataset.vglZeile)}"]`); }
   const b = e.target.closest("[data-vgl-auf], [data-vgl-opt], [data-vgl-ansicht]");
   if (!b) return;
   if (b.dataset.vglAuf) {
@@ -1328,6 +1383,9 @@ document.addEventListener("click", e => {
     if (z.wahl.length > vglMax()) z.wahl.splice(Math.max(0, z.wahl.findIndex(x => !imPlan(x) && x !== wert)), 1);
   }
   vglNeu(id, `[${b.dataset.vglOpt ? "data-vgl-opt" : "data-vgl-ansicht"}="${CSS.escape(b.dataset.vglOpt || b.dataset.vglAnsicht)}"]`);
+});
+document.addEventListener("keydown", e => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("[data-vgl-zeile]")) { e.preventDefault(); e.target.click(); }
 });
 document.addEventListener("change", e => {
   const c = e.target.closest("[data-vgl-nur]");
@@ -1352,8 +1410,9 @@ function optionChips(w, o) {
     o.aktiv && !w.optionen.every(x => x.aktiv) ? chip("", w.art === "unterwegs" ? "Standard" : (w.offen ? "vorläufig im Plan" : "im Plan")) : null);
 }
 // ohneMerkmale: Die Merkmale stehen schon im Wahl-Modul darüber
-function optionBlock(w, o, ohneMerkmale) {
-  const b = el("div", {class: "option ziel" + (o.aktiv ? " aktiv" : ""), id: o.id, "data-ziel": o.id});
+// ohneId: in der aufgeklappten Zeile der Tabelle (die Zeile trägt die Kennung als Sprungziel)
+function optionBlock(w, o, ohneMerkmale, ohneId) {
+  const b = el("div", {class: "option ziel" + (o.aktiv ? " aktiv" : ""), id: ohneId ? null : o.id, "data-ziel": ohneId ? null : o.id});
   b.append(el("div", {class: "k"}, o.titel, zid(o.id)), optionChips(w, o));
   if (o.ausloeser) b.append(el("div", {class: "z"}, el("b", {}, "Wann: "), o.ausloeser));
   if (o.text) b.append(el("div", {class: "z"}, o.text));
@@ -1366,7 +1425,11 @@ function optionBlock(w, o, ohneMerkmale) {
   if (o.plus.length) b.append(el("ul", {}, o.plus.map(x => el("li", {}, "+ " + x))));
   if (o.minus.length) b.append(el("ul", {}, o.minus.map(x => el("li", {}, "– " + x))));
   for (const sid of o.strecken || []) b.append(streckeZeile(sid));
-  for (const uid of o.unterkuenfte || []) if (R.unterkuenfte[uid]) b.append(el("div", {class: "z"}, link(uid, "→ " + R.unterkuenfte[uid].name)));
+  // Unterkunft der Möglichkeit: mit Reiter „Plan“ der Link auf ihre Karte, sonst steht sie hier (Heimat), also Kontakt
+  // und Webseite statt eines Links auf dieselbe Seite
+  for (const uid of o.unterkuenfte || []) if (R.unterkuenfte[uid]) { const u = R.unterkuenfte[uid];
+    b.append(PLAN_DA ? el("div", {class: "z"}, link(uid, "→ " + u.name))
+      : el("div", {class: "z"}, u.kontakt ? [el("b", {}, "Kontakt: "), u.kontakt.replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ") || "–", " "] : null, webLink(o, true))); }
   if (o.tage && o.tage.length) {
     const aktivTage = o.tage.filter(tid => R.tage.some(t => t.id === tid));
     if (aktivTage.length) {
@@ -1407,7 +1470,10 @@ function wahlKarte(w) {
   const tage = w.an.map(tid => R.tage.find(t => t.id === tid)).filter(Boolean), datum = tage.length === 1 ? tage[0].datum : null;
   const vgl = wahlVergleich(w, true, datum);
   if (vgl) k.append(el("div", {class: "chips"}, wahlEinstieg(w, true, datum)), vgl);
-  for (const o of gueltig) k.append(optionBlock(w, o, !!vgl && gueltig.some(x => gefuellt(w, x))));
+  // Mit Vergleich stehen die Möglichkeiten in seiner Tabelle (Zeile aufklappen); am Handy (Karten) im Einzelnen zugeklappt
+  if (vgl) k.append(el("details", {class: "block wm-einzeln"}, el("summary", {}, `Alle Möglichkeiten im Einzelnen (${gueltig.length})`),
+    el("div", {class: "inhalt"}, gueltig.map(o => optionBlock(w, o, gueltig.some(x => gefuellt(w, x)), true)))));
+  else for (const o of gueltig) k.append(optionBlock(w, o, false));
   const verw = w.optionen.filter(o => weg(o.status));
   if (verw.length) {
     const d = el("details", {class: "weg"}, el("summary", {}, `Verworfen (${verw.length})`));
@@ -2578,7 +2644,11 @@ function ansichtTag(m, tid) {
   const orte = tagOrte(t);
   // Links lesen (Weg, Hintergrund, Quellen), rechts nachschlagen (Unterwegs, Orte); am Handy untereinander
   const nacht = PLAN_DA ? null : nachtAbschnitt(t);
-  const lesen = [e.weg, nacht, e.hintergrund, e.quellen].filter(Boolean), nachschlagen = [e.unterwegs, orte.length ? tagOrteZeilen(orte) : null].filter(Boolean);
+  // Offene Wahl der Nacht: am Rechner über die volle Breite (dort wird gewählt, Product Owner 29.10.2026); am Handy an
+  // ihrem Platz in der Reihenfolge (CSS order)
+  const nachtVoll = nacht && nacht.querySelector(".wm");
+  if (nachtVoll) { nacht.classList.add("nacht-voll"); seite.append(nacht); }
+  const lesen = [e.weg, nachtVoll ? null : nacht, e.hintergrund, e.quellen].filter(Boolean), nachschlagen = [e.unterwegs, orte.length ? tagOrteZeilen(orte) : null].filter(Boolean);
   if (lesen.length) seite.append(el("div", {class: "tag-lesen"}, lesen));
   if (nachschlagen.length) seite.append(el("div", {class: "tag-spalte"}, nachschlagen));
   if (imPlan && !imPlan.alt) {
@@ -2917,6 +2987,9 @@ function ansichtBausteine(m) {
   teil("Atom", "Kennung", "Nur die Sprechblase mit Tooltip („Symbol oder Wort, nie beides“). Antippen öffnet Rückmeldungen und Aufgaben zu dieser Stelle; dort stehen die Kennung und „Kopieren“.",
     fall("leer", zid(R ? R.tage[0].id : abschnitte[0].id)), fall("2 Rückmeldungen (Muster)", kennungMuster([rmMuster, rmMuster], [])),
     fall("Aufgabe offen (Muster)", kennungMuster([], [agMuster])), fall("beides (Muster)", kennungMuster([rmMuster], [agMuster])));
+  const webEcht = R && Object.values(R.unterkuenfte).map(x => webAus(x.kontakt)).find(Boolean);
+  teil("Atom", "Webseite", "Link nach außen in neuem Fenster, aus dem Kontakt der Unterkunft; fehlt sie, ein leiser Hinweis.",
+    el("div", {class: "chips"}, webLink(webEcht || "https://example.org/"), webEcht ? null : el("span", {class: "z klein"}, "(Muster)"), webLink(null)));
   teil("Atom", "Etikett", "Sagt, was etwas ist; normale Schreibweise, gedämpft. Ein Symbol nur, wo es die Art sofort zeigt.",
     el("div", {class: "chips"}, dingEtikett("Nacht", null, "nacht"), dingEtikett("Wahl", null, "wahl"), el("span", {class: "etikett"}, "Etikett ohne Symbol")));
   if (R && R.plaene.length) teil("Atom", "Planfarbe", "Jeder Plan hat eine Farbe: als Punkt in Legende, Tabelle und Überschrift, als Linie im Umschalter wie auf der Karte.",

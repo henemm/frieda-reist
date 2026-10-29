@@ -50,6 +50,7 @@ unterkuenfte:
     typ: Pension
     frage: F-02
     hinweis: "erfunden; Doppelzimmer mit Blick auf die Burg"
+    kontakt: "Tel. +49 00 0000 (Beispielwert) ; https://example.org/pension-burgblick"
     quelle: "erfunden (Beispiel)"
     merkmale:
       preis: {wert: "85 €", notiz: "Beispielwert, erfunden"}
