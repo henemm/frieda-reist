@@ -1267,7 +1267,7 @@ let BL = lies("belege", []);
 let BL_OK = null;
 async function blLaden() {
   try {
-    const r = await fetch(BL_API, {cache: "no-store"});
+    const r = await fetch(BL_API + "/", {cache: "no-store"});   // mit Schrägstrich: der nginx-Block api/belege/ antwortet direkt
     if (!r.ok) throw 0;
     const d = await r.json();
     if (!Array.isArray(d)) throw 0;
