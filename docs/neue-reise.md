@@ -2,7 +2,7 @@
 
 Eine neue Reise entsteht im Gespräch. Niemand legt Dateien von Hand an. Es gibt zwei Wege:
 
-- **In der Claude-App** (der Regelfall, ADR-0001): Über den Konnektor „Frieda“ oder den persönlichen Konto-Link „Frieda – meine Reisen“, der zu einer Person und zu keiner Reise gehört (`docs/konnektor.md`), nutzt man das Werkzeug `reise_anlegen`. Der Dienst prüft die Angaben sofort, der Schreibweg legt die Reise aus den Bausteinen der Vorlage an (`neu.aus_auftrag`) und sichert sie nach `main`; das Veröffentlichen schaltet sie frei. Danach zeigt `meine_reisen` der Person die Links.
+- **In der Claude-App** (der Regelfall, ADR-0001): Über den Konnektor „Frieda“ (Konto mit E-Mail-Adresse, ADR-0005; der frühere Konto-Link „Frieda – meine Reisen“ ist der Übergang, `docs/konnektor.md`) nutzt man das Werkzeug `reise_anlegen` mit Titel, Zeitraum, Ziel, Personen und einer Notiz zu dem, was schon bekannt ist; der Schreibweg legt die Reise sofort an, der Betrieb schaltet sie frei und stellt die Links zu.
 - **In Claude Code** (Betreiber, etwa beim Einrichten der ersten Reise einer Instanz): `engine/neu.py reise` mit Titel, Zeitraum, Ziel und Personen aufrufen; Quellen mit `neu.py abschnitt` übernehmen.
 
 In beiden Fällen steht die Reise danach im Status `idee` und baut sofort: mit Eckdaten, Wissen, Wünschen und einer ersten offenen Frage.
@@ -51,7 +51,7 @@ Texte sind Markdown. Eigenes HTML lehnt der Generator ab (`docs/design.md`, Reis
 
 ## IDs
 
-IDs werden nie neu vergeben. `engine/neu.py id <reise> <W|F|O|U|E|T|V>` gibt die nächste freie Nummer aus und vermerkt sie sofort in `ids.yaml`. Die Nummer liegt über der Marke und über jeder Nummer, die irgendwo in der Reise steht, auch im Verlauf von Verworfenem. Ein gelöschter Abschnitt gibt seine Nummer deshalb nicht frei. Für Reisen von vor Paket H entsteht `ids.yaml` beim ersten Aufruf. Führt eine Reise in `ids.yaml` alle IDs als Liste je Art (`ids:`), kommt die neue ID dort dazu; Liste und Kommentare bleiben erhalten.
+IDs werden nie neu vergeben. `engine/neu.py id <reise> <W|F|O|U|A|E|T|V|B>` gibt die nächste freie Nummer aus und vermerkt sie sofort in `ids.yaml`. Die Nummer liegt über der Marke und über jeder Nummer, die irgendwo in der Reise steht, auch im Verlauf von Verworfenem. Ein gelöschter Abschnitt gibt seine Nummer deshalb nicht frei. Für Reisen von vor Paket H entsteht `ids.yaml` beim ersten Aufruf. Führt eine Reise in `ids.yaml` alle IDs als Liste je Art (`ids:`), kommt die neue ID dort dazu; Liste und Kommentare bleiben erhalten.
 
 ## Prüfung vor dem Bau
 

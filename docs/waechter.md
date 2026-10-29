@@ -22,9 +22,9 @@ Nur wenn der Baustein `waechter` eingeschaltet ist und der Status es zulässt: `
 
 ## Veränderliches prüfen
 
-Geprüft werden Merkmale mit `veraenderlich: true` (Preis, Öffnungszeiten, Fahrzeiten …) der Optionen im Plan (nicht verworfene) und der Unterkünfte mit Nächten. Zu prüfen sind Angaben ohne Prüfdatum und solche, deren Prüfdatum älter ist als `regeln.waechter_frist_tage` (Vorgabe 60). Gibt es Werte je Datum (z. B. Samstag teurer, `docs/alternativen.md`), zählt jeder Eintrag mit eigenem Prüfdatum für sich und steht in der Meldung mit „am …“.
+Geprüft werden Merkmale mit `veraenderlich: true` (Preis, Öffnungszeiten, Fahrzeiten …) der Optionen im Plan (nicht verworfene), der Unterkünfte mit Nächten, der Aufenthalte ohne Nacht und der Strecken im Plan sowie die Lage. Zu prüfen sind Angaben ohne Prüfdatum und solche, deren Prüfdatum älter ist als `waechter_frist_tage` (Vorgabe 60); abgeschaltete Merkmale (Stufe `aus`, auch je Art) nicht.
 
-Daraus entsteht je Angabe eine **Meldung** (Art `pruefung`) an die Organisator:innen, seit dem 28.10.2026 (ADR-0001, Paket O-4: Frieda enthält keine eigene KI; bis dahin ein Prüfauftrag für das Einarbeiten):
+Daraus entsteht je Angabe eine **Meldung** (Art `pruefung`) an die Organisator:innen, seit dem 29.10.2026 (ADR-0001, Paket O-4: Frieda enthält keine eigene KI; bis dahin ein Prüfauftrag für das Einarbeiten mit Claude Code). Seit dem Abgleich vom 29.10.2026 prüft der Wächter alle Aussagen mit Prüfdatum: Merkmale der Optionen im Plan, der Unterkünfte mit Nächten, der Aufenthalte ohne Nacht an einem Tag und der Strecken im Plan sowie die Lage (Adresse, Punkt; ADR-0004).
 
 - Höchstens 15 Meldungen je Lauf, die ältesten Angaben zuerst; dieselbe Angabe wird frühestens nach `waechter_frist_tage` wieder gemeldet.
 - Der AI-Client schlägt die Angabe im Gespräch nach. Stimmt der Wert, bekommt sie Prüfdatum und Quelle. **Weicht er ab, wird er nicht still übernommen**: Ein:e Organisator:in entscheidet; bis dahin bleibt der alte Wert stehen.

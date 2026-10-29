@@ -24,7 +24,7 @@ Technik (Python-Generator, HTML-Vorlage, Service Worker, nginx, systemd, Git) is
 2. Das Modell ist für die KI gebaut: Reise, Personen, Rollen, Bausteine, Herkunft und Prüfdatum sind Felder mit Schema (`reise.yaml`, `routen.yaml`, Merkmale). Fließtext bleibt Fließtext.
 3. Die Regeln prüft die Maschine (Rechte, Pflichtfelder, Konflikte); die KI bekommt nur eine kurze Verfassung.
 4. Die KI handelt: Was im Gespräch festgelegt wird, gilt sofort; Veränderliches wird überwacht, Fristen werden gemeldet, Optionen werden im Gespräch vorgeschlagen.
-5. Die KI kennt die Menschen: je Person ein Profil, über Reisen hinweg, einsehbar und korrigierbar.
+5. Frieda kennt die Menschen: je Person ein Konto mit E-Mail-Adresse, über Reisen hinweg (ADR-0005). Ein Profil je Person (Vorlieben, Erlebtes) ist Ausbaustufe 3 (Paket F) und noch nicht gebaut; was dort entsteht, trägt der AI-Client über den Konnektor ein, kein Lauf in Frieda.
 
 ## Rollen
 
@@ -36,9 +36,9 @@ Rollen gelten je Reise, nicht je Person. Rechte sind gestuft, jede Stufe enthäl
 | `mitwirkend` | Wünsche, Rückmeldungen, Aufgaben, Antworten auf Fragen; auch für Nicht-Reisende (`reist: false`) |
 | `organisator` | entscheiden (gewählt, verworfen, ersetzt), Status und Einstellungen der Reise setzen, Personen einladen |
 
-Mehrere Organisator:innen sind möglich. Jede Entscheidung hat genau eine Person und ein Datum. Zwei verschiedene Entscheidungen an derselben Stelle überschreiben sich nicht: Die KI macht daraus eine offene Frage und meldet den Konflikt beiden (Regel `konflikt: offene_frage`). Die KI selbst ist die vierte Rolle: Assistent, schlägt vor, prüft, arbeitet ein, entscheidet nie.
+Mehrere Organisator:innen sind möglich. Jede Entscheidung hat genau eine Person und ein Datum. Zwei verschiedene Entscheidungen an derselben Stelle überschreiben sich nicht: Der Schreibweg macht daraus eine offene Frage und meldet den Konflikt beiden (Regel `konflikt: offene_frage`). Die KI im AI-Client ist die vierte Rolle: Assistent, schlägt vor, prüft, trägt über den Konnektor ein, entscheidet nie.
 
-Personen und Rollen stehen je Reise in `reisen/<reise>/reise.yaml` unter `personen:`. Wer nur einen Teil der Reise mitreist, bekommt `von` und `bis` (Datum); der Reiseüberblick zeigt dann „ab“ und „bis“. Der Konnektor-Link gehört zu einer Person (`konnektor.py zugang <reise> <person>`).
+Personen und Rollen stehen je Reise in `reisen/<reise>/reise.yaml` unter `personen:`. Wer nur einen Teil der Reise mitreist, bekommt `von` und `bis` (Datum); der Reiseüberblick zeigt dann „ab“ und „bis“. Wer spricht, sagt das Konto der Person (E-Mail-Adresse, ADR-0005); ein Link je Reise und Person ist nur noch der Übergang (`konnektor.py zugang <reise> <person>`).
 
 ## Einstellungen je Reise (`reise.yaml`)
 
@@ -71,12 +71,12 @@ Die Regeln stehen in `engine/reise.py` (`VERHALTEN`, `AKTIONEN`, `erlaubt`) und 
 | `planung` | alles | Lücken und offene Wahlstellen sind Zwischenstand; Aufgabenfristen zählen noch nicht |
 | `fest` | alles | offene Planungs-Wahlstellen und ungeprüfte veränderliche Angaben der gewählten Optionen sind eine **Mahnung** (`route.mahnungen`, in der Claude-App; auf der Seite stehen sie als „Zu entscheiden“ in „Zu tun“ und als „ungeprüft“ am Wert, ohne Kasten); ein Merkmal „gut zu wissen“ ohne Wert ist keine Lücke und keine Mahnung, nur „nötig“ zählt; Aufgabenfristen zählen (überfällig) |
 | `unterwegs` | alles | wie `fest`; die Seite startet mit „Heute“ und der Karte, Wahlstellen mit Auslöser stehen vorn |
-| `danach` | Nachlese: Rückmeldungen, Aufgaben und Abhaken von Wünschen ja; neue Wünsche, Punkte, Alternativen, Aufträge nein | Plan schreibgeschützt |
+| `danach` | Nachlese: Rückmeldungen, Aufgaben, Antworten, Wissen, Fragen schließen, Einladen und Abhaken von Wünschen ja; neue Wünsche, Punkte, Alternativen, Werte, Dinge und Entscheidungen nein | Plan schreibgeschützt |
 | `archiv` | nichts | nur lesen |
 
 `reise_status_setzen` und `einstellung_setzen` gehen in jedem Status, damit ein:e Organisator:in eine gesperrte Reise wieder öffnen kann.
 
-Rechte: Der Rückmeldedienst kennt die Rolle über den Namen aus `reise.yaml` (veröffentlichte `daten.json`). Eine bekannte Person mit Rolle `gast` kann nichts eintragen; ein unbekannter Name auf der Seite kommt über den geheimen Link und zählt als Mitwirkende:r. Zugänge je Person gibt es seit Paket C (siehe unten).
+Rechte: Der Rückmeldedienst und der Konnektor kennen die Rolle aus `reise.yaml` (veröffentlichte `daten.json`), die Person aus ihrem Konto oder ihrem Link (ADR-0005). Eine bekannte Person mit Rolle `gast` kann nichts eintragen; ein unbekannter Name auf der Seite kommt über den geheimen Link und zählt als Mitwirkende:r (Übergangsregel).
 
 Bausteine: Ein ausgeschalteter Baustein verschwindet aus der Seite (Reiter, Knöpfe, Formulare), aus den Konnektor-Werkzeugen (Liste, Aufruf, Überblick, Anleitung) und blockiert das Schreiben im Dienst. Die Daten bleiben. Karte aus: `route.karte` wird auf der Seite nicht verwendet; Tagesseiten aus: die Etappen stehen wieder im Reiter „Etappen“.
 
@@ -88,7 +88,7 @@ Details und Eingaben der Werkzeuge: `docs/konnektor.md`, Abschnitt „Entscheide
 
 - `entscheiden` (Organisator:in): Entscheidung über eine Option wird im selben Moment geprüft (Option, Status, Grund, Doppelungen, Konflikt mit anderen Organisator:innen) und seit 29.10.2026 (O-3) mit Datum, Person und Grund direkt in den Plan geschrieben; ein Konflikt wird offene Frage mit Meldung. Die frühere Regel `regeln.entscheidungsweg` ist entfallen. Status und Einstellungen der Reise setzen Organisator:innen mit `reise_status_setzen` und `einstellung_setzen`.
 - `frage_beantworten` (Mitwirkende:r): Die Antwort hängt an der Frage; ob die Frage geklärt ist, entscheidet die Organisator:in.
-- `person_einladen` (`regeln.einladen`): legt die Person mit Rolle an und stellt den Link aus, ohne Handarbeit auf dem Server. Rolle und Zugang gelten sofort (`einladungen.json`); seit O-3 steht die Person sofort in `reise.yaml`.
+- `person_einladen` (`regeln.einladen`): legt die Person mit Rolle an; im Konnektor „Frieda“ mit E-Mail-Adresse und Einladung per Mail (ADR-0005), beim alten Link je Reise mit einem weiteren Link. Rolle und Zugang gelten sofort (`einladungen.json`); seit O-3 steht die Person sofort in `reise.yaml`.
 - Die Anleitung des Konnektors nennt die Rolle, den Reisestatus und die Grenzen der sprechenden Person.
 
 ### Wächter und Erinnerer (Paket E, 26.10.2026)
@@ -114,7 +114,7 @@ Wünsche sind Ideen ohne feste Stelle (ein Ort, ein Erlebnis, ein Essen). Das Br
 
 - **Punkte** heißen „wie wichtig mir das ist“. Jede Person verteilt ihr Kontingent (`regeln.kontingent`, Vorgabe 10 Punkte) nur auf ihre eigenen Wünsche und darf umverteilen. Ein Wunsch, der nicht passt, gibt seine Punkte frei. Claude nutzt Punkte beim Prüfen als Priorität, nie als Entscheidung. Mit Art `anzahl` gibt es keine Punkte, dann begrenzt das Kontingent die Zahl offener Wünsche je Person.
 - **Abhaken** (erlebt) dürfen alle Mitwirkenden, auch fremde Wünsche, im Status `unterwegs` und `danach`. Die Seite merkt sich Abgehaktes ohne Netz und reicht es nach; einen Haken zurücknehmen geht nur mit Netz. Wer abgehakt hat, steht mit Datum im Verlauf.
-- **Einplanen** ist eine Entscheidung: nur ein:e Organisator:in, mit dem persönlichen Link in der Claude-App (auf der Webseite ist der Name nur eingetippt), ab Status `danach` nicht mehr. Die Seite zeigt, wer eingeplant hat. Claude schlägt nur vor (`plan/wuensche.yaml`: Bezug, Notiz mit Herkunft, Option), plant aber nie selbst ein.
+- **Einplanen** ist eine Entscheidung: nur ein:e Organisator:in, angemeldet in der Claude-App (auf der Webseite ist der Name nur eingetippt), ab Status `danach` nicht mehr. Die Seite zeigt, wer eingeplant hat. Der AI-Client schlägt nur vor (`wunsch_vorschlagen` nach `plan/wuensche.yaml`: Bezug, Notiz mit Herkunft, Option), plant aber nie selbst ein.
 - Die **Bilanz** je Person (Wünsche, eingeplant, erlebt, freie Punkte) sehen alle.
 - Technik: Punkte, eingeplant und erlebt liegen live in `brett.json` der Rückmelde-Ablage, mit Verlauf; gelöscht wird nichts. Seite: Reiter „Wünsche“. Claude-App: `wuensche` und `wunsch_aendern`.
 
@@ -134,14 +134,16 @@ Die Rollen und Status der laufenden Reisen stehen in deren `reise.yaml`, die Ent
 | A Modell | Personen, Rollen, Rechte, Kontingente, Einstellungen, Status als Daten; Herkunft und Prüfdatum als Felder, wo Regeln wirken; feste Namen raus aus Engine, Konnektor, Regeln | 3 bis 4 |
 | B Regeln im Code | Rechteprüfung beim Schreiben, Pflichtfelder, Konfliktmeldung, Verhalten je Status, Bausteine blenden sich aus | 1 bis 2 |
 | C Gespräch für alle | Zugang je Person mit Rolle; Werkzeuge entscheiden, Frage beantworten, Person einladen; Entscheidung wird im Moment geprüft | 2 |
-| D Sofort statt stündlich | Eingaben lösen das Einarbeiten aus (Sammelzeit), Veröffentlichung am Ende des Laufs; mit O-3 (29.10.2026) durch den Schreibweg ersetzt und abgeschaltet: Eintragen gilt sofort | 2 |
+| D Sofort statt stündlich | Eingaben lösten das Einarbeiten aus (Sammelzeit); mit O-3 (29.10.2026) durch den Schreibweg ersetzt und abgeschaltet: Eintragen gilt sofort | abgeschlossen (Geschichte) |
 | E Wächter und Erinnerer | Prüfung veränderlicher Angaben, Meldung von Fristen und „ab“-Terminen | 2 |
-| F Profile | je Person, KI-gepflegt, einsehbar, reiseübergreifend | 2 |
+| F Profile | je Person, vom AI-Client über den Konnektor gepflegt (kein KI-Lauf in Frieda), einsehbar, reiseübergreifend; nicht gebaut | 2 |
 | G Wunsch-Brett | Spalten, Kontingent, Verknüpfung mit Tag oder Ort, Bilanz je Person, Abhaken unterwegs | 2 bis 3 |
 | H Neue Reise anlegen | Vorlage; Reise entsteht im Gespräch aus Eckdaten, Personen, Quellen | 2 |
 | I Mehrere Haushalte | eigene Instanz je Reisegruppe; später | 5 oder mehr |
+| J Konten | Anmeldung mit E-Mail-Adresse, ein Konnektor für alle Reisen, Einladen per Mail (ADR-0005, `docs/konten.md`) | gebaut 27.10.2026 |
+| O Ontologie | Grundformen in der Software, Arten je Reise, Schreibweg statt Einarbeiten, Seite nach Grundformen (ADR-0001, #85) | gebaut 28.–29.10.2026 |
 
-Stufe 1 „Rollen und sofort“: A, B, C, D. Stufe 2 „Wünsche und Wächter“: G, E. Stufe 3 „Lernen und neue Reisen“: F, H. Vorerst eine Instanz auf dem eigenen Server, der Code wird generisch. Die Software wird als „Ida Pfeiffer“ (AGPL-3.0) von den Reiseinhalten getrennt (Issue #78); Reiseinhalte bleiben privat.
+Stufe 1 „Rollen und sofort“: A, B, C (D ist durch den Schreibweg abgelöst). Stufe 2 „Wünsche und Wächter“: G, E. Stufe 3 „Lernen und neue Reisen“: F, H. Dazwischen J (Konten) und O (Ontologie). Vorerst eine Instanz auf dem eigenen Server, der Code wird generisch. Die Software heißt „Frieda Reist“ (AGPL-3.0, Repo `henemm/frieda-reist`), getrennt von den Reiseinhalten (Issue #78); Reiseinhalte bleiben privat.
 
 ## Stand
 
