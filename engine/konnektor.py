@@ -60,6 +60,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import anmeldung  # noqa: E402
 import instanz  # noqa: E402
+import kalender  # noqa: E402
 import konten  # noqa: E402
 import oauth  # noqa: E402
 import belege as bl  # noqa: E402
@@ -443,7 +444,9 @@ class Handbuch:
         """Aufenthalt ohne Nacht (A-…): Name, Art, Zeit, Buchungsstand."""
         a = (self.r.get("aufenthalte") or {}).get(aid) or {}
         art = ((self.r.get("arten") or {}).get(a.get("art")) or {}).get("name") or a.get("art") or ""
-        return ", ".join(x for x in [f"{a.get('name', aid)} ({aid})", art, a.get("zeit"), f"Buchung: {a['buchung']}" if a.get("buchung") else ""] if x)
+        uhr = "–".join(x for x in (a.get("beginn"), a.get("ende")) if x)
+        return ", ".join(x for x in [f"{a.get('name', aid)} ({aid})", art, a.get("zeit"), uhr and uhr + " Uhr",
+                                     f"Buchung: {a['buchung']}" if a.get("buchung") else ""] if x)
 
     def strecke(self, sid):
         s = (self.r.get("strecken") or {}).get(sid) or {}
@@ -598,6 +601,8 @@ class Handbuch:
             z = [f"{self.ort(s.get('von'))} → {self.ort(s.get('nach'))}" + (f" ({' + '.join(s['art']) if isinstance(s['art'], list) else s['art']})" if s.get("art") else "")]
             if s.get("kennzahlen") and sid not in e:  # bei Etappen stehen sie schon im Dossier
                 z.append("; ".join(f"{k}: {v}" for k, v in s["kennzahlen"].items()))
+            if s.get("beginn"):
+                z.append(f"Uhrzeit: {s['beginn']}" + (f"–{s['ende']}" if s.get("ende") else "") + " Uhr")
             for k in ("text", "quelle", "siehe"):
                 if s.get(k):
                     z.append(("Quelle: " if k == "quelle" else "Siehe: " if k == "siehe" else "") + str(s[k]))
@@ -1758,6 +1763,13 @@ def reise_anlegen(konto, args):
 REISEN_ANLEGEN_ANFRAGEN = {"name": "reisen_anlegen_anfragen", "description": "Bitten, Reisen anlegen zu dürfen. Das "
                            "entscheidet der Betreiber; bis dahin kann die Person bei Reisen mitmachen, zu denen sie "
                            "eingeladen ist.", "inputSchema": {"type": "object", "properties": {}}}
+KALENDER = {"name": "kalender", "description": "Persönlicher Link, um eine Reise im Kalender zu abonnieren (iPhone, Mac, "
+            "Outlook: webcal-Link antippen; Google Kalender: https-Link unter „Andere Kalender, Per URL“ einfügen). Der Kalender "
+            "zeigt Entschiedenes und bleibt aktuell: Tage, Unterkünfte, Aufenthalte, Fahrten mit Uhrzeit, Fristen. neu=true stellt "
+            "einen neuen Link aus, der alte gilt dann nicht mehr (z. B. wenn er in falsche Hände geraten ist). Der Link ist "
+            "persönlich: nur dieser Person zeigen, nie weitergeben.",
+            "inputSchema": {"type": "object", "properties": {
+                "neu": {"type": "boolean", "description": "true: neuer Link, der alte gilt nicht mehr"}}}}
 ANFRAGE_ENTSCHEIDEN = {"name": "anfrage_entscheiden", "description": "Nur für den Betreiber: eine Bitte „Reisen anlegen“ "
                        "annehmen oder ablehnen (offene Bitten stehen in meine_reisen). Vorher bestätigen lassen.",
                        "inputSchema": {"type": "object", "properties": {
@@ -1784,6 +1796,11 @@ def frieda_werkzeuge(k):
     if konten.recht(k, "betreiber"):
         eigene.append(ANFRAGE_ENTSCHEIDEN)
     reisen = reisen_des_kontos(k)
+    if reisen:
+        eigene.append({**KALENDER, "inputSchema": {**KALENDER["inputSchema"], "properties": {
+            **KALENDER["inputSchema"]["properties"], "reise": {"type": "string", "enum": [r for r, _, _ in reisen],
+                                                               "description": "Ordner der Reise (aus meine_reisen)"}},
+            "required": ["reise"] if len(reisen) > 1 else []}})
     je_name, wo = {}, {}
     for reise, schl, _ in reisen:
         for w in werkzeuge_fuer({"reise": reise, "person": schl}):
@@ -1894,8 +1911,28 @@ def frieda_werkzeug(k, name, args):
     schl = next((s_ for r, s_, _ in reisen if r == reise), None)
     if not schl:
         return "Bei dieser Reise bist du nicht dabei (oder sie ist nicht veröffentlicht).", True
+    if name == "kalender":
+        return kalender_link(k, reise, args.get("neu") is True)
     args.pop("name", None)
     return werkzeug({"reise": reise, "person": schl, "konto_id": k["id"]}, name, args)
+
+
+def kalender_link(k, reise, neu=False):
+    """Text für das Werkzeug kalender: persönlicher Abo-Link der Reise (#77, engine/kalender.py)."""
+    seite = seitenlinks().get(reise)
+    if not seite:
+        return "Die Seite dieser Reise ist noch nicht freigeschaltet; dann gibt es auch den Kalender.", True
+    try:
+        url = kalender.abo_url(seite, konten.kalender_token(k["id"], reise, erneuern=neu))
+    except konten.KontoFehler as f:
+        return str(f), True
+    return ("\n".join([("Neuer Kalender-Link (der alte gilt nicht mehr; den alten Kalender im Kalender-Programm entfernen):"
+                        if neu else "Dein Kalender-Link (persönlich, nicht weitergeben):"),
+                       f"- iPhone, Mac, Outlook (antippen, dann „Abonnieren“): {kalender.webcal(url)}",
+                       f"- Google Kalender (Andere Kalender → Per URL): {url}",
+                       "Der Kalender zeigt nur Entschiedenes und aktualisiert sich selbst (etwa alle paar Stunden, je nach Programm). "
+                       "Einzelne Einträge gibt es auf der Seite als Datei („In den Kalender“). Auch unter „Mein Konto“ auf der Seite."]),
+            False)
 
 
 def frieda_antwort(zugang, nid, methode, p, ok):
@@ -2170,6 +2207,7 @@ MERKMALE_FELD = {"type": "object", "description": "{merkmal: wert | {wert, quell
                  "(ein unbekanntes Merkmal legt ein:e Organisator:in erst mit merkmal_definieren an); quelle und geprueft dürfen auch oben stehen",
                  "additionalProperties": True}
 QUELLE_FELD = {"type": "string", "description": "Herkunft: Website mit Adresse, Buch mit Seite, Anruf, „Name im Gespräch“ (Pflicht)"}
+UHRZEIT_FELD = {"type": "string", "description": "Beginn HH:MM, Ortszeit (Abfahrt, Einlass); steht dann mit Uhrzeit im Kalender"}
 DING_ANLEGEN = {"name": "ding_anlegen", "description": "Eine Unterkunft, einen Aufenthalt ohne Nacht (Besichtigung, Essen, Besuch), eine "
                 "Strecke oder einen Ort in der Reise anlegen (neue ID). Schreibt sofort; Herkunft (quelle) ist Pflicht. Unterkunft und Aufenthalt "
                 "brauchen ort (O-…) und art (Aufenthalts-Art der Reise), eine Strecke von, nach und art (Bewegungs-Art). Merkmale (Preis, "
@@ -2180,6 +2218,7 @@ DING_ANLEGEN = {"name": "ding_anlegen", "description": "Eine Unterkunft, einen A
                     "titel": {"type": "string", "description": "Name der Unterkunft, des Aufenthalts oder des Orts, Titel der Strecke"},
                     "ort": {"type": "string", "description": "Unterkunft, Aufenthalt: Ort O-… (fehlt er, erst mit ding_anlegen was=ort anlegen)"},
                     "zeit": {"type": "string", "description": "Aufenthalt: wann, als Text („10–12 Uhr“, „abends“)"},
+                    "beginn": UHRZEIT_FELD, "ende": {**UHRZEIT_FELD, "description": "Ende HH:MM (nur mit beginn; vor beginn: am Tag danach)"},
                     "buchung": {"type": "string", "description": "Buchungsstand, z. B. gebucht oder offen; Vorgabe offen bei buchbarer Art"},
                     "von": {"type": "string", "description": "Strecke: Start O-…"}, "nach": {"type": "string", "description": "Strecke: Ziel O-…"},
                     "art": {"type": "string", "description": "Art dieser Reise (Schlüssel aus merkmale), z. B. pension oder bus"},
@@ -2189,12 +2228,14 @@ DING_ANLEGEN = {"name": "ding_anlegen", "description": "Eine Unterkunft, einen A
                     "name": NAME_FELD},
                     "required": ["was", "titel", "quelle"]}}
 DING_AENDERN = {"name": "ding_aendern", "description": "Felder einer Unterkunft (name, ort, art, hinweis, quelle, buchungslink, frage, buchung), "
-                "eines Aufenthalts ohne Nacht (dazu zeit), einer Strecke (titel, von, nach, art, hinweis, quelle, buchung) oder eines Orts (name, "
-                "hinweis, quelle) ändern; schreibt sofort, der alte Wert bleibt im Verlauf. buchung ist der Buchungsstand („gebucht“, „offen“, "
-                "„Zeitfenster 10 Uhr“), er steht auf der Seite unter Zu buchen. Merkmale ändert wert_eintragen. Die Art ändern dürfen nur "
-                "Organisator:innen. Leerer Text entfernt hinweis, buchungslink, frage, zeit oder buchung.",
+                "eines Aufenthalts ohne Nacht (dazu zeit, beginn, ende), einer Strecke (titel, von, nach, art, beginn, ende, hinweis, quelle, buchung) "
+                "oder eines Orts (name, hinweis, quelle) ändern; schreibt sofort, der alte Wert bleibt im Verlauf. buchung ist der Buchungsstand („gebucht“, „offen“, "
+                "„Zeitfenster 10 Uhr“), er steht auf der Seite unter Zu buchen. beginn und ende sind Uhrzeiten (HH:MM, Ortszeit) für den Kalender, "
+                "z. B. Abfahrt und Ankunft eines Zugs. Merkmale ändert wert_eintragen. Die Art ändern dürfen nur "
+                "Organisator:innen. Leerer Text entfernt hinweis, buchungslink, frage, zeit, beginn, ende oder buchung.",
                 "inputSchema": {"type": "object", "properties": {
                     "ziel": {"type": "string", "description": "U-…, A-…, E-… oder O-…"}, "zeit": {"type": "string"}, "buchung": {"type": "string"},
+                    "beginn": UHRZEIT_FELD, "ende": {**UHRZEIT_FELD, "description": "Ende HH:MM (nur mit beginn; vor beginn: am Tag danach)"},
                     "name": {"type": "string", "description": "neuer Name (Unterkunft, Ort)"}, "titel": {"type": "string", "description": "neuer Titel (Strecke)"},
                     "ort": {"type": "string"}, "von": {"type": "string"}, "nach": {"type": "string"}, "art": {"type": "string"},
                     "hinweis": {"type": "string"}, "quelle": {"type": "string"}, "buchungslink": {"type": "string"}, "frage": {"type": "string"},

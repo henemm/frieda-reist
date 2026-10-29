@@ -110,6 +110,8 @@ CREATE TABLE IF NOT EXISTS einladungen (
 CREATE TABLE IF NOT EXISTS anfragen (
   konto TEXT PRIMARY KEY, erstellt TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'offen', entschieden TEXT);
 CREATE TABLE IF NOT EXISTS versand (schluessel TEXT NOT NULL, zeit REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS kalender (
+  konto TEXT NOT NULL, reise TEXT NOT NULL, stand INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (konto, reise));
 CREATE TABLE IF NOT EXISTS oauth_clients (
   client_id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', redirect_uris TEXT NOT NULL, art TEXT NOT NULL,
   erstellt REAL NOT NULL);
@@ -404,7 +406,7 @@ def loeschen(kid):
     """Konto und Adresse löschen (auf Wunsch der Person). Verlaufseinträge der Reisen behalten den Namen."""
     with closing(db()) as v, v:
         _widerrufen(v, kid)
-        for t in ("mitgliedschaften", "anfragen"):
+        for t in ("mitgliedschaften", "anfragen", "kalender"):
             v.execute(f"DELETE FROM {t} WHERE konto = ?", (kid,))
         v.execute("DELETE FROM konten WHERE id = ?", (kid,))
 
@@ -530,6 +532,38 @@ def entfernen(reise, schluessel):
         n += v.execute("DELETE FROM einladungen WHERE reise = ? AND schluessel = ? AND eingeloest IS NULL",
                        (reise, schluessel)).rowcount
         return n > 0
+
+
+# ---------- Kalender-Abo (#77): geheimes Wort je Konto und Reise, berechnet statt gespeichert (engine/kalender.py) ----------
+
+def kalender_token(kid, reise, erneuern=False):
+    """Geheimes Wort für das Kalender-Abo des Kontos in der Reise; erneuern: neues Wort, das alte gilt nicht mehr."""
+    import kalender
+    with closing(db()) as v, v:
+        if not v.execute("SELECT 1 FROM mitgliedschaften WHERE konto = ? AND reise = ?", (kid, reise)).fetchone():
+            raise KontoFehler("Bei dieser Reise bist du nicht dabei.")
+        if erneuern:
+            v.execute("INSERT INTO kalender VALUES (?,?,1) ON CONFLICT (konto, reise) DO UPDATE SET stand = stand + 1",
+                      (kid, reise))
+        z = v.execute("SELECT stand FROM kalender WHERE konto = ? AND reise = ?", (kid, reise)).fetchone()
+        return kalender.token(dienst_geheimnis(), kid, reise, z["stand"] if z else 0)
+
+
+def kalender_konto(reise, token):
+    """Konto (nicht gesperrt, Mitglied der Reise), dem das geheime Wort gehört, oder None."""
+    import kalender
+    if not token or not REISE_MUSTER.match(reise or ""):
+        return None
+    with closing(db()) as v:
+        zeilen = v.execute("SELECT m.konto, m.schluessel, COALESCE(k.stand, 0) AS stand FROM mitgliedschaften m "
+                           "LEFT JOIN kalender k ON k.konto = m.konto AND k.reise = m.reise WHERE m.reise = ?",
+                           (reise,)).fetchall()
+    geheim = dienst_geheimnis()
+    for z in zeilen:
+        if secrets.compare_digest(kalender.token(geheim, z["konto"], reise, z["stand"]), token):
+            k = konto(z["konto"])
+            return {**k, "schluessel": z["schluessel"]} if k and not k["gesperrt"] else None
+    return None
 
 
 def _einladung_zeile(v, token):

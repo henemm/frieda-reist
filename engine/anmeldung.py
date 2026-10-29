@@ -13,6 +13,7 @@ import html
 import re
 import urllib.parse
 
+import kalender
 import konten
 from reise import rolle_neu
 import rueckmeldungen as rm
@@ -137,6 +138,23 @@ def code_seite(email, zurueck="", einladung="", code="", meldung="", name_noetig
         'Andere Adresse oder neuen Code anfordern</a></p>'))
 
 
+def kalender_teil(k, reise, info):
+    """Kalender-Abo der Reise (#77): persönlicher Link (webcal:// zum Abonnieren, https:// zum Kopieren) und neuer Link."""
+    if not info.get("seite"):
+        return ""
+    try:
+        url = kalender.abo_url(info["seite"], konten.kalender_token(k["id"], reise))
+    except konten.KontoFehler:
+        return ""
+    return (f'<details><summary>Kalender abonnieren</summary><p class="klein">Die Reise erscheint in deinem Kalender und '
+            "bleibt dort aktuell (Tage, Unterkünfte, Termine, Fristen). Der Link ist persönlich: nicht weitergeben.</p>"
+            f'<p><a href="{esc(kalender.webcal(url))}">Im Kalender abonnieren</a></p>'
+            f'<label for="kal-{esc(reise)}">Link zum Kopieren (z. B. für Google Kalender: Andere Kalender, Per URL)</label>'
+            f'<input id="kal-{esc(reise)}" type="text" readonly value="{esc(url)}">'
+            + formular("/konto", verdeckt(aktion="kalender_neu", reise=reise), "Neuen Link ausstellen (der alte gilt dann nicht mehr)", "leise")
+            + "</details>")
+
+
 def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu=""):
     reisen = []
     for m in konten.mitgliedschaften(k["id"]):
@@ -145,7 +163,7 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu=""):
         p = next((x for x in z.get("personen") or [] if x.get("schluessel") == m["schluessel"]), {})
         link = f' – <a href="{esc(info["seite"])}">öffnen</a>' if info.get("seite") else ""
         reisen.append(f'<li>{esc(info.get("titel") or m["reise"])} ({esc(ROLLE_TEXT.get(rolle_neu(p.get("rolle")), "dabei"))})'
-                      f"{link}</li>")
+                      f"{link}{kalender_teil(k, m['reise'], info)}</li>")
     reisen_html = f"<ul>{''.join(reisen)}</ul>" if reisen else (
         '<p class="hinweis">Noch keine Reisen. Wer eine Reise bestimmt, kann dich mit deiner Adresse einladen.</p>')
     if konten.recht(k, "reise_anlegen"):
@@ -333,6 +351,10 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
             if a in ("freischalten", "ablehnen") and konten.recht(k, "betreiber"):
                 konten.freischalten(f.get("wer"), ja=a == "freischalten")
                 return weiter("/konto")
+            if a == "kalender_neu":
+                konten.kalender_token(k["id"], f.get("reise"), erneuern=True)
+                return antwort(200, konto_seite(k, reise_info, hinweis="Neuer Kalender-Link ausgestellt. Den alten "
+                                                "Kalender im Kalender-Programm entfernen und den neuen abonnieren."))
             if a == "alle_abmelden":
                 konten.alle_abmelden(k["id"])
                 return weiter("/anmelden", [cookie_loeschen()])

@@ -786,6 +786,33 @@ class Dienst(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(daten)
 
+    def _kalender(self, o, token=None):
+        """Kalender der Reise (#77, engine/kalender.py): Abo mit geheimem Wort (Kalender-Apps melden sich nicht an) oder
+        Datei zum Herunterladen, ganz oder für ein Ding (?id=T-…/U-…/A-…/E-…/B-…/AG-…)."""
+        import kalender
+        if token is not None and not konten.kalender_konto(o.name, token.removesuffix(".ics")):
+            return self._antwort(404, {"fehler": "Diesen Kalender gibt es nicht (mehr). Den aktuellen Link gibt es unter „Mein Konto“."})
+        try:
+            daten = json.loads((seiten() / o.name / "daten.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return self._antwort(503, {"fehler": "Die Seite der Reise ist gerade nicht lesbar."})
+        nur = (self._query().get("id") or [None])[0] if token is None else None
+        if nur is not None and not ZIEL_MUSTER.match(nur):
+            return self._antwort(400, {"fehler": "ungültige ID"})
+        text = kalender.ics(daten, o.name, aufgaben(o), nur=nur)
+        if text is None:
+            return self._antwort(404, {"fehler": "Dazu gibt es noch keinen Kalendereintrag (noch nicht entschieden oder ohne Datum)."})
+        body = text.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/calendar; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        if token is None:
+            self.send_header("Content-Disposition", f'attachment; filename="{o.name}{"-" + nur if nur else ""}.ics"')
+        self.send_header("Cache-Control", "private, no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(body)
+
     def _query(self):
         return urllib.parse.parse_qs(self.path.split("?", 1)[1]) if "?" in self.path else {}
 
@@ -803,9 +830,13 @@ class Dienst(BaseHTTPRequestHandler):
             if b is None or not bl.darf_sehen(b, name, rolle):
                 return self._antwort(404, {"fehler": "Diesen Beleg gibt es nicht, oder er ist für dich nicht sichtbar."})
             return self._datei(b, bl.datei_pfad(o, b))
+        if t and t[1] == "kalender" and t[2]:
+            return self._kalender(t[0], t[2])
         if not t or t[2] is not None:
             return self._antwort(404, {"fehler": "unbekannt"})
         o, was, _ = t
+        if was == "kalender.ics":
+            return self._kalender(o)
         if was == "gesund":
             ok = os.access(o, os.W_OK)
             return self._antwort(200 if ok else 503, {"gesund": ok})

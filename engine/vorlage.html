@@ -1142,6 +1142,13 @@ function nachtZeile(n, ohneLinks, datum, verweis) {
   return einstieg && !verweis ? [zeile, wahlVergleich(w, false, datum)] : zeile;
 }
 // ohneKennung: die Kennung steht schon an anderer Stelle der Seite (Etappe auf der Tagesseite)
+// Kalender (#77): Uhrzeit eines Dings (beginn, ende, Ortszeit) und Kalenderdatei beim Rückmeldedienst (api/kalender.ics, braucht
+// Netz). Der Chip steht nur in der Heimat eines Dings (ADR-0003) und nur, wenn es entschieden ist; das Abo ist persönlich (Konto).
+const uhrText = d => d.beginn ? d.beginn + (d.ende ? "–" + d.ende : "") + " Uhr" : "";
+const wahlOffen = vid => { const w = vid && wahlZu.get(vid); return !!(w && w.art === "planung" && w.offen); };
+const imKalender = tid => { const t = R.tage.find(x => x.id === tid); return !!(t && t.datum && !(t.vorlaeufig || []).length); };
+const kalenderChip = (id, text) => el("div", {class: "chips"}, chip("leise", text || "In den Kalender",
+  {href: "api/kalender.ics" + (id ? "?id=" + encodeURIComponent(id) : ""), download: true, title: "Kalenderdatei (.ics) herunterladen"}));
 function streckeZeile(id, wahl, ohneKennung, voll) {
   const s = R.strecken[id] || {titel: id};
   // art: ein Verkehrsmittel oder eine Liste in Reihenfolge, z. B. [bahn, bus]
@@ -1151,7 +1158,7 @@ function streckeZeile(id, wahl, ohneKennung, voll) {
   const z = el("div", {class: "z"}, el("div", {class: "titelzeile"}, el("span", {}, symbol(artSym(arten[0], "bewegung"), "etikett-sym"), " ", s.dossier || proId.has(id) ? link(id, s.titel) : s.titel), ohneKennung ? null : zid(id)));
   // Kennzahlen als Leiste mit Etiketten (Gehzeit, Aufstieg, Abstieg, Strecke); Verkehrsmittel als Textzeile
   const kz = kennzahlLeiste(s.kennzahlen);
-  if (art) z.append(el("div", {class: "z klein"}, art));
+  if (art || s.beginn) z.append(el("div", {class: "z klein"}, [art, uhrText(s)].filter(Boolean).join(" · ")));
   if (kz) z.append(kz);
   if (s.buchung) z.append(el("div", {class: "chips"}, buchungChip(s.buchung, s.buchung_id)));
   if (s.text) z.append(el("div", {class: "z klein"}, s.text));
@@ -1176,7 +1183,7 @@ function aufenthaltZeile(id, voll) {
   const a = (R.aufenthalte || {})[id];
   if (!a) return null;
   const z = el("div", {class: "z aufenthalt" + (voll ? " ziel" : ""), id: voll ? id : null, "data-ziel": voll ? id : null},
-    dingEtikett([artName(a.art), a.zeit].filter(Boolean).join(" · "), a.art, a.art),
+    dingEtikett([artName(a.art), a.zeit, uhrText(a)].filter(Boolean).join(" · "), a.art, a.art),
     el("div", {class: "titelzeile"}, el("span", {}, a.name), zid(id)));
   if (a.buchung) z.append(el("div", {class: "chips"}, buchungChip(a.buchung, a.buchung_id)));
   if (!voll) return z;
@@ -1190,6 +1197,7 @@ function aufenthaltZeile(id, voll) {
   const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
   if ((a.fehlt || []).length) z.append(el("div", {class: "z klein"}, "Fehlt noch: " + a.fehlt.map(x => name[x] || x).join(", ")));
   for (const b of buchungenZu(id)) z.append(buchungBlock(b));
+  if ((a.tage || []).some(imKalender)) z.append(kalenderChip(id));
   return z;
 }
 // Zeitleiste des Tags: Start → Bewegungen → Ziel, Aufenthalte ohne Nacht an ihrem Ort (nach der Ankunft dort); was an keinem
@@ -1250,6 +1258,7 @@ function tagKarte(t, ohneKopf) {
     // sonst in der Unterkunftskarte des Abschnitts „Nacht“ der Tagesseite
     if (!ohneKopf && PLAN_DA) { const uid = nachtUnterkunft(t.nacht); for (const b of uid ? buchungenZu(uid) : []) k.append(buchungBlock(b)); }
   }
+  if ((ohneKopf || PLAN_DA) && imKalender(t.id)) k.append(kalenderChip(t.id));
   // Plan entschieden (ohne Plan-Baum): die Tagesseite hat den ganzen Weg mit Karte
   if (!ohneKopf && !D.reise.tiefe && PLAN_TAGE && PLAN_TAGE.tage.some(x => x.id === t.id))
     k.append(el("a", {class: "weiter", href: "#" + t.id}, t.strecken.some(s => ETAPPE_TAG.get(s.id) === t.id) ? "Ganzer Tag: Weg, Karte, Einkehr →" : "Ganzer Tag →"));
@@ -1260,6 +1269,8 @@ function tagesplan(s) {
   const ws = R.warnungen.filter(w => w.bezug === "plan" || R.tage.some(t => t.id === w.bezug));
   if (ws.length) s.append(warnungen(ws));
   s.append(el("div", {class: "z klein"}, "Aktueller Plan: " + summeText(R.summe)));
+  s.append(kalenderChip(null, "Ganze Reise in den Kalender"),
+    el("div", {class: "z klein"}, "Nur Entschiedenes. Abonnieren (bleibt aktuell): unter „Mein Konto“ oder in der Claude-App."));
   let teil = null;
   for (const t of R.tage) {
     if (t.teil && t.teil !== teil) { teil = t.teil; s.append(el("h3", {class: "teil"}, teil)); }
@@ -1289,6 +1300,8 @@ function unterkunftKarte(id) {
   const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
   if ((u.fehlt || []).length) k.append(el("div", {class: "z klein"}, "Fehlt noch: " + u.fehlt.map(x => name[x] || x).join(", ")));
   for (const b of buchungenZu(id)) k.append(buchungBlock(b));
+  if (u.naechte.some(tid => { const n = (R.tage.find(x => x.id === tid) || {}).nacht || {}; return imKalender(tid) && n.unterkunft === id && !wahlOffen(n.wahl); }))
+    k.append(kalenderChip(id));
   return k;
 }
 
