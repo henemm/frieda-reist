@@ -36,6 +36,7 @@ unterkuenfte:
     ort: O-01
     typ: Hotel
     hinweis: "erfundenes Beispielhotel in der Altstadt"
+    adresse: {wert: "Terrassenufer 1, 01067 Dresden", quelle: "erfunden (Beispiel)", notiz: "Beispielwert"}
     buchung: gebucht   # Beispielwert, erfunden; ohne Angabe gilt „offen“
     quelle: "erfunden (Beispiel)"
     merkmale:

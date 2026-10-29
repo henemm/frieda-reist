@@ -263,6 +263,7 @@ class Routen:
             if u.get("frage") and u["frage"] not in self.fragen:
                 self.fehl(f"Unterkunft {uid}: Frage {u['frage']} gibt es nicht.")
             self.u_art[uid] = self.art_von(u, f"Unterkunft {uid}")
+            self.lage_pruefen(u, f"Unterkunft {uid}")
         for tid in self.tage:
             self.id_anlegen(tid, self.q)
         for vid, w in self.wahl.items():
@@ -286,6 +287,26 @@ class Routen:
             self.waehle(vid, w)
         self.regeln_pruefen()
         self.merkmale_pruefen()
+
+    def lage_pruefen(self, d, wo):
+        """Lage eines Aufenthalts (ADR-0004): adresse und punkt, beide als Aussage mit Herkunft
+        ({wert, quelle, geprueft}); punkt.wert ist [Breite, Länge]. Beide sind freiwillig; ob eine Lage fehlt, mahnt der Bau."""
+        for feld in ("adresse", "punkt"):
+            v = d.get(feld)
+            if v is None:
+                continue
+            if not isinstance(v, dict) or set(v) - {"wert", "quelle", "geprueft", "notiz"} or not v.get("quelle"):
+                self.fehl(f"{wo}: {feld} braucht {{wert, quelle}} (Herkunft), dazu geprueft (Datum).")
+                continue
+            w = v.get("wert")
+            if feld == "adresse" and not (isinstance(w, str) and w.strip()):
+                self.fehl(f"{wo}: adresse.wert muss ein Text sein (Straße Nr., PLZ Ort).")
+            if feld == "punkt" and not (isinstance(w, list) and len(w) == 2 and all(isinstance(x, (int, float)) for x in w)
+                                         and -90 <= w[0] <= 90 and -180 <= w[1] <= 180):
+                self.fehl(f"{wo}: punkt.wert braucht [Breite, Länge] in Grad.")
+            g = v.get("geprueft")
+            if g is not None and not isinstance(g, datetime.date):
+                self.fehl(f"{wo}: {feld}.geprueft muss ein Datum sein (JJJJ-MM-TT).")
 
     def an_pruefen(self, vid, w):
         """„an:“ nennt die IDs, an denen die Wahlstelle hängt: Tag, Strecke, Unterkunft, Ort, Wahlstelle oder ein Abschnitt
@@ -1151,7 +1172,12 @@ class Routen:
                 naechte.setdefault(u, []).append(t["id"])
         aus = {}
         for uid, u in self.unterkuenfte.items():
-            aus[uid] = {k: u.get(k) for k in ("name", "ort", "typ", "kontakt", "hinweis", "quelle", "frage")}
+            aus[uid] = {k: u.get(k) for k in ("name", "ort", "typ", "kontakt", "hinweis", "quelle", "frage", "buchungslink")}
+            # Lage (ADR-0004): Adresse und Punkt als Aussage mit Herkunft; der Bau ergänzt den Punkt aus plan/punkte.yaml
+            for feld in ("adresse", "punkt"):
+                v = u.get(feld) if isinstance(u.get(feld), dict) else None
+                aus[uid][feld] = {"wert": v.get("wert"), "quelle": v.get("quelle"), "notiz": v.get("notiz"),
+                                  "geprueft": v["geprueft"].isoformat() if isinstance(v.get("geprueft"), datetime.date) else None} if v else None
             a = self.u_art.get(uid)
             aus[uid]["art"] = a
             aus[uid]["kategorie"] = a    # für die Seite bis Paket O-5

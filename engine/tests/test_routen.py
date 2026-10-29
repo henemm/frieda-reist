@@ -613,6 +613,29 @@ def test_wahlstelle_an_wissensabschnitt():
     assert any("an W-02 gibt es nicht" in f for f in fehler)
 
 
+@pytest.mark.parametrize("lage, meldung", [
+    ({"adresse": "Hauptstraße 1"}, "braucht {wert, quelle}"),
+    ({"adresse": {"wert": "Hauptstraße 1"}}, "braucht {wert, quelle}"),
+    ({"punkt": {"wert": [91, 0], "quelle": "x"}}, "Breite, Länge"),
+    ({"punkt": {"wert": [50, 14], "quelle": "x", "geprueft": "gestern"}}, "geprueft muss ein Datum"),
+])
+def test_lage_fehler(lage, meldung):
+    r = roh()
+    r["unterkuenfte"]["U-01"].update(lage)
+    assert any(meldung in f for f in mk_bauen(r)[1])
+
+
+def test_lage_ausgabe():
+    r = roh()
+    r["unterkuenfte"]["U-01"].update({"adresse": {"wert": "Hauptstraße 1, 12345 Musterort", "quelle": "erfunden", "geprueft": D(2026, 10, 29)},
+                                      "punkt": {"wert": [50.1, 14.2], "quelle": "erfunden"}})
+    erg, fehler = mk_bauen(r)
+    assert fehler == []
+    u = erg["unterkuenfte"]["U-01"]
+    assert u["adresse"]["wert"] == "Hauptstraße 1, 12345 Musterort" and u["adresse"]["geprueft"] == "2026-10-29"
+    assert u["punkt"]["wert"] == [50.1, 14.2] and erg["unterkuenfte"]["U-02"]["punkt"] is None
+
+
 @pytest.mark.parametrize("an, meldung", [(["T-99"], "gibt es nicht"), (["X-1"], "weder Tag"), ("T-01", "Liste")])
 def test_an_fehler(an, meldung):
     r = roh()

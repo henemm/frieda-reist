@@ -202,6 +202,24 @@ def test_mahnungen_erst_ab_fest(tmp_path):
     assert "U-01" in ids["unterwegs"] and "U-01" not in ids["planung"]
 
 
+def test_lage_der_unterkunft(tmp_path):
+    """ADR-0004: Lage = Adresse oder Punkt. Der Punkt kommt aus plan/punkte.yaml (id: U-…); ab fest wird eine Unterkunft
+    im Plan ohne Lage gemahnt."""
+    r = daten_von(reise_bauen(tmp_path / "a", "fest"))["route"]
+    u = r["unterkuenfte"]
+    assert u["U-01"]["adresse"]["wert"].startswith("Terrassenufer") and u["U-01"]["adresse"]["quelle"]
+    assert u["U-02"]["punkt"]["wert"] == [50.9792, 14.1128] and u["U-02"]["punkt"]["quelle"] == "erfunden (Beispiel)"
+    assert not any("Lage fehlt" in m["text"] for m in r["mahnungen"])
+    # ohne Adresse und ohne Punkt: Mahnung für U-01 (Nacht 1 im Plan)
+    quelle = tmp_path / "b" / "quelle"
+    seiten = reise_bauen(tmp_path / "b", "fest")
+    rt = quelle / "plan" / "routen.yaml"
+    rt.write_text("\n".join(z for z in rt.read_text(encoding="utf-8").splitlines() if "Terrassenufer" not in z) + "\n", encoding="utf-8")
+    bauen.bauen(quelle, seiten / "beispielreise")
+    m = [x for x in daten_von(seiten)["route"]["mahnungen"] if "Lage fehlt" in x["text"]]
+    assert [x["bezug"] for x in m] == ["U-01"], m
+
+
 def test_mahnungen_auf_der_seite_abschaltbar(tmp_path):
     """darstellung.mahnungen: false blendet die Mahnungen im Plan aus; berechnet und im Konnektor bleiben sie."""
     def bauen_mit(ziel, wert):

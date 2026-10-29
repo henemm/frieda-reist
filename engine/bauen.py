@@ -573,6 +573,8 @@ class Bauer:
                 if (self.reise_dir / p_rel).exists():
                     route["punkte"] = self.punkte(p_rel, route, etappen)
             if route:
+                self.lage_ergaenzen(route)
+            if route:
                 for art in ("tagesplan", "unterkuenfte"):
                     if art not in r_cfg:
                         continue
@@ -732,6 +734,31 @@ class Bauer:
             return None
         return {"grundkarten": karten, "punkte": aus,
                 "namensnennung": roh.get("namensnennung", "© OpenStreetMap-Mitwirkende · Protomaps")}
+
+    def lage_ergaenzen(self, route):
+        """Lage der Unterkünfte (ADR-0004): fehlt der Punkt, kommt er aus plan/punkte.yaml (Eintrag mit id: U-…, mit dessen
+        Quelle). Ab Status fest mahnt der Bau Unterkünfte im Plan ohne Lage (weder Adresse noch Punkt)."""
+        for liste in (route.get("punkte") or {}).values():
+            for p in liste:
+                u = route["unterkuenfte"].get(p.get("id"))
+                if u is not None and not u.get("punkt") and isinstance(p.get("lage"), list):
+                    u["punkt"] = {"wert": p["lage"], "quelle": p.get("quelle"), "notiz": None, "geprueft": p.get("geprueft")}
+        if not self.eck["verhalten"].get("mahnung_planung"):
+            return
+        im_plan = []
+        for t in route.get("tage") or []:
+            n = t.get("nacht") or {}
+            if n.get("unterkunft"):
+                im_plan.append(n["unterkunft"])
+            elif n.get("wahl"):
+                w = next((x for x in route["wahlstellen"] if x["id"] == n["wahl"]), None)
+                akt = w and next((o for o in w["optionen"] if o["aktiv"]), None)
+                im_plan += (akt or {}).get("unterkuenfte") or []
+        for uid in dict.fromkeys(im_plan):
+            u = route["unterkuenfte"].get(uid)
+            if u and not u.get("adresse") and not u.get("punkt"):
+                route.setdefault("mahnungen", []).append({"bezug": uid, "text": f"{uid} {u.get('name')}: Lage fehlt "
+                                                          "(Adresse oder Koordinaten). Bitte nachschlagen und mit Quelle eintragen."})
 
     def punkte(self, rel, route, etappen):
         """plan/punkte.yaml prüfen und die Namen im Etappentext mit der Karte verknüpfen."""
