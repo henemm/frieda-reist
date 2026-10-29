@@ -73,11 +73,11 @@ SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern",
 # Werkzeuge, die direkt in die Ontologie der Reise schreiben (ADR-0001, O-3; engine/schreiben.py): nur bei Instanzen mit
 # Schreibweg (KN_SCHREIBDIENST); Organisator:innen schreiben, Mitwirkende schlagen vor (Rückmeldung der Art Ergänzung)
 ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "wert_eintragen", "ding_anlegen", "ding_aendern",
-                       "option_anlegen", "wahlstelle_anlegen", "frage_anlegen")
+                       "option_anlegen", "wahlstelle_anlegen", "frage_anlegen", "tag_aendern")
 # Aktion der Regelprüfung je Werkzeug; art_definieren und merkmal_definieren gehen für Mitwirkende als Rückmeldung (Vorschlag)
 ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "wert_eintragen": "wert",
                     "ding_anlegen": "ding", "ding_aendern": "ding", "option_anlegen": "alternative", "wahlstelle_anlegen": "alternative",
-                    "frage_anlegen": "frage"}
+                    "frage_anlegen": "frage", "tag_aendern": "plan"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe",
                   "auftrag_geben": "auftrag", "entscheiden": "entscheiden",
@@ -1011,7 +1011,7 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
                 return (f"Nicht angelegt: Bei der Art {art} gibt es schon ein ähnliches Merkmal, {aehnlich['id']} – {aehnlich['name']}. "
                         "Das vorhandene nutzen oder mit merkmal_definieren ändern; ist es wirklich ein anderes, noch einmal mit "
                         "trotzdem = true."), True
-    if name in ("wert_eintragen", "ding_aendern"):
+    if name in ("wert_eintragen", "ding_aendern", "tag_aendern"):
         ziel = str(args.get("ziel") or "").strip()
         if ziel and ziel not in ids_der_reise(d):
             return f"„{ziel}“ gibt es in dieser Reise nicht. Mit suche oder ueberblick die ID finden.", True
@@ -1231,11 +1231,22 @@ def antworten_von(reise):
 
 # ---------- Entscheiden und Fragen beantworten (Paket C) ----------
 
+def konflikt_pruefen(reise, d, wer, oid, status):
+    """Widerspricht die Entscheidung einer anderen Organisator:in (regeln.konflikt = offene_frage)? -> (Beschreibung, Beteiligte) oder (None, [])."""
+    regeln = ((d or {}).get("reise") or {}).get("regeln") or {}
+    if regeln.get("konflikt", "offene_frage") != "offene_frage":
+        return None, []
+    alt = konflikte({"wer": wer, "ziel": oid, "entscheidung": status}, stehende_entscheidungen(reise, d))
+    if not alt:
+        return None, []
+    return "; ".join(f"{x['quelle']}: {x['entscheidung']} {x['ziel']}" for x in alt), alt
+
+
 def entscheiden(reise, d, h, wer, args):
     """Werkzeug entscheiden. Rolle, Status und Baustein sind schon geprüft. Der Dienst prüft die Entscheidung im Moment
-    (Handbuch.entscheidung_pruefen) und hält sie als geprüften Auftrag fest; bei regeln.entscheidungsweg = direkt gilt sie
-    damit, bei auftrag prüft sie zusätzlich Claude Code, bevor sie gilt. Ein Widerspruch zu einer anderen Organisator:in wird nicht
-    übernommen, sondern zur offenen Frage (konflikt_melden). -> (Text, ist_fehler)"""
+    (Handbuch.entscheidung_pruefen). Mit Schreibweg (ADR-0001, O-3) schreibt er den Verlaufseintrag sofort in routen.yaml der
+    Reise; ein Widerspruch zu einer anderen Organisator:in wird nicht übernommen, sondern eine offene Frage mit Meldung an beide.
+    Ohne Schreibweg (Übergang) hält er die Entscheidung als geprüften Auftrag fest (regeln.entscheidungsweg). -> (Text, ist_fehler)"""
     if not wer["name"]:
         return ("Entscheiden geht nur mit dem persönlichen Link: Jede Entscheidung gehört genau einer Person, und dieser Link "
                 "kennt keinen Namen. Ein:e Organisator:in kann mit person_einladen einen persönlichen Link ausstellen."), True
@@ -1245,13 +1256,39 @@ def entscheiden(reise, d, h, wer, args):
     if fehler:
         return "Nicht entschieden:\n" + "\n".join(f"- {f}" for f in fehler), True
     text_, daten_ = ergebnis
+    wort = WORT[daten_["entscheidung"]]
+    if schreibdienst():
+        beschr, alt = konflikt_pruefen(reise, d, wer["name"], daten_["option"], daten_["entscheidung"])
+        if beschr:
+            frage = (f"Widerspruch zwischen Organisator:innen zu {daten_['option']}: {wer['name']} will {wort} ({daten_['grund']}), aber "
+                     f"{beschr}. Einigen, dann entscheiden.")
+            antwort, fehler = schreib_anfrage(reise, "frage_anlegen", {"person": wer.get("person"), "name": wer["name"], "rolle": wer["rolle"],
+                                                                       "args": {"text": frage, "bis": "vor Abreise", "bezug": [daten_["wahlstelle"]]}})
+            fid = (antwort or {}).get("text", "").split(" ")[2] if antwort else None
+            o = rm.ordner(reise)
+            organisator = set(organisator_namen(d)) & ({wer["name"]} | {x["wer"] for x in alt})
+            if o is not None:
+                rm.meldung_anlegen(o, organisator or {wer["name"]}, "konflikt", daten_["option"],
+                                   f"{wer['name']} will {daten_['entscheidung']} {daten_['option']}, aber {beschr}. Beides gilt nicht, bis ihr "
+                                   f"euch einig seid" + (f"; offene Frage {fid}" if fid else "") + ".", [])
+            return (f"Nicht entschieden: {daten_['option']} {wort} zu setzen widerspricht einer anderen Entscheidung ({beschr}). Nichts wird "
+                    f"übernommen, bis ihr euch einig seid: " + (f"Dafür steht jetzt die offene Frage {fid}, und" if fid else "Es gibt dafür eine Meldung, und")
+                    + " alle beteiligten Organisator:innen bekommen sie zu sehen. Sag nie, etwas sei schon entschieden."), False
+        rest = {k: args[k] for k in ("option", "status", "grund", "ersetzt_durch", "quelle") if args.get(k)}
+        antwort, fehler = schreib_anfrage(reise, "entscheiden", {"person": wer.get("person"), "name": wer["name"], "rolle": wer["rolle"], "args": rest})
+        if fehler:
+            return f"Nicht entschieden: {fehler}", True
+        z = [f"{antwort.get('text', '')} Gesichert; es gilt ab jetzt, die Seite zeigt es in wenigen Minuten."]
+        if hinweise:
+            z.append("Hinweise:\n" + "\n".join(f"- {x}" for x in hinweise))
+        return "\n".join(z), False
+    # Übergang ohne Schreibweg: geprüfter Auftrag, das Einarbeiten zieht nach
     regeln = regeln_von(d)
     weg = regeln.get("entscheidungsweg") or VORGABEN["entscheidungsweg"]
     daten_.update({"weg": weg, "geprueft": weg == "direkt"})
     e, fehler = auftrag_anlegen(reise, daten_["option"], text_, daten_, name=wer["name"])
     if fehler:
         return f"Nicht gespeichert: {fehler}", True
-    wort = WORT[daten_["entscheidung"]]
     k = konflikt_melden(reise, e, d)
     if k:
         return (f"Nicht entschieden: {daten_['option']} {wort} zu setzen widerspricht einer anderen Entscheidung ({k}). Nichts wird "
@@ -2081,6 +2118,16 @@ FRAGE_ANLEGEN = {"name": "frage_anlegen", "description": "Eine offene Frage (F-�
                      "bis": {"type": "string", "description": "bis wann zu klären, z. B. „vor Abreise“ oder ein Datum"},
                      "bezug": {"type": "array", "items": {"type": "string"}, "description": "IDs, zu denen die Frage gehört (T-, U-, E-, V-, W-)"},
                      "name": NAME_FELD}, "required": ["text"]}}
+TAG_AENDERN = {"name": "tag_aendern", "description": "Nur für Organisator:innen: einen Tag des Plans ändern: Titel, Text, die Nacht (Unterkunft "
+               "U-…, Wahlstelle V-… oder leer), die Strecken (E-… oder Wahlstellen V-…), Wahlstellen unterwegs (wahl). So wird z. B. eine feste "
+               "Unterkunft zur Wahl zwischen mehreren (nacht = die neue Wahlstelle). Schreibt sofort; der Generator prüft, ob der Plan aufgeht. "
+               "Vorher kurz bestätigen lassen.",
+               "inputSchema": {"type": "object", "properties": {
+                   "ziel": {"type": "string", "description": "T-…"}, "titel": {"type": "string"}, "text": {"type": "string"},
+                   "nacht": {"type": "string", "description": "U-…, V-…, O-… oder leer"},
+                   "strecken": {"type": "array", "items": {"type": "string"}}, "wahl": {"type": "array", "items": {"type": "string"}},
+                   "grund": {"type": "string", "description": "warum (steht im Verlauf)"}, "vorname": NAME_FELD},
+                   "required": ["ziel"]}}
 WERT_SCHEMA_EINTRAG = {"type": "object", "properties": {
     "wert": {"type": "string"}, "gilt": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}],
              "description": "Datum JJJJ-MM-TT oder Liste, wenn der Wert nur für diese Tage gilt (Preis je Nacht)"},
@@ -2233,7 +2280,10 @@ def anleitung(zugang, d):
     if wer["rolle"] == "organisator":
         z.append(f"{name} (Organisator:in). Entscheidungen über Optionen einer Wahlstelle trägst du mit entscheiden ein (Option, "
                  "Status, Grund; vorher kurz bestätigen lassen). "
-                 + ("Auf dieser Reise gilt der Weg direkt: Der Dienst prüft im selben Moment, lehnt Unstimmiges mit Begründung ab "
+                 + ("Der Dienst prüft im selben Moment, lehnt Unstimmiges mit Begründung ab und schreibt die Entscheidung mit Datum, "
+                    "Person und Grund in den Plan; sie gilt ab jetzt, die Seite zeigt sie in wenigen Minuten. Den Plan selbst (welche "
+                    "Nacht welche Wahlstelle nutzt, Strecken eines Tags) änderst du mit tag_aendern. " if schreibdienst() else
+                    "Auf dieser Reise gilt der Weg direkt: Der Dienst prüft im selben Moment, lehnt Unstimmiges mit Begründung ab "
                     "und hält die Entscheidung mit Datum fest; sie gilt dann, auf der Seite steht sie nach dem nächsten "
                     "Einarbeiten. " if weg == "direkt" else
                     "Auf dieser Reise gilt der Weg auftrag: Eine Entscheidung ist ein Auftrag und gilt erst, wenn sie in Claude "
@@ -2357,7 +2407,7 @@ def werkzeug(zugang, name, args):
     h = Handbuch(d, aufgaben_von(reise), offene_entscheidungen(reise), antworten_von(reise),
                  meldungen_fuer(reise, wer["name"], d))
     if name == "entscheiden":
-        return entscheiden(reise, d, h, wer, args)
+        return entscheiden(reise, d, h, {**wer, "person": zugang.get("person")}, args)
     if name == "frage_beantworten":
         return frage_beantworten(reise, d, h, wer, args)
     if name == "person_einladen":
@@ -2467,7 +2517,7 @@ def werkzeuge_fuer(zugang):
     _, bausteine = zustand_von(d)
     werkzeuge = []
     ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN, WERT_EINTRAGEN, DING_ANLEGEN, DING_AENDERN, OPTION_ANLEGEN, WAHLSTELLE_ANLEGEN,
-                 FRAGE_ANLEGEN] if schreibdienst() else []
+                 FRAGE_ANLEGEN, TAG_AENDERN] if schreibdienst() else []
     for w in WERKZEUGE + [AUFTRAG, ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN] + ontologie:
         n = w["name"]
         if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:

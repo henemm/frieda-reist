@@ -522,3 +522,86 @@ def test_ding_aendern_und_ablehnungen(repo):
             s.schreiben("beispielreise", werkzeug, {**IDA, "args": args})
         assert not git(arbeit, "status", "--porcelain"), (werkzeug, args)
     assert git(origin, "rev-parse", "main") == stand
+
+
+# ---------- Entscheiden und Plan ----------
+
+def fragen_auf_main(origin):
+    return subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/offene-fragen.md"], check=True,
+                          capture_output=True, text=True).stdout
+
+
+def test_entscheiden_schreibt_verlauf_und_klaert_die_frage(repo):
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    heute = datetime.date.today()
+    a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-01.b", "status": "gewaehlt",
+                                                                     "grund": "Karl möchte mit der Bahn fahren", "quelle": "Gespräch"}})
+    assert a["text"].startswith("Entschieden: V-01.b „Zum Lichtenhainer Wasserfall") and "ist gewählt (Ida," in a["text"] and "Frage F-01 ist damit geklärt" in a["text"]
+    r, text = routen_auf_main(origin)
+    o = next(o for o in r["wahlstellen"]["V-01"]["optionen"] if o["id"] == "V-01.b")
+    assert o["verlauf"][-1] == {"datum": heute, "status": "gewaehlt", "wer": "Ida", "grund": "Karl möchte mit der Bahn fahren (Quelle: Gespräch)"}
+    assert len(o["verlauf"]) == 3                                   # die alten Einträge bleiben
+    assert f"| vor Abreise | geklärt {heute.strftime('%-d.%-m.%Y')}: Ida, Zum Lichtenhainer Wasserfall" in fragen_auf_main(origin)
+    assert git(origin, "log", "-1", "--format=%s", "main").endswith("V-01.b „Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück (Plan B)“ gewählt")
+    # gewählt an einer Wahlstelle mit gewählter Option: die alte wird ersetzt (eigener Verlaufseintrag), die Frage bleibt geklärt
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-03.b", "status": "gewaehlt", "grund": "Abendessen im Haus"}})
+    assert "Bisher gewählt und dadurch ersetzt: V-03.a" in a["text"]
+    r, _ = routen_auf_main(origin)
+    opts = {o["id"]: o for o in r["wahlstellen"]["V-03"]["optionen"]}
+    assert opts["V-03.a"]["verlauf"][-1]["status"] == "ersetzt" and opts["V-03.a"]["verlauf"][-1]["durch"] == "V-03.b"
+    assert opts["V-03.b"]["verlauf"][-1]["status"] == "gewaehlt"
+    assert "| F-02 | Unterkunft in Hohnstein wählen (Pension Burgblick oder Gasthof Polenztal) | – | geklärt" in fragen_auf_main(origin)
+    assert "Gasthof Polenztal (V-03.b)" in fragen_auf_main(origin)
+    # Alle Optionen ungültig (V-03.a ersetzt, V-03.b verworfen): der Probebau lehnt ab, nichts geändert
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="alle Optionen sind verworfen"):
+        s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-03.b", "status": "verworfen", "grund": "doch zu laut"}})
+    assert not git(arbeit, "status", "--porcelain")
+    # verworfen ohne verbleibende Wahl (V-01.a bleibt vorgeschlagen): Wahlstelle offen, Frage wieder offen
+    a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-01.b", "status": "verworfen", "grund": "Fahrplan passt nicht"}})
+    assert "V-01 ist danach offen, Frage F-01 wieder offen" in a["text"]
+    assert "| vor Abreise | offen |" in fragen_auf_main(origin)
+    s.vorbereiten()
+    stand = git(origin, "rev-parse", "main")
+    for args, text in (
+        ({"option": "V-01.b", "status": "verworfen", "grund": "x"}, "schon verworfen"),
+        ({"option": "V-01.a", "status": "ersetzt", "grund": "x"}, "ersetzt_durch"),
+        ({"option": "V-01.a", "status": "ersetzt", "ersetzt_durch": "V-03.b", "grund": "x"}, "derselben Wahlstelle"),
+        ({"option": "V-01.a", "status": "verworfen", "ersetzt_durch": "V-01.b", "grund": "x"}, "nur beim Status ersetzt"),
+        ({"option": "V-01.a", "status": "favorisiert", "grund": "x"}, "„status“ muss"),
+        ({"option": "V-01.a", "status": "verworfen"}, "„grund“ fehlt"),
+        ({"option": "V-99.a", "status": "gewaehlt", "grund": "x"}, "gibt es nicht"),
+        ({"option": "V-01", "status": "gewaehlt", "grund": "x"}, "muss eine Option"),
+    ):
+        with pytest.raises(sb.Ablehnung, match=text):
+            s.schreiben("beispielreise", "entscheiden", {**IDA, "args": args})
+        assert not git(arbeit, "status", "--porcelain"), args
+    with pytest.raises(sb.Ablehnung, match="nur Organisator:innen"):
+        s.schreiben("beispielreise", "entscheiden", {**KARL, "args": {"option": "V-01.a", "status": "verworfen", "grund": "x"}})
+    assert git(origin, "rev-parse", "main") == stand
+
+
+def test_tag_aendern_nur_organisator(repo):
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    with pytest.raises(sb.Ablehnung, match="nur Organisator:innen"):
+        s.schreiben("beispielreise", "tag_aendern", {**KARL, "args": {"ziel": "T-03", "nacht": "V-03"}})
+    a = s.schreiben("beispielreise", "tag_aendern", {**IDA, "args": {"ziel": "T-03", "nacht": "V-03", "text": "Nacht jetzt zur Wahl", "grund": "Probe"}})
+    assert "nacht „U-04“ → „V-03“" in a["text"] and "Grund: Probe" in a["text"]
+    r, text = routen_auf_main(origin)
+    assert r["tage"]["T-03"]["nacht"] == "V-03" and r["tage"]["T-03"]["text"] == "Nacht jetzt zur Wahl" and r["tage"]["T-03"]["strecken"] == ["E-02"]
+    assert 'T-03: {titel: "Hohnstein → Brand → Altendorf", strecken: [E-02], nacht: V-03, text: "Nacht jetzt zur Wahl"}' in text
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "tag_aendern", {**IDA, "args": {"ziel": "T-04", "strecken": ["E-03", "E-23"]}})
+    r, _ = routen_auf_main(origin)
+    assert r["tage"]["T-04"]["strecken"] == ["E-03", "E-23"]
+    s.vorbereiten()
+    for args, text in (({"ziel": "T-03", "nacht": "U-99"}, "gibt es nicht"), ({"ziel": "T-03"}, "Nichts zu ändern"),
+                       ({"ziel": "T-99", "nacht": "U-01"}, "gibt es nicht"), ({"ziel": "T-03", "nacht": "E-01"}, "„nacht“ ist")):
+        with pytest.raises(sb.Ablehnung, match=text):
+            s.schreiben("beispielreise", "tag_aendern", {**IDA, "args": args})
+    # ein Plan, der nicht aufgeht (Strecke beginnt woanders): der Probebau meldet nur Warnungen, kein Fehler -> geht durch; aber
+    # eine Nacht an einem Ort ohne Unterkunft bleibt erlaubt. Hier reicht: die Arbeitskopie ist sauber.
+    assert not git(arbeit, "status", "--porcelain")

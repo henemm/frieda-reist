@@ -51,7 +51,7 @@ MAX_WERTE = 20
 ZEIT_ANWENDEN = 150     # Sekunden für einen Schreibvorgang (fetch, Probebau, push)
 AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "wert_eintragen": "wert",
             "ding_anlegen": "ding", "ding_aendern": "ding", "option_anlegen": "alternative", "wahlstelle_anlegen": "alternative",
-            "frage_anlegen": "frage"}   # reise.AKTIONEN
+            "frage_anlegen": "frage", "entscheiden": "entscheiden", "tag_aendern": "plan"}   # reise.AKTIONEN
 ARTEN_KOPF = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). {herkunft}\n"
               "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (Gliederung des\n"
               "# Lesetexts: je Rubrik name und hilfe); je Merkmal: name, typ,\n"
@@ -1017,9 +1017,156 @@ def wahlstelle_anlegen(reise_dir, wer, args, heute=None):
     return titel, text
 
 
+# ---------- Entscheiden und Plan (plan/routen.yaml, offene-fragen.md) ----------
+ENTSCHEIDUNGEN = ("gewaehlt", "verworfen", "ersetzt")
+WORT = {"gewaehlt": "gewählt", "verworfen": "verworfen", "ersetzt": "ersetzt"}
+
+
+def frage_status_setzen(reise_dir, fid, status):
+    """Status-Zelle einer Frage in offene-fragen.md setzen -> True, wenn die Zeile gefunden wurde."""
+    p = Path(reise_dir) / "offene-fragen.md"
+    if not p.exists():
+        return False
+    zeilen = p.read_text(encoding="utf-8").splitlines()
+    for i, z in enumerate(zeilen):
+        if re.match(rf"^\|\s*{re.escape(fid)}\s*\|", z):
+            zellen = [x.strip() for x in z.strip().strip("|").split("|")]
+            if len(zellen) >= 4:
+                zellen[-1] = " ".join(str(status).replace("|", "/").split())
+                zeilen[i] = "| " + " | ".join(zellen) + " |"
+                p.write_text("\n".join(zeilen) + "\n", encoding="utf-8")
+                return True
+    return False
+
+
+def entscheiden(reise_dir, wer, args, heute=None):
+    """Entscheidung einer Organisator:in über eine Option: Verlaufseintrag (Datum, Status, Person, Grund) direkt in routen.yaml.
+    gewählt setzt bisher gewählte Optionen derselben Wahlstelle auf ersetzt und klärt die Frage der Wahlstelle; verworfen oder
+    ersetzt ohne verbleibende Wahl öffnet die Frage wieder. Widersprüche zwischen Organisator:innen prüft der Konnektor vorher
+    (regeln.konflikt). -> (Titel, Text)."""
+    heute = heute or datetime.date.today()
+    oid = (text_wert(args, "option", pflicht=True, laenge=12) or "").strip()
+    status = (text_wert(args, "status", pflicht=True, laenge=12) or "").lower()
+    grund = text_wert(args, "grund", pflicht=True)
+    durch = text_wert(args, "ersetzt_durch", laenge=12)
+    quelle = text_wert(args, "quelle")
+    if status not in ENTSCHEIDUNGEN:
+        raise Ablehnung(f"„status“ muss einer von {', '.join(ENTSCHEIDUNGEN)} sein.")
+    if not re.fullmatch(r"V-\d+\.[a-z]", oid):
+        raise Ablehnung("„option“ muss eine Option V-01.a sein (varianten zeigt sie).")
+    vid = oid.split(".")[0]
+    route = route_stand(reise_dir)
+    wr = next((w for w in route.get("wahlstellen") or [] if w["id"] == vid), None)
+    o = next((x for x in (wr or {}).get("optionen") or [] if x["id"] == oid), None)
+    if o is None:
+        raise Ablehnung(f"Die Option {oid} gibt es nicht.")
+    if o.get("status") == status:
+        raise Ablehnung(f"{oid} ist schon {WORT[status]}; daran ändert sich nichts.")
+    if status == "ersetzt":
+        od = next((x for x in wr["optionen"] if x["id"] == durch), None) if durch else None
+        if od is None or durch == oid:
+            raise Ablehnung(f"„ersetzt“ braucht ersetzt_durch, eine andere Option derselben Wahlstelle {vid}.")
+        if od.get("status") in ("verworfen", "ersetzt"):
+            raise Ablehnung(f"{durch} ist selbst {WORT[od['status']]} und kann nichts ersetzen.")
+    elif durch:
+        raise Ablehnung("ersetzt_durch gibt es nur beim Status ersetzt.")
+    roh = routen_laden(reise_dir)
+    knoten, bezeichnung = ding_finden(roh, oid)
+    from ruamel.yaml.comments import CommentedSeq
+    eintrag = {"datum": heute, "status": status, "wer": wer["name"], "grund": grund + (f" (Quelle: {quelle})" if quelle else "")}
+    if durch:
+        eintrag["durch"] = durch
+    verlauf = knoten.get("verlauf")
+    if verlauf is None:
+        verlauf = CommentedSeq()
+        knoten["verlauf"] = verlauf
+    verlauf.append(fliess_map(eintrag))
+    ersetzt = []
+    if status == "gewaehlt":
+        for x in wr["optionen"]:
+            if x["id"] != oid and x.get("status") == "gewaehlt":
+                k2, _ = ding_finden(roh, x["id"])
+                v2 = k2.get("verlauf")
+                if v2 is None:
+                    v2 = CommentedSeq()
+                    k2["verlauf"] = v2
+                v2.append(fliess_map({"datum": heute, "status": "ersetzt", "wer": wer["name"], "durch": oid,
+                                      "grund": f"ersetzt durch {oid} „{o['titel']}“: {grund}"}))
+                ersetzt.append(x["id"])
+    routen_speichern(reise_dir, roh)
+    frage_text = ""
+    if wr.get("frage"):
+        gewaehlt_danach = status == "gewaehlt" or any(x.get("status") == "gewaehlt" and x["id"] != oid for x in wr["optionen"])
+        if status == "gewaehlt":
+            ok = frage_status_setzen(reise_dir, wr["frage"], f"geklärt {heute.strftime('%-d.%-m.%Y')}: {wer['name']}, {o['titel']} ({oid})")
+            frage_text = f" Frage {wr['frage']} ist damit geklärt." if ok else ""
+        elif not gewaehlt_danach:
+            ok = frage_status_setzen(reise_dir, wr["frage"], "offen")
+            frage_text = f" {vid} ist danach offen, Frage {wr['frage']} wieder offen." if ok else f" {vid} ist danach offen."
+    titel = f"{oid} „{o['titel']}“ {WORT[status]}" + (f" (ersetzt durch {durch})" if durch else "")
+    text = (f"Entschieden: {oid} „{o['titel']}“ ({vid} {wr.get('titel', '')}) ist {WORT[status]}" + (f", ersetzt durch {durch}" if durch else "")
+            + f" ({wer['name']}, {heute.strftime('%-d.%-m.%Y')}, Grund: {grund})." + (f" Bisher gewählt und dadurch ersetzt: {', '.join(ersetzt)}." if ersetzt else "")
+            + frage_text)
+    return titel, text
+
+
+def tag_aendern(reise_dir, wer, args, heute=None):
+    """Einen Tag des Plans ändern: Titel, Text, Nacht (U-…, V-… oder leer), Strecken (E-…/V-…), Wahlstellen unterwegs (V-…).
+    Nur Organisator:innen (es ändert den Plan). -> (Titel, Text)."""
+    tid = (text_wert(args, "ziel", pflicht=True, laenge=10) or "").strip()
+    roh = routen_laden(reise_dir)
+    t = (roh.get("tage") or {}).get(tid) if re.fullmatch(r"T-\d+", tid) else None
+    if t is None:
+        raise Ablehnung(f"Den Tag {tid} gibt es nicht.")
+    geaendert = []
+    for feld in ("titel", "text"):
+        if args.get(feld) is not None:
+            v = text_wert(args, feld, laenge=2000 if feld == "text" else 200) or ""
+            if v != (t.get(feld) or ""):
+                geaendert.append(f"{feld} „{t.get(feld) or ''}“ → „{v}“")
+                if v:
+                    t[feld] = skalar(feld, v)
+                else:
+                    t.pop(feld, None)
+    if args.get("nacht") is not None:
+        n = str(args.get("nacht") or "").strip()
+        if n and not re.fullmatch(r"(U-\d+|V-\d+|O-\d+)", n):
+            raise Ablehnung("„nacht“ ist eine Unterkunft U-…, eine Wahlstelle V-…, ein Ort O-… oder leer (keine Nacht, letzter Tag).")
+        menge = {"U": "unterkuenfte", "V": "wahlstellen", "O": "orte"}.get(n[:1])
+        if n and n not in (roh.get(menge) or {}):
+            raise Ablehnung(f"„nacht“: {n} gibt es nicht.")
+        if str(t.get("nacht") or "") != n:
+            geaendert.append(f"nacht „{t.get('nacht') or '–'}“ → „{n or '–'}“")
+            if n:
+                t["nacht"] = n
+            else:
+                t.pop("nacht", None)
+    for feld, muster, mengen in (("strecken", r"(E-\d+[A-Za-z]?|V-\d+)", {"E": "strecken", "V": "wahlstellen"}),
+                                 ("wahl", r"V-\d+", {"V": "wahlstellen"})):
+        if args.get(feld) is None:
+            continue
+        liste = id_liste(args, feld, muster, roh) or []
+        for x in liste:
+            if x not in (roh.get(mengen[x[:1]]) or {}):
+                raise Ablehnung(f"„{feld}“: {x} gibt es nicht.")
+        if list(t.get(feld) or []) != liste:
+            geaendert.append(f"{feld} {list(t.get(feld) or [])} → {liste}")
+            if liste:
+                t[feld] = fliess_map({feld: liste})[feld]
+            else:
+                t.pop(feld, None)
+    if not geaendert:
+        raise Ablehnung(f"Nichts zu ändern an {tid} (titel, text, nacht, strecken, wahl).")
+    grund = text_wert(args, "grund")
+    routen_speichern(reise_dir, roh)
+    return f"{tid} geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), \
+        f"{tid} {t.get('titel', '')}: " + "; ".join(geaendert) + "." + (f" Grund: {grund}." if grund else "")
+
+
 WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_definieren, "wert_eintragen": wert_eintragen,
              "ding_anlegen": ding_anlegen, "ding_aendern": ding_aendern, "option_anlegen": option_anlegen,
-             "wahlstelle_anlegen": wahlstelle_anlegen, "frage_anlegen": frage_anlegen}
+             "wahlstelle_anlegen": wahlstelle_anlegen, "frage_anlegen": frage_anlegen, "entscheiden": entscheiden,
+             "tag_aendern": tag_aendern}
 
 
 # ---------- Der Schreibvorgang ----------

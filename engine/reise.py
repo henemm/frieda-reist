@@ -94,6 +94,8 @@ AKTIONEN = {
     "ding":         {"rolle": "mitwirkend", "baustein": None, "ab": ("alles",)},
     # O-3: eine offene Frage anlegen (zu klären oder zu entscheiden); Baustein fragen
     "frage":        {"rolle": "mitwirkend", "baustein": "fragen", "ab": ("alles",)},
+    # O-3: den Plan ändern (Tage: Nacht, Strecken, Wahlstellen) – nur Organisator:innen
+    "plan":         {"rolle": "organisator", "baustein": None, "ab": ("alles",)},
 }
 # Lesende Konnektor-Werkzeuge, die zu einem zuschaltbaren Baustein gehören
 LESE_BAUSTEIN = {"offene_fragen": "fragen", "varianten": "varianten", "merkmale": "varianten",
