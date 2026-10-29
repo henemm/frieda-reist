@@ -7,5 +7,6 @@ Hier stehen die Entscheidungen, die die Software als Ganzes prägen, je eine Dat
 | [0001](0001-kern.md) | Der Kern von Frieda Reist: AI first, Reise-Ontologie ohne Katalog, Frieda ohne eigene KI | gilt |
 | [0002](0002-atomic-design.md) | Oberfläche nach Atomic Design | gilt |
 | [0003](0003-heimat.md) | Seitenordnung: jede Grundform hat genau eine Heimat | gilt |
+| [0004](0004-lage.md) | Lage eines Aufenthalts: Adresse oder Koordinaten, Kartenlinks | gilt |
 
 ADR-0001 ist zugleich die **Prüfstelle**: Jedes Issue, jedes Paket und jeder Pull Request beantwortet die zehn Fragen am Ende des Dokuments. Das PR-Template (`.github/pull_request_template.md`) enthält sie.

@@ -76,3 +76,44 @@ def test_werkzeuge_finden_die_wurzel_des_reisen_repos(tmp_path, monkeypatch):
         assert m.WURZEL == tmp_path and m.KENNUNG == "Probe/1 (ida@example.org)"
     m = importlib.reload(wp)
     assert m.WURZEL == tmp_path
+
+
+# ---------- werkzeuge/adressen_holen.py: Lage der Unterkünfte aus OSM (ADR-0004), ohne Netz ----------
+import adressen_holen as ah  # noqa: E402
+
+
+def test_adresse_aus_osm_tags():
+    assert ah.adresse_aus({"addr:street": "Carrer de sa Lluna", "addr:housenumber": "21", "addr:postcode": "07100",
+                           "addr:city": "Sóller"}) == "Carrer de sa Lluna 21, 07100 Sóller"
+    assert ah.adresse_aus({"addr:place": "Biniaraix", "addr:postcode": "07100"}) == "Biniaraix, 07100"
+    assert ah.adresse_aus({"addr:city": "Sóller"}) is None   # ohne Straße keine Adresse
+
+
+def test_vorschlaege_aus_osm_bezug_und_suche():
+    """Erfundene Testdaten: U-1 mit OSM-Punkt (Overpass liefert eine Adresse), U-2 ohne Punkt (Nominatim findet ein Hotel),
+    U-3 hat schon eine Adresse, U-4 findet nichts."""
+    roh = {"orte": {"O-1": {"name": "Musterort"}},
+           "unterkuenfte": {"U-1": {"name": "Haus A", "ort": "O-1"}, "U-2": {"name": "Haus B", "ort": "O-1"},
+                            "U-3": {"name": "Haus C", "ort": "O-1", "adresse": {"wert": "x", "quelle": "y"}},
+                            "U-4": {"name": "Haus D", "ort": "O-1"}}}
+    punkte = {"strecken": {"E-1": [{"name": "Haus A", "id": "U-1", "lage": [50.0, 14.0], "quelle": "OSM way/11, Stand 2026-10-25"}]}}
+    karte = {"orte": {"O-1": {"lage": [50.0, 14.0]}}}
+
+    def abfragen(url, daten=None):
+        if url == ah.OVERPASS:
+            assert "way(id:11);" in daten["data"]
+            return {"elements": [{"type": "way", "id": 11, "tags": {"addr:street": "Hauptstraße", "addr:housenumber": "1",
+                                                                     "addr:postcode": "12345", "addr:city": "Musterort"}}]}
+        if "Haus+B" in url:
+            return [{"category": "amenity", "type": "restaurant"},
+                    {"category": "tourism", "type": "hotel", "osm_type": "node", "osm_id": 22, "lat": "50.001", "lon": "14.002",
+                     "address": {"road": "Nebenweg", "house_number": "2", "postcode": "12345", "village": "Musterort"}}]
+        return []
+    heute = datetime.date(2026, 10, 29)
+    neu, fehlt = ah.vorschlaege(roh, punkte, karte, suchen=True, heute=heute, abfragen=abfragen)
+    assert neu["U-1"] == {"adresse": {"wert": "Hauptstraße 1, 12345 Musterort", "quelle": "OSM way/11, Stand 2026-10-29", "geprueft": heute}}
+    assert neu["U-2"]["adresse"]["wert"] == "Nebenweg 2, 12345 Musterort" and neu["U-2"]["punkt"]["wert"] == [50.001, 14.002]
+    assert "U-3" not in neu and [f[0] for f in fehlt] == ["U-4"]
+    # ohne --suchen: nur der OSM-Bezug, der Rest steht in der Liste
+    neu, fehlt = ah.vorschlaege(roh, punkte, karte, suchen=False, heute=heute, abfragen=abfragen)
+    assert list(neu) == ["U-1"] and [f[0] for f in fehlt] == ["U-2", "U-4"]

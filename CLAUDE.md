@@ -15,10 +15,11 @@ engine/            bauen.py (Generator), routen.py (Routenmodell), reise.py (rei
                    neu.py (neue Reise, IDs, arten-ableiten), reisevorlage/, vendor/ (Fremdbibliotheken, siehe THIRD_PARTY.md), tests/
 betrieb/           Betrieb einer Instanz: Einarbeiten (KI je Reise, läuft aus mit O-3), Schreibweg, Veröffentlichen, Deploy,
                    Freischalten, Wächter-Lauf, Einrichten, Vorlagen für systemd und nginx, KI-Anweisung, einstellungen.beispiel
-werkzeuge/         Werkzeuge für Inhalte aus dem Netz: Grundkarte, Punkte aus OpenStreetMap, Wasserstellen
+werkzeuge/         Werkzeuge für Inhalte aus dem Netz: Grundkarte, Punkte und Adressen aus OpenStreetMap, Wasserstellen
 beispiel/reisen/   erfundene Beispielreise, Demo und Testgrundlage
 docs/              Produktbild, Alternativen und Merkmale, Design und Bausteine, Konnektor, Betrieb, Werkzeuge;
-                   adr/ Architektur-Entscheidungen, ADR-0001 ist der Kern und die Prüfstelle, ADR-0002 Atomic Design, ADR-0003 eine Heimat je Art
+                   adr/ Architektur-Entscheidungen, ADR-0001 ist der Kern und die Prüfstelle, ADR-0002 Atomic Design, ADR-0003 eine Heimat je Art,
+                   ADR-0004 Lage eines Aufenthalts
 ```
 
 Der Generator sucht Reisen in `./reisen/` des aktuellen Ordners (`--reisen`, `--ziel` zum Ändern).

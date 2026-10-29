@@ -23,6 +23,10 @@ Regionale Karten der Recherche: `frieda/werkzeuge/karte-holen.sh <reise> <name>`
 
 `engine/.venv/bin/python frieda/werkzeuge/wissen_punkte_holen.py <reise> [--neu] [--rahmen]` sucht für die Punkte der Recherche (`reise.json` → `wissen_punkte`) Koordinaten bei Nominatim. Die Suche bleibt auf das Gebiet des Punkts begrenzt. Was nicht gefunden wird, bleibt ohne Lage. Die Sprachen der Namen bestimmt `FR_SPRACHEN` (Vorgabe `de,en`).
 
+## Adressen der Unterkünfte
+
+`engine/.venv/bin/python frieda/werkzeuge/adressen_holen.py <reise> [--suchen] [--trocken]` füllt die Lage der Unterkünfte vor (ADR-0004). Für Unterkünfte ohne Adresse, die in `plan/punkte.yaml` einen OSM-Punkt mit ihrer ID haben, holt es die Adress-Tags über Overpass. Mit `--suchen` fragt es für die übrigen Nominatim nach „Name, Ort“, begrenzt auf 3 km um den Ort aus `plan/karte.yaml`, und übernimmt nur Treffer, die eine Unterkunft mit Straße sind (dann auch die Koordinaten). Jede Adresse bekommt Quelle und Prüfdatum; was nichts liefert, nennt das Skript am Ende, ohne zu schätzen. `--trocken` zeigt nur an. Danach `plan/routen.yaml` durchsehen und einchecken; den Rest trägt Frieda im Gespräch ein (`lage_eintragen`).
+
 ## Wasserstellen prüfen
 
 `engine/.venv/bin/python frieda/werkzeuge/wasser_pruefen.py <reise>` holt die OSM-Wasserpunkte aus `plan/punkte.yaml` noch einmal mit allen Tags: Trinkwasser, saisonal, zeitweise, Zugang, Prüfdatum, Hinweise. Danach stuft es sie ein: gut belegt, mit Vorbehalt, unsicher. Das Ergebnis steht zur Durchsicht in `inhalt/recherche/wasserstellen-osm.md`; `punkte.yaml` bleibt unverändert. Die Einstufung beschreibt die Datenlage, nicht den Zustand vor Ort.
