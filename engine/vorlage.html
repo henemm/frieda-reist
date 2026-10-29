@@ -141,9 +141,9 @@ ol.fussnoten li{margin:0 0 .25em;overflow-wrap:anywhere}
 /* ---------- Atom Symbol (Lucide, eingebettet als <symbol>) ---------- */
 .sym{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
 /* ---------- Atom Zustand (chip): feste Namen, die Farbe folgt der Bedeutung ---------- */
-.chip{font-size:var(--t-etikett);background:var(--acc2);color:var(--acc);border-radius:99px;padding:2px 10px;max-width:100%;overflow-wrap:break-word}
+.chip{font-size:var(--t-etikett);background:var(--acc2);color:var(--acc);border-radius:var(--r-pille);padding:2px 10px;max-width:100%;overflow-wrap:break-word}
 .chip.plan{background:var(--acc);color:var(--bg);font-weight:700}
-.chip.neben{background:var(--warnbg);color:var(--warn)}
+.chip.neben{background:transparent;color:var(--mut);border:1px solid var(--line)}
 .chip.offen{background:var(--warnbg);color:var(--warn)}
 .chip.weg{background:transparent;color:var(--mut);border:1px solid var(--line);text-decoration:line-through}
 .chip.unterwegs{background:transparent;color:var(--ocker);border:1px solid var(--ocker)}
@@ -216,13 +216,13 @@ button.zid.hat-rm .zid-blase{fill:var(--acc2)}
 
 /* ==================== 4 Moleküle ==================== */
 /* ---------- Fläche: Karte und aufklappbarer Block ---------- */
-.karte{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 10px;color:inherit;text-decoration:none}
+.karte{display:block;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin:0 0 10px;color:inherit;text-decoration:none}
 a.karte:active{background:var(--acc2)}
 .karte .k{font-weight:700}
 .karte .z{margin-top:4px;font-size:var(--t-text)}
 .karte .z b{color:var(--mut);font-weight:600}
 .karte .z.klein,.verlauf{font-size:var(--t-etikett);color:var(--mut)}
-details.block{background:var(--card);border:1px solid var(--line);border-radius:12px}
+details.block{background:var(--card);border:1px solid var(--line);border-radius:var(--r)}
 details.block>summary{padding:12px 14px;font-weight:600;cursor:pointer;min-height:44px}
 details.block>.inhalt{padding:0 14px 8px}
 details.weg>summary{font-size:var(--t-klein);color:var(--mut);padding:8px 0}
@@ -239,11 +239,11 @@ details.weg>summary{font-size:var(--t-klein);color:var(--mut);padding:8px 0}
 details.block>.ortchips{padding:0 14px}
 /* ---------- Umschalter: ein Knopf gedrückt ---------- */
 .umschalter{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px;padding:0;border:0;min-width:0}
-.umschalter button{font:inherit;font-size:var(--t-klein);font-weight:600;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:8px 13px;min-height:40px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.umschalter button{font:inherit;font-size:var(--t-klein);font-weight:600;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:var(--r-pille);padding:8px 13px;min-height:40px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
 .umschalter button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 /* Eigene Bedienelemente innerhalb von .pico behalten ihr Aussehen */
 .pico :is(.umschalter button){width:auto;box-shadow:none;line-height:1.3;transition:none;
-  --pico-background-color:var(--card);--pico-border-color:var(--line);--pico-color:var(--fg);background-color:var(--card);border:1px solid var(--line);border-radius:99px}
+  --pico-background-color:var(--card);--pico-border-color:var(--line);--pico-color:var(--fg);background-color:var(--card);border:1px solid var(--line);border-radius:var(--r-pille)}
 .pico .umschalter button{margin:0;font-size:var(--t-klein);font-weight:600;color:var(--fg);padding:8px 13px}
 .pico .umschalter button[aria-pressed="true"]{--pico-background-color:var(--fg);background-color:var(--fg);color:var(--bg);border-color:var(--fg)}
 @media (hover:hover){
@@ -280,7 +280,6 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .lg-u{width:16px;border-top:3px dotted var(--fg)}
 .lg-s{width:16px;border-top:3px dotted var(--skip)}
 .lg-b{width:16px;border-top:2px dashed var(--bus)}
-.lg-f{width:18px;border-top:3px dashed var(--fg)}
 .legende i{display:inline-block;width:12px;height:12px;margin-right:4px;vertical-align:-1px;border-width:1px}
 /* ---------- Listenzeile: Wissen, Praxis, Quellen, Orte ---------- */
 .wliste{display:flex;flex-direction:column}
@@ -307,13 +306,13 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .beleg-form input[type=file]{max-width:100%;font-size:var(--t-klein)}
 .beleg-form input[name=name]{max-width:12rem}
 /* ---------- Hinweiskasten: geht nicht auf ---------- */
-.warnungen{background:var(--warnbg);color:var(--warn);border-radius:12px;padding:10px 14px;margin:0 0 12px}
+.warnungen{background:var(--warnbg);color:var(--warn);border-radius:var(--r);padding:10px 14px;margin:0 0 12px}
 .warnungen ul{margin:.3em 0 0;padding-left:20px}
 /* ---------- Rückmeldung und Aufgabe als Eintrag ---------- */
 .rmeintrag{border-top:1px solid var(--line);padding:9px 0}
 .rmeintrag .kopfzeile{font-size:var(--t-etikett);color:var(--mut)}
 .rmeintrag .text{white-space:pre-wrap;margin:3px 0}
-.rmeintrag .antwort{font-size:var(--t-text);background:var(--acc2);border-radius:8px;padding:6px 9px;margin-top:5px}
+.rmeintrag .antwort{font-size:var(--t-text);background:var(--acc2);border-radius:var(--r-klein);padding:6px 9px;margin-top:5px}
 .ag{display:flex;gap:12px;align-items:flex-start;padding:12px 0}
 .ag>.ag-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .ag-kopf{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
@@ -324,7 +323,7 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .ag-frist{color:var(--fg);font-weight:600}
 .ag-frist.ueber,.ag-wichtig{color:var(--warn);font-weight:600}
 .ag-bezug{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
-.ag-bezug a{font-size:var(--t-etikett);line-height:1.3;padding:3px 10px;border-radius:var(--r-pille);background:var(--acc2);color:var(--acc);text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ag-bezug .chip{line-height:1.3;padding:3px 10px;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ag-notiz{font-size:var(--t-text);color:var(--mut);line-height:1.45}
 .pico button.ag-bearbeiten{flex:none;width:auto;margin:0;padding:4px 0;min-height:32px;border:0;background:none;box-shadow:none;color:var(--acc);font-size:var(--t-klein);font-weight:600}
 .ag-liste{display:flex;flex-direction:column}
@@ -345,7 +344,7 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .pico button.neu-knopf{width:auto;margin:0;min-height:44px;padding:0 18px;border-radius:var(--r-pille);font-weight:600}
 .pico button.neu-knopf::before{content:"+";margin-right:6px;font-weight:700}
 details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
-.pico button.haken{width:30px;height:30px;flex:none;padding:0;margin:0;border-radius:8px;border:2px solid var(--acc);background:transparent;color:var(--acc);font-size:var(--t-text);line-height:1;box-shadow:none}
+.pico button.haken{width:30px;height:30px;flex:none;padding:0;margin:0;border-radius:var(--r-klein);border:2px solid var(--acc);background:transparent;color:var(--acc);font-size:var(--t-text);line-height:1;box-shadow:none}
 .pico button.haken.an{background:var(--acc);color:var(--bg)}
 
 /* ==================== 5 Organismen ==================== */
@@ -359,7 +358,7 @@ details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
 .pico .ding>.zid-box{margin:2px 0 0;flex:none}
 .karte>.ding-art{margin:0 0 3px}
 /* Kontext unterwegs: Wahlen mit Auslöser stehen oben im Tag, mit Rahmen in Ocker */
-.ding.wahl.vorn{border:2px solid var(--ocker);border-radius:12px;padding:10px 12px;margin:4px 0 10px}
+.ding.wahl.vorn{border:2px solid var(--ocker);border-radius:var(--r);padding:10px 12px;margin:4px 0 10px}
 /* ---------- Wahl-Modul (Designsystem 2c): Einstieg an der Stelle, Vergleich darunter; ab 700 px Tabelle, darunter Karten oder Tabelle ---------- */
 .vergleich.mk th[scope=row]{text-align:left;color:var(--mut);font-weight:600;white-space:nowrap}
 .vergleich.mk td{vertical-align:top;min-width:9em}
@@ -375,7 +374,7 @@ details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
 .pico .wm-steuer label{display:flex;align-items:center;gap:6px;font-size:var(--t-text);min-height:40px;margin:0}
 .pico .wm-steuer input[type=checkbox]{margin:0}
 .wm-wahl,.wm-ansicht{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;padding:0;border:0;min-width:0}
-.pico :is(.wm-wahl,.wm-ansicht) button{width:auto;margin:0;box-shadow:none;font:600 var(--t-klein)/1.2 var(--font-text);border-radius:99px;border:1px solid var(--line);
+.pico :is(.wm-wahl,.wm-ansicht) button{width:auto;margin:0;box-shadow:none;font:600 var(--t-klein)/1.2 var(--font-text);border-radius:var(--r-pille);border:1px solid var(--line);
   background:var(--card);color:var(--fg);padding:6px 12px;min-height:40px;cursor:pointer}
 .pico :is(.wm-wahl,.wm-ansicht) button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--bg)}
 .wm-wahl small{font-weight:400;opacity:.8;margin-left:4px}
@@ -414,7 +413,7 @@ tr.auf .wm-pfeil{transform:rotate(90deg)}
 .web-link{font-weight:600;white-space:nowrap}
 .karten-links{display:inline-flex;flex-wrap:wrap;gap:4px 12px}
 .wm-einzeln{margin-top:10px}
-.wm-karte{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card)}
+.wm-karte{border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;background:var(--card)}
 .wm-karte.an{border-color:var(--acc);box-shadow:inset 3px 0 0 var(--acc)}
 @media (min-width:700px){.wm-karten,.wm-ansicht,.wm-wahl,.wm-anzahl,.pico details.wm-einzeln{display:none}.wm.ohne-tabelle .wm-karten{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
 @media (max-width:699px){.wm[data-ansicht=karten] .wm-tabelle,.wm[data-ansicht=tabelle] .wm-karten{display:none}
@@ -477,7 +476,7 @@ details.kapitel[open]>summary::after{transform:rotate(-135deg);margin-bottom:-4p
 .kap-titel{font-weight:600;line-height:1.3;color:var(--fg)}
 .kap-vorschau{font-size:var(--t-klein);color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 details.kapitel[open] .kap-vorschau{display:none}
-.kap-zahl{flex:none;font-size:var(--t-etikett);font-weight:700;background:var(--acc2);color:var(--acc);border-radius:99px;padding:1px 8px;font-variant-numeric:tabular-nums}
+.kap-zahl{flex:none;font-size:var(--t-etikett);font-weight:700;background:var(--acc2);color:var(--acc);border-radius:var(--r-pille);padding:1px 8px;font-variant-numeric:tabular-nums}
 .pico details.kapitel>summary .zid-box{margin:0;flex:none}
 .kap-inhalt{padding:0 0 14px}
 .kap-inhalt :is(h4,h5){font-size:var(--t-text);margin:1.1em 0 .3em}
@@ -548,7 +547,7 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .achse .tz-titel,.achse .tz-zeit,.achse .tz-nacht{grid-column:3}
 .tz-name{display:block}
 .tz-marken{margin-top:4px}
-.pico .tz-marken .chip{font-size:var(--t-etikett);white-space:normal;border-radius:8px;text-align:left}
+.pico .tz-marken .chip{font-size:var(--t-etikett);white-space:normal;border-radius:var(--r-klein);text-align:left}
 .achse .tagzeile:focus-visible,.achse .tagzeile.zurueck-hier{background:var(--acc2)}
 @media (min-width:1100px){
   .achse .tagzeile{grid-template-columns:20px 3.4rem minmax(0,1.25fr) 8.5rem minmax(0,1fr);align-items:start}
@@ -566,7 +565,7 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .vergleich .nacht{display:inline-block;font-size:var(--t-etikett);font-weight:600;border-radius:4px;padding:0 6px;margin-top:2px;color:var(--bg);background:var(--kat,var(--farbe-grau))}
 .vergleich .nacht.offen{background:transparent;color:var(--mut);border:1px dashed var(--mut)}
 /* ---------- Karte (Leaflet): Übersicht, Etappe, Recherche ---------- */
-.kartenbox{isolation:isolate;height:min(68vh,620px);min-height:320px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--sea)}
+.kartenbox{isolation:isolate;height:min(68vh,620px);min-height:320px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--sea)}
 .kartenbox.leaflet-container{background:var(--sea);font:inherit}
 .kartenbox.klein{height:240px;min-height:0;margin:8px 0 4px}
 .rh-ort.rh-hier::after{width:14px;height:14px;border-radius:50%;background:var(--acc);border:2px solid var(--bg)}
@@ -575,7 +574,7 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .leaflet-container .rh-halo{stroke:var(--land)}
 .leaflet-container .rh-plan-a{stroke:var(--plan-a)} .leaflet-container .rh-plan-b{stroke:var(--plan-b)}
 .leaflet-container .rh-plan-c{stroke:var(--plan-c)} .leaflet-container .rh-plan-d{stroke:var(--plan-d)}
-.leaflet-container .rh-gemeinsam{stroke:var(--mut)} .leaflet-container .rh-bus{stroke:var(--bus)} .leaflet-container .rh-skip{stroke:var(--skip)}
+.leaflet-container .rh-gemeinsam{stroke:var(--mut)} .leaflet-container .rh-fahrt{stroke:var(--bus)} .leaflet-container .rh-skip{stroke:var(--skip)}
 .rh-ort{background:none;border:0}
 /* Etappen-Karte: Track, Punkte nach Kategorie, Kartenlinks im Text (25.10.2026) */
 .ekarte{height:min(58vh,460px);min-height:280px}
@@ -589,7 +588,7 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .wkarte{margin:8px 0 12px}
 .kartenlinks{display:flex;flex-direction:column;gap:2px;margin:4px 0}
 .pico .regionen{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
-.pico .regionen button{all:unset;cursor:pointer;font-size:var(--t-klein);padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card)}
+.pico .regionen button{all:unset;cursor:pointer;font-size:var(--t-klein);padding:4px 10px;border-radius:var(--r-pille);border:1px solid var(--line);background:var(--card)}
 .pico .regionen button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--bg)}
 .rh-p.umriss{background:var(--card);color:var(--pk);border-color:var(--pk)}
 .leaflet-popup-content{font:inherit;font-size:14px;margin:10px 12px;line-height:1.35}
@@ -624,7 +623,7 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .pico .leaflet-container .leaflet-control-attribution{font-size:10px;line-height:1.3;background:color-mix(in srgb,var(--card) 75%,transparent);color:var(--mut);max-width:70%}
 .leaflet-tooltip.rh-lbl.verdeckt{visibility:hidden}
 /* ---------- Rückmeldefenster ---------- */
-dialog#rm{border:0;border-radius:16px 16px 0 0;padding:0;margin:auto 0 0;bottom:calc(0px - var(--hoehe-fehlt,0px));width:100%;max-width:100%;max-height:88vh;background:var(--card);color:var(--fg);box-shadow:0 -4px 24px rgba(0,0,0,.25)}
+dialog#rm{border:0;border-radius:16px 16px 0 0;padding:0;margin:auto 0 0;bottom:calc(0px - var(--hoehe-fehlt,0px));width:100%;max-width:100%;max-height:88vh;background:var(--card);color:var(--fg);box-shadow:var(--schatten)}
 @media (min-width:700px){dialog#rm{margin:auto;max-width:600px;border-radius:16px}}
 dialog#rm::backdrop{background:rgba(0,0,0,.35)}
 #rm .rmkopf{position:sticky;top:0;background:var(--card);padding:14px 16px 8px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
@@ -651,7 +650,7 @@ dialog#rm::backdrop{background:rgba(0,0,0,.35)}
 .wu-kopf{display:flex;gap:10px;align-items:flex-start}
 .wu-kopf .text{white-space:pre-wrap;flex:1;min-width:0}
 .wu-karte .kopfzeile{font-size:var(--t-etikett);color:var(--mut)}
-.wu-karte .antwort{font-size:var(--t-text);background:var(--acc2);border-radius:8px;padding:6px 9px;margin-top:5px}
+.wu-karte .antwort{font-size:var(--t-text);background:var(--acc2);border-radius:var(--r-klein);padding:6px 9px;margin-top:5px}
 .wu-vorschlag{font-size:var(--t-text);border-left:3px solid var(--acc);padding:2px 0 2px 9px;margin-top:6px}
 .wu-knoepfe{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
 .pico .wu-knoepfe button{margin:0}
@@ -728,7 +727,7 @@ header .konto{position:absolute;top:calc(10px + env(safe-area-inset-top));right:
 .meldungen{position:fixed;z-index:11;top:calc(10px + env(safe-area-inset-top));left:12px;right:12px;display:grid;justify-items:center;gap:8px;pointer-events:none}
 .hinweis{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:22px;font-size:var(--t-klein);max-width:520px}
 .hinweis[hidden]{display:none}
-.hinweis button{font:inherit;font-weight:600;border:0;border-radius:99px;padding:6px 12px;background:var(--acc);color:var(--bg);cursor:pointer}
+.hinweis button{font:inherit;font-weight:600;border:0;border-radius:var(--r-pille);padding:6px 12px;background:var(--acc);color:var(--bg);cursor:pointer}
 #offline{color:var(--warn);padding-right:14px}
 /* ---------- Glas (Liquid Glass: 35 %, Blur 8px, Sättigung 170 %) ----------
    Leitbild: Inhalt läuft bis an die Ränder, Bedienelemente schweben als Glas darüber (iOS 26/27).
@@ -752,7 +751,7 @@ nav a{min-width:0;text-align:center;color:var(--mut);text-decoration:none;font-w
     box-shadow:0 0 0 1px color-mix(in srgb,var(--fg) 10%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 40%,transparent),0 10px 30px rgba(20,30,25,.18)}
 }
 nav{flex:1;min-width:0;display:flex;gap:2px}
-nav a,#suchKnopf{flex:1 1 0;min-width:0;padding:0 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:12px;border:0;background:none;cursor:pointer;
+nav a,#suchKnopf{flex:1 1 0;min-width:0;padding:0 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:var(--r);border:0;background:none;cursor:pointer;
       color:var(--mut);text-decoration:none;font:600 0.6562rem/1.1 var(--font-text);letter-spacing:-.01em;white-space:nowrap}
 #suchKnopf{flex:0 1 calc(100% / 6)}
 nav a span,#suchKnopf span{max-width:100%;overflow:hidden;text-overflow:ellipsis}
@@ -763,7 +762,7 @@ nav a.on{color:var(--acc);background:color-mix(in srgb,var(--acc2) 85%,transpare
 #suchfeld input::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
 #suchfeld input{flex:1;min-width:0;border:0;background:none;color:var(--fg);font:inherit;font-size:var(--t-text);outline:none;padding:0}
 #suchfeld input::placeholder{color:var(--mut);opacity:1}
-#suchZu{border:0;background:color-mix(in srgb,var(--fg) 8%,transparent);color:var(--fg);width:44px;height:44px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+#suchZu{border:0;background:color-mix(in srgb,var(--fg) 8%,transparent);color:var(--fg);width:44px;height:44px;border-radius:var(--r);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 body.sucht nav,body.sucht #suchKnopf{display:none}
 body::after{content:"";position:fixed;z-index:9;left:0;right:0;bottom:calc(0px - var(--hoehe-fehlt));height:var(--tabbar-space);pointer-events:none;
     background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg) 70%,transparent))}
@@ -945,20 +944,15 @@ function zid(id) {
   return el("span", {class: "zid-box"}, knopf);
 }
 /* Bausteine nach Ebenen (Designsystem, frieda-reist#18, docs/design.md). Jede Ansicht setzt sich aus ihnen zusammen,
-   statt dieselbe Sache selbst zu zeichnen; die Stile stehen im <style> in derselben Ordnung.
-   Atome:     symbol, chip (Zustand), Etikett (CSS), merkmalWert (Wert mit Herkunft), zid (Kennung), planMarke, webLink, kartenLinks
-   Moleküle:  kennzahlLeiste, merkmalListe, reiseText (Reisetext mit Merkmallisten), reiterGruppe, ebeneKopf, dingEtikett,
-              listenZeile, zeilenKarte, rmEintrag, agEintrag, eintragGruppen, kartenLegende, umschalter, kontoKnopf,
-              nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, buchungChip (Stand einer Buchung mit Link),
-              belegeListe (Belege einer Buchung mit Formular)
-   Organismen: Ding (nachtZeile, unterkunftKarte, aufenthaltZeile, streckeZeile), buchungBlock (Buchung am Ding, ihre Heimat),
-              Wahl-Modul (wahlEinstieg, wahlVergleich mit optionEinzelheiten in der aufgeklappten Zeile, wahlKarte),
-              tagKarte (Tageskasten mit wegVerlauf), tagEbenen, tagOrteZeilen, nachtAbschnitt (Nacht der Tagesseite),
-              tagZeile (Zeitachse), uebersichtKarte, zuEntscheiden, zuBuchen (Listen aus listenZeile)
-   Vorlagen:  tagKachel, Ansichten (ansichtTag = Tagesseite, ansichtReise = Reiseüberblick, ansichtOffen = Zu tun,
-              ansichtPlan …)
+   statt dieselbe Sache selbst zu zeichnen; die Stile stehen im <style> in derselben Ordnung. Diese vier Zeilen sind die eine
+   Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
+   engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
+   Atome: symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zahlMarke, buchungChip
+   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, wahlZustand, belegeListe
+   Organismen: nachtZeile, unterkunftKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, nachtAbschnitt, tagZeile, uebersichtKarte, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
+   Vorlagen: tagKachel, leseAbschnitt, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtOffen, ansichtWissen, ansichtPlan, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
-   Stile seiner Ebene, auf die Bausteinseite (#bausteine) und, wenn er eine Grundform zeigt, in GRUNDFORMEN.
+   Stile seiner Ebene, auf die Bausteinseite (#bausteine) und in docs/design.md; zeigt er eine Grundform, auch in GRUNDFORMEN.
    Zustände haben feste Namen, die Farbe folgt der Bedeutung, nicht dem Ort:
      plan      entschieden oder im Plan (Akzent)       offen  braucht noch eine Entscheidung (Warnfarbe)
      unterwegs erst unterwegs zu entscheiden           weg    verworfen oder ersetzt (durchgestrichen)
@@ -1034,7 +1028,7 @@ function chips(a) {
 function abschnittKarte(a) {
   const titel = a.typ === "etappe" ? a.titel : a.titel;
   const k = el("a", {class: "karte vorschau", href: "#" + a.id}, el("div", {class: "k"}, titel, zid(a.id)));
-  if (a.typ === "etappe") k.append(...[chips(a), kennzahlLeiste(a.kennzahlen)].filter(Boolean));
+  if (a.typ === "etappe") k.append(...[chips(a), kennzahlLeiste(a.kennzahlen, fahrtVon(a.id))].filter(Boolean));
   return k;
 }
 
@@ -1048,9 +1042,10 @@ function abschnittInhalt(a, ohneTitel, kennzahlen) {
     for (const z of a.tabelle.zeilen) s.append(zeilenKarte(a.tabelle.spalten, z));
     if (a.nach) s.append(el("div", {html: a.nach}));
   }
-  // Ohne Reiter „Plan“ stehen Tage und Unterkünfte an ihrer Heimat (Zeitachse, Tagesseite, Zu tun); hier nur der Text
+  // Ohne Reiter „Plan“ stehen Tage und Unterkünfte an ihrer Heimat (Zeitachse, Tagesseite, Zu tun); hier nur der Text.
+  // Mit Tagesseiten ist die Nacht der Tagesseite die Heimat der Unterkunft: die Liste hier zeigt dann nur Zeilen (ADR-0003)
   if (a.route_ansicht === "tagesplan" && PLAN_DA) tagesplan(s);
-  if (a.route_ansicht === "unterkuenfte" && PLAN_DA) unterkuenfte(s);
+  if (a.route_ansicht === "unterkuenfte" && PLAN_DA) (PLAN_TAGE ? unterkunftZeilen(s) : unterkuenfte(s));
   einmal(a.bloecke).forEach((b, i) => s.append(block(b, i === 0, kennzahlen)));
   return s;
 }
@@ -1063,19 +1058,49 @@ const artName = k => (artDef(k) || {}).name || k || "";
 const artNamen = () => Object.fromEntries(Object.entries(R.arten || {}).map(([k, v]) => [k, v.name]));
 const GRUNDFORM_SYM = {aufenthalt: "unterkunft", bewegung: "strecke", folge: "plan"};
 const artSym = (k, grundform) => (artDef(k) || {}).symbol || GRUNDFORM_SYM[(artDef(k) || {}).grundform || grundform] || "strecke";
-// Atom Zustand Buchung: offen und angefragt in Warnfarbe, alles andere als „im Plan“; null = kein Buchungsstand (Art nicht
-// buchbar). Kommt der Stand aus einer Buchung (B-…, #76), führt der Chip zu ihr.
-const buchungChip = (b, bid) => b ? chip(b === "offen" || b === "angefragt" ? "offen" : "plan", "Buchung: " + b, bid ? {href: "#" + bid} : null) : null;
+// Bewegung aus eigener Kraft (summiert in plan/arten.yaml): die Seite kennt keine Art, nur dieses Merkmal der Art (ADR-0001).
+// Es entscheidet über Etappenkarte, Tageskilometer, Gehzeit statt Dauer, Linienstil und Legende; bis 29.10.2026 stand hier „wandern“.
+const summiertArt = s => [].concat((s || {}).art || []).some(a => (artDef(a) || {}).summiert);
+const fahrtVon = id => !!(R && R.strecken[id] && R.strecken[id].art && !summiertArt(R.strecken[id]));
+// Molekül Buchungsstand eines Dings, einmal für alle (Chip, Zeitachse, Zu buchen, Zähler): aus der geltenden Buchung (B-…)
+// oder dem Bestandsfeld buchung; null = kein Stand (Art nicht buchbar). offen und angefragt sind nicht gebucht.
+function buchungsStand(d) {
+  if (!d || !d.buchung) return null;
+  const offen = d.buchung === "offen" || d.buchung === "angefragt";
+  return {zustand: offen ? "offen" : "plan", text: d.buchung === "offen" ? "nicht gebucht" : d.buchung, gebucht: !offen, bid: d.buchung_id || null};
+}
+// Atom Zustand Buchung: der Stand als Chip; kommt er aus einer Buchung (B-…, #76), führt der Chip zu ihr
+const buchungChip = d => { const st = buchungsStand(d); return st ? chip(st.zustand, st.text, st.bid ? {href: "#" + st.bid} : null) : null; };
 // Buchungen (B-…) eines Dings: geltende zuerst, stornierte danach
 const buchungenZu = id => Object.values(R && R.buchungen || {}).filter(b => (b.fuer || []).includes(id))
   .sort((a, b) => (a.status === "storniert") - (b.status === "storniert"));
+// Heimat einer Buchung (ADR-0003): ihr erstes Ding zeigt sie vollständig, jedes weitere nur den Chip
+const buchungenBei = id => buchungenZu(id).filter(b => (b.fuer || [])[0] === id);
+// Kontakt einer Unterkunft ohne die Webseite (die steht als Atom webLink daneben)
+const kontaktText = u => ((u || {}).kontakt || "").replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ");
+// Zustand einer Wahl, überall gleich: unterwegs zu entscheiden, offen (braucht eine Entscheidung) oder entschieden
+const wahlOffen = w => !!w && w.wann === "planung" && w.offen && gueltigeOptionen(w).length > 1;
+const wahlZustand = w => w.wann === "unterwegs" ? chip("unterwegs", "unterwegs entscheiden") : wahlOffen(w) ? chip("offen", "offen") : chip("plan", "entschieden");
+// Atom Zahlmarke: die Zahl der Einträge einer Gruppe oder eines Kapitels als Pille
+const zahlMarke = (n, title) => el("span", {class: "kap-zahl", title}, String(n));
+const gruppenTitel = (titel, n) => el("h3", {class: "reise-titel"}, titel, zahlMarke(n));
 const weg = s => s === "verworfen" || s === "ersetzt";
 const optionZustand = s => weg(s) ? "weg" : s === "gewaehlt" ? "plan" : "";
 const link = (id, text) => el("a", {href: "#" + id}, text);
 const ortName = id => (R.orte[id] || {}).name || id || "?";
 // Herkunft eines Kartenpunkts: Quelle und Prüfdatum (Feld geprueft oder stand der Punktdatei)
-function punktHerkunft(p) { return [p.quelle, p.geprueft && "geprüft " + p.geprueft.split("-").reverse().map(Number).join(".")].filter(Boolean).join(" · "); }
+function punktHerkunft(p) { return [p.quelle, p.geprueft && "geprüft " + datumKurz(p.geprueft)].filter(Boolean).join(" · "); }
+// Atom Datum: datumText mit Wochentag („Mo 1.5.“) für die Tage des Plans; datumKurz ohne („1.5.“, mit Jahr, wenn es nicht
+// das laufende ist) für Fristen, Prüfdaten, Verläufe und alles andere. Zwei Formen, sonst keine (ADR-0002).
 function datumText(iso, wt) { const [, m, d] = iso.split("-"); return `${wt} ${+d}.${+m}.`; }
+// Jahre der Reise (Zeitraum oder Tage des Plans): Daten darin tragen kein Jahr, ebenso das laufende Jahr; alle anderen schon
+function reiseJahre() {
+  const z = (D.reise || {}).zeitraum || {}, t = R && R.tage.length ? [R.tage[0].datum, R.tage[R.tage.length - 1].datum] : [];
+  const j = [z.von, z.bis, ...t].filter(Boolean).map(x => +String(x).slice(0, 4)), aus = new Set([new Date().getFullYear()]);
+  if (j.length) for (let y = Math.min(...j); y <= Math.max(...j); y++) aus.add(y);
+  return aus;
+}
+function datumKurz(iso) { const [j, m, d] = String(iso || "").slice(0, 10).split("-"); return d ? `${+d}.${+m}.${reiseJahre().has(+j) ? "" : j}` : ""; }
 function dauer(min) { return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")} h`; }
 function summeText(s) {
   if (!s) return "";
@@ -1087,21 +1112,22 @@ function summeText(s) {
 }
 
 // Molekül Kennzahlenleiste: Gehzeit, Aufstieg, Abstieg, Strecke mit Etikett; Namen aus routen.yaml werden vereinheitlicht
-function kennzahlPaar(n, v) {
+// fahrt: eine Bewegung, die nicht aus eigener Kraft ist (Bahn, Bus …): ihre Zeit heißt Dauer, nicht Gehzeit
+function kennzahlPaar(n, v, fahrt) {
   return /^aufstieg/i.test(n) ? ["Aufstieg", `↑ ${v} m`] : /^abstieg/i.test(n) ? ["Abstieg", `↓ ${v} m`]
-    : /^(gehzeit|dauer)/i.test(n) ? ["Gehzeit", v] : /^l(ä|ae)nge/i.test(n) ? ["Strecke", /^[\d.,]+$/.test(v) ? `${v} km` : v] : [n, v];
+    : /^(gehzeit|dauer)/i.test(n) ? [fahrt ? "Dauer" : "Gehzeit", v] : /^l(ä|ae)nge/i.test(n) ? ["Strecke", /^[\d.,]+$/.test(v) ? `${v} km` : v] : [n, v];
 }
 // Je Kennzahl eine Kachel; die bekannten tragen ihr Symbol im Etikett
-const KZ_SYM = {Gehzeit: "gehzeit", Aufstieg: "aufstieg", Abstieg: "abstieg", Strecke: "strecke", Tage: "plan", "Höhenmeter": "aufstieg", "Nächte": "unterkunft", Orte: "ort", "Übernachtungen": "unterkunft"};
-function kennzahlLeiste(kennzahlen) {
-  const kz = Object.entries(kennzahlen || {}).map(([n, v]) => kennzahlPaar(n, v));
+const KZ_SYM = {Gehzeit: "gehzeit", Dauer: "gehzeit", Aufstieg: "aufstieg", Abstieg: "abstieg", Strecke: "strecke", Tage: "plan", "Höhenmeter": "aufstieg", "Nächte": "unterkunft", Orte: "ort", "Übernachtungen": "unterkunft"};
+function kennzahlLeiste(kennzahlen, fahrt) {
+  const kz = Object.entries(kennzahlen || {}).map(([n, v]) => kennzahlPaar(n, v, fahrt));
   return kz.length ? el("div", {class: "kz"}, kz.map(([n, v]) => el("div", {},
     el("span", {class: "kzn"}, KZ_SYM[n] ? symbol(KZ_SYM[n]) : null, n), el("span", {class: "kzw"}, v)))) : null;
 }
 /* Organismus Ding (Designsystem 2b): ein Aufenthalt, eine Bewegung oder eine Folge sieht überall gleich aus.
    Etikett oben (was es ist, mit Symbol der Art und Punkt in der Farbe der Kategorie), Titel, Unterzeile, Zustand, Kennung. */
 // Symbol je Art eines Dings: Nacht und Unterkunft ein Bett, eine Wahl ein Abzweig
-const DING_SYM = {nacht: "unterkunft", unterkunft: "unterkunft", wahl: "varianten"};
+const DING_SYM = {nacht: "unterkunft", unterkunft: "unterkunft", wahl: "varianten", ticket: "ticket"};
 // art: nacht, unterkunft, wahl oder eine Art der Reise (dann ihr Symbol)
 function dingEtikett(text, kat, art) {
   const sym = DING_SYM[art] || (artDef(art) ? artSym(art) : null);
@@ -1118,7 +1144,8 @@ function nachtUnterkunft(n) {
   const akt = w && (kand.find(o => o.aktiv) || kand[0]);
   return n.unterkunft && R.unterkuenfte[n.unterkunft] ? n.unterkunft : akt && (akt.unterkuenfte || []).find(x => R.unterkuenfte[x]);
 }
-function nachtZeile(n, ohneLinks, datum, verweis) {
+// tid: der Tag der Zeile; ohne Tagesseiten (PLAN_DA) ist der Tageskasten des ersten Tags die Heimat der Wahl (Ziel von #V-…)
+function nachtZeile(n, ohneLinks, datum, verweis, tid) {
   const w = n.wahl && wahlZu.get(n.wahl);
   const kand = w ? w.optionen.filter(o => !weg(o.status)) : [];
   const akt = w && (kand.find(o => o.aktiv) || kand[0]);
@@ -1128,12 +1155,12 @@ function nachtZeile(n, ohneLinks, datum, verweis) {
   const titel = n.an_bord ? "an Bord" : u ? u.name : akt ? akt.titel : n.hinweis || ort;
   const unter = [kat && kat !== "offen" && kat !== "unterwegs" ? artName(kat) : (nachtTyp(n) !== "offen" ? nachtTyp(n) : ""), ort !== titel ? ort : "",
     titel !== n.hinweis ? n.hinweis : "", !u && !akt && !n.an_bord ? "Unterkunft noch offen" : ""].filter(Boolean);
-  const offen = w && w.wann === "planung" && w.offen && kand.length > 1;
-  const zustand = !w || w.wann !== "planung" ? null : offen ? chip("offen", ohneLinks ? `offen · ${kand.length} Möglichkeiten` : "offen") : chip("plan", "gewählt");
+  const offen = wahlOffen(w);
+  const zustand = !w || w.wann !== "planung" ? null : offen && ohneLinks ? chip("offen", `offen · ${kand.length} Möglichkeiten`) : wahlZustand(w);
   const kennung = ohneLinks ? null : w ? zid(w.id) : uid ? zid(uid) : null;
-  const einstieg = w && !ohneLinks ? (verweis ? (kand.length > 1 ? el("a", {class: "wm-knopf", href: "#" + w.id}, "Alternativen vergleichen",
-    el("span", {class: "wm-n", "aria-label": `${kand.length} Möglichkeiten`}, String(kand.length))) : null) : wahlEinstieg(w, false, datum)) : null;
-  const zeile = el("div", {class: "ding nacht"},
+  const einstieg = w && !ohneLinks ? wahlEinstieg(w, false, datum, verweis ? "#" + w.id : null) : null;
+  const heim = PLAN_DA && w && tid && w.an[0] === tid;
+  const zeile = el("div", {class: "ding nacht" + (heim ? " ziel" : ""), id: heim ? w.id : null, "data-ziel": heim ? w.id : null},
     el("div", {class: "ding-text"}, dingEtikett("Nacht", kat !== "offen" ? kat : null, "nacht"),
       el("span", {class: "ding-titel"}, !ohneLinks && u ? link(uid, titel) : titel),
       unter.length ? el("span", {class: "ding-unter"}, unter.join(" · ")) : null,
@@ -1150,14 +1177,14 @@ function streckeZeile(id, wahl, ohneKennung, voll) {
   const art = !arten.length ? "Verkehrsmittel offen" : arten.some(a => (artDef(a) || {}).summiert) ? "" : arten.map(artName).join(" + ");
   const z = el("div", {class: "z"}, el("div", {class: "titelzeile"}, el("span", {}, symbol(artSym(arten[0], "bewegung"), "etikett-sym"), " ", s.dossier || proId.has(id) ? link(id, s.titel) : s.titel), ohneKennung ? null : zid(id)));
   // Kennzahlen als Leiste mit Etiketten (Gehzeit, Aufstieg, Abstieg, Strecke); Verkehrsmittel als Textzeile
-  const kz = kennzahlLeiste(s.kennzahlen);
+  const kz = kennzahlLeiste(s.kennzahlen, !!s.art && !summiertArt(s));
   if (art) z.append(el("div", {class: "z klein"}, art));
   if (kz) z.append(kz);
-  if (s.buchung) z.append(el("div", {class: "chips"}, buchungChip(s.buchung, s.buchung_id)));
+  if (s.buchung) z.append(el("div", {class: "chips"}, buchungChip(s)));
   if (s.text) z.append(el("div", {class: "z klein"}, s.text));
   if (s.quelle) z.append(el("div", {class: "z klein"}, "Quelle: " + s.quelle));
   if (s.siehe && proId.has(s.siehe)) z.append(el("div", {class: "z klein"}, link(s.siehe, "→ " + proId.get(s.siehe).titel)));
-  if (voll) for (const b of buchungenZu(id)) z.append(buchungBlock(b));
+  if (voll) for (const b of buchungenBei(id)) z.append(buchungBlock(b));
   return z;
 }
 
@@ -1178,7 +1205,7 @@ function aufenthaltZeile(id, voll) {
   const z = el("div", {class: "z aufenthalt" + (voll ? " ziel" : ""), id: voll ? id : null, "data-ziel": voll ? id : null},
     dingEtikett([artName(a.art), a.zeit].filter(Boolean).join(" · "), a.art, a.art),
     el("div", {class: "titelzeile"}, el("span", {}, a.name), zid(id)));
-  if (a.buchung) z.append(el("div", {class: "chips"}, buchungChip(a.buchung, a.buchung_id)));
+  if (a.buchung) z.append(el("div", {class: "chips"}, buchungChip(a)));
   if (!voll) return z;
   const l = lageZeile(a, true);
   if (l) z.append(l);
@@ -1189,7 +1216,7 @@ function aufenthaltZeile(id, voll) {
   if (a.quelle) z.append(el("div", {class: "z klein"}, "Quelle: " + a.quelle));
   const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
   if ((a.fehlt || []).length) z.append(el("div", {class: "z klein"}, "Fehlt noch: " + a.fehlt.map(x => name[x] || x).join(", ")));
-  for (const b of buchungenZu(id)) z.append(buchungBlock(b));
+  for (const b of buchungenBei(id)) z.append(buchungBlock(b));
   return z;
 }
 // Zeitleiste des Tags: Start → Bewegungen → Ziel, Aufenthalte ohne Nacht an ihrem Ort (nach der Ankunft dort); was an keinem
@@ -1215,17 +1242,19 @@ function wegVerlauf(t, ohneKennung, heimat) {
 // ohneKopf: auf der Tagesseite (der Kopf steht darüber); dort ist der Tageskasten die Fläche, an der man handelt
 // Organismus Ding: Wahlstelle als Zeile (Etikett, Titel, auf Wunsch die Möglichkeiten, Zustand, Einstieg in den Vergleich,
 // Kennung); im Tageskasten mit den Möglichkeiten, im Plan ohne (dort folgen sie als Alternativen)
-function wahlZeile(w, mitOptionen) {
+// tid: ohne Tagesseiten (PLAN_DA) ist die Zeile im Tageskasten des ersten Tags die Heimat der Wahl (Ziel von #V-…)
+function wahlZeile(w, mitOptionen, tid) {
   const ul = mitOptionen ? el("ul", {}, w.optionen.filter(o => !weg(o.status)).map(o => el("li", {}, o.titel, o.ausloeser ? ` – ${o.ausloeser}` : "",
     o.aktiv && w.wann !== "unterwegs" ? (w.offen ? " (vorläufig)" : " (gewählt)") : ""))) : null;
-  const offen = w.wann === "planung" && w.offen && gueltigeOptionen(w).length > 1;
-  return el("div", {class: "ding wahl"},
+  const heim = PLAN_DA && tid && w.an[0] === tid;
+  return el("div", {class: "ding wahl" + (heim ? " ziel" : ""), id: heim ? w.id : null, "data-ziel": heim ? w.id : null},
     el("div", {class: "ding-text"}, dingEtikett(w.wann === "unterwegs" ? "Unterwegs wählen" : "Wahl", null, "wahl"),
       el("span", {class: "ding-titel"}, link(w.id, w.titel)), ul,
-      el("span", {class: "chips"}, w.wann === "unterwegs" ? chip("unterwegs", "unterwegs entscheiden") : chip(offen ? "offen" : "plan", offen ? "offen" : "entschieden"), wahlEinstieg(w))),
+      el("span", {class: "chips"}, wahlZustand(w), wahlEinstieg(w))),
     zid(w.id));
 }
-function tagKarte(t, ohneKopf) {
+// vorschau: der Kasten steht als Vorschau an anderer Stelle (Heute im Überblick): nichts vollständig, keine Buchung
+function tagKarte(t, ohneKopf, vorschau) {
   const k = el("div", {class: "karte ziel" + (ohneKopf ? " flaeche" : ""), id: ohneKopf ? null : t.id, "data-ziel": ohneKopf ? null : t.id});
   if (!ohneKopf) k.append(tagKopf("div", {}, t.nr, t.datum, t.wochentag, t.titel, t.id));
   for (const f of t.fixpunkte || []) k.append(el("div", {class: "chips"}, chip("plan", f)));
@@ -1236,23 +1265,23 @@ function tagKarte(t, ohneKopf) {
   for (const vid of [...t.wahlstellen, ...amTag]) {
     const w = wahlZu.get(vid);
     if (!w) continue;
-    wahlZeilen.push([w, [wahlZeile(w, true), wahlVergleich(w)]]);
+    wahlZeilen.push([w, [wahlZeile(w, true, t.id), wahlVergleich(w)]]);
   }
   // Unterwegs rücken Wahlstellen mit Auslöser nach vorn (Verhalten je Status)
   const vorn = V.ausloeser_vor ? wahlZeilen.filter(([w]) => w.wann === "unterwegs") : [];
   for (const [, z] of vorn) { z[0].classList.add("vorn"); k.append(...z.filter(Boolean)); }
-  if (t.strecken.length || (t.aufenthalte || []).length) k.append(wegVerlauf(t, ohneKopf ? id => (proId.get(id) || {}).typ === "etappe" : null, !ohneKopf && PLAN_DA));
+  if (t.strecken.length || (t.aufenthalte || []).length) k.append(wegVerlauf(t, ohneKopf && !vorschau ? id => (proId.get(id) || {}).typ === "etappe" : null, !ohneKopf && !vorschau && PLAN_DA));
   for (const [w, z] of wahlZeilen) if (!vorn.some(([x]) => x === w)) k.append(...z.filter(Boolean));
   if (t.text) k.append(el("div", {class: "z"}, t.text));
   if (t.nacht) {
-    k.append(...[].concat(nachtZeile(t.nacht, false, t.datum, ohneKopf && !PLAN_DA)).filter(Boolean));
+    k.append(...[].concat(nachtZeile(t.nacht, false, t.datum, ohneKopf && !PLAN_DA, vorschau ? null : t.id)).filter(Boolean));
     // Ohne Tagesseiten ist der Tageskasten im Plan die Heimat der Nacht (ADR-0003): die Buchung der Unterkunft steht hier,
     // sonst in der Unterkunftskarte des Abschnitts „Nacht“ der Tagesseite
-    if (!ohneKopf && PLAN_DA) { const uid = nachtUnterkunft(t.nacht); for (const b of uid ? buchungenZu(uid) : []) k.append(buchungBlock(b)); }
+    if (!ohneKopf && !vorschau && PLAN_DA) { const uid = nachtUnterkunft(t.nacht); for (const b of uid ? buchungenBei(uid) : []) k.append(buchungBlock(b)); }
   }
   // Plan entschieden (ohne Plan-Baum): die Tagesseite hat den ganzen Weg mit Karte
   if (!ohneKopf && !D.reise.tiefe && PLAN_TAGE && PLAN_TAGE.tage.some(x => x.id === t.id))
-    k.append(el("a", {class: "weiter", href: "#" + t.id}, t.strecken.some(s => ETAPPE_TAG.get(s.id) === t.id) ? "Ganzer Tag: Weg, Karte, Einkehr →" : "Ganzer Tag →"));
+    k.append(el("a", {class: "weiter", href: "#" + t.id}, t.strecken.some(s => ETAPPE_TAG.get(s.id) === t.id) ? "Ganzer Tag: Weg und Karte →" : "Ganzer Tag →"));
   return k;
 }
 
@@ -1273,8 +1302,8 @@ function unterkunftKarte(id) {
     dingEtikett(artName(u.art) || "Unterkunft", u.art, u.art), el("div", {class: "k"}, u.name, zid(id)));
   k.append(el("div", {class: "z"}, [artName(u.art), ortName(u.ort)].filter(Boolean).join(" · ")));
   k.append(lageZeile(u));
-  if (u.kontakt || webVon(u)) k.append(el("div", {class: "z"}, el("b", {}, "Kontakt: "), (u.kontakt || "").replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ") || "–", " ", webLink(webVon(u), true)));
-  if (u.buchung || u.frage) k.append(el("div", {class: "chips"}, buchungChip(u.buchung, u.buchung_id), u.frage ? chip("leise", u.frage, {href: "#" + u.frage}) : null));
+  if (u.kontakt || webVon(u)) k.append(el("div", {class: "z"}, el("b", {}, "Kontakt: "), kontaktText(u) || "–", " ", webLink(webVon(u), true)));
+  if (u.buchung || u.frage) k.append(el("div", {class: "chips"}, buchungChip(u), u.frage ? chip("leise", u.frage, {href: "#" + u.frage}) : null));
   if (u.naechte.length) {
     const z = el("div", {class: "z"}, el("b", {}, "Nächte: "));
     u.naechte.forEach((tid, i) => { const t = R.tage.find(x => x.id === tid); if (i) z.append(", "); z.append(link(tid, datumText(t.datum, t.wochentag))); });
@@ -1288,7 +1317,7 @@ function unterkunftKarte(id) {
   if (u.quelle) k.append(el("div", {class: "z klein"}, "Quelle: " + u.quelle));
   const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
   if ((u.fehlt || []).length) k.append(el("div", {class: "z klein"}, "Fehlt noch: " + u.fehlt.map(x => name[x] || x).join(", ")));
-  for (const b of buchungenZu(id)) k.append(buchungBlock(b));
+  for (const b of buchungenBei(id)) k.append(buchungBlock(b));
   return k;
 }
 
@@ -1323,14 +1352,14 @@ function buchungBlock(b) {
   const zeile = (name, wert, klasse) => wert ? el("div", {class: "z" + (klasse ? " " + klasse : "")}, el("b", {}, name + ": "), wert) : null;
   if ((b.fuer || []).length > 1) k.append(zeile("Für", b.fuer.map(x => titelZu(x) || x).join(", ")));
   k.append(...[zeile("Nummer", b.nummer), zeile("Gebucht bei", b.bei), zeile("Preis", b.preis), zeile("Bezahlt", b.bezahlt)].filter(Boolean));
-  if (b.frist) k.append(zeile("Frist", tagMonat(b.frist) + (b.frist_was ? " · " + b.frist_was : ""), !zu && V.fristen && b.frist < heute() ? "ueber" : null));
-  if (b.storno || b.storno_bis) k.append(zeile("Storno", [b.storno, b.storno_bis ? "bis " + tagMonat(b.storno_bis) : ""].filter(Boolean).join(" · ")));
+  if (b.frist) k.append(zeile("Frist", datumKurz(b.frist) + (b.frist_was ? " · " + b.frist_was : ""), !zu && V.fristen && b.frist < heute() ? "ueber" : null));
+  if (b.storno || b.storno_bis) k.append(zeile("Storno", [b.storno, b.storno_bis ? "bis " + datumKurz(b.storno_bis) : ""].filter(Boolean).join(" · ")));
   if (b.notiz) k.append(el("div", {class: "z"}, b.notiz));
-  const leise = [b.gebucht_am ? "gebucht am " + tagMonat(b.gebucht_am) : "", b.wer ? "von " + b.wer : "", b.quelle ? "Quelle: " + b.quelle : ""].filter(Boolean);
+  const leise = [b.gebucht_am ? "gebucht am " + datumKurz(b.gebucht_am) : "", b.wer ? "von " + b.wer : "", b.quelle ? "Quelle: " + b.quelle : ""].filter(Boolean);
   if (leise.length) k.append(el("div", {class: "z klein"}, leise.join(" · ")));
   k.append(belegeListe(b));
   if ((b.verlauf || []).length > 1) k.append(el("details", {class: "verlauf"}, el("summary", {}, `Verlauf (${b.verlauf.length})`),
-    b.verlauf.slice().reverse().map(v => el("div", {}, `${tagMonat(v.datum)} ${v.wer || ""}: ${v.was || ""}${v.grund ? " (" + v.grund + ")" : ""}`))));
+    b.verlauf.slice().reverse().map(v => el("div", {}, `${datumKurz(v.datum)} ${v.wer || ""}: ${v.was || ""}${v.grund ? " (" + v.grund + ")" : ""}`))));
   return k;
 }
 // Molekül Belege einer Buchung: je Datei Name (öffnet die Datei, nur mit Netz), Größe, wer und wann, Sichtbarkeit; Knöpfe
@@ -1343,7 +1372,7 @@ function belegeListe(b) {
   for (const x of liste) {
     const z = el("div", {class: "beleg" + (x.zurueckgezogen ? " weg" : "")},
       el("a", {href: BL_API + "/" + x.id, target: "_blank", rel: "noopener"}, x.name + " ↗"),
-      el("span", {class: "z klein"}, [groesseText(x.groesse), x.wer, x.hochgeladen ? tagMonat(x.hochgeladen.slice(0, 10)) : "",
+      el("span", {class: "z klein"}, [groesseText(x.groesse), x.wer, x.hochgeladen ? datumKurz(x.hochgeladen.slice(0, 10)) : "",
         x.sichtbar === "alle" ? "für alle" : "nur Beteiligte", x.zurueckgezogen ? "zurückgezogen" : ""].filter(Boolean).join(" · ")));
     if (ich && !x.zurueckgezogen && V.schreiben === "alles") {
       if (ich.rolle === "organisator") z.append(el("button", {type: "button", class: "outline klein", "data-bl-sichtbar": x.id,
@@ -1395,6 +1424,14 @@ document.addEventListener("click", async e => {
 }, true);
 window.addEventListener("online", () => blLaden().then(() => route(true)));
 
+// Unterkünfte als Zeilen (Vorschau), wenn ihre Heimat die Tagesseite ist; die Zeile führt zur ersten Nacht
+function unterkunftZeilen(s) {
+  const l = el("div", {class: "wliste"});
+  for (const [id, u] of Object.entries(R.unterkuenfte)) if (u.naechte.length)
+    l.append(listenZeile("unterkunft", artSym(u.art, "aufenthalt"), u.name, [artName(u.art), ortName(u.ort)].filter(Boolean).join(" · "), id, null,
+      buchungChip(u)));
+  if (l.childNodes.length) s.append(l);
+}
 function unterkuenfte(s) {
   const ids = Object.keys(R.unterkuenfte);
   const imPlan = ids.filter(i => R.unterkuenfte[i].naechte.length);
@@ -1407,14 +1444,12 @@ function unterkuenfte(s) {
   }
 }
 
-function mkDatum(iso) { const [j, m, d] = iso.split("-"); return `${+d}.${+m}.${j.slice(2)}`; }
 // Wert je Datum (wie routen.gilt_am): Eintrag mit passendem „gilt“, sonst der ohne Datum, sonst nichts
 function giltAm(v, datum) {
   if (!v) return null;
   for (const e of v.je_datum || []) if ((e.gilt || []).includes(datum)) return e;
   return v.gilt ? null : v;
 }
-const tagKurz = iso => { const [, m, d] = iso.split("-"); return `${+d}.${+m}.`; };
 // Atom Wert: der Wert, „ungeprüft“, Herkunft hinter dem i. Mit Datum (Nacht im Tag) nur der Wert für dieses Datum,
 // ohne Datum bei Werten je Datum alle Einträge untereinander.
 function merkmalWert(v, datum) {
@@ -1422,14 +1457,14 @@ function merkmalWert(v, datum) {
     const e = giltAm(v, datum);
     return merkmalWert(e && {...e, je_datum: null, gilt: null, am: v.je_datum.includes(e) ? datum : null});
   }
-  if (v && v.je_datum) return el("span", {}, [...v.je_datum.map(e => [e.gilt.map(tagKurz).join(", "), e]), ...(v.gilt ? [] : [["sonst", v]])]
+  if (v && v.je_datum) return el("span", {}, [...v.je_datum.map(e => [e.gilt.map(datumKurz).join(", "), e]), ...(v.gilt ? [] : [["sonst", v]])]
     .map(([wann, e]) => el("span", {class: "mk-datum"}, el("span", {class: "mk-am"}, wann + ": "), merkmalWert({...e, je_datum: null, gilt: null}))));
   if (!v) return el("span", {class: "mk-leer"}, "offen");
-  const herkunft = [v.notiz, v.geprueft ? "geprüft " + mkDatum(v.geprueft) : "", v.quelle ? "Quelle: " + v.quelle : ""].filter(Boolean).join(" · ");
+  const herkunft = [v.notiz, v.geprueft ? "geprüft " + datumKurz(v.geprueft) : "", v.quelle ? "Quelle: " + v.quelle : ""].filter(Boolean).join(" · ");
   // „unklar“ und berechnete Lücken (Anschluss) fallen auf
   const auffaellig = /^unklar$/i.test(String(v.wert)) ? "mk-unklar" : v.auto && /^Lücke/.test(String(v.wert)) ? "mk-luecke" : null;
   return el("span", {}, el("span", {class: auffaellig}, v.wert),
-    v.am ? el("span", {class: "mk-am-tag"}, "am " + tagKurz(v.am)) : null,
+    v.am ? el("span", {class: "mk-am-tag"}, "am " + datumKurz(v.am)) : null,
     v.ungeprueft ? chip("offen", "ungeprüft", {class: "mk-chip"}) : null,
     herkunft ? [el("button", {type: "button", class: "mk-i", "data-mk-i": "", "aria-expanded": "false", "aria-label": "Herkunft zeigen"}, "i"),
       el("span", {class: "mk-q", role: "tooltip", hidden: true}, herkunft)] : null);
@@ -1516,7 +1551,7 @@ function lageZeile(u, ohneHinweis) {
   const v = u.adresse || u.punkt;
   return el("div", {class: "z lage"}, el("b", {}, u.adresse ? "Adresse: " : "Lage: "),
     u.adresse ? u.adresse.wert : u.punkt.wert.map(x => x.toFixed(4).replace(".", ",")).join(" · "), " ",
-    v.quelle ? el("span", {class: "z klein", title: `Quelle: ${v.quelle}${v.geprueft ? ", geprüft " + v.geprueft : ""}`}, "ⓘ") : null, " ", l);
+    v.quelle ? el("span", {class: "z klein", title: `Quelle: ${v.quelle}${v.geprueft ? ", geprüft " + datumKurz(v.geprueft) : ""}`}, "ⓘ") : null, " ", l);
 }
 // Atom Webseite: Link nach außen in neuem Fenster; fehlt sie, ein leiser Hinweis (ergänzen im Gespräch mit Frieda)
 const webLink = (x, ohneHinweis) => { const u = typeof x === "string" ? x : x ? webseite(x) : null;
@@ -1529,9 +1564,11 @@ function vglZustand(w, liste, datum) {
   }
   return VGL.get(s);
 }
-function wahlEinstieg(w, liste, datum) {
+// href: als Verweis zum Vergleich an anderer Stelle (Tageskasten der Tagesseite → Abschnitt „Nacht“) statt als Schalter
+function wahlEinstieg(w, liste, datum, href) {
   const g = gueltigeOptionen(w);
   if (g.length < 2) return null;
+  if (href) return el("a", {class: "wm-knopf", href}, "Alternativen vergleichen", el("span", {class: "wm-n", "aria-label": `${g.length} Möglichkeiten`}, String(g.length)));
   const z = vglZustand(w, liste, datum);
   return el("button", {type: "button", class: "wm-knopf", "data-vgl-auf": vglSchluessel(w, liste, datum), "aria-expanded": String(z.offen)},
     z.offen ? "Vergleich schließen" : "Alternativen vergleichen", el("span", {class: "wm-n", "aria-label": `${g.length} Möglichkeiten`}, String(g.length)));
@@ -1561,7 +1598,7 @@ function wahlVergleich(w, liste, datum) {
   box.append(el("div", {class: "wm-steuer"},
     el("label", {}, el("input", {type: "checkbox", "data-vgl-nur": s, checked: z.nur}), "nur Unterschiede"),
     el("span", {class: "z klein wm-anzahl"}, `${opts.length} von ${g.length} im Vergleich, höchstens ${max} nebeneinander`
-      + (datum && opts.some(o => Object.values(o.merkmale).some(v => v.je_datum)) ? ` · Werte für die Nacht vom ${tagKurz(datum)}` : ""))));
+      + (datum && opts.some(o => Object.values(o.merkmale).some(v => v.je_datum)) ? ` · Werte für die Nacht vom ${datumKurz(datum)}` : ""))));
   // Auswahl nur, wenn es mehr als zwei gibt; die Zahl sagt, wie viele Merkmale schon belegt sind
   if (g.length > 2) box.append(el("fieldset", {class: "wm-wahl"}, el("legend", {class: "unsichtbar"}, "Möglichkeiten im Vergleich"),
     g.map(o => el("button", {type: "button", "data-vgl-opt": s + "|" + o.id, "aria-pressed": String(z.wahl.includes(o.id))},
@@ -1684,7 +1721,7 @@ function optionBlock(w, o, ohneMerkmale, ohneId) {
   const inNacht = !PLAN_DA && o.aktiv && !w.offen && w.wann === "planung";
   for (const uid of inNacht ? [] : o.unterkuenfte || []) if (R.unterkuenfte[uid]) { const u = R.unterkuenfte[uid];
     b.append(...[PLAN_DA ? el("div", {class: "z"}, link(uid, "→ " + u.name))
-      : [lageZeile(u), el("div", {class: "z"}, u.kontakt ? [el("b", {}, "Kontakt: "), u.kontakt.replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ") || "–", " "] : null, webLink(o, true))]].flat().filter(Boolean)); }
+      : [lageZeile(u), el("div", {class: "z"}, u.kontakt ? [el("b", {}, "Kontakt: "), kontaktText(u) || "–", " "] : null, webLink(o, true))]].flat().filter(Boolean)); }
   if (o.tage && o.tage.length) {
     const aktivTage = o.tage.filter(tid => R.tage.some(t => t.id === tid));
     if (aktivTage.length) {
@@ -1709,7 +1746,7 @@ const ohneNummern = t => String(t || "").replace(/\s*\b(?:Auftrag|Rückmeldung|A
   .replace(/\b[AR]-\d{8}-\d{6}-\w+\b/g, "").replace(/^[\s–,;·-]+|[\s–,;·-]+$/g, "");
 function optionVerlauf(o) {
   return el("div", {class: "verlauf"}, o.verlauf.map(v => { const g = ohneNummern(v.grund);
-    return `${v.datum.split("-").reverse().join(".")}: ${STATUS_TEXT[v.status] || v.status}${v.wer ? " (" + v.wer + ")" : ""}${g ? " – " + g : ""}${v.durch ? " → " + v.durch : ""}`; }).join(" · "));
+    return `${datumKurz(v.datum)}: ${STATUS_TEXT[v.status] || v.status}${v.wer ? " (" + v.wer + ")" : ""}${g ? " – " + g : ""}${v.durch ? " → " + v.durch : ""}`; }).join(" · "));
 }
 // Einzelheiten einer Möglichkeit in der aufgeklappten Zeile des Vergleichs (D1): Name, Zustand, Merkmale der Spalten und
 // Webseite stehen schon in der Zeile; hier nur, was dort fehlt: Text, weitere Merkmale, Vor- und Nachteile, Lage und Kontakt,
@@ -1723,7 +1760,7 @@ function optionEinzelheiten(w, o, weitere) {
   if (o.plus.length || o.minus.length) b.append(el("ul", {class: "pm"}, o.plus.map(x => el("li", {}, "+ " + x)), o.minus.map(x => el("li", {}, "– " + x))));
   for (const sid of o.strecken || []) b.append(streckeZeile(sid));
   for (const uid of o.unterkuenfte || []) if (R.unterkuenfte[uid]) { const u = R.unterkuenfte[uid];
-    const kontakt = u.kontakt && u.kontakt.replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ");
+    const kontakt = kontaktText(u);
     b.append(...[lageZeile(u, true), kontakt ? el("div", {class: "z"}, el("b", {}, "Kontakt: "), kontakt) : null,
       PLAN_DA ? el("div", {class: "z klein"}, link(uid, "Zur Unterkunft")) : null].filter(Boolean)); }
   const tage = (o.tage || []).filter(tid => R.tage.some(t => t.id === tid));
@@ -1737,12 +1774,8 @@ function optionEinzelheiten(w, o, weitere) {
 function wahlKarte(w) {
   const k = el("div", {class: "karte ziel", id: w.id, "data-ziel": w.id});
   const gueltig = w.optionen.filter(o => !weg(o.status));
-  const offen = w.wann === "planung" && w.offen && gueltig.length > 1;
   k.append(el("div", {class: "k"}, w.titel, zid(w.id)),
-    el("div", {class: "chips"},
-      chip(w.wann === "unterwegs" ? "unterwegs" : "", w.wann === "unterwegs" ? "unterwegs entscheiden" : "Planung"),
-      w.wann === "planung" ? chip(offen ? "offen" : "", offen ? "offen" : "entschieden") : null,
-      w.frage ? link(w.frage, w.frage) : null));
+    el("div", {class: "chips"}, wahlZustand(w), w.frage ? link(w.frage, w.frage) : null));
   if (w.text) k.append(el("div", {class: "z"}, w.text));
   if (w.an.length) {
     const z = el("div", {class: "z klein"}, "Betrifft: ");
@@ -1755,7 +1788,7 @@ function wahlKarte(w) {
   if (vgl) k.append(el("div", {class: "chips"}, wahlEinstieg(w, true, datum)), vgl);
   // Mit Vergleich stehen die Möglichkeiten in seiner Tabelle (Zeile aufklappen); am Handy (Karten) im Einzelnen zugeklappt
   if (vgl) k.append(el("details", {class: "block wm-einzeln"}, el("summary", {}, `Alle Möglichkeiten im Einzelnen (${gueltig.length})`),
-    el("div", {class: "inhalt"}, gueltig.map(o => optionBlock(w, o, false, true)))));
+    el("div", {class: "inhalt"}, gueltig.map(o => optionBlock(w, o, true, true)))));
   else for (const o of gueltig) k.append(optionBlock(w, o, false));
   const verw = w.optionen.filter(o => weg(o.status));
   if (verw.length) {
@@ -1776,20 +1809,17 @@ function entscheidungen(m) {
   const s = el("section", {class: "ziel", id: "entscheidungen"}, el("h2", {}, "Entscheidungen und Varianten"));
   const andere = R.warnungen.filter(w => /^V-/.test(w.bezug));
   if (andere.length) s.append(warnungen(andere));
-  if (offen.length) {
-    s.append(el("h3", {}, `Noch zu entscheiden (${offen.length})`));
-    for (const w of offen) s.append(wahlKarte(w));
-  }
+  // Eine Heimat je Wahl (ADR-0003): hängt sie an einem Tag des Plans, steht sie dort vollständig und hier nur als Zeile
+  const amTag = w => w.an.some(tid => R.tage.some(t => t.id === tid));
+  const karten = liste => { const zeilen = liste.filter(amTag), ganz = liste.filter(w => !amTag(w));
+    return [zeilen.length ? el("div", {class: "wliste"}, zeilen.map(wahlListenZeile)) : null, ...ganz.map(wahlKarte)]; };
+  if (offen.length) s.append(el("h3", {}, `Noch zu entscheiden (${offen.length})`), ...karten(offen));
   const unterwegs = R.wahlstellen.filter(w => w.wann === "unterwegs");
-  if (unterwegs.length) {
-    s.append(el("h3", {}, "Unterwegs entscheiden"));
-    for (const w of unterwegs) s.append(wahlKarte(w));
-  }
+  if (unterwegs.length) s.append(el("h3", {}, "Unterwegs entscheiden"), ...karten(unterwegs));
   const fest = R.wahlstellen.filter(w => !offen.includes(w) && !unterwegs.includes(w));
   if (fest.length) {
     const d = el("details", {class: "block"}, el("summary", {}, `Entschieden (${fest.length})`));
-    const inh = el("div", {class: "inhalt"});
-    for (const w of fest) inh.append(wahlKarte(w));
+    const inh = el("div", {class: "inhalt"}, karten(fest));
     d.append(inh);
     s.append(d);
   }
@@ -1836,14 +1866,14 @@ function nachtName(n) {
 // Wegstrecke eines Tages in km (Wanderstrecken, Kennzahl Länge oder Strecke); 0, wenn keine bekannt ist
 function tagKm(t) {
   let km = 0;
-  for (const s of t.strecken) { const st = R.strecken[s.id] || {}; if ((st.art || "wandern") !== "wandern") continue;
+  for (const s of t.strecken) { const st = R.strecken[s.id] || {}; if (!summiertArt(st)) continue;
     const g = Object.entries(st.kennzahlen || {}).find(([k]) => /^(länge|strecke|km)/i.test(k));
     const x = g && /(\d+(?:[.,]\d+)?)\s*km/.exec(g[1]); if (x) km += +x[1].replace(",", "."); }
   return Math.round(km * 10) / 10;
 }
 function tagMin(t) {
   let m = 0;
-  for (const s of t.strecken) { const st = R.strecken[s.id] || {}; if ((st.art || "wandern") !== "wandern") continue;
+  for (const s of t.strecken) { const st = R.strecken[s.id] || {}; if (!summiertArt(st)) continue;
     const g = Object.entries(st.kennzahlen || {}).find(([k]) => /^(gehzeit|dauer)/i.test(k));
     const x = g && /(\d+):(\d{2})/.exec(g[1]); if (x) m += +x[1] * 60 + +x[2]; }
   return m;
@@ -1952,7 +1982,6 @@ function karteZeichnen(plaene, info, box) {
     const x = R.strecken[sid] || {}; return x.von !== x.nach && lage(x.von) && lage(x.nach) ? [lage(x.von), lage(x.nach)] : null; };
   // linien: alle -> jede Strecke in Planfarbe (Rundreise); sonst nur Wanderwege, Bus/Bahn grau (Wanderreise)
   const alleLinien = K.linien === "alle";
-  const STRICH = {flug: "7 7", faehre: "2 6"};
   const linie = (w, o) => L.polyline(w, {lineCap: "round", lineJoin: "round", interactive: false, ...o}).addTo(karte);
   for (const sid of K.ausgelassen || []) if (K.wege[sid]) linie(K.wege[sid], {className: "rh-skip", weight: 2.5, dashArray: "1 6"});
   // Rundreise mit mehreren Plänen: Strecken, die alle gezeigten Pläne fahren, einmal neutral zeichnen
@@ -1978,18 +2007,18 @@ function karteZeichnen(plaene, info, box) {
         const w = wegVon(st.id); if (!w) continue;
         const art = (R.strecken[st.id] || {}).art;
         w.forEach(q => bereich.extend(q));
-        if (!alleLinien && art && art !== "wandern") {
-          if (!einmal["bus" + st.id]) { einmal["bus" + st.id] = linie(w, {className: "rh-bus", weight: 1.6, dashArray: "3 5"}); treffer(w, st.id, d, p); }
+        if (!alleLinien && art && !summiertArt(R.strecken[st.id])) {   // Fahrt (nicht aus eigener Kraft): dünn und gestrichelt, einmal
+          if (!einmal["fahrt" + st.id]) { einmal["fahrt" + st.id] = linie(w, {className: "rh-fahrt", weight: 1.6, dashArray: "3 5"}); treffer(w, st.id, d, p); }
           continue;
         }
         if (inPlaenen[st.id] === plaene.length) {
-          if (!einmal[st.id]) { einmal[st.id] = linie(w, {className: "rh-gemeinsam", weight: 2.5, dashArray: STRICH[art]}); treffer(w, st.id, d, p); }
+          if (!einmal[st.id]) { einmal[st.id] = linie(w, {className: "rh-gemeinsam", weight: 2.5}); treffer(w, st.id, d, p); }
           merke(d, einmal[st.id], 2.5);
           continue;
         }
         const um = (K.unmarkiert || {})[st.id];
         linie(w, {className: "rh-halo", weight: breite + 3.5});
-        const l = linie(um ? w.slice(um.length - 1) : w, {className: farbe, weight: breite, dashArray: um ? null : (alleLinien && STRICH[art]) || null});
+        const l = linie(um ? w.slice(um.length - 1) : w, {className: farbe, weight: breite, dashArray: null});
         if (um) linie(um, {className: farbe, weight: Math.max(breite, 3), dashArray: "1 6"});
         merke(d, l, breite);
         treffer(w, st.id, d, p);
@@ -2001,7 +2030,7 @@ function karteZeichnen(plaene, info, box) {
         for (let i = 1; i < punkte.length; i++) { const x = Math.hypot(punkte[i][0] - punkte[i - 1][0], (punkte[i][1] - punkte[i - 1][1]) * cx); l.push(x); len += x; }
         let h = len / 2, i = 0; while (i < l.length && h > l[i]) { h -= l[i]; i++; }
         const A = punkte[i], B = punkte[i + 1] || A, f = l[i] ? h / l[i] : 0;
-        const st = d.strecken.find(x => wegVon(x.id) && (alleLinien || ((R.strecken[x.id] || {}).art || "wandern") === "wandern"));
+        const st = d.strecken.find(x => wegVon(x.id) && (alleLinien || summiertArt(R.strecken[x.id])));
         marken.push([[A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f], d.nr, farbe, st && zielVon(st.id, d)]);
       }
     }
@@ -2260,7 +2289,7 @@ document.addEventListener("click", e => {
 // Ganze Etappe auf ihrer eigenen Seite: Kennzahlen, Karte, Beschreibung (am Tag: Vorlage Tagesseite)
 function etappeTeil(a) {
   const s = el("div", {class: "etappe"});
-  s.append(...[chips(a), kennzahlLeiste(a.kennzahlen)].filter(Boolean));
+  s.append(...[chips(a), kennzahlLeiste(a.kennzahlen, fahrtVon(a.id))].filter(Boolean));
   const k = etappenKarte(a.id);
   if (k) s.append(k);
   s.append(abschnittInhalt(a, true, a.kennzahlen));
@@ -2313,7 +2342,9 @@ function uebersichtKarte(m, gezeigt, info) {
     m.append(box);
     segmente = karteZeichnen(gezeigt, info, box).segmente;
     // Legende nur mit dem, was auf dieser Karte vorkommt
-    const K = R.karte, arten = new Set(gezeigt.flatMap(p => p.tage.flatMap(d => d.strecken.map(st => (R.strecken[st.id] || {}).art))));
+    // Fahrten auf dieser Karte (Bewegungen, die nicht aus eigener Kraft sind): ihre Arten stehen in der Legende
+    const K = R.karte, fahrten = [...new Set(gezeigt.flatMap(p => p.tage.flatMap(d => d.strecken.flatMap(st => [].concat((R.strecken[st.id] || {}).art || [])))))]
+      .filter(a => a && !(artDef(a) || {}).summiert);
     // Kategorien der Übernachtungen auf dieser Karte, in fester Reihenfolge
     const katDa = new Set(gezeigt.flatMap(p => p.tage.map(d => nachtKat(d.nacht)).filter(k => k && k !== "offen" && k !== "unterwegs")));
     const kats = Object.keys(R.arten || {}).filter(k => katDa.has(k));
@@ -2321,8 +2352,7 @@ function uebersichtKarte(m, gezeigt, info) {
       ...kats.map(k => [el("i", {class: "lg-k" + katKlasse(k)}), artName(k)]),
       Object.keys(K.unmarkiert || {}).length ? [el("i", {class: "lg-u"}), "nicht markiert"] : null,
       (K.ausgelassen || []).length ? [el("i", {class: "lg-s"}), "ausgelassen"] : null,
-      K.linien !== "alle" ? [el("i", {class: "lg-b"}), "Bus"] : null,
-      K.linien === "alle" && (arten.has("flug") || arten.has("faehre")) ? [el("i", {class: "lg-f"}), "Flug, Fähre"] : null,
+      K.linien !== "alle" && fahrten.length ? [el("i", {class: "lg-b"}), fahrten.map(artName).join(", ")] : null,
       ...(gezeigt.length > 1 ? gezeigt.map(p => [planMarke(p), p.kurz]) : [])]));
     m.append(el("p", {class: "meldung"}, (R.karte.linien === "alle" ? "Übersichtskarte; gerade Linien verbinden die Orte und zeigen nicht den Fahrweg." : "Schematische Karte, Lage der Wege ungefähr.") + " Ort antippen zeigt die Übernachtungen, Linie antippen öffnet " + (hat("etappe") ? "die Etappe." : "den Tag.") + (gezeigt.length > 1 ? " Einen Plan wählen, um die Tagesnummern zu sehen." : "")));
   }
@@ -2352,8 +2382,9 @@ function nachtStand(n) {
   const akt = w && (kand.find(o => o.aktiv) || kand[0]);
   const uid = n.unterkunft && R.unterkuenfte[n.unterkunft] ? n.unterkunft : akt && (akt.unterkuenfte || []).find(x => R.unterkuenfte[x]);
   const u = uid && R.unterkuenfte[uid];
-  if (u) return u.buchung && u.buchung !== "offen" && u.buchung !== "angefragt" ? {name: u.name, zustand: "", text: u.buchung, zaehlt: true, gebucht: true, bid: u.buchung_id}
-    : {name: u.name, zustand: "offen", text: u.buchung === "angefragt" ? "angefragt" : "nicht gebucht", zaehlt: true, gebucht: false, bid: u.buchung_id};
+  if (u) { const st = buchungsStand(u);   // ohne Stand (Art nicht buchbar): die Nacht zählt nicht als zu buchen
+    return st ? {name: u.name, zustand: st.gebucht ? "" : "offen", text: st.text, zaehlt: true, gebucht: st.gebucht, bid: st.bid}
+      : {name: u.name, zustand: "", text: "", zaehlt: false, gebucht: false}; }
   return {name: akt ? akt.titel : n.hinweis || ortName(n.ort), zustand: "offen", text: akt ? "nicht gebucht" : "Unterkunft offen", zaehlt: true, gebucht: false};
 }
 // Organismus Tag als Zeile der Zeitachse: Nummer und Datum, Titel mit Marken (feste Termine, Wahl am Tag), Gehzeit und
@@ -2396,27 +2427,26 @@ function buchungen(p) {
         zustand: x.zustand, text: buchungText(x.text, x.bid), gebucht: x.gebucht, href: offen ? w.id : x.bid || n.unterkunft || (w ? w.id : t.id)});
     }
     // Bewegungen und Aufenthalte mit Buchungsstand; angefragt zählt noch nicht als gebucht; eine Buchung (B-…) ist das Ziel
-    const offenS = b => b === "offen" || b === "angefragt";
-    for (const st of t.strecken) { const s = R.strecken[st.id]; if (s && s.buchung)
+    for (const st of t.strecken) { const s = R.strecken[st.id], b = s && buchungsStand(s); if (b)
       aus.push({tag: t, id: st.id, titel: s.titel, sym: artSym([].concat(s.art || [])[0], "bewegung"), unter: datumText(t.datum, t.wochentag) + " · " + artName([].concat(s.art || [])[0]),
-        zustand: offenS(s.buchung) ? "offen" : "", text: buchungText(s.buchung === "offen" ? "nicht gebucht" : s.buchung, s.buchung_id), gebucht: !offenS(s.buchung), href: s.buchung_id || t.id}); }
-    for (const aid of t.aufenthalte || []) { const a = (R.aufenthalte || {})[aid]; if (a && a.buchung)
+        zustand: b.gebucht ? "" : "offen", text: buchungText(b.text, b.bid), gebucht: b.gebucht, href: b.bid || t.id}); }
+    for (const aid of t.aufenthalte || []) { const a = (R.aufenthalte || {})[aid], b = a && buchungsStand(a); if (b)
       aus.push({tag: t, id: aid, titel: a.name, sym: artSym(a.art, "aufenthalt"), unter: [datumText(t.datum, t.wochentag), artName(a.art), a.zeit].filter(Boolean).join(" · "),
-        zustand: offenS(a.buchung) ? "offen" : "", text: buchungText(a.buchung === "offen" ? "nicht gebucht" : a.buchung, a.buchung_id), gebucht: !offenS(a.buchung), href: a.buchung_id || t.id}); }
+        zustand: b.gebucht ? "" : "offen", text: buchungText(b.text, b.bid), gebucht: b.gebucht, href: b.bid || t.id}); }
   }
   return aus;
 }
 // Stand in Worten mit der Frist der Buchung, falls sie eine hat („gebucht · Frist 13.5.“)
 function buchungText(text, bid) {
   const b = bid && R.buchungen && R.buchungen[bid];
-  return b && b.frist && b.status !== "storniert" ? `${text} · Frist ${tagMonat(b.frist)}` : text;
+  return b && b.frist && b.status !== "storniert" ? `${text} · Frist ${datumKurz(b.frist)}` : text;
 }
 // Molekül Stand der Vorbereitung: je Zeile Wort, Wert und Ziel; was nichts zu tun hat, entfällt (Gebucht bleibt)
 function standLeiste(p) {
   const naechte = buchungen(p);
   const offenN = naechte.filter(x => !x.gebucht);
   const wahl = R.wahlstellen.filter(w => w.wann === "planung" && w.offen && gueltigeOptionen(w).length > 1);
-  const fragen = B("fragen") ? D.fragen.zeilen.filter(z => !/^(erledigt|geklärt|beantwortet)/i.test(z.status || z.zellen[z.zellen.length - 1] || "")) : [];
+  const fragen = B("fragen") ? D.fragen.zeilen.filter(frageOffen) : [];
   const ag = B("aufgaben") ? AG.filter(agOffen) : [], ueber = ag.filter(ueberfaellig).length;
   const zeilen = [
     naechte.length && ["Gebucht", `${naechte.length - offenN.length} von ${naechte.length}`, offenN.length > 0, PLAN_DA ? (offenN.length ? offenN[0].tag.id : null) : "zu-buchen"],
@@ -2470,7 +2500,7 @@ function reiseKosten(p) {
 function reiseEnde(art, t) {
   if (!t) return null;
   // Wege: nur Fahrten (Bahn, Bus, Flug …), die Wanderetappe des Tages gehört nicht zur An- oder Abreise
-  const termine = t.fixpunkte || [], wege = t.strecken.map(x => R.strecken[x.id] || {titel: x.id}).filter(x => x.art && x.art !== "wandern").map(x => x.titel);
+  const termine = t.fixpunkte || [], wege = t.strecken.map(x => R.strecken[x.id] || {titel: x.id}).filter(x => x.art && !summiertArt(x)).map(x => x.titel);
   const zeilen = art === "Anreise" ? [...termine, ...wege] : [...wege, ...termine];
   return el("a", {class: "karte anab vorschau", href: "#" + t.id},
     el("span", {class: "etikett"}, art, t.datum ? " · " + datumText(t.datum, t.wochentag) : ""),
@@ -2481,25 +2511,27 @@ function mitreisende() {
   const l = (D.reise.personen || []).filter(x => x.reist);
   if (!l.length) return null;
   return el("p", {class: "mitreisende"}, el("span", {class: "etikett"}, "Mitreisende "), l.map((x, i) => [i ? ", " : "", x.name,
-    x.von ? ` ab ${tagKurz(x.von)}` : "", x.bis ? ` bis ${tagKurz(x.bis)}` : ""]));
+    x.von ? ` ab ${datumKurz(x.von)}` : "", x.bis ? ` bis ${datumKurz(x.bis)}` : ""]));
+}
+// Molekül Terminzeile: eine Zeile im Gesicht der Zeitachse (links Nummer oder Datum, Titel, rechts eine Nebenangabe), genau ein Link;
+// für feste Termine und die nächsten Fristen im Reiseüberblick
+function terminZeile(href, links, titel, rechts, klasse) {
+  return el("a", {class: "tagzeile vorschau" + (klasse ? " " + klasse : ""), href},
+    el("span", {class: "tz-datum"}, links), el("span", {class: "tz-titel"}, titel), rechts ? el("span", {class: "tz-nacht"}, rechts) : null);
 }
 // Feste Termine zwischen An- und Abreise (die am ersten und letzten Tag stehen schon dort)
 function festeTermine(p) {
   const l = p.tage.slice(1, -1).flatMap(t => (t.fixpunkte || []).map(f => [t, f]));
   if (!l.length) return null;
   return el("section", {class: "termine"}, el("h3", {class: "reise-titel"}, "Feste Termine"), el("div", {class: "tagzeilen"}, l.map(([t, f]) =>
-    el("a", {class: "tagzeile vorschau", href: "#" + t.id}, el("span", {class: "tz-datum"}, el("b", {}, String(t.nr)), t.datum ? datumText(t.datum, t.wochentag) : null),
-      el("span", {class: "tz-titel"}, f)))));
+    terminZeile("#" + t.id, [el("b", {}, String(t.nr)), t.datum ? datumText(t.datum, t.wochentag) : null], f))));
 }
 // Nächste Fristen: offene Aufgaben mit Frist, die frühesten zuerst, als Zeile (Frist, Titel, Zuständig); führt zu den Aufgaben
 function naechsteFristen() {
   if (!B("aufgaben")) return null;
   const l = AG.filter(a => agOffen(a) && a.frist).sort((a, b) => a.frist.localeCompare(b.frist));
   if (!l.length) return null;
-  const zeile = a => el("a", {class: "tagzeile vorschau" + (ueberfaellig(a) ? " ueber" : ""), href: "#aufgaben"},
-    el("span", {class: "tz-datum"}, el("b", {}, tagKurz(a.frist)), ueberfaellig(a) ? "überfällig" : "Frist"),
-    el("span", {class: "tz-titel"}, a.titel),
-    a.zustaendig ? el("span", {class: "tz-nacht"}, a.zustaendig) : null);
+  const zeile = a => terminZeile("#aufgaben", [el("b", {}, datumKurz(a.frist)), ueberfaellig(a) ? "überfällig" : "Frist"], a.titel, a.zustaendig, ueberfaellig(a) ? "ueber" : null);
   return el("section", {class: "fristen"}, el("h3", {class: "reise-titel"}, "Nächste Fristen"), el("div", {class: "tagzeilen"}, l.slice(0, 3).map(zeile)),
     l.length > 3 ? el("a", {class: "weiter", href: "#aufgaben"}, `Alle ${l.length} Aufgaben mit Frist →`) : null);
 }
@@ -2573,7 +2605,7 @@ function heuteBlock(m) {
   if (V.start !== "heute" || !R) return;
   const t = R.tage.find(x => x.datum === heute());
   const s = el("section", {class: "heute"}, el("h2", {}, t ? `Heute · Tag ${t.nr}: ${t.titel}` : "Heute"));
-  s.append(t ? tagKarte(t, true) : el("div", {class: "leer"}, "Heute ist kein Tag im Plan."));
+  s.append(t ? tagKarte(t, true, true) : el("div", {class: "leer"}, "Heute ist kein Tag im Plan."));
   m.append(s);
 }
 function ansichtPlan(m) {
@@ -2586,9 +2618,9 @@ function ansichtPlan(m) {
   fragenKarte(m);
 }
 function fragenKarte(m) {
-  const offen = D.fragen.zeilen.filter(z => !/^(erledigt|geklärt|beantwortet)/i.test(z.status || z.zellen[z.zellen.length - 1] || ""));
+  const offen = D.fragen.zeilen.filter(frageOffen);
   if (B("fragen") && D.fragen.zeilen.length) m.append(el("a", {class: "karte", href: "#fragen"},
-    el("div", {class: "k"}, `Offene Fragen: ${offen.length} →`), el("div", {class: "z klein"}, "im Reiter Offen")));
+    el("div", {class: "k"}, `Offene Fragen: ${offen.length} →`), el("div", {class: "z klein"}, "in „Zu tun“")));
 }
 
 /* ---------- Reiter „Plan“ nur mit Rahmen (reise.json plan_reiter): Eckdaten, grober Zeitplan, Vorgaben ---------- */
@@ -2605,7 +2637,7 @@ function ansichtRahmen(m) {
 }
 // Kennungen in einem Text (aus Markdown-Tabellen der Reise) in Namen auflösen: eine Klammer, die nur Kennungen enthält,
 // entfällt (diese Stellen stehen als Pillen darunter); eine Kennung im Satz wird zum Namen mit Link. -> {teile, ids}
-const KENNUNG = /\b(?:AG-\d+|P-[A-Z]\b|[TEOUVPFW]-\d+(?:\.[a-z0-9-]+)?)\b/g;
+const KENNUNG = /\b(?:AG-\d+|P-[A-Z]\b|[TEOUVPFWAB]-\d+(?:\.[a-z0-9-]+)?)\b/g;   // A- Aufenthalt, B- Buchung (seit O-5 und #76)
 // Auftrags- und Rückmeldungsnummern (A-20261028-145021-cbca) bleiben in den Dateien, auf der Seite entfallen sie
 const NUMMER = /\s*\b[AR]-\d{8}-\d{6}-[0-9a-z]{4}\b/g;
 // Name einer Kennung für den Lesetext: eine Frage mit ihren ersten Worten, eine Aufgabe mit ihrem Titel, sonst der Titel
@@ -2642,6 +2674,9 @@ function frageStand(text) {
   if (/^→\s*Aufgabe/i.test(t)) return {art: "aufgabe", wort: "als Aufgabe", rest: t.replace(/^→\s*Aufgabe\s*/i, "")};
   return {art: "offen", wort: "offen", rest: /^offen\b/i.test(t) ? t.replace(/^offen\b[\s:,–-]*/i, "") : t};
 }
+// Stand einer Frage aus ihrer Zeile (Spalte „Status“, sonst das Feld status) -> offen, solange sie nicht geklärt ist; einmal für alle
+const frageStatusText = z => { const i = D.fragen.spalten.findIndex(k => k.toLowerCase() === "status"); return i >= 0 ? z.zellen[i] : z.status; };
+const frageOffen = z => frageStand(frageStatusText(z)).art !== "zu";
 // Molekül offene Frage als Zeile (28.10.2026): die Frage in Worten ohne Kennungen, darunter bis wann, die
 // Stellen als Pillen, die Notiz zum Stand leise; die Kennung steht im Tooltip und in der Sprechblase
 function frageZeile(spalten, z) {
@@ -2658,7 +2693,7 @@ function frageZeile(spalten, z) {
     el("div", {class: "ag-text"},
       el("div", {class: "ag-kopf"}, el("span", {class: "titel"}, was.teile), zid(z.id)),
       meta.length ? el("div", {class: "ag-meta"}, meta.flatMap((x, i) => i ? [el("span", {class: "ag-punkt", "aria-hidden": "true"}, "·"), x] : [x])) : null,
-      ids.length ? el("div", {class: "ag-bezug"}, ids.map(id => el("a", {href: "#" + id, title: id}, titelZu(id)))) : null,
+      ids.length ? el("div", {class: "ag-bezug"}, ids.map(id => chip("", titelZu(id), {href: "#" + id, title: id}))) : null,
       stand.rest ? el("div", {class: "ag-notiz"}, notiz.teile) : null));
 }
 // Kennungen in jedem Text einer Ansicht (Reisetexte, Notizen, Kommentare): Nummern von Aufträgen und Rückmeldungen
@@ -2684,14 +2719,14 @@ function kennungenImText(wurzel) {
 }
 function ansichtFragen(m) {
   const f = el("section", {class: "ziel", id: "fragen"}, el("h2", {}, "Offene Fragen"));
-  const alle = D.fragen.zeilen.map(z => [z, frageStand(z.zellen[D.fragen.spalten.findIndex(k => k.toLowerCase() === "status")] ?? z.status)]);
-  const gruppe = (titel, l) => el("section", {class: "ag-gruppe"}, el("h3", {class: "reise-titel"}, titel, el("span", {class: "kap-zahl"}, String(l.length))),
+  const alle = D.fragen.zeilen.map(z => [z, frageStand(frageStatusText(z))]);
+  const gruppe = (titel, l) => el("section", {class: "ag-gruppe"}, gruppenTitel(titel, l.length),
     el("div", {class: "ag-liste"}, l.map(([z]) => frageZeile(D.fragen.spalten, z))));
   const offen = alle.filter(([, x]) => x.art === "offen"), aufgabe = alle.filter(([, x]) => x.art === "aufgabe"), zu = alle.filter(([, x]) => x.art === "zu");
   if (offen.length) f.append(gruppe("Zu klären", offen));
   if (aufgabe.length) f.append(gruppe("Als Aufgabe unterwegs", aufgabe));
   if (zu.length) f.append(el("details", {class: "kapitel ag-erledigt"}, el("summary", {}, el("span", {class: "kap-text"}, el("span", {class: "kap-titel"}, "Geklärt")),
-    el("span", {class: "kap-zahl"}, String(zu.length))), el("div", {class: "ag-liste"}, zu.map(([z]) => frageZeile(D.fragen.spalten, z)))));
+    zahlMarke(zu.length)), el("div", {class: "ag-liste"}, zu.map(([z]) => frageZeile(D.fragen.spalten, z)))));
   if (!alle.length) f.append(el("div", {class: "leer"}, "Keine offenen Fragen."));
   m.append(f);
 }
@@ -2753,7 +2788,7 @@ function tagKachel(t, datum, nr) {
   const c = el("div", {class: "chips"});
   for (const f of t.fixpunkte || []) c.append(chip("plan", f));
   for (const o of tagOrte(t)) c.append(chip(ortAbschnitt(o) ? "" : "leise", ortName(o)));
-  for (const s of t.strecken) if (s.wahl) c.append(chip("offen", "Wahl: " + ((wahlZu.get(s.wahl) || {}).titel || s.wahl)));
+  for (const s of t.strecken) if (s.wahl) { const w = wahlZu.get(s.wahl); c.append(chip(!w ? "offen" : w.wann === "unterwegs" ? "unterwegs" : wahlOffen(w) ? "offen" : "plan", "Wahl: " + (w ? w.titel : s.wahl))); }
   if (c.childNodes.length) k.append(c);
   const n = t.nacht;
   if (n) k.append(nachtZeile(n, true));
@@ -2845,7 +2880,7 @@ function kapitel(b, kz, tag) {
   const n = (b.html.match(/<li[\s>]/g) || []).length;
   const d = el("details", {class: "kapitel ziel", id: b.id, "data-ziel": b.id, "data-tag": tag, open: TAGKAPITEL[tag] === b.id},
     el("summary", {}, el("span", {class: "kap-text"}, el("span", {class: "kap-titel"}, b.titel),
-      el("span", {class: "kap-vorschau"}, klartext(b.html).slice(0, 160))), n > 1 ? el("span", {class: "kap-zahl", title: `${n} Einträge`}, String(n)) : null, zid(b.id)),
+      el("span", {class: "kap-vorschau"}, klartext(b.html).slice(0, 160))), n > 1 ? zahlMarke(n, `${n} Einträge`) : null, zid(b.id)),
     el("div", {class: "kap-inhalt"}, reiseText(b.html, kz)));
   d.addEventListener("toggle", () => {
     if (!d.open) { if (TAGKAPITEL[tag] === b.id) delete TAGKAPITEL[tag]; return; }
@@ -2901,13 +2936,17 @@ function nachtAbschnitt(t) {
   const kand = w ? gueltigeOptionen(w) : [];
   const akt = w && (kand.find(o => o.aktiv) || kand[0]);
   const uid = n.unterkunft && R.unterkuenfte[n.unterkunft] ? n.unterkunft : akt && (akt.unterkuenfte || []).find(x => R.unterkuenfte[x]);
-  const offen = w && w.wann === "planung" && w.offen && kand.length > 1;
+  const offen = wahlOffen(w);
   const s = el("section", {class: "ebene ebene-nacht ziel", id: "nacht"},
-    el("div", {class: "ebene-kopf"}, el("h3", {}, symbol("unterkunft", "etikett-sym"), " Nacht in " + ortName(n.ort),
-      st && st.text ? chip(st.zustand, offen ? `noch wählen · ${kand.length}` : st.text) : null)));
+    ebeneKopf([symbol("unterkunft", "etikett-sym"), " Nacht in " + ortName(n.ort),
+      st && st.text ? chip(st.zustand, offen ? `noch wählen · ${kand.length}` : st.text) : null]));
   if (offen) s.append(wahlKarte(w), el("p", {class: "meldung"}, "Entscheiden: in der Claude-App. Danach steht hier die gewählte Unterkunft mit Adresse, Kontakt und Buchungsstand."));
   else {
-    if (uid) s.append(unterkunftKarte(uid));
+    // Eine Heimat je Unterkunft (ADR-0003): vollständig an ihrer ersten Nacht im Plan, an jeder weiteren als Zeile mit Link dorthin
+    const erste = uid && (R.unterkuenfte[uid].naechte || [])[0];
+    if (uid && (!erste || erste === t.id)) s.append(unterkunftKarte(uid));
+    else if (uid) s.append(nachtZeile(n, false, t.datum, true), el("p", {class: "meldung"}, "Alles zur Unterkunft steht bei ihrer ersten Nacht: ",
+      link(uid, `Tag ${(R.tage.find(x => x.id === erste) || {}).nr || ""} →`)));
     else s.append(el("p", {class: "meldung"}, n.hinweis || "Unterkunft noch offen."));
     if (w && w.optionen.length > 1) s.append(el("details", {class: "block"}, el("summary", {}, `Alle Möglichkeiten (${w.optionen.length})`), wahlKarte(w)));
   }
@@ -2947,7 +2986,7 @@ function ansichtTag(m, tid) {
   const karten = t.strecken.flatMap(s => {
     const a = proId.get(s.id), st = R.strecken[s.id] || {};
     if (a && a.typ === "etappe") return [etappenKarte(s.id)];
-    const k = (st.art || "wandern") === "wandern" ? etappenKarte(s.id) : null;
+    const k = summiertArt(st) ? etappenKarte(s.id) : null;
     return k ? [el("div", {class: "tag-karte"}, el("div", {class: "etikett"}, "Weg: " + st.titel), k,
       st.quelle ? el("p", {class: "meldung"}, "Angaben: " + st.quelle) : null,
       st.siehe && proId.has(st.siehe) ? el("p", {}, link(st.siehe, "Beschreibung: " + proId.get(st.siehe).titel + " →")) : null)] : [];
@@ -3228,14 +3267,15 @@ function markiert(text, begriffe, laenge) {
    eigenen Baustein, sondern Name, Farbe und Symbol. Die Bausteinseite zeigt die Tabelle, test_seite prüft, dass jede
    Kennung der Reise einer Grundform angehört. */
 const GRUNDFORMEN = [
+  ["reise", "Reise", "–", {zeile: [], vorschau: [reiseEnde, mitreisende, standLeiste], karte: [uebersichtKarte], seite: [ansichtReise]}],
   ["tag", "Folge: Tag", "T-01", {zeile: [tagZeile], vorschau: [tagKachel], karte: [tagKarte], seite: [ansichtTag, ansichtReise]}],
   ["etappe", "Bewegung: Etappe, Strecke", "E-01", {zeile: [streckeZeile], vorschau: [abschnittKarte], karte: [], seite: [ansichtAbschnitt, tagEbenen]}],
   ["ort", "Ort", "O-01", {zeile: [wegVerlauf], vorschau: [tagOrteZeilen, listenZeile], karte: [], seite: [ansichtOrt]}],
   ["unterkunft", "Aufenthalt mit Nacht: Unterkunft", "U-01", {zeile: [nachtZeile], vorschau: [listenZeile], karte: [unterkunftKarte], seite: [nachtAbschnitt]}],
-  ["aufenthalt", "Aufenthalt ohne Nacht", "A-01", {zeile: [aufenthaltZeile], vorschau: [listenZeile], karte: [], seite: [tagEbenen]}],
-  ["buchung", "Buchung zu Aufenthalt oder Bewegung", "B-01", {zeile: [buchungChip], vorschau: [listenZeile], karte: [buchungBlock], seite: [unterkunftKarte, aufenthaltZeile, streckeZeile]}],
+  ["aufenthalt", "Aufenthalt ohne Nacht", "A-01", {zeile: [aufenthaltZeile], vorschau: [listenZeile], karte: [], seite: [tagKarte]}],
+  ["buchung", "Buchung zu Aufenthalt oder Bewegung", "B-01", {zeile: [buchungChip], vorschau: [listenZeile], karte: [], seite: [buchungBlock]}],
   ["wahlstelle", "Wahl: Wahlstelle", "V-01", {zeile: [wahlZeile], vorschau: [listenZeile], karte: [wahlKarte], seite: [wahlEinstieg, wahlVergleich, nachtAbschnitt]}],
-  ["option", "Wahl: Option", "V-01.a", {zeile: [optionBlock], vorschau: [], karte: [wahlVergleich], seite: []}],
+  ["option", "Wahl: Option", "V-01.a", {zeile: [optionBlock], vorschau: [wahlVergleich], karte: [wahlVergleich], seite: [optionEinzelheiten]}],
   ["plan", "Folge: Plan", "P-A", {zeile: [planMarke], vorschau: [steckbrief], karte: [], seite: [ansichtPlanDetail]}],
   ["frage", "Offenes: Frage", "F-01", {zeile: [frageZeile], vorschau: [], karte: [], seite: [ansichtFragen]}],
   ["wissen", "Wissen: Praxis, Quelle, Plantext", "W-01", {zeile: [], vorschau: [listenZeile], karte: [], seite: [ansichtAbschnitt, ansichtWissen]}],
@@ -3278,13 +3318,32 @@ function ansichtBausteine(m) {
   const fall = (name, inhalt) => el("div", {class: "z"}, el("b", {}, name + ": "), inhalt);
   m.append(el("h2", {}, "Bausteine"), el("p", {class: "meldung"}, "Alle Bausteine dieser Seite mit den Daten der Reise, geordnet nach Ebenen "
     + "(Atome, Moleküle, Organismen, Vorlagen). Nicht in der Leiste; Adresse #bausteine."));
-  teil("Ontologie", "Art → Bausteine", "Jede Art im Datenmodell nutzt dieselben Bausteine, je nach Dichte. Die Kennung (Atom) trägt jede Art; "
+  teil("Ontologie", "Grundform → Bausteine", "Jede Grundform der Reise-Ontologie nutzt dieselben Bausteine, je nach Dichte; welche Arten eine Reise hat, weiß nur sie. Die Kennung (Atom) trägt jedes Ding; "
     + "unterwegs nicht in einer Vorschau und nicht im Kopf von Zugeklapptem.", ontologieTabelle());
   teil("Token", "Schriftleiter", "Fünf Stufen; jede Schrift der Seite ist eine davon (docs/design.md).",
     [["titel", "Titel"], ["untertitel", "Untertitel"], ["text", "Text"], ["klein", "Nebentext"], ["etikett", "Etikett"]].map(([s, n]) =>
       el("div", {class: "z", style: `font-size:var(--t-${s})`}, `${n} · --t-${s}`)));
   teil("Atom", "Zustand", "Feste Namen; die Farbe folgt der Bedeutung, nicht dem Ort.",
     el("div", {class: "chips"}, Object.keys(CHIP).map(z => chip(z, z)), chip("", "Hinweis")));
+  teil("Atom", "Datum", "Zwei Formen: mit Wochentag für die Tage des Plans, kurz (mit Jahr, wenn es nicht das laufende ist) für Fristen, Prüfdaten und Verläufe.",
+    fall("mit Wochentag", datumText("2027-05-13", "Do")), fall("kurz", datumKurz("2027-05-13")), fall("kurz, laufendes Jahr", datumKurz(heute())));
+  teil("Atom", "Zahlmarke", "Die Zahl der Einträge einer Gruppe oder eines Kapitels; im Gruppentitel (Molekül).",
+    el("div", {class: "chips"}, zahlMarke(3)), gruppenTitel("Gruppe (Muster)", 2));
+  teil("Atom", "Zustand Buchung", "Der Buchungsstand eines Dings als Chip (Molekül Buchungsstand: gebucht, nicht gebucht, angefragt; mit Buchung führt er zu ihr).",
+    el("div", {class: "chips"}, buchungChip({buchung: "gebucht"}), buchungChip({buchung: "offen"}), buchungChip({buchung: "angefragt"}), buchungChip({buchung: "Zeitfenster 10 Uhr"})),
+    el("p", {class: "meldung"}, "Muster"));
+  const wMuster = (wann, offen) => ({wann, offen, optionen: [{status: "vorgeschlagen"}, {status: "vorgeschlagen"}]});
+  teil("Molekül", "Wahlzustand", "Zustand einer Wahl, überall gleich: unterwegs zu entscheiden, offen oder entschieden.",
+    el("div", {class: "chips"}, wahlZustand(wMuster("unterwegs", true)), wahlZustand(wMuster("planung", true)), wahlZustand(wMuster("planung", false))));
+  teil("Molekül", "Terminzeile", "Eine Zeile im Gesicht der Zeitachse: links Nummer oder Datum, Titel, rechts eine Nebenangabe; genau ein Link.",
+    el("div", {class: "tagzeilen"}, terminZeile("#bausteine", [el("b", {}, "2"), "Fr 14.5."], "Beispieltermin (Muster)", "Ida"),
+      terminZeile("#bausteine", [el("b", {}, "1.5."), "überfällig"], "Beispielfrist (Muster)", "Karl", "ueber")));
+  teil("Molekül", "Ebenenkopf", "Titel einer Ebene der Tagesseite, rechts die Kennung.", ebeneKopf("Titel einer Ebene (Muster)", zid("Muster")));
+  teil("Molekül", "Namensfeld", "Wer schreibt: aus dem Konto, sonst ein Feld für den Vornamen.", nameFeld("bs-name"));
+  const rmMusterVoll = {ziel: "Muster", status: "neu", art: "Kommentar", name: "Muster", erstellt: "2027-01-02T00:00:00Z", text: "Beispieltext (Muster)."};
+  const gruppenBox = el("div", {});
+  eintragGruppen(gruppenBox, [["Neu", e => e.status === "neu"]], [rmMusterVoll], e => rmEintrag(e, false));
+  teil("Molekül", "Eintragsgruppen", "„Titel (n)“ und darunter die Einträge (Rückmeldungen, Aufgaben).", gruppenBox);
   const alleWerte = R ? [...Object.values(R.unterkuenfte).map(u => u.merkmale), ...R.wahlstellen.flatMap(w => w.optionen.map(o => o.merkmale))]
     .flatMap(x => Object.values(x || {})) : [];
   const echt = (pruef, muster) => alleWerte.find(pruef) || {...muster, notiz: [muster.notiz, "Muster"].filter(Boolean).join(" · ")};
@@ -3310,15 +3369,23 @@ function ansichtBausteine(m) {
     kartenLinks(mitLage || {name: "Muster", adresse: {wert: "Musterstraße 1, 12345 Musterort", quelle: "Muster"}}), mitLage ? null : el("span", {class: "z klein"}, " (Muster)"));
   teil("Molekül", "Lage", "Adresse mit Herkunft und Kartenlinks; ohne Lage ein leiser Hinweis.",
     lageZeile(mitLage || {name: "Muster", adresse: {wert: "Musterstraße 1, 12345 Musterort", quelle: "Muster"}}), lageZeile({name: "ohne Lage"}));
-  teil("Atom", "Etikett", "Sagt, was etwas ist; normale Schreibweise, gedämpft. Ein Symbol nur, wo es die Art sofort zeigt.",
-    el("div", {class: "chips"}, dingEtikett("Nacht", null, "nacht"), dingEtikett("Wahl", null, "wahl"), el("span", {class: "etikett"}, "Etikett ohne Symbol")));
+  teil("Atom", "Etikett", "Sagt, was etwas ist; normale Schreibweise, gedämpft (nur Stil, .etikett).", el("span", {class: "etikett"}, "Etikett ohne Symbol"));
+  teil("Atom", "Symbol", "Zeichen der Seite (Lucide), eingebettet; Arten der Reise wählen eines davon.",
+    el("div", {class: "chips"}, ["unterkunft", "strecke", "plan", "ort", "varianten", "ticket", "gehzeit"].map(n => symbol(n))));
+  teil("Molekül", "Ding-Etikett", "Etikett eines Dings mit Symbol seiner Art oder Grundform und Farbpunkt der Art.",
+    el("div", {class: "chips"}, dingEtikett("Nacht", null, "nacht"), dingEtikett("Wahl", null, "wahl"), dingEtikett("Buchung", null, "ticket")));
   if (R && R.plaene.length) teil("Atom", "Planfarbe", "Jeder Plan hat eine Farbe: als Punkt in Legende, Tabelle und Überschrift, als Linie im Umschalter wie auf der Karte.",
     R.plaene.map(p => fall(p.kurz, [planMarke(p), " ", planMarke(p, "linie")])));
   const wz = abschnitte.find(x => x.typ === "wissen" || x.typ === "praxis" || x.typ === "quelle");
   teil("Molekül", "Listenzeile", "Symbol, Titel, Unterzeile und Kennung oder rechts ein Zustand; für Wissen, Praxis, Quellen, Orte und die Listen in „Zu tun“. Die ganze Zeile ist der Link.",
-    wz ? el("div", {class: "wliste"}, wissenZeile(wz)) : el("p", {class: "meldung"}, "Kein Abschnitt für Wissen, Praxis oder Quellen."));
+    el("div", {class: "wliste"}, wz ? wissenZeile(wz) : null, listenZeile("wahl", "varianten", "Zeile mit Zustand (Muster)", "Unterzeile", "bausteine", null, chip("offen", "2 zur Wahl"))));
+  teil("Molekül", "Tabellenzeile als Karte", "Eine Zeile einer Tabelle aus einem Abschnitt der Reise (Spalten als Zeilen).",
+    zeilenKarte(["Nr.", "Was", "Hinweis", "Stand"], {id: "Muster", zellen: ["1", "Beispielzeile (Muster)", "Hinweis dazu", "offen"]}));
+  teil("Molekül", "Buchungsstand", "Der eine Stand eines Dings in Worten, aus der geltenden Buchung oder dem Bestandsfeld; Chip, Zeitachse, Zu buchen und Zähler nutzen ihn.",
+    el("div", {class: "z"}, [{buchung: "gebucht", buchung_id: "B-00"}, {buchung: "offen"}, {buchung: "angefragt"}, {}].map(d => { const st = buchungsStand(d);
+      return el("div", {class: "z klein"}, `${d.buchung || "ohne Stand"} → ${st ? `${st.text} (${st.gebucht ? "gebucht" : "offen"})` : "kein Buchungsstand"}`); })));
   const fr = D.fragen.zeilen[0];
-  teil("Molekül", "Fragenkarte", "Eine offene Frage mit Kennung und Verweisen.",
+  teil("Molekül", "Frage als Zeile", "Eine offene Frage in Worten, darunter bis wann, die Stellen als Pillen und die Notiz zum Stand.",
     fr ? frageZeile(D.fragen.spalten, fr) : el("p", {class: "meldung"}, "Keine offenen Fragen."));
   // Rückmeldung und Aufgabe: Beispiele sind als Muster benannt; die Knöpfe sind abgeschaltet
   const eintraege = [
@@ -3334,8 +3401,11 @@ function ansichtBausteine(m) {
     frist: "2099-12-31", frist_was: "Restzahlung", storno: "kostenlos bis 7 Tage vorher (Muster)", gebucht_am: "2027-01-02", wer: "Muster",
     quelle: "Muster", verlauf: [{datum: "2027-01-02", wer: "Muster", was: "angelegt"}]});
   buBlock.querySelectorAll("button, form").forEach(k => { k.tagName === "FORM" ? k.remove() : (k.disabled = true); });
-  teil("Molekül", "Buchung", "Eine Buchung mit Stand, Nummer, Frist, Stornoregel, Herkunft, Belegen und Verlauf; ihre Heimat ist das gebuchte Ding."
+  teil("Organismus", "Buchung", "Eine Buchung mit Stand, Nummer, Frist, Stornoregel, Herkunft, Belegen und Verlauf; ihre Heimat ist ihr erstes Ding."
     + (bu ? "" : " (Muster)"), buBlock);
+  const bl = belegeListe(bu || {id: "B-00", fuer: [], status: "gebucht"});
+  bl.querySelectorAll("button, form").forEach(k => { k.tagName === "FORM" ? k.remove() : (k.disabled = true); });
+  teil("Molekül", "Belege", "Die Belege einer Buchung (Name, Größe, wer, wann, Sichtbarkeit) mit dem Formular zum Anhängen (nur angemeldet).", bl);
   if (WUENSCHE) {
     const wk = wuKarte({id: "", name: "Muster", text: "Beispielwunsch (Muster).", status: "uebernommen", erstellt: "2027-01-02T00:00:00Z",
       spalte: "geprueft", punkte: 3, kommentar: "Beispielantwort, wo der Wunsch hinpasst (Muster).",
@@ -3366,11 +3436,15 @@ function ansichtBausteine(m) {
   teil("Molekül", "Legende", "Zeichen und Wort; unter einer Karte steht nur, was auf ihr vorkommt.",
     kartenLegende([...Object.entries(artNamen()).map(([k, t]) => [el("i", {class: "lg-k" + katKlasse(k)}), t]),
       ...R.plaene.map(p => [planMarke(p), p.kurz])]));
-  if (R.plaene.length > 1) {
-    const us = planUmschalter(R.plaene);
-    us.querySelectorAll("button").forEach(k => { k.disabled = true; });
-    teil("Molekül", "Umschalter", "Genau ein Knopf ist gedrückt; in „Varianten“ wählt er den gezeigten Plan.", us);
-  }
+  const us = R.plaene.length > 1 ? planUmschalter(R.plaene) : umschalter("Muster", [[{}, true, "Alle"], [{}, false, "Plan A (Muster)"]]);
+  us.querySelectorAll("button").forEach(k => { k.disabled = true; });
+  teil("Molekül", "Umschalter", "Genau ein Knopf ist gedrückt; in „Varianten“ wählt er den gezeigten Plan.", us);
+  // Hintergrund-Kapitel: aus der ersten Etappe, die eines hat, sonst ein Muster
+  const hinter = etappenBloecke.find(([, b]) => b.ebene === "hintergrund");
+  const blockMuster = (etappenBloecke.find(([, b]) => b.ebene === "unterwegs") || [null, {id: "Muster", titel: "Beispielabschnitt (Muster)", html: "<p>Beispieltext.</p>"}])[1];
+  teil("Molekül", "Fläche: aufklappbarer Abschnitt", "Ein Abschnitt eines Textes als zuklappbare Fläche (block).", block(blockMuster, true));
+  teil("Molekül", "Kapitel", "Zugeklappt mit Titel, einer Zeile Vorschau und der Zahl der Einträge; immer nur eines offen.",
+    el("div", {class: "kapitel-liste"}, kapitel(hinter ? hinter[1] : {id: "Muster", titel: "Beispielkapitel (Muster)", html: "<p>Beispieltext.</p>"}, null, "Muster")));
   // Organismus Ding: je Art der Nacht ein Beispiel aus der Reise
   const naechte = [["Wahl offen", t => t.nacht.wahl && wahlZu.get(t.nacht.wahl).offen], ["Wahl entschieden", t => t.nacht.wahl && !wahlZu.get(t.nacht.wahl).offen],
     ["Unterkunft fest", t => !t.nacht.wahl && t.nacht.unterkunft], ["an Bord", t => t.nacht.an_bord], ["noch offen", t => !t.nacht.wahl && !t.nacht.unterkunft && !t.nacht.an_bord]]
@@ -3380,16 +3454,28 @@ function ansichtBausteine(m) {
   if (u) teil("Organismus", "Ding: Aufenthalt als Karte", null, unterkunftKarte(u[0]));
   const auf = Object.keys(R.aufenthalte || {});
   if (auf.length) teil("Organismus", "Ding: Aufenthalt ohne Nacht", "Besichtigung, Essen, Besuch: in der Zeitleiste des Tags an seinem Ort, auf der Tagesseite vollständig (Heimat).", aufenthaltZeile(auf[0], true));
-  const fuss = strecken.find(([, x]) => (x.art || "wandern") === "wandern"), fahrt = strecken.find(([, x]) => x.art && x.art !== "wandern");
+  const fuss = strecken.find(([, x]) => summiertArt(x)), fahrt = strecken.find(([, x]) => x.art && !summiertArt(x));
   teil("Organismus", "Ding: Bewegung als Zeile", null, [fuss, fahrt].filter(Boolean).map(([id]) => el("div", {class: "karte"}, streckeZeile(id))));
-  const w = R.wahlstellen.find(x => gueltigeOptionen(x).length > 2) || R.wahlstellen.find(x => gueltigeOptionen(x).length > 1);
-  if (w) teil("Organismus", "Wahl-Modul", "Einstieg, Vergleich und Optionen; in der Liste der Entscheidungen gleich offen.", wahlKarte(w));
+  const w = R.wahlstellen.find(x => gueltigeOptionen(x).length > 2) || R.wahlstellen.find(x => gueltigeOptionen(x).length > 1) || R.wahlstellen[0];
+  if (w) teil("Organismus", "Ding: Wahl als Zeile", "Etikett, Titel, die Möglichkeiten, Zustand und Einstieg in den Vergleich.", el("div", {class: "karte"}, wahlZeile(w, true)));
+  if (w) { const o = gueltigeOptionen(w)[0] || w.optionen[0];
+    teil("Organismus", "Wahl-Modul: Teile", "Einstieg (Knopf), Vergleich, eine Option als Block mit Zustandschips und „Fehlt noch“, die Einzelheiten einer aufgeklappten Zeile.",
+      el("div", {class: "chips"}, wahlEinstieg(w, true), optionChips(w, o)), fehltZeile(w, o) || el("p", {class: "meldung"}, "Nichts fehlt (oder die Wahl ist entschieden)."),
+      wahlVergleich(w, true), el("div", {class: "karte"}, optionBlock(w, o, false, true)), el("div", {class: "karte"}, optionEinzelheiten(w, o)));
+    teil("Organismus", "Wahl-Modul", "Alles zusammen als Karte: Einstieg, Vergleich (Tabelle am Rechner, Karten am Handy) und Optionen.", wahlKarte(w)); }
+  else teil("Organismus", "Wahl-Modul", "Diese Reise hat keine Wahlstelle (Muster entfällt).");
+  const abschnittE = abschnitte.find(a => a.typ === "etappe");
+  if (abschnittE) teil("Organismus", "Abschnitt als Karte", "Etappe oder Abschnitt des Wissens als Vorschau mit Kennzahlen.", abschnittKarte(abschnittE));
+  teil("Organismus", "Steckbrief eines Plans", "Kennzahlen, Nächte, Dafür und Dagegen eines benannten Plans.",
+    R.plaene.length ? steckbrief(R.plaene[0], true) : el("p", {class: "meldung"}, "Keine benannten Pläne."));
   const tag = R.tage.find(t => t.wahlstellen.length && t.nacht) || R.tage.find(t => t.nacht) || R.tage[0];
   const plan = PLAN_FEST || R.plaene[0];
   if (plan) teil("Molekül", "Stand der Vorbereitung", "Im Reiseüberblick bis zur Abreise; Zeilen ohne Offenes entfallen, die Unterkünfte bleiben.",
     standLeiste(plan) || el("p", {class: "meldung"}, "Nichts offen."));
   if (plan) teil("Organismus", "Tag als Zeile (Zeitachse)", "Im Reiseüberblick: Punkt und Linie, Datum, Titel mit Marken, Gehzeit und Strecke, die Nacht mit Stand. Genau ein Link, keine Kennung.",
-    el("div", {class: "tagzeilen achse"}, plan.tage.slice(0, 3).map(tagZeile)));
+    el("div", {class: "tagzeilen achse"}, plan.tage.slice(0, 3).map(t => tagZeile(t))));
+  if (tag && (tag.strecken.length || (tag.aufenthalte || []).length)) teil("Organismus", "Zeitleiste des Tags", "Start, Bewegungen, Aufenthalte an ihrem Ort, Ziel; vollständig auf der Tagesseite.",
+    el("div", {class: "karte"}, wegVerlauf(tag, null, false)));
   if (PLAN_FEST) {
     const tun = el("div", {class: "tun-raster"});
     zuEntscheiden(tun); zuBuchen(tun);
@@ -3399,8 +3485,20 @@ function ansichtBausteine(m) {
   const tagNacht = PLAN_FEST && (PLAN_FEST.tage.find(t => t.nacht && t.nacht.wahl && wahlZu.get(t.nacht.wahl).offen) || PLAN_FEST.tage.find(t => t.nacht && !t.nacht.an_bord));
   if (tagNacht) teil("Organismus", "Nacht der Tagesseite", `Heimat von Unterkunft und Wahl der Nacht (Tag ${tagNacht.nr}): offen mit Vergleich, sonst die Unterkunft vollständig.`,
     nachtAbschnitt(tagNacht));
-  if (tag) teil("Vorlage", "Tag", `Tag ${tag.nr} mit allen Bausteinen, wie im Plan.`, tagKarte(tag));
-  if (tag) teil("Vorlage", "Tageskasten", "Auf der Tagesseite die einzige Fläche: weiß, ohne Rahmen, weicher Schatten.", tagKarte({...tag, text: ""}, true));
+  if (tag) teil("Organismus", "Tageskasten", `Tag ${tag.nr} mit allen Bausteinen, wie im Plan (Zeitleiste: Molekül wegVerlauf).`, tagKarte(tag));
+  if (tag) teil("Organismus", "Tageskasten der Tagesseite", "Dort die einzige Fläche: weiß, ohne Rahmen, weicher Schatten.", tagKarte({...tag, text: ""}, true));
+  if (tag) teil("Vorlage", "Tageskachel", "Ein Tag als Vorschau in „Varianten“: Kopf, Marken, Nacht.", tagKachel(tag, tag.datum, tag.nr));
+  const etappenAmTag = tag ? tag.strecken.map(x => proId.get(x.id)).filter(a => a && a.typ === "etappe") : [];
+  if (etappenAmTag.length) { const e = tagEbenen(tag, etappenAmTag);
+    teil("Organismus", "Ebenen der Tagesseite", "Der Weg, Unterwegs nachschlagen, Hintergrund, Quellen und Prüfung (Vorlage leseAbschnitt im Weg).",
+      [e.weg, e.unterwegs, e.hintergrund, e.quellen].filter(Boolean)); }
+  if (tag && tagOrte(tag).length) teil("Organismus", "Orte des Tages", "Je Ort eine Zeile mit Kurztext und Kennung.", tagOrteZeilen(tagOrte(tag)));
+  if (plan) teil("Molekül", "An- und Abreise", "Erster und letzter Tag mit festen Terminen und Fahrten; führt zum Tag.",
+    reiseEnde("Anreise", plan.tage[0]), reiseEnde("Abreise", plan.tage[plan.tage.length - 1]));
+  teil("Molekül", "Mitreisende", "Wer reist, wer nur einen Teil.", mitreisende() || el("p", {class: "meldung"}, "Niemand reist (Muster entfällt)."));
+  if (plan && R.karte) { const box = el("div", {}), info = el("div", {class: "karte", "aria-live": "polite"});
+    uebersichtKarte(box, [plan], info); box.append(info);
+    teil("Organismus", "Karte der Reise", "Karte mit Legende; der Kasten darunter erscheint, wenn man einen Ort antippt.", box); }
   // Kennungen sind auf dieser Seite nur Beispiele: keine Sprungziele, damit sie den echten Stellen nicht im Weg stehen
   m.querySelectorAll("[id]").forEach(x => { x.removeAttribute("id"); x.removeAttribute("data-ziel"); });
 }
@@ -3518,11 +3616,11 @@ function rmEintrag(e, mitZiel) {
   const d = el("div", {class: "rmeintrag"});
   d.append(el("div", {class: "kopfzeile"},
     chip("st-" + st, (e.art === "Wunsch" ? WU_STATUS : RM_STATUS)[st] || st), " ",
-    `${e.name || "?"} · ${e.art === "Wunsch" ? "" : e.art + " · "}${(e.erstellt || "").slice(0, 10).split("-").reverse().join(".")}`,
+    `${e.name || "?"} · ${e.art === "Wunsch" ? "" : e.art + " · "}${datumKurz(e.erstellt)}`,
     mitZiel ? [" · ", el("a", {href: "#" + e.ziel}, e.ziel + (titelZu(e.ziel) ? " " + titelZu(e.ziel) : ""))] : ""));
   d.append(el("div", {class: "text"}, e.text));
   if (e.quelle) d.append(el("div", {class: "kopfzeile"}, "Quelle: " + e.quelle));
-  if (e.kommentar) d.append(el("div", {class: "antwort"}, el("b", {}, "Claude: "), e.kommentar));
+  if (e.kommentar) d.append(el("div", {class: "antwort"}, el("b", {}, "Frieda: "), e.kommentar));
   if (st === "neu" && MEINE.has(e.id)) d.append(el("button", {type: "button", class: "outline klein", "data-zurueck": e.id}, "Zurückziehen"));
   if (st === "ausstehend") d.append(el("button", {type: "button", class: "outline klein", "data-verwerfen": e.lokal}, "Nicht senden"));
   return d;
@@ -3555,7 +3653,7 @@ function rmFormular(id) {
         nameFeld("rmName"),
         el("p", {class: "meldung", id: "rmMeldung"},
           API_OK === false ? "Gerade keine Verbindung: Die Rückmeldung wird hier gespeichert und später gesendet." :
-          "Geht an Frieda, meist in wenigen Minuten eingearbeitet. Der Stand erscheint hier und unter „Rückmeldungen“."),
+          "Geht an die Organisator:innen der Reise, die es in der Claude-App eintragen. Der Stand erscheint hier und unter „Rückmeldungen“."),
         el("button", {type: "submit", class: ""}, "Senden"))));
   dlg.dataset.ziel = id;
   dlg.dataset.ag = "";
@@ -3623,7 +3721,7 @@ function eintragGruppen(m, gruppen, alle, zeichne, davor) {
 const jetztSenden = () => el("button", {type: "button", class: "klein", "data-nachreichen": "1"}, "Jetzt senden");
 function ansichtRueckmeldungen(m) {
   m.append(el("h2", {}, "Rückmeldungen"));
-  m.append(el("p", {class: "meldung"}, "Zu jeder Stelle kann man über die Sprechblase daneben etwas anmerken, fragen oder korrigieren. Frieda prüft jede Rückmeldung, arbeitet sie ein (meist in wenigen Minuten) und schreibt hier dazu, was daraus geworden ist."));
+  m.append(el("p", {class: "meldung"}, "Zu jeder Stelle kann man über die Sprechblase daneben etwas anmerken, fragen oder korrigieren. Eine Organisator:in prüft jede Rückmeldung in der Claude-App, trägt sie ein und schreibt hier dazu, was daraus geworden ist."));
   if (KANN_RM) m.append(el("button", {type: "button", class: "outline", "data-rm": "allgemein"}, "Allgemeine Rückmeldung zur Reise"));
   if (API_OK === false) m.append(el("p", {class: "meldung"}, "Gerade keine Verbindung zum Rückmeldedienst – angezeigt wird der zuletzt geladene Stand."));
   eintragGruppen(m, [["Noch nicht gesendet", () => true]], AUSGANG, e => rmEintrag(e, true), jetztSenden);
@@ -3648,7 +3746,6 @@ const KONTINGENT = (D.reise.regeln || {}).kontingent || {art: "punkte", je_perso
 const KANN_ERLEBT = WUENSCHE && V.schreiben !== "nichts" && ["unterwegs", "danach"].includes((D.reise.status || {}).wert);
 const WU_SPALTEN = [["eingebracht", "Eingebracht"], ["geprueft", "Geprüft"], ["eingeplant", "Eingeplant"], ["erlebt", "Erlebt"], ["passt_nicht", "Passt nicht"]];
 const gleicherName = (a, b) => (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
-const datumKurz = iso => (iso || "").slice(0, 10).split("-").reverse().join(".");
 
 async function brLaden() {
   if (!WUENSCHE) return;
@@ -3799,7 +3896,7 @@ function ansichtWuensche(m) {
   for (const [s, t] of WU_SPALTEN) {
     const l = alle.filter(w => w.spalte === s).sort(sortiert);
     brett.append(el("section", {class: "spalte" + (l.length ? "" : " leer-spalte"), "data-spalte": s},
-      el("h3", {}, t, el("span", {class: "kap-zahl"}, String(l.length))), l.map(wuKarte)));
+      el("h3", {}, t, zahlMarke(l.length)), l.map(wuKarte)));
   }
   m.append(brett);
 }
@@ -3891,7 +3988,7 @@ const AG_FELD = {titel: "Titel", bezug: "Bezug", zustaendig: "Zuständig", prior
 function agWert(k, v) {
   if (v == null || v === "" || (Array.isArray(v) && !v.length)) return "–";
   if (k === "status") return AG_STATUS[v] || v;
-  if (k === "ab" || k === "frist") return v.split("-").reverse().join(".");
+  if (k === "ab" || k === "frist") return datumKurz(v);
   if (k === "notiz") return v.length > 60 ? v.slice(0, 60) + "…" : v;
   return [].concat(v).join(", ");
 }
@@ -3904,7 +4001,6 @@ function agSortierung(a, b) {
   const s = x => Object.keys(AG_STATUS).indexOf(x.status), p = x => AG_PRIO.indexOf(x.prioritaet || "normal");
   return s(a) - s(b) || p(a) - p(b) || (a.frist || "9999").localeCompare(b.frist || "9999") || a.id.localeCompare(b.id, "de", {numeric: true});
 }
-function tagMonat(iso) { const [j, m, d] = iso.split("-"); return `${+d}.${+m}.${j === String(new Date().getFullYear()) ? "" : j}`; }
 
 async function agLaden() {
   try {
@@ -3949,16 +4045,16 @@ function agEintrag(a, mitBezug) {
   t.append(el("div", {class: "ag-kopf"}, el("span", {class: "titel"}, a.titel),
     KANN_AG ? el("button", {type: "button", class: "ag-bearbeiten", "data-ag-edit": a.id, "aria-label": `„${a.titel}“ bearbeiten`}, "Bearbeiten") : null));
   const meta = [];
-  if (a.frist) meta.push(el("span", {class: "ag-frist" + (ueberfaellig(a) ? " ueber" : "")}, (ueberfaellig(a) ? "überfällig seit " : "bis ") + tagMonat(a.frist)));
-  if (a.ab && agOffen(a)) meta.push(el("span", {}, "ab " + tagMonat(a.ab)));
+  if (a.frist) meta.push(el("span", {class: "ag-frist" + (ueberfaellig(a) ? " ueber" : "")}, (ueberfaellig(a) ? "überfällig seit " : "bis ") + datumKurz(a.frist)));
+  if (a.ab && agOffen(a)) meta.push(el("span", {}, "ab " + datumKurz(a.ab)));
   if (a.zustaendig) meta.push(el("span", {}, a.zustaendig));
   if (a.prioritaet === "hoch") meta.push(el("span", {class: "ag-wichtig"}, "wichtig"));
   if (a.prioritaet === "niedrig") meta.push(el("span", {}, "kann warten"));
   if (a.status === "in_arbeit" || a.status === "entfaellt") meta.push(el("span", {}, AG_STATUS[a.status]));
-  if (a.status === "erledigt" && a.erledigt) meta.push(el("span", {}, "erledigt " + tagMonat(a.erledigt)));
+  if (a.status === "erledigt" && a.erledigt) meta.push(el("span", {}, "erledigt " + datumKurz(a.erledigt)));
   if (meta.length) t.append(el("div", {class: "ag-meta"}, meta.flatMap((x, i) => i ? [el("span", {class: "ag-punkt", "aria-hidden": "true"}, "·"), x] : [x])));
   if (mitBezug && (a.bezug || []).length) t.append(el("div", {class: "ag-bezug"},
-    a.bezug.map(b => el("a", {href: "#" + b, title: b}, titelZu(b) || "eine Stelle im Handbuch"))));
+    a.bezug.map(b => chip("", titelZu(b) || "eine Stelle im Handbuch", {href: "#" + b, title: b}))));
   if (a.notiz) t.append(el("div", {class: "ag-notiz"}, a.notiz));
   d.append(t);
   return d;
@@ -3998,7 +4094,7 @@ function agFormular(agid, bezug, zurueck) {
           "Gilt sofort für alle, auch in der Claude-App."),
         el("button", {type: "submit"}, a ? "Speichern" : "Anlegen")),
       a ? el("div", {class: "verlauf"}, el("h4", {}, "Verlauf"), a.verlauf.slice().reverse().map(v => el("div", {class: "rmeintrag"},
-        el("div", {class: "kopfzeile"}, `${(v.zeit || "").slice(0, 10).split("-").reverse().join(".")} · ${v.wer} · ${v.was}`),
+        el("div", {class: "kopfzeile"}, `${datumKurz(v.zeit)} · ${v.wer} · ${v.was}`),
         v.felder ? el("div", {}, Object.entries(v.felder).map(([k, [alt, neu]]) => `${AG_FELD[k] || k}: ${agWert(k, alt)} → ${agWert(k, neu)}`).join("; ")) : null,
         v.kommentar ? el("div", {class: "text"}, v.kommentar) : null))) : null));
   dlg.dataset.ag = agid || "";
@@ -4053,12 +4149,12 @@ function ansichtAufgaben(m) {
     ["Später möglich", a => spaeter(a) && !ueberfaellig(a)]];
   for (const [t, g] of gruppen) {
     const x = l.filter(g);
-    if (x.length) m.append(el("section", {class: "ag-gruppe"}, el("h3", {class: "reise-titel"}, t, el("span", {class: "kap-zahl"}, String(x.length))),
+    if (x.length) m.append(el("section", {class: "ag-gruppe"}, gruppenTitel(t, x.length),
       el("div", {class: "ag-liste"}, x.map(a => agEintrag(a, true)))));
   }
   const zu = l.filter(a => !agOffen(a));
   if (zu.length) m.append(el("details", {class: "kapitel ag-erledigt"}, el("summary", {}, el("span", {class: "kap-text"}, el("span", {class: "kap-titel"}, "Erledigt oder entfallen")),
-    el("span", {class: "kap-zahl"}, String(zu.length))), el("div", {class: "ag-liste"}, zu.map(a => agEintrag(a, true)))));
+    zahlMarke(zu.length)), el("div", {class: "ag-liste"}, zu.map(a => agEintrag(a, true)))));
   if (!l.length) m.append(el("div", {class: "leer"}, AG.length ? "Keine Aufgaben für diesen Filter." : "Noch keine Aufgaben."));
 }
 
@@ -4082,6 +4178,18 @@ function heimat(id, tiefe = 0) {
   if (!R || !PLAN_TAGE || tiefe > 3) return null;
   const imPlan = tid => PLAN_TAGE.tage.some(t => t.id === tid);
 
+  if (R.buchungen && R.buchungen[id]) {   // Buchung: ihr erstes Ding (dort steht der Block)
+    const h = heimat((R.buchungen[id].fuer || [])[0], tiefe + 1);
+    return h ? {...h, ziel: id} : null;
+  }
+  if ((R.aufenthalte || {})[id]) {   // Aufenthalt ohne Nacht: der Tag, an dem er steht
+    const t = (R.aufenthalte[id].tage || []).find(imPlan);
+    return t ? {tag: t, ziel: id} : null;
+  }
+  if (R.strecken[id] && !ETAPPE_TAG.has(id)) {   // Fahrt ohne Dossier: der Tag, an dem sie gefahren wird
+    const t = PLAN_TAGE.tage.find(x => x.strecken.some(st => st.id === id));
+    return t ? {tag: t.id, ziel: id} : null;
+  }
   if (R.unterkuenfte[id]) {
     const t = R.unterkuenfte[id].naechte.find(imPlan);
     if (t) return {tag: t, ziel: id};
@@ -4194,7 +4302,7 @@ function route(behalten) {
   }
   else if (zeileZu.has(h) && PLAN_DA) { zeigeReiter("plan"); ansichtPlan(m); ziel = h; }
   else if (!PLAN_DA) { zeigeReiter(START); START === "varianten" ? ansichtStart(m) : ansichtOffen(m); }
-  else { zeigeReiter("plan"); ansichtPlan(m); }
+  else { zeigeReiter("plan"); ansichtPlan(m); if (document.getElementById(h)) ziel = h; }   // Heimat im Plan: Tageskasten (Wahl, Aufenthalt, Strecke)
   if (zielB && document.getElementById(zielB)) ziel = zielB;
   // Lesetext ohne Kennungen (28.10.2026); die Bausteinseite zeigt Kennungen absichtlich
   if (h !== "bausteine") kennungenImText(m);
