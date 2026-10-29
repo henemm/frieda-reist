@@ -1071,3 +1071,84 @@ def test_dauer_steht_im_protokoll(repo, monkeypatch, capsys):
         fcntl.flock(f, fcntl.LOCK_EX)
         sb.anwenden_extern(s, "beispielreise", "art_definieren", anfrage)
     assert codes() == ["429"]
+
+
+def test_langes_veroeffentlichen_haelt_die_antwort_nicht_auf(repo, monkeypatch, capsys, tmp_path):
+    # Das Veröffentlichen läuft im Hintergrund weiter; es darf die Ausgabe des Anwendens nicht offen halten
+    import time
+    wurzel, _, arbeit, _ = repo
+    marke = tmp_path / "marke"
+    stub = tmp_path / "langsam.sh"
+    stub.write_text(f"#!/bin/sh\necho $$ > {marke}.pid\ntouch {marke}.start\necho Ausgabe; echo Fehler >&2\n"
+                    f"sleep 6\ntouch {marke}.ende\n")
+    stub.chmod(0o755)
+    monkeypatch.setenv("SB_VEROEFFENTLICHEN", str(stub))
+    s = sb.Schreiber(wurzel, arbeit)
+    try:
+        code, a = sb.anwenden_extern(s, "beispielreise", "art_definieren",
+                                     {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}})
+        err = capsys.readouterr().err
+        assert code == 200 and a["ok"], (code, a)
+        assert "abgebrochen" not in err
+        for _ in range(40):
+            if Path(f"{marke}.start").exists():
+                break
+            time.sleep(0.05)
+        assert Path(f"{marke}.start").exists(), "Veröffentlichen wurde nicht gestartet"
+        assert not Path(f"{marke}.ende").exists(), "Die Antwort hat auf das Ende des Veröffentlichens gewartet"
+    finally:
+        try:
+            os.killpg(int(Path(f"{marke}.pid").read_text()), 9)
+        except (OSError, ValueError):
+            pass
+
+
+def test_unerwarteter_fehler_gibt_500_und_protokoll(repo, monkeypatch, capsys, tmp_path):
+    # z. B. fehlt der Ordner der Sperrdateien
+    wurzel, _, arbeit, _ = repo
+    monkeypatch.setattr(sb, "sperrdatei", lambda reise: tmp_path / "fehlt" / "x.lock")
+    code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "art_definieren",
+                                 {**IDA, "args": {"bezeichnung": "X", "grundform": "aufenthalt"}})
+    err = capsys.readouterr().err
+    assert code == 500 and not a["ok"] and "Fehler im Dienst" in a["fehler"]
+    assert "Fehler art_definieren 500: FileNotFoundError" in err
+    assert "Fertig art_definieren 500 in " in err
+
+
+def test_veraltete_sperre_von_git_blockiert_die_reise_nicht(repo, capsys):
+    # Nach einem Abbruch kann git eine index.lock in der Arbeitskopie hinterlassen
+    wurzel, _, arbeit, _ = repo
+    s = sb.Schreiber(wurzel, arbeit)
+    assert sb.anwenden_extern(s, "beispielreise", "art_definieren",
+                              {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}})[0] == 200
+    gitdir = Path(git(Path(f"{arbeit}-beispielreise"), "rev-parse", "--absolute-git-dir"))
+    (gitdir / "index.lock").touch()
+    code, a = sb.anwenden_extern(s, "beispielreise", "art_definieren",
+                                 {**IDA, "args": {"bezeichnung": "Finca", "grundform": "aufenthalt"}})
+    assert code == 200, (code, a, capsys.readouterr().err)
+    assert not (gitdir / "index.lock").exists()
+
+
+def test_veroeffentlichen_ohne_nice_und_ionice(repo, monkeypatch):
+    # Fehlen nice oder ionice, startet es ohne Priorität; scheitert auch das, kommt trotzdem die Antwort
+    wurzel, _, arbeit, _ = repo
+    s = sb.Schreiber(wurzel, arbeit)
+    gerufen = []
+    monkeypatch.setattr(sb.shutil, "which", lambda name: None if name == "ionice" else f"/usr/bin/{name}")
+
+    class Stummel:
+        fehler = 0
+
+        def __init__(self, argv, *a, **k):
+            gerufen.append(argv)
+            if len(gerufen) <= Stummel.fehler:
+                raise FileNotFoundError(argv[0])
+
+    monkeypatch.setattr(sb.subprocess, "Popen", Stummel)
+    s.veroeffentlichen_anstossen()
+    assert gerufen[0][0] == "nice" and "ionice" not in gerufen[0] and gerufen[0][-1] == s.veroeffentlichen
+    for fehler in (1, 2):
+        gerufen.clear()
+        Stummel.fehler = fehler
+        s.veroeffentlichen_anstossen()      # wirft nie
+        assert len(gerufen) == 2 and gerufen[1] == [s.veroeffentlichen]
