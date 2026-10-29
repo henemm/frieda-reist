@@ -37,7 +37,10 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `entscheiden` | Organisator:innen | Option wählen, verwerfen oder ersetzen: sofort geprüft und mit Datum, Person und Grund in den Plan geschrieben (Paket C; seit O-3 direkt) |
 | `tag_aendern` | Organisator:innen | Titel, Text, Nacht, Strecken und Wahlstellen eines Tags ändern; schreibt sofort |
 | `frage_beantworten` | Mitwirkende | Antwort auf eine offene Frage (F-…); hängt an der Frage, die Entscheidung bleibt bei der Organisator:in (Paket C) |
-| `person_einladen` | je nach `regeln.einladen` (Vorgabe Organisator:innen) | legt eine Person mit Rolle an und stellt ihren persönlichen Link aus (Paket C) |
+| `frage_schliessen` | Organisator:innen | Frage als geklärt oder entfallen eintragen, mit Ergebnis; schreibt sofort nach `offene-fragen.md` |
+| `wissen_schreiben` | Mitwirkende, Organisator:innen | Wissen in eigenen Worten mit Herkunft: neuer W-Abschnitt (ID aus `ids.yaml`, Zuordnung in `reise.json`) oder Absatz unter einem vorhandenen; schreibt sofort |
+| `rueckmeldung_erledigen` | Organisator:innen | Rückmeldung oder Auftrag abschließen (uebernommen, verworfen, rueckfrage) mit Kommentar für die Seite; über den Rückmeldedienst, gilt sofort |
+| `person_einladen` | je nach `regeln.einladen` (Vorgabe Organisator:innen) | legt eine Person mit Rolle an und stellt ihren persönlichen Link aus (Paket C); seit O-3 steht sie sofort in `reise.yaml` (`person_schreiben`), `person_entfernen` macht sie zum Gast, der nicht mitreist (niemand wird gestrichen) |
 
 Schreibende Werkzeuge (`rueckmeldung_geben`, `frage_beantworten`, `aufgabe_*`, `wunsch_aendern`, die Werkzeuge des Schreibwegs) sehen nur Mitwirkende und Organisator:innen; `entscheiden` und `auftrag_geben` nur Organisator:innen, `person_einladen` wer `regeln.einladen` erreicht. Welche Werkzeuge es gibt und was sie dürfen, hängt zusätzlich vom Status der Reise und den eingeschalteten Bausteinen ab (Paket B, `docs/produkt.md`): `danach` sperrt neue Wünsche, Punkte, Alternativen und Aufträge (Abhaken geht noch), `archiv` alles Schreiben; ein ausgeschalteter Baustein nimmt seine Werkzeuge mit (`aufgaben`, `varianten`, `offene_fragen`, `rueckmeldungen`, `wuensche`). Geprüft wird bei jedem Aufruf, nicht nur in der Liste; der Dienst nennt den Grund.
 
@@ -62,13 +65,13 @@ Aufgaben liegen live in `<ablage>/<reise>/aufgaben.json`, nicht im Repo. Der Rü
 **`person_einladen`** (`regeln.einladen`: `organisator` oder `mitwirkend`): Eingaben `vorname`, `rolle` (Standard `mitwirkend`), `reist`, `notiz`. Man kann höchstens die eigene Rolle vergeben. Der Dienst
 1. stellt den persönlichen Link aus (`zugaenge.json`, Rechte 600) und gibt ihn dem Einladenden im Gespräch,
 2. legt die Person live in `<ablage>/<reise>/einladungen.json` an, damit Rolle und Zugang sofort gelten (Konnektor und Rückmeldedienst kennen sie),
-3. legt einen Auftrag an, damit Claude Code sie beim Einarbeiten in `reise.yaml` (`personen`) übernimmt. Steht sie dort, gilt `reise.yaml`.
+3. schreibt sie über den Schreibweg sofort nach `reise.yaml` (`personen`; ohne Schreibweg übergangsweise als Auftrag für das Einarbeiten). Steht sie dort, gilt `reise.yaml`.
 
 Gibt es die Person schon, bekommt sie nur einen weiteren Link; ihre Rolle zu ändern ist eine Einstellung der Reise (Auftrag an `reise`). Einen Link zu sperren geht noch von Hand (Eintrag aus `zugaenge.json` löschen).
 
 **Anleitung:** Beim Verbinden bekommt die KI Rolle, Reisestatus, Entscheidungsweg und die Grenzen der sprechenden Person (Mitwirkende:r: kann nicht entscheiden; Link ohne Person: kein Entscheiden und Einladen).
 
-## Ontologie im Gespräch (ADR-0001, Paket O-3, Schritte 1 bis 4, 29.10.2026)
+## Ontologie im Gespräch (ADR-0001, Paket O-3, Schritte 1 bis 5, 29.10.2026)
 
 Welche Arten eine Reise hat (Hotel, Refugi, Ryokan, Zugfahrt, Reiseteil …) und was zu jeder Sache einer Art bekannt sein muss, legt die Reise im Gespräch fest (`docs/ontologie.md`). Dafür gibt es `art_definieren` und `merkmal_definieren`:
 
@@ -79,7 +82,8 @@ Welche Arten eine Reise hat (Hotel, Refugi, Ryokan, Zugfahrt, Reiseteil …) und
 - **Werte** (Schritt 2, 29.10.2026): `wert_eintragen` schreibt einen Wert eines Merkmals an eine Unterkunft, Strecke oder Option (`plan/routen.yaml`, Form in `docs/alternativen.md`). Der Schreibweg nimmt die Merkmale, die der Generator an dieser Stelle kennt (Art des Dings, Ergänzungen der Wahlstelle), prüft Auswahlwerte, Zahlen und Daten und verlangt die **Herkunft** (`quelle`) jeder Angabe sowie bei veränderlichen Merkmalen das **Prüfdatum** (`geprueft`, nicht in der Zukunft); berechnete und abgeschaltete Merkmale lehnt er ab. Ein neuer Wert ersetzt den bisherigen für dieselben Tage (Einträge mit `gilt` je Datum bleiben nebeneinander), der alte steht im Commit („Preis pro Nacht „85 €“ → „95 €““). Die Datei wird mit ruamel.yaml rund geschrieben: Kommentare und Form bleiben, nur die geänderte Stelle unterscheidet sich. Mitwirkende schreiben Werte direkt (Eingaben, keine Entscheidungen); Mitwirkende ohne persönlichen Link nennen ihren Vornamen.
 - **Dinge, Optionen, Wahlstellen, Fragen** (Schritt 3, 29.10.2026): `ding_anlegen` legt eine Unterkunft (Ort, Art, Herkunft, Merkmale), Strecke (von, nach, Art) oder einen Ort an; die ID kommt aus `ids.yaml` der Reise (`neu.naechste_id`, nie neu vergeben). `ding_aendern` ändert Felder (Name, Ort, Hinweis, Quelle, Buchungslink, Frage; die Art nur Organisator:innen, weil sie bestimmt, welche Merkmale gelten), Merkmale ändert `wert_eintragen`. `option_anlegen` hängt eine Alternative an eine Wahlstelle, Status `vorgeschlagen` mit Verlauf (Datum, Person, Grund) und Herkunft; `erfordert`/`schliesst_aus` und Merkmale werden geprüft. `wahlstelle_anlegen` legt eine Wahlstelle mit Optionen an und hängt sie mit `an` an Tage, Strecken, Unterkünfte, Orte oder Abschnitte; eine Planungs-Wahlstelle ohne `frage` bekommt ihre offene Frage mit (`frage_anlegen` legt Fragen auch einzeln an). Den Plan selbst (welche Nacht welche Wahlstelle nutzt, Entscheidungen) ändern diese Werkzeuge nicht; das ist Schritt 4. `alternative_vorschlagen` ist entfallen.
 - **Entscheiden und Plan** (Schritt 4, 29.10.2026): `entscheiden` schreibt den Verlaufseintrag direkt (siehe oben), `tag_aendern` den Plan eines Tags.
-- Noch über den alten Weg (Auftrag, Einarbeiten): Wissen (W-Abschnitte), Status von Rückmeldungen, Personen in `reise.yaml`. Sie folgen in den nächsten Schritten von O-3 (frieda-reist #91). Bis dahin laufen beide Wege.
+- **Wissen, Fragen, Rückmeldungen, Personen** (Schritt 5, 29.10.2026): `wissen_schreiben` legt einen W-Abschnitt an oder ergänzt einen (Herkunft am Absatz), `frage_schliessen` klärt eine Frage, `rueckmeldung_erledigen` setzt den Status einer Rückmeldung über den Rückmeldedienst (die KI im AI-Client arbeitet Rückmeldungen der Seite ein: Inhalt prüfen, mit den Werkzeugen eintragen, erledigen), `person_einladen`/`person_entfernen` schreiben die Person über `person_schreiben` sofort nach `reise.yaml` (ausscheiden = Gast, reist nicht; der Verlauf nennt die Person weiter).
+- Noch über den alten Weg (Auftrag, Einarbeiten): nur noch `auftrag_geben` selbst (Status und Einstellungen der Reise); er entfällt mit Schritt 6. Sie folgen in den nächsten Schritten von O-3 (frieda-reist #91). Bis dahin laufen beide Wege.
 
 Betrieb: `docs/betrieb.md`, Abschnitt „Schreibweg“. Ohne eingerichteten Schreibweg (`KN_SCHREIBDIENST` leer) gibt es die beiden Werkzeuge nicht, und die Anleitung nennt sie nicht.
 

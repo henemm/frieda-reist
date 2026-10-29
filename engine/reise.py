@@ -96,6 +96,10 @@ AKTIONEN = {
     "frage":        {"rolle": "mitwirkend", "baustein": "fragen", "ab": ("alles",)},
     # O-3: den Plan ändern (Tage: Nacht, Strecken, Wahlstellen) – nur Organisator:innen
     "plan":         {"rolle": "organisator", "baustein": None, "ab": ("alles",)},
+    # O-3: Wissen in eigenen Worten mit Herkunft (auch in der Nachlese); Fragen schließen und Rückmeldungen erledigen nur Organisator:innen
+    "wissen":       {"rolle": "mitwirkend", "baustein": None, "ab": ("alles", "nachlese")},
+    "frage_schliessen":       {"rolle": "organisator", "baustein": "fragen", "ab": ("alles", "nachlese")},
+    "rueckmeldung_erledigen": {"rolle": "organisator", "baustein": "rueckmeldungen", "ab": ("alles", "nachlese")},
 }
 # Lesende Konnektor-Werkzeuge, die zu einem zuschaltbaren Baustein gehören
 LESE_BAUSTEIN = {"offene_fragen": "fragen", "varianten": "varianten", "merkmale": "varianten",
