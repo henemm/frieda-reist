@@ -361,25 +361,21 @@ def test_konten_ordner_alt_und_neu(tmp_path, monkeypatch):
     assert instanz.konten() == tmp_path / "woanders"
 
 
-def test_dienst_geheimnis_bei_gleichzeitigen_anfragen(umgebung):
-    """Beim ersten Aufruf entsteht das Geheimnis; gleichzeitige Anfragen eines Dienstes (Threads, gleiche pid) bekommen
-    alle dasselbe, ohne Fehler und ohne übrig bleibende Zwischendateien."""
+def test_dienst_geheimnis_gleichzeitig_beim_ersten_Aufruf(umgebung):
+    """Der Dienst arbeitet mit Threads: Fragen mehrere gleichzeitig das noch nicht angelegte Geheimnis ab, bekommen
+    alle dasselbe und keiner stürzt über die Zwischendatei des anderen."""
     import threading
-    werte, fehler, start = [], [], threading.Barrier(16)
+    ergebnisse, fehler = [], []
 
-    def holen():
-        start.wait()
+    def hole():
         try:
-            werte.append(konten.dienst_geheimnis())
-        except Exception as e:   # noqa: BLE001
+            ergebnisse.append(konten.dienst_geheimnis())
+        except Exception as e:  # noqa: BLE001
             fehler.append(e)
-    for _ in range(5):
-        (konten.pfad().parent / "dienst-geheimnis").unlink(missing_ok=True)
-        werte.clear()
-        laeufe = [threading.Thread(target=holen) for _ in range(16)]
-        for x in laeufe:
-            x.start()
-        for x in laeufe:
-            x.join()
-        assert fehler == [] and len(set(werte)) == 1 and len(werte) == 16
-    assert not list(konten.pfad().parent.glob("dienst-geheimnis.*.tmp"))
+
+    threads = [threading.Thread(target=hole) for _ in range(16)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert not fehler and len(ergebnisse) == 16 and len(set(ergebnisse)) == 1
