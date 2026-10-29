@@ -594,7 +594,7 @@ def test_unbekannte_unterkunftsart_ist_fehler(tmp_path):
     kopie = tmp_path / "bsp"
     shutil.copytree(BEISPIEL, kopie)
     p = kopie / "plan" / "routen.yaml"
-    p.write_text(p.read_text(encoding="utf-8").replace("typ: Herberge", "typ: Baumhaus", 1), encoding="utf-8")
+    p.write_text(p.read_text(encoding="utf-8").replace("art: herberge", "art: baumhaus", 1), encoding="utf-8")
     with pytest.raises(bauen.BauFehler) as e:
         bauen.Bauer(kopie, tmp_path / "aus").daten()
     assert "Art „baumhaus“ steht nicht in plan/arten.yaml" in str(e.value) and "gibt es hier nicht" not in str(e.value)
@@ -607,11 +607,13 @@ def test_ebenen_der_etappen(reise, tmp_path):
     """B2 (#53): Jeder Abschnitt einer Etappe gehört zu einer Ebene der Tagesseite, nach dem Titelanfang; reise.json
     etappen_ebenen gilt vor der Vorgabe; eine unbekannte Ebene ist ein Baufehler."""
     ebene = lambda d: {b["id"]: b["ebene"] for a in d["abschnitte"] if a["typ"] == "etappe" for b in a["bloecke"]}
-    assert ebene(baue(reise, tmp_path)) == {"E-01.eckdaten": "unterwegs", "E-01.hoehenprofil": "unterwegs", "E-01.karten": "quellen",
+    # Vorgabe nur für die Form (ADR-0001, kein Wandervokabular in der Software): Zusammenfassung, Eckdaten, Unterkünfte-Liste,
+    # Quellen; was eine Reise sonst unterwegs nachschlagen will (Höhenprofil …), sagt sie in reise.json
+    assert ebene(baue(reise, tmp_path)) == {"E-01.eckdaten": "unterwegs", "E-01.hoehenprofil": "hintergrund", "E-01.karten": "quellen",
                                             "E-01.unterkuenfte-liste": "unterwegs", "E-02V.zusammenfassung": "weg"}
-    setze(reise, lambda c: c.update({"etappen_ebenen": {"hintergrund": ["höhen"], "unterwegs": ["Karten"]}}))
+    setze(reise, lambda c: c.update({"etappen_ebenen": {"unterwegs": ["höhen"], "hintergrund": ["Karten"]}}))
     e = ebene(baue(reise, tmp_path / "b"))
-    assert e["E-01.hoehenprofil"] == "hintergrund" and e["E-01.karten"] == "unterwegs"
+    assert e["E-01.hoehenprofil"] == "unterwegs" and e["E-01.karten"] == "hintergrund"
     setze(reise, lambda c: c.update({"etappen_ebenen": {"lesen": ["Eckdaten"]}}))
     assert "Ebene „lesen“ gibt es nicht" in meldungen(reise, tmp_path / "c")
     setze(reise, lambda c: c.update({"etappen_ebenen": {"weg": "Eckdaten"}}))

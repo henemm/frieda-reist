@@ -74,9 +74,9 @@ arten:
 
 **Zuordnung eines Dings zu seiner Art:**
 
-- Unterkunft (`U-…`) und Nacht (`nacht: {typ: …}`): Feld `art:`; fehlt es, wird `typ` als Art gelesen (klein geschrieben, Umlaute und Leerzeichen zu `ae`/`_`: `Refugi` → `refugi`, `Shukubō` → `shukubo`). Die Art muss in `arten.yaml` stehen, sonst bricht der Bau mit dem Hinweis ab, sie im Gespräch anzulegen.
-- Strecke (`E-…`): Feld `art:` wie bisher (`wandern`, `bahn`, `faehre` …). Eine Liste mehrerer Arten gilt als Art `kombiniert`, die die Reise definiert.
-- Wahlstelle (`V-…`): Feld `art:` (bis 28.10.2026 `bereich:`, wird weiter gelesen). Fehlt es, kommt die Art aus den Optionen: Unterkünfte → die Art der ersten Unterkunft, Strecken → die gemeinsame Art der Strecken, Folge → die eine Art der Grundform `folge`, wenn die Reise genau eine hat, sonst keine Merkmale.
+- Unterkunft (`U-…`), Aufenthalt (`A-…`) und Nacht (`nacht: {art: …}`): Feld `art:`. Der alte Schlüssel `typ:` (bis 29.10.2026) wird als Art gelesen (klein geschrieben, Umlaute und Leerzeichen zu `ae`/`_`: `Refugi` → `refugi`, `Shukubō` → `shukubo`), aber nie mehr geschrieben; die Seite und der Konnektor nennen den Namen der Art aus `arten.yaml`. Die Art muss in `arten.yaml` stehen, sonst bricht der Bau mit dem Hinweis ab, sie im Gespräch anzulegen.
+- Strecke (`E-…`): Feld `art:`, Pflicht (seit 29.10.2026 gibt es keine Vorgabe mehr: die Software kennt keine Art, auch nicht „wandern“). Eine Liste mehrerer Arten gilt als Art `kombiniert`, die die Reise definiert; Werte stehen dann an der Option. Welche Bewegung „aus eigener Kraft“ ist (Gehzeit, Länge, Höhenmeter werden summiert, Etappenkarte, Tageskilometer), sagt `summiert: true` an der Art.
+- Wahlstelle (`V-…`): Feld `art:` ist die Art der Dinge, zwischen denen gewählt wird (bis 29.10.2026 `bereich:`, wird weiter gelesen). Fehlt es, kommt die Art aus den Optionen: Unterkünfte → die Art der ersten Unterkunft, Strecken → die gemeinsame Art der Strecken, Folge → die eine Art der Grundform `folge`, wenn die Reise genau eine hat, sonst keine Merkmale. Wann entschieden wird, sagt `wann: planung | unterwegs` (Vorgabe `planung`; bis 29.10.2026 stand das in `art:`, was mit der Art der Dinge kollidierte; `art: planung` wird weiter gelesen). In den gebauten Daten heißen die Felder ebenso `art` und `wann`.
 - Jede Art gehört zu genau einer Grundform. Berechnete Merkmale (`auto`) gibt es je Grundform: Bewegung `gehzeit`, `laenge`, `hoehenmeter`; Folge `tage`, `gehzeit`, `unterkuenfte`, `anschluss`. Sie sind Kennzahlen der Grundform, kein Katalog; die Reise entscheidet, ob und unter welchem Namen sie erscheinen.
 
 ## Die Form eines Merkmals
@@ -93,10 +93,13 @@ Ein Merkmal ist eine Definition in `arten.yaml` und ein Wert am Ding.
 | `hilfe`, `frage` | wie der AI-Client den Wert recherchiert und wonach er fragt |
 | `einheit` | Anzeige hinter Zahlen |
 | `auch` | weitere Namen, unter denen dasselbe gemeint ist (Zuordnung ähnlicher Vorschläge innerhalb der Reise) |
+| `rolle` | `kosten` (Product Owner 29.10.2026): dieses Merkmal (Typ `geld`) ist der Preis des Dings, den die Seite über die Reise summiert („Übernachtungen“ im Reiseüberblick: Preis je Nacht am Datum der Nacht, bei offener Wahl die Spanne). Die Software kennt die Rolle, nicht den Namen des Merkmals; je Art trägt sie höchstens ein Merkmal, ohne Rolle wird nichts summiert (die Herberge der Beispielreise mit „Preis pro Person“ hat keine) |
 
 Ein **Wert** am Ding: `{wert, quelle, geprueft, notiz, gilt}`; mehrere Werte je Datum als Liste mit `gilt` (`docs/alternativen.md`). Ein Wert ohne Herkunft wird abgelehnt, seit der Konnektor direkt schreibt (Paket O-3, `wert_eintragen`); Bestandswerte ohne Quelle bleiben lesbar.
 
-Die Software prüft nur die Form: bekannte Felder, erlaubte Typen und Stufen, Auswahlwerte, Prüfdatum bei Veränderlichem, dass jede Art genau eine Grundform hat und jedes Ding eine bekannte Art. Ob „Frühstück“ für ein Refugi sinnvoll ist, entscheidet die Reise.
+Die Software prüft nur die Form: bekannte Felder, erlaubte Typen, Stufen und Rollen, Auswahlwerte, Prüfdatum bei Veränderlichem, dass jede Art genau eine Grundform hat und jedes Ding eine bekannte Art. Ob „Frühstück“ für ein Refugi sinnvoll ist, entscheidet die Reise. Eine Stufe je Art (`stufe: {"*": aus, refugi: empfohlen}`) hängt am Schlüssel der Art.
+
+**Buchungsstand eines Dings:** Er folgt seiner geltenden Buchung (`B-…`). Das freie Feld `buchung:` am Ding (bis 29.10.2026) wird weiter gelesen, aber vom Konnektor nicht mehr geschrieben: Eine Buchung ohne Nummer, Frist, Stornoregel und Herkunft wäre eine Tatsache ohne Herkunft (ADR-0001, Frage 5).
 
 ## Lesetext und seine Gliederung
 
@@ -143,4 +146,5 @@ Punkte auf den Karten (Etappen-Karte aus `plan/punkte.yaml`, Karte im Wissensabs
 - Paket O-3, Abschalten (29.10.2026): Der Einarbeiten-Lauf mit Claude Code auf dem Server ist entfernt; es gibt keinen zweiten KI-Lauf in Frieda mehr (ADR-0001, Punkt 5). Alles Schreiben geht über den Schreibweg.
 - Paket O-5 (29.10.2026, frieda-reist #93): Aufenthalte ohne Nacht (`A-…`, `aufenthalte`, am Tag `aufenthalte:`), `symbol` und `buchbar` je Art, Buchungsstand an Unterkunft, Aufenthalt und Bewegung; „Fehlt noch“ und Zähler nur für `pflicht`; die Seite kennt keine Art mehr (`ART_TEXT`, `kategorien` entfallen), ihre Bausteintabelle nennt Grundformen.
 - 29.10.2026 (Product Owner): Die Stufen heißen für Menschen „nötig“, „gut zu wissen“, „zusätzlich“; nur „nötig“ ohne Wert ist eine Lücke; der Kasten „Mahnung“ auf der Seite ist weg.
+- 29.10.2026 (Abgleich Ontologie · Software · Design, `docs/abgleich-2026-10-29.md`, Product Owner): Form eines Merkmals um `rolle: kosten` ergänzt (die Übernachtungssumme las vorher fest das Merkmal `preis`); an Wahlstellen `art:` = Art der Dinge und `wann:` = planung/unterwegs (vorher `bereich:` und `art:`); Strecke ohne `art:` ist ein Baufehler (vorher Vorgabe `wandern`); `typ:` an Unterkünften und `buchung:` am Ding werden nur noch gelesen; Herkunft ist auch bei Optionen Pflicht; die Vorgabe der Ebenen einer Tagesseite kennt kein Wandervokabular mehr (`reise.json etappen_ebenen`).
 - 29.10.2026 (frieda-reist #76, Product Owner): Buchung als eigenes Ding `B-…` (`buchungen:` in `plan/routen.yaml`) mit Beleg-Datei in der Ablage; Konnektor `buchung_anlegen`, `buchung_aendern`; Wächter meldet Fristen und Stornofristen; die Seite zeigt die Buchung bei ihrem Ding und hängt Belege an.

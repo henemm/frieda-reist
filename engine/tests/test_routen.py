@@ -22,7 +22,7 @@ BASIS = {
                  "kennzahlen": {"Gehzeit": "3:30 h", "Aufstieg (Hm)": "400", "Abstieg (Hm)": "100", "Länge (km)": "10,5 km"}},
         "E-02": {"titel": "B → C", "von": "O-02", "nach": "O-03", "art": "wandern",
                  "kennzahlen": {"Gehzeit": "2:00 h", "Aufstieg (Hm)": "100", "Abstieg (Hm)": "300", "Länge (km)": "6 km"}},
-        "E-02V": {"titel": "Abzweig → C", "von": "O-04", "nach": "O-03", "zweig_von": "E-02", "rolle": "alternative"},
+        "E-02V": {"titel": "Abzweig → C", "von": "O-04", "nach": "O-03", "art": "wandern", "zweig_von": "E-02", "rolle": "alternative"},
         "E-03": {"titel": "Bus B → C", "von": "O-02", "nach": "O-03", "art": "bus"},
     },
     "unterkuenfte": {
@@ -39,15 +39,15 @@ BASIS = {
     },
     "route": [{"teil": "Alles", "folge": ["V-01"]}],
     "wahlstellen": {
-        "V-01": {"titel": "Route", "art": "planung", "frage": "F-01", "optionen": [
+        "V-01": {"titel": "Route", "wann": "planung", "frage": "F-01", "optionen": [
             {"id": "V-01.a", "titel": "Zu Fuß", "folge": ["T-01", "T-02", "T-03"]},
             {"id": "V-01.b", "titel": "Mit Bus", "folge": ["T-04", "T-05"]},
         ]},
-        "V-02": {"titel": "Hotel in B", "art": "planung", "frage": "F-01", "optionen": [
+        "V-02": {"titel": "Hotel in B", "wann": "planung", "frage": "F-01", "optionen": [
             {"id": "V-02.a", "titel": "B1", "unterkuenfte": ["U-01"]},
             {"id": "V-02.b", "titel": "B2", "unterkuenfte": ["U-02"]},
         ]},
-        "V-03": {"titel": "Abzweig nehmen?", "art": "unterwegs", "optionen": [
+        "V-03": {"titel": "Abzweig nehmen?", "wann": "unterwegs", "optionen": [
             {"id": "V-03.a", "titel": "Hauptweg", "strecken": ["E-02"]},
             {"id": "V-03.b", "titel": "Abzweig", "strecken": ["E-02V"], "ausloeser": "bei gutem Wetter"},
         ]},
@@ -397,7 +397,8 @@ def test_merkmale_bereich_und_werte():
     erg, fehler = mk_bauen(r)
     assert fehler == []
     w = {x["id"]: x for x in erg["wahlstellen"]}
-    assert (w["V-01"]["bereich"], w["V-02"]["bereich"], w["V-03"]["bereich"]) == ("reiseteil", "hotel", "wandern")
+    assert (w["V-01"]["art"], w["V-02"]["art"], w["V-03"]["art"]) == ("reiseteil", "hotel", "wandern")
+    assert (w["V-01"]["wann"], w["V-03"]["wann"]) == ("planung", "unterwegs")
     assert (w["V-01"]["grundform"], w["V-02"]["grundform"], w["V-03"]["grundform"]) == ("folge", "aufenthalt", "bewegung")
     a, b = w["V-02"]["optionen"]
     assert a["merkmale"]["preis"]["geprueft"] == "2026-10-26" and not a["merkmale"]["preis"]["ungeprueft"]
@@ -407,7 +408,7 @@ def test_merkmale_bereich_und_werte():
     assert w["V-01"]["optionen"][0]["merkmale"]["tage"]["wert"] == "3 Tage"
     assert erg["unterkuenfte"]["U-01"]["merkmale"]["fruehstueck"]["wert"] == "inklusive"
     assert [k["id"] for k in erg["merkmale"]["hotel"]] == ["preis", "fruehstueck"]
-    assert erg["arten"]["hotel"] == {"name": "Hotel", "grundform": "aufenthalt", "farbe": "blau", "symbol": "unterkunft", "buchbar": True, "summiert": False, "beschreibung": None}
+    assert erg["arten"]["hotel"] == {"name": "Hotel", "grundform": "aufenthalt", "farbe": "blau", "symbol": "unterkunft", "buchbar": True, "summiert": False, "beschreibung": None, "kosten": None}
     assert erg["arten"]["huette"]["name"] == "Hütte" and erg["unterkuenfte"]["U-03"]["art"] == "huette"
 
 
@@ -469,7 +470,7 @@ def test_unterkunft_art_aus_typ_oder_ausdruecklich():
     assert fehler == [], fehler
     u = erg["unterkuenfte"]
     assert [u[k]["art"] for k in ("U-01", "U-02", "U-03")] == ["hotel", "refugi", "huette"]
-    assert u["U-02"]["typ"] == "Refugi"   # die eigene Bezeichnung der Reise bleibt
+    assert "typ" not in u["U-02"]   # die Brücke typ: wird gelesen, die Ausgabe nennt nur die Art
     t = {x["id"]: x for x in erg["tage"]}
     assert t["T-03"]["nacht"]["art"] == "nachtzug"
     assert erg["summe"]["unterkunftstypen"] == {"Hotel": 1, "Hütte": 1, "Nachtzug": 1}   # Nächte je Art, Name der Reise
@@ -526,13 +527,13 @@ def test_art_der_strecken_bestimmt_die_liste_und_werte_stehen_an_strecke_oder_op
     erg, fehler = mk_bauen(mit_faehren())
     assert fehler == []
     w = next(x for x in erg["wahlstellen"] if x["id"] == "V-04")
-    assert w["bereich"] == "faehre" and [k["id"] for k in w["kriterien"]] == ["preis", "dauer"]
+    assert w["art"] == "faehre" and [k["id"] for k in w["kriterien"]] == ["preis", "dauer"]
     a, b = w["optionen"]
     assert a["merkmale"]["dauer"]["wert"] == "ca. 11 h" and a["merkmale"]["preis"]["wert"] == "80 €"
     assert b["merkmale"]["dauer"]["wert"] == "ca. 10 h" and b["fehlt"] == []
     # Wanderstrecken haben ihre eigene Art
     w3 = next(x for x in erg["wahlstellen"] if x["id"] == "V-03")
-    assert w3["bereich"] == "wandern"
+    assert w3["art"] == "wandern"
 
 
 def test_gemischte_arten_haben_keine_gemeinsamen_merkmale():
@@ -541,7 +542,7 @@ def test_gemischte_arten_haben_keine_gemeinsamen_merkmale():
     r["wahlstellen"]["V-04"]["optionen"][0]["merkmale"] = r["wahlstellen"]["V-04"]["optionen"][1]["merkmale"] = {}
     erg, fehler = mk_bauen(r)
     assert fehler == []
-    assert next(x for x in erg["wahlstellen"] if x["id"] == "V-04")["bereich"] == "allgemein"
+    assert next(x for x in erg["wahlstellen"] if x["id"] == "V-04")["art"] == "allgemein"
 
 
 def test_strecke_mit_mehreren_arten_ist_kombiniert():
@@ -601,7 +602,7 @@ def test_neue_art_der_reise_und_wahlstelle_an_beliebiger_id():
     erg, fehler = mk_bauen(r, a)
     assert fehler == []
     w = next(x for x in erg["wahlstellen"] if x["id"] == "V-05")
-    assert w["bereich"] == "restaurant" and w["an_ids"] == ["O-02", "U-01", "E-01"] and w["an"] == []
+    assert w["art"] == "restaurant" and w["wann"] == "planung" and w["an_ids"] == ["O-02", "U-01", "E-01"] and w["an"] == []   # alte Schlüssel art: planung und bereich: werden gelesen
     assert w["optionen"][1]["fehlt"] == []
     assert [k["id"] for k in erg["merkmale"]["restaurant"]] == ["kueche", "preis"]
     assert not any("nirgends verwendet" in x["text"] for x in erg["warnungen"] if x["bezug"] == "V-05")

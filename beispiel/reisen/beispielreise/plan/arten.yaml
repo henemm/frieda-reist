@@ -5,7 +5,8 @@
 # buchbar (hat einen Buchungsstand; Vorgabe: Aufenthalte ja, Bewegungen nein), summiert (Bewegung
 # aus eigener Kraft: Gehzeit, Länge, Höhenmeter werden summiert), merkmale. Felder je Merkmal: name, typ (text | geld |
 # zahl | auswahl mit werte), veraenderlich (braucht Prüfdatum), stufe (pflicht = nötig | empfohlen = gut zu wissen |
-# angeboten = zusätzlich | aus), auto
+# angeboten = zusätzlich | aus), rolle (kosten: der Preis des Dings, Typ geld, den die Seite über die Reise summiert; die
+# Herberge unten hat keine, weil ihr Preis pro Person gilt), auto
 # (berechnet: Bewegung gehzeit, laenge, hoehenmeter; Folge tage, gehzeit, unterkuenfte, anschluss), hilfe, frage, auch.
 arten:
   hotel:
@@ -14,7 +15,7 @@ arten:
     farbe: blau
     symbol: unterkunft
     merkmale:
-      preis:       {name: Preis pro Nacht, typ: geld, veraenderlich: true,
+      preis:       {name: Preis pro Nacht, typ: geld, veraenderlich: true, rolle: kosten,
                     hilfe: "Website des Hauses oder Buchungsportal, für das Reisedatum und zwei Personen",
                     frage: "Hast du einen Preis für die Nacht gesehen, und wo?"}
       fruehstueck: {name: Frühstück, typ: auswahl, werte: [inklusive, gegen Aufpreis, keins, unklar], veraenderlich: true,
@@ -27,7 +28,7 @@ arten:
     name: Pension
     farbe: braun
     merkmale:
-      preis:       {name: Preis pro Nacht, typ: geld, veraenderlich: true, hilfe: "Website oder Anruf; für zwei Personen"}
+      preis:       {name: Preis pro Nacht, typ: geld, veraenderlich: true, rolle: kosten, hilfe: "Website oder Anruf; für zwei Personen"}
       fruehstueck: {name: Frühstück, typ: auswahl, werte: [inklusive, gegen Aufpreis, keins, unklar], veraenderlich: true}
       abendessen:  {name: Abendessen, typ: auswahl, werte: [im Haus, im Haus mit Vorbestellung, im Ort, keins, unklar],
                     hilfe: "Website oder Wanderführer; bei kleinen Häusern zählt die Vorbestellung"}
@@ -39,7 +40,7 @@ arten:
     name: Gasthof
     farbe: braun
     merkmale:
-      preis:       {name: Preis pro Nacht, typ: geld, veraenderlich: true}
+      preis:       {name: Preis pro Nacht, typ: geld, veraenderlich: true, rolle: kosten}
       abendessen:  {name: Abendessen, typ: auswahl, werte: [im Haus, im Haus mit Vorbestellung, im Ort, keins, unklar]}
       ruhetag:     {name: Ruhetag, typ: text, veraenderlich: true, stufe: angeboten, hilfe: "Website; Küche oft an einem Wochentag zu"}
   herberge:

@@ -195,9 +195,36 @@ def arten_speichern(reise_dir, arten, wer):
     p.write_text(arten_text(arten, herkunft), encoding="utf-8")
 
 
+def lesetext_gliederung(roh):
+    """Gliederung des Lesetexts einer Art aus der Anfrage (Liste von {rubrik, name, hilfe} oder {schluessel: {name, hilfe}})
+    -> {rubrik: {name, hilfe}} in der Reihenfolge, None ohne Angabe, {} zum Entfernen (leere Liste)."""
+    from routen import art_schluessel
+    if roh is None:
+        return None
+    if isinstance(roh, dict):
+        roh = [{"rubrik": k, **(v if isinstance(v, dict) else {"name": v})} for k, v in roh.items()]
+    if not isinstance(roh, list):
+        raise Ablehnung("„lesetext“ ist eine Liste von Rubriken {rubrik, name, hilfe} in Lesereihenfolge (leer entfernt die Gliederung).")
+    aus = {}
+    for r in roh:
+        if not isinstance(r, dict) or not str(r.get("name") or "").strip():
+            raise Ablehnung("Jede Rubrik des Lesetexts braucht einen Namen (das Stichwort vor dem Absatz, z. B. Charakter).")
+        name = str(r["name"]).strip()[:60]
+        key = art_schluessel(r.get("rubrik") or name)
+        if not key or not SCHLUESSEL_MUSTER.match(key) or key in aus:
+            raise Ablehnung(f"Rubrik „{name}“: Schlüssel „{key}“ taugt nicht oder kommt doppelt vor.")
+        if any(x["name"].casefold() == name.casefold() for x in aus.values()):
+            raise Ablehnung(f"Rubrik „{name}“ kommt doppelt vor.")
+        aus[key] = {"name": name}
+        if str(r.get("hilfe") or "").strip():
+            aus[key]["hilfe"] = str(r["hilfe"]).strip()[:400]
+    return aus
+
+
 def art_definieren(reise_dir, wer, args):
-    """Eine Art anlegen oder ändern. -> (Titel für den Commit, Text für den AI-Client)."""
-    from routen import ALLGEMEIN, ART_MUSTER, AUTO_JE_GRUNDFORM, FARBEN, GRUNDFORMEN, UNTERWEGS, art_schluessel
+    """Eine Art anlegen oder ändern (Bezeichnung, Grundform beim Anlegen, Farbe, Symbol, buchbar, summiert, Beschreibung,
+    Gliederung des Lesetexts). -> (Titel für den Commit, Text für den AI-Client)."""
+    from routen import ALLGEMEIN, ART_MUSTER, AUTO_JE_GRUNDFORM, FARBEN, GRUNDFORMEN, SYMBOLE_ARTEN, UNTERWEGS, art_schluessel
     arten = arten_laden(reise_dir)
     name = text_wert(args, "bezeichnung", laenge=80)
     key = text_wert(args, "art", laenge=40)
@@ -217,6 +244,11 @@ def art_definieren(reise_dir, wer, args):
         raise Ablehnung(f"„farbe“ muss eine von {', '.join(FARBEN)} sein.")
     beschreibung = text_wert(args, "beschreibung")
     summiert = bool_wert(args, "summiert")
+    buchbar = bool_wert(args, "buchbar")
+    symbol = text_wert(args, "symbol", laenge=20)
+    if symbol is not None and symbol.lower() not in SYMBOLE_ARTEN:
+        raise Ablehnung(f"„symbol“ muss eines der Seite sein: {', '.join(SYMBOLE_ARTEN)}.")
+    lesetext = lesetext_gliederung(args.get("lesetext"))
     grund = text_wert(args, "grund")
     neu = key not in arten
     if neu:
@@ -236,8 +268,14 @@ def art_definieren(reise_dir, wer, args):
             raise Ablehnung("„summiert“ gibt es nur bei Bewegung (aus eigener Kraft: Gehzeit, Länge, Höhenmeter werden summiert).")
         if summiert:
             a["summiert"] = True
+        if symbol:
+            a["symbol"] = symbol.lower()
+        if buchbar is not None and buchbar != (grundform == "aufenthalt"):   # Vorgabe: Aufenthalte buchbar, sonst nicht
+            a["buchbar"] = buchbar
         if beschreibung:
             a["beschreibung"] = beschreibung
+        if lesetext:
+            a["lesetext"] = lesetext
         auto = AUTO_JE_GRUNDFORM.get(grundform, ()) if (grundform == "folge" or summiert) else ()
         if auto:
             namen = {"gehzeit": "Gehzeit", "laenge": "Länge", "hoehenmeter": "Höhenmeter", "tage": "Tage",
@@ -272,11 +310,20 @@ def art_definieren(reise_dir, wer, args):
                 a["summiert"] = True
             else:
                 a.pop("summiert", None)
+        if symbol is not None and symbol.lower() != a.get("symbol"):
+            geaendert.append(f"Symbol {symbol.lower()}")
+            a["symbol"] = symbol.lower()
+        if buchbar is not None and bool(a.get("buchbar", a.get("grundform") == "aufenthalt")) != buchbar:
+            geaendert.append("buchbar (hat einen Buchungsstand)" if buchbar else "nicht buchbar")
+            a["buchbar"] = buchbar
+        if lesetext is not None and lesetext != a.get("lesetext"):
+            geaendert.append("Gliederung des Lesetexts: " + ", ".join(r["name"] for r in lesetext.values()))
+            a["lesetext"] = lesetext
         if not geaendert:
             raise Ablehnung(f"Die Art „{a.get('name', key)}“ ({key}) gibt es schon, und nichts daran soll sich ändern. Merkmale "
                             "ändert merkmal_definieren.")
-        arten[key] = {k: a[k] for k in ("grundform", "name", "farbe", "summiert", "beschreibung", "merkmale", "lesetext")
-                     if k in a}
+        arten[key] = {k: a[k] for k in ("grundform", "name", "farbe", "symbol", "buchbar", "summiert", "beschreibung", "merkmale",
+                                        "lesetext") if k in a}
         titel = f"Art „{a['name']}“ ({key}) geändert"
         text = f"Art „{a['name']}“ ({key}) geändert: " + ", ".join(geaendert) + "."
     arten_speichern(reise_dir, arten, wer)
@@ -399,9 +446,19 @@ def kategorie_definieren(reise_dir, wer, args):
     return titel, text + (f" Grund: {grund}." if grund else "")
 
 
+def rolle_pruefen(merkmale, key, rolle, typ):
+    """Die Rolle kosten braucht den Typ geld und gilt je Art nur einmal."""
+    if rolle == "kosten" and typ != "geld":
+        raise Ablehnung("Die Rolle kosten braucht den Typ geld (ein Betrag mit Währung).")
+    andere = next((k for k, d in merkmale.items() if k != key and isinstance(d, dict) and d.get("rolle") == rolle), None)
+    if andere:
+        raise Ablehnung(f"Die Rolle {rolle} hat an dieser Art schon das Merkmal „{merkmale[andere].get('name', andere)}“ ({andere}); "
+                        "erst dort die Rolle nehmen (rolle: keine).")
+
+
 def merkmal_definieren(reise_dir, wer, args):
     """Ein Merkmal einer Art anlegen oder ändern (umbenennen, Stufe, abschalten mit Stufe aus). -> (Titel, Text)."""
-    from routen import STUFEN, TYPEN, art_schluessel, stufe_schluessel, stufe_wort
+    from routen import ROLLEN, STUFEN, TYPEN, art_schluessel, stufe_schluessel, stufe_wort
     arten = arten_laden(reise_dir)
     art = (text_wert(args, "art", pflicht=True, laenge=40) or "").lower()
     if art not in arten:
@@ -431,6 +488,11 @@ def merkmal_definieren(reise_dir, wer, args):
     werte = liste_wert(args, "werte")
     veraenderlich = bool_wert(args, "veraenderlich")
     einheit, hilfe, frage, grund = (text_wert(args, f) for f in ("einheit", "hilfe", "frage", "grund"))
+    rolle = text_wert(args, "rolle", laenge=20)
+    if rolle is not None and rolle not in ("", "keine", *ROLLEN):
+        raise Ablehnung(f"„rolle“ muss eine von {', '.join(ROLLEN)} sein (kosten: der Preis des Dings, den die Seite über die Reise "
+                        "summiert) oder keine.")
+    rolle = None if rolle is None else (rolle if rolle in ROLLEN else "")
     auch = liste_wert(args, "auch")
     if auch is not None:
         auch = [art_schluessel(x) for x in auch]
@@ -461,6 +523,9 @@ def merkmal_definieren(reise_dir, wer, args):
         for f, v in (("hilfe", hilfe), ("frage", frage), ("auch", auch)):
             if v:
                 d[f] = v
+        if rolle:
+            rolle_pruefen(merkmale, key, rolle, typ)
+            d["rolle"] = rolle
         merkmale[key] = d
         titel = f"Merkmal „{name}“ ({key}) an {a.get('name', art)} angelegt"
         text = (f"Merkmal „{name}“ ({key}) an der Art {a.get('name', art)} angelegt: Typ {typ}"
@@ -468,10 +533,18 @@ def merkmal_definieren(reise_dir, wer, args):
                 + f", Stufe {stufe_wort(stufe or 'empfohlen')}.")
     else:
         d = merkmale[key]
-        if d.get("auto"):
-            raise Ablehnung(f"„{d.get('name', key)}“ wird aus dem Plan berechnet; daran lässt sich nur Name und Stufe ändern."
-                            if any(x is not None for x in (typ, werte, veraenderlich, einheit)) else "")
+        if d.get("auto") and any(x is not None for x in (typ, werte, veraenderlich, einheit, rolle)):
+            raise Ablehnung(f"„{d.get('name', key)}“ wird aus dem Plan berechnet; daran lassen sich nur Name, Stufe, Hilfe und "
+                            "weitere Namen ändern.")
         geaendert = []
+        if rolle is not None and rolle != (d.get("rolle") or ""):
+            if rolle:
+                rolle_pruefen(merkmale, key, rolle, (typ or d.get("typ", "text")).lower())
+                d["rolle"] = rolle
+                geaendert.append(f"Rolle {rolle}")
+            else:
+                d.pop("rolle", None)
+                geaendert.append("keine Rolle mehr")
         if typ is not None and typ.lower() != d.get("typ", "text"):
             if typ.lower() == "auswahl" and not (werte or d.get("werte")):
                 raise Ablehnung("Der Typ auswahl braucht „werte“.")
@@ -510,8 +583,8 @@ def merkmal_definieren(reise_dir, wer, args):
         if not geaendert:
             raise Ablehnung(f"Das Merkmal „{d.get('name', key)}“ ({key}) gibt es an {a.get('name', art)} schon, und nichts daran soll "
                             "sich ändern.")
-        merkmale[key] = {k: d[k] for k in ("name", "typ", "werte", "auto", "veraenderlich", "einheit", "stufe", "hilfe", "frage", "auch")
-                         if k in d}
+        merkmale[key] = {k: d[k] for k in ("name", "typ", "werte", "auto", "veraenderlich", "einheit", "stufe", "rolle", "hilfe", "frage",
+                                           "auch") if k in d}
         titel = f"Merkmal „{d['name']}“ ({key}) an {a.get('name', art)} geändert"
         text = f"Merkmal „{d['name']}“ ({key}) an der Art {a.get('name', art)} geändert: " + ", ".join(geaendert) + "."
     a["merkmale"] = merkmale
@@ -696,7 +769,10 @@ def wert_eintragen(reise_dir, wer, args, heute=None):
         st = (route.get("strecken") or {}).get(ziel)
         if st is None:
             raise Ablehnung(f"Die Strecke {ziel} gibt es nicht.")
-        krit = (route.get("merkmale") or {}).get(st.get("art") or st.get("bereich")) or []
+        if isinstance(st.get("art"), list):
+            raise Ablehnung(f"Die Strecke {ziel} hat mehrere Arten ({' + '.join(st['art'])}); Werte stehen an der Option der Wahlstelle "
+                            "(wert_eintragen mit V-01.a), nicht an der kombinierten Strecke.")
+        krit = (route.get("merkmale") or {}).get(st.get("art_schluessel") or st.get("art")) or []
         heutige = st.get("merkmale") or {}
     definition = next((x for x in krit if x["id"] == k), None) or next((x for x in krit if k in (x.get("auch") or [])), None)
     if definition is None:
@@ -760,7 +836,7 @@ DING_ARTEN = {"unterkunft": ("U", "unterkuenfte"), "aufenthalt": ("A", "aufentha
 ID_MUSTER = re.compile(r"^(T-\d+|E-\d+[A-Za-z]?|U-\d+|A-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?|F-\d+|B-\d+)$")
 
 
-PLAIN_FELDER = {"id", "status", "wer", "art", "typ", "ort", "von", "nach", "frage", "siehe", "bereich", "an", "unterkuenfte",
+PLAIN_FELDER = {"id", "status", "wer", "art", "wann", "typ", "ort", "von", "nach", "frage", "siehe", "bereich", "an", "unterkuenfte",
                 "strecken", "folge", "erfordert", "schliesst_aus", "auswahl", "fuer"}
 PLAIN_MUSTER = re.compile(r"^[A-Za-zÄÖÜäöüß][\w .\-äöüÄÖÜß]*$")
 
@@ -898,13 +974,12 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
         if art not in arten or arten[art].get("grundform") != "aufenthalt":
             raise Ablehnung(f"„art“ muss eine Aufenthalts-Art dieser Reise sein ({', '.join(k for k, a in arten.items() if a.get('grundform') == 'aufenthalt') or 'keine'}); "
                             "eine neue legt ein:e Organisator:in mit art_definieren an.")
-        if was == "unterkunft":
-            d["typ"] = arten[art].get("name") or art
-        d["art"] = art
+        d["art"] = art    # nur art: (der alte Schlüssel typ wird gelesen, nie mehr geschrieben; docs/ontologie.md)
         if was == "aufenthalt" and (zeit := text_wert(args, "zeit", laenge=80)):
             d["zeit"] = zeit
-        if (b := text_wert(args, "buchung", laenge=80)):
-            d["buchung"] = b
+        if text_wert(args, "buchung", laenge=80):
+            raise Ablehnung("Einen Buchungsstand gibt es nur als Buchung (buchung_anlegen: Nummer, Frist, Stornoregel, Herkunft); "
+                            "das freie Feld buchung wird seit 29.10.2026 nicht mehr geschrieben.")
         if (link := text_wert(args, "buchungslink", laenge=600)):
             if not link.startswith(("http://", "https://")):
                 raise Ablehnung("„buchungslink“ muss mit http:// oder https:// beginnen.")
@@ -945,14 +1020,15 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
     return titel, text
 
 
-AENDERBAR = {"unterkunft": ("name", "ort", "art", "hinweis", "quelle", "buchungslink", "frage", "buchung"),
-             "aufenthalt": ("name", "ort", "art", "zeit", "hinweis", "quelle", "buchungslink", "frage", "buchung"),
-             "strecke": ("titel", "von", "nach", "art", "hinweis", "quelle", "buchung"), "ort": ("name", "hinweis", "quelle")}
+AENDERBAR = {"unterkunft": ("name", "ort", "art", "hinweis", "quelle", "buchungslink", "frage"),
+             "aufenthalt": ("name", "ort", "art", "zeit", "hinweis", "quelle", "buchungslink", "frage"),
+             "strecke": ("titel", "von", "nach", "art", "hinweis", "quelle"), "ort": ("name", "hinweis", "quelle")}
 
 
 def ding_aendern(reise_dir, wer, args, heute=None):
     """Felder einer Unterkunft, Strecke oder eines Orts ändern (nicht die Merkmale: wert_eintragen). -> (Titel, Text)."""
     from reise import darf
+    from routen import art_schluessel
     ziel = (text_wert(args, "ziel", pflicht=True, laenge=20) or "").strip()
     was = next((w for w, (k, _) in DING_ARTEN.items() if ziel.startswith(k + "-")), None)
     if was is None or not ID_MUSTER.match(ziel):
@@ -965,6 +1041,11 @@ def ding_aendern(reise_dir, wer, args, heute=None):
     if was == "ort":
         bezeichnung = f"{ziel} {knoten.get('name', '')}".strip()
     arten = route.get("arten") or {}
+    if text_wert(args, "buchung", laenge=80) is not None:
+        raise Ablehnung("Einen Buchungsstand gibt es nur als Buchung (buchung_anlegen, buchung_aendern); das freie Feld buchung wird "
+                        "seit 29.10.2026 nicht mehr geschrieben.")
+    if args.get("neuer_name") is not None:   # der Konnektor nimmt name als Vornamen der sprechenden Person; der neue Name heißt dort neuer_name
+        args = {**args, "name": args["neuer_name"]}
     geaendert = []
     for feld in AENDERBAR[was]:
         if feld not in args or args.get(feld) is None:
@@ -990,8 +1071,8 @@ def ding_aendern(reise_dir, wer, args, heute=None):
                 raise Ablehnung("„frage“ muss eine F-… sein.")
         else:
             v = text_wert(args, feld, laenge=600 if feld == "quelle" else MAX_TEXT) or ""
-        alt = knoten.get(feld) if feld != "art" else (knoten.get("art") or knoten.get("typ"))
-        if v == "" and feld in ("hinweis", "buchungslink", "frage", "zeit", "buchung"):
+        alt = knoten.get(feld) if feld != "art" else (knoten.get("art") or art_schluessel(knoten.get("typ")))
+        if v == "" and feld in ("hinweis", "buchungslink", "frage", "zeit"):
             if feld in knoten:
                 geaendert.append(f"{feld} entfernt (war „{alt}“)")
                 del knoten[feld]
@@ -1000,8 +1081,8 @@ def ding_aendern(reise_dir, wer, args, heute=None):
             continue
         geaendert.append(f"{feld} „{alt}“ → „{v}“" if alt is not None else f"{feld} „{v}“")
         knoten[feld] = skalar(feld, v)
-        if feld == "art" and was == "unterkunft":
-            knoten["typ"] = skalar("typ", arten[v].get("name") or v)
+        if feld == "art" and "typ" in knoten:   # Brücke typ: entfällt, sobald art: steht
+            del knoten["typ"]
     if not geaendert:
         raise Ablehnung(f"Nichts zu ändern an {bezeichnung} (änderbar: {', '.join(AENDERBAR[was])}; Merkmale mit wert_eintragen).")
     grund = text_wert(args, "grund")
@@ -1081,7 +1162,9 @@ def frage_anlegen(reise_dir, wer, args, heute=None):
 
 
 def option_bauen(roh, route, vid, o, wer, heute, bereich):
-    """Eine Option aus der Anfrage -> CommentedMap (Status vorgeschlagen mit Verlauf). bereich: Art der Wahlstelle für die Merkmale."""
+    """Eine Option aus der Anfrage -> CommentedMap (Status vorgeschlagen mit Verlauf). bereich: Art der Dinge der Wahlstelle
+    (Schlüssel aus plan/arten.yaml) für die Merkmale. Herkunft (quelle) ist Pflicht (ADR-0001, Frage 5); sie gilt als Vorgabe
+    für die Merkmale der Option."""
     if not isinstance(o, dict):
         raise Ablehnung("Jede Option ist ein Objekt mit titel und Inhalt (unterkuenfte, strecken oder folge).")
     d = {"id": None, "titel": text_wert(o, "titel", pflicht=True, laenge=200)}
@@ -1112,7 +1195,10 @@ def option_bauen(roh, route, vid, o, wer, heute, bereich):
         d["siehe"] = siehe
     if (a := text_wert(o, "ausloeser")):
         d["ausloeser"] = a
-    quelle = text_wert(o, "quelle") or f"Vorschlag von {wer['name']} im Gespräch (Claude-App)"
+    quelle = text_wert(o, "quelle", laenge=600)
+    if not quelle:
+        raise Ablehnung(f"Option „{d['titel']}“: quelle fehlt (Herkunft: Website, Buch mit Seite, Anruf oder „Name im Gespräch“). "
+                        "Ohne Herkunft wird nichts eingetragen.")
     d["quelle"] = quelle
     verlauf = {"datum": heute, "status": "vorgeschlagen", "wer": wer["name"]}
     if (g := text_wert(o, "grund")):
@@ -1152,7 +1238,7 @@ def option_anlegen(reise_dir, wer, args, heute=None):
     if buchstabe is None:
         raise Ablehnung(f"{vid} hat schon 26 Optionen.")
     oid = f"{vid}.{buchstabe}"
-    knoten, d, werte = option_bauen(roh, route, vid, args, wer, heute, wr.get("bereich"))
+    knoten, d, werte = option_bauen(roh, route, vid, args, wer, heute, wr.get("art"))
     knoten["id"] = oid
     knoten.move_to_end("id", last=False)
     optionen.append(knoten)
@@ -1172,16 +1258,23 @@ def wahlstelle_anlegen(reise_dir, wer, args, heute=None):
     roh = routen_laden(reise_dir)
     arten = route.get("arten") or {}
     d = {"titel": text_wert(args, "titel", pflicht=True, laenge=200)}
-    art = (text_wert(args, "art", laenge=20) or "planung").lower()
+    # wann: planung | unterwegs (bis 29.10.2026 hieß das art:); art: die Art der Dinge, zwischen denen gewählt wird (alt bereich:)
+    art = text_wert(args, "wann", laenge=20)
+    bereich = text_wert(args, "art", laenge=40)
+    if art is None and bereich in ("planung", "unterwegs"):   # alte Form: art = wann
+        art, bereich = bereich, None
+    if bereich is None:
+        bereich = text_wert(args, "bereich", laenge=40)
+    art = (art or "planung").lower()
     if art not in ("planung", "unterwegs"):
-        raise Ablehnung("„art“ einer Wahlstelle ist planung (vor der Abreise entscheiden) oder unterwegs (mit Auslöser).")
-    d["art"] = art
-    bereich = text_wert(args, "bereich", laenge=40)
+        raise Ablehnung("„wann“ einer Wahlstelle ist planung (vor der Abreise entscheiden) oder unterwegs (mit Auslöser).")
+    d["wann"] = art
     if bereich is not None:
         bereich = bereich.lower()
         if bereich not in arten:
-            raise Ablehnung(f"„bereich“ muss eine Art dieser Reise sein ({', '.join(arten) or 'keine'}).")
-        d["bereich"] = bereich
+            raise Ablehnung(f"„art“ muss eine Art dieser Reise sein ({', '.join(arten) or 'keine'}): die Art der Dinge, zwischen "
+                            "denen gewählt wird.")
+        d["art"] = bereich
     an = id_liste(args, "an", r"(T-\d+|E-\d+[A-Za-z]?|U-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?)", roh)
     if an:
         for x in an:

@@ -9,6 +9,10 @@ danach im Status „idee“ und baut sofort.
   neu.py id <reise-ordner> <W|F|O|U|E|T|V>        nächste freie ID, wird sofort als vergeben vermerkt
   neu.py abschnitt <reise-ordner> --titel T [--gruppe wissen|praxis|quelle] [--datei inhalt/wissen.md] [--text-datei P]
   neu.py pruefen <reise-ordner>                   Prüfung vor dem Bau mit verständlichen Meldungen
+  neu.py nachziehen <reise-ordner> [--strecke E-15=kombiniert …]
+                                                  Schlüssel einer bestehenden Reise auf den Stand vom 29.10.2026 bringen
+                                                  (docs/ontologie.md): typ→art, bereich→art, art→wann an Wahlstellen,
+                                                  rolle kosten, Ebenen in reise.json; keine ID, kein Wert ändert sich
 
 IDs werden nie neu vergeben: ids.yaml hält je Art die höchste je vergebene Nummer fest. Die nächste ID liegt über
 dieser Marke und über jeder Nummer, die irgendwo in der Reise steht (auch im Verlauf von Verworfenem).
@@ -337,13 +341,15 @@ def arten_ableiten(reise_dir, namen=None, summiert=(), definitionen=None, schrei
         if isinstance(n, dict) and (n.get("typ") or n.get("art")) and not n.get("an_bord"):
             art(n.get("art") or art_schluessel(n.get("typ")), "aufenthalt", n.get("typ"))["dinge"].append(("aufenthalt", n.get("typ"), {}))
     for s in (r.get("strecken") or {}).values():
-        k = s.get("art", "wandern")
+        k = s.get("art")
+        if not k:
+            continue   # ohne Art: der Bau meldet es; die Software kennt keine Vorgabe (ADR-0001)
         k = "kombiniert" if isinstance(k, list) else str(k)
         art(k, "bewegung")["dinge"].append(("bewegung", None, s.get("merkmale") or {}))
     wahl = r.get("wahlstellen") or {}
     for vid, w in (wahl.items() if isinstance(wahl, dict) else ((x["id"], x) for x in wahl)):
         opts = w.get("optionen") or []
-        b = w.get("bereich")
+        b = w.get("bereich") or (w.get("art") if w.get("art") not in ("planung", "unterwegs") else None)
         if b and b not in arten:
             art(b, "bewegung" if any(o.get("strecken") for o in opts) else "aufenthalt")
         if any(o.get("folge") is not None for o in opts):
@@ -355,8 +361,8 @@ def arten_ableiten(reise_dir, namen=None, summiert=(), definitionen=None, schrei
                     u = (r.get("unterkuenfte") or {}).get(uid) or {}
                     b = b or u.get("art") or art_schluessel(u.get("typ"))
                 for sid in o.get("strecken") or []:
-                    sa = ((r.get("strecken") or {}).get(sid) or {}).get("art", "wandern")
-                    b = b or ("kombiniert" if isinstance(sa, list) else str(sa))
+                    sa = ((r.get("strecken") or {}).get(sid) or {}).get("art")
+                    b = b or (sa and ("kombiniert" if isinstance(sa, list) else str(sa)))
         if b in arten:
             for o in opts:
                 if o.get("merkmale"):
@@ -412,6 +418,89 @@ def arten_ableiten(reise_dir, namen=None, summiert=(), definitionen=None, schrei
     return text
 
 
+# ---------- Schlüssel einer Reise nachziehen (Abgleich 29.10.2026, docs/abgleich-2026-10-29.md) ----------
+def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
+    """Nur Schlüssel, keine Inhalte: Unterkunft und Nacht typ: → art:; Wahlstelle bereich: → art:, art: planung|unterwegs →
+    wann:; Strecke ohne art: bekommt die in strecken_arten genannte ({E-15: kombiniert}), sonst wird sie gemeldet; das
+    Merkmal mit Schlüssel preis (Typ geld) einer Aufenthalts-Art bekommt rolle: kosten, wenn die Art noch keine Rolle hat;
+    reise.json bekommt die bisherige Vorgabe der Ebene „Unterwegs nachschlagen“, wenn die Reise ein Etappen-Dossier hat.
+    Kommentare und Form der Dateien bleiben (ruamel). -> Liste der Meldungen (was geändert oder offen ist)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from routen import WANN, art_schluessel
+    import schreiben as sb
+    reise_dir = Path(reise_dir)
+    strecken_arten = dict(strecken_arten or {})
+    meldungen = []
+    roh = sb.routen_laden(reise_dir)
+
+    def typ_zu_art(knoten, wo):
+        if not isinstance(knoten, dict) or knoten.get("typ") is None:
+            return
+        if knoten.get("art") is None:
+            a = art_schluessel(knoten["typ"])
+            knoten.insert(list(knoten.keys()).index("typ"), "art", a)
+            meldungen.append(f"{wo}: typ „{knoten['typ']}“ → art {a}")
+        else:
+            meldungen.append(f"{wo}: typ „{knoten['typ']}“ entfernt (art {knoten['art']} steht schon)")
+        del knoten["typ"]
+
+    for uid, u in (roh.get("unterkuenfte") or {}).items():
+        typ_zu_art(u, uid)
+    for tid, t in (roh.get("tage") or {}).items():
+        if isinstance(t, dict):
+            typ_zu_art(t.get("nacht"), f"{tid} nacht")
+    for sid, st in (roh.get("strecken") or {}).items():
+        if isinstance(st, dict) and not st.get("art"):
+            if sid in strecken_arten:
+                st["art"] = strecken_arten[sid]
+                meldungen.append(f"{sid}: art {strecken_arten[sid]} (angegeben)")
+            else:
+                meldungen.append(f"OFFEN {sid}: keine Art; mit --strecke {sid}=<art> angeben (der Bau verlangt sie)")
+    for vid, w in (roh.get("wahlstellen") or {}).items():
+        if not isinstance(w, dict):
+            continue
+        alt_art, bereich = w.get("art"), w.get("bereich")
+        if alt_art in WANN:
+            w.insert(list(w.keys()).index("art"), "wann", alt_art)
+            del w["art"]
+            meldungen.append(f"{vid}: art {alt_art} → wann {alt_art}")
+        if bereich is not None:
+            if w.get("art") is None:
+                w.insert(list(w.keys()).index("bereich"), "art", bereich)
+                meldungen.append(f"{vid}: bereich {bereich} → art {bereich}")
+            del w["bereich"]
+    if schreiben:
+        sb.routen_speichern(reise_dir, roh)
+
+    # arten.yaml: rolle kosten am Merkmal preis (Typ geld) der Aufenthalts-Arten
+    if (reise_dir / "plan" / "arten.yaml").exists():
+        arten = sb.arten_laden(reise_dir)
+        geaendert = False
+        for a, d in arten.items():
+            mk = d.get("merkmale") if isinstance(d.get("merkmale"), dict) else {}
+            if d.get("grundform") != "aufenthalt" or any(isinstance(m, dict) and m.get("rolle") for m in mk.values()):
+                continue
+            m = mk.get("preis")
+            if isinstance(m, dict) and m.get("typ") == "geld":
+                m["rolle"] = "kosten"
+                geaendert = True
+                meldungen.append(f"arten.yaml {a}: Merkmal preis bekommt rolle kosten")
+        if geaendert and schreiben:
+            sb.arten_speichern(reise_dir, arten, {"name": "Betrieb (neu.py nachziehen)"})
+
+    # reise.json: bisherige Vorgabe der Ebene „Unterwegs nachschlagen“ (bis 29.10.2026 in der Software)
+    cfg_pfad = reise_dir / "reise.json"
+    if cfg_pfad.exists():
+        cfg = lies_json(cfg_pfad)
+        if cfg.get("etappen_dossier") and "etappen_ebenen" not in cfg:
+            cfg["etappen_ebenen"] = {"unterwegs": ["Höhenprofil", "Wegpunkte", "Unterkünfte", "Unterkunft", "Kontakte", "Wasser",
+                                                   "Einkehr", "Verpflegung", "Anfahrt", "Abfahrt", "Praktisch"]}
+            meldungen.append("reise.json: etappen_ebenen mit der bisherigen Vorgabe für „Unterwegs nachschlagen“")
+            if schreiben:   # in der Form der Datei (json.dumps mit Einrückung 2), damit nur die neue Zeile im Diff steht
+                cfg_pfad.write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return meldungen
+
+
 # ---------- Aufruf ----------
 def main(argv):
     import argparse
@@ -427,7 +516,7 @@ def main(argv):
     r.add_argument("--ziel")
     r.add_argument("--pfad")
     r.add_argument("--untertitel")
-    r.add_argument("--herkunft", default="Gespräch in Claude Code")
+    r.add_argument("--herkunft", default="Gespräch (Betreiber-Ausnahme in Claude Code, docs/neue-reise.md)")
     r.add_argument("--ueberblick")
     i = sub.add_parser("id", help="nächste freie ID vergeben")
     i.add_argument("reise", type=Path)
@@ -445,8 +534,15 @@ def main(argv):
     g.add_argument("--name", action="append", default=[], help="art=Anzeigename, z. B. faehre=Fähre")
     g.add_argument("--summiert", default="", help="Arten aus eigener Kraft, Komma-Liste, z. B. wandern,rad")
     g.add_argument("--definitionen", type=Path, help="YAML {merkmal: {name, typ, …}} als Vorlage für Namen und Hilfetexte")
+    nz = sub.add_parser("nachziehen", help="Schlüssel einer bestehenden Reise auf den Stand vom 29.10.2026 bringen (nur Schlüssel)")
+    nz.add_argument("reise", type=Path)
+    nz.add_argument("--strecke", action="append", default=[], help="E-ID=art für Strecken ohne Art, z. B. E-15=kombiniert")
     x = ap.parse_args(argv[1:])
     try:
+        if x.befehl == "nachziehen":
+            m = nachziehen(x.reise, dict(t.split("=", 1) for t in x.strecke))
+            print("\n".join(m) if m else "Nichts nachzuziehen.")
+            return 1 if any(t.startswith("OFFEN") for t in m) else 0
         if x.befehl == "arten-ableiten":
             import yaml
             defs = yaml.safe_load(x.definitionen.read_text(encoding="utf-8")) if x.definitionen else {}

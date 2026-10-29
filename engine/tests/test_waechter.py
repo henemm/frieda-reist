@@ -40,10 +40,10 @@ class Reise:
         if geprueft:   # Prüfdatum für den Preis von U-01 (veränderliche Angabe)
             r = quelle / "plan" / "routen.yaml"
             text = r.read_text(encoding="utf-8")
-            alt = '- {wert: "120 €", notiz: "Beispielwert, erfunden"}'    # Hauptwert; der Eintrag für den 15.5. bleibt ungeprüft
+            alt = '- {wert: "120 €", quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}'    # Hauptwert; der Eintrag für den 15.5. bleibt ungeprüft
             assert alt in text
             r.write_text(text.replace(
-                alt, f'- {{wert: "120 €", notiz: "Beispielwert, erfunden", geprueft: {geprueft}, quelle: "https://beispiel.invalid/u1"}}'),
+                alt, f'- {{wert: "120 €", quelle: "https://beispiel.invalid/u1", geprueft: {geprueft}, notiz: "Beispielwert, erfunden"}}'),
                 encoding="utf-8")
         self.seiten = tmp / "seiten"
         bauen.bauen(quelle, self.seiten / "beispielreise")
@@ -339,11 +339,11 @@ def test_json_der_meldungen_bleibt_lesbar(reise):
 
 
 def test_zu_pruefen_laesst_ausgeschaltete_merkmale_aus():
-    """ADR-0001, Paket O-0: Merkmale mit Stufe aus (je Reise, auch je Unterkunftstyp) prüft der Wächter nicht."""
+    """ADR-0001, Paket O-0: Merkmale mit Stufe aus (je Reise, auch je Art) prüft der Wächter nicht."""
     preis = {"id": "preis", "name": "Preis", "veraenderlich": True, "stufe": {"*": "aus", "refugi": "empfohlen"}}
-    d = {"route": {"wahlstellen": [], "merkmale": {"unterkunft": [preis]},   # Merkmale je Art (hier eine Art „unterkunft“)
-                   "unterkuenfte": {"U-1": {"art": "unterkunft", "typ": "Hotel", "naechte": ["T-01"], "merkmale": {"preis": {"wert": "1 €"}}},
-                                    "U-2": {"art": "unterkunft", "typ": "Refugi", "naechte": ["T-02"], "merkmale": {"preis": {"wert": "2 €"}}}}}}
+    d = {"route": {"wahlstellen": [], "merkmale": {"hotel": [preis], "refugi": [preis]},   # Merkmale je Art
+                   "unterkuenfte": {"U-1": {"art": "hotel", "naechte": ["T-01"], "merkmale": {"preis": {"wert": "1 €"}}},
+                                    "U-2": {"art": "refugi", "naechte": ["T-02"], "merkmale": {"preis": {"wert": "2 €"}}}}}}
     assert [t["bezug"] for t in wa.zu_pruefen(d, D(2026, 11, 1), 60)] == ["U-2"]
     preis["stufe"] = "aus"
     assert wa.zu_pruefen(d, D(2026, 11, 1), 60) == []

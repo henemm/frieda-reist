@@ -1026,7 +1026,7 @@ function chips(a) {
   for (const oid of a.optionen || []) {
     const [w, o] = optionZu.get(oid) || [];
     // Zustand aus der Wahlstelle: unterwegs nur bei Unterwegs-Wahl, offen solange die Planung offen ist
-    if (w) c.append(chip(weg(o.status) ? "weg" : w.art === "unterwegs" ? "unterwegs" : w.offen ? "offen" : "", `Variante: ${o.titel}`));
+    if (w) c.append(chip(weg(o.status) ? "weg" : w.wann === "unterwegs" ? "unterwegs" : w.offen ? "offen" : "", `Variante: ${o.titel}`));
   }
   return c.childNodes.length ? c : null;
 }
@@ -1128,8 +1128,8 @@ function nachtZeile(n, ohneLinks, datum, verweis) {
   const titel = n.an_bord ? "an Bord" : u ? u.name : akt ? akt.titel : n.hinweis || ort;
   const unter = [kat && kat !== "offen" && kat !== "unterwegs" ? artName(kat) : (nachtTyp(n) !== "offen" ? nachtTyp(n) : ""), ort !== titel ? ort : "",
     titel !== n.hinweis ? n.hinweis : "", !u && !akt && !n.an_bord ? "Unterkunft noch offen" : ""].filter(Boolean);
-  const offen = w && w.art === "planung" && w.offen && kand.length > 1;
-  const zustand = !w || w.art !== "planung" ? null : offen ? chip("offen", ohneLinks ? `offen · ${kand.length} Möglichkeiten` : "offen") : chip("plan", "gewählt");
+  const offen = w && w.wann === "planung" && w.offen && kand.length > 1;
+  const zustand = !w || w.wann !== "planung" ? null : offen ? chip("offen", ohneLinks ? `offen · ${kand.length} Möglichkeiten` : "offen") : chip("plan", "gewählt");
   const kennung = ohneLinks ? null : w ? zid(w.id) : uid ? zid(uid) : null;
   const einstieg = w && !ohneLinks ? (verweis ? (kand.length > 1 ? el("a", {class: "wm-knopf", href: "#" + w.id}, "Alternativen vergleichen",
     el("span", {class: "wm-n", "aria-label": `${kand.length} Möglichkeiten`}, String(kand.length))) : null) : wahlEinstieg(w, false, datum)) : null;
@@ -1217,12 +1217,12 @@ function wegVerlauf(t, ohneKennung, heimat) {
 // Kennung); im Tageskasten mit den Möglichkeiten, im Plan ohne (dort folgen sie als Alternativen)
 function wahlZeile(w, mitOptionen) {
   const ul = mitOptionen ? el("ul", {}, w.optionen.filter(o => !weg(o.status)).map(o => el("li", {}, o.titel, o.ausloeser ? ` – ${o.ausloeser}` : "",
-    o.aktiv && w.art !== "unterwegs" ? (w.offen ? " (vorläufig)" : " (gewählt)") : ""))) : null;
-  const offen = w.art === "planung" && w.offen && gueltigeOptionen(w).length > 1;
+    o.aktiv && w.wann !== "unterwegs" ? (w.offen ? " (vorläufig)" : " (gewählt)") : ""))) : null;
+  const offen = w.wann === "planung" && w.offen && gueltigeOptionen(w).length > 1;
   return el("div", {class: "ding wahl"},
-    el("div", {class: "ding-text"}, dingEtikett(w.art === "unterwegs" ? "Unterwegs wählen" : "Wahl", null, "wahl"),
+    el("div", {class: "ding-text"}, dingEtikett(w.wann === "unterwegs" ? "Unterwegs wählen" : "Wahl", null, "wahl"),
       el("span", {class: "ding-titel"}, link(w.id, w.titel)), ul,
-      el("span", {class: "chips"}, w.art === "unterwegs" ? chip("unterwegs", "unterwegs entscheiden") : chip(offen ? "offen" : "plan", offen ? "offen" : "entschieden"), wahlEinstieg(w))),
+      el("span", {class: "chips"}, w.wann === "unterwegs" ? chip("unterwegs", "unterwegs entscheiden") : chip(offen ? "offen" : "plan", offen ? "offen" : "entschieden"), wahlEinstieg(w))),
     zid(w.id));
 }
 function tagKarte(t, ohneKopf) {
@@ -1239,7 +1239,7 @@ function tagKarte(t, ohneKopf) {
     wahlZeilen.push([w, [wahlZeile(w, true), wahlVergleich(w)]]);
   }
   // Unterwegs rücken Wahlstellen mit Auslöser nach vorn (Verhalten je Status)
-  const vorn = V.ausloeser_vor ? wahlZeilen.filter(([w]) => w.art === "unterwegs") : [];
+  const vorn = V.ausloeser_vor ? wahlZeilen.filter(([w]) => w.wann === "unterwegs") : [];
   for (const [, z] of vorn) { z[0].classList.add("vorn"); k.append(...z.filter(Boolean)); }
   if (t.strecken.length || (t.aufenthalte || []).length) k.append(wegVerlauf(t, ohneKopf ? id => (proId.get(id) || {}).typ === "etappe" : null, !ohneKopf && PLAN_DA));
   for (const [w, z] of wahlZeilen) if (!vorn.some(([x]) => x === w)) k.append(...z.filter(Boolean));
@@ -1271,7 +1271,7 @@ function unterkunftKarte(id) {
   const u = R.unterkuenfte[id];
   const k = el("div", {class: "karte ziel", id, "data-ziel": id},
     dingEtikett(artName(u.art) || "Unterkunft", u.art, u.art), el("div", {class: "k"}, u.name, zid(id)));
-  k.append(el("div", {class: "z"}, [u.typ, ortName(u.ort)].filter(Boolean).join(" · ")));
+  k.append(el("div", {class: "z"}, [artName(u.art), ortName(u.ort)].filter(Boolean).join(" · ")));
   k.append(lageZeile(u));
   if (u.kontakt || webVon(u)) k.append(el("div", {class: "z"}, el("b", {}, "Kontakt: "), (u.kontakt || "").replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ") || "–", " ", webLink(webVon(u), true)));
   if (u.buchung || u.frage) k.append(el("div", {class: "chips"}, buchungChip(u.buchung, u.buchung_id), u.frage ? chip("leise", u.frage, {href: "#" + u.frage}) : null));
@@ -1465,7 +1465,7 @@ function merkmalListe(kriterien, werte, datum) {
   return zeilen.length ? el("dl", {class: "mliste"}, zeilen.flatMap(k => [el("dt", {}, k.name), el("dd", {}, merkmalWert(werte[k.id], datum))])) : null;
 }
 function fehltZeile(w, o) {
-  if (w.art !== "planung" || !w.offen || weg(o.status) || !o.fehlt.length) return null;
+  if (w.wann !== "planung" || !w.offen || weg(o.status) || !o.fehlt.length) return null;
   const name = Object.fromEntries(w.kriterien.map(k => [k.id, k.name]));
   return el("div", {class: "z klein"}, "Fehlt noch: " + o.fehlt.map(k => name[k] || k).join(", "));
 }
@@ -1582,7 +1582,7 @@ function wahlVergleich(w, liste, datum) {
   const spaltenKopf = (kid, name) => el("th", {scope: "col", "aria-sort": z.sort === kid ? "ascending" : null},
     el("button", {type: "button", class: "wm-sort", "data-vgl-sort": s + "|" + kid}, name));
   // Erste Spalte: Name, „vorläufig im Plan“ (nur dort ein Zustand, sonst stünde in jeder Zeile „vorgeschlagen“), Webseite
-  const imPlan = o => o.aktiv && !w.optionen.every(x => x.aktiv) ? chip("", w.art === "unterwegs" ? "Standard" : (w.offen ? "vorläufig im Plan" : "im Plan")) : null;
+  const imPlan = o => o.aktiv && !w.optionen.every(x => x.aktiv) ? chip("", w.wann === "unterwegs" ? "Standard" : (w.offen ? "vorläufig im Plan" : "im Plan")) : null;
   if (zeilen.length) box.append(el("div", {class: "tabelle wm-tabelle"}, el("table", {class: "vergleich mk wm-tab"},
     el("thead", {}, el("tr", {}, spaltenKopf("_titel", "Möglichkeit"), zeilen.map(k => spaltenKopf(k.id, k.name)))),
     el("tbody", {}, reihe.flatMap(o => { const auf = z.auf.includes(o.id);
@@ -1660,7 +1660,7 @@ function regelZeilen(o) {
 function optionChips(w, o) {
   return el("span", {class: "chips"},
     chip(optionZustand(o.status), STATUS_TEXT[o.status] || o.status),
-    o.aktiv && !w.optionen.every(x => x.aktiv) ? chip("", w.art === "unterwegs" ? "Standard" : (w.offen ? "vorläufig im Plan" : "im Plan")) : null);
+    o.aktiv && !w.optionen.every(x => x.aktiv) ? chip("", w.wann === "unterwegs" ? "Standard" : (w.offen ? "vorläufig im Plan" : "im Plan")) : null);
 }
 // ohneMerkmale: Die Merkmale stehen schon im Wahl-Modul darüber
 // ohneId: in der aufgeklappten Zeile der Tabelle (die Zeile trägt die Kennung als Sprungziel)
@@ -1681,7 +1681,7 @@ function optionBlock(w, o, ohneMerkmale, ohneId) {
   // Unterkunft der Möglichkeit: mit Reiter „Plan“ der Link auf ihre Karte, sonst steht sie hier (Heimat), also Kontakt
   // und Webseite statt eines Links auf dieselbe Seite
   // Ist die Wahl entschieden, steht die gewählte Unterkunft ohne Reiter „Plan“ schon mit Lage und Kontakt in ihrer Nacht
-  const inNacht = !PLAN_DA && o.aktiv && !w.offen && w.art === "planung";
+  const inNacht = !PLAN_DA && o.aktiv && !w.offen && w.wann === "planung";
   for (const uid of inNacht ? [] : o.unterkuenfte || []) if (R.unterkuenfte[uid]) { const u = R.unterkuenfte[uid];
     b.append(...[PLAN_DA ? el("div", {class: "z"}, link(uid, "→ " + u.name))
       : [lageZeile(u), el("div", {class: "z"}, u.kontakt ? [el("b", {}, "Kontakt: "), u.kontakt.replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ") || "–", " "] : null, webLink(o, true))]].flat().filter(Boolean)); }
@@ -1737,11 +1737,11 @@ function optionEinzelheiten(w, o, weitere) {
 function wahlKarte(w) {
   const k = el("div", {class: "karte ziel", id: w.id, "data-ziel": w.id});
   const gueltig = w.optionen.filter(o => !weg(o.status));
-  const offen = w.art === "planung" && w.offen && gueltig.length > 1;
+  const offen = w.wann === "planung" && w.offen && gueltig.length > 1;
   k.append(el("div", {class: "k"}, w.titel, zid(w.id)),
     el("div", {class: "chips"},
-      chip(w.art === "unterwegs" ? "unterwegs" : "", w.art === "unterwegs" ? "unterwegs entscheiden" : "Planung"),
-      w.art === "planung" ? chip(offen ? "offen" : "", offen ? "offen" : "entschieden") : null,
+      chip(w.wann === "unterwegs" ? "unterwegs" : "", w.wann === "unterwegs" ? "unterwegs entscheiden" : "Planung"),
+      w.wann === "planung" ? chip(offen ? "offen" : "", offen ? "offen" : "entschieden") : null,
       w.frage ? link(w.frage, w.frage) : null));
   if (w.text) k.append(el("div", {class: "z"}, w.text));
   if (w.an.length) {
@@ -1772,7 +1772,7 @@ function warnungen(liste) {
 }
 
 function entscheidungen(m) {
-  const offen = R.wahlstellen.filter(w => w.art === "planung" && w.offen && w.optionen.filter(o => !weg(o.status)).length > 1);
+  const offen = R.wahlstellen.filter(w => w.wann === "planung" && w.offen && w.optionen.filter(o => !weg(o.status)).length > 1);
   const s = el("section", {class: "ziel", id: "entscheidungen"}, el("h2", {}, "Entscheidungen und Varianten"));
   const andere = R.warnungen.filter(w => /^V-/.test(w.bezug));
   if (andere.length) s.append(warnungen(andere));
@@ -1780,7 +1780,7 @@ function entscheidungen(m) {
     s.append(el("h3", {}, `Noch zu entscheiden (${offen.length})`));
     for (const w of offen) s.append(wahlKarte(w));
   }
-  const unterwegs = R.wahlstellen.filter(w => w.art === "unterwegs");
+  const unterwegs = R.wahlstellen.filter(w => w.wann === "unterwegs");
   if (unterwegs.length) {
     s.append(el("h3", {}, "Unterwegs entscheiden"));
     for (const w of unterwegs) s.append(wahlKarte(w));
@@ -1823,8 +1823,8 @@ const farbeVon = k => k === "unterwegs" ? "schiefer" : ((R.arten || {})[k] || {}
 const katKlasse = k => k && k !== "offen" ? " farbe-" + farbeVon(k) : "";
 function nachtTyp(n) {
   if (!n || n.an_bord) return "";
-  if (n.unterkunft && R.unterkuenfte[n.unterkunft]) return R.unterkuenfte[n.unterkunft].typ || "";
-  return n.typ || "offen";
+  if (n.unterkunft && R.unterkuenfte[n.unterkunft]) return artName(R.unterkuenfte[n.unterkunft].art) || "";
+  return n.art_name || "offen";
 }
 function nachtName(n) {
   if (!n) return "";
@@ -2347,7 +2347,7 @@ function nachtStand(n) {
   if (n.an_bord) return {name: "an Bord", zaehlt: false};
   const w = n.wahl && wahlZu.get(n.wahl);
   const kand = w ? w.optionen.filter(o => !weg(o.status)) : [];
-  if (w && w.art === "planung" && w.offen && kand.length > 1)
+  if (w && w.wann === "planung" && w.offen && kand.length > 1)
     return {name: ortName(n.ort), zustand: "offen", text: `noch wählen · ${kand.length}`, zaehlt: true, gebucht: false};
   const akt = w && (kand.find(o => o.aktiv) || kand[0]);
   const uid = n.unterkunft && R.unterkuenfte[n.unterkunft] ? n.unterkunft : akt && (akt.unterkuenfte || []).find(x => R.unterkuenfte[x]);
@@ -2364,8 +2364,8 @@ function tagZeile(t) {
   // Feste Termine des ersten und letzten Tags stehen schon bei An- und Abreise
   const p = PLAN_FEST, rand = p && (t === p.tage[0] || t === p.tage[p.tage.length - 1]);
   const marken = [...(rand ? [] : t.fixpunkte || []).map(f => chip("leise", f)),
-    ...wahl.map(w => chip(w.art === "unterwegs" ? "unterwegs" : w.offen ? "offen" : "plan",
-      (w.art === "unterwegs" ? "Wahl unterwegs: " : "Wahl: ") + w.titel.replace(/^Tag \d+\s*:?\s*/, "")))];
+    ...wahl.map(w => chip(w.wann === "unterwegs" ? "unterwegs" : w.offen ? "offen" : "plan",
+      (w.wann === "unterwegs" ? "Wahl unterwegs: " : "Wahl: ") + w.titel.replace(/^Tag \d+\s*:?\s*/, "")))];
   return el("a", {class: "tagzeile vorschau", href: "#" + t.id, "data-tag": t.id},
     el("span", {class: "tz-punkt", "aria-hidden": "true"}),
     el("span", {class: "tz-datum"}, el("b", {}, String(t.nr)), t.datum ? datumText(t.datum, t.wochentag) : null),
@@ -2415,7 +2415,7 @@ function buchungText(text, bid) {
 function standLeiste(p) {
   const naechte = buchungen(p);
   const offenN = naechte.filter(x => !x.gebucht);
-  const wahl = R.wahlstellen.filter(w => w.art === "planung" && w.offen && gueltigeOptionen(w).length > 1);
+  const wahl = R.wahlstellen.filter(w => w.wann === "planung" && w.offen && gueltigeOptionen(w).length > 1);
   const fragen = B("fragen") ? D.fragen.zeilen.filter(z => !/^(erledigt|geklärt|beantwortet)/i.test(z.status || z.zellen[z.zellen.length - 1] || "")) : [];
   const ag = B("aufgaben") ? AG.filter(agOffen) : [], ueber = ag.filter(ueberfaellig).length;
   const zeilen = [
@@ -2441,8 +2441,10 @@ function betrag(text) {
   const z = m ? [m[1], m[2]].filter(Boolean).map(zahl) : [];
   return w && z.length && z.every(Number.isFinite) ? {von: Math.min(...z), bis: Math.max(...z), waehrung: w} : null;
 }
-// Kosten der Übernachtungen: Preis pro Nacht (Merkmal preis) am Datum der Nacht; bei offener Wahl die Spanne der
-// Kandidaten. -> {text, bekannt, naechte} oder null, wenn kein Preis bekannt ist
+// Kosten der Übernachtungen: das Merkmal mit der Rolle kosten der Art der Unterkunft (plan/arten.yaml, docs/ontologie.md;
+// die Seite kennt keinen Merkmalnamen) am Datum der Nacht; bei offener Wahl die Spanne der Kandidaten.
+// -> {text, bekannt, naechte} oder null, wenn kein Preis bekannt ist
+const kostenMerkmal = art => ((R.arten || {})[art] || {}).kosten || "";
 function reiseKosten(p) {
   const summe = {}; let bekannt = 0, naechte = 0;
   for (const d of p.tage) {
@@ -2451,9 +2453,9 @@ function reiseKosten(p) {
     naechte++;
     const w = n.wahl && wahlZu.get(n.wahl);
     const kand = w ? w.optionen.filter(o => !weg(o.status)) : [];
-    const offen = w && w.art === "planung" && w.offen && kand.length > 1;
+    const offen = w && w.wann === "planung" && w.offen && kand.length > 1;
     const uids = n.unterkunft ? [n.unterkunft] : (offen ? kand : [kand.find(o => o.aktiv) || kand[0]].filter(Boolean)).flatMap(o => o.unterkuenfte || []);
-    const preise = uids.map(u => R.unterkuenfte[u] && betrag((giltAm(((R.unterkuenfte[u].merkmale || {}).preis), d.datum) || {}).wert || "")).filter(Boolean);
+    const preise = uids.map(u => R.unterkuenfte[u] && betrag((giltAm(((R.unterkuenfte[u].merkmale || {})[kostenMerkmal(R.unterkuenfte[u].art)]), d.datum) || {}).wert || "")).filter(Boolean);
     if (!preise.length || new Set(preise.map(x => x.waehrung)).size > 1) continue;
     const g = summe[preise[0].waehrung] ||= {von: 0, bis: 0};
     g.von += Math.min(...preise.map(x => x.von)); g.bis += Math.max(...preise.map(x => x.bis));
@@ -2899,7 +2901,7 @@ function nachtAbschnitt(t) {
   const kand = w ? gueltigeOptionen(w) : [];
   const akt = w && (kand.find(o => o.aktiv) || kand[0]);
   const uid = n.unterkunft && R.unterkuenfte[n.unterkunft] ? n.unterkunft : akt && (akt.unterkuenfte || []).find(x => R.unterkuenfte[x]);
-  const offen = w && w.art === "planung" && w.offen && kand.length > 1;
+  const offen = w && w.wann === "planung" && w.offen && kand.length > 1;
   const s = el("section", {class: "ebene ebene-nacht ziel", id: "nacht"},
     el("div", {class: "ebene-kopf"}, el("h3", {}, symbol("unterkunft", "etikett-sym"), " Nacht in " + ortName(n.ort),
       st && st.text ? chip(st.zustand, offen ? `noch wählen · ${kand.length}` : st.text) : null)));
@@ -3109,23 +3111,23 @@ function wahlWo(w) {
   const tage = PLAN_FEST ? PLAN_FEST.tage.filter(t => w.an.includes(t.id) || (w.an_ids || []).includes(t.id)) : [];
   const naechte = tage.filter(t => (t.nacht || {}).wahl === w.id);
   if (naechte.length) return "Nacht " + naechte.map(t => datumText(t.datum, t.wochentag)).join(", ");
-  if (tage.length) return (w.art === "unterwegs" ? "am Weg von " : "") + tage.map(t => `Tag ${t.nr}`).join(", ");
+  if (tage.length) return (w.wann === "unterwegs" ? "am Weg von " : "") + tage.map(t => `Tag ${t.nr}`).join(", ");
   const namen = (w.an_ids || []).map(x => (R.unterkuenfte[x] || {}).name || (R.strecken[x] || {}).titel || (R.orte[x] || {}).name || (proId.get(x) || {}).titel).filter(Boolean);
   return namen.join(", ");
 }
 // Wahlstelle als Listenzeile in „Zu entscheiden“: wo sie hängt, was vorläufig gilt, rechts „n zur Wahl“
 function wahlListenZeile(w) {
   const g = gueltigeOptionen(w), akt = g.find(o => o.aktiv);
-  const unter = [wahlWo(w), w.art === "unterwegs" ? (akt ? "Standard: " + akt.titel : "") : akt ? "vorläufig " + akt.titel : ""].filter(Boolean).join(" · ");
+  const unter = [wahlWo(w), w.wann === "unterwegs" ? (akt ? "Standard: " + akt.titel : "") : akt ? "vorläufig " + akt.titel : ""].filter(Boolean).join(" · ");
   return listenZeile("wahl", "varianten", w.titel.replace(/^Tag \d+\s*:?\s*/, ""), unter || null, w.id, null,
-    chip(w.art === "unterwegs" ? "unterwegs" : "offen", `${g.length} zur Wahl`));
+    chip(w.wann === "unterwegs" ? "unterwegs" : "offen", `${g.length} zur Wahl`));
 }
 // Titel einer Sammelliste mit Zahl als Zustand (Atom chip)
 const listenTitel = (titel, zahl, offen) => el("h2", {class: "listen-titel"}, titel, zahl ? chip(offen ? "offen" : "", zahl) : null);
 function zuEntscheiden(m) {
   if (!R) return;
-  const offen = R.wahlstellen.filter(w => w.art === "planung" && w.offen && gueltigeOptionen(w).length > 1);
-  const unterwegs = R.wahlstellen.filter(w => w.art === "unterwegs" && gueltigeOptionen(w).length > 1);
+  const offen = R.wahlstellen.filter(w => w.wann === "planung" && w.offen && gueltigeOptionen(w).length > 1);
+  const unterwegs = R.wahlstellen.filter(w => w.wann === "unterwegs" && gueltigeOptionen(w).length > 1);
   const andere = R.warnungen.filter(w => /^V-/.test(w.bezug));
   if (!offen.length && !unterwegs.length && !andere.length) return;
   const s = el("section", {class: "ziel", id: "zu-entscheiden"}, listenTitel("Zu entscheiden", offen.length ? String(offen.length) : "", true));
@@ -3190,7 +3192,7 @@ function indexBauen() {
   if (R) {
     for (const t of R.tage) add(t.id, `Tag ${t.nr} · ${t.titel}`, "Tagesplan",
       [t.text, ...t.strecken.map(s => (R.strecken[s.id] || {}).titel), t.nacht && ortName(t.nacht.ort)].filter(Boolean).join(" · "));
-    for (const [id, u] of Object.entries(R.unterkuenfte)) add(id, u.name, "Unterkünfte", [u.typ, ortName(u.ort), u.kontakt, u.hinweis, ...Object.values(u.merkmale || {}).map(v => v.wert)].filter(Boolean).join(" · "));
+    for (const [id, u] of Object.entries(R.unterkuenfte)) add(id, u.name, "Unterkünfte", [artName(u.art), ortName(u.ort), u.kontakt, u.hinweis, ...Object.values(u.merkmale || {}).map(v => v.wert)].filter(Boolean).join(" · "));
     for (const p of PLAN_FEST ? [] : R.plaene) add(p.id, `${p.kurz}: ${p.titel}`, "Varianten", [...p.plus, ...p.minus].join(" · "));
     for (const w of R.wahlstellen) {
       add(w.id, w.titel, "Entscheidungen", w.text || "");

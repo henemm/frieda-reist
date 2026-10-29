@@ -66,7 +66,7 @@ import belege as bl  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, REISE_ZIEL, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
-from routen import FARBEN, GRUNDFORMEN, STUFEN, TYPEN, art_schluessel, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
+from routen import FARBEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, art_schluessel, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
 
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "rueckmeldung_erledigen",
@@ -403,8 +403,8 @@ class Handbuch:
             if u.get("name") == teile[0]:  # Unterkunft ist selbst der Ort (z. B. eine Hütte)
                 teile.pop()
             teile.append(f"{u.get('name')} ({n['unterkunft']})")
-        elif n.get("hinweis") or n.get("typ"):
-            teile.append(n.get("hinweis") or n.get("typ"))
+        elif n.get("hinweis") or n.get("art_name"):
+            teile.append(n.get("hinweis") or n.get("art_name"))
         if n.get("wahl"):
             teile.append(f"Wahl {n['wahl']}")
         return ", ".join(teile)
@@ -505,7 +505,7 @@ class Handbuch:
         """-> (Wahlstelle, Bereich, Kriterien) zu V-…, V-….x oder U-…"""
         for w in self.r.get("wahlstellen", []):
             if id_ == w["id"] or any(o["id"] == id_ for o in w["optionen"]):
-                return w, w.get("bereich", "allgemein"), w.get("kriterien") or []
+                return w, w.get("art") or "allgemein", w.get("kriterien") or []
         if id_ in (self.r.get("aufenthalte") or {}):   # Aufenthalt ohne Nacht (A-…): Zeile wie im Tag, dann Merkmale
             a = self.r["aufenthalte"][id_]
             z = [self.aufenthalt(id_), "in " + self.ort(a.get("ort")), *( [a["hinweis"]] if a.get("hinweis") else []),
@@ -517,7 +517,7 @@ class Handbuch:
             return None, b, (self.r.get("merkmale") or {}).get(b) or []
         st = (self.r.get("strecken") or {}).get(id_)
         if st is not None:   # Bewegung: Merkmale ihrer Art
-            b = st.get("bereich")
+            b = st.get("art_schluessel")
             return None, b, (self.r.get("merkmale") or {}).get(b) or []
         return None, None, None
 
@@ -603,7 +603,7 @@ class Handbuch:
                     z.append(("Quelle: " if k == "quelle" else "Siehe: " if k == "siehe" else "") + str(s[k]))
             if s.get("merkmale") or s.get("fehlt"):
                 z.append("Merkmale:")
-                z += self.merkmal_zeilen((r.get("merkmale") or {}).get(s.get("bereich")), s.get("merkmale"), s.get("fehlt"))
+                z += self.merkmal_zeilen((r.get("merkmale") or {}).get(s.get("art_schluessel")), s.get("merkmale"), s.get("fehlt"))
             z += self.lesetext_zeilen(s)
             if sid in e:  # Etappe aus dem Dossier: Text dort, Strecke ergänzt
                 titel, alt = e[sid]
@@ -611,7 +611,7 @@ class Handbuch:
             else:
                 e[sid] = (s.get("titel") or sid, "\n".join(z))
         for uid, u in (r.get("unterkuenfte") or {}).items():
-            z = [f"{u.get('typ') or ''} in {self.ort(u.get('ort'))}".strip()]
+            z = [f"{((self.r.get('arten') or {}).get(u.get('art')) or {}).get('name') or ''} in {self.ort(u.get('ort'))}".strip()]
             for k, name in (("hinweis", ""), ("kontakt", "Kontakt: "), ("buchung", "Buchung: "),
                             ("frage", "Offene Frage: "), ("quelle", "Quelle: ")):
                 if u.get(k):
@@ -706,8 +706,8 @@ class Handbuch:
         if self.r.get("wahlstellen") and self.an("varianten"):
             z.append("## Wahlstellen (Werkzeug varianten)")
             z += [f"- {w['id']} {w['titel']}" + (" – offen" if w.get("offen") else "")
-                  + (" – unterwegs wählen" if w.get("art") == "unterwegs" and self.v["ausloeser_vor"] else "")
-                  for w in sorted(self.r["wahlstellen"], key=lambda w: not (self.v["ausloeser_vor"] and w.get("art") == "unterwegs"))]
+                  + (" – unterwegs wählen" if w.get("wann") == "unterwegs" and self.v["ausloeser_vor"] else "")
+                  for w in sorted(self.r["wahlstellen"], key=lambda w: not (self.v["ausloeser_vor"] and w.get("wann") == "unterwegs"))]
         z.append("## Inhalt (mit zeige nachschlagen)")
         z += [f"- {a['id']} {a['titel']}" for a in self.d.get("abschnitte", [])]
         if self.r.get("warnungen"):
@@ -767,8 +767,8 @@ class Handbuch:
     def lesetext_zeilen(self, s):
         """Gliederung des Lesetexts der Art einer Strecke (plan/arten.yaml lesetext, docs/ontologie.md) als Anleitung für
         den AI-Client: Rubriken in ihrer Reihenfolge, jede als Absatz mit fettem Stichwort."""
-        art = s.get("bereich") or s.get("art") or "wandern"
-        rubriken = (((self.r.get("arten") or {}).get(art if isinstance(art, str) else "kombiniert")) or {}).get("lesetext")
+        art = s.get("art_schluessel")
+        rubriken = (((self.r.get("arten") or {}).get(art)) or {}).get("lesetext")
         if not rubriken:
             return []
         return ["Gliederung des Lesetexts (Abschnitt Zusammenfassung; je Rubrik ein Absatz, der mit dem fetten Stichwort "
@@ -785,8 +785,8 @@ class Handbuch:
         elif bereich in katalog:
             w, b, krit = None, bereich, katalog[bereich]
         else:
-            return None, f"ziel (V-…, U-…, E-…) oder bereich angeben: eine Art dieser Reise ({', '.join(katalog) or 'keine definiert'})."
-        z = [f"# Merkmale für Bereich {b}" + (f" – {w['id']} {w['titel']}" if w else f" – {ziel}" if ziel else ""),
+            return None, f"ziel (V-…, U-…, E-…) oder art angeben: eine Art dieser Reise ({', '.join(katalog) or 'keine definiert'})."
+        z = [f"# Merkmale der Art {b}" + (f" – {w['id']} {w['titel']}" if w else f" – {ziel}" if ziel else ""),
              "Vorgehen: Erst selbst recherchieren (Hinweis „so finden“), dann die Person nur nach dem fragen, was offen "
              "bleibt (Hinweis „fragen“). Veränderliche Werte mit Prüfdatum. Werte an einer vorhandenen Stelle trägst du mit "
              "wert_eintragen ein (sofort, mit Herkunft); eine neue Alternative: ding_anlegen (Unterkunft, Strecke) und option_anlegen an der Wahlstelle, vorher kurz bestätigen lassen. Ist ein Wert je Datum verschieden (z. B. "
@@ -925,7 +925,7 @@ class Handbuch:
                     if o2.get("im_plan") and o2["status"] not in ("verworfen", "ersetzt") and \
                             any(x["id"] == oid for x in o2.get("erfordert") or []):
                         hinweise.append(f"{o2['id']} „{o2['titel']}“ steht im Plan und setzt {oid} voraus.")
-        if w.get("art") == "unterwegs" and not self.v["ausloeser_vor"]:
+        if w.get("wann") == "unterwegs" and not self.v["ausloeser_vor"]:
             hinweise.append(f"{w['id']} ist eine Wahlstelle für unterwegs"
                             + (f" (Auslöser: {o['ausloeser']})" if o.get("ausloeser") else "")
                             + ": Sie wird normalerweise erst unterwegs entschieden.")
@@ -1064,7 +1064,7 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
         return ("Das geht nur mit dem persönlichen Link: Jede Änderung gehört genau einer Person, und dieser Link kennt keinen Namen."
                 if aktion == "ontologie" and not vorschlag else "Name fehlt: bitte die Person nach ihrem Vornamen fragen."), True
     wer = {**wer, "name": name_.strip()}
-    rest = {k: v for k, v in args.items() if k not in ("name", "vorname", "trotzdem")}
+    rest = {k: v for k, v in args.items() if k not in ("name", "vorname", "trotzdem")}   # ein neuer Name eines Dings heißt neuer_name
     if vorschlag:
         ziel = art_schluessel(str(args.get("kategorie") or args.get("art") or args.get("bezeichnung") or "")) or "allgemein"
         e, fehler = rueckmeldung_senden(reise, {"name": wer["name"], "art": "Ergänzung", "ziel": ziel[:rm.LAENGE["ziel"]],
@@ -1108,7 +1108,7 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
         w = next((w for w in route.get("wahlstellen") or [] if w["id"] == vid), None)
         if w is None:
             return f"Die Wahlstelle „{vid}“ gibt es nicht; varianten zeigt alle. Fehlt sie wirklich, wahlstelle_anlegen.", True
-        if (h := merkmal_hinweise(d, w.get("bereich"), args.get("merkmale"))):
+        if (h := merkmal_hinweise(d, w.get("art"), args.get("merkmale"))):
             return h, True
     if name == "frage_schliessen":
         fid = str(args.get("frage") or "").strip().upper()
@@ -2012,9 +2012,9 @@ WERKZEUGE += [
      "schon hat und was fehlt. Vor wert_eintragen, option_anlegen und ding_anlegen aufrufen.",
      "inputSchema": {"type": "object", "properties": {
          "ziel": {"type": "string", "description": "Wahlstelle V-…, Option V-….a, Unterkunft U-… oder Strecke E-… (z. B. eine Fähre)"},
-         "bereich": {"type": "string",
-                     "description": "nur ohne ziel: eine Art dieser Reise (ihre Arten und Merkmale stehen in plan/arten.yaml; "
-                                    "ohne Angabe nennt die Antwort die bekannten Arten)"}}},
+         "art": {"type": "string",
+                 "description": "nur ohne ziel: eine Art dieser Reise (ihre Arten und Merkmale stehen in plan/arten.yaml; "
+                                "ohne Angabe nennt die Antwort die bekannten Arten)"}}},
      "annotations": {"readOnlyHint": True}},
 ]
 AG_EIGENSCHAFTEN = {
@@ -2086,6 +2086,10 @@ ART_DEFINIEREN = {"name": "art_definieren", "description": "Eine Art dieser Reis
                       "beschreibung": {"type": "string", "description": "ein Satz, was diese Art bei dieser Reise meint"},
                       "summiert": {"type": "boolean", "description": "nur Bewegung aus eigener Kraft (Wandern, Rad): Gehzeit, Länge, "
                                    "Höhenmeter werden summiert und als berechnete Merkmale angelegt"},
+                      "symbol": {"type": "string", "enum": list(SYMBOLE_ARTEN), "description": "Zeichen der Seite am Etikett; ohne Angabe das der Grundform"},
+                      "buchbar": {"type": "boolean", "description": "die Dinge dieser Art haben einen Buchungsstand (Zu buchen); Vorgabe: Aufenthalte ja, Bewegungen nein"},
+                      "lesetext": {"type": "array", "items": {"type": "object", "properties": {"rubrik": {"type": "string"}, "name": {"type": "string"}, "hilfe": {"type": "string"}}, "required": ["name"]},
+                                   "description": "Gliederung des Lesetexts der Strecken dieser Art (Bewegung): Rubriken in Lesereihenfolge, je name (Stichwort vor dem Absatz) und hilfe; leere Liste entfernt sie"},
                       "grund": {"type": "string", "description": "warum (steht im Verlauf)"},
                       "name": NAME_FELD}}}
 KATEGORIE_DEFINIEREN = {"name": "kategorie_definieren", "description": "Eine Kategorie der Kartenpunkte dieser Reise anlegen oder ändern "
@@ -2132,6 +2136,7 @@ MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "Ein Merkmal 
                           "hilfe": {"type": "string", "description": "wie man den Wert findet (Website, Buch, Anruf)"},
                           "frage": {"type": "string", "description": "wonach die Person gefragt wird, wenn der Wert fehlt"},
                           "auch": {"type": "array", "items": {"type": "string"}, "description": "weitere Namen, unter denen dasselbe gemeint ist"},
+                          "rolle": {"type": "string", "enum": ["kosten", "keine"], "description": "kosten: dieses Merkmal (Typ geld) ist der Preis des Dings, den die Seite über die Reise summiert (Übernachtungen); je Art höchstens eines"},
                           "trotzdem": {"type": "boolean", "description": "true, wenn ein ähnliches Merkmal gemeldet wurde und es wirklich "
                                        "ein anderes ist"},
                           "grund": {"type": "string", "description": "warum (steht im Verlauf)"},
@@ -2151,7 +2156,6 @@ DING_ANLEGEN = {"name": "ding_anlegen", "description": "Eine Unterkunft, einen A
                     "titel": {"type": "string", "description": "Name der Unterkunft, des Aufenthalts oder des Orts, Titel der Strecke"},
                     "ort": {"type": "string", "description": "Unterkunft, Aufenthalt: Ort O-… (fehlt er, erst mit ding_anlegen was=ort anlegen)"},
                     "zeit": {"type": "string", "description": "Aufenthalt: wann, als Text („10–12 Uhr“, „abends“)"},
-                    "buchung": {"type": "string", "description": "Buchungsstand, z. B. gebucht oder offen; Vorgabe offen bei buchbarer Art"},
                     "von": {"type": "string", "description": "Strecke: Start O-…"}, "nach": {"type": "string", "description": "Strecke: Ziel O-…"},
                     "art": {"type": "string", "description": "Art dieser Reise (Schlüssel aus merkmale), z. B. pension oder bus"},
                     "hinweis": {"type": "string"}, "buchungslink": {"type": "string", "description": "Unterkunft: Adresse zum Buchen"},
@@ -2159,24 +2163,23 @@ DING_ANLEGEN = {"name": "ding_anlegen", "description": "Eine Unterkunft, einen A
                     "merkmale": MERKMALE_FELD, "quelle": QUELLE_FELD, "geprueft": {"type": "string", "description": "Prüfdatum für die Merkmale, JJJJ-MM-TT"},
                     "name": NAME_FELD},
                     "required": ["was", "titel", "quelle"]}}
-DING_AENDERN = {"name": "ding_aendern", "description": "Felder einer Unterkunft (name, ort, art, hinweis, quelle, buchungslink, frage, buchung), "
-                "eines Aufenthalts ohne Nacht (dazu zeit), einer Strecke (titel, von, nach, art, hinweis, quelle, buchung) oder eines Orts (name, "
-                "hinweis, quelle) ändern; schreibt sofort, der alte Wert bleibt im Verlauf. buchung ist der Buchungsstand („gebucht“, „offen“, "
-                "„Zeitfenster 10 Uhr“), er steht auf der Seite unter Zu buchen. Merkmale ändert wert_eintragen. Die Art ändern dürfen nur "
-                "Organisator:innen. Leerer Text entfernt hinweis, buchungslink, frage, zeit oder buchung.",
+DING_AENDERN = {"name": "ding_aendern", "description": "Felder einer Unterkunft (neuer_name, ort, art, hinweis, quelle, buchungslink, frage), "
+                "eines Aufenthalts ohne Nacht (dazu zeit), einer Strecke (titel, von, nach, art, hinweis, quelle) oder eines Orts (neuer_name, "
+                "hinweis, quelle) ändern; schreibt sofort, der alte Wert bleibt im Verlauf. Merkmale ändert wert_eintragen, die Lage lage_eintragen, "
+                "eine Buchung buchung_anlegen. Die Art ändern dürfen nur Organisator:innen. Leerer Text entfernt hinweis, buchungslink, frage oder zeit.",
                 "inputSchema": {"type": "object", "properties": {
-                    "ziel": {"type": "string", "description": "U-…, A-…, E-… oder O-…"}, "zeit": {"type": "string"}, "buchung": {"type": "string"},
-                    "name": {"type": "string", "description": "neuer Name (Unterkunft, Ort)"}, "titel": {"type": "string", "description": "neuer Titel (Strecke)"},
+                    "ziel": {"type": "string", "description": "U-…, A-…, E-… oder O-…"}, "zeit": {"type": "string"},
+                    "neuer_name": {"type": "string", "description": "neuer Name (Unterkunft, Aufenthalt, Ort)"}, "titel": {"type": "string", "description": "neuer Titel (Strecke)"},
                     "ort": {"type": "string"}, "von": {"type": "string"}, "nach": {"type": "string"}, "art": {"type": "string"},
                     "hinweis": {"type": "string"}, "quelle": {"type": "string"}, "buchungslink": {"type": "string"}, "frage": {"type": "string"},
                     "grund": {"type": "string", "description": "warum (steht im Verlauf)"}, "vorname": NAME_FELD},
                     "required": ["ziel"]}}
-LAGE_EINTRAGEN = {"name": "lage_eintragen", "description": "Lage einer Unterkunft eintragen: Adresse (Straße Nr., PLZ Ort) und/oder "
+LAGE_EINTRAGEN = {"name": "lage_eintragen", "description": "Lage einer Unterkunft oder eines Aufenthalts ohne Nacht eintragen: Adresse (Straße Nr., PLZ Ort) und/oder "
                   "Koordinaten (Breite, Länge). Jede Unterkunft im Plan braucht eine Lage; die Seite verlinkt sie mit Google Maps "
                   "(und Apple Karten). Herkunft (quelle) ist Pflicht, z. B. Website des Hauses oder OpenStreetMap. Schreibt sofort; "
                   "vorher kurz bestätigen lassen.",
                   "inputSchema": {"type": "object", "properties": {
-                      "ziel": {"type": "string", "description": "U-…"},
+                      "ziel": {"type": "string", "description": "U-… oder A-…"},
                       "adresse": {"type": "string", "description": "Postadresse, z. B. „Carrer de sa Lluna 21, 07100 Sóller“"},
                       "koordinaten": {"type": "string", "description": "„Breite, Länge“ in Grad, z. B. „39.7671, 2.7149“"},
                       "quelle": QUELLE_FELD, "geprueft": {"type": "string", "description": "Datum des Nachschlagens, JJJJ-MM-TT (Vorgabe heute)"},
@@ -2193,24 +2196,24 @@ OPTION_FELDER = {"titel": {"type": "string", "description": "Name der Option, z.
                  "schliesst_aus": {"type": "array", "items": {"type": "string"}, "description": "Optionen, die nie zusammen mit dieser gehen"},
                  "ausloeser": {"type": "string", "description": "bei Wahlstellen unterwegs: wann diese Option gilt"},
                  "siehe": {"type": "string", "description": "ID mit mehr dazu, z. B. W-05"},
-                 "merkmale": MERKMALE_FELD, "quelle": {"type": "string", "description": "woher die Alternative stammt; Vorgabe: Vorschlag der Person im Gespräch"},
+                 "merkmale": MERKMALE_FELD, "quelle": {"type": "string", "description": "woher die Alternative stammt (Website, Buch mit Seite, „Name im Gespräch“); Pflicht, gilt auch für die Merkmale"},
                  "grund": {"type": "string", "description": "warum sie vorgeschlagen wird (Verlauf)"}}
 OPTION_ANLEGEN = {"name": "option_anlegen", "description": "Eine Alternative als Option an eine bestehende Wahlstelle hängen (ein weiteres Hotel, "
                   "eine andere Strecke, eine andere Route), Status vorgeschlagen; schreibt sofort. Erst merkmale aufrufen und recherchieren, "
                   "Unterkunft oder Strecke mit ding_anlegen anlegen, dann kurz bestätigen lassen. Entscheiden bleibt bei den Organisator:innen.",
                   "inputSchema": {"type": "object", "properties": {"wahlstelle": {"type": "string", "description": "V-… (aus varianten)"},
                                                                    **OPTION_FELDER, "name": NAME_FELD},
-                                  "required": ["wahlstelle", "titel"]}}
+                                  "required": ["wahlstelle", "titel", "quelle"]}}
 WAHLSTELLE_ANLEGEN = {"name": "wahlstelle_anlegen", "description": "Eine neue Wahlstelle mit mindestens einer Option anlegen, wenn es noch keine "
                       "gibt (varianten zeigt alle). Sie hängt mit an an Tagen, Strecken, Unterkünften, Orten oder Abschnitten; den Plan "
                       "selbst ändert sie nicht. planung: vor der Abreise entscheiden (offen braucht eine Frage F-…); unterwegs: mit Auslöser. "
                       "Schreibt sofort, alle Optionen vorgeschlagen.",
                       "inputSchema": {"type": "object", "properties": {
-                          "titel": {"type": "string"}, "art": {"type": "string", "enum": ["planung", "unterwegs"]},
+                          "titel": {"type": "string"}, "wann": {"type": "string", "enum": ["planung", "unterwegs"], "description": "Vorgabe planung"},
                           "an": {"type": "array", "items": {"type": "string"}, "description": "IDs, an denen die Wahl hängt (T-…, E-…, U-…, O-…, W-…)"},
-                          "bereich": {"type": "string", "description": "Art der Dinge, zwischen denen gewählt wird (Schlüssel aus merkmale); sonst aus den Optionen"},
+                          "art": {"type": "string", "description": "Art der Dinge, zwischen denen gewählt wird (Schlüssel aus merkmale); sonst aus den Optionen"},
                           "frage": {"type": "string", "description": "offene Frage F-… dazu"}, "text": {"type": "string"},
-                          "optionen": {"type": "array", "items": {"type": "object", "properties": OPTION_FELDER, "required": ["titel"]}},
+                          "optionen": {"type": "array", "items": {"type": "object", "properties": OPTION_FELDER, "required": ["titel", "quelle"]}},
                           "name": NAME_FELD},
                           "required": ["titel", "optionen"]}}
 FRAGE_ANLEGEN = {"name": "frage_anlegen", "description": "Eine offene Frage (F-…) anlegen: etwas, das noch zu klären oder zu entscheiden "
@@ -2635,7 +2638,7 @@ def werkzeug(zugang, name, args):
     if name == "varianten":
         return h.varianten(), False
     if name == "merkmale":
-        t, fehler = h.merkmale(str(args.get("ziel") or "").strip(), str(args.get("bereich") or "").strip())
+        t, fehler = h.merkmale(str(args.get("ziel") or "").strip(), str(args.get("art") or args.get("bereich") or "").strip())
         return (fehler, True) if fehler else (t, False)
     return f"Unbekanntes Werkzeug {name}.", True
 

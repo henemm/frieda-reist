@@ -445,14 +445,14 @@ def test_wert_eintragen_an_unterkunft_strecke_und_option(repo):
     assert a["ok"] and a["text"].startswith("Preis pro Nacht an U-02 Pension Burgblick: 95 € (vorher: 85 €). Herkunft: Website der Pension, geprüft 2026-10-29.")
     r, text = routen_auf_main(origin)
     assert r["unterkuenfte"]["U-02"]["merkmale"]["preis"] == {"wert": "95 €", "geprueft": datetime.date(2026, 10, 29), "quelle": "Website der Pension"}
-    assert r["unterkuenfte"]["U-02"]["merkmale"]["fruehstueck"] == {"wert": "inklusive", "notiz": "Beispielwert, erfunden"}   # Nachbarn unberührt
+    assert r["unterkuenfte"]["U-02"]["merkmale"]["fruehstueck"] == {"wert": "inklusive", "quelle": "erfunden (Beispiel)", "notiz": "Beispielwert, erfunden"}   # Nachbarn unberührt
     assert "# Alle Unterkünfte sind erfunden" in text and "# Buchungsstand: aus der Buchung B-01" in text        # Kommentare bleiben
     assert git(origin, "log", "-1", "--format=%s", "main") == "Beispielreise – Malerweg in vier Tagen: U-02 Pension Burgblick: Preis pro Nacht „85 €“ → „95 €“"
     assert "Karl (mitwirkend)" in git(origin, "log", "-1", "--format=%b", "main")
     # Nur die geänderte Stelle: der Rest der Datei ist zeichengleich
     import difflib
     diff = [z for z in difflib.unified_diff(vorher.splitlines(), text.splitlines(), lineterm="", n=0) if z[:1] in "+-" and z[:3] not in ("+++", "---")]
-    assert diff == ['-      preis: {wert: "85 €", notiz: "Beispielwert, erfunden"}',
+    assert diff == ['-      preis: {wert: "85 €", quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}',
                     '+      preis: {wert: "95 €", geprueft: 2026-10-29, quelle: "Website der Pension"}']
     # Werte je Datum: der Eintrag für den 15.5. wird ersetzt, der Eintrag ohne gilt bleibt
     s.vorbereiten()
@@ -461,7 +461,7 @@ def test_wert_eintragen_an_unterkunft_strecke_und_option(repo):
     assert "150 € (am 15.05., 16.05.) (vorher: 140 € (am 15.05.))" in a["text"]
     r, text = routen_auf_main(origin)
     assert r["unterkuenfte"]["U-01"]["merkmale"]["preis"] == [
-        {"wert": "120 €", "notiz": "Beispielwert, erfunden"},
+        {"wert": "120 €", "quelle": "erfunden (Beispiel)", "notiz": "Beispielwert, erfunden"},
         {"wert": "150 €", "gilt": [datetime.date(2027, 5, 15), datetime.date(2027, 5, 16)], "geprueft": datetime.date(2026, 10, 29), "quelle": "Booking"}]
     assert '- {wert: "150 €", gilt: [2027-05-15, 2027-05-16], geprueft: 2026-10-29, quelle: "Booking"}' in text
     # Strecke ohne bisherige Merkmale, Option einer Wahlstelle
@@ -531,7 +531,7 @@ def test_ding_option_wahlstelle_und_frage_anlegen(repo):
     assert a["text"].startswith("Unterkunft U-05 „Pension Elbblick“ angelegt in Rathen, Art pension, Merkmale: preis, fruehstueck.")
     r, text = routen_auf_main(origin)
     u = r["unterkuenfte"]["U-05"]
-    assert u["ort"] == "O-07" and u["art"] == "pension" and u["typ"] == "Pension" and u["buchungslink"].startswith("https://")
+    assert u["ort"] == "O-07" and u["art"] == "pension" and "typ" not in u and u["buchungslink"].startswith("https://")
     assert u["merkmale"]["preis"] == {"wert": "90 €", "quelle": "Website pension-elbblick.example", "geprueft": datetime.date(2026, 10, 29)}
     assert r["orte"]["O-07"] == {"name": "Rathen", "hinweis": "Kurort", "quelle": "Karte"}
     ids = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/ids.yaml"], check=True,
@@ -544,22 +544,25 @@ def test_ding_option_wahlstelle_und_frage_anlegen(repo):
     assert r["strecken"]["E-24"] == {"titel": "Fähre Rathen → Stadt Wehlen", "von": "O-07", "nach": "O-02", "art": "bus", "quelle": "Fahrplan"}
     # Option an bestehender Wahlstelle: Status vorgeschlagen, Verlauf mit Person und Datum
     s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="quelle fehlt"):   # Herkunft ist Pflicht, keine Ersatzquelle (ADR-0001, Frage 5)
+        s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-03", "titel": "Pension Elbblick", "unterkuenfte": ["U-05"]}})
     a = s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-03", "titel": "Pension Elbblick", "unterkuenfte": ["U-05"],
-                                                                         "plus": ["Elbblick"], "grund": "Karl kennt sie"}})
+                                                                         "plus": ["Elbblick"], "grund": "Karl kennt sie", "quelle": "Karl im Gespräch"}})
     assert "V-03.c" in a["text"] and "vorgeschlagen" in a["text"]
     r, text = routen_auf_main(origin)
     o = next(o for o in r["wahlstellen"]["V-03"]["optionen"] if o["id"] == "V-03.c")
-    assert o["unterkuenfte"] == ["U-05"] and o["plus"] == ["Elbblick"] and o["quelle"] == "Vorschlag von Karl im Gespräch (Claude-App)"
+    assert o["unterkuenfte"] == ["U-05"] and o["plus"] == ["Elbblick"] and o["quelle"] == "Karl im Gespräch"
     assert o["verlauf"] == [{"datum": datetime.date.today(), "status": "vorgeschlagen", "wer": "Karl", "grund": "Karl kennt sie"}]
     assert "wer: Karl, grund:" in text and "&id" not in text
     # Wahlstelle planung ohne Frage: die Frage entsteht mit (offene-fragen.md), Schlüssel bleiben gültig
     s.vorbereiten()
-    a = s.schreiben("beispielreise", "wahlstelle_anlegen", {**KARL, "args": {"titel": "Anreise nach Stadt Wehlen", "an": ["T-01"], "bereich": "bahn",
-        "optionen": [{"titel": "S-Bahn wie bisher", "strecken": ["E-20"]}, {"titel": "Mit dem Auto", "text": "Parken in Wehlen", "minus": ["Auto steht vier Tage"]}]}})
+    a = s.schreiben("beispielreise", "wahlstelle_anlegen", {**KARL, "args": {"titel": "Anreise nach Stadt Wehlen", "an": ["T-01"], "art": "bahn",
+        "optionen": [{"titel": "S-Bahn wie bisher", "strecken": ["E-20"], "quelle": "Fahrplan"},
+                     {"titel": "Mit dem Auto", "text": "Parken in Wehlen", "minus": ["Auto steht vier Tage"], "quelle": "Karl im Gespräch"}]}})
     assert "V-04" in a["text"] and "F-04" in a["text"]
     r, _ = routen_auf_main(origin)
     w = r["wahlstellen"]["V-04"]
-    assert w["art"] == "planung" and w["an"] == ["T-01"] and w["bereich"] == "bahn" and w["frage"] == "F-04"
+    assert w["wann"] == "planung" and w["an"] == ["T-01"] and w["art"] == "bahn" and w["frage"] == "F-04" and "bereich" not in w
     assert [o["id"] for o in w["optionen"]] == ["V-04.a", "V-04.b"] and w["optionen"][1]["minus"] == ["Auto steht vier Tage"]
     fragen = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/offene-fragen.md"], check=True, capture_output=True, text=True).stdout
     assert "| F-04 | Anreise nach Stadt Wehlen: welche Option? (V-04) | vor Abreise | offen |" in fragen
@@ -602,13 +605,13 @@ def test_ding_aendern_und_ablehnungen(repo):
     with pytest.raises(sb.Ablehnung, match="abendessen"):
         s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "U-02", "art": "hotel", "grund": "ist ein Hotel"}})
     a = s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "U-03", "art": "pension", "grund": "eher eine Pension"}})
-    assert "art „Gasthof“ → „pension“" in a["text"] and "Grund: eher eine Pension" in a["text"]
+    assert "art „gasthof“ → „pension“" in a["text"] and "Grund: eher eine Pension" in a["text"]
     r, _ = routen_auf_main(origin)
-    assert r["unterkuenfte"]["U-03"]["art"] == "pension" and r["unterkuenfte"]["U-03"]["typ"] == "Pension"
+    assert r["unterkuenfte"]["U-03"]["art"] == "pension" and "typ" not in r["unterkuenfte"]["U-03"]
     s.vorbereiten()
-    a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "O-03", "name": "Hohnstein (Sächs. Schweiz)", "hinweis": ""}})
+    a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "O-03", "neuer_name": "Hohnstein (Sächs. Schweiz)", "hinweis": ""}})
     r, _ = routen_auf_main(origin)
-    assert r["orte"]["O-03"] == {"name": "Hohnstein (Sächs. Schweiz)"}
+    assert r["orte"]["O-03"] == {"name": "Hohnstein (Sächs. Schweiz)", "quelle": "OpenStreetMap; Hinweis Wikipedia (W-05)"}
     s.vorbereiten()
     stand = git(origin, "rev-parse", "main")
     for werkzeug, args, text in (
@@ -626,7 +629,9 @@ def test_ding_aendern_und_ablehnungen(repo):
         ("option_anlegen", {"wahlstelle": "V-99", "titel": "X"}, "gibt es nicht"),
         ("wahlstelle_anlegen", {"titel": "X", "optionen": []}, "mindestens eine Option"),
         ("wahlstelle_anlegen", {"titel": "X", "an": ["T-77"], "optionen": [{"titel": "a"}]}, "gibt es nicht"),
-        ("wahlstelle_anlegen", {"titel": "X", "art": "vielleicht", "optionen": [{"titel": "a"}]}, "planung"),
+        ("wahlstelle_anlegen", {"titel": "X", "wann": "vielleicht", "optionen": [{"titel": "a", "quelle": "x"}]}, "planung"),
+        ("wahlstelle_anlegen", {"titel": "X", "art": "schloss", "optionen": [{"titel": "a", "quelle": "x"}]}, "Art dieser Reise"),
+        ("wahlstelle_anlegen", {"titel": "X", "optionen": [{"titel": "a"}]}, "quelle fehlt"),
         ("frage_anlegen", {"bis": "morgen"}, "„text“ fehlt"),
     ):
         with pytest.raises(sb.Ablehnung, match=text):
@@ -864,8 +869,8 @@ def test_neue_reise_aus_der_anfrage(repo):
 
 
 def test_aufenthalt_ohne_nacht_anlegen_an_den_tag_haengen_und_buchen(repo):
-    """Paket O-5: ding_anlegen was=aufenthalt (A-…, Ort, Aufenthalts-Art, Zeit), tag_aendern aufenthalte, Buchungsstand mit
-    ding_aendern buchung; die Seite zeigt ihn in der Zeitleiste des Tags."""
+    """Paket O-5: ding_anlegen was=aufenthalt (A-…, Ort, Aufenthalts-Art, Zeit), tag_aendern aufenthalte; der Buchungsstand
+    kommt nur noch aus einer Buchung (buchung_anlegen, 29.10.2026), das freie Feld buchung lehnt der Schreibweg ab."""
     _, origin, arbeit, _ = repo
     s = schreiber(repo)
     a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {
@@ -880,14 +885,17 @@ def test_aufenthalt_ohne_nacht_anlegen_an_den_tag_haengen_und_buchen(repo):
     a = s.schreiben("beispielreise", "tag_aendern", {**IDA, "args": {"ziel": "T-04", "aufenthalte": ["A-02"]}})
     assert "aufenthalte [] → ['A-02']" in a["text"]
     s.vorbereiten()
-    a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "A-02", "buchung": "Zeitfenster 14 Uhr gebucht"}})
-    assert "buchung „Zeitfenster 14 Uhr gebucht“" in a["text"]
-    s.vorbereiten()
-    a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "E-20", "buchung": "gebucht"}})
-    assert "buchung „offen“ → „gebucht“" not in a["text"] and "buchung „gebucht“" in a["text"]   # vorher kein Eintrag am Ding
+    with pytest.raises(sb.Ablehnung, match="nur als Buchung"):
+        s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "A-02", "buchung": "Zeitfenster 14 Uhr gebucht"}})
+    with pytest.raises(sb.Ablehnung, match="nur als Buchung"):
+        s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "aufenthalt", "titel": "y", "ort": "O-05", "art": "besichtigung",
+                                                                       "quelle": "x", "buchung": "gebucht"}})
+    a = s.schreiben("beispielreise", "buchung_anlegen", {**KARL, "args": {"fuer": "A-02", "status": "gebucht", "nummer": "Z-14",
+                                                                          "quelle": "Zeitfenster-Ticket per Mail (Test)"}})
+    assert a["ok"]
     r, _ = routen_auf_main(origin)
-    assert r["tage"]["T-04"]["aufenthalte"] == ["A-02"] and r["aufenthalte"]["A-02"]["buchung"] == "Zeitfenster 14 Uhr gebucht"
-    assert r["strecken"]["E-20"]["buchung"] == "gebucht"
+    assert r["tage"]["T-04"]["aufenthalte"] == ["A-02"] and "buchung" not in r["aufenthalte"]["A-02"]
+    assert r["buchungen"]["B-03"]["fuer"] == ["A-02"] and r["buchungen"]["B-03"]["status"] == "gebucht"
     with pytest.raises(Exception, match="Aufenthalts-Art"):
         s.vorbereiten()
         s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "aufenthalt", "titel": "x", "ort": "O-05", "art": "bahn", "quelle": "x"}})
@@ -957,7 +965,7 @@ def test_gemeinsame_frage_bleibt_offen_bis_alles_gewaehlt(repo):
     wurzel, origin, _, _ = repo
     r = wurzel / "reisen/beispielreise/plan/routen.yaml"
     text = r.read_text(encoding="utf-8")
-    alt = "  V-03:\n    titel: Unterkunft in Hohnstein\n    art: planung\n    frage: F-02\n"
+    alt = "  V-03:\n    titel: Unterkunft in Hohnstein\n    wann: planung   # art: (die Art der Dinge) kommt hier aus den Optionen: die Art der ersten Unterkunft\n    frage: F-02\n"
     assert alt in text
     # erfunden: V-01 und V-03 teilen F-01, an V-03 ist noch nichts gewählt
     text = text.replace(alt, alt.replace("F-02", "F-01"))

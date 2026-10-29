@@ -205,3 +205,47 @@ def test_aus_auftrag_der_claude_app(tmp_path):
         neu.aus_auftrag(tmp_path, a)
     with pytest.raises(neu.Fehler, match="kein Auftrag"):
         neu.aus_auftrag(tmp_path, {"id": "A-1", "daten": {}})
+
+
+def test_nachziehen_nur_schluessel(tmp_path):
+    """Abgleich 29.10.2026 (docs/abgleich-2026-10-29.md): neu.py nachziehen bringt eine Reise mit den alten Schlüsseln
+    (typ an Unterkunft und Nacht, bereich und art: planung an Wahlstellen) auf den Stand, ohne eine ID oder einen Wert zu
+    ändern; eine Strecke ohne Art wird gemeldet oder bekommt die angegebene; das Merkmal preis bekommt rolle kosten."""
+    import shutil
+    beispiel = Path(__file__).resolve().parents[2] / "beispiel/reisen/beispielreise"
+    r = tmp_path / "bsp"
+    shutil.copytree(beispiel, r)
+    p = r / "plan/routen.yaml"
+    alt = p.read_text(encoding="utf-8")
+    alt = alt.replace("    art: hotel\n", "    typ: Hotel\n").replace("    art: pension\n", "    typ: Pension\n")
+    alt = alt.replace("    wann: planung   # art: (die Art der Dinge) kommt hier aus den Optionen: die Art der ersten Unterkunft\n",
+                      "    art: planung\n    bereich: pension\n")
+    alt = alt.replace("    wann: unterwegs\n", "    art: unterwegs\n")
+    alt = alt.replace("  E-23: {titel: \"Bus Bad Schandau → Dresden\", von: O-05, nach: O-01, art: bus, quelle",
+                      "  E-23: {titel: \"Bus Bad Schandau → Dresden\", von: O-05, nach: O-01, quelle")
+    p.write_text(alt, encoding="utf-8")
+    a = r / "plan/arten.yaml"
+    a.write_text(a.read_text(encoding="utf-8").replace(", rolle: kosten", ""), encoding="utf-8")
+    cfg = json.loads((r / "reise.json").read_text(encoding="utf-8"))
+    cfg.pop("etappen_ebenen")
+    (r / "reise.json").write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    with pytest.raises(bauen.BauFehler, match="E-23: art fehlt"):      # keine Vorgabe-Art mehr (ADR-0001)
+        bauen.Bauer(r, tmp_path / "v0").daten()
+    m = neu.nachziehen(r, schreiben=False)
+    assert any(t.startswith("OFFEN E-23") for t in m) and "U-01: typ „Hotel“ → art hotel" in m and "V-03: art planung → wann planung" in m
+    assert "V-03: bereich pension → art pension" in m and "V-02: art unterwegs → wann unterwegs" in m
+    assert "arten.yaml hotel: Merkmal preis bekommt rolle kosten" in m and any(t.startswith("reise.json") for t in m)
+    p.write_text(alt.replace("nach: O-01, quelle", "nach: O-01, art: bus, quelle"), encoding="utf-8")
+    vorher = bauen.Bauer(r, tmp_path / "v").daten()   # baut über die Brücke der alten Schlüssel
+    p.write_text(alt, encoding="utf-8")
+    m = neu.nachziehen(r, {"E-23": "bus"})
+    assert "E-23: art bus (angegeben)" in m and not [t for t in m if t.startswith("OFFEN")]
+    text = p.read_text(encoding="utf-8")
+    assert "typ:" not in text and "bereich:" not in text and "art: planung" not in text
+    assert "# Alle Unterkünfte sind erfunden" in text                     # Kommentare bleiben
+    nachher = bauen.Bauer(r, tmp_path / "n").daten()
+    assert nachher["route"]["unterkuenfte"] == vorher["route"]["unterkuenfte"]
+    assert [w["id"] for w in nachher["route"]["wahlstellen"]] == [w["id"] for w in vorher["route"]["wahlstellen"]]
+    assert nachher["route"]["arten"]["hotel"]["kosten"] == "preis" and nachher["route"]["arten"]["herberge"]["kosten"] == "preis"   # pauschal; „pro Person“ nimmt die Organisator:in mit merkmal_definieren (rolle keine) heraus
+    assert json.loads((r / "reise.json").read_text(encoding="utf-8"))["etappen_ebenen"]["unterwegs"][0] == "Höhenprofil"
+    assert neu.nachziehen(r) == []                                        # zweiter Lauf: nichts mehr zu tun
