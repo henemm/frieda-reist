@@ -578,6 +578,28 @@ def test_ontologie_mitwirkende_schlagen_vor(schreibweg):
     assert f and "nur lesen" in t
 
 
+def test_kategorie_definieren_ueber_den_schreibweg(schreibweg):
+    """kategorie_definieren (O-7): Organisator:innen schreiben direkt, Mitwirkende schlagen vor, Gäste sehen das Werkzeug nicht."""
+    import konten
+    basis, ablage = schreibweg
+    for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (MITREISEND, True), (GAST, False)):
+        assert ("kategorie_definieren" in {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}) is da, token
+    Schreibweg.antwort = (200, {"ok": True, "text": "Kategorie „Aussicht“ angelegt: Schlüssel aussicht, Gruppe punkt, Farbe #336699."})
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "kategorie_definieren", kategorie="aussicht", bezeichnung="Aussicht", gruppe="punkt", farbe="#336699")
+    assert not f and "Kategorie „Aussicht“ angelegt" in t
+    pfad, geheim, body = Schreibweg.anfragen[-1]
+    assert pfad == "/beispielreise/kategorie_definieren" and geheim == konten.dienst_geheimnis()
+    assert body["args"] == {"kategorie": "aussicht", "bezeichnung": "Aussicht", "gruppe": "punkt", "farbe": "#336699"}
+    vorher = len(Schreibweg.anfragen)
+    t, f = werkzeug(basis, KARL, "kategorie_definieren", kategorie="aussicht", bezeichnung="Aussicht", gruppe="punkt", farbe="blau",
+                    art="viewpoint", art_bezeichnung="Aussichtspunkt")
+    assert not f and "Vorschlag R-" in t and len(Schreibweg.anfragen) == vorher       # nichts direkt geschrieben
+    e = next(x for x in rm.eintraege(ablage / "beispielreise") if x["ziel"] == "aussicht")
+    assert e["name"] == "Karl" and e["art"] == "Ergänzung"
+    assert e["text"] == ("Kartenkategorie festlegen – art: viewpoint; kategorie: aussicht; bezeichnung: Aussicht; gruppe: punkt; art_bezeichnung: "
+                         "Aussichtspunkt; farbe: blau")
+
+
 def test_wert_eintragen_ueber_den_schreibweg(schreibweg):
     basis, ablage = schreibweg
     for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (MITREISEND, True), (GAST, False)):
