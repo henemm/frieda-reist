@@ -110,6 +110,10 @@ Die Skripte setzen daraus die Umgebung der Software (`RM_ABLAGE`, `KN_SEITEN`, `
 
 **Meldeweg:** `FR_MELDEN` ist eine ausführbare Datei der Instanz (ein relativer Pfad gilt ab der Wurzel des Reisen-Repos), aufgerufen als `<befehl> <normal|high> <betreff> <text> [erledigt]`. `erledigt` heißt: Das ist ein reiner Bericht, es ist nichts zu tun. Fehler kommen ohne `erledigt` und sollen offen bleiben, bis jemand sie ansieht. Wie die Nachricht ankommt (Mail, Telegram, eine Warteschlange), entscheidet die Instanz in ihrem Skript.
 
+## Seiten prüfen (angemeldet, im echten Browser)
+
+Die Reiseseiten verlangen eine Anmeldung (E-Mail und Code). Für Prüfungen der veröffentlichten Seiten gilt der übliche Weg von Playwright: ein eigenes Konto mit den geringsten Rechten, die Sitzung außerhalb des Browsers erzeugen und als Cookie einsetzen (`storageState`). Die Anmeldung selbst wird nicht nachgespielt und bekommt keine Hintertür. `betrieb/pruefsitzung.py <datei.json> [--stunden 2]` legt beim ersten Mal das Konto `pruefung@<Adresse der Seiten>` an (kein Mitglied einer Reise, sieht nur, was eine fremde Person mit dem Link sieht), stellt eine kurze Sitzung aus und schreibt sie als storageState (Rechte 600, nie ins Repo). Der Aufruf geschieht als Dienstbenutzer mit den Werten der Instanz (`RM_SEITEN` oder `FR_KONTEN`, `FR_KN_ADRESSE`). Im Browser: `browser.newContext({storageState: "<datei>"})`, dann die Adresse der Reise mit dem geheimen Pfad öffnen. Das Prüfkonto liest damit alle Reiseseiten; schreiben darf es nirgends.
+
 ## Überwachung
 
 Nach fachlichem Erfolg berühren die Läufe Stempel in `<FR_DIENST>/`: `veroeffentlichen-erfolg` (nichts Neues oder alles veröffentlicht) und `waechter-erfolg`. Ein Monitor der Instanz meldet, wenn ein Stempel zu alt ist (etwa 2 h beim Veröffentlichen, 36 h beim Wächter), ein Dienst `failed` ist oder der Schreibweg auf `127.0.0.1:<FR_SB_PORT>/gesund` nicht mit `{"gesund": true}` antwortet. Wer einen Heartbeat-Dienst hat, setzt `FR_HEARTBEAT_VEROEFFENTLICHEN`: Die Adresse wird nur nach Erfolg zusätzlich abgerufen. Seiten, `api/gesund` und der Konnektor unter `/gesund` lassen sich von außen prüfen.
