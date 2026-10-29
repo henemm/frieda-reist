@@ -834,6 +834,32 @@ class Handbuch:
             z += self.merkmal_zeilen(krit, s.get("merkmale"), s.get("fehlt")) or ["(keine Merkmale)"]
         return "\n".join(z), None
 
+    def kategorien(self):
+        """Die Kartenkategorien dieser Reise (plan/kategorien.yaml) in Worten (Werkzeug kategorien)."""
+        k = self.d.get("kategorien") or {}
+        if not k:
+            return ("Diese Reise hat noch keine Kartenkategorien. Mit kategorie_definieren legen Organisator:innen sie an "
+                    "(Gruppe punkt für die Etappen-Karte, wissen für die Karte in einem Wissensabschnitt).")
+        z = ["# Kartenkategorien dieser Reise (plan/kategorien.yaml)",
+             "Ändern oder ergänzen mit kategorie_definieren (Schlüssel aus dieser Liste); vorher kurz bestätigen lassen."]
+        for gruppe, titel in (("punkt", "Etappen-Karte"), ("wissen", "Karte in einem Wissensabschnitt")):
+            sub = {a: d for a, d in k.items() if d.get("gruppe") == gruppe}
+            if not sub:
+                continue
+            z.append(f"## Gruppe {gruppe} – {titel}")
+            for a, d in sub.items():
+                zeile = f"- {a} – {d.get('name')}"
+                if d.get("einzahl"):
+                    zeile += f" (einzeln: {d['einzahl']})"
+                zeile += f"; Farbe {d.get('farbe')}"
+                zeile += "; zeigt die Nummer" if d.get("nummeriert") else f"; Symbol {d.get('symbol') or 'keins'}"
+                z.append(zeile)
+                for w, ad in (d.get("arten") or {}).items():
+                    teile = [ad.get("name") or w] + ([f"Symbol {ad['symbol']}"] if ad.get("symbol") else []) \
+                        + (["als Umriss"] if ad.get("umriss") else []) + ([f"Hinweis: {ad['hinweis']}"] if ad.get("hinweis") else [])
+                    z.append(f"  - art {w}: " + "; ".join(teile))
+        return "\n".join(z)
+
     def option(self, oid):
         """-> (Wahlstelle, Option) zu einer Option-ID V-01.a oder (None, None)."""
         for w in self.r.get("wahlstellen", []):
@@ -2007,6 +2033,9 @@ WERT_SCHEMA = {"type": "object", "properties": {
     "gilt": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}],
              "description": "nur bei Werten je Datum: Datum JJJJ-MM-TT oder Liste solcher Daten"}}, "required": ["wert"]}
 WERKZEUGE += [
+    {"name": "kategorien", "description": "Die Kartenkategorien dieser Reise: Schlüssel, Name in der Legende, Farbe, Symbol, Gruppe "
+     "(Etappen-Karte oder Wissenskarte) und die art-Wörter der Punkte. Vor kategorie_definieren aufrufen (kein Doppeltes anlegen).",
+     "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}},
     {"name": "merkmale", "description": "Welche Merkmale eine Alternative braucht (z. B. bei Unterkünften Preis, Frühstück, "
      "Öffnung), je mit Hinweis zum Recherchieren und zum gezielten Nachfragen; zu einer Wahlstelle auch, was jede Option "
      "schon hat und was fehlt. Vor wert_eintragen, option_anlegen und ding_anlegen aufrufen.",
@@ -2637,6 +2666,8 @@ def werkzeug(zugang, name, args):
         return h.fragen(bool(args.get("alle"))), False
     if name == "varianten":
         return h.varianten(), False
+    if name == "kategorien":
+        return h.kategorien(), False
     if name == "merkmale":
         t, fehler = h.merkmale(str(args.get("ziel") or "").strip(), str(args.get("art") or args.get("bereich") or "").strip())
         return (fehler, True) if fehler else (t, False)
