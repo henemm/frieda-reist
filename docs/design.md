@@ -74,7 +74,7 @@ Vorher „Wanderführer“ (Papiergrund, Waldgrün, Serifen, Etiketten in Großb
 
 - **Farben** (hell / dunkel): Grund `#f8f8f5` / `#151816`, Fläche `#ffffff` / `#1d211e`, Text `#1d2420` / `#eceee9`, gedämpft `#5b645e` / `#a5aca6`, Linie `#e4e5df` / `#2c312d`, Akzent `#1f7a57` / `#6fd0a5`, helle Akzentfläche `#e3f1ea` / `#1f3329`, offen `#9a5b00` auf `#fbeed6` / `#f0c46a` auf `#3a3017`. Text auf Grund und Fläche hat hell und dunkel mindestens 4,5:1 (WCAG AA), der Akzent auf der hellen Akzentfläche 4,5:1.
 - **Schrift:** Source Sans 3 für Titel und Text (keine Serifen mehr), Tagesnummer 800, Titel mit leicht engerem Abstand.
-- **Etiketten** (Atom Etikett: Ding-Etikett, Tagesdatum, Kennzahl, Start und Ziel, Merkmal einer Merkmalliste) in normaler Schreibweise, 0,85 rem, halbfett, gedämpft. Titel einer Ebene oder Gruppe 1,2 rem fett.
+- **Etiketten** (Atom Etikett: Ding-Etikett, Tagesdatum, Kennzahl, Start und Ziel, Merkmal einer Merkmalliste) in normaler Schreibweise, Stufe Etikett, halbfett, gedämpft. Titel einer Ebene oder Gruppe Stufe Untertitel, fett.
 - **Kennzahlen** als hellgrüne Kacheln (Radius 14 px) mit Symbol im Etikett: Gehzeit (Uhr), Aufstieg, Abstieg, Strecke; am Handy 2 × 2.
 - **Symbole an Etiketten:** Nacht und Unterkunft (Bett), Wahl (Abzweig), Orte (Nadel).
 - **Flächen:** die Fläche, an der man handelt, weiß, ohne Rahmen, weicher Schatten, Radius 18 px; übrige Karten (Plan, Listen) vorerst mit feiner Linie.
@@ -87,6 +87,17 @@ Vorher „Wanderführer“ (Papiergrund, Waldgrün, Serifen, Etiketten in Großb
 ## Schrift und Breite (27.10.2026)
 
 - **Schrift.** Alle Schriftgrößen stehen in `rem`, nichts in `px` (Ausnahme: Beschriftung und Zeichen auf der Karte). Die Wurzelgröße wächst mit dem Bildschirm: Handy 16 px, ab 760 px 17 px, ab 1100 px 19 px, ab 1700 px 20 px. So wird der Text am Rechner größer, ohne dass das Handy sich ändert, und jede Größe ändert man an einer Stelle.
+- **Schriftleiter** (Product Owner 29.10.2026): genau fünf Stufen als Tokens, jede Schriftgröße der Seite ist eine davon.
+
+  | Stufe | Token | Größe | Wofür |
+  |---|---|---|---|
+  | Titel | `--t-titel` | 1,75 rem | Titel einer Ansicht, eines Tags, der Reise im Kopf |
+  | Untertitel | `--t-untertitel` | 1,2 rem | Titel einer Ebene oder Gruppe, Kennzahl in der Kachel, Tagestitel in Listen |
+  | Text | `--t-text` | 1,0625 rem | Fließtext, Werte (Merkmalliste und Vergleichstabelle gleich), Tabellen, Knöpfe, Felder |
+  | Nebentext | `--t-klein` | 0,875 rem | Hinweise, Verlauf, kleine Knöpfe, Herkunft hinter dem „i“ |
+  | Etikett | `--t-etikett` | 0,8125 rem | Etiketten, Pillen, Datum, Legende, Kopfzeilen von Einträgen |
+
+  Ausnahmen mit eigener Größe: die Ziffer der Tagesnummer, die Beschriftung der Leiste unten (Rahmen), Hochzahlen von Fußnoten (`em`) und die Karte (`px`). Pico-Überschriften, -Knöpfe und -Felder sind auf die Stufen gesetzt. Tests: `test_schriftleiter_ohne_freie_groessen` (Stil) und der Rundgang in `seiten_browser.mjs` (jede Ansicht, Handy und Rechner).
 - **Breite.** Kopf und alle Ansichten teilen die Breite `--breite` (Handy voll, ab 760 px 920 px, ab 1100 px 1280 px, ab 1700 px 1400 px). Eine Ansicht ist nie schmaler oder breiter als die andere. Fließtext bleibt auf Lesebreite `--lese` (44 rem), damit Zeilen nicht zu lang werden; Karten, Tabellen und die Karte nutzen die ganze Breite.
 - **Spalten.** Ab 1100 px stehen die Tage des Plans in zwei Spalten, ein Tag mit geöffnetem Vergleich nimmt die ganze Breite. Der Vergleich zeigt am Handy 2, bis 1099 px 4 und ab 1100 px 5 Möglichkeiten nebeneinander (`vglMax`).
 

@@ -46,6 +46,7 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
     assert e["fehler"] == []
     assert e["leer"] == []
     assert e["breit"] == []          # keine Ansicht steht auf dem Handy seitlich über
+    assert e["schrift"] == {}        # jeder Text hat eine Stufe der Schriftleiter (Größe -> Ansicht und Element)
     assert e["ohneArt"] == []        # jede Kennung gehört einer Art der Ontologie mit Bausteinen an
     # Wahl-Modul: öffnet an der Stelle, zeigt mindestens 2 Möglichkeiten (Handy als Karten, höchstens 2; Rechner als Tabelle
     # mit allen gültigen, sortierbar, Zeile klappt auf; Alternativen D1, 29.10.2026)
@@ -297,3 +298,21 @@ def test_anmeldeseiten_im_browser(tmp_path, monkeypatch, browser):
     e = json.loads(out.strip().splitlines()[-1])
     assert e["nachAdresse"] == "Code eingeben", e
     assert e["antworten"][0] == 200 and e["nachCode"] == "Code eingeben", e   # neues Konto: jetzt fragt sie den Namen
+
+
+def test_schriftleiter_ohne_freie_groessen():
+    """Schriftleiter (docs/design.md): Jede Schriftgröße im Stil der Vorlage ist eine der fünf Stufen (var(--t-…)).
+    Ausnahmen: Wurzel (html, %), Leiste unten (nav, Suche), Ziffer der Tagesnummer, Karte (px, Leaflet) und Hochzahlen (em)."""
+    html = (WURZEL / "engine/vorlage.html").read_text(encoding="utf-8")
+    css = html[html.index("<style>"):html.index("</style>")]
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    frei = []
+    for regel in re.findall(r"([^{}]*)\{([^{}]*)\}", css):
+        sel, inhalt = regel
+        for wert in re.findall(r"font(?:-size)?:\s*([^;]+)", inhalt):
+            if "var(--t-" in wert or wert.strip() in ("inherit",) or not re.search(r"\d(?:rem|px|em|%)", wert):
+                continue
+            if re.search(r"^\s*(html|.*\b(nav a|#suchKnopf|tagnr|leaflet|rh-|sup\.fn)\b)", sel.strip()) or "leaflet" in sel or ".rh-" in sel:
+                continue
+            frei.append(f"{sel.strip()[-60:]}: {wert}")
+    assert frei == [], frei
