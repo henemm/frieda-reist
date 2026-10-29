@@ -752,7 +752,7 @@ def test_freischalten_erneuert_den_baustein_bei_neuer_vorlage(fs):
 
 def test_freischalten_erneuert_auch_einen_von_hand_benannten_baustein(fs):
     """Ein von Hand angelegter Baustein kann einen Pfad tragen, der nicht mit dem Ordner der Reise beginnt (eine Reise
-    „japan-2027“ unter „/japan-<token>/“). Die Erneuerung liest den Pfad aus dem Baustein und lässt den Link, wie er ist;
+    „rundreise-2027“ unter „/rundreise-<token>/“). Die Erneuerung liest den Pfad aus dem Baustein und lässt den Link, wie er ist;
     bis zum 29.10.2026 brach sie hier stumm ab, und die Reise bekam den Belege-Block nie."""
     sn = fs["snippets"] / "probe-beispielreise.conf"
     pfad = "beispiel-0123456789abcdef01234567"

@@ -42,7 +42,7 @@ abruf() {  # <url> -> HTTP-Code
 snippet="$SNIPPETS/$FR_INSTANZ-$REISE.conf"
 rendern() {  # <pfad> -> Baustein aus der Vorlage; der Pfad ist das erste Glied des geheimen Links („<reise>-<token>“)
   # Der Pfad wird als Ganzes eingesetzt, nicht aus Reise und Token zusammengesetzt: Ein von Hand angelegter Baustein
-  # kann einen anderen Namen als den Ordner der Reise tragen (etwa „japan-…“ für „japan-2027“), und der Link muss bleiben.
+  # kann einen anderen Namen als den Ordner der Reise tragen (etwa „rundreise-…“ für „rundreise-2027“), und der Link muss bleiben.
   sed -e "s|__REISE__-__TOKEN__|$1|g" -e "s|__TOKEN__|${1##*-}|g" -e "s|__REISE__|$REISE|g" -e "s|__SEITEN__|$FR_SEITEN|g" \
     -e "s|__RM_PORT__|$FR_RM_PORT|g" -e "s|__ZONE__|${FR_INSTANZ//-/_}_api|g" -e "s|__INSTANZ__|$FR_INSTANZ|g" \
     "$FR_BETRIEB/vorlagen/nginx-reise.conf"
