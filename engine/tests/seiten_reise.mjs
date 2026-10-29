@@ -67,8 +67,10 @@ for (const breite of [390, 1300]) {
   await p.waitForSelector(".tagseite");
   a.unterkunft = await p.evaluate(() => ({inNacht: !!document.querySelector(".ebene-nacht #U-02"), reiter: document.querySelector("#nav a.on").textContent,
     // Webseite aus dem Kontakt nach außen, kein Link der Nacht auf sich selbst (29.10.2026)
-    web: (document.querySelector('.ebene-nacht a.web-link[target="_blank"]') || {}).href || null,
-    selbst: document.querySelectorAll('.ebene-nacht a[href="#U-02"]').length}));
+    web: (document.querySelector('.ebene-nacht a.web-link[target="_blank"]:not(.karten-links a)') || {}).href || null,
+    selbst: document.querySelectorAll('.ebene-nacht a[href="#U-02"]').length,
+    // Lage (ADR-0004): Punkt aus plan/punkte.yaml, Link zu Google Maps; Apple Karten nur auf Apple-Geräten
+    karte: [...document.querySelectorAll('.ebene-nacht .lage a')].map(a => a.href)}));
   await p.evaluate(() => { location.hash = "offen"; });
   await p.waitForSelector("#zu-buchen");
   a.buchen = await p.evaluate(() => [...document.querySelectorAll("#zu-buchen .wzeile")].map(z => [z.getAttribute("href"), z.querySelector(".chip").textContent]));

@@ -378,6 +378,7 @@ tr.auf .wm-pfeil{transform:rotate(90deg)}
 .pico .wm-tab:has(.wm-zeile) :is(td,th){padding:9px 10px}
 .pico .wm-tab tr.wm-mehr>td{background:var(--tint);padding:4px 14px 12px}
 .web-link{font-weight:600;white-space:nowrap}
+.karten-links{display:inline-flex;flex-wrap:wrap;gap:4px 12px}
 .wm-einzeln{margin-top:10px}
 .wm-karte{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card)}
 .wm-karte.an{border-color:var(--acc);box-shadow:inset 3px 0 0 var(--acc)}
@@ -913,10 +914,10 @@ function zid(id) {
 }
 /* Bausteine nach Ebenen (Designsystem, frieda-reist#18, docs/design.md). Jede Ansicht setzt sich aus ihnen zusammen,
    statt dieselbe Sache selbst zu zeichnen; die Stile stehen im <style> in derselben Ordnung.
-   Atome:     symbol, chip (Zustand), Etikett (CSS), merkmalWert (Wert mit Herkunft), zid (Kennung), planMarke, webLink
+   Atome:     symbol, chip (Zustand), Etikett (CSS), merkmalWert (Wert mit Herkunft), zid (Kennung), planMarke, webLink, kartenLinks
    Moleküle:  kennzahlLeiste, merkmalListe, reiseText (Reisetext mit Merkmallisten), reiterGruppe, ebeneKopf, dingEtikett,
               listenZeile, zeilenKarte, rmEintrag, agEintrag, eintragGruppen, kartenLegende, umschalter, kontoKnopf,
-              nameFeld, fehltZeile, optionChips, standLeiste
+              nameFeld, fehltZeile, optionChips, standLeiste, lageZeile
    Organismen: Ding (nachtZeile, unterkunftKarte, streckeZeile), Wahl-Modul (wahlEinstieg, wahlVergleich, wahlKarte),
               tagKarte (Tageskasten mit wegVerlauf), tagEbenen, tagOrteZeilen, nachtAbschnitt (Nacht der Tagesseite),
               tagZeile (Zeitachse), uebersichtKarte, zuEntscheiden, zuBuchen (Listen aus listenZeile)
@@ -1180,7 +1181,8 @@ function unterkunftKarte(id) {
   const k = el("div", {class: "karte ziel", id, "data-ziel": id},
     dingEtikett(["Unterkunft", (R.kategorien || {})[u.kategorie]].filter(Boolean).join(" · "), u.kategorie, "unterkunft"), el("div", {class: "k"}, u.name, zid(id)));
   k.append(el("div", {class: "z"}, [u.typ, ortName(u.ort)].filter(Boolean).join(" · ")));
-  if (u.kontakt) k.append(el("div", {class: "z"}, el("b", {}, "Kontakt: "), u.kontakt.replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ") || "–", " ", webLink(webAus(u.kontakt), true)));
+  k.append(lageZeile(u));
+  if (u.kontakt || webVon(u)) k.append(el("div", {class: "z"}, el("b", {}, "Kontakt: "), (u.kontakt || "").replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ") || "–", " ", webLink(webVon(u), true)));
   k.append(el("div", {class: "chips"}, chip(u.buchung === "offen" ? "offen" : "plan", "Buchung: " + u.buchung), u.frage ? chip("leise", u.frage, {href: "#" + u.frage}) : null));
   if (u.naechte.length) {
     const z = el("div", {class: "z"}, el("b", {}, "Nächte: "));
@@ -1277,7 +1279,30 @@ function webAus(text) {
   const m = WEB.exec(String(text || "").replace(/\S+@\S+/g, ""));   // E-Mail-Adressen sind keine Webseite
   return m ? (/^https?:/i.test(m[0]) ? m[0] : "https://" + m[0]).replace(/[.)]+$/, "") : null;
 }
-const webseite = o => (o.unterkuenfte || []).map(u => R.unterkuenfte[u] && webAus(R.unterkuenfte[u].kontakt)).find(Boolean) || null;
+// Webseite einer Unterkunft: der Buchungslink, sonst die Webseite aus dem Kontakt
+const webVon = u => u && (u.buchungslink || webAus(u.kontakt)) || null;
+const webseite = o => (o.unterkuenfte || []).map(u => webVon(R.unterkuenfte[u])).find(Boolean) || null;
+// Atom Kartenlinks (ADR-0004): Lage einer Unterkunft (Adresse und/oder Punkt) als Link zu Google Maps, auf Apple-Geräten
+// zusätzlich zu Apple Karten (Product Owner 29.10.2026). Mit Adresse sucht der Link nach Name und Adresse, sonst nach dem Punkt.
+const APPLE = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+function kartenLinks(u) {
+  const a = u && u.adresse && u.adresse.wert, p = u && u.punkt && u.punkt.wert;
+  if (!a && !p) return null;
+  const q = a ? `${u.name}, ${a}` : `${p[0]},${p[1]}`;
+  const google = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+  const apple = "https://maps.apple.com/?q=" + encodeURIComponent(u.name) + (p ? `&ll=${p[0]},${p[1]}` : "") + (a ? "&address=" + encodeURIComponent(a) : "");
+  return el("span", {class: "karten-links"}, el("a", {class: "web-link", href: google, target: "_blank", rel: "noopener"}, "Google Maps ↗"),
+    APPLE ? el("a", {class: "web-link", href: apple, target: "_blank", rel: "noopener"}, "Apple Karten ↗") : null);
+}
+// Molekül Lage: Adresse (oder „Koordinaten“) mit Herkunft und den Kartenlinks; ohne Lage ein leiser Hinweis
+function lageZeile(u, ohneHinweis) {
+  const l = kartenLinks(u);
+  if (!l) return ohneHinweis ? null : el("div", {class: "z klein"}, "Lage fehlt");
+  const v = u.adresse || u.punkt;
+  return el("div", {class: "z lage"}, el("b", {}, u.adresse ? "Adresse: " : "Lage: "),
+    u.adresse ? u.adresse.wert : u.punkt.wert.map(x => x.toFixed(4).replace(".", ",")).join(" · "), " ",
+    v.quelle ? el("span", {class: "z klein", title: `Quelle: ${v.quelle}${v.geprueft ? ", geprüft " + v.geprueft : ""}`}, "ⓘ") : null, " ", l);
+}
 // Atom Webseite: Link nach außen in neuem Fenster; fehlt sie, ein leiser Hinweis (ergänzen im Gespräch mit Frieda)
 const webLink = (x, ohneHinweis) => { const u = typeof x === "string" ? x : x ? webseite(x) : null;
   return u ? el("a", {class: "web-link", href: u, target: "_blank", rel: "noopener"}, "Webseite ↗") : ohneHinweis ? null : el("span", {class: "z klein"}, "Webseite fehlt"); };
@@ -1438,7 +1463,7 @@ function optionBlock(w, o, ohneMerkmale, ohneId) {
   // und Webseite statt eines Links auf dieselbe Seite
   for (const uid of o.unterkuenfte || []) if (R.unterkuenfte[uid]) { const u = R.unterkuenfte[uid];
     b.append(PLAN_DA ? el("div", {class: "z"}, link(uid, "→ " + u.name))
-      : el("div", {class: "z"}, u.kontakt ? [el("b", {}, "Kontakt: "), u.kontakt.replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ") || "–", " "] : null, webLink(o, true))); }
+      : [lageZeile(u), el("div", {class: "z"}, u.kontakt ? [el("b", {}, "Kontakt: "), u.kontakt.replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ") || "–", " "] : null, webLink(o, true))]); }
   if (o.tage && o.tage.length) {
     const aktivTage = o.tage.filter(tid => R.tage.some(t => t.id === tid));
     if (aktivTage.length) {
@@ -2999,6 +3024,11 @@ function ansichtBausteine(m) {
   const webEcht = R && Object.values(R.unterkuenfte).map(x => webAus(x.kontakt)).find(Boolean);
   teil("Atom", "Webseite", "Link nach außen in neuem Fenster, aus dem Kontakt der Unterkunft; fehlt sie, ein leiser Hinweis.",
     el("div", {class: "chips"}, webLink(webEcht || "https://example.org/"), webEcht ? null : el("span", {class: "z klein"}, "(Muster)"), webLink(null)));
+  const mitLage = R && Object.values(R.unterkuenfte).find(x => x.adresse || x.punkt);
+  teil("Atom", "Kartenlinks", "Lage einer Unterkunft als Link zu Google Maps, auf Apple-Geräten auch zu Apple Karten (ADR-0004).",
+    kartenLinks(mitLage || {name: "Muster", adresse: {wert: "Musterstraße 1, 12345 Musterort", quelle: "Muster"}}), mitLage ? null : el("span", {class: "z klein"}, " (Muster)"));
+  teil("Molekül", "Lage", "Adresse mit Herkunft und Kartenlinks; ohne Lage ein leiser Hinweis.",
+    lageZeile(mitLage || {name: "Muster", adresse: {wert: "Musterstraße 1, 12345 Musterort", quelle: "Muster"}}), lageZeile({name: "ohne Lage"}));
   teil("Atom", "Etikett", "Sagt, was etwas ist; normale Schreibweise, gedämpft. Ein Symbol nur, wo es die Art sofort zeigt.",
     el("div", {class: "chips"}, dingEtikett("Nacht", null, "nacht"), dingEtikett("Wahl", null, "wahl"), el("span", {class: "etikett"}, "Etikett ohne Symbol")));
   if (R && R.plaene.length) teil("Atom", "Planfarbe", "Jeder Plan hat eine Farbe: als Punkt in Legende, Tabelle und Überschrift, als Linie im Umschalter wie auf der Karte.",
