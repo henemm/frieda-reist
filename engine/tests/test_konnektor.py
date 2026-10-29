@@ -452,6 +452,14 @@ def test_merkmale_lesen(dienst):
     assert "Preis pro Nacht: 120 €" in t
 
 
+def test_kategorien_lesen(dienst):
+    """Das Gegenstück zu kategorie_definieren: die Kategorien der Reise lassen sich auch lesen."""
+    basis, ablage = dienst
+    t, f = werkzeug(basis, MITREISEND, "kategorien")
+    assert not f and ("Kartenkategorien" in t)
+    if "noch keine" not in t:
+        assert "Farbe" in t and "Gruppe" in t
+
 def test_merkmale_einer_strecke(dienst):
     """Paket 3 (#18): Merkmale einer Strecke (Liste ihrer Art). Vorschlagen und Werte je Datum gehen seit O-3 über den Schreibweg
     (option_anlegen, wert_eintragen; test_schreiben.py)."""
