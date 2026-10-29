@@ -572,17 +572,15 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .rh-pw{background:none;border:0}
 .rh-p{width:100%;height:100%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--card);box-shadow:0 1px 3px rgba(0,0,0,.35);color:#fff;font-size:11px;font-weight:700;line-height:1}
 .rh-p .sym{width:14px;height:14px}
-.rh-p.kat-wegpunkt{background:var(--fg);color:var(--bg)} .rh-p.kat-unterkunft{background:#2f5d8a} .rh-p.kat-einkehr{background:#b0632b}
-.rh-p.kat-wasser{background:#1f86b5} .rh-p.kat-notfall{background:#6b4a8b}
-/* Recherche-Karten (Issue #64): Art des Orts als Farbe, Legende unter der Karte, Regionswahl darüber */
-.rh-p.kat-schauplatz{background:#c62a2a} .rh-p.kat-vorbild{background:#7a4db0} .rh-p.kat-biografie{background:#b07800}
-.rh-p.kat-sehenswert{background:#1e5a43} .rh-p.kat-onsen{background:#1f86b5} .rh-p.kat-verkehr{background:#5b6168}
+/* Farbe, Symbol und Namen der Kartenpunkte kommen aus plan/kategorien.yaml der Reise (--pk je Punkt, katFarbe) */
+.rh-p{background:var(--pk,var(--farbe-grau))} .rh-p.kontrast{color:var(--bg)}
+/* Recherche-Karten (Issue #64): Kategorie des Orts als Farbe, Legende unter der Karte, Regionswahl darüber */
 .wkarte{margin:8px 0 12px}
 .kartenlinks{display:flex;flex-direction:column;gap:2px;margin:4px 0}
 .pico .regionen{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
 .pico .regionen button{all:unset;cursor:pointer;font-size:0.875rem;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card)}
 .pico .regionen button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--bg)}
-.rh-p.kat-wasser.art-quelle{background:var(--card);color:#1f86b5;border-color:#1f86b5}
+.rh-p.umriss{background:var(--card);color:var(--pk);border-color:var(--pk)}
 .leaflet-popup-content{font:inherit;font-size:14px;margin:10px 12px;line-height:1.35}
 .leaflet-popup-content .pk{font-size:12px;color:var(--mut)} .leaflet-popup-content .pq{font-size:11px;color:var(--mut);margin-top:4px}
 .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--card);color:var(--fg)}
@@ -2070,15 +2068,17 @@ function karteZeichnen(plaene, info, box) {
    (Wegpunkte des Buchs, Unterkünfte, Einkehr, Wasser, Bus/Notfall), Kategorien ein- und ausblendbar.
    Wird erst gezeichnet, wenn sie sichtbar ist (Leaflet braucht eine Größe). Auf dem Telefon verschiebt
    ein Finger die Seite, nicht die Karte: Verschieben erst nach einem Tipp in die Karte. */
-const PUNKT_KAT = {wegpunkt: "Wegpunkte aus dem Buch", unterkunft: "Unterkünfte", einkehr: "Einkehr", wasser: "Wasser", notfall: "Bus und Notfall"};
-const PUNKT_ART = {trinkwasser: "Trinkwasser (laut OpenStreetMap)", quelle: "Quelle oder Brunnen, Trinkbarkeit ungeprüft",
-  bus: "Bushaltestelle", taxi: "Taxistand", pharmacy: "Apotheke", clinic: "Klinik", hospital: "Krankenhaus", doctors: "Arztpraxis",
-  restaurant: "Restaurant", cafe: "Café", bar: "Bar", pub: "Kneipe", fast_food: "Imbiss", biergarten: "Biergarten",
-  hotel: "Hotel", hostel: "Herberge", guest_house: "Pension", alpine_hut: "Hütte", wilderness_hut: "Schutzhütte",
-  schutzhuette: "Schutzhütte", apartment: "Ferienwohnung", chalet: "Ferienhaus"};
-const PUNKT_SYM = {unterkunft: "unterkunft", einkehr: "einkehr", wasser: "wasser", bus: "bus", taxi: "taxi", pharmacy: "apotheke"};
+// Kategorien der Kartenpunkte: Namen, Farben, Symbole und Arten stehen in plan/kategorien.yaml der Reise (D.kategorien)
+const KATEGORIEN = D.kategorien || {};
+const katFarbe = f => !f ? "var(--farbe-grau)" : f[0] === "#" ? f : f === "kontrast" ? "var(--fg)" : `var(--farbe-${f})`;
+const katDef = k => KATEGORIEN[k] || {name: k, farbe: null, arten: {}};
+const punktArt = p => (katDef(p.kat).arten || {})[p.art] || {};
+const punktMarke = (p, inhalt) => {
+  const k = katDef(p.kat), kontrast = k.farbe === "kontrast";
+  return `<span class="rh-p${punktArt(p).umriss ? " umriss" : ""}${kontrast ? " kontrast" : ""}" style="--pk:${katFarbe(k.farbe)}">${inhalt}</span>`;
+};
 let EKARTEN = [];
-const punktName = p => p.name || PUNKT_ART[p.art] || PUNKT_KAT[p.kat];
+const punktName = p => p.name || punktArt(p).name || katDef(p.kat).name;
 function etappenKarte(sid) {
   const K = R && R.karte, punkte = (R && R.punkte || {})[sid] || [], weg = K && K.wege && K.wege[sid];
   if (!weg || !K.grundkarte || !window.protomapsL) return null;
@@ -2102,17 +2102,17 @@ function etappenKarte(sid) {
     const gruppen = {};
     punkte.forEach((p, i) => {
       const g = gruppen[p.kat] = gruppen[p.kat] || L.layerGroup().addTo(karte);
-      const s = p.kat === "wegpunkt" ? null : PUNKT_SYM[p.art] || PUNKT_SYM[p.kat];
+      const nummer = katDef(p.kat).nummeriert, s = nummer ? null : punktArt(p).symbol || katDef(p.kat).symbol;
       // Farbe im inneren Element: Pico setzt den Hintergrund von Leaflet-Markierungen zurück
-      const icon = L.divIcon({className: "rh-pw", iconSize: p.kat === "wegpunkt" ? [22, 22] : [24, 24],
-        html: `<span class="rh-p kat-${p.kat} art-${p.art || ""}">${p.kat === "wegpunkt" ? p.nr : s ? symbol(s).outerHTML : ""}</span>`});
-      const mk = L.marker(p.lage, {icon, title: punktName(p), alt: punktName(p), riseOnHover: true, zIndexOffset: p.kat === "wegpunkt" ? 500 : 0}).addTo(g);
+      const icon = L.divIcon({className: "rh-pw", iconSize: nummer ? [22, 22] : [24, 24],
+        html: punktMarke(p, nummer ? p.nr : s ? symbol(s).outerHTML : "")});
+      const mk = L.marker(p.lage, {icon, title: punktName(p), alt: punktName(p), riseOnHover: true, zIndexOffset: nummer ? 500 : 0}).addTo(g);
       mk.bindPopup(() => punktPopup(sid, i, p), {maxWidth: 260});
       eintrag.marken[i] = mk;
     });
     const ebenen = {};
-    for (const [k, titel] of Object.entries(PUNKT_KAT)) if (gruppen[k])
-      ebenen[`${titel} (${punkte.filter(p => p.kat === k).length})`] = gruppen[k];
+    for (const [k, d] of Object.entries(KATEGORIEN)) if (d.gruppe === "punkt" && gruppen[k])
+      ebenen[`${d.name} (${punkte.filter(p => p.kat === k).length})`] = gruppen[k];
     if (Object.keys(ebenen).length) L.control.layers(null, ebenen, {collapsed: true, position: "topright"}).addTo(karte);
     karte.fitBounds(linie.getBounds(), {padding: [18, 18]});
   };
@@ -2124,9 +2124,12 @@ function etappenKarte(sid) {
 }
 function punktPopup(sid, i, p) {
   const d = el("div", {},
-    el("b", {}, p.kat === "wegpunkt" ? `${p.nr} · ${punktName(p)}` : punktName(p)),
-    el("div", {class: "pk"}, p.kat === "wegpunkt" ? "Wegpunkt im Buch" : [PUNKT_KAT[p.kat], p.name && PUNKT_ART[p.art]].filter(Boolean).join(" · ")));
-  if (p.kat === "wasser" && p.art === "quelle") d.append(el("div", {}, p.trinkbar === "yes" ? "laut OpenStreetMap trinkbar, nicht geprüft" : p.trinkbar === "no" ? "laut OpenStreetMap kein Trinkwasser" : "Trinkbarkeit ungeprüft"));
+    el("b", {}, katDef(p.kat).nummeriert ? `${p.nr} · ${punktName(p)}` : punktName(p)),
+    el("div", {class: "pk"}, katDef(p.kat).nummeriert ? katDef(p.kat).einzahl || katDef(p.kat).name
+      : [katDef(p.kat).name, p.name && punktArt(p).name].filter(Boolean).join(" · ")));
+  if (p.trinkbar === "yes") d.append(el("div", {}, "laut OpenStreetMap trinkbar, nicht geprüft"));
+  else if (p.trinkbar === "no") d.append(el("div", {}, "laut OpenStreetMap kein Trinkwasser"));
+  else if (punktArt(p).hinweis) d.append(el("div", {}, punktArt(p).hinweis));
   if (p.offen) d.append(el("div", {}, "Öffnungszeiten laut OpenStreetMap: " + p.offen));
   if (p.id && R.unterkuenfte[p.id]) d.append(el("div", {}, link(p.id, R.unterkuenfte[p.id].name + " im Plan")));
   const imText = document.querySelector(`a.kp[data-p="${sid}:${i}"]`);
@@ -2142,8 +2145,6 @@ function punktPopup(sid, i, p) {
    Offline-Grundkarte. Liegen die Orte in mehreren Regionen (Sapporo und Matsumoto), wählt eine Tastenreihe die Region.
    Jeder Punkt lässt sich zusätzlich in Google Maps öffnen (braucht Netz). */
 const WK = D.wissen_karte;
-const WISSEN_KAT = {schauplatz: "Schauplatz", vorbild: "Reales Vorbild", biografie: "Biografie", sehenswert: "Sehenswert",
-  einkehr: "Essen und Trinken", unterkunft: "Unterkunft", onsen: "Onsen und Bad", verkehr: "Bahnhof und Hafen"};
 function wissenKarte(bid) {
   const punkte = WK && WK.punkte[bid];
   if (!punkte || !window.protomapsL) return null;
@@ -2152,8 +2153,8 @@ function wissenKarte(bid) {
   const box = el("div", {class: "kartenbox ekarte", role: "region", "aria-label": "Karte der Orte in diesem Abschnitt"});
   const hinweis = touch ? el("p", {class: "ziehhinweis"}, "In die Karte tippen, dann lässt sie sich verschieben. Punkte antippen für Details.") : null;
   const tasten = regionen.length > 1 ? el("div", {class: "regionen", role: "toolbar", "aria-label": "Region der Karte"}) : null;
-  const kats = Object.keys(WISSEN_KAT).filter(k => punkte.some(p => p.kat === k));
-  const legende = kartenLegende(kats.map(k => [el("i", {class: "rh-p kat-" + k}), WISSEN_KAT[k]]), "p");
+  const kats = Object.keys(KATEGORIEN).filter(k => KATEGORIEN[k].gruppe === "wissen" && punkte.some(p => p.kat === k));
+  const legende = kartenLegende(kats.map(k => [el("i", {class: "rh-p" + (KATEGORIEN[k].farbe === "kontrast" ? " kontrast" : ""), style: "--pk:" + katFarbe(KATEGORIEN[k].farbe)}), KATEGORIEN[k].einzahl || KATEGORIEN[k].name]), "p");
   const eintrag = {sid: bid, box, karte: null, marken: [], region: null};
   EKARTEN.push(eintrag);
   let schicht = null;
@@ -2183,7 +2184,7 @@ function wissenKarte(bid) {
     karte.on("click", () => { karte.scrollWheelZoom.enable(); karte.dragging.enable(); if (hinweis) hinweis.hidden = true; });
     box.addEventListener("mouseleave", () => karte.scrollWheelZoom.disable());
     punkte.forEach((p, i) => {
-      const icon = L.divIcon({className: "rh-pw", iconSize: [24, 24], html: `<span class="rh-p kat-${p.kat}">${i + 1}</span>`});
+      const icon = L.divIcon({className: "rh-pw", iconSize: [24, 24], html: punktMarke(p, i + 1)});
       const mk = L.marker(p.lage, {icon, title: p.name, alt: p.name, riseOnHover: true});
       mk.bindPopup(() => wissenPopup(bid, i, p), {maxWidth: 260});
       eintrag.marken[i] = mk;
@@ -2200,7 +2201,7 @@ function wissenKarte(bid) {
   return el("div", {class: "ekarte-rahmen wkarte"}, tasten, box, hinweis, legende);
 }
 function wissenPopup(bid, i, p) {
-  const d = el("div", {}, el("b", {}, `${i + 1} · ${p.name}`), el("div", {class: "pk"}, WISSEN_KAT[p.kat]));
+  const d = el("div", {}, el("b", {}, `${i + 1} · ${p.name}`), el("div", {class: "pk"}, katDef(p.kat).einzahl || katDef(p.kat).name));
   if (p.hinweis) d.append(el("div", {}, p.hinweis));
   // Apple Karten: von dort lässt sich der Ort in einen eigenen Reiseführer legen (25.10.2026)
   d.append(el("div", {class: "kartenlinks"},

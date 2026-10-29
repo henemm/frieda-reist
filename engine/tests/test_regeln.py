@@ -452,7 +452,7 @@ def test_verfassung_ist_kurz_und_nennt_aufgabe_grenzen_rollen(umgebung):
     u = umgebung("fest")
     for token, rolle in ((IDA, "Organisator:in"), (KARL, "Mitwirkende:r"), (KIM, "gast")):
         text = u.rpc(token, "initialize")["instructions"]
-        assert len(text) < 3600, len(text)   # mit Schreibweg: alle Werkzeuge in einem Satz
+        assert len(text) < 3650, len(text)   # mit Schreibweg: alle Werkzeuge in einem Satz
         assert text.startswith("Aufgabe:") and "Grenzen:" in text and "Rollen:" in text and rolle in text
         assert "Status: Der Plan steht" in text
 

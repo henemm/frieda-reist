@@ -85,6 +85,40 @@ def warten_auf(datei, versuche=50):
     return False
 
 
+# ---------- Kategorien der Kartenpunkte (O-7) ----------
+
+def kategorien_auf_main(origin):
+    text = git(origin, "show", "main:reisen/beispielreise/plan/kategorien.yaml")
+    return yaml.safe_load(text)["kategorien"], text
+
+
+def test_kategorie_anlegen_aendern_und_ablehnen(repo):
+    wurzel, origin, arbeit, stempel = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "kategorie_definieren", {**IDA, "args": {
+        "kategorie": "aussicht", "bezeichnung": "Aussichtspunkte", "gruppe": "punkt", "farbe": "#336699", "symbol": "karte"}})
+    assert a["ok"] and "aussicht" in a["text"]
+    k, text = kategorien_auf_main(origin)
+    assert k["aussicht"] == {"gruppe": "punkt", "name": "Aussichtspunkte", "farbe": "#336699", "symbol": "karte"}
+    assert k["wasser"]["arten"]["quelle"]["umriss"] is True            # Bestand der Beispielreise unverändert
+    assert text.startswith("# Kategorien der Kartenpunkte dieser Reise") and "Ida" in text
+    # ändern: Art-Zusatz und Name; die Gruppe lässt sich nicht ändern
+    a = s.schreiben("beispielreise", "kategorie_definieren", {**IDA, "args": {
+        "kategorie": "aussicht", "bezeichnung": "Aussicht", "art": "viewpoint", "art_bezeichnung": "Aussichtspunkt"}})
+    assert a["ok"]
+    k, _ = kategorien_auf_main(origin)
+    assert k["aussicht"]["name"] == "Aussicht" and k["aussicht"]["arten"]["viewpoint"] == {"name": "Aussichtspunkt"}
+    for args, grund in (({"kategorie": "aussicht", "gruppe": "wissen"}, "Gruppe"),
+                        ({"kategorie": "neu", "bezeichnung": "Neu"}, "braucht"),
+                        ({"kategorie": "neu", "bezeichnung": "N", "gruppe": "punkt", "farbe": "rot"}, "farbe"),
+                        ({"kategorie": "aussicht", "symbol": "nix"}, "symbol"),
+                        ({"kategorie": "aussicht", "art_hinweis": "x", "bezeichnung": "Aussicht"}, "art")):
+        with pytest.raises(sb.Ablehnung, match=grund):
+            s.schreiben("beispielreise", "kategorie_definieren", {**IDA, "args": args})
+    with pytest.raises(sb.Ablehnung, match="nichts daran soll sich ändern"):
+        s.schreiben("beispielreise", "kategorie_definieren", {**IDA, "args": {"kategorie": "aussicht", "bezeichnung": "Aussicht"}})
+
+
 # ---------- Arten ----------
 
 def test_art_anlegen_geht_nach_main_und_wird_veroeffentlicht(repo):

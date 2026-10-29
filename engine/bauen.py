@@ -38,7 +38,7 @@ except ImportError:
              "  python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt\n"
              "Danach läuft:  python3 engine/bauen.py <reise>")
 from reise import Reise  # noqa: E402
-from routen import Routen, verhalten_anwenden  # noqa: E402
+from routen import FARBEN, Routen, verhalten_anwenden  # noqa: E402
 import gpx  # noqa: E402
 
 ZIEL_ID = re.compile(r"^[A-Za-z0-9][\w.\-]{0,79}$", re.ASCII)
@@ -254,6 +254,7 @@ class Bauer:
         self.umzug = (umzug or os.environ.get("FR_UMZUG_NACH") or "").rstrip("/") or None  # neue Adresse (Ursprung), siehe sw.vorlage.js
         self.ziel_dir = Path(ziel_dir)
         self.fehler = []
+        self._kategorien = None  # plan/kategorien.yaml, beim ersten Gebrauch geladen
         self.ids = {}
         self.bilder = {}  # Quelldatei -> relativer Zielpfad
         self.grundkarte = None  # PMTiles-Datei der Offline-Karte, falls vorhanden
@@ -605,6 +606,7 @@ class Bauer:
         # Karten in der Recherche: Orte je Block auf regionalen Offline-Karten (reise.json wissen_punkte; Issue #64)
         wissen_karte = self.wissen_karte(c["wissen_punkte"], abschnitte) if c.get("wissen_punkte") else None
 
+        kategorien = self.kategorien_laden()   # auch ohne Punkte prüfen, damit ein Fehler in der Datei nicht schlummert
         if self.fehler:
             raise BauFehler(list(dict.fromkeys(self.fehler)))
         return {
@@ -615,6 +617,7 @@ class Bauer:
             "fragen": fragen,
             "route": route,
             "wissen_karte": wissen_karte,
+            "kategorien": kategorien,
             "wunsch_vorschlaege": wunsch_vorschlaege,
         }
 
@@ -663,6 +666,68 @@ class Bauer:
                         "gewaehlt": bool(option) and optionen[option]["status"] == "gewaehlt"}
         return aus
 
+    def kategorien_laden(self):
+        """plan/kategorien.yaml der Reise -> {Schlüssel: Definition}; fehlt die Datei, ist es leer. Wer Punkte hat,
+        braucht Kategorien (kategorie_pruefen meldet es je Punkt)."""
+        if self._kategorien is not None:
+            return self._kategorien
+        rel = "plan/kategorien.yaml"
+        self._kategorien = {}
+        if not (self.reise_dir / rel).exists():
+            return self._kategorien
+        try:
+            roh = yaml.safe_load(self.lesen(rel)) or {}
+        except yaml.YAMLError as e:
+            self.fehler.append(f"{rel}: kein gültiges YAML ({e}).")
+            return self._kategorien
+        roh = roh.get("kategorien") if isinstance(roh, dict) else None
+        if not isinstance(roh, dict):
+            self.fehler.append(f"{rel}: braucht den Abschnitt „kategorien:“.")
+            return self._kategorien
+        for k, d in roh.items():
+            wo = f"{rel} {k}"
+            if not re.fullmatch(KATEGORIE_MUSTER, str(k)):
+                self.fehler.append(f"{wo}: Schlüssel nur aus Kleinbuchstaben, Ziffern und _.")
+                continue
+            if not isinstance(d, dict) or d.get("gruppe") not in KATEGORIE_GRUPPEN:
+                self.fehler.append(f"{wo}: gruppe muss {' oder '.join(KATEGORIE_GRUPPEN)} sein.")
+                continue
+            if set(d) - KATEGORIE_FELDER:
+                self.fehler.append(f"{wo}: unbekannte Felder {', '.join(sorted(set(d) - KATEGORIE_FELDER))}.")
+            if not d.get("name"):
+                self.fehler.append(f"{wo}: name fehlt.")
+            f = d.get("farbe")
+            if f not in KATEGORIE_FARBEN and not (isinstance(f, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", f)):
+                self.fehler.append(f"{wo}: farbe muss {', '.join(KATEGORIE_FARBEN)} oder #rrggbb sein.")
+            if d.get("symbol") and d["symbol"] not in SYMBOLE:
+                self.fehler.append(f"{wo}: symbol muss {', '.join(SYMBOLE)} sein.")
+            arten = d.get("arten") or {}
+            if not isinstance(arten, dict):
+                self.fehler.append(f"{wo}: arten muss eine Liste „art: {{name: …}}“ sein.")
+                arten = {}
+            for a, ad in arten.items():
+                ad = ad if isinstance(ad, dict) else {"name": ad}
+                if set(ad) - KATEGORIE_ART_FELDER:
+                    self.fehler.append(f"{wo} {a}: unbekannte Felder {', '.join(sorted(set(ad) - KATEGORIE_ART_FELDER))}.")
+                if ad.get("symbol") and ad["symbol"] not in SYMBOLE:
+                    self.fehler.append(f"{wo} {a}: symbol muss {', '.join(SYMBOLE)} sein.")
+                arten[a] = ad
+            self._kategorien[k] = {"gruppe": d["gruppe"], "name": str(d.get("name") or k), "einzahl": d.get("einzahl"), "farbe": f,
+                                   "symbol": d.get("symbol"), "nummeriert": bool(d.get("nummeriert")), "arten": arten}
+        return self._kategorien
+
+    def kategorie_pruefen(self, wo, p, gruppe):
+        """Die kat eines Kartenpunkts muss in plan/kategorien.yaml stehen, in der Gruppe der Karte."""
+        k = self.kategorien_laden()
+        gueltig = [n for n, d in k.items() if d["gruppe"] == gruppe]
+        if p.get("kat") in gueltig:
+            return
+        if not gueltig:
+            self.fehler.append(f"{wo}: kat „{p.get('kat')}“ – die Reise hat keine Kategorien der Gruppe {gruppe} "
+                               "(plan/kategorien.yaml; im Gespräch mit kategorie_definieren anlegen, docs/ontologie.md).")
+        else:
+            self.fehler.append(f"{wo}: kat muss eine von {', '.join(gueltig)} sein (plan/kategorien.yaml).")
+
     def wissen_karte(self, rel, abschnitte):
         """Punkte je Wissens-Block (W-….<slug>) mit regionalen Grundkarten. Erzeugt vom Betrieb (Punkte aus OpenStreetMap),
         von Hand geprüft. Punkte ohne Lage (nicht gefunden) oder außerhalb jeder Grundkarte kommen nicht auf die
@@ -701,8 +766,7 @@ class Bauer:
             zeigen = []
             for i, p in enumerate(liste or []):
                 wo = f"{rel}: {bid} Punkt {i + 1}"
-                if p.get("kat") not in WISSEN_KATEGORIEN:
-                    self.fehler.append(f"{wo}: kat muss eine von {', '.join(WISSEN_KATEGORIEN)} sein.")
+                self.kategorie_pruefen(wo, p, "wissen")
                 if not p.get("name"):
                     self.fehler.append(f"{wo}: name fehlt.")
                 lage = p.get("lage")
@@ -779,8 +843,7 @@ class Bauer:
             for i, p in enumerate(liste or []):
                 wo = f"{rel}: {sid} Punkt {i + 1}"
                 lage = p.get("lage")
-                if p.get("kat") not in PUNKT_KATEGORIEN:
-                    self.fehler.append(f"{wo}: kat muss eine von {', '.join(PUNKT_KATEGORIEN)} sein.")
+                self.kategorie_pruefen(wo, p, "punkt")
                 if not (isinstance(lage, list) and len(lage) == 2 and all(isinstance(x, (int, float)) for x in lage)):
                     self.fehler.append(f"{wo}: lage braucht [Breite, Länge].")
                 if not p.get("quelle"):
@@ -1081,8 +1144,13 @@ VENDOR = {"pico-2.1.1.conditional.jade.min.css": "pico-2.1.1.min.css",   # Pico 
 VENDOR_GRUNDKARTE = {"protomaps-leaflet-5.1.0.js": "protomaps-leaflet-5.1.0.js"}
 # Symbole: Lucide (ISC, lucide.dev), lokal in engine/vendor; beim Bauen als <symbol> in die Seite (Issue #25)
 LUCIDE = "lucide-1.55.0"
-PUNKT_KATEGORIEN = ("wegpunkt", "unterkunft", "einkehr", "wasser", "notfall")
-WISSEN_KATEGORIEN = ("schauplatz", "vorbild", "biografie", "sehenswert", "einkehr", "unterkunft", "onsen", "verkehr")
+# Kategorien der Kartenpunkte (docs/ontologie.md „Kartenpunkte“, ADR-0001, Issue O-7): Welche es gibt, sagt allein die Reise in
+# plan/kategorien.yaml. Die Software prüft nur die Form: Gruppe, Name, Farbe (Palette der Seite oder #rrggbb), Symbol (aus SYMBOLE).
+KATEGORIE_GRUPPEN = ("punkt", "wissen")       # punkt: Etappen-Karte (plan/punkte.yaml), wissen: Karte im Wissensabschnitt
+KATEGORIE_FELDER = {"gruppe", "name", "einzahl", "farbe", "symbol", "nummeriert", "arten"}
+KATEGORIE_ART_FELDER = {"name", "symbol", "hinweis", "umriss"}
+KATEGORIE_FARBEN = FARBEN + ("kontrast",)   # kontrast: Schrift- auf Hintergrundfarbe der Seite (hell wie dunkel lesbar)
+KATEGORIE_MUSTER = r"[a-z][a-z0-9_]*"
 
 
 def datei_hash(pfad):

@@ -73,11 +73,11 @@ SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern",
                      "frage_beantworten", "entscheiden", "person_einladen", "person_entfernen", "wunsch_aendern"}
 # Werkzeuge, die direkt in die Ontologie der Reise schreiben (ADR-0001, O-3; engine/schreiben.py): nur bei Instanzen mit
 # Schreibweg (KN_SCHREIBDIENST); Organisator:innen schreiben, Mitwirkende schlagen vor (Rückmeldung der Art Ergänzung)
-ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "wert_eintragen", "ding_anlegen", "ding_aendern", "lage_eintragen",
+ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "kategorie_definieren", "wert_eintragen", "ding_anlegen", "ding_aendern", "lage_eintragen",
                        "option_anlegen", "wahlstelle_anlegen", "frage_anlegen", "tag_aendern", "wissen_schreiben", "frage_schliessen",
                        "reise_status_setzen", "einstellung_setzen", "buchung_anlegen", "buchung_aendern")
 # Aktion der Regelprüfung je Werkzeug; art_definieren und merkmal_definieren gehen für Mitwirkende als Rückmeldung (Vorschlag)
-ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "wert_eintragen": "wert",
+ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "kategorie_definieren": "ontologie", "wert_eintragen": "wert",
                     "ding_anlegen": "ding", "ding_aendern": "ding", "lage_eintragen": "ding", "option_anlegen": "alternative",
                     "wahlstelle_anlegen": "alternative", "frage_anlegen": "frage", "tag_aendern": "plan", "wissen_schreiben": "wissen",
                     "frage_schliessen": "frage_schliessen", "reise_status_setzen": "einstellung", "einstellung_setzen": "einstellung",
@@ -1005,7 +1005,8 @@ def schreib_anfrage(reise, werkzeug_, anfrage):
 
 def ontologie_text(name, args):
     """Vorschlag oder Eintrag in Worten: welche Art, welches Merkmal, welche Felder."""
-    felder = ("art", "bezeichnung", "grundform", "farbe", "beschreibung", "summiert", "merkmal", "typ", "werte", "veraenderlich",
+    felder = ("art", "kategorie", "bezeichnung", "einzahl", "gruppe", "symbol", "nummeriert", "art_bezeichnung", "art_symbol",
+              "art_hinweis", "art_umriss", "grundform", "farbe", "beschreibung", "summiert", "merkmal", "typ", "werte", "veraenderlich",
               "stufe", "einheit", "hilfe", "frage", "auch", "grund")
     teile = []
     for f in felder:
@@ -1016,7 +1017,7 @@ def ontologie_text(name, args):
             s = stufe_schluessel(v)
             v = "abgeschaltet (aus)" if s == "aus" else stufe_wort(s) if s else v
         teile.append(f"{f}: {' | '.join(map(str, v)) if isinstance(v, list) else v}")
-    return ("Art festlegen" if name == "art_definieren" else "Merkmal festlegen") + " – " + "; ".join(teile)
+    return ({"art_definieren": "Art festlegen", "kategorie_definieren": "Kartenkategorie festlegen"}.get(name, "Merkmal festlegen")) + " – " + "; ".join(teile)
 
 
 def ids_der_reise(d):
@@ -1065,7 +1066,7 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
     wer = {**wer, "name": name_.strip()}
     rest = {k: v for k, v in args.items() if k not in ("name", "vorname", "trotzdem")}
     if vorschlag:
-        ziel = art_schluessel(str(args.get("art") or args.get("bezeichnung") or "")) or "allgemein"
+        ziel = art_schluessel(str(args.get("kategorie") or args.get("art") or args.get("bezeichnung") or "")) or "allgemein"
         e, fehler = rueckmeldung_senden(reise, {"name": wer["name"], "art": "Ergänzung", "ziel": ziel[:rm.LAENGE["ziel"]],
                                                 "text": ontologie_text(name, rest)[:rm.LAENGE["text"]], "quelle": "über Claude"})
         if fehler:
@@ -2087,6 +2088,28 @@ ART_DEFINIEREN = {"name": "art_definieren", "description": "Eine Art dieser Reis
                                    "Höhenmeter werden summiert und als berechnete Merkmale angelegt"},
                       "grund": {"type": "string", "description": "warum (steht im Verlauf)"},
                       "name": NAME_FELD}}}
+KATEGORIE_DEFINIEREN = {"name": "kategorie_definieren", "description": "Eine Kategorie der Kartenpunkte dieser Reise anlegen oder ändern "
+                        "(z. B. Einkehr, Wasser, Schauplatz, Bahnhof): Name in der Legende, Farbe, Symbol und, was ein art-Wort der Punkte "
+                        "(z. B. quelle, hotel) auf der Karte heißt. Gruppe punkt gehört zur Etappen-Karte, wissen zur Karte in einem "
+                        "Wissensabschnitt. Organisator:innen schreiben direkt (plan/kategorien.yaml, gilt sofort, Seite in wenigen Minuten), "
+                        "Mitwirkende schlagen vor. Punkte mit einer Kategorie, die die Reise nicht kennt, lassen den Bau scheitern: erst "
+                        "die Kategorie anlegen. Vorher kurz bestätigen lassen, was genau eingetragen wird.",
+                        "inputSchema": {"type": "object", "properties": {
+                            "kategorie": {"type": "string", "description": "Schlüssel (klein, ohne Umlaute, z. B. einkehr)"},
+                            "bezeichnung": {"type": "string", "description": "Name in der Legende, Mehrzahl bei Punkten (beim Anlegen nötig)"},
+                            "einzahl": {"type": "string", "description": "Name für einen einzelnen Punkt, falls anders"},
+                            "gruppe": {"type": "string", "enum": ["punkt", "wissen"], "description": "beim Anlegen nötig; später nicht änderbar"},
+                            "farbe": {"type": "string", "description": "blau, braun, lila, gruen, tuerkis, oliv, grau, rosa, schiefer, kontrast "
+                                      "(Schriftfarbe der Seite) oder #rrggbb (beim Anlegen nötig)"},
+                            "symbol": {"type": "string", "description": "Symbol im Punkt, eines der Seite (z. B. einkehr, wasser, unterkunft, bus)"},
+                            "nummeriert": {"type": "boolean", "description": "der Punkt zeigt seine Nummer (nr) statt eines Symbols"},
+                            "art": {"type": "string", "description": "nur für Angaben zu einem art-Wort der Punkte dieser Kategorie (z. B. quelle)"},
+                            "art_bezeichnung": {"type": "string", "description": "Name dieser art auf der Karte"},
+                            "art_symbol": {"type": "string", "description": "Symbol dieser art"},
+                            "art_hinweis": {"type": "string", "description": "Satz im Popup dieser art, z. B. Trinkbarkeit ungeprüft"},
+                            "art_umriss": {"type": "boolean", "description": "Punkt dieser art als Umriss statt gefüllt (für Ungeprüftes)"},
+                            "grund": {"type": "string", "description": "warum (steht im Verlauf)"},
+                            "name": NAME_FELD}}}
 MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "Ein Merkmal einer Art dieser Reise anlegen oder ändern: "
                       "umbenennen, Typ und Werte, veränderlich (braucht dann ein Prüfdatum), Stufe (nötig | gut zu wissen | zusätzlich; "
                       "aus schaltet es für diese Reise ab), Hilfe zum Recherchieren, Frage an die Person, weitere Namen. "
@@ -2443,7 +2466,7 @@ def anleitung(zugang, d):
                     "person_einladen ein (Rolle und Link gelten sofort). ")
                  + "Den Stand zeigt rueckmeldungen."
                  + (" Du schreibst direkt in die Reise, geprüft von Regeln: Arten und Merkmale (art_definieren, merkmal_definieren; bei einer "
-                    "neuen Art fragen, was zu jeder Sache bekannt sein muss und was sich ändern kann), Werte mit Herkunft und Prüfdatum "
+                    "neuen Art fragen, was zu jeder Sache bekannt sein muss und was sich ändern kann), Kartenkategorien (kategorie_definieren), Werte mit Herkunft und Prüfdatum "
                     "(wert_eintragen; erst selbst recherchieren, merkmale sagt wo), Unterkünfte, Strecken, Orte (ding_anlegen, ding_aendern), "
                     "Alternativen (option_anlegen, wahlstelle_anlegen), der Plan eines Tags (tag_aendern), Wissen in eigenen Worten mit "
                     "Herkunft (wissen_schreiben), Fragen (frage_anlegen, frage_beantworten, frage_schliessen), Buchungen als eigenes Ding "
@@ -2657,7 +2680,7 @@ def werkzeuge_fuer(zugang):
     wer = wer_spricht(zugang, d) or {"rolle": "gast"}
     _, bausteine = zustand_von(d)
     werkzeuge = []
-    ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN, WERT_EINTRAGEN, DING_ANLEGEN, DING_AENDERN, LAGE_EINTRAGEN, OPTION_ANLEGEN, WAHLSTELLE_ANLEGEN,
+    ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN, KATEGORIE_DEFINIEREN, WERT_EINTRAGEN, DING_ANLEGEN, DING_AENDERN, LAGE_EINTRAGEN, OPTION_ANLEGEN, WAHLSTELLE_ANLEGEN,
                  FRAGE_ANLEGEN, TAG_AENDERN, WISSEN_SCHREIBEN, FRAGE_SCHLIESSEN, REISE_STATUS_SETZEN, EINSTELLUNG_SETZEN,
                  BUCHUNG_ANLEGEN, BUCHUNG_AENDERN] if schreibdienst() else []
     for w in WERKZEUGE + [ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN, RUECKMELDUNG_ERLEDIGEN] + ontologie:

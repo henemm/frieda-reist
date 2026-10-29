@@ -507,6 +507,12 @@ def test_wissen_karte(reise, tmp_path, capsys):
                                     encoding="utf-8")
     (reise / "medien/karte").mkdir(parents=True)
     (reise / "medien/karte/dresden.pmtiles").write_bytes(b"PMTiles\x03" + bytes(93) + b"\x0e" + bytes(25))
+    (reise / "plan/kategorien.yaml").write_text("""
+kategorien:
+  schauplatz: {gruppe: wissen, name: Schauplatz, farbe: '#c62a2a'}
+  einkehr_ort: {gruppe: wissen, name: Essen, farbe: rosa}
+  verkehr: {gruppe: wissen, name: Bahnhof, farbe: grau, symbol: bus}
+""", encoding="utf-8")
     (reise / "wp.yaml").write_text("""
 grundkarten:
   dresden: {titel: Dresden, rahmen: {nord: 51.2, sued: 50.9, west: 13.5, ost: 14.0}}
@@ -514,7 +520,7 @@ grundkarten:
 bloecke:
   W-20.teil:
   - {name: Neustadt, kat: schauplatz, lage: [51.07, 13.75], quelle: 'OSM node/1, Stand 2026-10-25'}
-  - {name: Nirgendwo, kat: einkehr}
+  - {name: Nirgendwo, kat: einkehr_ort}
   - {name: Leipzig, kat: verkehr, lage: [51.34, 12.37], quelle: 'OSM node/2, Stand 2026-10-25'}
   - {name: Loschwitz, kat: schauplatz, hinweis: geschlossen, lage: [51.05, 13.82], quelle: 'OSM node/3, Stand 2026-10-25'}
 """, encoding="utf-8")
@@ -530,10 +536,26 @@ bloecke:
     assert "Leipzig</a>" not in html
     aus = capsys.readouterr().out
     assert "Grundkarten fehlen: leipzig" in aus and "Nirgendwo" in aus
+    assert wk["punkte"]["W-20.teil"][0]["kat"] == "schauplatz" and d["kategorien"]["verkehr"]["symbol"] == "bus"
     assert "karte-dresden.pmtiles" in (tmp_path / "dist/sw.js").read_text() and (tmp_path / "dist/karte-dresden.pmtiles").exists()
     assert "protomaps-leaflet" in (tmp_path / "dist/index.html").read_text()
     (reise / "wp.yaml").write_text("bloecke:\n  W-99.x:\n  - {name: A, kat: quatsch, lage: [1, 2], quelle: x}\n", encoding="utf-8")
     assert "Block W-99.x gibt es nicht" in meldungen(reise, tmp_path)
+    (reise / "wp.yaml").write_text("bloecke:\n  W-20.teil:\n  - {name: A, kat: quatsch, lage: [1, 2], quelle: x}\n", encoding="utf-8")
+    assert "kat muss eine von schauplatz, einkehr_ort, verkehr sein" in meldungen(reise, tmp_path)
+    (reise / "plan/kategorien.yaml").unlink()
+    assert "die Reise hat keine Kategorien der Gruppe wissen" in meldungen(reise, tmp_path)
+
+
+def test_kategorien_form(reise, tmp_path):
+    """plan/kategorien.yaml: nur die Form wird geprüft (Gruppe, Farbe, Symbol, Felder), kein Katalog in der Software."""
+    k = reise / "plan/kategorien.yaml"
+    k.write_text("kategorien:\n  a: {gruppe: mitte, name: A, farbe: blau}\n  b: {gruppe: punkt, name: B, farbe: rot}\n"
+                 "  c: {gruppe: punkt, name: C, farbe: '#12345', symbol: nix, quatsch: 1}\n"
+                 "  D: {gruppe: punkt, name: D, farbe: blau}\n", encoding="utf-8")
+    m = meldungen(reise, tmp_path)
+    assert "kategorien.yaml a: gruppe muss punkt oder wissen sein" in m and "kategorien.yaml b: farbe muss" in m
+    assert "c: farbe muss" in m and "c: symbol muss" in m and "c: unbekannte Felder quatsch" in m and "D: Schlüssel nur" in m
 
 
 # ---------- Volllauf mit der Beispielreise (erfunden, beispiel/reisen/beispielreise) ----------

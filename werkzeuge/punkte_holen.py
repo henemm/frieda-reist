@@ -244,8 +244,8 @@ def main(reise):
 
     kopf = (f"# Punkte der Etappen-Karten, erzeugt mit frieda/werkzeuge/punkte_holen.py {reise} am {heute}.\n"
             f"# Quellen: Rother-GPX (nur privat, siehe medien/gpx/README.md) und OpenStreetMap (ODbL), Stand {stand}.\n"
-            "# kat: wegpunkt | unterkunft | einkehr | wasser | notfall; bei wasser art trinkwasser (laut OSM) oder quelle\n"
-            "# (Trinkbarkeit ungeprüft). Von Hand ergänzte Punkte: von_hand: true, quelle mit Prüfdatum; sie bleiben beim Auffrischen.\n")
+            "# kat: wegpunkt | unterkunft | einkehr | wasser | notfall (Vorschlag des Werkzeugs; die Reise legt sie in\n"
+            "# plan/kategorien.yaml an); bei wasser art trinkwasser (laut OSM) oder quelle (Trinkbarkeit ungeprüft). Von Hand ergänzte Punkte: von_hand: true, quelle mit Prüfdatum; sie bleiben beim Auffrischen.\n")
     zeilen = [f"stand: {stand}", "strecken:"]
     for eid, punkte in ausgabe.items():  # ein Punkt je Zeile: gut zu prüfen und zu ändern
         zeilen.append(f"  {eid}:")

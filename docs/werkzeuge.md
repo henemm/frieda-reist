@@ -15,7 +15,7 @@ Regionale Karten der Recherche: `frieda/werkzeuge/karte-holen.sh <reise> <name>`
 
 ## Punkte der Etappen-Karten
 
-1. `engine/.venv/bin/python frieda/werkzeuge/punkte_holen.py <reise>` liest zuerst die GPX-Wegpunkte der Tracks. Ihre Nummern verbinden sie mit der Kurzliste im Etappentext. Danach fragt es OpenStreetMap einmal über den Kartenrahmen ab: Einkehr, Wasser, Bus und Notfall, Unterkünfte. Ergebnis: `reisen/<reise>/plan/punkte.yaml`, ein Punkt je Zeile mit Quelle und Stand.
+1. `engine/.venv/bin/python frieda/werkzeuge/punkte_holen.py <reise>` liest zuerst die GPX-Wegpunkte der Tracks. Ihre Nummern verbinden sie mit der Kurzliste im Etappentext. Danach fragt es OpenStreetMap einmal über den Kartenrahmen ab: Einkehr, Wasser, Bus und Notfall, Unterkünfte. Ergebnis: `reisen/<reise>/plan/punkte.yaml`, ein Punkt je Zeile mit Quelle und Stand. Die Kategorien (`kat`) sind der Vorschlag des Werkzeugs (wegpunkt, unterkunft, einkehr, wasser, notfall); damit der Bau sie annimmt, legt die Reise sie in `plan/kategorien.yaml` an (`kategorie_definieren`, `docs/ontologie.md` „Kartenpunkte“).
 2. Die Datei durchsehen (Zuordnung zu U-IDs, Namen), dann einchecken. Namen aus dem Text, die das Werkzeug nicht gefunden hat, nennt es am Ende; die bekommen keine geschätzte Lage. Von Hand ergänzte Punkte (`von_hand: true`) bleiben beim Auffrischen erhalten.
 3. Der Bau liest nur diese Datei und verknüpft die erste Nennung je Block im Etappentext mit der Karte.
 

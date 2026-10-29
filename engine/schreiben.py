@@ -50,7 +50,7 @@ MAX_BODY = 64 * 1024
 MAX_TEXT = 500          # Namen, Hilfe, Fragen, Beschreibungen
 MAX_WERTE = 20
 ZEIT_ANWENDEN = 150     # Sekunden für einen Schreibvorgang (fetch, Probebau, push)
-AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "wert_eintragen": "wert",
+AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "kategorie_definieren": "ontologie", "wert_eintragen": "wert",
             "ding_anlegen": "ding", "ding_aendern": "ding", "option_anlegen": "alternative", "wahlstelle_anlegen": "alternative",
             "frage_anlegen": "frage", "entscheiden": "entscheiden", "tag_aendern": "plan", "wissen_schreiben": "wissen",
             "frage_schliessen": "frage_schliessen", "person_schreiben": "einladen", "lage_eintragen": "ding",
@@ -245,6 +245,122 @@ def art_definieren(reise_dir, wer, args):
         titel = f"Art „{a['name']}“ ({key}) geändert"
         text = f"Art „{a['name']}“ ({key}) geändert: " + ", ".join(geaendert) + "."
     arten_speichern(reise_dir, arten, wer)
+    return titel, text + (f" Grund: {grund}." if grund else "")
+
+
+# ---------- Kategorien der Kartenpunkte (plan/kategorien.yaml) ----------
+
+KATEGORIEN_KOPF = ("# Kategorien der Kartenpunkte dieser Reise (docs/ontologie.md „Kartenpunkte“, ADR-0001). {herkunft}\n"
+                   "# Felder je Kategorie: gruppe (punkt = Etappen-Karte, wissen = Karte im Wissensabschnitt), name, einzahl, farbe\n"
+                   "# (blau | braun | lila | gruen | tuerkis | oliv | grau | rosa | schiefer | kontrast | #rrggbb), symbol,\n"
+                   "# nummeriert (Punkt zeigt seine Nummer statt eines Symbols), arten (Zusatz je art eines Punkts: name, symbol,\n"
+                   "# hinweis, umriss).\n")
+
+
+def kategorien_laden(reise_dir):
+    import yaml
+    p = Path(reise_dir) / "plan" / "kategorien.yaml"
+    if not p.exists():
+        return {}
+    try:
+        roh = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    except yaml.YAMLError as e:
+        raise Ablehnung(f"plan/kategorien.yaml ist kein gültiges YAML ({e}); das muss jemand in einer Sitzung richten.")
+    k = roh.get("kategorien") if isinstance(roh, dict) else None
+    return k if isinstance(k, dict) else {}
+
+
+def kategorien_speichern(reise_dir, kategorien, wer):
+    import yaml
+
+    class Ohne_Verweise(yaml.SafeDumper):
+        def ignore_aliases(self, data):
+            return True
+    p = Path(reise_dir) / "plan" / "kategorien.yaml"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    herkunft = (f"Gepflegt im Gespräch über den Konnektor (zuletzt {datetime.date.today().isoformat()}, {wer['name']}); "
+                "der Verlauf steht in der Geschichte des Repos.")
+    p.write_text(KATEGORIEN_KOPF.format(herkunft=herkunft)
+                 + yaml.dump({"kategorien": kategorien}, Dumper=Ohne_Verweise, allow_unicode=True, sort_keys=False, width=120),
+                 encoding="utf-8")
+
+
+def kategorie_definieren(reise_dir, wer, args):
+    """Eine Kategorie der Kartenpunkte anlegen oder ändern, auch den Zusatz zu einer art. -> (Titel, Text)."""
+    from bauen import KATEGORIE_FARBEN, KATEGORIE_GRUPPEN, KATEGORIE_MUSTER, SYMBOLE
+    kategorien = kategorien_laden(reise_dir)
+    name = text_wert(args, "bezeichnung", laenge=80)
+    key = text_wert(args, "kategorie", pflicht=True, laenge=40).lower()
+    if not re.fullmatch(KATEGORIE_MUSTER, key):
+        raise Ablehnung(f"„{key}“ taugt nicht als Schlüssel einer Kategorie (Kleinbuchstaben, Ziffern, Unterstrich).")
+    gruppe = text_wert(args, "gruppe", laenge=20)
+    if gruppe is not None and gruppe.lower() not in KATEGORIE_GRUPPEN:
+        raise Ablehnung(f"„gruppe“ muss eine von {', '.join(KATEGORIE_GRUPPEN)} sein.")
+    farbe = text_wert(args, "farbe", laenge=20)
+    if farbe is not None and farbe.lower() not in KATEGORIE_FARBEN and not re.fullmatch(r"#[0-9a-fA-F]{6}", farbe):
+        raise Ablehnung(f"„farbe“ muss eine von {', '.join(KATEGORIE_FARBEN)} oder #rrggbb sein.")
+    symbol = text_wert(args, "symbol", laenge=20)
+    if symbol is not None and symbol not in SYMBOLE:
+        raise Ablehnung(f"„symbol“ muss eines von {', '.join(SYMBOLE)} sein.")
+    einzahl = text_wert(args, "einzahl", laenge=80)
+    nummeriert = bool_wert(args, "nummeriert")
+    art = text_wert(args, "art", laenge=40)
+    art_name, art_symbol = text_wert(args, "art_bezeichnung", laenge=80), text_wert(args, "art_symbol", laenge=20)
+    art_hinweis, art_umriss = text_wert(args, "art_hinweis"), bool_wert(args, "art_umriss")
+    if art_symbol is not None and art_symbol not in SYMBOLE:
+        raise Ablehnung(f"„art_symbol“ muss eines von {', '.join(SYMBOLE)} sein.")
+    if art is None and any(x is not None for x in (art_name, art_symbol, art_hinweis, art_umriss)):
+        raise Ablehnung("Für Angaben zu einer art (art_bezeichnung, art_symbol, art_hinweis, art_umriss) fehlt „art“ (das art-Wort der Punkte).")
+    grund = text_wert(args, "grund")
+    geaendert = []
+    if key not in kategorien:
+        if name is None or gruppe is None or farbe is None:
+            raise Ablehnung("Eine neue Kategorie braucht „bezeichnung“ (Name in der Legende), „gruppe“ (punkt = Etappen-Karte, "
+                            "wissen = Karte im Wissensabschnitt) und „farbe“.")
+        k = {"gruppe": gruppe.lower(), "name": name}
+        titel, kopf = f"Kategorie „{name}“ ({key}) angelegt", f"Kategorie „{name}“ angelegt: Schlüssel {key}, Gruppe {k['gruppe']}, Farbe {farbe}"
+        neu = True
+    else:
+        k = kategorien[key]
+        neu = False
+        if gruppe is not None and gruppe.lower() != k.get("gruppe"):
+            raise Ablehnung(f"Die Gruppe von „{k.get('name', key)}“ lässt sich nicht ändern ({k.get('gruppe')}); dafür eine neue Kategorie anlegen.")
+        if name is not None and name != k.get("name"):
+            geaendert.append(f"Name „{k.get('name')}“ → „{name}“")
+            k["name"] = name
+    for feld, wert in (("einzahl", einzahl), ("farbe", farbe), ("symbol", symbol)):
+        if wert is not None and wert != k.get(feld):
+            k[feld] = wert
+            geaendert.append(f"{feld} {wert}")
+    if nummeriert is not None and bool(k.get("nummeriert")) != nummeriert:
+        k["nummeriert"] = nummeriert or None
+        if not nummeriert:
+            k.pop("nummeriert", None)
+        geaendert.append("nummeriert" if nummeriert else "nicht mehr nummeriert")
+    if art is not None:
+        arten = k.setdefault("arten", {})
+        a = arten.get(art) if isinstance(arten.get(art), dict) else {}
+        for feld, wert in (("name", art_name), ("symbol", art_symbol), ("hinweis", art_hinweis)):
+            if wert is not None and wert != a.get(feld):
+                a[feld] = wert
+                geaendert.append(f"art {art}: {feld} {wert}")
+        if art_umriss is not None and bool(a.get("umriss")) != art_umriss:
+            a["umriss"] = True if art_umriss else None
+            if not art_umriss:
+                a.pop("umriss", None)
+            geaendert.append(f"art {art}: " + ("Umriss" if art_umriss else "ohne Umriss"))
+        arten[art] = a
+    if neu:
+        k["farbe"] = farbe
+        kategorien[key] = {f: k[f] for f in ("gruppe", "name", "einzahl", "farbe", "symbol", "nummeriert", "arten") if k.get(f)}
+        text = kopf + (f" (außerdem: {', '.join(geaendert)})" if geaendert else "") + "."
+    else:
+        if not geaendert:
+            raise Ablehnung(f"Die Kategorie „{k.get('name', key)}“ ({key}) gibt es schon, und nichts daran soll sich ändern.")
+        kategorien[key] = {f: k[f] for f in ("gruppe", "name", "einzahl", "farbe", "symbol", "nummeriert", "arten") if k.get(f)}
+        titel = f"Kategorie „{k['name']}“ ({key}) geändert"
+        text = f"Kategorie „{k['name']}“ ({key}) geändert: " + ", ".join(geaendert) + "."
+    kategorien_speichern(reise_dir, kategorien, wer)
     return titel, text + (f" Grund: {grund}." if grund else "")
 
 
@@ -1625,7 +1741,7 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
     return titel, text
 
 
-WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_definieren, "wert_eintragen": wert_eintragen,
+WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_definieren, "kategorie_definieren": kategorie_definieren, "wert_eintragen": wert_eintragen,
              "ding_anlegen": ding_anlegen, "ding_aendern": ding_aendern, "option_anlegen": option_anlegen,
              "wahlstelle_anlegen": wahlstelle_anlegen, "frage_anlegen": frage_anlegen, "entscheiden": entscheiden,
              "tag_aendern": tag_aendern, "wissen_schreiben": wissen_schreiben, "frage_schliessen": frage_schliessen,

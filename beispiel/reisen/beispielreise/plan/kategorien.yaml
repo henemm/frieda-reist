@@ -1,0 +1,49 @@
+# Kategorien der Kartenpunkte der Beispielreise (erfunden). Jede Reise legt ihre eigenen fest, im Gespräch im AI-Client
+# (kategorie_definieren); diese Datei ist Anschauung, kein Katalog (docs/ontologie.md „Kartenpunkte“, ADR-0001).
+# Felder je Kategorie: gruppe (punkt = Etappen-Karte, wissen = Karte im Wissensabschnitt; der Schlüssel gilt in der Reise nur
+# einmal), name, einzahl, farbe (blau, braun, lila, gruen, tuerkis, oliv, grau, rosa, schiefer, kontrast oder #rrggbb), symbol
+# (Zeichen der Seite), nummeriert (der Punkt zeigt seine Nummer statt eines Symbols), arten (Zusatz je art eines Punkts:
+# name, symbol, hinweis, umriss).
+kategorien:
+  wegpunkt:
+    gruppe: punkt
+    name: Wegpunkte aus dem Buch
+    einzahl: Wegpunkt im Buch
+    farbe: kontrast
+    nummeriert: true
+  unterkunft:
+    gruppe: punkt
+    name: Unterkünfte
+    farbe: '#2f5d8a'
+    symbol: unterkunft
+    arten:
+      hostel: {name: Herberge}
+      guest_house: {name: Pension}
+  einkehr:
+    gruppe: punkt
+    name: Einkehr
+    farbe: '#b0632b'
+    symbol: einkehr
+    arten:
+      restaurant: {name: Restaurant}
+  wasser:
+    gruppe: punkt
+    name: Wasser
+    farbe: '#1f86b5'
+    symbol: wasser
+    arten:
+      quelle: {name: Quelle oder Brunnen, hinweis: Trinkbarkeit ungeprüft, umriss: true}
+  notfall:
+    gruppe: punkt
+    name: Bus und Notfall
+    farbe: '#6b4a8b'
+    arten:
+      bus: {name: Bushaltestelle, symbol: bus}
+  sehenswert:
+    gruppe: wissen
+    name: Sehenswert
+    farbe: '#1e5a43'
+  verkehr:
+    gruppe: wissen
+    name: Bahnhof und Hafen
+    farbe: '#5b6168'
