@@ -312,6 +312,23 @@ def test_deploy_startet_dienste_bei_geaenderten_modulen_neu():
     assert '[ -n "$NEU_RM$NEU_KN" ] && neustart "$FR_INSTANZ-konnektor"' in deploy
 
 
+def test_deploy_kopiert_module_des_schreibwegs():
+    """Der Schreibweg (schreiben.py dienst) läuft aus <FR_DIENST> und lädt beim Start nur seine eigenen Module; den
+    Schreibvorgang führt er mit dem Code der Arbeitskopie aus (dort liegt die ganze Engine). Deshalb zählen hier nur die
+    Importe auf oberster Ebene; die Importe in den Funktionen (bauen, routen, reise) gehören zur Arbeitskopie."""
+    kopiert = _deploy_liste("SB_MODULE")
+    oben = {f"{n}.py" for n in re.findall(r"^(?:from|import)\s+(\w+)", (ENGINE / "schreiben.py").read_text(encoding="utf-8"), re.M)
+            if (ENGINE / f"{n}.py").exists()}
+    offen, gesehen = ["schreiben.py"], set()
+    while offen:
+        datei = offen.pop()
+        gesehen.add(datei)
+        assert datei in kopiert, f"deploy.sh kopiert {datei} nicht (SB_MODULE)"
+        offen += [m for m in (oben if datei == "schreiben.py" else _eigene_importe(datei)) if m not in gesehen]
+    deploy = (BETRIEB / "deploy.sh").read_text(encoding="utf-8")
+    assert 'neustart "$FR_INSTANZ-schreiben"' in deploy and 'is-enabled --quiet "$FR_INSTANZ-schreiben"' in deploy
+
+
 def test_deploy_kopiert_friedas_symbol():
     deploy = (BETRIEB / "deploy.sh").read_text(encoding="utf-8")
     assert '"$WURZEL/engine/marke/" "$DIENST/marke/"' in deploy
@@ -550,8 +567,9 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     aus = tmp_path / "aus"
     namen = sorted(p.name for p in (aus / "systemd").iterdir())
     assert namen == ["probe-einarbeiten.path", "probe-einarbeiten.service", "probe-einarbeiten.timer",
-                     "probe-konnektor.service", "probe-rueckmeldungen.service", "probe-veroeffentlichen.service",
-                     "probe-veroeffentlichen.timer", "probe-waechter.service", "probe-waechter.timer"]
+                     "probe-konnektor.service", "probe-rueckmeldungen.service", "probe-schreiben.service",
+                     "probe-veroeffentlichen.service", "probe-veroeffentlichen.timer", "probe-waechter.service",
+                     "probe-waechter.timer"]
     for p in [*(aus / "systemd").iterdir(), *(aus / "nginx").iterdir()]:
         assert not re.search(r"__[A-Z_]+__", p.read_text()), p.name
     srv = tmp_path / "srv/probe"
@@ -564,6 +582,13 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     assert "Environment=KN_PORT=8772" in einh["probe-konnektor.service"]
     assert "Environment=KN_BASIS=https://example.invalid/probe-mcp" in einh["probe-konnektor.service"]
     assert f"ExecStart=/usr/bin/python3 {srv}/_dienst/konnektor.py dienst" in einh["probe-konnektor.service"]
+    # Schreibweg (O-3): Konnektor kennt die Adresse, der Dienst läuft mit dem Python der Software aus dem Dienstordner
+    assert "Environment=KN_SCHREIBDIENST=http://127.0.0.1:8773" in einh["probe-konnektor.service"]
+    assert "Environment=FR_SB_PORT=8773" in einh["probe-schreiben.service"]
+    assert f"ExecStart={tmp_path}/repo/engine/.venv/bin/python {srv}/_dienst/schreiben.py dienst" in einh["probe-schreiben.service"]
+    assert f"Environment=FR_WURZEL={tmp_path}/repo" in einh["probe-schreiben.service"]
+    assert "ProtectHome=" not in einh["probe-schreiben.service"]     # schreibt in die Arbeitskopie neben dem Repo
+    assert "sudo systemctl enable --now probe-rueckmeldungen probe-konnektor probe-schreiben" in r.stdout
     assert "OnCalendar=" in einh["probe-waechter.timer"] and "Persistent=true" in einh["probe-waechter.timer"]
     nginx = (aus / "nginx/probe-konnektor.conf").read_text()
     assert "location ^~ /probe-mcp/" in nginx and "zone=probe_api" in nginx and "127.0.0.1:8772/" in nginx
@@ -577,8 +602,13 @@ def test_einrichten_erkennt_belegte_ports_einer_anderen_instanz(tmp_path):
     (tmp_path / "systemd").mkdir()
     (tmp_path / "systemd/andere-rueckmeldungen.service").write_text("[Service]\nEnvironment=RM_PORT=8771\n")
     r = einrichten(tmp_path)
-    assert r.returncode == 2 and "Port 8771 oder 8772 nutzt schon andere-rueckmeldungen.service" in r.stdout
+    assert r.returncode == 2 and "Port 8771, 8772 oder 8773 nutzt schon andere-rueckmeldungen.service" in r.stdout
     r = einrichten(tmp_path, FR_RM_PORT="8781", FR_KN_PORT="8782")
+    assert "nutzt schon" not in r.stdout
+    (tmp_path / "systemd/andere-schreiben.service").write_text("[Service]\nEnvironment=FR_SB_PORT=8773\n")
+    assert "nutzt schon andere-schreiben.service" in einrichten(tmp_path, FR_RM_PORT="8781", FR_KN_PORT="8782").stdout
+    (tmp_path / "systemd/andere-schreiben.service").unlink()
+    r = einrichten(tmp_path, FR_RM_PORT="8781", FR_KN_PORT="8782", FR_SB_PORT="8783")
     assert "nutzt schon" not in r.stdout
     # die eigene Instanz zählt nicht als andere
     (tmp_path / "systemd/andere-rueckmeldungen.service").rename(tmp_path / "systemd/probe-rueckmeldungen.service")

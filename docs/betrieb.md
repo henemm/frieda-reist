@@ -11,13 +11,13 @@ Eine **Instanz** ist eine Reisegruppe mit eigenem Betreiber: ein Reisen-Repo, da
 | Software | dieses Repo, im Reisen-Repo als Submodul `frieda/` (`engine -> frieda/engine`) | Generator, Dienste, `betrieb/` mit Skripten, Vorlagen und KI-Anweisung |
 | Reisen-Repo | eigenes, privates Repo | `reisen/<reise>/`, `betrieb/einstellungen.env`, optional `betrieb/einarbeiten-ergaenzung.md`, ein Meldeskript, eigene Tests unter `tests/` |
 | Veröffentlichungsordner | Klon des Reisen-Repos auf dem Server, immer auf `main` | von hier wird gebaut; nicht darin arbeiten |
-| Arbeitskopien | `<Klon>-auto` (Einarbeiten), `<Klon>-arbeit` (Sitzungen) | Git-Worktrees, `betrieb/arbeitskopie.sh` |
+| Arbeitskopien | `<Klon>-auto` (Einarbeiten), `<Klon>-arbeit` (Sitzungen), `<Klon>-schreiben` (Schreibweg, legt der Dienst selbst an) | Git-Worktrees, `betrieb/arbeitskopie.sh` |
 | Seiten | `<FR_SEITEN>/<reise>/` | gebaute Seiten, nginx liefert sie aus |
 | Ablage | `<FR_ABLAGE>/<reise>/` (`eingang.jsonl`, `auftraege.jsonl`, `status.json`, …), `<FR_ABLAGE>/_neu/` (Anfragen nach neuen Reisen) | Eingaben der Mitreisenden; nie im Repo |
 | Konten | `<FR_KONTEN>/` (`konten.db`, Dienst-Geheimnis) | Konten, Anmeldungen und Einladungen aller Nutzer der Instanz; nie im Repo, nie in einer Reise |
 | Dienstordner | `<FR_DIENST>/` | Code der Dienste, Stände, Protokolle, Stempel, geheime Einstellungen |
 | Konnektor-Zugänge | `<FR_KONNEKTOR>/zugaenge.json`, `seiten.json` (600) | geheime Links; nie im Repo |
-| systemd | `<instanz>-rueckmeldungen`, `-konnektor`, `-veroeffentlichen.timer`, `-einarbeiten.path`/`.timer`, `-waechter.timer` | aus `betrieb/vorlagen/`, erzeugt von `einrichten.sh` |
+| systemd | `<instanz>-rueckmeldungen`, `-konnektor`, `-schreiben`, `-veroeffentlichen.timer`, `-einarbeiten.path`/`.timer`, `-waechter.timer` | aus `betrieb/vorlagen/`, erzeugt von `einrichten.sh` |
 | nginx | `<FR_NGINX_SNIPPETS>/<instanz>-<reise>.conf` (mit Token), `<instanz>-konnektor.conf`, Zone in `conf.d/<instanz>-zone.conf` | aus `betrieb/vorlagen/` |
 
 Die Skripte rufen sich im Reisen-Repo als `frieda/betrieb/<skript>.sh` auf und finden die Instanz selbst (das Repo, das die Software einbindet; sonst `FR_WURZEL`).
@@ -41,6 +41,20 @@ Der Name der Instanz (`FR_INSTANZ`) steht vor Units, Zonen und nginx-Bausteinen 
 5. **Erinnern:** `waechter.sh` läuft täglich, meldet Fristen und legt Prüfaufträge an, die wieder bei 1 eingehen.
 
 Eine Änderung aus einer Sitzung (Claude Code im Reisen-Repo) geht über einen PR nach `main` und von dort denselben Weg ab Schritt 3.
+
+**Direkt (ADR-0001, Paket O-3, seit 29.10.2026):** Was im AI-Client über den Konnektor festgelegt wird, schreibt der **Schreibweg** sofort nach `main` (Schritt 2 entfällt, es folgt sofort Schritt 3). Zuerst gilt das für Arten und Merkmale (`plan/arten.yaml`); die weiteren Schreibvorgänge folgen, bis das Einarbeiten mit KI entfällt. Siehe „Schreibweg“.
+
+## Schreibweg
+
+`engine/schreiben.py dienst` (`<instanz>-schreiben.service`, 127.0.0.1:`FR_SB_PORT`) nimmt vom Konnektor Anfragen `POST /<reise>/<werkzeug>` mit dem Dienst-Geheimnis an (`X-Frieda-Dienst`, dasselbe wie beim Rückmeldedienst). Er hält eine eigene Arbeitskopie `<Klon>-schreiben` (`FR_SCHREIBKOPIE`), einen Git-Worktree ohne eigenen Branch, den er selbst anlegt und vor jedem Schreibvorgang auf `origin/main` bringt. Ein Vorgang zur Zeit (Sperre `<FR_SPERREN>/<instanz>-schreiben.lock`):
+
+1. Arbeitskopie holen (`origin/main`), eigene Reste verwerfen.
+2. Mit dem Code **dieser Arbeitskopie** einen Unterprozess `schreiben.py anwenden` starten, damit Code und Daten denselben Stand haben; der Dienst selbst lädt nur `schreiben.py`, `konten.py`, `reise.py`, `instanz.py` aus `<FR_DIENST>` (`SB_MODULE` in `deploy.sh`).
+3. Dort: Person und Rolle gegen `reise.yaml` der Reise prüfen (die Datei gilt vor dem, was der Konnektor sagt), Status (`reise.erlaubt`, Aktion `ontologie`), Form der Angaben; Datei ändern; Probebau (`bauen.Bauer(...).daten()`). Lehnt eine Prüfung ab, wird die Arbeitskopie zurückgesetzt, der AI-Client bekommt den Grund (HTTP 422).
+4. Commit mit Reise, Titel, Text, Person, Werkzeug und Datum; `git push origin HEAD:main`. Kam inzwischen etwas anderes an, setzt er darauf auf (Rebase, höchstens dreimal); bei einem Konflikt bricht er ab und meldet „bitte noch einmal“.
+5. `betrieb/veroeffentlichen.sh` im Hintergrund, mit `FR_WURZEL` des Veröffentlichungsordners. Hält der Timer die Sperre, holt er es in wenigen Minuten nach.
+
+Der Dienst läuft als Dienstbenutzer mit dessen `git`-Anmeldung (`gh` als Credential-Helfer, `PATH` wie beim Einarbeiten), ohne `ProtectHome`, weil die Arbeitskopie neben dem Repo liegt. `GET /gesund` antwortet `{"gesund": true}`, wenn das Repo erreichbar ist. Von Hand: `frieda/betrieb/…`: `FR_WURZEL=<Klon> engine/.venv/bin/python engine/schreiben.py vorbereiten` legt die Arbeitskopie an. Protokoll: `journalctl -u <instanz>-schreiben`. Eine Instanz ohne diesen Dienst setzt `KN_SCHREIBDIENST` nicht; der Konnektor bietet die Werkzeuge dann nicht an.
 
 ## Einarbeiten
 
@@ -112,7 +126,8 @@ Links von Hand: `freischalten.sh <reise>` für die Seite, `freischalten.sh <reis
 | `FR_KN_ADRESSE` | `<FR_ADRESSE>/<FR_INSTANZ>-mcp` | Adresse des Konnektors |
 | `FR_UMZUG_NACH` | leer | neue Adresse der Seiten bei einem Umzug auf eine andere Domain: Der Generator baut dann einen Service Worker, der gespeicherte Seiten verwirft und sich abmeldet, und eine Seite, die auf denselben Pfad der neuen Adresse weiterleitet. Erst danach darf der Server von der alten Adresse umleiten (ein umgeleitetes `sw.js` lehnt der Browser als Update ab). Kann auch als `bauen.py --umzug-nach` übergeben werden |
 | `FR_SEITEN`, `FR_ABLAGE`, `FR_DIENST`, `FR_KONNEKTOR`, `FR_KONTEN` | `/srv/<instanz>`, darunter `_rueckmeldungen`, `_dienst`, `_konnektor`, `_konten` | Ordner auf dem Server |
-| `FR_RM_PORT`, `FR_KN_PORT` | `8771`, `8772` | Ports auf 127.0.0.1 |
+| `FR_RM_PORT`, `FR_KN_PORT`, `FR_SB_PORT` | `8771`, `8772`, `8773` | Ports auf 127.0.0.1 (Rückmeldedienst, Konnektor, Schreibweg) |
+| `FR_SCHREIBKOPIE` | `<Wurzel>-schreiben` | Arbeitskopie des Schreibwegs (Git-Worktree, legt der Dienst an) |
 | `FR_PYTHON` | `<Wurzel>/engine/.venv/bin/python` | Python mit den Paketen der Software |
 | `FR_MELDEN` | leer | Meldeweg (unten) |
 | `FR_CLAUDE`, `FR_CLAUDE_MIN` | `claude`, `45` | Befehl und Höchstdauer eines KI-Laufs je Reise |
@@ -123,7 +138,7 @@ Links von Hand: `freischalten.sh <reise>` für die Seite, `freischalten.sh <reis
 | `FR_HEARTBEAT_VEROEFFENTLICHEN` | leer | Überwachungsadresse, nur in `betrieb.env` |
 | `FR_KENNUNG`, `FR_SPRACHEN` | Name der Software, `de,en` | Kennung mit Kontakt gegenüber OpenStreetMap und Sprachen der Namen (`docs/werkzeuge.md`) |
 
-Die Skripte setzen daraus die Umgebung der Software (`RM_ABLAGE`, `KN_SEITEN`, `KN_ZUGAENGE`, `KN_BASIS`, `RM_LAEUFE`). Ausdrücklich gesetzte Werte bleiben. Fehlt etwas, etwa bei einem Aufruf von Hand wie `python3 engine/rueckmeldungen.py liste <reise>` in der Wurzel des Reisen-Repos, leitet `engine/instanz.py` die Ordner nach derselben Ordnung ab, notfalls aus der Einstellungsdatei. Die Software selbst kennt keine Instanz, ihre letzte Vorgabe ist `/srv/frieda`.
+Die Skripte setzen daraus die Umgebung der Software (`RM_ABLAGE`, `KN_SEITEN`, `KN_ZUGAENGE`, `KN_BASIS`, `RM_LAEUFE`; die Unit des Konnektors zusätzlich `KN_SCHREIBDIENST`). Ausdrücklich gesetzte Werte bleiben. Fehlt etwas, etwa bei einem Aufruf von Hand wie `python3 engine/rueckmeldungen.py liste <reise>` in der Wurzel des Reisen-Repos, leitet `engine/instanz.py` die Ordner nach derselben Ordnung ab, notfalls aus der Einstellungsdatei. Die Software selbst kennt keine Instanz, ihre letzte Vorgabe ist `/srv/frieda`.
 
 **Meldeweg:** `FR_MELDEN` ist eine ausführbare Datei der Instanz (ein relativer Pfad gilt ab der Wurzel des Reisen-Repos), aufgerufen als `<befehl> <normal|high> <betreff> <text> [erledigt]`. `erledigt` heißt: Das ist ein reiner Bericht, es ist nichts zu tun. Fehler kommen ohne `erledigt` und sollen offen bleiben, bis jemand sie ansieht. Wie die Nachricht ankommt (Mail, Telegram, eine Warteschlange), entscheidet die Instanz in ihrem Skript.
 
@@ -145,10 +160,10 @@ Nach fachlichem Erfolg berühren die Läufe Stempel in `<FR_DIENST>/`: `einarbei
 4. **Einrichten:** `frieda/betrieb/einrichten.sh` prüft die Voraussetzungen. Es erzeugt Units und nginx-Bausteine in einem Ordner und zeigt die Befehle zum Aktivieren. Außerhalb dieses Ordners ändert es nichts. `--installieren` legt nach Rückfrage die Ordner an und kopiert Units und Bausteine nach `/etc`.
 5. **nginx:** Im server-Block der Adresse `include <FR_NGINX_SNIPPETS>/<instanz>-*.conf;` eintragen, `nginx -t`, neu laden.
 6. **sudo** für den Dienstbenutzer, ohne Passwort und nur für diese Befehle:
-   - `systemctl restart <instanz>-rueckmeldungen <instanz>-konnektor`
+   - `systemctl restart <instanz>-rueckmeldungen <instanz>-konnektor <instanz>-schreiben`
    - `nginx -t` und `systemctl reload nginx`
    - `install`, `test`, `cat` und `rm` für Dateien in `<FR_NGINX_SNIPPETS>/<instanz>-*.conf`
-7. **Erste Reise** anlegen (`docs/neue-reise.md`), committen, `frieda/betrieb/deploy.sh <reise>` (legt den Code der Dienste an). Danach `sudo systemctl enable --now <instanz>-rueckmeldungen <instanz>-konnektor` und die Timer und den Pfad-Wächter, wie `einrichten.sh` sie nennt.
+7. **Erste Reise** anlegen (`docs/neue-reise.md`), committen, `frieda/betrieb/deploy.sh <reise>` (legt den Code der Dienste an). Danach `sudo systemctl enable --now <instanz>-rueckmeldungen <instanz>-konnektor <instanz>-schreiben` und die Timer und den Pfad-Wächter, wie `einrichten.sh` sie nennt.
 8. **Prüfen:** `veroeffentlichen.sh --immer` zeigt „ist online“. Mit `freischalten.sh <reise> --person <schlüssel>` bekommt jede Person ihren Link, den sie in der Claude-App einträgt (`docs/konnektor.md`). `date > <FR_ABLAGE>/.neu` zeigt im Journal „Nichts Neues.“.
 
 **Zwei Instanzen auf einem Server** brauchen verschiedene `FR_INSTANZ`, `FR_SEITEN` (und damit Ablage und Dienstordner) und Ports. `einrichten.sh` bricht ab, wenn eine andere installierte Instanz dieselben Ports nutzt. Unit-Namen, nginx-Bausteine, Drossel-Zone und Sperrdateien tragen den Namen der Instanz. Jede Instanz braucht einen eigenen Konnektor-Pfad (`<instanz>-mcp`).
@@ -170,5 +185,6 @@ Im Veröffentlichungsordner wird nicht gearbeitet, sonst setzt der Timer aus. `f
 | Seite antwortet nicht | `ls <FR_SEITEN>/<reise>/index.html`, `sudo nginx -t`, Fehlerlog von nginx |
 | `api/gesund` antwortet nicht | `systemctl status <instanz>-rueckmeldungen`, `journalctl -u <instanz>-rueckmeldungen -n 50` |
 | Konnektor `gesund` 503 | `zugaenge.json` unlesbar, keine Reise freigeschaltet (`seiten.json`) und kein alter Link, oder eine freigeschaltete oder verlinkte Reise nicht veröffentlicht |
+| Konnektor meldet „Schreibweg nicht erreichbar“ oder „nicht eingerichtet“ | `systemctl status <instanz>-schreiben`, `journalctl -u <instanz>-schreiben -n 50`; steht `KN_SCHREIBDIENST` in der Unit des Konnektors? Geht `git push` als Dienstbenutzer ohne Rückfrage? |
 | Nichts geht online | `journalctl -u <instanz>-veroeffentlichen -n 50`; ist der Veröffentlichungsordner auf `main` und sauber? |
 | Eingaben bleiben „neu“ | `journalctl -u <instanz>-einarbeiten -n 100`, `rueckmeldungen.py laeufe`, offene Branches `auto/einarbeiten-…` |

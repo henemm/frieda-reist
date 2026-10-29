@@ -86,6 +86,8 @@ AKTIONEN = {
     "einladen":     {"rolle": "organisator", "baustein": None, "ab": ("alles", "nachlese")},
     # Paket J: eine Person aus der Reise nehmen (Konto-Verknüpfung und alte Links enden sofort)
     "entfernen":    {"rolle": "organisator", "baustein": None, "ab": ("alles", "nachlese")},
+    # ADR-0001, O-3: Arten und Merkmale der Reise (ihre Ontologie) im Gespräch festlegen; Mitwirkende schlagen vor (Rückmeldung)
+    "ontologie":    {"rolle": "organisator", "baustein": None, "ab": ("alles",)},
 }
 # Lesende Konnektor-Werkzeuge, die zu einem zuschaltbaren Baustein gehören
 LESE_BAUSTEIN = {"offene_fragen": "fragen", "varianten": "varianten", "merkmale": "varianten",

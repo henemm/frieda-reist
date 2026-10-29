@@ -541,3 +541,103 @@ def test_aehnliches_merkmal():
     assert aehnliches_merkmal("frühstück", liste)["id"] == "fruehstueck"
     assert aehnliches_merkmal("pool", liste) is None and aehnliches_merkmal("sauna", liste) is None
     assert aehnliches_merkmal("tarif", liste) is None   # kein Synonymwissen in der Software
+
+
+# ---------- Ontologie im Gespräch (ADR-0001, O-3): art_definieren, merkmal_definieren ----------
+
+class Schreibweg(kn.BaseHTTPRequestHandler):
+    """Nachgestellter Schreibdienst (engine/schreiben.py dienst): merkt sich die Anfrage, antwortet wie der echte."""
+    anfragen = []
+    antwort = (200, {"ok": True, "text": "Art „Refugi“ angelegt: Schlüssel refugi, Grundform Aufenthalt, Farbe gruen."})
+
+    def do_POST(self):
+        body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+        Schreibweg.anfragen.append((self.path, self.headers.get("X-Frieda-Dienst"), body))
+        code, obj = Schreibweg.antwort
+        daten = json.dumps(obj, ensure_ascii=False).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(daten)))
+        self.end_headers()
+        self.wfile.write(daten)
+
+    def log_message(self, *a):
+        pass
+
+
+@pytest.fixture
+def schreibweg(dienst, monkeypatch, tmp_path):
+    monkeypatch.setenv("FR_KONTEN", str(tmp_path / "konten"))
+    Schreibweg.anfragen = []
+    s, url = starten(Schreibweg)
+    monkeypatch.setenv("KN_SCHREIBDIENST", url)
+    yield dienst
+    s.shutdown()
+
+
+def test_ontologie_werkzeuge_nur_mit_schreibweg(dienst, monkeypatch):
+    basis, _ = dienst
+    monkeypatch.delenv("KN_SCHREIBDIENST", raising=False)
+    namen = {t["name"] for t in rpc(basis, ALT_ORGANISATOR, "tools/list")["tools"]}
+    assert not namen & set(kn.ONTOLOGIE_WERKZEUGE)
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt")
+    assert f and "nicht eingerichtet" in t
+    assert "art_definieren" not in rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
+
+
+def test_ontologie_organisator_schreibt_direkt(schreibweg):
+    import konten
+    basis, ablage = schreibweg
+    for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (MITREISEND, True), (GAST, False)):
+        namen = {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}
+        assert (set(kn.ONTOLOGIE_WERKZEUGE) <= namen) is da, token
+    anleitung = rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
+    assert "art_definieren und merkmal_definieren schreiben sofort" in anleitung and "Ausnahmen: Aufgaben AG-…, Arten" in anleitung
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt", grund="Hütten am Weg")
+    assert not f and t.startswith("Eingetragen und gesichert (Ida): Art „Refugi“ angelegt") and "wenige Minuten" in t
+    pfad, geheim, body = Schreibweg.anfragen[-1]
+    assert pfad == "/beispielreise/art_definieren" and geheim == konten.dienst_geheimnis()
+    assert body == {"person": "ida", "name": "Ida", "rolle": "organisator",
+                    "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt", "grund": "Hütten am Weg"}}
+    assert rm.eintraege(ablage / "beispielreise") == []        # keine Rückmeldung, direkt geschrieben
+    # Ablehnung des Schreibwegs kommt mit Grund an
+    Schreibweg.antwort = (422, {"ok": False, "fehler": "Die Grundform von „Hotel“ lässt sich nicht ändern (aufenthalt)."})
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "art_definieren", art="hotel", grundform="bewegung")
+    assert f and t == "Nicht eingetragen: Die Grundform von „Hotel“ lässt sich nicht ändern (aufenthalt)."
+    Schreibweg.antwort = (200, {"ok": True, "text": "x"})
+    # Ähnliches Merkmal: erst Hinweis, mit trotzdem geht es
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "merkmal_definieren", art="hotel", bezeichnung="Frühstück inklusive", typ="auswahl", werte=["ja", "nein"])
+    assert f and "ähnliches Merkmal" in t and "fruehstueck" in t
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "merkmal_definieren", art="hotel", bezeichnung="Frühstück inklusive", typ="auswahl",
+                    werte=["ja", "nein"], trotzdem=True)
+    assert not f and Schreibweg.anfragen[-1][2]["args"] == {"art": "hotel", "bezeichnung": "Frühstück inklusive", "typ": "auswahl",
+                                                            "werte": ["ja", "nein"]}
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "merkmal_definieren", art="hotel", bezeichnung="Stornierung", typ="auswahl", werte=["ja", "nein"])
+    assert not f and Schreibweg.anfragen[-1][2]["args"]["bezeichnung"] == "Stornierung"
+    # Nicht erreichbar
+    Schreibweg.anfragen.clear()
+    with pytest.MonkeyPatch.context() as m:
+        m.setenv("KN_SCHREIBDIENST", "http://127.0.0.1:9")
+        t, f = werkzeug(basis, ALT_ORGANISATOR, "art_definieren", bezeichnung="X", grundform="folge")
+    assert f and "nicht erreichbar" in t
+
+
+def test_ontologie_mitwirkende_schlagen_vor(schreibweg):
+    basis, ablage = schreibweg
+    t, f = werkzeug(basis, KARL, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt")
+    assert not f and "Vorschlag R-" in t and "Ida" in t
+    assert Schreibweg.anfragen == []                            # nichts direkt geschrieben
+    e = rm.eintraege(ablage / "beispielreise")[0]
+    assert e["name"] == "Karl" and e["art"] == "Ergänzung" and e["ziel"] == "refugi"
+    assert e["text"] == "Art festlegen – bezeichnung: Refugi; grundform: aufenthalt"
+    t, f = werkzeug(basis, KARL, "merkmal_definieren", art="hotel", bezeichnung="Stornierung", typ="auswahl", werte=["ja", "nein"], stufe="pflicht")
+    assert not f
+    e = rm.eintraege(ablage / "beispielreise")[1]
+    assert e["ziel"] == "hotel" and e["text"] == "Merkmal festlegen – art: hotel; bezeichnung: Stornierung; typ: auswahl; werte: ja | nein; stufe: pflicht"
+    # Mitwirkende ohne Namen (alter Rollen-Link) brauchen den Vornamen
+    t, f = werkzeug(basis, MITREISEND, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt")
+    assert f and "Name fehlt" in t
+    t, f = werkzeug(basis, MITREISEND, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt", name="Anna")
+    assert not f and rm.eintraege(ablage / "beispielreise")[2]["name"] == "Anna"
+    t, f = werkzeug(basis, GAST, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt")
+    assert f and "nur lesen" in t

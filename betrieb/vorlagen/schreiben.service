@@ -1,0 +1,29 @@
+# Schreibweg der Instanz __INSTANZ__ (engine/schreiben.py dienst, ADR-0001 Paket O-3): Was im AI-Client über den Konnektor
+# festgelegt wird (Arten und Merkmale der Reise), schreibt dieser Dienst sofort ins Reisen-Repo, prüft es mit einem Probebau,
+# sichert es als Commit nach main und stößt das Veröffentlichen an. Nur für den Konnektor erreichbar (127.0.0.1, Dienst-Geheimnis).
+# Erzeugt von frieda/betrieb/einrichten.sh. Code aus __DIENST__ (legt deploy.sh an); den Schreibvorgang selbst führt er mit dem
+# Code der Arbeitskopie __WURZEL__-schreiben aus (ein Git-Worktree auf main, legt der Dienst an).
+# git pusht mit der Anmeldung von __BENUTZER__ (gh als Credential-Helfer), darum kein ProtectHome.
+[Unit]
+Description=__TITEL__: Schreibweg (Claude-App schreibt direkt in die Reise)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=__BENUTZER__
+Group=__GRUPPE__
+Environment=PATH=__PFAD__
+Environment=FR_WURZEL=__WURZEL__
+Environment=FR_KONTEN=__KONTEN__
+Environment=FR_SB_HOST=127.0.0.1
+Environment=FR_SB_PORT=__SB_PORT__
+EnvironmentFile=-__DIENST__/betrieb.env
+EnvironmentFile=-__DIENST__/konten.env
+ExecStart=__PYTHON__ __DIENST__/schreiben.py dienst
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
