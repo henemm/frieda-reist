@@ -371,6 +371,8 @@ details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
 .pico .wm-tab th{vertical-align:top}
 .pico .wm-tab thead th .chips{margin:4px 0 0}
 .pico .wm-tab tbody th[scope=row]{position:sticky;left:0;z-index:1;background:var(--card);box-shadow:1px 0 0 var(--line)}
+/* alle Zellen auf der Kartenfarbe wie die feste erste Spalte, sonst wirkt die Tabelle zweifarbig */
+.pico .wm-tab tbody td{background:var(--card)}
 .pico .wm-tab :is(th,td).an{background:var(--acc2)}
 .wm-karten{display:grid;gap:10px}
 /* Tabelle mit Möglichkeiten als Zeilen (Rechner): Kopf sortiert, Zeile klappt auf */
