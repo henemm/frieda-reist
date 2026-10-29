@@ -57,6 +57,15 @@ arten:
       hoehenmeter:   {name: Höhenmeter, auto: hoehenmeter}
       schwierigkeit: {name: Schwierigkeit, typ: text, hilfe: "Wanderführer; Stufen, Leitern, Trittsicherheit"}
       einkehr:       {name: Einkehr und Wasser, typ: text, stufe: angeboten, hilfe: "Wanderführer, OpenStreetMap"}
+    # Gliederung des Lesetexts (Abschnitt Zusammenfassung, Ebene „Der Weg“): je Rubrik ein Absatz, der mit dem fetten
+    # Stichwort beginnt. Aufbau wie in Wanderführern (Kurzzeile, Charakter, Verlauf, Höhepunkte, Anforderungen), dazu
+    # Rubriken, die diese Reise wichtig findet. Erfunden als Anschauung, kein Katalog (docs/ontologie.md „Lesetext“).
+    lesetext:
+      charakter:    {name: Charakter, hilfe: "Wie sich der Tag anfühlt: Landschaft, Art des Wegs, Stimmung; zwei, drei Sätze"}
+      verlauf:      {name: Verlauf, hilfe: "Der Weg in groben Zügen (Aufstieg, Höhe, Abstieg), keine Wegbeschreibung Punkt für Punkt"}
+      hoehepunkte:  {name: Höhepunkte, hilfe: "Was man nicht verpassen sollte; Ausblicke, Bauten, Abstecher"}
+      anforderungen: {name: Anforderungen, hilfe: "Kondition, Trittsicherheit, Schlüsselstellen, Orientierung; mit Herkunft"}
+      ankommen:     {name: Ankommen, hilfe: "Wann man ungefähr ankommt und was am Ziel bleibt"}
   bahn:
     grundform: bewegung
     name: Bahn
@@ -66,6 +75,9 @@ arten:
       dauer:        {name: Dauer, typ: text, veraenderlich: true, hilfe: "Fahrplanauskunft für den Wochentag der Reise"}
       verkehrt:     {name: Fährt, typ: text, veraenderlich: true, hilfe: "Takt und Betriebstage; Saison beachten"}
       reservierung: {name: Reservierung, typ: auswahl, werte: [Pflicht, empfohlen, nicht nötig, unklar], veraenderlich: true, stufe: angeboten}
+    lesetext:     # Eine Bahnfahrt erzählt man anders als eine Wanderung (Anschauung, erfunden)
+      strecke:      {name: Strecke, hilfe: "Wohin, wie lange, wie oft man umsteigt"}
+      fenster:      {name: Am Fenster, hilfe: "Was man unterwegs sieht und auf welcher Seite man sitzt"}
   bus:
     grundform: bewegung
     name: Bus

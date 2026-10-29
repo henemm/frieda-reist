@@ -585,6 +585,7 @@ class Handbuch:
             if s.get("merkmale") or s.get("fehlt"):
                 z.append("Merkmale:")
                 z += self.merkmal_zeilen((r.get("merkmale") or {}).get(s.get("bereich")), s.get("merkmale"), s.get("fehlt"))
+            z += self.lesetext_zeilen(s)
             if sid in e:  # Etappe aus dem Dossier: Text dort, Strecke ergänzt
                 titel, alt = e[sid]
                 e[sid] = (titel, "\n".join(z) + "\n\n" + alt)
@@ -723,6 +724,17 @@ class Handbuch:
         if not zeilen:
             return "Keine offenen Fragen." if not alle else "Keine Fragen."
         return "\n".join([" | ".join(f.get("spalten", []))] + [" | ".join(z["zellen"]) for z in zeilen])
+
+    def lesetext_zeilen(self, s):
+        """Gliederung des Lesetexts der Art einer Strecke (plan/arten.yaml lesetext, docs/ontologie.md) als Anleitung für
+        den AI-Client: Rubriken in ihrer Reihenfolge, jede als Absatz mit fettem Stichwort."""
+        art = s.get("bereich") or s.get("art") or "wandern"
+        rubriken = (((self.r.get("arten") or {}).get(art if isinstance(art, str) else "kombiniert")) or {}).get("lesetext")
+        if not rubriken:
+            return []
+        return ["Gliederung des Lesetexts (Abschnitt Zusammenfassung; je Rubrik ein Absatz, der mit dem fetten Stichwort "
+                "beginnt, z. B. „**" + rubriken[0]["name"] + ".** …“; Rubriken ohne Inhalt weglassen; Herkunft nennen):"] + [
+            f"- {x['name']}" + (f": {x['hilfe']}" if x.get("hilfe") else "") for x in rubriken]
 
     def merkmale(self, ziel, bereich):
         """Welche Merkmale eine Alternative braucht, was schon da ist und was fehlt (Werkzeug merkmale)."""

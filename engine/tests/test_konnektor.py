@@ -233,6 +233,7 @@ def test_lesen(dienst):
     assert not f and "T-01" in t and "Offene Fragen" in t
     t, f = werkzeug(basis, MITREISEND, "zeige", id="E-01")
     assert not f and "Bastei" in t and "E-01.eckdaten" in t
+    assert "Gliederung des Lesetexts" in t and "- Charakter: Wie sich der Tag anfühlt" in t   # arten.yaml lesetext
     t, f = werkzeug(basis, MITREISEND, "zeige", id="E-01.eckdaten")
     assert "- Gehzeit: ca. 3:40 h" in t   # zweispaltige Tabelle als Merkmalliste (#54)
     t, f = werkzeug(basis, MITREISEND, "zeige", id="V-03.a")

@@ -406,7 +406,7 @@ def arten_ableiten(reise_dir, namen=None, summiert=(), definitionen=None, schrei
         aus[key] = eintrag
     kopf = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). Abgeleitet aus plan/routen.yaml am "
             f"{datetime.date.today().isoformat()} (engine/neu.py arten-ableiten); danach im Gespräch geprüft und geschärft.\n"
-            "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale; je Merkmal: name, typ,\n"
+            "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (Gliederung des Lesetexts); je Merkmal: name, typ,\n"
             "# werte, veraenderlich, stufe (pflicht | empfohlen | angeboten | aus), auto, hilfe, frage, auch.\n")
     class Ohne_Verweise(yaml.SafeDumper):   # gleiche Wertelisten je Merkmal ausschreiben statt als YAML-Anker
         def ignore_aliases(self, data):

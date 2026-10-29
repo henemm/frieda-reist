@@ -17,7 +17,15 @@ Drei Wandertage auf Abschnitten des Malerwegs, dazu eine Alternative für den le
 *Vom Elbufer hinauf zur Bastei und durch Gründe nach Hohnstein*
 
 ### Zusammenfassung
-Von der Fähre in Stadt Wehlen steigt der Weg durch Wald zur Hochfläche und erreicht bald die Basteibrücke mit dem Blick hinunter auf die Elbe. Über die Schwedenlöcher, eine enge Schlucht mit vielen Stufen, geht es hinab zum Amselsee und weiter durch den Amselgrund. Nach Rathewalde folgt der Hockstein mit Blick auf Hohnstein, dann der kurze Abstieg ins Polenztal und der letzte Anstieg in die Stadt.
+**Charakter.** Ein abwechslungsreicher erster Tag: Wald, Felsen und Gründe im schnellen Wechsel, dazu die bekannteste Aussicht der Gegend.
+
+**Verlauf.** Von der Fähre in Stadt Wehlen steigt der Weg durch Wald zur Hochfläche und erreicht bald die Basteibrücke. Über die Schwedenlöcher geht es hinab zum Amselsee und weiter durch den Amselgrund. Nach Rathewalde folgt der Hockstein, dann der kurze Abstieg ins Polenztal und der letzte Anstieg in die Stadt.
+
+**Höhepunkte.** Der Blick von der Basteibrücke hinunter auf die Elbe und der Blick vom Hockstein auf Hohnstein.
+
+**Anforderungen.** Viele Stufen in den Schwedenlöchern, sonst einfache Wege (Beispielwert, eigene Einschätzung).
+
+**Ankommen.** Mit gut dreieinhalb Stunden Gehzeit bleibt in Hohnstein der Nachmittag frei.
 
 ### Eckdaten
 | Merkmal | Wert |

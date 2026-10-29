@@ -36,7 +36,10 @@ MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+",
 GRUNDFORMEN = ("aufenthalt", "bewegung", "folge")
 AUTO_JE_GRUNDFORM = {"bewegung": ("gehzeit", "laenge", "hoehenmeter"), "folge": ("tage", "gehzeit", "unterkuenfte", "anschluss")}
 ART_MUSTER = r"[a-z][a-z0-9_]*"
-ART_FELDER = {"grundform", "name", "farbe", "merkmale", "beschreibung", "summiert"}
+ART_FELDER = {"grundform", "name", "farbe", "merkmale", "beschreibung", "summiert", "lesetext"}
+# Gliederung des Lesetexts einer Art (docs/ontologie.md „Lesetext“): Rubriken in ihrer Reihenfolge, jede mit Namen (das
+# Stichwort am Anfang eines Absatzes) und Hilfe für den AI-Client. Welche Rubriken es gibt, sagt allein die Reise.
+RUBRIK_FELDER = {"name", "hilfe"}
 # Farben der Seite für Arten (engine/vorlage.html, --farbe-*); ohne Angabe grau
 FARBEN = ("blau", "braun", "lila", "gruen", "tuerkis", "oliv", "grau", "rosa", "schiefer")
 UNTERWEGS = "unterwegs"     # Nacht an Bord (Nachtfähre, Nachtzug): keine Art der Reise, feste Darstellung
@@ -432,7 +435,30 @@ class Routen:
                 self.fehl(f"{wo}: farbe muss {', '.join(FARBEN)} sein.")
             self.arten[a] = {"name": str(d.get("name") or a), "grundform": d["grundform"], "farbe": d.get("farbe") or "grau",
                              "summiert": bool(d.get("summiert")), "beschreibung": d.get("beschreibung")}
+            if "lesetext" in d:
+                self.arten[a]["lesetext"] = self.lesetext_pruefen(wo, d["lesetext"])
             self.katalog[a] = self.definitionen(wo, d.get("merkmale") or {}, a, grundform=d["grundform"], neu=True)
+
+    def lesetext_pruefen(self, wo, roh):
+        """Gliederung des Lesetexts einer Art -> [{id, name, hilfe}] in der Reihenfolge der Datei. Nur die Form wird
+        geprüft: Schlüssel, Name, bekannte Felder, kein Name doppelt."""
+        aus = []
+        if not isinstance(roh, dict) or not roh:
+            self.fehl(f"{wo}: lesetext muss eine Liste „rubrik: {{name: …, hilfe: …}}“ sein.")
+            return aus
+        for k, d in roh.items():
+            if not re.fullmatch(r"[a-z][a-z0-9_]*", str(k)):
+                self.fehl(f"{wo}: Rubrik „{k}“: nur Kleinbuchstaben, Ziffern und _ (z. B. charakter, ankommen).")
+                continue
+            if not isinstance(d, dict) or not d.get("name"):
+                self.fehl(f"{wo}: Rubrik {k} braucht einen Namen (name: …), er steht als Stichwort vor dem Absatz.")
+                continue
+            if set(d) - RUBRIK_FELDER:
+                self.fehl(f"{wo}: Rubrik {k}: unbekannte Felder {', '.join(sorted(set(d) - RUBRIK_FELDER))}.")
+            if any(r["name"].casefold() == str(d["name"]).casefold() for r in aus):
+                self.fehl(f"{wo}: Rubrik {k}: Name „{d['name']}“ gibt es schon.")
+            aus.append({"id": k, "name": str(d["name"]), "hilfe": d.get("hilfe")})
+        return aus
 
     def grundform(self, art):
         return (self.arten.get(art) or {}).get("grundform")

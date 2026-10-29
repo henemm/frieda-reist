@@ -55,6 +55,8 @@ EBENEN_VORGABE = {
                   "Verpflegung", "Anfahrt", "Abfahrt", "Praktisch"),
     "quellen": ("Quellen", "Prüfung", "Karten"),
 }
+# Stichwort am Anfang eines Absatzes im Lesetext („**Charakter.** …“), Rubrik der Gliederung einer Art (docs/ontologie.md)
+STICHWORT = re.compile(r"<p>\s*<strong>([^<]{1,60})</strong>")
 BILD_LINK = re.compile(r"(!?)\[([^\]]*)\]\(([^)\s]+)\)")
 
 
@@ -587,6 +589,7 @@ class Bauer:
                     e["optionen"] = [o["id"] for w in route["wahlstellen"] for o in w["optionen"]
                                      if e["id"] in o["alle_strecken"] and not o["aktiv"]]
                     e["nebenroute"] = not e["im_plan"] and not e["optionen"]
+                self.lesetext_pruefen(etappen, route)
 
         # Claudes Vorschläge zu Wünschen (Wunsch-Brett, Paket G): plan/wuensche.yaml neben routen.yaml
         wunsch_vorschlaege = {}
@@ -851,6 +854,27 @@ class Bauer:
         self.id_anlegen(sid, wo)
         intro, bl = self.bloecke(sid, body, self.reise_dir / rel, wo)
         return {"id": sid, "typ": typ, "titel": titel, "intro": intro, "bloecke": bl}
+
+    def lesetext_pruefen(self, etappen, route):
+        """Stichworte im Lesetext (Ebene „Der Weg“) gegen die Gliederung der Art der Strecke (arten.yaml lesetext,
+        docs/ontologie.md). Ein Absatz, der mit einem fetten Stichwort beginnt, gehört zu einer Rubrik; ein unbekanntes
+        Stichwort ist ein Hinweis, kein Fehler. Ohne Gliederung der Art wird nichts geprüft."""
+        for eid, e in etappen.items():
+            s = (route.get("strecken") or {}).get(eid) or {}
+            art = s.get("art") or "wandern"
+            art = "kombiniert" if isinstance(art, list) else art
+            rubriken = ((route.get("arten") or {}).get(art) or {}).get("lesetext")
+            if not rubriken:
+                continue
+            namen = {r["name"].casefold() for r in rubriken}
+            for b in e["bloecke"]:
+                if b.get("ebene") != "weg":
+                    continue
+                for wort in STICHWORT.findall(b["html"]):
+                    if wort.strip().rstrip(".:").strip().casefold() not in namen:
+                        self.hinweise.append(f"{eid}: Stichwort „{wort.strip().rstrip('.:')}“ im Lesetext ist keine Rubrik "
+                                             f"der Art „{art}“ (arten.yaml lesetext: "
+                                             f"{', '.join(r['name'] for r in rubriken)}).")
 
     def ebene(self, titel):
         """Ebene eines Etappen-Abschnitts auf der Tagesseite: zuerst die Titelanfänge der Reise, dann die Vorgabe."""

@@ -93,6 +93,27 @@ Ein **Wert** am Ding: `{wert, quelle, geprueft, notiz, gilt}`; mehrere Werte je 
 
 Die Software prüft nur die Form: bekannte Felder, erlaubte Typen und Stufen, Auswahlwerte, Prüfdatum bei Veränderlichem, dass jede Art genau eine Grundform hat und jedes Ding eine bekannte Art. Ob „Frühstück“ für ein Refugi sinnvoll ist, entscheidet die Reise.
 
+## Lesetext und seine Gliederung
+
+Zu einem Ding gehört oft ein **Lesetext**: der Text am Anfang einer Etappe (Abschnitt „Zusammenfassung“, auf der Seite die Ebene „Der Weg“, `docs/design.md`). Er ist Wissen (Grundform), hängt aber an einer Bewegung. Wie er aufgebaut ist, legt die Reise **je Art** fest, denn eine Wanderung erzählt man anders als eine Bahnfahrt oder einen Stadttag. Die Software kennt nur die Form einer Gliederung, keine Rubriken (ADR-0001, kein Katalog).
+
+```yaml
+# plan/arten.yaml
+arten:
+  wandern:
+    grundform: bewegung
+    name: Wanderung
+    lesetext:                      # Rubriken in ihrer Reihenfolge
+      charakter: {name: Charakter, hilfe: "Wie sich der Tag anfühlt: Landschaft, Art des Wegs, Stimmung"}
+      verlauf:   {name: Verlauf, hilfe: "Der Weg in groben Zügen, keine Wegbeschreibung Punkt für Punkt"}
+      ankommen:  {name: Ankommen, hilfe: "Wann man ankommt und was am Ziel bleibt"}
+```
+
+- **Form im Text:** je Rubrik ein Absatz, der mit ihrem Namen als fettem Stichwort beginnt (`**Charakter.** …`). Rubriken ohne Inhalt fallen weg; die Reihenfolge der Datei ist die Lesereihenfolge. Die Herkunft steht wie bisher darunter.
+- **Prüfung:** Die Software prüft die Form der Gliederung (Schlüssel, Name, bekannte Felder `name` und `hilfe`, kein Name doppelt). Beim Bauen ist ein Stichwort im Lesetext, das keine Rubrik der Art der Strecke ist, ein Hinweis (kein Fehler). Ohne Gliederung der Art wird nichts geprüft.
+- **Konnektor:** `zeige E-…` nennt die Gliederung der Art mit der Hilfe je Rubrik, damit der AI-Client den Text in diesem Aufbau schreibt.
+- **Herkunft des Aufbaus** (Recherche 29.10.2026): Wanderführer und Tourenportale trennen den erzählenden Text von der Wegbeschreibung. Rother stellt jeder Tour Kopfdaten (Ausgangspunkt, Anforderungen, Einkehr, Varianten) und eine kurze Einleitung voran, dann folgt die Beschreibung; Cicerone nennt je Etappe Kennzahlen und Verpflegung vor dem Text. Outdooractive unterscheidet Kurzbeschreibung (Teaser, 50–300 Zeichen), Beschreibung (Erlebnis, Charakter und Sehenswertes, 900–2000 Zeichen) und Wegbeschreibung (so genau, dass man danach gehen kann), dazu Tipp, Sicherheitshinweise und Ausrüstung als eigene Felder. Wikivoyage gibt für Reiserouten ein Grundgerüst vor, von dem man weglässt, was nicht passt. Daraus der Grundaufbau Kurzzeile, Charakter, Verlauf in groben Zügen, Höhepunkte, Anforderungen, Ankommen; was eine Reise darüber hinaus wichtig findet (etwa „Im Vergleich zu gestern“, „Was andere sagen“, „Jahreszeit“), ergänzt sie in ihrer Gliederung. Die Beispielreise zeigt eine Gliederung für Wanderung und eine kürzere für Bahn.
+
 ## Darstellung
 
 Eine Art kann eine `farbe` aus der Palette der Seite tragen: `blau`, `braun`, `lila`, `gruen`, `tuerkis`, `oliv`, `grau`, `rosa`, `schiefer` (`engine/vorlage.html`, `--farbe-*`); ohne Angabe `grau`. Die Legende der Karte und der Vergleich zeigen die Arten der Reise mit ihrem Namen. Summen („Nächte: 5× Hotel, 3× Refugi“) zählen je Art.

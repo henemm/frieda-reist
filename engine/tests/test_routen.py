@@ -487,6 +487,23 @@ def test_arten_yaml_fehler():
     assert any("nicht unterwegs" in f for f in laufe(r, arten_=arten(unterwegs={"grundform": "aufenthalt"}))[1])
 
 
+def test_lesetext_gliederung_je_art():
+    """Eine Art kann die Gliederung ihres Lesetexts festlegen (docs/ontologie.md „Lesetext“); geprüft wird nur die Form."""
+    r = roh()
+    gut = {"grundform": "bewegung", "name": "Schiff",
+           "lesetext": {"strecke": {"name": "Strecke", "hilfe": "Wohin und wie lange"}, "an_deck": {"name": "An Deck"}}}
+    erg, fehler = laufe(r, arten_=arten(schiff=gut))
+    assert not fehler
+    assert erg["arten"]["schiff"]["lesetext"] == [{"id": "strecke", "name": "Strecke", "hilfe": "Wohin und wie lange"},
+                                                  {"id": "an_deck", "name": "An Deck", "hilfe": None}]
+    assert "lesetext" not in erg["arten"]["hotel"]
+    for lt, text in (([], "muss eine Liste"), ({"Gross": {"name": "X"}}, "nur Kleinbuchstaben"),
+                     ({"x": {"hilfe": "h"}}, "braucht einen Namen"), ({"x": {"name": "X", "farbe": "rot"}}, "unbekannte Felder"),
+                     ({"x": {"name": "Weg"}, "y": {"name": "weg"}}, "gibt es schon")):
+        fehler = laufe(r, arten_=arten(schiff={"grundform": "bewegung", "lesetext": lt}))[1]
+        assert any(text in f for f in fehler), (lt, fehler)
+
+
 # ---------- Arten, Werte je Datum, „an“ (Paket 1 der Alternativen, Issue frieda-reist#18) ----------
 def mit_faehren():
     r = roh()

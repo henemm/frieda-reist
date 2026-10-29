@@ -586,3 +586,16 @@ def test_ebenen_der_etappen(reise, tmp_path):
     assert "Ebene „lesen“ gibt es nicht" in meldungen(reise, tmp_path / "c")
     setze(reise, lambda c: c.update({"etappen_ebenen": {"weg": "Eckdaten"}}))
     assert "etappen_ebenen: erwartet" in meldungen(reise, tmp_path / "d")
+
+
+def test_lesetext_stichworte_gegen_gliederung(tmp_path):
+    """Stichworte im Lesetext einer Etappe gehören zur Gliederung ihrer Art; ein fremdes Stichwort ist ein Hinweis."""
+    r = tmp_path / "beispielreise"
+    shutil.copytree(BEISPIEL, r)
+    e = r / "inhalt/etappen.md"
+    e.write_text(e.read_text(encoding="utf-8").replace("**Ankommen.**", "**Abends.**", 1), encoding="utf-8")
+    b = bauen.Bauer(r, tmp_path / "dist")
+    d = b.daten()
+    assert any(h.startswith("E-01: Stichwort „Abends“") and "Charakter, Verlauf" in h for h in b.hinweise), b.hinweise
+    weg = next(x for x in d["abschnitte"] if x["id"] == "E-01")["bloecke"][0]
+    assert weg["ebene"] == "weg" and "<strong>Charakter.</strong>" in weg["html"]
