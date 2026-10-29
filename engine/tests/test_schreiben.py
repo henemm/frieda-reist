@@ -476,6 +476,24 @@ def test_ding_option_wahlstelle_und_frage_anlegen(repo):
     assert not git(arbeit, "status", "--porcelain")
 
 
+def test_lage_eintragen(repo):
+    """ADR-0004: Adresse und Koordinaten mit Herkunft und Prüfdatum; ohne quelle, ohne Angabe oder falsch: abgelehnt."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "lage_eintragen", {**KARL, "args": {"ziel": "U-02", "adresse": "Burgstraße 1, 01848 Hohnstein",
+                    "koordinaten": "50.9792, 14.1128", "quelle": "erfunden (Beispiel)", "geprueft": "2026-10-29"}})
+    assert "Adresse „Burgstraße 1, 01848 Hohnstein“" in a["text"] and "Koordinaten „50.9792, 14.1128“" in a["text"]
+    r, _ = routen_auf_main(origin)
+    u = r["unterkuenfte"]["U-02"]
+    assert u["adresse"]["wert"] == "Burgstraße 1, 01848 Hohnstein" and u["adresse"]["quelle"] == "erfunden (Beispiel)"
+    assert u["punkt"]["wert"] == [50.9792, 14.1128] and str(u["punkt"]["geprueft"]) == "2026-10-29"
+    s.vorbereiten()
+    for args, text in (({"ziel": "U-02", "adresse": "x"}, "„quelle“ fehlt"), ({"ziel": "U-02", "quelle": "x"}, "adresse"),
+                       ({"ziel": "U-02", "koordinaten": "91, 0", "quelle": "x"}, "Breite, Länge"), ({"ziel": "O-01", "adresse": "x", "quelle": "x"}, "Unterkunft U-")):
+        with pytest.raises(sb.Ablehnung, match=text):
+            s.schreiben("beispielreise", "lage_eintragen", {**KARL, "args": args})
+
+
 def test_ding_aendern_und_ablehnungen(repo):
     _, origin, arbeit, _ = repo
     s = schreiber(repo)

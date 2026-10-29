@@ -72,12 +72,12 @@ SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern",
                      "frage_beantworten", "entscheiden", "person_einladen", "person_entfernen", "wunsch_aendern"}
 # Werkzeuge, die direkt in die Ontologie der Reise schreiben (ADR-0001, O-3; engine/schreiben.py): nur bei Instanzen mit
 # Schreibweg (KN_SCHREIBDIENST); Organisator:innen schreiben, Mitwirkende schlagen vor (Rückmeldung der Art Ergänzung)
-ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "wert_eintragen", "ding_anlegen", "ding_aendern",
+ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "wert_eintragen", "ding_anlegen", "ding_aendern", "lage_eintragen",
                        "option_anlegen", "wahlstelle_anlegen", "frage_anlegen", "tag_aendern", "wissen_schreiben", "frage_schliessen")
 # Aktion der Regelprüfung je Werkzeug; art_definieren und merkmal_definieren gehen für Mitwirkende als Rückmeldung (Vorschlag)
 ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "wert_eintragen": "wert",
-                    "ding_anlegen": "ding", "ding_aendern": "ding", "option_anlegen": "alternative", "wahlstelle_anlegen": "alternative",
-                    "frage_anlegen": "frage", "tag_aendern": "plan", "wissen_schreiben": "wissen", "frage_schliessen": "frage_schliessen"}
+                    "ding_anlegen": "ding", "ding_aendern": "ding", "lage_eintragen": "ding", "option_anlegen": "alternative",
+                    "wahlstelle_anlegen": "alternative", "frage_anlegen": "frage", "tag_aendern": "plan", "wissen_schreiben": "wissen", "frage_schliessen": "frage_schliessen"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe",
                   "auftrag_geben": "auftrag", "entscheiden": "entscheiden", "rueckmeldung_erledigen": "rueckmeldung_erledigen",
@@ -573,6 +573,14 @@ class Handbuch:
                             ("frage", "Offene Frage: "), ("quelle", "Quelle: ")):
                 if u.get(k):
                     z.append(name + str(u[k]))
+            # Lage (ADR-0004): Adresse und Koordinaten mit Herkunft; fehlt beides, trägt lage_eintragen sie nach
+            for k, name in (("adresse", "Adresse: "), ("punkt", "Koordinaten: ")):
+                v = u.get(k)
+                if v:
+                    w = ", ".join(map(str, v["wert"])) if k == "punkt" else v["wert"]
+                    z.append(f"{name}{w} ({v.get('quelle') or 'ohne Quelle'}{', geprüft ' + v['geprueft'] if v.get('geprueft') else ''})")
+            if not u.get("adresse") and not u.get("punkt"):
+                z.append("Lage: fehlt (lage_eintragen)")
             if u.get("naechte"):
                 z.append("Nächte: " + ", ".join(u["naechte"]))
             if u.get("merkmale") or u.get("fehlt"):
@@ -1011,7 +1019,7 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
                 return (f"Nicht angelegt: Bei der Art {art} gibt es schon ein ähnliches Merkmal, {aehnlich['id']} – {aehnlich['name']}. "
                         "Das vorhandene nutzen oder mit merkmal_definieren ändern; ist es wirklich ein anderes, noch einmal mit "
                         "trotzdem = true."), True
-    if name in ("wert_eintragen", "ding_aendern", "tag_aendern"):
+    if name in ("wert_eintragen", "ding_aendern", "tag_aendern", "lage_eintragen"):
         ziel = str(args.get("ziel") or "").strip()
         if ziel and ziel not in ids_der_reise(d):
             return f"„{ziel}“ gibt es in dieser Reise nicht. Mit suche oder ueberblick die ID finden.", True
@@ -2111,6 +2119,17 @@ DING_AENDERN = {"name": "ding_aendern", "description": "Felder einer Unterkunft 
                     "hinweis": {"type": "string"}, "quelle": {"type": "string"}, "buchungslink": {"type": "string"}, "frage": {"type": "string"},
                     "grund": {"type": "string", "description": "warum (steht im Verlauf)"}, "vorname": NAME_FELD},
                     "required": ["ziel"]}}
+LAGE_EINTRAGEN = {"name": "lage_eintragen", "description": "Lage einer Unterkunft eintragen: Adresse (Straße Nr., PLZ Ort) und/oder "
+                  "Koordinaten (Breite, Länge). Jede Unterkunft im Plan braucht eine Lage; die Seite verlinkt sie mit Google Maps "
+                  "(und Apple Karten). Herkunft (quelle) ist Pflicht, z. B. Website des Hauses oder OpenStreetMap. Schreibt sofort; "
+                  "vorher kurz bestätigen lassen.",
+                  "inputSchema": {"type": "object", "properties": {
+                      "ziel": {"type": "string", "description": "U-…"},
+                      "adresse": {"type": "string", "description": "Postadresse, z. B. „Carrer de sa Lluna 21, 07100 Sóller“"},
+                      "koordinaten": {"type": "string", "description": "„Breite, Länge“ in Grad, z. B. „39.7671, 2.7149“"},
+                      "quelle": QUELLE_FELD, "geprueft": {"type": "string", "description": "Datum des Nachschlagens, JJJJ-MM-TT (Vorgabe heute)"},
+                      "grund": {"type": "string"}, "vorname": NAME_FELD},
+                      "required": ["ziel", "quelle"]}}
 OPTION_FELDER = {"titel": {"type": "string", "description": "Name der Option, z. B. „Pension Elbblick“"},
                  "text": {"type": "string", "description": "kurze Beschreibung"},
                  "unterkuenfte": {"type": "array", "items": {"type": "string"}, "description": "U-… (Aufenthalt); fehlt die Unterkunft, erst ding_anlegen"},
@@ -2594,7 +2613,7 @@ def werkzeuge_fuer(zugang):
     wer = wer_spricht(zugang, d) or {"rolle": "gast"}
     _, bausteine = zustand_von(d)
     werkzeuge = []
-    ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN, WERT_EINTRAGEN, DING_ANLEGEN, DING_AENDERN, OPTION_ANLEGEN, WAHLSTELLE_ANLEGEN,
+    ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN, WERT_EINTRAGEN, DING_ANLEGEN, DING_AENDERN, LAGE_EINTRAGEN, OPTION_ANLEGEN, WAHLSTELLE_ANLEGEN,
                  FRAGE_ANLEGEN, TAG_AENDERN, WISSEN_SCHREIBEN, FRAGE_SCHLIESSEN] if schreibdienst() else []
     for w in WERKZEUGE + [AUFTRAG, ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN, RUECKMELDUNG_ERLEDIGEN] + ontologie:
         n = w["name"]

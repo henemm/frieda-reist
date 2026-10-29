@@ -53,7 +53,7 @@ ZEIT_ANWENDEN = 150     # Sekunden für einen Schreibvorgang (fetch, Probebau, p
 AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "wert_eintragen": "wert",
             "ding_anlegen": "ding", "ding_aendern": "ding", "option_anlegen": "alternative", "wahlstelle_anlegen": "alternative",
             "frage_anlegen": "frage", "entscheiden": "entscheiden", "tag_aendern": "plan", "wissen_schreiben": "wissen",
-            "frage_schliessen": "frage_schliessen", "person_schreiben": "einladen"}   # reise.AKTIONEN
+            "frage_schliessen": "frage_schliessen", "person_schreiben": "einladen", "lage_eintragen": "ding"}   # reise.AKTIONEN
 ARTEN_KOPF = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). {herkunft}\n"
               "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (Gliederung des\n"
               "# Lesetexts: je Rubrik name und hilfe); je Merkmal: name, typ,\n"
@@ -843,6 +843,45 @@ def ding_aendern(reise_dir, wer, args, heute=None):
     return titel, text
 
 
+def lage_eintragen(reise_dir, wer, args, heute=None):
+    """Lage einer Unterkunft (ADR-0004): Adresse und/oder Koordinaten, je mit Herkunft (quelle) und Prüfdatum. -> (Titel, Text)."""
+    heute = heute or datetime.date.today()
+    ziel = (text_wert(args, "ziel", pflicht=True, laenge=20) or "").strip()
+    if not re.fullmatch(r"U-\d+", ziel):
+        raise Ablehnung("„ziel“ muss eine Unterkunft U-… sein.")
+    roh = routen_laden(reise_dir)
+    knoten, bezeichnung = ding_finden(roh, ziel)
+    if knoten is None:
+        raise Ablehnung(f"{ziel} gibt es nicht.")
+    quelle = text_wert(args, "quelle", pflicht=True, laenge=600)
+    g = datum(args["geprueft"], "geprueft", "Lage") if args.get("geprueft") else heute
+    if g > heute:
+        raise Ablehnung("„geprueft“ darf nicht in der Zukunft liegen.")
+    adresse = text_wert(args, "adresse", laenge=300)
+    punkt = None
+    if args.get("koordinaten") not in (None, ""):
+        try:
+            punkt = [round(float(x), 6) for x in re.split(r"[,;\s]+", str(args["koordinaten"]).strip()) if x]
+        except ValueError:
+            punkt = []
+        if len(punkt) != 2 or not (-90 <= punkt[0] <= 90 and -180 <= punkt[1] <= 180):
+            raise Ablehnung("„koordinaten“ als „Breite, Länge“ in Grad angeben, z. B. „39.7671, 2.7149“.")
+    if not adresse and not punkt:
+        raise Ablehnung("Bitte „adresse“ (Straße Nr., PLZ Ort) oder „koordinaten“ (Breite, Länge) angeben.")
+    geaendert = []
+    for feld, wert in (("adresse", adresse), ("punkt", punkt)):
+        if not wert:
+            continue
+        alt = (knoten.get(feld) or {}).get("wert") if isinstance(knoten.get(feld), dict) else None
+        knoten[feld] = fliess_map({"wert": wert, "quelle": quelle, "geprueft": g})
+        text = ", ".join(map(str, wert)) if feld == "punkt" else wert
+        geaendert.append(f"{'Koordinaten' if feld == 'punkt' else 'Adresse'} „{text}“" + (f" (war „{', '.join(map(str, alt)) if isinstance(alt, list) else alt}“)" if alt else ""))
+    routen_speichern(reise_dir, roh)
+    grund = text_wert(args, "grund")
+    return (f"{bezeichnung}: Lage eingetragen",
+            f"{bezeichnung}: " + "; ".join(geaendert) + f". Herkunft: {quelle}, geprüft {g.isoformat()}." + (f" Grund: {grund}." if grund else ""))
+
+
 def frage_zeile(reise_dir, text, bis=None):
     """Eine Zeile in offene-fragen.md anhängen (Tabelle | ID | Was | Bis | Status |) -> neue F-ID."""
     p = Path(reise_dir) / "offene-fragen.md"
@@ -1297,7 +1336,7 @@ WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_def
              "ding_anlegen": ding_anlegen, "ding_aendern": ding_aendern, "option_anlegen": option_anlegen,
              "wahlstelle_anlegen": wahlstelle_anlegen, "frage_anlegen": frage_anlegen, "entscheiden": entscheiden,
              "tag_aendern": tag_aendern, "wissen_schreiben": wissen_schreiben, "frage_schliessen": frage_schliessen,
-             "person_schreiben": person_schreiben}
+             "person_schreiben": person_schreiben, "lage_eintragen": lage_eintragen}
 
 
 # ---------- Der Schreibvorgang ----------
