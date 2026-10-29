@@ -883,6 +883,16 @@ class Routen:
         typ = next((self.unterkuenfte.get(u, {}).get("typ") for u in (o.get("unterkuenfte") or [])[:1]), None)
         return {k: mk[k] for k in krit if k in mk}, [k for k, d in krit.items() if zaehlt(d, typ) and k not in mk]
 
+    def frage_wird_gebraucht(self, frage, ausser):
+        """Hängt die Frage noch an einer anderen, offenen Wahlstelle? Dann bleibt sie offen, auch wenn eine entschieden ist."""
+        for xid, x in self.wahl.items():
+            if xid == ausser or x.get("frage") != frage:
+                continue
+            opts = [o for o in x.get("optionen") or [] if o.get("id") in self.option]
+            if not any(self.status(o) == "gewaehlt" for o in opts) and len([o for o in opts if self.status(o) not in UNGUELTIG]) > 1:
+                return True
+        return False
+
     def waehle(self, vid, w):
         opts = [o for o in w.get("optionen") or [] if o.get("id") in self.option]
         gewaehlt = [o for o in opts if self.status(o) == "gewaehlt"]
@@ -907,7 +917,7 @@ class Routen:
             f_offen = "offen" in self.fragen[f].lower()
             if offen and len(gueltig) > 1 and not f_offen:
                 self.warne(vid, f"{vid} ist noch offen, aber {f} steht nicht mehr auf offen.")
-            if not offen and f_offen:
+            if not offen and f_offen and not self.frage_wird_gebraucht(f, vid):
                 self.warne(vid, f"{vid} ist entschieden, aber {f} steht noch auf offen.")
 
     # ---------- Folge durchlaufen ----------
