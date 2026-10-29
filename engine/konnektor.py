@@ -2002,7 +2002,8 @@ MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "Ein Merkmal 
                                     "z. B. [kostenlos, gegen Gebühr, nicht möglich, unklar]"},
                           "veraenderlich": {"type": "boolean", "description": "Preise, Zeiten, Öffnungszeiten: der Wert braucht ein Prüfdatum"},
                           "stufe": {"type": "string", "enum": list(STUFEN), "description": "pflicht und empfohlen (Vorgabe) zählen als "
-                                    "„fehlt noch“; angeboten nur, wenn es jemanden interessiert; aus gilt für diese Reise nicht"},
+                                    "„fehlt noch“ und sind Spalten im Vergleich der Alternativen; angeboten nur, wenn es jemanden "
+                                    "interessiert (im Vergleich nur aufgeklappt); aus gilt für diese Reise nicht"},
                           "einheit": {"type": "string", "description": "hinter Zahlen, z. B. km oder h"},
                           "hilfe": {"type": "string", "description": "wie man den Wert findet (Website, Buch, Anruf)"},
                           "frage": {"type": "string", "description": "wonach die Person gefragt wird, wenn der Wert fehlt"},

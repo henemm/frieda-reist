@@ -1306,7 +1306,14 @@ function wahlVergleich(w, liste, datum) {
   // Auslöser (bei Unterwegs-Wahlstellen) als erste Zeile „Wann“, dann die Merkmale, zuletzt die Regeln
   const werte = o => ({...o.merkmale, _wann: o.ausloeser ? {wert: o.ausloeser} : null,
     _erfordert: regelWert(o.erfordert), _schliesst: regelWert(o.schliesst_aus)});
-  const belegt = [{id: "_wann", name: "Wann"}, ...w.kriterien, ...REGEL_ZEILEN].filter(k => opts.some(o => werte(o)[k.id]));
+  // Welche Merkmale Spalten sind, bestimmt die Reise über die Stufe (in der Claude-App einstellbar; Product Owner
+  // 29.10.2026): pflicht und empfohlen stehen im Vergleich, angeboten nur in den Einzelheiten, aus gar nicht. Hat keines
+  // davon einen Wert, stehen alle belegten im Vergleich.
+  const istRegel = k => k.id.startsWith("_");
+  const alleBelegt = [{id: "_wann", name: "Wann"}, ...w.kriterien.filter(k => stufeVon(k) !== "aus"), ...REGEL_ZEILEN].filter(k => g.some(o => werte(o)[k.id]));
+  const vorn = alleBelegt.filter(k => istRegel(k) || ["pflicht", "empfohlen"].includes(stufeVon(k)));
+  const belegt = vorn.some(k => !istRegel(k)) ? vorn : alleBelegt;
+  const nebenbei = alleBelegt.filter(k => !belegt.includes(k));
   const zeilen = z.nur ? belegt.filter(k => new Set(opts.map(o => text(werte(o)[k.id]))).size > 1) : belegt;
   const kopf = o => [link(o.id, o.titel), optionChips(w, o)];
   // Zeilen ohne Merkmal (Wann, Regeln): fehlt der Eintrag, gibt es nichts, und nicht „offen“
@@ -1344,7 +1351,9 @@ function wahlVergleich(w, liste, datum) {
         el("th", {scope: "row"}, el("span", {class: "wm-titel"}, el("span", {class: "wm-pfeil", "aria-hidden": "true"}, "›"), o.titel),
           el("span", {class: "wm-unter"}, imPlan(o), webLink(o, true))),
         zeilen.map(k => el("td", {}, zelle(k, werte(o)[k.id])))),
-        auf ? el("tr", {class: "wm-mehr"}, el("td", {colspan: String(zeilen.length + 1)}, optionBlock(w, o, true, true))) : null].filter(Boolean); })))));
+        auf ? el("tr", {class: "wm-mehr"}, el("td", {colspan: String(zeilen.length + 1)}, merkmalListe(nebenbei, werte(o), datum), optionBlock(w, o, true, true))) : null].filter(Boolean); })))));
+  if (nebenbei.length) box.append(el("p", {class: "z klein"}, `Weitere Merkmale beim Aufklappen: ${nebenbei.map(k => k.name).join(", ")}. `
+    + "Welche Merkmale Spalten sind, legt die Stufe fest (in der Claude-App einstellbar)."));
   box.append(el("div", {class: "wm-karten"}, opts.map(o => el("div", {class: "wm-karte" + (an(o) ? " an" : "")},
     el("div", {class: "k"}, o.titel), optionChips(w, o), merkmalListe(zeilen, werte(o), datum) || el("div", {class: "z klein"}, belegt.length ? "Keine Unterschiede in den gezeigten Merkmalen." : "Noch keine Merkmale."),
     webLink(o)))));
@@ -1417,7 +1426,7 @@ function optionBlock(w, o, ohneMerkmale, ohneId) {
   if (o.ausloeser) b.append(el("div", {class: "z"}, el("b", {}, "Wann: "), o.ausloeser));
   if (o.text) b.append(el("div", {class: "z"}, o.text));
   // Kennzahlen eigener Strecken stehen schon unter der Strecke
-  const mk = ohneMerkmale ? null : merkmalListe(w.kriterien.filter(k => !(k.auto && (o.strecken || []).length)), o.merkmale), luecke = fehltZeile(w, o);
+  const mk = ohneMerkmale ? null : merkmalListe(w.kriterien.filter(k => stufeVon(k) !== "aus" && !(k.auto && (o.strecken || []).length)), o.merkmale), luecke = fehltZeile(w, o);
   if (mk) b.append(mk);
   if (luecke) b.append(luecke);
   b.append(...regelZeilen(o));
@@ -1472,7 +1481,7 @@ function wahlKarte(w) {
   if (vgl) k.append(el("div", {class: "chips"}, wahlEinstieg(w, true, datum)), vgl);
   // Mit Vergleich stehen die Möglichkeiten in seiner Tabelle (Zeile aufklappen); am Handy (Karten) im Einzelnen zugeklappt
   if (vgl) k.append(el("details", {class: "block wm-einzeln"}, el("summary", {}, `Alle Möglichkeiten im Einzelnen (${gueltig.length})`),
-    el("div", {class: "inhalt"}, gueltig.map(o => optionBlock(w, o, gueltig.some(x => gefuellt(w, x)), true)))));
+    el("div", {class: "inhalt"}, gueltig.map(o => optionBlock(w, o, false, true)))));
   else for (const o of gueltig) k.append(optionBlock(w, o, false));
   const verw = w.optionen.filter(o => weg(o.status));
   if (verw.length) {

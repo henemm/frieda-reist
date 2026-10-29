@@ -83,7 +83,7 @@ Ein Merkmal ist eine Definition in `arten.yaml` und ein Wert am Ding.
 | `name` | Anzeige |
 | `typ` | `text` (Vorgabe), `geld`, `zahl`, `auswahl` (mit `werte`) |
 | `veraenderlich` | der Wert braucht ein Prüfdatum; ohne steht „ungeprüft“ daneben, ab Status `fest` eine Mahnung, der Wächter meldet alte Prüfdaten |
-| `stufe` | `pflicht`, `empfohlen` (Vorgabe), `angeboten`, `aus`. Pflicht und empfohlen zählen als „Fehlt noch“ und im Vergleichszähler; Pflicht fehlt ab Status `planung` als Mahnung, empfohlen ab `fest`; angeboten erscheint nur mit Wert; aus gilt nicht. Eine Wahlstelle kann die Stufe für sich ändern (`merkmale: {abendessen: {stufe: empfohlen}}`) |
+| `stufe` | `pflicht`, `empfohlen` (Vorgabe), `angeboten`, `aus`. Pflicht und empfohlen zählen als „Fehlt noch“ und im Vergleichszähler und sind die Spalten im Vergleich der Alternativen (angeboten steht dort nur in den Einzelheiten, `docs/design.md`); Pflicht fehlt ab Status `planung` als Mahnung, empfohlen ab `fest`; angeboten erscheint nur mit Wert; aus gilt nicht. Eine Wahlstelle kann die Stufe für sich ändern (`merkmale: {abendessen: {stufe: empfohlen}}`) |
 | `auto` | berechnet, nie eingetragen (siehe Grundformen) |
 | `hilfe`, `frage` | wie der AI-Client den Wert recherchiert und wonach er fragt |
 | `einheit` | Anzeige hinter Zahlen |

@@ -53,7 +53,7 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
         assert v["sichtbar"] and v["offen"] == "true", (breite, v)
         assert 2 <= v["spalten"] and (int(breite) >= 700 or v["spalten"] <= 2), (breite, v)
         if int(breite) >= 700:
-            assert v["sortiert"] == 1 and v["aufgeklappt"] == 1, (breite, v)
+            assert v["sortiert"] == 1 and v["aufgeklappt"] == 1 and v["falscheSpalten"] == [], (breite, v)
     assert set(e["vergleich"]) == {"390", "1200"}
     # Leiste als App: bleibt unten, wenn iOS die Höhe nach der Tastatur vergisst (800 statt 500 px), mit Tastatur über
     # ihr; im Browser ändert sich nichts (Abstand unten 12 px)
