@@ -17,7 +17,7 @@ import bauen  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 # Playwright für die Browser-Prüfung: PLAYWRIGHT_MODUL oder ~/playwright-tool (fehlt beides, wird übersprungen)
-PLAYWRIGHT = Path(os.environ.get("PLAYWRIGHT_MODUL") or Path.home() / "playwright-tool/node_modules/playwright/index.mjs")
+from playwright_pfad import PLAYWRIGHT  # noqa: E402
 
 
 def mini_reise(tmp_path):

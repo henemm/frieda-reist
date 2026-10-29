@@ -147,10 +147,13 @@ ol.fussnoten li{margin:0 0 .25em;overflow-wrap:anywhere}
 .mk-unklar{color:var(--warn);font-weight:700}
 .mk-luecke{color:var(--warn)}
 .pico button.mk-i{position:relative;width:20px;height:20px;min-height:0;padding:0;margin:0 0 0 6px;border-radius:50%;border:1px solid var(--line);
-  background:var(--card);color:var(--mut);font:italic 700 0.75rem/18px var(--font-text);text-align:center;vertical-align:1px;box-shadow:none;cursor:pointer}
+  background:var(--card);color:var(--mut);font:700 0.75rem/18px var(--font-text);font-style:normal;text-align:center;vertical-align:1px;box-shadow:none;cursor:pointer}
 .pico button.mk-i::after{content:"";position:absolute;inset:-12px}
-.pico button.mk-i[aria-expanded="true"]{background:var(--acc2);color:var(--acc);border-color:var(--acc)}
-.mk-q{display:block;font-size:0.8125rem;line-height:1.35;color:var(--mut);margin:3px 0 0;overflow-wrap:anywhere}
+.pico button.mk-i[aria-expanded="true"],.pico button.mk-i:hover{background:var(--acc2);color:var(--acc);border-color:var(--acc)}
+/* Herkunft schwebt über der Seite (auch über Tabellen mit seitlichem Rollen), Lage setzt mkZeige */
+.mk-q{position:fixed;z-index:60;width:max-content;max-width:min(22rem,calc(100vw - 32px));padding:7px 11px;border:1px solid var(--line);
+  border-radius:10px;background:var(--card);color:var(--fg);box-shadow:var(--schatten,0 4px 18px rgba(0,0,0,.14));
+  font:400 0.8125rem/1.4 var(--font-text);white-space:normal;text-align:left;overflow-wrap:anywhere}
 .mk-q[hidden]{display:none}
 .mk-datum{display:block}
 .mk-am{font-size:0.7812rem;font-weight:700;color:var(--ocker)}
@@ -385,7 +388,16 @@ tr.auf .wm-pfeil{transform:rotate(90deg)}
 .wm-unter{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:4px 0 0 1em}
 .pico .wm-tab:has(.wm-zeile){font-size:0.875rem}
 .pico .wm-tab:has(.wm-zeile) :is(td,th){padding:9px 10px}
-.pico .wm-tab tr.wm-mehr>td{background:var(--tint);padding:4px 14px 12px}
+.pico .wm-tab tr.wm-zeile.auf>:is(th,td){background:var(--tint);border-bottom:0}
+.pico .wm-tab tr.wm-mehr>td{background:var(--tint);padding:2px 14px 14px calc(10px + 1em)}
+.pico .wm-tab tr.wm-zeile.an.auf>:is(th,td),.pico .wm-tab tr.wm-mehr.an>td{background:var(--acc2)}
+.wm-einzelheiten{position:relative;display:flex;flex-direction:column;gap:6px;padding-right:44px;font-size:0.875rem}
+.wm-einzelheiten>*{max-width:72ch}
+.wm-einzelheiten>.zid-box{position:absolute;top:0;right:0}
+.pico .wm-einzelheiten :is(dl.mliste,ul,.z){margin:0;font-size:inherit}
+.pico .wm-einzelheiten :is(.z.klein,.verlauf){font-size:0.8125rem}
+.pico .wm-einzelheiten ul.pm{padding:0}
+.pico .wm-einzelheiten ul.pm li{list-style:none;margin:0}
 .web-link{font-weight:600;white-space:nowrap}
 .karten-links{display:inline-flex;flex-wrap:wrap;gap:4px 12px}
 .wm-einzeln{margin-top:10px}
@@ -931,7 +943,7 @@ function zid(id) {
               nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, buchungChip (Stand einer Buchung mit Link),
               belegeListe (Belege einer Buchung mit Formular)
    Organismen: Ding (nachtZeile, unterkunftKarte, aufenthaltZeile, streckeZeile), buchungBlock (Buchung am Ding, ihre Heimat),
-              Wahl-Modul (wahlEinstieg, wahlVergleich, wahlKarte),
+              Wahl-Modul (wahlEinstieg, wahlVergleich mit optionEinzelheiten in der aufgeklappten Zeile, wahlKarte),
               tagKarte (Tageskasten mit wegVerlauf), tagEbenen, tagOrteZeilen, nachtAbschnitt (Nacht der Tagesseite),
               tagZeile (Zeitachse), uebersichtKarte, zuEntscheiden, zuBuchen (Listen aus listenZeile)
    Vorlagen:  tagKachel, Ansichten (ansichtTag = Tagesseite, ansichtReise = Reiseüberblick, ansichtOffen = Zu tun,
@@ -1411,14 +1423,34 @@ function merkmalWert(v, datum) {
     v.am ? el("span", {class: "mk-am-tag"}, "am " + tagKurz(v.am)) : null,
     v.ungeprueft ? chip("offen", "ungeprüft", {class: "mk-chip"}) : null,
     herkunft ? [el("button", {type: "button", class: "mk-i", "data-mk-i": "", "aria-expanded": "false", "aria-label": "Herkunft zeigen"}, "i"),
-      el("span", {class: "mk-q", hidden: true}, herkunft)] : null);
+      el("span", {class: "mk-q", role: "tooltip", hidden: true}, herkunft)] : null);
 }
+// Herkunft hinter dem i: am Rechner beim Darüberfahren (und mit der Tastatur beim Fokus), überall per Klick oder Tippen,
+// dann offen bis zum nächsten Klick, Escape oder Rollen. Das Fenster schwebt neben dem i (position: fixed).
+let MK_FEST = null;
+function mkZeige(b, an) {
+  const q = b && b.nextElementSibling;
+  if (!q) return;
+  b.setAttribute("aria-expanded", String(an)); q.hidden = !an;
+  if (!an) return;
+  const r = b.getBoundingClientRect();
+  q.style.left = Math.max(16, Math.min(r.left - 10, innerWidth - 16 - q.offsetWidth)) + "px";
+  q.style.top = (r.bottom + 6 + q.offsetHeight <= innerHeight - 8 ? r.bottom + 6 : Math.max(8, r.top - 6 - q.offsetHeight)) + "px";
+}
+const mkZu = () => { if (MK_FEST) mkZeige(MK_FEST, false); MK_FEST = null; };
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-mk-i]");
-  if (!b) return;
-  const q = b.nextElementSibling, auf = b.getAttribute("aria-expanded") !== "true";
-  b.setAttribute("aria-expanded", String(auf)); q.hidden = !auf;
+  if (!b) { if (!e.target.closest(".mk-q")) mkZu(); return; }
+  const war = MK_FEST === b;
+  mkZu();
+  if (!war) { MK_FEST = b; mkZeige(b, true); }
 });
+document.addEventListener("mouseover", e => { const b = e.target.closest && e.target.closest("[data-mk-i]"); if (b && b !== MK_FEST && matchMedia("(hover:hover)").matches) mkZeige(b, true); });
+document.addEventListener("mouseout", e => { const b = e.target.closest && e.target.closest("[data-mk-i]"); if (b && b !== MK_FEST) mkZeige(b, false); });
+document.addEventListener("focusin", e => { if (e.target.matches("[data-mk-i]:focus-visible")) mkZeige(e.target, true); });
+document.addEventListener("focusout", e => { if (e.target.matches("[data-mk-i]") && e.target !== MK_FEST) mkZeige(e.target, false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") mkZu(); });
+window.addEventListener("scroll", () => { mkZu(); document.querySelectorAll("[data-mk-i][aria-expanded=true]").forEach(b => mkZeige(b, false)); }, {passive: true, capture: true});
 function merkmalListe(kriterien, werte, datum) {
   const zeilen = (kriterien || []).filter(k => werte && werte[k.id]);
   return zeilen.length ? el("dl", {class: "mliste"}, zeilen.flatMap(k => [el("dt", {}, k.name), el("dd", {}, merkmalWert(werte[k.id], datum))])) : null;
@@ -1550,7 +1582,7 @@ function wahlVergleich(w, liste, datum) {
         el("th", {scope: "row"}, el("span", {class: "wm-titel"}, el("span", {class: "wm-pfeil", "aria-hidden": "true"}, "›"), o.titel),
           el("span", {class: "wm-unter"}, imPlan(o), webLink(o, true))),
         zeilen.map(k => el("td", {}, zelle(k, werte(o)[k.id])))),
-        auf ? el("tr", {class: "wm-mehr"}, el("td", {colspan: String(zeilen.length + 1)}, merkmalListe(nebenbei, werte(o), datum), optionBlock(w, o, true, true))) : null].filter(Boolean); })))));
+        auf ? el("tr", {class: "wm-mehr" + (an(o) ? " an" : "")}, el("td", {colspan: String(zeilen.length + 1)}, optionEinzelheiten(w, o, merkmalListe(nebenbei, werte(o), datum)))) : null].filter(Boolean); })))));
   if (nebenbei.length) box.append(el("p", {class: "z klein"}, `Weitere Merkmale beim Aufklappen: ${nebenbei.map(k => k.name).join(", ")}. `
     + "Spalten sind die Merkmale, die der Reise nötig oder gut zu wissen sind; zusätzliche stehen hier (in der Claude-App einstellbar)."));
   box.append(el("div", {class: "wm-karten"}, opts.map(o => el("div", {class: "wm-karte" + (an(o) ? " an" : "")},
@@ -1562,9 +1594,13 @@ function wahlVergleich(w, liste, datum) {
 // Neu zeichnen nur des Moduls (nicht der ganzen Seite); der Fokus bleibt auf dem bedienten Element
 function vglNeu(id, fokus) {
   const {w, liste, datum} = vglTeile(id);
+  const vorher = fokus && document.querySelector(fokus), oben = vorher && vorher.getBoundingClientRect().top;
   document.querySelectorAll(`[data-vgl="${CSS.escape(id)}"]`).forEach(x => x.replaceWith(wahlVergleich(w, liste, datum)));
   document.querySelectorAll(`[data-vgl-auf="${CSS.escape(id)}"]`).forEach(x => x.replaceWith(wahlEinstieg(w, liste, datum)));
-  if (fokus) { const f = document.querySelector(fokus); if (f) f.focus(); }
+  const f = fokus && document.querySelector(fokus);
+  if (!f) return;
+  f.focus({preventScroll: true});
+  if (vorher) window.scrollBy(0, f.getBoundingClientRect().top - oben);
 }
 document.addEventListener("click", e => {
   const so = e.target.closest("[data-vgl-sort]");
@@ -1635,9 +1671,11 @@ function optionBlock(w, o, ohneMerkmale, ohneId) {
   for (const sid of o.strecken || []) b.append(streckeZeile(sid));
   // Unterkunft der Möglichkeit: mit Reiter „Plan“ der Link auf ihre Karte, sonst steht sie hier (Heimat), also Kontakt
   // und Webseite statt eines Links auf dieselbe Seite
-  for (const uid of o.unterkuenfte || []) if (R.unterkuenfte[uid]) { const u = R.unterkuenfte[uid];
-    b.append(PLAN_DA ? el("div", {class: "z"}, link(uid, "→ " + u.name))
-      : [lageZeile(u), el("div", {class: "z"}, u.kontakt ? [el("b", {}, "Kontakt: "), u.kontakt.replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ") || "–", " "] : null, webLink(o, true))]); }
+  // Ist die Wahl entschieden, steht die gewählte Unterkunft ohne Reiter „Plan“ schon mit Lage und Kontakt in ihrer Nacht
+  const inNacht = !PLAN_DA && o.aktiv && !w.offen && w.art === "planung";
+  for (const uid of inNacht ? [] : o.unterkuenfte || []) if (R.unterkuenfte[uid]) { const u = R.unterkuenfte[uid];
+    b.append(...[PLAN_DA ? el("div", {class: "z"}, link(uid, "→ " + u.name))
+      : [lageZeile(u), el("div", {class: "z"}, u.kontakt ? [el("b", {}, "Kontakt: "), u.kontakt.replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ") || "–", " "] : null, webLink(o, true))]].flat().filter(Boolean)); }
   if (o.tage && o.tage.length) {
     const aktivTage = o.tage.filter(tid => R.tage.some(t => t.id === tid));
     if (aktivTage.length) {
@@ -1654,8 +1692,36 @@ function optionBlock(w, o, ohneMerkmale, ohneId) {
   }
   if (o.siehe && proId.has(o.siehe)) b.append(el("div", {class: "z klein"}, link(o.siehe, "→ " + proId.get(o.siehe).titel)));
   if (o.quelle) b.append(el("div", {class: "z klein"}, "Quelle: " + o.quelle));
-  if (o.verlauf.length) b.append(el("div", {class: "verlauf"}, o.verlauf.map(v =>
-    `${v.datum.split("-").reverse().join(".")}: ${STATUS_TEXT[v.status] || v.status}${v.wer ? " (" + v.wer + ")" : ""}${v.grund ? " – " + v.grund : ""}${v.durch ? " → " + v.durch : ""}`).join(" · ")));
+  if (o.verlauf.length) b.append(optionVerlauf(o));
+  return b;
+}
+// Verlauf einer Option; Nummern von Aufträgen und Rückmeldungen (A-…, R-…) sind intern und stehen nicht auf der Seite
+const ohneNummern = t => String(t || "").replace(/\s*\b(?:Auftrag|Rückmeldung|Anfrage)\s+[AR]-[\w-]+(?:\s+(?:aus der Claude-App|von [^;,·)]+))?/g, "")
+  .replace(/\b[AR]-\d{8}-\d{6}-\w+\b/g, "").replace(/^[\s–,;·-]+|[\s–,;·-]+$/g, "");
+function optionVerlauf(o) {
+  return el("div", {class: "verlauf"}, o.verlauf.map(v => { const g = ohneNummern(v.grund);
+    return `${v.datum.split("-").reverse().join(".")}: ${STATUS_TEXT[v.status] || v.status}${v.wer ? " (" + v.wer + ")" : ""}${g ? " – " + g : ""}${v.durch ? " → " + v.durch : ""}`; }).join(" · "));
+}
+// Einzelheiten einer Möglichkeit in der aufgeklappten Zeile des Vergleichs (D1): Name, Zustand, Merkmale der Spalten und
+// Webseite stehen schon in der Zeile; hier nur, was dort fehlt: Text, weitere Merkmale, Vor- und Nachteile, Lage und Kontakt,
+// Strecken, Tage, Quelle, Verlauf. Die Sprechblase für Rückmeldungen steht rechts oben.
+function optionEinzelheiten(w, o, weitere) {
+  const b = el("div", {class: "wm-einzelheiten"}, zid(o.id));
+  if (o.text) b.append(el("div", {class: "z"}, o.text));
+  if (weitere) b.append(weitere);
+  const luecke = fehltZeile(w, o);
+  if (luecke) b.append(luecke);
+  if (o.plus.length || o.minus.length) b.append(el("ul", {class: "pm"}, o.plus.map(x => el("li", {}, "+ " + x)), o.minus.map(x => el("li", {}, "– " + x))));
+  for (const sid of o.strecken || []) b.append(streckeZeile(sid));
+  for (const uid of o.unterkuenfte || []) if (R.unterkuenfte[uid]) { const u = R.unterkuenfte[uid];
+    const kontakt = u.kontakt && u.kontakt.replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ");
+    b.append(...[lageZeile(u, true), kontakt ? el("div", {class: "z"}, el("b", {}, "Kontakt: "), kontakt) : null,
+      PLAN_DA ? el("div", {class: "z klein"}, link(uid, "Zur Unterkunft")) : null].filter(Boolean)); }
+  const tage = (o.tage || []).filter(tid => R.tage.some(t => t.id === tid));
+  if (tage.length) b.append(el("div", {class: "z klein"}, "Im Tagesplan: ", tage.flatMap((tid, i) => [i ? ", " : "", link(tid, `Tag ${R.tage.find(x => x.id === tid).nr}`)])));
+  if (o.siehe && proId.has(o.siehe)) b.append(el("div", {class: "z klein"}, link(o.siehe, "→ " + proId.get(o.siehe).titel)));
+  if (o.quelle) b.append(el("div", {class: "z klein"}, "Quelle: " + o.quelle));
+  if (o.verlauf.length) b.append(optionVerlauf(o));
   return b;
 }
 

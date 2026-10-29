@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bauen  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
-PLAYWRIGHT = Path(os.environ.get("PLAYWRIGHT_MODUL") or Path.home() / "playwright-tool/node_modules/playwright/index.mjs")
+from playwright_pfad import PLAYWRIGHT  # noqa: E402
 
 
 def plan_fest(quelle):

@@ -66,7 +66,7 @@ for (const breite of [390, 1200]) {
     const sichtbar = await box.isVisible();
     // Handy: Karten (höchstens 2); Rechner: Tabelle mit je Möglichkeit einer Zeile, alle gültigen (29.10.2026)
     const spalten = await box.locator(breite < 700 ? ".wm-karte" : "tbody tr.wm-zeile").count();
-    let sortiert = null, aufgeklappt = null, falscheSpalten = null;
+    let sortiert = null, aufgeklappt = null, falscheSpalten = null, einzelheiten = null;
     if (breite >= 700) {
       // Spalten nur für Merkmale der Stufe pflicht oder empfohlen (angeboten steht in den Einzelheiten, aus nirgends)
       falscheSpalten = await p.evaluate(id => { const w = vglTeile(id).w;
@@ -75,11 +75,22 @@ for (const breite of [390, 1200]) {
         return pe ? [...document.querySelectorAll(`#main [data-vgl="${CSS.escape(id)}"] thead th`)].map(th => th.textContent.trim()).filter(t => nicht.has(t)) : []; }, id);
       await box.locator("[data-vgl-sort]").first().click();
       sortiert = await p.locator(`#main [data-vgl="${id}"] th[aria-sort]`).count();
-      await p.locator(`#main [data-vgl="${id}"] tr.wm-zeile`).first().click({position: {x: 12, y: 12}});
+      const zeile = p.locator(`#main [data-vgl="${id}"] tr.wm-zeile`).first(), yVor = (await zeile.boundingBox()).y;
+      await zeile.click({position: {x: 12, y: 12}});
       aufgeklappt = await p.locator(`#main [data-vgl="${id}"] tr.wm-mehr`).count();
+      // Aufklappen lässt die Zeile stehen, wo sie war; die Einzelheiten wiederholen weder Name noch Zustand, kein Fehlertext,
+      // keine internen Nummern; das i ist aufrecht und zeigt die Herkunft beim Darüberfahren
+      einzelheiten = await p.evaluate(id => { const m = document.querySelector(`#main [data-vgl="${CSS.escape(id)}"] tr.wm-mehr`), t = m.textContent;
+        const i = document.querySelector("#main .mk-i");
+        return {doppelt: m.querySelectorAll(".option, .chip, .k").length, fehlertext: /\[object |undefined|NaN/.test(t), nummern: /\b[AR]-\d{8}/.test(t),
+          kursiv: i ? getComputedStyle(i).fontStyle : "normal", ohneNummern: ohneNummern("Auftrag A-20261029-065303-b061 aus der Claude-App") + "|" + ohneNummern("zu teuer – Auftrag A-20261029-065303-b061 aus der Claude-App")}; }, id);
+      einzelheiten.springt = Math.abs((await zeile.boundingBox()).y - yVor) > 1;
+      const i = p.locator(`#main [data-vgl="${id}"] .mk-i`).first();
+      if (await i.count()) { await i.scrollIntoViewIfNeeded(); await p.waitForTimeout(100); await i.hover();
+        einzelheiten.herkunft = await i.evaluate(x => !x.nextElementSibling.hidden && x.nextElementSibling.textContent.length > 0); await p.mouse.move(1, 1); }
     }
     await p.locator(`#main [data-vgl="${id}"] [data-vgl-nur]`).first().check();
-    vergleich[breite] = {route: h, sichtbar, spalten, sortiert, aufgeklappt, falscheSpalten, offen: await p.locator(`[data-vgl-auf="${id}"]`).first().getAttribute("aria-expanded")};
+    vergleich[breite] = {route: h, sichtbar, spalten, sortiert, aufgeklappt, falscheSpalten, einzelheiten, offen: await p.locator(`[data-vgl-auf="${id}"]`).first().getAttribute("aria-expanded")};
     break;
   }
   await ctx.close();
