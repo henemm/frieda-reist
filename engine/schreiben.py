@@ -53,7 +53,8 @@ ZEIT_ANWENDEN = 150     # Sekunden für einen Schreibvorgang (fetch, Probebau, p
 AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "wert_eintragen": "wert",
             "ding_anlegen": "ding", "ding_aendern": "ding", "option_anlegen": "alternative", "wahlstelle_anlegen": "alternative",
             "frage_anlegen": "frage", "entscheiden": "entscheiden", "tag_aendern": "plan", "wissen_schreiben": "wissen",
-            "frage_schliessen": "frage_schliessen", "person_schreiben": "einladen"}   # reise.AKTIONEN
+            "frage_schliessen": "frage_schliessen", "person_schreiben": "einladen", "reise_status_setzen": "einstellung",
+            "einstellung_setzen": "einstellung"}   # reise.AKTIONEN
 ARTEN_KOPF = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). {herkunft}\n"
               "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (Gliederung des\n"
               "# Lesetexts: je Rubrik name und hilfe); je Merkmal: name, typ,\n"
@@ -1293,11 +1294,122 @@ def person_schreiben(reise_dir, wer, args, heute=None):
     return titel, text
 
 
+# ---------- Status und Einstellungen der Reise (reise.yaml), neue Reise ----------
+
+def reise_yaml_laden(reise_dir):
+    p = Path(reise_dir) / "reise.yaml"
+    if not p.exists():
+        raise Ablehnung("Diese Reise hat keine reise.yaml.")
+    return p, yaml_rund().load(p.read_text(encoding="utf-8"))
+
+
+def reise_yaml_speichern(p, roh):
+    import io
+    out = io.StringIO()
+    yaml_rund().dump(roh, out)
+    p.write_text(out.getvalue(), encoding="utf-8")
+
+
+def reise_status_setzen(reise_dir, wer, args, heute=None):
+    """Status der Reise (idee, planung, fest, unterwegs, danach, archiv) mit Verlaufseintrag (Datum, Wert, Person, Grund);
+    nur Organisator:innen, in jedem Status (auch aus dem Archiv zurück). -> (Titel, Text)."""
+    from reise import STATUS
+    from ruamel.yaml.comments import CommentedMap, CommentedSeq
+    heute = heute or datetime.date.today()
+    wert = (text_wert(args, "status", pflicht=True, laenge=20) or "").lower()
+    if wert not in STATUS:
+        raise Ablehnung(f"„status“ muss einer von {', '.join(STATUS)} sein.")
+    grund = text_wert(args, "grund", pflicht=True)
+    p, roh = reise_yaml_laden(reise_dir)
+    st = roh.get("status")
+    if not isinstance(st, dict):
+        st = CommentedMap()
+        roh["status"] = st
+    alt = st.get("wert")
+    if alt == wert:
+        raise Ablehnung(f"Die Reise hat schon den Status {wert}.")
+    st["wert"] = wert
+    verlauf = st.get("verlauf")
+    if verlauf is None:
+        verlauf = CommentedSeq()
+        st["verlauf"] = verlauf
+    verlauf.append(fliess_map({"datum": heute, "wert": wert, "wer": wer["name"], "grund": grund}))
+    reise_yaml_speichern(p, roh)
+    return f"Status {alt or '–'} → {wert}", f"Die Reise hat jetzt den Status {wert} (vorher {alt or '–'}; {wer['name']}, {heute.strftime('%-d.%-m.%Y')}, Grund: {grund})."
+
+
+def einstellung_setzen(reise_dir, wer, args, heute=None):
+    """Einstellungen der Reise: bausteine (vollständige Liste) und regeln (Name: Wert); nur Organisator:innen. Was gilt, prüft der
+    Probebau (reise.py). -> (Titel, Text)."""
+    from reise import BAUSTEINE, KERN, VORGABEN
+    from ruamel.yaml.comments import CommentedMap
+    p, roh = reise_yaml_laden(reise_dir)
+    geaendert = []
+    bausteine = args.get("bausteine")
+    if bausteine is not None:
+        liste = liste_wert({"b": bausteine}, "b", laenge=20) or []
+        fremd = [b for b in liste if b not in BAUSTEINE and b not in KERN]
+        if fremd:
+            raise Ablehnung(f"Unbekannte Bausteine: {', '.join(fremd)} (bekannt: {', '.join(BAUSTEINE)}).")
+        liste = [b for b in dict.fromkeys(liste) if b not in KERN]
+        if list(roh.get("bausteine") or []) != liste:
+            geaendert.append(f"bausteine {list(roh.get('bausteine') or [])} → {liste}")
+            roh["bausteine"] = fliess_map({"bausteine": liste})["bausteine"]
+    regeln = args.get("regeln")
+    if regeln not in (None, {}):
+        if not isinstance(regeln, dict):
+            raise Ablehnung("„regeln“ muss ein Objekt {regel: wert} sein.")
+        r = roh.get("regeln")
+        if r is None:
+            r = CommentedMap()
+            roh["regeln"] = r
+        for k, v in regeln.items():
+            if k not in VORGABEN:
+                raise Ablehnung(f"Unbekannte Regel „{k}“ (bekannt: {', '.join(VORGABEN)}).")
+            if isinstance(v, str) and v.strip().lstrip("-").isdigit():
+                v = int(v)
+            if r.get(k) == v:
+                continue
+            geaendert.append(f"regeln.{k} „{r.get(k, VORGABEN[k])}“ → „{v}“")
+            r[k] = skalar(k, v) if isinstance(v, str) else v
+    if not geaendert:
+        raise Ablehnung("Nichts zu ändern (bausteine als Liste oder regeln als Objekt angeben).")
+    grund = text_wert(args, "grund")
+    reise_yaml_speichern(p, roh)
+    return "Einstellungen geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), \
+        "Einstellungen: " + "; ".join(geaendert) + "." + (f" Grund: {grund}." if grund else "")
+
+
+def reise_anlegen(reisen_dir, wer, args, heute=None):
+    """Neue Reise aus einer geprüften Anfrage der Claude-App (Konnektor reise_anlegen, daten.neue_reise) -> (Titel, Text, Ordner).
+    Läuft auf Ebene des Repos, nicht einer Reise."""
+    import neu
+    import shutil
+    auftrag = args.get("auftrag")
+    if not isinstance(auftrag, dict) or not isinstance((auftrag.get("daten") or {}).get("neue_reise"), dict):
+        raise Ablehnung("Die Anfrage beschreibt keine neue Reise.")
+    n = auftrag["daten"]["neue_reise"]
+    if not REISE_MUSTER.match(str(n.get("pfad") or "")):
+        raise Ablehnung("Der Ordner der Reise ist ungültig.")
+    if (Path(reisen_dir) / n["pfad"]).exists():
+        raise Ablehnung(f"Den Ordner reisen/{n['pfad']} gibt es schon.")
+    try:
+        ordner = neu.aus_auftrag(Path(reisen_dir), auftrag, heute=heute)
+    except neu.Fehler as e:
+        raise Ablehnung(str(e))
+    ok, meldungen = neu.pruefen(ordner)
+    if not ok:
+        shutil.rmtree(ordner, ignore_errors=True)
+        raise Ablehnung("Die Reise baut nicht: " + " ".join(meldungen))
+    return f"Neue Reise {ordner.name} angelegt", f"Die Reise „{n['titel']}“ ist angelegt (Ordner {ordner.name}, Status Idee).", ordner.name
+
+
 WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_definieren, "wert_eintragen": wert_eintragen,
              "ding_anlegen": ding_anlegen, "ding_aendern": ding_aendern, "option_anlegen": option_anlegen,
              "wahlstelle_anlegen": wahlstelle_anlegen, "frage_anlegen": frage_anlegen, "entscheiden": entscheiden,
              "tag_aendern": tag_aendern, "wissen_schreiben": wissen_schreiben, "frage_schliessen": frage_schliessen,
-             "person_schreiben": person_schreiben}
+             "person_schreiben": person_schreiben, "reise_status_setzen": reise_status_setzen, "einstellung_setzen": einstellung_setzen}
+REPO_WERKZEUGE = {"reise_anlegen": reise_anlegen}   # arbeiten auf reisen/, nicht in einer Reise
 
 
 # ---------- Der Schreibvorgang ----------
@@ -1360,20 +1472,35 @@ class Schreiber:
         """Ein Schreibvorgang in der vorbereiteten Arbeitskopie -> {"ok": True, "text", "commit"}; sonst Ablehnung."""
         if not REISE_MUSTER.match(reise or ""):
             raise Ablehnung("Unbekannte Reise.")
-        if werkzeug not in WERKZEUGE:
+        if werkzeug not in WERKZEUGE and werkzeug not in REPO_WERKZEUGE:
             raise Ablehnung(f"Unbekanntes Werkzeug „{werkzeug}“.")
-        reise_dir = self.arbeit / "reisen" / reise
-        if not (reise_dir / "reise.json").exists():
-            raise Ablehnung(f"Die Reise „{reise}“ gibt es im Repo nicht.")
         args = anfrage.get("args") if isinstance(anfrage.get("args"), dict) else {}
-        wer = self.wer_pruefen(reise_dir, anfrage, werkzeug)
-        try:
-            titel, text = WERKZEUGE[werkzeug](reise_dir, wer, args)
-            self.probebau(reise_dir)
-        except Ablehnung:
-            git(self.arbeit, "checkout", "-q", "--", f"reisen/{reise}")
-            git(self.arbeit, "clean", "-qfd", "--", f"reisen/{reise}")
-            raise
+        reise_dir = self.arbeit / "reisen" / reise
+        if werkzeug in REPO_WERKZEUGE:
+            # Neue Reise: der Konnektor hat Person und Recht geprüft (Konto darf Reisen anlegen); hier Form und Probebau
+            name = anfrage.get("name")
+            if not isinstance(name, str) or not name.strip():
+                raise Ablehnung("Schreiben geht nur mit einer Person (Name fehlt).")
+            wer = {"name": name.strip(), "rolle": anfrage.get("rolle") or "organisator", "person": anfrage.get("person"), "titel": "Reisen"}
+            try:
+                titel, text, reise = REPO_WERKZEUGE[werkzeug](self.arbeit / "reisen", wer, args)
+                reise_dir = self.arbeit / "reisen" / reise
+                self.probebau(reise_dir)
+            except Ablehnung:
+                git(self.arbeit, "reset", "-q", "--hard")
+                git(self.arbeit, "clean", "-qfd", "--", "reisen")
+                raise
+        else:
+            if not (reise_dir / "reise.json").exists():
+                raise Ablehnung(f"Die Reise „{reise}“ gibt es im Repo nicht.")
+            wer = self.wer_pruefen(reise_dir, anfrage, werkzeug)
+            try:
+                titel, text = WERKZEUGE[werkzeug](reise_dir, wer, args)
+                self.probebau(reise_dir)
+            except Ablehnung:
+                git(self.arbeit, "checkout", "-q", "--", f"reisen/{reise}")
+                git(self.arbeit, "clean", "-qfd", "--", f"reisen/{reise}")
+                raise
         if not git(self.arbeit, "status", "--porcelain", "--", f"reisen/{reise}"):
             raise Ablehnung("Das ändert nichts.")
         nachricht = (f"{wer['titel']}: {titel}\n\n{text}\n\nÜber den Konnektor ({werkzeug}) von {wer['name']} ({wer['rolle']}), "
@@ -1480,7 +1607,7 @@ class Dienst(BaseHTTPRequestHandler):
         if not hmac.compare_digest(self.headers.get("X-Frieda-Dienst", ""), konten.dienst_geheimnis()):
             return self._senden(403, {"fehler": "nur für den Konnektor"})
         teile = self.path.split("?", 1)[0].strip("/").split("/")
-        if len(teile) != 2 or not REISE_MUSTER.match(teile[0]) or teile[1] not in WERKZEUGE:
+        if len(teile) != 2 or not REISE_MUSTER.match(teile[0]) or (teile[1] not in WERKZEUGE and teile[1] not in REPO_WERKZEUGE):
             return self._senden(404, {"fehler": "unbekannt"})
         try:
             laenge = int(self.headers.get("Content-Length", "0"))

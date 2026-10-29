@@ -100,6 +100,8 @@ AKTIONEN = {
     "wissen":       {"rolle": "mitwirkend", "baustein": None, "ab": ("alles", "nachlese")},
     "frage_schliessen":       {"rolle": "organisator", "baustein": "fragen", "ab": ("alles", "nachlese")},
     "rueckmeldung_erledigen": {"rolle": "organisator", "baustein": "rueckmeldungen", "ab": ("alles", "nachlese")},
+    # O-3: Status und Einstellungen der Reise – nur Organisator:innen, in jedem Status (auch aus dem Archiv zurück)
+    "einstellung":  {"rolle": "organisator", "baustein": None, "ab": ("alles", "nachlese", "nichts")},
 }
 # Lesende Konnektor-Werkzeuge, die zu einem zuschaltbaren Baustein gehören
 LESE_BAUSTEIN = {"offene_fragen": "fragen", "varianten": "varianten", "merkmale": "varianten",

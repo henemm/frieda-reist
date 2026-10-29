@@ -678,3 +678,75 @@ def test_frage_schliessen_und_person_schreiben(repo):
     with pytest.raises(sb.Ablehnung, match="Name „Ida“ kommt zweimal"):
         s.schreiben("beispielreise", "person_schreiben", {**IDA, "args": {"schluessel": "ida2", "vorname": "Ida"}})
     assert not git(arbeit, "status", "--porcelain")
+
+
+# ---------- Status, Einstellungen, neue Reise ----------
+
+def test_status_und_einstellungen_der_reise(repo):
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    heute = datetime.date.today()
+    with pytest.raises(sb.Ablehnung, match="nur Organisator:innen"):
+        s.schreiben("beispielreise", "reise_status_setzen", {**KARL, "args": {"status": "fest", "grund": "x"}})
+    a = s.schreiben("beispielreise", "reise_status_setzen", {**IDA, "args": {"status": "fest", "grund": "Unterkünfte stehen"}})
+    assert a["text"].startswith("Die Reise hat jetzt den Status fest (vorher planung; Ida,")
+    r = yaml.safe_load(datei_auf_main(origin, "reise.yaml"))
+    assert r["status"]["wert"] == "fest" and r["status"]["verlauf"][-1] == {"datum": heute, "wert": "fest", "wer": "Ida", "grund": "Unterkünfte stehen"}
+    assert len(r["status"]["verlauf"]) == 3 and "# Eckdaten" in datei_auf_main(origin, "reise.yaml")
+    # Aus dem Archiv zurück geht nur für den Status (alles andere ist dort gesperrt)
+    s.vorbereiten()
+    s.schreiben("beispielreise", "reise_status_setzen", {**IDA, "args": {"status": "archiv", "grund": "vorbei"}})
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="archiviert"):
+        s.schreiben("beispielreise", "frage_anlegen", {**IDA, "args": {"text": "x"}})
+    a = s.schreiben("beispielreise", "reise_status_setzen", {**IDA, "args": {"status": "planung", "grund": "doch nochmal"}})
+    assert "vorher archiv" in a["text"]
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="schon den Status"):
+        s.schreiben("beispielreise", "reise_status_setzen", {**IDA, "args": {"status": "planung", "grund": "x"}})
+    with pytest.raises(sb.Ablehnung, match="„status“ muss"):
+        s.schreiben("beispielreise", "reise_status_setzen", {**IDA, "args": {"status": "fertig", "grund": "x"}})
+    # Einstellungen: Bausteine und Regeln; Unbekanntes lehnt der Schreibweg ab, Falsches der Probebau
+    a = s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"bausteine": ["varianten", "karte", "fragen", "waechter"],
+                                                                            "regeln": {"einladen": "mitwirkend", "waechter_frist_tage": "45"}}})
+    assert "bausteine" in a["text"] and "regeln.einladen „organisator“ → „mitwirkend“" in a["text"] and "waechter_frist_tage „60“ → „45“" in a["text"]
+    r = yaml.safe_load(datei_auf_main(origin, "reise.yaml"))
+    assert r["bausteine"] == ["varianten", "karte", "fragen", "waechter"] and r["regeln"]["einladen"] == "mitwirkend" and r["regeln"]["waechter_frist_tage"] == 45
+    assert r["regeln"]["kontingent"] == {"art": "punkte", "je_person": 10}     # Bestehendes bleibt
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="Unbekannte Bausteine"):
+        s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"bausteine": ["karte", "zauber"]}})
+    with pytest.raises(sb.Ablehnung, match="Unbekannte Regel"):
+        s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"regeln": {"farbe": "rot"}}})
+    with pytest.raises(sb.Ablehnung, match="nicht bauen"):
+        s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"regeln": {"einladen": "chef"}}})
+    with pytest.raises(sb.Ablehnung, match="Nichts zu ändern"):
+        s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {}})
+    # Mitwirkende dürfen jetzt einladen (regeln.einladen = mitwirkend), aber keine höhere Rolle vergeben
+    with pytest.raises(sb.Ablehnung, match="höchstens eine Rolle"):
+        s.schreiben("beispielreise", "person_schreiben", {**KARL, "args": {"schluessel": "anna", "vorname": "Anna", "rolle": "organisator"}})
+    a = s.schreiben("beispielreise", "person_schreiben", {**KARL, "args": {"schluessel": "anna", "vorname": "Anna", "rolle": "mitwirkend"}})
+    assert "Anna steht jetzt in der Reise" in a["text"]
+    assert not git(arbeit, "status", "--porcelain")
+
+
+def test_neue_reise_aus_der_anfrage(repo):
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    anfrage = {"id": "A-20261029-120000-abcd", "erstellt": "2026-10-29T12:00:00+00:00", "name": "Ida", "art": "Auftrag",
+               "daten": {"neue_reise": {"titel": "Skiwoche im Allgäu", "von": "2027-02-06", "bis": "2027-02-13", "ziel": "Oberstdorf", "pfad": "skiwoche-allgaeu-2027",
+                                        "personen": {"ida": {"name": "Ida", "rolle": "organisator"}, "karl": {"name": "Karl", "rolle": "mitwirkend"}},
+                                        "wer": "Ida", "notiz": "Idee aus dem Gespräch."}}}
+    a = s.schreiben("skiwoche-allgaeu-2027", "reise_anlegen", {"person": None, "name": "Ida", "rolle": "organisator", "args": {"auftrag": anfrage}})
+    assert a["ok"] and a["text"].startswith("Die Reise „Skiwoche im Allgäu“ ist angelegt (Ordner skiwoche-allgaeu-2027, Status Idee).")
+    assert git(origin, "log", "-1", "--format=%s", "main") == "Reisen: Neue Reise skiwoche-allgaeu-2027 angelegt"
+    dateien = subprocess.run(["git", "-C", str(origin), "ls-tree", "-r", "--name-only", "main", "reisen/skiwoche-allgaeu-2027"], check=True, capture_output=True, text=True).stdout
+    assert "reisen/skiwoche-allgaeu-2027/reise.yaml" in dateien and "reisen/skiwoche-allgaeu-2027/ids.yaml" in dateien
+    r = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/skiwoche-allgaeu-2027/reise.yaml"], check=True, capture_output=True, text=True).stdout)
+    assert r["status"]["wert"] == "idee" and r["personen"]["karl"]["rolle"] == "mitwirkend"
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="gibt es schon"):
+        s.schreiben("skiwoche-allgaeu-2027", "reise_anlegen", {"person": None, "name": "Ida", "rolle": "organisator", "args": {"auftrag": anfrage}})
+    with pytest.raises(sb.Ablehnung, match="keine neue Reise"):
+        s.schreiben("x-2027", "reise_anlegen", {"person": None, "name": "Ida", "rolle": "organisator", "args": {}})
+    assert not git(arbeit, "status", "--porcelain")

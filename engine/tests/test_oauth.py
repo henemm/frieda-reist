@@ -14,6 +14,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import konnektor as kn  # noqa: E402
 import konten  # noqa: E402
 import oauth  # noqa: E402
 from test_anmeldung import BASIS, abruf, anmelden, kopf, welt  # noqa: E402,F401  (welt: Fixture)
@@ -309,7 +310,11 @@ def test_reisen_anlegen_mit_recht(welt):
     assert e["konto_id"] == konten.konto_per_email(BEN)["id"] and e["name"] == "Ben"
     assert e["einladen"] == [{"schluessel": "mo", "email": "mo@beispiel.invalid", "rolle": "mitwirkend", "name": "Mo"}]
     assert "mo@beispiel.invalid" not in json.dumps(e["daten"])              # Adressen nicht in den Reisedaten
-    assert "Winterwoche im Allgäu" in aufruf(u, t["access_token"], "meine_reisen")[0]
+    # Die Reise entsteht sofort über den Schreibweg (hier nachgestellt): Anfrage erledigt, Links folgen nach dem Veröffentlichen
+    st = json.loads((u.ablage / "_neu" / "status.json").read_text())[e["id"]]
+    assert st["status"] == "uebernommen" and "Angelegt als winterwoche-im-allgaeu-2027" in st["kommentar"]
+    assert "winterwoche-im-allgaeu-2027" in (u.ablage.parent / "_dienst" / "neue-reisen-ausstehend.jsonl").read_text()
+    assert "Winterwoche im Allgäu" not in aufruf(u, t["access_token"], "meine_reisen")[0]   # steht dort, sobald die Seite online ist
 
 
 def test_betreiber_entscheidet_bitten(welt):
@@ -342,13 +347,18 @@ def test_person_entfernen(welt):
     from test_regeln import KARL as KARL_LINK
     assert "person_entfernen" not in {w["name"] for w in mcp(u, karl["access_token"], "tools/list")[2]["result"]["tools"]}
     assert aufruf(u, ida["access_token"], "person_entfernen", person="Ida")[1]          # sich selbst nicht
-    text, fehler = aufruf(u, ida["access_token"], "person_entfernen", person="karl", grund="fährt nicht mit")
+    # Die Person wird über den Schreibweg zum Gast, der nicht mitreist (hier nachgestellt)
+    geschrieben = []
+    with pytest.MonkeyPatch.context() as m:
+        m.setenv("KN_SCHREIBDIENST", "http://127.0.0.1:9")
+        m.setattr(kn, "schreib_anfrage", lambda reise, w, anfrage: (geschrieben.append((reise, w, anfrage)) or {"ok": True, "text": "x"}, None))
+        text, fehler = aufruf(u, ida["access_token"], "person_entfernen", person="karl", grund="fährt nicht mit")
     assert not fehler and "endet sofort" in text, text
     assert konten.mitglied(konten.konto_per_email(KARL)["id"], "beispielreise") is None
     assert "Noch keine Reise" in aufruf(u, karl["access_token"], "meine_reisen")[0]
     assert KARL_LINK not in json.loads(Path(__import__("os").environ["KN_ZUGAENGE"]).read_text())   # alter Link weg
-    a = [json.loads(z) for z in (u.o / "auftraege.jsonl").read_text().splitlines()]
-    assert a[-1]["daten"] == {"entfernen": {"schluessel": "karl"}} and "fährt nicht mit" in a[-1]["text"]
+    assert geschrieben and geschrieben[-1][1] == "person_schreiben" and geschrieben[-1][2]["args"]["schluessel"] == "karl"
+    assert geschrieben[-1][2]["args"]["rolle"] == "gast" and "fährt nicht mit" in geschrieben[-1][2]["args"]["notiz"]
 
 
 def test_niemand_uebernimmt_eine_bestehende_person(welt):
