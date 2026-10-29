@@ -901,3 +901,29 @@ def test_buchung_anlegen_und_aendern(repo):
     assert "Status „gebucht“ → „storniert“" in a["text"] and "Grund: Pension hat abgesagt" in a["text"]
     s.vorbereiten()
     assert s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-03", "notiz": "von Ida"}})["ok"]
+
+
+def test_gemeinsame_frage_bleibt_offen_bis_alles_gewaehlt(repo):
+    """Hängen mehrere Wahlstellen an derselben Frage (etwa „Winteröffnung der Hotels prüfen“), klärt eine Wahl die Frage
+    erst, wenn an jeder dieser Wahlstellen etwas gewählt ist."""
+    wurzel, origin, _, _ = repo
+    r = wurzel / "reisen/beispielreise/plan/routen.yaml"
+    text = r.read_text(encoding="utf-8")
+    alt = "  V-03:\n    titel: Unterkunft in Hohnstein\n    art: planung\n    frage: F-02\n"
+    assert alt in text
+    # erfunden: V-01 und V-03 teilen F-01, an V-03 ist noch nichts gewählt
+    text = text.replace(alt, alt.replace("F-02", "F-01"))
+    for zeile in ('{datum: 2026-10-20, status: gewaehlt, wer: Ida, grund: "liegt am Weg, kein Anstieg am Morgen"}',
+                  '{datum: 2026-10-20, status: verworfen, wer: Ida, grund: "Anstieg am Morgen"}'):
+        assert zeile in text
+        text = text.replace(zeile, zeile.replace("gewaehlt", "vorgeschlagen").replace("verworfen", "vorgeschlagen"))
+    r.write_text(text, encoding="utf-8")
+    git(wurzel, "commit", "-qam", "V-03 hängt an F-01")
+    git(wurzel, "push", "-q")
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-01.b", "status": "gewaehlt", "grund": "Bahn"}})
+    assert "Frage F-01 bleibt offen, weil dort noch V-03 zu entscheiden ist." in a["text"], a["text"]
+    assert "| vor Abreise | offen |" in fragen_auf_main(origin)
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-03.b", "status": "gewaehlt", "grund": "Abendessen"}})
+    assert "Frage F-01 ist damit geklärt" in a["text"], a["text"]
