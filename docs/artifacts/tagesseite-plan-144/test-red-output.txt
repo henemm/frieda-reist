@@ -1,0 +1,94 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0 -- /home/hem/frieda-reist/.claude/worktrees/hashed-noodling-crown/engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/hem/frieda-reist/.claude/worktrees/hashed-noodling-crown
+collecting ... collected 2 items
+
+engine/tests/test_tagesplan.py::test_tagesseite_zaehlt_im_gewaehlten_plan[nacht] FAILED [ 50%]
+engine/tests/test_tagesplan.py::test_tagesseite_zaehlt_im_gewaehlten_plan[tag] FAILED [100%]
+
+=================================== FAILURES ===================================
+_______________ test_tagesseite_zaehlt_im_gewaehlten_plan[nacht] _______________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-5679/test_tagesseite_zaehlt_im_gewa0')
+zuerst = 'nacht'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("zuerst", ["nacht", "tag"])
+    def test_tagesseite_zaehlt_im_gewaehlten_plan(tmp_path, zuerst):
+        quelle = tmp_path / "quelle"
+        shutil.copytree(WURZEL / "beispiel/reisen/beispielreise", quelle)
+        fest_mit_abweichenden_plaenen(quelle, zuerst)
+        bauen.bauen(quelle, tmp_path / "web" / "beispiel")
+    
+        class Handler(http.server.SimpleHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+    
+        s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(tmp_path / "web")))
+        threading.Thread(target=s.serve_forever, daemon=True).start()
+        try:
+            aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_tagesplan.mjs"), str(PLAYWRIGHT), f"http://127.0.0.1:{s.server_address[1]}/beispiel/"],
+                                 capture_output=True, text=True, timeout=300, env={**os.environ, "RH_BROWSER": "chromium"})
+        finally:
+            s.shutdown()
+        assert aus.returncode == 0, aus.stderr[-2000:]
+        e = json.loads(aus.stdout.strip().splitlines()[-1])
+        assert e["fehler"] == []
+        assert len(e["tage"]) >= 4, e["tage"]
+        # 1./2./3.: jede Tagesseite zeigt Nummer und Datum der Übersicht, keine zwei Seiten mit gleichem Kopf
+        for t in e["tage"]:
+>           assert t["kopf"] == t["erwartet"], t
+E           AssertionError: {'id': 'T-03', 'erwartet': 'Tag 3 · Sa 15.5.', 'kopf': 'Tag 4 · So 16.5.', 'blaettern': [['#T-07', '← Tag 3'], ['#T-04', 'Tag 5 →']]}
+E           assert 'Tag 4 · So 16.5.' == 'Tag 3 · Sa 15.5.'
+E             
+E             - Tag 3 · Sa 15.5.
+E             ?     ^    ^  ^
+E             + Tag 4 · So 16.5.
+E             ?     ^    ^  ^
+
+engine/tests/test_tagesplan.py:101: AssertionError
+________________ test_tagesseite_zaehlt_im_gewaehlten_plan[tag] ________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-5679/test_tagesseite_zaehlt_im_gewa1')
+zuerst = 'tag'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("zuerst", ["nacht", "tag"])
+    def test_tagesseite_zaehlt_im_gewaehlten_plan(tmp_path, zuerst):
+        quelle = tmp_path / "quelle"
+        shutil.copytree(WURZEL / "beispiel/reisen/beispielreise", quelle)
+        fest_mit_abweichenden_plaenen(quelle, zuerst)
+        bauen.bauen(quelle, tmp_path / "web" / "beispiel")
+    
+        class Handler(http.server.SimpleHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+    
+        s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(tmp_path / "web")))
+        threading.Thread(target=s.serve_forever, daemon=True).start()
+        try:
+            aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_tagesplan.mjs"), str(PLAYWRIGHT), f"http://127.0.0.1:{s.server_address[1]}/beispiel/"],
+                                 capture_output=True, text=True, timeout=300, env={**os.environ, "RH_BROWSER": "chromium"})
+        finally:
+            s.shutdown()
+        assert aus.returncode == 0, aus.stderr[-2000:]
+        e = json.loads(aus.stdout.strip().splitlines()[-1])
+        assert e["fehler"] == []
+        assert len(e["tage"]) >= 4, e["tage"]
+        # 1./2./3.: jede Tagesseite zeigt Nummer und Datum der Übersicht, keine zwei Seiten mit gleichem Kopf
+        for t in e["tage"]:
+>           assert t["kopf"] == t["erwartet"], t
+E           AssertionError: {'id': 'T-04', 'erwartet': 'Tag 4 · So 16.5.', 'kopf': 'Tag 3 · Sa 15.5.', 'blaettern': [['#T-02', '← Tag 2']]}
+E           assert 'Tag 3 · Sa 15.5.' == 'Tag 4 · So 16.5.'
+E             
+E             - Tag 4 · So 16.5.
+E             ?     ^    ^  ^
+E             + Tag 3 · Sa 15.5.
+E             ?     ^    ^  ^
+
+engine/tests/test_tagesplan.py:101: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_tagesplan.py::test_tagesseite_zaehlt_im_gewaehlten_plan[nacht]
+FAILED engine/tests/test_tagesplan.py::test_tagesseite_zaehlt_im_gewaehlten_plan[tag]
+============================== 2 failed in 4.42s ===============================
