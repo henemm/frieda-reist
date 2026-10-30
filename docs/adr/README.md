@@ -9,5 +9,6 @@ Hier stehen die Entscheidungen, die die Software als Ganzes prägen, je eine Dat
 | [0003](0003-heimat.md) | Seitenordnung: jede Grundform hat genau eine Heimat | gilt |
 | [0004](0004-lage.md) | Lage eines Aufenthalts: Adresse oder Koordinaten, Kartenlinks | gilt |
 | [0005](0005-konten.md) | Konten und Anmeldung: eine Person, eine E-Mail-Adresse, ein Konnektor | gilt |
+| [0006](0006-mehrsprachigkeit.md) | Mehrsprachigkeit: Deutsch und Englisch als Vorgabe, Katalog in der Software, Sprache an Reise und Konto | Entwurf |
 
 ADR-0001 ist zugleich die **Prüfstelle**: Jedes Issue, jedes Paket und jeder Pull Request beantwortet die zehn Fragen im Abschnitt „Prüfstelle“. Das PR-Template (`.github/pull_request_template.md`) enthält sie.
