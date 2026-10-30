@@ -1,6 +1,6 @@
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
-rootdir: /home/hem/frieda-reist/.claude/worktrees/sprightly-sniffing-comet
+rootdir: <Arbeitskopie>
 collected 112 items / 103 deselected / 9 selected
 
 engine/tests/test_konnektor.py FFFFFF                                    [ 66%]
