@@ -948,7 +948,7 @@ function zid(id) {
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, buchungChip
-   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, wahlZustand, belegeListe
+   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, wahlZustand, belegeListe, stornierteBuchungen
    Organismen: nachtZeile, unterkunftKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, nachtAbschnitt, tagZeile, uebersichtKarte, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
    Vorlagen: tagKachel, leseAbschnitt, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtOffen, ansichtWissen, ansichtPlan, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
@@ -1071,11 +1071,12 @@ function buchungsStand(d) {
 }
 // Atom Zustand Buchung: der Stand als Chip; kommt er aus einer Buchung (B-…, #76), führt der Chip zu ihr
 const buchungChip = d => { const st = buchungsStand(d); return st ? chip(st.zustand, st.text, st.bid ? {href: "#" + st.bid} : null) : null; };
-// Buchungen (B-…) eines Dings: geltende zuerst, stornierte danach
-const buchungenZu = id => Object.values(R && R.buchungen || {}).filter(b => (b.fuer || []).includes(id))
-  .sort((a, b) => (a.status === "storniert") - (b.status === "storniert"));
-// Heimat einer Buchung (ADR-0003): ihr erstes Ding zeigt sie vollständig, jedes weitere nur den Chip
-const buchungenBei = id => buchungenZu(id).filter(b => (b.fuer || [])[0] === id);
+// Buchungen (B-…) eines Dings in der Reihenfolge der Reise
+const buchungenZu = id => Object.values(R && R.buchungen || {}).filter(b => (b.fuer || []).includes(id));
+// Heimat einer Buchung (ADR-0003): ihr erstes Ding zeigt sie vollständig, jedes weitere nur den Chip. Geltende stehen voll da,
+// stornierte nur im zugeklappten Block stornierteBuchungen (#146)
+const buchungenBei = id => buchungenZu(id).filter(b => (b.fuer || [])[0] === id && b.status !== "storniert");
+const stornierteBei = id => buchungenZu(id).filter(b => (b.fuer || [])[0] === id && b.status === "storniert");
 // Kontakt einer Unterkunft ohne die Webseite (die steht als Atom webLink daneben)
 const kontaktText = u => ((u || {}).kontakt || "").replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ");
 // Zustand einer Wahl, überall gleich: unterwegs zu entscheiden, offen (braucht eine Entscheidung) oder entschieden
@@ -1193,7 +1194,7 @@ function streckeZeile(id, wahl, ohneKennung, voll) {
   if (s.text) z.append(el("div", {class: "z klein"}, s.text));
   if (s.quelle) z.append(el("div", {class: "z klein"}, "Quelle: " + s.quelle));
   if (s.siehe && proId.has(s.siehe)) z.append(el("div", {class: "z klein"}, link(s.siehe, "→ " + proId.get(s.siehe).titel)));
-  if (voll) for (const b of buchungenBei(id)) z.append(buchungBlock(b));
+  if (voll) { for (const b of buchungenBei(id)) z.append(buchungBlock(b)); z.append(...stornierteBuchungen(stornierteBei(id))); }
   return z;
 }
 
@@ -1226,6 +1227,7 @@ function aufenthaltZeile(id, voll) {
   const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
   if ((a.fehlt || []).length) z.append(el("div", {class: "z klein"}, "Fehlt noch: " + a.fehlt.map(x => name[x] || x).join(", ")));
   for (const b of buchungenBei(id)) z.append(buchungBlock(b));
+  z.append(...stornierteBuchungen(stornierteBei(id)));
   if ((a.tage || []).some(imKalender)) z.append(kalenderChip(id));
   return z;
 }
@@ -1287,7 +1289,10 @@ function tagKarte(t, ohneKopf, vorschau) {
     k.append(...[].concat(nachtZeile(t.nacht, false, t.datum, ohneKopf && !PLAN_DA, vorschau ? null : t.id)).filter(Boolean));
     // Ohne Tagesseiten ist der Tageskasten im Plan die Heimat der Nacht (ADR-0003): die Buchung der Unterkunft steht hier,
     // sonst in der Unterkunftskarte des Abschnitts „Nacht“ der Tagesseite
-    if (!ohneKopf && !vorschau && PLAN_DA) { const uid = nachtUnterkunft(t.nacht); for (const b of uid ? buchungenBei(uid) : []) k.append(buchungBlock(b)); }
+    if (!ohneKopf && !vorschau && PLAN_DA) {
+      const uid = nachtUnterkunft(t.nacht);
+      if (uid) { for (const b of buchungenBei(uid)) k.append(buchungBlock(b)); k.append(...stornierteBuchungen(stornierteBei(uid))); }
+    }
   }
   if ((ohneKopf || PLAN_DA) && imKalender(t.id)) k.append(kalenderChip(t.id));
   // Plan entschieden (ohne Plan-Baum): die Tagesseite hat den ganzen Weg mit Karte
@@ -1331,6 +1336,7 @@ function unterkunftKarte(id) {
   const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
   if ((u.fehlt || []).length) k.append(el("div", {class: "z klein"}, "Fehlt noch: " + u.fehlt.map(x => name[x] || x).join(", ")));
   for (const b of buchungenBei(id)) k.append(buchungBlock(b));
+  k.append(...stornierteBuchungen(stornierteBei(id)));
   if (u.naechte.some(tid => { const n = (R.tage.find(x => x.id === tid) || {}).nacht || {}; return imKalender(tid) && n.unterkunft === id && !nachtVorlaeufig(n.wahl); }))
     k.append(kalenderChip(id));
   return k;
@@ -1380,6 +1386,13 @@ function buchungBlock(b) {
   if ((b.verlauf || []).length > 1) k.append(el("details", {class: "verlauf"}, el("summary", {}, `Verlauf (${b.verlauf.length})`),
     b.verlauf.slice().reverse().map(v => el("div", {}, `${datumKurz(v.datum)} ${v.wer || ""}: ${v.was || ""}${v.grund ? " (" + v.grund + ")" : ""}`))));
   return k;
+}
+// Molekül Stornierte Buchungen (#146): alle stornierten Buchungen eines Dings zugeklappt in einem Block, oben der Hinweis
+// zum Zurückholen; jede Buchung darin unverändert. Leere Liste ohne stornierte, so lässt er sich überall anhängen.
+function stornierteBuchungen(bs) {
+  if (!(bs || []).length) return [];
+  return [el("details", {class: "weg"}, el("summary", {}, `Storniert (${bs.length})`),
+    el("div", {class: "z klein"}, "Zurückholen: im Gespräch mit Frieda."), bs.map(buchungBlock))];
 }
 // Molekül Belege einer Buchung: je Datei Name (öffnet die Datei, nur mit Netz), Größe, wer und wann, Sichtbarkeit; Knöpfe
 // für Organisator:innen (freigeben) und die hochladende Person (zurückziehen); darunter das Formular zum Anhängen
@@ -2967,7 +2980,8 @@ function nachtAbschnitt(t) {
     else if (uid) s.append(nachtZeile(n, false, t.datum, true), el("p", {class: "meldung"}, "Alles zur Unterkunft steht bei ihrer ersten Nacht: ",
       link(uid, `Tag ${(R.tage.find(x => x.id === erste) || {}).nr || ""} →`)));
     else s.append(el("p", {class: "meldung"}, n.hinweis || "Unterkunft noch offen."));
-    if (w && w.optionen.length > 1) s.append(el("details", {class: "block"}, el("summary", {}, `Alle Möglichkeiten (${w.optionen.length})`), wahlKarte(w)));
+    // Bei mehr als einer Option insgesamt (auch verworfene, damit #V-….b erreichbar bleibt); gezählt werden nur gültige (#146)
+    if (w && w.optionen.length > 1) s.append(el("details", {class: "block"}, el("summary", {}, `Alle Möglichkeiten (${gueltigeOptionen(w).length})`), wahlKarte(w)));
   }
   return s;
 }
@@ -3425,6 +3439,13 @@ function ansichtBausteine(m) {
   buBlock.querySelectorAll("button, form").forEach(k => { k.tagName === "FORM" ? k.remove() : (k.disabled = true); });
   teil("Organismus", "Buchung", "Eine Buchung mit Stand, Nummer, Frist, Stornoregel, Herkunft, Belegen und Verlauf; ihre Heimat ist ihr erstes Ding."
     + (bu ? "" : " (Muster)"), buBlock);
+  const buSt = R && Object.values(R.buchungen || {}).find(b => b.status === "storniert");
+  const stBlock = stornierteBuchungen([buSt || {id: "B-00", fuer: [], status: "storniert", nummer: "MUSTER-124", bei: "Muster",
+    preis: "100 € (Muster)", gebucht_am: "2027-01-02", wer: "Muster", quelle: "Muster", verlauf: [{datum: "2027-01-02", wer: "Muster", was: "angelegt"},
+      {datum: "2027-01-03", wer: "Muster", was: "Status", grund: "Beispielgrund (Muster)"}]}]);
+  stBlock.forEach(d => d.querySelectorAll("button, form").forEach(k => { k.tagName === "FORM" ? k.remove() : (k.disabled = true); }));
+  teil("Molekül", "Stornierte Buchungen", "Die stornierten Buchungen eines Dings, zugeklappt in einem Block „Storniert (n)“ direkt nach den "
+    + "geltenden, mit Hinweis zum Zurückholen; darin jede Buchung unverändert." + (buSt ? "" : " (Muster)"), stBlock);
   const bl = belegeListe(bu || {id: "B-00", fuer: [], status: "gebucht"});
   bl.querySelectorAll("button, form").forEach(k => { k.tagName === "FORM" ? k.remove() : (k.disabled = true); });
   teil("Molekül", "Belege", "Die Belege einer Buchung (Name, Größe, wer, wann, Sichtbarkeit) mit dem Formular zum Anhängen (nur angemeldet).", bl);

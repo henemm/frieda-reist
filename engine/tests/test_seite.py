@@ -201,11 +201,12 @@ def test_stornierte_buchung_eingeklappt_am_ding(tmp_path, browser):
         assert any(blk["offen"] and blk["b03"] for blk in s["bloecke"]), (name, s)
         assert any(o["sichtbar"] and len(o["bloecke"]) == 1 for o in s["b01"]), (name, s)
         if name == "fest":
-            # AC-7: Tagesseite T-02, Nacht in Hohnstein: V-03 hat nur eine gültige Option (V-03.b verworfen), keine Zeile
-            # „Alle Möglichkeiten“
+            # AC-7: Tagesseite T-02, Nacht in Hohnstein: V-03 hat eine gültige Option und eine verworfene (V-03.b). Die Zeile
+            # zählt nur die gültige, steht aber da, damit die verworfene im Block „Verworfen (1)“ und #V-03.b erreichbar bleiben
             m = e["moeglichkeiten"]
             assert m["nacht"], (name, m)
-            assert not [z for z in m["zeilen"] if z.startswith("Alle Möglichkeiten (")], (name, m)
+            assert [z for z in m["zeilen"] if z.startswith("Alle Möglichkeiten (")] == ["Alle Möglichkeiten (1)"], (name, m)
+            assert "Verworfen (1)" in m["zeilen"] and m["verworfenSichtbar"], (name, m)
 
 
 def _funktion(quelle, name):
