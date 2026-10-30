@@ -2826,9 +2826,11 @@ class Schreiber:
             r = subprocess.run(["git", "-C", str(self.arbeit), "push", "-q", "origin", "HEAD:main"], capture_output=True, text=True)
             if r.returncode == 0:
                 return git(self.arbeit, "rev-parse", "HEAD")
+            sys.stderr.write(f"Hochladen, Versuch {versuch + 1}: git push fehlgeschlagen: {r.stderr.strip()}\n")
             git(self.arbeit, "fetch", "-q", "origin", "main")
             rb = subprocess.run(["git", "-C", str(self.arbeit), "rebase", "-q", "origin/main"], capture_output=True, text=True)
             if rb.returncode != 0:
+                sys.stderr.write(f"Hochladen, Versuch {versuch + 1}: git rebase fehlgeschlagen: {rb.stderr.strip() or rb.stdout.strip()}\n")
                 git(self.arbeit, "rebase", "--abort", fehler=False)
                 git(self.arbeit, "reset", "-q", "--hard", "origin/main")
                 raise Ablehnung(f"Gleichzeitig hat jemand dieselbe Stelle der Reise „{reise}“ geändert; nichts geschrieben. "
