@@ -1,6 +1,6 @@
 # Plan: Frieda Reist mehrsprachig (Deutsch und Englisch als Vorgabe)
 
-Stand 30.10.2026. Entscheidungen: [ADR-0006](adr/0006-mehrsprachigkeit.md) (gilt, Product Owner 30.10.2026). Dieser Plan beschreibt die Arbeitspakete so, dass Agenten sie einzeln umsetzen können, jedes als eigener Pull Request mit grünen Tests.
+Stand 30.10.2026. Entscheidungen: [ADR-0006](adr/0006-mehrsprachigkeit.md) (gilt, Product Owner 30.10.2026). Dieser Plan beschreibt die Arbeitspakete so, dass Agenten sie einzeln umsetzen können, jedes als eigener Pull Request mit grünen Tests. Die fertigen Aufträge je Paket liegen in `docs/auftraege/mehrsprachigkeit/` (README mit den Grundregeln, `M0.md` bis `M12.md`); dort steht auch der Stand.
 
 ## Ziel
 
