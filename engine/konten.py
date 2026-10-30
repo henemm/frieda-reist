@@ -59,6 +59,7 @@ MAX_NAME = 80
 
 CODE_MINUTEN = 10
 CODE_VERSUCHE = 5
+CODE_NACHFRIST = 60     # Sekunden, in denen ein eingelöster Anmeldecode nochmal gilt (doppeltes Absenden am Handy)
 JE_ADRESSE = (3, 15 * 60)        # höchstens 3 Codes je Adresse in 15 Minuten
 JE_IP = (10, 60 * 60)            # höchstens 10 Codes je IP in der Stunde
 SITZUNG_TAGE = 365               # rollierend: jede Nutzung verlängert
@@ -264,6 +265,11 @@ def _code_einloesen(v, e, zweck, code):
     if not z:
         raise falsch
     code = re.sub(r"\s", "", code or "") if isinstance(code, str) else ""
+    eingeloest = z["versuche"] < 0      # Anmeldecode schon verbraucht, steht nur noch kurz für ein doppeltes Absenden bereit
+    if eingeloest:
+        if z["ablauf"] < _jetzt() or not secrets.compare_digest(z["hash"], _hash(e, zweck, code)):
+            raise falsch                # kein Fehlversuch zählen: das würde den Code wiederbeleben
+        return z
     if z["ablauf"] < _jetzt() or z["versuche"] >= CODE_VERSUCHE:
         v.execute("DELETE FROM codes WHERE email = ? AND zweck = ?", (e, zweck))
         v.commit()      # sonst nähme der Fehler das Löschen mit zurück
@@ -272,7 +278,11 @@ def _code_einloesen(v, e, zweck, code):
         v.execute("UPDATE codes SET versuche = versuche + 1 WHERE email = ? AND zweck = ?", (e, zweck))
         v.commit()      # Fehlversuch zählt, auch wenn der Fehler die Verbindung zurückrollt
         raise falsch
-    v.execute("DELETE FROM codes WHERE email = ? AND zweck = ?", (e, zweck))
+    if zweck == "anmelden":
+        v.execute("UPDATE codes SET versuche = -1, ablauf = ? WHERE email = ? AND zweck = ?",
+                  (_jetzt() + CODE_NACHFRIST, e, zweck))
+    else:
+        v.execute("DELETE FROM codes WHERE email = ? AND zweck = ?", (e, zweck))
     return z
 
 

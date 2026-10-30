@@ -41,7 +41,7 @@ def einloggen(umgebung, an, name=None, **kw):
     return konten.anmelden(an, letzter_code(umgebung, an), name=name, **kw)
 
 
-def test_szenario1_neu_ohne_einladung(umgebung):
+def test_szenario1_neu_ohne_einladung(umgebung, monkeypatch):
     konten.code_anfordern("  Ida@Beispiel.INVALID ")
     m = mails(umgebung, IDA)[0]
     assert "Dein Code für Frieda" in m["text"] and "https://frieda.beispiel.invalid/anmelden?schritt=code&email=" in m["text"]
@@ -52,7 +52,11 @@ def test_szenario1_neu_ohne_einladung(umgebung):
     assert k["id"].startswith("K-") and k["email"] == IDA and k["name"] == "Ida" and k["rechte"] == []
     assert konten.sitzung(token)["id"] == k["id"]
     assert konten.mitgliedschaften(k["id"]) == []
-    with pytest.raises(konten.KontoFehler):            # Code ist verbraucht
+    konten.anmelden(IDA, code)                          # doppeltes Absenden binnen der Nachfrist geht noch
+    monkeypatch.setattr(konten, "CODE_NACHFRIST", 0)
+    with sqlite3.connect(konten.pfad()) as v:
+        v.execute("UPDATE codes SET ablauf = 0")
+    with pytest.raises(konten.KontoFehler):            # danach ist der Code verbraucht
         konten.anmelden(IDA, code)
     # Reisen anlegen: erst bitten, dann entscheidet der Betreiber
     assert konten.reisen_anlegen_anfragen(k["id"]) == "offen"

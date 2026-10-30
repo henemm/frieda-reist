@@ -351,6 +351,8 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
             return antwort(200, code_seite(f.get("email", ""), zurueck, einl, code=f.get("code", ""), meldung=str(x),
                                            name_noetig=True))
         except konten.KontoFehler as x:
+            if k and not k["gesperrt"] and k["email"] == (f.get("email") or "").strip().lower():
+                return weiter(zurueck)     # doppelt abgesendet: schon angemeldet, nicht „Code stimmt nicht“ zeigen
             return antwort(200, code_seite(f.get("email", ""), zurueck, einl, meldung=str(x),
                                            name_noetig=bool(f.get("name"))))
         if token:
