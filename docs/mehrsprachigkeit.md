@@ -7,7 +7,7 @@ Stand 30.10.2026. Entscheidungen: [ADR-0006](adr/0006-mehrsprachigkeit.md) (gilt
 - Die Reiseseite erscheint in der Sprache der Reise (`reise.yaml sprache`, Vorgabe `de`); ein Umschalter wechselt die Hülle (Beschriftungen, Datum, Zahl, Sortierung) im Browser, der Inhalt bleibt in der Sprache der Reise.
 - Der Konnektor spricht die Sprache des Kontos: Anleitung, Werkzeugbeschreibungen, Ergebnisse, Fehler. Werkzeuge und Parameter heißen englisch, die deutschen Namen gelten als Aliase weiter.
 - Kontoseiten und Mails folgen dem Konto; Kalender, Wächter-Meldungen und alles, was in Dateien der Reise geschrieben wird, folgen der Reise.
-- Deutsch bleibt wörtlich wie heute; die bestehenden Tests bleiben grün. Englisch ist vollständig. Eine dritte Sprache ist eine Datei.
+- Deutsch bleibt wörtlich wie heute; die bestehenden Tests bleiben grün. Englisch ist vollständig. Eine dritte Sprache ist eine Datei und sonst nichts: Konnektor und Seite kennen keine Sprache beim Namen (ADR-0006, Punkt 9); eine Pseudo-Sprache im Test beweist das bei jedem Lauf.
 - Reiseinhalte, Datenschlüssel, Enum-Werte, ID-Präfixe, Dateinamen und die Pfade des Schreibwegs ändern sich nicht.
 
 ## Bestandsaufnahme (30.10.2026)
@@ -33,19 +33,29 @@ Stand 30.10.2026. Entscheidungen: [ADR-0006](adr/0006-mehrsprachigkeit.md) (gilt
 ### Katalog
 
 ```
-engine/texte.py       t(sprache, schluessel, **werte) -> str; Plural über Schlüssel {schluessel}.one/.other und Wert n;
-                      Rückfall auf "de", fehlender Schlüssel -> der Schlüssel selbst (nie Absturz);
-                      SPRACHEN = ("de", "en"); aus_header(accept_language) -> Sprache oder "en";
-                      datum(d, sprache), datum_kurz(d, sprache), zeit(t, sprache) ersetzen datum_de/zeit_de;
-                      seite() -> {sprache: {nur Schlüssel "seite.*"}} für alle Sprachen, in den JSON-Blob der Vorlage;
+engine/texte.py       SPRACHEN: Reihenfolge der Sprachen = Reihenfolge der Sprachdateien (de, en, …); VORGABE = "en" für Personen,
+                      Reisen ohne Feld bauen mit "de" (Bestand);
+                      t(sprache, schluessel, **werte) -> str; Plural: Wert n -> Kategorie über plural() der Sprachdatei ->
+                      Schlüssel {schluessel}.<kategorie>, Rückfall auf .other; fehlender Schlüssel -> Rückfall auf "en",
+                      dann der Schlüssel selbst (nie Absturz);
+                      aus_header(accept_language) -> beste Sprache aus SPRACHEN nach q-Wert, Region abgeschnitten (de-AT -> de), sonst VORGABE;
+                      datum(d, sprache), datum_kurz(d, sprache), zeit(t, sprache): Formate aus der Sprachdatei;
+                      seite() -> {sprache: {name, locale, richtung, plural (als Name der CLDR-Regel), texte "seite.*"}} für alle Sprachen;
                       inhaltswoerter(schluessel) -> set der Wörter aller Sprachen (für die Inhaltserkennung)
-engine/texte_de.py    TEXTE = {"seite.reiter.plan": "Plan", "seite.anzahl.tage.one": "1 Tag", "seite.anzahl.tage.other": "{n} Tage", …}
-engine/texte_en.py    TEXTE = {…dieselben Schlüssel…}
+engine/texte_de.py    NAME = "Deutsch"; LOCALE = "de-DE"; RICHTUNG = "ltr"; PLURAL = "one_other" (oder eine Funktion n -> Kategorie);
+                      DATUM = "%-d.%-m.%Y"; DATUM_KURZ = "%-d.%-m."; ZEIT = "%-H:%M";
+                      TEXTE = {"seite.reiter.plan": "Plan", "seite.anzahl.tage.one": "1 Tag", "seite.anzahl.tage.other": "{n} Tage", …}
+engine/texte_en.py    dieselben Felder, dieselben Schlüssel
+engine/tests/texte_xx.py   Pseudo-Sprache nur für Tests: NAME "Pseudo", LOCALE "ar-EG" (andere Ziffern, Richtung rtl), PLURAL mit
+                      sechs Kategorien, jeder Text "[xx {original}]", abgeleitet aus texte_en.py; wird vom Test über eine
+                      Umgebungsvariable FR_TEXTE_ZUSATZ als weitere Sprache geladen
 ```
 
-Regeln für Schlüssel: flach, Kleinbuchstaben, Punkte als Trenner, Bereich vorn (`seite`, `konnektor`, `schreiben`, `dienst`, `konto`, `mail`, `kalender`, `waechter`, `inhalt`). Platzhalter in geschweiften Klammern mit Namen (`{name}`, `{n}`, `{id}`), nie positional. Werkzeugbeschreibungen: `konnektor.werkzeug.<interner Name>` und `konnektor.werkzeug.<interner Name>.<interner Parameter>` (interne, also deutsche Namen als Schlüssel; die Namenstabelle übersetzt beim Ausgeben). Anleitungsbausteine: `konnektor.anleitung.<baustein>`. Fehler: `schreiben.<werkzeug>.<grund>` bzw. `dienst.<grund>`.
+Regeln für Schlüssel: flach, Kleinbuchstaben, Punkte als Trenner, Bereich vorn (`seite`, `konnektor`, `schreiben`, `dienst`, `konto`, `mail`, `kalender`, `waechter`, `inhalt`). Platzhalter in geschweiften Klammern mit Namen (`{name}`, `{n}`, `{id}`), nie positional. Jeder Text ist ein ganzer Satz oder eine ganze Beschriftung; nichts wird aus Teilen zusammengesetzt (`"Nacht in " + ort` wird `t("seite.tag.nacht_in", ort=…)`), damit andere Wortstellungen möglich sind. Plural immer über Kategorien (`.zero`, `.one`, `.two`, `.few`, `.many`, `.other`; Deutsch und Englisch füllen nur `.one` und `.other`), nie über `n === 1 ? … : …`. Werkzeugbeschreibungen: `konnektor.werkzeug.<interner Name>` und `konnektor.werkzeug.<interner Name>.<interner Parameter>` (interne, also deutsche Namen als Schlüssel; die Namenstabelle übersetzt beim Ausgeben). Anleitungsbausteine: `konnektor.anleitung.<baustein>`. Fehler: `schreiben.<werkzeug>.<grund>` bzw. `dienst.<grund>`.
 
-In der Vorlage: `bauen.py` ersetzt `/*__TEXTE__*/null` durch `texte.seite()` (alle Sprachen, damit der Umschalter offline geht). Eine JS-Funktion `t(schluessel, werte)` (Atom, ADR-0002) liest aus dem Katalog der Variablen `SPRACHE`, mit `Intl.PluralRules(LOCALE)` für `.one/.other`. `SPRACHE` startet mit `localStorage` (Schlüssel `SP + "sprache"`), sonst `D.sprache`; `LOCALE` folgt (`de-DE`, `en-GB`). Der Umschalter setzt `SPRACHE`, `document.documentElement.lang` und `localStorage` und zeichnet die Ansicht neu. Alle `Intl`-Aufrufe und `localeCompare` nutzen `LOCALE`.
+Verboten im Code (der Literal-Test und ein Grep-Test prüfen das): `if sprache == "de"` oder ein anderes Kürzel, feste Locale-Strings (`"de-DE"`), feste Wochentags- oder Monatslisten, `one/other` als einzige Pluralfrage, eine feste Zahl von Sprachknöpfen.
+
+In der Vorlage: `bauen.py` ersetzt `/*__TEXTE__*/null` durch `texte.seite()` (alle Sprachen, damit der Umschalter offline geht; etwa 15 KB je Sprache). Eine JS-Funktion `t(schluessel, werte)` (Atom, ADR-0002) liest aus dem Katalog der Variablen `SPRACHE`, mit `Intl.PluralRules(LOCALE).select(n)` für die Kategorie. `SPRACHE` startet mit `localStorage` (Schlüssel `SP + "sprache"`), sonst `D.sprache`; `LOCALE` und `RICHTUNG` kommen aus dem Katalogeintrag der Sprache. Der Umschalter zeigt je Sprache des Katalogs einen Knopf mit ihrem `name`, setzt `SPRACHE`, `document.documentElement.lang` und `dir`, speichert und zeichnet die Ansicht neu. Alle `Intl`-Aufrufe (`DateTimeFormat`, `NumberFormat`, `Collator`, `PluralRules`) und die Karte nutzen `LOCALE`; Abstände in neuen Stilen mit logischen Eigenschaften (`margin-inline`, `padding-inline-start`), damit `rtl` nicht kippt. Schriften: die mitgelieferten Schriften bekommen einen System-Rückfall (`system-ui`) für Zeichen, die sie nicht haben.
 
 ### Namen der Schnittstelle (ADR-0006, Punkt 4)
 
@@ -126,11 +136,19 @@ Parameternamen: feste Wörter über alle Werkzeuge gleich übersetzen, zum Beisp
 
 Datenschlüssel in YAML und JSON, Enum-Werte, ID-Präfixe, Dateinamen, Pfade des Schreibwegs, Namen von Arten, Merkmalen, Kategorien, Auswahlwerte, Wissen, Lesetexte, Titel, Gründe. Die `ARTEN` der Rückmeldungen („Kommentar“, „Frage“ …) bleiben als Datenwerte und Enum deutsch; englische Aliase gelten beim Aufruf.
 
+### Eine Sprache hinzufügen (Zielbild, wird `docs/sprachen.md` in M11)
+
+1. `engine/texte_<kürzel>.py` anlegen: `NAME`, `LOCALE`, `RICHTUNG`, `PLURAL`, `DATUM`, `DATUM_KURZ`, `ZEIT`, `TEXTE` mit allen Schlüsseln aus `texte_en.py` (der Paritätstest nennt, was fehlt).
+2. Das Kürzel in `texte.SPRACHEN` eintragen und die Datei in `betrieb/deploy.sh` (KN_, RM_, SB_MODULE) aufnehmen; der Test `test_betrieb.py` prüft das.
+3. Optional `engine/reisevorlage/<kürzel>/` (sonst Englisch) und `README.<kürzel>.md`.
+4. Tests laufen lassen: Parität, Rundgang je Sprache (parametrisiert über `SPRACHEN`), Konnektor je Sprache. Mehr ist nicht zu tun; Umschalter, Kontoseite, `Accept-Language`, Inhaltserkennung, Kalender und Mails kennen die Sprache ab jetzt.
+
 ### Tests, die den Umbau tragen
 
-- `test_texte.py`: Parität (gleiche Schlüssel, gleiche Platzhalter in allen Sprachen), Rückfall, Plural, `aus_header`.
+- `test_texte.py`: Parität (gleiche Schlüssel, gleiche Platzhalter in allen Sprachen), Rückfall, Plural nach Kategorien, `aus_header` (q-Werte, Region, unbekannt → `en`), Pflichtfelder jeder Sprachdatei.
+- `test_texte.py::test_pseudo_sprache`: lädt `texte_xx.py` als dritte Sprache (`FR_TEXTE_ZUSATZ`), baut die Beispielreise mit `sprache: xx`, prüft `lang="xx"`, `dir="rtl"`, markierte Texte `[xx …]`, Plural mit Kategorie `few`, Datum und Zahl der Locale; der Umschalter zeigt drei Knöpfe; `tools/list` mit Konto `sprache: xx` liefert markierte Beschreibungen. Grep-Test: kein `== "de"`, `== "en"`, `"de-DE"`, `"en-GB"` außerhalb der Sprachdateien.
 - `test_texte.py::test_keine_literale_in_der_vorlage`: findet im Skript der Vorlage String-Literale mit Umlauten oder ß außerhalb von `t(…)`, Kommentaren und einer Ausnahmeliste; die Ausnahmeliste wird mit jedem Paket kürzer und ist am Ende leer. Dasselbe für `konnektor.py` (Bereich Werkzeuge und Anleitung), `schreiben.py` (`raise Ablehnung(f"`), `rueckmeldungen.py` (`"fehler":`), `anmeldung.py`, `konten.py`, `kalender.py`, `waechter.py`.
-- Englischer Rundgang: `test_seite_en.py` baut eine Kopie der Beispielreise mit `sprache: en` und prüft im Browser (`seiten_browser.mjs` mit Parameter Sprache) Reiter, Datum (`Thu 13/5`), Zahl, Plural, Knöpfe, Offline-Hinweis, `lang="en"`; dazu Umschalten auf der deutschen Beispielreise nach Englisch und zurück, Wahl überlebt Neuladen, Inhalt bleibt deutsch.
+- Rundgang je Sprache: `test_seite_sprachen.py`, parametrisiert über `texte.SPRACHEN`, baut eine Kopie der Beispielreise mit `sprache: <kürzel>` und prüft im Browser (`seiten_browser.mjs` mit Parameter Sprache) Reiter, Datum (Englisch `Thu 13/5`), Zahl, Plural, Knöpfe, Offline-Hinweis, `lang`; dazu Umschalten auf der deutschen Beispielreise in jede andere Sprache und zurück, Wahl überlebt Neuladen, Inhalt bleibt deutsch.
 - Konnektor: `tools/list` zeigt englische Namen; Aufrufe mit englischem und mit deutschem Namen (und gemischten Parameternamen) liefern dasselbe; mit Konto `sprache: en` sind Beschreibungen und Anleitung englisch; ein Schreibfehler kommt englisch zurück; die Datei der Reise bleibt deutsch. Vergleich der Schemata beider Sprachen ohne `description` ist identisch.
 
 ## Arbeitspakete
@@ -141,9 +159,9 @@ Reihenfolge: M0 → M1 → M2 → (M3, M4, M5 parallel) → M6 → M7 → M8 →
 
 ### M0 · Katalog und Leitplanken (Haiku)
 
-- Neu: `engine/texte.py`, `engine/texte_de.py`, `engine/texte_en.py` (zunächst mit den schon vorhandenen Zuordnungen `STATUS_TEXT`, `BUCHUNG_STATUS`, `RM_STATUS`, `WU_STATUS`, `AG_STATUS`, `AG_FELD`, `WORT` aus konnektor und schreiben, `GRUNDFORM_WORT`, `BUCHUNG_WORTE`, `stufe_wort`).
-- `betrieb/deploy.sh`: die drei Module in `KN_MODULE`, `RM_MODULE`, `SB_MODULE`; `CODE_DATEIEN` in konnektor.py.
-- `engine/tests/test_texte.py`: Parität, Rückfall, Plural, `aus_header`; Literal-Test mit vollständiger Ausnahmeliste (also zunächst grün).
+- Neu: `engine/texte.py`, `engine/texte_de.py`, `engine/texte_en.py` mit allen Feldern einer Sprache (`NAME`, `LOCALE`, `RICHTUNG`, `PLURAL`, `DATUM`, `DATUM_KURZ`, `ZEIT`, `TEXTE`; zunächst mit den schon vorhandenen Zuordnungen `STATUS_TEXT`, `BUCHUNG_STATUS`, `RM_STATUS`, `WU_STATUS`, `AG_STATUS`, `AG_FELD`, `WORT` aus konnektor und schreiben, `GRUNDFORM_WORT`, `BUCHUNG_WORTE`, `stufe_wort`); Pluralkategorien nach CLDR mit den Regeln für de und en in den Sprachdateien, `texte.plural(sprache, n)` ruft sie; `engine/tests/texte_xx.py` als Pseudo-Sprache (aus `texte_en.py` abgeleitet, Texte `[xx …]`, Locale `ar-EG`, `rtl`, Pluralregel mit sechs Kategorien), geladen über `FR_TEXTE_ZUSATZ`.
+- `betrieb/deploy.sh`: die drei Module in `KN_MODULE`, `RM_MODULE`, `SB_MODULE`; `CODE_DATEIEN` in konnektor.py; ein Test prüft, dass jede Sprache aus `texte.SPRACHEN` in den drei Listen steht.
+- `engine/tests/test_texte.py`: Parität, Pflichtfelder, Rückfall, Plural nach Kategorien, `aus_header`; Literal-Test mit vollständiger Ausnahmeliste (also zunächst grün); Grep-Test gegen Sprachweichen im Code (`== "de"`, feste Locale-Strings).
 - `CLAUDE.md`: Regel „Sichtbare Texte stehen im Katalog in allen Sprachen, nie im Code; Werkzeug- und Parameternamen englisch mit deutschem Alias“.
 - DoD: Tests grün, `test_betrieb.py` akzeptiert die Modullisten, kein Verhalten geändert.
 
@@ -151,15 +169,16 @@ Reihenfolge: M0 → M1 → M2 → (M3, M4, M5 parallel) → M6 → M7 → M8 →
 
 - `engine/reise.py`: Feld `sprache` (Eckdaten, erlaubt `texte.SPRACHEN`, Vorgabe `de`, Fehlermeldung bei anderem Wert); in `daten()` ausgeben; `einstellung_setzen` im Schreibweg darf es setzen (Verlauf mit Grund).
 - `engine/bauen.py`: `/*__TEXTE__*/` mit allen Sprachen, `<title>`, `manifest.json lang`, „Küste schematisch“ aus dem Katalog; `WOCHENTAGE` aus routen entfernen, Wochentag in JS aus dem Datum.
-- `engine/vorlage.html`: `SPRACHE`, `LOCALE`, `t()` als Atom; Umschalter als Verwendung des Moleküls `umschalter` an der Stelle der Kontoleiste (Kopfkommentar, Bausteinseite, `docs/design.md`; keine neuen Stile); Umschalten setzt `lang`, speichert und zeichnet neu; die vorhandenen Map-Objekte lesen aus `t()`.
+- `engine/vorlage.html`: `SPRACHE`, `LOCALE`, `RICHTUNG`, `t()` als Atom mit `Intl.PluralRules`; Umschalter als Verwendung des Moleküls `umschalter` an der Stelle der Kontoleiste (Kopfkommentar, Bausteinseite, `docs/design.md`; keine neuen Stile), ein Knopf je Sprache aus dem Katalog mit ihrem `name`, verborgen, wenn der Katalog nur eine Sprache hat; Umschalten setzt `lang` und `dir`, speichert und zeichnet neu; die vorhandenen Map-Objekte lesen aus `t()`.
+- DoD zusätzlich: die Pseudo-Sprache baut und zeigt drei Knöpfe (`test_pseudo_sprache`, Teil Seite).
 - `engine/neu.py`, `reise_anlegen`: Parameter `sprache` (Vorgabe: Sprache des Kontos).
 - Beispielreise: `sprache: de` ausdrücklich eintragen; `docs/neue-reise.md`, `docs/konnektor.md` ergänzen.
 - DoD: Bau der Beispielreise unverändert bis auf die neuen Konstanten und den Umschalter; `test_design.py` grün; Umschalter wechselt vorerst nur die Map-Objekte (der Rest folgt in M3 bis M5).
 
 ### M2 · Datum, Zahl, Sortierung, Karte (Sonnet)
 
-- `datumText`, `datumKurz`, `dauer`, `WT`, `zahl`, alle `replace(".", ",")`, alle `localeCompare`, Karte `lang` auf `Intl` und `LOCALE`. Die zwei Datumsformen aus ADR-0002 bleiben genau zwei; Deutsch ergibt dieselben Zeichenketten wie heute („Do 13.5.“, „13.5.“, „5:30 h“). Nach dem Umschalten rechnet alles mit der neuen `LOCALE`.
-- Auch `texte.datum()` für Python (konnektor `datum_de`, `zeit_de`; schreiben, waechter, kalender nutzen es ab M9/M10).
+- `datumText`, `datumKurz`, `dauer`, `WT`, `zahl`, alle `replace(".", ",")`, alle `localeCompare` (→ `Intl.Collator(LOCALE)`), Karte `lang` auf `Intl` und `LOCALE`; Wochentags- und Monatsnamen nur noch aus `Intl.DateTimeFormat`, keine Listen. Die zwei Datumsformen aus ADR-0002 bleiben genau zwei; Deutsch ergibt dieselben Zeichenketten wie heute („Do 13.5.“, „13.5.“, „5:30 h“). Nach dem Umschalten rechnet alles mit der neuen `LOCALE`. Die Pseudo-Sprache zeigt arabisch-indische Ziffern und `rtl`; was dabei kippt, wird mit logischen CSS-Eigenschaften gerichtet.
+- Auch `texte.datum()` für Python aus den Formaten der Sprachdatei (konnektor `datum_de`, `zeit_de`; schreiben, waechter, kalender nutzen es ab M9/M10).
 - Test: `test_seite.py` vergleicht die deutschen Ausgaben vor und nach dem Umbau; englische Stichproben im Rundgang.
 
 ### M3 · Vorlage, Teil A: Rahmen, Reiter, Suche, Plan, Tag, Etappe (Haiku)
@@ -181,13 +200,13 @@ Reihenfolge: M0 → M1 → M2 → (M3, M4, M5 parallel) → M6 → M7 → M8 →
 ### M6 · Inhaltserkennung sprachfest, Reisevorlage je Sprache (Sonnet)
 
 - `frageStand`, `Auftrag|Rückmeldung|Anfrage`, `^Übersicht:`, `^Tag \d+`, `gehzeit|dauer|länge` in der Vorlage; `ETAPPEN_MUSTER` und Ebenen-Titel in `bauen.py`; `MONATE` in `neu.py`: Wörter aus `texte.inhaltswoerter("inhalt.<…>")` aller Sprachen, als Alternation ins Muster. Der Fragestatus, den `schreiben.py` schreibt („geklärt {datum}: …“), nimmt das Wort der Reise-Sprache.
-- `engine/reisevorlage/de/` (heutiger Stand) und `engine/reisevorlage/en/`; `neu.py` wählt nach `sprache`. `reise.json` der Vorlage nennt die Überschriften passend.
+- `engine/reisevorlage/de/` (heutiger Stand) und `engine/reisevorlage/en/`; `neu.py` wählt nach `sprache`, fehlt der Ordner einer Sprache, nimmt es `en`. `reise.json` der Vorlage nennt die Überschriften passend.
 - Test: `test_neu.py` legt eine englische Reise an, baut sie, die Seite erkennt Eckdaten, Überblick, Quellen und eine offene Frage mit Status „open“ / „resolved“.
 
 ### M7 · Sprache am Konto (Haiku)
 
-- `engine/konten.py`: Spalte `sprache TEXT NOT NULL DEFAULT ''` (`ALTER TABLE` im `try`, leer heißt `en`), `_konto_dict` liefert `sprache`, Funktion `sprache_setzen(konto_id, sprache)`; beim Anlegen des Kontos `texte.aus_header(Accept-Language)` (Sprache des Katalogs, sonst `en`).
-- `engine/anmeldung.py`: Kontoseite mit Auswahl der Sprache; alle Seitentexte und `lang` über `t(sprache, …)`; Anmeldeseiten vor dem Konto nach `Accept-Language`; Mails in `konten.py` (Code, Einladung) in der Sprache des Empfängers, bei Einladung unbekannter Personen in der Sprache der Reise.
+- `engine/konten.py`: Spalte `sprache TEXT NOT NULL DEFAULT ''` (`ALTER TABLE` im `try`, leer heißt `texte.VORGABE`; ein Wert, den der Katalog nicht mehr kennt, zählt ebenso als Vorgabe), `_konto_dict` liefert `sprache`, Funktion `sprache_setzen(konto_id, sprache)` prüft gegen `texte.SPRACHEN`; beim Anlegen des Kontos `texte.aus_header(Accept-Language)`.
+- `engine/anmeldung.py`: Kontoseite mit Auswahl der Sprache (eine Option je Eintrag in `texte.SPRACHEN`, beschriftet mit `NAME`); alle Seitentexte, `lang` und `dir` über die Sprachdatei; Anmeldeseiten vor dem Konto nach `Accept-Language`; Mails in `konten.py` (Code, Einladung) in der Sprache des Empfängers, bei Einladung unbekannter Personen in der Sprache der Reise.
 - `engine/konnektor.py`: Werkzeug `sprache_setzen` (intern; englisch `language_set` ab M8b; Konto-Werkzeug, alle Rollen); `zugang` trägt `sprache`.
 - Tests: `test_konten.py` (Migration auf alter Datenbank, Setzen, Vorgabe `en` ohne Header), `test_anmeldung.py` (englische Kontoseite), `test_oauth.py` unverändert.
 
@@ -221,18 +240,20 @@ Reihenfolge: M0 → M1 → M2 → (M3, M4, M5 parallel) → M6 → M7 → M8 →
 
 - `docs/adr/README.md`; `docs/konnektor.md` (Sprache, `language_set`, `trip_create language`, Namenstabelle), `docs/konten.md`, `docs/betrieb.md` (deploy, Migration der Spalte), `docs/neue-reise.md` (Reisevorlage je Sprache), `docs/design.md` (`t()`, `SPRACHE`, `LOCALE`, Umschalter, Datumsformen), `docs/produkt.md` (Sprache der Reise, des Kontos, Umschalter), `docs/ontologie.md` (Feld `sprache` der Eckdaten).
 - `README.en.md` (Kurzfassung: was Frieda ist, Konnektor, Seite, Lizenz) und ein Verweis im `README.md`.
+- `docs/sprachen.md`: die vier Schritte „Eine Sprache hinzufügen“ (oben), die Felder einer Sprachdatei, die Pseudo-Sprache, die Verbote im Code.
 - Literal-Test ohne Ausnahmen; `CLAUDE.md`-Regel endgültig.
 
 ### M12 · Abnahme (Sonnet)
 
-- Vollständiger Testlauf, Browser-Rundgänge deutsch, englisch und umgeschaltet, Konnektor-Gespräch deutsch und englisch gegen die Beispielreise (`test_gespraech.py` um eine englische Variante mit englischen Werkzeugnamen ergänzt), Stichprobe der englischen Texte auf Verständlichkeit und auf erklärte Datenwerte.
+- Vollständiger Testlauf, Browser-Rundgänge deutsch, englisch, umgeschaltet und mit der Pseudo-Sprache (`rtl`, fremde Ziffern, sechs Pluralkategorien), Konnektor-Gespräch deutsch und englisch gegen die Beispielreise (`test_gespraech.py` um eine englische Variante mit englischen Werkzeugnamen ergänzt), Stichprobe der englischen Texte auf Verständlichkeit und auf erklärte Datenwerte.
+- Probe aufs Exempel: eine dritte echte Sprache (etwa Niederländisch oder Spanisch) nach den vier Schritten aus `docs/sprachen.md` anlegen, ohne eine andere Datei anzufassen. Geht das nicht, ist der Plan nicht fertig. Ob die Sprache dann im Repo bleibt, entscheidet der Product Owner.
 - Erst danach, als eigener Schritt und eigene Entscheidung: deutsche Texte umformulieren, wo das Englische eine bessere Fassung nahelegt (betrifft bis zu 440 Teilstring-Prüfungen in den Tests).
 
 ## Aufwand (grob)
 
 | Paket | Umfang | Modell |
 |---|---|---|
-| M0 | 3 neue Module, 1 Test, deploy.sh | Haiku |
+| M0 | 3 neue Module, Pseudo-Sprache für Tests, Paritäts-, Literal- und Grep-Test, deploy.sh | Haiku |
 | M1 | reise.py, bauen.py, Vorlage (Atom `t`, `SPRACHE`, `LOCALE`, Umschalter), neu.py, Doku | Haiku |
 | M2 | ca. 20 Stellen Vorlage, texte.datum() | Sonnet |
 | M3–M5 | ca. 700 Literale Vorlage, ca. 350 Schlüssel je Sprache | Haiku, drei PRs |
@@ -255,6 +276,8 @@ Reihenfolge: M0 → M1 → M2 → (M3, M4, M5 parallel) → M6 → M7 → M8 →
 - **Doppelte Wahrheit in Ablehnungstexten**: Deutsch im Code und im Katalog. Gegenmittel: der Literal-Test lässt am Ende keinen Satz mehr im Code zu.
 - **Haiku übersetzt Datenwerte mit** (`gewaehlt` → `chosen` als gespeicherter Wert). Gegenmittel: in jedem Paketauftrag die Liste „Was nie übersetzt wird“; Tests vergleichen Schemata und Dateien zwischen den Sprachen.
 - **Migration der Konten-Datenbank** auf laufenden Instanzen. Gegenmittel: `ALTER TABLE` im `try`, leer heißt Vorgabe, Test auf einer Datenbank ohne die Spalte.
+- **Zwei ähnliche Sprachen verbergen Annahmen** (Plural one/other, Wortstellung, Ziffern, Richtung, Zeichensatz der Schriften), die bei der dritten Sprache brechen. Gegenmittel: Pseudo-Sprache mit absichtlich anderen Eigenschaften von M0 an in jedem Testlauf; Grep-Test gegen Sprachweichen; Probe mit einer echten dritten Sprache in M12.
+- **Katalog wächst mit jeder Sprache in der Seite** (etwa 15 KB je Sprache, offline im Service Worker). Gegenmittel: akzeptabel bis etwa zehn Sprachen; darüber lädt die Seite nur die Reisesprache und die gewählte Sprache nach (nicht Teil dieses Plans).
 
 ## Nicht im Plan (Product Owner, 30.10.2026)
 
