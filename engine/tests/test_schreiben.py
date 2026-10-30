@@ -352,6 +352,20 @@ def test_dienst_nur_fuer_den_konnektor_und_mit_dem_code_der_arbeitskopie(repo):
         assert code == 422 and not a["ok"] and "Organisator" in a["fehler"]
         code, a = post("beispielreise/art_definieren", anfrage, geheim)
         assert code == 422 and "nichts daran soll sich ändern" in a["fehler"]
+        # GET /<reise>/buchung/<B-id>: gibt es die Buchung auf main? (Beleg vor dem Veröffentlichen, Issue #135)
+
+        def get(pfad, geheim):
+            req = urllib.request.Request(f"{basis}/{pfad}", headers={"X-Frieda-Dienst": geheim} if geheim else {})
+            try:
+                with urllib.request.urlopen(req) as r:
+                    return r.status, json.loads(r.read())
+            except urllib.error.HTTPError as e:
+                return e.code, json.loads(e.read())
+        assert get("beispielreise/buchung/B-01", None)[0] == 403
+        assert get("beispielreise/buchung/B-01", geheim) == (200, {"gibt_es": True, "fuer": ["U-01"], "wer": "Ida"})
+        assert get("beispielreise/buchung/B-77", geheim) == (200, {"gibt_es": False})
+        assert get("andere-reise/buchung/B-01", geheim) == (200, {"gibt_es": False})
+        assert get("beispielreise/buchung/U-01", geheim) == (200, {"gibt_es": False})
     finally:
         server.shutdown()
         sb.Dienst.schreiber = None
@@ -940,6 +954,7 @@ def test_buchung_anlegen_und_aendern(repo):
         "frist_was": "Anzahlung überweisen", "storno": "kostenlos bis 14 Tage vorher", "storno_bis": "2027-05-01",
         "quelle": "Telefonat mit der Pension am 29.10.2026", "notiz": "Zimmer zur Burg"}}, )
     assert a["ok"] and a["text"].startswith("Buchung B-03 angelegt (angefragt) für U-02 Pension Burgblick, E-21 S-Bahn Bad Schandau → Dresden, Nr. P-7, bei telefonisch")
+    assert a["id"] == "B-03"   # die neue ID, damit der Konnektor den Beleg gleich anhängen kann (Issue #135)
     assert "Frist 15.1.2027 (Anzahlung überweisen)" in a["text"] and "Storno: kostenlos bis 14 Tage vorher (bis 1.5.2027)" in a["text"]
     r, text = routen_auf_main(origin)
     b = r["buchungen"]["B-03"]

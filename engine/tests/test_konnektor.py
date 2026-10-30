@@ -490,6 +490,18 @@ class Schreibweg(kn.BaseHTTPRequestHandler):
     """Nachgestellter Schreibdienst (engine/schreiben.py dienst): merkt sich die Anfrage, antwortet wie der echte."""
     anfragen = []
     antwort = (200, {"ok": True, "text": "Art „Refugi“ angelegt: Schlüssel refugi, Grundform Aufenthalt, Farbe gruen."})
+    im_repo = set()   # Buchungen, die der nachgestellte Schreibweg auf main kennt (GET /<reise>/buchung/<B-id>)
+
+    def do_GET(self):
+        teile = self.path.strip("/").split("/")
+        gibt_es = len(teile) == 3 and teile[1] == "buchung" and teile[2] in Schreibweg.im_repo \
+            and self.headers.get("X-Frieda-Dienst") == konten_geheimnis()
+        daten = json.dumps({"gibt_es": gibt_es}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(daten)))
+        self.end_headers()
+        self.wfile.write(daten)
 
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
@@ -506,10 +518,16 @@ class Schreibweg(kn.BaseHTTPRequestHandler):
         pass
 
 
+def konten_geheimnis():
+    import konten
+    return konten.dienst_geheimnis()
+
+
 @pytest.fixture
 def schreibweg(dienst, monkeypatch, tmp_path):
     monkeypatch.setenv("FR_KONTEN", str(tmp_path / "konten"))
     Schreibweg.anfragen = []
+    Schreibweg.im_repo = set()
     s, url = starten(Schreibweg)
     monkeypatch.setenv("KN_SCHREIBDIENST", url)
     yield dienst
@@ -906,3 +924,43 @@ def test_beleg_anlegen_ueber_den_konnektor(schreibweg, seiten, monkeypatch):
     assert "Bestätigung Bahn.txt (Karl, " in t
     t, _ = werkzeug(basis, GAST, "zeige", id="B-02")
     assert "Belege: keine" in t
+
+
+def test_beleg_in_einem_schritt_mit_der_buchung(schreibweg, seiten, monkeypatch):
+    """Issue #135: Der Beleg geht beim Anlegen der Buchung gleich mit (beleg_text oder beleg_base64), ohne auf das Veröffentlichen zu
+    warten; nachträglich fragt beleg_anlegen den Schreibweg, ob es die Buchung im Repo schon gibt."""
+    import belege as bl
+    basis, ablage = schreibweg
+    monkeypatch.setenv("RM_SEITEN", str(seiten))
+    o = ablage / "beispielreise"
+    # Beleg fehlerhaft: die Buchung wird gar nicht erst angelegt
+    t, f = werkzeug(basis, KARL, "buchung_anlegen", fuer=["E-21"], quelle="Mail", beleg_base64="%%%", beleg_dateiname="x.pdf")
+    assert f and "kein gültiges Base64" in t and Schreibweg.anfragen == []
+    Schreibweg.antwort = (200, {"ok": True, "text": "Buchung B-03 angelegt (gebucht) für E-21 S-Bahn Bad Schandau → Dresden, Nr. DB-7.", "id": "B-03"})
+    t, f = werkzeug(basis, KARL, "buchung_anlegen", fuer=["E-21"], nummer="DB-7", quelle="Mail vom 30.10.2026",
+                    beleg_text="Buchung DB-7, 19,90 €", beleg_dateiname="Bestätigung Bahn")
+    assert not f and "Buchung B-03 angelegt" in t and "Beleg D-01 „Bestätigung Bahn.txt“ an B-03 abgelegt" in t
+    assert "beleg_text" not in Schreibweg.anfragen[-1][2]["args"] and Schreibweg.anfragen[-1][2]["args"]["nummer"] == "DB-7"
+    b = bl.liste(o, "Karl", "mitwirkend")
+    assert len(b) == 1 and b[0]["buchung"] == "B-03" and (o / "belege" / "D-01.txt").read_text(encoding="utf-8") == "Buchung DB-7, 19,90 €\n"
+    # Nennt der Schreibweg keine ID, bleibt die Buchung, der Beleg nicht (Hinweis auf beleg_anlegen)
+    Schreibweg.antwort = (200, {"ok": True, "text": "Buchung B-04 angelegt (gebucht) für E-21."})
+    t, f = werkzeug(basis, KARL, "buchung_anlegen", fuer=["E-21"], quelle="Mail", beleg_text="x")
+    assert not f and "nicht abgelegt" in t and "beleg_anlegen" in t
+    # beleg_* nur bei buchung_anlegen
+    t, f = werkzeug(basis, KARL, "buchung_aendern", ziel="B-03", notiz="x", beleg_text="y")
+    assert f and "nur bei buchung_anlegen" in t
+    # Nachträglich, vor dem Veröffentlichen: der Schreibweg kennt B-03 im Repo, B-99 nicht
+    t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-03", text="Nachtrag")
+    assert f and "Die Buchung B-03 gibt es nicht" in t
+    Schreibweg.im_repo = {"B-03"}
+    t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-03", text="Nachtrag", dateiname="Mail")
+    assert not f and "Beleg D-02 „Mail.txt“ an B-03 abgelegt" in t
+    t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-99", text="x")
+    assert f and "B-99 gibt es nicht" in t
+    # Ohne Schreibweg bleibt die veröffentlichte Buchung erreichbar, die unveröffentlichte nicht
+    monkeypatch.delenv("KN_SCHREIBDIENST", raising=False)
+    t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-03", text="x")
+    assert f and "nicht eingerichtet" in t
+    t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-02", text="veröffentlicht")
+    assert not f and "an B-02 abgelegt" in t

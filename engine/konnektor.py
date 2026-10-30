@@ -1112,7 +1112,7 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
         return ("Das geht nur mit dem persönlichen Link: Jede Änderung gehört genau einer Person, und dieser Link kennt keinen Namen."
                 if aktion == "ontologie" and not vorschlag else "Name fehlt: bitte die Person nach ihrem Vornamen fragen."), True
     wer = {**wer, "name": name_.strip()}
-    rest = {k: v for k, v in args.items() if k not in ("name", "vorname", "trotzdem")}   # ein neuer Name eines Dings heißt neuer_name
+    rest = {k: v for k, v in args.items() if k not in ("name", "vorname", "trotzdem") and not k.startswith("beleg_")}   # ein neuer Name eines Dings heißt neuer_name
     if vorschlag:
         ziel = art_schluessel(str(args.get("kategorie") or args.get("art") or args.get("bezeichnung") or "")) or "allgemein"
         e, fehler = rueckmeldung_senden(reise, {"name": wer["name"], "art": "Ergänzung", "ziel": ziel[:rm.LAENGE["ziel"]],
@@ -1156,11 +1156,23 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
         w = next((w for w in route.get("wahlstellen") or [] if w["id"] == vid), None)
         if w is not None and (h := merkmal_hinweise(d, w.get("art"), args.get("merkmale"))):
             return h, True
+    beleg = {k: v for k, v in args.items() if k.startswith("beleg_") and v}
+    if beleg and name != "buchung_anlegen":
+        return "beleg_text, beleg_base64 und beleg_dateiname gibt es nur bei buchung_anlegen; sonst beleg_anlegen.", True
+    if beleg and beleg_daten(args, "beleg_")[0] is None:   # Beleg vorher prüfen: die Buchung soll nicht ohne ihn angelegt werden
+        return beleg_daten(args, "beleg_")[1], True
     antwort, fehler = schreib_anfrage(reise, name, {"person": zugang.get("person"), "name": wer["name"], "rolle": wer["rolle"], "args": rest})
     if fehler:
         return f"Nicht eingetragen: {fehler}", True
-    return (f"Eingetragen und gesichert ({wer['name']}): {antwort.get('text', '')} Es gilt ab jetzt; die Seite und die Werkzeuge "
-            "zeige, merkmale und varianten zeigen den neuen Stand, sobald veröffentlicht ist (wenige Minuten)."), False
+    text = (f"Eingetragen und gesichert ({wer['name']}): {antwort.get('text', '')} Es gilt ab jetzt; die Seite und die Werkzeuge "
+            "zeige, merkmale und varianten zeigen den neuen Stand, sobald veröffentlicht ist (wenige Minuten).")
+    if beleg:   # in einem Schritt (Issue #135): die Buchung ist im Repo, der Beleg geht sofort in die Ablage
+        bid = str(antwort.get("id") or "")
+        if not re.fullmatch(r"B-\d+", bid):
+            return text + " Der Beleg ist nicht abgelegt (der Schreibweg nannte keine Buchungsnummer); bitte mit beleg_anlegen nachholen.", False
+        bt, bf = beleg_ablegen(reise, bid, wer["name"], args, im_repo=True, praefix="beleg_")
+        return text + (" " + bt if not bf else f" Der Beleg ist nicht abgelegt ({bt}); bitte mit beleg_anlegen nachholen."), False
+    return text, False
 
 
 def dienst_anfrage(methode, pfad, daten):
@@ -1182,12 +1194,58 @@ def dienst_anfrage(methode, pfad, daten):
         return None, "Rückmeldedienst nicht erreichbar, bitte später noch einmal"
 
 
-def beleg_senden(reise, bid, name, dateiname, daten):
-    """Datei an den Rückmeldedienst (einziger Schreiber der Ablage): POST /<reise>/belege/<B-id>, Body ist die Datei. -> (antwort, fehler)"""
+def beleg_daten(args, praefix=""):
+    """Abschrift (text) oder Datei (daten_base64) aus der Anfrage -> (dateiname, bytes) oder (None, fehler)."""
+    text, b64 = str(args.get(praefix + "text") or ""), str(args.get(praefix + "base64" if praefix else "daten_base64") or "").strip()
+    if b64:
+        import base64, binascii
+        try:
+            inhalt = base64.b64decode(b64, validate=True)
+        except (binascii.Error, ValueError):
+            return None, f"{praefix + 'base64' if praefix else 'daten_base64'} ist kein gültiges Base64."
+        return str(args.get(praefix + "dateiname") or "Beleg").strip(), inhalt
+    if text.strip():
+        dateiname = str(args.get(praefix + "dateiname") or "Abschrift").strip()
+        if not dateiname.lower().endswith((".txt", ".md")):
+            dateiname += ".txt"
+        return dateiname, text.strip().encode("utf-8") + b"\n"
+    return None, (f"{praefix}text (Abschrift) oder {praefix + 'base64' if praefix else 'daten_base64'} (Datei) angeben.")
+
+
+def beleg_ablegen(reise, bid, name, args, im_repo=False, praefix=""):
+    """Beleg aus der Anfrage an die Buchung hängen -> (Text, ist_fehler)."""
+    dateiname, inhalt = beleg_daten(args, praefix)
+    if dateiname is None:
+        return inhalt, True
+    a, fehler = beleg_senden(reise, bid, name, dateiname, inhalt, im_repo)
+    if fehler:
+        return f"Nicht abgelegt: {fehler}", True
+    return (f"Beleg {a['id']} „{a['name']}“ an {bid} abgelegt ({a.get('groesse', 0)} Bytes), sichtbar für {name} und die Organisator:innen; "
+            "eine Organisator:in kann ihn auf der Reiseseite für alle freigeben."), False
+
+
+def buchung_im_repo(reise, bid):
+    """Gibt es die Buchung schon im Repo, auch wenn die Seite sie noch nicht zeigt? Fragt den Schreibweg (GET /<reise>/buchung/<B-id>).
+    -> (True | False | None, fehler); None: nicht prüfbar."""
+    if not schreibdienst():
+        return None, "Der Schreibweg dieser Instanz ist nicht eingerichtet."
+    req = urllib.request.Request(f"{schreibdienst()}/{reise}/buchung/{bid}", headers={"X-Frieda-Dienst": konten.dienst_geheimnis()})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return bool(json.loads(r.read()).get("gibt_es")), None
+    except urllib.error.HTTPError as e:
+        return None, f"Fehler {e.code} beim Schreibweg"
+    except (urllib.error.URLError, OSError, ValueError):
+        return None, "Der Schreibweg ist nicht erreichbar, bitte später noch einmal"
+
+
+def beleg_senden(reise, bid, name, dateiname, daten, im_repo=False):
+    """Datei an den Rückmeldedienst (einziger Schreiber der Ablage): POST /<reise>/belege/<B-id>, Body ist die Datei. -> (antwort, fehler)
+    im_repo: die Buchung ist im Repo geprüft, aber noch nicht veröffentlicht (gerade angelegt); der Dienst nimmt sie dann trotzdem an."""
     basis = os.environ.get("KN_RUECKMELDEDIENST", "http://127.0.0.1:8771").rstrip("/")
     req = urllib.request.Request(f"{basis}/{reise}/belege/{bid}?name={urllib.parse.quote(name)}", method="POST", data=daten,
                                  headers={"Content-Type": "application/octet-stream", "X-Frieda-Dienst": konten.dienst_geheimnis(),
-                                          "X-Frieda-Datei": urllib.parse.quote(dateiname)})
+                                          "X-Frieda-Datei": urllib.parse.quote(dateiname), **({"X-Frieda-Buchung": "im-repo"} if im_repo else {})})
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             return json.loads(r.read()), None
@@ -2390,11 +2448,16 @@ BUCHUNG_ANLEGEN = {"name": "buchung_anlegen", "description": "Eine Buchung als e
                    "welchen Aufenthalt (A-…) oder welche Strecke (E-…), Status, Buchungsnummer, Anbieter, Preis, Frist, Stornoregel. "
                    "Schreibt sofort; Herkunft (quelle) ist Pflicht, z. B. „Buchungsbestätigung per Mail vom …“. Liest die Person dir eine "
                    "Bestätigung vor oder zeigt sie dir, trägst du daraus Nummer, Frist und Stornoregel ein (vorher kurz bestätigen lassen). "
-                   "Den Beleg selbst (PDF, Bild) hängt die Person angemeldet auf der Reiseseite bei der Buchung an; er liegt nie im Repo "
-                   "und ist nur für sie und Organisator:innen sichtbar, bis eine Organisator:in ihn für alle freigibt.",
+                   "Den Beleg gibst du gleich mit (beleg_text: die Bestätigung wörtlich als Abschrift, oder beleg_base64 mit beleg_dateiname, "
+                   "wenn der Client die Datei hat); er landet in einem Schritt an der Buchung, liegt nie im Repo und ist nur für die Person "
+                   "und Organisator:innen sichtbar, bis eine Organisator:in ihn für alle freigibt. Nachträglich: beleg_anlegen oder die Reiseseite.",
                    "inputSchema": {"type": "object", "properties": {
                        "fuer": {"type": "array", "items": {"type": "string"}, "description": "U-…, A-… oder E-…, eine oder mehrere"},
-                       **BUCHUNG_FELDER_SCHEMA, "quelle": QUELLE_FELD, "grund": {"type": "string"}, "vorname": NAME_FELD},
+                       **BUCHUNG_FELDER_SCHEMA, "quelle": QUELLE_FELD, "grund": {"type": "string"},
+                       "beleg_text": {"type": "string", "description": "Beleg als Abschrift (Text der Bestätigung oder Mail, wörtlich)"},
+                       "beleg_base64": {"type": "string", "description": "Beleg als Datei, Base64 (PDF, JPEG, PNG, WebP, HEIC, höchstens 10 MB)"},
+                       "beleg_dateiname": {"type": "string", "description": "Anzeigename des Belegs, z. B. „Bestätigung Eurowings.pdf“"},
+                       "vorname": NAME_FELD},
                        "required": ["fuer", "quelle"]}}
 BUCHUNG_AENDERN = {"name": "buchung_aendern", "description": "Felder einer Buchung B-… ändern (Status gebucht/storniert, Nummer, Frist, "
                    "Stornoregel, Preis …); schreibt sofort, jede Änderung steht mit Person, Datum und Grund im Verlauf. Leerer Text "
@@ -2501,7 +2564,8 @@ WUNSCH_VORSCHLAGEN = {"name": "wunsch_vorschlagen", "description": "Nach dem Pr�
                           "notiz": {"type": "string", "description": "kurz, mit Herkunft (Website, Buch, Karte)"},
                           "option": {"type": "string", "description": "V-01.b, wenn eine Option daraus wurde"},
                           "vorname": NAME_FELD}, "required": ["wunsch", "notiz"]}}
-BELEG_ANLEGEN = {"name": "beleg_anlegen", "description": "Einen Beleg an eine Buchung hängen, ohne die Reiseseite: als Abschrift (text: der "
+BELEG_ANLEGEN = {"name": "beleg_anlegen", "description": "Einen Beleg nachträglich an eine Buchung hängen, ohne die Reiseseite (beim Anlegen geht er "
+                 "mit buchung_anlegen in einem Schritt): als Abschrift (text: der "
                  "Inhalt der Bestätigung oder Mail, den die Person im Gespräch gezeigt oder vorgelesen hat, wörtlich, ohne Deutung) oder, wenn "
                  "der Client die Datei liefern kann, als daten_base64 (PDF, JPEG, PNG, WebP, HEIC, höchstens 10 MB). Der Beleg liegt in der "
                  "Ablage, nie im Repo, sichtbar für die Person und Organisator:innen. Mitwirkende und Organisator:innen. Vorher kurz bestätigen lassen.",
@@ -2760,26 +2824,14 @@ def werkzeug(zugang, name, args):
         name_ = wer["name"] or args.get("vorname")
         if not isinstance(name_, str) or not name_.strip():
             return "Name fehlt: bitte die Person nach ihrem Vornamen fragen.", True
-        text, b64 = str(args.get("text") or ""), str(args.get("daten_base64") or "").strip()
-        if b64:
-            import base64, binascii
-            try:
-                inhalt = base64.b64decode(b64, validate=True)
-            except (binascii.Error, ValueError):
-                return "daten_base64 ist kein gültiges Base64.", True
-            dateiname = str(args.get("dateiname") or "Beleg").strip()
-        elif text.strip():
-            inhalt = text.strip().encode("utf-8") + b"\n"
-            dateiname = str(args.get("dateiname") or "Abschrift").strip()
-            if not dateiname.lower().endswith((".txt", ".md")):
-                dateiname += ".txt"
-        else:
-            return "text (Abschrift) oder daten_base64 (Datei) angeben.", True
-        a, fehler = beleg_senden(reise, bid, name_.strip(), dateiname, inhalt)
-        if fehler:
-            return f"Nicht abgelegt: {fehler}", True
-        return (f"Beleg {a['id']} „{a['name']}“ an {bid} abgelegt ({a.get('groesse', 0)} Bytes), sichtbar für {name_.strip()} und die Organisator:innen; "
-                "eine Organisator:in kann ihn auf der Reiseseite für alle freigeben."), False
+        im_repo = False
+        if bid not in ((d.get("route") or {}).get("buchungen") or {}):   # noch nicht veröffentlicht? Dann zählt das Repo (Issue #135)
+            im_repo, fehler = buchung_im_repo(reise, bid)
+            if fehler:
+                return f"Nicht abgelegt: {fehler}", True
+            if not im_repo:
+                return f"Die Buchung {bid} gibt es nicht (zeige U-…/E-… nennt die Buchung, ueberblick zählt sie).", True
+        return beleg_ablegen(reise, bid, name_.strip(), args, im_repo)
     if name == "rueckmeldung_geben":
         e = {k: args.get(k, "") for k in rm.INHALT}
         if wer["name"]:

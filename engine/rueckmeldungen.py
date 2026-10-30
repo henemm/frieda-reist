@@ -47,6 +47,7 @@ HTTP (hinter nginx, Präfix /<reise>-<token>/api/ -> /<reise>/):
   GET    /<reise>/belege[?buchung=B-01]   Belege zu Buchungen, die die Person sehen darf (engine/belege.py, #76)
   GET    /<reise>/belege/<D-id>           die Datei selbst (PDF, Bild), wenn die Person sie sehen darf
   POST   /<reise>/belege/<B-id>           Datei hochladen (Body = Datei, X-Frieda-Datei = Name, ?name= bei eingetipptem Namen)
+                                         (X-Frieda-Buchung: im-repo vom Konnektor, wenn die Buchung noch nicht veröffentlicht ist)
   PATCH  /<reise>/belege/<D-id>           {sichtbar: beteiligte | alle} (Organisator:in), {zurueckziehen: true} (wer hochlud, Organisator:in)
   GET    /<reise>/gesund                  200, wenn die Ablage beschreibbar ist (für die Überwachung)
 
@@ -936,7 +937,10 @@ class Dienst(BaseHTTPRequestHandler):
 
     def _beleg_hochladen(self, o, bid):
         """POST /<reise>/belege/<B-id>: Body ist die Datei (#76). Rolle wie beim Eintragen einer Buchung (Aktion buchung)."""
-        if not bl.BID_MUSTER.match(bid or "") or not buchung_bekannt(o.name, bid):
+        # Die Buchung muss es geben: auf der veröffentlichten Seite, oder der Konnektor hat sie gerade im Repo geprüft
+        # (Schreibweg GET /<reise>/buchung/<B-id>; Issue #135: Beleg sofort nach dem Anlegen, vor dem Veröffentlichen)
+        im_repo = self.headers.get("X-Frieda-Buchung") == "im-repo" and hmac_gleich(self.headers.get("X-Frieda-Dienst", ""), konten.dienst_geheimnis())
+        if not bl.BID_MUSTER.match(bid or "") or not (buchung_bekannt(o.name, bid) or im_repo):
             return self._antwort(404, {"fehler": f"Die Buchung {bid} gibt es nicht (oder sie ist noch nicht veröffentlicht)."})
         try:
             laenge = int(self.headers.get("Content-Length", "0"))

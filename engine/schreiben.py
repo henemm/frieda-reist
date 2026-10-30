@@ -8,8 +8,9 @@ einzige Stelle, an der ein Dienst Reisedateien ändert.
 
 Zwei Teile:
   Dienst   `schreiben.py dienst` auf 127.0.0.1:<FR_SB_PORT> (8773), nur für den Konnektor (Header X-Frieda-Dienst, das
-           gemeinsame Dienst-Geheimnis). POST /<reise>/<werkzeug> mit {"person", "name", "rolle", "args"}. Ein
-           Schreibvorgang zur Zeit (Sperre). Je Anfrage bringt er die Arbeitskopie auf origin/main und startet dort einen
+           gemeinsame Dienst-Geheimnis). POST /<reise>/<werkzeug> mit {"person", "name", "rolle", "args"}; die Antwort
+           nennt bei einem neuen Ding seine ID. GET /<reise>/buchung/<B-id> sagt, ob es die Buchung auf origin/main schon
+           gibt (Beleg vor dem Veröffentlichen, Issue #135). Ein Schreibvorgang zur Zeit (Sperre). Je Anfrage bringt er die Arbeitskopie auf origin/main und startet dort einen
            Unterprozess `anwenden` mit dem Code dieser Arbeitskopie, damit Code und Daten denselben Stand haben.
   Arbeit   `schreiben.py anwenden` liest die Anfrage als JSON von stdin, prüft Rolle und Status, ändert die Dateien,
            baut zur Probe, committet, pusht nach main, stößt das Veröffentlichen an und antwortet auf stdout als JSON.
@@ -2798,7 +2799,27 @@ class Schreiber:
         git(self.arbeit, "commit", "-q", "-m", nachricht)
         commit = self.hochladen(reise)
         self.veroeffentlichen_anstossen()
-        return {"ok": True, "text": text, "commit": commit}
+        antwort = {"ok": True, "text": text, "commit": commit}
+        if (m := re.match(r"^([A-Z]+-\d+(?:\.[\w-]+)?) ", titel)):   # neu angelegtes Ding: seine ID, damit der Konnektor weitermachen kann
+            antwort["id"] = m.group(1)
+        return antwort
+
+    def buchung_im_repo(self, reise, bid):
+        """Gibt es die Buchung B-… auf origin/main (auch wenn die Seite noch nicht neu gebaut ist)? -> {"gibt_es", "fuer", "wer"}.
+        Liest nur (git show), ohne Sperre und ohne Arbeitskopie; der Konnektor fragt so, bevor er einen Beleg ablegt (Issue #135)."""
+        import yaml
+        if not REISE_MUSTER.match(reise or "") or not re.fullmatch(r"B-\d+", bid or ""):
+            return {"gibt_es": False}
+        git(self.wurzel, "fetch", "-q", "origin", "main", frist=ZEIT_PRUEFUNG)
+        text = git(self.wurzel, "show", f"origin/main:reisen/{reise}/plan/routen.yaml", fehler=False, frist=ZEIT_PRUEFUNG)
+        try:
+            b = ((yaml.safe_load(text) or {}).get("buchungen") or {}).get(bid) if text else None
+        except yaml.YAMLError:
+            b = None
+        if not isinstance(b, dict):
+            return {"gibt_es": False}
+        fuer = b.get("fuer")
+        return {"gibt_es": True, "fuer": [fuer] if isinstance(fuer, str) else [str(x) for x in (fuer or [])], "wer": b.get("wer")}
 
     def hochladen(self, reise):
         """Nach main pushen; kam inzwischen etwas anderes an, darauf aufsetzen (höchstens dreimal)."""
@@ -2988,11 +3009,21 @@ class Dienst(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        if self.path.split("?", 1)[0] == "/gesund":
+        pfad = self.path.split("?", 1)[0]
+        if pfad == "/gesund":
             s = self.schreiber or Schreiber(wurzel())
             ok = (s.wurzel / ".git").exists() and subprocess.run(["git", "-C", str(s.wurzel), "rev-parse", "--git-dir"],
                                                                capture_output=True).returncode == 0
             return self._senden(200 if ok else 503, {"gesund": ok})
+        teile = pfad.strip("/").split("/")
+        if len(teile) == 3 and teile[1] == "buchung":   # GET /<reise>/buchung/<B-id>: gibt es sie im Repo? (Beleg vor dem Veröffentlichen)
+            if not hmac.compare_digest(self.headers.get("X-Frieda-Dienst", ""), konten.dienst_geheimnis()):
+                return self._senden(403, {"fehler": "nur für den Konnektor"})
+            try:
+                return self._senden(200, (self.schreiber or Schreiber(wurzel())).buchung_im_repo(teile[0], teile[2]))
+            except (RuntimeError, subprocess.TimeoutExpired) as e:
+                sys.stderr.write(f"Fehler buchung 503: {' '.join(str(e).split())[:LOG_LAENGE]}\n")
+                return self._senden(503, {"fehler": "Das Repo ist gerade nicht erreichbar."})
         self._senden(404, {"fehler": "unbekannt"})
 
     def do_POST(self):

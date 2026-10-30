@@ -315,4 +315,15 @@ def test_beleg_abgelehnt(belege_welt):
     assert code == 201 and b["typ"] == "text/plain; charset=utf-8" and b["datei"].endswith(".txt") and b["name"] == "Mail.txt"
     assert (ablage / "beispielreise" / "belege" / b["datei"]).read_text(encoding="utf-8") == "Abschrift der Mail\n"
     assert _dienst_anfrage(u + "/B-01?name=Karl", "POST", roh=b"hallo", kopf={"X-Frieda-Datei": "Mail.pdf"})[0] == 415
+    # Noch nicht veröffentlichte Buchung: nur, wenn der Konnektor sie im Repo geprüft hat (Dienst-Header + X-Frieda-Buchung: im-repo)
+    assert _dienst_anfrage(u + "/B-05?name=Karl", "POST", roh=PDF)[0] == 404
+    code, b, _ = _dienst_anfrage(u + "/B-05?name=Karl", "POST", roh=PDF, kopf={"X-Frieda-Datei": "Neu.pdf", "X-Frieda-Buchung": "im-repo"})
+    assert code == 201 and b["buchung"] == "B-05"
+    req = urllib.request.Request(u + "/B-06?name=Karl", data=PDF, method="POST",
+                                 headers={"Content-Type": "application/octet-stream", "X-Frieda-Buchung": "im-repo"})   # ohne Dienst-Header
+    try:
+        with urllib.request.urlopen(req) as r:
+            assert False, r.status
+    except urllib.error.HTTPError as e:
+        assert e.code == 404
     assert bl.name_saeubern("../../etc/passwd") == "passwd" and bl.name_saeubern("  ") == "Beleg" and bl.name_saeubern("a\x00b.pdf") == "ab.pdf"
