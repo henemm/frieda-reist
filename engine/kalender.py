@@ -22,17 +22,18 @@ ABO_STUNDEN = 6   # so oft fragt eine Kalender-App nach (wenn sie den Hinweis be
 
 
 # ---------- Persönlicher Abo-Link ----------
-# Kalender-Apps können sich nicht anmelden. Das Abo trägt deshalb ein geheimes Wort je Konto und Reise. Es wird nicht
-# gespeichert, sondern aus dem Dienst-Geheimnis, Konto, Reise und einem Zähler berechnet (konten.py, Tabelle kalender):
-# Erneuern zählt hoch, der alte Link gilt dann nicht mehr. Wer die Reise verlässt, verliert das Abo von selbst.
+# Ein Abo je Person über alle ihre Reisen (Product Owner 30.10.2026). Kalender-Apps können sich nicht anmelden; das Abo
+# trägt deshalb ein geheimes Wort je Konto. Es wird nicht gespeichert, sondern aus dem Dienst-Geheimnis, dem Konto und einem
+# Zähler berechnet (konten.py, Tabelle kalender_abo): Erneuern zählt hoch, der alte Link gilt dann nicht mehr. Wer eine
+# Reise verlässt, hat sie im Abo nicht mehr. Ausgeliefert wird es vom Konnektor unter seiner Adresse (KN_BASIS).
 
-def token(geheimnis, konto, reise, stand):
-    return hmac.new(geheimnis.encode(), f"kalender|{konto}|{reise}|{stand}".encode(), hashlib.sha256).hexdigest()[:40]
+def token(geheimnis, konto, stand):
+    return hmac.new(geheimnis.encode(), f"kalender|{konto}|{stand}".encode(), hashlib.sha256).hexdigest()[:40]
 
 
-def abo_url(seite, tok):
-    """Adresse des Abos: unter dem Link der Seite, beim Rückmeldedienst (nginx: <seite>/api/ -> Dienst)."""
-    return f"{seite.rstrip('/')}/api/kalender/{tok}.ics"
+def abo_url(basis, tok):
+    """Adresse des Abos beim Konnektor (nginx: <FR_KN_ADRESSE>/ -> Konnektor)."""
+    return f"{basis.rstrip('/')}/kalender/{tok}.ics"
 
 
 def webcal(url):
@@ -79,7 +80,7 @@ def _offen(route):
 
 
 def eintraege(daten, aufgaben=None):
-    """-> Liste von Einträgen {id, uid, titel, tag, bis | beginn, ende, ort, text}. tag/bis: ganztägig (bis ausschließlich);
+    """-> Liste von Einträgen {sorte, id, uid, titel, tag, bis | beginn, ende, ort, text}. tag/bis: ganztägig (bis ausschließlich);
     beginn/ende: mit Uhrzeit. id ist das Ding, zu dem der Eintrag gehört (T-, U-, A-, E-, B-, AG-)."""
     r = (daten or {}).get("route") or {}
     orte, strecken = r.get("orte") or {}, r.get("strecken") or {}
@@ -112,13 +113,13 @@ def eintraege(daten, aufgaben=None):
             zeilen.append("Nacht in " + ort_name(n["ort"]))
         if t.get("text"):
             zeilen += ["", t["text"]]
-        aus.append({"id": t["id"], "uid": t["id"], "titel": f"Tag {t.get('nr')}: {t.get('titel') or ''}".rstrip(": "),
+        aus.append({"sorte": "tage", "id": t["id"], "uid": t["id"], "titel": f"Tag {t.get('nr')}: {t.get('titel') or ''}".rstrip(": "),
                     "tag": tag, "bis": tag + datetime.timedelta(days=1), "ort": ort_name(t.get("end_ort")),
                     "text": "\n".join(zeilen)})
         for sid, s in weg:
             b, e = _spanne(tag, s.get("ab"), s.get("an"))
             if b:
-                aus.append({"id": sid, "uid": f"{sid}-{tag.isoformat()}", "titel": s.get("titel") or sid, "beginn": b, "ende": e,
+                aus.append({"sorte": "fahrten", "id": sid, "uid": f"{sid}-{tag.isoformat()}", "titel": s.get("titel") or sid, "beginn": b, "ende": e,
                             "ort": ort_name(s.get("von")), "text": f"{ort_name(s.get('von'))} → {ort_name(s.get('nach'))}"
                             + _buchung_text(r, s.get("buchung_id"))})
         for aid in t.get("aufenthalte") or []:
@@ -126,7 +127,7 @@ def eintraege(daten, aufgaben=None):
             if not a:
                 continue
             text = "\n".join(x for x in (a.get("zeit"), a.get("hinweis")) if x) + _buchung_text(r, a.get("buchung_id"))
-            e = {"id": aid, "uid": f"{aid}-{tag.isoformat()}", "titel": a.get("name") or aid, "ort": lage(a), "text": text.strip()}
+            e = {"sorte": "aufenthalte", "id": aid, "uid": f"{aid}-{tag.isoformat()}", "titel": a.get("name") or aid, "ort": lage(a), "text": text.strip()}
             b, ende = _spanne(tag, a.get("beginn"), a.get("ende"))
             if b:
                 e.update(beginn=b, ende=ende)
@@ -146,7 +147,7 @@ def eintraege(daten, aufgaben=None):
                 stuecke.append(an)
         for von, bis in stuecke:
             n = (bis - von).days
-            aus.append({"id": uid, "uid": uid if len(stuecke) == 1 else f"{uid}-{von.isoformat()}",
+            aus.append({"sorte": "unterkuenfte", "id": uid, "uid": uid if len(stuecke) == 1 else f"{uid}-{von.isoformat()}",
                         "titel": f"Übernachtung: {u.get('name', uid)}", "tag": von, "bis": bis, "ort": lage(u),
                         "text": (f"{n} Nacht" if n == 1 else f"{n} Nächte") + _buchung_text(r, u.get("buchung_id"))
                         + (f"\n{u['kontakt']}" if u.get("kontakt") else "") + (f"\n{u['hinweis']}" if u.get("hinweis") else "")})
@@ -157,17 +158,17 @@ def eintraege(daten, aufgaben=None):
             continue
         titel = b.get("titel") or bid
         if (d := _datum(b.get("frist"))):
-            aus.append({"id": bid, "uid": f"{bid}-frist", "titel": f"Frist: {b.get('frist_was') or 'Buchung'} – {titel}",
+            aus.append({"sorte": "buchungen", "id": bid, "uid": f"{bid}-frist", "titel": f"Frist: {b.get('frist_was') or 'Buchung'} – {titel}",
                         "tag": d, "bis": d + datetime.timedelta(days=1), "text": _buchung_text(r, bid).strip()})
         if (d := _datum(b.get("ab"))):
-            aus.append({"id": bid, "uid": f"{bid}-ab", "titel": f"Ab heute: {b.get('ab_was') or 'Buchung'} – {titel}",
+            aus.append({"sorte": "buchungen", "id": bid, "uid": f"{bid}-ab", "titel": f"Ab heute: {b.get('ab_was') or 'Buchung'} – {titel}",
                         "tag": d, "bis": d + datetime.timedelta(days=1), "text": _buchung_text(r, bid).strip()})
         if (d := _datum(b.get("storno_bis"))):
-            aus.append({"id": bid, "uid": f"{bid}-storno", "titel": f"Letzter Tag kostenlos stornieren – {titel}",
+            aus.append({"sorte": "buchungen", "id": bid, "uid": f"{bid}-storno", "titel": f"Letzter Tag kostenlos stornieren – {titel}",
                         "tag": d, "bis": d + datetime.timedelta(days=1), "text": _buchung_text(r, bid).strip()})
     for a in aufgaben or []:
         if a.get("status") in AG_OFFEN and (d := _datum(a.get("frist"))):
-            aus.append({"id": a["id"], "uid": f"{a['id']}-frist", "titel": f"Aufgabe fällig: {a.get('titel', a['id'])}",
+            aus.append({"sorte": "aufgaben", "zustaendig": a.get("zustaendig") or "", "id": a["id"], "uid": f"{a['id']}-frist", "titel": f"Aufgabe fällig: {a.get('titel', a['id'])}",
                         "tag": d, "bis": d + datetime.timedelta(days=1),
                         "text": "\n".join(x for x in (f"Zuständig: {a['zustaendig']}" if a.get("zustaendig") else "", a.get("notiz")) if x)})
     return aus
@@ -214,14 +215,68 @@ def _zeit(t):
 def ics(daten, reise, aufgaben=None, nur=None, jetzt=None, name=None):
     """Kalenderdatei der Reise als Text. nur: nur die Einträge eines Dings (T-, U-, A-, E-, B-, AG-). -> str oder None,
     wenn nur gesetzt ist und das Ding keinen Eintrag hat (noch nicht entschieden oder ohne Datum)."""
-    liste = [e for e in eintraege(daten, aufgaben) if nur is None or e["id"] == nur]
+    liste = [(reise, e) for e in eintraege(daten, aufgaben) if nur is None or e["id"] == nur]
     if nur is not None and not liste:
         return None
+    return _kalender(liste, name or ((daten or {}).get("reise") or {}).get("titel") or reise, jetzt)
+
+
+# ---------- Persönlicher Kalender über alle Reisen (Abo und Download auf „Mein Konto“) ----------
+# Jede Person stellt ihren Kalender selbst ein (Product Owner 30.10.2026): welche Einträge, nur eigene Aufgaben, Erinnerungen,
+# welche Reisen. Die Einstellungen liegen am Konto (konten.py, Tabelle kalender_abo) und gelten für Abo und Download.
+
+SORTEN = {"tage": "Reisetage mit Weg und Nacht", "unterkuenfte": "Unterkünfte", "aufenthalte": "Besichtigungen, Essen, Besuche",
+          "fahrten": "Fahrten mit Uhrzeit", "buchungen": "Fristen von Buchungen", "aufgaben": "Fristen von Aufgaben"}
+# Erinnerung vor Fristen (ganztägig, Beginn 0 Uhr: -PT15H ist 9 Uhr am Vortag) und vor Terminen mit Uhrzeit
+ERINNERUNG_FRISTEN = {"": "keine", "-PT15H": "am Vortag um 9 Uhr", "-P2DT15H": "3 Tage vorher um 9 Uhr",
+                      "-P6DT15H": "1 Woche vorher um 9 Uhr"}
+ERINNERUNG_TERMINE = {"": "keine", "-PT15M": "15 Minuten vorher", "-PT30M": "30 Minuten vorher", "-PT1H": "1 Stunde vorher",
+                      "-PT2H": "2 Stunden vorher"}
+VORGABE = {"sorten": list(SORTEN), "nur_meine_aufgaben": False, "erinnerung_fristen": "", "erinnerung_termine": "", "reisen_aus": []}
+
+
+def einstellungen(roh):
+    """Einstellungen eines Kontos, bereinigt (Unbekanntes fällt weg, Fehlendes nimmt die Vorgabe)."""
+    roh = roh if isinstance(roh, dict) else {}
+    e = dict(VORGABE)
+    if isinstance(roh.get("sorten"), list):
+        e["sorten"] = [x for x in SORTEN if x in roh["sorten"]]
+    e["nur_meine_aufgaben"] = roh.get("nur_meine_aufgaben") is True
+    if roh.get("erinnerung_fristen") in ERINNERUNG_FRISTEN:
+        e["erinnerung_fristen"] = roh["erinnerung_fristen"]
+    if roh.get("erinnerung_termine") in ERINNERUNG_TERMINE:
+        e["erinnerung_termine"] = roh["erinnerung_termine"]
+    if isinstance(roh.get("reisen_aus"), list):
+        e["reisen_aus"] = sorted({x for x in roh["reisen_aus"] if isinstance(x, str)})
+    return e
+
+
+def ics_person(reisen, e, name="Frieda – meine Reisen", jetzt=None):
+    """Kalender einer Person: reisen = [(reise, daten, aufgaben, name der person)], e = einstellungen()."""
+    e = einstellungen(e)
+    liste = []
+    for reise, daten, aufgaben, person in reisen:
+        if reise in e["reisen_aus"]:
+            continue
+        titel = ((daten or {}).get("reise") or {}).get("titel") or reise
+        for x in eintraege(daten, aufgaben):
+            if x["sorte"] not in e["sorten"]:
+                continue
+            if x["sorte"] == "aufgaben" and e["nur_meine_aufgaben"] and \
+                    (not person or (x.get("zustaendig") or "").casefold() != person.casefold()):
+                continue
+            alarm = e["erinnerung_fristen"] if x["sorte"] in ("buchungen", "aufgaben") else \
+                e["erinnerung_termine"] if x.get("beginn") else ""
+            liste.append((reise, {**x, "titel": f"{x['titel']} ({titel})" if len(reisen) > 1 else x["titel"], "alarm": alarm}))
+    return _kalender(liste, name, jetzt)
+
+
+def _kalender(liste, titel, jetzt=None):
+    """liste: [(reise, eintrag)] -> iCalendar als Text."""
     jetzt = (jetzt or datetime.datetime.now(datetime.timezone.utc)).strftime("%Y%m%dT%H%M%SZ")
-    titel = name or ((daten or {}).get("reise") or {}).get("titel") or reise
     z = ["BEGIN:VCALENDAR", "VERSION:2.0", f"PRODID:{PRODID}", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
          f"X-WR-CALNAME:{_esc(titel)}", f"REFRESH-INTERVAL;VALUE=DURATION:PT{ABO_STUNDEN}H", f"X-PUBLISHED-TTL:PT{ABO_STUNDEN}H"]
-    for e in sorted(liste, key=lambda e: (str(e.get("tag") or e["beginn"].date()), e["uid"])):
+    for reise, e in sorted(liste, key=lambda x: (str(x[1].get("tag") or x[1]["beginn"].date()), x[0], x[1]["uid"])):
         z += ["BEGIN:VEVENT", f"UID:{e['uid']}.{reise}@frieda", f"DTSTAMP:{jetzt}"]
         if e.get("beginn"):
             z.append("DTSTART:" + _zeit(e["beginn"]))
@@ -235,6 +290,8 @@ def ics(daten, reise, aufgaben=None, nur=None, jetzt=None, name=None):
             z.append("LOCATION:" + _esc(e["ort"]))
         if e.get("text"):
             z.append("DESCRIPTION:" + _esc(e["text"]))
+        if e.get("alarm"):
+            z += ["BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + _esc(e["titel"]), f"TRIGGER:{e['alarm']}", "END:VALARM"]
         z.append("END:VEVENT")
     z.append("END:VCALENDAR")
     return "\r\n".join(_falten(x) for x in z) + "\r\n"

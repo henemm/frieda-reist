@@ -120,9 +120,9 @@ Rotation. Einzelheiten stehen in `engine/oauth.py` und [konten.md](konten.md).
 - `meine_reisen`
 - `reise_anlegen`, wenn das Konto freigeschaltet ist; sonst `reisen_anlegen_anfragen`
 - für den Betreiber `anfrage_entscheiden`
-- `kalender` (#77): persönlicher Link, um die Reise im Kalender zu abonnieren (webcal:// für iPhone, Mac, Outlook;
-  https:// für Google Kalender). `neu: true` stellt einen neuen Link aus, der alte gilt dann nicht mehr. Der Link
-  ist persönlich und gilt, solange das Konto in der Reise ist; derselbe Link steht unter „Mein Konto“.
+- `kalender` (#77): persönlicher Link, um alle eigenen Reisen im Kalender zu abonnieren (webcal:// für iPhone, Mac,
+  Outlook; https:// für Google Kalender). `neu: true` stellt einen neuen Link aus, der alte gilt dann nicht mehr. Was im
+  Kalender steht, Erinnerungen und welche Reisen stellt die Person auf „Mein Konto“ ein; dort gibt es auch den Download.
 - alle Reise-Werkzeuge mit der Angabe `reise`. Bei nur einer Reise darf sie fehlen.
 
 Die Rechte prüft der Konnektor je Reise wie bisher (Rolle aus `reise.yaml` und `einladungen.json`). Den Namen kennt

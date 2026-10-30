@@ -118,6 +118,28 @@ def test_uhrzeit_im_modell_wird_geprueft(tmp_path):
         bauen.bauen(q, tmp_path / "ziel")
 
 
+# ---------- Persönlicher Kalender: Einstellungen (kalender.py) ----------
+
+def test_einstellungen_filtern_und_erinnern(daten):
+    aufgaben = [{"id": "AG-01", "titel": "Rucksack packen", "frist": "2027-05-10", "status": "offen", "zustaendig": "Karl"},
+                {"id": "AG-02", "titel": "Karten kaufen", "frist": "2027-05-11", "status": "offen", "zustaendig": "ida"}]
+    reisen = [("beispielreise", daten, aufgaben, "Ida")]
+    alles = kalender.ics_person(reisen, {}, jetzt=JETZT)
+    assert "Rucksack packen" in alles and "Karten kaufen" in alles and "BEGIN:VALARM" not in alles
+    t = kalender.ics_person(reisen, {"sorten": ["aufgaben", "fahrten", "unbekannt"], "nur_meine_aufgaben": True,
+                                     "erinnerung_fristen": "-PT15H", "erinnerung_termine": "-PT30M"}, jetzt=JETZT)
+    entfaltet = t.replace("\r\n ", "")
+    assert "Karten kaufen" in entfaltet and "Rucksack packen" not in entfaltet          # nur eigene, Name ohne Groß/klein
+    assert "UID:T-01" not in entfaltet and "UID:E-20-2027-05-14.beispielreise@frieda" in entfaltet
+    assert entfaltet.count("TRIGGER:-PT15H") == 1 and entfaltet.count("TRIGGER:-PT30M") == 1
+    assert "X-WR-CALNAME:Frieda – meine Reisen" in entfaltet
+    assert kalender.ics_person(reisen, {"reisen_aus": ["beispielreise"]}, jetzt=JETZT).count("BEGIN:VEVENT") == 0
+    # zwei Reisen: der Titel nennt die Reise, UIDs bleiben verschieden
+    zwei = kalender.ics_person(reisen + [("zweite-reise", daten, [], "Ida")], {"sorten": ["tage"]}, jetzt=JETZT).replace("\r\n ", "")
+    assert "UID:T-01.zweite-reise@frieda" in zwei and "(Beispielreise – Malerweg in vier Tagen)" in zwei
+    assert kalender.einstellungen({"erinnerung_fristen": "-P99D", "reisen_aus": "x"}) == kalender.VORGABE
+
+
 # ---------- Abo-Link (konten.py) ----------
 
 @pytest.fixture
@@ -134,23 +156,22 @@ def konten_welt(tmp_path, monkeypatch):
 
 
 def test_abo_link_erneuern_und_entziehen(konten_welt):
-    t = konten.kalender_token("k-ida", "beispielreise")
-    assert t == konten.kalender_token("k-ida", "beispielreise") and len(t) == 40
-    assert t != konten.kalender_token("k-karl", "beispielreise")
-    assert konten.kalender_konto("beispielreise", t)["schluessel"] == "ida"
-    assert konten.kalender_konto("andere-reise", t) is None and konten.kalender_konto("beispielreise", "x" * 40) is None
-    neu = konten.kalender_token("k-ida", "beispielreise", erneuern=True)
-    assert neu != t and konten.kalender_konto("beispielreise", t) is None
-    assert konten.kalender_konto("beispielreise", neu)["id"] == "k-ida"
-    with pytest.raises(konten.KontoFehler, match="nicht dabei"):
-        konten.kalender_token("k-ida", "andere-reise")
-    k = konten.kalender_token("k-karl", "beispielreise")
+    t = konten.kalender_token("k-ida")
+    assert t == konten.kalender_token("k-ida") and len(t) == 40 and t != konten.kalender_token("k-karl")
+    assert konten.kalender_konto(t)["id"] == "k-ida" and konten.kalender_konto("x" * 40) is None
+    neu = konten.kalender_token("k-ida", erneuern=True)
+    assert neu != t and konten.kalender_konto(t) is None and konten.kalender_konto(neu)["id"] == "k-ida"
+    assert konten.kalender_einstellungen("k-ida") == kalender.VORGABE
+    e = konten.kalender_einstellungen("k-ida", {"sorten": ["tage"], "reisen_aus": ["beispielreise"]})
+    assert konten.kalender_einstellungen("k-ida") == e and e["sorten"] == ["tage"]
+    assert konten.kalender_token("k-ida") == neu                         # Einstellungen ändern den Link nicht
+    k = konten.kalender_token("k-karl")
     konten.sperren("k-karl")
-    assert konten.kalender_konto("beispielreise", k) is None
-    konten.entfernen("beispielreise", "ida")
-    assert konten.kalender_konto("beispielreise", neu) is None
-    assert kalender.abo_url(SEITE, "abc") == SEITE + "api/kalender/abc.ics"
-    assert kalender.webcal(SEITE + "api/kalender/abc.ics").startswith("webcal://frieda.beispiel.invalid/")
+    assert konten.kalender_konto(k) is None
+    with pytest.raises(konten.KontoFehler):
+        konten.kalender_token("k-niemand")
+    assert kalender.abo_url("https://frieda.beispiel.invalid/fr-mcp/", "abc") == "https://frieda.beispiel.invalid/fr-mcp/kalender/abc.ics"
+    assert kalender.webcal("https://frieda.beispiel.invalid/fr-mcp/kalender/abc.ics").startswith("webcal://frieda.beispiel.invalid/")
 
 
 # ---------- Rückmeldedienst, Konto-Seite und Konnektor ----------
@@ -171,6 +192,9 @@ def umgebung(tmp_path, monkeypatch):
     links.write_text(json.dumps({"beispielreise": SEITE}))
     monkeypatch.setenv("KN_SEITENLINKS", str(links))
     monkeypatch.setenv("FR_BASIS", "https://frieda.beispiel.invalid")
+    monkeypatch.setenv("FR_MAIL_DATEI", str(tmp_path / "mails.jsonl"))
+    monkeypatch.delenv("KN_BASIS", raising=False)
+    u.mails = tmp_path / "mails.jsonl"
     v = konten.db()
     v.execute("INSERT INTO konten (id, email, name, angelegt) VALUES ('k-ida', 'ida@beispiel.invalid', 'Ida', '2026-10-29')")
     v.commit()
@@ -180,7 +204,7 @@ def umgebung(tmp_path, monkeypatch):
     u.schliessen()
 
 
-def test_dienst_liefert_datei_und_abo(umgebung):
+def test_dienst_liefert_datei(umgebung):
     u = umgebung
     s, h, t = holen(f"{u.rurl}/beispielreise/kalender.ics")
     assert s == 200 and h["Content-Type"] == "text/calendar; charset=utf-8" and "attachment" in h["Content-Disposition"]
@@ -189,36 +213,69 @@ def test_dienst_liefert_datei_und_abo(umgebung):
     assert s == 200 and t.count("BEGIN:VEVENT") == 1 and 'beispielreise-T-02.ics' in h["Content-Disposition"]
     assert holen(f"{u.rurl}/beispielreise/kalender.ics?id=T-05")[0] == 404
     assert holen(f"{u.rurl}/beispielreise/kalender.ics?id=%22%3B")[0] == 400
-    tok = konten.kalender_token("k-ida", "beispielreise")
-    s, h, t = holen(f"{u.rurl}/beispielreise/kalender/{tok}.ics")
-    assert s == 200 and "Content-Disposition" not in h and "X-WR-CALNAME:Beispielreise" in t
-    assert holen(f"{u.rurl}/beispielreise/kalender/{'0' * 40}.ics")[0] == 404
-    # Aufgaben mit Frist kommen live aus der Ablage dazu
+
+
+def test_abo_ueber_den_konnektor(umgebung):
+    u = umgebung
+    tok = konten.kalender_token("k-ida")
     (u.o / "aufgaben.json").write_text(json.dumps({"naechste": 2, "aufgaben": [
-        {"id": "AG-01", "titel": "Rucksack packen", "frist": "2027-05-10", "status": "offen"}]}))
-    assert "Aufgabe fällig: Rucksack packen" in holen(f"{u.rurl}/beispielreise/kalender/{tok}.ics")[2]
+        {"id": "AG-01", "titel": "Rucksack packen", "frist": "2027-05-10", "status": "offen", "zustaendig": "Karl"}]}))
+    s, h, t = holen(f"{u.kurl}/kalender/{tok}.ics")
+    assert s == 200 and h["Content-Type"] == "text/calendar; charset=utf-8" and "Content-Disposition" not in h
+    assert "UID:T-01.beispielreise@frieda" in t and "Aufgabe fällig: Rucksack packen" in t
+    konten.kalender_einstellungen("k-ida", {"sorten": ["aufgaben"], "nur_meine_aufgaben": True})
+    assert "BEGIN:VEVENT" not in holen(f"{u.kurl}/kalender/{tok}.ics")[2]     # Karl ist zuständig, nicht Ida
+    assert holen(f"{u.kurl}/kalender/{'0' * 40}.ics")[0] == 404
 
 
-def test_konto_seite_zeigt_abo_und_erneuert(umgebung):
+def anmelden_ida(u):
+    konten.code_anfordern("ida@beispiel.invalid")
+    m = json.loads((u.mails).read_text().splitlines()[-1])
+    import re
+    code = re.search(r"(\d{3}) (\d{3})", m["text"]).expand(r"\1\2")
+    token, _ = konten.anmelden("ida@beispiel.invalid", code)
+    return {"Cookie": f"__Host-frieda={token}", "Origin": "https://frieda.beispiel.invalid"}
+
+
+def test_konto_seite_kalender(umgebung, monkeypatch):
     import anmeldung
-    k = konten.konto("k-ida")
+    monkeypatch.setenv("KN_BASIS", "https://frieda.beispiel.invalid/fr-mcp")
+    kopf = anmelden_ida(umgebung)
     info = lambda r: {"titel": "Beispielreise", "seite": SEITE}   # noqa: E731
-    alt = konten.kalender_token("k-ida", "beispielreise")
-    html = anmeldung.konto_seite(k, info)
-    assert f"webcal://frieda.beispiel.invalid/beispielreise-0123456789abcdef01234567/api/kalender/{alt}.ics" in html
-    assert 'value="kalender_neu"' in html
-    konten.kalender_token("k-ida", "beispielreise", erneuern=True)
-    assert alt not in anmeldung.konto_seite(k, info)
+    code, _, body = anmeldung.bearbeiten("GET", "/konto", kopf, b"", "127.0.0.1", info)
+    html = body.decode()
+    alt = konten.kalender_token("k-ida")
+    assert code == 200 and f"webcal://frieda.beispiel.invalid/fr-mcp/kalender/{alt}.ics" in html
+    assert 'href="/konto?kalender=datei"' in html and 'name="sorte_tage" value="ja" checked' in html
+    assert 'name="reise_beispielreise" value="ja" checked' in html and "1 Woche vorher um 9 Uhr" in html
+    # Download mit den Einstellungen des Kontos
+    code, k_, body = anmeldung.bearbeiten("GET", "/konto?kalender=datei", kopf, b"", "127.0.0.1", info)
+    assert code == 200 and ("Content-Disposition", 'attachment; filename="frieda-reisen.ics"') in k_ and b"BEGIN:VCALENDAR" in body
+    # Einstellungen speichern: fehlende Häkchen sind aus
+    form = "aktion=kalender_einstellungen&sorte_tage=ja&sorte_fahrten=ja&erinnerung_termine=-PT1H&reise_beispielreise=ja"
+    code, _, body = anmeldung.bearbeiten("POST", "/konto", kopf, form.encode(), "127.0.0.1", info)
+    assert code == 200 and "Kalender-Einstellungen gespeichert" in body.decode()
+    e = konten.kalender_einstellungen("k-ida")
+    assert e["sorten"] == ["tage", "fahrten"] and e["erinnerung_termine"] == "-PT1H" and e["reisen_aus"] == []
+    code, _, body = anmeldung.bearbeiten("GET", "/konto?kalender=datei", kopf, b"", "127.0.0.1", info)
+    assert b"Unterkunft" not in body.replace(b"\r\n ", b"") and b"TRIGGER:-PT1H" in body
+    anmeldung.bearbeiten("POST", "/konto", kopf, b"aktion=kalender_einstellungen", "127.0.0.1", info)
+    assert konten.kalender_einstellungen("k-ida")["reisen_aus"] == ["beispielreise"]
+    # Neuer Link
+    anmeldung.bearbeiten("POST", "/konto", kopf, b"aktion=kalender_neu", "127.0.0.1", info)
+    assert konten.kalender_token("k-ida") != alt and konten.kalender_konto(alt) is None
 
 
-def test_konnektor_werkzeug_kalender(umgebung):
+def test_konnektor_werkzeug_kalender(umgebung, monkeypatch):
     import konnektor as kn
     k = konten.konto("k-ida")
-    namen = [w["name"] for w in kn.frieda_werkzeuge(k)]
-    assert "kalender" in namen
+    assert "kalender" in [w["name"] for w in kn.frieda_werkzeuge(k)]
     text, fehler = kn.frieda_werkzeug(k, "kalender", {})
-    tok = konten.kalender_token("k-ida", "beispielreise")
-    assert not fehler and f"{SEITE}api/kalender/{tok}.ics" in text and "webcal://" in text
+    assert fehler and "nicht eingerichtet" in text
+    monkeypatch.setenv("KN_BASIS", "https://frieda.beispiel.invalid/fr-mcp")
+    text, fehler = kn.frieda_werkzeug(k, "kalender", {})
+    tok = konten.kalender_token("k-ida")
+    assert not fehler and f"https://frieda.beispiel.invalid/fr-mcp/kalender/{tok}.ics" in text and "Mein Konto" in text
     text, fehler = kn.frieda_werkzeug(k, "kalender", {"neu": True})
     assert not fehler and "Neuer Kalender-Link" in text and tok not in text
 

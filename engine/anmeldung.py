@@ -10,6 +10,8 @@ SameSite=Lax, ein Jahr, rollierend). Jede Änderung (POST) muss von Friedas eige
 Reiseseiten bleiben zum Lesen über ihren geheimen Link offen; mitmachen geht nach dem Anmelden (Rückmeldedienst).
 """
 import html
+import json
+import os
 import re
 import urllib.parse
 
@@ -45,7 +47,8 @@ background:var(--acc);color:var(--card);cursor:pointer}
 button.leise{background:var(--acc2);color:var(--fg)}button.gefahr{background:var(--warnbg);color:var(--warn)}
 .fehler{background:var(--warnbg);color:var(--warn);padding:.6rem .8rem;border-radius:.375rem;margin:.5rem 0}
 .hinweis,.klein{color:var(--mut)}.klein{font-size:.875rem}
-ul{padding-left:1.2rem}a{color:var(--acc)}form.zeile{display:inline}
+fieldset{border:0;padding:0;margin:.75rem 0 0}legend{font-weight:600;padding:0}label.haken{font-weight:400;margin:.35rem 0}
+select{min-height:2.75rem;font:inherit;width:100%}ul{padding-left:1.2rem}a{color:var(--acc)}form.zeile{display:inline}
 """
 
 
@@ -138,21 +141,73 @@ def code_seite(email, zurueck="", einladung="", code="", meldung="", name_noetig
         'Andere Adresse oder neuen Code anfordern</a></p>'))
 
 
-def kalender_teil(k, reise, info):
-    """Kalender-Abo der Reise (#77): persönlicher Link (webcal:// zum Abonnieren, https:// zum Kopieren) und neuer Link."""
-    if not info.get("seite"):
-        return ""
-    try:
-        url = kalender.abo_url(info["seite"], konten.kalender_token(k["id"], reise))
-    except konten.KontoFehler:
-        return ""
-    return (f'<details><summary>Kalender abonnieren</summary><p class="klein">Die Reise erscheint in deinem Kalender und '
-            "bleibt dort aktuell (Tage, Unterkünfte, Termine, Fristen). Der Link ist persönlich: nicht weitergeben.</p>"
-            f'<p><a href="{esc(kalender.webcal(url))}">Im Kalender abonnieren</a></p>'
-            f'<label for="kal-{esc(reise)}">Link zum Kopieren (z. B. für Google Kalender: Andere Kalender, Per URL)</label>'
-            f'<input id="kal-{esc(reise)}" type="text" readonly value="{esc(url)}">'
-            + formular("/konto", verdeckt(aktion="kalender_neu", reise=reise), "Neuen Link ausstellen (der alte gilt dann nicht mehr)", "leise")
-            + "</details>")
+def kalender_reisen(k):
+    """[(reise, daten, aufgaben, name der person)] aller veröffentlichten Reisen des Kontos (für den Kalender, #77)."""
+    aus = []
+    for m in konten.mitgliedschaften(k["id"]):
+        try:
+            d = json.loads((rm.seiten() / m["reise"] / "daten.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        p = next((x for x in (d.get("reise") or {}).get("personen") or [] if x.get("schluessel") == m["schluessel"]), {})
+        o = rm.ordner(m["reise"])
+        aus.append((m["reise"], d, rm.aufgaben(o) if o else [], p.get("name") or k["name"]))
+    return aus
+
+
+def kalender_antwort(k, datei=False):
+    """Persönlicher Kalender des Kontos mit seinen Einstellungen: als Abo (Kalender-App) oder als Datei (Download)."""
+    text = kalender.ics_person(kalender_reisen(k), konten.kalender_einstellungen(k["id"]))
+    kopf = [("Content-Type", "text/calendar; charset=utf-8"), ("Cache-Control", "private, no-store")]
+    if datei:
+        kopf.append(("Content-Disposition", 'attachment; filename="frieda-reisen.ics"'))
+    return 200, kopf, text.encode("utf-8")
+
+
+def kalender_karte(k, reise_info):
+    """Karte „Kalender“ auf Mein Konto: Abo-Link, Download und Einstellungen für alle Reisen (Product Owner 30.10.2026)."""
+    e = konten.kalender_einstellungen(k["id"])
+    basis = os.environ.get("KN_BASIS")
+    if basis:
+        url = kalender.abo_url(basis, konten.kalender_token(k["id"]))
+        abo = (f'<p><a href="{esc(kalender.webcal(url))}">Im Kalender abonnieren</a> (iPhone, Mac, Outlook)</p>'
+               '<label for="kal-url">Link zum Kopieren (Google Kalender: Andere Kalender, Per URL)</label>'
+               f'<input id="kal-url" type="text" readonly value="{esc(url)}">')
+    else:
+        abo = '<p class="hinweis">Das Abo ist auf diesem Server noch nicht eingerichtet; der Download geht.</p>'
+    haken = lambda name, an, text: (f'<label class="haken"><input type="checkbox" name="{esc(name)}" value="ja"'   # noqa: E731
+                                    f'{" checked" if an else ""}> {esc(text)}</label>')
+    wahl = lambda name, werte, jetzt: (f'<select id="{name}" name="{name}">' + "".join(   # noqa: E731
+        f'<option value="{esc(w)}"{" selected" if w == jetzt else ""}>{esc(t)}</option>' for w, t in werte.items()) + "</select>")
+    reisen = [(m["reise"], (reise_info(m["reise"]) or {}).get("titel") or m["reise"]) for m in konten.mitgliedschaften(k["id"])]
+    felder = (verdeckt(aktion="kalender_einstellungen")
+              + "<fieldset><legend>Was im Kalender steht</legend>"
+              + "".join(haken("sorte_" + s_, s_ in e["sorten"], t) for s_, t in kalender.SORTEN.items())
+              + haken("nur_meine_aufgaben", e["nur_meine_aufgaben"], "Bei Aufgaben nur meine (wo ich zuständig bin)")
+              + "</fieldset>"
+              + ("<fieldset><legend>Reisen</legend>" + "".join(haken("reise_" + r, r not in e["reisen_aus"], t) for r, t in reisen)
+                 + "</fieldset>" if reisen else "")
+              + '<label for="erinnerung_fristen">Erinnerung vor Fristen</label>'
+              + wahl("erinnerung_fristen", kalender.ERINNERUNG_FRISTEN, e["erinnerung_fristen"])
+              + '<label for="erinnerung_termine">Erinnerung vor Terminen mit Uhrzeit</label>'
+              + wahl("erinnerung_termine", kalender.ERINNERUNG_TERMINE, e["erinnerung_termine"])
+              + '<p class="klein">Manche Kalender (etwa Google) übernehmen Erinnerungen aus einem Abo nicht; dann im '
+                "Kalender selbst einstellen.</p>")
+    return karte("<h2>Kalender</h2>",
+                 '<p class="klein">Alle deine Reisen in deinem Kalender: Tage, Unterkünfte, Termine und Fristen, nur was '
+                 "entschieden ist. Das Abo bleibt von selbst aktuell. Der Link ist persönlich: nicht weitergeben.</p>",
+                 abo, '<p><a href="/konto?kalender=datei">Als Datei herunterladen</a> (einmaliger Stand)</p>',
+                 formular("/konto", felder, "Einstellungen speichern"),
+                 formular("/konto", verdeckt(aktion="kalender_neu"), "Neuen Abo-Link ausstellen (der alte gilt dann nicht mehr)", "leise"))
+
+
+def kalender_formular(k, f):
+    """Formular der Kalender-Karte -> Einstellungen (Häkchen fehlen im Formular, wenn sie aus sind)."""
+    reisen = [m["reise"] for m in konten.mitgliedschaften(k["id"])]
+    return {"sorten": [s_ for s_ in kalender.SORTEN if f.get("sorte_" + s_) == "ja"],
+            "nur_meine_aufgaben": f.get("nur_meine_aufgaben") == "ja",
+            "erinnerung_fristen": f.get("erinnerung_fristen", ""), "erinnerung_termine": f.get("erinnerung_termine", ""),
+            "reisen_aus": [r for r in reisen if f.get("reise_" + r) != "ja"]}
 
 
 def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu=""):
@@ -163,7 +218,7 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu=""):
         p = next((x for x in z.get("personen") or [] if x.get("schluessel") == m["schluessel"]), {})
         link = f' – <a href="{esc(info["seite"])}">öffnen</a>' if info.get("seite") else ""
         reisen.append(f'<li>{esc(info.get("titel") or m["reise"])} ({esc(ROLLE_TEXT.get(rolle_neu(p.get("rolle")), "dabei"))})'
-                      f"{link}{kalender_teil(k, m['reise'], info)}</li>")
+                      f"{link}</li>")
     reisen_html = f"<ul>{''.join(reisen)}</ul>" if reisen else (
         '<p class="hinweis">Noch keine Reisen. Wer eine Reise bestimmt, kann dich mit deiner Adresse einladen.</p>')
     if konten.recht(k, "reise_anlegen"):
@@ -200,6 +255,7 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu=""):
                        f"<p>Angemeldet als <strong>{esc(k['email'])}</strong>.</p>",
                        formular("/abmelden", "", "Abmelden", "leise")),
                  karte("<h2>Meine Reisen</h2>", reisen_html, anlegen),
+                 kalender_karte(k, reise_info),
                  betreiber,
                  karte("<h2>Name</h2>", formular("/konto", verdeckt(aktion="name")
                                                 + '<label for="name">So steht dein Name bei deinen Beiträgen</label>'
@@ -259,7 +315,7 @@ def geraet(headers):
 
 def ist_unsere(pfad):
     p = pfad.split("?", 1)[0]
-    return p in ("/anmelden", "/konto", "/abmelden") or p.startswith("/einladung/")
+    return p in ("/anmelden", "/konto", "/abmelden") or p.startswith(("/einladung/", "/kalender/"))
 
 
 def bearbeiten(methode, pfad, headers, body, ip, reise_info):
@@ -327,9 +383,19 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
             return antwort(200, einladungs_seite(e, et, k, reise_info, str(x)))
         return weiter((reise_info(reise) or {}).get("seite") or "/konto")
 
+    if weg.startswith("/kalender/") and methode == "GET":
+        # Kalender-Abo (#77): Kalender-Apps melden sich nicht an, das geheime Wort im Pfad steht für das Konto
+        wer = konten.kalender_konto(weg.rsplit("/", 1)[1].removesuffix(".ics"))
+        if not wer:
+            return antwort(404, seite("Kalender", karte("<h1>Kalender nicht gefunden</h1><p>Diesen Link gibt es nicht "
+                                                        "(mehr). Den aktuellen gibt es unter „Mein Konto“.</p>")))
+        return kalender_antwort(wer)
+
     if weg == "/konto":
         if not k:
             return weiter("/anmelden?zurueck=/konto")
+        if methode == "GET" and q.get("kalender") == "datei":
+            return kalender_antwort(k, datei=True)
         if methode == "GET":
             return antwort(200, konto_seite(k, reise_info))
         a = f.get("aktion")
@@ -352,9 +418,13 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
                 konten.freischalten(f.get("wer"), ja=a == "freischalten")
                 return weiter("/konto")
             if a == "kalender_neu":
-                konten.kalender_token(k["id"], f.get("reise"), erneuern=True)
+                konten.kalender_token(k["id"], erneuern=True)
                 return antwort(200, konto_seite(k, reise_info, hinweis="Neuer Kalender-Link ausgestellt. Den alten "
                                                 "Kalender im Kalender-Programm entfernen und den neuen abonnieren."))
+            if a == "kalender_einstellungen":
+                konten.kalender_einstellungen(k["id"], kalender_formular(k, f))
+                return antwort(200, konto_seite(k, reise_info, hinweis="Kalender-Einstellungen gespeichert. Das Abo "
+                                                "übernimmt sie beim nächsten Abgleich."))
             if a == "alle_abmelden":
                 konten.alle_abmelden(k["id"])
                 return weiter("/anmelden", [cookie_loeschen()])

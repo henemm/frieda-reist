@@ -1789,11 +1789,11 @@ def reise_anlegen(konto, args):
 REISEN_ANLEGEN_ANFRAGEN = {"name": "reisen_anlegen_anfragen", "description": "Bitten, Reisen anlegen zu dürfen. Das "
                            "entscheidet der Betreiber; bis dahin kann die Person bei Reisen mitmachen, zu denen sie "
                            "eingeladen ist.", "inputSchema": {"type": "object", "properties": {}}}
-KALENDER = {"name": "kalender", "description": "Persönlicher Link, um eine Reise im Kalender zu abonnieren (iPhone, Mac, "
-            "Outlook: webcal-Link antippen; Google Kalender: https-Link unter „Andere Kalender, Per URL“ einfügen). Der Kalender "
-            "zeigt Entschiedenes und bleibt aktuell: Tage, Unterkünfte, Aufenthalte, Fahrten mit Uhrzeit, Fristen. neu=true stellt "
-            "einen neuen Link aus, der alte gilt dann nicht mehr (z. B. wenn er in falsche Hände geraten ist). Der Link ist "
-            "persönlich: nur dieser Person zeigen, nie weitergeben.",
+KALENDER = {"name": "kalender", "description": "Persönlicher Link, um alle Reisen der Person im Kalender zu abonnieren "
+            "(iPhone, Mac, Outlook: webcal-Link antippen; Google Kalender: https-Link unter „Andere Kalender, Per URL“ einfügen). "
+            "Der Kalender zeigt Entschiedenes und bleibt aktuell. Was darin steht (Tage, Unterkünfte, Termine, Fristen, nur eigene "
+            "Aufgaben, Erinnerungen, welche Reisen) stellt die Person selbst unter „Mein Konto“ ein; dort gibt es auch den Download. "
+            "neu=true stellt einen neuen Link aus, der alte gilt dann nicht mehr. Der Link ist persönlich: nur dieser Person zeigen.",
             "inputSchema": {"type": "object", "properties": {
                 "neu": {"type": "boolean", "description": "true: neuer Link, der alte gilt nicht mehr"}}}}
 ANFRAGE_ENTSCHEIDEN = {"name": "anfrage_entscheiden", "description": "Nur für den Betreiber: eine Bitte „Reisen anlegen“ "
@@ -1822,11 +1822,7 @@ def frieda_werkzeuge(k):
     if konten.recht(k, "betreiber"):
         eigene.append(ANFRAGE_ENTSCHEIDEN)
     reisen = reisen_des_kontos(k)
-    if reisen:
-        eigene.append({**KALENDER, "inputSchema": {**KALENDER["inputSchema"], "properties": {
-            **KALENDER["inputSchema"]["properties"], "reise": {"type": "string", "enum": [r for r, _, _ in reisen],
-                                                               "description": "Ordner der Reise (aus meine_reisen)"}},
-            "required": ["reise"] if len(reisen) > 1 else []}})
+    eigene.append(KALENDER)
     je_name, wo = {}, {}
     for reise, schl, _ in reisen:
         for w in werkzeuge_fuer({"reise": reise, "person": schl}):
@@ -1919,6 +1915,8 @@ def frieda_werkzeug(k, name, args):
         return {"offen": "Deine Bitte liegt beim Betreiber. Du bekommst Bescheid in meine_reisen.",
                 "schon_erlaubt": "Du darfst schon Reisen anlegen (reise_anlegen).",
                 "abgelehnt": "Deine Bitte wurde abgelehnt. Bei Fragen wende dich an den Betreiber."}[st], False
+    if name == "kalender":
+        return kalender_link(k, args.get("neu") is True)
     if name == "anfrage_entscheiden":
         if not konten.recht(k, "betreiber"):
             return "Das darf nur der Betreiber.", True
@@ -1937,27 +1935,21 @@ def frieda_werkzeug(k, name, args):
     schl = next((s_ for r, s_, _ in reisen if r == reise), None)
     if not schl:
         return "Bei dieser Reise bist du nicht dabei (oder sie ist nicht veröffentlicht).", True
-    if name == "kalender":
-        return kalender_link(k, reise, args.get("neu") is True)
     args.pop("name", None)
     return werkzeug({"reise": reise, "person": schl, "konto_id": k["id"]}, name, args)
 
 
-def kalender_link(k, reise, neu=False):
-    """Text für das Werkzeug kalender: persönlicher Abo-Link der Reise (#77, engine/kalender.py)."""
-    seite = seitenlinks().get(reise)
-    if not seite:
-        return "Die Seite dieser Reise ist noch nicht freigeschaltet; dann gibt es auch den Kalender.", True
-    try:
-        url = kalender.abo_url(seite, konten.kalender_token(k["id"], reise, erneuern=neu))
-    except konten.KontoFehler as f:
-        return str(f), True
+def kalender_link(k, neu=False):
+    """Text für das Werkzeug kalender: persönlicher Abo-Link über alle Reisen (#77, engine/kalender.py)."""
+    if not os.environ.get("KN_BASIS"):
+        return "Das Kalender-Abo ist auf dem Server nicht eingerichtet (KN_BASIS). Der Download geht unter „Mein Konto“.", True
+    url = kalender.abo_url(basis(), konten.kalender_token(k["id"], erneuern=neu))
     return ("\n".join([("Neuer Kalender-Link (der alte gilt nicht mehr; den alten Kalender im Kalender-Programm entfernen):"
-                        if neu else "Dein Kalender-Link (persönlich, nicht weitergeben):"),
+                        if neu else "Dein Kalender-Link für alle deine Reisen (persönlich, nicht weitergeben):"),
                        f"- iPhone, Mac, Outlook (antippen, dann „Abonnieren“): {kalender.webcal(url)}",
                        f"- Google Kalender (Andere Kalender → Per URL): {url}",
-                       "Der Kalender zeigt nur Entschiedenes und aktualisiert sich selbst (etwa alle paar Stunden, je nach Programm). "
-                       "Einzelne Einträge gibt es auf der Seite als Datei („In den Kalender“). Auch unter „Mein Konto“ auf der Seite."]),
+                       "Was im Kalender steht, Erinnerungen und welche Reisen: unter „Mein Konto“ auf der Seite, dort auch "
+                       "der Download. Der Kalender zeigt nur Entschiedenes und gleicht sich selbst ab (je nach Programm alle paar Stunden)."]),
             False)
 
 
