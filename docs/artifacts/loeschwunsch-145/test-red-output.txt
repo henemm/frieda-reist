@@ -1,0 +1,170 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/hem/frieda-reist/.claude/worktrees/sprightly-sniffing-comet
+collected 112 items / 103 deselected / 9 selected
+
+engine/tests/test_konnektor.py FFFFFF                                    [ 66%]
+engine/tests/test_schreiben.py FFF                                       [100%]
+
+=================================== FAILURES ===================================
+_____ test_anleitung_nennt_den_loeschwunsch_fuer_jede_rolle[gast-zugang0] ______
+
+rolle = 'gast', zugang = {'reise': 'beispielreise', 'rolle': 'gast'}
+
+    @pytest.mark.parametrize("rolle,zugang", LOESCH_ZUGAENGE)
+    def test_anleitung_nennt_den_loeschwunsch_fuer_jede_rolle(rolle, zugang):
+        """Kriterium 1: Frieda löscht nie; Weg je Grundform; erst bestätigen lassen; ein Satz danach; Rückmeldung, wo es keinen Weg gibt."""
+        z = loesch_absatz(kn.anleitung(zugang, {"reise": {}}))
+>       assert z, rolle
+E       AssertionError: gast
+E       assert ''
+
+engine/tests/test_konnektor.py:993: AssertionError
+__ test_anleitung_nennt_den_loeschwunsch_fuer_jede_rolle[mitwirkend-zugang1] ___
+
+rolle = 'mitwirkend', zugang = {'reise': 'beispielreise', 'rolle': 'mitreisend'}
+
+    @pytest.mark.parametrize("rolle,zugang", LOESCH_ZUGAENGE)
+    def test_anleitung_nennt_den_loeschwunsch_fuer_jede_rolle(rolle, zugang):
+        """Kriterium 1: Frieda löscht nie; Weg je Grundform; erst bestätigen lassen; ein Satz danach; Rückmeldung, wo es keinen Weg gibt."""
+        z = loesch_absatz(kn.anleitung(zugang, {"reise": {}}))
+>       assert z, rolle
+E       AssertionError: mitwirkend
+E       assert ''
+
+engine/tests/test_konnektor.py:993: AssertionError
+__ test_anleitung_nennt_den_loeschwunsch_fuer_jede_rolle[organisator-zugang2] __
+
+rolle = 'organisator'
+zugang = {'reise': 'beispielreise', 'rolle': 'organisator'}
+
+    @pytest.mark.parametrize("rolle,zugang", LOESCH_ZUGAENGE)
+    def test_anleitung_nennt_den_loeschwunsch_fuer_jede_rolle(rolle, zugang):
+        """Kriterium 1: Frieda löscht nie; Weg je Grundform; erst bestätigen lassen; ein Satz danach; Rückmeldung, wo es keinen Weg gibt."""
+        z = loesch_absatz(kn.anleitung(zugang, {"reise": {}}))
+>       assert z, rolle
+E       AssertionError: organisator
+E       assert ''
+
+engine/tests/test_konnektor.py:993: AssertionError
+_______ test_werkzeugbeschreibungen_nennen_loeschwunsch_und_rueckholweg ________
+
+    def test_werkzeugbeschreibungen_nennen_loeschwunsch_und_rueckholweg():
+        """Kriterium 2: je Werkzeug ein Satz mit dem eigenen Weg und dem Rückholweg."""
+        erwartet = ((kn.BUCHUNG_AENDERN, ("storniert", "gebucht")),
+                    (kn.ENTSCHEIDEN, ("verworfen", "gewaehlt")),
+                    (aufgabe_werkzeug(), ("entfaellt", "offen")),
+                    (kn.FRAGE_SCHLIESSEN, ("entfaellt", "neue Frage")))
+        for w, teile in erwartet:
+            satz = next((s for s in w["description"].split(". ") if "Löschwunsch" in s), "")
+>           assert satz, w["name"]
+E           AssertionError: buchung_aendern
+E           assert ''
+
+engine/tests/test_konnektor.py:1006: AssertionError
+____________ test_neue_loeschtexte_nennen_nichts_reisespezifisches _____________
+
+    def test_neue_loeschtexte_nennen_nichts_reisespezifisches():
+        """Kriterium 8: keine Pfade, Adressen oder Namen aus Reisen in den neuen Texten."""
+        texte = [loesch_absatz(kn.anleitung(z, {"reise": {}})) for _, z in LOESCH_ZUGAENGE]
+        for w in (kn.BUCHUNG_AENDERN, kn.ENTSCHEIDEN, kn.FRAGE_SCHLIESSEN, aufgabe_werkzeug()):
+            texte += [s for s in w["description"].split(". ") if "Löschwunsch" in s]
+>       assert len(texte) == 7 and all(texte)
+E       AssertionError: assert (3 == 7)
+E        +  where 3 = len(['', '', ''])
+
+engine/tests/test_konnektor.py:1016: AssertionError
+_________________ test_aufgabe_entfaellt_nennt_den_rueckholweg _________________
+
+dienst = ('http://127.0.0.1:38491', PosixPath('/tmp/pytest-of-hem/pytest-5996/test_aufgabe_entfaellt_nennt_d0/ablage'))
+
+    def test_aufgabe_entfaellt_nennt_den_rueckholweg(dienst):
+        """Kriterium 6: nach entfaellt steht „wieder offen“ im Antworttext; bei erledigt nicht."""
+        basis, _ = dienst
+        t, f = werkzeug(basis, ALT_ORGANISATOR, "aufgabe_anlegen", titel="Bus prüfen", name="Ida")
+        assert not f and "AG-01" in t
+        t, f = werkzeug(basis, ALT_ORGANISATOR, "aufgabe_aendern", id="AG-01", status="erledigt", name="Ida")
+        assert not f and t.startswith("Gespeichert (gilt sofort):") and "Nicht gelöscht" not in t
+        t, f = werkzeug(basis, ALT_ORGANISATOR, "aufgabe_aendern", id="AG-01", status="entfaellt", name="Ida")
+        assert not f and t.startswith("Gespeichert (gilt sofort):")      # bisheriger Satz bleibt vorn (Kriterium 7)
+>       assert "Nicht gelöscht" in t and "wieder offen" in t and "Status offen" in t
+E       AssertionError: assert ('Nicht gelöscht' in 'Gespeichert (gilt sofort):\nAG-01 [entfaellt]: Bus prüfen\n  zuletzt: 2026-10-30 Ida – geändert\n  angelegt 2026-10-30 von Ida\n  2026-10-30 Ida: status: offen → erledigt\n  2026-10-30 Ida: status: erledigt → entfaellt')
+
+engine/tests/test_konnektor.py:1031: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 200
+PATCH 200
+POST 200
+PATCH 200
+POST 200
+____________________ test_loeschwunsch_antworttext_buchung _____________________
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-5996/test_loeschwunsch_antworttext_0/reisen'), PosixPath('/tmp/pytest-of-hem/pyt...text_0/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-5996/test_loeschwunsch_antworttext_0/veroeffentlicht'))
+
+    def test_loeschwunsch_antworttext_buchung(repo):
+        """Kriterium 3: Stornieren hängt den Hinweis an; eine andere Änderung nicht. Der bisherige Satz bleibt vorn."""
+        s = schreiber(repo)
+        a = s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-02", "nummer": "EW-9"}})
+        assert "Nicht gelöscht" not in a["text"]
+        s.vorbereiten()
+        a = s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-01", "status": "storniert", "grund": "Plan geändert"}})
+        assert "Status „gebucht“ → „storniert“" in a["text"] and "Grund: Plan geändert" in a["text"]
+>       assert a["text"].rstrip().endswith("Nicht gelöscht, die Buchung steht weiter mit Verlauf da; zurückholen mit Status gebucht.")
+E       AssertionError: assert False
+E        +  where False = <built-in method endswith of str object at 0x72fd7c5ff2d0>('Nicht gelöscht, die Buchung steht weiter mit Verlauf da; zurückholen mit Status gebucht.')
+E        +    where <built-in method endswith of str object at 0x72fd7c5ff2d0> = 'Buchung B-01 (U-01 Hotel am Elbufer): Status „gebucht“ → „storniert“. Grund: Plan geändert.'.endswith
+E        +      where 'Buchung B-01 (U-01 Hotel am Elbufer): Status „gebucht“ → „storniert“. Grund: Plan geändert.' = <built-in method rstrip of str object at 0x72fd7c5ff2d0>()
+E        +        where <built-in method rstrip of str object at 0x72fd7c5ff2d0> = 'Buchung B-01 (U-01 Hotel am Elbufer): Status „gebucht“ → „storniert“. Grund: Plan geändert.'.rstrip
+
+engine/tests/test_schreiben.py:1509: AssertionError
+_____________________ test_loeschwunsch_antworttext_option _____________________
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-5996/test_loeschwunsch_antworttext_1/reisen'), PosixPath('/tmp/pytest-of-hem/pyt...text_1/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-5996/test_loeschwunsch_antworttext_1/veroeffentlicht'))
+
+    def test_loeschwunsch_antworttext_option(repo):
+        """Kriterium 4: verworfen und ersetzt hängen den Hinweis an; gewählt nicht."""
+        s = schreiber(repo)
+        a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-01.b", "status": "gewaehlt", "grund": "Bahn"}})
+        assert a["text"].startswith("Entschieden:") and "Nicht gelöscht" not in a["text"]
+        hinweis = "Nicht gelöscht, die Option bleibt mit Verlauf stehen; zurückholen mit entscheiden, Status gewählt."
+        s.vorbereiten()
+        a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-01.b", "status": "verworfen", "grund": "Fahrplan passt nicht"}})
+>       assert a["text"].startswith("Entschieden:") and hinweis in a["text"]
+E       AssertionError: assert (True and 'Nicht gelöscht, die Option bleibt mit Verlauf stehen; zurückholen mit entscheiden, Status gewählt.' in 'Entschieden: V-01.b „Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück (Plan B)“ (V-01 Letzter Tag: Weg zum Zug) ist verworfen (Ida, 30.10.2026, Grund: Fahrplan passt nicht). V-01 ist danach offen, Frage F-01 wieder offen.')
+E        +  where True = <built-in method startswith of str object at 0x8c38a20>('Entschieden:')
+E        +    where <built-in method startswith of str object at 0x8c38a20> = 'Entschieden: V-01.b „Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück (Plan B)“ (V-01 Letzter Tag: Weg zum Zug) ist verworfen (Ida, 30.10.2026, Grund: Fahrplan passt nicht). V-01 ist danach offen, Frage F-01 wieder offen.'.startswith
+
+engine/tests/test_schreiben.py:1520: AssertionError
+_____________________ test_loeschwunsch_antworttext_frage ______________________
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-5996/test_loeschwunsch_antworttext_2/reisen'), PosixPath('/tmp/pytest-of-hem/pyt...text_2/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-5996/test_loeschwunsch_antworttext_2/veroeffentlicht'))
+
+    def test_loeschwunsch_antworttext_frage(repo):
+        """Kriterium 5: entfaellt sagt ehrlich, dass es kein Wiedereröffnen gibt; geklärt nicht."""
+        s = schreiber(repo)
+        a = s.schreiben("beispielreise", "frage_schliessen", {**IDA, "args": {"frage": "F-03", "ergebnis": "Fahrplan steht"}})
+        assert "Nicht gelöscht" not in a["text"]
+        s.vorbereiten()
+        a = s.schreiben("beispielreise", "frage_schliessen", {**IDA, "args": {"frage": "F-01", "ergebnis": "wird unterwegs entschieden", "status": "entfaellt"}})
+        assert "entfällt" in a["text"]
+>       assert a["text"].rstrip().endswith("Nicht gelöscht, die Frage steht weiter mit Verlauf da; ein Wiedereröffnen gibt es nicht, "
+                                           "bei Bedarf eine neue Frage anlegen.")
+E       AssertionError: assert False
+E        +  where False = <built-in method endswith of str object at 0x72fd7cd39db0>('Nicht gelöscht, die Frage steht weiter mit Verlauf da; ein Wiedereröffnen gibt es nicht, bei Bedarf eine neue Frage anlegen.')
+E        +    where <built-in method endswith of str object at 0x72fd7cd39db0> = 'Frage F-01 ist entfällt (Ida, 30.10.2026): wird unterwegs entschieden'.endswith
+E        +      where 'Frage F-01 ist entfällt (Ida, 30.10.2026): wird unterwegs entschieden' = <built-in method rstrip of str object at 0x72fd7cd39db0>()
+E        +        where <built-in method rstrip of str object at 0x72fd7cd39db0> = 'Frage F-01 ist entfällt (Ida, 30.10.2026): wird unterwegs entschieden'.rstrip
+
+engine/tests/test_schreiben.py:1535: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_konnektor.py::test_anleitung_nennt_den_loeschwunsch_fuer_jede_rolle[gast-zugang0]
+FAILED engine/tests/test_konnektor.py::test_anleitung_nennt_den_loeschwunsch_fuer_jede_rolle[mitwirkend-zugang1]
+FAILED engine/tests/test_konnektor.py::test_anleitung_nennt_den_loeschwunsch_fuer_jede_rolle[organisator-zugang2]
+FAILED engine/tests/test_konnektor.py::test_werkzeugbeschreibungen_nennen_loeschwunsch_und_rueckholweg
+FAILED engine/tests/test_konnektor.py::test_neue_loeschtexte_nennen_nichts_reisespezifisches
+FAILED engine/tests/test_konnektor.py::test_aufgabe_entfaellt_nennt_den_rueckholweg
+FAILED engine/tests/test_schreiben.py::test_loeschwunsch_antworttext_buchung
+FAILED engine/tests/test_schreiben.py::test_loeschwunsch_antworttext_option
+FAILED engine/tests/test_schreiben.py::test_loeschwunsch_antworttext_frage - ...
+====================== 9 failed, 103 deselected in 3.76s =======================

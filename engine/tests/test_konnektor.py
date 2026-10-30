@@ -968,3 +968,64 @@ def test_beleg_in_einem_schritt_mit_der_buchung(schreibweg, seiten, monkeypatch)
     assert f and "nicht eingerichtet" in t
     t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-02", text="veröffentlicht")
     assert not f and "an B-02 abgelegt" in t
+
+
+# --- Löschwunsch (#145): Frieda löscht nie; die Texte weisen den passenden Weg und den Rückholweg ---
+
+LOESCH_ZUGAENGE = (("gast", {"reise": "beispielreise", "rolle": "gast"}),
+                   ("mitwirkend", {"reise": "beispielreise", "rolle": "mitreisend"}),
+                   ("organisator", {"reise": "beispielreise", "rolle": "organisator"}))
+
+
+def loesch_absatz(text):
+    """Der Absatz (Zeile) der Anleitung, der den Löschwunsch behandelt; leer, wenn es ihn nicht gibt."""
+    return next((z for z in text.split("\n") if "Löschwunsch" in z), "")
+
+
+def aufgabe_werkzeug():
+    return next(w for w in kn.WERKZEUGE if w["name"] == "aufgabe_aendern")
+
+
+@pytest.mark.parametrize("rolle,zugang", LOESCH_ZUGAENGE)
+def test_anleitung_nennt_den_loeschwunsch_fuer_jede_rolle(rolle, zugang):
+    """Kriterium 1: Frieda löscht nie; Weg je Grundform; erst bestätigen lassen; ein Satz danach; Rückmeldung, wo es keinen Weg gibt."""
+    z = loesch_absatz(kn.anleitung(zugang, {"reise": {}}))
+    assert z, rolle
+    for teil in ("löscht nie", "storniert", "verworfen", "entfaellt", "bestätigen", "nicht gelöscht", "rueckmeldung_geben"):
+        assert teil in z, (rolle, teil)
+
+
+def test_werkzeugbeschreibungen_nennen_loeschwunsch_und_rueckholweg():
+    """Kriterium 2: je Werkzeug ein Satz mit dem eigenen Weg und dem Rückholweg."""
+    erwartet = ((kn.BUCHUNG_AENDERN, ("storniert", "gebucht")),
+                (kn.ENTSCHEIDEN, ("verworfen", "gewaehlt")),
+                (aufgabe_werkzeug(), ("entfaellt", "offen")),
+                (kn.FRAGE_SCHLIESSEN, ("entfaellt", "neue Frage")))
+    for w, teile in erwartet:
+        satz = next((s for s in w["description"].split(". ") if "Löschwunsch" in s), "")
+        assert satz, w["name"]
+        for t in teile:
+            assert t in satz, (w["name"], t)
+
+
+def test_neue_loeschtexte_nennen_nichts_reisespezifisches():
+    """Kriterium 8: keine Pfade, Adressen oder Namen aus Reisen in den neuen Texten."""
+    texte = [loesch_absatz(kn.anleitung(z, {"reise": {}})) for _, z in LOESCH_ZUGAENGE]
+    for w in (kn.BUCHUNG_AENDERN, kn.ENTSCHEIDEN, kn.FRAGE_SCHLIESSEN, aufgabe_werkzeug()):
+        texte += [s for s in w["description"].split(". ") if "Löschwunsch" in s]
+    assert len(texte) == 7 and all(texte)
+    for t in texte:
+        for verboten in ("/home", "/var", "http", "@", "Ida", "Karl", "Burgblick", "Elbufer"):
+            assert verboten not in t, (verboten, t)
+
+
+def test_aufgabe_entfaellt_nennt_den_rueckholweg(dienst):
+    """Kriterium 6: nach entfaellt steht „wieder offen“ im Antworttext; bei erledigt nicht."""
+    basis, _ = dienst
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "aufgabe_anlegen", titel="Bus prüfen", name="Ida")
+    assert not f and "AG-01" in t
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "aufgabe_aendern", id="AG-01", status="erledigt", name="Ida")
+    assert not f and t.startswith("Gespeichert (gilt sofort):") and "Nicht gelöscht" not in t
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "aufgabe_aendern", id="AG-01", status="entfaellt", name="Ida")
+    assert not f and t.startswith("Gespeichert (gilt sofort):")      # bisheriger Satz bleibt vorn (Kriterium 7)
+    assert "Nicht gelöscht" in t and "wieder offen" in t and "Status offen" in t

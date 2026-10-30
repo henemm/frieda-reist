@@ -1494,3 +1494,43 @@ def test_strecke_mit_zeiten_und_ort_ausserhalb(repo):
     a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "O-07", "ausserhalb": False}})
     r, _ = routen_auf_main(origin)
     assert "ausserhalb" not in r["orte"]["O-07"] or r["orte"]["O-07"]["ausserhalb"] is False
+
+
+# --- Löschwunsch (#145): Antworttexte sagen, dass nichts gelöscht ist, und wie man es zurückholt ---
+
+def test_loeschwunsch_antworttext_buchung(repo):
+    """Kriterium 3: Stornieren hängt den Hinweis an; eine andere Änderung nicht. Der bisherige Satz bleibt vorn."""
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-02", "nummer": "EW-9"}})
+    assert "Nicht gelöscht" not in a["text"]
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-01", "status": "storniert", "grund": "Plan geändert"}})
+    assert "Status „gebucht“ → „storniert“" in a["text"] and "Grund: Plan geändert" in a["text"]
+    assert a["text"].rstrip().endswith("Nicht gelöscht, die Buchung steht weiter mit Verlauf da; zurückholen mit Status gebucht.")
+
+
+def test_loeschwunsch_antworttext_option(repo):
+    """Kriterium 4: verworfen und ersetzt hängen den Hinweis an; gewählt nicht."""
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-01.b", "status": "gewaehlt", "grund": "Bahn"}})
+    assert a["text"].startswith("Entschieden:") and "Nicht gelöscht" not in a["text"]
+    hinweis = "Nicht gelöscht, die Option bleibt mit Verlauf stehen; zurückholen mit entscheiden, Status gewählt."
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-01.b", "status": "verworfen", "grund": "Fahrplan passt nicht"}})
+    assert a["text"].startswith("Entschieden:") and hinweis in a["text"]
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-03.a", "status": "ersetzt", "ersetzt_durch": "V-03.b",
+                                                                      "grund": "Gasthof ist besser"}})
+    assert a["text"].startswith("Entschieden:") and hinweis in a["text"]
+
+
+def test_loeschwunsch_antworttext_frage(repo):
+    """Kriterium 5: entfaellt sagt ehrlich, dass es kein Wiedereröffnen gibt; geklärt nicht."""
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "frage_schliessen", {**IDA, "args": {"frage": "F-03", "ergebnis": "Fahrplan steht"}})
+    assert "Nicht gelöscht" not in a["text"]
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "frage_schliessen", {**IDA, "args": {"frage": "F-01", "ergebnis": "wird unterwegs entschieden", "status": "entfaellt"}})
+    assert "entfällt" in a["text"]
+    assert a["text"].rstrip().endswith("Nicht gelöscht, die Frage steht weiter mit Verlauf da; ein Wiedereröffnen gibt es nicht, "
+                                       "bei Bedarf eine neue Frage anlegen.")
