@@ -1172,6 +1172,8 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
             return text + " Der Beleg ist nicht abgelegt (der Schreibweg nannte keine Buchungsnummer); bitte mit beleg_anlegen nachholen.", False
         bt, bf = beleg_ablegen(reise, bid, wer["name"], args, im_repo=True, praefix="beleg_")
         return text + (" " + bt if not bf else f" Der Beleg ist nicht abgelegt ({bt}); bitte mit beleg_anlegen nachholen."), False
+    if name == "buchung_anlegen":
+        text += " Kein Beleg mitgegeben: nachträglich mit beleg_anlegen (Abschrift oder Datei) oder angemeldet auf der Reiseseite; er bleibt außerhalb des Repos."
     return text, False
 
 
@@ -2445,7 +2447,9 @@ BUCHUNG_FELDER_SCHEMA = {
                "description": "bei mehreren Dingen in fuer der Preis je Ding, z. B. {\"E-28\": \"120 €\", \"E-29\": \"110 €\"}"},
     "notiz": {"type": "string"}}
 BUCHUNG_ANLEGEN = {"name": "buchung_anlegen", "description": "Eine Buchung als eigenes Ding (B-…) eintragen: für welche Unterkunft (U-…), "
-                   "welchen Aufenthalt (A-…) oder welche Strecke (E-…), Status, Buchungsnummer, Anbieter, Preis, Frist, Stornoregel. "
+                   "welchen Aufenthalt (A-…) oder welche Strecke (E-…), Status, Buchungsnummer, Anbieter, Preis, Frist, Stornoregel; dazu "
+                   "personen (die Reisenden dieser Buchung mit Sitzplatz, Gepäck, Vielfliegernummer), preise (je Ding, wenn fuer mehrere umfasst), "
+                   "ab und ab_was (ab wann etwas geht, etwa der Check-in; frist sagt bis wann). "
                    "Schreibt sofort; Herkunft (quelle) ist Pflicht, z. B. „Buchungsbestätigung per Mail vom …“. Liest die Person dir eine "
                    "Bestätigung vor oder zeigt sie dir, trägst du daraus Nummer, Frist und Stornoregel ein (vorher kurz bestätigen lassen). "
                    "Den Beleg gibst du gleich mit (beleg_text: die Bestätigung wörtlich als Abschrift, oder beleg_base64 mit beleg_dateiname, "

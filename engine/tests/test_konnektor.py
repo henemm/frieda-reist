@@ -844,7 +844,7 @@ def test_buchung_werkzeuge_und_anzeige(schreibweg):
     assert "buchung_anlegen" in rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
     Schreibweg.antwort = (200, {"ok": True, "text": "Buchung B-03 angelegt (gebucht) für U-02 Pension Burgblick, Nr. P-7."})
     t, f = werkzeug(basis, KARL, "buchung_anlegen", fuer=["U-02"], nummer="P-7", quelle="Mail vom 29.10.", frist="2027-01-15", frist_was="Anzahlung")
-    assert not f and t.startswith("Eingetragen und gesichert (Karl): Buchung B-03 angelegt")
+    assert not f and t.startswith("Eingetragen und gesichert (Karl): Buchung B-03 angelegt") and "Kein Beleg mitgegeben" in t
     pfad, _, body = Schreibweg.anfragen[-1]
     assert pfad == "/beispielreise/buchung_anlegen" and body["args"]["fuer"] == ["U-02"] and body["args"]["frist_was"] == "Anzahlung"
     # Unbekannte IDs prüft der Schreibweg (Issue #135: eine gerade angelegte Strecke ist sofort buchbar, auch vor dem Veröffentlichen)
@@ -939,7 +939,7 @@ def test_beleg_in_einem_schritt_mit_der_buchung(schreibweg, seiten, monkeypatch)
     Schreibweg.antwort = (200, {"ok": True, "text": "Buchung B-03 angelegt (gebucht) für E-21 S-Bahn Bad Schandau → Dresden, Nr. DB-7.", "id": "B-03"})
     t, f = werkzeug(basis, KARL, "buchung_anlegen", fuer=["E-21"], nummer="DB-7", quelle="Mail vom 30.10.2026",
                     beleg_text="Buchung DB-7, 19,90 €", beleg_dateiname="Bestätigung Bahn")
-    assert not f and "Buchung B-03 angelegt" in t and "Beleg D-01 „Bestätigung Bahn.txt“ an B-03 abgelegt" in t
+    assert not f and "Buchung B-03 angelegt" in t and "Beleg D-01 „Bestätigung Bahn.txt“ an B-03 abgelegt" in t and "Kein Beleg" not in t
     assert "beleg_text" not in Schreibweg.anfragen[-1][2]["args"] and Schreibweg.anfragen[-1][2]["args"]["nummer"] == "DB-7"
     b = bl.liste(o, "Karl", "mitwirkend")
     assert len(b) == 1 and b[0]["buchung"] == "B-03" and (o / "belege" / "D-01.txt").read_text(encoding="utf-8") == "Buchung DB-7, 19,90 €\n"

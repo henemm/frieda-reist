@@ -1905,8 +1905,7 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
             + (f", Ab {d['ab'].strftime('%-d.%-m.%Y')}" + (f" ({d['ab_was']})" if d.get("ab_was") else "") if d.get("ab") else "")
             + (", Preise: " + ", ".join(f"{k} {v}" for k, v in preise.items()) if preise else "")
             + (", Reisende: " + ", ".join(f"{k}{(' (' + v + ')') if v else ''}" for k, v in pers.items()) if pers else "")
-            + f". Herkunft: {quelle}. Den Beleg hängt die Person auf der Seite bei dieser Buchung an oder im Gespräch mit beleg_anlegen; "
-            "er bleibt außerhalb des Repos.")
+            + f". Herkunft: {quelle}.")   # zum Beleg sagt der Konnektor etwas: er weiß, ob einer mitkam
     return titel, text
 
 
