@@ -869,6 +869,10 @@ def test_buchung_werkzeuge_und_anzeige(schreibweg):
     assert "Quelle: Buchungsbestätigung per Mail" in t and "Belege: keine" in t and "29.10.2026 Ida: angelegt" in t
     t, f = werkzeug(basis, KARL, "zeige", id="U-01")
     assert not f and "Buchung: gebucht (B-01, zeige B-01)" in t
+    t, f = werkzeug(basis, KARL, "zeige", id="E-20")   # auch an einer Strecke eine Zeile mit Verweis auf die Buchung (ADR-0003)
+    assert not f and "Buchung: gebucht (B-02, zeige B-02)" in t
+    t, f = werkzeug(basis, KARL, "zeige", id="B-09")
+    assert f and "noch nicht neu gebaut" in t
     t, f = werkzeug(basis, KARL, "ueberblick")
     assert not f and "## Buchungen: 2 gebucht (zeige B-…)" in t and "B-02" in t and "Frist 13.5.2027 (Ticket in die App laden)" in t \
         and "kostenlos stornierbar bis 11.5.2027" in t

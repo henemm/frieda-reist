@@ -614,6 +614,8 @@ class Handbuch:
                  + (f", ab {s['ab']}" if s.get("ab") else "") + (f", an {s['an']}" if s.get("an") else "")]
             if s.get("kennzahlen") and sid not in e:  # bei Etappen stehen sie schon im Dossier
                 z.append("; ".join(f"{k}: {v}" for k, v in s["kennzahlen"].items()))
+            if s.get("buchung"):   # eine Zeile mit Verweis auf die Heimat der Buchung (ADR-0003)
+                z.append(f"Buchung: {s['buchung']}" + (f" ({s['buchung_id']}, zeige {s['buchung_id']})" if s.get("buchung_id") else ""))
             if s.get("beginn"):
                 z.append(f"Uhrzeit: {s['beginn']}" + (f"–{s['ende']}" if s.get("ende") else "") + " Uhr")
             for k in ("text", "quelle", "siehe"):
@@ -739,7 +741,8 @@ class Handbuch:
             return (aufgabe_text(a, self.titel()), None) if a else (None, "Diese Aufgabe gibt es nicht.")
         if id_ not in self.eintraege:
             nah = [k for k in self.eintraege if k.lower().startswith(id_.lower())][:20]
-            return None, ("Diese ID gibt es nicht." + (f" Meinst du: {', '.join(nah)}?" if nah else ""))
+            return None, ("Diese ID gibt es nicht, oder sie ist gerade erst angelegt und die Seite noch nicht neu gebaut (wenige Minuten)."
+                          + (f" Meinst du: {', '.join(nah)}?" if nah else ""))
         titel, t = self.eintraege[id_]
         aus = f"{id_} – {titel}\n\n{t}".strip()
         if self.antworten.get(id_):
