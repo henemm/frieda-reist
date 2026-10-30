@@ -235,3 +235,4 @@ Zusätzlich beim Umsetzen: `kalender.py` überspringt stornierte Buchungen (:155
 ## Changelog
 
 - 2026-10-30: Entwurf (Workflow papierkorb-146).
+- 2026-10-30: RED-Phase. Erkenntnisse für die Umsetzung: Die Beispielreise hat erst mit festem Plan Tagesseiten (`reise_bauen(fest=True)`, Plan A gewählt); ohne festen Plan und mit `tiefe` zeigt die Planseite B-01/B-03 zweimal, im Tageskasten T-01 und in der Unterkunftskarte U-01 (vorhandenes Verhalten). Der Browser-Test prüft deshalb je Ding (nächstes Element mit `id`): dort genau ein Block „Storniert (1)“. AC-7 läuft auf der Tagesseite T-02 der Variante „fest“. Folgeänderungen durch B-03 auch in `test_schreiben.py` (Aufenthalts- und Reisenden-Test) und im Mock des Belegtests in `test_konnektor.py` (B-04/B-05).
