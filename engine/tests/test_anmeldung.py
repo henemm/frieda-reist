@@ -271,3 +271,33 @@ def test_konnektor_braucht_das_geheimnis(welt):
     assert e[-1]["name"] == "Karl" and e[-1]["text"] == "Aus der App"
     s, _, _ = mitmachen(u, name="Karl", kopf={"X-Frieda-Dienst": "geraten"})
     assert s == 401
+
+
+def test_doppeltes_absenden_zeigt_keinen_fehler(welt):
+    """Handy sendet das Formular zweimal ab (28./30.10.2026): erst Erfolg, dann schon angemeldet, nicht „Code stimmt nicht“."""
+    u = welt()
+    abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "adresse", "email": IDA})
+    felder = {"schritt": "code", "email": IDA, "code": code_aus(u, IDA), "name": "Ida"}
+    s, h, _ = abruf(f"{u.kurl}/anmelden", "POST", felder)
+    assert s == 303
+    token = re.match(r"__Host-frieda=([^;]+)", kopf(h, "Set-Cookie")[0]).group(1)
+    s, h, t = abruf(f"{u.kurl}/anmelden", "POST", felder, cookie=token)       # mit Sitzung
+    assert s == 303 and kopf(h, "Location") == ["/konto"], t
+    s, h, t = abruf(f"{u.kurl}/anmelden", "POST", felder)                     # Cookie noch nicht angekommen
+    assert s == 303 and kopf(h, "Set-Cookie"), t
+    s, _, t = abruf(f"{u.kurl}/anmelden", "POST", {**felder, "code": "000000"})
+    assert s == 200 and "stimmt nicht" in t
+    s, _, t = abruf(f"{u.kurl}/anmelden", "POST", {**felder, "code": "000000"})
+    s, _, t = abruf(f"{u.kurl}/anmelden", "POST", felder)                     # Fehlversuche beleben den Code nicht
+    assert s == 303
+
+
+def test_eingeloester_code_gilt_nach_der_nachfrist_nicht_mehr(welt, monkeypatch):
+    import konten
+    monkeypatch.setattr(konten, "CODE_NACHFRIST", -1)
+    u = welt()
+    abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "adresse", "email": IDA})
+    felder = {"schritt": "code", "email": IDA, "code": code_aus(u, IDA), "name": "Ida"}
+    assert abruf(f"{u.kurl}/anmelden", "POST", felder)[0] == 303
+    s, _, t = abruf(f"{u.kurl}/anmelden", "POST", felder)
+    assert s == 200 and "stimmt nicht" in t
