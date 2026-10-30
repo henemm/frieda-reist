@@ -1486,6 +1486,8 @@ def entscheiden(reise_dir, wer, args, heute=None):
     text = (f"Entschieden: {oid} „{o['titel']}“ ({vid} {wr.get('titel', '')}) ist {WORT[status]}" + (f", ersetzt durch {durch}" if durch else "")
             + f" ({wer['name']}, {heute.strftime('%-d.%-m.%Y')}, Grund: {grund})." + (f" Bisher gewählt und dadurch ersetzt: {', '.join(ersetzt)}." if ersetzt else "")
             + frage_text)
+    if status in ("verworfen", "ersetzt"):
+        text += " Nicht gelöscht, die Option bleibt mit Verlauf stehen; zurückholen mit entscheiden, Status gewählt."
     return titel, text
 
 
@@ -1609,7 +1611,11 @@ def frage_schliessen(reise_dir, wer, args, heute=None):
     wort = "geklärt" if status == "geklaert" else "entfällt"
     if not frage_status_setzen(reise_dir, fid, f"{wort} {heute.strftime('%-d.%-m.%Y')}: {wer['name']}, {ergebnis}"):
         raise Ablehnung(f"Die Frage {fid} gibt es nicht (offene_fragen zeigt alle).")
-    return f"{fid} {wort}", f"Frage {fid} ist {wort} ({wer['name']}, {heute.strftime('%-d.%-m.%Y')}): {ergebnis}"
+    text = f"Frage {fid} ist {wort} ({wer['name']}, {heute.strftime('%-d.%-m.%Y')}): {ergebnis}"
+    if status == "entfaellt":
+        text += (" Nicht gelöscht, die Frage steht weiter mit Verlauf da; ein Wiedereröffnen gibt es nicht, "
+                 "bei Bedarf eine neue Frage anlegen.")
+    return f"{fid} {wort}", text
 
 
 def person_schreiben(reise_dir, wer, args, heute=None):
@@ -1932,6 +1938,7 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
         raise Ablehnung(f"Die Buchung {bid} hat {knoten.get('wer') or 'jemand anderes'} eingetragen; ändern darf sie nur diese Person "
                         "oder eine Organisator:in.")
     grund = text_wert(args, "grund")
+    status_vorher = knoten.get("status", "gebucht")
     geaendert, kurz = [], []   # ausführlich für die Antwort, kurz für den Verlauf
 
     def setze(feld, neu, wort=None):
@@ -2000,6 +2007,8 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
     namen = ", ".join(f"{x} {buchung_dingname(roh, route, x)}" for x in fuer)
     titel = f"{bid} geändert: " + "; ".join(kurz)
     text = f"Buchung {bid} ({namen}): " + "; ".join(geaendert) + "." + (f" Grund: {grund}." if grund else "")
+    if knoten.get("status") == "storniert" and status_vorher != "storniert":
+        text += " Nicht gelöscht, die Buchung steht weiter mit Verlauf da; zurückholen mit Status gebucht."
     return titel, text
 
 

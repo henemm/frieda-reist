@@ -1519,7 +1519,7 @@ def test_loeschwunsch_antworttext_option(repo):
     a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-01.b", "status": "verworfen", "grund": "Fahrplan passt nicht"}})
     assert a["text"].startswith("Entschieden:") and hinweis in a["text"]
     s.vorbereiten()
-    a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-03.a", "status": "ersetzt", "ersetzt_durch": "V-03.b",
+    a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-02.a", "status": "ersetzt", "ersetzt_durch": "V-02.b",
                                                                       "grund": "Gasthof ist besser"}})
     assert a["text"].startswith("Entschieden:") and hinweis in a["text"]
 

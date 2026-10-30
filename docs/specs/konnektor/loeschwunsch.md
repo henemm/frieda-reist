@@ -76,15 +76,15 @@ Sprache: Deutsch mit Umlauten; nichts Reisespezifisches.
 
 ## Acceptance Criteria
 
-1. Die Anleitung enthält den Absatz zum Löschwunsch (Frieda löscht nie; Weg je Grundform; erst bestätigen lassen; ein Satz danach; ehrlicher Verweis auf die Rückmeldung, wo es keinen Weg gibt). Er steht für jede Rolle (Gast, Mitwirkende, Organisator:in) in der Anleitung.
-2. Die Beschreibungen von `buchung_aendern`, `entscheiden`, `aufgabe_aendern` und `frage_schliessen` nennen den Löschwunsch und den eigenen Weg samt Rückholweg.
-3. Der Antworttext nach dem Stornieren einer Buchung enthält „Nicht gelöscht“ und den Rückholweg (Status gebucht). Nach einer anderen Änderung der Buchung (z. B. Nummer) steht der Hinweis nicht.
-4. Der Antworttext nach `entscheiden` mit `verworfen` oder `ersetzt` enthält „Nicht gelöscht“ und den Rückholweg (entscheiden, Status gewählt). Bei `gewaehlt` steht der Hinweis nicht.
-5. Der Antworttext nach `frage_schliessen` mit `entfaellt` sagt ehrlich, dass es kein Wiedereröffnen gibt; bei `geklaert` steht er nicht.
-6. Der Antworttext nach Aufgabe `entfaellt` nennt „wieder offen“ als Rückholweg.
-7. Die bisherigen Antwortsätze bleiben unverändert und stehen vor dem Zusatz (Teilstring-Tests der bestehenden Tests bleiben grün).
-8. Die Texte nennen nichts Reisespezifisches; in der Beispielreise (Ida, Karl) gibt es keine Namen oder Pfade außerhalb davon.
-9. `engine/.venv/bin/python -m pytest -q engine/tests` ist insgesamt grün; die neuen Tests sind ohne die Änderungen rot (TDD RED).
+- **AC-1:** Die Anleitung enthält den Absatz zum Löschwunsch (Frieda löscht nie; Weg je Grundform; erst bestätigen lassen; ein Satz danach; ehrlicher Verweis auf die Rückmeldung, wo es keinen Weg gibt). Er steht für jede Rolle (Gast, Mitwirkende, Organisator:in) in der Anleitung.
+- **AC-2:** Die Beschreibungen von `buchung_aendern`, `entscheiden`, `aufgabe_aendern` und `frage_schliessen` nennen den Löschwunsch und den eigenen Weg samt Rückholweg.
+- **AC-3:** Der Antworttext nach dem Stornieren einer Buchung enthält „Nicht gelöscht“ und den Rückholweg (Status gebucht). Nach einer anderen Änderung der Buchung (z. B. Nummer) steht der Hinweis nicht.
+- **AC-4:** Der Antworttext nach `entscheiden` mit `verworfen` oder `ersetzt` enthält „Nicht gelöscht“ und den Rückholweg (entscheiden, Status gewählt). Bei `gewaehlt` steht der Hinweis nicht.
+- **AC-5:** Der Antworttext nach `frage_schliessen` mit `entfaellt` sagt ehrlich, dass es kein Wiedereröffnen gibt; bei `geklaert` steht er nicht.
+- **AC-6:** Der Antworttext nach Aufgabe `entfaellt` nennt „wieder offen“ als Rückholweg.
+- **AC-7:** Die bisherigen Antwortsätze bleiben unverändert und stehen vor dem Zusatz (Teilstring-Tests der bestehenden Tests bleiben grün).
+- **AC-8:** Die Texte nennen nichts Reisespezifisches; in der Beispielreise (Ida, Karl) gibt es keine Namen oder Pfade außerhalb davon.
+- **AC-9:** `engine/.venv/bin/python -m pytest -q engine/tests` ist insgesamt grün; die neuen Tests sind ohne die Änderungen rot (TDD RED).
 
 ## Architektur-Entscheidung (ADR)
 
@@ -120,3 +120,4 @@ Sprache: Deutsch mit Umlauten; nichts Reisespezifisches.
 
 - 2026-10-30: Erstfassung.
 - 2026-10-30: Definition of Done, ADR-Abschnitt und Test zu Kriterium 8 ergänzt; Umfang um Aufgaben und Fragen erweitert (begründet in Purpose); Briefing nennt dazu eine Freigabe-Frage.
+- 2026-10-30 (Umsetzung): Ausnahmen von AC-7/AC-9 begründet. (1) Die Längengrenze der Anleitung in `test_regeln.py` stieg von 3650 auf 3900 Zeichen, weil der Absatz aus AC-1 sonst nicht hineinpasst (vorher 3640). Der Absatz ist bewusst knapp, die Rückholwege stehen in Werkzeugbeschreibungen und Antworttexten. (2) Im Test zu AC-4 war die Konstellation „ersetzt“ unzulässig (V-03.b war schon verworfen); die Testdaten nutzen jetzt V-02.a → V-02.b, die Regel in `entscheiden` blieb unverändert. (3) Der Hinweis auf `rueckmeldung_geben` im Anleitungs-Absatz steht mit „sofern erlaubt“, weil Gäste keine Rückmeldung geben können.

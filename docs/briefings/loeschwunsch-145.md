@@ -1,7 +1,7 @@
 ---
 spec_file: docs/specs/konnektor/loeschwunsch.md
-spec_sha256: b8ae33b3b10fb936dde5bb5a7ba34f9860944ab29a60d05adf81f2780918410c
-spec_frozen_sha256: c36c4f1bb575b5cf9138bccb4622200954468e24735591fef7a660cebe80a921
+spec_sha256: dcc0cb4cddca5dfee5c5c322a6b21834d448cabe43b129bb4eae3d557e37bd1b
+spec_frozen_sha256: 8a7984eb3a64d8b96144eefa7dff5f1fd83ed797c8a7f6161944e2a1a3d87b80
 ---
 
 # PO-Briefing: loeschwunsch-145
@@ -12,11 +12,11 @@ spec_frozen_sha256: c36c4f1bb575b5cf9138bccb4622200954468e24735591fef7a660cebe80
 
 ## Was gebaut wird
 
-Sagt jemand „lösch das“, wählt der Assistent den passenden Weg und erklärt, dass nichts gelöscht ist und wie man es zurückholt.
+Bei „lösch das“ wählt der Assistent den passenden Weg und sagt, dass nichts gelöscht ist und wie man es zurückholt.
 
 ## Definition of Done
 
-Nach Stornieren, Verwerfen oder Entfallen nennt die Antwort „Nicht gelöscht“ und den Rückholweg; Anleitung und Werkzeugbeschreibungen erklären den Löschwunsch.
+Nach Stornieren, Verwerfen oder Entfallen nennt die Antwort „Nicht gelöscht“ samt Rückholweg; Anleitung und Werkzeugbeschreibungen erklären den Löschwunsch.
 
 ## Wie geprüft wird
 
@@ -24,13 +24,14 @@ Tests prüfen, dass die Texte vorhanden sind; ob der Assistent sie im Gespräch 
 
 ## Kritische Anmerkungen
 
-- Zusatz: Spec nimmt Aufgaben und Fragen dazu und ändert auch Antworttexte außerhalb des Konnektors; das Ticket nennt nur Buchungen und Optionen.
-- Entfallene Fragen lassen sich nicht zurückholen, nur durch neue Frage ersetzen.
+- Umfang über das Ticket hinaus (Aufgaben, Fragen) – von dir mit der Freigabe entschieden; entfallene Fragen lassen sich nicht zurückholen.
+- Änderungen bei der Umsetzung: Längengrenze der Anleitung 3650→3900, ein Test mit unzulässigen Testdaten korrigiert.
+- Hinweis auf Rückmeldung steht mit „sofern erlaubt“, weil Gäste keine Rückmeldung geben können.
 
 ## Freigabe-Frage
 
-Soll der Umfang wie im Ticket auf Buchungen und Optionen beschränkt bleiben oder dürfen Aufgaben und Fragen dazukommen?
+Keine – Ampel gruen.
 
 ## Ampel
 
-Ampel: rot
+Ampel: gruen

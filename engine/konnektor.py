@@ -2188,7 +2188,8 @@ WERKZEUGE += [
      "inputSchema": {"type": "object", "properties": {**AG_EIGENSCHAFTEN, "name": NAME_FELD}, "required": ["titel"]}},
     {"name": "aufgabe_aendern", "description": "Aufgabe ändern: abhaken (status erledigt), in Arbeit, entfällt, wieder offen, "
      "Frist/Zuständig/Priorität/Notiz ändern oder einen Kommentar in den Verlauf schreiben. Nur angegebene Felder ändern "
-     "sich. Wirkt sofort. Gelöscht wird nie; nicht mehr Nötiges bekommt status entfaellt.",
+     "sich. Wirkt sofort. Gelöscht wird nie; nicht mehr Nötiges bekommt status entfaellt. Bei einem Löschwunsch status "
+     "entfaellt setzen; zurückholen mit status offen (wieder offen).",
      "inputSchema": {"type": "object", "properties": {
          "id": {"type": "string", "description": "AG-…"},
          "status": {"type": "string", "enum": list(rm.AG_STATUS)},
@@ -2403,7 +2404,8 @@ WISSEN_SCHREIBEN = {"name": "wissen_schreiben", "description": "Wissen zur Reise
                         "name": NAME_FELD}, "required": ["text", "quelle"]}}
 FRAGE_SCHLIESSEN = {"name": "frage_schliessen", "description": "Nur für Organisator:innen: eine offene Frage (F-…) als geklärt oder entfallen "
                     "eintragen, mit Ergebnis in einem Satz. Schreibt sofort nach offene-fragen.md. Antworten von Mitwirkenden (frage_beantworten) "
-                    "sind Eingaben; geklärt ist eine Frage erst damit.",
+                    "sind Eingaben; geklärt ist eine Frage erst damit. Bei einem Löschwunsch status entfaellt setzen; eine entfallene Frage "
+                    "wird nicht wieder geöffnet, bei Bedarf eine neue Frage anlegen (frage_anlegen).",
                     "inputSchema": {"type": "object", "properties": {
                         "frage": {"type": "string", "description": "F-…"},
                         "ergebnis": {"type": "string", "description": "was herausgekommen ist oder entschieden wurde"},
@@ -2469,7 +2471,8 @@ BUCHUNG_ANLEGEN = {"name": "buchung_anlegen", "description": "Eine Buchung als e
 BUCHUNG_AENDERN = {"name": "buchung_aendern", "description": "Felder einer Buchung B-… ändern (Status gebucht/storniert, Nummer, Frist, "
                    "Stornoregel, Preis …); schreibt sofort, jede Änderung steht mit Person, Datum und Grund im Verlauf. Leerer Text "
                    "entfernt ein Feld (z. B. frist: \"\" nach Erledigung). Mitwirkende ändern nur Buchungen, die sie selbst eingetragen "
-                   "haben, Organisator:innen alle; Stornieren braucht einen Grund. Vorher kurz bestätigen lassen.",
+                   "haben, Organisator:innen alle; Stornieren braucht einen Grund. Vorher kurz bestätigen lassen. Bei einem Löschwunsch "
+                   "nicht löschen, sondern status storniert mit Grund setzen; zurückholen mit status gebucht.",
                    "inputSchema": {"type": "object", "properties": {
                        "ziel": {"type": "string", "description": "B-…"},
                        "fuer": {"type": "array", "items": {"type": "string"}}, **BUCHUNG_FELDER_SCHEMA,
@@ -2607,7 +2610,8 @@ ENTSCHEIDEN = {"name": "entscheiden", "description": "Nur für Organisator:innen
                "bestätigen lassen. Der Dienst prüft sofort: Gibt es die Option, ist der Status stimmig, ist ein Grund da, "
                "widerspricht es einer anderen Organisator:in? Unstimmiges lehnt er mit Begründung ab, Hinweise (fehlende oder "
                "ungeprüfte Merkmale) gibt er mit. Die Entscheidung steht sofort mit Datum, Person und Grund im Plan; die Seite "
-               "zeigt sie in wenigen Minuten.",
+               "zeigt sie in wenigen Minuten. Bei einem Löschwunsch zu einer Option status verworfen (oder ersetzt) mit Grund setzen; "
+               "zurückholen mit entscheiden, status gewaehlt.",
                "inputSchema": {"type": "object", "properties": {
                    "option": {"type": "string", "description": "Option, über die entschieden wird, z. B. V-01.b (aus varianten)"},
                    "status": {"type": "string", "enum": list(ENTSCHEIDUNGEN),
@@ -2764,6 +2768,9 @@ def anleitung(zugang, d):
         z.append(f"{name} (Rolle gast): nur lesen. Rückmeldungen, Antworten, Aufgaben und Vorschläge gehen mit diesem Zugang "
                  "nicht; wer mitgestalten will, bittet ein:e Organisator:in um eine andere Rolle."
 )
+    z.append("Löschwunsch: Frieda löscht nie. Buchung storniert, Option verworfen, Aufgabe oder Frage entfaellt; erst "
+             "bestätigen lassen, danach ein Satz: nicht gelöscht, wie es zurückgeht. Sonst ehrlich sagen und (sofern erlaubt) "
+             "rueckmeldung_geben anbieten.")
     if status in STATUS_SATZ:
         z.append("Status: " + STATUS_SATZ[status])
     aus = [b for b in ("varianten", "fragen", "aufgaben", "rueckmeldungen", "wuensche") if bausteine is not None and b not in bausteine]
@@ -2886,7 +2893,9 @@ def werkzeug(zugang, name, args):
             a, fehler = dienst_anfrage("PATCH", f"{reise}/aufgaben/{agid}", roh)
         if fehler:
             return f"Nicht gespeichert: {fehler}", True
-        return "Gespeichert (gilt sofort):\n" + aufgabe_text(a, h.titel()), False
+        zusatz = ("\nNicht gelöscht; zurückholen mit Status offen (wieder offen)."
+                  if name == "aufgabe_aendern" and str(args.get("status", "")).strip().lower() == "entfaellt" else "")
+        return "Gespeichert (gilt sofort):\n" + aufgabe_text(a, h.titel()) + zusatz, False
     if name == "wuensche":
         o = rm.ordner(reise)
         return (brett_text(rm.brett(o, rm.zustand(reise)), h.titel()) if o else "Noch keine Wünsche."), False
