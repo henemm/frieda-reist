@@ -1,7 +1,7 @@
 ---
 spec_file: docs/specs/oberflaeche/papierkorb-146.md
-spec_sha256: f071aef63eeff621cb61e0bcf5c73b9f50442c7e5110f40a26604c839545586a
-spec_frozen_sha256: 2f869c051215c96aab282189e7fd1722a198305642b5e7440e5cdd5b039d2066
+spec_sha256: 69e688fd31de5b55cac8f574535c2e9b8216d747c70bb36672418810f0b77230
+spec_frozen_sha256: 2639f5a2d29178ab433d2eb2ae6a1546d74d7f4ce303b558f28bdc8ba2503d93
 ---
 
 # PO-Briefing: papierkorb-146
@@ -12,7 +12,7 @@ spec_frozen_sha256: 2f869c051215c96aab282189e7fd1722a198305642b5e7440e5cdd5b039d
 
 ## Was gebaut wird
 
-Stornierte Buchungen verschwinden aus dem Tagesverlauf und stehen nur noch in einer zugeklappten Zeile „Storniert“ am jeweiligen Eintrag.
+Stornierte Buchungen stehen nur noch zugeklappt als „Storniert (n)“ am jeweiligen Eintrag, nicht mehr als Karte mitten im Tag.
 
 ## Definition of Done
 
@@ -24,13 +24,13 @@ Browser-Tests belegen Verstecken, Aufklappen, Link und Zählung; Strecke, Aufent
 
 ## Kritische Anmerkungen
 
+- Neu seit erster Freigabe: „Alle Möglichkeiten“ erscheint bei mehr als einer Option, zählt aber nur gültige (Entscheidung des PO).
 - Ticket verlangte Sammelstelle mit Zurückholen-Knopf; beides fehlt, Zurückholen nur im Gespräch mit Frieda (Folge-Issue #149).
-- Aufgaben und Fragen bleiben unverändert; nur Buchungen werden eingeklappt.
 
 ## Freigabe-Frage
 
-Genügt dir „zugeklappt am Eintrag“ mit Zurückholen im Gespräch mit Frieda, statt einer Sammelstelle mit Zurückholen-Knopf?
+Keine – Ampel gruen.
 
 ## Ampel
 
-Ampel: rot
+Ampel: gruen
