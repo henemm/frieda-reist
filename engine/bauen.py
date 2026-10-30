@@ -46,13 +46,16 @@ BILD_ENDUNGEN = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 ETAPPEN_MUSTER = r"^Etappe\s+(\d+[A-Za-z]?)\s*:\s*(.+)$"
 UMLAUTE = {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"}
 # Ebenen der Tagesseite (B2, docs/design.md „Tagesseite“): Jeder Abschnitt einer Etappe gehört zu einer Ebene, erkannt am
-# Anfang seines Titels (Groß- und Kleinschreibung egal). reise.json „etappen_ebenen“ ergänzt das je Reise mit eigenen
-# Titelanfängen ({"unterwegs": ["Fahrplan"], …}), die vor der Vorgabe gelten. Was nirgends passt, ist Hintergrund.
+# Anfang seines Titels (Groß- und Kleinschreibung egal). Die Software kennt nur die Form (ADR-0001, kein Katalog): die
+# Zusammenfassung ist „Der Weg“, Eckdaten (die Kennzahlentabelle) und die Unterkünfte-Liste des Dossiers sind „Unterwegs
+# nachschlagen“, Quellen, Prüfung und Karten sind „Quellen und Prüfung“. Welche Rubriken eine Reise sonst unterwegs
+# nachschlagen will (Höhenprofil, Wegpunkte, Wasser, Fahrplan, Tempel …), sagt sie in reise.json „etappen_ebenen“
+# ({"unterwegs": ["Höhenprofil", "Fahrplan"], …}); die Titelanfänge der Reise gelten vor der Vorgabe. Was nirgends passt,
+# ist Hintergrund. Bis 29.10.2026 enthielt die Vorgabe Wandervokabular (Wegpunkte, Wasser, Einkehr, Verpflegung).
 EBENEN = ("weg", "unterwegs", "hintergrund", "quellen")
 EBENEN_VORGABE = {
     "weg": ("Zusammenfassung",),
-    "unterwegs": ("Eckdaten", "Höhenprofil", "Wegpunkte", "Unterkünfte", "Unterkunft", "Kontakte", "Wasser", "Einkehr",
-                  "Verpflegung", "Anfahrt", "Abfahrt", "Praktisch"),
+    "unterwegs": ("Eckdaten", "Unterkünfte & Einkehr (Unterkünfte-Dossier)"),
     "quellen": ("Quellen", "Prüfung", "Karten"),
 }
 # Stichwort am Anfang eines Absatzes im Lesetext („**Charakter.** …“), Rubrik der Gliederung einer Art (docs/ontologie.md)
@@ -951,8 +954,7 @@ class Bauer:
         Stichwort ist ein Hinweis, kein Fehler. Ohne Gliederung der Art wird nichts geprüft."""
         for eid, e in etappen.items():
             s = (route.get("strecken") or {}).get(eid) or {}
-            art = s.get("art") or "wandern"
-            art = "kombiniert" if isinstance(art, list) else art
+            art = s.get("art_schluessel")
             rubriken = ((route.get("arten") or {}).get(art) or {}).get("lesetext")
             if not rubriken:
                 continue

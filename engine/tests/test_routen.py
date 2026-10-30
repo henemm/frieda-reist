@@ -22,7 +22,7 @@ BASIS = {
                  "kennzahlen": {"Gehzeit": "3:30 h", "Aufstieg (Hm)": "400", "Abstieg (Hm)": "100", "Länge (km)": "10,5 km"}},
         "E-02": {"titel": "B → C", "von": "O-02", "nach": "O-03", "art": "wandern",
                  "kennzahlen": {"Gehzeit": "2:00 h", "Aufstieg (Hm)": "100", "Abstieg (Hm)": "300", "Länge (km)": "6 km"}},
-        "E-02V": {"titel": "Abzweig → C", "von": "O-04", "nach": "O-03", "zweig_von": "E-02", "rolle": "alternative"},
+        "E-02V": {"titel": "Abzweig → C", "von": "O-04", "nach": "O-03", "art": "wandern", "zweig_von": "E-02", "rolle": "alternative"},
         "E-03": {"titel": "Bus B → C", "von": "O-02", "nach": "O-03", "art": "bus"},
     },
     "unterkuenfte": {
@@ -39,15 +39,15 @@ BASIS = {
     },
     "route": [{"teil": "Alles", "folge": ["V-01"]}],
     "wahlstellen": {
-        "V-01": {"titel": "Route", "art": "planung", "frage": "F-01", "optionen": [
+        "V-01": {"titel": "Route", "wann": "planung", "frage": "F-01", "optionen": [
             {"id": "V-01.a", "titel": "Zu Fuß", "folge": ["T-01", "T-02", "T-03"]},
             {"id": "V-01.b", "titel": "Mit Bus", "folge": ["T-04", "T-05"]},
         ]},
-        "V-02": {"titel": "Hotel in B", "art": "planung", "frage": "F-01", "optionen": [
+        "V-02": {"titel": "Hotel in B", "wann": "planung", "frage": "F-01", "optionen": [
             {"id": "V-02.a", "titel": "B1", "unterkuenfte": ["U-01"]},
             {"id": "V-02.b", "titel": "B2", "unterkuenfte": ["U-02"]},
         ]},
-        "V-03": {"titel": "Abzweig nehmen?", "art": "unterwegs", "optionen": [
+        "V-03": {"titel": "Abzweig nehmen?", "wann": "unterwegs", "optionen": [
             {"id": "V-03.a", "titel": "Hauptweg", "strecken": ["E-02"]},
             {"id": "V-03.b", "titel": "Abzweig", "strecken": ["E-02V"], "ausloeser": "bei gutem Wetter"},
         ]},
@@ -397,7 +397,8 @@ def test_merkmale_bereich_und_werte():
     erg, fehler = mk_bauen(r)
     assert fehler == []
     w = {x["id"]: x for x in erg["wahlstellen"]}
-    assert (w["V-01"]["bereich"], w["V-02"]["bereich"], w["V-03"]["bereich"]) == ("reiseteil", "hotel", "wandern")
+    assert (w["V-01"]["art"], w["V-02"]["art"], w["V-03"]["art"]) == ("reiseteil", "hotel", "wandern")
+    assert (w["V-01"]["wann"], w["V-03"]["wann"]) == ("planung", "unterwegs")
     assert (w["V-01"]["grundform"], w["V-02"]["grundform"], w["V-03"]["grundform"]) == ("folge", "aufenthalt", "bewegung")
     a, b = w["V-02"]["optionen"]
     assert a["merkmale"]["preis"]["geprueft"] == "2026-10-26" and not a["merkmale"]["preis"]["ungeprueft"]
@@ -407,7 +408,7 @@ def test_merkmale_bereich_und_werte():
     assert w["V-01"]["optionen"][0]["merkmale"]["tage"]["wert"] == "3 Tage"
     assert erg["unterkuenfte"]["U-01"]["merkmale"]["fruehstueck"]["wert"] == "inklusive"
     assert [k["id"] for k in erg["merkmale"]["hotel"]] == ["preis", "fruehstueck"]
-    assert erg["arten"]["hotel"] == {"name": "Hotel", "grundform": "aufenthalt", "farbe": "blau", "symbol": "unterkunft", "buchbar": True, "summiert": False, "beschreibung": None}
+    assert erg["arten"]["hotel"] == {"name": "Hotel", "grundform": "aufenthalt", "farbe": "blau", "symbol": "unterkunft", "buchbar": True, "summiert": False, "beschreibung": None, "kosten": None}
     assert erg["arten"]["huette"]["name"] == "Hütte" and erg["unterkuenfte"]["U-03"]["art"] == "huette"
 
 
@@ -469,7 +470,7 @@ def test_unterkunft_art_aus_typ_oder_ausdruecklich():
     assert fehler == [], fehler
     u = erg["unterkuenfte"]
     assert [u[k]["art"] for k in ("U-01", "U-02", "U-03")] == ["hotel", "refugi", "huette"]
-    assert u["U-02"]["typ"] == "Refugi"   # die eigene Bezeichnung der Reise bleibt
+    assert "typ" not in u["U-02"]   # die Brücke typ: wird gelesen, die Ausgabe nennt nur die Art
     t = {x["id"]: x for x in erg["tage"]}
     assert t["T-03"]["nacht"]["art"] == "nachtzug"
     assert erg["summe"]["unterkunftstypen"] == {"Hotel": 1, "Hütte": 1, "Nachtzug": 1}   # Nächte je Art, Name der Reise
@@ -526,13 +527,13 @@ def test_art_der_strecken_bestimmt_die_liste_und_werte_stehen_an_strecke_oder_op
     erg, fehler = mk_bauen(mit_faehren())
     assert fehler == []
     w = next(x for x in erg["wahlstellen"] if x["id"] == "V-04")
-    assert w["bereich"] == "faehre" and [k["id"] for k in w["kriterien"]] == ["preis", "dauer"]
+    assert w["art"] == "faehre" and [k["id"] for k in w["kriterien"]] == ["preis", "dauer"]
     a, b = w["optionen"]
     assert a["merkmale"]["dauer"]["wert"] == "ca. 11 h" and a["merkmale"]["preis"]["wert"] == "80 €"
     assert b["merkmale"]["dauer"]["wert"] == "ca. 10 h" and b["fehlt"] == []
     # Wanderstrecken haben ihre eigene Art
     w3 = next(x for x in erg["wahlstellen"] if x["id"] == "V-03")
-    assert w3["bereich"] == "wandern"
+    assert w3["art"] == "wandern"
 
 
 def test_gemischte_arten_haben_keine_gemeinsamen_merkmale():
@@ -541,7 +542,7 @@ def test_gemischte_arten_haben_keine_gemeinsamen_merkmale():
     r["wahlstellen"]["V-04"]["optionen"][0]["merkmale"] = r["wahlstellen"]["V-04"]["optionen"][1]["merkmale"] = {}
     erg, fehler = mk_bauen(r)
     assert fehler == []
-    assert next(x for x in erg["wahlstellen"] if x["id"] == "V-04")["bereich"] == "allgemein"
+    assert next(x for x in erg["wahlstellen"] if x["id"] == "V-04")["art"] == "allgemein"
 
 
 def test_strecke_mit_mehreren_arten_ist_kombiniert():
@@ -601,7 +602,7 @@ def test_neue_art_der_reise_und_wahlstelle_an_beliebiger_id():
     erg, fehler = mk_bauen(r, a)
     assert fehler == []
     w = next(x for x in erg["wahlstellen"] if x["id"] == "V-05")
-    assert w["bereich"] == "restaurant" and w["an_ids"] == ["O-02", "U-01", "E-01"] and w["an"] == []
+    assert w["art"] == "restaurant" and w["wann"] == "planung" and w["an_ids"] == ["O-02", "U-01", "E-01"] and w["an"] == []   # alte Schlüssel art: planung und bereich: werden gelesen
     assert w["optionen"][1]["fehlt"] == []
     assert [k["id"] for k in erg["merkmale"]["restaurant"]] == ["kueche", "preis"]
     assert not any("nirgends verwendet" in x["text"] for x in erg["warnungen"] if x["bezug"] == "V-05")
@@ -942,3 +943,59 @@ def test_buchung_prueft_bezug_status_herkunft_und_datum():
     r["buchungen"] = {"X-01": {"fuer": ["U-01"], "quelle": "x"}}
     _, fehler = laufe(r, FRAGEN, a)
     assert any("keine gültige ID für buchung" in x for x in fehler)
+
+
+def test_zeitpunkt_form():
+    """Issue #135: Zeiten an Bewegungen sind HH:MM (am Tag der Strecke) oder JJJJ-MM-TTTHH:MM mit Zeitzone; die Software kennt
+    keine Zeitzonen der Orte, sie prüft nur die Form und vergleicht gleiche Formen."""
+    from routen import zeitpunkt
+    assert zeitpunkt("07:45") == datetime.time(7, 45)
+    z = zeitpunkt("2027-02-25T07:45+01:00")
+    assert z == datetime.datetime(2027, 2, 25, 7, 45, tzinfo=datetime.timezone(datetime.timedelta(hours=1)))
+    assert zeitpunkt("2027-02-25T06:45Z") == z
+    assert zeitpunkt("2027-02-25T07:45") == datetime.datetime(2027, 2, 25, 7, 45)
+    for falsch in ("7:45", "25.2. 7 Uhr", "2027-02-30T07:45+01:00", "", None, "07:60"):
+        assert zeitpunkt(falsch) is None, falsch
+
+
+def test_buchung_reisende_preise_und_ab_termin():
+    """Issue #135: Eine Buchung nennt ihre Reisenden mit Angabe je Person (Sitz, Gepäck), bei mehreren Dingen den Preis je Ding und
+    einen Ab-Termin (Check-in öffnet) neben der Frist."""
+    r, a = staedtereise()
+    r["strecken"]["E-11"] = {"titel": "Flug zurück (erfunden)", "von": "O-01", "nach": "O-01", "art": "flug"}
+    r["buchungen"] = {"B-01": {"fuer": ["E-10", "E-11"], "status": "gebucht", "quelle": "x", "preis": "230 €",
+                               "preise": {"E-10": "120 €", "E-11": "110 €"}, "personen": {"Ida": "Sitz 12A, 23 kg Gepäck", "Karl": None},
+                               "ab": D(2027, 2, 28), "ab_was": "Online-Check-in"},
+                      "B-02": {"fuer": ["A-01"], "status": "gebucht", "quelle": "x", "personen": ["Ida", "Karl"]}}
+    erg, fehler = laufe(r, FRAGEN, a)
+    assert fehler == [], fehler
+    b = erg["buchungen"]["B-01"]
+    assert b["personen"] == {"Ida": "Sitz 12A, 23 kg Gepäck", "Karl": ""} and b["preise"] == {"E-10": "120 €", "E-11": "110 €"}
+    assert b["ab"] == "2027-02-28" and b["ab_was"] == "Online-Check-in"
+    assert erg["buchungen"]["B-02"]["personen"] == {"Ida": "", "Karl": ""} and erg["buchungen"]["B-02"]["preise"] == {}
+    r["buchungen"] = {"B-01": {"fuer": ["E-10"], "quelle": "x", "personen": "Ida", "preise": {"E-11": "1 €"}, "ab": "bald"}}
+    _, fehler = laufe(r, FRAGEN, a)
+    f = " ".join(fehler)
+    assert "Buchung B-01: personen ist eine Liste von Namen oder {Name: Angabe}" in f and "preise ist {ID aus fuer: Betrag}; E-11 passt nicht" in f
+    assert "ab muss ein Datum" in f
+
+
+def test_strecke_mit_zeiten_und_anschluss():
+    """Issue #135: Abfahrt und Ankunft an einer Bewegung; der Generator meldet, wenn die nächste Strecke des Tags abfährt, bevor die
+    vorige ankommt. Ein Ort der An- und Abreise kann außerhalb der Reisegegend liegen."""
+    r, a = staedtereise()
+    r["orte"]["O-09"] = {"name": "Flughafen daheim", "ausserhalb": True}
+    r["strecken"]["E-10"].update({"von": "O-09", "ab": "2027-03-02T07:45+01:00", "an": "2027-03-02T10:05+01:00"})
+    r["strecken"]["E-12"] = {"titel": "Bus vom Flughafen", "von": "O-01", "nach": "O-01", "art": "flug", "ab": "2027-03-02T09:50+01:00", "an": "11:00"}
+    r["tage"]["T-02"]["strecken"] = ["E-10", "E-12"]
+    erg, fehler = laufe(r, FRAGEN, a)
+    assert fehler == [], fehler
+    assert erg["strecken"]["E-10"]["ab"] == "2027-03-02T07:45+01:00" and erg["strecken"]["E-10"]["an"] == "2027-03-02T10:05+01:00"
+    assert erg["orte"]["O-09"]["ausserhalb"] is True and erg["orte"]["O-01"]["ausserhalb"] is False
+    assert any("T-02: Anschluss – E-10 kommt um 2027-03-02T10:05+01:00 an, E-12 fährt schon um 2027-03-02T09:50+01:00 ab" in w["text"] for w in erg["warnungen"])
+    r["strecken"]["E-12"]["ab"] = "10:30"        # andere Form (Uhrzeit ohne Datum): kein Vergleich, keine Meldung
+    erg, _ = laufe(r, FRAGEN, a)
+    assert not any("Anschluss" in w["text"] for w in erg["warnungen"])
+    r["strecken"]["E-12"]["ab"] = "morgens"
+    _, fehler = laufe(r, FRAGEN, a)
+    assert any("Strecke E-12: ab muss eine Uhrzeit HH:MM oder ein Zeitpunkt" in x for x in fehler)

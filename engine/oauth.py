@@ -229,7 +229,7 @@ def zustimmung(q, c, k, meldung=""):
     return anmeldung.seite("Zugriff erlauben", anmeldung.karte(
         "<h1>Zugriff erlauben?</h1>",
         f"<p><strong>{e(wer)}</strong> möchte als <strong>{e(k['name'])}</strong> ({e(k['email'])}) auf deine Reisen "
-        f"bei Frieda zugreifen: lesen und in deinem Namen Rückmeldungen, Wünsche und Aufträge geben, wie es deine Rolle "
+        f"bei Frieda zugreifen: lesen und in deinem Namen Rückmeldungen, Wünsche, Aufgaben und Einträge in die Reise geben, wie es deine Rolle "
         f"in jeder Reise erlaubt.</p><p class=\"klein\">Weiter geht es zu <strong>{e(host)}</strong>. Nur erlauben, "
         "wenn du gerade selbst in deiner Claude-App verbindest.</p>",
         warnung, anmeldung.fehler(meldung),

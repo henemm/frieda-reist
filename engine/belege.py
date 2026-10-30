@@ -24,15 +24,23 @@ from pathlib import Path
 MAX_DATEI = 10 * 1024 * 1024
 MAX_REISE = 100 * 1024 * 1024
 MAX_ANZAHL = 200
-TYPEN = {"application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic"}
+TYPEN = {"application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic",
+         "text/plain; charset=utf-8": "txt"}   # txt: Abschrift einer Bestätigung aus dem Gespräch (beleg_anlegen, Issue #135)
 SICHTBAR = ("beteiligte", "alle")
 DID_MUSTER = re.compile(r"^D-\d{2,}$")
 BID_MUSTER = re.compile(r"^B-\d+$")
 
 
-def typ_erkennen(daten):
-    """MIME-Typ aus den ersten Bytes oder None, wenn kein erlaubter Typ."""
+def typ_erkennen(daten, dateiname=None):
+    """MIME-Typ aus den ersten Bytes oder None, wenn kein erlaubter Typ. Text (UTF-8, ohne Steuerzeichen) nur, wenn der
+    Dateiname .txt oder .md heißt: die Abschrift einer Bestätigung, die der AI-Client über den Konnektor anhängt."""
     k = daten[:16]
+    if str(dateiname or "").lower().endswith((".txt", ".md")):
+        try:
+            t = daten.decode("utf-8")
+        except UnicodeDecodeError:
+            return None
+        return "text/plain; charset=utf-8" if t.strip() and not any(ord(c) < 32 and c not in "\n\r\t" for c in t) else None
     if k.startswith(b"%PDF-"):
         return "application/pdf"
     if k.startswith(b"\xff\xd8\xff"):
@@ -109,9 +117,9 @@ def ablegen(o, bid, name, dateiname, daten):
         return None, (400, "Die Datei ist leer.")
     if len(daten) > MAX_DATEI:
         return None, (413, f"Die Datei ist zu groß (höchstens {MAX_DATEI // 1024 // 1024} MB).")
-    typ = typ_erkennen(daten)
+    typ = typ_erkennen(daten, dateiname)
     if typ is None:
-        return None, (415, "Erlaubt sind PDF, JPEG, PNG, WebP und HEIC; diese Datei ist keins davon.")
+        return None, (415, "Erlaubt sind PDF, JPEG, PNG, WebP und HEIC (und Text als .txt aus dem Gespräch); diese Datei ist keins davon.")
     d = lesen(o)
     if len(d["belege"]) >= MAX_ANZAHL:
         return None, (409, f"Diese Reise hat schon {MAX_ANZAHL} Belege und nimmt keinen weiteren an; zurückgezogene zählen mit. "

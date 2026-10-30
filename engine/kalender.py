@@ -2,12 +2,12 @@
 persönliches Abo.
 
 Was drin steht (Product Owner 29.10.2026): je Reisetag ein ganztägiger Eintrag mit Weg und Nacht, je Unterkunft ein
-Eintrag über alle Nächte, Aufenthalte ohne Nacht, Bewegungen mit Uhrzeit (beginn, ende) und Fristen (Buchungen: Frist und
-kostenloses Storno; Aufgaben: Frist). Nur Entschiedenes: Tage unter einer offenen Planungs-Wahlstelle (route.tage[].vorlaeufig)
+Eintrag über alle Nächte, Aufenthalte ohne Nacht (Uhrzeit beginn, ende), Bewegungen mit Abfahrt (ab, an; #135) und Fristen
+(Buchungen: Frist, kostenloses Storno, ab wann etwas geht; Aufgaben: Frist). Nur Entschiedenes: Tage unter einer offenen Planungs-Wahlstelle (route.tage[].vorlaeufig)
 und Nächte oder Strecken aus einer offenen Planungs-Wahlstelle fehlen, bis eine Organisator:in gewählt hat.
 
-Uhrzeiten sind Ortszeit am Ort des Dings und stehen deshalb ohne Zeitzone in der Datei („floating“): Der Kalender zeigt
-09:30 als 09:30, wo man gerade ist. Jeder Eintrag hat eine feste UID aus Reise und ID, damit ein Abo Änderungen ersetzt
+Uhrzeiten HH:MM sind Ortszeit am Ort des Dings und stehen deshalb ohne Zeitzone in der Datei („floating“): Der Kalender
+zeigt 09:30 als 09:30, wo man gerade ist. Ein Zeitpunkt mit Zeitzone (ab/an „2027-05-13T09:30+02:00“) steht als UTC darin. Jeder Eintrag hat eine feste UID aus Reise und ID, damit ein Abo Änderungen ersetzt
 statt verdoppelt.
 
 Nur Standardbibliothek: Rückmeldedienst und Konnektor laufen mit dem Python des Systems (docs/betrieb.md).
@@ -49,18 +49,33 @@ def _datum(t):
         return None
 
 
-def _uhr(datum, hhmm):
+def _uhr(datum, text):
+    """HH:MM am Tag oder JJJJ-MM-TTTHH:MM[Zeitzone] (Form wie routen.zeitpunkt) -> datetime (mit Zeitzone nur, wenn angegeben)."""
+    t = str(text or "").strip()
     try:
-        h, m = (int(x) for x in str(hhmm).split(":"))
+        if "T" in t:
+            return datetime.datetime.fromisoformat(t.replace("Z", "+00:00"))
+        h, m = (int(x) for x in t.split(":"))
         return datetime.datetime.combine(datum, datetime.time(h, m))
     except (TypeError, ValueError):
         return None
 
 
+def _spanne(tag, a, e):
+    """Beginn und Ende; ein Ende ohne Zeitzone vor dem Beginn liegt am Tag danach, Ende und Beginn verschiedener Form passen nicht."""
+    b = _uhr(tag, a) if a else None
+    ende = _uhr(tag, e) if b and e else None
+    if ende and (ende.tzinfo is None) != (b.tzinfo is None):
+        ende = None
+    if ende and ende <= b and ende.tzinfo is None:
+        ende += datetime.timedelta(days=1)
+    return b, ende
+
+
 def _offen(route):
     """Offene Planungs-Wahlstellen (noch keine Option gewählt)."""
     return {w["id"] for w in route.get("wahlstellen") or []
-            if w.get("art") == "planung" and not any(o.get("status") == "gewaehlt" for o in w.get("optionen") or [])}
+            if w.get("wann", w.get("art")) == "planung" and not any(o.get("status") == "gewaehlt" for o in w.get("optionen") or [])}
 
 
 def eintraege(daten, aufgaben=None):
@@ -85,7 +100,7 @@ def eintraege(daten, aufgaben=None):
         n = t.get("nacht") or {}
         uid = n.get("unterkunft") if n.get("wahl") not in offen else None
         zeilen = [f"{s.get('titel') or sid} ({ort_name(s.get('von'))} → {ort_name(s.get('nach'))})"
-                  + (f", {s['beginn']}" + (f"–{s['ende']}" if s.get("ende") else "") + " Uhr" if s.get("beginn") else "")
+                  + "".join(f", {w} {s[k]}" for k, w in (("ab", "ab"), ("an", "an")) if s.get(k))
                   for sid, s in weg]
         zeilen += [f"{a.get('name', aid)}" + (f", {a['zeit']}" if a.get("zeit") else "")
                    for aid in t.get("aufenthalte") or [] if (a := aufenth.get(aid))]
@@ -101,10 +116,8 @@ def eintraege(daten, aufgaben=None):
                     "tag": tag, "bis": tag + datetime.timedelta(days=1), "ort": ort_name(t.get("end_ort")),
                     "text": "\n".join(zeilen)})
         for sid, s in weg:
-            if s.get("beginn") and (b := _uhr(tag, s["beginn"])):
-                e = _uhr(tag, s["ende"]) if s.get("ende") else None
-                if e and e <= b:
-                    e += datetime.timedelta(days=1)
+            b, e = _spanne(tag, s.get("ab"), s.get("an"))
+            if b:
                 aus.append({"id": sid, "uid": f"{sid}-{tag.isoformat()}", "titel": s.get("titel") or sid, "beginn": b, "ende": e,
                             "ort": ort_name(s.get("von")), "text": f"{ort_name(s.get('von'))} → {ort_name(s.get('nach'))}"
                             + _buchung_text(r, s.get("buchung_id"))})
@@ -114,10 +127,8 @@ def eintraege(daten, aufgaben=None):
                 continue
             text = "\n".join(x for x in (a.get("zeit"), a.get("hinweis")) if x) + _buchung_text(r, a.get("buchung_id"))
             e = {"id": aid, "uid": f"{aid}-{tag.isoformat()}", "titel": a.get("name") or aid, "ort": lage(a), "text": text.strip()}
-            if a.get("beginn") and (b := _uhr(tag, a["beginn"])):
-                ende = _uhr(tag, a["ende"]) if a.get("ende") else None
-                if ende and ende <= b:
-                    ende += datetime.timedelta(days=1)
+            b, ende = _spanne(tag, a.get("beginn"), a.get("ende"))
+            if b:
                 e.update(beginn=b, ende=ende)
             else:
                 e.update(tag=tag, bis=tag + datetime.timedelta(days=1))
@@ -147,6 +158,9 @@ def eintraege(daten, aufgaben=None):
         titel = b.get("titel") or bid
         if (d := _datum(b.get("frist"))):
             aus.append({"id": bid, "uid": f"{bid}-frist", "titel": f"Frist: {b.get('frist_was') or 'Buchung'} – {titel}",
+                        "tag": d, "bis": d + datetime.timedelta(days=1), "text": _buchung_text(r, bid).strip()})
+        if (d := _datum(b.get("ab"))):
+            aus.append({"id": bid, "uid": f"{bid}-ab", "titel": f"Ab heute: {b.get('ab_was') or 'Buchung'} – {titel}",
                         "tag": d, "bis": d + datetime.timedelta(days=1), "text": _buchung_text(r, bid).strip()})
         if (d := _datum(b.get("storno_bis"))):
             aus.append({"id": bid, "uid": f"{bid}-storno", "titel": f"Letzter Tag kostenlos stornieren – {titel}",
@@ -190,6 +204,13 @@ def _falten(zeile):
     return "\r\n ".join(aus)
 
 
+def _zeit(t):
+    """Ortszeit ohne Zeitzone („floating“) oder, mit Zeitzone, als UTC."""
+    if t.tzinfo is not None:
+        return t.astimezone(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return t.strftime("%Y%m%dT%H%M%S")
+
+
 def ics(daten, reise, aufgaben=None, nur=None, jetzt=None, name=None):
     """Kalenderdatei der Reise als Text. nur: nur die Einträge eines Dings (T-, U-, A-, E-, B-, AG-). -> str oder None,
     wenn nur gesetzt ist und das Ding keinen Eintrag hat (noch nicht entschieden oder ohne Datum)."""
@@ -203,9 +224,9 @@ def ics(daten, reise, aufgaben=None, nur=None, jetzt=None, name=None):
     for e in sorted(liste, key=lambda e: (str(e.get("tag") or e["beginn"].date()), e["uid"])):
         z += ["BEGIN:VEVENT", f"UID:{e['uid']}.{reise}@frieda", f"DTSTAMP:{jetzt}"]
         if e.get("beginn"):
-            z.append("DTSTART:" + e["beginn"].strftime("%Y%m%dT%H%M%S"))
+            z.append("DTSTART:" + _zeit(e["beginn"]))
             if e.get("ende"):
-                z.append("DTEND:" + e["ende"].strftime("%Y%m%dT%H%M%S"))
+                z.append("DTEND:" + _zeit(e["ende"]))
         else:
             z += ["DTSTART;VALUE=DATE:" + e["tag"].strftime("%Y%m%d"), "DTEND;VALUE=DATE:" + e["bis"].strftime("%Y%m%d"),
                   "TRANSP:TRANSPARENT"]

@@ -7,25 +7,25 @@
 start: {datum: 2027-05-13, ort: O-01}
 ende: {datum: 2027-05-16, ort: O-01}
 fixpunkte:
-  - {datum: 2027-05-13, ort: O-01, titel: "Ankunft mit dem Zug in Dresden (Beispiel)"}
-  - {datum: 2027-05-15, ort: O-04, titel: "Abendessen in Altendorf, Tisch um 19 Uhr reserviert (Beispiel)"}
+  - {datum: 2027-05-13, ort: O-01, titel: "Ankunft mit dem Zug in Dresden (Beispiel)", quelle: "erfunden (Beispiel)"}
+  - {datum: 2027-05-15, ort: O-04, titel: "Abendessen in Altendorf, Tisch um 19 Uhr reserviert (Beispiel)", quelle: "erfunden (Beispiel)"}
 
-orte:
-  O-01: {name: Dresden}
-  O-02: {name: Stadt Wehlen}
-  O-03: {name: Hohnstein, hinweis: "Burgstadt über dem Polenztal"}
-  O-04: {name: Altendorf}
-  O-05: {name: Bad Schandau}
-  O-06: {name: Lichtenhainer Wasserfall, hinweis: "Endhaltestelle der Kirnitzschtalbahn"}
+orte:   # Orte gibt es wirklich; Herkunft je Ort (Kern jedes Dings, docs/ontologie.md)
+  O-01: {name: Dresden, quelle: "OpenStreetMap"}
+  O-02: {name: Stadt Wehlen, quelle: "OpenStreetMap"}
+  O-03: {name: Hohnstein, hinweis: "Burgstadt über dem Polenztal", quelle: "OpenStreetMap; Hinweis Wikipedia (W-05)"}
+  O-04: {name: Altendorf, quelle: "OpenStreetMap"}
+  O-05: {name: Bad Schandau, quelle: "OpenStreetMap"}
+  O-06: {name: Lichtenhainer Wasserfall, hinweis: "Endhaltestelle der Kirnitzschtalbahn", quelle: "OpenStreetMap; Hinweis Wikipedia (W-06)"}
 
 # Wanderetappen kommen aus dem Etappen-Dossier (Titel, Kennzahlen); hier nur Anfang und Ende.
 strecken:
-  E-01: {von: O-02, nach: O-03, art: wandern}
-  E-02: {von: O-03, nach: O-04, art: wandern}
-  E-03: {von: O-04, nach: O-05, art: wandern}
-  E-04: {von: O-04, nach: O-06, art: wandern}
-  # beginn/ende (#77): Uhrzeit für den Kalender, Ortszeit; hier erfundene Beispielwerte
-  E-20: {titel: "S-Bahn Dresden → Stadt Wehlen, Fähre über die Elbe", von: O-01, nach: O-02, art: bahn, beginn: "08:12", ende: "08:40", quelle: "Beispiel; Fahrplan nicht geprüft"}
+  E-01: {von: O-02, nach: O-03, art: wandern, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
+  E-02: {von: O-03, nach: O-04, art: wandern, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
+  E-03: {von: O-04, nach: O-05, art: wandern, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
+  E-04: {von: O-04, nach: O-06, art: wandern, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
+  # ab/an (#135) erscheinen mit Uhrzeit im Kalender (#77); hier erfundene Beispielwerte
+  E-20: {titel: "S-Bahn Dresden → Stadt Wehlen, Fähre über die Elbe", von: O-01, nach: O-02, art: bahn, ab: "08:12", an: "08:40", quelle: "Beispiel; Fahrplan nicht geprüft"}
   E-21: {titel: "S-Bahn Bad Schandau → Dresden", von: O-05, nach: O-01, art: bahn, quelle: "Beispiel; Fahrplan nicht geprüft"}
   E-23: {titel: "Bus Bad Schandau → Dresden", von: O-05, nach: O-01, art: bus, quelle: "erfunden (Beispiel)"}
   E-22: {titel: "Kirnitzschtalbahn Lichtenhainer Wasserfall → Bad Schandau", von: O-06, nach: O-05, art: bahn, siehe: W-06, quelle: "Strecke laut Wikipedia (W-06); Fahrplan nicht geprüft"}
@@ -35,7 +35,7 @@ unterkuenfte:
   U-01:
     name: Hotel am Elbufer
     ort: O-01
-    typ: Hotel
+    art: hotel
     hinweis: "erfundenes Beispielhotel in der Altstadt"
     adresse: {wert: "Terrassenufer 1, 01067 Dresden", quelle: "erfunden (Beispiel)", notiz: "Beispielwert"}
     # Buchungsstand: aus der Buchung B-01 (unten); ohne Buchung gilt „offen“, ein eigener Eintrag buchung: ginge auch
@@ -43,41 +43,41 @@ unterkuenfte:
     merkmale:
       # Wert je Datum (docs/alternativen.md): ein Eintrag ohne „gilt“ für alle übrigen Tage
       preis:
-        - {wert: "120 €", notiz: "Beispielwert, erfunden"}
-        - {wert: "140 €", gilt: 2027-05-15, notiz: "Beispielwert, erfunden: Samstag teurer"}
-      fruehstueck: {wert: inklusive, notiz: "Beispielwert, erfunden"}
+        - {wert: "120 €", quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
+        - {wert: "140 €", gilt: 2027-05-15, quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden: Samstag teurer"}
+      fruehstueck: {wert: inklusive, quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
   U-02:
     name: Pension Burgblick
     ort: O-03
-    typ: Pension
+    art: pension
     frage: F-02
     hinweis: "erfunden; Doppelzimmer mit Blick auf die Burg"
     kontakt: "Tel. +49 00 0000 (Beispielwert) ; https://example.org/pension-burgblick"
     quelle: "erfunden (Beispiel)"
     merkmale:
-      preis: {wert: "85 €", notiz: "Beispielwert, erfunden"}
-      fruehstueck: {wert: inklusive, notiz: "Beispielwert, erfunden"}
-      abendessen: {wert: im Ort, notiz: "Beispielwert, erfunden"}
+      preis: {wert: "85 €", quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
+      fruehstueck: {wert: inklusive, quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
+      abendessen: {wert: im Ort, quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
       lage: {wert: "am Markt, zwei Minuten vom Malerweg", quelle: "erfunden (Beispiel)"}
   U-03:
     name: Gasthof Polenztal
     ort: O-03
-    typ: Gasthof
+    art: gasthof
     frage: F-02
     hinweis: "erfunden; unten im Tal, morgens 15 Minuten Anstieg zurück zum Weg"
     quelle: "erfunden (Beispiel)"
     merkmale:
-      preis: {wert: "70 €", notiz: "Beispielwert, erfunden"}
-      abendessen: {wert: im Haus, notiz: "Beispielwert, erfunden"}
+      preis: {wert: "70 €", quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
+      abendessen: {wert: im Haus, quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
   U-04:
     name: Wanderherberge Altendorf
     ort: O-04
-    typ: Herberge
+    art: herberge
     hinweis: "erfunden; Mehrbettzimmer, Selbstversorgerküche"
     quelle: "erfunden (Beispiel)"
     merkmale:
-      preis: {wert: "35 € pro Person", notiz: "Beispielwert, erfunden"}
-      fruehstueck: {wert: gegen Aufpreis, notiz: "Beispielwert, erfunden"}
+      preis: {wert: "35 € pro Person", quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
+      fruehstueck: {wert: gegen Aufpreis, quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
       zimmer: {wert: "Vierbettzimmer", quelle: "erfunden (Beispiel)"}
 
 # Aufenthalte ohne Nacht (Paket O-5): Besichtigung, Essen, Besuch; stehen am Tag unter aufenthalte: in der Zeitleiste
@@ -160,18 +160,20 @@ plaene:
 wahlstellen:
   V-01:
     titel: "Letzter Tag: Weg zum Zug"
-    art: planung
+    wann: planung
     frage: F-01
     text: "Beide Wege beginnen in Altendorf und führen über die Schrammsteinaussicht. Offen ist, wo der Abstieg endet."
     optionen:
       - id: V-01.a
         titel: "Abstieg nach Bad Schandau (Plan A)"
         folge: [T-04]
+        quelle: "Etappen-Dossier Etappe 3 (Beispiel)"
         verlauf:
           - {datum: 2026-10-20, status: vorgeschlagen, wer: Claude, grund: "kürzeste Verbindung zum Bahnhof"}
       - id: V-01.b
         titel: "Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück (Plan B)"
         folge: [T-05]
+        quelle: "Etappen-Dossier Etappe 4 und Wikipedia (W-06), Beispiel"
         verlauf:
           - {datum: 2026-10-20, status: vorgeschlagen, wer: Claude}
           - {datum: 2026-10-22, status: favorisiert, wer: Karl, grund: "Karl möchte einmal mit der Kirnitzschtalbahn fahren"}
@@ -181,6 +183,7 @@ wahlstellen:
         titel: "Mit dem Bus zurück (erfundenes Beispiel)"
         text: "Gepäck bleibt in der Pension Burgblick und wird unterwegs abgeholt (erfunden)."
         folge: [T-06]
+        quelle: "erfunden (Beispiel)"
         erfordert: [V-03.a]
         schliesst_aus: [V-02.b]
         verlauf:
@@ -188,29 +191,38 @@ wahlstellen:
 
   V-02:
     titel: "Tag 2: Zugang zum Hockstein"
-    art: unterwegs
+    wann: unterwegs
     text: "Der Hockstein hat zwei Zugänge: die Steinbrücke und die Wolfsschlucht (Wikipedia, siehe W-05)."
     optionen:
-      - {id: V-02.a, titel: "Über die Steinbrücke"}
+      - id: V-02.a
+        titel: "Über die Steinbrücke"
+        quelle: "Wikipedia (W-05)"
+        verlauf:
+          - {datum: 2026-10-20, status: vorgeschlagen, wer: Ida, grund: "der übliche Zugang"}
       - id: V-02.b
         titel: "Durch die Wolfsschlucht"
         ausloeser: "nur bei trockenem Fels; Felsstufen bei Nässe vermutlich glatt (Annahme)"
         siehe: W-05
+        quelle: "Wikipedia (W-05); Annahme zur Nässe"
+        verlauf:
+          - {datum: 2026-10-20, status: vorgeschlagen, wer: Ida, grund: "Abenteuer, wenn es trocken ist"}
 
   V-03:
     titel: Unterkunft in Hohnstein
-    art: planung
+    wann: planung   # art: (die Art der Dinge) kommt hier aus den Optionen: die Art der ersten Unterkunft
     frage: F-02
     optionen:
       - id: V-03.a
         titel: Pension Burgblick
         unterkuenfte: [U-02]
+        quelle: "erfunden (Beispiel)"
         plus: ["direkt am Weg"]
         verlauf:
           - {datum: 2026-10-20, status: gewaehlt, wer: Ida, grund: "liegt am Weg, kein Anstieg am Morgen"}
       - id: V-03.b
         titel: Gasthof Polenztal
         unterkuenfte: [U-03]
+        quelle: "erfunden (Beispiel)"
         plus: ["Abendessen im Haus"]
         minus: ["morgens 15 Minuten Anstieg"]
         verlauf:

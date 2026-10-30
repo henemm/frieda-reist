@@ -14,13 +14,13 @@ Die Oberfläche folgt Brad Frosts Atomic Design. Dazu kommt die Abbildung der On
 
 1. **Fünf Ebenen.** Tokens → Atome → Moleküle → Organismen → Vorlagen (Ansichten). Ein Baustein nutzt nur Bausteine derselben oder einer tieferen Ebene. Welcher Baustein auf welcher Ebene steht, sagt `docs/design.md` (Abschnitt „Aufbau“). Im Code steht dieselbe Liste im Kopfkommentar „Bausteine nach Ebenen“ von `engine/vorlage.html`.
 2. **Wiederverwenden vor Neubau.** Eine neue Ansicht setzt sich aus vorhandenen Bausteinen zusammen. Passt ein Baustein fast, bekommt er einen Parameter (Beispiel: `listenZeile` mit Zustand rechts für „Zu tun“). Eine Kopie mit eigenen Stilen gibt es nicht.
-3. **Ontologie → Bausteine.** Jede Grundform der Reise (Folge/Tag, Bewegung, Aufenthalt, Ort, Wahl mit Option, Wissen, Offenes) hat feste Bausteine je Dichte: Zeile, Vorschau, Karte, Seite. Die Tabelle steht als `ONTOLOGIE` im Code und in `docs/design.md`. Wo die Grundform auf der Seite ihre Heimat hat, regelt [ADR-0003](0003-heimat.md).
+3. **Ontologie → Bausteine.** Jede Grundform der Reise (Folge/Tag, Bewegung, Aufenthalt, Ort, Wahl mit Option, Wissen, Offenes) hat feste Bausteine je Dichte: Zeile, Vorschau, Karte, Seite. Die Tabelle steht als `GRUNDFORMEN` im Code (bis Paket O-5 `ONTOLOGIE`) und in `docs/design.md`. Wo die Grundform auf der Seite ihre Heimat hat, regelt [ADR-0003](0003-heimat.md).
 4. **Werte nur aus Tokens.** Farben, Radien, Schatten, Breiten und Schriftgrößen kommen aus den Tokens (`--acc`, `--warn`, `--r-*`, `--t-*` …). Für die Schrift gibt es genau fünf Stufen, die Schriftleiter (`docs/design.md`, Product Owner 29.10.2026); ein Baustein wählt eine Stufe, keine eigene Zahl. Zwei Tests prüfen das: im Stil keine freie Größe, auf der gebauten Seite kein Text außerhalb der Stufen. Zustände haben feste Namen (`chip`: plan, offen, unterwegs, weg, leise, neben); die Farbe folgt der Bedeutung, nicht dem Ort.
 5. **Gleiche Ordnung in Skript und Stilen.** Der Stilblock ist nach Ebenen gegliedert: Tokens, Grundlagen, Atome, Moleküle, Organismen, Vorlagen, Rahmen, Breiten. Jede Regel steht bei ihrem Baustein, das Raster einer Ansicht bei den Vorlagen.
 6. **Verhalten über Achsen, nicht über neue Bausteine.** Zustand, Dichte und Kontext (Handy oder Rechner, planen oder unterwegs) ändern Reihenfolge und Betonung, nie die Bausteine.
 
 **Pflicht bei jeder Änderung an der Oberfläche:**
-- Ein neuer Baustein kommt an vier Stellen hinzu: in den Kopfkommentar der Vorlage, in die Stile seiner Ebene, auf die Bausteinseite (mit Daten der Reise oder einem als „Muster“ benannten Wert) und in `docs/design.md`. Zeigt er eine Grundform, kommt er außerdem in `ONTOLOGIE`.
+- Ein neuer Baustein kommt an vier Stellen hinzu: in den Kopfkommentar der Vorlage, in die Stile seiner Ebene, auf die Bausteinseite (mit Daten der Reise oder einem als „Muster“ benannten Wert) und in `docs/design.md`. Zeigt er eine Grundform, kommt er außerdem in `GRUNDFORMEN`. Die vier Stellen prüft `engine/tests/test_design.py` (seit 29.10.2026): Kopfkommentar und `docs/design.md` sind dieselbe Liste, die Bausteinseite zeichnet jeden Baustein, `GRUNDFORMEN` nennt nur Bausteine der Liste.
 - Zeichnet eine Ansicht etwas selbst, was ein Baustein schon kann, ist das ein Fehler und wird vor dem Zusammenführen umgebaut.
 
 ## Begründung
@@ -34,9 +34,10 @@ Die Oberfläche folgt Brad Frosts Atomic Design. Dazu kommt die Abbildung der On
 - Neue Ansichten brauchen vorab etwas mehr Überlegung, welcher Baustein passt.
 - Die Vorlage bleibt eine Datei. Die Ebenen sind Abschnitte darin, keine eigenen Module.
 - Umbauten ohne sichtbare Änderung werden mit `seiten_browser.mjs` und `stil_abzug.mjs` belegt (`docs/design.md`, Bausteinseite und Prüfung).
-- Mit frieda-reist #87 nachgezogen: „Zu entscheiden“ und „Zu buchen“ nutzen `listenZeile` und `chip`. `nachtAbschnitt`, `zuEntscheiden` und `zuBuchen` stehen im Inventar, in `ONTOLOGIE` und auf der Bausteinseite.
+- Mit frieda-reist #87 nachgezogen: „Zu entscheiden“ und „Zu buchen“ nutzen `listenZeile` und `chip`. `nachtAbschnitt`, `zuEntscheiden` und `zuBuchen` stehen im Inventar und auf der Bausteinseite.
 
 ## Verlauf
 
+- 29.10.2026: Abgleich (`docs/abgleich-2026-10-29.md`): Die Seite kannte die Art „wandern“ noch an sieben Stellen und die Arten „flug“ und „faehre“ in Legende und Linienstil; jetzt entscheidet allein `summiert` der Art. Buchungsstand, Datum, Zustand einer Wahl, Zählmarke, Terminzeile und Kontakt sind je ein Baustein statt mehrfach gezeichnet; Radien und Schatten kommen aus Tokens; die drei Bausteinlisten sind eine Liste, die Bausteinseite zeichnet jeden Baustein, ein Test prüft die vier Stellen.
 - 26.10.2026: Designsystem nach Atomic Design (frieda-reist #18), Stilblock nach Ebenen geordnet.
 - 28.10.2026: Als ADR festgehalten auf Wunsch des Product Owners. Zuerst als ADR 0001 angelegt; umnummeriert zu 0002, weil am selben Tag ADR-0001 „Der Kern“ entstand.

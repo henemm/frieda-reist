@@ -4,6 +4,7 @@
   "etappen_dossier": "inhalt/etappen.md",
   "unterkuenfte_dossier": "inhalt/unterkuenfte.md",
   "bilder_max_breite": 1600,
+  "etappen_ebenen": {"unterwegs": ["Höhenprofil", "Wegpunkte", "Unterkünfte", "Unterkunft", "Kontakte", "Wasser", "Einkehr", "Verpflegung", "Anfahrt", "Abfahrt", "Praktisch"]},
   "abschnitte": {
     "inhalt/etappen.md": {
       "Übersicht": ["W-01", "uebersicht"]

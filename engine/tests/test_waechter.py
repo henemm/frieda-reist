@@ -40,10 +40,10 @@ class Reise:
         if geprueft:   # Prüfdatum für den Preis von U-01 (veränderliche Angabe)
             r = quelle / "plan" / "routen.yaml"
             text = r.read_text(encoding="utf-8")
-            alt = '- {wert: "120 €", notiz: "Beispielwert, erfunden"}'    # Hauptwert; der Eintrag für den 15.5. bleibt ungeprüft
+            alt = '- {wert: "120 €", quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}'    # Hauptwert; der Eintrag für den 15.5. bleibt ungeprüft
             assert alt in text
             r.write_text(text.replace(
-                alt, f'- {{wert: "120 €", notiz: "Beispielwert, erfunden", geprueft: {geprueft}, quelle: "https://beispiel.invalid/u1"}}'),
+                alt, f'- {{wert: "120 €", quelle: "https://beispiel.invalid/u1", geprueft: {geprueft}, notiz: "Beispielwert, erfunden"}}'),
                 encoding="utf-8")
         self.seiten = tmp / "seiten"
         bauen.bauen(quelle, self.seiten / "beispielreise")
@@ -115,7 +115,7 @@ def test_zu_pruefen_findet_nie_und_lange_nicht_gepruefte(reise):
     spaeter = wa.zu_pruefen(d, D(2027, 1, 15), 60)
     alt = next(t for t in spaeter if (t["bezug"], t["merkmal"], t["wert"]) == ("U-01", "preis", "120 €"))
     assert alt["alter_tage"] == 87 and "vor 87 Tagen" in alt["grund"] and alt["quelle"] == "https://beispiel.invalid/u1"
-    assert spaeter[-1] is alt
+    assert alt in spaeter and all(t["alter_tage"] is None or t["alter_tage"] <= 87 for t in spaeter[spaeter.index(alt):])   # die ältesten zuerst
     # eine längere Frist lässt sie wieder zu
     assert "120 €" not in {t["wert"] for t in wa.zu_pruefen(d, D(2027, 1, 15), 90) if t["merkmal"] == "preis"}
 
@@ -271,7 +271,7 @@ def test_lauf_schreibt_sammelnachricht_nur_fuer_den_kanal_nachricht(reise, tmp_p
     datei = tmp_path / "bericht.txt"
     assert wa.main(["lauf", "beispielreise", "--heute", "2026-11-09", "--bericht", str(datei)]) == 0
     aus = capsys.readouterr().out
-    assert "beispielreise: 11 neue Meldung(en), 10 Angabe(n) zu prüfen" in aus and "Prüfauftrag" not in aus
+    assert "beispielreise: 12 neue Meldung(en), 11 Angabe(n) zu prüfen" in aus and "Prüfauftrag" not in aus   # seit 29.10.2026 auch die Adresse von U-01
     text = datei.read_text(encoding="utf-8")
     assert "Karl: Frist in 1 Tag(en)" in text and "Ida: U-01 " in text and "nachschlagen" in text
     # zweiter Lauf am selben Tag: nichts Neues, keine Nachricht
@@ -339,11 +339,11 @@ def test_json_der_meldungen_bleibt_lesbar(reise):
 
 
 def test_zu_pruefen_laesst_ausgeschaltete_merkmale_aus():
-    """ADR-0001, Paket O-0: Merkmale mit Stufe aus (je Reise, auch je Unterkunftstyp) prüft der Wächter nicht."""
+    """ADR-0001, Paket O-0: Merkmale mit Stufe aus (je Reise, auch je Art) prüft der Wächter nicht."""
     preis = {"id": "preis", "name": "Preis", "veraenderlich": True, "stufe": {"*": "aus", "refugi": "empfohlen"}}
-    d = {"route": {"wahlstellen": [], "merkmale": {"unterkunft": [preis]},   # Merkmale je Art (hier eine Art „unterkunft“)
-                   "unterkuenfte": {"U-1": {"art": "unterkunft", "typ": "Hotel", "naechte": ["T-01"], "merkmale": {"preis": {"wert": "1 €"}}},
-                                    "U-2": {"art": "unterkunft", "typ": "Refugi", "naechte": ["T-02"], "merkmale": {"preis": {"wert": "2 €"}}}}}}
+    d = {"route": {"wahlstellen": [], "merkmale": {"hotel": [preis], "refugi": [preis]},   # Merkmale je Art
+                   "unterkuenfte": {"U-1": {"art": "hotel", "naechte": ["T-01"], "merkmale": {"preis": {"wert": "1 €"}}},
+                                    "U-2": {"art": "refugi", "naechte": ["T-02"], "merkmale": {"preis": {"wert": "2 €"}}}}}}
     assert [t["bezug"] for t in wa.zu_pruefen(d, D(2026, 11, 1), 60)] == ["U-2"]
     preis["stufe"] = "aus"
     assert wa.zu_pruefen(d, D(2026, 11, 1), 60) == []
@@ -360,3 +360,35 @@ def test_erinnerer_meldet_fristen_von_buchungen(reise):
     assert not [m for m in r.lauf(D(2027, 5, 11))["meldungen"] if m["art"] == "erinnerung"]   # nicht doppelt
     ueber = [m for m in r.lauf(D(2027, 5, 15))["meldungen"] if m["art"] == "erinnerung"]
     assert len(ueber) == 1 and "Überfällig seit 2 Tag(en): Ticket in die App laden zur Buchung B-02" in ueber[0]["text"] and ueber[0]["an"] == ["Karl"]
+
+
+def test_zu_pruefen_auch_strecken_aufenthalte_und_lage():
+    """Abgleich 29.10.2026: Der Wächter prüft alle Aussagen mit Prüfdatum, auch an Strecken im Plan, an Aufenthalten ohne Nacht
+    und die Lage (Adresse, Punkt; ADR-0004), nicht nur Unterkünfte und Optionen."""
+    verkehrt = {"id": "verkehrt", "name": "Fährt", "veraenderlich": True}
+    eintritt = {"id": "eintritt", "name": "Eintritt", "typ": "geld", "veraenderlich": True}
+    d = {"route": {"wahlstellen": [], "merkmale": {"bahn": [verkehrt], "besichtigung": [eintritt], "hotel": []},
+                   "unterkuenfte": {"U-1": {"art": "hotel", "naechte": ["T-01"], "merkmale": {},
+                                            "adresse": {"wert": "Straße 1", "quelle": "x"}, "punkt": {"wert": [1, 2], "quelle": "x", "geprueft": "2026-10-20"}}},
+                   "aufenthalte": {"A-1": {"art": "besichtigung", "tage": ["T-02"], "merkmale": {"eintritt": {"wert": "6 €"}}},
+                                   "A-2": {"art": "besichtigung", "tage": [], "merkmale": {"eintritt": {"wert": "9 €"}}}},
+                   "strecken": {"E-1": {"titel": "Bahn", "art": "bahn", "art_schluessel": "bahn", "merkmale": {"verkehrt": {"wert": "stündlich"}}},
+                                "E-2": {"titel": "Bahn alt", "art": "bahn", "art_schluessel": "bahn", "merkmale": {"verkehrt": {"wert": "x"}}}},
+                   "aktiv_strecken": ["E-1"]}}
+    t = wa.zu_pruefen(d, D(2026, 11, 1), 60)
+    assert sorted((x["bezug"], x["merkmal"]) for x in t) == [("A-1", "eintritt"), ("E-1", "verkehrt"), ("U-1", "adresse")]
+    assert next(x for x in t if x["bezug"] == "U-1")["name"] == "Adresse" and next(x for x in t if x["bezug"] == "E-1")["grund"] == "noch nie geprüft"
+    # Punkt mit frischem Prüfdatum und Dinge außerhalb des Plans (A-2, E-2) bleiben still
+    assert wa.zu_pruefen(d, D(2026, 12, 25), 60)[-1]["merkmal"] == "punkt"
+
+
+def test_erinnerer_meldet_ab_termin_einer_buchung(reise, tmp_path):
+    """Issue #135: „ab“ an einer Buchung (Check-in öffnet) meldet der Erinnerer einmal, sobald der Tag da ist, an die Person, die gebucht hat."""
+    r = reise()
+    d = json.loads((r.seiten / "beispielreise" / "daten.json").read_text(encoding="utf-8"))
+    d["route"]["buchungen"]["B-02"].update({"ab": "2027-05-12", "ab_was": "Online-Check-in"})
+    (r.seiten / "beispielreise" / "daten.json").write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    assert not [m for m in r.lauf(D(2027, 5, 11))["meldungen"] if "Jetzt möglich" in m["text"]]
+    ms = [m for m in r.lauf(D(2027, 5, 12))["meldungen"] if "Jetzt möglich" in m["text"]]
+    assert len(ms) == 1 and ms[0]["an"] == ["Karl"] and "Jetzt möglich (ab 12.5.2027): Online-Check-in zur Buchung B-02" in ms[0]["text"]
+    assert not [m for m in r.lauf(D(2027, 5, 13))["meldungen"] if "Jetzt möglich" in m["text"]]   # nicht doppelt

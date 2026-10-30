@@ -82,7 +82,6 @@ AKTIONEN = {
     "wunsch_einplanen": {"rolle": "organisator", "baustein": "wuensche", "ab": ("alles",)},
     "aufgabe":      {"rolle": "mitwirkend", "baustein": "aufgaben", "ab": ("alles", "nachlese")},
     "alternative":  {"rolle": "mitwirkend", "baustein": "varianten", "ab": ("alles",)},
-    "auftrag":      {"rolle": "organisator", "baustein": None, "ab": ("alles",)},
     # Paket C: Gespräch für alle. Entscheiden gilt für Wahlstellen (Baustein varianten); eine Antwort auf eine Frage
     # braucht den Baustein fragen; wer einladen darf, steht je Reise in regeln.einladen (hier nur die Vorgabe).
     "entscheiden":  {"rolle": "organisator", "baustein": "varianten", "ab": ("alles",)},
@@ -113,7 +112,6 @@ AKTIONEN = {
 LESE_BAUSTEIN = {"offene_fragen": "fragen", "varianten": "varianten", "merkmale": "varianten",
                  "aufgaben": "aufgaben", "rueckmeldungen": "rueckmeldungen", "wuensche": "wuensche"}
 ENTSCHEIDUNGEN = ("gewaehlt", "verworfen", "ersetzt")
-REISE_ZIEL = "reise"    # Aufträge an dieses Ziel (Status, Einstellungen) gehen in jedem Status
 
 
 def verhalten(status):
@@ -139,11 +137,11 @@ def erlaubt(aktion, rolle, status, bausteine, ziel=None, regeln=None):
     if a["baustein"] and bausteine is not None and a["baustein"] not in bausteine:
         return False, f"Der Baustein „{a['baustein']}“ ist bei dieser Reise ausgeschaltet."
     schreiben = verhalten(status)["schreiben"]
-    if schreiben not in a["ab"] and not (aktion == "auftrag" and ziel == REISE_ZIEL):
+    if schreiben not in a["ab"]:
         grund = {"nachlese": "Die Reise ist vorbei (Status danach): Der Plan ist schreibgeschützt, nur Rückmeldungen und "
                              "Aufgaben gehen noch.",
                  "nichts": "Die Reise ist archiviert: Es kann nur gelesen werden."}[schreiben]
-        return False, grund + " Ein:e Organisator:in kann den Status zurücksetzen (Auftrag an „reise“)."
+        return False, grund + " Ein:e Organisator:in kann den Status zurücksetzen (reise_status_setzen)."
     return True, ""
 
 
@@ -309,6 +307,16 @@ class Reise:
         e["untertitel"] = e.get("untertitel") or ""
         return e
 
+    def verlauf(self):
+        """Verlauf der Eckdaten (reise_aendern, 29.10.2026): [{datum, wer, was, grund}]; Status und Einstellungen haben ihren eigenen."""
+        v = self.r.get("verlauf")
+        if v is None:
+            return []
+        if not isinstance(v, list) or any(not isinstance(e, dict) or not isinstance(e.get("datum"), datetime.date) or not e.get("wer") for e in v):
+            self.fehl("verlauf: Liste von {datum: JJJJ-MM-TT, wer: …, was: …, grund: …}.")
+            return []
+        return [{**e, "datum": e["datum"].isoformat()} for e in v]
+
     def zeitraum(self):
         """Zeitraum der Reise {von, bis} (ISO), schon vor dem Plan; fehlt er, None."""
         z = self.r.get("zeitraum")
@@ -470,9 +478,10 @@ class Reise:
         """-> Eintrag „reise“ für daten.json; Fehler stehen danach in self.fehler."""
         if not self.alt:
             for k in self.r:
-                if k not in ALTE_ECKDATEN + ("zeitraum", "status", "personen", "bausteine", "regeln", "darstellung"):
+                if k not in ALTE_ECKDATEN + ("zeitraum", "status", "personen", "bausteine", "regeln", "darstellung", "verlauf"):
                     self.fehl(f"unbekannter Schlüssel „{k}“.")
         d = self.eckdaten()
+        d["verlauf"] = self.verlauf()
         d.update(self.darstellung())
         d["zeitraum"] = None if self.alt else self.zeitraum()
         d["status"] = self.status()

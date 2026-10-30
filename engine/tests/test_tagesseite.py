@@ -53,7 +53,7 @@ def test_tagesseite_in_ebenen(tmp_path, browser):
         assert a["breit"] == [] and not a["breitNachTabelle"], (breite, a["breit"])
         assert a["kaesten"] == 1 and a["flaeche"], breite                       # ein Kasten: der Tageskasten
         assert a["planChips"] == [], a["planChips"]                             # Plan gewählt: der Tag nennt keine Pläne
-        assert a["aufenthalte"] == [["Burg Hohnstein", "Buchung: offen"]], a["aufenthalte"]   # Aufenthalt ohne Nacht am Ziel (O-5)
+        assert a["aufenthalte"] == [["Burg Hohnstein", "nicht gebucht"]], a["aufenthalte"]   # Aufenthalt ohne Nacht am Ziel (O-5)
         assert a["reiter"] == ["Eckdaten", "Wegpunkte", "Unterkünfte"], a["reiter"]
         assert a["offen"] == ["E-01.eckdaten"] and a["kennungImKopf"] == ["E-01.eckdaten"]
         assert a["nachKlick"] == ["E-01.unterkuenfte-liste"] and a["kennungNachKlick"] == ["E-01.unterkuenfte-liste"]

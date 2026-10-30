@@ -65,10 +65,16 @@ def test_uhrzeiten_und_fristen(daten):
 def test_ende_vor_beginn_ist_am_tag_danach():
     d = {"route": {"tage": [{"id": "T-01", "nr": 1, "datum": "2027-05-13", "titel": "Nachtfähre", "strecken": [{"id": "E-01", "wahl": None}],
                              "aufenthalte": [], "nacht": None}],
-                   "strecken": {"E-01": {"titel": "Nachtfähre", "von": "O-01", "nach": "O-02", "beginn": "22:30", "ende": "07:15"}},
+                   "strecken": {"E-01": {"titel": "Nachtfähre", "von": "O-01", "nach": "O-02", "ab": "22:30", "an": "07:15"}},
                    "orte": {"O-01": {"name": "Hafen A"}, "O-02": {"name": "Hafen B"}}}}
     s = nach_uid(d)["E-01-2027-05-13"]
     assert s["ende"] == datetime.datetime(2027, 5, 14, 7, 15)
+    # Zeitpunkt mit Zeitzone (#135): steht als UTC in der Datei
+    d["route"]["strecken"]["E-01"].update(ab="2027-05-13T22:30+02:00", an="2027-05-14T07:15+02:00")
+    t = kalender.ics(d, "beispielreise", jetzt=JETZT)
+    assert "DTSTART:20270513T203000Z" in t and "DTEND:20270514T051500Z" in t
+    d["route"]["strecken"]["E-01"]["an"] = "07:15"          # verschiedene Form: kein Ende
+    assert nach_uid(d)["E-01-2027-05-13"]["ende"] is None
 
 
 def test_ics_datei(daten):
@@ -104,10 +110,10 @@ def test_uhrzeit_im_modell_wird_geprueft(tmp_path):
     shutil.copytree(BEISPIEL, q)
     p = q / "plan" / "routen.yaml"
     text = p.read_text(encoding="utf-8")
-    p.write_text(text.replace('beginn: "08:12"', 'beginn: "8 Uhr"'), encoding="utf-8")
+    p.write_text(text.replace('beginn: "16:00"', 'beginn: "16 Uhr"'), encoding="utf-8")
     with pytest.raises(bauen.BauFehler, match="beginn muss eine Uhrzeit HH:MM"):
         bauen.bauen(q, tmp_path / "ziel")
-    p.write_text(text.replace('beginn: "08:12", ', ""), encoding="utf-8")
+    p.write_text(text.replace('beginn: "16:00"', ""), encoding="utf-8")
     with pytest.raises(bauen.BauFehler, match="ende ohne beginn"):
         bauen.bauen(q, tmp_path / "ziel")
 
