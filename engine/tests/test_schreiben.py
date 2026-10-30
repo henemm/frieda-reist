@@ -933,7 +933,7 @@ def test_aufenthalt_ohne_nacht_anlegen_an_den_tag_haengen_und_buchen(repo):
     assert a["ok"]
     r, _ = routen_auf_main(origin)
     assert r["tage"]["T-04"]["aufenthalte"] == ["A-02"] and "buchung" not in r["aufenthalte"]["A-02"]
-    assert r["buchungen"]["B-03"]["fuer"] == ["A-02"] and r["buchungen"]["B-03"]["status"] == "gebucht"
+    assert r["buchungen"]["B-04"]["fuer"] == ["A-02"] and r["buchungen"]["B-04"]["status"] == "gebucht"
     with pytest.raises(Exception, match="Aufenthalts-Art"):
         s.vorbereiten()
         s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "aufenthalt", "titel": "x", "ort": "O-05", "art": "bahn", "quelle": "x"}})
@@ -953,24 +953,24 @@ def test_buchung_anlegen_und_aendern(repo):
         "fuer": "U-02, E-21", "status": "angefragt", "nummer": "P-7", "bei": "telefonisch", "preis": "85 €", "frist": "2027-01-15",
         "frist_was": "Anzahlung überweisen", "storno": "kostenlos bis 14 Tage vorher", "storno_bis": "2027-05-01",
         "quelle": "Telefonat mit der Pension am 29.10.2026", "notiz": "Zimmer zur Burg"}}, )
-    assert a["ok"] and a["text"].startswith("Buchung B-03 angelegt (angefragt) für U-02 Pension Burgblick, E-21 S-Bahn Bad Schandau → Dresden, Nr. P-7, bei telefonisch")
-    assert a["id"] == "B-03"   # die neue ID, damit der Konnektor den Beleg gleich anhängen kann (Issue #135)
+    assert a["ok"] and a["text"].startswith("Buchung B-04 angelegt (angefragt) für U-02 Pension Burgblick, E-21 S-Bahn Bad Schandau → Dresden, Nr. P-7, bei telefonisch")
+    assert a["id"] == "B-04"   # die neue ID, damit der Konnektor den Beleg gleich anhängen kann (Issue #135)
     assert "Frist 15.1.2027 (Anzahlung überweisen)" in a["text"] and "Storno: kostenlos bis 14 Tage vorher (bis 1.5.2027)" in a["text"]
     r, text = routen_auf_main(origin)
-    b = r["buchungen"]["B-03"]
+    b = r["buchungen"]["B-04"]
     assert b["fuer"] == ["U-02", "E-21"] and b["status"] == "angefragt" and b["nummer"] == "P-7" and b["wer"] == "Karl"
     assert b["frist"] == datetime.date(2027, 1, 15) and b["storno_bis"] == datetime.date(2027, 5, 1) and b["gebucht_am"] == datetime.date.today()
     assert b["quelle"] == "Telefonat mit der Pension am 29.10.2026" and b["verlauf"] == [{"datum": datetime.date.today(), "wer": "Karl", "was": "angelegt"}]
     assert "fuer: [U-02, E-21]" in text and "# Buchungen (B-…, #76)" in text   # Kommentare und Form bleiben
-    assert yaml.safe_load(datei_auf_main(origin, "ids.yaml"))["B"] == 3
+    assert yaml.safe_load(datei_auf_main(origin, "ids.yaml"))["B"] == 4
     # Ändern: Status gebucht, Frist weg, Nummer neu; Verlaufseintrag mit Person, Datum, Grund
     s.vorbereiten()
-    a = s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-03", "status": "gebucht", "frist": "", "nummer": "P-7/2027",
+    a = s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "status": "gebucht", "frist": "", "nummer": "P-7/2027",
                                                                           "grund": "Bestätigung ist da"}})
     # Felder in Worten, nicht als Schlüssel (Product Owner 29.10.2026)
     assert "Status „angefragt“ → „gebucht“" in a["text"] and "Frist entfernt (war „15.1.2027“)" in a["text"] and "Nummer „P-7“ → „P-7/2027“" in a["text"]
     r, _ = routen_auf_main(origin)
-    b = r["buchungen"]["B-03"]
+    b = r["buchungen"]["B-04"]
     assert b["status"] == "gebucht" and "frist" not in b and b["nummer"] == "P-7/2027"
     assert b["verlauf"][-1] == {"datum": datetime.date.today(), "wer": "Ida", "was": "Status; Nummer; Frist entfernt", "grund": "Bestätigung ist da"}
     # Mitwirkende ändern nur, was sie selbst eingetragen haben; Stornieren braucht einen Grund (Product Owner 29.10.2026)
@@ -979,23 +979,23 @@ def test_buchung_anlegen_und_aendern(repo):
         s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-01", "notiz": "x"}})
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="Stornieren braucht einen Grund"):
-        s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-03", "status": "storniert"}})
+        s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-04", "status": "storniert"}})
     # Der Buchungsstand der Dinge folgt der Buchung (Probebau liest sie)
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="Nichts zu ändern"):
-        s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-03", "status": "gebucht"}})
+        s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "status": "gebucht"}})
     with pytest.raises(sb.Ablehnung, match="gibt es nicht"):
         s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-09", "status": "storniert"}})
     with pytest.raises(sb.Ablehnung, match="„quelle“ darf nicht leer"):
-        s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-03", "quelle": ""}})
+        s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "quelle": ""}})
     with pytest.raises(sb.Ablehnung, match="nur lesen"):
-        s.schreiben("beispielreise", "buchung_aendern", {"person": "gast", "name": "Gast", "rolle": "gast", "args": {"ziel": "B-03", "status": "storniert"}})
+        s.schreiben("beispielreise", "buchung_aendern", {"person": "gast", "name": "Gast", "rolle": "gast", "args": {"ziel": "B-04", "status": "storniert"}})
     # Stornieren mit Grund durch die Person, die eingetragen hat (Karl); Organisator:innen dürfen jede Buchung
     s.vorbereiten()
-    a = s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-03", "status": "storniert", "grund": "Pension hat abgesagt"}})
+    a = s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-04", "status": "storniert", "grund": "Pension hat abgesagt"}})
     assert "Status „gebucht“ → „storniert“" in a["text"] and "Grund: Pension hat abgesagt" in a["text"]
     s.vorbereiten()
-    assert s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-03", "notiz": "von Ida"}})["ok"]
+    assert s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "notiz": "von Ida"}})["ok"]
 
 
 def test_gemeinsame_frage_bleibt_offen_bis_alles_gewaehlt(repo):
@@ -1458,14 +1458,14 @@ def test_buchung_mit_reisenden_preisen_und_ab_termin(repo):
     assert a["ok"] and "Reisende: Ida (Sitz 12A, 23 kg Gepäck), Karl" in a["text"] and "Preise: E-20 120 €, E-21 110 €" in a["text"] \
         and "Ab 13.5.2027 (Online-Check-in)" in a["text"]
     r, text = routen_auf_main(origin)
-    b = r["buchungen"]["B-03"]
+    b = r["buchungen"]["B-04"]
     assert b["personen"] == {"Ida": "Sitz 12A, 23 kg Gepäck", "Karl": ""} and b["preise"] == {"E-20": "120 €", "E-21": "110 €"}
     assert b["ab"] == datetime.date(2027, 5, 13) and b["ab_was"] == "Online-Check-in"
     s.vorbereiten()
-    a = s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-03", "personen": ["Karl"], "ab": "", "grund": "Ida fliegt nicht mit"}})
+    a = s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-04", "personen": ["Karl"], "ab": "", "grund": "Ida fliegt nicht mit"}})
     assert "Reisende" in a["text"] and "Ab entfernt" in a["text"]
     r, _ = routen_auf_main(origin)
-    assert r["buchungen"]["B-03"]["personen"] == {"Karl": ""} and "ab" not in r["buchungen"]["B-03"] and "ab_was" not in r["buchungen"]["B-03"]
+    assert r["buchungen"]["B-04"]["personen"] == {"Karl": ""} and "ab" not in r["buchungen"]["B-04"] and "ab_was" not in r["buchungen"]["B-04"]
 
 
 def test_strecke_mit_zeiten_und_ort_ausserhalb(repo):

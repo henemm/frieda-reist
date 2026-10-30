@@ -24,7 +24,7 @@ IDA, MAX, KARL, KIM = "i" * 32, "x" * 32, "k" * 32, "q" * 32
 ALLE_BAUSTEINE = ["varianten", "karte", "tagesseiten", "rueckmeldungen", "fragen", "aufgaben", "wuensche"]
 
 
-def reise_bauen(tmp, status="planung", bausteine=None, luecke=False, regeln=None, darstellung=None):
+def reise_bauen(tmp, status="planung", bausteine=None, luecke=False, regeln=None, darstellung=None, fest=False):
     """Beispielreise mit gewünschtem Status, Bausteinen und Darstellung bauen; Max als zweite Organisator:in, Kim als Gast.
     -> Seitenordner (<seiten>/beispielreise/daten.json)"""
     quelle = tmp / "quelle"
@@ -45,6 +45,11 @@ def reise_bauen(tmp, status="planung", bausteine=None, luecke=False, regeln=None
     if luecke:   # Start in einem anderen Ort: der Plan geht nicht auf (Warnung)
         r = quelle / "plan" / "routen.yaml"
         r.write_text(r.read_text(encoding="utf-8").replace("ort: O-01}", "ort: O-03}", 1), encoding="utf-8")
+    if fest:     # Plan A gewählt (V-01.a): der Plan steht fest, die Seite hat Tagesseiten
+        r = quelle / "plan" / "routen.yaml"
+        alt = '{datum: 2026-10-20, status: vorgeschlagen, wer: Claude, grund: "kürzeste Verbindung zum Bahnhof"}'
+        r.write_text(r.read_text(encoding="utf-8").replace(
+            alt, alt + '\n          - {datum: 2026-10-25, status: gewaehlt, wer: Ida, grund: "Test"}', 1), encoding="utf-8")
     seiten = tmp / "seiten"
     bauen.bauen(quelle, seiten / "beispielreise")
     return seiten

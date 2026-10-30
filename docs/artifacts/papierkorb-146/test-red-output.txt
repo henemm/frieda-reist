@@ -1,0 +1,216 @@
+........................................................................ [ 11%]
+........................................................................ [ 22%]
+........................................................................ [ 33%]
+........................................................................ [ 44%]
+........................................................................ [ 55%]
+........................................................................ [ 67%]
+........................................................................ [ 78%]
+........................................................................ [ 89%]
+.....FF......FFF...................................................      [100%]
+=================================== FAILURES ===================================
+_______________ test_alle_ansichten_der_beispielreise[chromium] ________________
+
+tmp_path = PosixPath('<tmp>/test_alle_ansichten_der_beispi0')
+browser = 'chromium'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])   # webkit = Safari auf iPhone und iPad
+    def test_alle_ansichten_der_beispielreise(tmp_path, browser):
+        ziel = tmp_path / "web" / "beispiel"
+        if os.environ.get("RH_BILDER"):   # Bilder der Bausteinseite zur Durchsicht (in GitHub Actions als Artefakt)
+            Path(os.environ["RH_BILDER"]).mkdir(parents=True, exist_ok=True)
+        bauen.bauen(WURZEL / "beispiel/reisen/beispielreise", ziel)
+    
+        class Handler(http.server.SimpleHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+    
+        s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(tmp_path / "web")))
+        threading.Thread(target=s.serve_forever, daemon=True).start()
+        try:
+            aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_browser.mjs"), str(PLAYWRIGHT),
+                                  f"http://127.0.0.1:{s.server_address[1]}/beispiel/", str(tmp_path / "dom.json")],
+                                 capture_output=True, text=True, timeout=300, env={**os.environ, "RH_BROWSER": browser})
+        finally:
+            s.shutdown()
+        assert aus.returncode == 0, aus.stderr[-2000:]
+        e = json.loads(aus.stdout.strip().splitlines()[-1])
+        assert e["routen"] > 100
+        assert e["fehler"] == []
+        assert e["leer"] == []
+        assert e["breit"] == []          # keine Ansicht steht auf dem Handy seitlich über
+        assert e["schrift"] == {}        # jeder Text hat eine Stufe der Schriftleiter (Größe -> Ansicht und Element)
+        assert e["ohneArt"] == []        # jede Kennung gehört einer Art der Ontologie mit Bausteinen an
+        # Wahl-Modul: öffnet an der Stelle, zeigt mindestens 2 Möglichkeiten (Handy als Karten, höchstens 2; Rechner als Tabelle
+        # mit allen gültigen, sortierbar, Zeile klappt auf; Alternativen D1, 29.10.2026)
+        for breite, v in e["vergleich"].items():
+            assert v["sichtbar"] and v["offen"] == "true", (breite, v)
+            assert 2 <= v["spalten"] and (int(breite) >= 700 or v["spalten"] <= 2), (breite, v)
+            if int(breite) >= 700:
+                assert v["sortiert"] == 1 and v["aufgeklappt"] == 1 and v["falscheSpalten"] == [], (breite, v)
+                ez = v["einzelheiten"]
+                assert ez["doppelt"] == 0 and not ez["fehlertext"] and not ez["nummern"] and not ez["springt"], (breite, ez)
+                assert ez["kursiv"] == "normal" and ez["ohneNummern"] == "|zu teuer" and ez.get("herkunft", True), (breite, ez)
+        assert set(e["vergleich"]) == {"390", "1200"}
+        # Leiste als App: bleibt unten, wenn iOS die Höhe nach der Tastatur vergisst (800 statt 500 px), mit Tastatur über
+        # ihr; im Browser ändert sich nichts (Abstand unten 12 px)
+        a, w = e["leiste"]["app"], e["leiste"]["browser"]
+        assert a["start"] == a["klein"] == a["zu"] == a["voll"] == 788, a
+        assert a["tippt"] == 488, a
+        assert w == {"start": 788, "klein": 488, "tippt": 488, "zu": 488, "voll": 788}, w
+        dom = json.loads((tmp_path / "dom.json").read_text(encoding="utf-8"))
+        # Wert je Datum: die Unterkunft zeigt beide Einträge; Herkunft steht hinter dem i, nicht im Text
+        u01 = dom["1200#U-01"]
+        assert "15.5.: " in u01 and "sonst: " in u01 and "140 €" in u01
+        assert 'class="mk-i"' in u01 and '<span class="mk-q" role="tooltip" hidden="">Beispielwert, erfunden' in u01
+        # Regeln und Anschluss (Paket 4): an der Wahlstelle stehen „Setzt voraus“ und die berechnete Lücke der erfundenen V-01.c
+        v01 = dom["1200#V-01"]
+        assert "Setzt voraus: " in v01 and "Schließt aus: " in v01 and "(im Plan)" in v01
+        assert '<span class="mk-luecke">Lücke am Anfang: Altendorf → Bad Schandau</span>' in v01
+        # Bausteinseite: alle Ebenen, keine Sprungziele (die echten Stellen bleiben eindeutig), kein „null“
+        b = dom["1200#bausteine"]
+        for teil in ("Atom · Zustand", "Atom · Wert", "Molekül · Listenzeile", "Molekül · Frage als Zeile", "Molekül · Rückmeldung", "Molekül · Aufgabe", "Molekül · Wunschkarte", "Molekül · Kennzahlenleiste", "Organismus · Wahl-Modul", "Organismus · Tageskasten",
+                     "Ontologie · Grundform → Bausteine", "Atom · Etikett", "Molekül · Reisetext: Tabellen", "Molekül · Reiter", "Organismus · Tageskasten der Tagesseite", "Vorlage · Tageskachel", "Molekül · Kapitel", "Organismus · Karte der Reise",
+                     "Molekül · Stornierte Buchungen"):
+>           assert teil in b, teil
+E           AssertionError: Molekül · Stornierte Buchungen
+E           assert 'Molekül · Stornierte Buchungen' in '<main id="main" class="pico"><h2>Bausteine</h2><p class="meldung">Alle Bausteine dieser Seite mit den Daten der Reise...igt die Übernachtungen, Linie antippen öffnet die Etappe.</p><div class="karte" aria-live="polite"></div></div></main>'
+
+engine/tests/test_seite.py:82: AssertionError
+________________ test_alle_ansichten_der_beispielreise[webkit] _________________
+
+tmp_path = PosixPath('<tmp>/test_alle_ansichten_der_beispi1')
+browser = 'webkit'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])   # webkit = Safari auf iPhone und iPad
+    def test_alle_ansichten_der_beispielreise(tmp_path, browser):
+        ziel = tmp_path / "web" / "beispiel"
+        if os.environ.get("RH_BILDER"):   # Bilder der Bausteinseite zur Durchsicht (in GitHub Actions als Artefakt)
+            Path(os.environ["RH_BILDER"]).mkdir(parents=True, exist_ok=True)
+        bauen.bauen(WURZEL / "beispiel/reisen/beispielreise", ziel)
+    
+        class Handler(http.server.SimpleHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+    
+        s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(tmp_path / "web")))
+        threading.Thread(target=s.serve_forever, daemon=True).start()
+        try:
+            aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_browser.mjs"), str(PLAYWRIGHT),
+                                  f"http://127.0.0.1:{s.server_address[1]}/beispiel/", str(tmp_path / "dom.json")],
+                                 capture_output=True, text=True, timeout=300, env={**os.environ, "RH_BROWSER": browser})
+        finally:
+            s.shutdown()
+        assert aus.returncode == 0, aus.stderr[-2000:]
+        e = json.loads(aus.stdout.strip().splitlines()[-1])
+        assert e["routen"] > 100
+        assert e["fehler"] == []
+        assert e["leer"] == []
+        assert e["breit"] == []          # keine Ansicht steht auf dem Handy seitlich über
+        assert e["schrift"] == {}        # jeder Text hat eine Stufe der Schriftleiter (Größe -> Ansicht und Element)
+        assert e["ohneArt"] == []        # jede Kennung gehört einer Art der Ontologie mit Bausteinen an
+        # Wahl-Modul: öffnet an der Stelle, zeigt mindestens 2 Möglichkeiten (Handy als Karten, höchstens 2; Rechner als Tabelle
+        # mit allen gültigen, sortierbar, Zeile klappt auf; Alternativen D1, 29.10.2026)
+        for breite, v in e["vergleich"].items():
+            assert v["sichtbar"] and v["offen"] == "true", (breite, v)
+            assert 2 <= v["spalten"] and (int(breite) >= 700 or v["spalten"] <= 2), (breite, v)
+            if int(breite) >= 700:
+                assert v["sortiert"] == 1 and v["aufgeklappt"] == 1 and v["falscheSpalten"] == [], (breite, v)
+                ez = v["einzelheiten"]
+                assert ez["doppelt"] == 0 and not ez["fehlertext"] and not ez["nummern"] and not ez["springt"], (breite, ez)
+                assert ez["kursiv"] == "normal" and ez["ohneNummern"] == "|zu teuer" and ez.get("herkunft", True), (breite, ez)
+        assert set(e["vergleich"]) == {"390", "1200"}
+        # Leiste als App: bleibt unten, wenn iOS die Höhe nach der Tastatur vergisst (800 statt 500 px), mit Tastatur über
+        # ihr; im Browser ändert sich nichts (Abstand unten 12 px)
+        a, w = e["leiste"]["app"], e["leiste"]["browser"]
+        assert a["start"] == a["klein"] == a["zu"] == a["voll"] == 788, a
+        assert a["tippt"] == 488, a
+        assert w == {"start": 788, "klein": 488, "tippt": 488, "zu": 488, "voll": 788}, w
+        dom = json.loads((tmp_path / "dom.json").read_text(encoding="utf-8"))
+        # Wert je Datum: die Unterkunft zeigt beide Einträge; Herkunft steht hinter dem i, nicht im Text
+        u01 = dom["1200#U-01"]
+        assert "15.5.: " in u01 and "sonst: " in u01 and "140 €" in u01
+        assert 'class="mk-i"' in u01 and '<span class="mk-q" role="tooltip" hidden="">Beispielwert, erfunden' in u01
+        # Regeln und Anschluss (Paket 4): an der Wahlstelle stehen „Setzt voraus“ und die berechnete Lücke der erfundenen V-01.c
+        v01 = dom["1200#V-01"]
+        assert "Setzt voraus: " in v01 and "Schließt aus: " in v01 and "(im Plan)" in v01
+        assert '<span class="mk-luecke">Lücke am Anfang: Altendorf → Bad Schandau</span>' in v01
+        # Bausteinseite: alle Ebenen, keine Sprungziele (die echten Stellen bleiben eindeutig), kein „null“
+        b = dom["1200#bausteine"]
+        for teil in ("Atom · Zustand", "Atom · Wert", "Molekül · Listenzeile", "Molekül · Frage als Zeile", "Molekül · Rückmeldung", "Molekül · Aufgabe", "Molekül · Wunschkarte", "Molekül · Kennzahlenleiste", "Organismus · Wahl-Modul", "Organismus · Tageskasten",
+                     "Ontologie · Grundform → Bausteine", "Atom · Etikett", "Molekül · Reisetext: Tabellen", "Molekül · Reiter", "Organismus · Tageskasten der Tagesseite", "Vorlage · Tageskachel", "Molekül · Kapitel", "Organismus · Karte der Reise",
+                     "Molekül · Stornierte Buchungen"):
+>           assert teil in b, teil
+E           AssertionError: Molekül · Stornierte Buchungen
+E           assert 'Molekül · Stornierte Buchungen' in '<main id="main" class="pico"><h2>Bausteine</h2><p class="meldung">Alle Bausteine dieser Seite mit den Daten der Reise...igt die Übernachtungen, Linie antippen öffnet die Etappe.</p><div class="karte" aria-live="polite"></div></div></main>'
+
+engine/tests/test_seite.py:82: AssertionError
+____________ test_stornierte_buchung_eingeklappt_am_ding[chromium] _____________
+
+tmp_path = PosixPath('<tmp>/test_stornierte_buchung_eingek0')
+browser = 'chromium'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    def test_stornierte_buchung_eingeklappt_am_ding(tmp_path, browser):
+        """#146: Eine stornierte Buchung (B-03 an U-01) steht nicht mehr voll da, sondern an ihrem Ding im zugeklappten Block
+        „Storniert (1)“ mit Hinweis zum Zurückholen; die geltende B-01 steht voll da. #B-03 öffnet den Block. Geprüft im Plan
+        (Plan noch offen), mit Tagesseiten (Plan A fest) und ohne Tagesseiten (darstellung.tiefe)."""
+        for name, variante in (("plan", {}), ("fest", {"fest": True}), ("tiefe", {"darstellung": {"tiefe": True}})):
+            e = seite_der_variante(tmp_path / name, browser, **variante)
+            # AC-1, AC-2: an jedem Ding mit B-01 steht B-01 voll, B-03 nur im zugeklappten Block „Storniert (1)“, unsichtbar
+            s = e["stornoB01"]
+            assert s["b01"], (name, s)
+            for o in s["b01"]:
+                assert o["sichtbar"] and not o["imBlock"], (name, o)
+>               assert len(o["bloecke"]) == 1 and o["b03Draussen"] == 0, (name, o)
+E               AssertionError: ('plan', {'ding': 'T-01', 'sichtbar': True, 'imBlock': False, 'bloecke': [], ...})
+E               assert (0 == 1)
+E                +  where 0 = len([])
+
+engine/tests/test_seite.py:182: AssertionError
+_____________ test_stornierte_buchung_eingeklappt_am_ding[webkit] ______________
+
+tmp_path = PosixPath('<tmp>/test_stornierte_buchung_eingek1')
+browser = 'webkit'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    def test_stornierte_buchung_eingeklappt_am_ding(tmp_path, browser):
+        """#146: Eine stornierte Buchung (B-03 an U-01) steht nicht mehr voll da, sondern an ihrem Ding im zugeklappten Block
+        „Storniert (1)“ mit Hinweis zum Zurückholen; die geltende B-01 steht voll da. #B-03 öffnet den Block. Geprüft im Plan
+        (Plan noch offen), mit Tagesseiten (Plan A fest) und ohne Tagesseiten (darstellung.tiefe)."""
+        for name, variante in (("plan", {}), ("fest", {"fest": True}), ("tiefe", {"darstellung": {"tiefe": True}})):
+            e = seite_der_variante(tmp_path / name, browser, **variante)
+            # AC-1, AC-2: an jedem Ding mit B-01 steht B-01 voll, B-03 nur im zugeklappten Block „Storniert (1)“, unsichtbar
+            s = e["stornoB01"]
+            assert s["b01"], (name, s)
+            for o in s["b01"]:
+                assert o["sichtbar"] and not o["imBlock"], (name, o)
+>               assert len(o["bloecke"]) == 1 and o["b03Draussen"] == 0, (name, o)
+E               AssertionError: ('plan', {'ding': 'T-01', 'sichtbar': True, 'imBlock': False, 'bloecke': [], ...})
+E               assert (0 == 1)
+E                +  where 0 = len([])
+
+engine/tests/test_seite.py:182: AssertionError
+_____________ test_stornierte_buchungen_ein_helfer_an_vier_stellen _____________
+
+    def test_stornierte_buchungen_ein_helfer_an_vier_stellen():
+        """#146, AC-6: Strecke, Aufenthalt, Tageskasten und Unterkunft hängen stornierte Buchungen über denselben Helfer an
+        (keine vier Kopien); buchungenBei liefert nur geltende, stornierteBei nur stornierte, jeweils an der Heimat (ADR-0003)."""
+        q = (WURZEL / "engine" / "vorlage.html").read_text(encoding="utf-8")
+>       assert re.search(r"^function stornierteBuchungen\(|^const stornierteBuchungen = ", q, re.M)
+E       assert None
+E        +  where None = <function search at 0x71a0d21354e0>('^function stornierteBuchungen\\(|^const stornierteBuchungen = ', '<!doctype html>\n<html lang="de">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,..." && navigator.onLine) reg.update().catch(() => {});\n    });\n  }).catch(() => {});\n}\n</script>\n</body>\n</html>\n', re.MULTILINE)
+E        +    where <function search at 0x71a0d21354e0> = re.search
+E        +    and   re.MULTILINE = re.M
+
+engine/tests/test_seite.py:222: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_seite.py::test_alle_ansichten_der_beispielreise[chromium]
+FAILED engine/tests/test_seite.py::test_alle_ansichten_der_beispielreise[webkit]
+FAILED engine/tests/test_seite.py::test_stornierte_buchung_eingeklappt_am_ding[chromium]
+FAILED engine/tests/test_seite.py::test_stornierte_buchung_eingeklappt_am_ding[webkit]
+FAILED engine/tests/test_seite.py::test_stornierte_buchungen_ein_helfer_an_vier_stellen
+5 failed, 638 passed in 389.44s (0:06:29)

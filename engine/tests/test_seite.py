@@ -77,7 +77,8 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
     # Bausteinseite: alle Ebenen, keine Sprungziele (die echten Stellen bleiben eindeutig), kein „null“
     b = dom["1200#bausteine"]
     for teil in ("Atom · Zustand", "Atom · Wert", "Molekül · Listenzeile", "Molekül · Frage als Zeile", "Molekül · Rückmeldung", "Molekül · Aufgabe", "Molekül · Wunschkarte", "Molekül · Kennzahlenleiste", "Organismus · Wahl-Modul", "Organismus · Tageskasten",
-                 "Ontologie · Grundform → Bausteine", "Atom · Etikett", "Molekül · Reisetext: Tabellen", "Molekül · Reiter", "Organismus · Tageskasten der Tagesseite", "Vorlage · Tageskachel", "Molekül · Kapitel", "Organismus · Karte der Reise"):
+                 "Ontologie · Grundform → Bausteine", "Atom · Etikett", "Molekül · Reisetext: Tabellen", "Molekül · Reiter", "Organismus · Tageskasten der Tagesseite", "Vorlage · Tageskachel", "Molekül · Kapitel", "Organismus · Karte der Reise",
+                 "Molekül · Stornierte Buchungen"):
         assert teil in b, teil
     assert ' id="' not in b.split(">", 1)[1]
     assert "null" not in re.sub(r"<[^>]+>", " ", b)
@@ -163,6 +164,82 @@ def test_buchung_hat_eine_heimat_auch_ohne_tagesseiten(tmp_path, browser):
     ohne = seite_der_variante(tmp_path / "ohne", browser, darstellung={"tiefe": True})
     assert ohne["buchung"] and ohne["buchung"]["sichtbar"] and ohne["buchung"]["nummer"] == "HE-2027-0415", ohne
     assert ohne["buchung"]["reiter"] == "plan"
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_stornierte_buchung_eingeklappt_am_ding(tmp_path, browser):
+    """#146: Eine stornierte Buchung (B-03 an U-01) steht nicht mehr voll da, sondern an ihrem Ding im zugeklappten Block
+    „Storniert (1)“ mit Hinweis zum Zurückholen; die geltende B-01 steht voll da. #B-03 öffnet den Block. Geprüft im Plan
+    (Plan noch offen), mit Tagesseiten (Plan A fest) und ohne Tagesseiten (darstellung.tiefe)."""
+    for name, variante in (("plan", {}), ("fest", {"fest": True}), ("tiefe", {"darstellung": {"tiefe": True}})):
+        e = seite_der_variante(tmp_path / name, browser, **variante)
+        # AC-1, AC-2: an jedem Ding mit B-01 steht B-01 voll, B-03 nur im zugeklappten Block „Storniert (1)“, unsichtbar
+        s = e["stornoB01"]
+        assert s["b01"], (name, s)
+        for o in s["b01"]:
+            assert o["sichtbar"] and not o["imBlock"], (name, o)
+            assert len(o["bloecke"]) == 1 and o["b03Draussen"] == 0, (name, o)
+            blk = o["bloecke"][0]
+            assert blk["summary"] == "Storniert (1)" and blk["offen"] is False, (name, o)
+            # AC-4: Hinweis und die Buchung unverändert (Chip „storniert“, Nummer, Verlauf mit Grund)
+            assert blk["hinweis"] == "Zurückholen: im Gespräch mit Frieda.", (name, o)
+            i = blk["b03"]
+            assert i and "storniert" in i["chip"] and i["nummer"] == "Nummer: HE-2027-0388", (name, o)
+            assert i["verlauf"] == "Verlauf (2)" and i["grund"], (name, o)
+        assert s["b03"] >= 1 and s["b03Draussen"] == 0 and not s["b03Sichtbar"], (name, s)
+        # AC-8: kein Chip führt zur stornierten Buchung; der Chip der Unterkunft zeigt „gebucht“ aus B-01
+        assert s["chipZuB03"] == 0 and "gebucht" in s["chipZuB01"], (name, s)
+        # AC-3: ein Ding ohne stornierte Buchung (E-20 mit B-02) hat keinen Block und keinen Hinweis
+        s = e["stornoB02"]
+        assert s["b02"], (name, s)
+        for o in s["b02"]:
+            assert o["bloecke"] == [] and not o["zurueckholen"], (name, o)
+        # AC-5: #B-03 öffnet den Block, die Buchung ist sichtbar und steht bei U-01 neben der geltenden B-01
+        s = e["stornoB03"]
+        assert s["b03Sichtbar"] and s["b03Draussen"] == 0, (name, s)
+        assert any(blk["offen"] and blk["b03"] for blk in s["bloecke"]), (name, s)
+        assert any(o["sichtbar"] and len(o["bloecke"]) == 1 for o in s["b01"]), (name, s)
+        if name == "fest":
+            # AC-7: Tagesseite T-02, Nacht in Hohnstein: V-03 hat nur eine gültige Option (V-03.b verworfen), keine Zeile
+            # „Alle Möglichkeiten“
+            m = e["moeglichkeiten"]
+            assert m["nacht"], (name, m)
+            assert not [z for z in m["zeilen"] if z.startswith("Alle Möglichkeiten (")], (name, m)
+
+
+def _funktion(quelle, name):
+    """Rumpf einer Funktion der Vorlage (vom Kopf bis zur schließenden Klammer am Zeilenanfang)."""
+    m = re.search(rf"^function {name}\(.*?^\}}", quelle, re.S | re.M)
+    assert m, name
+    return m.group(0)
+
+
+def test_stornierte_buchungen_ein_helfer_an_vier_stellen():
+    """#146, AC-6: Strecke, Aufenthalt, Tageskasten und Unterkunft hängen stornierte Buchungen über denselben Helfer an
+    (keine vier Kopien); buchungenBei liefert nur geltende, stornierteBei nur stornierte, jeweils an der Heimat (ADR-0003)."""
+    q = (WURZEL / "engine" / "vorlage.html").read_text(encoding="utf-8")
+    assert re.search(r"^function stornierteBuchungen\(|^const stornierteBuchungen = ", q, re.M)
+    assert re.search(r"^const stornierteBei = ", q, re.M) or re.search(r"^function stornierteBei\(", q, re.M)
+    for name in ("streckeZeile", "aufenthaltZeile", "tagKarte", "unterkunftKarte"):
+        f = _funktion(q, name)
+        assert "stornierteBuchungen(stornierteBei(" in f, name
+    # Stornierte nie über buchungenBei voll gezeichnet: der Helfer trennt nach Status
+    bei = re.search(r"^const buchungenBei = .*$", q, re.M)
+    assert bei and "storniert" in bei.group(0), bei and bei.group(0)
+    assert "Zurückholen: im Gespräch mit Frieda." in q and "`Storniert (${" in q
+
+
+def test_stornierte_buchung_bleibt_in_den_daten(tmp_path):
+    """#146, AC-13 und AC-8: Nichts wird gelöscht. B-03 steht nach dem Bauen mit Status und beiden Verlaufseinträgen in den Daten;
+    der Buchungsstand von U-01 kommt aus der geltenden B-01."""
+    ziel = tmp_path / "web"
+    bauen.bauen(WURZEL / "beispiel/reisen/beispielreise", ziel)
+    r = json.loads((ziel / "daten.json").read_text(encoding="utf-8"))["route"]
+    b = r["buchungen"]["B-03"]
+    assert b["status"] == "storniert" and b["fuer"] == ["U-01"] and b["nummer"] == "HE-2027-0388"
+    assert [v["was"] for v in b["verlauf"]] == ["angelegt", "Status"] and "Zimmer doppelt gebucht" in b["verlauf"][1]["grund"]
+    assert r["unterkuenfte"]["U-01"]["buchung"] == "gebucht" and r["unterkuenfte"]["U-01"]["buchung_id"] == "B-01"
 
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
