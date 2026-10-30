@@ -74,11 +74,15 @@ def fest_mit_abweichenden_plaenen(quelle, zuerst):
 
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("tiefe", [False, True])
 @pytest.mark.parametrize("zuerst", ["nacht", "tag"])
-def test_tagesseite_zaehlt_im_gewaehlten_plan(tmp_path, zuerst):
+def test_tagesseite_zaehlt_im_gewaehlten_plan(tmp_path, zuerst, tiefe):
     quelle = tmp_path / "quelle"
     shutil.copytree(WURZEL / "beispiel/reisen/beispielreise", quelle)
     fest_mit_abweichenden_plaenen(quelle, zuerst)
+    if tiefe:  # Ortsseiten mit „Kommt vor in“ (ansichtOrt) gibt es nur im Tiefe-Modus
+        eck = quelle / "reise.yaml"
+        eck.write_text(eck.read_text(encoding="utf-8").replace("darstellung:\n", "darstellung:\n  tiefe: true\n", 1), encoding="utf-8")
     bauen.bauen(quelle, tmp_path / "web" / "beispiel")
 
     class Handler(http.server.SimpleHTTPRequestHandler):
@@ -106,5 +110,6 @@ def test_tagesseite_zaehlt_im_gewaehlten_plan(tmp_path, zuerst):
         for href, text in t["blaettern"]:
             assert nr[href.lstrip("#")] in text, (t["id"], t["blaettern"])
     # 7.: Ortsseite: „Kommt vor in“ nennt nur den gewählten Plan
-    assert e["ort"]["chips"] and all(c.startswith("Plan A:") for c in e["ort"]["chips"]), e["ort"]
-    assert e["ort"]["zurueck"] == "#P-A", e["ort"]
+    if tiefe:
+        assert e["ort"]["chips"] and all(c.startswith("Plan A:") for c in e["ort"]["chips"]), e["ort"]
+        assert e["ort"]["zurueck"] == "#P-A", e["ort"]

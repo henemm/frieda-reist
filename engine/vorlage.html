@@ -2981,7 +2981,8 @@ function tagOrteZeilen(orte) {
 }
 function ansichtTag(m, tid) {
   const mit = R.plaene.filter(p => p.tage.some(t => t.id === tid));
-  const p = mit.find(x => x.id === PLAN_ZULETZT) || mit[0] || planZu(PLAN_ZULETZT);
+  // Ist ein Plan gewählt und enthält er den Tag, zählt die Seite in diesem Plan wie die Übersicht (#144)
+  const p = PLAN_FEST && mit.includes(PLAN_FEST) ? PLAN_FEST : mit.find(x => x.id === PLAN_ZULETZT) || mit[0] || planZu(PLAN_ZULETZT);
   let imPlan = p && p.tage.find(t => t.id === tid);
   const t = imPlan || R.weitere_tage[tid] || R.tage.find(x => x.id === tid);
   if (!imPlan && p) for (const liste of alternativen(p).values()) for (const {andere, start} of liste) for (const o of andere) {
@@ -3032,7 +3033,8 @@ function ansichtTag(m, tid) {
 }
 const ortPlaene = oid => R.plaene.filter(x => x.tage.some(t => tagOrte(t).includes(oid)));
 function ansichtOrt(m, a) {
-  const p = planZu(PLAN_ZULETZT), inPlan = ortPlaene(a.id).length > 0;
+  // Ist ein Plan gewählt, gilt nur er: Zurück-Link und „Kommt vor in“ (#144)
+  const p = PLAN_FEST || planZu(PLAN_ZULETZT), inPlan = ortPlaene(a.id).length > 0;
   m.append(inPlan || p ? el("a", {class: "zurueck", href: "#" + (p ? p.id : "varianten")}, "← " + (p ? `${p.kurz}: ${p.titel}` : "Alle Pläne"))
     : el("a", {class: "zurueck", href: "#orte"}, "← Alle Orte"));
   m.append(el("h2", {class: "ziel", id: a.id, "data-ziel": a.id}, a.titel, zid(a.id)));
@@ -3040,7 +3042,7 @@ function ansichtOrt(m, a) {
   m.append(el("h3", {}, "Übersicht"));
   if (a.intro) m.append(el("div", {html: a.intro}));
   const wo = el("div", {class: "chips"});
-  for (const x of R.plaene) for (const t of x.tage) if (tagOrte(t).includes(a.id))
+  for (const x of PLAN_FEST ? [PLAN_FEST] : R.plaene) for (const t of x.tage) if (tagOrte(t).includes(a.id))
     wo.append(chip("leise", `${x.kurz}: Tag ${t.nr}, ${datumText(t.datum, t.wochentag)}`, {href: "#" + t.id}));
   if (wo.childNodes.length) m.append(el("div", {class: "z klein"}, "Kommt vor in:"), wo);
   if (a.bloecke.length) m.append(el("h3", {}, "Highlights und Praktisches"));
