@@ -1,7 +1,7 @@
 ============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0 -- /home/hem/frieda-reist/.claude/worktrees/hashed-noodling-crown/engine/.venv/bin/python
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0 -- <pfad>
 cachedir: .pytest_cache
-rootdir: /home/hem/frieda-reist/.claude/worktrees/hashed-noodling-crown
+rootdir: <pfad>
 collecting ... collected 2 items
 
 engine/tests/test_tagesplan.py::test_tagesseite_zaehlt_im_gewaehlten_plan[nacht] FAILED [ 50%]
