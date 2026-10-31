@@ -2299,7 +2299,7 @@ MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "Ein Merkmal 
                           "merkmal": {"type": "string", "description": "Schlüssel des Merkmals (klein, z. B. stornierung); leer: aus "
                                       "der Bezeichnung. Zum Ändern den vorhandenen Schlüssel"},
                           "bezeichnung": {"type": "string", "description": "Anzeigename, z. B. Stornierung (beim Anlegen nötig)"},
-                          "typ": {"type": "string", "enum": sorted(TYPEN), "description": "Vorgabe text; auswahl braucht werte"},
+                          "typ": {"type": "string", "enum": sorted(TYPEN), "description": "Vorgabe text; auswahl braucht werte; Adressen (Webseite, Buchungsseite) immer link, die Seite zeigt sie als Link"},
                           "werte": {"type": "array", "items": {"type": "string"}, "description": "mögliche Antworten bei typ auswahl, "
                                     "z. B. [kostenlos, gegen Gebühr, nicht möglich, unklar]"},
                           "veraenderlich": {"type": "boolean", "description": "Preise, Zeiten, Öffnungszeiten: der Wert braucht ein Prüfdatum"},

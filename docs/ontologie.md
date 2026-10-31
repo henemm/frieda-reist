@@ -88,7 +88,7 @@ Ein Merkmal ist eine Definition in `arten.yaml` und ein Wert am Ding.
 | Feld der Definition | Bedeutung |
 |---|---|
 | `name` | Anzeige |
-| `typ` | `text` (Vorgabe), `geld`, `zahl`, `auswahl` (mit `werte`) |
+| `typ` | `text` (Vorgabe), `geld`, `zahl`, `auswahl` (mit `werte`), `link` (Adresse mit `https://` oder `http://`; die Seite zeigt jeden Wert dieses Typs gleich als Link nach außen, mit dem Namen der Webseite und der Herkunft hinter dem i; seit #165, 31.10.2026) |
 | `veraenderlich` | der Wert braucht ein Prüfdatum; ohne steht „ungeprüft“ daneben, ab Status `fest` eine Mahnung, der Wächter meldet alte Prüfdaten |
 | `stufe` | `pflicht`, `empfohlen` (Vorgabe), `angeboten`, `aus`. Für Menschen heißen sie **„nötig“**, **„gut zu wissen“** und **„zusätzlich“** (Product Owner 29.10.2026); `aus` bleibt unsichtbar. In Dateien und Werkzeugen bleiben die Schlüssel, der Schreibweg nimmt auch die Wörter an (`routen.stufe_schluessel`), der Konnektor sagt die Wörter (`routen.stufe_wort`; bei einer Stufe je Unterkunftstyp „sonst“ für `*` und „gilt nicht“ für `aus`), die Seite erklärt den Vergleich in Worten. Nötig und gut zu wissen sind die Spalten im Vergleich der Alternativen (zusätzlich steht dort nur in den Einzelheiten, `docs/design.md`); nur **nötig** zählt als „Fehlt noch“ und im Zähler des Vergleichs (seit Paket O-5); gut zu wissen ohne Wert ist keine Lücke und keine Mahnung (Product Owner 29.10.2026); zusätzlich erscheint nur mit Wert; aus gilt nicht. Eine Wahlstelle kann die Stufe für sich ändern (`merkmale: {abendessen: {stufe: empfohlen}}`) |
 | `auto` | berechnet, nie eingetragen (siehe Grundformen) |
