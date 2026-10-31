@@ -7,7 +7,7 @@ const [, , modul, frieda, email] = process.argv;
 const pw = await import(modul);
 const b = await pw[process.env.RH_BROWSER || "chromium"].launch();
 const aus = {antworten: []};
-const p = await (await b.newContext()).newPage();
+const p = await (await b.newContext({ locale: "de-DE" })).newPage();
 p.on("response", r => { if (r.request().method() === "POST") aus.antworten.push(r.status()); });
 await p.goto(frieda + "/anmelden");
 await p.fill("#email", email);
