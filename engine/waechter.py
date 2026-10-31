@@ -38,7 +38,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 import texte  # noqa: E402
-from routen import ZAHLUNG_OFFEN, ZAHLUNG_WORTE  # noqa: E402
+from routen import ZAHLUNG_OFFEN  # noqa: E402
 
 UNGUELTIG = ("verworfen", "ersetzt")      # Optionen, die niemand mehr nachschlagen muss
 MAX_PRUEFUNGEN = 15                       # Prüfmeldungen je Lauf, damit der Überblick lesbar bleibt
@@ -275,19 +275,20 @@ def zahlungen_offen(d, heute, vorlauf):
         z = b.get("zahlung")
         if b.get("status") != "gebucht" or z not in ZAHLUNG_OFFEN:
             continue
-        termine = [(b["frist"], "Frist")] if b.get("frist") else []
+        termine = [(b["frist"], 0, "frist_wort")] if b.get("frist") else []   # bei gleichem Tag zählt die Frist
         tage = [erster[x] for x in b.get("fuer") or [] if x in erster]
         if tage:
-            termine.append((min(tage), "erster Tag"))
+            termine.append((min(tage), 1, "erster_tag"))
         if not termine:
             continue
-        stichtag, wort = min(termine)
+        stichtag, _, wort = min(termine)
         if tage_zwischen(heute, datetime.date.fromisoformat(stichtag)) > vorlauf:
             continue
         titel = f"{b['id']} {b.get('titel') or ''}".strip()
         aus.append({"schluessel": f"zahlung:{b['id']}:{z}", "wiederholen": WIEDERHOLEN_TAGE,
-                    "text": f"Zahlung {ZAHLUNG_WORTE.get(z, z)}: Buchung {titel}" + (f" ({b['bezahlt']})" if b.get("bezahlt") else "")
-                            + f", {wort} {datum_de(stichtag)}.",
+                    "text": tw(d, "zahlung_offen", w1=texte.t(sprache_von(d), "seite.buchung.zahlung." + z), w2=titel,
+                               w3=f" ({b['bezahlt']})" if b.get("bezahlt") else "", w4=tw(d, wort),
+                               w5=datum_de(stichtag, sprache_von(d))),
                     "an": empfaenger(d, b.get("wer")), "art": "erinnerung", "ziel": b["id"], "bezug": b["id"]})
     return aus
 

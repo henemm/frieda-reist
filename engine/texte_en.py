@@ -1905,6 +1905,8 @@ TEXTE = {
     "waechter.frist_aufgabe": "Deadline {w1}: {w2} {w3} (deadline {w4}).",
     "waechter.frist_buchung": "Deadline {w1}: {w2} for the booking {w3} (deadline {w4}).",
     "waechter.frist_wort": "Deadline",
+    "waechter.zahlung_offen": "Payment {w1}: booking {w2}{w3}, {w4} {w5}.",
+    "waechter.erster_tag": "first day",
     "waechter.heute": "today",
     "waechter.in_tagen.one": "in {n} day",
     "waechter.in_tagen.other": "in {n} days",

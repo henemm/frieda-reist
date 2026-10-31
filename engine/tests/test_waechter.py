@@ -448,6 +448,14 @@ def test_zahlung_offen_nur_mit_regel_und_vor_dem_stichtag(reise):
     assert not wa.zahlungen_offen(d, D(2027, 5, 12), 3)
 
 
+def test_zahlungsmeldung_in_der_sprache_der_reise(reise):
+    """Die Zahlungsmeldung folgt der Sprache der Reise (ADR-0006); Deutsch bleibt wörtlich wie bisher."""
+    r = reise(regeln={"waechter_zahlung": True}, sprache="en")
+    ms = [m for m in r.lauf(D(2027, 5, 10))["meldungen"] if m["schluessel"].startswith("zahlung:")]
+    assert len(ms) == 1 and ms[0]["text"].startswith("Payment deposit paid: booking B-01 ") and ms[0]["text"].endswith(", first day 13/5/2027.")
+    assert "Zahlung" not in ms[0]["text"] and "erster Tag" not in ms[0]["text"]
+
+
 def test_regel_waechter_zahlung_ist_ja_oder_nein():
     fehler = []
     rg.Reise({"regeln": {"waechter_zahlung": "ja"}}, {}, fehler, []).regeln()
