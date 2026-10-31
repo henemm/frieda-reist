@@ -394,6 +394,45 @@ def test_erinnerer_meldet_ab_termin_einer_buchung(reise, tmp_path):
     assert not [m for m in r.lauf(D(2027, 5, 13))["meldungen"] if "Jetzt möglich" in m["text"]]   # nicht doppelt
 
 
+def test_zahlung_offen_nur_mit_regel_und_vor_dem_stichtag(reise):
+    """#166 (Product Owner 31.10.2026): Mit regeln.waechter_zahlung meldet der Erinnerer eine gebuchte Buchung mit Zahlstand offen
+    oder angezahlt, wenn ihre Frist oder der erste Tag ihrer Dinge in höchstens erinnerung_vorlauf_tage Tagen liegt, danach alle
+    7 Tage, bis sich der Zahlstand ändert. Beispielreise: B-01 (Ida, Hotel, angezahlt, Nacht am 13.5.2027), B-02 bezahlt, B-03
+    storniert (erstattet)."""
+    zahlung = lambda ms: [m for m in ms if m["text"].startswith("Zahlung ")]
+    assert not zahlung(reise().lauf(D(2027, 5, 10))["meldungen"])           # Vorgabe: aus
+    r = reise(regeln={"waechter_zahlung": True})
+    assert not zahlung(r.lauf(D(2027, 5, 9))["meldungen"])
+    ms = zahlung(r.lauf(D(2027, 5, 10))["meldungen"])
+    assert len(ms) == 1 and ms[0]["an"] == ["Ida"] and ms[0]["bezug"] == "B-01"
+    assert ms[0]["text"] == "Zahlung angezahlt: Buchung B-01 Hotel am Elbufer (Anzahlung 30 €, Rest vor Ort (Beispielwert)), erster Tag 13.5.2027."
+    assert not zahlung(r.lauf(D(2027, 5, 11))["meldungen"])                 # nicht täglich
+    assert zahlung(r.lauf(D(2027, 5, 17))["meldungen"])                     # nach 7 Tagen wieder
+    # Die Frist zählt, wenn sie früher liegt; vor_ort, inklusive und bezahlt melden nie; angefragt auch nicht
+    d = json.loads((r.seiten / "beispielreise" / "daten.json").read_text(encoding="utf-8"))
+    b = d["route"]["buchungen"]
+    b["B-01"]["zahlung"] = "vor_ort"
+    b["B-02"].update({"zahlung": "offen", "frist": "2027-05-01", "frist_was": "Restzahlung"})
+    (r.seiten / "beispielreise" / "daten.json").write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    ms = wa.zahlungen_offen(d, D(2027, 4, 28), 3)
+    assert [(m["bezug"], m["an"]) for m in ms] == [("B-02", ["Karl"])] and ms[0]["text"].endswith(", Frist 1.5.2027.")
+    for z in ("inklusive", "bezahlt"):
+        b["B-02"]["zahlung"] = z
+        assert not wa.zahlungen_offen(d, D(2027, 4, 28), 3)
+    b["B-02"].update({"zahlung": "angezahlt", "status": "angefragt"})
+    assert not wa.zahlungen_offen(d, D(2027, 4, 28), 3)
+    # Ohne Frist und ohne Tag im Plan gibt es keinen Stichtag
+    b["B-02"].update({"status": "gebucht", "frist": None, "fuer": ["E-23"]})
+    assert not wa.zahlungen_offen(d, D(2027, 5, 12), 3)
+
+
+def test_regel_waechter_zahlung_ist_ja_oder_nein():
+    fehler = []
+    rg.Reise({"regeln": {"waechter_zahlung": "ja"}}, {}, fehler, []).regeln()
+    assert any("regeln.waechter_zahlung muss true oder false sein" in f for f in fehler)
+    assert rg.VORGABEN["waechter_zahlung"] is False
+
+
 def test_rot_melden_legt_eine_meldung_je_phase_an_die_organisatoren_an(reise):
     """Issue #142, AC-23: Kann eine Reise seit der Schwelle nicht veröffentlicht werden (Baufehler), bekommen ihre
     Organisator:innen genau eine Meldung je Rot-Phase (Schlüssel mit seit); die Seite bleibt auf dem letzten guten Stand.

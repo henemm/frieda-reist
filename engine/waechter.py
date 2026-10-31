@@ -7,7 +7,8 @@ Wächter   Findet veränderliche Angaben (Merkmale mit veraenderlich: true) der 
           Nächten, die noch nie geprüft wurden oder deren Prüfdatum älter ist als regeln.waechter_frist_tage, und
           meldet jede den Organisator:innen (Art pruefung). Nachschlagen tut der AI-Client im Gespräch; Frieda hat
           keine eigene KI (ADR-0001, Paket O-4). Weicht ein Wert ab, wird er NICHT still übernommen.
-Erinnerer Meldet Fristen und „ab“-Termine der Aufgaben an die Zuständigen und erinnert die Organisator:innen an den
+Erinnerer Meldet Fristen und „ab“-Termine der Aufgaben und Buchungen an die Zuständigen, mit regeln.waechter_zahlung
+          offene Zahlungen gebuchter Buchungen (#166), und erinnert die Organisator:innen an den
           Wechsel des Reisestatus am Start- und Enddatum (die KI wechselt nie selbst).
 
 Beides gilt nur, wenn der Baustein waechter eingeschaltet ist und der Status es zulässt (fest, unterwegs; Aufgabenfristen
@@ -36,6 +37,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
+from routen import ZAHLUNG_OFFEN, ZAHLUNG_WORTE  # noqa: E402
 
 UNGUELTIG = ("verworfen", "ersetzt")      # Optionen, die niemand mehr nachschlagen muss
 MAX_PRUEFUNGEN = 15                       # Prüfmeldungen je Lauf, damit der Überblick lesbar bleibt
@@ -235,6 +237,47 @@ def buchungsfristen(d, heute, vorlauf):
     return aus
 
 
+def erster_tag_je_ding(d):
+    """Erster Tag des aktuellen Plans, an dem eine Unterkunft (Nacht), ein Aufenthalt oder eine Strecke vorkommt -> {ID: JJJJ-MM-TT}."""
+    aus = {}
+    for t in ((d or {}).get("route") or {}).get("tage") or []:
+        ids = [s.get("id") for s in t.get("strecken") or []] + list(t.get("aufenthalte") or []) \
+            + [(t.get("nacht") or {}).get("unterkunft")]
+        for x in ids:
+            if x and x not in aus:
+                aus[x] = t["datum"]
+    return aus
+
+
+def zahlungen_offen(d, heute, vorlauf):
+    """Offene Zahlungen (#166, nur mit regeln.waechter_zahlung): eine gebuchte Buchung mit Zahlstand offen oder angezahlt, deren
+    Frist oder erster Reisetag ihrer Dinge in höchstens vorlauf Tagen liegt; danach alle 7 Tage neu, bis sich der Zahlstand
+    ändert. vor_ort, inklusive und bezahlt melden nie. An die Person, die gebucht hat, sonst an die Organisator:innen."""
+    if not regel(d, "waechter_zahlung") or not rg.verhalten(((d or {}).get("reise") or {}).get("status", {}).get("wert"))["fristen"]:
+        return []
+    erster = erster_tag_je_ding(d)
+    aus = []
+    for b in (((d or {}).get("route") or {}).get("buchungen") or {}).values():
+        z = b.get("zahlung")
+        if b.get("status") != "gebucht" or z not in ZAHLUNG_OFFEN:
+            continue
+        termine = [(b["frist"], "Frist")] if b.get("frist") else []
+        tage = [erster[x] for x in b.get("fuer") or [] if x in erster]
+        if tage:
+            termine.append((min(tage), "erster Tag"))
+        if not termine:
+            continue
+        stichtag, wort = min(termine)
+        if tage_zwischen(heute, datetime.date.fromisoformat(stichtag)) > vorlauf:
+            continue
+        titel = f"{b['id']} {b.get('titel') or ''}".strip()
+        aus.append({"schluessel": f"zahlung:{b['id']}:{z}", "wiederholen": WIEDERHOLEN_TAGE,
+                    "text": f"Zahlung {ZAHLUNG_WORTE.get(z, z)}: Buchung {titel}" + (f" ({b['bezahlt']})" if b.get("bezahlt") else "")
+                            + f", {wort} {datum_de(stichtag)}.",
+                    "an": empfaenger(d, b.get("wer")), "art": "erinnerung", "ziel": b["id"], "bezug": b["id"]})
+    return aus
+
+
 def statuswechsel(d, heute):
     """Erinnert die Organisator:innen, wenn der Status nicht mehr zu den Reisetagen passt. Die KI wechselt den Status nie selbst."""
     tage = ((d or {}).get("route") or {}).get("tage") or []
@@ -306,7 +349,8 @@ def lauf_reise(reise, heute=None, trocken=False):
     items = zu_pruefen(d, heute, frist)
     ergebnis["zu_pruefen"] = items
     wunsch = (erinnerungen(d, rm.aufgaben(o), heute, regel(d, "erinnerung_vorlauf_tage"))
-              + buchungsfristen(d, heute, regel(d, "erinnerung_vorlauf_tage")) + statuswechsel(d, heute)
+              + buchungsfristen(d, heute, regel(d, "erinnerung_vorlauf_tage"))
+              + zahlungen_offen(d, heute, regel(d, "erinnerung_vorlauf_tage")) + statuswechsel(d, heute)
               + pruefmeldungen(d, items, frist))
     ergebnis["meldungen"] = neue_meldungen(o, wunsch, jetzt, trocken)
     ergebnis["nachricht"] = "nachricht" in regel(d, "meldekanal")
@@ -356,7 +400,8 @@ def zeige(reise, heute):
         print(f"  {t['bezug']} {t['name']}: {t['wert']} – {t['grund']}")
     o = rm.ordner(reise)
     vorlauf = regel(d, "erinnerung_vorlauf_tage")
-    for m in erinnerungen(d, rm.aufgaben(o) if o else [], heute, vorlauf) + buchungsfristen(d, heute, vorlauf) + statuswechsel(d, heute):
+    for m in (erinnerungen(d, rm.aufgaben(o) if o else [], heute, vorlauf) + buchungsfristen(d, heute, vorlauf)
+              + zahlungen_offen(d, heute, vorlauf) + statuswechsel(d, heute)):
         print(f"  Meldung an {', '.join(m['an']) or '–'}: {m['text']}")
 
 

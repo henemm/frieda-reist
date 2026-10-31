@@ -38,6 +38,7 @@ VORGABEN = {
     # Paket E (Wächter und Erinnerer, Baustein waechter)
     "waechter_frist_tage": 60,           # veränderliche Angaben, deren Prüfdatum älter ist, prüft der Wächter neu
     "erinnerung_vorlauf_tage": 3,        # Aufgabenfristen werden so viele Tage vorher gemeldet
+    "waechter_zahlung": False,           # offene Zahlungen gebuchter Buchungen melden (#166; je Reise einschaltbar)
     "meldekanal": ["app", "nachricht"],  # app: beim Öffnen der Claude-App; nachricht: Sammelnachricht an den Betreiber
     # Paket J (Konten): uebergang = auf der Seite geht auch ein eingetippter Name; noetig = Mitmachen nur angemeldet
     "anmeldung": "uebergang",
@@ -453,6 +454,8 @@ class Reise:
         for k, kleinste in (("waechter_frist_tage", 1), ("erinnerung_vorlauf_tage", 0)):
             if not isinstance(r[k], int) or isinstance(r[k], bool) or r[k] < kleinste:
                 self.fehl(f"regeln.{k} muss eine ganze Zahl ab {kleinste} sein.")
+        if not isinstance(r["waechter_zahlung"], bool):
+            self.fehl("regeln.waechter_zahlung muss true oder false sein.")
         kanal = r["meldekanal"]
         if not isinstance(kanal, list) or not kanal or not all(isinstance(x, str) for x in kanal):
             self.fehl(f"regeln.meldekanal muss eine Liste aus {', '.join(KANAELE)} sein.")
