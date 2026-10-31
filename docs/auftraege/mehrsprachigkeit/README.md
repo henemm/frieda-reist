@@ -20,8 +20,8 @@ Jede Datei `M*.md` in diesem Ordner ist ein vollständiger Auftrag für einen Ag
 | M7 | Sprache am Konto | Haiku | M0 | umgesetzt (31.10.2026) |
 | M8 | Konnektor: Anleitung und Beschreibungen | Haiku, dann Sonnet | M7 | umgesetzt (31.10.2026) |
 | M8b | Englische Namen der Schnittstelle mit Aliasen | Sonnet, dann Haiku | M8 | umgesetzt (31.10.2026) |
-| M9 | Fehler als Schlüssel: Schreibweg, Regeln, Rückmeldedienst | Sonnet, dann Haiku (vier Stapel) | M8b | Ablehnungen, Rechte und Dienstfehler umgesetzt (31.10.2026); Bestätigungstexte des Schreibwegs noch deutsch |
-| M10 | Konnektor-Ergebnisse, Kalender, Wächter | Haiku | M8b | offen |
+| M9 | Fehler als Schlüssel: Schreibweg, Regeln, Rückmeldedienst | Sonnet, dann Haiku (vier Stapel) | M8b | Ablehnungen, Rechte und Dienstfehler umgesetzt (31.10.2026); Bestätigungen des Schreibwegs in der Sprache der Person (31.10.2026); Texte, die in Dateien der Reise und ins Protokoll gehen, bleiben deutsch |
+| M10 | Konnektor-Ergebnisse, Kalender, Wächter | Haiku | M8b | umgesetzt (31.10.2026): Konnektor, Kalender, Wächter, Mahnungen, Aufgabentext |
 | M11 | Dokumentation und Abschluss | Haiku | M6, M9, M10 | offen |
 | M12 | Abnahme und dritte Sprache | Sonnet | M11 | offen |
 

@@ -69,6 +69,26 @@ def arten_auf_main(origin):
     return yaml.safe_load(text)["arten"], text
 
 
+@pytest.fixture(autouse=True)
+def _bestaetigungen_in_jeder_sprache(monkeypatch):
+    """Jede Bestätigung des Schreibwegs, die aus dem Katalog kommt, reist als Schlüssel mit (text_teile, ADR-0006): auf Deutsch ist sie
+    der Text selbst, auf Englisch ein vollständiger Satz ohne offene Platzhalter und ohne deutsche Sprachbausteine."""
+    import texte
+    original = sb.Schreiber.schreiben
+
+    def pruefen(self, *args, **kw):
+        antwort = original(self, *args, **kw)
+        if isinstance(antwort, dict) and antwort.get("text_teile"):
+            satz = texte.Satz.aus_json(antwort["text_teile"])
+            assert satz == antwort["text"] and satz.text("de") == antwort["text"]
+            en = satz.text("en")
+            assert en and "{" not in en and "}" not in en, en
+            for wort in (" angelegt", "Grund:", "Herkunft", " für ", "Merkmal ", "Frage "):
+                assert wort not in en, (wort, en)
+        return antwort
+    monkeypatch.setattr(sb.Schreiber, "schreiben", pruefen)
+
+
 def schreiber(repo):
     wurzel, _, arbeit, _ = repo
     s = sb.Schreiber(wurzel, arbeit)
@@ -129,6 +149,9 @@ def test_art_anlegen_geht_nach_main_und_wird_veroeffentlicht(repo):
                                                                          "beschreibung": "bewirtschaftete Berghütte", "grund": "GR-Etappen"}})
     assert a["ok"] and "Refugi" in a["text"] and "refugi" in a["text"] and "Aufenthalt" in a["text"]
     assert git(origin, "rev-parse", "main") == a["commit"] != vorher
+    import texte
+    en = texte.Satz.aus_json(a["text_teile"]).text("en")   # dieselbe Bestätigung für eine englische Person (M9)
+    assert en.startswith("Kind “Refugi” created: key refugi, basic form ") and "angelegt" not in en, en
     arten, text = arten_auf_main(origin)
     r = arten["refugi"]
     assert r["grundform"] == "aufenthalt" and r["name"] == "Refugi" and r["beschreibung"] == "bewirtschaftete Berghütte"
@@ -1541,3 +1564,4 @@ def test_loeschwunsch_antworttext_frage(repo):
     assert "entfällt" in a["text"]
     assert a["text"].rstrip().endswith("Nicht gelöscht, die Frage steht weiter mit Verlauf da; ein Wiedereröffnen gibt es nicht, "
                                        "bei Bedarf eine neue Frage anlegen.")
+

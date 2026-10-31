@@ -1081,7 +1081,10 @@ def schreib_anfrage(reise, werkzeug_, anfrage):
                                  headers={"Content-Type": "application/json", "X-Frieda-Dienst": konten.dienst_geheimnis()})
     try:
         with urllib.request.urlopen(req, timeout=120) as r:
-            return json.loads(r.read()), None
+            antwort = json.loads(r.read())
+        if isinstance(antwort, dict) and antwort.get("text_teile"):   # Bestätigung in der Sprache der Person (ADR-0006)
+            antwort["text"] = texte.Satz.aus_json(antwort["text_teile"]).text(texte.aufruf_sprache())
+        return antwort, None
     except urllib.error.HTTPError as e:
         try:
             antwort = json.loads(e.read())

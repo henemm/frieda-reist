@@ -73,6 +73,16 @@ ARTEN_KOPF = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). 
               "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (Gliederung des\n"
               "# Lesetexts: je Rubrik name und hilfe); je Merkmal: name, typ,\n"
               "# werte, veraenderlich, stufe (pflicht | empfohlen | angeboten | aus), auto, hilfe, frage, auch.\n")
+S = texte.satz   # Satz des Katalogs, in jeder Sprache lesbar (Bestätigungen, ADR-0006)
+verbinden = texte.Satz.verbinden
+
+
+def stufe_satz(s):
+    """Wie routen.stufe_wort („nötig (pflicht)“), aber als Satz in jeder Sprache."""
+    from routen import STUFEN_WORTE, stufe_wort
+    if isinstance(s, str) and s in STUFEN_WORTE and s != "aus":
+        return S("schreiben.stufe." + s) + f" ({s})"
+    return stufe_wort(s)
 GRUNDFORM_WORT = texte.gruppe("de", "schreiben.grundform")   # Katalog in texte_de.py (ADR-0006)
 
 
@@ -311,10 +321,9 @@ def art_definieren(reise_dir, wer, args):
             a["merkmale"] = {m: {"name": namen.get(m, m.capitalize()), "auto": m} for m in auto}
         arten[key] = a
         titel = f"Art „{name}“ ({key}) angelegt"
-        text = (f"Art „{name}“ angelegt: Schlüssel {key}, Grundform {GRUNDFORM_WORT[grundform]}"
-                + (f", Farbe {a['farbe']}" if a.get("farbe") else "") + (", summiert" if a.get("summiert") else "") + "."
-                + (f" Berechnete Merkmale dazu: {', '.join(auto)}." if auto else "")
-                + " Merkmale legst du mit merkmal_definieren an (im Gespräch: Was muss zu jeder Sache dieser Art bekannt sein?).")
+        text = (S("schreiben.antwort.art.angelegt", w1=name, w2=key) + S("schreiben.grundform." + grundform)
+                + (S("schreiben.antwort.art.farbe", w1=a["farbe"]) if a.get("farbe") else "") + (S("schreiben.antwort.art.summiert") if a.get("summiert") else "") + "."
+                + (S("schreiben.antwort.art.berechnet", w1=", ".join(auto)) if auto else "") + S("schreiben.antwort.art.merkmale_hinweis"))
     else:
         a = arten[key]
         if grundform is not None and grundform.lower() != a.get("grundform"):
@@ -323,37 +332,37 @@ def art_definieren(reise_dir, wer, args):
             raise Ablehnung("schreiben.art_definieren.9")
         geaendert = []
         if name is not None and name != a.get("name"):
-            geaendert.append(f"Name „{a.get('name')}“ → „{name}“")
+            geaendert.append(S("schreiben.antwort.art.name", w1=a.get("name"), w2=name))
             a["name"] = name
         if farbe is not None and farbe.lower() != a.get("farbe"):
-            geaendert.append(f"Farbe {farbe.lower()}")
+            geaendert.append(S("schreiben.antwort.art.farbe_neu", w1=farbe.lower()))
             a["farbe"] = farbe.lower()
         if beschreibung is not None and beschreibung != a.get("beschreibung"):
-            geaendert.append("Beschreibung")
+            geaendert.append(S("schreiben.antwort.art.beschreibung"))
             a["beschreibung"] = beschreibung
         if summiert is not None and bool(a.get("summiert")) != summiert:
-            geaendert.append("summiert" if summiert else "nicht mehr summiert")
+            geaendert.append(S("schreiben.antwort.art.summiert_an" if summiert else "schreiben.antwort.art.summiert_aus"))
             if summiert:
                 a["summiert"] = True
             else:
                 a.pop("summiert", None)
         if symbol is not None and symbol.lower() != a.get("symbol"):
-            geaendert.append(f"Symbol {symbol.lower()}")
+            geaendert.append(S("schreiben.antwort.art.symbol", w1=symbol.lower()))
             a["symbol"] = symbol.lower()
         if buchbar is not None and bool(a.get("buchbar", a.get("grundform") == "aufenthalt")) != buchbar:
-            geaendert.append("buchbar (hat einen Buchungsstand)" if buchbar else "nicht buchbar")
+            geaendert.append(S("schreiben.antwort.art.buchbar" if buchbar else "schreiben.antwort.art.nicht_buchbar"))
             a["buchbar"] = buchbar
         if lesetext is not None and lesetext != a.get("lesetext"):
-            geaendert.append("Gliederung des Lesetexts: " + ", ".join(r["name"] for r in lesetext.values()))
+            geaendert.append(S("schreiben.antwort.art.lesetext", w1=", ".join(r["name"] for r in lesetext.values())))
             a["lesetext"] = lesetext
         if not geaendert:
             raise Ablehnung("schreiben.art_definieren.10", w1=a.get('name', key), key=key)
         arten[key] = {k: a[k] for k in ("grundform", "name", "farbe", "symbol", "buchbar", "summiert", "beschreibung", "merkmale",
                                         "lesetext") if k in a}
         titel = f"Art „{a['name']}“ ({key}) geändert"
-        text = f"Art „{a['name']}“ ({key}) geändert: " + ", ".join(geaendert) + "."
+        text = S("schreiben.antwort.art.geaendert", w1=a["name"], w2=key) + verbinden(geaendert) + "."
     arten_speichern(reise_dir, arten, wer)
-    return titel, text + (f" Grund: {grund}." if grund else "")
+    return titel, text + (S("schreiben.antwort.grund", w1=grund) if grund else "")
 
 
 # ---------- Kategorien der Kartenpunkte (plan/kategorien.yaml) ----------
@@ -425,7 +434,7 @@ def kategorie_definieren(reise_dir, wer, args):
         if name is None or gruppe is None or farbe is None:
             raise Ablehnung("schreiben.kategorie_definieren.7")
         k = {"gruppe": gruppe.lower(), "name": name}
-        titel, kopf = f"Kategorie „{name}“ ({key}) angelegt", f"Kategorie „{name}“ angelegt: Schlüssel {key}, Gruppe {k['gruppe']}, Farbe {farbe}"
+        titel, kopf = f"Kategorie „{name}“ ({key}) angelegt", S("schreiben.antwort.kategorie.angelegt", w1=name, w2=key, w3=k["gruppe"], w4=farbe)
         neu = True
     else:
         k = kategorien[key]
@@ -433,7 +442,7 @@ def kategorie_definieren(reise_dir, wer, args):
         if gruppe is not None and gruppe.lower() != k.get("gruppe"):
             raise Ablehnung("schreiben.kategorie_definieren.8", w1=k.get('name', key), w2=k.get('gruppe'))
         if name is not None and name != k.get("name"):
-            geaendert.append(f"Name „{k.get('name')}“ → „{name}“")
+            geaendert.append(S("schreiben.antwort.art.name", w1=k.get("name"), w2=name))
             k["name"] = name
     for feld, wert in (("einzahl", einzahl), ("farbe", farbe), ("symbol", symbol)):
         if wert is not None and wert != k.get(feld):
@@ -443,7 +452,7 @@ def kategorie_definieren(reise_dir, wer, args):
         k["nummeriert"] = nummeriert or None
         if not nummeriert:
             k.pop("nummeriert", None)
-        geaendert.append("nummeriert" if nummeriert else "nicht mehr nummeriert")
+        geaendert.append(S("schreiben.antwort.kategorie.nummeriert" if nummeriert else "schreiben.antwort.kategorie.nicht_nummeriert"))
     if art is not None:
         arten = k.setdefault("arten", {})
         a = arten.get(art) if isinstance(arten.get(art), dict) else {}
@@ -455,20 +464,20 @@ def kategorie_definieren(reise_dir, wer, args):
             a["umriss"] = True if art_umriss else None
             if not art_umriss:
                 a.pop("umriss", None)
-            geaendert.append(f"art {art}: " + ("Umriss" if art_umriss else "ohne Umriss"))
+            geaendert.append(S("schreiben.antwort.kategorie.umriss" if art_umriss else "schreiben.antwort.kategorie.ohne_umriss", w1=art))
         arten[art] = a
     if neu:
         k["farbe"] = farbe
         kategorien[key] = {f: k[f] for f in ("gruppe", "name", "einzahl", "farbe", "symbol", "nummeriert", "arten") if k.get(f)}
-        text = kopf + (f" (außerdem: {', '.join(geaendert)})" if geaendert else "") + "."
+        text = kopf + (S("schreiben.antwort.kategorie.ausserdem", w1=", ".join(map(str, geaendert))) if geaendert else "") + "."
     else:
         if not geaendert:
             raise Ablehnung("schreiben.kategorie_definieren.9", w1=k.get('name', key), key=key)
         kategorien[key] = {f: k[f] for f in ("gruppe", "name", "einzahl", "farbe", "symbol", "nummeriert", "arten") if k.get(f)}
         titel = f"Kategorie „{k['name']}“ ({key}) geändert"
-        text = f"Kategorie „{k['name']}“ ({key}) geändert: " + ", ".join(geaendert) + "."
+        text = S("schreiben.antwort.kategorie.geaendert", w1=k["name"], w2=key) + verbinden(geaendert) + "."
     kategorien_speichern(reise_dir, kategorien, wer)
-    return titel, text + (f" Grund: {grund}." if grund else "")
+    return titel, text + (S("schreiben.antwort.grund", w1=grund) if grund else "")
 
 
 def rolle_pruefen(merkmale, key, rolle, typ):
@@ -547,9 +556,9 @@ def merkmal_definieren(reise_dir, wer, args):
             d["rolle"] = rolle
         merkmale[key] = d
         titel = f"Merkmal „{name}“ ({key}) an {a.get('name', art)} angelegt"
-        text = (f"Merkmal „{name}“ ({key}) an der Art {a.get('name', art)} angelegt: Typ {typ}"
-                + (f" ({' | '.join(werte)})" if werte else "") + (", veränderlich (braucht Prüfdatum)" if veraenderlich else "")
-                + f", Stufe {stufe_wort(stufe or 'empfohlen')}.")
+        text = (S("schreiben.antwort.merkmal.angelegt", w1=name, w2=key, w3=a.get("name", art), w4=typ)
+                + (f" ({' | '.join(werte)})" if werte else "") + (S("schreiben.antwort.merkmal.veraenderlich_hinweis") if veraenderlich else "")
+                + S("schreiben.antwort.merkmal.stufe_kopf") + stufe_satz(stufe or "empfohlen") + ".")
     else:
         d = merkmale[key]
         if d.get("auto") and any(x is not None for x in (typ, werte, veraenderlich, einheit, rolle)):
@@ -559,14 +568,14 @@ def merkmal_definieren(reise_dir, wer, args):
             if rolle:
                 rolle_pruefen(merkmale, key, rolle, (typ or d.get("typ", "text")).lower())
                 d["rolle"] = rolle
-                geaendert.append(f"Rolle {rolle}")
+                geaendert.append(S("schreiben.antwort.merkmal.rolle", w1=rolle))
             else:
                 d.pop("rolle", None)
-                geaendert.append("keine Rolle mehr")
+                geaendert.append(S("schreiben.antwort.merkmal.keine_rolle"))
         if typ is not None and typ.lower() != d.get("typ", "text"):
             if typ.lower() == "auswahl" and not (werte or d.get("werte")):
                 raise Ablehnung("schreiben.merkmal_definieren.11")
-            geaendert.append(f"Typ {typ.lower()}")
+            geaendert.append(S("schreiben.antwort.merkmal.typ", w1=typ.lower()))
             d["typ"] = typ.lower()
             if typ.lower() != "auswahl":
                 d.pop("werte", None)
@@ -574,39 +583,39 @@ def merkmal_definieren(reise_dir, wer, args):
             if d.get("typ", "text") != "auswahl":
                 raise Ablehnung("schreiben.merkmal_definieren.9")
             if werte != d.get("werte"):
-                geaendert.append("Werte " + " | ".join(werte))
+                geaendert.append(S("schreiben.antwort.merkmal.werte", w1=" | ".join(werte)))
                 d["werte"] = werte
         if name is not None and name != d.get("name"):
-            geaendert.append(f"Name „{d.get('name')}“ → „{name}“")
+            geaendert.append(S("schreiben.antwort.art.name", w1=d.get("name"), w2=name))
             d["name"] = name
         if veraenderlich is not None and bool(d.get("veraenderlich")) != veraenderlich:
-            geaendert.append("veränderlich" if veraenderlich else "nicht mehr veränderlich")
+            geaendert.append(S("schreiben.antwort.merkmal.veraenderlich" if veraenderlich else "schreiben.antwort.merkmal.nicht_veraenderlich"))
             if veraenderlich:
                 d["veraenderlich"] = True
             else:
                 d.pop("veraenderlich", None)
         if stufe is not None and stufe != (d.get("stufe") if isinstance(d.get("stufe"), str) else "empfohlen"):
-            geaendert.append("abgeschaltet (Stufe aus)" if stufe == "aus" else f"Stufe {stufe_wort(stufe)}")
+            geaendert.append(S("schreiben.antwort.merkmal.stufe_aus") if stufe == "aus" else S("schreiben.antwort.merkmal.stufe_kopf_geaendert") + stufe_satz(stufe))
             if stufe == "empfohlen":
                 d.pop("stufe", None)
             else:
                 d["stufe"] = stufe
         for f, v in (("einheit", einheit), ("hilfe", hilfe), ("frage", frage)):
             if v is not None and v != d.get(f):
-                geaendert.append(f.capitalize())
+                geaendert.append(S("schreiben.antwort.merkmal.feld." + f))
                 d[f] = v
         if auch is not None and auch != d.get("auch"):
-            geaendert.append("andere Namen " + ", ".join(auch))
+            geaendert.append(S("schreiben.antwort.merkmal.auch", w1=", ".join(auch)))
             d["auch"] = auch
         if not geaendert:
             raise Ablehnung("schreiben.merkmal_definieren.12", w1=d.get('name', key), key=key, w3=a.get('name', art))
         merkmale[key] = {k: d[k] for k in ("name", "typ", "werte", "auto", "veraenderlich", "einheit", "stufe", "rolle", "hilfe", "frage",
                                            "auch") if k in d}
         titel = f"Merkmal „{d['name']}“ ({key}) an {a.get('name', art)} geändert"
-        text = f"Merkmal „{d['name']}“ ({key}) an der Art {a.get('name', art)} geändert: " + ", ".join(geaendert) + "."
+        text = S("schreiben.antwort.merkmal.geaendert", w1=d["name"], w2=key, w3=a.get("name", art)) + verbinden(geaendert) + "."
     a["merkmale"] = merkmale
     arten_speichern(reise_dir, arten, wer)
-    return titel, text + (f" Grund: {grund}." if grund else "")
+    return titel, text + (S("schreiben.antwort.grund", w1=grund) if grund else "")
 
 
 # ---------- Werte an Dingen (plan/routen.yaml) ----------
@@ -746,7 +755,7 @@ def wert_text(e):
     t = str(e.get("wert"))
     if e.get("gilt") is not None:
         g = e["gilt"] if isinstance(e["gilt"], list) else [e["gilt"]]
-        t += " (am " + ", ".join(x.strftime("%d.%m.") if hasattr(x, "strftime") else str(x) for x in g) + ")"
+        t = t + S("schreiben.antwort.wert.am", w1=", ".join(x.strftime("%d.%m.") if hasattr(x, "strftime") else str(x) for x in g))
     return t
 
 
@@ -834,12 +843,13 @@ def wert_eintragen(reise_dir, wer, args, heute=None):
         merkmale[k] = liste
     routen_speichern(reise_dir, roh)
     name = definition.get("name") or k
-    neu_text = "; ".join(wert_text(e) for e in neue)
-    alt_text = "; ".join(wert_text(e) for e in ersetzt)
+    neu_text = verbinden([wert_text(e) for e in neue], "; ")
+    alt_text = verbinden([wert_text(e) for e in ersetzt], "; ")
     titel = f"{bezeichnung}: {name} {('„' + alt_text + '“ → ') if alt_text else ''}„{neu_text}“"
-    text = (f"{name} an {bezeichnung}: {neu_text}" + (f" (vorher: {alt_text})" if alt_text else "")
-            + f". Herkunft: {'; '.join(dict.fromkeys(e['quelle'] for e in neue))}"
-            + (f", geprüft {', '.join(dict.fromkeys(e['geprueft'].isoformat() for e in neue if 'geprueft' in e))}" if any('geprueft' in e for e in neue) else "")
+    text = (S("schreiben.antwort.wert.kopf", w1=name, w2=bezeichnung, w3=neu_text)
+            + (S("schreiben.antwort.wert.vorher", w1=alt_text) if alt_text else "")
+            + S("schreiben.antwort.herkunft", w1="; ".join(dict.fromkeys(e["quelle"] for e in neue)))
+            + (S("schreiben.antwort.geprueft", w1=", ".join(dict.fromkeys(e["geprueft"].isoformat() for e in neue if "geprueft" in e))) if any("geprueft" in e for e in neue) else "")
             + ".")
     return titel, text
 
@@ -1046,10 +1056,12 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
     roh[abschnitt][did] = knoten
     name = d.get("name") or d.get("titel")
     titel = f"{did} {name} angelegt ({was})"
-    text = (f"{was.capitalize()} {did} „{name}“ angelegt" + (f" in {route.get('orte', {}).get(d['ort'], {}).get('name', d['ort'])}" if was in ("unterkunft", "aufenthalt") else "")
-            + (f", Art {d['art']}" if d.get("art") else "") + (f", Merkmale: {', '.join(werte)}" if werte else "") + f". Herkunft: {quelle}."
-            + (" Als Alternative gehört es noch in eine Wahlstelle (option_anlegen oder wahlstelle_anlegen)." if was == "unterkunft" else "")
-            + (" Er gehört noch an einen Tag (tag_aendern mit aufenthalte)." if was == "aufenthalt" else ""))
+    text = (S("schreiben.antwort.ding." + was, w1=did, w2=name)
+            + (S("schreiben.antwort.ding.in", w1=route.get("orte", {}).get(d["ort"], {}).get("name", d["ort"])) if was in ("unterkunft", "aufenthalt") else "")
+            + (S("schreiben.antwort.ding.art", w1=d["art"]) if d.get("art") else "") + (S("schreiben.antwort.ding.merkmale", w1=", ".join(werte)) if werte else "")
+            + S("schreiben.antwort.ding.herkunft_punkt", w1=quelle)
+            + (S("schreiben.antwort.ding.alternative") if was == "unterkunft" else "")
+            + (S("schreiben.antwort.ding.an_einen_tag") if was == "aufenthalt" else ""))
     routen_speichern(reise_dir, roh)
     return titel, text
 
@@ -1123,12 +1135,12 @@ def ding_aendern(reise_dir, wer, args, heute=None):
         elif feld == "ausserhalb":
             v = bool_wert(args, feld)
             if v is False and feld in knoten:
-                geaendert.append("ausserhalb entfernt (Ort der Reisegegend)")
+                geaendert.append(S("schreiben.antwort.ding.ausserhalb_entfernt"))
                 del knoten[feld]
                 continue
             if not v or knoten.get(feld):
                 continue
-            geaendert.append("ausserhalb (Ort der An- und Abreise)")
+            geaendert.append(S("schreiben.antwort.ding.ausserhalb"))
             knoten[feld] = True
             continue
         else:
@@ -1136,12 +1148,12 @@ def ding_aendern(reise_dir, wer, args, heute=None):
         alt = knoten.get(feld) if feld != "art" else (knoten.get("art") or art_schluessel(knoten.get("typ")))
         if v == "" and feld in ("hinweis", "buchungslink", "frage", "zeit", "beginn", "ende", "ab", "an"):
             if feld in knoten:
-                geaendert.append(f"{feld} entfernt (war „{alt}“)")
+                geaendert.append(S("schreiben.antwort.ding.entfernt", w1=feld, w2=alt))
                 del knoten[feld]
             continue
         if str(alt) == str(v):
             continue
-        geaendert.append(f"{feld} „{alt}“ → „{v}“" if alt is not None else f"{feld} „{v}“")
+        geaendert.append(S("schreiben.antwort.ding.wechsel", w1=feld, w2=alt, w3=v) if alt is not None else S("schreiben.antwort.ding.neu", w1=feld, w2=v))
         knoten[feld] = skalar(feld, v)
         if feld == "art" and "typ" in knoten:   # Brücke typ: entfällt, sobald art: steht
             del knoten["typ"]
@@ -1152,7 +1164,7 @@ def ding_aendern(reise_dir, wer, args, heute=None):
     grund = text_wert(args, "grund")
     routen_speichern(reise_dir, roh)
     titel = f"{bezeichnung} geändert: " + "; ".join(g.split(" „")[0] for g in geaendert)
-    text = f"{bezeichnung}: " + "; ".join(geaendert) + "." + (f" Grund: {grund}." if grund else "")
+    text = f"{bezeichnung}: " + verbinden(geaendert, "; ") + "." + (S("schreiben.antwort.grund", w1=grund) if grund else "")
     return titel, text
 
 
@@ -1188,11 +1200,12 @@ def lage_eintragen(reise_dir, wer, args, heute=None):
         alt = (knoten.get(feld) or {}).get("wert") if isinstance(knoten.get(feld), dict) else None
         knoten[feld] = fliess_map({"wert": wert, "quelle": quelle, "geprueft": g})
         text = ", ".join(map(str, wert)) if feld == "punkt" else wert
-        geaendert.append(f"{'Koordinaten' if feld == 'punkt' else 'Adresse'} „{text}“" + (f" (war „{', '.join(map(str, alt)) if isinstance(alt, list) else alt}“)" if alt else ""))
+        geaendert.append(S("schreiben.antwort.lage.koordinaten" if feld == "punkt" else "schreiben.antwort.lage.adresse", w1=text)
+                         + (S("schreiben.antwort.lage.war", w1=", ".join(map(str, alt)) if isinstance(alt, list) else alt) if alt else ""))
     routen_speichern(reise_dir, roh)
     grund = text_wert(args, "grund")
     return (f"{bezeichnung}: Lage eingetragen",
-            f"{bezeichnung}: " + "; ".join(geaendert) + f". Herkunft: {quelle}, geprüft {g.isoformat()}." + (f" Grund: {grund}." if grund else ""))
+            f"{bezeichnung}: " + verbinden(geaendert, "; ") + S("schreiben.antwort.lage.herkunft", w1=quelle, w2=g.isoformat()) + (S("schreiben.antwort.grund", w1=grund) if grund else ""))
 
 
 def frage_zeile(reise_dir, text, bis=None):
@@ -1222,7 +1235,7 @@ def frage_anlegen(reise_dir, wer, args, heute=None):
     if bezug:
         text = f"{text} ({', '.join(bezug)})" if not any(b in text for b in bezug) else text
     fid = frage_zeile(reise_dir, text, bis)
-    return f"Frage {fid} angelegt", f"Offene Frage {fid} angelegt: {text}" + (f", bis {bis}" if bis else "") + f" (von {wer['name']})."
+    return f"Frage {fid} angelegt", S("schreiben.antwort.frage.angelegt", w1=fid, w2=text) + (S("schreiben.antwort.frage.bis", w1=bis) if bis else "") + S("schreiben.antwort.frage.von", w1=wer["name"])
 
 
 def option_bauen(roh, route, vid, o, wer, heute, bereich):
@@ -1307,9 +1320,9 @@ def option_anlegen(reise_dir, wer, args, heute=None):
     optionen.append(knoten)
     routen_speichern(reise_dir, roh)
     titel = f"{oid} „{d['titel']}“ an {vid} vorgeschlagen"
-    text = (f"Option {oid} „{d['titel']}“ an der Wahlstelle {vid} {wr.get('titel', '')} angelegt, Status vorgeschlagen"
-            + (f", Merkmale: {', '.join(werte)}" if werte else "") + f". Herkunft: {d['quelle']}. "
-            "Ob sie gewählt wird, entscheidet ein:e Organisator:in (entscheiden).")
+    text = (S("schreiben.antwort.option.angelegt", w1=oid, w2=d["titel"], w3=vid, w4=wr.get("titel", ""))
+            + (S("schreiben.antwort.ding.merkmale", w1=", ".join(werte)) if werte else "") + S("schreiben.antwort.option.herkunft", w1=d["quelle"])
+            + S("schreiben.antwort.option.entscheiden"))
     return titel, text
 
 
@@ -1375,9 +1388,9 @@ def wahlstelle_anlegen(reise_dir, wer, args, heute=None):
     roh["wahlstellen"][vid] = knoten
     routen_speichern(reise_dir, roh)
     titel = f"Wahlstelle {vid} „{d['titel']}“ angelegt"
-    text = (f"Wahlstelle {vid} „{d['titel']}“ ({art}" + (f", {bereich}" if bereich else "") + (f", an {', '.join(an)}" if an else "")
-            + f") angelegt mit {', '.join(namen)}, alle vorgeschlagen. Entscheiden können Organisator:innen (entscheiden)."
-            + (f" Dazu die offene Frage {frage}." if art == "planung" else ""))
+    text = (S("schreiben.antwort.wahlstelle.angelegt", w1=vid, w2=d["titel"], w3=art) + (f", {bereich}" if bereich else "")
+            + (S("schreiben.antwort.wahlstelle.an", w1=", ".join(an)) if an else "")
+            + S("schreiben.antwort.wahlstelle.mit", w1=", ".join(namen)) + (S("schreiben.antwort.wahlstelle.frage", w1=frage) if art == "planung" else ""))
     return titel, text
 
 
@@ -1466,27 +1479,27 @@ def entscheiden(reise_dir, wer, args, heute=None):
         noch_offen = [w["id"] for w in route.get("wahlstellen") or [] if w["id"] != vid and w.get("frage") == wr["frage"]
                       and not any(x.get("status") == "gewaehlt" for x in w.get("optionen") or [])]
         if status == "gewaehlt" and noch_offen:
-            frage_text = f" Frage {wr['frage']} bleibt offen, weil dort noch {', '.join(noch_offen)} zu entscheiden {'ist' if len(noch_offen) == 1 else 'sind'}."
+            frage_text = S("schreiben.antwort.entscheiden.frage_offen", n=len(noch_offen), w1=wr["frage"], w2=", ".join(noch_offen))
             # Die KI im AI-Client fragt die Person danach einzeln, je Wahlstelle eine Auswahlfrage (Product Owner 29.10.2026)
             wahl = {w["id"]: w for w in route.get("wahlstellen") or []}
-            frage_text += (" Frag die Person jetzt einzeln nach, je Wahlstelle eine eigene Frage mit den Möglichkeiten zur Auswahl "
-                           "(mit dem Fragewerkzeug der App, wenn es eins gibt), eine nach der anderen: "
+            frage_text += (S("schreiben.antwort.entscheiden.einzeln")
                            + " · ".join(f"{v} {wahl[v].get('titel', '')}: " + ", ".join(
                                f"{x['id']} {x.get('titel', '')}" for x in wahl[v].get("optionen") or []
                                if x.get("status") not in ("verworfen", "ersetzt")) for v in noch_offen) + ".")
         elif status == "gewaehlt":
             sp = sprache_von(reise_dir)
             ok = frage_status_setzen(reise_dir, wr["frage"], f"{texte.wort(sp, 'inhalt.frage.geklaert')} {texte.datum(heute, sp)}: {wer['name']}, {o['titel']} ({oid})")
-            frage_text = f" Frage {wr['frage']} ist damit geklärt." if ok else ""
+            frage_text = S("schreiben.antwort.entscheiden.geklaert", w1=wr["frage"]) if ok else ""
         elif not gewaehlt_danach:
             ok = frage_status_setzen(reise_dir, wr["frage"], texte.wort(sprache_von(reise_dir), "inhalt.frage.offen"))
-            frage_text = f" {vid} ist danach offen, Frage {wr['frage']} wieder offen." if ok else f" {vid} ist danach offen."
+            frage_text = S("schreiben.antwort.entscheiden.danach_offen_frage", w1=vid, w2=wr["frage"]) if ok else S("schreiben.antwort.entscheiden.danach_offen", w1=vid)
     titel = f"{oid} „{o['titel']}“ {WORT[status]}" + (f" (ersetzt durch {durch})" if durch else "")
-    text = (f"Entschieden: {oid} „{o['titel']}“ ({vid} {wr.get('titel', '')}) ist {WORT[status]}" + (f", ersetzt durch {durch}" if durch else "")
-            + f" ({wer['name']}, {heute.strftime('%-d.%-m.%Y')}, Grund: {grund})." + (f" Bisher gewählt und dadurch ersetzt: {', '.join(ersetzt)}." if ersetzt else "")
-            + frage_text)
+    text = (S("schreiben.antwort.entscheiden.kopf", w1=oid, w2=o["titel"], w3=vid, w4=wr.get("titel", "")) + S("schreiben.wort." + status)
+            + (S("schreiben.antwort.entscheiden.ersetzt_durch", w1=durch) if durch else "")
+            + S("schreiben.antwort.entscheiden.klammer", w1=wer["name"], w2=heute.strftime("%-d.%-m.%Y"), w3=grund)
+            + (S("schreiben.antwort.entscheiden.bisher", w1=", ".join(ersetzt)) if ersetzt else "") + frage_text)
     if status in ("verworfen", "ersetzt"):
-        text += " Nicht gelöscht, die Option bleibt mit Verlauf stehen; zurückholen mit entscheiden, Status gewählt."
+        text += S("schreiben.antwort.entscheiden.nicht_geloescht")
     return titel, text
 
 
@@ -1541,7 +1554,7 @@ def tag_aendern(reise_dir, wer, args, heute=None):
     grund = text_wert(args, "grund")
     routen_speichern(reise_dir, roh)
     return f"{tid} geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), \
-        f"{tid} {t.get('titel', '')}: " + "; ".join(geaendert) + "." + (f" Grund: {grund}." if grund else "")
+        f"{tid} {t.get('titel', '')}: " + verbinden(geaendert, "; ") + "." + (S("schreiben.antwort.grund", w1=grund) if grund else "")
 
 
 # ---------- Wissen, Fragen schließen, Personen (inhalt/*.md, offene-fragen.md, reise.yaml) ----------
@@ -1587,14 +1600,14 @@ def wissen_schreiben(reise_dir, wer, args, heute=None):
             ende -= 1
         zeilen[ende:ende] = ["", *absatz.split("\n")]
         f.write_text("\n".join(zeilen).rstrip("\n") + "\n", encoding="utf-8")
-        return f"{wid} „{t}“ ergänzt", f"Abschnitt {wid} „{t}“ ({d_}) ergänzt. Herkunft: {quelle}."
+        return f"{wid} „{t}“ ergänzt", S("schreiben.antwort.abschnitt.ergaenzt_text", w1=wid, w2=t, w3=d_) + S("schreiben.antwort.herkunft", w1=quelle) + "."
     if not titel:
         raise Ablehnung("schreiben.wissen_schreiben.4")
     try:
         wid = neu.abschnitt(Path(reise_dir), titel, gruppe, datei, absatz)
     except neu.Fehler as e:
         raise Ablehnung(str(e))
-    return f"{wid} „{titel}“ angelegt", f"Neuer Abschnitt {wid} „{titel}“ in {datei} (Gruppe {gruppe}). Herkunft: {quelle}."
+    return f"{wid} „{titel}“ angelegt", S("schreiben.antwort.abschnitt.neu", w1=wid, w2=titel, w3=datei, w4=gruppe) + S("schreiben.antwort.herkunft", w1=quelle) + "."
 
 
 def frage_schliessen(reise_dir, wer, args, heute=None):
@@ -1611,10 +1624,9 @@ def frage_schliessen(reise_dir, wer, args, heute=None):
     wort = texte.wort(sp, "inhalt.frage.geklaert" if status == "geklaert" else "inhalt.frage.entfaellt")
     if not frage_status_setzen(reise_dir, fid, f"{wort} {texte.datum(heute, sp)}: {wer['name']}, {ergebnis}"):
         raise Ablehnung("schreiben.frage_schliessen.2", fid=fid)
-    text = f"Frage {fid} ist {wort} ({wer['name']}, {heute.strftime('%-d.%-m.%Y')}): {ergebnis}"
+    text = S("schreiben.antwort.frage.ist", w1=fid, w2=wort, w3=wer["name"], w4=heute.strftime("%-d.%-m.%Y"), w5=ergebnis)
     if status == "entfaellt":
-        text += (" Nicht gelöscht, die Frage steht weiter mit Verlauf da; ein Wiedereröffnen gibt es nicht, "
-                 "bei Bedarf eine neue Frage anlegen.")
+        text += S("schreiben.antwort.frage.nicht_geloescht")
     return f"{fid} {wort}", text
 
 
@@ -1657,7 +1669,7 @@ def person_schreiben(reise_dir, wer, args, heute=None):
                 d[k] = v
         personen[schluessel] = fliess_map(d)
         titel = f"Person {name} ({schluessel}) aufgenommen, Rolle {d['rolle']}"
-        text = f"{name} steht jetzt in der Reise ({schluessel}, Rolle {d['rolle']}, reist {'mit' if d['reist'] else 'nicht mit'})."
+        text = S("schreiben.antwort.person.aufgenommen", w1=name, w2=schluessel, w3=d["rolle"]) + S("schreiben.antwort.person.mit" if d["reist"] else "schreiben.antwort.person.nicht_mit")
     else:
         if vorhanden.get("rolle") == "organisator" and rolle not in (None, "organisator") and not darf(wer["rolle"], "organisator"):
             raise Ablehnung("schreiben.person_schreiben.6")
@@ -1718,7 +1730,7 @@ def reise_status_setzen(reise_dir, wer, args, heute=None):
         st["verlauf"] = verlauf
     verlauf.append(fliess_map({"datum": heute, "wert": wert, "wer": wer["name"], "grund": grund}))
     reise_yaml_speichern(p, roh)
-    return f"Status {alt or '–'} → {wert}", f"Die Reise hat jetzt den Status {wert} (vorher {alt or '–'}; {wer['name']}, {heute.strftime('%-d.%-m.%Y')}, Grund: {grund})."
+    return f"Status {alt or '–'} → {wert}", S("schreiben.antwort.status.text", w1=wert, w2=alt or "–", w3=wer["name"], w4=heute.strftime("%-d.%-m.%Y"), w5=grund)
 
 
 def einstellung_setzen(reise_dir, wer, args, heute=None):
@@ -1768,7 +1780,7 @@ def einstellung_setzen(reise_dir, wer, args, heute=None):
     grund = text_wert(args, "grund")
     reise_yaml_speichern(p, roh)
     return "Einstellungen geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), \
-        "Einstellungen: " + "; ".join(geaendert) + "." + (f" Grund: {grund}." if grund else "")
+        S("schreiben.antwort.einstellungen.kopf") + verbinden(geaendert, "; ") + "." + (S("schreiben.antwort.grund", w1=grund) if grund else "")
 
 
 def reise_anlegen(reisen_dir, wer, args, heute=None):
@@ -1792,7 +1804,7 @@ def reise_anlegen(reisen_dir, wer, args, heute=None):
     if not ok:
         shutil.rmtree(ordner, ignore_errors=True)
         raise Ablehnung("schreiben.bau.baut_nicht", meldungen=" ".join(meldungen))
-    return f"Neue Reise {ordner.name} angelegt", f"Die Reise „{n['titel']}“ ist angelegt (Ordner {ordner.name}, Status Idee).", ordner.name
+    return f"Neue Reise {ordner.name} angelegt", S("schreiben.antwort.reise.angelegt", w1=n["titel"], w2=ordner.name), ordner.name
 
 
 
@@ -1909,14 +1921,16 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
     routen_speichern(reise_dir, roh)
     namen = ", ".join(f"{x} {buchung_dingname(roh, route, x)}" for x in fuer)
     titel = f"{bid} Buchung {status}: {namen}"
-    text = (f"Buchung {bid} angelegt ({status}) für {namen}" + (f", Nr. {d['nummer']}" if d.get("nummer") else "")
-            + (f", bei {d['bei']}" if d.get("bei") else "") + (f", Preis {d['preis']}" if d.get("preis") else "")
-            + (f", Frist {d['frist'].strftime('%-d.%-m.%Y')}" + (f" ({d['frist_was']})" if d.get("frist_was") else "") if d.get("frist") else "")
-            + (f", Storno: {d['storno']}" if d.get("storno") else "") + (f" (bis {d['storno_bis'].strftime('%-d.%-m.%Y')})" if d.get("storno_bis") else "")
-            + (f", Ab {d['ab'].strftime('%-d.%-m.%Y')}" + (f" ({d['ab_was']})" if d.get("ab_was") else "") if d.get("ab") else "")
-            + (", Preise: " + ", ".join(f"{k} {v}" for k, v in preise.items()) if preise else "")
-            + (", Reisende: " + ", ".join(f"{k}{(' (' + v + ')') if v else ''}" for k, v in pers.items()) if pers else "")
-            + f". Herkunft: {quelle}.")   # zum Beleg sagt der Konnektor etwas: er weiß, ob einer mitkam
+    text = (S("schreiben.antwort.buchung.angelegt", w1=bid) + S("seite.buchung.status." + status) + S("schreiben.antwort.buchung.angelegt_fuer", w1=namen)
+            + (S("schreiben.antwort.buchung.nr", w1=d["nummer"]) if d.get("nummer") else "")
+            + (S("schreiben.antwort.buchung.bei", w1=d["bei"]) if d.get("bei") else "") + (S("schreiben.antwort.buchung.preis", w1=d["preis"]) if d.get("preis") else "")
+            + (S("schreiben.antwort.buchung.frist", w1=d["frist"].strftime("%-d.%-m.%Y")) + (f" ({d['frist_was']})" if d.get("frist_was") else "") if d.get("frist") else "")
+            + (S("schreiben.antwort.buchung.storno", w1=d["storno"]) if d.get("storno") else "")
+            + (S("schreiben.antwort.buchung.storno_bis", w1=d["storno_bis"].strftime("%-d.%-m.%Y")) if d.get("storno_bis") else "")
+            + (S("schreiben.antwort.buchung.ab", w1=d["ab"].strftime("%-d.%-m.%Y")) + (f" ({d['ab_was']})" if d.get("ab_was") else "") if d.get("ab") else "")
+            + (S("schreiben.antwort.buchung.preise", w1=", ".join(f"{k} {v}" for k, v in preise.items())) if preise else "")
+            + (S("schreiben.antwort.buchung.reisende_liste", w1=", ".join(f"{k}{(' (' + v + ')') if v else ''}" for k, v in pers.items())) if pers else "")
+            + S("schreiben.antwort.herkunft", w1=quelle) + ".")   # zum Beleg sagt der Konnektor etwas: er weiß, ob einer mitkam
     return titel, text
 
 
@@ -1947,18 +1961,19 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
 
     def setze(feld, neu, wort=None):
         wort = wort or BUCHUNG_WORTE.get(feld, feld)
+        wort_satz = S("schreiben.buchung." + feld) if feld in BUCHUNG_WORTE else wort   # in der Antwort in der Sprache der Person
         alt = knoten.get(feld)
         alt_t = alt.strftime("%-d.%-m.%Y") if isinstance(alt, datetime.date) else (", ".join(alt) if isinstance(alt, list) else alt)
         neu_t = neu.strftime("%-d.%-m.%Y") if isinstance(neu, datetime.date) else (", ".join(neu) if isinstance(neu, list) else neu)
         if neu in ("", None):
             if feld in knoten:
-                geaendert.append(f"{wort or feld} entfernt (war „{alt_t}“)")
+                geaendert.append(S("schreiben.antwort.buchung.entfernt", w1=wort_satz, w2=alt_t))
                 kurz.append(f"{wort or feld} entfernt")
                 del knoten[feld]
             return
         if alt_t == neu_t:
             return
-        geaendert.append(f"{wort or feld} „{alt_t}“ → „{neu_t}“" if alt is not None else f"{wort or feld} „{neu_t}“")
+        geaendert.append(S("schreiben.antwort.ding.wechsel", w1=wort_satz, w2=alt_t, w3=neu_t) if alt is not None else S("schreiben.antwort.ding.neu", w1=wort_satz, w2=neu_t))
         kurz.append(wort or feld)
         knoten[feld] = skalar(feld, neu) if isinstance(neu, str) else neu
 
@@ -1988,13 +2003,13 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
     if pers is not None:
         if dict(knoten.get("personen") or {}) != pers:
             alt = knoten.get("personen")
-            geaendert.append(f"Reisende {', '.join(f'{k}{(' (' + v + ')') if v else ''}' for k, v in pers.items()) or '–'}")
+            geaendert.append(S("schreiben.buchung.personen") + f" {', '.join(f'{k}{(' (' + v + ')') if v else ''}' for k, v in pers.items()) or '–'}")
             kurz.append("Reisende")
             (knoten.__setitem__("personen", block_map(pers)) if pers else knoten.pop("personen", None))
     fuer_jetzt = [knoten["fuer"]] if isinstance(knoten.get("fuer"), str) else list(knoten.get("fuer") or [])
     preise = buchung_preise(args, fuer_jetzt)
     if preise is not None and dict(knoten.get("preise") or {}) != preise:
-        geaendert.append("Preise je Ding " + (", ".join(f"{k} {v}" for k, v in preise.items()) or "entfernt"))
+        geaendert.append(S("schreiben.buchung.preise") + " " + (", ".join(f"{k} {v}" for k, v in preise.items()) or S("schreiben.antwort.buchung.preise_entfernt")))
         kurz.append("Preise je Ding")
         (knoten.__setitem__("preise", fliess_map(preise)) if preise else knoten.pop("preise", None))
     if not geaendert:
@@ -2010,9 +2025,9 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
     fuer = [fuer] if isinstance(fuer, str) else list(fuer or [])
     namen = ", ".join(f"{x} {buchung_dingname(roh, route, x)}" for x in fuer)
     titel = f"{bid} geändert: " + "; ".join(kurz)
-    text = f"Buchung {bid} ({namen}): " + "; ".join(geaendert) + "." + (f" Grund: {grund}." if grund else "")
+    text = S("schreiben.antwort.buchung.kopf", w1=bid, w2=namen) + verbinden(geaendert, "; ") + "." + (S("schreiben.antwort.grund", w1=grund) if grund else "")
     if knoten.get("status") == "storniert" and status_vorher != "storniert":
-        text += " Nicht gelöscht, die Buchung steht weiter mit Verlauf da; zurückholen mit Status gebucht."
+        text += S("schreiben.antwort.buchung.nicht_geloescht")
     return titel, text
 
 
@@ -2069,18 +2084,18 @@ def tag_anlegen(reise_dir, wer, args, heute=None):
     roh["tage"][tid] = fliess_map(d)
     if liste is not None:
         liste.insert(i + (1 if nach else 0), tid)
-        wo = f"{'nach' if nach else 'vor'} {anker}"
+        wo = S("schreiben.antwort.tag.nach" if nach else "schreiben.antwort.tag.vor", w1=anker)
     elif args.get("ohne_route"):
-        wo = "noch nicht in der Route (für eine Variante: option_aendern mit folge)"
+        wo = S("schreiben.antwort.tag.ohne_route")
     else:
         route = roh.get("route")
         if route is None:
             route = CommentedSeq()
             roh["route"] = route
         route.append(tid)
-        wo = "am Ende der Route"
+        wo = S("schreiben.antwort.tag.ende")
     routen_speichern(reise_dir, roh)
-    return f"{tid} „{d['titel']}“ angelegt", f"Tag {tid} „{d['titel']}“ angelegt, {wo}. Der Generator prüft, ob der Plan aufgeht (Datum ergibt sich aus der Reihenfolge)."
+    return f"{tid} „{d['titel']}“ angelegt", S("schreiben.antwort.tag.angelegt", w1=tid, w2=d["titel"]) + wo + S("schreiben.antwort.tag.pruefung")
 
 
 def termin_setzen(reise_dir, wer, args, heute=None):
@@ -2105,7 +2120,7 @@ def termin_setzen(reise_dir, wer, args, heute=None):
             raise Ablehnung("schreiben.termin_setzen.3")
         fix.remove(alt)
         routen_speichern(reise_dir, roh)
-        return f"Termin {datum_.strftime('%-d.%-m.')} „{titel}“ entfernt", f"Fester Termin am {datum_.strftime('%-d.%-m.%Y')} „{titel}“ entfernt. Grund: {grund}."
+        return f"Termin {datum_.strftime('%-d.%-m.')} „{titel}“ entfernt", S("schreiben.antwort.termin.entfernt", w1=datum_.strftime("%-d.%-m.%Y"), w2=titel) + S("schreiben.antwort.grund", w1=grund)
     ort = text_wert(args, "ort", laenge=10)
     if ort and (not re.fullmatch(r"O-\d+", ort) or ort not in (roh.get("orte") or {})):
         raise Ablehnung("schreiben.termin_setzen.4", ort=ort)
@@ -2122,7 +2137,7 @@ def termin_setzen(reise_dir, wer, args, heute=None):
         if not geaendert:
             raise Ablehnung("schreiben.termin_setzen.5")
         routen_speichern(reise_dir, roh)
-        return f"Termin {datum_.strftime('%-d.%-m.')} geändert", f"Fester Termin am {datum_.strftime('%-d.%-m.%Y')}: " + "; ".join(geaendert) + "." + (f" Grund: {grund}." if grund else "")
+        return f"Termin {datum_.strftime('%-d.%-m.')} geändert", S("schreiben.antwort.termin.kopf", w1=datum_.strftime("%-d.%-m.%Y")) + verbinden(geaendert, "; ") + "." + (S("schreiben.antwort.grund", w1=grund) if grund else "")
     if not quelle:
         raise Ablehnung("schreiben.termin_setzen.6")
     d = {"datum": datum_}
@@ -2132,7 +2147,7 @@ def termin_setzen(reise_dir, wer, args, heute=None):
     d["quelle"] = quelle
     fix.append(fliess_map(d))
     routen_speichern(reise_dir, roh)
-    return f"Termin {datum_.strftime('%-d.%-m.')} „{titel}“", f"Fester Termin am {datum_.strftime('%-d.%-m.%Y')} „{titel}“ angelegt" + (f" in {ort}" if ort else "") + f". Herkunft: {quelle}."
+    return f"Termin {datum_.strftime('%-d.%-m.')} „{titel}“", S("schreiben.antwort.termin.angelegt", w1=datum_.strftime("%-d.%-m.%Y"), w2=titel) + (S("schreiben.antwort.ding.in", w1=ort) if ort else "") + S("schreiben.antwort.herkunft", w1=quelle) + "."
 
 
 def wahlstelle_aendern(reise_dir, wer, args, heute=None):
@@ -2172,7 +2187,7 @@ def wahlstelle_aendern(reise_dir, wer, args, heute=None):
             raise Ablehnung("schreiben.wahlstelle_aendern.4", w1=', '.join(arten) or 'keine')
         alt = w.get("bereich") or (w.get("art") if w.get("art") not in ("planung", "unterwegs") else None)
         if (art or None) != alt:
-            geaendert.append(f"art {alt or '–'} → {art or '– (aus den Optionen)'}")
+            geaendert.append(S("schreiben.antwort.ding.pfeil", w1="art", w2=alt or "–", w3=art or S("schreiben.antwort.plan.aus_optionen")))
             w.pop("bereich", None)
             if w.get("art") not in ("planung", "unterwegs"):
                 w.pop("art", None)
@@ -2213,13 +2228,13 @@ def wahlstelle_aendern(reise_dir, wer, args, heute=None):
                 raise Ablehnung("schreiben.wahlstelle_aendern.7", st=st, k=k)
             alt = (mk.get(k) or {}).get("stufe") if isinstance(mk.get(k), dict) else None
             if alt != s:
-                geaendert.append(f"Stufe {k}: {alt or 'wie die Art'} → {s}")
+                geaendert.append(S("schreiben.antwort.ding.pfeil", w1=S("schreiben.antwort.merkmal.stufe_kopf_geaendert") + f"{k}:", w2=alt or S("schreiben.antwort.art.wie_art"), w3=s))
                 mk[k] = fliess_map({"stufe": s})
     if not geaendert:
         raise Ablehnung("schreiben.wahlstelle_aendern.8", vid=vid)
     grund = text_wert(args, "grund")
     routen_speichern(reise_dir, roh)
-    return f"{vid} geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), f"Wahlstelle {vid} „{w.get('titel', '')}“: " + "; ".join(geaendert) + "." + (f" Grund: {grund}." if grund else "")
+    return f"{vid} geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), S("schreiben.antwort.wahlstelle.kopf", w1=vid, w2=w.get("titel", "")) + verbinden(geaendert, "; ") + "." + (S("schreiben.antwort.grund", w1=grund) if grund else "")
 
 
 def option_aendern(reise_dir, wer, args, heute=None):
@@ -2295,11 +2310,11 @@ def option_aendern(reise_dir, wer, args, heute=None):
             verlauf = CommentedSeq()
             knoten["verlauf"] = verlauf
         verlauf.append(fliess_map({"datum": heute, "status": "favorisiert", "wer": wer["name"], "grund": grund}))
-        geaendert.append(f"favorisiert ({wer['name']})")
+        geaendert.append(S("schreiben.antwort.option.favorisiert", w1=wer["name"]))
     if not geaendert:
         raise Ablehnung("schreiben.option_aendern.8", oid=oid)
     routen_speichern(reise_dir, roh)
-    return f"{oid} geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), f"Option {oid} „{knoten.get('titel', '')}“: " + "; ".join(geaendert) + "." + (f" Grund: {grund}." if grund and not bool_wert(args, "favorisiert") else "")
+    return f"{oid} geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), S("schreiben.antwort.option.kopf", w1=oid, w2=knoten.get("titel", "")) + verbinden(geaendert, "; ") + "." + (S("schreiben.antwort.grund", w1=grund) if grund and not bool_wert(args, "favorisiert") else "")
 
 
 def abschnitt_finden(reise_dir, wid):
@@ -2348,7 +2363,7 @@ def wissen_aendern(reise_dir, wer, args, heute=None):
         quelle = text_wert(args, "quelle", pflicht=True)
         absatz = f"{text}\n\n*Herkunft: {quelle}; berichtigt am {heute.strftime('%-d.%-m.%Y')} von {wer['name']} über den Konnektor ({grund}).*"
         zeilen[start + 1:ende] = ["", *absatz.split("\n")]
-        geaendert.append("Inhalt ersetzt")
+        geaendert.append(S("schreiben.antwort.abschnitt.inhalt_ersetzt"))
     if neuer_titel and neuer_titel != titel:
         if neuer_titel.startswith("#") or "|" in neuer_titel:
             raise Ablehnung("schreiben.wissen_aendern.4")
@@ -2364,7 +2379,7 @@ def wissen_aendern(reise_dir, wer, args, heute=None):
     if not geaendert:
         raise Ablehnung("schreiben.wissen_aendern.6")
     f.write_text("\n".join(zeilen).rstrip("\n") + "\n", encoding="utf-8")
-    return f"{wid} geändert: " + "; ".join(geaendert), f"Abschnitt {wid} „{neuer_titel or titel}“ ({datei}): " + "; ".join(geaendert) + f". Grund: {grund}."
+    return f"{wid} geändert: " + "; ".join(geaendert), S("schreiben.antwort.abschnitt.kopf", w1=wid, w2=neuer_titel or titel, w3=datei) + verbinden(geaendert, "; ") + S("schreiben.antwort.abschnitt.grund_ende", w1=grund)
 
 
 def lesetext_schreiben(reise_dir, wer, args, heute=None):
@@ -2410,14 +2425,14 @@ def lesetext_schreiben(reise_dir, wer, args, heute=None):
         while ze > zs + 1 and not zeilen[ze - 1].strip():
             ze -= 1
         zeilen[zs + 1:ze] = *absatz.split("\n"),
-        was = "ersetzt"
+        was = "ersetzt"   # Schlüssel schreiben.antwort.lesetext.<was>
     else:
         # vor dem ersten Unterabschnitt, nach der Einleitung (kursive Zeile) der Etappe
         erster = next((i for i in range(start + 1, ende) if zeilen[i].startswith("### ")), ende)
         zeilen[erster:erster] = ["### Zusammenfassung", *absatz.split("\n"), ""]
         was = "angelegt"
     f.write_text("\n".join(zeilen).rstrip("\n") + "\n", encoding="utf-8")
-    return f"{eid}: Lesetext {was}", f"Lesetext der Etappe {eid} {was} (Abschnitt Zusammenfassung in {d_rel}). Herkunft: {quelle}."
+    return f"{eid}: Lesetext {was}", S("schreiben.antwort.lesetext." + was, w1=eid, w2=d_rel) + S("schreiben.antwort.herkunft", w1=quelle) + "."
 
 
 def reise_aendern(reise_dir, wer, args, heute=None):
@@ -2460,7 +2475,7 @@ def reise_aendern(reise_dir, wer, args, heute=None):
         roh["verlauf"] = verlauf
     verlauf.append(fliess_map({"datum": heute, "wer": wer["name"], "was": "; ".join(geaendert), "grund": grund}))
     reise_yaml_speichern(p, roh)
-    return "Eckdaten geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), "Eckdaten der Reise: " + "; ".join(geaendert) + f". Grund: {grund}. (Start und Ende des Plans stehen in plan/routen.yaml.)"
+    return "Eckdaten geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), S("schreiben.antwort.eckdaten.kopf") + verbinden(geaendert, "; ") + S("schreiben.antwort.eckdaten.grund_ende", w1=grund)
 
 
 PLAN_FARBEN = ("a", "b", "c", "d")
@@ -2535,7 +2550,7 @@ def plan_anlegen(reise_dir, wer, args, heute=None):
     d["quelle"] = skalar("quelle", quelle)
     plaene.append(d)
     routen_speichern(reise_dir, roh)
-    return f"Plan {pid} „{d['kurz']}“ angelegt", f"Benannter Plan {pid} „{d['kurz']}: {d['titel']}“ angelegt mit {', '.join(d.get('auswahl') or [])}. Herkunft: {quelle}. Gewählt wird ein Plan über seine Optionen (entscheiden)."
+    return f"Plan {pid} „{d['kurz']}“ angelegt", S("schreiben.antwort.plan.angelegt", w1=pid, w2=d["kurz"], w3=d["titel"], w4=", ".join(d.get("auswahl") or [])) + S("schreiben.antwort.herkunft", w1=quelle) + S("schreiben.antwort.plan.entscheiden")
 
 
 def plan_aendern(reise_dir, wer, args, heute=None):
@@ -2552,7 +2567,7 @@ def plan_aendern(reise_dir, wer, args, heute=None):
         raise Ablehnung("schreiben.plan_aendern.2", pid=pid)
     grund = text_wert(args, "grund")
     routen_speichern(reise_dir, roh)
-    return f"{pid} geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), f"Plan {pid} „{d.get('kurz', '')}“: " + "; ".join(geaendert) + "." + (f" Grund: {grund}." if grund else "")
+    return f"{pid} geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), S("schreiben.antwort.plan.kopf", w1=pid, w2=d.get("kurz", "")) + verbinden(geaendert, "; ") + "." + (S("schreiben.antwort.grund", w1=grund) if grund else "")
 
 
 def merkmal_zusammenfuehren(reise_dir, wer, args, heute=None):
@@ -2613,9 +2628,9 @@ def merkmal_zusammenfuehren(reise_dir, wer, args, heute=None):
     del mk[von]
     arten[art]["merkmale"] = mk
     arten_speichern(reise_dir, arten, wer)
-    return f"{art}: {von} → {nach} zusammengeführt", (f"Merkmal {von} der Art {art} ist in {nach} aufgegangen: {len(umgehaengt)} Wert(e) umgehängt"
-            + (f", bei {', '.join(behalten)} blieb der Wert von {nach} (der andere steht in der Notiz)" if behalten else "")
-            + f"; „{von}“ ist jetzt ein weiterer Name von {nach}. Grund: {grund}.")
+    return f"{art}: {von} → {nach} zusammengeführt", (S("schreiben.antwort.zusammen.aufgegangen", w1=von, w2=art, w3=nach, w4=len(umgehaengt))
+            + (S("schreiben.antwort.zusammen.behalten", w1=", ".join(behalten), w2=nach) if behalten else "")
+            + S("schreiben.antwort.zusammen.name", w1=von, w2=nach, w3=grund))
 
 
 def art_schluessel_von(knoten):
@@ -2650,9 +2665,9 @@ def arten_uebernehmen(reise_dir, wer, args, heute=None):
         eigene[a] = copy.deepcopy(fremd[a])
     arten_speichern(reise_dir, eigene, wer)
     grund = text_wert(args, "grund")
-    return f"Arten aus {von} übernommen: {', '.join(gewuenscht)}", (f"Aus der Reise „{von}“ übernommen (als Kopie, hier frei änderbar): "
-            + ", ".join(f"{a} „{fremd[a].get('name', a)}“ ({len((fremd[a].get('merkmale') or {}))} Merkmale)" for a in gewuenscht) + "."
-            + (f" Grund: {grund}." if grund else ""))
+    return f"Arten aus {von} übernommen: {', '.join(gewuenscht)}", (S("schreiben.antwort.uebernommen", w1=von)
+            + verbinden([S("schreiben.antwort.uebernommen_art", w1=a, w2=fremd[a].get("name", a), w3=len(fremd[a].get("merkmale") or {})) for a in gewuenscht]) + "."
+            + (S("schreiben.antwort.grund", w1=grund) if grund else ""))
 
 
 def wunsch_vorschlagen(reise_dir, wer, args, heute=None):
@@ -2688,8 +2703,8 @@ def wunsch_vorschlagen(reise_dir, wer, args, heute=None):
     out = io.StringIO()
     y.dump(roh, out)
     p.write_text(out.getvalue(), encoding="utf-8")
-    return f"Vorschlag zu Wunsch {rid[:14]}… {'geändert' if war else 'eingetragen'}", (f"Vorschlag zum Wunsch {'geändert' if war else 'eingetragen'}: passt zu {', '.join(bezug) or 'keiner festen Stelle'}"
-            + (f", Option {option}" if option else "") + f". {notiz} Das Brett zeigt ihn unter „geprüft“; einplanen tut eine Organisator:in.")
+    return f"Vorschlag zu Wunsch {rid[:14]}… {'geändert' if war else 'eingetragen'}", (S("schreiben.antwort.wunsch.geaendert" if war else "schreiben.antwort.wunsch.eingetragen") + (", ".join(bezug) or S("schreiben.antwort.wunsch.keine_stelle"))
+            + (S("schreiben.antwort.wunsch.option", w1=option) if option else "") + S("schreiben.antwort.wunsch.brett", w1=notiz))
 
 
 WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_definieren, "kategorie_definieren": kategorie_definieren, "wert_eintragen": wert_eintragen,
@@ -2812,6 +2827,8 @@ class Schreiber:
         commit = self.hochladen(reise)
         self.veroeffentlichen_anstossen()
         antwort = {"ok": True, "text": text, "commit": commit}
+        if isinstance(text, texte.Satz) and text.mit_schluesseln():   # der Konnektor setzt den Satz in der Sprache der Person zusammen
+            antwort["text_teile"] = text.teile_json()
         if (m := re.match(r"^([A-Z]+-\d+(?:\.[\w-]+)?) ", titel)):   # neu angelegtes Ding: seine ID, damit der Konnektor weitermachen kann
             antwort["id"] = m.group(1)
         return antwort

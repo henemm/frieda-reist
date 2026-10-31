@@ -199,18 +199,53 @@ def aufruf_sprache(sprache=None):
 
 class Satz(str):
     """Ein Satz aus dem Katalog: als Text ist er der deutsche Satz (Bestand, Protokolle, Dateien), dazu trägt er Schlüssel und Werte, aus
-    denen sich der Satz in jeder Sprache bauen lässt (text(sprache)); in f-Strings erscheint er in der Sprache des laufenden Aufrufs."""
+    denen sich der Satz in jeder Sprache bauen lässt (text(sprache)); in f-Strings erscheint er in der Sprache des laufenden Aufrufs.
+    Mit + lassen sich Sätze und feste Stücke aneinanderhängen; die Folge bleibt ein Satz, der in jeder Sprache lesbar ist (teile).
+    Über JSON (teile_json, aus_json) reist er vom Dienst zum Konnektor, der ihn in der Sprache der Person setzt."""
 
-    def __new__(cls, text, schluessel=None, werte=None):
+    def __new__(cls, text, schluessel=None, werte=None, teile=None):
         o = super().__new__(cls, text)
         o.schluessel, o.werte = schluessel, dict(werte or {})
+        o.teile = list(teile) if teile is not None else [(schluessel, o.werte if schluessel else str(text))]
         return o
 
     def text(self, sprache):
-        return t(sprache, self.schluessel, **self.werte) if self.schluessel else str(self)
+        return "".join(t(sprache, k, **{n: v.text(sprache) if isinstance(v, Satz) else v for n, v in w.items()}) if k else w
+                       for k, w in self.teile)
 
     def __format__(self, spec):
         return format(self.text(aufruf_sprache()), spec)
+
+    @staticmethod
+    def _teile_von(x):
+        return list(x.teile) if isinstance(x, Satz) else [(None, str(x))]
+
+    def __add__(self, anderes):
+        return Satz(str(self) + str(anderes), teile=self.teile + Satz._teile_von(anderes))
+
+    def __radd__(self, anderes):
+        return Satz(str(anderes) + str(self), teile=Satz._teile_von(anderes) + self.teile)
+
+    @staticmethod
+    def verbinden(teile, trenner=", "):
+        """Wie trenner.join(teile), aber die Folge bleibt ein Satz (Stücke dürfen Sätze oder feste Texte sein)."""
+        aus = Satz("")
+        for i, x in enumerate(teile):
+            aus = aus + (trenner if i else "") + x
+        return aus
+
+    def mit_schluesseln(self):
+        return any(k for k, _ in self.teile)
+
+    def teile_json(self):
+        """Für den Weg vom Dienst zum Konnektor: [Schlüssel, Werte] für Sätze des Katalogs, "Text" für feste Stücke."""
+        return [[k, {n: {"satz": v.teile_json()} if isinstance(v, Satz) else v for n, v in w.items()}] if k else w for k, w in self.teile]
+
+    @classmethod
+    def aus_json(cls, teile):
+        gelesen = [(x[0], {n: cls.aus_json(v["satz"]) if isinstance(v, dict) and "satz" in v else v for n, v in x[1].items()})
+                   if isinstance(x, list) else (None, str(x)) for x in teile]
+        return cls("".join(t(VORGABE_REISE, k, **{n: v.text(VORGABE_REISE) if isinstance(v, Satz) else v for n, v in w.items()}) if k else w for k, w in gelesen), teile=gelesen)
 
 
 def satz(schluessel, /, **werte):
