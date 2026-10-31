@@ -389,6 +389,23 @@ def mk_bauen(r, arten_=None):
     return erg, fehler
 
 
+def test_merkmal_typ_link():
+    """Typ link (#165): der Wert ist eine Adresse, die Seite bekommt das Kennzeichen link und zeigt ihn als Link."""
+    a = copy.deepcopy(ARTEN)
+    a["arten"]["hotel"]["merkmale"]["webseite"] = {"name": "Webseite", "typ": "link"}
+    r = roh()
+    r["unterkuenfte"]["U-01"]["merkmale"] = {"webseite": "https://hotel.example/"}
+    erg, fehler = mk_bauen(r, a)
+    assert fehler == []
+    assert erg["unterkuenfte"]["U-01"]["merkmale"]["webseite"]["link"] is True
+    assert "link" not in erg["unterkuenfte"]["U-01"]["merkmale"].get("preis", {})
+    for falsch in ("hotel.example", "www.hotel.example", "ein Hotel https://hotel.example/", "ftp://hotel.example/"):
+        r = roh()
+        r["unterkuenfte"]["U-01"]["merkmale"] = {"webseite": falsch}
+        _, fehler = mk_bauen(r, a)
+        assert any("keine Adresse" in f for f in fehler), falsch
+
+
 def test_merkmale_bereich_und_werte():
     r = roh()
     r["unterkuenfte"]["U-01"]["merkmale"] = {"preis": {"wert": "120 €", "geprueft": D(2026, 10, 26)}, "fruehstueck": "inklusive"}
