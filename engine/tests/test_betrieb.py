@@ -117,7 +117,7 @@ def test_beispiel_einstellungen_sind_vollstaendig():
 
 @pytest.fixture
 def vf(tmp_path):
-    """Origin mit main, Veröffentlichungsordner als Klon, Deploy-Attrappe, die jede Reise protokolliert."""
+    """Origin mit main, Bauordner als Klon, Deploy-Attrappe, die jede Reise protokolliert."""
     if not shutil.which("flock"):
         pytest.skip("flock fehlt")
     quelle = tmp_path / "quelle"
@@ -462,12 +462,12 @@ def test_deploy_mit_warnung_im_plan_legt_die_seite_ab(tmp_path):
 
 
 def test_veroeffentlichen_merge_und_submodulfehler_werden_nicht_gemerkt(vf):
-    """Scheitert das Vorspulen (lokaler Commit im Veröffentlichungsordner) oder das Holen des Submoduls, endet der Lauf mit 1,
+    """Scheitert das Vorspulen (lokaler Commit im Bauordner) oder das Holen des Submoduls, endet der Lauf mit 1,
     es wird nichts gebaut, kein Stand geschrieben und die Rot-Datei weder angelegt noch verändert (AC-18)."""
     stand = vf["tmp"] / "dienst" / "veroeffentlicht"
     rot_datei = vf["tmp"] / "dienst" / "veroeffentlichen-rot"
     arbeit, quelle = vf["arbeit"], vf["tmp"] / "quelle"
-    # Merge-Fehler: lokaler Commit im Veröffentlichungsordner, origin/main läuft davon
+    # Merge-Fehler: lokaler Commit im Bauordner, origin/main läuft davon
     git(arbeit, "config", "user.email", "test@example.invalid")
     git(arbeit, "config", "user.name", "Test")
     (arbeit / "lokal.txt").write_text("lokal")
@@ -752,6 +752,106 @@ def test_deploy_kopiert_module_des_schreibwegs():
 def test_deploy_kopiert_friedas_symbol():
     deploy = (BETRIEB / "deploy.sh").read_text(encoding="utf-8")
     assert '"$WURZEL/engine/marke/" "$DIENST/marke/"' in deploy
+
+
+# ---------- Nur aus dem Bauordner (#137) ----------
+
+@pytest.fixture
+def instanz(tmp_path):
+    """Reisen-Repo auf main, das die Software (Kopie von betrieb/) als Submodul frieda/ einbindet, mit der Beispielreise.
+    So findet gemeinsam.sh die Wurzel auch ohne FR_WURZEL, wie bei einem Aufruf von Hand in einem Arbeitsordner."""
+    wurzel = tmp_path / "instanz"
+    shutil.copytree(BEISPIEL, wurzel / "reisen" / "beispielreise")
+    shutil.copytree(BETRIEB, wurzel / "frieda" / "betrieb", ignore=shutil.ignore_patterns("__pycache__"))
+    git(wurzel / "frieda", "init", "-q", "-b", "main")
+    git(wurzel / "frieda", "add", ".")
+    git(wurzel / "frieda", "commit", "-qm", "software")
+    (wurzel / "engine").symlink_to(ENGINE)
+    (wurzel / ".gitignore").write_text("dist/\n__pycache__/\n")
+    git(wurzel, "init", "-q", "-b", "main")
+    git(wurzel, "add", ".")
+    git(wurzel, "commit", "-qm", "start")
+    assert git(wurzel / "frieda", "rev-parse", "--show-superproject-working-tree").strip() == str(wurzel)
+    (tmp_path / "seiten").mkdir()
+    # FR_GEPRUEFT: deploy.sh soll hier nicht die ganzen Tests der Software noch einmal laufen lassen
+    env = {**SAUBER, "FR_INSTANZ": "probe", "FR_SEITEN": str(tmp_path / "seiten"), "FR_DIENST": str(tmp_path / "dienst"),
+           "FR_SPERREN": str(tmp_path), "FR_PYTHON": sys.executable, "FR_SUDO": "false", "FR_RM_PORT": "9",
+           "FR_GEPRUEFT": git(wurzel, "rev-parse", "HEAD").strip(),
+           "VF_DEPLOY": str(ausfuehrbar(tmp_path / "deploy.sh", f'#!/bin/sh\necho "$1" >> {tmp_path}/deploy.log\n'))}
+    return {"wurzel": wurzel, "tmp": tmp_path, "env": env,
+            "deploy": wurzel / "frieda" / "betrieb" / "deploy.sh",
+            "veroeffentlichen": wurzel / "frieda" / "betrieb" / "veroeffentlichen.sh"}
+
+
+def test_deploy_ohne_fr_wurzel_verweigert(instanz):
+    """AC-1: Ohne FR_WURZEL baut deploy.sh nicht aus dem Ordner, in dem es zufällig liegt."""
+    r = subprocess.run([str(instanz["deploy"]), "beispielreise"], env=instanz["env"], capture_output=True, text=True)
+    assert r.returncode == 1 and "FR_WURZEL" in r.stderr, r.stdout + r.stderr
+    assert not (instanz["tmp"] / "seiten" / "beispielreise").exists()
+    assert not (instanz["wurzel"] / "dist").exists()
+
+
+def test_veroeffentlichen_ohne_fr_wurzel_verweigert(instanz):
+    """AC-2: Ohne FR_WURZEL veröffentlicht veroeffentlichen.sh nichts und merkt sich nichts."""
+    r = subprocess.run([str(instanz["veroeffentlichen"]), "--immer"], env=instanz["env"], capture_output=True, text=True)
+    assert r.returncode == 1 and "FR_WURZEL" in r.stderr, r.stdout + r.stderr
+    assert not (instanz["tmp"] / "deploy.log").exists()
+    assert not (instanz["tmp"] / "dienst" / "veroeffentlicht").exists()
+    assert not (instanz["tmp"] / "dienst" / "veroeffentlichen-erfolg").exists()
+
+
+@pytest.mark.parametrize("wechsel", [("checkout", "-qb", "baustelle"), ("checkout", "-q", "--detach")])
+def test_deploy_nur_auf_main(instanz, wechsel):
+    """AC-3: Steht der Ordner nicht auf main (anderer Branch oder losgelöster HEAD), baut deploy.sh nicht."""
+    git(instanz["wurzel"], *wechsel)
+    r = subprocess.run([str(instanz["deploy"]), "beispielreise"], env={**instanz["env"], "FR_WURZEL": str(instanz["wurzel"])},
+                       capture_output=True, text=True)
+    assert r.returncode == 1 and "main" in r.stderr, r.stdout + r.stderr
+    assert not (instanz["tmp"] / "seiten" / "beispielreise").exists()
+    assert not (instanz["wurzel"] / "dist").exists()
+
+
+def _texte_ohne_geschichte():
+    """Doku, Skripte und Code, ohne die Protokolle früherer Vorhaben (docs/artifacts, docs/specs, docs/context)."""
+    for ordner in ("docs", "betrieb", "werkzeuge", "engine"):
+        for pfad in (WURZEL / ordner).rglob("*"):
+            teile = pfad.relative_to(WURZEL).parts
+            if not pfad.is_file() or pfad.suffix not in {".md", ".sh", ".py", ".yml", ".service", ".timer", ".conf", ".beispiel"}:
+                continue
+            if teile[:2] in {("docs", "artifacts"), ("docs", "specs"), ("docs", "context")} or ".venv" in teile \
+                    or teile[:2] == ("engine", "vendor") or pfad.name == "test_betrieb.py":
+                continue
+            yield pfad, pfad.read_text(encoding="utf-8")
+
+
+def test_arbeitskopie_sh_entfaellt():
+    """AC-5: Arbeitskopien gibt es nicht mehr; gearbeitet wird in einem eigenen Arbeitsordner."""
+    assert not (BETRIEB / "arbeitskopie.sh").exists()
+    for pfad, text in _texte_ohne_geschichte():
+        assert "arbeitskopie.sh" not in text, pfad
+
+
+def test_handaufrufe_nennen_den_bauordner():
+    """AC-6: Jede dokumentierte Handzeile, die deploy.sh oder veroeffentlichen.sh aufruft, setzt FR_WURZEL."""
+    aufruf = re.compile(r"(?:frieda/)?betrieb/(?:deploy|veroeffentlichen)\.sh(?: --immer| <[^>]+>| \$\w+)")
+    quellen = [*(WURZEL / "docs").glob("*.md"), BETRIEB / "einrichten.sh", WURZEL / "werkzeuge" / "karte-holen.sh"]
+    gefunden = 0
+    for pfad in quellen:
+        for zeile in pfad.read_text(encoding="utf-8").splitlines():
+            for m in aufruf.finditer(zeile):
+                gefunden += 1
+                davor = zeile[:m.start()]
+                assert re.search(r"FR_WURZEL=\S*\s*$", davor), f"{pfad.name}: {zeile.strip()}"
+    assert gefunden >= 4
+
+
+def test_betrieb_md_bauordner_und_zurueckrollen():
+    """AC-7: Bauordner und Arbeitsordner in der Tabelle der Instanz, Zurückrollen per git revert auf main."""
+    text = (WURZEL / "docs" / "betrieb.md").read_text(encoding="utf-8")
+    assert "| Bauordner |" in text and "| Arbeitsordner |" in text
+    assert "Veröffentlichungsordner" not in text
+    zurueck = text.split("## Zurückrollen", 1)[1].split("\n## ", 1)[0]
+    assert "git revert" in zurueck and "git checkout" not in zurueck
 
 
 # ---------- Freischalten ----------
