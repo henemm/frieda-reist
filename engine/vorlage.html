@@ -1363,6 +1363,8 @@ async function blLaden() {
 // eingetippter Name (Übergangsregel) kann das nicht tragen, deshalb gibt es das Formular ohne Konto nicht
 const KANN_BELEG = () => V.schreiben === "alles" && MIT_KONTO();
 const BUCHUNG_STATUS = {gebucht: "gebucht", angefragt: "angefragt", storniert: "storniert"};
+// Zahlstand einer Buchung (#166): Datenwerte deutsch (ADR-0006), die Wörter kommen mit dem Textkatalog in die Sprachdateien
+const ZAHLUNG_TEXT = {offen: "offen", angezahlt: "angezahlt", bezahlt: "bezahlt", vor_ort: "vor Ort", inklusive: "inklusive", erstattet: "erstattet"};
 const groesseText = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(n / 1024)) + " kB";
 // Molekül Buchung: Etikett mit Zustand, die Angaben als Zeilen, leise Herkunft, Belege, Verlauf zugeklappt
 function buchungBlock(b) {
@@ -1372,7 +1374,11 @@ function buchungBlock(b) {
       chip(zu ? "weg" : b.status === "gebucht" ? "plan" : "offen", BUCHUNG_STATUS[b.status] || b.status)), zid(b.id)));
   const zeile = (name, wert, klasse) => wert ? el("div", {class: "z" + (klasse ? " " + klasse : "")}, el("b", {}, name + ": "), wert) : null;
   if ((b.fuer || []).length > 1) k.append(zeile("Für", b.fuer.map(x => titelZu(x) || x).join(", ")));
-  k.append(...[zeile("Nummer", b.nummer), zeile("Gebucht bei", b.bei), zeile("Preis", b.preis), zeile("Bezahlt", b.bezahlt)].filter(Boolean));
+  const zahlung = [ZAHLUNG_TEXT[b.zahlung] || b.zahlung, b.bezahlt].filter(Boolean).join(" · ");
+  k.append(...[zeile("Nummer", b.nummer), zeile("Gebucht bei", b.bei), zeile("Preis", b.preis),
+    zeile("Zahlung", zahlung)].filter(Boolean));
+  // Merkmale der Buchung (#166): die Art ihrer Dinge legt sie fest; Herkunft wie die Buchung
+  k.append(...(b.merkmale || []).map(m => zeile(m.name, m.wert + (m.einheit ? " " + m.einheit : ""))));
   const preise = Object.entries(b.preise || {}), personen = Object.entries(b.personen || {});
   if (preise.length) k.append(zeile("Preise", preise.map(([x, p]) => `${titelZu(x) || x}: ${p}`).join(" · ")));
   if (personen.length) k.append(zeile("Reisende", personen.map(([n, a]) => n + (a ? ` (${a})` : "")).join(", ")));

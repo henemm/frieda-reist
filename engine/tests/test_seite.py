@@ -161,6 +161,7 @@ def test_buchung_hat_eine_heimat_auch_ohne_tagesseiten(tmp_path, browser):
     ohne Tagesseiten (darstellung.tiefe, wie bei einer Rundreise) im Tageskasten des Plans. #B-01 führt in beiden Fällen hin."""
     mit = seite_der_variante(tmp_path / "mit", browser)
     assert mit["buchung"] and mit["buchung"]["sichtbar"] and mit["buchung"]["nummer"] == "HE-2027-0415", mit
+    assert mit["buchung"]["zahlung"] == "angezahlt · Anzahlung 30 €, Rest vor Ort (Beispielwert)", mit   # Zahlstand in Worten (#166)
     ohne = seite_der_variante(tmp_path / "ohne", browser, darstellung={"tiefe": True})
     assert ohne["buchung"] and ohne["buchung"]["sichtbar"] and ohne["buchung"]["nummer"] == "HE-2027-0415", ohne
     assert ohne["buchung"]["reiter"] == "plan"
