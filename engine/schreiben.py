@@ -1538,6 +1538,8 @@ def entscheiden(reise_dir, wer, args, heute=None):
         knoten["verlauf"] = verlauf
     verlauf.append(fliess_map(eintrag))
     ersetzt = []
+    nicht_gewaehlt = []
+    wieder = []
     if status == "gewaehlt":
         for x in wr["optionen"]:
             if x["id"] != oid and x.get("status") == "gewaehlt":
@@ -1549,6 +1551,26 @@ def entscheiden(reise_dir, wer, args, heute=None):
                 v2.append(fliess_map({"datum": heute, "status": "ersetzt", "wer": wer["name"], "durch": oid,
                                       "grund": f"ersetzt durch {oid} „{o['titel']}“: {grund}"}))
                 ersetzt.append(x["id"])
+        # Die übrigen Optionen der Wahlstelle sind damit nicht gewählt: ersetzt durch die gewählte (Product Owner 31.10.2026)
+        for x in wr["optionen"]:
+            if x["id"] != oid and x.get("status") in (None, "vorgeschlagen", "favorisiert"):
+                k2, _ = ding_finden(roh, x["id"])
+                v2 = k2.get("verlauf")
+                if v2 is None:
+                    v2 = CommentedSeq()
+                    k2["verlauf"] = v2
+                v2.append(fliess_map({"datum": heute, "status": "ersetzt", "wer": wer["name"], "durch": oid,
+                                      "grund": f"nicht gewählt, {oid} „{o['titel']}“ ist gewählt"}))
+                nicht_gewaehlt.append(x["id"])
+    elif status in ("verworfen", "ersetzt"):
+        # Wird die gewählte Option verworfen, kommen die dadurch ausgeschiedenen wieder ins Spiel
+        for x in wr["optionen"]:
+            if x["id"] != oid and x.get("status") == "ersetzt" and o.get("status") == "gewaehlt" \
+                    and (x.get("verlauf") or [{}])[-1].get("durch") == oid and (x["verlauf"][-1].get("grund") or "").startswith("nicht gewählt"):
+                k2, _ = ding_finden(roh, x["id"])
+                k2["verlauf"].append(fliess_map({"datum": heute, "status": "vorgeschlagen", "wer": wer["name"],
+                                                 "grund": f"wieder offen, {oid} ist nicht mehr gewählt"}))
+                wieder.append(x["id"])
     routen_speichern(reise_dir, roh)
     frage_text = ""
     if wr.get("frage"):
@@ -1574,6 +1596,8 @@ def entscheiden(reise_dir, wer, args, heute=None):
     titel = f"{oid} „{o['titel']}“ {WORT[status]}" + (f" (ersetzt durch {durch})" if durch else "")
     text = (f"Entschieden: {oid} „{o['titel']}“ ({vid} {wr.get('titel', '')}) ist {WORT[status]}" + (f", ersetzt durch {durch}" if durch else "")
             + f" ({wer['name']}, {heute.strftime('%-d.%-m.%Y')}, Grund: {grund})." + (f" Bisher gewählt und dadurch ersetzt: {', '.join(ersetzt)}." if ersetzt else "")
+            + (f" Nicht gewählt und damit ausgeschieden: {', '.join(nicht_gewaehlt)}." if nicht_gewaehlt else "")
+            + (f" Wieder offen: {', '.join(wieder)}." if wieder else "")
             + frage_text)
     if status in ("verworfen", "ersetzt"):
         text += " Nicht gelöscht, die Option bleibt mit Verlauf stehen; zurückholen mit entscheiden, Status gewählt."
