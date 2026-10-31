@@ -1056,7 +1056,9 @@ def test_vorlagen_ohne_werte_einer_instanz():
     for p in sorted(BETRIEB.rglob("*")):
         if p.is_file() and p.suffix not in (".pyc",):
             text = p.read_text(encoding="utf-8")
-            treffer = [t for t in verboten.findall(text) if "example" not in t and "anthropic" not in t and "claude" not in t]
+            # github.com ist keine Adresse einer Instanz (Bot-Adresse im Workflow „Software nachziehen“, #161)
+            treffer = [t for t in verboten.findall(text)
+                       if "example" not in t and "anthropic" not in t and "claude" not in t and t.lower() != "github.com"]
             assert treffer == [], (p.name, treffer)
 
 
