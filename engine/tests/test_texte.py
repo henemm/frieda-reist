@@ -138,8 +138,9 @@ def test_inhaltswoerter_nimmt_alle_sprachen(monkeypatch):
 
 def test_pseudo_sprache_laedt_ueber_umgebungsvariable(monkeypatch):
     assert "xx" not in texte.SPRACHEN
+    ohne = texte.SPRACHEN   # Deutsch, Englisch und was sonst als Datei neben texte.py liegt
     monkeypatch.setenv("FR_TEXTE_ZUSATZ", "xx")
-    assert texte.SPRACHEN == ("de", "en", "xx")
+    assert texte.SPRACHEN == ohne + ("xx",)
     assert texte.plural("xx", 3) == "few" and texte.plural("xx", 0) == "zero" and texte.plural("xx", 11) == "many"
     assert texte.t("xx", "seite.status.gewaehlt") == "[xx chosen]"
     s = texte.seite()

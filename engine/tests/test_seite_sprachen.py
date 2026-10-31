@@ -85,12 +85,12 @@ def test_umschalten_auf_englisch_und_zurueck(tmp_path, browser):
     e = im_browser(seite_bauen(tmp_path), "en", browser)
     assert e["fehler"] == []
     assert e["start"]["lang"] == "de" and e["start"]["gewaehlt"] == "gewählt" and e["start"]["wochentag"] == "Do"
-    assert [k[0] for k in e["start"]["knoepfe"]] == ["de", "en"]
-    assert [k[2] for k in e["start"]["knoepfe"]] == ["true", "false"]
+    assert [k[0] for k in e["start"]["knoepfe"]] == list(texte.SPRACHEN)   # ein Knopf je Sprache des Katalogs
+    assert [k[2] for k in e["start"]["knoepfe"]] == ["true"] + ["false"] * (len(texte.SPRACHEN) - 1)
     assert e["umgeschaltet"]["lang"] == "en" and e["umgeschaltet"]["locale"] == "en-GB"
     assert e["umgeschaltet"]["gewaehlt"] == "chosen" and e["umgeschaltet"]["erledigt"] == "done"
     assert e["umgeschaltet"]["wochentag"] == "Thu"
-    assert [k[2] for k in e["umgeschaltet"]["knoepfe"]] == ["false", "true"]
+    assert [k[2] for k in e["umgeschaltet"]["knoepfe"]] == ["true" if k == "en" else "false" for k in texte.SPRACHEN]
     # Deutsch wörtlich wie bisher; Englisch mit Datum, Zahl, Dauer und Plural der Sprache (M2)
     s, u = e["start"], e["umgeschaltet"]
     assert (s["datum"], s["datumFern"], s["zahl"], s["km"], s["dauer"], s["zeit"]) == ("Do 13.5.", "2.1.2031", "1.234,5", "12,4", "2:05 h", "18:05")
@@ -110,7 +110,8 @@ def test_pseudo_sprache_dritter_knopf_und_rtl(tmp_path, monkeypatch, browser):
     assert "xx" in texte.SPRACHEN
     e = im_browser(seite_bauen(tmp_path), "xx", browser)
     assert e["fehler"] == []
-    assert [k[0] for k in e["start"]["knoepfe"]] == ["de", "en", "xx"]   # ein Knopf je Sprache des Katalogs
+    assert [k[0] for k in e["start"]["knoepfe"]] == list(texte.SPRACHEN)   # ein Knopf je Sprache des Katalogs, xx als letzter
+    assert texte.SPRACHEN[-1] == "xx"
     assert e["umgeschaltet"]["lang"] == "xx" and e["umgeschaltet"]["dir"] == "rtl" and e["umgeschaltet"]["locale"] == "ar-EG"
     assert e["umgeschaltet"]["gewaehlt"] == "[xx chosen]"
     # andere Ziffern der Locale (ar-EG), Pluralkategorie few für 3 und many für 11 aus der Regel der Sprache, nicht aus dem Code
