@@ -223,10 +223,11 @@ def kennwerte(k):
             "ab": zahl(such("abstieg")), "km": zahl(such("länge", "km"))}
 
 
-def verhalten_anwenden(route, v):
+def verhalten_anwenden(route, v, sprache=None):
     """Status der Reise wirkt auf das fertige Routenmodell (docs/produkt.md, Paket B). v: reise.verhalten(status).
     idee ohne Warnungen; ab fest werden offene Planungs-Wahlstellen und ungeprüfte veränderliche Angaben der aktiven
-    Optionen zur Mahnung (route["mahnungen"], Liste {bezug, text}). Der Plan bleibt vollständig, nichts wird versteckt."""
+    Optionen zur Mahnung (route["mahnungen"], Liste {bezug, text}, in der Sprache der Reise). Der Plan bleibt vollständig, nichts wird versteckt."""
+    sprache = sprache or texte.VORGABE_REISE
     if not route:
         return route
     if not v.get("warnungen"):
@@ -236,21 +237,19 @@ def verhalten_anwenden(route, v):
         for w in route.get("wahlstellen") or []:
             gueltig = [o for o in w["optionen"] if o["status"] not in UNGUELTIG]
             if w.get("wann") == "planung" and w["offen"] and len(gueltig) > 1:
-                mahnungen.append({"bezug": w["id"], "text": f"{w['id']} {w['titel']}: noch offen, obwohl die Reise fest ist "
-                                  f"({len(gueltig)} Kandidaten). Bitte entscheiden."})
+                mahnungen.append({"bezug": w["id"], "text": texte.t(sprache, "seite.mahnung.offen", w1=w["id"], w2=w["titel"], n=len(gueltig))})
             for o in w["optionen"]:
                 if o["aktiv"]:
                     namen = {k["id"]: k["name"] for k in w["kriterien"] if stufe_von(k) != "aus"}
                     ung = [namen[k] for k, m in o["merkmale"].items() if m.get("ungeprueft") and k in namen]
                     if ung:
-                        mahnungen.append({"bezug": o["id"], "text": f"{o['id']} {o['titel']}: {', '.join(ung)} "
-                                          "ohne Prüfdatum. Veränderliche Angaben bitte nachschlagen und mit Datum eintragen."})
+                        mahnungen.append({"bezug": o["id"], "text": texte.t(sprache, "seite.mahnung.option", w1=o["id"], w2=o["titel"], w3=", ".join(ung))})
         for uid, u in (route.get("unterkuenfte") or {}).items():
             defs = {k["id"]: k for k in (route.get("merkmale") or {}).get(u.get("art")) or []}
             ung = [k for k, m in (u.get("merkmale") or {}).items()
                    if m.get("ungeprueft") and stufe_von(defs.get(k, {}), u.get("art")) != "aus"]
             if ung and u.get("naechte"):
-                mahnungen.append({"bezug": uid, "text": f"{uid} {u.get('name')}: {', '.join(ung)} ohne Prüfdatum."})
+                mahnungen.append({"bezug": uid, "text": texte.t(sprache, "seite.mahnung.unterkunft", w1=uid, w2=u.get("name"), w3=", ".join(ung))})
     route["mahnungen"] = mahnungen
     return route
 

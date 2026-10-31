@@ -183,7 +183,7 @@ def kalender_reisen(k):
 
 def kalender_antwort(k, datei=False):
     """Persönlicher Kalender des Kontos mit seinen Einstellungen: als Abo (Kalender-App) oder als Datei (Download)."""
-    text = kalender.ics_person(kalender_reisen(k), konten.kalender_einstellungen(k["id"]))
+    text = kalender.ics_person(kalender_reisen(k), konten.kalender_einstellungen(k["id"]), sprache=sprache_der_seite())
     kopf = [("Content-Type", "text/calendar; charset=utf-8"), ("Cache-Control", "private, no-store")]
     if datei:
         kopf.append(("Content-Disposition", 'attachment; filename="frieda-reisen.ics"'))
@@ -209,15 +209,15 @@ def kalender_karte(k, reise_info):
     reisen = [(m["reise"], (reise_info(m["reise"]) or {}).get("titel") or m["reise"]) for m in konten.mitgliedschaften(k["id"])]
     felder = (verdeckt(aktion="kalender_einstellungen")
               + f"<fieldset><legend>{esc(tx('konto.kalender.was'))}</legend>"
-              + "".join(haken("sorte_" + s_, s_ in e["sorten"], t) for s_, t in kalender.SORTEN.items())
+              + "".join(haken("sorte_" + s_, s_ in e["sorten"], t) for s_, t in kalender.sorten(sprache_der_seite()).items())
               + haken("nur_meine_aufgaben", e["nur_meine_aufgaben"], tx("konto.kalender.nur_meine"))
               + "</fieldset>"
               + (f"<fieldset><legend>{esc(tx('konto.kalender.reisen'))}</legend>" + "".join(haken("reise_" + r, r not in e["reisen_aus"], t) for r, t in reisen)
                  + "</fieldset>" if reisen else "")
               + f'<label for="erinnerung_fristen">{esc(tx("konto.kalender.erinnerung_fristen"))}</label>'
-              + wahl("erinnerung_fristen", kalender.ERINNERUNG_FRISTEN, e["erinnerung_fristen"])
+              + wahl("erinnerung_fristen", kalender.erinnerungen(kalender.ERINNERUNG_FRISTEN_SCHLUESSEL, sprache_der_seite()), e["erinnerung_fristen"])
               + f'<label for="erinnerung_termine">{esc(tx("konto.kalender.erinnerung_termine"))}</label>'
-              + wahl("erinnerung_termine", kalender.ERINNERUNG_TERMINE, e["erinnerung_termine"])
+              + wahl("erinnerung_termine", kalender.erinnerungen(kalender.ERINNERUNG_TERMINE_SCHLUESSEL, sprache_der_seite()), e["erinnerung_termine"])
               + f'<p class="klein">{esc(tx("konto.kalender.erinnerung_hinweis"))}</p>')
     datei = '<a href="/konto?kalender=datei">' + esc(tx("konto.kalender.datei_link")) + "</a>"
     return karte(f"<h2>{esc(tx('konto.kalender.titel'))}</h2>",

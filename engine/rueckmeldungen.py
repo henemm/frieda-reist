@@ -1184,29 +1184,35 @@ def dienstordner():
     return ablage().parent / "_dienst"
 
 
-def aufgaben_text(liste, titel=None, fristen=True):
+def aufgaben_text(liste, titel=None, fristen=True, sprache=None):
     """Lesbare Aufgabenliste (Kommandozeile und Konnektor). titel: ID -> Titel. fristen: False vor dem Status „fest“,
-    dann steht die Frist da, aber nichts ist überfällig (Verhalten je Status)."""
+    dann steht die Frist da, aber nichts ist überfällig (Verhalten je Status). sprache: Sprache der Person, sonst die des Aufrufs."""
+    sprache = sprache or texte.aufruf_sprache()
+
+    def tx(schluessel, **werte):
+        return texte.t(sprache, "dienst.aufgaben." + schluessel, **werte)
+
     heute = datetime.date.today().isoformat()
     z = []
     for a in liste:
-        teile = [f"{a['id']} [{a['status']}]"]
+        status = tx("status." + a["status"]) if a["status"] in AG_STATUS else a["status"]
+        teile = [tx("kopf", w1=a["id"], w2=status)]
         if a.get("prioritaet") and a["prioritaet"] != "normal":
-            teile.append(f"Priorität {a['prioritaet']}")
+            teile.append(tx("prioritaet", w1=a["prioritaet"]))
         if a.get("frist"):
-            teile.append(f"Frist {a['frist']}" + (" ÜBERFÄLLIG" if fristen and a["frist"] < heute and a["status"] in ("offen", "in_arbeit") else ""))
+            teile.append(tx("frist", w1=a["frist"]) + (tx("ueberfaellig") if fristen and a["frist"] < heute and a["status"] in ("offen", "in_arbeit") else ""))
         if a.get("ab"):
-            teile.append(f"ab {a['ab']}")
+            teile.append(tx("ab", w1=a["ab"]))
         if a.get("zustaendig"):
-            teile.append(f"zuständig {a['zustaendig']}")
+            teile.append(tx("zustaendig", w1=a["zustaendig"]))
         z.append(" · ".join(teile) + f": {a['titel']}")
         if a.get("bezug"):
-            z.append("  an: " + ", ".join(f"{b} ({titel[b]})" if titel and b in titel else b for b in a["bezug"]))
+            z.append(tx("an") + ", ".join(f"{b} ({titel[b]})" if titel and b in titel else b for b in a["bezug"]))
         if a.get("notiz"):
-            z.append("  Notiz: " + a["notiz"].replace("\n", " "))
+            z.append(tx("notiz") + a["notiz"].replace("\n", " "))
         letzte = a["verlauf"][-1] if a.get("verlauf") else None
         if letzte:
-            z.append(f"  zuletzt: {letzte['zeit'][:10]} {letzte['wer']} – {letzte['was']}"
+            z.append(tx("zuletzt", w1=letzte["zeit"][:10], w2=letzte["wer"], w3=letzte["was"])
                      + (f": {letzte['kommentar']}" if letzte.get("kommentar") else ""))
     return "\n".join(z)
 

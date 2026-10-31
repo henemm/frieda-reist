@@ -571,7 +571,7 @@ class Bauer:
             route = Routen(roh, etappen, status, self.fehler, self.id_anlegen, r_rel, arten=arten,
                            entscheider=organisator if self.reise_roh is not None else None,
                            wissen={i for i in self.ids if i.startswith("W-")}).bauen()
-            verhalten_anwenden(route, self.eck["verhalten"])
+            verhalten_anwenden(route, self.eck["verhalten"], self.eck["sprache"])
             for oid, wo in orte_inhalt.items():
                 if route and oid not in route["orte"]:
                     self.fehler.append(f"{wo}: Ort {oid} gibt es in routen.yaml nicht.")
