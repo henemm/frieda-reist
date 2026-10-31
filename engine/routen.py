@@ -24,12 +24,13 @@ import datetime
 import re
 import unicodedata
 
+import texte
+
 STATUS = ("vorgeschlagen", "favorisiert", "gewaehlt", "verworfen", "ersetzt")
 NUR_ENTSCHEIDER = {"gewaehlt", "verworfen", "ersetzt"}
 UNGUELTIG = {"verworfen", "ersetzt"}
 WANN = {"planung", "unterwegs"}   # wann eine Wahlstelle entschieden wird (Schlüssel wann:, bis 29.10.2026 art:)
 ARTEN = WANN                      # alter Name, wird von Bestand gelesen
-WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 # Uhrzeit eines Aufenthalts ohne Nacht (beginn, ende; #77 Kalender), Ortszeit; Bewegungen haben ab und an (#135)
 UHRZEIT = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+", "aufenthalt": r"A-\d+",
@@ -100,7 +101,7 @@ TYPEN = {"text", "geld", "zahl", "auswahl"}
 # Für Menschen heißen die Stufen „nötig“, „gut zu wissen“, „zusätzlich“ (Product Owner 29.10.2026); „aus“ bleibt unsichtbar.
 # In Dateien und Werkzeugen bleiben die Schlüssel; die Wörter nimmt der Schreibweg als Eingabe ebenfalls an (stufe_schluessel).
 STUFEN = ("pflicht", "empfohlen", "angeboten", "aus")
-STUFEN_WORTE = {"pflicht": "nötig", "empfohlen": "gut zu wissen", "angeboten": "zusätzlich", "aus": "aus"}
+STUFEN_WORTE = texte.gruppe("de", "schreiben.stufe")
 
 
 def stufe_wort(s):
@@ -1170,7 +1171,7 @@ class Routen:
                 if el not in self.wahl:
                     self.fehl(f"{tid}: Wahlstelle {el} gibt es nicht.")
             tage.append({"id": tid, "nr": i + 1, "datum": datum.isoformat(),
-                         "wochentag": WOCHENTAGE[datum.weekday()], "teil": teil,
+                         "teil": teil,
                          "titel": t.get("titel", ""), "text": t.get("text", ""),
                          "start_ort": start_ort, "end_ort": pos,
                          "strecken": [{"id": s, "wahl": v} for s, v in strecken],

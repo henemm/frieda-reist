@@ -40,10 +40,13 @@ except ImportError:
 from reise import Reise  # noqa: E402
 from routen import FARBEN, Routen, verhalten_anwenden  # noqa: E402
 import gpx  # noqa: E402
+import texte  # noqa: E402
 
 ZIEL_ID = re.compile(r"^[A-Za-z0-9][\w.\-]{0,79}$", re.ASCII)
 BILD_ENDUNGEN = (".jpg", ".jpeg", ".png", ".webp", ".gif")
-ETAPPEN_MUSTER = r"^Etappe\s+(\d+[A-Za-z]?)\s*:\s*(.+)$"
+def etappen_muster():
+    """Titel einer Etappe („Etappe 3: Name“, englisch „Stage 3: Name“): das Wort aller Sprachen des Katalogs (ADR-0006, Punkt 7)."""
+    return r"^(?:" + texte.inhaltsmuster("inhalt.etappe") + r")\s+(\d+[A-Za-z]?)\s*:\s*(.+)$"
 UMLAUTE = {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"}
 # Ebenen der Tagesseite (B2, docs/design.md „Tagesseite“): Jeder Abschnitt einer Etappe gehört zu einer Ebene, erkannt am
 # Anfang seines Titels (Groß- und Kleinschreibung egal). Die Software kennt nur die Form (ADR-0001, kein Katalog): die
@@ -53,11 +56,13 @@ UMLAUTE = {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"}
 # ({"unterwegs": ["Höhenprofil", "Fahrplan"], …}); die Titelanfänge der Reise gelten vor der Vorgabe. Was nirgends passt,
 # ist Hintergrund. Bis 29.10.2026 enthielt die Vorgabe Wandervokabular (Wegpunkte, Wasser, Einkehr, Verpflegung).
 EBENEN = ("weg", "unterwegs", "hintergrund", "quellen")
-EBENEN_VORGABE = {
-    "weg": ("Zusammenfassung",),
-    "unterwegs": ("Eckdaten", "Unterkünfte & Einkehr (Unterkünfte-Dossier)"),
-    "quellen": ("Quellen", "Prüfung", "Karten"),
-}
+def ebenen_vorgabe():
+    """Titelanfänge je Ebene aus dem Katalog, in allen Sprachen (inhalt.ebene.*)."""
+    def woerter(*schluessel):
+        return tuple(sorted(set().union(*(texte.inhaltswoerter(s) for s in schluessel))))
+    return {"weg": woerter("inhalt.ebene.zusammenfassung"),
+            "unterwegs": woerter("inhalt.ebene.eckdaten", "inhalt.ebene.unterkuenfte"),
+            "quellen": woerter("inhalt.ebene.quellen", "inhalt.ebene.pruefung", "inhalt.ebene.karten")}
 # Stichwort am Anfang eines Absatzes im Lesetext („**Charakter.** …“), Rubrik der Gliederung einer Art (docs/ontologie.md)
 STICHWORT = re.compile(r"<p>\s*<strong>([^<]{1,60})</strong>")
 BILD_LINK = re.compile(r"(!?)\[([^\]]*)\]\(([^)\s]+)\)")
@@ -277,7 +282,7 @@ class Bauer:
             except yaml.YAMLError as e:
                 raise BauFehler([f"reise.yaml: kein gültiges YAML ({e})."])
         self.eck = Reise(self.reise_roh, self.cfg, self.fehler, self.hinweise).daten()
-        self.etappen_muster = re.compile(self.cfg.get("etappen_muster", ETAPPEN_MUSTER))
+        self.etappen_muster = re.compile(self.cfg.get("etappen_muster", etappen_muster()))
 
     # ---------- Hilfen ----------
     def id_anlegen(self, id_, wo):
@@ -615,6 +620,7 @@ class Bauer:
         return {
             # Eckdaten, Darstellung, Status, Personen, Bausteine, Regeln aus reise.yaml (engine/reise.py)
             "reise": self.eck,
+            "inhaltswoerter": texte.seite_inhaltswoerter(),   # Wörter, an denen die Seite Inhalt erkennt (Fragestatus, Tag n, …), alle Sprachen
             "plan_kopf": plan_kopf,
             "abschnitte": abschnitte,
             "fragen": fragen,
@@ -908,7 +914,7 @@ class Bauer:
                 k["grundkarte"] = {"url": "grundkarte.pmtiles"}
                 k["namensnennung"] = " · ".join(x for x in (k.get("namensnennung"), g.get("namensnennung")) if x)
             else:
-                k["namensnennung"] = " · ".join(x for x in (k.get("namensnennung"), "Küste schematisch") if x)
+                k["namensnennung"] = " · ".join(x for x in (k.get("namensnennung"), texte.t(self.eck["sprache"], "seite.karte.kueste")) if x)
                 self.hinweise.append(f"Grundkarte {g['datei']} fehlt, die Karte bleibt schematisch "
                                      f"(PMTiles-Datei unter {g['datei']} ablegen).")
         return k
@@ -971,7 +977,7 @@ class Bauer:
     def ebene(self, titel):
         """Ebene eines Etappen-Abschnitts auf der Tagesseite: zuerst die Titelanfänge der Reise, dann die Vorgabe."""
         t = titel.strip().lower()
-        for quelle in (self.cfg.get("etappen_ebenen") or {}, EBENEN_VORGABE):
+        for quelle in (self.cfg.get("etappen_ebenen") or {}, ebenen_vorgabe()):
             for ebene, anfaenge in quelle.items():
                 if any(t.startswith(a.lower()) for a in anfaenge):
                     return ebene
@@ -1066,8 +1072,11 @@ class Bauer:
                                       json.dumps(self.umzug) + " + location.pathname + location.search + location.hash)</script>", 1)
         vorlage = vorlage.replace("<!--__GRUNDKARTE__-->", "".join(
             f'<script src="{n}"></script>' for n in VENDOR_GRUNDKARTE.values()) if self.grundkarte or self.grundkarten else "", 1)
-        if vorlage.count("/*__DATEN__*/null") != 1:
-            raise BauFehler(["vorlage.html muss den Platzhalter /*__DATEN__*/null genau einmal enthalten."])
+        if vorlage.count("/*__DATEN__*/null") != 1 or vorlage.count("/*__TEXTE__*/null") != 1:
+            raise BauFehler(["vorlage.html muss die Platzhalter /*__DATEN__*/null und /*__TEXTE__*/null genau einmal enthalten."])
+        vorlage = re.sub(r'<html lang="[^"]*">', lambda _: f'<html lang="{daten["reise"]["sprache"]}" dir="{texte.sprache(daten["reise"]["sprache"]).RICHTUNG}">', vorlage, count=1)
+        katalog = json.dumps(texte_fuer_seite(), ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+        vorlage = vorlage.replace("/*__TEXTE__*/null", katalog, 1)
         js = json.dumps(daten, ensure_ascii=False, separators=(",", ":"))
         js = js.replace("</", "<\\/").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
         self.ziel_dir.mkdir(parents=True, exist_ok=True)
@@ -1083,7 +1092,7 @@ class Bauer:
         kurz = c.get("kurz") or c["titel"].split(" – ")[0]
         motiv = self.reise_dir / "medien" / "icon.svg"  # eigenes App-Symbol der Reise, sonst Kurzname
         (ziel / "manifest.json").write_text(json.dumps({
-            "name": c["titel"], "short_name": kurz, "lang": "de",
+            "name": c["titel"], "short_name": kurz, "lang": c["sprache"], "dir": texte.sprache(c["sprache"]).RICHTUNG,
             "start_url": "./", "scope": "./", "display": "standalone",
             "background_color": PWA_HINTERGRUND, "theme_color": PWA_FARBE,
             # eigenes Motiv ist für Android-Masken gezeichnet (Motiv im inneren 80 %)
@@ -1263,6 +1272,11 @@ def icon_zeichnen(text, groesse):
     for i, z in enumerate(zeilen):
         d.text((groesse / 2, y0 + hoehe * (i + 0.5)), z, font=f, fill="white", anchor="mm")
     return im
+
+
+def texte_fuer_seite():
+    """Katalog aller Sprachen für die Seite (ADR-0006); ab M1 legt der Bau ihn in die Seite, damit der Umschalter offline geht."""
+    return texte.seite()
 
 
 def bauen(reise_dir, ziel_dir, umzug=None):

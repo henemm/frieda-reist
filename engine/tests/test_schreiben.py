@@ -878,6 +878,13 @@ def test_status_und_einstellungen_der_reise(repo):
         s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"regeln": {"einladen": "chef"}}})
     with pytest.raises(sb.Ablehnung, match="Nichts zu ändern"):
         s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {}})
+    # Sprache der Reise (ADR-0006): nur bekannte Sprachen, der alte Wert steht im Verlauf der Antwort
+    with pytest.raises(sb.Ablehnung, match="Unbekannte Sprache"):
+        s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"sprache": "klingonisch"}})
+    a = s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"sprache": "en", "grund": "Gruppe liest Englisch"}})
+    assert "sprache „de“ → „en“" in a["text"]
+    assert yaml.safe_load(datei_auf_main(origin, "reise.yaml"))["sprache"] == "en"
+    s.vorbereiten()
     # Mitwirkende dürfen jetzt einladen (regeln.einladen = mitwirkend), aber keine höhere Rolle vergeben
     with pytest.raises(sb.Ablehnung, match="höchstens eine Rolle"):
         s.schreiben("beispielreise", "person_schreiben", {**KARL, "args": {"schluessel": "anna", "vorname": "Anna", "rolle": "organisator"}})

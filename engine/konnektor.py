@@ -65,6 +65,7 @@ import konten  # noqa: E402
 import oauth  # noqa: E402
 import belege as bl  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
+import texte  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
 from routen import FARBEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, art_schluessel, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
@@ -99,7 +100,7 @@ SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufg
                   "wunsch_aendern": "wunsch_erlebt"}
 # Werkzeuge, die zusätzlich eine zweite Aktion brauchen: eine Antwort landet als Rückmeldung (Art Antwort) im Eingang
 ZUSATZ_AKTION = {"frage_beantworten": "rueckmeldung"}
-WORT = {"gewaehlt": "gewählt", "verworfen": "verworfen", "ersetzt": "ersetzt"}
+WORT = texte.gruppe("de", "konnektor.wort")   # Wörter der Entscheidungen; Katalog in texte_de.py (ADR-0006)
 MAX_GRUND = 500
 PROTOKOLLE = ("2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05")
 MAX_BODY = 64 * 1024
@@ -109,7 +110,7 @@ AID_MUSTER = re.compile(r"^A-\d{8}-\d{6}-[0-9a-f]{4}$")
 
 _sperre = threading.Lock()
 
-CODE_DATEIEN = ("konnektor.py", "reise.py", "rueckmeldungen.py", "routen.py")
+CODE_DATEIEN = ("konnektor.py", "reise.py", "rueckmeldungen.py", "routen.py", "texte.py", "texte_de.py", "texte_en.py")
 
 
 def code_stand():
@@ -162,6 +163,25 @@ def zugang_zu(token):
                 return z
             return z if rolle_neu(z.get("rolle")) in ROLLEN else None
     return None
+
+
+def sprache_des_zugangs(zugang):
+    """Sprache für diese Anfrage (ADR-0006): die des Kontos; bei Übergangs-Links ohne Konto die der Reise (veröffentlichte Daten);
+    sonst die Vorgabe der Personen."""
+    if zugang.get("konto_id"):
+        k = konten.konto(zugang["konto_id"])
+        if k:
+            return k["sprache"]
+    s = (((daten(zugang.get("reise") or "") or {}).get("reise") or {}).get("sprache")) if zugang.get("reise") else None
+    return s if texte.gueltig(s or "") else texte.VORGABE
+
+
+def sprache_setzen_werkzeug(sprache):
+    """Konto-Werkzeug sprache_setzen: Beschreibung in der Sprache der Person, die Wahl aus den Sprachen des Katalogs."""
+    return {"name": "sprache_setzen", "description": texte.t(sprache, "konnektor.werkzeug.sprache_setzen"),
+            "inputSchema": {"type": "object", "properties": {"sprache": {
+                "type": "string", "enum": list(texte.SPRACHEN),
+                "description": texte.t(sprache, "konnektor.werkzeug.sprache_setzen.sprache")}}, "required": ["sprache"]}}
 
 
 def personen_der_reise(reise, d):
@@ -309,8 +329,9 @@ def symbole(reise):
     return liste
 
 
-def zeit_de(t):
-    return t.astimezone().strftime("%d.%m.%Y %H:%M")
+def zeit_de(t, sprache=texte.VORGABE_REISE):
+    """Zeitpunkt mit Datum in der Sprache (bis M10 die der Reise-Vorgabe, dann die der Person)."""
+    return texte.datum_zeit(t.astimezone(), sprache)
 
 
 def stand_text(reise):
@@ -375,9 +396,9 @@ def stunden(minuten):
     return f"{minuten // 60}:{minuten % 60:02d} h" if minuten else ""
 
 
-def datum_de(iso):
-    d = datetime.date.fromisoformat(iso)
-    return f"{d.day}.{d.month}.{d.year}"
+def datum_de(iso, sprache=texte.VORGABE_REISE):
+    """Datum mit Jahr in der Sprache (bis M10 die der Reise-Vorgabe, dann die der Person)."""
+    return texte.datum(iso, sprache)
 
 
 class Handbuch:
@@ -469,7 +490,7 @@ class Handbuch:
     def tag_text(self, t, datum=True):
         z = []
         if datum and t.get("datum"):
-            z.append(f"Tag {t['nr']}, {t['wochentag']} {datum_de(t['datum'])}" + (f" ({t['teil']})" if t.get("teil") else ""))
+            z.append(f"Tag {t['nr']}, {texte.wochentag(t['datum'], texte.VORGABE_REISE)} {datum_de(t['datum'])}" + (f" ({t['teil']})" if t.get("teil") else ""))
         if t.get("strecken"):
             z.append("Wege: " + "; ".join(f"{self.strecke(s['id'])} ({s['id']}"
                                            + (f", Wahl {s['wahl']}" if s.get("wahl") else "") + ")"
@@ -698,7 +719,7 @@ class Handbuch:
                 if t.get("teil") and t["teil"] != teil:
                     teil = t["teil"]
                     z.append(f"### {teil}")
-                z.append(f"- {t['id']} Tag {t['nr']}, {t['wochentag']} {datum_de(t['datum'])}: {t['titel']}"
+                z.append(f"- {t['id']} Tag {t['nr']}, {texte.wochentag(t['datum'], texte.VORGABE_REISE)} {datum_de(t['datum'])}: {t['titel']}"
                          + (f" – Nacht: {self.nacht(t.get('nacht'))}" if t.get("nacht") else ""))
         if self.an("fragen"):
             z.append(f"## Offene Fragen: {len(self.offene())} (Werkzeug offene_fragen)")
@@ -1895,6 +1916,7 @@ def frieda_werkzeuge(k):
         eigene.append(ANFRAGE_ENTSCHEIDEN)
     reisen = reisen_des_kontos(k)
     eigene.append(KALENDER)
+    eigene.append(sprache_setzen_werkzeug(k["sprache"]))
     je_name, wo = {}, {}
     for reise, schl, _ in reisen:
         for w in werkzeuge_fuer({"reise": reise, "person": schl}):
@@ -1989,6 +2011,12 @@ def frieda_werkzeug(k, name, args):
                 "abgelehnt": "Deine Bitte wurde abgelehnt. Bei Fragen wende dich an den Betreiber."}[st], False
     if name == "kalender":
         return kalender_link(k, args.get("neu") is True)
+    if name == "sprache_setzen":
+        try:
+            neu = konten.sprache_setzen(k["id"], args.get("sprache"))
+        except konten.KontoFehler as f:
+            return f.text(k["sprache"]), True
+        return texte.t(neu, "konnektor.sprache_gesetzt", name=texte.sprache(neu).NAME), False
     if name == "anfrage_entscheiden":
         if not konten.recht(k, "betreiber"):
             return "Das darf nur der Betreiber.", True
@@ -2441,6 +2469,7 @@ EINSTELLUNG_SETZEN = {"name": "einstellung_setzen", "description": "Nur für Org
                       "inputSchema": {"type": "object", "properties": {
                           "bausteine": {"type": "array", "items": {"type": "string"}},
                           "regeln": {"type": "object", "additionalProperties": True},
+                          "sprache": {"type": "string", "enum": list(texte.SPRACHEN)},
                           "grund": {"type": "string"}, "vorname": NAME_FELD}}}
 BUCHUNG_FELDER_SCHEMA = {
     "status": {"type": "string", "enum": ["angefragt", "gebucht", "storniert"], "description": "Vorgabe gebucht"},
@@ -2690,7 +2719,8 @@ REISE_ANLEGEN = {"name": "reise_anlegen", "description": "Eine neue Reise anlege
                                       "notiz": {"type": "string", "description": "kurze Notiz zur Person, eine Zeile"}},
                                       "required": ["vorname"]}},
                      "notiz": {"type": "string", "description": "was schon bekannt ist, in eigenen Worten mit Herkunft"},
-                     "pfad": {"type": "string", "description": "nur wenn nötig: Ordnername (klein, Bindestriche)"}},
+                     "pfad": {"type": "string", "description": "nur wenn nötig: Ordnername (klein, Bindestriche)"},
+                     "sprache": {"type": "string", "enum": list(texte.SPRACHEN)}},
                      "required": ["titel", "von", "bis"]}}
 
 
@@ -3129,11 +3159,12 @@ class Dienst(BaseHTTPRequestHandler):
             if not k:
                 return self._senden(401, {"fehler": "Anmeldung nötig"},
                                     {"WWW-Authenticate": oauth.www_authenticate(fehler=bool(t))})
-            zugang = {"konto_id": k["id"]}
+            zugang = {"konto_id": k["id"], "sprache": k["sprache"]}
         else:
             zugang = self._zugang()
         if zugang is None:
             return self._senden(404, {"fehler": "unbekannt"})
+        zugang = {**zugang, "sprache": zugang.get("sprache") or sprache_des_zugangs(zugang)}
         try:
             laenge = int(self.headers.get("Content-Length", "0"))
         except ValueError:

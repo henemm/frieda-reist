@@ -47,6 +47,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import instanz  # noqa: E402
 import konten  # noqa: E402
+import texte  # noqa: E402
 
 REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
 SCHLUESSEL_MUSTER = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -74,7 +75,13 @@ ARTEN_KOPF = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). 
               "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (Gliederung des\n"
               "# Lesetexts: je Rubrik name und hilfe); je Merkmal: name, typ,\n"
               "# werte, veraenderlich, stufe (pflicht | empfohlen | angeboten | aus), auto, hilfe, frage, auch.\n")
-GRUNDFORM_WORT = {"aufenthalt": "Aufenthalt", "bewegung": "Bewegung", "folge": "Folge"}
+GRUNDFORM_WORT = texte.gruppe("de", "schreiben.grundform")   # Katalog in texte_de.py (ADR-0006)
+
+
+def sprache_von(reise_dir):
+    """Sprache der Reise (reise.yaml sprache): in ihr schreibt der Schreibweg alles, was in Dateien der Reise landet."""
+    from reise import sprache_von as von
+    return von(reise_dir)
 
 
 class Ablehnung(Exception):
@@ -1387,7 +1394,7 @@ def wahlstelle_anlegen(reise_dir, wer, args, heute=None):
 
 # ---------- Entscheiden und Plan (plan/routen.yaml, offene-fragen.md) ----------
 ENTSCHEIDUNGEN = ("gewaehlt", "verworfen", "ersetzt")
-WORT = {"gewaehlt": "gewählt", "verworfen": "verworfen", "ersetzt": "ersetzt"}
+WORT = texte.gruppe("de", "schreiben.wort")
 
 
 def frage_status_setzen(reise_dir, fid, status):
@@ -1479,10 +1486,11 @@ def entscheiden(reise_dir, wer, args, heute=None):
                                f"{x['id']} {x.get('titel', '')}" for x in wahl[v].get("optionen") or []
                                if x.get("status") not in ("verworfen", "ersetzt")) for v in noch_offen) + ".")
         elif status == "gewaehlt":
-            ok = frage_status_setzen(reise_dir, wr["frage"], f"geklärt {heute.strftime('%-d.%-m.%Y')}: {wer['name']}, {o['titel']} ({oid})")
+            sp = sprache_von(reise_dir)
+            ok = frage_status_setzen(reise_dir, wr["frage"], f"{texte.wort(sp, 'inhalt.frage.geklaert')} {texte.datum(heute, sp)}: {wer['name']}, {o['titel']} ({oid})")
             frage_text = f" Frage {wr['frage']} ist damit geklärt." if ok else ""
         elif not gewaehlt_danach:
-            ok = frage_status_setzen(reise_dir, wr["frage"], "offen")
+            ok = frage_status_setzen(reise_dir, wr["frage"], texte.wort(sprache_von(reise_dir), "inhalt.frage.offen"))
             frage_text = f" {vid} ist danach offen, Frage {wr['frage']} wieder offen." if ok else f" {vid} ist danach offen."
     titel = f"{oid} „{o['titel']}“ {WORT[status]}" + (f" (ersetzt durch {durch})" if durch else "")
     text = (f"Entschieden: {oid} „{o['titel']}“ ({vid} {wr.get('titel', '')}) ist {WORT[status]}" + (f", ersetzt durch {durch}" if durch else "")
@@ -1610,8 +1618,9 @@ def frage_schliessen(reise_dir, wer, args, heute=None):
     status = (text_wert(args, "status", laenge=20) or "geklaert").lower()
     if status not in ("geklaert", "entfaellt"):
         raise Ablehnung("„status“ ist geklaert oder entfaellt.")
-    wort = "geklärt" if status == "geklaert" else "entfällt"
-    if not frage_status_setzen(reise_dir, fid, f"{wort} {heute.strftime('%-d.%-m.%Y')}: {wer['name']}, {ergebnis}"):
+    sp = sprache_von(reise_dir)   # der Status in offene-fragen.md steht in der Sprache der Reise
+    wort = texte.wort(sp, "inhalt.frage.geklaert" if status == "geklaert" else "inhalt.frage.entfaellt")
+    if not frage_status_setzen(reise_dir, fid, f"{wort} {texte.datum(heute, sp)}: {wer['name']}, {ergebnis}"):
         raise Ablehnung(f"Die Frage {fid} gibt es nicht (offene_fragen zeigt alle).")
     text = f"Frage {fid} ist {wort} ({wer['name']}, {heute.strftime('%-d.%-m.%Y')}): {ergebnis}"
     if status == "entfaellt":
@@ -1724,7 +1733,7 @@ def reise_status_setzen(reise_dir, wer, args, heute=None):
 
 
 def einstellung_setzen(reise_dir, wer, args, heute=None):
-    """Einstellungen der Reise: bausteine (vollständige Liste) und regeln (Name: Wert); nur Organisator:innen. Was gilt, prüft der
+    """Einstellungen der Reise: bausteine (vollständige Liste), regeln (Name: Wert) und sprache (de, en …); nur Organisator:innen. Was gilt, prüft der
     Probebau (reise.py). -> (Titel, Text)."""
     from reise import BAUSTEINE, KERN, VORGABEN
     from ruamel.yaml.comments import CommentedMap
@@ -1757,8 +1766,16 @@ def einstellung_setzen(reise_dir, wer, args, heute=None):
                 continue
             geaendert.append(f"regeln.{k} „{r.get(k, VORGABEN[k])}“ → „{v}“")
             r[k] = skalar(k, v) if isinstance(v, str) else v
+    sprache = args.get("sprache")
+    if sprache not in (None, ""):
+        sprache = str(sprache).strip().lower()
+        if not texte.gueltig(sprache):
+            raise Ablehnung(f"Unbekannte Sprache „{sprache}“ (bekannt: {', '.join(texte.SPRACHEN)}).")
+        if str(roh.get("sprache") or texte.VORGABE_REISE) != sprache:
+            geaendert.append(f"sprache „{roh.get('sprache') or texte.VORGABE_REISE}“ → „{sprache}“")
+            roh["sprache"] = sprache
     if not geaendert:
-        raise Ablehnung("Nichts zu ändern (bausteine als Liste oder regeln als Objekt angeben).")
+        raise Ablehnung("Nichts zu ändern (bausteine als Liste, regeln als Objekt oder sprache angeben).")
     grund = text_wert(args, "grund")
     reise_yaml_speichern(p, roh)
     return "Einstellungen geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), \
@@ -1824,10 +1841,7 @@ def buchung_fuer(args, roh, route):
 
 BUCHUNG_TEXTE = {"nummer": 80, "bei": 120, "preis": 120, "bezahlt": 200, "frist_was": 120, "storno": 400, "notiz": MAX_TEXT, "ab_was": 120}
 # Felder einer Buchung in Worten für Antwort und Verlauf (Menschen lesen Wörter, keine Schlüssel; Product Owner 29.10.2026)
-BUCHUNG_WORTE = {"fuer": "Gehört zu", "status": "Status", "nummer": "Nummer", "bei": "Gebucht bei", "preis": "Preis", "bezahlt": "Bezahlt",
-                 "frist": "Frist", "frist_was": "Was bis zur Frist", "storno": "Stornoregel", "storno_bis": "Stornofrist",
-                 "gebucht_am": "Gebucht am", "quelle": "Herkunft", "notiz": "Notiz", "ab": "Ab", "ab_was": "Was ab dann geht",
-                 "personen": "Reisende", "preise": "Preise je Ding"}
+BUCHUNG_WORTE = texte.gruppe("de", "schreiben.buchung")
 
 
 def buchung_personen(args, reise_dir):
@@ -2380,7 +2394,7 @@ def lesetext_schreiben(reise_dir, wer, args, heute=None):
     if not d_rel or not (Path(reise_dir) / d_rel).exists():
         raise Ablehnung("Diese Reise hat kein Etappen-Dossier (reise.json etappen_dossier); ein Lesetext gehört zu einer Etappe darin.")
     import bauen
-    muster = re.compile(cfg.get("etappen_muster") or bauen.ETAPPEN_MUSTER)
+    muster = re.compile(cfg.get("etappen_muster") or bauen.etappen_muster())
     f = Path(reise_dir) / d_rel
     zeilen = f.read_text(encoding="utf-8").split("\n")
     start = None

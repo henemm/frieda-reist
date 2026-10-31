@@ -228,7 +228,9 @@ def test_stornierte_buchungen_ein_helfer_an_vier_stellen():
     # Stornierte nie über buchungenBei voll gezeichnet: der Helfer trennt nach Status
     bei = re.search(r"^const buchungenBei = .*$", q, re.M)
     assert bei and "storniert" in bei.group(0), bei and bei.group(0)
-    assert "Zurückholen: im Gespräch mit Frieda." in q and "`Storniert (${" in q
+    assert 'T("seite.buchung.zurueckholen")' in q and 'T("seite.buchung.storniert_n"' in q   # die Texte stehen im Katalog (ADR-0006)
+    de = (WURZEL / "engine/texte_de.py").read_text(encoding="utf-8")
+    assert '"seite.buchung.zurueckholen": "Zurückholen: im Gespräch mit Frieda."' in de and '"seite.buchung.storniert_n": "Storniert ({n})"' in de
 
 
 def test_stornierte_buchung_bleibt_in_den_daten(tmp_path):

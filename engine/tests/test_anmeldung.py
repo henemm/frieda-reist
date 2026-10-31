@@ -41,7 +41,7 @@ def abruf(url, methode="GET", felder=None, cookie=None, origin=BASIS, json_body=
     """Eine Anfrage ohne Weiterleitungen zu folgen. -> (status, kopfzeilen, text)"""
     t = urllib.parse.urlsplit(url)
     c = http.client.HTTPConnection(t.hostname, t.port, timeout=10)
-    h = dict(kopf or {})
+    h = {"Accept-Language": "de", **(kopf or {})}   # die Seiten antworten in der Sprache des Browsers; die Tests lesen Deutsch
     body = None
     if felder is not None:
         body = urllib.parse.urlencode(felder).encode()
@@ -301,3 +301,33 @@ def test_eingeloester_code_gilt_nach_der_nachfrist_nicht_mehr(welt, monkeypatch)
     assert abruf(f"{u.kurl}/anmelden", "POST", felder)[0] == 303
     s, _, t = abruf(f"{u.kurl}/anmelden", "POST", felder)
     assert s == 200 and "stimmt nicht" in t
+
+
+# ---------- Sprache der Seiten (ADR-0006, M7) ----------
+
+def test_seiten_in_der_sprache_des_browsers_und_des_kontos(welt):
+    u = welt()
+    s, _, t = abruf(f"{u.kurl}/anmelden", kopf={"Accept-Language": "en-GB,en;q=0.9"})
+    assert s == 200 and '<html lang="en" dir="ltr">' in t and "Sign in to Frieda" in t and "Send code" in t
+    s, _, t = abruf(f"{u.kurl}/anmelden", kopf={"Accept-Language": "de-AT,de;q=0.9"})
+    assert '<html lang="de"' in t and "Bei Frieda anmelden" in t
+    s, _, t = abruf(f"{u.kurl}/anmelden", kopf={"Accept-Language": "fr"})
+    assert '<html lang="en"' in t                        # unbekannte Sprache: Vorgabe
+    # Ablauf mit englischem Browser: die Mail ist englisch, das Konto bekommt Englisch
+    abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "adresse", "email": KARL}, kopf={"Accept-Language": "en"})
+    zeilen = [json.loads(z) for z in u.mails.read_text().splitlines()]
+    assert zeilen[-1]["betreff"].startswith("Frieda: your code") and "Your code for Frieda" in zeilen[-1]["text"]
+    code = re.search(r"Your code for Frieda: (\d{3}) (\d{3})", zeilen[-1]["text"]).expand(r"\1\2")
+    s, h, t = abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "code", "email": KARL, "code": code, "name": "Karl"},
+                    kopf={"Accept-Language": "en"})
+    assert s == 303
+    token = re.match(r"__Host-frieda=([^;]+)", kopf(h, "Set-Cookie")[0]).group(1)
+    s, _, t = abruf(f"{u.kurl}/konto", cookie=token, kopf={"Accept-Language": "de"})   # nach dem Anmelden gilt die Sprache des Kontos
+    assert '<html lang="en"' in t and "Hello Karl" in t and "No trips yet" in t and "Language of the pages" in t
+    # Sprache auf der Kontoseite wechseln: die Antwort kommt gleich in der neuen Sprache, die Wahl bleibt
+    s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "sprache", "sprache": "de"}, cookie=token)
+    assert s == 200 and '<html lang="de"' in t and "Hallo Karl" in t and "Sprache gespeichert." in t
+    s, _, t = abruf(f"{u.kurl}/konto", cookie=token, kopf={"Accept-Language": "en"})
+    assert "Hallo Karl" in t and '<option value="de" selected>Deutsch</option>' in t and '<option value="en">English</option>' in t
+    s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "sprache", "sprache": "klingonisch"}, cookie=token)
+    assert "Diese Sprache gibt es nicht." in t

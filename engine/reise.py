@@ -3,6 +3,7 @@
 Hintergrund und Entscheidungen: docs/produkt.md (26.10.2026). Die Zuordnung der Inhalte (Überschrift
 -> ID) bleibt in reise.json; hier steht, was die KI sicher lesen und ändern soll, ohne Inhalte zu berühren:
 
+  sprache     de | en | … (texte.SPRACHEN), Vorgabe de: Sprache der Seite, des Kalenders und aller Texte, die in Dateien der Reise landen (ADR-0006)
   zeitraum    {von, bis} als Datum; schon in der Idee bekannt, bevor es einen Plan gibt (Paket H)
   status      idee | planung | fest | unterwegs | danach | archiv, mit Verlauf (datum, wert, wer, grund)
   personen    {schluessel: {name, rolle, reist, notiz}}; Rollen gast < mitwirkend < organisator
@@ -16,6 +17,9 @@ reise.json (alte Form) mit einem Hinweis; Status ist dann „planung“, Persone
 import datetime
 import re
 import unicodedata
+from pathlib import Path
+
+import texte
 
 STATUS = ("idee", "planung", "fest", "unterwegs", "danach", "archiv")
 ROLLEN = ("gast", "mitwirkend", "organisator")          # aufsteigend: jede Stufe enthält die darunter
@@ -169,6 +173,25 @@ def reise_pfad(titel, jahr=None):
     return _klein(titel if jahr is None or str(jahr) in (titel or "") else f"{titel} {jahr}", 40)
 
 
+def sprache_von(reise_dir):
+    """Sprache einer Reise aus ihrer reise.yaml (Vorgabe de): in dieser Sprache schreibt die Software in Dateien der Reise."""
+    try:
+        text = (Path(reise_dir) / "reise.yaml").read_text(encoding="utf-8")
+    except OSError:
+        return texte.VORGABE_REISE
+    m = re.search(r"^sprache:\s*['\"]?([A-Za-z-]+)", text, re.M)
+    return m.group(1).lower() if m and texte.gueltig(m.group(1).lower()) else texte.VORGABE_REISE
+
+
+def sprache_pruefen(wert):
+    """Sprache einer Reise (Kürzel aus texte.SPRACHEN, Vorgabe de) -> (Kürzel, None) oder (Vorgabe, Fehler)."""
+    if wert is None or wert == "":
+        return texte.VORGABE_REISE, None
+    if not isinstance(wert, str) or not texte.gueltig(wert.strip().lower()):
+        return texte.VORGABE_REISE, f"sprache: unbekannt „{wert}“ (bekannt: {', '.join(texte.SPRACHEN)})."
+    return wert.strip().lower(), None
+
+
 def neue_reise_pruefen(args, wer, vergeben=()):
     """Eingaben für eine neue Reise prüfen (Konnektor mit Konto-Link, Werkzeug reise_anlegen). wer: Name der anlegenden
     Person, sie wird Organisator:in. vergeben: Ordnernamen, die es schon gibt. -> (daten, None) oder (None, Grund in einfachen Worten)."""
@@ -227,6 +250,9 @@ def neue_reise_pruefen(args, wer, vergeben=()):
             if "\n" in p["notiz"].strip() or len(p["notiz"].strip()) > 300:
                 return None, f"{name}: Notiz in einer Zeile, höchstens 300 Zeichen."
             eintrag["notiz"] = p["notiz"].strip()
+    sprache, f = sprache_pruefen(args.get("sprache"))
+    if f:
+        return None, f
     pfad = args.get("pfad") or reise_pfad(titel, von.year)
     if not isinstance(pfad, str) or not PFAD_MUSTER.match(pfad):
         return None, "pfad: nur Kleinbuchstaben, Ziffern und Bindestrich, 2 bis 40 Zeichen."
@@ -234,7 +260,7 @@ def neue_reise_pruefen(args, wer, vergeben=()):
         return None, (f"Eine Reise mit dem Ordnernamen „{pfad}“ gibt es schon oder ist angefragt. Bitte einen anderen "
                       "Titel oder pfad wählen.")
     return {"titel": titel, "von": von.isoformat(), "bis": bis.isoformat(), "ziel": ziel, "pfad": pfad,
-            "personen": personen, "wer": wer, "notiz": notiz.strip()}, None
+            "personen": personen, "wer": wer, "notiz": notiz.strip(), "sprache": sprache}, None
 
 
 def stelle(ziel):
@@ -305,7 +331,16 @@ class Reise:
             if not isinstance(e.get(k), str) or not e[k].strip():
                 self.fehl(f"„{k}“ fehlt.")
         e["untertitel"] = e.get("untertitel") or ""
+        e["sprache"] = self.sprache(quelle.get("sprache"))
         return e
+
+    def sprache(self, wert):
+        """Sprache der Reise (ADR-0006): Kürzel aus texte.SPRACHEN, Vorgabe de (Bestand). Sie bestimmt die Hülle der Seite,
+        den Startwert des Umschalters und alles, was die Software in Dateien der Reise schreibt."""
+        kuerzel, fehler = sprache_pruefen(wert)
+        if fehler:
+            self.fehl(fehler)
+        return kuerzel
 
     def verlauf(self):
         """Verlauf der Eckdaten (reise_aendern, 29.10.2026): [{datum, wer, was, grund}]; Status und Einstellungen haben ihren eigenen."""
@@ -478,7 +513,7 @@ class Reise:
         """-> Eintrag „reise“ für daten.json; Fehler stehen danach in self.fehler."""
         if not self.alt:
             for k in self.r:
-                if k not in ALTE_ECKDATEN + ("zeitraum", "status", "personen", "bausteine", "regeln", "darstellung", "verlauf"):
+                if k not in ALTE_ECKDATEN + ("zeitraum", "status", "personen", "bausteine", "regeln", "darstellung", "verlauf", "sprache"):
                     self.fehl(f"unbekannter Schlüssel „{k}“.")
         d = self.eckdaten()
         d["verlauf"] = self.verlauf()
