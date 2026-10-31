@@ -1395,7 +1395,8 @@ function einzelheiten(offen, inhalt, titel) {
   return teile.length ? el("details", {class: "einzelheiten", open: !!offen}, el("summary", {}, titel || "Einzelheiten"), teile) : null;
 }
 // Molekül Buchung: Etikett mit Zustand, darunter die Zeilen, die bis zur Reise zählen (Nummer, Preis, Zahlung, eine noch
-// laufende Frist oder Stornofrist); alles Übrige in den Einzelheiten, zu, sobald gebucht (Stand-Leiter, 31.10.2026)
+// laufende Frist); alles Übrige in den Einzelheiten, zu, sobald gebucht (Stand-Leiter, 31.10.2026). Storno steht immer in den
+// Einzelheiten (Product Owner 31.10.2026); an die Stornofrist erinnert der Wächter.
 function buchungBlock(b) {
   const zu = b.status === "storniert", h = heute();
   const k = el("div", {class: "buchung ziel", id: b.id, "data-ziel": b.id},
@@ -1403,13 +1404,12 @@ function buchungBlock(b) {
       chip(zu ? "weg" : b.status === "gebucht" ? "plan" : "offen", BUCHUNG_STATUS[b.status] || b.status)), zid(b.id)));
   const zeile = (name, wert, klasse) => wert ? el("div", {class: "z" + (klasse ? " " + klasse : "")}, el("b", {}, name + ": "), wert) : null;
   const ueber = !zu && V.fristen && b.frist && b.frist < h;
-  // Frist und Stornofrist stehen oben, solange sie laufen (eine überfällige Frist, solange Fristen zählen); danach zugeklappt
-  const fristOben = b.frist && (b.frist >= h || ueber), stornoOben = !zu && b.storno_bis && b.storno_bis >= h;
+  // Die Frist steht oben, solange sie läuft (eine überfällige, solange Fristen zählen); danach zugeklappt
+  const fristOben = b.frist && (b.frist >= h || ueber);
   const frist = b.frist ? zeile("Frist", datumKurz(b.frist) + (b.frist_was ? " · " + b.frist_was : ""), ueber ? "ueber" : null) : null;
   // Zahlstand (#166) in Worten mit seinen Einzelheiten aus bezahlt
   const zahlung = [ZAHLUNG_TEXT[b.zahlung] || b.zahlung, b.bezahlt].filter(Boolean).join(" · ");
-  k.append(...[zeile("Nummer", b.nummer), zeile("Preis", b.preis), zeile("Zahlung", zahlung), fristOben ? frist : null,
-    stornoOben ? zeile("Storno", "bis " + datumKurz(b.storno_bis)) : null].filter(Boolean));
+  k.append(...[zeile("Nummer", b.nummer), zeile("Preis", b.preis), zeile("Zahlung", zahlung), fristOben ? frist : null].filter(Boolean));
   const preise = Object.entries(b.preise || {}), personen = Object.entries(b.personen || {});
   const leise = [b.gebucht_am ? "gebucht am " + datumKurz(b.gebucht_am) : "", b.wer ? "von " + b.wer : "", b.quelle ? "Quelle: " + b.quelle : ""].filter(Boolean);
   const belege = BL.filter(x => x.buchung === b.id && !x.zurueckgezogen).length;

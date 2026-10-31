@@ -63,11 +63,11 @@ def test_tagesseite_in_ebenen(tmp_path, browser):
         assert not n["voll"] and n["hintergrund"] < n["oben"] < n["quellen"], n
         # Stand-Leiter: nicht gebucht (Pension Burgblick) sind die Einzelheiten offen
         assert n["einzelheiten"] == [True], n
-        # gebucht (Hotel am Elbufer, B-01): Einzelheiten von Unterkunft und Buchung zu; oben Nummer, Preis, Zahlung (#166) und die
-        # laufende Stornofrist; der Stand steht einmal (die Buchung trägt ihn, kein Chip an der Karte); im Tageskasten „gebucht“
+        # gebucht (Hotel am Elbufer, B-01): Einzelheiten von Unterkunft und Buchung zu; oben Nummer, Preis, Zahlung (#166), Storno nie
+        # (Product Owner 31.10.2026); der Stand steht einmal (die Buchung trägt ihn, kein Chip an der Karte); im Tageskasten „gebucht“
         g = a["gebucht"]
         assert g["karte"] == [False] and g["buchung"] == [False], g
-        assert g["oben"] == ["Nummer", "Preis", "Zahlung", "Storno"] and g["storno"] == "Storno: bis 11.5.", g
+        assert g["oben"] == ["Nummer", "Preis", "Zahlung"] and g["storno"] is None, g
         assert g["chipsKarte"] == 0 and g["tageskasten"] == ["gebucht"], g
         assert a["breit"] == [] and not a["breitNachTabelle"], (breite, a["breit"])
         assert a["kaesten"] == 1 and a["flaeche"], breite                       # ein Kasten: der Tageskasten
