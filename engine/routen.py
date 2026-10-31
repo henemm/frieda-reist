@@ -322,6 +322,7 @@ class Routen:
         self.wissen = wissen
         self.option = {}          # V-01.a -> (V-01, Option)
         self.auswahl = {}         # V-01 -> aktive Option-ID
+        self.fragen_offen = []    # (Wahlstelle, Frage, offen, Zahl gültiger Optionen), geprüft nach dem Einlesen
         self.tag_benutzt = {}     # T-ID -> Fundstelle
         self.zwang = zwang or {}
         self.erfordert = {}       # V-01.a -> [Option-IDs], die im Plan stehen müssen
@@ -437,6 +438,12 @@ class Routen:
                 self.option[oid] = (vid, o)
                 self.verlauf_pruefen(oid, o)
             self.waehle(vid, w)
+        for vid, f, offen, n_gueltig in self.fragen_offen:
+            f_offen = "offen" in self.fragen[f].lower()
+            if offen and n_gueltig > 1 and not f_offen:
+                self.warne(vid, f"{vid} ist noch offen, aber {f} steht nicht mehr auf offen.")
+            if not offen and f_offen and not self.frage_wird_gebraucht(f, vid):
+                self.warne(vid, f"{vid} ist entschieden, aber {f} steht noch auf offen.")
         self.regeln_pruefen()
         self.merkmale_pruefen()
 
@@ -1099,11 +1106,8 @@ class Routen:
         if wann_von(w) == "planung" and offen and len(gueltig) > 1 and not f:
             self.fehl(f"Wahlstelle {vid} ist offen und braucht eine F-Frage (frage: F-…).")
         if f and f in self.fragen:
-            f_offen = "offen" in self.fragen[f].lower()
-            if offen and len(gueltig) > 1 and not f_offen:
-                self.warne(vid, f"{vid} ist noch offen, aber {f} steht nicht mehr auf offen.")
-            if not offen and f_offen and not self.frage_wird_gebraucht(f, vid):
-                self.warne(vid, f"{vid} ist entschieden, aber {f} steht noch auf offen.")
+            # Erst prüfen, wenn alle Wahlstellen eingelesen sind: Ob die Frage noch gebraucht wird, hängt auch von den späteren ab
+            self.fragen_offen.append((vid, f, offen, len(gueltig)))
 
     # ---------- Folge durchlaufen ----------
     def folge(self, liste, wo, tiefe=0):

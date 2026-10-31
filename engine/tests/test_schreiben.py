@@ -716,6 +716,11 @@ def test_entscheiden_schreibt_verlauf_und_klaert_die_frage(repo):
     o = next(o for o in r["wahlstellen"]["V-01"]["optionen"] if o["id"] == "V-01.b")
     assert o["verlauf"][-1] == {"datum": heute, "status": "gewaehlt", "wer": "Ida", "grund": "Karl möchte mit der Bahn fahren (Quelle: Gespräch)"}
     assert len(o["verlauf"]) == 3                                   # die alten Einträge bleiben
+    # Die übrigen Optionen der Wahlstelle sind damit nicht gewählt: ersetzt durch die gewählte, mit Verlauf
+    assert "Nicht gewählt und damit ausgeschieden: V-01.a" in a["text"]
+    a_opt = next(x for x in r["wahlstellen"]["V-01"]["optionen"] if x["id"] == "V-01.a")
+    assert a_opt["verlauf"][-1] == {"datum": heute, "status": "ersetzt", "wer": "Ida", "durch": "V-01.b",
+                                    "grund": "nicht gewählt, V-01.b „Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück (Plan B)“ ist gewählt"}
     assert f"| vor Abreise | geklärt {heute.strftime('%-d.%-m.%Y')}: Ida, Zum Lichtenhainer Wasserfall" in fragen_auf_main(origin)
     assert git(origin, "log", "-1", "--format=%s", "main").endswith("V-01.b „Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück (Plan B)“ gewählt")
     # gewählt an einer Wahlstelle mit gewählter Option: die alte wird ersetzt (eigener Verlaufseintrag), die Frage bleibt geklärt
@@ -736,6 +741,9 @@ def test_entscheiden_schreibt_verlauf_und_klaert_die_frage(repo):
     # verworfen ohne verbleibende Wahl (V-01.a bleibt vorgeschlagen): Wahlstelle offen, Frage wieder offen
     a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-01.b", "status": "verworfen", "grund": "Fahrplan passt nicht"}})
     assert "V-01 ist danach offen, Frage F-01 wieder offen" in a["text"]
+    assert "Wieder offen: V-01.a" in a["text"]                      # was nur wegen dieser Wahl ausschied, ist wieder im Spiel
+    r, _ = routen_auf_main(origin)
+    assert next(x for x in r["wahlstellen"]["V-01"]["optionen"] if x["id"] == "V-01.a")["verlauf"][-1]["status"] == "vorgeschlagen"
     assert "| vor Abreise | offen |" in fragen_auf_main(origin)
     s.vorbereiten()
     stand = git(origin, "rev-parse", "main")

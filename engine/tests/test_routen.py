@@ -217,6 +217,14 @@ def test_f_status_passt_nicht_zur_wahl():
     assert any("V-01 ist entschieden, aber F-01" in t for t in texte(erg))
 
 
+def test_f_hinweis_unabhaengig_von_der_reihenfolge():
+    # V-01 steht vor V-02 und ist entschieden, V-02 hängt an derselben Frage und ist noch offen: kein Hinweis zu V-01
+    r = roh()
+    option(r, "V-01.a")["verlauf"] = verlauf(("gewaehlt", "Ida", {}))
+    erg = ok(r)
+    assert not any("V-01 ist entschieden, aber F-01" in t for t in texte(erg))
+
+
 # ---------- Ablauf: Lücken, Abzweig, Datum, Fixpunkte ----------
 def test_teilstueck_alternative_zweigt_ab():
     r = roh()
