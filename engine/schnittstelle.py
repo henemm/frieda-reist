@@ -86,7 +86,7 @@ PARAMETER = {
     "kommentar": "comment", "koordinaten": "coordinates", "kurz": "short", "lesetext": "reading_text", "merkmal": "attribute",
     "merkmale": "attributes", "minus": "cons", "nach": "after", "nacht": "night", "neu": "new", "neuer_name": "new_name",
     "neuer_titel": "new_title", "notiz": "note", "nummer": "number", "nummeriert": "numbered", "ohne_route": "without_route",
-    "optionen": "options", "ort": "place", "personen": "people", "pfad": "path", "plus": "pros", "preis": "price", "preise": "prices",
+    "optionen": "options", "ort": "place", "personen": "people", "pfad": "path", "plus": "pros", "preis": "price", "preise": "prices", "zahlung": "payment",
     "prioritaet": "priority", "punkte": "points", "quelle": "source", "regeln": "rules", "reist": "travels", "rolle": "role",
     "rubrik": "heading", "schliesst_aus": "excludes", "schluessel": "key", "siehe": "see", "sprache": "language",
     "storno": "cancellation", "storno_bis": "cancellation_until", "strecken": "legs", "stufe": "level", "stufen": "levels",

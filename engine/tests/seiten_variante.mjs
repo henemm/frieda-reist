@@ -36,7 +36,8 @@ await p.waitForTimeout(200);
 start.buchung = await p.evaluate(() => {
   const z = document.querySelector("#main #B-01");
   const nummer = [...z.querySelectorAll(".z")].map(x => x.textContent).find(t => t.startsWith("Nummer: "));
-  return z ? {sichtbar: window.sichtbar(z), nummer: nummer ? nummer.slice(8) : null,
+  const zahlung = [...z.querySelectorAll(".z")].map(x => x.textContent).find(t => t.startsWith("Zahlung: "));   // #166
+  return z ? {sichtbar: window.sichtbar(z), nummer: nummer ? nummer.slice(8) : null, zahlung: zahlung ? zahlung.slice(9) : null,
               reiter: (document.querySelector("#nav a.on") || {getAttribute: () => "#"}).getAttribute("href").slice(1)} : null;
 });
 // Stornierte Buchungen (#146): am Ding nur ein zugeklappter Block „Storniert (n)“ mit Hinweis zum Zurückholen; die geltende

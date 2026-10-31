@@ -37,14 +37,32 @@ MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+",
           "tag": r"T-\d+", "wahl": r"V-\d+", "option": r"V-\d+\.[a-z]+", "wissen": r"W-\d+", "buchung": r"B-\d+"}
 # Buchung (Product Owner 29.10.2026, frieda-reist #76): eigenes Ding B-… in routen.yaml unter buchungen:, gehört zu einem
 # oder mehreren Aufenthalten (U-, A-) oder Bewegungen (E-) („fuer“). Felder: status, nummer, bei, preis, bezahlt, frist,
-# frist_was, storno, storno_bis, gebucht_am, wer, quelle (Pflicht: Herkunft), notiz, verlauf. Der Beleg (PDF, Bild)
+# frist_was, storno, storno_bis, gebucht_am, wer, quelle (Pflicht: Herkunft), notiz, verlauf; seit #166 zahlung (Zahlstand)
+# und merkmale (Merkmale der Buchung, die die Arten ihrer Dinge in buchung_merkmale festlegen). Der Beleg (PDF, Bild)
 # liegt nie im Repo, sondern in der Ablage der Instanz (Rückmeldedienst, docs/betrieb.md „Belege“).
 BUCHUNG_STATUS = ("angefragt", "gebucht", "storniert")
 # Seit 29.10.2026 (Issue #135) dazu: personen (die Reisenden dieser Buchung, {Name: Angabe wie Sitzplatz, Gepäck, Vielfliegernummer}
 # oder Liste der Namen), preise ({ID aus fuer: Betrag}, wenn eine Buchung mehrere Dinge umfasst), ab mit ab_was (ab wann
 # etwas geht, etwa der Check-in; frist sagt bis wann).
 BUCHUNG_FELDER = ("fuer", "status", "nummer", "bei", "preis", "bezahlt", "frist", "frist_was", "storno", "storno_bis", "gebucht_am",
-                  "wer", "quelle", "notiz", "verlauf", "personen", "preise", "ab", "ab_was")
+                  "wer", "quelle", "notiz", "verlauf", "personen", "preise", "ab", "ab_was", "zahlung", "merkmale")
+# Zahlstand einer Buchung (Product Owner 31.10.2026, frieda-reist #166): festes Feld der Grundform Buchung, kein Merkmal.
+# Datenwerte bleiben deutsch (ADR-0006 Punkt 4); englische Aliase gelten bei der Eingabe. Einzelheiten („Anzahlung 50 €,
+# Rest bis 1.2.“) stehen weiter im freien Text bezahlt. erstattet gibt es nur bei einer stornierten Buchung.
+ZAHLUNG = ("offen", "angezahlt", "bezahlt", "vor_ort", "inklusive", "erstattet")
+ZAHLUNG_ALIAS = {"open": "offen", "deposit": "angezahlt", "paid": "bezahlt", "on_site": "vor_ort", "included": "inklusive",
+                 "refunded": "erstattet"}
+# Wörter für Menschen (Antworten, Konnektor); die Seite hat dieselben in ZAHLUNG_TEXT (engine/vorlage.html)
+ZAHLUNG_WORTE = {"offen": "offen", "angezahlt": "angezahlt", "bezahlt": "bezahlt", "vor_ort": "vor Ort", "inklusive": "inklusive",
+                 "erstattet": "erstattet"}
+# Zahlstände, bei denen vor der Reise noch Geld fließen muss (Wächter, Regel waechter_zahlung)
+ZAHLUNG_OFFEN = ("offen", "angezahlt")
+
+
+def zahlung_schluessel(text):
+    """Eingabe eines Zahlstands (Schlüssel, englischer Alias, „vor Ort“) -> Schlüssel oder None, wenn unbekannt."""
+    t = re.sub(r"[\s-]+", "_", str(text or "").strip().lower())
+    return t if t in ZAHLUNG else ZAHLUNG_ALIAS.get(t)
 BUCHUNG_DATEN = ("frist", "storno_bis", "gebucht_am", "ab")
 # Zeitpunkt an einer Bewegung (ab, an; Issue #135): Uhrzeit HH:MM am Tag der Strecke oder JJJJ-MM-TTTHH:MM mit Zeitzone
 # (+01:00, Z); die Software prüft nur die Form und meldet, wenn eine Strecke abfährt, bevor die vorige ankommt (Anschluss)
@@ -70,7 +88,11 @@ def zeitpunkt(text):
 GRUNDFORMEN = ("aufenthalt", "bewegung", "folge")
 AUTO_JE_GRUNDFORM = {"bewegung": ("gehzeit", "laenge", "hoehenmeter"), "folge": ("tage", "gehzeit", "unterkuenfte", "anschluss")}
 ART_MUSTER = r"[a-z][a-z0-9_]*"
-ART_FELDER = {"grundform", "name", "farbe", "symbol", "buchbar", "merkmale", "beschreibung", "summiert", "lesetext"}
+ART_FELDER = {"grundform", "name", "farbe", "symbol", "buchbar", "merkmale", "beschreibung", "summiert", "lesetext", "buchung_merkmale"}
+# Merkmale der Buchungen einer Art (Product Owner 31.10.2026, #166): was erst durch das Buchen entsteht (Ticketart, Tarif,
+# Lager oder Zimmer, Zeitfenster). Form wie ein Merkmal, aber ohne Stufe, Rolle, auto und Prüfdatum: der Wert ist eine gebuchte
+# Tatsache und erbt die Herkunft (quelle) der Buchung.
+BUCHUNG_DEF_FELDER = {"name", "typ", "werte", "einheit", "hilfe", "frage"}
 # Symbole der Seite, die eine Art tragen darf (engine/bauen.py SYMBOLE, Lucide); ohne Angabe das Symbol der Grundform
 SYMBOLE_ARTEN = ("unterkunft", "zelt", "einkehr", "ticket", "museum", "wandern", "bus", "bahn", "schiff", "flug", "auto", "rad",
                  "taxi", "strecke", "ort", "karte", "plan")
@@ -277,6 +299,7 @@ class Routen:
         self.a_art = {}           # A-01 -> Art (Aufenthalt ohne Nacht, Paket O-5)
         self.mk_aufenthalt = {}   # A-01 -> {Merkmal: Wert}
         self.katalog = {}         # Art -> {Merkmal: Definition}
+        self.buchung_katalog = {} # Art -> {Merkmal der Buchung: Definition} (#166)
         self.u_art = {}           # U-01 -> Art
         self.kriterien = {}       # V-ID -> (Art, {Merkmal: Definition})
         self.mk_option = {}       # V-01.a -> {Merkmal: Wert}
@@ -300,6 +323,7 @@ class Routen:
         self.wissen = wissen
         self.option = {}          # V-01.a -> (V-01, Option)
         self.auswahl = {}         # V-01 -> aktive Option-ID
+        self.fragen_offen = []    # (Wahlstelle, Frage, offen, Zahl gültiger Optionen), geprüft nach dem Einlesen
         self.tag_benutzt = {}     # T-ID -> Fundstelle
         self.zwang = zwang or {}
         self.erfordert = {}       # V-01.a -> [Option-IDs], die im Plan stehen müssen
@@ -419,6 +443,12 @@ class Routen:
                 self.option[oid] = (vid, o)
                 self.verlauf_pruefen(oid, o)
             self.waehle(vid, w)
+        for vid, f, offen, n_gueltig in self.fragen_offen:
+            f_offen = "offen" in self.fragen[f].lower()
+            if offen and n_gueltig > 1 and not f_offen:
+                self.warne(vid, texte.satz("pruefung.routen.98", vid=vid, f=f))
+            if not offen and f_offen and not self.frage_wird_gebraucht(f, vid):
+                self.warne(vid, texte.satz("pruefung.routen.99", vid=vid, f=f))
         self.regeln_pruefen()
         self.merkmale_pruefen()
 
@@ -455,6 +485,22 @@ class Routen:
             if pers is not None and not (isinstance(pers, list) and all(isinstance(x, str) for x in pers)) \
                     and not (isinstance(pers, dict) and all(isinstance(k, str) and (v is None or isinstance(v, str)) for k, v in pers.items())):
                 self.fehl(texte.satz("pruefung.routen.26", bid=bid))
+            z = b.get("zahlung")
+            if z is not None and z not in ZAHLUNG:
+                self.fehl(texte.satz("pruefung.routen.130", bid=bid, w1=', '.join(ZAHLUNG)))
+            elif z == "erstattet" and b.get("status", "gebucht") != "storniert":
+                self.warne(bid, texte.satz("pruefung.routen.131", bid=bid))
+            mk = b.get("merkmale")
+            if mk is not None:
+                if not isinstance(mk, dict) or any(isinstance(v, (dict, list)) for v in mk.values()):
+                    self.fehl(texte.satz("pruefung.routen.132", bid=bid))
+                else:
+                    defs = self.buchung_merkmal_defs(fuer)
+                    for k, v in mk.items():
+                        if k not in defs:
+                            self.warne(bid, texte.satz("pruefung.routen.133", bid=bid, k=k))
+                        elif defs[k].get("typ") == "auswahl" and str(v) not in [str(w) for w in defs[k].get("werte") or []]:
+                            self.warne(bid, texte.satz("pruefung.routen.134", bid=bid, name=defs[k]['name'], v=v, werte=' | '.join(map(str, defs[k]['werte']))))
             preise = b.get("preise")
             if preise is not None:
                 if not isinstance(preise, dict) or any(k not in fuer for k in preise):
@@ -492,8 +538,14 @@ class Routen:
         fuer = [b["fuer"]] if isinstance(b.get("fuer"), str) else list(b.get("fuer") or [])
         namen = [(self.unterkuenfte.get(x) or self.aufenthalte.get(x) or {}).get("name") or self.strecke(x).get("titel") or x for x in fuer]
         aus = {"id": bid, "fuer": fuer, "titel": ", ".join(namen), "status": str(b.get("status") or "gebucht")}
-        for k in ("nummer", "bei", "preis", "bezahlt", "frist_was", "storno", "wer", "quelle", "notiz", "ab_was"):
+        for k in ("nummer", "bei", "preis", "bezahlt", "frist_was", "storno", "wer", "quelle", "notiz", "ab_was", "zahlung"):
             aus[k] = str(b[k]) if b.get(k) not in (None, "") else None
+        # Merkmale der Buchung (#166) in der Reihenfolge der Definition, mit Name und Einheit; Unbekanntes zuletzt unter seinem Schlüssel
+        mk = b.get("merkmale") if isinstance(b.get("merkmale"), dict) else {}
+        defs = self.buchung_merkmal_defs(fuer)
+        aus["merkmale"] = [{"id": k, "name": d["name"], "wert": str(mk[k]), **({"einheit": d["einheit"]} if d.get("einheit") else {})}
+                           for k, d in defs.items() if mk.get(k) not in (None, "")] + \
+                          [{"id": str(k), "name": str(k), "wert": str(v)} for k, v in mk.items() if k not in defs and v not in (None, "")]
         pers = b.get("personen")
         aus["personen"] = {str(k): (str(v) if v else "") for k, v in pers.items()} if isinstance(pers, dict) else {str(x): "" for x in (pers or [])}
         aus["preise"] = {str(k): str(v) for k, v in (b.get("preise") or {}).items()} if isinstance(b.get("preise"), dict) else {}
@@ -677,6 +729,51 @@ class Routen:
             if "lesetext" in d:
                 self.arten[a]["lesetext"] = self.lesetext_pruefen(wo, d["lesetext"])
             self.katalog[a] = self.definitionen(wo, d.get("merkmale") or {}, a, grundform=d["grundform"], neu=True)
+            if "buchung_merkmale" in d:
+                self.buchung_katalog[a] = self.buchung_definitionen(wo, d["buchung_merkmale"])
+
+    def buchung_definitionen(self, wo, roh):
+        """Merkmale der Buchungen einer Art prüfen -> {Merkmal: Definition}: Name, Typ (Auswahl mit Werten), Einheit, Hilfe, Frage."""
+        aus = {}
+        if not isinstance(roh, dict):
+            self.fehl(texte.satz("pruefung.routen.135", wo=wo))
+            return aus
+        for k, d in roh.items():
+            if not re.fullmatch(r"[a-z][a-z0-9_]*", str(k)):
+                self.fehl(texte.satz("pruefung.routen.136", wo=wo, k=k))
+                continue
+            if not isinstance(d, dict) or not d.get("name"):
+                self.fehl(texte.satz("pruefung.routen.137", wo=wo, k=k))
+                continue
+            if set(d) - BUCHUNG_DEF_FELDER:
+                self.fehl(texte.satz("pruefung.routen.138", wo=wo, k=k, w1=", ".join(sorted(set(d) - BUCHUNG_DEF_FELDER)),
+                                     w2=", ".join(sorted(BUCHUNG_DEF_FELDER))))
+            typ = d.get("typ", "text")
+            if typ not in TYPEN:
+                self.fehl(texte.satz("pruefung.routen.139", wo=wo, k=k, w1=", ".join(sorted(TYPEN))))
+            if typ == "auswahl" and not (isinstance(d.get("werte"), list) and d["werte"]):
+                self.fehl(texte.satz("pruefung.routen.140", wo=wo, k=k))
+            aus[k] = {"name": d["name"], "typ": typ, **{f: d[f] for f in ("werte", "einheit", "hilfe", "frage") if d.get(f)}}
+        return aus
+
+    def art_des_dings(self, x):
+        """Art einer Unterkunft, eines Aufenthalts oder einer Strecke (Schlüssel aus plan/arten.yaml) oder None."""
+        if x in self.u_art:
+            return self.u_art[x]
+        if x in self.a_art:
+            return self.a_art[x]
+        if x in self.strecken or x in self.etappen:
+            return self.strecken_art(self.strecke(x))
+        return None
+
+    def buchung_merkmal_defs(self, fuer):
+        """Merkmale, die eine Buchung tragen darf: die Merkmale der Buchungen aller Arten ihrer Dinge, in der Reihenfolge der
+        Definition; gibt es ein Merkmal in mehreren Arten, gilt die erste Definition. -> {Merkmal: Definition}"""
+        aus = {}
+        for x in fuer:
+            for k, d in self.buchung_katalog.get(self.art_des_dings(x), {}).items():
+                aus.setdefault(k, d)
+        return aus
 
     def lesetext_pruefen(self, wo, roh):
         """Gliederung des Lesetexts einer Art -> [{id, name, hilfe}] in der Reihenfolge der Datei. Nur die Form wird
@@ -1005,11 +1102,8 @@ class Routen:
         if wann_von(w) == "planung" and offen and len(gueltig) > 1 and not f:
             self.fehl(texte.satz("pruefung.routen.97", vid=vid))
         if f and f in self.fragen:
-            f_offen = "offen" in self.fragen[f].lower()
-            if offen and len(gueltig) > 1 and not f_offen:
-                self.warne(vid, texte.satz("pruefung.routen.98", vid=vid, f=f))
-            if not offen and f_offen and not self.frage_wird_gebraucht(f, vid):
-                self.warne(vid, texte.satz("pruefung.routen.99", vid=vid, f=f))
+            # Erst prüfen, wenn alle Wahlstellen eingelesen sind: Ob die Frage noch gebraucht wird, hängt auch von den späteren ab
+            self.fragen_offen.append((vid, f, offen, len(gueltig)))
 
     # ---------- Folge durchlaufen ----------
     def folge(self, liste, wo, tiefe=0):
@@ -1264,6 +1358,8 @@ class Routen:
                       for a, d in self.arten.items()},
             "aktiv_strecken": sorted(aktiv_strecken),
             "merkmale": {b: [{"id": k, **d} for k, d in krit.items()] for b, krit in self.katalog.items()},
+            # Merkmale der Buchungen je Art (#166), Form wie merkmale
+            "buchung_merkmale": {b: [{"id": k, **d} for k, d in krit.items()] for b, krit in self.buchung_katalog.items() if krit},
             "warnungen": self.warnungen,
         }
 

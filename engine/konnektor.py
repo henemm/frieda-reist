@@ -69,7 +69,7 @@ import schnittstelle  # noqa: E402
 import texte  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
-from routen import FARBEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, art_schluessel, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
+from routen import FARBEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, ZAHLUNG, ZAHLUNG_ALIAS, ZAHLUNG_WORTE, art_schluessel, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
 
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "rueckmeldung_erledigen",
@@ -484,9 +484,13 @@ class Handbuch:
     def buchung_text(self, b):
         """Eine Buchung (B-…, #76) für die Claude-App: Dinge, Status, Nummer, Anbieter, Preis, Frist, Storno, Herkunft, Belege, Verlauf."""
         z = [tk("konnektor.buchung_text.1") + "; ".join(f"{x} {self.titel_von(x)}" for x in b.get("fuer") or []), tk("konnektor.ausgabe.buchung_text.1", w1=b.get('status'))]
-        for k, name in (("nummer", tk("konnektor.ausgabe.buchung_text.2")), ("bei", tk("konnektor.ausgabe.buchung_text.3")), ("preis", tk("konnektor.ausgabe.buchung_text.4")), ("bezahlt", tk("konnektor.ausgabe.buchung_text.5"))):
+        for k, name in (("nummer", tk("konnektor.ausgabe.buchung_text.2")), ("bei", tk("konnektor.ausgabe.buchung_text.3")), ("preis", tk("konnektor.ausgabe.buchung_text.4"))):
             if b.get(k):
                 z.append(name + str(b[k]))
+        if b.get("zahlung") or b.get("bezahlt"):   # Zahlstand (#166) mit seinen Einzelheiten
+            z.append(tk("konnektor.ausgabe.buchung_text.15") + " · ".join(x for x in (ZAHLUNG_WORTE.get(b.get("zahlung"), b.get("zahlung")), b.get("bezahlt")) if x))
+        for m in b.get("merkmale") or []:   # Merkmale der Buchung (#166), Herkunft wie die Buchung
+            z.append(f"{m['name']}: {m['wert']}" + (f" {m['einheit']}" if m.get("einheit") else ""))
         if b.get("preise"):
             z.append(tk("konnektor.ausgabe.buchung_text.7") + "; ".join(f"{x} {self.titel_von(x)}: {p}" for x, p in b["preise"].items()))
         if b.get("personen"):
@@ -910,6 +914,13 @@ class Handbuch:
             s = self.r["strecken"][ziel]
             z.append(f"## {ziel} {s.get('titel') or ziel}")
             z += self.merkmal_zeilen(krit, s.get("merkmale"), s.get("fehlt")) or [tk("konnektor.ausgabe.merkmale.4")]
+        bm = (self.r.get("buchung_merkmale") or {}).get(b) or []
+        if bm:   # #166: was erst durch das Buchen entsteht, steht an der Buchung (buchung_anlegen/buchung_aendern, merkmale)
+            z += [tk("konnektor.ausgabe.merkmale.5"), tk("konnektor.ausgabe.merkmale.6")]
+            for k in bm:
+                z.append(f"- {k['id']} – {k['name']}: {k.get('typ', 'text')}" + (f" ({' | '.join(k['werte'])})" if k.get("werte") else "")
+                         + (tk("konnektor.ausgabe.merkmale.7", w1=k["hilfe"]) if k.get("hilfe") else "")
+                         + (tk("konnektor.ausgabe.merkmale.8", w1=k["frage"]) if k.get("frage") else ""))
         return "\n".join(z), None
 
     def kategorien(self):
@@ -1190,7 +1201,8 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
     route = d.get("route") or {}
     if name == "merkmal_definieren" and not args.get("trotzdem"):
         art = str(args.get("art") or "").strip().lower()
-        krit = (route.get("merkmale") or {}).get(art) or []
+        bereich = "buchung_merkmale" if str(args.get("fuer") or "").strip().lower() == "buchung" else "merkmale"
+        krit = (route.get(bereich) or {}).get(art) or []
         key = art_schluessel(str(args.get("merkmal") or args.get("bezeichnung") or ""))
         if key and key not in {k["id"] for k in krit}:
             aehnlich = aehnliches_merkmal(key, krit)
@@ -2252,6 +2264,7 @@ KATEGORIE_DEFINIEREN = {"name": "kategorie_definieren", "description": "@konnekt
 MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "@konnektor.werkzeug.merkmal_definieren",
                       "inputSchema": {"type": "object", "properties": {
                           "art": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.art"},
+                          "fuer": {"type": "string", "enum": ["ding", "buchung"], "description": "@konnektor.werkzeug.merkmal_definieren.fuer"},
                           "merkmal": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.merkmal"},
                           "bezeichnung": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.bezeichnung"},
                           "typ": {"type": "string", "enum": sorted(TYPEN), "description": "@konnektor.werkzeug.merkmal_definieren.typ"},
@@ -2383,6 +2396,7 @@ BUCHUNG_FELDER_SCHEMA = {
     "nummer": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.nummer"},
     "bei": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.bei"},
     "preis": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.preis"},
+    "zahlung": {"type": "string", "enum": [*ZAHLUNG, *ZAHLUNG_ALIAS, ""], "description": "@konnektor.feld.buchung_felder_schema.zahlung"},
     "bezahlt": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.bezahlt"},
     "frist": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.frist"},
     "frist_was": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.frist_was"},
@@ -2395,6 +2409,8 @@ BUCHUNG_FELDER_SCHEMA = {
                  "description": "@konnektor.feld.buchung_felder_schema.personen"},
     "preise": {"type": "object", "additionalProperties": {"type": "string"},
                "description": "@konnektor.feld.buchung_felder_schema.preise"},
+    "merkmale": {"type": "object", "additionalProperties": {"type": ["string", "number"]},
+                 "description": "@konnektor.feld.buchung_felder_schema.merkmale"},
     "notiz": {"type": "string"}}
 BUCHUNG_ANLEGEN = {"name": "buchung_anlegen", "description": "@konnektor.werkzeug.buchung_anlegen",
                    "inputSchema": {"type": "object", "properties": {

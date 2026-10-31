@@ -217,6 +217,14 @@ def test_f_status_passt_nicht_zur_wahl():
     assert any("V-01 ist entschieden, aber F-01" in t for t in texte(erg))
 
 
+def test_f_hinweis_unabhaengig_von_der_reihenfolge():
+    # V-01 steht vor V-02 und ist entschieden, V-02 hängt an derselben Frage und ist noch offen: kein Hinweis zu V-01
+    r = roh()
+    option(r, "V-01.a")["verlauf"] = verlauf(("gewaehlt", "Ida", {}))
+    erg = ok(r)
+    assert not any("V-01 ist entschieden, aber F-01" in t for t in texte(erg))
+
+
 # ---------- Ablauf: Lücken, Abzweig, Datum, Fixpunkte ----------
 def test_teilstueck_alternative_zweigt_ab():
     r = roh()
@@ -960,6 +968,70 @@ def test_buchung_prueft_bezug_status_herkunft_und_datum():
     r["buchungen"] = {"X-01": {"fuer": ["U-01"], "quelle": "x"}}
     _, fehler = laufe(r, FRAGEN, a)
     assert any("keine gültige ID für buchung" in x for x in fehler)
+
+
+def test_buchung_zahlstand_und_merkmale_je_art_bei_zwei_reisetypen():
+    """#166 (Product Owner 31.10.2026): Der Zahlstand ist ein festes Feld der Buchung mit festen Werten; Merkmale der Buchung
+    legt die Art ihrer Dinge fest (buchung_merkmale). Städtereise: Flug mit Ticketart und Sitzplätzen, Museum mit Zeitfenster;
+    Hüttentour-Nacht (Hotel) ohne eigene Merkmale der Buchung."""
+    r, a = staedtereise()
+    a["arten"]["flug"]["buchung_merkmale"] = {
+        "ticketart": {"name": "Ticketart", "typ": "auswahl", "werte": ["Light", "Classic"], "hilfe": "Bestätigung"},
+        "sitzplaetze": {"name": "Sitzplätze", "typ": "zahl", "einheit": "Plätze"}}
+    a["arten"]["museum"]["buchung_merkmale"] = {"zeitfenster": {"name": "Zeitfenster", "typ": "text"}}
+    r["buchungen"] = {
+        "B-01": {"fuer": ["E-10", "A-01"], "status": "gebucht", "zahlung": "angezahlt", "bezahlt": "50 € an", "quelle": "Mail",
+                 "merkmale": {"zeitfenster": "10:30", "ticketart": "Classic", "sitzplaetze": 2}},
+        "B-02": {"fuer": ["U-01"], "status": "gebucht", "zahlung": "inklusive", "quelle": "Mail"},
+        "B-03": {"fuer": ["A-02"], "status": "storniert", "zahlung": "erstattet", "quelle": "Mail"},
+    }
+    erg, fehler = laufe(r, FRAGEN, a)
+    assert fehler == [], fehler
+    b = erg["buchungen"]
+    assert b["B-01"]["zahlung"] == "angezahlt" and b["B-01"]["bezahlt"] == "50 € an" and b["B-02"]["zahlung"] == "inklusive"
+    # Reihenfolge der Definition je Art in der Reihenfolge von fuer, mit Name und Einheit
+    assert b["B-01"]["merkmale"] == [{"id": "ticketart", "name": "Ticketart", "wert": "Classic"},
+                                     {"id": "sitzplaetze", "name": "Sitzplätze", "wert": "2", "einheit": "Plätze"},
+                                     {"id": "zeitfenster", "name": "Zeitfenster", "wert": "10:30"}]
+    assert b["B-02"]["merkmale"] == [] and b["B-03"]["zahlung"] == "erstattet"
+    assert erg["buchung_merkmale"]["flug"][0] == {"id": "ticketart", "name": "Ticketart", "typ": "auswahl", "werte": ["Light", "Classic"],
+                                                  "hilfe": "Bestätigung"}
+    assert "hotel" not in erg["buchung_merkmale"] and not any("B-0" in w["text"] for w in erg["warnungen"])
+    # Die Merkmale der Buchung sind nicht die des Angebots: das Ding trägt sie nicht
+    assert "ticketart" not in [k["id"] for k in erg["merkmale"]["flug"]]
+    # Unbekanntes Merkmal, Wert außerhalb der Auswahl, erstattet ohne Storno: Warnungen, kein Baufehler
+    r["buchungen"]["B-01"]["merkmale"] = {"ticketart": "First", "zimmer": "12"}
+    r["buchungen"]["B-02"]["zahlung"] = "erstattet"
+    erg, fehler = laufe(r, FRAGEN, a)
+    assert fehler == [], fehler
+    w = " ".join(x["text"] for x in erg["warnungen"])
+    assert "Ticketart „First“ steht nicht unter den Werten" in w and "Merkmal „zimmer“ ist an keiner Art" in w
+    assert "B-02: zahlung erstattet, aber die Buchung ist nicht storniert" in w
+    assert {"id": "zimmer", "name": "zimmer", "wert": "12"} in erg["buchungen"]["B-01"]["merkmale"]
+
+
+def test_buchung_zahlstand_und_buchung_merkmale_pruefen_die_form():
+    r, a = staedtereise()
+    a["arten"]["flug"]["buchung_merkmale"] = {"Ticket": {"name": "Ticket"}, "tarif": {"typ": "auswahl"},
+                                              "sitz": {"name": "Sitz", "stufe": "pflicht", "veraenderlich": True}, "klasse": {"name": "Klasse", "typ": "liste"}}
+    r["buchungen"] = {"B-01": {"fuer": ["E-10"], "quelle": "x", "zahlung": "teilweise", "merkmale": ["Classic"]}}
+    _, fehler = laufe(r, FRAGEN, a)
+    f = " ".join(fehler)
+    assert "Merkmal der Buchung „Ticket“: nur Kleinbuchstaben" in f and "Merkmal der Buchung tarif braucht einen Namen" in f
+    assert "Merkmal der Buchung sitz: unbekannte Felder stufe, veraenderlich" in f and "Merkmal der Buchung klasse: typ muss" in f
+    assert "Buchung B-01: zahlung muss offen, angezahlt, bezahlt, vor_ort, inklusive, erstattet sein" in f
+    assert "Buchung B-01: merkmale ist {Merkmal: Wert}" in f
+    a["arten"]["flug"]["buchung_merkmale"] = ["ticket"]
+    _, fehler = laufe(r, FRAGEN, a)
+    assert any("buchung_merkmale muss eine Liste" in x for x in fehler)
+
+
+def test_zahlung_schluessel_nimmt_englische_aliase_und_worte():
+    from routen import ZAHLUNG, zahlung_schluessel
+    assert [zahlung_schluessel(x) for x in ("offen", "Paid", "on_site", "vor Ort", "deposit", "included", "refunded")] == \
+        ["offen", "bezahlt", "vor_ort", "vor_ort", "angezahlt", "inklusive", "erstattet"]
+    assert zahlung_schluessel("teilweise") is None and zahlung_schluessel("") is None
+    assert ZAHLUNG == ("offen", "angezahlt", "bezahlt", "vor_ort", "inklusive", "erstattet")
 
 
 def test_zeitpunkt_form():

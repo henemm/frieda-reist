@@ -27,12 +27,14 @@ def plan_fest(quelle):
     r.write_text(text.replace(alt, alt + '          - {datum: 2026-10-24, status: gewaehlt, wer: Ida, grund: "Test"}\n'), encoding="utf-8")
 
 
-@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
-@pytest.mark.parametrize("browser", ["chromium", "webkit"])
-def test_tagesseite_in_ebenen(tmp_path, browser):
+def rundgang(tmp_path, browser, aendern=None):
+    """Beispielreise mit Plan A bauen (aendern: Text von routen.yaml anpassen) und Tag 2 bei 390 und 1300 px prüfen."""
     quelle = tmp_path / "quelle"
     shutil.copytree(WURZEL / "beispiel/reisen/beispielreise", quelle)
     plan_fest(quelle)
+    if aendern:
+        r = quelle / "plan" / "routen.yaml"
+        r.write_text(aendern(r.read_text(encoding="utf-8")), encoding="utf-8")
     bauen.bauen(quelle, tmp_path / "web" / "beispiel")
 
     class Handler(http.server.SimpleHTTPRequestHandler):
@@ -47,9 +49,26 @@ def test_tagesseite_in_ebenen(tmp_path, browser):
     finally:
         s.shutdown()
     assert aus.returncode == 0, aus.stderr[-2000:]
-    e = json.loads(aus.stdout.strip().splitlines()[-1])
+    return json.loads(aus.stdout.strip().splitlines()[-1])
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_tagesseite_in_ebenen(tmp_path, browser):
+    e = rundgang(tmp_path, browser)
     assert e["fehler"] == []
     for breite, a in e["aus"].items():
+        # Die Nacht kommt zuletzt: nach dem Hintergrund, vor den Quellen (Product Owner 31.10.2026), auf beiden Geräten
+        n = a["nacht"]
+        assert not n["voll"] and n["hintergrund"] < n["oben"] < n["quellen"], n
+        # Stand-Leiter: nicht gebucht (Pension Burgblick) sind die Einzelheiten offen
+        assert n["einzelheiten"] == [True], n
+        # gebucht (Hotel am Elbufer, B-01): Einzelheiten von Unterkunft und Buchung zu; oben Nummer, Preis, Zahlung (#166), Storno nie
+        # (Product Owner 31.10.2026); der Stand steht einmal (die Buchung trägt ihn, kein Chip an der Karte); im Tageskasten „gebucht“
+        g = a["gebucht"]
+        assert g["karte"] == [False] and g["buchung"] == [False], g
+        assert g["oben"] == ["Nummer", "Preis", "Zahlung"] and g["storno"] is None, g
+        assert g["chipsKarte"] == 0 and g["tageskasten"] == ["gebucht"], g
         assert a["breit"] == [] and not a["breitNachTabelle"], (breite, a["breit"])
         assert a["kaesten"] == 1 and a["flaeche"], breite                       # ein Kasten: der Tageskasten
         assert a["planChips"] == [], a["planChips"]                             # Plan gewählt: der Tag nennt keine Pläne
@@ -79,3 +98,29 @@ def test_tagesseite_in_ebenen(tmp_path, browser):
             assert lage["unterwegs"][1] > lage["weg"][1] and lage["orte"][1] == lage["unterwegs"][1]
             assert lage["hintergrund"][1] == lage["weg"][1] and lage["unterwegs"][0] == lage["weg"][0]
             assert a["tabelle"]["display"] == "block"   # rechte Spalte ist schmal: auch am Rechner gestapelt
+
+
+# Erfunden: Gasthof Polenztal (V-03.b) ist nicht verworfen, sondern nur vorgeschlagen; so hat die Nacht von Tag 2 zwei gültige
+# Möglichkeiten. Mit der gewählten Pension Burgblick ist sie entschieden, ohne die Wahl offen; damit Plan A trotzdem fest
+# ist (sonst keine Tagesseiten), hängt er dann nur an V-01.a.
+VERWORFEN = '          - {datum: 2026-10-20, status: verworfen, wer: Ida, grund: "Anstieg am Morgen"}\n'
+GEWAEHLT = '          - {datum: 2026-10-20, status: gewaehlt, wer: Ida, grund: "liegt am Weg, kein Anstieg am Morgen"}\n'
+
+
+def zwei_moeglichkeiten(text, offen=False):
+    assert VERWORFEN in text and GEWAEHLT in text
+    text = text.replace(VERWORFEN, "")
+    if offen:
+        text = text.replace(GEWAEHLT, "").replace("auswahl: [V-01.a, V-03.a]", "auswahl: [V-01.a]")
+    return text
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("offen", [False, True])
+def test_nacht_volle_breite_nur_bei_offener_wahl(tmp_path, offen):
+    """Am Rechner steht die Nacht nur bei offener Wahl über die volle Breite unter dem Tageskasten (Product Owner 29.10.2026).
+    Eine entschiedene Nacht mit weiteren Möglichkeiten (zugeklappt, mit Vergleich) bleibt in der Lesespalte (31.10.2026)."""
+    e = rundgang(tmp_path, "chromium", lambda t: zwei_moeglichkeiten(t, offen))
+    assert e["fehler"] == []
+    n = e["aus"]["1300"]["nacht"]
+    assert (n["voll"], n["inLesen"]) == (offen, not offen), n

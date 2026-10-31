@@ -982,6 +982,26 @@ def test_beleg_anlegen_ueber_den_konnektor(schreibweg, seiten, monkeypatch):
     assert "Belege: keine" in t
 
 
+def test_buchung_zeigt_zahlstand_und_merkmale(schreibweg):
+    """#166: zeige B-… nennt den Zahlstand in Worten mit seinen Einzelheiten und die Merkmale der Buchung; merkmale zeigt bei
+    einer Art auch die Merkmale ihrer Buchungen; zahlung und merkmale gehen an den Schreibweg, englische Aliase stehen im Schema."""
+    basis, _ = schreibweg
+    t, f = werkzeug(basis, KARL, "zeige", id="B-01")
+    assert not f and "Zahlung: angezahlt · Anzahlung 30 €, Rest vor Ort (Beispielwert)" in t
+    t, f = werkzeug(basis, KARL, "zeige", id="B-02")
+    assert not f and "Zahlung: bezahlt · Kreditkarte" in t and "Ticketart: Sparpreis" in t
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "merkmale", art="bahn")
+    assert not f and "## Merkmale der Buchungen dieser Art" in t and "- ticketart – Ticketart: auswahl (Sparpreis | Flexpreis | Verbundticket)" in t
+    assert "Buchungen dieser Art" not in werkzeug(basis, ALT_ORGANISATOR, "merkmale", art="hotel")[0]
+    schema = next(x for x in rpc(basis, KARL, "tools/list")["tools"] if x["name"] == "buchung_anlegen")["inputSchema"]["properties"]
+    assert {"offen", "vor_ort", "paid", "on_site", "included"} <= set(schema["payment"]["enum"]) and "attributes" in schema
+    md = next(x for x in rpc(basis, ALT_ORGANISATOR, "tools/list")["tools"] if x["name"] == "merkmal_definieren")["inputSchema"]["properties"]
+    assert md["for"]["enum"] == ["ding", "buchung"]
+    Schreibweg.antwort = (200, {"ok": True, "text": "Buchung B-02 (E-20 …): Zahlung „bezahlt“ → „erstattet“."})
+    t, f = werkzeug(basis, KARL, "buchung_aendern", ziel="B-02", zahlung="refunded", merkmale={"wagen": "Wagen 5"})
+    assert not f and Schreibweg.anfragen[-1][2]["args"]["zahlung"] == "refunded" and Schreibweg.anfragen[-1][2]["args"]["merkmale"] == {"wagen": "Wagen 5"}
+
+
 def test_beleg_in_einem_schritt_mit_der_buchung(schreibweg, seiten, monkeypatch):
     """Issue #135: Der Beleg geht beim Anlegen der Buchung gleich mit (beleg_text oder beleg_base64), ohne auf das Veröffentlichen zu
     warten; nachträglich fragt beleg_anlegen den Schreibweg, ob es die Buchung im Repo schon gibt."""

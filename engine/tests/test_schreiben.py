@@ -770,6 +770,11 @@ def test_entscheiden_schreibt_verlauf_und_klaert_die_frage(repo):
     o = next(o for o in r["wahlstellen"]["V-01"]["optionen"] if o["id"] == "V-01.b")
     assert o["verlauf"][-1] == {"datum": heute, "status": "gewaehlt", "wer": "Ida", "grund": "Karl möchte mit der Bahn fahren (Quelle: Gespräch)"}
     assert len(o["verlauf"]) == 3                                   # die alten Einträge bleiben
+    # Die übrigen Optionen der Wahlstelle sind damit nicht gewählt: ersetzt durch die gewählte, mit Verlauf
+    assert "Nicht gewählt und damit ausgeschieden: V-01.a" in a["text"]
+    a_opt = next(x for x in r["wahlstellen"]["V-01"]["optionen"] if x["id"] == "V-01.a")
+    assert a_opt["verlauf"][-1] == {"datum": heute, "status": "ersetzt", "wer": "Ida", "durch": "V-01.b",
+                                    "grund": "nicht gewählt, V-01.b „Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück (Plan B)“ ist gewählt"}
     assert f"| vor Abreise | geklärt {heute.strftime('%-d.%-m.%Y')}: Ida, Zum Lichtenhainer Wasserfall" in fragen_auf_main(origin)
     assert git(origin, "log", "-1", "--format=%s", "main").endswith("V-01.b „Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück (Plan B)“ gewählt")
     # gewählt an einer Wahlstelle mit gewählter Option: die alte wird ersetzt (eigener Verlaufseintrag), die Frage bleibt geklärt
@@ -790,6 +795,9 @@ def test_entscheiden_schreibt_verlauf_und_klaert_die_frage(repo):
     # verworfen ohne verbleibende Wahl (V-01.a bleibt vorgeschlagen): Wahlstelle offen, Frage wieder offen
     a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-01.b", "status": "verworfen", "grund": "Fahrplan passt nicht"}})
     assert "V-01 ist danach offen, Frage F-01 wieder offen" in a["text"]
+    assert "Wieder offen: V-01.a" in a["text"]                      # was nur wegen dieser Wahl ausschied, ist wieder im Spiel
+    r, _ = routen_auf_main(origin)
+    assert next(x for x in r["wahlstellen"]["V-01"]["optionen"] if x["id"] == "V-01.a")["verlauf"][-1]["status"] == "vorgeschlagen"
     assert "| vor Abreise | offen |" in fragen_auf_main(origin)
     s.vorbereiten()
     stand = git(origin, "rev-parse", "main")
@@ -1018,6 +1026,94 @@ def test_aufenthalt_ohne_nacht_anlegen_an_den_tag_haengen_und_buchen(repo):
     with pytest.raises(Exception, match="Aufenthalts-Art"):
         s.vorbereiten()
         s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "aufenthalt", "titel": "x", "ort": "O-05", "art": "bahn", "quelle": "x"}})
+
+
+def test_merkmale_der_buchung_definieren(repo):
+    """#166: merkmal_definieren mit fuer: buchung legt Merkmale der Buchungen einer Art an (buchung_merkmale); ohne Stufe,
+    Rolle und Prüfdatum. art_definieren lässt sie stehen."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "fuer": "buchung", "bezeichnung": "Zimmer",
+                                                                            "frage": "Welches Zimmer habt ihr bekommen?"}})
+    assert "Merkmal der Buchung „Zimmer“ (zimmer) an der Art Pension angelegt: Typ text" in a["text"]
+    arten, text = arten_auf_main(origin)
+    assert arten["pension"]["buchung_merkmale"] == {"zimmer": {"name": "Zimmer", "typ": "text", "frage": "Welches Zimmer habt ihr bekommen?"}}
+    assert "zimmer" not in arten["pension"]["merkmale"] and "buchung_merkmale" in text.split("arten:")[0]   # Kopf nennt die Form
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="„stufe“ gibt es bei Merkmalen der Buchung nicht"):
+        s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "fuer": "buchung", "bezeichnung": "X", "stufe": "pflicht"}})
+    with pytest.raises(sb.Ablehnung, match="„fuer“ ist ding"):
+        s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "fuer": "reise", "bezeichnung": "X"}})
+    with pytest.raises(sb.Ablehnung, match="braucht „werte“"):
+        s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "fuer": "buchung", "bezeichnung": "Tarif", "typ": "auswahl"}})
+    with pytest.raises(sb.Ablehnung, match="schon, und nichts"):
+        s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "fuer": "buchung", "merkmal": "zimmer"}})
+    a = s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "fuer": "buchung", "merkmal": "zimmer",
+                                                                            "typ": "auswahl", "werte": ["Einzel", "Doppel"]}})
+    assert "geändert: Typ auswahl, Werte Einzel | Doppel" in a["text"]
+    s.vorbereiten()
+    s.schreiben("beispielreise", "art_definieren", {**IDA, "args": {"art": "pension", "beschreibung": "kleines Haus"}})
+    arten, _ = arten_auf_main(origin)
+    assert arten["pension"]["buchung_merkmale"]["zimmer"]["werte"] == ["Einzel", "Doppel"] and arten["pension"]["beschreibung"] == "kleines Haus"
+
+
+def test_buchung_mit_zahlstand_und_merkmalen(repo):
+    """#166 (Product Owner 31.10.2026): zahlung ist ein festes Feld mit festen Werten (englische Aliase bei der Eingabe, gespeichert
+    deutsch); merkmale nur die, die die Arten der Dinge für Buchungen festlegen (Beispielreise: Bahn mit Ticketart und Wagen)."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    for args, grund in (({"zahlung": "teilweise"}, "„zahlung“ muss einer von offen, angezahlt"),
+                        ({"zahlung": "refunded"}, "erstattet gibt es nur bei einer stornierten"),
+                        ({"merkmale": {"klasse": "1"}}, "„klasse“ ist kein Merkmal der Buchung bei bahn"),
+                        ({"merkmale": {"ticketart": "First"}}, "Ticketart: „First“ steht nicht unter den Werten"),
+                        ({"merkmale": "Sparpreis"}, "„merkmale“ ist {Merkmal: Wert}")):
+        with pytest.raises(sb.Ablehnung, match=grund):
+            s.schreiben("beispielreise", "buchung_anlegen", {**KARL, "args": {"fuer": ["E-21"], "quelle": "Mail", **args}})
+    with pytest.raises(sb.Ablehnung, match="Für Buchungen der Art hotel sind keine Merkmale festgelegt"):
+        s.schreiben("beispielreise", "buchung_anlegen", {**KARL, "args": {"fuer": ["U-01"], "quelle": "Mail", "merkmale": {"zimmer": "12"}}})
+    a = s.schreiben("beispielreise", "buchung_anlegen", {**KARL, "args": {
+        "fuer": ["E-21"], "preis": "39,80 €", "zahlung": "deposit", "bezahlt": "20 € an", "merkmale": {"Ticketart": "sparpreis", "wagen": ""},
+        "quelle": "Bestätigung bahn.de (Test)"}})
+    assert "Preis 39,80 €, Zahlung angezahlt (20 € an), Ticketart: Sparpreis." in a["text"]
+    r, text = routen_auf_main(origin)
+    b = r["buchungen"]["B-04"]
+    assert b["zahlung"] == "angezahlt" and b["bezahlt"] == "20 € an" and b["merkmale"] == {"ticketart": "Sparpreis"}
+    assert list(b)[:6] == ["fuer", "status", "preis", "zahlung", "bezahlt", "gebucht_am"] and list(b).index("merkmale") == list(b).index("wer") - 1
+    assert "merkmale: {ticketart: Sparpreis}" in text
+    # Ändern: Zahlstand mit Wort und Alias, Merkmale einzeln (leer entfernt eines), Verlauf nennt die Namen
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-04", "zahlung": "paid",
+                                                                          "merkmale": {"wagen": "Wagen 5, Platz 61", "ticketart": ""}}})
+    assert "Zahlung „angezahlt“ → „bezahlt“" in a["text"] and "Merkmale Wagen und Platz: Wagen 5, Platz 61; Ticketart entfernt" in a["text"]
+    r, _ = routen_auf_main(origin)
+    b = r["buchungen"]["B-04"]
+    assert b["zahlung"] == "bezahlt" and b["merkmale"] == {"wagen": "Wagen 5, Platz 61"}
+    assert b["verlauf"][-1]["was"] == "Zahlung; Wagen und Platz, Ticketart"
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="erstattet gibt es nur bei einer stornierten"):
+        s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-04", "zahlung": "erstattet"}})
+    a = s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-04", "status": "storniert", "zahlung": "erstattet",
+                                                                          "grund": "Zug fällt aus"}})
+    assert "Zahlung „bezahlt“ → „erstattet“" in a["text"]
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="erstattet gibt es nur bei einer stornierten"):
+        s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-04", "status": "gebucht"}})
+    a = s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-04", "status": "gebucht", "zahlung": "Vor Ort",
+                                                                          "merkmale": {"wagen": ""}}})
+    r, text = routen_auf_main(origin)
+    assert r["buchungen"]["B-04"]["zahlung"] == "vor_ort" and "merkmale" not in r["buchungen"]["B-04"]
+    s.vorbereiten()
+    s.schreiben("beispielreise", "buchung_aendern", {**KARL, "args": {"ziel": "B-04", "zahlung": ""}})
+    r, _ = routen_auf_main(origin)
+    assert "zahlung" not in r["buchungen"]["B-04"]
+    # Die Meldung offener Zahlungen schaltet eine Organisator:in je Reise ein (Vorgabe aus)
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"regeln": {"waechter_zahlung": "ja"}}})
+    assert "regeln.waechter_zahlung „False“ → „True“" in a["text"]
+    assert yaml.safe_load(datei_auf_main(origin, "reise.yaml"))["regeln"]["waechter_zahlung"] is True
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="regeln.waechter_zahlung ist true oder false"):
+        s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"regeln": {"waechter_zahlung": "vielleicht"}}})
 
 
 def test_buchung_anlegen_und_aendern(repo):

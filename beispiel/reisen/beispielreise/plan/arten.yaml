@@ -8,6 +8,8 @@
 # angeboten = zusätzlich | aus), rolle (kosten: der Preis des Dings, Typ geld, den die Seite über die Reise summiert; die
 # Herberge unten hat keine, weil ihr Preis pro Person gilt), auto
 # (berechnet: Bewegung gehzeit, laenge, hoehenmeter; Folge tage, gehzeit, unterkuenfte, anschluss), hilfe, frage, auch.
+# buchung_merkmale: Merkmale der Buchungen einer Art (was erst durch das Buchen entsteht), je Merkmal name, typ, werte,
+# einheit, hilfe, frage.
 arten:
   hotel:
     grundform: aufenthalt
@@ -84,6 +86,11 @@ arten:
       dauer:        {name: Dauer, typ: text, veraenderlich: true, hilfe: "Fahrplanauskunft für den Wochentag der Reise"}
       verkehrt:     {name: Fährt, typ: text, veraenderlich: true, hilfe: "Takt und Betriebstage; Saison beachten"}
       reservierung: {name: Reservierung, typ: auswahl, werte: [Pflicht, empfohlen, nicht nötig, unklar], veraenderlich: true, stufe: angeboten}
+    # Merkmale der Buchungen dieser Art (#166): was erst durch das Buchen entsteht; der Wert steht an der Buchung (B-…)
+    # und erbt deren Herkunft. Der Preis laut Fahrplanauskunft oben gehört zum Angebot, der bezahlte zur Buchung.
+    buchung_merkmale:
+      ticketart:    {name: Ticketart, typ: auswahl, werte: [Sparpreis, Flexpreis, Verbundticket], hilfe: "steht auf der Buchungsbestätigung"}
+      wagen:        {name: Wagen und Platz, typ: text, frage: "Habt ihr Plätze reserviert, und welche?"}
     lesetext:     # Eine Bahnfahrt erzählt man anders als eine Wanderung (Anschauung, erfunden)
       strecke:      {name: Strecke, hilfe: "Wohin, wie lange, wie oft man umsteigt"}
       fenster:      {name: Am Fenster, hilfe: "Was man unterwegs sieht und auf welcher Seite man sitzt"}

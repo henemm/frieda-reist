@@ -30,13 +30,43 @@ def test_ausloeser_rechte_und_ein_lauf_gleichzeitig():  # AC-1
     assert w["concurrency"]["cancel-in-progress"] is False
 
 
+def mit_id(i):
+    return next(s for s in schritte() if s.get("id") == i)
+
+
 def test_rote_tests_fuehren_zum_issue():  # AC-2, #224
-    tests = next(s for s in schritte() if s.get("id") == "tests")
+    tests = mit_id("tests")
     assert tests.get("continue-on-error") is True
     assert "steps.tests.outcome == 'success'" in schritt("Nach main übernehmen")["if"]
     issue = schritt("Issue bei Testfehler")
     assert "steps.tests.outcome == 'failure'" in issue["if"]
     assert issue["run"].rstrip().endswith("exit 1")
+
+
+def test_tor_software_tests_und_bau_sperren():  # #168 AC-1, AC-2, AC-4
+    """Gleiches Tor wie veroeffentlichen.sh (#142): sperren nur engine/tests und der Bau jeder Reise."""
+    tests = mit_id("tests")
+    assert tests["run"].split() == ["python", "-m", "pytest", "-q", "-rs", "engine/tests"]
+    bau = mit_id("bau")
+    assert bau.get("continue-on-error") is True and "neu_da == 'ja'" in bau["if"]
+    assert "reisen/*/reise.json" in bau["run"] and "frieda/engine/bauen.py" in bau["run"]
+    assert "--ziel \"$RUNNER_TEMP" in bau["run"]   # nichts Gebautes im Repo, das der Commit mitnähme
+    assert "exit 1" in bau["run"]
+    uebernehmen = schritt("Nach main übernehmen")["if"]
+    assert "steps.bau.outcome == 'success'" in uebernehmen
+    issue = schritt("Issue bei Testfehler")
+    assert "steps.bau.outcome == 'failure'" in issue["if"]
+    assert "steps.bau.outcome" in issue["env"]["BAU"] and "steps.tests.outcome" in issue["env"]["TESTS"]
+
+
+def test_inhaltstests_warnen_nur():  # #168 AC-3
+    inhalt = mit_id("inhalt")
+    assert "neu_da == 'ja'" in inhalt["if"]
+    assert "pytest" in inhalt["run"] and "tests" in inhalt["run"].split() and "engine/tests" not in inhalt["run"]
+    assert "::warning::" in inhalt["run"]
+    assert not inhalt.get("continue-on-error")   # endet selbst grün, statt Rot zu verschlucken
+    for s in schritte():
+        assert "steps.inhalt" not in str(s.get("if", "")), s.get("name")
 
 
 def test_volle_historie_fuer_vorwaerts_pruefung():
@@ -68,5 +98,8 @@ def test_doku_einrichten_und_ueberwachung():  # AC-5
     einrichten = doku.split("## Neue Instanz einrichten", 1)[1].split("\n## ", 1)[0]
     assert "betrieb/software-nachziehen.yml" in einrichten and ".github/workflows/" in einrichten
     assert "contents: write" in einrichten and "issues: write" in einrichten
+    assert "nur bei grünen Tests" not in einrichten and "Bau jeder Reise" in einrichten   # #168 AC-5
+    konvention = doku.split("Konvention für `tests/`", 1)[1].split("\n\n", 1)[0]
+    assert "Software nachziehen" in konvention
     ueberwachung = doku.split("## Überwachung", 1)[1].split("\n## ", 1)[0]
     assert "Rückstand" in ueberwachung and "main" in ueberwachung
