@@ -29,7 +29,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bauen  # noqa: E402
-from reise import PFAD_MUSTER, ROLLEN, reise_pfad, rolle_neu, schluessel_aus_name  # noqa: E402
+from reise import PFAD_MUSTER, ROLLEN, reise_pfad, rolle_neu, schluessel_aus_name, sprache_pruefen  # noqa: E402
 
 VORLAGE = Path(__file__).with_name("reisevorlage")
 ARTEN = ("W", "F", "O", "U", "A", "E", "T", "V", "B")     # nummerierte IDs (A = Aufenthalt ohne Nacht, B = Buchung); Pläne (P-A) und Aufgaben (AG, live) nicht
@@ -138,7 +138,7 @@ def schreib_marken(reise_dir, marken):
 
 # ---------- Reise anlegen ----------
 def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, untertitel=None,
-            herkunft="Gespräch in Claude Code", ueberblick=None, heute=None):
+            herkunft="Gespräch in Claude Code", ueberblick=None, heute=None, sprache=None):
     """Legt reisen_dir/<pfad> aus der Vorlage an -> Ordner. personen: {schluessel: {name, rolle[, reist, notiz]}}."""
     heute = heute or datetime.date.today()
     titel = (titel or "").strip()
@@ -155,6 +155,9 @@ def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, un
         raise Fehler("Mindestens eine Person braucht die Rolle organisator: Sie entscheidet und setzt den Status.")
     if wer not in organisator:
         raise Fehler(f"Anlegen darf nur, wer auf der Reise bestimmt. {wer} steht nicht als organisator in den Personen.")
+    sprache, fehler = sprache_pruefen(sprache)
+    if fehler:
+        raise Fehler(fehler)
     pfad = pfad or reise_pfad(titel, von.year)
     if not PFAD_MUSTER.match(pfad):
         raise Fehler(f"Ordnername „{pfad}“: nur Kleinbuchstaben, Ziffern und Bindestrich.")
@@ -182,6 +185,7 @@ def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, un
         "titel": titel,
         "untertitel": untertitel or (f"{ziel}, {zt}" if ziel else zt),
         "pfad": pfad,
+        "sprache": sprache,
         "zeitraum": {"von": von, "bis": bis},
         "status": {"wert": "idee", "verlauf": [{"datum": heute, "wert": "idee", "wer": wer,
                                                  "grund": f"Reise angelegt ({herkunft})"}]},
@@ -215,7 +219,7 @@ def aus_auftrag(reisen_dir, auftrag, heute=None):
     ueberblick = f"Notiz von {n['wer']} aus der Claude-App ({datum}):\n\n{n['notiz']}" if n.get("notiz") else None
     return anlegen(reisen_dir, n["titel"], datetime.date.fromisoformat(n["von"]), datetime.date.fromisoformat(n["bis"]),
                    n["personen"], n["wer"], ziel=n.get("ziel") or None, pfad=n["pfad"], ueberblick=ueberblick,
-                   herkunft=f"Auftrag {auftrag['id']} aus der Claude-App", heute=heute)
+                   herkunft=f"Auftrag {auftrag['id']} aus der Claude-App", heute=heute, sprache=n.get("sprache"))
 
 
 # ---------- Abschnitt mit neuer ID ----------
@@ -515,6 +519,7 @@ def main(argv):
     r.add_argument("--wer", required=True, help="Name der Person, die anlegt (organisator)")
     r.add_argument("--ziel")
     r.add_argument("--pfad")
+    r.add_argument("--sprache", help="Sprachkennung (texte.SPRACHEN), Vorgabe de")
     r.add_argument("--untertitel")
     r.add_argument("--herkunft", default="Gespräch (Betreiber-Ausnahme in Claude Code, docs/neue-reise.md)")
     r.add_argument("--ueberblick")
@@ -550,7 +555,7 @@ def main(argv):
             return 0
         if x.befehl == "reise":
             personen = dict(person_aus_text(t) for t in x.person)
-            d = anlegen(x.reisen, x.titel, x.von, x.bis, personen, x.wer, ziel=x.ziel, pfad=x.pfad,
+            d = anlegen(x.reisen, x.titel, x.von, x.bis, personen, x.wer, ziel=x.ziel, pfad=x.pfad, sprache=x.sprache,
                         untertitel=x.untertitel, herkunft=x.herkunft, ueberblick=x.ueberblick)
             ok, m = pruefen(d)
             print(f"Angelegt: {d} (Status idee)." + ("" if ok else " Prüfung meldet:\n - " + "\n - ".join(m)))

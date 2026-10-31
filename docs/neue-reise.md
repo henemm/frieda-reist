@@ -14,6 +14,7 @@ In beiden Fällen steht die Reise danach im Status `idee` und baut sofort: mit E
 | Titel | ja | kurz, z. B. „Winterwoche im Allgäu“; daraus und aus dem Jahr wird der Ordnername (`reise_pfad`) |
 | Zeitraum | ja | erster und letzter Tag; steht in `reise.yaml` unter `zeitraum`, schon bevor es einen Plan gibt |
 | Ziel | nein | Ort oder Gegend; erscheint im Untertitel |
+| Sprache | nein | `de` oder `en` (weitere, sobald es eine Sprachdatei gibt); Vorgabe `de`. Die Seite startet in dieser Sprache, Kalender, Wächter-Meldungen und alles, was die Software in Dateien der Reise schreibt, folgen ihr. Der Inhalt der Reise bleibt in der Sprache, in der er geschrieben ist (ADR-0006). Später änderbar mit `einstellung_setzen` (Parameter `sprache`). |
 | Personen | ja | je Person Vorname, Rolle (`gast`, `mitwirkend`, `organisator`), ob sie mitreist; wer anlegt, ist Organisator:innen |
 | Bekanntes | nein | Ideen, schon Gebuchtes, Quellen; in eigenen Worten mit Herkunft |
 

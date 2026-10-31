@@ -10,6 +10,7 @@ RICHTUNG = "rtl"
 DATUM = texte_en.DATUM
 DATUM_KURZ = texte_en.DATUM_KURZ
 ZEIT = texte_en.ZEIT
+WOCHENTAGE_KURZ = tuple(f"[xx {w}]" for w in texte_en.WOCHENTAGE_KURZ)
 
 
 def PLURAL(n):

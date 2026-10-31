@@ -116,6 +116,7 @@ def test_datum_und_zeit():
     d = datetime.date(2027, 5, 13)
     assert texte.datum(d, "de") == "13.5.2027" and texte.datum_kurz(d, "de") == "13.5."
     assert texte.datum(d, "en") == "13/5/2027" and texte.datum_kurz("2027-05-13", "en") == "13/5"
+    assert texte.wochentag(d, "de") == "Do" and texte.wochentag("2027-05-13", "en") == "Thu"
     assert texte.zeit(datetime.time(5, 30), "de") == "5:30" and texte.zeit(datetime.time(5, 30), "en") == "05:30"
 
 
@@ -187,7 +188,7 @@ ALLE_DATEIEN = ["vorlage.html"] + PY_DATEIEN
 # Erlaubte Zahl deutscher Literale je Datei. Jedes Paket der Mehrsprachigkeit kürzt seinen Bereich; Einträge dürfen nur
 # kleiner werden, nie größer (docs/auftraege/mehrsprachigkeit/README.md, Regel 5). Am Ende steht überall 0.
 AUSNAHMEN = {
-    "vorlage.html": 321, "konnektor.py": 448, "schreiben.py": 287, "rueckmeldungen.py": 67, "anmeldung.py": 38, "konten.py": 31,
+    "vorlage.html": 314, "konnektor.py": 448, "schreiben.py": 287, "rueckmeldungen.py": 67, "anmeldung.py": 38, "konten.py": 31,
     "kalender.py": 6, "waechter.py": 21, "routen.py": 99, "bauen.py": 70, "neu.py": 50, "reise.py": 40,
 }
 # Treffer von Sprachweichen und festen Locale-Strings (Grep-Test); ebenfalls nur kleiner werdend

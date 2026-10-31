@@ -22,6 +22,17 @@ def anlegen(tmp_path, **kw):
     return neu.anlegen(tmp_path / "reisen", **args)
 
 
+def test_neue_reise_mit_sprache(tmp_path):
+    r = anlegen(tmp_path, sprache="en")
+    assert yaml.safe_load((r / "reise.yaml").read_text(encoding="utf-8"))["sprache"] == "en"
+    assert bauen.bauen(r, tmp_path / "dist")["reise"]["sprache"] == "en"
+    # ohne Angabe gilt die Vorgabe de; eine unbekannte Sprache lehnt das Anlegen ab
+    r2 = anlegen(tmp_path, pfad="zweite-reise")
+    assert yaml.safe_load((r2 / "reise.yaml").read_text(encoding="utf-8"))["sprache"] == "de"
+    with pytest.raises(neu.Fehler, match="sprache: unbekannt"):
+        anlegen(tmp_path, pfad="dritte-reise", sprache="klingonisch")
+
+
 def test_neue_reise_baut_im_status_idee(tmp_path):
     r = anlegen(tmp_path)
     assert r.name == "skiurlaub-im-tal-2027"

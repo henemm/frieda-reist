@@ -6,6 +6,7 @@ titel: Beispielreise – Malerweg in vier Tagen
 untertitel: Dresden und Sächsische Schweiz, 13.–16.5.2027 · erfundenes Beispiel
 pfad: beispielreise
 kurz: Beispiel
+sprache: de   # Sprache der Seite und aller Texte, die in Dateien der Reise landen (de | en; ADR-0006)
 
 status:
   wert: planung

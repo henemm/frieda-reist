@@ -12,7 +12,7 @@ import re
 BASIS = ("de", "en")
 VORGABE = "en"          # Sprache einer Person, deren Wunsch nicht erkennbar ist; Reisen ohne Feld sprache bauen mit "de"
 VORGABE_REISE = "de"
-PFLICHTFELDER = ("NAME", "LOCALE", "RICHTUNG", "PLURAL", "DATUM", "DATUM_KURZ", "ZEIT", "TEXTE")
+PFLICHTFELDER = ("NAME", "LOCALE", "RICHTUNG", "PLURAL", "DATUM", "DATUM_KURZ", "ZEIT", "WOCHENTAGE_KURZ", "TEXTE")
 KATEGORIEN = ("zero", "one", "two", "few", "many", "other")   # Pluralkategorien nach CLDR
 
 _module = {}
@@ -125,6 +125,11 @@ def datum_kurz(d, kuerzel):
     return _datum(d).strftime((sprache(kuerzel) or sprache(VORGABE)).DATUM_KURZ)
 
 
+def wochentag(d, kuerzel):
+    """Kurzer Wochentag (Deutsch Do, Englisch Thu) aus der Sprachdatei; strftime hängt an der Sprache des Rechners und taugt nicht."""
+    return (sprache(kuerzel) or sprache(VORGABE)).WOCHENTAGE_KURZ[_datum(d).weekday()]
+
+
 def zeit(z, kuerzel):
     """Uhrzeit (datetime.time oder datetime) in der Form der Sprache."""
     return z.strftime((sprache(kuerzel) or sprache(VORGABE)).ZEIT)
@@ -136,7 +141,7 @@ def seite():
     for k in sprachen():
         modul = sprache(k)
         ergebnis[k] = {"name": modul.NAME, "locale": modul.LOCALE, "richtung": modul.RICHTUNG,
-                       "plural": modul.PLURAL.__name__ if hasattr(modul.PLURAL, "__name__") else str(modul.PLURAL),
+                       "datum": modul.DATUM, "datum_kurz": modul.DATUM_KURZ, "zeit": modul.ZEIT,
                        "texte": {s: v for s, v in modul.TEXTE.items() if s.startswith("seite.")}}
     return ergebnis
 

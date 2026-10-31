@@ -909,7 +909,7 @@ class Bauer:
                 k["grundkarte"] = {"url": "grundkarte.pmtiles"}
                 k["namensnennung"] = " · ".join(x for x in (k.get("namensnennung"), g.get("namensnennung")) if x)
             else:
-                k["namensnennung"] = " · ".join(x for x in (k.get("namensnennung"), "Küste schematisch") if x)
+                k["namensnennung"] = " · ".join(x for x in (k.get("namensnennung"), texte.t(self.eck["sprache"], "seite.karte.kueste")) if x)
                 self.hinweise.append(f"Grundkarte {g['datei']} fehlt, die Karte bleibt schematisch "
                                      f"(PMTiles-Datei unter {g['datei']} ablegen).")
         return k
@@ -1067,8 +1067,11 @@ class Bauer:
                                       json.dumps(self.umzug) + " + location.pathname + location.search + location.hash)</script>", 1)
         vorlage = vorlage.replace("<!--__GRUNDKARTE__-->", "".join(
             f'<script src="{n}"></script>' for n in VENDOR_GRUNDKARTE.values()) if self.grundkarte or self.grundkarten else "", 1)
-        if vorlage.count("/*__DATEN__*/null") != 1:
-            raise BauFehler(["vorlage.html muss den Platzhalter /*__DATEN__*/null genau einmal enthalten."])
+        if vorlage.count("/*__DATEN__*/null") != 1 or vorlage.count("/*__TEXTE__*/null") != 1:
+            raise BauFehler(["vorlage.html muss die Platzhalter /*__DATEN__*/null und /*__TEXTE__*/null genau einmal enthalten."])
+        vorlage = re.sub(r'<html lang="[^"]*">', lambda _: f'<html lang="{daten["reise"]["sprache"]}" dir="{texte.sprache(daten["reise"]["sprache"]).RICHTUNG}">', vorlage, count=1)
+        katalog = json.dumps(texte_fuer_seite(), ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+        vorlage = vorlage.replace("/*__TEXTE__*/null", katalog, 1)
         js = json.dumps(daten, ensure_ascii=False, separators=(",", ":"))
         js = js.replace("</", "<\\/").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
         self.ziel_dir.mkdir(parents=True, exist_ok=True)
@@ -1084,7 +1087,7 @@ class Bauer:
         kurz = c.get("kurz") or c["titel"].split(" – ")[0]
         motiv = self.reise_dir / "medien" / "icon.svg"  # eigenes App-Symbol der Reise, sonst Kurzname
         (ziel / "manifest.json").write_text(json.dumps({
-            "name": c["titel"], "short_name": kurz, "lang": "de",
+            "name": c["titel"], "short_name": kurz, "lang": c["sprache"], "dir": texte.sprache(c["sprache"]).RICHTUNG,
             "start_url": "./", "scope": "./", "display": "standalone",
             "background_color": PWA_HINTERGRUND, "theme_color": PWA_FARBE,
             # eigenes Motiv ist für Android-Masken gezeichnet (Motiv im inneren 80 %)

@@ -11,7 +11,7 @@ Jede Datei `M*.md` in diesem Ordner ist ein vollständiger Auftrag für einen Ag
 | Paket | Titel | Modell | Voraussetzung | Status |
 |---|---|---|---|---|
 | M0 | Katalog und Leitplanken | Haiku | – | umgesetzt (31.10.2026) |
-| M1 | Sprache der Reise, Startwert der Seite, Umschalter | Haiku | M0 | offen |
+| M1 | Sprache der Reise, Startwert der Seite, Umschalter | Haiku | M0 | umgesetzt (31.10.2026) |
 | M2 | Datum, Zahl, Sortierung, Karte | Sonnet | M1 | offen |
 | M3 | Vorlage A: Rahmen, Reiter, Suche, Plan, Tag, Etappe | Haiku | M2 | offen |
 | M4 | Vorlage B: Varianten, Wahl, Buchung, Karte, Unterkunft | Haiku | M2 | offen |

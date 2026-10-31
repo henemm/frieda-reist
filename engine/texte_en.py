@@ -7,6 +7,7 @@ RICHTUNG = "ltr"
 DATUM = "%-d/%-m/%Y"
 DATUM_KURZ = "%-d/%-m"
 ZEIT = "%H:%M"
+WOCHENTAGE_KURZ = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")   # Montag bis Sonntag
 
 
 def PLURAL(n):
@@ -50,6 +51,12 @@ TEXTE = {
     "seite.aufgabe.feld.frist": "Deadline",
     "seite.aufgabe.feld.notiz": "Note",
     "seite.aufgabe.feld.status": "Status",
+    # Sprache der Seite
+    "seite.sprache.titel": "Language",
+    "seite.bausteine.text.beschreibung": "Every text on the page comes from the catalogue of the chosen language (T with a key); plurals follow the rule of the language.",
+    "seite.bausteine.text.huelle": "Language of the interface",
+    # Karte
+    "seite.karte.kueste": "Coast shown schematically",
     # Konnektor
     "konnektor.wort.gewaehlt": "chosen",
     "konnektor.wort.verworfen": "rejected",

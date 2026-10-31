@@ -1723,7 +1723,7 @@ def reise_status_setzen(reise_dir, wer, args, heute=None):
 
 
 def einstellung_setzen(reise_dir, wer, args, heute=None):
-    """Einstellungen der Reise: bausteine (vollständige Liste) und regeln (Name: Wert); nur Organisator:innen. Was gilt, prüft der
+    """Einstellungen der Reise: bausteine (vollständige Liste), regeln (Name: Wert) und sprache (de, en …); nur Organisator:innen. Was gilt, prüft der
     Probebau (reise.py). -> (Titel, Text)."""
     from reise import BAUSTEINE, KERN, VORGABEN
     from ruamel.yaml.comments import CommentedMap
@@ -1756,8 +1756,16 @@ def einstellung_setzen(reise_dir, wer, args, heute=None):
                 continue
             geaendert.append(f"regeln.{k} „{r.get(k, VORGABEN[k])}“ → „{v}“")
             r[k] = skalar(k, v) if isinstance(v, str) else v
+    sprache = args.get("sprache")
+    if sprache not in (None, ""):
+        sprache = str(sprache).strip().lower()
+        if not texte.gueltig(sprache):
+            raise Ablehnung(f"Unbekannte Sprache „{sprache}“ (bekannt: {', '.join(texte.SPRACHEN)}).")
+        if str(roh.get("sprache") or texte.VORGABE_REISE) != sprache:
+            geaendert.append(f"sprache „{roh.get('sprache') or texte.VORGABE_REISE}“ → „{sprache}“")
+            roh["sprache"] = sprache
     if not geaendert:
-        raise Ablehnung("Nichts zu ändern (bausteine als Liste oder regeln als Objekt angeben).")
+        raise Ablehnung("Nichts zu ändern (bausteine als Liste, regeln als Objekt oder sprache angeben).")
     grund = text_wert(args, "grund")
     reise_yaml_speichern(p, roh)
     return "Einstellungen geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), \

@@ -804,6 +804,7 @@ nav a.warn .zahl{background:var(--warn)}
 <!--__SYMBOLE__-->
 <header>
   <h1 class="t" id="titel"></h1><div class="u" id="untertitel"></div>
+  <div id="sprachen"></div>
 </header>
 <div class="meldungen">
   <div id="neu" class="hinweis glas" role="status" hidden>Neue Version des Handbuchs bereit. <button type="button" id="neuLaden">Aktualisieren</button></div>
@@ -826,6 +827,55 @@ nav a.warn .zahl{background:var(--warn)}
 <script>
 "use strict";
 const D = /*__DATEN__*/null;
+const TEXTE = /*__TEXTE__*/null;   // Katalog aller Sprachen (engine/texte_<sprache>.py), liegt in der Seite, damit der Umschalter offline geht
+
+/* ---------- Sprache (ADR-0006) ----------
+   SPRACHE: die Sprache der Hülle. Start: die Wahl dieser Person (localStorage), sonst die Sprache der Reise. LOCALE und RICHTUNG
+   kommen aus dem Katalogeintrag der Sprache, nie aus dem Code: eine neue Sprache ist eine Datei, keine Änderung hier. */
+const SP = "rh-" + D.reise.pfad + "-";
+function lies(k, def) { try { return JSON.parse(localStorage.getItem(SP + k)) ?? def; } catch (e) { return def; } }
+function merke(k, v) { try { localStorage.setItem(SP + k, JSON.stringify(v)); } catch (e) {} }
+let SPRACHE = (() => { const w = lies("sprache", null); return w && TEXTE[w] ? w : TEXTE[D.reise.sprache] ? D.reise.sprache : Object.keys(TEXTE)[0]; })();
+let LOCALE = TEXTE[SPRACHE].locale, RICHTUNG = TEXTE[SPRACHE].richtung;
+document.documentElement.lang = SPRACHE;
+document.documentElement.dir = RICHTUNG;
+const PLURAL_REGELN = new Map();
+function pluralKategorie(sprache, n) {
+  const l = TEXTE[sprache].locale;
+  if (!PLURAL_REGELN.has(l)) PLURAL_REGELN.set(l, new Intl.PluralRules(l));
+  return PLURAL_REGELN.get(l).select(n);
+}
+// Atom Text: Schlüssel -> Text in der Sprache der Hülle. Mit werte.n wählt die Pluralregel der Sprache die Kategorie
+// (Schlüssel.one, .few … , Rückfall .other); Platzhalter {name} stehen in geschweiften Klammern. Fehlt der Schlüssel, gilt
+// Englisch, dann der Schlüssel selbst (nie ein Absturz).
+function T(schluessel, werte) {
+  const w = werte || {};
+  for (const k of [SPRACHE, "en"]) {
+    const tx = TEXTE[k] && TEXTE[k].texte;
+    if (!tx) continue;
+    const kandidaten = "n" in w ? [schluessel + "." + pluralKategorie(k, w.n), schluessel + ".other", schluessel] : [schluessel];
+    for (const c of kandidaten) if (c in tx) return tx[c].replace(/\{(\w+)\}/g, (m, name) => name in w ? w[name] : m);
+  }
+  return schluessel;
+}
+// Alle Texte unter einem Präfix als Wörterbuch (Rest des Schlüssels -> Text); Englisch füllt, was die Sprache nicht hat
+function gruppe(praefix) {
+  const aus = {}, p = praefix + ".";
+  for (const k of ["en", SPRACHE])
+    for (const [s, v] of Object.entries(TEXTE[k].texte)) if (s.startsWith(p) && !s.slice(p.length).includes(".")) aus[s.slice(p.length)] = v;
+  return aus;
+}
+// Zuordnungen Datenwert -> Wort; sie entstehen beim Start und nach jedem Umschalten neu
+let STATUS_TEXT, BUCHUNG_STATUS, RM_STATUS, WU_STATUS, AG_STATUS, AG_FELD;
+function textKarten() {
+  STATUS_TEXT = gruppe("seite.status");
+  BUCHUNG_STATUS = gruppe("seite.buchung.status");
+  RM_STATUS = gruppe("seite.rueckmeldung.status");
+  WU_STATUS = gruppe("seite.wunsch.status");
+  AG_STATUS = gruppe("seite.aufgabe.status");
+  AG_FELD = gruppe("seite.aufgabe.feld");
+}
+textKarten();
 
 /* ---------- Hilfen ---------- */
 const $ = (s, w = document) => w.querySelector(s);
@@ -947,7 +997,7 @@ function zid(id) {
    statt dieselbe Sache selbst zu zeichnen; die Stile stehen im <style> in derselben Ordnung. Diese vier Zeilen sind die eine
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
-   Atome: symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, buchungChip
+   Atome: T, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, buchungChip
    Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, wahlZustand, belegeListe, stornierteBuchungen
    Organismen: nachtZeile, unterkunftKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, nachtAbschnitt, tagZeile, uebersichtKarte, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
    Vorlagen: tagKachel, leseAbschnitt, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtOffen, ansichtWissen, ansichtPlan, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
@@ -1051,7 +1101,6 @@ function abschnittInhalt(a, ohneTitel, kennzahlen) {
 }
 
 /* ---------- Route: Tage, Unterkünfte, Wahlstellen ---------- */
-const STATUS_TEXT = {vorgeschlagen: "vorgeschlagen", favorisiert: "favorisiert", gewaehlt: "gewählt", verworfen: "verworfen", ersetzt: "ersetzt"};
 // Arten der Reise (plan/arten.yaml, docs/ontologie.md): Name, Farbe, Symbol, buchbar; die Seite kennt keine Art selbst (Paket O-5)
 const artDef = k => ((R && R.arten) || {})[k] || null;
 const artName = k => (artDef(k) || {}).name || k || "";
@@ -1093,7 +1142,7 @@ const ortName = id => (R.orte[id] || {}).name || id || "?";
 function punktHerkunft(p) { return [p.quelle, p.geprueft && "geprüft " + datumKurz(p.geprueft)].filter(Boolean).join(" · "); }
 // Atom Datum: datumText mit Wochentag („Mo 1.5.“) für die Tage des Plans; datumKurz ohne („1.5.“, mit Jahr, wenn es nicht
 // das laufende ist) für Fristen, Prüfdaten, Verläufe und alles andere. Zwei Formen, sonst keine (ADR-0002).
-function datumText(iso, wt) { const [, m, d] = iso.split("-"); return `${wt} ${+d}.${+m}.`; }
+function datumText(iso) { const [, m, d] = iso.split("-"); return `${wochentag(iso)} ${+d}.${+m}.`; }
 // Jahre der Reise (Zeitraum oder Tage des Plans): Daten darin tragen kein Jahr, ebenso das laufende Jahr; alle anderen schon
 function reiseJahre() {
   const z = (D.reise || {}).zeitraum || {}, t = R && R.tage.length ? [R.tage[0].datum, R.tage[R.tage.length - 1].datum] : [];
@@ -1362,7 +1411,6 @@ async function blLaden() {
 // Belege nur angemeldet (Product Owner 29.10.2026): der Dienst zeigt sie nur der hochladenden Person und Organisator:innen; ein
 // eingetippter Name (Übergangsregel) kann das nicht tragen, deshalb gibt es das Formular ohne Konto nicht
 const KANN_BELEG = () => V.schreiben === "alles" && MIT_KONTO();
-const BUCHUNG_STATUS = {gebucht: "gebucht", angefragt: "angefragt", storniert: "storniert"};
 const groesseText = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(n / 1024)) + " kB";
 // Molekül Buchung: Etikett mit Zustand, die Angaben als Zeilen, leise Herkunft, Belege, Verlauf zugeklappt
 function buchungBlock(b) {
@@ -1871,6 +1919,26 @@ const kartenLegende = (eintraege, tag = "div") => el(tag, {class: "legende"}, ..
 // Molekül Umschalter: Knöpfe, von denen einer gedrückt ist; je Knopf [Daten-Attribute, gedrückt, Inhalt …]
 const umschalter = (titel, knoepfe) => el("fieldset", {class: "umschalter"}, el("legend", {class: "unsichtbar"}, titel),
   ...knoepfe.map(([daten, an, ...inhalt]) => el("button", {type: "button", ...daten, "aria-pressed": String(an)}, ...inhalt)));
+// Verwendung des Moleküls Umschalter im Kopf: ein Knopf je Sprache des Katalogs, beschriftet mit ihrem Namen in ihrer Sprache;
+// bei nur einer Sprache wird er nicht gezeichnet
+function sprachUmschalter() {
+  const ort = $("#sprachen"), kuerzel = Object.keys(TEXTE);
+  ort.replaceChildren();
+  if (kuerzel.length < 2) return;
+  const us = umschalter(T("seite.sprache.titel"), kuerzel.map(k => [{"data-sprache": k, lang: k}, k === SPRACHE, TEXTE[k].name]));
+  us.addEventListener("click", e => { const b = e.target.closest("button[data-sprache]"); if (b) spracheWaehlen(b.dataset.sprache); });
+  ort.append(us);
+}
+function spracheWaehlen(k) {
+  if (!TEXTE[k] || k === SPRACHE) return;
+  SPRACHE = k; LOCALE = TEXTE[k].locale; RICHTUNG = TEXTE[k].richtung;
+  document.documentElement.lang = SPRACHE;
+  document.documentElement.dir = RICHTUNG;
+  merke("sprache", k);
+  textKarten();
+  sprachUmschalter();
+  route(true);
+}
 const planUmschalter = alle => umschalter("Plan wählen", [[{"data-variante": ""}, !VARIANTE, `Alle ${alle.length}`],
   ...alle.map(p => [{"data-variante": p.id}, VARIANTE === p.id, planMarke(p, "linie"), `${p.kurz}${planFest(p) ? " (gewählt)" : !TIEFE && p.aktuell ? " (aktuell)" : ""}`])]);
 const PLAN_BREITE = [8, 5, 2.6, 1.6];
@@ -2782,8 +2850,8 @@ function plusTage(iso, n) {
   const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 }
-const WT = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
-const wochentag = iso => WT[new Date(iso + "T12:00:00Z").getUTCDay()];
+// Wochentag in der Sprache der Hülle (Zwischenlösung aus M1; M2 vereinheitlicht Datum und Zahl)
+const wochentag = iso => new Intl.DateTimeFormat(LOCALE, {weekday: "short", timeZone: "UTC"}).format(new Date(iso + "T12:00:00Z"));
 function ortKurz(id) {
   const a = ortAbschnitt(id);
   if (!a) return "";
@@ -3360,8 +3428,10 @@ function ansichtBausteine(m) {
       el("div", {class: "z", style: `font-size:var(--t-${s})`}, `${n} · --t-${s}`)));
   teil("Atom", "Zustand", "Feste Namen; die Farbe folgt der Bedeutung, nicht dem Ort.",
     el("div", {class: "chips"}, Object.keys(CHIP).map(z => chip(z, z)), chip("", "Hinweis")));
+  teil("Atom", "Text", T("seite.bausteine.text.beschreibung"),
+    fall("T(\"seite.sprache.titel\")", T("seite.sprache.titel")), fall(T("seite.bausteine.text.huelle"), `${TEXTE[SPRACHE].name} (${SPRACHE}, ${LOCALE})`));
   teil("Atom", "Datum", "Zwei Formen: mit Wochentag für die Tage des Plans, kurz (mit Jahr, wenn es nicht das laufende ist) für Fristen, Prüfdaten und Verläufe.",
-    fall("mit Wochentag", datumText("2027-05-13", "Do")), fall("kurz", datumKurz("2027-05-13")), fall("kurz, laufendes Jahr", datumKurz(heute())),
+    fall("mit Wochentag", datumText("2027-05-13")), fall("kurz", datumKurz("2027-05-13")), fall("kurz, laufendes Jahr", datumKurz(heute())),
     fall("Zeitpunkt einer Bewegung", [zeitText("18:05"), " · ", zeitText("2027-05-13T20:15+02:00")]));
   teil("Atom", "Zahlmarke", "Die Zahl der Einträge einer Gruppe oder eines Kapitels; im Gruppentitel (Molekül).",
     el("div", {class: "chips"}, zahlMarke(3)), gruppenTitel("Gruppe (Muster)", 2));
@@ -3566,9 +3636,6 @@ function ansichtSuche(m, q) {
    erreichbar (offline, lokal geöffnet), sammelt der Browser die Rückmeldungen in einem Ausgang
    (localStorage) und reicht sie beim nächsten Kontakt nach. Der Dienst erkennt doppelt Gesendetes. */
 const API = "api/rueckmeldungen";
-const SP = "rh-" + D.reise.pfad + "-";
-function lies(k, def) { try { return JSON.parse(localStorage.getItem(SP + k)) ?? def; } catch (e) { return def; } }
-function merke(k, v) { try { localStorage.setItem(SP + k, JSON.stringify(v)); } catch (e) {} }
 let RM = lies("zwischenstand", []);   // letzte Antwort des Dienstes (offline lesbar)
 let AUSGANG = lies("ausgang", []);    // noch nicht angekommen
 let MEINE = new Set(lies("meine", [])); // in diesem Browser geschrieben (zurückziehen erlaubt)
@@ -3606,8 +3673,6 @@ function anmeldeHinweis(ziel) {
   $(ziel).replaceChildren("Gespeichert. Bitte ", el("a", {href: ANMELDEN()}, "anmelden"), ", dann wird es gesendet.");
 }
 const ART_STANDARD = id => /^F-/.test(id) ? "Antwort" : "Kommentar";
-const RM_STATUS = {neu: "neu", uebernommen: "übernommen", verworfen: "verworfen", rueckfrage: "Rückfrage", ausstehend: "noch nicht gesendet"};
-const WU_STATUS = {...RM_STATUS, uebernommen: "aufgenommen", verworfen: "passt nicht"};
 // Wünsche stehen im eigenen Reiter, nicht noch einmal unter „Rückmeldungen“
 const istWunsch = e => WUENSCHE && e.art === "Wunsch";
 
@@ -4025,9 +4090,7 @@ const AG_API = "api/aufgaben";
 let AG = lies("aufgaben", []);
 let AG_OK = null;
 let AG_FILTER = "alle";
-const AG_STATUS = {offen: "offen", in_arbeit: "in Arbeit", erledigt: "erledigt", entfaellt: "entfällt"};
 const AG_PRIO = ["hoch", "normal", "niedrig"];
-const AG_FELD = {titel: "Titel", bezug: "Bezug", zustaendig: "Zuständig", prioritaet: "Priorität", ab: "Ab", frist: "Frist", notiz: "Notiz", status: "Status"};
 function agWert(k, v) {
   if (v == null || v === "" || (Array.isArray(v) && !v.length)) return "–";
   if (k === "status") return AG_STATUS[v] || v;
@@ -4397,6 +4460,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "/" && !document.body.classList.contains("sucht") && !e.target.closest("input, textarea, select, [contenteditable]") && !$("#rm").open) { e.preventDefault(); suche(true); }
 });
 window.addEventListener("hashchange", () => { if (document.body.classList.contains("sucht")) { $("#suche").value = ""; document.body.classList.remove("sucht"); $("#suchfeld").hidden = true; } route(); });
+sprachUmschalter();
 route();
 rmKnopf();
 agKnopf();

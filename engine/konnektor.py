@@ -468,7 +468,7 @@ class Handbuch:
     def tag_text(self, t, datum=True):
         z = []
         if datum and t.get("datum"):
-            z.append(f"Tag {t['nr']}, {t['wochentag']} {datum_de(t['datum'])}" + (f" ({t['teil']})" if t.get("teil") else ""))
+            z.append(f"Tag {t['nr']}, {texte.wochentag(t['datum'], texte.VORGABE_REISE)} {datum_de(t['datum'])}" + (f" ({t['teil']})" if t.get("teil") else ""))
         if t.get("strecken"):
             z.append("Wege: " + "; ".join(f"{self.strecke(s['id'])} ({s['id']}"
                                            + (f", Wahl {s['wahl']}" if s.get("wahl") else "") + ")"
@@ -697,7 +697,7 @@ class Handbuch:
                 if t.get("teil") and t["teil"] != teil:
                     teil = t["teil"]
                     z.append(f"### {teil}")
-                z.append(f"- {t['id']} Tag {t['nr']}, {t['wochentag']} {datum_de(t['datum'])}: {t['titel']}"
+                z.append(f"- {t['id']} Tag {t['nr']}, {texte.wochentag(t['datum'], texte.VORGABE_REISE)} {datum_de(t['datum'])}: {t['titel']}"
                          + (f" – Nacht: {self.nacht(t.get('nacht'))}" if t.get("nacht") else ""))
         if self.an("fragen"):
             z.append(f"## Offene Fragen: {len(self.offene())} (Werkzeug offene_fragen)")
@@ -2433,6 +2433,7 @@ EINSTELLUNG_SETZEN = {"name": "einstellung_setzen", "description": "Nur für Org
                       "inputSchema": {"type": "object", "properties": {
                           "bausteine": {"type": "array", "items": {"type": "string"}},
                           "regeln": {"type": "object", "additionalProperties": True},
+                          "sprache": {"type": "string", "enum": list(texte.SPRACHEN)},
                           "grund": {"type": "string"}, "vorname": NAME_FELD}}}
 BUCHUNG_FELDER_SCHEMA = {
     "status": {"type": "string", "enum": ["angefragt", "gebucht", "storniert"], "description": "Vorgabe gebucht"},
@@ -2675,7 +2676,8 @@ REISE_ANLEGEN = {"name": "reise_anlegen", "description": "Eine neue Reise anlege
                                       "notiz": {"type": "string", "description": "kurze Notiz zur Person, eine Zeile"}},
                                       "required": ["vorname"]}},
                      "notiz": {"type": "string", "description": "was schon bekannt ist, in eigenen Worten mit Herkunft"},
-                     "pfad": {"type": "string", "description": "nur wenn nötig: Ordnername (klein, Bindestriche)"}},
+                     "pfad": {"type": "string", "description": "nur wenn nötig: Ordnername (klein, Bindestriche)"},
+                     "sprache": {"type": "string", "enum": list(texte.SPRACHEN)}},
                      "required": ["titel", "von", "bis"]}}
 
 
