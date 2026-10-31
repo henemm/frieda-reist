@@ -377,10 +377,7 @@ details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
 .wm-steuer{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;margin:0 0 8px}
 .pico .wm-steuer label{display:flex;align-items:center;gap:6px;font-size:var(--t-text);min-height:40px;margin:0}
 .pico .wm-steuer input[type=checkbox]{margin:0}
-.wm-wahl,.wm-ansicht{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;padding:0;border:0;min-width:0}
-.pico :is(.wm-wahl,.wm-ansicht) button{width:auto;margin:0;box-shadow:none;font:600 var(--t-klein)/1.2 var(--font-text);border-radius:var(--r-pille);border:1px solid var(--line);
-  background:var(--card);color:var(--fg);padding:6px 12px;min-height:40px;cursor:pointer}
-.pico :is(.wm-wahl,.wm-ansicht) button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--bg)}
+.umschalter:is(.wm-wahl,.wm-ansicht){margin:0 0 10px}   /* Knöpfe: Baustein umschalter (#38) */
 .wm-wahl small{font-weight:400;opacity:.8;margin-left:4px}
 .pico .wm-tab th{vertical-align:top}
 .pico .wm-tab thead th .chips{margin:4px 0 0}
@@ -591,9 +588,7 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 /* Recherche-Karten (Issue #64): Kategorie des Orts als Farbe, Legende unter der Karte, Regionswahl darüber */
 .wkarte{margin:8px 0 12px}
 .kartenlinks{display:flex;flex-direction:column;gap:2px;margin:4px 0}
-.pico .regionen{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
-.pico .regionen button{all:unset;cursor:pointer;font-size:var(--t-klein);padding:4px 10px;border-radius:var(--r-pille);border:1px solid var(--line);background:var(--card)}
-.pico .regionen button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--bg)}
+.umschalter.regionen{margin:0 0 8px}   /* Knöpfe: Baustein umschalter (#38) */
 .rh-p.umriss{background:var(--card);color:var(--pk);border-color:var(--pk)}
 .leaflet-popup-content{font:inherit;font-size:14px;margin:10px 12px;line-height:1.35}
 .leaflet-popup-content .pk{font-size:12px;color:var(--mut)} .leaflet-popup-content .pq{font-size:11px;color:var(--mut);margin-top:4px}
@@ -1668,11 +1663,9 @@ function wahlVergleich(w, liste, datum) {
     el("span", {class: "z klein wm-anzahl"}, `${opts.length} von ${g.length} im Vergleich, höchstens ${max} nebeneinander`
       + (datum && opts.some(o => Object.values(o.merkmale).some(v => v.je_datum)) ? ` · Werte für die Nacht vom ${datumKurz(datum)}` : ""))));
   // Auswahl nur, wenn es mehr als zwei gibt; die Zahl sagt, wie viele Merkmale schon belegt sind
-  if (g.length > 2) box.append(el("fieldset", {class: "wm-wahl"}, el("legend", {class: "unsichtbar"}, "Möglichkeiten im Vergleich"),
-    g.map(o => el("button", {type: "button", "data-vgl-opt": s + "|" + o.id, "aria-pressed": String(z.wahl.includes(o.id))},
-      o.titel, zaehlend(w).length ? el("small", {}, `${gefuellt(w, o)}/${zaehlend(w).length}`) : null))));
-  box.append(el("fieldset", {class: "wm-ansicht"}, el("legend", {class: "unsichtbar"}, "Darstellung"),
-    [["karten", "Karten"], ["tabelle", "Tabelle"]].map(([a, t]) => el("button", {type: "button", "data-vgl-ansicht": s + "|" + a, "aria-pressed": String(z.ansicht === a)}, t))));
+  if (g.length > 2) box.append(umschalter("Möglichkeiten im Vergleich", g.map(o => [{"data-vgl-opt": s + "|" + o.id}, z.wahl.includes(o.id),
+    o.titel, zaehlend(w).length ? el("small", {}, `${gefuellt(w, o)}/${zaehlend(w).length}`) : null]), "wm-wahl"));
+  box.append(umschalter("Darstellung", [["karten", "Karten"], ["tabelle", "Tabelle"]].map(([a, t]) => [{"data-vgl-ansicht": s + "|" + a}, z.ansicht === a, t]), "wm-ansicht"));
   if (!belegt.length) box.append(el("p", {class: "meldung"}, "Zu diesen Möglichkeiten sind noch keine Merkmale erfasst."));
   if (!zeilen.length) box.classList.add("ohne-tabelle");   // nichts zu tabellieren: Karten auch am Rechner
   const an = o => o.aktiv && !w.optionen.every(x => x.aktiv) ? "an" : null;
@@ -1903,8 +1896,10 @@ const planFarbe = p => `var(--plan-${p.farbe || "a"})`;
 const planMarke = (p, form = "punkt") => el("i", {class: form === "linie" ? "plan-linie" : "punkt", style: `--farbe:${planFarbe(p)}`});
 // Molekül Legende: je Eintrag [Zeichen, Wort]; leere Einträge fallen weg
 const kartenLegende = (eintraege, tag = "div") => el(tag, {class: "legende"}, ...eintraege.filter(Boolean).map(([zeichen, wort]) => el("span", {}, zeichen, wort)));
-// Molekül Umschalter: Knöpfe, von denen einer gedrückt ist; je Knopf [Daten-Attribute, gedrückt, Inhalt …]
-const umschalter = (titel, knoepfe) => el("fieldset", {class: "umschalter"}, el("legend", {class: "unsichtbar"}, titel),
+// Molekül Umschalter: Knöpfe, von denen einer gedrückt ist; je Knopf [Daten-Attribute, gedrückt, Inhalt …]. Gedrückt
+// heißt Tinte, nicht Akzentgrün: ein gewählter Vergleich oder eine Region ist keine Entscheidung (Regel 4, #38).
+// klasse: Platz des Umschalters (Wahl-Modul, Karte), nur für Abstände und Sichtbarkeit
+const umschalter = (titel, knoepfe, klasse) => el("fieldset", {class: "umschalter" + (klasse ? " " + klasse : "")}, el("legend", {class: "unsichtbar"}, titel),
   ...knoepfe.map(([daten, an, ...inhalt]) => el("button", {type: "button", ...daten, "aria-pressed": String(an)}, ...inhalt)));
 const planUmschalter = alle => umschalter("Plan wählen", [[{"data-variante": ""}, !VARIANTE, `Alle ${alle.length}`],
   ...alle.map(p => [{"data-variante": p.id}, VARIANTE === p.id, planMarke(p, "linie"), `${p.kurz}${planFest(p) ? " (gewählt)" : !TIEFE && p.aktuell ? " (aktuell)" : ""}`])]);
@@ -2257,7 +2252,7 @@ function wissenKarte(bid) {
   const touch = matchMedia("(pointer: coarse)").matches;
   const box = el("div", {class: "kartenbox ekarte", role: "region", "aria-label": "Karte der Orte in diesem Abschnitt"});
   const hinweis = touch ? el("p", {class: "ziehhinweis"}, "In die Karte tippen, dann lässt sie sich verschieben. Punkte antippen für Details.") : null;
-  const tasten = regionen.length > 1 ? el("div", {class: "regionen", role: "toolbar", "aria-label": "Region der Karte"}) : null;
+  const tasten = regionen.length > 1 ? umschalter("Region der Karte", [], "regionen") : null;
   const kats = Object.keys(KATEGORIEN).filter(k => KATEGORIEN[k].gruppe === "wissen" && punkte.some(p => p.kat === k));
   const legende = kartenLegende(kats.map(k => [el("i", {class: "rh-p" + (KATEGORIEN[k].farbe === "kontrast" ? " kontrast" : ""), style: "--pk:" + katFarbe(KATEGORIEN[k].farbe)}), KATEGORIEN[k].einzahl || KATEGORIEN[k].name]), "p");
   const eintrag = {sid: bid, box, karte: null, marken: [], region: null};
@@ -2274,7 +2269,7 @@ function wissenKarte(bid) {
     punkte.forEach((p, i) => { const mk = eintrag.marken[i]; if (p.karte === r) mk.addTo(karte); else mk.remove(); });
     const hier = punkte.filter(p => p.karte === r).map(p => p.lage);
     if (hier.length === 1) karte.setView(hier[0], 14); else karte.fitBounds(hier, {padding: [24, 24], maxZoom: 15});
-    if (tasten) for (const t of tasten.children) t.setAttribute("aria-pressed", String(t.dataset.r === r));
+    if (tasten) for (const t of tasten.querySelectorAll("button")) t.setAttribute("aria-pressed", String(t.dataset.r === r));
   };
   if (tasten) for (const r of regionen) {
     const t = el("button", {type: "button", "data-r": r, "aria-pressed": "false"}, `${WK.grundkarten[r].titel} (${punkte.filter(p => p.karte === r).length})`);
@@ -3518,7 +3513,7 @@ function ansichtBausteine(m) {
       ...R.plaene.map(p => [planMarke(p), p.kurz])]));
   const us = R.plaene.length > 1 ? planUmschalter(R.plaene) : umschalter("Muster", [[{}, true, "Alle"], [{}, false, "Plan A (Muster)"]]);
   us.querySelectorAll("button").forEach(k => { k.disabled = true; });
-  teil("Molekül", "Umschalter", "Genau ein Knopf ist gedrückt; in „Varianten“ wählt er den gezeigten Plan.", us);
+  teil("Molekül", "Umschalter", "Genau ein Knopf ist gedrückt, in Tinte (gedrückt heißt nicht entschieden). Wählt den gezeigten Plan in „Varianten“, Vergleich und Darstellung im Wahl-Modul, die Region der Karte.", us);
   // Hintergrund-Kapitel: aus der ersten Etappe, die eines hat, sonst ein Muster
   const hinter = etappenBloecke.find(([, b]) => b.ebene === "hintergrund");
   const blockMuster = (etappenBloecke.find(([, b]) => b.ebene === "unterwegs") || [null, {id: "Muster", titel: "Beispielabschnitt (Muster)", html: "<p>Beispieltext.</p>"}])[1];

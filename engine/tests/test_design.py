@@ -135,3 +135,16 @@ def test_kein_katalog_in_der_engine():
             if any(m.search(code) for m in verboten):
                 funde.append(f"{pfad.name}:{nr}: {zeile.strip()[:100]}")
     assert funde == [], funde
+
+
+def test_gedrueckt_ist_tinte_nicht_akzent():
+    """#38: Ein gedrückter Knopf ist keine Entscheidung (Regel 4 in docs/design.md: Akzentgrün heißt entschieden). Kein
+    Stil für aria-pressed nimmt den Akzent; Vergleich und Darstellung im Wahl-Modul und die Regionen der Karte sind
+    der Baustein umschalter, nicht eigene Knopfleisten."""
+    css = VORLAGE[VORLAGE.index("<style>"):VORLAGE.index("</style>")]
+    gedrueckt = [inhalt for sel, inhalt in re.findall(r"([^{}]*)\{([^{}]*)\}", css) if 'aria-pressed="true"' in sel]
+    assert gedrueckt and not [x for x in gedrueckt if "--acc" in x], gedrueckt
+    js = skript()
+    for titel, klasse in (("Möglichkeiten im Vergleich", "wm-wahl"), ("Darstellung", "wm-ansicht"), ("Region der Karte", "regionen")):
+        assert re.search(rf'umschalter\("{titel}",.{{0,300}}?"{klasse}"\)', js, flags=re.S), klasse
+    assert 'el("fieldset", {class: "wm-' not in js and 'el("div", {class: "regionen"' not in js
