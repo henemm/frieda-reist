@@ -524,6 +524,24 @@ def test_wert_eintragen_ablehnungen(repo):
     assert git(origin, "rev-parse", "main") == stand
 
 
+def test_wert_eintragen_typ_link(repo):
+    """Typ link (#165): nur Adressen; der Konnektor kennt den Typ."""
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "bezeichnung": "Buchungsseite", "typ": "link"}})
+    assert a["ok"], a
+    s.vorbereiten()
+    for falsch in ("pension-burgblick.example", "bitte anrufen", "ftp://pension.example/"):
+        with pytest.raises(sb.Ablehnung, match="keine Adresse"):
+            s.schreiben("beispielreise", "wert_eintragen", {**IDA, "args": {"ziel": "U-02", "merkmal": "buchungsseite", "wert": falsch, "quelle": "x"}})
+        assert not git(arbeit, "status", "--porcelain"), falsch
+    a = s.schreiben("beispielreise", "wert_eintragen", {**IDA, "args": {"ziel": "U-02", "merkmal": "buchungsseite",
+                                                                        "wert": "https://pension-burgblick.example/buchen", "quelle": "Website der Pension"}})
+    assert a["ok"], a
+    r, _ = routen_auf_main(origin)
+    assert r["unterkuenfte"]["U-02"]["merkmale"]["buchungsseite"]["wert"] == "https://pension-burgblick.example/buchen"
+
+
 def test_beispielreise_ist_in_normalform():
     """Die Routendatei der Beispielreise geht zeichengleich durch den Schreibweg; so ändert ein Schreibvorgang nur seine Stelle."""
     import io

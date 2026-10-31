@@ -1077,8 +1077,8 @@ const buchungenZu = id => Object.values(R && R.buchungen || {}).filter(b => (b.f
 // stornierte nur im zugeklappten Block stornierteBuchungen (#146)
 const buchungenBei = id => buchungenZu(id).filter(b => (b.fuer || [])[0] === id && b.status !== "storniert");
 const stornierteBei = id => buchungenZu(id).filter(b => (b.fuer || [])[0] === id && b.status === "storniert");
-// Kontakt einer Unterkunft ohne die Webseite (die steht als Atom webLink daneben)
-const kontaktText = u => ((u || {}).kontakt || "").replace(WEB, "").replace(/^[\s;,]+|[\s;,]+$/g, "").replace(/\s*;\s*;\s*/g, "; ");
+// Kontakt einer Unterkunft (Telefon, E-Mail); die Webseite ist ein Merkmal vom Typ link
+const kontaktText = u => ((u || {}).kontakt || "").trim();
 // Zustand einer Wahl, überall gleich: unterwegs zu entscheiden, offen (braucht eine Entscheidung) oder entschieden
 const wahlOffen = w => !!w && w.wann === "planung" && w.offen && gueltigeOptionen(w).length > 1;
 const wahlZustand = w => w.wann === "unterwegs" ? chip("unterwegs", "unterwegs entscheiden") : wahlOffen(w) ? chip("offen", "offen") : chip("plan", "entschieden");
@@ -1320,7 +1320,7 @@ function unterkunftKarte(id) {
     dingEtikett(artName(u.art) || "Unterkunft", u.art, u.art), el("div", {class: "k"}, u.name, zid(id)));
   k.append(el("div", {class: "z"}, [artName(u.art), ortName(u.ort)].filter(Boolean).join(" · ")));
   k.append(lageZeile(u));
-  if (u.kontakt || webVon(u)) k.append(el("div", {class: "z"}, el("b", {}, "Kontakt: "), kontaktText(u) || "–", " ", webLink(webVon(u), true)));
+  if (u.kontakt || u.buchungslink) k.append(el("div", {class: "z"}, el("b", {}, "Kontakt: "), kontaktText(u) || "–", " ", webLink(u.buchungslink)));
   if (u.buchung || u.frage) k.append(el("div", {class: "chips"}, buchungChip(u), u.frage ? chip("leise", u.frage, {href: "#" + u.frage}) : null));
   if (u.naechte.length) {
     const z = el("div", {class: "z"}, el("b", {}, "Nächte: "));
@@ -1495,7 +1495,7 @@ function merkmalWert(v, datum) {
   const herkunft = [v.notiz, v.geprueft ? "geprüft " + datumKurz(v.geprueft) : "", v.quelle ? "Quelle: " + v.quelle : ""].filter(Boolean).join(" · ");
   // „unklar“ und berechnete Lücken (Anschluss) fallen auf
   const auffaellig = /^unklar$/i.test(String(v.wert)) ? "mk-unklar" : v.auto && /^Lücke/.test(String(v.wert)) ? "mk-luecke" : null;
-  return el("span", {}, el("span", {class: auffaellig}, v.wert),
+  return el("span", {}, v.link ? webLink(v.wert) : el("span", {class: auffaellig}, v.wert),
     v.am ? el("span", {class: "mk-am-tag"}, "am " + datumKurz(v.am)) : null,
     v.ungeprueft ? chip("offen", "ungeprüft", {class: "mk-chip"}) : null,
     herkunft ? [el("button", {type: "button", class: "mk-i", "data-mk-i": "", "aria-expanded": "false", "aria-label": "Herkunft zeigen"}, "i"),
@@ -1555,15 +1555,6 @@ const gueltigeOptionen = w => w.optionen.filter(o => !weg(o.status));
 const stufeVon = k => typeof k.stufe === "object" && k.stufe ? (k.stufe["*"] || "empfohlen") : (k.stufe || "empfohlen");
 const zaehlend = w => w.kriterien.filter(k => stufeVon(k) === "pflicht");
 const gefuellt = (w, o) => zaehlend(w).filter(k => o.merkmale[k.id]).length;
-// Webseite aus einem Kontakt-Text („https://…“, „www.…“ oder „name.com“), sonst null; für Unterkunft und Möglichkeit
-const WEB = /https?:\/\/[^\s;,()<>]+|\bwww\.[^\s;,()<>]+|\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:com|net|org|es|de|eu|it|fr|at|ch|uk|jp|kr|info|travel|cat)(?:\/[^\s;,()<>]*)?/i;
-function webAus(text) {
-  const m = WEB.exec(String(text || "").replace(/\S+@\S+/g, ""));   // E-Mail-Adressen sind keine Webseite
-  return m ? (/^https?:/i.test(m[0]) ? m[0] : "https://" + m[0]).replace(/[.)]+$/, "") : null;
-}
-// Webseite einer Unterkunft: der Buchungslink, sonst die Webseite aus dem Kontakt
-const webVon = u => u && (u.buchungslink || webAus(u.kontakt)) || null;
-const webseite = o => (o.unterkuenfte || []).map(u => webVon(R.unterkuenfte[u])).find(Boolean) || null;
 // Atom Kartenlinks (ADR-0004): Lage einer Unterkunft (Adresse und/oder Punkt) als Link zu Google Maps, auf Apple-Geräten
 // zusätzlich zu Apple Karten (Product Owner 29.10.2026). Mit Adresse sucht der Link nach Name und Adresse, sonst nach dem Punkt.
 const APPLE = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
@@ -1585,9 +1576,10 @@ function lageZeile(u, ohneHinweis) {
     u.adresse ? u.adresse.wert : u.punkt.wert.map(x => x.toFixed(4).replace(".", ",")).join(" · "), " ",
     v.quelle ? el("span", {class: "z klein", title: `Quelle: ${v.quelle}${v.geprueft ? ", geprüft " + datumKurz(v.geprueft) : ""}`}, "ⓘ") : null, " ", l);
 }
-// Atom Webseite: Link nach außen in neuem Fenster; fehlt sie, ein leiser Hinweis (ergänzen im Gespräch mit Frieda)
-const webLink = (x, ohneHinweis) => { const u = typeof x === "string" ? x : x ? webseite(x) : null;
-  return u ? el("a", {class: "web-link", href: u, target: "_blank", rel: "noopener"}, "Webseite ↗") : ohneHinweis ? null : el("span", {class: "z klein"}, "Webseite fehlt"); };
+// Atom Link: Adresse als Link nach außen in neuem Fenster, mit dem Namen der Webseite; für jeden Wert eines Merkmals vom Typ link
+// und für den Buchungslink einer Unterkunft (ontologie.md, #165). Die Seite rät keine Adresse mehr aus einem Kontakt-Text.
+const webName = url => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch (e) { return "Webseite"; } };
+const webLink = url => url ? el("a", {class: "web-link", href: url, target: "_blank", rel: "noopener"}, webName(url) + " ↗") : null;
 function vglZustand(w, liste, datum) {
   const s = vglSchluessel(w, liste, datum);
   if (!VGL.has(s)) {
@@ -1658,14 +1650,13 @@ function wahlVergleich(w, liste, datum) {
       return [el("tr", {class: ["wm-zeile", an(o), auf ? "auf" : ""].filter(Boolean).join(" "), id: o.id, "data-ziel": o.id, tabindex: "0",
           "aria-expanded": String(auf), "data-vgl-zeile": s + "|" + o.id},
         el("th", {scope: "row"}, el("span", {class: "wm-titel"}, el("span", {class: "wm-pfeil", "aria-hidden": "true"}, "›"), o.titel),
-          el("span", {class: "wm-unter"}, imPlan(o), webLink(o, true))),
+          el("span", {class: "wm-unter"}, imPlan(o))),
         zeilen.map(k => el("td", {}, zelle(k, werte(o)[k.id])))),
         auf ? el("tr", {class: "wm-mehr" + (an(o) ? " an" : "")}, el("td", {colspan: String(zeilen.length + 1)}, optionEinzelheiten(w, o, merkmalListe(nebenbei, werte(o), datum)))) : null].filter(Boolean); })))));
   if (nebenbei.length) box.append(el("p", {class: "z klein"}, `Weitere Merkmale beim Aufklappen: ${nebenbei.map(k => k.name).join(", ")}. `
     + "Spalten sind die Merkmale, die der Reise nötig oder gut zu wissen sind; zusätzliche stehen hier (in der Claude-App einstellbar)."));
   box.append(el("div", {class: "wm-karten"}, opts.map(o => el("div", {class: "wm-karte" + (an(o) ? " an" : "")},
-    el("div", {class: "k"}, o.titel), optionChips(w, o), merkmalListe(zeilen, werte(o), datum) || el("div", {class: "z klein"}, belegt.length ? "Keine Unterschiede in den gezeigten Merkmalen." : "Noch keine Merkmale."),
-    webLink(o)))));
+    el("div", {class: "k"}, o.titel), optionChips(w, o), merkmalListe(zeilen, werte(o), datum) || el("div", {class: "z klein"}, belegt.length ? "Keine Unterschiede in den gezeigten Merkmalen." : "Noch keine Merkmale.")))));
   if (belegt.length > zeilen.length) box.append(el("p", {class: "z klein"}, `${belegt.length - zeilen.length} gleiche Zeilen ausgeblendet.`));
   return box;
 }
@@ -1753,7 +1744,7 @@ function optionBlock(w, o, ohneMerkmale, ohneId) {
   const inNacht = !PLAN_DA && o.aktiv && !w.offen && w.wann === "planung";
   for (const uid of inNacht ? [] : o.unterkuenfte || []) if (R.unterkuenfte[uid]) { const u = R.unterkuenfte[uid];
     b.append(...[PLAN_DA ? el("div", {class: "z"}, link(uid, "→ " + u.name))
-      : [lageZeile(u), el("div", {class: "z"}, u.kontakt ? [el("b", {}, "Kontakt: "), kontaktText(u) || "–", " "] : null, webLink(o, true))]].flat().filter(Boolean)); }
+      : [lageZeile(u), el("div", {class: "z"}, u.kontakt || u.buchungslink ? [el("b", {}, "Kontakt: "), kontaktText(u) || "–", " ", webLink(u.buchungslink)] : null)]].flat().filter(Boolean)); }
   if (o.tage && o.tage.length) {
     const aktivTage = o.tage.filter(tid => R.tage.some(t => t.id === tid));
     if (aktivTage.length) {
@@ -3397,9 +3388,8 @@ function ansichtBausteine(m) {
   teil("Atom", "Kennung", "Nur die Sprechblase mit Tooltip („Symbol oder Wort, nie beides“). Antippen öffnet Rückmeldungen und Aufgaben zu dieser Stelle; dort stehen die Kennung und „Kopieren“.",
     fall("leer", zid(R ? R.tage[0].id : abschnitte[0].id)), fall("2 Rückmeldungen (Muster)", kennungMuster([rmMuster, rmMuster], [])),
     fall("Aufgabe offen (Muster)", kennungMuster([], [agMuster])), fall("beides (Muster)", kennungMuster([rmMuster], [agMuster])));
-  const webEcht = R && Object.values(R.unterkuenfte).map(x => webAus(x.kontakt)).find(Boolean);
-  teil("Atom", "Webseite", "Link nach außen in neuem Fenster, aus dem Kontakt der Unterkunft; fehlt sie, ein leiser Hinweis.",
-    el("div", {class: "chips"}, webLink(webEcht || "https://example.org/"), webEcht ? null : el("span", {class: "z klein"}, "(Muster)"), webLink(null)));
+  teil("Atom", "Link", "Adresse als Link nach außen in neuem Fenster, mit dem Namen der Webseite. Jeder Wert eines Merkmals vom Typ link sieht so aus, in Tabelle, Karte und Einzelheiten.",
+    el("div", {class: "chips"}, webLink("https://www.example.org/"), el("span", {class: "z klein"}, "(Muster)")));
   const mitLage = R && Object.values(R.unterkuenfte).find(x => x.adresse || x.punkt);
   teil("Atom", "Kartenlinks", "Lage einer Unterkunft als Link zu Google Maps, auf Apple-Geräten auch zu Apple Karten (ADR-0004).",
     kartenLinks(mitLage || {name: "Muster", adresse: {wert: "Musterstraße 1, 12345 Musterort", quelle: "Muster"}}), mitLage ? null : el("span", {class: "z klein"}, " (Muster)"));
