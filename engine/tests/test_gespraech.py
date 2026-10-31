@@ -12,6 +12,7 @@ import konnektor as kn  # noqa: E402
 import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from test_regeln import IDA, KARL, KIM, MAX, anfrage, umgebung  # noqa: E402,F401  (umgebung: Fixture)
+from schnittstelle_hilfe import N  # noqa: E402
 
 BASIS = "https://beispiel.invalid/mcp"
 
@@ -331,10 +332,10 @@ def test_anleitung_nennt_rolle_status_und_grenzen(umgebung):
     u = umgebung("fest")
     ida = u.rpc(IDA, "initialize")["instructions"]
     assert "Du sprichst mit Ida (Organisator:in)" in ida and "Status fest" in ida
-    assert "mit entscheiden ein (Option" in ida and "in den Plan" in ida and "person_einladen" in ida
+    assert N("mit entscheiden ein (Option") in ida and "in den Plan" in ida and N("person_einladen") in ida
     karl = u.rpc(KARL, "initialize")["instructions"]
     assert "Du sprichst mit Karl (Mitwirkende:r)" in karl and "Entscheiden kann sie nicht" in karl
-    assert "frage_beantworten" in karl and "person_einladen" not in karl
+    assert N("frage_beantworten") in karl and N("person_einladen") not in karl
     assert "nur lesen" in u.rpc(KIM, "initialize")["instructions"]
     offen = umgebung("planung", regeln={"einladen": "mitwirkend"})
     assert "in den Plan" in offen.rpc(IDA, "initialize")["instructions"]

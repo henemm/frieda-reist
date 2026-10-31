@@ -65,6 +65,7 @@ import konten  # noqa: E402
 import oauth  # noqa: E402
 import belege as bl  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
+import schnittstelle  # noqa: E402
 import texte  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
@@ -108,7 +109,7 @@ AID_MUSTER = re.compile(r"^A-\d{8}-\d{6}-[0-9a-f]{4}$")
 
 _sperre = threading.Lock()
 
-CODE_DATEIEN = ("konnektor.py", "reise.py", "rueckmeldungen.py", "routen.py", "texte.py", "texte_de.py", "texte_en.py")
+CODE_DATEIEN = ("konnektor.py", "reise.py", "rueckmeldungen.py", "routen.py", "schnittstelle.py", "texte.py", "texte_de.py", "texte_en.py")
 
 
 def code_stand():
@@ -186,6 +187,14 @@ def lokalisiert(werkzeuge, sprache):
             return [gehe(e) for e in x]
         return x
     return gehe(werkzeuge)
+
+
+def aufruf_intern(werkzeuge, name, args):
+    """tools/call von außen -> (interner Name, interne Argumente): englische und deutsche Namen gelten gleich, auch gemischt
+    (ADR-0006, Punkt 4). werkzeuge ist die interne Liste, aus der das Schema des Werkzeugs stammt."""
+    intern = schnittstelle.intern_name(name) if isinstance(name, str) else name
+    schema = next((w["inputSchema"] for w in werkzeuge if w["name"] == intern), None)
+    return intern, schnittstelle.intern_argumente(intern, args, schema)
 
 
 def sprache_setzen_werkzeug(sprache):
@@ -2062,14 +2071,15 @@ def frieda_antwort(zugang, nid, methode, p, ok):
         return ok({"protocolVersion": gewuenscht if gewuenscht in PROTOKOLLE else PROTOKOLLE[0],
                    "capabilities": {"tools": {}},
                    "serverInfo": {"name": "frieda", "title": "Frieda", "version": "1", "icons": frieda_symbole()},
-                   "instructions": anleitung_frieda(k)})
+                   "instructions": schnittstelle.namen_im_text(anleitung_frieda(k))})
     if methode == "ping":
         return ok({})
     if methode == "tools/list":
-        return ok({"tools": lokalisiert(frieda_werkzeuge(k), k["sprache"])})
+        return ok({"tools": schnittstelle.aussen(lokalisiert(frieda_werkzeuge(k), k["sprache"]))})
     if methode == "tools/call":
-        t, fehler = frieda_werkzeug(k, p.get("name"), p.get("arguments"))
-        return ok({"content": [{"type": "text", "text": t}], "isError": fehler})
+        name_i, args_i = aufruf_intern(frieda_werkzeuge(k), p.get("name"), p.get("arguments"))
+        t, fehler = frieda_werkzeug(k, name_i, args_i)
+        return ok({"content": [{"type": "text", "text": schnittstelle.namen_im_text(t, streng=True)}], "isError": fehler})
     return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 
@@ -2090,20 +2100,20 @@ def konto_antwort(konto, nid, methode, p, ok):
                    "capabilities": {"tools": {}},
                    "serverInfo": {"name": "frieda", "title": "Frieda – meine Reisen", "version": "1",
                                   "icons": frieda_symbole()},
-                   "instructions": anleitung_konto(konto)})
+                   "instructions": schnittstelle.namen_im_text(anleitung_konto(konto))})
     if methode == "ping":
         return ok({})
     if methode == "tools/list":
-        return ok({"tools": lokalisiert([MEINE_REISEN, REISE_ANLEGEN], sprache_des_zugangs(konto))})
+        return ok({"tools": schnittstelle.aussen(lokalisiert([MEINE_REISEN, REISE_ANLEGEN], sprache_des_zugangs(konto)))})
     if methode == "tools/call":
-        name, args = p.get("name"), p.get("arguments") if isinstance(p.get("arguments"), dict) else {}
+        name, args = aufruf_intern([MEINE_REISEN, REISE_ANLEGEN], p.get("name"), p.get("arguments") if isinstance(p.get("arguments"), dict) else {})
         if name == "meine_reisen":
             t, fehler = meine_reisen(konto), False
         elif name == "reise_anlegen":
             t, fehler = reise_anlegen(konto, args)
         else:
             t, fehler = f"Unbekanntes Werkzeug {name}.", True
-        return ok({"content": [{"type": "text", "text": t}], "isError": fehler})
+        return ok({"content": [{"type": "text", "text": schnittstelle.namen_im_text(t, streng=True)}], "isError": fehler})
     return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 
@@ -2788,14 +2798,15 @@ def antwort_auf(zugang, nachricht):
                    "capabilities": {"tools": {}},
                    "serverInfo": {"name": f"frieda-{zugang['reise']}", "title": rs.get("titel", "Frieda Reist"),
                                   "version": "1", **({"icons": ik} if (ik := symbole(zugang["reise"])) else {})},
-                   "instructions": anleitung(zugang, daten(zugang["reise"]))})
+                   "instructions": schnittstelle.namen_im_text(anleitung(zugang, daten(zugang["reise"])))})
     if methode == "ping":
         return ok({})
     if methode == "tools/list":
-        return ok({"tools": lokalisiert(werkzeuge_fuer(zugang), zugang.get("sprache") or texte.VORGABE)})
+        return ok({"tools": schnittstelle.aussen(lokalisiert(werkzeuge_fuer(zugang), zugang.get("sprache") or texte.VORGABE_REISE))})
     if methode == "tools/call":
-        t, fehler = werkzeug(zugang, p.get("name"), p.get("arguments"))
-        return ok({"content": [{"type": "text", "text": t}], "isError": fehler})
+        name_i, args_i = aufruf_intern(werkzeuge_fuer(zugang), p.get("name"), p.get("arguments"))
+        t, fehler = werkzeug(zugang, name_i, args_i)
+        return ok({"content": [{"type": "text", "text": schnittstelle.namen_im_text(t, streng=True)}], "isError": fehler})
     return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 

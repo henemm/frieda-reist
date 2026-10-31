@@ -17,6 +17,7 @@ import bauen  # noqa: E402
 import konnektor as kn  # noqa: E402
 import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
+from schnittstelle_hilfe import N, intern_liste  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 BEISPIEL = WURZEL / "beispiel" / "reisen" / "beispielreise"   # ida organisator, karl mitwirkend
@@ -118,7 +119,7 @@ class Umgebung:
     def rpc(self, token, methode, params=None):
         code, a = anfrage(f"{self.kurl}/{token}", {"jsonrpc": "2.0", "id": 1, "method": methode, "params": params or {}})
         assert code == 200, a
-        return a["result"]
+        return intern_liste(a["result"]) if methode == "tools/list" else a["result"]
 
     def werkzeug(self, token, name, **args):
         r = self.rpc(token, "tools/call", {"name": name, "arguments": args})
@@ -370,7 +371,7 @@ def test_konnektor_werkzeuge_je_status(umgebung):
     w = danach.werkzeuge(KARL)
     assert {"rueckmeldung_geben", "aufgabe_anlegen"} <= w and "option_anlegen" not in w
     art = next(t for t in danach.rpc(KARL, "tools/list")["tools"] if t["name"] == "rueckmeldung_geben")
-    assert "Wunsch" not in art["inputSchema"]["properties"]["art"]["enum"]
+    assert "Wunsch" not in art["inputSchema"]["properties"]["kind"]["enum"]
     assert "reise_status_setzen" in danach.werkzeuge(IDA)      # bleibt sichtbar: Status zurücksetzen geht
 
     archiv = umgebung("archiv")
@@ -412,7 +413,7 @@ def test_konnektor_bausteine_blenden_aus(umgebung):
     assert "option_anlegen" not in w and "merkmale" not in w and "offene_fragen" not in w
     assert {"ueberblick", "zeige", "suche", "rueckmeldungen", "rueckmeldung_geben"} <= w
     art = next(t for t in u.rpc(KARL, "tools/list")["tools"] if t["name"] == "rueckmeldung_geben")
-    assert "Wunsch" not in art["inputSchema"]["properties"]["art"]["enum"]
+    assert "Wunsch" not in art["inputSchema"]["properties"]["kind"]["enum"]
     for name, args in (("aufgaben", {}), ("varianten", {}), ("offene_fragen", {}),
                        ("aufgabe_anlegen", {"titel": "x"}), ("rueckmeldung_geben", {"art": "Wunsch", "text": "x"})):
         t, f = u.werkzeug(KARL, name, **args)
@@ -420,7 +421,7 @@ def test_konnektor_bausteine_blenden_aus(umgebung):
     ue, _ = u.werkzeug(KARL, "ueberblick")
     assert "Offene Fragen" not in ue and "Offene Aufgaben" not in ue and "Wahlstellen (Werkzeug" not in ue
     anleitung = u.rpc(KARL, "initialize")["instructions"]
-    assert "ausgeschaltet" in anleitung and "aufgaben" in anleitung and "art Wunsch" not in anleitung
+    assert "ausgeschaltet" in anleitung and N("aufgaben") in anleitung and "art Wunsch" not in anleitung
 
 
 def test_konnektor_ueberblick_je_status(umgebung):

@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bauen  # noqa: E402
 import konnektor as kn  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
+from schnittstelle_hilfe import N, intern_liste  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 BEISPIEL = WURZEL / "beispiel" / "reisen" / "beispielreise"   # erfundene Reise: ida organisator, karl mitwirkend
@@ -72,7 +73,7 @@ def anfrage(url, daten=None, methode="POST"):
 def rpc(basis, token, methode, params=None, nid=1):
     code, a = anfrage(f"{basis}/{token}", {"jsonrpc": "2.0", "id": nid, "method": methode, "params": params or {}})
     assert code == 200, a
-    return a["result"]
+    return intern_liste(a["result"]) if methode == "tools/list" else a["result"]
 
 
 def werkzeug(basis, token, werkzeugname, **args):
@@ -555,7 +556,7 @@ def test_ontologie_organisator_schreibt_direkt(schreibweg):
                    "merkmal_zusammenfuehren", "arten_uebernehmen"}
         assert (set(kn.ONTOLOGIE_WERKZEUGE) - nur_org <= namen) is da, token
     anleitung = rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
-    assert "Arten und Merkmale (art_definieren, merkmal_definieren" in anleitung and "schreibt es sofort in die Reise" in anleitung
+    assert N("Arten und Merkmale (art_definieren, merkmal_definieren") in anleitung and "schreibt es sofort in die Reise" in anleitung
     t, f = werkzeug(basis, ALT_ORGANISATOR, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt", grund="Hütten am Weg")
     assert not f and t.startswith("Eingetragen und gesichert (Ida): Art „Refugi“ angelegt") and "wenige Minuten" in t
     pfad, geheim, body = Schreibweg.anfragen[-1]
@@ -655,7 +656,7 @@ def test_wert_eintragen_ueber_den_schreibweg(schreibweg):
     Schreibweg.antwort = (422, {"ok": False, "fehler": "preis: „quelle“ fehlt."})
     t, f = werkzeug(basis, ALT_ORGANISATOR, "wert_eintragen", ziel="U-02", merkmal="preis", wert="1 €")
     assert f and t == "Nicht eingetragen: preis: „quelle“ fehlt."
-    assert "wert_eintragen" in rpc(basis, KARL, "initialize")["instructions"]
+    assert N("wert_eintragen") in rpc(basis, KARL, "initialize")["instructions"]
 
 
 def test_dinge_optionen_wahlstellen_fragen_ueber_den_schreibweg(schreibweg):
@@ -671,7 +672,7 @@ def test_dinge_optionen_wahlstellen_fragen_ueber_den_schreibweg(schreibweg):
     assert f and "gemeint ist wohl geoeffnet" in t and Schreibweg.anfragen == []
     t, f = werkzeug(basis, KARL, "ding_anlegen", was="unterkunft", titel="Pension Elbblick", ort="O-02", art="pension", quelle="Website",
                     merkmale={"pool": "ja"})
-    assert f and "merkmal_definieren" in t
+    assert f and N("merkmal_definieren") in t
     t, f = werkzeug(basis, KARL, "ding_anlegen", was="unterkunft", titel="Pension Elbblick", ort="O-02", art="pension", quelle="Website",
                     geprueft="2026-10-29", merkmale={"preis": "90 €"})
     assert not f and t.startswith("Eingetragen und gesichert (Karl): Unterkunft U-05")
@@ -679,7 +680,7 @@ def test_dinge_optionen_wahlstellen_fragen_ueber_den_schreibweg(schreibweg):
     # Option: Wahlstelle muss es geben; Merkmale werden gegen die Art der Wahlstelle geprüft
     Schreibweg.antwort = (422, {"ok": False, "fehler": "Die Wahlstelle V-77 gibt es nicht (varianten zeigt alle); eine neue mit wahlstelle_anlegen."})
     t, f = werkzeug(basis, KARL, "option_anlegen", wahlstelle="V-77", titel="X")
-    assert f and "gibt es nicht" in t and "wahlstelle_anlegen" in t
+    assert f and "gibt es nicht" in t and N("wahlstelle_anlegen") in t
     Schreibweg.antwort = (200, {"ok": True, "text": "ok"})
     t, f = werkzeug(basis, KARL, "option_anlegen", wahlstelle="V-03", titel="X", merkmale={"preise": "1 €"})
     assert f and "gemeint ist wohl preis" in t
@@ -742,7 +743,7 @@ def test_tag_aendern_nur_organisatoren_sehen_es(schreibweg):
     Schreibweg.antwort = (200, {"ok": True, "text": "T-03: nacht „U-04“ → „V-03“."})
     t, f = werkzeug(basis, ALT_ORGANISATOR, "tag_aendern", ziel="T-03", nacht="V-03", grund="Wahl")
     assert not f and Schreibweg.anfragen[-1][2]["args"] == {"ziel": "T-03", "nacht": "V-03", "grund": "Wahl"}
-    assert "tag_aendern" in rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
+    assert N("tag_aendern") in rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
 
 
 def test_rueckmeldung_erledigen_und_wissen_und_fragen(schreibweg):
@@ -804,7 +805,7 @@ def test_status_einstellungen_und_kein_auftrag_mehr(schreibweg):
     assert f and "nur Organisator:innen" in t
     t, f = werkzeug(basis, ALT_ORGANISATOR, "einstellung_setzen", regeln={"einladen": "mitwirkend"})
     assert not f and Schreibweg.anfragen[-1][0] == "/beispielreise/einstellung_setzen"
-    assert "reise_status_setzen, einstellung_setzen" in rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
+    assert N("reise_status_setzen, einstellung_setzen") in rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
     assert "auftrag_geben" not in rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
     assert rm.auftraege(ablage / "beispielreise") == []
 
@@ -841,7 +842,7 @@ def test_buchung_werkzeuge_und_anzeige(schreibweg):
     for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (GAST, False)):
         namen = {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}
         assert ({"buchung_anlegen", "buchung_aendern"} <= namen) is da, token
-    assert "buchung_anlegen" in rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
+    assert N("buchung_anlegen") in rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
     Schreibweg.antwort = (200, {"ok": True, "text": "Buchung B-03 angelegt (gebucht) für U-02 Pension Burgblick, Nr. P-7."})
     t, f = werkzeug(basis, KARL, "buchung_anlegen", fuer=["U-02"], nummer="P-7", quelle="Mail vom 29.10.", frist="2027-01-15", frist_was="Anzahlung")
     assert not f and t.startswith("Eingetragen und gesichert (Karl): Buchung B-03 angelegt") and "Kein Beleg mitgegeben" in t
@@ -950,10 +951,10 @@ def test_beleg_in_einem_schritt_mit_der_buchung(schreibweg, seiten, monkeypatch)
     # Nennt der Schreibweg keine ID, bleibt die Buchung, der Beleg nicht (Hinweis auf beleg_anlegen)
     Schreibweg.antwort = (200, {"ok": True, "text": "Buchung B-05 angelegt (gebucht) für E-21."})
     t, f = werkzeug(basis, KARL, "buchung_anlegen", fuer=["E-21"], quelle="Mail", beleg_text="x")
-    assert not f and "nicht abgelegt" in t and "beleg_anlegen" in t
+    assert not f and "nicht abgelegt" in t and N("beleg_anlegen") in t
     # beleg_* nur bei buchung_anlegen
     t, f = werkzeug(basis, KARL, "buchung_aendern", ziel="B-04", notiz="x", beleg_text="y")
-    assert f and "nur bei buchung_anlegen" in t
+    assert f and N("nur bei buchung_anlegen") in t
     # Nachträglich, vor dem Veröffentlichen: der Schreibweg kennt B-04 im Repo, B-99 nicht
     t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-04", text="Nachtrag")
     assert f and "Die Buchung B-04 gibt es nicht" in t
@@ -1029,3 +1030,60 @@ def test_aufgabe_entfaellt_nennt_den_rueckholweg(dienst):
     t, f = werkzeug(basis, ALT_ORGANISATOR, "aufgabe_aendern", id="AG-01", status="entfaellt", name="Ida")
     assert not f and t.startswith("Gespeichert (gilt sofort):")      # bisheriger Satz bleibt vorn (Kriterium 7)
     assert "Nicht gelöscht" in t and "wieder offen" in t and "Status offen" in t
+
+
+# ---------- Englische Namen der Schnittstelle mit deutschen Aliasen (ADR-0006, M8b) ----------
+
+def test_tools_list_zeigt_englische_namen_und_parameter(schreibweg):
+    basis, _ = schreibweg
+    liste = rpc(basis, ALT_ORGANISATOR, "tools/list")
+    aussen = {w["name_aussen"]: w for w in liste["tools"]}
+    assert {"overview", "value_set", "decide", "item_create", "question_create"} <= set(aussen)
+    assert not {"ueberblick", "wert_eintragen", "entscheiden", "ding_anlegen"} & set(aussen)
+    eig = aussen["value_set"]["inputSchema"]
+    assert {"target", "attribute", "value", "source", "checked"} <= set(eig["properties"]) and "quelle" not in eig["properties"]
+    assert set(eig["required"]) == {"target", "attribute"}
+    # Beschreibungen nennen die Namen, die der Client sieht
+    assert "attributes" in aussen["value_set"]["description"] and "merkmale" not in aussen["value_set"]["description"]
+    # Strecken: dasselbe Wort, andere Bedeutung (von/nach/ab/an) hat in ding_anlegen eigene Namen
+    assert {"from_place", "to_place", "departure", "arrival"} <= set(aussen["item_create"]["inputSchema"]["properties"])
+
+
+def test_aufruf_englisch_deutsch_und_gemischt_liefert_dasselbe(schreibweg):
+    basis, _ = schreibweg
+    Schreibweg.antwort = (200, {"ok": True, "text": "Preis an U-02: 95 €."})
+    varianten = (("value_set", dict(target="U-02", attribute="preis", value="95 €", source="Website", checked="2026-10-29")),
+                 ("wert_eintragen", dict(ziel="U-02", merkmal="preis", wert="95 €", quelle="Website", geprueft="2026-10-29")),
+                 ("value_set", dict(ziel="U-02", attribute="preis", wert="95 €", source="Website", geprueft="2026-10-29")))
+    ergebnisse = []
+    for name, args in varianten:
+        t, f = werkzeug(basis, KARL, name, **args)
+        pfad, _, body = Schreibweg.anfragen[-1]
+        ergebnisse.append((t, f, pfad, body["args"]))
+    assert ergebnisse[0] == ergebnisse[1] == ergebnisse[2] and not ergebnisse[0][1]
+    assert ergebnisse[0][2] == "/beispielreise/wert_eintragen"      # unter dem Rand bleibt alles deutsch
+    # bei Doppelung gewinnt der englische Name
+    werkzeug(basis, KARL, "value_set", ziel="U-01", target="U-02", attribute="preis", wert="1 €", source="x")
+    assert Schreibweg.anfragen[-1][2]["args"]["ziel"] == "U-02"
+
+
+def test_enum_alias_wird_auf_den_datenwert_abgebildet(schreibweg):
+    basis, _ = schreibweg
+    Schreibweg.antwort = (200, {"ok": True, "text": "ok"})
+    werkzeug(basis, ALT_ORGANISATOR, "decide", option="V-01.b", status="chosen", reason="passt")
+    body = Schreibweg.anfragen[-1][2]["args"]
+    assert Schreibweg.anfragen[-1][0] == "/beispielreise/entscheiden" and body["status"] == "gewaehlt" and body["grund"] == "passt"
+    werkzeug(basis, ALT_ORGANISATOR, "entscheiden", option="V-01.b", status="verworfen", grund="x")      # deutsch bleibt gültig
+    assert Schreibweg.anfragen[-1][2]["args"]["status"] == "verworfen"
+
+
+def test_keine_namenskollision_der_schnittstelle():
+    import schnittstelle as s
+    assert len(set(s.NAMEN)) == len(s.NAMEN) and len(set(s.NAMEN.values())) == len(s.NAMEN)
+    # ein englischer Parametername darf nie ein anderer interner Name sein (sonst wäre der Alias mehrdeutig)
+    intern = set(s.PARAMETER)
+    for werkzeug_intern in [None, *s.PARAMETER_JE_WERKZEUG]:
+        tab = s.parameter_zu_englisch(werkzeug_intern)
+        for i, e in tab.items():
+            assert e == i or e not in intern or tab.get(e) == e, (werkzeug_intern, i, e)
+        assert len(set(tab.values())) == len(tab), werkzeug_intern    # kein englischer Name doppelt

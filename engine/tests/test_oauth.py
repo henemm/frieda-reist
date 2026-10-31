@@ -18,6 +18,7 @@ import konnektor as kn  # noqa: E402
 import konten  # noqa: E402
 import oauth  # noqa: E402
 from test_anmeldung import BASIS, abruf, anmelden, kopf, welt  # noqa: E402,F401  (welt: Fixture)
+from schnittstelle_hilfe import intern_liste  # noqa: E402
 
 CALLBACK = "https://claude.ai/api/mcp/auth_callback"
 IDA, KARL, BEN = "ida@beispiel.invalid", "karl@beispiel.invalid", "ben@beispiel.invalid"
@@ -58,7 +59,10 @@ def mcp(u, access, methode, params=None):
     s, h, t = abruf(f"{u.kurl}/mcp", "POST", json_body={"jsonrpc": "2.0", "id": 1, "method": methode,
                                                          "params": params or {}},
                     kopf={"Authorization": f"Bearer {access}"} if access else None, origin=None)
-    return s, h, (json.loads(t) if t else None)
+    antwort = json.loads(t) if t else None
+    if methode == "tools/list" and antwort and "result" in antwort:
+        intern_liste(antwort["result"])
+    return s, h, antwort
 
 
 def verbinden(u, email, name=None):
@@ -151,7 +155,7 @@ def test_ganzer_ablauf_wie_die_claude_app(welt):
     assert {"meine_reisen", "reisen_anlegen_anfragen", "ueberblick", "rueckmeldung_geben"} <= set(werkzeuge)
     assert "reise_anlegen" not in werkzeuge and "anfrage_entscheiden" not in werkzeuge
     eig = werkzeuge["rueckmeldung_geben"]["inputSchema"]["properties"]
-    assert eig["reise"]["enum"] == ["beispielreise"] and "name" not in eig
+    assert eig["trip"]["enum"] == ["beispielreise"] and "name" not in eig
     text, fehler = aufruf(u, t["access_token"], "meine_reisen")
     assert not fehler and "Beispielreise" in text and "reise: beispielreise" in text and "du: mitwirkend" in text
     text, fehler = aufruf(u, t["access_token"], "rueckmeldung_geben", art="Kommentar", ziel="T-01", text="Aus der App",
@@ -300,7 +304,7 @@ def test_reisen_anlegen_mit_recht(welt):
     konten.freischalten(konten.konto_per_email(BEN)["id"])
     s, _, a = mcp(u, t["access_token"], "tools/list")
     w = next(x for x in a["result"]["tools"] if x["name"] == "reise_anlegen")
-    assert "email" in w["inputSchema"]["properties"]["personen"]["items"]["properties"]
+    assert "email" in w["inputSchema"]["properties"]["people"]["items"]["properties"]
     text, fehler = aufruf(u, t["access_token"], "reise_anlegen", titel="Winterwoche im Allgäu", von="2027-02-06",
                           bis="2027-02-13", ziel="Oberstdorf",
                           personen=[{"vorname": "Mo", "rolle": "mitwirkend", "email": "mo@beispiel.invalid"},
@@ -388,7 +392,7 @@ def test_sprache_am_konto_im_konnektor(welt):
     acc = t["access_token"]
     s, _, r = mcp(u, acc, "tools/list")
     werk = {w["name"]: w for w in r["result"]["tools"]}
-    assert "sprache_setzen" in werk and werk["sprache_setzen"]["inputSchema"]["properties"]["sprache"]["enum"][:2] == ["de", "en"]
+    assert "sprache_setzen" in werk and werk["sprache_setzen"]["inputSchema"]["properties"]["language"]["enum"][:2] == ["de", "en"]
     # Das Konto wurde mit Accept-Language: de angelegt (Testhelfer); Beschreibung und Antwort kommen deutsch
     assert werk["sprache_setzen"]["description"].startswith("Stellt die Sprache dieses Kontos ein")
     s, _, r = mcp(u, acc, "tools/call", {"name": "sprache_setzen", "arguments": {"sprache": "en"}})
