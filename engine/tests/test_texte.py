@@ -404,7 +404,7 @@ def test_ablehnung_traegt_schluessel_und_werte():
     alt = schreiben.Ablehnung("Ein fertiger Satz bleibt, wie er ist.")      # alte Aufrufe gelten weiter
     assert str(alt) == alt.text("en") == "Ein fertiger Satz bleibt, wie er ist." and alt.schluessel is None
     import reise
-    ok, grund = reise.erlaubt("wert_eintragen", "gast", "planung", None)
+    ok, grund = reise.erlaubt("alternative", "gast", "planung", None)
     assert not ok and schreiben.Ablehnung(grund).text("en").startswith("This access is read-only")
 
 
