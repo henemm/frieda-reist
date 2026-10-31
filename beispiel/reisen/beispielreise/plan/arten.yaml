@@ -33,6 +33,7 @@ arten:
       abendessen:  {name: Abendessen, typ: auswahl, werte: [im Haus, im Haus mit Vorbestellung, im Ort, keins, unklar],
                     hilfe: "Website oder Wanderführer; bei kleinen Häusern zählt die Vorbestellung"}
       lage:        {name: Lage, typ: text, stufe: angeboten}
+      webseite:    {name: Webseite, typ: link, hilfe: "Offizielle Website des Hauses (nicht das Buchungsportal)"}
       geoeffnet:   {name: Geöffnet am Reisedatum, typ: auswahl, werte: [ja, nein, unklar], veraenderlich: true, stufe: pflicht,
                     hilfe: "Website oder Anruf; kleine Häuser haben Betriebsferien", frage: "Weißt du, ob das Haus an dem Tag offen hat?"}
   gasthof:

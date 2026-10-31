@@ -92,7 +92,15 @@ def art_schluessel(text):
         t = t.replace(a, b)
     t = "".join(c for c in unicodedata.normalize("NFKD", t) if not unicodedata.combining(c))
     return re.sub(r"[^a-z0-9]+", "_", t).strip("_") or None
-TYPEN = {"text", "geld", "zahl", "auswahl"}
+TYPEN = {"text", "geld", "zahl", "auswahl", "link"}
+LINK_MUSTER = re.compile(r"https?://[^\s<>\"]+\Z", re.I)
+
+
+def ist_link(wert):
+    """Wert eines Merkmals vom Typ link: eine Adresse mit http:// oder https://, ohne Leerzeichen (docs/ontologie.md)."""
+    return bool(LINK_MUSTER.match(str(wert)))
+
+
 # Stufe eines Merkmals (docs/ontologie.md): nur pflicht zählt als „Fehlt noch“ (Paket O-5); empfohlen ist Spalte im Vergleich,
 # ohne Wert keine Lücke und keine Mahnung (Product Owner 29.10.2026); angeboten
 # wird nur gezeigt, wenn ein Wert da ist, aus gilt nicht (kein Fehlt, keine Mahnung, kein Wächter). Ohne Angabe gilt
@@ -841,6 +849,8 @@ class Routen:
             self.fehl(f"{wo}: {k} = „{w}“, erlaubt: {', '.join(map(str, d['werte']))}.")
         if d["typ"] == "zahl" and not isinstance(w, (int, float)):
             self.fehl(f"{wo}: {k} muss eine Zahl sein.")
+        if d["typ"] == "link" and not ist_link(w):
+            self.fehl(f"{wo}: {k} = „{w}“ ist keine Adresse (https://… ohne Leerzeichen).")
         g = e.get("geprueft")
         if g is not None and not isinstance(g, datetime.date):
             self.fehl(f"{wo}: {k}: geprueft muss ein Datum sein (JJJJ-MM-TT).")
@@ -858,6 +868,8 @@ class Routen:
                "ungeprueft": bool(d.get("veraenderlich")) and g is None}
         if gilt:
             out["gilt"] = gilt
+        if d["typ"] == "link":
+            out["link"] = True   # die Seite zeigt den Wert als Link, überall gleich
         return out
 
     def merkmale_pruefen(self):

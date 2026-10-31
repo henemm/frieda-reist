@@ -713,6 +713,10 @@ def wert_eintraege(args, k, definition, heute):
         wert = " ".join(str(wert).split()) if not isinstance(wert, (int, float)) else wert
         if definition.get("typ") == "auswahl" and str(wert) not in [str(v) for v in definition.get("werte") or []]:
             raise Ablehnung("schreiben.wert_eintraege.2", k=k, wert=wert, w3=', '.join(map(str, definition.get('werte') or [])))
+        if definition.get("typ") == "link":
+            from routen import ist_link
+            if not ist_link(wert):
+                raise Ablehnung("schreiben.wert_eintraege.link", k=k, wert=wert)
         if definition.get("typ") == "zahl":
             try:
                 wert = float(str(wert).replace(",", "."))

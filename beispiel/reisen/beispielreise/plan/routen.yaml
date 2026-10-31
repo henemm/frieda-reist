@@ -52,12 +52,13 @@ unterkuenfte:
     art: pension
     frage: F-02
     hinweis: "erfunden; Doppelzimmer mit Blick auf die Burg"
-    kontakt: "Tel. +49 00 0000 (Beispielwert) ; https://example.org/pension-burgblick"
+    kontakt: "Tel. +49 00 0000 (Beispielwert)"
     quelle: "erfunden (Beispiel)"
     merkmale:
       preis: {wert: "85 €", quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
       fruehstueck: {wert: inklusive, quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
       abendessen: {wert: im Ort, quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
+      webseite: {wert: "https://example.org/pension-burgblick", quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
       lage: {wert: "am Markt, zwei Minuten vom Malerweg", quelle: "erfunden (Beispiel)"}
   U-03:
     name: Gasthof Polenztal
