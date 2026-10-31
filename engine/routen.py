@@ -24,6 +24,8 @@ import datetime
 import re
 import unicodedata
 
+import texte
+
 STATUS = ("vorgeschlagen", "favorisiert", "gewaehlt", "verworfen", "ersetzt")
 NUR_ENTSCHEIDER = {"gewaehlt", "verworfen", "ersetzt"}
 UNGUELTIG = {"verworfen", "ersetzt"}
@@ -100,7 +102,7 @@ TYPEN = {"text", "geld", "zahl", "auswahl"}
 # Für Menschen heißen die Stufen „nötig“, „gut zu wissen“, „zusätzlich“ (Product Owner 29.10.2026); „aus“ bleibt unsichtbar.
 # In Dateien und Werkzeugen bleiben die Schlüssel; die Wörter nimmt der Schreibweg als Eingabe ebenfalls an (stufe_schluessel).
 STUFEN = ("pflicht", "empfohlen", "angeboten", "aus")
-STUFEN_WORTE = {"pflicht": "nötig", "empfohlen": "gut zu wissen", "angeboten": "zusätzlich", "aus": "aus"}
+STUFEN_WORTE = texte.gruppe("de", "schreiben.stufe")
 
 
 def stufe_wort(s):

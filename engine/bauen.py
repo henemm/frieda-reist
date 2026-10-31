@@ -40,6 +40,7 @@ except ImportError:
 from reise import Reise  # noqa: E402
 from routen import FARBEN, Routen, verhalten_anwenden  # noqa: E402
 import gpx  # noqa: E402
+import texte  # noqa: E402
 
 ZIEL_ID = re.compile(r"^[A-Za-z0-9][\w.\-]{0,79}$", re.ASCII)
 BILD_ENDUNGEN = (".jpg", ".jpeg", ".png", ".webp", ".gif")
@@ -1263,6 +1264,11 @@ def icon_zeichnen(text, groesse):
     for i, z in enumerate(zeilen):
         d.text((groesse / 2, y0 + hoehe * (i + 0.5)), z, font=f, fill="white", anchor="mm")
     return im
+
+
+def texte_fuer_seite():
+    """Katalog aller Sprachen für die Seite (ADR-0006); ab M1 legt der Bau ihn in die Seite, damit der Umschalter offline geht."""
+    return texte.seite()
 
 
 def bauen(reise_dir, ziel_dir, umzug=None):

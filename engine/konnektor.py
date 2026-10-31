@@ -65,6 +65,7 @@ import konten  # noqa: E402
 import oauth  # noqa: E402
 import belege as bl  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
+import texte  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
 from routen import FARBEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, art_schluessel, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
@@ -97,7 +98,7 @@ SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufg
                   "wunsch_aendern": "wunsch_erlebt"}
 # Werkzeuge, die zusätzlich eine zweite Aktion brauchen: eine Antwort landet als Rückmeldung (Art Antwort) im Eingang
 ZUSATZ_AKTION = {"frage_beantworten": "rueckmeldung"}
-WORT = {"gewaehlt": "gewählt", "verworfen": "verworfen", "ersetzt": "ersetzt"}
+WORT = texte.gruppe("de", "konnektor.wort")   # Wörter der Entscheidungen; Katalog in texte_de.py (ADR-0006)
 MAX_GRUND = 500
 PROTOKOLLE = ("2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05")
 MAX_BODY = 64 * 1024
@@ -107,7 +108,7 @@ AID_MUSTER = re.compile(r"^A-\d{8}-\d{6}-[0-9a-f]{4}$")
 
 _sperre = threading.Lock()
 
-CODE_DATEIEN = ("konnektor.py", "reise.py", "rueckmeldungen.py", "routen.py")
+CODE_DATEIEN = ("konnektor.py", "reise.py", "rueckmeldungen.py", "routen.py", "texte.py", "texte_de.py", "texte_en.py")
 
 
 def code_stand():

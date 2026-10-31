@@ -47,6 +47,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import instanz  # noqa: E402
 import konten  # noqa: E402
+import texte  # noqa: E402
 
 REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
 SCHLUESSEL_MUSTER = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -72,7 +73,7 @@ ARTEN_KOPF = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). 
               "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (Gliederung des\n"
               "# Lesetexts: je Rubrik name und hilfe); je Merkmal: name, typ,\n"
               "# werte, veraenderlich, stufe (pflicht | empfohlen | angeboten | aus), auto, hilfe, frage, auch.\n")
-GRUNDFORM_WORT = {"aufenthalt": "Aufenthalt", "bewegung": "Bewegung", "folge": "Folge"}
+GRUNDFORM_WORT = texte.gruppe("de", "schreiben.grundform")   # Katalog in texte_de.py (ADR-0006)
 
 
 class Ablehnung(Exception):
@@ -1385,7 +1386,7 @@ def wahlstelle_anlegen(reise_dir, wer, args, heute=None):
 
 # ---------- Entscheiden und Plan (plan/routen.yaml, offene-fragen.md) ----------
 ENTSCHEIDUNGEN = ("gewaehlt", "verworfen", "ersetzt")
-WORT = {"gewaehlt": "gewählt", "verworfen": "verworfen", "ersetzt": "ersetzt"}
+WORT = texte.gruppe("de", "schreiben.wort")
 
 
 def frage_status_setzen(reise_dir, fid, status):
@@ -1822,10 +1823,7 @@ def buchung_fuer(args, roh, route):
 
 BUCHUNG_TEXTE = {"nummer": 80, "bei": 120, "preis": 120, "bezahlt": 200, "frist_was": 120, "storno": 400, "notiz": MAX_TEXT, "ab_was": 120}
 # Felder einer Buchung in Worten für Antwort und Verlauf (Menschen lesen Wörter, keine Schlüssel; Product Owner 29.10.2026)
-BUCHUNG_WORTE = {"fuer": "Gehört zu", "status": "Status", "nummer": "Nummer", "bei": "Gebucht bei", "preis": "Preis", "bezahlt": "Bezahlt",
-                 "frist": "Frist", "frist_was": "Was bis zur Frist", "storno": "Stornoregel", "storno_bis": "Stornofrist",
-                 "gebucht_am": "Gebucht am", "quelle": "Herkunft", "notiz": "Notiz", "ab": "Ab", "ab_was": "Was ab dann geht",
-                 "personen": "Reisende", "preise": "Preise je Ding"}
+BUCHUNG_WORTE = texte.gruppe("de", "schreiben.buchung")
 
 
 def buchung_personen(args, reise_dir):
