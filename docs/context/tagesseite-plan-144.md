@@ -78,5 +78,5 @@ Gegenbefunde: keine gegen den Plan. Ein Randfall: Sind mehrere Pläne vollständ
 
 ### Open Questions
 - [ ] Soll „Kommt vor in“ auf der Ortsseite bei gewähltem Plan nur den gewählten Plan zeigen? (Empfehlung: ja, gleiche Regel wie Tagesseite; Entscheidung des Product Owners, falls er die Vergleichsansicht dort behalten will.)
-- [ ] Kalenderexport vor der Spec noch gezielt auf Planbezug prüfen.
+- [x] Kalenderexport auf Planbezug geprüft (31.10.2026): nimmt `route.tage`, siehe Changelog der Spec.
 - [ ] Prüfung in einer echten Reise nach dem Veröffentlichen liegt außerhalb dieses Repos (Product Owner/Reise-Repo).

@@ -2,8 +2,8 @@
 entity_id: tagesseite-plan
 type: module
 created: 2026-10-30
-updated: 2026-10-30
-status: draft
+updated: 2026-10-31
+status: approved
 version: "1.0"
 tags: [vorlage, tagesseite, plan, ortsseite]
 ---
@@ -12,7 +12,7 @@ tags: [vorlage, tagesseite, plan, ortsseite]
 
 ## Approval
 
-- [ ] Approved
+- [x] Approved (Product Owner, 31.10.2026)
 
 ## Purpose
 
@@ -80,3 +80,10 @@ Ist ein Plan vollständig gewählt (Status fest), soll die Tagesseite Nummer und
 ## Changelog
 
 - 2026-10-30: Erstfassung (#144)
+- 2026-10-31: Offener Punkt entschieden: Product Owner bestätigt, „Kommt vor in“ zeigt bei gewähltem Plan nur diesen
+  (Punkt 2, Kriterium 7). Kalenderexport geprüft (Kriterium 9): `engine/kalender.py` nimmt `route.tage` (aktueller
+  Plan, ohne vorläufige Tage), die Kalender-Chips der Seite `R.tage` (`imKalender`); kein Planbezug über `ansichtTag`.
+  Echte Reisen nach dem Veröffentlichen (Software mit ef65600, Prüfskript außerhalb des Repos auf Grundlage von
+  `seiten_tagesplan.mjs`): In beiden Reisen mit Plänen stimmen Nummer und Datum jeder Tagesseite mit der Übersicht
+  überein (11 und 25 Tagesseiten, keine doppelt, keine Seitenfehler); eine davon hat einen gewählten und daneben
+  verworfene Pläne, genau den Fall dieses Fehlers.
