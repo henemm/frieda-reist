@@ -1,0 +1,163 @@
+FFFFF                                                                    [100%]
+=================================== FAILURES ===================================
+_______________ test_ausloeser_rechte_und_ein_lauf_gleichzeitig ________________
+
+    def test_ausloeser_rechte_und_ein_lauf_gleichzeitig():  # AC-1
+>       w = lade()
+            ^^^^^^
+
+engine/tests/test_software_nachziehen.py:26: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_software_nachziehen.py:14: in lade
+    return yaml.safe_load(VORLAGE.read_text(encoding="utf-8"))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+______________________ test_rote_tests_fuehren_zum_issue _______________________
+
+    def test_rote_tests_fuehren_zum_issue():  # AC-2, #224
+>       tests = next(s for s in schritte() if s.get("id") == "tests")
+                                ^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:34: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_software_nachziehen.py:18: in schritte
+    return lade()["jobs"]["nachziehen"]["steps"]
+           ^^^^^^
+engine/tests/test_software_nachziehen.py:14: in lade
+    return yaml.safe_load(VORLAGE.read_text(encoding="utf-8"))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+_______________ test_commit_als_bot_mit_liste_und_ohne_erzwingen _______________
+
+    def test_commit_als_bot_mit_liste_und_ohne_erzwingen():  # AC-3
+>       run = schritt("Nach main übernehmen")["run"]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:43: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_software_nachziehen.py:22: in schritt
+    return next(s for s in schritte() if s.get("name") == name)
+                           ^^^^^^^^^^
+engine/tests/test_software_nachziehen.py:18: in schritte
+    return lade()["jobs"]["nachziehen"]["steps"]
+           ^^^^^^
+engine/tests/test_software_nachziehen.py:14: in lade
+    return yaml.safe_load(VORLAGE.read_text(encoding="utf-8"))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+__________________________ test_nichts_einer_instanz ___________________________
+
+    def test_nichts_einer_instanz():  # AC-4
+>       text = VORLAGE.read_text(encoding="utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:52: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+____________________ test_doku_einrichten_und_ueberwachung _____________________
+
+    def test_doku_einrichten_und_ueberwachung():  # AC-5
+        doku = BETRIEB_MD.read_text(encoding="utf-8")
+        einrichten = doku.split("## Neue Instanz einrichten", 1)[1].split("\n## ", 1)[0]
+>       assert "betrieb/software-nachziehen.yml" in einrichten and ".github/workflows/" in einrichten
+E       AssertionError: assert ('betrieb/software-nachziehen.yml' in '\n\n1. **Server:** Benutzer für die Dienste, nginx mit HTTPS für die Adresse, Python 3, `git`, `rsync`, `flock`, Node... und Sperrdateien tragen den Namen der Instanz. Jede Instanz braucht einen eigenen Konnektor-Pfad (`<instanz>-mcp`).\n')
+
+engine/tests/test_software_nachziehen.py:62: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_software_nachziehen.py::test_ausloeser_rechte_und_ein_lauf_gleichzeitig
+FAILED engine/tests/test_software_nachziehen.py::test_rote_tests_fuehren_zum_issue
+FAILED engine/tests/test_software_nachziehen.py::test_commit_als_bot_mit_liste_und_ohne_erzwingen
+FAILED engine/tests/test_software_nachziehen.py::test_nichts_einer_instanz - ...
+FAILED engine/tests/test_software_nachziehen.py::test_doku_einrichten_und_ueberwachung
+5 failed in 0.16s
+== Monitor der Instanz: tests/test_monitor_frieda_software.py
+=========================== short test summary info ============================
+FAILED tests/test_monitor_frieda_software.py::test_gleicher_stand_ist_ok_und_raeumt_auf
+FAILED tests/test_monitor_frieda_software.py::test_rueckstand_zum_ersten_mal_gesehen_ist_ok
+FAILED tests/test_monitor_frieda_software.py::test_rueckstand_ueber_6_stunden_meldet
+FAILED tests/test_monitor_frieda_software.py::test_rueckstand_unter_6_stunden_ist_ok
+FAILED tests/test_monitor_frieda_software.py::test_vorgerueckter_stand_beginnt_neu
+FAILED tests/test_monitor_frieda_software.py::test_netzfehler_aendert_keinen_zustand
+FAILED tests/test_monitor_frieda_software.py::test_stand_nicht_lesbar - Asser...
+FAILED tests/test_monitor_frieda_software.py::test_check_ist_eingehaengt - as...
+8 failed in 0.23s
