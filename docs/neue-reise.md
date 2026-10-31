@@ -36,6 +36,8 @@ kontext/herkunft.md wann, von wem und auf welchem Weg die Reise angelegt wurde
 medien/             für Bilder, Karten, Tracks
 ```
 
+Die Vorlage gibt es je Sprache (`engine/reisevorlage/de/`, `engine/reisevorlage/en/`); `neu.py` nimmt die der Reise (`sprache`), fehlt der Ordner einer Sprache, die englische. Überschriften, Spaltenköpfe der offenen Fragen, Monatsnamen und Rollenwörter folgen der Sprache der Reise; die Seite erkennt die Wörter aller Sprachen des Katalogs (`inhalt.*` in `engine/texte_<sprache>.py`), unabhängig von der Hülle.
+
 Eingeschaltet sind `rueckmeldungen`, `fragen`, `aufgaben` und `wuensche`. `varianten`, `karte`, `tagesseiten` und `waechter` schaltet ein:e Organisator:in zu, wenn die Planung beginnt. Ein Routenmodell (`plan/routen.yaml`, Aufbau in `engine/routen.py` und in der Beispielreise) kommt mit der Planung dazu: Start und Ende, Orte, Strecken, Unterkünfte, Wahlstellen. Dafür wird in `reise.json` der Eintrag `routen` ergänzt. Dazu gehört `plan/arten.yaml`: die Arten der Reise (Hotel, Hütte, Zugfahrt, Reiseteil …) mit ihren Merkmalen, entwickelt im Gespräch (`docs/ontologie.md`; Anschauung in der Beispielreise). Die Vorlage legt sie leer an.
 
 ## Quellen übernehmen

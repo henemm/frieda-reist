@@ -1,0 +1,12 @@
+# Kinds and attributes of this trip (docs/ontologie.md, ADR-0001). They emerge in conversation in the AI client and are
+# sharpened there again and again; the software supplies no list. As soon as plan/routen.yaml has accommodation or legs,
+# each of its kinds needs an entry here. For illustration: beispiel/reisen/beispielreise/plan/arten.yaml in the software.
+#
+# arten:
+#   hotel:
+#     grundform: aufenthalt          # aufenthalt | bewegung | folge
+#     name: Hotel
+#     farbe: blau                    # blau, braun, lila, gruen, tuerkis, oliv, grau, rosa, schiefer
+#     merkmale:
+#       preis: {name: Price per night, typ: geld, veraenderlich: true, stufe: empfohlen, hilfe: "…", frage: "…"}
+arten: {}

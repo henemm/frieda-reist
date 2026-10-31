@@ -76,6 +76,12 @@ ARTEN_KOPF = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). 
 GRUNDFORM_WORT = texte.gruppe("de", "schreiben.grundform")   # Katalog in texte_de.py (ADR-0006)
 
 
+def sprache_von(reise_dir):
+    """Sprache der Reise (reise.yaml sprache): in ihr schreibt der Schreibweg alles, was in Dateien der Reise landet."""
+    from reise import sprache_von as von
+    return von(reise_dir)
+
+
 class Ablehnung(Exception):
     """Der Schreibweg lehnt ab; der Text ist für den AI-Client (einfache Worte, nennt den Grund)."""
 
@@ -1478,10 +1484,11 @@ def entscheiden(reise_dir, wer, args, heute=None):
                                f"{x['id']} {x.get('titel', '')}" for x in wahl[v].get("optionen") or []
                                if x.get("status") not in ("verworfen", "ersetzt")) for v in noch_offen) + ".")
         elif status == "gewaehlt":
-            ok = frage_status_setzen(reise_dir, wr["frage"], f"geklärt {heute.strftime('%-d.%-m.%Y')}: {wer['name']}, {o['titel']} ({oid})")
+            sp = sprache_von(reise_dir)
+            ok = frage_status_setzen(reise_dir, wr["frage"], f"{texte.wort(sp, 'inhalt.frage.geklaert')} {texte.datum(heute, sp)}: {wer['name']}, {o['titel']} ({oid})")
             frage_text = f" Frage {wr['frage']} ist damit geklärt." if ok else ""
         elif not gewaehlt_danach:
-            ok = frage_status_setzen(reise_dir, wr["frage"], "offen")
+            ok = frage_status_setzen(reise_dir, wr["frage"], texte.wort(sprache_von(reise_dir), "inhalt.frage.offen"))
             frage_text = f" {vid} ist danach offen, Frage {wr['frage']} wieder offen." if ok else f" {vid} ist danach offen."
     titel = f"{oid} „{o['titel']}“ {WORT[status]}" + (f" (ersetzt durch {durch})" if durch else "")
     text = (f"Entschieden: {oid} „{o['titel']}“ ({vid} {wr.get('titel', '')}) ist {WORT[status]}" + (f", ersetzt durch {durch}" if durch else "")
@@ -1609,8 +1616,9 @@ def frage_schliessen(reise_dir, wer, args, heute=None):
     status = (text_wert(args, "status", laenge=20) or "geklaert").lower()
     if status not in ("geklaert", "entfaellt"):
         raise Ablehnung("„status“ ist geklaert oder entfaellt.")
-    wort = "geklärt" if status == "geklaert" else "entfällt"
-    if not frage_status_setzen(reise_dir, fid, f"{wort} {heute.strftime('%-d.%-m.%Y')}: {wer['name']}, {ergebnis}"):
+    sp = sprache_von(reise_dir)   # der Status in offene-fragen.md steht in der Sprache der Reise
+    wort = texte.wort(sp, "inhalt.frage.geklaert" if status == "geklaert" else "inhalt.frage.entfaellt")
+    if not frage_status_setzen(reise_dir, fid, f"{wort} {texte.datum(heute, sp)}: {wer['name']}, {ergebnis}"):
         raise Ablehnung(f"Die Frage {fid} gibt es nicht (offene_fragen zeigt alle).")
     text = f"Frage {fid} ist {wort} ({wer['name']}, {heute.strftime('%-d.%-m.%Y')}): {ergebnis}"
     if status == "entfaellt":
@@ -2384,7 +2392,7 @@ def lesetext_schreiben(reise_dir, wer, args, heute=None):
     if not d_rel or not (Path(reise_dir) / d_rel).exists():
         raise Ablehnung("Diese Reise hat kein Etappen-Dossier (reise.json etappen_dossier); ein Lesetext gehört zu einer Etappe darin.")
     import bauen
-    muster = re.compile(cfg.get("etappen_muster") or bauen.ETAPPEN_MUSTER)
+    muster = re.compile(cfg.get("etappen_muster") or bauen.etappen_muster())
     f = Path(reise_dir) / d_rel
     zeilen = f.read_text(encoding="utf-8").split("\n")
     start = None

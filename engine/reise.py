@@ -17,6 +17,7 @@ reise.json (alte Form) mit einem Hinweis; Status ist dann „planung“, Persone
 import datetime
 import re
 import unicodedata
+from pathlib import Path
 
 import texte
 
@@ -170,6 +171,16 @@ MAX_PERSONEN = 20
 def reise_pfad(titel, jahr=None):
     """Titel (und Jahr, falls nicht schon darin) -> Ordnername der Reise, z. B. „winterwoche-allgaeu-2027“."""
     return _klein(titel if jahr is None or str(jahr) in (titel or "") else f"{titel} {jahr}", 40)
+
+
+def sprache_von(reise_dir):
+    """Sprache einer Reise aus ihrer reise.yaml (Vorgabe de): in dieser Sprache schreibt die Software in Dateien der Reise."""
+    try:
+        text = (Path(reise_dir) / "reise.yaml").read_text(encoding="utf-8")
+    except OSError:
+        return texte.VORGABE_REISE
+    m = re.search(r"^sprache:\s*['\"]?([A-Za-z-]+)", text, re.M)
+    return m.group(1).lower() if m and texte.gueltig(m.group(1).lower()) else texte.VORGABE_REISE
 
 
 def sprache_pruefen(wert):

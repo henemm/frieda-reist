@@ -44,7 +44,9 @@ import texte  # noqa: E402
 
 ZIEL_ID = re.compile(r"^[A-Za-z0-9][\w.\-]{0,79}$", re.ASCII)
 BILD_ENDUNGEN = (".jpg", ".jpeg", ".png", ".webp", ".gif")
-ETAPPEN_MUSTER = r"^Etappe\s+(\d+[A-Za-z]?)\s*:\s*(.+)$"
+def etappen_muster():
+    """Titel einer Etappe („Etappe 3: Name“, englisch „Stage 3: Name“): das Wort aller Sprachen des Katalogs (ADR-0006, Punkt 7)."""
+    return r"^(?:" + texte.inhaltsmuster("inhalt.etappe") + r")\s+(\d+[A-Za-z]?)\s*:\s*(.+)$"
 UMLAUTE = {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"}
 # Ebenen der Tagesseite (B2, docs/design.md „Tagesseite“): Jeder Abschnitt einer Etappe gehört zu einer Ebene, erkannt am
 # Anfang seines Titels (Groß- und Kleinschreibung egal). Die Software kennt nur die Form (ADR-0001, kein Katalog): die
@@ -54,11 +56,13 @@ UMLAUTE = {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"}
 # ({"unterwegs": ["Höhenprofil", "Fahrplan"], …}); die Titelanfänge der Reise gelten vor der Vorgabe. Was nirgends passt,
 # ist Hintergrund. Bis 29.10.2026 enthielt die Vorgabe Wandervokabular (Wegpunkte, Wasser, Einkehr, Verpflegung).
 EBENEN = ("weg", "unterwegs", "hintergrund", "quellen")
-EBENEN_VORGABE = {
-    "weg": ("Zusammenfassung",),
-    "unterwegs": ("Eckdaten", "Unterkünfte & Einkehr (Unterkünfte-Dossier)"),
-    "quellen": ("Quellen", "Prüfung", "Karten"),
-}
+def ebenen_vorgabe():
+    """Titelanfänge je Ebene aus dem Katalog, in allen Sprachen (inhalt.ebene.*)."""
+    def woerter(*schluessel):
+        return tuple(sorted(set().union(*(texte.inhaltswoerter(s) for s in schluessel))))
+    return {"weg": woerter("inhalt.ebene.zusammenfassung"),
+            "unterwegs": woerter("inhalt.ebene.eckdaten", "inhalt.ebene.unterkuenfte"),
+            "quellen": woerter("inhalt.ebene.quellen", "inhalt.ebene.pruefung", "inhalt.ebene.karten")}
 # Stichwort am Anfang eines Absatzes im Lesetext („**Charakter.** …“), Rubrik der Gliederung einer Art (docs/ontologie.md)
 STICHWORT = re.compile(r"<p>\s*<strong>([^<]{1,60})</strong>")
 BILD_LINK = re.compile(r"(!?)\[([^\]]*)\]\(([^)\s]+)\)")
@@ -278,7 +282,7 @@ class Bauer:
             except yaml.YAMLError as e:
                 raise BauFehler([f"reise.yaml: kein gültiges YAML ({e})."])
         self.eck = Reise(self.reise_roh, self.cfg, self.fehler, self.hinweise).daten()
-        self.etappen_muster = re.compile(self.cfg.get("etappen_muster", ETAPPEN_MUSTER))
+        self.etappen_muster = re.compile(self.cfg.get("etappen_muster", etappen_muster()))
 
     # ---------- Hilfen ----------
     def id_anlegen(self, id_, wo):
@@ -616,6 +620,7 @@ class Bauer:
         return {
             # Eckdaten, Darstellung, Status, Personen, Bausteine, Regeln aus reise.yaml (engine/reise.py)
             "reise": self.eck,
+            "inhaltswoerter": texte.seite_inhaltswoerter(),   # Wörter, an denen die Seite Inhalt erkennt (Fragestatus, Tag n, …), alle Sprachen
             "plan_kopf": plan_kopf,
             "abschnitte": abschnitte,
             "fragen": fragen,
@@ -972,7 +977,7 @@ class Bauer:
     def ebene(self, titel):
         """Ebene eines Etappen-Abschnitts auf der Tagesseite: zuerst die Titelanfänge der Reise, dann die Vorgabe."""
         t = titel.strip().lower()
-        for quelle in (self.cfg.get("etappen_ebenen") or {}, EBENEN_VORGABE):
+        for quelle in (self.cfg.get("etappen_ebenen") or {}, ebenen_vorgabe()):
             for ebene, anfaenge in quelle.items():
                 if any(t.startswith(a.lower()) for a in anfaenge):
                     return ebene

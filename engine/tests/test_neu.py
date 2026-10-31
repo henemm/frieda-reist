@@ -10,6 +10,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bauen  # noqa: E402
 import neu  # noqa: E402
+import schreiben  # noqa: E402
 
 VON, BIS = datetime.date(2027, 2, 6), datetime.date(2027, 2, 13)
 PERSONEN = {"ida": {"name": "Ida", "rolle": "organisator"}, "karl": {"name": "Karl", "rolle": "mitwirkend"},
@@ -260,3 +261,13 @@ def test_nachziehen_nur_schluessel(tmp_path):
     assert nachher["route"]["arten"]["hotel"]["kosten"] == "preis" and nachher["route"]["arten"]["herberge"]["kosten"] == "preis"   # pauschal; „pro Person“ nimmt die Organisator:in mit merkmal_definieren (rolle keine) heraus
     assert json.loads((r / "reise.json").read_text(encoding="utf-8"))["etappen_ebenen"]["unterwegs"][0] == "Höhenprofil"
     assert neu.nachziehen(r) == []                                        # zweiter Lauf: nichts mehr zu tun
+
+
+def test_frage_schliessen_schreibt_in_der_sprache_der_reise(tmp_path):
+    """Was der Schreibweg in offene-fragen.md schreibt, folgt der Sprache der Reise (ADR-0006, Punkt 5): auf Englisch „resolved“."""
+    for sprache, wort, datum in (("en", "resolved", "30/10/2026"), ("de", "geklärt", "30.10.2026")):
+        r = anlegen(tmp_path, pfad=f"reise-{sprache}", sprache=sprache)
+        titel, text = schreiben.frage_schliessen(r, {"name": "Ida"}, {"frage": "F-01", "ergebnis": "Tal gewählt"}, heute=datetime.date(2026, 10, 30))
+        zeile = [z for z in (r / "offene-fragen.md").read_text(encoding="utf-8").splitlines() if z.startswith("| F-01")][0]
+        assert f"{wort} {datum}: Ida, Tal gewählt" in zeile, zeile
+        assert titel.startswith("F-01")

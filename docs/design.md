@@ -149,7 +149,7 @@ Am 27.10.2026 wurde das Grunddesign an einer echten Tagesseite überarbeitet (fr
 - **Weniger Lärm.** „im Plan“ und die Orte-Marken unter der Etappe entfallen; ist ein Plan gewählt, nennt der Tag keine Pläne.
 - **Tiefenlinks** (`#E-01.eckdaten`) wählen den Reiter, öffnen die Quellen oder springen zum Abschnitt.
 
-**Welche Ebene?** Der Generator ordnet jeden Abschnitt einer Etappe nach dem Anfang seines Titels (`EBENEN_VORGABE` in `engine/bauen.py`, Groß- und Kleinschreibung egal), für alle Reisen gleich:
+**Welche Ebene?** Der Generator ordnet jeden Abschnitt einer Etappe nach dem Anfang seines Titels (`ebenen_vorgabe()` in `engine/bauen.py`: die Wörter stehen im Katalog unter `inhalt.ebene.*`, in allen Sprachen zugleich; Groß- und Kleinschreibung egal), für alle Reisen gleich:
 
 | Ebene | Titel beginnt mit |
 |---|---|

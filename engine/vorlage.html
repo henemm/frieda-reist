@@ -865,6 +865,24 @@ function gruppe(praefix) {
     for (const [s, v] of Object.entries(TEXTE[k].texte)) if (s.startsWith(p) && !s.slice(p.length).includes(".")) aus[s.slice(p.length)] = v;
   return aus;
 }
+// Wörter, an denen die Seite Inhalt der Reise erkennt (Fragestatus, „Tag n“, Kennzahlen …): aus dem Katalog, alle Sprachen zugleich,
+// denn der Inhalt einer Reise steht in der Sprache der Reise, nicht in der der Hülle
+const IW = D.inhaltswoerter || {};
+const iwMuster = (...schluessel) => schluessel.flatMap(k => IW[k] || []).sort((a, b) => b.length - a.length).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+const REGEL = {
+  frageZu: new RegExp("^(" + iwMuster("inhalt.frage.erledigt", "inhalt.frage.geklaert", "inhalt.frage.beantwortet", "inhalt.frage.entfaellt") + ")", "i"),
+  frageAufgabe: new RegExp("^→\\s*(?:" + iwMuster("inhalt.frage.aufgabe") + ")\\s*", "i"),
+  frageOffen: new RegExp("^(?:" + iwMuster("inhalt.frage.offen") + ")\\b[\\s:,–-]*", "i"),
+  tagNr: new RegExp("^(?:" + iwMuster("inhalt.tag") + ")\\s+\\d+\\s*:?\\s*"),
+  uebersicht: new RegExp("^(?:" + iwMuster("inhalt.uebersicht") + "):\\s*"),
+  gehzeit: new RegExp("^(?:" + iwMuster("inhalt.kennzahl.gehzeit", "inhalt.kennzahl.dauer") + ")", "i"),
+  aufstieg: new RegExp("^(?:" + iwMuster("inhalt.kennzahl.aufstieg") + ")", "i"),
+  abstieg: new RegExp("^(?:" + iwMuster("inhalt.kennzahl.abstieg") + ")", "i"),
+  laenge: new RegExp("^(?:" + iwMuster("inhalt.kennzahl.laenge") + ")", "i"),
+  fristWort: new RegExp("^(?:" + iwMuster("inhalt.frist.praeposition") + ")\\b", "i"),
+  nummerWort: new RegExp("\\s*\\b(?:" + iwMuster("inhalt.auftrag", "inhalt.rueckmeldung", "inhalt.anfrage") + ")\\s+[AR]-[\\w-]+(?:\\s+(?:" + iwMuster("inhalt.herkunft.aus_app") + "|(?:" + iwMuster("inhalt.herkunft.von") + ") [^;,·)]+))?", "g"),
+};
+const spaltenName = (spalten, n) => spalten.findIndex(k => (IW["inhalt.frage.spalte_" + n] || []).includes(k.toLowerCase()));
 // Atom Zahl: in der Sprache der Hülle (Dezimalzeichen, Ziffern); ohne Tausendertrenner, es sei denn {useGrouping: true}
 function zahlText(x, opt) { return new Intl.NumberFormat(LOCALE, {useGrouping: false, maximumFractionDigits: 20, ...opt}).format(x); }
 // Ziffern einer Zeichenkette in die der Sprache setzen (Zeiten, Dauer)
@@ -1188,8 +1206,8 @@ function summeText(s) {
 // Molekül Kennzahlenleiste: Gehzeit, Aufstieg, Abstieg, Strecke mit Etikett; Namen aus routen.yaml werden vereinheitlicht
 // fahrt: eine Bewegung, die nicht aus eigener Kraft ist (Bahn, Bus …): ihre Zeit heißt Dauer, nicht Gehzeit
 function kennzahlPaar(n, v, fahrt) {
-  return /^aufstieg/i.test(n) ? ["aufstieg", `↑ ${v} m`] : /^abstieg/i.test(n) ? ["abstieg", `↓ ${v} m`]
-    : /^(gehzeit|dauer)/i.test(n) ? [fahrt ? "dauer" : "gehzeit", v] : /^l(ä|ae)nge/i.test(n) ? ["strecke", /^[\d.,]+$/.test(v) ? `${v} km` : v] : [n, v];
+  return REGEL.aufstieg.test(n) ? ["aufstieg", `↑ ${v} m`] : REGEL.abstieg.test(n) ? ["abstieg", `↓ ${v} m`]
+    : REGEL.gehzeit.test(n) ? [fahrt ? "dauer" : "gehzeit", v] : REGEL.laenge.test(n) ? ["strecke", /^[\d.,]+$/.test(v) ? `${v} km` : v] : [n, v];
 }
 // Je Kennzahl eine Kachel; die bekannten tragen ihr Symbol im Etikett
 // Die Kennungen der Kennzahlen sind stabil (gehzeit, aufstieg …); der Name kommt aus dem Katalog, unbekannte Namen der Reise bleiben, wie sie sind
@@ -1846,7 +1864,7 @@ function optionBlock(w, o, ohneMerkmale, ohneId) {
   return b;
 }
 // Verlauf einer Option; Nummern von Aufträgen und Rückmeldungen (A-…, R-…) sind intern und stehen nicht auf der Seite
-const ohneNummern = t => String(t || "").replace(/\s*\b(?:Auftrag|Rückmeldung|Anfrage)\s+[AR]-[\w-]+(?:\s+(?:aus der Claude-App|von [^;,·)]+))?/g, "")
+const ohneNummern = t => String(t || "").replace(REGEL.nummerWort, "")
   .replace(/\b[AR]-\d{8}-\d{6}-\w+\b/g, "").replace(/^[\s–,;·-]+|[\s–,;·-]+$/g, "");
 function optionVerlauf(o) {
   return el("div", {class: "verlauf"}, o.verlauf.map(v => { const g = ohneNummern(v.grund);
@@ -2002,7 +2020,7 @@ function tagKm(t) {
 function tagMin(t) {
   let m = 0;
   for (const s of t.strecken) { const st = R.strecken[s.id] || {}; if (!summiertArt(st)) continue;
-    const g = Object.entries(st.kennzahlen || {}).find(([k]) => /^(gehzeit|dauer)/i.test(k));
+    const g = Object.entries(st.kennzahlen || {}).find(([k]) => REGEL.gehzeit.test(k));
     const x = g && /(\d+):(\d{2})/.exec(g[1]); if (x) m += +x[1] * 60 + +x[2]; }
   return m;
 }
@@ -2524,7 +2542,7 @@ function tagZeile(t) {
   const p = PLAN_FEST, rand = p && (t === p.tage[0] || t === p.tage[p.tage.length - 1]);
   const marken = [...(rand ? [] : t.fixpunkte || []).map(f => chip("leise", f)),
     ...wahl.map(w => chip(w.wann === "unterwegs" ? "unterwegs" : w.offen ? "offen" : "plan",
-      (w.wann === "unterwegs" ? T("seite.wahl.unterwegs_label") : T("seite.label.wahl")) + w.titel.replace(/^Tag \d+\s*:?\s*/, "")))];
+      (w.wann === "unterwegs" ? T("seite.wahl.unterwegs_label") : T("seite.label.wahl")) + w.titel.replace(REGEL.tagNr, "")))];
   return el("a", {class: "tagzeile vorschau", href: "#" + t.id, "data-tag": t.id},
     el("span", {class: "tz-punkt", "aria-hidden": "true"}),
     el("span", {class: "tz-datum"}, el("b", {}, String(t.nr)), t.datum ? datumText(t.datum, t.wochentag) : null),
@@ -2797,24 +2815,24 @@ function kennungenAufloesen(text) {
 // Stand einer Frage aus der Spalte „Status“: geklärt, als Aufgabe weitergegeben oder offen; der Rest des Texts als Notiz
 function frageStand(text) {
   const t = String(text || "").trim();
-  const zu = /^(erledigt|geklärt|beantwortet|entfällt)/i.exec(t);
+  const zu = REGEL.frageZu.exec(t);
   if (zu) return {art: "zu", wort: zu[1].toLowerCase(), rest: t.slice(zu[0].length).replace(/^[\s:,–-]+/, "")};
-  if (/^→\s*Aufgabe/i.test(t)) return {art: "aufgabe", wort: T("seite.frage.als_aufgabe"), rest: t.replace(/^→\s*Aufgabe\s*/i, "")};
-  return {art: "offen", wort: "offen", rest: /^offen\b/i.test(t) ? t.replace(/^offen\b[\s:,–-]*/i, "") : t};
+  if (REGEL.frageAufgabe.test(t)) return {art: "aufgabe", wort: T("seite.frage.als_aufgabe"), rest: t.replace(REGEL.frageAufgabe, "")};
+  return {art: "offen", wort: T("seite.wahl.zustand_offen"), rest: REGEL.frageOffen.test(t) ? t.replace(REGEL.frageOffen, "") : t};
 }
 // Stand einer Frage aus ihrer Zeile (Spalte „Status“, sonst das Feld status) -> offen, solange sie nicht geklärt ist; einmal für alle
-const frageStatusText = z => { const i = D.fragen.spalten.findIndex(k => k.toLowerCase() === "status"); return i >= 0 ? z.zellen[i] : z.status; };
+const frageStatusText = z => { const i = spaltenName(D.fragen.spalten, "status"); return i >= 0 ? z.zellen[i] : z.status; };
 const frageOffen = z => frageStand(frageStatusText(z)).art !== "zu";
 // Molekül offene Frage als Zeile (28.10.2026): die Frage in Worten ohne Kennungen, darunter bis wann, die
 // Stellen als Pillen, die Notiz zum Stand leise; die Kennung steht im Tooltip und in der Sprechblase
 function frageZeile(spalten, z) {
-  const sp = n => spalten.findIndex(k => k.toLowerCase() === n);
+  const sp = n => spaltenName(spalten, n);
   const iWas = sp("was") >= 0 ? sp("was") : 1, iBis = sp("bis"), iStand = sp("status");
   const was = kennungenAufloesen(z.zellen[iWas]), stand = frageStand(iStand >= 0 ? z.zellen[iStand] : z.status);
   const notiz = kennungenAufloesen(stand.rest);
   const bis = iBis >= 0 && z.zellen[iBis] && z.zellen[iBis] !== "–" ? z.zellen[iBis] : "";
   // Der Stand steht in der Gruppe („Zu klären“, „Als Aufgabe unterwegs“, „Geklärt“), nicht noch einmal an jeder Frage
-  const meta = [bis ? el("span", {}, /^(ab|bis|vor|nach|sobald|spätestens)\b/i.test(bis) ? "" : T("seite.label.bis"), kennungenAufloesen(bis).teile) : null,
+  const meta = [bis ? el("span", {}, REGEL.fristWort.test(bis) ? "" : T("seite.label.bis"), kennungenAufloesen(bis).teile) : null,
     ...spalten.map((k, i) => i > 0 && ![iWas, iBis, iStand].includes(i) && z.zellen[i] && z.zellen[i] !== "–" ? el("span", {}, `${k}: ${z.zellen[i]}`) : null)].filter(Boolean);
   const ids = [...new Set([...was.ids, ...notiz.ids, ...(z.ziele || [])])].filter(id => titelZu(id));
   return el("div", {class: "frage ziel" + (stand.art === "zu" ? " zu" : ""), id: z.id, "data-ziel": z.id, title: z.id},
@@ -2883,7 +2901,7 @@ const wochentag = iso => new Intl.DateTimeFormat(LOCALE, {weekday: "short", time
 function ortKurz(id) {
   const a = ortAbschnitt(id);
   if (!a) return "";
-  const t = klartext(a.intro || "").replace(/^Übersicht:\s*/, "");
+  const t = klartext(a.intro || "").replace(REGEL.uebersicht, "");
   return t.length > 180 ? t.slice(0, 180).replace(/\s\S*$/, "") + " …" : t;
 }
 // Alternativen, die in einem Plan zur Wahl stehen (z. B. Kyūshū-Fassungen), verankert nach einem Tag des Plans
@@ -3289,7 +3307,7 @@ function wahlWo(w) {
 function wahlListenZeile(w) {
   const g = gueltigeOptionen(w), akt = g.find(o => o.aktiv);
   const unter = [wahlWo(w), w.wann === "unterwegs" ? (akt ? T("seite.wahl.standard_titel", {titel: akt.titel}) : "") : akt ? T("seite.wahl.vorlaeufig_titel", {titel: akt.titel}) : ""].filter(Boolean).join(" · ");
-  return listenZeile("wahl", "varianten", w.titel.replace(/^Tag \d+\s*:?\s*/, ""), unter || null, w.id, null,
+  return listenZeile("wahl", "varianten", w.titel.replace(REGEL.tagNr, ""), unter || null, w.id, null,
     chip(w.wann === "unterwegs" ? "unterwegs" : "offen", T("seite.wahl.zur_wahl_n", {n: g.length})));
 }
 // Titel einer Sammelliste mit Zahl als Zustand (Atom chip)

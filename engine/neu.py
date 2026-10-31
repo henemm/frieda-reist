@@ -29,15 +29,17 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bauen  # noqa: E402
+import texte  # noqa: E402
 from reise import PFAD_MUSTER, ROLLEN, reise_pfad, rolle_neu, schluessel_aus_name, sprache_pruefen  # noqa: E402
 
-VORLAGE = Path(__file__).with_name("reisevorlage")
+VORLAGEN = Path(__file__).with_name("reisevorlage")   # je Sprache ein Ordner (de, en …); fehlt er, gilt die Vorgabe der Personen (ADR-0006, Punkt 9)
+
+
+def vorlage_ordner(sprache):
+    return VORLAGEN / sprache if (VORLAGEN / sprache).is_dir() else VORLAGEN / texte.VORGABE
 ARTEN = ("W", "F", "O", "U", "A", "E", "T", "V", "B")     # nummerierte IDs (A = Aufenthalt ohne Nacht, B = Buchung); Pläne (P-A) und Aufgaben (AG, live) nicht
 GRUPPEN = ("wissen", "praxis", "quelle")
-ROLLE_TEXT = {"organisator": "organisiert", "mitwirkend": "bringt ein", "gast": "liest mit"}
 BAUSTEINE_IDEE = ["rueckmeldungen", "fragen", "aufgaben", "wuensche"]
-MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November",
-          "Dezember"]
 
 
 class Fehler(Exception):
@@ -45,16 +47,17 @@ class Fehler(Exception):
 
 
 # ---------- Hilfen ----------
-def datum_text(d):
-    return f"{d.day}.{d.month}.{d.year}"
+def datum_text(d, sprache=texte.VORGABE_REISE):
+    return texte.datum(d, sprache)
 
 
-def zeitraum_text(von, bis):
+def zeitraum_text(von, bis, sprache=texte.VORGABE_REISE):
+    """Zeitraum in Worten der Sprache der Reise: Muster und Monatsnamen stehen im Katalog (inhalt.zeitraum.*, inhalt.monat.*)."""
     if von.year == bis.year and von.month == bis.month:
-        return f"{von.day}.–{bis.day}. {MONATE[von.month - 1]} {von.year}"
+        return texte.t(sprache, "inhalt.zeitraum.gleicher_monat", von=von.day, bis=bis.day, monat=texte.t(sprache, f"inhalt.monat.{von.month}"), jahr=von.year)
     if von.year == bis.year:
-        return f"{von.day}.{von.month}.–{bis.day}.{bis.month}.{bis.year}"
-    return f"{datum_text(von)}–{datum_text(bis)}"
+        return texte.t(sprache, "inhalt.zeitraum.gleiches_jahr", von=von.day, vm=von.month, bis=bis.day, bm=bis.month, jahr=bis.year)
+    return texte.t(sprache, "inhalt.zeitraum.mehrere_jahre", von=datum_text(von, sprache), bis=datum_text(bis, sprache))
 
 
 def json_text(obj, tiefe=0):
@@ -138,7 +141,7 @@ def schreib_marken(reise_dir, marken):
 
 # ---------- Reise anlegen ----------
 def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, untertitel=None,
-            herkunft="Gespräch in Claude Code", ueberblick=None, heute=None, sprache=None):
+            herkunft=None, ueberblick=None, heute=None, sprache=None):
     """Legt reisen_dir/<pfad> aus der Vorlage an -> Ordner. personen: {schluessel: {name, rolle[, reist, notiz]}}."""
     heute = heute or datetime.date.today()
     titel = (titel or "").strip()
@@ -165,18 +168,20 @@ def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, un
     if ziel_dir.exists():
         raise Fehler(f"Eine Reise „{pfad}“ gibt es schon. Bitte einen anderen Ordnernamen wählen (--pfad).")
 
-    zt = zeitraum_text(von, bis)
+    # Alles, was die Software in Dateien der Reise schreibt, folgt der Sprache der Reise (ADR-0006, Punkt 5)
+    herkunft = herkunft or texte.t(sprache, "inhalt.neu.herkunft_gespraech")
+    zt = zeitraum_text(von, bis, sprache)
     werte = {
-        "titel": titel, "zeitraum_text": zt, "ziel_text": ziel or "noch offen", "wer": wer,
-        "personen_text": ", ".join(f"{p['name']} ({ROLLE_TEXT[p['rolle']]}{'' if p.get('reist', True) else ', reist nicht mit'})"
-                                   for p in personen.values()),
-        "heute_text": datum_text(heute), "herkunft": herkunft,
-        "ueberblick": ueberblick or "Noch leer. Hier steht, was über Ziel und Gegend wichtig ist, in eigenen Worten "
-                                    "und mit Quelle.",
+        "titel": titel, "zeitraum_text": zt, "ziel_text": ziel or texte.t(sprache, "inhalt.neu.ziel_offen"), "wer": wer,
+        "personen_text": ", ".join(f"{p['name']} ({texte.t(sprache, 'inhalt.neu.rolle.' + p['rolle'])}"
+                                   f"{'' if p.get('reist', True) else texte.t(sprache, 'inhalt.neu.reist_nicht_mit')})" for p in personen.values()),
+        "heute_text": datum_text(heute, sprache), "herkunft": herkunft,
+        "ueberblick": ueberblick or texte.t(sprache, "inhalt.neu.ueberblick_leer"),
     }
-    for f in sorted(VORLAGE.rglob("*")):
+    vorlage = vorlage_ordner(sprache)
+    for f in sorted(vorlage.rglob("*")):
         if f.is_file():
-            z = ziel_dir / f.relative_to(VORLAGE)
+            z = ziel_dir / f.relative_to(vorlage)
             z.parent.mkdir(parents=True, exist_ok=True)
             z.write_text(string.Template(f.read_text(encoding="utf-8")).substitute(werte), encoding="utf-8")
     (ziel_dir / "medien").mkdir(exist_ok=True)
@@ -188,10 +193,10 @@ def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, un
         "sprache": sprache,
         "zeitraum": {"von": von, "bis": bis},
         "status": {"wert": "idee", "verlauf": [{"datum": heute, "wert": "idee", "wer": wer,
-                                                 "grund": f"Reise angelegt ({herkunft})"}]},
+                                                 "grund": texte.t(sprache, "inhalt.neu.reise_angelegt", herkunft=herkunft)}]},
         "personen": personen,
         "bausteine": BAUSTEINE_IDEE,
-        "darstellung": {"gruppen": {"wissen": "Wissen", "praxis": "Praxis", "quelle": "Quellen"}},
+        "darstellung": {"gruppen": {g: texte.wort(sprache, f"inhalt.gruppe.{g}") for g in GRUPPEN}},
     }
     (ziel_dir / "reise.yaml").write_text(
         "# Eckdaten, Zeitraum, Status, Personen und Einstellungen (engine/reise.py, docs/produkt.md).\n"
@@ -201,8 +206,9 @@ def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, un
         "plan": "plan/plan.md",
         "fragen": "offene-fragen.md",
         "abschnitte": {
-            "plan/plan.md": {"Eckdaten": ["W-01", "plan"]},
-            "inhalt/wissen.md": {"Überblick": ["W-02", "wissen"], "Quellen": ["W-03", "quelle"]},
+            "plan/plan.md": {texte.wort(sprache, "inhalt.ebene.eckdaten"): ["W-01", "plan"]},
+            "inhalt/wissen.md": {texte.wort(sprache, "inhalt.abschnitt.ueberblick"): ["W-02", "wissen"],
+                                 texte.wort(sprache, "inhalt.ebene.quellen"): ["W-03", "quelle"]},
         },
     })
     schreib_marken(ziel_dir, {"W": 3, "F": 1})   # vergeben von der Vorlage: W-01 bis W-03, F-01
@@ -215,11 +221,12 @@ def aus_auftrag(reisen_dir, auftrag, heute=None):
     n = (auftrag.get("daten") or {}).get("neue_reise")
     if not n:
         raise Fehler(f"{auftrag.get('id')}: kein Auftrag für eine neue Reise.")
-    datum = datum_text(datetime.date.fromisoformat(str(auftrag.get("erstellt", ""))[:10] or (heute or datetime.date.today()).isoformat()))
-    ueberblick = f"Notiz von {n['wer']} aus der Claude-App ({datum}):\n\n{n['notiz']}" if n.get("notiz") else None
+    sprache = n.get("sprache") or texte.VORGABE_REISE
+    datum = datum_text(datetime.date.fromisoformat(str(auftrag.get("erstellt", ""))[:10] or (heute or datetime.date.today()).isoformat()), sprache)
+    ueberblick = texte.t(sprache, "inhalt.neu.notiz_von", wer=n["wer"], datum=datum, notiz=n["notiz"]) if n.get("notiz") else None
     return anlegen(reisen_dir, n["titel"], datetime.date.fromisoformat(n["von"]), datetime.date.fromisoformat(n["bis"]),
                    n["personen"], n["wer"], ziel=n.get("ziel") or None, pfad=n["pfad"], ueberblick=ueberblick,
-                   herkunft=f"Auftrag {auftrag['id']} aus der Claude-App", heute=heute, sprache=n.get("sprache"))
+                   herkunft=texte.t(n.get("sprache") or texte.VORGABE_REISE, "inhalt.neu.herkunft_auftrag", id=auftrag["id"]), heute=heute, sprache=n.get("sprache"))
 
 
 # ---------- Abschnitt mit neuer ID ----------
@@ -521,7 +528,7 @@ def main(argv):
     r.add_argument("--pfad")
     r.add_argument("--sprache", help="Sprachkennung (texte.SPRACHEN), Vorgabe de")
     r.add_argument("--untertitel")
-    r.add_argument("--herkunft", default="Gespräch (Betreiber-Ausnahme in Claude Code, docs/neue-reise.md)")
+    r.add_argument("--herkunft", help="Vorgabe: Gespräch in Claude Code")
     r.add_argument("--ueberblick")
     i = sub.add_parser("id", help="nächste freie ID vergeben")
     i.add_argument("reise", type=Path)
@@ -556,7 +563,8 @@ def main(argv):
         if x.befehl == "reise":
             personen = dict(person_aus_text(t) for t in x.person)
             d = anlegen(x.reisen, x.titel, x.von, x.bis, personen, x.wer, ziel=x.ziel, pfad=x.pfad, sprache=x.sprache,
-                        untertitel=x.untertitel, herkunft=x.herkunft, ueberblick=x.ueberblick)
+                        untertitel=x.untertitel, ueberblick=x.ueberblick,
+                        herkunft=x.herkunft or texte.t(sprache_pruefen(x.sprache)[0], "inhalt.neu.herkunft_gespraech_betreiber"))
             ok, m = pruefen(d)
             print(f"Angelegt: {d} (Status idee)." + ("" if ok else " Prüfung meldet:\n - " + "\n - ".join(m)))
             return 0 if ok else 1

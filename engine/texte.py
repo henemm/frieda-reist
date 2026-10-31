@@ -152,10 +152,32 @@ def seite():
 
 
 def inhaltswoerter(schluessel):
-    """Die Wörter, die ein Schlüssel in allen Sprachen hat (für die Erkennung von Inhalt, der in irgendeiner Sprache geschrieben ist)."""
+    """Die Wörter, die ein Schlüssel in allen Sprachen hat (für die Erkennung von Inhalt, der in irgendeiner Sprache geschrieben ist).
+    Ein Wert darf Alternativen mit | nennen (länge|laenge); sie zählen einzeln."""
     woerter = set()
     for k in sprachen():
         text = sprache(k).TEXTE.get(schluessel)
         if text:
-            woerter.add(text)
+            woerter.update(w.strip() for w in text.split("|") if w.strip())
     return woerter
+
+
+def inhaltsmuster(*schluessel):
+    """Regex-Alternation (ohne Klammern) aller Wörter der Schlüssel in allen Sprachen, längste zuerst, mit re.escape."""
+    woerter = set()
+    for s in schluessel:
+        woerter |= inhaltswoerter(s)
+    return "|".join(re.escape(w) for w in sorted(woerter, key=lambda w: (-len(w), w)))
+
+
+def wort(kuerzel, schluessel):
+    """Das Wort einer Sprache für einen Inhaltsschlüssel (bei Alternativen die erste): was die Software in Dateien der Reise schreibt."""
+    return t(kuerzel, schluessel).split("|")[0].strip()
+
+
+def seite_inhaltswoerter():
+    """Alle Inhaltswörter (Schlüssel inhalt.* -> Liste) für die Seite."""
+    schluessel = set()
+    for k in sprachen():
+        schluessel |= {s for s in sprache(k).TEXTE if s.startswith("inhalt.")}
+    return {s: sorted(inhaltswoerter(s)) for s in sorted(schluessel)}

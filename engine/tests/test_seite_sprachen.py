@@ -16,6 +16,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bauen  # noqa: E402
+import neu  # noqa: E402
 import texte  # noqa: E402
 from playwright_pfad import PLAYWRIGHT  # noqa: E402
 
@@ -147,3 +148,73 @@ def test_rundgang_pseudo_sprache_alles_im_katalog_und_umschalten_ist_vollstaendi
     assert e["fehler"] == [] and e["routen"] > 60
     assert e["stale"] == {}, dict(list(e["stale"].items())[:6])
     assert e["marke"] == {}, dict(list(e["marke"].items())[:10])
+
+
+def ausdruecke(web, liste, browser="chromium"):
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(web)))
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        aus = subprocess.run(["node", str(Path(__file__).parent / "ausdruecke_browser.mjs"), str(PLAYWRIGHT),
+                              f"http://127.0.0.1:{srv.server_address[1]}/reise/", json.dumps(liste)],
+                             capture_output=True, text=True, timeout=120, env={**os.environ, "RH_BROWSER": browser})
+    finally:
+        srv.shutdown()
+    assert aus.returncode == 0, aus.stderr[-2000:]
+    e = json.loads(aus.stdout.strip().splitlines()[-1])
+    assert e["fehler"] == [], e["fehler"]
+    return e["werte"]
+
+
+def neue_reise_bauen(tmp_path, sprache):
+    import datetime
+    ordner = neu.anlegen(tmp_path / "reisen", "Winter in the Alps", datetime.date(2027, 2, 6), datetime.date(2027, 2, 13),
+                         {"ida": {"name": "Ida", "rolle": "organisator"}, "karl": {"name": "Karl", "rolle": "mitwirkend", "reist": False}},
+                         "Ida", ziel="Oberstdorf", sprache=sprache, heute=datetime.date(2026, 10, 27))
+    ziel = tmp_path / "web" / "reise"
+    daten = bauen.bauen(ordner, ziel)
+    return ordner, daten, tmp_path / "web"
+
+
+def test_englische_reise_wird_angelegt_gebaut_und_erkannt(tmp_path):
+    """Eine neue Reise mit sprache en bekommt die englische Vorlage; Überschriften, Fragen und Zeitraum stehen auf Englisch,
+    und der Generator erkennt ihre Abschnitte (Key facts, Overview, Sources) und die offene Frage."""
+    ordner, daten, _ = neue_reise_bauen(tmp_path, "en")
+    assert daten["reise"]["sprache"] == "en" and daten["reise"]["untertitel"] == "Oberstdorf, 6–13 February 2027"
+    assert [a["titel"] for a in daten["abschnitte"]] == ["Key facts", "Overview", "Sources"]
+    assert [a["id"] for a in daten["abschnitte"]] == ["W-01", "W-02", "W-03"]
+    assert daten["fragen"]["spalten"] == ["ID", "What", "Until", "Status"] and daten["fragen"]["zeilen"][0]["id"] == "F-01"
+    assert "Ida (organises), Karl (contributes, not travelling)" in (ordner / "plan/plan.md").read_text(encoding="utf-8")
+    assert "created by Ida (conversation in Claude Code)" in (ordner / "kontext/herkunft.md").read_text(encoding="utf-8")
+    assert daten["reise"]["verlauf"] == [] and daten["reise"]["status"]["verlauf"][0]["grund"] == "Trip created (conversation in Claude Code)"
+    assert (ordner / "reise.yaml").read_text(encoding="utf-8").count("Knowledge") == 1   # Gruppennamen in der Sprache der Reise
+    assert "resolved" in daten["inhaltswoerter"]["inhalt.frage.geklaert"] and "geklärt" in daten["inhaltswoerter"]["inhalt.frage.geklaert"]
+
+
+def test_deutsche_reise_bekommt_deutsche_vorlage(tmp_path):
+    ordner, daten, _ = neue_reise_bauen(tmp_path, "de")
+    assert [a["titel"] for a in daten["abschnitte"]] == ["Eckdaten", "Überblick", "Quellen"]
+    assert daten["reise"]["untertitel"] == "Oberstdorf, 6.–13. Februar 2027"
+    assert "Ida (organisiert), Karl (bringt ein, reist nicht mit)" in (ordner / "plan/plan.md").read_text(encoding="utf-8")
+
+
+@ohne_browser
+@pytest.mark.parametrize("sprache", ["en", "de"])
+def test_seite_erkennt_fragestatus_in_beiden_sprachen(tmp_path, sprache):
+    """Der Fragestatus wird in jeder Sprache des Katalogs erkannt, unabhängig von der Hülle (Inhalt gehört der Reise)."""
+    _, _, web = neue_reise_bauen(tmp_path, sprache)
+    ausdruck = [f'["{t}"].map(t => frageStand(t).art).join()' for t in (
+        "open", "offen", "resolved 30/10/2026: Ida, chosen", "geklärt 30.10.2026: Ida, gewählt", "done", "dropped", "entfällt",
+        "→ task call", "→ Aufgabe anrufen")]
+    arten = ausdruecke(web, ausdruck)
+    assert arten == ["offen", "offen", "zu", "zu", "zu", "zu", "zu", "aufgabe", "aufgabe"], arten
+    assert ausdruecke(web, ['frageStand("resolved 30/10/2026: Ida, chosen").rest'])[0] == "30/10/2026: Ida, chosen"
+    # Tag n, Übersicht, Kennzahlen: Wörter beider Sprachen
+    muster = ausdruecke(web, ['["Day 3: Hut", "Tag 3: Hütte"].map(t => t.replace(REGEL.tagNr, "")).join("|")',
+                              '["Overview: x", "Übersicht: x"].map(t => t.replace(REGEL.uebersicht, "")).join("|")',
+                              '["Walking time", "Gehzeit", "Duration", "Dauer"].every(t => REGEL.gehzeit.test(t))',
+                              '["Length", "Länge", "Laenge"].every(t => REGEL.laenge.test(t))'])
+    assert muster == ["Hut|Hütte", "x|x", True, True]
