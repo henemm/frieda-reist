@@ -40,6 +40,9 @@ for (const breite of [390, 1300]) {
   const a = aus[breite] = await lesen();
   // Karte der Reise: Leaflet hat ihren Kasten vermessen und zeichnet die Wege in der Fläche, nicht in einen Punkt
   // (Fehler 29.10.2026: Kasten beim Zeichnen noch nicht im Dokument, Größe 0)
+  // Auf einem ausgelasteten Rechner braucht das Vermessen länger als eine feste Frist: warten, bis Leaflet den Kasten kennt
+  await p.waitForFunction(() => { const box = document.querySelector(".reise-karte .kartenbox");
+    return !box || (KARTE && box.clientWidth > 0 && KARTE.getSize().x === box.clientWidth); }, null, {timeout: 5000}).catch(() => {});
   await p.waitForTimeout(300);
   a.karte = await p.evaluate(() => { const box = document.querySelector(".reise-karte .kartenbox");
     if (!box) return null;
