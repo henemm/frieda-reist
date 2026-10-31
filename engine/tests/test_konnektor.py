@@ -1118,6 +1118,6 @@ def test_englische_reise_antwortet_englisch(dienst, seiten_englisch, monkeypatch
         assert not f, (name, t)
         antworten[name] = t
     u = antworten["ueberblick"]
-    assert "## Bookings: 2 booked, 1 cancelled" in u and "## Content (look up with zeige)" in u
+    assert "## Bookings: 2 booked, 1 cancelled" in u and "## Content (look up with show)" in u
     assert "Deadline 13/5/2027" in u and "free cancellation until 11/5/2027" in u
     assert "Fri 14/5/2027" in u and "Fr." not in u and "Frist" not in u and "Buchungen" not in u

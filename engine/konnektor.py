@@ -109,13 +109,21 @@ AID_MUSTER = re.compile(r"^A-\d{8}-\d{6}-[0-9a-f]{4}$")
 
 _sperre = threading.Lock()
 
-CODE_DATEIEN = ("konnektor.py", "reise.py", "rueckmeldungen.py", "routen.py", "schnittstelle.py", "texte.py", "texte_de.py", "texte_en.py")
+CODE_DATEIEN = ("konnektor.py", "reise.py", "rueckmeldungen.py", "routen.py", "schnittstelle.py", "texte.py")
+SPRACHDATEIEN = tuple(f"texte_{k}.py" for k in texte._dateien())   # jede Sprachdatei neben dem Code zählt zum Stand
+
+
+def antworttext(t):
+    """Text einer Antwort für den Client: ein Satz aus dem Katalog in der Sprache des Aufrufs, Werkzeugnamen so, wie tools/list sie zeigt."""
+    if isinstance(t, texte.Satz):
+        t = t.text(texte.aufruf_sprache())
+    return schnittstelle.namen_im_text(t, streng=True)
 
 
 def code_stand():
     """Kurzer Hash des Codes, den der Dienst von der Platte lädt (konnektor.py und die Module daneben)."""
     h = hashlib.sha256()
-    for n in CODE_DATEIEN:
+    for n in CODE_DATEIEN + SPRACHDATEIEN:
         try:
             h.update((Path(__file__).resolve().parent / n).read_bytes())
         except OSError:
@@ -2044,7 +2052,7 @@ def frieda_antwort(zugang, nid, methode, p, ok):
     if methode == "tools/call":
         name_i, args_i = aufruf_intern(frieda_werkzeuge(k), p.get("name"), p.get("arguments"))
         t, fehler = frieda_werkzeug(k, name_i, args_i)
-        return ok({"content": [{"type": "text", "text": schnittstelle.namen_im_text(t, streng=True)}], "isError": fehler})
+        return ok({"content": [{"type": "text", "text": antworttext(t)}], "isError": fehler})
     return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 
@@ -2078,7 +2086,7 @@ def konto_antwort(konto, nid, methode, p, ok):
             t, fehler = reise_anlegen(konto, args)
         else:
             t, fehler = tk("konnektor.ausgabe.werkzeug.1", name=name), True
-        return ok({"content": [{"type": "text", "text": schnittstelle.namen_im_text(t, streng=True)}], "isError": fehler})
+        return ok({"content": [{"type": "text", "text": antworttext(t)}], "isError": fehler})
     return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 
@@ -2767,7 +2775,7 @@ def antwort_auf(zugang, nachricht):
     if methode == "tools/call":
         name_i, args_i = aufruf_intern(werkzeuge_fuer(zugang), p.get("name"), p.get("arguments"))
         t, fehler = werkzeug(zugang, name_i, args_i)
-        return ok({"content": [{"type": "text", "text": schnittstelle.namen_im_text(t, streng=True)}], "isError": fehler})
+        return ok({"content": [{"type": "text", "text": antworttext(t)}], "isError": fehler})
     return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 
