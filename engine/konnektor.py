@@ -67,7 +67,7 @@ import belege as bl  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
-from routen import FARBEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, art_schluessel, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
+from routen import FARBEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, ZAHLUNG, ZAHLUNG_ALIAS, ZAHLUNG_WORTE, art_schluessel, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
 
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "rueckmeldung_erledigen",
@@ -421,9 +421,13 @@ class Handbuch:
     def buchung_text(self, b):
         """Eine Buchung (B-…, #76) für die Claude-App: Dinge, Status, Nummer, Anbieter, Preis, Frist, Storno, Herkunft, Belege, Verlauf."""
         z = ["Für: " + "; ".join(f"{x} {self.titel_von(x)}" for x in b.get("fuer") or []), f"Status: {b.get('status')}"]
-        for k, name in (("nummer", "Nummer: "), ("bei", "Gebucht bei: "), ("preis", "Preis: "), ("bezahlt", "Bezahlt: ")):
+        for k, name in (("nummer", "Nummer: "), ("bei", "Gebucht bei: "), ("preis", "Preis: ")):
             if b.get(k):
                 z.append(name + str(b[k]))
+        if b.get("zahlung") or b.get("bezahlt"):   # Zahlstand (#166) mit seinen Einzelheiten
+            z.append("Zahlung: " + " · ".join(x for x in (ZAHLUNG_WORTE.get(b.get("zahlung"), b.get("zahlung")), b.get("bezahlt")) if x))
+        for m in b.get("merkmale") or []:   # Merkmale der Buchung (#166), Herkunft wie die Buchung
+            z.append(f"{m['name']}: {m['wert']}" + (f" {m['einheit']}" if m.get("einheit") else ""))
         if b.get("preise"):
             z.append("Preise je Ding: " + "; ".join(f"{x} {self.titel_von(x)}: {p}" for x, p in b["preise"].items()))
         if b.get("personen"):
@@ -857,6 +861,14 @@ class Handbuch:
             s = self.r["strecken"][ziel]
             z.append(f"## {ziel} {s.get('titel') or ziel}")
             z += self.merkmal_zeilen(krit, s.get("merkmale"), s.get("fehlt")) or ["(keine Merkmale)"]
+        bm = (self.r.get("buchung_merkmale") or {}).get(b) or []
+        if bm:   # #166: was erst durch das Buchen entsteht, steht an der Buchung (buchung_anlegen/buchung_aendern, merkmale)
+            z += ["## Merkmale der Buchungen dieser Art",
+                  "Werte trägst du an der Buchung ein (buchung_anlegen, buchung_aendern: merkmale), nicht mit wert_eintragen; "
+                  "sie erben die Herkunft der Buchung."]
+            for k in bm:
+                z.append(f"- {k['id']} – {k['name']}: {k.get('typ', 'text')}" + (f" ({' | '.join(k['werte'])})" if k.get("werte") else "")
+                         + (f"; so finden: {k['hilfe']}" if k.get("hilfe") else "") + (f"; fragen: „{k['frage']}“" if k.get("frage") else ""))
         return "\n".join(z), None
 
     def kategorien(self):
@@ -1138,7 +1150,8 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
     route = d.get("route") or {}
     if name == "merkmal_definieren" and not args.get("trotzdem"):
         art = str(args.get("art") or "").strip().lower()
-        krit = (route.get("merkmale") or {}).get(art) or []
+        bereich = "buchung_merkmale" if str(args.get("fuer") or "").strip().lower() == "buchung" else "merkmale"
+        krit = (route.get(bereich) or {}).get(art) or []
         key = art_schluessel(str(args.get("merkmal") or args.get("bezeichnung") or ""))
         if key and key not in {k["id"] for k in krit}:
             aehnlich = aehnliches_merkmal(key, krit)
@@ -2274,10 +2287,15 @@ KATEGORIE_DEFINIEREN = {"name": "kategorie_definieren", "description": "Eine Kat
 MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "Ein Merkmal einer Art dieser Reise anlegen oder ändern: "
                       "umbenennen, Typ und Werte, veränderlich (braucht dann ein Prüfdatum), Stufe (nötig | gut zu wissen | zusätzlich; "
                       "aus schaltet es für diese Reise ab), Hilfe zum Recherchieren, Frage an die Person, weitere Namen. "
+                      "Mit fuer: buchung ein Merkmal der Buchungen dieser Art: was erst durch das Buchen entsteht (Ticketart, Tarif, "
+                      "Lager oder Zimmer, Zeitfenster), nicht was jedes Angebot beschreibt (Preis laut Website, Frühstück, Lage); "
+                      "dort nur Name, Typ, Werte, Einheit, Hilfe, Frage. "
                       "Organisator:innen schreiben damit direkt (gilt sofort, Seite in wenigen Minuten), Mitwirkende schlagen vor. "
                       "Vorher merkmale aufrufen (kein Doppeltes anlegen) und kurz bestätigen lassen, was genau eingetragen wird.",
                       "inputSchema": {"type": "object", "properties": {
                           "art": {"type": "string", "description": "Schlüssel der Art, z. B. refugi (aus merkmale)"},
+                          "fuer": {"type": "string", "enum": ["ding", "buchung"], "description": "ding (Vorgabe): Merkmal des Angebots, "
+                                   "gilt für jeden Kandidaten; buchung: Merkmal der Buchungen dieser Art"},
                           "merkmal": {"type": "string", "description": "Schlüssel des Merkmals (klein, z. B. stornierung); leer: aus "
                                       "der Bezeichnung. Zum Ändern den vorhandenen Schlüssel"},
                           "bezeichnung": {"type": "string", "description": "Anzeigename, z. B. Stornierung (beim Anlegen nötig)"},
@@ -2437,7 +2455,8 @@ REISE_STATUS_SETZEN = {"name": "reise_status_setzen", "description": "Nur für O
                            "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["status", "grund"]}}
 EINSTELLUNG_SETZEN = {"name": "einstellung_setzen", "description": "Nur für Organisator:innen: Bausteine der Reise (vollständige Liste, z. B. "
                       "varianten, karte, tagesseiten, rueckmeldungen, fragen, aufgaben, wuensche, waechter) oder Spielregeln (regeln, z. B. einladen: "
-                      "mitwirkend, waechter_frist_tage: 45) setzen; schreibt sofort, der alte Wert steht im Verlauf.",
+                      "mitwirkend, waechter_frist_tage: 45, waechter_zahlung: true meldet offene Zahlungen gebuchter Buchungen) setzen; "
+                      "schreibt sofort, der alte Wert steht im Verlauf.",
                       "inputSchema": {"type": "object", "properties": {
                           "bausteine": {"type": "array", "items": {"type": "string"}},
                           "regeln": {"type": "object", "additionalProperties": True},
@@ -2447,7 +2466,11 @@ BUCHUNG_FELDER_SCHEMA = {
     "nummer": {"type": "string", "description": "Buchungsnummer, Buchungscode, PNR"},
     "bei": {"type": "string", "description": "wo gebucht: Anbieter oder Portal, z. B. booking.com, direkt per Mail, bahn.de"},
     "preis": {"type": "string", "description": "Gesamtpreis mit Währung und wofür, z. B. „240 € für 2 Nächte“"},
-    "bezahlt": {"type": "string", "description": "was schon bezahlt ist, z. B. „Anzahlung 50 €, Rest vor Ort“"},
+    "zahlung": {"type": "string", "enum": [*ZAHLUNG, *ZAHLUNG_ALIAS, ""],
+                "description": "Zahlstand: offen (open), angezahlt (deposit), bezahlt (paid), vor_ort (on_site: erst vor Ort, vorher "
+                               "nichts zu tun), inklusive (included: in einer anderen Buchung enthalten), erstattet (refunded: nur bei "
+                               "storniert); gespeichert wird der deutsche Wert. Leer entfernt ihn"},
+    "bezahlt": {"type": "string", "description": "Einzelheiten zur Zahlung, z. B. „Anzahlung 50 €, Rest bis 1.2.“"},
     "frist": {"type": "string", "description": "JJJJ-MM-TT: bis wann etwas zu tun ist (Restzahlung, Ticket laden); der Wächter erinnert"},
     "frist_was": {"type": "string", "description": "was bis zur Frist zu tun ist"},
     "storno": {"type": "string", "description": "Stornoregel in Worten, z. B. „kostenlos bis 7 Tage vorher, danach 1 Nacht“"},
@@ -2459,9 +2482,13 @@ BUCHUNG_FELDER_SCHEMA = {
                  "description": "die Reisenden dieser Buchung (Namen aus der Reise) mit Angabe je Person, z. B. {\"Ida\": \"Sitz 12A, 23 kg Gepäck\", \"Karl\": \"\"}"},
     "preise": {"type": "object", "additionalProperties": {"type": "string"},
                "description": "bei mehreren Dingen in fuer der Preis je Ding, z. B. {\"E-28\": \"120 €\", \"E-29\": \"110 €\"}"},
+    "merkmale": {"type": "object", "additionalProperties": {"type": ["string", "number"]},
+                 "description": "Merkmale der Buchung, die die Art ihrer Dinge festlegt (merkmale art zeigt sie), z. B. "
+                                "{\"ticketart\": \"Sparpreis\"}; Herkunft wie die Buchung. Beim Ändern nur die genannten, leer entfernt eines"},
     "notiz": {"type": "string"}}
 BUCHUNG_ANLEGEN = {"name": "buchung_anlegen", "description": "Eine Buchung als eigenes Ding (B-…) eintragen: für welche Unterkunft (U-…), "
-                   "welchen Aufenthalt (A-…) oder welche Strecke (E-…), Status, Buchungsnummer, Anbieter, Preis, Frist, Stornoregel; dazu "
+                   "welchen Aufenthalt (A-…) oder welche Strecke (E-…), Status, Buchungsnummer, Anbieter, Preis, Zahlstand (zahlung, "
+                   "Einzelheiten in bezahlt), Frist, Stornoregel, Merkmale der Buchung (merkmale, je Art festgelegt); dazu "
                    "personen (die Reisenden dieser Buchung mit Sitzplatz, Gepäck, Vielfliegernummer), preise (je Ding, wenn fuer mehrere umfasst), "
                    "ab und ab_was (ab wann etwas geht, etwa der Check-in; frist sagt bis wann). "
                    "Schreibt sofort; Herkunft (quelle) ist Pflicht, z. B. „Buchungsbestätigung per Mail vom …“. Liest die Person dir eine "
