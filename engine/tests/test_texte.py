@@ -165,18 +165,16 @@ def test_plural_waehlt_kategorie_der_sprache(monkeypatch):
 
 # ---------- Betrieb ----------
 
-def _deploy_liste(name):
-    deploy = (BETRIEB / "deploy.sh").read_text(encoding="utf-8")
-    return set(re.search(rf'^{name}="([^"]*)"', deploy, re.M).group(1).split())
+from test_betrieb import _deploy_liste  # noqa: E402  (löst $SPRACHDATEIEN in die Dateien der Sprachen auf)
 
 
 def test_jede_sprache_steht_in_den_modullisten_des_deploys():
-    dateien = {"texte.py"} | {f"texte_{k}.py" for k in texte.BASIS}
+    dateien = {"texte.py"} | {f"texte_{k}.py" for k in texte._dateien()}
     for liste in ("RM_MODULE", "KN_MODULE", "SB_MODULE"):
         fehlt = dateien - _deploy_liste(liste)
         assert not fehlt, f"deploy.sh {liste} kopiert nicht: {sorted(fehlt)}"
     import konnektor
-    assert dateien <= set(konnektor.CODE_DATEIEN)
+    assert dateien <= set(konnektor.CODE_DATEIEN) | set(konnektor.SPRACHDATEIEN)
 
 
 # ---------- Leitplanken: keine deutschen Literale und keine Sprachweichen im Code ----------

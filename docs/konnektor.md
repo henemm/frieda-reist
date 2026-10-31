@@ -157,6 +157,14 @@ Eine neue Reise legt eine Person an, keine Reise. Deshalb gibt es neben den Link
 
 `reise_anlegen` lehnt sofort ab, wenn Angaben fehlen oder nicht passen oder wenn es den Ordnernamen schon gibt, als veröffentlichte Reise, als Ablage oder als offene Anfrage (`reise.neue_reise_pruefen`). Sonst bleibt die Anfrage mit `daten.neue_reise` als Beleg in `<ablage>/_neu/auftraege.jsonl` (gehört zu keiner Reise), und der Schreibweg legt die Reise sofort an (`neu.aus_auftrag`, die Notiz wird der Überblick, Probebau, Commit nach `main`). Das Veröffentlichen schaltet sie frei und schreibt der Person eine Meldung mit den Links nach `<ablage>/_neu/meldungen.jsonl` (`betrieb/zustellen.py`). Die Links zu den Seiten liest der Konnektor aus `KN_SEITENLINKS` (Standard `seiten.json` neben den Zugängen), die der Betrieb beim Freischalten schreibt. Den Stand der Anfragen zeigt `rueckmeldungen.py liste _neu`. Eine persönliche Startseite im Web mit derselben Übersicht ist geplant (Issue #41).
 
+## Sprache (ADR-0006, Stand 31.10.2026)
+
+Der Konnektor spricht die Sprache des Kontos: Anleitung, Beschreibungen der Werkzeuge, Ergebnisse, Bestätigungen und Fehler. Die Sprache stammt aus der Spalte `konten.sprache` (beim ersten Anmelden aus `Accept-Language`, sonst Englisch) und lässt sich auf der Kontoseite oder mit dem Konto-Werkzeug `language_set` (intern `sprache_setzen`, alle Rollen) ändern. Die Anleitung weist Claude an, in der Sprache der Person zu antworten („Reply in the person's language“).
+
+Die **Reise** hat ihre eigene Sprache (`reise.yaml sprache`, Vorgabe `de`): `trip_create` hat den Parameter `language` (Vorgabe: Sprache des Kontos), `setting_set` ändert sie (nur Organisator:innen, mit Grund). Was die Software in Dateien der Reise schreibt (Verlaufseinträge, Herkunftszeilen, Commit-Nachrichten) und die Meldungen des Wächters und des Kalenders folgen der Reise, nicht dem Konto. Inhalte, die eine Person eingibt, werden nie übersetzt.
+
+Eine neue Sprache ist eine Datei und braucht im Konnektor keine Änderung ([sprachen.md](sprachen.md)); `language_set` bietet sie ab sofort an. Die Tabellen der englischen Namen stehen unten („Englische Namen der Schnittstelle“).
+
 ## Einrichten (einmalig)
 
 In einer Instanz erledigen das `betrieb/einrichten.sh`, `deploy.sh` und `freischalten.sh` (`docs/betrieb.md`). Von Hand:

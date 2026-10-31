@@ -298,7 +298,9 @@ def test_veroeffentlichen_und_deploy_pruefen_in_eigenem_testordner():
 
 def _deploy_liste(name):
     deploy = (BETRIEB / "deploy.sh").read_text(encoding="utf-8")
-    return set(re.search(rf'^{name}="([^"]*)"', deploy, re.M).group(1).split())
+    liste = re.search(rf'^{name}="([^"]*)"', deploy, re.M).group(1).split()
+    sprachen = sorted(p.name for p in ENGINE.glob("texte_??.py")) + sorted(p.name for p in ENGINE.glob("texte_???.py"))
+    return {m for x in liste for m in (sprachen if x == "$SPRACHDATEIEN" else [x])}   # die Sprachdateien nimmt deploy.sh per ls mit
 
 
 def _eigene_importe(datei):

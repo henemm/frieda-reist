@@ -26,6 +26,10 @@ Technik (Python-Generator, HTML-Vorlage, Service Worker, nginx, systemd, Git) is
 4. Die KI handelt: Was im Gespräch festgelegt wird, gilt sofort; Veränderliches wird überwacht, Fristen werden gemeldet, Optionen werden im Gespräch vorgeschlagen.
 5. Frieda kennt die Menschen: je Person ein Konto mit E-Mail-Adresse, über Reisen hinweg (ADR-0005). Ein Profil je Person (Vorlieben, Erlebtes) ist Ausbaustufe 3 (Paket F) und noch nicht gebaut; was dort entsteht, trägt der AI-Client über den Konnektor ein, kein Lauf in Frieda.
 
+## Sprachen
+
+Frieda spricht Deutsch und Englisch, jede weitere Sprache ist eine Datei ([sprachen.md](sprachen.md)). Drei Dinge sind getrennt: die **Sprache der Reise** (`reise.yaml`, wie die Reise geschrieben ist und was die Software in ihre Dateien schreibt), die **Sprache des Kontos** (Anleitung, Antworten und Fehler des Konnektors, Kontoseiten und Mails; vom Browser vorbelegt, auf der Kontoseite oder im Gespräch änderbar) und der **Umschalter auf der Seite**, mit dem jede Person die Beschriftungen für sich in eine andere Sprache stellt. Wer die Seite in einer anderen Sprache liest, sieht den Inhalt weiter in der Sprache der Reise.
+
 ## Rollen
 
 Rollen gelten je Reise, nicht je Person. Rechte sind gestuft, jede Stufe enthält die darunter:
@@ -45,6 +49,8 @@ Personen und Rollen stehen je Reise in `reisen/<reise>/reise.yaml` unter `person
 - **Bausteine, an oder aus** (`bausteine:`). Immer da: Plan, Wissen, Suche, Personen. Zuschaltbar: `varianten`, `karte`, `tagesseiten`, `rueckmeldungen`, `fragen`, `aufgaben`, `wuensche`, `waechter`, `profile`. Ein ausgeschalteter Baustein verschwindet aus Seite und App, seine Daten bleiben. (`waechter` ist seit Paket E gebaut, `profile` ist angelegt, aber noch nicht gebaut: Ausbaustufe 3.)
 - **Spielregeln, mit Wert** (`regeln:`), Vorgaben in `engine/reise.py`: `konflikt` (offene_frage), `kontingent` beim Brett (Art `punkte` oder `anzahl`, `je_person`), `einladen` (organisator), dazu die Regeln des Wächters und `anmeldung`. Die Regeln des Einarbeitens (`entscheidungsweg`, `sammelzeit_minuten`) sind seit 29.10.2026 entfallen; stehen sie noch in einer `reise.yaml`, baut die Reise mit Hinweis.
 - **Darstellung** (`darstellung:`): Startreiter, Namen der Reiter, Tiefe der Ansicht, Gruppen. Der Kasten „Mahnung“ auf der Seite ist seit dem 29.10.2026 weg (Product Owner); der alte Schlüssel `mahnungen` ist ohne Wirkung. Berechnet werden die Mahnungen weiter und stehen in der Claude-App (`ueberblick`).
+
+- **Sprache** (`sprache:`, Vorgabe `de`): die Sprache der Reise. Die Seite startet in ihr; Kalender, Meldungen des Wächters und alles, was die Software in Dateien der Reise schreibt, folgen ihr. Der Inhalt bleibt in der Sprache, in der er geschrieben wurde.
 
 Einstellungen setzt die Organisator:in, auch im Gespräch. Jede Änderung bekommt einen Verlaufseintrag. Die Zuordnung der Inhalte (Überschrift zu ID) bleibt getrennt davon in `reise.json`.
 

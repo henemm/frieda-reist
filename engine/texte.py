@@ -1,8 +1,9 @@
 """Zugriff auf die Textkataloge der Software (ADR-0006, docs/mehrsprachigkeit.md).
 
 Jede Sprache ist eine Datei engine/texte_<kürzel>.py mit NAME, LOCALE, RICHTUNG, PLURAL, DATUM, DATUM_KURZ, ZEIT und TEXTE.
-Dieses Modul kennt keine Sprache beim Namen: SPRACHEN ist die Liste der Dateien (de, en und alles aus
-FR_TEXTE_ZUSATZ, kommagetrennt, Modul aus dem Suchpfad; die Tests laden so eine Pseudo-Sprache).
+Dieses Modul kennt keine Sprache beim Namen: SPRACHEN ist die Liste der Dateien texte_<kürzel>.py neben diesem Modul (Deutsch
+und Englisch zuerst, die übrigen nach dem Alphabet) und alles aus FR_TEXTE_ZUSATZ (kommagetrennt, Modul aus dem Suchpfad; die Tests
+laden so eine Pseudo-Sprache). Eine neue Sprache ist eine neue Datei (docs/sprachen.md).
 """
 import datetime
 import importlib
@@ -10,7 +11,8 @@ import os
 import re
 import threading
 
-BASIS = ("de", "en")
+ERSTE = ("de", "en")    # stehen in der Liste vorn (Reihenfolge der Knöpfe); jede weitere Sprachdatei folgt nach dem Alphabet
+ORDNER = os.path.dirname(os.path.abspath(__file__))
 VORGABE = "en"          # Sprache einer Person, deren Wunsch nicht erkennbar ist; Reisen ohne Feld sprache bauen mit "de"
 VORGABE_REISE = "de"
 PFLICHTFELDER = ("NAME", "LOCALE", "RICHTUNG", "PLURAL", "DATUM", "DATUM_KURZ", "ZEIT", "DATUM_ZEIT", "WOCHENTAGE_KURZ", "TEXTE")
@@ -23,9 +25,16 @@ def _zusatz():
     return tuple(k.strip() for k in os.environ.get("FR_TEXTE_ZUSATZ", "").split(",") if k.strip())
 
 
+def _dateien():
+    """Kürzel aller Sprachdateien texte_<kürzel>.py neben diesem Modul."""
+    return sorted(m.group(1) for m in (re.fullmatch(r"texte_([a-z]{2,3})\.py", n) for n in os.listdir(ORDNER)) if m)
+
+
 def sprachen():
-    """Die Sprachen der Software in der Reihenfolge ihrer Dateien (de, en, dann die Zusätze)."""
-    return BASIS + tuple(k for k in _zusatz() if k not in BASIS)
+    """Die Sprachen der Software: Deutsch und Englisch vorn, dann die übrigen Dateien nach dem Alphabet, dann die Zusätze der Tests."""
+    gefunden = _dateien()
+    alle = [k for k in ERSTE if k in gefunden] + [k for k in gefunden if k not in ERSTE]
+    return tuple(alle) + tuple(k for k in _zusatz() if k not in alle)
 
 
 def __getattr__(name):

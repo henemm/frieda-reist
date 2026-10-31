@@ -22,7 +22,7 @@ Jede Datei `M*.md` in diesem Ordner ist ein vollständiger Auftrag für einen Ag
 | M8b | Englische Namen der Schnittstelle mit Aliasen | Sonnet, dann Haiku | M8 | umgesetzt (31.10.2026) |
 | M9 | Fehler als Schlüssel: Schreibweg, Regeln, Rückmeldedienst | Sonnet, dann Haiku (vier Stapel) | M8b | Ablehnungen, Rechte und Dienstfehler umgesetzt (31.10.2026); Bestätigungen des Schreibwegs in der Sprache der Person (31.10.2026); Texte, die in Dateien der Reise und ins Protokoll gehen, bleiben deutsch |
 | M10 | Konnektor-Ergebnisse, Kalender, Wächter | Haiku | M8b | umgesetzt (31.10.2026): Konnektor, Kalender, Wächter, Mahnungen, Aufgabentext |
-| M11 | Dokumentation und Abschluss | Haiku | M6, M9, M10 | offen |
+| M11 | Dokumentation und Abschluss | Haiku | M6, M9, M10 | umgesetzt (31.10.2026): `docs/sprachen.md`, `README.en.md`, Sprachdateien werden von selbst gefunden und vom Deploy mitgenommen; Ausnahmelisten nicht leer (Prüfmeldungen der Reise, Dateitexte, Betreiber-Ausgaben, siehe `docs/sprachen.md`, „Noch offen“) |
 | M12 | Abnahme und dritte Sprache | Sonnet | M11 | offen |
 
 Wer ein Paket startet, trägt hier „läuft“ ein, wer es übernimmt, „übernommen (Datum)“.

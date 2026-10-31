@@ -58,6 +58,10 @@ Atomic Design allein sagt nicht, wie sich ein Baustein verhält. Dafür gibt es 
 8. **Das Gerät bestimmt die Reihenfolge.** Dieselben Bausteine, am Rechner zum Planen nebeneinander, am Handy zum Nachschlagen untereinander (Tagesseite).
 9. **Anmerken erst nach dem Lesen.** Unterwegs (Handy und Tablet) trägt eine Vorschau (`.vorschau`) und der Kopf eines zugeklappten Blocks keine Sprechblase; sie erscheint, sobald der Inhalt offen oder die Seite geöffnet ist. Niemand merkt etwas an, bevor er den Inhalt gesehen hat. Am Rechner (Planen) bleibt sie überall (Entscheidung 28.10.2026).
 
+## Sprache der Seite (ADR-0006, 31.10.2026)
+
+Alle Texte der Seite kommen aus dem Katalog (`texte.seite()` legt die Texte aller Sprachen offline in die Seite; Anleitung zum Hinzufügen einer Sprache: [sprachen.md](sprachen.md)). Das Atom `T` liest sie in der Sprache `SPRACHE`; sie startet mit der Wahl der Person (`localStorage`), sonst mit der Sprache der Reise (`reise.yaml sprache`). `LOCALE` und `RICHTUNG` kommen aus dem Eintrag der Sprache; `document.documentElement.lang` und `dir` folgen. Datum, Zahl, Sortierung und Plural laufen über `Intl` mit `LOCALE` (`datumText`, `datumKurz`, `zahlText`, `Intl.PluralRules`), nie mit festen Formen oder Listen. Der Umschalter ist der vorhandene Baustein `umschalter` (ein Knopf je Sprache im Katalog, beschriftet mit `NAME`); er ändert nur die Hülle, der Inhalt der Reise bleibt in seiner Sprache. Neue Stile nutzen logische Eigenschaften (`margin-inline`, `padding-inline-start`, `inset-inline`), damit `rtl` nicht kippt; die mitgelieferten Schriften haben `system-ui` als Rückfall für Zeichen, die sie nicht haben.
+
 ## Reisetexte
 
 Was in den Markdown-Dateien einer Reise steht (Wissen, Praxis, Etappen, Unterkünfte), ist Fließtext. Das Designsystem gibt dort nur die Typografie vor: Überschriften, Absätze, Listen, Tabellen, Zitate, Links und Bilder sehen überall gleich aus, weil sie über die Gestaltung der Seite laufen. Bausteine entstehen nie aus Text, sondern aus Daten (Routenmodell, Merkmale).
