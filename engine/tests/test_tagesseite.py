@@ -58,6 +58,17 @@ def test_tagesseite_in_ebenen(tmp_path, browser):
     e = rundgang(tmp_path, browser)
     assert e["fehler"] == []
     for breite, a in e["aus"].items():
+        # Die Nacht kommt zuletzt: nach dem Hintergrund, vor den Quellen (Product Owner 31.10.2026), auf beiden Geräten
+        n = a["nacht"]
+        assert not n["voll"] and n["hintergrund"] < n["oben"] < n["quellen"], n
+        # Stand-Leiter: nicht gebucht (Pension Burgblick) sind die Einzelheiten offen
+        assert n["einzelheiten"] == [True], n
+        # gebucht (Hotel am Elbufer, B-01): Einzelheiten von Unterkunft und Buchung zu; oben Nummer, Preis, Zahlung (#166) und die
+        # laufende Stornofrist; der Stand steht einmal (die Buchung trägt ihn, kein Chip an der Karte); im Tageskasten „gebucht“
+        g = a["gebucht"]
+        assert g["karte"] == [False] and g["buchung"] == [False], g
+        assert g["oben"] == ["Nummer", "Preis", "Zahlung", "Storno"] and g["storno"] == "Storno: bis 11.5.", g
+        assert g["chipsKarte"] == 0 and g["tageskasten"] == ["gebucht"], g
         assert a["breit"] == [] and not a["breitNachTabelle"], (breite, a["breit"])
         assert a["kaesten"] == 1 and a["flaeche"], breite                       # ein Kasten: der Tageskasten
         assert a["planChips"] == [], a["planChips"]                             # Plan gewählt: der Tag nennt keine Pläne
@@ -111,4 +122,5 @@ def test_nacht_volle_breite_nur_bei_offener_wahl(tmp_path, offen):
     Eine entschiedene Nacht mit weiteren Möglichkeiten (zugeklappt, mit Vergleich) bleibt in der Lesespalte (31.10.2026)."""
     e = rundgang(tmp_path, "chromium", lambda t: zwei_moeglichkeiten(t, offen))
     assert e["fehler"] == []
-    assert e["aus"]["1300"]["nacht"] == {"voll": offen, "inLesen": not offen}, e["aus"]["1300"]["nacht"]
+    n = e["aus"]["1300"]["nacht"]
+    assert (n["voll"], n["inLesen"]) == (offen, not offen), n
