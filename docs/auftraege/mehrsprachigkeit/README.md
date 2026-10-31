@@ -13,9 +13,9 @@ Jede Datei `M*.md` in diesem Ordner ist ein vollständiger Auftrag für einen Ag
 | M0 | Katalog und Leitplanken | Haiku | – | umgesetzt (31.10.2026) |
 | M1 | Sprache der Reise, Startwert der Seite, Umschalter | Haiku | M0 | umgesetzt (31.10.2026) |
 | M2 | Datum, Zahl, Sortierung, Karte | Sonnet | M1 | umgesetzt (31.10.2026) |
-| M3 | Vorlage A: Rahmen, Reiter, Suche, Plan, Tag, Etappe | Haiku | M2 | offen |
-| M4 | Vorlage B: Varianten, Wahl, Buchung, Karte, Unterkunft | Haiku | M2 | offen |
-| M5 | Vorlage C: Wissen, Fragen, Aufgaben, Wünsche, Rückmeldungen, Konto, Bausteinseite | Haiku | M2 | offen |
+| M3 | Vorlage A: Rahmen, Reiter, Suche, Plan, Tag, Etappe | Haiku | M2 | umgesetzt (31.10.2026) |
+| M4 | Vorlage B: Varianten, Wahl, Buchung, Karte, Unterkunft | Haiku | M2 | umgesetzt (31.10.2026) |
+| M5 | Vorlage C: Wissen, Fragen, Aufgaben, Wünsche, Rückmeldungen, Konto, Bausteinseite | Haiku | M2 | umgesetzt (31.10.2026) |
 | M6 | Inhaltserkennung sprachfest, Reisevorlage je Sprache | Sonnet | M5 | offen |
 | M7 | Sprache am Konto | Haiku | M0 | offen |
 | M8 | Konnektor: Anleitung und Beschreibungen | Haiku, dann Sonnet | M7 | offen |

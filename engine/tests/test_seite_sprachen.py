@@ -117,3 +117,33 @@ def test_pseudo_sprache_dritter_knopf_und_rtl(tmp_path, monkeypatch, browser):
     assert u["zeit"] == "١٨:٠٥" and u["dauer"].startswith("[xx ٢:٠٥") and u["zahl"] == "١٬٢٣٤٫٥", u
     assert u["tage"][2].startswith("[xx few ") and u["tage"][3].startswith("[xx many ") and u["tage"][1].startswith("[xx two ")
     assert e["zurueck"]["dir"] == "ltr" and e["gleichNachZurueck"]
+
+
+def rundgang(web, sprache, browser="chromium"):
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(web)))
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        aus = subprocess.run(["node", str(Path(__file__).parent / "sprachen_rundgang.mjs"), str(PLAYWRIGHT),
+                              f"http://127.0.0.1:{srv.server_address[1]}/beispiel/", sprache],
+                             capture_output=True, text=True, timeout=900, env={**os.environ, "RH_BROWSER": browser})
+    finally:
+        srv.shutdown()
+    assert aus.returncode == 0, aus.stderr[-2000:]
+    return json.loads(aus.stdout.strip().splitlines()[-1])
+
+
+@ohne_browser
+def test_rundgang_pseudo_sprache_alles_im_katalog_und_umschalten_ist_vollstaendig(tmp_path, monkeypatch):
+    """Jede Ansicht in der Pseudo-Sprache: kein Text bleibt deutsch (jeder Text außer dem Inhalt der Reise trägt die Marke),
+    und Umschalten ergibt dieselbe Ansicht wie ein Start in der Sprache (nichts bleibt vom Start stehen)."""
+    monkeypatch.setenv("FR_TEXTE_ZUSATZ", "xx")
+    e = rundgang(seite_bauen(tmp_path), "xx")
+    if os.environ.get("RH_DUMP"):   # zur Durchsicht: alle Funde in eine Datei
+        Path(os.environ["RH_DUMP"]).write_text(json.dumps(e, ensure_ascii=False), encoding="utf-8")
+    assert e["fehler"] == [] and e["routen"] > 60
+    assert e["stale"] == {}, dict(list(e["stale"].items())[:6])
+    assert e["marke"] == {}, dict(list(e["marke"].items())[:10])

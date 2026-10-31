@@ -188,7 +188,7 @@ ALLE_DATEIEN = ["vorlage.html"] + PY_DATEIEN
 # Erlaubte Zahl deutscher Literale je Datei. Jedes Paket der Mehrsprachigkeit kürzt seinen Bereich; Einträge dürfen nur
 # kleiner werden, nie größer (docs/auftraege/mehrsprachigkeit/README.md, Regel 5). Am Ende steht überall 0.
 AUSNAHMEN = {
-    "vorlage.html": 309, "konnektor.py": 448, "schreiben.py": 287, "rueckmeldungen.py": 67, "anmeldung.py": 38, "konten.py": 31,
+    "vorlage.html": 2, "konnektor.py": 448, "schreiben.py": 287, "rueckmeldungen.py": 67, "anmeldung.py": 38, "konten.py": 31,
     "kalender.py": 6, "waechter.py": 21, "routen.py": 99, "bauen.py": 70, "neu.py": 50, "reise.py": 40,
 }
 # Treffer von Sprachweichen und festen Locale-Strings (Grep-Test); ebenfalls nur kleiner werdend
@@ -232,8 +232,8 @@ def py_literale(quelltext):
 _REGEX_VOR = set("(,=:[!&|?{};+-*%<>~^") | {""}
 
 
-def js_literale(code):
-    """Stringliterale ('…', "…", `…`) mit deutschem Text in JavaScript, ohne Kommentare und ohne Aufrufe t(…): [(Zeile, Text)].
+def js_literale_mit_ort(code, nur_deutsch=True):
+    """Wie js_literale, jeweils (Zeile, Text, Anfang, Ende, Anführungszeichen) mit Stelle im Quelltext. Stringliterale ('…', "…", `…`) mit deutschem Text in JavaScript, ohne Kommentare und ohne Aufrufe t(…): [(Zeile, Text)].
     Ein Template-Literal zählt als ein Literal. Regex-Literale werden an ihrem Vorgänger erkannt und übersprungen."""
     gefunden, i, n, zeile = [], 0, len(code), 1
     letztes = ""   # letztes bedeutsames Zeichen vor der Position
@@ -277,8 +277,8 @@ def js_literale(code):
                 j += 1
             text = code[i + 1:j]
             vor = code[max(0, i - 12):i].rstrip()
-            if ist_deutsch(text) and not re.search(r"(?<![\w$.])t\($", vor):
-                gefunden.append((zeile, text))
+            if (not nur_deutsch or ist_deutsch(text)) and not re.search(r"(?<![\w$.])[tT]\($", vor):
+                gefunden.append((zeile, text, i, j + 1, c))
             zeile += code.count("\n", i, j)
             i = j + 1
             letztes, letztes_wort = c, ""
@@ -315,6 +315,11 @@ def js_literale(code):
     return gefunden
 
 
+def js_literale(code):
+    """Stringliterale mit deutschem Text in JavaScript (siehe js_literale_mit_ort): [(Zeile, Text)]."""
+    return [(z, t) for z, t, *_ in js_literale_mit_ort(code)]
+
+
 def _quelltext(datei):
     text = (ENGINE / datei).read_text(encoding="utf-8")
     if datei.endswith(".html"):
@@ -323,10 +328,20 @@ def _quelltext(datei):
     return text, 0
 
 
+def _ohne_entwicklerseite(funde, quelltext):
+    """Literale zwischen ENTWICKLERSEITE-ANFANG und -ENDE (Bausteinseite der Vorlage) zählen nicht: sie ist Werkzeug der Entwicklung."""
+    if "ENTWICKLERSEITE-ANFANG" not in quelltext:
+        return funde
+    a = quelltext.index("ENTWICKLERSEITE-ANFANG")
+    b = quelltext.index("ENTWICKLERSEITE-ENDE")
+    von, bis = quelltext.count("\n", 0, a) + 1, quelltext.count("\n", 0, b) + 1
+    return [(z, t) for z, t in funde if not von <= z <= bis]
+
+
 def literale(datei):
     quelltext, versatz = _quelltext(datei)
     funde = js_literale(quelltext) if datei.endswith(".html") else py_literale(quelltext)
-    return [(z + versatz, t) for z, t in funde]
+    return [(z + versatz, t) for z, t in _ohne_entwicklerseite(funde, quelltext)]
 
 
 @pytest.mark.parametrize("datei", ALLE_DATEIEN)
