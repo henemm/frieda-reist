@@ -7,6 +7,7 @@ RICHTUNG = "ltr"
 DATUM = "%-d/%-m/%Y"
 DATUM_KURZ = "%-d/%-m"
 ZEIT = "%H:%M"
+DATUM_ZEIT = "%d/%m/%Y %H:%M"   # Zeitpunkt mit Datum, wie ihn Stand und Protokolle zeigen
 WOCHENTAGE_KURZ = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")   # Montag bis Sonntag
 
 
@@ -54,7 +55,29 @@ TEXTE = {
     # Sprache der Seite
     "seite.sprache.titel": "Language",
     "seite.bausteine.text.beschreibung": "Every text on the page comes from the catalogue of the chosen language (T with a key); plurals follow the rule of the language.",
+    "seite.bausteine.zahl.beschreibung": "Numbers follow the language of the interface: decimal sign, thousands separator and digits come from Intl, never from fixed characters in the code.",
     "seite.bausteine.text.huelle": "Language of the interface",
+    # Zeiten, Zahlen und Mehrzahlen
+    "seite.zeit.dauer": "{h}:{m} h",
+    "seite.anzahl.rueckmeldungen.one": "1 feedback item",
+    "seite.anzahl.rueckmeldungen.other": "{n} feedback items",
+    "seite.anzahl.aufgaben_offen.one": "1 open task",
+    "seite.anzahl.aufgaben_offen.other": "{n} open tasks",
+    "seite.anzahl.tage.one": "1 day",
+    "seite.anzahl.tage.other": "{n} days",
+    "seite.anzahl.eintraege.one": "{n} entry",
+    "seite.anzahl.eintraege.other": "{n} entries",
+    "seite.anzahl.abschnitte_recherche.one": "{n} section of research",
+    "seite.anzahl.abschnitte_recherche.other": "{n} sections of research",
+    "seite.anzahl.punkte.one": "{n} point",
+    "seite.anzahl.punkte.other": "{n} points",
+    "seite.anzahl.wuensche.one": "{n} wish",
+    "seite.anzahl.wuensche.other": "{n} wishes",
+    "seite.plan.morgen": "it starts tomorrow",
+    "seite.plan.noch_tage.one": "{n} day to go",
+    "seite.plan.noch_tage.other": "{n} days to go",
+    "seite.tag.orte.one": "Place of the day",
+    "seite.tag.orte.other": "Places of the day",
     # Karte
     "seite.karte.kueste": "Coast shown schematically",
     # Konnektor

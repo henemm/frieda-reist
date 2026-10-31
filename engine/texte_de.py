@@ -7,6 +7,7 @@ RICHTUNG = "ltr"
 DATUM = "%-d.%-m.%Y"
 DATUM_KURZ = "%-d.%-m."
 ZEIT = "%-H:%M"
+DATUM_ZEIT = "%d.%m.%Y %H:%M"   # Zeitpunkt mit Datum, wie ihn Stand und Protokolle zeigen
 WOCHENTAGE_KURZ = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")   # Montag bis Sonntag
 
 
@@ -54,7 +55,29 @@ TEXTE = {
     # Sprache der Seite
     "seite.sprache.titel": "Sprache",
     "seite.bausteine.text.beschreibung": "Jeder Text der Seite kommt aus dem Katalog der gewählten Sprache (T mit Schlüssel); Plural wählt die Regel der Sprache.",
+    "seite.bausteine.zahl.beschreibung": "Zahlen folgen der Sprache der Hülle: Dezimalzeichen, Tausendertrenner und Ziffern kommen aus Intl, nie aus festen Zeichen im Code.",
     "seite.bausteine.text.huelle": "Sprache der Hülle",
+    # Zeiten, Zahlen und Mehrzahlen
+    "seite.zeit.dauer": "{h}:{m} h",
+    "seite.anzahl.rueckmeldungen.one": "1 Rückmeldung",
+    "seite.anzahl.rueckmeldungen.other": "{n} Rückmeldungen",
+    "seite.anzahl.aufgaben_offen.one": "1 Aufgabe offen",
+    "seite.anzahl.aufgaben_offen.other": "{n} Aufgaben offen",
+    "seite.anzahl.tage.one": "1 Tag",
+    "seite.anzahl.tage.other": "{n} Tage",
+    "seite.anzahl.eintraege.one": "{n} Eintrag",
+    "seite.anzahl.eintraege.other": "{n} Einträge",
+    "seite.anzahl.abschnitte_recherche.one": "{n} Abschnitt der Recherche",
+    "seite.anzahl.abschnitte_recherche.other": "{n} Abschnitte der Recherche",
+    "seite.anzahl.punkte.one": "{n} Punkt",
+    "seite.anzahl.punkte.other": "{n} Punkte",
+    "seite.anzahl.wuensche.one": "{n} Wunsch",
+    "seite.anzahl.wuensche.other": "{n} Wünsche",
+    "seite.plan.morgen": "morgen geht es los",
+    "seite.plan.noch_tage.one": "noch {n} Tag",
+    "seite.plan.noch_tage.other": "noch {n} Tage",
+    "seite.tag.orte.one": "Ort des Tages",
+    "seite.tag.orte.other": "Orte des Tages",
     # Karte
     "seite.karte.kueste": "Küste schematisch",
     # Konnektor

@@ -308,8 +308,9 @@ def symbole(reise):
     return liste
 
 
-def zeit_de(t):
-    return t.astimezone().strftime("%d.%m.%Y %H:%M")
+def zeit_de(t, sprache=texte.VORGABE_REISE):
+    """Zeitpunkt mit Datum in der Sprache (bis M10 die der Reise-Vorgabe, dann die der Person)."""
+    return texte.datum_zeit(t.astimezone(), sprache)
 
 
 def stand_text(reise):
@@ -374,9 +375,9 @@ def stunden(minuten):
     return f"{minuten // 60}:{minuten % 60:02d} h" if minuten else ""
 
 
-def datum_de(iso):
-    d = datetime.date.fromisoformat(iso)
-    return f"{d.day}.{d.month}.{d.year}"
+def datum_de(iso, sprache=texte.VORGABE_REISE):
+    """Datum mit Jahr in der Sprache (bis M10 die der Reise-Vorgabe, dann die der Person)."""
+    return texte.datum(iso, sprache)
 
 
 class Handbuch:

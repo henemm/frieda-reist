@@ -15,6 +15,8 @@ const stand = () => p.evaluate(() => ({
   lang: document.documentElement.lang, dir: document.documentElement.dir, locale: LOCALE,
   knoepfe: [...document.querySelectorAll("#sprachen button")].map(k => [k.dataset.sprache, k.textContent, k.getAttribute("aria-pressed")]),
   gewaehlt: STATUS_TEXT.gewaehlt, erledigt: AG_STATUS.erledigt, wochentag: wochentag("2027-05-13"),
+  datum: datumText("2027-05-13"), datumFern: datumKurz("2031-01-02"), zahl: zahlText(1234.5, {useGrouping: true}), km: zahlText(12.4),
+  tage: [1, 2, 3, 11].map(n => T("seite.anzahl.tage", {n})), dauer: dauer(125), zeit: zeitText("18:05"), sortiert: [SORT_ZAHL.compare("A-2", "A-10"), SORT.compare("a", "b")],
   main: (() => {   // wie im Rundgang: ohne Karteninhalt (lädt zeitversetzt) und ohne Blitz
     const c = document.querySelector("#main").cloneNode(true);
     c.querySelectorAll(".regionen").forEach(x => x.querySelectorAll("[aria-pressed]").forEach(k => k.removeAttribute("aria-pressed")));

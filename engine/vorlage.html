@@ -865,6 +865,16 @@ function gruppe(praefix) {
     for (const [s, v] of Object.entries(TEXTE[k].texte)) if (s.startsWith(p) && !s.slice(p.length).includes(".")) aus[s.slice(p.length)] = v;
   return aus;
 }
+// Atom Zahl: in der Sprache der Hülle (Dezimalzeichen, Ziffern); ohne Tausendertrenner, es sei denn {useGrouping: true}
+function zahlText(x, opt) { return new Intl.NumberFormat(LOCALE, {useGrouping: false, maximumFractionDigits: 20, ...opt}).format(x); }
+// Ziffern einer Zeichenkette in die der Sprache setzen (Zeiten, Dauer)
+const lokaleZiffern = text => String(text).replace(/\d/g, z => zahlText(+z));
+// Datum nach dem Muster der Sprache (Sprachdatei: %-d Tag, %-m Monat, %Y Jahr), Ziffern der Locale
+const nachMuster = (muster, d, m, j) => muster.replace(/%-?([dmY])/g, (_, k) => zahlText(k === "d" ? d : k === "m" ? m : j));
+// Sortierung nach den Regeln der Sprache; entsteht beim Start und nach jedem Umschalten neu
+let SORT, SORT_ZAHL;
+function sprachFormate() { SORT = new Intl.Collator(LOCALE); SORT_ZAHL = new Intl.Collator(LOCALE, {numeric: true}); }
+sprachFormate();
 // Zuordnungen Datenwert -> Wort; sie entstehen beim Start und nach jedem Umschalten neu
 let STATUS_TEXT, BUCHUNG_STATUS, RM_STATUS, WU_STATUS, AG_STATUS, AG_FELD;
 function textKarten() {
@@ -987,7 +997,7 @@ function symbol(name, klasse) {
 function zid(id) {
   if (!B("rueckmeldungen") && !B("aufgaben")) return el("span", {class: "zid"}, id);
   const n = rmZu(id).length, a = agZu(id).filter(agOffen).length;
-  const rm = n === 1 ? "1 Rückmeldung" : `${n} Rückmeldungen`, ag = a === 1 ? "1 Aufgabe offen" : `${a} Aufgaben offen`;
+  const rm = T("seite.anzahl.rueckmeldungen", {n}), ag = T("seite.anzahl.aufgaben_offen", {n: a});
   const knopf = el("button", {type: "button", class: "zid" + (n ? " hat-rm" : "") + (a ? " hat-ag" : ""), "data-rm": id,
     title: [n ? rm : "Anmerken", a ? ag : ""].filter(Boolean).join(" · "), "aria-label": [`Anmerken zu ${id}`, n ? rm : "", a ? ag : ""].filter(Boolean).join(", ")},
     symbol("rueckmeldungen", "zid-blase"), n ? el("span", {class: "zid-n", "aria-hidden": "true"}, String(n)) : null, a ? el("span", {class: "zid-o", "aria-hidden": "true"}) : null);
@@ -997,7 +1007,7 @@ function zid(id) {
    statt dieselbe Sache selbst zu zeichnen; die Stile stehen im <style> in derselben Ordnung. Diese vier Zeilen sind die eine
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
-   Atome: T, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, buchungChip
+   Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, buchungChip
    Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, wahlZustand, belegeListe, stornierteBuchungen
    Organismen: nachtZeile, unterkunftKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, nachtAbschnitt, tagZeile, uebersichtKarte, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
    Vorlagen: tagKachel, leseAbschnitt, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtOffen, ansichtWissen, ansichtPlan, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
@@ -1142,7 +1152,7 @@ const ortName = id => (R.orte[id] || {}).name || id || "?";
 function punktHerkunft(p) { return [p.quelle, p.geprueft && "geprüft " + datumKurz(p.geprueft)].filter(Boolean).join(" · "); }
 // Atom Datum: datumText mit Wochentag („Mo 1.5.“) für die Tage des Plans; datumKurz ohne („1.5.“, mit Jahr, wenn es nicht
 // das laufende ist) für Fristen, Prüfdaten, Verläufe und alles andere. Zwei Formen, sonst keine (ADR-0002).
-function datumText(iso) { const [, m, d] = iso.split("-"); return `${wochentag(iso)} ${+d}.${+m}.`; }
+function datumText(iso) { const [, m, d] = iso.split("-"); return `${wochentag(iso)} ${nachMuster(TEXTE[SPRACHE].datum_kurz, +d, +m)}`; }
 // Jahre der Reise (Zeitraum oder Tage des Plans): Daten darin tragen kein Jahr, ebenso das laufende Jahr; alle anderen schon
 function reiseJahre() {
   const z = (D.reise || {}).zeitraum || {}, t = R && R.tage.length ? [R.tage[0].datum, R.tage[R.tage.length - 1].datum] : [];
@@ -1151,13 +1161,13 @@ function reiseJahre() {
   return aus;
 }
 // Atom Zeit: ein Zeitpunkt einer Bewegung (Issue #135): „18:05“ am Tag der Strecke, mit Datum „25.2. 18:05“, Zeitzone bleibt weg
-function zeitText(t) { const m = /^(?:(\d{4}-\d{2}-\d{2})T)?(\d{2}):(\d{2})/.exec(String(t || "")); return m ? (m[1] ? datumKurz(m[1]) + " " : "") + `${m[2]}:${m[3]}` : String(t || ""); }
-function datumKurz(iso) { const [j, m, d] = String(iso || "").slice(0, 10).split("-"); return d ? `${+d}.${+m}.${reiseJahre().has(+j) ? "" : j}` : ""; }
-function dauer(min) { return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")} h`; }
+function zeitText(t) { const m = /^(?:(\d{4}-\d{2}-\d{2})T)?(\d{2}):(\d{2})/.exec(String(t || "")); return m ? (m[1] ? datumKurz(m[1]) + " " : "") + lokaleZiffern(`${m[2]}:${m[3]}`) : String(t || ""); }
+function datumKurz(iso) { const [j, m, d] = String(iso || "").slice(0, 10).split("-"); return d ? (reiseJahre().has(+j) ? nachMuster(TEXTE[SPRACHE].datum_kurz, +d, +m) : nachMuster(TEXTE[SPRACHE].datum, +d, +m, +j)) : ""; }
+function dauer(min) { return T("seite.zeit.dauer", {h: lokaleZiffern(Math.floor(min / 60)), m: lokaleZiffern(String(min % 60).padStart(2, "0"))}); }
 function summeText(s) {
   if (!s) return "";
-  const t = [s.tage === 1 ? "1 Tag" : `${s.tage} Tage`];
-  if (s.km) t.push(`${String(s.km).replace(".", ",")} km`, `↑ ${s.auf} / ↓ ${s.ab} Hm`, `${dauer(s.min)} Gehzeit`);
+  const t = [T("seite.anzahl.tage", {n: s.tage})];
+  if (s.km) t.push(`${zahlText(s.km)} km`, `↑ ${s.auf} / ↓ ${s.ab} Hm`, `${dauer(s.min)} Gehzeit`);
   const ty = Object.entries(s.unterkunftstypen || {}).map(([k, v]) => `${v}× ${k}`);
   if (ty.length) t.push(ty.join(", "));
   return t.join(" · ") + (s.unvollstaendig && s.km ? " (nicht alle Strecken mit Kennzahlen)" : "");
@@ -1411,7 +1421,7 @@ async function blLaden() {
 // Belege nur angemeldet (Product Owner 29.10.2026): der Dienst zeigt sie nur der hochladenden Person und Organisator:innen; ein
 // eingetippter Name (Übergangsregel) kann das nicht tragen, deshalb gibt es das Formular ohne Konto nicht
 const KANN_BELEG = () => V.schreiben === "alles" && MIT_KONTO();
-const groesseText = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(n / 1024)) + " kB";
+const groesseText = n => n >= 1048576 ? zahlText(n / 1048576, {minimumFractionDigits: 1, maximumFractionDigits: 1}) + " MB" : Math.max(1, Math.round(n / 1024)) + " kB";
 // Molekül Buchung: Etikett mit Zustand, die Angaben als Zeilen, leise Herkunft, Belege, Verlauf zugeklappt
 function buchungBlock(b) {
   const zu = b.status === "storniert";
@@ -1630,7 +1640,7 @@ function lageZeile(u, ohneHinweis) {
   if (!l) return ohneHinweis ? null : el("div", {class: "z klein"}, "Lage fehlt");
   const v = u.adresse || u.punkt;
   return el("div", {class: "z lage"}, el("b", {}, u.adresse ? "Adresse: " : "Lage: "),
-    u.adresse ? u.adresse.wert : u.punkt.wert.map(x => x.toFixed(4).replace(".", ",")).join(" · "), " ",
+    u.adresse ? u.adresse.wert : u.punkt.wert.map(x => zahlText(x, {minimumFractionDigits: 4, maximumFractionDigits: 4})).join(" · "), " ",
     v.quelle ? el("span", {class: "z klein", title: `Quelle: ${v.quelle}${v.geprueft ? ", geprüft " + datumKurz(v.geprueft) : ""}`}, "ⓘ") : null, " ", l);
 }
 // Atom Webseite: Link nach außen in neuem Fenster; fehlt sie, ein leiser Hinweis (ergänzen im Gespräch mit Frieda)
@@ -1695,7 +1705,7 @@ function wahlVergleich(w, liste, datum) {
     const t = text(werte(o)[kid]); const b = t && betrag(t); return b ? b.von : t ? t.toLowerCase() : null; };
   const reihe = z.sort ? g.slice().sort((a, b) => { const x = sortWert(z.sort, a), y = sortWert(z.sort, b);
     if (x === null || y === null) return (x === null) - (y === null);
-    return typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), "de"); }) : g;
+    return typeof x === "number" && typeof y === "number" ? x - y : SORT.compare(String(x), String(y)); }) : g;
   const spaltenKopf = (kid, name) => el("th", {scope: "col", "aria-sort": z.sort === kid ? "ascending" : null},
     el("button", {type: "button", class: "wm-sort", "data-vgl-sort": s + "|" + kid}, name));
   // Erste Spalte: Name, „vorläufig im Plan“ (nur dort ein Zustand, sonst stünde in jeder Zeile „vorgeschlagen“), Webseite
@@ -1935,6 +1945,7 @@ function spracheWaehlen(k) {
   document.documentElement.lang = SPRACHE;
   document.documentElement.dir = RICHTUNG;
   merke("sprache", k);
+  sprachFormate();
   textKarten();
   sprachUmschalter();
   route(true);
@@ -1990,7 +2001,7 @@ function steckbrief(p, imPlan) {
   // Gehzeit, Strecke, Höhenmeter nur bei Plänen mit Wanderdaten (Wanderung ja, Rundreise mit Bahn nein)
   const wandern = s.min || s.km || s.auf;
   const zeilen = [["Tage", `${s.tage}`], ["Gehzeit", f.includes("min") ? "unvollständig" : `${f.length ? "" : ""}${dauer(s.min)}`],
-    ["Strecke", f.includes("km") ? "– (Angaben fehlen)" : `${String(s.km).replace(".", ",")} km`],
+    ["Strecke", f.includes("km") ? "– (Angaben fehlen)" : `${zahlText(s.km)} km`],
     ["Höhenmeter", f.includes("auf") ? "– (Angaben fehlen)" : `↑ ${s.auf} / ↓ ${s.ab}`],
     ["Längster Tag", s.laengster ? `${dauer(s.laengster.min)} (Tag ${s.laengster.nr})` : "–"], ["Nächte", ty]]
     .filter(([a]) => wandern || !["Gehzeit", "Strecke", "Höhenmeter", "Längster Tag"].includes(a));
@@ -2054,7 +2065,7 @@ function karteZeichnen(plaene, info, box) {
     box.classList.add("osm");
     // Außerhalb des ausgeschnittenen Bereichs (breite Bildschirme) Meeresfarbe der Grundkarte statt grauer Fläche
     box.style.background = dunkel() ? "#31353f" : "#80deea";
-    protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: "de", maxDataZoom: 15,
+    protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: LOCALE.split("-")[0], maxDataZoom: 15,
       attribution: ""}).addTo(karte);
   }
   const land = {className: "rh-land", weight: 1.2, fillOpacity: 1, interactive: false};
@@ -2232,7 +2243,7 @@ function etappenKarte(sid) {
       maxBounds: L.latLngBounds([K.rahmen.sued, K.rahmen.west], [K.rahmen.nord, K.rahmen.ost]).pad(0.15)});
     karte.attributionControl.setPrefix(false).addAttribution(K.namensnennung || "");
     box.style.background = dunkel() ? "#31353f" : "#80deea";
-    protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: "de", maxDataZoom: 15, attribution: ""}).addTo(karte);
+    protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: LOCALE.split("-")[0], maxDataZoom: 15, attribution: ""}).addTo(karte);
     karte.on("click", () => { karte.scrollWheelZoom.enable(); karte.dragging.enable(); if (hinweis) hinweis.hidden = true; });
     box.addEventListener("mouseleave", () => karte.scrollWheelZoom.disable());
     L.polyline(weg, {className: "rh-halo", weight: 7, interactive: false}).addTo(karte);
@@ -2301,7 +2312,7 @@ function wissenKarte(bid) {
     if (eintrag.region === r) return;
     eintrag.region = r;
     if (schicht) karte.removeLayer(schicht);
-    schicht = protomapsL.leafletLayer({url: G.url, flavor: dunkel() ? "dark" : "light", lang: "de", maxDataZoom: G.maxzoom, attribution: ""}).addTo(karte);
+    schicht = protomapsL.leafletLayer({url: G.url, flavor: dunkel() ? "dark" : "light", lang: LOCALE.split("-")[0], maxDataZoom: G.maxzoom, attribution: ""}).addTo(karte);
     schicht.bringToBack();
     karte.setMaxBounds(L.latLngBounds([G.rahmen.sued, G.rahmen.west], [G.rahmen.nord, G.rahmen.ost]).pad(0.1));
     punkte.forEach((p, i) => { const mk = eintrag.marken[i]; if (p.karte === r) mk.addTo(karte); else mk.remove(); });
@@ -2501,7 +2512,7 @@ function tagZeile(t) {
     el("span", {class: "tz-punkt", "aria-hidden": "true"}),
     el("span", {class: "tz-datum"}, el("b", {}, String(t.nr)), t.datum ? datumText(t.datum, t.wochentag) : null),
     el("span", {class: "tz-titel"}, el("span", {class: "tz-name"}, t.titel), marken.length ? el("span", {class: "chips tz-marken"}, marken) : null),
-    el("span", {class: "tz-zeit"}, [m ? dauer(m) : "", km ? `${String(km).replace(".", ",")} km` : ""].filter(Boolean).join(" · ")),
+    el("span", {class: "tz-zeit"}, [m ? dauer(m) : "", km ? `${zahlText(km)} km` : ""].filter(Boolean).join(" · ")),
     s ? el("span", {class: "tz-nacht"}, symbol("unterkunft", "etikett-sym"), el("span", {class: "tz-unterkunft"}, s.name), s.text ? chip(s.zustand, s.text) : null) : null);
 }
 // Kennzahlen der ganzen Reise aus der Summe des Plans: mit Wanderdaten Tage, Gehzeit, Strecke, Höhenmeter; sonst Tage,
@@ -2509,7 +2520,7 @@ function tagZeile(t) {
 function reiseKennzahlen(p) {
   const s = p.summe, f = s.fehlend || [];
   if (s.min || s.km || s.auf) return {Tage: String(s.tage), ...(f.includes("min") ? {} : {Gehzeit: dauer(s.min)}),
-    ...(f.includes("km") ? {} : {Strecke: `${String(s.km).replace(".", ",")} km`}), ...(f.includes("auf") ? {} : {"Höhenmeter": `↑ ${s.auf} ↓ ${s.ab}`})};
+    ...(f.includes("km") ? {} : {Strecke: `${zahlText(s.km)} km`}), ...(f.includes("auf") ? {} : {"Höhenmeter": `↑ ${s.auf} ↓ ${s.ab}`})};
   const n = p.tage.map(d => d.nacht).filter(x => x && !x.an_bord);
   return {Tage: String(s.tage), "Nächte": String(n.length), Orte: String(new Set(n.map(x => x.ort).filter(Boolean)).size)};
 }
@@ -2592,7 +2603,7 @@ function reiseKosten(p) {
     bekannt++;
   }
   if (!bekannt) return null;
-  const zahl = x => Math.round(x).toLocaleString("de-DE");
+  const zahl = x => zahlText(Math.round(x), {useGrouping: true});
   const text = Object.entries(summe).map(([w, g]) => (g.von === g.bis ? zahl(g.von) : `${zahl(g.von)}–${zahl(g.bis)}`) + " " + w).join(" + ");
   return {text, bekannt, naechte};
 }
@@ -2641,7 +2652,7 @@ function reiseZaehler(p) {
   if (!d.length) return null;
   const tag = iso => Date.UTC(...iso.split("-").map((x, i) => i === 1 ? x - 1 : +x)) / 864e5;
   const h = tag(heute()), von = tag(d[0]), bis = tag(d[d.length - 1]);
-  if (h < von) return chip("", von - h === 1 ? "morgen geht es los" : `noch ${von - h} Tage`);
+  if (h < von) return chip("", von - h === 1 ? T("seite.plan.morgen") : T("seite.plan.noch_tage", {n: von - h}));
   if (h <= bis) return chip("", `Tag ${h - von + 1} von ${bis - von + 1}`);
   return null;
 }
@@ -2850,7 +2861,7 @@ function plusTage(iso, n) {
   const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 }
-// Wochentag in der Sprache der Hülle (Zwischenlösung aus M1; M2 vereinheitlicht Datum und Zahl)
+// Wochentag in der Sprache der Hülle (Intl, keine Liste im Code)
 const wochentag = iso => new Intl.DateTimeFormat(LOCALE, {weekday: "short", timeZone: "UTC"}).format(new Date(iso + "T12:00:00Z"));
 function ortKurz(id) {
   const a = ortAbschnitt(id);
@@ -2980,7 +2991,7 @@ function kapitel(b, kz, tag) {
   const n = (b.html.match(/<li[\s>]/g) || []).length;
   const d = el("details", {class: "kapitel ziel", id: b.id, "data-ziel": b.id, "data-tag": tag, open: TAGKAPITEL[tag] === b.id},
     el("summary", {}, el("span", {class: "kap-text"}, el("span", {class: "kap-titel"}, b.titel),
-      el("span", {class: "kap-vorschau"}, klartext(b.html).slice(0, 160))), n > 1 ? zahlMarke(n, `${n} Einträge`) : null, zid(b.id)),
+      el("span", {class: "kap-vorschau"}, klartext(b.html).slice(0, 160))), n > 1 ? zahlMarke(n, T("seite.anzahl.eintraege", {n})) : null, zid(b.id)),
     el("div", {class: "kap-inhalt"}, reiseText(b.html, kz)));
   d.addEventListener("toggle", () => {
     if (!d.open) { if (TAGKAPITEL[tag] === b.id) delete TAGKAPITEL[tag]; return; }
@@ -3055,7 +3066,7 @@ function nachtAbschnitt(t) {
 }
 // Organismus Orte des Tages: je Ort eine Zeile (Name als Link, Kurztext, Kennung), ohne Kasten und ohne Marken
 function tagOrteZeilen(orte) {
-  return el("section", {class: "ebene ebene-orte"}, ebeneKopf(orte.length > 1 ? "Orte des Tages" : "Ort des Tages"),
+  return el("section", {class: "ebene ebene-orte"}, ebeneKopf(T("seite.tag.orte", {n: orte.length})),
     orte.map(o => { const a = ortAbschnitt(o);
       return el("div", {class: "ortzeile vorschau"},
         el("div", {class: "titelzeile"}, a ? el("a", {href: "#" + o}, symbol("ort", "etikett-sym"), ortName(o) + " →") : el("span", {}, ortName(o)), zid(o)),
@@ -3147,7 +3158,7 @@ function ortKarte(m, oid) {
     attributionControl: !!(K.namensnennung || K.quelle), maxBounds: L.latLngBounds([rf.sued, rf.west], [rf.nord, rf.ost]).pad(0.15)});
   if (K.namensnennung || K.quelle) karte.attributionControl.setPrefix(false).addAttribution(K.namensnennung || K.quelle);
   const osm = !!(K.grundkarte && window.protomapsL);
-  if (osm) protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: "de", maxDataZoom: 15, attribution: ""}).addTo(karte);
+  if (osm) protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: LOCALE.split("-")[0], maxDataZoom: 15, attribution: ""}).addTo(karte);
   else for (const poly of [K.kueste, ...(K.inseln || [])]) L.polygon(poly, {className: "rh-land", weight: 1.2, fillOpacity: 1, interactive: false}).addTo(karte);
   for (const [id, o] of Object.entries(K.orte)) {
     if (id === oid || !o.lage || !ortAbschnitt(id)) continue;
@@ -3200,9 +3211,9 @@ function ansichtWissen(m) {
     leer = false;
     const zeile = a => { const pl = ortPlaene(a.id);
       return listenZeile("wissen", "karte", a.titel,
-        [R && (R.orte[a.id] || {}).ausserhalb ? "außerhalb der Reisegegend" : "", pl.length ? "in " + pl.map(p => p.kurz).join(", ") : "in keinem Plan", a.wissen ? `${a.wissen.length} ${a.wissen.length === 1 ? "Abschnitt" : "Abschnitte"} der Recherche` : ""].filter(Boolean).join(" · "),
+        [R && (R.orte[a.id] || {}).ausserhalb ? "außerhalb der Reisegegend" : "", pl.length ? "in " + pl.map(p => p.kurz).join(", ") : "in keinem Plan", a.wissen ? T("seite.anzahl.abschnitte_recherche", {n: a.wissen.length}) : ""].filter(Boolean).join(" · "),
         a.id, a.id); };
-    const alle = abschnitte.filter(x => x.typ === "ort").sort((a, b) => a.titel.localeCompare(b.titel, "de"));
+    const alle = abschnitte.filter(x => x.typ === "ort").sort((a, b) => SORT.compare(a.titel, b.titel));
     m.append(el("h3", {class: "gruppe ziel", id: "orte"}, "Orte"));
     m.append(el("p", {class: "meldung"}, "Orte, die nur in der Recherche vorkommen. Jede Ortsseite zeigt die passenden Abschnitte der Recherche."));
     m.append(el("div", {class: "wliste"}, orte.filter(a => !ortPlaene(a.id).length).map(zeile)));
@@ -3433,6 +3444,7 @@ function ansichtBausteine(m) {
   teil("Atom", "Datum", "Zwei Formen: mit Wochentag für die Tage des Plans, kurz (mit Jahr, wenn es nicht das laufende ist) für Fristen, Prüfdaten und Verläufe.",
     fall("mit Wochentag", datumText("2027-05-13")), fall("kurz", datumKurz("2027-05-13")), fall("kurz, laufendes Jahr", datumKurz(heute())),
     fall("Zeitpunkt einer Bewegung", [zeitText("18:05"), " · ", zeitText("2027-05-13T20:15+02:00")]));
+  teil("Atom", "Zahl", T("seite.bausteine.zahl.beschreibung"), fall("1234.5", zahlText(1234.5, {useGrouping: true})), fall("12.4 km", zahlText(12.4) + " km"));
   teil("Atom", "Zahlmarke", "Die Zahl der Einträge einer Gruppe oder eines Kapitels; im Gruppentitel (Molekül).",
     el("div", {class: "chips"}, zahlMarke(3)), gruppenTitel("Gruppe (Muster)", 2));
   teil("Atom", "Zustand Buchung", "Der Buchungsstand eines Dings als Chip (Molekül Buchungsstand: gebucht, nicht gebucht, angefragt; mit Buchung führt er zu ihr).",
@@ -3917,7 +3929,7 @@ function wuBilanz(alle) {
   for (const p of D.reise.personen || []) if (p.rolle !== "gast") namen.set(p.name.toLowerCase(), p.name);
   for (const w of alle) if (w.name && !namen.has(w.name.toLowerCase())) namen.set(w.name.toLowerCase(), w.name);
   const punkte = KONTINGENT.art === "punkte";
-  return [...namen.values()].sort((a, b) => a.localeCompare(b, "de")).map(n => {
+  return [...namen.values()].sort((a, b) => SORT.compare(a, b)).map(n => {
     const eigene = alle.filter(w => gleicherName(w.name, n));
     const aktiv = eigene.filter(w => w.status !== "verworfen");
     const vergeben = aktiv.reduce((s, w) => s + (w.punkte || 0), 0);
@@ -3939,7 +3951,7 @@ function wuKarte(w) {
   if (!gesendet) c.append(chip("offen", "noch nicht gesendet"));
   else if (w.status === "neu") c.append(chip("leise", "wird geprüft"));
   else if (w.status === "rueckfrage") c.append(chip("offen", "Rückfrage"));
-  if (KONTINGENT.art === "punkte" && w.punkte) c.append(chip("", "●".repeat(Math.min(w.punkte, 5)) + " " + w.punkte + (w.punkte === 1 ? " Punkt" : " Punkte"), {title: "So wichtig ist der Wunsch der Person"}));
+  if (KONTINGENT.art === "punkte" && w.punkte) c.append(chip("", "●".repeat(Math.min(w.punkte, 5)) + " " + T("seite.anzahl.punkte", {n: w.punkte}), {title: "So wichtig ist der Wunsch der Person"}));
   if (w.nachreichen) c.append(chip("offen", "wird nachgereicht"));
   k.append(c);
   k.append(el("div", {class: "kopfzeile"}, `${w.name || "?"} · ${datumKurz(w.erstellt)}`,
@@ -3997,7 +4009,7 @@ function ansichtWuensche(m) {
   const bl = wuBilanz(alle);
   m.append(el("div", {class: "wu-bilanz"}, el("h3", {class: "reise-titel"}, "Wer wünscht sich was"), bl.map(b => el("div", {class: "wu-person"},
     el("b", {}, b.name), " ",
-    el("span", {class: "kopfzeile"}, [`${b.wuensche} ${b.wuensche === 1 ? "Wunsch" : "Wünsche"}`, b.eingeplant ? `${b.eingeplant} eingeplant` : "",
+    el("span", {class: "kopfzeile"}, [T("seite.anzahl.wuensche", {n: b.wuensche}), b.eingeplant ? `${b.eingeplant} eingeplant` : "",
       b.erlebt ? `${b.erlebt} erlebt` : "", punkte ? `${b.frei} von ${KONTINGENT.je_person} Punkten frei` : `noch ${b.frei} frei`].filter(Boolean).join(" · "))))));
   const brett = el("div", {class: "brett"});
   const sortiert = (a, b) => (b.punkte || 0) - (a.punkte || 0) || (b.erstellt || "").localeCompare(a.erstellt || "");
@@ -4105,7 +4117,7 @@ const spaeter = a => agOffen(a) && a.ab && a.ab > heute();
 function agZu(id) { return AG.filter(a => (a.bezug || []).includes(id)); }
 function agSortierung(a, b) {
   const s = x => Object.keys(AG_STATUS).indexOf(x.status), p = x => AG_PRIO.indexOf(x.prioritaet || "normal");
-  return s(a) - s(b) || p(a) - p(b) || (a.frist || "9999").localeCompare(b.frist || "9999") || a.id.localeCompare(b.id, "de", {numeric: true});
+  return s(a) - s(b) || p(a) - p(b) || (a.frist || "9999").localeCompare(b.frist || "9999") || SORT_ZAHL.compare(a.id, b.id);
 }
 
 async function agLaden() {
@@ -4126,7 +4138,7 @@ async function agSenden(methode, url, body) {
   } catch (e) { throw "Gerade keine Verbindung. Aufgaben lassen sich nur mit Netz ändern."; }
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw r.status >= 500 || r.status === 404 && !d.fehler ? "Dienst gerade nicht erreichbar." : (d.fehler || "abgelehnt");
-  AG = [...AG.filter(a => a.id !== d.id), d].sort((a, b) => a.id.localeCompare(b.id, "de", {numeric: true}));
+  AG = [...AG.filter(a => a.id !== d.id), d].sort((a, b) => SORT_ZAHL.compare(a.id, b.id));
   AG_OK = true; merke("aufgaben", AG);
   return d;
 }

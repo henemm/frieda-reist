@@ -12,7 +12,7 @@ import re
 BASIS = ("de", "en")
 VORGABE = "en"          # Sprache einer Person, deren Wunsch nicht erkennbar ist; Reisen ohne Feld sprache bauen mit "de"
 VORGABE_REISE = "de"
-PFLICHTFELDER = ("NAME", "LOCALE", "RICHTUNG", "PLURAL", "DATUM", "DATUM_KURZ", "ZEIT", "WOCHENTAGE_KURZ", "TEXTE")
+PFLICHTFELDER = ("NAME", "LOCALE", "RICHTUNG", "PLURAL", "DATUM", "DATUM_KURZ", "ZEIT", "DATUM_ZEIT", "WOCHENTAGE_KURZ", "TEXTE")
 KATEGORIEN = ("zero", "one", "two", "few", "many", "other")   # Pluralkategorien nach CLDR
 
 _module = {}
@@ -128,6 +128,11 @@ def datum_kurz(d, kuerzel):
 def wochentag(d, kuerzel):
     """Kurzer Wochentag (Deutsch Do, Englisch Thu) aus der Sprachdatei; strftime hängt an der Sprache des Rechners und taugt nicht."""
     return (sprache(kuerzel) or sprache(VORGABE)).WOCHENTAGE_KURZ[_datum(d).weekday()]
+
+
+def datum_zeit(z, kuerzel):
+    """Zeitpunkt mit Datum und Uhrzeit (datetime) in der Form der Sprache."""
+    return z.strftime((sprache(kuerzel) or sprache(VORGABE)).DATUM_ZEIT)
 
 
 def zeit(z, kuerzel):
