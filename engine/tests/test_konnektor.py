@@ -183,6 +183,7 @@ def test_werkzeuge_je_rolle(dienst):
     assert {t["name"] for t in rpc(basis, KARL, "tools/list")["tools"]} == m
     r = {t["name"] for t in rpc(basis, GAST, "tools/list")["tools"]}
     assert r == m - kn.SCHREIB_WERKZEUGE and "zeige" in r
+    assert "start_ende_setzen" not in h   # Issue #142: ein Werkzeug des Schreibwegs, ohne ihn nicht angeboten
 
 
 def test_rollen_aus_reise_yaml(dienst):
@@ -552,8 +553,10 @@ def test_ontologie_organisator_schreibt_direkt(schreibweg):
         nur_org = {"tag_aendern", "frage_schliessen", "reise_status_setzen", "einstellung_setzen",
                    # Abgleich 29.10.2026: Plan, Eckdaten und Ontologie ändern nur Organisator:innen
                    "tag_anlegen", "termin_setzen", "wahlstelle_aendern", "reise_aendern", "plan_anlegen", "plan_aendern",
-                   "merkmal_zusammenfuehren", "arten_uebernehmen"}
+                   "merkmal_zusammenfuehren", "arten_uebernehmen",
+                   "start_ende_setzen"}   # Issue #142
         assert (set(kn.ONTOLOGIE_WERKZEUGE) - nur_org <= namen) is da, token
+        assert ("start_ende_setzen" in namen) is (token == ALT_ORGANISATOR), token
     anleitung = rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
     assert "Arten und Merkmale (art_definieren, merkmal_definieren" in anleitung and "schreibt es sofort in die Reise" in anleitung
     t, f = werkzeug(basis, ALT_ORGANISATOR, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt", grund="Hütten am Weg")
@@ -728,6 +731,53 @@ def test_entscheiden_ueber_den_schreibweg_und_widerspruch(schreibweg):
     Path(kn.zugaenge_pfad()).write_text(json.dumps(zug))
     t, f = werkzeug(basis, "o" * 32, "entscheiden", option="V-03.a", status="verworfen", grund="zu teuer")
     assert f and "persönlichen Link" in t
+
+
+def test_konnektor_haengt_hinweise_an_den_text(schreibweg):
+    """Issue #142, AC-13: Neue Warnungen aus dem Probebau (Feld hinweise) hängt der Konnektor an den Text; sie sind kein
+    Fehler, eingetragen ist trotzdem. Ohne hinweise bleibt der Text wie bisher. Beim allgemeinen Eintragen und bei entscheiden."""
+    basis, _ = schreibweg
+    hinweise = ["plan: Fixpunkt 20.05. (Konzert am Abend (Test)) liegt außerhalb des Plans.", "T-02: Erfundene Lücke im Ablauf (Test)."]
+    try:
+        Schreibweg.antwort = (200, {"ok": True, "text": "Preis pro Nacht an U-02 Pension Burgblick: 95 €.", "commit": "abc1234"})
+        t, f = werkzeug(basis, KARL, "wert_eintragen", ziel="U-02", merkmal="preis", wert="95 €", quelle="Website", geprueft="2026-10-29")
+        assert not f and t.startswith("Eingetragen und gesichert (Karl):") and "Neue Hinweise der Prüfung" not in t
+        Schreibweg.antwort = (200, {"ok": True, "text": "Preis pro Nacht an U-02 Pension Burgblick: 95 €.", "commit": "abc1234",
+                                    "hinweise": hinweise})
+        t, f = werkzeug(basis, KARL, "wert_eintragen", ziel="U-02", merkmal="preis", wert="95 €", quelle="Website", geprueft="2026-10-29")
+        assert not f and t.startswith("Eingetragen und gesichert (Karl):")
+        assert "Neue Hinweise der Prüfung" in t and all(f"- {h}" in t for h in hinweise)
+        Schreibweg.antwort = (200, {"ok": True, "text": "Entschieden: V-01.b „Plan B“ ist gewählt (Ida, Grund: Bahn).", "commit": "abc1234",
+                                    "hinweise": hinweise})
+        t, f = werkzeug(basis, ALT_ORGANISATOR, "entscheiden", option="V-01.b", status="gewaehlt", grund="Karl will die Bahn")
+        assert not f and t.startswith("Entschieden: V-01.b") and "Neue Hinweise der Prüfung" in t and all(f"- {h}" in t for h in hinweise)
+    finally:
+        Schreibweg.antwort = (200, {"ok": True, "text": "ok"})
+
+
+def test_reise_aendern_verweist_auf_start_ende_setzen(schreibweg, monkeypatch):
+    """Issue #142, AC-28 und AC-32: Start und Ende des Plans setzt das Werkzeug start_ende_setzen (nur Organisator:innen, nur mit
+    Schreibweg, Aktion einstellung wie reise_aendern); reise_aendern verweist darauf statt auf die Tage."""
+    basis, _ = schreibweg
+    assert "start_ende_setzen" in kn.REISE_AENDERN["description"] and "in den Tagen" not in kn.REISE_AENDERN["description"]
+    definition = getattr(kn, "START_ENDE_SETZEN", None)
+    assert definition is not None and definition["name"] == "start_ende_setzen"
+    assert {"start_ort", "start_datum", "ende_ort", "ende_datum", "grund"} <= set(definition["inputSchema"]["properties"])
+    assert "grund" in definition["inputSchema"].get("required", [])
+    assert "start_ende_setzen" in kn.ONTOLOGIE_WERKZEUGE and kn.ONTOLOGIE_AKTION["start_ende_setzen"] == "einstellung"
+    assert "`start_ende_setzen`" in (WURZEL / "docs" / "konnektor.md").read_text(encoding="utf-8")
+    t, f = werkzeug(basis, KARL, "start_ende_setzen", start_datum="2027-05-20", grund="x")
+    assert f and "nur Organisator:innen" in t and Schreibweg.anfragen == []
+    try:
+        Schreibweg.antwort = (200, {"ok": True, "text": "Start des Plans: Datum 2027-05-13 → 2027-05-20.", "commit": "abc1234"})
+        t, f = werkzeug(basis, ALT_ORGANISATOR, "start_ende_setzen", start_datum="2027-05-20", grund="Zug später (Test)")
+        assert not f and t.startswith("Eingetragen und gesichert (Ida): Start des Plans")
+        pfad, _, body = Schreibweg.anfragen[-1]
+        assert pfad == "/beispielreise/start_ende_setzen" and body["args"] == {"start_datum": "2027-05-20", "grund": "Zug später (Test)"}
+    finally:
+        Schreibweg.antwort = (200, {"ok": True, "text": "ok"})
+    monkeypatch.delenv("KN_SCHREIBDIENST")
+    assert "start_ende_setzen" not in {t["name"] for t in rpc(basis, ALT_ORGANISATOR, "tools/list")["tools"]}
 
 
 def test_tag_aendern_nur_organisatoren_sehen_es(schreibweg):

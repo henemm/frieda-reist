@@ -1,0 +1,914 @@
+........................................................................ [ 10%]
+.........................FF.FF....FFF.FFFFFFFFFFFFF..................... [ 21%]
+........................................................................ [ 31%]
+...............................F.....FF................................. [ 42%]
+........................................................................ [ 53%]
+........................................................................ [ 63%]
+........................................................................ [ 74%]
+......................................F................................. [ 84%]
+..F...F...................FFFFFFFFFFFFFF................................ [ 95%]
+.................F.............                                          [100%]
+=================================== FAILURES ===================================
+_______________ test_veroeffentlichen_fehlschlag_wird_wiederholt _______________
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bbf85b20>, 'deploys': <function vf.<locals>.deploys at 0x7805bbf87560>, '...f.<locals>.anzahl_pings at 0x7805bbf86fc0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bbf840e0>, ...}
+
+    def test_veroeffentlichen_fehlschlag_wird_wiederholt(vf):
+        """Ein Infrastrukturfehler (Exit 1 aus deploy.sh) beendet den Lauf sofort, wird nicht gemerkt und beim nächsten Lauf
+        auf demselben Stand wiederholt (#142, AC-18)."""
+        (vf["tmp"] / "kaputt").touch()
+        assert vf["lauf"]().returncode == 1
+>       assert vf["deploys"]() == ["beispielreise"]
+E       AssertionError: assert ['beispielrei... 'zweitreise'] == ['beispielreise']
+E         
+E         Left contains one more item: 'zweitreise'
+E         Use -v to get more diff
+
+engine/tests/test_betrieb.py:232: AssertionError
+_____________ test_veroeffentlichen_prueft_einmal_fuer_alle_reisen _____________
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bb255580>, 'deploys': <function vf.<locals>.deploys at 0x7805bb255440>, '...f.<locals>.anzahl_pings at 0x7805bb2556c0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bb255620>, ...}
+
+    def test_veroeffentlichen_prueft_einmal_fuer_alle_reisen(vf):
+        """Die Prüfungen laufen einmal je Lauf, nicht je Reise; deploy.sh bekommt den geprüften Stand und prüft nicht nochmal.
+        Rote Software-Tests: keine Reise wird angefasst, der Stand bleibt ungemerkt, die Rot-Datei merkt den Stand (art=software);
+        derselbe Stand wird erst mit --immer oder einem neuen Commit wieder geprüft (#142, AC-3, AC-15)."""
+        (vf["tmp"] / "rot").touch()
+        r = vf["lauf"](VF_JETZT=str(T0))
+        assert r.returncode == 1 and "Prüfungen rot" in r.stdout and vf["deploys"]() == []
+        assert not (vf["tmp"] / "dienst/veroeffentlicht").exists()
+        assert not (vf["tmp"] / "dienst/veroeffentlichen-erfolg").exists() and vf["pings"]() == 0
+        rot = vf["rot"]()
+>       assert rot["commit"] == vf["kopf"]() and rot["art"] == "software" and rot["reisen"] == ""
+               ^^^^^^^^^^^^^
+E       TypeError: 'NoneType' object is not subscriptable
+
+engine/tests/test_betrieb.py:251: TypeError
+________________ test_veroeffentlichen_heartbeat_nur_bei_erfolg ________________
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bb255d00>, 'deploys': <function vf.<locals>.deploys at 0x7805bb255e40>, '...f.<locals>.anzahl_pings at 0x7805bb2554e0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bb255300>, ...}
+
+    def test_veroeffentlichen_heartbeat_nur_bei_erfolg(vf):
+        (vf["tmp"] / "kaputt-beispielreise").touch()
+        assert vf["lauf"]().returncode == 1
+        assert vf["pings"]() == 0                                  # Bau einer Reise gescheitert (Teil-Erfolg ist kein Erfolg)
+>       assert vf["lauf"]().returncode == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche c522c39 start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='').returncode
+E        +    where CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche c522c39 start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='') = <function vf.<locals>.lauf at 0x7805bb255d00>()
+
+engine/tests/test_betrieb.py:282: AssertionError
+_________________ test_veroeffentlichen_stempel_nur_bei_erfolg _________________
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bc043380>, 'deploys': <function vf.<locals>.deploys at 0x7805bbf85d00>, '...f.<locals>.anzahl_pings at 0x7805bbf86020>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bbf86980>, ...}
+
+    def test_veroeffentlichen_stempel_nur_bei_erfolg(vf):
+        stempel = vf["tmp"] / "dienst" / "veroeffentlichen-erfolg"
+        (vf["tmp"] / "kaputt-beispielreise").touch()
+        assert vf["lauf"]().returncode == 1
+        assert not stempel.exists()                                # Bau einer Reise gescheitert
+>       assert vf["lauf"]().returncode == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche c522c39 start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='').returncode
+E        +    where CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche c522c39 start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='') = <function vf.<locals>.lauf at 0x7805bc043380>()
+
+engine/tests/test_betrieb.py:300: AssertionError
+_____________ test_veroeffentlichen_rote_reisetests_sperren_nicht ______________
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bbf86160>, 'deploys': <function vf.<locals>.deploys at 0x7805bbf840e0>, '...f.<locals>.anzahl_pings at 0x7805bbf876a0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bbf86f20>, ...}
+
+    def test_veroeffentlichen_rote_reisetests_sperren_nicht(vf):
+        """Die Tests des Reisen-Repos (tests/) prüfen Inhalt, nicht Software: rot sperrt nie, der Betrieb bekommt eine
+        Nachricht (AC-1)."""
+        vf["reisetests"]()
+        (vf["tmp"] / "rot-reise").touch()
+        r = vf["lauf"]()
+        assert r.returncode == 0, r.stdout + r.stderr
+>       assert "Tests des Reisen-Repos rot (sperren nicht)" in r.stdout
+E       AssertionError: assert 'Tests des Reisen-Repos rot (sperren nicht)' in 'Veröffentliche fd059fc tests\nFertig: fd059fc ist online.\n'
+E        +  where 'Veröffentliche fd059fc tests\nFertig: fd059fc ist online.\n' = CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=0, stdout='Veröffentliche fd059fc tests\nFertig: fd059fc ist online.\n', stderr='').stdout
+
+engine/tests/test_betrieb.py:370: AssertionError
+________ test_veroeffentlichen_warnung_der_reisetests_einmal_je_commit _________
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bb255ee0>, 'deploys': <function vf.<locals>.deploys at 0x7805bb255120>, '...f.<locals>.anzahl_pings at 0x7805bb255da0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bb255f80>, ...}
+
+    def test_veroeffentlichen_warnung_der_reisetests_einmal_je_commit(vf):
+        """Die Nachricht über rote Tests des Reisen-Repos kommt je Commit einmal, auch bei --immer (AC-2)."""
+        vf["reisetests"]()
+        (vf["tmp"] / "rot-reise").touch()
+        normal = lambda: [z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]   # noqa: E731
+        assert vf["lauf"]().returncode == 0
+        assert vf["lauf"]("--immer").returncode == 0
+>       assert len(normal()) == 1
+E       assert 0 == 1
+E        +  where 0 = len([])
+E        +    where [] = <function test_veroeffentlichen_warnung_der_reisetests_einmal_je_commit.<locals>.<lambda> at 0x7805bb256340>()
+
+engine/tests/test_betrieb.py:387: AssertionError
+________________ test_deploy_prueft_nur_die_tests_der_software _________________
+
+    def test_deploy_prueft_nur_die_tests_der_software():
+        """deploy.sh und das Tor prüfen mit pytest nur engine/tests; tests/ des Reisen-Repos läuft im Tor getrennt und sperrt
+        nicht (AC-4)."""
+        deploy = (BETRIEB / "deploy.sh").read_text(encoding="utf-8")
+        pytest_zeilen = [z for z in deploy.splitlines() if "pytest" in z and not z.lstrip().startswith("#")]
+        assert pytest_zeilen and all('"$WURZEL/engine/tests"' in z for z in pytest_zeilen)
+>       assert not any("$WURZEL/tests" in z for z in pytest_zeilen)
+E       assert not True
+E        +  where True = any(<generator object test_deploy_prueft_nur_die_tests_der_software.<locals>.<genexpr> at 0x7805bbf44930>)
+
+engine/tests/test_betrieb.py:400: AssertionError
+______ test_veroeffentlichen_eine_rote_reise_haelt_die_anderen_nicht_auf _______
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bbf86840>, 'deploys': <function vf.<locals>.deploys at 0x7805bbf862a0>, '...f.<locals>.anzahl_pings at 0x7805bbf86fc0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bbf87060>, ...}
+
+    def test_veroeffentlichen_eine_rote_reise_haelt_die_anderen_nicht_auf(vf):
+        """Scheitert der Bau einer Reise (Exit 2), werden die anderen trotzdem veröffentlicht und freigeschaltet; der Lauf ist
+        rot, der Stand bleibt ungemerkt, die Rot-Datei nennt die Reise (AC-6)."""
+        (vf["tmp"] / "kaputt-beispielreise").touch()
+        r = vf["lauf"](VF_JETZT=str(T0))
+        assert r.returncode == 1
+        assert vf["deploys"]() == ["beispielreise", "zweitreise"]
+>       assert vf["zeilen"]("frei.log") == ["zweitreise"]
+E       AssertionError: assert [] == ['zweitreise']
+E         
+E         Right contains one more item: 'zweitreise'
+E         Use -v to get more diff
+
+engine/tests/test_betrieb.py:430: AssertionError
+___________________ test_deploy_exit_2_bei_baufehler_sonst_1 ___________________
+
+tmp_path = PosixPath('<tmp>')
+
+    def test_deploy_exit_2_bei_baufehler_sonst_1(tmp_path):
+        """deploy.sh endet mit 2, wenn der Bau der Reise scheitert (deterministisch, nur diese Reise), sonst bei Fehlern mit 1
+        (AC-7)."""
+        wurzel = tmp_path / "instanz"
+        (wurzel / "reisen" / "kaputtreise").mkdir(parents=True)
+        (wurzel / "engine").symlink_to(ENGINE)
+        (wurzel / "reisen" / "kaputtreise" / "reise.json").write_text("{}")
+        (wurzel / "reisen" / "kaputtreise" / "reise.yaml").write_text("titel: [kein gültiges YAML\n")
+        (wurzel / ".gitignore").write_text("dist/\n")
+        git(wurzel, "init", "-q", "-b", "main")
+        git(wurzel, "add", ".")
+        git(wurzel, "commit", "-qm", "start")
+        (tmp_path / "seiten").mkdir()
+        env = {**SAUBER, "FR_WURZEL": str(wurzel), "FR_INSTANZ": "probe", "FR_SEITEN": str(tmp_path / "seiten"),
+               "FR_DIENST": str(tmp_path / "dienst"), "FR_PYTHON": sys.executable}
+        r = subprocess.run([str(BETRIEB / "deploy.sh"), "kaputtreise"], env=env, capture_output=True, text=True)
+>       assert r.returncode == 2, r.stdout + r.stderr
+E       AssertionError: Die Seite wurde NICHT gebaut. Das muss zuerst behoben werden:
+E          - reise.yaml: kein gültiges YAML (while parsing a flow sequence
+E           in "<unicode string>", line 1, column 8:
+E             titel: [kein gültiges YAML
+E                    ^
+E         expected ',' or ']', but got '<stream end>'
+E           in "<unicode string>", line 2, column 1:
+E             
+E             ^).
+E         
+E       assert 1 == 2
+E        +  where 1 = CompletedProcess(args=['betrieb/deploy.sh', 'kaputtr...cted \',\' or \']\', but got \'<stream end>\'\n  in "<unicode string>", line 2, column 1:\n    \n    ^).\n', stderr='').returncode
+
+engine/tests/test_betrieb.py:454: AssertionError
+_ test_veroeffentlichen_infrastrukturfehler_wird_nicht_gemerkt_und_wiederholt __
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bc03f240>, 'deploys': <function vf.<locals>.deploys at 0x7805bc03f2e0>, '...f.<locals>.anzahl_pings at 0x7805bc03e340>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bc03c7c0>, ...}
+
+    def test_veroeffentlichen_infrastrukturfehler_wird_nicht_gemerkt_und_wiederholt(vf):
+        """Ein Infrastrukturfehler (Exit 1) bei der ersten Reise beendet die Schleife; die zweite Reise wird nicht angefasst,
+        die Rot-Datei weder angelegt noch verändert (AC-8)."""
+        (vf["tmp"] / "infra-beispielreise").touch()
+        assert vf["lauf"]().returncode == 1
+>       assert vf["deploys"]() == ["beispielreise"]
+E       AssertionError: assert ['beispielrei... 'zweitreise'] == ['beispielreise']
+E         
+E         Left contains one more item: 'zweitreise'
+E         Use -v to get more diff
+
+engine/tests/test_betrieb.py:468: AssertionError
+_________ test_veroeffentlichen_roter_stand_wird_nicht_erneut_geprueft _________
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bc0b9bc0>, 'deploys': <function vf.<locals>.deploys at 0x7805bc0bbce0>, '...f.<locals>.anzahl_pings at 0x7805bc0bba60>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bc0b9c60>, ...}
+
+    def test_veroeffentlichen_roter_stand_wird_nicht_erneut_geprueft(vf):
+        """Ein Stand mit gescheitertem Bau wird beim nächsten Lauf ohne --immer nicht noch einmal geprüft und gebaut (AC-15)."""
+        (vf["tmp"] / "kaputt-beispielreise").touch()
+        assert vf["lauf"]().returncode == 1
+        assert vf["deploys"]() == ["beispielreise", "zweitreise"]
+        assert vf["zeilen"]("pruefen.log") == ["p"]
+        r = vf["lauf"]()
+>       assert r.returncode == 0 and "Bekannter roter Stand" in r.stdout
+E       AssertionError: assert (1 == 0)
+E        +  where 1 = CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche e61b49b start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='').returncode
+
+engine/tests/test_betrieb.py:485: AssertionError
+________ test_veroeffentlichen_ueberspringen_ohne_stempel_und_heartbeat ________
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bbf85b20>, 'deploys': <function vf.<locals>.deploys at 0x7805bbf85580>, '...f.<locals>.anzahl_pings at 0x7805bbf84900>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bbf85d00>, ...}
+
+    def test_veroeffentlichen_ueberspringen_ohne_stempel_und_heartbeat(vf):
+        """Das Überspringen eines bekannten roten Stands ist kein fachlicher Erfolg: kein Stempel, kein Heartbeat (AC-16)."""
+        stempel = vf["tmp"] / "dienst" / "veroeffentlichen-erfolg"
+        (vf["tmp"] / "kaputt-beispielreise").touch()
+        assert vf["lauf"]().returncode == 1
+>       assert vf["lauf"]().returncode == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche e61b49b start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='').returncode
+E        +    where CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche e61b49b start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='') = <function vf.<locals>.lauf at 0x7805bbf85b20>()
+
+engine/tests/test_betrieb.py:494: AssertionError
+_____________ test_veroeffentlichen_gruen_raeumt_die_rot_datei_auf _____________
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bb2574c0>, 'deploys': <function vf.<locals>.deploys at 0x7805bb255a80>, '...f.<locals>.anzahl_pings at 0x7805bb257380>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bb257560>, ...}
+
+    def test_veroeffentlichen_gruen_raeumt_die_rot_datei_auf(vf):
+        """Nach einem roten Stand prüfen --immer und ein neuer Commit wieder; ist alles grün, verschwindet die Rot-Datei und
+        der Stand wird gemerkt (AC-17)."""
+        (vf["tmp"] / "kaputt-beispielreise").touch()
+>       assert vf["lauf"]().returncode == 1 and vf["rot"]() is not None
+E       AssertionError: assert (1 == 1 and None is not None)
+E        +  where 1 = CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche e9ad7af start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='').returncode
+E        +    where CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche e9ad7af start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='') = <function vf.<locals>.lauf at 0x7805bb2574c0>()
+E        +  and   None = <function vf.<locals>.rot at 0x7805bb257740>()
+
+engine/tests/test_betrieb.py:508: AssertionError
+______________ test_veroeffentlichen_kein_alarm_vor_der_schwelle _______________
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bc0400e0>, 'deploys': <function vf.<locals>.deploys at 0x7805bc0439c0>, '...f.<locals>.anzahl_pings at 0x7805bbf87560>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bbf84f40>, ...}
+
+    def test_veroeffentlichen_kein_alarm_vor_der_schwelle(vf):
+        """Vor 30 Minuten Rot geht kein Alarm hinaus (AC-20)."""
+        (vf["tmp"] / "kaputt-beispielreise").touch()
+        assert vf["lauf"](VF_JETZT=str(T0)).returncode == 1
+>       assert vf["lauf"](VF_JETZT=str(T0 + 29 * 60)).returncode == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche e9ad7af start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='').returncode
+E        +    where CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche e9ad7af start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='') = <function vf.<locals>.lauf at 0x7805bc0400e0>(VF_JETZT='1800001740')
+E        +      where '1800001740' = str((1800000000 + (29 * 60)))
+
+engine/tests/test_betrieb.py:529: AssertionError
+___________________ test_veroeffentlichen_alarm_genau_einmal ___________________
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bb2562a0>, 'deploys': <function vf.<locals>.deploys at 0x7805bb256ac0>, '...f.<locals>.anzahl_pings at 0x7805bb2559e0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bb256200>, ...}
+
+    def test_veroeffentlichen_alarm_genau_einmal(vf):
+        """Ab 30 Minuten Rot geht genau ein Alarm an den Betrieb, auch beim Überspringen; weitere Läufe und neue rote Commits
+        derselben Rot-Phase alarmieren nicht erneut (AC-21)."""
+        (vf["tmp"] / "kaputt-beispielreise").touch()
+        assert vf["lauf"](VF_JETZT=str(T0)).returncode == 1
+        r = vf["lauf"](VF_JETZT=str(T0 + 30 * 60))
+>       assert r.returncode == 0 and "Bekannter roter Stand" in r.stdout
+E       AssertionError: assert (1 == 0)
+E        +  where 1 = CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche e9ad7af start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='').returncode
+
+engine/tests/test_betrieb.py:540: AssertionError
+_________ test_veroeffentlichen_alarm_art_software_nur_an_den_betrieb __________
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bb257e20>, 'deploys': <function vf.<locals>.deploys at 0x7805bb256660>, '...f.<locals>.anzahl_pings at 0x7805bb2560c0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bb255ee0>, ...}
+
+    def test_veroeffentlichen_alarm_art_software_nur_an_den_betrieb(vf):
+        """Bei einer roten Reise gehen Meldungen an deren Organisator:innen (waechter.py rot-melden), bei roter Software nur
+        der Alarm an den Betrieb (AC-22)."""
+        (vf["tmp"] / "kaputt-beispielreise").touch()
+        assert vf["lauf"](VF_JETZT=str(T0)).returncode == 1
+>       assert vf["lauf"](VF_JETZT=str(T0 + 31 * 60)).returncode == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche e9ad7af start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='').returncode
+E        +    where CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche e9ad7af start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='') = <function vf.<locals>.lauf at 0x7805bb257e20>(VF_JETZT='1800001860')
+E        +      where '1800001860' = str((1800000000 + (31 * 60)))
+
+engine/tests/test_betrieb.py:555: AssertionError
+_______ test_veroeffentlichen_alarm_wiederholt_bei_ausfall_des_meldewegs _______
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bb256ca0>, 'deploys': <function vf.<locals>.deploys at 0x7805bb256e80>, '...f.<locals>.anzahl_pings at 0x7805bb256b60>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bb256a20>, ...}
+
+    def test_veroeffentlichen_alarm_wiederholt_bei_ausfall_des_meldewegs(vf):
+        """Kommt der Alarm nicht an (FR_MELDEN scheitert), bleibt gemeldet=0 und der nächste Lauf versucht es wieder (AC-24)."""
+        (vf["tmp"] / "kaputt-beispielreise").touch()
+        (vf["tmp"] / "melden-aus").touch()
+        assert vf["lauf"](VF_JETZT=str(T0)).returncode == 1
+>       assert vf["lauf"](VF_JETZT=str(T0 + 31 * 60)).returncode == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche e9ad7af start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='').returncode
+E        +    where CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche e9ad7af start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='') = <function vf.<locals>.lauf at 0x7805bb256ca0>(VF_JETZT='1800001860')
+E        +      where '1800001860' = str((1800000000 + (31 * 60)))
+
+engine/tests/test_betrieb.py:576: AssertionError
+________________ test_veroeffentlichen_schwelle_ist_einstellbar ________________
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bc0bbba0>, 'deploys': <function vf.<locals>.deploys at 0x7805bc0bbec0>, '...f.<locals>.anzahl_pings at 0x7805bc0bba60>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bc0b9c60>, ...}
+
+    def test_veroeffentlichen_schwelle_ist_einstellbar(vf):
+        """Die Schwelle kommt aus FR_ROT_MELDEN_NACH_MINUTEN (Vorgabe 30, erklärt in einstellungen.beispiel) (AC-25)."""
+        (vf["tmp"] / "kaputt-beispielreise").touch()
+        assert vf["lauf"](VF_JETZT=str(T0), FR_ROT_MELDEN_NACH_MINUTEN="10").returncode == 1
+>       assert vf["lauf"](VF_JETZT=str(T0 + 9 * 60), FR_ROT_MELDEN_NACH_MINUTEN="10").returncode == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche e9ad7af start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='').returncode
+E        +    where CompletedProcess(args=['betrieb/veroeffentlichen.sh'], returncode=1, stdout='Veröffentliche e9ad7af start\nFEHLER: Deploy von beispielreise fehlgeschlagen.\n', stderr='') = <function vf.<locals>.lauf at 0x7805bc0bbba0>(VF_JETZT='1800000540', FR_ROT_MELDEN_NACH_MINUTEN='10')
+E        +      where '1800000540' = str((1800000000 + (9 * 60)))
+
+engine/tests/test_betrieb.py:587: AssertionError
+__________ test_veroeffentlichen_seit_bleibt_ueber_neue_rote_commits ___________
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7805bc03e020>, 'deploys': <function vf.<locals>.deploys at 0x7805bc03d620>, '...f.<locals>.anzahl_pings at 0x7805bc03c7c0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7805bc03d940>, ...}
+
+    def test_veroeffentlichen_seit_bleibt_ueber_neue_rote_commits(vf):
+        """Ein neuer roter Commit in derselben Rot-Phase ersetzt commit, art und reisen; seit und gemeldet bleiben (AC-26)."""
+        (vf["tmp"] / "kaputt-beispielreise").touch()
+        assert vf["lauf"](VF_JETZT=str(T0)).returncode == 1
+        erster = vf["kopf"]()
+        (vf["tmp"] / "kaputt-beispielreise").unlink()
+        (vf["tmp"] / "kaputt-zweitreise").touch()
+        vf["neuer_commit"]()
+        assert vf["lauf"](VF_JETZT=str(T0 + 5 * 60)).returncode == 1
+        rot = vf["rot"]()
+>       assert rot["commit"] == vf["kopf"]() != erster and rot["reisen"] == "zweitreise"
+               ^^^^^^^^^^^^^
+E       TypeError: 'NoneType' object is not subscriptable
+
+engine/tests/test_betrieb.py:605: TypeError
+_____________ test_betrieb_md_nennt_rot_datei_alarm_und_konvention _____________
+
+    def test_betrieb_md_nennt_rot_datei_alarm_und_konvention():
+        """docs/betrieb.md beschreibt Tor, Exit-Codes, Rot-Datei, Überspringen, Alarm mit Schwelle und die Konvention für die
+        Tests des Reisen-Repos (AC-33)."""
+        text = (WURZEL / "docs" / "betrieb.md").read_text(encoding="utf-8")
+        for teil in ("veroeffentlichen-rot", "FR_ROT_MELDEN_NACH_MINUTEN", "Exit 2", "Bekannter roter Stand",
+                     "rot-melden", "sperren nicht"):
+>           assert teil in text, teil
+E           AssertionError: veroeffentlichen-rot
+E           assert 'veroeffentlichen-rot' in '# Betrieb einer Instanz\n\nWie Frieda auf einem eigenen Server läuft: Seiten ausliefern, Rückmeldungen annehmen, was ...dungen`, dann `rueckmeldung_erledigen`); `python3 engine/rueckmeldungen.py liste <reise>` zeigt sie auf dem Server |\n'
+
+engine/tests/test_betrieb.py:620: AssertionError
+__________________ test_ontologie_organisator_schreibt_direkt __________________
+
+schreibweg = ('http://127.0.0.1:36969', PosixPath('<tmp>'))
+
+    def test_ontologie_organisator_schreibt_direkt(schreibweg):
+        import konten
+        basis, ablage = schreibweg
+        for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (MITREISEND, True), (GAST, False)):
+            namen = {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}
+            nur_org = {"tag_aendern", "frage_schliessen", "reise_status_setzen", "einstellung_setzen",
+                       # Abgleich 29.10.2026: Plan, Eckdaten und Ontologie ändern nur Organisator:innen
+                       "tag_anlegen", "termin_setzen", "wahlstelle_aendern", "reise_aendern", "plan_anlegen", "plan_aendern",
+                       "merkmal_zusammenfuehren", "arten_uebernehmen",
+                       "start_ende_setzen"}   # Issue #142
+            assert (set(kn.ONTOLOGIE_WERKZEUGE) - nur_org <= namen) is da, token
+>           assert ("start_ende_setzen" in namen) is (token == ALT_ORGANISATOR), token
+E           AssertionError: hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+E           assert ('start_ende_setzen' in {'art_definieren', 'arten_uebernehmen', 'aufgabe_aendern', 'aufgabe_anlegen', 'aufgaben', 'beleg_anlegen', ...}) is ('hhhhhhhhhhhh...hhhhhhhhhhhhh' == 'hhhhhhhhhhhh...hhhhhhhhhhhhh'
+E             
+E               hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh)
+
+engine/tests/test_konnektor.py:559: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+__________________ test_konnektor_haengt_hinweise_an_den_text __________________
+
+schreibweg = ('http://127.0.0.1:36317', PosixPath('<tmp>'))
+
+    def test_konnektor_haengt_hinweise_an_den_text(schreibweg):
+        """Issue #142, AC-13: Neue Warnungen aus dem Probebau (Feld hinweise) hängt der Konnektor an den Text; sie sind kein
+        Fehler, eingetragen ist trotzdem. Ohne hinweise bleibt der Text wie bisher. Beim allgemeinen Eintragen und bei entscheiden."""
+        basis, _ = schreibweg
+        hinweise = ["plan: Fixpunkt 20.05. (Konzert am Abend (Test)) liegt außerhalb des Plans.", "T-02: Erfundene Lücke im Ablauf (Test)."]
+        try:
+            Schreibweg.antwort = (200, {"ok": True, "text": "Preis pro Nacht an U-02 Pension Burgblick: 95 €.", "commit": "abc1234"})
+            t, f = werkzeug(basis, KARL, "wert_eintragen", ziel="U-02", merkmal="preis", wert="95 €", quelle="Website", geprueft="2026-10-29")
+            assert not f and t.startswith("Eingetragen und gesichert (Karl):") and "Neue Hinweise der Prüfung" not in t
+            Schreibweg.antwort = (200, {"ok": True, "text": "Preis pro Nacht an U-02 Pension Burgblick: 95 €.", "commit": "abc1234",
+                                        "hinweise": hinweise})
+            t, f = werkzeug(basis, KARL, "wert_eintragen", ziel="U-02", merkmal="preis", wert="95 €", quelle="Website", geprueft="2026-10-29")
+            assert not f and t.startswith("Eingetragen und gesichert (Karl):")
+>           assert "Neue Hinweise der Prüfung" in t and all(f"- {h}" in t for h in hinweise)
+E           AssertionError: assert ('Neue Hinweise der Prüfung' in 'Eingetragen und gesichert (Karl): Preis pro Nacht an U-02 Pension Burgblick: 95 €. Es gilt ab jetzt; die Seite und die Werkzeuge zeige, merkmale und varianten zeigen den neuen Stand, sobald veröffentlicht ist (wenige Minuten).')
+
+engine/tests/test_konnektor.py:749: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 200
+______________ test_reise_aendern_verweist_auf_start_ende_setzen _______________
+
+schreibweg = ('http://127.0.0.1:44867', PosixPath('<tmp>'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7805bbfff650>
+
+    def test_reise_aendern_verweist_auf_start_ende_setzen(schreibweg, monkeypatch):
+        """Issue #142, AC-28 und AC-32: Start und Ende des Plans setzt das Werkzeug start_ende_setzen (nur Organisator:innen, nur mit
+        Schreibweg, Aktion einstellung wie reise_aendern); reise_aendern verweist darauf statt auf die Tage."""
+        basis, _ = schreibweg
+>       assert "start_ende_setzen" in kn.REISE_AENDERN["description"] and "in den Tagen" not in kn.REISE_AENDERN["description"]
+E       AssertionError: assert ('start_ende_setzen' in 'Nur für Organisator:innen: Eckdaten der Reise ändern: titel, untertitel, kurz (Kurzname), von und bis (Zeitraum, JJJJ.... Status: reise_status_setzen; Bausteine und Regeln: einstellung_setzen; Start und Ende des Plans stehen in den Tagen.')
+
+engine/tests/test_konnektor.py:762: AssertionError
+_______________ test_probebau_lehnt_ab_und_laesst_nichts_zurueck _______________
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+
+    def test_probebau_lehnt_ab_und_laesst_nichts_zurueck(repo):
+        """Neue Auswahlwerte, zu denen die eingetragenen Werte der Reise nicht passen: der Generator lehnt ab, die Arbeitskopie
+        bleibt sauber, main unverändert."""
+        _, origin, arbeit, stempel = repo
+        s = schreiber(repo)
+        stand = git(origin, "rev-parse", "main")
+        with pytest.raises(sb.Ablehnung, match="nicht bauen"):
+            s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "merkmal": "fruehstueck",
+                                                                                 "werte": ["ja", "nein"]}})
+        assert not git(arbeit, "status", "--porcelain")
+        assert git(origin, "rev-parse", "main") == stand and not stempel.exists()
+        # Issue #142: der Probebau liefert die Warnungen des Baus (bezug, text); die Beispielreise hat keine
+>       assert s.probebau(arbeit / "reisen" / "beispielreise") == []
+E       AssertionError: assert None == []
+E        +  where None = probebau(((PosixPath('<tmp>') / 'reisen') / 'beispielreise'))
+E        +    where probebau = <schreiben.Schreiber object at 0x7805bbbbf470>.probebau
+
+engine/tests/test_schreiben.py:266: AssertionError
+___________________ test_rollen_je_werkzeug_des_schreibwegs ____________________
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+
+    def test_rollen_je_werkzeug_des_schreibwegs(repo):
+        """Jedes Werkzeug des Schreibwegs prüft die Rolle nach reise.AKTIONEN: Gäste nie, Mitwirkende nur bei Eingaben, Organisator:innen
+        alles; die Liste der Werkzeuge und ihrer Aktionen ist vollständig (ADR-0001, Frage 4 und 6)."""
+        import reise as rg
+        s = schreiber(repo)
+        reise_dir = s.arbeit / "reisen" / "beispielreise"
+        assert set(sb.WERKZEUGE) == set(sb.AKTIONEN) - {"person_schreiben"} | {"person_schreiben"}
+        gast = {"person": None, "name": "Mo", "rolle": "gast"}
+        for werkzeug, aktion in sb.AKTIONEN.items():
+            with pytest.raises(sb.Ablehnung):
+                s.wer_pruefen(reise_dir, gast, werkzeug)
+            darf_mitwirkend = rg.AKTIONEN[aktion]["rolle"] == "mitwirkend"
+            if darf_mitwirkend:
+                assert s.wer_pruefen(reise_dir, KARL, werkzeug)["rolle"] == "mitwirkend", werkzeug
+            else:
+                with pytest.raises(sb.Ablehnung):
+                    s.wer_pruefen(reise_dir, KARL, werkzeug)
+            assert s.wer_pruefen(reise_dir, IDA, werkzeug)["rolle"] == "organisator", werkzeug
+        # Mitwirkende: Eingaben; Organisator:innen: Plan, Ontologie, Einstellungen
+>       assert {w for w, a in sb.AKTIONEN.items() if rg.AKTIONEN[a]["rolle"] == "organisator"} >= {
+            "tag_anlegen", "tag_aendern", "termin_setzen", "wahlstelle_aendern", "plan_anlegen", "plan_aendern", "reise_aendern",
+            "merkmal_zusammenfuehren", "arten_uebernehmen", "entscheiden", "art_definieren", "merkmal_definieren",
+            "start_ende_setzen"}   # Issue #142: Start und Ende des Plans wie die Eckdaten der Reise (Aktion einstellung)
+E       AssertionError: assert {'art_definie...inieren', ...} >= {'art_definie...aendern', ...}
+E         
+E         Extra items in the right set:
+E         'start_ende_setzen'
+
+engine/tests/test_schreiben.py:1229: AssertionError
+________________________ test_reise_aendern_und_plaene _________________________
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+
+    def test_reise_aendern_und_plaene(repo):
+        _, origin, arbeit, _ = repo
+        s = schreiber(repo)
+        with pytest.raises(sb.Ablehnung, match="„grund“ fehlt"):
+            s.schreiben("beispielreise", "reise_aendern", {**IDA, "args": {"titel": "x"}})
+        with pytest.raises(sb.Ablehnung, match="von und bis zusammen"):
+            s.schreiben("beispielreise", "reise_aendern", {**IDA, "args": {"bis": "2027-05-17", "grund": "x"}})
+        a = s.schreiben("beispielreise", "reise_aendern", {**IDA, "args": {"untertitel": "Dresden und Sächsische Schweiz, 13.–17.5.2027 · erfundenes Beispiel",
+                                                                           "von": "2027-05-13", "bis": "2027-05-17", "grund": "ein Tag länger"}})
+        assert "bis – → 2027-05-17" in a["text"] and "untertitel" in a["text"]
+        # Issue #142: Start und Ende des Plans setzt ein eigenes Werkzeug; der Text verweist darauf statt auf die Datei
+>       assert "start_ende_setzen" in a["text"] and "plan/routen.yaml" not in a["text"]
+E       AssertionError: assert ('start_ende_setzen' in 'Eckdaten der Reise: untertitel „Dresden und Sächsische Schweiz, 13.–16.5.2027 · erfundenes Beispiel“ → „Dresden und S... von – → 2027-05-13; bis – → 2027-05-17. Grund: ein Tag länger. (Start und Ende des Plans stehen in plan/routen.yaml.)')
+
+engine/tests/test_schreiben.py:1356: AssertionError
+______________ test_neue_warnung_steht_als_hinweis_in_der_antwort ______________
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+
+    def test_neue_warnung_steht_als_hinweis_in_der_antwort(repo):
+        """AC-9: Schreibweg und Tor prüfen dasselbe (nur Baufehler lehnen ab); eine Warnung, die der Eintrag neu erzeugt, steht
+        als Hinweis in der Antwort, eingetragen ist trotzdem. Ohne neue Warnung gibt es das Feld nicht."""
+        _, origin, _, _ = repo
+        s = schreiber(repo)
+        a = s.schreiben("beispielreise", "reise_aendern", {**IDA, "args": {"kurz": "Malerweg", "grund": "kürzer"}})
+        assert a["ok"] is True and "hinweise" not in a                     # die Beispielreise hat keine Warnung
+        s.vorbereiten()
+        a = s.schreiben("beispielreise", "termin_setzen", {**IDA, "args": {"datum": "2027-05-20", "titel": "Konzert am Abend (Test)",
+                                                                           "ort": "O-01", "quelle": "erfunden (Test)"}})
+>       assert a["ok"] is True and a["hinweise"] == [AUSSERHALB]
+                                   ^^^^^^^^^^^^^
+E       KeyError: 'hinweise'
+
+engine/tests/test_schreiben.py:1560: KeyError
+____________________ test_keine_hinweise_ohne_neue_warnung _____________________
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+
+    def test_keine_hinweise_ohne_neue_warnung(repo):
+        """AC-10: Hat die Reise schon Warnungen und kommt keine neue dazu, fehlt das Feld hinweise (nur Neues zählt)."""
+        s = schreiber(repo)
+        a = s.schreiben("beispielreise", "termin_setzen", {**IDA, "args": {"datum": "2027-05-20", "titel": "Konzert am Abend (Test)",
+                                                                           "ort": "O-01", "quelle": "erfunden (Test)"}})
+>       assert a["hinweise"] == [AUSSERHALB]
+               ^^^^^^^^^^^^^
+E       KeyError: 'hinweise'
+
+engine/tests/test_schreiben.py:1570: KeyError
+_________________________ test_hinweise_sind_begrenzt __________________________
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7805bc0153a0>
+
+    def test_hinweise_sind_begrenzt(repo, monkeypatch):
+        """AC-12: Höchstens 10 Hinweise, dann eine Zeile „und N weitere“. Die Warnungen sind erfunden: ein Termin mit dem Titel
+        „Viele Hinweise (Test)“ lässt den Bau 13 Warnungen mehr melden."""
+        import bauen
+        original = bauen.Bauer.daten
+    
+        def daten(self):
+            d = original(self)
+            if "Viele Hinweise (Test)" in (self.reise_dir / "plan" / "routen.yaml").read_text(encoding="utf-8"):
+                d["route"]["warnungen"] = d["route"].get("warnungen", []) + [
+                    {"bezug": "plan", "text": f"Erfundene Warnung {i} (Test)."} for i in range(1, 14)]
+            return d
+        monkeypatch.setattr(bauen.Bauer, "daten", daten)
+        s = schreiber(repo)
+        a = s.schreiben("beispielreise", "termin_setzen", {**IDA, "args": {"datum": "2027-05-13", "titel": "Viele Hinweise (Test)",
+                                                                           "ort": "O-01", "quelle": "erfunden (Test)"}})
+        assert a["ok"] is True
+>       assert a["hinweise"][:10] == [f"plan: Erfundene Warnung {i} (Test)." for i in range(1, 11)]
+               ^^^^^^^^^^^^^
+E       KeyError: 'hinweise'
+
+engine/tests/test_schreiben.py:1593: KeyError
+___________ test_start_ende_setzen_aendert_plan_und_schreibt_verlauf ___________
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+
+    def test_start_ende_setzen_aendert_plan_und_schreibt_verlauf(repo):
+        """AC-27: Start und Ende des Plans (plan/routen.yaml) setzt die Organisatorin mit Grund; der Verlauf steht in reise.yaml,
+        die Daten aller Tage hängen am Startdatum, die Antwort sagt das."""
+        _, origin, arbeit, _ = repo
+        s = schreiber(repo)
+>       a = s.schreiben("beispielreise", "start_ende_setzen", {**IDA, "args": {"start_datum": "2027-05-20", "ende_datum": "2027-05-23",
+                                                                               "grund": "Zug eine Woche später (Test)"}})
+
+engine/tests/test_schreiben.py:1602: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <schreiben.Schreiber object at 0x7805bbf7bd40>, reise = 'beispielreise'
+werkzeug = 'start_ende_setzen'
+anfrage = {'person': 'ida', 'name': 'Ida', 'rolle': 'organisator', 'args': {'start_datum': '2027-05-20', 'ende_datum': '2027-05-23', 'grund': 'Zug eine Woche später (Test)'}}
+
+    def schreiben(self, reise, werkzeug, anfrage):
+        """Ein Schreibvorgang in der vorbereiteten Arbeitskopie -> {"ok": True, "text", "commit"}; sonst Ablehnung."""
+        if not REISE_MUSTER.match(reise or ""):
+            raise Ablehnung("Unbekannte Reise.")
+        if werkzeug not in WERKZEUGE and werkzeug not in REPO_WERKZEUGE:
+>           raise Ablehnung(f"Unbekanntes Werkzeug „{werkzeug}“.")
+E           schreiben.Ablehnung: Unbekanntes Werkzeug „start_ende_setzen“.
+
+engine/schreiben.py:2772: Ablehnung
+___________ test_start_ende_setzen_lehnt_ungueltiges_ab[args0-grund] ___________
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+args = {'start_datum': '2027-05-20'}, grund = 'grund'
+
+    @pytest.mark.parametrize("args, grund", [
+        ({"start_datum": "2027-05-20"}, "grund"),
+        ({"grund": "x"}, "Nichts zu ändern"),
+        ({"start_datum": "2027-05-13", "grund": "x"}, "Nichts zu ändern"),
+        ({"start_ort": "O-99", "grund": "x"}, "O-99"),
+        ({"start_datum": "31.02.2027", "grund": "x"}, "JJJJ-MM-TT"),
+        ({"ende_datum": "morgen", "grund": "x"}, "JJJJ-MM-TT"),
+        ({"start_datum": "", "grund": "x"}, "start_datum"),
+        ({"ende_datum": "2027-05-10", "grund": "x"}, "vor"),
+    ])
+    def test_start_ende_setzen_lehnt_ungueltiges_ab(repo, args, grund):
+        """AC-29: Ablehnung mit verständlichem Grund, die Arbeitskopie bleibt unverändert."""
+        _, origin, arbeit, _ = repo
+        s = schreiber(repo)
+        stand = git(origin, "rev-parse", "main")
+>       with pytest.raises(sb.Ablehnung, match=grund):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'grund'
+E         Actual message: 'Unbekanntes Werkzeug „start_ende_setzen“.'
+
+engine/tests/test_schreiben.py:1636: AssertionError
+____ test_start_ende_setzen_lehnt_ungueltiges_ab[args1-Nichts zu \xe4ndern] ____
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+args = {'grund': 'x'}, grund = 'Nichts zu ändern'
+
+    @pytest.mark.parametrize("args, grund", [
+        ({"start_datum": "2027-05-20"}, "grund"),
+        ({"grund": "x"}, "Nichts zu ändern"),
+        ({"start_datum": "2027-05-13", "grund": "x"}, "Nichts zu ändern"),
+        ({"start_ort": "O-99", "grund": "x"}, "O-99"),
+        ({"start_datum": "31.02.2027", "grund": "x"}, "JJJJ-MM-TT"),
+        ({"ende_datum": "morgen", "grund": "x"}, "JJJJ-MM-TT"),
+        ({"start_datum": "", "grund": "x"}, "start_datum"),
+        ({"ende_datum": "2027-05-10", "grund": "x"}, "vor"),
+    ])
+    def test_start_ende_setzen_lehnt_ungueltiges_ab(repo, args, grund):
+        """AC-29: Ablehnung mit verständlichem Grund, die Arbeitskopie bleibt unverändert."""
+        _, origin, arbeit, _ = repo
+        s = schreiber(repo)
+        stand = git(origin, "rev-parse", "main")
+>       with pytest.raises(sb.Ablehnung, match=grund):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'Nichts zu ändern'
+E         Actual message: 'Unbekanntes Werkzeug „start_ende_setzen“.'
+
+engine/tests/test_schreiben.py:1636: AssertionError
+____ test_start_ende_setzen_lehnt_ungueltiges_ab[args2-Nichts zu \xe4ndern] ____
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+args = {'start_datum': '2027-05-13', 'grund': 'x'}, grund = 'Nichts zu ändern'
+
+    @pytest.mark.parametrize("args, grund", [
+        ({"start_datum": "2027-05-20"}, "grund"),
+        ({"grund": "x"}, "Nichts zu ändern"),
+        ({"start_datum": "2027-05-13", "grund": "x"}, "Nichts zu ändern"),
+        ({"start_ort": "O-99", "grund": "x"}, "O-99"),
+        ({"start_datum": "31.02.2027", "grund": "x"}, "JJJJ-MM-TT"),
+        ({"ende_datum": "morgen", "grund": "x"}, "JJJJ-MM-TT"),
+        ({"start_datum": "", "grund": "x"}, "start_datum"),
+        ({"ende_datum": "2027-05-10", "grund": "x"}, "vor"),
+    ])
+    def test_start_ende_setzen_lehnt_ungueltiges_ab(repo, args, grund):
+        """AC-29: Ablehnung mit verständlichem Grund, die Arbeitskopie bleibt unverändert."""
+        _, origin, arbeit, _ = repo
+        s = schreiber(repo)
+        stand = git(origin, "rev-parse", "main")
+>       with pytest.raises(sb.Ablehnung, match=grund):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'Nichts zu ändern'
+E         Actual message: 'Unbekanntes Werkzeug „start_ende_setzen“.'
+
+engine/tests/test_schreiben.py:1636: AssertionError
+___________ test_start_ende_setzen_lehnt_ungueltiges_ab[args3-O-99] ____________
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+args = {'start_ort': 'O-99', 'grund': 'x'}, grund = 'O-99'
+
+    @pytest.mark.parametrize("args, grund", [
+        ({"start_datum": "2027-05-20"}, "grund"),
+        ({"grund": "x"}, "Nichts zu ändern"),
+        ({"start_datum": "2027-05-13", "grund": "x"}, "Nichts zu ändern"),
+        ({"start_ort": "O-99", "grund": "x"}, "O-99"),
+        ({"start_datum": "31.02.2027", "grund": "x"}, "JJJJ-MM-TT"),
+        ({"ende_datum": "morgen", "grund": "x"}, "JJJJ-MM-TT"),
+        ({"start_datum": "", "grund": "x"}, "start_datum"),
+        ({"ende_datum": "2027-05-10", "grund": "x"}, "vor"),
+    ])
+    def test_start_ende_setzen_lehnt_ungueltiges_ab(repo, args, grund):
+        """AC-29: Ablehnung mit verständlichem Grund, die Arbeitskopie bleibt unverändert."""
+        _, origin, arbeit, _ = repo
+        s = schreiber(repo)
+        stand = git(origin, "rev-parse", "main")
+>       with pytest.raises(sb.Ablehnung, match=grund):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'O-99'
+E         Actual message: 'Unbekanntes Werkzeug „start_ende_setzen“.'
+
+engine/tests/test_schreiben.py:1636: AssertionError
+________ test_start_ende_setzen_lehnt_ungueltiges_ab[args4-JJJJ-MM-TT] _________
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+args = {'start_datum': '31.02.2027', 'grund': 'x'}, grund = 'JJJJ-MM-TT'
+
+    @pytest.mark.parametrize("args, grund", [
+        ({"start_datum": "2027-05-20"}, "grund"),
+        ({"grund": "x"}, "Nichts zu ändern"),
+        ({"start_datum": "2027-05-13", "grund": "x"}, "Nichts zu ändern"),
+        ({"start_ort": "O-99", "grund": "x"}, "O-99"),
+        ({"start_datum": "31.02.2027", "grund": "x"}, "JJJJ-MM-TT"),
+        ({"ende_datum": "morgen", "grund": "x"}, "JJJJ-MM-TT"),
+        ({"start_datum": "", "grund": "x"}, "start_datum"),
+        ({"ende_datum": "2027-05-10", "grund": "x"}, "vor"),
+    ])
+    def test_start_ende_setzen_lehnt_ungueltiges_ab(repo, args, grund):
+        """AC-29: Ablehnung mit verständlichem Grund, die Arbeitskopie bleibt unverändert."""
+        _, origin, arbeit, _ = repo
+        s = schreiber(repo)
+        stand = git(origin, "rev-parse", "main")
+>       with pytest.raises(sb.Ablehnung, match=grund):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'JJJJ-MM-TT'
+E         Actual message: 'Unbekanntes Werkzeug „start_ende_setzen“.'
+
+engine/tests/test_schreiben.py:1636: AssertionError
+________ test_start_ende_setzen_lehnt_ungueltiges_ab[args5-JJJJ-MM-TT] _________
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+args = {'ende_datum': 'morgen', 'grund': 'x'}, grund = 'JJJJ-MM-TT'
+
+    @pytest.mark.parametrize("args, grund", [
+        ({"start_datum": "2027-05-20"}, "grund"),
+        ({"grund": "x"}, "Nichts zu ändern"),
+        ({"start_datum": "2027-05-13", "grund": "x"}, "Nichts zu ändern"),
+        ({"start_ort": "O-99", "grund": "x"}, "O-99"),
+        ({"start_datum": "31.02.2027", "grund": "x"}, "JJJJ-MM-TT"),
+        ({"ende_datum": "morgen", "grund": "x"}, "JJJJ-MM-TT"),
+        ({"start_datum": "", "grund": "x"}, "start_datum"),
+        ({"ende_datum": "2027-05-10", "grund": "x"}, "vor"),
+    ])
+    def test_start_ende_setzen_lehnt_ungueltiges_ab(repo, args, grund):
+        """AC-29: Ablehnung mit verständlichem Grund, die Arbeitskopie bleibt unverändert."""
+        _, origin, arbeit, _ = repo
+        s = schreiber(repo)
+        stand = git(origin, "rev-parse", "main")
+>       with pytest.raises(sb.Ablehnung, match=grund):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'JJJJ-MM-TT'
+E         Actual message: 'Unbekanntes Werkzeug „start_ende_setzen“.'
+
+engine/tests/test_schreiben.py:1636: AssertionError
+________ test_start_ende_setzen_lehnt_ungueltiges_ab[args6-start_datum] ________
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+args = {'start_datum': '', 'grund': 'x'}, grund = 'start_datum'
+
+    @pytest.mark.parametrize("args, grund", [
+        ({"start_datum": "2027-05-20"}, "grund"),
+        ({"grund": "x"}, "Nichts zu ändern"),
+        ({"start_datum": "2027-05-13", "grund": "x"}, "Nichts zu ändern"),
+        ({"start_ort": "O-99", "grund": "x"}, "O-99"),
+        ({"start_datum": "31.02.2027", "grund": "x"}, "JJJJ-MM-TT"),
+        ({"ende_datum": "morgen", "grund": "x"}, "JJJJ-MM-TT"),
+        ({"start_datum": "", "grund": "x"}, "start_datum"),
+        ({"ende_datum": "2027-05-10", "grund": "x"}, "vor"),
+    ])
+    def test_start_ende_setzen_lehnt_ungueltiges_ab(repo, args, grund):
+        """AC-29: Ablehnung mit verständlichem Grund, die Arbeitskopie bleibt unverändert."""
+        _, origin, arbeit, _ = repo
+        s = schreiber(repo)
+        stand = git(origin, "rev-parse", "main")
+>       with pytest.raises(sb.Ablehnung, match=grund):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'start_datum'
+E         Actual message: 'Unbekanntes Werkzeug „start_ende_setzen“.'
+
+engine/tests/test_schreiben.py:1636: AssertionError
+____________ test_start_ende_setzen_lehnt_ungueltiges_ab[args7-vor] ____________
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+args = {'ende_datum': '2027-05-10', 'grund': 'x'}, grund = 'vor'
+
+    @pytest.mark.parametrize("args, grund", [
+        ({"start_datum": "2027-05-20"}, "grund"),
+        ({"grund": "x"}, "Nichts zu ändern"),
+        ({"start_datum": "2027-05-13", "grund": "x"}, "Nichts zu ändern"),
+        ({"start_ort": "O-99", "grund": "x"}, "O-99"),
+        ({"start_datum": "31.02.2027", "grund": "x"}, "JJJJ-MM-TT"),
+        ({"ende_datum": "morgen", "grund": "x"}, "JJJJ-MM-TT"),
+        ({"start_datum": "", "grund": "x"}, "start_datum"),
+        ({"ende_datum": "2027-05-10", "grund": "x"}, "vor"),
+    ])
+    def test_start_ende_setzen_lehnt_ungueltiges_ab(repo, args, grund):
+        """AC-29: Ablehnung mit verständlichem Grund, die Arbeitskopie bleibt unverändert."""
+        _, origin, arbeit, _ = repo
+        s = schreiber(repo)
+        stand = git(origin, "rev-parse", "main")
+>       with pytest.raises(sb.Ablehnung, match=grund):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'vor'
+E         Actual message: 'Unbekanntes Werkzeug „start_ende_setzen“.'
+
+engine/tests/test_schreiben.py:1636: AssertionError
+_____________________ test_start_ende_setzen_entfernt_ende _____________________
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+
+    def test_start_ende_setzen_entfernt_ende(repo):
+        """AC-30: Leerer Text entfernt ende.ort bzw. ende.datum; ohne Ende baut die Reise (höchstens Warnungen)."""
+        _, origin, _, _ = repo
+        s = schreiber(repo)
+>       a = s.schreiben("beispielreise", "start_ende_setzen", {**IDA, "args": {"ende_ort": "", "ende_datum": "", "grund": "Ende offen (Test)"}})
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_schreiben.py:1645: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <schreiben.Schreiber object at 0x7805bb377e90>, reise = 'beispielreise'
+werkzeug = 'start_ende_setzen'
+anfrage = {'person': 'ida', 'name': 'Ida', 'rolle': 'organisator', 'args': {'ende_ort': '', 'ende_datum': '', 'grund': 'Ende offen (Test)'}}
+
+    def schreiben(self, reise, werkzeug, anfrage):
+        """Ein Schreibvorgang in der vorbereiteten Arbeitskopie -> {"ok": True, "text", "commit"}; sonst Ablehnung."""
+        if not REISE_MUSTER.match(reise or ""):
+            raise Ablehnung("Unbekannte Reise.")
+        if werkzeug not in WERKZEUGE and werkzeug not in REPO_WERKZEUGE:
+>           raise Ablehnung(f"Unbekanntes Werkzeug „{werkzeug}“.")
+E           schreiben.Ablehnung: Unbekanntes Werkzeug „start_ende_setzen“.
+
+engine/schreiben.py:2772: Ablehnung
+_______________ test_start_ende_setzen_warnung_kommt_als_hinweis _______________
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+
+    def test_start_ende_setzen_warnung_kommt_als_hinweis(repo):
+        """AC-31: Ein Ende, das nicht zum Plan passt, ist nur eine Warnung: eingetragen, und sie steht als Hinweis in der Antwort."""
+        _, origin, _, _ = repo
+        s = schreiber(repo)
+>       a = s.schreiben("beispielreise", "start_ende_setzen", {**IDA, "args": {"ende_datum": "2027-05-18", "grund": "zwei Tage länger (Test)"}})
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_schreiben.py:1656: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <schreiben.Schreiber object at 0x7805bb376a20>, reise = 'beispielreise'
+werkzeug = 'start_ende_setzen'
+anfrage = {'person': 'ida', 'name': 'Ida', 'rolle': 'organisator', 'args': {'ende_datum': '2027-05-18', 'grund': 'zwei Tage länger (Test)'}}
+
+    def schreiben(self, reise, werkzeug, anfrage):
+        """Ein Schreibvorgang in der vorbereiteten Arbeitskopie -> {"ok": True, "text", "commit"}; sonst Ablehnung."""
+        if not REISE_MUSTER.match(reise or ""):
+            raise Ablehnung("Unbekannte Reise.")
+        if werkzeug not in WERKZEUGE and werkzeug not in REPO_WERKZEUGE:
+>           raise Ablehnung(f"Unbekanntes Werkzeug „{werkzeug}“.")
+E           schreiben.Ablehnung: Unbekanntes Werkzeug „start_ende_setzen“.
+
+engine/schreiben.py:2772: Ablehnung
+______ test_rot_melden_legt_eine_meldung_je_phase_an_die_organisatoren_an ______
+
+reise = <function reise.<locals>.neu at 0x7805bb6f16c0>
+
+    def test_rot_melden_legt_eine_meldung_je_phase_an_die_organisatoren_an(reise):
+        """Issue #142, AC-23: Kann eine Reise seit der Schwelle nicht veröffentlicht werden (Baufehler), bekommen ihre
+        Organisator:innen genau eine Meldung je Rot-Phase (Schlüssel mit seit); die Seite bleibt auf dem letzten guten Stand.
+        veroeffentlichen.sh ruft dafür bei jedem Lauf `waechter.py rot-melden --reisen … --seit …` auf, das ist gefahrlos."""
+        r = reise()
+        seit = "2027-01-15T08:00:00Z"
+>       assert wa.main(["rot-melden", "--reisen", "beispielreise", "--seit", seit]) == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = <function main at 0x7805baf1b560>(['rot-melden', '--reisen', 'beispielreise', '--seit', '2027-01-15T08:00:00Z'])
+E        +    where <function main at 0x7805baf1b560> = wa.main
+
+engine/tests/test_waechter.py:403: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Wächter und Erinnerer (Paket E, Issue #11; Baustein waechter, docs/produkt.md und docs/waechter.md).
+
+Die KI wacht über das, was sich ändern kann, und meldet, was ansteht. Niemand muss selbst daran denken.
+
+Wächter   Findet veränderliche Angaben (Merkmale mit veraenderlich: true) der Optionen im Plan und der Unterkünfte mit
+          Nächten, die noch nie geprüft wurden oder deren Prüfdatum älter ist als regeln.waechter_frist_tage, und
+          meldet jede den Organisator:innen (Art pruefung). Nachschlagen tut der AI-Client im Gespräch; Frieda hat
+          keine eigene KI (ADR-0001, Paket O-4). Weicht ein Wert ab, wird er NICHT still übernommen.
+Erinnerer Meldet Fristen und „ab“-Termine der Aufgaben an die Zuständigen und erinnert die Organisator:innen an den
+          Wechsel des Reisestatus am Start- und Enddatum (die KI wechselt nie selbst).
+
+Beides gilt nur, wenn der Baustein waechter eingeschaltet ist und der Status es zulässt (fest, unterwegs; Aufgabenfristen
+zählen erst ab fest). Meldungen gehen an meldungen.jsonl der Ablage; der Konnektor zeigt sie im Überblick und unter
+rueckmeldungen (Kanal app). Eine Sammelnachricht für den Betreiber (Kanal nachricht) schreibt `lauf --bericht`.
+Gleiche Meldungen werden nicht doppelt angelegt (schluessel).
+
+Aufrufe:
+  python3 engine/waechter.py zeige <reise> [--heute JJJJ-MM-TT]           zeigt, was anstünde, ändert nichts
+  python3 engine/waechter.py lauf [<reise>…] [--heute JJJJ-MM-TT] [--bericht DATEI]
+        legt Meldungen an (ohne Reise: alle Reisen der Ablage); --bericht schreibt die
+        Sammelnachricht für den Betreiber in DATEI, falls es etwas zu melden gibt und eine Reise den Kanal
+        nachricht hat
+Umgebung: RM_ABLAGE, RM_SEITEN oder KN_SEITEN (Standard aus engine/instanz.py)
+
+=========================== short test summary info ============================
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_fehlschlag_wird_wiederholt
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_prueft_einmal_fuer_alle_reisen
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_heartbeat_nur_bei_erfolg
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_stempel_nur_bei_erfolg
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_rote_reisetests_sperren_nicht
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_warnung_der_reisetests_einmal_je_commit
+FAILED engine/tests/test_betrieb.py::test_deploy_prueft_nur_die_tests_der_software
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_eine_rote_reise_haelt_die_anderen_nicht_auf
+FAILED engine/tests/test_betrieb.py::test_deploy_exit_2_bei_baufehler_sonst_1
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_infrastrukturfehler_wird_nicht_gemerkt_und_wiederholt
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_roter_stand_wird_nicht_erneut_geprueft
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_ueberspringen_ohne_stempel_und_heartbeat
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_gruen_raeumt_die_rot_datei_auf
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_kein_alarm_vor_der_schwelle
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_alarm_genau_einmal
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_alarm_art_software_nur_an_den_betrieb
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_alarm_wiederholt_bei_ausfall_des_meldewegs
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_schwelle_ist_einstellbar
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_seit_bleibt_ueber_neue_rote_commits
+FAILED engine/tests/test_betrieb.py::test_betrieb_md_nennt_rot_datei_alarm_und_konvention
+FAILED engine/tests/test_konnektor.py::test_ontologie_organisator_schreibt_direkt
+FAILED engine/tests/test_konnektor.py::test_konnektor_haengt_hinweise_an_den_text
+FAILED engine/tests/test_konnektor.py::test_reise_aendern_verweist_auf_start_ende_setzen
+FAILED engine/tests/test_schreiben.py::test_probebau_lehnt_ab_und_laesst_nichts_zurueck
+FAILED engine/tests/test_schreiben.py::test_rollen_je_werkzeug_des_schreibwegs
+FAILED engine/tests/test_schreiben.py::test_reise_aendern_und_plaene - Assert...
+FAILED engine/tests/test_schreiben.py::test_neue_warnung_steht_als_hinweis_in_der_antwort
+FAILED engine/tests/test_schreiben.py::test_keine_hinweise_ohne_neue_warnung
+FAILED engine/tests/test_schreiben.py::test_hinweise_sind_begrenzt - KeyError...
+FAILED engine/tests/test_schreiben.py::test_start_ende_setzen_aendert_plan_und_schreibt_verlauf
+FAILED engine/tests/test_schreiben.py::test_start_ende_setzen_lehnt_ungueltiges_ab[args0-grund]
+FAILED engine/tests/test_schreiben.py::test_start_ende_setzen_lehnt_ungueltiges_ab[args1-Nichts zu \xe4ndern]
+FAILED engine/tests/test_schreiben.py::test_start_ende_setzen_lehnt_ungueltiges_ab[args2-Nichts zu \xe4ndern]
+FAILED engine/tests/test_schreiben.py::test_start_ende_setzen_lehnt_ungueltiges_ab[args3-O-99]
+FAILED engine/tests/test_schreiben.py::test_start_ende_setzen_lehnt_ungueltiges_ab[args4-JJJJ-MM-TT]
+FAILED engine/tests/test_schreiben.py::test_start_ende_setzen_lehnt_ungueltiges_ab[args5-JJJJ-MM-TT]
+FAILED engine/tests/test_schreiben.py::test_start_ende_setzen_lehnt_ungueltiges_ab[args6-start_datum]
+FAILED engine/tests/test_schreiben.py::test_start_ende_setzen_lehnt_ungueltiges_ab[args7-vor]
+FAILED engine/tests/test_schreiben.py::test_start_ende_setzen_entfernt_ende
+FAILED engine/tests/test_schreiben.py::test_start_ende_setzen_warnung_kommt_als_hinweis
+FAILED engine/tests/test_waechter.py::test_rot_melden_legt_eine_meldung_je_phase_an_die_organisatoren_an
+41 failed, 638 passed in 425.89s (0:07:05)

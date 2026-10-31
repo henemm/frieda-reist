@@ -392,3 +392,24 @@ def test_erinnerer_meldet_ab_termin_einer_buchung(reise, tmp_path):
     ms = [m for m in r.lauf(D(2027, 5, 12))["meldungen"] if "Jetzt möglich" in m["text"]]
     assert len(ms) == 1 and ms[0]["an"] == ["Karl"] and "Jetzt möglich (ab 12.5.2027): Online-Check-in zur Buchung B-02" in ms[0]["text"]
     assert not [m for m in r.lauf(D(2027, 5, 13))["meldungen"] if "Jetzt möglich" in m["text"]]   # nicht doppelt
+
+
+def test_rot_melden_legt_eine_meldung_je_phase_an_die_organisatoren_an(reise):
+    """Issue #142, AC-23: Kann eine Reise seit der Schwelle nicht veröffentlicht werden (Baufehler), bekommen ihre
+    Organisator:innen genau eine Meldung je Rot-Phase (Schlüssel mit seit); die Seite bleibt auf dem letzten guten Stand.
+    veroeffentlichen.sh ruft dafür bei jedem Lauf `waechter.py rot-melden --reisen … --seit …` auf, das ist gefahrlos."""
+    r = reise()
+    seit = "2027-01-15T08:00:00Z"
+    assert wa.main(["rot-melden", "--reisen", "beispielreise", "--seit", seit]) == 0
+    assert wa.main(["rot-melden", "--reisen", "beispielreise", "--seit", seit]) == 0     # derselbe Lauf noch einmal: nichts Neues
+    rot = [m for m in rm.meldungen(r.o) if str(m.get("schluessel", "")).startswith("veroeffentlichen-rot:")]
+    assert len(rot) == 1
+    m = rot[0]
+    assert m["schluessel"] == f"veroeffentlichen-rot:beispielreise:{seit}"
+    assert m["an"] == ["Ida"] and m["bezug"] == "reise"
+    assert "nicht veröffentlicht" in m["text"] and "/" not in m["text"] and "http" not in m["text"]
+    # neue Rot-Phase (anderes seit): neue Meldung
+    neu = wa.rot_melden(["beispielreise"], "2027-01-16T09:30:00Z")
+    assert len(neu) == 1
+    assert len([m for m in rm.meldungen(r.o) if str(m.get("schluessel", "")).startswith("veroeffentlichen-rot:")]) == 2
+    assert wa.rot_melden(["beispielreise"], "2027-01-16T09:30:00Z") == []
