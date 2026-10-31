@@ -17,7 +17,7 @@ Zwei Teile:
 
 Arbeitskopie: <Wurzel>-schreiben (FR_SCHREIBKOPIE), ein Git-Worktree des Reisen-Repos ohne eigenen Branch (steht auf
 origin/main). Sie gehört allein dem Schreibweg. Veröffentlicht wird wie nach jedem Zusammenführen: betrieb/veroeffentlichen.sh
-holt main in den Veröffentlichungsordner (im Hintergrund; hält der Timer gerade die Sperre, holt er es nach).
+holt main in den Bauordner (im Hintergrund; hält der Timer gerade die Sperre, holt er es nach).
 
 Regeln vor dem Schreiben (Prüfstelle ADR-0001): Rolle und Status (reise.erlaubt mit reise.yaml der Arbeitskopie, nicht
 nur mit dem, was der Konnektor sagt), Form der Arten und Merkmale (docs/ontologie.md), Probebau (routen.arten_pruefen und
@@ -2941,7 +2941,7 @@ class Schreiber:
         raise Ablehnung("Das Repo war dauernd beschäftigt; nichts geschrieben. Bitte noch einmal versuchen.")
 
     def veroeffentlichen_anstossen(self):
-        """Veröffentlichen im Hintergrund (holt main in den Veröffentlichungsordner, baut, prüft). Hält der Timer die Sperre,
+        """Veröffentlichen im Hintergrund (holt main in den Bauordner, baut, prüft). Hält der Timer die Sperre,
         meldet das Skript „Läuft schon“, und der Timer holt es in wenigen Minuten nach. Niedrige Priorität wie im Dienst
         veroeffentlichen.service, damit Schreibvorgänge während der Tests nicht warten (fehlen nice oder ionice, ohne sie).
         Die Ausgabe geht nach /dev/null: Die Ausgabe des Anwendens ist die Leitung zum Dienst, die das Skript sonst bis zu

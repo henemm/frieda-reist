@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Veröffentlicht automatisch, was auf main liegt (docs/betrieb.md, Veröffentlichen): holt origin/main in den
-# Veröffentlichungsordner, bringt die Software (Submodul) auf den festgehaltenen Stand und ruft deploy.sh für jede Reise
+# Bauordner, bringt die Software (Submodul) auf den festgehaltenen Stand und ruft deploy.sh für jede Reise
 # auf, sobald main einen neuen Stand hat. Gestartet alle 5 Minuten vom Timer <instanz>-veroeffentlichen.timer und
 # gleich nach jedem Schreibvorgang des Schreibwegs (engine/schreiben.py).
-# Aufruf von Hand:  frieda/betrieb/veroeffentlichen.sh          (nur wenn main neu ist)
-#                   frieda/betrieb/veroeffentlichen.sh --immer  (auch ohne neuen Stand, auch einen bekannten roten)
-# Ist der Veröffentlichungsordner nicht auf main oder nicht sauber, wird nichts angefasst (jemand arbeitet gerade dort).
+# Aufruf von Hand:  FR_WURZEL=<Bauordner> frieda/betrieb/veroeffentlichen.sh          (nur wenn main neu ist)
+#                   FR_WURZEL=<Bauordner> frieda/betrieb/veroeffentlichen.sh --immer  (auch ohne neuen Stand, auch
+#                   einen bekannten roten). Ohne FR_WURZEL bricht es ab (#137).
+# Ist der Bauordner nicht auf main oder nicht sauber, wird nichts angefasst und nichts gemerkt.
 # Tor (#142): Sperren können nur die Tests der Software (engine/tests) und ein gescheiterter Bau einer Reise (deploy.sh
 # Exit 2). Die Tests des Reisen-Repos (tests/) prüfen Inhalt: rot dort ist nur eine Warnung (einmal je Commit eine
 # Nachricht an den Betrieb). Eine rote Reise hält die anderen nicht auf; sie bleibt auf ihrem letzten guten Stand.
@@ -26,6 +27,7 @@
 # VF_ROT (Rot-Datei), VF_JETZT (Uhr, Sekunden seit 1970), VF_ROTMELDEN (statt engine/waechter.py rot-melden).
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
+nur_bauordner
 
 erfolg_melden() {
   mkdir -p "$FR_DIENST"
@@ -128,10 +130,10 @@ main() {
 
   cd "$wurzel"
   if [ "$(git rev-parse --abbrev-ref HEAD)" != main ]; then
-    echo "Veröffentlichungsordner ist nicht auf main ($(git rev-parse --abbrev-ref HEAD)), übersprungen."; return 0
+    echo "Bauordner ist nicht auf main ($(git rev-parse --abbrev-ref HEAD)), übersprungen."; return 0
   fi
   if ! git diff --quiet HEAD || [ -n "$(git ls-files --others --exclude-standard)" ]; then
-    echo "Ungesicherte Änderungen im Veröffentlichungsordner, übersprungen."; return 0
+    echo "Ungesicherte Änderungen im Bauordner, übersprungen."; return 0
   fi
 
   mkdir -p "$FR_DIENST"   # Zustand des Veröffentlichens (Stand, Rot-Datei, Merker der Warnung, Stempel)

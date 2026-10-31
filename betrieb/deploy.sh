@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Baut eine Reise-Seite und legt sie in <FR_SEITEN>/<reise>/ ab (nginx liefert von dort aus), bringt Rückmeldedienst
 # und Konnektor auf den Stand der Software und prüft, dass alles antwortet (docs/betrieb.md, Veröffentlichen).
-# Aufruf:  frieda/betrieb/deploy.sh <reise>
-# Exit:    0 gelungen, 2 Bau dieser Reise gescheitert, 1 alles andere (Reise oder Ordner fehlt, ungesicherte Änderungen,
-#          Prüfungen rot, Dienste nicht bereit, Kopieren gescheitert)
+# Aufruf:  FR_WURZEL=<Bauordner> frieda/betrieb/deploy.sh <reise>   (sonst ruft veroeffentlichen.sh es auf)
+# Exit:    0 gelungen, 2 Bau dieser Reise gescheitert, 1 alles andere (FR_WURZEL fehlt, Ordner nicht auf main, Reise
+#          oder Ordner fehlt, ungesicherte Änderungen, Prüfungen rot, Dienste nicht bereit, Kopieren gescheitert)
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
+nur_bauordner --main
 
 REISE="${1:?Aufruf: deploy.sh <reise>}"
 WURZEL="$FR_WURZEL"
