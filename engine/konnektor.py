@@ -1098,7 +1098,9 @@ def schreib_anfrage(reise, werkzeug_, anfrage):
     except urllib.error.HTTPError as e:
         try:
             antwort = json.loads(e.read())
-            return None, texte.Satz(antwort.get("fehler", f"Fehler {e.code}"), antwort.get("fehler_code"), antwort.get("werte"))
+            werte = {n: texte.Satz.aus_json(v["satz"]) if isinstance(v, dict) and "satz" in v else v
+                     for n, v in (antwort.get("werte") or {}).items()}
+            return None, texte.Satz(antwort.get("fehler", f"Fehler {e.code}"), antwort.get("fehler_code"), werte)
         except (json.JSONDecodeError, AttributeError):
             return None, tk("konnektor.ausgabe.schreib_anfrage.1", w1=e.code)
     except (urllib.error.URLError, OSError):
@@ -1152,7 +1154,9 @@ def merkmal_hinweise(d, art, merkmale):
 
 def hinweise_text(antwort):
     """Neue Warnungen des Probebaus (Feld hinweise des Schreibwegs, Issue #142) als Absatz; kein Fehler, eingetragen ist trotzdem."""
-    h = (antwort or {}).get("hinweise") or []
+    antwort = antwort or {}
+    h = [texte.Satz.aus_json(x).text(texte.aufruf_sprache()) if isinstance(x, list) else str(x) for x in antwort.get("hinweise_teile") or []] \
+        or antwort.get("hinweise") or []
     return (tk("konnektor.ausgabe.hinweise_text.1") + "\n".join(f"- {x}" for x in h)) if h else ""
 
 

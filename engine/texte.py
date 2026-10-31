@@ -259,4 +259,5 @@ class Satz(str):
 
 def satz(schluessel, /, **werte):
     werte = {k: v if isinstance(v, (str, int, float, bool)) or v is None else str(v) for k, v in werte.items()}
-    return Satz(t(VORGABE_REISE, schluessel, **werte), schluessel, werte)
+    return Satz(t(VORGABE_REISE, schluessel, **{k: v.text(VORGABE_REISE) if isinstance(v, Satz) else v for k, v in werte.items()}),
+                schluessel, werte)

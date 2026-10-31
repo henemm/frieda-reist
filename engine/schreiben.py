@@ -106,11 +106,20 @@ class Ablehnung(Exception):
             super().__init__(str(text_oder_schluessel))
             return
         self.schluessel = text_oder_schluessel if re.fullmatch(r"(schreiben|dienst)(\.[A-Za-z0-9_]+)+", str(text_oder_schluessel)) else None
-        self.werte = {k: v if isinstance(v, (str, int, float, bool)) or v is None else str(v) for k, v in werte.items()}
-        super().__init__(texte.t(texte.VORGABE_REISE, self.schluessel, **self.werte) if self.schluessel else text_oder_schluessel)
+        self.werte = {k: v if isinstance(v, (str, int, float, bool, texte.Satz)) or v is None else str(v) for k, v in werte.items()}
+        super().__init__(texte.t(texte.VORGABE_REISE, self.schluessel, **self._werte_in(texte.VORGABE_REISE))
+                         if self.schluessel else text_oder_schluessel)
+
+    def _werte_in(self, sprache):
+        """Werte für den Katalog; Sätze (zum Beispiel Prüfmeldungen der Reise) in dieser Sprache."""
+        return {k: v.text(sprache) if isinstance(v, texte.Satz) else v for k, v in self.werte.items()}
 
     def text(self, sprache):
-        return texte.t(sprache, self.schluessel, **self.werte) if self.schluessel else str(self)
+        return texte.t(sprache, self.schluessel, **self._werte_in(sprache)) if self.schluessel else str(self)
+
+    def werte_json(self):
+        """Werte für den Weg zum Konnektor; Sätze reisen mit ihren Schlüsseln ({"satz": …}, texte.Satz.aus_json)."""
+        return {k: {"satz": v.teile_json()} if isinstance(v, texte.Satz) else v for k, v in self.werte.items()}
 
 
 # ---------- Hilfen ----------
@@ -780,7 +789,7 @@ def wert_eintragen(reise_dir, wer, args, heute=None):
         try:
             d = bauen.Bauer(reise_dir, tmp).daten()
         except bauen.BauFehler as e:
-            raise Ablehnung("schreiben.bau.nicht_jetzt", meldungen=" ".join(e.meldungen))
+            raise Ablehnung("schreiben.bau.nicht_jetzt", meldungen=texte.Satz.verbinden(e.meldungen, " "))
     route = d.get("route") or {}
     # Merkmale, die an dieser Stelle gelten (wie der Generator sie zuordnet), und der heutige Wert
     if ziel.startswith("V-"):
@@ -969,7 +978,7 @@ def route_stand(reise_dir):
         try:
             return bauen.Bauer(reise_dir, tmp).daten().get("route") or {}
         except bauen.BauFehler as e:
-            raise Ablehnung("schreiben.bau.nicht_jetzt", meldungen=" ".join(e.meldungen))
+            raise Ablehnung("schreiben.bau.nicht_jetzt", meldungen=texte.Satz.verbinden(e.meldungen, " "))
 
 
 def neue_id(reise_dir, kuerzel):
@@ -977,7 +986,7 @@ def neue_id(reise_dir, kuerzel):
     try:
         return neu.naechste_id(Path(reise_dir), kuerzel)
     except neu.Fehler as e:
-        raise Ablehnung(str(e))
+        raise Ablehnung(e.args[0] if e.args and isinstance(e.args[0], texte.Satz) else str(e))
 
 
 def uhrzeit_wert(args, feld):
@@ -2803,9 +2812,9 @@ def warnungen_des_baus(reise_dir):
 
 def neue_hinweise(vorher, nachher):
     """Warnungen, die der Eintrag neu erzeugt hat, als Zeilen „<bezug>: <text>“ (höchstens HINWEISE_HOECHSTENS, dann „und N weitere“)."""
-    neu = [f"{b}: {t}" for b, t in nachher if (b, t) not in set(vorher)]
+    neu = [texte.Satz(f"{b}: ") + t for b, t in nachher if (b, t) not in set(vorher)]
     if len(neu) > HINWEISE_HOECHSTENS:
-        return neu[:HINWEISE_HOECHSTENS] + [f"und {len(neu) - HINWEISE_HOECHSTENS} weitere"]
+        return neu[:HINWEISE_HOECHSTENS] + [texte.satz("schreiben.hinweise.weitere", n=len(neu) - HINWEISE_HOECHSTENS)]
     return neu
 
 
@@ -2846,7 +2855,7 @@ class Schreiber:
             try:
                 eck = bauen.Bauer(reise_dir, ziel).eck
             except bauen.BauFehler as e:
-                raise Ablehnung("schreiben.bau.lesen", meldungen=" ".join(e.meldungen))
+                raise Ablehnung("schreiben.bau.lesen", meldungen=texte.Satz.verbinden(e.meldungen, " "))
         rolle = rolle_neu(anfrage.get("rolle"))
         person = anfrage.get("person")
         p = next((x for x in eck.get("personen") or [] if person and x.get("schluessel") == person), None)
@@ -2867,7 +2876,7 @@ class Schreiber:
         try:
             return warnungen_des_baus(reise_dir)
         except bauen.BauFehler as e:
-            raise Ablehnung("schreiben.bau.nichts_geaendert", meldungen=" ".join(e.meldungen))
+            raise Ablehnung("schreiben.bau.nichts_geaendert", meldungen=texte.Satz.verbinden(e.meldungen, " "))
 
     def vorher(self, reise_dir):
         """Warnungen des Stands vor dem Eintrag; baut er nicht, gibt es keinen Vergleich (leer)."""
@@ -2928,7 +2937,8 @@ class Schreiber:
         if (m := re.match(r"^([A-Z]+-\d+(?:\.[\w-]+)?) ", titel)):   # neu angelegtes Ding: seine ID, damit der Konnektor weitermachen kann
             antwort["id"] = m.group(1)
         if hinweise:   # nur neue Warnungen; reise_anlegen (REPO_WERKZEUGE) hat keinen Vergleich
-            antwort["hinweise"] = hinweise
+            antwort["hinweise"] = [str(h) for h in hinweise]
+            antwort["hinweise_teile"] = [h.teile_json() if isinstance(h, texte.Satz) else str(h) for h in hinweise]
         return antwort
 
     def buchung_im_repo(self, reise, bid):
@@ -2996,7 +3006,7 @@ def anwenden(wurzel_, arbeit, reise, werkzeug, anfrage):
         sys.stderr.write(f"Abgelehnt {werkzeug} 422: {grund}\n")
         antwort = {"ok": False, "fehler": str(e)}
         if e.schluessel:   # der Konnektor setzt den Satz in der Sprache der Person zusammen
-            antwort.update(fehler_code=e.schluessel, werte=e.werte)
+            antwort.update(fehler_code=e.schluessel, werte=e.werte_json())
         return 422, antwort
 
 

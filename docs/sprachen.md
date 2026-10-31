@@ -43,7 +43,7 @@ Eine Sprache, deren Datei einen Schlüssel nicht hat, fällt für diesen Text au
 
 ## Regeln für Schlüssel und Texte
 
-- Schlüssel sind flach, in Kleinbuchstaben, mit Punkten getrennt, der Bereich steht vorn: `seite.`, `konnektor.`, `schreiben.`, `dienst.`, `konto.`, `mail.`, `kalender.`, `waechter.`, `inhalt.`. Der Test prüft die Form.
+- Schlüssel sind flach, in Kleinbuchstaben, mit Punkten getrennt, der Bereich steht vorn: `seite.`, `konnektor.`, `schreiben.`, `dienst.`, `konto.`, `mail.`, `kalender.`, `waechter.`, `inhalt.`, `pruefung.` (Prüfmeldungen der Reise). Der Test prüft die Form.
 - Platzhalter haben Namen in geschweiften Klammern (`{name}`, `{n}`, `{id}`), nie Positionen, und sind in allen Sprachen dieselben.
 - Jeder Text ist ein ganzer Satz oder eine ganze Beschriftung. Nichts wird aus Teilen zusammengesetzt (`"Nacht in " + ort` wird ein Schlüssel mit `{ort}`), damit andere Sprachen die Wortstellung ändern können. Ausnahme: Bestätigungen des Schreibwegs sind aus Sätzen des Katalogs zusammengesetzte `Satz`-Folgen, die in jeder Sprache gebaut werden können (`texte.Satz`).
 - Plural nur über Kategorien: gibt es den Wert `n`, wählt `PLURAL` die Kategorie, und `t()` nimmt `<schluessel>.<kategorie>`, dann `<schluessel>.other`, dann `<schluessel>`. Deutsch und Englisch füllen `.one` und `.other`, nie `n == 1 ? … : …` im Code.
@@ -74,11 +74,12 @@ Datum, Zeit und Zahl kommen aus der Sprachdatei (`texte.datum`, `texte.datum_kur
 
 ## Noch offen (Stand 31.10.2026)
 
-Die Ausnahmelisten in `test_texte.py` sind noch nicht leer. Es bleiben deutsche Literale in diesen Bereichen, die Personen nur selten oder nur über Betreiber sehen:
+Die Ausnahmelisten in `test_texte.py` sind noch nicht leer. Was bleibt, sieht eine Person kaum oder nur über Betreiber:
 
-- **Prüfmeldungen der Reise** (`routen.py`, `reise.py`, `bauen.py`, `neu.py`, etwa 240 Stellen): Fehler und Hinweise der Prüfung beim Bauen („Unterkunft U-01: Ort O-09 gibt es nicht.“). Sie erreichen den Betreiber im Bau-Protokoll und eine Person im Gespräch, wenn der Probebau eine Änderung ablehnt. Auf Englisch erscheinen sie heute deutsch.
 - **Texte, die in Dateien der Reise geschrieben werden** (Kopfkommentare der Dateien, Verlaufseinträge, Commit-Nachrichten in `schreiben.py`, `neu.py`): bleiben bewusst deutsch beziehungsweise in der Sprache der Reise, weil sie zum Bestand der Reise gehören.
-- **Ausgaben für Betreiber auf der Kommandozeile** (`konnektor.py`, `rueckmeldungen.py`, `waechter.py`, `konten.py`: Startmeldungen, Aufruf-Hinweise, Protokollzeilen).
-- **Datenwerte** (Art `Ergänzung` einer Rückmeldung, `geändert`, `Geprüft`) und zwei Treffer in der Vorlage.
+- **Ausgaben für Betreiber auf der Kommandozeile** (`konnektor.py`, `rueckmeldungen.py`, `waechter.py`, `konten.py`, `bauen.py`, `neu.py`: Startmeldungen, Hilfetexte, Protokollzeilen).
+- **Muster und Datenwerte** (Zeichenklassen mit Umlauten in regulären Ausdrücken, Art `Ergänzung` einer Rückmeldung, `geändert`, `Geprüft`, ein Dossier-Titel) und zwei Treffer in der Vorlage.
 
-Die Prüfmeldungen sind der größte Brocken und der nächste sinnvolle Schritt: Sie als `Satz` mit Schlüssel zu führen, wie es die Ablehnungen des Schreibwegs schon tun, gibt jeder Sprache ihre Prüfmeldungen, ohne den deutschen Wortlaut zu ändern.
+## Prüfmeldungen der Reise
+
+Fehler und Hinweise der Prüfung beim Bauen („Unterkunft U-01: Ort O-09 gibt es nicht.“) stehen als Sätze unter `pruefung.<bereich>.<nummer>` im Katalog und werden im Code mit `texte.satz("pruefung.routen.6", …)` erzeugt. Als Text ist ein solcher Satz der deutsche Wortlaut (Bau-Protokoll, Tests, Bestand); er trägt Schlüssel und Werte mit, sodass der Konnektor ihn in der Sprache der Person setzt: Eine Ablehnung des Probebaus (`schreiben.bau.nichts_geaendert`) und die Hinweise nach einem Eintrag (`hinweise_teile`) reisen mit ihren Schlüsseln zum Konnektor. Werte berechneter Merkmale, die die Seite zeigt (Anschluss zwischen Optionen, Hinweis „Lage fehlt“), folgen der Sprache der Reise (`Routen.sprache`).

@@ -65,7 +65,7 @@ def test_paritaet_schluessel_und_platzhalter():
 
 
 def test_schluessel_form():
-    muster = re.compile(r"^(seite|konnektor|schreiben|dienst|konto|mail|kalender|waechter|inhalt)(\.[a-z0-9_]+)+$")
+    muster = re.compile(r"^(seite|konnektor|schreiben|dienst|konto|mail|kalender|waechter|inhalt|pruefung)(\.[a-z0-9_]+)+$")
     for s in texte.sprache("de").TEXTE:
         assert muster.match(s), f"Schlüssel {s} hält die Form nicht ein"
 
@@ -188,7 +188,7 @@ ALLE_DATEIEN = ["vorlage.html"] + PY_DATEIEN
 # kleiner werden, nie größer (docs/auftraege/mehrsprachigkeit/README.md, Regel 5). Am Ende steht überall 0.
 AUSNAHMEN = {
     "vorlage.html": 2, "konnektor.py": 5, "schreiben.py": 45, "rueckmeldungen.py": 17, "anmeldung.py": 0, "konten.py": 1,
-    "kalender.py": 0, "waechter.py": 5, "routen.py": 97, "bauen.py": 68, "neu.py": 44, "reise.py": 34,
+    "kalender.py": 0, "waechter.py": 5, "routen.py": 6, "bauen.py": 11, "neu.py": 22, "reise.py": 4,
 }
 # Treffer von Sprachweichen und festen Locale-Strings (Grep-Test); ebenfalls nur kleiner werdend
 WEICHEN_AUSNAHMEN = {datei: 0 for datei in ALLE_DATEIEN}
