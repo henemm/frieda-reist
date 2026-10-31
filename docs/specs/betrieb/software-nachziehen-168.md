@@ -3,7 +3,7 @@
 ## Anlass
 
 Der Workflow „Software nachziehen“ (#161) prüfte `engine/tests tests` zusammen und sperrte bei jedem Rot. Am 31.10.2026
-hielt ein Inhaltstest von GR 221 (Wahlstelle entschieden, Frage noch offen) den Stand 8799d15 auf. Solche Zustände
+hielt ein Inhaltstest einer echten Reise (Wahlstelle entschieden, Frage noch offen) den Stand 8799d15 auf. Solche Zustände
 entstehen im Betrieb jederzeit über den Konnektor. Das Veröffentlichen behandelt rote `tests/` seit #142 nur als
 Warnung. Das Nachziehen braucht dasselbe Tor, sonst kommt bei unstimmigem Inhalt keine Software in den Betrieb, auch
 keine Fehlerbehebung.
