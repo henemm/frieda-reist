@@ -49,17 +49,39 @@ ergebnis.offlineBild = bild ? await p.evaluate(src => new Promise(r => {
 if (chromium) await ctx.setOffline(false);
 await fetch(new URL("/__netz/an", basis));
 
-// Update mit fehlender Datei: alte Version bleibt, kein Hinweis
+// Update mit fehlender Datei: alte Version bleibt, kein Hinweis.
+// Gewartet wird auf Zustände, nicht auf eine feste Zeit (#154): Bis 31.10.2026 kam die Datei nach 1,5 s zurück. War
+// die Installation von „kaputt“ unter Last dann noch nicht fertig, gelang sie doch, und „kaputt“ übernahm beim Tippen
+// statt „neu“. Jetzt bleibt die Datei bis zum Schluss weg; das ordentliche Update braucht sie nicht, unveränderte
+// Dateien kommen aus dem alten Speicher (#64).
+const leise = ms => new Promise(r => setTimeout(r, ms));
+const keinerInstalliert = async () => {
+  for (let i = 0; i < 150; i++) {
+    if (await p.evaluate(async () => {
+      const r = await navigator.serviceWorker.getRegistration();
+      return !r.installing && !r.waiting;
+    })) return true;
+    await leise(100);
+  }
+  return false;
+};
+const fehlend = bild ? path.join(ordner, bild) : null;
 if (bild) {
-  const pfad = path.join(ordner, bild), weg = pfad + ".weg";
-  fs.renameSync(pfad, weg);
+  fs.renameSync(fehlend, fehlend + ".weg");
   // Hash ändern, damit die Datei geladen werden muss (unveränderte übernimmt der Worker aus dem alten Speicher)
   fs.writeFileSync(swDatei, swText.replace(/const VERSION = "[^"]*"/, 'const VERSION = "kaputt"').replace(`"${bild}": "`, `"${bild}": "x`));
+  await fetch(new URL("/__log/leeren", basis));
   await p.evaluate(() => navigator.serviceWorker.getRegistration().then(r => r.update()).catch(() => {}));
-  await p.waitForTimeout(1500);
+  // Der Versuch hat die fehlende Datei angefragt (Protokoll des Testservers), danach ist er entschieden
+  for (let i = 0; i < 150; i++) {
+    const log = await (await fetch(new URL("/__log/zeigen", basis))).json();
+    if ((ergebnis.kaputtVersucht = log.some(x => x.endsWith("/" + bild)))) break;
+    await leise(100);
+  }
+  fs.writeFileSync(swDatei, swText);   // nichts mehr, was der Browser noch einmal versuchen könnte
+  ergebnis.kaputtEntschieden = await keinerInstalliert();
   ergebnis.kaputtHinweis = await p.isVisible("#neu");
   ergebnis.kaputtVersion = await swVersion();
-  fs.renameSync(weg, pfad);
 }
 
 // Ordentliches Update: Hinweis erscheint, Tippen übernimmt und lädt neu. Unveränderte Dateien
@@ -69,6 +91,11 @@ neueVersion("neu");
 await p.evaluate(() => navigator.serviceWorker.getRegistration().then(r => r.update()));
 await p.waitForSelector("#neu:not([hidden])", {timeout: 15000});
 ergebnis.updateHinweis = true;
+ergebnis.wartet = await p.evaluate(async () => {   // wer beim Tippen übernimmt
+  const w = (await navigator.serviceWorker.getRegistration()).waiting;
+  const c = new MessageChannel();
+  return w && new Promise(r => { c.port1.onmessage = e => r(e.data); w.postMessage({typ: "version"}, [c.port2]); });
+});
 ergebnis.geladenBeimInstallieren = await (await fetch(new URL("/__log/zeigen", basis))).json();
 await Promise.all([p.waitForEvent("load"), p.click("#neuLaden")]);
 await p.waitForFunction(() => navigator.serviceWorker.controller !== null);
@@ -76,6 +103,7 @@ ergebnis.version2 = await swVersion();
 ergebnis.speicherNachUpdate = await p.evaluate(async () => (await caches.keys()).filter(k => k.startsWith("rh:")).length);
 ergebnis.geladenBeimUpdate = await (await fetch(new URL("/__log/zeigen", basis))).json();
 fs.writeFileSync(swDatei, swText);
+if (fehlend) fs.renameSync(fehlend + ".weg", fehlend);
 
 ergebnis.fehler = fehler;
 console.log(JSON.stringify(ergebnis));

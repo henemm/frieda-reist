@@ -119,6 +119,9 @@ def test_offline_im_browser(tmp_path, browser):
                 self.close_connection = True   # keine Antwort: Abbruch wie ohne Netz
             else:
                 geladen.append(self.path.split("?")[0])
+                # Immer den aktuellen Inhalt liefern: Der Test ändert sw.js mehrmals in derselben Sekunde, und die
+                # sekundengenaue Änderungszeit ergäbe sonst „304 unverändert“ mit dem alten Inhalt (#154).
+                del self.headers["If-Modified-Since"]
                 super().do_GET()
 
     handler = functools.partial(Handler, directory=str(web))
@@ -135,7 +138,11 @@ def test_offline_im_browser(tmp_path, browser):
     assert e["gespeichert"] == e["erwartet"]
     assert e["offlineTitel"] == "Testreise – Untertitel" and e["offlineBild"]
     assert e["offlineHinweis"] in (True, None)
+    # Auf Zustände gewartet statt auf eine feste Zeit (#154): Der kaputte Versuch fand statt und ist entschieden,
+    # beim Tippen übernimmt „neu“
+    assert e["kaputtVersucht"] and e["kaputtEntschieden"]
     assert not e["kaputtHinweis"] and e["kaputtVersion"] == e["version1"]
+    assert e["wartet"] == "neu"
     assert e["updateHinweis"] and e["version2"] == "neu" and e["speicherNachUpdate"] == 1
     # Update: unveränderte Dateien kommen aus dem alten Speicher, geladen wird nur sw.js (Issue #64).
     # Nach dem Neuladen fragt die Seite den Rückmeldedienst; die Seite selbst darf je nach Zeitpunkt vom Netz kommen.
