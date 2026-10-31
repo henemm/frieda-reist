@@ -289,6 +289,37 @@ def test_probebau_lehnt_ab_und_laesst_nichts_zurueck(repo):
     assert s.probebau(arbeit / "reisen" / "beispielreise") == []
 
 
+def test_ablehnung_des_probebaus_reist_als_satz_und_kommt_auf_englisch_an(repo):
+    """Prüfmeldungen der Reise (pruefung.*, ADR-0006) reisen mit Schlüsseln zum Konnektor: Deutsch bleibt der Wortlaut des
+    Protokolls, die Person liest denselben Fehler in ihrer Sprache."""
+    import json
+    import texte
+    s = schreiber(repo)
+    with pytest.raises(sb.Ablehnung) as fehler:
+        s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "merkmal": "fruehstueck",
+                                                                             "werte": ["ja", "nein"]}})
+    e = fehler.value
+    unterwegs = json.loads(json.dumps({"fehler": str(e), "fehler_code": e.schluessel, "werte": e.werte_json()}))   # wie über HTTP
+    werte = {n: texte.Satz.aus_json(v["satz"]) if isinstance(v, dict) and "satz" in v else v for n, v in unterwegs["werte"].items()}
+    satz = texte.Satz(unterwegs["fehler"], unterwegs["fehler_code"], werte)
+    assert satz.text("de") == str(e) and "nicht bauen" in satz.text("de")
+    en = satz.text("en")
+    assert "{" not in en and "cannot be built" in en and "allowed:" in en, en
+    for wort in (" gibt es nicht", " muss ", "Merkmal ", "erlaubt", "nicht bauen"):
+        assert wort not in en, (wort, en)
+
+
+def test_hinweise_reisen_mit_schluesseln(repo):
+    """Neue Warnungen des Baus kommen als Sätze zum Konnektor (hinweise_teile) und lassen sich dort in jeder Sprache setzen."""
+    import texte
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "termin_setzen", {**IDA, "args": {"datum": "2027-05-20", "titel": "Konzert am Abend (Test)",
+                                                                       "ort": "O-01", "quelle": "erfunden (Test)"}})
+    assert a["hinweise"] == [AUSSERHALB] and len(a["hinweise_teile"]) == 1
+    satz = texte.Satz.aus_json(a["hinweise_teile"][0])
+    assert str(satz) == AUSSERHALB and satz.text("de") == AUSSERHALB
+
+
 # ---------- Rolle, Status, Person ----------
 
 def test_rolle_aus_reise_yaml_gilt_vor_dem_konnektor(repo):
