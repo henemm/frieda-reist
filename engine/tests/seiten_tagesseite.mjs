@@ -44,7 +44,11 @@ for (const breite of [390, 1300]) {
       getoent: getComputedStyle(document.querySelector(".ebene-unterwegs")).backgroundColor !== getComputedStyle(document.body).backgroundColor,
       weiterlesen: [...document.querySelectorAll(".ebene-weg .weiterlesen")].filter(x => !x.hidden).length,
       // Nacht: über die volle Breite nur bei offener Wahl, sonst an ihrem Platz in der Lesespalte
-      nacht: {voll: !!document.querySelector(".tagseite > .nacht-voll"), inLesen: !!document.querySelector(".tag-lesen > .ebene-nacht")},
+      nacht: {voll: !!document.querySelector(".tagseite > .nacht-voll"), inLesen: !!document.querySelector(".tag-lesen > .ebene-nacht"),
+        // Platz (Product Owner 31.10.2026): nach dem Hintergrund, vor den Quellen; oben in Pixeln
+        oben: oben(".ebene-nacht"), hintergrund: oben(".ebene-hintergrund"), quellen: oben(".ebene-quellen"),
+        // Stand-Leiter: nicht gebucht sind die Einzelheiten der Unterkunft offen
+        einzelheiten: [...document.querySelectorAll(".ebene-nacht .karte > details.einzelheiten")].map(d => d.open)},
     };
   });
   a.offen = await p.evaluate(offen);
@@ -84,6 +88,19 @@ for (const breite of [390, 1300]) {
     a.tiefe[id] = await p.evaluate(i => { const e = document.getElementById(i);
       return !!e && !!document.querySelector(".tagseite") && e.offsetParent !== null && !e.hidden && (!e.closest("details") || e.closest("details").open); }, id);
   }
+  // Stand-Leiter, gebucht (Tag 1, Hotel am Elbufer mit Buchung B-01, Beispielwerte): kompakt, Einzelheiten zu, ein Stand
+  await p.evaluate(() => { location.hash = "#T-01"; });
+  await p.waitForSelector(".ebene-nacht #U-01");
+  a.gebucht = await p.evaluate(() => {
+    const k = document.querySelector(".ebene-nacht #U-01"), b = k.querySelector("[id='B-01']");
+    const zeilen = x => [...x.querySelectorAll(":scope > .z")].map(z => z.textContent);
+    return {karte: [...k.querySelectorAll(":scope > details.einzelheiten")].map(d => d.open),
+      buchung: [...b.querySelectorAll(":scope > details.einzelheiten")].map(d => d.open),
+      oben: zeilen(b).map(t => t.split(":")[0]), storno: zeilen(b).find(t => t.startsWith("Storno")) || null,
+      // Stand-Chips an der Karte (ohne Frage und Kalender)
+      chipsKarte: [...k.querySelectorAll(":scope > .chips .chip")].filter(c => ["gebucht", "angefragt", "nicht gebucht"].includes(c.textContent)).length,
+      tageskasten: [...document.querySelectorAll(".tag-oben .ding.nacht .chip, .tag-oben .ding.nacht .wm-knopf")].map(x => x.textContent)};
+  });
   await ctx.close();
 }
 await b.close();
