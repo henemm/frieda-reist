@@ -48,6 +48,7 @@ from contextlib import closing
 from pathlib import Path
 
 import instanz
+import texte
 from reise import rolle_neu
 
 EMAIL_MUSTER = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$")
@@ -67,7 +68,15 @@ EINLADUNG_TAGE = 30
 
 
 class KontoFehler(Exception):
-    """Fehler mit einem Satz, der so dem Menschen gezeigt werden kann."""
+    """Fehler mit einem Satz, der so dem Menschen gezeigt werden kann. Der Satz steht im Katalog (konto.fehler.*, ADR-0006);
+    str(fehler) ist der Satz in der Vorgabe der Reisen (Bestand), text(sprache) der in der Sprache der Person."""
+
+    def __init__(self, schluessel, **werte):
+        self.schluessel, self.werte = schluessel, werte
+        super().__init__(texte.t(texte.VORGABE_REISE, schluessel, **werte))
+
+    def text(self, sprache):
+        return texte.t(sprache, self.schluessel, **self.werte)
 
 
 class NameNoetig(KontoFehler):
@@ -94,7 +103,7 @@ def pfad():
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS konten (
   id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, name TEXT NOT NULL DEFAULT '', rechte TEXT NOT NULL DEFAULT '',
-  gesperrt INTEGER NOT NULL DEFAULT 0, angelegt TEXT NOT NULL);
+  gesperrt INTEGER NOT NULL DEFAULT 0, angelegt TEXT NOT NULL, sprache TEXT NOT NULL DEFAULT '');
 CREATE TABLE IF NOT EXISTS codes (
   email TEXT NOT NULL, zweck TEXT NOT NULL, hash TEXT NOT NULL, konto TEXT, ablauf REAL NOT NULL,
   versuche INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (email, zweck));
@@ -143,6 +152,11 @@ def db():
         os.chmod(p, 0o600)
         v.execute("PRAGMA journal_mode = WAL")
     v.executescript(SCHEMA)
+    try:   # Datenbanken von vor ADR-0006 haben die Spalte noch nicht; leer heißt: die Vorgabe der Personen
+        v.execute("ALTER TABLE konten ADD COLUMN sprache TEXT NOT NULL DEFAULT ''")
+        v.commit()
+    except sqlite3.OperationalError:
+        pass   # Spalte ist schon da
     return v
 
 
@@ -175,14 +189,14 @@ def adresse(roh):
     """E-Mail-Adresse normalisieren (Leerzeichen weg, klein) oder KontoFehler."""
     e = (roh or "").strip().lower() if isinstance(roh, str) else ""
     if len(e) > 254 or not EMAIL_MUSTER.match(e):
-        raise KontoFehler("Das sieht nicht wie eine E-Mail-Adresse aus.")
+        raise KontoFehler("konto.fehler.keine_adresse")
     return e
 
 
 def name_pruefen(roh):
     n = " ".join((roh or "").split()) if isinstance(roh, str) else ""
     if not n or len(n) > MAX_NAME:
-        raise KontoFehler(f"Bitte einen Namen mit höchstens {MAX_NAME} Zeichen angeben.")
+        raise KontoFehler("konto.fehler.name_zu_lang", max=MAX_NAME)
     return n
 
 
@@ -200,7 +214,7 @@ def mail_senden(an, betreff, text):
     host = os.environ.get("FR_SMTP_HOST")
     absender = os.environ.get("FR_ABSENDER")
     if not host or not absender:
-        raise KontoFehler("Der Mailversand ist noch nicht eingerichtet. Bitte später noch einmal versuchen.")
+        raise KontoFehler("konto.fehler.mail_nicht_eingerichtet")
     m = email.message.EmailMessage()
     m["From"], m["To"], m["Subject"] = absender, an, betreff
     m.set_content(text)
@@ -211,7 +225,7 @@ def mail_senden(an, betreff, text):
                 s.login(os.environ["FR_SMTP_USER"], os.environ.get("FR_SMTP_PASS", ""))
             s.send_message(m)
     except (OSError, smtplib.SMTPException) as f:
-        raise KontoFehler("Die Mail ließ sich gerade nicht verschicken. Bitte gleich noch einmal versuchen.") from f
+        raise KontoFehler("konto.fehler.mail_fehlgeschlagen") from f
 
 
 def _begrenzt(v, schluessel, grenze):
@@ -225,22 +239,22 @@ def _begrenzt(v, schluessel, grenze):
 
 # ---------------------------------------------------------------- Codes
 
-def code_anfordern(roh, ip="", zweck="anmelden", konto=None):
+def code_anfordern(roh, ip="", zweck="anmelden", konto=None, sprache=texte.VORGABE_REISE):
     """Schickt einen Anmeldecode an die Adresse. Die Antwort ist für bekannte und unbekannte Adressen gleich.
     zweck „adresse“: Code an eine neue Adresse für das Konto `konto` (nur, wenn die Adresse frei ist)."""
     e = adresse(roh)
     with closing(db()) as v, v:
         if zweck == "adresse":
             if not konto:
-                raise KontoFehler("Zum Ändern der Adresse bitte zuerst anmelden.")
+                raise KontoFehler("konto.fehler.adresse_erst_anmelden")
             belegt = v.execute("SELECT id FROM konten WHERE email = ?", (e,)).fetchone()
             if belegt:
-                raise KontoFehler("Diese Adresse gehört schon zu einem Konto." if belegt["id"] != konto
-                                  else "Das ist schon deine Adresse.")
+                raise KontoFehler("konto.fehler.adresse_belegt" if belegt["id"] != konto
+                                  else "konto.fehler.adresse_schon_deine")
         elif zweck != "anmelden":
             raise ValueError(zweck)
         if _begrenzt(v, "adresse:" + e, JE_ADRESSE) or (ip and _begrenzt(v, "ip:" + ip, JE_IP)):
-            raise KontoFehler("Zu viele Codes in kurzer Zeit. Bitte in einer Viertelstunde noch einmal versuchen.")
+            raise KontoFehler("konto.fehler.zu_viele_codes")
         code = f"{secrets.randbelow(10 ** 6):06d}"
         v.execute("INSERT OR REPLACE INTO codes (email, zweck, hash, konto, ablauf, versuche) VALUES (?,?,?,?,?,0)",
                   (e, zweck, _hash(e, zweck, code), konto, _jetzt() + CODE_MINUTEN * 60))
@@ -248,19 +262,19 @@ def code_anfordern(roh, ip="", zweck="anmelden", konto=None):
         if ip:
             v.execute("INSERT INTO versand VALUES (?, ?)", ("ip:" + ip, _jetzt()))
     lesbar = f"{code[:3]} {code[3:]}"
-    zeilen = [f"Dein Code für Frieda: {lesbar}", "",
-              f"Gib ihn dort ein, wo du dich gerade anmeldest. Er gilt {CODE_MINUTEN} Minuten.", ""]
+    zeilen = [texte.t(sprache, "mail.code.zeile_code", code=lesbar), "",
+              texte.t(sprache, "mail.code.zeile_eingabe", minuten=CODE_MINUTEN), ""]
     if zweck == "anmelden" and basis():   # Link ohne Code: der Code gehört nicht in Protokolle und Verläufe
-        zeilen += ["Zur Code-Eingabe auf diesem Gerät:",
+        zeilen += [texte.t(sprache, "mail.code.zeile_link"),
                    f"{basis()}/anmelden?{urllib.parse.urlencode({'schritt': 'code', 'email': e})}", ""]
-    zeilen += ["Hast du keinen Code angefordert, kannst du diese Mail einfach löschen."]
-    betreff = f"Frieda: dein Code {lesbar}" if zweck == "anmelden" else f"Frieda: neue Adresse bestätigen ({lesbar})"
+    zeilen += [texte.t(sprache, "mail.code.zeile_loeschen")]
+    betreff = texte.t(sprache, "mail.code.betreff_anmelden" if zweck == "anmelden" else "mail.code.betreff_adresse", code=lesbar)
     mail_senden(e, betreff, "\n".join(zeilen))
 
 
 def _code_einloesen(v, e, zweck, code):
     """Prüft einen Code und verbraucht ihn bei Erfolg. -> Zeile oder KontoFehler (für alle Fehler derselbe Satz)."""
-    falsch = KontoFehler("Der Code stimmt nicht oder ist abgelaufen. Bitte einen neuen anfordern.")
+    falsch = KontoFehler("konto.fehler.code_falsch")
     z = v.execute("SELECT * FROM codes WHERE email = ? AND zweck = ?", (e, zweck)).fetchone()
     if not z:
         raise falsch
@@ -291,8 +305,11 @@ def _code_einloesen(v, e, zweck, code):
 def _konto_dict(z):
     if not z:
         return None
+    sprache = z["sprache"] if "sprache" in z.keys() else ""
     return {"id": z["id"], "email": z["email"], "name": z["name"], "gesperrt": bool(z["gesperrt"]),
-            "rechte": [r for r in z["rechte"].split(",") if r], "angelegt": z["angelegt"]}
+            "rechte": [r for r in z["rechte"].split(",") if r], "angelegt": z["angelegt"],
+            # Sprache der Person (ADR-0006): ein Wert, den der Katalog nicht (mehr) kennt, zählt wie keiner
+            "sprache": sprache if texte.gueltig(sprache) else texte.VORGABE}
 
 
 def konto(kid):
@@ -313,7 +330,7 @@ def _sitzung_anlegen(v, kid, geraet):
     return token
 
 
-def anmelden(roh, code, name=None, geraet="", einladung=None):
+def anmelden(roh, code, name=None, geraet="", einladung=None, sprache=None):
     """Code prüfen, Konto finden oder anlegen, Einladungen einlösen, Sitzung anlegen.
     -> (sitzungs_token, konto). Ein neues Konto braucht einen Namen (oder eine Einladung, die ihn mitbringt);
     fehlt er, kommt NameNoetig und der Code bleibt gültig."""
@@ -331,13 +348,14 @@ def anmelden(roh, code, name=None, geraet="", einladung=None):
                                "ORDER BY erstellt", (e, _jetzt())).fetchone()
                 vorschlag = ez["name"] if ez else None
             if not (name or vorschlag):
-                raise NameNoetig("Wie heißt du? Der Name steht bei deinen Beiträgen.")   # Code bleibt gültig
+                raise NameNoetig("konto.fehler.name_noetig")   # Code bleibt gültig
             n = name_pruefen(name or vorschlag)
             kid = "K-" + secrets.token_hex(8)
-            v.execute("INSERT INTO konten (id, email, name, angelegt) VALUES (?,?,?,?)", (kid, e, n, _datum()))
+            v.execute("INSERT INTO konten (id, email, name, angelegt, sprache) VALUES (?,?,?,?,?)",
+                      (kid, e, n, _datum(), sprache if texte.gueltig(sprache or "") else ""))
             z = v.execute("SELECT * FROM konten WHERE id = ?", (kid,)).fetchone()
         if z["gesperrt"]:
-            raise KontoFehler("Dieses Konto ist gesperrt. Bitte wende dich an den Betreiber.")
+            raise KontoFehler("konto.fehler.gesperrt")
         # Einladungen an diese Adresse gelten beim Anmelden (Entscheidung 27.10.2026), dazu der Link aus der Mail
         for ez in v.execute("SELECT hash FROM einladungen WHERE email = ? AND eingeloest IS NULL AND ablauf > ?",
                             (e, _jetzt())).fetchall():
@@ -392,6 +410,17 @@ def geraete(kid):
                 for z in v.execute("SELECT * FROM sitzungen WHERE konto = ? ORDER BY zuletzt DESC", (kid,))]
 
 
+def sprache_setzen(kid, sprache):
+    """Sprache der Person ändern (Kontoseite, Werkzeug sprache_setzen); nur Sprachen des Katalogs."""
+    sprache = str(sprache or "").strip().lower()
+    if not texte.gueltig(sprache):
+        raise KontoFehler("konto.fehler.sprache_unbekannt")
+    with closing(db()) as v, v:
+        if v.execute("UPDATE konten SET sprache = ? WHERE id = ?", (sprache, kid)).rowcount == 0:
+            raise KontoFehler("konto.fehler.konto_nicht_gefunden")
+    return sprache
+
+
 def name_setzen(kid, roh):
     n = name_pruefen(roh)
     with closing(db()) as v, v:
@@ -405,11 +434,11 @@ def adresse_aendern(kid, roh, code):
     with closing(db()) as v, v:
         z = _code_einloesen(v, e, "adresse", code)
         if z["konto"] != kid:
-            raise KontoFehler("Der Code stimmt nicht oder ist abgelaufen. Bitte einen neuen anfordern.")
+            raise KontoFehler("konto.fehler.code_falsch")
         try:
             v.execute("UPDATE konten SET email = ? WHERE id = ?", (e, kid))
         except sqlite3.IntegrityError:
-            raise KontoFehler("Diese Adresse gehört schon zu einem Konto.") from None
+            raise KontoFehler("konto.fehler.adresse_belegt") from None
     return e
 
 
@@ -433,12 +462,12 @@ def zusammenfuehren(von, nach):
     """Zwei Konten eines Menschen vereinen: Mitgliedschaften und Rechte gehen an `nach`, `von` wird gelöscht.
     Ist `nach` in einer Reise schon Mitglied, bleibt dessen Personen-Schlüssel."""
     if von == nach:
-        raise KontoFehler("Das ist dasselbe Konto.")
+        raise KontoFehler("konto.fehler.dasselbe_konto")
     with closing(db()) as v, v:
         a = v.execute("SELECT * FROM konten WHERE id = ?", (von,)).fetchone()
         b = v.execute("SELECT * FROM konten WHERE id = ?", (nach,)).fetchone()
         if not a or not b:
-            raise KontoFehler("Konto nicht gefunden.")
+            raise KontoFehler("konto.fehler.konto_nicht_gefunden")
         for m in v.execute("SELECT * FROM mitgliedschaften WHERE konto = ?", (von,)).fetchall():
             v.execute("DELETE FROM mitgliedschaften WHERE konto = ? AND reise = ?", (von, m["reise"]))
             v.execute("INSERT OR IGNORE INTO mitgliedschaften VALUES (?,?,?,?)",
@@ -462,7 +491,7 @@ def recht_setzen(kid, r, an=True):
     with closing(db()) as v, v:
         z = v.execute("SELECT rechte FROM konten WHERE id = ?", (kid,)).fetchone()
         if not z:
-            raise KontoFehler("Konto nicht gefunden.")
+            raise KontoFehler("konto.fehler.konto_nicht_gefunden")
         rechte = set(filter(None, z["rechte"].split(",")))
         rechte = rechte | {r} if an else rechte - {r}
         v.execute("UPDATE konten SET rechte = ? WHERE id = ?", (",".join(sorted(rechte)), kid))
@@ -473,7 +502,7 @@ def reisen_anlegen_anfragen(kid):
     with closing(db()) as v, v:
         k = v.execute("SELECT rechte FROM konten WHERE id = ?", (kid,)).fetchone()
         if not k:
-            raise KontoFehler("Konto nicht gefunden.")
+            raise KontoFehler("konto.fehler.konto_nicht_gefunden")
         if "reise_anlegen" in k["rechte"].split(","):
             return "schon_erlaubt"
         z = v.execute("SELECT status FROM anfragen WHERE konto = ?", (kid,)).fetchone()
@@ -525,14 +554,14 @@ def konto_von_person(reise, schluessel):
 def verknuepfen(kid, reise, schluessel):
     """Konto direkt mit einer Person der Reise verknüpfen (z. B. wer eine Reise anlegt, ist dort Organisator:in)."""
     if not REISE_MUSTER.match(reise or "") or not PERSON_MUSTER.match(schluessel or ""):
-        raise KontoFehler("Reise oder Person ungültig.")
+        raise KontoFehler("konto.fehler.reise_person_ungueltig")
     with closing(db()) as v, v:
         if not v.execute("SELECT id FROM konten WHERE id = ?", (kid,)).fetchone():
-            raise KontoFehler("Konto nicht gefunden.")
+            raise KontoFehler("konto.fehler.konto_nicht_gefunden")
         belegt = v.execute("SELECT konto FROM mitgliedschaften WHERE reise = ? AND schluessel = ?",
                            (reise, schluessel)).fetchone()
         if belegt and belegt["konto"] != kid:
-            raise KontoFehler("Diese Person ist in der Reise schon mit einem anderen Konto verknüpft.")
+            raise KontoFehler("konto.fehler.person_verknuepft")
         v.execute("INSERT OR IGNORE INTO mitgliedschaften VALUES (?,?,?,?)", (kid, reise, schluessel, _datum()))
 
 
@@ -557,7 +586,7 @@ def kalender_token(kid, erneuern=False):
     import kalender
     with closing(db()) as v, v:
         if not v.execute("SELECT 1 FROM konten WHERE id = ?", (kid,)).fetchone():
-            raise KontoFehler("Konto nicht gefunden.")
+            raise KontoFehler("konto.fehler.konto_nicht_gefunden")
         if erneuern:
             _kalender_zeile(v, kid)
             v.execute("UPDATE kalender_abo SET stand = stand + 1 WHERE konto = ?", (kid,))
@@ -627,50 +656,52 @@ def einladung_einloesen(token, kid):
     with closing(db()) as v, v:
         z = _einladung_zeile(v, token)
         if not z or z["eingeloest"] is not None:
-            raise KontoFehler("Diese Einladung ist abgelaufen oder schon benutzt.")
+            raise KontoFehler("konto.fehler.einladung_abgelaufen")
         _einloesen(v, z["hash"], kid)
         return z["reise"]
 
 
-def einladen(reise, schluessel, roh, rolle, name, von, titel=None, seite=None):
+def einladen(reise, schluessel, roh, rolle, name, von, titel=None, seite=None, sprache=texte.VORGABE_REISE):
     """Lädt eine Adresse in eine Reise ein und schickt die Mail. Hat die Adresse schon ein Konto, gilt die
     Einladung sofort. -> {"sofort": bool}. Der Link in der Mail ist ein Nachweis und bleibt geheim."""
     if not REISE_MUSTER.match(reise or "") or not PERSON_MUSTER.match(schluessel or ""):
-        raise KontoFehler("Reise oder Person ungültig.")
+        raise KontoFehler("konto.fehler.reise_person_ungueltig")
     rolle = rolle_neu(rolle)
     if rolle not in ROLLEN:
-        raise KontoFehler("Unbekannte Rolle.")
+        raise KontoFehler("konto.fehler.unbekannte_rolle")
     e, n, von = adresse(roh), name_pruefen(name), name_pruefen(von)
     token = secrets.token_urlsafe(32)
     with closing(db()) as v, v:
         if _begrenzt(v, "einladung:" + reise, (50, 24 * 3600)):
-            raise KontoFehler("Heute wurden für diese Reise schon sehr viele Einladungen verschickt.")
+            raise KontoFehler("konto.fehler.zu_viele_einladungen")
         belegt = v.execute("SELECT k.email FROM mitgliedschaften m JOIN konten k ON k.id = m.konto "
                            "WHERE m.reise = ? AND m.schluessel = ?", (reise, schluessel)).fetchone()
         if belegt and belegt["email"] != e:
-            raise KontoFehler("Diese Person ist in der Reise schon mit einem anderen Konto verknüpft.")
+            raise KontoFehler("konto.fehler.person_verknuepft")
         v.execute("INSERT INTO einladungen (hash, reise, schluessel, email, rolle, name, von, erstellt, ablauf) "
                   "VALUES (?,?,?,?,?,?,?,?,?)", (_hash("einladung", token), reise, schluessel, e, rolle, n, von,
                                                  _jetzt(), _jetzt() + EINLADUNG_TAGE * 86400))
         v.execute("INSERT INTO versand VALUES (?, ?)", ("einladung:" + reise, _jetzt()))
-        k = v.execute("SELECT id, gesperrt FROM konten WHERE email = ?", (e,)).fetchone()
+        k = v.execute("SELECT id, gesperrt, sprache FROM konten WHERE email = ?", (e,)).fetchone()
         sofort = bool(k and not k["gesperrt"])
         if sofort:
             _einloesen(v, _hash("einladung", token), k["id"])
     titel = titel or reise
-    rolle_text = {"gast": "liest mit", "mitwirkend": "bringst ein", "organisator": "organisierst mit"}[rolle]
-    zeilen = [f"Hallo {n},", "", f"{von} hat dich zur Reise „{titel}“ eingeladen (du {rolle_text}).", ""]
+    # Sprache der Mail: die der eingeladenen Person, wenn sie ein Konto hat, sonst die Sprache der Reise (Parameter)
+    if k and texte.gueltig(k["sprache"]):
+        sprache = k["sprache"]
+    zeilen = [texte.t(sprache, "mail.einladung.anrede", name=n), "",
+              texte.t(sprache, "mail.einladung.eingeladen", von=von, titel=titel, rolle=texte.t(sprache, f"mail.einladung.rolle.{rolle}")), ""]
     if sofort:
-        zeilen += ["Die Reise steht ab jetzt bei deinen Reisen, wenn du dich bei Frieda anmeldest."]
+        zeilen += [texte.t(sprache, "mail.einladung.sofort")]
     else:
-        zeilen += ["Mitmachen kannst du nach dem Anmelden mit dieser Adresse oder über diesen Link "
-                   f"({EINLADUNG_TAGE} Tage gültig, auch wenn du lieber eine andere Adresse nutzt):"]
+        zeilen += [texte.t(sprache, "mail.einladung.link", tage=EINLADUNG_TAGE)]
         if basis():
             zeilen += [f"{basis()}/einladung/{token}"]
     if seite:
-        zeilen += ["", "Lesen geht ohne Anmeldung:", seite]
-    zeilen += ["", "Frieda ist der Reiseassistent eurer Reisegruppe. Kennst du die Person nicht, lösche diese Mail."]
-    mail_senden(e, f"Frieda: Einladung zu „{titel}“", "\n".join(zeilen))
+        zeilen += ["", texte.t(sprache, "mail.einladung.lesen"), seite]
+    zeilen += ["", texte.t(sprache, "mail.einladung.schluss")]
+    mail_senden(e, texte.t(sprache, "mail.einladung.betreff", titel=titel), "\n".join(zeilen))
     return {"sofort": sofort}
 
 
@@ -787,7 +818,7 @@ def liste():
 def _per_email(e):
     k = konto_per_email(e)
     if not k:
-        raise KontoFehler(f"Kein Konto mit der Adresse {e}.")
+        raise KontoFehler("konto.fehler.kein_konto_mit", adresse=e)
     return k
 
 

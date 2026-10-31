@@ -378,3 +378,24 @@ def test_niemand_uebernimmt_eine_bestehende_person(welt):
     # neue Personen einladen darf ein:e Mitwirkende:r hier weiterhin (höchstens die eigene Rolle)
     text, fehler = aufruf(u, karl["access_token"], "person_einladen", vorname="Lea", email="lea@beispiel.invalid")
     assert not fehler, text
+
+
+def test_sprache_am_konto_im_konnektor(welt):
+    """Das Konto trägt eine Sprache (ADR-0006): das Werkzeug sprache_setzen ändert sie, die Anleitung folgt ihr nach der Änderung;
+    eine unbekannte Sprache lehnt es in der Sprache der Person ab."""
+    u = welt()
+    t, _ = verbinden(u, IDA, "Ida")
+    acc = t["access_token"]
+    s, _, r = mcp(u, acc, "tools/list")
+    werk = {w["name"]: w for w in r["result"]["tools"]}
+    assert "sprache_setzen" in werk and werk["sprache_setzen"]["inputSchema"]["properties"]["sprache"]["enum"][:2] == ["de", "en"]
+    # Das Konto wurde mit Accept-Language: de angelegt (Testhelfer); Beschreibung und Antwort kommen deutsch
+    assert werk["sprache_setzen"]["description"].startswith("Stellt die Sprache dieses Kontos ein")
+    s, _, r = mcp(u, acc, "tools/call", {"name": "sprache_setzen", "arguments": {"sprache": "en"}})
+    assert not r["result"]["isError"] and r["result"]["content"][0]["text"].startswith("Language set to English.")
+    s, _, r = mcp(u, acc, "tools/list")
+    assert {w["name"]: w for w in r["result"]["tools"]}["sprache_setzen"]["description"].startswith("Sets the language of this account")
+    s, _, r = mcp(u, acc, "tools/call", {"name": "sprache_setzen", "arguments": {"sprache": "klingonisch"}})
+    assert r["result"]["isError"] and r["result"]["content"][0]["text"] == "That language does not exist."
+    import konten as k
+    assert k.konto_per_email(IDA)["sprache"] == "en"

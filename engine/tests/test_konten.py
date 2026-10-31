@@ -11,6 +11,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import konten  # noqa: E402
+import texte  # noqa: E402
 
 IDA, KARL, MO = "ida@beispiel.invalid", "karl@beispiel.invalid", "mo@beispiel.invalid"
 
@@ -383,3 +384,62 @@ def test_dienst_geheimnis_gleichzeitig_beim_ersten_Aufruf(umgebung):
     for t in threads:
         t.join()
     assert not fehler and len(ergebnisse) == 16 and len(set(ergebnisse)) == 1
+
+
+# ---------- Sprache am Konto (ADR-0006, M7) ----------
+
+def test_sprache_vorgabe_setzen_und_unbekannte(umgebung):
+    einloggen(umgebung, IDA, name="Ida")
+    k = konten.konto_per_email(IDA)
+    assert k["sprache"] == "en"                          # ohne Angabe gilt die Vorgabe der Personen
+    assert konten.sprache_setzen(k["id"], "de") == "de" and konten.konto(k["id"])["sprache"] == "de"
+    with pytest.raises(konten.KontoFehler) as e:
+        konten.sprache_setzen(k["id"], "klingonisch")
+    assert e.value.text("en") == "That language does not exist." and str(e.value) == "Diese Sprache gibt es nicht."
+    with pytest.raises(konten.KontoFehler):
+        konten.sprache_setzen("K-gibt-es-nicht", "de")
+
+
+def test_neues_konto_bekommt_die_sprache_der_anmeldeseite(umgebung):
+    konten.code_anfordern(KARL, sprache=texte.aus_header("de-AT,de;q=0.9,en;q=0.8"))
+    konten.anmelden(KARL, letzter_code(umgebung, KARL), name="Karl", sprache=texte.aus_header("de-AT,de;q=0.9"))
+    assert konten.konto_per_email(KARL)["sprache"] == "de"
+    konten.code_anfordern(MO, sprache="en")
+    code = re.search(r"code for Frieda: (\d{3}) (\d{3})", mails(umgebung, MO)[-1]["text"]).expand(r"\1\2")
+    konten.anmelden(MO, code, name="Mo", sprache=texte.aus_header("fr"))
+    assert konten.konto_per_email(MO)["sprache"] == "en"     # unbekannte Sprache: Vorgabe
+    assert "Frieda: your code" in mails(umgebung, MO)[-1]["betreff"]
+
+
+def test_alte_datenbank_ohne_spalte_wird_migriert(umgebung):
+    p = konten.pfad()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    v = sqlite3.connect(p)
+    v.execute("CREATE TABLE konten (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, name TEXT NOT NULL DEFAULT '', "
+              "rechte TEXT NOT NULL DEFAULT '', gesperrt INTEGER NOT NULL DEFAULT 0, angelegt TEXT NOT NULL)")
+    v.execute("INSERT INTO konten (id, email, name, angelegt) VALUES ('K-alt', 'alt@beispiel.invalid', 'Alt', '2026-01-01')")
+    v.commit()
+    v.close()
+    k = konten.konto("K-alt")                            # öffnet die Datenbank und fügt die Spalte hinzu
+    assert k["sprache"] == "en"
+    assert konten.sprache_setzen("K-alt", "de") == "de" and konten.konto("K-alt")["sprache"] == "de"
+    konten.db().close()                                  # ein zweites Öffnen verträgt die vorhandene Spalte
+
+
+def test_gespeicherte_unbekannte_sprache_zaehlt_wie_keine(umgebung):
+    einloggen(umgebung, IDA, name="Ida")
+    kid = konten.konto_per_email(IDA)["id"]
+    with konten.closing(konten.db()) as v, v:
+        v.execute("UPDATE konten SET sprache = 'xx-fort' WHERE id = ?", (kid,))
+    assert konten.konto(kid)["sprache"] == "en"
+
+
+def test_einladung_in_der_sprache_der_person_oder_der_reise(umgebung):
+    konten.einladen("beispiel", "karl", KARL, "mitwirkend", "Karl", "Ida", titel="Malerweg", sprache="en")
+    m = mails(umgebung, KARL)[-1]
+    assert m["betreff"] == "Frieda: invitation to “Malerweg”" and "(you contribute)" in m["text"] and "Hello Karl," in m["text"]
+    einloggen(umgebung, MO, name="Mo")
+    konten.sprache_setzen(konten.konto_per_email(MO)["id"], "de")
+    konten.einladen("beispiel", "mo", MO, "gast", "Mo", "Ida", titel="Malerweg", sprache="en")   # Konto gewinnt vor der Reise
+    m = mails(umgebung, MO)[-1]
+    assert m["betreff"] == "Frieda: Einladung zu „Malerweg“" and "(du liest mit)" in m["text"]

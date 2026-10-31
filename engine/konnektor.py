@@ -163,6 +163,25 @@ def zugang_zu(token):
     return None
 
 
+def sprache_des_zugangs(zugang):
+    """Sprache für diese Anfrage (ADR-0006): die des Kontos; bei Übergangs-Links ohne Konto die der Reise (veröffentlichte Daten);
+    sonst die Vorgabe der Personen."""
+    if zugang.get("konto_id"):
+        k = konten.konto(zugang["konto_id"])
+        if k:
+            return k["sprache"]
+    s = (((daten(zugang.get("reise") or "") or {}).get("reise") or {}).get("sprache")) if zugang.get("reise") else None
+    return s if texte.gueltig(s or "") else texte.VORGABE
+
+
+def sprache_setzen_werkzeug(sprache):
+    """Konto-Werkzeug sprache_setzen: Beschreibung in der Sprache der Person, die Wahl aus den Sprachen des Katalogs."""
+    return {"name": "sprache_setzen", "description": texte.t(sprache, "konnektor.werkzeug.sprache_setzen"),
+            "inputSchema": {"type": "object", "properties": {"sprache": {
+                "type": "string", "enum": list(texte.SPRACHEN),
+                "description": texte.t(sprache, "konnektor.werkzeug.sprache_setzen.sprache")}}, "required": ["sprache"]}}
+
+
 def personen_der_reise(reise, d):
     """Personen aus reise.yaml (veröffentlichte Seite) plus Eingeladene, die dort noch fehlen (einladungen.json)."""
     return rm.personen_mit_einladungen(((d or {}).get("reise") or {}).get("personen") or [], rm.ordner(reise))
@@ -1888,6 +1907,7 @@ def frieda_werkzeuge(k):
         eigene.append(ANFRAGE_ENTSCHEIDEN)
     reisen = reisen_des_kontos(k)
     eigene.append(KALENDER)
+    eigene.append(sprache_setzen_werkzeug(k["sprache"]))
     je_name, wo = {}, {}
     for reise, schl, _ in reisen:
         for w in werkzeuge_fuer({"reise": reise, "person": schl}):
@@ -1982,6 +2002,12 @@ def frieda_werkzeug(k, name, args):
                 "abgelehnt": "Deine Bitte wurde abgelehnt. Bei Fragen wende dich an den Betreiber."}[st], False
     if name == "kalender":
         return kalender_link(k, args.get("neu") is True)
+    if name == "sprache_setzen":
+        try:
+            neu = konten.sprache_setzen(k["id"], args.get("sprache"))
+        except konten.KontoFehler as f:
+            return f.text(k["sprache"]), True
+        return texte.t(neu, "konnektor.sprache_gesetzt", name=texte.sprache(neu).NAME), False
     if name == "anfrage_entscheiden":
         if not konten.recht(k, "betreiber"):
             return "Das darf nur der Betreiber.", True
@@ -3117,11 +3143,12 @@ class Dienst(BaseHTTPRequestHandler):
             if not k:
                 return self._senden(401, {"fehler": "Anmeldung nötig"},
                                     {"WWW-Authenticate": oauth.www_authenticate(fehler=bool(t))})
-            zugang = {"konto_id": k["id"]}
+            zugang = {"konto_id": k["id"], "sprache": k["sprache"]}
         else:
             zugang = self._zugang()
         if zugang is None:
             return self._senden(404, {"fehler": "unbekannt"})
+        zugang = {**zugang, "sprache": zugang.get("sprache") or sprache_des_zugangs(zugang)}
         try:
             laenge = int(self.headers.get("Content-Length", "0"))
         except ValueError:
