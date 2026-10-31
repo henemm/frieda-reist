@@ -171,7 +171,21 @@ def sprache_des_zugangs(zugang):
         if k:
             return k["sprache"]
     s = (((daten(zugang.get("reise") or "") or {}).get("reise") or {}).get("sprache")) if zugang.get("reise") else None
-    return s if texte.gueltig(s or "") else texte.VORGABE
+    # ohne Konto und ohne lesbare Reise (alte Konto-Links): die Sprache des Bestands
+    return s if texte.gueltig(s or "") else texte.VORGABE_REISE
+
+
+def lokalisiert(werkzeuge, sprache):
+    """Kopie der Werkzeugliste, in der jede Beschreibung der Form "@schlüssel" durch den Text des Katalogs in der Sprache ersetzt ist
+    (ADR-0006): Namen, Schemata und Hinweise bleiben gleich, nur die Beschreibungen folgen der Sprache der Person."""
+    def gehe(x):
+        if isinstance(x, dict):
+            return {k: (texte.t(sprache, v[1:]) if k == "description" and isinstance(v, str) and v.startswith("@") else gehe(v))
+                    for k, v in x.items()}
+        if isinstance(x, list):
+            return [gehe(e) for e in x]
+        return x
+    return gehe(werkzeuge)
 
 
 def sprache_setzen_werkzeug(sprache):
@@ -1870,24 +1884,16 @@ def reise_anlegen(konto, args):
 
 # ---------- Konnektor „Frieda“ (Paket J3): ein Zugang für alle Reisen, angemeldet mit dem Konto (OAuth) ----------
 
-REISEN_ANLEGEN_ANFRAGEN = {"name": "reisen_anlegen_anfragen", "description": "Bitten, Reisen anlegen zu dürfen. Das "
-                           "entscheidet der Betreiber; bis dahin kann die Person bei Reisen mitmachen, zu denen sie "
-                           "eingeladen ist.", "inputSchema": {"type": "object", "properties": {}}}
-KALENDER = {"name": "kalender", "description": "Persönlicher Link, um alle Reisen der Person im Kalender zu abonnieren "
-            "(iPhone, Mac, Outlook: webcal-Link antippen; Google Kalender: https-Link unter „Andere Kalender, Per URL“ einfügen). "
-            "Der Kalender zeigt Entschiedenes und bleibt aktuell. Was darin steht (Tage, Unterkünfte, Termine, Fristen, nur eigene "
-            "Aufgaben, Erinnerungen, welche Reisen) stellt die Person selbst unter „Mein Konto“ ein; dort gibt es auch den Download. "
-            "neu=true stellt einen neuen Link aus, der alte gilt dann nicht mehr. Der Link ist persönlich: nur dieser Person zeigen.",
+REISEN_ANLEGEN_ANFRAGEN = {"name": "reisen_anlegen_anfragen", "description": "@konnektor.werkzeug.reisen_anlegen_anfragen", "inputSchema": {"type": "object", "properties": {}}}
+KALENDER = {"name": "kalender", "description": "@konnektor.werkzeug.kalender",
             "inputSchema": {"type": "object", "properties": {
-                "neu": {"type": "boolean", "description": "true: neuer Link, der alte gilt nicht mehr"}}}}
-ANFRAGE_ENTSCHEIDEN = {"name": "anfrage_entscheiden", "description": "Nur für den Betreiber: eine Bitte „Reisen anlegen“ "
-                       "annehmen oder ablehnen (offene Bitten stehen in meine_reisen). Vorher bestätigen lassen.",
+                "neu": {"type": "boolean", "description": "@konnektor.werkzeug.kalender.neu"}}}}
+ANFRAGE_ENTSCHEIDEN = {"name": "anfrage_entscheiden", "description": "@konnektor.werkzeug.anfrage_entscheiden",
                        "inputSchema": {"type": "object", "properties": {
-                           "email": {"type": "string", "description": "Adresse des Kontos aus der Liste der Bitten"},
-                           "erlauben": {"type": "boolean", "description": "true: darf Reisen anlegen; false: abgelehnt"}},
+                           "email": {"type": "string", "description": "@konnektor.werkzeug.anfrage_entscheiden.email"},
+                           "erlauben": {"type": "boolean", "description": "@konnektor.werkzeug.anfrage_entscheiden.erlauben"}},
                            "required": ["email", "erlauben"]}}
-EMAIL_FELD = {"type": "string", "description": "E-Mail-Adresse der Person: Sie bekommt die Einladung per Mail und meldet "
-              "sich damit bei Frieda an. Vorher mit der einladenden Person abstimmen."}
+EMAIL_FELD = {"type": "string", "description": "@konnektor.feld.email_feld"}
 
 
 def reisen_des_kontos(k):
@@ -1920,7 +1926,7 @@ def frieda_werkzeuge(k):
         if n == "person_einladen":
             eig["email"] = EMAIL_FELD
         eig["reise"] = {"type": "string", "enum": wo[n],
-                        "description": "Ordner der Reise (aus meine_reisen)" + ("" if len(reisen) > 1 else "; optional")}
+                        "description": "@konnektor.feld.reise_ordner" if len(reisen) > 1 else "@konnektor.feld.reise_ordner_optional"}
         pflicht = [x for x in schema.get("required", []) if x != "name"]
         if n == "person_einladen":
             pflicht.append("email")
@@ -1930,22 +1936,25 @@ def frieda_werkzeuge(k):
     return aus
 
 
-# Wie Frieda mit der Person spricht (28.10.2026): Kennungen sind für die Werkzeuge da, nicht für die Person
-SPRACHE = ("In Antworten Namen statt Kennungen: „Zugfahrt Münster → Duisburg am 8.1.“ statt „AG-01“. IDs nur für "
-           "die Werkzeuge oder auf Nachfrage, die Nummern von Rückmeldungen (R-…) nie.")
+# Wie Frieda mit der Person spricht (28.10.2026): Kennungen sind für die Werkzeuge da, nicht für die Person.
+# Alle Sätze der Anleitung stehen im Katalog (konnektor.anleitung.*, ADR-0006); hier bleiben nur die Bedingungen.
+def anl(sprache, schluessel, **werte):
+    return texte.t(sprache, "konnektor.anleitung." + schluessel, **werte)
 
 
-def anleitung_frieda(k):
+STATUS_SAETZE = ("idee", "planung", "fest", "unterwegs", "danach", "archiv")   # Statuswerte, zu denen die Anleitung einen Satz hat
+
+
+def anleitung_frieda(k, sprache=None):
+    sprache = sprache or k.get("sprache") or texte.VORGABE_REISE
     reisen = reisen_des_kontos(k)
-    z = [f"Aufgabe: Du bist Frieda, der Reiseassistent von {k['name']} (angemeldet als {k['email']}). Dieser Konnektor "
-         "gilt für alle Reisen der Person; jedes Reise-Werkzeug braucht die Angabe reise (Ordner, siehe meine_reisen"
-         + (")" if len(reisen) > 1 else "; bei nur einer Reise darf sie fehlen)") + ". Beginne mit meine_reisen und "
-         "nenne Meldungen zuerst. Personen lädst du per E-Mail-Adresse ein (person_einladen mit email); Links gibt es "
-         "nicht mehr. Neue Reisen: reise_anlegen, wenn die Person das darf, sonst reisen_anlegen_anfragen. " + SPRACHE]
+    z = [anl(sprache, "frieda.aufgabe_viele" if len(reisen) > 1 else "frieda.aufgabe_eine", name=k["name"], email=k["email"],
+             kennungen=anl(sprache, "kennungen_regel"))]
     for reise, schl, d in reisen:
-        z += ["", f"## Reise {reise}", anleitung({"reise": reise, "person": schl, "konto_id": k["id"]}, d)]
+        z += ["", anl(sprache, "frieda.reise_kopf", reise=reise),
+              anleitung({"reise": reise, "person": schl, "konto_id": k["id"], "sprache": sprache}, d)]
     if not reisen:
-        z += ["", "Die Person hat noch keine Reisen. Wer eine Reise bestimmt, kann sie mit ihrer Adresse einladen."]
+        z += ["", anl(sprache, "frieda.keine_reisen"), "", anl(sprache, "antwortsprache")]
     return "\n".join(z)
 
 
@@ -2057,27 +2066,21 @@ def frieda_antwort(zugang, nid, methode, p, ok):
     if methode == "ping":
         return ok({})
     if methode == "tools/list":
-        return ok({"tools": frieda_werkzeuge(k)})
+        return ok({"tools": lokalisiert(frieda_werkzeuge(k), k["sprache"])})
     if methode == "tools/call":
         t, fehler = frieda_werkzeug(k, p.get("name"), p.get("arguments"))
         return ok({"content": [{"type": "text", "text": t}], "isError": fehler})
     return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 
-MEINE_REISEN = {"name": "meine_reisen", "description": "Deine Reisen mit Rolle, Status, Link zur Seite und Link für die "
-                "Claude-App; dazu Meldungen an dich (z. B. eine neu angelegte Reise) und angefragte neue Reisen.",
+MEINE_REISEN = {"name": "meine_reisen", "description": "@konnektor.werkzeug.meine_reisen",
                 "inputSchema": {"type": "object", "properties": {}}}
 
 
-def anleitung_konto(konto):
-    return (f"Aufgabe: Du bist Frieda, die Reiseplanung von {konto['name']}. Mit diesem Zugang siehst du die Reisen der "
-            "Person (meine_reisen) und legst neue an (reise_anlegen). Für eine einzelne Reise gibt es eigene Konnektoren; "
-            "Plan, Wissen und Rückmeldungen laufen dort. Beginne mit meine_reisen und nenne Meldungen zuerst. "
-            "Neue Reise: Titel, Zeitraum, Ziel und Personen mit Rollen im Gespräch klären (gast liest, mitwirkend gibt "
-            "Wünsche, Rückmeldungen und Aufgaben, organisator entscheidet mit), vor dem Anlegen bestätigen lassen. Bekanntes "
-            "(Ideen, schon Gebuchtes, Quellen wie Bücher, Fotos, PDFs) in eigenen Worten mit Herkunft in die Notiz, nie "
-            "abschreiben, nichts erfinden. Der Schreibweg legt die Reise sofort an; ihre Links kommen, sobald die Seite online ist. Links sind "
-            "persönlich: nur dieser Person zeigen. " + SPRACHE)
+def anleitung_konto(konto, sprache=None):
+    sprache = sprache or konto.get("sprache") or texte.VORGABE_REISE
+    return (anl(sprache, "konto.aufgabe", name=konto["name"], kennungen=anl(sprache, "kennungen_regel"))
+            + " " + anl(sprache, "antwortsprache"))
 
 
 def konto_antwort(konto, nid, methode, p, ok):
@@ -2091,7 +2094,7 @@ def konto_antwort(konto, nid, methode, p, ok):
     if methode == "ping":
         return ok({})
     if methode == "tools/list":
-        return ok({"tools": [MEINE_REISEN, REISE_ANLEGEN]})
+        return ok({"tools": lokalisiert([MEINE_REISEN, REISE_ANLEGEN], sprache_des_zugangs(konto))})
     if methode == "tools/call":
         name, args = p.get("name"), p.get("arguments") if isinstance(p.get("arguments"), dict) else {}
         if name == "meine_reisen":
@@ -2136,575 +2139,422 @@ def liste_text(reise, mit_auftraegen, name=None, d=None):
 
 # ---------- MCP ----------
 
-ZIEL_FELD = {"type": "string", "description": "ID, z. B. T-03, E-07, U-02, V-01.a, F-04, W-06 (aus ueberblick, suche oder zeige)"}
+ZIEL_FELD = {"type": "string", "description": "@konnektor.feld.ziel_feld"}
 
 WERKZEUGE = [
-    {"name": "ueberblick", "description": "Überblick über die Reise: Eckdaten, Tagesplan mit IDs, Anzahl offener Fragen, "
-     "Wahlstellen und Inhaltsverzeichnis. Zuerst aufrufen.",
+    {"name": "ueberblick", "description": "@konnektor.werkzeug.ueberblick",
      "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}},
-    {"name": "zeige", "description": "Volltext zu einer ID: Tag (T-), Etappe/Strecke (E-), Ort (O-), Unterkunft (U-), "
-     "Aufenthalt ohne Nacht (A-), Buchung (B-, mit Belegen), Wahlstelle (V-) oder Option (V-01.a), Plan (P-), offene Frage (F-), "
-     "Wissens-Abschnitt (W-, auch W-06.unterabschnitt).",
+    {"name": "zeige", "description": "@konnektor.werkzeug.zeige",
      "inputSchema": {"type": "object", "properties": {"id": ZIEL_FELD}, "required": ["id"]},
      "annotations": {"readOnlyHint": True}},
-    {"name": "suche", "description": "Volltextsuche in der ganzen Reise. Alle Wörter müssen vorkommen. Liefert IDs mit Ausschnitt.",
+    {"name": "suche", "description": "@konnektor.werkzeug.suche",
      "inputSchema": {"type": "object", "properties": {"begriff": {"type": "string"}}, "required": ["begriff"]},
      "annotations": {"readOnlyHint": True}},
-    {"name": "offene_fragen", "description": "Offene Fragen und To-dos (F-…) mit Frist und Status.",
-     "inputSchema": {"type": "object", "properties": {"alle": {"type": "boolean", "description": "auch erledigte"}}},
+    {"name": "offene_fragen", "description": "@konnektor.werkzeug.offene_fragen",
+     "inputSchema": {"type": "object", "properties": {"alle": {"type": "boolean", "description": "@konnektor.werkzeug.offene_fragen.alle"}}},
      "annotations": {"readOnlyHint": True}},
-    {"name": "varianten", "description": "Alle Alternativen: benannte Pläne (P-…) und Wahlstellen (V-…) mit Optionen, "
-     "Status, Dafür/Dagegen und Summen.",
+    {"name": "varianten", "description": "@konnektor.werkzeug.varianten",
      "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}},
-    {"name": "rueckmeldungen", "description": "Bisherige Rückmeldungen mit Status (neu, übernommen, verworfen, Rückfrage) "
-     "und Antwort; bei Organisator:innen auch die Aufträge.",
+    {"name": "rueckmeldungen", "description": "@konnektor.werkzeug.rueckmeldungen",
      "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}},
-    {"name": "rueckmeldung_geben", "description": "Rückmeldung zu einer ID abgeben: Kommentar, Frage, Korrektur, Ergänzung "
-     "oder Antwort (auf eine offene Frage F-…). Oder ein Wunsch: eine Idee für die Reise (Ort, Erlebnis, Essen), auch "
-     "ohne passende ID; dann ziel leer lassen. Landet im Eingang; eine Organisator:in prüft sie in der Claude-App, trägt sie "
-     "mit den Schreibwerkzeugen ein und schließt sie ab (kein Lauf in Frieda, ADR-0001). Vorher den Text mit der Person abstimmen.",
+    {"name": "rueckmeldung_geben", "description": "@konnektor.werkzeug.rueckmeldung_geben",
      "inputSchema": {"type": "object", "properties": {
-         "ziel": {**ZIEL_FELD, "description": ZIEL_FELD["description"] + "; bei art Wunsch leer lassen"},
+         "ziel": {**ZIEL_FELD, "description": "@konnektor.werkzeug.rueckmeldung_geben.ziel"},
          "art": {"type": "string", "enum": sorted(rm.ARTEN)},
-         "text": {"type": "string", "description": "in den Worten der Person, max. 4000 Zeichen"},
-         "name": {"type": "string", "description": "Vorname der Person, die die Rückmeldung gibt. Wenn unbekannt: einmal fragen, "
-                  "nicht raten. Gehört der Link zu einer Person, entfällt das."},
-         "quelle": {"type": "string", "description": "woher die Angabe stammt (Link, Buch mit Seite), falls vorhanden"}},
+         "text": {"type": "string", "description": "@konnektor.werkzeug.rueckmeldung_geben.text"},
+         "name": {"type": "string", "description": "@konnektor.werkzeug.rueckmeldung_geben.name"},
+         "quelle": {"type": "string", "description": "@konnektor.werkzeug.rueckmeldung_geben.quelle"}},
          "required": ["art", "text"]}},
 ]
-NAME_FELD = {"type": "string", "description": "Vorname der Person, die gerade spricht (für den Verlauf). Wenn unbekannt: "
-             "einmal fragen, nicht raten. Gehört der Link zu einer Person, entfällt das."}
+NAME_FELD = {"type": "string", "description": "@konnektor.feld.name_feld"}
 WERT_SCHEMA = {"type": "object", "properties": {
     "wert": {"type": "string"}, "quelle": {"type": "string"}, "geprueft": {"type": "string"}, "notiz": {"type": "string"},
     "gilt": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}],
-             "description": "nur bei Werten je Datum: Datum JJJJ-MM-TT oder Liste solcher Daten"}}, "required": ["wert"]}
+             "description": "@konnektor.feld.wert_schema.gilt"}}, "required": ["wert"]}
 WERKZEUGE += [
-    {"name": "kategorien", "description": "Die Kartenkategorien dieser Reise: Schlüssel, Name in der Legende, Farbe, Symbol, Gruppe "
-     "(Etappen-Karte oder Wissenskarte) und die art-Wörter der Punkte. Vor kategorie_definieren aufrufen (kein Doppeltes anlegen).",
+    {"name": "kategorien", "description": "@konnektor.werkzeug.kategorien",
      "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}},
-    {"name": "merkmale", "description": "Welche Merkmale eine Alternative braucht (z. B. bei Unterkünften Preis, Frühstück, "
-     "Öffnung), je mit Hinweis zum Recherchieren und zum gezielten Nachfragen; zu einer Wahlstelle auch, was jede Option "
-     "schon hat und was fehlt. Vor wert_eintragen, option_anlegen und ding_anlegen aufrufen.",
+    {"name": "merkmale", "description": "@konnektor.werkzeug.merkmale",
      "inputSchema": {"type": "object", "properties": {
-         "ziel": {"type": "string", "description": "Wahlstelle V-…, Option V-….a, Unterkunft U-… oder Strecke E-… (z. B. eine Fähre)"},
+         "ziel": {"type": "string", "description": "@konnektor.werkzeug.merkmale.ziel"},
          "art": {"type": "string",
-                 "description": "nur ohne ziel: eine Art dieser Reise (ihre Arten und Merkmale stehen in plan/arten.yaml; "
-                                "ohne Angabe nennt die Antwort die bekannten Arten)"}}},
+                 "description": "@konnektor.werkzeug.merkmale.art"}}},
      "annotations": {"readOnlyHint": True}},
 ]
 AG_EIGENSCHAFTEN = {
-    "titel": {"type": "string", "description": "kurz, was zu tun ist (max. 200 Zeichen)"},
+    "titel": {"type": "string", "description": "@konnektor.feld.ag_eigenschaften.titel"},
     "bezug": {"type": "array", "items": {"type": "string"},
-              "description": "IDs, an denen die Aufgabe hängt (z. B. [\"U-13\", \"T-07\"]); leer = allgemein"},
-    "zustaendig": {"type": "string", "description": "Vorname der Person, die sich kümmert"},
+              "description": "@konnektor.feld.ag_eigenschaften.bezug"},
+    "zustaendig": {"type": "string", "description": "@konnektor.feld.ag_eigenschaften.zustaendig"},
     "prioritaet": {"type": "string", "enum": list(rm.AG_PRIO)},
-    "ab": {"type": "string", "description": "frühester Termin JJJJ-MM-TT (z. B. Buchung öffnet), leer = sofort"},
-    "frist": {"type": "string", "description": "erledigt sein bis JJJJ-MM-TT, leer = ohne Frist"},
-    "notiz": {"type": "string", "description": "Details, Links, Kontakt (max. 2000 Zeichen)"},
+    "ab": {"type": "string", "description": "@konnektor.feld.ag_eigenschaften.ab"},
+    "frist": {"type": "string", "description": "@konnektor.feld.ag_eigenschaften.frist"},
+    "notiz": {"type": "string", "description": "@konnektor.feld.ag_eigenschaften.notiz"},
 }
 WERKZEUGE += [
-    {"name": "aufgaben", "description": "Aufgaben (AG-…) mit Status, Priorität, Frist, ab wann, Zuständig und Bezug. "
-     "Standard: nur offene. Filter nach Bezug (z. B. U-13 oder T-07), Zuständig oder Status.",
+    {"name": "aufgaben", "description": "@konnektor.werkzeug.aufgaben",
      "inputSchema": {"type": "object", "properties": {
-         "bezug": {"type": "string", "description": "nur Aufgaben an dieser ID"},
-         "zustaendig": {"type": "string", "description": "nur Aufgaben dieser Person"},
+         "bezug": {"type": "string", "description": "@konnektor.werkzeug.aufgaben.bezug"},
+         "zustaendig": {"type": "string", "description": "@konnektor.werkzeug.aufgaben.zustaendig"},
          "status": {"type": "string", "enum": ["offen", "alle", *rm.AG_STATUS],
-                    "description": "offen = offen und in Arbeit (Standard)"}}},
+                    "description": "@konnektor.werkzeug.aufgaben.status"}}},
      "annotations": {"readOnlyHint": True}},
-    {"name": "aufgabe_anlegen", "description": "Neue Aufgabe an einer oder mehreren IDs anlegen. Wirkt sofort (auch auf der "
-     "Webseite). Vorher Titel, Frist und Zuständig mit der Person abstimmen; nichts erfinden.",
+    {"name": "aufgabe_anlegen", "description": "@konnektor.werkzeug.aufgabe_anlegen",
      "inputSchema": {"type": "object", "properties": {**AG_EIGENSCHAFTEN, "name": NAME_FELD}, "required": ["titel"]}},
-    {"name": "aufgabe_aendern", "description": "Aufgabe ändern: abhaken (status erledigt), in Arbeit, entfällt, wieder offen, "
-     "Frist/Zuständig/Priorität/Notiz ändern oder einen Kommentar in den Verlauf schreiben. Nur angegebene Felder ändern "
-     "sich. Wirkt sofort. Gelöscht wird nie; nicht mehr Nötiges bekommt status entfaellt. Bei einem Löschwunsch status "
-     "entfaellt setzen; zurückholen mit status offen (wieder offen).",
+    {"name": "aufgabe_aendern", "description": "@konnektor.werkzeug.aufgabe_aendern",
      "inputSchema": {"type": "object", "properties": {
-         "id": {"type": "string", "description": "AG-…"},
+         "id": {"type": "string", "description": "@konnektor.werkzeug.aufgabe_aendern.id"},
          "status": {"type": "string", "enum": list(rm.AG_STATUS)},
          **AG_EIGENSCHAFTEN,
-         "kommentar": {"type": "string", "description": "kurze Notiz für den Verlauf, z. B. „gebucht, Bestätigung per Mail“"},
+         "kommentar": {"type": "string", "description": "@konnektor.werkzeug.aufgabe_aendern.kommentar"},
          "name": NAME_FELD}, "required": ["id"]}},
 ]
 WERKZEUGE += [
-    {"name": "wuensche", "description": "Wunsch-Brett: alle Wünsche (R-…) nach Spalten (eingebracht, geprüft, eingeplant, "
-     "erlebt, passt nicht) mit Punkten, Vorschlag von Claude (passt zu …), wer eingeplant und wer abgehakt hat; dazu die "
-     "Bilanz je Person und das Kontingent.",
+    {"name": "wuensche", "description": "@konnektor.werkzeug.wuensche",
      "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}},
-    {"name": "wunsch_aendern", "description": "Wunsch auf dem Brett ändern, wirkt sofort (auch auf der Webseite): punkte = "
-     "wie wichtig der Person ihr eigener Wunsch ist (nur eigene Wünsche, im Kontingent, umverteilen erlaubt); erlebt = "
-     "abhaken (unterwegs und danach, alle Mitwirkenden); eingeplant mit bezug (nur Organisator:innen); kommentar für den Verlauf. "
-     "Nur angegebene Felder ändern sich. Vorher kurz bestätigen lassen.",
+    {"name": "wunsch_aendern", "description": "@konnektor.werkzeug.wunsch_aendern",
      "inputSchema": {"type": "object", "properties": {
-         "id": {"type": "string", "description": "R-… (aus wuensche)"},
-         "punkte": {"type": "integer", "minimum": 0, "description": "neue Punktzahl dieses Wunsches"},
+         "id": {"type": "string", "description": "@konnektor.werkzeug.wunsch_aendern.id"},
+         "punkte": {"type": "integer", "minimum": 0, "description": "@konnektor.werkzeug.wunsch_aendern.punkte"},
          "erlebt": {"type": "boolean"},
          "eingeplant": {"type": "boolean"},
          "bezug": {"type": "array", "items": {"type": "string"},
-                   "description": "nur mit eingeplant true: wo eingeplant (z. B. [\"T-03\"]); leer = ohne feste Stelle"},
-         "kommentar": {"type": "string", "description": "kurze Notiz für den Verlauf"},
+                   "description": "@konnektor.werkzeug.wunsch_aendern.bezug"},
+         "kommentar": {"type": "string", "description": "@konnektor.werkzeug.wunsch_aendern.kommentar"},
          "name": NAME_FELD}, "required": ["id"]}},
 ]
 # Ontologie der Reise im Gespräch (ADR-0001, O-3; docs/ontologie.md): die Software kennt nur die Form, die Reise ihre Arten
-ART_DEFINIEREN = {"name": "art_definieren", "description": "Eine Art dieser Reise anlegen oder ändern (Hotel, Refugi, Ryokan, "
-                  "Zugfahrt, Reiseteil …). Organisator:innen schreiben damit direkt in die Ontologie der Reise (plan/arten.yaml): "
-                  "gilt sofort, die Seite zeigt es in wenigen Minuten. Mitwirkende schlagen damit vor (wird eine Rückmeldung). "
-                  "Vorher kurz bestätigen lassen, was genau eingetragen wird; beim Anlegen fragen, was zu jeder Sache dieser Art "
-                  "bekannt sein muss, und die Merkmale danach mit merkmal_definieren anlegen. Eine Art hat genau eine Grundform: "
-                  "aufenthalt (an einem Ort sein, übernachten), bewegung (von Ort zu Ort), folge (ein Abschnitt aus mehreren Tagen). "
-                  "Die Grundform lässt sich später nicht ändern.",
+ART_DEFINIEREN = {"name": "art_definieren", "description": "@konnektor.werkzeug.art_definieren",
                   "inputSchema": {"type": "object", "properties": {
-                      "art": {"type": "string", "description": "Schlüssel der Art (klein, ohne Umlaute, z. B. refugi); leer: aus der "
-                              "Bezeichnung. Zum Ändern den vorhandenen Schlüssel (aus merkmale)"},
-                      "bezeichnung": {"type": "string", "description": "Anzeigename, z. B. Refugi (beim Anlegen nötig)"},
-                      "grundform": {"type": "string", "enum": list(GRUNDFORMEN), "description": "beim Anlegen nötig"},
+                      "art": {"type": "string", "description": "@konnektor.werkzeug.art_definieren.art"},
+                      "bezeichnung": {"type": "string", "description": "@konnektor.werkzeug.art_definieren.bezeichnung"},
+                      "grundform": {"type": "string", "enum": list(GRUNDFORMEN), "description": "@konnektor.werkzeug.art_definieren.grundform"},
                       "farbe": {"type": "string", "enum": list(FARBEN),
-                                "description": "Farbe auf Karte, Legende und Vergleich; Aufenthalte bekommen sonst die nächste freie"},
-                      "beschreibung": {"type": "string", "description": "ein Satz, was diese Art bei dieser Reise meint"},
-                      "summiert": {"type": "boolean", "description": "nur Bewegung aus eigener Kraft (Wandern, Rad): Gehzeit, Länge, "
-                                   "Höhenmeter werden summiert und als berechnete Merkmale angelegt"},
-                      "symbol": {"type": "string", "enum": list(SYMBOLE_ARTEN), "description": "Zeichen der Seite am Etikett; ohne Angabe das der Grundform"},
-                      "buchbar": {"type": "boolean", "description": "die Dinge dieser Art haben einen Buchungsstand (Zu buchen); Vorgabe: Aufenthalte ja, Bewegungen nein"},
+                                "description": "@konnektor.werkzeug.art_definieren.farbe"},
+                      "beschreibung": {"type": "string", "description": "@konnektor.werkzeug.art_definieren.beschreibung"},
+                      "summiert": {"type": "boolean", "description": "@konnektor.werkzeug.art_definieren.summiert"},
+                      "symbol": {"type": "string", "enum": list(SYMBOLE_ARTEN), "description": "@konnektor.werkzeug.art_definieren.symbol"},
+                      "buchbar": {"type": "boolean", "description": "@konnektor.werkzeug.art_definieren.buchbar"},
                       "lesetext": {"type": "array", "items": {"type": "object", "properties": {"rubrik": {"type": "string"}, "name": {"type": "string"}, "hilfe": {"type": "string"}}, "required": ["name"]},
-                                   "description": "Gliederung des Lesetexts der Strecken dieser Art (Bewegung): Rubriken in Lesereihenfolge, je name (Stichwort vor dem Absatz) und hilfe; leere Liste entfernt sie"},
-                      "grund": {"type": "string", "description": "warum (steht im Verlauf)"},
+                                   "description": "@konnektor.werkzeug.art_definieren.lesetext"},
+                      "grund": {"type": "string", "description": "@konnektor.werkzeug.art_definieren.grund"},
                       "name": NAME_FELD}}}
-KATEGORIE_DEFINIEREN = {"name": "kategorie_definieren", "description": "Eine Kategorie der Kartenpunkte dieser Reise anlegen oder ändern "
-                        "(z. B. Einkehr, Wasser, Schauplatz, Bahnhof): Name in der Legende, Farbe, Symbol und, was ein art-Wort der Punkte "
-                        "(z. B. quelle, hotel) auf der Karte heißt. Gruppe punkt gehört zur Etappen-Karte, wissen zur Karte in einem "
-                        "Wissensabschnitt. Organisator:innen schreiben direkt (plan/kategorien.yaml, gilt sofort, Seite in wenigen Minuten), "
-                        "Mitwirkende schlagen vor. Punkte mit einer Kategorie, die die Reise nicht kennt, lassen den Bau scheitern: erst "
-                        "die Kategorie anlegen. Vorher kurz bestätigen lassen, was genau eingetragen wird.",
+KATEGORIE_DEFINIEREN = {"name": "kategorie_definieren", "description": "@konnektor.werkzeug.kategorie_definieren",
                         "inputSchema": {"type": "object", "properties": {
-                            "kategorie": {"type": "string", "description": "Schlüssel (klein, ohne Umlaute, z. B. einkehr)"},
-                            "bezeichnung": {"type": "string", "description": "Name in der Legende, Mehrzahl bei Punkten (beim Anlegen nötig)"},
-                            "einzahl": {"type": "string", "description": "Name für einen einzelnen Punkt, falls anders"},
-                            "gruppe": {"type": "string", "enum": ["punkt", "wissen"], "description": "beim Anlegen nötig; später nicht änderbar"},
-                            "farbe": {"type": "string", "description": "blau, braun, lila, gruen, tuerkis, oliv, grau, rosa, schiefer, kontrast "
-                                      "(Schriftfarbe der Seite) oder #rrggbb (beim Anlegen nötig)"},
-                            "symbol": {"type": "string", "description": "Symbol im Punkt, eines der Seite (z. B. einkehr, wasser, unterkunft, bus)"},
-                            "nummeriert": {"type": "boolean", "description": "der Punkt zeigt seine Nummer (nr) statt eines Symbols"},
-                            "art": {"type": "string", "description": "nur für Angaben zu einem art-Wort der Punkte dieser Kategorie (z. B. quelle)"},
-                            "art_bezeichnung": {"type": "string", "description": "Name dieser art auf der Karte"},
-                            "art_symbol": {"type": "string", "description": "Symbol dieser art"},
-                            "art_hinweis": {"type": "string", "description": "Satz im Popup dieser art, z. B. Trinkbarkeit ungeprüft"},
-                            "art_umriss": {"type": "boolean", "description": "Punkt dieser art als Umriss statt gefüllt (für Ungeprüftes)"},
-                            "grund": {"type": "string", "description": "warum (steht im Verlauf)"},
+                            "kategorie": {"type": "string", "description": "@konnektor.werkzeug.kategorie_definieren.kategorie"},
+                            "bezeichnung": {"type": "string", "description": "@konnektor.werkzeug.kategorie_definieren.bezeichnung"},
+                            "einzahl": {"type": "string", "description": "@konnektor.werkzeug.kategorie_definieren.einzahl"},
+                            "gruppe": {"type": "string", "enum": ["punkt", "wissen"], "description": "@konnektor.werkzeug.kategorie_definieren.gruppe"},
+                            "farbe": {"type": "string", "description": "@konnektor.werkzeug.kategorie_definieren.farbe"},
+                            "symbol": {"type": "string", "description": "@konnektor.werkzeug.kategorie_definieren.symbol"},
+                            "nummeriert": {"type": "boolean", "description": "@konnektor.werkzeug.kategorie_definieren.nummeriert"},
+                            "art": {"type": "string", "description": "@konnektor.werkzeug.kategorie_definieren.art"},
+                            "art_bezeichnung": {"type": "string", "description": "@konnektor.werkzeug.kategorie_definieren.art_bezeichnung"},
+                            "art_symbol": {"type": "string", "description": "@konnektor.werkzeug.kategorie_definieren.art_symbol"},
+                            "art_hinweis": {"type": "string", "description": "@konnektor.werkzeug.kategorie_definieren.art_hinweis"},
+                            "art_umriss": {"type": "boolean", "description": "@konnektor.werkzeug.kategorie_definieren.art_umriss"},
+                            "grund": {"type": "string", "description": "@konnektor.werkzeug.kategorie_definieren.grund"},
                             "name": NAME_FELD}}}
-MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "Ein Merkmal einer Art dieser Reise anlegen oder ändern: "
-                      "umbenennen, Typ und Werte, veränderlich (braucht dann ein Prüfdatum), Stufe (nötig | gut zu wissen | zusätzlich; "
-                      "aus schaltet es für diese Reise ab), Hilfe zum Recherchieren, Frage an die Person, weitere Namen. "
-                      "Organisator:innen schreiben damit direkt (gilt sofort, Seite in wenigen Minuten), Mitwirkende schlagen vor. "
-                      "Vorher merkmale aufrufen (kein Doppeltes anlegen) und kurz bestätigen lassen, was genau eingetragen wird.",
+MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "@konnektor.werkzeug.merkmal_definieren",
                       "inputSchema": {"type": "object", "properties": {
-                          "art": {"type": "string", "description": "Schlüssel der Art, z. B. refugi (aus merkmale)"},
-                          "merkmal": {"type": "string", "description": "Schlüssel des Merkmals (klein, z. B. stornierung); leer: aus "
-                                      "der Bezeichnung. Zum Ändern den vorhandenen Schlüssel"},
-                          "bezeichnung": {"type": "string", "description": "Anzeigename, z. B. Stornierung (beim Anlegen nötig)"},
-                          "typ": {"type": "string", "enum": sorted(TYPEN), "description": "Vorgabe text; auswahl braucht werte"},
-                          "werte": {"type": "array", "items": {"type": "string"}, "description": "mögliche Antworten bei typ auswahl, "
-                                    "z. B. [kostenlos, gegen Gebühr, nicht möglich, unklar]"},
-                          "veraenderlich": {"type": "boolean", "description": "Preise, Zeiten, Öffnungszeiten: der Wert braucht ein Prüfdatum"},
-                          "stufe": {"type": "string", "enum": list(STUFEN), "description": "Für die Person heißen sie: pflicht = "
-                                    "„nötig“ (ohne Wert eine Lücke, „Fehlt noch“), empfohlen = „gut zu wissen“ (Vorgabe; Spalte im "
-                                    "Vergleich, ohne Wert keine Mahnung), angeboten = „zusätzlich“ (nur mit Wert sichtbar, im Vergleich "
-                                    "aufgeklappt); aus gilt für diese Reise nicht und wird nicht genannt"},
-                          "einheit": {"type": "string", "description": "hinter Zahlen, z. B. km oder h"},
-                          "hilfe": {"type": "string", "description": "wie man den Wert findet (Website, Buch, Anruf)"},
-                          "frage": {"type": "string", "description": "wonach die Person gefragt wird, wenn der Wert fehlt"},
-                          "auch": {"type": "array", "items": {"type": "string"}, "description": "weitere Namen, unter denen dasselbe gemeint ist"},
-                          "rolle": {"type": "string", "enum": ["kosten", "keine"], "description": "kosten: dieses Merkmal (Typ geld) ist der Preis des Dings, den die Seite über die Reise summiert (Übernachtungen); je Art höchstens eines"},
-                          "trotzdem": {"type": "boolean", "description": "true, wenn ein ähnliches Merkmal gemeldet wurde und es wirklich "
-                                       "ein anderes ist"},
-                          "grund": {"type": "string", "description": "warum (steht im Verlauf)"},
+                          "art": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.art"},
+                          "merkmal": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.merkmal"},
+                          "bezeichnung": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.bezeichnung"},
+                          "typ": {"type": "string", "enum": sorted(TYPEN), "description": "@konnektor.werkzeug.merkmal_definieren.typ"},
+                          "werte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.merkmal_definieren.werte"},
+                          "veraenderlich": {"type": "boolean", "description": "@konnektor.werkzeug.merkmal_definieren.veraenderlich"},
+                          "stufe": {"type": "string", "enum": list(STUFEN), "description": "@konnektor.werkzeug.merkmal_definieren.stufe"},
+                          "einheit": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.einheit"},
+                          "hilfe": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.hilfe"},
+                          "frage": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.frage"},
+                          "auch": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.merkmal_definieren.auch"},
+                          "rolle": {"type": "string", "enum": ["kosten", "keine"], "description": "@konnektor.werkzeug.merkmal_definieren.rolle"},
+                          "trotzdem": {"type": "boolean", "description": "@konnektor.werkzeug.merkmal_definieren.trotzdem"},
+                          "grund": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.grund"},
                           "name": NAME_FELD},
                           "required": ["art"]}}
-MERKMALE_FELD = {"type": "object", "description": "{merkmal: wert | {wert, quelle, geprueft, gilt, notiz} | [solche je Datum]}; Schlüssel aus merkmale "
-                 "(ein unbekanntes Merkmal legt ein:e Organisator:in erst mit merkmal_definieren an); quelle und geprueft dürfen auch oben stehen",
+MERKMALE_FELD = {"type": "object", "description": "@konnektor.feld.merkmale_feld",
                  "additionalProperties": True}
-QUELLE_FELD = {"type": "string", "description": "Herkunft: Website mit Adresse, Buch mit Seite, Anruf, „Name im Gespräch“ (Pflicht)"}
-UHRZEIT_FELD = {"type": "string", "description": "Beginn HH:MM, Ortszeit (Abfahrt, Einlass); steht dann mit Uhrzeit im Kalender"}
-DING_ANLEGEN = {"name": "ding_anlegen", "description": "Eine Unterkunft, einen Aufenthalt ohne Nacht (Besichtigung, Essen, Besuch), eine "
-                "Strecke oder einen Ort in der Reise anlegen (neue ID). Schreibt sofort; Herkunft (quelle) ist Pflicht. Unterkunft und Aufenthalt "
-                "brauchen ort (O-…) und art (Aufenthalts-Art der Reise), eine Strecke von, nach und art (Bewegungs-Art). Merkmale (Preis, "
-                "Frühstück …) gleich mit; veränderliche mit geprueft. Ein Aufenthalt gehört danach an einen Tag (tag_aendern, aufenthalte), "
-                "eine Unterkunft als Alternative mit option_anlegen an die Wahlstelle. Vorher kurz bestätigen lassen.",
+QUELLE_FELD = {"type": "string", "description": "@konnektor.feld.quelle_feld"}
+UHRZEIT_FELD = {"type": "string", "description": "@konnektor.feld.uhrzeit_feld"}
+DING_ANLEGEN = {"name": "ding_anlegen", "description": "@konnektor.werkzeug.ding_anlegen",
                 "inputSchema": {"type": "object", "properties": {
                     "was": {"type": "string", "enum": ["unterkunft", "aufenthalt", "strecke", "ort"]},
-                    "titel": {"type": "string", "description": "Name der Unterkunft, des Aufenthalts oder des Orts, Titel der Strecke"},
-                    "ort": {"type": "string", "description": "Unterkunft, Aufenthalt: Ort O-… (fehlt er, erst mit ding_anlegen was=ort anlegen)"},
-                    "zeit": {"type": "string", "description": "Aufenthalt: wann, als Text („10–12 Uhr“, „abends“)"},
-                    "beginn": UHRZEIT_FELD, "ende": {**UHRZEIT_FELD, "description": "Aufenthalt: Ende HH:MM (nur mit beginn; vor beginn: am Tag danach)"},
-                    "von": {"type": "string", "description": "Strecke: Start O-…"}, "nach": {"type": "string", "description": "Strecke: Ziel O-…"},
-                    "ab": {"type": "string", "description": "Strecke: Abfahrt, HH:MM am Tag der Strecke oder JJJJ-MM-TTTHH:MM+HH:MM mit Zeitzone"},
-                    "an": {"type": "string", "description": "Strecke: Ankunft, ebenso; der Generator meldet, wenn die nächste Strecke abfährt, bevor diese ankommt"},
-                    "ausserhalb": {"type": "boolean", "description": "Ort: außerhalb der Reisegegend (Flughafen oder Bahnhof daheim, An- und Abreise)"},
-                    "art": {"type": "string", "description": "Art dieser Reise (Schlüssel aus merkmale), z. B. pension oder bus"},
-                    "hinweis": {"type": "string"}, "buchungslink": {"type": "string", "description": "Unterkunft: Adresse zum Buchen"},
-                    "frage": {"type": "string", "description": "Unterkunft: offene Frage F-…, zu der sie gehört"},
-                    "merkmale": MERKMALE_FELD, "quelle": QUELLE_FELD, "geprueft": {"type": "string", "description": "Prüfdatum für die Merkmale, JJJJ-MM-TT"},
+                    "titel": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.titel"},
+                    "ort": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.ort"},
+                    "zeit": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.zeit"},
+                    "beginn": UHRZEIT_FELD, "ende": {**UHRZEIT_FELD, "description": "@konnektor.werkzeug.ding_anlegen.ende"},
+                    "von": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.von"}, "nach": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.nach"},
+                    "ab": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.ab"},
+                    "an": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.an"},
+                    "ausserhalb": {"type": "boolean", "description": "@konnektor.werkzeug.ding_anlegen.ausserhalb"},
+                    "art": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.art"},
+                    "hinweis": {"type": "string"}, "buchungslink": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.buchungslink"},
+                    "frage": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.frage"},
+                    "merkmale": MERKMALE_FELD, "quelle": QUELLE_FELD, "geprueft": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.geprueft"},
                     "name": NAME_FELD},
                     "required": ["was", "titel", "quelle"]}}
-DING_AENDERN = {"name": "ding_aendern", "description": "Felder einer Unterkunft (neuer_name, ort, art, hinweis, quelle, buchungslink, frage), "
-                "eines Aufenthalts ohne Nacht (dazu zeit, beginn, ende: Uhrzeit HH:MM für den Kalender), einer Strecke (titel, von, nach, art, ab, an, hinweis, quelle) oder eines Orts (neuer_name, "
-                "hinweis, quelle, ausserhalb) ändern; schreibt sofort, der alte Wert bleibt im Verlauf. Merkmale ändert wert_eintragen, die Lage lage_eintragen, "
-                "eine Buchung buchung_anlegen. Die Art ändern dürfen nur Organisator:innen. Leerer Text entfernt hinweis, buchungslink, frage, zeit, beginn, ende, ab oder an.",
+DING_AENDERN = {"name": "ding_aendern", "description": "@konnektor.werkzeug.ding_aendern",
                 "inputSchema": {"type": "object", "properties": {
-                    "ziel": {"type": "string", "description": "U-…, A-…, E-… oder O-…"}, "zeit": {"type": "string"},
-                    "neuer_name": {"type": "string", "description": "neuer Name (Unterkunft, Aufenthalt, Ort)"}, "titel": {"type": "string", "description": "neuer Titel (Strecke)"},
-                    "beginn": UHRZEIT_FELD, "ende": {**UHRZEIT_FELD, "description": "Aufenthalt: Ende HH:MM (nur mit beginn; vor beginn: am Tag danach)"},
+                    "ziel": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.ziel"}, "zeit": {"type": "string"},
+                    "neuer_name": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.neuer_name"}, "titel": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.titel"},
+                    "beginn": UHRZEIT_FELD, "ende": {**UHRZEIT_FELD, "description": "@konnektor.werkzeug.ding_aendern.ende"},
                     "ort": {"type": "string"}, "von": {"type": "string"}, "nach": {"type": "string"}, "art": {"type": "string"},
-                    "ab": {"type": "string", "description": "Strecke: Abfahrt HH:MM oder Zeitpunkt mit Zeitzone; leer entfernt"},
-                    "an": {"type": "string", "description": "Strecke: Ankunft"}, "ausserhalb": {"type": "boolean", "description": "Ort außerhalb der Reisegegend"},
+                    "ab": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.ab"},
+                    "an": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.an"}, "ausserhalb": {"type": "boolean", "description": "@konnektor.werkzeug.ding_aendern.ausserhalb"},
                     "hinweis": {"type": "string"}, "quelle": {"type": "string"}, "buchungslink": {"type": "string"}, "frage": {"type": "string"},
-                    "grund": {"type": "string", "description": "warum (steht im Verlauf)"}, "vorname": NAME_FELD},
+                    "grund": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.grund"}, "vorname": NAME_FELD},
                     "required": ["ziel"]}}
-LAGE_EINTRAGEN = {"name": "lage_eintragen", "description": "Lage einer Unterkunft oder eines Aufenthalts ohne Nacht eintragen: Adresse (Straße Nr., PLZ Ort) und/oder "
-                  "Koordinaten (Breite, Länge). Jede Unterkunft im Plan braucht eine Lage; die Seite verlinkt sie mit Google Maps "
-                  "(und Apple Karten). Herkunft (quelle) ist Pflicht, z. B. Website des Hauses oder OpenStreetMap. Schreibt sofort; "
-                  "vorher kurz bestätigen lassen.",
+LAGE_EINTRAGEN = {"name": "lage_eintragen", "description": "@konnektor.werkzeug.lage_eintragen",
                   "inputSchema": {"type": "object", "properties": {
-                      "ziel": {"type": "string", "description": "U-… oder A-…"},
-                      "adresse": {"type": "string", "description": "Postadresse, z. B. „Carrer de sa Lluna 21, 07100 Sóller“"},
-                      "koordinaten": {"type": "string", "description": "„Breite, Länge“ in Grad, z. B. „39.7671, 2.7149“"},
-                      "quelle": QUELLE_FELD, "geprueft": {"type": "string", "description": "Datum des Nachschlagens, JJJJ-MM-TT (Vorgabe heute)"},
+                      "ziel": {"type": "string", "description": "@konnektor.werkzeug.lage_eintragen.ziel"},
+                      "adresse": {"type": "string", "description": "@konnektor.werkzeug.lage_eintragen.adresse"},
+                      "koordinaten": {"type": "string", "description": "@konnektor.werkzeug.lage_eintragen.koordinaten"},
+                      "quelle": QUELLE_FELD, "geprueft": {"type": "string", "description": "@konnektor.werkzeug.lage_eintragen.geprueft"},
                       "grund": {"type": "string"}, "vorname": NAME_FELD},
                       "required": ["ziel", "quelle"]}}
-OPTION_FELDER = {"titel": {"type": "string", "description": "Name der Option, z. B. „Pension Elbblick“"},
-                 "text": {"type": "string", "description": "kurze Beschreibung"},
-                 "unterkuenfte": {"type": "array", "items": {"type": "string"}, "description": "U-… (Aufenthalt); fehlt die Unterkunft, erst ding_anlegen"},
-                 "strecken": {"type": "array", "items": {"type": "string"}, "description": "E-… (Bewegung)"},
-                 "folge": {"type": "array", "items": {"type": "string"}, "description": "T-… (Reiseteil aus Tagen)"},
-                 "plus": {"type": "array", "items": {"type": "string"}, "description": "was dafür spricht"},
-                 "minus": {"type": "array", "items": {"type": "string"}, "description": "was dagegen spricht"},
-                 "erfordert": {"type": "array", "items": {"type": "string"}, "description": "Optionen V-01.b anderer Wahlstellen, die dazu nötig sind"},
-                 "schliesst_aus": {"type": "array", "items": {"type": "string"}, "description": "Optionen, die nie zusammen mit dieser gehen"},
-                 "ausloeser": {"type": "string", "description": "bei Wahlstellen unterwegs: wann diese Option gilt"},
-                 "siehe": {"type": "string", "description": "ID mit mehr dazu, z. B. W-05"},
-                 "merkmale": MERKMALE_FELD, "quelle": {"type": "string", "description": "woher die Alternative stammt (Website, Buch mit Seite, „Name im Gespräch“); Pflicht, gilt auch für die Merkmale"},
-                 "grund": {"type": "string", "description": "warum sie vorgeschlagen wird (Verlauf)"}}
-OPTION_ANLEGEN = {"name": "option_anlegen", "description": "Eine Alternative als Option an eine bestehende Wahlstelle hängen (ein weiteres Hotel, "
-                  "eine andere Strecke, eine andere Route), Status vorgeschlagen; schreibt sofort. Erst merkmale aufrufen und recherchieren, "
-                  "Unterkunft oder Strecke mit ding_anlegen anlegen, dann kurz bestätigen lassen. Entscheiden bleibt bei den Organisator:innen.",
-                  "inputSchema": {"type": "object", "properties": {"wahlstelle": {"type": "string", "description": "V-… (aus varianten)"},
+OPTION_FELDER = {"titel": {"type": "string", "description": "@konnektor.feld.option_felder.titel"},
+                 "text": {"type": "string", "description": "@konnektor.feld.option_felder.text"},
+                 "unterkuenfte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.unterkuenfte"},
+                 "strecken": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.strecken"},
+                 "folge": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.folge"},
+                 "plus": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.plus"},
+                 "minus": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.minus"},
+                 "erfordert": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.erfordert"},
+                 "schliesst_aus": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.schliesst_aus"},
+                 "ausloeser": {"type": "string", "description": "@konnektor.feld.option_felder.ausloeser"},
+                 "siehe": {"type": "string", "description": "@konnektor.feld.option_felder.siehe"},
+                 "merkmale": MERKMALE_FELD, "quelle": {"type": "string", "description": "@konnektor.feld.option_felder.quelle"},
+                 "grund": {"type": "string", "description": "@konnektor.feld.option_felder.grund"}}
+OPTION_ANLEGEN = {"name": "option_anlegen", "description": "@konnektor.werkzeug.option_anlegen",
+                  "inputSchema": {"type": "object", "properties": {"wahlstelle": {"type": "string", "description": "@konnektor.werkzeug.option_anlegen.wahlstelle"},
                                                                    **OPTION_FELDER, "name": NAME_FELD},
                                   "required": ["wahlstelle", "titel", "quelle"]}}
-WAHLSTELLE_ANLEGEN = {"name": "wahlstelle_anlegen", "description": "Eine neue Wahlstelle mit mindestens einer Option anlegen, wenn es noch keine "
-                      "gibt (varianten zeigt alle). Sie hängt mit an an Tagen, Strecken, Unterkünften, Orten oder Abschnitten; den Plan "
-                      "selbst ändert sie nicht. planung: vor der Abreise entscheiden (offen braucht eine Frage F-…); unterwegs: mit Auslöser. "
-                      "Schreibt sofort, alle Optionen vorgeschlagen.",
+WAHLSTELLE_ANLEGEN = {"name": "wahlstelle_anlegen", "description": "@konnektor.werkzeug.wahlstelle_anlegen",
                       "inputSchema": {"type": "object", "properties": {
-                          "titel": {"type": "string"}, "wann": {"type": "string", "enum": ["planung", "unterwegs"], "description": "Vorgabe planung"},
-                          "an": {"type": "array", "items": {"type": "string"}, "description": "IDs, an denen die Wahl hängt (T-…, E-…, U-…, O-…, W-…)"},
-                          "art": {"type": "string", "description": "Art der Dinge, zwischen denen gewählt wird (Schlüssel aus merkmale); sonst aus den Optionen"},
-                          "frage": {"type": "string", "description": "offene Frage F-… dazu"}, "text": {"type": "string"},
+                          "titel": {"type": "string"}, "wann": {"type": "string", "enum": ["planung", "unterwegs"], "description": "@konnektor.werkzeug.wahlstelle_anlegen.wann"},
+                          "an": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.wahlstelle_anlegen.an"},
+                          "art": {"type": "string", "description": "@konnektor.werkzeug.wahlstelle_anlegen.art"},
+                          "frage": {"type": "string", "description": "@konnektor.werkzeug.wahlstelle_anlegen.frage"}, "text": {"type": "string"},
                           "optionen": {"type": "array", "items": {"type": "object", "properties": OPTION_FELDER, "required": ["titel", "quelle"]}},
                           "name": NAME_FELD},
                           "required": ["titel", "optionen"]}}
-FRAGE_ANLEGEN = {"name": "frage_anlegen", "description": "Eine offene Frage (F-…) anlegen: etwas, das noch zu klären oder zu entscheiden "
-                 "ist (Aufgaben sind Dinge, die zu tun sind: aufgabe_anlegen). Schreibt sofort nach offene-fragen.md. Vorher kurz bestätigen lassen.",
+FRAGE_ANLEGEN = {"name": "frage_anlegen", "description": "@konnektor.werkzeug.frage_anlegen",
                  "inputSchema": {"type": "object", "properties": {
-                     "text": {"type": "string", "description": "die Frage in einem Satz"},
-                     "bis": {"type": "string", "description": "bis wann zu klären, z. B. „vor Abreise“ oder ein Datum"},
-                     "bezug": {"type": "array", "items": {"type": "string"}, "description": "IDs, zu denen die Frage gehört (T-, U-, E-, V-, W-)"},
+                     "text": {"type": "string", "description": "@konnektor.werkzeug.frage_anlegen.text"},
+                     "bis": {"type": "string", "description": "@konnektor.werkzeug.frage_anlegen.bis"},
+                     "bezug": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.frage_anlegen.bezug"},
                      "name": NAME_FELD}, "required": ["text"]}}
-TAG_AENDERN = {"name": "tag_aendern", "description": "Nur für Organisator:innen: einen Tag des Plans ändern: Titel, Text, die Nacht (Unterkunft "
-               "U-…, Wahlstelle V-… oder leer), die Strecken (E-… oder Wahlstellen V-…), Wahlstellen unterwegs (wahl), Aufenthalte ohne Nacht "
-               "(aufenthalte: A-…, in der Zeitleiste des Tags). So wird z. B. eine feste "
-               "Unterkunft zur Wahl zwischen mehreren (nacht = die neue Wahlstelle). Schreibt sofort; der Generator prüft, ob der Plan aufgeht. "
-               "Vorher kurz bestätigen lassen.",
+TAG_AENDERN = {"name": "tag_aendern", "description": "@konnektor.werkzeug.tag_aendern",
                "inputSchema": {"type": "object", "properties": {
-                   "ziel": {"type": "string", "description": "T-…"}, "titel": {"type": "string"}, "text": {"type": "string"},
-                   "nacht": {"type": "string", "description": "U-…, V-…, O-… oder leer"},
+                   "ziel": {"type": "string", "description": "@konnektor.werkzeug.tag_aendern.ziel"}, "titel": {"type": "string"}, "text": {"type": "string"},
+                   "nacht": {"type": "string", "description": "@konnektor.werkzeug.tag_aendern.nacht"},
                    "strecken": {"type": "array", "items": {"type": "string"}}, "wahl": {"type": "array", "items": {"type": "string"}},
-                   "aufenthalte": {"type": "array", "items": {"type": "string"}, "description": "A-… in der Reihenfolge des Tags"},
-                   "grund": {"type": "string", "description": "warum (steht im Verlauf)"}, "vorname": NAME_FELD},
+                   "aufenthalte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.tag_aendern.aufenthalte"},
+                   "grund": {"type": "string", "description": "@konnektor.werkzeug.tag_aendern.grund"}, "vorname": NAME_FELD},
                    "required": ["ziel"]}}
-WISSEN_SCHREIBEN = {"name": "wissen_schreiben", "description": "Wissen zur Reise festhalten (Geschichte, Natur, Praxis, Quellen): einen "
-                    "neuen Abschnitt anlegen (titel) oder einen vorhandenen ergänzen (abschnitt = W-ID). In eigenen Worten, nie Buchtext "
-                    "abschreiben; die Herkunft (quelle) ist Pflicht und steht am Absatz. Schreibt sofort. Vorher kurz bestätigen lassen.",
+WISSEN_SCHREIBEN = {"name": "wissen_schreiben", "description": "@konnektor.werkzeug.wissen_schreiben",
                     "inputSchema": {"type": "object", "properties": {
-                        "titel": {"type": "string", "description": "Titel eines neuen Abschnitts"},
-                        "abschnitt": {"type": "string", "description": "W-ID eines vorhandenen Abschnitts, der ergänzt wird"},
-                        "text": {"type": "string", "description": "der Text in eigenen Worten (Markdown erlaubt), max. 6000 Zeichen"},
+                        "titel": {"type": "string", "description": "@konnektor.werkzeug.wissen_schreiben.titel"},
+                        "abschnitt": {"type": "string", "description": "@konnektor.werkzeug.wissen_schreiben.abschnitt"},
+                        "text": {"type": "string", "description": "@konnektor.werkzeug.wissen_schreiben.text"},
                         "quelle": QUELLE_FELD,
-                        "gruppe": {"type": "string", "enum": ["wissen", "praxis", "quelle"], "description": "neuer Abschnitt: Rubrik (Vorgabe wissen)"},
-                        "datei": {"type": "string", "description": "neuer Abschnitt: Datei unter inhalt/ (Vorgabe inhalt/wissen.md)"},
+                        "gruppe": {"type": "string", "enum": ["wissen", "praxis", "quelle"], "description": "@konnektor.werkzeug.wissen_schreiben.gruppe"},
+                        "datei": {"type": "string", "description": "@konnektor.werkzeug.wissen_schreiben.datei"},
                         "name": NAME_FELD}, "required": ["text", "quelle"]}}
-FRAGE_SCHLIESSEN = {"name": "frage_schliessen", "description": "Nur für Organisator:innen: eine offene Frage (F-…) als geklärt oder entfallen "
-                    "eintragen, mit Ergebnis in einem Satz. Schreibt sofort nach offene-fragen.md. Antworten von Mitwirkenden (frage_beantworten) "
-                    "sind Eingaben; geklärt ist eine Frage erst damit. Bei einem Löschwunsch status entfaellt setzen; eine entfallene Frage "
-                    "wird nicht wieder geöffnet, bei Bedarf eine neue Frage anlegen (frage_anlegen).",
+FRAGE_SCHLIESSEN = {"name": "frage_schliessen", "description": "@konnektor.werkzeug.frage_schliessen",
                     "inputSchema": {"type": "object", "properties": {
-                        "frage": {"type": "string", "description": "F-…"},
-                        "ergebnis": {"type": "string", "description": "was herausgekommen ist oder entschieden wurde"},
-                        "status": {"type": "string", "enum": ["geklaert", "entfaellt"], "description": "Vorgabe geklaert"},
+                        "frage": {"type": "string", "description": "@konnektor.werkzeug.frage_schliessen.frage"},
+                        "ergebnis": {"type": "string", "description": "@konnektor.werkzeug.frage_schliessen.ergebnis"},
+                        "status": {"type": "string", "enum": ["geklaert", "entfaellt"], "description": "@konnektor.werkzeug.frage_schliessen.status"},
                         "vorname": NAME_FELD}, "required": ["frage", "ergebnis"]}}
-RUECKMELDUNG_ERLEDIGEN = {"name": "rueckmeldung_erledigen", "description": "Nur für Organisator:innen: eine Rückmeldung oder einen Auftrag "
-                          "(R-…, A-… aus rueckmeldungen) abschließen, nachdem der Inhalt mit den Werkzeugen eingetragen ist: Status "
-                          "uebernommen (aufgenommen), verworfen (passt nicht) oder rueckfrage, mit einem Kommentar in einfachen Worten, "
-                          "der auf der Seite steht (wo es gelandet ist oder warum nicht). Gilt sofort.",
+RUECKMELDUNG_ERLEDIGEN = {"name": "rueckmeldung_erledigen", "description": "@konnektor.werkzeug.rueckmeldung_erledigen",
                           "inputSchema": {"type": "object", "properties": {
-                              "id": {"type": "string", "description": "R-… oder A-…"},
+                              "id": {"type": "string", "description": "@konnektor.werkzeug.rueckmeldung_erledigen.id"},
                               "status": {"type": "string", "enum": ["uebernommen", "verworfen", "rueckfrage"]},
-                              "kommentar": {"type": "string", "description": "für die Person, die die Rückmeldung gab"},
+                              "kommentar": {"type": "string", "description": "@konnektor.werkzeug.rueckmeldung_erledigen.kommentar"},
                               "vorname": NAME_FELD}, "required": ["id", "status", "kommentar"]}}
-REISE_STATUS_SETZEN = {"name": "reise_status_setzen", "description": "Nur für Organisator:innen: den Status der Reise wechseln (idee, planung, "
-                       "fest, unterwegs, danach, archiv), mit Grund; schreibt sofort mit Verlauf in die Reise. Wächter und Seite melden den "
-                       "fälligen Wechsel, wechseln ihn aber nie selbst. Vorher kurz bestätigen lassen.",
+REISE_STATUS_SETZEN = {"name": "reise_status_setzen", "description": "@konnektor.werkzeug.reise_status_setzen",
                        "inputSchema": {"type": "object", "properties": {
                            "status": {"type": "string", "enum": ["idee", "planung", "fest", "unterwegs", "danach", "archiv"]},
                            "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["status", "grund"]}}
-EINSTELLUNG_SETZEN = {"name": "einstellung_setzen", "description": "Nur für Organisator:innen: Bausteine der Reise (vollständige Liste, z. B. "
-                      "varianten, karte, tagesseiten, rueckmeldungen, fragen, aufgaben, wuensche, waechter) oder Spielregeln (regeln, z. B. einladen: "
-                      "mitwirkend, waechter_frist_tage: 45) setzen; schreibt sofort, der alte Wert steht im Verlauf.",
+EINSTELLUNG_SETZEN = {"name": "einstellung_setzen", "description": "@konnektor.werkzeug.einstellung_setzen",
                       "inputSchema": {"type": "object", "properties": {
                           "bausteine": {"type": "array", "items": {"type": "string"}},
                           "regeln": {"type": "object", "additionalProperties": True},
-                          "sprache": {"type": "string", "enum": list(texte.SPRACHEN)},
+                          "sprache": {"type": "string", "enum": list(texte.SPRACHEN), "description": "@konnektor.werkzeug.einstellung_setzen.sprache"},
                           "grund": {"type": "string"}, "vorname": NAME_FELD}}}
 BUCHUNG_FELDER_SCHEMA = {
-    "status": {"type": "string", "enum": ["angefragt", "gebucht", "storniert"], "description": "Vorgabe gebucht"},
-    "nummer": {"type": "string", "description": "Buchungsnummer, Buchungscode, PNR"},
-    "bei": {"type": "string", "description": "wo gebucht: Anbieter oder Portal, z. B. booking.com, direkt per Mail, bahn.de"},
-    "preis": {"type": "string", "description": "Gesamtpreis mit Währung und wofür, z. B. „240 € für 2 Nächte“"},
-    "bezahlt": {"type": "string", "description": "was schon bezahlt ist, z. B. „Anzahlung 50 €, Rest vor Ort“"},
-    "frist": {"type": "string", "description": "JJJJ-MM-TT: bis wann etwas zu tun ist (Restzahlung, Ticket laden); der Wächter erinnert"},
-    "frist_was": {"type": "string", "description": "was bis zur Frist zu tun ist"},
-    "storno": {"type": "string", "description": "Stornoregel in Worten, z. B. „kostenlos bis 7 Tage vorher, danach 1 Nacht“"},
-    "storno_bis": {"type": "string", "description": "JJJJ-MM-TT: bis wann kostenlos stornierbar; der Wächter erinnert"},
-    "gebucht_am": {"type": "string", "description": "JJJJ-MM-TT (Vorgabe heute)"},
-    "ab": {"type": "string", "description": "JJJJ-MM-TT: ab wann etwas geht (Check-in, Sitzplatzwahl); der Wächter erinnert; frist sagt bis wann"},
-    "ab_was": {"type": "string", "description": "was ab dann geht"},
+    "status": {"type": "string", "enum": ["angefragt", "gebucht", "storniert"], "description": "@konnektor.feld.buchung_felder_schema.status"},
+    "nummer": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.nummer"},
+    "bei": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.bei"},
+    "preis": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.preis"},
+    "bezahlt": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.bezahlt"},
+    "frist": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.frist"},
+    "frist_was": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.frist_was"},
+    "storno": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.storno"},
+    "storno_bis": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.storno_bis"},
+    "gebucht_am": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.gebucht_am"},
+    "ab": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.ab"},
+    "ab_was": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.ab_was"},
     "personen": {"type": "object", "additionalProperties": {"type": "string"},
-                 "description": "die Reisenden dieser Buchung (Namen aus der Reise) mit Angabe je Person, z. B. {\"Ida\": \"Sitz 12A, 23 kg Gepäck\", \"Karl\": \"\"}"},
+                 "description": "@konnektor.feld.buchung_felder_schema.personen"},
     "preise": {"type": "object", "additionalProperties": {"type": "string"},
-               "description": "bei mehreren Dingen in fuer der Preis je Ding, z. B. {\"E-28\": \"120 €\", \"E-29\": \"110 €\"}"},
+               "description": "@konnektor.feld.buchung_felder_schema.preise"},
     "notiz": {"type": "string"}}
-BUCHUNG_ANLEGEN = {"name": "buchung_anlegen", "description": "Eine Buchung als eigenes Ding (B-…) eintragen: für welche Unterkunft (U-…), "
-                   "welchen Aufenthalt (A-…) oder welche Strecke (E-…), Status, Buchungsnummer, Anbieter, Preis, Frist, Stornoregel; dazu "
-                   "personen (die Reisenden dieser Buchung mit Sitzplatz, Gepäck, Vielfliegernummer), preise (je Ding, wenn fuer mehrere umfasst), "
-                   "ab und ab_was (ab wann etwas geht, etwa der Check-in; frist sagt bis wann). "
-                   "Schreibt sofort; Herkunft (quelle) ist Pflicht, z. B. „Buchungsbestätigung per Mail vom …“. Liest die Person dir eine "
-                   "Bestätigung vor oder zeigt sie dir, trägst du daraus Nummer, Frist und Stornoregel ein (vorher kurz bestätigen lassen). "
-                   "Den Beleg gibst du gleich mit (beleg_text: die Bestätigung wörtlich als Abschrift, oder beleg_base64 mit beleg_dateiname, "
-                   "wenn der Client die Datei hat); er landet in einem Schritt an der Buchung, liegt nie im Repo und ist nur für die Person "
-                   "und Organisator:innen sichtbar, bis eine Organisator:in ihn für alle freigibt. Nachträglich: beleg_anlegen oder die Reiseseite.",
+BUCHUNG_ANLEGEN = {"name": "buchung_anlegen", "description": "@konnektor.werkzeug.buchung_anlegen",
                    "inputSchema": {"type": "object", "properties": {
-                       "fuer": {"type": "array", "items": {"type": "string"}, "description": "U-…, A-… oder E-…, eine oder mehrere"},
+                       "fuer": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.buchung_anlegen.fuer"},
                        **BUCHUNG_FELDER_SCHEMA, "quelle": QUELLE_FELD, "grund": {"type": "string"},
-                       "beleg_text": {"type": "string", "description": "Beleg als Abschrift (Text der Bestätigung oder Mail, wörtlich)"},
-                       "beleg_base64": {"type": "string", "description": "Beleg als Datei, Base64 (PDF, JPEG, PNG, WebP, HEIC, höchstens 10 MB)"},
-                       "beleg_dateiname": {"type": "string", "description": "Anzeigename des Belegs, z. B. „Bestätigung Eurowings.pdf“"},
+                       "beleg_text": {"type": "string", "description": "@konnektor.werkzeug.buchung_anlegen.beleg_text"},
+                       "beleg_base64": {"type": "string", "description": "@konnektor.werkzeug.buchung_anlegen.beleg_base64"},
+                       "beleg_dateiname": {"type": "string", "description": "@konnektor.werkzeug.buchung_anlegen.beleg_dateiname"},
                        "vorname": NAME_FELD},
                        "required": ["fuer", "quelle"]}}
-BUCHUNG_AENDERN = {"name": "buchung_aendern", "description": "Felder einer Buchung B-… ändern (Status gebucht/storniert, Nummer, Frist, "
-                   "Stornoregel, Preis …); schreibt sofort, jede Änderung steht mit Person, Datum und Grund im Verlauf. Leerer Text "
-                   "entfernt ein Feld (z. B. frist: \"\" nach Erledigung). Mitwirkende ändern nur Buchungen, die sie selbst eingetragen "
-                   "haben, Organisator:innen alle; Stornieren braucht einen Grund. Vorher kurz bestätigen lassen. Bei einem Löschwunsch "
-                   "nicht löschen, sondern status storniert mit Grund setzen; zurückholen mit status gebucht.",
+BUCHUNG_AENDERN = {"name": "buchung_aendern", "description": "@konnektor.werkzeug.buchung_aendern",
                    "inputSchema": {"type": "object", "properties": {
-                       "ziel": {"type": "string", "description": "B-…"},
+                       "ziel": {"type": "string", "description": "@konnektor.werkzeug.buchung_aendern.ziel"},
                        "fuer": {"type": "array", "items": {"type": "string"}}, **BUCHUNG_FELDER_SCHEMA,
-                       "quelle": {"type": "string", "description": "neue Herkunft, falls sie sich ändert"},
-                       "grund": {"type": "string", "description": "warum (steht im Verlauf)"}, "vorname": NAME_FELD},
+                       "quelle": {"type": "string", "description": "@konnektor.werkzeug.buchung_aendern.quelle"},
+                       "grund": {"type": "string", "description": "@konnektor.werkzeug.buchung_aendern.grund"}, "vorname": NAME_FELD},
                        "required": ["ziel"]}}
 WERT_SCHEMA_EINTRAG = {"type": "object", "properties": {
     "wert": {"type": "string"}, "gilt": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}],
-             "description": "Datum JJJJ-MM-TT oder Liste, wenn der Wert nur für diese Tage gilt (Preis je Nacht)"},
+             "description": "@konnektor.feld.wert_schema_eintrag.gilt"},
     "geprueft": {"type": "string"}, "quelle": {"type": "string"}, "notiz": {"type": "string"}}, "required": ["wert"]}
 # ---------- Abgleich 29.10.2026 (Paket 3): die Tür für alle Grundformen (docs/abgleich-2026-10-29.md) ----------
-TAG_ANLEGEN = {"name": "tag_anlegen", "description": "Nur für Organisator:innen: einen neuen Tag anlegen (neue T-ID) und in die Route stellen: "
-               "nach einem Tag (nach), vor einem (vor) oder am Ende; mit Titel, Text, Nacht, Strecken, Wahlstellen und Aufenthalten wie bei "
-               "tag_aendern. Das Datum ergibt sich aus der Reihenfolge. Für eine Variante (Tage, die nur in einer Option stehen) ohne_route: true "
-               "und dann option_aendern mit folge. Schreibt sofort; vorher kurz bestätigen lassen.",
+TAG_ANLEGEN = {"name": "tag_anlegen", "description": "@konnektor.werkzeug.tag_anlegen",
                "inputSchema": {"type": "object", "properties": {
-                   "titel": {"type": "string"}, "text": {"type": "string"}, "nach": {"type": "string", "description": "T-…, hinter dem der Tag steht"},
-                   "vor": {"type": "string", "description": "T-…, vor dem der Tag steht"}, "ohne_route": {"type": "boolean"},
-                   "nacht": {"type": "string", "description": "U-…, V-… oder O-…"}, "strecken": {"type": "array", "items": {"type": "string"}},
+                   "titel": {"type": "string"}, "text": {"type": "string"}, "nach": {"type": "string", "description": "@konnektor.werkzeug.tag_anlegen.nach"},
+                   "vor": {"type": "string", "description": "@konnektor.werkzeug.tag_anlegen.vor"}, "ohne_route": {"type": "boolean"},
+                   "nacht": {"type": "string", "description": "@konnektor.werkzeug.tag_anlegen.nacht"}, "strecken": {"type": "array", "items": {"type": "string"}},
                    "wahl": {"type": "array", "items": {"type": "string"}}, "aufenthalte": {"type": "array", "items": {"type": "string"}},
                    "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["titel"]}}
-TERMIN_SETZEN = {"name": "termin_setzen", "description": "Nur für Organisator:innen: einen festen Termin der Reise (Ankunft, reservierter Tisch, "
-                 "Zeitfenster) anlegen, ändern oder entfernen. Anlegen: datum, titel, ort, quelle (Pflicht). Ändern: datum und titel des "
-                 "vorhandenen, dazu neuer_titel, ort oder quelle. Entfernen: entfernen true mit grund. Schreibt sofort nach plan/routen.yaml "
-                 "(fixpunkte); die Seite zeigt Termine am Tag und im Reiseüberblick.",
+TERMIN_SETZEN = {"name": "termin_setzen", "description": "@konnektor.werkzeug.termin_setzen",
                  "inputSchema": {"type": "object", "properties": {
-                     "datum": {"type": "string", "description": "JJJJ-MM-TT"}, "titel": {"type": "string"}, "neuer_titel": {"type": "string"},
-                     "ort": {"type": "string", "description": "O-…"}, "quelle": QUELLE_FELD, "entfernen": {"type": "boolean"},
+                     "datum": {"type": "string", "description": "@konnektor.werkzeug.termin_setzen.datum"}, "titel": {"type": "string"}, "neuer_titel": {"type": "string"},
+                     "ort": {"type": "string", "description": "@konnektor.werkzeug.termin_setzen.ort"}, "quelle": QUELLE_FELD, "entfernen": {"type": "boolean"},
                      "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["datum", "titel"]}}
-WAHLSTELLE_AENDERN = {"name": "wahlstelle_aendern", "description": "Nur für Organisator:innen: Felder einer Wahlstelle ändern: titel, text, wann "
-                      "(planung | unterwegs), art (Art der Dinge, leer = aus den Optionen), an (IDs, an denen sie hängt), frage (F-… oder leer), "
-                      "stufen ({merkmal: nötig | gut zu wissen | zusätzlich | aus} nur für diese Wahlstelle). Optionen ändert option_aendern, "
-                      "entschieden wird mit entscheiden. Schreibt sofort; vorher kurz bestätigen lassen.",
+WAHLSTELLE_AENDERN = {"name": "wahlstelle_aendern", "description": "@konnektor.werkzeug.wahlstelle_aendern",
                       "inputSchema": {"type": "object", "properties": {
-                          "ziel": {"type": "string", "description": "V-…"}, "titel": {"type": "string"}, "text": {"type": "string"},
+                          "ziel": {"type": "string", "description": "@konnektor.werkzeug.wahlstelle_aendern.ziel"}, "titel": {"type": "string"}, "text": {"type": "string"},
                           "wann": {"type": "string", "enum": ["planung", "unterwegs"]}, "art": {"type": "string"},
                           "an": {"type": "array", "items": {"type": "string"}}, "frage": {"type": "string"},
                           "stufen": {"type": "object", "additionalProperties": True},
                           "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["ziel"]}}
-OPTION_AENDERN = {"name": "option_aendern", "description": "Felder einer Option ändern (Mitwirkende und Organisator:innen): titel, text, plus, "
-                  "minus, erfordert, schliesst_aus, ausloeser, siehe, unterkuenfte, strecken, folge, quelle; oder sie favorisieren (favorisiert: "
-                  "true mit grund: ein Vorschlag mit Begründung, keine Entscheidung). Gewählt, verworfen und ersetzt setzt nur entscheiden. "
-                  "Merkmale ändert wert_eintragen. Schreibt sofort; vorher kurz bestätigen lassen.",
+OPTION_AENDERN = {"name": "option_aendern", "description": "@konnektor.werkzeug.option_aendern",
                   "inputSchema": {"type": "object", "properties": {
-                      "ziel": {"type": "string", "description": "V-01.a"}, **{k: v for k, v in OPTION_FELDER.items() if k != "merkmale"},
+                      "ziel": {"type": "string", "description": "@konnektor.werkzeug.option_aendern.ziel"}, **{k: v for k, v in OPTION_FELDER.items() if k != "merkmale"},
                       "favorisiert": {"type": "boolean"}, "vorname": NAME_FELD}, "required": ["ziel"]}}
-WISSEN_AENDERN = {"name": "wissen_aendern", "description": "Einen Abschnitt des Wissens berichtigen: text ersetzt den ganzen Inhalt des "
-                  "Abschnitts (in eigenen Worten, Herkunft quelle Pflicht), neuer_titel benennt ihn um (die W-ID bleibt). Grund ist Pflicht "
-                  "(steht im Verlauf). Ergänzen ohne Ersetzen: wissen_schreiben. Schreibt sofort; vorher kurz bestätigen lassen.",
+WISSEN_AENDERN = {"name": "wissen_aendern", "description": "@konnektor.werkzeug.wissen_aendern",
                   "inputSchema": {"type": "object", "properties": {
-                      "ziel": {"type": "string", "description": "W-…"}, "text": {"type": "string"}, "quelle": QUELLE_FELD,
+                      "ziel": {"type": "string", "description": "@konnektor.werkzeug.wissen_aendern.ziel"}, "text": {"type": "string"}, "quelle": QUELLE_FELD,
                       "neuer_titel": {"type": "string"}, "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["ziel", "grund"]}}
-LESETEXT_SCHREIBEN = {"name": "lesetext_schreiben", "description": "Den Lesetext einer Etappe schreiben oder ersetzen (Abschnitt „Zusammenfassung“ "
-                      "im Etappen-Dossier, auf der Seite „Der Weg“): je Rubrik der Art ein Absatz, der mit dem fetten Stichwort beginnt "
-                      "(zeige E-… nennt die Gliederung mit Hilfe je Rubrik), in eigenen Worten; Herkunft quelle Pflicht. Schreibt sofort.",
+LESETEXT_SCHREIBEN = {"name": "lesetext_schreiben", "description": "@konnektor.werkzeug.lesetext_schreiben",
                       "inputSchema": {"type": "object", "properties": {
-                          "ziel": {"type": "string", "description": "E-…"}, "text": {"type": "string", "description": "Absätze „**Rubrik.** …“, durch Leerzeilen getrennt"},
+                          "ziel": {"type": "string", "description": "@konnektor.werkzeug.lesetext_schreiben.ziel"}, "text": {"type": "string", "description": "@konnektor.werkzeug.lesetext_schreiben.text"},
                           "quelle": QUELLE_FELD, "vorname": NAME_FELD}, "required": ["ziel", "text", "quelle"]}}
-REISE_AENDERN = {"name": "reise_aendern", "description": "Nur für Organisator:innen: Eckdaten der Reise ändern: titel, untertitel, kurz "
-                 "(Kurzname), von und bis (Zeitraum, JJJJ-MM-TT). Mit grund (Pflicht, steht im Verlauf). Status: reise_status_setzen; "
-                 "Bausteine und Regeln: einstellung_setzen; Start und Ende des Plans stehen in den Tagen.",
+REISE_AENDERN = {"name": "reise_aendern", "description": "@konnektor.werkzeug.reise_aendern",
                  "inputSchema": {"type": "object", "properties": {
                      "titel": {"type": "string"}, "untertitel": {"type": "string"}, "kurz": {"type": "string"},
                      "von": {"type": "string"}, "bis": {"type": "string"}, "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["grund"]}}
-PLAN_FELDER_SCHEMA = {"kurz": {"type": "string", "description": "Kurzname, z. B. Plan B"}, "titel": {"type": "string"}, "text": {"type": "string"},
+PLAN_FELDER_SCHEMA = {"kurz": {"type": "string", "description": "@konnektor.feld.plan_felder_schema.kurz"}, "titel": {"type": "string"}, "text": {"type": "string"},
                       "farbe": {"type": "string", "enum": ["a", "b", "c", "d"]},
-                      "auswahl": {"type": "array", "items": {"type": "string"}, "description": "je Wahlstelle die Option dieses Plans (V-01.b …)"},
+                      "auswahl": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.plan_felder_schema.auswahl"},
                       "plus": {"type": "array", "items": {"type": "string"}}, "minus": {"type": "array", "items": {"type": "string"}}}
-PLAN_ANLEGEN = {"name": "plan_anlegen", "description": "Nur für Organisator:innen: einen benannten Plan (P-A, P-B …) anlegen, eine feste "
-                "Kombination von Optionen über die Reise (Ansicht „Varianten“); Herkunft quelle Pflicht. Gewählt wird ein Plan, indem seine "
-                "Optionen gewählt werden (entscheiden). Schreibt sofort.",
+PLAN_ANLEGEN = {"name": "plan_anlegen", "description": "@konnektor.werkzeug.plan_anlegen",
                 "inputSchema": {"type": "object", "properties": {**PLAN_FELDER_SCHEMA, "quelle": QUELLE_FELD, "vorname": NAME_FELD},
                                 "required": ["titel", "auswahl", "quelle"]}}
-PLAN_AENDERN = {"name": "plan_aendern", "description": "Nur für Organisator:innen: Felder eines benannten Plans ändern (kurz, titel, text, farbe, "
-                "auswahl, plus, minus), mit grund. Schreibt sofort.",
-                "inputSchema": {"type": "object", "properties": {"ziel": {"type": "string", "description": "P-…"}, **PLAN_FELDER_SCHEMA,
+PLAN_AENDERN = {"name": "plan_aendern", "description": "@konnektor.werkzeug.plan_aendern",
+                "inputSchema": {"type": "object", "properties": {"ziel": {"type": "string", "description": "@konnektor.werkzeug.plan_aendern.ziel"}, **PLAN_FELDER_SCHEMA,
                                                                  "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["ziel"]}}
-MERKMAL_ZUSAMMENFUEHREN = {"name": "merkmal_zusammenfuehren", "description": "Nur für Organisator:innen: zwei Merkmale einer Art zusammenführen "
-                           "(z. B. oeffnung in geoeffnet): die Werte von „von“ hängen danach an „nach“ (wo beide einen Wert haben, bleibt der von "
-                           "„nach“, der andere steht in der Notiz), „von“ entfällt und wird ein weiterer Name von „nach“. Mit grund (Pflicht). "
-                           "Vorher merkmale aufrufen und kurz bestätigen lassen.",
+MERKMAL_ZUSAMMENFUEHREN = {"name": "merkmal_zusammenfuehren", "description": "@konnektor.werkzeug.merkmal_zusammenfuehren",
                            "inputSchema": {"type": "object", "properties": {
                                "art": {"type": "string"}, "von": {"type": "string"}, "nach": {"type": "string"}, "grund": {"type": "string"},
                                "vorname": NAME_FELD}, "required": ["art", "von", "nach", "grund"]}}
-ARTEN_UEBERNEHMEN = {"name": "arten_uebernehmen", "description": "Nur für Organisator:innen und nur, wenn die Person ausdrücklich danach fragt "
-                     "(Product Owner 28.10.2026): Arten mit ihren Merkmalen aus einer anderen Reise, auf der die Person dabei ist, als Kopie "
-                     "übernehmen (nur Arten, die es hier noch nicht gibt; arten nennt eine Auswahl). Die Kopie wird hier frei geändert. Schreibt sofort.",
+ARTEN_UEBERNEHMEN = {"name": "arten_uebernehmen", "description": "@konnektor.werkzeug.arten_uebernehmen",
                      "inputSchema": {"type": "object", "properties": {
-                         "von_reise": {"type": "string", "description": "Ordner der anderen Reise (aus meine_reisen)"},
-                         "arten": {"type": "array", "items": {"type": "string"}, "description": "nur diese Arten; leer = alle fehlenden"},
+                         "von_reise": {"type": "string", "description": "@konnektor.werkzeug.arten_uebernehmen.von_reise"},
+                         "arten": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.arten_uebernehmen.arten"},
                          "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["von_reise"]}}
-WUNSCH_VORSCHLAGEN = {"name": "wunsch_vorschlagen", "description": "Nach dem Prüfen eines Wunschs (Wo liegt das, passt es in die Route, was kostet "
-                      "es an Zeit, Saison, Öffnungszeiten): den Vorschlag eintragen (plan/wuensche.yaml): an welche Stellen er passt (bezug), "
-                      "eine Notiz mit Herkunft, und wenn daraus eine Option wurde (option_anlegen), deren ID. Das Brett zeigt ihn unter "
-                      "„geprüft“; einplanen tut eine Organisator:in (wunsch_aendern eingeplant oder die Wahl der Option). Schreibt sofort.",
+WUNSCH_VORSCHLAGEN = {"name": "wunsch_vorschlagen", "description": "@konnektor.werkzeug.wunsch_vorschlagen",
                       "inputSchema": {"type": "object", "properties": {
-                          "wunsch": {"type": "string", "description": "R-… (aus wuensche)"},
-                          "bezug": {"type": "array", "items": {"type": "string"}, "description": "T-…, O-…, V-… …; leer = keine feste Stelle"},
-                          "notiz": {"type": "string", "description": "kurz, mit Herkunft (Website, Buch, Karte)"},
-                          "option": {"type": "string", "description": "V-01.b, wenn eine Option daraus wurde"},
+                          "wunsch": {"type": "string", "description": "@konnektor.werkzeug.wunsch_vorschlagen.wunsch"},
+                          "bezug": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.wunsch_vorschlagen.bezug"},
+                          "notiz": {"type": "string", "description": "@konnektor.werkzeug.wunsch_vorschlagen.notiz"},
+                          "option": {"type": "string", "description": "@konnektor.werkzeug.wunsch_vorschlagen.option"},
                           "vorname": NAME_FELD}, "required": ["wunsch", "notiz"]}}
-BELEG_ANLEGEN = {"name": "beleg_anlegen", "description": "Einen Beleg nachträglich an eine Buchung hängen, ohne die Reiseseite (beim Anlegen geht er "
-                 "mit buchung_anlegen in einem Schritt): als Abschrift (text: der "
-                 "Inhalt der Bestätigung oder Mail, den die Person im Gespräch gezeigt oder vorgelesen hat, wörtlich, ohne Deutung) oder, wenn "
-                 "der Client die Datei liefern kann, als daten_base64 (PDF, JPEG, PNG, WebP, HEIC, höchstens 10 MB). Der Beleg liegt in der "
-                 "Ablage, nie im Repo, sichtbar für die Person und Organisator:innen. Mitwirkende und Organisator:innen. Vorher kurz bestätigen lassen.",
+BELEG_ANLEGEN = {"name": "beleg_anlegen", "description": "@konnektor.werkzeug.beleg_anlegen",
                  "inputSchema": {"type": "object", "properties": {
-                     "buchung": {"type": "string", "description": "B-…"},
-                     "dateiname": {"type": "string", "description": "Anzeigename, z. B. „Bestätigung Eurowings.txt“ oder „Ticket.pdf“"},
-                     "text": {"type": "string", "description": "Abschrift als Text (wird als .txt abgelegt)"},
-                     "daten_base64": {"type": "string", "description": "die Datei Base64-kodiert, wenn der Client sie hat"},
+                     "buchung": {"type": "string", "description": "@konnektor.werkzeug.beleg_anlegen.buchung"},
+                     "dateiname": {"type": "string", "description": "@konnektor.werkzeug.beleg_anlegen.dateiname"},
+                     "text": {"type": "string", "description": "@konnektor.werkzeug.beleg_anlegen.text"},
+                     "daten_base64": {"type": "string", "description": "@konnektor.werkzeug.beleg_anlegen.daten_base64"},
                      "vorname": NAME_FELD}, "required": ["buchung"]}}
-WERT_EINTRAGEN = {"name": "wert_eintragen", "description": "Einen Wert eines Merkmals an einer Unterkunft (U-…), Strecke (E-…) oder "
-                  "Option (V-01.a) eintragen: Preis, Frühstück, Öffnung, Dauer … Schreibt sofort in die Reise (gilt ab jetzt, Seite in "
-                  "wenigen Minuten) und ersetzt den bisherigen Wert für dieselben Tage; der alte bleibt im Verlauf. Jede Angabe braucht "
-                  "ihre Herkunft (quelle); veränderliche Merkmale (Preise, Zeiten, Öffnung) auch das Prüfdatum (geprueft, Datum des "
-                  "Nachschlagens). Vorher merkmale aufrufen (welche Merkmale es an dieser Stelle gibt, erlaubte Auswahlwerte) und "
-                  "kurz bestätigen lassen, was genau eingetragen wird. Mitwirkende und Organisator:innen.",
+WERT_EINTRAGEN = {"name": "wert_eintragen", "description": "@konnektor.werkzeug.wert_eintragen",
                   "inputSchema": {"type": "object", "properties": {
-                      "ziel": {"type": "string", "description": "U-…, E-… oder V-01.a (aus ueberblick, zeige, merkmale)"},
-                      "merkmal": {"type": "string", "description": "Schlüssel des Merkmals, z. B. preis (aus merkmale)"},
-                      "wert": {"type": "string", "description": "der Wert, bei Auswahl einer der erlaubten Werte; bei Geld mit Währung"},
-                      "quelle": {"type": "string", "description": "Herkunft: Website mit Adresse, Buch mit Seite, Anruf, „Name im Gespräch“"},
-                      "geprueft": {"type": "string", "description": "Datum des Nachschlagens JJJJ-MM-TT (bei veränderlichen Merkmalen nötig)"},
+                      "ziel": {"type": "string", "description": "@konnektor.werkzeug.wert_eintragen.ziel"},
+                      "merkmal": {"type": "string", "description": "@konnektor.werkzeug.wert_eintragen.merkmal"},
+                      "wert": {"type": "string", "description": "@konnektor.werkzeug.wert_eintragen.wert"},
+                      "quelle": {"type": "string", "description": "@konnektor.werkzeug.wert_eintragen.quelle"},
+                      "geprueft": {"type": "string", "description": "@konnektor.werkzeug.wert_eintragen.geprueft"},
                       "gilt": WERT_SCHEMA_EINTRAG["properties"]["gilt"],
-                      "notiz": {"type": "string", "description": "Einschränkung, Rechnung, Widerspruch zwischen Quellen"},
+                      "notiz": {"type": "string", "description": "@konnektor.werkzeug.wert_eintragen.notiz"},
                       "werte": {"type": "array", "items": WERT_SCHEMA_EINTRAG,
-                                "description": "statt wert: mehrere Werte je Datum auf einmal (quelle und geprueft dürfen oben stehen)"},
+                                "description": "@konnektor.werkzeug.wert_eintragen.werte"},
                       "name": NAME_FELD},
                       "required": ["ziel", "merkmal"]}}
 
 
-ENTSCHEIDEN = {"name": "entscheiden", "description": "Nur für Organisator:innen: im Gespräch über eine Option einer Wahlstelle entscheiden "
-               "(gewaehlt, verworfen oder ersetzt). Erst varianten/zeige ansehen und den Grund mit der Person klären, dann kurz "
-               "bestätigen lassen. Der Dienst prüft sofort: Gibt es die Option, ist der Status stimmig, ist ein Grund da, "
-               "widerspricht es einer anderen Organisator:in? Unstimmiges lehnt er mit Begründung ab, Hinweise (fehlende oder "
-               "ungeprüfte Merkmale) gibt er mit. Die Entscheidung steht sofort mit Datum, Person und Grund im Plan; die Seite "
-               "zeigt sie in wenigen Minuten. Bei einem Löschwunsch zu einer Option status verworfen (oder ersetzt) mit Grund setzen; "
-               "zurückholen mit entscheiden, status gewaehlt.",
+ENTSCHEIDEN = {"name": "entscheiden", "description": "@konnektor.werkzeug.entscheiden",
                "inputSchema": {"type": "object", "properties": {
-                   "option": {"type": "string", "description": "Option, über die entschieden wird, z. B. V-01.b (aus varianten)"},
+                   "option": {"type": "string", "description": "@konnektor.werkzeug.entscheiden.option"},
                    "status": {"type": "string", "enum": list(ENTSCHEIDUNGEN),
-                              "description": "gewaehlt = diese Option nehmen; verworfen = nicht nehmen; ersetzt = durch eine andere Option ersetzt"},
-                   "grund": {"type": "string", "description": "Warum, in den Worten der Person, eine Zeile (kommt in den Verlauf)"},
-                   "ersetzt_durch": {"type": "string", "description": "nur bei ersetzt: die andere Option derselben Wahlstelle"},
-                   "quelle": {"type": "string", "description": "woran sich die Entscheidung stützt (Link, Gespräch), falls vorhanden"}},
+                              "description": "@konnektor.werkzeug.entscheiden.status"},
+                   "grund": {"type": "string", "description": "@konnektor.werkzeug.entscheiden.grund"},
+                   "ersetzt_durch": {"type": "string", "description": "@konnektor.werkzeug.entscheiden.ersetzt_durch"},
+                   "quelle": {"type": "string", "description": "@konnektor.werkzeug.entscheiden.quelle"}},
                    "required": ["option", "status", "grund"]}}
-FRAGE_BEANTWORTEN = {"name": "frage_beantworten", "description": "Eine offene Frage (F-…) beantworten. Die Antwort hängt an der Frage "
-                     "(zeige F-… listet sie) und ist eine Eingabe: ob die Frage damit geklärt ist und was daraus folgt, "
-                     "entscheidet ein:e Organisator:in. Vorher die Antwort mit der Person abstimmen; Herkunft nennen, Annahmen markieren.",
+FRAGE_BEANTWORTEN = {"name": "frage_beantworten", "description": "@konnektor.werkzeug.frage_beantworten",
                      "inputSchema": {"type": "object", "properties": {
-                         "frage": {"type": "string", "description": "F-… aus offene_fragen"},
-                         "antwort": {"type": "string", "description": "die Antwort in den Worten der Person, max. 4000 Zeichen"},
-                         "quelle": {"type": "string", "description": "woher die Angabe stammt (Link, Buch mit Seite), falls vorhanden"},
+                         "frage": {"type": "string", "description": "@konnektor.werkzeug.frage_beantworten.frage"},
+                         "antwort": {"type": "string", "description": "@konnektor.werkzeug.frage_beantworten.antwort"},
+                         "quelle": {"type": "string", "description": "@konnektor.werkzeug.frage_beantworten.quelle"},
                          "name": NAME_FELD}, "required": ["frage", "antwort"]}}
-PERSON_EINLADEN = {"name": "person_einladen", "description": "Eine Person zur Reise einladen: legt sie mit Rolle an und stellt ihren "
-                   "persönlichen Link für die Claude-App aus (gilt sofort). Wer einladen darf, regelt die Reise "
-                   "(regeln.einladen); man kann höchstens die eigene Rolle vergeben. Vorher Vorname und Rolle mit der Person "
-                   "abstimmen und den Link danach nur an diese Person weitergeben lassen. Gibt es die Person schon, bekommt sie "
-                   "einen weiteren Link; ihre Rolle ändert sich dabei nicht.",
+PERSON_EINLADEN = {"name": "person_einladen", "description": "@konnektor.werkzeug.person_einladen",
                    "inputSchema": {"type": "object", "properties": {
-                       "vorname": {"type": "string", "description": "Vorname der einzuladenden Person"},
+                       "vorname": {"type": "string", "description": "@konnektor.werkzeug.person_einladen.vorname"},
                        "rolle": {"type": "string", "enum": list(ROLLEN),
-                                 "description": "gast liest; mitwirkend gibt Wünsche, Rückmeldungen, Aufgaben, Antworten; "
-                                 "organisator entscheidet und lädt ein. Standard mitwirkend."},
-                       "reist": {"type": "boolean", "description": "reist die Person mit? Standard ja (nein: gestaltet nur mit)"},
-                       "notiz": {"type": "string", "description": "kurze Notiz zur Person, eine Zeile"},
-                       "schluessel": {"type": "string", "description": "nur wenn nötig: Kurzname für den Zugang (klein, ohne Umlaute)"},
+                                 "description": "@konnektor.werkzeug.person_einladen.rolle"},
+                       "reist": {"type": "boolean", "description": "@konnektor.werkzeug.person_einladen.reist"},
+                       "notiz": {"type": "string", "description": "@konnektor.werkzeug.person_einladen.notiz"},
+                       "schluessel": {"type": "string", "description": "@konnektor.werkzeug.person_einladen.schluessel"},
                        "name": NAME_FELD}, "required": ["vorname"]}}
 
 
-PERSON_ENTFERNEN = {"name": "person_entfernen", "description": "Nur für Organisator:innen: eine Person aus der Reise nehmen. Ihr "
-                    "Zugang (Konto und Links) endet sofort; Beiträge und Verlauf bleiben mit ihrem Namen stehen. Organisator:innen "
-                    "und sich selbst nimmt man so nicht heraus. Vorher bestätigen lassen.",
+PERSON_ENTFERNEN = {"name": "person_entfernen", "description": "@konnektor.werkzeug.person_entfernen",
                     "inputSchema": {"type": "object", "properties": {
-                        "person": {"type": "string", "description": "Vorname oder Schlüssel der Person"},
-                        "grund": {"type": "string", "description": "kurz, warum (optional, eine Zeile)"},
+                        "person": {"type": "string", "description": "@konnektor.werkzeug.person_entfernen.person"},
+                        "grund": {"type": "string", "description": "@konnektor.werkzeug.person_entfernen.grund"},
                         "name": NAME_FELD}, "required": ["person"]}}
 
 
-REISE_ANLEGEN = {"name": "reise_anlegen", "description": "Eine neue Reise anlegen. "
-                 "Vorher im Gespräch Titel, Zeitraum, Ziel und Personen mit Rollen klären und bestätigen lassen; wer anlegt, "
-                 "ist Organisator:in der neuen Reise. Was schon bekannt ist (Ideen, Unterkunft, Quellen), kommt in notiz: Bücher, "
-                 "Fotos und PDFs in eigenen Worten zusammenfassen, mit Herkunft (Buch und Seite, Link), nie abschreiben. "
-                 "Die Reise entsteht in wenigen Minuten im Status idee; danach zeigt meine_reisen eine Meldung mit dem Link "
-                 "zur Seite und dem Link für die Claude-App. Sag nie, die Reise sei schon angelegt.",
+REISE_ANLEGEN = {"name": "reise_anlegen", "description": "@konnektor.werkzeug.reise_anlegen",
                  "inputSchema": {"type": "object", "properties": {
-                     "titel": {"type": "string", "description": "Titel der Reise, z. B. „Winterwoche im Allgäu“"},
-                     "von": {"type": "string", "description": "erster Tag, JJJJ-MM-TT"},
-                     "bis": {"type": "string", "description": "letzter Tag, JJJJ-MM-TT"},
-                     "ziel": {"type": "string", "description": "Ziel oder Gegend, eine Zeile"},
-                     "personen": {"type": "array", "description": "weitere Personen (die anlegende Person kommt von selbst "
-                                  "als organisator dazu)", "items": {"type": "object", "properties": {
+                     "titel": {"type": "string", "description": "@konnektor.werkzeug.reise_anlegen.titel"},
+                     "von": {"type": "string", "description": "@konnektor.werkzeug.reise_anlegen.von"},
+                     "bis": {"type": "string", "description": "@konnektor.werkzeug.reise_anlegen.bis"},
+                     "ziel": {"type": "string", "description": "@konnektor.werkzeug.reise_anlegen.ziel"},
+                     "personen": {"type": "array", "description": "@konnektor.werkzeug.reise_anlegen.personen", "items": {"type": "object", "properties": {
                                       "vorname": {"type": "string"},
                                       "rolle": {"type": "string", "enum": list(ROLLEN),
-                                                "description": "gast liest; mitwirkend gibt Wünsche, Rückmeldungen, "
-                                                "Aufgaben, Antworten; organisator entscheidet mit. Standard mitwirkend."},
-                                      "reist": {"type": "boolean", "description": "reist mit? Standard ja"},
-                                      "notiz": {"type": "string", "description": "kurze Notiz zur Person, eine Zeile"}},
+                                                "description": "@konnektor.werkzeug.reise_anlegen.personen.items.rolle"},
+                                      "reist": {"type": "boolean", "description": "@konnektor.werkzeug.reise_anlegen.personen.items.reist"},
+                                      "notiz": {"type": "string", "description": "@konnektor.werkzeug.reise_anlegen.personen.items.notiz"}},
                                       "required": ["vorname"]}},
-                     "notiz": {"type": "string", "description": "was schon bekannt ist, in eigenen Worten mit Herkunft"},
-                     "pfad": {"type": "string", "description": "nur wenn nötig: Ordnername (klein, Bindestriche)"},
-                     "sprache": {"type": "string", "enum": list(texte.SPRACHEN)}},
+                     "notiz": {"type": "string", "description": "@konnektor.werkzeug.reise_anlegen.notiz"},
+                     "pfad": {"type": "string", "description": "@konnektor.werkzeug.reise_anlegen.pfad"},
+                     "sprache": {"type": "string", "enum": list(texte.SPRACHEN), "description": "@konnektor.werkzeug.reise_anlegen.sprache"}},
                      "required": ["titel", "von", "bis"]}}
 
 
@@ -2712,9 +2562,7 @@ def _mit_mail(w):
     """reise_anlegen im Konnektor „Frieda“: Personen mit E-Mail-Adresse, die eine Einladung bekommen."""
     import copy
     w = copy.deepcopy(w)
-    w["description"] = w["description"].replace(
-        "danach zeigt meine_reisen eine Meldung mit dem Link zur Seite und dem Link für die Claude-App",
-        "danach steht sie in meine_reisen, und Personen mit E-Mail-Adresse bekommen eine Einladung per Mail")
+    w["description"] = "@konnektor.werkzeug.reise_anlegen.mit_mail"   # eigener Text statt Ersetzen im Wortlaut (ADR-0006)
     w["inputSchema"]["properties"]["personen"]["items"]["properties"]["email"] = EMAIL_FELD
     return w
 
@@ -2722,104 +2570,53 @@ def _mit_mail(w):
 REISE_ANLEGEN_MIT_MAIL = _mit_mail(REISE_ANLEGEN)
 
 
-STATUS_SATZ = {
-    "idee": "Die Reise ist erst eine Idee: Eckdaten, Personen und Wünsche sammeln, kein Plan nötig, keine Warnungen.",
-    "planung": "Alles ist offen; Lücken und offene Wahlstellen sind normaler Zwischenstand.",
-    "fest": "Der Plan steht, das Buchen läuft: Offene Planungs-Wahlstellen und Aufgabenfristen mahnst du an.",
-    "unterwegs": "Die Reise läuft: Heute und Wahlstellen mit Auslöser kommen zuerst; Rückmeldungen sind Notizen vom Weg.",
-    "danach": "Die Reise ist vorbei: Der Plan ist schreibgeschützt, nur Rückmeldungen (Nachlese) und Aufgaben gehen noch.",
-    "archiv": "Die Reise ist archiviert: Es kann nur gelesen werden.",
-}
-
-
 def anleitung(zugang, d):
-    """Kurze Verfassung für die KI: Aufgabe, Grenzen, Rollen, Status. Was die Maschine prüft, steht nicht darin."""
+    """Kurze Verfassung für die KI: Aufgabe, Grenzen, Rollen, Status. Was die Maschine prüft, steht nicht darin. Die Sätze stehen im
+    Katalog in der Sprache des Zugangs (zugang["sprache"], ADR-0006); hier stehen nur die Bedingungen."""
+    sp = zugang.get("sprache") or texte.VORGABE_REISE
     rs = (d or {}).get("reise", {})
     wer = wer_spricht(zugang, d) or {"rolle": "gast", "name": None}
     organisator = organisator_namen(d)
     namen = " und ".join(organisator) or "Organisator:in"
     status = (rs.get("status") or {}).get("wert")
     bausteine = rs.get("bausteine")
-    z = [f"Aufgabe: Du hilfst bei der Reise „{rs.get('titel', zugang['reise'])}“ ({rs.get('untertitel', '')})"
-         + (f", Status {status}" if status else "") + ". Du liest vor, schlägst vor, prüfst und gibst Eingaben weiter; "
-         f"{namen} {'entscheiden' if len(organisator) > 1 else 'entscheidet'}, du nie.",
-         "Grenzen: Was du mit den Werkzeugen einträgst, prüft der Dienst nach Regeln und schreibt es sofort in die Reise; "
-         "die Seite zeigt es in wenigen Minuten. Rückmeldungen (rueckmeldung_geben) und Antworten sind Eingaben, die eine "
-         "Organisator:in einarbeitet. "
-         + ("" if schreibdienst() else "Der Schreibweg dieser Instanz ist nicht eingerichtet: Eintragen geht nicht, nur Lesen, "
-            "Rückmeldungen und Aufgaben. ")
-         + "Status gewählt/verworfen/ersetzt und Einstellungen setzen nur Organisator:innen. Nichts erfinden: Herkunft nennen, Annahmen "
-         "markieren, veränderliche Angaben (Fahrpläne, Öffnungszeiten, Preise) mit Prüfdatum. Vor jedem Eintragen kurz "
-         "bestätigen lassen, was genau eingetragen wird. Die Regeln prüft der Dienst; lehnt er etwas ab, gib den Grund weiter.",
-         "IDs: T- Tag, E- Etappe/Strecke, O- Ort, U- Unterkunft, A- Aufenthalt ohne Nacht, B- Buchung, V- Wahlstelle mit "
-         "Optionen V-01.a, P- Plan, F- offene Frage, W- Wissen, AG- Aufgabe. Mit ueberblick beginnen, dann zeige/suche. " + SPRACHE,
-         "Rollen: gast liest; mitwirkend gibt dazu Rückmeldungen, Antworten, Aufgaben und Vorschläge; organisator entscheidet "
-         "dazu, setzt Status und Einstellungen und lädt ein."]
-    name = f"Du sprichst mit {wer['name']}" if wer["name"] else "Du sprichst mit einer Person ohne festen Namen"
+    kennungen = anl(sp, "kennungen_regel")
+    z = [anl(sp, "aufgabe_mehrere" if len(organisator) > 1 else "aufgabe_einer", titel=rs.get("titel", zugang["reise"]),
+             untertitel=rs.get("untertitel", ""), namen=namen, status_teil=anl(sp, "status_teil", status=status) if status else ""),
+         anl(sp, "grenzen", kein_schreibweg="" if schreibdienst() else anl(sp, "kein_schreibweg")),
+         anl(sp, "ids", kennungen=kennungen),
+         anl(sp, "rollen")]
+    name = anl(sp, "du_mit_name", name=wer["name"]) if wer["name"] else anl(sp, "du_ohne_name")
     regeln = rs.get("regeln") or {}
     einladen_ab = regeln.get("einladen") or VORGABEN["einladen"]
     kann_einladen = darf(wer["rolle"], einladen_ab)
     direkt = schreibdienst()
     if wer["rolle"] == "organisator":
-        z.append(f"{name} (Organisator:in). Entscheidungen über Optionen einer Wahlstelle trägst du mit entscheiden ein (Option, "
-                 "Status, Grund; vorher kurz bestätigen lassen). "
-                 + ("Der Dienst prüft im selben Moment, lehnt Unstimmiges mit Begründung ab und schreibt die Entscheidung mit Datum, "
-                    "Person und Grund in den Plan; sie gilt ab jetzt, die Seite zeigt sie in wenigen Minuten. " if direkt else
-                    "Ohne eingerichteten Schreibweg geht Entscheiden nicht; der Betreiber richtet ihn ein. ")
-                 + "Widerspricht sie der einer anderen Organisator:in, wird daraus eine offene Frage, und alle Beteiligten bekommen "
-                 "eine Meldung. Personen lädst du mit "
-                 + ("person_einladen und ihrer E-Mail-Adresse ein (die Rolle gilt sofort, die Einladung kommt per Mail); "
-                    "mit person_entfernen nimmst du jemanden heraus. " if "konto_id" in zugang else
-                    "person_einladen ein (Rolle und Link gelten sofort). ")
-                 + "Den Stand zeigt rueckmeldungen."
-                 + (" Du schreibst direkt in die Reise, geprüft von Regeln: Arten und Merkmale (art_definieren, merkmal_definieren; bei einer "
-                    "neuen Art fragen, was zu jeder Sache bekannt sein muss und was sich ändern kann), Kartenkategorien (kategorie_definieren), Werte mit Herkunft und Prüfdatum "
-                    "(wert_eintragen; erst selbst recherchieren, merkmale sagt wo), Unterkünfte, Strecken, Orte (ding_anlegen, ding_aendern), "
-                    "Alternativen (option_anlegen, wahlstelle_anlegen), der Plan eines Tags (tag_aendern), Wissen in eigenen Worten mit "
-                    "Herkunft (wissen_schreiben), Fragen (frage_anlegen, frage_beantworten, frage_schliessen), Buchungen als eigenes Ding "
-                    "mit Nummer, Frist und Stornoregel (buchung_anlegen, buchung_aendern; Beleg: auf der Reiseseite oder beleg_anlegen), "
-                    "Status und Einstellungen "
-                    "(reise_status_setzen, einstellung_setzen). Rückmeldungen der Seite arbeitest du ein: prüfen, eintragen, dann "
-                    "rueckmeldung_erledigen mit Kommentar in einfachen Worten. Vor jedem Eintragen den Wortlaut bestätigen lassen."
-                    if direkt else ""))
+        z.append(anl(sp, "org", name=name,
+                     pruefung=anl(sp, "org.pruefung_direkt" if direkt else "org.pruefung_ohne"),
+                     einladen=anl(sp, "org.einladen_konto" if "konto_id" in zugang else "org.einladen_link"),
+                     direkt=anl(sp, "org.direkt") if direkt else ""))
     elif wer["rolle"] == "mitwirkend":
-        z.append(f"{name} (Mitwirkende:r). Ihre Hinweise sind Vorschläge, keine Entscheidungen: Entscheiden "
-                 f"kann sie nicht, das bleibt bei {namen}. Offene Fragen beantwortet sie mit frage_beantworten. "
-                 + ("Sie schreibt direkt in die Reise: Werte mit Herkunft und Prüfdatum (wert_eintragen), Unterkünfte, Strecken, Orte "
-                    "(ding_anlegen, ding_aendern), Alternativen als Vorschlag (option_anlegen, wahlstelle_anlegen), Wissen in eigenen Worten "
-                    "mit Herkunft (wissen_schreiben), Fragen (frage_anlegen), Buchungen, die sie selbst gemacht hat (buchung_anlegen, "
-                    "buchung_aendern; den Beleg hängt sie auf der Reiseseite an). Arten und Merkmale schlägt sie mit art_definieren und "
-                    "merkmal_definieren vor (wird eine Rückmeldung). " if direkt else "")
-                 + ("Sie darf Personen einladen (person_einladen), höchstens mit der Rolle mitwirkend. " if kann_einladen else "")
-                 + ("" if wer["name"] else "Für Rückmeldungen und Aufgaben brauchst du ihren Vornamen: einmal fragen, "
-                    "nicht raten, dann im Gespräch beibehalten. ")
-                 + "„Meine Aufgaben“ = aufgaben mit zustaendig = dieser Vorname.")
+        z.append(anl(sp, "mit", name=name, namen=namen, direkt=anl(sp, "mit.direkt") if direkt else "",
+                     einladen=anl(sp, "mit.einladen") if kann_einladen else "",
+                     vorname="" if wer["name"] else anl(sp, "mit.vorname")))
     else:
-        z.append(f"{name} (Rolle gast): nur lesen. Rückmeldungen, Antworten, Aufgaben und Vorschläge gehen mit diesem Zugang "
-                 "nicht; wer mitgestalten will, bittet ein:e Organisator:in um eine andere Rolle."
-)
-    z.append("Löschwunsch: Frieda löscht nie. Buchung storniert, Option verworfen, Aufgabe oder Frage entfaellt; erst "
-             "bestätigen lassen, danach ein Satz: nicht gelöscht, wie es zurückgeht. Sonst ehrlich sagen und (sofern erlaubt) "
-             "rueckmeldung_geben anbieten.")
-    if status in STATUS_SATZ:
-        z.append("Status: " + STATUS_SATZ[status])
+        z.append(anl(sp, "gast", name=name))
+    z.append(anl(sp, "loeschwunsch"))
+    if status in STATUS_SAETZE:
+        z.append(anl(sp, "status_label", satz=anl(sp, "status." + status)))
     aus = [b for b in ("varianten", "fragen", "aufgaben", "rueckmeldungen", "wuensche") if bausteine is not None and b not in bausteine]
     if wer["name"] is None and wer["rolle"] != "gast":
-        z.append("Dieser Link gehört keiner Person: Entscheiden und Einladen gehen nur mit einem persönlichen Link.")
+        z.append(anl(sp, "link_ohne_person"))
     if aus:
-        z.append("Bei dieser Reise ausgeschaltet (Werkzeuge fehlen, Daten bleiben): " + ", ".join(aus) + ".")
+        z.append(anl(sp, "ausgeschaltet", liste=", ".join(aus)))
     if bausteine is None or "varianten" in bausteine:
-        z.append("Alternativen (eine weitere Unterkunft, Strecke, Route): erst merkmale aufrufen, die Merkmale selbst "
-                 "recherchieren, dann gezielt nur nach Lücken fragen, dann anlegen (ding_anlegen, option_anlegen; neue Wahlstelle: "
-                 "wahlstelle_anlegen).")
+        z.append(anl(sp, "alternativen"))
     if bausteine is None or "waechter" in bausteine:
-        z.append("Wächter und Erinnerer sind an: Meldungen an die Person (Fristen, ab-Termine, Statuswechsel, Prüfungen "
-                 "veränderlicher Angaben) stehen im ueberblick unter „Meldungen an dich“. Nenne sie zu Beginn und frag, ob "
-                 "etwas davon erledigt werden soll. Den Reisestatus wechselt nur ein:e Organisator:in, nie du.")
+        z.append(anl(sp, "waechter"))
     if "wuensche" in (bausteine or []):
-        z.append("Wünsche (Ort, Erlebnis, Essen, auch vage) hältst du mit rueckmeldung_geben, art Wunsch, fest; wuensche zeigt "
-                 "das Brett. Mit wunsch_aendern: Punkte (wie wichtig) nur auf eigene Wünsche, abhaken unterwegs alle, "
-                 "einplanen nur Organisator:innen. Ein Wunsch ist ein Vorschlag, keine Entscheidung.")
+        z.append(anl(sp, "wuensche"))
+    z.append(anl(sp, "antwortsprache"))
     return " ".join(z)
 
 
@@ -2995,7 +2792,7 @@ def antwort_auf(zugang, nachricht):
     if methode == "ping":
         return ok({})
     if methode == "tools/list":
-        return ok({"tools": werkzeuge_fuer(zugang)})
+        return ok({"tools": lokalisiert(werkzeuge_fuer(zugang), zugang.get("sprache") or texte.VORGABE)})
     if methode == "tools/call":
         t, fehler = werkzeug(zugang, p.get("name"), p.get("arguments"))
         return ok({"content": [{"type": "text", "text": t}], "isError": fehler})

@@ -48,6 +48,8 @@ def gueltig(kuerzel):
 
 
 def _fuellen(text, werte):
+    if not werte:
+        return text   # ohne Werte bleiben geschweifte Klammern im Text, wie sie sind (Beispiele in Beschreibungen)
     try:
         return text.format(**werte)
     except (KeyError, IndexError, ValueError):

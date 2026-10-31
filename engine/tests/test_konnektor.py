@@ -1002,7 +1002,7 @@ def test_werkzeugbeschreibungen_nennen_loeschwunsch_und_rueckholweg():
                 (aufgabe_werkzeug(), ("entfaellt", "offen")),
                 (kn.FRAGE_SCHLIESSEN, ("entfaellt", "neue Frage")))
     for w, teile in erwartet:
-        satz = next((s for s in w["description"].split(". ") if "Löschwunsch" in s), "")
+        satz = next((s for s in kn.lokalisiert([w], "de")[0]["description"].split(". ") if "Löschwunsch" in s), "")
         assert satz, w["name"]
         for t in teile:
             assert t in satz, (w["name"], t)
@@ -1012,7 +1012,7 @@ def test_neue_loeschtexte_nennen_nichts_reisespezifisches():
     """Kriterium 8: keine Pfade, Adressen oder Namen aus Reisen in den neuen Texten."""
     texte = [loesch_absatz(kn.anleitung(z, {"reise": {}})) for _, z in LOESCH_ZUGAENGE]
     for w in (kn.BUCHUNG_AENDERN, kn.ENTSCHEIDEN, kn.FRAGE_SCHLIESSEN, aufgabe_werkzeug()):
-        texte += [s for s in w["description"].split(". ") if "Löschwunsch" in s]
+        texte += [s for s in kn.lokalisiert([w], "de")[0]["description"].split(". ") if "Löschwunsch" in s]
     assert len(texte) == 7 and all(texte)
     for t in texte:
         for verboten in ("/home", "/var", "http", "@", "Ida", "Karl", "Burgblick", "Elbufer"):

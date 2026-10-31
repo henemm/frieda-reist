@@ -399,3 +399,32 @@ def test_sprache_am_konto_im_konnektor(welt):
     assert r["result"]["isError"] and r["result"]["content"][0]["text"] == "That language does not exist."
     import konten as k
     assert k.konto_per_email(IDA)["sprache"] == "en"
+
+
+def ohne_beschreibung(x):
+    if isinstance(x, dict):
+        return {k: ohne_beschreibung(v) for k, v in x.items() if k != "description"}
+    if isinstance(x, list):
+        return [ohne_beschreibung(e) for e in x]
+    return x
+
+
+def test_anleitung_und_werkzeuge_in_der_sprache_des_kontos(welt):
+    """Anleitung und Beschreibungen kommen aus dem Katalog in der Sprache des Kontos (ADR-0006, M8): Namen, Schemata und
+    Hinweise sind in beiden Sprachen gleich, nur die Texte unterscheiden sich; Datenwerte bleiben deutsch und werden erklärt."""
+    u = welt()
+    t, _ = verbinden(u, IDA, "Ida")
+    acc = t["access_token"]
+    _, _, de_init = mcp(u, acc, "initialize")
+    _, _, de_list = mcp(u, acc, "tools/list")
+    assert "Aufgabe: Du bist Frieda" in de_init["result"]["instructions"] and "Antworte in der Sprache der Person" in de_init["result"]["instructions"]
+    mcp(u, acc, "tools/call", {"name": "sprache_setzen", "arguments": {"sprache": "en"}})
+    _, _, en_init = mcp(u, acc, "initialize")
+    _, _, en_list = mcp(u, acc, "tools/list")
+    assert en_init["result"]["instructions"].startswith("Task: You are Frieda") and "Reply in the person's language" in en_init["result"]["instructions"]
+    assert ohne_beschreibung(de_list["result"]["tools"]) == ohne_beschreibung(en_list["result"]["tools"])
+    de_t = {w["name"]: w["description"] for w in de_list["result"]["tools"]}
+    en_t = {w["name"]: w["description"] for w in en_list["result"]["tools"]}
+    assert de_t.keys() == en_t.keys() and all(de_t[n] != en_t[n] for n in de_t if n != "sprache_setzen" or True)
+    assert en_t["meine_reisen"].startswith("Your trips with role, status")
+    assert not any("@konnektor" in d or d.startswith("TODO-EN") for d in en_t.values())
