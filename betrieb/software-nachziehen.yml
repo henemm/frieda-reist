@@ -2,8 +2,10 @@
 # Einrichten: Datei nach .github/workflows/ des Reisen-Repos kopieren (docs/betrieb.md, „Neue Instanz einrichten“).
 #
 # Alle 30 Minuten (und von Hand): Liegt auf main der Software (Submodul frieda/) ein neuerer Stand, wird das Submodul
-# darauf gesetzt und alles getestet (Software und echte Reisen, wie tests.yml). Grün: Commit des Bots direkt nach
-# main, der Server veröffentlicht dann selbst. Rot: nichts wird übernommen, stattdessen entsteht ein Issue (Label
+# darauf gesetzt und geprüft. Tor wie beim Veröffentlichen (#142, #168): Sperren können nur die Tests der Software
+# (engine/tests) und der Bau einer Reise. Die Tests des Reisen-Repos (tests/) prüfen Inhalt, rot dort ist nur eine
+# Warnung im Lauf; das Veröffentlichen meldet sie ohnehin einmal je Commit. Tor grün: Commit des Bots direkt nach
+# main, der Server veröffentlicht dann selbst. Tor rot: nichts wird übernommen, stattdessen entsteht ein Issue (Label
 # software-nachziehen), und der Lauf endet rot, sodass GitHub den Fehlschlag per Mail meldet.
 # Nur vorwärts, ein Lauf gleichzeitig, nie erzwungen: Scheitert der Push am Wettlauf mit dem Schreibweg, versucht es
 # der nächste Lauf wieder.
@@ -66,16 +68,41 @@ jobs:
           sudo apt-get install -y -q libcairo2
           pip install -r frieda/engine/requirements.txt
 
-      # continue-on-error: Rote Tests beenden den Job nicht sofort, damit der Issue-Schritt das Ergebnis
-      # (steps.tests.outcome) auswerten kann. Der Lauf endet trotzdem rot (exit 1 im Issue-Schritt).
-      - name: Tests (Software und echte Reisen)
+      # continue-on-error: Ein rotes Tor beendet den Job nicht sofort, damit der Issue-Schritt die Ergebnisse
+      # (steps.tests.outcome, steps.bau.outcome) auswerten kann. Der Lauf endet trotzdem rot (exit 1 im Issue-Schritt).
+      - name: Tests der Software
         id: tests
         if: steps.stand.outputs.neu_da == 'ja'
         continue-on-error: true
-        run: python -m pytest -q -rs engine/tests tests
+        run: python -m pytest -q -rs engine/tests
+
+      # Jede Reise wie beim Veröffentlichen; Warnungen im Plan sperren nie (bauen.py endet dann mit 0).
+      - name: Bau jeder Reise
+        id: bau
+        if: steps.stand.outputs.neu_da == 'ja'
+        continue-on-error: true
+        run: |
+          rote=""
+          for r in reisen/*/reise.json; do
+            [ -e "$r" ] || continue
+            reise="$(basename "$(dirname "$r")")"
+            if ! python frieda/engine/bauen.py --reisen reisen --ziel "$RUNNER_TEMP/dist" "$reise"; then
+              echo "::error::Bau von $reise mit dem neuen Stand gescheitert"
+              rote="$rote $reise"
+            fi
+          done
+          [ -z "$rote" ] || exit 1
+
+      - name: Tests des Reisen-Repos (nur Warnung)
+        id: inhalt
+        if: steps.stand.outputs.neu_da == 'ja'
+        run: |
+          if [ -d tests ] && ! python -m pytest -q -rs tests; then
+            echo "::warning::Tests des Reisen-Repos (tests/) rot. Sie sperren das Nachziehen nicht (docs/betrieb.md, Konvention für tests/)."
+          fi
 
       - name: Nach main übernehmen
-        if: steps.stand.outputs.neu_da == 'ja' && steps.tests.outcome == 'success'
+        if: steps.stand.outputs.neu_da == 'ja' && steps.tests.outcome == 'success' && steps.bau.outcome == 'success'
         env:
           ALT: ${{ steps.stand.outputs.alt }}
           NEU: ${{ steps.stand.outputs.neu }}
@@ -105,12 +132,17 @@ jobs:
           exit 1
 
       - name: Issue bei Testfehler
-        if: steps.stand.outputs.neu_da == 'ja' && steps.tests.outcome == 'failure'
+        if: steps.stand.outputs.neu_da == 'ja' && (steps.tests.outcome == 'failure' || steps.bau.outcome == 'failure')
         env:
           GH_TOKEN: ${{ github.token }}
           NEU: ${{ steps.stand.outputs.neu }}
+          TESTS: ${{ steps.tests.outcome }}
+          BAU: ${{ steps.bau.outcome }}
         run: |
           kurz=$(git -C frieda rev-parse --short "$NEU")
+          rot=""
+          [ "$TESTS" = success ] || rot="die Tests der Software (engine/tests)"
+          [ "$BAU" = success ] || rot="${rot:+$rot und }der Bau einer Reise"
           lauf="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           offen=$(gh issue list --label software-nachziehen --state open --json number --jq 'length' 2>/dev/null || echo 0)
           if [ "$offen" -eq 0 ]; then
@@ -118,7 +150,7 @@ jobs:
               --description "Automatisches Nachziehen der Software ist an Tests gescheitert" 2>/dev/null || true
             gh issue create --label software-nachziehen \
               --title "Software-Stand $kurz lässt sich nicht automatisch übernehmen" \
-              --body "Die Tests schlagen mit dem neuen Stand der Software fehl. Die Reisen oder die Software anpassen, dann übernimmt der nächste Lauf den Stand selbst (oder das Submodul von Hand nachziehen). Lauf: $lauf"
+              --body "Mit dem neuen Stand der Software scheitert $rot. Die Software (oder die betroffene Reise) anpassen, dann übernimmt der nächste Lauf den Stand selbst (oder das Submodul von Hand nachziehen). Lauf: $lauf"
           else
             echo "Es gibt schon ein offenes Issue, kein weiteres angelegt."
           fi
