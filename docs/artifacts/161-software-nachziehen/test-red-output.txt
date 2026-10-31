@@ -16,7 +16,7 @@ engine/tests/test_software_nachziehen.py:14: in lade
          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = PosixPath('/home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml')
+self = PosixPath('betrieb/software-nachziehen.yml')
 mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
 
     def open(self, mode='r', buffering=-1, encoding=None,
@@ -29,7 +29,7 @@ mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
             encoding = io.text_encoding(encoding)
 >       return io.open(self, mode, buffering, encoding, errors, newline)
                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E       FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml'
+E       FileNotFoundError: [Errno 2] No such file or directory: 'betrieb/software-nachziehen.yml'
 
 /usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
 ______________________ test_rote_tests_fuehren_zum_issue _______________________
@@ -51,7 +51,7 @@ engine/tests/test_software_nachziehen.py:14: in lade
          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = PosixPath('/home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml')
+self = PosixPath('betrieb/software-nachziehen.yml')
 mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
 
     def open(self, mode='r', buffering=-1, encoding=None,
@@ -64,7 +64,7 @@ mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
             encoding = io.text_encoding(encoding)
 >       return io.open(self, mode, buffering, encoding, errors, newline)
                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E       FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml'
+E       FileNotFoundError: [Errno 2] No such file or directory: 'betrieb/software-nachziehen.yml'
 
 /usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
 _______________ test_commit_als_bot_mit_liste_und_ohne_erzwingen _______________
@@ -89,7 +89,7 @@ engine/tests/test_software_nachziehen.py:14: in lade
          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = PosixPath('/home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml')
+self = PosixPath('betrieb/software-nachziehen.yml')
 mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
 
     def open(self, mode='r', buffering=-1, encoding=None,
@@ -102,7 +102,7 @@ mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
             encoding = io.text_encoding(encoding)
 >       return io.open(self, mode, buffering, encoding, errors, newline)
                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E       FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml'
+E       FileNotFoundError: [Errno 2] No such file or directory: 'betrieb/software-nachziehen.yml'
 
 /usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
 __________________________ test_nichts_einer_instanz ___________________________
@@ -118,7 +118,7 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = PosixPath('/home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml')
+self = PosixPath('betrieb/software-nachziehen.yml')
 mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
 
     def open(self, mode='r', buffering=-1, encoding=None,
@@ -131,7 +131,7 @@ mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
             encoding = io.text_encoding(encoding)
 >       return io.open(self, mode, buffering, encoding, errors, newline)
                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E       FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml'
+E       FileNotFoundError: [Errno 2] No such file or directory: 'betrieb/software-nachziehen.yml'
 
 /usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
 ____________________ test_doku_einrichten_und_ueberwachung _____________________

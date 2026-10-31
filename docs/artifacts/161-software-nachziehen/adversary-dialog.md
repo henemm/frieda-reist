@@ -47,15 +47,15 @@ Datum: 2026-10-31 12:00
 ### Runde 3
 **Adversary:** F001 nachgeprüft. Zeile 1768 `[ "$STATUS_MODE" = true ] || rm -f "$merk"` und Zeile 1776 `[ "$STATUS_MODE" = true ] || echo ... > "$merk"`: Merkdatei wird nur im normalen Lauf angefasst. Angriffe: (1) Normaler Modus, gleicher Stand: Merkdatei wird gelöscht (gewollt, AC-7). (2) Status-Modus, gleicher Stand: Datei bleibt unverändert (Test test_status_gleicher_stand). (3) Status-Modus, Rückstand erstmals: keine Datei geschrieben, age = 0, Statuszeile ok; bei alter Datei 7 h Statuszeile fail ohne Schreiben (test_status_rueckstand). (4) Status-Modus mit Netzfehler oder unlesbarer HEAD: kein State (test_status_netzfehler_und_nicht_lesbar). `||`-Form ist ohne `-e` unkritisch. Tests: 33 passed in tests/test_monitor_frieda*.py. F001 ist behoben.
 Zusätzlich zitiert: die Ausnahme für die Bot-Domain in test_vorlagen_ohne_werte_einer_instanz.
-Code reference: /home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/engine/tests/test_betrieb.py:1059
-Code reference: /home/hem/henemm-infra-wt-frieda-software/scripts/monitor.sh:1768
+Code reference: engine/tests/test_betrieb.py:1059
+Code reference: <infra>/scripts/monitor.sh:1768
 **Implementierer:** F001 behoben, siehe Runde 3.
 
 Finding (behoben in Runde 3):
   ID: F001
   Severity: LOW
   Category: anti_pattern
-  Code reference: /home/hem/henemm-infra-wt-frieda-software/scripts/monitor.sh:1776
+  Code reference: <infra>/scripts/monitor.sh:1776
   Description: Im Status-Modus schreibt und löscht der Check die Merkdatei (Zeilen 1768, 1776), obwohl alert_on_change dort bewusst keinen Zustand schreibt (Zeile 323). Ein manueller Status-Aufruf als Nicht-root gibt eine Permission-Fehlermeldung aus.
   Spec requirement: AC-8 — Merkdatei nennt den Stand (kein Verbot im Status-Modus)
   Conflict: Inkonsistent zur Konvention des Monitors; kein Spezifikationsbruch. Folge harmlos.
@@ -63,73 +63,73 @@ Finding (behoben in Runde 3):
 
 Confirmation:
   AC: AC-1
-  Code reference: /home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml:12
+  Code reference: betrieb/software-nachziehen.yml:12
   Evidence: schedule, workflow_dispatch, permissions contents/issues write, concurrency cancel-in-progress false.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2
-  Code reference: /home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml:74
+  Code reference: betrieb/software-nachziehen.yml:74
   Evidence: continue-on-error true, Bedingungen Zeilen 78 und 108, exit 1 Zeile 125.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-3
-  Code reference: /home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml:97
+  Code reference: betrieb/software-nachziehen.yml:97
   Evidence: Bot-Identität 92-93, Liste 90, Schleife mit rebase --abort 101, kein --force.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-4
-  Code reference: /home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/engine/tests/test_software_nachziehen.py:58
-  Evidence: Test auf /srv/, /home/, Domains; Ausnahme der Bot-Domain in /home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/engine/tests/test_betrieb.py:1059 eng gefasst.
+  Code reference: engine/tests/test_software_nachziehen.py:58
+  Evidence: Test auf /srv/, /home/, Domains; Ausnahme der Bot-Domain in engine/tests/test_betrieb.py:1059 eng gefasst.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-5
-  Code reference: /home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/docs/betrieb.md:162
+  Code reference: docs/betrieb.md:162
   Evidence: Überwachungsabsatz (Rückstand gegen main) und Einrichtschritt Zeile 174 mit Datei, .github/workflows/ und Rechten.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-7
-  Code reference: /home/hem/henemm-infra-wt-frieda-software/scripts/monitor.sh:1766
+  Code reference: <infra>/scripts/monitor.sh:1766
   Evidence: Gleich: rm -f Merkdatei, alert ok, status_ok.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-8
-  Code reference: /home/hem/henemm-infra-wt-frieda-software/tests/test_monitor_frieda_software.py:59
+  Code reference: <infra>/tests/test_monitor_frieda_software.py:59
   Evidence: Erstsicht schreibt Merkdatei mit Stand, ok mit Rückstand.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-9
-  Code reference: /home/hem/henemm-infra-wt-frieda-software/scripts/monitor.sh:1781
+  Code reference: <infra>/scripts/monitor.sh:1781
   Evidence: Rückstand über 6 h: fail mit Stunden, Präfix frieda-reisen- nicht kritisch.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-10
-  Code reference: /home/hem/henemm-infra-wt-frieda-software/scripts/monitor.sh:1774
+  Code reference: <infra>/scripts/monitor.sh:1774
   Evidence: Anderer eingebundener Stand setzt die Merkdatei neu.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-11
-  Code reference: /home/hem/henemm-infra-wt-frieda-software/scripts/monitor.sh:1763
+  Code reference: <infra>/scripts/monitor.sh:1763
   Evidence: ls-remote-Fehler: status_warn und return ohne alert_on_change.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-12
-  Code reference: /home/hem/henemm-infra-wt-frieda-software/scripts/monitor.sh:1755
+  Code reference: <infra>/scripts/monitor.sh:1755
   Evidence: HEAD fehlt oder kein SHA: fail nicht lesbar.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-13
-  Code reference: /home/hem/henemm-infra-wt-frieda-software/docs/monitoring.md:99
+  Code reference: <infra>/docs/monitoring.md:99
   Evidence: Doku vorhanden, Check in der Aufrufliste (monitor.sh:2017). Journal-Zeile nach Merge: offen, nach Merge (Betriebsabnahme). AC-6 ebenso offen, nach Merge.
   Status: CONFIRMED
 
@@ -145,18 +145,18 @@ Tests: 68 passed (frieda-reist) + 33 passed (henemm-infra), 0 failed, 0 überspr
 
 ## Geprüfte Dateien
 
-- sha256:240a075437f55cf0d7d34c37a24458a1d7f5d97bd61c91b3adb05d22567a8c22  /home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml
-- sha256:6d699a6e3ff8d47fb12954a9d4993848e731507fb5bc0515fee52cf85f2ef121  /home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/docs/betrieb.md
-- sha256:d3e856404f766d745738e1c52e80df9ae2bd636921cc42ff5c2c10b5ed474c77  /home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/engine/tests/test_betrieb.py
-- sha256:dcf8130f92632ec56dce764be0a13d470fbf93a80269a84882c7e9bc81cd91f3  /home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/engine/tests/test_software_nachziehen.py
-- sha256:d538b92806d341fda1e73136ab2ad1d6606dfcafe7418503d11eec0a4e0055b9  /home/hem/henemm-infra-wt-frieda-software/docs/monitoring.md
-- sha256:079879b1e3b12bcfacfbc913d01e1cc819c8191651f692db2670ef2a8fb2487d  /home/hem/henemm-infra-wt-frieda-software/scripts/monitor.sh
-- sha256:e38b68136e3ff41e1742457c72ba3be32a1167cabe3c0e53c76c4783112b8674  /home/hem/henemm-infra-wt-frieda-software/tests/test_monitor_frieda_software.py
+- sha256:240a075437f55cf0d7d34c37a24458a1d7f5d97bd61c91b3adb05d22567a8c22  betrieb/software-nachziehen.yml
+- sha256:6d699a6e3ff8d47fb12954a9d4993848e731507fb5bc0515fee52cf85f2ef121  docs/betrieb.md
+- sha256:d3e856404f766d745738e1c52e80df9ae2bd636921cc42ff5c2c10b5ed474c77  engine/tests/test_betrieb.py
+- sha256:dcf8130f92632ec56dce764be0a13d470fbf93a80269a84882c7e9bc81cd91f3  engine/tests/test_software_nachziehen.py
+- sha256:d538b92806d341fda1e73136ab2ad1d6606dfcafe7418503d11eec0a4e0055b9  <infra>/docs/monitoring.md
+- sha256:079879b1e3b12bcfacfbc913d01e1cc819c8191651f692db2670ef2a8fb2487d  <infra>/scripts/monitor.sh
+- sha256:e38b68136e3ff41e1742457c72ba3be32a1167cabe3c0e53c76c4783112b8674  <infra>/tests/test_monitor_frieda_software.py
 
 ## Prüfbasis
 
 - base: 1e983e1a8994836959a57ac44f64341a0e975898
-- blob:c7072c7ac5c75c2eb98a45e8a943f4d5cfb89b32  /home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/betrieb/software-nachziehen.yml
-- blob:dce8d63d3886b9690e1bf7100b71d0ff01e96729  /home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/docs/betrieb.md
-- blob:27d016ba3aa706dee9bcb8b4ef367e93debe84b4  /home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/engine/tests/test_betrieb.py
-- blob:d69ebea8937af310b934ccc0bdef9736bb4f3242  /home/hem/frieda-reist/.claude/worktrees/imperative-scribbling-goose/engine/tests/test_software_nachziehen.py
+- blob:c7072c7ac5c75c2eb98a45e8a943f4d5cfb89b32  betrieb/software-nachziehen.yml
+- blob:dce8d63d3886b9690e1bf7100b71d0ff01e96729  docs/betrieb.md
+- blob:27d016ba3aa706dee9bcb8b4ef367e93debe84b4  engine/tests/test_betrieb.py
+- blob:d69ebea8937af310b934ccc0bdef9736bb4f3242  engine/tests/test_software_nachziehen.py
