@@ -8,6 +8,7 @@ import datetime
 import importlib
 import os
 import re
+import threading
 
 BASIS = ("de", "en")
 VORGABE = "en"          # Sprache einer Person, deren Wunsch nicht erkennbar ist; Reisen ohne Feld sprache bauen mit "de"
@@ -149,7 +150,7 @@ def seite():
         modul = sprache(k)
         ergebnis[k] = {"name": modul.NAME, "locale": modul.LOCALE, "richtung": modul.RICHTUNG,
                        "datum": modul.DATUM, "datum_kurz": modul.DATUM_KURZ, "zeit": modul.ZEIT,
-                       "texte": {s: v for s, v in modul.TEXTE.items() if s.startswith("seite.")}}
+                       "texte": {s: v for s, v in modul.TEXTE.items() if s.startswith(("seite.", "dienst."))}}
     return ergebnis
 
 
@@ -183,3 +184,35 @@ def seite_inhaltswoerter():
     for k in sprachen():
         schluessel |= {s for s in sprache(k).TEXTE if s.startswith("inhalt.")}
     return {s: sorted(inhaltswoerter(s)) for s in sorted(schluessel)}
+
+
+# ---------- Sätze mit Schlüssel (Fehler, Ablehnungen) ----------
+_aufruf = threading.local()   # Sprache des Aufrufs, den dieser Thread gerade bearbeitet
+
+
+def aufruf_sprache(sprache=None):
+    """Sprache der Person im laufenden Aufruf setzen (mit Wert) oder lesen; Vorgabe ist die Sprache des Bestands."""
+    if sprache is not None:
+        _aufruf.sprache = sprache
+    return getattr(_aufruf, "sprache", VORGABE_REISE)
+
+
+class Satz(str):
+    """Ein Satz aus dem Katalog: als Text ist er der deutsche Satz (Bestand, Protokolle, Dateien), dazu trägt er Schlüssel und Werte, aus
+    denen sich der Satz in jeder Sprache bauen lässt (text(sprache)); in f-Strings erscheint er in der Sprache des laufenden Aufrufs."""
+
+    def __new__(cls, text, schluessel=None, werte=None):
+        o = super().__new__(cls, text)
+        o.schluessel, o.werte = schluessel, dict(werte or {})
+        return o
+
+    def text(self, sprache):
+        return t(sprache, self.schluessel, **self.werte) if self.schluessel else str(self)
+
+    def __format__(self, spec):
+        return format(self.text(aufruf_sprache()), spec)
+
+
+def satz(schluessel, **werte):
+    werte = {k: v if isinstance(v, (str, int, float, bool)) or v is None else str(v) for k, v in werte.items()}
+    return Satz(t(VORGABE_REISE, schluessel, **werte), schluessel, werte)

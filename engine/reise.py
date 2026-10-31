@@ -130,22 +130,20 @@ def mindestrolle(aktion, regeln=None):
 
 
 def erlaubt(aktion, rolle, status, bausteine, ziel=None, regeln=None):
-    """Darf diese Rolle jetzt schreiben? -> (True, "") oder (False, Begründung in einfachen Worten).
+    """Darf diese Rolle jetzt schreiben? -> (True, "") oder (False, Begründung in einfachen Worten; ein texte.Satz, der Schlüssel und
+    Werte trägt, damit der Konnektor ihn in der Sprache der Person sagen kann).
     bausteine: eingeschaltete Bausteine der Reise (None: nicht bekannt, nicht prüfen).
     regeln: Spielregeln der Reise (nur für „einladen“ nötig)."""
     a = AKTIONEN[aktion]
     mind = mindestrolle(aktion, regeln)
     if not darf(rolle, mind):
-        return False, (f"Mit diesem Zugang kann man nur lesen (Rolle {rolle or 'unbekannt'}). Dafür braucht man die Rolle "
-                       "mitwirkend." if mind == "mitwirkend" else "Das dürfen nur Organisator:innen.")
+        return False, (texte.satz("schreiben.erlaubt.nur_lesen", rolle=rolle or "unbekannt") if mind == "mitwirkend"
+                       else texte.satz("schreiben.erlaubt.nur_organisator"))
     if a["baustein"] and bausteine is not None and a["baustein"] not in bausteine:
-        return False, f"Der Baustein „{a['baustein']}“ ist bei dieser Reise ausgeschaltet."
+        return False, texte.satz("schreiben.erlaubt.baustein_aus", baustein=a["baustein"])
     schreiben = verhalten(status)["schreiben"]
     if schreiben not in a["ab"]:
-        grund = {"nachlese": "Die Reise ist vorbei (Status danach): Der Plan ist schreibgeschützt, nur Rückmeldungen und "
-                             "Aufgaben gehen noch.",
-                 "nichts": "Die Reise ist archiviert: Es kann nur gelesen werden."}[schreiben]
-        return False, grund + " Ein:e Organisator:in kann den Status zurücksetzen (reise_status_setzen)."
+        return False, texte.satz({"nachlese": "schreiben.erlaubt.danach", "nichts": "schreiben.erlaubt.archiv"}[schreiben])
     return True, ""
 
 

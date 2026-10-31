@@ -124,7 +124,7 @@ def test_seite_liefert_nur_seitentexte():
     s = texte.seite()
     assert list(s)[:2] == ["de", "en"]
     assert s["de"]["locale"] == "de-DE" and s["en"]["richtung"] == "ltr"
-    assert s["de"]["texte"] and all(k.startswith("seite.") for k in s["de"]["texte"])
+    assert s["de"]["texte"] and all(k.startswith(("seite.", "dienst.")) for k in s["de"]["texte"])
     assert s["de"]["texte"]["seite.status.gewaehlt"] == "gewählt"
 
 
@@ -188,8 +188,8 @@ ALLE_DATEIEN = ["vorlage.html"] + PY_DATEIEN
 # Erlaubte Zahl deutscher Literale je Datei. Jedes Paket der Mehrsprachigkeit kürzt seinen Bereich; Einträge dürfen nur
 # kleiner werden, nie größer (docs/auftraege/mehrsprachigkeit/README.md, Regel 5). Am Ende steht überall 0.
 AUSNAHMEN = {
-    "vorlage.html": 2, "konnektor.py": 231, "schreiben.py": 284, "rueckmeldungen.py": 67, "anmeldung.py": 0, "konten.py": 1,
-    "kalender.py": 6, "waechter.py": 21, "routen.py": 99, "bauen.py": 68, "neu.py": 44, "reise.py": 40,
+    "vorlage.html": 2, "konnektor.py": 231, "schreiben.py": 86, "rueckmeldungen.py": 20, "anmeldung.py": 0, "konten.py": 1,
+    "kalender.py": 6, "waechter.py": 21, "routen.py": 99, "bauen.py": 68, "neu.py": 44, "reise.py": 34,
 }
 # Treffer von Sprachweichen und festen Locale-Strings (Grep-Test); ebenfalls nur kleiner werdend
 WEICHEN_AUSNAHMEN = {datei: 0 for datei in ALLE_DATEIEN}
@@ -380,3 +380,35 @@ def test_js_scanner_erkennt_literale():
 if __name__ == "__main__":
     for z, t in literale(sys.argv[1]):
         print(f"{z}: {t[:100]!r}")
+
+
+# ---------- Sätze mit Schlüssel (Fehler, ADR-0006 Punkt 6) ----------
+
+def test_satz_ist_deutsch_als_text_und_sprachfaehig_in_fstrings():
+    s = texte.satz("schreiben.text_wert.1", feld="titel")
+    assert str(s) == "„titel“ fehlt." and s.schluessel == "schreiben.text_wert.1" and s.werte == {"feld": "titel"}
+    assert s.text("en") == "“titel” is missing."
+    texte.aufruf_sprache("en")
+    try:
+        assert f"{s}" == "“titel” is missing."
+    finally:
+        texte.aufruf_sprache(texte.VORGABE_REISE)
+    assert f"{s}" == "„titel“ fehlt."
+
+
+def test_ablehnung_traegt_schluessel_und_werte():
+    import schreiben
+    a = schreiben.Ablehnung("schreiben.entscheiden.3", oid="V-99.z")
+    assert str(a) == "Die Option V-99.z gibt es nicht." and a.text("en") == "The option V-99.z does not exist."
+    assert a.schluessel == "schreiben.entscheiden.3" and a.werte == {"oid": "V-99.z"}
+    alt = schreiben.Ablehnung("Ein fertiger Satz bleibt, wie er ist.")      # alte Aufrufe gelten weiter
+    assert str(alt) == alt.text("en") == "Ein fertiger Satz bleibt, wie er ist." and alt.schluessel is None
+    import reise
+    ok, grund = reise.erlaubt("wert_eintragen", "gast", "planung", None)
+    assert not ok and schreiben.Ablehnung(grund).text("en").startswith("This access is read-only")
+
+
+def test_dienstfehler_tragen_den_code(tmp_path):
+    import rueckmeldungen as rm
+    k = texte.satz("dienst.wunsch_aendern.1")
+    assert str(k) == "Diesen Wunsch gibt es nicht." and k.text("en") == "This wish does not exist."

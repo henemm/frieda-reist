@@ -858,6 +858,8 @@ function T(schluessel, werte) {
   }
   return schluessel;
 }
+// Fehler des Dienstes: Schlüssel und Werte (fehler_code, werte) in der Sprache der Hülle; ältere Antworten tragen nur den Satz
+function dienstFehler(o) { return o && o.fehler_code ? T(o.fehler_code, o.werte || {}) : o && o.fehler; }
 // Alle Texte unter einem Präfix als Wörterbuch (Rest des Schlüssels -> Text); Englisch füllt, was die Sprache nicht hat
 function gruppe(praefix) {
   const aus = {}, p = praefix + ".";
@@ -1524,7 +1526,7 @@ document.addEventListener("submit", async e => {
     const r = await fetch(BL_API + "/" + f.dataset.blForm,
       {method: "POST", body: datei, headers: {"Content-Type": datei.type || "application/octet-stream", "X-Frieda-Datei": encodeURIComponent(datei.name)}});
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw d.fehler || "abgelehnt";
+    if (!r.ok) throw dienstFehler(d) || T("seite.fehler.abgelehnt");
     await blLaden();
     route(true);
   } catch (x) { m.textContent = typeof x === "string" ? x : T("seite.beleg.keine_verbindung"); }
@@ -1539,7 +1541,7 @@ document.addEventListener("click", async e => {
     const r = await fetch(BL_API + "/" + id, {method: "PATCH", headers: {"Content-Type": "application/json"},
       body: JSON.stringify(s ? {sichtbar: s.dataset.wert} : {zurueckziehen: true})});
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw d.fehler || "abgelehnt";
+    if (!r.ok) throw dienstFehler(d) || T("seite.fehler.abgelehnt");
     await blLaden();
     route(true);
   } catch (x) { alert(typeof x === "string" ? x : T("seite.fehler.keine_verbindung")); }
@@ -3753,7 +3755,7 @@ async function senden(e) {
   const r = await fetch(API, {method: "POST", headers: {"Content-Type": "application/json"},
     body: JSON.stringify({name: e.name, art: e.art, ziel: e.ziel, text: e.text, quelle: e.quelle || ""})});
   if (r.status === 401) throw {anmelden: true};
-  if (r.status === 400 || r.status === 403 || r.status === 413) { const f = await r.json().catch(() => ({})); throw {abgelehnt: f.fehler || "abgelehnt"}; }
+  if (r.status === 400 || r.status === 403 || r.status === 413) { const f = await r.json().catch(() => ({})); throw {abgelehnt: dienstFehler(f) || T("seite.fehler.abgelehnt")}; }
   if (!r.ok) throw {netz: true};
   return r.json();
 }
@@ -3928,8 +3930,8 @@ async function brAendern(rid, body) {
   catch (e) { throw {netz: true}; }
   const d = await r.json().catch(() => ({}));
   if (r.status >= 500 || r.status === 429 || (r.status === 404 && !d.fehler)) throw {netz: true};   // 429: kurz zu viele, später noch einmal
-  if (r.status === 401) throw {anmelden: true, abgelehnt: d.fehler || T("seite.konto.bitte_anmelden")};
-  if (!r.ok) throw {abgelehnt: d.fehler || "abgelehnt"};
+  if (r.status === 401) throw {anmelden: true, abgelehnt: dienstFehler(d) || T("seite.konto.bitte_anmelden")};
+  if (!r.ok) throw {abgelehnt: dienstFehler(d) || T("seite.fehler.abgelehnt")};
   if (BR) { const w = BR.wuensche.find(x => x.id === rid); if (w) Object.assign(w, {punkte: d.punkte, eingeplant: d.eingeplant, erlebt: d.erlebt, verlauf: d.verlauf}); merke("brett", BR); }
   return d;
 }
@@ -4179,7 +4181,7 @@ async function agSenden(methode, url, body) {
     r = await fetch(url, {method: methode, headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
   } catch (e) { throw T("seite.aufgabe.offline_aendern"); }
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw r.status >= 500 || r.status === 404 && !d.fehler ? T("seite.fehler.dienst_nicht_erreichbar") : (d.fehler || "abgelehnt");
+  if (!r.ok) throw r.status >= 500 || r.status === 404 && !d.fehler ? T("seite.fehler.dienst_nicht_erreichbar") : (dienstFehler(d) || T("seite.fehler.abgelehnt"));
   AG = [...AG.filter(a => a.id !== d.id), d].sort((a, b) => SORT_ZAHL.compare(a.id, b.id));
   AG_OK = true; merke("aufgaben", AG);
   return d;

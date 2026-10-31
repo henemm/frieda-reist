@@ -1089,7 +1089,8 @@ def schreib_anfrage(reise, werkzeug_, anfrage):
             return json.loads(r.read()), None
     except urllib.error.HTTPError as e:
         try:
-            return None, json.loads(e.read()).get("fehler", f"Fehler {e.code}")
+            antwort = json.loads(e.read())
+            return None, texte.Satz(antwort.get("fehler", f"Fehler {e.code}"), antwort.get("fehler_code"), antwort.get("werte"))
         except (json.JSONDecodeError, AttributeError):
             return None, f"Fehler {e.code}"
     except (urllib.error.URLError, OSError):
@@ -2957,6 +2958,7 @@ class Dienst(BaseHTTPRequestHandler):
         if zugang is None:
             return self._senden(404, {"fehler": "unbekannt"})
         zugang = {**zugang, "sprache": zugang.get("sprache") or sprache_des_zugangs(zugang)}
+        texte.aufruf_sprache(zugang["sprache"])
         try:
             laenge = int(self.headers.get("Content-Length", "0"))
         except ValueError:
