@@ -96,8 +96,9 @@ aufenthalte:
       eintritt: {wert: "6 €", quelle: "erfunden (Beispiel)", geprueft: 2026-10-29}
 
 # Buchungen (B-…, #76): eigenes Ding zu einer Unterkunft, einem Aufenthalt oder einer Strecke (fuer, auch mehrere).
-# Felder: status (angefragt | gebucht | storniert), nummer, bei, preis, bezahlt, frist (+ frist_was), storno (+ storno_bis),
-# gebucht_am, wer, quelle (Herkunft, Pflicht), notiz, verlauf. Der Beleg (PDF, Bild) liegt nie im Repo: Die Person hängt ihn
+# Felder: status (angefragt | gebucht | storniert), nummer, bei, preis, zahlung (Zahlstand, #166), bezahlt (Einzelheiten),
+# frist (+ frist_was), storno (+ storno_bis), gebucht_am, merkmale (Merkmale der Buchung, je Art in plan/arten.yaml
+# buchung_merkmale), wer, quelle (Herkunft, Pflicht), notiz, verlauf. Der Beleg (PDF, Bild) liegt nie im Repo: Die Person hängt ihn
 # auf der Seite an die Buchung (Rückmeldedienst, docs/betrieb.md „Belege“). Alle Angaben hier sind erfunden.
 buchungen:
   B-01:
@@ -106,7 +107,8 @@ buchungen:
     nummer: "HE-2027-0415"
     bei: "direkt beim Hotel (Mail)"
     preis: "120 € für eine Nacht"
-    bezahlt: "vor Ort"
+    zahlung: angezahlt   # Zahlstand (#166): offen | angezahlt | bezahlt | vor_ort | inklusive | erstattet
+    bezahlt: "Anzahlung 30 €, Rest vor Ort (Beispielwert)"
     storno: "kostenlos bis 3 Tage vorher, danach eine Nacht"
     storno_bis: 2027-05-11
     gebucht_am: 2026-10-29
@@ -120,11 +122,13 @@ buchungen:
     nummer: "DB-ABC123"
     bei: "bahn.de"
     preis: "19,90 € für zwei Personen"
-    bezahlt: "ja, Kreditkarte"
+    zahlung: bezahlt
+    bezahlt: "Kreditkarte"
     frist: 2027-05-13
     frist_was: "Ticket in die App laden"
     storno: "Sparpreis, keine Erstattung"
     gebucht_am: 2026-10-29
+    merkmale: {ticketart: Sparpreis}   # Merkmal der Buchung, festgelegt an der Art Bahn (plan/arten.yaml, Beispielwert)
     wer: Karl
     quelle: "Buchungsbestätigung bahn.de vom 29.10.2026 (erfunden, Beispiel)"
     verlauf:
@@ -135,6 +139,8 @@ buchungen:
     nummer: "HE-2027-0388"
     bei: "direkt beim Hotel (Mail)"
     preis: "95 € für eine Nacht (Beispielwert)"
+    zahlung: erstattet
+    bezahlt: "Anzahlung 20 € zurück (Beispielwert)"
     storno: "kostenlos bis 3 Tage vorher"
     gebucht_am: 2026-10-27
     wer: Ida
