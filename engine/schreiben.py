@@ -73,7 +73,8 @@ HINWEISE_HOECHSTENS = 10   # neue Warnungen des Probebaus in der Antwort (Issue 
 ARTEN_KOPF = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). {herkunft}\n"
               "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (Gliederung des\n"
               "# Lesetexts: je Rubrik name und hilfe); je Merkmal: name, typ,\n"
-              "# werte, veraenderlich, stufe (pflicht | empfohlen | angeboten | aus), auto, hilfe, frage, auch.\n")
+              "# werte, veraenderlich, stufe (pflicht | empfohlen | angeboten | aus), auto, hilfe, frage, auch; buchung_merkmale\n"
+              "# (was erst durch das Buchen entsteht, an der Buchung): je Merkmal name, typ, werte, einheit, hilfe, frage.\n")
 GRUNDFORM_WORT = {"aufenthalt": "Aufenthalt", "bewegung": "Bewegung", "folge": "Folge"}
 
 
@@ -333,7 +334,7 @@ def art_definieren(reise_dir, wer, args):
             raise Ablehnung(f"Die Art „{a.get('name', key)}“ ({key}) gibt es schon, und nichts daran soll sich ändern. Merkmale "
                             "ändert merkmal_definieren.")
         arten[key] = {k: a[k] for k in ("grundform", "name", "farbe", "symbol", "buchbar", "summiert", "beschreibung", "merkmale",
-                                        "lesetext") if k in a}
+                                        "lesetext", "buchung_merkmale") if k in a}
         titel = f"Art „{a['name']}“ ({key}) geändert"
         text = f"Art „{a['name']}“ ({key}) geändert: " + ", ".join(geaendert) + "."
     arten_speichern(reise_dir, arten, wer)
@@ -466,14 +467,96 @@ def rolle_pruefen(merkmale, key, rolle, typ):
                         "erst dort die Rolle nehmen (rolle: keine).")
 
 
+def buchung_merkmal_definieren(reise_dir, wer, args, arten, art):
+    """Ein Merkmal der Buchungen einer Art anlegen oder ändern (#166): Name, Typ (Auswahl mit Werten), Einheit, Hilfe, Frage.
+    Keine Stufe, Rolle oder Prüfdatum: der Wert ist eine gebuchte Tatsache mit der Herkunft der Buchung. -> (Titel, Text)."""
+    from routen import TYPEN, art_schluessel
+    for f in ("stufe", "veraenderlich", "rolle", "auch"):
+        if args.get(f) not in (None, "", [], False):
+            raise Ablehnung(f"„{f}“ gibt es bei Merkmalen der Buchung nicht: ihr Wert ist eine gebuchte Tatsache, er erbt die "
+                            "Herkunft der Buchung und braucht kein Prüfdatum.")
+    a = arten[art]
+    merkmale = a.get("buchung_merkmale") if isinstance(a.get("buchung_merkmale"), dict) else {}
+    name = text_wert(args, "bezeichnung", laenge=80)
+    key = text_wert(args, "merkmal", laenge=40)
+    if key is None:
+        if name is None:
+            raise Ablehnung("„bezeichnung“ fehlt (das Merkmal braucht einen Namen, z. B. Ticketart).")
+        key = art_schluessel(name)
+    key = key.lower()
+    if not SCHLUESSEL_MUSTER.match(key):
+        raise Ablehnung(f"„{key}“ taugt nicht als Schlüssel eines Merkmals (Kleinbuchstaben, Ziffern, Unterstrich).")
+    typ = text_wert(args, "typ", laenge=20)
+    if typ is not None and typ.lower() not in TYPEN:
+        raise Ablehnung(f"„typ“ muss einer von {', '.join(sorted(TYPEN))} sein.")
+    werte = liste_wert(args, "werte")
+    einheit, hilfe, frage, grund = (text_wert(args, f) for f in ("einheit", "hilfe", "frage", "grund"))
+    if key not in merkmale:
+        if name is None:
+            raise Ablehnung("„bezeichnung“ fehlt (das Merkmal braucht einen Namen, z. B. Ticketart).")
+        typ = (typ or "text").lower()
+        if typ == "auswahl" and not werte:
+            raise Ablehnung("Ein Merkmal vom Typ auswahl braucht „werte“ (die möglichen Antworten, z. B. Sparpreis | Flexpreis).")
+        if werte and typ != "auswahl":
+            raise Ablehnung("„werte“ gibt es nur beim Typ auswahl.")
+        d = {"name": name, "typ": typ}
+        for f, v in (("werte", werte), ("einheit", einheit), ("hilfe", hilfe), ("frage", frage)):
+            if v:
+                d[f] = v
+        merkmale[key] = d
+        titel = f"Merkmal der Buchung „{name}“ ({key}) an {a.get('name', art)} angelegt"
+        text = (f"Merkmal der Buchung „{name}“ ({key}) an der Art {a.get('name', art)} angelegt: Typ {typ}"
+                + (f" ({' | '.join(werte)})" if werte else "") + ". Werte trägst du mit buchung_anlegen oder buchung_aendern "
+                "(merkmale) an der Buchung ein; sie erben deren Herkunft.")
+    else:
+        d = merkmale[key]
+        geaendert = []
+        if typ is not None and typ.lower() != d.get("typ", "text"):
+            if typ.lower() == "auswahl" and not (werte or d.get("werte")):
+                raise Ablehnung("Der Typ auswahl braucht „werte“.")
+            geaendert.append(f"Typ {typ.lower()}")
+            d["typ"] = typ.lower()
+            if typ.lower() != "auswahl":
+                d.pop("werte", None)
+        if werte is not None:
+            if d.get("typ", "text") != "auswahl":
+                raise Ablehnung("„werte“ gibt es nur beim Typ auswahl.")
+            if werte != d.get("werte"):
+                geaendert.append("Werte " + " | ".join(werte))
+                d["werte"] = werte
+        if name is not None and name != d.get("name"):
+            geaendert.append(f"Name „{d.get('name')}“ → „{name}“")
+            d["name"] = name
+        for f, v in (("einheit", einheit), ("hilfe", hilfe), ("frage", frage)):
+            if v is not None and v != d.get(f):
+                geaendert.append(f.capitalize())
+                d[f] = v
+        if not geaendert:
+            raise Ablehnung(f"Das Merkmal der Buchung „{d.get('name', key)}“ ({key}) gibt es an {a.get('name', art)} schon, und nichts "
+                            "daran soll sich ändern.")
+        merkmale[key] = {k: d[k] for k in ("name", "typ", "werte", "einheit", "hilfe", "frage") if k in d}
+        titel = f"Merkmal der Buchung „{d['name']}“ ({key}) an {a.get('name', art)} geändert"
+        text = f"Merkmal der Buchung „{d['name']}“ ({key}) an der Art {a.get('name', art)} geändert: " + ", ".join(geaendert) + "."
+    a["buchung_merkmale"] = merkmale
+    arten_speichern(reise_dir, arten, wer)
+    return titel, text + (f" Grund: {grund}." if grund else "")
+
+
 def merkmal_definieren(reise_dir, wer, args):
-    """Ein Merkmal einer Art anlegen oder ändern (umbenennen, Stufe, abschalten mit Stufe aus). -> (Titel, Text)."""
+    """Ein Merkmal einer Art anlegen oder ändern (umbenennen, Stufe, abschalten mit Stufe aus). fuer: ding (Vorgabe, das
+    Angebot) oder buchung (Merkmale der Buchungen dieser Art, #166). -> (Titel, Text)."""
     from routen import ROLLEN, STUFEN, TYPEN, art_schluessel, stufe_schluessel, stufe_wort
     arten = arten_laden(reise_dir)
     art = (text_wert(args, "art", pflicht=True, laenge=40) or "").lower()
     if art not in arten:
         raise Ablehnung(f"Die Art „{art}“ gibt es bei dieser Reise nicht" + (f" (vorhanden: {', '.join(arten)})" if arten else "")
                         + ". Erst mit art_definieren anlegen.")
+    fuer = (text_wert(args, "fuer", laenge=20) or "ding").lower()
+    if fuer not in ("ding", "buchung"):
+        raise Ablehnung("„fuer“ ist ding (Vorgabe: das Angebot, was für jeden Kandidaten gilt) oder buchung (was erst durch das "
+                        "Buchen entsteht, z. B. Ticketart).")
+    if fuer == "buchung":
+        return buchung_merkmal_definieren(reise_dir, wer, args, arten, art)
     a = arten[art]
     merkmale = a.get("merkmale") if isinstance(a.get("merkmale"), dict) else {}
     name = text_wert(args, "bezeichnung", laenge=80)
@@ -1753,6 +1836,11 @@ def einstellung_setzen(reise_dir, wer, args, heute=None):
                 raise Ablehnung(f"Unbekannte Regel „{k}“ (bekannt: {', '.join(VORGABEN)}).")
             if isinstance(v, str) and v.strip().lstrip("-").isdigit():
                 v = int(v)
+            if isinstance(VORGABEN[k], bool):   # ja/nein-Regeln (waechter_zahlung)
+                if isinstance(v, str) and v.strip().lower() in ("true", "ja", "an", "false", "nein", "aus"):
+                    v = v.strip().lower() in ("true", "ja", "an")
+                if not isinstance(v, bool):
+                    raise Ablehnung(f"regeln.{k} ist true oder false.")
             if r.get(k) == v:
                 continue
             geaendert.append(f"regeln.{k} „{r.get(k, VORGABEN[k])}“ → „{v}“")
@@ -1827,7 +1915,93 @@ BUCHUNG_TEXTE = {"nummer": 80, "bei": 120, "preis": 120, "bezahlt": 200, "frist_
 BUCHUNG_WORTE = {"fuer": "Gehört zu", "status": "Status", "nummer": "Nummer", "bei": "Gebucht bei", "preis": "Preis", "bezahlt": "Bezahlt",
                  "frist": "Frist", "frist_was": "Was bis zur Frist", "storno": "Stornoregel", "storno_bis": "Stornofrist",
                  "gebucht_am": "Gebucht am", "quelle": "Herkunft", "notiz": "Notiz", "ab": "Ab", "ab_was": "Was ab dann geht",
-                 "personen": "Reisende", "preise": "Preise je Ding"}
+                 "personen": "Reisende", "preise": "Preise je Ding", "zahlung": "Zahlung", "merkmale": "Merkmale"}
+
+
+def zahlung_wert(args):
+    """zahlung (Zahlstand, #166) aus der Anfrage -> Schlüssel, "" (leer: entfernen) oder None (nicht angegeben)."""
+    from routen import ZAHLUNG, ZAHLUNG_ALIAS, ZAHLUNG_WORTE, zahlung_schluessel
+    if args.get("zahlung") is None:
+        return None
+    v = text_wert(args, "zahlung", laenge=20)
+    if v is None:
+        return ""
+    z = zahlung_schluessel(v)
+    if z is None:
+        raise Ablehnung(f"„zahlung“ muss einer von {', '.join(ZAHLUNG)} sein (englisch: {', '.join(ZAHLUNG_ALIAS)}): "
+                        f"{'; '.join(ZAHLUNG_WORTE[k] for k in ZAHLUNG)}. Einzelheiten wie „Anzahlung 50 €, Rest bis 1.2.“ "
+                        "stehen im Text bezahlt.")
+    return z
+
+
+def buchung_merkmal_defs(route, fuer):
+    """Merkmale, die eine Buchung tragen darf (#166): die Merkmale der Buchungen aller Arten ihrer Dinge (plan/arten.yaml,
+    buchung_merkmale), in der Reihenfolge der Definition. -> ({Merkmal: Definition}, [Arten])"""
+    katalog = route.get("buchung_merkmale") or {}
+    defs, arten = {}, []
+    for x in fuer:
+        d = (route.get("unterkuenfte") or {}).get(x) or (route.get("aufenthalte") or {}).get(x) or {}
+        a = d.get("art") or ((route.get("strecken") or {}).get(x) or {}).get("art_schluessel")
+        if a and a not in arten:
+            arten.append(a)
+            for k in katalog.get(a) or []:
+                defs.setdefault(k["id"], k)
+    return defs, arten
+
+
+def buchung_merkmale_wert(args, route, fuer):
+    """merkmale einer Buchung aus der Anfrage: {Merkmal: Wert} -> {Schlüssel: Wert oder "" (entfernen)} oder None.
+    Erlaubt sind die Merkmale der Buchungen der Arten ihrer Dinge; Auswahl nur mit einem der Werte, Zahl als Zahl."""
+    v = args.get("merkmale")
+    if v is None:
+        return None
+    if not isinstance(v, dict):
+        raise Ablehnung("„merkmale“ ist {Merkmal: Wert}, z. B. {\"ticketart\": \"Sparpreis\"}.")
+    defs, arten = buchung_merkmal_defs(route, fuer)
+    if not defs:
+        raise Ablehnung(f"Für Buchungen der Art {', '.join(arten) or 'dieser Dinge'} sind keine Merkmale festgelegt. Erst mit "
+                        "merkmal_definieren (fuer: buchung) an der Art anlegen; was zum Angebot gehört (Preis laut Website, "
+                        "Frühstück), ist ein Merkmal des Dings (wert_eintragen).")
+    aus = {}
+    for k, w in v.items():
+        key = str(k).strip().lower()
+        if key not in defs:
+            key = next((x for x, d in defs.items() if str(d.get("name", "")).casefold() == str(k).strip().casefold()), None)
+        if key is None:
+            moeglich = ", ".join(f"{x} ({d['name']})" for x, d in defs.items())
+            raise Ablehnung(f"„{k}“ ist kein Merkmal der Buchung bei {', '.join(arten)} (möglich: {moeglich}). "
+                            "Ein neues legt merkmal_definieren mit fuer: buchung an.")
+        d = defs[key]
+        if w is None or (isinstance(w, str) and not w.strip()):
+            aus[key] = ""
+            continue
+        if isinstance(w, (dict, list)):
+            raise Ablehnung(f"{d['name']}: der Wert ist ein Text oder eine Zahl.")
+        typ = d.get("typ", "text")
+        if typ == "auswahl":
+            treffer = next((x for x in d.get("werte") or [] if str(x).casefold() == str(w).strip().casefold()), None)
+            if treffer is None:
+                raise Ablehnung(f"{d['name']}: „{w}“ steht nicht unter den Werten ({' | '.join(map(str, d.get('werte') or []))}).")
+            aus[key] = treffer
+        elif typ == "zahl":
+            t = str(w).strip().replace(",", ".")
+            try:
+                z = float(t)
+            except ValueError:
+                raise Ablehnung(f"{d['name']} ist eine Zahl, „{w}“ ist keine.")
+            aus[key] = int(z) if z.is_integer() else z
+        else:
+            aus[key] = " ".join(str(w).split())[:200]
+    return aus
+
+
+def merkmale_text(werte, defs):
+    """Merkmale der Buchung für Antwort und Verlauf: „Ticketart: Sparpreis, Sitzplätze: 2“."""
+    teile = []
+    for k, v in werte.items():
+        d = defs.get(k) or {}
+        teile.append(f"{d.get('name', k)}: {v}" + (f" {d['einheit']}" if d.get("einheit") else ""))
+    return ", ".join(teile)
 
 
 def buchung_personen(args, reise_dir):
@@ -1864,8 +2038,9 @@ def buchung_preise(args, fuer):
 
 
 def buchung_anlegen(reise_dir, wer, args, heute=None):
-    """Eine Buchung anlegen (neue B-ID): zu welchen Dingen, Status, Nummer, Anbieter, Preis, Frist, Stornoregel, Herkunft. -> (Titel, Text)."""
-    from routen import BUCHUNG_STATUS
+    """Eine Buchung anlegen (neue B-ID): zu welchen Dingen, Status, Nummer, Anbieter, Preis, Zahlstand, Frist, Stornoregel, Merkmale
+    der Buchung, Herkunft. -> (Titel, Text)."""
+    from routen import BUCHUNG_STATUS, ZAHLUNG_WORTE
     heute = heute or datetime.date.today()
     route = route_stand(reise_dir)
     roh = routen_laden(reise_dir)
@@ -1874,10 +2049,16 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
     if status not in BUCHUNG_STATUS:
         raise Ablehnung(f"„status“ muss {', '.join(BUCHUNG_STATUS)} sein.")
     quelle = text_wert(args, "quelle", pflicht=True, laenge=600)
+    zahlung = zahlung_wert(args)
+    if zahlung == "erstattet" and status != "storniert":
+        raise Ablehnung("Zahlung erstattet gibt es nur bei einer stornierten Buchung.")
+    mk = {k: v for k, v in (buchung_merkmale_wert(args, route, fuer) or {}).items() if v != ""}
     d = {"fuer": fuer, "status": status}
     for k, laenge in BUCHUNG_TEXTE.items():
         if k == "notiz":
             continue
+        if k == "bezahlt" and zahlung:   # der Zahlstand steht vor seinen Einzelheiten
+            d["zahlung"] = zahlung
         if (v := text_wert(args, k, laenge=laenge)):
             d[k] = v
     for k in ("frist", "storno_bis", "gebucht_am", "ab"):
@@ -1897,6 +2078,8 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
     grund = text_wert(args, "grund")
     bid = neue_id(reise_dir, "B")
     knoten = block_map(d)
+    if mk:   # Merkmale der Buchung in einer Zeile, vor wer
+        knoten.insert(list(knoten).index("wer"), "merkmale", fliess_map(mk))
     from ruamel.yaml.comments import CommentedSeq
     verlauf = CommentedSeq()
     verlauf.append(fliess_map({"datum": heute, "wer": wer["name"], "was": "angelegt", **({"grund": grund} if grund else {})}))
@@ -1908,6 +2091,8 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
     titel = f"{bid} Buchung {status}: {namen}"
     text = (f"Buchung {bid} angelegt ({status}) für {namen}" + (f", Nr. {d['nummer']}" if d.get("nummer") else "")
             + (f", bei {d['bei']}" if d.get("bei") else "") + (f", Preis {d['preis']}" if d.get("preis") else "")
+            + (f", Zahlung {ZAHLUNG_WORTE[zahlung]}" if zahlung else "") + (f" ({d['bezahlt']})" if d.get("bezahlt") else "")
+            + (f", {merkmale_text(mk, buchung_merkmal_defs(route, fuer)[0])}" if mk else "")
             + (f", Frist {d['frist'].strftime('%-d.%-m.%Y')}" + (f" ({d['frist_was']})" if d.get("frist_was") else "") if d.get("frist") else "")
             + (f", Storno: {d['storno']}" if d.get("storno") else "") + (f" (bis {d['storno_bis'].strftime('%-d.%-m.%Y')})" if d.get("storno_bis") else "")
             + (f", Ab {d['ab'].strftime('%-d.%-m.%Y')}" + (f" ({d['ab_was']})" if d.get("ab_was") else "") if d.get("ab") else "")
@@ -1925,7 +2110,7 @@ def buchung_dingname(roh, route, x):
 def buchung_aendern(reise_dir, wer, args, heute=None):
     """Felder einer Buchung ändern (Status, Nummer, Frist, Storno …); jede Änderung bekommt einen Verlaufseintrag mit Person,
     Datum und Grund. Leerer Text entfernt ein Feld. -> (Titel, Text)."""
-    from routen import BUCHUNG_STATUS
+    from routen import BUCHUNG_STATUS, ZAHLUNG_WORTE
     heute = heute or datetime.date.today()
     bid = (text_wert(args, "ziel", pflicht=True, laenge=10) or "").strip().upper()
     if not re.fullmatch(r"B-\d+", bid):
@@ -1990,13 +2175,47 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
             kurz.append("Reisende")
             (knoten.__setitem__("personen", block_map(pers)) if pers else knoten.pop("personen", None))
     fuer_jetzt = [knoten["fuer"]] if isinstance(knoten.get("fuer"), str) else list(knoten.get("fuer") or [])
+    zahlung = zahlung_wert(args)
+    if zahlung is not None:
+        alt_z = knoten.get("zahlung")
+        if zahlung != (alt_z or ""):
+            if zahlung:
+                geaendert.append(f"Zahlung „{ZAHLUNG_WORTE.get(alt_z, alt_z)}“ → „{ZAHLUNG_WORTE[zahlung]}“" if alt_z
+                                 else f"Zahlung „{ZAHLUNG_WORTE[zahlung]}“")
+                if "zahlung" not in knoten and "bezahlt" in knoten:   # vor seinen Einzelheiten
+                    knoten.insert(list(knoten).index("bezahlt"), "zahlung", zahlung)
+                else:
+                    knoten["zahlung"] = zahlung
+            else:
+                geaendert.append(f"Zahlung entfernt (war „{ZAHLUNG_WORTE.get(alt_z, alt_z)}“)")
+                del knoten["zahlung"]
+            kurz.append("Zahlung")
+    if knoten.get("zahlung") == "erstattet" and knoten.get("status", "gebucht") != "storniert":
+        raise Ablehnung("Zahlung erstattet gibt es nur bei einer stornierten Buchung.")
+    mk = buchung_merkmale_wert(args, route, fuer_jetzt)
+    if mk is not None:
+        defs = buchung_merkmal_defs(route, fuer_jetzt)[0]
+        alt_mk = dict(knoten.get("merkmale") or {})
+        neu_mk = {k: v for k, v in {**alt_mk, **mk}.items() if v != ""}
+        if neu_mk != alt_mk:
+            weg = [k for k in alt_mk if k not in neu_mk]
+            anders = {k: v for k, v in neu_mk.items() if alt_mk.get(k) != v}
+            geaendert.append("Merkmale " + "; ".join(([merkmale_text(anders, defs)] if anders else [])
+                                                     + [f"{(defs.get(k) or {}).get('name', k)} entfernt" for k in weg]))
+            kurz.append(", ".join((defs.get(k) or {}).get("name", k) for k in [*anders, *weg]))
+            if neu_mk and "merkmale" in knoten:
+                knoten["merkmale"] = fliess_map(neu_mk)
+            elif neu_mk:
+                knoten.insert(list(knoten).index("wer") if "wer" in knoten else len(knoten), "merkmale", fliess_map(neu_mk))
+            else:
+                knoten.pop("merkmale", None)
     preise = buchung_preise(args, fuer_jetzt)
     if preise is not None and dict(knoten.get("preise") or {}) != preise:
         geaendert.append("Preise je Ding " + (", ".join(f"{k} {v}" for k, v in preise.items()) or "entfernt"))
         kurz.append("Preise je Ding")
         (knoten.__setitem__("preise", fliess_map(preise)) if preise else knoten.pop("preise", None))
     if not geaendert:
-        raise Ablehnung(f"Nichts zu ändern an {bid} (änderbar: fuer, status, {', '.join(BUCHUNG_TEXTE)}, quelle, frist, storno_bis, gebucht_am, ab, personen, preise).")
+        raise Ablehnung(f"Nichts zu ändern an {bid} (änderbar: fuer, status, {', '.join(BUCHUNG_TEXTE)}, zahlung, quelle, frist, storno_bis, gebucht_am, ab, personen, preise, merkmale).")
     from ruamel.yaml.comments import CommentedSeq
     verlauf = knoten.get("verlauf")
     if verlauf is None:
