@@ -49,6 +49,10 @@ FR_ADRESSE=https://reisen.example.org
 # Leer: keine Nachrichten. (leer)
 #FR_MELDEN=betrieb/melden.sh
 
+# Veröffentlichen rot (Tests der Software rot oder Bau einer Reise gescheitert): nach so vielen Minuten Rot geht einmal je
+# Rot-Phase ein Alarm an den Betreiber (FR_MELDEN), bei roten Reisen dazu eine Meldung an deren Organisator:innen. (30)
+#FR_ROT_MELDEN_NACH_MINUTEN=30
+
 # nginx: Ordner der Bausteine und Befehl für Rechte (leer = ohne sudo). (/etc/nginx/snippets, sudo -n)
 #FR_NGINX_SNIPPETS=/etc/nginx/snippets
 #FR_SUDO=sudo -n

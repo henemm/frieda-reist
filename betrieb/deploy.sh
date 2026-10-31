@@ -2,6 +2,8 @@
 # Baut eine Reise-Seite und legt sie in <FR_SEITEN>/<reise>/ ab (nginx liefert von dort aus), bringt Rückmeldedienst
 # und Konnektor auf den Stand der Software und prüft, dass alles antwortet (docs/betrieb.md, Veröffentlichen).
 # Aufruf:  frieda/betrieb/deploy.sh <reise>
+# Exit:    0 gelungen, 2 Bau dieser Reise gescheitert, 1 alles andere (Reise oder Ordner fehlt, ungesicherte Änderungen,
+#          Prüfungen rot, Dienste nicht bereit, Kopieren gescheitert)
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
 
@@ -25,12 +27,16 @@ SB_MODULE="schreiben.py konten.py reise.py instanz.py kalender.py"
 if ! git -C "$WURZEL" diff --quiet HEAD -- engine "reisen/$REISE" || [ -n "$(git -C "$WURZEL" ls-files --others --exclude-standard -- engine "reisen/$REISE")" ]; then
   echo "FEHLER: ungesicherte Änderungen in engine/ oder reisen/$REISE. Erst committen, dann veröffentlichen."; exit 1
 fi
-"$FR_PYTHON" "$WURZEL/engine/bauen.py" --reisen "$WURZEL/reisen" --ziel "$WURZEL/dist" "$REISE"
-# Prüfungen; veroeffentlichen.sh prüft einmal für alle Reisen und setzt FR_GEPRUEFT auf den geprüften Stand
+# Bau: der erste Schritt mit Wirkung. Scheitert er (Baufehler dieser Reise, deterministisch), endet deploy.sh mit 2;
+# veroeffentlichen.sh macht dann mit den anderen Reisen weiter, die Seite bleibt auf ihrem letzten guten Stand.
+# Warnungen im Plan sperren nie (bauen.py endet dann mit 0).
+"$FR_PYTHON" "$WURZEL/engine/bauen.py" --reisen "$WURZEL/reisen" --ziel "$WURZEL/dist" "$REISE" \
+  || { echo "FEHLER: Bau von $REISE gescheitert, die Seite bleibt auf dem letzten guten Stand."; exit 2; }
+# Prüfungen nur der Software (engine/tests); tests/ des Reisen-Repos prüft Inhalt und sperrt nie (docs/betrieb.md).
+# veroeffentlichen.sh prüft einmal für alle Reisen und setzt FR_GEPRUEFT auf den geprüften Stand
 if [ "${FR_GEPRUEFT:-}" != "$(git -C "$WURZEL" rev-parse HEAD)" ]; then
   pruef_tmp="$(mktemp -d)"   # eigener Ordner für die Testdateien, Grund in veroeffentlichen.sh
-  "$FR_PYTHON" -m pytest "$WURZEL/engine/tests" $( [ -d "$WURZEL/tests" ] && echo "$WURZEL/tests" ) -q --basetemp "$pruef_tmp" \
-    || { rm -rf "$pruef_tmp"; exit 1; }
+  "$FR_PYTHON" -m pytest "$WURZEL/engine/tests" -q --basetemp "$pruef_tmp" || { rm -rf "$pruef_tmp"; exit 1; }
   rm -rf "$pruef_tmp"
 fi
 

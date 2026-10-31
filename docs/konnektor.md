@@ -54,6 +54,7 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `wissen_aendern` | Mitwirkende, Organisator:innen | einen W-Abschnitt berichtigen: Inhalt ersetzen (Herkunft Pflicht) oder umbenennen (ID bleibt), mit Grund; der Probebau lehnt ab, wenn andere Dateien Unterabschnitte oder Fußnoten daraus brauchen |
 | `lesetext_schreiben` | Mitwirkende, Organisator:innen | den Lesetext einer Etappe (Abschnitt Zusammenfassung, „Der Weg“) nach der Gliederung ihrer Art schreiben oder ersetzen, Herkunft Pflicht; fremde Stichworte lehnt der Schreibweg ab |
 | `reise_aendern` | Organisator:innen | Eckdaten: Titel, Untertitel, Kurzname, Zeitraum, mit Grund; Verlauf in `reise.yaml` unter `verlauf` |
+| `start_ende_setzen` | Organisator:innen | Start und Ende des Plans (`start`, `ende` in `plan/routen.yaml`): Datum und Ort, leerer Text entfernt das Ende; mit Grund, Verlauf in `reise.yaml`; ein neues Startdatum verschiebt die Daten aller Tage |
 | `plan_anlegen`, `plan_aendern` | Organisator:innen | benannte Pläne P-… (feste Kombination von Optionen, „Varianten“): Kurzname, Titel, Farbe, Auswahl, Dafür, Dagegen; anlegen mit Herkunft |
 | `merkmal_zusammenfuehren` | Organisator:innen | zwei Merkmale einer Art zusammenführen: Werte umhängen, das alte entfällt und wird weiterer Name des bleibenden; mit Grund |
 | `arten_uebernehmen` | Organisator:innen | Arten einer anderen Reise derselben Person als Kopie übernehmen (nur fehlende, nur auf ausdrückliche Nachfrage; Product Owner 28.10.2026) |

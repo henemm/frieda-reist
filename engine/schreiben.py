@@ -67,7 +67,9 @@ AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "k
             "buchung_anlegen": "buchung", "buchung_aendern": "buchung",
             "tag_anlegen": "plan", "termin_setzen": "plan", "wahlstelle_aendern": "plan", "option_aendern": "alternative",
             "wissen_aendern": "wissen", "lesetext_schreiben": "wissen", "reise_aendern": "einstellung", "plan_anlegen": "plan",
-            "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch"}   # reise.AKTIONEN
+            "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch",
+            "start_ende_setzen": "einstellung"}   # reise.AKTIONEN
+HINWEISE_HOECHSTENS = 10   # neue Warnungen des Probebaus in der Antwort (Issue #142)
 ARTEN_KOPF = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). {herkunft}\n"
               "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (Gliederung des\n"
               "# Lesetexts: je Rubrik name und hilfe); je Merkmal: name, typ,\n"
@@ -2456,7 +2458,69 @@ def reise_aendern(reise_dir, wer, args, heute=None):
         roh["verlauf"] = verlauf
     verlauf.append(fliess_map({"datum": heute, "wer": wer["name"], "was": "; ".join(geaendert), "grund": grund}))
     reise_yaml_speichern(p, roh)
-    return "Eckdaten geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), "Eckdaten der Reise: " + "; ".join(geaendert) + f". Grund: {grund}. (Start und Ende des Plans stehen in plan/routen.yaml.)"
+    return "Eckdaten geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), "Eckdaten der Reise: " + "; ".join(geaendert) + f". Grund: {grund}. (Start und Ende des Plans setzt start_ende_setzen.)"
+
+
+def start_ende_neu(args, roh):
+    """Neue Werte für Start und Ende des Plans aus der Anfrage -> {(teil, feld): wert}; wert "" heißt entfernen. Prüft Form
+    und Existenz der Orte; start_datum darf nicht leer sein (ohne baut die Reise nicht)."""
+    neu = {}
+    for teil in ("start", "ende"):
+        d = datum_wert(args, f"{teil}_datum")
+        if d is not None:
+            neu[(teil, "datum")] = d
+        if args.get(f"{teil}_ort") is not None:
+            o = text_wert(args, f"{teil}_ort", laenge=10) or ""
+            if o and (not re.fullmatch(r"O-\d+", o) or o not in (roh.get("orte") or {})):
+                raise Ablehnung(f"„{teil}_ort“: {o} gibt es nicht (Orte der Reise: O-…).")
+            neu[(teil, "ort")] = o
+    if neu.get(("start", "datum")) == "":
+        raise Ablehnung("„start_datum“ darf nicht leer sein: ohne Startdatum haben die Tage kein Datum.")
+    if neu.get(("start", "ort")) == "":
+        raise Ablehnung("„start_ort“ darf nicht leer sein.")
+    return neu
+
+
+def start_ende_setzen(reise_dir, wer, args, heute=None):
+    """Start und Ende des Plans (start, ende in plan/routen.yaml): start_datum, start_ort, ende_datum, ende_ort; leerer Text
+    entfernt ende_datum bzw. ende_ort. Nur Organisator:innen, mit grund; der Verlauf steht in reise.yaml. -> (Titel, Text)."""
+    from ruamel.yaml.comments import CommentedSeq
+    heute = heute or datetime.date.today()
+    grund = text_wert(args, "grund", pflicht=True)
+    roh = routen_laden(reise_dir)
+    neu = start_ende_neu(args, roh)
+    geaendert, verschoben = [], False
+    for (teil, feld), v in neu.items():
+        knoten = roh.get(teil) or {}
+        alt = knoten.get(feld)
+        if v == (alt if alt is not None else ""):
+            continue
+        name = ("Start" if teil == "start" else "Ende") + " des Plans: " + ("Datum" if feld == "datum" else "Ort")
+        geaendert.append(f"{name} {alt or '–'} → {v}" if v else f"{name} {alt} entfernt")
+        verschoben = verschoben or (teil, feld) == ("start", "datum")
+        if teil not in roh or roh.get(teil) is None:
+            roh[teil] = fliess_map({})
+        (roh[teil].__setitem__(feld, v) if v else roh[teil].pop(feld, None))
+    if not geaendert:
+        raise Ablehnung("Nichts zu ändern (start_datum, start_ort, ende_datum, ende_ort).")
+    s, e = (roh.get("start") or {}).get("datum"), (roh.get("ende") or {}).get("datum")
+    if isinstance(s, datetime.date) and isinstance(e, datetime.date) and e < s:
+        raise Ablehnung(f"Das Ende ({e.isoformat()}) liegt vor dem Start ({s.isoformat()}).")
+    if "ende" in roh and not roh.get("ende"):
+        del roh["ende"]
+    routen_speichern(reise_dir, roh)
+    p, ry = reise_yaml_laden(reise_dir)
+    verlauf = ry.get("verlauf")
+    if verlauf is None:
+        verlauf = CommentedSeq()
+        ry["verlauf"] = verlauf
+    verlauf.append(fliess_map({"datum": heute, "wer": wer["name"], "was": "; ".join(geaendert), "grund": grund}))
+    reise_yaml_speichern(p, ry)
+    text = "; ".join(geaendert) + f". Grund: {grund}."
+    if verschoben:
+        text += (" Die Daten aller Tage verschieben sich mit dem Startdatum; feste Termine und Buchungen behalten ihr Datum "
+                 "(die Prüfung nennt, was jetzt nicht mehr passt).")
+    return "Start und Ende des Plans geändert", text
 
 
 PLAN_FARBEN = ("a", "b", "c", "d")
@@ -2698,11 +2762,28 @@ WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_def
              "tag_anlegen": tag_anlegen, "termin_setzen": termin_setzen, "wahlstelle_aendern": wahlstelle_aendern,
              "option_aendern": option_aendern, "wissen_aendern": wissen_aendern, "lesetext_schreiben": lesetext_schreiben,
              "reise_aendern": reise_aendern, "plan_anlegen": plan_anlegen, "plan_aendern": plan_aendern,
-             "merkmal_zusammenfuehren": merkmal_zusammenfuehren, "arten_uebernehmen": arten_uebernehmen, "wunsch_vorschlagen": wunsch_vorschlagen}
+             "merkmal_zusammenfuehren": merkmal_zusammenfuehren, "arten_uebernehmen": arten_uebernehmen, "wunsch_vorschlagen": wunsch_vorschlagen,
+             "start_ende_setzen": start_ende_setzen}
 REPO_WERKZEUGE = {"reise_anlegen": reise_anlegen}   # arbeiten auf reisen/, nicht in einer Reise
 
 
 # ---------- Der Schreibvorgang ----------
+
+def warnungen_des_baus(reise_dir):
+    """Daten der Reise bauen wie das Tor -> Warnungen [(bezug, text)]; wirft bauen.BauFehler."""
+    import bauen
+    with tempfile.TemporaryDirectory(prefix="frieda-probe-") as ziel:
+        d = bauen.Bauer(reise_dir, ziel).daten()
+    return [(w["bezug"], w["text"]) for w in (d.get("route") or {}).get("warnungen") or []]
+
+
+def neue_hinweise(vorher, nachher):
+    """Warnungen, die der Eintrag neu erzeugt hat, als Zeilen „<bezug>: <text>“ (höchstens HINWEISE_HOECHSTENS, dann „und N weitere“)."""
+    neu = [f"{b}: {t}" for b, t in nachher if (b, t) not in set(vorher)]
+    if len(neu) > HINWEISE_HOECHSTENS:
+        return neu[:HINWEISE_HOECHSTENS] + [f"und {len(neu) - HINWEISE_HOECHSTENS} weitere"]
+    return neu
+
 
 class Schreiber:
     """Arbeitskopie des Reisen-Repos für den Schreibweg: holen, ändern, prüfen, sichern, veröffentlichen."""
@@ -2757,12 +2838,20 @@ class Schreiber:
         return {"name": name.strip(), "rolle": rolle, "person": person, "titel": eck.get("titel") or reise_dir.name}
 
     def probebau(self, reise_dir):
+        """Probebau wie im Tor: nur ein Baufehler lehnt ab -> Warnungen des Baus [(bezug, text)]."""
         import bauen
-        with tempfile.TemporaryDirectory(prefix="frieda-probe-") as ziel:
-            try:
-                bauen.Bauer(reise_dir, ziel).daten()
-            except bauen.BauFehler as e:
-                raise Ablehnung("So lässt sich die Reise nicht bauen, nichts geändert: " + " ".join(e.meldungen))
+        try:
+            return warnungen_des_baus(reise_dir)
+        except bauen.BauFehler as e:
+            raise Ablehnung("So lässt sich die Reise nicht bauen, nichts geändert: " + " ".join(e.meldungen))
+
+    def vorher(self, reise_dir):
+        """Warnungen des Stands vor dem Eintrag; baut er nicht, gibt es keinen Vergleich (leer)."""
+        import bauen
+        try:
+            return warnungen_des_baus(reise_dir)
+        except bauen.BauFehler:
+            return []
 
     def schreiben(self, reise, werkzeug, anfrage):
         """Ein Schreibvorgang in der vorbereiteten Arbeitskopie -> {"ok": True, "text", "commit"}; sonst Ablehnung."""
@@ -2772,6 +2861,7 @@ class Schreiber:
             raise Ablehnung(f"Unbekanntes Werkzeug „{werkzeug}“.")
         args = anfrage.get("args") if isinstance(anfrage.get("args"), dict) else {}
         reise_dir = self.arbeit / "reisen" / reise
+        hinweise = []
         if werkzeug in REPO_WERKZEUGE:
             # Neue Reise: der Konnektor hat Person und Recht geprüft (Konto darf Reisen anlegen); hier Form und Probebau
             name = anfrage.get("name")
@@ -2790,9 +2880,10 @@ class Schreiber:
             if not (reise_dir / "reise.json").exists():
                 raise Ablehnung(f"Die Reise „{reise}“ gibt es im Repo nicht.")
             wer = self.wer_pruefen(reise_dir, anfrage, werkzeug)
+            vorher = self.vorher(reise_dir)
             try:
                 titel, text = WERKZEUGE[werkzeug](reise_dir, wer, args)
-                self.probebau(reise_dir)
+                hinweise = neue_hinweise(vorher, self.probebau(reise_dir))
             except Ablehnung:
                 git(self.arbeit, "checkout", "-q", "--", f"reisen/{reise}")
                 git(self.arbeit, "clean", "-qfd", "--", f"reisen/{reise}")
@@ -2810,6 +2901,8 @@ class Schreiber:
         antwort = {"ok": True, "text": text, "commit": commit}
         if (m := re.match(r"^([A-Z]+-\d+(?:\.[\w-]+)?) ", titel)):   # neu angelegtes Ding: seine ID, damit der Konnektor weitermachen kann
             antwort["id"] = m.group(1)
+        if hinweise:   # nur neue Warnungen; reise_anlegen (REPO_WERKZEUGE) hat keinen Vergleich
+            antwort["hinweise"] = hinweise
         return antwort
 
     def buchung_im_repo(self, reise, bid):
