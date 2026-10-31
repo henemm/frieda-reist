@@ -43,6 +43,8 @@ for (const breite of [390, 1300]) {
       kapitel: [document.querySelectorAll(".ebene-hintergrund details.kapitel").length, document.querySelectorAll(".ebene-hintergrund details.kapitel[open]").length],
       getoent: getComputedStyle(document.querySelector(".ebene-unterwegs")).backgroundColor !== getComputedStyle(document.body).backgroundColor,
       weiterlesen: [...document.querySelectorAll(".ebene-weg .weiterlesen")].filter(x => !x.hidden).length,
+      // Nacht: über die volle Breite nur bei offener Wahl, sonst an ihrem Platz in der Lesespalte
+      nacht: {voll: !!document.querySelector(".tagseite > .nacht-voll"), inLesen: !!document.querySelector(".tag-lesen > .ebene-nacht")},
     };
   });
   a.offen = await p.evaluate(offen);

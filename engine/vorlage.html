@@ -3022,8 +3022,9 @@ function ansichtTag(m, tid) {
   // Links lesen (Weg, Hintergrund, Quellen), rechts nachschlagen (Unterwegs, Orte); am Handy untereinander
   const nacht = PLAN_DA ? null : nachtAbschnitt(t);
   // Offene Wahl der Nacht: am Rechner über die volle Breite (dort wird gewählt, Product Owner 29.10.2026); am Handy an
-  // ihrem Platz in der Reihenfolge (CSS order)
-  const nachtVoll = nacht && nacht.querySelector(".wm");
+  // ihrem Platz in der Reihenfolge (CSS order). Nur die offene Wahl: Eine entschiedene Nacht trägt unter „Alle Möglichkeiten“
+  // auch einen Vergleich und bleibt trotzdem an ihrem Platz.
+  const nachtVoll = nacht && wahlOffen(t.nacht.wahl && wahlZu.get(t.nacht.wahl)) && nacht.querySelector(".wm");
   if (nachtVoll) { nacht.classList.add("nacht-voll"); seite.append(nacht); }
   const lesen = [e.weg, nachtVoll ? null : nacht, e.hintergrund, e.quellen].filter(Boolean), nachschlagen = [e.unterwegs, orte.length ? tagOrteZeilen(orte) : null].filter(Boolean);
   if (lesen.length) seite.append(el("div", {class: "tag-lesen"}, lesen));
