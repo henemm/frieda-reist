@@ -21,6 +21,9 @@ Aufrufe:
         legt Meldungen an (ohne Reise: alle Reisen der Ablage); --bericht schreibt die
         Sammelnachricht für den Betreiber in DATEI, falls es etwas zu melden gibt und eine Reise den Kanal
         nachricht hat
+  python3 engine/waechter.py rot-melden --reisen <a,b> --seit JJJJ-MM-TTTHH:MM:SSZ
+        Meldung an die Organisator:innen jeder Reise, die seit diesem Zeitpunkt nicht veröffentlicht werden kann
+        (betrieb/veroeffentlichen.sh, Issue #142); je Reise und Zeitpunkt nur einmal
 Umgebung: RM_ABLAGE, RM_SEITEN oder KN_SEITEN (Standard aus engine/instanz.py)
 """
 import datetime
@@ -326,6 +329,25 @@ def lauf_reise(reise, heute=None, trocken=False):
     return ergebnis
 
 
+def rot_melden(reisen, seit):
+    """Issue #142: Kann eine Reise seit `seit` (UTC, JJJJ-MM-TTTHH:MM:SSZ, Beginn der Rot-Phase) nicht veröffentlicht werden
+    (Baufehler), bekommen ihre Organisator:innen eine Meldung (Art betrieb: unabhängig vom Baustein waechter). Der Schlüssel enthält seit: je Reise und Rot-Phase genau eine
+    Meldung, jeder weitere Aufruf ist gefahrlos. Aufgerufen von betrieb/veroeffentlichen.sh -> angelegte Meldungen."""
+    zeit = datetime.datetime.strptime(seit, "%Y-%m-%dT%H:%M:%SZ")
+    jetzt = datetime.datetime.now(datetime.timezone.utc)
+    neu = []
+    for reise in reisen:
+        d, o = veroeffentlicht(reise), rm.ordner(reise)
+        if d is None or o is None:
+            continue
+        titel = ((d.get("reise") or {}).get("titel")) or reise
+        text = tw(d, "veroeffentlichen_rot", w1=titel, w2=datum_de(seit, sprache_von(d)), w3=f"{zeit:%H:%M}")
+        neu += neue_meldungen(o, [{"schluessel": f"veroeffentlichen-rot:{reise}:{seit}", "wiederholen": None,
+                                   "an": organisator_von(d), "art": "betrieb", "ziel": "reise", "bezug": "reise",
+                                   "text": text}], jetzt)
+    return neu
+
+
 def alle_reisen():
     return sorted(p.name for p in rm.ablage().iterdir() if p.is_dir() and rm.REISE_MUSTER.match(p.name)) \
         if rm.ablage().is_dir() else []
@@ -380,6 +402,16 @@ def main(a):
             sys.exit("--bericht braucht eine Datei.")
         bericht = a[i + 1]
         a = a[:i] + a[i + 2:]
+    if a[:1] == ["rot-melden"]:
+        try:
+            reisen = [r for r in a[a.index("--reisen") + 1].split(",") if r]
+            seit = a[a.index("--seit") + 1]
+            datetime.datetime.strptime(seit, "%Y-%m-%dT%H:%M:%SZ")
+        except (ValueError, IndexError):
+            sys.exit("rot-melden braucht --reisen <a,b> und --seit JJJJ-MM-TTTHH:MM:SSZ.")
+        for m in rot_melden(reisen, seit):
+            print(f"Meldung an {', '.join(m['an'])}: {m['schluessel']}")
+        return 0
     if a[:1] == ["zeige"] and len(a) == 2:
         zeige(a[1], heute or datetime.date.today())
     elif a[:1] == ["lauf"]:

@@ -17,7 +17,7 @@ Zwei Teile:
 
 Arbeitskopie: <Wurzel>-schreiben (FR_SCHREIBKOPIE), ein Git-Worktree des Reisen-Repos ohne eigenen Branch (steht auf
 origin/main). Sie gehört allein dem Schreibweg. Veröffentlicht wird wie nach jedem Zusammenführen: betrieb/veroeffentlichen.sh
-holt main in den Veröffentlichungsordner (im Hintergrund; hält der Timer gerade die Sperre, holt er es nach).
+holt main in den Bauordner (im Hintergrund; hält der Timer gerade die Sperre, holt er es nach).
 
 Regeln vor dem Schreiben (Prüfstelle ADR-0001): Rolle und Status (reise.erlaubt mit reise.yaml der Arbeitskopie, nicht
 nur mit dem, was der Konnektor sagt), Form der Arten und Merkmale (docs/ontologie.md), Probebau (routen.arten_pruefen und
@@ -68,7 +68,9 @@ AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "k
             "buchung_anlegen": "buchung", "buchung_aendern": "buchung",
             "tag_anlegen": "plan", "termin_setzen": "plan", "wahlstelle_aendern": "plan", "option_aendern": "alternative",
             "wissen_aendern": "wissen", "lesetext_schreiben": "wissen", "reise_aendern": "einstellung", "plan_anlegen": "plan",
-            "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch"}   # reise.AKTIONEN
+            "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch",
+            "start_ende_setzen": "einstellung"}   # reise.AKTIONEN
+HINWEISE_HOECHSTENS = 10   # neue Warnungen des Probebaus in der Antwort (Issue #142)
 ARTEN_KOPF = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). {herkunft}\n"
               "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (Gliederung des\n"
               "# Lesetexts: je Rubrik name und hilfe); je Merkmal: name, typ,\n"
@@ -2478,6 +2480,69 @@ def reise_aendern(reise_dir, wer, args, heute=None):
     return "Eckdaten geändert: " + "; ".join(g.split(" ")[0] for g in geaendert), S("schreiben.antwort.eckdaten.kopf") + verbinden(geaendert, "; ") + S("schreiben.antwort.eckdaten.grund_ende", w1=grund)
 
 
+def start_ende_neu(args, roh):
+    """Neue Werte für Start und Ende des Plans aus der Anfrage -> {(teil, feld): wert}; wert "" heißt entfernen. Prüft Form
+    und Existenz der Orte; start_datum darf nicht leer sein (ohne baut die Reise nicht)."""
+    neu = {}
+    for teil in ("start", "ende"):
+        d = datum_wert(args, f"{teil}_datum")
+        if d is not None:
+            neu[(teil, "datum")] = d
+        if args.get(f"{teil}_ort") is not None:
+            o = text_wert(args, f"{teil}_ort", laenge=10) or ""
+            if o and (not re.fullmatch(r"O-\d+", o) or o not in (roh.get("orte") or {})):
+                raise Ablehnung("schreiben.start_ende_neu.1", teil=teil, o=o)
+            neu[(teil, "ort")] = o
+    if neu.get(("start", "datum")) == "":
+        raise Ablehnung("schreiben.start_ende_neu.2")
+    if neu.get(("start", "ort")) == "":
+        raise Ablehnung("schreiben.start_ende_neu.3")
+    return neu
+
+
+def start_ende_setzen(reise_dir, wer, args, heute=None):
+    """Start und Ende des Plans (start, ende in plan/routen.yaml): start_datum, start_ort, ende_datum, ende_ort; leerer Text
+    entfernt ende_datum bzw. ende_ort. Nur Organisator:innen, mit grund; der Verlauf steht in reise.yaml. -> (Titel, Text)."""
+    from ruamel.yaml.comments import CommentedSeq
+    heute = heute or datetime.date.today()
+    grund = text_wert(args, "grund", pflicht=True)
+    roh = routen_laden(reise_dir)
+    neu = start_ende_neu(args, roh)
+    geaendert, antwort_teile, verschoben = [], [], False
+    for (teil, feld), v in neu.items():
+        knoten = roh.get(teil) or {}
+        alt = knoten.get(feld)
+        if v == (alt if alt is not None else ""):
+            continue
+        name = ("Start" if teil == "start" else "Ende") + " des Plans: " + ("Datum" if feld == "datum" else "Ort")
+        geaendert.append(f"{name} {alt or '–'} → {v}" if v else f"{name} {alt} entfernt")
+        satz_name = S(f"schreiben.antwort.start_ende.{teil}_{feld}")
+        antwort_teile.append(satz_name + f" {alt or '–'} → {v}" if v else satz_name + f" {alt}" + S("schreiben.antwort.start_ende.entfernt"))
+        verschoben = verschoben or (teil, feld) == ("start", "datum")
+        if teil not in roh or roh.get(teil) is None:
+            roh[teil] = fliess_map({})
+        (roh[teil].__setitem__(feld, v) if v else roh[teil].pop(feld, None))
+    if not geaendert:
+        raise Ablehnung("schreiben.start_ende_setzen.1")
+    s, e = (roh.get("start") or {}).get("datum"), (roh.get("ende") or {}).get("datum")
+    if isinstance(s, datetime.date) and isinstance(e, datetime.date) and e < s:
+        raise Ablehnung("schreiben.start_ende_setzen.2", w1=e.isoformat(), w2=s.isoformat())
+    if "ende" in roh and not roh.get("ende"):
+        del roh["ende"]
+    routen_speichern(reise_dir, roh)
+    p, ry = reise_yaml_laden(reise_dir)
+    verlauf = ry.get("verlauf")
+    if verlauf is None:
+        verlauf = CommentedSeq()
+        ry["verlauf"] = verlauf
+    verlauf.append(fliess_map({"datum": heute, "wer": wer["name"], "was": "; ".join(geaendert), "grund": grund}))
+    reise_yaml_speichern(p, ry)
+    text = verbinden(antwort_teile, "; ") + S("schreiben.antwort.eckdaten.grund_ende_kurz", w1=grund)
+    if verschoben:
+        text = text + S("schreiben.antwort.start_ende.verschoben")
+    return texte.t(texte.VORGABE_REISE, "schreiben.titel.start_ende_setzen"), text   # Titel des Eintrags (Commit): Sprache der Reise-Dateien
+
+
 PLAN_FARBEN = ("a", "b", "c", "d")
 
 
@@ -2717,11 +2782,28 @@ WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_def
              "tag_anlegen": tag_anlegen, "termin_setzen": termin_setzen, "wahlstelle_aendern": wahlstelle_aendern,
              "option_aendern": option_aendern, "wissen_aendern": wissen_aendern, "lesetext_schreiben": lesetext_schreiben,
              "reise_aendern": reise_aendern, "plan_anlegen": plan_anlegen, "plan_aendern": plan_aendern,
-             "merkmal_zusammenfuehren": merkmal_zusammenfuehren, "arten_uebernehmen": arten_uebernehmen, "wunsch_vorschlagen": wunsch_vorschlagen}
+             "merkmal_zusammenfuehren": merkmal_zusammenfuehren, "arten_uebernehmen": arten_uebernehmen, "wunsch_vorschlagen": wunsch_vorschlagen,
+             "start_ende_setzen": start_ende_setzen}
 REPO_WERKZEUGE = {"reise_anlegen": reise_anlegen}   # arbeiten auf reisen/, nicht in einer Reise
 
 
 # ---------- Der Schreibvorgang ----------
+
+def warnungen_des_baus(reise_dir):
+    """Daten der Reise bauen wie das Tor -> Warnungen [(bezug, text)]; wirft bauen.BauFehler."""
+    import bauen
+    with tempfile.TemporaryDirectory(prefix="frieda-probe-") as ziel:
+        d = bauen.Bauer(reise_dir, ziel).daten()
+    return [(w["bezug"], w["text"]) for w in (d.get("route") or {}).get("warnungen") or []]
+
+
+def neue_hinweise(vorher, nachher):
+    """Warnungen, die der Eintrag neu erzeugt hat, als Zeilen „<bezug>: <text>“ (höchstens HINWEISE_HOECHSTENS, dann „und N weitere“)."""
+    neu = [f"{b}: {t}" for b, t in nachher if (b, t) not in set(vorher)]
+    if len(neu) > HINWEISE_HOECHSTENS:
+        return neu[:HINWEISE_HOECHSTENS] + [f"und {len(neu) - HINWEISE_HOECHSTENS} weitere"]
+    return neu
+
 
 class Schreiber:
     """Arbeitskopie des Reisen-Repos für den Schreibweg: holen, ändern, prüfen, sichern, veröffentlichen."""
@@ -2776,12 +2858,20 @@ class Schreiber:
         return {"name": name.strip(), "rolle": rolle, "person": person, "titel": eck.get("titel") or reise_dir.name}
 
     def probebau(self, reise_dir):
+        """Probebau wie im Tor: nur ein Baufehler lehnt ab -> Warnungen des Baus [(bezug, text)]."""
         import bauen
-        with tempfile.TemporaryDirectory(prefix="frieda-probe-") as ziel:
-            try:
-                bauen.Bauer(reise_dir, ziel).daten()
-            except bauen.BauFehler as e:
-                raise Ablehnung("schreiben.bau.nichts_geaendert", meldungen=" ".join(e.meldungen))
+        try:
+            return warnungen_des_baus(reise_dir)
+        except bauen.BauFehler as e:
+            raise Ablehnung("schreiben.bau.nichts_geaendert", meldungen=" ".join(e.meldungen))
+
+    def vorher(self, reise_dir):
+        """Warnungen des Stands vor dem Eintrag; baut er nicht, gibt es keinen Vergleich (leer)."""
+        import bauen
+        try:
+            return warnungen_des_baus(reise_dir)
+        except bauen.BauFehler:
+            return []
 
     def schreiben(self, reise, werkzeug, anfrage):
         """Ein Schreibvorgang in der vorbereiteten Arbeitskopie -> {"ok": True, "text", "commit"}; sonst Ablehnung."""
@@ -2791,6 +2881,7 @@ class Schreiber:
             raise Ablehnung("schreiben.schreiben.2", werkzeug=werkzeug)
         args = anfrage.get("args") if isinstance(anfrage.get("args"), dict) else {}
         reise_dir = self.arbeit / "reisen" / reise
+        hinweise = []
         if werkzeug in REPO_WERKZEUGE:
             # Neue Reise: der Konnektor hat Person und Recht geprüft (Konto darf Reisen anlegen); hier Form und Probebau
             name = anfrage.get("name")
@@ -2809,9 +2900,10 @@ class Schreiber:
             if not (reise_dir / "reise.json").exists():
                 raise Ablehnung("schreiben.schreiben.3", reise=reise)
             wer = self.wer_pruefen(reise_dir, anfrage, werkzeug)
+            vorher = self.vorher(reise_dir)
             try:
                 titel, text = WERKZEUGE[werkzeug](reise_dir, wer, args)
-                self.probebau(reise_dir)
+                hinweise = neue_hinweise(vorher, self.probebau(reise_dir))
             except Ablehnung:
                 git(self.arbeit, "checkout", "-q", "--", f"reisen/{reise}")
                 git(self.arbeit, "clean", "-qfd", "--", f"reisen/{reise}")
@@ -2831,6 +2923,8 @@ class Schreiber:
             antwort["text_teile"] = text.teile_json()
         if (m := re.match(r"^([A-Z]+-\d+(?:\.[\w-]+)?) ", titel)):   # neu angelegtes Ding: seine ID, damit der Konnektor weitermachen kann
             antwort["id"] = m.group(1)
+        if hinweise:   # nur neue Warnungen; reise_anlegen (REPO_WERKZEUGE) hat keinen Vergleich
+            antwort["hinweise"] = hinweise
         return antwort
 
     def buchung_im_repo(self, reise, bid):
@@ -2868,7 +2962,7 @@ class Schreiber:
         raise Ablehnung("schreiben.hochladen.2")
 
     def veroeffentlichen_anstossen(self):
-        """Veröffentlichen im Hintergrund (holt main in den Veröffentlichungsordner, baut, prüft). Hält der Timer die Sperre,
+        """Veröffentlichen im Hintergrund (holt main in den Bauordner, baut, prüft). Hält der Timer die Sperre,
         meldet das Skript „Läuft schon“, und der Timer holt es in wenigen Minuten nach. Niedrige Priorität wie im Dienst
         veroeffentlichen.service, damit Schreibvorgänge während der Tests nicht warten (fehlen nice oder ionice, ohne sie).
         Die Ausgabe geht nach /dev/null: Die Ausgabe des Anwendens ist die Leitung zum Dienst, die das Skript sonst bis zu

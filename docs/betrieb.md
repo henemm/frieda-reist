@@ -10,8 +10,9 @@ Eine **Instanz** ist eine Reisegruppe mit eigenem Betreiber: ein Reisen-Repo, da
 |---|---|---|
 | Software | dieses Repo, im Reisen-Repo als Submodul `frieda/` (`engine -> frieda/engine`) | Generator, Dienste, `betrieb/` mit Skripten und Vorlagen |
 | Reisen-Repo | eigenes, privates Repo | `reisen/<reise>/`, `betrieb/einstellungen.env`, ein Meldeskript, eigene Tests unter `tests/` |
-| Veröffentlichungsordner | Klon des Reisen-Repos auf dem Server, immer auf `main` | von hier wird gebaut; nicht darin arbeiten |
-| Arbeitskopien | `<Klon>-schreiben` (Schreibweg, legt der Dienst selbst an), `<Klon>-arbeit` (Sitzungen) | Git-Worktrees, `betrieb/arbeitskopie.sh` |
+| Bauordner | Klon des Reisen-Repos auf dem Server, spiegelt nur `main` (`FR_WURZEL` der Units) | von hier wird gebaut, hier laufen Timer und Dienste; nie darin arbeiten (Abschnitt „Bauordner und Arbeitsordner“) |
+| Arbeitsordner | eigener Klon des Reisen-Repos, Branches erlaubt | hier wird gearbeitet, über Pull Requests nach `main` |
+| Arbeitskopie des Schreibwegs | `<Bauordner>-schreiben-<reise>` | Git-Worktree je Reise, legt der Dienst selbst an |
 | Seiten | `<FR_SEITEN>/<reise>/` | gebaute Seiten, nginx liefert sie aus |
 | Ablage | `<FR_ABLAGE>/<reise>/` (`eingang.jsonl`, `status.json`, `aufgaben.json`, …), `<FR_ABLAGE>/_neu/` (Anfragen nach neuen Reisen) | Eingaben der Mitreisenden; nie im Repo |
 | Konten | `<FR_KONTEN>/` (`konten.db`, Dienst-Geheimnis) | Konten, Anmeldungen und Einladungen aller Nutzer der Instanz; nie im Repo, nie in einer Reise |
@@ -36,7 +37,7 @@ Der Name der Instanz (`FR_INSTANZ`) steht vor Units, Zonen und nginx-Bausteinen 
 
 1. **Schreiben:** Was im AI-Client über den Konnektor festgelegt wird (Arten, Merkmale, Werte, Dinge, Optionen, Entscheidungen, Fragen, Wissen, Personen, Status, Einstellungen, neue Reisen), prüft der **Schreibweg** nach den Regeln der Reise und schreibt es sofort nach `main` (siehe „Schreibweg“).
 2. **Eingaben:** Rückmeldungen und Antworten von der Webseite und aus der Claude-App, Aufgaben und das Wunsch-Brett liegen live in der Ablage der Reise. Eine Organisator:in arbeitet Rückmeldungen im AI-Client ein (prüfen, mit den Schreibwerkzeugen eintragen, `rueckmeldung_erledigen` mit Kommentar); die Absender sehen „aufgenommen“, „passt nicht“ oder eine Rückfrage.
-3. **Veröffentlichen:** `veroeffentlichen.sh` holt `main` in den Veröffentlichungsordner und ruft `deploy.sh` für jede Reise auf. Das geschieht gleich nach jedem Schreibvorgang und sonst alle 5 Minuten. Danach schaltet `freischalten.sh` neue Reisen frei und `zustellen.py` meldet neuen Reisen ihre Links.
+3. **Veröffentlichen:** `veroeffentlichen.sh` holt `main` in den Bauordner und ruft `deploy.sh` für jede Reise auf. Das geschieht gleich nach jedem Schreibvorgang und sonst alle 5 Minuten. Danach schaltet `freischalten.sh` neue Reisen frei und `zustellen.py` meldet neuen Reisen ihre Links.
 4. **Erinnern:** `waechter.sh` läuft täglich, meldet Fristen, fällige Statuswechsel und zu alte Prüfdaten als Meldungen an die Personen; nachschlagen und eintragen tut der AI-Client im Gespräch.
 
 Eine Änderung aus einer Sitzung (Claude Code im Reisen-Repo, nur Software und Betrieb) geht über einen PR nach `main` und von dort denselben Weg ab Schritt 3.
@@ -45,17 +46,17 @@ Bis zum 29.10.2026 stand zwischen Eingabe und Veröffentlichen der **Einarbeiten
 
 ## Schreibweg
 
-`engine/schreiben.py dienst` (`<instanz>-schreiben.service`, 127.0.0.1:`FR_SB_PORT`) nimmt vom Konnektor Anfragen `POST /<reise>/<werkzeug>` mit dem Dienst-Geheimnis an (`X-Frieda-Dienst`, dasselbe wie beim Rückmeldedienst). Er hält eine eigene Arbeitskopie `<Klon>-schreiben` (`FR_SCHREIBKOPIE`), einen Git-Worktree ohne eigenen Branch, den er selbst anlegt und vor jedem Schreibvorgang auf `origin/main` bringt. Ein Vorgang zur Zeit (Sperre `<FR_SPERREN>/<instanz>-schreiben.lock`):
+`engine/schreiben.py dienst` (`<instanz>-schreiben.service`, 127.0.0.1:`FR_SB_PORT`) nimmt vom Konnektor Anfragen `POST /<reise>/<werkzeug>` mit dem Dienst-Geheimnis an (`X-Frieda-Dienst`, dasselbe wie beim Rückmeldedienst). Er hält eine eigene Arbeitskopie `<Bauordner>-schreiben` (`FR_SCHREIBKOPIE`), einen Git-Worktree ohne eigenen Branch, den er selbst anlegt und vor jedem Schreibvorgang auf `origin/main` bringt. Ein Vorgang zur Zeit (Sperre `<FR_SPERREN>/<instanz>-schreiben.lock`):
 
 1. Arbeitskopie holen (`origin/main`), eigene Reste verwerfen.
 2. Mit dem Code **dieser Arbeitskopie** einen Unterprozess `schreiben.py anwenden` starten, damit Code und Daten denselben Stand haben; der Dienst selbst lädt nur `schreiben.py`, `konten.py`, `reise.py`, `instanz.py` aus `<FR_DIENST>` (`SB_MODULE` in `deploy.sh`).
 3. Dort: Person und Rolle gegen `reise.yaml` der Reise prüfen (die Datei gilt vor dem, was der Konnektor sagt), Status (`reise.erlaubt`, Aktion `ontologie`), Form der Angaben; Datei ändern; Probebau (`bauen.Bauer(...).daten()`). Lehnt eine Prüfung ab, wird die Arbeitskopie zurückgesetzt, der AI-Client bekommt den Grund (HTTP 422).
 4. Commit mit Reise, Titel, Text, Person, Werkzeug und Datum; `git push origin HEAD:main`. Kam inzwischen etwas anderes an, setzt er darauf auf (Rebase, höchstens dreimal); bei einem Konflikt bricht er ab und meldet „bitte noch einmal“.
-5. `betrieb/veroeffentlichen.sh` im Hintergrund, mit `FR_WURZEL` des Veröffentlichungsordners. Hält der Timer die Sperre, holt er es in wenigen Minuten nach.
+5. `betrieb/veroeffentlichen.sh` im Hintergrund, mit `FR_WURZEL` des Bauordners. Hält der Timer die Sperre, holt er es in wenigen Minuten nach.
 
 Die Routendatei (`plan/routen.yaml`; neue IDs über `ids.yaml`, Fragen in `offene-fragen.md`) schreibt er mit ruamel.yaml rund (Kommentare und Form bleiben; `engine/requirements.txt`, bei einer bestehenden Instanz einmal `engine/.venv/bin/pip install -r engine/requirements.txt`). Beim ersten Schreiben zieht er von Hand umbrochene Fließ-Mappings in eine Zeile; `python engine/schreiben.py normalisieren <reise>` tut das vorab in einer Sitzung, damit der erste Commit aus dem Gespräch nur seine Stelle ändert.
 
-Der Dienst läuft als Dienstbenutzer mit dessen `git`-Anmeldung (`gh` als Credential-Helfer, `PATH` aus `FR_PFAD`), ohne `ProtectHome`, weil die Arbeitskopie neben dem Repo liegt. `GET /gesund` antwortet `{"gesund": true}`, wenn das Repo erreichbar ist. Von Hand: `frieda/betrieb/…`: `FR_WURZEL=<Klon> engine/.venv/bin/python engine/schreiben.py vorbereiten` legt die Arbeitskopie an. Protokoll: `journalctl -u <instanz>-schreiben`. Eine Instanz ohne diesen Dienst setzt `KN_SCHREIBDIENST` nicht; der Konnektor bietet die Schreibwerkzeuge dann nicht an, und neue Reisen lassen sich aus der Claude-App nicht anlegen.
+Der Dienst läuft als Dienstbenutzer mit dessen `git`-Anmeldung (`gh` als Credential-Helfer, `PATH` aus `FR_PFAD`), ohne `ProtectHome`, weil die Arbeitskopie neben dem Repo liegt. `GET /gesund` antwortet `{"gesund": true}`, wenn das Repo erreichbar ist. Von Hand: `frieda/betrieb/…`: `FR_WURZEL=<Bauordner> engine/.venv/bin/python engine/schreiben.py vorbereiten` legt die Arbeitskopie an. Protokoll: `journalctl -u <instanz>-schreiben`. Eine Instanz ohne diesen Dienst setzt `KN_SCHREIBDIENST` nicht; der Konnektor bietet die Schreibwerkzeuge dann nicht an, und neue Reisen lassen sich aus der Claude-App nicht anlegen.
 
 **Fehlerfälle:** Lehnt der Schreibweg ab (Rolle, Status, Form, Probebau), bleibt alles unverändert, und der AI-Client bekommt den Grund im Gespräch. Scheitert `git push` (Konflikt nach drei Versuchen, kein Netz), meldet er „bitte noch einmal“; nichts ist halb geschrieben. Bleibt der Dienst stehen (`failed`), sieht das der Monitor der Instanz (siehe „Überwachung“), der Konnektor meldet der Person „Schreibweg nicht erreichbar“.
 
@@ -94,9 +95,24 @@ Die Texte der Software stehen in `engine/texte_<kürzel>.py`. `deploy.sh` nimmt 
 
 ## Veröffentlichen
 
-`betrieb/veroeffentlichen.sh` holt `origin/main`, spult den Veröffentlichungsordner vor und bringt das Submodul auf den festgehaltenen Stand. Danach laufen die Tests einmal (Software und `tests/` des Reisen-Repos); sind sie rot, wird keine Reise angefasst. Dann ruft es `deploy.sh` für jede Reise mit `reise.json` auf und gibt ihm den geprüften Stand mit (`FR_GEPRUEFT`), damit die Tests nicht je Reise erneut laufen. Der Lauf hat niedrige Priorität (`Nice=10`, `IOSchedulingPriority=7` im Dienst `veroeffentlichen.service`; der Schreibweg startet ihn mit `nice` und `ionice`), damit Schreibvorgänge während der Tests nicht warten (#120); fehlen `nice` oder `ionice`, startet er ohne sie. Die Ausgabe dieses angestoßenen Laufs geht nach `/dev/null`: Sonst hielte das Skript die Leitung zum Schreibweg bis zu seinem Ende offen, und jeder Schreibvorgang wartete darauf. Verloren geht dabei nichts Wesentliches: Ein Erfolg zeigt sich an `<FR_DIENST>/veroeffentlichen-erfolg` und am Heartbeat, ein fehlgeschlagener Lauf merkt den Stand nicht und wird vom Timer wiederholt, dessen Ausgabe im Protokoll steht (`journalctl -u <instanz>-veroeffentlichen`). Gemerkt wird der Stand in `<FR_DIENST>/veroeffentlicht`. Nur ein gelungener Lauf merkt ihn, ein fehlgeschlagener wird also beim nächsten Mal wiederholt. Ist der Ordner nicht auf `main` oder nicht sauber, überspringt es den Lauf. `--immer` veröffentlicht auch ohne neuen Stand.
+`betrieb/veroeffentlichen.sh` holt `origin/main`, spult den Bauordner vor und bringt das Submodul auf den festgehaltenen Stand. Danach laufen die Tests einmal. Dann ruft es `deploy.sh` für jede Reise mit `reise.json` auf und gibt ihm den geprüften Stand mit (`FR_GEPRUEFT`), damit die Tests nicht je Reise erneut laufen. Der Lauf hat niedrige Priorität (`Nice=10`, `IOSchedulingPriority=7` im Dienst `veroeffentlichen.service`; der Schreibweg startet ihn mit `nice` und `ionice`), damit Schreibvorgänge während der Tests nicht warten (#120); fehlen `nice` oder `ionice`, startet er ohne sie. Die Ausgabe dieses angestoßenen Laufs geht nach `/dev/null`: Sonst hielte das Skript die Leitung zum Schreibweg bis zu seinem Ende offen, und jeder Schreibvorgang wartete darauf. Verloren geht dabei nichts Wesentliches: Ein Erfolg zeigt sich an `<FR_DIENST>/veroeffentlichen-erfolg` und am Heartbeat, ein Infrastrukturfehler wird vom Timer wiederholt, ein roter Stand wird übersprungen und meldet sich nach der Schwelle selbst (unten); die Ausgabe des Timers steht im Protokoll (`journalctl -u <instanz>-veroeffentlichen`). Gemerkt wird der Stand in `<FR_DIENST>/veroeffentlicht`. Nur ein ganz gelungener Lauf merkt ihn. Ist der Ordner nicht auf `main` oder nicht sauber, überspringt es den Lauf. `--immer` veröffentlicht auch ohne neuen Stand und prüft auch einen bekannten roten Stand neu.
 
-`betrieb/deploy.sh <reise>` baut, führt die Tests aus (außer der Stand ist schon geprüft) und kopiert die Seite nach `<FR_SEITEN>/<reise>/`. Es legt die Ablage der Reise an und kopiert den Code der Dienste nach `<FR_DIENST>/`. Die Liste der Module steht im Skript, ein Test prüft sie gegen die Importe. Bei geändertem Code startet es die Dienste neu (`sudo -n systemctl restart`). Am Ende prüft es Seite, Rückmeldedienst und Konnektor.
+**Was sperrt (#142):** Eine Inhaltsfrage einer Reise hält das Veröffentlichen nie an. Sperren können nur zwei Dinge:
+
+- **Tests der Software rot** (`pytest engine/tests`): Keine Reise wird angefasst, Exit 1.
+- **Bau einer Reise gescheitert** (Baufehler, `deploy.sh` endet mit Exit 2): Nur diese Reise bleibt auf ihrem letzten guten Stand, die anderen werden gebaut und freigeschaltet. Der Lauf endet mit Exit 1, der Stand wird nicht gemerkt.
+
+Warnungen im Plan sperren nie, weder im Bau noch im Schreibweg (dort stehen neue Warnungen als Hinweise in der Antwort). Die Tests in `tests/` des Reisen-Repos laufen danach weiter, sperren aber nicht: Sind sie rot, steht „Warnung: Tests des Reisen-Repos rot (sperren nicht)“ im Protokoll, und der Betrieb bekommt je Commit einmal eine Nachricht (`normal`; Merker `<FR_DIENST>/veroeffentlichen-warnung`).
+
+**Rot-Datei:** Ein roter Stand steht in `<FR_DIENST>/veroeffentlichen-rot`, Zeilen `schluessel=wert`: `commit` (der rote Stand), `art` (`software` oder `reise`), `reisen` (die roten Reisen, durch Komma), `seit` (Beginn der Rot-Phase, UTC) und `gemeldet` (`1`, wenn der Alarm an den Betrieb raus ist). Eine Rot-Phase reicht vom ersten roten Lauf bis zum nächsten ganz grünen; ein neuer roter Commit ändert `commit`, `art` und `reisen`, `seit` und `gemeldet` bleiben. Ein ganz grüner Lauf löscht die Datei.
+
+**Kein Wiederholen ohne Änderung:** Kommt der nächste Lauf auf denselben roten Commit, steht „Bekannter roter Stand …, übersprungen“ im Protokoll: keine Tests, kein Bau, Exit 0, aber **kein Stempel und kein Heartbeat** (Rot ist kein fachlicher Erfolg). Neu geprüft wird bei einem neuen Commit oder mit `--immer`. Ein Baufehler, der nur durch etwas außerhalb des Repos verschwindet, braucht `--immer`. Infrastrukturfehler werden dagegen nicht gemerkt und vom Timer wiederholt: Vorspulen oder Submodul scheitern, `deploy.sh` endet mit Exit 1 (dann endet auch die Schleife über die Reisen sofort).
+
+**Alarm:** Ist ein Stand seit `FR_ROT_MELDEN_NACH_MINUTEN` Minuten rot (Vorgabe 30, Einstellungen), geht bei jedem Lauf, der das Rot kennt (auch beim Überspringen), die Alarmprüfung los: einmal je Rot-Phase `high` an den Betrieb („Veröffentlichen seit … Minuten rot“, mit Art, Reisen und Commit). Kommt die Nachricht nicht an, bleibt `gemeldet=0` und der nächste Lauf versucht es wieder. Bei roten Reisen legt `engine/waechter.py rot-melden --reisen <a,b> --seit <seit>` dazu je Reise eine Meldung an deren Organisator:innen an (sie sehen sie im Konnektor); der Schlüssel enthält Reise und `seit`, darum kommt sie je Phase nur einmal. Bei roter Software geht nur der Alarm an den Betrieb.
+
+**Konvention für `tests/` des Reisen-Repos:** Inhaltsschnappschüsse (feste Warnungslisten, Tageszahlen, Summen, Bildanzahlen) im `tests/` des Reisen-Repos sperren nicht und gehören dort gekennzeichnet oder entfernt: Jede Änderung über den Schreibweg kann sie rot machen, ohne dass etwas kaputt ist. Was wirklich sperren soll, gehört als Regel des Baus in die Software (eigenes Issue, gemessen an `docs/adr/0001-kern.md`), nicht als Schnappschuss.
+
+`FR_WURZEL=<Bauordner> betrieb/deploy.sh <reise>` (sonst von `veroeffentlichen.sh` aufgerufen) baut, führt die Tests der Software aus (`engine/tests`, außer der Stand ist schon geprüft) und kopiert die Seite nach `<FR_SEITEN>/<reise>/`. Exit-Codes: 0 gelungen, Exit 2 Bau dieser Reise gescheitert (vor jeder Wirkung, die Seite bleibt auf dem letzten guten Stand), 1 alles andere (`FR_WURZEL` fehlt, Ordner nicht auf `main`, Reise oder Ordner fehlt, ungesicherte Änderungen, Tests rot, Dienste nicht bereit). Es legt die Ablage der Reise an und kopiert den Code der Dienste nach `<FR_DIENST>/`. Die Liste der Module steht im Skript, ein Test prüft sie gegen die Importe. Bei geändertem Code startet es die Dienste neu (`sudo -n systemctl restart`). Am Ende prüft es Seite, Rückmeldedienst und Konnektor.
 
 ## Neue Reise freischalten
 
@@ -129,6 +145,7 @@ Links von Hand: `freischalten.sh <reise>` für die Seite, `freischalten.sh <reis
 | `FR_SCHREIBKOPIE` | `<Wurzel>-schreiben` | Arbeitskopie des Schreibwegs (Git-Worktree, legt der Dienst an) |
 | `FR_PYTHON` | `<Wurzel>/engine/.venv/bin/python` | Python mit den Paketen der Software |
 | `FR_MELDEN` | leer | Meldeweg (unten) |
+| `FR_ROT_MELDEN_NACH_MINUTEN` | `30` | Minuten Rot beim Veröffentlichen bis zum Alarm (Veröffentlichen) |
 | `FR_NGINX_SNIPPETS`, `FR_SUDO` | `/etc/nginx/snippets`, `sudo -n` | nginx-Bausteine und Rechte |
 | `FR_SPERREN` | `/tmp` | Ordner der Sperrdateien |
 | `FR_BENUTZER`, `FR_GRUPPE`, `FR_HOME`, `FR_PFAD` | aufrufender Benutzer | nur für `einrichten.sh`: Benutzer und `PATH` der Dienste |
@@ -145,7 +162,9 @@ Die Reiseseiten verlangen eine Anmeldung (E-Mail und Code). Für Prüfungen der 
 
 ## Überwachung
 
-Nach fachlichem Erfolg berühren die Läufe Stempel in `<FR_DIENST>/`: `veroeffentlichen-erfolg` (nichts Neues oder alles veröffentlicht) und `waechter-erfolg`. Ein Monitor der Instanz meldet, wenn ein Stempel zu alt ist (etwa 2 h beim Veröffentlichen, 36 h beim Wächter), ein Dienst `failed` ist oder der Schreibweg auf `127.0.0.1:<FR_SB_PORT>/gesund` nicht mit `{"gesund": true}` antwortet. Wer einen Heartbeat-Dienst hat, setzt `FR_HEARTBEAT_VEROEFFENTLICHEN`: Die Adresse wird nur nach Erfolg zusätzlich abgerufen. Seiten, `api/gesund` und der Konnektor unter `/gesund` lassen sich von außen prüfen.
+Nach fachlichem Erfolg berühren die Läufe Stempel in `<FR_DIENST>/`: `veroeffentlichen-erfolg` (nichts Neues oder alles veröffentlicht; nicht bei einem roten oder übersprungenen roten Stand) und `waechter-erfolg`. Ein roter Stand meldet sich selbst: nach `FR_ROT_MELDEN_NACH_MINUTEN` Minuten (Vorgabe 30) einmal je Rot-Phase an den Betrieb, bei roten Reisen auch an deren Organisator:innen (Veröffentlichen, Rot-Datei `<FR_DIENST>/veroeffentlichen-rot`). Ein Monitor der Instanz meldet, wenn ein Stempel zu alt ist (etwa 2 h beim Veröffentlichen, 36 h beim Wächter), ein Dienst `failed` ist oder der Schreibweg auf `127.0.0.1:<FR_SB_PORT>/gesund` nicht mit `{"gesund": true}` antwortet. Wer einen Heartbeat-Dienst hat, setzt `FR_HEARTBEAT_VEROEFFENTLICHEN`: Die Adresse wird nur nach Erfolg zusätzlich abgerufen. Seiten, `api/gesund` und der Konnektor unter `/gesund` lassen sich von außen prüfen.
+
+Der Workflow „Software nachziehen“ (siehe „Neue Instanz einrichten“) läuft auf GitHub und hinterlässt auf dem Server keinen Stempel. Einen Fehlschlag meldet GitHub per Mail. Für die Überwachung prüft der Monitor der Instanz das Ergebnis: Der eingebundene Stand im Bauordner (`.git/modules/frieda/HEAD`, nur lesen) darf nicht länger als etwa 6 h im Rückstand gegen `main` der Software sein (`git ls-remote`). Gezählt wird ab dem Zeitpunkt, an dem der Monitor den Rückstand für diesen Stand zum ersten Mal sieht, nicht ab dem Datum der Commits, die nach dem Vorspulen oft Stunden später auf `main` kommen. Das deckt Workflow, Tests und Veröffentlichen zusammen ab.
 
 ## Neue Instanz einrichten
 
@@ -157,26 +176,29 @@ Nach fachlichem Erfolg berühren die Läufe Stempel in `<FR_DIENST>/`: `veroeffe
    mkdir -p reisen betrieb && cp frieda/betrieb/einstellungen.beispiel betrieb/einstellungen.env
    ```
    Werte eintragen; ein Meldeskript ist optional. In `.gitignore`: `dist/`, `reisen/*/medien/karte`.
-3. **Klon auf dem Server:** als Dienstbenutzer, `git submodule update --init`. Danach `python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt`. `git fetch` muss ohne Rückfrage gehen. Lokale Dateien, die nicht ins Repo gehören (etwa `.claude/settings.json`), kommen in `.git/info/exclude`, sonst gilt der Ordner als belegt und das Veröffentlichen setzt aus.
+   **Software nachziehen:** `cp frieda/betrieb/software-nachziehen.yml .github/workflows/` (dazu ein `tests.yml`, das `python -m pytest -q -rs engine/tests tests` ausführt). Der Workflow braucht die Rechte `contents: write` und `issues: write`, die er selbst anfordert. In den Einstellungen des Repos müssen Actions erlaubt sein, mit Schreibrechten für `GITHUB_TOKEN`. Alle 30 Minuten zieht er das Submodul auf den neuen Stand von `main` der Software, nur bei grünen Tests, als Commit des Bots. Bei Rot legt er ein Issue mit dem Label `software-nachziehen` an. Änderungen an der Vorlage werden von Hand übernommen (Datei neu kopieren).
+3. **Bauordner auf dem Server:** Klon des Reisen-Repos als Dienstbenutzer, `git submodule update --init`. Danach `python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt`. `git fetch` muss ohne Rückfrage gehen. Lokale Dateien, die nicht ins Repo gehören (etwa `.claude/settings.json`), kommen in `.git/info/exclude`, sonst gilt der Ordner als belegt und das Veröffentlichen setzt aus.
 4. **Einrichten:** `frieda/betrieb/einrichten.sh` prüft die Voraussetzungen. Es erzeugt Units und nginx-Bausteine in einem Ordner und zeigt die Befehle zum Aktivieren. Außerhalb dieses Ordners ändert es nichts. `--installieren` legt nach Rückfrage die Ordner an und kopiert Units und Bausteine nach `/etc`.
 5. **nginx:** Im server-Block der Adresse `include <FR_NGINX_SNIPPETS>/<instanz>-*.conf;` eintragen, `nginx -t`, neu laden.
 6. **sudo** für den Dienstbenutzer, ohne Passwort und nur für diese Befehle:
    - `systemctl restart <instanz>-rueckmeldungen <instanz>-konnektor <instanz>-schreiben`
    - `nginx -t` und `systemctl reload nginx`
    - `install`, `test`, `cat` und `rm` für Dateien in `<FR_NGINX_SNIPPETS>/<instanz>-*.conf`
-7. **Erste Reise** anlegen (`docs/neue-reise.md`), committen, `frieda/betrieb/deploy.sh <reise>` (legt den Code der Dienste an). Danach `sudo systemctl enable --now <instanz>-rueckmeldungen <instanz>-konnektor <instanz>-schreiben` und die beiden Timer, wie `einrichten.sh` sie nennt.
-8. **Prüfen:** `veroeffentlichen.sh --immer` zeigt „ist online“. Mit `freischalten.sh <reise> --person <schlüssel>` bekommt jede Person ihren Link, den sie in der Claude-App einträgt (`docs/konnektor.md`). `curl -s 127.0.0.1:<FR_SB_PORT>/gesund` antwortet `{"gesund": true}`.
+7. **Erste Reise** anlegen (`docs/neue-reise.md`), nach `main` bringen, im Bauordner `FR_WURZEL=<Bauordner> frieda/betrieb/deploy.sh <reise>` (legt den Code der Dienste an). Danach `sudo systemctl enable --now <instanz>-rueckmeldungen <instanz>-konnektor <instanz>-schreiben` und die beiden Timer, wie `einrichten.sh` sie nennt.
+8. **Prüfen:** `FR_WURZEL=<Bauordner> frieda/betrieb/veroeffentlichen.sh --immer` zeigt „ist online“. Mit `freischalten.sh <reise> --person <schlüssel>` bekommt jede Person ihren Link, den sie in der Claude-App einträgt (`docs/konnektor.md`). `curl -s 127.0.0.1:<FR_SB_PORT>/gesund` antwortet `{"gesund": true}`.
 
 **Zwei Instanzen auf einem Server** brauchen verschiedene `FR_INSTANZ`, `FR_SEITEN` (und damit Ablage und Dienstordner) und Ports. `einrichten.sh` bricht ab, wenn eine andere installierte Instanz dieselben Ports nutzt. Unit-Namen, nginx-Bausteine, Drossel-Zone und Sperrdateien tragen den Namen der Instanz. Jede Instanz braucht einen eigenen Konnektor-Pfad (`<instanz>-mcp`).
 
-## Arbeitskopien
+## Bauordner und Arbeitsordner
 
-Im Veröffentlichungsordner wird nicht gearbeitet, sonst setzt der Timer aus. `frieda/betrieb/arbeitskopie.sh <branch>` legt daneben einen Git-Worktree an oder wechselt dort den Branch. Was nicht im Repo liegt, wird aus dem Veröffentlichungsordner verlinkt: Python-Umgebung, Werkzeuge, Grundkarten und `.claude/settings.json`.
+Der **Bauordner** spiegelt nur `main`. Timer, Schreibweg und Wächter laufen von dort, ihre Units nennen ihn mit `FR_WURZEL`. Von Hand wird darin nichts geändert, kein Branch ausgecheckt und nichts committet. Sonst setzt das Veröffentlichen aus (es überspringt jeden Lauf, solange der Ordner nicht auf `main` oder nicht sauber ist). `deploy.sh` und `veroeffentlichen.sh` laufen nur mit `FR_WURZEL`. `deploy.sh` baut außerdem nur, wenn der Ordner auf dem Branch `main` steht. Ein Aufruf aus einem anderen Klon bricht damit ab, statt von dort zu veröffentlichen (#137). Was nicht im Repo liegt, hat der Bauordner selbst: die Python-Umgebung (`engine/.venv`), die Werkzeuge (`engine/.bin`) und die Grundkarten. Eine neue Grundkarte kommt mit `FR_WURZEL=<Bauordner> frieda/werkzeuge/karte-holen.sh <reise>` direkt dorthin (ignorierte Dateien, `main` bleibt sauber), danach `FR_WURZEL=<Bauordner> frieda/betrieb/veroeffentlichen.sh --immer`.
+
+Gearbeitet wird in einem eigenen **Arbeitsordner**, einem normalen Klon mit eigener Python-Umgebung und Branches. Er wird über Pull Requests nach `main` gebracht, danach holt der Timer den Stand in den Bauordner. Die Software selbst wird nur in ihrem eigenen Repo geändert. Im Reisen-Repo ändert sich das Submodul `frieda/` nur durch einen Versionswechsel (Workflow „Software nachziehen“).
 
 ## Zurückrollen und sperren
 
-- **Seite:** auf den letzten guten Stand gehen (`git checkout <commit>`), `deploy.sh <reise>`, zurück auf `main`. Der Service Worker bietet den alten Inhalt als neue Version an.
-- **Dienste:** der Code liegt in `<FR_DIENST>/`; ein Deploy eines älteren Stands bringt ihn zurück.
+- **Seite:** den schlechten Stand auf `main` mit `git revert <commit>` zurücknehmen (in einem Arbeitsordner, über einen PR). Der Timer veröffentlicht den neuen Stand, der Service Worker bietet den alten Inhalt als neue Version an. Im Bauordner wird nichts ausgecheckt.
+- **Dienste:** der Code liegt in `<FR_DIENST>/`. Ein Revert der Software (neuer Stand des Submoduls auf `main`) bringt den alten Code beim nächsten Veröffentlichen zurück.
 - **Link sperren:** Eintrag aus `zugaenge.json` löschen (Konnektor, wirkt sofort) bzw. den Token im nginx-Baustein ändern (Seite).
 
 ## Wenn etwas klemmt
@@ -187,6 +209,6 @@ Im Veröffentlichungsordner wird nicht gearbeitet, sonst setzt der Timer aus. `f
 | `api/gesund` antwortet nicht | `systemctl status <instanz>-rueckmeldungen`, `journalctl -u <instanz>-rueckmeldungen -n 50` |
 | Konnektor `gesund` 503 | `zugaenge.json` unlesbar, keine Reise freigeschaltet (`seiten.json`) und kein alter Link, oder eine freigeschaltete oder verlinkte Reise nicht veröffentlicht |
 | Konnektor meldet „Schreibweg nicht erreichbar“ oder „nicht eingerichtet“ | `systemctl status <instanz>-schreiben`, `journalctl -u <instanz>-schreiben -n 50`; steht `KN_SCHREIBDIENST` in der Unit des Konnektors? Geht `git push` als Dienstbenutzer ohne Rückfrage? |
-| Nichts geht online | `journalctl -u <instanz>-veroeffentlichen -n 50`; ist der Veröffentlichungsordner auf `main` und sauber? |
+| Nichts geht online | `journalctl -u <instanz>-veroeffentlichen -n 50`; ist der Bauordner auf `main` und sauber? |
 | Eingetragenes erscheint nicht auf der Seite | `journalctl -u <instanz>-schreiben -n 50` (Commit und Push da?), dann `journalctl -u <instanz>-veroeffentlichen -n 50` |
 | Rückmeldungen bleiben „neu“ | Das ist kein Fehler: Eine Organisator:in arbeitet sie im AI-Client ein (`rueckmeldungen`, dann `rueckmeldung_erledigen`); `python3 engine/rueckmeldungen.py liste <reise>` zeigt sie auf dem Server |

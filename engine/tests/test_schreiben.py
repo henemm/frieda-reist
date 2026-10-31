@@ -285,6 +285,8 @@ def test_probebau_lehnt_ab_und_laesst_nichts_zurueck(repo):
                                                                              "werte": ["ja", "nein"]}})
     assert not git(arbeit, "status", "--porcelain")
     assert git(origin, "rev-parse", "main") == stand and not stempel.exists()
+    # Issue #142: der Probebau liefert die Warnungen des Baus (bezug, text); die Beispielreise hat keine
+    assert s.probebau(arbeit / "reisen" / "beispielreise") == []
 
 
 # ---------- Rolle, Status, Person ----------
@@ -1256,7 +1258,9 @@ def test_rollen_je_werkzeug_des_schreibwegs(repo):
     # Mitwirkende: Eingaben; Organisator:innen: Plan, Ontologie, Einstellungen
     assert {w for w, a in sb.AKTIONEN.items() if rg.AKTIONEN[a]["rolle"] == "organisator"} >= {
         "tag_anlegen", "tag_aendern", "termin_setzen", "wahlstelle_aendern", "plan_anlegen", "plan_aendern", "reise_aendern",
-        "merkmal_zusammenfuehren", "arten_uebernehmen", "entscheiden", "art_definieren", "merkmal_definieren"}
+        "merkmal_zusammenfuehren", "arten_uebernehmen", "entscheiden", "art_definieren", "merkmal_definieren",
+        "start_ende_setzen"}   # Issue #142: Start und Ende des Plans wie die Eckdaten der Reise (Aktion einstellung)
+    assert sb.AKTIONEN["start_ende_setzen"] == sb.AKTIONEN["reise_aendern"] == "einstellung"
     assert {w for w, a in sb.AKTIONEN.items() if rg.AKTIONEN[a]["rolle"] == "mitwirkend"} >= {
         "option_aendern", "wissen_aendern", "lesetext_schreiben", "wunsch_vorschlagen", "wert_eintragen", "ding_anlegen", "option_anlegen"}
 
@@ -1378,6 +1382,8 @@ def test_reise_aendern_und_plaene(repo):
     a = s.schreiben("beispielreise", "reise_aendern", {**IDA, "args": {"untertitel": "Dresden und Sächsische Schweiz, 13.–17.5.2027 · erfundenes Beispiel",
                                                                        "von": "2027-05-13", "bis": "2027-05-17", "grund": "ein Tag länger"}})
     assert "bis – → 2027-05-17" in a["text"] and "untertitel" in a["text"]
+    # Issue #142: Start und Ende des Plans setzt ein eigenes Werkzeug; der Text verweist darauf statt auf die Datei
+    assert "start_ende_setzen" in a["text"] and "plan/routen.yaml" not in a["text"]
     ry = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/reise.yaml"], check=True, capture_output=True, text=True).stdout)
     assert ry["zeitraum"]["bis"] == datetime.date(2027, 5, 17) and ry["verlauf"][-1]["grund"] == "ein Tag länger" and ry["verlauf"][-1]["wer"] == "Ida"
     s.vorbereiten()
@@ -1565,3 +1571,137 @@ def test_loeschwunsch_antworttext_frage(repo):
     assert a["text"].rstrip().endswith("Nicht gelöscht, die Frage steht weiter mit Verlauf da; ein Wiedereröffnen gibt es nicht, "
                                        "bei Bedarf eine neue Frage anlegen.")
 
+
+# ---------- Issue #142: Hinweise der Prüfung, Start und Ende des Plans ----------
+
+AUSSERHALB = "plan: Fixpunkt 20.05. (Konzert am Abend (Test)) liegt außerhalb des Plans."
+
+
+def test_neue_warnung_steht_als_hinweis_in_der_antwort(repo):
+    """AC-9: Schreibweg und Tor prüfen dasselbe (nur Baufehler lehnen ab); eine Warnung, die der Eintrag neu erzeugt, steht
+    als Hinweis in der Antwort, eingetragen ist trotzdem. Ohne neue Warnung gibt es das Feld nicht."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "reise_aendern", {**IDA, "args": {"kurz": "Malerweg", "grund": "kürzer"}})
+    assert a["ok"] is True and "hinweise" not in a                     # die Beispielreise hat keine Warnung
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "termin_setzen", {**IDA, "args": {"datum": "2027-05-20", "titel": "Konzert am Abend (Test)",
+                                                                       "ort": "O-01", "quelle": "erfunden (Test)"}})
+    assert a["ok"] is True and a["hinweise"] == [AUSSERHALB]
+    r, _ = routen_auf_main(origin)
+    assert any(f.get("titel") == "Konzert am Abend (Test)" for f in r["fixpunkte"])   # der Eintrag ist im Repo
+
+
+def test_keine_hinweise_ohne_neue_warnung(repo):
+    """AC-10: Hat die Reise schon Warnungen und kommt keine neue dazu, fehlt das Feld hinweise (nur Neues zählt)."""
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "termin_setzen", {**IDA, "args": {"datum": "2027-05-20", "titel": "Konzert am Abend (Test)",
+                                                                       "ort": "O-01", "quelle": "erfunden (Test)"}})
+    assert a["hinweise"] == [AUSSERHALB]
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "reise_aendern", {**IDA, "args": {"kurz": "Malerweg", "grund": "kürzer"}})
+    assert a["ok"] is True and "hinweise" not in a
+
+
+def test_hinweise_sind_begrenzt(repo, monkeypatch):
+    """AC-12: Höchstens 10 Hinweise, dann eine Zeile „und N weitere“. Die Warnungen sind erfunden: ein Termin mit dem Titel
+    „Viele Hinweise (Test)“ lässt den Bau 13 Warnungen mehr melden."""
+    import bauen
+    original = bauen.Bauer.daten
+
+    def daten(self):
+        d = original(self)
+        if "Viele Hinweise (Test)" in (self.reise_dir / "plan" / "routen.yaml").read_text(encoding="utf-8"):
+            d["route"]["warnungen"] = d["route"].get("warnungen", []) + [
+                {"bezug": "plan", "text": f"Erfundene Warnung {i} (Test)."} for i in range(1, 14)]
+        return d
+    monkeypatch.setattr(bauen.Bauer, "daten", daten)
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "termin_setzen", {**IDA, "args": {"datum": "2027-05-13", "titel": "Viele Hinweise (Test)",
+                                                                       "ort": "O-01", "quelle": "erfunden (Test)"}})
+    assert a["ok"] is True
+    assert a["hinweise"][:10] == [f"plan: Erfundene Warnung {i} (Test)." for i in range(1, 11)]
+    assert len(a["hinweise"]) == 11 and a["hinweise"][10] == "und 3 weitere"
+
+
+def test_start_ende_setzen_aendert_plan_und_schreibt_verlauf(repo):
+    """AC-27: Start und Ende des Plans (plan/routen.yaml) setzt die Organisatorin mit Grund; der Verlauf steht in reise.yaml,
+    die Daten aller Tage hängen am Startdatum, die Antwort sagt das."""
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "start_ende_setzen", {**IDA, "args": {"start_datum": "2027-05-20", "ende_datum": "2027-05-23",
+                                                                           "grund": "Zug eine Woche später (Test)"}})
+    assert a["ok"] is True and "verschieb" in a["text"]
+    r, _ = routen_auf_main(origin)
+    assert r["start"] == {"datum": datetime.date(2027, 5, 20), "ort": "O-01"}
+    assert r["ende"] == {"datum": datetime.date(2027, 5, 23), "ort": "O-01"}
+    ry = yaml.safe_load(git(origin, "show", "main:reisen/beispielreise/reise.yaml"))
+    v = ry["verlauf"][-1]
+    assert v["wer"] == "Ida" and v["grund"] == "Zug eine Woche später (Test)" and v["datum"] == datetime.date.today()
+    assert "2027-05-13 → 2027-05-20" in v["was"] and "2027-05-16 → 2027-05-23" in v["was"]
+    # Die festen Termine bleiben an ihrem Datum und liegen jetzt außerhalb des Plans: das zeigen die Hinweise
+    assert any("Fixpunkt 13.05." in h for h in a["hinweise"])
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "start_ende_setzen", {**IDA, "args": {"start_ort": "O-02", "grund": "Start woanders (Test)"}})
+    r, _ = routen_auf_main(origin)
+    assert r["start"]["ort"] == "O-02" and r["start"]["datum"] == datetime.date(2027, 5, 20)
+    assert not git(arbeit, "status", "--porcelain")
+
+
+def test_start_ende_setzen_verschiebt_die_tagesdaten(repo):
+    """AC-27 (Tage): Nach dem Verschieben von start_datum hängen die Daten aller Tage am neuen Start; der erste Tag liegt
+    am neuen Startdatum, jeder weitere einen Tag später."""
+    import bauen
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    s.vorbereiten()
+    vorher = [t["datum"] for t in bauen.Bauer(arbeit / "reisen" / "beispielreise", arbeit / "probe").daten()["route"]["tage"]]
+    assert vorher and vorher[0] == "2027-05-13"
+    a = s.schreiben("beispielreise", "start_ende_setzen", {**IDA, "args": {"start_datum": "2027-05-20", "ende_datum": "2027-05-23",
+                                                                           "grund": "Zug eine Woche später (Test)"}})
+    assert a["ok"] is True
+    nachher = [t["datum"] for t in bauen.Bauer(arbeit / "reisen" / "beispielreise", arbeit / "probe").daten()["route"]["tage"]]
+    erwartet = [(datetime.date(2027, 5, 20) + datetime.timedelta(days=i)).isoformat() for i in range(len(vorher))]
+    assert len(nachher) == len(vorher) and nachher == erwartet
+
+
+@pytest.mark.parametrize("args, grund", [
+    ({"start_datum": "2027-05-20"}, "grund"),
+    ({"grund": "x"}, "Nichts zu ändern"),
+    ({"start_datum": "2027-05-13", "grund": "x"}, "Nichts zu ändern"),
+    ({"start_ort": "O-99", "grund": "x"}, "O-99"),
+    ({"start_datum": "31.02.2027", "grund": "x"}, "JJJJ-MM-TT"),
+    ({"ende_datum": "morgen", "grund": "x"}, "JJJJ-MM-TT"),
+    ({"start_datum": "", "grund": "x"}, "start_datum"),
+    ({"ende_datum": "2027-05-10", "grund": "x"}, "vor"),
+])
+def test_start_ende_setzen_lehnt_ungueltiges_ab(repo, args, grund):
+    """AC-29: Ablehnung mit verständlichem Grund, die Arbeitskopie bleibt unverändert."""
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    stand = git(origin, "rev-parse", "main")
+    with pytest.raises(sb.Ablehnung, match=grund):
+        s.schreiben("beispielreise", "start_ende_setzen", {**IDA, "args": args})
+    assert not git(arbeit, "status", "--porcelain") and git(origin, "rev-parse", "main") == stand
+
+
+def test_start_ende_setzen_entfernt_ende(repo):
+    """AC-30: Leerer Text entfernt ende.ort bzw. ende.datum; ohne Ende baut die Reise (höchstens Warnungen)."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "start_ende_setzen", {**IDA, "args": {"ende_ort": "", "ende_datum": "", "grund": "Ende offen (Test)"}})
+    assert a["ok"] is True and "entfernt" in a["text"]
+    r, _ = routen_auf_main(origin)
+    assert not (r.get("ende") or {}).get("datum") and not (r.get("ende") or {}).get("ort")
+    assert r["start"] == {"datum": datetime.date(2027, 5, 13), "ort": "O-01"}
+
+
+def test_start_ende_setzen_warnung_kommt_als_hinweis(repo):
+    """AC-31: Ein Ende, das nicht zum Plan passt, ist nur eine Warnung: eingetragen, und sie steht als Hinweis in der Antwort."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "start_ende_setzen", {**IDA, "args": {"ende_datum": "2027-05-18", "grund": "zwei Tage länger (Test)"}})
+    assert a["ok"] is True
+    assert a["hinweise"] == ["plan: Der aktuelle Plan endet am 16.05., die Reise aber am 18.05. (-2 Tag(e))."]
+    r, _ = routen_auf_main(origin)
+    assert r["ende"]["datum"] == datetime.date(2027, 5, 18)

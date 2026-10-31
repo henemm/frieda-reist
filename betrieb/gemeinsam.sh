@@ -4,6 +4,7 @@
 # keine Instanz: Pfade, Adressen, Namen, Meldeweg und Überwachung kommen aus den Einstellungen.
 #
 #   FR_WURZEL         Wurzel des Reisen-Repos. Ohne Angabe das Repo, das diese Software als Submodul einbindet.
+#                     deploy.sh und veroeffentlichen.sh verlangen die Angabe (nur_bauordner, unten).
 #   FR_EINSTELLUNGEN  Einstellungsdatei der Instanz, Vorgabe <FR_WURZEL>/betrieb/einstellungen.env (Vorlage:
 #                     betrieb/einstellungen.beispiel). Darin nur Zeilen NAME=wert mit Namen FR_…, ohne Shell-Auswertung.
 #                     Was schon in der Umgebung steht (systemd, Aufruf von Hand, Tests), gilt vor der Datei.
@@ -11,6 +12,7 @@
 #                     nie im Repo; gleiche Form, wird nach den Einstellungen gelesen.
 
 FR_BETRIEB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fr_wurzel_angegeben="${FR_WURZEL:-}"
 
 if [ -z "${FR_WURZEL:-}" ]; then
   FR_WURZEL="$(git -C "$FR_BETRIEB" rev-parse --show-superproject-working-tree 2>/dev/null || true)"
@@ -18,6 +20,25 @@ if [ -z "${FR_WURZEL:-}" ]; then
 fi
 FR_WURZEL="$(cd "$FR_WURZEL" && pwd)"
 export FR_WURZEL
+
+# Gebaut und veröffentlicht wird nur im Bauordner der Instanz (docs/betrieb.md, Ordner; #137). Die Units und der
+# Schreibweg nennen ihn mit FR_WURZEL. Ohne diese Angabe nähme ein Aufruf von Hand den Ordner, in dem das Skript
+# zufällig liegt, etwa einen Arbeitsordner auf einem Branch.
+nur_bauordner() {  # [--main]: ohne FR_WURZEL abbrechen; mit --main auch, wenn HEAD nicht der Branch main ist
+  local skript zweig
+  skript="$(basename "$0")"
+  if [ -z "$fr_wurzel_angegeben" ]; then
+    echo "FEHLER: FR_WURZEL fehlt. $skript läuft nur im Bauordner: FR_WURZEL=<Bauordner> frieda/betrieb/$skript …" >&2
+    exit 1
+  fi
+  if [ "${1:-}" = --main ]; then
+    zweig="$(git -C "$FR_WURZEL" symbolic-ref -q --short HEAD 2>/dev/null || echo "losgelöster HEAD")"
+    if [ "$zweig" != main ]; then
+      echo "FEHLER: $FR_WURZEL steht nicht auf main ($zweig). Gebaut wird nur, was auf main liegt." >&2
+      exit 1
+    fi
+  fi
+}
 
 fr_einlesen() {  # <datei>: NAME=wert-Zeilen übernehmen, Vorhandenes bleibt; nur Namen FR_…
   local zeile name wert

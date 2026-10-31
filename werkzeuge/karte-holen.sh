@@ -64,4 +64,4 @@ echo "Schneide $BBOX bis Zoom $MAXZOOM aus $QUELLE …"
 "$WERKZEUG" verify "$ZIEL.neu" >/dev/null
 mv "$ZIEL.neu" "$ZIEL"
 echo "$QUELLE (Stand $TAG), Rahmen $BBOX, Zoom bis $MAXZOOM" > "$ZIEL.quelle.txt"
-echo "Fertig: $ZIEL ($(du -h "$ZIEL" | cut -f1)). Jetzt veröffentlichen: frieda/betrieb/deploy.sh $REISE"
+echo "Fertig: $ZIEL ($(du -h "$ZIEL" | cut -f1)). Jetzt veröffentlichen: FR_WURZEL=$WURZEL frieda/betrieb/veroeffentlichen.sh --immer"

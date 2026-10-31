@@ -1,0 +1,125 @@
+# Vorlage: Workflow „Software nachziehen“ für das Reisen-Repo einer Instanz (#161).
+# Einrichten: Datei nach .github/workflows/ des Reisen-Repos kopieren (docs/betrieb.md, „Neue Instanz einrichten“).
+#
+# Alle 30 Minuten (und von Hand): Liegt auf main der Software (Submodul frieda/) ein neuerer Stand, wird das Submodul
+# darauf gesetzt und alles getestet (Software und echte Reisen, wie tests.yml). Grün: Commit des Bots direkt nach
+# main, der Server veröffentlicht dann selbst. Rot: nichts wird übernommen, stattdessen entsteht ein Issue (Label
+# software-nachziehen), und der Lauf endet rot, sodass GitHub den Fehlschlag per Mail meldet.
+# Nur vorwärts, ein Lauf gleichzeitig, nie erzwungen: Scheitert der Push am Wettlauf mit dem Schreibweg, versucht es
+# der nächste Lauf wieder.
+name: Software nachziehen
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: software-nachziehen
+  cancel-in-progress: false
+
+jobs:
+  nachziehen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Neuer Stand?
+        id: stand
+        run: |
+          alt=$(git -C frieda rev-parse HEAD)
+          # Das Submodul ist ein flacher Klon. Vorwärts-Prüfung und Commit-Liste brauchen die volle Historie.
+          git -C frieda fetch -q --unshallow origin main 2>/dev/null || git -C frieda fetch -q origin main
+          neu=$(git -C frieda rev-parse origin/main)
+          neu_da=ja
+          if [ "$alt" = "$neu" ]; then
+            neu_da=nein
+          elif ! git -C frieda merge-base --is-ancestor "$alt" "$neu"; then
+            # Nur vorwärts: ein Stand, der nicht auf dem eingebundenen aufbaut, wird nie übernommen.
+            neu_da=nein
+            echo "::warning::main der Software liegt nicht vor dem eingebundenen Stand, nichts übernommen"
+          fi
+          { echo "alt=$alt"; echo "neu=$neu"; echo "neu_da=$neu_da"; } >> "$GITHUB_OUTPUT"
+
+      - name: Submodul setzen
+        if: steps.stand.outputs.neu_da == 'ja'
+        run: git -C frieda checkout -q "${{ steps.stand.outputs.neu }}"
+
+      - uses: actions/setup-python@v5
+        if: steps.stand.outputs.neu_da == 'ja'
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: frieda/engine/requirements.txt
+
+      - name: Python-Pakete
+        if: steps.stand.outputs.neu_da == 'ja'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libcairo2
+          pip install -r frieda/engine/requirements.txt
+
+      # continue-on-error: Rote Tests beenden den Job nicht sofort, damit der Issue-Schritt das Ergebnis
+      # (steps.tests.outcome) auswerten kann. Der Lauf endet trotzdem rot (exit 1 im Issue-Schritt).
+      - name: Tests (Software und echte Reisen)
+        id: tests
+        if: steps.stand.outputs.neu_da == 'ja'
+        continue-on-error: true
+        run: python -m pytest -q -rs engine/tests tests
+
+      - name: Nach main übernehmen
+        if: steps.stand.outputs.neu_da == 'ja' && steps.tests.outcome == 'success'
+        env:
+          ALT: ${{ steps.stand.outputs.alt }}
+          NEU: ${{ steps.stand.outputs.neu }}
+        run: |
+          alt="$ALT"; neu="$NEU"
+          kurz=$(git -C frieda rev-parse --short "$neu")
+          anzahl=$(git -C frieda rev-list --count "$alt..$neu")
+          {
+            echo "Software auf Stand $kurz (automatisch)"
+            echo
+            echo "$anzahl Commit(s) seit $(git -C frieda rev-parse --short "$alt"):"
+            git -C frieda log --reverse --format='- %h %s' "$alt..$neu"
+          } > "$RUNNER_TEMP/nachricht"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frieda
+          git commit -q -F "$RUNNER_TEMP/nachricht"
+          # Der Schreibweg schreibt laufend auf main: vor jedem Push neu holen und vorspulen, nie erzwingen.
+          for versuch in 1 2 3; do
+            if git pull -q --rebase origin main && git push -q origin HEAD:main; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep 10
+          done
+          echo "::error::Übernahme nach main nicht gelungen, der nächste Lauf versucht es wieder"
+          exit 1
+
+      - name: Issue bei Testfehler
+        if: steps.stand.outputs.neu_da == 'ja' && steps.tests.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEU: ${{ steps.stand.outputs.neu }}
+        run: |
+          kurz=$(git -C frieda rev-parse --short "$NEU")
+          lauf="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          offen=$(gh issue list --label software-nachziehen --state open --json number --jq 'length' 2>/dev/null || echo 0)
+          if [ "$offen" -eq 0 ]; then
+            gh label create software-nachziehen --color B60205 \
+              --description "Automatisches Nachziehen der Software ist an Tests gescheitert" 2>/dev/null || true
+            gh issue create --label software-nachziehen \
+              --title "Software-Stand $kurz lässt sich nicht automatisch übernehmen" \
+              --body "Die Tests schlagen mit dem neuen Stand der Software fehl. Die Reisen oder die Software anpassen, dann übernimmt der nächste Lauf den Stand selbst (oder das Submodul von Hand nachziehen). Lauf: $lauf"
+          else
+            echo "Es gibt schon ein offenes Issue, kein weiteres angelegt."
+          fi
+          exit 1

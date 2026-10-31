@@ -91,7 +91,7 @@ echo
 echo "Aktivieren (nachdem im server-Block von $FR_ADRESSE  include $SNIPPETS/$FR_INSTANZ-*.conf;  steht):"
 befehle | sed 's/^/  /'
 cat <<TEXT
-  $FR_WURZEL/frieda/betrieb/deploy.sh <erste reise>     (legt Code der Dienste an, Prüfung schlägt vor dem Start fehl)
+  cd $FR_WURZEL && FR_WURZEL=$FR_WURZEL frieda/betrieb/deploy.sh <erste reise>   (legt Code der Dienste an, Prüfung schlägt vor dem Start fehl)
   sudo systemctl enable --now $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben
   sudo nginx -t && sudo systemctl reload nginx
   sudo systemctl enable --now $FR_INSTANZ-veroeffentlichen.timer $FR_INSTANZ-waechter.timer

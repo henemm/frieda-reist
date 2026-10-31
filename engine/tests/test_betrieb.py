@@ -117,7 +117,7 @@ def test_beispiel_einstellungen_sind_vollstaendig():
 
 @pytest.fixture
 def vf(tmp_path):
-    """Origin mit main, Veröffentlichungsordner als Klon, Deploy-Attrappe, die jede Reise protokolliert."""
+    """Origin mit main, Bauordner als Klon, Deploy-Attrappe, die jede Reise protokolliert."""
     if not shutil.which("flock"):
         pytest.skip("flock fehlt")
     quelle = tmp_path / "quelle"
@@ -130,9 +130,20 @@ def vf(tmp_path):
     arbeit = tmp_path / "arbeit"
     subprocess.run(["git", "clone", "-q", str(quelle), str(arbeit)], check=True)
     protokoll = tmp_path / "deploy.log"
+    # Deploy-Attrappe (#142): kaputt-<reise> = Bau dieser Reise gescheitert (Exit 2), kaputt oder infra-<reise> =
+    # Infrastrukturfehler (Exit 1)
     attrappe = ausfuehrbar(tmp_path / "deploy.sh", f'#!/bin/sh\necho "$1" >> {protokoll}\necho "$FR_GEPRUEFT" >> {tmp_path}/gepreuft.log\n'
-                                                   f'[ -e {tmp_path}/kaputt ] && exit 1\nexit 0\n')
-    pruefen = ausfuehrbar(tmp_path / "pruefen.sh", f'#!/bin/sh\necho p >> {tmp_path}/pruefen.log\n[ ! -e {tmp_path}/rot ]\n')
+                                                   f'[ -e {tmp_path}/kaputt ] && exit 1\n[ -e {tmp_path}/infra-$1 ] && exit 1\n'
+                                                   f'[ -e {tmp_path}/kaputt-$1 ] && exit 2\nexit 0\n')
+    # Prüf-Attrappe: aufgerufen mit „engine/tests“ (Software, rot über die Datei rot, Protokoll p) oder „tests“ (Tests des
+    # Reisen-Repos, rot über rot-reise, Protokoll r)
+    pruefen = ausfuehrbar(tmp_path / "pruefen.sh", f'#!/bin/sh\nif [ "$1" = tests ]; then echo r >> {tmp_path}/pruefen.log; '
+                                                   f'[ ! -e {tmp_path}/rot-reise ]; exit; fi\n'
+                                                   f'echo p >> {tmp_path}/pruefen.log\n[ ! -e {tmp_path}/rot ]\n')
+    # Meldeweg an den Betrieb (FR_MELDEN) und Meldung an Personen (waechter.py rot-melden) als Attrappen
+    melden = ausfuehrbar(tmp_path / "melden.sh", f'#!/bin/sh\necho "$1|$2" >> {tmp_path}/melden.log\n'
+                                                 f'[ ! -e {tmp_path}/melden-aus ]\n')
+    rotmelden = ausfuehrbar(tmp_path / "rotmelden.sh", f'#!/bin/sh\necho "$@" >> {tmp_path}/rotmelden.log\n')
     # curl-Attrappe: protokolliert Heartbeat-Abrufe statt ins Netz zu gehen
     pings = tmp_path / "pings.log"
     ausfuehrbar(tmp_path / "bin/curl", f'#!/bin/sh\necho ping >> {pings}\n')
@@ -140,7 +151,8 @@ def vf(tmp_path):
                        f'#!/bin/sh\necho "$1" >> {tmp_path}/frei.log\necho "Seite: https://example.invalid/$1-geheim/"\n')
     env = {**SAUBER, "FR_WURZEL": str(arbeit), "FR_INSTANZ": "probe", "FR_DIENST": str(tmp_path / "dienst"),
            "FR_SPERREN": str(tmp_path), "VF_DEPLOY": str(attrappe), "VF_PRUEFEN": str(pruefen), "VF_FREISCHALTEN": str(frei),
-           "FR_HEARTBEAT_VEROEFFENTLICHEN": "https://example.invalid/hb", "PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}"}
+           "FR_HEARTBEAT_VEROEFFENTLICHEN": "https://example.invalid/hb", "PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}",
+           "FR_MELDEN": str(melden), "VF_ROTMELDEN": str(rotmelden)}
 
     def lauf(*args, **extra):
         return subprocess.run([str(BETRIEB / "veroeffentlichen.sh"), *args], env={**env, **extra}, capture_output=True, text=True)
@@ -160,8 +172,42 @@ def vf(tmp_path):
         pings.unlink(missing_ok=True)
         return n
 
+    def reisetests():
+        """Das Reisen-Repo bekommt einen eigenen Testordner tests/ (wie eine echte Instanz)."""
+        (quelle / "tests").mkdir(exist_ok=True)
+        (quelle / "tests" / "test_inhalt.py").write_text("def test_inhalt():\n    pass\n")
+        git(quelle, "add", ".")
+        git(quelle, "commit", "-qm", "tests")
+
+    def rot():
+        """Inhalt der Rot-Datei <FR_DIENST>/veroeffentlichen-rot als dict, None wenn es sie nicht gibt."""
+        datei = tmp_path / "dienst" / "veroeffentlichen-rot"
+        if not datei.exists():
+            return None
+        return dict(z.split("=", 1) for z in datei.read_text(encoding="utf-8").splitlines() if "=" in z)
+
+    def zeilen(name):
+        datei = tmp_path / name
+        return datei.read_text(encoding="utf-8").splitlines() if datei.exists() else []
+
+    def kopf():
+        return git(quelle, "rev-parse", "HEAD").strip()
+
     return {"lauf": lauf, "deploys": deploys, "pings": anzahl_pings, "neuer_commit": neuer_commit, "arbeit": arbeit,
-            "tmp": tmp_path, "env": env}
+            "tmp": tmp_path, "env": env, "reisetests": reisetests, "rot": rot, "zeilen": zeilen, "kopf": kopf}
+
+
+T0 = 1_800_000_000   # erfundener Zeitpunkt für VF_JETZT (Sekunden seit 1970)
+
+
+def iso(sekunden):
+    import datetime
+    return datetime.datetime.fromtimestamp(sekunden, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def hoch(vf):
+    """Nachrichten an den Betrieb mit Priorität high."""
+    return [z for z in vf["zeilen"]("melden.log") if z.startswith("high|")]
 
 
 def test_veroeffentlichen_nur_bei_neuem_stand(vf):
@@ -179,9 +225,14 @@ def test_veroeffentlichen_nur_bei_neuem_stand(vf):
 
 
 def test_veroeffentlichen_fehlschlag_wird_wiederholt(vf):
+    """Ein Infrastrukturfehler (Exit 1 aus deploy.sh) beendet den Lauf sofort, wird nicht gemerkt und beim nächsten Lauf
+    auf demselben Stand wiederholt (#142, AC-18)."""
     (vf["tmp"] / "kaputt").touch()
     assert vf["lauf"]().returncode == 1
-    vf["deploys"]()
+    assert vf["deploys"]() == ["beispielreise"]
+    assert vf["rot"]() is None
+    assert vf["lauf"]().returncode == 1
+    assert vf["deploys"]() == ["beispielreise"]                  # wiederholt, nicht übersprungen
     (vf["tmp"] / "kaputt").unlink()
     assert vf["lauf"]().returncode == 0
     assert vf["deploys"]() == ["beispielreise", "zweitreise"]
@@ -189,15 +240,23 @@ def test_veroeffentlichen_fehlschlag_wird_wiederholt(vf):
 
 def test_veroeffentlichen_prueft_einmal_fuer_alle_reisen(vf):
     """Die Prüfungen laufen einmal je Lauf, nicht je Reise; deploy.sh bekommt den geprüften Stand und prüft nicht nochmal.
-    Rote Prüfungen: keine Reise wird angefasst, der Stand bleibt ungemerkt, der nächste Lauf versucht es wieder."""
+    Rote Software-Tests: keine Reise wird angefasst, der Stand bleibt ungemerkt, die Rot-Datei merkt den Stand (art=software);
+    derselbe Stand wird erst mit --immer oder einem neuen Commit wieder geprüft (#142, AC-3, AC-15)."""
     (vf["tmp"] / "rot").touch()
-    r = vf["lauf"]()
+    r = vf["lauf"](VF_JETZT=str(T0))
     assert r.returncode == 1 and "Prüfungen rot" in r.stdout and vf["deploys"]() == []
     assert not (vf["tmp"] / "dienst/veroeffentlicht").exists()
+    assert not (vf["tmp"] / "dienst/veroeffentlichen-erfolg").exists() and vf["pings"]() == 0
+    rot = vf["rot"]()
+    assert rot["commit"] == vf["kopf"]() and rot["art"] == "software" and rot["reisen"] == ""
+    assert rot["seit"] == iso(T0) and rot["gemeldet"] == "0"
     (vf["tmp"] / "rot").unlink()
-    assert vf["lauf"]().returncode == 0
+    r = vf["lauf"]()
+    assert r.returncode == 0 and "Bekannter roter Stand" in r.stdout and vf["deploys"]() == []
+    assert vf["zeilen"]("pruefen.log") == ["p"]
+    assert vf["lauf"]("--immer").returncode == 0
     assert vf["deploys"]() == ["beispielreise", "zweitreise"]
-    assert (vf["tmp"] / "pruefen.log").read_text().split() == ["p", "p"]
+    assert vf["zeilen"]("pruefen.log") == ["p", "p"]
     kopf = git(vf["arbeit"], "rev-parse", "HEAD").strip()
     assert (vf["tmp"] / "gepreuft.log").read_text().split() == [kopf, kopf]
     deploy = (BETRIEB / "deploy.sh").read_text(encoding="utf-8")
@@ -217,12 +276,15 @@ def test_veroeffentlichen_laesst_laufende_arbeit_in_ruhe(vf):
 
 
 def test_veroeffentlichen_heartbeat_nur_bei_erfolg(vf):
-    (vf["tmp"] / "kaputt").touch()
+    (vf["tmp"] / "kaputt-beispielreise").touch()
     assert vf["lauf"]().returncode == 1
-    assert vf["pings"]() == 0                                  # Deploy fehlgeschlagen
-    (vf["tmp"] / "kaputt").unlink()
+    assert vf["pings"]() == 0                                  # Bau einer Reise gescheitert (Teil-Erfolg ist kein Erfolg)
     assert vf["lauf"]().returncode == 0
-    assert vf["pings"]() == 1                                  # veröffentlicht
+    assert vf["pings"]() == 0                                  # bekannter roter Stand übersprungen
+    (vf["tmp"] / "kaputt-beispielreise").unlink()
+    vf["neuer_commit"]()
+    assert vf["lauf"]().returncode == 0
+    assert vf["pings"]() == 1                                  # repariert und veröffentlicht
     assert vf["lauf"]().returncode == 0
     assert vf["pings"]() == 1                                  # nichts Neues, Abruf gelungen
     (vf["arbeit"] / "entwurf.md").write_text("halb fertig")
@@ -232,12 +294,14 @@ def test_veroeffentlichen_heartbeat_nur_bei_erfolg(vf):
 
 def test_veroeffentlichen_stempel_nur_bei_erfolg(vf):
     stempel = vf["tmp"] / "dienst" / "veroeffentlichen-erfolg"
-    (vf["tmp"] / "kaputt").touch()
+    (vf["tmp"] / "kaputt-beispielreise").touch()
     assert vf["lauf"]().returncode == 1
-    assert not stempel.exists()                                # Deploy fehlgeschlagen
-    (vf["tmp"] / "kaputt").unlink()
+    assert not stempel.exists()                                # Bau einer Reise gescheitert
     assert vf["lauf"]().returncode == 0
-    assert stempel.exists()                                    # veröffentlicht
+    assert not stempel.exists()                                # bekannter roter Stand übersprungen
+    (vf["tmp"] / "kaputt-beispielreise").unlink()
+    assert vf["lauf"]("--immer").returncode == 0
+    assert stempel.exists()                                    # repariert und veröffentlicht
     stempel.unlink()
     (vf["arbeit"] / "entwurf.md").write_text("halb fertig")
     assert vf["lauf"]().returncode == 0
@@ -292,6 +356,340 @@ def test_veroeffentlichen_und_deploy_pruefen_in_eigenem_testordner():
         text = (BETRIEB / datei).read_text(encoding="utf-8")
         assert re.search(r'pytest .*--basetemp "\$pruef_tmp"', text), datei
         assert 'rm -rf "$pruef_tmp"' in text, datei
+
+
+# ---------- Veröffentlichen: Tor, Rot-Datei und Alarm (#142) ----------
+
+def test_veroeffentlichen_rote_reisetests_sperren_nicht(vf):
+    """Die Tests des Reisen-Repos (tests/) prüfen Inhalt, nicht Software: rot sperrt nie, der Betrieb bekommt eine
+    Nachricht (AC-1)."""
+    vf["reisetests"]()
+    (vf["tmp"] / "rot-reise").touch()
+    r = vf["lauf"]()
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "Tests des Reisen-Repos rot (sperren nicht)" in r.stdout
+    assert vf["zeilen"]("pruefen.log") == ["p", "r"]
+    assert vf["deploys"]() == ["beispielreise", "zweitreise"]
+    assert vf["zeilen"]("frei.log") == ["beispielreise", "zweitreise"]
+    assert (vf["tmp"] / "dienst/veroeffentlicht").read_text().strip() == vf["kopf"]()
+    assert (vf["tmp"] / "dienst/veroeffentlichen-erfolg").exists() and vf["pings"]() == 1
+    assert len([z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]) == 1
+    assert vf["rot"]() is None
+
+
+def test_veroeffentlichen_warnung_der_reisetests_einmal_je_commit(vf):
+    """Die Nachricht über rote Tests des Reisen-Repos kommt je Commit einmal, auch bei --immer (AC-2)."""
+    vf["reisetests"]()
+    (vf["tmp"] / "rot-reise").touch()
+    normal = lambda: [z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]   # noqa: E731
+    assert vf["lauf"]().returncode == 0
+    assert vf["lauf"]("--immer").returncode == 0
+    assert len(normal()) == 1
+    assert (vf["tmp"] / "dienst/veroeffentlichen-warnung").read_text().strip() == vf["kopf"]()
+    vf["neuer_commit"]()
+    assert vf["lauf"]().returncode == 0
+    assert len(normal()) == 2
+
+
+def test_deploy_prueft_nur_die_tests_der_software():
+    """deploy.sh und das Tor prüfen mit pytest nur engine/tests; tests/ des Reisen-Repos läuft im Tor getrennt und sperrt
+    nicht (AC-4)."""
+    deploy = (BETRIEB / "deploy.sh").read_text(encoding="utf-8")
+    pytest_zeilen = [z for z in deploy.splitlines() if "pytest" in z and not z.lstrip().startswith("#")]
+    assert pytest_zeilen and all('"$WURZEL/engine/tests"' in z for z in pytest_zeilen)
+    assert not any("$WURZEL/tests" in z for z in pytest_zeilen)
+    assert 'if [ "${FR_GEPRUEFT:-}" != "$(git -C "$WURZEL" rev-parse HEAD)" ]; then' in deploy
+    tor = (BETRIEB / "veroeffentlichen.sh").read_text(encoding="utf-8")
+    assert not any("engine/tests" in z and "[ -d tests ]" in z for z in tor.splitlines())
+
+
+def test_bau_mit_warnung_sperrt_nicht(tmp_path):
+    """Eine Warnung im Plan (hier: Plan endet an einem anderen Tag als die Reise) sperrt den Bau nie: bauen.py endet mit 0
+    und legt die Seite an (AC-5). Regressionsschutz: das galt schon vor #142."""
+    reise = tmp_path / "reisen" / "beispielreise"
+    shutil.copytree(BEISPIEL, reise)
+    routen = reise / "plan" / "routen.yaml"
+    text = routen.read_text(encoding="utf-8")
+    assert "ende: {datum: 2027-05-16, ort: O-01}" in text
+    routen.write_text(text.replace("ende: {datum: 2027-05-16, ort: O-01}", "ende: {datum: 2027-05-20, ort: O-01}"), encoding="utf-8")
+    daten = bauen.Bauer(reise, tmp_path / "probe").daten()
+    assert any("endet am" in w["text"] for w in daten["route"]["warnungen"])
+    r = subprocess.run([sys.executable, str(ENGINE / "bauen.py"), "--reisen", str(tmp_path / "reisen"), "--ziel",
+                        str(tmp_path / "dist"), "beispielreise"], capture_output=True, text=True, env=SAUBER)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (tmp_path / "dist" / "beispielreise" / "index.html").exists()
+
+
+def test_deploy_mit_warnung_im_plan_legt_die_seite_ab(tmp_path):
+    """deploy.sh selbst (nicht nur bauen.py) endet bei einer Warnung im Plan mit 0 und legt die Seite im Zielordner
+    FR_SEITEN ab (AC-5)."""
+    wurzel = tmp_path / "instanz"
+    reise = wurzel / "reisen" / "beispielreise"
+    shutil.copytree(BEISPIEL, reise)
+    routen = reise / "plan" / "routen.yaml"
+    text = routen.read_text(encoding="utf-8")
+    assert "ende: {datum: 2027-05-16, ort: O-01}" in text
+    routen.write_text(text.replace("ende: {datum: 2027-05-16, ort: O-01}", "ende: {datum: 2027-05-20, ort: O-01}"), encoding="utf-8")
+    (wurzel / "engine").symlink_to(ENGINE)
+    (wurzel / ".gitignore").write_text("dist/\n__pycache__/\n")
+    git(wurzel, "init", "-q", "-b", "main")
+    git(wurzel, "add", ".")
+    git(wurzel, "commit", "-qm", "start")
+    (tmp_path / "seiten").mkdir()
+    # Rückmeldedienst-Attrappe: antwortet auf …/gesund, damit die Bereitschaftsprüfung am Ende von deploy.sh besteht
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    class Gesund(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def log_message(self, *args):
+            pass
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Gesund)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    env = {**SAUBER, "FR_WURZEL": str(wurzel), "FR_INSTANZ": "probe", "FR_SEITEN": str(tmp_path / "seiten"),
+           "FR_DIENST": str(tmp_path / "dienst"), "FR_PYTHON": sys.executable, "FR_GEPRUEFT": git(wurzel, "rev-parse", "HEAD").strip(),
+           "FR_RM_PORT": str(server.server_address[1]), "FR_SUDO": "false"}
+    try:
+        r = subprocess.run([str(BETRIEB / "deploy.sh"), "beispielreise"], env=env, capture_output=True, text=True)
+    finally:
+        server.shutdown()
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (tmp_path / "seiten" / "beispielreise" / "index.html").exists()
+
+
+def test_veroeffentlichen_merge_und_submodulfehler_werden_nicht_gemerkt(vf):
+    """Scheitert das Vorspulen (lokaler Commit im Bauordner) oder das Holen des Submoduls, endet der Lauf mit 1,
+    es wird nichts gebaut, kein Stand geschrieben und die Rot-Datei weder angelegt noch verändert (AC-18)."""
+    stand = vf["tmp"] / "dienst" / "veroeffentlicht"
+    rot_datei = vf["tmp"] / "dienst" / "veroeffentlichen-rot"
+    arbeit, quelle = vf["arbeit"], vf["tmp"] / "quelle"
+    # Merge-Fehler: lokaler Commit im Bauordner, origin/main läuft davon
+    git(arbeit, "config", "user.email", "test@example.invalid")
+    git(arbeit, "config", "user.name", "Test")
+    (arbeit / "lokal.txt").write_text("lokal")
+    git(arbeit, "add", ".")
+    git(arbeit, "commit", "-qm", "lokal")
+    vf["neuer_commit"]()
+    r = vf["lauf"]()
+    assert r.returncode == 1 and "lässt sich nicht vorspulen" in r.stdout, r.stdout + r.stderr
+    assert vf["deploys"]() == [] and not stand.exists() and vf["rot"]() is None
+    # Submodul-Fehler: .gitmodules verweist auf ein Ziel, das es nicht gibt
+    git(arbeit, "fetch", "-q", "origin", "main")
+    git(arbeit, "reset", "-q", "--hard", "origin/main")
+    (quelle / ".gitmodules").write_text('[submodule "frieda"]\n\tpath = frieda\n\turl = %s\n' % (vf["tmp"] / "fehlt.git"))
+    git(quelle, "update-index", "--add", "--cacheinfo", "160000," + git(quelle, "rev-parse", "HEAD").strip() + ",frieda")
+    git(quelle, "add", ".gitmodules")
+    git(quelle, "commit", "-qm", "Submodul ohne Ziel")
+    alt = "commit=" + "0" * 40 + "\nart=reise\nreisen=zweitreise\nseit=1\ngemeldet=0\n"
+    rot_datei.parent.mkdir(exist_ok=True)
+    rot_datei.write_text(alt, encoding="utf-8")
+    r = vf["lauf"]()
+    assert r.returncode == 1 and "Submodul" in r.stdout, r.stdout + r.stderr
+    assert vf["deploys"]() == [] and not stand.exists() and rot_datei.read_text(encoding="utf-8") == alt
+
+
+def test_veroeffentlichen_eine_rote_reise_haelt_die_anderen_nicht_auf(vf):
+    """Scheitert der Bau einer Reise (Exit 2), werden die anderen trotzdem veröffentlicht und freigeschaltet; der Lauf ist
+    rot, der Stand bleibt ungemerkt, die Rot-Datei nennt die Reise (AC-6)."""
+    (vf["tmp"] / "kaputt-beispielreise").touch()
+    r = vf["lauf"](VF_JETZT=str(T0))
+    assert r.returncode == 1
+    assert vf["deploys"]() == ["beispielreise", "zweitreise"]
+    assert vf["zeilen"]("frei.log") == ["zweitreise"]
+    rot = vf["rot"]()
+    assert rot["art"] == "reise" and rot["reisen"] == "beispielreise" and rot["commit"] == vf["kopf"]()
+    assert rot["seit"] == iso(T0) and rot["gemeldet"] == "0"
+    assert not (vf["tmp"] / "dienst/veroeffentlicht").exists()
+    assert not (vf["tmp"] / "dienst/veroeffentlichen-erfolg").exists() and vf["pings"]() == 0
+
+
+def test_deploy_exit_2_bei_baufehler_sonst_1(tmp_path):
+    """deploy.sh endet mit 2, wenn der Bau der Reise scheitert (deterministisch, nur diese Reise), sonst bei Fehlern mit 1
+    (AC-7)."""
+    wurzel = tmp_path / "instanz"
+    (wurzel / "reisen" / "kaputtreise").mkdir(parents=True)
+    (wurzel / "engine").symlink_to(ENGINE)
+    (wurzel / "reisen" / "kaputtreise" / "reise.json").write_text("{}")
+    (wurzel / "reisen" / "kaputtreise" / "reise.yaml").write_text("titel: [kein gültiges YAML\n")
+    (wurzel / ".gitignore").write_text("dist/\n")
+    git(wurzel, "init", "-q", "-b", "main")
+    git(wurzel, "add", ".")
+    git(wurzel, "commit", "-qm", "start")
+    (tmp_path / "seiten").mkdir()
+    env = {**SAUBER, "FR_WURZEL": str(wurzel), "FR_INSTANZ": "probe", "FR_SEITEN": str(tmp_path / "seiten"),
+           "FR_DIENST": str(tmp_path / "dienst"), "FR_PYTHON": sys.executable}
+    r = subprocess.run([str(BETRIEB / "deploy.sh"), "kaputtreise"], env=env, capture_output=True, text=True)
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert not (tmp_path / "seiten" / "kaputtreise").exists()
+    r = subprocess.run([str(BETRIEB / "deploy.sh"), "kaputtreise"], env={**env, "FR_SEITEN": str(tmp_path / "fehlt")},
+                       capture_output=True, text=True)
+    assert r.returncode == 1, r.stdout + r.stderr
+    r = subprocess.run([str(BETRIEB / "deploy.sh"), "gibtsnicht"], env=env, capture_output=True, text=True)
+    assert r.returncode == 1, r.stdout + r.stderr
+
+
+def test_veroeffentlichen_infrastrukturfehler_wird_nicht_gemerkt_und_wiederholt(vf):
+    """Ein Infrastrukturfehler (Exit 1) bei der ersten Reise beendet die Schleife; die zweite Reise wird nicht angefasst,
+    die Rot-Datei weder angelegt noch verändert (AC-8)."""
+    (vf["tmp"] / "infra-beispielreise").touch()
+    assert vf["lauf"]().returncode == 1
+    assert vf["deploys"]() == ["beispielreise"]
+    assert vf["rot"]() is None and vf["zeilen"]("frei.log") == []
+    rot_datei = vf["tmp"] / "dienst" / "veroeffentlichen-rot"
+    alt = f"commit={'0' * 40}\nart=reise\nreisen=zweitreise\nseit={iso(T0)}\ngemeldet=0\n"
+    rot_datei.write_text(alt, encoding="utf-8")
+    assert vf["lauf"](VF_JETZT=str(T0 + 60)).returncode == 1
+    assert vf["deploys"]() == ["beispielreise"]
+    assert rot_datei.read_text(encoding="utf-8") == alt
+
+
+def test_veroeffentlichen_roter_stand_wird_nicht_erneut_geprueft(vf):
+    """Ein Stand mit gescheitertem Bau wird beim nächsten Lauf ohne --immer nicht noch einmal geprüft und gebaut (AC-15)."""
+    (vf["tmp"] / "kaputt-beispielreise").touch()
+    assert vf["lauf"]().returncode == 1
+    assert vf["deploys"]() == ["beispielreise", "zweitreise"]
+    assert vf["zeilen"]("pruefen.log") == ["p"]
+    r = vf["lauf"]()
+    assert r.returncode == 0 and "Bekannter roter Stand" in r.stdout
+    assert vf["deploys"]() == [] and vf["zeilen"]("pruefen.log") == ["p"]
+
+
+def test_veroeffentlichen_ueberspringen_ohne_stempel_und_heartbeat(vf):
+    """Das Überspringen eines bekannten roten Stands ist kein fachlicher Erfolg: kein Stempel, kein Heartbeat (AC-16)."""
+    stempel = vf["tmp"] / "dienst" / "veroeffentlichen-erfolg"
+    (vf["tmp"] / "kaputt-beispielreise").touch()
+    assert vf["lauf"]().returncode == 1
+    assert vf["lauf"]().returncode == 0
+    assert not stempel.exists() and vf["pings"]() == 0
+    (vf["tmp"] / "kaputt-beispielreise").unlink()
+    (vf["tmp"] / "rot").touch()
+    vf["neuer_commit"]()
+    assert vf["lauf"]().returncode == 1                        # Software rot
+    assert vf["lauf"]().returncode == 0
+    assert not stempel.exists() and vf["pings"]() == 0
+
+
+def test_veroeffentlichen_gruen_raeumt_die_rot_datei_auf(vf):
+    """Nach einem roten Stand prüfen --immer und ein neuer Commit wieder; ist alles grün, verschwindet die Rot-Datei und
+    der Stand wird gemerkt (AC-17)."""
+    (vf["tmp"] / "kaputt-beispielreise").touch()
+    assert vf["lauf"]().returncode == 1 and vf["rot"]() is not None
+    (vf["tmp"] / "kaputt-beispielreise").unlink()
+    vf["deploys"]()
+    assert vf["lauf"]("--immer").returncode == 0
+    assert vf["deploys"]() == ["beispielreise", "zweitreise"]
+    assert vf["rot"]() is None and vf["pings"]() == 1
+    assert (vf["tmp"] / "dienst/veroeffentlicht").read_text().strip() == vf["kopf"]()
+    (vf["tmp"] / "kaputt-zweitreise").touch()
+    vf["neuer_commit"]()
+    assert vf["lauf"]().returncode == 1 and vf["rot"]()["reisen"] == "zweitreise"
+    (vf["tmp"] / "kaputt-zweitreise").unlink()
+    vf["neuer_commit"]()
+    vf["deploys"]()
+    assert vf["lauf"]().returncode == 0
+    assert vf["deploys"]() == ["beispielreise", "zweitreise"] and vf["rot"]() is None
+
+
+def test_veroeffentlichen_kein_alarm_vor_der_schwelle(vf):
+    """Vor 30 Minuten Rot geht kein Alarm hinaus (AC-20)."""
+    (vf["tmp"] / "kaputt-beispielreise").touch()
+    assert vf["lauf"](VF_JETZT=str(T0)).returncode == 1
+    assert vf["lauf"](VF_JETZT=str(T0 + 29 * 60)).returncode == 0
+    assert hoch(vf) == [] and vf["zeilen"]("rotmelden.log") == []
+    assert vf["rot"]()["gemeldet"] == "0"
+
+
+def test_veroeffentlichen_alarm_genau_einmal(vf):
+    """Ab 30 Minuten Rot geht genau ein Alarm an den Betrieb, auch beim Überspringen; weitere Läufe und neue rote Commits
+    derselben Rot-Phase alarmieren nicht erneut (AC-21)."""
+    (vf["tmp"] / "kaputt-beispielreise").touch()
+    assert vf["lauf"](VF_JETZT=str(T0)).returncode == 1
+    r = vf["lauf"](VF_JETZT=str(T0 + 30 * 60))
+    assert r.returncode == 0 and "Bekannter roter Stand" in r.stdout
+    assert len(hoch(vf)) == 1 and "rot" in hoch(vf)[0]
+    assert vf["rot"]()["gemeldet"] == "1"
+    assert vf["lauf"](VF_JETZT=str(T0 + 60 * 60)).returncode == 0
+    vf["neuer_commit"]()
+    assert vf["lauf"](VF_JETZT=str(T0 + 70 * 60)).returncode == 1
+    assert len(hoch(vf)) == 1
+    assert vf["rot"]()["seit"] == iso(T0)
+
+
+def test_veroeffentlichen_alarm_art_software_nur_an_den_betrieb(vf):
+    """Bei einer roten Reise gehen Meldungen an deren Organisator:innen (waechter.py rot-melden), bei roter Software nur
+    der Alarm an den Betrieb (AC-22)."""
+    (vf["tmp"] / "kaputt-beispielreise").touch()
+    assert vf["lauf"](VF_JETZT=str(T0)).returncode == 1
+    assert vf["lauf"](VF_JETZT=str(T0 + 31 * 60)).returncode == 0
+    aufrufe = vf["zeilen"]("rotmelden.log")
+    assert aufrufe and all(a.split() == ["--reisen", "beispielreise", "--seit", iso(T0)] for a in aufrufe)
+    # grün: neue Rot-Phase mit roter Software
+    (vf["tmp"] / "kaputt-beispielreise").unlink()
+    assert vf["lauf"]("--immer", VF_JETZT=str(T0 + 40 * 60)).returncode == 0 and vf["rot"]() is None
+    (vf["tmp"] / "rot").touch()
+    vf["neuer_commit"]()
+    t1 = T0 + 50 * 60
+    assert vf["lauf"](VF_JETZT=str(t1)).returncode == 1
+    assert vf["rot"]()["seit"] == iso(t1) and vf["rot"]()["art"] == "software"
+    assert vf["lauf"](VF_JETZT=str(t1 + 31 * 60)).returncode == 0
+    assert len(hoch(vf)) == 2                                  # je Rot-Phase ein Alarm
+    assert vf["zeilen"]("rotmelden.log") == aufrufe            # keine Meldung an Personen
+
+
+def test_veroeffentlichen_alarm_wiederholt_bei_ausfall_des_meldewegs(vf):
+    """Kommt der Alarm nicht an (FR_MELDEN scheitert), bleibt gemeldet=0 und der nächste Lauf versucht es wieder (AC-24)."""
+    (vf["tmp"] / "kaputt-beispielreise").touch()
+    (vf["tmp"] / "melden-aus").touch()
+    assert vf["lauf"](VF_JETZT=str(T0)).returncode == 1
+    assert vf["lauf"](VF_JETZT=str(T0 + 31 * 60)).returncode == 0
+    assert len(hoch(vf)) == 1 and vf["rot"]()["gemeldet"] == "0"
+    (vf["tmp"] / "melden-aus").unlink()
+    assert vf["lauf"](VF_JETZT=str(T0 + 36 * 60)).returncode == 0
+    assert len(hoch(vf)) == 2 and vf["rot"]()["gemeldet"] == "1"
+
+
+def test_veroeffentlichen_schwelle_ist_einstellbar(vf):
+    """Die Schwelle kommt aus FR_ROT_MELDEN_NACH_MINUTEN (Vorgabe 30, erklärt in einstellungen.beispiel) (AC-25)."""
+    (vf["tmp"] / "kaputt-beispielreise").touch()
+    assert vf["lauf"](VF_JETZT=str(T0), FR_ROT_MELDEN_NACH_MINUTEN="10").returncode == 1
+    assert vf["lauf"](VF_JETZT=str(T0 + 9 * 60), FR_ROT_MELDEN_NACH_MINUTEN="10").returncode == 0
+    assert hoch(vf) == []
+    assert vf["lauf"](VF_JETZT=str(T0 + 11 * 60), FR_ROT_MELDEN_NACH_MINUTEN="10").returncode == 0
+    assert len(hoch(vf)) == 1
+    beispiel = (BETRIEB / "einstellungen.beispiel").read_text(encoding="utf-8")
+    assert re.search(r"^#?FR_ROT_MELDEN_NACH_MINUTEN=30\s*$", beispiel, re.M)
+
+
+def test_veroeffentlichen_seit_bleibt_ueber_neue_rote_commits(vf):
+    """Ein neuer roter Commit in derselben Rot-Phase ersetzt commit, art und reisen; seit und gemeldet bleiben (AC-26)."""
+    (vf["tmp"] / "kaputt-beispielreise").touch()
+    assert vf["lauf"](VF_JETZT=str(T0)).returncode == 1
+    erster = vf["kopf"]()
+    (vf["tmp"] / "kaputt-beispielreise").unlink()
+    (vf["tmp"] / "kaputt-zweitreise").touch()
+    vf["neuer_commit"]()
+    assert vf["lauf"](VF_JETZT=str(T0 + 5 * 60)).returncode == 1
+    rot = vf["rot"]()
+    assert rot["commit"] == vf["kopf"]() != erster and rot["reisen"] == "zweitreise"
+    assert rot["seit"] == iso(T0) and rot["gemeldet"] == "0"
+    assert vf["lauf"](VF_JETZT=str(T0 + 31 * 60)).returncode == 0 and vf["rot"]()["gemeldet"] == "1"
+    vf["neuer_commit"]()
+    assert vf["lauf"](VF_JETZT=str(T0 + 40 * 60)).returncode == 1
+    rot = vf["rot"]()
+    assert rot["commit"] == vf["kopf"]() and rot["seit"] == iso(T0) and rot["gemeldet"] == "1"
+
+
+def test_betrieb_md_nennt_rot_datei_alarm_und_konvention():
+    """docs/betrieb.md beschreibt Tor, Exit-Codes, Rot-Datei, Überspringen, Alarm mit Schwelle und die Konvention für die
+    Tests des Reisen-Repos (AC-33)."""
+    text = (WURZEL / "docs" / "betrieb.md").read_text(encoding="utf-8")
+    for teil in ("veroeffentlichen-rot", "FR_ROT_MELDEN_NACH_MINUTEN", "Exit 2", "Bekannter roter Stand",
+                 "rot-melden", "sperren nicht"):
+        assert teil in text, teil
 
 
 # ---------- Deploy ----------
@@ -356,6 +754,106 @@ def test_deploy_kopiert_module_des_schreibwegs():
 def test_deploy_kopiert_friedas_symbol():
     deploy = (BETRIEB / "deploy.sh").read_text(encoding="utf-8")
     assert '"$WURZEL/engine/marke/" "$DIENST/marke/"' in deploy
+
+
+# ---------- Nur aus dem Bauordner (#137) ----------
+
+@pytest.fixture
+def instanz(tmp_path):
+    """Reisen-Repo auf main, das die Software (Kopie von betrieb/) als Submodul frieda/ einbindet, mit der Beispielreise.
+    So findet gemeinsam.sh die Wurzel auch ohne FR_WURZEL, wie bei einem Aufruf von Hand in einem Arbeitsordner."""
+    wurzel = tmp_path / "instanz"
+    shutil.copytree(BEISPIEL, wurzel / "reisen" / "beispielreise")
+    shutil.copytree(BETRIEB, wurzel / "frieda" / "betrieb", ignore=shutil.ignore_patterns("__pycache__"))
+    git(wurzel / "frieda", "init", "-q", "-b", "main")
+    git(wurzel / "frieda", "add", ".")
+    git(wurzel / "frieda", "commit", "-qm", "software")
+    (wurzel / "engine").symlink_to(ENGINE)
+    (wurzel / ".gitignore").write_text("dist/\n__pycache__/\n")
+    git(wurzel, "init", "-q", "-b", "main")
+    git(wurzel, "add", ".")
+    git(wurzel, "commit", "-qm", "start")
+    assert git(wurzel / "frieda", "rev-parse", "--show-superproject-working-tree").strip() == str(wurzel)
+    (tmp_path / "seiten").mkdir()
+    # FR_GEPRUEFT: deploy.sh soll hier nicht die ganzen Tests der Software noch einmal laufen lassen
+    env = {**SAUBER, "FR_INSTANZ": "probe", "FR_SEITEN": str(tmp_path / "seiten"), "FR_DIENST": str(tmp_path / "dienst"),
+           "FR_SPERREN": str(tmp_path), "FR_PYTHON": sys.executable, "FR_SUDO": "false", "FR_RM_PORT": "9",
+           "FR_GEPRUEFT": git(wurzel, "rev-parse", "HEAD").strip(),
+           "VF_DEPLOY": str(ausfuehrbar(tmp_path / "deploy.sh", f'#!/bin/sh\necho "$1" >> {tmp_path}/deploy.log\n'))}
+    return {"wurzel": wurzel, "tmp": tmp_path, "env": env,
+            "deploy": wurzel / "frieda" / "betrieb" / "deploy.sh",
+            "veroeffentlichen": wurzel / "frieda" / "betrieb" / "veroeffentlichen.sh"}
+
+
+def test_deploy_ohne_fr_wurzel_verweigert(instanz):
+    """AC-1: Ohne FR_WURZEL baut deploy.sh nicht aus dem Ordner, in dem es zufällig liegt."""
+    r = subprocess.run([str(instanz["deploy"]), "beispielreise"], env=instanz["env"], capture_output=True, text=True)
+    assert r.returncode == 1 and "FR_WURZEL" in r.stderr, r.stdout + r.stderr
+    assert not (instanz["tmp"] / "seiten" / "beispielreise").exists()
+    assert not (instanz["wurzel"] / "dist").exists()
+
+
+def test_veroeffentlichen_ohne_fr_wurzel_verweigert(instanz):
+    """AC-2: Ohne FR_WURZEL veröffentlicht veroeffentlichen.sh nichts und merkt sich nichts."""
+    r = subprocess.run([str(instanz["veroeffentlichen"]), "--immer"], env=instanz["env"], capture_output=True, text=True)
+    assert r.returncode == 1 and "FR_WURZEL" in r.stderr, r.stdout + r.stderr
+    assert not (instanz["tmp"] / "deploy.log").exists()
+    assert not (instanz["tmp"] / "dienst" / "veroeffentlicht").exists()
+    assert not (instanz["tmp"] / "dienst" / "veroeffentlichen-erfolg").exists()
+
+
+@pytest.mark.parametrize("wechsel", [("checkout", "-qb", "baustelle"), ("checkout", "-q", "--detach")])
+def test_deploy_nur_auf_main(instanz, wechsel):
+    """AC-3: Steht der Ordner nicht auf main (anderer Branch oder losgelöster HEAD), baut deploy.sh nicht."""
+    git(instanz["wurzel"], *wechsel)
+    r = subprocess.run([str(instanz["deploy"]), "beispielreise"], env={**instanz["env"], "FR_WURZEL": str(instanz["wurzel"])},
+                       capture_output=True, text=True)
+    assert r.returncode == 1 and "main" in r.stderr, r.stdout + r.stderr
+    assert not (instanz["tmp"] / "seiten" / "beispielreise").exists()
+    assert not (instanz["wurzel"] / "dist").exists()
+
+
+def _texte_ohne_geschichte():
+    """Doku, Skripte und Code, ohne die Protokolle früherer Vorhaben (docs/artifacts, docs/specs, docs/context)."""
+    for ordner in ("docs", "betrieb", "werkzeuge", "engine"):
+        for pfad in (WURZEL / ordner).rglob("*"):
+            teile = pfad.relative_to(WURZEL).parts
+            if not pfad.is_file() or pfad.suffix not in {".md", ".sh", ".py", ".yml", ".service", ".timer", ".conf", ".beispiel"}:
+                continue
+            if teile[:2] in {("docs", "artifacts"), ("docs", "specs"), ("docs", "context")} or ".venv" in teile \
+                    or teile[:2] == ("engine", "vendor") or pfad.name == "test_betrieb.py":
+                continue
+            yield pfad, pfad.read_text(encoding="utf-8")
+
+
+def test_arbeitskopie_sh_entfaellt():
+    """AC-5: Arbeitskopien gibt es nicht mehr; gearbeitet wird in einem eigenen Arbeitsordner."""
+    assert not (BETRIEB / "arbeitskopie.sh").exists()
+    for pfad, text in _texte_ohne_geschichte():
+        assert "arbeitskopie.sh" not in text, pfad
+
+
+def test_handaufrufe_nennen_den_bauordner():
+    """AC-6: Jede dokumentierte Handzeile, die deploy.sh oder veroeffentlichen.sh aufruft, setzt FR_WURZEL."""
+    aufruf = re.compile(r"(?:frieda/)?betrieb/(?:deploy|veroeffentlichen)\.sh(?: --immer| <[^>]+>| \$\w+)")
+    quellen = [*(WURZEL / "docs").glob("*.md"), BETRIEB / "einrichten.sh", WURZEL / "werkzeuge" / "karte-holen.sh"]
+    gefunden = 0
+    for pfad in quellen:
+        for zeile in pfad.read_text(encoding="utf-8").splitlines():
+            for m in aufruf.finditer(zeile):
+                gefunden += 1
+                davor = zeile[:m.start()]
+                assert re.search(r"FR_WURZEL=\S*\s*$", davor), f"{pfad.name}: {zeile.strip()}"
+    assert gefunden >= 4
+
+
+def test_betrieb_md_bauordner_und_zurueckrollen():
+    """AC-7: Bauordner und Arbeitsordner in der Tabelle der Instanz, Zurückrollen per git revert auf main."""
+    text = (WURZEL / "docs" / "betrieb.md").read_text(encoding="utf-8")
+    assert "| Bauordner |" in text and "| Arbeitsordner |" in text
+    assert "Veröffentlichungsordner" not in text
+    zurueck = text.split("## Zurückrollen", 1)[1].split("\n## ", 1)[0]
+    assert "git revert" in zurueck and "git checkout" not in zurueck
 
 
 # ---------- Freischalten ----------
@@ -660,7 +1158,9 @@ def test_vorlagen_ohne_werte_einer_instanz():
     for p in sorted(BETRIEB.rglob("*")):
         if p.is_file() and p.suffix not in (".pyc",):
             text = p.read_text(encoding="utf-8")
-            treffer = [t for t in verboten.findall(text) if "example" not in t and "anthropic" not in t and "claude" not in t]
+            # github.com ist keine Adresse einer Instanz (Bot-Adresse im Workflow „Software nachziehen“, #161)
+            treffer = [t for t in verboten.findall(text)
+                       if "example" not in t and "anthropic" not in t and "claude" not in t and t.lower() != "github.com"]
             assert treffer == [], (p.name, treffer)
 
 

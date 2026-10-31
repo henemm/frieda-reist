@@ -7,7 +7,7 @@ Gegenüber OpenStreetMap melden sich die Werkzeuge mit `FR_KENNUNG` aus den Eins
 ## Offline-Grundkarte (PMTiles)
 
 1. `frieda/werkzeuge/karte-holen.sh <reise>`: Holt das Werkzeug `pmtiles` einmalig nach `engine/.bin/`. Dann schneidet es aus dem neuesten Protomaps-Tagesbuild den Kartenrahmen aus `plan/karte.yaml` bis Zoom 15 aus. Ergebnis: `reisen/<reise>/medien/karte/grundkarte.pmtiles`, dazu `….quelle.txt` mit der Herkunft. Die Datei kommt nicht ins Repo (`.gitignore`).
-2. Veröffentlichen (`frieda/betrieb/deploy.sh <reise>` oder der nächste Lauf des Timers). Fehlt die Grundkarte, meldet das Bauen „Grundkarte … fehlt“, und die Karte bleibt schematisch.
+2. Veröffentlichen: `FR_WURZEL=<Bauordner> frieda/betrieb/veroeffentlichen.sh --immer` (der Timer allein baut nur bei einem neuen Stand auf `main`). Die Karte selbst holt man dafür direkt in den Bauordner: `FR_WURZEL=<Bauordner> frieda/werkzeuge/karte-holen.sh <reise>` (`docs/betrieb.md`, „Bauordner und Arbeitsordner“). Fehlt die Grundkarte, meldet das Bauen „Grundkarte … fehlt“, und die Karte bleibt schematisch.
 3. Telefon: Die Karte wird bei der Installation bzw. beim nächsten Update ganz geladen, das sind einige 10 MB; am besten im WLAN. Kleiner wird sie mit `MAXZOOM=14 frieda/werkzeuge/karte-holen.sh <reise>`.
 4. Nur bei Bedarf auffrischen, etwa kurz vor der Reise: Jede neue Datei heißt für das Telefon einen neuen Download.
 

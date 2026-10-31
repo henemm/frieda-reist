@@ -81,7 +81,8 @@ ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "kategorie_defini
                        "reise_status_setzen", "einstellung_setzen", "buchung_anlegen", "buchung_aendern",
                        # Abgleich 29.10.2026 (Paket 3): die Tür für alle Grundformen
                        "tag_anlegen", "termin_setzen", "wahlstelle_aendern", "option_aendern", "wissen_aendern", "lesetext_schreiben",
-                       "reise_aendern", "plan_anlegen", "plan_aendern", "merkmal_zusammenfuehren", "arten_uebernehmen", "wunsch_vorschlagen")
+                       "reise_aendern", "plan_anlegen", "plan_aendern", "merkmal_zusammenfuehren", "arten_uebernehmen", "wunsch_vorschlagen",
+                       "start_ende_setzen")
 # Aktion der Regelprüfung je Werkzeug; art_definieren und merkmal_definieren gehen für Mitwirkende als Rückmeldung (Vorschlag)
 ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "kategorie_definieren": "ontologie", "wert_eintragen": "wert",
                     "ding_anlegen": "ding", "ding_aendern": "ding", "lage_eintragen": "ding", "option_anlegen": "alternative",
@@ -90,7 +91,8 @@ ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontolo
                     "buchung_anlegen": "buchung", "buchung_aendern": "buchung",
                     "tag_anlegen": "plan", "termin_setzen": "plan", "wahlstelle_aendern": "plan", "option_aendern": "alternative",
                     "wissen_aendern": "wissen", "lesetext_schreiben": "wissen", "reise_aendern": "einstellung", "plan_anlegen": "plan",
-                    "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch"}
+                    "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch",
+                    "start_ende_setzen": "einstellung"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe", "beleg_anlegen": "buchung",
                   "entscheiden": "entscheiden", "rueckmeldung_erledigen": "rueckmeldung_erledigen",
@@ -1148,6 +1150,12 @@ def merkmal_hinweise(d, art, merkmale):
     return tk("konnektor.ausgabe.merkmal_hinweise.1") + "; ".join(z) + "."
 
 
+def hinweise_text(antwort):
+    """Neue Warnungen des Probebaus (Feld hinweise des Schreibwegs, Issue #142) als Absatz; kein Fehler, eingetragen ist trotzdem."""
+    h = (antwort or {}).get("hinweise") or []
+    return (tk("konnektor.ausgabe.hinweise_text.1") + "\n".join(f"- {x}" for x in h)) if h else ""
+
+
 def ontologie_werkzeug(reise, d, wer, zugang, name, args):
     """Werkzeuge, die direkt in die Reise schreiben (ADR-0001, O-3; engine/schreiben.py): Rolle und Status prüft der Konnektor vor dem
     Senden, der Schreibweg noch einmal mit reise.yaml. art_definieren und merkmal_definieren gehen für Mitwirkende als Rückmeldung
@@ -1214,7 +1222,7 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
     antwort, fehler = schreib_anfrage(reise, name, {"person": zugang.get("person"), "name": wer["name"], "rolle": wer["rolle"], "args": rest})
     if fehler:
         return tk("konnektor.ausgabe.ontologie_werkzeug.1", fehler=fehler), True
-    text = (tk("konnektor.ontologie_werkzeug.1", w1=wer['name'], w2=antwort.get('text', '')))
+    text = (tk("konnektor.ontologie_werkzeug.1", w1=wer['name'], w2=antwort.get('text', ''))) + hinweise_text(antwort)
     if beleg:   # in einem Schritt (Issue #135): die Buchung ist im Repo, der Beleg geht sofort in die Ablage
         bid = str(antwort.get("id") or "")
         if not re.fullmatch(r"B-\d+", bid):
@@ -1494,7 +1502,7 @@ def entscheiden(reise, d, h, wer, args):
         z = [tk("konnektor.entscheiden.5", w1=antwort.get('text', ''))]
         if hinweise:
             z.append(tk("konnektor.ausgabe.entscheiden.3") + "\n".join(f"- {x}" for x in hinweise))
-        return "\n".join(z), False
+        return "\n".join(z) + hinweise_text(antwort), False
     return (tk("konnektor.entscheiden.1")), True
 
 
@@ -2440,6 +2448,11 @@ REISE_AENDERN = {"name": "reise_aendern", "description": "@konnektor.werkzeug.re
                  "inputSchema": {"type": "object", "properties": {
                      "titel": {"type": "string"}, "untertitel": {"type": "string"}, "kurz": {"type": "string"},
                      "von": {"type": "string"}, "bis": {"type": "string"}, "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["grund"]}}
+START_ENDE_SETZEN = {"name": "start_ende_setzen", "description": "@konnektor.werkzeug.start_ende_setzen",
+                     "inputSchema": {"type": "object", "properties": {
+                         "start_datum": {"type": "string"}, "start_ort": {"type": "string", "description": "O-…"},
+                         "ende_datum": {"type": "string"}, "ende_ort": {"type": "string", "description": "O-…"},
+                         "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["grund"]}}
 PLAN_FELDER_SCHEMA = {"kurz": {"type": "string", "description": "@konnektor.feld.plan_felder_schema.kurz"}, "titel": {"type": "string"}, "text": {"type": "string"},
                       "farbe": {"type": "string", "enum": ["a", "b", "c", "d"]},
                       "auswahl": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.plan_felder_schema.auswahl"},
@@ -2789,7 +2802,7 @@ def werkzeuge_fuer(zugang):
     ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN, KATEGORIE_DEFINIEREN, WERT_EINTRAGEN, DING_ANLEGEN, DING_AENDERN, LAGE_EINTRAGEN, OPTION_ANLEGEN, WAHLSTELLE_ANLEGEN,
                  FRAGE_ANLEGEN, TAG_AENDERN, WISSEN_SCHREIBEN, FRAGE_SCHLIESSEN, REISE_STATUS_SETZEN, EINSTELLUNG_SETZEN,
                  BUCHUNG_ANLEGEN, BUCHUNG_AENDERN, TAG_ANLEGEN, TERMIN_SETZEN, WAHLSTELLE_AENDERN, OPTION_AENDERN, WISSEN_AENDERN,
-                 LESETEXT_SCHREIBEN, REISE_AENDERN, PLAN_ANLEGEN, PLAN_AENDERN, MERKMAL_ZUSAMMENFUEHREN, ARTEN_UEBERNEHMEN,
+                 LESETEXT_SCHREIBEN, REISE_AENDERN, START_ENDE_SETZEN, PLAN_ANLEGEN, PLAN_AENDERN, MERKMAL_ZUSAMMENFUEHREN, ARTEN_UEBERNEHMEN,
                  WUNSCH_VORSCHLAGEN] if schreibdienst() else []
     for w in WERKZEUGE + [ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN, RUECKMELDUNG_ERLEDIGEN, BELEG_ANLEGEN] + ontologie:
         n = w["name"]
