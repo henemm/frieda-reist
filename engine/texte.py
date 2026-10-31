@@ -63,7 +63,7 @@ def plural(kuerzel, n):
     return modul.PLURAL(n)
 
 
-def t(kuerzel, schluessel, **werte):
+def t(kuerzel, schluessel, /, **werte):
     """Text zu einem Schlüssel in der Sprache. Gibt es den Wert n, wählt PLURAL die Kategorie (Schlüssel.<kategorie>, Rückfall
     Schlüssel.other, dann Schlüssel). Fehlt der Schlüssel, gilt Englisch, dann kommt der Schlüssel selbst zurück."""
     for k in (kuerzel, VORGABE):
@@ -213,6 +213,6 @@ class Satz(str):
         return format(self.text(aufruf_sprache()), spec)
 
 
-def satz(schluessel, **werte):
+def satz(schluessel, /, **werte):
     werte = {k: v if isinstance(v, (str, int, float, bool)) or v is None else str(v) for k, v in werte.items()}
     return Satz(t(VORGABE_REISE, schluessel, **werte), schluessel, werte)

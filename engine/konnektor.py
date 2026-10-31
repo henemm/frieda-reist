@@ -176,6 +176,17 @@ def sprache_des_zugangs(zugang):
     return s if texte.gueltig(s or "") else texte.VORGABE_REISE
 
 
+def tk(schluessel, /, **werte):
+    """Text des Konnektors aus dem Katalog in der Sprache des laufenden Aufrufs (texte.aufruf_sprache); ohne Aufruf (Tests, Skripte)
+    ist es die Sprache des Bestands."""
+    return texte.t(texte.aufruf_sprache(), schluessel, **werte)
+
+
+def tkd(schluessel, /, **werte):
+    """Wie tk, aber immer in der Sprache des Bestands: für Text, der in die Ablage der Reise geschrieben wird (Einträge, Herkunft)."""
+    return texte.t(texte.VORGABE_REISE, schluessel, **werte)
+
+
 def lokalisiert(werkzeuge, sprache):
     """Kopie der Werkzeugliste, in der jede Beschreibung der Form "@schlüssel" durch den Text des Katalogs in der Sprache ersetzt ist
     (ADR-0006): Namen, Schemata und Hinweise bleiben gleich, nur die Beschreibungen folgen der Sprache der Person."""
@@ -272,7 +283,7 @@ class Text(HTMLParser):
             self.link = a["href"]
             self.teile.append("[")
         elif tag == "img":
-            self.teile.append(f"[Bild{': ' + a['alt'] if a.get('alt') else ''}]")
+            self.teile.append(tk("konnektor.ausgabe.handle_starttag.1", w1=': ' + a['alt'] if a.get('alt') else ''))
 
     def handle_endtag(self, tag):
         if tag == "a" and self.link:
@@ -350,22 +361,22 @@ def symbole(reise):
     return liste
 
 
-def zeit_de(t, sprache=texte.VORGABE_REISE):
+def zeit_de(t, sprache=None):
     """Zeitpunkt mit Datum in der Sprache (bis M10 die der Reise-Vorgabe, dann die der Person)."""
-    return texte.datum_zeit(t.astimezone(), sprache)
+    return texte.datum_zeit(t.astimezone(), sprache or texte.aufruf_sprache())
 
 
 def stand_text(reise):
     """Woran man in der App sieht, ob das Veröffentlichen gelaufen ist: Bauzeit der Seite und Stand des Dienstes."""
-    z = ["## Stand"]
+    z = [tk("konnektor.ausgabe.stand_text.1")]
     try:
         gebaut = datetime.datetime.fromtimestamp((seiten() / reise / "daten.json").stat().st_mtime).astimezone()
-        z.append(f"- Reise zuletzt veröffentlicht: {zeit_de(gebaut)}")
+        z.append(tk("konnektor.stand_text.1", w1=zeit_de(gebaut)))
     except OSError:
-        z.append("- Reise: Zeitpunkt der Veröffentlichung unbekannt")
+        z.append(tk("konnektor.stand_text.2"))
     jetzt = code_stand()
-    z.append(f"- Konnektor gestartet: {zeit_de(_START)}, Code {_CODE_START}"
-             + ("" if jetzt == _CODE_START else f" – auf dem Server liegt neuerer Code ({jetzt}), der Dienst braucht einen Neustart"))
+    z.append(tk("konnektor.ausgabe.stand_text.2", w1=zeit_de(_START), w2=_CODE_START)
+             + ("" if jetzt == _CODE_START else tk("konnektor.stand_text.3", jetzt=jetzt)))
     return "\n".join(z)
 
 
@@ -377,12 +388,12 @@ def stand_text(reise):
 
 def regel_stand(x):
     """Stand einer Option, auf die eine Regel zeigt (erfordert, schliesst_aus)."""
-    return "verworfen" if not x.get("gueltig", True) else "im Plan" if x.get("im_plan") else "nicht im Plan"
+    return "verworfen" if not x.get("gueltig", True) else tk("konnektor.ausgabe.regel_stand.1") if x.get("im_plan") else tk("konnektor.regel_stand.1")
 
 
 def merkmal_norm(s):
     s = str(s).lower()
-    for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+    for a, b in ((tkd("konnektor.merkmal_norm.1"), "ae"), (tkd("konnektor.merkmal_norm.2"), "oe"), (tkd("konnektor.merkmal_norm.3"), "ue"), (tkd("konnektor.merkmal_norm.4"), "ss")):
         s = s.replace(a, b)
     return re.sub(r"[^a-z0-9]", "", s)
 
@@ -417,9 +428,9 @@ def stunden(minuten):
     return f"{minuten // 60}:{minuten % 60:02d} h" if minuten else ""
 
 
-def datum_de(iso, sprache=texte.VORGABE_REISE):
+def datum_de(iso, sprache=None):
     """Datum mit Jahr in der Sprache (bis M10 die der Reise-Vorgabe, dann die der Person)."""
-    return texte.datum(iso, sprache)
+    return texte.datum(iso, sprache or texte.aufruf_sprache())
 
 
 class Handbuch:
@@ -447,7 +458,7 @@ class Handbuch:
         if not n:
             return ""
         if n.get("an_bord"):
-            return "an Bord"
+            return tk("konnektor.ausgabe.nacht.1")
         teile = [self.ort(n.get("ort"))]
         u = (self.r.get("unterkuenfte") or {}).get(n.get("unterkunft") or "")
         if u:
@@ -457,37 +468,37 @@ class Handbuch:
         elif n.get("hinweis") or n.get("art_name"):
             teile.append(n.get("hinweis") or n.get("art_name"))
         if n.get("wahl"):
-            teile.append(f"Wahl {n['wahl']}")
+            teile.append(tk("konnektor.ausgabe.nacht.2", w1=n['wahl']))
         return ", ".join(teile)
 
     def buchung_text(self, b):
         """Eine Buchung (B-…, #76) für die Claude-App: Dinge, Status, Nummer, Anbieter, Preis, Frist, Storno, Herkunft, Belege, Verlauf."""
-        z = ["Für: " + "; ".join(f"{x} {self.titel_von(x)}" for x in b.get("fuer") or []), f"Status: {b.get('status')}"]
-        for k, name in (("nummer", "Nummer: "), ("bei", "Gebucht bei: "), ("preis", "Preis: "), ("bezahlt", "Bezahlt: ")):
+        z = [tk("konnektor.buchung_text.1") + "; ".join(f"{x} {self.titel_von(x)}" for x in b.get("fuer") or []), tk("konnektor.ausgabe.buchung_text.1", w1=b.get('status'))]
+        for k, name in (("nummer", tk("konnektor.ausgabe.buchung_text.2")), ("bei", tk("konnektor.ausgabe.buchung_text.3")), ("preis", tk("konnektor.ausgabe.buchung_text.4")), ("bezahlt", tk("konnektor.ausgabe.buchung_text.5"))):
             if b.get(k):
                 z.append(name + str(b[k]))
         if b.get("preise"):
-            z.append("Preise je Ding: " + "; ".join(f"{x} {self.titel_von(x)}: {p}" for x, p in b["preise"].items()))
+            z.append(tk("konnektor.ausgabe.buchung_text.7") + "; ".join(f"{x} {self.titel_von(x)}: {p}" for x, p in b["preise"].items()))
         if b.get("personen"):
-            z.append("Reisende: " + "; ".join(f"{n}" + (f" ({a})" if a else "") for n, a in b["personen"].items()))
+            z.append(tk("konnektor.ausgabe.buchung_text.8") + "; ".join(f"{n}" + (f" ({a})" if a else "") for n, a in b["personen"].items()))
         if b.get("ab"):
-            z.append(f"Ab {datum_de(b['ab'])}" + (f": {b['ab_was']}" if b.get("ab_was") else ""))
+            z.append(tk("konnektor.ausgabe.buchung_text.ab", w1=datum_de(b['ab'])) + (f": {b['ab_was']}" if b.get("ab_was") else ""))
         if b.get("frist"):
-            z.append(f"Frist {datum_de(b['frist'])}" + (f": {b['frist_was']}" if b.get("frist_was") else ""))
+            z.append(tk("konnektor.ausgabe.buchung_text.9", w1=datum_de(b['frist'])) + (f": {b['frist_was']}" if b.get("frist_was") else ""))
         if b.get("storno") or b.get("storno_bis"):
-            z.append("Storno: " + (b.get("storno") or "") + (f" (bis {datum_de(b['storno_bis'])})" if b.get("storno_bis") else ""))
+            z.append(tk("konnektor.ausgabe.buchung_text.11") + (b.get("storno") or "") + (tk("konnektor.ausgabe.buchung_text.12", w1=datum_de(b['storno_bis'])) if b.get("storno_bis") else ""))
         if b.get("gebucht_am") or b.get("wer"):
-            z.append("Gebucht " + (f"am {datum_de(b['gebucht_am'])} " if b.get("gebucht_am") else "") + (f"von {b['wer']}" if b.get("wer") else ""))
+            z.append(tk("konnektor.ausgabe.buchung_text.13") + (tk("konnektor.ausgabe.buchung_text.am", w1=datum_de(b['gebucht_am'])) if b.get("gebucht_am") else "") + (tk("konnektor.ausgabe.buchung_text.14", w1=b['wer']) if b.get("wer") else ""))
         if b.get("notiz"):
             z.append(b["notiz"])
         if b.get("quelle"):
-            z.append("Quelle: " + str(b["quelle"]))
+            z.append(tk("konnektor.ausgabe.option_text.2") + str(b["quelle"]))
         belege = (self.belege or {}).get(b.get("id")) or []
-        z.append("Belege: " + ("; ".join(f"{x.get('name')} ({x.get('wer')}, {str(x.get('hochgeladen', ''))[:10]}"
-                                          + (", für alle sichtbar" if x.get("sichtbar") == "alle" else "") + ")" for x in belege)
-                               if belege else "keine (die Person hängt sie auf der Reiseseite bei der Buchung an)"))
+        z.append(tk("konnektor.ausgabe.buchung_text.6") + ("; ".join(f"{x.get('name')} ({x.get('wer')}, {str(x.get('hochgeladen', ''))[:10]}"
+                                          + (tk("konnektor.beleg.fuer_alle") if x.get("sichtbar") == "alle" else "") + ")" for x in belege)
+                               if belege else tk("konnektor.buchung_text.2")))
         if b.get("verlauf"):
-            z.append("Verlauf: " + "; ".join(f"{datum_de(v['datum'])} {v.get('wer')}: {v.get('was')}" + (f" ({v['grund']})" if v.get("grund") else "")
+            z.append(tk("konnektor.ausgabe.buchung_text.10") + "; ".join(f"{datum_de(v['datum'])} {v.get('wer')}: {v.get('was')}" + (f" ({v['grund']})" if v.get("grund") else "")
                                              for v in b["verlauf"] if v.get("datum")))
         return "\n".join(z)
 
@@ -511,19 +522,19 @@ class Handbuch:
     def tag_text(self, t, datum=True):
         z = []
         if datum and t.get("datum"):
-            z.append(f"Tag {t['nr']}, {texte.wochentag(t['datum'], texte.VORGABE_REISE)} {datum_de(t['datum'])}" + (f" ({t['teil']})" if t.get("teil") else ""))
+            z.append(tk("konnektor.ausgabe.tag_text.1", w1=t['nr'], w2=texte.wochentag(t['datum'], texte.aufruf_sprache()), w3=datum_de(t['datum'])) + (f" ({t['teil']})" if t.get("teil") else ""))
         if t.get("strecken"):
-            z.append("Wege: " + "; ".join(f"{self.strecke(s['id'])} ({s['id']}"
-                                           + (f", Wahl {s['wahl']}" if s.get("wahl") else "") + ")"
+            z.append(tk("konnektor.ausgabe.tag_text.2") + "; ".join(f"{self.strecke(s['id'])} ({s['id']}"
+                                           + (tk("konnektor.ausgabe.wahl", w1=s['wahl']) if s.get("wahl") else "") + ")"
                                            for s in t["strecken"]))
         if t.get("aufenthalte"):
-            z.append("Aufenthalte: " + "; ".join(self.aufenthalt(a) for a in t["aufenthalte"]))
+            z.append(tk("konnektor.ausgabe.tag_text.3") + "; ".join(self.aufenthalt(a) for a in t["aufenthalte"]))
         if t.get("nacht"):
-            z.append("Nacht: " + self.nacht(t["nacht"]))
+            z.append(tk("konnektor.ausgabe.tag_text.4") + self.nacht(t["nacht"]))
         if t.get("fixpunkte"):
-            z.append("Fest: " + "; ".join(t["fixpunkte"]))
+            z.append(tk("konnektor.ausgabe.tag_text.5") + "; ".join(t["fixpunkte"]))
         if t.get("wahlstellen"):
-            z.append("Unterwegs zu entscheiden: " + ", ".join(t["wahlstellen"]))
+            z.append(tk("konnektor.ausgabe.tag_text.6") + ", ".join(t["wahlstellen"]))
         if t.get("text"):
             z.append(t["text"])
         return "\n".join(z)
@@ -531,11 +542,11 @@ class Handbuch:
     def summe(self, s):
         if not s:
             return ""
-        z = [f"{s.get('tage')} Tage, {s.get('naechte')} Nächte"]
+        z = [tk("konnektor.summe.1", w1=s.get('tage'), w2=s.get('naechte'))]
         if s.get("min"):
             z.append(f"Gehzeit {stunden(s['min'])}, ↑ {s.get('auf'):.0f} Hm, ↓ {s.get('ab'):.0f} Hm, {s.get('km')} km")
         if s.get("unterkunftstypen"):
-            z.append("Unterkünfte: " + ", ".join(f"{k} {v}" for k, v in s["unterkunftstypen"].items()))
+            z.append(tk("konnektor.summe.2") + ", ".join(f"{k} {v}" for k, v in s["unterkunftstypen"].items()))
         return "; ".join(z)
 
     def merkmal_zeilen(self, kriterien, werte, fehlt=None):
@@ -547,17 +558,17 @@ class Handbuch:
                 continue
             zusatz = [v["notiz"]] if v.get("notiz") else []
             if v.get("geprueft"):
-                zusatz.append(f"geprüft {datum_de(v['geprueft'])}")
+                zusatz.append(tk("konnektor.merkmal_zeilen.1", w1=datum_de(v['geprueft'])))
             elif v.get("ungeprueft"):
-                zusatz.append("ungeprüft, vor Gebrauch nachschlagen")
+                zusatz.append(tk("konnektor.merkmal_zeilen.2"))
             if v.get("quelle"):
-                zusatz.append(f"Quelle: {v['quelle']}")
+                zusatz.append(tk("konnektor.ausgabe.merkmal_zeilen.1", w1=v['quelle']))
             if v.get("auto"):
                 zusatz.append("berechnet")
             z.append(f"- {k['name']}: {v['wert']}" + (f" ({'; '.join(zusatz)})" if zusatz else ""))
         if fehlt:
             namen = {k["id"]: k["name"] for k in kriterien or []}
-            z.append("Fehlt noch: " + ", ".join(namen.get(k, k) for k in fehlt))
+            z.append(tk("konnektor.ausgabe.merkmal_zeilen.2") + ", ".join(namen.get(k, k) for k in fehlt))
         return z
 
     def kriterien_von(self, id_):
@@ -568,7 +579,7 @@ class Handbuch:
         if id_ in (self.r.get("aufenthalte") or {}):   # Aufenthalt ohne Nacht (A-…): Zeile wie im Tag, dann Merkmale
             a = self.r["aufenthalte"][id_]
             z = [self.aufenthalt(id_), "in " + self.ort(a.get("ort")), *( [a["hinweis"]] if a.get("hinweis") else []),
-                 *( ["an: " + ", ".join(a["tage"])] if a.get("tage") else []), *( ["Quelle: " + a["quelle"]] if a.get("quelle") else [])]
+                 *( [tk("konnektor.ausgabe.kriterien_von.1") + ", ".join(a["tage"])] if a.get("tage") else []), *( [tk("konnektor.ausgabe.option_text.2") + a["quelle"]] if a.get("quelle") else [])]
             z += self.merkmal_zeilen((self.r.get("merkmale") or {}).get(a.get("art")), a.get("merkmale"), a.get("fehlt"))
             return "\n".join(z)
         if id_ in (self.r.get("unterkuenfte") or {}):   # Aufenthalt: Merkmale seiner Art (plan/arten.yaml)
@@ -581,36 +592,35 @@ class Handbuch:
         return None, None, None
 
     def option_text(self, o, w=None):
-        z = [f"Status: {o.get('status')}" + (" (im aktuellen Plan)" if o.get("aktiv") else "")]
+        z = [tk("konnektor.ausgabe.buchung_text.1", w1=o.get('status')) + (tk("konnektor.ausgabe.option_text.5") if o.get("aktiv") else "")]
         if w and (o.get("merkmale") or o.get("fehlt")):
-            z.append("Merkmale:")
+            z.append(tk("konnektor.ausgabe.option_text.1"))
             z += self.merkmal_zeilen(w.get("kriterien"), o.get("merkmale"), o.get("fehlt"))
-        for k, name in (("text", ""), ("ausloeser", "Auslöser: "), ("quelle", "Quelle: "), ("siehe", "Siehe: ")):
+        for k, name in (("text", ""), ("ausloeser", tk("konnektor.option_text.1")), ("quelle", tk("konnektor.ausgabe.option_text.2")), ("siehe", tk("konnektor.ausgabe.option_text.3"))):
             if o.get(k):
                 z.append(name + str(o[k]))
         if o.get("plus"):
-            z.append("Dafür: " + "; ".join(o["plus"]))
+            z.append(tk("konnektor.option_text.3") + "; ".join(o["plus"]))
         if o.get("minus"):
-            z.append("Dagegen: " + "; ".join(o["minus"]))
+            z.append(tk("konnektor.ausgabe.option_text.6") + "; ".join(o["minus"]))
         if o.get("tage"):
-            z.append("Tage: " + ", ".join(o["tage"]))
-        for k, name in (("erfordert", "Setzt voraus"), ("schliesst_aus", "Schließt aus")):
+            z.append(tk("konnektor.ausgabe.option_text.7") + ", ".join(o["tage"]))
+        for k, name in (("erfordert", tk("konnektor.ausgabe.option_text.4")), ("schliesst_aus", tk("konnektor.option_text.2"))):
             if o.get(k):
                 z.append(f"{name}: " + "; ".join(f"{x['id']} „{x['titel']}“ ({regel_stand(x)})" for x in o[k]))
         if o.get("summe"):
-            z.append("Summe: " + self.summe(o["summe"]))
+            z.append(tk("konnektor.ausgabe.option_text.8") + self.summe(o["summe"]))
         for v in o.get("verlauf") or []:
-            z.append(f"Verlauf {v.get('datum')}: {v.get('status')}" + (f" ({v['wer']})" if v.get("wer") else "")
+            z.append(tk("konnektor.ausgabe.option_text.9", w1=v.get('datum'), w2=v.get('status')) + (f" ({v['wer']})" if v.get("wer") else "")
                      + (f" – {v['grund']}" if v.get("grund") else ""))
         z += self.offen_zeilen(o["id"])
         return "\n".join(z)
 
     def offen_zeilen(self, oid):
         """Entscheidungen zu dieser Option, die eingetragen, aber noch nicht in der Seite eingearbeitet sind."""
-        return [f"Eingetragen, noch nicht auf der Seite: {WORT.get(e['entscheidung'], e['entscheidung'])} von {e['wer']} "
-                f"am {datum_de(e['datum'])} ({e['auftrag']}, "
-                + ("im Gespräch geprüft" if e["weg"] == "direkt" else "als Auftrag, wird noch geprüft")
-                + (", WIDERSPRUCH – wartet auf eine offene Frage" if e["status"] == "konflikt" else "") + ")"
+        return [tk("konnektor.offen_zeilen.1", w1=WORT.get(e['entscheidung'], e['entscheidung']), w2=e['wer'], w3=datum_de(e['datum']), w4=e['auftrag'])
+                + (tk("konnektor.offen_zeilen.3") if e["weg"] == "direkt" else tk("konnektor.offen_zeilen.4"))
+                + (tk("konnektor.offen_zeilen.2") if e["status"] == "konflikt" else "") + ")"
                 for e in self.offene_entscheidungen.get(oid, [])]
 
     def sammeln(self):
@@ -626,17 +636,17 @@ class Handbuch:
                 z += [f"{r['id']}: " + " | ".join(r["zellen"]) for r in t["zeilen"]]
             z.append(text(a.get("nach")))
             if a.get("route_ansicht") == "tagesplan":
-                z.append("(Tagesplan: siehe Überblick bzw. die einzelnen Tage T-…)")
+                z.append(tk("konnektor.sammeln.1"))
             if a.get("route_ansicht") == "unterkuenfte":
-                z.append("(Unterkünfte: siehe die einzelnen U-…)")
+                z.append(tk("konnektor.sammeln.2"))
             if a.get("bloecke"):
-                z.append("Unterabschnitte: " + "; ".join(f"{b['id']} {b['titel']}" for b in a["bloecke"]))
+                z.append(tk("konnektor.ausgabe.sammeln.12") + "; ".join(f"{b['id']} {b['titel']}" for b in a["bloecke"]))
             # Orte ↔ Recherche (reise.json orte_wissen)
             if a.get("wissen"):
-                z.append("Aus der Recherche: " + "; ".join(f"{w['id']} {w['titel']}" + (f" ({w['notiz']})" if w.get("notiz") else "")
+                z.append(tk("konnektor.sammeln.5") + "; ".join(f"{w['id']} {w['titel']}" + (f" ({w['notiz']})" if w.get("notiz") else "")
                                                          for w in a["wissen"]))
             if a.get("orte"):
-                z.append("Orte: " + ", ".join(a["orte"]))
+                z.append(tk("konnektor.ausgabe.sammeln.13") + ", ".join(a["orte"]))
             e[a["id"]] = (a["titel"], "\n\n".join(x for x in z if x))
             for b in a.get("bloecke", []):
                 e[b["id"]] = (f"{a['titel']} › {b['titel']}",
@@ -647,26 +657,26 @@ class Handbuch:
                               "\n".join(f"{k}: {v}" for k, v in zip(f["spalten"], zeile["zellen"])))
         r = self.r
         for t in r.get("tage", []):
-            e[t["id"]] = (f"Tag {t['nr']} ({datum_de(t['datum'])}): {t['titel']}", self.tag_text(t))
+            e[t["id"]] = (tk("konnektor.ausgabe.sammeln.1", w1=t['nr'], w2=datum_de(t['datum']), w3=t['titel']), self.tag_text(t))
         for tid, t in (r.get("weitere_tage") or {}).items():
-            e[tid] = (f"Variante: {t['titel']}", "Nicht im aktuellen Plan (gehört zu einer anderen Option).\n"
+            e[tid] = (tk("konnektor.ausgabe.sammeln.2", w1=t['titel']), tk("konnektor.sammeln.3")
                       + self.tag_text(t, datum=False))
         for oid, o in self.orte.items():
             e.setdefault(oid, (o.get("name") or oid, o.get("hinweis") or ""))
         for sid, s in (r.get("strecken") or {}).items():
             z = [f"{self.ort(s.get('von'))} → {self.ort(s.get('nach'))}" + (f" ({' + '.join(s['art']) if isinstance(s['art'], list) else s['art']})" if s.get("art") else "")
-                 + (f", ab {s['ab']}" if s.get("ab") else "") + (f", an {s['an']}" if s.get("an") else "")]
+                 + (tk("konnektor.ausgabe.sammeln.18", w1=s['ab']) if s.get("ab") else "") + (tk("konnektor.ausgabe.sammeln.14", w1=s['an']) if s.get("an") else "")]
             if s.get("kennzahlen") and sid not in e:  # bei Etappen stehen sie schon im Dossier
                 z.append("; ".join(f"{k}: {v}" for k, v in s["kennzahlen"].items()))
             if s.get("buchung"):   # eine Zeile mit Verweis auf die Heimat der Buchung (ADR-0003)
-                z.append(f"Buchung: {s['buchung']}" + (f" ({s['buchung_id']}, zeige {s['buchung_id']})" if s.get("buchung_id") else ""))
+                z.append(tk("konnektor.ausgabe.sammeln.15", w1=s['buchung']) + (tk("konnektor.ausgabe.zeige_hinweis", w1=s['buchung_id']) if s.get("buchung_id") else ""))
             if s.get("beginn"):
-                z.append(f"Uhrzeit: {s['beginn']}" + (f"–{s['ende']}" if s.get("ende") else "") + " Uhr")
+                z.append(tk("konnektor.ausgabe.sammeln.19", w1=s['beginn']) + (f"–{s['ende']}" if s.get("ende") else "") + " Uhr")
             for k in ("text", "quelle", "siehe"):
                 if s.get(k):
-                    z.append(("Quelle: " if k == "quelle" else "Siehe: " if k == "siehe" else "") + str(s[k]))
+                    z.append((tk("konnektor.ausgabe.option_text.2") if k == "quelle" else tk("konnektor.ausgabe.option_text.3") if k == "siehe" else "") + str(s[k]))
             if s.get("merkmale") or s.get("fehlt"):
-                z.append("Merkmale:")
+                z.append(tk("konnektor.ausgabe.option_text.1"))
                 z += self.merkmal_zeilen((r.get("merkmale") or {}).get(s.get("art_schluessel")), s.get("merkmale"), s.get("fehlt"))
             z += self.lesetext_zeilen(s)
             if sid in e:  # Etappe aus dem Dossier: Text dort, Strecke ergänzt
@@ -676,44 +686,44 @@ class Handbuch:
                 e[sid] = (s.get("titel") or sid, "\n".join(z))
         for uid, u in (r.get("unterkuenfte") or {}).items():
             z = [f"{((self.r.get('arten') or {}).get(u.get('art')) or {}).get('name') or ''} in {self.ort(u.get('ort'))}".strip()]
-            for k, name in (("hinweis", ""), ("kontakt", "Kontakt: "), ("buchung", "Buchung: "),
-                            ("frage", "Offene Frage: "), ("quelle", "Quelle: ")):
+            for k, name in (("hinweis", ""), ("kontakt", tk("konnektor.ausgabe.sammeln.4")), ("buchung", tk("konnektor.ausgabe.sammeln.5")),
+                            ("frage", tk("konnektor.ausgabe.sammeln.6")), ("quelle", tk("konnektor.ausgabe.option_text.2"))):
                 if u.get(k):
-                    z.append(name + str(u[k]) + (f" ({u['buchung_id']}, zeige {u['buchung_id']})" if k == "buchung" and u.get("buchung_id") else ""))
+                    z.append(name + str(u[k]) + (tk("konnektor.ausgabe.zeige_hinweis", w1=u['buchung_id']) if k == "buchung" and u.get("buchung_id") else ""))
             # Lage (ADR-0004): Adresse und Koordinaten mit Herkunft; fehlt beides, trägt lage_eintragen sie nach
-            for k, name in (("adresse", "Adresse: "), ("punkt", "Koordinaten: ")):
+            for k, name in (("adresse", tk("konnektor.ausgabe.sammeln.7")), ("punkt", tk("konnektor.ausgabe.sammeln.8"))):
                 v = u.get(k)
                 if v:
                     w = ", ".join(map(str, v["wert"])) if k == "punkt" else v["wert"]
-                    z.append(f"{name}{w} ({v.get('quelle') or 'ohne Quelle'}{', geprüft ' + v['geprueft'] if v.get('geprueft') else ''})")
+                    z.append(f"{name}{w} ({v.get('quelle') or tk("konnektor.ausgabe.sammeln.20")}{tk("konnektor.sammeln.7") + v['geprueft'] if v.get('geprueft') else ''})")
             if not u.get("adresse") and not u.get("punkt"):
-                z.append("Lage: fehlt (lage_eintragen)")
+                z.append(tk("konnektor.ausgabe.sammeln.9"))
             if u.get("naechte"):
-                z.append("Nächte: " + ", ".join(u["naechte"]))
+                z.append(tk("konnektor.sammeln.6") + ", ".join(u["naechte"]))
             if u.get("merkmale") or u.get("fehlt"):
-                z.append("Merkmale:")
+                z.append(tk("konnektor.ausgabe.option_text.1"))
                 z += self.merkmal_zeilen((r.get("merkmale") or {}).get(u.get("art")), u.get("merkmale"), u.get("fehlt"))
             e[uid] = (u.get("name") or uid, "\n".join(z))
         for bid, b in (r.get("buchungen") or {}).items():   # Buchung als eigenes Ding (#76)
-            e[bid] = (f"Buchung {b.get('status')}: {b.get('titel') or bid}", self.buchung_text(b))
+            e[bid] = (tk("konnektor.ausgabe.sammeln.3", w1=b.get('status'), w2=b.get('titel') or bid), self.buchung_text(b))
         for p in r.get("plaene", []):
-            z = [p.get("text") or "", "Auswahl: " + ", ".join(p.get("auswahl") or [])]
+            z = [p.get("text") or "", tk("konnektor.ausgabe.sammeln.10") + ", ".join(p.get("auswahl") or [])]
             if p.get("aktuell"):
-                z.append("Das ist der aktuelle Plan.")
+                z.append(tk("konnektor.sammeln.4"))
             if p.get("plus"):
-                z.append("Dafür: " + "; ".join(p["plus"]))
+                z.append(tk("konnektor.option_text.3") + "; ".join(p["plus"]))
             if p.get("minus"):
-                z.append("Dagegen: " + "; ".join(p["minus"]))
-            z += [f"{t['id']} {t['titel']}" + (f" – Nacht: {self.nacht(t.get('nacht'))}" if t.get("nacht") else "")
+                z.append(tk("konnektor.ausgabe.option_text.6") + "; ".join(p["minus"]))
+            z += [f"{t['id']} {t['titel']}" + (tk("konnektor.ausgabe.sammeln.16", w1=self.nacht(t.get('nacht'))) if t.get("nacht") else "")
                   for t in p.get("tage", [])]
             e[p["id"]] = (f"{p['kurz']}: {p['titel']}", "\n".join(x for x in z if x))
         for w in r.get("wahlstellen", []):
-            z = [f"Art: {w.get('art')}" + (" (offen)" if w.get("offen") else "")]
+            z = [f"Art: {w.get('art')}" + (tk("konnektor.ausgabe.sammeln.17") if w.get("offen") else "")]
             if w.get("frage"):
-                z.append(f"Frage: {w['frage']}")
+                z.append(tk("konnektor.ausgabe.sammeln.11", w1=w['frage']))
             if w.get("text"):
                 z.append(w["text"])
-            z += [f"{o['id']} {o['titel']} – {o.get('status')}" + (" (aktuell)" if o.get("aktiv") else "")
+            z += [f"{o['id']} {o['titel']} – {o.get('status')}" + (tk("konnektor.ausgabe.aktuell") if o.get("aktiv") else "")
                   for o in w["optionen"]]
             e[w["id"]] = (w["titel"], "\n".join(z))
             for o in w["optionen"]:
@@ -726,76 +736,76 @@ class Handbuch:
         if self.d.get("plan_kopf"):
             z.append(text(self.d["plan_kopf"]))
         if self.r.get("summe"):
-            z.append("Aktueller Plan: " + self.summe(self.r["summe"]))
+            z.append(tk("konnektor.ausgabe.ueberblick.6") + self.summe(self.r["summe"]))
         if self.v["start"] == "heute" and self.r.get("tage"):
             heute = datetime.date.today().isoformat()
             tag = next((t for t in self.r["tage"] if t["datum"] == heute), None)
-            z.append("## Heute" + (f": {tag['id']} Tag {tag['nr']}, {tag['titel']}"
-                                    + (f" – Nacht: {self.nacht(tag.get('nacht'))}" if tag.get("nacht") else "")
-                                    if tag else ": kein Tag im Plan"))
+            z.append(tk("konnektor.ausgabe.ueberblick.7") + (tk("konnektor.ausgabe.ueberblick.14", w1=tag['id'], w2=tag['nr'], w3=tag['titel'])
+                                    + (tk("konnektor.ausgabe.sammeln.16", w1=self.nacht(tag.get('nacht'))) if tag.get("nacht") else "")
+                                    if tag else tk("konnektor.ueberblick.3")))
         if self.r.get("tage"):
-            z.append("## Tagesplan (aktueller Stand)")
+            z.append(tk("konnektor.ausgabe.ueberblick.2"))
             teil = None
             for t in self.r["tage"]:
                 if t.get("teil") and t["teil"] != teil:
                     teil = t["teil"]
                     z.append(f"### {teil}")
-                z.append(f"- {t['id']} Tag {t['nr']}, {texte.wochentag(t['datum'], texte.VORGABE_REISE)} {datum_de(t['datum'])}: {t['titel']}"
-                         + (f" – Nacht: {self.nacht(t.get('nacht'))}" if t.get("nacht") else ""))
+                z.append(tk("konnektor.ausgabe.ueberblick.9", w1=t['id'], w2=t['nr'], w3=texte.wochentag(t['datum'], texte.aufruf_sprache()), w4=datum_de(t['datum']), w5=t['titel'])
+                         + (tk("konnektor.ausgabe.sammeln.16", w1=self.nacht(t.get('nacht'))) if t.get("nacht") else ""))
         if self.an("fragen"):
-            z.append(f"## Offene Fragen: {len(self.offene())} (Werkzeug offene_fragen)")
+            z.append(tk("konnektor.ausgabe.ueberblick.3", w1=len(self.offene())))
         if self.aufgaben is not None and self.an("aufgaben"):
             offene_ag = [a for a in self.aufgaben if a["status"] in ("offen", "in_arbeit")]
             heute = datetime.date.today().isoformat()
             ueber = [a for a in offene_ag if a.get("frist") and a["frist"] < heute] if self.v["fristen"] else []
-            z.append(f"## Offene Aufgaben: {len(offene_ag)}" + (f", davon {len(ueber)} überfällig" if ueber else "")
-                     + " (Werkzeug aufgaben)")
-            z += [f"- {a['id']} Frist {a['frist']}: {a['titel']}" for a in ueber]
+            z.append(tk("konnektor.ausgabe.ueberblick.10", w1=len(offene_ag)) + (tk("konnektor.ueberblick.5", w1=len(ueber)) if ueber else "")
+                     + tk("konnektor.ausgabe.ueberblick.8"))
+            z += [tk("konnektor.ausgabe.ueberblick.4", w1=a['id'], w2=a['frist'], w3=a['titel']) for a in ueber]
         if self.r.get("buchungen"):
             bs = list(self.r["buchungen"].values())
-            gezaehlt = {s: len([b for b in bs if b.get("status") == s]) for s in ("gebucht", "angefragt", "storniert")}
-            z.append("## Buchungen: " + ", ".join(f"{n} {s}" for s, n in gezaehlt.items() if n) + " (zeige B-…)")
+            gezaehlt = {tk(f"konnektor.ausgabe.ueberblick.status_{s}"): len([b for b in bs if b.get("status") == s]) for s in ("gebucht", "angefragt", "storniert")}
+            z.append(tk("konnektor.ausgabe.ueberblick.13") + ", ".join(f"{n} {s}" for s, n in gezaehlt.items() if n) + tk("konnektor.ausgabe.ueberblick.zeige_b"))
             heute = datetime.date.today().isoformat()
             fristen = sorted((b for b in bs if b.get("status") != "storniert" and (b.get("frist") or b.get("storno_bis"))),
                              key=lambda b: min(x for x in (b.get("frist"), b.get("storno_bis")) if x))[:5]
             z += [f"- {b['id']} {b.get('titel')}: " + ", ".join(x for x in (
-                f"Frist {datum_de(b['frist'])}" + (f" ({b['frist_was']})" if b.get("frist_was") else "") + (" überfällig" if b["frist"] < heute else "") if b.get("frist") else "",
-                f"kostenlos stornierbar bis {datum_de(b['storno_bis'])}" if b.get("storno_bis") else "") if x) for b in fristen]
+                tk("konnektor.ausgabe.fristen.1", w1=datum_de(b['frist'])) + (f" ({b['frist_was']})" if b.get("frist_was") else "") + (tk("konnektor.buchung.ueberfaellig") if b["frist"] < heute else "") if b.get("frist") else "",
+                tk("konnektor.ausgabe.fristen.2", w1=datum_de(b['storno_bis'])) if b.get("storno_bis") else "") if x) for b in fristen]
         if self.meldungen:
-            z.append("## Meldungen an dich")
+            z.append(tk("konnektor.ausgabe.liste_text.1"))
             z += [f"- {m['erstellt'][:10]}: {m['text']}" for m in self.meldungen[:10]]
         if self.r.get("mahnungen"):
-            z.append("## Mahnungen (die Reise ist fest oder unterwegs)")
+            z.append(tk("konnektor.ueberblick.1"))
             z += [f"- {m['text']}" for m in self.r["mahnungen"]]
         if self.r.get("wahlstellen") and self.an("varianten"):
-            z.append("## Wahlstellen (Werkzeug varianten)")
-            z += [f"- {w['id']} {w['titel']}" + (" – offen" if w.get("offen") else "")
-                  + (" – unterwegs wählen" if w.get("wann") == "unterwegs" and self.v["ausloeser_vor"] else "")
+            z.append(tk("konnektor.ausgabe.ueberblick.5"))
+            z += [f"- {w['id']} {w['titel']}" + (tk("konnektor.ausgabe.ueberblick.15") if w.get("offen") else "")
+                  + (tk("konnektor.ueberblick.4") if w.get("wann") == "unterwegs" and self.v["ausloeser_vor"] else "")
                   for w in sorted(self.r["wahlstellen"], key=lambda w: not (self.v["ausloeser_vor"] and w.get("wann") == "unterwegs"))]
-        z.append("## Inhalt (mit zeige nachschlagen)")
+        z.append(tk("konnektor.ausgabe.ueberblick.1"))
         z += [f"- {a['id']} {a['titel']}" for a in self.d.get("abschnitte", [])]
         if self.r.get("warnungen"):
-            z.append("## Hinweise der Prüfung")
+            z.append(tk("konnektor.ueberblick.2"))
             z += [f"- {w['text']}" for w in self.r["warnungen"]]
         return "\n".join(x for x in z if x)
 
     def zeige(self, id_):
         if self.aufgaben is not None and rm.AG_MUSTER.match(id_):
             a = next((x for x in self.aufgaben if x["id"] == id_), None)
-            return (aufgabe_text(a, self.titel()), None) if a else (None, "Diese Aufgabe gibt es nicht.")
+            return (aufgabe_text(a, self.titel()), None) if a else (None, tk("konnektor.zeige.1"))
         if id_ not in self.eintraege:
             nah = [k for k in self.eintraege if k.lower().startswith(id_.lower())][:20]
-            return None, ("Diese ID gibt es nicht, oder sie ist gerade erst angelegt und die Seite noch nicht neu gebaut (wenige Minuten)."
-                          + (f" Meinst du: {', '.join(nah)}?" if nah else ""))
+            return None, (tk("konnektor.zeige.2")
+                          + (tk("konnektor.ausgabe.zeige.3", w1=', '.join(nah)) if nah else ""))
         titel, t = self.eintraege[id_]
         aus = f"{id_} – {titel}\n\n{t}".strip()
         if self.antworten.get(id_):
-            aus += "\n\n## Antworten (Eingaben, keine Entscheidung)\n" + "\n".join(
+            aus += tk("konnektor.ausgabe.zeige.1") + "\n".join(
                 f"- {a['erstellt'][:10]} {a.get('name')}: {a['text']}" + (f" (Quelle: {a['quelle']})" if a.get("quelle") else "")
                 for a in self.antworten[id_])
         dran = aufgaben_filter(self.aufgaben or [], {"bezug": id_, "status": "alle"})
         if dran:
-            aus += "\n\n## Aufgaben hier\n" + rm.aufgaben_text(dran, self.titel(), self.v["fristen"])
+            aus += tk("konnektor.ausgabe.zeige.2") + rm.aufgaben_text(dran, self.titel(), self.v["fristen"])
         return aus, None
 
     def titel(self):
@@ -811,8 +821,8 @@ class Handbuch:
                 schnipsel = f"{titel}\n{t}"[max(0, pos - 80):pos + 160].replace("\n", " ")
                 treffer.append(f"- {k} {titel}: …{schnipsel}…")
         if not treffer:
-            return "Nichts gefunden."
-        mehr = f"\n(… und {len(treffer) - grenze} weitere, genauer suchen)" if len(treffer) > grenze else ""
+            return tk("konnektor.ausgabe.suche.1")
+        mehr = tk("konnektor.ausgabe.suche.mehr", w1=len(treffer) - grenze) if len(treffer) > grenze else ""
         return "\n".join(treffer[:grenze]) + mehr
 
     def an(self, baustein):
@@ -826,7 +836,7 @@ class Handbuch:
         f = self.d.get("fragen") or {}
         zeilen = f.get("zeilen", []) if alle else self.offene()
         if not zeilen:
-            return "Keine offenen Fragen." if not alle else "Keine Fragen."
+            return tk("konnektor.ausgabe.fragen.1") if not alle else tk("konnektor.ausgabe.fragen.2")
         return "\n".join([" | ".join(f.get("spalten", []))] + [" | ".join(z["zellen"]) for z in zeilen])
 
     def lesetext_zeilen(self, s):
@@ -836,8 +846,7 @@ class Handbuch:
         rubriken = (((self.r.get("arten") or {}).get(art)) or {}).get("lesetext")
         if not rubriken:
             return []
-        return ["Gliederung des Lesetexts (Abschnitt Zusammenfassung; je Rubrik ein Absatz, der mit dem fetten Stichwort "
-                "beginnt, z. B. „**" + rubriken[0]["name"] + ".** …“; Rubriken ohne Inhalt weglassen; Herkunft nennen):"] + [
+        return [tk("konnektor.lesetext_zeilen.1") + rubriken[0]["name"] + tk("konnektor.ausgabe.lesetext_zeilen.1")] + [
             f"- {x['name']}" + (f": {x['hilfe']}" if x.get("hilfe") else "") for x in rubriken]
 
     def merkmale(self, ziel, bereich):
@@ -846,22 +855,14 @@ class Handbuch:
         if ziel:
             w, b, krit = self.kriterien_von(ziel)
             if krit is None:
-                return None, "Zu dieser ID gibt es keine Merkmale. Erlaubt: Wahlstelle V-…, Option V-….a, Unterkunft U-… oder Strecke E-…."
+                return None, tk("konnektor.merkmale.4")
         elif bereich in katalog:
             w, b, krit = None, bereich, katalog[bereich]
         else:
-            return None, (f"ziel (V-…, U-…, E-…) oder art angeben: eine Art dieser Reise ({', '.join(katalog) or 'keine definiert'}). "
-                          "Eine gerade angelegte Art kennt die Seite erst nach dem Veröffentlichen (wenige Minuten); eintragen geht schon jetzt, "
-                          "der Schreibweg kennt sie.")
-        z = [f"# Merkmale der Art {b}" + (f" – {w['id']} {w['titel']}" if w else f" – {ziel}" if ziel else ""),
-             "Vorgehen: Erst selbst recherchieren (Hinweis „so finden“), dann die Person nur nach dem fragen, was offen "
-             "bleibt (Hinweis „fragen“). Veränderliche Werte mit Prüfdatum. Werte an einer vorhandenen Stelle trägst du mit "
-             "wert_eintragen ein (sofort, mit Herkunft); eine neue Alternative: ding_anlegen (Unterkunft, Strecke) und option_anlegen an der Wahlstelle, vorher kurz bestätigen lassen. Ist ein Wert je Datum verschieden (z. B. "
-             "Preis je Nacht), mehrere Werte mit gilt (JJJJ-MM-TT) angeben; einer ohne gilt steht für alle übrigen Tage. "
-             "Das sind die Merkmale dieser Reise für diese Art (plan/arten.yaml, von den Reisenden festgelegt). Ein neues "
-             "Merkmal nur, wenn es hier nichts Passendes gibt; dann wird es an der Art der Reise definiert (merkmal_definieren: "
-             "Organisator:innen legen fest, Mitwirkende schlagen vor).",
-             "## Liste"]
+            return None, (tk("konnektor.merkmale.5", w1=', '.join(katalog) or tk("konnektor.ausgabe.merkmale.keine")))
+        z = [tk("konnektor.ausgabe.merkmale.2", b=b) + (f" – {w['id']} {w['titel']}" if w else f" – {ziel}" if ziel else ""),
+             tk("konnektor.merkmale.1"),
+             tk("konnektor.ausgabe.merkmale.1")]
         for k in krit:
             st = k.get("stufe", "empfohlen")   # Stufe je Reise (routen.yaml merkmale: {…: {stufe: …}}); je Unterkunftstyp als Objekt
             if not stufe_gilt(st):   # gilt für diese Reise nicht (aus, auch je Typ überall aus): bleibt unsichtbar
@@ -870,61 +871,60 @@ class Handbuch:
             zeile = f"- {k['id']} – {k['name']}: {art}"
             # Stufen für Menschen: nötig, gut zu wissen, zusätzlich (Product Owner 29.10.2026); Schlüssel in Klammern
             if isinstance(st, dict):
-                zeile += "; Stufe je Unterkunftstyp: " + stufe_wort(st)
+                zeile += tk("konnektor.ausgabe.merkmale.3") + stufe_wort(st)
             elif st == "pflicht":
-                zeile += "; nötig (pflicht): ohne Wert eine Lücke"
+                zeile += tk("konnektor.merkmale.6")
             elif st == "angeboten":
-                zeile += "; zusätzlich (angeboten): nur eintragen, wenn es die Person interessiert, fehlt sonst nicht"
+                zeile += tk("konnektor.merkmale.7")
             else:
-                zeile += "; gut zu wissen (empfohlen): ohne Wert keine Mahnung"
+                zeile += tk("konnektor.merkmale.8")
             if k.get("auto"):
-                zeile += "; wird aus dem Plan berechnet, nicht eintragen"
+                zeile += tk("konnektor.merkmale.2")
             if k.get("veraenderlich"):
-                zeile += "; veränderlich, braucht Prüfdatum"
+                zeile += tk("konnektor.merkmale.3")
             if k.get("hilfe"):
-                zeile += f"; so finden: {k['hilfe']}"
+                zeile += tk("konnektor.ausgabe.merkmal.so_finden", w1=k['hilfe'])
             if k.get("frage"):
-                zeile += f"; fragen: „{k['frage']}“"
+                zeile += tk("konnektor.ausgabe.merkmal.fragen", w1=k['frage'])
             z.append(zeile)
         if w:
             for o in w["optionen"]:
                 z.append(f"## {o['id']} {o['titel']} ({o.get('status')})")
                 z += self.merkmal_zeilen(krit, o.get("merkmale"), [] if o.get("status") in ("verworfen", "ersetzt")
-                                         else o.get("fehlt")) or ["(keine Merkmale)"]
+                                         else o.get("fehlt")) or [tk("konnektor.ausgabe.merkmale.4")]
         elif ziel in (self.r.get("unterkuenfte") or {}):
             u = self.r["unterkuenfte"][ziel]
             z.append(f"## {ziel} {u.get('name')}")
-            z += self.merkmal_zeilen(krit, u.get("merkmale"), u.get("fehlt")) or ["(keine Merkmale)"]
+            z += self.merkmal_zeilen(krit, u.get("merkmale"), u.get("fehlt")) or [tk("konnektor.ausgabe.merkmale.4")]
         elif ziel:
             s = self.r["strecken"][ziel]
             z.append(f"## {ziel} {s.get('titel') or ziel}")
-            z += self.merkmal_zeilen(krit, s.get("merkmale"), s.get("fehlt")) or ["(keine Merkmale)"]
+            z += self.merkmal_zeilen(krit, s.get("merkmale"), s.get("fehlt")) or [tk("konnektor.ausgabe.merkmale.4")]
         return "\n".join(z), None
 
     def kategorien(self):
         """Die Kartenkategorien dieser Reise (plan/kategorien.yaml) in Worten (Werkzeug kategorien)."""
         k = self.d.get("kategorien") or {}
         if not k:
-            return ("Diese Reise hat noch keine Kartenkategorien. Mit kategorie_definieren legen Organisator:innen sie an "
-                    "(Gruppe punkt für die Etappen-Karte, wissen für die Karte in einem Wissensabschnitt).")
-        z = ["# Kartenkategorien dieser Reise (plan/kategorien.yaml)",
-             "Ändern oder ergänzen mit kategorie_definieren (Schlüssel aus dieser Liste); vorher kurz bestätigen lassen."]
-        for gruppe, titel in (("punkt", "Etappen-Karte"), ("wissen", "Karte in einem Wissensabschnitt")):
+            return (tk("konnektor.kategorien.1"))
+        z = [tk("konnektor.ausgabe.kategorien.1"),
+             tk("konnektor.kategorien.2")]
+        for gruppe, titel in (("punkt", "Etappen-Karte"), ("wissen", tk("konnektor.ausgabe.kategorien.2"))):
             sub = {a: d for a, d in k.items() if d.get("gruppe") == gruppe}
             if not sub:
                 continue
-            z.append(f"## Gruppe {gruppe} – {titel}")
+            z.append(tk("konnektor.ausgabe.kategorien.3", gruppe=gruppe, titel=titel))
             for a, d in sub.items():
                 zeile = f"- {a} – {d.get('name')}"
                 if d.get("einzahl"):
                     zeile += f" (einzeln: {d['einzahl']})"
-                zeile += f"; Farbe {d.get('farbe')}"
-                zeile += "; zeigt die Nummer" if d.get("nummeriert") else f"; Symbol {d.get('symbol') or 'keins'}"
+                zeile += tk("konnektor.ausgabe.kategorien.4", w1=d.get('farbe'))
+                zeile += tk("konnektor.ausgabe.kategorien.5") if d.get("nummeriert") else tk("konnektor.ausgabe.kategorien.6", w1=d.get('symbol') or 'keins')
                 z.append(zeile)
                 for w, ad in (d.get("arten") or {}).items():
-                    teile = [ad.get("name") or w] + ([f"Symbol {ad['symbol']}"] if ad.get("symbol") else []) \
-                        + (["als Umriss"] if ad.get("umriss") else []) + ([f"Hinweis: {ad['hinweis']}"] if ad.get("hinweis") else [])
-                    z.append(f"  - art {w}: " + "; ".join(teile))
+                    teile = [ad.get("name") or w] + ([tk("konnektor.ausgabe.kategorien.9", w1=ad['symbol'])] if ad.get("symbol") else []) \
+                        + ([tk("konnektor.ausgabe.kategorien.8")] if ad.get("umriss") else []) + ([tk("konnektor.ausgabe.kategorien.7", w1=ad['hinweis'])] if ad.get("hinweis") else [])
+                    z.append(tk("konnektor.ausgabe.art_zeile", w1=w) + "; ".join(teile))
         return "\n".join(z)
 
     def option(self, oid):
@@ -949,48 +949,46 @@ class Handbuch:
         if o is None:
             stelle = next((x for x in self.r.get("wahlstellen", []) if x["id"] == oid), None)
             if stelle:
-                return None, [], [f"{oid} ist eine Wahlstelle. Entschieden wird über eine Option: "
+                return None, [], [tk("konnektor.entscheidung_pruefen.24", oid=oid)
                                   + ", ".join(f"{x['id']} {x['titel']}" for x in stelle["optionen"]) + "."]
-            return None, [], [f"Die Option „{oid}“ gibt es nicht. Mit varianten die Wahlstellen und ihre Optionen (V-01.a) ansehen."]
+            return None, [], [tk("konnektor.entscheidung_pruefen.6", oid=oid)]
         if status not in ENTSCHEIDUNGEN:
-            fehler.append(f"status muss einer von {', '.join(ENTSCHEIDUNGEN)} sein.")
+            fehler.append(tk("konnektor.entscheidung_pruefen.1", w1=', '.join(ENTSCHEIDUNGEN)))
         if not grund:
-            fehler.append("Der Grund fehlt: jede Entscheidung hat einen Grund (in den Worten der Person), der in den Verlauf kommt.")
+            fehler.append(tk("konnektor.entscheidung_pruefen.2"))
         elif len(grund) > MAX_GRUND or "\n" in grund:
-            fehler.append(f"Der Grund passt in eine Zeile mit höchstens {MAX_GRUND} Zeichen.")
+            fehler.append(tk("konnektor.entscheidung_pruefen.7", w1=MAX_GRUND))
         if status == "ersetzt":
             wd, od = self.option(durch)
             if not durch:
-                fehler.append("Bei „ersetzt“ gehört dazu, wodurch die Option ersetzt wird (ersetzt_durch, z. B. V-01.b).")
+                fehler.append(tk("konnektor.entscheidung_pruefen.8"))
             elif od is None or wd is not w or durch == oid:
-                fehler.append(f"ersetzt_durch muss eine andere Option derselben Wahlstelle {w['id']} sein "
-                              f"({', '.join(x['id'] for x in w['optionen'] if x['id'] != oid)}).")
+                fehler.append(tk("konnektor.ausgabe.entscheidung_pruefen.1", w1=w['id'], w2=', '.join(x['id'] for x in w['optionen'] if x['id'] != oid)))
             elif od["status"] in ("verworfen", "ersetzt"):
-                fehler.append(f"{durch} ist selbst {WORT[od['status']]} und kann nichts ersetzen.")
+                fehler.append(tk("konnektor.entscheidung_pruefen.17", durch=durch, w2=WORT[od['status']]))
         elif durch:
-            fehler.append("ersetzt_durch gibt es nur beim Status ersetzt.")
+            fehler.append(tk("konnektor.entscheidung_pruefen.9"))
         if status in ENTSCHEIDUNGEN and o["status"] == status:
-            fehler.append(f"{oid} ist schon {WORT[status]}; daran ändert sich nichts.")
+            fehler.append(tk("konnektor.entscheidung_pruefen.3", oid=oid, w2=WORT[status]))
         for e in self.offene_entscheidungen.get(oid, []):
             if e["wer"] == wer and e["entscheidung"] == status and e["status"] != "konflikt":
-                fehler.append(f"Dieselbe Entscheidung liegt schon vor ({e['auftrag']}); sie wird noch eingearbeitet.")
+                fehler.append(tk("konnektor.entscheidung_pruefen.10", w1=e['auftrag']))
         if fehler:
             return None, [], fehler
         andere = [x for x in w["optionen"] if x["id"] != oid and x["status"] == "gewaehlt"]
         if status == "gewaehlt" and andere:
-            hinweise.append(f"{', '.join(x['id'] for x in andere)} ist bisher gewählt und wird dadurch ersetzt "
-                            "(mit eigenem Verlaufseintrag).")
+            hinweise.append(tk("konnektor.entscheidung_pruefen.4", w1=', '.join(x['id'] for x in andere)))
         if status in ("verworfen", "ersetzt") and o["status"] == "gewaehlt" and not andere:
-            hinweise.append(f"{oid} war die gewählte Option: {w['id']} ist danach offen"
-                            + (f" (Frage {w['frage']})" if w.get("frage") else "") + ".")
+            hinweise.append(tk("konnektor.entscheidung_pruefen.13", oid=oid, w2=w['id'])
+                            + (tk("konnektor.ausgabe.entscheidung_pruefen.4", w1=w['frage']) if w.get("frage") else "") + ".")
         if status == "gewaehlt":
             namen = {k["id"]: k["name"] for k in w.get("kriterien") or []}
             if o.get("fehlt"):
-                hinweise.append("Es fehlen noch Merkmale: " + ", ".join(namen.get(k, k) for k in o["fehlt"])
-                                + ". Recherchieren und mit wert_eintragen (Herkunft, Prüfdatum) nachtragen.")
+                hinweise.append(tk("konnektor.entscheidung_pruefen.18") + ", ".join(namen.get(k, k) for k in o["fehlt"])
+                                + tk("konnektor.entscheidung_pruefen.14"))
             offen = [namen.get(k, k) for k, v in (o.get("merkmale") or {}).items() if v.get("ungeprueft")]
             if offen:
-                hinweise.append("Ungeprüfte veränderliche Angaben: " + ", ".join(offen) + " – vor dem Buchen nachschlagen.")
+                hinweise.append(tk("konnektor.entscheidung_pruefen.19") + ", ".join(offen) + tk("konnektor.ausgabe.entscheidung_pruefen.2"))
             # Quellen prüfen: geprüft, aber älter als die Frist des Wächters (regeln.waechter_frist_tage)
             frist = ((self.d.get("reise") or {}).get("regeln") or {}).get("waechter_frist_tage", VORGABEN["waechter_frist_tage"])
             veraenderlich = {k["id"] for k in w.get("kriterien") or [] if k.get("veraenderlich")}
@@ -1000,38 +998,35 @@ class Handbuch:
                 for e in [v] + list(v.get("je_datum") or []):
                     g = e.get("geprueft")
                     if k in veraenderlich and g and (stichtag - datetime.date.fromisoformat(g)).days > frist:
-                        alt.append(f"{namen.get(k, k)} (geprüft {datum_de(g)}, Quelle {e.get('quelle') or 'unbekannt'})")
+                        alt.append(tk("konnektor.entscheidung_pruefen.20", w1=namen.get(k, k), w2=datum_de(g), w3=e.get('quelle') or 'unbekannt'))
             if alt:
-                hinweise.append(f"Älter als {frist} Tage: " + ", ".join(alt) + " – vor dem Buchen neu nachschlagen.")
+                hinweise.append(tk("konnektor.entscheidung_pruefen.21", frist=frist) + ", ".join(alt) + tk("konnektor.ausgabe.entscheidung_pruefen.3"))
         # Regeln zwischen Optionen (Paket 4): nichts verhindern, aber sagen, was dann nicht mehr zusammenpasst
         if status == "gewaehlt":
             for x in o.get("erfordert") or []:
                 if not x["im_plan"]:
-                    hinweise.append(f"{oid} setzt {x['id']} „{x['titel']}“ voraus; das steht derzeit nicht im Plan"
-                                    + ("" if x["gueltig"] else " und ist verworfen") + ".")
+                    hinweise.append(tk("konnektor.entscheidung_pruefen.25", oid=oid, w2=x['id'], w3=x['titel'])
+                                    + ("" if x["gueltig"] else tk("konnektor.entscheidung_pruefen.27")) + ".")
             for x in o.get("schliesst_aus") or []:
                 if x["im_plan"]:
-                    hinweise.append(f"{oid} und {x['id']} „{x['titel']}“ schließen sich aus; {x['id']} steht derzeit im Plan.")
+                    hinweise.append(tk("konnektor.entscheidung_pruefen.29", oid=oid, id=x["id"], titel=x["titel"]))
         if status in ("verworfen", "ersetzt"):
             for w2 in self.r.get("wahlstellen", []):
                 for o2 in w2["optionen"]:
                     if o2.get("im_plan") and o2["status"] not in ("verworfen", "ersetzt") and \
                             any(x["id"] == oid for x in o2.get("erfordert") or []):
-                        hinweise.append(f"{o2['id']} „{o2['titel']}“ steht im Plan und setzt {oid} voraus.")
+                        hinweise.append(tk("konnektor.entscheidung_pruefen.22", w1=o2['id'], w2=o2['titel'], oid=oid))
         if w.get("wann") == "unterwegs" and not self.v["ausloeser_vor"]:
-            hinweise.append(f"{w['id']} ist eine Wahlstelle für unterwegs"
-                            + (f" (Auslöser: {o['ausloeser']})" if o.get("ausloeser") else "")
-                            + ": Sie wird normalerweise erst unterwegs entschieden.")
+            hinweise.append(tk("konnektor.entscheidung_pruefen.15", w1=w['id'])
+                            + (tk("konnektor.entscheidung_pruefen.23", w1=o['ausloeser']) if o.get("ausloeser") else "")
+                            + tk("konnektor.entscheidung_pruefen.11"))
         heute = heute or datetime.date.today()
-        text_ = (f"Entscheidung von {wer} am {datum_de(heute.isoformat())}: {oid} „{o['titel']}“ ({w['id']} {w['titel']}) "
-                 f"ist {WORT[status]}" + (f", ersetzt durch {durch}" if durch else "") + f".\nGrund: {grund}\n"
-                 f"Herkunft: Entscheidung von {wer} im Gespräch in der Claude-App" + (f"; Quelle: {quelle}" if quelle else "")
-                 + ".\nEinzutragen: Verlaufseintrag an der Option "
-                 f"{{datum: {heute.isoformat()}, status: {status}, wer: {wer}, grund: …}}"
-                 + (f"; bisher gewählt: {', '.join(x['id'] for x in andere)} bekommt ersetzt" if status == "gewaehlt" and andere else "")
-                 + (f"; Frage {w['frage']} als geklärt eintragen" if w.get("frage") and status == "gewaehlt" else "") + ".")
+        text_ = (tkd("konnektor.entscheidung_pruefen.28", wer=wer, w2=datum_de(heute.isoformat()), oid=oid, w4=o['titel'], w5=w['id'], w6=w['titel'], w7=WORT[status]) + (tkd("konnektor.ausgabe.entscheidung_pruefen.ersetzt_durch", w1=durch) if durch else "") + tkd("konnektor.entscheidung_pruefen.26", grund=grund, wer=wer) + (tk("konnektor.ausgabe.entscheidung_pruefen.5", quelle=quelle) if quelle else "")
+                 + tkd("konnektor.ausgabe.entscheidung_pruefen.einzutragen", w1=f"{{datum: {heute.isoformat()}, status: {status}, wer: {wer}, grund: …}}")
+                 + (tkd("konnektor.entscheidung_pruefen.16", w1=', '.join(x['id'] for x in andere)) if status == "gewaehlt" and andere else "")
+                 + (tkd("konnektor.entscheidung_pruefen.12", w1=w['frage']) if w.get("frage") and status == "gewaehlt" else "") + ".")
         if hinweise:
-            text_ += "\nHinweise der Vorprüfung:\n" + "\n".join(f"- {x}" for x in hinweise)
+            text_ += tkd("konnektor.entscheidung_pruefen.5") + "\n".join(f"- {x}" for x in hinweise)
         daten = {"entscheidung": status, "option": oid, "wahlstelle": w["id"], "grund": grund, "datum": heute.isoformat(),
                  **({"ersetzt_durch": durch} if durch else {}), **({"quelle": quelle} if quelle else {}),
                  "hinweise": hinweise}
@@ -1040,23 +1035,23 @@ class Handbuch:
     def varianten(self):
         z = []
         for p in self.r.get("plaene", []):
-            z.append(f"- {p['id']} {p['kurz']}: {p['titel']}" + (" (aktueller Plan)" if p.get("aktuell") else "")
-                     + f" – Auswahl {', '.join(p.get('auswahl') or [])}")
+            z.append(f"- {p['id']} {p['kurz']}: {p['titel']}" + (tk("konnektor.ausgabe.varianten.3") if p.get("aktuell") else "")
+                     + tk("konnektor.ausgabe.varianten.2", w1=', '.join(p.get('auswahl') or [])))
         if z:
-            z.insert(0, "## Benannte Pläne")
-        z.append("## Wahlstellen")
+            z.insert(0, tk("konnektor.varianten.1"))
+        z.append(tk("konnektor.ausgabe.varianten.1"))
         for w in self.r.get("wahlstellen", []):
-            z.append(f"### {w['id']} {w['titel']} ({w.get('art')}" + (", offen" if w.get("offen") else "")
-                     + (f", Frage {w['frage']}" if w.get("frage") else "") + ")")
+            z.append(f"### {w['id']} {w['titel']} ({w.get('art')}" + (tk("konnektor.ausgabe.varianten.5") if w.get("offen") else "")
+                     + (tk("konnektor.ausgabe.varianten.4", w1=w['frage']) if w.get("frage") else "") + ")")
             if w.get("text"):
                 z.append(w["text"])
             for o in w["optionen"]:
-                z.append(f"- {o['id']} {o['titel']} – {o.get('status')}" + (" (aktuell)" if o.get("aktiv") else "")
-                         + (f"; dafür: {'; '.join(o['plus'])}" if o.get("plus") else "")
-                         + (f"; dagegen: {'; '.join(o['minus'])}" if o.get("minus") else "")
+                z.append(f"- {o['id']} {o['titel']} – {o.get('status')}" + (tk("konnektor.ausgabe.aktuell") if o.get("aktiv") else "")
+                         + (tk("konnektor.varianten.2", w1='; '.join(o['plus'])) if o.get("plus") else "")
+                         + (tk("konnektor.ausgabe.dagegen", w1='; '.join(o['minus'])) if o.get("minus") else "")
                          + (f"; {self.summe(o['summe'])}" if o.get("summe") else ""))
                 z += ["  " + x for x in self.merkmal_zeilen(w.get("kriterien"), o.get("merkmale"))
-                      if not x.startswith("Fehlt")]
+                      if not x.startswith(tk("konnektor.ausgabe.merkmal_zeilen.2"))]
                 z += ["  " + x for x in self.offen_zeilen(o["id"])]
         return "\n".join(z)
 
@@ -1092,9 +1087,9 @@ def schreib_anfrage(reise, werkzeug_, anfrage):
             antwort = json.loads(e.read())
             return None, texte.Satz(antwort.get("fehler", f"Fehler {e.code}"), antwort.get("fehler_code"), antwort.get("werte"))
         except (json.JSONDecodeError, AttributeError):
-            return None, f"Fehler {e.code}"
+            return None, tk("konnektor.ausgabe.schreib_anfrage.1", w1=e.code)
     except (urllib.error.URLError, OSError):
-        return None, "Der Schreibweg ist nicht erreichbar, bitte später noch einmal"
+        return None, tk("konnektor.schreib_anfrage.1")
 
 
 def ontologie_text(name, args):
@@ -1109,9 +1104,9 @@ def ontologie_text(name, args):
             continue
         if f == "stufe":   # für Menschen in Worten (nötig, gut zu wissen, zusätzlich; Product Owner 29.10.2026)
             s = stufe_schluessel(v)
-            v = "abgeschaltet (aus)" if s == "aus" else stufe_wort(s) if s else v
+            v = tkd("konnektor.ausgabe.ontologie.aus") if s == "aus" else stufe_wort(s) if s else v
         teile.append(f"{f}: {' | '.join(map(str, v)) if isinstance(v, list) else v}")
-    return ({"art_definieren": "Art festlegen", "kategorie_definieren": "Kartenkategorie festlegen"}.get(name, "Merkmal festlegen")) + " – " + "; ".join(teile)
+    return tkd({"art_definieren": "konnektor.ausgabe.ontologie.art", "kategorie_definieren": "konnektor.ausgabe.ontologie.kategorie"}.get(name, "konnektor.ausgabe.ontologie.merkmal")) + " – " + "; ".join(teile)
 
 
 def ids_der_reise(d):
@@ -1137,9 +1132,9 @@ def merkmal_hinweise(d, art, merkmale):
     z = []
     for k in fremd:
         a = aehnliches_merkmal(k, krit)
-        z.append(f"„{k}“ gibt es an der Art {art} nicht" + (f"; gemeint ist wohl {a['id']} – {a['name']}" if a else
-                 "; ein neues Merkmal legt ein:e Organisator:in mit merkmal_definieren an (du kannst es damit vorschlagen)"))
-    return "Nicht eingetragen: " + "; ".join(z) + "."
+        z.append(tk("konnektor.merkmal_hinweise.1", k=k, art=art) + (tk("konnektor.ausgabe.gemeint_wohl", w1=a['id'], w2=a['name']) if a else
+                 tk("konnektor.merkmal_hinweise.2")))
+    return tk("konnektor.ausgabe.merkmal_hinweise.1") + "; ".join(z) + "."
 
 
 def ontologie_werkzeug(reise, d, wer, zugang, name, args):
@@ -1147,29 +1142,27 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
     Senden, der Schreibweg noch einmal mit reise.yaml. art_definieren und merkmal_definieren gehen für Mitwirkende als Rückmeldung
     der Art Ergänzung (Vorschlag). -> (Text, ist_fehler)"""
     if not all(isinstance(v, (str, bool, int, float, list, dict, type(None))) for v in args.values()):
-        return "Alle Angaben müssen Text, Zahlen, ja/nein, Listen oder Objekte sein.", True
+        return tk("konnektor.ontologie_werkzeug.3"), True
     aktion = ONTOLOGIE_AKTION[name]
     vorschlag = aktion == "ontologie" and not darf(wer["rolle"], "organisator")
     if (nein := recht(wer["rolle"], d, "rueckmeldung" if vorschlag else aktion)):
         return nein, True
     if not schreibdienst():
-        return ("Bei dieser Instanz ist der Schreibweg nicht eingerichtet (engine/schreiben.py dienst, docs/betrieb.md); bis dahin "
-                "ändert eine Sitzung im Reisen-Repo die Reise."), True
+        return (tk("konnektor.ontologie_werkzeug.4")), True
     name_ = wer["name"] or args.get("name") or args.get("vorname")
     if not isinstance(name_, str) or not name_.strip():
-        return ("Das geht nur mit dem persönlichen Link: Jede Änderung gehört genau einer Person, und dieser Link kennt keinen Namen."
-                if aktion == "ontologie" and not vorschlag else "Name fehlt: bitte die Person nach ihrem Vornamen fragen."), True
+        return (tk("konnektor.ontologie_werkzeug.7")
+                if aktion == "ontologie" and not vorschlag else tk("konnektor.frage_beantworten.4")), True
     wer = {**wer, "name": name_.strip()}
     rest = {k: v for k, v in args.items() if k not in ("name", "vorname", "trotzdem") and not k.startswith("beleg_")}   # ein neuer Name eines Dings heißt neuer_name
     if vorschlag:
         ziel = art_schluessel(str(args.get("kategorie") or args.get("art") or args.get("bezeichnung") or "")) or "allgemein"
-        e, fehler = rueckmeldung_senden(reise, {"name": wer["name"], "art": "Ergänzung", "ziel": ziel[:rm.LAENGE["ziel"]],
-                                                "text": ontologie_text(name, rest)[:rm.LAENGE["text"]], "quelle": "über Claude"})
+        e, fehler = rueckmeldung_senden(reise, {"name": wer["name"], "art": tkd("konnektor.ontologie_werkzeug.8"), "ziel": ziel[:rm.LAENGE["ziel"]],
+                                                "text": ontologie_text(name, rest)[:rm.LAENGE["text"]], "quelle": tkd("konnektor.werkzeug.4")})
         if fehler:
-            return f"Nicht gespeichert: {fehler}", True
-        organisator = " und ".join(organisator_namen(d)) or "ein:e Organisator:in"
-        return (f"Vorschlag {e['id']} gespeichert. Arten und Merkmale legen Organisator:innen fest; {organisator} sieht den Vorschlag "
-                "unter rueckmeldungen und kann ihn im Gespräch übernehmen."), False
+            return tk("konnektor.ausgabe.frage_beantworten.4", fehler=fehler), True
+        organisator = tk("konnektor.und").join(organisator_namen(d)) or tk("konnektor.ausgabe.frage_beantworten.1")
+        return (tk("konnektor.ontologie_werkzeug.5", w1=e['id'], organisator=organisator)), False
     # Vorprüfungen mit dem veröffentlichten Stand (der Schreibweg prüft noch einmal mit dem Repo)
     route = d.get("route") or {}
     if name == "merkmal_definieren" and not args.get("trotzdem"):
@@ -1179,9 +1172,7 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
         if key and key not in {k["id"] for k in krit}:
             aehnlich = aehnliches_merkmal(key, krit)
             if aehnlich:
-                return (f"Nicht angelegt: Bei der Art {art} gibt es schon ein ähnliches Merkmal, {aehnlich['id']} – {aehnlich['name']}. "
-                        "Das vorhandene nutzen oder mit merkmal_definieren ändern; ist es wirklich ein anderes, noch einmal mit "
-                        "trotzdem = true."), True
+                return (tk("konnektor.ontologie_werkzeug.12", art=art, w2=aehnlich['id'], w3=aehnlich['name'])), True
     # Was die veröffentlichte Seite noch nicht kennt (gerade angelegt, Issue #135), prüft der Schreibweg mit dem Repo: hier
     # keine Ablehnung wegen einer unbekannten ID, nur Hinweise, die der veröffentlichte Stand sicher weiß
     if name == "arten_uebernehmen":
@@ -1189,13 +1180,13 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
         von = str(args.get("von_reise") or "").strip()
         dv = daten(von) if REISE_MUSTER.match(von) else None
         if not dv or von == reise:
-            return f"Die Reise „{von}“ gibt es nicht (meine_reisen zeigt deine Reisen).", True
+            return tk("konnektor.ontologie_werkzeug.9", von=von), True
         if wer_spricht({**zugang, "reise": von}, dv) is None:
-            return f"Auf der Reise „{von}“ bist du nicht dabei; Arten lassen sich nur aus eigenen Reisen übernehmen.", True
+            return tk("konnektor.ontologie_werkzeug.10", von=von), True
     if name == "wunsch_vorschlagen":
         rid = str(args.get("wunsch") or "").strip()
         if not any(w.get("id") == rid for w in (wuensche_liste(reise) or [])):
-            return f"Den Wunsch „{rid}“ gibt es nicht (wuensche zeigt alle).", True
+            return tk("konnektor.ontologie_werkzeug.11", rid=rid), True
     if name == "ding_anlegen":
         if (h := merkmal_hinweise(d, str(args.get("art") or "").lower(), args.get("merkmale"))):
             return h, True
@@ -1206,22 +1197,21 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
             return h, True
     beleg = {k: v for k, v in args.items() if k.startswith("beleg_") and v}
     if beleg and name != "buchung_anlegen":
-        return "beleg_text, beleg_base64 und beleg_dateiname gibt es nur bei buchung_anlegen; sonst beleg_anlegen.", True
+        return tk("konnektor.ontologie_werkzeug.6"), True
     if beleg and beleg_daten(args, "beleg_")[0] is None:   # Beleg vorher prüfen: die Buchung soll nicht ohne ihn angelegt werden
         return beleg_daten(args, "beleg_")[1], True
     antwort, fehler = schreib_anfrage(reise, name, {"person": zugang.get("person"), "name": wer["name"], "rolle": wer["rolle"], "args": rest})
     if fehler:
-        return f"Nicht eingetragen: {fehler}", True
-    text = (f"Eingetragen und gesichert ({wer['name']}): {antwort.get('text', '')} Es gilt ab jetzt; die Seite und die Werkzeuge "
-            "zeige, merkmale und varianten zeigen den neuen Stand, sobald veröffentlicht ist (wenige Minuten).")
+        return tk("konnektor.ausgabe.ontologie_werkzeug.1", fehler=fehler), True
+    text = (tk("konnektor.ontologie_werkzeug.1", w1=wer['name'], w2=antwort.get('text', '')))
     if beleg:   # in einem Schritt (Issue #135): die Buchung ist im Repo, der Beleg geht sofort in die Ablage
         bid = str(antwort.get("id") or "")
         if not re.fullmatch(r"B-\d+", bid):
-            return text + " Der Beleg ist nicht abgelegt (der Schreibweg nannte keine Buchungsnummer); bitte mit beleg_anlegen nachholen.", False
+            return text + tk("konnektor.ontologie_werkzeug.13"), False
         bt, bf = beleg_ablegen(reise, bid, wer["name"], args, im_repo=True, praefix="beleg_")
-        return text + (" " + bt if not bf else f" Der Beleg ist nicht abgelegt ({bt}); bitte mit beleg_anlegen nachholen."), False
+        return text + (" " + bt if not bf else tk("konnektor.ontologie_werkzeug.14", bt=bt)), False
     if name == "buchung_anlegen":
-        text += " Kein Beleg mitgegeben: nachträglich mit beleg_anlegen (Abschrift oder Datei) oder angemeldet auf der Reiseseite; er bleibt außerhalb des Repos."
+        text += tk("konnektor.ontologie_werkzeug.2")
     return text, False
 
 
@@ -1239,9 +1229,9 @@ def dienst_anfrage(methode, pfad, daten):
         try:
             return None, json.loads(e.read()).get("fehler", f"Fehler {e.code}")
         except (json.JSONDecodeError, AttributeError):
-            return None, f"Fehler {e.code}"
+            return None, tk("konnektor.ausgabe.schreib_anfrage.1", w1=e.code)
     except (urllib.error.URLError, OSError):
-        return None, "Rückmeldedienst nicht erreichbar, bitte später noch einmal"
+        return None, tk("konnektor.dienst_anfrage.1")
 
 
 def beleg_daten(args, praefix=""):
@@ -1252,14 +1242,14 @@ def beleg_daten(args, praefix=""):
         try:
             inhalt = base64.b64decode(b64, validate=True)
         except (binascii.Error, ValueError):
-            return None, f"{praefix + 'base64' if praefix else 'daten_base64'} ist kein gültiges Base64."
+            return None, tk("konnektor.beleg_daten.1", w1=praefix + 'base64' if praefix else 'daten_base64')
         return str(args.get(praefix + "dateiname") or "Beleg").strip(), inhalt
     if text.strip():
         dateiname = str(args.get(praefix + "dateiname") or "Abschrift").strip()
         if not dateiname.lower().endswith((".txt", ".md")):
             dateiname += ".txt"
         return dateiname, text.strip().encode("utf-8") + b"\n"
-    return None, (f"{praefix}text (Abschrift) oder {praefix + 'base64' if praefix else 'daten_base64'} (Datei) angeben.")
+    return None, (tk("konnektor.ausgabe.beleg_daten.1", praefix=praefix, w2=praefix + 'base64' if praefix else 'daten_base64'))
 
 
 def beleg_ablegen(reise, bid, name, args, im_repo=False, praefix=""):
@@ -1269,24 +1259,23 @@ def beleg_ablegen(reise, bid, name, args, im_repo=False, praefix=""):
         return inhalt, True
     a, fehler = beleg_senden(reise, bid, name, dateiname, inhalt, im_repo)
     if fehler:
-        return f"Nicht abgelegt: {fehler}", True
-    return (f"Beleg {a['id']} „{a['name']}“ an {bid} abgelegt ({a.get('groesse', 0)} Bytes), sichtbar für {name} und die Organisator:innen; "
-            "eine Organisator:in kann ihn auf der Reiseseite für alle freigeben."), False
+        return tk("konnektor.ausgabe.beleg_ablegen.1", fehler=fehler), True
+    return (tk("konnektor.beleg_ablegen.1", w1=a['id'], w2=a['name'], bid=bid, w4=a.get('groesse', 0), name=name)), False
 
 
 def buchung_im_repo(reise, bid):
     """Gibt es die Buchung schon im Repo, auch wenn die Seite sie noch nicht zeigt? Fragt den Schreibweg (GET /<reise>/buchung/<B-id>).
     -> (True | False | None, fehler); None: nicht prüfbar."""
     if not schreibdienst():
-        return None, "Der Schreibweg dieser Instanz ist nicht eingerichtet."
+        return None, tk("konnektor.buchung_im_repo.1")
     req = urllib.request.Request(f"{schreibdienst()}/{reise}/buchung/{bid}", headers={"X-Frieda-Dienst": konten.dienst_geheimnis()})
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             return bool(json.loads(r.read()).get("gibt_es")), None
     except urllib.error.HTTPError as e:
-        return None, f"Fehler {e.code} beim Schreibweg"
+        return None, tk("konnektor.ausgabe.buchung_im_repo.1", w1=e.code)
     except (urllib.error.URLError, OSError, ValueError):
-        return None, "Der Schreibweg ist nicht erreichbar, bitte später noch einmal"
+        return None, tk("konnektor.schreib_anfrage.1")
 
 
 def beleg_senden(reise, bid, name, dateiname, daten, im_repo=False):
@@ -1303,9 +1292,9 @@ def beleg_senden(reise, bid, name, dateiname, daten, im_repo=False):
         try:
             return None, json.loads(e.read()).get("fehler", f"Fehler {e.code}")
         except (json.JSONDecodeError, AttributeError):
-            return None, f"Fehler {e.code}"
+            return None, tk("konnektor.ausgabe.schreib_anfrage.1", w1=e.code)
     except (urllib.error.URLError, OSError):
-        return None, "Rückmeldedienst nicht erreichbar, bitte später noch einmal"
+        return None, tk("konnektor.dienst_anfrage.1")
 
 
 def brett_text(b, titel=None):
@@ -1314,32 +1303,32 @@ def brett_text(b, titel=None):
     k = b["kontingent"]
     punkte = k["art"] == "punkte"
     stelle = lambda ids: ", ".join(f"{x} {titel[x]}" if titel.get(x) else x for x in ids)
-    z = ["## Wunsch-Brett (" + (f"je Person {k['je_person']} Punkte für die eigenen Wünsche" if punkte else
-                                f"je Person höchstens {k['je_person']} Wünsche") + ")"]
+    z = [tk("konnektor.ausgabe.brett_text.2") + (tk("konnektor.brett_text.2", w1=k['je_person']) if punkte else
+                                tk("konnektor.brett_text.3", w1=k['je_person'])) + ")"]
     for sp in b["spalten"]:
         liste = [w for w in b["wuensche"] if w["spalte"] == sp["id"]]
         z.append(f"### {sp['titel']} ({len(liste)})")
         for w in sorted(liste, key=lambda w: -w["punkte"]):
-            z.append(f"- {w['id']} · {w['name']}" + (f" · {w['punkte']} Punkte" if punkte and w["punkte"] else "") + f": {w['text']}")
+            z.append(f"- {w['id']} · {w['name']}" + (tk("konnektor.ausgabe.brett_text.7", w1=w['punkte']) if punkte and w["punkte"] else "") + f": {w['text']}")
             if w["status"] == "rueckfrage":
-                z.append(f"  Rückfrage: {w['kommentar']}")
+                z.append(tk("konnektor.brett_text.4", w1=w['kommentar']))
             elif w["kommentar"]:
-                z.append(f"  Claude: {w['kommentar']}")
+                z.append(tk("konnektor.ausgabe.brett_text.5", w1=w['kommentar']))
             v = w.get("vorschlag") or {}
             if v.get("bezug") or v.get("notiz") or v.get("option"):
-                z.append("  Vorschlag: " + "; ".join(x for x in (
-                    f"passt zu {stelle(v['bezug'])}" if v.get("bezug") else "",
-                    f"Option {v['option']}" + (" (gewählt)" if v.get("gewaehlt") else " (zur Wahl)") if v.get("option") else "",
+                z.append(tk("konnektor.ausgabe.brett_text.6") + "; ".join(x for x in (
+                    tk("konnektor.ausgabe.passt_zu", w1=stelle(v['bezug'])) if v.get("bezug") else "",
+                    f"Option {v['option']}" + (tk("konnektor.option.gewaehlt") if v.get("gewaehlt") else tk("konnektor.option.zur_wahl")) if v.get("option") else "",
                     v.get("notiz") or "") if x))
             if w.get("eingeplant"):
                 e = w["eingeplant"]
-                z.append(f"  Eingeplant von {e['wer']} am {e['datum']}" + (f": {stelle(e['bezug'])}" if e.get("bezug") else ""))
+                z.append(tk("konnektor.brett_text.6", w1=e['wer'], w2=e['datum']) + (f": {stelle(e['bezug'])}" if e.get("bezug") else ""))
             if w.get("erlebt"):
-                z.append(f"  Erlebt ✓ {w['erlebt']['wer']} am {w['erlebt']['datum']}")
-    z.append("### Bilanz je Person")
+                z.append(tk("konnektor.ausgabe.brett_text.3", w1=w['erlebt']['wer'], w2=w['erlebt']['datum']))
+    z.append(tk("konnektor.ausgabe.brett_text.1"))
     for p in b["bilanz"]:
-        z.append(f"- {p['name']}: {p['wuensche']} Wünsche, {p['eingeplant']} eingeplant, {p['erlebt']} erlebt, "
-                 + (f"{p['frei']} von {k['je_person']} Punkten frei" if punkte else f"noch {p['frei']} Wünsche frei"))
+        z.append(tk("konnektor.brett_text.1", w1=p['name'], w2=p['wuensche'], w3=p['eingeplant'], w4=p['erlebt'])
+                 + (tk("konnektor.ausgabe.brett_text.4", w1=p['frei'], w2=k['je_person']) if punkte else tk("konnektor.brett_text.5", w1=p['frei'])))
     return "\n".join(z)
 
 
@@ -1356,10 +1345,10 @@ def wuensche_kurz(reise):
         return ""
     b = rm.brett(o, rm.zustand(reise))
     if not b["wuensche"]:
-        return "\n## Wünsche: noch keine (Werkzeug wuensche)"
+        return tk("konnektor.wuensche_kurz.1")
     zahl = {s["titel"]: sum(1 for w in b["wuensche"] if w["spalte"] == s["id"]) for s in b["spalten"]}
-    return (f"\n## Wünsche: {len(b['wuensche'])} (" + ", ".join(f"{t.lower()} {n}" for t, n in zahl.items() if n)
-            + ") (Werkzeug wuensche)")
+    return (tk("konnektor.wuensche_kurz.2", w1=len(b['wuensche'])) + ", ".join(f"{t.lower()} {n}" for t, n in zahl.items() if n)
+            + tk("konnektor.ausgabe.wuensche_kurz.1"))
 
 
 def aufgaben_von(reise):
@@ -1370,8 +1359,8 @@ def aufgaben_von(reise):
 def aufgabe_text(a, titel):
     """Eine Aufgabe ausführlich, mit Verlauf."""
     z = [rm.aufgaben_text([a], titel)]
-    z.append(f"  angelegt {a['erstellt'][:10]} von {a.get('erstellt_von')}"
-             + (f", erledigt am {a['erledigt']}" if a.get("erledigt") else ""))
+    z.append(tk("konnektor.ausgabe.aufgabe_text.1", w1=a['erstellt'][:10], w2=a.get('erstellt_von'))
+             + (tk("konnektor.ausgabe.aufgaben.1", w1=a['erledigt']) if a.get("erledigt") else ""))
     for v in a.get("verlauf", [])[1:]:
         felder = "; ".join(f"{k}: {alt or '–'} → {neu or '–'}" for k, (alt, neu) in (v.get("felder") or {}).items())
         z.append(f"  {v['zeit'][:10]} {v['wer']}: " + "; ".join(x for x in (felder, v.get("kommentar", "")) if x))
@@ -1402,13 +1391,13 @@ def stehende_entscheidungen(reise, d):
             v = (o.get("verlauf") or [{}])[-1]
             if v.get("status") in ENTSCHEIDUNGEN and v.get("wer"):
                 aus.append({"wer": v["wer"], "ziel": o["id"], "entscheidung": v["status"],
-                            "quelle": f"{v['wer']} am {v.get('datum')} im Plan"})
+                            "quelle": tkd("konnektor.stehende_entscheidungen.1", w1=v['wer'], w2=v.get('datum'))})
     ordner = rm.ordner(reise)
     for a in rm.auftraege(ordner) if ordner else []:
         ent = (a.get("daten") or {}).get("entscheidung")
         if ent in ENTSCHEIDUNGEN and a["status"] in ("neu", "rueckfrage", "konflikt"):
             aus.append({"wer": a.get("name"), "ziel": a.get("ziel"), "entscheidung": ent, "auftrag": a["id"],
-                        "quelle": f"Auftrag {a['id']} von {a.get('name')}"})
+                        "quelle": tkd("konnektor.ausgabe.stehende_entscheidungen.1", w1=a['id'], w2=a.get('name'))})
     return aus
 
 
@@ -1463,44 +1452,39 @@ def entscheiden(reise, d, h, wer, args):
     Reise; ein Widerspruch zu einer anderen Organisator:in wird nicht übernommen, sondern eine offene Frage mit Meldung an beide.
     -> (Text, ist_fehler)"""
     if not wer["name"]:
-        return ("Entscheiden geht nur mit dem persönlichen Link: Jede Entscheidung gehört genau einer Person, und dieser Link "
-                "kennt keinen Namen. Ein:e Organisator:in kann mit person_einladen einen persönlichen Link ausstellen."), True
+        return (tk("konnektor.entscheiden.2")), True
     if not all(isinstance(args.get(k) or "", str) for k in ("option", "status", "grund", "ersetzt_durch", "quelle")):
-        return "Alle Angaben müssen Text sein.", True
+        return tk("konnektor.entscheiden.3"), True
     ergebnis, hinweise, fehler = h.entscheidung_pruefen(args, wer["name"])
     if fehler:
-        return "Nicht entschieden:\n" + "\n".join(f"- {f}" for f in fehler), True
+        return tk("konnektor.ausgabe.entscheiden.1") + "\n".join(f"- {f}" for f in fehler), True
     text_, daten_ = ergebnis
     wort = WORT[daten_["entscheidung"]]
     if schreibdienst():
         beschr, alt = konflikt_pruefen(reise, d, wer["name"], daten_["option"], daten_["entscheidung"])
         if beschr:
-            frage = (f"Widerspruch zwischen Organisator:innen zu {daten_['option']}: {wer['name']} will {wort} ({daten_['grund']}), aber "
-                     f"{beschr}. Einigen, dann entscheiden.")
+            frage = (tk("konnektor.entscheiden.4", w1=daten_['option'], w2=wer['name'], wort=wort, w4=daten_['grund'], beschr=beschr))
             antwort, fehler = schreib_anfrage(reise, "frage_anlegen", {"person": wer.get("person"), "name": wer["name"], "rolle": wer["rolle"],
-                                                                       "args": {"text": frage, "bis": "vor Abreise", "bezug": [daten_["wahlstelle"]]}})
+                                                                       "args": {"text": frage, "bis": tkd("konnektor.ausgabe.entscheiden.4"), "bezug": [daten_["wahlstelle"]]}})
             m_ = re.search(r"\bF-\d+\b", (antwort or {}).get("text", "")) if antwort else None
             fid = m_.group(0) if m_ else None
             o = rm.ordner(reise)
             organisator = set(organisator_namen(d)) & ({wer["name"]} | {x["wer"] for x in alt})
             if o is not None:
                 rm.meldung_anlegen(o, organisator or {wer["name"]}, "konflikt", daten_["option"],
-                                   f"{wer['name']} will {daten_['entscheidung']} {daten_['option']}, aber {beschr}. Beides gilt nicht, bis ihr "
-                                   f"euch einig seid" + (f"; offene Frage {fid}" if fid else "") + ".", [])
-            return (f"Nicht entschieden: {daten_['option']} {wort} zu setzen widerspricht einer anderen Entscheidung ({beschr}). Nichts wird "
-                    f"übernommen, bis ihr euch einig seid: " + (f"Dafür steht jetzt die offene Frage{' ' + fid if fid else ''}, und" if antwort and not fehler
-                                                               else "Es gibt dafür eine Meldung, und")
-                    + " alle beteiligten Organisator:innen bekommen sie zu sehen. Sag nie, etwas sei schon entschieden."), False
+                                   tk("konnektor.entscheiden.8", w1=wer['name'], w2=daten_['entscheidung'], w3=daten_['option'], beschr=beschr) + (tk("konnektor.ausgabe.entscheiden.5", fid=fid) if fid else "") + ".", [])
+            return (tk("konnektor.entscheiden.7", w1=daten_['option'], wort=wort, beschr=beschr) + (tk("konnektor.entscheiden.9", w1=' ' + fid if fid else '') if antwort and not fehler
+                                                               else tk("konnektor.entscheiden.10"))
+                    + tk("konnektor.entscheiden.6")), False
         rest = {k: args[k] for k in ("option", "status", "grund", "ersetzt_durch", "quelle") if args.get(k)}
         antwort, fehler = schreib_anfrage(reise, "entscheiden", {"person": wer.get("person"), "name": wer["name"], "rolle": wer["rolle"], "args": rest})
         if fehler:
-            return f"Nicht entschieden: {fehler}", True
-        z = [f"{antwort.get('text', '')} Gesichert; es gilt ab jetzt, die Seite zeigt es in wenigen Minuten."]
+            return tk("konnektor.ausgabe.entscheiden.2", fehler=fehler), True
+        z = [tk("konnektor.entscheiden.5", w1=antwort.get('text', ''))]
         if hinweise:
-            z.append("Hinweise:\n" + "\n".join(f"- {x}" for x in hinweise))
+            z.append(tk("konnektor.ausgabe.entscheiden.3") + "\n".join(f"- {x}" for x in hinweise))
         return "\n".join(z), False
-    return ("Bei dieser Instanz ist der Schreibweg nicht eingerichtet (engine/schreiben.py dienst, docs/betrieb.md); entscheiden geht "
-            "erst damit."), True
+    return (tk("konnektor.entscheiden.1")), True
 
 
 def frage_beantworten(reise, d, h, wer, args):
@@ -1511,30 +1495,28 @@ def frage_beantworten(reise, d, h, wer, args):
     fid = args.get("frage")
     antwort = args.get("antwort")
     if not isinstance(fid, str) or not isinstance(antwort, str) or not isinstance(args.get("quelle") or "", str):
-        return "frage, antwort und quelle müssen Text sein.", True
+        return tk("konnektor.frage_beantworten.1"), True
     fid, antwort = fid.strip(), antwort.strip()
     zeile = next((z for z in (h.d.get("fragen") or {}).get("zeilen", []) if z["id"] == fid), None)
     if zeile is None:
-        return f"Die Frage „{fid}“ gibt es nicht. Mit offene_fragen die richtige F-… finden.", True
+        return tk("konnektor.frage_beantworten.2", fid=fid), True
     if not zeile.get("status", "").lower().startswith("offen"):
-        return (f"{fid} ist nicht mehr offen ({zeile.get('status')}). Neue Erkenntnisse dazu gibst du mit rueckmeldung_geben "
-                "(Art Kommentar oder Korrektur) weiter."), True
+        return (tk("konnektor.frage_beantworten.3", fid=fid, w2=zeile.get('status'))), True
     if not antwort:
-        return "Die Antwort fehlt.", True
+        return tk("konnektor.ausgabe.frage_beantworten.2"), True
     name_ = wer["name"] or args.get("name")
     if not isinstance(name_, str) or not name_.strip():
-        return "Name fehlt: bitte die Person nach ihrem Vornamen fragen.", True
-    e, fehler = rueckmeldung_senden(reise, {"name": name_, "art": "Antwort", "ziel": fid, "text": antwort,
-                                            "quelle": str(args.get("quelle") or "über Claude")})
+        return tk("konnektor.frage_beantworten.4"), True
+    e, fehler = rueckmeldung_senden(reise, {"name": name_, "art": tkd("konnektor.ausgabe.frage_beantworten.3"), "ziel": fid, "text": antwort,
+                                            "quelle": str(args.get("quelle") or tkd("konnektor.werkzeug.4"))})
     if fehler:
-        return f"Nicht gespeichert: {fehler}", True
+        return tk("konnektor.ausgabe.frage_beantworten.4", fehler=fehler), True
     stelle = next((w for w in h.r.get("wahlstellen", []) if w.get("frage") == fid), None)
-    organisator = " und ".join(organisator_namen(d)) or "ein:e Organisator:in"
-    z = [f"Antwort {e['id']} gespeichert, sie hängt an {fid} (zeige {fid} listet sie). Die Frage bleibt offen: Eine Antwort ist "
-         f"eine Eingabe, ob damit geklärt ist und was daraus folgt, entscheidet {organisator}."]
+    organisator = tk("konnektor.und").join(organisator_namen(d)) or tk("konnektor.ausgabe.frage_beantworten.1")
+    z = [tk("konnektor.frage_beantworten.7", id=e["id"], fid=fid, organisator=organisator)]
     if stelle:
-        z.append(f"Die Frage gehört zur Wahlstelle {stelle['id']} {stelle['titel']}."
-                 + (" Als Organisator:in kannst du dort mit entscheiden entscheiden." if darf(wer["rolle"], "organisator") else ""))
+        z.append(tk("konnektor.frage_beantworten.5", w1=stelle['id'], w2=stelle['titel'])
+                 + (tk("konnektor.frage_beantworten.6") if darf(wer["rolle"], "organisator") else ""))
     return " ".join(z), False
 
 
@@ -1563,29 +1545,28 @@ def einladen(reise, d, wer, args, mit_konto=False):
         try:
             email = konten.adresse(args.get("email"))
         except konten.KontoFehler:
-            return "email fehlt oder ist keine E-Mail-Adresse: An welche Adresse soll die Einladung gehen?", True
+            return tk("konnektor.einladen.24"), True
     vorname = args.get("vorname")
     rolle = rolle_neu(args.get("rolle") or "mitwirkend")
     notiz = args.get("notiz") or ""
     if not isinstance(vorname, str) or not isinstance(rolle, str) or not isinstance(notiz, str) \
             or not isinstance(args.get("schluessel") or "", str):
-        return "Vorname, Rolle, Schlüssel und Notiz müssen Text sein.", True
+        return tk("konnektor.einladen.2"), True
     vorname, notiz = vorname.strip(), notiz.strip()
     if not vorname or "\n" in vorname or len(vorname) > rm.LAENGE["name"]:
-        return "vorname fehlt (eine Zeile, höchstens 80 Zeichen): wen soll ich einladen?", True
+        return tk("konnektor.einladen.3"), True
     if len(notiz) > 300 or "\n" in notiz:
-        return "Die Notiz passt in eine Zeile mit höchstens 300 Zeichen.", True
+        return tk("konnektor.einladen.4"), True
     if rolle not in ROLLEN:
-        return f"Rolle muss eine von {', '.join(ROLLEN)} sein.", True
+        return tk("konnektor.einladen.5", w1=', '.join(ROLLEN)), True
     name_von = wer["name"]
     if not name_von:
-        return ("Einladen geht nur mit dem persönlichen Link: Der Link ohne Person kennt deinen Namen nicht. "
-                "Bitte ein:e Organisator:in um einen persönlichen Link."), True
+        return (tk("konnektor.einladen.6")), True
     if not mit_konto and not os.environ.get("KN_BASIS"):
-        return "Die Adresse für Links ist auf dem Server nicht eingerichtet (KN_BASIS). Das muss der Betreiber ergänzen.", True
+        return tk("konnektor.einladen.7"), True
     o = rm.ordner(reise)
     if o is None:
-        return "Diese Reise nimmt noch keine Eingaben an.", True
+        return tk("konnektor.einladen.8"), True
     personen = personen_der_reise(reise, d)
     vorhanden = next((p for p in personen if p["name"].casefold() == vorname.casefold()
                       or p["schluessel"] == (args.get("schluessel") or "").strip()), None)
@@ -1593,72 +1574,63 @@ def einladen(reise, d, wer, args, mit_konto=False):
         if args.get("rolle") and rolle != vorhanden["rolle"]:
             # Rolle ändern: eine Einstellung der Reise, nur Organisator:innen, direkt nach reise.yaml (person_schreiben)
             if not darf(wer["rolle"], "organisator"):
-                return f"{vorhanden['name']} ist schon dabei, mit der Rolle {vorhanden['rolle']}. Die Rolle ändern nur Organisator:innen.", True
+                return tk("konnektor.einladen.25", w1=vorhanden['name'], w2=vorhanden['rolle']), True
             if not schreibdienst():
-                return f"{vorhanden['name']} ist schon dabei, mit der Rolle {vorhanden['rolle']}. Die Rolle ändern geht erst mit eingerichtetem Schreibweg.", True
+                return tk("konnektor.einladen.26", w1=vorhanden['name'], w2=vorhanden['rolle']), True
             a_, fehler = schreib_anfrage(reise, "person_schreiben", {"person": wer.get("person"), "name": wer["name"], "rolle": wer["rolle"],
                                                                      "args": {"schluessel": vorhanden["schluessel"], "rolle": rolle}})
             if fehler:
-                return f"Rolle nicht geändert: {fehler}", True
-            return (f"{vorhanden['name']} hat jetzt die Rolle {rolle} (vorher {vorhanden['rolle']}); die Seite zeigt es in wenigen Minuten. "
-                    "Der Link bleibt derselbe."), False
+                return tk("konnektor.einladen.27", fehler=fehler), True
+            return (tk("konnektor.einladen.13", w1=vorhanden['name'], rolle=rolle, w3=vorhanden['rolle'])), False
         rolle, neu = vorhanden["rolle"], False
         schluessel = vorhanden["schluessel"]
     else:
         schluessel = (args.get("schluessel") or "").strip() or schluessel_aus_name(vorname)
         if not PERSON_MUSTER.match(schluessel):
-            return ("Aus dem Namen lässt sich kein Schlüssel bilden (klein, ohne Umlaute, Buchstaben und Ziffern). "
-                    "Bitte schluessel angeben, z. B. „anna“."), True
+            return (tk("konnektor.einladen.14")), True
         neu = True
     if neu and not darf(wer["rolle"], rolle):
-        return (f"Du kannst höchstens eine Rolle vergeben, die du selbst hast (du: {wer['rolle']}, gewünscht: {rolle}). "
-                "Für mehr Rechte muss ein:e Organisator:in einladen."), True
+        return (tk("konnektor.einladen.9", w1=wer['rolle'], rolle=rolle)), True
     if not neu and not darf(wer["rolle"], rolle):
-        return f"Einen Link für {vorhanden['name']} (Rolle {rolle}) kann nur jemand mit mindestens dieser Rolle ausstellen.", True
+        return tk("konnektor.einladen.10", w1=vorhanden['name'], rolle=rolle), True
     if neu:
         with _sperre:
             if len(rm.einladungen_lesen(o)) >= rm.MAX_EINLADUNGEN:
-                return "Es sind schon sehr viele Einladungen vorgemerkt (einladungen.json); der Betreiber räumt sie auf.", True
+                return tk("konnektor.einladen.28"), True
     if mit_konto:
         # Eine Person, die schon in der Reise steht, mit einem Konto verknüpfen heißt: wer die Adresse hat, spricht als sie.
         # Deshalb nur durch Organisator:innen, und Organisator:innen selbst verknüpft nur der Betreiber (konten.py einladen), sonst könnte
         # man sich per eigener Adresse als eine andere Organisator:in ausgeben (Prüfung J3, 27.10.2026).
         if not neu and not darf(wer["rolle"], "organisator"):
-            return ("Eine Person, die schon in der Reise steht, mit einem Konto verknüpfen darf nur ein:e Organisator:in."), True
+            return (tk("konnektor.einladen.15")), True
         if not neu and vorhanden["rolle"] == "organisator":
-            return (f"{vorhanden['name']} organisiert die Reise mit. Organisator:innen verknüpft der Betreiber mit ihrem Konto, "
-                    "nicht das Gespräch."), True
+            return (tk("konnektor.einladen.16", w1=vorhanden['name'])), True
         return einladen_per_mail(reise, d, o, wer, args, vorname if neu else vorhanden["name"], rolle, schluessel, neu,
                                  notiz, email)
     try:
         token = zugang_ausstellen({"reise": reise, "person": schluessel})
     except OSError:
-        return ("Der Link konnte nicht angelegt werden: Der Dienst darf die Zugänge nicht schreiben. Das muss der "
-                "Betreiber einrichten (Schreibrecht auf die Datei KN_ZUGAENGE, docs/konnektor.md)."), True
+        return (tk("konnektor.einladen.17")), True
     link = f"{basis()}/{token}"
     heute = datetime.date.today().isoformat()
     if neu:
         eintrag = {"name": vorname, "rolle": rolle, "reist": args.get("reist", True) is not False,
-                   "notiz": notiz or f"eingeladen von {name_von} am {datum_de(heute)} über die Claude-App",
+                   "notiz": notiz or tkd("konnektor.einladen.18", name_von=name_von, w2=datum_de(heute)),
                    "eingeladen_von": name_von, "datum": heute}
         with _sperre:
             alle = rm.einladungen_lesen(o)
             alle[schluessel] = eintrag
             rm.schreiben(o / "einladungen.json", json.dumps(alle, ensure_ascii=False, indent=1) + "\n")
-        text_ = (f"Einladung von {name_von}: {vorname} als {rolle} in reise.yaml unter personen aufnehmen, Schlüssel "
-                 f"{schluessel}, reist: {'ja' if eintrag['reist'] else 'nein'}, notiz: „{eintrag['notiz']}“. "
-                 "Zugang und Rolle gelten schon (einladungen.json); der Link ist ausgestellt.")
+        text_ = (tkd("konnektor.einladen.1", name_von=name_von, vorname=vorname, rolle=rolle, schluessel=schluessel, w5='ja' if eintrag['reist'] else 'nein', w6=eintrag['notiz']))
         person_sichern(reise, wer, text_, schluessel, eintrag, name_von)
-    z = [(f"{vorname} ist eingeladen" if neu else f"Neuer Link für {vorhanden['name']}") + f" (Rolle {rolle}). Der Link:",
+    z = [(tk("konnektor.ausgabe.einladen.eingeladen", w1=vorname) if neu else tk("konnektor.einladen.19", w1=vorhanden['name'])) + tk("konnektor.ausgabe.einladen.1", rolle=rolle),
          link, "",
-         "Den Link nur an diese Person geben, am besten privat: Wer ihn kennt, spricht in der Reise als " + vorname + ". "
-         "Sie trägt ihn in der Claude-App ein (Einstellungen → Konnektoren → Eigenen Konnektor hinzufügen, ohne Anmeldung); "
-         "dafür braucht sie ein Claude-Konto, in dem eigene Konnektoren erlaubt sind.",
-         {"gast": "Mit der Rolle gast kann sie nur lesen.",
-          "mitwirkend": "Als Mitwirkende:r gibt sie Wünsche, Rückmeldungen, Aufgaben und Antworten; entscheiden kann sie nicht.",
-          "organisator": "Als Organisator:in entscheidet sie mit, setzt Status und Einstellungen und lädt Personen ein."}[rolle]]
+         tk("konnektor.einladen.20") + vorname + tk("konnektor.einladen.11"),
+         {"gast": tk("konnektor.einladen.21"),
+          "mitwirkend": tk("konnektor.einladen.22"),
+          "organisator": tk("konnektor.einladen.23")}[rolle]]
     if neu:
-        z.append("Auf der Seite steht die Person in wenigen Minuten.")
+        z.append(tk("konnektor.einladen.12"))
     return "\n".join(z), False
 
 
@@ -1666,7 +1638,7 @@ def person_sichern(reise, wer, text_, schluessel, eintrag, name_von):
     """Neue Person nach reise.yaml über den Schreibweg (person_schreiben). Scheitert das, gilt die Person trotzdem schon
     (einladungen.json); der Fehler steht im Protokoll und als Meldung an die Organisator:innen."""
     if not schreibdienst():
-        sys.stderr.write(f"person_schreiben {reise}/{schluessel}: kein Schreibweg (KN_SCHREIBDIENST)\n")
+        sys.stderr.write(f"person_schreiben {reise}/{schluessel}: no write path (KN_SCHREIBDIENST)\n")
         return
     a, fehler = schreib_anfrage(reise, "person_schreiben", {"person": wer.get("person"), "name": name_von, "rolle": wer["rolle"],
                                                             "args": {"schluessel": schluessel, "vorname": eintrag["name"], "rolle": eintrag["rolle"],
@@ -1675,8 +1647,7 @@ def person_sichern(reise, wer, text_, schluessel, eintrag, name_von):
         sys.stderr.write(f"person_schreiben {reise}/{schluessel}: {fehler}\n")
         o = rm.ordner(reise)
         if o is not None:
-            rm.meldung_anlegen(o, [name_von], "technik", "reise", f"{eintrag['name']} ist eingeladen (Zugang gilt), steht aber noch nicht "
-                               f"in der Reise: {fehler} Bitte noch einmal mit person_einladen oder dem Betreiber sagen.")
+            rm.meldung_anlegen(o, [name_von], "technik", "reise", tk("konnektor.person_sichern.1", w1=eintrag['name'], fehler=fehler))
 
 
 # ---------- Konto: meine Reisen und neue Reise (Paket H) ----------
@@ -1710,12 +1681,11 @@ def person_entfernen(reise, d, wer, args):
     p = next((x for x in personen_der_reise(reise, d)
               if x["schluessel"] == gesucht or x["name"].casefold() == gesucht.casefold()), None) if gesucht else None
     if not p:
-        return "Wen? Bitte person angeben (Vorname oder Schlüssel aus dem Überblick).", True
+        return tk("konnektor.person_entfernen.1"), True
     if not wer["name"] or p["name"].casefold() == wer["name"].casefold():
-        return "Dich selbst nimmst du so nicht aus der Reise.", True
+        return tk("konnektor.person_entfernen.2"), True
     if p["rolle"] == "organisator":
-        return (f"{p['name']} organisiert die Reise mit. Ein:e Organisator:in nimmt man nicht im Gespräch heraus; dafür sprechen "
-                "die Organisator:innen miteinander und ändern die Rolle (person_einladen mit anderer Rolle geht nicht), sonst der Betreiber."), True
+        return (tk("konnektor.person_entfernen.3", w1=p['name'])), True
     grund = str(args.get("grund") or "").strip()[:300]
     konten.entfernen(reise, p["schluessel"])
     with _sperre:
@@ -1733,16 +1703,15 @@ def person_entfernen(reise, d, wer, args):
     else:
         # Niemand wird gestrichen (der Verlauf nennt die Person weiter): sie wird gast und reist nicht mehr
         if not schreibdienst():
-            return "Zugang beendet; in die Reise schreiben geht erst mit eingerichtetem Schreibweg (docs/betrieb.md).", True
+            return tk("konnektor.person_entfernen.5"), True
         a, fehler = schreib_anfrage(reise, "person_schreiben", {"person": wer.get("person"), "name": wer["name"], "rolle": wer["rolle"],
                                                                 "args": {"schluessel": p["schluessel"], "rolle": "gast", "reist": False,
-                                                                         "notiz": f"ausgeschieden am {datum_de(datetime.date.today().isoformat())} ({wer['name']})"
+                                                                         "notiz": tkd("konnektor.ausgabe.ausscheiden.1", w1=datum_de(datetime.date.today().isoformat(), texte.VORGABE_REISE), w2=wer['name'])
                                                                                   + (f": {grund}" if grund else "")}})
         if fehler:
-            return f"Zugang beendet, aber nicht in die Reise geschrieben: {fehler}", True
-    return (f"{p['name']} ist aus der Reise genommen: Zugang über Konto und Links endet sofort. "
-            + ("" if p.get("eingeladen") else "In der Reise steht die Person als Gast, die nicht mitreist (der Verlauf nennt sie weiter); "
-               "die Seite zeigt es in wenigen Minuten.")), False
+            return tk("konnektor.person_entfernen.6", fehler=fehler), True
+    return (tk("konnektor.person_entfernen.4", w1=p['name'])
+            + ("" if p.get("eingeladen") else tk("konnektor.person_entfernen.7"))), False
 
 
 def einladen_per_mail(reise, d, o, wer, args, name, rolle, schluessel, neu, notiz, email):
@@ -1752,25 +1721,22 @@ def einladen_per_mail(reise, d, o, wer, args, name, rolle, schluessel, neu, noti
         r = konten.einladen(reise, schluessel, email, rolle, name, wer["name"],
                             titel=((d or {}).get("reise") or {}).get("titel"), seite=seitenlinks().get(reise))
     except konten.KontoFehler as f:
-        return f"Nicht eingeladen: {f}", True
+        return tk("konnektor.ausgabe.einladen_per_mail.1", f=f), True
     if neu:
         heute = datetime.date.today().isoformat()
         eintrag = {"name": name, "rolle": rolle, "reist": args.get("reist", True) is not False,
-                   "notiz": notiz or f"eingeladen von {wer['name']} am {datum_de(heute)} über die Claude-App",
+                   "notiz": notiz or tkd("konnektor.einladen_per_mail.2", w1=wer['name'], w2=datum_de(heute)),
                    "eingeladen_von": wer["name"], "datum": heute}
         with _sperre:
             alle = rm.einladungen_lesen(o)
             alle[schluessel] = eintrag
             rm.schreiben(o / "einladungen.json", json.dumps(alle, ensure_ascii=False, indent=1) + "\n")
-        person_sichern(reise, wer, f"Einladung von {wer['name']}: {name} als {rolle} in reise.yaml unter personen "
-                       f"aufnehmen, Schlüssel {schluessel}, reist: {'ja' if eintrag['reist'] else 'nein'}, notiz: "
-                       f"„{eintrag['notiz']}“. Rolle gilt schon (einladungen.json); die Einladung ging per Mail.",
+        person_sichern(reise, wer, tkd("konnektor.einladen_per_mail.1", w1=wer['name'], name=name, rolle=rolle, schluessel=schluessel, w5='ja' if eintrag['reist'] else 'nein', w6=eintrag['notiz']),
                        schluessel, eintrag, wer["name"])
-    return ((f"{name} ist eingeladen (Rolle {rolle})." if neu else f"Einladung für {name} (Rolle {rolle}) verschickt.")
-            + f" Eine Mail ist an {email} unterwegs. "
-            + ("Die Adresse hat schon ein Konto: Die Reise steht ab jetzt bei ihren Reisen."
-               if r["sofort"] else "Sobald sie sich mit dieser Adresse bei Frieda anmeldet (oder über den Link in der "
-               "Mail), ist sie dabei.")), False
+    return ((tk("konnektor.ausgabe.einladen_per_mail.2", name=name, rolle=rolle) if neu else tk("konnektor.einladen_per_mail.6", name=name, rolle=rolle))
+            + tk("konnektor.einladen_per_mail.3", email=email)
+            + (tk("konnektor.einladen_per_mail.4")
+               if r["sofort"] else tk("konnektor.einladen_per_mail.5"))), False
 
 
 def reise_kurz(reise):
@@ -1810,22 +1776,22 @@ def meine_reisen(konto):
     if o:
         ms = rm.meldungen_aktuell(o, konto["name"])
         if ms:
-            z.append("Meldungen an dich:")
+            z.append(tk("konnektor.ausgabe.meine_reisen.5"))
             z += [f"- {datum_de(m['erstellt'][:10])}: {m['text']}" for m in ms]
             z.append("")
     reisen = reisen_von(konto)
-    z.append(f"Deine Reisen ({len(reisen)}):" if reisen else "Noch keine Reise, auf der du dabei bist.")
+    z.append(tk("konnektor.ausgabe.meine_reisen.1", w1=len(reisen)) if reisen else tk("konnektor.meine_reisen.1"))
     for r in reisen:
-        z.append(f"- {r['titel']} ({r['untertitel']}), Status {r['status']}, du: {r['rolle']}")
-        z.append(f"  Seite: {r['seite'] or 'Link liegt beim Betreiber'}")
-        z.append(f"  Claude-App: {r['app'] or 'noch kein persönlicher Link (beim Betreiber oder einer Organisator:in der Reise erfragen)'}")
+        z.append(tk("konnektor.ausgabe.meine_reisen.2", w1=r['titel'], w2=r['untertitel'], w3=r['status'], w4=r['rolle']))
+        z.append(tk("konnektor.ausgabe.meine_reisen.3", w1=r['seite'] or tk("konnektor.ausgabe.meine_reisen.7")))
+        z.append(tk("konnektor.ausgabe.meine_reisen.4", w1=r['app'] or tk("konnektor.meine_reisen.2")))
     if o:
         offen = [e for e in rm.auftraege(o) if e.get("name") == konto["name"] and (e.get("daten") or {}).get("neue_reise")
                  and e["status"] in ("neu", "rueckfrage")]
         if offen:
-            z += ["", "Angefragte neue Reisen:"]
+            z += ["", tk("konnektor.ausgabe.meine_reisen.6")]
             z += [f"- {e['daten']['neue_reise']['titel']} ({e['id']}): "
-                  + ("wird angelegt" if e["status"] == "neu" else f"Rückfrage: {e.get('kommentar') or 'siehe Betreiber'}")
+                  + (tk("konnektor.ausgabe.wird_angelegt") if e["status"] == "neu" else tk("konnektor.meine_reisen.3", w1=e.get('kommentar') or tk("konnektor.ausgabe.siehe_betreiber")))
                   for e in offen]
     return "\n".join(z)
 
@@ -1838,18 +1804,17 @@ def reise_anlegen(konto, args):
     with _sperre:
         neu, fehler = neue_reise_pruefen(args, konto["name"], vergebene_pfade())
         if fehler:
-            return f"Nicht angelegt: {fehler}", True
+            return tk("konnektor.ausgabe.reise_anlegen.2", fehler=fehler), True
         if not schreibdienst():
-            return ("Nicht angelegt: Der Schreibweg dieser Instanz ist nicht eingerichtet (KN_SCHREIBDIENST), ohne ihn kann der "
-                    "Dienst keine Reise anlegen. Das muss der Betreiber einrichten (docs/betrieb.md, Schreibweg)."), True
-        wer_text = ", ".join(f"{p['name']} ({p['rolle']}{'' if p.get('reist', True) else ', reist nicht mit'})"
+            return (tk("konnektor.reise_anlegen.1")), True
+        wer_text = ", ".join(p['name'] + " (" + p['rolle'] + ("" if p.get('reist', True) else ", " + tk("konnektor.ausgabe.einladen.reist_nicht_mit")) + ")"
                              for p in neu["personen"].values())
-        text_ = (f"Neue Reise anlegen: „{neu['titel']}“, {datum_de(neu['von'])} bis {datum_de(neu['bis'])}"
-                 + (f", Ziel {neu['ziel']}" if neu["ziel"] else "") + f". Personen: {wer_text}. Ordner reisen/{neu['pfad']}."
-                 + (f"\nNotiz: {neu['notiz']}" if neu["notiz"] else ""))
+        text_ = (tkd("konnektor.ausgabe.reise_anlegen.5", w1=neu['titel'], w2=datum_de(neu['von']), w3=datum_de(neu['bis']))
+                 + (tkd("konnektor.ausgabe.reise_anlegen.6", w1=neu['ziel']) if neu["ziel"] else "") + tkd("konnektor.ausgabe.reise_anlegen.3", wer_text=wer_text, w2=neu['pfad'])
+                 + (tkd("konnektor.ausgabe.reise_anlegen.4", w1=neu['notiz']) if neu["notiz"] else ""))
         jetzt = datetime.datetime.now(datetime.timezone.utc)
         e = {"id": f"A-{jetzt:%Y%m%d-%H%M%S}-{secrets.token_hex(2)}", "erstellt": jetzt.isoformat(timespec="seconds"),
-             "name": konto["name"], "konto": konto["konto"], "art": "Auftrag", "ziel": "allgemein",
+             "name": konto["name"], "konto": konto["konto"], "art": tkd("konnektor.ausgabe.reise_anlegen.1"), "ziel": "allgemein",
              "text": text_[:MAX_AUFTRAG], "quelle": "Claude-App", "daten": {"neue_reise": neu}}
         if konto.get("konto_id"):
             # Konnektor „Frieda“: wer anlegt, wird nach dem Anlegen mit seinem Konto verknüpft; wer eine Adresse hat,
@@ -1861,7 +1826,7 @@ def reise_anlegen(konto, args):
                     try:
                         adr = konten.adresse(x["email"])
                     except konten.KontoFehler:
-                        return f"Nicht angelegt: „{x.get('vorname')}“ hat keine gültige E-Mail-Adresse.", True
+                        return tk("konnektor.reise_anlegen.6", w1=x.get('vorname')), True
                     schl = next((k_ for k_, p_ in neu["personen"].items() if p_["name"] == str(x.get("vorname")).strip()),
                                 None)
                     if schl:
@@ -1878,18 +1843,17 @@ def reise_anlegen(konto, args):
                                                                "args": {"auftrag": e}})
     with _sperre:
         rm.status_setzen(o, e["id"], "rueckfrage" if fehler else "uebernommen",
-                         f"Nicht angelegt: {fehler}" if fehler else f"Angelegt als {neu['pfad']}. Die Links stehen in meine_reisen, sobald die Seite online ist.")
+                         tk("konnektor.ausgabe.reise_anlegen.2", fehler=fehler) if fehler else tk("konnektor.reise_anlegen.2", w1=neu['pfad']))
         if not fehler:
             person = next(k_ for k_, p_ in neu["personen"].items() if p_["name"] == neu["wer"])
             ausstehend_datei().parent.mkdir(parents=True, exist_ok=True)
             with ausstehend_datei().open("a", encoding="utf-8") as f:
                 f.write(json.dumps({"ordner": neu["pfad"], "aid": e["id"], "name": konto["name"], "person": person}, ensure_ascii=False) + "\n")
     if fehler:
-        return f"Nicht angelegt: {fehler}", True
-    return (f"Die Reise „{neu['titel']}“ ist angelegt (Status Idee, Ordner {neu['pfad']}). In wenigen Minuten ist die Seite online; "
-            "dann steht die Reise in meine_reisen"
-            + (", und die Personen mit Adresse bekommen eine Einladung per Mail" if e.get("einladen") else
-               ", mit dem Link zur Seite und dem Link für die Claude-App unter „Meldungen an dich“") + "."), False
+        return tk("konnektor.ausgabe.reise_anlegen.2", fehler=fehler), True
+    return (tk("konnektor.reise_anlegen.3", w1=neu['titel'], w2=neu['pfad'])
+            + (tk("konnektor.reise_anlegen.4") if e.get("einladen") else
+               tk("konnektor.reise_anlegen.5")) + "."), False
 
 
 # ---------- Konnektor „Frieda“ (Paket J3): ein Zugang für alle Reisen, angemeldet mit dem Konto (OAuth) ----------
@@ -1974,32 +1938,31 @@ def meine_reisen_konto(k):
     if o:
         ms = rm.meldungen_aktuell(o, k["name"])
         if ms:
-            z += ["Meldungen an dich:", *[f"- {datum_de(m['erstellt'][:10])}: {m['text']}" for m in ms], ""]
+            z += [tk("konnektor.ausgabe.meine_reisen.5"), *[f"- {datum_de(m['erstellt'][:10])}: {m['text']}" for m in ms], ""]
     reisen = reisen_des_kontos(k)
-    z.append(f"Deine Reisen ({len(reisen)}):" if reisen else
-             "Noch keine Reise. Wer eine Reise bestimmt, kann dich mit deiner E-Mail-Adresse einladen.")
+    z.append(tk("konnektor.ausgabe.meine_reisen.1", w1=len(reisen)) if reisen else
+             tk("konnektor.meine_reisen_konto.1"))
     links = seitenlinks()
     for reise, schl, d in reisen:
         rs = d.get("reise") or {}
         p = next((x for x in personen_der_reise(reise, d) if x.get("schluessel") == schl), {})
-        z.append(f"- {rs.get('titel', reise)} ({rs.get('untertitel', '')}), reise: {reise}, Status "
-                 f"{(rs.get('status') or {}).get('wert')}, du: {p.get('rolle', '?')}")
-        z.append(f"  Seite: {links.get(reise) or 'Link liegt beim Betreiber'}")
+        z.append(tk("konnektor.ausgabe.meine_reisen_konto.1", w1=rs.get('titel', reise), w2=rs.get('untertitel', ''), reise=reise, w4=(rs.get('status') or {}).get('wert'), w5=p.get('rolle', '?')))
+        z.append(tk("konnektor.ausgabe.meine_reisen.3", w1=links.get(reise) or tk("konnektor.ausgabe.meine_reisen.7")))
     if konten.recht(k, "reise_anlegen"):
-        z += ["", "Du darfst neue Reisen anlegen (reise_anlegen)."]
+        z += ["", tk("konnektor.ausgabe.meine_reisen_konto.2")]
     if o:
         offen = [e for e in rm.auftraege(o) if e.get("konto_id") == k["id"] and (e.get("daten") or {}).get("neue_reise")
                  and e["status"] in ("neu", "rueckfrage")]
         if offen:
-            z += ["", "Angefragte neue Reisen:"]
+            z += ["", tk("konnektor.ausgabe.meine_reisen.6")]
             z += [f"- {e['daten']['neue_reise']['titel']} ({e['id']}): "
-                  + ("wird angelegt" if e["status"] == "neu" else f"Rückfrage: {e.get('kommentar') or 'siehe Betreiber'}")
+                  + (tk("konnektor.ausgabe.wird_angelegt") if e["status"] == "neu" else tk("konnektor.meine_reisen.3", w1=e.get('kommentar') or tk("konnektor.ausgabe.siehe_betreiber")))
                   for e in offen]
     if konten.recht(k, "betreiber"):
         bitten = konten.anfragen()
         if bitten:
-            z += ["", "Offene Bitten „Reisen anlegen“ (anfrage_entscheiden):",
-                  *[f"- {a['name']} ({a['email']}), seit {a['erstellt'][:10]}" for a in bitten]]
+            z += ["", tk("konnektor.ausgabe.meine_reisen_konto.3"),
+                  *[tk("konnektor.ausgabe.anfrage_seit", w1=a['name'], w2=a['email'], w3=a['erstellt'][:10]) for a in bitten]]
     return "\n".join(z)
 
 
@@ -2009,16 +1972,16 @@ def frieda_werkzeug(k, name, args):
         return meine_reisen_konto(k), False
     if name == "reise_anlegen":
         if not konten.recht(k, "reise_anlegen"):
-            return "Reisen anlegen darfst du noch nicht. Mit reisen_anlegen_anfragen kannst du darum bitten.", True
+            return tk("konnektor.frieda_werkzeug.2"), True
         return reise_anlegen({"konto": schluessel_aus_name(k["name"]) or "person", "name": k["name"],
                               "konto_id": k["id"]}, args)
     if name == "reisen_anlegen_anfragen":
         st = konten.reisen_anlegen_anfragen(k["id"])
         if st == "offen":
             anmeldung.betreiber_melden(k)
-        return {"offen": "Deine Bitte liegt beim Betreiber. Du bekommst Bescheid in meine_reisen.",
-                "schon_erlaubt": "Du darfst schon Reisen anlegen (reise_anlegen).",
-                "abgelehnt": "Deine Bitte wurde abgelehnt. Bei Fragen wende dich an den Betreiber."}[st], False
+        return {"offen": tk("konnektor.frieda_werkzeug.5"),
+                "schon_erlaubt": tk("konnektor.ausgabe.frieda_werkzeug.3"),
+                "abgelehnt": tk("konnektor.frieda_werkzeug.6")}[st], False
     if name == "kalender":
         return kalender_link(k, args.get("neu") is True)
     if name == "sprache_setzen":
@@ -2029,22 +1992,22 @@ def frieda_werkzeug(k, name, args):
         return texte.t(neu, "konnektor.sprache_gesetzt", name=texte.sprache(neu).NAME), False
     if name == "anfrage_entscheiden":
         if not konten.recht(k, "betreiber"):
-            return "Das darf nur der Betreiber.", True
+            return tk("konnektor.frieda_werkzeug.3"), True
         try:
             wer = konten.konto_per_email(args.get("email"))
         except konten.KontoFehler as f:
             return str(f), True
         if not wer:
-            return "Kein Konto mit dieser Adresse.", True
+            return tk("konnektor.frieda_werkzeug.4"), True
         konten.freischalten(wer["id"], ja=args.get("erlauben") is True)
-        return f"{wer['name']} darf {'jetzt' if args.get('erlauben') is True else 'weiterhin keine'} Reisen anlegen.", False
+        return tk("konnektor.ausgabe.frieda_werkzeug.1", w1=wer['name'], w2=tk("konnektor.ausgabe.frieda_werkzeug.jetzt") if args.get('erlauben') is True else tk("konnektor.ausgabe.frieda_werkzeug.weiterhin_keine")), False
     reisen = reisen_des_kontos(k)
     reise = args.pop("reise", None) or (reisen[0][0] if len(reisen) == 1 else None)
     if not reise:
-        return "Welche Reise? Bitte reise angeben (Ordner aus meine_reisen).", True
+        return tk("konnektor.ausgabe.frieda_werkzeug.2"), True
     schl = next((s_ for r, s_, _ in reisen if r == reise), None)
     if not schl:
-        return "Bei dieser Reise bist du nicht dabei (oder sie ist nicht veröffentlicht).", True
+        return tk("konnektor.frieda_werkzeug.1"), True
     args.pop("name", None)
     return werkzeug({"reise": reise, "person": schl, "konto_id": k["id"]}, name, args)
 
@@ -2052,26 +2015,24 @@ def frieda_werkzeug(k, name, args):
 def kalender_link(k, neu=False):
     """Text für das Werkzeug kalender: persönlicher Abo-Link über alle Reisen (#77, engine/kalender.py)."""
     if not os.environ.get("KN_BASIS"):
-        return "Das Kalender-Abo ist auf dem Server nicht eingerichtet (KN_BASIS). Der Download geht unter „Mein Konto“.", True
+        return tk("konnektor.kalender_link.1"), True
     url = kalender.abo_url(basis(), konten.kalender_token(k["id"], erneuern=neu))
-    return ("\n".join([("Neuer Kalender-Link (der alte gilt nicht mehr; den alten Kalender im Kalender-Programm entfernen):"
-                        if neu else "Dein Kalender-Link für alle deine Reisen (persönlich, nicht weitergeben):"),
-                       f"- iPhone, Mac, Outlook (antippen, dann „Abonnieren“): {kalender.webcal(url)}",
-                       f"- Google Kalender (Andere Kalender → Per URL): {url}",
-                       "Was im Kalender steht, Erinnerungen und welche Reisen: unter „Mein Konto“ auf der Seite, dort auch "
-                       "der Download. Der Kalender zeigt nur Entschiedenes und gleicht sich selbst ab (je nach Programm alle paar Stunden)."]),
+    return ("\n".join([tk("konnektor.kalender.neu" if neu else "konnektor.kalender.link"),
+                       tk("konnektor.ausgabe.kalender.iphone", w1=kalender.webcal(url)),
+                       tk("konnektor.ausgabe.kalender.google", w1=url),
+                       tk("konnektor.kalender.hinweis")]),
             False)
 
 
 def frieda_antwort(zugang, nid, methode, p, ok):
     k = konten.konto(zugang["konto_id"])
     if not k or k["gesperrt"]:
-        return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32001, "message": "Konto gesperrt oder gelöscht"}}
+        return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32001, "message": tk("konnektor.frieda_antwort.1")}}
     if methode == "initialize":
         gewuenscht = p.get("protocolVersion") if isinstance(p, dict) else None
         return ok({"protocolVersion": gewuenscht if gewuenscht in PROTOKOLLE else PROTOKOLLE[0],
                    "capabilities": {"tools": {}},
-                   "serverInfo": {"name": "frieda", "title": "Frieda", "version": "1", "icons": frieda_symbole()},
+                   "serverInfo": {"name": "frieda", "title": tk("konnektor.ausgabe.frieda_antwort.1"), "version": "1", "icons": frieda_symbole()},
                    "instructions": schnittstelle.namen_im_text(anleitung_frieda(k))})
     if methode == "ping":
         return ok({})
@@ -2099,7 +2060,7 @@ def konto_antwort(konto, nid, methode, p, ok):
         gewuenscht = p.get("protocolVersion") if isinstance(p, dict) else None
         return ok({"protocolVersion": gewuenscht if gewuenscht in PROTOKOLLE else PROTOKOLLE[0],
                    "capabilities": {"tools": {}},
-                   "serverInfo": {"name": "frieda", "title": "Frieda – meine Reisen", "version": "1",
+                   "serverInfo": {"name": "frieda", "title": tk("konnektor.ausgabe.konto_antwort.1"), "version": "1",
                                   "icons": frieda_symbole()},
                    "instructions": schnittstelle.namen_im_text(anleitung_konto(konto))})
     if methode == "ping":
@@ -2113,7 +2074,7 @@ def konto_antwort(konto, nid, methode, p, ok):
         elif name == "reise_anlegen":
             t, fehler = reise_anlegen(konto, args)
         else:
-            t, fehler = f"Unbekanntes Werkzeug {name}.", True
+            t, fehler = tk("konnektor.ausgabe.werkzeug.1", name=name), True
         return ok({"content": [{"type": "text", "text": schnittstelle.namen_im_text(t, streng=True)}], "isError": fehler})
     return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
@@ -2130,20 +2091,19 @@ def meldungen_fuer(reise, name, d):
 def liste_text(reise, mit_auftraegen, name=None, d=None):
     o = rm.ordner(reise)
     if o is None:
-        return "Für diese Reise gibt es noch keine Rückmeldungen."
+        return tk("konnektor.liste_text.1")
     es = rm.eintraege(o) + (rm.auftraege(o) if mit_auftraegen else [])
     es.sort(key=lambda e: e.get("erstellt", ""), reverse=True)
     z = []
     ms = meldungen_fuer(reise, name, d)[:10]
     if ms:
-        z.append("## Meldungen an dich")
+        z.append(tk("konnektor.ausgabe.liste_text.1"))
         z += [f"- {m['erstellt'][:10]} {m['art']} zu {m['ziel']}: {m['text']}" for m in ms]
-        z.append("## Rückmeldungen")
+        z.append(tk("konnektor.liste_text.2"))
     if not es:
-        return "\n".join(z + ["Noch keine Rückmeldungen."])
+        return "\n".join(z + [tk("konnektor.rueckmeldungen.keine")])
     for e in es[:50]:
-        z.append(f"- {e['id']} {e['erstellt'][:10]} {e.get('name')} [{e.get('art')} zu {e.get('ziel')}] "
-                 f"Status: {e['status']}" + (f" – {e['kommentar']}" if e.get("kommentar") else ""))
+        z.append(tk("konnektor.ausgabe.liste_text.2", w1=e['id'], w2=e['erstellt'][:10], w3=e.get('name'), w4=e.get('art'), w5=e.get('ziel'), w6=e['status']) + (f" – {e['kommentar']}" if e.get("kommentar") else ""))
         z.append("  " + e.get("text", "").replace("\n", " ")[:300])
     return "\n".join(z)
 
@@ -2588,7 +2548,7 @@ def anleitung(zugang, d):
     rs = (d or {}).get("reise", {})
     wer = wer_spricht(zugang, d) or {"rolle": "gast", "name": None}
     organisator = organisator_namen(d)
-    namen = " und ".join(organisator) or "Organisator:in"
+    namen = tk("konnektor.und").join(organisator) or tk("konnektor.ausgabe.anleitung.1")
     status = (rs.get("status") or {}).get("wert")
     bausteine = rs.get("bausteine")
     kennungen = anl(sp, "kennungen_regel")
@@ -2637,13 +2597,13 @@ def werkzeug(zugang, name, args):
     args = args if isinstance(args, dict) else {}
     wer = wer_spricht(zugang, daten(reise))
     if wer is None:
-        return "Dieser Zugang gehört zu keiner Person der Reise (mehr). Ein:e Organisator:in um einen neuen Link bitten.", True
+        return tk("konnektor.werkzeug.1"), True
     organisator = darf(wer["rolle"], "organisator")
     d = daten(reise)
     # Regeln prüft die Maschine, bei jedem Aufruf (nicht nur beim Anzeigen der Werkzeuge): Rolle, Baustein, Status
     status, bausteine = zustand_von(d)
     if name in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[name] not in bausteine:
-        return f"Der Baustein „{LESE_BAUSTEIN[name]}“ ist bei dieser Reise ausgeschaltet.", True
+        return tk("konnektor.werkzeug.2", w1=LESE_BAUSTEIN[name]), True
     if name in ONTOLOGIE_WERKZEUGE:
         return ontologie_werkzeug(reise, d, wer, zugang, name, args)
     aktion = SCHREIB_AKTION.get(name)
@@ -2656,51 +2616,49 @@ def werkzeug(zugang, name, args):
     if name == "rueckmeldung_erledigen":
         rid = str(args.get("id") or "").strip()
         if not (rm.RID_MUSTER.match(rid) or AID_MUSTER.match(rid)):
-            return "id muss R-… oder A-… sein (aus rueckmeldungen).", True
+            return tk("konnektor.werkzeug.8"), True
         kommentar = str(args.get("kommentar") or "").strip()
         if not kommentar:
-            return "Der Kommentar fehlt: in einfachen Worten, wo die Rückmeldung gelandet ist oder warum sie nicht passt.", True
+            return tk("konnektor.werkzeug.9"), True
         name_ = wer["name"] or args.get("vorname")
         if not isinstance(name_, str) or not name_.strip():
-            return "Name fehlt: bitte die Person nach ihrem Vornamen fragen.", True
+            return tk("konnektor.frage_beantworten.4"), True
         a, fehler = dienst_anfrage("PATCH", f"{reise}/rueckmeldungen/{rid}", {"status": str(args.get("status") or ""), "kommentar": kommentar,
                                                                                "name": name_.strip()})
         if fehler:
-            return f"Nicht gesetzt: {fehler}", True
-        return (f"{rid} ist jetzt {a['status']} („{kommentar}“). Die Seite zeigt es der Person nach dem nächsten Laden; nichts weiter zu tun, "
-                "wenn der Inhalt schon eingetragen ist."), False
+            return tk("konnektor.ausgabe.werkzeug.2", fehler=fehler), True
+        return (tk("konnektor.werkzeug.3", rid=rid, w2=a['status'], kommentar=kommentar)), False
     if name == "beleg_anlegen":
         bid = str(args.get("buchung") or "").strip().upper()
         if not re.fullmatch(r"B-\d+", bid):
-            return "buchung muss eine B-… sein (zeige U-…/E-… nennt sie).", True
+            return tk("konnektor.werkzeug.10"), True
         name_ = wer["name"] or args.get("vorname")
         if not isinstance(name_, str) or not name_.strip():
-            return "Name fehlt: bitte die Person nach ihrem Vornamen fragen.", True
+            return tk("konnektor.frage_beantworten.4"), True
         im_repo = False
         if bid not in ((d.get("route") or {}).get("buchungen") or {}):   # noch nicht veröffentlicht? Dann zählt das Repo (Issue #135)
             im_repo, fehler = buchung_im_repo(reise, bid)
             if fehler:
-                return f"Nicht abgelegt: {fehler}", True
+                return tk("konnektor.ausgabe.beleg_ablegen.1", fehler=fehler), True
             if not im_repo:
-                return f"Die Buchung {bid} gibt es nicht (zeige U-…/E-… nennt die Buchung, ueberblick zählt sie).", True
+                return tk("konnektor.werkzeug.13", bid=bid), True
         return beleg_ablegen(reise, bid, name_.strip(), args, im_repo)
     if name == "rueckmeldung_geben":
         e = {k: args.get(k, "") for k in rm.INHALT}
         if wer["name"]:
             e["name"] = wer["name"]
         if not all(isinstance(v, str) for v in e.values()):
-            return "Alle Angaben müssen Text sein.", True
+            return tk("konnektor.entscheiden.3"), True
         if not e["name"].strip():
-            return "Name fehlt: bitte die Person nach ihrem Vornamen fragen.", True
-        e["quelle"] = e["quelle"] or "über Claude"
+            return tk("konnektor.frage_beantworten.4"), True
+        e["quelle"] = e["quelle"] or tkd("konnektor.werkzeug.4")
         antwort, fehler = rueckmeldung_senden(reise, e)
         if fehler:
-            return f"Nicht gespeichert: {fehler}", True
-        return (f"Gespeichert als {antwort['id']} (Status neu). Eine Organisator:in sieht es unter rueckmeldungen, trägt es ein "
-                "und schließt es mit rueckmeldung_erledigen ab."), False
+            return tk("konnektor.ausgabe.frage_beantworten.4", fehler=fehler), True
+        return (tk("konnektor.werkzeug.5", w1=antwort['id'])), False
     d = daten(reise)
     if d is None:
-        return "Die Seite dieser Reise ist noch nicht veröffentlicht.", True
+        return tk("konnektor.werkzeug.6"), True
     h = Handbuch(d, aufgaben_von(reise), offene_entscheidungen(reise), antworten_von(reise),
                  meldungen_fuer(reise, wer["name"], d), belege_von(reise, wer))
     if name == "entscheiden":
@@ -2713,49 +2671,48 @@ def werkzeug(zugang, name, args):
         return person_entfernen(reise, d, {**wer, "person": zugang.get("person")}, args)
     if name == "aufgaben":
         liste = aufgaben_filter(h.aufgaben, args)
-        return (rm.aufgaben_text(liste, h.titel(), h.v["fristen"]) if liste else "Keine passenden Aufgaben."), False
+        return (rm.aufgaben_text(liste, h.titel(), h.v["fristen"]) if liste else tk("konnektor.ausgabe.werkzeug.3")), False
     if name in ("aufgabe_anlegen", "aufgabe_aendern"):
         roh = {k: args[k] for k in (*rm.AG_FELDER, "kommentar") if k in args}
         roh["name"] = wer["name"] or args.get("name", "")
         if not isinstance(roh["name"], str) or not roh["name"].strip():
-            return "Name fehlt: bitte die Person nach ihrem Vornamen fragen.", True
+            return tk("konnektor.frage_beantworten.4"), True
         unbekannt = [b for b in (roh.get("bezug") or []) if isinstance(b, str) and b not in h.eintraege]
         if unbekannt:
-            return f"Diese IDs gibt es nicht: {', '.join(unbekannt)}. Mit suche die richtige ID finden.", True
+            return tk("konnektor.werkzeug.11", w1=', '.join(unbekannt)), True
         if name == "aufgabe_anlegen":
             a, fehler = dienst_anfrage("POST", f"{reise}/aufgaben", roh)
         else:
             agid = str(args.get("id", "")).strip()
             if not rm.AG_MUSTER.match(agid):
-                return "ID muss AG-… sein.", True
+                return tk("konnektor.ausgabe.id_muss_ag"), True
             a, fehler = dienst_anfrage("PATCH", f"{reise}/aufgaben/{agid}", roh)
         if fehler:
-            return f"Nicht gespeichert: {fehler}", True
-        zusatz = ("\nNicht gelöscht; zurückholen mit Status offen (wieder offen)."
+            return tk("konnektor.ausgabe.frage_beantworten.4", fehler=fehler), True
+        zusatz = (tk("konnektor.werkzeug.7")
                   if name == "aufgabe_aendern" and str(args.get("status", "")).strip().lower() == "entfaellt" else "")
-        return "Gespeichert (gilt sofort):\n" + aufgabe_text(a, h.titel()) + zusatz, False
+        return tk("konnektor.ausgabe.werkzeug.5") + aufgabe_text(a, h.titel()) + zusatz, False
     if name == "wuensche":
         o = rm.ordner(reise)
-        return (brett_text(rm.brett(o, rm.zustand(reise)), h.titel()) if o else "Noch keine Wünsche."), False
+        return (brett_text(rm.brett(o, rm.zustand(reise)), h.titel()) if o else tk("konnektor.werkzeug.12")), False
     if name == "wunsch_aendern":
         rid = str(args.get("id", "")).strip()
         if not rm.RID_MUSTER.match(rid):
-            return "ID muss R-… sein (aus wuensche).", True
+            return tk("konnektor.ausgabe.id_muss_r"), True
         roh = {k: args[k] for k in ("punkte", "erlebt", "eingeplant", "bezug", "kommentar") if k in args}
         if "eingeplant" in roh and not (wer["name"] and organisator):
-            return ("Einplanen geht nur für Organisator:innen mit dem persönlichen Link: Es ist eine Entscheidung, und dieser Link "
-                    "kennt keinen Namen." if organisator else "Einplanen dürfen nur Organisator:innen."), True
+            return (tk("konnektor.werkzeug.14") if organisator else tk("konnektor.werkzeug.15")), True
         roh["name"] = wer["name"] or args.get("name", "")
         if not isinstance(roh["name"], str) or not roh["name"].strip():
-            return "Name fehlt: bitte die Person nach ihrem Vornamen fragen.", True
+            return tk("konnektor.frage_beantworten.4"), True
         unbekannt = [b for b in (roh.get("bezug") or []) if isinstance(b, str) and b not in h.eintraege]
         if unbekannt:
-            return f"Diese IDs gibt es nicht: {', '.join(unbekannt)}. Mit suche die richtige ID finden.", True
+            return tk("konnektor.werkzeug.11", w1=', '.join(unbekannt)), True
         w, fehler = dienst_anfrage("PATCH", f"{reise}/rueckmeldungen/{rid}", roh)
         if fehler:
-            return f"Nicht gespeichert: {fehler}", True
-        teile = [f"{w['punkte']} Punkte"] + (["eingeplant"] if w.get("eingeplant") else []) + (["erlebt"] if w.get("erlebt") else [])
-        return f"Gespeichert (gilt sofort): {rid} – " + ", ".join(teile) + ".", False
+            return tk("konnektor.ausgabe.frage_beantworten.4", fehler=fehler), True
+        teile = [tk("konnektor.ausgabe.werkzeug.6", w1=w['punkte'])] + (["eingeplant"] if w.get("eingeplant") else []) + (["erlebt"] if w.get("erlebt") else [])
+        return tk("konnektor.ausgabe.werkzeug.7", rid=rid) + ", ".join(teile) + ".", False
     if name == "ueberblick":
         return (h.ueberblick() + "\n" + stand_text(reise)
                 + (wuensche_kurz(reise) if "wuensche" in (zustand_von(d)[1] or []) else "")), False
@@ -2764,7 +2721,7 @@ def werkzeug(zugang, name, args):
         return (fehler, True) if fehler else (t, False)
     if name == "suche":
         begriff = str(args.get("begriff", "")).strip()
-        return (h.suche(begriff), False) if begriff else ("Suchbegriff fehlt.", True)
+        return (h.suche(begriff), False) if begriff else (tk("konnektor.ausgabe.werkzeug.4"), True)
     if name == "offene_fragen":
         return h.fragen(bool(args.get("alle"))), False
     if name == "varianten":
@@ -2774,13 +2731,13 @@ def werkzeug(zugang, name, args):
     if name == "merkmale":
         t, fehler = h.merkmale(str(args.get("ziel") or "").strip(), str(args.get("art") or args.get("bereich") or "").strip())
         return (fehler, True) if fehler else (t, False)
-    return f"Unbekanntes Werkzeug {name}.", True
+    return tk("konnektor.ausgabe.werkzeug.1", name=name), True
 
 
 def antwort_auf(zugang, nachricht):
     """Eine JSON-RPC-Nachricht -> Antwort-Objekt oder None (Benachrichtigung)."""
     if not isinstance(nachricht, dict) or nachricht.get("jsonrpc") != "2.0" or not isinstance(nachricht.get("method"), str):
-        return {"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "ungültige Anfrage"}}
+        return {"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": tk("konnektor.antwort_auf.1")}}
     if "id" not in nachricht:
         return None
     nid, methode, p = nachricht["id"], nachricht["method"], nachricht.get("params") or {}
@@ -2902,7 +2859,7 @@ class Dienst(BaseHTTPRequestHandler):
             except ValueError:
                 laenge = 0
             if laenge < 0 or laenge > MAX_BODY:
-                return self._senden(413, {"fehler": "zu groß"})
+                return self._senden(413, {"fehler": tk("konnektor._anmeldung.1")})
             body = self.rfile.read(laenge)
         ip = self.client_address[0]
         if ip in ("127.0.0.1", "::1") and self.headers.get("X-Real-IP"):
@@ -2933,7 +2890,7 @@ class Dienst(BaseHTTPRequestHandler):
             return self._anmeldung()
         if self.path.split("?", 1)[0] == "/mcp":
             if not oauth.basis() or not konten.oauth_konto(oauth.bearer(self.headers) or ""):
-                return self._senden(401, {"fehler": "Anmeldung nötig"}, {"WWW-Authenticate": oauth.www_authenticate()})
+                return self._senden(401, {"fehler": tk("konnektor.do_get.1")}, {"WWW-Authenticate": oauth.www_authenticate()})
             return self._senden(405, {"fehler": "nur POST"}, {"Allow": "POST"})
         # Kein SSE-Kanal: der Dienst schickt nie von sich aus etwas (Streamable HTTP erlaubt 405).
         if self._zugang() is None:
@@ -2950,7 +2907,7 @@ class Dienst(BaseHTTPRequestHandler):
             t = oauth.bearer(self.headers)
             k = konten.oauth_konto(t) if t and oauth.basis() else None
             if not k:
-                return self._senden(401, {"fehler": "Anmeldung nötig"},
+                return self._senden(401, {"fehler": tk("konnektor.do_get.1")},
                                     {"WWW-Authenticate": oauth.www_authenticate(fehler=bool(t))})
             zugang = {"konto_id": k["id"], "sprache": k["sprache"]}
         else:
@@ -2964,7 +2921,7 @@ class Dienst(BaseHTTPRequestHandler):
         except ValueError:
             laenge = 0
         if laenge <= 0 or laenge > MAX_BODY:
-            return self._senden(413, {"fehler": "zu groß oder leer"})
+            return self._senden(413, {"fehler": tk("konnektor.do_post.1")})
         try:
             roh = json.loads(self.rfile.read(laenge).decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
@@ -3004,7 +2961,7 @@ def zugang_anlegen(reise, wen):
         wer = f"{personen[wen]['name']}, {personen[wen]['rolle']}"
     elif wen in ROLLEN:
         z = {"reise": reise, "rolle": wen}
-        wer = f"{wen} ohne festen Namen"
+        wer = tk("konnektor.ausgabe.zugang_anlegen.1", wen=wen)
     else:
         sys.exit(f"„{wen}“ ist weder eine Person der Reise ({', '.join(personen) or 'keine in reise.yaml'}) "
                  f"noch eine Rolle ({', '.join(ROLLEN)}).")
@@ -3028,7 +2985,7 @@ def zugaenge_zeigen():
         if "konto" in z:
             print(f"Konto {z['konto']} ({z.get('name')}, {z.get('angelegt', '?')}): {basis()}/{t}")
             continue
-        wer = z.get("person") or f"Rolle {z.get('rolle')}"
+        wer = z.get("person") or tk("konnektor.ausgabe.zugaenge_zeigen.1", w1=z.get('rolle'))
         print(f"{z.get('reise')} ({wer}, {z.get('angelegt', '?')}): {basis()}/{t}")
 
 

@@ -1087,3 +1087,37 @@ def test_keine_namenskollision_der_schnittstelle():
         for i, e in tab.items():
             assert e == i or e not in intern or tab.get(e) == e, (werkzeug_intern, i, e)
         assert len(set(tab.values())) == len(tab), werkzeug_intern    # kein englischer Name doppelt
+
+
+# ---------- Sprache der Reise im Konnektor (ADR-0006, M10) ----------
+
+@pytest.fixture(scope="module")
+def seiten_englisch(tmp_path_factory):
+    """Die Beispielreise mit sprache: en (Inhalt bleibt deutsch, die Hülle ist englisch)."""
+    import shutil
+    quelle = tmp_path_factory.mktemp("quelle_en") / "beispielreise"
+    shutil.copytree(BEISPIEL, quelle)
+    y = quelle / "reise.yaml"
+    y.write_text(y.read_text(encoding="utf-8").replace("sprache: de", "sprache: en"), encoding="utf-8")
+    s = tmp_path_factory.mktemp("seiten_en")
+    bauen.bauen(quelle, s / "beispielreise")
+    return s
+
+
+def test_englische_reise_antwortet_englisch(dienst, seiten_englisch, monkeypatch):
+    basis, _ = dienst
+    monkeypatch.setenv("KN_SEITEN", str(seiten_englisch))
+    anleitung = rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
+    assert anleitung.startswith("Task: You are helping with the trip") and "Reply in the person's language" in anleitung
+    beschr = {w["name_aussen"]: w["description"] for w in rpc(basis, ALT_ORGANISATOR, "tools/list")["tools"]}
+    assert beschr["overview"].startswith("Overview of the trip")
+    antworten = {}
+    for name, args in (("ueberblick", {}), ("zeige", {"id": "E-01"}), ("offene_fragen", {}), ("varianten", {}), ("rueckmeldungen", {}),
+                       ("aufgaben", {}), ("suche", {"begriff": "Dresden"})):
+        t, f = werkzeug(basis, ALT_ORGANISATOR, name, **args)
+        assert not f, (name, t)
+        antworten[name] = t
+    u = antworten["ueberblick"]
+    assert "## Bookings: 2 booked, 1 cancelled" in u and "## Content (look up with zeige)" in u
+    assert "Deadline 13/5/2027" in u and "free cancellation until 11/5/2027" in u
+    assert "Fri 14/5/2027" in u and "Fr." not in u and "Frist" not in u and "Buchungen" not in u
