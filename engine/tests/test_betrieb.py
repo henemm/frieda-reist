@@ -420,6 +420,78 @@ def test_bau_mit_warnung_sperrt_nicht(tmp_path):
     assert (tmp_path / "dist" / "beispielreise" / "index.html").exists()
 
 
+def test_deploy_mit_warnung_im_plan_legt_die_seite_ab(tmp_path):
+    """deploy.sh selbst (nicht nur bauen.py) endet bei einer Warnung im Plan mit 0 und legt die Seite im Zielordner
+    FR_SEITEN ab (AC-5)."""
+    wurzel = tmp_path / "instanz"
+    reise = wurzel / "reisen" / "beispielreise"
+    shutil.copytree(BEISPIEL, reise)
+    routen = reise / "plan" / "routen.yaml"
+    text = routen.read_text(encoding="utf-8")
+    assert "ende: {datum: 2027-05-16, ort: O-01}" in text
+    routen.write_text(text.replace("ende: {datum: 2027-05-16, ort: O-01}", "ende: {datum: 2027-05-20, ort: O-01}"), encoding="utf-8")
+    (wurzel / "engine").symlink_to(ENGINE)
+    (wurzel / ".gitignore").write_text("dist/\n__pycache__/\n")
+    git(wurzel, "init", "-q", "-b", "main")
+    git(wurzel, "add", ".")
+    git(wurzel, "commit", "-qm", "start")
+    (tmp_path / "seiten").mkdir()
+    # Rückmeldedienst-Attrappe: antwortet auf …/gesund, damit die Bereitschaftsprüfung am Ende von deploy.sh besteht
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    class Gesund(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def log_message(self, *args):
+            pass
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Gesund)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    env = {**SAUBER, "FR_WURZEL": str(wurzel), "FR_INSTANZ": "probe", "FR_SEITEN": str(tmp_path / "seiten"),
+           "FR_DIENST": str(tmp_path / "dienst"), "FR_PYTHON": sys.executable, "FR_GEPRUEFT": git(wurzel, "rev-parse", "HEAD").strip(),
+           "FR_RM_PORT": str(server.server_address[1]), "FR_SUDO": "false"}
+    try:
+        r = subprocess.run([str(BETRIEB / "deploy.sh"), "beispielreise"], env=env, capture_output=True, text=True)
+    finally:
+        server.shutdown()
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (tmp_path / "seiten" / "beispielreise" / "index.html").exists()
+
+
+def test_veroeffentlichen_merge_und_submodulfehler_werden_nicht_gemerkt(vf):
+    """Scheitert das Vorspulen (lokaler Commit im Veröffentlichungsordner) oder das Holen des Submoduls, endet der Lauf mit 1,
+    es wird nichts gebaut, kein Stand geschrieben und die Rot-Datei weder angelegt noch verändert (AC-18)."""
+    stand = vf["tmp"] / "dienst" / "veroeffentlicht"
+    rot_datei = vf["tmp"] / "dienst" / "veroeffentlichen-rot"
+    arbeit, quelle = vf["arbeit"], vf["tmp"] / "quelle"
+    # Merge-Fehler: lokaler Commit im Veröffentlichungsordner, origin/main läuft davon
+    git(arbeit, "config", "user.email", "test@example.invalid")
+    git(arbeit, "config", "user.name", "Test")
+    (arbeit / "lokal.txt").write_text("lokal")
+    git(arbeit, "add", ".")
+    git(arbeit, "commit", "-qm", "lokal")
+    vf["neuer_commit"]()
+    r = vf["lauf"]()
+    assert r.returncode == 1 and "lässt sich nicht vorspulen" in r.stdout, r.stdout + r.stderr
+    assert vf["deploys"]() == [] and not stand.exists() and vf["rot"]() is None
+    # Submodul-Fehler: .gitmodules verweist auf ein Ziel, das es nicht gibt
+    git(arbeit, "fetch", "-q", "origin", "main")
+    git(arbeit, "reset", "-q", "--hard", "origin/main")
+    (quelle / ".gitmodules").write_text('[submodule "frieda"]\n\tpath = frieda\n\turl = %s\n' % (vf["tmp"] / "fehlt.git"))
+    git(quelle, "update-index", "--add", "--cacheinfo", "160000," + git(quelle, "rev-parse", "HEAD").strip() + ",frieda")
+    git(quelle, "add", ".gitmodules")
+    git(quelle, "commit", "-qm", "Submodul ohne Ziel")
+    alt = "commit=" + "0" * 40 + "\nart=reise\nreisen=zweitreise\nseit=1\ngemeldet=0\n"
+    rot_datei.parent.mkdir(exist_ok=True)
+    rot_datei.write_text(alt, encoding="utf-8")
+    r = vf["lauf"]()
+    assert r.returncode == 1 and "Submodul" in r.stdout, r.stdout + r.stderr
+    assert vf["deploys"]() == [] and not stand.exists() and rot_datei.read_text(encoding="utf-8") == alt
+
+
 def test_veroeffentlichen_eine_rote_reise_haelt_die_anderen_nicht_auf(vf):
     """Scheitert der Bau einer Reise (Exit 2), werden die anderen trotzdem veröffentlicht und freigeschaltet; der Lauf ist
     rot, der Stand bleibt ungemerkt, die Rot-Datei nennt die Reise (AC-6)."""

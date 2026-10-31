@@ -1618,6 +1618,23 @@ def test_start_ende_setzen_aendert_plan_und_schreibt_verlauf(repo):
     assert not git(arbeit, "status", "--porcelain")
 
 
+def test_start_ende_setzen_verschiebt_die_tagesdaten(repo):
+    """AC-27 (Tage): Nach dem Verschieben von start_datum hängen die Daten aller Tage am neuen Start; der erste Tag liegt
+    am neuen Startdatum, jeder weitere einen Tag später."""
+    import bauen
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    s.vorbereiten()
+    vorher = [t["datum"] for t in bauen.Bauer(arbeit / "reisen" / "beispielreise", arbeit / "probe").daten()["route"]["tage"]]
+    assert vorher and vorher[0] == "2027-05-13"
+    a = s.schreiben("beispielreise", "start_ende_setzen", {**IDA, "args": {"start_datum": "2027-05-20", "ende_datum": "2027-05-23",
+                                                                           "grund": "Zug eine Woche später (Test)"}})
+    assert a["ok"] is True
+    nachher = [t["datum"] for t in bauen.Bauer(arbeit / "reisen" / "beispielreise", arbeit / "probe").daten()["route"]["tage"]]
+    erwartet = [(datetime.date(2027, 5, 20) + datetime.timedelta(days=i)).isoformat() for i in range(len(vorher))]
+    assert len(nachher) == len(vorher) and nachher == erwartet
+
+
 @pytest.mark.parametrize("args, grund", [
     ({"start_datum": "2027-05-20"}, "grund"),
     ({"grund": "x"}, "Nichts zu ändern"),
