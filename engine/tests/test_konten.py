@@ -421,9 +421,26 @@ def test_alte_datenbank_ohne_spalte_wird_migriert(umgebung):
     v.commit()
     v.close()
     k = konten.konto("K-alt")                            # öffnet die Datenbank und fügt die Spalte hinzu
-    assert k["sprache"] == "en"
-    assert konten.sprache_setzen("K-alt", "de") == "de" and konten.konto("K-alt")["sprache"] == "de"
+    assert k["sprache"] == "de"                          # Bestand von vor ADR-0006 spricht Deutsch (Product Owner, 1.11.2026)
+    assert konten.sprache_setzen("K-alt", "en") == "en" and konten.konto("K-alt")["sprache"] == "en"
     konten.db().close()                                  # ein zweites Öffnen verträgt die vorhandene Spalte
+    assert konten.konto("K-alt")["sprache"] == "en"      # und stellt eine gewählte Sprache nicht zurück
+
+
+def test_bestand_mit_leerer_sprache_wird_einmal_deutsch(umgebung):
+    """Datenbank, die die Spalte schon bekommen hat (leer für alle bisherigen Konten): einmalig Deutsch. Neue Konten
+    ohne erkennbare Sprache bekommen danach weiter die Vorgabe der Personen (Englisch)."""
+    p = konten.pfad()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    v = sqlite3.connect(p)
+    v.executescript(konten.SCHEMA)
+    v.execute("INSERT INTO konten (id, email, name, angelegt) VALUES ('K-alt', 'alt@beispiel.invalid', 'Alt', '2026-01-01')")
+    v.commit()
+    v.close()
+    assert konten.konto("K-alt")["sprache"] == "de"
+    einloggen(umgebung, IDA, name="Ida")
+    assert konten.konto_per_email(IDA)["sprache"] == "en"
+    assert konten.konto("K-alt")["sprache"] == "de"
 
 
 def test_gespeicherte_unbekannte_sprache_zaehlt_wie_keine(umgebung):

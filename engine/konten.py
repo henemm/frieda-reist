@@ -157,6 +157,12 @@ def db():
         v.commit()
     except sqlite3.OperationalError:
         pass   # Spalte ist schon da
+    if v.execute("PRAGMA user_version").fetchone()[0] < 1:
+        # Einmal je Datenbank: Konten von vor ADR-0006 sprachen Deutsch und behalten es (Product Owner, 1.11.2026);
+        # Englisch ist nur die Vorgabe neuer Konten ohne erkennbare Sprache. Eine neue Datenbank hat hier keine Konten.
+        with v:
+            v.execute("UPDATE konten SET sprache = ? WHERE sprache = ''", (texte.VORGABE_REISE,))
+            v.execute("PRAGMA user_version = 1")
     return v
 
 
