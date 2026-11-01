@@ -224,6 +224,30 @@ def test_veroeffentlichen_nur_bei_neuem_stand(vf):
     assert vf["deploys"]() == ["beispielreise", "zweitreise"]
 
 
+def test_anstoss_von_der_seite_startet_den_workflow(vf):
+    """Organisator:innen stoßen auf der Seite das Veröffentlichen an (api/aktualisieren): der nächste Lauf startet den
+    Workflow „Software nachziehen“ und legt das Ergebnis für die Seite ab; gescheitert geht eine Nachricht an den Betrieb."""
+    t = vf["tmp"]
+    ablage = t / "ablage"
+    ablage.mkdir()
+    nachziehen = ausfuehrbar(t / "nachziehen.sh", f'#!/bin/sh\necho los >> {t}/nachziehen.log\n[ ! -e {t}/gh-kaputt ]\n')
+    extra = {"FR_ABLAGE": str(ablage), "VF_NACHZIEHEN": str(nachziehen)}
+    assert vf["lauf"](**extra).returncode == 0 and vf["zeilen"]("nachziehen.log") == []       # ohne Anstoß nichts
+    (ablage / "_anstoss.json").write_text('{"zeit": "2026-11-01T12:00:00+00:00", "reise": "beispielreise", "von": "Ida"}\n')
+    r = vf["lauf"](**extra)
+    assert r.returncode == 0 and "Workflow software-nachziehen.yml gestartet" in r.stdout
+    assert vf["zeilen"]("nachziehen.log") == ["los"] and not (ablage / "_anstoss.json").exists()
+    assert json.loads((ablage / "_anstoss-ergebnis.json").read_text())["ok"] is True
+    vf["lauf"](**extra)
+    assert vf["zeilen"]("nachziehen.log") == ["los"]                                              # nur einmal
+    (t / "gh-kaputt").touch()
+    (ablage / "_anstoss.json").write_text('{"zeit": "2026-11-01T13:00:00+00:00", "reise": "beispielreise", "von": "Ida"}\n')
+    r = vf["lauf"](**extra)
+    assert r.returncode == 0 and "ließ sich nicht starten" in r.stdout
+    assert json.loads((ablage / "_anstoss-ergebnis.json").read_text())["ok"] is False
+    assert any("Anstoß gescheitert" in z for z in vf["zeilen"]("melden.log"))
+
+
 def test_veroeffentlichen_fehlschlag_wird_wiederholt(vf):
     """Ein Infrastrukturfehler (Exit 1 aus deploy.sh) beendet den Lauf sofort, wird nicht gemerkt und beim nächsten Lauf
     auf demselben Stand wiederholt (#142, AC-18)."""
@@ -1090,7 +1114,7 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     aus = tmp_path / "aus"
     namen = sorted(p.name for p in (aus / "systemd").iterdir())
     # kein Einarbeiten mehr (ADR-0001, O-3): keine Einheit ruft Claude Code auf, kein Pfad-Wächter auf die Ablage
-    assert namen == ["probe-konnektor.service", "probe-rueckmeldungen.service", "probe-schreiben.service",
+    assert namen == ["probe-konnektor.service", "probe-push.service", "probe-rueckmeldungen.service", "probe-schreiben.service",
                      "probe-veroeffentlichen.service", "probe-veroeffentlichen.timer", "probe-waechter.service",
                      "probe-waechter.timer"]
     for p in [*(aus / "systemd").iterdir(), *(aus / "nginx").iterdir()]:

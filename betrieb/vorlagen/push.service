@@ -1,0 +1,28 @@
+# Push-Dienst der Instanz __INSTANZ__ (engine/push.py, Issue #21): stellt Meldungen, Rückmeldungen, Zuweisungen und neue
+# Releases als Push-Nachricht auf die Geräte zu, die das auf der Reiseseite eingeschaltet haben. Ein Prozess für alle Reisen.
+# Erzeugt von frieda/betrieb/einrichten.sh. Der Code läuft aus __DIENST__ (legt deploy.sh an), mit dem Python der Software
+# (__PYTHON__, Paket pywebpush aus engine/requirements.txt). Den VAPID-Schlüssel legt der erste Start in konten.db an.
+# Log: journalctl -u __INSTANZ__-push -n 100
+[Unit]
+Description=__TITEL__: Push-Dienst
+After=network-online.target __INSTANZ__-rueckmeldungen.service
+
+[Service]
+User=__BENUTZER__
+Group=__GRUPPE__
+Environment=RM_ABLAGE=__ABLAGE__
+Environment=RM_SEITEN=__SEITEN__
+Environment=KN_ZUGAENGE=__KONNEKTOR__/zugaenge.json
+EnvironmentFile=-__DIENST__/konten.env
+ExecStart=__PYTHON__ __DIENST__/push.py dienst
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__KONTEN__
+ReadOnlyPaths=__DIENST__ __ABLAGE__ __SEITEN__ __KONNEKTOR__
+
+[Install]
+WantedBy=multi-user.target

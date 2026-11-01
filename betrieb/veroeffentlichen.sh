@@ -23,8 +23,13 @@
 # Claude-App zu (zustellen.py). Links stehen nie im Protokoll.
 # Die Prüfungen (pytest) laufen einmal je Lauf vor allen Reisen; deploy.sh überspringt sie dann für genau diesen Stand
 # (FR_GEPRUEFT). Sonst liefen sie je Reise einmal, und der Lauf stieße bei drei Reisen an die Zeitgrenze der Unit.
+# Anstoß von der Seite (Organisator:innen, „Veröffentlichen anstoßen“ im Fuß; engine/rueckmeldungen.py api/aktualisieren):
+# Liegt <FR_ABLAGE>/_anstoss.json, startet der Lauf den Workflow „Software nachziehen“ des Reisen-Repos (gh workflow run
+# FR_NACHZIEHEN_WORKFLOW) und schreibt das Ergebnis nach _anstoss-ergebnis.json; die Seite zeigt es. Der Workflow zieht das
+# Submodul nach, und ein späterer Lauf veröffentlicht den neuen Stand wie sonst auch.
 # Für Tests überschreibbar: VF_PRUEFEN, VF_STAND, VF_DEPLOY, VF_FREISCHALTEN, VF_AUSSTEHEND, VF_SPERRE, VF_STEMPEL, VF_HEARTBEAT,
-# VF_ROT (Rot-Datei), VF_JETZT (Uhr, Sekunden seit 1970), VF_ROTMELDEN (statt engine/waechter.py rot-melden).
+# VF_ROT (Rot-Datei), VF_JETZT (Uhr, Sekunden seit 1970), VF_ROTMELDEN (statt engine/waechter.py rot-melden),
+# VF_NACHZIEHEN (Befehl statt gh workflow run).
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
 nur_bauordner
@@ -112,6 +117,21 @@ pruefen_lauf() {  # <ordner>: pytest über engine/tests oder tests/ des Reisen-R
   "$FR_PYTHON" -m pytest "$1" -q --basetemp "$pruef_tmp"
 }
 
+anstoss_weitergeben() {  # Anstoß der Seite: Workflow „Software nachziehen“ starten, Ergebnis für die Seite ablegen
+  local datei="$FR_ABLAGE/_anstoss.json" ergebnis="$FR_ABLAGE/_anstoss-ergebnis.json" ok=true
+  [ -e "$datei" ] || return 0
+  if [ -n "${VF_NACHZIEHEN:-}" ]; then "$VF_NACHZIEHEN" > /dev/null 2>&1 || ok=false
+  else timeout 60 gh workflow run "$FR_NACHZIEHEN_WORKFLOW" --ref main > /dev/null 2>&1 || ok=false; fi
+  if [ "$ok" = true ]; then
+    echo "Anstoß von der Seite: Workflow $FR_NACHZIEHEN_WORKFLOW gestartet."
+  else
+    echo "Warnung: Anstoß von der Seite, Workflow $FR_NACHZIEHEN_WORKFLOW ließ sich nicht starten (gh angemeldet, Rechte actions: write?)."
+    fr_melden normal "Anstoß gescheitert" "Eine Organisator:in hat auf der Seite das Veröffentlichen angestoßen. gh workflow run $FR_NACHZIEHEN_WORKFLOW ist gescheitert (gh angemeldet? Recht, Workflows zu starten?). Log: journalctl -u $FR_INSTANZ-veroeffentlichen -n 50"
+  fi
+  printf '{"zeit": "%s", "ok": %s}\n' "$(date -u +%Y-%m-%dT%H:%M:%S+00:00)" "$ok" > "$ergebnis.tmp" && mv "$ergebnis.tmp" "$ergebnis"
+  rm -f "$datei"
+}
+
 # Alles steckt in main(), damit bash das Skript ganz einliest, bevor git es mit dem Submodul eventuell ersetzt.
 main() {
   local stand deploy immer="" alt neu reise freischalten aus rc gut="" rote="" warnung
@@ -129,6 +149,7 @@ main() {
   flock -n 9 || { echo "Läuft schon, übersprungen."; return 0; }
 
   cd "$wurzel"
+  anstoss_weitergeben
   if [ "$(git rev-parse --abbrev-ref HEAD)" != main ]; then
     echo "Bauordner ist nicht auf main ($(git rev-parse --abbrev-ref HEAD)), übersprungen."; return 0
   fi

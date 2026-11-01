@@ -10,6 +10,6 @@ Unter `engine/vendor/` liegen Bibliotheken und Schriften, die unverändert mitge
 | Lucide Icons | 1.55.0 | ISC | `engine/vendor/lucide-1.55.0/LICENSE` |
 | Source Sans 3 | – | SIL Open Font License 1.1 | `engine/vendor/fonts/source-sans-3-OFL.txt` |
 
-Python-Pakete (`engine/requirements.txt`, nicht mitgeliefert): Markdown (BSD), PyYAML (MIT), Pillow (MIT-CMU), CairoSVG (LGPL-3.0), pytest (MIT), icalendar (BSD-2-Clause, nur in den Tests: prüft die Kalenderdateien unabhängig).
+Python-Pakete (`engine/requirements.txt`, nicht mitgeliefert): Markdown (BSD), PyYAML (MIT), Pillow (MIT-CMU), CairoSVG (LGPL-3.0), pytest (MIT), icalendar (BSD-2-Clause, nur in den Tests: prüft die Kalenderdateien unabhängig), pywebpush (MPL-2.0, nur im Push-Dienst `engine/push.py`; bringt py-vapid und http-ece (MPL-2.0), cryptography (Apache-2.0 oder BSD), requests (Apache-2.0) und aiohttp (Apache-2.0) mit).
 
 Kartendaten: Grundkarten aus OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL) über Protomaps. Die Seite zeigt die Namensnennung an. Die Beispielreise enthält keine Kartendaten Dritter, ihre Tracks und Punkte sind von Hand geschätzt.

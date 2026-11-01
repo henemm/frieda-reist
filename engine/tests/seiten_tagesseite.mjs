@@ -99,6 +99,16 @@ for (const breite of [390, 1300]) {
   await p.locator("#release [data-release-pruefen]").click();
   await p.waitForFunction(() => /34/.test(document.querySelector("#release .fuss-stand").textContent));
   a.fussNeuer = (await fuss()).stand;
+  // Organisator:in: „Veröffentlichen anstoßen“ (Rückmeldedienst nachgestellt), danach „angestoßen um …“
+  await ctx.route("**/api/aktualisieren", r => r.fulfill({status: 200, contentType: "application/json", body: JSON.stringify(
+    r.request().method() === "POST" ? {darf: true, angestossen: {zeit: "2026-11-01T12:00:00+00:00", von: "Ida"}, ergebnis: null}
+      : {darf: true, angestossen: null, ergebnis: null})}));
+  await p.locator("#release [data-release-pruefen]").click();
+  await p.waitForSelector('#release [data-release-knopf="anstossen"]');
+  a.fussAnstoss = (await fuss()).stand;
+  await p.locator('#release [data-release-knopf="anstossen"]').click();
+  await p.waitForFunction(() => /15/.test(document.querySelector("#release .fuss-stand").textContent));
+  a.fussAngestossen = (await fuss()).stand;
   // Kapitel: immer nur eines offen; „Weiterlesen“ zeigt den ganzen Weg
   const kap = p.locator(".ebene-hintergrund details.kapitel > summary .kap-titel");
   await kap.nth(0).click(); await p.waitForTimeout(100); await kap.nth(1).click(); await p.waitForTimeout(100);

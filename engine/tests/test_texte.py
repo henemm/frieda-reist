@@ -91,7 +91,7 @@ def test_vorlage_vergleicht_nie_mit_anzeigetext_und_haelt_einheiten_im_katalog()
 
 
 def test_schluessel_form():
-    muster = re.compile(r"^(seite|konnektor|schreiben|dienst|konto|mail|kalender|waechter|inhalt|pruefung)(\.[a-z0-9_]+)+$")
+    muster = re.compile(r"^(seite|konnektor|schreiben|dienst|konto|mail|kalender|waechter|push|inhalt|pruefung)(\.[a-z0-9_]+)+$")
     for s in texte.sprache("de").TEXTE:
         assert muster.match(s), f"Schlüssel {s} hält die Form nicht ein"
 
@@ -207,14 +207,14 @@ def test_jede_sprache_steht_in_den_modullisten_des_deploys():
 # ---------- Leitplanken: keine deutschen Literale und keine Sprachweichen im Code ----------
 
 PY_DATEIEN = ["konnektor.py", "schreiben.py", "rueckmeldungen.py", "anmeldung.py", "konten.py", "kalender.py", "waechter.py",
-              "routen.py", "bauen.py", "neu.py", "reise.py"]
+              "routen.py", "bauen.py", "neu.py", "reise.py", "push.py"]
 ALLE_DATEIEN = ["vorlage.html"] + PY_DATEIEN
 
 # Erlaubte Zahl deutscher Literale je Datei. Jedes Paket der Mehrsprachigkeit kürzt seinen Bereich; Einträge dürfen nur
 # kleiner werden, nie größer (docs/auftraege/mehrsprachigkeit/README.md, Regel 5). Am Ende steht überall 0.
 AUSNAHMEN = {
     "vorlage.html": 2, "konnektor.py": 5, "schreiben.py": 50, "rueckmeldungen.py": 17, "anmeldung.py": 0, "konten.py": 1,
-    "kalender.py": 0, "waechter.py": 5, "routen.py": 6, "bauen.py": 11, "neu.py": 22, "reise.py": 4,
+    "kalender.py": 0, "waechter.py": 5, "routen.py": 6, "bauen.py": 11, "neu.py": 22, "reise.py": 4, "push.py": 0,
 }
 # Treffer von Sprachweichen und festen Locale-Strings (Grep-Test); ebenfalls nur kleiner werdend
 WEICHEN_AUSNAHMEN = {datei: 0 for datei in ALLE_DATEIEN}

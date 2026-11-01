@@ -50,6 +50,12 @@ HTTP (hinter nginx, Präfix /<reise>-<token>/api/ -> /<reise>/):
                                          (X-Frieda-Buchung: im-repo vom Konnektor, wenn die Buchung noch nicht veröffentlicht ist)
   PATCH  /<reise>/belege/<D-id>           {sichtbar: beteiligte | alle} (Organisator:in), {zurueckziehen: true} (wer hochlud, Organisator:in)
   GET    /<reise>/gesund                  200, wenn die Ablage beschreibbar ist (für die Überwachung)
+  GET    /<reise>/push                    öffentlicher Schlüssel für Push-Nachrichten (null: Push-Dienst nicht eingerichtet)
+  POST   /<reise>/push                    {abo, geraet, zeitzone, seite} Gerät anmelden | {abmelden: endpoint}; nur angemeldet
+                                          (engine/push.py, Issue #21)
+  GET    /<reise>/aktualisieren           Stand des Anstoßes „neue Software veröffentlichen“ und ob die Person ihn geben darf
+  POST   /<reise>/aktualisieren           Anstoß geben (Organisator:in, angemeldet): legt <ablage>/_anstoss.json an,
+                                          betrieb/veroeffentlichen.sh startet damit den Workflow „Software nachziehen“
 
 Wer schreibt (Paket J, docs/konten.md): Der Konnektor schickt das Dienst-Geheimnis (X-Frieda-Dienst) und den Namen der
 Person, die er erkannt hat. Alles andere gilt als Seite: Name und Rolle kommen aus der Sitzung (Cookie __Host-frieda,
@@ -749,6 +755,40 @@ def gedrosselt(o):
     return False
 
 
+# ---------- Anstoß „neue Software veröffentlichen“ (Fuß der Seite, Organisator:innen) ----------
+# Die Seite kann nur holen, was auf dem Server liegt. Liegt auf main der Software Neueres, zieht es der Workflow
+# „Software nachziehen“ des Reisen-Repos sonst alle 30 Minuten nach. Der Anstoß legt eine Datei in die Ablage; das nächste
+# Veröffentlichen (Timer, alle 5 Minuten) startet damit den Workflow und schreibt das Ergebnis daneben (docs/betrieb.md).
+ANSTOSS, ANSTOSS_ERGEBNIS = "_anstoss.json", "_anstoss-ergebnis.json"
+
+
+def _lies_json(p):
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+        return d if isinstance(d, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+def darf_anstossen(ident):
+    if ident["art"] != "konto":
+        return False
+    p = ident.get("person") or {}
+    return rg.rolle_neu(p.get("rolle")) == "organisator" or konten.recht(ident["konto"], "betreiber")
+
+
+def anstoss_stand():
+    return {"angestossen": _lies_json(ablage() / ANSTOSS), "ergebnis": _lies_json(ablage() / ANSTOSS_ERGEBNIS)}
+
+
+def anstossen(reise, name):
+    """Anstoß ablegen (einer gilt; ein zweiter vor dem Veröffentlichen ändert nichts). -> Stand"""
+    p = ablage() / ANSTOSS
+    if not p.exists():
+        schreiben(p, json.dumps({"zeit": jetzt_iso(), "reise": reise, "von": name}, ensure_ascii=False) + "\n")
+    return anstoss_stand()
+
+
 class Dienst(BaseHTTPRequestHandler):
     server_version = "Rueckmeldungen"
     sys_version = ""
@@ -844,6 +884,10 @@ class Dienst(BaseHTTPRequestHandler):
             return self._antwort(200 if ok else 503, {"gesund": ok})
         if was == "aufgaben":
             return self._antwort(200, aufgaben(o))
+        if was == "push":
+            return self._antwort(200, {"schluessel": konten.push_schluessel("vapid_oeffentlich")})
+        if was == "aktualisieren":
+            return self._antwort(200, {"darf": darf_anstossen(wer_ist(self.headers, o.name, lesen=True)), **anstoss_stand()})
         if was == "brett":
             return self._antwort(200, brett(o, zustand(o.name)))
         if was == "ich":
@@ -987,10 +1031,38 @@ class Dienst(BaseHTTPRequestHandler):
             b, nein = bl.ablegen(o, bid, name, dateiname, daten)
         return self._antwort(nein[0], {"fehler": nein[1]}) if nein else self._antwort(201, b)
 
+    def _konto_anfrage(self, o, was):
+        """POST push (Gerät für Push-Nachrichten an- oder abmelden) und aktualisieren (Anstoß): nur angemeldet."""
+        roh, fehlt = self._json()
+        if fehlt:
+            return
+        if not isinstance(roh, dict):
+            return self._antwort(400, {"fehler": texte.satz("dienst.pruefen.1")})
+        ident = wer_ist(self.headers, o.name)
+        if ident["art"] == "fremd":
+            return self._antwort(403, {"fehler": texte.satz("dienst.anfrage.1")})
+        if ident["art"] != "konto":
+            return self._antwort(401, {"fehler": texte.satz("dienst.push.anmelden")})
+        kid = ident["konto"]["id"]
+        if was == "aktualisieren":
+            if not darf_anstossen(ident):
+                return self._antwort(403, {"fehler": texte.satz("dienst.anstoss.recht")})
+            with _sperre:
+                return self._antwort(200, anstossen(o.name, (ident.get("person") or {}).get("name") or ident["konto"]["name"]))
+        if "abmelden" in roh:
+            return self._antwort(200, {"entfernt": konten.push_abo_entfernen(kid, str(roh.get("abmelden") or ""))})
+        try:
+            konten.push_abo_speichern(kid, roh.get("abo"), o.name, roh.get("seite"), roh.get("geraet"), roh.get("zeitzone"))
+        except konten.KontoFehler as x:
+            return self._antwort(400, {"fehler": texte.satz(x.schluessel)})
+        return self._antwort(200, {"an": True})
+
     def do_POST(self):
         t = self._teile()
         if t and t[1] == "belege" and t[2]:
             return self._beleg_hochladen(t[0], t[2])
+        if t and t[1] in ("push", "aktualisieren") and t[2] is None:
+            return self._konto_anfrage(t[0], t[1])
         if not t or t[1] not in ("rueckmeldungen", "aufgaben") or t[2] is not None:
             return self._antwort(404, {"fehler": texte.satz("dienst.do_get.2")})
         o = t[0]

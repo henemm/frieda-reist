@@ -825,8 +825,9 @@ body::after{content:"";position:fixed;z-index:9;left:0;right:0;bottom:calc(0px -
     background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg) 70%,transparent))}
 main{padding-bottom:calc(var(--tabbar-space) + 16px)}
 /* ---------- Fuß: Release der Software (Product Owner 1.11.2026), auf jeder Seite, unauffällig unter dem Inhalt ----------
-   „Frieda Release 412 · 9b4a397“, die Kennung führt zum Quellcode dieses Stands, „Auf Neueres prüfen“ vergleicht mit main
-   (releaseFuss). Der Fuß rückt in den Freiraum über der Leiste; ohne bekannten Stand bleibt er verborgen. */
+   „Frieda Release 412 · 9b4a397“, die Kennung führt zum Quellcode dieses Stands, „Auf Neueres prüfen“ fragt den Server und
+   main und bietet „Jetzt aktualisieren“ oder (Organisator:innen) „Veröffentlichen anstoßen“ an (releaseFuss). Darunter die
+   Zeile Benachrichtigungen (pushFuss, angemeldet). Der Fuß rückt in den Freiraum über der Leiste; ohne Zeile bleibt er verborgen. */
 .fuss{max-width:var(--breite);margin:calc(0px - var(--tabbar-space)) auto 0;padding:0 16px calc(var(--tabbar-space) + 16px);
   font-size:var(--t-klein);color:var(--mut);text-align:center;font-variant-numeric:tabular-nums}
 .fuss[hidden],.fuss [hidden]{display:none}
@@ -887,7 +888,7 @@ nav a.warn .zahl{background:var(--warn)}
   <div id="offline" class="hinweis glas" role="status" hidden data-t="seite.rahmen.offline">Ohne Netz: gespeicherter Stand. Rückmeldungen werden nachgereicht, Aufgaben erst wieder mit Netz änderbar.</div>
 </div>
 <main id="main" class="pico"></main>
-<footer class="fuss" id="fuss" hidden><div id="release" data-release="__RELEASE__" hidden></div><div id="sprachen" hidden></div></footer>
+<footer class="fuss" id="fuss" hidden><div id="release" data-release="__RELEASE__" hidden></div><div id="push" hidden></div><div id="sprachen" hidden></div></footer>
 <dialog id="rm" class="pico"></dialog>
 <div class="leiste">
   <nav id="nav" aria-label="Kategorien" data-t-attr="aria-label=seite.rahmen.kategorien"></nav>
@@ -2166,8 +2167,8 @@ function sprachUmschalter() {
   }
   fussZeigen();
 }
-// Der Fuß erscheint, sobald eine seiner Zeilen (Release, Sprache) etwas zeigt
-function fussZeigen() { $("#fuss").hidden = $("#release").hidden && $("#sprachen").hidden; }
+// Der Fuß erscheint, sobald eine seiner Zeilen (Release, Benachrichtigungen, Sprache) etwas zeigt
+function fussZeigen() { $("#fuss").hidden = $("#release").hidden && $("#push").hidden && $("#sprachen").hidden; }
 function spracheWaehlen(k) {
   if (!TEXTE[k] || k === SPRACHE) return;
   SPRACHE = k; LOCALE = TEXTE[k].locale; RICHTUNG = TEXTE[k].richtung;
@@ -2181,6 +2182,7 @@ function spracheWaehlen(k) {
   titelTexte();
   sprachUmschalter();
   releaseFuss();
+  pushFuss();
   route(true);
 }
 const planUmschalter = alle => umschalter(T("seite.plan.waehlen"), [[{"data-variante": ""}, !VARIANTE, T("seite.plan.alle_n", {n: alle.length})],
@@ -3944,6 +3946,7 @@ async function ichLaden() {
   const alt = $("#konto");
   if (alt) alt.remove();
   if (KONTO_HIER()) $("header").append(kontoKnopf(ICH));
+  pushFuss(null, true);
 }
 // Molekül Konto-Knopf: angemeldet der eigene Name (zur Kontoseite), sonst „Anmelden“
 function kontoKnopf(ich) {
@@ -4801,66 +4804,231 @@ Promise.all([ichLaden(), rmLaden(), agLaden(), brLaden(), blLaden()]).then(() =>
    Neue Version wartet, bis „Aktualisieren“ getippt wird; danach einmal neu laden. */
 // Fuß: Release der Software aus dem Bau (data-release, engine/bauen.py), Link zum Quellcode und Vergleich mit main.
 // Verglichen wird erst auf Tippen, damit nicht jeder Seitenaufruf GitHub fragt (die Seite spricht sonst nur mit ihrem Server).
+// Die Seite kann nur holen, was auf dem Server liegt: „Auf Neueres prüfen“ fragt darum zuerst den Server (Update des
+// Service Workers). Liegt dort ein neuer Stand, heißt der Knopf „Jetzt aktualisieren“. Ist main neuer als der Server,
+// können Organisator:innen das Veröffentlichen anstoßen (api/aktualisieren, docs/betrieb.md „Anstoß“).
 let RELEASE = {};
 try { RELEASE = JSON.parse($("#release").dataset.release); } catch (e) {}
-let RELEASE_STAND = null;   // letzter Vergleich: {schluessel, werte}
+let RELEASE_STAND = null;   // letzter Vergleich: {schluessel, werte, knopf, zusatz} (zusatz: zweiter Satz)
+let SW_REG = null;          // Anmeldung des Service Workers dieser Seite
+let SW_GEWOLLT = false;     // ein Wechsel des Workers soll die Seite neu laden (nicht beim ersten Besuch)
+const RELEASE_KNOEPFE = {aktualisieren: "seite.rahmen.aktualisieren_jetzt", anstossen: "seite.rahmen.release.anstossen"};
+function releaseStandZeile() {
+  const st = RELEASE_STAND;
+  return [st ? T(st.schluessel, st.werte) : "", ...(st && st.zusatz ? [" ", T(st.zusatz)] : []), ...(st && st.knopf ? [" ", el("button", {type: "button", "data-release-knopf": st.knopf}, T(RELEASE_KNOEPFE[st.knopf]))] : [])];
+}
 function releaseFuss() {
   const f = $("#release"), r = RELEASE;
   if (!r.kennung) { f.hidden = true; fussZeigen(); return; }
   const kennung = r.github ? el("a", {href: `https://github.com/${r.github}/commit/${r.commit}`, target: "_blank", rel: "noopener",
     title: T("seite.rahmen.release.quelle")}, r.kennung) : r.kennung;
   f.replaceChildren(r.nummer ? T("seite.rahmen.release.nummer", {nummer: r.nummer}) : T("seite.rahmen.release.ohne_nummer"), " · ", kennung,
-    ...(r.github ? [" ", el("button", {type: "button", "data-release-pruefen": "1"}, T("seite.rahmen.release.pruefen"))] : []),
-    el("span", {class: "fuss-stand", role: "status"}, RELEASE_STAND ? T(RELEASE_STAND.schluessel, RELEASE_STAND.werte) : ""));
+    ...(r.github || SW_REG ? [" ", el("button", {type: "button", "data-release-pruefen": "1"}, T("seite.rahmen.release.pruefen"))] : []),
+    el("span", {class: "fuss-stand", role: "status"}, ...releaseStandZeile()));
   f.hidden = false;
   fussZeigen();
 }
+// Nur die Statuszeile ändern: Knopf und Fokus bleiben, der Screenreader liest die neue Zeile vor
+function releaseZeige(schluessel, werte, knopf, zusatz) {
+  RELEASE_STAND = {schluessel, werte, knopf, zusatz};
+  const z = $("#release .fuss-stand");
+  if (z) z.replaceChildren(...releaseStandZeile());
+}
+// Frage an einen Worker (version, stand); ein Worker, der nicht antwortet, gilt nach 3 s als stumm
+function swFrage(w, typ) {
+  return new Promise(r => {
+    const c = new MessageChannel(), zeit = setTimeout(() => r(null), 3000);
+    c.port1.onmessage = e => { clearTimeout(zeit); r(e.data); };
+    w.postMessage({typ}, [c.port2]);
+  });
+}
+const swWartet = () => SW_REG && SW_REG.waiting && navigator.serviceWorker.controller ? SW_REG.waiting : null;
+// Server fragen: sw.js neu laden; installiert sich ein neuer Stand, bis zu 90 s auf sein Ende warten
+// (unveränderte Dateien kommen aus dem Speicher, Issue #64). -> wartender Worker oder null
+async function swPruefen() {
+  if (!SW_REG) return null;
+  if (navigator.onLine) { try { await SW_REG.update(); } catch (e) {} }
+  const w = SW_REG.installing;
+  if (w) {
+    releaseZeige("seite.rahmen.release.laedt");
+    await new Promise(fertig => {
+      const zeit = setTimeout(fertig, 90000);
+      w.addEventListener("statechange", () => { if (w.state !== "installing") { clearTimeout(zeit); fertig(); } });
+    });
+  }
+  return swWartet();
+}
+async function releaseBereit(w) {
+  const st = await swFrage(w, "stand"), rel = st && st.release;
+  releaseZeige(rel && rel.nummer && rel.nummer !== RELEASE.nummer ? "seite.rahmen.release.bereit" : "seite.rahmen.release.bereit_ohne_nummer",
+    {nummer: rel && rel.nummer}, "aktualisieren");
+}
+// Neuen Stand übernehmen: der wartende Worker übernimmt, controllerchange lädt neu. Feuert das nicht (bekannter Fall,
+// in dem ein Tippen sonst nichts tut), lädt die Seite nach 4 s trotzdem neu und zeigt dann wieder „bereit“.
+function uebernehmen() {
+  SW_GEWOLLT = true;
+  const w = swWartet();
+  if (!w) return location.reload();
+  w.postMessage({typ: "uebernehmen"});
+  setTimeout(() => location.reload(), 4000);
+}
+const uhrzeit = iso => { try { return new Intl.DateTimeFormat(LOCALE, {hour: "numeric", minute: "2-digit"}).format(new Date(iso)); } catch (e) { return ""; } };
+// Anstoß „Veröffentlichen“: nur wenn main neuer ist als der Server; ein Anstoß wartet, bis das Veröffentlichen ihn abholt
+async function anstossZeigen(ahead) {
+  let a = null;
+  try { const r = await fetch("api/aktualisieren", {cache: "no-store"}); if (r.ok) a = await r.json(); } catch (e) {}
+  const neu = RELEASE.nummer ? "seite.rahmen.release.neuer" : "seite.rahmen.release.neuer_ohne_nummer", werte = {n: ahead, neu: (RELEASE.nummer || 0) + ahead};
+  const frisch = x => x && Date.now() - Date.parse(x.zeit) < 3600e3;   // ein Ergebnis der letzten Stunde
+  if (a && a.angestossen) return releaseZeige("seite.rahmen.release.angestossen", {zeit: uhrzeit(a.angestossen.zeit)});
+  if (a && frisch(a.ergebnis) && a.ergebnis.ok) return releaseZeige("seite.rahmen.release.unterwegs", {zeit: uhrzeit(a.ergebnis.zeit)});
+  if (a && frisch(a.ergebnis) && a.darf) return releaseZeige(neu, werte, "anstossen", "seite.rahmen.release.anstoss_fehler");
+  releaseZeige(neu, werte, a && a.darf ? "anstossen" : null, a && a.darf ? "seite.rahmen.release.noch_nicht_da_anstossen" : "seite.rahmen.release.noch_nicht_da");
+}
+async function anstossen() {
+  releaseZeige("seite.rahmen.release.pruefe");
+  try {
+    const r = await fetch("api/aktualisieren", {method: "POST", headers: {"Content-Type": "application/json"}, body: "{}"});
+    if (!r.ok) throw 0;
+    const a = await r.json();
+    releaseZeige("seite.rahmen.release.angestossen", {zeit: uhrzeit(a.angestossen && a.angestossen.zeit)});
+  } catch (e) { releaseZeige(navigator.onLine ? "seite.rahmen.release.fehler" : "seite.rahmen.release.offline"); }
+}
 async function releasePruefen() {
-  // Nur die Statuszeile ändern: Knopf und Fokus bleiben, der Screenreader liest die neue Zeile vor
-  const r = RELEASE, zeige = (schluessel, werte) => { RELEASE_STAND = {schluessel, werte}; $("#release .fuss-stand").textContent = T(schluessel, werte); };
-  zeige("seite.rahmen.release.pruefe");
+  const r = RELEASE;
+  releaseZeige("seite.rahmen.release.pruefe");
+  const w = await swPruefen();
+  if (w) return releaseBereit(w);
+  if (!r.github) return releaseZeige(navigator.onLine ? "seite.rahmen.release.server_aktuell" : "seite.rahmen.release.offline");
   try {
     // Seite 2 mit einem Commit je Seite: Stand und Abstand ohne die Liste der Dateien (die steht nur auf Seite 1)
     const a = await fetch(`https://api.github.com/repos/${r.github}/compare/${r.commit}...main?per_page=1&page=2`,
       {cache: "no-store", headers: {Accept: "application/vnd.github+json"}});
     if (!a.ok) throw 0;
     const d = await a.json();
-    if (d.status === "identical") zeige("seite.rahmen.release.aktuell");
-    else if (d.status === "ahead") zeige(r.nummer ? "seite.rahmen.release.neuer" : "seite.rahmen.release.neuer_ohne_nummer",
-      {n: d.ahead_by, neu: (r.nummer || 0) + d.ahead_by});
-    else zeige("seite.rahmen.release.abseits");
-  } catch (e) { zeige(navigator.onLine ? "seite.rahmen.release.fehler" : "seite.rahmen.release.offline"); }
+    if (d.status === "identical") releaseZeige("seite.rahmen.release.aktuell");
+    else if (d.status === "ahead") await anstossZeigen(d.ahead_by);
+    else releaseZeige("seite.rahmen.release.abseits");
+  } catch (e) { releaseZeige(navigator.onLine ? "seite.rahmen.release.fehler" : "seite.rahmen.release.offline"); }
 }
-document.addEventListener("click", e => { if (e.target.closest("[data-release-pruefen]")) releasePruefen(); });
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-release-pruefen]")) releasePruefen();
+  const k = e.target.closest("[data-release-knopf]");
+  if (k && k.dataset.releaseKnopf === "aktualisieren") uebernehmen();
+  if (k && k.dataset.releaseKnopf === "anstossen") anstossen();
+});
 releaseFuss();
+
+/* ---------- Benachrichtigungen (Push, Issue #21, engine/push.py): je Gerät im Fuß einschalten ----------
+   Nur angemeldet (das Abo gehört zum Konto). iPhone und iPad bekommen Push nur in der App vom Home-Bildschirm; dort fragt
+   das System einmal, ein „Nicht erlauben“ hebt nur die Einstellung des Geräts auf. Darum fragt die Seite nie von selbst,
+   nur auf Tippen. Was kommt und die Ruhezeit stellt die Person auf „Mein Konto“ ein (für alle Reisen gleich). */
+const PUSH_DA = "PushManager" in window && "serviceWorker" in navigator && "Notification" in window;
+const APPLE_MOBIL = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const ALS_APP = navigator.standalone === true || !!(window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+let PUSH_SCHLUESSEL;        // öffentlicher Schlüssel des Servers; null: Push ist dort nicht eingerichtet
+function geraetKennung() {
+  try {
+    let g = localStorage.getItem("rh-geraet");
+    if (!g) { g = Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, "0")).join(""); localStorage.setItem("rh-geraet", g); }
+    return g;
+  } catch (e) { return ""; }
+}
+function schluesselBytes(b64) {
+  const roh = atob(b64.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - b64.length % 4) % 4));
+  return Uint8Array.from(roh, c => c.charCodeAt(0));
+}
+const zeitzone = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) { return ""; } };
+const pushAbo = async () => (await navigator.serviceWorker.ready).pushManager.getSubscription();
+async function pushMelden(abo) {
+  const r = await fetch("api/push", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(
+    {abo: abo.toJSON(), geraet: geraetKennung(), zeitzone: zeitzone(), seite: SW_REG ? SW_REG.scope : location.href.split(/[?#]/)[0]})});
+  if (!r.ok) throw 0;
+}
+// auffrischen: beim Öffnen meldet ein eingeschaltetes Gerät sich still neu (Zeitzone für die Ruhezeit, erneuertes Abo)
+async function pushFuss(meldung, auffrischen) {
+  const f = $("#push");
+  const zeigen = (...k) => {
+    f.replaceChildren(...k, ...(k.length && meldung ? [el("span", {class: "fuss-stand", role: "status"}, meldung)] : []));
+    f.hidden = !k.length; fussZeigen();
+  };
+  if (!(ICH && ICH.konto) || !KONTO_HIER()) return zeigen();
+  if (!PUSH_DA) return zeigen(...(APPLE_MOBIL && !ALS_APP ? [T("seite.rahmen.push.home")] : []));
+  if (PUSH_SCHLUESSEL === undefined) {
+    try { const r = await fetch("api/push", {cache: "no-store"}); PUSH_SCHLUESSEL = r.ok ? (await r.json()).schluessel || null : null; }
+    catch (e) { PUSH_SCHLUESSEL = null; }
+  }
+  if (!PUSH_SCHLUESSEL) return zeigen();
+  if (Notification.permission === "denied") return zeigen(T("seite.rahmen.push.blockiert"));
+  const abo = Notification.permission === "granted" ? await pushAbo().catch(() => null) : null;
+  if (abo && auffrischen) pushMelden(abo).catch(() => {});
+  const einstellen = el("a", {href: "/konto#push"}, T("seite.rahmen.push.einstellungen"));
+  if (abo) return zeigen(T("seite.rahmen.push.an"), " ", el("button", {type: "button", "data-push": "aus"}, T("seite.rahmen.push.ausschalten")), " · ", einstellen);
+  zeigen(el("button", {type: "button", "data-push": "an"}, T("seite.rahmen.push.einschalten")));
+}
+async function pushSchalten(an) {
+  try {
+    if (an) {
+      // Die Frage des Systems muss direkt aus dem Tippen kommen (sonst lehnt iOS ab): requestPermission zuerst
+      const erlaubt = await Notification.requestPermission();
+      if (erlaubt !== "granted") return pushFuss(erlaubt === "denied" ? null : T("seite.rahmen.push.nicht_erlaubt"));
+      const reg = await navigator.serviceWorker.ready;
+      const abo = await reg.pushManager.getSubscription()
+        || await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: schluesselBytes(PUSH_SCHLUESSEL)});
+      await pushMelden(abo);
+      return pushFuss(T("seite.rahmen.push.eingeschaltet"));
+    }
+    const abo = await pushAbo();
+    if (abo) {
+      await fetch("api/push", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({abmelden: abo.endpoint})}).catch(() => {});
+      await abo.unsubscribe();
+    }
+    pushFuss(T("seite.rahmen.push.ausgeschaltet"));
+  } catch (e) { pushFuss(T(navigator.onLine ? "seite.rahmen.push.fehler" : "seite.rahmen.release.offline")); }
+}
+document.addEventListener("click", e => { const k = e.target.closest("[data-push]"); if (k) pushSchalten(k.dataset.push === "an"); });
 
 function netzAnzeigen() { $("#offline").hidden = navigator.onLine; }
 window.addEventListener("online", netzAnzeigen);
 window.addEventListener("offline", netzAnzeigen);
 netzAnzeigen();
+// Aus einer Nachricht zu einem neuen Release (engine/push.py): ?aktualisieren=1 übernimmt den neuen Stand, sobald er da ist
+const AUTO_NEU = /[?&]aktualisieren=/.test(location.search);
+if (AUTO_NEU) { try { history.replaceState(null, "", location.pathname + location.hash); } catch (e) {} }
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
   // Neu laden nur bei einem Wechsel der Version, nicht beim ersten Besuch (da übernimmt der Worker nur die Kontrolle)
-  let neuGeladen = false, gewollt = !!navigator.serviceWorker.controller;
+  let neuGeladen = false;
+  SW_GEWOLLT = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (neuGeladen || !gewollt) return; neuGeladen = true; location.reload();
+    if (neuGeladen || !SW_GEWOLLT) return; neuGeladen = true; location.reload();
   });
   // Offline-Karte und Bilder sollen nicht verdrängt werden, wenn das Telefon Platz braucht
   if ((R && R.karte && R.karte.grundkarte || WK) && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   navigator.serviceWorker.register("sw.js").then(reg => {
-    const zeigen = () => { if (reg.waiting && navigator.serviceWorker.controller) $("#neu").hidden = false; };
+    SW_REG = reg;
+    releaseFuss();
+    const zeigen = () => {
+      if (!swWartet()) return;
+      if (AUTO_NEU) return uebernehmen();
+      $("#neu").hidden = false;
+      if (RELEASE_STAND) releaseBereit(reg.waiting);
+    };
     zeigen();
     reg.addEventListener("updatefound", () => {
       const sw = reg.installing;
       sw && sw.addEventListener("statechange", () => { if (sw.state === "installed") zeigen(); });
     });
-    $("#neuLaden").addEventListener("click", () => {
-      gewollt = true;
-      if (reg.waiting) reg.waiting.postMessage({typ: "uebernehmen"}); else location.reload();
-    });
-    // Als App vom Home-Bildschirm prüft iOS selten von sich aus; beim Zurückholen selbst nachsehen.
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && navigator.onLine) reg.update().catch(() => {});
-    });
+    $("#neuLaden").addEventListener("click", uebernehmen);
+    // Als App vom Home-Bildschirm prüft iOS selten von sich aus: beim Zurückholen, beim Wiederherstellen aus dem
+    // Zwischenspeicher des Browsers und jede halbe Stunde selbst nachsehen, höchstens einmal je Minute.
+    let zuletzt = Date.now();
+    const pruefen = () => {
+      if (document.visibilityState !== "visible" || !navigator.onLine || Date.now() - zuletzt < 60e3) return;
+      zuletzt = Date.now();
+      reg.update().catch(() => {});
+    };
+    document.addEventListener("visibilitychange", pruefen);
+    window.addEventListener("pageshow", pruefen);
+    setInterval(pruefen, 30 * 60e3);
   }).catch(() => {});
 }
 </script>

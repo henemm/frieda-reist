@@ -12,8 +12,12 @@
  *  - Mehrere Reisen teilen sich eine Domain; jede räumt nur ihre eigenen Speicher auf.
  *  - Die Offline-Grundkarte (grundkarte.pmtiles, einige 10 MB) wird ganz gespeichert; Bereichsanfragen
  *    der Karte beantwortet der Worker aus dieser Kopie (bereich()).
+ *  - Push-Nachrichten (Issue #21, engine/push.py): Jede Nachricht wird angezeigt (iOS entzieht einem Worker, der eine
+ *    Nachricht empfängt und nichts zeigt, die Erlaubnis). Tippen öffnet die Stelle in einem offenen Fenster der Seite
+ *    oder in einem neuen; eine Nachricht zu einem neuen Release öffnet die Seite mit ?aktualisieren=1 (vorlage.html).
  */
 const VERSION = "__VERSION__";
+const RELEASE = __RELEASE__;  // Release der Software dieses Stands ({nummer, kennung} oder {}), für „Neuer Stand bereit“
 const DATEIEN = __DATEIEN__;
 const STAND = __STAND__;  // Datei -> Inhalts-Hash; gespeichert wird unter „Datei?v=Hash“
 const UMZUG_NACH = __UMZUG__;  // null oder neue Adresse (Ursprung), wenn die Seiten umgezogen sind
@@ -58,6 +62,7 @@ self.addEventListener("install", event => {
 
 self.addEventListener("message", event => {
   if (event.data && event.data.typ === "version") event.ports[0] && event.ports[0].postMessage(VERSION);
+  if (event.data && event.data.typ === "stand") event.ports[0] && event.ports[0].postMessage({version: VERSION, release: RELEASE});
   if (event.data && event.data.typ === "uebernehmen") self.skipWaiting();
 });
 
@@ -129,3 +134,31 @@ async function ausSpeicher(req) {
     throw e;
   }
 }
+
+/* Push-Nachricht: {titel, text, url, tag}. Gleicher tag (eine Reise) ersetzt die vorige Nachricht, renotify meldet sich
+   trotzdem neu. Ohne lesbaren Inhalt zeigt der Worker den Namen der Seite (iOS verlangt eine sichtbare Nachricht). */
+self.addEventListener("push", event => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch (e) { d = {text: event.data ? event.data.text() : ""}; }
+  const tag = d.tag || "frieda";
+  event.waitUntil(self.registration.showNotification(d.titel || "Frieda", {
+    body: d.text || "", tag, renotify: true, icon: scope + "icon-192.png", badge: scope + "icon-192.png",
+    data: {url: d.url || scope}}));
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const ziel = new URL((event.notification.data && event.notification.data.url) || scope, self.location.origin);
+  event.waitUntil((async () => {
+    // Nur Fenster dieser Reise (matchAll liefert alle Fenster der Domain, auch anderer Reisen und „Mein Konto“)
+    const fenster = (await self.clients.matchAll({type: "window", includeUncontrolled: true}))
+      .filter(c => new URL(c.url).pathname.startsWith(scope));
+    // Ein offenes Fenster übernimmt (kein zweites Fenster); navigate nur, wenn das Ziel in diesem Scope liegt
+    const offen = ziel.pathname.startsWith(scope) && (fenster.find(c => new URL(c.url).pathname === ziel.pathname) || fenster[0]);
+    if (offen) {
+      try { const c = await offen.navigate(ziel.href); if (c) return c.focus(); } catch (e) {}
+      try { return await offen.focus(); } catch (e) {}
+    }
+    return self.clients.openWindow(ziel.href);
+  })());
+});

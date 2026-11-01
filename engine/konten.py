@@ -132,6 +132,18 @@ CREATE TABLE IF NOT EXISTS oauth_codes (
 CREATE TABLE IF NOT EXISTS oauth_tokens (
   hash TEXT PRIMARY KEY, art TEXT NOT NULL, konto TEXT NOT NULL, client_id TEXT NOT NULL, scope TEXT NOT NULL,
   familie TEXT NOT NULL, ablauf REAL NOT NULL, benutzt REAL);
+CREATE TABLE IF NOT EXISTS push_abos (
+  endpoint TEXT PRIMARY KEY, konto TEXT NOT NULL, p256dh TEXT NOT NULL, auth TEXT NOT NULL, reise TEXT NOT NULL DEFAULT '',
+  seite TEXT NOT NULL DEFAULT '', geraet TEXT NOT NULL DEFAULT '', zeitzone TEXT NOT NULL DEFAULT '', erstellt REAL NOT NULL,
+  zuletzt REAL NOT NULL, zuletzt_ok REAL);
+CREATE TABLE IF NOT EXISTS push_einstellungen (konto TEXT PRIMARY KEY, einstellungen TEXT NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS push_schluessel (name TEXT PRIMARY KEY, wert TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS push_stand (schluessel TEXT PRIMARY KEY, wert TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS push_warteschlange (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, konto TEXT NOT NULL, reise TEXT NOT NULL, art TEXT NOT NULL, text TEXT NOT NULL,
+  ziel TEXT NOT NULL DEFAULT '', erstellt REAL NOT NULL, versuche INTEGER NOT NULL DEFAULT 0, gesendet REAL);
+CREATE INDEX IF NOT EXISTS push_abos_konto ON push_abos (konto);
+CREATE INDEX IF NOT EXISTS push_warteschlange_offen ON push_warteschlange (gesendet, konto);
 CREATE INDEX IF NOT EXISTS oauth_tokens_konto ON oauth_tokens (konto);
 CREATE INDEX IF NOT EXISTS versand_schluessel ON versand (schluessel, zeit);
 CREATE INDEX IF NOT EXISTS sitzungen_konto ON sitzungen (konto);
@@ -452,7 +464,7 @@ def loeschen(kid):
     """Konto und Adresse löschen (auf Wunsch der Person). Verlaufseinträge der Reisen behalten den Namen."""
     with closing(db()) as v, v:
         _widerrufen(v, kid)
-        for t in ("mitgliedschaften", "anfragen", "kalender_abo"):
+        for t in ("mitgliedschaften", "anfragen", "kalender_abo", "push_abos", "push_einstellungen", "push_warteschlange"):
             v.execute(f"DELETE FROM {t} WHERE konto = ?", (kid,))
         v.execute("DELETE FROM konten WHERE id = ?", (kid,))
 
@@ -462,6 +474,7 @@ def sperren(kid, gesperrt=True):
         v.execute("UPDATE konten SET gesperrt = ? WHERE id = ?", (1 if gesperrt else 0, kid))
         if gesperrt:
             _widerrufen(v, kid)
+            v.execute("DELETE FROM push_abos WHERE konto = ?", (kid,))
 
 
 def zusammenfuehren(von, nach):
@@ -481,6 +494,9 @@ def zusammenfuehren(von, nach):
         rechte = sorted(set(filter(None, (a["rechte"] + "," + b["rechte"]).split(","))))
         v.execute("UPDATE konten SET rechte = ? WHERE id = ?", (",".join(rechte), nach))
         v.execute("DELETE FROM anfragen WHERE konto = ?", (von,))
+        v.execute("UPDATE push_abos SET konto = ? WHERE konto = ?", (nach, von))
+        v.execute("DELETE FROM push_einstellungen WHERE konto = ?", (von,))
+        v.execute("DELETE FROM push_warteschlange WHERE konto = ?", (von,))
         _widerrufen(v, von)
         v.execute("DELETE FROM konten WHERE id = ?", (von,))
 
@@ -578,6 +594,98 @@ def entfernen(reise, schluessel):
         n += v.execute("DELETE FROM einladungen WHERE reise = ? AND schluessel = ? AND eingeloest IS NULL",
                        (reise, schluessel)).rowcount
         return n > 0
+
+
+# ---------- Push-Nachrichten (Issue #21): Abos je Gerät, Einstellungen je Konto (engine/push.py) ----------
+# Ein Abo ist die Adresse eines Geräts beim Push-Dienst seines Browsers (Apple, Google, Mozilla) mit zwei Schlüsseln. Es
+# gehört zu dem Konto, das auf der Reiseseite angemeldet war, und zu der Reise, deren Seite es abgeschlossen hat (der
+# Service Worker der Reise zeigt die Nachricht). Die Adresse ist kein Geheimnis, die Sitzung schon: abmelden darf nur das
+# eigene Konto. Versand, Ruhezeiten und Bündeln: engine/push.py.
+PUSH_ENDPUNKT = re.compile(r"^https://[^\s]{8,1024}$")
+PUSH_SCHLUESSEL = re.compile(r"^[A-Za-z0-9_=-]{8,256}$")
+PUSH_GERAET = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+PUSH_ZONE = re.compile(r"^[A-Za-z0-9_+/-]{1,64}$")
+MAX_PUSH_ABOS = 10      # je Konto; das älteste fällt weg (alte Telefone, neu installierte Apps)
+
+
+def push_abo_speichern(kid, abo, reise="", seite="", geraet="", zeitzone=""):
+    """Abo eines Geräts speichern oder auffrischen (neue Zeitzone, neue Schlüssel). abo: {endpoint, keys: {p256dh, auth}}
+    wie PushSubscription.toJSON(). seite: Adresse der Reiseseite (Scope des Service Workers), für den Link in Nachrichten."""
+    keys = abo.get("keys") if isinstance(abo, dict) else None
+    endpoint = abo.get("endpoint") if isinstance(abo, dict) else None
+    if not (isinstance(endpoint, str) and PUSH_ENDPUNKT.match(endpoint) and isinstance(keys, dict)
+            and all(isinstance(keys.get(k), str) and PUSH_SCHLUESSEL.match(keys[k]) for k in ("p256dh", "auth"))):
+        raise KontoFehler("konto.fehler.push_abo_ungueltig")
+    reise = reise if REISE_MUSTER.match(reise or "") else ""
+    seite = seite if isinstance(seite, str) and seite.startswith("https://") and len(seite) <= 300 else ""
+    geraet = geraet if isinstance(geraet, str) and PUSH_GERAET.match(geraet) else ""
+    zeitzone = zeitzone if isinstance(zeitzone, str) and PUSH_ZONE.match(zeitzone) else ""
+    jetzt = _jetzt()
+    with closing(db()) as v, v:
+        if geraet:   # ein Gerät hat je Reise ein Abo; ein neues (andere Adresse) ersetzt das alte
+            v.execute("DELETE FROM push_abos WHERE konto = ? AND geraet = ? AND reise = ? AND endpoint != ?",
+                      (kid, geraet, reise, endpoint))
+        v.execute("INSERT INTO push_abos (endpoint, konto, p256dh, auth, reise, seite, geraet, zeitzone, erstellt, zuletzt) "
+                  "VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT (endpoint) DO UPDATE SET konto = excluded.konto, "
+                  "p256dh = excluded.p256dh, auth = excluded.auth, reise = excluded.reise, seite = excluded.seite, "
+                  "geraet = excluded.geraet, zeitzone = excluded.zeitzone, zuletzt = excluded.zuletzt",
+                  (endpoint, kid, keys["p256dh"], keys["auth"], reise, seite, geraet, zeitzone, jetzt, jetzt))
+        alte = [z["endpoint"] for z in v.execute("SELECT endpoint FROM push_abos WHERE konto = ? ORDER BY zuletzt DESC",
+                                                 (kid,)).fetchall()[MAX_PUSH_ABOS:]]
+        for e in alte:
+            v.execute("DELETE FROM push_abos WHERE endpoint = ?", (e,))
+
+
+def push_abo_entfernen(kid, endpoint):
+    """Abo des eigenen Kontos löschen. -> ob es eines gab."""
+    with closing(db()) as v, v:
+        return v.execute("DELETE FROM push_abos WHERE endpoint = ? AND konto = ?", (endpoint, kid)).rowcount > 0
+
+
+def push_abo_weg(endpoint):
+    """Der Push-Dienst kennt das Abo nicht mehr (404/410): löschen, egal zu welchem Konto."""
+    with closing(db()) as v, v:
+        v.execute("DELETE FROM push_abos WHERE endpoint = ?", (endpoint,))
+
+
+def push_abo_ok(endpoint):
+    with closing(db()) as v, v:
+        v.execute("UPDATE push_abos SET zuletzt_ok = ? WHERE endpoint = ?", (_jetzt(), endpoint))
+
+
+def push_abos(kid=None):
+    """Abos eines Kontos (ohne kid: aller Konten, die nicht gesperrt sind), neueste zuerst."""
+    with closing(db()) as v:
+        if kid is None:
+            return [dict(z) for z in v.execute("SELECT a.* FROM push_abos a JOIN konten k ON k.id = a.konto "
+                                               "WHERE k.gesperrt = 0 ORDER BY a.zuletzt DESC")]
+        return [dict(z) for z in v.execute("SELECT * FROM push_abos WHERE konto = ? ORDER BY zuletzt DESC", (kid,))]
+
+
+def push_einstellungen(kid, neu=None):
+    """Gespeicherte Einstellungen der Push-Nachrichten (roh, {} ohne Eintrag); mit neu: speichern. Bereinigt und mit
+    Vorgaben ergänzt werden sie in engine/push.py (einstellungen), damit dieses Modul den Push-Dienst nicht laden muss."""
+    with closing(db()) as v, v:
+        if neu is not None:
+            v.execute("INSERT INTO push_einstellungen (konto, einstellungen) VALUES (?, ?) ON CONFLICT (konto) "
+                      "DO UPDATE SET einstellungen = excluded.einstellungen", (kid, json.dumps(neu, ensure_ascii=False)))
+            return neu
+        z = v.execute("SELECT einstellungen FROM push_einstellungen WHERE konto = ?", (kid,)).fetchone()
+        try:
+            d = json.loads(z["einstellungen"]) if z else {}
+            return d if isinstance(d, dict) else {}
+        except ValueError:
+            return {}
+
+
+def push_schluessel(name, wert=None):
+    """VAPID-Schlüssel des Servers (öffentlich, privat). Mit wert: einmal anlegen; zwei gleichzeitige Erstanlagen behalten
+    die erste. -> gespeicherter Wert oder None."""
+    with closing(db()) as v, v:
+        if wert is not None:
+            v.execute("INSERT OR IGNORE INTO push_schluessel (name, wert) VALUES (?, ?)", (name, wert))
+        z = v.execute("SELECT wert FROM push_schluessel WHERE name = ?", (name,)).fetchone()
+        return z["wert"] if z else None
 
 
 # ---------- Kalender (#77): ein Abo je Konto über alle Reisen, mit Einstellungen (engine/kalender.py) ----------

@@ -294,6 +294,43 @@ def kalender_karte(k, reise_info, offen=False):
             + "</div>")
 
 
+def push_karte(k, offen=False):
+    """Benachrichtigungen auf Mein Konto (Issue #21): was aufs Handy kommt und die Ruhezeit, für alle Reisen gleich.
+    Eingeschaltet wird je Gerät im Fuß der Reiseseite (dort liegt der Service Worker, der die Nachricht zeigt)."""
+    import push
+    e = push.einstellungen_von(k["id"])
+    geraete = len({a["geraet"] or a["endpoint"] for a in konten.push_abos(k["id"])})
+    haken = lambda name, an, text: (f'<label class="haken"><input type="checkbox" name="{esc(name)}" value="ja"'   # noqa: E731
+                                    f'{" checked" if an else ""}> {esc(text)}</label>')
+    felder = (verdeckt(aktion="push_einstellungen")
+              + f"<fieldset><legend>{esc(tx('konto.push.was'))}</legend>"
+              + "".join(haken("art_" + a, a in e["arten"], tx("konto.push.art." + a)) for a in push.ARTEN)
+              + "</fieldset>"
+              + f"<fieldset><legend>{esc(tx('konto.push.ruhe'))}</legend>"
+              + '<div style="display:flex;gap:.6rem">'
+              + f'<div style="flex:1"><label for="ruhe_von">{esc(tx("konto.push.ruhe_von"))}</label>'
+              + f'<input id="ruhe_von" type="time" name="ruhe_von" value="{esc(e["ruhe_von"])}"></div>'
+              + f'<div style="flex:1"><label for="ruhe_bis">{esc(tx("konto.push.ruhe_bis"))}</label>'
+              + f'<input id="ruhe_bis" type="time" name="ruhe_bis" value="{esc(e["ruhe_bis"])}"></div></div>'
+              + f'<p class="klein">{esc(tx("konto.push.ruhe_hinweis"))}</p></fieldset>')
+    geraete_text = tx("konto.push.geraete", n=geraete) if geraete else tx("konto.push.keine_geraete")
+    aus = formular("/konto", verdeckt(aktion="push_aus"), tx("konto.push.alle_aus"), "neutral") if geraete else ""
+    einstellungen = (f'<details{" open" if offen else ""}><summary>{esc(tx("konto.kalender.konfigurieren"))}</summary>'
+                     f'<div class="inhalt" style="padding:0">' + formular("/konto", felder, tx("konto.kalender.speichern"))
+                     + aus + "</div></details>")
+    return (f'<div class="abschnitt" id="push"><h2>{esc(tx("konto.push.titel"))}</h2>'
+            + karte(f'<p>{esc(tx("konto.push.hinweis"))}</p>', f'<p class="klein">{esc(geraete_text)}</p>',
+                    f'<div class="kalender-links">{einstellungen}</div>')
+            + "</div>")
+
+
+def push_formular(f):
+    """Formular der Karte Benachrichtigungen -> Einstellungen (push.einstellungen bereinigt)."""
+    import push
+    return {"arten": [a for a in push.ARTEN if f.get("art_" + a) == "ja"],
+            "ruhe_von": f.get("ruhe_von", ""), "ruhe_bis": f.get("ruhe_bis", "")}
+
+
 def kalender_formular(k, f):
     """Formular der Kalender-Karte -> Einstellungen (Häkchen fehlen im Formular, wenn sie aus sind)."""
     reisen = [m["reise"] for m in konten.mitgliedschaften(k["id"])]
@@ -383,6 +420,7 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
                  fehler(meldung), f'<p class="kasten">{esc(hinweis)}</p>' if hinweis else "",
                  f'<div class="abschnitt"><h2>{esc(tx("konto.seite.meine_reisen"))}</h2>{reisen}{anlegen}</div>',
                  kalender_karte(k, reise_info, offen == "kalender"),
+                 push_karte(k, offen == "push"),
                  betreiber,
                  f'<div class="abschnitt"><h2>{esc(tx("konto.seite.einstellungen"))}</h2><div class="liste">{einstellungen}</div></div>',
                  '<div class="links" style="flex-direction:column;align-items:center">'
@@ -567,6 +605,14 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
             if a == "kalender_einstellungen":
                 konten.kalender_einstellungen(k["id"], kalender_formular(k, f))
                 return antwort(200, konto_seite(k, reise_info, hinweis=tx("konto.kalender.gespeichert_hinweis"), offen="kalender"))
+            if a == "push_einstellungen":
+                import push
+                push.einstellungen_von(k["id"], push_formular(f))
+                return antwort(200, konto_seite(k, reise_info, hinweis=tx("konto.push.gespeichert"), offen="push"))
+            if a == "push_aus":
+                for abo in konten.push_abos(k["id"]):
+                    konten.push_abo_entfernen(k["id"], abo["endpoint"])
+                return antwort(200, konto_seite(k, reise_info, hinweis=tx("konto.push.alle_aus_hinweis"), offen="push"))
             if a == "alle_abmelden":
                 konten.alle_abmelden(k["id"])
                 return weiter("/anmelden", [cookie_loeschen()])

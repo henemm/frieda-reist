@@ -19,10 +19,12 @@ DIENST="$FR_DIENST"
 SPRACHDATEIEN=""
 for f in "$WURZEL"/engine/texte_??.py "$WURZEL"/engine/texte_???.py; do [ -e "$f" ] && SPRACHDATEIEN="$SPRACHDATEIEN $(basename "$f")"; done
 RM_MODULE="rueckmeldungen.py belege.py reise.py konten.py instanz.py kalender.py texte.py $SPRACHDATEIEN"
-KN_MODULE="konnektor.py schnittstelle.py reise.py routen.py konten.py anmeldung.py oauth.py instanz.py belege.py kalender.py texte.py $SPRACHDATEIEN"
+KN_MODULE="konnektor.py schnittstelle.py reise.py routen.py konten.py anmeldung.py oauth.py instanz.py belege.py kalender.py push.py texte.py $SPRACHDATEIEN"
 # Schreibweg (engine/schreiben.py dienst, ADR-0001 O-3): der Dienst selbst lädt nur diese Module; den Schreibvorgang führt er
 # mit dem Code der Arbeitskopie <Wurzel>-schreiben aus (dort liegt die ganze Engine auf dem Stand von main).
 SB_MODULE="schreiben.py konten.py reise.py instanz.py kalender.py texte.py $SPRACHDATEIEN"
+# Push-Dienst (engine/push.py dienst, Issue #21): läuft mit FR_PYTHON (pywebpush), lädt seinen Code aus <FR_DIENST>
+PS_MODULE="push.py rueckmeldungen.py belege.py reise.py konten.py instanz.py kalender.py texte.py $SPRACHDATEIEN"
 
 [ -d "$WURZEL/reisen/$REISE" ] || { echo "Reise '$REISE' gibt es nicht."; exit 1; }
 [ -d "$FR_SEITEN" ] && [ -w "$FR_SEITEN" ] || { echo "$FR_SEITEN fehlt oder ist nicht beschreibbar (einrichten.sh, docs/betrieb.md)."; exit 1; }
@@ -49,11 +51,12 @@ mkdir -p "$ZIEL"
 # Rückmelde-Ablage der Reise (außerhalb Repo und Web-Ordner) und Code der Dienste
 mkdir -p "$FR_ABLAGE/$REISE" "$DIENST"
 chmod 750 "$FR_ABLAGE" "$FR_ABLAGE/$REISE"
-NEU_RM=""; NEU_KN=""; NEU_SB=""
+NEU_RM=""; NEU_KN=""; NEU_SB=""; NEU_PS=""
 for m in $RM_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_RM=1; done
 for m in $KN_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_KN=1; done
 for m in $SB_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_SB=1; done
-for m in $(printf '%s\n' $RM_MODULE $KN_MODULE $SB_MODULE | sort -u); do install -m 644 "$WURZEL/engine/$m" "$DIENST/"; done
+for m in $PS_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_PS=1; done
+for m in $(printf '%s\n' $RM_MODULE $KN_MODULE $SB_MODULE $PS_MODULE | sort -u); do install -m 644 "$WURZEL/engine/$m" "$DIENST/"; done
 # Friedas Symbol (Favicon, App-Symbol) und die Schrift der Anmeldeseiten; der Konnektor liest die Dateien bei jedem
 # Abruf, kein Neustart nötig
 rsync -a --delete --chmod=D755,F644 --exclude "*.py" "$WURZEL/engine/marke/" "$DIENST/marke/"
@@ -69,6 +72,10 @@ neustart() {
 # Der Schreibweg ist nur bei Instanzen aktiv, die ihn eingerichtet haben (einrichten.sh, docs/betrieb.md)
 if [ -n "$NEU_SB" ] && systemctl is-enabled --quiet "$FR_INSTANZ-schreiben" 2>/dev/null; then
   neustart "$FR_INSTANZ-schreiben" "Schreibweg"
+fi
+# Push-Dienst ebenso nur, wenn eingerichtet
+if [ -n "$NEU_PS" ] && systemctl is-enabled --quiet "$FR_INSTANZ-push" 2>/dev/null; then
+  neustart "$FR_INSTANZ-push" "Push-Dienst"
 fi
 rsync -a --delete --chmod=D755,F644 "$WURZEL/dist/$REISE/" "$ZIEL/"
 

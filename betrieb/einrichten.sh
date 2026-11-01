@@ -97,11 +97,11 @@ echo "der Konnektor steht an der Wurzel von $FR_KN_ADRESSE, deren server-Block b
 befehle | sed 's/^/  /'
 cat <<TEXT
   cd $FR_WURZEL && FR_WURZEL=$FR_WURZEL frieda/betrieb/deploy.sh <erste reise>   (legt Code der Dienste an, Prüfung schlägt vor dem Start fehl)
-  sudo systemctl enable --now $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben
+  sudo systemctl enable --now $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben $FR_INSTANZ-push
   sudo nginx -t && sudo systemctl reload nginx
   sudo systemctl enable --now $FR_INSTANZ-veroeffentlichen.timer $FR_INSTANZ-waechter.timer
 Prüfen:  curl -s 127.0.0.1:$FR_SB_PORT/gesund  antwortet {"gesund": true};  journalctl -u $FR_INSTANZ-veroeffentlichen -n 20
-Für deploy.sh braucht $FR_BENUTZER: sudo -n systemctl restart $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben;
+Für deploy.sh braucht $FR_BENUTZER: sudo -n systemctl restart $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben $FR_INSTANZ-push;
 für freischalten.sh: sudo -n nginx -t, systemctl reload nginx, install/test/cat/rm in $SNIPPETS (sudoers, docs/betrieb.md).
 TEXT
 

@@ -102,9 +102,41 @@ await p.waitForFunction(() => navigator.serviceWorker.controller !== null);
 ergebnis.version2 = await swVersion();
 ergebnis.speicherNachUpdate = await p.evaluate(async () => (await caches.keys()).filter(k => k.startsWith("rh:")).length);
 ergebnis.geladenBeimUpdate = await (await fetch(new URL("/__log/zeigen", basis))).json();
-fs.writeFileSync(swDatei, swText);
-if (fehlend) fs.renameSync(fehlend + ".weg", fehlend);
 
+// Manuelles Update im Fuß (Product Owner 1.11.2026): „Auf Neueres prüfen“ fragt den Server; liegt dort ein neuer Stand,
+// heißt der Knopf „Jetzt aktualisieren“ und übernimmt ihn
+neueVersion("neu2");
+await p.click("[data-release-pruefen]");
+await p.waitForSelector('[data-release-knopf="aktualisieren"]', {timeout: 30000});
+ergebnis.fussBereit = await p.textContent("#release .fuss-stand");
+await Promise.all([p.waitForEvent("load"), p.click('[data-release-knopf="aktualisieren"]')]);
+await p.waitForFunction(() => navigator.serviceWorker.controller !== null);
+ergebnis.version3 = await swVersion();
+
+// Push (Issue #21): der Worker zeigt eine Nachricht mit Titel, Text, Link und Kennung der Reise. Chromium stellt sie über
+// das Protokoll der Entwicklerwerkzeuge zu (ein echter Push-Dienst ist im Test nicht erreichbar). Benachrichtigungen
+// erlaubt der Browser ohne Fenster nie; der Test fängt darum showNotification im Worker ab und liest, was gezeigt würde.
+if (chromium) {
+  const worker = ctx.serviceWorkers().filter(w => w.url().startsWith(basis)).pop();   // der zuletzt gestartete, nicht der ersetzte
+  await worker.evaluate(() => {
+    self.GEZEIGT = [];
+    ServiceWorkerRegistration.prototype.showNotification = function (titel, o) { self.GEZEIGT.push({titel, ...o}); return Promise.resolve(); };
+  });
+  const cdp = await ctx.newCDPSession(p);
+  const regs = [];
+  cdp.on("ServiceWorker.workerRegistrationUpdated", e => regs.push(...e.registrations));
+  await cdp.send("ServiceWorker.enable");
+  for (let i = 0; i < 50 && !regs.some(r => r.scopeURL === basis && !r.isDeleted); i++) await leise(100);
+  const reg = regs.find(r => r.scopeURL === basis && !r.isDeleted);
+  await cdp.send("ServiceWorker.deliverPushMessage", {origin: new URL(basis).origin, registrationId: reg.registrationId,
+    data: JSON.stringify({titel: "Testreise", text: "Neue Aufgabe für dich", url: basis + "#offen", tag: "frieda-test"})});
+  for (let i = 0; i < 50; i++) {
+    ergebnis.push = await worker.evaluate(() => self.GEZEIGT.map(n => ({titel: n.titel, text: n.body, url: n.data && n.data.url, tag: n.tag})));
+    if (ergebnis.push.length) break;
+    await leise(100);
+  }
+}
+ergebnis.basis = basis;
 ergebnis.fehler = fehler;
 console.log(JSON.stringify(ergebnis));
 await b.close();

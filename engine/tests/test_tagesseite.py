@@ -97,7 +97,11 @@ def test_tagesseite_in_ebenen(tmp_path, browser):
         # Fuß: Release mit Link zum Quellcode; „Auf Neueres prüfen“ sagt „aktuell“ oder wie viele Stände neuer sind
         assert a["fussVorher"] == {"text": "Frieda Release 255 · 54f460c Auf Neueres prüfen", "link": "https://github.com/ida/frieda/commit/54f460c" + "0" * 33,
                                    "stand": "", "sichtbar": True}, a["fussVorher"]
-        assert a["fussGleich"] == "Aktuell: Das ist der neueste Stand." and a["fussNeuer"] == "Es gibt 34 neuere Stände, der neueste ist Release 289.", a
+        # Liegt der neuere Stand nur auf main, sagt der Fuß, dass er noch nicht auf dem Server ist; Organisator:innen stoßen an
+        assert a["fussGleich"] == "Aktuell: Das ist der neueste Stand." and a["fussNeuer"] == (
+            "Es gibt 34 neuere Stände, der neueste ist Release 289. Auf dem Server ist er noch nicht; er kommt mit dem nächsten Veröffentlichen."), a
+        assert a["fussAnstoss"] == "Es gibt 34 neuere Stände, der neueste ist Release 289. Auf dem Server ist er noch nicht. Veröffentlichen anstoßen", a
+        assert a["fussAngestossen"].startswith("Veröffentlichen angestoßen um ") and "15 Minuten" in a["fussAngestossen"], a
         assert a["fensterErledigt"] == {"zu": True, "titel": "Erledigt2", "offenOben": 0}, a["fensterErledigt"]
         assert all(a["tiefe"].values()) and len(a["tiefe"]) == 3, a["tiefe"]
         # Hintergrund als Kapitel: zu, immer nur eines offen; der umschaltende Bereich ist getönt; Der Weg mit „Weiterlesen“

@@ -1137,7 +1137,8 @@ class Bauer:
         sw = (Path(__file__).parent / "sw.vorlage.js").read_text(encoding="utf-8")
         sw = sw.replace("__VERSION__", h.hexdigest()[:12]).replace("__DATEIEN__", json.dumps(dateien, ensure_ascii=False)) \
                .replace("__STAND__", json.dumps(stand, ensure_ascii=False)) \
-               .replace("__UMZUG__", json.dumps(self.umzug))
+               .replace("__UMZUG__", json.dumps(self.umzug)) \
+               .replace("__RELEASE__", json.dumps({k: r[k] for k in ("nummer", "kennung")} if (r := software_release())["kennung"] else {}))
         (ziel / "sw.js").write_text(sw, encoding="utf-8")
 
 
