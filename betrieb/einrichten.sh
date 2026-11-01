@@ -36,6 +36,9 @@ echo "Voraussetzungen:"
 [ -f "$FR_WURZEL/engine/bauen.py" ] && ok "Software unter engine/" || problem "engine/ fehlt (Submodul frieda und Verweis engine -> frieda/engine, docs/betrieb.md)"
 if "$FR_PYTHON" -c 'import yaml, ruamel.yaml' 2> /dev/null; then ok "Python $FR_PYTHON"; else problem "Python mit yaml und ruamel.yaml: $FR_PYTHON (python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt)"; fi
 [ -n "$FR_ADRESSE" ] && ok "Adresse $FR_ADRESSE" || problem "FR_ADRESSE (öffentliche Adresse der Seiten) in den Einstellungen"
+# Der Konnektor steht an der Wurzel seiner Adresse: Seiten verweisen auf /anmelden, OAuth erwartet /.well-known/ (#163)
+if [ -z "$FR_KN_ADRESSE" ] || [[ "$FR_KN_ADRESSE" =~ ^https://[^/]+$ ]]; then [ -z "$FR_KN_ADRESSE" ] || ok "Konnektor an $FR_KN_ADRESSE/mcp"
+else problem "FR_KN_ADRESSE „$FR_KN_ADRESSE“: nur https://<host>, ohne Pfad und ohne / am Ende (der Konnektor steht an der Wurzel)"; fi
 git -C "$FR_WURZEL" ls-remote -q origin > /dev/null 2>&1 && ok "git erreicht origin" || problem "git -C $FR_WURZEL ls-remote origin geht nicht ohne Rückfrage"
 if PATH="$FR_PFAD" command -v gh > /dev/null; then
   # Der Schreibweg pusht nach main mit gh als Credential-Helfer; ohne Anmeldung scheitert jeder Schreibvorgang
@@ -64,12 +67,13 @@ ersetze() {  # <vorlage> <ziel>
       -e "s|__SEITEN__|$FR_SEITEN|g" -e "s|__ABLAGE__|$FR_ABLAGE|g" -e "s|__DIENST__|$FR_DIENST|g" \
       -e "s|__KONNEKTOR__|$FR_KONNEKTOR|g" -e "s|__KONTEN__|$FR_KONTEN|g" -e "s|__RM_PORT__|$FR_RM_PORT|g" -e "s|__KN_PORT__|$FR_KN_PORT|g" \
       -e "s|__SB_PORT__|$FR_SB_PORT|g" -e "s|__PYTHON__|$FR_PYTHON|g" \
-      -e "s|__KN_ADRESSE__|$FR_KN_ADRESSE|g" -e "s|__ZONE__|$ZONE|g" "$1" > "$2"
+      -e "s|__KN_ADRESSE__|$FR_KN_ADRESSE|g" -e "s|__ZONE__|$ZONE|g" -e "s|__SNIPPETS__|$SNIPPETS|g" "$1" > "$2"
 }
 for v in "$FR_BETRIEB"/vorlagen/*.service "$FR_BETRIEB"/vorlagen/*.timer; do
   ersetze "$v" "$ZIEL/systemd/$FR_INSTANZ-$(basename "$v")"
 done
 ersetze "$FR_BETRIEB/vorlagen/nginx-konnektor.conf" "$ZIEL/nginx/$FR_INSTANZ-konnektor.conf"
+ersetze "$FR_BETRIEB/vorlagen/nginx-konnektor.inc" "$ZIEL/nginx/$FR_INSTANZ-konnektor.inc"
 ersetze "$FR_BETRIEB/vorlagen/nginx-zone.conf" "$ZIEL/nginx/$FR_INSTANZ-zone.conf"
 if grep -rn "__[A-Z_]*__" "$ZIEL" > /dev/null; then
   problem "Platzhalter nicht ersetzt: $(grep -rho "__[A-Z_]*__" "$ZIEL" | sort -u | tr '\n' ' ')"
@@ -83,12 +87,13 @@ sudo install -d -o $FR_BENUTZER -g $FR_GRUPPE -m 750 $FR_ABLAGE
 sudo install -d -o $FR_BENUTZER -g $FR_GRUPPE -m 700 $FR_KONNEKTOR $FR_KONTEN
 sudo install -m 644 $ZIEL/systemd/* $SYSTEMD/
 sudo install -m 644 $ZIEL/nginx/$FR_INSTANZ-zone.conf /etc/nginx/conf.d/
-sudo install -m 640 $ZIEL/nginx/$FR_INSTANZ-konnektor.conf $SNIPPETS/
+sudo install -m 640 $ZIEL/nginx/$FR_INSTANZ-konnektor.conf $ZIEL/nginx/$FR_INSTANZ-konnektor.inc $SNIPPETS/
 sudo systemctl daemon-reload
 TEXT
 }
 echo
-echo "Aktivieren (nachdem im server-Block von $FR_ADRESSE  include $SNIPPETS/$FR_INSTANZ-*.conf;  steht):"
+echo "Aktivieren (nachdem im server-Block von $FR_ADRESSE  include $SNIPPETS/$FR_INSTANZ-*.conf;  steht;"
+echo "der Konnektor steht an der Wurzel von $FR_KN_ADRESSE, deren server-Block bindet $FR_INSTANZ-konnektor.conf ein):"
 befehle | sed 's/^/  /'
 cat <<TEXT
   cd $FR_WURZEL && FR_WURZEL=$FR_WURZEL frieda/betrieb/deploy.sh <erste reise>   (legt Code der Dienste an, Prüfung schlägt vor dem Start fehl)
