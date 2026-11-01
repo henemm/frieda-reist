@@ -140,16 +140,33 @@ for (const app of [true, false]) {
   p.on("pageerror", e => fehler.push(`Leiste app=${app}: ${e}`));
   await p.goto(basis);
   await p.waitForSelector("#titel:not(:empty)");
-  const unten = () => p.evaluate(() => Math.round(document.querySelector(".leiste").getBoundingClientRect().bottom));
+  // Gemessen wird erst, wenn die Lage ruhig ist: das Fenster hat die neue Höhe und der untere Rand der Leiste steht
+  // drei Bilder lang still. Unter Last verarbeitet WebKit die Größenänderung sonst erst nach der Messung (#159).
+  const unten = () => p.evaluate(() => new Promise(fertig => {
+    const rand = () => Math.round(document.querySelector(".leiste").getBoundingClientRect().bottom);
+    let vor = rand(), still = 0;
+    const ende = setTimeout(() => fertig(rand()), 3000);
+    const bild = () => {
+      const jetzt = rand();
+      still = jetzt === vor ? still + 1 : 0;
+      vor = jetzt;
+      if (still >= 3) { clearTimeout(ende); fertig(jetzt); } else requestAnimationFrame(bild);
+    };
+    requestAnimationFrame(bild);
+  }));
+  const hoehe = async h => {
+    await p.setViewportSize({width: 390, height: h});
+    await p.waitForFunction(h => window.innerHeight === h, h);
+  };
   const m = {start: await unten()};
-  await p.setViewportSize({width: 390, height: 500}); await p.waitForTimeout(100);
+  await hoehe(500);
   m.klein = await unten();
-  await p.evaluate(() => document.querySelector("#suchKnopf").click()); await p.waitForTimeout(100);
+  await p.evaluate(() => document.querySelector("#suchKnopf").click());
   m.tippt = await unten();
   await p.evaluate(() => document.activeElement && document.activeElement.blur());
-  await p.waitForTimeout(500);
+  await p.waitForTimeout(500);   // die Vorlage misst nach dem Verlassen eines Felds nach 50 und 400 ms
   m.zu = await unten();
-  await p.setViewportSize({width: 390, height: 800}); await p.waitForTimeout(100);
+  await hoehe(800);
   m.voll = await unten();
   leiste[app ? "app" : "browser"] = m;
   await ctx.close();
