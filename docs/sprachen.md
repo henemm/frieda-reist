@@ -98,3 +98,13 @@ Fehler und Hinweise der Prüfung beim Bauen („Unterkunft U-01: Ort O-09 gibt e
 ### Datenwerte
 
 Gespeichert wird immer der Datenwert selbst (`organisator`, `gewaehlt`, `blau`, `auswahl`; ADR-0006). Wer ihn **liest**, bekommt ihn in seiner Sprache: Jeder Wert eines Platzhalters, der genau einem Eintrag `wert.<Wert>` des Katalogs entspricht, wird von `texte.t` (und damit von jedem Satz) durch dessen Text ersetzt, bei fehlender Übersetzung durch den englischen. Deutsch zeigt den Wert unverändert (`"wert.organisator": "organisator"`). Ein neuer Datenwert (Rolle, Stufe, Farbe, Typ, Baustein, Schlüssel der Spielregeln) braucht deshalb einen Eintrag `wert.*` in jeder Sprache. Nicht hinein gehören Wörter, die im Englischen genauso lauten (`text`, `plan`, `bus`): sie brauchen keine Übersetzung. Wo der Code Werte selbst aneinanderhängt (f-String, `", ".join(...)`), bleibt der deutsche Wert stehen: dafür gibt es einen Satz im Katalog (`schreiben.antwort.feld_wert`) oder `schreiben.anzeige_text`. Der Test `test_englisch.py` fängt jede Stelle, an der ein deutscher Wert durchrutscht.
+
+### Leitplanken gegen deutsche Wörter in englischem Text
+
+Wer die Sprache nicht auf Deutsch gestellt hat, liest kein deutsches Wort (Englisch ist der Rückfall). Drei Tests sichern das, mit einer Erkennung deutscher Wörter (`engine/tests/englisch_hilfe.py`):
+
+- `test_englisch.py`: Anlegen und Schreiben in einer englischen Reise (Antwort, Commit-Nachricht, Dateien der Reise).
+- `test_englisch_werte.py`: rund 200 Schreibaufrufe mit englischen Eingaben, Datenwerte in Antworten, Commits und Dateitext.
+- `test_englisch_schnittstelle.py`: `tools/list` und `initialize` einer englischen Person, über Reise- und Konto-Zugang: Werkzeugnamen, Parameternamen (auch verschachtelt), Aufzählungswerte, Beschreibungen und Anweisungen. Eigennamen aus Beispielen (Orte, Anbieter) stehen in `EIGENNAMEN` des Tests.
+
+Beschreibungen im englischen Katalog nennen nur die Namen, die `tools/list` zeigt (`from_place`, nicht `von`). Ein neuer Parameter braucht deshalb einen englischen Namen in `PARAMETER` der Schnittstelle (`engine/schnittstelle.py`). Die Schuldenlisten (`BEKANNT`) dürfen nur kürzer werden.
