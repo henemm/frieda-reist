@@ -2876,6 +2876,12 @@ class Dienst(BaseHTTPRequestHandler):
     server_version = "Frieda-Konnektor"
     sys_version = ""
 
+    def end_headers(self):
+        # Kennung jeder Antwort: nginx ersetzt den Server-Kopf, daran erkennt deploy.sh von außen, dass ein Weg wirklich
+        # beim Konnektor ankommt und nicht bei einer 404-Seite von nginx (Kalender-Abo, 1.11.2026)
+        self.send_header("X-Frieda", "konnektor")
+        super().end_headers()
+
     def _senden(self, code, obj=None, extra=None):
         body = b"" if obj is None else json.dumps(obj, ensure_ascii=False).encode("utf-8")
         self.send_response(code)

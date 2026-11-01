@@ -462,6 +462,62 @@ def test_deploy_mit_warnung_im_plan_legt_die_seite_ab(tmp_path):
     assert (tmp_path / "seiten" / "beispielreise" / "index.html").exists()
 
 
+def test_deploy_prueft_die_wege_zum_konnektor_von_aussen(tmp_path):
+    """Nach dem Deploy fragt deploy.sh jede Art Pfad des Konnektors über die öffentliche Adresse ab. Kommt ein Weg bei
+    nginx statt beim Konnektor an (kein Kopf X-Frieda), warnt es und meldet es dem Betreiber; die Seite wird trotzdem
+    abgelegt. So lief das Kalender-Abo ins Leere: nginx kannte /kalender/ nicht (1.11.2026)."""
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    wurzel = tmp_path / "instanz"
+    shutil.copytree(BEISPIEL, wurzel / "reisen" / "beispielreise")
+    (wurzel / "engine").symlink_to(ENGINE)
+    (wurzel / ".gitignore").write_text("dist/\n__pycache__/\n")
+    git(wurzel, "init", "-q", "-b", "main")
+    git(wurzel, "add", ".")
+    git(wurzel, "commit", "-qm", "start")
+    (tmp_path / "seiten").mkdir()
+    fehlt = {"/kalender/"}
+
+    class Dienste(BaseHTTPRequestHandler):
+        """Rückmeldedienst, Konnektor und nginx davor in einem: X-Frieda nur, wo nginx zum Konnektor weiterleitet."""
+        def do_GET(self):
+            nginx_404 = any(self.path.startswith(f) for f in fehlt)
+            self.send_response(404 if nginx_404 else 200)
+            if not nginx_404:
+                self.send_header("X-Frieda", "konnektor")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+        do_HEAD = do_GET
+
+        def log_message(self, *args):
+            pass
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Dienste)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    port = str(server.server_address[1])
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    ausfuehrbar(bin_ / "systemctl", '#!/bin/sh\ncase "$*" in *konnektor*) exit 0;; esac\nexit 1\n')
+    meldungen = tmp_path / "meldungen.log"
+    melden = ausfuehrbar(tmp_path / "melden.sh", f'#!/bin/sh\necho "$1|$2|$3" >> {meldungen}\n')
+    env = {**SAUBER, "PATH": f"{bin_}:{SAUBER.get('PATH', os.environ['PATH'])}", "FR_WURZEL": str(wurzel), "FR_INSTANZ": "probe",
+           "FR_SEITEN": str(tmp_path / "seiten"), "FR_DIENST": str(tmp_path / "dienst"), "FR_KONNEKTOR": str(tmp_path / "kn"),
+           "FR_KONTEN": str(tmp_path / "konten"), "FR_PYTHON": sys.executable, "FR_GEPRUEFT": git(wurzel, "rev-parse", "HEAD").strip(),
+           "FR_RM_PORT": port, "FR_KN_PORT": port, "FR_KN_ADRESSE": f"http://127.0.0.1:{port}", "FR_SUDO": "false",
+           "FR_MELDEN": str(melden)}
+    try:
+        r = subprocess.run([str(BETRIEB / "deploy.sh"), "beispielreise"], env=env, capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert "WARNUNG: Diese Wege kommen" in r.stdout and "/kalender/" in r.stdout and "/gesund" not in r.stdout.split("WARNUNG")[1]
+        assert "nginx: Wege zum Konnektor fehlen" in meldungen.read_text() and "/kalender/" in meldungen.read_text()
+        assert (tmp_path / "seiten" / "beispielreise" / "index.html").exists()
+        fehlt.clear()
+        meldungen.unlink()
+        r = subprocess.run([str(BETRIEB / "deploy.sh"), "beispielreise"], env=env, capture_output=True, text=True)
+        assert r.returncode == 0 and "WARNUNG: Diese Wege" not in r.stdout and not meldungen.exists(), r.stdout + r.stderr
+    finally:
+        server.shutdown()
+
+
 def test_veroeffentlichen_merge_und_submodulfehler_werden_nicht_gemerkt(vf):
     """Scheitert das Vorspulen (lokaler Commit im Bauordner) oder das Holen des Submoduls, endet der Lauf mit 1,
     es wird nichts gebaut, kein Stand geschrieben und die Rot-Datei weder angelegt noch verändert (AC-18)."""

@@ -80,5 +80,19 @@ bereit() { for _ in 1 2 3 4 5 6 7 8 9 10; do curl -fsS -o /dev/null "$1" && retu
 bereit "http://127.0.0.1:$FR_RM_PORT/$REISE/gesund" || { echo "FEHLER: Rückmeldedienst antwortet nicht (systemctl status $FR_INSTANZ-rueckmeldungen)."; exit 1; }
 if systemctl is-enabled --quiet "$FR_INSTANZ-konnektor" 2>/dev/null; then
   bereit "http://127.0.0.1:$FR_KN_PORT/gesund" || { echo "FEHLER: Konnektor nicht bereit (systemctl status $FR_INSTANZ-konnektor)."; exit 1; }
+  # Wege von außen: Jede Art Pfad des Konnektors muss über die öffentliche Adresse bei ihm ankommen (Kopf X-Frieda),
+  # nicht bei nginx. Fehlt ein Ort im server-Block, geht die Seite, aber etwa das Kalender-Abo nicht (1.11.2026).
+  # Nur Warnung und Meldung: Die Reiseseite selbst ist davon nicht betroffen.
+  if [ -n "${FR_KN_ADRESSE:-}" ]; then
+    fehlen=""
+    for weg in /gesund /anmelden /kalender/0000000000000000000000000000000000000000.ics /schrift/pruefung.woff2 /favicon.svg; do
+      curl -sS -I --max-time 10 "$FR_KN_ADRESSE$weg" 2>/dev/null | grep -qi '^x-frieda:' || fehlen="$fehlen $weg"
+    done
+    if [ -n "$fehlen" ]; then
+      echo "WARNUNG: Diese Wege kommen über $FR_KN_ADRESSE nicht beim Konnektor an:$fehlen"
+      echo "         nginx: Baustein $FR_INSTANZ-konnektor.conf aus betrieb/vorlagen/ einbinden (einrichten.sh, docs/betrieb.md)."
+      fr_melden high "nginx: Wege zum Konnektor fehlen" "Über $FR_KN_ADRESSE kommen nicht beim Konnektor an:$fehlen. Baustein $FR_INSTANZ-konnektor.conf aus betrieb/vorlagen/ einbinden (einrichten.sh)."
+    fi
+  fi
 fi
 echo "Fertig: $ZIEL ($(du -sh "$ZIEL" | cut -f1))"
