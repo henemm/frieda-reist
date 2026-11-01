@@ -38,9 +38,10 @@ Daraus entsteht je Angabe eine **Meldung** (Art `pruefung`) an die Organisator:i
 | `app` | Meldungen stehen im `ueberblick` der Claude-App unter „Meldungen an dich“ und unter `rueckmeldungen`; erledigte Aufgaben, vollzogene Statuswechsel und Meldungen älter als 14 Tage verschwinden (Konflikte nie) | gebaut |
 | `nachricht` | Sammelnachricht an den Betreiber (`lauf --bericht`), versandt vom Betriebsskript `betrieb/waechter.sh` (`docs/betrieb.md`) | gebaut |
 | E-Mail an alle | – | nicht gebaut |
-| Handy über die Webseite (PWA), Push | – | Issue #21 |
+| `push` | Push-Nachricht aufs Handy (Web Push, `engine/push.py`, Dienst `<instanz>-push`): Meldungen an Personen, dazu neue Rückmeldungen an die Organisator:innen, neu zugewiesene Aufgaben und neue Releases der Software. Jede Person schaltet es je Gerät im Fuß der Reiseseite ein und stellt auf „Mein Konto“ ein, welche Arten kommen und wann Ruhe ist (Vorgabe 21:30 bis 7:00 auf der Uhr des Geräts; was in der Ruhezeit anfällt, kommt an ihrem Ende). Gleichzeitig Wartendes einer Reise kommt als eine Nachricht. Tippen öffnet die Stelle (`#AG-…`, `#T-…`, „Offen“) | gebaut (Issue #21, 1.11.2026) |
+| Meldungen auf der Webseite anzeigen | – | Issue #21, Stufe 1 |
 
-Vorgabe: `[app, nachricht]`.
+Vorgabe: `[app, nachricht, push]`. Ohne `push` schickt die Reise keine Push-Nachrichten, auch keine zu Rückmeldungen, Aufgaben oder Releases.
 
 ## Aufruf
 

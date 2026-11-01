@@ -43,7 +43,7 @@ Eine Sprache, deren Datei einen Schlüssel nicht hat, fällt für diesen Text au
 
 ## Regeln für Schlüssel und Texte
 
-- Schlüssel sind flach, in Kleinbuchstaben, mit Punkten getrennt, der Bereich steht vorn: `seite.`, `konnektor.`, `schreiben.`, `dienst.`, `konto.`, `mail.`, `kalender.`, `waechter.`, `inhalt.`, `pruefung.` (Prüfmeldungen der Reise). Der Test prüft die Form.
+- Schlüssel sind flach, in Kleinbuchstaben, mit Punkten getrennt, der Bereich steht vorn: `seite.`, `konnektor.`, `schreiben.`, `dienst.`, `konto.`, `mail.`, `kalender.`, `waechter.`, `push.` (Push-Nachrichten), `inhalt.`, `pruefung.` (Prüfmeldungen der Reise). Der Test prüft die Form.
 - Platzhalter haben Namen in geschweiften Klammern (`{name}`, `{n}`, `{id}`), nie Positionen, und sind in allen Sprachen dieselben.
 - Jeder Text ist ein ganzer Satz oder eine ganze Beschriftung. Nichts wird aus Teilen zusammengesetzt (`"Nacht in " + ort` wird ein Schlüssel mit `{ort}`), damit andere Sprachen die Wortstellung ändern können. Ausnahme: Bestätigungen des Schreibwegs sind aus Sätzen des Katalogs zusammengesetzte `Satz`-Folgen, die in jeder Sprache gebaut werden können (`texte.Satz`).
 - Plural nur über Kategorien: gibt es den Wert `n`, wählt `PLURAL` die Kategorie, und `t()` nimmt `<schluessel>.<kategorie>`, dann `<schluessel>.other`, dann `<schluessel>`. Deutsch und Englisch füllen `.one` und `.other`, nie `n == 1 ? … : …` im Code.

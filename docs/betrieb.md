@@ -18,7 +18,7 @@ Eine **Instanz** ist eine Reisegruppe mit eigenem Betreiber: ein Reisen-Repo, da
 | Konten | `<FR_KONTEN>/` (`konten.db`, Dienst-Geheimnis) | Konten, Anmeldungen und Einladungen aller Nutzer der Instanz; nie im Repo, nie in einer Reise |
 | Dienstordner | `<FR_DIENST>/` | Code der Dienste, Stände, Stempel, vorgemerkte Links, geheime Einstellungen |
 | Konnektor-Zugänge | `<FR_KONNEKTOR>/zugaenge.json`, `seiten.json` (600) | geheime Links; nie im Repo |
-| systemd | `<instanz>-rueckmeldungen`, `-konnektor`, `-schreiben`, `-veroeffentlichen.timer`, `-waechter.timer` | aus `betrieb/vorlagen/`, erzeugt von `einrichten.sh` |
+| systemd | `<instanz>-rueckmeldungen`, `-konnektor`, `-schreiben`, `-push`, `-veroeffentlichen.timer`, `-waechter.timer` | aus `betrieb/vorlagen/`, erzeugt von `einrichten.sh` |
 | nginx | `<FR_NGINX_SNIPPETS>/<instanz>-<reise>.conf` (mit Token), `<instanz>-konnektor.conf` mit `<instanz>-konnektor.inc`, Zone in `conf.d/<instanz>-zone.conf` | aus `betrieb/vorlagen/` |
 
 Die Skripte rufen sich im Reisen-Repo als `frieda/betrieb/<skript>.sh` auf und finden die Instanz selbst (das Repo, das die Software einbindet; sonst `FR_WURZEL`).
@@ -127,6 +127,23 @@ Ohne Handarbeit (`docs/neue-reise.md`): Nach dem Veröffentlichen ruft `veroeffe
 
 Links von Hand: `freischalten.sh <reise>` für die Seite, `freischalten.sh <reise> --person <schlüssel>` für die Claude-App. Links stehen nie im Protokoll, im Repo, in Issues oder Nachrichten.
 
+## Anstoß „Veröffentlichen“ von der Seite
+
+Die Seite kann nur holen, was auf dem Server liegt. Der Fuß jeder Seite fragt auf „Auf Neueres prüfen“ zuerst den Server (Update des Service Workers): Liegt dort ein neuer Stand, heißt der Knopf „Jetzt aktualisieren“ und übernimmt ihn (mit Rückfall: feuert der Wechsel nicht, lädt die Seite nach 4 Sekunden trotzdem neu). Ist nur `main` der Software neuer, nennt der Fuß die Zahl der Stände und sagt, dass sie noch nicht auf dem Server sind. Organisator:innen (angemeldet) bekommen dazu „Veröffentlichen anstoßen“: Der Rückmeldedienst legt `<FR_ABLAGE>/_anstoss.json` an (Zeit, Reise, Person; ein Anstoß gilt, bis er abgeholt ist). Der nächste Lauf von `veroeffentlichen.sh` (Timer, höchstens 5 Minuten) startet damit `gh workflow run <FR_NACHZIEHEN_WORKFLOW> --ref main` im Bauordner, schreibt das Ergebnis nach `<FR_ABLAGE>/_anstoss-ergebnis.json` und löscht den Anstoß. Der Workflow „Software nachziehen“ prüft und übernimmt den neuen Stand wie zur halben Stunde; ein späterer Lauf veröffentlicht ihn. Mit Push-Nachrichten bekommen alle eine Nachricht, sobald das neue Release online ist; Tippen darauf öffnet die Seite mit `?aktualisieren=1`, und die Seite übernimmt den neuen Stand selbst.
+
+Voraussetzung: `gh` ist für den Dienstbenutzer angemeldet und darf Workflows des Reisen-Repos starten (Recht `actions: write`, beim klassischen Token `repo`). Scheitert der Start, steht `ok: false` im Ergebnis (die Seite sagt „Der letzte Anstoß ist gescheitert“) und der Betrieb bekommt eine Nachricht (`normal`).
+
+## Push-Nachrichten
+
+`engine/push.py dienst` (`<instanz>-push.service`) stellt Push-Nachrichten zu (Issue #21, Kanal `push` in `docs/waechter.md`). Er läuft mit `FR_PYTHON`, weil der Versand `pywebpush` braucht (`engine/requirements.txt`; bei einer bestehenden Instanz einmal `engine/.venv/bin/pip install -r engine/requirements.txt`), und lädt seinen Code aus `<FR_DIENST>` (`PS_MODULE` in `deploy.sh`, Neustart bei geändertem Code, wenn die Unit eingeschaltet ist). Alle 20 Sekunden liest er, was in den Reisen neu ist (`meldungen.jsonl`, `eingang.jsonl`, `aufgaben.json` der Ablage und das Release im Fuß der veröffentlichten Seite), merkt sich den Stand in `konten.db` (`push_stand`; beim ersten Lauf nur merken) und stellt die Nachrichten aus der Warteschlange (`push_warteschlange`) zu, außerhalb der Ruhezeit der Person. Was 36 Stunden nicht zugestellt werden konnte, fällt weg; ein Abo, das der Push-Dienst des Browsers nicht mehr kennt (404, 410), wird gelöscht.
+
+- **Schlüssel:** Das VAPID-Schlüsselpaar legt der erste Start an (`konten.db`, Tabelle `push_schluessel`); `engine/push.py schluessel` zeigt den öffentlichen. Den gibt der Rückmeldedienst der Seite (`api/push`); ohne ihn bietet die Seite keine Benachrichtigungen an. Wird der Schlüssel ersetzt, müssen alle Geräte neu einschalten.
+- **Geräte:** Abos je Gerät in `konten.db` (`push_abos`: Adresse beim Push-Dienst, Schlüssel, Reise und Adresse der Seite, Zeitzone), höchstens 10 je Konto. Sperren, Löschen und „Auf allen Geräten ausschalten“ (Mein Konto) entfernen sie.
+- **Link der Nachricht:** die Adresse der Seite aus einem Abo derselben Reise, sonst aus `seiten.json` neben den Konnektor-Zugängen (`KN_ZUGAENGE`).
+- **Kontakt:** `FR_BASIS` aus `konten.env` steht als Absender in der VAPID-Unterschrift.
+- **Probe:** `FR_KONTEN=… RM_ABLAGE=… engine/.venv/bin/python <FR_DIENST>/push.py probe <email>` schickt eine Nachricht an alle Geräte eines Kontos. Protokoll: `journalctl -u <instanz>-push`.
+- **iPhone und iPad:** Push gibt es nur in der App vom Home-Bildschirm (iOS 16.4 und neuer); im Browser sagt der Fuß der Seite, wie man sie hinzufügt.
+
 ## Wächter
 
 `betrieb/waechter.sh` läuft täglich und ruft `engine/waechter.py lauf` auf (`docs/waechter.md`). Es berücksichtigt nur Reisen mit Baustein `waechter` und Status `fest` oder `unterwegs`. Hat es etwas zu melden, geht eine Sammelnachricht an den Betreiber; ein Fehler wird dringend gemeldet.
@@ -152,6 +169,7 @@ Links von Hand: `freischalten.sh <reise>` für die Seite, `freischalten.sh <reis
 | `FR_SPERREN` | `/tmp` | Ordner der Sperrdateien |
 | `FR_BENUTZER`, `FR_GRUPPE`, `FR_HOME`, `FR_PFAD` | aufrufender Benutzer | nur für `einrichten.sh`: Benutzer und `PATH` der Dienste |
 | `FR_HEARTBEAT_VEROEFFENTLICHEN` | leer | Überwachungsadresse, nur in `betrieb.env` |
+| `FR_NACHZIEHEN_WORKFLOW` | `software-nachziehen.yml` | Workflow des Reisen-Repos, den ein Anstoß von der Seite startet (Abschnitt „Anstoß“) |
 | `FR_KENNUNG`, `FR_SPRACHEN` | Name der Software, `de,en` | Kennung mit Kontakt gegenüber OpenStreetMap und Sprachen der Namen (`docs/werkzeuge.md`) |
 
 Die Skripte setzen daraus die Umgebung der Software (`RM_ABLAGE`, `KN_SEITEN`, `KN_ZUGAENGE`, `KN_BASIS`; die Unit des Konnektors zusätzlich `KN_SCHREIBDIENST`). Ausdrücklich gesetzte Werte bleiben. Fehlt etwas, etwa bei einem Aufruf von Hand wie `python3 engine/rueckmeldungen.py liste <reise>` in der Wurzel des Reisen-Repos, leitet `engine/instanz.py` die Ordner nach derselben Ordnung ab, notfalls aus der Einstellungsdatei. Die Software selbst kennt keine Instanz, ihre letzte Vorgabe ist `/srv/frieda`.
@@ -188,10 +206,10 @@ Der Workflow „Software nachziehen“ (siehe „Neue Instanz einrichten“) lä
    - Präfix-Orte (`^~`) und genaue Orte (`=`) gehen allgemeinen Regeln für Dateiendungen vor; Regeln mit `^~` oder `=` für dieselben Pfade im server-Block dürfen nicht stehen.
    - Übergang: Links aus der Zeit vor den Konten (`/<token>`, früher `/<instanz>-mcp/<token>`) gehen weiter an den Konnektor.
 6. **sudo** für den Dienstbenutzer, ohne Passwort und nur für diese Befehle:
-   - `systemctl restart <instanz>-rueckmeldungen <instanz>-konnektor <instanz>-schreiben`
+   - `systemctl restart <instanz>-rueckmeldungen <instanz>-konnektor <instanz>-schreiben <instanz>-push`
    - `nginx -t` und `systemctl reload nginx`
    - `install`, `test`, `cat` und `rm` für Dateien in `<FR_NGINX_SNIPPETS>/<instanz>-*.conf`
-7. **Erste Reise** anlegen (`docs/neue-reise.md`), nach `main` bringen, im Bauordner `FR_WURZEL=<Bauordner> frieda/betrieb/deploy.sh <reise>` (legt den Code der Dienste an). Danach `sudo systemctl enable --now <instanz>-rueckmeldungen <instanz>-konnektor <instanz>-schreiben` und die beiden Timer, wie `einrichten.sh` sie nennt.
+7. **Erste Reise** anlegen (`docs/neue-reise.md`), nach `main` bringen, im Bauordner `FR_WURZEL=<Bauordner> frieda/betrieb/deploy.sh <reise>` (legt den Code der Dienste an). Danach `sudo systemctl enable --now <instanz>-rueckmeldungen <instanz>-konnektor <instanz>-schreiben <instanz>-push` und die beiden Timer, wie `einrichten.sh` sie nennt. Eine bestehende Instanz richtet den Push-Dienst nach: `pip install -r engine/requirements.txt`, `einrichten.sh --installieren` (neue Unit), sudo-Regel um `<instanz>-push` ergänzen, `enable --now <instanz>-push`.
 8. **Prüfen:** `FR_WURZEL=<Bauordner> frieda/betrieb/veroeffentlichen.sh --immer` zeigt „ist online“. `curl -s <FR_KN_ADRESSE>/.well-known/oauth-authorization-server` zeigt die Endpunkte unter derselben Adresse; in der Claude-App wird `<FR_KN_ADRESSE>/mcp` als Konnektor eingetragen, die Anmeldung läuft mit E-Mail und Code (`docs/konten.md`). `curl -s 127.0.0.1:<FR_SB_PORT>/gesund` antwortet `{"gesund": true}`.
 
 **Zwei Instanzen auf einem Server** brauchen verschiedene `FR_INSTANZ`, `FR_SEITEN` (und damit Ablage und Dienstordner) und Ports. `einrichten.sh` bricht ab, wenn eine andere installierte Instanz dieselben Ports nutzt. Unit-Namen, nginx-Bausteine, Drossel-Zone und Sperrdateien tragen den Namen der Instanz. Jede Instanz braucht eine eigene Adresse (Host), weil ihr Konnektor an der Wurzel steht.
