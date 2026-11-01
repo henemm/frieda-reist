@@ -29,7 +29,7 @@ for (const [breite, hoehe] of [[390, 844], [820, 1180], [1300, 900]]) {
     return {spalte: !!s, abschnitte: s ? s.querySelectorAll(".lese-abschnitt").length : 0, kaesten: document.querySelectorAll("#main details.block").length,
       breite: s ? Math.round(s.getBoundingClientRect().width) : 0, allesSichtbar: s ? [...s.querySelectorAll(".lese-abschnitt")].every(sichtbar) : false}; }, sicht);
   await auf("V-03");
-  if (!await p.locator('#main [data-vgl^="V-03"]:not([hidden])').count()) { await p.locator('#main [data-vgl-auf^="V-03"]:visible').first().click(); await p.waitForTimeout(300); }
+  if (!await p.locator('#main [data-vgl^="V-03"]:not([hidden])').count()) { const k = p.locator('#main [data-vgl-auf^="V-03"]:visible'); if (await k.count()) { await k.first().click(); await p.waitForTimeout(300); } }
   const vergleich = await p.evaluate(sicht => { const sichtbar = eval(sicht), box = document.querySelector('#main [data-vgl^="V-03"]:not([hidden])');
     if (!box) return null;
     const tab = box.querySelector(".wm-tabelle"), karten = [...box.querySelectorAll(".wm-karte")];
@@ -51,6 +51,14 @@ for (const [breite, hoehe] of [[390, 844], [820, 1180], [1300, 900]]) {
     await p.locator(`${box} [data-vgl-sort]`).nth(1).click(); await p.waitForTimeout(200);
     vergleich.nachSortieren = await p.evaluate(box => { const r = [...document.querySelectorAll(`${box} tr.wm-herkunft`)];
       return r.length > 0 && r.every(x => x.previousElementSibling.classList.contains("wm-zeile")); }, box);
+    // Aufgeklappte Einzelheiten gehören zum Vergleich: auch dort kein i (#58)
+    await p.locator(`${box} tr.wm-zeile`).first().click({position: {x: 12, y: 12}}); await p.waitForTimeout(200);
+    vergleich.aufgeklappt = await p.evaluate(box => ({mehr: document.querySelectorAll(`${box} tr.wm-mehr`).length,
+      iImKasten: document.querySelectorAll(`${box} .mk-i`).length}), box);
+    // Knöpfe im Kasten nach Art (für die Abnahme-Seite)
+    vergleich.knopfArten = await p.evaluate(box => { const n = {};
+      for (const x of document.querySelectorAll(`${box} :is(button, summary, a.zid, .zid)`)) { const r = x.getBoundingClientRect();
+        if (r.width && r.height) { const k = x.className || x.tagName; n[k] = (n[k] || 0) + 1; } } return n; }, box);
   }
   aus[breite] = {wege, ort, vergleich};
   await ctx.close();

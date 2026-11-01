@@ -233,9 +233,15 @@ def test_b2_wissen_orte_vergleich(tmp_path, browser):
         assert v["herkunftText"].startswith("Quellen: "), (breite, v)
         if breite == "1300":
             assert v["tabelle"] and v["karten"] == 0 and v["nachSortieren"], (breite, v)
+            assert v["aufgeklappt"]["mehr"] == 1 and v["aufgeklappt"]["iImKasten"] == 0, (breite, v)
         else:
             assert not v["tabelle"] and v["karten"] >= 2 and v["herkunftKarten"] >= 1, (breite, v)
     assert e["1300"]["ort"]["breite"] <= 44 * 17 + 1   # Lesebreite --lese (44rem bei 106,25 % Schrift), nicht die volle Breite
+    # Zweiter Pfad der Ortsseite: Reisen mit darstellung.tiefe zeigen den Ort über ansichtOrt, dort gilt dasselbe
+    t = seite_der_variante(tmp_path / "tiefe", browser, datum="2026-11-01", skript="b2_browser.mjs", darstellung={"tiefe": True})
+    for breite in ("390", "1300"):
+        o = t[breite]["ort"]
+        assert o["spalte"] and o["abschnitte"] == 2 and o["kaesten"] == 0 and o["allesSichtbar"], (breite, o)
 
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
