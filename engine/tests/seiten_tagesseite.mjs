@@ -72,6 +72,19 @@ for (const breite of [390, 1300]) {
   a.fenster = await p.evaluate(() => ({offen: document.querySelector("#rm").open, kennung: (document.querySelector("#rm .kennung") || {}).textContent,
     kopieren: !!document.querySelector("#rm [data-kopieren]")}));
   await p.keyboard.press("Escape");
+  // Zahl an der Sprechblase zählt nur Offene; Erledigtes steht im Fenster zugeklappt (erfundene Rückmeldungen, 1.11.2026)
+  const rmMuster = (status, i) => ({id: "R-T" + i, ziel: "E-01", status, art: "Kommentar", name: "Ida", text: "Muster", erstellt: "2027-01-02T00:00:00Z"});
+  const blase = () => { const k = document.querySelector('.ebene-weg button.zid[data-rm="E-01"]');
+    return {zahl: (k.querySelector(".zid-n") || {}).textContent || null, gefuellt: k.classList.contains("hat-rm"), title: k.title}; };
+  await p.evaluate(`RM = ["neu", "uebernommen", "verworfen"].map(${rmMuster}); route(true);`);
+  a.blaseOffen = await p.evaluate(`(${blase})()`);
+  await p.evaluate(`RM = ["uebernommen", "verworfen"].map(${rmMuster}); route(true);`);
+  a.blaseErledigt = await p.evaluate(`(${blase})()`);
+  await p.locator('.ebene-weg button.zid[data-rm="E-01"]').first().click();
+  a.fensterErledigt = await p.evaluate(() => { const d = document.querySelector("#rm details.ag-erledigt");
+    return {zu: !!d && !d.open, titel: d && d.querySelector("summary").textContent, offenOben: document.querySelectorAll("#rm .rminhalt > div > .rmeintrag").length}; });
+  await p.keyboard.press("Escape");
+  await p.evaluate(() => { RM = []; route(true); });
   // Kapitel: immer nur eines offen; „Weiterlesen“ zeigt den ganzen Weg
   const kap = p.locator(".ebene-hintergrund details.kapitel > summary .kap-titel");
   await kap.nth(0).click(); await p.waitForTimeout(100); await kap.nth(1).click(); await p.waitForTimeout(100);
