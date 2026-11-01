@@ -2246,6 +2246,7 @@ TEXTE = {
     "pruefung.routen.112": "{tid}: overnight stay “{w1}” is neither an accommodation, a choice nor a place.",
     "pruefung.routen.113": "{tid}: gap – the day is in {w1}, {sid} starts in {w2}.",
     "pruefung.routen.114": "{tid}: connection – {w1} arrives at {w2}, {sid} already leaves at {w3}.",
+    "pruefung.zeit.tag_uhr": "{datum} {zeit}",
     "pruefung.routen.115": "{tid}: the way from {w1} to {w2} is missing.",
     "pruefung.routen.116": "start.datum is missing (YYYY-MM-DD).",
     "pruefung.routen.117": "Day {tid} appears twice in the current plan.",

@@ -341,6 +341,14 @@ class Routen:
         """Text, den die Seite zeigt (Werte berechneter Merkmale), in der Sprache der Reise."""
         return texte.t(self.sprache, schluessel, **werte)
 
+    def zeit_lesbar(self, text):
+        """Zeit einer Strecke wie auf der Seite (#189): „10.4. 10:20“ oder „10:00“. Die Uhrzeit ist die am Ort, wie sie
+        dasteht; die Zeitzone eines Zeitpunkts (Flug) fällt weg. Unlesbares bleibt, wie es ist."""
+        z = zeitpunkt(text)
+        if isinstance(z, datetime.datetime):
+            return self.t("pruefung.zeit.tag_uhr", datum=texte.datum_kurz(z.date(), self.sprache), zeit=texte.zeit(z, self.sprache))
+        return texte.zeit(z, self.sprache) if z is not None else str(text)
+
     def warne(self, bezug, text):
         w = {"bezug": bezug, "text": text}
         if w not in self.warnungen:
@@ -1227,7 +1235,8 @@ class Routen:
                 if isinstance(an_, datetime.datetime) != isinstance(ab_, datetime.datetime) and an_ is not None and ab_ is not None:
                     an_, ab_ = (x.time() if isinstance(x, datetime.datetime) else x for x in (an_, ab_))
                 if an_ is not None and ab_ is not None and type(an_) is type(ab_) and (an_.tzinfo is None) == (ab_.tzinfo is None) and ab_ < an_:
-                    self.warne(tid, texte.satz("pruefung.routen.114", tid=tid, w1=strecken[i - 1][0], w2=vorige['an'], sid=sid, w3=s['ab']))
+                    self.warne(tid, texte.satz("pruefung.routen.114", tid=tid, w1=strecken[i - 1][0], w2=self.zeit_lesbar(vorige['an']),
+                                               sid=sid, w3=self.zeit_lesbar(s['ab'])))
             pos = s.get("nach") or pos
         n = self.nacht(tid, t.get("nacht"))
         if n and n.get("ort") and not n.get("an_bord"):

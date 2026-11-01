@@ -2246,6 +2246,7 @@ TEXTE = {
     "pruefung.routen.112": "{tid}: Übernachtung „{w1}“ ist weder Unterkunft, Wahlstelle noch Ort.",
     "pruefung.routen.113": "{tid}: Lücke – der Tag steht in {w1}, {sid} beginnt in {w2}.",
     "pruefung.routen.114": "{tid}: Anschluss – {w1} kommt um {w2} an, {sid} fährt schon um {w3} ab.",
+    "pruefung.zeit.tag_uhr": "{datum} {zeit}",
     "pruefung.routen.115": "{tid}: Der Weg von {w1} nach {w2} fehlt.",
     "pruefung.routen.116": "start.datum fehlt (JJJJ-MM-TT).",
     "pruefung.routen.117": "Tag {tid} kommt im aktuellen Plan zweimal vor.",

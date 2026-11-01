@@ -1547,11 +1547,14 @@ function buchungBlock(b) {
     zeile(T("seite.buchung.preis"), b.preis), zeile(T("seite.buchung.zahlung"), zahlung), fristOben ? frist : null].filter(Boolean));
   k.append(belegeListe(b));
   const preise = Object.entries(b.preise || {}), personen = Object.entries(b.personen || {});
+  // Dinge der Buchung mit Namen als Link zu ihrer Heimat (ADR-0003, #189); mit Trennzeichen aneinander
+  const reihe = (teile, trenner) => teile.flatMap((x, i) => i ? [trenner, x] : [x]);
+  const dingLink = x => link(x, titelZu(x) || x);
   const leise = [b.gebucht_am ? T("seite.buchung.gebucht_am", {datum: datumKurz(b.gebucht_am)}) : "", b.wer ? T("seite.label.von_wer", {wer: b.wer}) : "", b.quelle ? T("seite.label.quelle") + b.quelle : ""].filter(Boolean);
   k.append(einzelheiten(b.status !== "gebucht", [
-    (b.fuer || []).length > 1 ? zeile(T("seite.buchung.fuer"), b.fuer.map(x => titelZu(x) || x).join(", ")) : null,
+    (b.fuer || []).length > 1 ? zeile(T("seite.buchung.fuer"), el("span", {}, reihe(b.fuer.map(dingLink), ", "))) : null,
     zeile(T("seite.buchung.bei"), b.bei),
-    preise.length ? zeile(T("seite.buchung.preise"), preise.map(([x, p]) => `${titelZu(x) || x}: ${p}`).join(" · ")) : null,
+    preise.length ? zeile(T("seite.buchung.preise"), el("span", {}, reihe(preise.map(([x, p]) => el("span", {}, dingLink(x), ": " + p)), " · "))) : null,
     personen.length ? zeile(T("seite.buchung.reisende"), personen.map(([n, a]) => n + (a ? ` (${a})` : "")).join(", ")) : null,
     // Merkmale der Buchung (#166): die Art ihrer Dinge legt sie fest; Herkunft wie die Buchung
     ...(b.merkmale || []).map(m => zeile(m.name, m.wert + (m.einheit ? " " + m.einheit : ""))),
@@ -3861,7 +3864,10 @@ function rmZu(id) { return [...AUSGANG.filter(e => e.ziel === id), ...RM.filter(
 let TITEL = null;
 function titelZu(id) {
   if (!TITEL) { if (!index) indexBauen(); TITEL = new Map(index.map(e => [e.id, e.titel])); }
-  return TITEL.get(id) || (id === "allgemein" ? T("seite.rueckmeldung.allgemein_zur_reise") : id === "wuensche" ? T("seite.wunsch.wunschliste") : "");
+  // Dinge der Route, die keinen eigenen Text haben (Strecke ohne Dossier, Aufenthalt, Ort), stehen nicht im Suchindex;
+  // ihr Name kommt aus der Route, damit nirgends eine rohe Kennung steht (#189)
+  const d = R && ((R.strecken || {})[id] || (R.unterkuenfte || {})[id] || (R.aufenthalte || {})[id] || (R.orte || {})[id]);
+  return TITEL.get(id) || (d && (d.titel || d.name)) || (id === "allgemein" ? T("seite.rueckmeldung.allgemein_zur_reise") : id === "wuensche" ? T("seite.wunsch.wunschliste") : "");
 }
 
 async function rmLaden() {
