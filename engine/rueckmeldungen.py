@@ -1078,7 +1078,7 @@ class Dienst(BaseHTTPRequestHandler):
 def dienst():
     host = os.environ.get("RM_HOST", "127.0.0.1")
     port = int(os.environ.get("RM_PORT", "8771"))
-    print(f"Rückmeldedienst auf {host}:{port}, Ablage {ablage()}", flush=True)
+    print(f"Feedback service on {host}:{port}, store {ablage()}", flush=True)
     ThreadingHTTPServer((host, port), Dienst).serve_forever()
 
 

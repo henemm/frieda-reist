@@ -118,7 +118,7 @@ def cimd_laden(client_id):
     """Client ID Metadata Document holen (nur von freigegebenen Hosts, ohne Weiterleitungen, höchstens 64 KB)."""
     if not cimd_erlaubt(client_id):
         # Nur den Host protokollieren: zeigt bei der ersten echten Verbindung, ob FR_CIMD_HOSTS passt
-        print(f"OAuth: Client-Dokument von nicht freigegebenem Host abgelehnt: "
+        print(f"OAuth: client document from a host that is not allowed rejected: "
               f"{urllib.parse.urlsplit(client_id or '').hostname}", file=sys.stderr, flush=True)
         return None
     alt = konten.oauth_client(client_id)
@@ -131,7 +131,7 @@ def cimd_laden(client_id):
         with oeffner.open(anfrage, timeout=5) as r:
             doc = json.loads(r.read(65536 + 1)[:65536])
     except (urllib.error.URLError, OSError, ValueError) as f:
-        print(f"OAuth: Client-Dokument von {urllib.parse.urlsplit(client_id).hostname} nicht lesbar: "
+        print(f"OAuth: client document from {urllib.parse.urlsplit(client_id).hostname} not readable: "
               f"{getattr(f, 'code', '') or type(f).__name__}", file=sys.stderr, flush=True)
         return alt
     uris = doc.get("redirect_uris") if isinstance(doc, dict) else None

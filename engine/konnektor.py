@@ -3018,7 +3018,7 @@ class Dienst(BaseHTTPRequestHandler):
 def dienst():
     host = os.environ.get("KN_HOST", "127.0.0.1")
     port = int(os.environ.get("KN_PORT", "8772"))
-    print(f"Konnektor auf {host}:{port}, Seiten {seiten()}, Zugänge {zugaenge_pfad()}", flush=True)
+    print(f"Connector on {host}:{port}, pages {seiten()}, access list {zugaenge_pfad()}", flush=True)
     ThreadingHTTPServer((host, port), Dienst).serve_forever()
 
 
@@ -3058,7 +3058,7 @@ def konto_anlegen(schluessel, name):
 def zugaenge_zeigen():
     alle = zugaenge()
     if not alle:
-        print("Keine Zugänge angelegt.")
+        print("No access entries.")
     for t, z in alle.items():
         if "konto" in z:
             print(f"Konto {z['konto']} ({z.get('name')}, {z.get('angelegt', '?')}): {basis()}/{t}")
