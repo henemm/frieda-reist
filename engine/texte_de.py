@@ -1570,7 +1570,7 @@ TEXTE = {
     "schreiben.wissen_aendern.1": "„ziel“ muss ein Abschnitt W-… sein (Unterabschnitte W-05.x gehören zu ihrem Abschnitt).",
     "schreiben.wissen_aendern.2": "Den Abschnitt {wid} gibt es nicht.",
     "schreiben.wissen_aendern.3": "Die Überschrift „{titel}“ steht nicht in {datei}; das muss jemand in einer Sitzung richten.",
-    "schreiben.wissen_aendern.4": "Der neue Titel darf keine Raute und keinen Strich enthalten.",
+    "schreiben.wissen_aendern.4": "Der neue Titel darf nicht mit einer Raute beginnen und keinen senkrechten Strich enthalten.",
     "schreiben.wissen_aendern.5": "Die Überschrift „{neuer_titel}“ gibt es in {datei} schon.",
     "schreiben.wissen_aendern.6": "Nichts zu ändern: text (ersetzt den Inhalt, mit quelle) oder neuer_titel angeben.",
     "schreiben.wissen_schreiben.1": "„datei“ muss eine Datei unter inhalt/ sein, z. B. inhalt/wissen.md.",
