@@ -1937,8 +1937,8 @@ def einstellung_setzen(reise_dir, wer, args, heute=None):
         sprache = str(sprache).strip().lower()
         if not texte.gueltig(sprache):
             raise Ablehnung("schreiben.einstellung_setzen.3", sprache=sprache, w2=', '.join(texte.SPRACHEN))
-        if str(roh.get("sprache") or texte.VORGABE_REISE) != sprache:
-            geaendert.append(f"sprache „{roh.get('sprache') or texte.VORGABE_REISE}“ → „{sprache}“")
+        if str(roh.get("sprache") or texte.BESTAND_REISE) != sprache:
+            geaendert.append(f"sprache „{roh.get('sprache') or texte.BESTAND_REISE}“ → „{sprache}“")
             roh["sprache"] = sprache
     if not geaendert:
         raise Ablehnung("schreiben.einstellung_setzen.4")

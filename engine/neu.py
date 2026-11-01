@@ -47,12 +47,13 @@ class Fehler(Exception):
 
 
 # ---------- Hilfen ----------
-def datum_text(d, sprache=texte.VORGABE_REISE):
-    return texte.datum(d, sprache)
+def datum_text(d, sprache=None):
+    return texte.datum(d, sprache or texte.VORGABE_REISE)
 
 
-def zeitraum_text(von, bis, sprache=texte.VORGABE_REISE):
+def zeitraum_text(von, bis, sprache=None):
     """Zeitraum in Worten der Sprache der Reise: Muster und Monatsnamen stehen im Katalog (inhalt.zeitraum.*, inhalt.monat.*)."""
+    sprache = sprache or texte.VORGABE_REISE
     if von.year == bis.year and von.month == bis.month:
         return texte.t(sprache, "inhalt.zeitraum.gleicher_monat", von=von.day, bis=bis.day, monat=texte.t(sprache, f"inhalt.monat.{von.month}"), jahr=von.year)
     if von.year == bis.year:
@@ -526,7 +527,7 @@ def main(argv):
     r.add_argument("--wer", required=True, help="Name der Person, die anlegt (organisator)")
     r.add_argument("--ziel")
     r.add_argument("--pfad")
-    r.add_argument("--sprache", help="Sprachkennung (texte.SPRACHEN), Vorgabe de")
+    r.add_argument("--sprache", help="Sprachkennung (texte.SPRACHEN), Vorgabe en")
     r.add_argument("--untertitel")
     r.add_argument("--herkunft", help="Vorgabe: Gespräch in Claude Code")
     r.add_argument("--ueberblick")

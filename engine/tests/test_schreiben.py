@@ -135,7 +135,7 @@ def test_kategorie_anlegen_aendern_und_ablehnen(repo):
                         ({"kategorie": "aussicht", "art_hinweis": "x", "bezeichnung": "Aussicht"}, "art")):
         with pytest.raises(sb.Ablehnung, match=grund):
             s.schreiben("beispielreise", "kategorie_definieren", {**IDA, "args": args})
-    with pytest.raises(sb.Ablehnung, match="nichts daran soll sich ändern"):
+    with pytest.raises(sb.Ablehnung, match="nothing about it is to change"):
         s.schreiben("beispielreise", "kategorie_definieren", {**IDA, "args": {"kategorie": "aussicht", "bezeichnung": "Aussicht"}})
 
 
@@ -203,7 +203,7 @@ def test_art_aendern_und_ablehnungen(repo):
     stand = git(origin, "rev-parse", "main")
     s.vorbereiten()
     for args, text in (
-        ({"art": "hotel"}, "nichts daran soll sich ändern"),
+        ({"art": "hotel"}, "nothing about it is to change"),
         ({"art": "hotel", "grundform": "bewegung"}, "lässt sich nicht ändern"),
         ({"bezeichnung": "Neu"}, "„grundform“ fehlt"),
         ({"grundform": "aufenthalt"}, "„bezeichnung“ fehlt"),
@@ -268,7 +268,7 @@ def test_merkmal_anlegen_aendern_abschalten(repo):
         s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "bezeichnung": "Storno"}})
     with pytest.raises(sb.Ablehnung, match="gibt es bei dieser Reise nicht"):
         s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "ryokan", "bezeichnung": "Onsen"}})
-    with pytest.raises(sb.Ablehnung, match="nichts daran soll sich ändern"):
+    with pytest.raises(sb.Ablehnung, match="nothing about it is to change"):
         s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "merkmal": "preis"}})
     with pytest.raises(sb.Ablehnung, match="„stufe“ muss"):
         s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "merkmal": "preis", "stufe": "wichtig"}})
@@ -426,9 +426,9 @@ def test_dienst_nur_fuer_den_konnektor_und_mit_dem_code_der_arbeitskopie(repo):
         assert git(origin, "rev-parse", "main") == a["commit"] and "refugi" in arten_auf_main(origin)[0]
         assert warten_auf(stempel)
         code, a = post("beispielreise/art_definieren", {**KARL, "args": {"bezeichnung": "X", "grundform": "aufenthalt"}}, geheim)
-        assert code == 422 and not a["ok"] and "Organisator" in a["fehler"]
+        assert code == 422 and not a["ok"] and "organisers" in a["fehler"]
         code, a = post("beispielreise/art_definieren", anfrage, geheim)
-        assert code == 422 and "nichts daran soll sich ändern" in a["fehler"]
+        assert code == 422 and "nothing about it is to change" in a["fehler"]
         # GET /<reise>/buchung/<B-id>: gibt es die Buchung auf main? (Beleg vor dem Veröffentlichen, Issue #135)
 
         def get(pfad, geheim):
@@ -460,7 +460,7 @@ def test_sperre_je_reise_und_begrenzte_wartezeit(repo, monkeypatch):
         assert code == 429 and not a["ok"] and "gleich noch einmal" in a["fehler"]
         # eine andere Reise wartet nicht darauf (hier: gibt es im Repo nicht, aber die Sperre hält sie nicht auf)
         code, a = sb.anwenden_extern(s, "andere-reise", "art_definieren", anfrage)
-        assert code == 422 and "gibt es im Repo nicht" in a["fehler"]
+        assert code == 422 and "does not exist in the repo" in a["fehler"]
     code, a = sb.anwenden_extern(s, "beispielreise", "art_definieren", anfrage)
     assert code == 200 and a["ok"]
 
@@ -472,7 +472,7 @@ def test_ablehnungsgrund_steht_im_protokoll(repo, capsys):
     assert code == 422
     err = capsys.readouterr().err
     zeile = next(z for z in err.splitlines() if z.startswith("Abgelehnt"))
-    assert zeile.startswith("Abgelehnt art_definieren 422: ") and "Organisator" in zeile and len(zeile) < 260
+    assert zeile.startswith("Abgelehnt art_definieren 422: ") and "organisers" in zeile and len(zeile) < 260
 
 
 def _abbruch_im_anwenden(repo, monkeypatch, capsys, origin_kaputt=True):

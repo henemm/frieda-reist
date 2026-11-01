@@ -82,4 +82,10 @@ Die Ausnahmelisten in `test_texte.py` sind noch nicht leer. Was bleibt, sieht ei
 
 ## Prüfmeldungen der Reise
 
-Fehler und Hinweise der Prüfung beim Bauen („Unterkunft U-01: Ort O-09 gibt es nicht.“) stehen als Sätze unter `pruefung.<bereich>.<nummer>` im Katalog und werden im Code mit `texte.satz("pruefung.routen.6", …)` erzeugt. Als Text ist ein solcher Satz der deutsche Wortlaut (Bau-Protokoll, Tests, Bestand); er trägt Schlüssel und Werte mit, sodass der Konnektor ihn in der Sprache der Person setzt: Eine Ablehnung des Probebaus (`schreiben.bau.nichts_geaendert`) und die Hinweise nach einem Eintrag (`hinweise_teile`) reisen mit ihren Schlüsseln zum Konnektor. Werte berechneter Merkmale, die die Seite zeigt (Anschluss zwischen Optionen, Hinweis „Lage fehlt“), folgen der Sprache der Reise (`Routen.sprache`).
+Fehler und Hinweise der Prüfung beim Bauen („Unterkunft U-01: Ort O-09 gibt es nicht.“) stehen als Sätze unter `pruefung.<bereich>.<nummer>` im Katalog und werden im Code mit `texte.satz("pruefung.routen.6", …)` erzeugt. Als Text ist ein solcher Satz der Wortlaut im Rückfall der Software (`texte.VORGABE_REISE`, Englisch; Bau-Protokoll, Tests); er trägt Schlüssel und Werte mit, sodass der Konnektor ihn in der Sprache der Person setzt: Eine Ablehnung des Probebaus (`schreiben.bau.nichts_geaendert`) und die Hinweise nach einem Eintrag (`hinweise_teile`) reisen mit ihren Schlüsseln zum Konnektor. Werte berechneter Merkmale, die die Seite zeigt (Anschluss zwischen Optionen, Hinweis „Lage fehlt“), folgen der Sprache der Reise (`Routen.sprache`).
+
+## Rückfall und Bestand
+
+- `texte.VORGABE_REISE` (Englisch) ist die Sprache der Software, wo keine Sprache bekannt ist: Protokolle, Fehlertexte ohne Person, unbekannte Sprache. Lieber Englisch bei einer Person, die es nicht erwartet, als Deutsch bei einer anderen.
+- `texte.BESTAND_REISE` (Deutsch) gilt nur für eine `reise.yaml` ohne Feld `sprache:` (Reisen von vor ADR-0006). Die Software schreibt nichts in fremde Reisen; sie liest das fehlende Feld als `de`. Neue Reisen tragen `sprache:` immer in der Datei.
+- Die Tests laufen mit einer Pinnung auf Deutsch (`engine/tests/conftest.py`), weil sie deutsche Wortlaute prüfen; Tests mit `@pytest.mark.echter_rueckfall` und der Schreibdienst im Unterprozess sehen den echten Rückfall.

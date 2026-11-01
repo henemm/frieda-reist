@@ -13,8 +13,9 @@ import threading
 
 ERSTE = ("de", "en")    # stehen in der Liste vorn (Reihenfolge der Knöpfe); jede weitere Sprachdatei folgt nach dem Alphabet
 ORDNER = os.path.dirname(os.path.abspath(__file__))
-VORGABE = "en"          # Sprache einer Person, deren Wunsch nicht erkennbar ist; Reisen ohne Feld sprache bauen mit "de"
-VORGABE_REISE = "de"
+VORGABE = "en"          # Sprache einer Person, deren Wunsch nicht erkennbar ist
+VORGABE_REISE = "en"    # Sprache der Software, wo keine Sprache bekannt ist (Rückfall); lieber Englisch als eine falsche Sprache
+BESTAND_REISE = "de"    # Sprache einer Reise, deren reise.yaml kein Feld sprache hat (Bestand von vor ADR-0006): sie bleibt deutsch
 PFLICHTFELDER = ("NAME", "LOCALE", "RICHTUNG", "PLURAL", "DATUM", "DATUM_KURZ", "ZEIT", "DATUM_ZEIT", "WOCHENTAGE_KURZ", "TEXTE")
 KATEGORIEN = ("zero", "one", "two", "few", "many", "other")   # Pluralkategorien nach CLDR
 

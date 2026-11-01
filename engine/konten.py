@@ -239,9 +239,10 @@ def _begrenzt(v, schluessel, grenze):
 
 # ---------------------------------------------------------------- Codes
 
-def code_anfordern(roh, ip="", zweck="anmelden", konto=None, sprache=texte.VORGABE_REISE):
+def code_anfordern(roh, ip="", zweck="anmelden", konto=None, sprache=None):
     """Schickt einen Anmeldecode an die Adresse. Die Antwort ist für bekannte und unbekannte Adressen gleich.
     zweck „adresse“: Code an eine neue Adresse für das Konto `konto` (nur, wenn die Adresse frei ist)."""
+    sprache = sprache or texte.VORGABE_REISE
     e = adresse(roh)
     with closing(db()) as v, v:
         if zweck == "adresse":
@@ -661,7 +662,7 @@ def einladung_einloesen(token, kid):
         return z["reise"]
 
 
-def einladen(reise, schluessel, roh, rolle, name, von, titel=None, seite=None, sprache=texte.VORGABE_REISE):
+def einladen(reise, schluessel, roh, rolle, name, von, titel=None, seite=None, sprache=None):
     """Lädt eine Adresse in eine Reise ein und schickt die Mail. Hat die Adresse schon ein Konto, gilt die
     Einladung sofort. -> {"sofort": bool}. Der Link in der Mail ist ein Nachweis und bleibt geheim."""
     if not REISE_MUSTER.match(reise or "") or not PERSON_MUSTER.match(schluessel or ""):
@@ -688,6 +689,7 @@ def einladen(reise, schluessel, roh, rolle, name, von, titel=None, seite=None, s
             _einloesen(v, _hash("einladung", token), k["id"])
     titel = titel or reise
     # Sprache der Mail: die der eingeladenen Person, wenn sie ein Konto hat, sonst die Sprache der Reise (Parameter)
+    sprache = sprache or texte.VORGABE_REISE
     if k and texte.gueltig(k["sprache"]):
         sprache = k["sprache"]
     zeilen = [texte.t(sprache, "mail.einladung.anrede", name=n), "",

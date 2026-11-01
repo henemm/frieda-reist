@@ -3,7 +3,7 @@
 Hintergrund und Entscheidungen: docs/produkt.md (26.10.2026). Die Zuordnung der Inhalte (Überschrift
 -> ID) bleibt in reise.json; hier steht, was die KI sicher lesen und ändern soll, ohne Inhalte zu berühren:
 
-  sprache     de | en | … (texte.SPRACHEN), Vorgabe de: Sprache der Seite, des Kalenders und aller Texte, die in Dateien der Reise landen (ADR-0006)
+  sprache     de | en | … (texte.SPRACHEN), ohne Feld de (Bestand; neue Reisen bekommen es immer): Sprache der Seite, des Kalenders und aller Texte, die in Dateien der Reise landen (ADR-0006)
   zeitraum    {von, bis} als Datum; schon in der Idee bekannt, bevor es einen Plan gibt (Paket H)
   status      idee | planung | fest | unterwegs | danach | archiv, mit Verlauf (datum, wert, wer, grund)
   personen    {schluessel: {name, rolle, reist, notiz}}; Rollen gast < mitwirkend < organisator
@@ -173,19 +173,23 @@ def reise_pfad(titel, jahr=None):
 
 
 def sprache_von(reise_dir):
-    """Sprache einer Reise aus ihrer reise.yaml (Vorgabe de): in dieser Sprache schreibt die Software in Dateien der Reise."""
+    """Sprache einer Reise aus ihrer reise.yaml: in dieser Sprache schreibt die Software in Dateien der Reise. Ohne Feld sprache
+    gilt der Bestand (texte.BESTAND_REISE), bei einer unbekannten Sprache oder ohne lesbare Datei der Rückfall (texte.VORGABE_REISE)."""
     try:
         text = (Path(reise_dir) / "reise.yaml").read_text(encoding="utf-8")
     except OSError:
         return texte.VORGABE_REISE
     m = re.search(r"^sprache:\s*['\"]?([A-Za-z-]+)", text, re.M)
-    return m.group(1).lower() if m and texte.gueltig(m.group(1).lower()) else texte.VORGABE_REISE
+    if not m:
+        return texte.BESTAND_REISE
+    return m.group(1).lower() if texte.gueltig(m.group(1).lower()) else texte.VORGABE_REISE
 
 
-def sprache_pruefen(wert):
-    """Sprache einer Reise (Kürzel aus texte.SPRACHEN, Vorgabe de) -> (Kürzel, None) oder (Vorgabe, Fehler)."""
+def sprache_pruefen(wert, leer=None):
+    """Sprache einer Reise (Kürzel aus texte.SPRACHEN) -> (Kürzel, None) oder (Vorgabe, Fehler). Ohne Angabe gilt leer: für eine
+    neue Reise die Vorgabe (Englisch), beim Lesen einer reise.yaml ohne Feld der Bestand (texte.BESTAND_REISE)."""
     if wert is None or wert == "":
-        return texte.VORGABE_REISE, None
+        return leer or texte.VORGABE_REISE, None
     if not isinstance(wert, str) or not texte.gueltig(wert.strip().lower()):
         return texte.VORGABE_REISE, texte.satz("pruefung.reise.sprache_unbekannt", wert=wert, bekannt=", ".join(texte.SPRACHEN))
     return wert.strip().lower(), None
@@ -331,9 +335,9 @@ class Reise:
         return e
 
     def sprache(self, wert):
-        """Sprache der Reise (ADR-0006): Kürzel aus texte.SPRACHEN, Vorgabe de (Bestand). Sie bestimmt die Hülle der Seite,
-        den Startwert des Umschalters und alles, was die Software in Dateien der Reise schreibt."""
-        kuerzel, fehler = sprache_pruefen(wert)
+        """Sprache der Reise (ADR-0006): Kürzel aus texte.SPRACHEN; fehlt das Feld, gilt ausdrücklich der Bestand (de). Sie bestimmt
+        die Hülle der Seite, den Startwert des Umschalters und alles, was die Software in Dateien der Reise schreibt."""
+        kuerzel, fehler = sprache_pruefen(wert, texte.BESTAND_REISE)
         if fehler:
             self.fehl(fehler)
         return kuerzel

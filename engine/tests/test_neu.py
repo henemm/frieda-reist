@@ -27,7 +27,7 @@ def test_neue_reise_mit_sprache(tmp_path):
     r = anlegen(tmp_path, sprache="en")
     assert yaml.safe_load((r / "reise.yaml").read_text(encoding="utf-8"))["sprache"] == "en"
     assert bauen.bauen(r, tmp_path / "dist")["reise"]["sprache"] == "en"
-    # ohne Angabe gilt die Vorgabe de; eine unbekannte Sprache lehnt das Anlegen ab
+    # ohne Angabe gilt der Rückfall (Test unten); eine unbekannte Sprache lehnt das Anlegen ab
     r2 = anlegen(tmp_path, pfad="zweite-reise")
     assert yaml.safe_load((r2 / "reise.yaml").read_text(encoding="utf-8"))["sprache"] == "de"
     with pytest.raises(neu.Fehler, match="sprache: unbekannt"):
@@ -271,3 +271,30 @@ def test_frage_schliessen_schreibt_in_der_sprache_der_reise(tmp_path):
         zeile = [z for z in (r / "offene-fragen.md").read_text(encoding="utf-8").splitlines() if z.startswith("| F-01")][0]
         assert f"{wort} {datum}: Ida, Tal gewählt" in zeile, zeile
         assert titel.startswith("F-01")
+
+
+# ---------- Rückfall der Software und Bestand (texte.VORGABE_REISE, texte.BESTAND_REISE) ----------
+
+@pytest.mark.echter_rueckfall
+def test_rueckfall_ist_englisch_und_neue_reisen_tragen_die_sprache_ausdruecklich(tmp_path):
+    import texte
+    assert texte.VORGABE_REISE == "en" and texte.BESTAND_REISE == "de"
+    r = anlegen(tmp_path)   # ohne Angabe
+    roh = yaml.safe_load((r / "reise.yaml").read_text(encoding="utf-8"))
+    assert roh["sprache"] == "en"                                    # steht in der Datei, kein stilles Verlassen auf eine Vorgabe
+    assert "February 2027" in neu.zeitraum_text(VON, BIS)            # ohne Sprache: Rückfall
+    assert bauen.bauen(r, tmp_path / "dist")["reise"]["sprache"] == "en"
+
+
+@pytest.mark.echter_rueckfall
+def test_reise_ohne_feld_sprache_bleibt_deutsch(tmp_path):
+    import reise
+    r = anlegen(tmp_path, sprache="de")
+    y = r / "reise.yaml"
+    y.write_text("".join(z for z in y.read_text(encoding="utf-8").splitlines(True) if not z.startswith("sprache:")), encoding="utf-8")
+    assert "sprache:" not in y.read_text(encoding="utf-8")
+    assert reise.sprache_von(r) == "de"                              # Bestand von vor ADR-0006
+    assert bauen.bauen(r, tmp_path / "dist")["reise"]["sprache"] == "de"
+    y.write_text(y.read_text(encoding="utf-8") + "sprache: xx-unbekannt\n", encoding="utf-8")
+    assert reise.sprache_von(r) == "en"                              # unbekannte Sprache: Rückfall, nicht Deutsch
+    assert reise.sprache_von(tmp_path / "gibt-es-nicht") == "en"     # keine lesbare Datei: Rückfall
