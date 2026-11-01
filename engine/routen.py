@@ -65,7 +65,8 @@ def zahlung_schluessel(text):
     return t if t in ZAHLUNG else ZAHLUNG_ALIAS.get(t)
 BUCHUNG_DATEN = ("frist", "storno_bis", "gebucht_am", "ab")
 # Zeitpunkt an einer Bewegung (ab, an; Issue #135): Uhrzeit HH:MM am Tag der Strecke oder JJJJ-MM-TTTHH:MM mit Zeitzone
-# (+01:00, Z); die Software prüft nur die Form und meldet, wenn eine Strecke abfährt, bevor die vorige ankommt (Anschluss)
+# (+01:00, Z); die Software prüft nur die Form und meldet, wenn eine Strecke abfährt, bevor die vorige ankommt (Anschluss;
+# eine Uhrzeit ohne Datum ist Ortszeit und wird mit der Uhrzeit eines Zeitpunkts am Ort verglichen)
 ZEIT_MUSTER = re.compile(r"^(?:(\d{4}-\d{2}-\d{2})T)?(\d{2}):(\d{2})(Z|[+-]\d{2}:\d{2})?$")
 
 
@@ -1218,10 +1219,13 @@ class Routen:
                 anfang = von
             if warnen and von and pos and von != pos:
                 self.warne(tid, texte.satz("pruefung.routen.113", tid=tid, w1=self.ort_name(pos), sid=sid, w2=self.ort_name(von)))
-            # Anschluss (Issue #135): fährt diese Strecke ab, bevor die vorige ankommt? Nur gleiche Form (beide mit Datum oder beide Uhrzeit)
+            # Anschluss (Issue #135): fährt diese Strecke ab, bevor die vorige ankommt? Eine Uhrzeit ohne Datum ist Ortszeit am
+            # Tag der Strecke; steht an der anderen ein Zeitpunkt, zählt dessen Uhrzeit am Ort (Flug mit Zone, Bus danach).
             if warnen and i > 0:
                 vorige = self.strecke(strecken[i - 1][0])
                 an_, ab_ = zeitpunkt(vorige.get("an")), zeitpunkt(s.get("ab"))
+                if isinstance(an_, datetime.datetime) != isinstance(ab_, datetime.datetime) and an_ is not None and ab_ is not None:
+                    an_, ab_ = (x.time() if isinstance(x, datetime.datetime) else x for x in (an_, ab_))
                 if an_ is not None and ab_ is not None and type(an_) is type(ab_) and (an_.tzinfo is None) == (ab_.tzinfo is None) and ab_ < an_:
                     self.warne(tid, texte.satz("pruefung.routen.114", tid=tid, w1=strecken[i - 1][0], w2=vorige['an'], sid=sid, w3=s['ab']))
             pos = s.get("nach") or pos
