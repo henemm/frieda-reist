@@ -977,7 +977,7 @@ def test_ausstehende_links_zustellen(fs, monkeypatch, capsys):
                      + json.dumps({"ordner": "spaeter", "aid": "A-2", "name": "Ida", "person": "ida"}) + "\n")
     assert zustellen.ausstehend(fs["repo"], datei) == 0
     out = capsys.readouterr().out
-    assert "Zugestellt: beispielreise an Ida" in out and "https://" not in out      # Links nie ins Protokoll
+    assert "Delivered: beispielreise an Ida" in out and "https://" not in out      # Links nie ins Protokoll
     assert [json.loads(z)["ordner"] for z in datei.read_text().splitlines()] == ["spaeter"]
     m = rm.meldungen(rm.ordner_neu(), "Ida")[0]
     assert m["art"] == "neue_reise" and m["auftraege"] == ["A-1"]
@@ -988,7 +988,7 @@ def test_ausstehende_links_zustellen(fs, monkeypatch, capsys):
     (fs["seiten"] / "spaeter" / "daten.json").write_text("{}")
     assert zustellen.ausstehend(fs["repo"], datei) == 1
     out = capsys.readouterr().out
-    assert "FEHLER: spaeter nicht freigeschaltet" in out and "https://" not in out
+    assert "ERROR: spaeter not released" in out and "https://" not in out
     assert len(datei.read_text().splitlines()) == 1
 
 
@@ -1012,13 +1012,13 @@ def test_neue_reise_aus_dem_konnektor_frieda(fs, monkeypatch, capsys):
     datei.write_text(json.dumps({"ordner": "beispielreise", "aid": "A-1", "name": "Ida", "person": "ida"}) + "\n")
     assert zustellen.ausstehend(fs["repo"], datei) == 0
     out = capsys.readouterr().out
-    assert "Zugestellt: beispielreise an Ida" in out and "@" not in out
+    assert "Delivered: beispielreise an Ida" in out and "@" not in out
     assert datei.read_text() == ""
     assert konten.mitglied(ida["id"], "beispielreise") == "ida"
     einl = [json.loads(z) for z in (fs["tmp"] / "mails.jsonl").read_text().splitlines() if "karl@" in z]
     assert len(einl) == 1 and "Ida hat dich zur Reise" in einl[0]["text"]
     m = rm.meldungen(rm.ordner_neu(), "Ida")[-1]
-    assert "steht in meine_reisen" in m["text"] and "Einladungen per Mail an 1 Person" in m["text"]
+    assert "steht in meine_reisen" in m["text"] and "Einladung per Mail an 1 Person" in m["text"]
     assert "https://example.invalid/mcp/" not in m["text"]                  # kein App-Link
 
 

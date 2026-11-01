@@ -21,6 +21,8 @@ import re
 import unicodedata
 from pathlib import Path
 
+import texte
+
 MAX_DATEI = 10 * 1024 * 1024
 MAX_REISE = 100 * 1024 * 1024
 MAX_ANZAHL = 200
@@ -112,20 +114,19 @@ def datei_pfad(o, b):
 def ablegen(o, bid, name, dateiname, daten):
     """Eine Datei zu einer Buchung ablegen -> (eintrag, None) oder (None, (code, fehler))."""
     if not BID_MUSTER.match(bid or ""):
-        return None, (404, "unbekannte Buchung")
+        return None, (404, texte.satz("dienst.belege.buchung_unbekannt"))
     if not daten:
-        return None, (400, "Die Datei ist leer.")
+        return None, (400, texte.satz("dienst.belege.leer"))
     if len(daten) > MAX_DATEI:
-        return None, (413, f"Die Datei ist zu groß (höchstens {MAX_DATEI // 1024 // 1024} MB).")
+        return None, (413, texte.satz("dienst.belege.zu_gross", mb=MAX_DATEI // 1024 // 1024))
     typ = typ_erkennen(daten, dateiname)
     if typ is None:
-        return None, (415, "Erlaubt sind PDF, JPEG, PNG, WebP und HEIC (und Text als .txt aus dem Gespräch); diese Datei ist keins davon.")
+        return None, (415, texte.satz("dienst.belege.format"))
     d = lesen(o)
     if len(d["belege"]) >= MAX_ANZAHL:
-        return None, (409, f"Diese Reise hat schon {MAX_ANZAHL} Belege und nimmt keinen weiteren an; zurückgezogene zählen mit. "
-                           "Bitte den Betreiber, alte Belege aus der Ablage zu nehmen.")
+        return None, (409, texte.satz("dienst.belege.anzahl", n=MAX_ANZAHL))
     if sum(int(b.get("groesse") or 0) for b in d["belege"]) + len(daten) > MAX_REISE:
-        return None, (409, f"Der Platz für Belege dieser Reise ({MAX_REISE // 1024 // 1024} MB) ist voll.")
+        return None, (409, texte.satz("dienst.belege.platz", mb=MAX_REISE // 1024 // 1024))
     did = f"D-{d['naechste']:02d}"
     b = {"id": did, "buchung": bid, "name": name_saeubern(dateiname), "datei": f"{did}.{TYPEN[typ]}", "typ": typ, "groesse": len(daten),
          "wer": name, "hochgeladen": jetzt_iso(), "sichtbar": "beteiligte", "zurueckgezogen": None}
@@ -148,25 +149,25 @@ def aendern(o, did, roh, name, rolle):
     d = lesen(o)
     b = next((x for x in d["belege"] if x["id"] == did), None)
     if b is None:
-        return None, (404, "Diesen Beleg gibt es nicht.")
+        return None, (404, texte.satz("dienst.belege.nicht_gefunden"))
     eigener = str(b.get("wer", "")).casefold() == str(name or "").casefold()
     geaendert = False
     if "sichtbar" in roh:
         if rolle != "organisator":
-            return None, (403, "Wer einen Beleg sehen darf, legen nur Organisator:innen fest.")
+            return None, (403, texte.satz("dienst.belege.sichtbar_organisator"))
         if roh["sichtbar"] not in SICHTBAR:
-            return None, (400, "sichtbar muss beteiligte oder alle sein.")
+            return None, (400, texte.satz("dienst.belege.sichtbar_wert"))
         if b.get("sichtbar") != roh["sichtbar"]:
             b["sichtbar"] = roh["sichtbar"]
             geaendert = True
     if roh.get("zurueckziehen"):
         if not (eigener or rolle == "organisator"):
-            return None, (403, "Zurückziehen darf nur, wer den Beleg hochgeladen hat, oder eine Organisator:in.")
+            return None, (403, texte.satz("dienst.belege.zurueckziehen"))
         if not b.get("zurueckgezogen"):
             b["zurueckgezogen"] = {"wer": name, "zeit": jetzt_iso()}
             geaendert = True
     if not geaendert:
-        return None, (400, "Nichts zu ändern (sichtbar: beteiligte | alle, zurueckziehen: true).")
+        return None, (400, texte.satz("dienst.belege.nichts"))
     speichern(o, d)
     return b, None
 

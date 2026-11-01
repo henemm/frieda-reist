@@ -961,7 +961,7 @@ def wert_eintragen(reise_dir, wer, args, heute=None):
     elif ziel.startswith(("U-", "A-")):
         u = (route.get("unterkuenfte" if ziel.startswith("U-") else "aufenthalte") or {}).get(ziel)
         if u is None:
-            raise Ablehnung("schreiben.wert_eintragen.2", w1='Die Unterkunft' if ziel.startswith('U-') else 'Den Aufenthalt', ziel=ziel)
+            raise Ablehnung("schreiben.wert_eintragen.2" if ziel.startswith("U-") else "schreiben.wert_eintragen.2b", ziel=ziel)
         krit = (route.get("merkmale") or {}).get(u.get("art")) or []
         heutige = u.get("merkmale") or {}
     else:

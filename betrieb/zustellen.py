@@ -27,6 +27,7 @@ def ausstehend(wurzel, datei, seiten=None, freischalten=None):
     sys.path.insert(0, str(Path(wurzel) / "engine"))
     import konten  # noqa: E402
     import rueckmeldungen as rm  # noqa: E402
+    import texte  # noqa: E402
     p = Path(datei)
     if not p.exists():
         return 0
@@ -46,6 +47,8 @@ def ausstehend(wurzel, datei, seiten=None, freischalten=None):
             continue
         auftrag = auftraege.get(e["aid"]) or {}
         mit_konto = bool(auftrag.get("konto_id"))
+        sprache = ((auftrag.get("daten") or {}).get("neue_reise") or {}).get("sprache")   # Meldung und Einladung: Sprache der neuen Reise
+        sprache = sprache if texte.gueltig(sprache or "") else texte.VORGABE_REISE
         aufruf = [freischalten, e["ordner"]] + ([] if mit_konto else ["--person", e["person"]])
         r = subprocess.run(aufruf, capture_output=True, text=True)
         links = dict(z.split(": ", 1) for z in r.stdout.splitlines() if z.startswith(("Seite: ", "Claude-App: ")))
@@ -53,7 +56,7 @@ def ausstehend(wurzel, datei, seiten=None, freischalten=None):
             fehlschlaege += 1
             # Links sind geheim: nur die Fehlerzeilen ins Protokoll
             fehler = [z for z in (r.stdout + r.stderr).splitlines() if not z.startswith(("Seite: ", "Claude-App: "))]
-            print(f"FEHLER: {e['ordner']} nicht freigeschaltet: {' '.join(fehler)[-300:]}")
+            print(f"ERROR: {e['ordner']} not released: {' '.join(fehler)[-300:]}")
             rest.append(zeile)
             continue
         titel = (json.loads(daten.read_text(encoding="utf-8")).get("reise") or {}).get("titel", e["ordner"])
@@ -65,26 +68,24 @@ def ausstehend(wurzel, datei, seiten=None, freischalten=None):
                     if x["schluessel"] in eingeladen:
                         continue
                     konten.einladen(e["ordner"], x["schluessel"], x["email"], x["rolle"], x["name"], e["name"],
-                                    titel=titel, seite=links["Seite"])
+                                    titel=titel, seite=links["Seite"], sprache=sprache)
                     eingeladen.add(x["schluessel"])
                     e["eingeladen"] = sorted(eingeladen)
             except konten.KontoFehler as f:
                 fehlschlaege += 1
-                print(f"FEHLER: {e['ordner']}: Konto oder Einladung: {f}")
+                print(f"ERROR: {e['ordner']}: account or invitation: {f}")
                 rest.append(json.dumps(e, ensure_ascii=False))
                 continue
             n = len(auftrag.get("einladen") or [])
             rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [e["name"]], "neue_reise", e["ordner"],
-                               f"Deine neue Reise „{titel}“ ist angelegt (Status Idee) und steht in meine_reisen. "
-                               f"Seite: {links['Seite']}"
-                               + (f" · Einladungen per Mail an {n} {'Person' if n == 1 else 'Personen'} verschickt."
+                               texte.t(sprache, "dienst.zustellen.konto", titel=titel, seite=links["Seite"])
+                               + (texte.t(sprache, "dienst.zustellen.einladungen_eine" if n == 1 else "dienst.zustellen.einladungen_viele", n=n)
                                   if n else ""), auftraege=[e["aid"]])
         else:
             rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [e["name"]], "neue_reise", e["ordner"],
-                               f"Deine neue Reise „{titel}“ ist angelegt (Status Idee). Seite: {links['Seite']} · Link für "
-                               f"die Claude-App, nur für dich, einmal als eigenen Konnektor eintragen: {links['Claude-App']}",
+                               texte.t(sprache, "dienst.zustellen.app", titel=titel, seite=links["Seite"], link=links["Claude-App"]),
                                auftraege=[e["aid"]])
-        print(f"Zugestellt: {e['ordner']} an {e['name']}")
+        print(f"Delivered: {e['ordner']} an {e['name']}")
     p.write_text("".join(z + "\n" for z in rest), encoding="utf-8")
     return fehlschlaege
 

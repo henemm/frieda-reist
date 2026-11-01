@@ -207,7 +207,7 @@ def test_jede_sprache_steht_in_den_modullisten_des_deploys():
 # ---------- Leitplanken: keine deutschen Literale und keine Sprachweichen im Code ----------
 
 PY_DATEIEN = ["konnektor.py", "schreiben.py", "rueckmeldungen.py", "anmeldung.py", "konten.py", "kalender.py", "waechter.py",
-              "routen.py", "bauen.py", "neu.py", "reise.py"]
+              "routen.py", "bauen.py", "neu.py", "reise.py", "belege.py", "instanz.py", "gpx.py", "oauth.py"]
 ALLE_DATEIEN = ["vorlage.html"] + PY_DATEIEN
 
 # Erlaubte Zahl deutscher Literale je Datei. Jedes Paket der Mehrsprachigkeit kürzt seinen Bereich; Einträge dürfen nur
@@ -215,6 +215,7 @@ ALLE_DATEIEN = ["vorlage.html"] + PY_DATEIEN
 AUSNAHMEN = {
     "vorlage.html": 2, "konnektor.py": 5, "schreiben.py": 4, "rueckmeldungen.py": 17, "anmeldung.py": 0, "konten.py": 1,
     "kalender.py": 0, "waechter.py": 5, "routen.py": 6, "bauen.py": 11, "neu.py": 19, "reise.py": 4,
+    "belege.py": 0, "instanz.py": 0, "gpx.py": 1, "oauth.py": 5,
 }
 # Treffer von Sprachweichen und festen Locale-Strings (Grep-Test); ebenfalls nur kleiner werdend
 WEICHEN_AUSNAHMEN = {datei: 0 for datei in ALLE_DATEIEN}

@@ -1265,10 +1265,7 @@ def dienst_anfrage(methode, pfad, daten):
         with urllib.request.urlopen(req, timeout=10) as r:
             return json.loads(r.read()), None
     except urllib.error.HTTPError as e:
-        try:
-            return None, json.loads(e.read()).get("fehler", f"Fehler {e.code}")
-        except (json.JSONDecodeError, AttributeError):
-            return None, tk("konnektor.ausgabe.schreib_anfrage.1", w1=e.code)
+        return None, dienst_fehler(e)
     except (urllib.error.URLError, OSError):
         return None, tk("konnektor.dienst_anfrage.1")
 
@@ -1317,6 +1314,17 @@ def buchung_im_repo(reise, bid):
         return None, tk("konnektor.schreib_anfrage.1")
 
 
+def dienst_fehler(e):
+    """Fehlerantwort des Rückmeldedienstes (HTTPError) -> Satz in der Sprache der Person: Schlüssel und Werte, die der Dienst mitschickt,
+    sonst sein Text, sonst die Nummer des Fehlers."""
+    try:
+        antwort = json.loads(e.read())
+        werte = {n: texte.wert_aus_json(v) for n, v in (antwort.get("werte") or {}).items()}
+        return texte.Satz(antwort.get("fehler") or tk("konnektor.ausgabe.schreib_anfrage.1", w1=e.code), antwort.get("fehler_code"), werte)
+    except (json.JSONDecodeError, AttributeError, UnicodeDecodeError):
+        return tk("konnektor.ausgabe.schreib_anfrage.1", w1=e.code)
+
+
 def beleg_senden(reise, bid, name, dateiname, daten, im_repo=False):
     """Datei an den Rückmeldedienst (einziger Schreiber der Ablage): POST /<reise>/belege/<B-id>, Body ist die Datei. -> (antwort, fehler)
     im_repo: die Buchung ist im Repo geprüft, aber noch nicht veröffentlicht (gerade angelegt); der Dienst nimmt sie dann trotzdem an."""
@@ -1328,10 +1336,7 @@ def beleg_senden(reise, bid, name, dateiname, daten, im_repo=False):
         with urllib.request.urlopen(req, timeout=30) as r:
             return json.loads(r.read()), None
     except urllib.error.HTTPError as e:
-        try:
-            return None, json.loads(e.read()).get("fehler", f"Fehler {e.code}")
-        except (json.JSONDecodeError, AttributeError):
-            return None, tk("konnektor.ausgabe.schreib_anfrage.1", w1=e.code)
+        return None, dienst_fehler(e)
     except (urllib.error.URLError, OSError):
         return None, tk("konnektor.dienst_anfrage.1")
 
@@ -1757,7 +1762,8 @@ def einladen_per_mail(reise, d, o, wer, args, name, rolle, schluessel, neu, noti
     Einladung über engine/konten.py (Mail mit Hinweis zum Anmelden, gilt sofort, wenn die Adresse ein Konto hat)."""
     try:
         r = konten.einladen(reise, schluessel, email, rolle, name, wer["name"],
-                            titel=((d or {}).get("reise") or {}).get("titel"), seite=seitenlinks().get(reise))
+                            titel=((d or {}).get("reise") or {}).get("titel"), seite=seitenlinks().get(reise),
+                            sprache=((d or {}).get("reise") or {}).get("sprache"))   # die Mail in der Sprache der Reise
     except konten.KontoFehler as f:
         return tk("konnektor.ausgabe.einladen_per_mail.1", f=f), True
     if neu:

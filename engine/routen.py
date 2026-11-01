@@ -1020,9 +1020,9 @@ class Routen:
             return {}
         f = set(s["fehlend"])
         werte = {"gehzeit": dauer(s["min"]) if s["min"] and "min" not in f else None,
-                 "laenge": f"{s['km']:g} km".replace(".", ",") if s["km"] and "km" not in f else None,
+                 "laenge": self.t("seite.auto.laenge", km=f"{s['km']:g}".replace(".", self.t("seite.auto.dezimaltrenner"))) if s["km"] and "km" not in f else None,
                  "hoehenmeter": f"↑ {s['auf']:.0f} m, ↓ {s['ab']:.0f} m" if s["auf"] and not {"auf", "ab"} & f else None,
-                 "tage": (f"{s['tage']} Tage" if s["tage"] != 1 else "1 Tag") if g == "folge" else None,
+                 "tage": (self.t("seite.auto.tage_viele", n=s["tage"]) if s["tage"] != 1 else self.t("seite.auto.tage_eins")) if g == "folge" else None,
                  "unterkuenfte": ", ".join(f"{n}× {k}" for k, n in s["unterkunftstypen"].items()) or None}
         return {k: {"wert": v, "auto": True} for k, v in werte.items() if v}
 
