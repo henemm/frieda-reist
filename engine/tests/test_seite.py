@@ -58,6 +58,7 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
             ez = v["einzelheiten"]
             assert ez["doppelt"] == 0 and not ez["fehlertext"] and not ez["nummern"] and not ez["springt"], (breite, ez)
             assert ez["kursiv"] == "normal" and ez["ohneNummern"] == "|zu teuer" and ez.get("herkunft", True), (breite, ez)
+            assert ez["iKnoepfe"] == 0, (breite, ez)      # Herkunft hinter dem Wert, kein „i“ (#58)
     assert set(e["vergleich"]) == {"390", "1200"}
     # Leiste als App: bleibt unten, wenn iOS die Höhe nach der Tastatur vergisst (800 statt 500 px), mit Tastatur über
     # ihr; im Browser ändert sich nichts (Abstand unten 12 px)
@@ -66,14 +67,14 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
     assert a["tippt"] == 488, a
     assert w == {"start": 788, "klein": 488, "tippt": 488, "zu": 488, "voll": 788}, w
     dom = json.loads((tmp_path / "dom.json").read_text(encoding="utf-8"))
-    # Wert je Datum: die Unterkunft zeigt beide Einträge; Herkunft steht hinter dem i, nicht im Text
+    # Wert je Datum: die Unterkunft zeigt beide Einträge; Herkunft steht hinter dem Wert (#58), nicht im Text
     u01 = dom["1200#U-01"]
     assert "15.5.: " in u01 and "sonst: " in u01 and "140 €" in u01
-    assert 'class="mk-i"' in u01 and '<span class="mk-q" role="tooltip" hidden="">Beispielwert, erfunden' in u01
+    assert 'class="mk-w"' in u01 and 'class="mk-i"' not in u01 and '<span class="mk-q" role="tooltip" hidden="">Beispielwert, erfunden' in u01
     # Regeln und Anschluss (Paket 4): an der Wahlstelle stehen „Setzt voraus“ und die berechnete Lücke der erfundenen V-01.c
     v01 = dom["1200#V-01"]
     assert "Setzt voraus: " in v01 and "Schließt aus: " in v01 and "(im Plan)" in v01
-    assert '<span class="mk-luecke">Lücke am Anfang: Altendorf → Bad Schandau</span>' in v01
+    assert '<button type="button" class="mk-w mk-luecke" data-mk-i="" aria-expanded="false">Lücke am Anfang: Altendorf → Bad Schandau<span' in v01
     # Bausteinseite: alle Ebenen, keine Sprungziele (die echten Stellen bleiben eindeutig), kein „null“
     b = dom["1200#bausteine"]
     for teil in ("Atom · Zustand", "Atom · Wert", "Molekül · Listenzeile", "Molekül · Frage als Zeile", "Molekül · Rückmeldung", "Molekül · Aufgabe", "Molekül · Wunschkarte", "Molekül · Kennzahlenleiste", "Organismus · Wahl-Modul", "Organismus · Tageskasten",

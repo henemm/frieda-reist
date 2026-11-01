@@ -92,13 +92,13 @@ for (const breite of [390, 1200]) {
       await zeile.click({position: {x: 12, y: 12}});
       aufgeklappt = await p.locator(`#main [data-vgl="${id}"] tr.wm-mehr`).count();
       // Aufklappen lässt die Zeile stehen, wo sie war; die Einzelheiten wiederholen weder Name noch Zustand, kein Fehlertext,
-      // keine internen Nummern; das i ist aufrecht und zeigt die Herkunft beim Darüberfahren
+      // keine internen Nummern; der Wert ist aufrecht und zeigt seine Herkunft beim Darüberfahren (kein „i“ mehr, #58)
       einzelheiten = await p.evaluate(id => { const m = document.querySelector(`#main [data-vgl="${CSS.escape(id)}"] tr.wm-mehr`), t = m.textContent;
-        const i = document.querySelector("#main .mk-i");
+        const i = document.querySelector("#main .mk-w");
         return {doppelt: m.querySelectorAll(".option, .chip, .k").length, fehlertext: /\[object |undefined|NaN/.test(t), nummern: /\b[AR]-\d{8}/.test(t),
-          kursiv: i ? getComputedStyle(i).fontStyle : "normal", ohneNummern: ohneNummern("Auftrag A-20261029-065303-b061 aus der Claude-App") + "|" + ohneNummern("zu teuer – Auftrag A-20261029-065303-b061 aus der Claude-App")}; }, id);
+          kursiv: i ? getComputedStyle(i).fontStyle : "normal", iKnoepfe: document.querySelectorAll("#main .mk-i").length, ohneNummern: ohneNummern("Auftrag A-20261029-065303-b061 aus der Claude-App") + "|" + ohneNummern("zu teuer – Auftrag A-20261029-065303-b061 aus der Claude-App")}; }, id);
       einzelheiten.springt = Math.abs((await zeile.boundingBox()).y - yVor) > 1;
-      const i = p.locator(`#main [data-vgl="${id}"] .mk-i`).first();
+      const i = p.locator(`#main [data-vgl="${id}"] .mk-w`).first();
       if (await i.count()) { await i.scrollIntoViewIfNeeded(); await p.waitForTimeout(100); await i.hover();
         einzelheiten.herkunft = await i.evaluate(x => !x.nextElementSibling.hidden && x.nextElementSibling.textContent.length > 0); await p.mouse.move(1, 1); }
     }

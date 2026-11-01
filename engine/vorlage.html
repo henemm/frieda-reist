@@ -154,13 +154,15 @@ ol.fussnoten li{margin:0 0 .25em;overflow-wrap:anywhere}
 .chip.ag-hoch,.chip.ag-ueber{background:var(--warnbg);color:var(--warn);font-weight:700}
 .chip.ag-leise{background:transparent;color:var(--mut);border:1px solid var(--line)}
 /* Lange Etiketten und Code brechen um, statt auf dem Handy seitlich überzustehen (Bildprüfung 2e): siehe .chip max-width */
-/* Atom Wert (Designsystem 2d): Wert vorn, Herkunft (Notiz, Prüfdatum, Quelle) hinter dem i; je Datum als Liste */
-.mk-unklar{color:var(--warn);font-weight:700}
-.mk-luecke{color:var(--warn)}
-.pico button.mk-i{position:relative;width:20px;height:20px;min-height:0;padding:0;margin:0 0 0 6px;border-radius:50%;border:1px solid var(--line);
-  background:var(--card);color:var(--mut);font:700 var(--t-etikett)/18px var(--font-text);font-style:normal;text-align:center;vertical-align:1px;box-shadow:none;cursor:pointer}
-.pico button.mk-i::after{content:"";position:absolute;inset:-12px}
-.pico button.mk-i[aria-expanded="true"],.pico button.mk-i:hover{background:var(--acc2);color:var(--acc);border-color:var(--acc)}
+/* Atom Wert (Designsystem 2d): Herkunft (Notiz, Prüfdatum, Quelle) hinter dem Wert selbst, erkennbar an der gepunkteten
+   Linie (Regel 3 und 7, #58; bis 1.11.2026 hinter einem „i“); je Datum als Liste */
+.pico button.mk-w{position:relative;display:inline;width:auto;min-height:0;margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none;
+  color:inherit;font:inherit;text-align:inherit;cursor:help;text-decoration:underline dotted var(--mut);text-decoration-thickness:1.5px;text-underline-offset:5px}
+.pico button.mk-w::after{content:"";position:absolute;inset:-12px -4px}
+.pico button.mk-w[aria-expanded="true"],.pico button.mk-w:hover{text-decoration-color:var(--acc)}
+.pico button.mk-w:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:3px}
+.mk-unklar,.pico button.mk-w.mk-unklar{color:var(--warn);font-weight:700}
+.mk-luecke,.pico button.mk-w.mk-luecke{color:var(--warn)}
 /* Herkunft schwebt über der Seite (auch über Tabellen mit seitlichem Rollen), Lage setzt mkZeige */
 .mk-q{position:fixed;z-index:60;width:max-content;max-width:min(22rem,calc(100vw - 32px));padding:7px 11px;border:1px solid var(--line);
   border-radius:10px;background:var(--card);color:var(--fg);box-shadow:var(--schatten,0 4px 18px rgba(0,0,0,.14));
@@ -229,6 +231,9 @@ details.weg>summary{font-size:var(--t-klein);color:var(--mut);padding:8px 0}
 /* Fläche, an der man handelt (Tageskasten): weiß, ohne Rahmen, weicher Schatten, großer Radius. Sonst gibt es auf der
    Tagesseite keine Kästen; Lesetext steht ohne Rahmen. */
 .karte.flaeche{border:0;border-radius:var(--r-gross);box-shadow:var(--schatten);padding:16px 18px}
+/* Wahl-Modul ohne Rahmen (#58): kein Kasten im Kasten, die Karten der Möglichkeiten sind die Flächen */
+.karte.wahl-modul{border:0;border-radius:0;background:none;padding:0;box-shadow:none}
+details.block>.karte.wahl-modul{padding:0 14px 12px}
 .pico .karte .k{font-size:var(--t-text)}
 @media (hover:hover){
   a.karte:hover{border-color:var(--acc)}
@@ -429,7 +434,10 @@ tr.auf .wm-pfeil{transform:rotate(90deg)}
 .wm-einzeln{margin-top:10px}
 .wm-karte{border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;background:var(--card)}
 .wm-karte.an{border-color:var(--acc);box-shadow:inset 3px 0 0 var(--acc)}
-@media (min-width:700px){.wm-karten,.wm-ansicht,.wm-wahl,.wm-anzahl,.pico details.wm-einzeln{display:none}.wm.ohne-tabelle .wm-karten{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
+/* Tabelle nur am Rechner (ab 1100 px mit Maus: planen); Tablet zeigt Karten nebeneinander ohne Umschalter, Handy Karten
+   oder Tabelle zum Umschalten (#58: am Tablet war die Tabelle breiter als der Bildschirm) */
+@media (min-width:1100px) and (pointer:fine){.wm-karten,.wm-ansicht,.wm-wahl,.wm-anzahl,.pico details.wm-einzeln{display:none}.wm.ohne-tabelle .wm-karten{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
+@media (min-width:700px) and (max-width:1099px),(min-width:700px) and (pointer:coarse){.wm-tabelle,.wm-ansicht{display:none}.wm-karten{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
 @media (max-width:699px){.wm[data-ansicht=karten] .wm-tabelle,.wm[data-ansicht=tabelle] .wm-karten{display:none}
   .pico .wm-tab th[scope=row]{white-space:normal;min-width:5.5em;max-width:6.5em;font-size:var(--t-klein);padding-left:6px;padding-right:6px}
   .pico .wm-tab td,.pico .wm-tab thead th{min-width:7.5em;padding-left:7px;padding-right:7px}}
@@ -522,7 +530,8 @@ details.quellen>summary{min-height:44px;display:flex;align-items:center;font-wei
 .mitreisende .etikett{margin-right:6px}
 .reisekopf{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
 .reisekopf h2{margin:0}
-.pico .karte.anab{padding:14px 18px}
+/* An- und Abreise: eine Zeile wie die Zeitachse, kein Kasten (#58, Regel 6: sie führt nur zum Tag) */
+.anab{display:block;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);color:var(--fg);text-decoration:none}
 .stand{display:flex;flex-direction:column;padding:16px 20px 4px}
 .stand>.etikett{margin-bottom:2px}
 .standzeile{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:44px;border-top:1px solid var(--line);color:var(--fg);text-decoration:none}
@@ -534,6 +543,7 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .tagzeilen{display:flex;flex-direction:column}
 .anab ul{margin:4px 0 0;padding:0}
 .pico .anab li{list-style:none;font-weight:600;line-height:1.35;margin:2px 0;color:var(--fg)}
+@media (hover:hover){.pico .anab:hover li{color:var(--acc)}}
 
 .tz-teil{padding:14px 0 4px}
 .tagzeile{display:grid;grid-template-columns:3.5rem minmax(0,1fr) auto auto;gap:3px 12px;align-items:baseline;padding:11px 0;border-top:1px solid var(--line);color:var(--fg);text-decoration:none}
@@ -1177,7 +1187,8 @@ function abschnittInhalt(a, ohneTitel, kennzahlen) {
   // Mit Tagesseiten ist die Nacht der Tagesseite die Heimat der Unterkunft: die Liste hier zeigt dann nur Zeilen (ADR-0003)
   if (a.route_ansicht === "tagesplan" && PLAN_DA) tagesplan(s);
   if (a.route_ansicht === "unterkuenfte" && PLAN_DA) (PLAN_TAGE ? unterkunftZeilen(s) : unterkuenfte(s));
-  einmal(a.bloecke).forEach((b, i) => s.append(block(b, i === 0, kennzahlen)));
+  // Ortsseite: Abschnitte als Lesetext ohne Rahmen, alle offen (#58, Regel 6); sonst aufklappbar, der erste offen
+  einmal(a.bloecke).forEach((b, i) => s.append(a.typ === "ort" ? leseAbschnitt(b, kennzahlen) : block(b, i === 0, kennzahlen)));
   return s;
 }
 
@@ -1677,7 +1688,8 @@ function giltAm(v, datum) {
   for (const e of v.je_datum || []) if ((e.gilt || []).includes(datum)) return e;
   return v.gilt ? null : v;
 }
-// Atom Wert: der Wert, „ungeprüft“, Herkunft hinter dem i. Mit Datum (Nacht im Tag) nur der Wert für dieses Datum,
+// Atom Wert: der Wert, „ungeprüft“, Herkunft hinter dem Wert (Knopf mit gepunkteter Linie; eine Webseite bleibt Link und
+// zeigt die Herkunft beim Darüberfahren und beim Fokus). Mit Datum (Nacht im Tag) nur der Wert für dieses Datum,
 // ohne Datum bei Werten je Datum alle Einträge untereinander.
 function merkmalWert(v, datum) {
   if (v && v.je_datum && datum) {
@@ -1690,14 +1702,19 @@ function merkmalWert(v, datum) {
   const herkunft = [v.notiz, v.geprueft ? T("seite.label.geprueft") + datumKurz(v.geprueft) : "", v.quelle ? T("seite.label.quelle") + v.quelle : ""].filter(Boolean).join(" · ");
   // „unklar“ und berechnete Lücken (Anschluss) fallen auf
   const auffaellig = /^unklar$/i.test(String(v.wert)) ? "mk-unklar" : v.auto && /^Lücke/.test(String(v.wert)) ? "mk-luecke" : null;
-  return el("span", {}, v.link ? webLink(v.wert) : el("span", {class: auffaellig}, v.wert),
+  const q = herkunft ? el("span", {class: "mk-q", role: "tooltip", hidden: true}, herkunft) : null;
+  let wert;
+  if (v.link) { wert = webLink(v.wert); if (q) wert.setAttribute("data-mk-h", ""); }
+  else if (q) wert = el("button", {type: "button", class: ["mk-w", auffaellig].filter(Boolean).join(" "), "data-mk-i": "", "aria-expanded": "false"},
+    String(v.wert), el("span", {class: "unsichtbar"}, " · " + T("seite.merkmal.herkunft_zeigen")));
+  else wert = el("span", {class: auffaellig}, v.wert);
+  return el("span", {}, wert, q,
     v.am ? el("span", {class: "mk-am-tag"}, "am " + datumKurz(v.am)) : null,
-    v.ungeprueft ? chip("offen", T("seite.chip.ungeprueft"), {class: "mk-chip"}) : null,
-    herkunft ? [el("button", {type: "button", class: "mk-i", "data-mk-i": "", "aria-expanded": "false", "aria-label": T("seite.merkmal.herkunft_zeigen")}, "i"),
-      el("span", {class: "mk-q", role: "tooltip", hidden: true}, herkunft)] : null);
+    v.ungeprueft ? chip("offen", T("seite.chip.ungeprueft"), {class: "mk-chip"}) : null);
 }
-// Herkunft hinter dem i: am Rechner beim Darüberfahren (und mit der Tastatur beim Fokus), überall per Klick oder Tippen,
-// dann offen bis zum nächsten Klick, Escape oder Rollen. Das Fenster schwebt neben dem i (position: fixed).
+// Herkunft hinter dem Wert: am Rechner beim Darüberfahren (und mit der Tastatur beim Fokus), überall per Klick oder Tippen,
+// dann offen bis zum nächsten Klick, Escape oder Rollen. Das Fenster schwebt neben dem Wert (position: fixed).
+// Eine Webseite (data-mk-h) öffnet beim Tippen die Seite; ihre Herkunft zeigt nur Darüberfahren und Fokus.
 let MK_FEST = null;
 function mkZeige(b, an) {
   const q = b && b.nextElementSibling;
@@ -1716,12 +1733,13 @@ document.addEventListener("click", e => {
   mkZu();
   if (!war) { MK_FEST = b; mkZeige(b, true); }
 });
-document.addEventListener("mouseover", e => { const b = e.target.closest && e.target.closest("[data-mk-i]"); if (b && b !== MK_FEST && matchMedia("(hover:hover)").matches) mkZeige(b, true); });
-document.addEventListener("mouseout", e => { const b = e.target.closest && e.target.closest("[data-mk-i]"); if (b && b !== MK_FEST) mkZeige(b, false); });
-document.addEventListener("focusin", e => { if (e.target.matches("[data-mk-i]:focus-visible")) mkZeige(e.target, true); });
-document.addEventListener("focusout", e => { if (e.target.matches("[data-mk-i]") && e.target !== MK_FEST) mkZeige(e.target, false); });
+const MK = "[data-mk-i], [data-mk-h]";
+document.addEventListener("mouseover", e => { const b = e.target.closest && e.target.closest(MK); if (b && b !== MK_FEST && matchMedia("(hover:hover)").matches) mkZeige(b, true); });
+document.addEventListener("mouseout", e => { const b = e.target.closest && e.target.closest(MK); if (b && b !== MK_FEST) mkZeige(b, false); });
+document.addEventListener("focusin", e => { if (e.target.matches(`:is(${MK}):focus-visible`)) mkZeige(e.target, true); });
+document.addEventListener("focusout", e => { if (e.target.matches(MK) && e.target !== MK_FEST) mkZeige(e.target, false); });
 document.addEventListener("keydown", e => { if (e.key === "Escape") mkZu(); });
-window.addEventListener("scroll", () => { mkZu(); document.querySelectorAll("[data-mk-i][aria-expanded=true]").forEach(b => mkZeige(b, false)); }, {passive: true, capture: true});
+window.addEventListener("scroll", () => { mkZu(); document.querySelectorAll(`:is(${MK})[aria-expanded=true]`).forEach(b => mkZeige(b, false)); }, {passive: true, capture: true});
 function merkmalListe(kriterien, werte, datum) {
   const zeilen = (kriterien || []).filter(k => werte && werte[k.id]);
   return zeilen.length ? el("dl", {class: "mliste"}, zeilen.flatMap(k => [el("dt", {}, k.name), el("dd", {}, merkmalWert(werte[k.id], datum))])) : null;
@@ -1743,8 +1761,8 @@ const VGL = new Map();   // Schlüssel -> {offen, wahl: [Options-IDs], nur, ansi
 const vglSchluessel = (w, liste, datum) => w.id + (liste ? "~liste" : "") + (datum ? "@" + datum : "");
 const vglTeile = s => ({w: wahlZu.get(s.split(/[~@]/)[0]), liste: s.includes("~"), datum: (s.split("@")[1] || null)});
 const schmal = () => matchMedia("(max-width: 699px)").matches;
-// Möglichkeiten nebeneinander im Vergleich: Handy 2, schmaler Rechner 4, breiter Rechner 5
-const vglMax = () => schmal() ? 2 : matchMedia("(min-width: 1100px)").matches ? 5 : 4;
+// Möglichkeiten nebeneinander im Vergleich: Handy 2, Tablet 4 (Karten), Rechner 5 (Tabelle)
+const vglMax = () => schmal() ? 2 : matchMedia("(min-width: 1100px) and (pointer: fine)").matches ? 5 : 4;
 const gueltigeOptionen = w => w.optionen.filter(o => !weg(o.status));
 // Zähler „1/2“: nur Pflichtmerkmale der Reise (Paket O-5); empfohlen ist Spalte ohne Zähler, angeboten und aus bleiben außen vor
 const stufeVon = k => typeof k.stufe === "object" && k.stufe ? (k.stufe["*"] || "empfohlen") : (k.stufe || "empfohlen");
@@ -1988,7 +2006,7 @@ function optionEinzelheiten(w, o, weitere) {
 }
 
 function wahlKarte(w) {
-  const k = el("div", {class: "karte ziel", id: w.id, "data-ziel": w.id});
+  const k = el("div", {class: "karte wahl-modul ziel", id: w.id, "data-ziel": w.id});
   const gueltig = w.optionen.filter(o => !weg(o.status));
   k.append(el("div", {class: "k"}, w.titel, zid(w.id)),
     el("div", {class: "chips"}, wahlZustand(w), w.frage ? link(w.frage, frageVerweis(w.frage)) : null));
@@ -2765,7 +2783,7 @@ function reiseEnde(art, t) {   // art: anreise | abreise
   // Wege: nur Fahrten (Bahn, Bus, Flug …), die Wanderetappe des Tages gehört nicht zur An- oder Abreise
   const termine = t.fixpunkte || [], wege = t.strecken.map(x => R.strecken[x.id] || {titel: x.id}).filter(x => x.art && !summiertArt(x)).map(x => x.titel);
   const zeilen = art === "anreise" ? [...termine, ...wege] : [...wege, ...termine];
-  return el("a", {class: "karte anab vorschau", href: "#" + t.id},
+  return el("a", {class: "anab vorschau", href: "#" + t.id},
     el("span", {class: "etikett"}, T("seite.reise." + art), t.datum ? " · " + datumText(t.datum, t.wochentag) : ""),
     el("ul", {}, (zeilen.length ? zeilen : [t.titel]).map(z => el("li", {}, z))));
 }
@@ -3162,8 +3180,9 @@ function wegKurz(inhalt) {
   requestAnimationFrame(() => { if (inhalt.scrollHeight > inhalt.clientHeight + 4) knopf.hidden = false; else inhalt.classList.remove("kurz"); });
   return knopf;
 }
+// Vorlage Leseabschnitt: Titel mit Sprechblase, Text ohne Rahmen; Orte und Karte des Abschnitts, wenn es sie gibt
 const leseAbschnitt = (b, kz) => el("div", {class: "lese-abschnitt ziel", id: b.id, "data-ziel": b.id},
-  el("div", {class: "lese-kopf"}, el("h4", {}, b.titel), zid(b.id)), reiseText(b.html, kz));
+  el("div", {class: "lese-kopf"}, el("h4", {}, b.titel), zid(b.id)), b.orte ? ortChips(b.orte) : null, wissenKarte(b.id), reiseText(b.html, kz));
 // Organismus Ebenen einer Etappe am Tag -> {weg, unterwegs, hintergrund, quellen} (fehlende Ebenen: null)
 function tagEbenen(t, etappen) {
   const teile = {weg: [], unterwegs: [], hintergrund: [], quellen: []};
@@ -3297,7 +3316,8 @@ function ansichtOrt(m, a) {
     wo.append(chip("leise", T("seite.ort.kommt_vor_chip", {plan: x.kurz, nr: t.nr, datum: datumText(t.datum, t.wochentag)}), {href: "#" + t.id}));
   if (wo.childNodes.length) m.append(el("div", {class: "z klein"}, T("seite.ort.kommt_vor_in")), wo);
   if (a.bloecke.length) m.append(el("h3", {}, T("seite.ort.highlights")));
-  for (const b of a.bloecke) m.append(block(b, false));
+  // Abschnitte als Lesetext ohne Rahmen, alle offen (#58, Regel 6): eine Ortsseite wird gelesen
+  for (const b of a.bloecke) m.append(leseAbschnitt(b));
   // Abschnitte der Recherche zu diesem Ort (25.10.2026)
   if (a.wissen) {
     m.append(el("h3", {}, T("seite.ort.aus_recherche")));
@@ -3385,9 +3405,8 @@ function ansichtWissen(m) {
       leer = false;
       m.append(el("h3", {class: "gruppe ziel", id: "weitere-wege"}, T("seite.etappen.weitere_wege")));
       m.append(el("p", {class: "meldung"}, T("seite.etappen.weitere_wege_hinweis")));
-      for (const u of ueb) m.append(el("details", {class: "block"}, el("summary", {}, u.titel, zid(u.id)),
-        el("div", {class: "inhalt", html: u.intro + u.bloecke.map(b => b.html).join("")})));
-      for (const a of weitere) m.append(abschnittKarte(a));
+      // Je Weg eine Listenzeile wie Wissen und Praxis (#58): Kennzahlen und Variante in der Unterzeile, die Kacheln stehen auf der Seite der Etappe
+      m.append(el("div", {class: "wliste"}, ...ueb.map(wissenZeile), ...weitere.map(wegZeile)));
     }
   }
   if (leer) m.append(el("div", {class: "leer"}, T("seite.leer.noch_nichts")));
@@ -3413,6 +3432,13 @@ function listenZeile(typ, sym, titel, unter, href, kennung, rechts) {
 }
 function wissenZeile(a) {
   return listenZeile(a.typ, SYM_TYP[a.typ] || "wissen", a.titel, wissenThemen(a) || null, a.id, a.id);
+}
+// Etappe als Listenzeile (Weitere Wege): Kennzahlen wie in der Leiste, dahinter die Varianten, zu denen sie gehört
+function wegZeile(a) {
+  const fahrt = fahrtVon(a.id);
+  const kz = Object.entries(a.kennzahlen || {}).map(([n, v]) => kennzahlPaar(n, v, fahrt)[1]);
+  const varianten = (a.optionen || []).map(oid => (optionZu.get(oid) || [])[1]).filter(Boolean).map(o => T("seite.chip.variante", {titel: o.titel}));
+  return listenZeile("etappe", "etappen", a.titel, [...kz, ...varianten].join(" · ") || null, a.id, a.id);
 }
 /* ---------- Vorlage „Zu tun“ (bis 28.10.2026 „Offen“; Seitenordnung): Sammelansichten mit eigener Aufgabe ----------
    Zu entscheiden (jede offene Wahl, an welchem Element sie auch hängt) · Zu buchen je Nacht · Aufgaben · Fragen ·
@@ -3626,7 +3652,7 @@ function ansichtBausteine(m) {
     .flatMap(x => Object.values(x || {})) : [];
   const echt = (pruef, muster) => alleWerte.find(pruef) || {...muster, notiz: [muster.notiz, "Muster"].filter(Boolean).join(" · ")};
   const jeDatum = echt(v => v.je_datum, {wert: "120 €", je_datum: [{wert: "140 €", gilt: ["2027-05-15"]}]});
-  teil("Atom", "Wert", "Vorn der Wert, Herkunft hinter dem i.",
+  teil("Atom", "Wert", "Der Wert; Herkunft hinter dem Wert selbst (gepunktete Linie), an einer Webseite beim Darüberfahren.",
     fall("bekannt", merkmalWert(echt(v => v.quelle && !v.ungeprueft && !v.je_datum && !/^unklar$/i.test(v.wert), {wert: "inklusive", quelle: "Muster"}))),
     fall("ungeprüft", merkmalWert(echt(v => v.ungeprueft && !v.je_datum, {wert: "85 €", ungeprueft: true}))),
     fall("unklar", merkmalWert(echt(v => /^unklar$/i.test(v.wert), {wert: "unklar", notiz: "noch zu prüfen"}))),
@@ -3752,7 +3778,7 @@ function ansichtBausteine(m) {
     teil("Organismus", "Wahl-Modul: Teile", "Einstieg (Knopf), Vergleich, eine Option als Block mit Zustandschips und „Fehlt noch“, die Einzelheiten einer aufgeklappten Zeile.",
       el("div", {class: "chips"}, wahlEinstieg(w, true), optionChips(w, o)), fehltZeile(w, o) || el("p", {class: "meldung"}, "Nichts fehlt (oder die Wahl ist entschieden)."),
       wahlVergleich(w, true), el("div", {class: "karte"}, optionBlock(w, o, false, true)), el("div", {class: "karte"}, optionEinzelheiten(w, o)));
-    teil("Organismus", "Wahl-Modul", "Alles zusammen als Karte: Einstieg, Vergleich (Tabelle am Rechner, Karten am Handy) und Optionen.", wahlKarte(w)); }
+    teil("Organismus", "Wahl-Modul", "Alles zusammen ohne Rahmen: Einstieg, Vergleich (Tabelle am Rechner, Karten an Handy und Tablet) und Optionen; die Frage mit Namen.", wahlKarte(w)); }
   else teil("Organismus", "Wahl-Modul", "Diese Reise hat keine Wahlstelle (Muster entfällt).");
   const abschnittE = abschnitte.find(a => a.typ === "etappe");
   if (abschnittE) teil("Organismus", "Abschnitt als Karte", "Etappe oder Abschnitt des Wissens als Vorschau mit Kennzahlen.", abschnittKarte(abschnittE));

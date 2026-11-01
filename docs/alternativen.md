@@ -93,7 +93,7 @@ Manche Optionen gehen nur zusammen mit einer anderen (der Bus fährt nur, wenn d
 
 ## Anschluss (berechnet)
 
-Bei Reiseteilen (Arten der Grundform `folge`) berechnet der Generator das Merkmal **Anschluss**: Passt die Option an ihre Stelle im aktuellen Plan? Verglichen wird, wo der Plan davor endet, mit dem Anfang ihres ersten Tages (Start der ersten Strecke, sonst Ort der Nacht), und wo sie endet, mit dem, was danach kommt (nächster Tag oder Reiseende). Werte: „nahtlos“, „Lücke am Anfang: A → B“, „Lücke am Ende: A → B“, bei einer Option ohne Tage „Lücke: A → B“. Hinter dem „i“ steht, wovon die Rechnung ausgeht. Die Lücken sind dieselben, die der Plan als Warnung meldet, sobald die Option gilt; so sieht man vor der Entscheidung, welche Variante einen fehlenden Weg mitbringt. Optionen ohne `folge` (noch nicht ausgearbeitet) und Wahlstellen außerhalb des aktuellen Plans bekommen keinen Wert.
+Bei Reiseteilen (Arten der Grundform `folge`) berechnet der Generator das Merkmal **Anschluss**: Passt die Option an ihre Stelle im aktuellen Plan? Verglichen wird, wo der Plan davor endet, mit dem Anfang ihres ersten Tages (Start der ersten Strecke, sonst Ort der Nacht), und wo sie endet, mit dem, was danach kommt (nächster Tag oder Reiseende). Werte: „nahtlos“, „Lücke am Anfang: A → B“, „Lücke am Ende: A → B“, bei einer Option ohne Tage „Lücke: A → B“. Hinter dem Wert (gepunktete Linie) steht, wovon die Rechnung ausgeht. Die Lücken sind dieselben, die der Plan als Warnung meldet, sobald die Option gilt; so sieht man vor der Entscheidung, welche Variante einen fehlenden Weg mitbringt. Optionen ohne `folge` (noch nicht ausgearbeitet) und Wahlstellen außerhalb des aktuellen Plans bekommen keinen Wert.
 
 ## Darstellung auf der Seite
 
@@ -104,7 +104,7 @@ Jede Wahlstelle mit mindestens zwei gültigen Optionen hat dasselbe **Wahl-Modul
 - **„nur Unterschiede“** blendet Zeilen aus, in denen alle gezeigten Optionen denselben Wert haben. Zeilen ohne jeden Wert erscheinen nie.
 - Spalten der Tabelle sind die Merkmale der Stufen „nötig“ und „gut zu wissen“; „zusätzlich“ steht in den aufgeklappten Einzelheiten, `aus` nirgends. Ein Klick auf einen Spaltenkopf sortiert, ein Klick auf die Zeile klappt die Einzelheiten auf.
 - Der Vergleich ist nur zum Lesen. Entschieden wird über Rückmeldung oder die Claude-App.
-- Jeder Wert zeigt vorn nur den Wert; Notiz, Prüfdatum und Quelle stehen hinter dem „i“. „unklar“ ist hervorgehoben, ein fehlender Wert heißt „offen“.
+- Jeder Wert zeigt vorn nur den Wert; Notiz, Prüfdatum und Quelle stehen hinter dem Wert selbst (gepunktete Linie; Tippen oder Darüberfahren zeigt sie, #58). „unklar“ ist hervorgehoben, ein fehlender Wert heißt „offen“.
 - Werte je Datum: Im Tag und im Vergleich an einer Nacht gilt der Wert für dieses Datum (mit „am …“), in der Unterkunft und in Listen stehen alle Einträge untereinander („15.5.: 140 €“, „sonst: 120 €“).
 - Veränderliche Werte ohne Prüfdatum tragen „ungeprüft“.
 - Eine berechnete Lücke (Anschluss) ist hervorgehoben wie „unklar“.
