@@ -214,9 +214,10 @@ Beide Ansichten sprechen die Sprache der Mitreisenden, nicht die des Systems:
 
 Die Kennung (Atom `zid`: T-01, V-05 …) ist die Anschrift jeder Rückmeldung. Im Alltag braucht niemand sie, deshalb steht sie nie in der Seite. Es gilt **„Symbol oder Wort, nie beides“**: Bedienelemente, die man nur vielleicht braucht, sind ein Symbol mit Tooltip; was man oft braucht, ist ein Wort ohne Symbol („Alternativen vergleichen“, Reiter, „← Plan“, „Tag 3 →“).
 
-- **Anmerken** ist deshalb überall nur die Sprechblase: Tippfläche 44 × 44 px, Symbol 1,25 rem, leer blass (Deckkraft 0,7; bei Hover und Fokus voll), mit Rückmeldungen grün gefüllt mit der Zahl oben rechts, eine offene Aufgabe als Warnpunkt unten rechts.
-- Der Tooltip (`title`) sagt es in Klartext: „Anmerken“ oder „2 Rückmeldungen · 1 Aufgabe offen“. `aria-label` nennt dazu die Kennung („Anmerken zu T-01, 2 Rückmeldungen“).
+- **Anmerken** ist deshalb überall nur die Sprechblase: Tippfläche 44 × 44 px, Symbol 1,25 rem, leer blass (Deckkraft 0,7; bei Hover und Fokus voll), mit Rückmeldungen grün gefüllt, oben rechts die Zahl der offenen (neu, Rückfrage, noch nicht gesendet), eine offene Aufgabe als Warnpunkt unten rechts. Sind alle Rückmeldungen übernommen oder verworfen, bleibt die Blase gefüllt ohne Zahl: Erledigtes verlangt nichts mehr, und niemand muss es wegklicken (1.11.2026).
+- Der Tooltip (`title`) sagt es in Klartext: „Anmerken“, „2 Rückmeldungen, 1 offen · 1 Aufgabe offen“ oder „2 Rückmeldungen, alle erledigt“. `aria-label` nennt dazu die Kennung („Anmerken zu T-01, 2 Rückmeldungen“).
 - Die Kennung selbst steht im Fenster, das sich öffnet („Zu T-01“), mit einem Knopf „Kopieren“, um im Gespräch auf eine Stelle zu zeigen. Ein Info-Zeichen „i“ gibt es nicht.
+- Im Fenster stehen offene Rückmeldungen oben, erledigte zugeklappt unter „Erledigt (n)“.
 - In Titelzeilen sitzt die Sprechblase mit Abstand am rechten Rand, damit Tippen auf den Titel sie nicht trifft.
 - Unterwegs fehlt sie in Vorschauen und an Zugeklapptem (Regel 9).
 - Das „i“ an einem Wert (Notiz, Prüfdatum, Quelle; Atom `merkmalWert`) ist etwas anderes und bleibt.
