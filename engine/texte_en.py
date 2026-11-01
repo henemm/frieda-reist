@@ -2454,4 +2454,5 @@ TEXTE = {
     "pruefung.routen.nach_buchung": "{wo}: attribute {k}: nach_buchung is true or false.",
     "konnektor.merkmale.nach_buchung": "; stays visible after booking",
     "konnektor.werkzeug.merkmal_definieren.nach_buchung": "only with fuer ding: true = the value stays visible on the page once the thing is booked (e.g. the character of a hotel); otherwise it is then folded away under “From planning” (default false)",
+    "schreiben.reise_json.unlesbar": "reise.json cannot be read; someone needs to fix it in a session.",
 }

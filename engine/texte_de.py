@@ -2454,4 +2454,5 @@ TEXTE = {
     "pruefung.routen.nach_buchung": "{wo}: Merkmal {k}: nach_buchung ist true oder false.",
     "konnektor.merkmale.nach_buchung": "; bleibt nach der Buchung sichtbar",
     "konnektor.werkzeug.merkmal_definieren.nach_buchung": "nur fuer ding: true = der Wert bleibt auf der Seite sichtbar, wenn das Ding gebucht ist (z. B. Charakter eines Hotels); sonst steht er dann zugeklappt unter „Aus der Planung“ (Vorgabe false)",
+    "schreiben.reise_json.unlesbar": "reise.json ist nicht lesbar; das muss jemand in einer Sitzung richten.",
 }

@@ -759,7 +759,7 @@ def plan_sicherstellen(reise_dir):
         try:
             cfg = json.loads(rj.read_text(encoding="utf-8"))
         except ValueError:
-            raise Ablehnung("reise.json ist nicht lesbar; das muss jemand in einer Sitzung richten.")
+            raise Ablehnung("schreiben.reise_json.unlesbar")
         if not cfg.get("routen"):
             cfg["routen"] = {"datei": "plan/routen.yaml"}
             rj.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
