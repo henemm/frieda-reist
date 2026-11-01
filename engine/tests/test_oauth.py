@@ -362,7 +362,7 @@ def test_person_entfernen(welt):
     assert "Noch keine Reise" in aufruf(u, karl["access_token"], "meine_reisen")[0]
     assert KARL_LINK not in json.loads(Path(__import__("os").environ["KN_ZUGAENGE"]).read_text())   # alter Link weg
     assert geschrieben and geschrieben[-1][1] == "person_schreiben" and geschrieben[-1][2]["args"]["schluessel"] == "karl"
-    assert geschrieben[-1][2]["args"]["rolle"] == "gast" and "fährt nicht mit" in geschrieben[-1][2]["args"]["notiz"]
+    assert geschrieben[-1][2]["args"]["rolle"] == "gast" and geschrieben[-1][2]["args"]["ausgeschieden"] == "fährt nicht mit"   # den Satz der Notiz schreibt der Schreibweg in der Sprache der Reise
 
 
 def test_niemand_uebernimmt_eine_bestehende_person(welt):
