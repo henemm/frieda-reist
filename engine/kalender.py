@@ -16,6 +16,7 @@ import datetime
 import hashlib
 import hmac
 import sys
+import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -42,8 +43,27 @@ def abo_url(basis, tok):
 
 
 def webcal(url):
-    """Dieselbe Adresse als webcal:// (öffnet auf iPhone, Mac und in Outlook direkt „Abonnieren“)."""
+    """Dieselbe Adresse als webcal:// (öffnet auf iPhone, Mac und in Outlook direkt „Abonnieren“). Apple-Geräte holen
+    webcal:// über HTTPS; scheitert das, fragen sie, ob es ohne SSL gehen soll (dann http://)."""
     return "webcal://" + url.split("://", 1)[1] if "://" in url else url
+
+
+def google(url):
+    """Link, der in Google Kalender „Kalender hinzufügen“ mit dieser Adresse öffnet (Parameter cid). Google holt das Abo
+    selbst vom Server; es muss deshalb öffentlich über HTTPS erreichbar sein."""
+    return "https://calendar.google.com/calendar/render?cid=" + urllib.parse.quote(webcal(url), safe="")
+
+
+def outlook(url, name):
+    """Link, der in Outlook im Web „Aus dem Internet abonnieren“ mit dieser Adresse öffnet (persönliche Konten;
+    Outlook für Windows und Mac öffnet den webcal-Link)."""
+    return "https://outlook.live.com/calendar/0/addfromweb?" + urllib.parse.urlencode({"url": url, "name": name})
+
+
+def etag(text):
+    """Kennung des Inhalts für bedingte Abrufe (If-None-Match): ohne DTSTAMP, der bei jedem Abruf neu ist."""
+    kern = "\r\n".join(z for z in text.split("\r\n") if not z.startswith("DTSTAMP:"))
+    return '"' + hashlib.sha256(kern.encode("utf-8")).hexdigest()[:32] + '"'
 
 
 # ---------- Einträge aus den Daten der Seite (daten.json) ----------
@@ -299,8 +319,15 @@ def ics_person(reisen, e, name=None, jetzt=None, sprache=None):
 def _kalender(liste, titel, jetzt=None):
     """liste: [(reise, eintrag)] -> iCalendar als Text."""
     jetzt = (jetzt or datetime.datetime.now(datetime.timezone.utc)).strftime("%Y%m%dT%H%M%SZ")
+    # NAME und REFRESH-INTERVAL nach RFC 7986, X-WR-CALNAME und X-PUBLISHED-TTL für Apple, Google und Outlook
     z = ["BEGIN:VCALENDAR", "VERSION:2.0", f"PRODID:{PRODID}", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
-         f"X-WR-CALNAME:{_esc(titel)}", f"REFRESH-INTERVAL;VALUE=DURATION:PT{ABO_STUNDEN}H", f"X-PUBLISHED-TTL:PT{ABO_STUNDEN}H"]
+         f"NAME:{_esc(titel)}", f"X-WR-CALNAME:{_esc(titel)}",
+         f"REFRESH-INTERVAL;VALUE=DURATION:PT{ABO_STUNDEN}H", f"X-PUBLISHED-TTL:PT{ABO_STUNDEN}H"]
+    if not liste:
+        # RFC 5545 verlangt mindestens einen Bestandteil; ein leerer Kalender (noch nichts entschieden, alles abgewählt)
+        # wäre sonst ungültig und manche Programme lehnen das Abo ab. Eine Zeitzone UTC ändert nichts an den Einträgen.
+        z += ["BEGIN:VTIMEZONE", "TZID:UTC", "BEGIN:STANDARD", "DTSTART:19700101T000000", "TZOFFSETFROM:+0000",
+              "TZOFFSETTO:+0000", "TZNAME:UTC", "END:STANDARD", "END:VTIMEZONE"]
     for reise, e in sorted(liste, key=lambda x: (str(x[1].get("tag") or x[1]["beginn"].date()), x[0], x[1]["uid"])):
         z += ["BEGIN:VEVENT", f"UID:{e['uid']}.{reise}@frieda", f"DTSTAMP:{jetzt}"]
         if e.get("beginn"):

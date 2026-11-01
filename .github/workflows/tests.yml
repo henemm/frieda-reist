@@ -26,7 +26,7 @@ jobs:
       - name: Python-Pakete
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q libcairo2
+          sudo apt-get install -y -q libcairo2 nginx-core   # nginx: Prüfung der Vorlagen (test_betrieb.py)
           pip install -r engine/requirements.txt
       - name: Playwright und Browser
         run: |

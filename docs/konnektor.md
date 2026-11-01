@@ -174,11 +174,11 @@ In einer Instanz erledigen das `betrieb/einrichten.sh`, `deploy.sh` und `freisch
 
 1. Seite bauen und veröffentlichen, sodass `<seiten>/<reise>/daten.json` existiert. Der Konnektor braucht seine Module im selben Ordner (Liste `KN_MODULE` in `betrieb/deploy.sh`, dazu `rueckmeldungen.py`).
 2. Den Dienst starten (`python3 engine/konnektor.py dienst`, z. B. als systemd-Dienst). Umgebung: `KN_SEITEN`, `KN_ZUGAENGE`, `KN_RUECKMELDEDIENST`, `KN_HOST`, `KN_PORT`, `KN_BASIS` (siehe Kopf von `engine/konnektor.py`).
-3. Einen Reverse-Proxy mit HTTPS davorsetzen, mit geheimem Pfad und Drossel.
+3. Einen Reverse-Proxy mit HTTPS davorsetzen, mit Drossel; der Dienst steht an der Wurzel der Adresse (Vorlage `betrieb/vorlagen/nginx-konnektor.conf`, #163).
    Soll `person_einladen` Links ausstellen, braucht der Dienst `KN_BASIS` und Schreibrecht auf den Ordner von `KN_ZUGAENGE` (bei systemd `ReadWritePaths`, siehe `betrieb/vorlagen/konnektor.service`; Einrichtung in `docs/betrieb.md`). Ohne beides lehnt das Werkzeug mit einem Hinweis ab.
 4. Links anlegen:
    ```
-   KN_BASIS=https://<domain>/<pfad> python3 engine/konnektor.py zugang <reise> <person>
+   KN_BASIS=https://<domain> python3 engine/konnektor.py zugang <reise> <person>
    … zugang beispielreise karl
    … zugang beispielreise mitwirkend      # Link ohne feste Person, fragt nach dem Vornamen
    ```

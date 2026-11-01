@@ -8,13 +8,19 @@ import pytest
 PRAEFIXE = ("FR_", "RM_", "KN_", "EA_", "VF_", "FS_", "WA_")
 
 
-@pytest.fixture(autouse=True)
-def ohne_instanz(tmp_path, monkeypatch):
+def instanz_leeren(monkeypatch, tmp_path):
+    """Entfernt die Umgebung der Instanz. Auch für Fixtures mit größerem Geltungsbereich (scope="module"), die vor
+    ohne_instanz laufen: mit pytest.MonkeyPatch.context() aufrufen (sonst griffe z. B. FR_UMZUG_NACH des Servers)."""
     for name in list(os.environ):
         if name.startswith(PRAEFIXE):
             monkeypatch.delenv(name)
     monkeypatch.setenv("FR_WURZEL", str(tmp_path / "keine-instanz"))   # keine betrieb/einstellungen.env
     monkeypatch.setenv("FR_KONTEN", str(tmp_path / "_konten"))
+
+
+@pytest.fixture(autouse=True)
+def ohne_instanz(tmp_path, monkeypatch):
+    instanz_leeren(monkeypatch, tmp_path)
 
 
 @pytest.fixture(autouse=True)

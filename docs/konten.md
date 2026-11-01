@@ -119,7 +119,7 @@ Umgebung:
 
 | Variable | Bedeutung |
 |---|---|
-| `FR_BASIS` | Öffentliche Adresse von Frieda (für Links in Mails) |
+| `FR_BASIS` | Öffentliche Adresse von Frieda (für Links in Mails, OAuth); gleich `FR_KN_ADRESSE` der Instanz, ohne Pfad (`docs/betrieb.md`, nginx-Vorlage des Konnektors) |
 | `FR_SMTP_HOST`, `FR_SMTP_PORT` (587), `FR_SMTP_USER`, `FR_SMTP_PASS`, `FR_ABSENDER` | Mailversand mit STARTTLS |
 | `FR_MAIL_DATEI` | Mails stattdessen als JSON-Zeilen in diese Datei (Tests, Probebetrieb) |
 | `FR_OAUTH_REDIRECTS` | weitere erlaubte Redirect-URIs der Claude-App (durch Komma getrennt) |

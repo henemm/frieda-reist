@@ -1295,9 +1295,11 @@ def test_gemeinsame_frage_bleibt_offen_bis_alles_gewaehlt(repo):
 
 def test_zeitgrenzen_liegen_unter_der_des_konnektors():
     import re
-    conf = (WURZEL / "betrieb" / "vorlagen" / "nginx-konnektor.conf").read_text()
-    grenze = int(re.search(r"proxy_read_timeout (\d+)s", conf).group(1))
-    assert sb.ZEIT_GESAMT + sb.ZEIT_PRUEFUNG < grenze
+    # Jede Lesefrist der Konnektor-Vorlage (Wurzel und alter Pfad, #163) liegt über dem längsten Schreibvorgang
+    vorlagen = WURZEL / "betrieb" / "vorlagen"
+    grenzen = [int(g) for d in ("nginx-konnektor.conf", "nginx-konnektor.inc")
+               for g in re.findall(r"proxy_read_timeout (\d+)s", (vorlagen / d).read_text())]
+    assert len(grenzen) == 2 and all(sb.ZEIT_GESAMT + sb.ZEIT_PRUEFUNG < g for g in grenzen), grenzen
     assert sb.ZEIT_SPERRE <= sb.ZEIT_GESAMT
 
 

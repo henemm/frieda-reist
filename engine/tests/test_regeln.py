@@ -25,8 +25,9 @@ IDA, MAX, KARL, KIM = "i" * 32, "x" * 32, "k" * 32, "q" * 32
 ALLE_BAUSTEINE = ["varianten", "karte", "tagesseiten", "rueckmeldungen", "fragen", "aufgaben", "wuensche"]
 
 
-def reise_bauen(tmp, status="planung", bausteine=None, luecke=False, regeln=None, darstellung=None, fest=False):
+def reise_bauen(tmp, status="planung", bausteine=None, luecke=False, regeln=None, darstellung=None, fest=False, routen_ersetzen=()):
     """Beispielreise mit gewünschtem Status, Bausteinen und Darstellung bauen; Max als zweite Organisator:in, Kim als Gast.
+    routen_ersetzen: Paare (alt, neu) für plan/routen.yaml, je genau einmal (erfundene Abwandlungen für einen Test).
     -> Seitenordner (<seiten>/beispielreise/daten.json)"""
     quelle = tmp / "quelle"
     shutil.copytree(BEISPIEL, quelle)
@@ -51,6 +52,11 @@ def reise_bauen(tmp, status="planung", bausteine=None, luecke=False, regeln=None
         alt = '{datum: 2026-10-20, status: vorgeschlagen, wer: Claude, grund: "kürzeste Verbindung zum Bahnhof"}'
         r.write_text(r.read_text(encoding="utf-8").replace(
             alt, alt + '\n          - {datum: 2026-10-25, status: gewaehlt, wer: Ida, grund: "Test"}', 1), encoding="utf-8")
+    for alt, neu in routen_ersetzen:
+        r = quelle / "plan" / "routen.yaml"
+        text = r.read_text(encoding="utf-8")
+        assert text.count(alt) == 1, alt
+        r.write_text(text.replace(alt, neu), encoding="utf-8")
     seiten = tmp / "seiten"
     bauen.bauen(quelle, seiten / "beispielreise")
     return seiten

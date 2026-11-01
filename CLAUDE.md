@@ -37,4 +37,5 @@ Der Generator sucht Reisen in `./reisen/` des aktuellen Ordners (`--reisen`, `--
 - Braucht der Konnektor oder der Rückmeldedienst ein neues eigenes Modul, gehört es in die Liste in `betrieb/deploy.sh` (ein Test prüft das).
 - Sprache der Texte und Kommentare: Deutsch mit korrekten Umlauten.
 - Kleine, thematisch saubere Commits; Änderungen über Pull Requests.
+- Alles, was Git betrifft (Branches, Commits, Rebase, Vorspulen auf `main`, Push), entscheidet Claude selbst und ohne Rückfrage (Product Owner, 1.11.2026). „Autark umsetzen“ heißt: bis `main` ausliefern, sobald die Tests grün sind.
 - Keine privaten E-Mail-Adressen in der Geschichte: lokal `user.email` auf die GitHub-noreply-Adresse setzen und Pull Requests lokal vorspulen statt auf GitHub zusammenführen (nach grünen Tests `git push origin HEAD:main`; GitHub markiert den PR dann selbst als gemergt). Jedes Zusammenführen über GitHub trägt sonst die Konto-Adresse als Committer ein.

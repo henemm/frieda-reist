@@ -17,8 +17,9 @@ FR_ADRESSE=https://reisen.example.org
 # weiter und der Service Worker räumt den Speicher auf (docs/betrieb.md). (leer: kein Umzug)
 #FR_UMZUG_NACH=https://neu.example.org
 
-# Adresse des Konnektors für die Claude-App. (<FR_ADRESSE>/<FR_INSTANZ>-mcp)
-#FR_KN_ADRESSE=https://reisen.example.org/beispiel-mcp
+# Adresse des Konnektors (Claude-App unter /mcp, Anmeldung, Mein Konto), ohne Pfad: Er steht an der Wurzel. Die
+# Reiseseiten brauchen dieselbe Adresse für die Anmeldung; FR_BASIS in konten.env hat denselben Wert. (<FR_ADRESSE>)
+#FR_KN_ADRESSE=https://reisen.example.org
 
 # Ordner auf dem Server. (/srv/<FR_INSTANZ>; darunter _rueckmeldungen, _dienst, _konnektor, _konten)
 #FR_SEITEN=/srv/beispiel

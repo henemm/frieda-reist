@@ -59,7 +59,7 @@ def test_einstellungen_aus_datei_mit_vorgaben(tmp_path):
     assert r.returncode == 0, r.stderr
     assert w["FR_INSTANZ"] == "probe" and w["FR_SEITEN"] == "/srv/probe" and w["FR_ABLAGE"] == "/srv/probe/_rueckmeldungen"
     assert w["RM_ABLAGE"] == "/srv/probe/_rueckmeldungen" and w["KN_ZUGAENGE"] == "/srv/probe/_konnektor/zugaenge.json"
-    assert w["FR_KN_ADRESSE"] == w["KN_BASIS"] == "https://reisen.example.org/probe-mcp"
+    assert w["FR_KN_ADRESSE"] == w["KN_BASIS"] == "https://reisen.example.org"   # Konnektor an der Wurzel (#163)
     assert w["FR_PYTHON"] == f"{tmp_path}/engine/.venv/bin/python"
     assert w["FR_UMZUG_NACH"] == ""
     r2, w2 = einstellungen(tmp_path, "FR_UMZUG_NACH=https://neu.example.org\n")   # wird an bauen.py weitergereicht (exportiert)
@@ -460,6 +460,62 @@ def test_deploy_mit_warnung_im_plan_legt_die_seite_ab(tmp_path):
         server.shutdown()
     assert r.returncode == 0, r.stdout + r.stderr
     assert (tmp_path / "seiten" / "beispielreise" / "index.html").exists()
+
+
+def test_deploy_prueft_die_wege_zum_konnektor_von_aussen(tmp_path):
+    """Nach dem Deploy fragt deploy.sh jede Art Pfad des Konnektors über die öffentliche Adresse ab. Kommt ein Weg bei
+    nginx statt beim Konnektor an (kein Kopf X-Frieda), warnt es und meldet es dem Betreiber; die Seite wird trotzdem
+    abgelegt. So lief das Kalender-Abo ins Leere: nginx kannte /kalender/ nicht (1.11.2026)."""
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    wurzel = tmp_path / "instanz"
+    shutil.copytree(BEISPIEL, wurzel / "reisen" / "beispielreise")
+    (wurzel / "engine").symlink_to(ENGINE)
+    (wurzel / ".gitignore").write_text("dist/\n__pycache__/\n")
+    git(wurzel, "init", "-q", "-b", "main")
+    git(wurzel, "add", ".")
+    git(wurzel, "commit", "-qm", "start")
+    (tmp_path / "seiten").mkdir()
+    fehlt = {"/kalender/"}
+
+    class Dienste(BaseHTTPRequestHandler):
+        """Rückmeldedienst, Konnektor und nginx davor in einem: X-Frieda nur, wo nginx zum Konnektor weiterleitet."""
+        def do_GET(self):
+            nginx_404 = any(self.path.startswith(f) for f in fehlt)
+            self.send_response(404 if nginx_404 else 200)
+            if not nginx_404:
+                self.send_header("X-Frieda", "konnektor")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+        do_HEAD = do_GET
+
+        def log_message(self, *args):
+            pass
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Dienste)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    port = str(server.server_address[1])
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    ausfuehrbar(bin_ / "systemctl", '#!/bin/sh\ncase "$*" in *konnektor*) exit 0;; esac\nexit 1\n')
+    meldungen = tmp_path / "meldungen.log"
+    melden = ausfuehrbar(tmp_path / "melden.sh", f'#!/bin/sh\necho "$1|$2|$3" >> {meldungen}\n')
+    env = {**SAUBER, "PATH": f"{bin_}:{SAUBER.get('PATH', os.environ['PATH'])}", "FR_WURZEL": str(wurzel), "FR_INSTANZ": "probe",
+           "FR_SEITEN": str(tmp_path / "seiten"), "FR_DIENST": str(tmp_path / "dienst"), "FR_KONNEKTOR": str(tmp_path / "kn"),
+           "FR_KONTEN": str(tmp_path / "konten"), "FR_PYTHON": sys.executable, "FR_GEPRUEFT": git(wurzel, "rev-parse", "HEAD").strip(),
+           "FR_RM_PORT": port, "FR_KN_PORT": port, "FR_KN_ADRESSE": f"http://127.0.0.1:{port}", "FR_SUDO": "false",
+           "FR_MELDEN": str(melden)}
+    try:
+        r = subprocess.run([str(BETRIEB / "deploy.sh"), "beispielreise"], env=env, capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert "WARNUNG: Diese Wege kommen" in r.stdout and "/kalender/" in r.stdout and "/gesund" not in r.stdout.split("WARNUNG")[1]
+        assert "nginx: Wege zum Konnektor fehlen" in meldungen.read_text() and "/kalender/" in meldungen.read_text()
+        assert (tmp_path / "seiten" / "beispielreise" / "index.html").exists()
+        fehlt.clear()
+        meldungen.unlink()
+        r = subprocess.run([str(BETRIEB / "deploy.sh"), "beispielreise"], env=env, capture_output=True, text=True)
+        assert r.returncode == 0 and "WARNUNG: Diese Wege" not in r.stdout and not meldungen.exists(), r.stdout + r.stderr
+    finally:
+        server.shutdown()
 
 
 def test_veroeffentlichen_merge_und_submodulfehler_werden_nicht_gemerkt(vf):
@@ -1104,7 +1160,7 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     assert "Nice=10" in einh["probe-veroeffentlichen.service"] and "IOSchedulingClass=best-effort" in einh["probe-veroeffentlichen.service"]
     assert "IOSchedulingPriority=7" in einh["probe-veroeffentlichen.service"]
     assert "Environment=KN_PORT=8772" in einh["probe-konnektor.service"]
-    assert "Environment=KN_BASIS=https://example.invalid/probe-mcp" in einh["probe-konnektor.service"]
+    assert "Environment=KN_BASIS=https://example.invalid" in einh["probe-konnektor.service"]
     assert f"ExecStart=/usr/bin/python3 {srv}/_dienst/konnektor.py dienst" in einh["probe-konnektor.service"]
     # Schreibweg (O-3): Konnektor kennt die Adresse, der Dienst läuft mit dem Python der Software aus dem Dienstordner
     assert "Environment=KN_SCHREIBDIENST=http://127.0.0.1:8773" in einh["probe-konnektor.service"]
@@ -1115,7 +1171,15 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     assert "sudo systemctl enable --now probe-rueckmeldungen probe-konnektor probe-schreiben" in r.stdout
     assert "OnCalendar=" in einh["probe-waechter.timer"] and "Persistent=true" in einh["probe-waechter.timer"]
     nginx = (aus / "nginx/probe-konnektor.conf").read_text()
+    inc = (aus / "nginx/probe-konnektor.inc").read_text()
+    # Konnektor an der Wurzel (#163): /mcp, Anmeldung, OAuth; der alte Pfad bleibt für Links aus der Zeit vor den Konten
+    assert "location ~ ^/(mcp|anmelden|abmelden|konto|authorize|token|register|gesund)$" in nginx
+    assert "location ^~ /.well-known/oauth-" in nginx and "location ^~ /schrift/" in nginx and "location = /favicon.ico" in nginx
     assert "location ^~ /probe-mcp/" in nginx and "zone=probe_api" in nginx and "127.0.0.1:8772/" in nginx
+    assert "include /etc/nginx/snippets/probe-konnektor.inc;" in nginx
+    assert "proxy_pass http://127.0.0.1:8772;" in inc
+    # Der Dienst setzt Referrer-Policy „same-origin“; „no-referrer“ von nginx ließe Browser „Origin: null“ schicken
+    assert "add_header Referrer-Policy" not in nginx + inc
     assert "zone=probe_api:10m" in (aus / "nginx/probe-zone.conf").read_text()
     assert "sudo systemctl enable --now probe-veroeffentlichen.timer" in r.stdout
     # ohne --installieren wird außerhalb des Ausgabeordners nichts angelegt
@@ -1140,6 +1204,102 @@ def test_konnektor_darf_vorgemerkte_neue_reisen_schreiben(tmp_path, monkeypatch)
     srv = tmp_path / "srv/probe"
     assert datei == srv / "_konnektor/neue-reisen-ausstehend.jsonl"
     assert "$FR_KONNEKTOR/neue-reisen-ausstehend.jsonl" in (BETRIEB / "veroeffentlichen.sh").read_text()
+
+
+def test_einrichten_verlangt_konnektor_an_der_wurzel(tmp_path):
+    """Die Anmeldeseiten verweisen auf /anmelden, OAuth erwartet /.well-known/ an der Wurzel (#163): ein Pfad geht nicht."""
+    assert "FR_KN_ADRESSE „https://example.invalid/probe-mcp“" in einrichten(tmp_path, FR_KN_ADRESSE="https://example.invalid/probe-mcp").stdout
+    assert "ok      Konnektor an https://example.invalid/mcp" in einrichten(tmp_path).stdout
+
+
+def _frei():
+    import socket
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+@pytest.mark.skipif(not shutil.which("nginx"), reason="nginx fehlt")
+def test_nginx_leitet_konnektor_und_reise_richtig(tmp_path):
+    """Die erzeugten Bausteine in einem echten nginx: Konnektor-Pfade an der Wurzel gehen an den Dienst, auch wenn der
+    server-Block vorher eine allgemeine Regel für Dateiendungen hat; die Reiseseite kommt aus ihrem Ordner (#163)."""
+    import http.server
+    import threading
+    import urllib.error
+    import urllib.request
+    kn_port, port = _frei(), _frei()
+    snippets = tmp_path / "snippets"
+    snippets.mkdir()
+    r = einrichten(tmp_path, FR_KN_PORT=str(kn_port), FR_NGINX_SNIPPETS=str(snippets))
+    assert r.returncode in (0, 2), r.stdout + r.stderr
+    aus = tmp_path / "aus/nginx"
+    for n in ("probe-konnektor.conf", "probe-konnektor.inc"):
+        shutil.copy(aus / n, snippets / n)
+    seiten = tmp_path / "seiten"
+    (seiten / "reise").mkdir(parents=True)
+    (seiten / "reise/index.html").write_text("Reiseseite")
+    reise = (BETRIEB / "vorlagen/nginx-reise.conf").read_text()
+    for k, v in {"__INSTANZ__": "probe", "__REISE__": "reise", "__TOKEN__": "geheim", "__SEITEN__": str(seiten),
+                 "__ZONE__": "probe_api", "__RM_PORT__": str(_frei())}.items():
+        reise = reise.replace(k, v)
+    (snippets / "probe-reise.conf").write_text(reise)
+    temp = " ".join(f"{n}_temp_path {tmp_path}/{n};" for n in ("client_body", "proxy", "fastcgi", "uwsgi", "scgi"))
+    # Als root laufen die Arbeiter sonst als „nobody“ und lesen den Testordner nicht
+    benutzer = "user root;" if os.geteuid() == 0 else ""
+    (tmp_path / "nginx.conf").write_text(f"""{benutzer} pid {tmp_path}/nginx.pid; error_log {tmp_path}/fehler.log; daemon off;
+events {{}}
+http {{ access_log off; {temp}
+  include {aus}/probe-zone.conf;
+  server {{ listen 127.0.0.1:{port};
+    location ~* \\.(ico|png|svg|woff2|ics)$ {{ return 418; }}
+    include {snippets}/probe-*.conf;
+  }}
+}}
+""")
+
+    class Dienst(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("X-Pfad", self.path)
+            self.end_headers()
+
+        do_POST = do_GET
+
+        def log_message(self, *a):
+            pass
+
+    s = http.server.ThreadingHTTPServer(("127.0.0.1", kn_port), Dienst)
+    threading.Thread(target=s.serve_forever, daemon=True).start()
+    pruefung = subprocess.run(["nginx", "-t", "-e", str(tmp_path / "fehler.log"), "-c", str(tmp_path / "nginx.conf"), "-p", str(tmp_path)], capture_output=True, text=True)
+    assert pruefung.returncode == 0, pruefung.stderr
+    ng = subprocess.Popen(["nginx", "-e", str(tmp_path / "fehler.log"), "-c", str(tmp_path / "nginx.conf"), "-p", str(tmp_path)], stderr=subprocess.PIPE)
+    try:
+        def hol(pfad):
+            import time
+            for _ in range(50):
+                try:
+                    with urllib.request.urlopen(f"http://127.0.0.1:{port}{pfad}") as a:
+                        return a.status, a.headers.get("X-Pfad"), a.read().decode()
+                except urllib.error.HTTPError as e:
+                    return e.code, None, ""
+                except OSError:
+                    time.sleep(0.1)
+            raise AssertionError("nginx antwortet nicht")
+        # Konnektor an der Wurzel: Pfad kommt unverändert an
+        for pfad in ("/mcp", "/anmelden?zurueck=/konto", "/konto", "/authorize?x=1", "/token", "/register", "/gesund",
+                     "/.well-known/oauth-authorization-server", "/.well-known/oauth-protected-resource/mcp", "/einladung/abc",
+                     "/kalender/abc.ics", "/schrift/source-sans-3-latin-wght-normal.woff2", "/favicon.ico", "/favicon.svg",
+                     "/icon-192.png", "/" + "t" * 32):
+            assert hol(pfad)[:2] == (200, pfad), pfad
+        # alter Pfad der Links vor den Konten: Präfix fällt weg
+        assert hol("/probe-mcp/" + "t" * 32)[:2] == (200, "/" + "t" * 32)
+        # Reiseseite aus ihrem Ordner, Fremdes nicht an den Dienst
+        assert hol("/reise-geheim/") == (200, None, "Reiseseite")
+        assert hol("/etwas.png")[0] == 418 and hol("/anderes")[0] == 404
+    finally:
+        ng.terminate()
+        ng.wait(timeout=10)
+        s.shutdown()
 
 
 def test_einrichten_erkennt_belegte_ports_einer_anderen_instanz(tmp_path):

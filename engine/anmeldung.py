@@ -231,12 +231,19 @@ def kalender_reisen(k):
     return aus
 
 
-def kalender_antwort(k, datei=False):
-    """Persönlicher Kalender des Kontos mit seinen Einstellungen: als Abo (Kalender-App) oder als Datei (Download)."""
+def kalender_antwort(k, datei=False, headers=None):
+    """Persönlicher Kalender des Kontos mit seinen Einstellungen: als Abo (Kalender-App) oder als Datei (Download).
+    Das Abo trägt ein ETag; fragt die App mit If-None-Match nach und hat sich nichts geändert, kommt 304 ohne Inhalt.
+    Gespeichert werden darf es nur bei der App selbst (private), und nur nach Rückfrage (no-cache)."""
     text = kalender.ics_person(kalender_reisen(k), konten.kalender_einstellungen(k["id"]), sprache=sprache_der_seite())
-    kopf = [("Content-Type", "text/calendar; charset=utf-8"), ("Cache-Control", "private, no-store")]
     if datei:
-        kopf.append(("Content-Disposition", 'attachment; filename="frieda-reisen.ics"'))
+        return 200, [("Content-Type", "text/calendar; charset=utf-8"), ("Cache-Control", "private, no-store"),
+                     ("Content-Disposition", 'attachment; filename="frieda-reisen.ics"')], text.encode("utf-8")
+    tag = kalender.etag(text)
+    kopf = [("Content-Type", "text/calendar; charset=utf-8"), ("Cache-Control", "private, no-cache"), ("ETag", tag)]
+    gefragt = (headers or {}).get("If-None-Match") or ""
+    if tag in (x.strip() for x in gefragt.split(",")) or gefragt.strip() == "*":
+        return 304, kopf[1:3], b""
     return 200, kopf, text.encode("utf-8")
 
 
@@ -247,12 +254,17 @@ def kalender_karte(k, reise_info, offen=False):
     basis = os.environ.get("KN_BASIS")
     if basis:
         url = kalender.abo_url(basis, konten.kalender_token(k["id"]))
+        # Je Programm der Weg, den es selbst vorsieht: webcal:// für Apple (und Outlook für Windows), „Kalender
+        # hinzufügen“ bei Google, „Aus dem Internet abonnieren“ bei Outlook im Web; die https-Adresse für alle anderen
         abo = f'<a class="knopf" href="{esc(kalender.webcal(url))}">{esc(tx("konto.kalender.abonnieren_link"))}</a>'
+        andere = (f'<a href="{esc(kalender.google(url))}" target="_blank" rel="noopener noreferrer">{esc(tx("konto.kalender.google_link"))}</a>'
+                  f'<a href="{esc(kalender.outlook(url, tx("kalender.abo_name")))}" target="_blank" rel="noopener noreferrer">'
+                  f'{esc(tx("konto.kalender.outlook_link"))}</a>')
         link = (f'<label for="kal-url">{esc(tx("konto.kalender.url_label"))}</label>'
                 f'<input id="kal-url" type="text" readonly value="{esc(url)}">'
                 f'<p class="klein">{esc(tx("konto.kalender.persoenlich"))}</p>')
     else:
-        abo, link = "", f'<p class="klein">{esc(tx("konto.kalender.abo_fehlt"))}</p>'
+        abo, andere, link = "", "", f'<p class="klein">{esc(tx("konto.kalender.abo_fehlt"))}</p>'
     haken = lambda name, an, text: (f'<label class="haken"><input type="checkbox" name="{esc(name)}" value="ja"'   # noqa: E731
                                     f'{" checked" if an else ""}> {esc(text)}</label>')
     wahl = lambda name, werte, jetzt: (f'<select id="{name}" name="{name}">' + "".join(   # noqa: E731
@@ -277,7 +289,7 @@ def kalender_karte(k, reise_info, offen=False):
                      + "</div></details>")
     return (f'<div class="abschnitt"><h2>{esc(tx("konto.kalender.titel"))}</h2>'
             + karte(f'<p>{esc(tx("konto.kalender.hinweis"))}</p>', abo,
-                    f'<div class="kalender-links"><a href="/konto?kalender=datei">{esc(tx("konto.kalender.datei_link"))}</a>'
+                    f'<div class="kalender-links">{andere}<a href="/konto?kalender=datei">{esc(tx("konto.kalender.datei_link"))}</a>'
                     f"{einstellungen}</div>")
             + "</div>")
 
@@ -514,7 +526,8 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
         if not wer:
             return antwort(404, seite(tx("konto.kalender.titel"), karte(
                 f"<h1>{esc(tx('konto.kalender.nicht_gefunden'))}</h1><p>{esc(tx('konto.kalender.nicht_gefunden_text'))}</p>")))
-        return kalender_antwort(wer)
+        _anfrage.sprache = wer["sprache"] or _anfrage.sprache      # die App schickt keine Sprache mit, das Konto hat eine
+        return kalender_antwort(wer, headers=headers)
 
     if weg == "/konto":
         if not k:

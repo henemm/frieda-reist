@@ -72,7 +72,7 @@ fr_einlesen "$FR_DIENST/betrieb.env"
 : "${FR_SB_PORT:=8773}"
 : "${FR_SCHREIBKOPIE:=$FR_WURZEL-schreiben}"
 : "${FR_ADRESSE:=}"
-: "${FR_KN_ADRESSE:=${FR_ADRESSE:+$FR_ADRESSE/$FR_INSTANZ-mcp}}"
+: "${FR_KN_ADRESSE:=$FR_ADRESSE}"   # Konnektor an der Wurzel der Adresse (/mcp, Anmeldung, OAuth; #163)
 : "${FR_PYTHON:=$FR_WURZEL/engine/.venv/bin/python}"
 : "${FR_MELDEN:=}"
 : "${FR_UMZUG_NACH:=}"

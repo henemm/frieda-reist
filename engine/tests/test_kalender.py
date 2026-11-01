@@ -246,6 +246,8 @@ def test_konto_seite_kalender(umgebung, monkeypatch):
     html = body.decode()
     alt = konten.kalender_token("k-ida")
     assert code == 200 and f"webcal://frieda.beispiel.invalid/fr-mcp/kalender/{alt}.ics" in html
+    assert "https://calendar.google.com/calendar/render?cid=webcal%3A%2F%2Ffrieda.beispiel.invalid" in html
+    assert "https://outlook.live.com/calendar/0/addfromweb?url=https%3A%2F%2Ffrieda.beispiel.invalid" in html
     assert 'href="/konto?kalender=datei"' in html and 'name="sorte_tage" value="ja" checked' in html
     assert 'name="reise_beispielreise" value="ja" checked' in html and "1 week before at 9:00" in html
     # Download mit den Einstellungen des Kontos
@@ -276,6 +278,8 @@ def test_konnektor_werkzeug_kalender(umgebung, monkeypatch):
     text, fehler = kn.frieda_werkzeug(k, "kalender", {})
     tok = konten.kalender_token("k-ida")
     assert not fehler and f"https://frieda.beispiel.invalid/fr-mcp/kalender/{tok}.ics" in text and "Mein Konto" in text
+    assert f"webcal://frieda.beispiel.invalid/fr-mcp/kalender/{tok}.ics" in text
+    assert "calendar.google.com/calendar/render?cid=webcal" in text and "outlook.live.com/calendar/0/addfromweb" in text
     text, fehler = kn.frieda_werkzeug(k, "kalender", {"neu": True})
     assert not fehler and "Neuer Kalender-Link" in text and tok not in text
 
@@ -303,3 +307,89 @@ def test_kalender_in_der_sprache_der_reise(daten):
     assert list(kalender.erinnerungen(kalender.ERINNERUNG_FRISTEN_SCHLUESSEL, "en").values())[1] == "the day before at 9:00"
     assert "X-WR-CALNAME:Frieda – my trips" in kalender.ics_person([("beispielreise", en_daten, [], "Ida")], {}, jetzt=JETZT, sprache="en")
     assert "X-WR-CALNAME:Frieda – meine Reisen" in kalender.ics_person([("beispielreise", daten, [], "Ida")], {}, jetzt=JETZT)
+
+
+# ---------- Abo wie Kalender-Apps es abrufen (Apple, Google, Outlook) ----------
+# Apple-Geräte (dataaccessd, CalendarAgent) und Prüfdienste fragen vor dem Laden mit HEAD, OPTIONS oder PROPFIND, ob es die
+# Adresse gibt und ob sie CalDAV spricht. Ein 501 darauf ließ das Abo scheitern (Fehler im Apple Kalender, 1.11.2026).
+
+APPLE = {"User-Agent": "iOS/18.1 (22B83) dataaccessd/1.0", "Accept": "*/*"}
+
+
+def anfrage(url, methode="GET", kopf=None):
+    r = urllib.request.Request(url, method=methode, headers={**APPLE, **(kopf or {})})
+    try:
+        with urllib.request.urlopen(r) as a:
+            return a.status, dict(a.headers), a.read()
+    except urllib.error.HTTPError as e:
+        return e.code, dict(e.headers), e.read()
+
+
+def test_abo_fuer_kalender_apps(umgebung):
+    url = f"{umgebung.kurl}/kalender/{konten.kalender_token('k-ida')}.ics"
+    s, h, body = anfrage(url)
+    assert s == 200 and h["Content-Type"] == "text/calendar; charset=utf-8" and body.startswith(b"BEGIN:VCALENDAR\r\n")
+    assert h["Cache-Control"] == "private, no-cache" and h["ETag"].startswith('"') and int(h["Content-Length"]) == len(body)
+    # HEAD: dieselben Kopfzeilen, kein Inhalt
+    s, hk, leer = anfrage(url, "HEAD")
+    assert s == 200 and leer == b"" and hk["Content-Length"] == h["Content-Length"] and hk["ETag"] == h["ETag"]
+    # OPTIONS: welche Methoden gehen; PROPFIND und andere WebDAV-Methoden: 405 statt 501, damit die App beim Abo bleibt
+    s, ho, _ = anfrage(url, "OPTIONS")
+    assert s == 204 and ho["Allow"] == "GET, HEAD, OPTIONS" and "Access-Control-Allow-Origin" not in ho
+    for m in ("PROPFIND", "REPORT", "PUT", "MKCALENDAR"):
+        s, hm, _ = anfrage(url, m, {"Depth": "0"})
+        assert (s, hm["Allow"]) == (405, "GET, HEAD, OPTIONS"), m
+    # Unbekanntes Wort: auch mit HEAD 404, nicht 501
+    assert anfrage(f"{umgebung.kurl}/kalender/{'0' * 40}.ics", "HEAD")[0] == 404
+
+
+def test_abo_bedingter_abruf(umgebung):
+    url = f"{umgebung.kurl}/kalender/{konten.kalender_token('k-ida')}.ics"
+    tag = anfrage(url)[1]["ETag"]
+    s, h, body = anfrage(url, kopf={"If-None-Match": tag})
+    assert s == 304 and body == b"" and h["ETag"] == tag
+    assert anfrage(url, kopf={"If-None-Match": '"anders", ' + tag})[0] == 304
+    assert anfrage(url)[1]["ETag"] == tag                                   # neuer DTSTAMP ändert das ETag nicht
+    konten.kalender_einstellungen("k-ida", {"sorten": ["tage"]})
+    s, h, _ = anfrage(url, kopf={"If-None-Match": tag})
+    assert s == 200 and h["ETag"] != tag                                    # anderer Inhalt: neu laden
+
+
+def test_abo_in_der_sprache_des_kontos(umgebung):
+    url = f"{umgebung.kurl}/kalender/{konten.kalender_token('k-ida')}.ics"
+    v = konten.db()
+    v.execute("UPDATE konten SET sprache = 'de' WHERE id = 'k-ida'")
+    v.commit()
+    v.close()
+    assert b"X-WR-CALNAME:Frieda \xe2\x80\x93 meine Reisen" in anfrage(url)[2]   # Kalender-Apps schicken keine Sprache mit
+
+
+def test_datei_der_reise_mit_head(umgebung):
+    s, h, body = anfrage(f"{umgebung.rurl}/beispielreise/kalender.ics", "HEAD")
+    assert s == 200 and body == b"" and h["Content-Type"] == "text/calendar; charset=utf-8" and int(h["Content-Length"]) > 0
+
+
+def test_abo_ist_gueltiges_icalendar(umgebung):
+    """Unabhängige Prüfung mit der Bibliothek icalendar (fehlt sie, wird übersprungen)."""
+    icalendar = pytest.importorskip("icalendar")
+    url = f"{umgebung.kurl}/kalender/{konten.kalender_token('k-ida')}.ics"
+    c = icalendar.Calendar.from_ical(anfrage(url)[2])
+    assert c["VERSION"] == "2.0" and c.get("NAME") == c.get("X-WR-CALNAME")
+    ev = c.walk("VEVENT")
+    assert ev and all(e.get("UID") and e.get("DTSTAMP") and e.get("DTSTART") for e in ev)
+    assert len({str(e["UID"]) for e in ev}) == len(ev)
+    # Leerer Kalender (alles abgewählt): bleibt gültig (RFC 5545 verlangt einen Bestandteil)
+    konten.kalender_einstellungen("k-ida", {"sorten": []})
+    leer = anfrage(url)[2]
+    assert b"BEGIN:VEVENT" not in leer and b"BEGIN:VTIMEZONE" in leer
+    assert icalendar.Calendar.from_ical(leer).walk("VTIMEZONE")
+
+
+def test_links_je_kalender_programm():
+    url = "https://frieda.beispiel.invalid/fr-mcp/kalender/abc.ics"
+    assert kalender.webcal(url) == "webcal://frieda.beispiel.invalid/fr-mcp/kalender/abc.ics"
+    assert kalender.google(url) == ("https://calendar.google.com/calendar/render?cid="
+                                    "webcal%3A%2F%2Ffrieda.beispiel.invalid%2Ffr-mcp%2Fkalender%2Fabc.ics")
+    assert kalender.outlook(url, "Frieda – meine Reisen") == (
+        "https://outlook.live.com/calendar/0/addfromweb?url=https%3A%2F%2Ffrieda.beispiel.invalid%2Ffr-mcp%2Fkalender%2Fabc.ics"
+        "&name=Frieda+%E2%80%93+meine+Reisen")
