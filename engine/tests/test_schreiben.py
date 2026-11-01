@@ -251,6 +251,27 @@ def test_merkmal_anlegen_aendern_abschalten(repo):
         s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "merkmal": "preis", "stufe": "wichtig"}})
 
 
+
+def test_merkmal_nach_buchung_sichtbar(repo):
+    """Product Owner 31.10.2026: Die Reise legt fest, welches Merkmal nach der Buchung sichtbar bleibt (nach_buchung, z. B. der
+    Charakter eines Hotels); alle übrigen stehen dann „Aus der Planung“. Bei Merkmalen der Buchung gibt es das nicht."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "bezeichnung": "Charakter", "nach_buchung": True}})
+    assert "bleibt nach der Buchung sichtbar" in a["text"], a["text"]
+    arten, _ = arten_auf_main(origin)
+    assert arten["pension"]["merkmale"]["charakter"] == {"name": "Charakter", "typ": "text", "nach_buchung": True}
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "merkmal": "charakter", "nach_buchung": False}})
+    assert "„Aus der Planung“" in a["text"], a["text"]
+    arten, _ = arten_auf_main(origin)
+    assert "nach_buchung" not in arten["pension"]["merkmale"]["charakter"]
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="„nach_buchung“ gibt es bei Merkmalen der Buchung nicht"):
+        s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "fuer": "buchung", "bezeichnung": "Zimmer",
+                                                                            "nach_buchung": True}})
+
+
 def test_probebau_lehnt_ab_und_laesst_nichts_zurueck(repo):
     """Neue Auswahlwerte, zu denen die eingetragenen Werte der Reise nicht passen: der Generator lehnt ab, die Arbeitskopie
     bleibt sauber, main unverändert."""

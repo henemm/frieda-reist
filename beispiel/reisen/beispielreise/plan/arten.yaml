@@ -25,6 +25,8 @@ arten:
       geoeffnet:   {name: Geöffnet am Reisedatum, typ: auswahl, werte: [ja, nein, unklar], veraenderlich: true, stufe: pflicht,
                     hilfe: "Saison und Betriebsferien auf der Website; im Zweifel anfragen (als Aufgabe)"}
       lage:        {name: Lage, typ: text, stufe: angeboten, hilfe: "Entfernung zum Weg oder zur Haltestelle; ruhig oder laut"}
+      # nach_buchung: bleibt sichtbar, wenn das Hotel gebucht ist; alle anderen Merkmale stehen dann „Aus der Planung“ (Beispiel)
+      charakter:   {name: Charakter, typ: text, stufe: angeboten, nach_buchung: true, hilfe: "ein, zwei Sätze: was das Haus ausmacht"}
   pension:
     grundform: aufenthalt
     name: Pension

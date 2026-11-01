@@ -46,6 +46,7 @@ unterkuenfte:
         - {wert: "120 €", quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
         - {wert: "140 €", gilt: 2027-05-15, quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden: Samstag teurer"}
       fruehstueck: {wert: inklusive, quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
+      charakter: {wert: "Altes Bürgerhaus am Fluss, kleine Zimmer mit Blick auf die Elbe; abends ruhig (Beispielwert)", quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
   U-02:
     name: Pension Burgblick
     ort: O-03

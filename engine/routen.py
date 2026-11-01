@@ -157,7 +157,9 @@ def stufe_schluessel(text):
         if t == w or t == w.replace("ö", "oe"):
             return k
     return None
-DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage", "einheit", "stufe", "auch", "rolle"}
+DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage", "einheit", "stufe", "auch", "rolle", "nach_buchung"}
+# nach_buchung: true (Product Owner 31.10.2026): der Wert bleibt sichtbar, wenn das Ding gebucht ist (z. B. „Charakter“ eines
+# Hotels); alle übrigen Merkmale stehen dann zugeklappt „Aus der Planung“. Die Reise legt fest, welche.
 # Rolle eines Merkmals (Form eines Merkmals, docs/ontologie.md; Product Owner 29.10.2026): kosten = der Preis des Dings
 # (Typ geld), den die Seite über die Reise summiert („Übernachtungen“). Die Software kennt die Rolle, die Reise sagt,
 # welches ihrer Merkmale sie trägt; ohne Rolle wird nichts summiert. Kein Katalog: der Schlüssel des Merkmals ist frei.
@@ -870,10 +872,13 @@ class Routen:
                     self.fehl(f"{wo}: Merkmal {k}: die Rolle kosten braucht den Typ geld.")
                 elif neu and any(x.get("rolle") == d["rolle"] for x in aus.values()):
                     self.fehl(f"{wo}: Merkmal {k}: die Rolle {d['rolle']} hat an dieser Art schon ein anderes Merkmal.")
+            if "nach_buchung" in d and not isinstance(d["nach_buchung"], bool):
+                self.fehl(f"{wo}: Merkmal {k}: nach_buchung ist true oder false.")
             if k in self.katalog.get(art, {}) and not neu:
                 self.fehl(f"{wo}: Merkmal {k} gibt es für {art} schon (nur {{stufe: …}} ändert die Stufe).")
             aus[k] = {"name": d["name"], "typ": typ, **{f: d[f] for f in ("werte", "veraenderlich", "auto", "hilfe",
-                                                                          "frage", "einheit", "stufe", "auch", "rolle") if d.get(f)}}
+                                                                          "frage", "einheit", "stufe", "auch", "rolle",
+                                                                          "nach_buchung") if d.get(f)}}
         return aus
 
     def art_der_wahl(self, w, vid):

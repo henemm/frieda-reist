@@ -471,7 +471,7 @@ def buchung_merkmal_definieren(reise_dir, wer, args, arten, art):
     """Ein Merkmal der Buchungen einer Art anlegen oder ändern (#166): Name, Typ (Auswahl mit Werten), Einheit, Hilfe, Frage.
     Keine Stufe, Rolle oder Prüfdatum: der Wert ist eine gebuchte Tatsache mit der Herkunft der Buchung. -> (Titel, Text)."""
     from routen import TYPEN, art_schluessel
-    for f in ("stufe", "veraenderlich", "rolle", "auch"):
+    for f in ("stufe", "veraenderlich", "rolle", "auch", "nach_buchung"):
         if args.get(f) not in (None, "", [], False):
             raise Ablehnung(f"„{f}“ gibt es bei Merkmalen der Buchung nicht: ihr Wert ist eine gebuchte Tatsache, er erbt die "
                             "Herkunft der Buchung und braucht kein Prüfdatum.")
@@ -580,6 +580,7 @@ def merkmal_definieren(reise_dir, wer, args):
                             "sichtbar), aus gilt für diese Reise nicht.")
     werte = liste_wert(args, "werte")
     veraenderlich = bool_wert(args, "veraenderlich")
+    nach_buchung = bool_wert(args, "nach_buchung")   # bleibt sichtbar, wenn das Ding gebucht ist (31.10.2026)
     einheit, hilfe, frage, grund = (text_wert(args, f) for f in ("einheit", "hilfe", "frage", "grund"))
     rolle = text_wert(args, "rolle", laenge=20)
     if rolle is not None and rolle not in ("", "keine", *ROLLEN):
@@ -609,6 +610,8 @@ def merkmal_definieren(reise_dir, wer, args):
             d["werte"] = werte
         if veraenderlich:
             d["veraenderlich"] = True
+        if nach_buchung:
+            d["nach_buchung"] = True
         if einheit:
             d["einheit"] = einheit
         if stufe and stufe != "empfohlen":
@@ -623,10 +626,10 @@ def merkmal_definieren(reise_dir, wer, args):
         titel = f"Merkmal „{name}“ ({key}) an {a.get('name', art)} angelegt"
         text = (f"Merkmal „{name}“ ({key}) an der Art {a.get('name', art)} angelegt: Typ {typ}"
                 + (f" ({' | '.join(werte)})" if werte else "") + (", veränderlich (braucht Prüfdatum)" if veraenderlich else "")
-                + f", Stufe {stufe_wort(stufe or 'empfohlen')}.")
+                + f", Stufe {stufe_wort(stufe or 'empfohlen')}" + (", bleibt nach der Buchung sichtbar" if nach_buchung else "") + ".")
     else:
         d = merkmale[key]
-        if d.get("auto") and any(x is not None for x in (typ, werte, veraenderlich, einheit, rolle)):
+        if d.get("auto") and any(x is not None for x in (typ, werte, veraenderlich, einheit, rolle, nach_buchung)):
             raise Ablehnung(f"„{d.get('name', key)}“ wird aus dem Plan berechnet; daran lassen sich nur Name, Stufe, Hilfe und "
                             "weitere Namen ändern.")
         geaendert = []
@@ -660,6 +663,12 @@ def merkmal_definieren(reise_dir, wer, args):
                 d["veraenderlich"] = True
             else:
                 d.pop("veraenderlich", None)
+        if nach_buchung is not None and bool(d.get("nach_buchung")) != nach_buchung:
+            geaendert.append("bleibt nach der Buchung sichtbar" if nach_buchung else "nach der Buchung „Aus der Planung“")
+            if nach_buchung:
+                d["nach_buchung"] = True
+            else:
+                d.pop("nach_buchung", None)
         if stufe is not None and stufe != (d.get("stufe") if isinstance(d.get("stufe"), str) else "empfohlen"):
             geaendert.append("abgeschaltet (Stufe aus)" if stufe == "aus" else f"Stufe {stufe_wort(stufe)}")
             if stufe == "empfohlen":
@@ -676,8 +685,8 @@ def merkmal_definieren(reise_dir, wer, args):
         if not geaendert:
             raise Ablehnung(f"Das Merkmal „{d.get('name', key)}“ ({key}) gibt es an {a.get('name', art)} schon, und nichts daran soll "
                             "sich ändern.")
-        merkmale[key] = {k: d[k] for k in ("name", "typ", "werte", "auto", "veraenderlich", "einheit", "stufe", "rolle", "hilfe", "frage",
-                                           "auch") if k in d}
+        merkmale[key] = {k: d[k] for k in ("name", "typ", "werte", "auto", "veraenderlich", "einheit", "stufe", "rolle", "nach_buchung",
+                                           "hilfe", "frage", "auch") if k in d}
         titel = f"Merkmal „{d['name']}“ ({key}) an {a.get('name', art)} geändert"
         text = f"Merkmal „{d['name']}“ ({key}) an der Art {a.get('name', art)} geändert: " + ", ".join(geaendert) + "."
     a["merkmale"] = merkmale

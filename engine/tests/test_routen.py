@@ -536,6 +536,20 @@ def test_lesetext_gliederung_je_art():
         assert any(text in f for f in fehler), (lt, fehler)
 
 
+
+def test_merkmal_nach_buchung():
+    """Form eines Merkmals (Product Owner 31.10.2026): nach_buchung: true lässt den Wert nach der Buchung sichtbar; nur true
+    oder false. Die Seite bekommt das Feld mit der Definition."""
+    r = roh()
+    mit = arten()
+    mit["arten"]["hotel"]["merkmale"]["charakter"] = {"name": "Charakter", "nach_buchung": True}
+    erg, fehler = laufe(r, arten_=mit)
+    assert not fehler, fehler
+    assert next(k for k in erg["merkmale"]["hotel"] if k["id"] == "charakter")["nach_buchung"] is True
+    mit["arten"]["hotel"]["merkmale"]["charakter"]["nach_buchung"] = "ja"
+    assert any("nach_buchung ist true oder false" in f for f in laufe(r, arten_=mit)[1])
+
+
 # ---------- Arten, Werte je Datum, „an“ (Paket 1 der Alternativen, Issue frieda-reist#18) ----------
 def mit_faehren():
     r = roh()

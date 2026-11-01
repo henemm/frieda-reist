@@ -843,6 +843,8 @@ class Handbuch:
                 zeile += "; wird aus dem Plan berechnet, nicht eintragen"
             if k.get("veraenderlich"):
                 zeile += "; veränderlich, braucht Prüfdatum"
+            if k.get("nach_buchung"):
+                zeile += "; bleibt nach der Buchung sichtbar"
             if k.get("hilfe"):
                 zeile += f"; so finden: {k['hilfe']}"
             if k.get("frage"):
@@ -2286,7 +2288,9 @@ KATEGORIE_DEFINIEREN = {"name": "kategorie_definieren", "description": "Eine Kat
                             "name": NAME_FELD}}}
 MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "Ein Merkmal einer Art dieser Reise anlegen oder ändern: "
                       "umbenennen, Typ und Werte, veränderlich (braucht dann ein Prüfdatum), Stufe (nötig | gut zu wissen | zusätzlich; "
-                      "aus schaltet es für diese Reise ab), Hilfe zum Recherchieren, Frage an die Person, weitere Namen. "
+                      "aus schaltet es für diese Reise ab), Hilfe zum Recherchieren, Frage an die Person, weitere Namen, ob es "
+                      "nach der Buchung sichtbar bleibt (nach_buchung, z. B. Charakter eines Hotels; alles andere steht dann unter "
+                      "„Aus der Planung“). "
                       "Mit fuer: buchung ein Merkmal der Buchungen dieser Art: was erst durch das Buchen entsteht (Ticketart, Tarif, "
                       "Lager oder Zimmer, Zeitfenster), nicht was jedes Angebot beschreibt (Preis laut Website, Frühstück, Lage); "
                       "dort nur Name, Typ, Werte, Einheit, Hilfe, Frage. "
@@ -2303,6 +2307,9 @@ MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "Ein Merkmal 
                           "werte": {"type": "array", "items": {"type": "string"}, "description": "mögliche Antworten bei typ auswahl, "
                                     "z. B. [kostenlos, gegen Gebühr, nicht möglich, unklar]"},
                           "veraenderlich": {"type": "boolean", "description": "Preise, Zeiten, Öffnungszeiten: der Wert braucht ein Prüfdatum"},
+                          "nach_buchung": {"type": "boolean", "description": "nur fuer ding: true = der Wert bleibt auf der Seite "
+                                           "sichtbar, wenn das Ding gebucht ist (z. B. Charakter eines Hotels); sonst steht er dann "
+                                           "zugeklappt unter „Aus der Planung“ (Vorgabe false)"},
                           "stufe": {"type": "string", "enum": list(STUFEN), "description": "Für die Person heißen sie: pflicht = "
                                     "„nötig“ (ohne Wert eine Lücke, „Fehlt noch“), empfohlen = „gut zu wissen“ (Vorgabe; Spalte im "
                                     "Vergleich, ohne Wert keine Mahnung), angeboten = „zusätzlich“ (nur mit Wert sichtbar, im Vergleich "
