@@ -274,6 +274,25 @@ details.block>.ortchips{padding:0 14px}
 .kzn .sym{width:1.05rem;height:1.05rem}
 .kzw{font-size:var(--t-untertitel);font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 @media (max-width:520px){.kz{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}.kz>div:last-child:nth-child(odd){grid-column:1 / -1}}
+/* ---------- Wegtabelle (#58): Wege mit Kennzahlen; Rechner Tabelle, Handy und Tablet je Weg ein Eintrag mit Zahlenzeile ---------- */
+.pico .wege table{width:100%;font-size:var(--t-text)}
+.pico .wege :is(th,td){vertical-align:top;background:none;--pico-background-color:transparent}
+.pico .wege thead th{font-size:var(--t-klein);color:var(--mut);font-weight:600}
+.pico .wege tbody th{font-weight:600}
+.pico .wege .zahl{text-align:end;white-space:nowrap;font-variant-numeric:tabular-nums}
+.wege-name{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pico .wege tbody th .chips{margin:2px 0 0}
+@media not all and (min-width:1100px) and (pointer:fine){
+  /* keine Tabelle mehr: die Hülle scrollt nicht (die Tippfläche des Anmerkens ragt sonst als Scrollbereich über den Rand) */
+  .wege.tabelle{overflow:visible}
+  .pico .wege :is(table,tbody,tr,th){display:block;width:auto}
+  .pico .wege thead{display:none}
+  .pico .wege tr{border-bottom:1px solid var(--line);padding:8px 0}
+  .pico .wege :is(th,td){border:0;padding:0}
+  .pico .wege td{display:inline;font-weight:600}
+  .pico .wege td.leer{display:none}
+  .pico .wege td:not(.leer)~td:not(.leer)::before{content:" · ";color:var(--mut);font-weight:400}
+}
 /* ---------- Merkmalliste (docs/alternativen.md) ---------- */
 dl.mliste{margin:6px 0;font-size:var(--t-text)}
 dl.mliste dt{font-size:var(--t-etikett);color:var(--mut);margin-top:6px}
@@ -383,7 +402,16 @@ details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
 .ding.wahl.vorn{border:2px solid var(--ocker);border-radius:var(--r);padding:10px 12px;margin:4px 0 10px}
 /* ---------- Wahl-Modul (Designsystem 2c): Einstieg an der Stelle, Vergleich darunter; ab 700 px Tabelle, darunter Karten oder Tabelle ---------- */
 .vergleich.mk th[scope=row]{text-align:left;color:var(--mut);font-weight:600;white-space:nowrap}
-.vergleich.mk td{vertical-align:top;min-width:9em}
+/* Mindestbreite klein (#58): bei 9em je Spalte war die Summe breiter als der Platz, alle Spalten blieben gleich schmal
+   und ein langer Preis lief über fünfzehn Zeilen. So verteilt der Browser den Platz nach der Länge der Werte. */
+.vergleich.mk td{vertical-align:top;min-width:6em}
+/* Herkunftszeile (#58): einmal je Möglichkeit, leise; in der Karte unten, in der Tabelle als Zeile unter der Möglichkeit */
+.herkunft{display:flex;flex-direction:column;gap:2px;font-size:var(--t-klein);color:var(--mut);overflow-wrap:anywhere}
+.wm-karte .herkunft{border-top:1px solid var(--line);margin-top:8px;padding-top:6px}
+.pico .wm-tab tr.wm-zeile:has(+ .wm-herkunft)>:is(th,td){border-bottom:0}
+.pico .wm-tab tr.wm-herkunft>td{padding-top:0;padding-inline-start:calc(10px + 1em)}
+.pico .wm-tab tr.wm-herkunft.an>td{background:var(--acc2)}
+.pico .wm-tab tr.wm-herkunft.auf>td{background:var(--tint);border-bottom:0}
 /* Einstieg „Alternativen vergleichen“: hellgrüne Pille mit Zahl; offen mit Rand statt Fläche */
 .pico .wm-knopf{width:auto;margin:0;box-shadow:none;font:600 var(--t-klein)/1.2 var(--font-text);display:inline-flex;align-items:center;gap:8px;min-height:40px;
   padding:6px 8px 6px 14px;border-radius:var(--r-pille);border:1px solid transparent;background:var(--acc2);color:var(--acc);--pico-color:var(--acc);cursor:pointer}
@@ -476,6 +504,9 @@ h2.tagkopf .tagtitel{font-size:var(--t-titel);line-height:1.15}
 .weg-unter p{margin:0}
 .lese-abschnitt{padding:2px 0 8px}
 .lese-abschnitt+.lese-abschnitt{padding-top:16px}
+/* Lesespalte der Ortsseite (#58): Ebenen untereinander, am Rechner auf Lesebreite statt Kästen über die ganze Breite */
+.lese-spalte{max-width:var(--lese);margin-top:8px}
+.pico .lese-spalte .lese-kopf h4{font-size:var(--t-untertitel)}
 .lese-kopf{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px}
 .pico .lese-kopf h4{margin:0;font-size:var(--t-text)}
 .lese-abschnitt .inhalt :is(h4,h5){font-size:var(--t-text);margin:1.1em 0 .3em}
@@ -1089,8 +1120,8 @@ function zid(id) {
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, buchungChip
-   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, wahlZustand, belegeListe, stornierteBuchungen, einzelheiten
-   Organismen: nachtZeile, unterkunftKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, nachtAbschnitt, tagZeile, uebersichtKarte, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
+   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, wahlZustand, belegeListe, stornierteBuchungen, einzelheiten, wegTabelle, herkunftZeile
+   Organismen: nachtZeile, unterkunftKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, nachtAbschnitt, tagZeile, uebersichtKarte, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
    Vorlagen: tagKachel, leseAbschnitt, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtOffen, ansichtWissen, ansichtPlan, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
    Stile seiner Ebene, auf die Bausteinseite (#bausteine) und in docs/design.md; zeigt er eine Grundform, auch in GRUNDFORMEN.
@@ -1173,6 +1204,20 @@ function abschnittKarte(a) {
   return k;
 }
 
+// Molekül Wegtabelle (#58): Liste von Wegen mit ihren Kennzahlen. Am Rechner eine Tabelle (eine Spalte je Kennzahl, Zahlen
+// rechtsbündig untereinander), am Handy und Tablet je Weg ein Eintrag mit Name, Chips und einer Zeile Kennzahlen. Die
+// Spalten sind die Kennzahlen, die die Wege tragen (die Reise kann eigene haben); große Kacheln bleiben dem Tag.
+function wegTabelle(liste) {
+  const paare = new Map(liste.map(a => [a.id, Object.fromEntries(Object.entries(a.kennzahlen || {}).map(([n, v]) => kennzahlPaar(n, v, fahrtVon(a.id))))]));
+  const spalten = [...new Set(liste.flatMap(a => Object.keys(paare.get(a.id))))];
+  return el("div", {class: "tabelle wege"}, el("table", {},
+    el("thead", {}, el("tr", {}, el("th", {scope: "col"}, T("seite.wege.weg")),
+      spalten.map(n => el("th", {scope: "col", class: "zahl"}, kennzahlName(n))))),
+    el("tbody", {}, liste.map(a => el("tr", {},
+      el("th", {scope: "row"}, el("span", {class: "wege-name"}, link(a.id, a.titel), zid(a.id)), chips(a)),
+      spalten.map(n => el("td", {class: "zahl" + (paare.get(a.id)[n] ? "" : " leer")}, paare.get(a.id)[n] || "–")))))));
+}
+
 // kennzahlen: die Kennzahlen, die die Seite schon in der Leiste zeigt
 function abschnittInhalt(a, ohneTitel, kennzahlen) {
   const s = el("section", {class: "ziel", id: a.id, "data-ziel": a.id});
@@ -1187,8 +1232,8 @@ function abschnittInhalt(a, ohneTitel, kennzahlen) {
   // Mit Tagesseiten ist die Nacht der Tagesseite die Heimat der Unterkunft: die Liste hier zeigt dann nur Zeilen (ADR-0003)
   if (a.route_ansicht === "tagesplan" && PLAN_DA) tagesplan(s);
   if (a.route_ansicht === "unterkuenfte" && PLAN_DA) (PLAN_TAGE ? unterkunftZeilen(s) : unterkuenfte(s));
-  // Ortsseite: Abschnitte als Lesetext ohne Rahmen, alle offen (#58, Regel 6); sonst aufklappbar, der erste offen
-  einmal(a.bloecke).forEach((b, i) => s.append(a.typ === "ort" ? leseAbschnitt(b, kennzahlen) : block(b, i === 0, kennzahlen)));
+  if (a.typ === "ort") { const e = ortEbenen(einmal(a.bloecke), kennzahlen); if (e) s.append(e); }
+  else einmal(a.bloecke).forEach((b, i) => s.append(block(b, i === 0, kennzahlen)));
   return s;
 }
 
@@ -1691,18 +1736,19 @@ function giltAm(v, datum) {
 // Atom Wert: der Wert, „ungeprüft“, Herkunft hinter dem Wert (Knopf mit gepunkteter Linie; eine Webseite bleibt Link und
 // zeigt die Herkunft beim Darüberfahren und beim Fokus). Mit Datum (Nacht im Tag) nur der Wert für dieses Datum,
 // ohne Datum bei Werten je Datum alle Einträge untereinander.
-function merkmalWert(v, datum) {
+// ohneHerkunft: im Vergleich (#58) steht die Herkunft einmal je Möglichkeit (herkunftZeile), nicht hinter einem i je Wert
+function merkmalWert(v, datum, ohneHerkunft) {
   if (v && v.je_datum && datum) {
     const e = giltAm(v, datum);
-    return merkmalWert(e && {...e, je_datum: null, gilt: null, am: v.je_datum.includes(e) ? datum : null});
+    return merkmalWert(e && {...e, je_datum: null, gilt: null, am: v.je_datum.includes(e) ? datum : null}, null, ohneHerkunft);
   }
   if (v && v.je_datum) return el("span", {}, [...v.je_datum.map(e => [e.gilt.map(datumKurz).join(", "), e]), ...(v.gilt ? [] : [[T("seite.merkmal.sonst"), v]])]
-    .map(([wann, e]) => el("span", {class: "mk-datum"}, el("span", {class: "mk-am"}, wann + ": "), merkmalWert({...e, je_datum: null, gilt: null}))));
+    .map(([wann, e]) => el("span", {class: "mk-datum"}, el("span", {class: "mk-am"}, wann + ": "), merkmalWert({...e, je_datum: null, gilt: null}, null, ohneHerkunft))));
   if (!v) return el("span", {class: "mk-leer"}, "offen");
   const herkunft = [v.notiz, v.geprueft ? T("seite.label.geprueft") + datumKurz(v.geprueft) : "", v.quelle ? T("seite.label.quelle") + v.quelle : ""].filter(Boolean).join(" · ");
   // „unklar“ und berechnete Lücken (Anschluss) fallen auf
   const auffaellig = /^unklar$/i.test(String(v.wert)) ? "mk-unklar" : v.auto && /^Lücke/.test(String(v.wert)) ? "mk-luecke" : null;
-  const q = herkunft ? el("span", {class: "mk-q", role: "tooltip", hidden: true}, herkunft) : null;
+  const q = herkunft && !ohneHerkunft ? el("span", {class: "mk-q", role: "tooltip", hidden: true}, herkunft) : null;
   let wert;
   if (v.link) { wert = webLink(v.wert); if (q) wert.setAttribute("data-mk-h", ""); }
   else if (q) wert = el("button", {type: "button", class: ["mk-w", auffaellig].filter(Boolean).join(" "), "data-mk-i": "", "aria-expanded": "false"},
@@ -1740,9 +1786,29 @@ document.addEventListener("focusin", e => { if (e.target.matches(`:is(${MK}):foc
 document.addEventListener("focusout", e => { if (e.target.matches(MK) && e.target !== MK_FEST) mkZeige(e.target, false); });
 document.addEventListener("keydown", e => { if (e.key === "Escape") mkZu(); });
 window.addEventListener("scroll", () => { mkZu(); document.querySelectorAll(`:is(${MK})[aria-expanded=true]`).forEach(b => mkZeige(b, false)); }, {passive: true, capture: true});
-function merkmalListe(kriterien, werte, datum) {
+function merkmalListe(kriterien, werte, datum, ohneHerkunft) {
   const zeilen = (kriterien || []).filter(k => werte && werte[k.id]);
-  return zeilen.length ? el("dl", {class: "mliste"}, zeilen.flatMap(k => [el("dt", {}, k.name), el("dd", {}, merkmalWert(werte[k.id], datum))])) : null;
+  return zeilen.length ? el("dl", {class: "mliste"}, zeilen.flatMap(k => [el("dt", {}, k.name), el("dd", {}, merkmalWert(werte[k.id], datum, ohneHerkunft))])) : null;
+}
+// Molekül Herkunftszeile (#58): die Herkunft aller gezeigten Werte einer Möglichkeit einmal, leise. Quellen mit Prüfdatum,
+// je Paar aus Quelle und Prüfdatum einmal; Notizen stehen für sich (sie sind keine Quelle). Mit Datum nur die Einträge,
+// die an diesem Datum gelten, sonst alle Einträge je Datum. Ohne Herkunft: nichts.
+function herkunftZeile(kriterien, werte, datum) {
+  const quellen = new Map(), notizen = new Set();
+  const nimm = e => {
+    if (!e) return;
+    if (e.quelle) { const k = e.quelle + "|" + (e.geprueft || ""); if (!quellen.has(k)) quellen.set(k, e.geprueft ? T("seite.herkunft.quelle_geprueft", {quelle: e.quelle, datum: datumKurz(e.geprueft)}) : e.quelle); }
+    if (e.notiz) notizen.add(e.notiz);
+  };
+  for (const k of kriterien || []) {
+    const v = werte && werte[k.id];
+    if (!v) continue;
+    if (v.je_datum && datum) nimm(giltAm(v, datum));
+    else { (v.je_datum || []).forEach(nimm); if (!v.je_datum || !v.gilt) nimm(v); }
+  }
+  const teile = [quellen.size ? T("seite.herkunft.quellen", {quellen: [...quellen.values()].join(" · ")}) : "",
+    notizen.size ? T("seite.herkunft.notizen", {notizen: [...notizen].join(" · ")}) : ""].filter(Boolean);
+  return teile.length ? el("div", {class: "herkunft"}, teile.map(t => el("span", {}, t))) : null;
 }
 function fehltZeile(w, o) {
   if (w.wann !== "planung" || !w.offen || weg(o.status) || !o.fehlt.length) return null;
@@ -1831,7 +1897,7 @@ function wahlVergleich(w, liste, datum) {
   const zeilen = z.nur ? belegt.filter(k => new Set(opts.map(o => text(werte(o)[k.id]))).size > 1) : belegt;
   const kopf = o => [link(o.id, o.titel), optionChips(w, o)];
   // Zeilen ohne Merkmal (Wann, Regeln): fehlt der Eintrag, gibt es nichts, und nicht „offen“
-  const zelle = (k, v) => v || !k.id.startsWith("_") ? merkmalWert(v, datum) : el("span", {class: "mk-nichts", "aria-label": T("seite.leer.keine")}, "–");
+  const zelle = (k, v) => v || !k.id.startsWith("_") ? merkmalWert(v, datum, true) : el("span", {class: "mk-nichts", "aria-label": T("seite.leer.keine")}, "–");
   box.append(el("div", {class: "wm-steuer"},
     el("label", {}, el("input", {type: "checkbox", "data-vgl-nur": s, checked: z.nur}), T("seite.vergleich.nur_unterschiede")),
     el("span", {class: "z klein wm-anzahl"}, T("seite.vergleich.anzahl", {n: opts.length, gesamt: g.length, max})
@@ -1857,17 +1923,20 @@ function wahlVergleich(w, liste, datum) {
   const imPlan = o => o.aktiv && !w.optionen.every(x => x.aktiv) ? chip("", w.wann === "unterwegs" ? T("seite.vergleich.standard") : (w.offen ? T("seite.vergleich.vorlaeufig_im_plan") : T("seite.chip.im_plan"))) : null;
   if (zeilen.length) box.append(el("div", {class: "tabelle wm-tabelle"}, el("table", {class: "vergleich mk wm-tab"},
     el("thead", {}, el("tr", {}, spaltenKopf("_titel", T("seite.vergleich.moeglichkeit")), zeilen.map(k => spaltenKopf(k.id, k.name)))),
-    el("tbody", {}, reihe.flatMap(o => { const auf = z.auf.includes(o.id);
+    el("tbody", {}, reihe.flatMap(o => { const auf = z.auf.includes(o.id), hk = herkunftZeile(zeilen, werte(o), datum);
       return [el("tr", {class: ["wm-zeile", an(o), auf ? "auf" : ""].filter(Boolean).join(" "), id: o.id, "data-ziel": o.id, tabindex: "0",
           "aria-expanded": String(auf), "data-vgl-zeile": s + "|" + o.id},
         el("th", {scope: "row"}, el("span", {class: "wm-titel"}, el("span", {class: "wm-pfeil", "aria-hidden": "true"}, "›"), o.titel),
           el("span", {class: "wm-unter"}, imPlan(o))),
         zeilen.map(k => el("td", {}, zelle(k, werte(o)[k.id])))),
+        // Herkunft der Zeile darunter (#58); wandert beim Sortieren mit, klappt nichts auf (kein data-vgl-zeile)
+        hk ? el("tr", {class: "wm-herkunft" + (an(o) ? " an" : "") + (auf ? " auf" : "")}, el("td", {colspan: String(zeilen.length + 1)}, hk)) : null,
         auf ? el("tr", {class: "wm-mehr" + (an(o) ? " an" : "")}, el("td", {colspan: String(zeilen.length + 1)}, optionEinzelheiten(w, o, merkmalListe(nebenbei, werte(o), datum)))) : null].filter(Boolean); })))));
   if (nebenbei.length) box.append(el("p", {class: "z klein"}, T("seite.vergleich.weitere_merkmale", {merkmale: nebenbei.map(k => k.name).join(", ")})
     + T("seite.vergleich.spalten_hinweis")));
   box.append(el("div", {class: "wm-karten"}, opts.map(o => el("div", {class: "wm-karte" + (an(o) ? " an" : "")},
-    el("div", {class: "k"}, o.titel), optionChips(w, o), merkmalListe(zeilen, werte(o), datum) || el("div", {class: "z klein"}, belegt.length ? T("seite.vergleich.keine_unterschiede") : T("seite.vergleich.noch_keine_merkmale"))))));
+    el("div", {class: "k"}, o.titel), optionChips(w, o), merkmalListe(zeilen, werte(o), datum, true) || el("div", {class: "z klein"}, belegt.length ? T("seite.vergleich.keine_unterschiede") : T("seite.vergleich.noch_keine_merkmale")),
+    herkunftZeile(zeilen, werte(o), datum)))));
   if (belegt.length > zeilen.length) box.append(el("p", {class: "z klein"}, T("seite.vergleich.gleiche_zeilen", {n: belegt.length - zeilen.length})));
   return box;
 }
@@ -3183,6 +3252,9 @@ function wegKurz(inhalt) {
 // Vorlage Leseabschnitt: Titel mit Sprechblase, Text ohne Rahmen; Orte und Karte des Abschnitts, wenn es sie gibt
 const leseAbschnitt = (b, kz) => el("div", {class: "lese-abschnitt ziel", id: b.id, "data-ziel": b.id},
   el("div", {class: "lese-kopf"}, el("h4", {}, b.titel), zid(b.id)), b.orte ? ortChips(b.orte) : null, wissenKarte(b.id), reiseText(b.html, kz));
+// Abschnitte eines Orts als Ebenen ohne Kasten, alle offen, in einer Lesespalte (B2-Regel 3, #58). Eine Spalte gilt für
+// jede Reise: welche Abschnitte zum Nachschlagen gehören, weiß nur die Reise (ADR-0001).
+const ortEbenen = (bloecke, kz) => bloecke.length ? el("div", {class: "lese-spalte"}, bloecke.map(b => leseAbschnitt(b, kz))) : null;
 // Organismus Ebenen einer Etappe am Tag -> {weg, unterwegs, hintergrund, quellen} (fehlende Ebenen: null)
 function tagEbenen(t, etappen) {
   const teile = {weg: [], unterwegs: [], hintergrund: [], quellen: []};
@@ -3316,8 +3388,8 @@ function ansichtOrt(m, a) {
     wo.append(chip("leise", T("seite.ort.kommt_vor_chip", {plan: x.kurz, nr: t.nr, datum: datumText(t.datum, t.wochentag)}), {href: "#" + t.id}));
   if (wo.childNodes.length) m.append(el("div", {class: "z klein"}, T("seite.ort.kommt_vor_in")), wo);
   if (a.bloecke.length) m.append(el("h3", {}, T("seite.ort.highlights")));
-  // Abschnitte als Lesetext ohne Rahmen, alle offen (#58, Regel 6): eine Ortsseite wird gelesen
-  for (const b of a.bloecke) m.append(leseAbschnitt(b));
+  const ebenen = ortEbenen(a.bloecke);
+  if (ebenen) m.append(ebenen);
   // Abschnitte der Recherche zu diesem Ort (25.10.2026)
   if (a.wissen) {
     m.append(el("h3", {}, T("seite.ort.aus_recherche")));
@@ -3405,8 +3477,10 @@ function ansichtWissen(m) {
       leer = false;
       m.append(el("h3", {class: "gruppe ziel", id: "weitere-wege"}, T("seite.etappen.weitere_wege")));
       m.append(el("p", {class: "meldung"}, T("seite.etappen.weitere_wege_hinweis")));
-      // Je Weg eine Listenzeile wie Wissen und Praxis (#58): Kennzahlen und Variante in der Unterzeile, die Kacheln stehen auf der Seite der Etappe
-      m.append(el("div", {class: "wliste"}, ...ueb.map(wissenZeile), ...weitere.map(wegZeile)));
+      // Übersichten als Listenzeilen wie Wissen und Praxis; weitere Wege als Wegtabelle: am Handy je Weg eine Zeile
+      // Kennzahlen, am Rechner eine Tabelle (#58)
+      if (ueb.length) m.append(el("div", {class: "wliste"}, ...ueb.map(wissenZeile)));
+      if (weitere.length) m.append(wegTabelle(weitere));
     }
   }
   if (leer) m.append(el("div", {class: "leer"}, T("seite.leer.noch_nichts")));
@@ -3432,13 +3506,6 @@ function listenZeile(typ, sym, titel, unter, href, kennung, rechts) {
 }
 function wissenZeile(a) {
   return listenZeile(a.typ, SYM_TYP[a.typ] || "wissen", a.titel, wissenThemen(a) || null, a.id, a.id);
-}
-// Etappe als Listenzeile (Weitere Wege): Kennzahlen wie in der Leiste, dahinter die Varianten, zu denen sie gehört
-function wegZeile(a) {
-  const fahrt = fahrtVon(a.id);
-  const kz = Object.entries(a.kennzahlen || {}).map(([n, v]) => kennzahlPaar(n, v, fahrt)[1]);
-  const varianten = (a.optionen || []).map(oid => (optionZu.get(oid) || [])[1]).filter(Boolean).map(o => T("seite.chip.variante", {titel: o.titel}));
-  return listenZeile("etappe", "etappen", a.titel, [...kz, ...varianten].join(" · ") || null, a.id, a.id);
 }
 /* ---------- Vorlage „Zu tun“ (bis 28.10.2026 „Offen“; Seitenordnung): Sammelansichten mit eigener Aufgabe ----------
    Zu entscheiden (jede offene Wahl, an welchem Element sie auch hängt) · Zu buchen je Nacht · Aufgaben · Fragen ·
@@ -3734,6 +3801,12 @@ function ansichtBausteine(m) {
   const mitKz = strecken.find(([, x]) => Object.keys(x.kennzahlen || {}).length);
   const u = Object.entries(R.unterkuenfte).find(([, x]) => Object.keys(x.merkmale || {}).length);
   teil("Molekül", "Kennzahlenleiste", null, mitKz ? kennzahlLeiste(mitKz[1].kennzahlen) : el("p", {class: "meldung"}, "Keine Strecke mit Kennzahlen."));
+  const mitKzListe = abschnitte.filter(a => a.typ === "etappe" && Object.keys(a.kennzahlen || {}).length).slice(0, 3);
+  teil("Molekül", "Wegtabelle", "Wege mit Kennzahlen (#58): am Rechner Tabelle, am Handy und Tablet je Weg ein Eintrag mit Zahlenzeile.",
+    mitKzListe.length ? wegTabelle(mitKzListe) : el("p", {class: "meldung"}, "Keine Etappe mit Kennzahlen."));
+  const mitHerkunft = R.wahlstellen.flatMap(w => w.optionen.map(o => [w, o])).find(([w, o]) => Object.values(o.merkmale || {}).some(x => x.quelle));
+  teil("Molekül", "Herkunftszeile", "Herkunft aller gezeigten Werte einer Möglichkeit einmal, leise (Vergleich, #58); Quellen mit Prüfdatum, Notizen für sich.",
+    mitHerkunft ? herkunftZeile(mitHerkunft[0].kriterien, mitHerkunft[1].merkmale) : herkunftZeile([{id: "m"}], {m: {wert: "inklusive", quelle: "Muster", geprueft: "2026-10-23"}}));
   teil("Molekül", "Merkmalliste", null, u ? merkmalListe((R.merkmale || {})[u[1].art], u[1].merkmale) : el("p", {class: "meldung"}, "Keine Unterkunft mit Merkmalen."));
   // Reisetext: Tabellen aus dem Text, geordnet vom Generator (zweispaltig als Merkmalliste, breit gestapelt bei wenig Platz)
   const etappenBloecke = abschnitte.filter(a => a.typ === "etappe").flatMap(a => a.bloecke.map(b => [a, b]));
@@ -3808,6 +3881,8 @@ function ansichtBausteine(m) {
   if (etappenAmTag.length) { const e = tagEbenen(tag, etappenAmTag);
     teil("Organismus", "Ebenen der Tagesseite", "Der Weg, Unterwegs nachschlagen, Hintergrund, Quellen und Prüfung (Vorlage leseAbschnitt im Weg).",
       [e.weg, e.unterwegs, e.hintergrund, e.quellen].filter(Boolean)); }
+  const ortMitText = abschnitte.find(a => a.typ === "ort" && a.bloecke.length);
+  if (ortMitText) teil("Organismus", "Ebenen eines Orts", "Abschnitte eines Orts ohne Kasten, alle offen, in einer Lesespalte (#58).", ortEbenen(ortMitText.bloecke.slice(0, 2)));
   if (tag && tagOrte(tag).length) teil("Organismus", "Orte des Tages", "Je Ort eine Zeile mit Kurztext und Kennung.", tagOrteZeilen(tagOrte(tag)));
   if (plan) teil("Molekül", "An- und Abreise", "Erster und letzter Tag mit festen Terminen und Fahrten; führt zum Tag.",
     reiseEnde("anreise", plan.tage[0]), reiseEnde("abreise", plan.tage[plan.tage.length - 1]));

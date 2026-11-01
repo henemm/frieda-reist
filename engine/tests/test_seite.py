@@ -116,7 +116,7 @@ def test_neue_reise_aus_der_vorlage(tmp_path, browser):
     assert "6.–13. Februar 2027" in dom["390#"] and "Offene Fragen: 1" in dom["390#"]
 
 
-def seite_der_variante(tmp_path, browser, datum="2027-05-13", **variante):
+def seite_der_variante(tmp_path, browser, datum="2027-05-13", skript="seiten_variante.mjs", **variante):
     """Beispielreise mit anderem Status oder anderen Bausteinen bauen (wie test_regeln) und im Browser ansehen."""
     from test_regeln import reise_bauen
     seiten = reise_bauen(tmp_path, **variante)
@@ -128,7 +128,7 @@ def seite_der_variante(tmp_path, browser, datum="2027-05-13", **variante):
     s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(seiten)))
     threading.Thread(target=s.serve_forever, daemon=True).start()
     try:
-        aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_variante.mjs"), str(PLAYWRIGHT),
+        aus = subprocess.run(["node", str(Path(__file__).parent / skript), str(PLAYWRIGHT),
                               f"http://127.0.0.1:{s.server_address[1]}/beispielreise/", datum],
                              capture_output=True, text=True, timeout=120, env={**os.environ, "RH_BROWSER": browser})
     finally:
@@ -209,6 +209,33 @@ def test_stornierte_buchung_eingeklappt_am_ding(tmp_path, browser):
             assert m["nacht"], (name, m)
             assert [z for z in m["zeilen"] if z.startswith("Alle Möglichkeiten (")] == ["Alle Möglichkeiten (1)"], (name, m)
             assert "Verworfen (1)" in m["zeilen"] and m["verworfenSichtbar"], (name, m)
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_b2_wissen_orte_vergleich(tmp_path, browser):
+    """#58 (Entscheidung PO 1.11.2026), Plan A fest: Weitere Wege am Rechner als Tabelle, am Handy und Tablet als Einträge mit
+    einer Zeile Kennzahlen, nie als Kacheln; Ortsseite als Ebenen ohne Kasten in einer Lesespalte; Vergleich ohne „i“, die
+    Herkunft einmal je Möglichkeit (Karte unten, Tabelle als Zeile darunter), Tabelle nur am Rechner."""
+    # Erfundene Abwandlung: der Gasthof in Hohnstein (V-03.b) ist nicht verworfen, damit die Nacht zwei gültige Möglichkeiten
+    # mit Quellen hat; V-03.a bleibt gewählt, der Plan bleibt fest (sonst gäbe es keine „Weiteren Wege“)
+    offen = [('- {datum: 2026-10-20, status: verworfen, wer: Ida, grund: "Anstieg am Morgen"}',
+              '- {datum: 2026-10-20, status: vorgeschlagen, wer: Ida, grund: "Abendessen im Haus"}')]
+    e = seite_der_variante(tmp_path, browser, datum="2026-11-01", skript="b2_browser.mjs", fest=True, routen_ersetzen=offen)   # vor der Reise
+    for breite in ("390", "820", "1300"):
+        w, o, v = e[breite]["wege"], e[breite]["ort"], e[breite]["vergleich"]
+        assert w and w["zeilen"] >= 1 and w["kacheln"] == 0 and not w["ueberlauf"] and w["links"] == w["zeilen"], (breite, w)
+        assert w["kopf"] == (breite == "1300"), (breite, w)   # Tabellenkopf nur am Rechner
+        assert w["zahlen"] and all(z.strip() for z in w["zahlen"]), (breite, w)
+        assert o["spalte"] and o["abschnitte"] == 2 and o["kaesten"] == 0 and o["allesSichtbar"], (breite, o)
+        assert v and v["iImVergleich"] == 0 and not v["ueberlauf"], (breite, v)
+        assert v["herkunftZeilen"] >= 1 and v["herkunftOhneAufklappen"] and v["quellenDa"], (breite, v)
+        assert v["herkunftText"].startswith("Quellen: "), (breite, v)
+        if breite == "1300":
+            assert v["tabelle"] and v["karten"] == 0 and v["nachSortieren"], (breite, v)
+        else:
+            assert not v["tabelle"] and v["karten"] >= 2 and v["herkunftKarten"] >= 1, (breite, v)
+    assert e["1300"]["ort"]["breite"] <= 44 * 17 + 1   # Lesebreite --lese (44rem bei 106,25 % Schrift), nicht die volle Breite
 
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
