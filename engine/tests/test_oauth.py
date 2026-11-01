@@ -315,12 +315,12 @@ def test_reisen_anlegen_mit_recht(welt):
                           personen=[{"vorname": "Mo", "rolle": "mitwirkend", "email": "mo@beispiel.invalid"},
                                     {"vorname": "Kai"}])
     assert not fehler and "Einladung per Mail" in text, text
-    e = json.loads((u.ablage / "_neu" / "auftraege.jsonl").read_text().splitlines()[-1])
+    e = json.loads((konten.pfad().parent / "neu" / "auftraege.jsonl").read_text().splitlines()[-1])
     assert e["konto_id"] == konten.konto_per_email(BEN)["id"] and e["name"] == "Ben"
     assert e["einladen"] == [{"schluessel": "mo", "email": "mo@beispiel.invalid", "rolle": "mitwirkend", "name": "Mo"}]
     assert "mo@beispiel.invalid" not in json.dumps(e["daten"])              # Adressen nicht in den Reisedaten
     # Die Reise entsteht sofort über den Schreibweg (hier nachgestellt): Anfrage erledigt, Links folgen nach dem Veröffentlichen
-    st = json.loads((u.ablage / "_neu" / "status.json").read_text())[e["id"]]
+    st = json.loads((konten.pfad().parent / "neu" / "status.json").read_text())[e["id"]]
     assert st["status"] == "uebernommen" and "Angelegt als winterwoche-im-allgaeu-2027" in st["kommentar"]
     assert "winterwoche-im-allgaeu-2027" in Path(__import__("os").environ["KN_ZUGAENGE"]).with_name("neue-reisen-ausstehend.jsonl").read_text()
     assert "Winterwoche im Allgäu" not in aufruf(u, t["access_token"], "meine_reisen")[0]   # steht dort, sobald die Seite online ist

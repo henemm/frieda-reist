@@ -43,7 +43,8 @@ HTTP (hinter nginx, Präfix /<reise>-<token>/api/ -> /<reise>/):
                                           eingeplant nur vom Konnektor oder angemeldeten Organisator:innen
   PATCH  /<reise>/rueckmeldungen/<R-id|A-id>  nur vom Konnektor (Organisator:in erledigt im Gespräch): {status, kommentar} setzt
                                           uebernommen, verworfen oder rueckfrage mit Kommentar für die Seite (O-3)
-  GET    /<reise>/ich                     angemeldet als (Konto, Person der Reise), Regel anmeldung, Basis-Adresse
+  GET    /<reise>/ich                     angemeldet als (Konto, Person der Reise), Regel anmeldung, Basis-Adresse,
+                                          Meldungen an die Person in dieser Reise
   GET    /<reise>/belege[?buchung=B-01]   Belege zu Buchungen, die die Person sehen darf (engine/belege.py, #76)
   GET    /<reise>/belege/<D-id>           die Datei selbst (PDF, Bild), wenn die Person sie sehen darf
   POST   /<reise>/belege/<B-id>           Datei hochladen (Body = Datei, X-Frieda-Datei = Name, ?name= bei eingetipptem Namen)
@@ -107,13 +108,17 @@ def ablage():
     return instanz.ablage()
 
 
-NEU = "_neu"   # Ablage für Anfragen nach neuen Reisen und Meldungen an Konten (gehört zu keiner Reise, Paket H)
+NEU = "_neu"   # Name auf der Kommandozeile für die Ablage ohne Reise (Anfragen nach neuen Reisen, Meldungen an Konten)
 
 
 def ordner_neu(anlegen=False):
-    p = ablage() / NEU
+    """Ablage ohne Reise: <Konten>/neu (Rechte 700, #72), übergangsweise noch <Ablage>/_neu (instanz.neu)."""
+    p = instanz.neu()
     if anlegen:
-        p.mkdir(parents=True, exist_ok=True)
+        for q in (p.parent, p):
+            if not q.is_dir():
+                q.mkdir(parents=True, exist_ok=True)
+                os.chmod(q, 0o700)
     return p if p.is_dir() else None
 
 
@@ -284,6 +289,32 @@ def meldungen_aktuell(o, an, aufgaben=None, status=None, bausteine=None, heute=N
             continue
         aus.append(m)
     return aus
+
+
+def meldungen_der_person(reise, name, z=None):
+    """Meldungen an eine Person in einer Reise, die noch gelten (Status und Bausteine aus der veröffentlichten Seite)."""
+    o = ordner(reise)
+    if o is None or not name:
+        return []
+    z = z or {}
+    return meldungen_aktuell(o, name, aufgaben(o), z.get("status"), z.get("bausteine"))
+
+
+def meldungen_des_kontos(k):
+    """Alle Meldungen an ein Konto, die noch gelten (#21, #41): die ohne Reise (Name des Kontos) und die jeder Reise, in der
+    das Konto Mitglied ist (Name der Person dort). Eine Quelle für meine_reisen, Mein Konto und die Reiseseiten.
+    -> [{reise (None ohne Reise), id, erstellt, text, art}], neueste zuerst."""
+    aus = []
+    o = ordner_neu()
+    if o:
+        aus += [m | {"reise": None} for m in meldungen_aktuell(o, k["name"])]
+    for mg in konten.mitgliedschaften(k["id"]):
+        z = zustand(mg["reise"]) or {}
+        p = next((x for x in z.get("personen") or [] if x.get("schluessel") == mg["schluessel"]), None)
+        if p:
+            aus += [m | {"reise": mg["reise"]} for m in meldungen_der_person(mg["reise"], p.get("name"), z)]
+    aus.sort(key=lambda m: m.get("erstellt", ""), reverse=True)
+    return [{f: m.get(f) for f in ("reise", "id", "erstellt", "text", "art")} for m in aus]
 
 
 def schreiben(pfad, text):
@@ -855,7 +886,10 @@ class Dienst(BaseHTTPRequestHandler):
                 "basis": konten.basis(), "anmeldung": anmeldung_regel(z),
                 # sprache: angemeldet folgt die Seite der Sprache des Kontos (#188)
                 "konto": {"name": k["name"], "email": k["email"], "sprache": k["sprache"]} if k else None,
-                "person": {f: p.get(f) for f in ("schluessel", "name", "rolle")} if p else None})
+                "person": {f: p.get(f) for f in ("schluessel", "name", "rolle")} if p else None,
+                # Meldungen an die Person in dieser Reise (#21 Stufe 1): die Seite zeigt sie als Hinweis, auch offline
+                "meldungen": [{f: m.get(f) for f in ("id", "erstellt", "text")}
+                              for m in meldungen_der_person(o.name, p.get("name"), z)] if p else []})
         if was != "rueckmeldungen":
             return self._antwort(404, {"fehler": texte.satz("dienst.do_get.2")})
         self._antwort(200, eintraege(o))

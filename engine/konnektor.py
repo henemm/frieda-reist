@@ -17,7 +17,7 @@ Wissen) und Rückmeldungen abgeben. Ein Link gehört zu genau einer Reise und ei
                erlaubt (Vorgabe: Organisator:innen); person_einladen legt die Person an und stellt ihren Zugang aus.
 
 Paket H (27.10.2026): Ein Konto-Link gehört zu einer Person, nicht zu einer Reise („Frieda – meine Reisen“). Er zeigt die
-eigenen Reisen (meine_reisen) und legt neue an (reise_anlegen); Anfragen und Meldungen liegen in <ablage>/_neu/.
+eigenen Reisen (meine_reisen) und legt neue an (reise_anlegen); Anfragen und Meldungen liegen in <konten>/neu/ (#72).
 
 Alte Links mit rolle mitreisend (vor dem 26.10.2026) gelten weiter als mitwirkend ohne festen Namen. Ein Link ohne Person (zugang <reise> mitwirkend) fragt nach dem Vornamen.
 
@@ -1867,7 +1867,7 @@ def meine_reisen(konto):
 
 
 def reise_anlegen(konto, args):
-    """reise_anlegen: prüft die Eingaben sofort, legt in <ablage>/_neu die Anfrage als Beleg ab und lässt den Schreibweg die
+    """reise_anlegen: prüft die Eingaben sofort, legt in <konten>/neu die Anfrage als Beleg ab und lässt den Schreibweg die
     Reise anlegen. Sobald die Seite online ist, bekommt die Person eine Meldung mit den Links (meine_reisen).
     -> (Text, ist_fehler)"""
     o = rm.ordner_neu(anlegen=True)
@@ -2005,13 +2005,18 @@ def anleitung_frieda(k, sprache=None):
     return "\n".join(z)
 
 
+def meldung_zeile(m, titel=None):
+    """Meldung als Listenzeile; bei Meldungen aus einer Reise steht deren Titel davor."""
+    return f"- {datum_de(m['erstellt'][:10])}" + (f", {titel}" if titel else "") + f": {m['text']}"
+
+
 def meine_reisen_konto(k):
     z = []
     o = rm.ordner_neu()
-    if o:
-        ms = rm.meldungen_aktuell(o, k["name"])
-        if ms:
-            z += [tk("konnektor.ausgabe.meine_reisen.5"), *[f"- {datum_de(m['erstellt'][:10])}: {m['text']}" for m in ms], ""]
+    ms = rm.meldungen_des_kontos(k)   # dieselbe Quelle wie Mein Konto und die Reiseseiten (#21, #41)
+    if ms:
+        titel = {r: (reise_kurz(r) or {}).get("titel", r) for r in {m["reise"] for m in ms if m["reise"]}}
+        z += [tk("konnektor.ausgabe.meine_reisen.5"), *[meldung_zeile(m, titel.get(m["reise"])) for m in ms], ""]
     reisen = reisen_des_kontos(k)
     z.append(tk("konnektor.ausgabe.meine_reisen.1", w1=len(reisen)) if reisen else
              tk("konnektor.meine_reisen_konto.1"))
@@ -2156,11 +2161,8 @@ def konto_antwort(konto, nid, methode, p, ok):
 
 def meldungen_fuer(reise, name, d):
     """Meldungen, die für diese Person noch gelten (nicht erledigt, nicht zu alt, Baustein waechter an)."""
-    o = rm.ordner(reise)
-    if o is None or not name:
-        return []
     status, bausteine = zustand_von(d)
-    return rm.meldungen_aktuell(o, name, rm.aufgaben(o), status, bausteine)
+    return rm.meldungen_der_person(reise, name, {"status": status, "bausteine": bausteine})
 
 
 def liste_text(reise, mit_auftraegen, name=None, d=None):
@@ -2982,7 +2984,8 @@ class Dienst(BaseHTTPRequestHandler):
             return self._senden(*gesund())
         if self.path.split("?", 1)[0] in MARKE_DATEIEN or self.path.split("?", 1)[0] in SCHRIFT_DATEIEN:
             return self._marke(self.path.split("?", 1)[0])
-        if anmeldung.ist_unsere(self.path) or oauth.ist_unsere(self.path):
+        # Die Startseite der Adresse ist Mein Konto (#41); POST auf / bleibt unbekannt
+        if anmeldung.ist_unsere(self.path) or oauth.ist_unsere(self.path) or self.path.split("?", 1)[0] == "/":
             return self._anmeldung()
         if self.path.split("?", 1)[0] == "/mcp":
             if not oauth.basis() or not konten.oauth_konto(oauth.bearer(self.headers) or ""):

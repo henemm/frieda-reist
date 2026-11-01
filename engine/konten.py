@@ -30,6 +30,7 @@ Aufrufe:
   python3 engine/konten.py loeschen <email>                    Konto und Adresse löschen
   python3 engine/konten.py zusammenfuehren <von> <nach>        zwei Konten eines Menschen vereinen
   python3 engine/konten.py einladen <reise> <schluessel> <email> <rolle> <Name> <von>
+  python3 engine/konten.py sichern                             sauberer Schnappschuss nach <Konten>/sicherung/ (#72)
 """
 import datetime
 import email.message
@@ -823,6 +824,33 @@ def liste():
                   f"{'  GESPERRT' if k['gesperrt'] else ''}  geräte: {n}  reisen: {reisen or '-'}")
 
 
+def sichern():
+    """Schnappschuss der Datenbank über die Backup-API von SQLite (#72). Eine Kopie der Datei im laufenden Betrieb kann
+    wegen WAL unbrauchbar sein; dieser Schnappschuss ist in sich stimmig. Er ersetzt den vorigen erst, wenn er fertig
+    und geprüft ist, und liegt nur für den Betreiber lesbar unter <Konten>/sicherung/konten.db. Das Server-Backup
+    sichert ihn mit dem Ordner der Konten. -> Pfad des Schnappschusses oder None, wenn es noch keine Datenbank gibt."""
+    p = pfad()
+    if not p.exists():
+        return None
+    ordner = p.parent / "sicherung"
+    ordner.mkdir(exist_ok=True)
+    os.chmod(ordner, 0o700)
+    ziel, tmp = ordner / "konten.db", ordner / f".konten.db.{os.getpid()}"
+    tmp.unlink(missing_ok=True)
+    try:
+        with closing(sqlite3.connect(p, timeout=10)) as quelle, \
+                closing(sqlite3.connect(tmp)) as kopie:
+            os.chmod(tmp, 0o600)
+            quelle.backup(kopie)
+            kopie.execute("PRAGMA journal_mode = DELETE")   # eine Datei ohne -wal, so wie sie im Backup liegt
+            if kopie.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
+                raise sqlite3.DatabaseError("integrity_check")
+        os.replace(tmp, ziel)
+    finally:
+        tmp.unlink(missing_ok=True)
+    return ziel
+
+
 def _per_email(e):
     k = konto_per_email(e)
     if not k:
@@ -847,6 +875,10 @@ def main(a):
             loeschen(_per_email(a[1])["id"])
         elif a[:1] == ["zusammenfuehren"] and len(a) == 3:
             zusammenfuehren(_per_email(a[1])["id"], _per_email(a[2])["id"])
+        elif a[:1] == ["sichern"] and len(a) == 1:
+            z = sichern()   # ohne Datenbank: nichts zu sichern, keine Ausgabe
+            if z:
+                print(z)
         elif a[:1] == ["einladen"] and len(a) == 7:
             print("valid immediately" if einladen(*a[1:])["sofort"] else "invitation sent")
         else:

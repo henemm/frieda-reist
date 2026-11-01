@@ -786,6 +786,9 @@ header .konto{position:absolute;top:calc(10px + env(safe-area-inset-top));right:
 .hinweis[hidden]{display:none}
 .hinweis button{font:inherit;font-weight:600;border:0;border-radius:var(--r-pille);padding:6px 12px;background:var(--acc);color:var(--bg);cursor:pointer}
 #offline{color:var(--warn);padding-right:14px}
+/* Meldungen an die angemeldete Person in dieser Reise (#21): Hinweis mit den neuesten Meldungen, „Gelesen“ blendet sie aus */
+#fuerDich{align-items:flex-start}#fuerDich .fd-text{flex:1;min-width:0;display:grid;gap:2px;padding:6px 0;overflow-wrap:anywhere}
+#fuerDich a{color:var(--acc)}
 /* ---------- Glas (Liquid Glass: 35 %, Blur 8px, Sättigung 170 %) ----------
    Leitbild: Inhalt läuft bis an die Ränder, Bedienelemente schweben als Glas darüber (iOS 26/27).
    Ohne backdrop-filter bleibt das Glas deckend, sonst stünde Text auf Text. */
@@ -884,6 +887,7 @@ nav a.warn .zahl{background:var(--warn)}
 </header>
 <div class="meldungen">
   <div id="neu" class="hinweis glas" role="status" hidden><span data-t="seite.rahmen.neue_version">Neue Version des Handbuchs bereit.</span> <button type="button" id="neuLaden" data-t="seite.rahmen.aktualisieren">Aktualisieren</button></div>
+  <div id="fuerDich" class="hinweis glas" role="status" hidden></div>
   <div id="offline" class="hinweis glas" role="status" hidden data-t="seite.rahmen.offline">Ohne Netz: gespeicherter Stand. Rückmeldungen werden nachgereicht, Aufgaben erst wieder mit Netz änderbar.</div>
 </div>
 <main id="main" class="pico"></main>
@@ -2181,6 +2185,7 @@ function spracheWaehlen(k) {
   titelTexte();
   sprachUmschalter();
   releaseFuss();
+  fuerDich();
   route(true);
 }
 const planUmschalter = alle => umschalter(T("seite.plan.waehlen"), [[{"data-variante": ""}, !VARIANTE, T("seite.plan.alle_n", {n: alle.length})],
@@ -3934,8 +3939,12 @@ const ANMELDEN = () => "/anmelden?zurueck=" + encodeURIComponent(location.pathna
 const KONTO_HIER = () => !!(ICH && ICH.basis && ICH.basis === location.origin);
 const MIT_KONTO = () => !!(ICH && ICH.person);
 async function ichLaden() {
-  try { const r = await fetch("api/ich", {cache: "no-store"}); if (r.ok) ICH = await r.json(); } catch (e) {}
+  let geladen = false;
+  try { const r = await fetch("api/ich", {cache: "no-store"}); if (r.ok) { ICH = await r.json(); geladen = true; } } catch (e) {}
   if (MIT_KONTO()) NAME = ICH.person.name;
+  // Meldungen an die Person (#21): der letzte Stand bleibt im Browser, damit der Hinweis auch ohne Netz steht; abgemeldet leer
+  if (geladen) merke("fuer-dich", MIT_KONTO() ? ICH.meldungen || [] : []);
+  FUER_DICH = geladen ? (MIT_KONTO() && ICH.meldungen) || [] : lies("fuer-dich", []);
   // Angemeldet spricht die Seite die Sprache des Kontos (#188); gemerkt wie eine Wahl, damit sie beim nächsten Öffnen gleich gilt
   ICH_BEKANNT = true;
   const kontoSprache = ICH && ICH.konto && ICH.konto.sprache;
@@ -3944,6 +3953,23 @@ async function ichLaden() {
   const alt = $("#konto");
   if (alt) alt.remove();
   if (KONTO_HIER()) $("header").append(kontoKnopf(ICH));
+  fuerDich();
+}
+/* Hinweis „Für dich“ (Rahmen, Meldungen; #21 Stufe 1): Meldungen an die angemeldete Person in dieser Reise, die noch nicht
+   als gelesen gelten, die neuesten drei, dazu „und n weitere“. Alle Meldungen über alle Reisen stehen auf Mein Konto. */
+let FUER_DICH = [];
+const FD_ZEIGEN = 3;
+function fuerDich() {
+  const box = $("#fuerDich"), gelesen = new Set(lies("gelesen", []));
+  const offen = FUER_DICH.filter(m => m && m.id && !gelesen.has(m.id));
+  box.hidden = !offen.length;
+  if (!offen.length) return box.replaceChildren();
+  const ok = el("button", {type: "button"}, T("seite.fuer_dich.gelesen"));
+  ok.addEventListener("click", () => { merke("gelesen", [...gelesen, ...offen.map(m => m.id)].slice(-200)); fuerDich(); });
+  const mehr = offen.length - FD_ZEIGEN;
+  box.replaceChildren(el("span", {class: "fd-text"}, el("b", {}, T("seite.fuer_dich.titel")),
+    offen.slice(0, FD_ZEIGEN).map(m => el("span", {}, m.text)),
+    mehr > 0 ? el("span", {}, KONTO_HIER() ? el("a", {href: "/konto#meldungen"}, T("seite.fuer_dich.weitere", {n: mehr})) : T("seite.fuer_dich.weitere", {n: mehr})) : null), ok);
 }
 // Molekül Konto-Knopf: angemeldet der eigene Name (zur Kontoseite), sonst „Anmelden“
 function kontoKnopf(ich) {

@@ -1083,8 +1083,13 @@ def test_neue_reise_aus_dem_konnektor_frieda(fs, monkeypatch, capsys):
 @pytest.fixture
 def wa(tmp_path):
     """Attrappe für Python (schreibt den Bericht, wenn WA_BERICHT gesetzt ist) und für den Meldeweg."""
-    ausfuehrbar(tmp_path / "python", '''#!/bin/sh
-# Aufruf: python engine/waechter.py lauf --bericht DATEI
+    ausfuehrbar(tmp_path / "python", f'''#!/bin/sh
+# Aufruf: python engine/waechter.py lauf --bericht DATEI, danach python engine/konten.py sichern
+if [ "$2" = sichern ]; then
+  echo "${{1##*/}}" >> {tmp_path}/gesichert
+  [ -z "$WA_SICHERN_FEHLER" ] || exit 2
+  exit 0
+fi
 [ -z "$WA_FEHLER" ] || exit 3
 [ -z "$WA_BERICHT" ] || printf '%s\\n' "$WA_BERICHT" > "$4"
 exit 0
@@ -1095,17 +1100,30 @@ exit 0
     def lauf(**umgebung):
         env = {**SAUBER, "FR_WURZEL": str(tmp_path / "quelle"), "FR_PYTHON": str(tmp_path / "python"),
                "FR_DIENST": str(tmp_path / "dienst"), "FR_MELDEN": str(tmp_path / "melden.sh"), "FR_TITEL": "Probe",
-               "WA_BERICHT": "", "WA_FEHLER": "", **umgebung}
+               "WA_BERICHT": "", "WA_FEHLER": "", "WA_SICHERN_FEHLER": "", **umgebung}
         r = subprocess.run([str(BETRIEB / "waechter.sh")], capture_output=True, text=True, env=env)
         nachrichten = tmp_path / "nachrichten"
         return r, nachrichten.read_text().splitlines() if nachrichten.exists() else []
     lauf.stempel = tmp_path / "dienst" / "waechter-erfolg"
+    lauf.gesichert = tmp_path / "gesichert"
     return lauf
 
 
 def test_waechter_ohne_neues_keine_nachricht(wa):
     r, nachrichten = wa()
     assert r.returncode == 0 and nachrichten == [] and wa.stempel.exists()
+    assert wa.gesichert.read_text() == "konten.py\n"                     # täglicher Schnappschuss der Konten (#72)
+
+
+def test_waechter_sicherung_fehlgeschlagen_meldet_sich(wa):
+    r, nachrichten = wa(WA_SICHERN_FEHLER="1")
+    assert r.returncode == 1 and not wa.stempel.exists()
+    assert len(nachrichten) == 1 and nachrichten[0].startswith("high|") and "Account backup" in nachrichten[0]
+
+
+def test_waechter_fehler_sichert_trotzdem(wa):
+    r, _ = wa(WA_FEHLER="1")
+    assert r.returncode == 1 and wa.gesichert.exists()
 
 
 def test_waechter_bericht_geht_als_sammelnachricht_und_ist_erledigt(wa):
@@ -1173,7 +1191,7 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     nginx = (aus / "nginx/probe-konnektor.conf").read_text()
     inc = (aus / "nginx/probe-konnektor.inc").read_text()
     # Konnektor an der Wurzel (#163): /mcp, Anmeldung, OAuth; der alte Pfad bleibt für Links aus der Zeit vor den Konten
-    assert "location ~ ^/(mcp|anmelden|abmelden|konto|authorize|token|register|gesund)$" in nginx
+    assert "location ~ ^/(mcp|anmelden|abmelden|konto|authorize|token|register|gesund)?$" in nginx
     assert "location ^~ /.well-known/oauth-" in nginx and "location ^~ /schrift/" in nginx and "location = /favicon.ico" in nginx
     assert "location ^~ /probe-mcp/" in nginx and "zone=probe_api" in nginx and "127.0.0.1:8772/" in nginx
     assert "include /etc/nginx/snippets/probe-konnektor.inc;" in nginx

@@ -14,8 +14,8 @@ Eine **Instanz** ist eine Reisegruppe mit eigenem Betreiber: ein Reisen-Repo, da
 | Arbeitsordner | eigener Klon des Reisen-Repos, Branches erlaubt | hier wird gearbeitet, über Pull Requests nach `main` |
 | Arbeitskopie des Schreibwegs | `<Bauordner>-schreiben-<reise>` | Git-Worktree je Reise, legt der Dienst selbst an |
 | Seiten | `<FR_SEITEN>/<reise>/` | gebaute Seiten, nginx liefert sie aus |
-| Ablage | `<FR_ABLAGE>/<reise>/` (`eingang.jsonl`, `status.json`, `aufgaben.json`, …), `<FR_ABLAGE>/_neu/` (Anfragen nach neuen Reisen) | Eingaben der Mitreisenden; nie im Repo |
-| Konten | `<FR_KONTEN>/` (`konten.db`, Dienst-Geheimnis) | Konten, Anmeldungen und Einladungen aller Nutzer der Instanz; nie im Repo, nie in einer Reise |
+| Ablage | `<FR_ABLAGE>/<reise>/` (`eingang.jsonl`, `status.json`, `aufgaben.json`, …) | Eingaben der Mitreisenden; nie im Repo |
+| Konten | `<FR_KONTEN>/` (`konten.db`, Dienst-Geheimnis, `sicherung/konten.db`, `neu/` mit Anfragen nach neuen Reisen und Meldungen an Personen) | Konten, Anmeldungen, Einladungen und alles Personenbezogene ohne Reise; nie im Repo, nie in einer Reise |
 | Dienstordner | `<FR_DIENST>/` | Code der Dienste, Stände, Stempel, vorgemerkte Links, geheime Einstellungen |
 | Konnektor-Zugänge | `<FR_KONNEKTOR>/zugaenge.json`, `seiten.json` (600) | geheime Links; nie im Repo |
 | systemd | `<instanz>-rueckmeldungen`, `-konnektor`, `-schreiben`, `-veroeffentlichen.timer`, `-waechter.timer` | aus `betrieb/vorlagen/`, erzeugt von `einrichten.sh` |
@@ -29,7 +29,11 @@ Drei Gruppen, die sich nie mischen sollen:
 
 1. **Die Software** (dieses Repo): Code, Vorlagen, Werkzeuge. Auf dem Server liegt eine Kopie des Dienst-Codes in `<FR_DIENST>/*.py`, die `deploy.sh` anlegt. Sie ist für jede Instanz gleich und enthält nichts Eigenes.
 2. **Die Daten einer Reisegruppe** (das Reisen-Repo und seine Ordner): Reisen, Seiten, Ablage mit Rückmeldungen, Aufträgen, Aufgaben und Belegen, Einstellungen und Meldeweg der Instanz.
-3. **Daten der Nutzer**: Konten und Anmeldungen (`<FR_KONTEN>/`), Zugänge zum Konnektor (`<FR_KONNEKTOR>/`), Anfragen nach neuen Reisen (`<FR_ABLAGE>/_neu/`) und der Mailzugang (`konten.env`). Sie gehören nicht in das Reisen-Repo und gehören nicht einer einzelnen Reise.
+3. **Daten der Nutzer**: Konten und Anmeldungen (`<FR_KONTEN>/`), Zugänge zum Konnektor (`<FR_KONNEKTOR>/`), Anfragen nach neuen Reisen samt Meldungen an Personen (`<FR_KONTEN>/neu/`, Rechte 700) und der Mailzugang (`konten.env`). Sie gehören nicht in das Reisen-Repo und gehören nicht einer einzelnen Reise. Betriebsdaten des Konnektors bleiben in `<FR_KONNEKTOR>/` (`seiten.json`, `neue-reisen-ausstehend.jsonl`; `zugaenge.json` entfällt mit den alten Links, #43).
+
+**Sicherung:** Das Server-Backup sichert `<FR_KONTEN>/` und `<FR_ABLAGE>/`. Die Reisen selbst liegen im Reisen-Repo, die Seiten entstehen daraus neu. `konten.db` läuft im WAL-Modus; eine Kopie der Datei im laufenden Betrieb kann unbrauchbar sein. Darum schreibt der Wächter-Lauf täglich einen sauberen Schnappschuss über die Backup-API von SQLite nach `<FR_KONTEN>/sicherung/konten.db` (`engine/konten.py sichern`, geprüft mit `integrity_check`, ohne WAL-Dateien). Zurückholen: Dienste anhalten, den Schnappschuss als `<FR_KONTEN>/konten.db` einsetzen (alte `-wal`/`-shm` entfernen), Dienste starten.
+
+**Umzug von `_neu` (#72, 1.11.2026):** Früher lagen Anfragen und Meldungen ohne Reise in `<FR_ABLAGE>/_neu/`. Dieser Ort gilt weiter, solange in `<FR_KONTEN>/neu/` nichts liegt. Umziehen bei angehaltenen Diensten: `mv <FR_ABLAGE>/_neu <FR_KONTEN>/neu && chmod 700 <FR_KONTEN>/neu`.
 
 Der Name der Instanz (`FR_INSTANZ`) steht vor Units, Zonen und nginx-Bausteinen und nennt nur diese Instanz, nicht die Software. Eine zweite Reisegruppe bekommt eine zweite Instanz mit eigenem Namen, eigenem Reisen-Repo und eigenen Ordnern, ihre Daten sind damit von denen der ersten getrennt (#15). Ein gemeinsamer Ort für mehrere Gruppen mit Trennung je Mandant ist #68.
 
@@ -129,7 +133,7 @@ Links von Hand: `freischalten.sh <reise>` für die Seite, `freischalten.sh <reis
 
 ## Wächter
 
-`betrieb/waechter.sh` läuft täglich und ruft `engine/waechter.py lauf` auf (`docs/waechter.md`). Es berücksichtigt nur Reisen mit Baustein `waechter` und Status `fest` oder `unterwegs`. Hat es etwas zu melden, geht eine Sammelnachricht an den Betreiber; ein Fehler wird dringend gemeldet.
+`betrieb/waechter.sh` läuft täglich und ruft `engine/waechter.py lauf` auf (`docs/waechter.md`). Es berücksichtigt nur Reisen mit Baustein `waechter` und Status `fest` oder `unterwegs`. Hat es etwas zu melden, geht eine Sammelnachricht an den Betreiber; ein Fehler wird dringend gemeldet. Danach schreibt es den Schnappschuss der Konten (`engine/konten.py sichern`, siehe „Sicherung“); schlägt er fehl, kommt ebenfalls eine dringende Meldung, und der Stempel bleibt aus.
 
 ## Einstellungen
 
@@ -182,7 +186,7 @@ Der Workflow „Software nachziehen“ (siehe „Neue Instanz einrichten“) lä
 3. **Bauordner auf dem Server:** Klon des Reisen-Repos als Dienstbenutzer, `git submodule update --init`. Danach `python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt`. `git fetch` muss ohne Rückfrage gehen. Lokale Dateien, die nicht ins Repo gehören (etwa `.claude/settings.json`), kommen in `.git/info/exclude`, sonst gilt der Ordner als belegt und das Veröffentlichen setzt aus.
 4. **Einrichten:** `frieda/betrieb/einrichten.sh` prüft die Voraussetzungen. Es erzeugt Units und nginx-Bausteine in einem Ordner und zeigt die Befehle zum Aktivieren. Außerhalb dieses Ordners ändert es nichts. `--installieren` legt nach Rückfrage die Ordner an und kopiert Units und Bausteine nach `/etc`.
 5. **nginx:** Im server-Block der Adresse `include <FR_NGINX_SNIPPETS>/<instanz>-*.conf;` eintragen, `nginx -t`, neu laden. Das bindet die Reiseseiten und den Konnektor ein (`<instanz>-konnektor.conf`, gemeinsame Einstellungen in `<instanz>-konnektor.inc`, das der Stern nicht selbst einbindet). Der Konnektor steht an der Wurzel der Adresse (#163):
-   - `/mcp` (Claude-App), `/anmelden`, `/abmelden`, `/konto`, `/einladung/…`, OAuth (`/authorize`, `/token`, `/register`, `/.well-known/oauth-…`), `/kalender/…` (Abo), `/schrift/…`, Favicon und App-Symbole, `/gesund`.
+   - `/` (Startseite, führt zu Mein Konto; #41), `/mcp` (Claude-App), `/anmelden`, `/abmelden`, `/konto`, `/einladung/…`, OAuth (`/authorize`, `/token`, `/register`, `/.well-known/oauth-…`), `/kalender/…` (Abo), `/schrift/…`, Favicon und App-Symbole, `/gesund`.
    - Reiseseiten und Konnektor teilen sich die Adresse: Die Sitzung (`__Host-frieda`) gilt nur dort, und die Reiseseite fragt mit ihr `api/ich`.
    - Kein `add_header Referrer-Policy "no-referrer"` im server-Block für diese Pfade: Der Dienst setzt `same-origin`, sonst schicken Browser `Origin: null` und jede Anmeldung scheitert an der Prüfung der Herkunft. Cache-Control und Content-Security-Policy setzt ebenfalls der Dienst.
    - Präfix-Orte (`^~`) und genaue Orte (`=`) gehen allgemeinen Regeln für Dateiendungen vor; Regeln mit `^~` oder `=` für dieselben Pfade im server-Block dürfen nicht stehen.

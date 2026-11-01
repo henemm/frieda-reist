@@ -242,7 +242,7 @@ def test_kontoseite(welt):
     # Bitte „Reisen anlegen“: Meldung an den Betreiber, der auf seiner Kontoseite entscheidet
     abruf(f"{u.kurl}/konto", "POST", {"aktion": "anfragen"}, cookie=mo)
     assert "liegt beim Betreiber" in abruf(f"{u.kurl}/konto", cookie=mo)[2]
-    m = [json.loads(z) for z in (u.ablage / "_neu" / "meldungen.jsonl").read_text().splitlines()]
+    m = [json.loads(z) for z in (konten.pfad().parent / "neu" / "meldungen.jsonl").read_text().splitlines()]
     assert m[-1]["an"] == ["Ida"] and "Mo Beispiel" in m[-1]["text"]
     s, _, t = abruf(f"{u.kurl}/konto", cookie=ida)
     assert "Mo Beispiel" in t and "Freischalten" in t
@@ -339,3 +339,35 @@ def test_seiten_in_der_sprache_des_browsers_und_des_kontos(welt):
     assert "Hallo Karl" in t and '<option value="de" selected>Deutsch</option>' in t and '<option value="en">English</option>' in t
     s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "sprache", "sprache": "klingonisch"}, cookie=token)
     assert "Diese Sprache gibt es nicht." in t
+
+
+def test_meldungen_auf_mein_konto_und_der_reiseseite(welt):
+    """#21 Stufe 1 und #41: Die Adresse führt zu Mein Konto; dort stehen die Meldungen an die Person über alle Reisen,
+    auf der Reiseseite (api/ich) die dieser Reise. Eine Quelle für beides und für meine_reisen in der Claude-App."""
+    import konnektor as kn
+    import rueckmeldungen as rm
+    u = welt()
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
+    karl, _ = anmelden(u, KARL)
+    s, h, _ = abruf(f"{u.kurl}/")
+    assert s == 303 and kopf(h, "Location") == ["/anmelden?zurueck=/konto"]
+    s, h, _ = abruf(f"{u.kurl}/", cookie=karl)
+    assert s == 303 and kopf(h, "Location") == ["/konto"]
+    assert 'id="meldungen"' not in abruf(f"{u.kurl}/konto", cookie=karl)[2]      # ohne Meldungen kein Abschnitt
+    assert json.loads(abruf(f"{u.rurl}/beispielreise/ich", cookie=karl)[2])["meldungen"] == []
+    rm.meldung_anlegen(u.o, ["Karl"], "hinweis", "allgemein", "Treffpunkt am Bahnhof ist jetzt 8:40 Uhr.")
+    rm.meldung_anlegen(u.o, ["Ida"], "hinweis", "allgemein", "Nur für Ida.")
+    rm.meldung_anlegen(rm.ordner_neu(anlegen=True), ["Karl"], "neue_reise", "winterwoche", "Deine neue Reise ist angelegt.")
+    s, _, t = abruf(f"{u.kurl}/konto", cookie=karl)
+    abschnitt = t.split('id="meldungen"', 1)[1].split('class="abschnitt"', 1)[0]
+    assert "Meldungen an dich" in t and "Treffpunkt am Bahnhof" in abschnitt and "Deine neue Reise ist angelegt." in abschnitt
+    assert "Nur für Ida" not in t
+    assert f'<a class="zeile" href="{SEITE}">' in abschnitt and "Beispielreise" in abschnitt   # führt zur Reise
+    assert t.index('id="meldungen"') < t.index("Deine Reisen")
+    ich = json.loads(abruf(f"{u.rurl}/beispielreise/ich", cookie=karl)[2])
+    assert [m["text"] for m in ich["meldungen"]] == ["Treffpunkt am Bahnhof ist jetzt 8:40 Uhr."]
+    assert set(ich["meldungen"][0]) == {"id", "erstellt", "text"}
+    assert json.loads(abruf(f"{u.rurl}/beispielreise/ich")[2])["meldungen"] == []           # ohne Anmeldung nichts
+    text = kn.meine_reisen_konto(konten.konto_per_email(KARL))
+    assert text.startswith("Meldungen an dich:\n- ") and ", Beispielreise – Malerweg in vier Tagen: Treffpunkt am Bahnhof" in text
+    assert "Deine neue Reise ist angelegt." in text and "Nur für Ida" not in text

@@ -9,6 +9,8 @@ leitet dieses Modul den Rest nach derselben Ordnung ab, ohne Werte einer bestimm
   Ablage   RM_ABLAGE, FR_ABLAGE; sonst <Seiten>/_rueckmeldungen
   Konten   FR_KONTEN; sonst <Seiten>/_konten (Konten-Datenbank des Dienstes, nicht Teil einer Reise); eine ältere Datenbank
            unter <Ablage>/_konten/ gilt weiter, solange am neuen Ort keine liegt
+  Neu      <Konten>/neu (Anfragen nach neuen Reisen und Meldungen an Personen, gehört zu keiner Reise, #72); ein älterer
+           Ordner <Ablage>/_neu/ gilt weiter, solange am neuen Ort nichts liegt
   Zugänge  KN_ZUGAENGE; sonst <FR_KONNEKTOR bzw. <Seiten>/_konnektor>/zugaenge.json
 
 Einstellungen der Instanz: <FR_WURZEL bzw. aktueller Ordner>/betrieb/einstellungen.env, Zeilen NAME=wert wie in
@@ -72,6 +74,17 @@ def konten():
     neu = Path(os.environ.get("FR_KONTEN") or wert("FR_KONTEN") or seiten() / "_konten")
     alt = ablage() / "_konten"
     return alt if not (neu / "konten.db").exists() and (alt / "konten.db").exists() else neu
+
+
+def _belegt(p):
+    return p.is_dir() and any(p.iterdir())
+
+
+def neu():
+    """Ordner für Anfragen nach neuen Reisen und Meldungen an Personen: Personenbezogenes ohne Reise liegt bei den Konten
+    (#72). Der alte Ort <Ablage>/_neu gilt weiter, solange am neuen nichts liegt (Übergang wie beim Umzug der Konten)."""
+    neu, alt = konten() / "neu", ablage() / "_neu"
+    return alt if not _belegt(neu) and _belegt(alt) else neu
 
 
 def zugaenge():
