@@ -2048,7 +2048,8 @@ const planMarke = (p, form = "punkt") => el("i", {class: form === "linie" ? "pla
 const kartenLegende = (eintraege, tag = "div") => el(tag, {class: "legende"}, ...eintraege.filter(Boolean).map(([zeichen, wort]) => el("span", {}, zeichen, wort)));
 // Molekül Umschalter: Knöpfe, von denen einer gedrückt ist; je Knopf [Daten-Attribute, gedrückt, Inhalt …]. Gedrückt
 // heißt Tinte, nicht Akzentgrün: ein gewählter Vergleich oder eine Region ist keine Entscheidung (Regel 4, #38).
-// klasse: Platz des Umschalters (Wahl-Modul, Karte), nur für Abstände und Sichtbarkeit
+// klasse: Platz des Umschalters (Wahl-Modul, Karte), nur für Abstände und Sichtbarkeit; einzige Ausnahme im Fuß
+// (fuss-sprachen): dort als kleine Textzeile statt Pillen, damit die seltene Spracheinstellung nicht auffällt (#188)
 const umschalter = (titel, knoepfe, klasse) => el("fieldset", {class: "umschalter" + (klasse ? " " + klasse : "")}, el("legend", {class: "unsichtbar"}, titel),
   ...knoepfe.map(([daten, an, ...inhalt]) => el("button", {type: "button", ...daten, "aria-pressed": String(an)}, ...inhalt)));
 // Verwendung des Moleküls Umschalter im Fuß, nur für Gäste (#188): ein Knopf je Sprache des Katalogs, beschriftet mit ihrem
