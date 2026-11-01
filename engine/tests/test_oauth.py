@@ -313,7 +313,7 @@ def test_reisen_anlegen_mit_recht(welt):
     # Die Reise entsteht sofort über den Schreibweg (hier nachgestellt): Anfrage erledigt, Links folgen nach dem Veröffentlichen
     st = json.loads((u.ablage / "_neu" / "status.json").read_text())[e["id"]]
     assert st["status"] == "uebernommen" and "Angelegt als winterwoche-im-allgaeu-2027" in st["kommentar"]
-    assert "winterwoche-im-allgaeu-2027" in (u.ablage.parent / "_dienst" / "neue-reisen-ausstehend.jsonl").read_text()
+    assert "winterwoche-im-allgaeu-2027" in Path(__import__("os").environ["KN_ZUGAENGE"]).with_name("neue-reisen-ausstehend.jsonl").read_text()
     assert "Winterwoche im Allgäu" not in aufruf(u, t["access_token"], "meine_reisen")[0]   # steht dort, sobald die Seite online ist
 
 

@@ -120,7 +120,7 @@ main() {
   deploy="${VF_DEPLOY:-$FR_BETRIEB/deploy.sh}"
   pruefen="${VF_PRUEFEN:-}"
   freischalten="${VF_FREISCHALTEN:-$FR_BETRIEB/freischalten.sh}"
-  ausstehend="${VF_AUSSTEHEND:-$FR_DIENST/neue-reisen-ausstehend.jsonl}"
+  ausstehend="${VF_AUSSTEHEND:-$FR_KONNEKTOR/neue-reisen-ausstehend.jsonl}"
   rot_datei="${VF_ROT:-$FR_DIENST/veroeffentlichen-rot}"
   warnung="$FR_DIENST/veroeffentlichen-warnung"
   [ "${1:-}" = "--immer" ] && immer=1

@@ -1036,8 +1036,10 @@ class Handbuch:
 # ---------- Rückmeldungen und Aufträge ----------
 
 def ausstehend_datei():
-    """Links neuer Reisen, die veroeffentlichen.sh zustellt (betrieb/zustellen.py), sobald die Seite online ist (Dienstordner)."""
-    return Path(os.environ.get("KN_AUSSTEHEND") or rm.dienstordner() / "neue-reisen-ausstehend.jsonl")
+    """Links neuer Reisen, die veroeffentlichen.sh zustellt (betrieb/zustellen.py), sobald die Seite online ist. Liegt
+    neben den Zugängen im Ordner des Konnektors: Nur den darf der Konnektor beschreiben, der Dienstordner ist für ihn
+    schreibgeschützt (betrieb/vorlagen/konnektor.service)."""
+    return Path(os.environ.get("KN_AUSSTEHEND") or zugaenge_pfad().with_name("neue-reisen-ausstehend.jsonl"))
 
 
 def rueckmeldung_senden(reise, eintrag):
@@ -1852,7 +1854,7 @@ def reise_anlegen(konto, args):
             f.flush()
             os.fsync(f.fileno())
     # ADR-0001, O-3: die Reise entsteht sofort über den Schreibweg; die Links kommen, sobald die Seite online ist
-    # (veroeffentlichen.sh stellt sie zu, Datei neue-reisen-ausstehend.jsonl im Dienstordner)
+    # (veroeffentlichen.sh stellt sie zu, Datei neue-reisen-ausstehend.jsonl im Ordner des Konnektors)
     a, fehler = schreib_anfrage(neu["pfad"], "reise_anlegen", {"person": None, "name": konto["name"], "rolle": "organisator",
                                                                "args": {"auftrag": e}})
     with _sperre:
