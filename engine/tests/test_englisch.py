@@ -51,7 +51,7 @@ def test_neue_englische_reise_enthaelt_kein_deutsches_wort(repo):
     assert not funde, f"deutsche Wörter in einer englischen Reise: {funde}"
 
 
-def _funde_des_letzten_commits(origin, antwort, erlaubt_text, erlaubt_datei):  # noqa: C901
+def _funde_des_letzten_commits(origin, antwort, erlaubt_text, erlaubt_datei):
     """Deutsche Wörter in Antwort, Commit-Nachricht und den hinzugefügten Zeilen des letzten Commits auf main."""
     funde = {}
     if antwort.get("text_teile"):
@@ -71,8 +71,6 @@ def _funde_des_letzten_commits(origin, antwort, erlaubt_text, erlaubt_datei):  #
             elif z.startswith("+") and deutsche_woerter(ohne_schluessel(z[1:]), erlaubt_datei):
                 zeilen.append(f"{datei}: {z[1:].strip()}")
         funde["zeilen"] = zeilen[:6]
-        funde["umfeld"] = [git(origin, "show", "--stat", "--format=", "main").replace("\n", " | ")] + \
-                          [git(origin, "show", "main:reisen/coast-trip-2027/reise.json").replace("\n", " ")[:900]]
     return funde
 
 
