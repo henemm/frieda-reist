@@ -66,19 +66,22 @@ def test_b2_auf_reise_ort_wissen_vergleich(basis, browser):
         o = a["ort"]
         assert o["bloecke"] == 0 and o["kaesten"] == 0 and not o["ueber"], (breite, o)
         assert [x[0] for x in o["lesen"]] == ["Frauenkirche", "Abend an der Elbe"] and all(x[1] for x in o["lesen"]), (breite, o)
-        # W1: Weitere Wege als Listenzeilen mit Kennzahlen und Variante, keine Kacheln und keine Kästen
+        # W1: Weitere Wege in der Wegtabelle mit Kennzahlen und Variante, keine Kacheln und keine Kästen; Kopf nur am Rechner
         w = a["wissen"]
         assert w["kacheln"] == 0 and w["bloecke"] == 0 and w["kaesten"] == 0, (breite, w)
         assert [x[0] for x in w["wege"]] == ["#E-04"], (breite, w)
-        assert "6,6 km" in w["wege"][0][1] and "↑ 190 m" in w["wege"][0][1] and "Variante" in w["wege"][0][1], (breite, w)
-        # V1–V4: Wahlstelle ohne Rahmen, Herkunft hinter dem Wert (kein „i“), Tabelle nur am Rechner, Frage mit Namen
+        assert "6,6 km" in w["wege"][0][1] and "190 m" in w["wege"][0][1] and "Variante" in w["wege"][0][1], (breite, w)
+        assert w["kopf"] == rechner, (breite, w)
+        # V1–V4: Wahlstelle ohne Rahmen, im Vergleich kein Knopf am Wert, die Herkunft einmal je Möglichkeit
+        # (Herkunftszeile, #58); Tabelle nur am Rechner, Frage mit Namen
         v = a["vergleich"]
-        assert not v["rahmen"] and v["kaesten"] == [] and v["i"] == 0 and v["werte"] > 0, (breite, v)
+        assert not v["rahmen"] and v["kaesten"] == [] and v["i"] == 0 and v["werte"] == 0 and v["herkunft"] > 0, (breite, v)
         assert v["tabelle"] == rechner and v["karten"] == (not rechner), (breite, v)
         assert v["umschalter"] == (int(breite) < 700), (breite, v)     # Karten oder Tabelle wählt nur das Handy
         assert v["einzeln"] == (not rechner), (breite, v)              # ohne Tabelle die Einzelheiten zum Aufklappen
         assert not v["kennung"] and v["frage"].startswith("Zu klären: „Unterkunft in Hohnstein wählen"), (breite, v)
         assert not v["ueber"], (breite, v)
+        # Außerhalb des Vergleichs steht die Herkunft hinter dem Wert selbst
         assert v["tippen"][:2] == ["true", True] and "Quelle" in v["tippen"][2], (breite, v)
         assert v["tippenText"].startswith("85 €") or v["tippenText"].startswith("70 €"), (breite, v)
         if rechner:

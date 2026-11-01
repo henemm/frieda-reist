@@ -32,8 +32,10 @@ for (const breite of [390, 820, 1300]) {
   a.ort.ueber = await ueber();
   // Wissen: Weitere Wege als Listenzeilen, ohne Kacheln
   await geh("fest/#wissen");
-  a.wissen = await p.evaluate(`({wege: [...document.querySelectorAll("#main .wliste a.wzeile")].filter(x => /^#E-/.test(x.getAttribute("href")))
-      .map(x => [x.getAttribute("href"), x.querySelector(".wu") && x.querySelector(".wu").textContent]),
+  // Weitere Wege in der Wegtabelle (#58): am Rechner Tabelle, sonst je Weg ein Eintrag mit Zahlenzeile
+  a.wissen = await p.evaluate(`({wege: [...document.querySelectorAll("#main .wege tbody tr")]
+      .map(x => [x.querySelector("a").getAttribute("href"), x.textContent.replace(/\\s+/g, " ")]),
+    kopf: (e => !!e && getComputedStyle(e).display !== "none")(document.querySelector("#main .wege thead")),
     kacheln: document.querySelectorAll("#main .kz").length, bloecke: document.querySelectorAll("#main details.block").length,
     kaesten: (${kaesten})(document.querySelector("#main")).length})`);
   // Vergleich (offene Nacht in Hohnstein): ohne Rahmen um die Wahlstelle, Herkunft hinter dem Wert,
@@ -42,12 +44,14 @@ for (const breite of [390, 820, 1300]) {
   const nacht = "#main .ebene-nacht";
   a.vergleich = await p.evaluate(`(() => { const n = document.querySelector("${nacht}"), m = n.querySelector(".wahl-modul"), s = getComputedStyle(m);
     const sicht = e => !!e && e.getClientRects().length > 0 && getComputedStyle(e).display !== "none";
-    return {rahmen: parseFloat(s.borderTopWidth) > 0 || s.boxShadow !== "none", i: n.querySelectorAll(".mk-i").length, werte: n.querySelectorAll("button.mk-w").length,
+    return {rahmen: parseFloat(s.borderTopWidth) > 0 || s.boxShadow !== "none", i: n.querySelectorAll(".mk-i").length, werte: [...n.querySelectorAll(":is(.wm-tabelle, .wm-karten) [data-mk-i]")].filter(sicht).length, herkunft: [...n.querySelectorAll(".herkunft")].filter(sicht).length,
       tabelle: sicht(n.querySelector(".wm-tabelle")), karten: sicht(n.querySelector(".wm-karten")), umschalter: sicht(n.querySelector(".wm-ansicht")),
       einzeln: sicht(n.querySelector("details.wm-einzeln")), kennung: /\\bF-\\d/.test(n.textContent), frage: (n.querySelector('a[href="#F-02"]') || {}).textContent || null,
       kaesten: (${kaesten})(n).filter(k => !/wm-karte|wm-einzeln/.test(k))}; })()`);
   a.vergleich.ueber = await ueber();
-  // Herkunft: Tippen auf den Wert öffnet das Fenster und hält es offen; am Rechner reicht Darüberfahren
+  // Herkunft am Wert außerhalb des Vergleichs (gewählte Unterkunft): Tippen öffnet das Fenster und hält es offen;
+  // am Rechner reicht Darüberfahren
+  await geh("fest/#T-02");
   const wert = p.locator(`${nacht} button.mk-w:visible`).first();
   await wert.scrollIntoViewIfNeeded();
   if (breite >= 1100) { await wert.hover(); a.vergleich.hover = await wert.evaluate(x => !x.nextElementSibling.hidden); await p.mouse.move(1, 1); }

@@ -40,7 +40,7 @@ for (const [breite, hoehe] of [[390, 844], [820, 1180], [1300, 900]]) {
       const q = Object.values(o.merkmale || {}).flatMap(v => [v, ...(v.je_datum || [])]).map(v => v.quelle).filter(Boolean);
       return !q.length || (hk && hk.classList.contains("wm-herkunft") && q.every(x => hk.textContent.includes(x))); });
     return {id: box.dataset.vgl, tabelle: tab ? sichtbar(tab) : false, karten: karten.filter(sichtbar).length,
-      iImVergleich: box.querySelectorAll(".wm-karte .mk-i, tr.wm-zeile .mk-i").length,
+      iImVergleich: box.querySelectorAll(":is(.wm-karte, tr.wm-zeile) :is(.mk-i, [data-mk-i], [data-mk-h])").length,
       herkunftKarten: karten.filter(k => k.querySelector(".herkunft")).length, herkunftZeilen: box.querySelectorAll("tr.wm-herkunft").length,
       herkunftText: (box.querySelector(".herkunft") || {}).textContent || "", quellenDa,
       herkunftOhneAufklappen: [...box.querySelectorAll("tr.wm-herkunft")].every(r => !r.hasAttribute("data-vgl-zeile")),
@@ -54,7 +54,7 @@ for (const [breite, hoehe] of [[390, 844], [820, 1180], [1300, 900]]) {
     // Aufgeklappte Einzelheiten gehören zum Vergleich: auch dort kein i (#58)
     await p.locator(`${box} tr.wm-zeile`).first().click({position: {x: 12, y: 12}}); await p.waitForTimeout(200);
     vergleich.aufgeklappt = await p.evaluate(box => ({mehr: document.querySelectorAll(`${box} tr.wm-mehr`).length,
-      iImKasten: document.querySelectorAll(`${box} .mk-i`).length}), box);
+      iImKasten: document.querySelectorAll(`${box} :is(.wm-tabelle, .wm-karten) :is(.mk-i, [data-mk-i], [data-mk-h])`).length}), box);
     // Knöpfe im Kasten nach Art (für die Abnahme-Seite)
     vergleich.knopfArten = await p.evaluate(box => { const n = {};
       for (const x of document.querySelectorAll(`${box} :is(button, summary, a.zid, .zid)`)) { const r = x.getBoundingClientRect();

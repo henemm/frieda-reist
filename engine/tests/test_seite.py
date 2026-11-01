@@ -74,7 +74,8 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
     # Regeln und Anschluss (Paket 4): an der Wahlstelle stehen „Setzt voraus“ und die berechnete Lücke der erfundenen V-01.c
     v01 = dom["1200#V-01"]
     assert "Setzt voraus: " in v01 and "Schließt aus: " in v01 and "(im Plan)" in v01
-    assert '<button type="button" class="mk-w mk-luecke" data-mk-i="" aria-expanded="false">Lücke am Anfang: Altendorf → Bad Schandau<span' in v01
+    # die Lücke fällt auf; im Vergleich ohne Knopf (Herkunft dort einmal je Möglichkeit, #58), sonst hinter dem Wert
+    assert re.search(r'class="(mk-w )?mk-luecke"[^>]*>Lücke am Anfang: Altendorf → Bad Schandau<', v01)
     # Bausteinseite: alle Ebenen, keine Sprungziele (die echten Stellen bleiben eindeutig), kein „null“
     b = dom["1200#bausteine"]
     for teil in ("Atom · Zustand", "Atom · Wert", "Molekül · Listenzeile", "Molekül · Frage als Zeile", "Molekül · Rückmeldung", "Molekül · Aufgabe", "Molekül · Wunschkarte", "Molekül · Kennzahlenleiste", "Organismus · Wahl-Modul", "Organismus · Tageskasten",
