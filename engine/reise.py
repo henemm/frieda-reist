@@ -3,6 +3,7 @@
 Hintergrund und Entscheidungen: docs/produkt.md (26.10.2026). Die Zuordnung der Inhalte (Überschrift
 -> ID) bleibt in reise.json; hier steht, was die KI sicher lesen und ändern soll, ohne Inhalte zu berühren:
 
+  sprache     de | en | … (texte.SPRACHEN), Vorgabe de: Sprache der Seite, des Kalenders und aller Texte, die in Dateien der Reise landen (ADR-0006)
   zeitraum    {von, bis} als Datum; schon in der Idee bekannt, bevor es einen Plan gibt (Paket H)
   status      idee | planung | fest | unterwegs | danach | archiv, mit Verlauf (datum, wert, wer, grund)
   personen    {schluessel: {name, rolle, reist, notiz}}; Rollen gast < mitwirkend < organisator
@@ -16,6 +17,9 @@ reise.json (alte Form) mit einem Hinweis; Status ist dann „planung“, Persone
 import datetime
 import re
 import unicodedata
+from pathlib import Path
+
+import texte
 
 STATUS = ("idee", "planung", "fest", "unterwegs", "danach", "archiv")
 ROLLEN = ("gast", "mitwirkend", "organisator")          # aufsteigend: jede Stufe enthält die darunter
@@ -127,22 +131,20 @@ def mindestrolle(aktion, regeln=None):
 
 
 def erlaubt(aktion, rolle, status, bausteine, ziel=None, regeln=None):
-    """Darf diese Rolle jetzt schreiben? -> (True, "") oder (False, Begründung in einfachen Worten).
+    """Darf diese Rolle jetzt schreiben? -> (True, "") oder (False, Begründung in einfachen Worten; ein texte.Satz, der Schlüssel und
+    Werte trägt, damit der Konnektor ihn in der Sprache der Person sagen kann).
     bausteine: eingeschaltete Bausteine der Reise (None: nicht bekannt, nicht prüfen).
     regeln: Spielregeln der Reise (nur für „einladen“ nötig)."""
     a = AKTIONEN[aktion]
     mind = mindestrolle(aktion, regeln)
     if not darf(rolle, mind):
-        return False, (f"Mit diesem Zugang kann man nur lesen (Rolle {rolle or 'unbekannt'}). Dafür braucht man die Rolle "
-                       "mitwirkend." if mind == "mitwirkend" else "Das dürfen nur Organisator:innen.")
+        return False, (texte.satz("schreiben.erlaubt.nur_lesen", rolle=rolle or "unbekannt") if mind == "mitwirkend"
+                       else texte.satz("schreiben.erlaubt.nur_organisator"))
     if a["baustein"] and bausteine is not None and a["baustein"] not in bausteine:
-        return False, f"Der Baustein „{a['baustein']}“ ist bei dieser Reise ausgeschaltet."
+        return False, texte.satz("schreiben.erlaubt.baustein_aus", baustein=a["baustein"])
     schreiben = verhalten(status)["schreiben"]
     if schreiben not in a["ab"]:
-        grund = {"nachlese": "Die Reise ist vorbei (Status danach): Der Plan ist schreibgeschützt, nur Rückmeldungen und "
-                             "Aufgaben gehen noch.",
-                 "nichts": "Die Reise ist archiviert: Es kann nur gelesen werden."}[schreiben]
-        return False, grund + " Ein:e Organisator:in kann den Status zurücksetzen (reise_status_setzen)."
+        return False, texte.satz({"nachlese": "schreiben.erlaubt.danach", "nichts": "schreiben.erlaubt.archiv"}[schreiben])
     return True, ""
 
 
@@ -170,15 +172,34 @@ def reise_pfad(titel, jahr=None):
     return _klein(titel if jahr is None or str(jahr) in (titel or "") else f"{titel} {jahr}", 40)
 
 
+def sprache_von(reise_dir):
+    """Sprache einer Reise aus ihrer reise.yaml (Vorgabe de): in dieser Sprache schreibt die Software in Dateien der Reise."""
+    try:
+        text = (Path(reise_dir) / "reise.yaml").read_text(encoding="utf-8")
+    except OSError:
+        return texte.VORGABE_REISE
+    m = re.search(r"^sprache:\s*['\"]?([A-Za-z-]+)", text, re.M)
+    return m.group(1).lower() if m and texte.gueltig(m.group(1).lower()) else texte.VORGABE_REISE
+
+
+def sprache_pruefen(wert):
+    """Sprache einer Reise (Kürzel aus texte.SPRACHEN, Vorgabe de) -> (Kürzel, None) oder (Vorgabe, Fehler)."""
+    if wert is None or wert == "":
+        return texte.VORGABE_REISE, None
+    if not isinstance(wert, str) or not texte.gueltig(wert.strip().lower()):
+        return texte.VORGABE_REISE, texte.satz("pruefung.reise.sprache_unbekannt", wert=wert, bekannt=", ".join(texte.SPRACHEN))
+    return wert.strip().lower(), None
+
+
 def neue_reise_pruefen(args, wer, vergeben=()):
     """Eingaben für eine neue Reise prüfen (Konnektor mit Konto-Link, Werkzeug reise_anlegen). wer: Name der anlegenden
     Person, sie wird Organisator:in. vergeben: Ordnernamen, die es schon gibt. -> (daten, None) oder (None, Grund in einfachen Worten)."""
     def zeile(k, laenge, pflicht=False):
         v = args.get(k)
         if v is None or v == "":
-            return (None, f"{k} fehlt.") if pflicht else ("", None)
+            return (None, texte.satz("pruefung.reise_neu.1", k=k)) if pflicht else ("", None)
         if not isinstance(v, str) or "\n" in v.strip() or len(v.strip()) > laenge:
-            return None, f"{k}: eine Zeile Text, höchstens {laenge} Zeichen."
+            return None, texte.satz("pruefung.reise_neu.2", k=k, laenge=laenge)
         return v.strip(), None
     titel, f = zeile("titel", 80, True)
     if f:
@@ -189,53 +210,55 @@ def neue_reise_pruefen(args, wer, vergeben=()):
     try:
         von, bis = (datetime.date.fromisoformat(str(args.get(k) or "")) for k in ("von", "bis"))
     except ValueError:
-        return None, "von und bis als Datum angeben (JJJJ-MM-TT), z. B. 2027-02-06."
+        return None, texte.satz("pruefung.reise_neu.3")
     if bis < von:
-        return None, "Das Ende liegt vor dem Anfang."
+        return None, texte.satz("pruefung.reise_neu.4")
     if (bis - von).days > 366:
-        return None, "Eine Reise dauert hier höchstens ein Jahr."
+        return None, texte.satz("pruefung.reise_neu.5")
     notiz = args.get("notiz") or ""
     if not isinstance(notiz, str) or len(notiz) > MAX_NOTIZ:
-        return None, f"notiz: Text mit höchstens {MAX_NOTIZ} Zeichen."
+        return None, texte.satz("pruefung.reise_neu.6", MAX_NOTIZ=MAX_NOTIZ)
     roh = args.get("personen") or []
     if not isinstance(roh, list) or len(roh) > MAX_PERSONEN:
-        return None, f"personen: Liste mit höchstens {MAX_PERSONEN} Personen."
+        return None, texte.satz("pruefung.reise_neu.7", MAX_PERSONEN=MAX_PERSONEN)
     if not wer:
-        return None, "Eine Reise anlegen geht nur mit einem persönlichen Konto-Link."
+        return None, texte.satz("pruefung.reise_neu.8")
     personen = {}
     for p in [{"vorname": wer, "rolle": "organisator"}] + roh:
         if not isinstance(p, dict) or not isinstance(p.get("vorname"), str) or not p["vorname"].strip() \
                 or "\n" in p["vorname"].strip() or len(p["vorname"].strip()) > 80:
-            return None, "Jede Person braucht einen Vornamen (eine Zeile)."
+            return None, texte.satz("pruefung.reise_neu.9")
         name, rolle = p["vorname"].strip(), rolle_neu(p.get("rolle") or "mitwirkend")
         if rolle not in ROLLEN:
-            return None, f"{name}: Rolle muss eine von {', '.join(ROLLEN)} sein."
+            return None, texte.satz("pruefung.reise_neu.10", name=name, w1=', '.join(ROLLEN))
         k = schluessel_aus_name(name)
         if not k:
-            return None, f"{name}: Aus dem Namen lässt sich kein Schlüssel bilden."
+            return None, texte.satz("pruefung.reise_neu.11", name=name)
         if k in personen:
             if name.casefold() == wer.casefold() and personen[k]["name"] == wer:
                 if rolle != "organisator":
-                    return None, f"{wer} legt die Reise an und bestimmt deshalb mit (Rolle organisator)."
+                    return None, texte.satz("pruefung.reise_neu.12", wer=wer)
                 eintrag = personen[k]
             else:
-                return None, f"{name} steht zweimal in der Liste."
+                return None, texte.satz("pruefung.reise_neu.13", name=name)
         else:
             eintrag = personen[k] = {"name": name, "rolle": rolle}
         if p.get("reist") is False:
             eintrag["reist"] = False
         if isinstance(p.get("notiz"), str) and p["notiz"].strip():
             if "\n" in p["notiz"].strip() or len(p["notiz"].strip()) > 300:
-                return None, f"{name}: Notiz in einer Zeile, höchstens 300 Zeichen."
+                return None, texte.satz("pruefung.reise_neu.14", name=name)
             eintrag["notiz"] = p["notiz"].strip()
+    sprache, f = sprache_pruefen(args.get("sprache"))
+    if f:
+        return None, f
     pfad = args.get("pfad") or reise_pfad(titel, von.year)
     if not isinstance(pfad, str) or not PFAD_MUSTER.match(pfad):
-        return None, "pfad: nur Kleinbuchstaben, Ziffern und Bindestrich, 2 bis 40 Zeichen."
+        return None, texte.satz("pruefung.reise_neu.15")
     if pfad in vergeben:
-        return None, (f"Eine Reise mit dem Ordnernamen „{pfad}“ gibt es schon oder ist angefragt. Bitte einen anderen "
-                      "Titel oder pfad wählen.")
+        return None, (texte.satz("pruefung.reise_neu.16", pfad=pfad))
     return {"titel": titel, "von": von.isoformat(), "bis": bis.isoformat(), "ziel": ziel, "pfad": pfad,
-            "personen": personen, "wer": wer, "notiz": notiz.strip()}, None
+            "personen": personen, "wer": wer, "notiz": notiz.strip(), "sprache": sprache}, None
 
 
 def stelle(ziel):
@@ -287,26 +310,33 @@ class Reise:
         self.q = quelle
 
     def fehl(self, text):
-        self.fehler.append(f"{self.q}: {text}")
+        self.fehler.append(texte.Satz(f"{self.q}: ") + text)
 
     # ---------- Teile ----------
     def eckdaten(self):
         quelle = self.cfg if self.alt else self.r
         if self.alt:
-            self.hinweise.append("reise.yaml fehlt: Eckdaten und Darstellung kommen aus reise.json (alte Form); "
-                                 "Status planung, keine Personen. Siehe docs/produkt.md.")
+            self.hinweise.append(texte.satz("pruefung.reise.2"))
         else:
             for k in ALTE_ECKDATEN + DARSTELLUNG + ("funktionen",):
                 if k in self.cfg:
-                    self.fehl(f"„{k}“ steht noch in reise.json; es gehört nach reise.yaml"
-                              + (" (bausteine)" if k == "funktionen" else " (darstellung)" if k in DARSTELLUNG else "")
-                              + ".")
+                    self.fehl(texte.satz("pruefung.reise.noch_in_json.bausteine" if k == "funktionen" else
+                                         "pruefung.reise.noch_in_json.darstellung" if k in DARSTELLUNG else "pruefung.reise.noch_in_json", k=k))
         e = {k: quelle.get(k) for k in ALTE_ECKDATEN}
         for k in ("titel", "pfad"):
             if not isinstance(e.get(k), str) or not e[k].strip():
-                self.fehl(f"„{k}“ fehlt.")
+                self.fehl(texte.satz("pruefung.reise.3", k=k))
         e["untertitel"] = e.get("untertitel") or ""
+        e["sprache"] = self.sprache(quelle.get("sprache"))
         return e
+
+    def sprache(self, wert):
+        """Sprache der Reise (ADR-0006): Kürzel aus texte.SPRACHEN, Vorgabe de (Bestand). Sie bestimmt die Hülle der Seite,
+        den Startwert des Umschalters und alles, was die Software in Dateien der Reise schreibt."""
+        kuerzel, fehler = sprache_pruefen(wert)
+        if fehler:
+            self.fehl(fehler)
+        return kuerzel
 
     def verlauf(self):
         """Verlauf der Eckdaten (reise_aendern, 29.10.2026): [{datum, wer, was, grund}]; Status und Einstellungen haben ihren eigenen."""
@@ -314,7 +344,7 @@ class Reise:
         if v is None:
             return []
         if not isinstance(v, list) or any(not isinstance(e, dict) or not isinstance(e.get("datum"), datetime.date) or not e.get("wer") for e in v):
-            self.fehl("verlauf: Liste von {datum: JJJJ-MM-TT, wer: …, was: …, grund: …}.")
+            self.fehl(texte.satz("pruefung.reise.4"))
             return []
         return [{**e, "datum": e["datum"].isoformat()} for e in v]
 
@@ -325,10 +355,10 @@ class Reise:
             return None
         if not isinstance(z, dict) or set(z) != {"von", "bis"} \
                 or not all(isinstance(z[k], datetime.date) for k in ("von", "bis")):
-            self.fehl("zeitraum muss {von: JJJJ-MM-TT, bis: JJJJ-MM-TT} sein.")
+            self.fehl(texte.satz("pruefung.reise.5"))
             return None
         if z["bis"] < z["von"]:
-            self.fehl(f"zeitraum: bis ({z['bis']}) liegt vor von ({z['von']}).")
+            self.fehl(texte.satz("pruefung.reise.6", w1=z['bis'], w2=z['von']))
             return None
         return {"von": z["von"].isoformat(), "bis": z["bis"].isoformat()}
 
@@ -337,31 +367,30 @@ class Reise:
             return {"wert": "planung", "verlauf": []}
         st = self.r.get("status")
         if not isinstance(st, dict) or st.get("wert") not in STATUS:
-            self.fehl(f"status.wert muss eines von {', '.join(STATUS)} sein.")
+            self.fehl(texte.satz("pruefung.reise.7", w1=', '.join(STATUS)))
             return {"wert": "planung", "verlauf": []}
         verlauf = st.get("verlauf") or []
         vorher = None
         organisator = self.organisator_namen()
         for e in verlauf:
             if not isinstance(e, dict):
-                self.fehl("status.verlauf: Eintrag muss {datum, wert, wer, grund} sein.")
+                self.fehl(texte.satz("pruefung.reise.8"))
                 continue
             if e.get("wert") not in STATUS:
-                self.fehl(f"status.verlauf: Status „{e.get('wert')}“ unbekannt.")
+                self.fehl(texte.satz("pruefung.reise.9", w1=e.get('wert')))
             if e.get("wer") not in organisator:
-                self.fehl(f"status.verlauf: den Status darf nur ein:e Organisator:in setzen "
-                          f"({', '.join(sorted(organisator)) or 'keiner eingetragen'}), steht: {e.get('wer')}.")
+                self.fehl(texte.satz("pruefung.reise.10", w1=', '.join(sorted(organisator)) or 'keiner eingetragen', w2=e.get('wer')))
             d = e.get("datum")
             if not isinstance(d, datetime.date):
-                self.fehl("status.verlauf: Eintrag ohne gültiges Datum (JJJJ-MM-TT).")
+                self.fehl(texte.satz("pruefung.reise.11"))
             elif vorher and d < vorher:
-                self.fehl("status.verlauf ist nicht zeitlich sortiert.")
+                self.fehl(texte.satz("pruefung.reise.12"))
             else:
                 vorher = d
         if not verlauf:
-            self.fehl("status braucht einen Verlauf (wer hat ihn wann gesetzt).")
+            self.fehl(texte.satz("pruefung.reise.13"))
         elif isinstance(verlauf[-1], dict) and verlauf[-1].get("wert") != st["wert"]:
-            self.fehl(f"status.wert ({st['wert']}) passt nicht zum letzten Verlaufseintrag ({verlauf[-1].get('wert')}).")
+            self.fehl(texte.satz("pruefung.reise.14", w1=st['wert'], w2=verlauf[-1].get('wert')))
         return {"wert": st["wert"],
                 "verlauf": [{**e, "datum": e["datum"].isoformat()} for e in verlauf
                             if isinstance(e, dict) and isinstance(e.get("datum"), datetime.date)]}
@@ -369,21 +398,21 @@ class Reise:
     def personen(self):
         roh = self.r.get("personen") or {}
         if not isinstance(roh, dict):
-            self.fehl("personen muss „schluessel: {name, rolle, reist}“ sein.")
+            self.fehl(texte.satz("pruefung.reise.15"))
             return []
         aus, namen = [], set()
         for k, p in roh.items():
             if not isinstance(p, dict) or not isinstance(p.get("name"), str) or not p["name"].strip():
-                self.fehl(f"Person „{k}“ braucht einen Namen.")
+                self.fehl(texte.satz("pruefung.reise.16", k=k))
                 continue
             if rolle_neu(p.get("rolle")) not in ROLLEN:
-                self.fehl(f"Person „{k}“: rolle muss eines von {', '.join(ROLLEN)} sein.")
+                self.fehl(texte.satz("pruefung.reise.17", k=k, w1=', '.join(ROLLEN)))
                 continue
             unbekannt = set(p) - PERSON_FELDER
             if unbekannt:
-                self.fehl(f"Person „{k}“: unbekannte Felder {', '.join(sorted(unbekannt))}.")
+                self.fehl(texte.satz("pruefung.reise.18", k=k, w1=', '.join(sorted(unbekannt))))
             if p["name"] in namen:
-                self.fehl(f"Name „{p['name']}“ kommt zweimal vor; Namen müssen eindeutig sein.")
+                self.fehl(texte.satz("pruefung.reise.19", w1=p['name']))
             namen.add(p["name"])
             teil = {}
             for f in ("von", "bis"):   # reist nur einen Teil mit (Reiseüberblick: „Karl ab 14.5.“)
@@ -392,11 +421,11 @@ class Reise:
                 if isinstance(p[f], datetime.date):
                     teil[f] = p[f].isoformat()
                 else:
-                    self.fehl(f"Person „{k}“: {f} muss ein Datum sein (JJJJ-MM-TT).")
+                    self.fehl(texte.satz("pruefung.reise.20", k=k, f=f))
             aus.append({"schluessel": str(k), "name": p["name"], "rolle": rolle_neu(p["rolle"]),
                         "reist": bool(p.get("reist", True)), "notiz": p.get("notiz") or "", **teil})
         if not self.alt and not any(p["rolle"] == "organisator" for p in aus):
-            self.fehl("Mindestens eine Person braucht die Rolle organisator.")
+            self.fehl(texte.satz("pruefung.reise.21"))
         return aus
 
     def organisator_namen(self):
@@ -410,69 +439,66 @@ class Reise:
             return [b for b in BAUSTEINE if b not in NOCH_NICHT_GEBAUT and b != "wuensche"]
         roh = self.r.get("bausteine")
         if roh is None:
-            self.fehl("bausteine fehlt (Liste; leer heißt nur der Kern).")
+            self.fehl(texte.satz("pruefung.reise.22"))
             return []
         if not isinstance(roh, list):
-            self.fehl("bausteine muss eine Liste sein.")
+            self.fehl(texte.satz("pruefung.reise.23"))
             return []
         aus = []
         for b in roh:
             if b in KERN:
-                self.hinweise.append(f"reise.yaml: „{b}“ ist Kern und immer da; der Eintrag unter bausteine ist unnötig.")
+                self.hinweise.append(texte.satz("pruefung.reise.24", b=b))
             elif b not in BAUSTEINE:
-                self.fehl(f"unbekannter Baustein „{b}“ (bekannt: {', '.join(BAUSTEINE)}).")
+                self.fehl(texte.satz("pruefung.reise.25", b=b, w1=', '.join(BAUSTEINE)))
             elif b in aus:
-                self.fehl(f"Baustein „{b}“ steht zweimal.")
+                self.fehl(texte.satz("pruefung.reise.26", b=b))
             else:
                 if b in NOCH_NICHT_GEBAUT:
-                    self.hinweise.append(f"reise.yaml: Baustein „{b}“ ist eingeschaltet, aber noch nicht gebaut "
-                                         f"({NOCH_NICHT_GEBAUT[b]}).")
+                    self.hinweise.append(texte.satz("pruefung.reise.27", b=b, w1=NOCH_NICHT_GEBAUT[b]))
                 aus.append(b)
         return aus
 
     def regeln(self):
         eigen = self.r.get("regeln") or {}
         if not isinstance(eigen, dict):
-            self.fehl("regeln muss „regel: wert“ sein.")
+            self.fehl(texte.satz("pruefung.reise.28"))
             eigen = {}
         for k in eigen:
             if k in ALTE_REGELN:
-                self.hinweise.append(f"reise.yaml: regeln.{k} gibt es seit dem 29.10.2026 nicht mehr (der Konnektor schreibt "
-                                     "direkt, kein Einarbeiten-Lauf); der Eintrag ist ohne Wirkung und kann weg.")
+                self.hinweise.append(texte.satz("pruefung.reise.29", k=k))
             elif k not in VORGABEN:
-                self.fehl(f"unbekannte Regel „{k}“ (bekannt: {', '.join(VORGABEN)}).")
+                self.fehl(texte.satz("pruefung.reise.30", k=k, w1=', '.join(VORGABEN)))
         r = regeln_mit_vorgaben({k: v for k, v in eigen.items() if k in VORGABEN})
         r["einladen"] = rolle_neu(r["einladen"])
         for k, erlaubt in REGEL_WERTE.items():
             if r[k] not in erlaubt:
-                self.fehl(f"regeln.{k} muss eines von {', '.join(erlaubt)} sein.")
+                self.fehl(texte.satz("pruefung.reise.31", k=k, w1=', '.join(erlaubt)))
         kt = r["kontingent"]
         if kt.get("art") not in KONTINGENT_ARTEN:
-            self.fehl(f"regeln.kontingent.art muss {' oder '.join(KONTINGENT_ARTEN)} sein.")
+            self.fehl(texte.satz("pruefung.reise.32", w1=' oder '.join(KONTINGENT_ARTEN)))
         if not isinstance(kt.get("je_person"), int) or isinstance(kt.get("je_person"), bool) or kt["je_person"] < 0:
-            self.fehl("regeln.kontingent.je_person muss eine ganze Zahl ab 0 sein.")
+            self.fehl(texte.satz("pruefung.reise.33"))
         for k, kleinste in (("waechter_frist_tage", 1), ("erinnerung_vorlauf_tage", 0)):
             if not isinstance(r[k], int) or isinstance(r[k], bool) or r[k] < kleinste:
-                self.fehl(f"regeln.{k} muss eine ganze Zahl ab {kleinste} sein.")
+                self.fehl(texte.satz("pruefung.reise.34", k=k, kleinste=kleinste))
         if not isinstance(r["waechter_zahlung"], bool):
-            self.fehl("regeln.waechter_zahlung muss true oder false sein.")
+            self.fehl(texte.satz("pruefung.reise.40"))
         kanal = r["meldekanal"]
         if not isinstance(kanal, list) or not kanal or not all(isinstance(x, str) for x in kanal):
-            self.fehl(f"regeln.meldekanal muss eine Liste aus {', '.join(KANAELE)} sein.")
+            self.fehl(texte.satz("pruefung.reise.35", w1=', '.join(KANAELE)))
         elif set(kanal) - set(KANAELE):
-            self.fehl(f"regeln.meldekanal: {', '.join(sorted(set(kanal) - set(KANAELE)))} gibt es nicht "
-                      f"(möglich: {', '.join(KANAELE)}; E-Mail an alle ist noch nicht gebaut).")
+            self.fehl(texte.satz("pruefung.reise.36", w1=', '.join(sorted(set(kanal) - set(KANAELE))), w2=', '.join(KANAELE)))
         return r
 
     def darstellung(self):
         quelle = self.cfg if self.alt else (self.r.get("darstellung") or {})
         if not isinstance(quelle, dict):
-            self.fehl("darstellung muss „schluessel: wert“ sein.")
+            self.fehl(texte.satz("pruefung.reise.37"))
             quelle = {}
         if not self.alt:
             for k in quelle:
                 if k not in DARSTELLUNG and k not in ALTE_DARSTELLUNG:
-                    self.fehl(f"darstellung: unbekannter Schlüssel „{k}“ (bekannt: {', '.join(DARSTELLUNG)}).")
+                    self.fehl(texte.satz("pruefung.reise.38", k=k, w1=', '.join(DARSTELLUNG)))
         return {"gruppen": quelle.get("gruppen") or {}, "tiefe": bool(quelle.get("tiefe")),
                 "plan_reiter": quelle.get("plan_reiter"), "varianten_titel": quelle.get("varianten_titel", "Varianten"),
                 "start": quelle.get("start")}
@@ -481,8 +507,8 @@ class Reise:
         """-> Eintrag „reise“ für daten.json; Fehler stehen danach in self.fehler."""
         if not self.alt:
             for k in self.r:
-                if k not in ALTE_ECKDATEN + ("zeitraum", "status", "personen", "bausteine", "regeln", "darstellung", "verlauf"):
-                    self.fehl(f"unbekannter Schlüssel „{k}“.")
+                if k not in ALTE_ECKDATEN + ("zeitraum", "status", "personen", "bausteine", "regeln", "darstellung", "verlauf", "sprache"):
+                    self.fehl(texte.satz("pruefung.reise.39", k=k))
         d = self.eckdaten()
         d["verlauf"] = self.verlauf()
         d.update(self.darstellung())

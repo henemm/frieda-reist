@@ -136,12 +136,9 @@ Parameternamen: feste Wörter über alle Werkzeuge gleich übersetzen, zum Beisp
 
 Datenschlüssel in YAML und JSON, Enum-Werte, ID-Präfixe, Dateinamen, Pfade des Schreibwegs, Namen von Arten, Merkmalen, Kategorien, Auswahlwerte, Wissen, Lesetexte, Titel, Gründe. Die `ARTEN` der Rückmeldungen („Kommentar“, „Frage“ …) bleiben als Datenwerte und Enum deutsch; englische Aliase gelten beim Aufruf.
 
-### Eine Sprache hinzufügen (Zielbild, wird `docs/sprachen.md` in M11)
+### Eine Sprache hinzufügen
 
-1. `engine/texte_<kürzel>.py` anlegen: `NAME`, `LOCALE`, `RICHTUNG`, `PLURAL`, `DATUM`, `DATUM_KURZ`, `ZEIT`, `TEXTE` mit allen Schlüsseln aus `texte_en.py` (der Paritätstest nennt, was fehlt).
-2. Das Kürzel in `texte.SPRACHEN` eintragen und die Datei in `betrieb/deploy.sh` (KN_, RM_, SB_MODULE) aufnehmen; der Test `test_betrieb.py` prüft das.
-3. Optional `engine/reisevorlage/<kürzel>/` (sonst Englisch) und `README.<kürzel>.md`.
-4. Tests laufen lassen: Parität, Rundgang je Sprache (parametrisiert über `SPRACHEN`), Konnektor je Sprache. Mehr ist nicht zu tun; Umschalter, Kontoseite, `Accept-Language`, Inhaltserkennung, Kalender und Mails kennen die Sprache ab jetzt.
+Steht in [sprachen.md](sprachen.md): eine Datei `engine/texte_<kürzel>.py`, mehr nicht (Stand der Umsetzung 31.10.2026).
 
 ### Tests, die den Umbau tragen
 

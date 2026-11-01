@@ -247,14 +247,14 @@ def test_konto_seite_kalender(umgebung, monkeypatch):
     alt = konten.kalender_token("k-ida")
     assert code == 200 and f"webcal://frieda.beispiel.invalid/fr-mcp/kalender/{alt}.ics" in html
     assert 'href="/konto?kalender=datei"' in html and 'name="sorte_tage" value="ja" checked' in html
-    assert 'name="reise_beispielreise" value="ja" checked' in html and "1 Woche vorher um 9 Uhr" in html
+    assert 'name="reise_beispielreise" value="ja" checked' in html and "1 week before at 9:00" in html
     # Download mit den Einstellungen des Kontos
     code, k_, body = anmeldung.bearbeiten("GET", "/konto?kalender=datei", kopf, b"", "127.0.0.1", info)
     assert code == 200 and ("Content-Disposition", 'attachment; filename="frieda-reisen.ics"') in k_ and b"BEGIN:VCALENDAR" in body
     # Einstellungen speichern: fehlende Häkchen sind aus
     form = "aktion=kalender_einstellungen&sorte_tage=ja&sorte_fahrten=ja&erinnerung_termine=-PT1H&reise_beispielreise=ja"
     code, _, body = anmeldung.bearbeiten("POST", "/konto", kopf, form.encode(), "127.0.0.1", info)
-    assert code == 200 and "Kalender-Einstellungen gespeichert" in body.decode()
+    assert code == 200 and "Calendar settings saved" in body.decode()
     e = konten.kalender_einstellungen("k-ida")
     assert e["sorten"] == ["tage", "fahrten"] and e["erinnerung_termine"] == "-PT1H" and e["reisen_aus"] == []
     code, _, body = anmeldung.bearbeiten("GET", "/konto?kalender=datei", kopf, b"", "127.0.0.1", info)
@@ -286,3 +286,20 @@ def test_uhrzeit_im_konnektor_lesbar(umgebung):
     import konnektor as kn
     text, _ = kn.frieda_werkzeug(konten.konto("k-ida"), "zeige", {"id": "T-02"})
     assert "16:00–18:00 Uhr" in text
+
+
+def test_kalender_in_der_sprache_der_reise(daten):
+    """Titel, Beschreibungen und Namen folgen der Sprache der Reise (ADR-0006, M10); Deutsch bleibt wörtlich wie bisher."""
+    de = {e["uid"]: e for e in kalender.eintraege(daten)}
+    assert de["T-01"]["titel"].startswith("Tag 1:")
+    en_daten = json.loads(json.dumps(daten))
+    en_daten["reise"]["sprache"] = "en"
+    en = {e["uid"]: e for e in kalender.eintraege(en_daten)}
+    assert en["T-01"]["titel"].startswith("Day 1:") and "Tag" not in en["T-01"]["titel"].split(":")[0]
+    assert any(e["titel"].startswith("Overnight stay: ") for e in en.values())
+    assert any("Booking booked" in e["text"] for e in en.values()) and any("Buchung gebucht" in e["text"] for e in de.values())
+    assert not any(e["titel"].startswith(("Übernachtung", "Frist:")) for e in en.values())
+    assert kalender.sorten("en")["unterkuenfte"] == "Accommodations" and kalender.sorten()["unterkuenfte"] == "Unterkünfte"
+    assert list(kalender.erinnerungen(kalender.ERINNERUNG_FRISTEN_SCHLUESSEL, "en").values())[1] == "the day before at 9:00"
+    assert "X-WR-CALNAME:Frieda – my trips" in kalender.ics_person([("beispielreise", en_daten, [], "Ida")], {}, jetzt=JETZT, sprache="en")
+    assert "X-WR-CALNAME:Frieda – meine Reisen" in kalender.ics_person([("beispielreise", daten, [], "Ida")], {}, jetzt=JETZT)

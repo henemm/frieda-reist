@@ -40,10 +40,13 @@ except ImportError:
 from reise import Reise  # noqa: E402
 from routen import FARBEN, Routen, verhalten_anwenden  # noqa: E402
 import gpx  # noqa: E402
+import texte  # noqa: E402
 
 ZIEL_ID = re.compile(r"^[A-Za-z0-9][\w.\-]{0,79}$", re.ASCII)
 BILD_ENDUNGEN = (".jpg", ".jpeg", ".png", ".webp", ".gif")
-ETAPPEN_MUSTER = r"^Etappe\s+(\d+[A-Za-z]?)\s*:\s*(.+)$"
+def etappen_muster():
+    """Titel einer Etappe („Etappe 3: Name“, englisch „Stage 3: Name“): das Wort aller Sprachen des Katalogs (ADR-0006, Punkt 7)."""
+    return r"^(?:" + texte.inhaltsmuster("inhalt.etappe") + r")\s+(\d+[A-Za-z]?)\s*:\s*(.+)$"
 UMLAUTE = {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"}
 # Ebenen der Tagesseite (B2, docs/design.md „Tagesseite“): Jeder Abschnitt einer Etappe gehört zu einer Ebene, erkannt am
 # Anfang seines Titels (Groß- und Kleinschreibung egal). Die Software kennt nur die Form (ADR-0001, kein Katalog): die
@@ -53,11 +56,13 @@ UMLAUTE = {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"}
 # ({"unterwegs": ["Höhenprofil", "Fahrplan"], …}); die Titelanfänge der Reise gelten vor der Vorgabe. Was nirgends passt,
 # ist Hintergrund. Bis 29.10.2026 enthielt die Vorgabe Wandervokabular (Wegpunkte, Wasser, Einkehr, Verpflegung).
 EBENEN = ("weg", "unterwegs", "hintergrund", "quellen")
-EBENEN_VORGABE = {
-    "weg": ("Zusammenfassung",),
-    "unterwegs": ("Eckdaten", "Unterkünfte & Einkehr (Unterkünfte-Dossier)"),
-    "quellen": ("Quellen", "Prüfung", "Karten"),
-}
+def ebenen_vorgabe():
+    """Titelanfänge je Ebene aus dem Katalog, in allen Sprachen (inhalt.ebene.*)."""
+    def woerter(*schluessel):
+        return tuple(sorted(set().union(*(texte.inhaltswoerter(s) for s in schluessel))))
+    return {"weg": woerter("inhalt.ebene.zusammenfassung"),
+            "unterwegs": woerter("inhalt.ebene.eckdaten", "inhalt.ebene.unterkuenfte"),
+            "quellen": woerter("inhalt.ebene.quellen", "inhalt.ebene.pruefung", "inhalt.ebene.karten")}
 # Stichwort am Anfang eines Absatzes im Lesetext („**Charakter.** …“), Rubrik der Gliederung einer Art (docs/ontologie.md)
 STICHWORT = re.compile(r"<p>\s*<strong>([^<]{1,60})</strong>")
 BILD_LINK = re.compile(r"(!?)\[([^\]]*)\]\(([^)\s]+)\)")
@@ -267,7 +272,7 @@ class Bauer:
         self.md = markdown.Markdown(extensions=["tables"])
         pfad = self.reise_dir / "reise.json"
         if not pfad.exists():
-            raise BauFehler([f"{pfad} fehlt."])
+            raise BauFehler([texte.satz("pruefung.bauen.datei_fehlt", pfad=pfad)])
         self.cfg = json.loads(pfad.read_text(encoding="utf-8"))
         # Eckdaten, Status, Personen, Bausteine, Regeln, Darstellung (docs/produkt.md); fehlt die Datei, alte Form
         self.reise_roh = None
@@ -275,16 +280,16 @@ class Bauer:
             try:
                 self.reise_roh = yaml.safe_load((self.reise_dir / "reise.yaml").read_text(encoding="utf-8")) or {}
             except yaml.YAMLError as e:
-                raise BauFehler([f"reise.yaml: kein gültiges YAML ({e})."])
+                raise BauFehler([texte.satz("pruefung.bauen.yaml_reise", e=e)])
         self.eck = Reise(self.reise_roh, self.cfg, self.fehler, self.hinweise).daten()
-        self.etappen_muster = re.compile(self.cfg.get("etappen_muster", ETAPPEN_MUSTER))
+        self.etappen_muster = re.compile(self.cfg.get("etappen_muster", etappen_muster()))
 
     # ---------- Hilfen ----------
     def id_anlegen(self, id_, wo):
         if not ZIEL_ID.match(id_):
-            self.fehler.append(f"{wo}: ID „{id_}“ passt nicht zum erlaubten Muster.")
+            self.fehler.append(texte.satz("pruefung.bauen.1", wo=wo, id_=id_))
         if id_ in self.ids:
-            self.fehler.append(f"Doppelte ID {id_}: {self.ids[id_]} und {wo}.")
+            self.fehler.append(texte.satz("pruefung.bauen.2", id_=id_, w1=self.ids[id_], wo=wo))
         self.ids[id_] = wo
 
     def ignoriert(self, rel, titel):
@@ -296,7 +301,7 @@ class Bauer:
             return ""
         p = self.reise_dir / rel
         if not p.exists():
-            self.fehler.append(f"Datei fehlt: {rel} (steht in reise.json).")
+            self.fehler.append(texte.satz("pruefung.bauen.3", rel=rel))
             return ""
         return self.fussnoten_lesen(p, p.read_text(encoding="utf-8"))
 
@@ -326,7 +331,7 @@ class Bauer:
             benutzt.add(treffer[0])
             return karte[treffer[0]]
         if len(treffer) > 1:
-            self.fehler.append(f"{rel}:{nr}: Überschrift „{titel}“ passt auf mehrere Einträge in reise.json: {treffer}.")
+            self.fehler.append(texte.satz("pruefung.bauen.4", rel=rel, nr=nr, titel=titel, treffer=treffer))
         return None
 
     def html(self, md_text, quelldatei):
@@ -337,8 +342,7 @@ class Bauer:
         pruefung = TextPruefung()
         pruefung.feed(h)
         if pruefung.fremd:
-            self.fehler.append(f"{Path(quelldatei).name}: HTML im Text, das die Seite nicht vorsieht "
-                               f"({', '.join(dict.fromkeys(pruefung.fremd))}). Bitte als Markdown schreiben.")
+            self.fehler.append(texte.satz("pruefung.bauen.5", w1=Path(quelldatei).name, w2=', '.join(dict.fromkeys(pruefung.fremd))))
         h = tabellen_ordnen(h)
         h = re.sub(r'<a href="(https?://)', r'<a target="_blank" rel="noopener" href="\1', h)
         h = re.sub(r'<img ', '<img loading="lazy" ', h)
@@ -355,7 +359,7 @@ class Bauer:
         def ersetze(m):
             n = m.group(1)
             if n not in noten:
-                self.fehler.append(f"{Path(quelldatei).name}: Fußnote [^{n}] hat keinen Nachweis.")
+                self.fehler.append(texte.satz("pruefung.bauen.6", w1=Path(quelldatei).name, w2=n))
                 return m.group(0)
             if n not in benutzt:
                 benutzt.append(n)
@@ -373,12 +377,12 @@ class Bauer:
                 return m.group(0)
             quelle = (Path(quelldatei).parent / ziel).resolve()
             if not quelle.exists():
-                self.fehler.append(f"{Path(quelldatei).name}: Bildlink „{ziel}“ zeigt auf keine Datei.")
+                self.fehler.append(texte.satz("pruefung.bauen.7", w1=Path(quelldatei).name, ziel=ziel))
                 return m.group(0)
             try:
                 rel = quelle.relative_to(self.reise_dir.resolve())
             except ValueError:
-                self.fehler.append(f"{Path(quelldatei).name}: Bild „{ziel}“ liegt außerhalb der Reise.")
+                self.fehler.append(texte.satz("pruefung.bauen.8", w1=Path(quelldatei).name, ziel=ziel))
                 return m.group(0)
             self.bilder[quelle] = rel.as_posix()
             return f"{ausruf}[{alt}]({rel.as_posix()})"
@@ -427,7 +431,7 @@ class Bauer:
                 continue
             eintrag = self.finde_abschnitt(d_rel, titel, nr, benutzt[d_rel])
             if not eintrag:
-                self.fehler.append(f"{wo}: Überschrift „{titel}“ hat keine ID in reise.json.")
+                self.fehler.append(texte.satz("pruefung.bauen.9", wo=wo, titel=titel))
                 continue
             abschnitte.append(self.wissen(eintrag, titel, body, d_rel, wo))
 
@@ -441,7 +445,7 @@ class Bauer:
             if m:
                 eid = self.etappen_id(m.group(1))
                 if eid not in etappen:
-                    self.fehler.append(f"{wo}: Etappe „{titel}“ gibt es im Etappen-Dossier nicht.")
+                    self.fehler.append(texte.satz("pruefung.bauen.10", wo=wo, titel=titel))
                     continue
                 bid = f"{eid}.unterkuenfte-liste"
                 self.id_anlegen(bid, wo)
@@ -454,7 +458,7 @@ class Bauer:
                 continue
             eintrag = self.finde_abschnitt(u_rel, titel, nr, benutzt[u_rel])
             if not eintrag:
-                self.fehler.append(f"{wo}: Überschrift „{titel}“ hat keine ID in reise.json.")
+                self.fehler.append(texte.satz("pruefung.bauen.11", wo=wo, titel=titel))
                 continue
             abschnitte.append(self.wissen(eintrag, titel, body, u_rel, wo))
 
@@ -477,12 +481,12 @@ class Bauer:
                 continue
             eintrag = self.finde_abschnitt(p_rel, titel, nr, benutzt[p_rel])
             if not eintrag:
-                self.fehler.append(f"{wo}: Überschrift „{titel}“ hat keine ID in reise.json.")
+                self.fehler.append(texte.satz("pruefung.bauen.12", wo=wo, titel=titel))
                 continue
             abschnitte.append(self.wissen(eintrag, titel, body, p_rel, wo))
         for titel in tab_cfg:
             if titel not in tab_benutzt:
-                self.fehler.append(f"reise.json: Tabellenabschnitt „{titel}“ fehlt in {p_rel}.")
+                self.fehler.append(texte.satz("pruefung.bauen.13", titel=titel, p_rel=p_rel))
 
         # Weitere Dateien, die nur Abschnitte mit IDs enthalten (z. B. Recherche, Planungsstand)
         for rel in c.get("abschnitte", {}):
@@ -500,15 +504,14 @@ class Bauer:
                     benutzt[rel].add("#")
                     abschnitte.append(self.wissen(eintrag, h1 or rel, vor, rel, f"{rel}:1"))
                 else:
-                    self.fehler.append(f"{rel}: Text vor der ersten ##-Überschrift hat keine ID "
-                                       f"(reise.json: \"#\" unter abschnitte oder ignorieren).")
+                    self.fehler.append(texte.satz("pruefung.bauen.14", rel=rel))
             for titel, nr, body in teile:
                 wo = f"{rel}:{nr}"
                 if self.ignoriert(rel, titel):
                     continue
                 eintrag = self.finde_abschnitt(rel, titel, nr, benutzt[rel])
                 if not eintrag:
-                    self.fehler.append(f"{wo}: Überschrift „{titel}“ hat keine ID in reise.json.")
+                    self.fehler.append(texte.satz("pruefung.bauen.15", wo=wo, titel=titel))
                     continue
                 abschnitte.append(self.wissen(eintrag, titel, body, rel, wo))
 
@@ -521,11 +524,11 @@ class Bauer:
                 wo = f"{rel}:{nr}"
                 m = re.match(r"^(O-\d+)\s+(.+)$", titel)
                 if not m:
-                    self.fehler.append(f"{wo}: Überschrift „{titel}“ muss mit einer Orts-ID beginnen (## O-01 Name).")
+                    self.fehler.append(texte.satz("pruefung.bauen.16", wo=wo, titel=titel))
                     continue
                 oid, name = m.groups()
                 if oid in orte_inhalt:
-                    self.fehler.append(f"{wo}: Ort {oid} ist schon in {orte_inhalt[oid]} beschrieben.")
+                    self.fehler.append(texte.satz("pruefung.bauen.17", wo=wo, oid=oid, w1=orte_inhalt[oid]))
                     continue
                 orte_inhalt[oid] = wo
                 intro, bl = self.bloecke(oid, body, self.reise_dir / rel, wo)
@@ -536,11 +539,11 @@ class Bauer:
         # Rückwärts-Prüfung: Einträge in reise.json ohne Überschrift
         for rel, karte in c.get("abschnitte", {}).items():
             if rel not in benutzt:
-                self.fehler.append(f"reise.json: Datei {rel} wird nicht gelesen.")
+                self.fehler.append(texte.satz("pruefung.bauen.18", rel=rel))
                 continue
             for titel in karte:
                 if titel not in benutzt[rel]:
-                    self.fehler.append(f"reise.json: „{titel}“ steht für {rel}, aber diese Überschrift fehlt in der Datei.")
+                    self.fehler.append(texte.satz("pruefung.bauen.19", titel=titel, rel=rel))
 
         # Routenmodell (Tage, Strecken, Unterkünfte, Wahlstellen)
         route = None
@@ -550,26 +553,26 @@ class Bauer:
             try:
                 roh = yaml.safe_load(self.lesen(r_rel)) or {}
             except yaml.YAMLError as e:
-                self.fehler.append(f"{r_rel}: kein gültiges YAML ({e}).")
+                self.fehler.append(texte.satz("pruefung.bauen.20", r_rel=r_rel, e=e))
                 roh = {}
             status = {z["id"]: z["status"] for z in fragen["zeilen"]}
             if "entscheider" in roh and self.reise_roh is not None:
-                self.fehler.append(f"{r_rel}: „entscheider“ steht jetzt in reise.yaml (personen mit rolle organisator).")
+                self.fehler.append(texte.satz("pruefung.bauen.21", r_rel=r_rel))
             organisator = [p["name"] for p in self.eck["personen"] if p["rolle"] == "organisator"]
             # Arten und Merkmale der Reise (docs/ontologie.md): plan/arten.yaml neben routen.yaml
             a_rel = str(Path(r_rel).with_name("arten.yaml"))
             try:
                 arten = yaml.safe_load(self.lesen(a_rel)) if (self.reise_dir / a_rel).exists() else None
             except yaml.YAMLError as e:
-                self.fehler.append(f"{a_rel}: kein gültiges YAML ({e}).")
+                self.fehler.append(texte.satz("pruefung.bauen.22", a_rel=a_rel, e=e))
                 arten = None
             route = Routen(roh, etappen, status, self.fehler, self.id_anlegen, r_rel, arten=arten,
                            entscheider=organisator if self.reise_roh is not None else None,
-                           wissen={i for i in self.ids if i.startswith("W-")}).bauen()
-            verhalten_anwenden(route, self.eck["verhalten"])
+                           wissen={i for i in self.ids if i.startswith("W-")}, sprache=self.eck["sprache"]).bauen()
+            verhalten_anwenden(route, self.eck["verhalten"], self.eck["sprache"])
             for oid, wo in orte_inhalt.items():
                 if route and oid not in route["orte"]:
-                    self.fehler.append(f"{wo}: Ort {oid} gibt es in routen.yaml nicht.")
+                    self.fehler.append(texte.satz("pruefung.bauen.23", wo=wo, oid=oid))
             if route and r_cfg.get("karte"):
                 route["karte"] = self.karte(r_cfg["karte"], route)
                 # Punkte der Etappen-Karten (werkzeuge/punkte_holen.py, docs/werkzeuge.md); Namen im Etappentext werden zu Kartenlinks
@@ -615,6 +618,7 @@ class Bauer:
         return {
             # Eckdaten, Darstellung, Status, Personen, Bausteine, Regeln aus reise.yaml (engine/reise.py)
             "reise": self.eck,
+            "inhaltswoerter": texte.seite_inhaltswoerter(),   # Wörter, an denen die Seite Inhalt erkennt (Fragestatus, Tag n, …), alle Sprachen
             "plan_kopf": plan_kopf,
             "abschnitte": abschnitte,
             "fragen": fragen,
@@ -632,10 +636,10 @@ class Bauer:
         try:
             roh = yaml.safe_load(self.lesen(rel)) or {}
         except yaml.YAMLError as e:
-            self.fehler.append(f"{rel}: kein gültiges YAML ({e}).")
+            self.fehler.append(texte.satz("pruefung.bauen.24", rel=rel, e=e))
             return {}
         if not isinstance(roh, dict):
-            self.fehler.append(f"{rel}: erwartet je Wunsch-ID (R-…) einen Eintrag mit bezug, notiz, option.")
+            self.fehler.append(texte.satz("pruefung.bauen.25", rel=rel))
             return {}
         optionen = {o["id"]: o for w in route.get("wahlstellen") or [] for o in w["optionen"]}
         bekannt = set(self.ids) | set(route.get("unterkuenfte") or {}) | set(route.get("orte") or {}) | set(optionen)
@@ -643,27 +647,27 @@ class Bauer:
         for rid, v in roh.items():
             wo = f"{rel}: {rid}"
             if not re.match(r"^R-\d{8}-\d{6}-[0-9a-f]{4}$", str(rid)):
-                self.fehler.append(f"{wo}: Schlüssel muss eine Wunsch-ID sein (R-JJJJMMTT-HHMMSS-xxxx).")
+                self.fehler.append(texte.satz("pruefung.bauen.26", wo=wo))
                 continue
             if not isinstance(v, dict) or set(v) - {"bezug", "notiz", "option"}:
-                self.fehler.append(f"{wo}: erlaubt sind bezug (Liste von IDs), notiz (Text) und option (V-….x).")
+                self.fehler.append(texte.satz("pruefung.bauen.27", wo=wo))
                 continue
             bezug = v.get("bezug") or []
             if isinstance(bezug, str):
                 bezug = [bezug]
             if not isinstance(bezug, list) or not all(isinstance(x, str) for x in bezug):
-                self.fehler.append(f"{wo}: bezug muss eine Liste von IDs sein.")
+                self.fehler.append(texte.satz("pruefung.bauen.28", wo=wo))
                 continue
             for x in bezug:
                 if x not in bekannt:
-                    self.fehler.append(f"{wo}: {x} gibt es nicht.")
+                    self.fehler.append(texte.satz("pruefung.bauen.29", wo=wo, x=x))
             notiz = v.get("notiz") or ""
             if not isinstance(notiz, str):
-                self.fehler.append(f"{wo}: notiz muss Text sein.")
+                self.fehler.append(texte.satz("pruefung.bauen.30", wo=wo))
                 notiz = ""
             option = v.get("option")
             if option is not None and option not in optionen:
-                self.fehler.append(f"{wo}: Option {option} gibt es an keiner Wahlstelle.")
+                self.fehler.append(texte.satz("pruefung.bauen.31", wo=wo, option=option))
                 option = None
             aus[rid] = {"bezug": bezug, "notiz": notiz.strip(), "option": option,
                         "gewaehlt": bool(option) and optionen[option]["status"] == "gewaehlt"}
@@ -681,39 +685,39 @@ class Bauer:
         try:
             roh = yaml.safe_load(self.lesen(rel)) or {}
         except yaml.YAMLError as e:
-            self.fehler.append(f"{rel}: kein gültiges YAML ({e}).")
+            self.fehler.append(texte.satz("pruefung.bauen.32", rel=rel, e=e))
             return self._kategorien
         roh = roh.get("kategorien") if isinstance(roh, dict) else None
         if not isinstance(roh, dict):
-            self.fehler.append(f"{rel}: braucht den Abschnitt „kategorien:“.")
+            self.fehler.append(texte.satz("pruefung.bauen.33", rel=rel))
             return self._kategorien
         for k, d in roh.items():
             wo = f"{rel} {k}"
             if not re.fullmatch(KATEGORIE_MUSTER, str(k)):
-                self.fehler.append(f"{wo}: Schlüssel nur aus Kleinbuchstaben, Ziffern und _.")
+                self.fehler.append(texte.satz("pruefung.bauen.34", wo=wo))
                 continue
             if not isinstance(d, dict) or d.get("gruppe") not in KATEGORIE_GRUPPEN:
-                self.fehler.append(f"{wo}: gruppe muss {' oder '.join(KATEGORIE_GRUPPEN)} sein.")
+                self.fehler.append(texte.satz("pruefung.bauen.35", wo=wo, w1=' oder '.join(KATEGORIE_GRUPPEN)))
                 continue
             if set(d) - KATEGORIE_FELDER:
-                self.fehler.append(f"{wo}: unbekannte Felder {', '.join(sorted(set(d) - KATEGORIE_FELDER))}.")
+                self.fehler.append(texte.satz("pruefung.bauen.36", wo=wo, w1=', '.join(sorted(set(d) - KATEGORIE_FELDER))))
             if not d.get("name"):
-                self.fehler.append(f"{wo}: name fehlt.")
+                self.fehler.append(texte.satz("pruefung.bauen.37", wo=wo))
             f = d.get("farbe")
             if f not in KATEGORIE_FARBEN and not (isinstance(f, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", f)):
-                self.fehler.append(f"{wo}: farbe muss {', '.join(KATEGORIE_FARBEN)} oder #rrggbb sein.")
+                self.fehler.append(texte.satz("pruefung.bauen.38", wo=wo, w1=', '.join(KATEGORIE_FARBEN)))
             if d.get("symbol") and d["symbol"] not in SYMBOLE:
-                self.fehler.append(f"{wo}: symbol muss {', '.join(SYMBOLE)} sein.")
+                self.fehler.append(texte.satz("pruefung.bauen.39", wo=wo, w1=', '.join(SYMBOLE)))
             arten = d.get("arten") or {}
             if not isinstance(arten, dict):
-                self.fehler.append(f"{wo}: arten muss eine Liste „art: {{name: …}}“ sein.")
+                self.fehler.append(texte.satz("pruefung.bauen.40", wo=wo))
                 arten = {}
             for a, ad in arten.items():
                 ad = ad if isinstance(ad, dict) else {"name": ad}
                 if set(ad) - KATEGORIE_ART_FELDER:
-                    self.fehler.append(f"{wo} {a}: unbekannte Felder {', '.join(sorted(set(ad) - KATEGORIE_ART_FELDER))}.")
+                    self.fehler.append(texte.satz("pruefung.bauen.41", wo=wo, a=a, w1=', '.join(sorted(set(ad) - KATEGORIE_ART_FELDER))))
                 if ad.get("symbol") and ad["symbol"] not in SYMBOLE:
-                    self.fehler.append(f"{wo} {a}: symbol muss {', '.join(SYMBOLE)} sein.")
+                    self.fehler.append(texte.satz("pruefung.bauen.42", wo=wo, a=a, w1=', '.join(SYMBOLE)))
                 arten[a] = ad
             self._kategorien[k] = {"gruppe": d["gruppe"], "name": str(d.get("name") or k), "einzahl": d.get("einzahl"), "farbe": f,
                                    "symbol": d.get("symbol"), "nummeriert": bool(d.get("nummeriert")), "arten": arten}
@@ -726,10 +730,9 @@ class Bauer:
         if p.get("kat") in gueltig:
             return
         if not gueltig:
-            self.fehler.append(f"{wo}: kat „{p.get('kat')}“ – die Reise hat keine Kategorien der Gruppe {gruppe} "
-                               "(plan/kategorien.yaml; im Gespräch mit kategorie_definieren anlegen, docs/ontologie.md).")
+            self.fehler.append(texte.satz("pruefung.bauen.43", wo=wo, w1=p.get('kat'), gruppe=gruppe))
         else:
-            self.fehler.append(f"{wo}: kat muss eine von {', '.join(gueltig)} sein (plan/kategorien.yaml).")
+            self.fehler.append(texte.satz("pruefung.bauen.44", wo=wo, w1=', '.join(gueltig)))
 
     def wissen_karte(self, rel, abschnitte):
         """Punkte je Wissens-Block (W-….<slug>) mit regionalen Grundkarten. Erzeugt vom Betrieb (Punkte aus OpenStreetMap),
@@ -738,17 +741,17 @@ class Bauer:
         try:
             roh = yaml.safe_load(self.lesen(rel)) or {}
         except yaml.YAMLError as e:
-            self.fehler.append(f"{rel}: kein gültiges YAML ({e}).")
+            self.fehler.append(texte.satz("pruefung.bauen.45", rel=rel, e=e))
             return None
         stand = roh.get("stand")
         if stand is not None and als_datum(stand) is None:
-            self.fehler.append(f"{rel}: stand muss ein Datum sein (JJJJ-MM-TT).")
+            self.fehler.append(texte.satz("pruefung.bauen.46", rel=rel))
             stand = None
         karten, fehlen = {}, []
         for name, g in (roh.get("grundkarten") or {}).items():
             r = (g or {}).get("rahmen") or {}
             if not all(isinstance(r.get(x), (int, float)) for x in ("nord", "sued", "west", "ost")):
-                self.fehler.append(f"{rel}: Grundkarte {name}: rahmen braucht nord, sued, west, ost.")
+                self.fehler.append(texte.satz("pruefung.bauen.47", rel=rel, name=name))
                 continue
             datei = self.reise_dir / "medien" / "karte" / f"{name}.pmtiles"
             if not datei.exists():
@@ -758,36 +761,35 @@ class Bauer:
             karten[name] = {"url": f"karte-{name}.pmtiles", "titel": g.get("titel", name), "rahmen": r,
                             "maxzoom": pmtiles_maxzoom(datei)}
         if fehlen:
-            self.hinweise.append(f"Grundkarten fehlen: {', '.join(fehlen)}; diese Orte bleiben ohne Karte "
-                                 f"(je Name eine PMTiles-Datei unter medien/karte/<name>.pmtiles ablegen).")
+            self.hinweise.append(texte.satz("pruefung.bauen.48", w1=', '.join(fehlen)))
         bloecke = {b["id"]: b for a in abschnitte if a["typ"] != "ort" for b in a["bloecke"]}
         aus, ohne = {}, []
         for bid, liste in (roh.get("bloecke") or {}).items():
             if bid not in bloecke:
-                self.fehler.append(f"{rel}: Block {bid} gibt es nicht.")
+                self.fehler.append(texte.satz("pruefung.bauen.49", rel=rel, bid=bid))
                 continue
             zeigen = []
             for i, p in enumerate(liste or []):
                 wo = f"{rel}: {bid} Punkt {i + 1}"
                 self.kategorie_pruefen(wo, p, "wissen")
                 if not p.get("name"):
-                    self.fehler.append(f"{wo}: name fehlt.")
+                    self.fehler.append(texte.satz("pruefung.bauen.50", wo=wo))
                 lage = p.get("lage")
                 if p.get("ohne_karte"):  # bewusst ohne Punkt, Grund steht in der Datei
                     continue
                 if lage is None:
-                    ohne.append(f"{p.get('name')} ({bid.split('.')[0]})")
+                    ohne.append(texte.satz("pruefung.bauen.ort_ohne_karte", name=p.get("name"), bid=bid.split(".")[0]))
                     continue
                 if not (isinstance(lage, list) and len(lage) == 2 and all(isinstance(x, (int, float)) for x in lage)):
-                    self.fehler.append(f"{wo}: lage braucht [Breite, Länge].")
+                    self.fehler.append(texte.satz("pruefung.bauen.51", wo=wo))
                     continue
                 if not p.get("quelle"):
-                    self.fehler.append(f"{wo}: quelle fehlt (Herkunft und Prüfdatum).")
+                    self.fehler.append(texte.satz("pruefung.bauen.52", wo=wo))
                 k = next((n for n, g in karten.items() if g["rahmen"]["sued"] <= lage[0] <= g["rahmen"]["nord"]
                           and g["rahmen"]["west"] <= lage[1] <= g["rahmen"]["ost"]), None)
                 if k is None:
                     if karten:
-                        ohne.append(f"{p.get('name')} ({bid.split('.')[0]}, außerhalb der Grundkarten)")
+                        ohne.append(texte.satz("pruefung.bauen.ort_ausserhalb", name=p.get("name"), bid=bid.split(".")[0]))
                     continue
                 g = punkt_geprueft(p, stand, wo, self.fehler)
                 zeigen.append({x: p[x] for x in ("name", "auch", "kat", "lage", "quelle", "hinweis") if p.get(x)} | {"karte": k}
@@ -796,7 +798,7 @@ class Bauer:
                 aus[bid] = zeigen
                 bloecke[bid]["html"] = punkte_verlinken(bloecke[bid]["html"], bid, zeigen)
         if ohne:
-            self.hinweise.append(f"{rel}: {len(ohne)} Orte nicht auf der Karte: {', '.join(ohne)}.")
+            self.hinweise.append(texte.satz("pruefung.bauen.53", rel=rel, w1=len(ohne), w2=texte.Satz.verbinden(ohne)))
         if not aus:
             return None
         return {"grundkarten": karten, "punkte": aus,
@@ -824,35 +826,34 @@ class Bauer:
         for uid in dict.fromkeys(im_plan):
             u = route["unterkuenfte"].get(uid)
             if u and not u.get("adresse") and not u.get("punkt"):
-                route.setdefault("mahnungen", []).append({"bezug": uid, "text": f"{uid} {u.get('name')}: Lage fehlt "
-                                                          "(Adresse oder Koordinaten). Bitte nachschlagen und mit Quelle eintragen."})
+                route.setdefault("mahnungen", []).append({"bezug": uid, "text": texte.t(self.eck["sprache"], "pruefung.bauen.lage_fehlt", uid=uid, name=u.get("name"))})
 
     def punkte(self, rel, route, etappen):
         """plan/punkte.yaml prüfen und die Namen im Etappentext mit der Karte verknüpfen."""
         try:
             roh = yaml.safe_load(self.lesen(rel)) or {}
         except yaml.YAMLError as e:
-            self.fehler.append(f"{rel}: kein gültiges YAML ({e}).")
+            self.fehler.append(texte.satz("pruefung.bauen.54", rel=rel, e=e))
             return {}
         aus = {}
         stand = roh.get("stand")
         if stand is not None and als_datum(stand) is None:
-            self.fehler.append(f"{rel}: stand muss ein Datum sein (JJJJ-MM-TT).")
+            self.fehler.append(texte.satz("pruefung.bauen.55", rel=rel))
             stand = None
         for sid, liste in (roh.get("strecken") or {}).items():
             if sid not in route["strecken"] and sid not in etappen:
-                self.fehler.append(f"{rel}: Strecke {sid} gibt es nicht.")
+                self.fehler.append(texte.satz("pruefung.bauen.56", rel=rel, sid=sid))
                 continue
             for i, p in enumerate(liste or []):
                 wo = f"{rel}: {sid} Punkt {i + 1}"
                 lage = p.get("lage")
                 self.kategorie_pruefen(wo, p, "punkt")
                 if not (isinstance(lage, list) and len(lage) == 2 and all(isinstance(x, (int, float)) for x in lage)):
-                    self.fehler.append(f"{wo}: lage braucht [Breite, Länge].")
+                    self.fehler.append(texte.satz("pruefung.bauen.57", wo=wo))
                 if not p.get("quelle"):
-                    self.fehler.append(f"{wo}: quelle fehlt (Herkunft und Prüfdatum).")
+                    self.fehler.append(texte.satz("pruefung.bauen.58", wo=wo))
                 if p.get("id") and p["id"] not in self.ids and p["id"] not in route.get("unterkuenfte", {}):
-                    self.fehler.append(f"{wo}: ID {p['id']} gibt es nicht.")
+                    self.fehler.append(texte.satz("pruefung.bauen.59", wo=wo, w1=p['id']))
                 p["geprueft"] = punkt_geprueft(p, stand, wo, self.fehler)
                 if p["geprueft"] is None:
                     del p["geprueft"]
@@ -869,34 +870,34 @@ class Bauer:
         try:
             k = yaml.safe_load(self.lesen(rel)) or {}
         except yaml.YAMLError as e:
-            self.fehler.append(f"{rel}: kein gültiges YAML ({e}).")
+            self.fehler.append(texte.satz("pruefung.bauen.60", rel=rel, e=e))
             return None
         def punkt(p, wo):
             ok = isinstance(p, list) and len(p) == 2 and all(isinstance(x, (int, float)) for x in p)
             if not ok:
-                self.fehler.append(f"{rel}: {wo}: Lage muss [Breite, Länge] sein.")
+                self.fehler.append(texte.satz("pruefung.bauen.61", rel=rel, wo=wo))
         for oid, o in (k.get("orte") or {}).items():
             if oid not in route["orte"]:
-                self.fehler.append(f"{rel}: Ort {oid} gibt es in routen.yaml nicht.")
+                self.fehler.append(texte.satz("pruefung.bauen.62", rel=rel, oid=oid))
             punkt(o.get("lage"), oid)
         for art in ("wege", "unmarkiert"):
             for sid, weg in (k.get(art) or {}).items():
                 if sid not in route["strecken"] and sid not in self.ids:
-                    self.fehler.append(f"{rel}: {art}: Strecke {sid} gibt es nicht.")
+                    self.fehler.append(texte.satz("pruefung.bauen.63", rel=rel, art=art, sid=sid))
                 for p in weg:
                     punkt(p, sid)
         for sid in k.get("ausgelassen") or []:
             if sid not in self.ids:
-                self.fehler.append(f"{rel}: ausgelassen: Strecke {sid} gibt es nicht.")
+                self.fehler.append(texte.satz("pruefung.bauen.64", rel=rel, sid=sid))
         if k.get("linien") not in (None, "alle"):
-            self.fehler.append(f"{rel}: linien kennt nur „alle“ (jede Strecke in Planfarbe).")
+            self.fehler.append(texte.satz("pruefung.bauen.65", rel=rel))
         r = k.get("rahmen") or {}
         if not all(isinstance(r.get(x), (int, float)) for x in ("nord", "sued", "west", "ost")):
-            self.fehler.append(f"{rel}: rahmen braucht nord, sued, west, ost.")
+            self.fehler.append(texte.satz("pruefung.bauen.66", rel=rel))
         # GPX-Tracks ersetzen die schematischen Wege (25.10.2026)
         for sid in k.get("gpx") or {}:
             if sid not in route["strecken"] and sid not in self.ids:
-                self.fehler.append(f"{rel}: gpx: Strecke {sid} gibt es nicht.")
+                self.fehler.append(texte.satz("pruefung.bauen.67", rel=rel, sid=sid))
         if k.get("gpx"):
             self.fehler += [f"{rel}: {m}" for m in gpx.einbauen(k, route["strecken"], lambda d: gpx.lesen(self.reise_dir / d))]
         # Offline-Grundkarte (OpenStreetMap als PMTiles, werkzeuge/karte-holen.sh); fehlt sie, bleibt die Karte schematisch
@@ -908,9 +909,8 @@ class Bauer:
                 k["grundkarte"] = {"url": "grundkarte.pmtiles"}
                 k["namensnennung"] = " · ".join(x for x in (k.get("namensnennung"), g.get("namensnennung")) if x)
             else:
-                k["namensnennung"] = " · ".join(x for x in (k.get("namensnennung"), "Küste schematisch") if x)
-                self.hinweise.append(f"Grundkarte {g['datei']} fehlt, die Karte bleibt schematisch "
-                                     f"(PMTiles-Datei unter {g['datei']} ablegen).")
+                k["namensnennung"] = " · ".join(x for x in (k.get("namensnennung"), texte.t(self.eck["sprache"], "seite.karte.kueste")) if x)
+                self.hinweise.append(texte.satz("pruefung.bauen.68", w1=g['datei']))
         return k
 
     def orte_wissen(self, rel, abschnitte):
@@ -919,7 +919,7 @@ class Bauer:
         try:
             roh = yaml.safe_load(self.lesen(rel)) or {}
         except yaml.YAMLError as e:
-            self.fehler.append(f"{rel}: kein gültiges YAML ({e}).")
+            self.fehler.append(texte.satz("pruefung.bauen.69", rel=rel, e=e))
             return
         orte = {a["id"]: a for a in abschnitte if a["typ"] == "ort"}
         ziele = {}
@@ -929,12 +929,12 @@ class Bauer:
                 ziele.update({b["id"]: (b, a) for b in a["bloecke"]})
         for oid, liste in roh.items():
             if oid not in orte:
-                self.fehler.append(f"{rel}: Ort {oid} hat keine Ortsseite (reise.json orte_dossiers).")
+                self.fehler.append(texte.satz("pruefung.bauen.70", rel=rel, oid=oid))
                 continue
             for e in liste or []:
                 e = {"ziel": e} if isinstance(e, str) else e
                 if e.get("ziel") not in ziele:
-                    self.fehler.append(f"{rel}: {oid}: Ziel „{e.get('ziel')}“ gibt es nicht.")
+                    self.fehler.append(texte.satz("pruefung.bauen.71", rel=rel, oid=oid, w1=e.get('ziel')))
                     continue
                 x, a = ziele[e["ziel"]]
                 orte[oid].setdefault("wissen", []).append(
@@ -964,14 +964,12 @@ class Bauer:
                     continue
                 for wort in STICHWORT.findall(b["html"]):
                     if wort.strip().rstrip(".:").strip().casefold() not in namen:
-                        self.hinweise.append(f"{eid}: Stichwort „{wort.strip().rstrip('.:')}“ im Lesetext ist keine Rubrik "
-                                             f"der Art „{art}“ (arten.yaml lesetext: "
-                                             f"{', '.join(r['name'] for r in rubriken)}).")
+                        self.hinweise.append(texte.satz("pruefung.bauen.72", eid=eid, w1=wort.strip().rstrip('.:'), art=art, w2=', '.join(r['name'] for r in rubriken)))
 
     def ebene(self, titel):
         """Ebene eines Etappen-Abschnitts auf der Tagesseite: zuerst die Titelanfänge der Reise, dann die Vorgabe."""
         t = titel.strip().lower()
-        for quelle in (self.cfg.get("etappen_ebenen") or {}, EBENEN_VORGABE):
+        for quelle in (self.cfg.get("etappen_ebenen") or {}, ebenen_vorgabe()):
             for ebene, anfaenge in quelle.items():
                 if any(t.startswith(a.lower()) for a in anfaenge):
                     return ebene
@@ -983,11 +981,11 @@ class Bauer:
             return
         if not isinstance(e, dict) or any(not isinstance(v, list) or not all(isinstance(x, str) and x.strip() for x in v)
                                           for v in e.values()):
-            self.fehler.append("reise.json etappen_ebenen: erwartet {Ebene: [Titelanfang, …]}.")
+            self.fehler.append(texte.satz("pruefung.bauen.73"))
             return
         for k in e:
             if k not in EBENEN:
-                self.fehler.append(f"reise.json etappen_ebenen: Ebene „{k}“ gibt es nicht (möglich: {', '.join(EBENEN)}).")
+                self.fehler.append(texte.satz("pruefung.bauen.74", k=k, w1=', '.join(EBENEN)))
 
     def kennzahlen(self, body, wo):
         gewuenscht = self.cfg.get("etappen_kennzahlen", [])
@@ -1004,7 +1002,7 @@ class Bauer:
         self.id_anlegen(sid, wo)
         t = tabelle_lesen(body, wo, self.fehler)
         if not t:
-            self.fehler.append(f"{wo}: Abschnitt „{titel}“ enthält keine Tabelle.")
+            self.fehler.append(texte.satz("pruefung.bauen.75", wo=wo, titel=titel))
             return {"id": sid, "typ": typ, "titel": titel, "intro": "", "bloecke": []}
         davor, kopf, rows, danach = t
         quelle = self.reise_dir / rel
@@ -1013,7 +1011,7 @@ class Bauer:
             if art == "tage":
                 ziffern = re.sub(r"\D", "", werte[0])
                 if not ziffern:
-                    self.fehler.append(f"{wo}: Tag „{werte[0]}“ ist keine Nummer.")
+                    self.fehler.append(texte.satz("pruefung.bauen.76", wo=wo, w1=werte[0]))
                     continue
                 zid = "T-" + ziffern.zfill(2)
             else:
@@ -1028,13 +1026,13 @@ class Bauer:
     def fragen(self, rel):
         t = tabelle_lesen(self.lesen(rel), rel, self.fehler)
         if not t:
-            self.fehler.append(f"{rel}: keine Tabelle gefunden.")
+            self.fehler.append(texte.satz("pruefung.bauen.77", rel=rel))
             return {"spalten": [], "zeilen": []}
         _, kopf, rows, _ = t
         zeilen = []
         for werte in rows:
             if not re.match(r"^F-\d+$", werte[0]):
-                self.fehler.append(f"{rel}: „{werte[0]}“ ist keine Frage-ID (F-01…).")
+                self.fehler.append(texte.satz("pruefung.bauen.78", rel=rel, w1=werte[0]))
                 continue
             self.id_anlegen(werte[0], rel)
             sp = next((i for i, k in enumerate(kopf) if k.lower() == "status"), None)
@@ -1066,8 +1064,11 @@ class Bauer:
                                       json.dumps(self.umzug) + " + location.pathname + location.search + location.hash)</script>", 1)
         vorlage = vorlage.replace("<!--__GRUNDKARTE__-->", "".join(
             f'<script src="{n}"></script>' for n in VENDOR_GRUNDKARTE.values()) if self.grundkarte or self.grundkarten else "", 1)
-        if vorlage.count("/*__DATEN__*/null") != 1:
-            raise BauFehler(["vorlage.html muss den Platzhalter /*__DATEN__*/null genau einmal enthalten."])
+        if vorlage.count("/*__DATEN__*/null") != 1 or vorlage.count("/*__TEXTE__*/null") != 1:
+            raise BauFehler(["vorlage.html muss die Platzhalter /*__DATEN__*/null und /*__TEXTE__*/null genau einmal enthalten."])
+        vorlage = re.sub(r'<html lang="[^"]*">', lambda _: f'<html lang="{daten["reise"]["sprache"]}" dir="{texte.sprache(daten["reise"]["sprache"]).RICHTUNG}">', vorlage, count=1)
+        katalog = json.dumps(texte_fuer_seite(), ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+        vorlage = vorlage.replace("/*__TEXTE__*/null", katalog, 1)
         js = json.dumps(daten, ensure_ascii=False, separators=(",", ":"))
         js = js.replace("</", "<\\/").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
         self.ziel_dir.mkdir(parents=True, exist_ok=True)
@@ -1083,7 +1084,7 @@ class Bauer:
         kurz = c.get("kurz") or c["titel"].split(" – ")[0]
         motiv = self.reise_dir / "medien" / "icon.svg"  # eigenes App-Symbol der Reise, sonst Kurzname
         (ziel / "manifest.json").write_text(json.dumps({
-            "name": c["titel"], "short_name": kurz, "lang": "de",
+            "name": c["titel"], "short_name": kurz, "lang": c["sprache"], "dir": texte.sprache(c["sprache"]).RICHTUNG,
             "start_url": "./", "scope": "./", "display": "standalone",
             "background_color": PWA_HINTERGRUND, "theme_color": PWA_FARBE,
             # eigenes Motiv ist für Android-Masken gezeichnet (Motiv im inneren 80 %)
@@ -1263,6 +1264,11 @@ def icon_zeichnen(text, groesse):
     for i, z in enumerate(zeilen):
         d.text((groesse / 2, y0 + hoehe * (i + 0.5)), z, font=f, fill="white", anchor="mm")
     return im
+
+
+def texte_fuer_seite():
+    """Katalog aller Sprachen für die Seite (ADR-0006); ab M1 legt der Bau ihn in die Seite, damit der Umschalter offline geht."""
+    return texte.seite()
 
 
 def bauen(reise_dir, ziel_dir, umzug=None):

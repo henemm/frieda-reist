@@ -73,6 +73,7 @@ import belege as bl  # noqa: E402
 import instanz  # noqa: E402
 import konten  # noqa: E402
 import reise as rg  # noqa: E402
+import texte  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent
 # Wunsch: Idee für die Reise (Ort, Erlebnis, Essen) ohne feste Stelle, ziel = WUNSCH_ZIEL (25.10.2026)
@@ -319,28 +320,28 @@ def auftraege(o):
 def pruefen(roh):
     """Eingabe prüfen und auf erlaubte Felder kürzen. -> (eintrag, fehler)"""
     if not isinstance(roh, dict):
-        return None, "kein Objekt"
+        return None, texte.satz("dienst.pruefen.1")
     e = {}
     for feld in INHALT:
         wert = roh.get(feld, "")
         if not isinstance(wert, str):
-            return None, f"{feld} muss Text sein"
+            return None, texte.satz("dienst.pruefen.2", feld=feld)
         e[feld] = wert.strip()
     if e["art"] not in ARTEN:
-        return None, "unbekannte Art"
+        return None, texte.satz("dienst.pruefen.3")
     if e["art"] == "Wunsch" and not e["ziel"]:
         e["ziel"] = WUNSCH_ZIEL
     if not ZIEL_MUSTER.match(e["ziel"]):
-        return None, "ungültige ID"
+        return None, texte.satz("dienst.pruefen.4")
     if not e["text"]:
-        return None, "Text fehlt"
+        return None, texte.satz("dienst.pruefen.5")
     if not e["name"]:
-        return None, "Name fehlt"
+        return None, texte.satz("dienst.pruefen.6")
     if "\n" in e["name"]:
-        return None, "Name nur in einer Zeile"
+        return None, texte.satz("dienst.pruefen.7")
     for feld, n in LAENGE.items():
         if len(e[feld]) > n:
-            return None, f"{feld} zu lang (max. {n} Zeichen)"
+            return None, texte.satz("dienst.pruefen.8", feld=feld, n=n)
     jetzt = datetime.datetime.now(datetime.timezone.utc)
     e["id"] = f"R-{jetzt:%Y%m%d-%H%M%S}-{secrets.token_hex(2)}"
     e["erstellt"] = jetzt.isoformat(timespec="seconds")
@@ -379,43 +380,43 @@ def ag_felder(roh, neu):
             if isinstance(v, str):
                 v = [x for x in re.split(r"[,\s]+", v) if x]
             if not isinstance(v, list) or not all(isinstance(x, str) for x in v):
-                return None, "bezug muss eine Liste von IDs sein"
+                return None, texte.satz("dienst.ag_felder.1")
             v = list(dict.fromkeys(x.strip() for x in v if x.strip()))
             if len(v) > MAX_BEZUG:
-                return None, f"höchstens {MAX_BEZUG} Bezüge"
+                return None, texte.satz("dienst.ag_felder.2", w1=MAX_BEZUG)
             if not all(ZIEL_MUSTER.match(x) for x in v):
-                return None, "ungültige ID im Bezug"
+                return None, texte.satz("dienst.ag_felder.3")
         else:
             if v is None:
                 v = ""
             if not isinstance(v, str):
-                return None, f"{k} muss Text sein"
+                return None, texte.satz("dienst.ag_felder.4", k=k)
             v = v.strip()
             if k in AG_LAENGE and len(v) > AG_LAENGE[k]:
-                return None, f"{k} zu lang (max. {AG_LAENGE[k]} Zeichen)"
+                return None, texte.satz("dienst.ag_felder.5", k=k, w2=AG_LAENGE[k])
             if k in ("titel", "zustaendig") and "\n" in v:
-                return None, f"{k} nur in einer Zeile"
+                return None, texte.satz("dienst.ag_felder.6", k=k)
             if k in ("ab", "frist") and v and not ist_datum(v):
-                return None, f"{k} muss ein Datum JJJJ-MM-TT sein"
+                return None, texte.satz("dienst.ag_felder.7", k=k)
             if k == "prioritaet" and v not in AG_PRIO:
-                return None, f"Priorität: {', '.join(AG_PRIO)}"
+                return None, texte.satz("dienst.ag_felder.8", w1=', '.join(AG_PRIO))
             if k == "status" and v not in AG_STATUS:
-                return None, f"Status: {', '.join(AG_STATUS)}"
+                return None, texte.satz("dienst.ag_felder.9", w1=', '.join(AG_STATUS))
             if k == "titel" and not v:
-                return None, "Titel fehlt"
+                return None, texte.satz("dienst.ag_felder.10")
         f[k] = v
     if neu and not f.get("titel"):
-        return None, "Titel fehlt"
+        return None, texte.satz("dienst.ag_felder.10")
     return f, None
 
 
 def wer(roh):
     n = roh.get("name", "") if isinstance(roh, dict) else ""
     if not isinstance(n, str) or not n.strip():
-        return None, "Name fehlt"
+        return None, texte.satz("dienst.pruefen.6")
     n = n.strip()
     if "\n" in n or len(n) > AG_LAENGE["name"]:
-        return None, "Name nur in einer Zeile, max. 80 Zeichen"
+        return None, texte.satz("dienst.wer.1")
     return n, None
 
 
@@ -426,7 +427,7 @@ def jetzt_iso():
 def aufgabe_anlegen(o, roh):
     """-> (aufgabe, fehler). Aufrufer hält _sperre."""
     if not isinstance(roh, dict):
-        return None, "kein Objekt"
+        return None, texte.satz("dienst.pruefen.1")
     name, fehler = wer(roh)
     if fehler:
         return None, fehler
@@ -435,7 +436,7 @@ def aufgabe_anlegen(o, roh):
         return None, fehler
     alle = aufgaben_lesen(o)
     if len(alle["aufgaben"]) >= MAX_AUFGABEN:
-        return None, "zu viele Aufgaben"
+        return None, texte.satz("dienst.aufgabe_anlegen.1")
     zeit = jetzt_iso()
     a = {"id": f"AG-{alle['naechste']:02d}", "titel": f["titel"], "bezug": f.get("bezug", []),
          "zustaendig": f.get("zustaendig", ""), "prioritaet": f.get("prioritaet") or "normal",
@@ -452,7 +453,7 @@ def aufgabe_anlegen(o, roh):
 def aufgabe_aendern(o, agid, roh):
     """-> (aufgabe, fehler, code). Aufrufer hält _sperre."""
     if not isinstance(roh, dict):
-        return None, "kein Objekt", 400
+        return None, texte.satz("dienst.pruefen.1"), 400
     name, fehler = wer(roh)
     if fehler:
         return None, fehler, 400
@@ -461,12 +462,12 @@ def aufgabe_aendern(o, agid, roh):
         return None, fehler, 400
     kommentar = roh.get("kommentar", "")
     if not isinstance(kommentar, str) or len(kommentar.strip()) > AG_LAENGE["kommentar"]:
-        return None, "Kommentar zu lang (max. 500 Zeichen)", 400
+        return None, texte.satz("dienst.aufgabe_aendern.1"), 400
     kommentar = kommentar.strip()
     alle = aufgaben_lesen(o)
     a = next((x for x in alle["aufgaben"] if x["id"] == agid), None)
     if a is None:
-        return None, "nicht gefunden", 404
+        return None, texte.satz("dienst.aufgabe_aendern.2"), 404
     diff = {k: [a.get(k), v] for k, v in f.items() if a.get(k) != v}
     if not diff and not kommentar:
         return a, None, 200
@@ -585,8 +586,7 @@ def wunsch_annehmen(o, z, name):
     """Darf diese Person noch einen Wunsch einbringen (regeln.kontingent art anzahl)? -> Fehlertext oder None."""
     k = kontingent(z)
     if k["art"] == "anzahl" and aktive_wuensche(wuensche(o), name) >= k["je_person"]:
-        return (f"Höchstens {k['je_person']} Wünsche je Person. Erst einen eigenen Wunsch zurückziehen, oder er wird "
-                "geprüft und passt nicht.")
+        return texte.satz("dienst.wunsch_annehmen.1", n=k["je_person"])
     return None
 
 
@@ -595,25 +595,25 @@ def wunsch_aendern(o, rid, roh, z):
     unterwegs und danach), eingeplant mit bezug (nur Organisator:innen); kommentar geht in den Verlauf.
     z: zustand(reise) oder None (dann nur die technischen Prüfungen). -> (wunsch, fehler, code). Aufrufer hält _sperre."""
     if not isinstance(roh, dict):
-        return None, "kein Objekt", 400
+        return None, texte.satz("dienst.pruefen.1"), 400
     name, fehler = wer(roh)
     if fehler:
         return None, fehler, 400
     e = next((x for x in wuensche(o) if x["id"] == rid), None)
     if e is None:
-        return None, "Diesen Wunsch gibt es nicht.", 404
+        return None, texte.satz("dienst.wunsch_aendern.1"), 404
     felder = {}
     aktionen = []
     if "punkte" in roh:
         p = roh["punkte"]
         if not isinstance(p, int) or isinstance(p, bool) or not 0 <= p <= MAX_PUNKTE:
-            return None, f"punkte muss eine ganze Zahl von 0 bis {MAX_PUNKTE} sein", 400
+            return None, texte.satz("dienst.wunsch_aendern.2", w1=MAX_PUNKTE), 400
         felder["punkte"] = p
         aktionen.append("wunsch")
     for f in ("erlebt", "eingeplant"):
         if f in roh:
             if not isinstance(roh[f], bool):
-                return None, f"{f} muss ja oder nein sein (true/false)", 400
+                return None, texte.satz("dienst.wunsch_aendern.3", f=f), 400
             aktionen.append("wunsch_erlebt" if f == "erlebt" else "wunsch_einplanen")
     bezug = []
     if "bezug" in roh:
@@ -622,35 +622,35 @@ def wunsch_aendern(o, rid, roh, z):
             return None, fehler, 400
         bezug = bezug["bezug"]
         if roh.get("eingeplant") is not True:
-            return None, "bezug gehört zu eingeplant: true", 400
+            return None, texte.satz("dienst.wunsch_aendern.4"), 400
     kommentar = roh.get("kommentar", "")
     if not isinstance(kommentar, str) or len(kommentar.strip()) > AG_LAENGE["kommentar"]:
-        return None, "Kommentar zu lang (max. 500 Zeichen)", 400
+        return None, texte.satz("dienst.aufgabe_aendern.1"), 400
     kommentar = kommentar.strip()
     if not aktionen and not kommentar:
-        return None, "Nichts zu ändern (punkte, erlebt, eingeplant oder kommentar).", 400
+        return None, texte.satz("dienst.wunsch_aendern.5"), 400
     if z is not None:
         for a in aktionen or ["wunsch_erlebt"]:   # nur ein Kommentar: darf, wer auch abhaken darf
             ok, grund = rg.erlaubt(a, rolle_von(z, name), z["status"], z["bausteine"], regeln=z.get("regeln"))
             if not ok:
                 return None, grund, 403
     if aktionen and e.get("status") == "verworfen":
-        return None, "Dieser Wunsch passt nicht (so geprüft); er bleibt so stehen.", 409
+        return None, texte.satz("dienst.wunsch_aendern.6"), 409
     alle = brett_lesen(o)
     b = alle.setdefault(rid, {"punkte": 0, "eingeplant": None, "erlebt": None, "verlauf": []})
     if "punkte" in felder:
         k = kontingent(z)
         if k["art"] != "punkte":
-            return None, "Diese Reise zählt Wünsche, keine Punkte.", 400
+            return None, texte.satz("dienst.wunsch_aendern.7"), 400
         if _schluessel(e.get("name")) != _schluessel(name):
-            return None, f"Punkte verteilt nur, wer den Wunsch eingebracht hat ({e.get('name')}).", 403
+            return None, texte.satz("dienst.wunsch_aendern.8", w1=e.get('name')), 403
         frei = k["je_person"] - vergeben(wuensche(o), alle, name, ohne=rid)
         if felder["punkte"] > frei:
-            return None, f"So viele Punkte sind nicht mehr frei: noch {max(0, frei)} von {k['je_person']}.", 409
+            return None, texte.satz("dienst.wunsch_aendern.9", w1=max(0, frei), w2=k['je_person']), 409
     heute = datetime.date.today().isoformat()
     if "erlebt" in roh:
         if z is not None and z["status"] not in ERLEBT_AB:
-            return None, "Abhaken geht erst, wenn die Reise läuft (Status unterwegs) und danach.", 409
+            return None, texte.satz("dienst.wunsch_aendern.10"), 409
         felder["erlebt"] = {"wer": name, "datum": heute} if roh["erlebt"] else None
     if "eingeplant" in roh:
         felder["eingeplant"] = {"wer": name, "datum": heute, "bezug": bezug} if roh["eingeplant"] else None
@@ -728,14 +728,14 @@ def name_fuer(ident, z, getippt):
     if ident["art"] == "dienst":
         return getippt, None
     if ident["art"] == "fremd":
-        return None, (403, "Diese Anfrage kommt nicht von Frieda selbst.")
+        return None, (403, texte.satz("dienst.anfrage.1"))
     if ident["art"] == "konto" and ident["person"]:
         return ident["person"]["name"], None
     if anmeldung_regel(z) == "uebergang" or z is None:
         return getippt, None
     if ident["art"] == "konto":
-        return None, (403, "Du bist bei dieser Reise nicht eingeladen. Bitte die Person fragen, die die Reise bestimmt.")
-    return None, (401, "Bitte melde dich an, um mitzumachen.")
+        return None, (403, texte.satz("dienst.anfrage.2"))
+    return None, (401, texte.satz("dienst.anfrage.3"))
 
 
 def gedrosselt(o):
@@ -754,6 +754,9 @@ class Dienst(BaseHTTPRequestHandler):
     sys_version = ""
 
     def _antwort(self, code, obj):
+        if isinstance(obj, dict) and isinstance(obj.get("fehler"), texte.Satz) and obj["fehler"].schluessel:
+            # Schlüssel und Werte neben dem deutschen Satz: Seite und Konnektor sagen ihn in der Sprache der Person (ADR-0006, Punkt 6)
+            obj = {**obj, "fehler_code": obj["fehler"].schluessel, "werte": obj["fehler"].werte}
         body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -777,7 +780,7 @@ class Dienst(BaseHTTPRequestHandler):
         try:
             daten = pfad.read_bytes()
         except OSError:
-            return self._antwort(404, {"fehler": "Die Datei fehlt in der Ablage."})
+            return self._antwort(404, {"fehler": texte.satz("dienst._datei.1")})
         self.send_response(200)
         self.send_header("Content-Type", b["typ"])
         self.send_header("Content-Length", str(len(daten)))
@@ -794,13 +797,13 @@ class Dienst(BaseHTTPRequestHandler):
         try:
             daten = json.loads((seiten() / o.name / "daten.json").read_text(encoding="utf-8"))
         except (OSError, ValueError):
-            return self._antwort(503, {"fehler": "Die Seite der Reise ist gerade nicht lesbar."})
+            return self._antwort(503, {"fehler": texte.satz("dienst._kalender.1")})
         nur = (self._query().get("id") or [None])[0]
         if nur is not None and not ZIEL_MUSTER.match(nur):
-            return self._antwort(400, {"fehler": "ungültige ID"})
+            return self._antwort(400, {"fehler": texte.satz("dienst.pruefen.4")})
         text = kalender.ics(daten, o.name, aufgaben(o), nur=nur)
         if text is None:
-            return self._antwort(404, {"fehler": "Dazu gibt es noch keinen Kalendereintrag (noch nicht entschieden oder ohne Datum)."})
+            return self._antwort(404, {"fehler": texte.satz("dienst._kalender.2")})
         body = text.encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "text/calendar; charset=utf-8")
@@ -826,10 +829,10 @@ class Dienst(BaseHTTPRequestHandler):
                 return self._antwort(200, bl.liste(o, name, rolle, (q.get("buchung") or [None])[0]))
             b = bl.finden(o, did)
             if b is None or not bl.darf_sehen(b, name, rolle):
-                return self._antwort(404, {"fehler": "Diesen Beleg gibt es nicht, oder er ist für dich nicht sichtbar."})
+                return self._antwort(404, {"fehler": texte.satz("dienst.do_get.1")})
             return self._datei(b, bl.datei_pfad(o, b))
         if not t or t[2] is not None:
-            return self._antwort(404, {"fehler": "unbekannt"})
+            return self._antwort(404, {"fehler": texte.satz("dienst.do_get.2")})
         o, was, _ = t
         if was == "kalender.ics":
             return self._kalender(o)
@@ -850,7 +853,7 @@ class Dienst(BaseHTTPRequestHandler):
                 "konto": {"name": k["name"], "email": k["email"]} if k else None,
                 "person": {f: p.get(f) for f in ("schluessel", "name", "rolle")} if p else None})
         if was != "rueckmeldungen":
-            return self._antwort(404, {"fehler": "unbekannt"})
+            return self._antwort(404, {"fehler": texte.satz("dienst.do_get.2")})
         self._antwort(200, eintraege(o))
 
     def _json(self):
@@ -860,12 +863,12 @@ class Dienst(BaseHTTPRequestHandler):
         except ValueError:
             laenge = 0
         if laenge <= 0 or laenge > MAX_BODY:
-            self._antwort(413, {"fehler": "zu groß oder leer"})
+            self._antwort(413, {"fehler": texte.satz("dienst._json.1")})
             return None, True
         try:
             return json.loads(self.rfile.read(laenge).decode("utf-8")), None
         except (UnicodeDecodeError, json.JSONDecodeError):
-            self._antwort(400, {"fehler": "kein gültiges JSON"})
+            self._antwort(400, {"fehler": texte.satz("dienst._json.2")})
             return None, True
 
     def do_PATCH(self):
@@ -874,19 +877,19 @@ class Dienst(BaseHTTPRequestHandler):
             # Beleg (#76): Sichtbarkeit (Organisator:in) oder zurückziehen (wer hochlud, Organisator:in)
             o, _, did = t
             if bl.finden(o, did or "") is None:
-                return self._antwort(404, {"fehler": "Diesen Beleg gibt es nicht."})
+                return self._antwort(404, {"fehler": texte.satz("dienst.do_patch.1")})
             roh, fehlt = self._json()
             if fehlt:
                 return
             if not isinstance(roh, dict):
-                return self._antwort(400, {"fehler": "kein Objekt"})
+                return self._antwort(400, {"fehler": texte.satz("dienst.pruefen.1")})
             z = zustand(o.name)
             ident = wer_ist(self.headers, o.name, z)
             name, nein = name_fuer(ident, z, roh.get("name"))
             if nein:
                 return self._antwort(nein[0], {"fehler": nein[1]})
             if ident["art"] == "seite":   # eingetippter Name genügt für Belege nicht (sie sind sensibel)
-                return self._antwort(401, {"fehler": "Bitte melde dich an, um Belege zu ändern."})
+                return self._antwort(401, {"fehler": texte.satz("dienst.do_patch.2")})
             _, rolle = seher(ident, z, name)
             with _sperre:
                 b, nein = bl.aendern(o, did, roh, name, rolle)
@@ -894,18 +897,18 @@ class Dienst(BaseHTTPRequestHandler):
         wunsch = bool(t) and t[1] == "rueckmeldungen" and bool(RID_MUSTER.match(t[2] or ""))
         erledigen = bool(t) and t[1] == "rueckmeldungen" and bool(AID_MUSTER.match(t[2] or ""))
         if not t or not (wunsch or erledigen) and (t[1] != "aufgaben" or not AG_MUSTER.match(t[2] or "")):
-            return self._antwort(404, {"fehler": "unbekannt"})
+            return self._antwort(404, {"fehler": texte.satz("dienst.do_get.2")})
         roh, fehlt = self._json()
         if fehlt:
             return
         if not isinstance(roh, dict):
-            return self._antwort(400, {"fehler": "kein Objekt"})
+            return self._antwort(400, {"fehler": texte.satz("dienst.pruefen.1")})
         z = zustand(t[0].name)
         ident = wer_ist(self.headers, t[0].name, z)
         if erledigen or (wunsch and "status" in roh):
             # Status setzen (O-3, rueckmeldung_erledigen): nur der Konnektor, der die Organisator:in erkannt hat
             if ident["art"] != "dienst":
-                return self._antwort(403, {"fehler": "Den Status setzt nur ein:e Organisator:in in der Claude-App."})
+                return self._antwort(403, {"fehler": texte.satz("dienst.do_patch.3")})
             kommentar = str(roh.get("kommentar") or "").strip()[:LAENGE["text"]]
             with _sperre:
                 e, fehler = status_setzen(t[0], t[2], str(roh.get("status") or ""), kommentar, roh.get("name"))
@@ -920,18 +923,17 @@ class Dienst(BaseHTTPRequestHandler):
             # eingetippter Name genügt nicht.
             bestimmt = ident["art"] == "konto" and (ident["person"] or {}).get("rolle") == "organisator"
             if "eingeplant" in roh and ident["art"] != "dienst" and not bestimmt:
-                return self._antwort(403, {"fehler": "Einplanen dürfen nur Organisator:innen: in der Claude-App oder angemeldet "
-                                                     "auf der Seite."})
+                return self._antwort(403, {"fehler": texte.satz("dienst.do_patch.4")})
             with _sperre:
                 if gedrosselt(t[0]):
-                    return self._antwort(429, {"fehler": "zu viele Änderungen, bitte kurz warten"})
+                    return self._antwort(429, {"fehler": texte.satz("dienst.do_patch.5")})
                 w, fehler, code = wunsch_aendern(t[0], t[2], roh, z)
             return self._antwort(code, {"fehler": fehler} if fehler else w)
         if (nein := schreibrecht(t[0].name, "aufgabe", roh.get("name"))):
             return self._antwort(403, {"fehler": nein})
         with _sperre:
             if gedrosselt(t[0]):
-                return self._antwort(429, {"fehler": "zu viele Änderungen, bitte kurz warten"})
+                return self._antwort(429, {"fehler": texte.satz("dienst.do_patch.5")})
             a, fehler, code = aufgabe_aendern(t[0], t[2], roh)
         self._antwort(code, {"fehler": fehler} if fehler else a)
 
@@ -941,13 +943,13 @@ class Dienst(BaseHTTPRequestHandler):
         # (Schreibweg GET /<reise>/buchung/<B-id>; Issue #135: Beleg sofort nach dem Anlegen, vor dem Veröffentlichen)
         im_repo = self.headers.get("X-Frieda-Buchung") == "im-repo" and hmac_gleich(self.headers.get("X-Frieda-Dienst", ""), konten.dienst_geheimnis())
         if not bl.BID_MUSTER.match(bid or "") or not (buchung_bekannt(o.name, bid) or im_repo):
-            return self._antwort(404, {"fehler": f"Die Buchung {bid} gibt es nicht (oder sie ist noch nicht veröffentlicht)."})
+            return self._antwort(404, {"fehler": texte.satz("dienst._beleg_hochladen.1", bid=bid)})
         try:
             laenge = int(self.headers.get("Content-Length", "0"))
         except ValueError:
             laenge = 0
         if laenge <= 0:
-            return self._antwort(400, {"fehler": "Die Datei ist leer."})
+            return self._antwort(400, {"fehler": texte.satz("dienst._beleg_hochladen.2")})
         if laenge > bl.MAX_DATEI:
             # Etwas zu große Dateien lesen und verwerfen, damit der Browser die Antwort noch bekommt; nginx begrenzt den
             # Body vorher (client_max_body_size), ganz große Anfragen werden ungelesen beendet
@@ -955,7 +957,7 @@ class Dienst(BaseHTTPRequestHandler):
                 self.rfile.read(laenge)
             else:
                 self.close_connection = True
-            return self._antwort(413, {"fehler": f"Die Datei ist zu groß (höchstens {bl.MAX_DATEI // 1024 // 1024} MB)."})
+            return self._antwort(413, {"fehler": texte.satz("dienst._beleg_hochladen.3", w1=bl.MAX_DATEI // 1024 // 1024)})
         z = zustand(o.name)
         ident = wer_ist(self.headers, o.name, z)
         name, nein = name_fuer(ident, z, (self._query().get("name") or [None])[0])
@@ -964,10 +966,10 @@ class Dienst(BaseHTTPRequestHandler):
             return self._antwort(nein[0], {"fehler": nein[1]})
         if ident["art"] == "seite":   # Belege nur angemeldet (Product Owner 29.10.2026): ein eingetippter Name trägt „nur für dich
             self.close_connection = True   # und Organisator:innen sichtbar“ nicht, auch nicht bei der Übergangsregel
-            return self._antwort(401, {"fehler": "Bitte melde dich an, um Belege anzuhängen; sie sind nur für dich und die Organisator:innen sichtbar."})
+            return self._antwort(401, {"fehler": texte.satz("dienst._beleg_hochladen.4")})
         if not name:
             self.close_connection = True
-            return self._antwort(400, {"fehler": "Name fehlt (wer lädt den Beleg hoch?)."})
+            return self._antwort(400, {"fehler": texte.satz("dienst._beleg_hochladen.5")})
         if (nein := schreibrecht(o.name, "buchung", name)):
             self.close_connection = True
             return self._antwort(403, {"fehler": nein})
@@ -975,7 +977,7 @@ class Dienst(BaseHTTPRequestHandler):
         dateiname = urllib.parse.unquote(self.headers.get("X-Frieda-Datei", ""))
         with _sperre:
             if gedrosselt(o):
-                return self._antwort(429, {"fehler": "zu viele Änderungen, bitte kurz warten"})
+                return self._antwort(429, {"fehler": texte.satz("dienst.do_patch.5")})
             b, nein = bl.ablegen(o, bid, name, dateiname, daten)
         return self._antwort(nein[0], {"fehler": nein[1]}) if nein else self._antwort(201, b)
 
@@ -984,13 +986,13 @@ class Dienst(BaseHTTPRequestHandler):
         if t and t[1] == "belege" and t[2]:
             return self._beleg_hochladen(t[0], t[2])
         if not t or t[1] not in ("rueckmeldungen", "aufgaben") or t[2] is not None:
-            return self._antwort(404, {"fehler": "unbekannt"})
+            return self._antwort(404, {"fehler": texte.satz("dienst.do_get.2")})
         o = t[0]
         roh, fehlt = self._json()
         if fehlt:
             return
         if not isinstance(roh, dict):
-            return self._antwort(400, {"fehler": "kein Objekt"})
+            return self._antwort(400, {"fehler": texte.satz("dienst.pruefen.1")})
         name, nein = name_fuer(wer_ist(self.headers, o.name), zustand(o.name), roh.get("name"))
         if nein:
             return self._antwort(nein[0], {"fehler": nein[1]})
@@ -1000,7 +1002,7 @@ class Dienst(BaseHTTPRequestHandler):
                 return self._antwort(403, {"fehler": nein})
             with _sperre:
                 if gedrosselt(o):
-                    return self._antwort(429, {"fehler": "zu viele Änderungen, bitte kurz warten"})
+                    return self._antwort(429, {"fehler": texte.satz("dienst.do_patch.5")})
                 a, fehler = aufgabe_anlegen(o, roh)
             return self._antwort(400, {"fehler": fehler}) if fehler else self._antwort(201, a)
         e, fehler = pruefen(roh)
@@ -1019,7 +1021,7 @@ class Dienst(BaseHTTPRequestHandler):
             if e["art"] == "Wunsch" and (nein := wunsch_annehmen(o, zustand(o.name), e["name"])):
                 return self._antwort(409, {"fehler": nein})
             if gedrosselt(o):
-                return self._antwort(429, {"fehler": "zu viele Rückmeldungen, bitte kurz warten"})
+                return self._antwort(429, {"fehler": texte.satz("dienst.do_post.1")})
             with (o / "eingang.jsonl").open("a", encoding="utf-8") as f:
                 f.write(json.dumps(e, ensure_ascii=False) + "\n")
                 f.flush()
@@ -1029,7 +1031,7 @@ class Dienst(BaseHTTPRequestHandler):
     def do_DELETE(self):
         t = self._teile()
         if not t or t[1] != "rueckmeldungen" or not RID_MUSTER.match(t[2] or ""):
-            return self._antwort(404, {"fehler": "unbekannt"})
+            return self._antwort(404, {"fehler": texte.satz("dienst.do_get.2")})
         o, _, rid = t
         z = zustand(o.name)
         ident = wer_ist(self.headers, o.name, z)
@@ -1037,15 +1039,15 @@ class Dienst(BaseHTTPRequestHandler):
         if nein:
             return self._antwort(nein[0], {"fehler": nein[1]})
         if z and rg.verhalten(z["status"])["schreiben"] == "nichts":
-            return self._antwort(403, {"fehler": "Die Reise ist archiviert: Es kann nur gelesen werden."})
+            return self._antwort(403, {"fehler": texte.satz("dienst.do_delete.1")})
         with _sperre:
             eingang = o / "eingang.jsonl"
             if not eingang.exists():
-                return self._antwort(404, {"fehler": "nicht gefunden"})
+                return self._antwort(404, {"fehler": texte.satz("dienst.aufgabe_aendern.2")})
             if status_lesen(o).get(rid, {}).get("status", "neu") != "neu":
-                return self._antwort(409, {"fehler": "schon bearbeitet, kann nicht mehr zurückgezogen werden"})
+                return self._antwort(409, {"fehler": texte.satz("dienst.do_delete.2")})
             if any((brett_lesen(o).get(rid) or {}).get(f) for f in ("erlebt", "eingeplant")):
-                return self._antwort(409, {"fehler": "steht auf dem Brett schon als eingeplant oder erlebt"})
+                return self._antwort(409, {"fehler": texte.satz("dienst.do_delete.3")})
             zeilen = eingang.read_text(encoding="utf-8").splitlines(keepends=True)
             rest, weg = [], None
             for z in zeilen:
@@ -1058,9 +1060,9 @@ class Dienst(BaseHTTPRequestHandler):
                     pass
                 rest.append(z)
             if weg is None:
-                return self._antwort(404, {"fehler": "nicht gefunden"})
+                return self._antwort(404, {"fehler": texte.satz("dienst.aufgabe_aendern.2")})
             if ident["art"] == "konto" and str(weg.get("name", "")).casefold() != (ich or "").casefold():
-                return self._antwort(403, {"fehler": "Zurückziehen kann nur, wer die Rückmeldung geschrieben hat."})
+                return self._antwort(403, {"fehler": texte.satz("dienst.do_delete.4")})
             # Zurückziehen ist Schreiben: dieselbe Prüfung wie beim Absenden (Rolle des Absenders, Baustein, Status)
             if (nein := schreibrecht(o.name, "wunsch" if weg.get("art") == "Wunsch" else "rueckmeldung", weg.get("name"))):
                 return self._antwort(403, {"fehler": nein})
@@ -1159,9 +1161,9 @@ def liste(reise, alle):
 def status_setzen(o, rid, status, kommentar, wer=None):
     """Status einer Rückmeldung oder eines Auftrags setzen -> (Eintrag, None) oder (None, Fehler). Aufrufer hält _sperre."""
     if status not in STATUSWERTE:
-        return None, f"Status muss einer von {', '.join(sorted(STATUSWERTE))} sein."
+        return None, texte.satz("dienst.status_setzen.1", w1=', '.join(sorted(STATUSWERTE)))
     if rid not in {e["id"] for e in eintraege(o) + auftraege(o)}:
-        return None, f"{rid} gibt es nicht."
+        return None, texte.satz("dienst.status_setzen.2", rid=rid)
     alle = status_lesen(o)
     alle[rid] = {"status": status, "kommentar": kommentar, "datum": datetime.date.today().isoformat(), **({"wer": wer} if wer else {})}
     schreiben(o / "status.json", json.dumps(alle, ensure_ascii=False, indent=1) + "\n")
@@ -1182,29 +1184,35 @@ def dienstordner():
     return ablage().parent / "_dienst"
 
 
-def aufgaben_text(liste, titel=None, fristen=True):
+def aufgaben_text(liste, titel=None, fristen=True, sprache=None):
     """Lesbare Aufgabenliste (Kommandozeile und Konnektor). titel: ID -> Titel. fristen: False vor dem Status „fest“,
-    dann steht die Frist da, aber nichts ist überfällig (Verhalten je Status)."""
+    dann steht die Frist da, aber nichts ist überfällig (Verhalten je Status). sprache: Sprache der Person, sonst die des Aufrufs."""
+    sprache = sprache or texte.aufruf_sprache()
+
+    def tx(schluessel, **werte):
+        return texte.t(sprache, "dienst.aufgaben." + schluessel, **werte)
+
     heute = datetime.date.today().isoformat()
     z = []
     for a in liste:
-        teile = [f"{a['id']} [{a['status']}]"]
+        status = tx("status." + a["status"]) if a["status"] in AG_STATUS else a["status"]
+        teile = [tx("kopf", w1=a["id"], w2=status)]
         if a.get("prioritaet") and a["prioritaet"] != "normal":
-            teile.append(f"Priorität {a['prioritaet']}")
+            teile.append(tx("prioritaet", w1=a["prioritaet"]))
         if a.get("frist"):
-            teile.append(f"Frist {a['frist']}" + (" ÜBERFÄLLIG" if fristen and a["frist"] < heute and a["status"] in ("offen", "in_arbeit") else ""))
+            teile.append(tx("frist", w1=a["frist"]) + (tx("ueberfaellig") if fristen and a["frist"] < heute and a["status"] in ("offen", "in_arbeit") else ""))
         if a.get("ab"):
-            teile.append(f"ab {a['ab']}")
+            teile.append(tx("ab", w1=a["ab"]))
         if a.get("zustaendig"):
-            teile.append(f"zuständig {a['zustaendig']}")
+            teile.append(tx("zustaendig", w1=a["zustaendig"]))
         z.append(" · ".join(teile) + f": {a['titel']}")
         if a.get("bezug"):
-            z.append("  an: " + ", ".join(f"{b} ({titel[b]})" if titel and b in titel else b for b in a["bezug"]))
+            z.append(tx("an") + ", ".join(f"{b} ({titel[b]})" if titel and b in titel else b for b in a["bezug"]))
         if a.get("notiz"):
-            z.append("  Notiz: " + a["notiz"].replace("\n", " "))
+            z.append(tx("notiz") + a["notiz"].replace("\n", " "))
         letzte = a["verlauf"][-1] if a.get("verlauf") else None
         if letzte:
-            z.append(f"  zuletzt: {letzte['zeit'][:10]} {letzte['wer']} – {letzte['was']}"
+            z.append(tx("zuletzt", w1=letzte["zeit"][:10], w2=letzte["wer"], w3=letzte["was"])
                      + (f": {letzte['kommentar']}" if letzte.get("kommentar") else ""))
     return "\n".join(z)
 

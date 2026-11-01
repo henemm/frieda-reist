@@ -37,16 +37,26 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
-from routen import ZAHLUNG_OFFEN, ZAHLUNG_WORTE  # noqa: E402
+import texte  # noqa: E402
+from routen import ZAHLUNG_OFFEN  # noqa: E402
 
 UNGUELTIG = ("verworfen", "ersetzt")      # Optionen, die niemand mehr nachschlagen muss
 MAX_PRUEFUNGEN = 15                       # Prüfmeldungen je Lauf, damit der Überblick lesbar bleibt
 WIEDERHOLEN_TAGE = 7                      # überfällige Aufgaben und ein verpasster Statuswechsel melden sich so oft neu
 
 
-def datum_de(iso):
-    d = datetime.date.fromisoformat(str(iso)[:10])
-    return f"{d.day}.{d.month}.{d.year}"
+def sprache_von(d):
+    """Sprache der Reise (reise.yaml sprache): Meldungen landen in der Ablage der Reise und sprechen ihre Sprache (ADR-0006)."""
+    return ((d or {}).get("reise") or {}).get("sprache") or texte.VORGABE_REISE
+
+
+def tw(d, schluessel, /, **werte):
+    """Text des Wächters aus dem Katalog in der Sprache der Reise."""
+    return texte.t(sprache_von(d), "waechter." + schluessel, **werte)
+
+
+def datum_de(iso, sprache=None):
+    return texte.datum(str(iso)[:10], sprache or texte.VORGABE_REISE)
 
 
 def tage_zwischen(von, bis):
@@ -66,10 +76,10 @@ def aktiv(d):
     rs = (d or {}).get("reise") or {}
     bausteine = rs.get("bausteine")
     if bausteine is not None and "waechter" not in bausteine:
-        return False, "Der Baustein waechter ist ausgeschaltet."
+        return False, tw(d, "aus")
     status = (rs.get("status") or {}).get("wert")
     if not rg.verhalten(status)["waechter"]:
-        return False, f"Beim Status {status or 'planung'} wacht der Wächter nicht (erst ab fest)."
+        return False, tw(d, "wacht_nicht", w1=status or "planung")
     return True, ""
 
 
@@ -78,6 +88,10 @@ def regel(d, name):
 
 
 # ---------- Wächter: veränderliche Angaben ----------
+
+def grund_text(d, g, alter):
+    return tw(d, "nie_geprueft") if g is None else tw(d, "zuletzt_geprueft", w1=datum_de(g, sprache_von(d)), n=alter)
+
 
 def zu_pruefen(d, heute, frist_tage):
     """Veränderliche Angaben, die noch nie oder zu lange nicht geprüft wurden -> Liste, zuerst die nie geprüften, dann die
@@ -100,19 +114,19 @@ def zu_pruefen(d, heute, frist_tage):
                 alter = tage_zwischen(datetime.date.fromisoformat(g), heute) if g else None
                 if alter is not None and alter <= frist_tage:
                     continue
-                gilt = ", ".join(datum_de(x) for x in e.get("gilt") or [])
+                gilt = ", ".join(datum_de(x, sprache_von(d)) for x in e.get("gilt") or [])
                 treffer.append({"bezug": bezug, "titel": titel, "merkmal": k,
-                                "name": defs[k]["name"] + (f" am {gilt}" if gilt else ""), "wert": e.get("wert"),
+                                "name": defs[k]["name"] + (tw(d, "am", w1=gilt) if gilt else ""), "wert": e.get("wert"),
                                 "geprueft": g, "quelle": e.get("quelle"), "alter_tage": alter,
-                                "grund": "noch nie geprüft" if g is None else f"zuletzt geprüft {datum_de(g)} (vor {alter} Tagen)"})
+                                "grund": grund_text(d, g, alter)})
 
     for w in r.get("wahlstellen") or []:
         for o in w["optionen"]:
             if o["aktiv"] and o["status"] not in UNGUELTIG:
                 pruefe(o["id"], f"{w['titel']} › {o['titel']}", o.get("merkmale"), w.get("kriterien"))
-    def lage(bezug, titel, d):   # Lage (ADR-0004): Adresse und Punkt sind Aussagen mit Prüfdatum
+    def lage(bezug, titel, ding):   # Lage (ADR-0004): Adresse und Punkt sind Aussagen mit Prüfdatum
         for feld, name in (("adresse", "Adresse"), ("punkt", "Koordinaten")):
-            v = d.get(feld)
+            v = ding.get(feld)
             if not isinstance(v, dict) or not v.get("wert"):
                 continue
             g = v.get("geprueft")
@@ -121,7 +135,7 @@ def zu_pruefen(d, heute, frist_tage):
                 continue
             treffer.append({"bezug": bezug, "titel": titel, "merkmal": feld, "name": name, "wert": str(v["wert"]), "geprueft": g,
                             "quelle": v.get("quelle"), "alter_tage": alter,
-                            "grund": "noch nie geprüft" if g is None else f"zuletzt geprüft {datum_de(g)} (vor {alter} Tagen)"})
+                            "grund": grund_text(d, g, alter)})
 
     for uid, u in (r.get("unterkuenfte") or {}).items():
         if u.get("naechte"):   # Merkmale der Art der Unterkunft (plan/arten.yaml)
@@ -147,10 +161,8 @@ def pruefmeldungen(d, items, frist_tage):
     an = organisator_von(d)
     aus = []
     for t in items[:MAX_PRUEFUNGEN]:
-        text = (f"{t['bezug']} {t['titel']}, {t['name']}: {t['wert']} ist {t['grund']}"
-                + (f"; bisherige Quelle: {t['quelle']}" if t.get("quelle") else "")
-                + ". Bitte im Gespräch nachschlagen und mit Prüfdatum und Quelle eintragen. Weicht der Wert ab, "
-                "entscheidet ein:e Organisator:in; nichts wird still übernommen.")
+        text = (tw(d, "pruefung", w1=t["bezug"], w2=t["titel"], w3=t["name"], w4=t["wert"], w5=t["grund"])
+                + (tw(d, "pruefung_quelle", w1=t["quelle"]) if t.get("quelle") else "") + tw(d, "pruefung_bitte"))
         aus.append({"an": an, "art": "pruefung", "ziel": t["bezug"], "bezug": t["bezug"], "text": text,
                     "schluessel": f"pruefung:{t['bezug']}:{t['merkmal']}:{t['name']}", "wiederholen": frist_tage})
     return aus
@@ -180,18 +192,19 @@ def erinnerungen(d, aufgaben, heute, vorlauf):
         if a["status"] not in ("offen", "in_arbeit"):
             continue
         an = empfaenger(d, a.get("zustaendig"))
+        sp = sprache_von(d)
         if a.get("frist"):
             rest = tage_zwischen(heute, datetime.date.fromisoformat(a["frist"]))
             if rest < 0:
                 aus.append({"schluessel": f"ueberfaellig:{a['id']}:{a['frist']}", "wiederholen": WIEDERHOLEN_TAGE,
-                            "text": f"Überfällig seit {-rest} Tag(en): {a['id']} {a['titel']} (Frist {datum_de(a['frist'])})."})
+                            "text": tw(d, "ueberfaellig_aufgabe", n=-rest, w1=a["id"], w2=a["titel"], w3=datum_de(a["frist"], sp))})
             elif rest <= vorlauf:
                 aus.append({"schluessel": f"frist:{a['id']}:{a['frist']}", "wiederholen": None,
-                            "text": f"Frist {'heute' if rest == 0 else 'in ' + str(rest) + ' Tag(en)'}: {a['id']} {a['titel']} "
-                                    f"(Frist {datum_de(a['frist'])})."})
+                            "text": tw(d, "frist_aufgabe", w1=tw(d, "heute") if rest == 0 else tw(d, "in_tagen", n=rest),
+                                       w2=a["id"], w3=a["titel"], w4=datum_de(a["frist"], sp))})
         if a.get("ab") and datetime.date.fromisoformat(a["ab"]) <= heute:
             aus.append({"schluessel": f"ab:{a['id']}:{a['ab']}", "wiederholen": None,
-                        "text": f"Jetzt möglich (ab {datum_de(a['ab'])}): {a['id']} {a['titel']}."})
+                        "text": tw(d, "ab_aufgabe", w1=datum_de(a["ab"], sp), w2=a["id"], w3=a["titel"])})
         for m in aus:
             m.setdefault("an", an)
             m.setdefault("art", "erinnerung")
@@ -211,26 +224,27 @@ def buchungsfristen(d, heute, vorlauf):
             continue
         an = empfaenger(d, b.get("wer"))
         titel = f"{b['id']} {b.get('titel') or ''}".strip()
+        sp = sprache_von(d)
         neu = []
         if b.get("frist"):
             rest = tage_zwischen(heute, datetime.date.fromisoformat(b["frist"]))
-            was = b.get("frist_was") or "Frist"
+            was = b.get("frist_was") or tw(d, "frist_wort")
             if rest < 0:
                 neu.append({"schluessel": f"ueberfaellig:{b['id']}:{b['frist']}", "wiederholen": WIEDERHOLEN_TAGE,
-                            "text": f"Überfällig seit {-rest} Tag(en): {was} zur Buchung {titel} (Frist {datum_de(b['frist'])})."})
+                            "text": tw(d, "ueberfaellig_buchung", n=-rest, w1=was, w2=titel, w3=datum_de(b["frist"], sp))})
             elif rest <= vorlauf:
                 neu.append({"schluessel": f"frist:{b['id']}:{b['frist']}", "wiederholen": None,
-                            "text": f"Frist {'heute' if rest == 0 else 'in ' + str(rest) + ' Tag(en)'}: {was} zur Buchung {titel} "
-                                    f"(Frist {datum_de(b['frist'])})."})
+                            "text": tw(d, "frist_buchung", w1=tw(d, "heute") if rest == 0 else tw(d, "in_tagen", n=rest),
+                                       w2=was, w3=titel, w4=datum_de(b["frist"], sp))})
         if b.get("ab") and datetime.date.fromisoformat(b["ab"]) <= heute:   # Issue #135: ab wann etwas geht (Check-in, Sitzplatzwahl)
             neu.append({"schluessel": f"ab:{b['id']}:{b['ab']}", "wiederholen": None,
-                        "text": f"Jetzt möglich (ab {datum_de(b['ab'])}): {b.get('ab_was') or 'etwas'} zur Buchung {titel}."})
+                        "text": tw(d, "ab_buchung", w1=datum_de(b["ab"], sp), w2=b.get("ab_was") or tw(d, "etwas"), w3=titel)})
         if b.get("storno_bis"):
             rest = tage_zwischen(heute, datetime.date.fromisoformat(b["storno_bis"]))
             if 0 <= rest <= vorlauf:
                 neu.append({"schluessel": f"storno:{b['id']}:{b['storno_bis']}", "wiederholen": None,
-                            "text": f"Kostenlos stornieren geht nur noch {'heute' if rest == 0 else 'bis ' + datum_de(b['storno_bis'])}: "
-                                    f"Buchung {titel}" + (f" ({b['storno']})" if b.get("storno") else "") + "."})
+                            "text": tw(d, "storno_buchung", w1=tw(d, "heute") if rest == 0 else tw(d, "bis", w1=datum_de(b["storno_bis"], sp)),
+                                       w2=titel, w3=f" ({b['storno']})" if b.get("storno") else "")})
         for m in neu:
             m.update({"an": an, "art": "erinnerung", "ziel": b["id"], "bezug": b["id"]})
         aus += neu
@@ -261,19 +275,20 @@ def zahlungen_offen(d, heute, vorlauf):
         z = b.get("zahlung")
         if b.get("status") != "gebucht" or z not in ZAHLUNG_OFFEN:
             continue
-        termine = [(b["frist"], "Frist")] if b.get("frist") else []
+        termine = [(b["frist"], 0, "frist_wort")] if b.get("frist") else []   # bei gleichem Tag zählt die Frist
         tage = [erster[x] for x in b.get("fuer") or [] if x in erster]
         if tage:
-            termine.append((min(tage), "erster Tag"))
+            termine.append((min(tage), 1, "erster_tag"))
         if not termine:
             continue
-        stichtag, wort = min(termine)
+        stichtag, _, wort = min(termine)
         if tage_zwischen(heute, datetime.date.fromisoformat(stichtag)) > vorlauf:
             continue
         titel = f"{b['id']} {b.get('titel') or ''}".strip()
         aus.append({"schluessel": f"zahlung:{b['id']}:{z}", "wiederholen": WIEDERHOLEN_TAGE,
-                    "text": f"Zahlung {ZAHLUNG_WORTE.get(z, z)}: Buchung {titel}" + (f" ({b['bezahlt']})" if b.get("bezahlt") else "")
-                            + f", {wort} {datum_de(stichtag)}.",
+                    "text": tw(d, "zahlung_offen", w1=texte.t(sprache_von(d), "seite.buchung.zahlung." + z), w2=titel,
+                               w3=f" ({b['bezahlt']})" if b.get("bezahlt") else "", w4=tw(d, wort),
+                               w5=datum_de(stichtag, sprache_von(d))),
                     "an": empfaenger(d, b.get("wer")), "art": "erinnerung", "ziel": b["id"], "bezug": b["id"]})
     return aus
 
@@ -286,14 +301,14 @@ def statuswechsel(d, heute):
         return []
     start, ende = datetime.date.fromisoformat(tage[0]["datum"]), datetime.date.fromisoformat(tage[-1]["datum"])
     if heute > ende:
-        ziel, text = "danach", f"Die Reise war am {datum_de(ende.isoformat())} zu Ende, der Status steht noch auf {st}."
+        ziel, text = "danach", tw(d, "ende_erreicht", w1=datum_de(ende.isoformat(), sprache_von(d)), w2=tw(d, "status." + st))
     elif st == "fest" and heute >= start:
-        ziel, text = "unterwegs", f"Die Reise hat am {datum_de(start.isoformat())} begonnen, der Status steht noch auf fest."
+        ziel, text = "unterwegs", tw(d, "start_erreicht", w1=datum_de(start.isoformat(), sprache_von(d)), w2=tw(d, "status.fest"))
     else:
         return []
     return [{"schluessel": f"status:{st}:{ziel}", "wiederholen": WIEDERHOLEN_TAGE, "an": organisator_von(d), "art": "status",
              "ziel": "reise", "bezug": "reise", "extra": {"status_bei": st},
-             "text": f"{text} Soll er auf {ziel} wechseln? Das entscheidet ein:e Organisator:in (reise_status_setzen in der Claude-App)."}]
+             "text": tw(d, "statuswechsel", w1=text, w2=tw(d, "status." + ziel))}]
 
 
 def neue_meldungen(o, meldungen, jetzt, trocken=False):
@@ -326,7 +341,7 @@ def bericht_text(reise, d, neu, items):
         z.append(f"- {', '.join(m['an'])}: {m['text']}")
     offen = len(items) - sum(1 for m in neu if m["art"] == "pruefung")
     if offen > 0 and any(m["art"] == "pruefung" for m in neu):
-        z.append(f"- Wächter: {offen} weitere veränderliche Angaben sind zu prüfen (gemeldet oder folgen im nächsten Lauf).")
+        z.append("- " + tw(d, "weitere", w1=offen))
     return "\n".join(z)
 
 
@@ -371,9 +386,7 @@ def rot_melden(reisen, seit):
         if d is None or o is None:
             continue
         titel = ((d.get("reise") or {}).get("titel")) or reise
-        text = (f"„{titel}“ kann seit {datum_de(seit)} um {zeit:%H:%M} Uhr (UTC) nicht veröffentlicht werden: Beim Bauen der "
-                f"Seite ist ein Fehler aufgetreten, ein Eintrag passt nicht zu den Regeln der Prüfung. Der Betrieb ist informiert. "
-                f"Bis das behoben ist, bleibt die Seite auf dem letzten guten Stand.")
+        text = tw(d, "veroeffentlichen_rot", w1=titel, w2=datum_de(seit, sprache_von(d)), w3=f"{zeit:%H:%M}")
         neu += neue_meldungen(o, [{"schluessel": f"veroeffentlichen-rot:{reise}:{seit}", "wiederholen": None,
                                    "an": organisator_von(d), "art": "betrieb", "ziel": "reise", "bezug": "reise",
                                    "text": text}], jetzt)
@@ -406,7 +419,7 @@ def zeige(reise, heute):
 
 
 def lauf(reisen, heute, bericht):
-    texte = []
+    berichte = []
     for reise in reisen or alle_reisen():
         r = lauf_reise(reise, heute)
         if not r["aktiv"]:
@@ -414,9 +427,9 @@ def lauf(reisen, heute, bericht):
             continue
         print(f"{reise}: {len(r['meldungen'])} neue Meldung(en), {len(r['zu_pruefen'])} Angabe(n) zu prüfen")
         if r["bericht"] and r["nachricht"]:
-            texte.append(r["bericht"])
-    if bericht and texte:
-        Path(bericht).write_text("\n\n".join(texte) + "\n", encoding="utf-8")
+            berichte.append(r["bericht"])
+    if bericht and berichte:
+        Path(bericht).write_text("\n\n".join(berichte) + "\n", encoding="utf-8")
 
 
 def main(a):

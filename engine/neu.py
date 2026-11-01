@@ -29,15 +29,17 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bauen  # noqa: E402
-from reise import PFAD_MUSTER, ROLLEN, reise_pfad, rolle_neu, schluessel_aus_name  # noqa: E402
+import texte  # noqa: E402
+from reise import PFAD_MUSTER, ROLLEN, reise_pfad, rolle_neu, schluessel_aus_name, sprache_pruefen  # noqa: E402
 
-VORLAGE = Path(__file__).with_name("reisevorlage")
+VORLAGEN = Path(__file__).with_name("reisevorlage")   # je Sprache ein Ordner (de, en …); fehlt er, gilt die Vorgabe der Personen (ADR-0006, Punkt 9)
+
+
+def vorlage_ordner(sprache):
+    return VORLAGEN / sprache if (VORLAGEN / sprache).is_dir() else VORLAGEN / texte.VORGABE
 ARTEN = ("W", "F", "O", "U", "A", "E", "T", "V", "B")     # nummerierte IDs (A = Aufenthalt ohne Nacht, B = Buchung); Pläne (P-A) und Aufgaben (AG, live) nicht
 GRUPPEN = ("wissen", "praxis", "quelle")
-ROLLE_TEXT = {"organisator": "organisiert", "mitwirkend": "bringt ein", "gast": "liest mit"}
 BAUSTEINE_IDEE = ["rueckmeldungen", "fragen", "aufgaben", "wuensche"]
-MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November",
-          "Dezember"]
 
 
 class Fehler(Exception):
@@ -45,16 +47,17 @@ class Fehler(Exception):
 
 
 # ---------- Hilfen ----------
-def datum_text(d):
-    return f"{d.day}.{d.month}.{d.year}"
+def datum_text(d, sprache=texte.VORGABE_REISE):
+    return texte.datum(d, sprache)
 
 
-def zeitraum_text(von, bis):
+def zeitraum_text(von, bis, sprache=texte.VORGABE_REISE):
+    """Zeitraum in Worten der Sprache der Reise: Muster und Monatsnamen stehen im Katalog (inhalt.zeitraum.*, inhalt.monat.*)."""
     if von.year == bis.year and von.month == bis.month:
-        return f"{von.day}.–{bis.day}. {MONATE[von.month - 1]} {von.year}"
+        return texte.t(sprache, "inhalt.zeitraum.gleicher_monat", von=von.day, bis=bis.day, monat=texte.t(sprache, f"inhalt.monat.{von.month}"), jahr=von.year)
     if von.year == bis.year:
-        return f"{von.day}.{von.month}.–{bis.day}.{bis.month}.{bis.year}"
-    return f"{datum_text(von)}–{datum_text(bis)}"
+        return texte.t(sprache, "inhalt.zeitraum.gleiches_jahr", von=von.day, vm=von.month, bis=bis.day, bm=bis.month, jahr=bis.year)
+    return texte.t(sprache, "inhalt.zeitraum.mehrere_jahre", von=datum_text(von, sprache), bis=datum_text(bis, sprache))
 
 
 def json_text(obj, tiefe=0):
@@ -85,14 +88,14 @@ def person_aus_text(text):
     schluessel, _, rest = text.rpartition("=") if "=" in text else ("", "", text)
     teile = [t.strip() for t in rest.split(":")]
     if len(teile) < 2 or not teile[0]:
-        raise Fehler(f"Person „{text}“: bitte als Name:rolle angeben, z. B. Hanna:mitwirkend.")
+        raise Fehler(texte.satz("pruefung.neu.1", text=text))
     name, rolle = teile[0], rolle_neu(teile[1])
     if rolle not in ROLLEN:
-        raise Fehler(f"Person {name}: Rolle „{rolle}“ gibt es nicht; möglich sind {', '.join(ROLLEN)}.")
+        raise Fehler(texte.satz("pruefung.neu.2", name=name, rolle=rolle, w1=', '.join(ROLLEN)))
     p = {"name": name, "rolle": rolle}
     if len(teile) > 2:
         if teile[2] not in ("reist", "nicht"):
-            raise Fehler(f"Person {name}: drittes Feld ist „reist“ oder „nicht“ (reist nicht mit).")
+            raise Fehler(texte.satz("pruefung.neu.3", name=name))
         p["reist"] = teile[2] == "reist"
     return (schluessel.strip() or schluessel_aus_name(name)), p
 
@@ -111,7 +114,7 @@ def _nummern(reise_dir, art):
 def naechste_id(reise_dir, art):
     """Nächste freie ID einer Art; die Marke in ids.yaml steigt sofort, damit keine ID zweimal vergeben wird."""
     if art not in ARTEN:
-        raise Fehler(f"IDs der Art „{art}“ vergibt dieses Skript nicht; möglich sind {', '.join(ARTEN)}.")
+        raise Fehler(texte.satz("pruefung.neu.4", art=art, w1=', '.join(ARTEN)))
     reise_dir = Path(reise_dir)
     datei = reise_dir / "ids.yaml"
     marken = (yaml.safe_load(datei.read_text(encoding="utf-8")) or {}) if datei.exists() else {}
@@ -138,42 +141,47 @@ def schreib_marken(reise_dir, marken):
 
 # ---------- Reise anlegen ----------
 def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, untertitel=None,
-            herkunft="Gespräch in Claude Code", ueberblick=None, heute=None):
+            herkunft=None, ueberblick=None, heute=None, sprache=None):
     """Legt reisen_dir/<pfad> aus der Vorlage an -> Ordner. personen: {schluessel: {name, rolle[, reist, notiz]}}."""
     heute = heute or datetime.date.today()
     titel = (titel or "").strip()
     if not titel:
-        raise Fehler("Die Reise braucht einen Titel.")
+        raise Fehler(texte.satz("pruefung.neu.5"))
     if not isinstance(von, datetime.date) or not isinstance(bis, datetime.date):
-        raise Fehler("Zeitraum: von und bis als Datum angeben (JJJJ-MM-TT).")
+        raise Fehler(texte.satz("pruefung.neu.6"))
     if bis < von:
-        raise Fehler(f"Zeitraum: Das Ende ({datum_text(bis)}) liegt vor dem Anfang ({datum_text(von)}).")
+        raise Fehler(texte.satz("pruefung.neu.7", w1=datum_text(bis), w2=datum_text(von)))
     if not personen:
-        raise Fehler("Die Reise braucht mindestens eine Person, die bestimmt.")
+        raise Fehler(texte.satz("pruefung.neu.8"))
     organisator = [p["name"] for p in personen.values() if p.get("rolle") == "organisator"]
     if not organisator:
-        raise Fehler("Mindestens eine Person braucht die Rolle organisator: Sie entscheidet und setzt den Status.")
+        raise Fehler(texte.satz("pruefung.neu.9"))
     if wer not in organisator:
-        raise Fehler(f"Anlegen darf nur, wer auf der Reise bestimmt. {wer} steht nicht als organisator in den Personen.")
+        raise Fehler(texte.satz("pruefung.neu.10", wer=wer))
+    sprache, fehler = sprache_pruefen(sprache)
+    if fehler:
+        raise Fehler(fehler)
     pfad = pfad or reise_pfad(titel, von.year)
     if not PFAD_MUSTER.match(pfad):
-        raise Fehler(f"Ordnername „{pfad}“: nur Kleinbuchstaben, Ziffern und Bindestrich.")
+        raise Fehler(texte.satz("pruefung.neu.11", pfad=pfad))
     ziel_dir = Path(reisen_dir) / pfad
     if ziel_dir.exists():
-        raise Fehler(f"Eine Reise „{pfad}“ gibt es schon. Bitte einen anderen Ordnernamen wählen (--pfad).")
+        raise Fehler(texte.satz("pruefung.neu.12", pfad=pfad))
 
-    zt = zeitraum_text(von, bis)
+    # Alles, was die Software in Dateien der Reise schreibt, folgt der Sprache der Reise (ADR-0006, Punkt 5)
+    herkunft = herkunft or texte.t(sprache, "inhalt.neu.herkunft_gespraech")
+    zt = zeitraum_text(von, bis, sprache)
     werte = {
-        "titel": titel, "zeitraum_text": zt, "ziel_text": ziel or "noch offen", "wer": wer,
-        "personen_text": ", ".join(f"{p['name']} ({ROLLE_TEXT[p['rolle']]}{'' if p.get('reist', True) else ', reist nicht mit'})"
-                                   for p in personen.values()),
-        "heute_text": datum_text(heute), "herkunft": herkunft,
-        "ueberblick": ueberblick or "Noch leer. Hier steht, was über Ziel und Gegend wichtig ist, in eigenen Worten "
-                                    "und mit Quelle.",
+        "titel": titel, "zeitraum_text": zt, "ziel_text": ziel or texte.t(sprache, "inhalt.neu.ziel_offen"), "wer": wer,
+        "personen_text": ", ".join(f"{p['name']} ({texte.t(sprache, 'inhalt.neu.rolle.' + p['rolle'])}"
+                                   f"{'' if p.get('reist', True) else texte.t(sprache, 'inhalt.neu.reist_nicht_mit')})" for p in personen.values()),
+        "heute_text": datum_text(heute, sprache), "herkunft": herkunft,
+        "ueberblick": ueberblick or texte.t(sprache, "inhalt.neu.ueberblick_leer"),
     }
-    for f in sorted(VORLAGE.rglob("*")):
+    vorlage = vorlage_ordner(sprache)
+    for f in sorted(vorlage.rglob("*")):
         if f.is_file():
-            z = ziel_dir / f.relative_to(VORLAGE)
+            z = ziel_dir / f.relative_to(vorlage)
             z.parent.mkdir(parents=True, exist_ok=True)
             z.write_text(string.Template(f.read_text(encoding="utf-8")).substitute(werte), encoding="utf-8")
     (ziel_dir / "medien").mkdir(exist_ok=True)
@@ -182,12 +190,13 @@ def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, un
         "titel": titel,
         "untertitel": untertitel or (f"{ziel}, {zt}" if ziel else zt),
         "pfad": pfad,
+        "sprache": sprache,
         "zeitraum": {"von": von, "bis": bis},
         "status": {"wert": "idee", "verlauf": [{"datum": heute, "wert": "idee", "wer": wer,
-                                                 "grund": f"Reise angelegt ({herkunft})"}]},
+                                                 "grund": texte.t(sprache, "inhalt.neu.reise_angelegt", herkunft=herkunft)}]},
         "personen": personen,
         "bausteine": BAUSTEINE_IDEE,
-        "darstellung": {"gruppen": {"wissen": "Wissen", "praxis": "Praxis", "quelle": "Quellen"}},
+        "darstellung": {"gruppen": {g: texte.wort(sprache, f"inhalt.gruppe.{g}") for g in GRUPPEN}},
     }
     (ziel_dir / "reise.yaml").write_text(
         "# Eckdaten, Zeitraum, Status, Personen und Einstellungen (engine/reise.py, docs/produkt.md).\n"
@@ -197,8 +206,9 @@ def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, un
         "plan": "plan/plan.md",
         "fragen": "offene-fragen.md",
         "abschnitte": {
-            "plan/plan.md": {"Eckdaten": ["W-01", "plan"]},
-            "inhalt/wissen.md": {"Überblick": ["W-02", "wissen"], "Quellen": ["W-03", "quelle"]},
+            "plan/plan.md": {texte.wort(sprache, "inhalt.ebene.eckdaten"): ["W-01", "plan"]},
+            "inhalt/wissen.md": {texte.wort(sprache, "inhalt.abschnitt.ueberblick"): ["W-02", "wissen"],
+                                 texte.wort(sprache, "inhalt.ebene.quellen"): ["W-03", "quelle"]},
         },
     })
     schreib_marken(ziel_dir, {"W": 3, "F": 1})   # vergeben von der Vorlage: W-01 bis W-03, F-01
@@ -210,12 +220,13 @@ def aus_auftrag(reisen_dir, auftrag, heute=None):
     Die Notiz (in der App schon in eigenen Worten mit Herkunft) wird der Überblick, mit Name und Datum davor."""
     n = (auftrag.get("daten") or {}).get("neue_reise")
     if not n:
-        raise Fehler(f"{auftrag.get('id')}: kein Auftrag für eine neue Reise.")
-    datum = datum_text(datetime.date.fromisoformat(str(auftrag.get("erstellt", ""))[:10] or (heute or datetime.date.today()).isoformat()))
-    ueberblick = f"Notiz von {n['wer']} aus der Claude-App ({datum}):\n\n{n['notiz']}" if n.get("notiz") else None
+        raise Fehler(texte.satz("pruefung.neu.13", w1=auftrag.get('id')))
+    sprache = n.get("sprache") or texte.VORGABE_REISE
+    datum = datum_text(datetime.date.fromisoformat(str(auftrag.get("erstellt", ""))[:10] or (heute or datetime.date.today()).isoformat()), sprache)
+    ueberblick = texte.t(sprache, "inhalt.neu.notiz_von", wer=n["wer"], datum=datum, notiz=n["notiz"]) if n.get("notiz") else None
     return anlegen(reisen_dir, n["titel"], datetime.date.fromisoformat(n["von"]), datetime.date.fromisoformat(n["bis"]),
                    n["personen"], n["wer"], ziel=n.get("ziel") or None, pfad=n["pfad"], ueberblick=ueberblick,
-                   herkunft=f"Auftrag {auftrag['id']} aus der Claude-App", heute=heute)
+                   herkunft=texte.t(n.get("sprache") or texte.VORGABE_REISE, "inhalt.neu.herkunft_auftrag", id=auftrag["id"]), heute=heute, sprache=n.get("sprache"))
 
 
 # ---------- Abschnitt mit neuer ID ----------
@@ -224,16 +235,16 @@ def abschnitt(reise_dir, titel, gruppe="wissen", datei="inhalt/wissen.md", text=
     reise_dir = Path(reise_dir)
     titel = (titel or "").strip()
     if not titel or "\n" in titel:
-        raise Fehler("Der Abschnitt braucht einen Titel in einer Zeile.")
+        raise Fehler(texte.satz("pruefung.neu.14"))
     if gruppe not in GRUPPEN:
-        raise Fehler(f"Gruppe „{gruppe}“ gibt es nicht; möglich sind {', '.join(GRUPPEN)}.")
+        raise Fehler(texte.satz("pruefung.neu.15", gruppe=gruppe, w1=', '.join(GRUPPEN)))
     cfg = lies_json(reise_dir / "reise.json")
     zuordnung = cfg.setdefault("abschnitte", {}).setdefault(datei, {})
     if titel in zuordnung:
-        raise Fehler(f"In {datei} gibt es schon einen Abschnitt „{titel}“ ({zuordnung[titel][0]}).")
+        raise Fehler(texte.satz("pruefung.neu.16", datei=datei, titel=titel, w1=zuordnung[titel][0]))
     f = reise_dir / datei
     if f.exists() and re.search(rf"^## {re.escape(titel)}\s*$", f.read_text(encoding="utf-8"), re.M):
-        raise Fehler(f"In {datei} steht die Überschrift „{titel}“ schon, aber ohne ID. Bitte in reise.json zuordnen.")
+        raise Fehler(texte.satz("pruefung.neu.17", datei=datei, titel=titel))
     neu = naechste_id(reise_dir, "W")
     if not f.exists():
         f.parent.mkdir(parents=True, exist_ok=True)
@@ -263,33 +274,33 @@ def pruefen(reise_dir):
     reise_dir = Path(reise_dir)
     m = []
     if not reise_dir.is_dir():
-        return False, [f"Den Ordner {reise_dir} gibt es nicht."]
+        return False, [texte.satz("pruefung.neu_pruefen.1", reise_dir=reise_dir)]
     ry = reise_dir / "reise.yaml"
     if not ry.exists():
-        m.append("reise.yaml fehlt. Neue Reisen legt „neu.py reise“ an.")
+        m.append(texte.satz("pruefung.neu_pruefen.2"))
     else:
         try:
             yaml.safe_load(ry.read_text(encoding="utf-8"))
         except yaml.YAMLError as e:
             z = getattr(e, "problem_mark", None)
-            m.append(f"reise.yaml ist nicht lesbar{f' (Zeile {z.line + 1}, Spalte {z.column + 1})' if z else ''}: "
-                     f"{getattr(e, 'problem', None) or e}. Oft fehlt ein Doppelpunkt oder die Einrückung stimmt nicht.")
+            problem = getattr(e, "problem", None) or e
+            m.append(texte.satz("pruefung.neu_pruefen.yaml_ort", zeile=z.line + 1, spalte=z.column + 1, problem=problem) if z
+                     else texte.satz("pruefung.neu_pruefen.yaml", problem=problem))
     rj = reise_dir / "reise.json"
     cfg = None
     if not rj.exists():
-        m.append("reise.json fehlt: Sie ordnet den Überschriften ihre IDs zu.")
+        m.append(texte.satz("pruefung.neu_pruefen.3"))
     else:
         try:
             cfg = lies_json(rj)
         except json.JSONDecodeError as e:
-            m.append(f"reise.json ist nicht lesbar (Zeile {e.lineno}, Spalte {e.colno}): {e.msg}. "
-                     "Oft fehlt ein Komma oder ein Anführungszeichen.")
+            m.append(texte.satz("pruefung.neu_pruefen.4", w1=e.lineno, w2=e.colno, w3=e.msg))
     if isinstance(cfg, dict):
         dateien = [cfg.get(k) for k in DATEI_SCHLUESSEL] + list(cfg.get("abschnitte") or {}) \
             + list(cfg.get("orte_dossiers") or []) + [(cfg.get("routen") or {}).get(k) for k in ("datei", "karte")]
         for d in dict.fromkeys(x for x in dateien if x):
             if not (reise_dir / d).exists():
-                m.append(f"reise.json nennt die Datei {d}, die es nicht gibt. Datei anlegen oder den Eintrag entfernen.")
+                m.append(texte.satz("pruefung.neu_pruefen.5", d=d))
     if m:
         return False, m
     with tempfile.TemporaryDirectory() as t:
@@ -298,7 +309,7 @@ def pruefen(reise_dir):
         except bauen.BauFehler as e:
             return False, list(e.meldungen)
         except Exception as e:   # unerwartet: trotzdem lesbar melden statt eines Python-Fehlers
-            return False, [f"Unerwarteter Fehler beim Probebau ({type(e).__name__}: {e}). Bitte an die Technik geben."]
+            return False, [texte.satz("pruefung.neu_pruefen.6", w1=type(e).__name__, e=e)]
     return True, []
 
 
@@ -515,8 +526,9 @@ def main(argv):
     r.add_argument("--wer", required=True, help="Name der Person, die anlegt (organisator)")
     r.add_argument("--ziel")
     r.add_argument("--pfad")
+    r.add_argument("--sprache", help="Sprachkennung (texte.SPRACHEN), Vorgabe de")
     r.add_argument("--untertitel")
-    r.add_argument("--herkunft", default="Gespräch (Betreiber-Ausnahme in Claude Code, docs/neue-reise.md)")
+    r.add_argument("--herkunft", help="Vorgabe: Gespräch in Claude Code")
     r.add_argument("--ueberblick")
     i = sub.add_parser("id", help="nächste freie ID vergeben")
     i.add_argument("reise", type=Path)
@@ -550,8 +562,9 @@ def main(argv):
             return 0
         if x.befehl == "reise":
             personen = dict(person_aus_text(t) for t in x.person)
-            d = anlegen(x.reisen, x.titel, x.von, x.bis, personen, x.wer, ziel=x.ziel, pfad=x.pfad,
-                        untertitel=x.untertitel, herkunft=x.herkunft, ueberblick=x.ueberblick)
+            d = anlegen(x.reisen, x.titel, x.von, x.bis, personen, x.wer, ziel=x.ziel, pfad=x.pfad, sprache=x.sprache,
+                        untertitel=x.untertitel, ueberblick=x.ueberblick,
+                        herkunft=x.herkunft or texte.t(sprache_pruefen(x.sprache)[0], "inhalt.neu.herkunft_gespraech_betreiber"))
             ok, m = pruefen(d)
             print(f"Angelegt: {d} (Status idee)." + ("" if ok else " Prüfung meldet:\n - " + "\n - ".join(m)))
             return 0 if ok else 1

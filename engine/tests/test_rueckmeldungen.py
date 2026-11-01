@@ -327,3 +327,15 @@ def test_beleg_abgelehnt(belege_welt):
     except urllib.error.HTTPError as e:
         assert e.code == 404
     assert bl.name_saeubern("../../etc/passwd") == "passwd" and bl.name_saeubern("  ") == "Beleg" and bl.name_saeubern("a\x00b.pdf") == "ab.pdf"
+
+
+def test_aufgabentext_in_der_sprache_der_person():
+    """Die Aufgabenliste spricht die Sprache der Person (ADR-0006, M10); Deutsch wörtlich wie bisher."""
+    a = {"id": "AG-01", "titel": "Fähre buchen", "status": "offen", "prioritaet": "hoch", "frist": "2000-01-01", "zustaendig": "Ida",
+         "bezug": ["T-01"], "notiz": "früh\nanrufen", "verlauf": [{"zeit": "2027-05-01T10:00:00", "wer": "Ida", "was": "angelegt"}]}
+    assert rm.aufgaben_text([a], {"T-01": "Tag 1"}, sprache="de").splitlines() == [
+        "AG-01 [offen] · Priorität hoch · Frist 2000-01-01 ÜBERFÄLLIG · zuständig Ida: Fähre buchen", "  an: T-01 (Tag 1)",
+        "  Notiz: früh anrufen", "  zuletzt: 2027-05-01 Ida – angelegt"]
+    assert rm.aufgaben_text([a], {"T-01": "Tag 1"}, sprache="en").splitlines() == [
+        "AG-01 [open] · priority hoch · deadline 2000-01-01 OVERDUE · assigned to Ida: Fähre buchen", "  for: T-01 (Tag 1)",
+        "  Note: früh anrufen", "  last: 2027-05-01 Ida – angelegt"]

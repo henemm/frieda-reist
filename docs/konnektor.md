@@ -40,7 +40,7 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `kategorie_definieren` | Organisator:innen schreiben, Mitwirkende schlagen vor | eine Kategorie der Kartenpunkte anlegen oder ändern (Schlüssel, Bezeichnung, Gruppe `punkt` oder `wissen`, Farbe, Symbol, nummeriert) und den Zusatz zu einem `art`-Wort der Punkte (Name, Symbol, Hinweis, Umriss); schreibt direkt in `plan/kategorien.yaml` (#128, O-7); ohne Kategorie lässt ein Punkt den Bau scheitern; nur bei Instanzen mit Schreibweg |
 | `merkmal_definieren` | Organisator:innen schreiben, Mitwirkende schlagen vor | ein Merkmal einer Art anlegen oder ändern: umbenennen, Typ und Werte, veränderlich, Stufe (für die Person „nötig“, „gut zu wissen“, „zusätzlich“; Schlüssel `pflicht`, `empfohlen`, `angeboten`, beides wird angenommen; `aus` schaltet ab und wird nicht genannt), Hilfe, Frage, weitere Namen, ob der Wert nach der Buchung sichtbar bleibt (`nach_buchung`, z. B. Charakter; 31.10.2026); warnt vor einem ähnlichen vorhandenen Merkmal (`trotzdem` übergeht das). Mit `fuer: buchung` ein Merkmal der Buchungen dieser Art (#166: was erst durch das Buchen entsteht, etwa Ticketart; nur Name, Typ, Werte, Einheit, Hilfe, Frage) |
 | `wert_eintragen` | Mitwirkende, Organisator:innen | einen Wert eines Merkmals an `U-…`, `E-…` oder einer Option `V-01.a` eintragen (auch mehrere je Datum mit `gilt`); schreibt sofort in `plan/routen.yaml`, ersetzt den Wert für dieselben Tage, der alte bleibt im Verlauf; Herkunft (`quelle`) ist Pflicht, bei veränderlichen Merkmalen auch `geprueft` |
-| `reise_status_setzen`, `einstellung_setzen` | Organisator:innen | Status der Reise mit Grund und Verlauf; Bausteine und Spielregeln; schreibt sofort nach `reise.yaml` (ersetzt `auftrag_geben`) |
+| `reise_status_setzen`, `einstellung_setzen` | Organisator:innen | Status der Reise mit Grund und Verlauf; Bausteine, Spielregeln und Sprache der Reise (`sprache`); schreibt sofort nach `reise.yaml` (ersetzt `auftrag_geben`) |
 | `entscheiden` | Organisator:innen | Option wählen, verwerfen oder ersetzen: sofort geprüft und mit Datum, Person und Grund in den Plan geschrieben (Paket C; seit O-3 direkt) |
 | `tag_aendern` | Organisator:innen | Titel, Text, Nacht, Strecken, Wahlstellen und Aufenthalte ohne Nacht (`aufenthalte`) eines Tags ändern; schreibt sofort |
 | `frage_beantworten` | Mitwirkende | Antwort auf eine offene Frage (F-…); hängt an der Frage, die Entscheidung bleibt bei der Organisator:in (Paket C) |
@@ -155,9 +155,18 @@ Eine neue Reise legt eine Person an, keine Reise. Deshalb gibt es neben den Link
 | Werkzeug | Was |
 |---|---|
 | `meine_reisen` | die veröffentlichten Reisen, auf denen die Person dabei ist (Schlüssel oder Name in `reise.yaml`), mit Rolle, Status, Link zur Seite und ihrem Link für die Claude-App; davor die Meldungen an sie, danach ihre angefragten neuen Reisen |
-| `reise_anlegen` | Eingaben `titel`, `von`, `bis` (JJJJ-MM-TT), optional `ziel`, `personen` (je `vorname`, `rolle`, `reist`, `notiz`), `notiz` (Bekanntes in eigenen Worten mit Herkunft) und `pfad`; wer anlegt, ist Organisator:innen der neuen Reise |
+| `sprache_setzen` | Konto-Werkzeug (alle Rollen), Eingabe `sprache` (de, en …): stellt die Sprache des Kontos ein; sie gilt für Anleitung, Beschreibungen, Antworten, Kontoseiten und Mails (ADR-0006) |
+| `reise_anlegen` | Eingaben `titel`, `von`, `bis` (JJJJ-MM-TT), optional `ziel`, `sprache` (Sprache der Reise, Vorgabe `de`), `personen` (je `vorname`, `rolle`, `reist`, `notiz`), `notiz` (Bekanntes in eigenen Worten mit Herkunft) und `pfad`; wer anlegt, ist Organisator:innen der neuen Reise |
 
 `reise_anlegen` lehnt sofort ab, wenn Angaben fehlen oder nicht passen oder wenn es den Ordnernamen schon gibt, als veröffentlichte Reise, als Ablage oder als offene Anfrage (`reise.neue_reise_pruefen`). Sonst bleibt die Anfrage mit `daten.neue_reise` als Beleg in `<ablage>/_neu/auftraege.jsonl` (gehört zu keiner Reise), und der Schreibweg legt die Reise sofort an (`neu.aus_auftrag`, die Notiz wird der Überblick, Probebau, Commit nach `main`). Das Veröffentlichen schaltet sie frei und schreibt der Person eine Meldung mit den Links nach `<ablage>/_neu/meldungen.jsonl` (`betrieb/zustellen.py`). Die Links zu den Seiten liest der Konnektor aus `KN_SEITENLINKS` (Standard `seiten.json` neben den Zugängen), die der Betrieb beim Freischalten schreibt. Den Stand der Anfragen zeigt `rueckmeldungen.py liste _neu`. Eine persönliche Startseite im Web mit derselben Übersicht ist geplant (Issue #41).
+
+## Sprache (ADR-0006, Stand 31.10.2026)
+
+Der Konnektor spricht die Sprache des Kontos: Anleitung, Beschreibungen der Werkzeuge, Ergebnisse, Bestätigungen und Fehler. Die Sprache stammt aus der Spalte `konten.sprache` (beim ersten Anmelden aus `Accept-Language`, sonst Englisch) und lässt sich auf der Kontoseite oder mit dem Konto-Werkzeug `language_set` (intern `sprache_setzen`, alle Rollen) ändern. Die Anleitung weist Claude an, in der Sprache der Person zu antworten („Reply in the person's language“).
+
+Die **Reise** hat ihre eigene Sprache (`reise.yaml sprache`, Vorgabe `de`): `trip_create` hat den Parameter `language` (Vorgabe: Sprache des Kontos), `setting_set` ändert sie (nur Organisator:innen, mit Grund). Was die Software in Dateien der Reise schreibt (Verlaufseinträge, Herkunftszeilen, Commit-Nachrichten) und die Meldungen des Wächters und des Kalenders folgen der Reise, nicht dem Konto. Inhalte, die eine Person eingibt, werden nie übersetzt.
+
+Eine neue Sprache ist eine Datei und braucht im Konnektor keine Änderung ([sprachen.md](sprachen.md)); `language_set` bietet sie ab sofort an. Die Tabellen der englischen Namen stehen unten („Englische Namen der Schnittstelle“).
 
 ## Einrichten (einmalig)
 
@@ -195,3 +204,244 @@ Der Konnektor meldet beim Verbinden das Symbol der Reise (`serverInfo.icons`, da
 - Über den Konnektor ändern sich Aufgaben sowie alles, was die Schreibwerkzeuge eintragen, direkt (über den Schreibweg mit Rollen-, Status- und Formprüfung und einem Probebau, siehe „Ontologie im Gespräch“). Rückmeldungen sind Eingaben. Status `gewaehlt`/`verworfen` setzen nur Organisator:innen.
 - Drossel im Reverse-Proxy. Der Dienst protokolliert weder Tokens noch Inhalte.
 - Überwachung: `GET /gesund` (ohne Token) meldet `{"gesund": true}`, wenn die Zugänge lesbar und alle verlinkten Reisen veröffentlicht sind.
+
+## Englische Namen der Schnittstelle (ADR-0006, Stand 31.10.2026)
+
+`tools/list` zeigt die Werkzeuge mit englischen Namen und englischen Parameternamen. Die deutschen Namen bleiben als Aliase: ein Aufruf mit deutschem Namen, englischem Namen oder beidem gemischt (englisch gewinnt bei Doppelung) bewirkt dasselbe. Die Übersetzung geschieht nur am Rand des Konnektors (`engine/schnittstelle.py`); Schreibweg, Rückmeldedienst, Dateien der Reise und Tests darunter kennen nur die deutschen Namen. Datenwerte, ID-Präfixe und Dateinamen bleiben deutsch; für Datenwerte nimmt der Aufruf auch englische Aliase an (Tabelle unten), die Schemata nennen weiter den Datenwert.
+
+| Englisch (`tools/list`) | Intern und Alias |
+|---|---|
+| `overview` | `ueberblick` |
+| `show` | `zeige` |
+| `search` | `suche` |
+| `open_questions` | `offene_fragen` |
+| `variants` | `varianten` |
+| `feedback_list` | `rueckmeldungen` |
+| `feedback_give` | `rueckmeldung_geben` |
+| `feedback_resolve` | `rueckmeldung_erledigen` |
+| `tasks` | `aufgaben` |
+| `task_create` | `aufgabe_anlegen` |
+| `task_update` | `aufgabe_aendern` |
+| `wishes` | `wuensche` |
+| `wish_update` | `wunsch_aendern` |
+| `wish_propose` | `wunsch_vorschlagen` |
+| `categories` | `kategorien` |
+| `category_define` | `kategorie_definieren` |
+| `attributes` | `merkmale` |
+| `attribute_define` | `merkmal_definieren` |
+| `attribute_merge` | `merkmal_zusammenfuehren` |
+| `kind_define` | `art_definieren` |
+| `kinds_adopt` | `arten_uebernehmen` |
+| `value_set` | `wert_eintragen` |
+| `location_set` | `lage_eintragen` |
+| `item_create` | `ding_anlegen` |
+| `item_update` | `ding_aendern` |
+| `option_create` | `option_anlegen` |
+| `option_update` | `option_aendern` |
+| `choice_create` | `wahlstelle_anlegen` |
+| `choice_update` | `wahlstelle_aendern` |
+| `decide` | `entscheiden` |
+| `plan_create` | `plan_anlegen` |
+| `plan_update` | `plan_aendern` |
+| `day_create` | `tag_anlegen` |
+| `day_update` | `tag_aendern` |
+| `fixed_date_set` | `termin_setzen` |
+| `question_create` | `frage_anlegen` |
+| `question_answer` | `frage_beantworten` |
+| `question_close` | `frage_schliessen` |
+| `knowledge_write` | `wissen_schreiben` |
+| `knowledge_update` | `wissen_aendern` |
+| `narrative_write` | `lesetext_schreiben` |
+| `booking_create` | `buchung_anlegen` |
+| `booking_update` | `buchung_aendern` |
+| `receipt_add` | `beleg_anlegen` |
+| `person_invite` | `person_einladen` |
+| `person_remove` | `person_entfernen` |
+| `trip_update` | `reise_aendern` |
+| `trip_status_set` | `reise_status_setzen` |
+| `setting_set` | `einstellung_setzen` |
+| `my_trips` | `meine_reisen` |
+| `trip_create` | `reise_anlegen` |
+| `trip_create_request` | `reisen_anlegen_anfragen` |
+| `request_decide` | `anfrage_entscheiden` |
+| `calendar` | `kalender` |
+| `language_set` | `sprache_setzen` |
+
+Parameternamen (ein Wort hat überall dieselbe Übersetzung, außer wo unten eine Ausnahme steht):
+
+| Intern und Alias | Englisch |
+|---|---|
+| `ab` | `available_from` |
+| `ab_was` | `available_from_what` |
+| `abschnitt` | `section` |
+| `adresse` | `address` |
+| `alle` | `all` |
+| `an` | `at` |
+| `antwort` | `answer` |
+| `art` | `kind` |
+| `art_bezeichnung` | `kind_label` |
+| `art_hinweis` | `kind_hint` |
+| `art_symbol` | `kind_symbol` |
+| `art_umriss` | `kind_outline` |
+| `arten` | `kinds` |
+| `auch` | `aliases` |
+| `aufenthalte` | `stays` |
+| `ausloeser` | `trigger` |
+| `ausserhalb` | `outside` |
+| `auswahl` | `selection` |
+| `bausteine` | `blocks` |
+| `beginn` | `start_time` |
+| `begriff` | `query` |
+| `bei` | `booked_with` |
+| `beleg_base64` | `receipt_base64` |
+| `beleg_dateiname` | `receipt_filename` |
+| `beleg_text` | `receipt_text` |
+| `beschreibung` | `description` |
+| `bezahlt` | `paid` |
+| `bezeichnung` | `label` |
+| `bezug` | `refs` |
+| `bis` | `until` |
+| `buchbar` | `bookable` |
+| `buchung` | `booking` |
+| `buchungslink` | `booking_link` |
+| `datei` | `file` |
+| `dateiname` | `filename` |
+| `daten_base64` | `data_base64` |
+| `datum` | `date` |
+| `eingeplant` | `scheduled` |
+| `einheit` | `unit` |
+| `einzahl` | `singular` |
+| `ende` | `end_time` |
+| `entfernen` | `remove` |
+| `erfordert` | `requires` |
+| `ergebnis` | `result` |
+| `erlauben` | `allow` |
+| `erlebt` | `experienced` |
+| `ersetzt_durch` | `replaced_by` |
+| `farbe` | `colour` |
+| `favorisiert` | `favoured` |
+| `folge` | `sequence` |
+| `frage` | `question` |
+| `frist` | `deadline` |
+| `frist_was` | `deadline_what` |
+| `fuer` | `for` |
+| `gebucht_am` | `booked_on` |
+| `geprueft` | `checked` |
+| `gilt` | `valid_for` |
+| `grund` | `reason` |
+| `grundform` | `basic_form` |
+| `gruppe` | `group` |
+| `hilfe` | `help` |
+| `hinweis` | `hint` |
+| `kategorie` | `category` |
+| `kommentar` | `comment` |
+| `koordinaten` | `coordinates` |
+| `kurz` | `short` |
+| `lesetext` | `reading_text` |
+| `merkmal` | `attribute` |
+| `merkmale` | `attributes` |
+| `minus` | `cons` |
+| `nach` | `after` |
+| `nacht` | `night` |
+| `neu` | `new` |
+| `neuer_name` | `new_name` |
+| `neuer_titel` | `new_title` |
+| `notiz` | `note` |
+| `nummer` | `number` |
+| `nummeriert` | `numbered` |
+| `ohne_route` | `without_route` |
+| `optionen` | `options` |
+| `ort` | `place` |
+| `personen` | `people` |
+| `pfad` | `path` |
+| `plus` | `pros` |
+| `preis` | `price` |
+| `preise` | `prices` |
+| `prioritaet` | `priority` |
+| `punkte` | `points` |
+| `quelle` | `source` |
+| `regeln` | `rules` |
+| `reist` | `travels` |
+| `rolle` | `role` |
+| `rubrik` | `heading` |
+| `schliesst_aus` | `excludes` |
+| `schluessel` | `key` |
+| `siehe` | `see` |
+| `sprache` | `language` |
+| `storno` | `cancellation` |
+| `storno_bis` | `cancellation_until` |
+| `strecken` | `legs` |
+| `stufe` | `level` |
+| `stufen` | `levels` |
+| `summiert` | `summed` |
+| `titel` | `title` |
+| `trotzdem` | `anyway` |
+| `typ` | `type` |
+| `unterkuenfte` | `accommodations` |
+| `untertitel` | `subtitle` |
+| `veraenderlich` | `changeable` |
+| `von` | `from` |
+| `von_reise` | `from_trip` |
+| `vor` | `before` |
+| `vorname` | `first_name` |
+| `wahl` | `choices` |
+| `wahlstelle` | `choice` |
+| `wann` | `when` |
+| `was` | `what` |
+| `wert` | `value` |
+| `werte` | `values` |
+| `wunsch` | `wish` |
+| `zeit` | `time_text` |
+| `ziel` | `target` |
+| `zustaendig` | `assignee` |
+| `reise` | `trip` |
+
+Ausnahmen je Werkzeug:
+
+- `ding_anlegen`: `von` → `from_place`, `nach` → `to_place`, `ab` → `departure`, `an` → `arrival`
+- `ding_aendern`: `von` → `from_place`, `nach` → `to_place`, `ab` → `departure`, `an` → `arrival`
+- `aufgabe_anlegen`: `ab` → `earliest`
+- `aufgabe_aendern`: `ab` → `earliest`
+- `tag_aendern`: `nacht` → `night`, `wahl` → `choices`
+- `buchung_anlegen`: `ab` → `available_from`
+- `buchung_aendern`: `ab` → `available_from`
+
+Englische Aliase für Datenwerte (nur bei Eingaben mit festen Werten):
+
+| Englisch | Datenwert |
+|---|---|
+| `chosen` | `gewaehlt` |
+| `rejected` | `verworfen` |
+| `replaced` | `ersetzt` |
+| `proposed` | `vorgeschlagen` |
+| `favoured` | `favorisiert` |
+| `organizer` | `organisator` |
+| `organiser` | `organisator` |
+| `contributor` | `mitwirkend` |
+| `guest` | `gast` |
+| `required` | `pflicht` |
+| `recommended` | `empfohlen` |
+| `optional` | `angeboten` |
+| `off` | `aus` |
+| `open` | `offen` |
+| `in_progress` | `in_arbeit` |
+| `done` | `erledigt` |
+| `dropped` | `entfaellt` |
+| `booked` | `gebucht` |
+| `requested` | `angefragt` |
+| `cancelled` | `storniert` |
+| `resolved` | `geklaert` |
+| `idea` | `idee` |
+| `planning` | `planung` |
+| `fixed` | `fest` |
+| `travelling` | `unterwegs` |
+| `after` | `danach` |
+| `archive` | `archiv` |
+| `comment` | `Kommentar` |
+| `question` | `Frage` |
+| `correction` | `Korrektur` |
+| `addition` | `Ergänzung` |
+| `answer` | `Antwort` |
+| `wish` | `Wunsch` |
+
+In Beschreibungen und Anleitungen ersetzt der Konnektor die Namen von Werkzeugen und eindeutigen Parametern durch die Namen aus `tools/list`; kurze Parameternamen, die zugleich deutsche Wörter sind (von, nach, an, ab, bei, vor, was, art), bleiben im Fließtext unverändert.

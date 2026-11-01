@@ -26,7 +26,7 @@ BAUSTEINE = ["varianten", "karte", "tagesseiten", "rueckmeldungen", "fragen", "a
 class Reise:
     """Beispielreise gebaut und veröffentlicht, mit Ablage; Wächter und Konnektor lesen von dort."""
 
-    def __init__(self, tmp, monkeypatch, status="fest", bausteine=None, regeln=None, geprueft=None):
+    def __init__(self, tmp, monkeypatch, status="fest", bausteine=None, regeln=None, geprueft=None, sprache=None):
         quelle = tmp / "quelle"
         shutil.copytree(BEISPIEL, quelle)
         y = yaml.safe_load((quelle / "reise.yaml").read_text(encoding="utf-8"))
@@ -34,6 +34,8 @@ class Reise:
             y["status"] = {"wert": status, "verlauf": y["status"]["verlauf"] + [
                 {"datum": D(2026, 10, 25), "wert": status, "wer": "Ida", "grund": "Test"}]}
         y["bausteine"] = BAUSTEINE if bausteine is None else bausteine
+        if sprache:
+            y["sprache"] = sprache
         if regeln:
             y.setdefault("regeln", {}).update(regeln)
         (quelle / "reise.yaml").write_text(yaml.safe_dump(y, allow_unicode=True), encoding="utf-8")
@@ -394,6 +396,26 @@ def test_erinnerer_meldet_ab_termin_einer_buchung(reise, tmp_path):
     assert not [m for m in r.lauf(D(2027, 5, 13))["meldungen"] if "Jetzt möglich" in m["text"]]   # nicht doppelt
 
 
+def test_meldungen_in_der_sprache_der_reise(reise):
+    """Meldungen und Mahnungen sprechen die Sprache der Reise (ADR-0006, M10); Deutsch bleibt wörtlich wie bisher."""
+    heute = D(2027, 5, 13)
+
+    def meldungen(**kw):   # die Umgebung zeigt auf die zuletzt gebaute Reise: nacheinander bauen und auswerten
+        r = reise(**kw)
+        r.aufgabe("Fähre prüfen", frist="2027-05-10")
+        daten = json.loads((r.seiten / "beispielreise" / "daten.json").read_text(encoding="utf-8"))
+        return [m["text"] for m in r.lauf(heute, trocken=True)["meldungen"]], daten["route"]["mahnungen"]
+    texte_de, mahn_de = meldungen()
+    texte_en, mahn_en = meldungen(sprache="en")
+    assert any(t.startswith("Überfällig seit 3 Tag(en): AG-") and "(Frist 10.5.2027)" in t for t in texte_de)
+    assert any(t.startswith("Overdue for 3 days: AG-") and "(deadline 10/5/2027)" in t for t in texte_en)
+    assert not any("Überfällig" in t or "Frist" in t for t in texte_en)
+    assert any("zuletzt geprüft" in t or "noch nie geprüft" in t for t in texte_de)
+    assert any("never checked" in t or "last checked" in t for t in texte_en) and not any("geprüft" in t for t in texte_en)
+    assert mahn_de and any("Bitte" in m["text"] for m in mahn_de)
+    assert mahn_en and any("Please" in m["text"] for m in mahn_en) and not any("Bitte" in m["text"] for m in mahn_en)
+
+
 def test_zahlung_offen_nur_mit_regel_und_vor_dem_stichtag(reise):
     """#166 (Product Owner 31.10.2026): Mit regeln.waechter_zahlung meldet der Erinnerer eine gebuchte Buchung mit Zahlstand offen
     oder angezahlt, wenn ihre Frist oder der erste Tag ihrer Dinge in höchstens erinnerung_vorlauf_tage Tagen liegt, danach alle
@@ -424,6 +446,14 @@ def test_zahlung_offen_nur_mit_regel_und_vor_dem_stichtag(reise):
     # Ohne Frist und ohne Tag im Plan gibt es keinen Stichtag
     b["B-02"].update({"status": "gebucht", "frist": None, "fuer": ["E-23"]})
     assert not wa.zahlungen_offen(d, D(2027, 5, 12), 3)
+
+
+def test_zahlungsmeldung_in_der_sprache_der_reise(reise):
+    """Die Zahlungsmeldung folgt der Sprache der Reise (ADR-0006); Deutsch bleibt wörtlich wie bisher."""
+    r = reise(regeln={"waechter_zahlung": True}, sprache="en")
+    ms = [m for m in r.lauf(D(2027, 5, 10))["meldungen"] if m["schluessel"].startswith("zahlung:")]
+    assert len(ms) == 1 and ms[0]["text"].startswith("Payment deposit paid: booking B-01 ") and ms[0]["text"].endswith(", first day 13/5/2027.")
+    assert "Zahlung" not in ms[0]["text"] and "erster Tag" not in ms[0]["text"]
 
 
 def test_regel_waechter_zahlung_ist_ja_oder_nein():

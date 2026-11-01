@@ -31,6 +31,7 @@ import sys
 
 import anmeldung
 import konten
+import texte
 
 CLAUDE_CALLBACK = "https://claude.ai/api/mcp/auth_callback"
 SCOPES = ("frieda", "offline_access")
@@ -179,17 +180,17 @@ def anfrage_pruefen(q):
     """-> (client, None) oder (None, Fehlertext). Fehler hier gehen nie an die Redirect-URI (sie ist nicht geprüft)."""
     c = client_finden(q.get("client_id"))
     if not c:
-        return None, "Unbekannter Client."
+        return None, anmeldung.tx("konto.oauth.unbekannter_client")
     if not redirect_passt(c["redirect_uris"], q.get("redirect_uri")):
-        return None, "Diese Rücksprungadresse ist nicht erlaubt."
+        return None, anmeldung.tx("konto.oauth.ruecksprung")
     if q.get("response_type") != "code":
-        return None, "Nur response_type=code."
+        return None, anmeldung.tx("konto.oauth.nur_code")
     if q.get("code_challenge_method") != "S256" or not CHALLENGE_MUSTER.match(q.get("code_challenge") or ""):
-        return None, "PKCE mit S256 ist nötig."
+        return None, anmeldung.tx("konto.oauth.pkce")
     if q.get("resource") and q["resource"].rstrip("/") != ressource():
-        return None, "Unbekannte Ressource."
+        return None, anmeldung.tx("konto.oauth.ressource")
     if len(q.get("state") or "") > 500:
-        return None, "state ist zu lang."
+        return None, anmeldung.tx("konto.oauth.state_lang")
     return c, None
 
 
@@ -221,37 +222,35 @@ def zustimmung(q, c, k, meldung=""):
     if c["art"] == "cimd":
         wer = urllib.parse.urlsplit(c["client_id"]).hostname
     else:
-        wer = f"Ein Programm, das sich „{c['name']}“ nennt," if c["name"] else "Ein Programm"
-    warnung = (anmeldung.fehler("Achtung: Der Code geht an ein Programm auf diesem Gerät (localhost). Erlaube das nur, "
-                                "wenn du es gerade selbst gestartet hast, z. B. Claude Code.") if loopback(q["redirect_uri"])
-               else "")
+        wer = anmeldung.tx("konto.oauth.programm_name", name=c["name"]) if c["name"] else anmeldung.tx("konto.oauth.programm")
+    warnung = anmeldung.fehler(anmeldung.tx("konto.oauth.warnung_localhost")) if loopback(q["redirect_uri"]) else ""
     verdeckt = anmeldung.verdeckt(**{f: q.get(f, "") for f in FELDER})
-    return anmeldung.seite("Zugriff erlauben", anmeldung.karte(
-        "<h1>Zugriff erlauben?</h1>",
-        f"<p><strong>{e(wer)}</strong> möchte als <strong>{e(k['name'])}</strong> ({e(k['email'])}) auf deine Reisen "
-        f"bei Frieda zugreifen: lesen und in deinem Namen Rückmeldungen, Wünsche, Aufgaben und Einträge in die Reise geben, wie es deine Rolle "
-        f"in jeder Reise erlaubt.</p><p class=\"klein\">Weiter geht es zu <strong>{e(host)}</strong>. Nur erlauben, "
-        "wenn du gerade selbst in deiner Claude-App verbindest.</p>",
+    return anmeldung.seite(anmeldung.tx("konto.oauth.titel"), anmeldung.karte(
+        f"<h1>{e(anmeldung.tx('konto.oauth.frage'))}</h1>",
+        "<p>" + anmeldung.th("konto.oauth.moechte", wer=f"<strong>{e(wer)}</strong>", name=f"<strong>{e(k['name'])}</strong>", email=e(k["email"]))
+        + '</p><p class="klein">' + anmeldung.th("konto.oauth.weiter_zu", host=f"<strong>{e(host)}</strong>") + "</p>",
         warnung, anmeldung.fehler(meldung),
-        anmeldung.formular("/authorize", verdeckt + anmeldung.verdeckt(aktion="erlauben"), "Erlauben"),
-        anmeldung.formular("/authorize", verdeckt + anmeldung.verdeckt(aktion="abbrechen"), "Abbrechen", "leise"),
-        '<p class="klein">Den Zugriff beendest du auf deiner Kontoseite mit „Überall abmelden“.</p>'))
+        anmeldung.formular("/authorize", verdeckt + anmeldung.verdeckt(aktion="erlauben"), anmeldung.tx("konto.oauth.erlauben")),
+        anmeldung.formular("/authorize", verdeckt + anmeldung.verdeckt(aktion="abbrechen"), anmeldung.tx("konto.oauth.abbrechen"), "leise"),
+        f'<p class="klein">{e(anmeldung.tx("konto.oauth.beenden"))}</p>'))
 
 
 def autorisieren(methode, pfad, headers, body):
     teile = urllib.parse.urlsplit(pfad)
+    _, konto_sitzung = anmeldung.sitzung_aus(headers)   # Sprache der Seite: die des Kontos, sonst die des Browsers
+    anmeldung._anfrage.sprache = konto_sitzung["sprache"] if konto_sitzung else texte.aus_header(headers.get("Accept-Language"))
     if methode == "POST":
         if not anmeldung.herkunft_ok(headers):
-            return anmeldung.antwort(403, anmeldung.seite("Nicht erlaubt", anmeldung.karte(
-                "<h1>Nicht erlaubt</h1><p>Diese Anfrage kam nicht von Frieda selbst.</p>")))
+            return anmeldung.antwort(403, anmeldung.seite(anmeldung.tx("konto.nicht_erlaubt"), anmeldung.karte(
+                f"<h1>{html.escape(anmeldung.tx('konto.nicht_erlaubt'))}</h1><p>{html.escape(anmeldung.tx('konto.fehler.nicht_erlaubt'))}</p>")))
         q = {k: v[0] for k, v in urllib.parse.parse_qs(body.decode("utf-8", "replace")).items()}
     else:
         q = {k: v[0] for k, v in urllib.parse.parse_qs(teile.query).items()}
     c, fehler = anfrage_pruefen(q)
     if fehler:
-        return anmeldung.antwort(400, anmeldung.seite("Anmeldung nicht möglich", anmeldung.karte(
-            "<h1>Anmeldung nicht möglich</h1>", anmeldung.fehler(fehler),
-            "<p>Bitte den Konnektor in der Claude-App neu verbinden.</p>")))
+        return anmeldung.antwort(400, anmeldung.seite(anmeldung.tx("konto.oauth.nicht_moeglich"), anmeldung.karte(
+            f"<h1>{html.escape(anmeldung.tx('konto.oauth.nicht_moeglich'))}</h1>", anmeldung.fehler(fehler),
+            f"<p>{html.escape(anmeldung.tx('konto.oauth.neu_verbinden'))}</p>")))
     _, k = anmeldung.sitzung_aus(headers)
     if not k:
         weiter = "/authorize?" + urllib.parse.urlencode({f: q[f] for f in FELDER if q.get(f)})

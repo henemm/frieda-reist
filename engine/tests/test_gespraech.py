@@ -12,6 +12,7 @@ import konnektor as kn  # noqa: E402
 import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from test_regeln import IDA, KARL, KIM, MAX, anfrage, umgebung  # noqa: E402,F401  (umgebung: Fixture)
+from schnittstelle_hilfe import N  # noqa: E402
 
 BASIS = "https://beispiel.invalid/mcp"
 
@@ -331,10 +332,10 @@ def test_anleitung_nennt_rolle_status_und_grenzen(umgebung):
     u = umgebung("fest")
     ida = u.rpc(IDA, "initialize")["instructions"]
     assert "Du sprichst mit Ida (Organisator:in)" in ida and "Status fest" in ida
-    assert "mit entscheiden ein (Option" in ida and "in den Plan" in ida and "person_einladen" in ida
+    assert N("mit entscheiden ein (Option") in ida and "in den Plan" in ida and N("person_einladen") in ida
     karl = u.rpc(KARL, "initialize")["instructions"]
     assert "Du sprichst mit Karl (Mitwirkende:r)" in karl and "Entscheiden kann sie nicht" in karl
-    assert "frage_beantworten" in karl and "person_einladen" not in karl
+    assert N("frage_beantworten") in karl and N("person_einladen") not in karl
     assert "nur lesen" in u.rpc(KIM, "initialize")["instructions"]
     offen = umgebung("planung", regeln={"einladen": "mitwirkend"})
     assert "in den Plan" in offen.rpc(IDA, "initialize")["instructions"]
@@ -396,3 +397,42 @@ def test_entscheiden_meldet_alte_quellen(tmp_path):
     o["merkmale"]["preis"]["geprueft"] = "2026-10-01"
     _, hinweise, _ = h.entscheidung_pruefen(args, "Ida", heute=datetime.date(2026, 10, 27))
     assert not any(x.startswith("Älter als") for x in hinweise)
+
+
+# ---------- dasselbe Gespräch auf Englisch (ADR-0006, M12) ----------
+
+def test_gespraech_auf_englisch_mit_englischen_namen(umgebung, tmp_path):
+    """Konto `en`, englische Werkzeug- und Parameternamen: dieselben Antworten und Ablehnungen wie auf Deutsch, aber englisch; was
+    zum Schreibweg geht, trägt die internen (deutschen) Namen, und die Datenwerte bleiben deutsch."""
+    u = umgebung("planung")
+    zug = Path(kn.zugaenge_pfad())
+    daten = json.loads(zug.read_text(encoding="utf-8"))
+    for token in daten:
+        daten[token]["sprache"] = "en"
+    zug.write_text(json.dumps(daten), encoding="utf-8")
+    # Anleitung und Werkzeugliste
+    anleitung = u.rpc(IDA, "initialize")["instructions"]
+    assert "You are speaking with Ida" in anleitung and "Reply in the person's language" in anleitung and "Du sprichst" not in anleitung
+    namen = {w["name_aussen"] for w in u.rpc(IDA, "tools/list")["tools"]}
+    assert {"decide", "question_answer", "person_invite", "overview"} <= namen and "entscheiden" not in namen
+    # entscheiden: englische Parameter, interne Werte
+    t, f = u.werkzeug(IDA, "decide", option="V-01.b", status="gewaehlt", reason="Karl wants to take the Kirnitzschtal tram")
+    assert not f and "geschrieben: /beispielreise/entscheiden" in t
+    pfad, body = u.schreibweg[-1]
+    assert body["args"] == {"option": "V-01.b", "status": "gewaehlt", "grund": "Karl wants to take the Kirnitzschtal tram"}
+    # Ablehnung vor dem Schreiben: englisch
+    t, f = u.werkzeug(IDA, "decide", option="V-99.a", status="gewaehlt", reason="x")
+    assert f and t.startswith("Not decided:") and "“V-99.a” does not exist" in t and "with variants" in t and len(u.schreibweg) == 1
+    t, f = u.werkzeug(IDA, "decide", option="V-01.b", status="gewaehlt", reason="")
+    assert f and "The reason is missing" in t
+    # Rechte: Karl darf nicht entscheiden, die Ablehnung ist englisch
+    t, f = u.werkzeug(KARL, "decide", option="V-01.b", status="gewaehlt", reason="x")
+    assert f and t == "Only organisers may do this."
+    # Frage beantworten: der Eintrag der Reise bleibt, wie er ist, die Antwort an die Person ist englisch
+    t, f = u.werkzeug(KARL, "question_answer", question="F-01", answer="The tram runs every 30 minutes on Sundays")
+    assert not f and t.startswith("Answer ") and "attached to F-01" in t and "hängt an" not in t
+    (e,) = rm.eintraege(u.o)
+    assert (e["name"], e["art"], e["ziel"], e["status"]) == ("Karl", "Antwort", "F-01", "neu")
+    # lesen: Überblick und Abschnitt englisch
+    t, f = u.werkzeug(IDA, "overview")
+    assert not f and "## Day plan" in t and "## Tagesplan" not in t

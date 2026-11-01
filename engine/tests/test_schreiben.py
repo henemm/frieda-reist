@@ -69,6 +69,26 @@ def arten_auf_main(origin):
     return yaml.safe_load(text)["arten"], text
 
 
+@pytest.fixture(autouse=True)
+def _bestaetigungen_in_jeder_sprache(monkeypatch):
+    """Jede Bestätigung des Schreibwegs, die aus dem Katalog kommt, reist als Schlüssel mit (text_teile, ADR-0006): auf Deutsch ist sie
+    der Text selbst, auf Englisch ein vollständiger Satz ohne offene Platzhalter und ohne deutsche Sprachbausteine."""
+    import texte
+    original = sb.Schreiber.schreiben
+
+    def pruefen(self, *args, **kw):
+        antwort = original(self, *args, **kw)
+        if isinstance(antwort, dict) and antwort.get("text_teile"):
+            satz = texte.Satz.aus_json(antwort["text_teile"])
+            assert satz == antwort["text"] and satz.text("de") == antwort["text"]
+            en = satz.text("en")
+            assert en and "{" not in en and "}" not in en, en
+            for wort in (" angelegt", "Grund:", "Herkunft", " für ", "Merkmal ", "Frage "):
+                assert wort not in en, (wort, en)
+        return antwort
+    monkeypatch.setattr(sb.Schreiber, "schreiben", pruefen)
+
+
 def schreiber(repo):
     wurzel, _, arbeit, _ = repo
     s = sb.Schreiber(wurzel, arbeit)
@@ -129,6 +149,9 @@ def test_art_anlegen_geht_nach_main_und_wird_veroeffentlicht(repo):
                                                                          "beschreibung": "bewirtschaftete Berghütte", "grund": "GR-Etappen"}})
     assert a["ok"] and "Refugi" in a["text"] and "refugi" in a["text"] and "Aufenthalt" in a["text"]
     assert git(origin, "rev-parse", "main") == a["commit"] != vorher
+    import texte
+    en = texte.Satz.aus_json(a["text_teile"]).text("en")   # dieselbe Bestätigung für eine englische Person (M9)
+    assert en.startswith("Kind “Refugi” created: key refugi, basic form ") and "angelegt" not in en, en
     arten, text = arten_auf_main(origin)
     r = arten["refugi"]
     assert r["grundform"] == "aufenthalt" and r["name"] == "Refugi" and r["beschreibung"] == "bewirtschaftete Berghütte"
@@ -285,6 +308,37 @@ def test_probebau_lehnt_ab_und_laesst_nichts_zurueck(repo):
     assert git(origin, "rev-parse", "main") == stand and not stempel.exists()
     # Issue #142: der Probebau liefert die Warnungen des Baus (bezug, text); die Beispielreise hat keine
     assert s.probebau(arbeit / "reisen" / "beispielreise") == []
+
+
+def test_ablehnung_des_probebaus_reist_als_satz_und_kommt_auf_englisch_an(repo):
+    """Prüfmeldungen der Reise (pruefung.*, ADR-0006) reisen mit Schlüsseln zum Konnektor: Deutsch bleibt der Wortlaut des
+    Protokolls, die Person liest denselben Fehler in ihrer Sprache."""
+    import json
+    import texte
+    s = schreiber(repo)
+    with pytest.raises(sb.Ablehnung) as fehler:
+        s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "merkmal": "fruehstueck",
+                                                                             "werte": ["ja", "nein"]}})
+    e = fehler.value
+    unterwegs = json.loads(json.dumps({"fehler": str(e), "fehler_code": e.schluessel, "werte": e.werte_json()}))   # wie über HTTP
+    werte = {n: texte.Satz.aus_json(v["satz"]) if isinstance(v, dict) and "satz" in v else v for n, v in unterwegs["werte"].items()}
+    satz = texte.Satz(unterwegs["fehler"], unterwegs["fehler_code"], werte)
+    assert satz.text("de") == str(e) and "nicht bauen" in satz.text("de")
+    en = satz.text("en")
+    assert "{" not in en and "cannot be built" in en and "allowed:" in en, en
+    for wort in (" gibt es nicht", " muss ", "Merkmal ", "erlaubt", "nicht bauen"):
+        assert wort not in en, (wort, en)
+
+
+def test_hinweise_reisen_mit_schluesseln(repo):
+    """Neue Warnungen des Baus kommen als Sätze zum Konnektor (hinweise_teile) und lassen sich dort in jeder Sprache setzen."""
+    import texte
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "termin_setzen", {**IDA, "args": {"datum": "2027-05-20", "titel": "Konzert am Abend (Test)",
+                                                                       "ort": "O-01", "quelle": "erfunden (Test)"}})
+    assert a["hinweise"] == [AUSSERHALB] and len(a["hinweise_teile"]) == 1
+    satz = texte.Satz.aus_json(a["hinweise_teile"][0])
+    assert str(satz) == AUSSERHALB and satz.text("de") == AUSSERHALB
 
 
 # ---------- Rolle, Status, Person ----------
@@ -925,6 +979,13 @@ def test_status_und_einstellungen_der_reise(repo):
         s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"regeln": {"einladen": "chef"}}})
     with pytest.raises(sb.Ablehnung, match="Nichts zu ändern"):
         s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {}})
+    # Sprache der Reise (ADR-0006): nur bekannte Sprachen, der alte Wert steht im Verlauf der Antwort
+    with pytest.raises(sb.Ablehnung, match="Unbekannte Sprache"):
+        s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"sprache": "klingonisch"}})
+    a = s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"sprache": "en", "grund": "Gruppe liest Englisch"}})
+    assert "sprache „de“ → „en“" in a["text"]
+    assert yaml.safe_load(datei_auf_main(origin, "reise.yaml"))["sprache"] == "en"
+    s.vorbereiten()
     # Mitwirkende dürfen jetzt einladen (regeln.einladen = mitwirkend), aber keine höhere Rolle vergeben
     with pytest.raises(sb.Ablehnung, match="höchstens eine Rolle"):
         s.schreiben("beispielreise", "person_schreiben", {**KARL, "args": {"schluessel": "anna", "vorname": "Anna", "rolle": "organisator"}})

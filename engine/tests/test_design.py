@@ -145,6 +145,7 @@ def test_gedrueckt_ist_tinte_nicht_akzent():
     gedrueckt = [inhalt for sel, inhalt in re.findall(r"([^{}]*)\{([^{}]*)\}", css) if 'aria-pressed="true"' in sel]
     assert gedrueckt and not [x for x in gedrueckt if "--acc" in x], gedrueckt
     js = skript()
-    for titel, klasse in (("Möglichkeiten im Vergleich", "wm-wahl"), ("Darstellung", "wm-ansicht"), ("Region der Karte", "regionen")):
-        assert re.search(rf'umschalter\("{titel}",.{{0,300}}?"{klasse}"\)', js, flags=re.S), klasse
+    # Die Titel kommen aus dem Katalog (ADR-0006)
+    for titel, klasse in (("seite.vergleich.moeglichkeiten", "wm-wahl"), ("seite.vergleich.darstellung", "wm-ansicht"), ("seite.karte.region", "regionen")):
+        assert re.search(rf'umschalter\(T\("{titel}"\),.{{0,300}}?"{klasse}"\)', js, flags=re.S), klasse
     assert 'el("fieldset", {class: "wm-' not in js and 'el("div", {class: "regionen"' not in js

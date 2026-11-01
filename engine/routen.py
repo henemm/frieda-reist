@@ -24,12 +24,13 @@ import datetime
 import re
 import unicodedata
 
+import texte
+
 STATUS = ("vorgeschlagen", "favorisiert", "gewaehlt", "verworfen", "ersetzt")
 NUR_ENTSCHEIDER = {"gewaehlt", "verworfen", "ersetzt"}
 UNGUELTIG = {"verworfen", "ersetzt"}
 WANN = {"planung", "unterwegs"}   # wann eine Wahlstelle entschieden wird (Schlüssel wann:, bis 29.10.2026 art:)
 ARTEN = WANN                      # alter Name, wird von Bestand gelesen
-WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 # Uhrzeit eines Aufenthalts ohne Nacht (beginn, ende; #77 Kalender), Ortszeit; Bewegungen haben ab und an (#135)
 UHRZEIT = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+", "aufenthalt": r"A-\d+",
@@ -130,7 +131,7 @@ def ist_link(wert):
 # Für Menschen heißen die Stufen „nötig“, „gut zu wissen“, „zusätzlich“ (Product Owner 29.10.2026); „aus“ bleibt unsichtbar.
 # In Dateien und Werkzeugen bleiben die Schlüssel; die Wörter nimmt der Schreibweg als Eingabe ebenfalls an (stufe_schluessel).
 STUFEN = ("pflicht", "empfohlen", "angeboten", "aus")
-STUFEN_WORTE = {"pflicht": "nötig", "empfohlen": "gut zu wissen", "angeboten": "zusätzlich", "aus": "aus"}
+STUFEN_WORTE = texte.gruppe("de", "schreiben.stufe")
 
 
 def stufe_wort(s):
@@ -254,10 +255,11 @@ def kennwerte(k):
             "ab": zahl(such("abstieg")), "km": zahl(such("länge", "km"))}
 
 
-def verhalten_anwenden(route, v):
+def verhalten_anwenden(route, v, sprache=None):
     """Status der Reise wirkt auf das fertige Routenmodell (docs/produkt.md, Paket B). v: reise.verhalten(status).
     idee ohne Warnungen; ab fest werden offene Planungs-Wahlstellen und ungeprüfte veränderliche Angaben der aktiven
-    Optionen zur Mahnung (route["mahnungen"], Liste {bezug, text}). Der Plan bleibt vollständig, nichts wird versteckt."""
+    Optionen zur Mahnung (route["mahnungen"], Liste {bezug, text}, in der Sprache der Reise). Der Plan bleibt vollständig, nichts wird versteckt."""
+    sprache = sprache or texte.VORGABE_REISE
     if not route:
         return route
     if not v.get("warnungen"):
@@ -267,34 +269,33 @@ def verhalten_anwenden(route, v):
         for w in route.get("wahlstellen") or []:
             gueltig = [o for o in w["optionen"] if o["status"] not in UNGUELTIG]
             if w.get("wann") == "planung" and w["offen"] and len(gueltig) > 1:
-                mahnungen.append({"bezug": w["id"], "text": f"{w['id']} {w['titel']}: noch offen, obwohl die Reise fest ist "
-                                  f"({len(gueltig)} Kandidaten). Bitte entscheiden."})
+                mahnungen.append({"bezug": w["id"], "text": texte.t(sprache, "seite.mahnung.offen", w1=w["id"], w2=w["titel"], n=len(gueltig))})
             for o in w["optionen"]:
                 if o["aktiv"]:
                     namen = {k["id"]: k["name"] for k in w["kriterien"] if stufe_von(k) != "aus"}
                     ung = [namen[k] for k, m in o["merkmale"].items() if m.get("ungeprueft") and k in namen]
                     if ung:
-                        mahnungen.append({"bezug": o["id"], "text": f"{o['id']} {o['titel']}: {', '.join(ung)} "
-                                          "ohne Prüfdatum. Veränderliche Angaben bitte nachschlagen und mit Datum eintragen."})
+                        mahnungen.append({"bezug": o["id"], "text": texte.t(sprache, "seite.mahnung.option", w1=o["id"], w2=o["titel"], w3=", ".join(ung))})
         for uid, u in (route.get("unterkuenfte") or {}).items():
             defs = {k["id"]: k for k in (route.get("merkmale") or {}).get(u.get("art")) or []}
             ung = [k for k, m in (u.get("merkmale") or {}).items()
                    if m.get("ungeprueft") and stufe_von(defs.get(k, {}), u.get("art")) != "aus"]
             if ung and u.get("naechte"):
-                mahnungen.append({"bezug": uid, "text": f"{uid} {u.get('name')}: {', '.join(ung)} ohne Prüfdatum."})
+                mahnungen.append({"bezug": uid, "text": texte.t(sprache, "seite.mahnung.unterkunft", w1=uid, w2=u.get("name"), w3=", ".join(ung))})
     route["mahnungen"] = mahnungen
     return route
 
 
 class Routen:
     def __init__(self, roh, etappen, fragen, fehler, id_anlegen, quelle="plan/routen.yaml", zwang=None, arten=None,
-                 entscheider=None, wissen=None):
+                 entscheider=None, wissen=None, sprache=None):
         """roh: geladenes YAML. etappen: {E-ID: Etappe aus dem Dossier}. fragen: {F-ID: Status-Text}.
         entscheider: Namen, die gewaehlt/verworfen/ersetzt setzen dürfen (Organisator:innen aus reise.yaml); None: aus dem YAML.
         zwang: {V-ID: Option-ID} – für benannte Pläne; erzwingt eine Option, auch eine verworfene.
         arten: geladenes plan/arten.yaml der Reise (Arten und Merkmale, docs/ontologie.md).
         wissen: bekannte W-IDs (Abschnitte wie Essen, Ausflug, Praxis), an denen eine Wahlstelle hängen darf; None: ungeprüft."""
         self.r = roh or {}
+        self.sprache = sprache or texte.VORGABE_REISE
         self.arten_roh = arten
         self.arten = {}           # Art -> {name, grundform, farbe, symbol, buchbar, summiert}, aus plan/arten.yaml der Reise
         self.a_art = {}           # A-01 -> Art (Aufenthalt ohne Nacht, Paket O-5)
@@ -335,13 +336,17 @@ class Routen:
         self.ist_plan = zwang is not None   # Unterlauf für einen benannten Plan: keine Pläne darin
 
     # ---------- Hilfen ----------
+    def t(self, schluessel, /, **werte):
+        """Text, den die Seite zeigt (Werte berechneter Merkmale), in der Sprache der Reise."""
+        return texte.t(self.sprache, schluessel, **werte)
+
     def warne(self, bezug, text):
         w = {"bezug": bezug, "text": text}
         if w not in self.warnungen:
             self.warnungen.append(w)
 
     def fehl(self, text):
-        self.fehler.append(f"{self.q}: {text}")
+        self.fehler.append(texte.Satz(f"{self.q}: ") + text)
 
     def strecke(self, sid):
         """Strecke mit Titel und Kennzahlen; Dossier-Etappen werden um von/nach ergänzt."""
@@ -365,53 +370,53 @@ class Routen:
         """beginn und ende (#77, Kalender): Uhrzeit HH:MM als Text, ende nur mit beginn. Ende vor Beginn heißt: am Tag danach."""
         for k in ("beginn", "ende"):
             if d.get(k) is not None and not (isinstance(d[k], str) and UHRZEIT.match(d[k])):
-                self.fehl(f"{wo}: {k} muss eine Uhrzeit HH:MM in Anführungszeichen sein (z. B. \"09:30\").")
+                self.fehl(texte.satz("pruefung.routen.2", wo=wo, k=k))
         if d.get("ende") is not None and d.get("beginn") is None:
-            self.fehl(f"{wo}: ende ohne beginn.")
+            self.fehl(texte.satz("pruefung.routen.3", wo=wo))
 
     def bausteine(self):
         for art, menge in (("ort", self.orte), ("strecke", self.strecken), ("unterkunft", self.unterkuenfte),
                            ("aufenthalt", self.aufenthalte), ("buchung", self.buchungen), ("tag", self.tage), ("wahl", self.wahl)):
             for i in menge:
                 if not ist(art, i):
-                    self.fehl(f"„{i}“ ist keine gültige ID für {art}.")
+                    self.fehl(texte.satz("pruefung.routen.4", i=i, art=art))
         for oid in self.orte:
             self.id_anlegen(oid, self.q)
         for sid, s in self.strecken.items():
             if sid not in self.etappen:
                 self.id_anlegen(sid, self.q)
                 if not s.get("titel"):
-                    self.fehl(f"Strecke {sid} braucht einen Titel (sie steht nicht im Etappen-Dossier).")
+                    self.fehl(texte.satz("pruefung.routen.5", sid=sid))
             for k in ("von", "nach"):
                 if s.get(k) and s[k] not in self.orte:
-                    self.fehl(f"Strecke {sid}: Ort {s[k]} gibt es nicht.")
+                    self.fehl(texte.satz("pruefung.routen.6", sid=sid, w1=s[k]))
             z = s.get("zweig_von")
             if z and z not in self.strecken and z not in self.etappen:
-                self.fehl(f"Strecke {sid}: zweig_von {z} gibt es nicht.")
+                self.fehl(texte.satz("pruefung.routen.7", sid=sid, z=z))
         self.arten_pruefen()
         for sid, s in self.strecken.items():
             self.strecken_art(s, f"Strecke {sid}")
             for k in ("ab", "an"):
                 if s.get(k) is not None and zeitpunkt(s[k]) is None:
-                    self.fehl(f"Strecke {sid}: {k} muss eine Uhrzeit HH:MM oder ein Zeitpunkt JJJJ-MM-TTTHH:MM+HH:MM sein.")
+                    self.fehl(texte.satz("pruefung.routen.8", sid=sid, k=k))
         for uid, u in self.unterkuenfte.items():
             self.id_anlegen(uid, self.q)
             if u.get("ort") not in self.orte:
-                self.fehl(f"Unterkunft {uid}: Ort {u.get('ort')} gibt es nicht.")
+                self.fehl(texte.satz("pruefung.routen.9", uid=uid, w1=u.get('ort')))
             if u.get("frage") and u["frage"] not in self.fragen:
-                self.fehl(f"Unterkunft {uid}: Frage {u['frage']} gibt es nicht.")
+                self.fehl(texte.satz("pruefung.routen.10", uid=uid, w1=u['frage']))
             self.u_art[uid] = self.art_von(u, f"Unterkunft {uid}")
             self.lage_pruefen(u, f"Unterkunft {uid}")
         for aid, a in self.aufenthalte.items():
             # Aufenthalt ohne Nacht (Paket O-5): Ort, Art (Grundform aufenthalt), Herkunft; zeit ist freier Text („10–12 Uhr“)
             self.id_anlegen(aid, self.q)
             if not isinstance(a, dict) or not a.get("name"):
-                self.fehl(f"Aufenthalt {aid} braucht einen Namen (name: …).")
+                self.fehl(texte.satz("pruefung.routen.11", aid=aid))
                 continue
             if a.get("ort") not in self.orte:
-                self.fehl(f"Aufenthalt {aid}: Ort {a.get('ort')} gibt es nicht.")
+                self.fehl(texte.satz("pruefung.routen.12", aid=aid, w1=a.get('ort')))
             if not a.get("quelle"):
-                self.fehl(f"Aufenthalt {aid}: quelle fehlt (Herkunft).")
+                self.fehl(texte.satz("pruefung.routen.13", aid=aid))
             self.uhrzeit_pruefen(a, f"Aufenthalt {aid}")
             self.a_art[aid] = self.art_von(a, f"Aufenthalt {aid}")
             self.lage_pruefen(a, f"Aufenthalt {aid}")
@@ -420,21 +425,21 @@ class Routen:
             self.id_anlegen(tid, self.q)
             for aid in t.get("aufenthalte") or []:
                 if aid not in self.aufenthalte:
-                    self.fehl(f"{tid}: Aufenthalt {aid} gibt es nicht.")
+                    self.fehl(texte.satz("pruefung.routen.14", tid=tid, aid=aid))
         for vid, w in self.wahl.items():
             self.id_anlegen(vid, self.q)
             if w.get("wann", "planung") not in WANN or (w.get("wann") is not None and w.get("art") in WANN):
-                self.fehl(f"Wahlstelle {vid}: wann muss planung oder unterwegs sein (art: ist die Art der Dinge).")
+                self.fehl(texte.satz("pruefung.routen.15", vid=vid))
             if w.get("frage") and w["frage"] not in self.fragen:
-                self.fehl(f"Wahlstelle {vid}: Frage {w['frage']} gibt es nicht.")
+                self.fehl(texte.satz("pruefung.routen.16", vid=vid, w1=w['frage']))
             opts = w.get("optionen") or []
             if not opts:
-                self.fehl(f"Wahlstelle {vid} hat keine Optionen.")
+                self.fehl(texte.satz("pruefung.routen.17", vid=vid))
             self.an_pruefen(vid, w)
             for o in opts:
                 oid = o.get("id", "")
                 if not ist("option", oid) or not oid.startswith(vid + "."):
-                    self.fehl(f"Wahlstelle {vid}: Option „{oid}“ muss {vid}.a, {vid}.b … heißen.")
+                    self.fehl(texte.satz("pruefung.routen.18", vid=vid, oid=oid))
                     continue
                 self.id_anlegen(oid, self.q)
                 self.option[oid] = (vid, o)
@@ -443,9 +448,9 @@ class Routen:
         for vid, f, offen, n_gueltig in self.fragen_offen:
             f_offen = "offen" in self.fragen[f].lower()
             if offen and n_gueltig > 1 and not f_offen:
-                self.warne(vid, f"{vid} ist noch offen, aber {f} steht nicht mehr auf offen.")
+                self.warne(vid, texte.satz("pruefung.routen.98", vid=vid, f=f))
             if not offen and f_offen and not self.frage_wird_gebraucht(f, vid):
-                self.warne(vid, f"{vid} ist entschieden, aber {f} steht noch auf offen.")
+                self.warne(vid, texte.satz("pruefung.routen.99", vid=vid, f=f))
         self.regeln_pruefen()
         self.merkmale_pruefen()
 
@@ -455,64 +460,62 @@ class Routen:
         for bid, b in self.buchungen.items():
             self.id_anlegen(bid, self.q)
             if not isinstance(b, dict):
-                self.fehl(f"Buchung {bid} muss Felder haben (fuer, status, quelle …).")
+                self.fehl(texte.satz("pruefung.routen.19", bid=bid))
                 continue
             for k in b:
                 if k not in BUCHUNG_FELDER:
-                    self.fehl(f"Buchung {bid}: unbekanntes Feld „{k}“ (möglich: {', '.join(BUCHUNG_FELDER)}).")
+                    self.fehl(texte.satz("pruefung.routen.20", bid=bid, k=k, w1=', '.join(BUCHUNG_FELDER)))
             fuer = b.get("fuer")
             fuer = [fuer] if isinstance(fuer, str) else list(fuer or [])
             if not fuer:
-                self.fehl(f"Buchung {bid}: fuer fehlt (welche Unterkunft U-…, welcher Aufenthalt A-… oder welche Strecke E-… ist gebucht).")
+                self.fehl(texte.satz("pruefung.routen.21", bid=bid))
             for x in fuer:
                 if not (x in self.unterkuenfte or x in self.aufenthalte or x in self.strecken or x in self.etappen):
-                    self.fehl(f"Buchung {bid}: {x} gibt es nicht (fuer nennt Unterkünfte, Aufenthalte oder Strecken).")
+                    self.fehl(texte.satz("pruefung.routen.22", bid=bid, x=x))
             if b.get("status", "gebucht") not in BUCHUNG_STATUS:
-                self.fehl(f"Buchung {bid}: status muss {', '.join(BUCHUNG_STATUS)} sein.")
+                self.fehl(texte.satz("pruefung.routen.23", bid=bid, w1=', '.join(BUCHUNG_STATUS)))
             if not b.get("quelle"):
-                self.fehl(f"Buchung {bid}: quelle fehlt (Herkunft, z. B. „Buchungsbestätigung per Mail vom …“).")
+                self.fehl(texte.satz("pruefung.routen.24", bid=bid))
             for k in BUCHUNG_DATEN:
                 v = b.get(k)
                 if v is not None and not isinstance(v, datetime.date):
                     try:
                         datetime.date.fromisoformat(str(v))
                     except ValueError:
-                        self.fehl(f"Buchung {bid}: {k} muss ein Datum JJJJ-MM-TT sein.")
+                        self.fehl(texte.satz("pruefung.routen.25", bid=bid, k=k))
             pers = b.get("personen")
             if pers is not None and not (isinstance(pers, list) and all(isinstance(x, str) for x in pers)) \
                     and not (isinstance(pers, dict) and all(isinstance(k, str) and (v is None or isinstance(v, str)) for k, v in pers.items())):
-                self.fehl(f"Buchung {bid}: personen ist eine Liste von Namen oder {{Name: Angabe}} (Sitzplatz, Gepäck …).")
+                self.fehl(texte.satz("pruefung.routen.26", bid=bid))
             z = b.get("zahlung")
             if z is not None and z not in ZAHLUNG:
-                self.fehl(f"Buchung {bid}: zahlung muss {', '.join(ZAHLUNG)} sein (Einzelheiten stehen im Text bezahlt).")
+                self.fehl(texte.satz("pruefung.routen.130", bid=bid, w1=', '.join(ZAHLUNG)))
             elif z == "erstattet" and b.get("status", "gebucht") != "storniert":
-                self.warne(bid, f"Buchung {bid}: zahlung erstattet, aber die Buchung ist nicht storniert.")
+                self.warne(bid, texte.satz("pruefung.routen.131", bid=bid))
             mk = b.get("merkmale")
             if mk is not None:
                 if not isinstance(mk, dict) or any(isinstance(v, (dict, list)) for v in mk.values()):
-                    self.fehl(f"Buchung {bid}: merkmale ist {{Merkmal: Wert}} (Merkmale der Buchung aus plan/arten.yaml, buchung_merkmale).")
+                    self.fehl(texte.satz("pruefung.routen.132", bid=bid))
                 else:
                     defs = self.buchung_merkmal_defs(fuer)
                     for k, v in mk.items():
                         if k not in defs:
-                            self.warne(bid, f"Buchung {bid}: Merkmal „{k}“ ist an keiner Art ihrer Dinge als Merkmal der Buchung "
-                                            "definiert (plan/arten.yaml, buchung_merkmale).")
+                            self.warne(bid, texte.satz("pruefung.routen.133", bid=bid, k=k))
                         elif defs[k].get("typ") == "auswahl" and str(v) not in [str(w) for w in defs[k].get("werte") or []]:
-                            self.warne(bid, f"Buchung {bid}: {defs[k]['name']} „{v}“ steht nicht unter den Werten "
-                                            f"({' | '.join(map(str, defs[k]['werte']))}).")
+                            self.warne(bid, texte.satz("pruefung.routen.134", bid=bid, name=defs[k]['name'], v=v, werte=' | '.join(map(str, defs[k]['werte']))))
             preise = b.get("preise")
             if preise is not None:
                 if not isinstance(preise, dict) or any(k not in fuer for k in preise):
-                    self.fehl(f"Buchung {bid}: preise ist {{ID aus fuer: Betrag}}; {', '.join(k for k in (preise or {}) if k not in fuer) or 'Form'} passt nicht.")
+                    self.fehl(texte.satz("pruefung.routen.27", bid=bid, w1=', '.join(k for k in (preise or {}) if k not in fuer) or 'Form'))
             for e in b.get("verlauf") or []:   # wie jeder Verlauf: wer hat wann (ADR-0001)
                 if not isinstance(e, dict) or not isinstance(e.get("datum"), datetime.date) or not e.get("wer"):
-                    self.fehl(f"Buchung {bid}: jeder Verlaufseintrag braucht datum (JJJJ-MM-TT) und wer.")
+                    self.fehl(texte.satz("pruefung.routen.28", bid=bid))
                     break
             if b.get("status", "gebucht") != "storniert":
                 for x in fuer:
                     alt = self.buchung_je_ding.get(x)
                     if alt and alt != bid:
-                        self.warne(bid, f"Buchung {bid} und {alt} gelten beide für {x}.")
+                        self.warne(bid, texte.satz("pruefung.routen.29", bid=bid, alt=alt, x=x))
                     # Welche gilt (Product Owner 29.10.2026): gebucht vor angefragt, dann die jüngste (gebucht_am), dann die spätere
                     if alt is None or self.buchung_rang(bid) >= self.buchung_rang(alt):
                         self.buchung_je_ding[x] = bid
@@ -561,17 +564,17 @@ class Routen:
             if v is None:
                 continue
             if not isinstance(v, dict) or set(v) - {"wert", "quelle", "geprueft", "notiz"} or not v.get("quelle"):
-                self.fehl(f"{wo}: {feld} braucht {{wert, quelle}} (Herkunft), dazu geprueft (Datum).")
+                self.fehl(texte.satz("pruefung.routen.30", wo=wo, feld=feld))
                 continue
             w = v.get("wert")
             if feld == "adresse" and not (isinstance(w, str) and w.strip()):
-                self.fehl(f"{wo}: adresse.wert muss ein Text sein (Straße Nr., PLZ Ort).")
+                self.fehl(texte.satz("pruefung.routen.31", wo=wo))
             if feld == "punkt" and not (isinstance(w, list) and len(w) == 2 and all(isinstance(x, (int, float)) for x in w)
                                          and -90 <= w[0] <= 90 and -180 <= w[1] <= 180):
-                self.fehl(f"{wo}: punkt.wert braucht [Breite, Länge] in Grad.")
+                self.fehl(texte.satz("pruefung.routen.32", wo=wo))
             g = v.get("geprueft")
             if g is not None and not isinstance(g, datetime.date):
-                self.fehl(f"{wo}: {feld}.geprueft muss ein Datum sein (JJJJ-MM-TT).")
+                self.fehl(texte.satz("pruefung.routen.33", wo=wo, feld=feld))
 
     def an_pruefen(self, vid, w):
         """„an:“ nennt die IDs, an denen die Wahlstelle hängt: Tag, Strecke, Unterkunft, Ort, Wahlstelle oder ein Abschnitt
@@ -580,7 +583,7 @@ class Routen:
         if an is None:
             return
         if not isinstance(an, list):
-            self.fehl(f"Wahlstelle {vid}: an muss eine Liste von IDs sein.")
+            self.fehl(texte.satz("pruefung.routen.34", vid=vid))
             return
         for x in an:
             for art, menge in (("tag", self.tage), ("strecke", {**self.etappen, **self.strecken}),
@@ -588,10 +591,10 @@ class Routen:
                                ("wissen", self.wissen)):
                 if ist(art, x):
                     if menge is not None and x not in menge:
-                        self.fehl(f"Wahlstelle {vid}: an {x} gibt es nicht.")
+                        self.fehl(texte.satz("pruefung.routen.35", vid=vid, x=x))
                     break
             else:
-                self.fehl(f"Wahlstelle {vid}: an „{x}“ ist weder Tag, Strecke, Unterkunft, Ort, Wahlstelle noch Abschnitt (W-…).")
+                self.fehl(texte.satz("pruefung.routen.36", vid=vid, x=x))
 
     def regeln_pruefen(self):
         """Voraussetzungen zwischen Optionen verschiedener Wahlstellen (Paket 4, #18): erfordert (diese Option geht nur
@@ -603,16 +606,16 @@ class Routen:
                 if liste is None:
                     continue
                 if not isinstance(liste, list):
-                    self.fehl(f"{oid}: {feld} muss eine Liste von Optionen sein (z. B. [V-02.b]).")
+                    self.fehl(texte.satz("pruefung.routen.37", oid=oid, feld=feld))
                     continue
                 gut = []
                 for x in liste:
                     if x not in self.option:
-                        self.fehl(f"{oid}: {feld} {x} – diese Option gibt es nicht.")
+                        self.fehl(texte.satz("pruefung.routen.38", oid=oid, feld=feld, x=x))
                     elif self.option[x][0] == vid:
-                        self.fehl(f"{oid}: {feld} {x} gehört zur selben Wahlstelle {vid}; dort gilt ohnehin nur eine Option.")
+                        self.fehl(texte.satz("pruefung.routen.39", oid=oid, feld=feld, x=x, vid=vid))
                     elif x in gesehen:
-                        self.fehl(f"{oid}: {x} steht unter {gesehen[x]} und {feld}.")
+                        self.fehl(texte.satz("pruefung.routen.40", oid=oid, x=x, w1=gesehen[x], feld=feld))
                     else:
                         gesehen[x] = feld
                         gut.append(x)
@@ -622,12 +625,12 @@ class Routen:
                         je.setdefault(self.option[x][0], []).append(x)
                     for v, xs in je.items():
                         if len(xs) > 1:
-                            self.fehl(f"{oid}: erfordert {', '.join(xs)} – von {v} kann nur eine Option im Plan stehen.")
+                            self.fehl(texte.satz("pruefung.routen.41", oid=oid, w1=', '.join(xs), v=v))
                     self.erfordert[oid] = gut
                     if self.status(o) not in UNGUELTIG:
                         for x in gut:
                             if self.status(self.option[x][1]) in UNGUELTIG:
-                                self.warne(oid, f"{oid} setzt {x} voraus, aber {x} ist {self.status(self.option[x][1])}.")
+                                self.warne(oid, texte.satz("pruefung.routen.42", oid=oid, x=x, w1=self.status(self.option[x][1])))
                 else:
                     for x in gut:
                         self.schliesst.setdefault(oid, set()).add(x)
@@ -659,11 +662,12 @@ class Routen:
                 if x in self.im_plan:
                     continue
                 vx = self.option[x][0]
-                wo = f"im Plan ist {self.auswahl[vx]}" if vx in erreicht and vx in self.auswahl else f"{vx} liegt nicht im Plan"
-                self.warne("plan", f"{titel(oid)} setzt {titel(x)} voraus, {wo}.")
+                wo = texte.satz("pruefung.routen.im_plan_ist", w1=self.auswahl[vx]) if vx in erreicht and vx in self.auswahl \
+                    else texte.satz("pruefung.routen.liegt_nicht_im_plan", vx=vx)
+                self.warne("plan", texte.satz("pruefung.routen.43", w1=titel(oid), w2=titel(x), wo=wo))
             for x in sorted(self.schliesst.get(oid, ())):
                 if x in self.im_plan and oid < x:
-                    self.warne("plan", f"{titel(oid)} und {titel(x)} schließen sich aus, stehen aber beide im Plan.")
+                    self.warne("plan", texte.satz("pruefung.routen.44", w1=titel(oid), w2=titel(x)))
 
     def regel_aus(self, oid):
         """Voraussetzungen einer Option für die Seite: mit Titel, ob sie im Plan stehen und ob sie noch gelten."""
@@ -679,19 +683,18 @@ class Routen:
         for e in o.get("verlauf") or []:
             st = e.get("status")
             if st not in STATUS:
-                self.fehl(f"{oid}: Status „{st}“ unbekannt (erlaubt: {', '.join(STATUS)}).")
+                self.fehl(texte.satz("pruefung.routen.45", oid=oid, st=st, w1=', '.join(STATUS)))
             if st in NUR_ENTSCHEIDER and e.get("wer") not in self.entscheider:
-                self.fehl(f"{oid}: „{st}“ darf nur {', '.join(sorted(self.entscheider)) or 'der Entscheider'} setzen "
-                          f"(steht: {e.get('wer')}).")
+                self.fehl(texte.satz("pruefung.routen.46", oid=oid, st=st, w1=', '.join(sorted(self.entscheider)) or 'der Entscheider', w2=e.get('wer')))
             if st == "favorisiert" and e.get("wer") not in self.entscheider and not e.get("grund"):
-                self.fehl(f"{oid}: „favorisiert“ von {e.get('wer') or 'Claude'} braucht eine Begründung (grund).")
+                self.fehl(texte.satz("pruefung.routen.47", oid=oid, w1=e.get('wer') or 'Claude'))
             if st == "ersetzt" and not e.get("durch"):
-                self.fehl(f"{oid}: „ersetzt“ braucht „durch“ (die neue Option).")
+                self.fehl(texte.satz("pruefung.routen.48", oid=oid))
             d = e.get("datum")
             if not isinstance(d, datetime.date):
-                self.fehl(f"{oid}: Verlaufseintrag ohne gültiges Datum (JJJJ-MM-TT).")
+                self.fehl(texte.satz("pruefung.routen.49", oid=oid))
             elif vorher and d < vorher:
-                self.fehl(f"{oid}: Verlauf ist nicht zeitlich sortiert.")
+                self.fehl(texte.satz("pruefung.routen.50", oid=oid))
             else:
                 vorher = d
 
@@ -704,23 +707,22 @@ class Routen:
         if isinstance(roh, dict) and "arten" in roh:
             roh = roh["arten"]
         if not isinstance(roh, dict) or not roh:
-            self.fehl("plan/arten.yaml fehlt oder hat keine Arten („arten:“). Jede Reise legt ihre Arten und Merkmale selbst "
-                      "fest (docs/ontologie.md); aus Bestandsdaten ableiten: engine/neu.py arten-ableiten <reise>.")
+            self.fehl(texte.satz("pruefung.routen.51"))
             return
         for a, d in roh.items():
             wo = f"arten.yaml {a}"
             if not re.fullmatch(ART_MUSTER, str(a)) or a in (UNTERWEGS, ALLGEMEIN):
-                self.fehl(f"{wo}: Art „{a}“: nur Kleinbuchstaben, Ziffern und _ (nicht {UNTERWEGS}, {ALLGEMEIN}).")
+                self.fehl(texte.satz("pruefung.routen.52", wo=wo, a=a, UNTERWEGS=UNTERWEGS, ALLGEMEIN=ALLGEMEIN))
                 continue
             if not isinstance(d, dict) or d.get("grundform") not in GRUNDFORMEN:
-                self.fehl(f"{wo}: grundform muss {', '.join(GRUNDFORMEN)} sein.")
+                self.fehl(texte.satz("pruefung.routen.53", wo=wo, w1=', '.join(GRUNDFORMEN)))
                 continue
             if set(d) - ART_FELDER:
-                self.fehl(f"{wo}: unbekannte Felder {', '.join(sorted(set(d) - ART_FELDER))}.")
+                self.fehl(texte.satz("pruefung.routen.54", wo=wo, w1=', '.join(sorted(set(d) - ART_FELDER))))
             if d.get("farbe") and d["farbe"] not in FARBEN:
-                self.fehl(f"{wo}: farbe muss {', '.join(FARBEN)} sein.")
+                self.fehl(texte.satz("pruefung.routen.55", wo=wo, w1=', '.join(FARBEN)))
             if d.get("symbol") and d["symbol"] not in SYMBOLE_ARTEN:
-                self.fehl(f"{wo}: symbol muss {', '.join(SYMBOLE_ARTEN)} sein.")
+                self.fehl(texte.satz("pruefung.routen.56", wo=wo, w1=', '.join(SYMBOLE_ARTEN)))
             # buchbar: das Ding dieser Art hat einen Buchungsstand (Zu buchen, Stand der Vorbereitung); Vorgabe: Aufenthalte ja
             self.arten[a] = {"name": str(d.get("name") or a), "grundform": d["grundform"], "farbe": d.get("farbe") or "grau",
                              "symbol": d.get("symbol") or GRUNDFORM_SYMBOL[d["grundform"]],
@@ -736,23 +738,23 @@ class Routen:
         """Merkmale der Buchungen einer Art prüfen -> {Merkmal: Definition}: Name, Typ (Auswahl mit Werten), Einheit, Hilfe, Frage."""
         aus = {}
         if not isinstance(roh, dict):
-            self.fehl(f"{wo}: buchung_merkmale muss eine Liste „name: {{…}}“ sein.")
+            self.fehl(texte.satz("pruefung.routen.135", wo=wo))
             return aus
         for k, d in roh.items():
             if not re.fullmatch(r"[a-z][a-z0-9_]*", str(k)):
-                self.fehl(f"{wo}: Merkmal der Buchung „{k}“: nur Kleinbuchstaben, Ziffern und _ (z. B. ticketart).")
+                self.fehl(texte.satz("pruefung.routen.136", wo=wo, k=k))
                 continue
             if not isinstance(d, dict) or not d.get("name"):
-                self.fehl(f"{wo}: Merkmal der Buchung {k} braucht einen Namen (name: …).")
+                self.fehl(texte.satz("pruefung.routen.137", wo=wo, k=k))
                 continue
             if set(d) - BUCHUNG_DEF_FELDER:
-                self.fehl(f"{wo}: Merkmal der Buchung {k}: unbekannte Felder {', '.join(sorted(set(d) - BUCHUNG_DEF_FELDER))} "
-                          f"(möglich: {', '.join(sorted(BUCHUNG_DEF_FELDER))}).")
+                self.fehl(texte.satz("pruefung.routen.138", wo=wo, k=k, w1=", ".join(sorted(set(d) - BUCHUNG_DEF_FELDER)),
+                                     w2=", ".join(sorted(BUCHUNG_DEF_FELDER))))
             typ = d.get("typ", "text")
             if typ not in TYPEN:
-                self.fehl(f"{wo}: Merkmal der Buchung {k}: typ muss {', '.join(sorted(TYPEN))} sein.")
+                self.fehl(texte.satz("pruefung.routen.139", wo=wo, k=k, w1=", ".join(sorted(TYPEN))))
             if typ == "auswahl" and not (isinstance(d.get("werte"), list) and d["werte"]):
-                self.fehl(f"{wo}: Merkmal der Buchung {k} ist eine Auswahl und braucht werte: […].")
+                self.fehl(texte.satz("pruefung.routen.140", wo=wo, k=k))
             aus[k] = {"name": d["name"], "typ": typ, **{f: d[f] for f in ("werte", "einheit", "hilfe", "frage") if d.get(f)}}
         return aus
 
@@ -780,19 +782,19 @@ class Routen:
         geprüft: Schlüssel, Name, bekannte Felder, kein Name doppelt."""
         aus = []
         if not isinstance(roh, dict) or not roh:
-            self.fehl(f"{wo}: lesetext muss eine Liste „rubrik: {{name: …, hilfe: …}}“ sein.")
+            self.fehl(texte.satz("pruefung.routen.57", wo=wo))
             return aus
         for k, d in roh.items():
             if not re.fullmatch(r"[a-z][a-z0-9_]*", str(k)):
-                self.fehl(f"{wo}: Rubrik „{k}“: nur Kleinbuchstaben, Ziffern und _ (z. B. charakter, ankommen).")
+                self.fehl(texte.satz("pruefung.routen.58", wo=wo, k=k))
                 continue
             if not isinstance(d, dict) or not d.get("name"):
-                self.fehl(f"{wo}: Rubrik {k} braucht einen Namen (name: …), er steht als Stichwort vor dem Absatz.")
+                self.fehl(texte.satz("pruefung.routen.59", wo=wo, k=k))
                 continue
             if set(d) - RUBRIK_FELDER:
-                self.fehl(f"{wo}: Rubrik {k}: unbekannte Felder {', '.join(sorted(set(d) - RUBRIK_FELDER))}.")
+                self.fehl(texte.satz("pruefung.routen.60", wo=wo, k=k, w1=', '.join(sorted(set(d) - RUBRIK_FELDER))))
             if any(r["name"].casefold() == str(d["name"]).casefold() for r in aus):
-                self.fehl(f"{wo}: Rubrik {k}: Name „{d['name']}“ gibt es schon.")
+                self.fehl(texte.satz("pruefung.routen.61", wo=wo, k=k, w1=d['name']))
             aus.append({"id": k, "name": str(d["name"]), "hilfe": d.get("hilfe")})
         return aus
 
@@ -805,14 +807,13 @@ class Routen:
         if not a:
             if eintrag.get("an_bord"):
                 return UNTERWEGS
-            self.fehl(f"{wo}: braucht typ oder art (eine Art aus plan/arten.yaml).")
+            self.fehl(texte.satz("pruefung.routen.62", wo=wo))
             return None
         if a not in self.arten:
-            self.fehl(f"{wo}: Art „{a}“ steht nicht in plan/arten.yaml. Im Gespräch anlegen (docs/ontologie.md), bekannt: "
-                      f"{', '.join(k for k, v in self.arten.items() if v['grundform'] == 'aufenthalt') or 'keine'}.")
+            self.fehl(texte.satz("pruefung.routen.63", wo=wo, a=a, w1=', '.join(k for k, v in self.arten.items() if v['grundform'] == 'aufenthalt') or 'keine'))
             return None
         if self.grundform(a) != "aufenthalt":
-            self.fehl(f"{wo}: Art „{a}“ ist {self.grundform(a)}, hier braucht es einen Aufenthalt.")
+            self.fehl(texte.satz("pruefung.routen.64", wo=wo, a=a, w1=self.grundform(a)))
         return a
 
     def strecken_art(self, s, wo=None):
@@ -821,15 +822,14 @@ class Routen:
         a = s.get("art")
         if a is None or a == "" or a == []:
             if wo:
-                self.fehl(f"{wo}: art fehlt. Jede Strecke nennt ihre Art aus plan/arten.yaml (Grundform bewegung, bekannt: "
-                          f"{', '.join(k for k, v in self.arten.items() if v['grundform'] == 'bewegung') or 'keine'}).")
+                self.fehl(texte.satz("pruefung.routen.65", wo=wo, w1=', '.join(k for k, v in self.arten.items() if v['grundform'] == 'bewegung') or 'keine'))
             return None
         a = KOMBINIERT if isinstance(a, list) else str(a)
         if wo and self.arten:
             if a not in self.arten:
-                self.fehl(f"{wo}: Art „{a}“ steht nicht in plan/arten.yaml (Grundform bewegung). Im Gespräch anlegen.")
+                self.fehl(texte.satz("pruefung.routen.66", wo=wo, a=a))
             elif self.grundform(a) != "bewegung":
-                self.fehl(f"{wo}: Art „{a}“ ist {self.grundform(a)}, eine Strecke braucht eine Bewegung.")
+                self.fehl(texte.satz("pruefung.routen.67", wo=wo, a=a, w1=self.grundform(a)))
         return a
 
     def definitionen(self, wo, roh, art, grundform=None, neu=False):
@@ -837,45 +837,44 @@ class Routen:
         sonst ergänzt eine Wahlstelle die Art oder ändert nur die Stufe eines Merkmals."""
         aus = {}
         if not isinstance(roh, dict):
-            self.fehl(f"{wo}: merkmale muss eine Liste „name: {{…}}“ sein.")
+            self.fehl(texte.satz("pruefung.routen.68", wo=wo))
             return aus
         for k, d in roh.items():
             if not re.fullmatch(r"[a-z][a-z0-9_]*", str(k)):
-                self.fehl(f"{wo}: Merkmal „{k}“: nur Kleinbuchstaben, Ziffern und _ (z. B. preis, onsen).")
+                self.fehl(texte.satz("pruefung.routen.69", wo=wo, k=k))
                 continue
             if isinstance(d, dict) and set(d) == {"stufe"} and k in self.katalog.get(art, {}):
                 # nur die Stufe eines Merkmals der Art ändern (Wahlstelle: aus oder wieder empfohlen)
                 if stufe_fehler(d["stufe"]):
-                    self.fehl(f"{wo}: Merkmal {k}: {stufe_fehler(d['stufe'])}")
+                    self.fehl(texte.satz("pruefung.routen.70", wo=wo, k=k, w1=stufe_fehler(d['stufe'])))
                     continue
                 aus[k] = {**self.katalog[art][k], "stufe": d["stufe"]}
                 continue
             if not isinstance(d, dict) or not d.get("name"):
-                self.fehl(f"{wo}: Merkmal {k} braucht einen Namen (name: …).")
+                self.fehl(texte.satz("pruefung.routen.71", wo=wo, k=k))
                 continue
             if set(d) - DEF_FELDER:
-                self.fehl(f"{wo}: Merkmal {k}: unbekannte Felder {', '.join(sorted(set(d) - DEF_FELDER))}.")
+                self.fehl(texte.satz("pruefung.routen.72", wo=wo, k=k, w1=', '.join(sorted(set(d) - DEF_FELDER))))
             if d.get("stufe") and stufe_fehler(d["stufe"]):
-                self.fehl(f"{wo}: Merkmal {k}: {stufe_fehler(d['stufe'])}")
+                self.fehl(texte.satz("pruefung.routen.73", wo=wo, k=k, w1=stufe_fehler(d['stufe'])))
             typ = d.get("typ", "text")
             if typ not in TYPEN:
-                self.fehl(f"{wo}: Merkmal {k}: typ muss {', '.join(sorted(TYPEN))} sein.")
+                self.fehl(texte.satz("pruefung.routen.74", wo=wo, k=k, w1=', '.join(sorted(TYPEN))))
             if typ == "auswahl" and not (isinstance(d.get("werte"), list) and d["werte"]):
-                self.fehl(f"{wo}: Merkmal {k} ist eine Auswahl und braucht werte: […].")
+                self.fehl(texte.satz("pruefung.routen.75", wo=wo, k=k))
             if d.get("auto") and d["auto"] not in AUTO_JE_GRUNDFORM.get(grundform or "", ()):
-                self.fehl(f"{wo}: Merkmal {k}: auto „{d['auto']}“ gibt es für die Grundform {grundform or '–'} nicht; "
-                          f"berechnet werden {', '.join(f'{g}: {', '.join(v)}' for g, v in AUTO_JE_GRUNDFORM.items())}.")
+                self.fehl(texte.satz("pruefung.routen.76", wo=wo, k=k, w1=d['auto'], w2=grundform or '–', w3=', '.join(f'{g}: {', '.join(v)}' for g, v in AUTO_JE_GRUNDFORM.items())))
             if d.get("rolle"):
                 if d["rolle"] not in ROLLEN:
-                    self.fehl(f"{wo}: Merkmal {k}: rolle muss {', '.join(ROLLEN)} sein.")
+                    self.fehl(texte.satz("pruefung.routen.77", wo=wo, k=k, w1=', '.join(ROLLEN)))
                 elif typ != "geld":
-                    self.fehl(f"{wo}: Merkmal {k}: die Rolle kosten braucht den Typ geld.")
+                    self.fehl(texte.satz("pruefung.routen.78", wo=wo, k=k))
                 elif neu and any(x.get("rolle") == d["rolle"] for x in aus.values()):
-                    self.fehl(f"{wo}: Merkmal {k}: die Rolle {d['rolle']} hat an dieser Art schon ein anderes Merkmal.")
+                    self.fehl(texte.satz("pruefung.routen.79", wo=wo, k=k, w1=d['rolle']))
             if "nach_buchung" in d and not isinstance(d["nach_buchung"], bool):
-                self.fehl(f"{wo}: Merkmal {k}: nach_buchung ist true oder false.")
+                self.fehl(texte.satz("pruefung.routen.nach_buchung", wo=wo, k=k))
             if k in self.katalog.get(art, {}) and not neu:
-                self.fehl(f"{wo}: Merkmal {k} gibt es für {art} schon (nur {{stufe: …}} ändert die Stufe).")
+                self.fehl(texte.satz("pruefung.routen.80", wo=wo, k=k, art=art))
             aus[k] = {"name": d["name"], "typ": typ, **{f: d[f] for f in ("werte", "veraenderlich", "auto", "hilfe",
                                                                           "frage", "einheit", "stufe", "auch", "rolle",
                                                                           "nach_buchung") if d.get(f)}}
@@ -887,7 +886,7 @@ class Routen:
         b = art_der_dinge(w)
         if b:
             if b != ALLGEMEIN and b not in self.arten:
-                self.fehl(f"Wahlstelle {vid}: art „{b}“ steht nicht in plan/arten.yaml (bekannt: {', '.join(self.arten)}).")
+                self.fehl(texte.satz("pruefung.routen.81", vid=vid, b=b, w1=', '.join(self.arten)))
                 return ALLGEMEIN
             return b
         opts = w.get("optionen") or []
@@ -912,16 +911,15 @@ class Routen:
         if roh is None:
             return aus
         if not isinstance(roh, dict):
-            self.fehl(f"{wo}: merkmale muss „merkmal: wert“ sein.")
+            self.fehl(texte.satz("pruefung.routen.82", wo=wo))
             return aus
         for k, v in roh.items():
             d = kriterien.get(k)
             if d is None:
-                self.fehl(f"{wo}: Merkmal „{k}“ gibt es hier nicht (bekannt: {', '.join(kriterien) or 'keine'}). "
-                          f"Ein neues Merkmal bei der Art in plan/arten.yaml oder an der Wahlstelle anlegen.")
+                self.fehl(texte.satz("pruefung.routen.83", wo=wo, k=k, w1=', '.join(kriterien) or 'keine'))
                 continue
             if d.get("auto"):
-                self.fehl(f"{wo}: {d['name']} wird aus dem Plan berechnet und nicht eingetragen.")
+                self.fehl(texte.satz("pruefung.routen.84", wo=wo, w1=d['name']))
                 continue
             eintraege = [self.wert_eintrag(wo, k, d, x) for x in (v if isinstance(v, list) else [v])]
             eintraege = [x for x in eintraege if x]
@@ -929,10 +927,10 @@ class Routen:
                 continue
             ohne = [x for x in eintraege if not x.get("gilt")]
             if len(ohne) > 1:
-                self.fehl(f"{wo}: {k} hat mehrere Werte ohne „gilt“; je Datum angeben.")
+                self.fehl(texte.satz("pruefung.routen.85", wo=wo, k=k))
             tage = [t for x in eintraege for t in x.get("gilt") or []]
             if len(tage) != len(set(tage)):
-                self.fehl(f"{wo}: {k}: ein Datum steht in zwei Werten.")
+                self.fehl(texte.satz("pruefung.routen.86", wo=wo, k=k))
             aus[k] = dict(ohne[0] if ohne else eintraege[0])
             if any(x.get("gilt") for x in eintraege):
                 aus[k]["je_datum"] = [x for x in eintraege if x.get("gilt")]
@@ -942,28 +940,27 @@ class Routen:
         """Ein Wert eines Merkmals prüfen -> Eintrag oder None (bei Fehlern, die schon gemeldet sind)."""
         e = dict(v) if isinstance(v, dict) else {"wert": v}
         if set(e) - WERT_FELDER:
-            self.fehl(f"{wo}: {k}: unbekannte Felder {', '.join(sorted(set(e) - WERT_FELDER))} "
-                      f"(erlaubt: {', '.join(sorted(WERT_FELDER))}).")
+            self.fehl(texte.satz("pruefung.routen.87", wo=wo, k=k, w1=', '.join(sorted(set(e) - WERT_FELDER)), w2=', '.join(sorted(WERT_FELDER))))
         w = e.get("wert")
         w = {True: "ja", False: "nein"}.get(w, w) if isinstance(w, bool) else w
         if w is None or str(w).strip() == "":
-            self.fehl(f"{wo}: {k} ohne Wert. Fehlt der Wert, das Merkmal weglassen.")
+            self.fehl(texte.satz("pruefung.routen.88", wo=wo, k=k))
             return None
         if d["typ"] == "auswahl" and w not in d.get("werte", []):
-            self.fehl(f"{wo}: {k} = „{w}“, erlaubt: {', '.join(map(str, d['werte']))}.")
+            self.fehl(texte.satz("pruefung.routen.89", wo=wo, k=k, w=w, w1=', '.join(map(str, d['werte']))))
         if d["typ"] == "zahl" and not isinstance(w, (int, float)):
-            self.fehl(f"{wo}: {k} muss eine Zahl sein.")
+            self.fehl(texte.satz("pruefung.routen.90", wo=wo, k=k))
         if d["typ"] == "link" and not ist_link(w):
-            self.fehl(f"{wo}: {k} = „{w}“ ist keine Adresse (https://… ohne Leerzeichen).")
+            self.fehl(texte.satz("pruefung.routen.91", wo=wo, k=k, w=w))
         g = e.get("geprueft")
         if g is not None and not isinstance(g, datetime.date):
-            self.fehl(f"{wo}: {k}: geprueft muss ein Datum sein (JJJJ-MM-TT).")
+            self.fehl(texte.satz("pruefung.routen.92", wo=wo, k=k))
             g = None
         gilt = e.get("gilt")
         if gilt is not None:
             liste = gilt if isinstance(gilt, list) else [gilt]
             if not liste or not all(isinstance(x, datetime.date) for x in liste):
-                self.fehl(f"{wo}: {k}: gilt muss ein Datum oder eine Liste von Daten sein (JJJJ-MM-TT).")
+                self.fehl(texte.satz("pruefung.routen.93", wo=wo, k=k))
                 gilt = None
             else:
                 gilt = [x.isoformat() for x in liste]
@@ -979,8 +976,7 @@ class Routen:
     def merkmale_pruefen(self):
         self.arten_pruefen()
         if self.r.get("merkmale") is not None:
-            self.fehl("merkmale: in routen.yaml gibt es nicht mehr. Arten und Merkmale stehen je Art in plan/arten.yaml "
-                      "(docs/ontologie.md); eine Wahlstelle darf weiter eigene merkmale: ergänzen.")
+            self.fehl(texte.satz("pruefung.routen.94"))
         u_extra, s_extra = {}, {}
         for vid, w in self.wahl.items():
             b = self.art_der_wahl(w, vid)
@@ -1046,21 +1042,21 @@ class Routen:
                 anfang = anf
         if tids:
             if davor and anfang and davor != anfang:
-                luecken.append(f"Lücke am Anfang: {self.ort_name(davor)} → {self.ort_name(anfang)}")
+                luecken.append(self.t("pruefung.routen.anschluss_luecke_anfang", von=self.ort_name(davor), nach=self.ort_name(anfang)))
             if pos and danach and pos != danach:
-                luecken.append(f"Lücke am Ende: {self.ort_name(pos)} → {self.ort_name(danach)}")
+                luecken.append(self.t("pruefung.routen.anschluss_luecke_ende", von=self.ort_name(pos), nach=self.ort_name(danach)))
             bekannt = davor and anfang and pos and (danach or e >= len(tage))
         else:
             if davor and danach and davor != danach:
-                luecken.append(f"Lücke: {self.ort_name(davor)} → {self.ort_name(danach)}")
+                luecken.append(self.t("pruefung.routen.anschluss_luecke", von=self.ort_name(davor), nach=self.ort_name(danach)))
             bekannt = davor and danach
         if not luecken and not bekannt:
             return {}
-        notiz = "Berechnet aus dem aktuellen Plan: davor " + (
-            f"in {self.ort_name(davor)}" if a else f"Reisebeginn in {self.ort_name(davor)}") + (
-            ", danach " + (f"weiter ab {self.ort_name(danach)}" if e < len(tage) else f"Reiseende in {self.ort_name(danach)}")
-            if danach else ", danach Reiseende") + "."
-        return {"anschluss": {"wert": "; ".join(luecken) or "nahtlos", "auto": True, "notiz": notiz}}
+        davor_text = self.t("pruefung.routen.anschluss_davor_in" if a else "pruefung.routen.anschluss_davor_beginn", ort=self.ort_name(davor))
+        danach_text = (self.t("pruefung.routen.anschluss_danach_weiter" if e < len(tage) else "pruefung.routen.anschluss_danach_ende",
+                              ort=self.ort_name(danach)) if danach else self.t("pruefung.routen.anschluss_danach_ende_ohne"))
+        notiz = self.t("pruefung.routen.anschluss_notiz", davor=davor_text, danach=danach_text)
+        return {"anschluss": {"wert": "; ".join(luecken) or self.t("pruefung.routen.anschluss_nahtlos"), "auto": True, "notiz": notiz}}
 
     def merkmale_aus(self, vid, o):
         b, krit = self.kriterien.get(vid, (ALLGEMEIN, {}))
@@ -1094,13 +1090,13 @@ class Routen:
         opts = [o for o in w.get("optionen") or [] if o.get("id") in self.option]
         gewaehlt = [o for o in opts if self.status(o) == "gewaehlt"]
         if len(gewaehlt) > 1:
-            self.fehl(f"Wahlstelle {vid}: mehrere Optionen gewählt ({', '.join(o['id'] for o in gewaehlt)}).")
+            self.fehl(texte.satz("pruefung.routen.95", vid=vid, w1=', '.join(o['id'] for o in gewaehlt)))
         gueltig = [o for o in opts if self.status(o) not in UNGUELTIG]
         fav = [o for o in gueltig if self.status(o) == "favorisiert"]
         aktiv = (gewaehlt or fav or gueltig or [None])[0]
         if aktiv is None:
             if opts:
-                self.fehl(f"Wahlstelle {vid}: alle Optionen sind verworfen. Mindestens eine muss gültig bleiben.")
+                self.fehl(texte.satz("pruefung.routen.96", vid=vid))
             return
         self.auswahl[vid] = aktiv["id"]
         if vid in self.zwang:
@@ -1109,7 +1105,7 @@ class Routen:
         offen = not gewaehlt
         f = w.get("frage")
         if wann_von(w) == "planung" and offen and len(gueltig) > 1 and not f:
-            self.fehl(f"Wahlstelle {vid} ist offen und braucht eine F-Frage (frage: F-…).")
+            self.fehl(texte.satz("pruefung.routen.97", vid=vid))
         if f and f in self.fragen:
             # Erst prüfen, wenn alle Wahlstellen eingelesen sind: Ob die Frage noch gebraucht wird, hängt auch von den späteren ab
             self.fragen_offen.append((vid, f, offen, len(gueltig)))
@@ -1119,7 +1115,7 @@ class Routen:
         """Folge aus Tagen, Wahlstellen und Teilen -> Liste (T-ID, Teil-Titel) in aktueller Auswahl."""
         aus = []
         if tiefe > 20:
-            self.fehl(f"{wo}: Wahlstellen sind zu tief oder im Kreis verschachtelt.")
+            self.fehl(texte.satz("pruefung.routen.100", wo=wo))
             return aus
         for el in liste or []:
             if isinstance(el, dict) and "teil" in el:
@@ -1127,18 +1123,18 @@ class Routen:
                     aus.append((tid, teil or el["teil"]))
             elif ist("tag", el):
                 if el not in self.tage:
-                    self.fehl(f"{wo}: Tag {el} gibt es nicht.")
+                    self.fehl(texte.satz("pruefung.routen.101", wo=wo, el=el))
                     continue
                 aus.append((el, None))
             elif ist("wahl", el):
                 if el not in self.wahl:
-                    self.fehl(f"{wo}: Wahlstelle {el} gibt es nicht.")
+                    self.fehl(texte.satz("pruefung.routen.102", wo=wo, el=el))
                     continue
                 oid = self.auswahl.get(el)
                 if oid:
                     aus += self.folge(self.option[oid][1].get("folge"), oid, tiefe + 1)
             else:
-                self.fehl(f"{wo}: „{el}“ ist weder Tag, Wahlstelle noch Teil.")
+                self.fehl(texte.satz("pruefung.routen.103", wo=wo, el=el))
         return aus
 
     def alle_tage_in(self, liste, sammel, wo):
@@ -1158,7 +1154,7 @@ class Routen:
         for el in liste or []:
             if ist("wahl", el):
                 if el not in self.wahl:
-                    self.fehl(f"{tid}: Wahlstelle {el} gibt es nicht.")
+                    self.fehl(texte.satz("pruefung.routen.104", tid=tid, el=el))
                     continue
                 oid = self.auswahl.get(el)
                 for s in (self.option[oid][1].get("strecken") if oid else None) or []:
@@ -1167,7 +1163,7 @@ class Routen:
                 aus.append((el, None))
         for s, _ in aus:
             if s not in self.strecken and s not in self.etappen:
-                self.fehl(f"{tid}: Strecke {s} gibt es nicht.")
+                self.fehl(texte.satz("pruefung.routen.105", tid=tid, s=s))
         return aus
 
     def nacht(self, tid, n):
@@ -1176,34 +1172,34 @@ class Routen:
             return None
         if isinstance(n, dict):
             if n.get("ort") and n["ort"] not in self.orte:
-                self.fehl(f"{tid}: Ort {n['ort']} gibt es nicht.")
+                self.fehl(texte.satz("pruefung.routen.106", tid=tid, w1=n['ort']))
             a = self.art_von(n, f"{tid} nacht") if (n.get("typ") or n.get("art") or n.get("an_bord")) else None
             return {"ort": n.get("ort"), "hinweis": n.get("hinweis"), "an_bord": bool(n.get("an_bord")), "art": a,
                     "art_name": (self.arten.get(a) or {}).get("name")}
         if ist("unterkunft", n):
             if n not in self.unterkuenfte:
-                self.fehl(f"{tid}: Unterkunft {n} gibt es nicht.")
+                self.fehl(texte.satz("pruefung.routen.107", tid=tid, w1=n))
                 return None
             return {"ort": self.unterkuenfte[n].get("ort"), "unterkunft": n}
         if ist("wahl", n):
             if n not in self.wahl:
-                self.fehl(f"{tid}: Wahlstelle {n} gibt es nicht.")
+                self.fehl(texte.satz("pruefung.routen.108", tid=tid, w1=n))
                 return None
             uids = [u for o in self.wahl[n].get("optionen") or [] for u in o.get("unterkuenfte") or []]
             for u in uids:
                 if u not in self.unterkuenfte:
-                    self.fehl(f"{n}: Unterkunft {u} gibt es nicht.")
+                    self.fehl(texte.satz("pruefung.routen.109", w1=n, u=u))
             orte = {self.unterkuenfte[u].get("ort") for u in uids if u in self.unterkuenfte}
             if len(orte) > 1:
-                self.warne(n, f"{n}: Die Kandidaten liegen in verschiedenen Orten ({', '.join(map(self.ort_name, orte))}).")
+                self.warne(n, texte.satz("pruefung.routen.110", w1=n, w2=', '.join(map(self.ort_name, orte))))
             oid = self.auswahl.get(n)
             akt = (self.option[oid][1].get("unterkuenfte") or [None])[0] if oid else None
             return {"ort": next(iter(orte), None), "wahl": n, "unterkunft": akt}
         if ist("ort", n):
             if n not in self.orte:
-                self.fehl(f"{tid}: Ort {n} gibt es nicht.")
+                self.fehl(texte.satz("pruefung.routen.111", tid=tid, w1=n))
             return {"ort": n}
-        self.fehl(f"{tid}: Übernachtung „{n}“ ist weder Unterkunft, Wahlstelle noch Ort.")
+        self.fehl(texte.satz("pruefung.routen.112", tid=tid, w1=n))
         return None
 
     def tag_lauf(self, tid, pos, warnen=False):
@@ -1221,21 +1217,20 @@ class Routen:
             if i == 0:
                 anfang = von
             if warnen and von and pos and von != pos:
-                self.warne(tid, f"{tid}: Lücke – der Tag steht in {self.ort_name(pos)}, "
-                                f"{sid} beginnt in {self.ort_name(von)}.")
+                self.warne(tid, texte.satz("pruefung.routen.113", tid=tid, w1=self.ort_name(pos), sid=sid, w2=self.ort_name(von)))
             # Anschluss (Issue #135): fährt diese Strecke ab, bevor die vorige ankommt? Nur gleiche Form (beide mit Datum oder beide Uhrzeit)
             if warnen and i > 0:
                 vorige = self.strecke(strecken[i - 1][0])
                 an_, ab_ = zeitpunkt(vorige.get("an")), zeitpunkt(s.get("ab"))
                 if an_ is not None and ab_ is not None and type(an_) is type(ab_) and (an_.tzinfo is None) == (ab_.tzinfo is None) and ab_ < an_:
-                    self.warne(tid, f"{tid}: Anschluss – {strecken[i - 1][0]} kommt um {vorige['an']} an, {sid} fährt schon um {s['ab']} ab.")
+                    self.warne(tid, texte.satz("pruefung.routen.114", tid=tid, w1=strecken[i - 1][0], w2=vorige['an'], sid=sid, w3=s['ab']))
             pos = s.get("nach") or pos
         n = self.nacht(tid, t.get("nacht"))
         if n and n.get("ort") and not n.get("an_bord"):
             if not strecken:
                 anfang = n["ort"]
             if warnen and pos and n["ort"] != pos:
-                self.warne(tid, f"{tid}: Der Weg von {self.ort_name(pos)} nach {self.ort_name(n['ort'])} fehlt.")
+                self.warne(tid, texte.satz("pruefung.routen.115", tid=tid, w1=self.ort_name(pos), w2=self.ort_name(n['ort'])))
             pos = n["ort"]
         return strecken, n, pos, anfang
 
@@ -1263,7 +1258,7 @@ class Routen:
         start = self.r.get("start") or {}
         ende = self.r.get("ende") or {}
         if not isinstance(start.get("datum"), datetime.date):
-            self.fehl("start.datum fehlt (JJJJ-MM-TT).")
+            self.fehl(texte.satz("pruefung.routen.116"))
             return None
         folge = self.folge(self.r.get("route"), "route")
         self.grenzen_suchen(self.r.get("route"))
@@ -1271,7 +1266,7 @@ class Routen:
         tage, pos = [], start.get("ort")
         for i, (tid, teil) in enumerate(folge):
             if tid in self.tag_benutzt:
-                self.fehl(f"Tag {tid} kommt im aktuellen Plan zweimal vor.")
+                self.fehl(texte.satz("pruefung.routen.117", tid=tid))
             self.tag_benutzt[tid] = True
             t = self.tage[tid]
             datum = start["datum"] + datetime.timedelta(days=i)
@@ -1281,9 +1276,9 @@ class Routen:
             unterwegs += [el for el in t.get("wahl") or []]
             for el in t.get("wahl") or []:
                 if el not in self.wahl:
-                    self.fehl(f"{tid}: Wahlstelle {el} gibt es nicht.")
+                    self.fehl(texte.satz("pruefung.routen.118", tid=tid, el=el))
             tage.append({"id": tid, "nr": i + 1, "datum": datum.isoformat(),
-                         "wochentag": WOCHENTAGE[datum.weekday()], "teil": teil,
+                         "teil": teil,
                          "titel": t.get("titel", ""), "text": t.get("text", ""),
                          "start_ort": start_ort, "end_ort": pos,
                          "strecken": [{"id": s, "wahl": v} for s, v in strecken],
@@ -1302,27 +1297,24 @@ class Routen:
         for fp in self.r.get("fixpunkte") or []:
             d = fp.get("datum")
             if not isinstance(d, datetime.date):
-                self.fehl(f"Fixpunkt „{fp.get('titel')}“ ohne gültiges Datum.")
+                self.fehl(texte.satz("pruefung.routen.119", w1=fp.get('titel')))
                 continue
             t = nach_datum.get(d.isoformat())
             if not t:
-                self.warne("plan", f"Fixpunkt {d:%d.%m.} ({fp.get('titel')}) liegt außerhalb des Plans.")
+                self.warne("plan", texte.satz("pruefung.routen.120", w1=format(d, '%d.%m.'), w2=fp.get('titel')))
                 continue
             orte = {t["start_ort"], t["end_ort"]} | {self.strecke(s["id"]).get(k) for s in t["strecken"]
                                                      for k in ("von", "nach")}
             if fp.get("ort") and fp["ort"] not in orte:
-                self.warne(t["id"], f"Fixpunkt {d:%d.%m.} ({fp.get('titel')}): Der Plan ist an diesem Tag nicht in "
-                                    f"{self.ort_name(fp['ort'])}.")
+                self.warne(t["id"], texte.satz("pruefung.routen.121", w1=format(d, '%d.%m.'), w2=fp.get('titel'), w3=self.ort_name(fp['ort'])))
             t.setdefault("fixpunkte", []).append(fp.get("titel", ""))
         if isinstance(ende.get("datum"), datetime.date) and tage:
             letzt = datetime.date.fromisoformat(tage[-1]["datum"])
             diff = (letzt - ende["datum"]).days
             if diff:
-                self.warne("plan", f"Der aktuelle Plan endet am {letzt:%d.%m.}, die Reise aber am "
-                                   f"{ende['datum']:%d.%m.} ({'+' if diff > 0 else ''}{diff} Tag(e)).")
+                self.warne("plan", texte.satz("pruefung.routen.122", w1=format(letzt, '%d.%m.'), w2=format(ende['datum'], '%d.%m.'), w3='+' if diff > 0 else '', diff=diff))
             if ende.get("ort") and tage[-1]["end_ort"] != ende["ort"]:
-                self.warne(tage[-1]["id"], f"Der Plan endet in {self.ort_name(tage[-1]['end_ort'])}, "
-                                           f"die Reise endet in {self.ort_name(ende['ort'])}.")
+                self.warne(tage[-1]["id"], texte.satz("pruefung.routen.123", w1=self.ort_name(tage[-1]['end_ort']), w2=self.ort_name(ende['ort'])))
 
         self.plan_tage = tage
         self.regeln_im_plan(tage, {o for t in tage for o in (t["start_ort"], t["end_ort"])}
@@ -1332,16 +1324,15 @@ class Routen:
         self.alle_tage_in(self.r.get("route"), in_opt, "route")
         for tid, wo in in_opt.items():
             if len(wo) > 1:
-                self.fehl(f"Tag {tid} steht in mehreren Optionen ({', '.join(sorted(wo))}). "
-                          f"Ein Tag gehört zu genau einer Option; für eine Variante einen neuen Tag anlegen.")
+                self.fehl(texte.satz("pruefung.routen.124", tid=tid, w1=', '.join(sorted(wo))))
         for tid in self.tage:
             if tid not in in_opt:
-                self.warne(tid, f"Tag {tid} kommt in keiner Option vor.")
+                self.warne(tid, texte.satz("pruefung.routen.125", tid=tid))
         for vid, w in self.wahl.items():
             frei = not w.get("an") and not any(vid in (t.get("strecken") or []) or vid == t.get("nacht")
                                                or vid in (t.get("wahl") or []) for t in self.tage.values())
             if frei and not self.kommt_in_folge_vor(vid):
-                self.warne(vid, f"Wahlstelle {vid} wird nirgends verwendet.")
+                self.warne(vid, texte.satz("pruefung.routen.126", vid=vid))
 
         aktiv_strecken = {s["id"] for t in tage for s in t["strecken"]}
         aktiv_tage = {t["id"] for t in tage}
@@ -1383,20 +1374,20 @@ class Routen:
         for p in self.r.get("plaene") or []:
             pid = p.get("id", "")
             if not re.fullmatch(r"P-[A-Za-z0-9]+", pid):
-                self.fehl(f"Plan „{pid}“: ID muss P-… heißen.")
+                self.fehl(texte.satz("pruefung.routen.127", pid=pid))
                 continue
             self.id_anlegen(pid, self.q)
             zwang = {}
             for oid in p.get("auswahl") or []:
                 if oid not in self.option:
-                    self.fehl(f"Plan {pid}: Option {oid} gibt es nicht.")
+                    self.fehl(texte.satz("pruefung.routen.128", pid=pid, oid=oid))
                     continue
                 vid = self.option[oid][0]
                 if vid in zwang:
-                    self.fehl(f"Plan {pid}: zwei Optionen für {vid} ({zwang[vid]}, {oid}).")
+                    self.fehl(texte.satz("pruefung.routen.129", pid=pid, vid=vid, w1=zwang[vid], oid=oid))
                 zwang[vid] = oid
             r = Routen(self.r, self.etappen, self.fragen, [], lambda *a: None, self.q, zwang, self.arten_roh,
-                       entscheider=sorted(self.entscheider))
+                       entscheider=sorted(self.entscheider), sprache=self.sprache)
             erg = r.bauen()
             if not erg:
                 continue

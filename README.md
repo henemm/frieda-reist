@@ -1,10 +1,12 @@
 # Frieda Reist
 
+*English summary: [README.en.md](README.en.md).*
+
 **AI-first-Reiseplanung und Reisehandbuch.** Frieda hält eine Reise als strukturierte Wahrheit (Reise-Ontologie): Tage, Aufenthalte, Bewegungen, Orte, Alternativen mit Entscheidungsverlauf und Wissen, jede Stelle mit fester ID, jede Angabe mit Herkunft und Prüfdatum. Alles Unstrukturierte (Gespräch, Recherche, Abwägen) passiert im AI-Client der Reisenden (Claude Desktop oder Handy), der über einen MCP-Konnektor liest und strukturiert zurückschreibt. Ein Generator baut daraus eine Reiseseite, die offline funktioniert. Der Kern steht in [`docs/adr/0001-kern.md`](docs/adr/0001-kern.md).
 
 **Was Frieda anders macht:** Die Herkunft jeder Angabe wird beim Schreiben erzwungen, nicht nachträglich erbeten. Der Konnektor nimmt keinen Wert ohne Quelle an, Veränderliches nur mit Prüfdatum, Entscheidungen nur von Organisator:innen mit Person, Datum und Grund. Frieda enthält keine eigene KI: Sie prüft Regeln, hält die Wahrheit und zeigt sie; recherchiert, abgewogen und formuliert wird im AI-Client der Reisenden. Welche Arten von Dingen und welche Merkmale eine Reise kennt (Refugi, Ryokan, Zeitfenster-Ticket, Vorbestellung), legt jede Reise selbst im Gespräch fest; die Software liefert keinen Katalog.
 
-*A travel planner and handbook, AI first: a trip lives as a structured ontology in Git (days, stays, movements, places, choices with a decision log, knowledge), every statement with its source and check date. The travellers' own AI client (Claude Desktop or mobile) reads and writes it through an MCP connector; Frieda itself contains no AI, it enforces the rules: no value without a source, no decision without a named organiser. A generator builds an offline-capable web handbook. Documentation is in German for now.*
+*A travel planner and handbook, AI first: a trip lives as a structured ontology in Git (days, stays, movements, places, choices with a decision log, knowledge), every statement with its source and check date. The travellers' own AI client (Claude Desktop or mobile) reads and writes it through an MCP connector; Frieda itself contains no AI, it enforces the rules: no value without a source, no decision without a named organiser. A generator builds an offline-capable web handbook. The page and the connector speak German and English (further languages: one file each, `docs/sprachen.md`); the detailed documentation is in German, a short English summary is in [README.en.md](README.en.md).*
 
 ## Was es kann
 
@@ -37,7 +39,7 @@ mein-reisen-repo/
   reisen/<reise>/  reise.yaml, reise.json, plan/routen.yaml, inhalt/, medien/
 ```
 
-Aufbau einer Reise: `beispiel/reisen/beispielreise/`, Modell in `engine/routen.py` und `engine/reise.py`, Reise-Ontologie (Grundformen, Arten und Merkmale je Reise) in `docs/ontologie.md`, Produktbild in `docs/produkt.md`, Alternativen in `docs/alternativen.md`, Design und Bausteine in `docs/design.md`, Claude-App in `docs/konnektor.md`, neue Reise anlegen in `docs/neue-reise.md`.
+Aufbau einer Reise: `beispiel/reisen/beispielreise/`, Modell in `engine/routen.py` und `engine/reise.py`, Reise-Ontologie (Grundformen, Arten und Merkmale je Reise) in `docs/ontologie.md`, Produktbild in `docs/produkt.md`, Alternativen in `docs/alternativen.md`, Design und Bausteine in `docs/design.md`, Claude-App in `docs/konnektor.md`, neue Reise anlegen in `docs/neue-reise.md`, Sprachen und eine neue Sprache hinzufügen in `docs/sprachen.md`.
 
 ## Auf dem eigenen Server
 
