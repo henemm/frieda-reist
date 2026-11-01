@@ -10,6 +10,8 @@ Rückmeldedienst, Dateien und Tests darunter kennen nur die internen (deutschen)
 import copy
 import re
 
+import texte
+
 NAMEN = {
     "overview": "ueberblick",
     "show": "zeige",
@@ -56,8 +58,10 @@ NAMEN = {
     "booking_update": "buchung_aendern",
     "receipt_add": "beleg_anlegen",
     "person_invite": "person_einladen",
+    "person_write": "person_schreiben",
     "person_remove": "person_entfernen",
     "trip_update": "reise_aendern",
+    "start_end_set": "start_ende_setzen",
     "trip_status_set": "reise_status_setzen",
     "setting_set": "einstellung_setzen",
     "my_trips": "meine_reisen",
@@ -103,15 +107,21 @@ PARAMETER_JE_WERKZEUG = {
     "tag_aendern": {"nacht": "night", "wahl": "choices"},
     "buchung_anlegen": {"ab": "available_from"}, "buchung_aendern": {"ab": "available_from"},
 }
-ENUM_ALIAS = {
-    "chosen": "gewaehlt", "rejected": "verworfen", "replaced": "ersetzt", "proposed": "vorgeschlagen", "favoured": "favorisiert",
-    "organizer": "organisator", "organiser": "organisator", "contributor": "mitwirkend", "guest": "gast",
-    "required": "pflicht", "recommended": "empfohlen", "optional": "angeboten", "off": "aus",
-    "open": "offen", "in_progress": "in_arbeit", "done": "erledigt", "dropped": "entfaellt",
-    "booked": "gebucht", "requested": "angefragt", "cancelled": "storniert", "resolved": "geklaert",
-    "idea": "idee", "planning": "planung", "fixed": "fest", "travelling": "unterwegs", "after": "danach", "archive": "archiv",
-    "comment": "Kommentar", "question": "Frage", "correction": "Korrektur", "addition": "Ergänzung", "answer": "Antwort", "wish": "Wunsch",
-}
+def _werte_aus_dem_katalog():
+    """Englischer Wert -> Datenwert aus den Einträgen wert.* und symbol.* des englischen Katalogs (dieselben Wörter, die Antworten zeigen)."""
+    aus = {}
+    for k, v in texte.sprache(texte.VORGABE).TEXTE.items():
+        for bereich in ("wert", "symbol"):
+            if k.startswith(bereich + "."):
+                aus.setdefault(v, k[len(bereich) + 1:])
+    return aus
+
+
+# Weitere Schreibweisen, die als Eingabe gelten (nur Eingabe; Datenwerte bleiben deutsch). Der Katalog liefert die Hauptform.
+ENUM_ALIAS = {**_werte_aus_dem_katalog(), "organizer": "organisator", "gray": "grau", "canceled": "storniert", "favored": "favorisiert"}
+# Datenwert -> englisches Wort, wie tools/list es als Wert anbietet (die Hauptform: die, die der Katalog nennt)
+WERT_ENGLISCH = {d: e for e, d in _werte_aus_dem_katalog().items()}
+texte.rand_woerter({i: e for i, e in PARAMETER.items() if i != e})
 
 
 def parameter_zu_englisch(werkzeug):
@@ -133,6 +143,8 @@ def _schema_aussen(x, tab):
                 neu[k] = {tab.get(p, p): _schema_aussen(s, tab) for p, s in v.items()}
             elif k == "required" and isinstance(v, list):
                 neu[k] = [tab.get(p, p) for p in v]
+            elif k == "enum" and isinstance(v, list):
+                neu[k] = list(dict.fromkeys(WERT_ENGLISCH.get(w, w) if isinstance(w, str) else w for w in v))
             else:
                 neu[k] = _schema_aussen(v, tab)
         return neu

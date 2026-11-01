@@ -69,7 +69,7 @@ import schnittstelle  # noqa: E402
 import texte  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
-from routen import FARBEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, ZAHLUNG, ZAHLUNG_ALIAS, ZAHLUNG_WORTE, art_schluessel, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
+from routen import FARBEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, ZAHLUNG, ZAHLUNG_ALIAS, art_schluessel, zahlung_wort, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
 
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "rueckmeldung_erledigen",
@@ -488,7 +488,7 @@ class Handbuch:
             if b.get(k):
                 z.append(name + str(b[k]))
         if b.get("zahlung") or b.get("bezahlt"):   # Zahlstand (#166) mit seinen Einzelheiten
-            z.append(tk("konnektor.ausgabe.buchung_text.15") + " · ".join(x for x in (ZAHLUNG_WORTE.get(b.get("zahlung"), b.get("zahlung")), b.get("bezahlt")) if x))
+            z.append(tk("konnektor.ausgabe.buchung_text.15") + " · ".join(f"{x}" for x in (zahlung_wort(b.get("zahlung")), b.get("bezahlt")) if x))
         for m in b.get("merkmale") or []:   # Merkmale der Buchung (#166), Herkunft wie die Buchung
             z.append(f"{m['name']}: {m['wert']}" + (f" {m['einheit']}" if m.get("einheit") else ""))
         if b.get("preise"):

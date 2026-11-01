@@ -52,9 +52,11 @@ BUCHUNG_FELDER = ("fuer", "status", "nummer", "bei", "preis", "bezahlt", "frist"
 ZAHLUNG = ("offen", "angezahlt", "bezahlt", "vor_ort", "inklusive", "erstattet")
 ZAHLUNG_ALIAS = {"open": "offen", "deposit": "angezahlt", "paid": "bezahlt", "on_site": "vor_ort", "included": "inklusive",
                  "refunded": "erstattet"}
-# Wörter für Menschen (Antworten, Konnektor); die Seite hat dieselben in ZAHLUNG_TEXT (engine/vorlage.html)
-ZAHLUNG_WORTE = {"offen": "offen", "angezahlt": "angezahlt", "bezahlt": "bezahlt", "vor_ort": "vor Ort", "inklusive": "inklusive",
-                 "erstattet": "erstattet"}
+def zahlung_wort(z):
+    """Das Wort für einen Zahlstand als Satz (in der Sprache des Lesers); ein unbekannter Wert bleibt, wie er ist."""
+    return texte.satz("seite.buchung.zahlung." + z) if z in ZAHLUNG else z
+
+
 # Zahlstände, bei denen vor der Reise noch Geld fließen muss (Wächter, Regel waechter_zahlung)
 ZAHLUNG_OFFEN = ("offen", "angezahlt")
 

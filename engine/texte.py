@@ -76,6 +76,7 @@ def plural(kuerzel, n):
 def t(kuerzel, schluessel, /, **werte):
     """Text zu einem Schlüssel in der Sprache. Gibt es den Wert n, wählt PLURAL die Kategorie (Schlüssel.<kategorie>, Rückfall
     Schlüssel.other, dann Schlüssel). Fehlt der Schlüssel, gilt Englisch, dann kommt der Schlüssel selbst zurück."""
+    werte = {n: wert_in(kuerzel, v) if isinstance(v, Wert) else datenwert(kuerzel, v) if isinstance(v, str) and not isinstance(v, (Satz, Datum)) else v for n, v in werte.items()}
     for k in (kuerzel, VORGABE):
         modul = sprache(k)
         if modul is None:
@@ -87,6 +88,64 @@ def t(kuerzel, schluessel, /, **werte):
             if kandidat in modul.TEXTE:
                 return _fuellen(modul.TEXTE[kandidat], werte)
     return schluessel
+
+
+def _uebersetzt(kuerzel, bereich, wert):
+    """Eintrag <bereich>.<wert> des Katalogs in dieser Sprache, sonst in der Rückfallsprache; fehlt er, bleibt der Wert (None)."""
+    s = f"{bereich}.{wert}"
+    for k in (kuerzel, VORGABE):
+        modul = sprache(k)
+        if modul is not None and s in modul.TEXTE:
+            return modul.TEXTE[s]
+    return None
+
+
+_RAND = {}   # englische Namen der Schnittstelle (Parameter), von schnittstelle.py eingetragen: Rückfall für Namen ohne Eintrag im Katalog
+
+
+def rand_woerter(tabelle):
+    """Namen, die die Schnittstelle englisch zeigt (interner Name -> englischer Name), für Sätze in jeder Sprache außer der des Bestands."""
+    _RAND.update(tabelle)
+
+
+def datenwert(kuerzel, wert):
+    """Ein Datenwert der Reise (Rolle, Stufe, Farbe, Typ, Baustein, Name einer Regel …) in dieser Sprache: Eintrag wert.<Wert> des
+    Katalogs, bei fehlender Übersetzung der englische; jeder andere Text bleibt, wie er ist. Gespeichert wird immer der Datenwert selbst
+    (ADR-0006): Deutsch zeigt ihn unverändert, jede andere Sprache liest ein Wort ihrer Sprache oder das englische."""
+    if not isinstance(wert, str):
+        return wert
+    einzeln = _einzeln(kuerzel, wert)
+    if einzeln is not None:
+        return einzeln
+    stuecke = _TRENNER.split(wert)
+    if len(stuecke) < 3:   # Text, Trenner, Text: mindestens zwei Stücke
+        return wert
+    uebersetzt = [_einzeln(kuerzel, s) for s in stuecke[::2]]
+    if sum(u is not None for u in uebersetzt) * 2 < len(uebersetzt):   # eine Aufzählung von Datenwerten, nicht ein Satz mit einem Zufallstreffer
+        return wert
+    stuecke[::2] = [u if u is not None else s for u, s in zip(uebersetzt, stuecke[::2])]
+    return "".join(stuecke)
+
+
+_TRENNER = re.compile(r"(, | \| |; | \+ )")
+
+
+def _einzeln(kuerzel, wert):
+    """Übersetzung eines einzelnen Datenwerts oder None, wenn es keiner ist."""
+    gefunden = _uebersetzt(kuerzel, "wert", wert)
+    if gefunden is None and kuerzel != BESTAND_REISE and wert in _RAND and (sprache(kuerzel) is None or "wert." + wert not in sprache(kuerzel).TEXTE):
+        return _RAND[wert]
+    return gefunden
+
+
+class Wert(str):
+    """Ein Datenwert, der nur dort übersetzt wird, wo der Code ihn so kennzeichnet (Symbole, Arten von Dingen): Arten einer Reise heißen
+    oft gleich, ein Katalogeintrag für das bloße Wort würde ihre Schlüssel verändern. Übersetzt wird <bereich>.<Wert> des Katalogs."""
+
+    def __new__(cls, wert, bereich="symbol"):
+        o = super().__new__(cls, wert)
+        o.bereich = bereich
+        return o
 
 
 def gruppe(kuerzel, praefix):
@@ -223,6 +282,9 @@ def wert_in(sprache, v):
     """Wert eines Platzhalters in dieser Sprache: Sätze in ihr gesetzt, Daten in ihrer Form, alles andere unverändert."""
     if isinstance(v, Satz):
         return v.text(sprache)
+    if isinstance(v, Wert):
+        uebersetzt = _uebersetzt(sprache, v.bereich, str(v))
+        return str(v) if uebersetzt is None else uebersetzt
     if isinstance(v, DatumKurz):
         return datum_kurz(v, sprache)
     if isinstance(v, Datum):
@@ -236,6 +298,8 @@ def wert_json(v):
         return {"satz": v.teile_json()}
     if isinstance(v, Datum):
         return {"datum": str(v), "kurz": True} if isinstance(v, DatumKurz) else {"datum": str(v)}
+    if isinstance(v, Wert):
+        return {"wert": str(v), "bereich": v.bereich}
     return v
 
 
@@ -245,7 +309,22 @@ def wert_aus_json(v):
         return Satz.aus_json(v["satz"])
     if isinstance(v, dict) and "datum" in v:
         return (DatumKurz if v.get("kurz") else Datum)(v["datum"])
+    if isinstance(v, dict) and "wert" in v:
+        return Wert(v["wert"], v.get("bereich", "symbol"))
     return v
+
+
+ANFANG = "§anfang"   # Teil eines Satzes: das erste Wort eines anderen Satzes, in der Sprache des Lesers
+
+
+def _erstes_wort(text):
+    return re.split(r"[ :„“]", text)[0]
+
+
+def _teil(sprache, k, w):
+    if k == ANFANG:
+        return _erstes_wort(w["satz"].text(sprache))
+    return t(sprache, k, **{n: wert_in(sprache, v) for n, v in w.items()})
 
 
 class Satz(str):
@@ -261,7 +340,11 @@ class Satz(str):
         return o
 
     def text(self, sprache):
-        return "".join(t(sprache, k, **{n: wert_in(sprache, v) for n, v in w.items()}) if k else w for k, w in self.teile)
+        return "".join(_teil(sprache, k, w) if k else w for k, w in self.teile)
+
+    def anfang(self):
+        """Das erste Wort dieses Satzes, in der Sprache gelesen, in der er gesetzt wird (für Titel: Namen der geänderten Felder)."""
+        return Satz(_erstes_wort(str(self)), teile=[(ANFANG, {"satz": self})])
 
     def __format__(self, spec):
         return format(self.text(aufruf_sprache()), spec)
@@ -295,7 +378,7 @@ class Satz(str):
     def aus_json(cls, teile):
         gelesen = [(x[0], {n: wert_aus_json(v) for n, v in x[1].items()})
                    if isinstance(x, list) else (None, str(x)) for x in teile]
-        return cls("".join(t(VORGABE_REISE, k, **{n: wert_in(VORGABE_REISE, v) for n, v in w.items()}) if k else w for k, w in gelesen), teile=gelesen)
+        return cls("".join(_teil(VORGABE_REISE, k, w) if k else w for k, w in gelesen), teile=gelesen)
 
 
 def satz(schluessel, /, **werte):
