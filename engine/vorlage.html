@@ -795,9 +795,12 @@ main{padding-bottom:calc(var(--tabbar-space) + 16px)}
    die gewählte Sprache steht in Tinte, ohne Unterstrich. Angemeldet gilt die Sprache des Kontos, die Zeile fehlt. */
 .fuss .umschalter.fuss-sprachen{display:inline-flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0;margin:0}
 .fuss .fuss-sprachen button{min-height:44px;padding:0 4px;border:0;border-radius:0;background:none;color:var(--acc);font-weight:400;
-  text-decoration:underline;text-underline-offset:2px}
-.fuss .fuss-sprachen button[aria-pressed="true"]{background:none;color:var(--fg);text-decoration:none;cursor:default}
-.fuss .fuss-sprachen button+button::before{content:"·";color:var(--mut);margin-inline-end:8px;display:inline-block;text-decoration:none}
+  text-decoration:none}
+/* Unterstrichen ist nur der Name (span), nicht der Trennpunkt davor (die Regel für Knöpfe im Fuß unterstreicht sonst alles) */
+.fuss .fuss-sprachen button span{text-decoration:underline;text-underline-offset:2px}
+.fuss .fuss-sprachen button[aria-pressed="true"]{background:none;color:var(--fg);cursor:default}
+.fuss .fuss-sprachen button[aria-pressed="true"] span{text-decoration:none}
+.fuss .fuss-sprachen button+button::before{content:"·";color:var(--mut);margin-inline-end:8px}
 @media (hover:hover){nav a:hover,#suchKnopf:hover{color:var(--fg)} .rund:hover{border-color:var(--acc)}}
 /* Zahl am Reiter „Offen“: offene Aufgaben + nicht gesendete Rückmeldungen */
 nav a{position:relative}
@@ -2064,7 +2067,7 @@ function sprachUmschalter() {
   ort.replaceChildren();
   ort.hidden = !ICH_BEKANNT || kuerzel.length < 2 || !!(ICH && ICH.konto);
   if (!ort.hidden) {
-    const us = umschalter(T("seite.sprache.titel"), kuerzel.map(k => [{"data-sprache": k, lang: k}, k === SPRACHE, TEXTE[k].name]), "fuss-sprachen");
+    const us = umschalter(T("seite.sprache.titel"), kuerzel.map(k => [{"data-sprache": k, lang: k}, k === SPRACHE, el("span", {}, TEXTE[k].name)]), "fuss-sprachen");
     us.addEventListener("click", e => { const b = e.target.closest("button[data-sprache]"); if (b) spracheWaehlen(b.dataset.sprache); });
     ort.append(el("span", {"aria-hidden": "true"}, T("seite.sprache.fuss")), " ", us);
   }
