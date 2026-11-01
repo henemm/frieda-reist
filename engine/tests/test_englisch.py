@@ -62,7 +62,10 @@ def _funde_des_letzten_commits(origin, antwort, erlaubt_text, erlaubt_datei):
     diff = git(origin, "show", "-U0", "--format=", "main")
     neu = "\n".join(z[1:] for z in diff.splitlines() if z.startswith("+") and not z.startswith("+++"))
     funde["dateien"] = deutsche_woerter(ohne_schluessel(neu), erlaubt_datei)
-    return {k: v for k, v in funde.items() if v}
+    funde = {k: v for k, v in funde.items() if v}
+    if funde.get("dateien"):   # die Zeilen dazu, damit ein Fund in der Meldung steht und nicht gesucht werden muss
+        funde["zeilen"] = [z for z in neu.splitlines() if deutsche_woerter(ohne_schluessel(z), erlaubt_datei)][:6]
+    return funde
 
 
 # Bekannte Schuld: deutsche Wörter, die eine englische Reise noch zeigt (Datenwerte wie Rollen, Stufen, Typen, Farben, Baustein-Namen und
