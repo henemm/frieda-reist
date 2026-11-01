@@ -28,31 +28,31 @@ ZONE="${FR_INSTANZ//-/_}_api"
 
 probleme=0
 ok()      { echo "  ok      $*"; }
-problem() { echo "  FEHLT   $*"; probleme=$((probleme + 1)); }
-hinweis() { echo "  HINWEIS $*"; }
+problem() { echo "  MISSING $*"; probleme=$((probleme + 1)); }
+hinweis() { echo "  NOTE    $*"; }
 
-echo "Instanz $FR_INSTANZ ($FR_TITEL), Reisen-Repo $FR_WURZEL"
-echo "Voraussetzungen:"
-[ -f "$FR_WURZEL/engine/bauen.py" ] && ok "Software unter engine/" || problem "engine/ fehlt (Submodul frieda und Verweis engine -> frieda/engine, docs/betrieb.md)"
-if "$FR_PYTHON" -c 'import yaml, ruamel.yaml' 2> /dev/null; then ok "Python $FR_PYTHON"; else problem "Python mit yaml und ruamel.yaml: $FR_PYTHON (python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt)"; fi
-[ -n "$FR_ADRESSE" ] && ok "Adresse $FR_ADRESSE" || problem "FR_ADRESSE (öffentliche Adresse der Seiten) in den Einstellungen"
-git -C "$FR_WURZEL" ls-remote -q origin > /dev/null 2>&1 && ok "git erreicht origin" || problem "git -C $FR_WURZEL ls-remote origin geht nicht ohne Rückfrage"
+echo "Instance $FR_INSTANZ ($FR_TITEL), trips repo $FR_WURZEL"
+echo "Prerequisites:"
+[ -f "$FR_WURZEL/engine/bauen.py" ] && ok "software under engine/" || problem "engine/ is missing (submodule frieda and link engine -> frieda/engine, docs/betrieb.md)"
+if "$FR_PYTHON" -c 'import yaml, ruamel.yaml' 2> /dev/null; then ok "Python $FR_PYTHON"; else problem "Python with yaml and ruamel.yaml: $FR_PYTHON (python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt)"; fi
+[ -n "$FR_ADRESSE" ] && ok "address $FR_ADRESSE" || problem "FR_ADRESSE (public address of the pages) in the settings"
+git -C "$FR_WURZEL" ls-remote -q origin > /dev/null 2>&1 && ok "git reaches origin" || problem "git -C $FR_WURZEL ls-remote origin does not work without a prompt"
 if PATH="$FR_PFAD" command -v gh > /dev/null; then
   # Der Schreibweg pusht nach main mit gh als Credential-Helfer; ohne Anmeldung scheitert jeder Schreibvorgang
-  PATH="$FR_PFAD" gh auth status > /dev/null 2>&1 && ok "gh angemeldet" || problem "gh ist nicht angemeldet (gh auth login als $FR_BENUTZER)"
-else problem "gh nicht in FR_PFAD"; fi
+  PATH="$FR_PFAD" gh auth status > /dev/null 2>&1 && ok "gh signed in" || problem "gh is not signed in (gh auth login as $FR_BENUTZER)"
+else problem "gh not in FR_PFAD"; fi
 command -v flock > /dev/null && ok "flock" || problem "flock (util-linux)"
 command -v rsync > /dev/null && ok "rsync" || problem "rsync"
 if [ -d "$FR_SEITEN" ]; then
-  [ -w "$FR_SEITEN" ] && ok "$FR_SEITEN beschreibbar" || problem "$FR_SEITEN gehört nicht $FR_BENUTZER"
-else hinweis "$FR_SEITEN wird angelegt (sudo install -d -o $FR_BENUTZER -g $FR_GRUPPE $FR_SEITEN)"; fi
-[ -n "$FR_MELDEN" ] && { [ -x "$FR_MELDEN" ] && ok "Meldeweg $FR_MELDEN" || problem "FR_MELDEN ist nicht ausführbar: $FR_MELDEN"; } \
-  || hinweis "kein Meldeweg (FR_MELDEN): Fehler stehen nur im Journal"
+  [ -w "$FR_SEITEN" ] && ok "$FR_SEITEN writable" || problem "$FR_SEITEN does not belong to $FR_BENUTZER"
+else hinweis "$FR_SEITEN will be created (sudo install -d -o $FR_BENUTZER -g $FR_GRUPPE $FR_SEITEN)"; fi
+[ -n "$FR_MELDEN" ] && { [ -x "$FR_MELDEN" ] && ok "reporting channel $FR_MELDEN" || problem "FR_MELDEN is not executable: $FR_MELDEN"; } \
+  || hinweis "no reporting channel (FR_MELDEN): errors appear only in the journal"
 for d in "$SYSTEMD"/*-rueckmeldungen.service "$SYSTEMD"/*-konnektor.service "$SYSTEMD"/*-schreiben.service; do
   [ -e "$d" ] || continue
   case "$(basename "$d")" in "$FR_INSTANZ"-*) continue ;; esac
   if grep -qE "^Environment=(RM_PORT|KN_PORT|FR_SB_PORT)=($FR_RM_PORT|$FR_KN_PORT|$FR_SB_PORT)$" "$d"; then
-    problem "Port $FR_RM_PORT, $FR_KN_PORT oder $FR_SB_PORT nutzt schon $(basename "$d"); FR_RM_PORT/FR_KN_PORT/FR_SB_PORT ändern"
+    problem "Port $FR_RM_PORT, $FR_KN_PORT or $FR_SB_PORT is already used by $(basename "$d"); change FR_RM_PORT/FR_KN_PORT/FR_SB_PORT"
   fi
 done
 
@@ -72,9 +72,9 @@ done
 ersetze "$FR_BETRIEB/vorlagen/nginx-konnektor.conf" "$ZIEL/nginx/$FR_INSTANZ-konnektor.conf"
 ersetze "$FR_BETRIEB/vorlagen/nginx-zone.conf" "$ZIEL/nginx/$FR_INSTANZ-zone.conf"
 if grep -rn "__[A-Z_]*__" "$ZIEL" > /dev/null; then
-  problem "Platzhalter nicht ersetzt: $(grep -rho "__[A-Z_]*__" "$ZIEL" | sort -u | tr '\n' ' ')"
+  problem "placeholder not replaced: $(grep -rho "__[A-Z_]*__" "$ZIEL" | sort -u | tr '\n' ' ')"
 fi
-echo "Erzeugt in $ZIEL:"; (cd "$ZIEL" && find . -type f | sort | sed 's|^\./|  |')
+echo "Generated in $ZIEL:"; (cd "$ZIEL" && find . -type f | sort | sed 's|^\./|  |')
 
 befehle() {
   cat <<TEXT
@@ -88,22 +88,22 @@ sudo systemctl daemon-reload
 TEXT
 }
 echo
-echo "Aktivieren (nachdem im server-Block von $FR_ADRESSE  include $SNIPPETS/$FR_INSTANZ-*.conf;  steht):"
+echo "Activate (once the server block of $FR_ADRESSE contains  include $SNIPPETS/$FR_INSTANZ-*.conf; ):"
 befehle | sed 's/^/  /'
 cat <<TEXT
-  cd $FR_WURZEL && FR_WURZEL=$FR_WURZEL frieda/betrieb/deploy.sh <erste reise>   (legt Code der Dienste an, Prüfung schlägt vor dem Start fehl)
+  cd $FR_WURZEL && FR_WURZEL=$FR_WURZEL frieda/betrieb/deploy.sh <first trip>   (installs the code of the services; the check fails before the start)
   sudo systemctl enable --now $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben
   sudo nginx -t && sudo systemctl reload nginx
   sudo systemctl enable --now $FR_INSTANZ-veroeffentlichen.timer $FR_INSTANZ-waechter.timer
-Prüfen:  curl -s 127.0.0.1:$FR_SB_PORT/gesund  antwortet {"gesund": true};  journalctl -u $FR_INSTANZ-veroeffentlichen -n 20
-Für deploy.sh braucht $FR_BENUTZER: sudo -n systemctl restart $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben;
-für freischalten.sh: sudo -n nginx -t, systemctl reload nginx, install/test/cat/rm in $SNIPPETS (sudoers, docs/betrieb.md).
+Check:  curl -s 127.0.0.1:$FR_SB_PORT/gesund  answers {"gesund": true};  journalctl -u $FR_INSTANZ-veroeffentlichen -n 20
+deploy.sh needs for $FR_BENUTZER: sudo -n systemctl restart $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben;
+freischalten.sh needs: sudo -n nginx -t, systemctl reload nginx, install/test/cat/rm in $SNIPPETS (sudoers, docs/betrieb.md).
 TEXT
 
-if [ "$probleme" -gt 0 ]; then echo; echo "$probleme Voraussetzung(en) fehlen."; [ -z "$INSTALLIEREN" ] || exit 1; exit 2; fi
+if [ "$probleme" -gt 0 ]; then echo; echo "$probleme prerequisite(s) missing."; [ -z "$INSTALLIEREN" ] || exit 1; exit 2; fi
 [ -n "$INSTALLIEREN" ] || exit 0
 echo
-read -r -p "Jetzt unter /etc installieren (Ordner, Einheiten, nginx-Bausteine)? Mit „ja“ bestätigen: " antwort
-[ "$antwort" = ja ] || { echo "Nichts installiert."; exit 0; }
+read -r -p "Install under /etc now (folders, units, nginx blocks)? Confirm with “yes”: " antwort
+[ "$antwort" = yes ] || [ "$antwort" = ja ] || { echo "Nothing installed."; exit 0; }
 befehle | while IFS= read -r befehl; do echo "+ $befehl"; bash -c "$befehl"; done
-echo "Installiert. Weiter mit deploy.sh, enable und nginx (siehe oben)."
+echo "Installed. Continue with deploy.sh, enable and nginx (see above)."

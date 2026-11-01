@@ -54,7 +54,7 @@ def main():
     fd = os.open(arg.datei, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(zustand, f)
-    print(f"Prüfsitzung für {email} gilt {arg.stunden:g} Stunden: {arg.datei}")
+    print(f"Check session for {email} valid for {arg.stunden:g} hours: {arg.datei}")
 
 
 if __name__ == "__main__":

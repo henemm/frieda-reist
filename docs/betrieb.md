@@ -76,18 +76,18 @@ Das Anwenden läuft als Unterprozess in eigener Prozessgruppe; bei Fristablauf w
 
 | Fall | Code | Meldung | Protokoll |
 |------|------|---------|-----------|
-| eingetragen trotz Abbruch | 200 | „Es hat länger gedauert, ist aber eingetragen.“ | `Zeit <werkzeug> 504: abgebrochen, eingetragen` |
-| nicht eingetragen (Abbruch im Vorbereiten oder Kennung nicht gefunden) | 504 | „… ist nicht eingetragen; bitte noch einmal versuchen.“ | `Zeit <werkzeug> 504: abgebrochen, nicht eingetragen` |
-| Prüfung nicht möglich (`origin` nicht erreichbar) | 504 | „… bitte prüfen, ob es angekommen ist.“ | `Zeit <werkzeug> 504: abgebrochen, ungeprüft` |
-| Sperre belegt | 429 | „… bitte gleich noch einmal versuchen.“ | `Gesperrt <werkzeug> 429: …` |
-| abgelehnt | 422 | Grund der Regel | `Abgelehnt <werkzeug> 422: <Grund>` (#121) |
-| unerwarteter Fehler im Dienst | 500 | „Schreiben fehlgeschlagen (Fehler im Dienst) …“ | `Fehler <werkzeug> 500: <Art>: <Text>` |
+| eingetragen trotz Abbruch | 200 | „Es hat länger gedauert, ist aber eingetragen.“ | `Timeout <werkzeug> 504: aborted, saved` |
+| nicht eingetragen (Abbruch im Vorbereiten oder Kennung nicht gefunden) | 504 | „… ist nicht eingetragen; bitte noch einmal versuchen.“ | `Timeout <werkzeug> 504: aborted, not saved` |
+| Prüfung nicht möglich (`origin` nicht erreichbar) | 504 | „… bitte prüfen, ob es angekommen ist.“ | `Timeout <werkzeug> 504: aborted, unchecked` |
+| Sperre belegt | 429 | „… bitte gleich noch einmal versuchen.“ | `Locked <werkzeug> 429: …` |
+| abgelehnt | 422 | Grund der Regel | `Rejected <werkzeug> 422: <Grund>` (#121) |
+| unerwarteter Fehler im Dienst | 500 | „Schreiben fehlgeschlagen (Fehler im Dienst) …“ | `Error <werkzeug> 500: <Art>: <Text>` |
 
 Ein Restrisiko bleibt: Wird ein `git push` im Moment der Übertragung beendet, kann der Eintrag noch ankommen, nachdem „nicht eingetragen“ gemeldet wurde; eine Wiederholung kann ihn dann doppelt eintragen.
 
 Ein beendetes `git` kann Sperrdateien (`index.lock` u. ä.) hinterlassen. Vor dem Vorbereiten entfernt der Schreibweg darum veraltete `*.lock` im eigenen git-Ordner der Arbeitskopie (`<Repo>/.git/worktrees/<Name>/`); das ist sicher, weil er dabei die Sperre der Reise hält. Sperren im gemeinsamen git-Ordner des Repos fasst er nicht an, dort arbeiten andere Reisen und das Veröffentlichen.
 
-Sperre und Arbeitskopie (`<wurzel>-schreiben-<reise>`) gibt es je Reise (#119): Was bei einer Reise hängt, hält die anderen nicht auf. Das Protokoll des Schreibwegs (`journalctl -u <instanz>-schreiben`) nennt Ablehnungen mit Werkzeug und Grund (einzeilig, höchstens 200 Zeichen) und für jeden Vorgang mit jedem Code eine Zeile `Fertig <werkzeug> <code> in <Sekunden> s`. An diesen Dauern lässt sich prüfen, ob `ZEIT_GESAMT` für große Reisen reicht.
+Sperre und Arbeitskopie (`<wurzel>-schreiben-<reise>`) gibt es je Reise (#119): Was bei einer Reise hängt, hält die anderen nicht auf. Betriebsprotokolle (stderr, Journal) sind englisch, unabhängig von der Sprache der Personen (ADR-0006). Das Protokoll des Schreibwegs (`journalctl -u <instanz>-schreiben`) nennt Ablehnungen mit Werkzeug und Grund (einzeilig, höchstens 200 Zeichen) und für jeden Vorgang mit jedem Code eine Zeile `Done <werkzeug> <code> in <Sekunden> s`. An diesen Dauern lässt sich prüfen, ob `ZEIT_GESAMT` für große Reisen reicht.
 
 ## Sprachen
 
@@ -106,7 +106,7 @@ Warnungen im Plan sperren nie, weder im Bau noch im Schreibweg (dort stehen neue
 
 **Rot-Datei:** Ein roter Stand steht in `<FR_DIENST>/veroeffentlichen-rot`, Zeilen `schluessel=wert`: `commit` (der rote Stand), `art` (`software` oder `reise`), `reisen` (die roten Reisen, durch Komma), `seit` (Beginn der Rot-Phase, UTC) und `gemeldet` (`1`, wenn der Alarm an den Betrieb raus ist). Eine Rot-Phase reicht vom ersten roten Lauf bis zum nächsten ganz grünen; ein neuer roter Commit ändert `commit`, `art` und `reisen`, `seit` und `gemeldet` bleiben. Ein ganz grüner Lauf löscht die Datei.
 
-**Kein Wiederholen ohne Änderung:** Kommt der nächste Lauf auf denselben roten Commit, steht „Bekannter roter Stand …, übersprungen“ im Protokoll: keine Tests, kein Bau, Exit 0, aber **kein Stempel und kein Heartbeat** (Rot ist kein fachlicher Erfolg). Neu geprüft wird bei einem neuen Commit oder mit `--immer`. Ein Baufehler, der nur durch etwas außerhalb des Repos verschwindet, braucht `--immer`. Infrastrukturfehler werden dagegen nicht gemerkt und vom Timer wiederholt: Vorspulen oder Submodul scheitern, `deploy.sh` endet mit Exit 1 (dann endet auch die Schleife über die Reisen sofort).
+**Kein Wiederholen ohne Änderung:** Kommt der nächste Lauf auf denselben roten Commit, steht „Known red state …, skipped“ (Bekannter roter Stand) im Protokoll: keine Tests, kein Bau, Exit 0, aber **kein Stempel und kein Heartbeat** (Rot ist kein fachlicher Erfolg). Neu geprüft wird bei einem neuen Commit oder mit `--immer`. Ein Baufehler, der nur durch etwas außerhalb des Repos verschwindet, braucht `--immer`. Infrastrukturfehler werden dagegen nicht gemerkt und vom Timer wiederholt: Vorspulen oder Submodul scheitern, `deploy.sh` endet mit Exit 1 (dann endet auch die Schleife über die Reisen sofort).
 
 **Alarm:** Ist ein Stand seit `FR_ROT_MELDEN_NACH_MINUTEN` Minuten rot (Vorgabe 30, Einstellungen), geht bei jedem Lauf, der das Rot kennt (auch beim Überspringen), die Alarmprüfung los: einmal je Rot-Phase `high` an den Betrieb („Veröffentlichen seit … Minuten rot“, mit Art, Reisen und Commit). Kommt die Nachricht nicht an, bleibt `gemeldet=0` und der nächste Lauf versucht es wieder. Bei roten Reisen legt `engine/waechter.py rot-melden --reisen <a,b> --seit <seit>` dazu je Reise eine Meldung an deren Organisator:innen an (sie sehen sie im Konnektor); der Schlüssel enthält Reise und `seit`, darum kommt sie je Phase nur einmal. Bei roter Software geht nur der Alarm an den Betrieb.
 
@@ -185,7 +185,7 @@ Der Workflow „Software nachziehen“ (siehe „Neue Instanz einrichten“) lä
    - `nginx -t` und `systemctl reload nginx`
    - `install`, `test`, `cat` und `rm` für Dateien in `<FR_NGINX_SNIPPETS>/<instanz>-*.conf`
 7. **Erste Reise** anlegen (`docs/neue-reise.md`), nach `main` bringen, im Bauordner `FR_WURZEL=<Bauordner> frieda/betrieb/deploy.sh <reise>` (legt den Code der Dienste an). Danach `sudo systemctl enable --now <instanz>-rueckmeldungen <instanz>-konnektor <instanz>-schreiben` und die beiden Timer, wie `einrichten.sh` sie nennt.
-8. **Prüfen:** `FR_WURZEL=<Bauordner> frieda/betrieb/veroeffentlichen.sh --immer` zeigt „ist online“. Mit `freischalten.sh <reise> --person <schlüssel>` bekommt jede Person ihren Link, den sie in der Claude-App einträgt (`docs/konnektor.md`). `curl -s 127.0.0.1:<FR_SB_PORT>/gesund` antwortet `{"gesund": true}`.
+8. **Prüfen:** `FR_WURZEL=<Bauordner> frieda/betrieb/veroeffentlichen.sh --immer` zeigt „Done: … is online“. Mit `freischalten.sh <reise> --person <schlüssel>` bekommt jede Person ihren Link, den sie in der Claude-App einträgt (`docs/konnektor.md`). `curl -s 127.0.0.1:<FR_SB_PORT>/gesund` antwortet `{"gesund": true}`.
 
 **Zwei Instanzen auf einem Server** brauchen verschiedene `FR_INSTANZ`, `FR_SEITEN` (und damit Ablage und Dienstordner) und Ports. `einrichten.sh` bricht ab, wenn eine andere installierte Instanz dieselben Ports nutzt. Unit-Namen, nginx-Bausteine, Drossel-Zone und Sperrdateien tragen den Namen der Instanz. Jede Instanz braucht einen eigenen Konnektor-Pfad (`<instanz>-mcp`).
 

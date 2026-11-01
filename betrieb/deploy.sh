@@ -24,18 +24,18 @@ KN_MODULE="konnektor.py schnittstelle.py reise.py routen.py konten.py anmeldung.
 # mit dem Code der Arbeitskopie <Wurzel>-schreiben aus (dort liegt die ganze Engine auf dem Stand von main).
 SB_MODULE="schreiben.py konten.py reise.py instanz.py kalender.py texte.py $SPRACHDATEIEN"
 
-[ -d "$WURZEL/reisen/$REISE" ] || { echo "Reise '$REISE' gibt es nicht."; exit 1; }
-[ -d "$FR_SEITEN" ] && [ -w "$FR_SEITEN" ] || { echo "$FR_SEITEN fehlt oder ist nicht beschreibbar (einrichten.sh, docs/betrieb.md)."; exit 1; }
+[ -d "$WURZEL/reisen/$REISE" ] || { echo "Trip '$REISE' does not exist."; exit 1; }
+[ -d "$FR_SEITEN" ] && [ -w "$FR_SEITEN" ] || { echo "$FR_SEITEN is missing or not writable (einrichten.sh, docs/betrieb.md)."; exit 1; }
 
 # Nur gesicherten Stand veröffentlichen: ungesicherte Änderungen an Software oder Reise brechen ab
 if ! git -C "$WURZEL" diff --quiet HEAD -- engine "reisen/$REISE" || [ -n "$(git -C "$WURZEL" ls-files --others --exclude-standard -- engine "reisen/$REISE")" ]; then
-  echo "FEHLER: ungesicherte Änderungen in engine/ oder reisen/$REISE. Erst committen, dann veröffentlichen."; exit 1
+  echo "ERROR: uncommitted changes in engine/ or reisen/$REISE. Commit first, then publish."; exit 1
 fi
 # Bau: der erste Schritt mit Wirkung. Scheitert er (Baufehler dieser Reise, deterministisch), endet deploy.sh mit 2;
 # veroeffentlichen.sh macht dann mit den anderen Reisen weiter, die Seite bleibt auf ihrem letzten guten Stand.
 # Warnungen im Plan sperren nie (bauen.py endet dann mit 0).
 "$FR_PYTHON" "$WURZEL/engine/bauen.py" --reisen "$WURZEL/reisen" --ziel "$WURZEL/dist" "$REISE" \
-  || { echo "FEHLER: Bau von $REISE gescheitert, die Seite bleibt auf dem letzten guten Stand."; exit 2; }
+  || { echo "ERROR: build of $REISE failed, the page stays at the last good state."; exit 2; }
 # Prüfungen nur der Software (engine/tests); tests/ des Reisen-Repos prüft Inhalt und sperrt nie (docs/betrieb.md).
 # veroeffentlichen.sh prüft einmal für alle Reisen und setzt FR_GEPRUEFT auf den geprüften Stand
 if [ "${FR_GEPRUEFT:-}" != "$(git -C "$WURZEL" rev-parse HEAD)" ]; then
@@ -60,11 +60,11 @@ rsync -a --delete --chmod=D755,F644 --exclude "*.py" "$WURZEL/engine/marke/" "$D
 rsync -a --delete --chmod=D755,F644 --include "*.woff2" --exclude "*" "$WURZEL/engine/vendor/fonts/" "$DIENST/schrift/"
 mkdir -p "$FR_KONNEKTOR" "$FR_KONTEN" && chmod 700 "$FR_KONNEKTOR" "$FR_KONTEN"
 neustart() {
-  ${FR_SUDO-sudo -n} systemctl restart "$1" 2>/dev/null && echo "$2 neu gestartet." \
-    || echo "$2: Code geändert, bitte: sudo systemctl restart $1"
+  ${FR_SUDO-sudo -n} systemctl restart "$1" 2>/dev/null && echo "$2 restarted." \
+    || echo "$2: code changed, please run: sudo systemctl restart $1"
 }
 # Der Konnektor lädt auch rueckmeldungen.py: ändert sich etwas am Rückmeldedienst, starten beide neu
-[ -n "$NEU_RM" ] && neustart "$FR_INSTANZ-rueckmeldungen" "Rückmeldedienst"
+[ -n "$NEU_RM" ] && neustart "$FR_INSTANZ-rueckmeldungen" "feedback service"
 [ -n "$NEU_RM$NEU_KN" ] && neustart "$FR_INSTANZ-konnektor" "Konnektor"
 # Der Schreibweg ist nur bei Instanzen aktiv, die ihn eingerichtet haben (einrichten.sh, docs/betrieb.md)
 if [ -n "$NEU_SB" ] && systemctl is-enabled --quiet "$FR_INSTANZ-schreiben" 2>/dev/null; then
@@ -74,11 +74,11 @@ rsync -a --delete --chmod=D755,F644 "$WURZEL/dist/$REISE/" "$ZIEL/"
 
 # Prüfung: Seite samt PWA-Hülle liegt da, die Dienste antworten (nach einem Neustart kurz warten)
 for f in index.html sw.js manifest.json; do
-  [ -s "$ZIEL/$f" ] || { echo "FEHLER: $ZIEL/$f fehlt oder ist leer."; exit 1; }
+  [ -s "$ZIEL/$f" ] || { echo "ERROR: $ZIEL/$f is missing or empty."; exit 1; }
 done
 bereit() { for _ in 1 2 3 4 5 6 7 8 9 10; do curl -fsS -o /dev/null "$1" && return 0; sleep 0.5; done; return 1; }
-bereit "http://127.0.0.1:$FR_RM_PORT/$REISE/gesund" || { echo "FEHLER: Rückmeldedienst antwortet nicht (systemctl status $FR_INSTANZ-rueckmeldungen)."; exit 1; }
+bereit "http://127.0.0.1:$FR_RM_PORT/$REISE/gesund" || { echo "ERROR: feedback service does not respond (systemctl status $FR_INSTANZ-rueckmeldungen)."; exit 1; }
 if systemctl is-enabled --quiet "$FR_INSTANZ-konnektor" 2>/dev/null; then
-  bereit "http://127.0.0.1:$FR_KN_PORT/gesund" || { echo "FEHLER: Konnektor nicht bereit (systemctl status $FR_INSTANZ-konnektor)."; exit 1; }
+  bereit "http://127.0.0.1:$FR_KN_PORT/gesund" || { echo "ERROR: connector not ready (systemctl status $FR_INSTANZ-konnektor)."; exit 1; }
 fi
-echo "Fertig: $ZIEL ($(du -sh "$ZIEL" | cut -f1))"
+echo "Done: $ZIEL ($(du -sh "$ZIEL" | cut -f1))"

@@ -16,7 +16,7 @@ fr_wurzel_angegeben="${FR_WURZEL:-}"
 
 if [ -z "${FR_WURZEL:-}" ]; then
   FR_WURZEL="$(git -C "$FR_BETRIEB" rev-parse --show-superproject-working-tree 2>/dev/null || true)"
-  [ -n "$FR_WURZEL" ] || { echo "FEHLER: Wurzel der Instanz unbekannt (FR_WURZEL setzen oder die Software als Submodul einbinden)." >&2; exit 1; }
+  [ -n "$FR_WURZEL" ] || { echo "ERROR: root of the instance unknown (set FR_WURZEL or include the software as a submodule)." >&2; exit 1; }
 fi
 FR_WURZEL="$(cd "$FR_WURZEL" && pwd)"
 export FR_WURZEL
@@ -28,13 +28,13 @@ nur_bauordner() {  # [--main]: ohne FR_WURZEL abbrechen; mit --main auch, wenn H
   local skript zweig
   skript="$(basename "$0")"
   if [ -z "$fr_wurzel_angegeben" ]; then
-    echo "FEHLER: FR_WURZEL fehlt. $skript läuft nur im Bauordner: FR_WURZEL=<Bauordner> frieda/betrieb/$skript …" >&2
+    echo "ERROR: FR_WURZEL is missing. $skript runs only in the build folder: FR_WURZEL=<Bauordner> frieda/betrieb/$skript …" >&2
     exit 1
   fi
   if [ "${1:-}" = --main ]; then
-    zweig="$(git -C "$FR_WURZEL" symbolic-ref -q --short HEAD 2>/dev/null || echo "losgelöster HEAD")"
+    zweig="$(git -C "$FR_WURZEL" symbolic-ref -q --short HEAD 2>/dev/null || echo "detached HEAD")"
     if [ "$zweig" != main ]; then
-      echo "FEHLER: $FR_WURZEL steht nicht auf main ($zweig). Gebaut wird nur, was auf main liegt." >&2
+      echo "ERROR: $FR_WURZEL is not on main ($zweig). Only what is on main gets built." >&2
       exit 1
     fi
   fi
@@ -48,7 +48,7 @@ fr_einlesen() {  # <datei>: NAME=wert-Zeilen übernehmen, Vorhandenes bleibt; nu
     case "$zeile" in ''|'#'*) continue ;; esac
     name="${zeile%%=*}"; wert="${zeile#*=}"
     if [[ ! "$name" =~ ^FR_[A-Z0-9_]+$ ]] || [ "$name" = "$zeile" ]; then
-      echo "Warnung: $1: Zeile ignoriert (erwartet FR_NAME=wert): $name" >&2; continue
+      echo "Warning: $1: line ignored (expected FR_NAME=value): $name" >&2; continue
     fi
     case "$wert" in \"*\") wert="${wert:1:${#wert}-2}" ;; \'*\') wert="${wert:1:${#wert}-2}" ;; esac
     [ -n "${!name+x}" ] || export "$name=$wert"
@@ -59,7 +59,7 @@ fr_einlesen "${FR_EINSTELLUNGEN:-$FR_WURZEL/betrieb/einstellungen.env}"
 
 # Vorgaben (Erklärung in einstellungen.beispiel)
 : "${FR_INSTANZ:=frieda}"
-[[ "$FR_INSTANZ" =~ ^[a-z][a-z0-9-]{0,30}$ ]] || { echo "FEHLER: FR_INSTANZ „$FR_INSTANZ“: nur Kleinbuchstaben, Ziffern, Bindestrich." >&2; exit 1; }
+[[ "$FR_INSTANZ" =~ ^[a-z][a-z0-9-]{0,30}$ ]] || { echo "ERROR: FR_INSTANZ “$FR_INSTANZ”: lowercase letters, digits and hyphen only." >&2; exit 1; }
 : "${FR_TITEL:=Frieda}"
 : "${FR_SEITEN:=/srv/$FR_INSTANZ}"
 : "${FR_DIENST:=$FR_SEITEN/_dienst}"
@@ -90,5 +90,5 @@ export RM_ABLAGE KN_SEITEN KN_ZUGAENGE
 
 fr_melden() {  # <normal|high> <betreff> <text> [erledigt]: Nachricht an den Betreiber über FR_MELDEN, sonst nichts
   [ -n "$FR_MELDEN" ] || return 0
-  "$FR_MELDEN" "$1" "$FR_TITEL: $2" "$3" "${4:-}" > /dev/null 2>&1 || echo "Warnung: Nachricht nicht gesendet."
+  "$FR_MELDEN" "$1" "$FR_TITEL: $2" "$3" "${4:-}" > /dev/null 2>&1 || echo "Warning: message not sent."
 }

@@ -471,8 +471,8 @@ def test_ablehnungsgrund_steht_im_protokoll(repo, capsys):
     code, a = sb.anwenden_extern(s, "beispielreise", "art_definieren", {**KARL, "args": {"bezeichnung": "X", "grundform": "aufenthalt"}})
     assert code == 422
     err = capsys.readouterr().err
-    zeile = next(z for z in err.splitlines() if z.startswith("Abgelehnt"))
-    assert zeile.startswith("Abgelehnt art_definieren 422: ") and "organisers" in zeile and len(zeile) < 260
+    zeile = next(z for z in err.splitlines() if z.startswith("Rejected"))
+    assert zeile.startswith("Rejected art_definieren 422: ") and "organisers" in zeile and len(zeile) < 260
 
 
 def _abbruch_im_anwenden(repo, monkeypatch, capsys, origin_kaputt=True):
@@ -493,7 +493,7 @@ def _abbruch_im_anwenden(repo, monkeypatch, capsys, origin_kaputt=True):
 def test_zu_langsamer_vorgang_gibt_meldung_in_der_zeit(repo, monkeypatch, capsys):
     code, a, err = _abbruch_im_anwenden(repo, monkeypatch, capsys)
     assert code == 504 and not a["ok"] and "prüfen, ob es angekommen ist" in a["fehler"]
-    assert "Zeit art_definieren 504: abgebrochen, ungeprüft" in err
+    assert "Timeout art_definieren 504: aborted, unchecked" in err
 
 
 def test_arten_text_ist_die_form_der_datei():
@@ -1340,15 +1340,15 @@ def test_nach_abbruch_sagt_die_antwort_ob_eingetragen_wurde(repo, monkeypatch, c
     assert sb.vorgang_eingetragen(s, "k4711") is True
     assert sb.vorgang_eingetragen(s, "k0815") is False
     # Die Antworten nach einem Abbruch im Anwenden
-    for ergebnis, code_soll, ok_soll, text, zeile in [(True, 200, True, "ist aber eingetragen", "eingetragen"),
-                                                      (False, 504, False, "nicht eingetragen", "nicht eingetragen"),
-                                                      (None, 504, False, "prüfen, ob es angekommen ist", "ungeprüft")]:
+    for ergebnis, code_soll, ok_soll, text, zeile in [(True, 200, True, "ist aber eingetragen", "saved"),
+                                                      (False, 504, False, "nicht eingetragen", "not saved"),
+                                                      (None, 504, False, "prüfen, ob es angekommen ist", "unchecked")]:
         monkeypatch.setattr(sb, "vorgang_eingetragen", lambda s_, kennung, e=ergebnis: e)
         code, a, err = _abbruch_im_anwenden(repo, monkeypatch, capsys, origin_kaputt=False)
         assert code == code_soll and a["ok"] is ok_soll, (ergebnis, code, a)
         assert text in (a.get("text") or a.get("fehler") or "")
-        assert f"Fertig art_definieren {code_soll} in " in err
-        assert f"Zeit art_definieren 504: abgebrochen, {zeile}" in err
+        assert f"Done art_definieren {code_soll} in " in err
+        assert f"Timeout art_definieren 504: aborted, {zeile}" in err
 
 
 def test_kommando_mit_frist_beendet_die_ganze_prozessgruppe(tmp_path):
@@ -1373,7 +1373,7 @@ def test_dauer_steht_im_protokoll(repo, monkeypatch, capsys):
     wurzel, _, arbeit, _ = repo
     s = sb.Schreiber(wurzel, arbeit)
     anfrage = {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}}
-    muster = re.compile(r"^Fertig art_definieren (\d{3}) in \d+\.\d s$", re.M)
+    muster = re.compile(r"^Done art_definieren (\d{3}) in \d+\.\d s$", re.M)
 
     def codes():
         return muster.findall(capsys.readouterr().err)
@@ -1428,7 +1428,7 @@ def test_unerwarteter_fehler_gibt_500_und_protokoll(repo, monkeypatch, capsys, t
     err = capsys.readouterr().err
     assert code == 500 and not a["ok"] and "Fehler im Dienst" in a["fehler"]
     assert "Fehler art_definieren 500: FileNotFoundError" in err
-    assert "Fertig art_definieren 500 in " in err
+    assert "Done art_definieren 500 in " in err
 
 
 def test_veraltete_sperre_von_git_blockiert_die_reise_nicht(repo, capsys):

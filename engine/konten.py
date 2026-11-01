@@ -848,12 +848,12 @@ def main(a):
         elif a[:1] == ["zusammenfuehren"] and len(a) == 3:
             zusammenfuehren(_per_email(a[1])["id"], _per_email(a[2])["id"])
         elif a[:1] == ["einladen"] and len(a) == 7:
-            print("gilt sofort" if einladen(*a[1:])["sofort"] else "Einladung verschickt")
+            print("valid immediately" if einladen(*a[1:])["sofort"] else "invitation sent")
         else:
             print(__doc__)
             return 1
     except KontoFehler as f:
-        print(f"FEHLER: {f}")
+        print(f"ERROR: {f}")
         return 2
     return 0
 

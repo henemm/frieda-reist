@@ -85,7 +85,7 @@ def ausstehend(wurzel, datei, seiten=None, freischalten=None):
             rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [e["name"]], "neue_reise", e["ordner"],
                                texte.t(sprache, "dienst.zustellen.app", titel=titel, seite=links["Seite"], link=links["Claude-App"]),
                                auftraege=[e["aid"]])
-        print(f"Delivered: {e['ordner']} an {e['name']}")
+        print(f"Delivered: {e['ordner']} to {e['name']}")
     p.write_text("".join(z + "\n" for z in rest), encoding="utf-8")
     return fehlschlaege
 

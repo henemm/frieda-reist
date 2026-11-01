@@ -15,11 +15,11 @@ bericht="$(mktemp)"
 trap 'rm -f "$bericht"' EXIT
 
 if ! "$FR_PYTHON" "$FR_WURZEL/engine/waechter.py" lauf --bericht "$bericht"; then
-  fr_melden high "Wächter fehlgeschlagen" "Der tägliche Lauf des Wächters ist abgebrochen, es kommen keine neuen Meldungen. Log: journalctl -u $FR_INSTANZ-waechter -n 100"
+  fr_melden high "Watchdog failed" "The daily run of the watchdog aborted, no new messages will arrive. Log: journalctl -u $FR_INSTANZ-waechter -n 100"
   exit 1
 fi
 
 mkdir -p "$(dirname "$STEMPEL")" && touch "$STEMPEL"
 if [ -s "$bericht" ]; then
-  fr_melden normal "Wächter und Erinnerer" "$(cat "$bericht")" erledigt
+  fr_melden normal "Watchdog and reminders" "$(cat "$bericht")" erledigt
 fi

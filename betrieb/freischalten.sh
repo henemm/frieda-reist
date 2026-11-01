@@ -18,9 +18,9 @@
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
 
-REISE="${1:?Aufruf: freischalten.sh <reise> [--person <schluessel>]}"
+REISE="${1:?usage: freischalten.sh <trip> [--person <key>]}"
 PERSON=""
-[ "${2:-}" = "--person" ] && PERSON="${3:?--person braucht einen Schlüssel aus reise.yaml}"
+[ "${2:-}" = "--person" ] && PERSON="${3:?--person needs a key from reise.yaml}"
 WURZEL="$FR_WURZEL"
 SNIPPETS="${FS_SNIPPETS:-${FR_NGINX_SNIPPETS:-/etc/nginx/snippets}}"
 BASIS="${FS_BASIS:-$FR_ADRESSE}"
@@ -34,10 +34,10 @@ abruf() {  # <url> -> HTTP-Code
   if [ -n "${FS_ABRUF:-}" ]; then $FS_ABRUF "$1"; else curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$1"; fi
 }
 
-[[ "$REISE" =~ ^[a-z0-9][a-z0-9-]{1,39}$ ]] || { echo "FEHLER: Reise „$REISE“: nur Kleinbuchstaben, Ziffern, Bindestrich."; exit 1; }
+[[ "$REISE" =~ ^[a-z0-9][a-z0-9-]{1,39}$ ]] || { echo "ERROR: trip “$REISE”: lowercase letters, digits and hyphen only."; exit 1; }
 [ -f "$WURZEL/reisen/$REISE/reise.yaml" ] || [ -f "$WURZEL/reisen/$REISE/reise.json" ] \
-  || { echo "FEHLER: Reise „$REISE“ gibt es nicht."; exit 1; }
-[ -n "$BASIS" ] || { echo "FEHLER: FR_ADRESSE ist nicht gesetzt (Einstellungen der Instanz)."; exit 1; }
+  || { echo "ERROR: trip “$REISE” does not exist."; exit 1; }
+[ -n "$BASIS" ] || { echo "ERROR: FR_ADRESSE is not set (settings of the instance)."; exit 1; }
 
 snippet="$SNIPPETS/$FR_INSTANZ-$REISE.conf"
 rendern() {  # <pfad> -> Baustein aus der Vorlage; der Pfad ist das erste Glied des geheimen Links („<reise>-<token>“)
@@ -58,7 +58,7 @@ if ! $SUDO test -e "$snippet"; then
   $SUDO install -m 640 "$tmp" "$snippet"
   if ! $NGINX_TEST; then
     $SUDO rm -f "$snippet"
-    echo "FEHLER: nginx lehnt die Konfiguration ab; Snippet für $REISE wieder entfernt, nichts geändert."; exit 1
+    echo "ERROR: nginx rejects the configuration; snippet for $REISE removed again, nothing changed."; exit 1
   fi
   $NGINX_LADEN
   neu=1
@@ -67,35 +67,35 @@ else
   # Stand mit demselben Pfad; der Link bleibt. Lehnt nginx ab, kommt der alte Stand zurück.
   alt="$($SUDO cat "$snippet")"
   pfad="$(pfad_aus "$alt")"
-  [ -n "$pfad" ] || { echo "FEHLER: Im Baustein $snippet steht kein Pfad (location ^~ /<reise>-<token>/ fehlt)."; exit 1; }
+  [ -n "$pfad" ] || { echo "ERROR: no path in the block $snippet (location ^~ /<reise>-<token>/ is missing)."; exit 1; }
   rendern "$pfad" > "$tmp"
   if [ "$(cat "$tmp")" != "$alt" ]; then
     sicher="$(mktemp)"; printf '%s\n' "$alt" > "$sicher"
     $SUDO install -m 640 "$tmp" "$snippet"
     if ! $NGINX_TEST; then
       $SUDO install -m 640 "$sicher" "$snippet"; rm -f "$sicher"
-      echo "FEHLER: nginx lehnt den erneuerten Baustein für $REISE ab; der alte Stand gilt weiter."; exit 1
+      echo "ERROR: nginx rejects the renewed block for $REISE; the old state stays in force."; exit 1
     fi
     rm -f "$sicher"
     $NGINX_LADEN
-    echo "Baustein erneuert: $REISE"
+    echo "Block renewed: $REISE"
   fi
 fi
 
 pfad="$(pfad_aus "$($SUDO cat "$snippet")")"
-[ -n "$pfad" ] || { echo "FEHLER: Im Snippet $snippet steht kein Pfad."; exit 1; }
+[ -n "$pfad" ] || { echo "ERROR: no path in the snippet $snippet."; exit 1; }
 url="$BASIS/$pfad/"
 # Nach dem Neuladen braucht nginx einen Moment, bis die neuen Pfade gelten: Ein neuer Link wird deshalb mehrmals versucht.
 versuche=1; [ -n "$neu" ] && versuche="${FS_VERSUCHE:-10}"
-for teil in "Seite|" "Rückmeldedienst|api/gesund"; do
+for teil in "page|" "feedback service|api/gesund"; do
   for ((i = 1; ; i++)); do
     code="$(abruf "$url${teil#*|}" || true)"
     { [ "$code" = 200 ] || [ "$i" -ge "$versuche" ]; } && break
     sleep "${FS_WARTEN:-1}"
   done
-  [ "$code" = 200 ] || { echo "FEHLER: ${teil%|*} von $REISE antwortet mit ${code:-nichts} statt 200${neu:+ (Link eben angelegt; fehlt das include in nginx?)}."; exit 1; }
+  [ "$code" = 200 ] || { echo "ERROR: ${teil%|*} of $REISE answers with ${code:-nothing} instead of 200${neu:+ (link just created; is the include missing in nginx?)}."; exit 1; }
 done
-[ -n "$neu" ] && echo "Freigeschaltet: $REISE"
+[ -n "$neu" ] && echo "Released: $REISE"
 
 # Link zur Seite für meine_reisen (Datei nur für den Betreiber lesbar, wie die Zugänge)
 python3 - "$SEITENLINKS" "$REISE" "$url" <<'PY'
@@ -117,8 +117,8 @@ PY
 echo "Seite: $url"
 
 if [ -n "$PERSON" ]; then
-  [ -n "${KN_BASIS:-}" ] || { echo "FEHLER: FR_KN_ADRESSE ist nicht gesetzt (Einstellungen der Instanz)."; exit 1; }
+  [ -n "${KN_BASIS:-}" ] || { echo "ERROR: FR_KN_ADRESSE is not set (settings of the instance)."; exit 1; }
   link="$(python3 "$WURZEL/engine/konnektor.py" zugang "$REISE" "$PERSON" | grep -oE 'https?://[^ ]+$')"
-  [ -n "$link" ] || { echo "FEHLER: Kein Link für die Claude-App ausgestellt."; exit 1; }
+  [ -n "$link" ] || { echo "ERROR: no link issued for the Claude app."; exit 1; }
   echo "Claude-App: $link"
 fi

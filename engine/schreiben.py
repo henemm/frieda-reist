@@ -3299,11 +3299,11 @@ class Schreiber:
             r = subprocess.run(["git", "-C", str(self.arbeit), "push", "-q", "origin", "HEAD:main"], capture_output=True, text=True)
             if r.returncode == 0:
                 return git(self.arbeit, "rev-parse", "HEAD")
-            sys.stderr.write(f"Hochladen, Versuch {versuch + 1}: git push fehlgeschlagen: {r.stderr.strip()}\n")
+            sys.stderr.write(f"Upload attempt {versuch + 1}: git push failed: {r.stderr.strip()}\n")
             git(self.arbeit, "fetch", "-q", "origin", "main")
             rb = subprocess.run(["git", "-C", str(self.arbeit), "rebase", "-q", "origin/main"], capture_output=True, text=True)
             if rb.returncode != 0:
-                sys.stderr.write(f"Hochladen, Versuch {versuch + 1}: git rebase fehlgeschlagen: {rb.stderr.strip() or rb.stdout.strip()}\n")
+                sys.stderr.write(f"Upload attempt {versuch + 1}: git rebase failed: {rb.stderr.strip() or rb.stdout.strip()}\n")
                 git(self.arbeit, "rebase", "--abort", fehler=False)
                 git(self.arbeit, "reset", "-q", "--hard", "origin/main")
                 raise Ablehnung("schreiben.hochladen.1", reise=reise)
@@ -3327,7 +3327,7 @@ class Schreiber:
                                  start_new_session=True)
                 return
             except OSError as e:
-                sys.stderr.write(f"Veröffentlichen nicht gestartet ({' '.join(argv[:1])}): {e}\n")
+                sys.stderr.write(f"Publishing not started ({' '.join(argv[:1])}): {e}\n")
 
 
 def anwenden(wurzel_, arbeit, reise, werkzeug, anfrage):
@@ -3338,7 +3338,7 @@ def anwenden(wurzel_, arbeit, reise, werkzeug, anfrage):
     except Ablehnung as e:
         # Grund ins Protokoll (Werkzeug, Code, Regel; ein Zeilenumbruch oder Überlänge hat dort nichts zu suchen)
         grund = " ".join(str(e).split())[:LOG_LAENGE]
-        sys.stderr.write(f"Abgelehnt {werkzeug} 422: {grund}\n")
+        sys.stderr.write(f"Rejected {werkzeug} 422: {grund}\n")
         antwort = {"ok": False, "fehler": str(e)}
         if e.schluessel:   # der Konnektor setzt den Satz in der Sprache der Person zusammen
             antwort.update(fehler_code=e.schluessel, werte=e.werte_json())
@@ -3384,7 +3384,7 @@ def vorgang_eingetragen(s, kennung):
 
 
 def nicht_eingetragen(werkzeug):
-    sys.stderr.write(f"Zeit {werkzeug} 504: abgebrochen, nicht eingetragen\n")
+    sys.stderr.write(f"Timeout {werkzeug} 504: aborted, not saved\n")
     return 504, fehler_antwort("schreiben.dienst.zu_lange_nicht")
 
 
@@ -3392,12 +3392,12 @@ def nach_abbruch(s, werkzeug, kennung):
     """Antwort, nachdem das Anwenden von der Frist abgebrochen wurde: Ergebnis auf origin/main nachsehen."""
     ergebnis = vorgang_eingetragen(s, kennung)
     if ergebnis:
-        sys.stderr.write(f"Zeit {werkzeug} 504: abgebrochen, eingetragen\n")
+        sys.stderr.write(f"Timeout {werkzeug} 504: aborted, saved\n")
         text = S("schreiben.dienst.verzoegert")
         return 200, {"ok": True, "text": str(text), "text_teile": text.teile_json(), "hinweis": str(text)}
     if ergebnis is False:
         return nicht_eingetragen(werkzeug)
-    sys.stderr.write(f"Zeit {werkzeug} 504: abgebrochen, ungeprüft\n")
+    sys.stderr.write(f"Timeout {werkzeug} 504: aborted, unchecked\n")
     return 504, fehler_antwort("schreiben.dienst.zu_lange_ungeprueft")
 
 
@@ -3412,9 +3412,9 @@ def anwenden_extern(s, reise, werkzeug, anfrage):
         code, antwort = vorgang(s, reise, werkzeug, anfrage, start)
     except Exception as e:
         grund = " ".join(f"{type(e).__name__}: {e}".split())[:LOG_LAENGE]
-        sys.stderr.write(f"Fehler {werkzeug} 500: {grund}\n")
+        sys.stderr.write(f"Error {werkzeug} 500: {grund}\n")
     finally:
-        sys.stderr.write(f"Fertig {werkzeug} {code} in {time.monotonic() - start:.1f} s\n")
+        sys.stderr.write(f"Done {werkzeug} {code} in {time.monotonic() - start:.1f} s\n")
     return code, antwort
 
 
@@ -3435,7 +3435,7 @@ def git_sperren_raeumen(arbeit):
         return
     for f in gitdir.glob("*.lock"):
         f.unlink(missing_ok=True)
-        sys.stderr.write(f"Arbeitskopie: veraltete Sperre {f.name} entfernt\n")
+        sys.stderr.write(f"Working copy: stale lock {f.name} removed\n")
 
 
 def vorgang(s, reise, werkzeug, anfrage, start):
@@ -3443,7 +3443,7 @@ def vorgang(s, reise, werkzeug, anfrage, start):
     s.ende = start + ZEIT_GESAMT
     with open(sperrdatei(reise), "w") as f:
         if not sperre_nehmen(f):
-            sys.stderr.write(f"Gesperrt {werkzeug} 429: Sperre der Reise nach {ZEIT_SPERRE} s noch belegt\n")
+            sys.stderr.write(f"Locked {werkzeug} 429: lock of the trip still held after {ZEIT_SPERRE} s\n")
             return 429, fehler_antwort("schreiben.dienst.besetzt")
         try:
             git_sperren_raeumen(s.arbeit)     # unter der Sperre der Reise: kein anderes git arbeitet in dieser Kopie
@@ -3455,7 +3455,7 @@ def vorgang(s, reise, werkzeug, anfrage, start):
             return 503, fehler_antwort("schreiben.dienst.repo_nicht_erreichbar_spaeter")
         skript = s.arbeit / "engine" / "schreiben.py"
         if not skript.exists():
-            sys.stderr.write(f"Arbeitskopie: {skript} fehlt\n")
+            sys.stderr.write(f"Working copy: {skript} missing\n")
             return 503, fehler_antwort("schreiben.dienst.software_alt")
         if s.rest() <= 0:
             return nicht_eingetragen(werkzeug)
@@ -3472,7 +3472,7 @@ def vorgang(s, reise, werkzeug, anfrage, start):
             code, antwort = json.loads(r.stdout)
             return int(code), antwort
         except (ValueError, TypeError):
-            sys.stderr.write(f"anwenden: Code {r.returncode}, Ausgabe: {r.stdout[-500:]}\n")
+            sys.stderr.write(f"apply: code {r.returncode}, output: {r.stdout[-500:]}\n")
             return 500, fehler_antwort("schreiben.dienst.fehlgeschlagen")
 
 
@@ -3504,7 +3504,7 @@ class Dienst(BaseHTTPRequestHandler):
             try:
                 return self._senden(200, (self.schreiber or Schreiber(wurzel())).buchung_im_repo(teile[0], teile[2]))
             except (RuntimeError, subprocess.TimeoutExpired) as e:
-                sys.stderr.write(f"Fehler buchung 503: {' '.join(str(e).split())[:LOG_LAENGE]}\n")
+                sys.stderr.write(f"Error buchung 503: {' '.join(str(e).split())[:LOG_LAENGE]}\n")
                 return self._senden(503, fehler_antwort("schreiben.dienst.repo_nicht_erreichbar", mit_ok=False))
         self._senden(404, fehler_antwort("schreiben.dienst.unbekannt", mit_ok=False))
 

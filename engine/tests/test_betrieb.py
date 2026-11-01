@@ -72,7 +72,7 @@ def test_umgebung_gilt_vor_der_datei_und_fremdes_wird_ignoriert(tmp_path):
     r, w = einstellungen(tmp_path, "FR_INSTANZ=probe\nPATH=/nirgends\nRM_ABLAGE=/falsch\nFR_SEITEN=/srv/datei\n",
                          FR_SEITEN="/srv/umgebung")
     assert r.returncode == 0 and w["FR_SEITEN"] == "/srv/umgebung" and w["RM_ABLAGE"] == "/srv/umgebung/_rueckmeldungen"
-    assert "Zeile ignoriert" in r.stderr and "PATH" in r.stderr
+    assert "line ignored" in r.stderr and "PATH" in r.stderr
 
 
 def test_geheime_werte_aus_dem_dienstordner(tmp_path):
@@ -98,7 +98,7 @@ def test_ohne_wurzel_bricht_ab(tmp_path):
     shutil.copy(BETRIEB / "gemeinsam.sh", tmp_path / "gemeinsam.sh")
     r = subprocess.run(["bash", "-c", f'. "{tmp_path}/gemeinsam.sh"'], capture_output=True, text=True,
                        env={**SAUBER, "GIT_CEILING_DIRECTORIES": str(tmp_path.parent)})
-    assert r.returncode != 0 and "Wurzel der Instanz" in r.stderr
+    assert r.returncode != 0 and "root of the instance" in r.stderr
 
 
 def test_beispiel_einstellungen_sind_vollstaendig():
@@ -244,7 +244,7 @@ def test_veroeffentlichen_prueft_einmal_fuer_alle_reisen(vf):
     derselbe Stand wird erst mit --immer oder einem neuen Commit wieder geprüft (#142, AC-3, AC-15)."""
     (vf["tmp"] / "rot").touch()
     r = vf["lauf"](VF_JETZT=str(T0))
-    assert r.returncode == 1 and "Prüfungen rot" in r.stdout and vf["deploys"]() == []
+    assert r.returncode == 1 and "checks red" in r.stdout and vf["deploys"]() == []
     assert not (vf["tmp"] / "dienst/veroeffentlicht").exists()
     assert not (vf["tmp"] / "dienst/veroeffentlichen-erfolg").exists() and vf["pings"]() == 0
     rot = vf["rot"]()
@@ -252,7 +252,7 @@ def test_veroeffentlichen_prueft_einmal_fuer_alle_reisen(vf):
     assert rot["seit"] == iso(T0) and rot["gemeldet"] == "0"
     (vf["tmp"] / "rot").unlink()
     r = vf["lauf"]()
-    assert r.returncode == 0 and "Bekannter roter Stand" in r.stdout and vf["deploys"]() == []
+    assert r.returncode == 0 and "Known red state" in r.stdout and vf["deploys"]() == []
     assert vf["zeilen"]("pruefen.log") == ["p"]
     assert vf["lauf"]("--immer").returncode == 0
     assert vf["deploys"]() == ["beispielreise", "zweitreise"]
@@ -266,12 +266,12 @@ def test_veroeffentlichen_prueft_einmal_fuer_alle_reisen(vf):
 def test_veroeffentlichen_laesst_laufende_arbeit_in_ruhe(vf):
     (vf["arbeit"] / "entwurf.md").write_text("halb fertig")
     erg = vf["lauf"]()
-    assert erg.returncode == 0 and "Ungesicherte" in erg.stdout
+    assert erg.returncode == 0 and "Uncommitted" in erg.stdout
     assert vf["deploys"]() == []
     (vf["arbeit"] / "entwurf.md").unlink()
     git(vf["arbeit"], "checkout", "-qb", "baustelle")
     erg = vf["lauf"]()
-    assert erg.returncode == 0 and "nicht auf main" in erg.stdout
+    assert erg.returncode == 0 and "not on main" in erg.stdout
     assert vf["deploys"]() == []
 
 
@@ -316,10 +316,10 @@ def test_veroeffentlichen_sperre_je_instanz(vf):
     import fcntl
     with open(vf["tmp"] / "andere-veroeffentlichen.lock", "w") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
-        assert "Läuft schon" not in vf["lauf"]().stdout
+        assert "Already running" not in vf["lauf"]().stdout
     with open(vf["tmp"] / "probe-veroeffentlichen.lock", "w") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
-        assert "Läuft schon" in vf["lauf"]().stdout
+        assert "Already running" in vf["lauf"]().stdout
 
 
 def test_veroeffentlichen_freischalten_je_reise_ohne_links_im_protokoll(vf):
@@ -341,12 +341,12 @@ def test_veroeffentlichen_nennt_erneuerte_bausteine_und_den_grund_eines_fehlschl
     """„Baustein erneuert“ steht im Protokoll; schlägt freischalten.sh fehl, steht sein FEHLER-Grund darunter, Links nie."""
     frei = ausfuehrbar(vf["tmp"] / "freischalten2.sh",
                        '#!/bin/sh\necho "Seite: https://example.invalid/$1-geheim/"\n'
-                       '[ "$1" = beispielreise ] && echo "Baustein erneuert: $1"\n'
-                       '[ "$1" = zweitreise ] && { echo "FEHLER: Im Baustein steht kein Pfad."; exit 1; }\nexit 0\n')
+                       '[ "$1" = beispielreise ] && echo "Block renewed: $1"\n'
+                       '[ "$1" = zweitreise ] && { echo "ERROR: no path in the block."; exit 1; }\nexit 0\n')
     r = vf["lauf"](VF_FREISCHALTEN=str(frei))
     assert r.returncode == 0, r.stdout + r.stderr
-    assert "Baustein erneuert: beispielreise" in r.stdout
-    assert "Warnung: zweitreise nicht freigeschaltet" in r.stdout and "FEHLER: Im Baustein steht kein Pfad." in r.stdout
+    assert "Block renewed: beispielreise" in r.stdout
+    assert "Warning: zweitreise not released" in r.stdout and "ERROR: no path in the block." in r.stdout
     assert "geheim" not in r.stdout + r.stderr
 
 
@@ -368,7 +368,7 @@ def test_veroeffentlichen_rote_reisetests_sperren_nicht(vf):
     (vf["tmp"] / "rot-reise").touch()
     r = vf["lauf"]()
     assert r.returncode == 0, r.stdout + r.stderr
-    assert "Tests des Reisen-Repos rot (sperren nicht)" in r.stdout
+    assert "tests of the trips repo red (they do not block)" in r.stdout
     assert vf["zeilen"]("pruefen.log") == ["p", "r"]
     assert vf["deploys"]() == ["beispielreise", "zweitreise"]
     assert vf["zeilen"]("frei.log") == ["beispielreise", "zweitreise"]
@@ -476,7 +476,7 @@ def test_veroeffentlichen_merge_und_submodulfehler_werden_nicht_gemerkt(vf):
     git(arbeit, "commit", "-qm", "lokal")
     vf["neuer_commit"]()
     r = vf["lauf"]()
-    assert r.returncode == 1 and "lässt sich nicht vorspulen" in r.stdout, r.stdout + r.stderr
+    assert r.returncode == 1 and "cannot be fast-forwarded" in r.stdout, r.stdout + r.stderr
     assert vf["deploys"]() == [] and not stand.exists() and vf["rot"]() is None
     # Submodul-Fehler: .gitmodules verweist auf ein Ziel, das es nicht gibt
     git(arbeit, "fetch", "-q", "origin", "main")
@@ -489,7 +489,7 @@ def test_veroeffentlichen_merge_und_submodulfehler_werden_nicht_gemerkt(vf):
     rot_datei.parent.mkdir(exist_ok=True)
     rot_datei.write_text(alt, encoding="utf-8")
     r = vf["lauf"]()
-    assert r.returncode == 1 and "Submodul" in r.stdout, r.stdout + r.stderr
+    assert r.returncode == 1 and "submodule" in r.stdout, r.stdout + r.stderr
     assert vf["deploys"]() == [] and not stand.exists() and rot_datei.read_text(encoding="utf-8") == alt
 
 
@@ -555,7 +555,7 @@ def test_veroeffentlichen_roter_stand_wird_nicht_erneut_geprueft(vf):
     assert vf["deploys"]() == ["beispielreise", "zweitreise"]
     assert vf["zeilen"]("pruefen.log") == ["p"]
     r = vf["lauf"]()
-    assert r.returncode == 0 and "Bekannter roter Stand" in r.stdout
+    assert r.returncode == 0 and "Known red state" in r.stdout
     assert vf["deploys"]() == [] and vf["zeilen"]("pruefen.log") == ["p"]
 
 
@@ -610,8 +610,8 @@ def test_veroeffentlichen_alarm_genau_einmal(vf):
     (vf["tmp"] / "kaputt-beispielreise").touch()
     assert vf["lauf"](VF_JETZT=str(T0)).returncode == 1
     r = vf["lauf"](VF_JETZT=str(T0 + 30 * 60))
-    assert r.returncode == 0 and "Bekannter roter Stand" in r.stdout
-    assert len(hoch(vf)) == 1 and "rot" in hoch(vf)[0]
+    assert r.returncode == 0 and "Known red state" in r.stdout
+    assert len(hoch(vf)) == 1 and "red" in hoch(vf)[0]
     assert vf["rot"]()["gemeldet"] == "1"
     assert vf["lauf"](VF_JETZT=str(T0 + 60 * 60)).returncode == 0
     vf["neuer_commit"]()
@@ -688,7 +688,7 @@ def test_betrieb_md_nennt_rot_datei_alarm_und_konvention():
     """docs/betrieb.md beschreibt Tor, Exit-Codes, Rot-Datei, Überspringen, Alarm mit Schwelle und die Konvention für die
     Tests des Reisen-Repos (AC-33)."""
     text = (WURZEL / "docs" / "betrieb.md").read_text(encoding="utf-8")
-    for teil in ("veroeffentlichen-rot", "FR_ROT_MELDEN_NACH_MINUTEN", "Exit 2", "Bekannter roter Stand",
+    for teil in ("veroeffentlichen-rot", "FR_ROT_MELDEN_NACH_MINUTEN", "Exit 2", "Known red state",
                  "rot-melden", "sperren nicht"):
         assert teil in text, teil
 
@@ -900,7 +900,7 @@ def test_freischalten_neue_reise_bekommt_link_einmal(fs):
     assert f"alias {fs['seiten']}/beispielreise/;" in inhalt and "proxy_pass http://127.0.0.1:8871/beispielreise/;" in inhalt
     assert "limit_req zone=probe_api " in inhalt
     assert stat.S_IMODE(sn.stat().st_mode) == 0o640
-    assert "Freigeschaltet: beispielreise" in r.stdout and f"Seite: https://example.invalid/{pfad}/" in r.stdout
+    assert "Released: beispielreise" in r.stdout and f"Seite: https://example.invalid/{pfad}/" in r.stdout
     assert fs["abrufe"].read_text().split() == [f"https://example.invalid/{pfad}/", f"https://example.invalid/{pfad}/api/gesund"]
     assert (fs["tmp"] / "nginx.log").read_text().split("\n")[:2] == ["-t", "reload"]
     links = fs["tmp"] / "konnektor/seiten.json"
@@ -908,7 +908,7 @@ def test_freischalten_neue_reise_bekommt_link_einmal(fs):
     assert stat.S_IMODE(links.stat().st_mode) == 0o600
     # zweiter Aufruf: derselbe Link, kein neues Laden von nginx
     r = fs["lauf"]("beispielreise")
-    assert r.returncode == 0 and "Freigeschaltet" not in r.stdout and sn.read_text() == inhalt
+    assert r.returncode == 0 and "Released" not in r.stdout and sn.read_text() == inhalt
     assert (fs["tmp"] / "nginx.log").read_text().count("reload") == 1
 
 
@@ -918,7 +918,7 @@ def test_freischalten_wartet_auf_das_neuladen_von_nginx(fs):
     fs["env"]["FS_ABRUF"] = str(ausfuehrbar(fs["tmp"] / "abruf-langsam.sh",
         f'#!/bin/sh\necho x >> {zaehler}\n[ $(wc -l < {zaehler}) -le 2 ] && echo 404 || echo 200\n'))
     r = fs["lauf"]("beispielreise")
-    assert r.returncode == 0 and "Freigeschaltet: beispielreise" in r.stdout, r.stdout
+    assert r.returncode == 0 and "Released: beispielreise" in r.stdout, r.stdout
     assert len(zaehler.read_text().split()) == 4        # zweimal 404, dann Seite und Rückmeldedienst
     # Bestehender Link: kein Warten, ein Fehler ist sofort ein Fehler
     zaehler.unlink()
@@ -939,24 +939,24 @@ def test_freischalten_link_fuer_die_claude_app(fs):
 def test_freischalten_nginx_lehnt_ab_alles_zurueck(fs):
     (fs["tmp"] / "nginx-kaputt").touch()
     r = fs["lauf"]("beispielreise")
-    assert r.returncode == 1 and "nginx lehnt die Konfiguration ab" in r.stdout
+    assert r.returncode == 1 and "nginx rejects the configuration" in r.stdout
     assert not list(fs["snippets"].iterdir()) and "reload" not in (fs["tmp"] / "nginx.log").read_text()
 
 
 def test_freischalten_seite_nicht_erreichbar_ist_fehler_ohne_link_im_protokoll(fs):
     fs["code"].write_text("404")
     r = fs["lauf"]("beispielreise")
-    assert r.returncode == 1 and "Seite von beispielreise antwortet mit 404" in r.stdout and "fehlt das include" in r.stdout
+    assert r.returncode == 1 and "page of beispielreise answers with 404" in r.stdout and "include missing" in r.stdout
     token = (fs["snippets"] / "probe-beispielreise.conf").read_text().split("beispielreise-", 1)[1][:24]
     assert token not in r.stdout + r.stderr
 
 
 def test_freischalten_unbekannte_reise_und_fehlende_adresse(fs):
-    assert "gibt es nicht" in fs["lauf"]("gibts-nicht").stdout
-    assert "nur Kleinbuchstaben" in fs["lauf"]("Böse;rm").stdout
+    assert "does not exist" in fs["lauf"]("gibts-nicht").stdout
+    assert "lowercase letters" in fs["lauf"]("Böse;rm").stdout
     r = subprocess.run([str(BETRIEB / "freischalten.sh"), "beispielreise"], capture_output=True, text=True,
                        env={**fs["env"], "FR_ADRESSE": "", "FR_KN_ADRESSE": ""})
-    assert r.returncode == 1 and "FR_ADRESSE ist nicht gesetzt" in r.stdout
+    assert r.returncode == 1 and "FR_ADRESSE is not set" in r.stdout
 
 
 def _zustellen_umgebung(fs, monkeypatch):
@@ -977,7 +977,7 @@ def test_ausstehende_links_zustellen(fs, monkeypatch, capsys):
                      + json.dumps({"ordner": "spaeter", "aid": "A-2", "name": "Ida", "person": "ida"}) + "\n")
     assert zustellen.ausstehend(fs["repo"], datei) == 0
     out = capsys.readouterr().out
-    assert "Delivered: beispielreise an Ida" in out and "https://" not in out      # Links nie ins Protokoll
+    assert "Delivered: beispielreise to Ida" in out and "https://" not in out      # Links nie ins Protokoll
     assert [json.loads(z)["ordner"] for z in datei.read_text().splitlines()] == ["spaeter"]
     m = rm.meldungen(rm.ordner_neu(), "Ida")[0]
     assert m["art"] == "neue_reise" and m["auftraege"] == ["A-1"]
@@ -1012,7 +1012,7 @@ def test_neue_reise_aus_dem_konnektor_frieda(fs, monkeypatch, capsys):
     datei.write_text(json.dumps({"ordner": "beispielreise", "aid": "A-1", "name": "Ida", "person": "ida"}) + "\n")
     assert zustellen.ausstehend(fs["repo"], datei) == 0
     out = capsys.readouterr().out
-    assert "Delivered: beispielreise an Ida" in out and "@" not in out
+    assert "Delivered: beispielreise to Ida" in out and "@" not in out
     assert datei.read_text() == ""
     assert konten.mitglied(ida["id"], "beispielreise") == "ida"
     einl = [json.loads(z) for z in (fs["tmp"] / "mails.jsonl").read_text().splitlines() if "karl@" in z]
@@ -1056,7 +1056,7 @@ def test_waechter_bericht_geht_als_sammelnachricht_und_ist_erledigt(wa):
     r, nachrichten = wa(WA_BERICHT="Beispiel: Karl: Frist morgen.")
     assert r.returncode == 0 and len(nachrichten) == 1
     prio, betreff, text, erledigt = nachrichten[0].split("|", 3)
-    assert (prio, erledigt) == ("normal", "erledigt") and betreff == "Probe: Wächter und Erinnerer"
+    assert (prio, erledigt) == ("normal", "erledigt") and betreff == "Probe: Watchdog and reminders"
     assert "Karl: Frist morgen." in text
 
 
@@ -1068,7 +1068,7 @@ def test_waechter_ohne_meldeweg_keine_nachricht(wa):
 def test_waechter_fehler_meldet_sich_und_laesst_den_stempel_aus(wa):
     r, nachrichten = wa(WA_FEHLER="1")
     assert r.returncode == 1 and not wa.stempel.exists()
-    assert len(nachrichten) == 1 and nachrichten[0].split("|")[0] == "high" and "fehlgeschlagen" in nachrichten[0]
+    assert len(nachrichten) == 1 and nachrichten[0].split("|")[0] == "high" and "failed" in nachrichten[0]
     assert nachrichten[0].endswith("|")    # Fehler bleiben offen
 
 
@@ -1146,17 +1146,17 @@ def test_einrichten_erkennt_belegte_ports_einer_anderen_instanz(tmp_path):
     (tmp_path / "systemd").mkdir()
     (tmp_path / "systemd/andere-rueckmeldungen.service").write_text("[Service]\nEnvironment=RM_PORT=8771\n")
     r = einrichten(tmp_path)
-    assert r.returncode == 2 and "Port 8771, 8772 oder 8773 nutzt schon andere-rueckmeldungen.service" in r.stdout
+    assert r.returncode == 2 and "Port 8771, 8772 or 8773 is already used by andere-rueckmeldungen.service" in r.stdout
     r = einrichten(tmp_path, FR_RM_PORT="8781", FR_KN_PORT="8782")
-    assert "nutzt schon" not in r.stdout
+    assert "is already used by" not in r.stdout
     (tmp_path / "systemd/andere-schreiben.service").write_text("[Service]\nEnvironment=FR_SB_PORT=8773\n")
-    assert "nutzt schon andere-schreiben.service" in einrichten(tmp_path, FR_RM_PORT="8781", FR_KN_PORT="8782").stdout
+    assert "is already used by andere-schreiben.service" in einrichten(tmp_path, FR_RM_PORT="8781", FR_KN_PORT="8782").stdout
     (tmp_path / "systemd/andere-schreiben.service").unlink()
     r = einrichten(tmp_path, FR_RM_PORT="8781", FR_KN_PORT="8782", FR_SB_PORT="8783")
-    assert "nutzt schon" not in r.stdout
+    assert "is already used by" not in r.stdout
     # die eigene Instanz zählt nicht als andere
     (tmp_path / "systemd/andere-rueckmeldungen.service").rename(tmp_path / "systemd/probe-rueckmeldungen.service")
-    assert "nutzt schon" not in einrichten(tmp_path).stdout
+    assert "is already used by" not in einrichten(tmp_path).stdout
 
 
 def test_einrichten_installiert_nur_nach_bestaetigung(tmp_path):
@@ -1166,9 +1166,9 @@ def test_einrichten_installiert_nur_nach_bestaetigung(tmp_path):
                        env={**SAUBER, "FR_WURZEL": str(tmp_path / "repo"), "FR_SEITEN": str(tmp_path / "srv/probe"),
                             "EI_ZIEL": str(tmp_path / "aus"), "EI_SYSTEMD": str(tmp_path / "systemd"), "FR_RM_PORT": "8781"})
     if vorher == 2:
-        assert r.returncode == 1 and "Voraussetzung(en) fehlen" in r.stdout
+        assert r.returncode == 1 and "prerequisite(s) missing" in r.stdout
     else:
-        assert r.returncode == 0 and "Nichts installiert." in r.stdout
+        assert r.returncode == 0 and "Nothing installed." in r.stdout
     assert not (tmp_path / "srv").exists() and not (tmp_path / "systemd").exists()
 
 
@@ -1242,8 +1242,8 @@ def test_einrichten_prueft_gh_und_nicht_claude(tmp_path):
     ausfuehrbar(bin_ / "gh", '#!/bin/sh\n[ "$1 $2" = "auth status" ] && [ "$ANGEMELDET" = true ]\n')
     pfad = f"{bin_}:/usr/bin:/bin"
     aus = einrichten(tmp_path, FR_PFAD=pfad, ANGEMELDET="false").stdout
-    assert "FEHLT   gh ist nicht angemeldet" in aus and "claude" not in aus.lower()
-    assert "ok      gh angemeldet" in einrichten(tmp_path, FR_PFAD=pfad, ANGEMELDET="true").stdout
+    assert "MISSING gh is not signed in" in aus and "claude" not in aus.lower()
+    assert "ok      gh signed in" in einrichten(tmp_path, FR_PFAD=pfad, ANGEMELDET="true").stdout
 
 
 def test_freischalten_erneuert_den_baustein_bei_neuer_vorlage(fs):
@@ -1261,7 +1261,7 @@ def test_freischalten_erneuert_den_baustein_bei_neuer_vorlage(fs):
     sn.write_text(inhalt.replace(inhalt[inhalt.index("# Belege zu Buchungen"):inhalt.index("# Rückmeldedienst.")], ""))
     assert "api/belege/" not in sn.read_text()
     r = fs["lauf"]("beispielreise")
-    assert r.returncode == 0 and "Baustein erneuert: beispielreise" in r.stdout, r.stdout + r.stderr
+    assert r.returncode == 0 and "Block renewed: beispielreise" in r.stdout, r.stdout + r.stderr
     assert sn.read_text() == inhalt and f"/{pfad}/" in sn.read_text()
     assert (fs["tmp"] / "nginx.log").read_text().count("reload") == 2
     # unverändert: nichts passiert
@@ -1272,7 +1272,7 @@ def test_freischalten_erneuert_den_baustein_bei_neuer_vorlage(fs):
     sn.write_text(kaputt)
     (fs["tmp"] / "nginx-kaputt").touch()
     r = fs["lauf"]("beispielreise")
-    assert r.returncode == 1 and "alte Stand gilt weiter" in r.stdout and sn.read_text() == kaputt
+    assert r.returncode == 1 and "old state stays in force" in r.stdout and sn.read_text() == kaputt
 
 
 def test_freischalten_erneuert_auch_einen_von_hand_benannten_baustein(fs):
@@ -1285,7 +1285,7 @@ def test_freischalten_erneuert_auch_einen_von_hand_benannten_baustein(fs):
                   f"location ^~ /{pfad}/ {{\n    alias {fs['seiten']}/beispielreise/;\n}}\n"
                   f"location ^~ /{pfad}/api/ {{\n    proxy_pass http://127.0.0.1:8871/beispielreise/;\n}}\n")
     r = fs["lauf"]("beispielreise")
-    assert r.returncode == 0 and "Baustein erneuert: beispielreise" in r.stdout, r.stdout + r.stderr
+    assert r.returncode == 0 and "Block renewed: beispielreise" in r.stdout, r.stdout + r.stderr
     inhalt = sn.read_text()
     assert f"location ^~ /{pfad}/ {{" in inhalt and f"location ^~ /{pfad}/api/belege/ {{" in inhalt
     assert "beispielreise-" not in inhalt.replace("probe-beispielreise.conf", "")   # kein zweiter Pfad aus Ordner und Token
@@ -1295,4 +1295,4 @@ def test_freischalten_erneuert_auch_einen_von_hand_benannten_baustein(fs):
     # ohne location-Block: klarer Fehler statt stummem Abbruch
     sn.write_text("# leer\n")
     r = fs["lauf"]("beispielreise")
-    assert r.returncode == 1 and "steht kein Pfad" in r.stdout
+    assert r.returncode == 1 and "no path in the" in r.stdout

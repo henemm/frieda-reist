@@ -339,7 +339,7 @@ def test_befehle(umgebung, capsys):
     assert konten.main(["betreiber", IDA]) == 0 and konten.recht(konten.konto(k["id"]), "betreiber")
     assert konten.main(["einladen", "winterwoche", "karl", KARL, "mitwirkend", "Karl", "Ida"]) == 0
     assert konten.main(["liste"]) == 0 and "rechte: betreiber,reise_anlegen" in capsys.readouterr().out
-    assert konten.main(["sperren", "niemand@beispiel.invalid"]) == 2 and "FEHLER" in capsys.readouterr().out
+    assert konten.main(["sperren", "niemand@beispiel.invalid"]) == 2 and "ERROR" in capsys.readouterr().out
     assert konten.main(["quatsch"]) == 1
 
 

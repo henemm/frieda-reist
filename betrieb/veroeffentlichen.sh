@@ -34,13 +34,13 @@ erfolg_melden() {
   touch "${VF_STEMPEL:-$FR_DIENST/veroeffentlichen-erfolg}"
   local hb="${VF_HEARTBEAT:-${FR_HEARTBEAT_VEROEFFENTLICHEN:-}}"
   [ -n "$hb" ] || return 0
-  curl -fsS -m 10 --retry 3 -o /dev/null "$hb" || echo "Warnung: Heartbeat nicht erreicht."
+  curl -fsS -m 10 --retry 3 -o /dev/null "$hb" || echo "Warning: heartbeat not reached."
 }
 
 zustellen() {  # ausstehende Links neuer Reisen (nur wenn welche anstehen)
   [ -s "$ausstehend" ] || return 0
   "$FR_PYTHON" "$FR_BETRIEB/zustellen.py" "$wurzel" "$ausstehend" \
-    || echo "Warnung: Links neuer Reisen nicht alle zugestellt, nächster Lauf versucht es wieder."
+    || echo "Warning: not all links of new trips delivered, the next run tries again."
 }
 
 jetzt() { echo "${VF_JETZT:-$(date +%s)}"; }
@@ -86,24 +86,24 @@ alarm_pruefen() {  # Alarm ab der Schwelle: Meldung an die Organisator:innen rot
   rot_lesen
   [ -n "$rot_seit" ] || return 0
   [[ "$schwelle" =~ ^[0-9]+$ ]] || schwelle=30
-  seit_s="$(date -u -d "$rot_seit" +%s 2>/dev/null)" || { echo "Warnung: Rot-Datei mit ungültigem seit ($rot_seit)."; return 0; }
+  seit_s="$(date -u -d "$rot_seit" +%s 2>/dev/null)" || { echo "Warning: red file with invalid since ($rot_seit)."; return 0; }
   minuten=$(( ($(jetzt) - seit_s) / 60 ))
   [ "$minuten" -ge "$schwelle" ] || return 0
   if [ "$rot_art" = reise ] && [ -n "$rot_reisen" ]; then
     # je Reise und Rot-Phase eine Meldung (schluessel mit seit), darum bei jedem Lauf gefahrlos
     if [ -n "${VF_ROTMELDEN:-}" ]; then
-      "$VF_ROTMELDEN" --reisen "$rot_reisen" --seit "$rot_seit" || echo "Warnung: Meldung an die Organisator:innen nicht angelegt."
+      "$VF_ROTMELDEN" --reisen "$rot_reisen" --seit "$rot_seit" || echo "Warning: message to the organisers not created."
     else
       "$FR_PYTHON" "$wurzel/engine/waechter.py" rot-melden --reisen "$rot_reisen" --seit "$rot_seit" \
-        || echo "Warnung: Meldung an die Organisator:innen nicht angelegt."
+        || echo "Warning: message to the organisers not created."
     fi
   fi
   [ "$rot_gemeldet" = 1 ] && return 0
-  if alarm_senden "Veröffentlichen seit $minuten Minuten rot" \
-    "Art: $rot_art${rot_reisen:+, Reisen: $rot_reisen}, Stand ${rot_commit:0:7}, rot seit $rot_seit (UTC). Gelungene Reisen sind online, rote bleiben auf ihrem letzten guten Stand. Log: journalctl -u $FR_INSTANZ-veroeffentlichen -n 100"; then
+  if alarm_senden "Publishing red for $minuten minutes" \
+    "Kind: $rot_art${rot_reisen:+, trips: $rot_reisen}, state ${rot_commit:0:7}, red since $rot_seit (UTC). Successful trips are online, red ones stay at their last good state. Log: journalctl -u $FR_INSTANZ-veroeffentlichen -n 100"; then
     rot_gemeldet=1; rot_ablegen
   else
-    echo "Warnung: Alarm an den Betrieb nicht gesendet, nächster Lauf versucht es wieder."
+    echo "Warning: alarm to operations not sent, the next run tries again."
   fi
 }
 
@@ -126,14 +126,14 @@ main() {
   [ "${1:-}" = "--immer" ] && immer=1
 
   exec 9>"${VF_SPERRE:-$FR_SPERREN/$FR_INSTANZ-veroeffentlichen.lock}"
-  flock -n 9 || { echo "Läuft schon, übersprungen."; return 0; }
+  flock -n 9 || { echo "Already running, skipped."; return 0; }
 
   cd "$wurzel"
   if [ "$(git rev-parse --abbrev-ref HEAD)" != main ]; then
-    echo "Bauordner ist nicht auf main ($(git rev-parse --abbrev-ref HEAD)), übersprungen."; return 0
+    echo "Build folder is not on main ($(git rev-parse --abbrev-ref HEAD)), skipped."; return 0
   fi
   if ! git diff --quiet HEAD || [ -n "$(git ls-files --others --exclude-standard)" ]; then
-    echo "Ungesicherte Änderungen im Bauordner, übersprungen."; return 0
+    echo "Uncommitted changes in the build folder, skipped."; return 0
   fi
 
   mkdir -p "$FR_DIENST"   # Zustand des Veröffentlichens (Stand, Rot-Datei, Merker der Warnung, Stempel)
@@ -142,35 +142,35 @@ main() {
   alt="$(cat "$stand" 2>/dev/null || true)"
   if [ -z "$immer" ] && [ "$neu" = "$alt" ]; then zustellen; rm -f "$rot_datei"; erfolg_melden; return 0; fi
 
-  git merge -q --ff-only origin/main || { echo "FEHLER: main lässt sich nicht vorspulen (lokale Commits?)."; return 1; }
+  git merge -q --ff-only origin/main || { echo "ERROR: main cannot be fast-forwarded (local commits?)."; return 1; }
   # Software (Submodul) auf den Stand bringen, den main festhält
-  git submodule update --init --quiet || { echo "FEHLER: Submodul der Software lässt sich nicht holen."; return 1; }
+  git submodule update --init --quiet || { echo "ERROR: the software submodule cannot be fetched."; return 1; }
 
   # Bekannter roter Stand: nicht noch einmal prüfen und bauen (kostet Minuten), kein Stempel, kein Heartbeat
   rot_lesen
   if [ -z "$immer" ] && [ -n "$rot_commit" ] && [ "$rot_commit" = "$neu" ]; then
-    echo "Bekannter roter Stand ${neu:0:7}, übersprungen (Art: $rot_art${rot_reisen:+, Reisen: $rot_reisen}). Neu geprüft wird mit einem neuen Commit oder --immer."
+    echo "Known red state ${neu:0:7}, skipped (kind: $rot_art${rot_reisen:+, trips: $rot_reisen}). It is checked again with a new commit or --immer."
     zustellen
     alarm_pruefen
     return 0
   fi
 
-  echo "Veröffentliche $(git log -1 --format='%h %s')"
+  echo "Publishing $(git log -1 --format='%h %s')"
   # Eigener Ordner für die Testdateien: Mit der Vorgabe (/tmp/pytest-of-<user>) räumt jeder weitere pytest-Lauf auf dem
   # Rechner die Ordner älterer Läufe weg, auch die eines noch laufenden (roter Lauf 29.10.2026 bei gleichzeitigen Tests).
   pruef_tmp="$(mktemp -d)"
   if ! pruefen_lauf engine/tests; then
     rm -rf "$pruef_tmp"
-    echo "FEHLER: Prüfungen rot (engine/tests, Software), nichts veröffentlicht."
+    echo "ERROR: checks red (engine/tests, software), nothing published."
     rot_schreiben "$neu" software ""
     alarm_pruefen
     return 1
   fi
   # Tests des Reisen-Repos prüfen Inhalt (Schnappschüsse der Reisen): rot sperrt nie, einmal je Commit eine Nachricht
   if [ -d tests ] && ! pruefen_lauf tests; then
-    echo "Warnung: Tests des Reisen-Repos rot (sperren nicht)."
+    echo "Warning: tests of the trips repo red (they do not block)."
     if [ "$(cat "$warnung" 2>/dev/null || true)" != "$neu" ]; then
-      fr_melden normal "Tests des Reisen-Repos rot" "Stand ${neu:0:7}: Die Tests in tests/ des Reisen-Repos sind rot. Sie sperren das Veröffentlichen nicht (docs/betrieb.md, Konvention für tests/). Log: journalctl -u $FR_INSTANZ-veroeffentlichen -n 100"
+      fr_melden normal "Tests of the trips repo red" "State ${neu:0:7}: the tests in tests/ of the trips repo are red. They do not block publishing (docs/betrieb.md, convention for tests/). Log: journalctl -u $FR_INSTANZ-veroeffentlichen -n 100"
       mkdir -p "$(dirname "$warnung")"
       echo "$neu" > "$warnung"
     fi
@@ -183,21 +183,21 @@ main() {
     rc=0; "$deploy" "$reise" || rc=$?
     case "$rc" in
       0) gut="$gut $reise" ;;
-      2) echo "FEHLER: Bau von $reise gescheitert, die Reise bleibt auf ihrem letzten guten Stand."
+      2) echo "ERROR: build of $reise failed, the trip stays at its last good state."
          rote="${rote:+$rote,}$reise" ;;
-      *) echo "FEHLER: Deploy von $reise fehlgeschlagen (Exit $rc), nächster Lauf versucht es wieder."; return 1 ;;
+      *) echo "ERROR: deploy of $reise failed (exit $rc), the next run tries again."; return 1 ;;
     esac
   done
   # Freischalten nur gelungener Reisen: neue bekommen ihren Link, alle werden geprüft (Ausgabe ohne Links, die sind geheim)
   for reise in $gut; do
-    aus="$("$freischalten" "$reise" 2>&1)" || echo "Warnung: $reise nicht freigeschaltet (Grund in der Zeile darunter)."
-    printf '%s\n' "$aus" | grep -E '^(FEHLER|Freigeschaltet|Baustein erneuert)' || true
+    aus="$("$freischalten" "$reise" 2>&1)" || echo "Warning: $reise not released (reason in the line below)."
+    printf '%s\n' "$aus" | grep -E '^(ERROR|Released|Block renewed)' || true
   done
   if [ -n "$rote" ]; then
     # Teil-Erfolg ist kein fachlicher Erfolg: Stand nicht merken, kein Stempel, kein Heartbeat
     rot_schreiben "$neu" reise "$rote"
     zustellen
-    echo "Rot: $(git log -1 --format='%h') teilweise online, nicht gebaut: $rote."
+    echo "Red: $(git log -1 --format='%h') partly online, not built: $rote."
     alarm_pruefen
     return 1
   fi
@@ -205,7 +205,7 @@ main() {
   mkdir -p "$(dirname "$stand")"
   echo "$neu" > "$stand"
   zustellen
-  echo "Fertig: $(git log -1 --format='%h') ist online."
+  echo "Done: $(git log -1 --format='%h') is online."
   erfolg_melden
 }
 
