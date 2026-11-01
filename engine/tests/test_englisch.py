@@ -64,7 +64,13 @@ def _funde_des_letzten_commits(origin, antwort, erlaubt_text, erlaubt_datei):
     funde["dateien"] = deutsche_woerter(ohne_schluessel(neu), erlaubt_datei)
     funde = {k: v for k, v in funde.items() if v}
     if funde.get("dateien"):   # die Zeilen dazu, damit ein Fund in der Meldung steht und nicht gesucht werden muss
-        funde["zeilen"] = [z for z in neu.splitlines() if deutsche_woerter(ohne_schluessel(z), erlaubt_datei)][:6]
+        datei, zeilen = "", []
+        for z in diff.splitlines():
+            if z.startswith("+++"):
+                datei = z[6:]
+            elif z.startswith("+") and deutsche_woerter(ohne_schluessel(z[1:]), erlaubt_datei):
+                zeilen.append(f"{datei}: {z[1:].strip()}")
+        funde["zeilen"] = zeilen[:6]
     return funde
 
 
