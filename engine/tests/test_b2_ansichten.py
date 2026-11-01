@@ -13,6 +13,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bauen  # noqa: E402
+from conftest import instanz_leeren  # noqa: E402
 from playwright_pfad import PLAYWRIGHT  # noqa: E402
 from test_tagesseite import WURZEL, plan_fest  # noqa: E402
 
@@ -32,13 +33,16 @@ def nacht_offen(quelle):
 @pytest.fixture(scope="module")
 def basis(tmp_path_factory):
     tmp = tmp_path_factory.mktemp("b2")
-    for name, aendern in (("fest", None), ("offen", nacht_offen)):
-        q = tmp / ("quelle-" + name)
-        shutil.copytree(WURZEL / "beispiel/reisen/beispielreise", q)
-        plan_fest(q)
-        if aendern:
-            aendern(q)
-        bauen.bauen(q, tmp / "web" / name)
+    # Läuft vor ohne_instanz: die Umgebung des Servers selbst entfernen (FR_UMZUG_NACH leitete die Seiten sonst um)
+    with pytest.MonkeyPatch.context() as mp:
+        instanz_leeren(mp, tmp)
+        for name, aendern in (("fest", None), ("offen", nacht_offen)):
+            q = tmp / ("quelle-" + name)
+            shutil.copytree(WURZEL / "beispiel/reisen/beispielreise", q)
+            plan_fest(q)
+            if aendern:
+                aendern(q)
+            bauen.bauen(q, tmp / "web" / name)
 
     class Handler(http.server.SimpleHTTPRequestHandler):
         def log_message(self, *a):
