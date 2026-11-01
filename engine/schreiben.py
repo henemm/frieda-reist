@@ -126,10 +126,10 @@ def kurz_namen(geaendert):
 
 def stufe_satz(s):
     """Wie routen.stufe_wort („nötig (pflicht)“), aber als Satz in jeder Sprache."""
-    from routen import STUFEN_WORTE, stufe_wort
-    if isinstance(s, str) and s in STUFEN_WORTE and s != "aus":
-        return S("schreiben.stufe_mit_wert", w1=S("schreiben.stufe." + s), w2=s)
-    return stufe_wort(s)
+    from routen import stufe_satz as satz
+    return satz(s)
+
+
 GRUNDFORM_WORT = texte.gruppe("de", "schreiben.grundform")   # Katalog in texte_de.py (ADR-0006)
 
 
@@ -1658,7 +1658,7 @@ def entscheiden(reise_dir, wer, args, heute=None):
                     v2 = CommentedSeq()
                     k2["verlauf"] = v2
                 v2.append(fliess_map({"datum": heute, "status": "ersetzt", "wer": wer["name"], "durch": oid,
-                                      "grund": f"ersetzt durch {oid} „{o['titel']}“: {grund}"}))
+                                      "grund": texte.t(sprache_von(reise_dir), "inhalt.schreiben.verlauf.ersetzt_durch", oid=oid, titel=o["titel"], grund=grund)}))
                 ersetzt.append(x["id"])
         # Die übrigen Optionen der Wahlstelle sind damit nicht gewählt: ersetzt durch die gewählte (Product Owner 31.10.2026)
         for x in wr["optionen"]:

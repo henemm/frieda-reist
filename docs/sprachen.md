@@ -105,6 +105,7 @@ Wer die Sprache nicht auf Deutsch gestellt hat, liest kein deutsches Wort (Engli
 
 - `test_englisch.py`: Anlegen und Schreiben in einer englischen Reise (Antwort, Commit-Nachricht, Dateien der Reise).
 - `test_englisch_werte.py`: rund 200 Schreibaufrufe mit englischen Eingaben, Datenwerte in Antworten, Commits und Dateitext.
+- `test_englisch_werte.py` liest außerdem nach den Schreibaufrufen alle Lese-Werkzeuge (Überblick, Suche, `show` für jede ID, Fragen, Kategorien, Aufgaben, Wünsche, Rückmeldungen) in einer englischen Reise. Was die Reise selbst enthält (Titel, Texte, Werte von Merkmalen, Eingaben der Aufrufe), zählt nicht; jedes Wort, das die Software ringsum setzt (Status, Stufen, Stücke wie „Buchung:“), muss englisch sein.
 - `test_englisch_schnittstelle.py`: `tools/list` und `initialize` einer englischen Person, über Reise- und Konto-Zugang: Werkzeugnamen, Parameternamen (auch verschachtelt), Aufzählungswerte, Beschreibungen und Anweisungen. Eigennamen aus Beispielen (Orte, Anbieter) stehen in `EIGENNAMEN` des Tests.
 
 Beschreibungen im englischen Katalog nennen nur die Namen, die `tools/list` zeigt (`from_place`, nicht `von`). Ein neuer Parameter braucht deshalb einen englischen Namen in `PARAMETER` der Schnittstelle (`engine/schnittstelle.py`). Die Schuldenlisten (`BEKANNT`) dürfen nur kürzer werden.

@@ -186,10 +186,21 @@ def sprache_des_zugangs(zugang):
     return s if texte.gueltig(s or "") else texte.VORGABE_REISE
 
 
+def zellen_von(zeile):
+    """Zellen einer Zeile der Fragentabelle; der Status steht in der Datei als Datenwert (offen, beantwortet) und wird in der Sprache der Person gesagt."""
+    status = zeile.get("status")
+    return [texte.datenwert(texte.aufruf_sprache(), c) if status and c == status else c for c in zeile["zellen"]]
+
+
 def tk(schluessel, /, **werte):
     """Text des Konnektors aus dem Katalog in der Sprache des laufenden Aufrufs (texte.aufruf_sprache); ohne Aufruf (Tests, Skripte)
     ist es die Sprache des Bestands."""
     return texte.t(texte.aufruf_sprache(), schluessel, **werte)
+
+
+def dw(wert):
+    """Datenwert (Status, Stufe, Art des Eintrags …) in der Sprache des laufenden Aufrufs; die Reise speichert ihn unverändert (ADR-0006)."""
+    return texte.datenwert(texte.aufruf_sprache(), wert)
 
 
 def tkd(schluessel, /, **werte):
@@ -396,9 +407,14 @@ def stand_text(reise):
 # Software (ADR-0001: kein Katalog).
 
 
+def warnung_text(w):
+    """Warnung des Baus in der Sprache des Aufrufs: aus den Teilen des Satzes, ältere Dateien nur mit dem Text der Reise."""
+    return texte.Satz.aus_json(w["teile"]).text(texte.aufruf_sprache()) if w.get("teile") else w["text"]
+
+
 def regel_stand(x):
     """Stand einer Option, auf die eine Regel zeigt (erfordert, schliesst_aus)."""
-    return "verworfen" if not x.get("gueltig", True) else tk("konnektor.ausgabe.regel_stand.1") if x.get("im_plan") else tk("konnektor.regel_stand.1")
+    return dw("verworfen") if not x.get("gueltig", True) else tk("konnektor.ausgabe.regel_stand.1") if x.get("im_plan") else tk("konnektor.regel_stand.1")
 
 
 def merkmal_norm(s):
@@ -483,7 +499,7 @@ class Handbuch:
 
     def buchung_text(self, b):
         """Eine Buchung (B-…, #76) für die Claude-App: Dinge, Status, Nummer, Anbieter, Preis, Frist, Storno, Herkunft, Belege, Verlauf."""
-        z = [tk("konnektor.buchung_text.1") + "; ".join(f"{x} {self.titel_von(x)}" for x in b.get("fuer") or []), tk("konnektor.ausgabe.buchung_text.1", w1=b.get('status'))]
+        z = [tk("konnektor.buchung_text.1") + "; ".join(f"{x} {self.titel_von(x)}" for x in b.get("fuer") or []), tk("konnektor.ausgabe.buchung_text.1", w1=dw(b.get('status')))]
         for k, name in (("nummer", tk("konnektor.ausgabe.buchung_text.2")), ("bei", tk("konnektor.ausgabe.buchung_text.3")), ("preis", tk("konnektor.ausgabe.buchung_text.4"))):
             if b.get(k):
                 z.append(name + str(b[k]))
@@ -526,8 +542,8 @@ class Handbuch:
         a = (self.r.get("aufenthalte") or {}).get(aid) or {}
         art = ((self.r.get("arten") or {}).get(a.get("art")) or {}).get("name") or a.get("art") or ""
         uhr = "–".join(x for x in (a.get("beginn"), a.get("ende")) if x)
-        return ", ".join(x for x in [f"{a.get('name', aid)} ({aid})", art, a.get("zeit"), uhr and uhr + " Uhr",
-                                     f"Buchung: {a['buchung']}" if a.get("buchung") else ""] if x)
+        return ", ".join(x for x in [f"{a.get('name', aid)} ({aid})", art, a.get("zeit"), uhr and tk("konnektor.ausgabe.uhr", w1=uhr),
+                                     tk("konnektor.ausgabe.sammeln.15", w1=dw(a['buchung'])) if a.get("buchung") else ""] if x)
 
     def strecke(self, sid):
         s = (self.r.get("strecken") or {}).get(sid) or {}
@@ -578,7 +594,7 @@ class Handbuch:
             if v.get("quelle"):
                 zusatz.append(tk("konnektor.ausgabe.merkmal_zeilen.1", w1=v['quelle']))
             if v.get("auto"):
-                zusatz.append("berechnet")
+                zusatz.append(tk("konnektor.ausgabe.merkmal_zeilen.3"))
             z.append(f"- {k['name']}: {v['wert']}" + (f" ({'; '.join(zusatz)})" if zusatz else ""))
         if fehlt:
             namen = {k["id"]: k["name"] for k in kriterien or []}
@@ -606,7 +622,7 @@ class Handbuch:
         return None, None, None
 
     def option_text(self, o, w=None):
-        z = [tk("konnektor.ausgabe.buchung_text.1", w1=o.get('status')) + (tk("konnektor.ausgabe.option_text.5") if o.get("aktiv") else "")]
+        z = [tk("konnektor.ausgabe.buchung_text.1", w1=dw(o.get('status'))) + (tk("konnektor.ausgabe.option_text.5") if o.get("aktiv") else "")]
         if w and (o.get("merkmale") or o.get("fehlt")):
             z.append(tk("konnektor.ausgabe.option_text.1"))
             z += self.merkmal_zeilen(w.get("kriterien"), o.get("merkmale"), o.get("fehlt"))
@@ -625,7 +641,7 @@ class Handbuch:
         if o.get("summe"):
             z.append(tk("konnektor.ausgabe.option_text.8") + self.summe(o["summe"]))
         for v in o.get("verlauf") or []:
-            z.append(tk("konnektor.ausgabe.option_text.9", w1=v.get('datum'), w2=v.get('status')) + (f" ({v['wer']})" if v.get("wer") else "")
+            z.append(tk("konnektor.ausgabe.option_text.9", w1=v.get('datum'), w2=dw(v.get('status'))) + (f" ({v['wer']})" if v.get("wer") else "")
                      + (f" – {v['grund']}" if v.get("grund") else ""))
         z += self.offen_zeilen(o["id"])
         return "\n".join(z)
@@ -668,7 +684,7 @@ class Handbuch:
         f = self.d.get("fragen") or {}
         for zeile in f.get("zeilen", []):
             e[zeile["id"]] = (zeile["zellen"][1] if len(zeile["zellen"]) > 1 else zeile["id"],
-                              "\n".join(f"{k}: {v}" for k, v in zip(f["spalten"], zeile["zellen"])))
+                              "\n".join(f"{k}: {v}" for k, v in zip(f["spalten"], zellen_von(zeile))))
         r = self.r
         for t in r.get("tage", []):
             e[t["id"]] = (tk("konnektor.ausgabe.sammeln.1", w1=t['nr'], w2=datum_de(t['datum']), w3=t['titel']), self.tag_text(t))
@@ -683,9 +699,9 @@ class Handbuch:
             if s.get("kennzahlen") and sid not in e:  # bei Etappen stehen sie schon im Dossier
                 z.append("; ".join(f"{k}: {v}" for k, v in s["kennzahlen"].items()))
             if s.get("buchung"):   # eine Zeile mit Verweis auf die Heimat der Buchung (ADR-0003)
-                z.append(tk("konnektor.ausgabe.sammeln.15", w1=s['buchung']) + (tk("konnektor.ausgabe.zeige_hinweis", w1=s['buchung_id']) if s.get("buchung_id") else ""))
+                z.append(tk("konnektor.ausgabe.sammeln.15", w1=dw(s['buchung'])) + (tk("konnektor.ausgabe.zeige_hinweis", w1=s['buchung_id']) if s.get("buchung_id") else ""))
             if s.get("beginn"):
-                z.append(tk("konnektor.ausgabe.sammeln.19", w1=s['beginn']) + (f"–{s['ende']}" if s.get("ende") else "") + " Uhr")
+                z.append(tk("konnektor.ausgabe.sammeln.19", w1=s['beginn'] + (f"–{s['ende']}" if s.get("ende") else "")))
             for k in ("text", "quelle", "siehe"):
                 if s.get(k):
                     z.append((tk("konnektor.ausgabe.option_text.2") if k == "quelle" else tk("konnektor.ausgabe.option_text.3") if k == "siehe" else "") + str(s[k]))
@@ -703,7 +719,7 @@ class Handbuch:
             for k, name in (("hinweis", ""), ("kontakt", tk("konnektor.ausgabe.sammeln.4")), ("buchung", tk("konnektor.ausgabe.sammeln.5")),
                             ("frage", tk("konnektor.ausgabe.sammeln.6")), ("quelle", tk("konnektor.ausgabe.option_text.2"))):
                 if u.get(k):
-                    z.append(name + str(u[k]) + (tk("konnektor.ausgabe.zeige_hinweis", w1=u['buchung_id']) if k == "buchung" and u.get("buchung_id") else ""))
+                    z.append(name + (dw(u[k]) if k == "buchung" else str(u[k])) + (tk("konnektor.ausgabe.zeige_hinweis", w1=u['buchung_id']) if k == "buchung" and u.get("buchung_id") else ""))
             # Lage (ADR-0004): Adresse und Koordinaten mit Herkunft; fehlt beides, trägt lage_eintragen sie nach
             for k, name in (("adresse", tk("konnektor.ausgabe.sammeln.7")), ("punkt", tk("konnektor.ausgabe.sammeln.8"))):
                 v = u.get(k)
@@ -719,7 +735,7 @@ class Handbuch:
                 z += self.merkmal_zeilen((r.get("merkmale") or {}).get(u.get("art")), u.get("merkmale"), u.get("fehlt"))
             e[uid] = (u.get("name") or uid, "\n".join(z))
         for bid, b in (r.get("buchungen") or {}).items():   # Buchung als eigenes Ding (#76)
-            e[bid] = (tk("konnektor.ausgabe.sammeln.3", w1=b.get('status'), w2=b.get('titel') or bid), self.buchung_text(b))
+            e[bid] = (tk("konnektor.ausgabe.sammeln.3", w1=dw(b.get('status')), w2=b.get('titel') or bid), self.buchung_text(b))
         for p in r.get("plaene", []):
             z = [p.get("text") or "", tk("konnektor.ausgabe.sammeln.10") + ", ".join(p.get("auswahl") or [])]
             if p.get("aktuell"):
@@ -732,12 +748,12 @@ class Handbuch:
                   for t in p.get("tage", [])]
             e[p["id"]] = (f"{p['kurz']}: {p['titel']}", "\n".join(x for x in z if x))
         for w in r.get("wahlstellen", []):
-            z = [f"Art: {w.get('art')}" + (tk("konnektor.ausgabe.sammeln.17") if w.get("offen") else "")]
+            z = [tk("konnektor.ausgabe.sammeln.art", w1=w.get('art')) + (tk("konnektor.ausgabe.sammeln.17") if w.get("offen") else "")]
             if w.get("frage"):
                 z.append(tk("konnektor.ausgabe.sammeln.11", w1=w['frage']))
             if w.get("text"):
                 z.append(w["text"])
-            z += [f"{o['id']} {o['titel']} – {o.get('status')}" + (tk("konnektor.ausgabe.aktuell") if o.get("aktiv") else "")
+            z += [f"{o['id']} {o['titel']} – {dw(o.get('status'))}" + (tk("konnektor.ausgabe.aktuell") if o.get("aktiv") else "")
                   for o in w["optionen"]]
             e[w["id"]] = (w["titel"], "\n".join(z))
             for o in w["optionen"]:
@@ -800,7 +816,7 @@ class Handbuch:
         z += [f"- {a['id']} {a['titel']}" for a in self.d.get("abschnitte", [])]
         if self.r.get("warnungen"):
             z.append(tk("konnektor.ueberblick.2"))
-            z += [f"- {w['text']}" for w in self.r["warnungen"]]
+            z += [f"- {warnung_text(w)}" for w in self.r["warnungen"]]
         return "\n".join(x for x in z if x)
 
     def zeige(self, id_):
@@ -851,7 +867,7 @@ class Handbuch:
         zeilen = f.get("zeilen", []) if alle else self.offene()
         if not zeilen:
             return tk("konnektor.ausgabe.fragen.1") if not alle else tk("konnektor.ausgabe.fragen.2")
-        return "\n".join([" | ".join(f.get("spalten", []))] + [" | ".join(z["zellen"]) for z in zeilen])
+        return "\n".join([" | ".join(f.get("spalten", []))] + [" | ".join(zellen_von(z)) for z in zeilen])
 
     def lesetext_zeilen(self, s):
         """Gliederung des Lesetexts der Art einer Strecke (plan/arten.yaml lesetext, docs/ontologie.md) als Anleitung für
@@ -905,7 +921,7 @@ class Handbuch:
             z.append(zeile)
         if w:
             for o in w["optionen"]:
-                z.append(f"## {o['id']} {o['titel']} ({o.get('status')})")
+                z.append(f"## {o['id']} {o['titel']} ({dw(o.get('status'))})")
                 z += self.merkmal_zeilen(krit, o.get("merkmale"), [] if o.get("status") in ("verworfen", "ersetzt")
                                          else o.get("fehlt")) or [tk("konnektor.ausgabe.merkmale.4")]
         elif ziel in (self.r.get("unterkuenfte") or {}):
@@ -932,7 +948,7 @@ class Handbuch:
             return (tk("konnektor.kategorien.1"))
         z = [tk("konnektor.ausgabe.kategorien.1"),
              tk("konnektor.kategorien.2")]
-        for gruppe, titel in (("punkt", "Etappen-Karte"), ("wissen", tk("konnektor.ausgabe.kategorien.2"))):
+        for gruppe, titel in (("punkt", tk("konnektor.ausgabe.kategorien.10")), ("wissen", tk("konnektor.ausgabe.kategorien.2"))):
             sub = {a: d for a, d in k.items() if d.get("gruppe") == gruppe}
             if not sub:
                 continue
@@ -1069,7 +1085,7 @@ class Handbuch:
             if w.get("text"):
                 z.append(w["text"])
             for o in w["optionen"]:
-                z.append(f"- {o['id']} {o['titel']} – {o.get('status')}" + (tk("konnektor.ausgabe.aktuell") if o.get("aktiv") else "")
+                z.append(f"- {o['id']} {o['titel']} – {dw(o.get('status'))}" + (tk("konnektor.ausgabe.aktuell") if o.get("aktiv") else "")
                          + (tk("konnektor.varianten.2", w1='; '.join(o['plus'])) if o.get("plus") else "")
                          + (tk("konnektor.ausgabe.dagegen", w1='; '.join(o['minus'])) if o.get("minus") else "")
                          + (f"; {self.summe(o['summe'])}" if o.get("summe") else ""))

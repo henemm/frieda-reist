@@ -137,12 +137,23 @@ STUFEN = ("pflicht", "empfohlen", "angeboten", "aus")
 STUFEN_WORTE = texte.gruppe("de", "schreiben.stufe")
 
 
-def stufe_wort(s):
-    """Wort einer Stufe für Menschen: „nötig (pflicht)“; eine Stufe je Typ wird je Typ genannt („sonst“ für „*“,
+def stufe_satz(s):
+    """Stufe für Menschen als Satz, in jeder Sprache lesbar: „nötig (pflicht)“; eine Stufe je Typ wird je Typ genannt („sonst“ für „*“,
     „gilt nicht“ statt des Schlüssels aus, der für Menschen unsichtbar bleibt; Product Owner 29.10.2026)."""
     if isinstance(s, dict):
-        return ", ".join(f"{'sonst' if t == '*' else t}: {'gilt nicht' if v == 'aus' else stufe_wort(v)}" for t, v in s.items())
-    return f"{STUFEN_WORTE.get(s, s)} ({s})" if s in STUFEN_WORTE and s != "aus" else str(s)
+        return texte.Satz.verbinden(
+            [texte.satz("schreiben.stufe_je_typ", typ=texte.satz("schreiben.stufe_sonst") if t == "*" else t,
+                        stufe=texte.satz("schreiben.stufe_gilt_nicht") if v == "aus" else stufe_satz(v)) for t, v in s.items()], ", ")
+    if isinstance(s, str) and s in STUFEN_WORTE and s != "aus":
+        return texte.satz("schreiben.stufe_mit_wert", w1=texte.satz("schreiben.stufe." + s), w2=s)
+    if s == "aus":
+        return texte.satz("schreiben.stufe.aus")
+    return texte.Satz(str(s))
+
+
+def stufe_wort(s, sprache=None):
+    """Wie stufe_satz, als Text in der Sprache des Aufrufs (oder sprache)."""
+    return stufe_satz(s).text(sprache or texte.aufruf_sprache())
 
 
 def stufe_gilt(s):

@@ -257,6 +257,18 @@ def punkt_geprueft(p, stand, wo, fehler):
     return als_datum(g).isoformat()
 
 
+
+def warnungen_in_reisesprache(daten):
+    """Warnungen des Baus (Sätze des Katalogs) für die Datei: der Text in der Sprache der Reise (die Seite zeigt ihn so), dazu die Teile
+    des Satzes, aus denen der Konnektor ihn in der Sprache der Person setzt (ADR-0006). Die Daten im Speicher bleiben unberührt."""
+    route = daten.get("route") or {}
+    if not route.get("warnungen"):
+        return daten
+    sprache = daten["reise"]["sprache"]
+    neu = [{**w, "text": w["text"].text(sprache), "teile": w["text"].teile_json()} if isinstance(w.get("text"), texte.Satz) and w["text"].mit_schluesseln()
+           else w for w in route["warnungen"]]
+    return {**daten, "route": {**route, "warnungen": neu}}
+
 class Bauer:
     def __init__(self, reise_dir, ziel_dir, umzug=None):
         self.reise_dir = Path(reise_dir)
@@ -1058,6 +1070,7 @@ class Bauer:
                     im.save(ziel)
 
     def schreiben(self, daten):
+        daten = warnungen_in_reisesprache(daten)
         vorlage = (Path(__file__).parent / "vorlage.html").read_text(encoding="utf-8")
         vorlage = vorlage.replace("<!--__SYMBOLE__-->", symbole(), 1)
         vorlage = vorlage.replace('data-release="__RELEASE__"', f'data-release="{release_attribut()}"', 1)
