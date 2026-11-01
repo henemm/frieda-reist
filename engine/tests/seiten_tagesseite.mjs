@@ -85,6 +85,20 @@ for (const breite of [390, 1300]) {
     return {zu: !!d && !d.open, titel: d && d.querySelector("summary").textContent, offenOben: document.querySelectorAll("#rm .rminhalt > div > .rmeintrag").length}; });
   await p.keyboard.press("Escape");
   await p.evaluate(() => { RM = []; route(true); });
+  // Fuß: Release und Vergleich mit main (GitHub nachgestellt: erst gleich, dann 34 neuere Stände; Beispielwerte)
+  let antwort = {status: "identical", ahead_by: 0};
+  await ctx.route("https://api.github.com/**", r => r.fulfill({status: 200, contentType: "application/json", body: JSON.stringify(antwort)}));
+  await p.evaluate(() => { RELEASE = {nummer: 255, kennung: "54f460c", commit: "54f460c" + "0".repeat(33), github: "ida/frieda"}; releaseFuss(); });
+  const fuss = () => p.evaluate(() => { const f = document.querySelector("#release"), r = f.getBoundingClientRect();
+    return {text: f.textContent, link: (f.querySelector("a") || {}).href, stand: f.querySelector(".fuss-stand").textContent, sichtbar: !f.hidden && r.height > 0}; });
+  a.fussVorher = await fuss();
+  await p.locator("#release [data-release-pruefen]").click();
+  await p.waitForFunction(() => !/…/.test(document.querySelector("#release .fuss-stand").textContent));
+  a.fussGleich = (await fuss()).stand;
+  antwort = {status: "ahead", ahead_by: 34};
+  await p.locator("#release [data-release-pruefen]").click();
+  await p.waitForFunction(() => /34/.test(document.querySelector("#release .fuss-stand").textContent));
+  a.fussNeuer = (await fuss()).stand;
   // Kapitel: immer nur eines offen; „Weiterlesen“ zeigt den ganzen Weg
   const kap = p.locator(".ebene-hintergrund details.kapitel > summary .kap-titel");
   await kap.nth(0).click(); await p.waitForTimeout(100); await kap.nth(1).click(); await p.waitForTimeout(100);
