@@ -302,7 +302,8 @@ def test_konto_meine_reisen_und_reise_anlegen(dienst, seiten, capsys, monkeypatc
                     personen=[{"vorname": "Karl", "rolle": "mitwirkend"}, {"vorname": "Mo", "rolle": "gast", "reist": False}],
                     notiz="Hotel schon gebucht (Bestätigung vom 1.10.2026).")
     assert f and "Schreibweg dieser Instanz ist nicht eingerichtet" in t
-    assert not (ablage / rm.NEU / "auftraege.jsonl").exists() and not (ablage / ".neu").exists()
+    o = rm.ordner_neu()
+    assert not (o and (o / "auftraege.jsonl").exists()) and not (ablage / rm.NEU).exists()
     # Die Anfrage, die der Schreibweg als Beleg in der Ablage hinterlässt (test_neue_reise_ueber_den_schreibweg), zeigt
     # meine_reisen, bis die Seite online ist; sie gehört zu keiner Reise
     from reise import neue_reise_pruefen

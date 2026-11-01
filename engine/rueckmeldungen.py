@@ -107,13 +107,17 @@ def ablage():
     return instanz.ablage()
 
 
-NEU = "_neu"   # Ablage für Anfragen nach neuen Reisen und Meldungen an Konten (gehört zu keiner Reise, Paket H)
+NEU = "_neu"   # Name auf der Kommandozeile für die Ablage ohne Reise (Anfragen nach neuen Reisen, Meldungen an Konten)
 
 
 def ordner_neu(anlegen=False):
-    p = ablage() / NEU
+    """Ablage ohne Reise: <Konten>/neu (Rechte 700, #72), übergangsweise noch <Ablage>/_neu (instanz.neu)."""
+    p = instanz.neu()
     if anlegen:
-        p.mkdir(parents=True, exist_ok=True)
+        for q in (p.parent, p):
+            if not q.is_dir():
+                q.mkdir(parents=True, exist_ok=True)
+                os.chmod(q, 0o700)
     return p if p.is_dir() else None
 
 

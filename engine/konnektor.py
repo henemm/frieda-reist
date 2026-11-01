@@ -17,7 +17,7 @@ Wissen) und Rückmeldungen abgeben. Ein Link gehört zu genau einer Reise und ei
                erlaubt (Vorgabe: Organisator:innen); person_einladen legt die Person an und stellt ihren Zugang aus.
 
 Paket H (27.10.2026): Ein Konto-Link gehört zu einer Person, nicht zu einer Reise („Frieda – meine Reisen“). Er zeigt die
-eigenen Reisen (meine_reisen) und legt neue an (reise_anlegen); Anfragen und Meldungen liegen in <ablage>/_neu/.
+eigenen Reisen (meine_reisen) und legt neue an (reise_anlegen); Anfragen und Meldungen liegen in <konten>/neu/ (#72).
 
 Alte Links mit rolle mitreisend (vor dem 26.10.2026) gelten weiter als mitwirkend ohne festen Namen. Ein Link ohne Person (zugang <reise> mitwirkend) fragt nach dem Vornamen.
 
@@ -1842,7 +1842,7 @@ def meine_reisen(konto):
 
 
 def reise_anlegen(konto, args):
-    """reise_anlegen: prüft die Eingaben sofort, legt in <ablage>/_neu die Anfrage als Beleg ab und lässt den Schreibweg die
+    """reise_anlegen: prüft die Eingaben sofort, legt in <konten>/neu die Anfrage als Beleg ab und lässt den Schreibweg die
     Reise anlegen. Sobald die Seite online ist, bekommt die Person eine Meldung mit den Links (meine_reisen).
     -> (Text, ist_fehler)"""
     o = rm.ordner_neu(anlegen=True)

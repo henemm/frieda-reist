@@ -4,6 +4,7 @@ import json
 import re
 import sqlite3
 import stat
+from contextlib import closing
 import sys
 from pathlib import Path
 
@@ -460,3 +461,44 @@ def test_einladung_in_der_sprache_der_person_oder_der_reise(umgebung):
     konten.einladen("beispiel", "mo", MO, "gast", "Mo", "Ida", titel="Malerweg", sprache="en")   # Konto gewinnt vor der Reise
     m = mails(umgebung, MO)[-1]
     assert m["betreff"] == "Frieda: Einladung zu „Malerweg“" and "(du liest mit)" in m["text"]
+
+
+def test_sichern_schreibt_einen_stimmigen_schnappschuss(umgebung, capsys):
+    """#72: Der tägliche Lauf sichert konten.db über die Backup-API; die Kopie hat keine WAL-Dateien und ist lesbar."""
+    assert konten.sichern() is None                                     # noch keine Datenbank: nichts zu tun
+    einloggen(umgebung, IDA, name="Ida")
+    with closing(konten.db()) as v:                                      # offene Verbindung wie im Betrieb
+        assert v.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
+        assert konten.main(["sichern"]) == 0
+    ziel = konten.pfad().parent / "sicherung" / "konten.db"
+    assert str(ziel) in capsys.readouterr().out
+    assert stat.S_IMODE(ziel.stat().st_mode) == 0o600 and stat.S_IMODE(ziel.parent.stat().st_mode) == 0o700
+    assert sorted(p.name for p in ziel.parent.iterdir()) == ["konten.db"]
+    with sqlite3.connect(ziel) as v:
+        assert v.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
+        assert v.execute("SELECT email FROM konten").fetchall() == [(IDA,)]
+    einloggen(umgebung, KARL, name="Karl")
+    konten.sichern()                                                     # ersetzt den vorigen Schnappschuss
+    with sqlite3.connect(ziel) as v:
+        assert v.execute("SELECT COUNT(*) FROM konten").fetchone()[0] == 2
+
+
+def test_ablage_ohne_reise_zieht_zu_den_konten(tmp_path, monkeypatch):
+    """#72: Anfragen nach neuen Reisen und Meldungen an Personen liegen bei den Konten (Rechte 700). Der alte Ort
+    <Ablage>/_neu gilt weiter, solange am neuen nichts liegt."""
+    import instanz
+    import rueckmeldungen as rm
+    monkeypatch.setenv("FR_KONTEN", str(tmp_path / "konten"))
+    assert rm.ordner_neu() is None
+    o = rm.ordner_neu(anlegen=True)
+    assert o == tmp_path / "konten" / "neu" and stat.S_IMODE(o.stat().st_mode) == 0o700
+    assert stat.S_IMODE(o.parent.stat().st_mode) == 0o700
+    o.rmdir()
+    alt = tmp_path / "ablage" / "_neu"
+    alt.mkdir(parents=True)
+    (alt / "meldungen.jsonl").write_text("")
+    assert rm.ordner_neu() == alt and rm.ordner_neu(anlegen=True) == alt      # vor dem Umzug: der alte Ort
+    (tmp_path / "konten" / "neu").mkdir()
+    assert instanz.neu() == alt                                               # leerer neuer Ordner zählt nicht
+    (tmp_path / "konten" / "neu" / "meldungen.jsonl").write_text("")
+    assert rm.ordner_neu() == tmp_path / "konten" / "neu"                     # nach dem Umzug: der neue

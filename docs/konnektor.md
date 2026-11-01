@@ -140,7 +140,7 @@ es nicht. Auch eine Person, die schon in der Reise steht, lässt sich so mit ihr
 in `reise.yaml` wird sie über den Schreibweg zum Gast, der nicht mitreist (niemand wird gestrichen).
 
 **Neue Reise:** Das Konto wird nach dem Anlegen mit der Reise verknüpft. Personen mit Adresse bekommen eine Einladung
-per Mail. Die Adressen stehen in der Anfrage (`einladen`) in `<ablage>/_neu/`, nie in den Reisedaten.
+per Mail. Die Adressen stehen in der Anfrage (`einladen`) in `<konten>/neu/`, nie in den Reisedaten.
 
 **Wer darf fragen:**
 - Redirect-URIs: nur `https://claude.ai/api/mcp/auth_callback` (dazu `FR_OAUTH_REDIRECTS`) und Loopback mit
@@ -158,7 +158,7 @@ Eine neue Reise legt eine Person an, keine Reise. Deshalb gibt es neben den Link
 | `sprache_setzen` | Konto-Werkzeug (alle Rollen), Eingabe `sprache` (de, en …): stellt die Sprache des Kontos ein; sie gilt für Anleitung, Beschreibungen, Antworten, Kontoseiten und Mails (ADR-0006) |
 | `reise_anlegen` | Eingaben `titel`, `von`, `bis` (JJJJ-MM-TT), optional `ziel`, `sprache` (Sprache der Reise, Vorgabe `de`), `personen` (je `vorname`, `rolle`, `reist`, `notiz`), `notiz` (Bekanntes in eigenen Worten mit Herkunft) und `pfad`; wer anlegt, ist Organisator:innen der neuen Reise |
 
-`reise_anlegen` lehnt sofort ab, wenn Angaben fehlen oder nicht passen oder wenn es den Ordnernamen schon gibt, als veröffentlichte Reise, als Ablage oder als offene Anfrage (`reise.neue_reise_pruefen`). Sonst bleibt die Anfrage mit `daten.neue_reise` als Beleg in `<ablage>/_neu/auftraege.jsonl` (gehört zu keiner Reise), und der Schreibweg legt die Reise sofort an (`neu.aus_auftrag`, die Notiz wird der Überblick, Probebau, Commit nach `main`). Das Veröffentlichen schaltet sie frei und schreibt der Person eine Meldung mit den Links nach `<ablage>/_neu/meldungen.jsonl` (`betrieb/zustellen.py`). Die Links zu den Seiten liest der Konnektor aus `KN_SEITENLINKS` (Standard `seiten.json` neben den Zugängen), die der Betrieb beim Freischalten schreibt. Den Stand der Anfragen zeigt `rueckmeldungen.py liste _neu`. Eine persönliche Startseite im Web mit derselben Übersicht ist geplant (Issue #41).
+`reise_anlegen` lehnt sofort ab, wenn Angaben fehlen oder nicht passen oder wenn es den Ordnernamen schon gibt, als veröffentlichte Reise, als Ablage oder als offene Anfrage (`reise.neue_reise_pruefen`). Sonst bleibt die Anfrage mit `daten.neue_reise` als Beleg in `<konten>/neu/auftraege.jsonl` (gehört zu keiner Reise), und der Schreibweg legt die Reise sofort an (`neu.aus_auftrag`, die Notiz wird der Überblick, Probebau, Commit nach `main`). Das Veröffentlichen schaltet sie frei und schreibt der Person eine Meldung mit den Links nach `<konten>/neu/meldungen.jsonl` (`betrieb/zustellen.py`). Die Links zu den Seiten liest der Konnektor aus `KN_SEITENLINKS` (Standard `seiten.json` neben den Zugängen), die der Betrieb beim Freischalten schreibt. Den Stand der Anfragen zeigt `rueckmeldungen.py liste _neu`. Eine persönliche Startseite im Web mit derselben Übersicht ist geplant (Issue #41).
 
 ## Sprache (ADR-0006, Stand 31.10.2026)
 

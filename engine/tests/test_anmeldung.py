@@ -242,7 +242,7 @@ def test_kontoseite(welt):
     # Bitte „Reisen anlegen“: Meldung an den Betreiber, der auf seiner Kontoseite entscheidet
     abruf(f"{u.kurl}/konto", "POST", {"aktion": "anfragen"}, cookie=mo)
     assert "liegt beim Betreiber" in abruf(f"{u.kurl}/konto", cookie=mo)[2]
-    m = [json.loads(z) for z in (u.ablage / "_neu" / "meldungen.jsonl").read_text().splitlines()]
+    m = [json.loads(z) for z in (konten.pfad().parent / "neu" / "meldungen.jsonl").read_text().splitlines()]
     assert m[-1]["an"] == ["Ida"] and "Mo Beispiel" in m[-1]["text"]
     s, _, t = abruf(f"{u.kurl}/konto", cookie=ida)
     assert "Mo Beispiel" in t and "Freischalten" in t
