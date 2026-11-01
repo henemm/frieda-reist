@@ -1213,7 +1213,8 @@ function wegTabelle(liste) {
   return el("div", {class: "tabelle wege"}, el("table", {},
     el("thead", {}, el("tr", {}, el("th", {scope: "col"}, T("seite.wege.weg")),
       spalten.map(n => el("th", {scope: "col", class: "zahl"}, kennzahlName(n))))),
-    el("tbody", {}, liste.map(a => el("tr", {},
+    // vorschau: die Zeile führt zur Etappe; unterwegs ohne Sprechblase (Entscheidung 28.10.2026), am Rechner mit
+    el("tbody", {}, liste.map(a => el("tr", {class: "vorschau"},
       el("th", {scope: "row"}, el("span", {class: "wege-name"}, link(a.id, a.titel), zid(a.id)), chips(a)),
       spalten.map(n => el("td", {class: "zahl" + (paare.get(a.id)[n] ? "" : " leer")}, paare.get(a.id)[n] || "–")))))));
 }
