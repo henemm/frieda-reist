@@ -4,7 +4,7 @@ Die Seite folgt einem Designsystem (Issue #18): wenige Bausteine, die jede Ansic
 
 ## Aufbau: Atomic Design und drei Achsen
 
-Die Ebenen folgen Brad Frosts Atomic Design; festgelegt in [ADR-0002](adr/0002-atomic-design.md) (mit der Pflicht, neue Bausteine an vier Stellen einzutragen). Skript und Stile in `engine/vorlage.html` sind gleich geordnet: Der Stilblock beginnt mit den Tokens, dann Grundlagen (Seite, Text, Pico CSS, Reisetexte), Atome, Moleküle, Organismen, Vorlagen, der Rahmen der Seite (Kopf, Meldungen, Glas, Leiste) und zuletzt die Breiten. Jede Regel steht bei dem Baustein, zu dem sie gehört; was ein Baustein in einem anderen anders macht, steht beim umfassenden.
+Die Ebenen folgen Brad Frosts Atomic Design; festgelegt in [ADR-0002](adr/0002-atomic-design.md) (mit der Pflicht, neue Bausteine an vier Stellen einzutragen). Skript und Stile in `engine/vorlage.html` sind gleich geordnet: Der Stilblock beginnt mit den Tokens, dann Grundlagen (Seite, Text, Pico CSS, Reisetexte), Atome, Moleküle, Organismen, Vorlagen, der Rahmen der Seite (Kopf, Meldungen, Glas, Leiste, Fuß) und zuletzt die Breiten. Der Fuß nennt auf jeder Seite das Release der Software („Frieda Release 412 · 9b4a397“: Zahl der Commits bis zu diesem Stand und kurzer Commit-Hash, beim Bau aus Git; in einem flachen Klon nur der Hash). So sieht man, ob eine Seite schon mit dem neuen Stand gebaut ist: Die Zahl steht auf GitHub auf der Startseite des Repos bei „Commits“. Jede Regel steht bei dem Baustein, zu dem sie gehört; was ein Baustein in einem anderen anders macht, steht beim umfassenden.
 
 | Ebene | Bausteine in `engine/vorlage.html` |
 |---|---|
