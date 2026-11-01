@@ -97,10 +97,27 @@ for (const breite of [390, 1300]) {
     return {karte: [...k.querySelectorAll(":scope > details.einzelheiten")].map(d => d.open),
       buchung: [...b.querySelectorAll(":scope > details.einzelheiten")].map(d => d.open),
       oben: zeilen(b).map(t => t.split(":")[0]), storno: zeilen(b).find(t => t.startsWith("Storno")) || null,
+      ab: zeilen(b).find(t => t.startsWith("Ab:")) || null,
+      // Charakter (nach_buchung) sichtbar vor der Buchung, die übrigen Merkmale „Aus der Planung“ (zu)
+      sichtbar: [...k.querySelectorAll(":scope > dl.mliste dt")].map(x => x.textContent),
+      planung: [...k.querySelectorAll(":scope > details.einzelheiten > summary")].map(x => x.textContent),
+      inPlanung: [...k.querySelectorAll(":scope > details.einzelheiten dl.mliste dt")].map(x => x.textContent),
+      reihenfolge: [...k.children].map(x => x.matches("dl.mliste") ? "sichtbar" : x.matches(".buchung") ? "buchung"
+        : x.matches("details.einzelheiten") ? "planung" : null).filter(Boolean),
       // Stand-Chips an der Karte (ohne Frage und Kalender)
       chipsKarte: [...k.querySelectorAll(":scope > .chips .chip")].filter(c => ["gebucht", "angefragt", "nicht gebucht"].includes(c.textContent)).length,
       tageskasten: [...document.querySelectorAll(".tag-oben .ding.nacht .chip, .tag-oben .ding.nacht .wm-knopf")].map(x => x.textContent)};
   });
+  // Kosten: gebucht zählt der Preis der Buchung, nicht das Angebot (Testwert: B-01 kostet 100 €, U-01 bietet 120 €)
+  a.kosten = await p.evaluate(() => { const alt = R.buchungen["B-01"].preis; R.buchungen["B-01"].preis = "100 € (Testwert)";
+    const k = reiseKosten(PLAN_FEST).text; R.buchungen["B-01"].preis = alt; return [k, reiseKosten(PLAN_FEST).text]; });
+  // Belege (31.10.2026): eine Zeile wie im Postfach, sichtbar ohne Aufklappen; keine Knöpfe ohne Konto (Beleg erfunden)
+  await p.evaluate(() => { BL = [{id: "x1", buchung: "B-01", name: "Bestätigung Hotel.pdf", groesse: 2048, wer: "Ida",
+    hochgeladen: "2026-10-29T10:00:00", sichtbar: "alle"}]; route(true); });
+  await p.waitForSelector(".ebene-nacht #U-01 .beleg");
+  a.beleg = await p.evaluate(() => { const z = document.querySelector("[id='B-01'] .beleg");
+    return {zugeklappt: !!z.closest("details:not([open])"), art: z.querySelector(".beleg-art").textContent,
+      name: z.querySelector("a").textContent, knoepfe: document.querySelectorAll("[id='B-01'] .belege button").length}; });
   await ctx.close();
 }
 await b.close();

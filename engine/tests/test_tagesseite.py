@@ -69,6 +69,14 @@ def test_tagesseite_in_ebenen(tmp_path, browser):
         assert g["karte"] == [False] and g["buchung"] == [False], g
         assert g["oben"] == ["Nummer", "Preis", "Zahlung"] and g["storno"] is None, g
         assert g["chipsKarte"] == 0 and g["tageskasten"] == ["gebucht"], g
+        # Variante A (Product Owner 31.10.2026): Charakter (nach_buchung, Beispielwert) bleibt sichtbar, dann die Buchung, dann
+        # zugeklappt „Aus der Planung“ mit den übrigen Merkmalen
+        assert g["sichtbar"] == ["Charakter"] and g["planung"] == ["Aus der Planung"], g
+        assert g["inPlanung"] == ["Preis pro Nacht", "Frühstück"] and g["reihenfolge"] == ["sichtbar", "buchung", "planung"], g
+        # Übernachtungen: gebucht zählt die Buchung (100 € statt 120 € Angebot) plus Pension Burgblick 85 € (Beispielwerte)
+        assert a["kosten"] == ["185 €", "205 €"], a["kosten"]
+        # Belege: sichtbar ohne Aufklappen, Art der Datei, Name ohne Endung; ohne Konto keine Knöpfe
+        assert a["beleg"] == {"zugeklappt": False, "art": "PDF", "name": "Bestätigung Hotel ↗", "knoepfe": 0}, a["beleg"]
         assert a["breit"] == [] and not a["breitNachTabelle"], (breite, a["breit"])
         assert a["kaesten"] == 1 and a["flaeche"], breite                       # ein Kasten: der Tageskasten
         assert a["planChips"] == [], a["planChips"]                             # Plan gewählt: der Tag nennt keine Pläne
@@ -98,6 +106,17 @@ def test_tagesseite_in_ebenen(tmp_path, browser):
             assert lage["unterwegs"][1] > lage["weg"][1] and lage["orte"][1] == lage["unterwegs"][1]
             assert lage["hintergrund"][1] == lage["weg"][1] and lage["unterwegs"][0] == lage["weg"][0]
             assert a["tabelle"]["display"] == "block"   # rechte Spalte ist schmal: auch am Rechner gestapelt
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+def test_gebuchte_nacht_zeigt_ab_oben(tmp_path):
+    """Variante A (Product Owner 31.10.2026): Was ab wann geht (ab, ab_was; z. B. der Check-in) steht oben in der Buchung, mit
+    Wochentag. Erfunden: B-01 bekommt einen Check-in."""
+    alt = '    storno: "kostenlos bis 3 Tage vorher, danach eine Nacht"\n'
+    e = rundgang(tmp_path, "chromium", lambda t: t.replace(alt, '    ab: 2027-05-13\n    ab_was: "Check-in ab 15 Uhr"\n' + alt, 1))
+    assert e["fehler"] == []
+    g = e["aus"]["390"]["gebucht"]
+    assert g["oben"] == ["Nummer", "Ab", "Preis", "Zahlung"] and g["ab"] == "Ab: Do 13.5. · Check-in ab 15 Uhr", g
 
 
 # Erfunden: Gasthof Polenztal (V-03.b) ist nicht verworfen, sondern nur vorgeschlagen; so hat die Nacht von Tag 2 zwei gültige
