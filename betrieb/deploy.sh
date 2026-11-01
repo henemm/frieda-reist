@@ -54,8 +54,10 @@ for m in $RM_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_RM=1; don
 for m in $KN_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_KN=1; done
 for m in $SB_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_SB=1; done
 for m in $(printf '%s\n' $RM_MODULE $KN_MODULE $SB_MODULE | sort -u); do install -m 644 "$WURZEL/engine/$m" "$DIENST/"; done
-# Friedas Symbol (Favicon, App-Symbol); der Konnektor liest die Dateien bei jedem Abruf, kein Neustart nötig
+# Friedas Symbol (Favicon, App-Symbol) und die Schrift der Anmeldeseiten; der Konnektor liest die Dateien bei jedem
+# Abruf, kein Neustart nötig
 rsync -a --delete --chmod=D755,F644 --exclude "*.py" "$WURZEL/engine/marke/" "$DIENST/marke/"
+rsync -a --delete --chmod=D755,F644 --include "*.woff2" --exclude "*" "$WURZEL/engine/vendor/fonts/" "$DIENST/schrift/"
 mkdir -p "$FR_KONNEKTOR" "$FR_KONTEN" && chmod 700 "$FR_KONNEKTOR" "$FR_KONTEN"
 neustart() {
   ${FR_SUDO-sudo -n} systemctl restart "$1" 2>/dev/null && echo "$2 neu gestartet." \

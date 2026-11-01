@@ -51,29 +51,68 @@ def th(schluessel, **html_werte):
 def fett(wert):
     return f"<strong>{esc(wert)}</strong>"
 
+# Gesicht „B2 Freundlich“ wie die Reiseseiten (docs/design.md): heller Grund, Flächen ohne Rahmen mit weichem Schatten,
+# Radius 18 px, Knöpfe als Pillen, Source Sans 3 (liefert der Konnektor unter /schrift/ aus). Entwurf und Entscheidung: #60.
 CSS = """
-:root{--bg:#f8f8f5;--fg:#1d2420;--mut:#5b645e;--card:#ffffff;--line:#e4e5df;--acc:#1f7a57;--acc2:#e3f1ea;
---warn:#9a5b00;--warnbg:#fbeed6}
-@media (prefers-color-scheme:dark){:root{--bg:#151816;--fg:#eceee9;--mut:#a5aca6;--card:#1d211e;--line:#2c312d;
---acc:#6fd0a5;--acc2:#1f3329;--warn:#f0c46a;--warnbg:#3a3017}}
+@font-face{font-family:"Source Sans 3";font-style:normal;font-weight:200 900;font-display:swap;
+src:url(/schrift/source-sans-3-latin-ext-wght-normal.woff2) format("woff2-variations");
+unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Source Sans 3";font-style:normal;font-weight:200 900;font-display:swap;
+src:url(/schrift/source-sans-3-latin-wght-normal.woff2) format("woff2-variations");
+unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+:root{--bg:#f8f8f5;--fg:#1d2420;--mut:#5b645e;--card:#ffffff;--line:#e4e5df;--feld:#d3d6cf;--acc:#1f7a57;--acc2:#e3f1ea;
+--neutral:#efefea;--warn:#9a5b00;--warnbg:#fbeed6;--gefahr:#a33b2b;--schatten:0 1px 2px rgba(29,36,32,.06),0 8px 24px rgba(29,36,32,.07)}
+@media (prefers-color-scheme:dark){:root{--bg:#151816;--fg:#eceee9;--mut:#a5aca6;--card:#1d211e;--line:#2c312d;--feld:#3a403b;
+--acc:#6fd0a5;--acc2:#1f3329;--neutral:#272b28;--warn:#f0c46a;--warnbg:#3a3017;--gefahr:#f08a7a;--schatten:none}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:1.0625rem/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",
-Roboto,sans-serif}
-header{background:var(--card);color:var(--fg);border-bottom:1px solid var(--line);padding:.75rem 1rem;font:700 1.25rem -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-main{max-width:30rem;margin:1.5rem auto;padding:0 1rem}
-.karte{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1.25rem;margin-bottom:1rem}
-h1{font-size:1.4rem;margin:0 0 .75rem}h2{font-size:1.1rem;margin:0 0 .5rem}
-label{display:block;margin:.75rem 0 .25rem;font-weight:600}
-input[type=email],input[type=text]{width:100%;min-height:2.75rem;padding:.5rem .75rem;font:inherit;color:var(--fg);
-background:var(--bg);border:1px solid var(--line);border-radius:.375rem}
-input.code{font-size:1.5rem;letter-spacing:.3em;text-align:center}
-button{min-height:2.75rem;margin-top:1rem;padding:.5rem 1.25rem;font:600 1rem inherit;border:0;border-radius:.375rem;
-background:var(--acc);color:var(--card);cursor:pointer}
-button.leise{background:var(--acc2);color:var(--fg)}button.gefahr{background:var(--warnbg);color:var(--warn)}
-.fehler{background:var(--warnbg);color:var(--warn);padding:.6rem .8rem;border-radius:.375rem;margin:.5rem 0}
-.hinweis,.klein{color:var(--mut)}.klein{font-size:.875rem}
-fieldset{border:0;padding:0;margin:.75rem 0 0}legend{font-weight:600;padding:0}label.haken{font-weight:400;margin:.35rem 0}
-select{min-height:2.75rem;font:inherit;width:100%}ul{padding-left:1.2rem}a{color:var(--acc)}form.zeile{display:inline}
+body{margin:0;background:var(--bg);color:var(--fg);font:1.0625rem/1.45 "Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+main{max-width:28rem;margin:0 auto;padding:1.25rem 1rem 2.5rem;display:flex;flex-direction:column;gap:1.5rem}
+.kopf{display:flex;align-items:center;justify-content:center;gap:.6rem;padding-top:1.5rem;font-weight:700;font-size:1.375rem}
+.kopf img{width:28px;height:28px;border-radius:7px}
+.kopf.breit{justify-content:space-between;padding-top:0}.kopf.breit span{display:flex;align-items:center;gap:.5rem;font-size:1.25rem}
+.karte{background:var(--card);border-radius:18px;box-shadow:var(--schatten);padding:1.6rem 1.35rem 1.4rem;display:flex;flex-direction:column;gap:1rem}
+.karte>*,.karte form>*{margin:0}
+h1{font-size:1.625rem;line-height:1.2;margin:0}h2{font-size:1.1875rem;margin:0 .25rem}
+.lead,.hinweis,.klein{color:var(--mut)}.klein{font-size:.875rem}.lead strong{color:var(--fg);font-weight:600}
+form{display:flex;flex-direction:column;gap:.5rem;margin:0}
+label{font-size:.9375rem;font-weight:600}
+input[type=email],input[type=text],select{width:100%;height:3.125rem;padding:0 .875rem;font:inherit;color:var(--fg);
+background:var(--bg);border:1.5px solid var(--feld);border-radius:12px}
+input.code{height:3.6rem;font-size:1.75rem;font-weight:600;letter-spacing:.28em;text-align:center}
+button,a.knopf{display:flex;align-items:center;justify-content:center;min-height:3.125rem;margin-top:.5rem;padding:.5rem 1.25rem;
+font-family:inherit;font-size:1.0625rem;font-weight:600;border:0;border-radius:999px;background:var(--acc);color:var(--card);cursor:pointer;text-decoration:none}
+button.leise{background:var(--acc2);color:var(--acc)}button.neutral{background:var(--neutral);color:var(--fg)}
+button.gefahr{background:var(--gefahr);color:var(--card)}
+button.link{background:none;color:var(--acc);min-height:2.75rem;margin:0;padding:.5rem .25rem;font-size:1rem}
+a{color:var(--acc)}.links{display:flex;justify-content:center;flex-wrap:wrap;gap:0 1.4rem}.links a{font-weight:600;font-size:1rem;text-decoration:none;padding:.6rem .25rem}
+.fuss{display:flex;flex-direction:column;gap:.6rem;padding:0 .4rem;font-size:.875rem;color:var(--mut)}.fuss p{margin:0}
+.fehler{background:var(--warnbg);color:var(--warn);padding:.6rem .8rem;border-radius:12px}
+.neu{border-top:1px solid var(--line);margin-top:.75rem;padding-top:1rem;display:flex;flex-direction:column;gap:.5rem}
+.marke{align-self:flex-start;font-size:.8125rem;font-weight:600;color:var(--acc);background:var(--acc2);border-radius:999px;padding:.1rem .6rem}
+.marke.leise{color:var(--mut);background:var(--neutral)}
+.darf{list-style:none;padding:0;display:flex;flex-direction:column;gap:.6rem}
+.darf li{display:flex;gap:.6rem}.darf li::before{content:"✓";flex:none;width:1.4rem;height:1.4rem;border-radius:50%;
+background:var(--acc2);color:var(--acc);font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+.kasten{background:var(--bg);border-radius:12px;padding:.65rem .8rem;font-size:.875rem;color:var(--mut)}.kasten strong{color:var(--fg)}
+.abschnitt{display:flex;flex-direction:column;gap:.6rem}.abschnitt>p{margin:0 .25rem;font-size:.9375rem}
+.liste{background:var(--card);border-radius:18px;box-shadow:var(--schatten);display:flex;flex-direction:column;overflow:hidden}
+.liste>*+*{border-top:1px solid var(--line)}
+.zeile{display:flex;align-items:center;gap:.75rem;padding:.9rem 1rem;color:var(--fg);text-decoration:none;cursor:pointer;list-style:none}
+.zeile::-webkit-details-marker{display:none}
+.zeile::after{content:"›";color:var(--mut);font-size:1.4rem;line-height:1}details[open]>.zeile::after{transform:rotate(90deg)}
+.zeile .was{flex:1;min-width:0;display:flex;flex-direction:column;gap:.2rem}.zeile .titel{font-weight:600}
+.zeile .wert{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%}
+details>.inhalt{padding:0 1rem 1rem;display:flex;flex-direction:column;gap:.5rem}
+.kalender-links{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 1rem}
+.kalender-links>a,.kalender-links summary{font-weight:600;color:var(--acc);text-decoration:none;padding:.4rem 0;cursor:pointer;list-style:none}
+.kalender-links summary::-webkit-details-marker{display:none}.kalender-links details[open]{flex-basis:100%}
+.kalender-links details[open]>summary{margin-bottom:.5rem}
+fieldset{border:0;padding:0;margin:.5rem 0 0;display:flex;flex-direction:column;gap:.35rem}legend{font-weight:600;padding:0;margin-bottom:.25rem}
+label.haken{font-weight:400;font-size:1rem;display:flex;gap:.5rem;align-items:flex-start}
+label.haken input{width:1.15rem;height:1.15rem;margin-top:.2rem;accent-color:var(--acc)}
+.bestaetigen{background:var(--bg);border-radius:12px;padding:.75rem}.bestaetigen input{accent-color:var(--gefahr)}
+ul.geraete{margin:0;padding-left:1.1rem}
+.zurueck{font-weight:600;text-decoration:none;padding:.5rem .25rem;align-self:flex-start}
 """
 
 
@@ -81,15 +120,17 @@ def esc(t):
     return html.escape(str(t or ""), quote=True)
 
 
-def seite(titel, *teile):
+def seite(titel, *teile, kopf=None):
+    """Ganze Seite. kopf: eigener Kopf (Mein Konto); sonst Friedas Zeichen mittig über der Karte."""
     rumpf = "".join(teile)
     sp = sprache_der_seite()
+    kopf = kopf if kopf is not None else '<header class="kopf"><img src="/favicon.svg" alt="">Frieda</header>'
     return (f'<!DOCTYPE html><html lang="{esc(sp)}" dir="{esc(texte.sprache(sp).RICHTUNG)}"><head><meta charset="utf-8"><meta name="viewport" '
             f'content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
             f'<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/favicon.ico" sizes="48x48">'
             f'<link rel="apple-touch-icon" href="/apple-touch-icon.png">'
-            f'<title>{esc(titel)} – Frieda</title><style>{CSS}</style></head><body><header>Frieda</header>'
-            f'<main>{rumpf}</main></body></html>')
+            f'<title>{esc(titel)} – Frieda</title><style>{CSS}</style></head><body>'
+            f'<main>{kopf}{rumpf}</main></body></html>')
 
 
 def karte(*teile):
@@ -107,6 +148,11 @@ def verdeckt(**felder):
 def formular(ziel, inhalt, knopf, klasse=""):
     k = f' class="{klasse}"' if klasse else ""
     return f'<form method="post" action="{esc(ziel)}">{inhalt}<button{k}>{esc(knopf)}</button></form>'
+
+
+def fuss(*saetze):
+    """Leise Zeilen unter der Karte."""
+    return '<div class="fuss">' + "".join(f"<p>{esc(t)}</p>" for t in saetze if t) + "</div>"
 
 
 def antwort(code, body, extra=()):
@@ -137,34 +183,38 @@ def rueckweg(roh):
 
 def adress_seite(zurueck="", einladung="", email="", meldung=""):
     return seite(tx("konto.anmelden.titel"), karte(
-        f"<h1>{esc(tx('konto.anmelden.ueberschrift'))}</h1>",
-        f"<p>{esc(tx('konto.anmelden.hinweis'))}</p>",
+        f"<div><h1>{esc(tx('konto.anmelden.ueberschrift'))}</h1>",
+        f'<p class="lead">{esc(tx("konto.anmelden.hinweis"))}</p></div>',
         fehler(meldung),
         formular("/anmelden", verdeckt(schritt="adresse", zurueck=zurueck, einladung=einladung)
                  + f'<label for="email">{esc(tx("konto.email_adresse"))}</label>'
                  f'<input id="email" type="email" name="email" value="{esc(email)}" autocomplete="email" required '
-                 'autofocus>', tx("konto.code_schicken")),
-        f'<p class="klein">{esc(tx("konto.datenschutz"))}</p>'))
+                 f'placeholder="{esc(tx("konto.email_beispiel"))}" autofocus>', tx("konto.code_schicken"))),
+        fuss(tx("konto.anmelden.nur_lesen"), tx("konto.datenschutz")))
 
 
 def code_seite(email, zurueck="", einladung="", code="", meldung="", name_noetig=False, name=""):
-    name_feld = (f'<label for="name">{esc(tx("konto.name_frage"))}</label>'
+    name_feld = (f'<div class="neu"><span class="marke">{esc(tx("konto.code.neu_hier"))}</span>'
+                 f'<label for="name">{esc(tx("konto.name_frage"))}</label>'
                  f'<input id="name" type="text" name="name" value="{esc(name)}" maxlength="{konten.MAX_NAME}" '
-                 'autocomplete="name" required>'
-                 f'<p class="klein">{esc(tx("konto.name_hinweis"))}</p>'
+                 f'autocomplete="given-name" placeholder="{esc(tx("konto.name_beispiel"))}" required>'
+                 f'<p class="klein">{esc(tx("konto.name_hinweis"))}</p></div>'
                  if name_noetig else "")
+    neuer_code = (f'<form method="post" action="/anmelden">{verdeckt(schritt="adresse", email=email, zurueck=zurueck, einladung=einladung)}'
+                  f'<button class="link">{esc(tx("konto.code.neuer_code"))}</button></form>')
+    andere = f'<a href="/anmelden?{urllib.parse.urlencode({"zurueck": zurueck, "einladung": einladung})}">{esc(tx("konto.code.andere_adresse"))}</a>'
     return seite(tx("konto.code.titel"), karte(
-        f"<h1>{esc(tx('konto.code.titel'))}</h1>",
-        f"<p>{th('konto.code.gesendet', email=fett(email), minuten=str(konten.CODE_MINUTEN))}</p>"
-        if not code else f"<p>{th('konto.code.anmelden_als', email=fett(email))}</p>",
+        f"<div><h1>{esc(tx('konto.code.titel'))}</h1>",
+        f'<p class="lead">{th("konto.code.gesendet", email=fett(email), minuten=str(konten.CODE_MINUTEN))}</p></div>'
+        if not code else f'<p class="lead">{th("konto.code.anmelden_als", email=fett(email))}</p></div>',
         fehler(meldung),
         formular("/anmelden", verdeckt(schritt="code", email=email, zurueck=zurueck, einladung=einladung)
                  + f'<label for="code">{esc(tx("konto.code.label"))}</label>'
                  f'<input id="code" class="code" type="text" name="code" value="{esc(code)}" inputmode="numeric" '
                  'autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required'
-                 f'{"" if code or name_noetig else " autofocus"}>' + name_feld, tx("konto.anmelden.titel")),
-        f'<p class="klein"><a href="/anmelden?{urllib.parse.urlencode({"zurueck": zurueck, "einladung": einladung})}">'
-        f'{esc(tx("konto.code.andere_adresse"))}</a></p>'))
+                 f'{"" if code or name_noetig else " autofocus"}>'
+                 + ("" if code else f'<p class="klein">{esc(tx("konto.code.spam"))}</p>') + name_feld, tx("konto.anmelden.titel"))),
+        f'<div class="links">{neuer_code}{andere}</div>')
 
 
 def kalender_reisen(k):
@@ -190,18 +240,19 @@ def kalender_antwort(k, datei=False):
     return 200, kopf, text.encode("utf-8")
 
 
-def kalender_karte(k, reise_info):
-    """Karte „Kalender“ auf Mein Konto: Abo-Link, Download und Einstellungen für alle Reisen (Product Owner 30.10.2026)."""
+def kalender_karte(k, reise_info, offen=False):
+    """Kalender auf Mein Konto: Abo, Download und, hinter „Konfigurieren“, die Einstellungen für alle Reisen
+    (Product Owner 30.10.2026; Gestalt #60)."""
     e = konten.kalender_einstellungen(k["id"])
     basis = os.environ.get("KN_BASIS")
     if basis:
         url = kalender.abo_url(basis, konten.kalender_token(k["id"]))
-        link = f'<a href="{esc(kalender.webcal(url))}">{esc(tx("konto.kalender.abonnieren_link"))}</a>'
-        abo = (f'<p>{th("konto.kalender.abonnieren", link=link)}</p>'
-               f'<label for="kal-url">{esc(tx("konto.kalender.url_label"))}</label>'
-               f'<input id="kal-url" type="text" readonly value="{esc(url)}">')
+        abo = f'<a class="knopf" href="{esc(kalender.webcal(url))}">{esc(tx("konto.kalender.abonnieren_link"))}</a>'
+        link = (f'<label for="kal-url">{esc(tx("konto.kalender.url_label"))}</label>'
+                f'<input id="kal-url" type="text" readonly value="{esc(url)}">'
+                f'<p class="klein">{esc(tx("konto.kalender.persoenlich"))}</p>')
     else:
-        abo = f'<p class="hinweis">{esc(tx("konto.kalender.abo_fehlt"))}</p>'
+        abo, link = "", f'<p class="klein">{esc(tx("konto.kalender.abo_fehlt"))}</p>'
     haken = lambda name, an, text: (f'<label class="haken"><input type="checkbox" name="{esc(name)}" value="ja"'   # noqa: E731
                                     f'{" checked" if an else ""}> {esc(text)}</label>')
     wahl = lambda name, werte, jetzt: (f'<select id="{name}" name="{name}">' + "".join(   # noqa: E731
@@ -219,12 +270,16 @@ def kalender_karte(k, reise_info):
               + f'<label for="erinnerung_termine">{esc(tx("konto.kalender.erinnerung_termine"))}</label>'
               + wahl("erinnerung_termine", kalender.erinnerungen(kalender.ERINNERUNG_TERMINE_SCHLUESSEL, sprache_der_seite()), e["erinnerung_termine"])
               + f'<p class="klein">{esc(tx("konto.kalender.erinnerung_hinweis"))}</p>')
-    datei = '<a href="/konto?kalender=datei">' + esc(tx("konto.kalender.datei_link")) + "</a>"
-    return karte(f"<h2>{esc(tx('konto.kalender.titel'))}</h2>",
-                 f'<p class="klein">{esc(tx("konto.kalender.hinweis"))}</p>',
-                 abo, f"<p>{th('konto.kalender.datei', link=datei)}</p>",
-                 formular("/konto", felder, tx("konto.kalender.einstellungen")),
-                 formular("/konto", verdeckt(aktion="kalender_neu"), tx("konto.kalender.neuer_link"), "leise"))
+    einstellungen = (f'<details{" open" if offen else ""}><summary>{esc(tx("konto.kalender.konfigurieren"))}</summary>'
+                     f'<div class="inhalt" style="padding:0">'
+                     + formular("/konto", felder, tx("konto.kalender.speichern")) + link
+                     + (formular("/konto", verdeckt(aktion="kalender_neu"), tx("konto.kalender.neuer_link"), "neutral") if basis else "")
+                     + "</div></details>")
+    return (f'<div class="abschnitt"><h2>{esc(tx("konto.kalender.titel"))}</h2>'
+            + karte(f'<p>{esc(tx("konto.kalender.hinweis"))}</p>', abo,
+                    f'<div class="kalender-links"><a href="/konto?kalender=datei">{esc(tx("konto.kalender.datei_link"))}</a>'
+                    f"{einstellungen}</div>")
+            + "</div>")
 
 
 def kalender_formular(k, f):
@@ -236,20 +291,35 @@ def kalender_formular(k, f):
             "reisen_aus": [r for r in reisen if f.get("reise_" + r) != "ja"]}
 
 
-def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu=""):
-    reisen = []
+def rolle_marke(rolle):
+    """Rolle als Marke („Du organisierst“); unbekannte Rollen ohne Marke."""
+    r = rolle_neu(rolle)
+    if r not in ("gast", "mitwirkend", "organisator"):
+        return ""
+    return f'<span class="marke{"" if r == "organisator" else " leise"}">{esc(tx("konto.rolle." + r))}</span>'
+
+
+def einstellung(name, titel, wert, inhalt, offen=False):
+    """Zeile der Liste „Einstellungen“; Antippen klappt das Formular darunter auf."""
+    return (f'<details id="{name}"{" open" if offen else ""}><summary class="zeile"><span class="was">{esc(titel)}</span>'
+            f'<span class="wert">{esc(wert)}</span></summary><div class="inhalt">{inhalt}</div></details>')
+
+
+def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen=""):
+    """Mein Konto (Gestalt #60): Reisen zuerst, dann Kalender, Freischaltungen (Betreiber), Einstellungen als Liste,
+    unten Abmelden auf allen Geräten und Konto löschen. offen: Einstellung, die aufgeklappt erscheint."""
+    zeilen = []
     for m in konten.mitgliedschaften(k["id"]):
         info = reise_info(m["reise"]) or {}
         z = rm.zustand(m["reise"]) or {}
         p = next((x for x in z.get("personen") or [] if x.get("schluessel") == m["schluessel"]), {})
-        link = f' – <a href="{esc(info["seite"])}">{esc(tx("konto.reise.oeffnen"))}</a>' if info.get("seite") else ""
-        rolle = rolle_neu(p.get("rolle"))
-        reisen.append(f'<li>{esc(info.get("titel") or m["reise"])} ({esc(tx("konto.rolle." + rolle) if rolle in ("gast", "mitwirkend", "organisator") else tx("konto.rolle.dabei"))})'
-                      f"{link}</li>")
-    reisen_html = f"<ul>{''.join(reisen)}</ul>" if reisen else (
-        f'<p class="hinweis">{esc(tx("konto.reisen.keine"))}</p>')
+        inhalt = (f'<span class="was"><span class="titel">{esc(info.get("titel") or m["reise"])}</span>'
+                  f"{rolle_marke(p.get('rolle'))}</span>")
+        zeilen.append(f'<a class="zeile" href="{esc(info["seite"])}">{inhalt}</a>' if info.get("seite")
+                      else f'<div class="zeile">{inhalt}</div>')
+    reisen = f'<div class="liste">{"".join(zeilen)}</div>' if zeilen else karte(f'<p class="hinweis">{esc(tx("konto.reisen.keine"))}</p>')
     if konten.recht(k, "reise_anlegen"):
-        anlegen = f"<p>{esc(tx('konto.reisen.anlegen_darfst'))}</p>"
+        anlegen = f'<p class="hinweis">{esc(tx("konto.reisen.anlegen_darfst"))}</p>'
     else:
         st = next((a["status"] for a in konten.anfragen(nur_offen=False) if a["konto"] == k["id"]), None)
         anlegen = {"offen": f'<p class="hinweis">{esc(tx("konto.reisen.anlegen_offen"))}</p>',
@@ -257,16 +327,19 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu=""):
             st, formular("/konto", verdeckt(aktion="anfragen"), tx("konto.reisen.anlegen_knopf"), "leise"))
     betreiber = ""
     if konten.recht(k, "betreiber"):
-        offen = konten.anfragen()
-        zeilen = "".join(
-            f'<li>{esc(a["name"])} ({esc(a["email"])}) '
-            + formular("/konto", verdeckt(aktion="freischalten", wer=a["konto"]), tx("konto.betreiber.freischalten"), "leise")
-            + formular("/konto", verdeckt(aktion="ablehnen", wer=a["konto"]), tx("konto.betreiber.ablehnen"), "gefahr") + "</li>"
-            for a in offen)
-        betreiber = karte(f"<h2>{esc(tx('konto.betreiber.titel'))}</h2>",
-                          f"<ul>{zeilen}</ul>" if zeilen else f'<p class="hinweis">{esc(tx("konto.betreiber.keine"))}</p>')
-    geraete = "".join(f'<li>{esc(g["geraet"] or tx("konto.geraete.geraet"))} <span class="klein">{esc(tx("konto.geraete.zuletzt", datum=g["zuletzt"][:10]))}</span>'
-                      f"</li>" for g in konten.geraete(k["id"]))
+        offen_anfragen = konten.anfragen()
+        bitten = "".join(
+            karte(f'<div><strong>{esc(a["name"])}</strong><p class="klein" style="margin:0">{esc(tx("konto.betreiber.anfrage", email=a["email"]))}</p></div>',
+                  '<div style="display:flex;gap:.6rem">'
+                  + formular("/konto", verdeckt(aktion="freischalten", wer=a["konto"]), tx("konto.betreiber.freischalten"), "leise").replace("<form ", '<form style="flex:1" ', 1)
+                  + formular("/konto", verdeckt(aktion="ablehnen", wer=a["konto"]), tx("konto.betreiber.ablehnen"), "neutral").replace("<form ", '<form style="flex:1" ', 1)
+                  + "</div>")
+            for a in offen_anfragen)
+        betreiber = (f'<div class="abschnitt"><h2>{esc(tx("konto.betreiber.titel"))}</h2>'
+                     + (bitten or f'<p class="hinweis">{esc(tx("konto.betreiber.keine"))}</p>') + "</div>")
+    geraete = konten.geraete(k["id"])
+    geraete_liste = "".join(f'<li>{esc(g["geraet"] or tx("konto.geraete.geraet"))} <span class="klein">{esc(tx("konto.geraete.zuletzt", datum=g["zuletzt"][:10]))}</span>'
+                            "</li>" for g in geraete)
     adresse_teil = (
         formular("/konto", verdeckt(aktion="adresse", email=adresse_neu)
                  + f'<label for="code">{esc(tx("konto.adresse.code_an", email=adresse_neu))}</label>'
@@ -278,52 +351,67 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu=""):
                  '<input id="neu" type="email" name="email" autocomplete="email" required>', tx("konto.code_schicken"), "leise"))
     sprachen = "".join(f'<option value="{esc(c)}"{" selected" if c == k["sprache"] else ""}>{esc(texte.sprache(c).NAME)}</option>'
                        for c in texte.SPRACHEN)
+    einstellungen = "".join((
+        einstellung("name", tx("konto.seite.name"), k["name"], formular("/konto", verdeckt(aktion="name")
+                    + f'<label for="name">{esc(tx("konto.seite.name_label"))}</label>'
+                    f'<input id="name" type="text" name="name" value="{esc(k["name"])}" maxlength="{konten.MAX_NAME}" required>',
+                    tx("konto.seite.speichern"), "leise"), offen == "name"),
+        einstellung("adresse", tx("konto.email_adresse"), k["email"], adresse_teil, offen == "adresse" or bool(adresse_neu)),
+        # Sprache gilt auch für die Reiseseiten und den Konnektor (#188)
+        einstellung("sprache", tx("konto.sprache.titel"), texte.sprache(k["sprache"]).NAME if k["sprache"] in texte.SPRACHEN else "",
+                    formular("/konto", verdeckt(aktion="sprache") + f'<label for="sprache">{esc(tx("konto.sprache.label"))}</label>'
+                             f'<select id="sprache" name="sprache">{sprachen}</select>', tx("konto.seite.speichern"), "leise"),
+                    offen == "sprache"),
+        einstellung("geraete", tx("konto.seite.geraete"), str(len(geraete)), f'<ul class="geraete">{geraete_liste}</ul>', offen == "geraete")))
+    kopf = (f'<header class="kopf breit"><span><img src="/favicon.svg" alt="">Frieda</span>'
+            f'<form method="post" action="/abmelden"><button class="link">{esc(tx("konto.seite.abmelden"))}</button></form></header>')
     return seite(tx("konto.seite.titel"),
-                 karte(f"<h1>{esc(tx('konto.seite.hallo', name=k['name']))}</h1>", fehler(meldung),
-                       f'<p class="hinweis">{esc(hinweis)}</p>' if hinweis else "",
-                       f"<p>{th('konto.seite.angemeldet_als', email=fett(k['email']))}</p>",
-                       formular("/abmelden", "", tx("konto.seite.abmelden"), "leise")),
-                 karte(f"<h2>{esc(tx('konto.seite.meine_reisen'))}</h2>", reisen_html, anlegen),
-                 kalender_karte(k, reise_info),
+                 f'<div><h1 style="font-size:1.875rem">{esc(tx("konto.seite.hallo", name=k["name"]))}</h1>'
+                 f'<p class="hinweis" style="margin:.1rem 0 0">{esc(k["email"])}</p></div>',
+                 fehler(meldung), f'<p class="kasten">{esc(hinweis)}</p>' if hinweis else "",
+                 f'<div class="abschnitt"><h2>{esc(tx("konto.seite.meine_reisen"))}</h2>{reisen}{anlegen}</div>',
+                 kalender_karte(k, reise_info, offen == "kalender"),
                  betreiber,
-                 karte(f"<h2>{esc(tx('konto.sprache.titel'))}</h2>",
-                       formular("/konto", verdeckt(aktion="sprache")
-                                + f'<label for="sprache">{esc(tx("konto.sprache.label"))}</label>'
-                                f'<select id="sprache" name="sprache">{sprachen}</select>', tx("konto.seite.speichern"), "leise")),
-                 karte(f"<h2>{esc(tx('konto.seite.name'))}</h2>", formular("/konto", verdeckt(aktion="name")
-                                                + f'<label for="name">{esc(tx("konto.seite.name_label"))}</label>'
-                                                f'<input id="name" type="text" name="name" value="{esc(k["name"])}" '
-                                                f'maxlength="{konten.MAX_NAME}" required>', tx("konto.seite.speichern"), "leise")),
-                 karte(f"<h2>{esc(tx('konto.email_adresse'))}</h2>", adresse_teil),
-                 karte(f"<h2>{esc(tx('konto.seite.geraete'))}</h2>", f"<ul>{geraete}</ul>",
-                       formular("/konto", verdeckt(aktion="alle_abmelden"), tx("konto.seite.ueberall_abmelden"), "leise")),
-                 karte(f"<h2>{esc(tx('konto.seite.loeschen_titel'))}</h2>",
-                       f'<p class="klein">{esc(tx("konto.seite.loeschen_hinweis"))}</p>',
+                 f'<div class="abschnitt"><h2>{esc(tx("konto.seite.einstellungen"))}</h2><div class="liste">{einstellungen}</div></div>',
+                 '<div class="links" style="flex-direction:column;align-items:center">'
+                 f'<form method="post" action="/konto">{verdeckt(aktion="alle_abmelden")}<button class="link">{esc(tx("konto.seite.ueberall_abmelden"))}</button></form>'
+                 f'<a href="/konto?loeschen=1" style="color:var(--gefahr)">{esc(tx("konto.seite.loeschen_titel"))}</a></div>',
+                 kopf=kopf)
+
+
+def loeschen_seite(k):
+    """Rückfrage vor dem Löschen: was gelöscht wird, was bleibt (#60)."""
+    return seite(tx("konto.seite.loeschen_frage"),
+                 f'<a class="zurueck" href="/konto">‹ {esc(tx("konto.seite.titel"))}</a>',
+                 karte(f"<h1>{esc(tx('konto.seite.loeschen_frage'))}</h1>",
+                       f'<div><strong>{esc(tx("konto.seite.loeschen_weg"))}</strong><p style="margin:.2rem 0 0">{esc(tx("konto.seite.loeschen_weg_text"))}</p></div>',
+                       f'<div><strong>{esc(tx("konto.seite.loeschen_bleibt"))}</strong><p style="margin:.2rem 0 0">{esc(tx("konto.seite.loeschen_bleibt_text"))}</p></div>',
                        formular("/konto", verdeckt(aktion="loeschen")
-                                + f'<label><input type="checkbox" name="sicher" value="ja" required> '
-                                  f'{esc(tx("konto.seite.loeschen_haken"))}</label>', tx("konto.seite.loeschen_titel"), "gefahr")))
+                                + f'<label class="haken bestaetigen"><input type="checkbox" name="sicher" value="ja" required> '
+                                  f'{esc(tx("konto.seite.loeschen_haken"))}</label>', tx("konto.seite.loeschen_knopf"), "gefahr"),
+                       f'<div class="links"><a href="/konto">{esc(tx("konto.seite.abbrechen"))}</a></div>'),
+                 kopf="")
 
 
 def einladungs_seite(e, token, k, reise_info, meldung=""):
     info = reise_info(e["reise"]) or {}
     titel = info.get("titel") or e["reise"]
-    rolle = rolle_neu(e["rolle"])
-    rolle_text = tx("konto.rolle." + rolle) if rolle in ("gast", "mitwirkend", "organisator") else e["rolle"]
-    kopf = (f"<h1>{esc(tx('konto.einladung.titel'))}</h1><p>"
-            f"{th('konto.einladung.text', von=esc(e['von']), name=esc(e['name']), titel='<strong>' + esc(titel) + '</strong>', rolle=esc(rolle_text))}</p>")
+    kopf = (f"<div><h1>{esc(tx('konto.einladung.titel'))}</h1><p class=\"lead\">"
+            f"{th('konto.einladung.text', von=esc(e['von']), name=esc(e['name']), titel='<strong>' + esc(titel) + '</strong>')}</p></div>"
+            + rolle_marke(e["rolle"]))
     if e["eingeloest"]:
         return seite(tx("konto.einladung.titel"), karte(kopf, f'<p class="hinweis">{esc(tx("konto.einladung.angenommen"))}</p>',
-                                                       f'<p><a href="/konto">{esc(tx("konto.einladung.zum_konto"))}</a></p>'))
+                                                       f'<a class="knopf" href="/konto">{esc(tx("konto.einladung.zum_konto"))}</a>'))
     if k:
         return seite(tx("konto.einladung.titel"), karte(
             kopf, fehler(meldung),
-            formular(f"/einladung/{token}", "", tx("konto.einladung.annehmen", name=k["name"], email=k["email"])),
-            '<p class="klein">' + th("konto.einladung.anderes_konto", link='<a href="/konto">' + esc(tx("konto.einladung.abmelden_link")) + "</a>") + "</p>"))
+            formular(f"/einladung/{token}", "", tx("konto.einladung.annehmen", name=k["name"], email=k["email"]))),
+            '<div class="fuss"><p>' + th("konto.einladung.anderes_konto", link='<a href="/konto">' + esc(tx("konto.einladung.abmelden_link")) + "</a>") + "</p></div>")
     q = urllib.parse.urlencode({"einladung": token, "email": e["email"]})
     return seite(tx("konto.einladung.titel"), karte(
         kopf, f"<p>{esc(tx('konto.einladung.anmelden_hinweis'))}</p>",
-        f'<p><a href="/anmelden?{q}"><button type="button">{esc(tx("konto.anmelden.titel"))}</button></a></p>',
-        f'<p class="klein">{esc(tx("konto.datenschutz"))}</p>'))
+        f'<a class="knopf" href="/anmelden?{q}">{esc(tx("konto.anmelden.titel"))}</a>'),
+        fuss(tx("konto.datenschutz")))
 
 
 # ---------------------------------------------------------------- Ablauf
@@ -433,6 +521,8 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
             return weiter("/anmelden?zurueck=/konto")
         if methode == "GET" and q.get("kalender") == "datei":
             return kalender_antwort(k, datei=True)
+        if methode == "GET" and q.get("loeschen"):
+            return antwort(200, loeschen_seite(k))
         if methode == "GET":
             return antwort(200, konto_seite(k, reise_info))
         a = f.get("aktion")
@@ -443,7 +533,7 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
             if a == "sprache":
                 neu_sprache = konten.sprache_setzen(k["id"], f.get("sprache"))
                 _anfrage.sprache = neu_sprache   # die Seite erscheint gleich in der neuen Sprache
-                return antwort(200, konto_seite({**k, "sprache": neu_sprache}, reise_info, hinweis=tx("konto.sprache.gespeichert")))
+                return antwort(200, konto_seite({**k, "sprache": neu_sprache}, reise_info, hinweis=tx("konto.sprache.gespeichert"), offen="sprache"))
             if a == "adresse_code":
                 konten.code_anfordern(f.get("email"), ip=ip, zweck="adresse", konto=k["id"], sprache=k["sprache"])
                 return antwort(200, konto_seite(k, reise_info, adresse_neu=konten.adresse(f["email"]),
@@ -460,10 +550,10 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
                 return weiter("/konto")
             if a == "kalender_neu":
                 konten.kalender_token(k["id"], erneuern=True)
-                return antwort(200, konto_seite(k, reise_info, hinweis=tx("konto.kalender.neuer_link_hinweis")))
+                return antwort(200, konto_seite(k, reise_info, hinweis=tx("konto.kalender.neuer_link_hinweis"), offen="kalender"))
             if a == "kalender_einstellungen":
                 konten.kalender_einstellungen(k["id"], kalender_formular(k, f))
-                return antwort(200, konto_seite(k, reise_info, hinweis=tx("konto.kalender.gespeichert_hinweis")))
+                return antwort(200, konto_seite(k, reise_info, hinweis=tx("konto.kalender.gespeichert_hinweis"), offen="kalender"))
             if a == "alle_abmelden":
                 konten.alle_abmelden(k["id"])
                 return weiter("/anmelden", [cookie_loeschen()])

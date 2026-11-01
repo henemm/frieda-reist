@@ -1095,17 +1095,18 @@ def test_strecke_mit_zeiten_und_anschluss():
     assert fehler == [], fehler
     assert erg["strecken"]["E-10"]["ab"] == "2027-03-02T07:45+01:00" and erg["strecken"]["E-10"]["an"] == "2027-03-02T10:05+01:00"
     assert erg["orte"]["O-09"]["ausserhalb"] is True and erg["orte"]["O-01"]["ausserhalb"] is False
-    assert any("T-02: Anschluss – E-10 kommt um 2027-03-02T10:05+01:00 an, E-12 fährt schon um 2027-03-02T09:50+01:00 ab" in w["text"] for w in erg["warnungen"])
+    # Zeiten wie auf der Seite (#189): ohne Jahr und Zeitzone; die Kennungen macht die Seite zu Namen mit Link
+    assert any("T-02: Anschluss – E-10 kommt um 2.3. 10:05 an, E-12 fährt schon um 2.3. 9:50 ab" in w["text"] for w in erg["warnungen"])
     # gemischte Form (Flug mit Zeitzone, Bus nur mit Uhrzeit): die Uhrzeit ist Ortszeit, verglichen mit der Ortszeit der Ankunft
     r["strecken"]["E-12"]["ab"] = "10:00"
     erg, _ = laufe(r, FRAGEN, a)
-    assert any("T-02: Anschluss – E-10 kommt um 2027-03-02T10:05+01:00 an, E-12 fährt schon um 10:00 ab" in w["text"] for w in erg["warnungen"])
+    assert any("T-02: Anschluss – E-10 kommt um 2.3. 10:05 an, E-12 fährt schon um 10:00 ab" in w["text"] for w in erg["warnungen"])
     r["strecken"]["E-12"]["ab"] = "10:30"
     erg, _ = laufe(r, FRAGEN, a)
     assert not any("Anschluss" in w["text"] for w in erg["warnungen"])
     r["strecken"]["E-10"]["an"], r["strecken"]["E-12"]["ab"] = "10:05", "2027-03-02T10:00+01:00"    # auch umgekehrt
     erg, _ = laufe(r, FRAGEN, a)
-    assert any("E-12 fährt schon um 2027-03-02T10:00+01:00 ab" in w["text"] for w in erg["warnungen"])
+    assert any("E-12 fährt schon um 2.3. 10:00 ab" in w["text"] for w in erg["warnungen"])
     r["strecken"]["E-10"]["an"] = "2027-03-02T10:05+01:00"
     r["strecken"]["E-12"]["ab"] = "morgens"
     _, fehler = laufe(r, FRAGEN, a)

@@ -210,6 +210,50 @@ def test_stornierte_buchung_eingeklappt_am_ding(tmp_path, browser):
             assert "Verworfen (1)" in m["zeilen"] and m["verworfenSichtbar"], (name, m)
 
 
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_buchung_und_anschluss_mit_namen(tmp_path, browser):
+    """#189: In den Einzelheiten einer Buchung für zwei Strecken stehen ihre Namen als Link zur Heimat, keine Kennungen; die
+    Anschlusswarnung nennt die Strecken beim Namen und die Zeiten wie sonst auf der Seite (ohne Jahr und Zeitzone).
+    Erfundene Abwandlung der Beispielreise: B-02 gilt für zwei Bahnfahrten, und der Weg ab Stadt Wehlen beginnt vor der Ankunft."""
+    reise = tmp_path / "quelle" / "beispielreise"
+    shutil.copytree(WURZEL / "beispiel/reisen/beispielreise", reise)
+    datei = reise / "plan/routen.yaml"
+    text = datei.read_text(encoding="utf-8")
+    for alt, neu in (('an: "08:40", quelle', 'an: "2027-05-13T08:40+02:00", quelle'),
+                     ("E-01: {von: O-02, nach: O-03, art: wandern,", 'E-01: {von: O-02, nach: O-03, art: wandern, ab: "08:30",'),
+                     ("    fuer: [E-20]\n    status: gebucht\n", '    fuer: [E-20, E-21]\n    preise: {E-20: "12 €", E-21: "8 €"}\n    status: angefragt\n')):
+        assert alt in text, alt
+        text = text.replace(alt, neu)
+    datei.write_text(text, encoding="utf-8")
+    bauen.bauen(reise, tmp_path / "web" / "beispiel")
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(tmp_path / "web")))
+    threading.Thread(target=s.serve_forever, daemon=True).start()
+    try:
+        aus = subprocess.run(["node", str(Path(__file__).parent / "namen_browser.mjs"), str(PLAYWRIGHT),
+                              f"http://127.0.0.1:{s.server_address[1]}/beispiel/"],
+                             capture_output=True, text=True, timeout=120, env={**os.environ, "RH_BROWSER": browser})
+    finally:
+        s.shutdown()
+    assert aus.returncode == 0, aus.stderr[-2000:]
+    e = json.loads(aus.stdout.strip().splitlines()[-1])
+    assert e["fehler"] == []
+    b = e["buchung"]
+    assert b and not re.search(r"\bE-\d", b["text"]), b
+    hin, zurueck = "S-Bahn Dresden → Stadt Wehlen, Fähre über die Elbe", "S-Bahn Bad Schandau → Dresden"
+    assert b["links"] == [["#E-20", hin], ["#E-21", zurueck], ["#E-20", hin], ["#E-21", zurueck]], b   # Für, Preise
+    assert f"{hin}: 12 €" in b["text"] and f"{zurueck}: 8 €" in b["text"], b
+    assert e["warnungen"], e
+    for w in e["warnungen"]:
+        assert not re.search(r"\b[ET]-\d", w) and "+02:00" not in w and "2027" not in w, w
+        assert f"{hin} kommt um 13.5. 8:40 an" in w and "fährt schon um 8:30 ab" in w, w
+
+
 def _funktion(quelle, name):
     """Rumpf einer Funktion der Vorlage (vom Kopf bis zur schließenden Klammer am Zeilenanfang)."""
     m = re.search(rf"^function {name}\(.*?^\}}", quelle, re.S | re.M)
@@ -329,7 +373,8 @@ def test_anmeldung_auf_der_seite(tmp_path, monkeypatch, browser):
     konten.einladen("beispielreise", "karl", "karl@beispiel.invalid", "mitwirkend", "Karl", "Ida")
     konten.code_anfordern("karl@beispiel.invalid")
     code = re.search(r"(\d{3}) (\d{3})", json.loads((tmp_path / "mails.jsonl").read_text().splitlines()[-1])["text"])
-    token, _ = konten.anmelden("karl@beispiel.invalid", code.expand(r"\1\2"))
+    token, karl = konten.anmelden("karl@beispiel.invalid", code.expand(r"\1\2"))
+    konten.sprache_setzen(karl["id"], "de")   # angemeldet folgt die Seite der Sprache des Kontos (#188)
 
     def lauf(sitzung):
         aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_konto.mjs"), str(PLAYWRIGHT),

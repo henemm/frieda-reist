@@ -258,7 +258,7 @@ def test_release_im_fuss_jeder_seite(reise, tmp_path, monkeypatch):
     monkeypatch.setattr(bauen, "software_release", lambda: r)
     baue(reise, tmp_path)
     seite = (tmp_path / "dist/index.html").read_text(encoding="utf-8")
-    m = re.search(r'<footer class="fuss" id="release" data-release="([^"]*)" hidden></footer>', seite)
+    m = re.search(r'<footer class="fuss" id="fuss" hidden><div id="release" data-release="([^"]*)" hidden></div>', seite)
     assert m and json.loads(m.group(1).replace("&quot;", '"')) == r
     monkeypatch.setattr(bauen, "software_release", lambda: {"nummer": None, "kennung": None, "commit": None, "github": None})
     baue(reise, tmp_path)
