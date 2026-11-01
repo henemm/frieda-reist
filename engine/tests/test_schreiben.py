@@ -1195,7 +1195,7 @@ def test_buchung_mit_zahlstand_und_merkmalen(repo):
     # Die Meldung offener Zahlungen schaltet eine Organisator:in je Reise ein (Vorgabe aus)
     s.vorbereiten()
     a = s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"regeln": {"waechter_zahlung": "ja"}}})
-    assert "regeln.waechter_zahlung „False“ → „True“" in a["text"]
+    assert "regeln.waechter_zahlung „nein“ → „ja“" in a["text"]
     assert yaml.safe_load(datei_auf_main(origin, "reise.yaml"))["regeln"]["waechter_zahlung"] is True
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="regeln.waechter_zahlung ist true oder false"):
@@ -1612,7 +1612,7 @@ def test_reise_aendern_und_plaene(repo):
         s.schreiben("beispielreise", "reise_aendern", {**IDA, "args": {"bis": "2027-05-17", "grund": "x"}})
     a = s.schreiben("beispielreise", "reise_aendern", {**IDA, "args": {"untertitel": "Dresden und Sächsische Schweiz, 13.–17.5.2027 · erfundenes Beispiel",
                                                                        "von": "2027-05-13", "bis": "2027-05-17", "grund": "ein Tag länger"}})
-    assert "bis – → 2027-05-17" in a["text"] and "untertitel" in a["text"]
+    assert "bis – → 17.5.2027" in a["text"] and "untertitel" in a["text"]
     # Issue #142: Start und Ende des Plans setzt ein eigenes Werkzeug; der Text verweist darauf statt auf die Datei
     assert "start_ende_setzen" in a["text"] and "plan/routen.yaml" not in a["text"]
     ry = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/reise.yaml"], check=True, capture_output=True, text=True).stdout)
