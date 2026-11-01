@@ -1202,3 +1202,12 @@ def test_englische_reise_antwortet_englisch(dienst, seiten_englisch, monkeypatch
     assert "## Bookings: 2 booked, 1 cancelled" in u and "## Content (look up with show)" in u
     assert "Deadline 13/5/2027" in u and "free cancellation until 11/5/2027" in u
     assert "Fri 14/5/2027" in u and "Fr." not in u and "Frist" not in u and "Buchungen" not in u
+
+
+def test_ontologie_text_im_rueckfall_englisch(monkeypatch):
+    """Die Rückmeldung zu einer Art oder Kategorie liegt in der Ablage in der Sprache des Bestands: Feldnamen, Symbole und Farben
+    sind im englischen Rückfall englisch (kein deutsches Wort für eine Person ohne Deutsch)."""
+    monkeypatch.setattr(kn.texte, "VORGABE_REISE", "en")
+    t = kn.ontologie_text("kategorie_definieren", {"kategorie": "aussicht", "bezeichnung": "Viewpoint", "farbe": "blau", "symbol": "bahn", "stufe": "pflicht"})
+    assert "colour: blue" in t and "symbol: train" in t and "label: Viewpoint" in t and "level: required" in t, t
+    assert "farbe" not in t and "bezeichnung" not in t and "blau" not in t

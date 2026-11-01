@@ -213,9 +213,9 @@ ALLE_DATEIEN = ["vorlage.html"] + PY_DATEIEN
 # Erlaubte Zahl deutscher Literale je Datei. Jedes Paket der Mehrsprachigkeit kürzt seinen Bereich; Einträge dürfen nur
 # kleiner werden, nie größer (docs/auftraege/mehrsprachigkeit/README.md, Regel 5). Am Ende steht überall 0.
 AUSNAHMEN = {
-    "vorlage.html": 2, "konnektor.py": 5, "schreiben.py": 4, "rueckmeldungen.py": 17, "anmeldung.py": 0, "konten.py": 1,
+    "vorlage.html": 2, "konnektor.py": 3, "schreiben.py": 1, "rueckmeldungen.py": 16, "anmeldung.py": 0, "konten.py": 1,
     "kalender.py": 0, "waechter.py": 5, "routen.py": 6, "bauen.py": 11, "neu.py": 19, "reise.py": 4,
-    "belege.py": 0, "instanz.py": 0, "gpx.py": 1, "oauth.py": 5,
+    "belege.py": 0, "instanz.py": 0, "gpx.py": 1, "oauth.py": 3,
 }
 # Treffer von Sprachweichen und festen Locale-Strings (Grep-Test); ebenfalls nur kleiner werdend
 WEICHEN_AUSNAHMEN = {datei: 0 for datei in ALLE_DATEIEN}

@@ -613,7 +613,7 @@ class Handbuch:
                 return w, w.get("art") or "allgemein", w.get("kriterien") or []
         if id_ in (self.r.get("aufenthalte") or {}):   # Aufenthalt ohne Nacht (A-…): Zeile wie im Tag, dann Merkmale
             a = self.r["aufenthalte"][id_]
-            z = [self.aufenthalt(id_), "in " + self.ort(a.get("ort")), *( [a["hinweis"]] if a.get("hinweis") else []),
+            z = [self.aufenthalt(id_), tk("konnektor.ausgabe.aufenthalt.in", w1=self.ort(a.get("ort"))), *( [a["hinweis"]] if a.get("hinweis") else []),
                  *( [tk("konnektor.ausgabe.kriterien_von.1") + ", ".join(a["tage"])] if a.get("tage") else []), *( [tk("konnektor.ausgabe.option_text.2") + a["quelle"]] if a.get("quelle") else [])]
             z += self.merkmal_zeilen((self.r.get("merkmale") or {}).get(a.get("art")), a.get("merkmale"), a.get("fehlt"))
             return "\n".join(z)
@@ -685,7 +685,7 @@ class Handbuch:
             e[a["id"]] = (a["titel"], "\n\n".join(x for x in z if x))
             for b in a.get("bloecke", []):
                 e[b["id"]] = (f"{a['titel']} › {b['titel']}",
-                              "\n\n".join(x for x in (("Orte: " + ", ".join(b["orte"])) if b.get("orte") else "", text(b.get("html"))) if x))
+                              "\n\n".join(x for x in ((tk("konnektor.ausgabe.sammeln.13") + ", ".join(b["orte"])) if b.get("orte") else "", text(b.get("html"))) if x))
         f = self.d.get("fragen") or {}
         for zeile in f.get("zeilen", []):
             e[zeile["id"]] = (zeile["zellen"][1] if len(zeile["zellen"]) > 1 else zeile["id"],
@@ -1156,7 +1156,11 @@ def ontologie_text(name, args):
         if f == "stufe":   # für Menschen in Worten (nötig, gut zu wissen, zusätzlich; Product Owner 29.10.2026)
             s = stufe_schluessel(v)
             v = tkd("konnektor.ausgabe.ontologie.aus") if s == "aus" else stufe_wort(s) if s else v
-        teile.append(f"{f}: {' | '.join(map(str, v)) if isinstance(v, list) else v}")
+        # Die Rückmeldung liegt in der Ablage, also in der Sprache des Bestands: Feldnamen, Symbole und Datenwerte in ihr
+        sprache = texte.VORGABE_REISE
+        wort = (lambda x: texte.wert_in(sprache, texte.Wert(str(x)))) if f in ("symbol", "art_symbol") else (lambda x: texte.datenwert(sprache, x))
+        v = " | ".join(str(wort(x)) for x in v) if isinstance(v, list) else wort(v)
+        teile.append(f"{texte.t(sprache, 'konnektor.ausgabe.ontologie.feld.' + f)}: {v}")
     return tkd({"art_definieren": "konnektor.ausgabe.ontologie.art", "kategorie_definieren": "konnektor.ausgabe.ontologie.kategorie"}.get(name, "konnektor.ausgabe.ontologie.merkmal")) + " – " + "; ".join(teile)
 
 
