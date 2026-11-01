@@ -8,6 +8,21 @@ import pytest
 PRAEFIXE = ("FR_", "RM_", "KN_", "EA_", "VF_", "FS_", "WA_")
 
 
+@pytest.fixture(autouse=True, scope="session")
+def ohne_instanz_im_lauf(tmp_path_factory):
+    """Entfernt die Einstellungen der Instanz einmal für den ganzen Lauf, vor allen Vorbereitungen mit scope="module"
+    oder "session". Die Vorbereitung je Test (ohne_instanz) greift erst danach; eine Modul-Vorbereitung, die eine Seite
+    baut, sah sonst die Einstellungen des Servers (etwa FR_UMZUG_NACH: die Testseite leitete auf die neue Adresse um
+    und erschien nie)."""
+    mp = pytest.MonkeyPatch()
+    for name in list(os.environ):
+        if name.startswith(PRAEFIXE):
+            mp.delenv(name)
+    mp.setenv("FR_WURZEL", str(tmp_path_factory.mktemp("lauf") / "keine-instanz"))
+    yield
+    mp.undo()
+
+
 @pytest.fixture(autouse=True)
 def ohne_instanz(tmp_path, monkeypatch):
     for name in list(os.environ):
