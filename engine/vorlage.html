@@ -729,7 +729,7 @@ details.neben>summary{font-weight:700;padding:10px 2px;color:var(--warn)}
   .tagseite:not(:has(>.tag-lesen))>.tag-spalte{grid-column:1/-1}
 }
 
-/* ==================== 7 Rahmen der Seite: Kopf, Meldungen, Glas, Leiste ==================== */
+/* ==================== 7 Rahmen der Seite: Kopf, Meldungen, Glas, Leiste, Fuß ==================== */
 /* ---------- Kopf: großer Titel am Seitenanfang (iOS Large Title), scrollt mit ---------- */
 header{max-width:var(--breite);margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px 2px 16px}
 header .t{font-family:var(--font-text);font-size:var(--t-titel);line-height:1.1;font-weight:700;letter-spacing:-.015em;margin:0;text-wrap:balance}
@@ -781,6 +781,12 @@ body.sucht nav,body.sucht #suchKnopf{display:none}
 body::after{content:"";position:fixed;z-index:9;left:0;right:0;bottom:calc(0px - var(--hoehe-fehlt));height:var(--tabbar-space);pointer-events:none;
     background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg) 70%,transparent))}
 main{padding-bottom:calc(var(--tabbar-space) + 16px)}
+/* ---------- Fuß: Release der Software (Product Owner 1.11.2026), auf jeder Seite, unauffällig unter dem Inhalt ----------
+   Der Bau setzt „Frieda Release 412 · 9b4a397“ ein (software_release in engine/bauen.py). Der Fuß rückt in den Freiraum
+   über der Leiste; ohne bekannten Stand ist er leer und belegt keinen Platz. */
+.fuss{max-width:var(--breite);margin:calc(0px - var(--tabbar-space)) auto 0;padding:0 16px calc(var(--tabbar-space) + 16px);
+  font-size:var(--t-klein);color:var(--mut);text-align:center;font-variant-numeric:tabular-nums}
+.fuss:empty{display:none}
 @media (hover:hover){nav a:hover,#suchKnopf:hover{color:var(--fg)} .rund:hover{border-color:var(--acc)}}
 /* Zahl am Reiter „Offen“: offene Aufgaben + nicht gesendete Rückmeldungen */
 nav a{position:relative}
@@ -824,6 +830,7 @@ nav a.warn .zahl{background:var(--warn)}
   <div id="offline" class="hinweis glas" role="status" hidden>Ohne Netz: gespeicherter Stand. Rückmeldungen werden nachgereicht, Aufgaben erst wieder mit Netz änderbar.</div>
 </div>
 <main id="main" class="pico"></main>
+<footer class="fuss" id="release"><!--__RELEASE__--></footer>
 <dialog id="rm" class="pico"></dialog>
 <div class="leiste">
   <nav id="nav" aria-label="Kategorien"></nav>

@@ -227,6 +227,38 @@ def test_seite_eingebettet_und_script_ende_escaped(reise, tmp_path):
     assert (tmp_path / "dist/daten.json").exists()
 
 
+def _git(ordner, *args):
+    import subprocess
+    return subprocess.run(["git", "-C", str(ordner), *args], check=True, capture_output=True, text=True).stdout.strip()
+
+
+def test_release_aus_git(tmp_path):
+    """Release = Zahl der Commits und kurzer Hash; im flachen Klon nur der Hash, ohne Git nichts (Product Owner 1.11.2026)."""
+    voll = tmp_path / "voll"
+    voll.mkdir()
+    _git(voll, "init", "-q")
+    for i in range(3):
+        (voll / "f").write_text(str(i))
+        _git(voll, "add", "f")
+        _git(voll, "-c", "user.name=Ida", "-c", "user.email=ida@example.org", "commit", "-qm", f"Stand {i}")
+    kennung = _git(voll, "rev-parse", "--short=7", "HEAD")
+    assert bauen.software_release(voll) == (3, kennung)
+    flach = tmp_path / "flach"
+    _git(tmp_path, "clone", "-q", "--depth=1", f"file://{voll}", str(flach))
+    assert bauen.software_release(flach) == (None, kennung)
+    assert bauen.software_release(tmp_path / "ohne") == (None, None)
+
+
+def test_release_im_fuss_jeder_seite(reise, tmp_path, monkeypatch):
+    monkeypatch.setattr(bauen, "software_release", lambda: (412, "9b4a397"))
+    baue(reise, tmp_path)
+    seite = (tmp_path / "dist/index.html").read_text(encoding="utf-8")
+    assert '<footer class="fuss" id="release">Frieda Release 412 · 9b4a397</footer>' in seite
+    monkeypatch.setattr(bauen, "software_release", lambda: (None, None))
+    baue(reise, tmp_path)
+    assert '<footer class="fuss" id="release"></footer>' in (tmp_path / "dist/index.html").read_text(encoding="utf-8")
+
+
 def test_symbole_eingebettet_mit_lizenz(reise, tmp_path):
     baue(reise, tmp_path)
     seite = (tmp_path / "dist/index.html").read_text(encoding="utf-8")
