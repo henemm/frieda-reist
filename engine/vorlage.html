@@ -1478,7 +1478,7 @@ function unterkunftKarte(id, tid, mehr) {
   const bs = buchungenBei(id), st = buchungsStand(u);
   // Der Stand steht einmal: Mit Buchung hier trägt sie ihn, sonst der Chip
   const marke = bs.length ? null : buchungChip(u);
-  if (marke || u.frage) k.append(el("div", {class: "chips"}, marke, u.frage ? chip("leise", u.frage, {href: "#" + u.frage}) : null));
+  if (marke || u.frage) k.append(el("div", {class: "chips"}, marke, u.frage ? chip("leise", frageVerweis(u.frage), {href: "#" + u.frage}) : null));
   let naechte = null;
   if (u.naechte.length > 1 || (u.naechte.length && u.naechte[0] !== tid)) {
     naechte = el("div", {class: "z"}, el("b", {}, T("seite.label.naechte")));
@@ -1991,7 +1991,7 @@ function wahlKarte(w) {
   const k = el("div", {class: "karte ziel", id: w.id, "data-ziel": w.id});
   const gueltig = w.optionen.filter(o => !weg(o.status));
   k.append(el("div", {class: "k"}, w.titel, zid(w.id)),
-    el("div", {class: "chips"}, wahlZustand(w), w.frage ? link(w.frage, w.frage) : null));
+    el("div", {class: "chips"}, wahlZustand(w), w.frage ? link(w.frage, frageVerweis(w.frage)) : null));
   if (w.text) k.append(el("div", {class: "z"}, w.text));
   if (w.an.length) {
     const z = el("div", {class: "z klein"}, T("seite.label.betrifft"));
@@ -2910,6 +2910,8 @@ function kennungName(id) {
     return w ? "„" + (w.length > 48 ? w.slice(0, 48).replace(/\s\S*$/, "") + " …" : w) + "“" : ""; }
   return titelZu(id);
 }
+// Verweis auf eine offene Frage im Klartext statt der Kennung (F-02): „Zu klären: „erste Worte …““
+const frageVerweis = id => { const n = kennungName(id); return n ? T("seite.frage.zu_klaeren") + ": " + n : T("seite.frage.zu_klaeren"); };
 const kennungZiel = id => /^AG-/.test(id) ? "aufgaben" : id;
 function kennungenAufloesen(text) {
   const ids = [], name = kennungName;
