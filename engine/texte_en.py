@@ -647,6 +647,14 @@ TEXTE = {
     # Inhalt: Herkunft in alten Texten
     "inhalt.herkunft.aus_app": "from the Claude app",
     "inhalt.herkunft.von": "by",
+    "inhalt.schreiben.arten_kopf": "# Kinds and attributes of this trip (docs/ontologie.md, ADR-0001). {herkunft}\n# Fields per kind: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (outline of the\n# reading text: name and hilfe per heading); per attribute: name, typ,\n# werte, veraenderlich, stufe (pflicht | empfohlen | angeboten | aus), auto, hilfe, frage, auch; buchung_merkmale\n# (what only arises through booking, kept on the booking): per attribute name, typ, werte, einheit, hilfe, frage.\n",
+    "inhalt.schreiben.kategorien_kopf": "# Categories of the map points of this trip (docs/ontologie.md “Kartenpunkte”, ADR-0001). {herkunft}\n# Fields per category: gruppe (punkt = stage map, wissen = map in the knowledge section), name, einzahl, farbe\n# (blau | braun | lila | gruen | tuerkis | oliv | grau | rosa | schiefer | kontrast | #rrggbb), symbol,\n# nummeriert (a point shows its number instead of a symbol), arten (extras per art of a point: name, symbol,\n# hinweis, umriss).\n",
+    "inhalt.schreiben.gepflegt": "Kept up in conversation through the connector (last {datum}, {wer}); the history is in the repository's log.",
+    "inhalt.schreiben.abgeleitet": "Derived from plan/routen.yaml on {datum} (engine/neu.py arten-ableiten); checked and refined in conversation afterwards.",
+    "inhalt.schreiben.herkunft.eingetragen": "*Source: {quelle}; entered on {datum} by {wer} through the connector.*",
+    "inhalt.schreiben.herkunft.berichtigt": "*Source: {quelle}; corrected on {datum} by {wer} through the connector ({grund}).*",
+    "inhalt.schreiben.herkunft.geschrieben": "*Source: {quelle}; written on {datum} by {wer} through the connector.*",
+    "schreiben.antwort.datum": "{w1}",
     # Inhalt: Texte neuer Reisen, Fortsetzung (M6)
     "inhalt.neu.herkunft_auftrag": "request {id} from the Claude app",
     "inhalt.neu.notiz_von": "Note from {wer} in the Claude app ({datum}):\n\n{notiz}",

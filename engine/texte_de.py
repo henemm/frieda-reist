@@ -647,6 +647,14 @@ TEXTE = {
     # Inhalt: Herkunft in alten Texten
     "inhalt.herkunft.aus_app": "aus der Claude-App",
     "inhalt.herkunft.von": "von",
+    "inhalt.schreiben.arten_kopf": "# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). {herkunft}\n# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (Gliederung des\n# Lesetexts: je Rubrik name und hilfe); je Merkmal: name, typ,\n# werte, veraenderlich, stufe (pflicht | empfohlen | angeboten | aus), auto, hilfe, frage, auch; buchung_merkmale\n# (was erst durch das Buchen entsteht, an der Buchung): je Merkmal name, typ, werte, einheit, hilfe, frage.\n",
+    "inhalt.schreiben.kategorien_kopf": "# Kategorien der Kartenpunkte dieser Reise (docs/ontologie.md „Kartenpunkte“, ADR-0001). {herkunft}\n# Felder je Kategorie: gruppe (punkt = Etappen-Karte, wissen = Karte im Wissensabschnitt), name, einzahl, farbe\n# (blau | braun | lila | gruen | tuerkis | oliv | grau | rosa | schiefer | kontrast | #rrggbb), symbol,\n# nummeriert (Punkt zeigt seine Nummer statt eines Symbols), arten (Zusatz je art eines Punkts: name, symbol,\n# hinweis, umriss).\n",
+    "inhalt.schreiben.gepflegt": "Gepflegt im Gespräch über den Konnektor (zuletzt {datum}, {wer}); der Verlauf steht in der Geschichte des Repos.",
+    "inhalt.schreiben.abgeleitet": "Abgeleitet aus plan/routen.yaml am {datum} (engine/neu.py arten-ableiten); danach im Gespräch geprüft und geschärft.",
+    "inhalt.schreiben.herkunft.eingetragen": "*Herkunft: {quelle}; eingetragen am {datum} von {wer} über den Konnektor.*",
+    "inhalt.schreiben.herkunft.berichtigt": "*Herkunft: {quelle}; berichtigt am {datum} von {wer} über den Konnektor ({grund}).*",
+    "inhalt.schreiben.herkunft.geschrieben": "*Herkunft: {quelle}; geschrieben am {datum} von {wer} über den Konnektor.*",
+    "schreiben.antwort.datum": "{w1}",
     # Inhalt: Texte neuer Reisen, Fortsetzung (M6)
     "inhalt.neu.herkunft_auftrag": "Auftrag {id} aus der Claude-App",
     "inhalt.neu.notiz_von": "Notiz von {wer} aus der Claude-App ({datum}):\n\n{notiz}",

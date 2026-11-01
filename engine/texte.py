@@ -207,6 +207,47 @@ def aufruf_sprache(sprache=None):
     return getattr(_aufruf, "sprache", VORGABE_REISE)
 
 
+class Datum(str):
+    """Ein Datum als Wert eines Satzes: als Text ISO (JJJJ-MM-TT), im Satz in der Form der Sprache, in der er gelesen wird (datum).
+    Reist über JSON als {"datum": "JJJJ-MM-TT"}."""
+
+    def __new__(cls, d):
+        return super().__new__(cls, _datum(d).isoformat())
+
+
+class DatumKurz(Datum):
+    """Wie Datum, aber ohne Jahr (Deutsch 13.5., Englisch 13/5)."""
+
+
+def wert_in(sprache, v):
+    """Wert eines Platzhalters in dieser Sprache: Sätze in ihr gesetzt, Daten in ihrer Form, alles andere unverändert."""
+    if isinstance(v, Satz):
+        return v.text(sprache)
+    if isinstance(v, DatumKurz):
+        return datum_kurz(v, sprache)
+    if isinstance(v, Datum):
+        return datum(v, sprache)
+    return v
+
+
+def wert_json(v):
+    """Wert für JSON (Weg vom Dienst zum Konnektor): Sätze und Daten reisen mit ihrer Art."""
+    if isinstance(v, Satz):
+        return {"satz": v.teile_json()}
+    if isinstance(v, Datum):
+        return {"datum": str(v), "kurz": True} if isinstance(v, DatumKurz) else {"datum": str(v)}
+    return v
+
+
+def wert_aus_json(v):
+    """Gegenstück zu wert_json."""
+    if isinstance(v, dict) and "satz" in v:
+        return Satz.aus_json(v["satz"])
+    if isinstance(v, dict) and "datum" in v:
+        return (DatumKurz if v.get("kurz") else Datum)(v["datum"])
+    return v
+
+
 class Satz(str):
     """Ein Satz aus dem Katalog: als Text ist er der deutsche Satz (Bestand, Protokolle, Dateien), dazu trägt er Schlüssel und Werte, aus
     denen sich der Satz in jeder Sprache bauen lässt (text(sprache)); in f-Strings erscheint er in der Sprache des laufenden Aufrufs.
@@ -220,8 +261,7 @@ class Satz(str):
         return o
 
     def text(self, sprache):
-        return "".join(t(sprache, k, **{n: v.text(sprache) if isinstance(v, Satz) else v for n, v in w.items()}) if k else w
-                       for k, w in self.teile)
+        return "".join(t(sprache, k, **{n: wert_in(sprache, v) for n, v in w.items()}) if k else w for k, w in self.teile)
 
     def __format__(self, spec):
         return format(self.text(aufruf_sprache()), spec)
@@ -249,16 +289,17 @@ class Satz(str):
 
     def teile_json(self):
         """Für den Weg vom Dienst zum Konnektor: [Schlüssel, Werte] für Sätze des Katalogs, "Text" für feste Stücke."""
-        return [[k, {n: {"satz": v.teile_json()} if isinstance(v, Satz) else v for n, v in w.items()}] if k else w for k, w in self.teile]
+        return [[k, {n: wert_json(v) for n, v in w.items()}] if k else w for k, w in self.teile]
 
     @classmethod
     def aus_json(cls, teile):
-        gelesen = [(x[0], {n: cls.aus_json(v["satz"]) if isinstance(v, dict) and "satz" in v else v for n, v in x[1].items()})
+        gelesen = [(x[0], {n: wert_aus_json(v) for n, v in x[1].items()})
                    if isinstance(x, list) else (None, str(x)) for x in teile]
-        return cls("".join(t(VORGABE_REISE, k, **{n: v.text(VORGABE_REISE) if isinstance(v, Satz) else v for n, v in w.items()}) if k else w for k, w in gelesen), teile=gelesen)
+        return cls("".join(t(VORGABE_REISE, k, **{n: wert_in(VORGABE_REISE, v) for n, v in w.items()}) if k else w for k, w in gelesen), teile=gelesen)
 
 
 def satz(schluessel, /, **werte):
-    werte = {k: v if isinstance(v, (str, int, float, bool)) or v is None else str(v) for k, v in werte.items()}
-    return Satz(t(VORGABE_REISE, schluessel, **{k: v.text(VORGABE_REISE) if isinstance(v, Satz) else v for k, v in werte.items()}),
+    werte = {k: Datum(v) if isinstance(v, datetime.date) and not isinstance(v, datetime.datetime)
+             else v if isinstance(v, (str, int, float, bool)) or v is None else str(v) for k, v in werte.items()}
+    return Satz(t(VORGABE_REISE, schluessel, **{k: wert_in(VORGABE_REISE, v) for k, v in werte.items()}),
                 schluessel, werte)

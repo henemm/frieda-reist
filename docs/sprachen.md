@@ -89,3 +89,8 @@ Fehler und Hinweise der Prüfung beim Bauen („Unterkunft U-01: Ort O-09 gibt e
 - `texte.VORGABE_REISE` (Englisch) ist die Sprache der Software, wo keine Sprache bekannt ist: Protokolle, Fehlertexte ohne Person, unbekannte Sprache. Lieber Englisch bei einer Person, die es nicht erwartet, als Deutsch bei einer anderen.
 - `texte.BESTAND_REISE` (Deutsch) gilt nur für eine `reise.yaml` ohne Feld `sprache:` (Reisen von vor ADR-0006). Die Software schreibt nichts in fremde Reisen; sie liest das fehlende Feld als `de`. Neue Reisen tragen `sprache:` immer in der Datei.
 - Die Tests laufen mit einer Pinnung auf Deutsch (`engine/tests/conftest.py`), weil sie deutsche Wortlaute prüfen; Tests mit `@pytest.mark.echter_rueckfall` und der Schreibdienst im Unterprozess sehen den echten Rückfall.
+
+## Was in Dateien der Reise landet
+- Was die Software in Dateien einer Reise schreibt, folgt der Sprache der Reise (`reise.sprache_von`): Herkunftszeilen an Wissensabschnitten (`inhalt.schreiben.herkunft.*`), die Kopfkommentare von `plan/arten.yaml` und `plan/kategorien.yaml` (`inhalt.schreiben.*_kopf`), der Status in `offene-fragen.md`. Die Texte stehen unter `inhalt.*` im Katalog, das Datum kommt aus `texte.datum(datum, sprache)`.
+- Antwortsätze an die Person tragen Daten als Wert `texte.Datum` (oder `texte.DatumKurz` ohne Jahr), nicht als fertigen Text: Der Satz formatiert sie erst in der Sprache, in der er gelesen wird, auch auf dem Weg vom Dienst zum Konnektor (`{"datum": "JJJJ-MM-TT"}`). Kein `strftime` mit festem Muster in Texten.
+- Die Titel der Commits und der Verlauf der Reise sind bisher bewusst deutsch (offen, Product Owner fragen).

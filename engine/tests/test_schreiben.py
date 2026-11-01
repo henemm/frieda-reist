@@ -549,7 +549,7 @@ def test_wert_eintragen_an_unterkunft_strecke_und_option(repo):
     s.vorbereiten()
     a = s.schreiben("beispielreise", "wert_eintragen", {**IDA, "args": {"ziel": "U-01", "merkmal": "preis", "quelle": "Booking", "geprueft": "2026-10-29",
                                                                         "werte": [{"wert": "150 €", "gilt": ["2027-05-15", "2027-05-16"]}]}})
-    assert "150 € (am 15.05., 16.05.) (vorher: 140 € (am 15.05.))" in a["text"]
+    assert "150 € (am 15.5., 16.5.) (vorher: 140 € (am 15.5.))" in a["text"]
     r, text = routen_auf_main(origin)
     assert r["unterkuenfte"]["U-01"]["merkmale"]["preis"] == [
         {"wert": "120 €", "quelle": "erfunden (Beispiel)", "notiz": "Beispielwert, erfunden"},
@@ -868,6 +868,35 @@ def test_tag_aendern_nur_organisator(repo):
 
 def datei_auf_main(origin, rel):
     return subprocess.run(["git", "-C", str(origin), "show", f"main:reisen/beispielreise/{rel}"], check=True, capture_output=True, text=True).stdout
+
+
+def test_dateien_der_reise_folgen_ihrer_sprache(repo):
+    """Variante A (ADR-0006): Herkunftszeilen und Kopfkommentare, die die Software in Dateien der Reise schreibt, stehen in der
+    Sprache der Reise; Antwortsätze setzen das Datum in der Sprache der Person."""
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"sprache": "en"}})
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "wissen_schreiben", {**KARL, "args": {"titel": "Tram", "text": "The tram runs since 1898.",
+                                                                           "quelle": "Wikipedia", "gruppe": "wissen"}})
+    heute = datetime.date.today()
+    wissen = datei_auf_main(origin, "inhalt/wissen.md")
+    assert f"*Source: Wikipedia; entered on {heute.day}/{heute.month}/{heute.year} by Karl through the connector.*" in wissen
+    assert "Herkunft" not in wissen.split("## Tram")[1]
+    s.vorbereiten()
+    s.schreiben("beispielreise", "art_definieren", {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt", "grund": "Test"}})
+    kopf = arten_auf_main(origin)[1].splitlines()[0]
+    assert kopf.startswith("# Kinds and attributes of this trip") and "Kept up in conversation" in kopf
+
+
+def test_datum_im_satz_folgt_der_sprache_des_lesers():
+    import texte
+    satz = texte.satz("schreiben.antwort.datum", w1=datetime.date(2027, 5, 13))
+    assert satz.text("de") == "13.5.2027" and satz.text("en") == "13/5/2027"
+    gelesen = texte.Satz.aus_json(satz.teile_json())   # Weg vom Dienst zum Konnektor
+    assert gelesen.text("en") == "13/5/2027" and gelesen.text("de") == "13.5.2027"
+    kurz = texte.satz("schreiben.antwort.datum", w1=texte.DatumKurz(datetime.date(2027, 5, 13)))
+    assert texte.Satz.aus_json(kurz.teile_json()).text("en") == "13/5"
 
 
 def test_wissen_schreiben_neu_und_ergaenzen(repo):

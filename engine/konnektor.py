@@ -1113,7 +1113,7 @@ def schreib_anfrage(reise, werkzeug_, anfrage):
     except urllib.error.HTTPError as e:
         try:
             antwort = json.loads(e.read())
-            werte = {n: texte.Satz.aus_json(v["satz"]) if isinstance(v, dict) and "satz" in v else v
+            werte = {n: texte.wert_aus_json(v)
                      for n, v in (antwort.get("werte") or {}).items()}
             return None, texte.Satz(antwort.get("fehler", f"Fehler {e.code}"), antwort.get("fehler_code"), werte)
         except (json.JSONDecodeError, AttributeError):

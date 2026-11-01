@@ -30,7 +30,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bauen  # noqa: E402
 import texte  # noqa: E402
-from reise import PFAD_MUSTER, ROLLEN, reise_pfad, rolle_neu, schluessel_aus_name, sprache_pruefen  # noqa: E402
+from reise import PFAD_MUSTER, ROLLEN, reise_pfad, rolle_neu, schluessel_aus_name, sprache_pruefen, sprache_von  # noqa: E402
 
 VORLAGEN = Path(__file__).with_name("reisevorlage")   # je Sprache ein Ordner (de, en …); fehlt er, gilt die Vorgabe der Personen (ADR-0006, Punkt 9)
 
@@ -423,8 +423,8 @@ def arten_ableiten(reise_dir, namen=None, summiert=(), definitionen=None, schrei
             eintrag["merkmale"] = merkmale
         aus[key] = eintrag
     from schreiben import arten_text     # dieselbe Form wie beim Schreiben über den Konnektor (O-3)
-    text = arten_text(aus, f"Abgeleitet aus plan/routen.yaml am {datetime.date.today().isoformat()} (engine/neu.py arten-ableiten); "
-                      "danach im Gespräch geprüft und geschärft.")
+    sp = sprache_von(reise_dir)   # Kopfkommentar und Herkunft in der Sprache der Reise
+    text = arten_text(aus, texte.t(sp, "inhalt.schreiben.abgeleitet", datum=datetime.date.today().isoformat()), sp)
     if schreiben:
         (reise_dir / "plan/arten.yaml").write_text(text, encoding="utf-8")
     return text

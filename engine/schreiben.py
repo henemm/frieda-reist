@@ -71,11 +71,6 @@ AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "k
             "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch",
             "start_ende_setzen": "einstellung"}   # reise.AKTIONEN
 HINWEISE_HOECHSTENS = 10   # neue Warnungen des Probebaus in der Antwort (Issue #142)
-ARTEN_KOPF = ("# Arten und Merkmale dieser Reise (docs/ontologie.md, ADR-0001). {herkunft}\n"
-              "# Felder je Art: grundform (aufenthalt | bewegung | folge), name, farbe, summiert, merkmale, lesetext (Gliederung des\n"
-              "# Lesetexts: je Rubrik name und hilfe); je Merkmal: name, typ,\n"
-              "# werte, veraenderlich, stufe (pflicht | empfohlen | angeboten | aus), auto, hilfe, frage, auch; buchung_merkmale\n"
-              "# (was erst durch das Buchen entsteht, an der Buchung): je Merkmal name, typ, werte, einheit, hilfe, frage.\n")
 S = texte.satz   # Satz des Katalogs, in jeder Sprache lesbar (Bestätigungen, ADR-0006)
 verbinden = texte.Satz.verbinden
 
@@ -107,20 +102,21 @@ class Ablehnung(Exception):
             super().__init__(str(text_oder_schluessel))
             return
         self.schluessel = text_oder_schluessel if re.fullmatch(r"(schreiben|dienst)(\.[A-Za-z0-9_]+)+", str(text_oder_schluessel)) else None
-        self.werte = {k: v if isinstance(v, (str, int, float, bool, texte.Satz)) or v is None else str(v) for k, v in werte.items()}
+        self.werte = {k: texte.Datum(v) if isinstance(v, datetime.date) and not isinstance(v, datetime.datetime)
+                       else v if isinstance(v, (str, int, float, bool, texte.Satz)) or v is None else str(v) for k, v in werte.items()}
         super().__init__(texte.t(texte.VORGABE_REISE, self.schluessel, **self._werte_in(texte.VORGABE_REISE))
                          if self.schluessel else text_oder_schluessel)
 
     def _werte_in(self, sprache):
         """Werte für den Katalog; Sätze (zum Beispiel Prüfmeldungen der Reise) in dieser Sprache."""
-        return {k: v.text(sprache) if isinstance(v, texte.Satz) else v for k, v in self.werte.items()}
+        return {k: texte.wert_in(sprache, v) for k, v in self.werte.items()}
 
     def text(self, sprache):
         return texte.t(sprache, self.schluessel, **self._werte_in(sprache)) if self.schluessel else str(self)
 
     def werte_json(self):
         """Werte für den Weg zum Konnektor; Sätze reisen mit ihren Schlüsseln ({"satz": …}, texte.Satz.aus_json)."""
-        return {k: {"satz": v.teile_json()} if isinstance(v, texte.Satz) else v for k, v in self.werte.items()}
+        return {k: texte.wert_json(v) for k, v in self.werte.items()}
 
 
 # ---------- Hilfen ----------
@@ -215,14 +211,14 @@ def liste_wert(args, feld, laenge=MAX_WERTE):
 
 # ---------- Arten und Merkmale (plan/arten.yaml) ----------
 
-def arten_text(arten, herkunft):
-    """Inhalt von plan/arten.yaml: Kopfkommentar der Software, dann die Arten; Wertelisten ausgeschrieben statt als Anker."""
+def arten_text(arten, herkunft, sprache=None):
+    """Inhalt von plan/arten.yaml: Kopfkommentar der Software (in der Sprache der Reise), dann die Arten; Wertelisten ausgeschrieben statt als Anker."""
     import yaml
 
     class Ohne_Verweise(yaml.SafeDumper):
         def ignore_aliases(self, data):
             return True
-    return ARTEN_KOPF.format(herkunft=herkunft) + yaml.dump({"arten": arten}, Dumper=Ohne_Verweise, allow_unicode=True,
+    return texte.t(sprache or texte.VORGABE_REISE, "inhalt.schreiben.arten_kopf", herkunft=herkunft) + yaml.dump({"arten": arten}, Dumper=Ohne_Verweise, allow_unicode=True,
                                                              sort_keys=False, width=120)
 
 
@@ -242,9 +238,9 @@ def arten_laden(reise_dir):
 def arten_speichern(reise_dir, arten, wer):
     p = Path(reise_dir) / "plan" / "arten.yaml"
     p.parent.mkdir(parents=True, exist_ok=True)
-    herkunft = (f"Gepflegt im Gespräch über den Konnektor (zuletzt {datetime.date.today().isoformat()}, {wer['name']}); "
-                "der Verlauf steht in der Geschichte des Repos.")
-    p.write_text(arten_text(arten, herkunft), encoding="utf-8")
+    sp = sprache_von(reise_dir)   # Kopf und Herkunft stehen in der Sprache der Reise
+    herkunft = texte.t(sp, "inhalt.schreiben.gepflegt", datum=datetime.date.today().isoformat(), wer=wer["name"])
+    p.write_text(arten_text(arten, herkunft, sp), encoding="utf-8")
 
 
 def lesetext_gliederung(roh):
@@ -379,11 +375,6 @@ def art_definieren(reise_dir, wer, args):
 
 # ---------- Kategorien der Kartenpunkte (plan/kategorien.yaml) ----------
 
-KATEGORIEN_KOPF = ("# Kategorien der Kartenpunkte dieser Reise (docs/ontologie.md „Kartenpunkte“, ADR-0001). {herkunft}\n"
-                   "# Felder je Kategorie: gruppe (punkt = Etappen-Karte, wissen = Karte im Wissensabschnitt), name, einzahl, farbe\n"
-                   "# (blau | braun | lila | gruen | tuerkis | oliv | grau | rosa | schiefer | kontrast | #rrggbb), symbol,\n"
-                   "# nummeriert (Punkt zeigt seine Nummer statt eines Symbols), arten (Zusatz je art eines Punkts: name, symbol,\n"
-                   "# hinweis, umriss).\n")
 
 
 def kategorien_laden(reise_dir):
@@ -407,9 +398,9 @@ def kategorien_speichern(reise_dir, kategorien, wer):
             return True
     p = Path(reise_dir) / "plan" / "kategorien.yaml"
     p.parent.mkdir(parents=True, exist_ok=True)
-    herkunft = (f"Gepflegt im Gespräch über den Konnektor (zuletzt {datetime.date.today().isoformat()}, {wer['name']}); "
-                "der Verlauf steht in der Geschichte des Repos.")
-    p.write_text(KATEGORIEN_KOPF.format(herkunft=herkunft)
+    sp = sprache_von(reise_dir)   # Kopf und Herkunft stehen in der Sprache der Reise
+    herkunft = texte.t(sp, "inhalt.schreiben.gepflegt", datum=datetime.date.today().isoformat(), wer=wer["name"])
+    p.write_text(texte.t(sp, "inhalt.schreiben.kategorien_kopf", herkunft=herkunft)
                  + yaml.dump({"kategorien": kategorien}, Dumper=Ohne_Verweise, allow_unicode=True, sort_keys=False, width=120),
                  encoding="utf-8")
 
@@ -890,7 +881,7 @@ def wert_text(e):
     t = str(e.get("wert"))
     if e.get("gilt") is not None:
         g = e["gilt"] if isinstance(e["gilt"], list) else [e["gilt"]]
-        t = t + S("schreiben.antwort.wert.am", w1=", ".join(x.strftime("%d.%m.") if hasattr(x, "strftime") else str(x) for x in g))
+        t = t + S("schreiben.antwort.wert.am", w1=verbinden([S("schreiben.antwort.datum", w1=texte.DatumKurz(x)) if isinstance(x, datetime.date) else str(x) for x in g]))
     return t
 
 
@@ -1654,7 +1645,7 @@ def entscheiden(reise_dir, wer, args, heute=None):
     titel = f"{oid} „{o['titel']}“ {WORT[status]}" + (f" (ersetzt durch {durch})" if durch else "")
     text = (S("schreiben.antwort.entscheiden.kopf", w1=oid, w2=o["titel"], w3=vid, w4=wr.get("titel", "")) + S("schreiben.wort." + status)
             + (S("schreiben.antwort.entscheiden.ersetzt_durch", w1=durch) if durch else "")
-            + S("schreiben.antwort.entscheiden.klammer", w1=wer["name"], w2=heute.strftime("%-d.%-m.%Y"), w3=grund)
+            + S("schreiben.antwort.entscheiden.klammer", w1=wer["name"], w2=heute, w3=grund)
             + (S("schreiben.antwort.entscheiden.bisher", w1=", ".join(ersetzt)) if ersetzt else "") + (S("schreiben.antwort.entscheiden.nicht_gewaehlt", w1=", ".join(nicht_gewaehlt)) if nicht_gewaehlt else "")
             + (S("schreiben.antwort.entscheiden.wieder", w1=", ".join(wieder)) if wieder else "")
             + frage_text)
@@ -1739,7 +1730,7 @@ def wissen_schreiben(reise_dir, wer, args, heute=None):
     titel = text_wert(args, "titel", laenge=120)
     cfg = json.loads((Path(reise_dir) / "reise.json").read_text(encoding="utf-8"))
     zu = cfg.get("abschnitte") or {}
-    absatz = f"{text}\n\n*Herkunft: {quelle}; eingetragen am {heute.strftime('%-d.%-m.%Y')} von {wer['name']} über den Konnektor.*"
+    absatz = f"{text}\n\n" + texte.t(sprache_von(reise_dir), "inhalt.schreiben.herkunft.eingetragen", quelle=quelle, datum=texte.datum(heute, sprache_von(reise_dir)), wer=wer["name"])
     # Vorhandener Abschnitt? (W-ID oder Titel in reise.json)
     treffer = None
     for d_, titel_zu in zu.items():
@@ -1784,7 +1775,7 @@ def frage_schliessen(reise_dir, wer, args, heute=None):
     wort = texte.wort(sp, "inhalt.frage.geklaert" if status == "geklaert" else "inhalt.frage.entfaellt")
     if not frage_status_setzen(reise_dir, fid, f"{wort} {texte.datum(heute, sp)}: {wer['name']}, {ergebnis}"):
         raise Ablehnung("schreiben.frage_schliessen.2", fid=fid)
-    text = S("schreiben.antwort.frage.ist", w1=fid, w2=wort, w3=wer["name"], w4=heute.strftime("%-d.%-m.%Y"), w5=ergebnis)
+    text = S("schreiben.antwort.frage.ist", w1=fid, w2=wort, w3=wer["name"], w4=heute, w5=ergebnis)
     if status == "entfaellt":
         text += S("schreiben.antwort.frage.nicht_geloescht")
     return f"{fid} {wort}", text
@@ -1890,7 +1881,7 @@ def reise_status_setzen(reise_dir, wer, args, heute=None):
         st["verlauf"] = verlauf
     verlauf.append(fliess_map({"datum": heute, "wert": wert, "wer": wer["name"], "grund": grund}))
     reise_yaml_speichern(p, roh)
-    return f"Status {alt or '–'} → {wert}", S("schreiben.antwort.status.text", w1=wert, w2=alt or "–", w3=wer["name"], w4=heute.strftime("%-d.%-m.%Y"), w5=grund)
+    return f"Status {alt or '–'} → {wert}", S("schreiben.antwort.status.text", w1=wert, w2=alt or "–", w3=wer["name"], w4=heute, w5=grund)
 
 
 def einstellung_setzen(reise_dir, wer, args, heute=None):
@@ -2182,10 +2173,10 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
             + (S("schreiben.antwort.buchung.bei", w1=d["bei"]) if d.get("bei") else "") + (S("schreiben.antwort.buchung.preis", w1=d["preis"]) if d.get("preis") else "")
             + (S("schreiben.antwort.buchung.zahlung", w1=ZAHLUNG_WORTE[zahlung]) if zahlung else "") + (f" ({d['bezahlt']})" if d.get("bezahlt") else "")
             + (f", {merkmale_text(mk, buchung_merkmal_defs(route, fuer)[0])}" if mk else "")
-            + (S("schreiben.antwort.buchung.frist", w1=d["frist"].strftime("%-d.%-m.%Y")) + (f" ({d['frist_was']})" if d.get("frist_was") else "") if d.get("frist") else "")
+            + (S("schreiben.antwort.buchung.frist", w1=d["frist"]) + (f" ({d['frist_was']})" if d.get("frist_was") else "") if d.get("frist") else "")
             + (S("schreiben.antwort.buchung.storno", w1=d["storno"]) if d.get("storno") else "")
-            + (S("schreiben.antwort.buchung.storno_bis", w1=d["storno_bis"].strftime("%-d.%-m.%Y")) if d.get("storno_bis") else "")
-            + (S("schreiben.antwort.buchung.ab", w1=d["ab"].strftime("%-d.%-m.%Y")) + (f" ({d['ab_was']})" if d.get("ab_was") else "") if d.get("ab") else "")
+            + (S("schreiben.antwort.buchung.storno_bis", w1=d["storno_bis"]) if d.get("storno_bis") else "")
+            + (S("schreiben.antwort.buchung.ab", w1=d["ab"]) + (f" ({d['ab_was']})" if d.get("ab_was") else "") if d.get("ab") else "")
             + (S("schreiben.antwort.buchung.preise", w1=", ".join(f"{k} {v}" for k, v in preise.items())) if preise else "")
             + (S("schreiben.antwort.buchung.reisende_liste", w1=", ".join(f"{k}{(' (' + v + ')') if v else ''}" for k, v in pers.items())) if pers else "")
             + S("schreiben.antwort.herkunft", w1=quelle) + ".")   # zum Beleg sagt der Konnektor etwas: er weiß, ob einer mitkam
@@ -2221,8 +2212,8 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
         wort = wort or BUCHUNG_WORTE.get(feld, feld)
         wort_satz = S("schreiben.buchung." + feld) if feld in BUCHUNG_WORTE else wort   # in der Antwort in der Sprache der Person
         alt = knoten.get(feld)
-        alt_t = alt.strftime("%-d.%-m.%Y") if isinstance(alt, datetime.date) else (", ".join(alt) if isinstance(alt, list) else alt)
-        neu_t = neu.strftime("%-d.%-m.%Y") if isinstance(neu, datetime.date) else (", ".join(neu) if isinstance(neu, list) else neu)
+        alt_t = texte.Datum(alt) if isinstance(alt, datetime.date) else (", ".join(alt) if isinstance(alt, list) else alt)
+        neu_t = texte.Datum(neu) if isinstance(neu, datetime.date) else (", ".join(neu) if isinstance(neu, list) else neu)
         if neu in ("", None):
             if feld in knoten:
                 geaendert.append(S("schreiben.antwort.buchung.entfernt", w1=wort_satz, w2=alt_t))
@@ -2412,7 +2403,7 @@ def termin_setzen(reise_dir, wer, args, heute=None):
             raise Ablehnung("schreiben.termin_setzen.3")
         fix.remove(alt)
         routen_speichern(reise_dir, roh)
-        return f"Termin {datum_.strftime('%-d.%-m.')} „{titel}“ entfernt", S("schreiben.antwort.termin.entfernt", w1=datum_.strftime("%-d.%-m.%Y"), w2=titel) + S("schreiben.antwort.grund", w1=grund)
+        return f"Termin {datum_.strftime('%-d.%-m.')} „{titel}“ entfernt", S("schreiben.antwort.termin.entfernt", w1=datum_, w2=titel) + S("schreiben.antwort.grund", w1=grund)
     ort = text_wert(args, "ort", laenge=10)
     if ort and (not re.fullmatch(r"O-\d+", ort) or ort not in (roh.get("orte") or {})):
         raise Ablehnung("schreiben.termin_setzen.4", ort=ort)
@@ -2429,7 +2420,7 @@ def termin_setzen(reise_dir, wer, args, heute=None):
         if not geaendert:
             raise Ablehnung("schreiben.termin_setzen.5")
         routen_speichern(reise_dir, roh)
-        return f"Termin {datum_.strftime('%-d.%-m.')} geändert", S("schreiben.antwort.termin.kopf", w1=datum_.strftime("%-d.%-m.%Y")) + verbinden(geaendert, "; ") + "." + (S("schreiben.antwort.grund", w1=grund) if grund else "")
+        return f"Termin {datum_.strftime('%-d.%-m.')} geändert", S("schreiben.antwort.termin.kopf", w1=datum_) + verbinden(geaendert, "; ") + "." + (S("schreiben.antwort.grund", w1=grund) if grund else "")
     if not quelle:
         raise Ablehnung("schreiben.termin_setzen.6")
     d = {"datum": datum_}
@@ -2439,7 +2430,7 @@ def termin_setzen(reise_dir, wer, args, heute=None):
     d["quelle"] = quelle
     fix.append(fliess_map(d))
     routen_speichern(reise_dir, roh)
-    return f"Termin {datum_.strftime('%-d.%-m.')} „{titel}“", S("schreiben.antwort.termin.angelegt", w1=datum_.strftime("%-d.%-m.%Y"), w2=titel) + (S("schreiben.antwort.ding.in", w1=ort) if ort else "") + S("schreiben.antwort.herkunft", w1=quelle) + "."
+    return f"Termin {datum_.strftime('%-d.%-m.')} „{titel}“", S("schreiben.antwort.termin.angelegt", w1=datum_, w2=titel) + (S("schreiben.antwort.ding.in", w1=ort) if ort else "") + S("schreiben.antwort.herkunft", w1=quelle) + "."
 
 
 def wahlstelle_aendern(reise_dir, wer, args, heute=None):
@@ -2653,7 +2644,7 @@ def wissen_aendern(reise_dir, wer, args, heute=None):
     geaendert = []
     if text:
         quelle = text_wert(args, "quelle", pflicht=True)
-        absatz = f"{text}\n\n*Herkunft: {quelle}; berichtigt am {heute.strftime('%-d.%-m.%Y')} von {wer['name']} über den Konnektor ({grund}).*"
+        absatz = f"{text}\n\n" + texte.t(sprache_von(reise_dir), "inhalt.schreiben.herkunft.berichtigt", quelle=quelle, datum=texte.datum(heute, sprache_von(reise_dir)), wer=wer["name"], grund=grund)
         zeilen[start + 1:ende] = ["", *absatz.split("\n")]
         geaendert.append(S("schreiben.antwort.abschnitt.inhalt_ersetzt"))
     if neuer_titel and neuer_titel != titel:
@@ -2710,7 +2701,7 @@ def lesetext_schreiben(reise_dir, wer, args, heute=None):
         fremd = [w for w in re.findall(r"^\*\*([^*]{1,60})\*\*", text, flags=re.M) if w.strip().rstrip(".:").casefold() not in namen]
         if fremd:
             raise Ablehnung("schreiben.lesetext_schreiben.4", w1=fremd[0].strip().rstrip('.:'), w2=', '.join(r['name'] for r in rubriken), eid=eid)
-    absatz = f"{text}\n\n*Herkunft: {quelle}; geschrieben am {heute.strftime('%-d.%-m.%Y')} von {wer['name']} über den Konnektor.*"
+    absatz = f"{text}\n\n" + texte.t(sprache_von(reise_dir), "inhalt.schreiben.herkunft.geschrieben", quelle=quelle, datum=texte.datum(heute, sprache_von(reise_dir)), wer=wer["name"])
     zs = next((i for i in range(start + 1, ende) if re.fullmatch(r"###\s+Zusammenfassung\s*", zeilen[i])), None)
     if zs is not None:
         ze = next((i for i in range(zs + 1, ende) if zeilen[i].startswith("### ")), ende)
