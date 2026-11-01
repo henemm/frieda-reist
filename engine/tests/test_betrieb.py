@@ -1191,7 +1191,7 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     nginx = (aus / "nginx/probe-konnektor.conf").read_text()
     inc = (aus / "nginx/probe-konnektor.inc").read_text()
     # Konnektor an der Wurzel (#163): /mcp, Anmeldung, OAuth; der alte Pfad bleibt für Links aus der Zeit vor den Konten
-    assert "location ~ ^/(mcp|anmelden|abmelden|konto|authorize|token|register|gesund)$" in nginx
+    assert "location ~ ^/(mcp|anmelden|abmelden|konto|authorize|token|register|gesund)?$" in nginx
     assert "location ^~ /.well-known/oauth-" in nginx and "location ^~ /schrift/" in nginx and "location = /favicon.ico" in nginx
     assert "location ^~ /probe-mcp/" in nginx and "zone=probe_api" in nginx and "127.0.0.1:8772/" in nginx
     assert "include /etc/nginx/snippets/probe-konnektor.inc;" in nginx

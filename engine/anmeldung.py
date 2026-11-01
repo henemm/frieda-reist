@@ -101,6 +101,8 @@ background:var(--acc2);color:var(--acc);font-weight:700;font-size:.85rem;display
 .zeile::-webkit-details-marker{display:none}
 .zeile::after{content:"›";color:var(--mut);font-size:1.4rem;line-height:1}details[open]>.zeile::after{transform:rotate(90deg)}
 .zeile .was{flex:1;min-width:0;display:flex;flex-direction:column;gap:.2rem}.zeile .titel{font-weight:600}
+.zeile.ohne-link{cursor:default}.zeile.ohne-link::after{content:none}
+.zeile .meldungstext{overflow-wrap:anywhere}
 .zeile .wert{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%}
 details>.inhalt{padding:0 1rem 1rem;display:flex;flex-direction:column;gap:.5rem}
 .kalender-links{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 1rem}
@@ -317,9 +319,28 @@ def einstellung(name, titel, wert, inhalt, offen=False):
             f'<span class="wert">{esc(wert)}</span></summary><div class="inhalt">{inhalt}</div></details>')
 
 
+def meldungen_abschnitt(k, reise_info):
+    """Meldungen an die Person über alle Reisen (#21 Stufe 1, #41), dieselbe Quelle wie meine_reisen. Jede Zeile führt
+    zur Seite ihrer Reise; Meldungen ohne Reise (neue Reise angelegt, Anfragen) stehen ohne Link. Ohne Meldungen: nichts."""
+    zeilen = []
+    for m in rm.meldungen_des_kontos(k):
+        info = (reise_info(m["reise"]) or {}) if m["reise"] else {}
+        wann = texte.datum_kurz(m["erstellt"], sprache_der_seite())
+        unter = f'{wann} · {info.get("titel") or m["reise"]}' if m["reise"] else wann
+        inhalt = (f'<span class="was"><span class="klein">{esc(unter)}</span>'
+                  f'<span class="meldungstext">{esc(m["text"])}</span></span>')
+        zeilen.append(f'<a class="zeile" href="{esc(info["seite"])}">{inhalt}</a>' if info.get("seite")
+                      else f'<div class="zeile ohne-link">{inhalt}</div>')
+    if not zeilen:
+        return ""
+    return (f'<div class="abschnitt" id="meldungen"><h2>{esc(tx("konto.meldungen.titel"))}</h2>'
+            f'<div class="liste">{"".join(zeilen)}</div></div>')
+
+
 def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen=""):
-    """Mein Konto (Gestalt #60): Reisen zuerst, dann Kalender, Freischaltungen (Betreiber), Einstellungen als Liste,
-    unten Abmelden auf allen Geräten und Konto löschen. offen: Einstellung, die aufgeklappt erscheint."""
+    """Mein Konto (Gestalt #60), zugleich die Startseite (#41): Meldungen, Reisen, dann Kalender, Freischaltungen
+    (Betreiber), Einstellungen als Liste, unten Abmelden auf allen Geräten und Konto löschen. offen: Einstellung, die
+    aufgeklappt erscheint."""
     zeilen = []
     for m in konten.mitgliedschaften(k["id"]):
         info = reise_info(m["reise"]) or {}
@@ -381,6 +402,7 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
                  f'<div><h1 style="font-size:1.875rem">{esc(tx("konto.seite.hallo", name=k["name"]))}</h1>'
                  f'<p class="hinweis" style="margin:.1rem 0 0">{esc(k["email"])}</p></div>',
                  fehler(meldung), f'<p class="kasten">{esc(hinweis)}</p>' if hinweis else "",
+                 meldungen_abschnitt(k, reise_info),
                  f'<div class="abschnitt"><h2>{esc(tx("konto.seite.meine_reisen"))}</h2>{reisen}{anlegen}</div>',
                  kalender_karte(k, reise_info, offen == "kalender"),
                  betreiber,
@@ -529,6 +551,8 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
         _anfrage.sprache = wer["sprache"] or _anfrage.sprache      # die App schickt keine Sprache mit, das Konto hat eine
         return kalender_antwort(wer, headers=headers)
 
+    if weg == "/":   # Startseite der Adresse ist Mein Konto (#41; nur GET, der Konnektor leitet nur das hierher)
+        return weiter("/konto" if k else "/anmelden?zurueck=/konto")
     if weg == "/konto":
         if not k:
             return weiter("/anmelden?zurueck=/konto")

@@ -410,6 +410,7 @@ def test_anmeldung_auf_der_seite(tmp_path, monkeypatch, browser):
     code = re.search(r"(\d{3}) (\d{3})", json.loads((tmp_path / "mails.jsonl").read_text().splitlines()[-1])["text"])
     token, karl = konten.anmelden("karl@beispiel.invalid", code.expand(r"\1\2"))
     konten.sprache_setzen(karl["id"], "de")   # angemeldet folgt die Seite der Sprache des Kontos (#188)
+    rm.meldung_anlegen(tmp_path / "ablage" / "beispielreise", ["Karl"], "hinweis", "allgemein", "Treffpunkt ist jetzt 8:40 Uhr.")
 
     def lauf(sitzung):
         aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_konto.mjs"), str(PLAYWRIGHT),
@@ -428,6 +429,11 @@ def test_anmeldung_auf_der_seite(tmp_path, monkeypatch, browser):
     assert mit["knopf"] == {"text": "Karl", "ziel": "/konto"}
     assert mit["nameFeld"] == "hidden" and "Du schreibst als Karl." in mit["hinweis"]
     assert "Danke" in ohne["meldung"] and "Danke" in mit["meldung"]
+    # Meldungen an die Person (#21): angemeldet als Hinweis, ohne Netz aus dem Speicher, nach „Gelesen“ weg
+    assert ohne["fuerDich"]["hidden"] and ohne["fuerDichOffline"]["hidden"]
+    assert not mit["fuerDich"]["hidden"] and mit["fuerDich"]["text"].startswith("Für dich") and "8:40 Uhr" in mit["fuerDich"]["text"]
+    assert mit["fuerDichOffline"] == mit["fuerDich"]
+    assert mit["fuerDichGelesen"]["hidden"] and mit["fuerDichDanach"]["hidden"]
     namen = [json.loads(z)["name"] for z in (tmp_path / "ablage/beispielreise/eingang.jsonl").read_text().splitlines()]
     assert namen == ["Hanna", "Karl"]
 
