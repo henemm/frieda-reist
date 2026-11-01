@@ -1427,7 +1427,7 @@ def test_unerwarteter_fehler_gibt_500_und_protokoll(repo, monkeypatch, capsys, t
                                  {**IDA, "args": {"bezeichnung": "X", "grundform": "aufenthalt"}})
     err = capsys.readouterr().err
     assert code == 500 and not a["ok"] and "Fehler im Dienst" in a["fehler"]
-    assert "Fehler art_definieren 500: FileNotFoundError" in err
+    assert "Error art_definieren 500: FileNotFoundError" in err
     assert "Done art_definieren 500 in " in err
 
 

@@ -1155,7 +1155,7 @@ def ontologie_text(name, args):
             continue
         if f == "stufe":   # für Menschen in Worten (nötig, gut zu wissen, zusätzlich; Product Owner 29.10.2026)
             s = stufe_schluessel(v)
-            v = tkd("konnektor.ausgabe.ontologie.aus") if s == "aus" else stufe_wort(s) if s else v
+            v = tkd("konnektor.ausgabe.ontologie.aus") if s == "aus" else stufe_wort(s, texte.VORGABE_REISE) if s else v
         # Die Rückmeldung liegt in der Ablage, also in der Sprache des Bestands: Feldnamen, Symbole und Datenwerte in ihr
         sprache = texte.VORGABE_REISE
         wort = (lambda x: texte.wert_in(sprache, texte.Wert(str(x)))) if f in ("symbol", "art_symbol") else (lambda x: texte.datenwert(sprache, x))
