@@ -91,7 +91,7 @@ def test_vorlage_vergleicht_nie_mit_anzeigetext_und_haelt_einheiten_im_katalog()
 
 
 def test_schluessel_form():
-    muster = re.compile(r"^(seite|konnektor|schreiben|dienst|konto|mail|kalender|waechter|inhalt|pruefung)(\.[a-z0-9_]+)+$")
+    muster = re.compile(r"^(?:(?:seite|konnektor|schreiben|dienst|konto|mail|kalender|waechter|inhalt|pruefung)(?:\.[a-z0-9_]+)+|(?:wert|symbol)\.[\wÄÖÜäöüß]+)$")
     for s in texte.sprache("de").TEXTE:
         assert muster.match(s), f"Schlüssel {s} hält die Form nicht ein"
 
@@ -412,10 +412,10 @@ if __name__ == "__main__":
 def test_satz_ist_deutsch_als_text_und_sprachfaehig_in_fstrings():
     s = texte.satz("schreiben.text_wert.1", feld="titel")
     assert str(s) == "„titel“ fehlt." and s.schluessel == "schreiben.text_wert.1" and s.werte == {"feld": "titel"}
-    assert s.text("en") == "“titel” is missing."
+    assert s.text("en") == "“title” is missing."
     texte.aufruf_sprache("en")
     try:
-        assert f"{s}" == "“titel” is missing."
+        assert f"{s}" == "“title” is missing."
     finally:
         texte.aufruf_sprache(texte.VORGABE_REISE)
     assert f"{s}" == "„titel“ fehlt."

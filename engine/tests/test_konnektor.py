@@ -1003,9 +1003,9 @@ def test_buchung_zeigt_zahlstand_und_merkmale(schreibweg):
     assert not f and "## Merkmale der Buchungen dieser Art" in t and "- ticketart – Ticketart: auswahl (Sparpreis | Flexpreis | Verbundticket)" in t
     assert "Buchungen dieser Art" not in werkzeug(basis, ALT_ORGANISATOR, "merkmale", art="hotel")[0]
     schema = next(x for x in rpc(basis, KARL, "tools/list")["tools"] if x["name"] == "buchung_anlegen")["inputSchema"]["properties"]
-    assert {"offen", "vor_ort", "paid", "on_site", "included"} <= set(schema["payment"]["enum"]) and "attributes" in schema
+    assert {"open", "paid", "on_site", "included"} <= set(schema["payment"]["enum"]) and "attributes" in schema
     md = next(x for x in rpc(basis, ALT_ORGANISATOR, "tools/list")["tools"] if x["name"] == "merkmal_definieren")["inputSchema"]["properties"]
-    assert md["for"]["enum"] == ["ding", "buchung"]
+    assert md["for"]["enum"] == ["item", "booking"]
     Schreibweg.antwort = (200, {"ok": True, "text": "Buchung B-02 (E-20 …): Zahlung „bezahlt“ → „erstattet“."})
     t, f = werkzeug(basis, KARL, "buchung_aendern", ziel="B-02", zahlung="refunded", merkmale={"wagen": "Wagen 5"})
     assert not f and Schreibweg.anfragen[-1][2]["args"]["zahlung"] == "refunded" and Schreibweg.anfragen[-1][2]["args"]["merkmale"] == {"wagen": "Wagen 5"}

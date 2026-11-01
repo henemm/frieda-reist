@@ -68,16 +68,7 @@ def _funde_des_letzten_commits(origin, antwort, erlaubt_text, erlaubt_datei):
 # Bekannte Schuld: deutsche Wörter, die eine englische Reise noch zeigt (Datenwerte wie Rollen, Stufen, Typen, Farben, Baustein-Namen und
 # Bezeichner in Commit-Texten). Die Liste darf nur kürzer werden: ein neues deutsches Wort lässt den Test scheitern, ein behobenes muss
 # hier gestrichen werden. Ziel ist eine leere Liste.
-BEKANNT = {
-    "art_definieren": {"antwort": {"blau"}, "commit": {"blau", "merkmal", "definieren"}},
-    "kategorie_definieren": {"antwort": {"punkt", "farbe", "karte"}, "commit": {"kategorie", "angelegt", "punkt", "farbe", "karte"},
-                             "dateien": {"kartenpunkte", "punkt", "karte"}},
-    "merkmal_definieren": {"antwort": {"auswahl", "empfohlen"}, "commit": {"auswahl", "empfohlen"}},
-    "person_schreiben": {"antwort": {"mitwirkend"}, "commit": {"mitwirkend", "schreiben"}},
-    "einstellung_setzen": {"antwort": {"regeln", "einladen", "organisator"}, "commit": {"regeln", "einladen", "organisator"}},
-    "Ablehnung entscheiden": {"text": {"varianten"}},
-    "Ablehnung option_anlegen": {"text": {"varianten"}},
-}
+BEKANNT = {}
 
 
 def _vergleichen(alle):

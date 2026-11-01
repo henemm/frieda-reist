@@ -1516,7 +1516,7 @@ def test_tag_anlegen_und_termin_setzen(repo):
     assert {"datum": datetime.date(2027, 5, 14), "ort": "O-03", "titel": "Tisch um 19 Uhr", "quelle": "Reservierung per Mail (Test)"} in r["fixpunkte"]
     s.vorbereiten()
     a = s.schreiben("beispielreise", "termin_setzen", {**IDA, "args": {"datum": "2027-05-14", "titel": "Tisch um 19 Uhr", "neuer_titel": "Tisch um 20 Uhr"}})
-    assert "Titel „Tisch um 19 Uhr“ → „Tisch um 20 Uhr“" in a["text"]
+    assert "titel „Tisch um 19 Uhr“ → „Tisch um 20 Uhr“" in a["text"]
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="Grund"):
         s.schreiben("beispielreise", "termin_setzen", {**IDA, "args": {"datum": "2027-05-14", "titel": "Tisch um 20 Uhr", "entfernen": True}})
@@ -1582,7 +1582,7 @@ def test_wissen_aendern_und_lesetext_schreiben(repo):
         s.schreiben("beispielreise", "wissen_aendern", {**KARL, "args": {"ziel": "W-07", "text": "x", "quelle": "y", "grund": "z"}})
     a = s.schreiben("beispielreise", "wissen_aendern", {**KARL, "args": {"ziel": "W-01", "text": "Drei Wandertage auf dem Malerweg (Test).",
                                                                          "quelle": "Beispielreise (Test)", "neuer_titel": "Überblick", "grund": "knapper"}})
-    assert "Inhalt ersetzt" in a["text"] and "Titel „Übersicht“ → „Überblick“" in a["text"]
+    assert "Inhalt ersetzt" in a["text"] and "titel „Übersicht“ → „Überblick“" in a["text"]
     dossier = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/inhalt/etappen.md"], check=True, capture_output=True, text=True).stdout
     assert "## Überblick\n\nDrei Wandertage auf dem Malerweg (Test).\n\n*Herkunft: Beispielreise (Test); berichtigt am" in dossier
     assert "\n## Übersicht\n" not in dossier and "## Etappe 1:" in dossier

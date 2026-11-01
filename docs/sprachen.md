@@ -43,7 +43,7 @@ Eine Sprache, deren Datei einen Schlüssel nicht hat, fällt für diesen Text au
 
 ## Regeln für Schlüssel und Texte
 
-- Schlüssel sind flach, in Kleinbuchstaben, mit Punkten getrennt, der Bereich steht vorn: `seite.`, `konnektor.`, `schreiben.`, `dienst.`, `konto.`, `mail.`, `kalender.`, `waechter.`, `inhalt.`, `pruefung.` (Prüfmeldungen der Reise). Der Test prüft die Form.
+- Schlüssel sind flach, in Kleinbuchstaben, mit Punkten getrennt, der Bereich steht vorn: `seite.`, `konnektor.`, `schreiben.`, `dienst.`, `konto.`, `mail.`, `kalender.`, `waechter.`, `inhalt.`, `pruefung.` (Prüfmeldungen der Reise), `wert.` und `symbol.` (Datenwerte der Reise, siehe unten). Der Test prüft die Form.
 - Platzhalter haben Namen in geschweiften Klammern (`{name}`, `{n}`, `{id}`), nie Positionen, und sind in allen Sprachen dieselben.
 - Jeder Text ist ein ganzer Satz oder eine ganze Beschriftung. Nichts wird aus Teilen zusammengesetzt (`"Nacht in " + ort` wird ein Schlüssel mit `{ort}`), damit andere Sprachen die Wortstellung ändern können. Ausnahme: Bestätigungen des Schreibwegs sind aus Sätzen des Katalogs zusammengesetzte `Satz`-Folgen, die in jeder Sprache gebaut werden können (`texte.Satz`).
 - Plural nur über Kategorien: gibt es den Wert `n`, wählt `PLURAL` die Kategorie, und `t()` nimmt `<schluessel>.<kategorie>`, dann `<schluessel>.other`, dann `<schluessel>`. Deutsch und Englisch füllen `.one` und `.other`, nie `n == 1 ? … : …` im Code.
@@ -93,4 +93,8 @@ Fehler und Hinweise der Prüfung beim Bauen („Unterkunft U-01: Ort O-09 gibt e
 ## Was in Dateien der Reise landet
 - Was die Software in Dateien einer Reise schreibt, folgt der Sprache der Reise (`reise.sprache_von`): Herkunftszeilen an Wissensabschnitten (`inhalt.schreiben.herkunft.*`), die Kopfkommentare von `plan/arten.yaml` und `plan/kategorien.yaml` (`inhalt.schreiben.*_kopf`), der Status in `offene-fragen.md`. Die Texte stehen unter `inhalt.*` im Katalog, das Datum kommt aus `texte.datum(datum, sprache)`.
 - Antwortsätze an die Person tragen Daten als Wert `texte.Datum` (oder `texte.DatumKurz` ohne Jahr), nicht als fertigen Text: Der Satz formatiert sie erst in der Sprache, in der er gelesen wird, auch auf dem Weg vom Dienst zum Konnektor (`{"datum": "JJJJ-MM-TT"}`). Kein `strftime` mit festem Muster in Texten.
-- Die Titel der Commits und der Verlauf der Reise sind bisher bewusst deutsch (offen, Product Owner fragen).
+- Titel, Text und Fuß der Commits stehen in der Sprache der Reise, ebenso der Verlauf. Werkzeug- und Parameternamen darin sind die englischen der Schnittstelle (`schreiben.am_rand`), außer eine Sprache erklärt deutsche Aliasse (`inhalt.schreiben.werkzeug_alias`).
+
+### Datenwerte
+
+Gespeichert wird immer der Datenwert selbst (`organisator`, `gewaehlt`, `blau`, `auswahl`; ADR-0006). Wer ihn **liest**, bekommt ihn in seiner Sprache: Jeder Wert eines Platzhalters, der genau einem Eintrag `wert.<Wert>` des Katalogs entspricht, wird von `texte.t` (und damit von jedem Satz) durch dessen Text ersetzt, bei fehlender Übersetzung durch den englischen. Deutsch zeigt den Wert unverändert (`"wert.organisator": "organisator"`). Ein neuer Datenwert (Rolle, Stufe, Farbe, Typ, Baustein, Schlüssel der Spielregeln) braucht deshalb einen Eintrag `wert.*` in jeder Sprache. Nicht hinein gehören Wörter, die im Englischen genauso lauten (`text`, `plan`, `bus`): sie brauchen keine Übersetzung. Wo der Code Werte selbst aneinanderhängt (f-String, `", ".join(...)`), bleibt der deutsche Wert stehen: dafür gibt es einen Satz im Katalog (`schreiben.antwort.feld_wert`) oder `schreiben.anzeige_text`. Der Test `test_englisch.py` fängt jede Stelle, an der ein deutscher Wert durchrutscht.

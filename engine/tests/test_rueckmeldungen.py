@@ -337,5 +337,5 @@ def test_aufgabentext_in_der_sprache_der_person():
         "AG-01 [offen] · Priorität hoch · Frist 2000-01-01 ÜBERFÄLLIG · zuständig Ida: Fähre buchen", "  an: T-01 (Tag 1)",
         "  Notiz: früh anrufen", "  zuletzt: 2027-05-01 Ida – angelegt"]
     assert rm.aufgaben_text([a], {"T-01": "Tag 1"}, sprache="en").splitlines() == [
-        "AG-01 [open] · priority hoch · deadline 2000-01-01 OVERDUE · assigned to Ida: Fähre buchen", "  for: T-01 (Tag 1)",
+        "AG-01 [open] · priority high · deadline 2000-01-01 OVERDUE · assigned to Ida: Fähre buchen", "  for: T-01 (Tag 1)",
         "  Note: früh anrufen", "  last: 2027-05-01 Ida – angelegt"]
