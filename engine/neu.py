@@ -135,9 +135,8 @@ def naechste_id(reise_dir, art):
 
 def schreib_marken(reise_dir, marken):
     marken = {a: marken[a] for a in ARTEN if a in marken}
-    (Path(reise_dir) / "ids.yaml").write_text("# Höchste je vergebene Nummer je Art (engine/neu.py). IDs werden nie "
-                                              "neu vergeben.\n" + yaml.safe_dump(marken, sort_keys=False),
-                                              encoding="utf-8")
+    (Path(reise_dir) / "ids.yaml").write_text(texte.t(sprache_von(reise_dir), "inhalt.neu.ids_kopf") + "\n"
+                                              + yaml.safe_dump(marken, sort_keys=False), encoding="utf-8")
 
 
 # ---------- Reise anlegen ----------
@@ -200,8 +199,7 @@ def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, un
         "darstellung": {"gruppen": {g: texte.wort(sprache, f"inhalt.gruppe.{g}") for g in GRUPPEN}},
     }
     (ziel_dir / "reise.yaml").write_text(
-        "# Eckdaten, Zeitraum, Status, Personen und Einstellungen (engine/reise.py, docs/produkt.md).\n"
-        "# Status und Einstellungen ändert nur ein:e Organisator:in, mit Verlaufseintrag.\n\n"
+        texte.t(sprache, "inhalt.neu.reise_yaml_kopf") + "\n\n"
         + yaml.safe_dump(reise, sort_keys=False, allow_unicode=True, width=110), encoding="utf-8")
     schreib_json(ziel_dir / "reise.json", {
         "plan": "plan/plan.md",

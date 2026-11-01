@@ -75,6 +75,15 @@ S = texte.satz   # Satz des Katalogs, in jeder Sprache lesbar (Bestätigungen, A
 verbinden = texte.Satz.verbinden
 
 
+def werkzeug_name(sprache, werkzeug):
+    """Name des Werkzeugs, wie ihn der Commit nennt: der englische Name der Schnittstelle, in einer Sprache mit deutschen Aliassen
+    (inhalt.schreiben.werkzeug_alias = 1) der interne."""
+    if texte.t(sprache, "inhalt.schreiben.werkzeug_alias") == "1":
+        return werkzeug
+    import schnittstelle
+    return schnittstelle.INTERN_ZU_ENGLISCH.get(werkzeug, werkzeug)
+
+
 def kurz_namen(geaendert):
     """Die Feldnamen am Anfang der Änderungssätze, für den Titel („beginn; ende“): bis zum ersten Leerzeichen oder Anführungszeichen,
     in der Sprache gelesen, in der der Titel steht (jeder Satz trägt seine Teile)."""
@@ -3201,10 +3210,12 @@ class Schreiber:
         if not git(self.arbeit, "status", "--porcelain", "--", f"reisen/{reise}"):
             raise Ablehnung("schreiben.schreiben.4")
         sp = sprache_von(reise_dir)   # Titel, Text und Fuß des Commits stehen in der Sprache der Reise (Variante A)
-        nachricht = (f"{wer['titel']}: {titel.text(sp) if isinstance(titel, texte.Satz) else titel}\n\n"
+        rolle = texte.t(sp, "inhalt.schreiben.rolle." + str(wer["rolle"]))
+        nachricht = (f"{texte.t(sp, 'inhalt.schreiben.reisen_titel') if werkzeug in REPO_WERKZEUGE else wer['titel']}: "
+                     f"{titel.text(sp) if isinstance(titel, texte.Satz) else titel}\n\n"
                      f"{text.text(sp) if isinstance(text, texte.Satz) else text}\n\n"
-                     + texte.t(sp, "inhalt.schreiben.commit_fuss", werkzeug=werkzeug, wer=wer["name"], rolle=wer["rolle"],
-                               datum=datetime.date.today().isoformat()) + "\n")
+                     + texte.t(sp, "inhalt.schreiben.commit_fuss", werkzeug=werkzeug_name(sp, werkzeug), wer=wer["name"],
+                               rolle=wer["rolle"] if rolle.startswith("inhalt.") else rolle, datum=datetime.date.today().isoformat()) + "\n")
         if os.environ.get("FR_VORGANG"):     # Kennung des Vorgangs: nach einem Abbruch findet vorgang_eingetragen den Eintrag
             nachricht += f"\nFrieda-Vorgang: {os.environ['FR_VORGANG']}\n"
         git(self.arbeit, "add", "-A", "--", f"reisen/{reise}")

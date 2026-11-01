@@ -119,7 +119,7 @@ def antworttext(t):
     """Text einer Antwort für den Client: ein Satz aus dem Katalog in der Sprache des Aufrufs, Werkzeugnamen so, wie tools/list sie zeigt."""
     if isinstance(t, texte.Satz):
         t = t.text(texte.aufruf_sprache())
-    return schnittstelle.namen_im_text(t, streng=True)
+    return schnittstelle.parameter_im_text(schnittstelle.namen_im_text(t, streng=True))
 
 
 def code_stand():

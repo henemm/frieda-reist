@@ -4,3 +4,4 @@ pytest
 PyYAML
 ruamel.yaml
 CairoSVG
+pyspellchecker==0.9.1

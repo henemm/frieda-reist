@@ -166,6 +166,17 @@ def namen_im_text(text, streng=False):
     return _ENTSCHEIDEN.sub(INTERN_ZU_ENGLISCH["entscheiden"], _TEXT_MUSTER.sub(lambda m: INTERN_ZU_ENGLISCH[m.group(1)], text))
 
 
+# In Sätzen stehen Parameternamen in Anführungszeichen („quelle“ fehlt, “quelle” is missing); tools/list zeigt sie englisch, also auch die Antworten
+_ANGEFUEHRT = re.compile(r"([„“])([a-z][a-z_]*)([“”])")
+
+
+def parameter_im_text(text):
+    """Interne Parameternamen in Anführungszeichen durch die Namen ersetzen, die tools/list zeigt (für Antworten und Ablehnungen)."""
+    if not isinstance(text, str):
+        return text
+    return _ANGEFUEHRT.sub(lambda m: m.group(1) + PARAMETER.get(m.group(2), m.group(2)) + m.group(3), text)
+
+
 def _text_parameter(text, tab):
     """Eigene Parameter in der Beschreibung eines Werkzeugs: nur eindeutige Wörter (kein von, nach, an, ab, bei, vor, was, art)."""
     eindeutig = [i for i, e in tab.items() if len(i) > 5 and i != e and "_" in i or i in (
