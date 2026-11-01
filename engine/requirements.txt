@@ -4,3 +4,4 @@ pytest
 PyYAML
 ruamel.yaml
 CairoSVG
+icalendar
