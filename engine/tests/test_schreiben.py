@@ -135,7 +135,7 @@ def test_kategorie_anlegen_aendern_und_ablehnen(repo):
                         ({"kategorie": "aussicht", "art_hinweis": "x", "bezeichnung": "Aussicht"}, "art")):
         with pytest.raises(sb.Ablehnung, match=grund):
             s.schreiben("beispielreise", "kategorie_definieren", {**IDA, "args": args})
-    with pytest.raises(sb.Ablehnung, match="nothing about it is to change"):
+    with pytest.raises(sb.Ablehnung, match="nichts daran soll sich ändern"):
         s.schreiben("beispielreise", "kategorie_definieren", {**IDA, "args": {"kategorie": "aussicht", "bezeichnung": "Aussicht"}})
 
 
@@ -203,7 +203,7 @@ def test_art_aendern_und_ablehnungen(repo):
     stand = git(origin, "rev-parse", "main")
     s.vorbereiten()
     for args, text in (
-        ({"art": "hotel"}, "nothing about it is to change"),
+        ({"art": "hotel"}, "nichts daran soll sich ändern"),
         ({"art": "hotel", "grundform": "bewegung"}, "lässt sich nicht ändern"),
         ({"bezeichnung": "Neu"}, "„grundform“ fehlt"),
         ({"grundform": "aufenthalt"}, "„bezeichnung“ fehlt"),
@@ -268,7 +268,7 @@ def test_merkmal_anlegen_aendern_abschalten(repo):
         s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "bezeichnung": "Storno"}})
     with pytest.raises(sb.Ablehnung, match="gibt es bei dieser Reise nicht"):
         s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "ryokan", "bezeichnung": "Onsen"}})
-    with pytest.raises(sb.Ablehnung, match="nothing about it is to change"):
+    with pytest.raises(sb.Ablehnung, match="nichts daran soll sich ändern"):
         s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "merkmal": "preis"}})
     with pytest.raises(sb.Ablehnung, match="„stufe“ muss"):
         s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "merkmal": "preis", "stufe": "wichtig"}})
