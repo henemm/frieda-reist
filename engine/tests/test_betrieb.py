@@ -507,13 +507,13 @@ def test_deploy_prueft_die_wege_zum_konnektor_von_aussen(tmp_path):
     try:
         r = subprocess.run([str(BETRIEB / "deploy.sh"), "beispielreise"], env=env, capture_output=True, text=True)
         assert r.returncode == 0, r.stdout + r.stderr
-        assert "WARNUNG: Diese Wege kommen" in r.stdout and "/kalender/" in r.stdout and "/gesund" not in r.stdout.split("WARNUNG")[1]
-        assert "nginx: Wege zum Konnektor fehlen" in meldungen.read_text() and "/kalender/" in meldungen.read_text()
+        assert "Warning: these paths do not reach the connector" in r.stdout and "/kalender/" in r.stdout and "/gesund" not in r.stdout.split("Warning")[1]
+        assert "nginx: paths to the connector missing" in meldungen.read_text() and "/kalender/" in meldungen.read_text()
         assert (tmp_path / "seiten" / "beispielreise" / "index.html").exists()
         fehlt.clear()
         meldungen.unlink()
         r = subprocess.run([str(BETRIEB / "deploy.sh"), "beispielreise"], env=env, capture_output=True, text=True)
-        assert r.returncode == 0 and "WARNUNG: Diese Wege" not in r.stdout and not meldungen.exists(), r.stdout + r.stderr
+        assert r.returncode == 0 and "Warning: these paths" not in r.stdout and not meldungen.exists(), r.stdout + r.stderr
     finally:
         server.shutdown()
 
@@ -1208,8 +1208,8 @@ def test_konnektor_darf_vorgemerkte_neue_reisen_schreiben(tmp_path, monkeypatch)
 
 def test_einrichten_verlangt_konnektor_an_der_wurzel(tmp_path):
     """Die Anmeldeseiten verweisen auf /anmelden, OAuth erwartet /.well-known/ an der Wurzel (#163): ein Pfad geht nicht."""
-    assert "FR_KN_ADRESSE „https://example.invalid/probe-mcp“" in einrichten(tmp_path, FR_KN_ADRESSE="https://example.invalid/probe-mcp").stdout
-    assert "ok      Konnektor an https://example.invalid/mcp" in einrichten(tmp_path).stdout
+    assert "FR_KN_ADRESSE “https://example.invalid/probe-mcp”" in einrichten(tmp_path, FR_KN_ADRESSE="https://example.invalid/probe-mcp").stdout
+    assert "ok      connector at https://example.invalid/mcp" in einrichten(tmp_path).stdout
 
 
 def _frei():
