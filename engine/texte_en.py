@@ -54,6 +54,7 @@ TEXTE = {
     "seite.aufgabe.feld.status": "Status",
     # Sprache der Seite
     "seite.sprache.titel": "Language",
+    "seite.sprache.fuss": "Language:",
     "seite.bausteine.text.beschreibung": "Every text on the page comes from the catalogue of the chosen language (T with a key); plurals follow the rule of the language.",
     "seite.bausteine.zahl.beschreibung": "Numbers follow the language of the interface: decimal sign, thousands separator and digits come from Intl, never from fixed characters in the code.",
     "seite.bausteine.text.huelle": "Language of the interface",

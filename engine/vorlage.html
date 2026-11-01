@@ -786,11 +786,18 @@ main{padding-bottom:calc(var(--tabbar-space) + 16px)}
    (releaseFuss). Der Fuß rückt in den Freiraum über der Leiste; ohne bekannten Stand bleibt er verborgen. */
 .fuss{max-width:var(--breite);margin:calc(0px - var(--tabbar-space)) auto 0;padding:0 16px calc(var(--tabbar-space) + 16px);
   font-size:var(--t-klein);color:var(--mut);text-align:center;font-variant-numeric:tabular-nums}
-.fuss[hidden]{display:none}
+.fuss[hidden],.fuss [hidden]{display:none}
 .fuss a{color:inherit}
 .fuss button{display:inline-flex;align-items:center;min-height:44px;margin:0;padding:0 4px;border:0;background:none;color:var(--acc);font:inherit;
   text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .fuss .fuss-stand{display:block}
+/* Sprache für Gäste (#188): eine kleine Zeile „Sprache: Deutsch · English“, Baustein umschalter als Textknöpfe;
+   die gewählte Sprache steht in Tinte, ohne Unterstrich. Angemeldet gilt die Sprache des Kontos, die Zeile fehlt. */
+.fuss .umschalter.fuss-sprachen{display:inline-flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0;margin:0}
+.fuss .fuss-sprachen button{min-height:44px;padding:0 4px;border:0;border-radius:0;background:none;color:var(--acc);font-weight:400;
+  text-decoration:underline;text-underline-offset:2px}
+.fuss .fuss-sprachen button[aria-pressed="true"]{background:none;color:var(--fg);text-decoration:none;cursor:default}
+.fuss .fuss-sprachen button+button::before{content:"·";color:var(--mut);margin-inline-end:8px;display:inline-block;text-decoration:none}
 @media (hover:hover){nav a:hover,#suchKnopf:hover{color:var(--fg)} .rund:hover{border-color:var(--acc)}}
 /* Zahl am Reiter „Offen“: offene Aufgaben + nicht gesendete Rückmeldungen */
 nav a{position:relative}
@@ -828,14 +835,13 @@ nav a.warn .zahl{background:var(--warn)}
 <!--__SYMBOLE__-->
 <header>
   <h1 class="t" id="titel"></h1><div class="u" id="untertitel"></div>
-  <div id="sprachen"></div>
 </header>
 <div class="meldungen">
   <div id="neu" class="hinweis glas" role="status" hidden><span data-t="seite.rahmen.neue_version">Neue Version des Handbuchs bereit.</span> <button type="button" id="neuLaden" data-t="seite.rahmen.aktualisieren">Aktualisieren</button></div>
   <div id="offline" class="hinweis glas" role="status" hidden data-t="seite.rahmen.offline">Ohne Netz: gespeicherter Stand. Rückmeldungen werden nachgereicht, Aufgaben erst wieder mit Netz änderbar.</div>
 </div>
 <main id="main" class="pico"></main>
-<footer class="fuss" id="release" data-release="__RELEASE__" hidden></footer>
+<footer class="fuss" id="fuss" hidden><div id="release" data-release="__RELEASE__" hidden></div><div id="sprachen" hidden></div></footer>
 <dialog id="rm" class="pico"></dialog>
 <div class="leiste">
   <nav id="nav" aria-label="Kategorien" data-t-attr="aria-label=seite.rahmen.kategorien"></nav>
@@ -2045,16 +2051,23 @@ const kartenLegende = (eintraege, tag = "div") => el(tag, {class: "legende"}, ..
 // klasse: Platz des Umschalters (Wahl-Modul, Karte), nur für Abstände und Sichtbarkeit
 const umschalter = (titel, knoepfe, klasse) => el("fieldset", {class: "umschalter" + (klasse ? " " + klasse : "")}, el("legend", {class: "unsichtbar"}, titel),
   ...knoepfe.map(([daten, an, ...inhalt]) => el("button", {type: "button", ...daten, "aria-pressed": String(an)}, ...inhalt)));
-// Verwendung des Moleküls Umschalter im Kopf: ein Knopf je Sprache des Katalogs, beschriftet mit ihrem Namen in ihrer Sprache;
-// bei nur einer Sprache wird er nicht gezeichnet
+// Verwendung des Moleküls Umschalter im Fuß, nur für Gäste (#188): ein Knopf je Sprache des Katalogs, beschriftet mit ihrem
+// Namen in ihrer Sprache. Angemeldet gilt die Sprache des Kontos (Kontoseite), die Zeile fehlt; bei nur einer Sprache auch.
+// Gezeichnet wird erst, wenn feststeht, ob jemand angemeldet ist (ichLaden), damit die Zeile nicht kurz aufblitzt.
+let ICH_BEKANNT = false;
 function sprachUmschalter() {
   const ort = $("#sprachen"), kuerzel = Object.keys(TEXTE);
   ort.replaceChildren();
-  if (kuerzel.length < 2) return;
-  const us = umschalter(T("seite.sprache.titel"), kuerzel.map(k => [{"data-sprache": k, lang: k}, k === SPRACHE, TEXTE[k].name]));
-  us.addEventListener("click", e => { const b = e.target.closest("button[data-sprache]"); if (b) spracheWaehlen(b.dataset.sprache); });
-  ort.append(us);
+  ort.hidden = !ICH_BEKANNT || kuerzel.length < 2 || !!(ICH && ICH.konto);
+  if (!ort.hidden) {
+    const us = umschalter(T("seite.sprache.titel"), kuerzel.map(k => [{"data-sprache": k, lang: k}, k === SPRACHE, TEXTE[k].name]), "fuss-sprachen");
+    us.addEventListener("click", e => { const b = e.target.closest("button[data-sprache]"); if (b) spracheWaehlen(b.dataset.sprache); });
+    ort.append(el("span", {"aria-hidden": "true"}, T("seite.sprache.fuss")), " ", us);
+  }
+  fussZeigen();
 }
+// Der Fuß erscheint, sobald eine seiner Zeilen (Release, Sprache) etwas zeigt
+function fussZeigen() { $("#fuss").hidden = $("#release").hidden && $("#sprachen").hidden; }
 function spracheWaehlen(k) {
   if (!TEXTE[k] || k === SPRACHE) return;
   SPRACHE = k; LOCALE = TEXTE[k].locale; RICHTUNG = TEXTE[k].richtung;
@@ -3706,7 +3719,7 @@ function ansichtBausteine(m) {
       ...R.plaene.map(p => [planMarke(p), p.kurz])]));
   const us = R.plaene.length > 1 ? planUmschalter(R.plaene) : umschalter("Muster", [[{}, true, "Alle"], [{}, false, "Plan A (Muster)"]]);
   us.querySelectorAll("button").forEach(k => { k.disabled = true; });
-  teil("Molekül", "Umschalter", "Genau ein Knopf ist gedrückt, in Tinte (gedrückt heißt nicht entschieden). Wählt den gezeigten Plan in „Varianten“, Vergleich und Darstellung im Wahl-Modul, die Region der Karte.", us);
+  teil("Molekül", "Umschalter", "Genau ein Knopf ist gedrückt, in Tinte (gedrückt heißt nicht entschieden). Wählt den gezeigten Plan in „Varianten“, Vergleich und Darstellung im Wahl-Modul, die Region der Karte, für Gäste die Sprache (als Textzeile im Fuß).", us);
   // Hintergrund-Kapitel: aus der ersten Etappe, die eines hat, sonst ein Muster
   const hinter = etappenBloecke.find(([, b]) => b.ebene === "hintergrund");
   const blockMuster = (etappenBloecke.find(([, b]) => b.ebene === "unterwegs") || [null, {id: "Muster", titel: "Beispielabschnitt (Muster)", html: "<p>Beispieltext.</p>"}])[1];
@@ -3807,6 +3820,11 @@ const MIT_KONTO = () => !!(ICH && ICH.person);
 async function ichLaden() {
   try { const r = await fetch("api/ich", {cache: "no-store"}); if (r.ok) ICH = await r.json(); } catch (e) {}
   if (MIT_KONTO()) NAME = ICH.person.name;
+  // Angemeldet spricht die Seite die Sprache des Kontos (#188); gemerkt wie eine Wahl, damit sie beim nächsten Öffnen gleich gilt
+  ICH_BEKANNT = true;
+  const kontoSprache = ICH && ICH.konto && ICH.konto.sprache;
+  if (kontoSprache && TEXTE[kontoSprache] && kontoSprache !== SPRACHE) spracheWaehlen(kontoSprache);
+  else sprachUmschalter();
   const alt = $("#konto");
   if (alt) alt.remove();
   if (KONTO_HIER()) $("header").append(kontoKnopf(ICH));
@@ -4625,7 +4643,6 @@ document.addEventListener("keydown", e => {
   if (e.key === "/" && !document.body.classList.contains("sucht") && !e.target.closest("input, textarea, select, [contenteditable]") && !$("#rm").open) { e.preventDefault(); suche(true); }
 });
 window.addEventListener("hashchange", () => { if (document.body.classList.contains("sucht")) { $("#suche").value = ""; document.body.classList.remove("sucht"); $("#suchfeld").hidden = true; } route(); });
-sprachUmschalter();
 route();
 rmKnopf();
 agKnopf();
@@ -4670,13 +4687,14 @@ try { RELEASE = JSON.parse($("#release").dataset.release); } catch (e) {}
 let RELEASE_STAND = null;   // letzter Vergleich: {schluessel, werte}
 function releaseFuss() {
   const f = $("#release"), r = RELEASE;
-  if (!r.kennung) { f.hidden = true; return; }
+  if (!r.kennung) { f.hidden = true; fussZeigen(); return; }
   const kennung = r.github ? el("a", {href: `https://github.com/${r.github}/commit/${r.commit}`, target: "_blank", rel: "noopener",
     title: T("seite.rahmen.release.quelle")}, r.kennung) : r.kennung;
   f.replaceChildren(r.nummer ? T("seite.rahmen.release.nummer", {nummer: r.nummer}) : T("seite.rahmen.release.ohne_nummer"), " · ", kennung,
     ...(r.github ? [" ", el("button", {type: "button", "data-release-pruefen": "1"}, T("seite.rahmen.release.pruefen"))] : []),
     el("span", {class: "fuss-stand", role: "status"}, RELEASE_STAND ? T(RELEASE_STAND.schluessel, RELEASE_STAND.werte) : ""));
   f.hidden = false;
+  fussZeigen();
 }
 async function releasePruefen() {
   // Nur die Statuszeile ändern: Knopf und Fokus bleiben, der Screenreader liest die neue Zeile vor

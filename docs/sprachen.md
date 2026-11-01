@@ -9,12 +9,12 @@ Frieda spricht Deutsch und Englisch. Jede weitere Sprache ist **eine Datei** `en
 | Wer | Quelle | Vorgabe | Setzen |
 |---|---|---|---|
 | Seite (Startwert), Manifest, Kalender, Wächter-Meldungen, alles, was die Software in Dateien der Reise schreibt, Commit-Nachrichten | `reise.yaml`, Feld `sprache` | `de` | `trip_create` (Parameter `language`, Vorgabe: Sprache des Kontos), `setting_set` (nur Organisator:innen, mit Grund) |
-| Seite (Hülle) nach dem Umschalten | `localStorage` der Person | Sprache der Reise | Umschalter auf der Seite |
-| Konnektor (Anleitung, Beschreibungen, Ergebnisse, Fehler), Kontoseiten, Mails an die Person | Spalte `konten.sprache` | aus `Accept-Language` beim Anlegen des Kontos, sonst `en` | Kontoseite, Werkzeug `language_set` |
+| Seite (Hülle) für Gäste ohne Konto | `localStorage` der Person | Sprache der Reise | Zeile „Sprache: …“ im Fuß der Seite |
+| Seite (Hülle) angemeldet, Konnektor (Anleitung, Beschreibungen, Ergebnisse, Fehler), Kontoseiten, Mails an die Person | Spalte `konten.sprache` | aus `Accept-Language` beim Anlegen des Kontos, sonst `en` | Kontoseite, Werkzeug `language_set` |
 | Einladung an eine Adresse ohne Konto | Sprache der Reise | | |
 | Rückmeldedienst | Feld `sprache` der Anfrage | Sprache der Reise | die Seite schickt ihre Sprache, der Konnektor die der Person |
 
-Der Umschalter ändert nur die Hülle der Seite (Beschriftungen, Datum, Zahlen, Sortierung). Der Inhalt der Reise bleibt in der Sprache, in der er geschrieben ist.
+Angemeldet zeigt die Seite die Sprache des Kontos (`api/ich` meldet sie) und merkt sie sich für das nächste Öffnen; einen Umschalter gibt es dann nicht, geändert wird sie auf der Kontoseite (#188). Der Umschalter ändert nur die Hülle der Seite (Beschriftungen, Datum, Zahlen, Sortierung). Der Inhalt der Reise bleibt in der Sprache, in der er geschrieben ist.
 
 ## Was nie übersetzt wird
 

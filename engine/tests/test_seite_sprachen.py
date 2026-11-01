@@ -121,6 +121,36 @@ def test_pseudo_sprache_dritter_knopf_und_rtl(tmp_path, monkeypatch, browser):
     assert e["zurueck"]["dir"] == "ltr" and e["gleichNachZurueck"]
 
 
+@ohne_browser
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_angemeldet_sprache_des_kontos_gast_umschalter_im_fuss(tmp_path, browser):
+    """#188: angemeldet folgt die Seite der Sprache des Kontos und zeigt keinen Umschalter; Gäste finden ihn als Zeile im Fuß,
+    im Kopf steht keiner."""
+    web = seite_bauen(tmp_path)   # Reise auf Deutsch
+    konto = next(c for c in texte.SPRACHEN if c != "de")
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(web)))
+    threading.Thread(target=s.serve_forever, daemon=True).start()
+    try:
+        aus = subprocess.run(["node", str(Path(__file__).parent / "sprache_konto.mjs"), str(PLAYWRIGHT),
+                              f"http://127.0.0.1:{s.server_address[1]}/beispiel/", konto],
+                             capture_output=True, text=True, timeout=120, env={**os.environ, "RH_BROWSER": browser})
+    finally:
+        s.shutdown()
+    assert aus.returncode == 0, aus.stderr[-2000:]
+    e = json.loads(aus.stdout.strip().splitlines()[-1])
+    assert e["fehler"] == []
+    a, g = e["angemeldet"], e["gast"]
+    assert a["lang"] == konto and a["gemerkt"] == json.dumps(konto)   # Sprache des Kontos, auch fürs nächste Öffnen
+    assert a["imKopf"] == 0 and a["imFuss"] == 0 and not a["sichtbar"]
+    assert g["lang"] == "de" and g["imKopf"] == 0 and g["imFuss"] == len(texte.SPRACHEN) and g["sichtbar"]
+    assert g["zeile"].startswith(texte.sprache("de").TEXTE["seite.sprache.fuss"])
+
+
 def rundgang(web, sprache, browser="chromium"):
     class Handler(http.server.SimpleHTTPRequestHandler):
         def log_message(self, *a):

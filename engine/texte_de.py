@@ -54,6 +54,7 @@ TEXTE = {
     "seite.aufgabe.feld.status": "Status",
     # Sprache der Seite
     "seite.sprache.titel": "Sprache",
+    "seite.sprache.fuss": "Sprache:",
     "seite.bausteine.text.beschreibung": "Jeder Text der Seite kommt aus dem Katalog der gewählten Sprache (T mit Schlüssel); Plural wählt die Regel der Sprache.",
     "seite.bausteine.zahl.beschreibung": "Zahlen folgen der Sprache der Hülle: Dezimalzeichen, Tausendertrenner und Ziffern kommen aus Intl, nie aus festen Zeichen im Code.",
     "seite.bausteine.text.huelle": "Sprache der Hülle",

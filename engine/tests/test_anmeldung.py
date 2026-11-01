@@ -11,6 +11,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import konten  # noqa: E402
+import texte  # noqa: E402
 from test_regeln import Umgebung  # noqa: E402
 
 BASIS = "https://frieda.beispiel.invalid"
@@ -174,6 +175,11 @@ def test_rueckmeldung_traegt_den_namen_aus_der_sitzung(welt):
     ich = json.loads(t)
     assert ich["person"] == {"schluessel": "karl", "name": "Karl", "rolle": "mitwirkend"}
     assert ich["konto"]["email"] == KARL and ich["basis"] == BASIS and ich["anmeldung"] == "uebergang"
+    # die Seite folgt angemeldet der Sprache des Kontos (#188)
+    assert ich["konto"]["sprache"] in texte.SPRACHEN
+    andere = next(c for c in texte.SPRACHEN if c != ich["konto"]["sprache"])
+    konten.sprache_setzen(konten.sitzung(token)["id"], andere)
+    assert json.loads(abruf(f"{u.rurl}/beispielreise/ich", cookie=token)[2])["konto"]["sprache"] == andere
     assert json.loads(abruf(f"{u.rurl}/beispielreise/ich")[2])["konto"] is None
     # mit Sitzung, aber von fremder Adresse (CSRF): nein
     s, _, t = mitmachen(u, token, origin="https://www.beispiel.invalid", name="Karl")

@@ -850,7 +850,8 @@ class Dienst(BaseHTTPRequestHandler):
             p = i.get("person") if k else None
             return self._antwort(200, {
                 "basis": konten.basis(), "anmeldung": anmeldung_regel(z),
-                "konto": {"name": k["name"], "email": k["email"]} if k else None,
+                # sprache: angemeldet folgt die Seite der Sprache des Kontos (#188)
+                "konto": {"name": k["name"], "email": k["email"], "sprache": k["sprache"]} if k else None,
                 "person": {f: p.get(f) for f in ("schluessel", "name", "rolle")} if p else None})
         if was != "rueckmeldungen":
             return self._antwort(404, {"fehler": texte.satz("dienst.do_get.2")})

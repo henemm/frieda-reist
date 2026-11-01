@@ -329,7 +329,8 @@ def test_anmeldung_auf_der_seite(tmp_path, monkeypatch, browser):
     konten.einladen("beispielreise", "karl", "karl@beispiel.invalid", "mitwirkend", "Karl", "Ida")
     konten.code_anfordern("karl@beispiel.invalid")
     code = re.search(r"(\d{3}) (\d{3})", json.loads((tmp_path / "mails.jsonl").read_text().splitlines()[-1])["text"])
-    token, _ = konten.anmelden("karl@beispiel.invalid", code.expand(r"\1\2"))
+    token, karl = konten.anmelden("karl@beispiel.invalid", code.expand(r"\1\2"))
+    konten.sprache_setzen(karl["id"], "de")   # angemeldet folgt die Seite der Sprache des Kontos (#188)
 
     def lauf(sitzung):
         aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_konto.mjs"), str(PLAYWRIGHT),

@@ -285,11 +285,12 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu=""):
                        formular("/abmelden", "", tx("konto.seite.abmelden"), "leise")),
                  karte(f"<h2>{esc(tx('konto.seite.meine_reisen'))}</h2>", reisen_html, anlegen),
                  kalender_karte(k, reise_info),
-                 betreiber,
+                 # Sprache neben dem Kalender: sie gilt auch für die Reiseseiten (#188)
                  karte(f"<h2>{esc(tx('konto.sprache.titel'))}</h2>",
                        formular("/konto", verdeckt(aktion="sprache")
                                 + f'<label for="sprache">{esc(tx("konto.sprache.label"))}</label>'
                                 f'<select id="sprache" name="sprache">{sprachen}</select>', tx("konto.seite.speichern"), "leise")),
+                 betreiber,
                  karte(f"<h2>{esc(tx('konto.seite.name'))}</h2>", formular("/konto", verdeckt(aktion="name")
                                                 + f'<label for="name">{esc(tx("konto.seite.name_label"))}</label>'
                                                 f'<input id="name" type="text" name="name" value="{esc(k["name"])}" '
