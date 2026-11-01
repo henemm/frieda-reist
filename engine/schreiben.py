@@ -723,10 +723,28 @@ def routen_geruest(reise_dir):
     return {"start": {"datum": z["von"]}, "ende": {"datum": z["bis"]}, "orte": {}, "strecken": {}, "tage": {}, "route": []}
 
 
+def plan_sicherstellen(reise_dir):
+    """Eine Reise aus der App hat noch keinen Plan: legt plan/routen.yaml (routen_geruest) an und trägt ihn in reise.json
+    ein, damit der Generator ihn liest (Probebau, Arten der Reise, Seite). Eingetragen wird er erst, wenn die Reise
+    Arten hat: Ein Plan ohne Arten baut nicht (docs/ontologie.md). Vorhandenes bleibt unberührt."""
+    reise_dir = Path(reise_dir)
+    if not (reise_dir / "plan" / "routen.yaml").exists():
+        routen_speichern(reise_dir, routen_geruest(reise_dir))
+    rj = reise_dir / "reise.json"
+    if rj.exists() and arten_laden(reise_dir):
+        try:
+            cfg = json.loads(rj.read_text(encoding="utf-8"))
+        except ValueError:
+            raise Ablehnung("reise.json ist nicht lesbar; das muss jemand in einer Sitzung richten.")
+        if not cfg.get("routen"):
+            cfg["routen"] = {"datei": "plan/routen.yaml"}
+            rj.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
 def routen_laden(reise_dir):
     p = Path(reise_dir) / "plan" / "routen.yaml"
     if not p.exists():
-        routen_speichern(reise_dir, routen_geruest(reise_dir))
+        plan_sicherstellen(reise_dir)
     try:
         return yaml_rund().load(p.read_text(encoding="utf-8"))
     except Exception as e:   # ruamel wirft verschiedene Fehlerklassen
@@ -1056,6 +1074,7 @@ def merkmale_knoten(werte):
 def route_stand(reise_dir):
     """Probebau des heutigen Stands -> d["route"] (Arten, Merkmale je Art, Wahlstellen mit Kriterien)."""
     import bauen
+    plan_sicherstellen(reise_dir)
     with tempfile.TemporaryDirectory(prefix="frieda-probe-") as tmp:
         try:
             return bauen.Bauer(reise_dir, tmp).daten().get("route") or {}

@@ -968,12 +968,26 @@ def test_neue_reise_bekommt_beim_ersten_eintrag_einen_plan(repo):
     a = s.schreiben("kurztrip-2027", "ding_anlegen", {**IDA, "args": {"was": "ort", "titel": "Dresden", "quelle": "Karte", "ausserhalb": True}})
     assert "O-01" in a["text"], a["text"]
     s.vorbereiten()
-    a = s.schreiben("kurztrip-2027", "tag_anlegen", {**IDA, "args": {"titel": "Anreise (Beispiel)"}})
+    s.schreiben("kurztrip-2027", "ding_anlegen", {**IDA, "args": {"was": "ort", "titel": "Prag", "quelle": "Karte"}})
+    s.vorbereiten()
+    s.schreiben("kurztrip-2027", "art_definieren", {**IDA, "args": {"art": "bus", "bezeichnung": "Bus", "grundform": "bewegung"}})
+    s.vorbereiten()
+    a = s.schreiben("kurztrip-2027", "ding_anlegen", {**IDA, "args": {"was": "strecke", "titel": "Bus Dresden → Prag", "von": "O-01",
+                                                                       "nach": "O-02", "art": "bus", "ab": "08:00", "an": "10:30", "quelle": "Fahrplan"}})
+    assert "E-01" in a["text"], a["text"]
+    s.vorbereiten()
+    a = s.schreiben("kurztrip-2027", "tag_anlegen", {**IDA, "args": {"titel": "Anreise (Beispiel)", "strecken": ["E-01"]}})
     assert "T-01" in a["text"], a["text"]
     text = git(origin, "show", "main:reisen/kurztrip-2027/plan/routen.yaml")
     r = yaml.safe_load(text)
     assert r["start"] == {"datum": datetime.date(2027, 4, 10)} and r["ende"] == {"datum": datetime.date(2027, 4, 12)}
-    assert r["orte"]["O-01"]["ausserhalb"] is True and r["route"] == ["T-01"]
+    assert r["orte"]["O-01"]["ausserhalb"] is True and r["route"] == ["T-01"] and r["tage"]["T-01"]["strecken"] == ["E-01"]
+    assert json.loads(git(origin, "show", "main:reisen/kurztrip-2027/reise.json"))["routen"] == {"datei": "plan/routen.yaml"}
+    # der Generator baut die Reise mit dem Plan: der Tag steht auf der Seite
+    import bauen
+    git(wurzel, "pull", "-q")
+    d = bauen.Bauer(wurzel / "reisen" / "kurztrip-2027", str(wurzel / "dist")).daten()
+    assert [t["id"] for t in d["route"]["tage"]] == ["T-01"]
     assert not git(arbeit, "status", "--porcelain")
 
 
