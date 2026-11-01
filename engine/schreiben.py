@@ -710,10 +710,23 @@ def yaml_rund():
     return y
 
 
+def routen_geruest(reise_dir):
+    """Leerer Plan einer Reise, die noch keinen hat (neu aus der App, Status idee): Start und Ende aus dem Zeitraum in
+    reise.yaml, noch ohne Ort. Der erste Eintrag (Ort, Strecke, Tag ...) legt ihn an (frieda-reist #135)."""
+    import yaml
+    try:
+        z = (yaml.safe_load((Path(reise_dir) / "reise.yaml").read_text(encoding="utf-8")) or {}).get("zeitraum") or {}
+    except (OSError, yaml.YAMLError):
+        z = {}
+    if not (isinstance(z.get("von"), datetime.date) and isinstance(z.get("bis"), datetime.date)):
+        raise Ablehnung("Diese Reise hat noch keinen Plan (plan/routen.yaml) und keinen Zeitraum in reise.yaml.")
+    return {"start": {"datum": z["von"]}, "ende": {"datum": z["bis"]}, "orte": {}, "strecken": {}, "tage": {}, "route": []}
+
+
 def routen_laden(reise_dir):
     p = Path(reise_dir) / "plan" / "routen.yaml"
     if not p.exists():
-        raise Ablehnung("Diese Reise hat noch keinen Plan (plan/routen.yaml).")
+        routen_speichern(reise_dir, routen_geruest(reise_dir))
     try:
         return yaml_rund().load(p.read_text(encoding="utf-8"))
     except Exception as e:   # ruamel wirft verschiedene Fehlerklassen
