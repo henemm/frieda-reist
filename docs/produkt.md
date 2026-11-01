@@ -99,7 +99,7 @@ Details und Eingaben der Werkzeuge: `docs/konnektor.md`, Abschnitt „Entscheide
 
 ### Wächter und Erinnerer (Paket E, 26.10.2026)
 
-Details: `docs/waechter.md`. Neue Regeln mit Vorgabe: `waechter_frist_tage` (60), `erinnerung_vorlauf_tage` (3), `meldekanal` (`app`, `nachricht`), `waechter_zahlung` (`false`; offene Zahlungen melden, #166).
+Details: `docs/waechter.md`. Neue Regeln mit Vorgabe: `waechter_frist_tage` (60), `erinnerung_vorlauf_tage` (3), `meldekanal` (`app`, `nachricht`, `push`), `waechter_zahlung` (`false`; offene Zahlungen melden, #166).
 
 - Der Wächter sucht veränderliche Angaben ohne oder mit altem Prüfdatum und meldet sie den Organisator:innen (seit O-4 eine Meldung, kein Prüfauftrag an eine KI); der AI-Client schlägt sie im Gespräch nach, Abweichungen entscheidet ein:e Organisator:in, nie still übernommen.
 - Der Erinnerer meldet Fristen und „ab“-Termine an die Zuständigen und den fälligen Statuswechsel an die Organisator:innen; die KI wechselt den Status nie selbst.
