@@ -1745,8 +1745,7 @@ def person_entfernen(reise, d, wer, args):
             return tk("konnektor.person_entfernen.5"), True
         a, fehler = schreib_anfrage(reise, "person_schreiben", {"person": wer.get("person"), "name": wer["name"], "rolle": wer["rolle"],
                                                                 "args": {"schluessel": p["schluessel"], "rolle": "gast", "reist": False,
-                                                                         "notiz": tkd("konnektor.ausgabe.ausscheiden.1", w1=datum_de(datetime.date.today().isoformat(), texte.VORGABE_REISE), w2=wer['name'])
-                                                                                  + (f": {grund}" if grund else "")}})
+                                                                         "ausgeschieden": grund or True}})
         if fehler:
             return tk("konnektor.person_entfernen.6", fehler=fehler), True
     return (tk("konnektor.person_entfernen.4", w1=p['name'])
