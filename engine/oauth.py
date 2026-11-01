@@ -211,28 +211,30 @@ def csp_fuer(uri):
     else:
         u = urllib.parse.urlsplit(uri)
         ziel = f"{u.scheme}://{u.netloc}"
-    return ("Content-Security-Policy", f"default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; form-action 'self' {ziel}; "
+    return ("Content-Security-Policy", f"default-src 'none'; img-src 'self'; font-src 'self'; style-src 'unsafe-inline'; form-action 'self' {ziel}; "
                                        "frame-ancestors 'none'; base-uri 'none'")
 
 
 def zustimmung(q, c, k, meldung=""):
     e = html.escape
+    tx = anmeldung.tx
     host = urllib.parse.urlsplit(q["redirect_uri"]).hostname or "?"
-    # Wer fragt: bei einem Client-Dokument dessen Host (der Name darin ist nur behauptet), sonst der behauptete Name
-    if c["art"] == "cimd":
-        wer = urllib.parse.urlsplit(c["client_id"]).hostname
-    else:
-        wer = anmeldung.tx("konto.oauth.programm_name", name=c["name"]) if c["name"] else anmeldung.tx("konto.oauth.programm")
-    warnung = anmeldung.fehler(anmeldung.tx("konto.oauth.warnung_localhost")) if loopback(q["redirect_uri"]) else ""
+    # Wer fragt: bei einem Client-Dokument dessen Host, sonst der Name, den das Programm selbst angibt (darum in
+    # Anführungszeichen); ohne Namen „ein Programm“
+    wer = urllib.parse.urlsplit(c["client_id"]).hostname if c["art"] == "cimd" else c["name"]
+    frage = tx("konto.oauth.frage", wer=wer) if wer else tx("konto.oauth.frage_ohne_name")
+    warnung = anmeldung.fehler(tx("konto.oauth.warnung_localhost")) if loopback(q["redirect_uri"]) else ""
     verdeckt = anmeldung.verdeckt(**{f: q.get(f, "") for f in FELDER})
-    return anmeldung.seite(anmeldung.tx("konto.oauth.titel"), anmeldung.karte(
-        f"<h1>{e(anmeldung.tx('konto.oauth.frage'))}</h1>",
-        "<p>" + anmeldung.th("konto.oauth.moechte", wer=f"<strong>{e(wer)}</strong>", name=f"<strong>{e(k['name'])}</strong>", email=e(k["email"]))
-        + '</p><p class="klein">' + anmeldung.th("konto.oauth.weiter_zu", host=f"<strong>{e(host)}</strong>") + "</p>",
+    return anmeldung.seite(tx("konto.oauth.titel"), anmeldung.karte(
+        f"<div><h1>{e(frage)}</h1>",
+        f'<p class="hinweis" style="margin:.3rem 0 0">' + anmeldung.th("konto.oauth.angemeldet_als", name=f"<strong>{e(k['name'])}</strong>", email=e(k["email"])) + "</p></div>",
+        f'<div><strong>{e(tx("konto.oauth.darf"))}</strong><ul class="darf" style="margin:.6rem 0 0">'
+        f'<li>{e(tx("konto.oauth.darf_lesen"))}</li><li>{e(tx("konto.oauth.darf_schreiben"))}</li></ul></div>',
+        '<p class="kasten">' + anmeldung.th("konto.oauth.weiter_zu", host=f"<strong>{e(host)}</strong>") + "</p>",
         warnung, anmeldung.fehler(meldung),
-        anmeldung.formular("/authorize", verdeckt + anmeldung.verdeckt(aktion="erlauben"), anmeldung.tx("konto.oauth.erlauben")),
-        anmeldung.formular("/authorize", verdeckt + anmeldung.verdeckt(aktion="abbrechen"), anmeldung.tx("konto.oauth.abbrechen"), "leise"),
-        f'<p class="klein">{e(anmeldung.tx("konto.oauth.beenden"))}</p>'))
+        anmeldung.formular("/authorize", verdeckt + anmeldung.verdeckt(aktion="erlauben"), tx("konto.oauth.erlauben")),
+        anmeldung.formular("/authorize", verdeckt + anmeldung.verdeckt(aktion="abbrechen"), tx("konto.oauth.abbrechen"), "link")),
+        anmeldung.fuss(tx("konto.oauth.beenden")))
 
 
 def autorisieren(methode, pfad, headers, body):

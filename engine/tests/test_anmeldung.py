@@ -86,7 +86,7 @@ def anmelden(u, an, name=None, einladung="", zurueck=""):
 def test_anmelden_von_null(welt):
     u = welt()
     s, h, t = abruf(f"{u.kurl}/anmelden")
-    assert s == 200 and "Bei Frieda anmelden" in t and "Konto jederzeit selbst löschen" in t
+    assert s == 200 and "<h1>Anmelden</h1>" in t and "jederzeit selbst löschen" in t and "Nur lesen?" in t
     assert "frame-ancestors 'none'" in kopf(h, "Content-Security-Policy")[0]
     s, _, t = abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "adresse", "email": "Ida@Beispiel.invalid"})
     assert s == 200 and IDA in t
@@ -100,7 +100,7 @@ def test_anmelden_von_null(welt):
         assert teil in keks
     token = re.match(r"__Host-frieda=([^;]+)", keks).group(1)
     s, _, t = abruf(f"{u.kurl}/konto", cookie=token)
-    assert s == 200 and "Hallo Ida" in t and "Noch keine Reisen" in t and "Ich möchte Reisen anlegen" in t
+    assert s == 200 and "Hallo Ida" in t and "Noch keine Reisen" in t and "Freischaltung anfragen" in t
 
 
 def test_aenderungen_nur_von_friedas_adresse(welt):
@@ -139,11 +139,11 @@ def test_einladung_mit_anderer_adresse(welt):
                     titel="Malerweg")
     link = re.search(r"/einladung/(\S+)", json.loads(u.mails.read_text().splitlines()[-1])["text"]).group(1)
     s, _, t = abruf(f"{u.kurl}/einladung/{link}")
-    assert s == 200 and "Ida hat Karl zur Reise" in t and "Beispielreise" in t and "andere E-Mail-Adresse" in t
+    assert s == 200 and "Ida lädt Karl zur Reise" in t and "Du bringst ein" in t and "Beispielreise" in t and "andere E-Mail-Adresse" in t
     token, ziel = anmelden(u, KARL, einladung=link)            # Name kommt aus der Einladung
     assert ziel == SEITE                                         # direkt zur Reise
     s, _, t = abruf(f"{u.kurl}/konto", cookie=token)
-    assert "Hallo Karl" in t and "Beispielreise" in t and "bringt ein" in t and SEITE in t
+    assert "Hallo Karl" in t and "Beispielreise" in t and "Du bringst ein" in t and SEITE in t
     s, _, t = abruf(f"{u.kurl}/einladung/{link}")
     assert "schon angenommen" in t
     assert abruf(f"{u.kurl}/einladung/{'x' * 40}")[0] == 404
@@ -249,7 +249,7 @@ def test_kontoseite(welt):
     mo_id = konten.konto_per_email(MO)["id"]
     assert abruf(f"{u.kurl}/konto", "POST", {"aktion": "freischalten", "wer": mo_id}, cookie=mo)[0] == 400
     abruf(f"{u.kurl}/konto", "POST", {"aktion": "freischalten", "wer": mo_id}, cookie=ida)
-    assert "Du darfst Reisen anlegen" in abruf(f"{u.kurl}/konto", cookie=mo)[2]
+    assert "Neue Reise? Sag es Frieda" in abruf(f"{u.kurl}/konto", cookie=mo)[2]
     # Adresse ändern mit Code an die neue Adresse
     s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "adresse_code", "email": IDA}, cookie=mo)
     assert "gehört schon zu einem Konto" in t
@@ -262,6 +262,8 @@ def test_kontoseite(welt):
     # Abmelden, überall abmelden, löschen
     s, h, _ = abruf(f"{u.kurl}/abmelden", "POST", {}, cookie=mo)
     assert s == 303 and "Max-Age=0" in kopf(h, "Set-Cookie")[0] and konten.sitzung(mo) is None
+    s, _, t = abruf(f"{u.kurl}/konto?loeschen=1", cookie=ida)                              # erst die Rückfrage (#60)
+    assert s == 200 and "Das wird gelöscht:" in t and "Das bleibt:" in t and 'name="sicher"' in t
     assert abruf(f"{u.kurl}/konto", "POST", {"aktion": "loeschen"}, cookie=ida)[0] == 400   # ohne Häkchen nicht
     s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "loeschen", "sicher": "ja"}, cookie=ida)
     assert s == 200 and "Konto gelöscht" in t and konten.konto_per_email(IDA) is None
@@ -314,9 +316,9 @@ def test_eingeloester_code_gilt_nach_der_nachfrist_nicht_mehr(welt, monkeypatch)
 def test_seiten_in_der_sprache_des_browsers_und_des_kontos(welt):
     u = welt()
     s, _, t = abruf(f"{u.kurl}/anmelden", kopf={"Accept-Language": "en-GB,en;q=0.9"})
-    assert s == 200 and '<html lang="en" dir="ltr">' in t and "Sign in to Frieda" in t and "Send code" in t
+    assert s == 200 and '<html lang="en" dir="ltr">' in t and "<h1>Sign in</h1>" in t and "Email me a code" in t
     s, _, t = abruf(f"{u.kurl}/anmelden", kopf={"Accept-Language": "de-AT,de;q=0.9"})
-    assert '<html lang="de"' in t and "Bei Frieda anmelden" in t
+    assert '<html lang="de"' in t and "<h1>Anmelden</h1>" in t
     s, _, t = abruf(f"{u.kurl}/anmelden", kopf={"Accept-Language": "fr"})
     assert '<html lang="en"' in t                        # unbekannte Sprache: Vorgabe
     # Ablauf mit englischem Browser: die Mail ist englisch, das Konto bekommt Englisch

@@ -334,6 +334,11 @@ MARKE = Path(__file__).resolve().parent / "marke"
 MARKE_DATEIEN = {"/favicon.ico": ("favicon.ico", "image/x-icon"), "/favicon.svg": ("frieda.svg", "image/svg+xml"),
                  "/apple-touch-icon.png": ("apple-touch-icon.png", "image/png"),
                  "/icon-192.png": ("icon-192.png", "image/png"), "/icon-512.png": ("icon-512.png", "image/png")}
+# Schrift der Anmelde- und Kontoseiten (Source Sans 3, engine/vendor/fonts/; im Dienst neben den Modulen in schrift/)
+SCHRIFT = next((d for d in (Path(__file__).resolve().parent / "schrift", Path(__file__).resolve().parent / "vendor" / "fonts")
+                if d.is_dir()), Path(__file__).resolve().parent / "schrift")
+SCHRIFT_DATEIEN = {f"/schrift/{n}": (n, "font/woff2") for n in
+                   ("source-sans-3-latin-wght-normal.woff2", "source-sans-3-latin-ext-wght-normal.woff2")}
 
 
 def frieda_symbole():
@@ -2881,9 +2886,9 @@ class Dienst(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _marke(self, pfad):
-        name, art = MARKE_DATEIEN[pfad]
+        ordner, (name, art) = (MARKE, MARKE_DATEIEN[pfad]) if pfad in MARKE_DATEIEN else (SCHRIFT, SCHRIFT_DATEIEN[pfad])
         try:
-            body = (MARKE / name).read_bytes()
+            body = (ordner / name).read_bytes()
         except OSError:
             return self._senden(404, {"fehler": "unbekannt"})
         self.send_response(200)
@@ -2920,7 +2925,7 @@ class Dienst(BaseHTTPRequestHandler):
         self.send_response(code)
         grund = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
                  "Referrer-Policy": "same-origin",   # nicht no-referrer: dann schicken Browser „Origin: null“
-                 "Content-Security-Policy": "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; form-action 'self'; "
+                 "Content-Security-Policy": "default-src 'none'; img-src 'self'; font-src 'self'; style-src 'unsafe-inline'; form-action 'self'; "
                                             "frame-ancestors 'none'; base-uri 'none'"}
         eigene = {k for k, _ in kopf}
         for k, v in [*((k, v) for k, v in grund.items() if k not in eigene), *kopf]:
@@ -2933,7 +2938,7 @@ class Dienst(BaseHTTPRequestHandler):
         # Readiness für BetterStack ohne geheimen Link: Zugänge lesbar und jede verlinkte Reise veröffentlicht
         if self.path.split("?", 1)[0] == "/gesund":
             return self._senden(*gesund())
-        if self.path.split("?", 1)[0] in MARKE_DATEIEN:
+        if self.path.split("?", 1)[0] in MARKE_DATEIEN or self.path.split("?", 1)[0] in SCHRIFT_DATEIEN:
             return self._marke(self.path.split("?", 1)[0])
         if anmeldung.ist_unsere(self.path) or oauth.ist_unsere(self.path):
             return self._anmeldung()

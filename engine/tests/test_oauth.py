@@ -40,7 +40,7 @@ def autorisieren(u, sitzung, client, redirect=CALLBACK, challenge=None, state="z
     q = {"response_type": "code", "client_id": client, "redirect_uri": redirect, "code_challenge": challenge,
          "code_challenge_method": "S256", "state": state, "scope": "frieda offline_access", "resource": BASIS + "/mcp"}
     s, h, t = abruf(f"{u.kurl}/authorize?{urllib.parse.urlencode(q)}", cookie=sitzung)
-    assert s == 200 and "Zugriff erlauben?" in t, t
+    assert s == 200 and "mit Frieda verbinden?" in t and "deine Reisen lesen" in t, t
     s, h, _ = abruf(f"{u.kurl}/authorize", "POST", {**q, "aktion": "erlauben"}, cookie=sitzung)
     assert s == 303
     return kopf(h, "Location")[0]
@@ -101,13 +101,16 @@ def test_symbol_von_frieda(welt):
     u = welt()
     t = urllib.parse.urlsplit(u.kurl)
     for pfad, art, anfang in (("/favicon.ico", "image/x-icon", b"\x00\x00\x01\x00"), ("/favicon.svg", "image/svg+xml", b"<svg"),
-                              ("/apple-touch-icon.png", "image/png", b"\x89PNG"), ("/icon-512.png", "image/png", b"\x89PNG")):
+                              ("/apple-touch-icon.png", "image/png", b"\x89PNG"), ("/icon-512.png", "image/png", b"\x89PNG"),
+                              # Schrift der Anmeldeseiten (#60)
+                              ("/schrift/source-sans-3-latin-wght-normal.woff2", "font/woff2", b"wOF2")):
         c = http.client.HTTPConnection(t.hostname, t.port, timeout=10)
         c.request("GET", pfad)
         r = c.getresponse()
         assert r.status == 200 and r.getheader("Content-Type") == art and r.read().startswith(anfang), pfad
     s, h, text = abruf(f"{u.kurl}/anmelden")
     assert '<link rel="icon" href="/favicon.svg"' in text and "img-src 'self'" in kopf(h, "Content-Security-Policy")[0]
+    assert "url(/schrift/source-sans-3-latin-wght-normal.woff2)" in text and "font-src 'self'" in kopf(h, "Content-Security-Policy")[0]
     t_, _ = verbinden(u, IDA, "Ida")
     s, _, a = mcp(u, t_["access_token"], "initialize", {"protocolVersion": "2025-06-18"})
     icons = a["result"]["serverInfo"]["icons"]
@@ -139,6 +142,8 @@ def test_ganzer_ablauf_wie_die_claude_app(welt):
     assert ziel == zurueck
     s, h, t = abruf(f"{u.kurl}{ziel}", cookie=sitzung)
     assert "Karl" in t and "claude.ai" in t and "form-action 'self' https://claude.ai" in kopf(h, "Content-Security-Policy")[0]
+    # Der Name stammt vom Programm selbst und steht darum in Anführungszeichen; was es darf, als Liste (#60)
+    assert "„Claude“ mit Frieda verbinden?" in t and "deine Reisen lesen" in t and "font-src 'self'" in kopf(h, "Content-Security-Policy")[0]
     loc = autorisieren(u, sitzung, c["client_id"], challenge=ch, state="abc")
     teile = urllib.parse.urlsplit(loc)
     assert loc.startswith(CALLBACK + "?") and urllib.parse.parse_qs(teile.query)["state"] == ["abc"]
