@@ -64,6 +64,32 @@ def test_paritaet_schluessel_und_platzhalter():
             assert set(PLATZHALTER.findall(text)) == set(PLATZHALTER.findall(de[s])), f"{k}: Platzhalter von {s} weichen ab"
 
 
+def test_leerzeichen_am_rand_wie_im_deutschen():
+    """Texte, die der Code aneinanderhängt, tragen ihre Leerzeichen am Rand in jeder Sprache gleich (", geprüft " und ", checked"
+    ergab „checked2026-…“)."""
+    de = texte.sprache("de").TEXTE
+    for k in _sprachen():
+        for s, text in texte.sprache(k).TEXTE.items():
+            assert (text[:1].isspace(), text[-1:].isspace()) == (de[s][:1].isspace(), de[s][-1:].isspace()), f"{k}: Leerzeichen am Rand von {s}"
+
+
+def test_satz_statt_fragment_beim_freischalten():
+    """Das Freischalten sagt ganze Sätze; ein Fragment als Platzhalter („may still no create trips“) lässt sich nicht übersetzen."""
+    for k in _sprachen():
+        for s in ("jetzt", "weiterhin_keine"):
+            assert "{w1}" in texte.sprache(k).TEXTE[f"konnektor.ausgabe.frieda_werkzeug.{s}"], f"{k}: {s} ist kein ganzer Satz"
+    assert "konnektor.ausgabe.frieda_werkzeug.1" not in texte.sprache("de").TEXTE
+
+
+def test_vorlage_vergleicht_nie_mit_anzeigetext_und_haelt_einheiten_im_katalog():
+    """Ein übersetzter Text ist keine Bedingung (bst.text !== "nicht gebucht" war auf Englisch immer wahr); die Einheit km steht im Katalog."""
+    vorlage = (ENGINE / "vorlage.html").read_text(encoding="utf-8")
+    vergleiche = re.findall(r"\.text\s*[!=]==?\s*[\"']", vorlage)
+    assert not vergleiche, f"Vergleich mit Anzeigetext in der Vorlage: {vergleiche}"
+    assert not re.findall(r"\}\s+km`", vorlage), "km steht fest in der Vorlage (seite.einheit.km)"
+    assert "seite.einheit.km" in texte.sprache("en").TEXTE
+
+
 def test_schluessel_form():
     muster = re.compile(r"^(seite|konnektor|schreiben|dienst|konto|mail|kalender|waechter|inhalt|pruefung)(\.[a-z0-9_]+)+$")
     for s in texte.sprache("de").TEXTE:

@@ -1213,7 +1213,7 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
     if name == "arten_uebernehmen":
         # nur Reisen derselben Person (Product Owner 28.10.2026): Konto oder Zugang muss auf beiden Reisen stehen
         von = str(args.get("von_reise") or "").strip()
-        dv = daten(von) if REISE_MUSTER.match(von) else None
+        dv = daten(von) if rm.REISE_MUSTER.match(von) else None
         if not dv or von == reise:
             return tk("konnektor.ontologie_werkzeug.9", von=von), True
         if wer_spricht({**zugang, "reise": von}, dv) is None:
@@ -2035,7 +2035,7 @@ def frieda_werkzeug(k, name, args):
         if not wer:
             return tk("konnektor.frieda_werkzeug.4"), True
         konten.freischalten(wer["id"], ja=args.get("erlauben") is True)
-        return tk("konnektor.ausgabe.frieda_werkzeug.1", w1=wer['name'], w2=tk("konnektor.ausgabe.frieda_werkzeug.jetzt") if args.get('erlauben') is True else tk("konnektor.ausgabe.frieda_werkzeug.weiterhin_keine")), False
+        return tk("konnektor.ausgabe.frieda_werkzeug.jetzt" if args.get('erlauben') is True else "konnektor.ausgabe.frieda_werkzeug.weiterhin_keine", w1=wer['name']), False
     reisen = reisen_des_kontos(k)
     reise = args.pop("reise", None) or (reisen[0][0] if len(reisen) == 1 else None)
     if not reise:

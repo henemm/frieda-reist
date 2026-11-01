@@ -893,6 +893,8 @@ const REGEL = {
 const spaltenName = (spalten, n) => spalten.findIndex(k => (IW["inhalt.frage.spalte_" + n] || []).includes(k.toLowerCase()));
 // Atom Zahl: in der Sprache der Hülle (Dezimalzeichen, Ziffern); ohne Tausendertrenner, es sei denn {useGrouping: true}
 function zahlText(x, opt) { return new Intl.NumberFormat(LOCALE, {useGrouping: false, maximumFractionDigits: 20, ...opt}).format(x); }
+// Hilfe zum Atom Zahl: Länge mit Einheit aus dem Katalog (eine Sprache kann Einheit und Stellung ändern); ist es schon Text, bleibt er, wie er ist
+const kmText = x => T("seite.einheit.km", {wert: typeof x === "number" ? zahlText(x) : x});
 // Ziffern einer Zeichenkette in die der Sprache setzen (Zeiten, Dauer)
 const lokaleZiffern = text => String(text).replace(/\d/g, z => zahlText(+z));
 // Datum nach dem Muster der Sprache (Sprachdatei: %-d Tag, %-m Monat, %Y Jahr), Ziffern der Locale
@@ -1164,7 +1166,7 @@ const fahrtVon = id => !!(R && R.strecken[id] && R.strecken[id].art && !summiert
 function buchungsStand(d) {
   if (!d || !d.buchung) return null;
   const offen = d.buchung === "offen" || d.buchung === "angefragt";
-  return {zustand: offen ? "offen" : "plan", text: d.buchung === "offen" ? T("seite.buchung.nicht_gebucht") : d.buchung, gebucht: !offen, bid: d.buchung_id || null};
+  return {zustand: offen ? "offen" : "plan", text: d.buchung === "offen" ? T("seite.buchung.nicht_gebucht") : d.buchung, gebucht: !offen, nichtGebucht: d.buchung === "offen", bid: d.buchung_id || null};
 }
 // Atom Zustand Buchung: der Stand als Chip; kommt er aus einer Buchung (B-…, #76), führt der Chip zu ihr
 const buchungChip = d => { const st = buchungsStand(d); return st ? chip(st.zustand, st.text, st.bid ? {href: "#" + st.bid} : null) : null; };
@@ -1205,7 +1207,7 @@ function dauer(min) { return T("seite.zeit.dauer", {h: lokaleZiffern(Math.floor(
 function summeText(s) {
   if (!s) return "";
   const t = [T("seite.anzahl.tage", {n: s.tage})];
-  if (s.km) t.push(`${zahlText(s.km)} km`, T("seite.kennzahl.auf_ab", {auf: s.auf, ab: s.ab}), T("seite.kennzahl.gehzeit_wert", {dauer: dauer(s.min)}));
+  if (s.km) t.push(kmText(s.km), T("seite.kennzahl.auf_ab", {auf: s.auf, ab: s.ab}), T("seite.kennzahl.gehzeit_wert", {dauer: dauer(s.min)}));
   const ty = Object.entries(s.unterkunftstypen || {}).map(([k, v]) => `${v}× ${k}`);
   if (ty.length) t.push(ty.join(", "));
   return t.join(" · ") + (s.unvollstaendig && s.km ? T("seite.summe.unvollstaendig") : "");
@@ -1215,7 +1217,7 @@ function summeText(s) {
 // fahrt: eine Bewegung, die nicht aus eigener Kraft ist (Bahn, Bus …): ihre Zeit heißt Dauer, nicht Gehzeit
 function kennzahlPaar(n, v, fahrt) {
   return REGEL.aufstieg.test(n) ? ["aufstieg", `↑ ${v} m`] : REGEL.abstieg.test(n) ? ["abstieg", `↓ ${v} m`]
-    : REGEL.gehzeit.test(n) ? [fahrt ? "dauer" : "gehzeit", v] : REGEL.laenge.test(n) ? ["strecke", /^[\d.,]+$/.test(v) ? `${v} km` : v] : [n, v];
+    : REGEL.gehzeit.test(n) ? [fahrt ? "dauer" : "gehzeit", v] : REGEL.laenge.test(n) ? ["strecke", /^[\d.,]+$/.test(v) ? kmText(v) : v] : [n, v];
 }
 // Je Kennzahl eine Kachel; die bekannten tragen ihr Symbol im Etikett
 // Die Kennungen der Kennzahlen sind stabil (gehzeit, aufstieg …); der Name kommt aus dem Katalog, unbekannte Namen der Reise bleiben, wie sie sind
@@ -1261,7 +1263,7 @@ function nachtZeile(n, ohneLinks, datum, verweis, tid) {
   // Stand-Leiter (31.10.2026): ein Stand je Nacht, die weiteste Stufe (offen → entschieden → angefragt → gebucht). Ist die
   // Unterkunft angefragt oder gebucht, steht dieser Stand statt „entschieden“; gebucht entfällt der Vergleich (er bleibt
   // unter „Alle Möglichkeiten“ an der Nacht).
-  const bst = !offen && u ? buchungsStand(u) : null, weiter = bst && bst.text !== "nicht gebucht";
+  const bst = !offen && u ? buchungsStand(u) : null, weiter = bst && !bst.nichtGebucht;
   const zustand = weiter ? buchungChip(u) : !w || w.wann !== "planung" ? null : offen && ohneLinks ? chip("offen", T("seite.wahl.offen_n", {n: kand.length})) : wahlZustand(w);
   const kennung = ohneLinks ? null : w ? zid(w.id) : uid ? zid(uid) : null;
   const einstieg = w && !ohneLinks && !(bst && bst.gebucht) ? wahlEinstieg(w, false, datum, verweis ? "#" + w.id : null) : null;
@@ -2073,7 +2075,7 @@ function steckbrief(p, imPlan) {
   // Gehzeit, Strecke, Höhenmeter nur bei Plänen mit Wanderdaten (Wanderung ja, Rundreise mit Bahn nein)
   const wandern = s.min || s.km || s.auf;
   const zeilen = [["tage", `${s.tage}`], ["gehzeit", f.includes("min") ? T("seite.steckbrief.unvollstaendig") : dauer(s.min)],
-    ["strecke", f.includes("km") ? T("seite.steckbrief.angaben_fehlen") : `${zahlText(s.km)} km`],
+    ["strecke", f.includes("km") ? T("seite.steckbrief.angaben_fehlen") : kmText(s.km)],
     ["hoehenmeter", f.includes("auf") ? T("seite.steckbrief.angaben_fehlen") : T("seite.steckbrief.auf_ab", {auf: s.auf, ab: s.ab})],
     ["laengster", s.laengster ? T("seite.steckbrief.laengster_wert", {dauer: dauer(s.laengster.min), nr: s.laengster.nr}) : "–"], ["naechte", ty]]
     .filter(([a]) => wandern || !["gehzeit", "strecke", "hoehenmeter", "laengster"].includes(a));
@@ -2584,7 +2586,7 @@ function tagZeile(t) {
     el("span", {class: "tz-punkt", "aria-hidden": "true"}),
     el("span", {class: "tz-datum"}, el("b", {}, String(t.nr)), t.datum ? datumText(t.datum, t.wochentag) : null),
     el("span", {class: "tz-titel"}, el("span", {class: "tz-name"}, t.titel), marken.length ? el("span", {class: "chips tz-marken"}, marken) : null),
-    el("span", {class: "tz-zeit"}, [m ? dauer(m) : "", km ? `${zahlText(km)} km` : ""].filter(Boolean).join(" · ")),
+    el("span", {class: "tz-zeit"}, [m ? dauer(m) : "", km ? kmText(km) : ""].filter(Boolean).join(" · ")),
     s ? el("span", {class: "tz-nacht"}, symbol("unterkunft", "etikett-sym"), el("span", {class: "tz-unterkunft"}, s.name), s.text ? chip(s.zustand, s.text) : null) : null);
 }
 // Kennzahlen der ganzen Reise aus der Summe des Plans: mit Wanderdaten Tage, Gehzeit, Strecke, Höhenmeter; sonst Tage,
@@ -2592,7 +2594,7 @@ function tagZeile(t) {
 function reiseKennzahlen(p) {
   const s = p.summe, f = s.fehlend || [];
   if (s.min || s.km || s.auf) return {tage: String(s.tage), ...(f.includes("min") ? {} : {gehzeit: dauer(s.min)}),
-    ...(f.includes("km") ? {} : {strecke: `${zahlText(s.km)} km`}), ...(f.includes("auf") ? {} : {hoehenmeter: T("seite.steckbrief.auf_ab_eng", {auf: s.auf, ab: s.ab})})};
+    ...(f.includes("km") ? {} : {strecke: kmText(s.km)}), ...(f.includes("auf") ? {} : {hoehenmeter: T("seite.steckbrief.auf_ab_eng", {auf: s.auf, ab: s.ab})})};
   const n = p.tage.map(d => d.nacht).filter(x => x && !x.an_bord);
   return {tage: String(s.tage), naechte: String(n.length), orte: String(new Set(n.map(x => x.ort).filter(Boolean)).size)};
 }

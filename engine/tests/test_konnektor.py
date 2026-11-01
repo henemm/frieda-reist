@@ -589,6 +589,15 @@ def test_ontologie_organisator_schreibt_direkt(schreibweg):
     assert f and "nicht erreichbar" in t
 
 
+def test_arten_uebernehmen_aus_unbekannter_reise_lehnt_ab_statt_abzustuerzen(schreibweg):
+    """Die Vorprüfung nutzte REISE_MUSTER ohne Modul (NameError bei jedem Aufruf): eine unbekannte Quellreise wird abgelehnt."""
+    basis, _ = schreibweg
+    for von in ("gibt-es-nicht-1", "../x", ""):
+        t, f = werkzeug(basis, ALT_ORGANISATOR, "arten_uebernehmen", von_reise=von)
+        assert f and "Traceback" not in t and "NameError" not in t
+        assert "gibt es nicht" in t or "does not exist" in t, t
+
+
 def test_ontologie_mitwirkende_schlagen_vor(schreibweg):
     basis, ablage = schreibweg
     t, f = werkzeug(basis, KARL, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt")
