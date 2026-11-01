@@ -700,7 +700,7 @@ def test_dinge_optionen_wahlstellen_fragen_ueber_den_schreibweg(schreibweg):
     assert not f and Schreibweg.anfragen[-1][0] == "/beispielreise/option_anlegen"
     Schreibweg.antwort = (422, {"ok": False, "fehler": "„an“: T-99 gibt es nicht."})
     t, f = werkzeug(basis, KARL, "wahlstelle_anlegen", titel="Anreise", an=["T-99"], optionen=[{"titel": "a"}])
-    assert f and t == "Nicht eingetragen: „an“: T-99 gibt es nicht."
+    assert f and t == "Nicht eingetragen: „at“: T-99 gibt es nicht."
     Schreibweg.antwort = (200, {"ok": True, "text": "ok"})
     t, f = werkzeug(basis, KARL, "wahlstelle_anlegen", titel="Anreise", an=["T-01"], optionen=[{"titel": "a", "strecken": ["E-20"]}])
     assert not f
@@ -911,7 +911,7 @@ def test_buchung_werkzeuge_und_anzeige(schreibweg):
     # Unbekannte IDs prüft der Schreibweg (Issue #135: eine gerade angelegte Strecke ist sofort buchbar, auch vor dem Veröffentlichen)
     Schreibweg.antwort = (422, {"ok": False, "fehler": "„fuer“: U-77 gibt es in dieser Reise nicht (Unterkunft U-…, Aufenthalt A-… oder Strecke E-…)."})
     t, f = werkzeug(basis, KARL, "buchung_anlegen", fuer="U-77", quelle="x")
-    assert f and t.startswith("Nicht eingetragen: „fuer“: U-77 gibt es in dieser Reise nicht")
+    assert f and t.startswith("Nicht eingetragen: „for“: U-77 gibt es in dieser Reise nicht")
     Schreibweg.antwort = (422, {"ok": False, "fehler": "Die Buchung B-09 gibt es nicht."})
     t, f = werkzeug(basis, KARL, "buchung_aendern", ziel="B-09", status="storniert")
     assert f and t == "Nicht eingetragen: Die Buchung B-09 gibt es nicht."
