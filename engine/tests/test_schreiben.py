@@ -955,6 +955,28 @@ def test_neue_reise_aus_der_anfrage(repo):
     assert not git(arbeit, "status", "--porcelain")
 
 
+def test_neue_reise_bekommt_beim_ersten_eintrag_einen_plan(repo):
+    """Eine Reise aus der App hat noch kein plan/routen.yaml. Der erste Eintrag legt den leeren Plan aus dem Zeitraum
+    an, statt abzulehnen; danach lassen sich Orte, Strecken und Tage anlegen, und der Generator baut die Reise."""
+    wurzel, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    anfrage = {"id": "A-20261101-120000-abcd", "erstellt": "2026-11-01T12:00:00+00:00", "name": "Ida", "art": "Auftrag",
+               "daten": {"neue_reise": {"titel": "Kurztrip (Beispiel)", "von": "2027-04-10", "bis": "2027-04-12", "ziel": "", "pfad": "kurztrip-2027",
+                                        "personen": {"ida": {"name": "Ida", "rolle": "organisator"}}, "wer": "Ida", "notiz": ""}}}
+    s.schreiben("kurztrip-2027", "reise_anlegen", {"person": None, "name": "Ida", "rolle": "organisator", "args": {"auftrag": anfrage}})
+    s.vorbereiten()
+    a = s.schreiben("kurztrip-2027", "ding_anlegen", {**IDA, "args": {"was": "ort", "titel": "Dresden", "quelle": "Karte", "ausserhalb": True}})
+    assert "O-01" in a["text"], a["text"]
+    s.vorbereiten()
+    a = s.schreiben("kurztrip-2027", "tag_anlegen", {**IDA, "args": {"titel": "Anreise (Beispiel)"}})
+    assert "T-01" in a["text"], a["text"]
+    text = git(origin, "show", "main:reisen/kurztrip-2027/plan/routen.yaml")
+    r = yaml.safe_load(text)
+    assert r["start"] == {"datum": datetime.date(2027, 4, 10)} and r["ende"] == {"datum": datetime.date(2027, 4, 12)}
+    assert r["orte"]["O-01"]["ausserhalb"] is True and r["route"] == ["T-01"]
+    assert not git(arbeit, "status", "--porcelain")
+
+
 def test_aufenthalt_ohne_nacht_anlegen_an_den_tag_haengen_und_buchen(repo):
     """Paket O-5: ding_anlegen was=aufenthalt (A-…, Ort, Aufenthalts-Art, Zeit), tag_aendern aufenthalte; der Buchungsstand
     kommt nur noch aus einer Buchung (buchung_anlegen, 29.10.2026), das freie Feld buchung lehnt der Schreibweg ab."""

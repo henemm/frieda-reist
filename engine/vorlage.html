@@ -182,7 +182,7 @@ ol.fussnoten li{margin:0 0 .25em;overflow-wrap:anywhere}
 h2 .punkt,h2 i.punkt{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--farbe);margin-right:8px;vertical-align:middle}
 /* ---------- Atom Kennung (zid): Rückmeldungen und Aufgaben zu einer Stelle (B2, frieda-reist#56, 27.10.2026) ----------
    „Symbol oder Wort, nie beides“: Anmerken braucht man nur vielleicht, deshalb nur die Sprechblase mit Tooltip, überall
-   gleich. Leer blass (bei Hover und Fokus voll), mit Rückmeldungen grün gefüllt mit Zahl, offene Aufgabe als Warnpunkt.
+   gleich. Leer blass (bei Hover und Fokus voll), mit Rückmeldungen grün gefüllt, die Zahl nur für offene, offene Aufgabe als Warnpunkt.
    Tippfläche 44 × 44 px. Die Kennung selbst (T-01 …) steht im Fenster, das sich öffnet, mit „Kopieren“.
    Deckkraft leer 0,7 statt der erprobten 0,55: so hat das Symbol 3:1 Kontrast (WCAG 1.4.11), hell und dunkel. */
 .zid-box{position:relative;display:inline-flex;align-items:center;max-width:100%;vertical-align:middle}
@@ -946,15 +946,18 @@ function symbol(name, klasse) {
   t.innerHTML = `<svg class="sym${klasse ? " " + klasse : ""}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
   return t.content.firstChild;
 }
-// Atom Kennung: Sprechblase mit Tooltip („Anmerken“ oder „2 Rückmeldungen · 1 Aufgabe offen“), Zahl und Warnpunkt.
+// Atom Kennung: Sprechblase mit Tooltip („Anmerken“ oder „2 Rückmeldungen, 1 offen · 1 Aufgabe offen“), Zahl und Warnpunkt.
+// Die Zahl zählt nur offene Rückmeldungen (neu, Rückfrage, noch nicht gesendet); sind alle erledigt, bleibt die Blase gefüllt
+// ohne Zahl, damit nichts nach Arbeit aussieht, was schon getan ist (1.11.2026).
 // Ohne die Bausteine Rückmeldungen und Aufgaben bleibt die Kennung als schlichter Text.
 function zid(id) {
   if (!B("rueckmeldungen") && !B("aufgaben")) return el("span", {class: "zid"}, id);
-  const n = rmZu(id).length, a = agZu(id).filter(agOffen).length;
-  const rm = n === 1 ? "1 Rückmeldung" : `${n} Rückmeldungen`, ag = a === 1 ? "1 Aufgabe offen" : `${a} Aufgaben offen`;
+  const alle = rmZu(id), n = alle.length, o = alle.filter(rmOffen).length, a = agZu(id).filter(agOffen).length;
+  const rm = (n === 1 ? "1 Rückmeldung" : `${n} Rückmeldungen`) + (o === n ? "" : o ? `, ${o} offen` : n === 1 ? " erledigt" : ", alle erledigt");
+  const ag = a === 1 ? "1 Aufgabe offen" : `${a} Aufgaben offen`;
   const knopf = el("button", {type: "button", class: "zid" + (n ? " hat-rm" : "") + (a ? " hat-ag" : ""), "data-rm": id,
     title: [n ? rm : "Anmerken", a ? ag : ""].filter(Boolean).join(" · "), "aria-label": [`Anmerken zu ${id}`, n ? rm : "", a ? ag : ""].filter(Boolean).join(", ")},
-    symbol("rueckmeldungen", "zid-blase"), n ? el("span", {class: "zid-n", "aria-hidden": "true"}, String(n)) : null, a ? el("span", {class: "zid-o", "aria-hidden": "true"}) : null);
+    symbol("rueckmeldungen", "zid-blase"), o ? el("span", {class: "zid-n", "aria-hidden": "true"}, String(o)) : null, a ? el("span", {class: "zid-o", "aria-hidden": "true"}) : null);
   return el("span", {class: "zid-box"}, knopf);
 }
 /* Bausteine nach Ebenen (Designsystem, frieda-reist#18, docs/design.md). Jede Ansicht setzt sich aus ihnen zusammen,
@@ -3478,6 +3481,7 @@ function ansichtBausteine(m) {
   const rmMuster = {ziel: "Muster", status: "neu"}, agMuster = {id: "AG-00", status: "offen", bezug: ["Muster"]};
   teil("Atom", "Kennung", "Nur die Sprechblase mit Tooltip („Symbol oder Wort, nie beides“). Antippen öffnet Rückmeldungen und Aufgaben zu dieser Stelle; dort stehen die Kennung und „Kopieren“.",
     fall("leer", zid(R ? R.tage[0].id : abschnitte[0].id)), fall("2 Rückmeldungen (Muster)", kennungMuster([rmMuster, rmMuster], [])),
+    fall("Rückmeldungen erledigt, ohne Zahl (Muster)", kennungMuster([{ziel: "Muster", status: "uebernommen"}], [])),
     fall("Aufgabe offen (Muster)", kennungMuster([], [agMuster])), fall("beides (Muster)", kennungMuster([rmMuster], [agMuster])));
   teil("Atom", "Link", "Adresse als Link nach außen in neuem Fenster, mit dem Namen der Webseite. Jeder Wert eines Merkmals vom Typ link sieht so aus, in Tabelle, Karte und Einzelheiten.",
     el("div", {class: "chips"}, webLink("https://www.example.org/"), el("span", {class: "z klein"}, "(Muster)")));
@@ -3697,6 +3701,8 @@ const WU_STATUS = {...RM_STATUS, uebernommen: "aufgenommen", verworfen: "passt n
 // Wünsche stehen im eigenen Reiter, nicht noch einmal unter „Rückmeldungen“
 const istWunsch = e => WUENSCHE && e.art === "Wunsch";
 
+// Erledigt ist, was eine Organisator:in übernommen oder verworfen hat; alles andere (auch noch nicht gesendet) ist offen
+const rmOffen = e => e.status !== "uebernommen" && e.status !== "verworfen";
 function rmZu(id) { return [...AUSGANG.filter(e => e.ziel === id), ...RM.filter(e => e.ziel === id)]; }
 let TITEL = null;
 function titelZu(id) {
@@ -3757,7 +3763,7 @@ function rmEintrag(e, mitZiel) {
 
 function rmFormular(id) {
   const dlg = $("#rm");
-  const liste = rmZu(id);
+  const liste = rmZu(id), offen = liste.filter(rmOffen), erledigt = liste.filter(e => !rmOffen(e));
   const titel = titelZu(id);
   const arten = ["Kommentar", "Frage", "Korrektur", "Ergänzung", "Antwort"];
   const sel = el("select", {id: "rmArt"}, arten.map(a => el("option", {value: a, selected: a === ART_STANDARD(id)}, a)));
@@ -3771,7 +3777,10 @@ function rmFormular(id) {
         el("div", {}, agZu(id).sort(agSortierung).map(a => agEintrag(a))),
         KANN_AG ? el("button", {type: "button", class: "outline klein", "data-ag-neu": id}, "+ Aufgabe") : null] : null,
       B("rueckmeldungen") ? el("h4", {}, "Rückmeldungen") : null,
-      B("rueckmeldungen") && liste.length ? el("div", {}, liste.map(e => rmEintrag(e))) : null,
+      B("rueckmeldungen") && offen.length ? el("div", {}, offen.map(e => rmEintrag(e))) : null,
+      B("rueckmeldungen") && erledigt.length ? el("details", {class: "kapitel ag-erledigt"},
+        el("summary", {}, el("span", {class: "kap-text"}, el("span", {class: "kap-titel"}, "Erledigt")), zahlMarke(erledigt.length)),
+        el("div", {}, erledigt.map(e => rmEintrag(e)))) : null,
       !KANN_RM ? el("p", {class: "meldung"}, V.schreiben === "nichts" ? "Die Reise ist archiviert: Hier kann nur noch gelesen werden." : "") : el("form", {id: "rmForm"},
         el("label", {for: "rmArt"}, "Art"), sel,
         el("label", {for: "rmText"}, "Text"),

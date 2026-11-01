@@ -91,6 +91,10 @@ def test_tagesseite_in_ebenen(tmp_path, browser):
         # Kennung: nur Sprechblase mit Tooltip, kein „i“; das Fenster nennt die Kennung und kann sie kopieren
         assert a["info"] == 0 and a["knoepfe"] and all(t in ("Anmerken",) and l.startswith("Anmerken zu ") for t, l in a["knoepfe"])
         assert a["fenster"] == {"offen": True, "kennung": "E-01", "kopieren": True}
+        # Zahl nur für offene Rückmeldungen; alle erledigt: Blase gefüllt ohne Zahl, im Fenster „Erledigt (2)“ zugeklappt
+        assert a["blaseOffen"] == {"zahl": "1", "gefuellt": True, "title": "3 Rückmeldungen, 1 offen"}, a["blaseOffen"]
+        assert a["blaseErledigt"] == {"zahl": None, "gefuellt": True, "title": "2 Rückmeldungen, alle erledigt"}, a["blaseErledigt"]
+        assert a["fensterErledigt"] == {"zu": True, "titel": "Erledigt2", "offenOben": 0}, a["fensterErledigt"]
         assert all(a["tiefe"].values()) and len(a["tiefe"]) == 3, a["tiefe"]
         # Hintergrund als Kapitel: zu, immer nur eines offen; der umschaltende Bereich ist getönt; Der Weg mit „Weiterlesen“
         assert a["kapitel"][0] >= 2 and a["kapitel"][1] == 0 and len(a["kapitelOffen"]) == 1, (a["kapitel"], a["kapitelOffen"])

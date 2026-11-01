@@ -150,7 +150,7 @@ def vf(tmp_path):
     frei = ausfuehrbar(tmp_path / "freischalten.sh",
                        f'#!/bin/sh\necho "$1" >> {tmp_path}/frei.log\necho "Seite: https://example.invalid/$1-geheim/"\n')
     env = {**SAUBER, "FR_WURZEL": str(arbeit), "FR_INSTANZ": "probe", "FR_DIENST": str(tmp_path / "dienst"),
-           "FR_SPERREN": str(tmp_path), "VF_DEPLOY": str(attrappe), "VF_PRUEFEN": str(pruefen), "VF_FREISCHALTEN": str(frei),
+           "FR_KONNEKTOR": str(tmp_path / "konnektor"), "FR_SPERREN": str(tmp_path), "VF_DEPLOY": str(attrappe), "VF_PRUEFEN": str(pruefen), "VF_FREISCHALTEN": str(frei),
            "FR_HEARTBEAT_VEROEFFENTLICHEN": "https://example.invalid/hb", "PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}",
            "FR_MELDEN": str(melden), "VF_ROTMELDEN": str(rotmelden)}
 
@@ -330,7 +330,8 @@ def test_veroeffentlichen_freischalten_je_reise_ohne_links_im_protokoll(vf):
     assert (vf["tmp"] / "frei.log").read_text().split() == ["beispielreise", "zweitreise"]
     assert "geheim" not in r.stdout + r.stderr
     py = ausfuehrbar(vf["tmp"] / "python.sh", f'#!/bin/sh\necho "$@" >> {vf["tmp"]}/zustellen.log\n')
-    (vf["tmp"] / "dienst/neue-reisen-ausstehend.jsonl").write_text('{"ordner": "neu"}\n')
+    (vf["tmp"] / "konnektor").mkdir(exist_ok=True)
+    (vf["tmp"] / "konnektor/neue-reisen-ausstehend.jsonl").write_text('{"ordner": "neu"}\n')
     r = vf["lauf"](FR_PYTHON=str(py))
     assert r.returncode == 0, r.stdout + r.stderr
     assert f"{BETRIEB}/zustellen.py" in (vf["tmp"] / "zustellen.log").read_text()
@@ -1117,6 +1118,26 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     assert "sudo systemctl enable --now probe-veroeffentlichen.timer" in r.stdout
     # ohne --installieren wird außerhalb des Ausgabeordners nichts angelegt
     assert not (tmp_path / "srv").exists() and not (tmp_path / "systemd").exists()
+
+
+def test_konnektor_darf_vorgemerkte_neue_reisen_schreiben(tmp_path, monkeypatch):
+    """reise_anlegen merkt die neue Reise in einer Datei vor. Sie muss in einem Ordner liegen, den die Einheit des
+    Konnektors beschreiben darf (ReadWritePaths), sonst scheitert das Anlegen im Betrieb mit „Read-only file system“.
+    Das Veröffentlichen liest dieselbe Datei."""
+    import konnektor as kn
+    einrichten(tmp_path)
+    einheit = (tmp_path / "aus/systemd/probe-konnektor.service").read_text()
+    for z in einheit.splitlines():
+        if z.startswith("Environment="):
+            k, _, v = z[len("Environment="):].partition("=")
+            monkeypatch.setenv(k, v)
+    monkeypatch.delenv("KN_AUSSTEHEND", raising=False)
+    schreibbar = next(z for z in einheit.splitlines() if z.startswith("ReadWritePaths=")).split("=", 1)[1].split()
+    datei = kn.ausstehend_datei()
+    assert any(datei.is_relative_to(p) for p in schreibbar), (datei, schreibbar)
+    srv = tmp_path / "srv/probe"
+    assert datei == srv / "_konnektor/neue-reisen-ausstehend.jsonl"
+    assert "$FR_KONNEKTOR/neue-reisen-ausstehend.jsonl" in (BETRIEB / "veroeffentlichen.sh").read_text()
 
 
 def test_einrichten_erkennt_belegte_ports_einer_anderen_instanz(tmp_path):

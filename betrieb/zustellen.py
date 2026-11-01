@@ -2,7 +2,7 @@
 """Links neuer Reisen zustellen (betrieb/veroeffentlichen.sh, docs/betrieb.md „Neue Reise freischalten“).
 
 Eine neue Reise aus der Claude-App legt der Schreibweg sofort an (engine/schreiben.py reise_anlegen). Der Konnektor
-merkt sie in <FR_DIENST>/neue-reisen-ausstehend.jsonl vor, je Zeile {ordner, aid, name, person}. Sobald ihre Seite
+merkt sie in <FR_KONNEKTOR>/neue-reisen-ausstehend.jsonl vor, je Zeile {ordner, aid, name, person}. Sobald ihre Seite
 veröffentlicht ist, schaltet dieses Skript sie frei (freischalten.sh) und stellt der Person die Links zu: als Meldung in
 meine_reisen, bei einem Konto als Verknüpfung mit der Reise und Einladungen per Mail. Links und Adressen stehen nie im
 Protokoll. Was noch nicht veröffentlicht ist oder scheitert, bleibt für den nächsten Lauf stehen.
