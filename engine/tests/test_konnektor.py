@@ -883,6 +883,7 @@ def test_neue_reise_ueber_den_schreibweg(schreibweg, tmp_path, monkeypatch):
     assert "ist angelegt" in t and "in wenigen minuten ist die seite online" in t.lower()
     pfad, _, body = Schreibweg.anfragen[-1]
     assert pfad == "/skiwoche-2027/reise_anlegen" and body["args"]["auftrag"]["daten"]["neue_reise"]["titel"] == "Skiwoche"
+    assert body["args"]["auftrag"]["daten"]["neue_reise"]["sprache"] == "de"   # ohne Angabe die Sprache der Person (hier der Rückfall der Tests), nicht still die des Bestands
     zeile = json.loads(ausstehend.read_text().strip())
     assert zeile["ordner"] == "skiwoche-2027" and zeile["name"] == "Ida" and zeile["person"] == "ida" and zeile["aid"].startswith("A-")
     o = rm.ordner_neu()

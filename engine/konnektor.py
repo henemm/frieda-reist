@@ -1866,6 +1866,8 @@ def reise_anlegen(konto, args):
     Reise anlegen. Sobald die Seite online ist, bekommt die Person eine Meldung mit den Links (meine_reisen).
     -> (Text, ist_fehler)"""
     o = rm.ordner_neu(anlegen=True)
+    if not args.get("sprache"):   # ohne Angabe schreibt die neue Reise in der Sprache der Person, nicht in der des Bestands
+        args = {**args, "sprache": texte.aufruf_sprache()}
     with _sperre:
         neu, fehler = neue_reise_pruefen(args, konto["name"], vergebene_pfade())
         if fehler:
@@ -1874,12 +1876,13 @@ def reise_anlegen(konto, args):
             return (tk("konnektor.reise_anlegen.1")), True
         wer_text = ", ".join(p['name'] + " (" + p['rolle'] + ("" if p.get('reist', True) else ", " + tk("konnektor.ausgabe.einladen.reist_nicht_mit")) + ")"
                              for p in neu["personen"].values())
-        text_ = (tkd("konnektor.ausgabe.reise_anlegen.5", w1=neu['titel'], w2=datum_de(neu['von']), w3=datum_de(neu['bis']))
-                 + (tkd("konnektor.ausgabe.reise_anlegen.6", w1=neu['ziel']) if neu["ziel"] else "") + tkd("konnektor.ausgabe.reise_anlegen.3", wer_text=wer_text, w2=neu['pfad'])
-                 + (tkd("konnektor.ausgabe.reise_anlegen.4", w1=neu['notiz']) if neu["notiz"] else ""))
+        tkn = lambda schluessel, /, **w: texte.t(neu["sprache"], schluessel, **w)   # Text für die Ablage der neuen Reise: in deren Sprache
+        text_ = (tkn("konnektor.ausgabe.reise_anlegen.5", w1=neu['titel'], w2=datum_de(neu["von"], neu["sprache"]), w3=datum_de(neu["bis"], neu["sprache"]))
+                 + (tkn("konnektor.ausgabe.reise_anlegen.6", w1=neu['ziel']) if neu["ziel"] else "") + tkn("konnektor.ausgabe.reise_anlegen.3", wer_text=wer_text, w2=neu['pfad'])
+                 + (tkn("konnektor.ausgabe.reise_anlegen.4", w1=neu['notiz']) if neu["notiz"] else ""))
         jetzt = datetime.datetime.now(datetime.timezone.utc)
         e = {"id": f"A-{jetzt:%Y%m%d-%H%M%S}-{secrets.token_hex(2)}", "erstellt": jetzt.isoformat(timespec="seconds"),
-             "name": konto["name"], "konto": konto["konto"], "art": tkd("konnektor.ausgabe.reise_anlegen.1"), "ziel": "allgemein",
+             "name": konto["name"], "konto": konto["konto"], "art": tkn("konnektor.ausgabe.reise_anlegen.1"), "ziel": "allgemein",
              "text": text_[:MAX_AUFTRAG], "quelle": "Claude-App", "daten": {"neue_reise": neu}}
         if konto.get("konto_id"):
             # Konnektor „Frieda“: wer anlegt, wird nach dem Anlegen mit seinem Konto verknüpft; wer eine Adresse hat,
