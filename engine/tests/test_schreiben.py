@@ -1072,12 +1072,16 @@ def test_neue_reise_bekommt_beim_ersten_eintrag_einen_plan(repo):
     r = yaml.safe_load(text)
     assert r["start"] == {"datum": datetime.date(2027, 4, 10)} and r["ende"] == {"datum": datetime.date(2027, 4, 12)}
     assert r["orte"]["O-01"]["ausserhalb"] is True and r["route"] == ["T-01"] and r["tage"]["T-01"]["strecken"] == ["E-01"]
-    assert json.loads(git(origin, "show", "main:reisen/kurztrip-2027/reise.json"))["routen"] == {"datei": "plan/routen.yaml"}
+    routen_cfg = json.loads(git(origin, "show", "main:reisen/kurztrip-2027/reise.json"))["routen"]
+    assert routen_cfg["datei"] == "plan/routen.yaml" and routen_cfg["tagesplan"][1] == "Tagesplan"
+    assert routen_cfg["unterkuenfte"][1] == "Unterkünfte" and routen_cfg["tagesplan"][0] != routen_cfg["unterkuenfte"][0]
     # der Generator baut die Reise mit dem Plan: der Tag steht auf der Seite
     import bauen
     git(wurzel, "pull", "-q")
     d = bauen.Bauer(wurzel / "reisen" / "kurztrip-2027", str(wurzel / "dist")).daten()
     assert [t["id"] for t in d["route"]["tage"]] == ["T-01"]
+    # die Seite zeigt die Tage: ein Abschnitt trägt den Tagesplan (sonst steht nur plan.md da)
+    assert [a["id"] for a in d["abschnitte"] if a.get("route_ansicht") == "tagesplan"] == [routen_cfg["tagesplan"][0]]
     assert not git(arbeit, "status", "--porcelain")
 
 

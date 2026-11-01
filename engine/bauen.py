@@ -1060,7 +1060,7 @@ class Bauer:
     def schreiben(self, daten):
         vorlage = (Path(__file__).parent / "vorlage.html").read_text(encoding="utf-8")
         vorlage = vorlage.replace("<!--__SYMBOLE__-->", symbole(), 1)
-        vorlage = vorlage.replace("<!--__RELEASE__-->", htmlmod.escape(release_text()), 1)
+        vorlage = vorlage.replace('data-release="__RELEASE__"', f'data-release="{release_attribut()}"', 1)
         if self.umzug:   # Seite ist umgezogen: gleicher Pfad auf der neuen Adresse (alte Browser-Speicher räumt sw.js auf)
             vorlage = vorlage.replace("<head>", "<head>\n<script>if (location.origin !== " + json.dumps(self.umzug) + ") location.replace(" +
                                       json.dumps(self.umzug) + " + location.pathname + location.search + location.hash)</script>", 1)
@@ -1151,30 +1151,32 @@ VENDOR_GRUNDKARTE = {"protomaps-leaflet-5.1.0.js": "protomaps-leaflet-5.1.0.js"}
 LUCIDE = "lucide-1.55.0"
 # Kategorien der Kartenpunkte (docs/ontologie.md „Kartenpunkte“, ADR-0001, Issue O-7): Welche es gibt, sagt allein die Reise in
 def software_release(ordner=Path(__file__).resolve().parent):
-    """Release der Software, aus der die Seite gebaut wird: (Nummer, Kennung).
-    Nummer ist die Zahl der Commits bis zu diesem Stand. main wird nur vorgespult (CLAUDE.md), deshalb wächst sie mit
-    jedem Stand um mindestens eins, ist eindeutig und dieselbe Zahl, die GitHub auf der Startseite des Repos als
-    „Commits“ zeigt. Kennung ist der kurze Commit-Hash (eindeutig auch für Stände außerhalb von main).
-    In einem flachen Klon ist die Zahl falsch und fehlt deshalb; ohne Git fehlt beides."""
+    """Release der Software, aus der die Seite gebaut wird: {nummer, kennung, commit, github}.
+    nummer ist die Zahl der Commits bis zu diesem Stand. main wächst nur (vorspulen, CLAUDE.md), deshalb steigt sie mit
+    jedem Stand, ist eindeutig und für main dieselbe Zahl, die GitHub auf der Startseite des Repos bei „Commits“ zeigt.
+    kennung ist der kurze Commit-Hash (eindeutig auch außerhalb von main), commit der volle. github ist „besitzer/repo“
+    aus der Adresse von origin, wenn die Software auf GitHub liegt (für Link und Vergleich im Fuß der Seite).
+    In einem flachen Klon ist die Zahl falsch und fehlt deshalb; ohne Git fehlt alles."""
     def git(*args):
         try:
             r = subprocess.run(["git", "-C", str(ordner), *args], capture_output=True, text=True, timeout=10)
         except (OSError, subprocess.SubprocessError):
             return None
         return r.stdout.strip() if r.returncode == 0 else None
-    kennung = git("rev-parse", "--short=7", "HEAD")
-    if not kennung:
-        return None, None
+    commit = git("rev-parse", "HEAD")
+    if not commit:
+        return {"nummer": None, "kennung": None, "commit": None, "github": None}
     nummer = git("rev-list", "--count", "HEAD") if git("rev-parse", "--is-shallow-repository") == "false" else None
-    return (int(nummer) if nummer and nummer.isdigit() else None), kennung
+    m = re.search(r"github\.com[:/]([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?/?$", git("config", "--get", "remote.origin.url") or "")
+    return {"nummer": int(nummer) if nummer and nummer.isdigit() else None, "kennung": commit[:7], "commit": commit,
+            "github": f"{m.group(1)}/{m.group(2)}" if m else None}
 
 
-def release_text():
-    """Zeile am Ende jeder Seite: „Frieda Release 412 · 9b4a397“; leer, wenn der Stand unbekannt ist."""
-    nummer, kennung = software_release()
-    if not kennung:
-        return ""
-    return f"Frieda Release {nummer} · {kennung}" if nummer else f"Frieda Release {kennung}"
+def release_attribut():
+    """Wert für data-release im Fuß jeder Seite: das Release als JSON (Nummer, Kennung, Commit, GitHub). Die Seite schreibt
+    daraus „Frieda Release 412 · 9b4a397“ in ihrer Sprache und vergleicht auf Tippen mit main; leer, wenn unbekannt."""
+    r = software_release()
+    return htmlmod.escape(json.dumps(r if r["kennung"] else {}, separators=(",", ":")), quote=True)
 
 
 # plan/kategorien.yaml. Die Software prüft nur die Form: Gruppe, Name, Farbe (Palette der Seite oder #rrggbb), Symbol (aus SYMBOLE).

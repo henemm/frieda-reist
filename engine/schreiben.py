@@ -800,8 +800,19 @@ def plan_sicherstellen(reise_dir):
             cfg = json.loads(rj.read_text(encoding="utf-8"))
         except ValueError:
             raise Ablehnung("schreiben.reise_json.unlesbar")
-        if not cfg.get("routen"):
-            cfg["routen"] = {"datei": "plan/routen.yaml"}
+        routen = cfg.get("routen") or {}
+        neu_ = dict(routen)
+        neu_.setdefault("datei", "plan/routen.yaml")
+        if "tagesplan" not in neu_:
+            # ohne diese Abschnitte zeigt die Seite keine Tage und keine Unterkünfte (bauen.py, route_ansicht); Titel in der
+            # Sprache der Reise, neue W-IDs aus ids.yaml (der Generator legt die Abschnitte dann selbst an)
+            import reise as reise_modul
+            sprache = reise_modul.sprache_von(reise_dir)
+            neu_["tagesplan"] = [neue_id(reise_dir, "W"), texte.t(sprache, "seite.suche.tagesplan")]
+            if "unterkuenfte" not in neu_:
+                neu_["unterkuenfte"] = [neue_id(reise_dir, "W"), texte.t(sprache, "seite.suche.unterkuenfte")]
+        if neu_ != routen:
+            cfg["routen"] = neu_
             rj.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 

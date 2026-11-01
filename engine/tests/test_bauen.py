@@ -233,7 +233,7 @@ def _git(ordner, *args):
 
 
 def test_release_aus_git(tmp_path):
-    """Release = Zahl der Commits und kurzer Hash; im flachen Klon nur der Hash, ohne Git nichts (Product Owner 1.11.2026)."""
+    """Release = Zahl der Commits, kurzer und voller Hash, GitHub-Repo aus origin; im flachen Klon ohne Zahl, ohne Git nichts."""
     voll = tmp_path / "voll"
     voll.mkdir()
     _git(voll, "init", "-q")
@@ -241,22 +241,28 @@ def test_release_aus_git(tmp_path):
         (voll / "f").write_text(str(i))
         _git(voll, "add", "f")
         _git(voll, "-c", "user.name=Ida", "-c", "user.email=ida@example.org", "commit", "-qm", f"Stand {i}")
-    kennung = _git(voll, "rev-parse", "--short=7", "HEAD")
-    assert bauen.software_release(voll) == (3, kennung)
+    commit = _git(voll, "rev-parse", "HEAD")
+    assert bauen.software_release(voll) == {"nummer": 3, "kennung": commit[:7], "commit": commit, "github": None}
+    for adresse in ("https://github.com/ida/frieda.git", "git@github.com:ida/frieda", "https://x-access-token:geheim@github.com/ida/frieda"):
+        _git(voll, "remote", "remove", "origin") if _git(voll, "remote") else None
+        _git(voll, "remote", "add", "origin", adresse)
+        assert bauen.software_release(voll)["github"] == "ida/frieda", adresse
     flach = tmp_path / "flach"
     _git(tmp_path, "clone", "-q", "--depth=1", f"file://{voll}", str(flach))
-    assert bauen.software_release(flach) == (None, kennung)
-    assert bauen.software_release(tmp_path / "ohne") == (None, None)
+    assert bauen.software_release(flach) == {"nummer": None, "kennung": commit[:7], "commit": commit, "github": None}
+    assert bauen.software_release(tmp_path / "ohne")["kennung"] is None
 
 
 def test_release_im_fuss_jeder_seite(reise, tmp_path, monkeypatch):
-    monkeypatch.setattr(bauen, "software_release", lambda: (412, "9b4a397"))
+    r = {"nummer": 412, "kennung": "9b4a397", "commit": "9b4a397" + "0" * 33, "github": "ida/frieda"}
+    monkeypatch.setattr(bauen, "software_release", lambda: r)
     baue(reise, tmp_path)
     seite = (tmp_path / "dist/index.html").read_text(encoding="utf-8")
-    assert '<footer class="fuss" id="release">Frieda Release 412 · 9b4a397</footer>' in seite
-    monkeypatch.setattr(bauen, "software_release", lambda: (None, None))
+    m = re.search(r'<footer class="fuss" id="release" data-release="([^"]*)" hidden></footer>', seite)
+    assert m and json.loads(m.group(1).replace("&quot;", '"')) == r
+    monkeypatch.setattr(bauen, "software_release", lambda: {"nummer": None, "kennung": None, "commit": None, "github": None})
     baue(reise, tmp_path)
-    assert '<footer class="fuss" id="release"></footer>' in (tmp_path / "dist/index.html").read_text(encoding="utf-8")
+    assert 'data-release="{}"' in (tmp_path / "dist/index.html").read_text(encoding="utf-8")
 
 
 def test_symbole_eingebettet_mit_lizenz(reise, tmp_path):

@@ -782,11 +782,15 @@ body::after{content:"";position:fixed;z-index:9;left:0;right:0;bottom:calc(0px -
     background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg) 70%,transparent))}
 main{padding-bottom:calc(var(--tabbar-space) + 16px)}
 /* ---------- Fuß: Release der Software (Product Owner 1.11.2026), auf jeder Seite, unauffällig unter dem Inhalt ----------
-   Der Bau setzt „Frieda Release 412 · 9b4a397“ ein (software_release in engine/bauen.py). Der Fuß rückt in den Freiraum
-   über der Leiste; ohne bekannten Stand ist er leer und belegt keinen Platz. */
+   „Frieda Release 412 · 9b4a397“, die Kennung führt zum Quellcode dieses Stands, „Auf Neueres prüfen“ vergleicht mit main
+   (releaseFuss). Der Fuß rückt in den Freiraum über der Leiste; ohne bekannten Stand bleibt er verborgen. */
 .fuss{max-width:var(--breite);margin:calc(0px - var(--tabbar-space)) auto 0;padding:0 16px calc(var(--tabbar-space) + 16px);
   font-size:var(--t-klein);color:var(--mut);text-align:center;font-variant-numeric:tabular-nums}
-.fuss:empty{display:none}
+.fuss[hidden]{display:none}
+.fuss a{color:inherit}
+.fuss button{display:inline-flex;align-items:center;min-height:44px;margin:0;padding:0 4px;border:0;background:none;color:var(--acc);font:inherit;
+  text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.fuss .fuss-stand{display:block}
 @media (hover:hover){nav a:hover,#suchKnopf:hover{color:var(--fg)} .rund:hover{border-color:var(--acc)}}
 /* Zahl am Reiter „Offen“: offene Aufgaben + nicht gesendete Rückmeldungen */
 nav a{position:relative}
@@ -831,7 +835,7 @@ nav a.warn .zahl{background:var(--warn)}
   <div id="offline" class="hinweis glas" role="status" hidden data-t="seite.rahmen.offline">Ohne Netz: gespeicherter Stand. Rückmeldungen werden nachgereicht, Aufgaben erst wieder mit Netz änderbar.</div>
 </div>
 <main id="main" class="pico"></main>
-<footer class="fuss" id="release"><!--__RELEASE__--></footer>
+<footer class="fuss" id="release" data-release="__RELEASE__" hidden></footer>
 <dialog id="rm" class="pico"></dialog>
 <div class="leiste">
   <nav id="nav" aria-label="Kategorien" data-t-attr="aria-label=seite.rahmen.kategorien"></nav>
@@ -2063,6 +2067,7 @@ function spracheWaehlen(k) {
   textKarten();
   titelTexte();
   sprachUmschalter();
+  releaseFuss();
   route(true);
 }
 const planUmschalter = alle => umschalter(T("seite.plan.waehlen"), [[{"data-variante": ""}, !VARIANTE, T("seite.plan.alle_n", {n: alle.length})],
@@ -4658,6 +4663,40 @@ Promise.all([ichLaden(), rmLaden(), agLaden(), brLaden(), blLaden()]).then(() =>
 
 /* ---------- Offline (PWA, Issue #6): Service Worker sw.js im Pfad der Reise ----------
    Neue Version wartet, bis „Aktualisieren“ getippt wird; danach einmal neu laden. */
+// Fuß: Release der Software aus dem Bau (data-release, engine/bauen.py), Link zum Quellcode und Vergleich mit main.
+// Verglichen wird erst auf Tippen, damit nicht jeder Seitenaufruf GitHub fragt (die Seite spricht sonst nur mit ihrem Server).
+let RELEASE = {};
+try { RELEASE = JSON.parse($("#release").dataset.release); } catch (e) {}
+let RELEASE_STAND = null;   // letzter Vergleich: {schluessel, werte}
+function releaseFuss() {
+  const f = $("#release"), r = RELEASE;
+  if (!r.kennung) { f.hidden = true; return; }
+  const kennung = r.github ? el("a", {href: `https://github.com/${r.github}/commit/${r.commit}`, target: "_blank", rel: "noopener",
+    title: T("seite.rahmen.release.quelle")}, r.kennung) : r.kennung;
+  f.replaceChildren(r.nummer ? T("seite.rahmen.release.nummer", {nummer: r.nummer}) : T("seite.rahmen.release.ohne_nummer"), " · ", kennung,
+    ...(r.github ? [" ", el("button", {type: "button", "data-release-pruefen": "1"}, T("seite.rahmen.release.pruefen"))] : []),
+    el("span", {class: "fuss-stand", role: "status"}, RELEASE_STAND ? T(RELEASE_STAND.schluessel, RELEASE_STAND.werte) : ""));
+  f.hidden = false;
+}
+async function releasePruefen() {
+  // Nur die Statuszeile ändern: Knopf und Fokus bleiben, der Screenreader liest die neue Zeile vor
+  const r = RELEASE, zeige = (schluessel, werte) => { RELEASE_STAND = {schluessel, werte}; $("#release .fuss-stand").textContent = T(schluessel, werte); };
+  zeige("seite.rahmen.release.pruefe");
+  try {
+    // Seite 2 mit einem Commit je Seite: Stand und Abstand ohne die Liste der Dateien (die steht nur auf Seite 1)
+    const a = await fetch(`https://api.github.com/repos/${r.github}/compare/${r.commit}...main?per_page=1&page=2`,
+      {cache: "no-store", headers: {Accept: "application/vnd.github+json"}});
+    if (!a.ok) throw 0;
+    const d = await a.json();
+    if (d.status === "identical") zeige("seite.rahmen.release.aktuell");
+    else if (d.status === "ahead") zeige(r.nummer ? "seite.rahmen.release.neuer" : "seite.rahmen.release.neuer_ohne_nummer",
+      {n: d.ahead_by, neu: (r.nummer || 0) + d.ahead_by});
+    else zeige("seite.rahmen.release.abseits");
+  } catch (e) { zeige(navigator.onLine ? "seite.rahmen.release.fehler" : "seite.rahmen.release.offline"); }
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-release-pruefen]")) releasePruefen(); });
+releaseFuss();
+
 function netzAnzeigen() { $("#offline").hidden = navigator.onLine; }
 window.addEventListener("online", netzAnzeigen);
 window.addEventListener("offline", netzAnzeigen);
