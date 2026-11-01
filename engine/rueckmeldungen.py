@@ -763,7 +763,8 @@ class Dienst(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        if self.command != "HEAD":
+            self.wfile.write(body)
 
     def _teile(self):
         """/<reise>/<was>[/<id>] -> (ordner, was, id) oder None"""
@@ -788,7 +789,8 @@ class Dienst(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "private, no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
-        self.wfile.write(daten)
+        if self.command != "HEAD":
+            self.wfile.write(daten)
 
     def _kalender(self, o):
         """Kalender der Reise als Datei (#77, engine/kalender.py), ganz oder für ein Ding (?id=T-…/U-…/A-…/E-…/B-…/AG-…).
@@ -812,7 +814,8 @@ class Dienst(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "private, no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
-        self.wfile.write(body)
+        if self.command != "HEAD":
+            self.wfile.write(body)
 
     def _query(self):
         return urllib.parse.parse_qs(self.path.split("?", 1)[1]) if "?" in self.path else {}
@@ -871,6 +874,8 @@ class Dienst(BaseHTTPRequestHandler):
         except (UnicodeDecodeError, json.JSONDecodeError):
             self._antwort(400, {"fehler": texte.satz("dienst._json.2")})
             return None, True
+
+    do_HEAD = do_GET    # Kopf wie bei GET ohne Inhalt (Kalenderdatei, Belege); sonst antwortet der Server 501
 
     def do_PATCH(self):
         t = self._teile()

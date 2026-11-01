@@ -2064,7 +2064,9 @@ def kalender_link(k, neu=False):
     url = kalender.abo_url(basis(), konten.kalender_token(k["id"], erneuern=neu))
     return ("\n".join([tk("konnektor.kalender.neu" if neu else "konnektor.kalender.link"),
                        tk("konnektor.ausgabe.kalender.iphone", w1=kalender.webcal(url)),
-                       tk("konnektor.ausgabe.kalender.google", w1=url),
+                       tk("konnektor.ausgabe.kalender.google", w1=kalender.google(url)),
+                       tk("konnektor.ausgabe.kalender.outlook", w1=kalender.outlook(url, tk("kalender.abo_name"))),
+                       tk("konnektor.ausgabe.kalender.url", w1=url),
                        tk("konnektor.kalender.hinweis")]),
             False)
 
@@ -2882,9 +2884,11 @@ class Dienst(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         for k, v in (extra or {}).items():
             self.send_header(k, v)
-        self.send_header("Content-Length", str(len(body)))
+        if code not in (204, 304):
+            self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        if self.command != "HEAD":
+            self.wfile.write(body)
 
     def _marke(self, pfad):
         ordner, (name, art) = (MARKE, MARKE_DATEIEN[pfad]) if pfad in MARKE_DATEIEN else (SCHRIFT, SCHRIFT_DATEIEN[pfad])
@@ -2919,10 +2923,11 @@ class Dienst(BaseHTTPRequestHandler):
         ip = self.client_address[0]
         if ip in ("127.0.0.1", "::1") and self.headers.get("X-Real-IP"):
             ip = self.headers["X-Real-IP"].strip()      # hinter nginx: echte Adresse für die Begrenzung
+        methode = "GET" if self.command == "HEAD" else self.command     # HEAD: Kopf wie bei GET, ohne Inhalt
         if oauth.ist_unsere(self.path):
-            code, kopf, inhalt = oauth.bearbeiten(self.command, self.path, self.headers, body, ip)
+            code, kopf, inhalt = oauth.bearbeiten(methode, self.path, self.headers, body, ip)
         else:
-            code, kopf, inhalt = anmeldung.bearbeiten(self.command, self.path, self.headers, body, ip, reise_kurz)
+            code, kopf, inhalt = anmeldung.bearbeiten(methode, self.path, self.headers, body, ip, reise_kurz)
         self.send_response(code)
         grund = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
                  "Referrer-Policy": "same-origin",   # nicht no-referrer: dann schicken Browser „Origin: null“
@@ -2931,9 +2936,11 @@ class Dienst(BaseHTTPRequestHandler):
         eigene = {k for k, _ in kopf}
         for k, v in [*((k, v) for k, v in grund.items() if k not in eigene), *kopf]:
             self.send_header(k, v)
-        self.send_header("Content-Length", str(len(inhalt)))
+        if code not in (204, 304):
+            self.send_header("Content-Length", str(len(inhalt)))
         self.end_headers()
-        self.wfile.write(inhalt)
+        if self.command != "HEAD":
+            self.wfile.write(inhalt)
 
     def do_GET(self):
         # Readiness für BetterStack ohne geheimen Link: Zugänge lesbar und jede verlinkte Reise veröffentlicht
@@ -2953,6 +2960,27 @@ class Dienst(BaseHTTPRequestHandler):
         self._senden(405, {"fehler": "nur POST"}, {"Allow": "POST"})
 
     do_DELETE = do_GET
+    do_HEAD = do_GET    # Kalender-Apps und Prüfdienste fragen mit HEAD, ob es die Adresse gibt; 501 lässt das Abo scheitern
+
+    def _erlaubt(self):
+        p = self.path.split("?", 1)[0]
+        return "GET, HEAD, OPTIONS" if p.startswith("/kalender/") or p in MARKE_DATEIEN or p in SCHRIFT_DATEIEN \
+            or p == "/gesund" else "GET, HEAD, POST, OPTIONS"
+
+    def do_OPTIONS(self):
+        """Welche Methoden gehen (RFC 9110). Ohne Access-Control-Kopf: Browser anderer Seiten dürfen weiterhin nichts."""
+        self._senden(204, extra={"Allow": self._erlaubt()})
+
+    def _nicht_erlaubt(self):
+        """WebDAV und CalDAV (PROPFIND, REPORT, …) und alles Unbekannte: 405 mit Allow statt 501. Kalender-Apps prüfen
+        so, ob eine Adresse CalDAV spricht, und nehmen bei 405 das einfache Abo (GET)."""
+        self._senden(405, {"fehler": "unbekannt"}, {"Allow": self._erlaubt()})
+
+    def __getattr__(self, name):
+        # BaseHTTPRequestHandler sucht do_<METHODE>; jede Methode ohne eigenen Zweig bekommt 405
+        if name.startswith("do_"):
+            return self._nicht_erlaubt
+        raise AttributeError(name)
 
     def do_POST(self):
         if anmeldung.ist_unsere(self.path) or oauth.ist_unsere(self.path):
