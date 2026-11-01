@@ -97,11 +97,11 @@ echo "the connector stands at the root of $FR_KN_ADRESSE, whose server block inc
 befehle | sed 's/^/  /'
 cat <<TEXT
   cd $FR_WURZEL && FR_WURZEL=$FR_WURZEL frieda/betrieb/deploy.sh <first trip>   (installs the code of the services; the check fails before the start)
-  sudo systemctl enable --now $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben
+  sudo systemctl enable --now $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben $FR_INSTANZ-push
   sudo nginx -t && sudo systemctl reload nginx
   sudo systemctl enable --now $FR_INSTANZ-veroeffentlichen.timer $FR_INSTANZ-waechter.timer
 Check:  curl -s 127.0.0.1:$FR_SB_PORT/gesund  answers {"gesund": true};  journalctl -u $FR_INSTANZ-veroeffentlichen -n 20
-deploy.sh needs for $FR_BENUTZER: sudo -n systemctl restart $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben;
+deploy.sh needs for $FR_BENUTZER: sudo -n systemctl restart $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben $FR_INSTANZ-push;
 freischalten.sh needs: sudo -n nginx -t, systemctl reload nginx, install/test/cat/rm in $SNIPPETS (sudoers, docs/betrieb.md).
 TEXT
 

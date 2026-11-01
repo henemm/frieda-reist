@@ -263,7 +263,7 @@ def test_regeln_pruefen(tmp_path):
     assert any("erinnerung_vorlauf_tage" in f for f in regeln(erinnerung_vorlauf_tage=-1))
     assert any("meldekanal" in f for f in regeln(meldekanal="app"))
     assert any("E-Mail an alle ist noch nicht gebaut" in f for f in regeln(meldekanal=["app", "email"]))
-    assert rg.VORGABEN["meldekanal"] == ["app", "nachricht"] and "waechter" not in rg.NOCH_NICHT_GEBAUT
+    assert rg.VORGABEN["meldekanal"] == ["app", "nachricht", "push"] and regeln(meldekanal=["push"]) == [] and "waechter" not in rg.NOCH_NICHT_GEBAUT
     assert rg.verhalten("fest")["waechter"] and not rg.verhalten("planung")["waechter"]
 
 

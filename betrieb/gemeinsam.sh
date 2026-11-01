@@ -79,8 +79,10 @@ fr_einlesen "$FR_DIENST/betrieb.env"
 : "${FR_SPERREN:=/tmp}"
 case "$FR_MELDEN" in ""|/*) ;; *) FR_MELDEN="$FR_WURZEL/$FR_MELDEN" ;; esac   # relativ zur Wurzel
 export FR_INSTANZ FR_TITEL FR_SEITEN FR_ABLAGE FR_DIENST FR_KONNEKTOR FR_KONTEN FR_RM_PORT FR_KN_PORT FR_SB_PORT FR_SCHREIBKOPIE \
-  FR_ADRESSE FR_KN_ADRESSE FR_PYTHON FR_MELDEN FR_SPERREN FR_UMZUG_NACH
+  FR_ADRESSE FR_KN_ADRESSE FR_PYTHON FR_MELDEN FR_SPERREN FR_UMZUG_NACH FR_NACHZIEHEN_WORKFLOW
 
+# Workflow des Reisen-Repos, den ein Anstoß von der Seite startet (veroeffentlichen.sh, docs/betrieb.md „Anstoß“)
+: "${FR_NACHZIEHEN_WORKFLOW:=software-nachziehen.yml}"
 # Was die Software (engine/) erwartet; ausdrücklich gesetzte Werte gelten weiter
 : "${RM_ABLAGE:=$FR_ABLAGE}"
 : "${KN_SEITEN:=$FR_SEITEN}"

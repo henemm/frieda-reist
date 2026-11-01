@@ -2,7 +2,7 @@
 // Aufruf: node seiten_konto.mjs <playwright-modul> <basis-url> <dienst-url> <sitzung|->
 // Die Seite spricht api/… an; die Anfragen gehen an den echten Dienst, mit dem Sitzungs-Cookie, wenn eins angegeben ist
 // (der Cookie __Host-… verlangt https, deshalb setzt ihn hier die Weiterleitung statt des Browsers).
-// Meldet: Konto-Knopf (Text, Ziel), Namensfeld, Meldung nach dem Senden, Hinweis „Für dich“ (online, ohne Netz aus dem
+// Meldet: Konto-Knopf (Text, Ziel), Zeile Benachrichtigungen im Fuß, Namensfeld, Meldung nach dem Senden, Hinweis „Für dich“ (online, ohne Netz aus dem
 // Speicher, nach „Gelesen“) und Skriptfehler.
 const [, , modul, basis, dienst, sitzung] = process.argv;
 const pw = await import(modul);
@@ -18,6 +18,8 @@ await ctx.route("**/api/**", async r => {
   r.fulfill({response: await r.fetch({url: `${dienst}/${reise}/${pfad}`, headers: kopf})});
 });
 await ctx.addInitScript(() => localStorage.setItem("rh-name", "Hanna"));
+// Chromium ohne Fenster meldet Benachrichtigungen immer als verboten; ein Telefon fragt beim ersten Mal (default)
+await ctx.addInitScript(() => { if (window.Notification) Object.defineProperty(Notification, "permission", {get: () => "default"}); });
 const p = await ctx.newPage();
 p.on("pageerror", e => fehler.push(String(e)));
 await p.goto(basis + "#plan");
@@ -25,6 +27,9 @@ await p.waitForSelector("#konto", {timeout: 5000}).catch(() => {});
 const fuerDich = q => q.evaluate(() => { const h = document.querySelector("#fuerDich"); return {hidden: h.hidden, text: h.textContent}; });
 aus.fuerDich = await fuerDich(p);
 aus.knopf = await p.evaluate(() => { const k = document.querySelector("#konto"); return k ? {text: k.textContent, ziel: k.getAttribute("href")} : null; });
+// Benachrichtigungen (Issue #21): angemeldet bietet der Fuß sie an, sobald der Server einen Schlüssel hat; ohne Konto nicht
+await p.waitForFunction(() => !document.querySelector("#push").hidden, null, {timeout: 3000}).catch(() => {});
+aus.push = await p.evaluate(() => { const f = document.querySelector("#push"); return f.hidden ? null : f.textContent; });
 await p.locator("[data-rm]").first().click();
 await p.waitForSelector("#rmForm");
 aus.nameFeld = await p.evaluate(() => { const n = document.querySelector("#rmName"); return n ? n.type : null; });

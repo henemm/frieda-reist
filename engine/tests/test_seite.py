@@ -411,6 +411,8 @@ def test_anmeldung_auf_der_seite(tmp_path, monkeypatch, browser):
     token, karl = konten.anmelden("karl@beispiel.invalid", code.expand(r"\1\2"))
     konten.sprache_setzen(karl["id"], "de")   # angemeldet folgt die Seite der Sprache des Kontos (#188)
     rm.meldung_anlegen(tmp_path / "ablage" / "beispielreise", ["Karl"], "hinweis", "allgemein", "Treffpunkt ist jetzt 8:40 Uhr.")
+    import push
+    push.schluessel()                          # Push-Dienst eingerichtet: die Seite bietet Benachrichtigungen an
 
     def lauf(sitzung):
         aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_konto.mjs"), str(PLAYWRIGHT),
@@ -427,6 +429,7 @@ def test_anmeldung_auf_der_seite(tmp_path, monkeypatch, browser):
     assert ohne["knopf"]["text"] == "Anmelden" and ohne["knopf"]["ziel"].startswith("/anmelden?zurueck=%2Fbeispielreise%2F")
     assert ohne["nameFeld"] == "text" and any("anmelden" in h for h in ohne["hinweis"])
     assert mit["knopf"] == {"text": "Karl", "ziel": "/konto"}
+    assert ohne["push"] is None and mit["push"] == "Benachrichtigungen auf diesem Gerät einschalten"
     assert mit["nameFeld"] == "hidden" and "Du schreibst als Karl." in mit["hinweis"]
     assert "Danke" in ohne["meldung"] and "Danke" in mit["meldung"]
     # Meldungen an die Person (#21): angemeldet als Hinweis, ohne Netz aus dem Speicher, nach „Gelesen“ weg

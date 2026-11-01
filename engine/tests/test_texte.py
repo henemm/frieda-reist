@@ -91,7 +91,7 @@ def test_vorlage_vergleicht_nie_mit_anzeigetext_und_haelt_einheiten_im_katalog()
 
 
 def test_schluessel_form():
-    muster = re.compile(r"^(?:(?:seite|konnektor|schreiben|dienst|konto|mail|kalender|waechter|inhalt|pruefung)(?:\.[a-z0-9_]+)+|(?:wert|symbol)\.[\wÄÖÜäöüß]+)$")
+    muster = re.compile(r"^(?:(?:seite|konnektor|schreiben|dienst|konto|mail|kalender|waechter|push|inhalt|pruefung)(?:\.[a-z0-9_]+)+|(?:wert|symbol)\.[\wÄÖÜäöüß]+)$")
     for s in texte.sprache("de").TEXTE:
         assert muster.match(s), f"Schlüssel {s} hält die Form nicht ein"
 
@@ -207,7 +207,7 @@ def test_jede_sprache_steht_in_den_modullisten_des_deploys():
 # ---------- Leitplanken: keine deutschen Literale und keine Sprachweichen im Code ----------
 
 PY_DATEIEN = ["konnektor.py", "schreiben.py", "rueckmeldungen.py", "anmeldung.py", "konten.py", "kalender.py", "waechter.py",
-              "routen.py", "bauen.py", "neu.py", "reise.py", "belege.py", "instanz.py", "gpx.py", "oauth.py", "schnittstelle.py", "texte.py"]
+              "routen.py", "bauen.py", "neu.py", "reise.py", "belege.py", "instanz.py", "gpx.py", "oauth.py", "schnittstelle.py", "texte.py", "push.py"]
 ALLE_DATEIEN = ["vorlage.html", "sw.vorlage.js"] + PY_DATEIEN
 
 # Erlaubte Zahl deutscher Literale je Datei. Jedes Paket der Mehrsprachigkeit kürzt seinen Bereich; Einträge dürfen nur
@@ -215,7 +215,7 @@ ALLE_DATEIEN = ["vorlage.html", "sw.vorlage.js"] + PY_DATEIEN
 AUSNAHMEN = {
     "vorlage.html": 2, "konnektor.py": 3, "schreiben.py": 1, "rueckmeldungen.py": 16, "anmeldung.py": 0, "konten.py": 1,
     "kalender.py": 0, "waechter.py": 5, "routen.py": 6, "bauen.py": 11, "neu.py": 19, "reise.py": 4,
-    "belege.py": 0, "instanz.py": 0, "gpx.py": 1, "oauth.py": 3, "sw.vorlage.js": 0, "schnittstelle.py": 7, "texte.py": 0,   # schnittstelle.py: Muster für deutsche Wörter
+    "belege.py": 0, "instanz.py": 0, "gpx.py": 1, "oauth.py": 3, "sw.vorlage.js": 0, "schnittstelle.py": 7, "texte.py": 0, "push.py": 0,   # schnittstelle.py: Muster für deutsche Wörter
 }
 # Treffer von Sprachweichen und festen Locale-Strings (Grep-Test); ebenfalls nur kleiner werdend
 WEICHEN_AUSNAHMEN = {datei: 0 for datei in ALLE_DATEIEN}

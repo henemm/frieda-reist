@@ -150,6 +150,10 @@ def test_offline_im_browser(tmp_path, browser):
     # machte den Test gelegentlich rot, 25.10.2026). Entscheidend ist, dass sonst nichts nachgeladen wird.
     assert set(e["geladenBeimInstallieren"]) == {"/test-abc/sw.js"}, e["geladenBeimInstallieren"]
     assert {x for x in e["geladenBeimUpdate"] if "/api/" not in x} <= {"/test-abc/sw.js", "/test-abc/"}, e["geladenBeimUpdate"]
+    # Manuelles Update im Fuß: Server gefragt, „Jetzt aktualisieren“ übernimmt den neuen Stand
+    assert e["version3"] == "neu2" and "bereit" in e["fussBereit"]
+    if browser == "chromium":
+        assert e["push"] == [{"titel": "Testreise", "text": "Neue Aufgabe für dich", "url": e["basis"] + "#offen", "tag": "frieda-test"}]
     assert e["fehler"] == []
 
 

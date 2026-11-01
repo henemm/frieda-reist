@@ -6,3 +6,4 @@ ruamel.yaml
 CairoSVG
 pyspellchecker==0.9.1
 icalendar
+pywebpush

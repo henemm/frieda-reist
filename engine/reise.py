@@ -43,11 +43,12 @@ VORGABEN = {
     "waechter_frist_tage": 60,           # veränderliche Angaben, deren Prüfdatum älter ist, prüft der Wächter neu
     "erinnerung_vorlauf_tage": 3,        # Aufgabenfristen werden so viele Tage vorher gemeldet
     "waechter_zahlung": False,           # offene Zahlungen gebuchter Buchungen melden (#166; je Reise einschaltbar)
-    "meldekanal": ["app", "nachricht"],  # app: beim Öffnen der Claude-App; nachricht: Sammelnachricht an den Betreiber
+    # app: beim Öffnen der Claude-App; nachricht: Sammelnachricht an den Betreiber; push: aufs Handy (engine/push.py)
+    "meldekanal": ["app", "nachricht", "push"],
     # Paket J (Konten): uebergang = auf der Seite geht auch ein eingetippter Name; noetig = Mitmachen nur angemeldet
     "anmeldung": "uebergang",
 }
-KANAELE = ("app", "nachricht")           # E-Mail an alle gibt es (noch) nicht
+KANAELE = ("app", "nachricht", "push")   # E-Mail an alle gibt es (noch) nicht
 REGEL_WERTE = {"konflikt": ("offene_frage",),
                "einladen": ("organisator", "mitwirkend"), "anmeldung": ("uebergang", "noetig")}
 # Regeln des Einarbeiten-Laufs (bis 29.10.2026, ADR-0001 Paket O-3): der Konnektor schreibt direkt, es gibt keinen Lauf
