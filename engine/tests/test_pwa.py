@@ -191,6 +191,7 @@ def test_umzug_service_worker(tmp_path, monkeypatch):
     assert 'const UMZUG_NACH = "https://aus-umgebung.example";' in (tmp_path / "env/sw.js").read_text(encoding="utf-8")
 
 
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
 def test_reise_stand_im_browser(tmp_path, browser):
     """Epic #223 (#228, #229): Der Fuß nennt Reise-Stand, Zeit der Veröffentlichung in Ortszeit und das Release; ein Tipp auf die
