@@ -189,10 +189,10 @@ def test_aufruf(tmp_path, capsys):
                    "--person", "Ida:organisator", "--person", "Karl:mitwirkend", "--wer", "Ida", "--ziel", "Oberstdorf"])
     assert rc == 0 and "Created: " in capsys.readouterr().out
     r = tmp_path / "ski-2027"
-    assert neu.main(["neu.py", "id", str(r), "O"]) == 0 and capsys.readouterr().out.strip() == "O-01"
-    (tmp_path / "text.md").write_text("Eigene Worte.", encoding="utf-8")
-    assert neu.main(["neu.py", "abschnitt", str(r), "--titel", "Tal", "--text-datei", str(tmp_path / "text.md")]) == 0
-    assert capsys.readouterr().out.strip() == "W-04"
+    for befehl in (["id", str(r), "O"], ["abschnitt", str(r), "--titel", "Tal"], ["reise", str(tmp_path), "--ueberblick", "x"]):
+        with pytest.raises(SystemExit):     # Inhalte entstehen nur im AI-Client über den Konnektor (ADR-0001, #219)
+            neu.main(["neu.py", *befehl])
+    capsys.readouterr()
     assert neu.main(["neu.py", "pruefen", str(r)]) == 0 and "OK: Ski builds without errors." in capsys.readouterr().out
     (r / "reise.json").write_text("{", encoding="utf-8")
     assert neu.main(["neu.py", "pruefen", str(r)]) == 1 and "1 point to fix" in capsys.readouterr().out

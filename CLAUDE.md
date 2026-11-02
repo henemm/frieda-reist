@@ -13,7 +13,7 @@ engine/            bauen.py (Generator), routen.py (Routenmodell), reise.py (rei
                    konten.py, anmeldung.py, oauth.py (Konten und Anmeldung, ADR-0005),
                    vorlage.html, sw.vorlage.js, rueckmeldungen.py (Dienst), belege.py (Belege zu Buchungen), konnektor.py (MCP), schnittstelle.py (englische Namen mit deutschen Aliasen), texte.py und texte_<kürzel>.py (Textkatalog je Sprache), schreiben.py (Schreibweg:
                    der Konnektor schreibt direkt in die Reise), waechter.py (Wächter und Erinnerer, läuft täglich),
-                   neu.py (neue Reise, IDs, arten-ableiten, nachziehen), reisevorlage/, vendor/ (Fremdbibliotheken, siehe THIRD_PARTY.md), tests/
+                   neu.py (Anlegen, IDs, Abschnitte für den Schreibweg; als Befehl nur Struktur: erste Reise, pruefen, arten-ableiten, nachziehen), reisevorlage/, vendor/ (Fremdbibliotheken, siehe THIRD_PARTY.md), tests/
 betrieb/           Betrieb einer Instanz: Schreibweg, Veröffentlichen, Deploy, Freischalten, Zustellen der Links neuer Reisen,
                    Wächter-Lauf, Einrichten, Vorlagen für systemd und nginx, einstellungen.beispiel (keine KI auf dem Server)
 werkzeuge/         Werkzeuge für Inhalte aus dem Netz: Grundkarte, Punkte und Adressen aus OpenStreetMap, Wasserstellen

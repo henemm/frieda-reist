@@ -770,7 +770,7 @@ TEXTE = {
     "inhalt.monat.8": "August",
     "inhalt.monat.9": "September",
     "inhalt.neu.herkunft_gespraech": "conversation in Claude Code",
-    "inhalt.neu.herkunft_gespraech_betreiber": "conversation (operator exception in Claude Code, docs/neue-reise.md)",
+    "inhalt.neu.herkunft_gespraech_betreiber": "first trip of the instance, created by the operator (engine/neu.py reise, docs/neue-reise.md)",
     "inhalt.neu.reise_angelegt": "Trip created ({herkunft})",
     "inhalt.neu.reist_nicht_mit": ", not travelling",
     "inhalt.neu.rolle.gast": "reads along",

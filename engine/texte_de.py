@@ -770,7 +770,7 @@ TEXTE = {
     "inhalt.monat.8": "August",
     "inhalt.monat.9": "September",
     "inhalt.neu.herkunft_gespraech": "Gespräch in Claude Code",
-    "inhalt.neu.herkunft_gespraech_betreiber": "Gespräch (Betreiber-Ausnahme in Claude Code, docs/neue-reise.md)",
+    "inhalt.neu.herkunft_gespraech_betreiber": "erste Reise der Instanz, vom Betreiber angelegt (engine/neu.py reise, docs/neue-reise.md)",
     "inhalt.neu.reise_angelegt": "Reise angelegt ({herkunft})",
     "inhalt.neu.reist_nicht_mit": ", reist nicht mit",
     "inhalt.neu.rolle.gast": "liest mit",
