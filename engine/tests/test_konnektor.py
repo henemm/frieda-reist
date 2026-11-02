@@ -557,9 +557,11 @@ def test_ontologie_organisator_schreibt_direkt(schreibweg):
                    # Abgleich 29.10.2026: Plan, Eckdaten und Ontologie ändern nur Organisator:innen
                    "tag_anlegen", "termin_setzen", "wahlstelle_aendern", "reise_aendern", "plan_anlegen", "plan_aendern",
                    "merkmal_zusammenfuehren", "arten_uebernehmen",
-                   "start_ende_setzen"}   # Issue #142
+                   "start_ende_setzen",   # Issue #142
+                   "symbol_setzen"}   # Issue #252
         assert (set(kn.ONTOLOGIE_WERKZEUGE) - nur_org <= namen) is da, token
         assert ("start_ende_setzen" in namen) is (token == ALT_ORGANISATOR), token
+        assert ("symbol_setzen" in namen) is (token == ALT_ORGANISATOR), token
     anleitung = rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
     assert N("Arten und Merkmale (art_definieren, merkmal_definieren") in anleitung and "schreibt es sofort in die Reise" in anleitung
     t, f = werkzeug(basis, ALT_ORGANISATOR, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt", grund="Hütten am Weg")
@@ -1221,3 +1223,44 @@ def test_ontologie_text_im_rueckfall_englisch(monkeypatch):
     t = kn.ontologie_text("kategorie_definieren", {"kategorie": "aussicht", "bezeichnung": "Viewpoint", "farbe": "blau", "symbol": "bahn", "stufe": "pflicht"})
     assert "colour: blue" in t and "symbol: train" in t and "label: Viewpoint" in t and "level: needed (required)" in t, t
     assert "farbe" not in t and "bezeichnung" not in t and "blau" not in t
+
+
+def test_symbol_lesen_und_setzen(schreibweg):
+    """icon_set (Issue #252): ohne Bild das aktuelle Symbol als SVG-Text und Vorschau, mit Bild über den Schreibweg; nur Organisator:innen."""
+    import base64
+    basis, _ = schreibweg
+    r = rpc(basis, ALT_ORGANISATOR, "tools/call", {"name": "icon_set", "arguments": {}})
+    assert not r["isError"] and len(r["content"]) == 2
+    text, bild = r["content"][0]["text"], r["content"][1]
+    assert meldet(text, "konnektor.symbol.svg") and "<svg" in text and "Sandsteinfelsen" in text   # Symbol der Beispielreise
+    assert bild["type"] == "image" and bild["mimeType"] == "image/png" and base64.b64decode(bild["data"]).startswith(b"\x89PNG")
+    assert Schreibweg.anfragen == []
+    for args in ({}, {"svg": "<svg/>"}):
+        t, f = werkzeug(basis, KARL, "symbol_setzen", **args)
+        assert f and "nur Organisator:innen" in t
+    assert Schreibweg.anfragen == []
+    svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#1f7a57"/></svg>'
+    Schreibweg.antwort = (200, {"ok": True, "text": "Das App-Symbol der Reise ist ersetzt (medien/icon.svg)."})
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "icon_set", svg=svg, reason="Entwurf aus der App")
+    assert not f, t
+    pfad, _, body = Schreibweg.anfragen[-1]
+    assert pfad == "/beispielreise/symbol_setzen" and body["args"] == {"svg": svg, "grund": "Entwurf aus der App"}
+    werkzeug(basis, ALT_ORGANISATOR, "icon_set", remove=True)
+    assert Schreibweg.anfragen[-1][2]["args"] == {"entfernen": True}
+    liste = rpc(basis, ALT_ORGANISATOR, "tools/list")["tools"]
+    w = next(x for x in liste if x["name"] == "symbol_setzen")
+    assert {"svg", "png_base64", "remove", "reason"} <= set(w["inputSchema"]["properties"])   # englisch nach außen
+
+
+def test_symbol_lesen_ohne_eigenes_symbol(schreibweg, tmp_path, monkeypatch):
+    basis, _ = schreibweg
+    seite = tmp_path / "s" / "beispielreise"
+    import shutil
+    shutil.copytree(Path(kn.os.environ["KN_SEITEN"]) / "beispielreise", seite)
+    (seite / "symbol.svg").unlink()
+    monkeypatch.setenv("KN_SEITEN", str(tmp_path / "s"))
+    r = rpc(basis, ALT_ORGANISATOR, "tools/call", {"name": "icon_set", "arguments": {}})
+    assert meldet(r["content"][0]["text"], "konnektor.symbol.kurzname") and r["content"][1]["type"] == "image"
+    (seite / "icon-192.png").unlink()
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "icon_set")
+    assert f and meldet(t, "konnektor.symbol.keine_seite")

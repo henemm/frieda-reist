@@ -65,6 +65,7 @@ NAMEN = {
     "start_end_set": "start_ende_setzen",
     "trip_status_set": "reise_status_setzen",
     "setting_set": "einstellung_setzen",
+    "icon_set": "symbol_setzen",
     "my_trips": "meine_reisen",
     "trip_create": "reise_anlegen",
     "trip_create_request": "reisen_anlegen_anfragen",

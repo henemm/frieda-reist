@@ -70,7 +70,7 @@ AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "k
             "tag_anlegen": "plan", "termin_setzen": "plan", "wahlstelle_aendern": "plan", "option_aendern": "alternative",
             "wissen_aendern": "wissen", "lesetext_schreiben": "wissen", "reise_aendern": "einstellung", "plan_anlegen": "plan",
             "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch",
-            "start_ende_setzen": "einstellung"}   # reise.AKTIONEN
+            "start_ende_setzen": "einstellung", "symbol_setzen": "einstellung"}   # reise.AKTIONEN
 HINWEISE_HOECHSTENS = 10   # neue Warnungen des Probebaus in der Antwort (Issue #142)
 S = texte.satz   # Satz des Katalogs, in jeder Sprache lesbar (Bestätigungen, ADR-0006)
 verbinden = texte.Satz.verbinden
@@ -2006,6 +2006,73 @@ def einstellung_setzen(reise_dir, wer, args, heute=None):
         S("schreiben.antwort.einstellungen.kopf") + verbinden(geaendert, "; ") + "." + (S("schreiben.antwort.grund", w1=grund) if grund else "")
 
 
+def symbol_setzen(reise_dir, wer, args, heute=None):
+    """App-Symbol der Reise (Issue #252): ein SVG als Text (svg) oder ein PNG als Base64 (png_base64, quadratisch, mindestens
+    512 Pixel) wird medien/icon.svg oder medien/icon.png, das andere fällt weg; entfernen nimmt das eigene Symbol heraus, dann
+    zeichnet der Generator wieder den Kurznamen. Nur Organisator:innen (Aktion einstellung). -> (Titel, Text)."""
+    import base64
+    import binascii
+    import io
+    import bauen
+    svg = args.get("svg")
+    png = args.get("png_base64")
+    entfernen = bool_wert(args, "entfernen")
+    gewaehlt = [x for x in (isinstance(svg, str) and svg.strip(), isinstance(png, str) and png.strip(), entfernen) if x]
+    if len(gewaehlt) != 1:
+        raise Ablehnung("schreiben.symbol.eines")
+    medien = Path(reise_dir) / "medien"
+    vorher = bauen.symbol_motiv(reise_dir)
+    grund = text_wert(args, "grund")
+    zusatz = S("schreiben.antwort.grund", w1=grund) if grund else ""
+    if entfernen:
+        if not vorher:
+            raise Ablehnung("schreiben.symbol.keines")
+        for n in bauen.SYMBOL_DATEIEN:
+            (medien / n).unlink(missing_ok=True)
+        return S("schreiben.titel.symbol_entfernt"), S("schreiben.antwort.symbol.entfernt") + zusatz
+    if isinstance(svg, str) and svg.strip():
+        inhalt = svg.strip().encode("utf-8")
+        name = "icon.svg"
+        if len(inhalt) > bauen.SYMBOL_MAX:
+            raise Ablehnung("schreiben.symbol.zu_gross", kb=bauen.SYMBOL_MAX // 1024)
+        if (fehler := bauen.svg_pruefen(svg.strip())):
+            raise Ablehnung(fehler)
+        try:
+            bauen.icon_aus_svg(inhalt, 64)     # zur Probe rechnen: was CairoSVG nicht zeichnen kann, kommt nicht in die Reise
+        except Exception:   # noqa: BLE001 – CairoSVG wirft je nach Fehler verschiedene Ausnahmen
+            raise Ablehnung("schreiben.symbol.svg_kaputt")
+        inhalt += b"\n"
+    else:
+        try:
+            inhalt = base64.b64decode(re.sub(r"\s+", "", png.strip().split(",", 1)[-1] if png.strip().startswith("data:") else png.strip()),
+                                      validate=True)
+        except (binascii.Error, ValueError):
+            raise Ablehnung("schreiben.symbol.png_base64")
+        name = "icon.png"
+        if len(inhalt) > bauen.SYMBOL_MAX:
+            raise Ablehnung("schreiben.symbol.zu_gross", kb=bauen.SYMBOL_MAX // 1024)
+        from PIL import Image, UnidentifiedImageError
+        try:
+            with Image.open(io.BytesIO(inhalt)) as im:
+                art, (b, h) = im.format, im.size
+                im.load()
+        except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
+            raise Ablehnung("schreiben.symbol.png_kaputt")
+        if art != "PNG":
+            raise Ablehnung("schreiben.symbol.png_kaputt")
+        if b != h:
+            raise Ablehnung("schreiben.symbol.png_quadrat", b=b, h=h)
+        if b < bauen.SYMBOL_PNG_MIN:
+            raise Ablehnung("schreiben.symbol.png_klein", b=b, min=bauen.SYMBOL_PNG_MIN)
+    medien.mkdir(parents=True, exist_ok=True)
+    (medien / name).write_bytes(inhalt)
+    for n in bauen.SYMBOL_DATEIEN:
+        if n != name:
+            (medien / n).unlink(missing_ok=True)
+    return (S("schreiben.titel.symbol_" + ("ersetzt" if vorher else "gesetzt"), w1=name),
+            S("schreiben.antwort.symbol." + ("ersetzt" if vorher else "gesetzt"), w1=name) + zusatz)
+
+
 def reise_anlegen(reisen_dir, wer, args, heute=None):
     """Neue Reise aus einer geprüften Anfrage der Claude-App (Konnektor reise_anlegen, daten.neue_reise) -> (Titel, Text, Ordner).
     Läuft auf Ebene des Repos, nicht einer Reise."""
@@ -3130,7 +3197,7 @@ WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_def
              "option_aendern": option_aendern, "wissen_aendern": wissen_aendern, "lesetext_schreiben": lesetext_schreiben,
              "reise_aendern": reise_aendern, "plan_anlegen": plan_anlegen, "plan_aendern": plan_aendern,
              "merkmal_zusammenfuehren": merkmal_zusammenfuehren, "arten_uebernehmen": arten_uebernehmen, "wunsch_vorschlagen": wunsch_vorschlagen,
-             "start_ende_setzen": start_ende_setzen}
+             "start_ende_setzen": start_ende_setzen, "symbol_setzen": symbol_setzen}
 REPO_WERKZEUGE = {"reise_anlegen": reise_anlegen}   # arbeiten auf reisen/, nicht in einer Reise
 
 

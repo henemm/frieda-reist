@@ -84,7 +84,7 @@ ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "kategorie_defini
                        # Abgleich 29.10.2026 (Paket 3): die Tür für alle Grundformen
                        "tag_anlegen", "termin_setzen", "wahlstelle_aendern", "option_aendern", "wissen_aendern", "lesetext_schreiben",
                        "reise_aendern", "plan_anlegen", "plan_aendern", "merkmal_zusammenfuehren", "arten_uebernehmen", "wunsch_vorschlagen",
-                       "start_ende_setzen")
+                       "start_ende_setzen", "symbol_setzen")
 # Aktion der Regelprüfung je Werkzeug; art_definieren und merkmal_definieren gehen für Mitwirkende als Rückmeldung (Vorschlag)
 ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "kategorie_definieren": "ontologie", "wert_eintragen": "wert",
                     "ding_anlegen": "ding", "ding_aendern": "ding", "lage_eintragen": "ding", "option_anlegen": "alternative",
@@ -94,7 +94,7 @@ ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontolo
                     "tag_anlegen": "plan", "termin_setzen": "plan", "wahlstelle_aendern": "plan", "option_aendern": "alternative",
                     "wissen_aendern": "wissen", "lesetext_schreiben": "wissen", "reise_aendern": "einstellung", "plan_anlegen": "plan",
                     "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch",
-                    "start_ende_setzen": "einstellung"}
+                    "start_ende_setzen": "einstellung", "symbol_setzen": "einstellung"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe", "beleg_anlegen": "buchung",
                   "entscheiden": "entscheiden", "rueckmeldung_erledigen": "rueckmeldung_erledigen",
@@ -395,6 +395,36 @@ def symbole(reise):
         liste.append({"src": "data:image/png;base64," + base64.b64encode(roh).decode("ascii"),
                       "mimeType": "image/png", "sizes": [f"{g}x{g}"]})
     return liste
+
+
+class MitBild:
+    """Antwort eines Werkzeugs mit Bildern (MCP-Inhalt „image“): text wie sonst, bilder als [(mimeType, Base64)]."""
+
+    def __init__(self, text, bilder):
+        self.text, self.bilder = text, bilder
+
+
+def inhalt(t):
+    """Antwort eines Werkzeugs -> content für tools/call: der Text (mit dem Satz zum Reise-Stand), dazu Bilder."""
+    bilder = t.bilder if isinstance(t, MitBild) else []
+    return [{"type": "text", "text": mit_stand(t.text if isinstance(t, MitBild) else t)}] + \
+        [{"type": "image", "data": b, "mimeType": m} for m, b in bilder]
+
+
+def symbol_lesen(reise):
+    """icon_set ohne Bild (Issue #252): das App-Symbol der veröffentlichten Seite. Den SVG-Text, wenn die Reise ein eigenes SVG
+    hat (symbol.svg, vom Generator neben die Seite gelegt), und icon-192.png als Vorschau. -> (Text oder MitBild, ist_fehler)"""
+    ordner = seiten() / reise
+    try:
+        vorschau = base64.b64encode((ordner / "icon-192.png").read_bytes()).decode("ascii")
+    except OSError:
+        return tk("konnektor.symbol.keine_seite"), True
+    bild = [("image/png", vorschau)]
+    if (ordner / "symbol.svg").is_file():
+        return MitBild(tk("konnektor.symbol.svg") + "\n\n" + (ordner / "symbol.svg").read_text(encoding="utf-8").strip(), bild), False
+    if (ordner / "symbol.png").is_file():
+        return MitBild(tk("konnektor.symbol.png"), bild), False
+    return MitBild(tk("konnektor.symbol.kurzname"), bild), False
 
 
 # ---------- Zeiten mit Zeitzone (#227) ----------
@@ -2246,7 +2276,7 @@ def frieda_antwort(zugang, nid, methode, p, ok):
         name_i, args_i = aufruf_intern(frieda_werkzeuge(k), p.get("name"), p.get("arguments"))
         _gesichert.wert = None
         t, fehler = frieda_werkzeug(k, name_i, args_i)
-        return ok({"content": [{"type": "text", "text": mit_stand(t)}], "isError": fehler})
+        return ok({"content": inhalt(t), "isError": fehler})
     return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 
@@ -2281,7 +2311,7 @@ def konto_antwort(konto, nid, methode, p, ok):
             t, fehler = reise_anlegen(konto, {**args, "sprache": args.get("sprache") or sprache_des_zugangs(konto)})
         else:
             t, fehler = tk("konnektor.ausgabe.werkzeug.1", name=name), True
-        return ok({"content": [{"type": "text", "text": mit_stand(t)}], "isError": fehler})
+        return ok({"content": inhalt(t), "isError": fehler})
     return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 
@@ -2564,6 +2594,12 @@ EINSTELLUNG_SETZEN = {"name": "einstellung_setzen", "description": "@konnektor.w
                           "regeln": {"type": "object", "additionalProperties": True},
                           "sprache": {"type": "string", "enum": list(texte.SPRACHEN), "description": "@konnektor.werkzeug.einstellung_setzen.sprache"},
                           "grund": {"type": "string"}, "vorname": NAME_FELD}}}
+SYMBOL_SETZEN = {"name": "symbol_setzen", "description": "@konnektor.werkzeug.symbol_setzen",
+                 "inputSchema": {"type": "object", "properties": {
+                     "svg": {"type": "string", "description": "@konnektor.werkzeug.symbol_setzen.svg"},
+                     "png_base64": {"type": "string", "description": "@konnektor.werkzeug.symbol_setzen.png_base64"},
+                     "entfernen": {"type": "boolean", "description": "@konnektor.werkzeug.symbol_setzen.entfernen"},
+                     "grund": {"type": "string"}, "vorname": NAME_FELD}}}
 BUCHUNG_FELDER_SCHEMA = {
     "status": {"type": "string", "enum": ["angefragt", "gebucht", "storniert"], "description": "@konnektor.feld.buchung_felder_schema.status"},
     "nummer": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.nummer"},
@@ -2822,6 +2858,8 @@ def werkzeug(zugang, name, args):
     status, bausteine = zustand_von(d)
     if name in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[name] not in bausteine:
         return tk("konnektor.werkzeug.2", w1=LESE_BAUSTEIN[name]), True
+    if name == "symbol_setzen" and not any(args.get(k) for k in ("svg", "png_base64", "entfernen")):
+        return (nein, True) if (nein := recht(wer["rolle"], d, ONTOLOGIE_AKTION[name])) else symbol_lesen(reise)
     if name in ONTOLOGIE_WERKZEUGE:
         return ontologie_werkzeug(reise, d, wer, zugang, name, args)
     aktion = SCHREIB_AKTION.get(name)
@@ -2988,7 +3026,7 @@ def antwort_auf(zugang, nachricht):
         name_i, args_i = aufruf_intern(werkzeuge_fuer(zugang), p.get("name"), p.get("arguments"))
         _gesichert.wert = None
         t, fehler = werkzeug(zugang, name_i, args_i)
-        return ok({"content": [{"type": "text", "text": mit_stand(t)}], "isError": fehler})
+        return ok({"content": inhalt(t), "isError": fehler})
     return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 
@@ -3003,7 +3041,7 @@ def werkzeuge_fuer(zugang):
                  FRAGE_ANLEGEN, TAG_AENDERN, WISSEN_SCHREIBEN, FRAGE_SCHLIESSEN, REISE_STATUS_SETZEN, EINSTELLUNG_SETZEN,
                  BUCHUNG_ANLEGEN, BUCHUNG_AENDERN, TAG_ANLEGEN, TERMIN_SETZEN, WAHLSTELLE_AENDERN, OPTION_AENDERN, WISSEN_AENDERN,
                  LESETEXT_SCHREIBEN, REISE_AENDERN, START_ENDE_SETZEN, PLAN_ANLEGEN, PLAN_AENDERN, MERKMAL_ZUSAMMENFUEHREN, ARTEN_UEBERNEHMEN,
-                 WUNSCH_VORSCHLAGEN] if schreibdienst() else []
+                 WUNSCH_VORSCHLAGEN, SYMBOL_SETZEN] if schreibdienst() else []
     for w in WERKZEUGE + [ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN, RUECKMELDUNG_ERLEDIGEN, BELEG_ANLEGEN] + ontologie:
         n = w["name"]
         if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:
