@@ -53,6 +53,10 @@ FR_ADRESSE=https://reisen.example.org
 # Workflow „Software nachziehen“ im Reisen-Repo (.github/workflows/), den Organisator:innen von der Seite aus anstoßen
 # („Veröffentlichen anstoßen“ im Fuß); gestartet mit gh workflow run als Dienstbenutzer. (software-nachziehen.yml)
 #FR_NACHZIEHEN_WORKFLOW=software-nachziehen.yml
+# Diesen Workflow startet das Veröffentlichen auch selbst, sobald main der Software einen anderen Stand hat als das
+# Submodul, einmal je Stand. Für denselben Stand startet es erst nach so vielen Stunden wieder (ein Lauf, der nie startete
+# oder vorübergehend scheiterte). (6)
+#FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN=6
 
 # Veröffentlichen rot (Tests der Software rot oder Bau einer Reise gescheitert): nach so vielen Minuten Rot geht einmal je
 # Rot-Phase ein Alarm an den Betreiber (FR_MELDEN), bei roten Reisen dazu eine Meldung an deren Organisator:innen. (30)

@@ -27,6 +27,10 @@
 # Liegt <FR_ABLAGE>/_anstoss.json, startet der Lauf den Workflow „Software nachziehen“ des Reisen-Repos (gh workflow run
 # FR_NACHZIEHEN_WORKFLOW) und schreibt das Ergebnis nach _anstoss-ergebnis.json; die Seite zeigt es. Der Workflow zieht das
 # Submodul nach, und ein späterer Lauf veröffentlicht den neuen Stand wie sonst auch.
+# Anstoß vom Server (#250): Hat main der Software (git ls-remote, URL aus .gitmodules) einen anderen Stand als das
+# eingebundene Submodul, startet der Lauf denselben Workflow, einmal je Stand; Stand und Zeit stehen danach in
+# <FR_DIENST>/nachziehen-angestossen („SHA Epoche“, nur nach Erfolg von gh). Für denselben Stand startet er erst nach
+# FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN wieder. Fehler dabei sind Warnungen, das Veröffentlichen läuft weiter.
 # Reise-Stand (Epic #223, engine/stand.py): Je Reise schreibt der Lauf ihren Zustand nach <FR_DIENST>/reise-stand/<reise>.lauf.json
 # (baut, veroeffentlicht mit Dauer seit dem Sichern, fehlgeschlagen mit Grund); api/stand und publish_status lesen ihn.
 # Zeitziel 2 Minuten vom Sichern bis zur Veröffentlichung (#230): Ein reiner Inhaltsstand (seit dem zuletzt veröffentlichten
@@ -37,7 +41,7 @@
 # <FR_DIENST>/veroeffentlichen-nochmal; der laufende startet danach gleich noch einmal, statt bis zum Timer zu warten.
 # Für Tests überschreibbar: VF_PRUEFEN, VF_STAND, VF_DEPLOY, VF_FREISCHALTEN, VF_AUSSTEHEND, VF_SPERRE, VF_STEMPEL, VF_HEARTBEAT,
 # VF_ROT (Rot-Datei), VF_JETZT (Uhr, Sekunden seit 1970), VF_ROTMELDEN (statt engine/waechter.py rot-melden),
-# VF_NACHZIEHEN (Befehl statt gh workflow run).
+# VF_NACHZIEHEN (Befehl statt gh workflow run), VF_LSREMOTE (Befehl statt git ls-remote).
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
 nur_bauordner
@@ -231,6 +235,40 @@ anstoss_weitergeben() {  # Anstoß der Seite: Workflow „Software nachziehen“
   rm -f "$datei"
 }
 
+software_anstossen() {  # neuer Stand auf main der Software: Workflow „Software nachziehen“ starten, einmal je Stand (#250)
+  # Gelesen wird der Stand von origin/main (gerade geholt), nicht HEAD: So zählt auch ein Submodul, das erst mit diesem
+  # Lauf in den Bauordner kommt. Ohne Submodul frieda/ geschieht nichts.
+  local url eingebunden fern merk="$FR_DIENST/nachziehen-angestossen" m_stand="" m_zeit="" t
+  url="$(git config --blob origin/main:.gitmodules submodule.frieda.url 2>/dev/null)" || return 0
+  eingebunden="$(git rev-parse -q --verify origin/main:frieda 2>/dev/null)" || return 0
+  [ -n "$url" ] && [ -n "$eingebunden" ] || return 0
+  if [ -n "${VF_LSREMOTE:-}" ]; then fern="$("$VF_LSREMOTE" "$url" refs/heads/main 2>/dev/null)" || fern=""
+  else fern="$(timeout 30 git ls-remote "$url" refs/heads/main 2>/dev/null)" || fern=""; fi
+  fern="$(printf '%s\n' "$fern" | awk '$2 == "refs/heads/main" {print $1; exit}')"
+  if [ -z "$fern" ]; then
+    echo "Warning: state of main of the software unknown (git ls-remote failed), no request to update the software."
+    return 0
+  fi
+  [ "$fern" != "$eingebunden" ] || return 0
+  [ -f "$merk" ] && { read -r m_stand m_zeit < "$merk" || true; }
+  t="$(jetzt)"
+  local stunden="$FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN"
+  [[ "$stunden" =~ ^[0-9]+$ ]] || stunden=6
+  if [ "$m_stand" = "$fern" ] && [[ "$m_zeit" =~ ^[0-9]+$ ]] && [ $(( 10#$t - 10#$m_zeit )) -lt $(( 10#$stunden * 3600 )) ]; then
+    return 0
+  fi
+  local ok=true
+  if [ -n "${VF_NACHZIEHEN:-}" ]; then "$VF_NACHZIEHEN" > /dev/null 2>&1 || ok=false
+  else timeout 60 gh workflow run "$FR_NACHZIEHEN_WORKFLOW" --ref main > /dev/null 2>&1 || ok=false; fi
+  if [ "$ok" != true ]; then
+    echo "Warning: new software state on main, workflow $FR_NACHZIEHEN_WORKFLOW could not be started (gh signed in, permission actions: write?). The next run tries again."
+    return 0
+  fi
+  echo "New software state on main (${fern:0:7}, included ${eingebunden:0:7}): workflow $FR_NACHZIEHEN_WORKFLOW started."
+  mkdir -p "$FR_DIENST"
+  echo "$fern $t" > "$merk.tmp" && mv "$merk.tmp" "$merk"
+}
+
 abhaengigkeiten() {  # Umgebung der Prüfungen wie in CI (#202): Bibliotheken und Playwright in festen Versionen aus dem Repo.
   # Sonst fehlte nach einem Software-Stand mit neuer Bibliothek nur dem Server etwas, und die Prüfungen blieben rot,
   # bis jemand von Hand installiert (rot 1.11.2026 wegen pyspellchecker). Installiert wird nur, wenn sich eine Liste
@@ -303,6 +341,7 @@ main() {
 
   mkdir -p "$FR_DIENST"   # Zustand des Veröffentlichens (Stand, Rot-Datei, Merker der Warnung, Stempel)
   git fetch -q origin main
+  software_anstossen || true
   neu="$(git rev-parse origin/main)"
   alt="$(cat "$stand" 2>/dev/null || true)"
   if [ -z "$immer" ] && [ "$neu" = "$alt" ]; then zustellen; rm -f "$rot_datei"; erfolg_melden; return 0; fi

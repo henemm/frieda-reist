@@ -502,6 +502,69 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
             if schreiben:   # in der Form der Datei (json.dumps mit Einrückung 2), damit nur die neue Zeile im Diff steht
                 cfg_pfad.write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         meldungen += eckdaten_nachziehen(reise_dir, cfg, schreiben)
+    meldungen += reste_nachziehen(reise_dir, schreiben)
+    return meldungen
+
+
+VORLAGE_VOR_217 = Path(__file__).resolve().parent / "altformen" / "vorlage-vor-217"   # <sprache>/CLAUDE.md, kontext/herkunft.md
+
+
+def _zeilen_normal(text):
+    """CRLF zu LF, Leerzeilen am Ende entfernt -> Liste der Zeilen."""
+    zeilen = text.replace("\r\n", "\n").split("\n")
+    while zeilen and not zeilen[-1].strip():
+        zeilen.pop()
+    return zeilen
+
+
+def ist_vorlagen_kopie(text, muster):
+    """True, wenn text nur die ausgefüllte frühere Vorlage muster ist: gleiche Zeilenzahl, jede Zeile passt vollständig zur
+    Zeile des Musters, ein Platzhalter $wort steht für beliebigen Text. Eine leere Datei passt nie."""
+    zeilen, vorlage = _zeilen_normal(text), _zeilen_normal(muster)
+    if not zeilen or len(zeilen) != len(vorlage):
+        return False
+    for z, m in zip(zeilen, vorlage):
+        teile = re.split(r"\$[A-Za-z_]+", m)
+        if not re.fullmatch(".*".join(re.escape(t) for t in teile), z):
+            return False
+    return True
+
+
+def reste_nachziehen(reise_dir, schreiben=True):
+    """Reste der früheren Vorlage (#250): CLAUDE.md und kontext/herkunft.md gehen, wenn sie nur ausgefüllte Kopien der Vorlage
+    (engine/altformen/vorlage-vor-217/<sprache>/) sind; ein dadurch leeres kontext/ geht mit. Eigene Dateien bleiben ohne
+    Meldung, die Software liest sie nicht. Der Kopfkommentar der reise.yaml mit wörtlichem \\n (#218) bekommt echte
+    Zeilenumbrüche. -> Meldungen."""
+    reise_dir = Path(reise_dir)
+    sprache = sprache_von(reise_dir)
+    meldungen = []
+    for rel in ("CLAUDE.md", "kontext/herkunft.md"):
+        pfad = reise_dir / rel
+        if not pfad.is_file():
+            continue
+        text = pfad.read_text(encoding="utf-8", errors="replace")
+        muster = [m.read_text(encoding="utf-8") for m in sorted(VORLAGE_VOR_217.glob(f"*/{rel}"))]
+        if not any(ist_vorlagen_kopie(text, m) for m in muster):
+            continue
+        meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.rest", datei=rel))
+        if schreiben:
+            pfad.unlink()
+            ordner = pfad.parent
+            if ordner != reise_dir and not any(ordner.iterdir()):
+                ordner.rmdir()
+    y = reise_dir / "reise.yaml"
+    if y.is_file():
+        text = y.read_text(encoding="utf-8")
+        zeilen = text.split("\n")
+        i = 0
+        while i < len(zeilen) and zeilen[i].startswith("#"):
+            zeilen[i] = re.sub(r"\\n(?=#)", "\n", zeilen[i])
+            i += 1
+        neu_text = "\n".join(zeilen)
+        if neu_text != text:
+            meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.kopfkommentar"))
+            if schreiben:
+                y.write_text(neu_text, encoding="utf-8")
     return meldungen
 
 
@@ -555,9 +618,6 @@ def eckdaten_nachziehen(reise_dir, cfg, schreiben=True):
         if roh["untertitel"] == kopie:
             del roh["untertitel"]
             meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.untertitel"))
-    for alt in ("CLAUDE.md", "kontext/herkunft.md"):
-        if (reise_dir / alt).exists():
-            meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.rest", datei=alt))
     if schreiben:
         while behalten and not behalten[0].strip():
             behalten.pop(0)

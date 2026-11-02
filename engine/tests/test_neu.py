@@ -79,9 +79,9 @@ def test_eckdaten_folgen_reise_yaml(tmp_path):
     d = bauen.bauen(r, tmp_path / "dist")
     assert d["reise"]["untertitel"] == "Kleinwalsertal, 1.–5. März 2027"
     w01 = d["abschnitte"][0]["intro"]
-    assert "Zeitraum: 1.–5. März 2027" in w01 and "Ziel: Kleinwalsertal" in w01 and "Status: planung" in w01
+    assert "Zeitraum: 1.–5. März 2027" in w01 and "Ziel: Kleinwalsertal" in w01 and "Status: Planung" in w01
     assert "Ben (bringt ein)" in w01 and "Idee" not in w01
-    assert w01.index("Status: planung") < w01.index("Anreise mit dem Zug ist gesetzt.")
+    assert w01.index("Status: Planung") < w01.index("Anreise mit dem Zug ist gesetzt.")
     schreiben.reise_aendern(r, wer, {"untertitel": "Skiwoche mit Freunden", "grund": "eigener Untertitel"}, heute=heute)
     assert bauen.bauen(r, tmp_path / "dist")["reise"]["untertitel"] == "Skiwoche mit Freunden"
     schreiben.reise_aendern(r, wer, {"untertitel": "", "ziel": "", "grund": "zurück"}, heute=heute)
@@ -403,7 +403,8 @@ def test_nachziehen_eckdaten_einer_reise_von_vor_217(tmp_path):
     assert bauen.bauen(r, tmp_path / "dist")["reise"]["untertitel"] == "Oberstdorf, 6.–13. Februar 2027"
 
     m = neu.nachziehen(r, schreiben=False)
-    assert any("W-01" in x for x in m) and any("Oberstdorf" in x for x in m) and any(x.startswith("OFFEN CLAUDE.md") for x in m)
+    assert any("W-01" in x for x in m) and any("Oberstdorf" in x for x in m)
+    assert not any(x.startswith(("OFFEN", "OPEN")) for x in m)    # eigene CLAUDE.md: kein Rest, nichts offen (#250)
     assert "Zeitraum" in (r / "plan/plan.md").read_text(encoding="utf-8")         # Probelauf schreibt nichts
 
     neu.nachziehen(r)
@@ -416,4 +417,5 @@ def test_nachziehen_eckdaten_einer_reise_von_vor_217(tmp_path):
     assert d["reise"]["untertitel"] == "Oberstdorf, 6.–13. Februar 2027"
     w01 = d["abschnitte"][0]["intro"]
     assert w01.count("Zeitraum:") == 1 and "Skipass für alle" in w01
+    assert (r / "CLAUDE.md").read_text(encoding="utf-8") == "# Skiurlaub im Tal\n"  # eigene Datei bleibt (#250)
     assert neu.nachziehen(r) == []                                                # ein zweiter Lauf ändert nichts

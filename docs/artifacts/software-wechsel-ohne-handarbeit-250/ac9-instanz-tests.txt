@@ -1,0 +1,18 @@
+AC-9 (#250): Tests des Reisen-Repos der Instanz (python -m pytest -q tests), 2.11.2026
+Reisen-Repo: main von GitHub (36a257c), Software als Submodul ausgetauscht.
+
+eingebundener Stand (7430aec), ohne #250:   18 passed
+Basis des Branches (74a2d29), ohne #250:     18 passed
+Branch software-wechsel-250 (1f34de0) + Umsetzung #250:  18 passed
+
+Neu rot durch #250: keine.
+Hinweis: Ein erster Lauf gegen eine veraltete lokale Kopie des Reisen-Repos (6eaf354) zeigte
+tests/test_reisen.py::test_orte_dossiers rot (KeyError 'plan_reiter'); auf dem aktuellen Stand von GitHub grün.
+
+Nachprüfung in der Validierung (2.11.2026), nach dem Rebase auf main 71bb277:
+Reisen-Repo frisch von GitHub geklont, Software per git archive (ohne Submodul-Verknüpfung) eingesetzt.
+main (71bb277), ohne #250:          17 passed, 1 failed
+Branch (d06e594), mit #250:         17 passed, 1 failed
+Rot in beiden Läufen derselbe Test: test_betrieb_instanz.py::test_einstellungen_wie_auf_dem_server
+(Wurzel der Instanz unbekannt, weil die Software im Prüfaufbau kein echtes Submodul ist; Aufbau, nicht #250).
+Neu rot durch #250: keine.

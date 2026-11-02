@@ -1,0 +1,2690 @@
+........................................................................ [  7%]
+...................................FFFFF................................ [ 14%]
+........................................................................ [ 21%]
+........................................................................ [ 29%]
+........................................................................ [ 36%]
+.............................................................F.......... [ 43%]
+........................................................................ [ 50%]
+........................................................................ [ 58%]
+........................................................................ [ 65%]
+........................................................................ [ 72%]
+........................................................................ [ 80%]
+.................FFFFF.FFFFFFFFFFFF..................................... [ 87%]
+...................................................................FF.FF [ 94%]
+FFFFFF...FF...........................................                   [100%]
+=================================== FAILURES ===================================
+_________________ test_anstoss_einmal_je_neuem_software_stand __________________
+
+an = {'lauf': <function vf.<locals>.lauf at 0x760979130ae0>, 'deploys': <function vf.<locals>.deploys at 0x760979130e00>, '...f.<locals>.anzahl_pings at 0x760979130360>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x760979131c60>, ...}
+
+    def test_anstoss_einmal_je_neuem_software_stand(an):
+        r = an["lauf_an"](T0)
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert an["starts"]() == 0 and an["merk"]() is None                 # eingebunden == main der Software: nichts
+        assert an["deploys"]() == ["beispielreise", "zweitreise"]
+>       assert str(an["sw"]) in an["zeilen"]("lsremote.log")[0]           # URL aus .gitmodules
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: list index out of range
+
+engine/tests/test_betrieb.py:392: IndexError
+____________________ test_anstoss_wartezeit_ist_einstellbar ____________________
+
+an = {'lauf': <function vf.<locals>.lauf at 0x760978e4f240>, 'deploys': <function vf.<locals>.deploys at 0x760978e4f380>, '...f.<locals>.anzahl_pings at 0x760978e4f420>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x760978e4f2e0>, ...}
+
+    def test_anstoss_wartezeit_ist_einstellbar(an):
+        an["remote"]("b" * 40)
+        an["lauf_an"](T0, FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN="1")
+>       assert an["starts"]() == 1
+E       assert 0 == 1
+E        +  where 0 = <function an.<locals>.starts at 0x760978e4fb00>()
+
+engine/tests/test_betrieb.py:413: AssertionError
+__ test_anstoss_merkdatei_nur_nach_erfolg_und_veroeffentlichen_laeuft_weiter ___
+
+an = {'lauf': <function vf.<locals>.lauf at 0x760978e4fe20>, 'deploys': <function vf.<locals>.deploys at 0x760978e4fce0>, '...f.<locals>.anzahl_pings at 0x760978e4fec0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x760978e4fd80>, ...}
+
+    def test_anstoss_merkdatei_nur_nach_erfolg_und_veroeffentlichen_laeuft_weiter(an):
+        an["remote"]("b" * 40)
+        (an["tmp"] / "gh-kaputt").touch()
+        r = an["lauf_an"](T0)
+        assert r.returncode == 0, r.stdout + r.stderr
+>       assert an["starts"]() == 1 and an["merk"]() is None
+E       assert (0 == 1)
+E        +  where 0 = <function an.<locals>.starts at 0x760978e6c540>()
+
+engine/tests/test_betrieb.py:425: AssertionError
+_______________ test_anstoss_ls_remote_rot_ist_nur_eine_warnung ________________
+
+an = {'lauf': <function vf.<locals>.lauf at 0x760978e6c9a0>, 'deploys': <function vf.<locals>.deploys at 0x760978e6cae0>, '...f.<locals>.anzahl_pings at 0x760978e6cb80>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x760978e6ca40>, ...}
+
+    def test_anstoss_ls_remote_rot_ist_nur_eine_warnung(an):
+        (an["tmp"] / "lsremote-kaputt").touch()
+        r = an["lauf_an"](T0)
+        assert r.returncode == 0, r.stdout + r.stderr
+>       assert an["zeilen"]("lsremote.log") and an["starts"]() == 0 and an["merk"]() is None
+E       AssertionError: assert ([])
+E        +  where [] = <function vf.<locals>.zeilen at 0x760978e6cd60>('lsremote.log')
+
+engine/tests/test_betrieb.py:437: AssertionError
+_____________________ test_wartezeit_vorgabe_sechs_stunden _____________________
+
+tmp_path = PosixPath('<tmp>/pytest-8080/test_wartezeit_vorgabe_sechs_s0')
+
+    def test_wartezeit_vorgabe_sechs_stunden(tmp_path):
+        r = subprocess.run(["bash", "-c", f'. "{BETRIEB}/gemeinsam.sh"; echo "$FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN"'],
+                           capture_output=True, text=True, env={**SAUBER, "FR_WURZEL": str(tmp_path)})
+>       assert r.stdout.strip() == "6"
+E       AssertionError: assert '' == '6'
+E         
+E         - 6
+
+engine/tests/test_betrieb.py:445: AssertionError
+_______________ test_nachziehen_eckdaten_einer_reise_von_vor_217 _______________
+
+tmp_path = PosixPath('<tmp>/pytest-8080/test_nachziehen_eckdaten_einer0')
+
+    def test_nachziehen_eckdaten_einer_reise_von_vor_217(tmp_path):
+        """Eine Reise aus der alten Vorlage (Eckdaten als Text in plan.md, Untertitel als Kopie, CLAUDE.md) kommt mit
+        neu.py nachziehen auf den neuen Stand: Text weg, Ziel in reise.yaml, Untertitel entsteht beim Bau, eigene Zeilen
+        bleiben, keine ID ändert sich (erfundene Testdaten)."""
+        r = anlegen(tmp_path)
+        cfg = json.loads((r / "reise.json").read_text(encoding="utf-8"))
+        del cfg["eckdaten"]
+        (r / "reise.json").write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        ry = (r / "reise.yaml").read_text(encoding="utf-8").replace("ziel: Oberstdorf\n", "untertitel: Oberstdorf, 6.–13. Februar 2027\n")
+        (r / "reise.yaml").write_text(ry, encoding="utf-8")
+        (r / "plan/plan.md").write_text(
+            "# Skiurlaub im Tal – Plan\n\n## Eckdaten\n\n- Zeitraum: 6.–13. Februar 2027\n- Ziel: Oberstdorf\n"
+            "- Wer: Ida (organisiert), Karl (bringt ein), Mo (liest mit, reist nicht mit)\n"
+            "- Die Reise ist eine Idee. Einen Plan mit Tagen, Wegen und Unterkünften gibt es ab der Planung.\n"
+            "- Skipass für alle über die Unterkunft.\n", encoding="utf-8")
+        (r / "CLAUDE.md").write_text("# Skiurlaub im Tal\n", encoding="utf-8")
+        assert bauen.bauen(r, tmp_path / "dist")["reise"]["untertitel"] == "Oberstdorf, 6.–13. Februar 2027"
+    
+        m = neu.nachziehen(r, schreiben=False)
+        assert any("W-01" in x for x in m) and any("Oberstdorf" in x for x in m)
+>       assert not any(x.startswith(("OFFEN", "OPEN")) for x in m)    # eigene CLAUDE.md: kein Rest, nichts offen (#250)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       assert not True
+E        +  where True = any(<generator object test_nachziehen_eckdaten_einer_reise_von_vor_217.<locals>.<genexpr> at 0x760977c068e0>)
+
+engine/tests/test_neu.py:407: AssertionError
+__________________________ test_python_in_jedem_lauf ___________________________
+
+    def test_python_in_jedem_lauf():  # AC-1, AC-2: umgestellt wird auch ohne neuen Software-Stand
+        python = next(s for s in schritte() if str(s.get("uses", "")).startswith("actions/setup-python"))
+        pakete = schritt("Python-Pakete")
+>       assert "if" not in python and "if" not in pakete
+E       assert ('if' not in {'uses': 'actions/setup-python@v5', 'if': "steps.stand.outputs.neu_da == 'ja'", 'with': {'python-version': '3.12', 'cache': 'pip', 'cache-dependency-path': 'frieda/engine/requirements.txt'}})
+
+engine/tests/test_software_nachziehen.py:102: AssertionError
+__________________ test_vorlage_ruft_das_skript_mit_dem_stand __________________
+
+    def test_vorlage_ruft_das_skript_mit_dem_stand():  # AC-1
+>       s = aufruf_schritt()
+            ^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def aufruf_schritt():
+        treffer = [s for s in schritte() if "frieda/betrieb/software-nachziehen.sh" in s.get("run", "")]
+>       assert len(treffer) == 1, "genau ein Schritt ruft das Skript"
+E       AssertionError: genau ein Schritt ruft das Skript
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_software_nachziehen.py:53: AssertionError
+________________ test_vorlage_skript_fehlt_lauf_rot_mit_hinweis ________________
+
+tmp_path = PosixPath('<tmp>/pytest-8080/test_vorlage_skript_fehlt_lauf0')
+
+    def test_vorlage_skript_fehlt_lauf_rot_mit_hinweis(tmp_path):  # AC-1
+        """Ist das Submodul älter als #250, fehlt das Skript: Der Lauf endet rot mit einem Hinweis im Protokoll."""
+        (tmp_path / "frieda" / "betrieb").mkdir(parents=True)
+>       r = subprocess.run(["bash", "-e", "-c", aufruf_schritt()["run"]], cwd=tmp_path, capture_output=True, text=True,
+                                                ^^^^^^^^^^^^^^^^
+                           env={**SAUBER, "ALT": "a" * 40, "NEU": "b" * 40, "NEU_DA": "ja"})
+
+engine/tests/test_software_nachziehen.py:123: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def aufruf_schritt():
+        treffer = [s for s in schritte() if "frieda/betrieb/software-nachziehen.sh" in s.get("run", "")]
+>       assert len(treffer) == 1, "genau ein Schritt ruft das Skript"
+E       AssertionError: genau ein Schritt ruft das Skript
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_software_nachziehen.py:53: AssertionError
+__________________________ test_nichts_einer_instanz ___________________________
+
+    def test_nichts_einer_instanz():  # #161 AC-4, auch für das Skript
+        for datei in (VORLAGE, SKRIPT):
+>           text = datei.read_text(encoding="utf-8")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:131: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('<repo>/betrieb/software-nachziehen.sh')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '<repo>/betrieb/software-nachziehen.sh'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+___________________________ test_skript_erzwingt_nie ___________________________
+
+    def test_skript_erzwingt_nie():  # AC-4
+>       text = SKRIPT.read_text(encoding="utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('<repo>/betrieb/software-nachziehen.sh')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '<repo>/betrieb/software-nachziehen.sh'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+______________________ test_doku_ablauf_anstoss_und_regel ______________________
+
+    def test_doku_ablauf_anstoss_und_regel():  # AC-8
+        doku = BETRIEB_MD.read_text(encoding="utf-8")
+>       assert "betrieb/software-nachziehen.sh" in doku and "neu.py nachziehen" in doku
+E       AssertionError: assert ('betrieb/software-nachziehen.sh' in '# Betrieb einer Instanz\n\nWie Frieda auf einem eigenen Server läuft: Seiten ausliefern, Rückmeldungen annehmen, was ...dungen`, dann `rueckmeldung_erledigen`); `python3 engine/rueckmeldungen.py liste <reise>` zeigt sie auf dem Server |\n')
+
+engine/tests/test_software_nachziehen.py:160: AssertionError
+_______ test_neuer_stand_ein_commit_mit_submodul_und_umgestellten_reisen _______
+
+sn = {'lauf': <function sn.<locals>.lauf at 0x760975d6b2e0>, 'kopf': <function sn.<locals>.kopf at 0x760975d6bba0>, 'schreiben': <function sn.<locals>.schreiben at 0x760975d691c0>, 'tor': <function sn.<locals>.tor at 0x760975d6af20>, ...}
+
+    def test_neuer_stand_ein_commit_mit_submodul_und_umgestellten_reisen(sn):  # AC-2
+        sn["reste"](sn["ski"])
+        vorher = sn["kopf"]()
+>       r, _ = sn["lauf"]("ja")
+               ^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:391: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_software_nachziehen.py:337: in lauf
+    r = subprocess.run([str(klon / "frieda" / "betrieb" / "software-nachziehen.sh")], cwd=klon, env=env,
+/usr/lib/python3.12/subprocess.py:548: in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: 255 args: ['<tmp>/pytest-8080/test_neuer_st...>
+args = ['<tmp>/pytest-8080/test_neuer_stand_ein_commit_mi0/lauf1/frieda/betrieb/software-nachziehen.sh']
+executable = b'<tmp>/pytest-8080/test_neuer_stand_ein_commit_mi0/lauf1/frieda/betrieb/software-nachziehen.sh'
+preexec_fn = None, close_fds = True, pass_fds = ()
+cwd = PosixPath('<tmp>/pytest-8080/test_neuer_stand_ein_commit_mi0/lauf1')
+env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wY:p1', ...}
+startupinfo = None, creationflags = 0, shell = False, p2cread = -1
+p2cwrite = -1, c2pread = 11, c2pwrite = 12, errread = 13, errwrite = 14
+restore_signals = True, gid = None, gids = None, uid = None, umask = -1
+start_new_session = False, process_group = -1
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds,
+                       pass_fds, cwd, env,
+                       startupinfo, creationflags, shell,
+                       p2cread, p2cwrite,
+                       c2pread, c2pwrite,
+                       errread, errwrite,
+                       restore_signals,
+                       gid, gids, uid, umask,
+                       start_new_session, process_group):
+        """Execute program (POSIX version)"""
+    
+        if isinstance(args, (str, bytes)):
+            args = [args]
+        elif isinstance(args, os.PathLike):
+            if shell:
+                raise TypeError('path-like args is not allowed when '
+                                'shell is true')
+            args = [args]
+        else:
+            args = list(args)
+    
+        if shell:
+            # On Android the default shell is at '/system/bin/sh'.
+            unix_shell = ('/system/bin/sh' if
+                      hasattr(sys, 'getandroidapilevel') else '/bin/sh')
+            args = [unix_shell, "-c"] + args
+            if executable:
+                args[0] = executable
+    
+        if executable is None:
+            executable = args[0]
+    
+        sys.audit("subprocess.Popen", executable, args, cwd, env)
+    
+        if (_USE_POSIX_SPAWN
+                and os.path.dirname(executable)
+                and preexec_fn is None
+                and not close_fds
+                and not pass_fds
+                and cwd is None
+                and (p2cread == -1 or p2cread > 2)
+                and (c2pwrite == -1 or c2pwrite > 2)
+                and (errwrite == -1 or errwrite > 2)
+                and not start_new_session
+                and process_group == -1
+                and gid is None
+                and gids is None
+                and uid is None
+                and umask < 0):
+            self._posix_spawn(args, executable, env, restore_signals,
+                              p2cread, p2cwrite,
+                              c2pread, c2pwrite,
+                              errread, errwrite)
+            return
+    
+        orig_executable = executable
+    
+        # For transferring possible exec failure from child to parent.
+        # Data format: "exception name:hex errno:description"
+        # Pickle is not used; it is complex and involves memory allocation.
+        errpipe_read, errpipe_write = os.pipe()
+        # errpipe_write must not be in the standard io 0, 1, or 2 fd range.
+        low_fds_to_close = []
+        while errpipe_write < 3:
+            low_fds_to_close.append(errpipe_write)
+            errpipe_write = os.dup(errpipe_write)
+        for low_fd in low_fds_to_close:
+            os.close(low_fd)
+        try:
+            try:
+                # We must avoid complex work that could involve
+                # malloc or free in the child process to avoid
+                # potential deadlocks, thus we do all this here.
+                # and pass it to fork_exec()
+    
+                if env is not None:
+                    env_list = []
+                    for k, v in env.items():
+                        k = os.fsencode(k)
+                        if b'=' in k:
+                            raise ValueError("illegal environment variable name")
+                        env_list.append(k + b'=' + os.fsencode(v))
+                else:
+                    env_list = None  # Use execv instead of execve.
+                executable = os.fsencode(executable)
+                if os.path.dirname(executable):
+                    executable_list = (executable,)
+                else:
+                    # This matches the behavior of os._execvpe().
+                    executable_list = tuple(
+                        os.path.join(os.fsencode(dir), executable)
+                        for dir in os.get_exec_path(env))
+                fds_to_keep = set(pass_fds)
+                fds_to_keep.add(errpipe_write)
+                self.pid = _fork_exec(
+                        args, executable_list,
+                        close_fds, tuple(sorted(map(int, fds_to_keep))),
+                        cwd, env_list,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+                        errread, errwrite,
+                        errpipe_read, errpipe_write,
+                        restore_signals, start_new_session,
+                        process_group, gid, gids, uid, umask,
+                        preexec_fn, _USE_VFORK)
+                self._child_created = True
+            finally:
+                # be sure the FD is closed no matter what
+                os.close(errpipe_write)
+    
+            self._close_pipe_fds(p2cread, p2cwrite,
+                                 c2pread, c2pwrite,
+                                 errread, errwrite)
+    
+            # Wait for exec to fail or succeed; possibly raising an
+            # exception (limited in size)
+            errpipe_data = bytearray()
+            while True:
+                part = os.read(errpipe_read, 50000)
+                errpipe_data += part
+                if not part or len(errpipe_data) > 50000:
+                    break
+        finally:
+            # be sure the FD is closed no matter what
+            os.close(errpipe_read)
+    
+        if errpipe_data:
+            try:
+                pid, sts = os.waitpid(self.pid, 0)
+                if pid == self.pid:
+                    self._handle_exitstatus(sts)
+                else:
+                    self.returncode = sys.maxsize
+            except ChildProcessError:
+                pass
+    
+            try:
+                exception_name, hex_errno, err_msg = (
+                        errpipe_data.split(b':', 2))
+                # The encoding here should match the encoding
+                # written in by the subprocess implementations
+                # like _posixsubprocess
+                err_msg = err_msg.decode()
+            except ValueError:
+                exception_name = b'SubprocessError'
+                hex_errno = b'0'
+                err_msg = 'Bad exception data from child: {!r}'.format(
+                              bytes(errpipe_data))
+            child_exception_type = getattr(
+                    builtins, exception_name.decode('ascii'),
+                    SubprocessError)
+            if issubclass(child_exception_type, OSError) and hex_errno:
+                errno_num = int(hex_errno, 16)
+                if err_msg == "noexec:chdir":
+                    err_msg = ""
+                    # The error must be from chdir(cwd).
+                    err_filename = cwd
+                elif err_msg == "noexec":
+                    err_msg = ""
+                    err_filename = None
+                else:
+                    err_filename = orig_executable
+                if errno_num != 0:
+                    err_msg = os.strerror(errno_num)
+                if err_filename is not None:
+>                   raise child_exception_type(errno_num, err_msg, err_filename)
+E                   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-8080/test_neuer_stand_ein_commit_mi0/lauf1/frieda/betrieb/software-nachziehen.sh'
+
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
+________________ test_ohne_neuen_stand_werden_reisen_umgestellt ________________
+
+sn = {'lauf': <function sn.<locals>.lauf at 0x760975dc1120>, 'kopf': <function sn.<locals>.kopf at 0x760975dc1e40>, 'schreiben': <function sn.<locals>.schreiben at 0x760975dc00e0>, 'tor': <function sn.<locals>.tor at 0x760975dc1ee0>, ...}
+
+    def test_ohne_neuen_stand_werden_reisen_umgestellt(sn):  # AC-2
+        sn["reste"](sn["wanderung"])
+        vorher = sn["kopf"]()
+>       r, _ = sn["lauf"]("nein")
+               ^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:416: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_software_nachziehen.py:337: in lauf
+    r = subprocess.run([str(klon / "frieda" / "betrieb" / "software-nachziehen.sh")], cwd=klon, env=env,
+/usr/lib/python3.12/subprocess.py:548: in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: 255 args: ['<tmp>/pytest-8080/test_ohne_neu...>
+args = ['<tmp>/pytest-8080/test_ohne_neuen_stand_werden_r0/lauf1/frieda/betrieb/software-nachziehen.sh']
+executable = b'<tmp>/pytest-8080/test_ohne_neuen_stand_werden_r0/lauf1/frieda/betrieb/software-nachziehen.sh'
+preexec_fn = None, close_fds = True, pass_fds = ()
+cwd = PosixPath('<tmp>/pytest-8080/test_ohne_neuen_stand_werden_r0/lauf1')
+env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wY:p1', ...}
+startupinfo = None, creationflags = 0, shell = False, p2cread = -1
+p2cwrite = -1, c2pread = 11, c2pwrite = 12, errread = 13, errwrite = 14
+restore_signals = True, gid = None, gids = None, uid = None, umask = -1
+start_new_session = False, process_group = -1
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds,
+                       pass_fds, cwd, env,
+                       startupinfo, creationflags, shell,
+                       p2cread, p2cwrite,
+                       c2pread, c2pwrite,
+                       errread, errwrite,
+                       restore_signals,
+                       gid, gids, uid, umask,
+                       start_new_session, process_group):
+        """Execute program (POSIX version)"""
+    
+        if isinstance(args, (str, bytes)):
+            args = [args]
+        elif isinstance(args, os.PathLike):
+            if shell:
+                raise TypeError('path-like args is not allowed when '
+                                'shell is true')
+            args = [args]
+        else:
+            args = list(args)
+    
+        if shell:
+            # On Android the default shell is at '/system/bin/sh'.
+            unix_shell = ('/system/bin/sh' if
+                      hasattr(sys, 'getandroidapilevel') else '/bin/sh')
+            args = [unix_shell, "-c"] + args
+            if executable:
+                args[0] = executable
+    
+        if executable is None:
+            executable = args[0]
+    
+        sys.audit("subprocess.Popen", executable, args, cwd, env)
+    
+        if (_USE_POSIX_SPAWN
+                and os.path.dirname(executable)
+                and preexec_fn is None
+                and not close_fds
+                and not pass_fds
+                and cwd is None
+                and (p2cread == -1 or p2cread > 2)
+                and (c2pwrite == -1 or c2pwrite > 2)
+                and (errwrite == -1 or errwrite > 2)
+                and not start_new_session
+                and process_group == -1
+                and gid is None
+                and gids is None
+                and uid is None
+                and umask < 0):
+            self._posix_spawn(args, executable, env, restore_signals,
+                              p2cread, p2cwrite,
+                              c2pread, c2pwrite,
+                              errread, errwrite)
+            return
+    
+        orig_executable = executable
+    
+        # For transferring possible exec failure from child to parent.
+        # Data format: "exception name:hex errno:description"
+        # Pickle is not used; it is complex and involves memory allocation.
+        errpipe_read, errpipe_write = os.pipe()
+        # errpipe_write must not be in the standard io 0, 1, or 2 fd range.
+        low_fds_to_close = []
+        while errpipe_write < 3:
+            low_fds_to_close.append(errpipe_write)
+            errpipe_write = os.dup(errpipe_write)
+        for low_fd in low_fds_to_close:
+            os.close(low_fd)
+        try:
+            try:
+                # We must avoid complex work that could involve
+                # malloc or free in the child process to avoid
+                # potential deadlocks, thus we do all this here.
+                # and pass it to fork_exec()
+    
+                if env is not None:
+                    env_list = []
+                    for k, v in env.items():
+                        k = os.fsencode(k)
+                        if b'=' in k:
+                            raise ValueError("illegal environment variable name")
+                        env_list.append(k + b'=' + os.fsencode(v))
+                else:
+                    env_list = None  # Use execv instead of execve.
+                executable = os.fsencode(executable)
+                if os.path.dirname(executable):
+                    executable_list = (executable,)
+                else:
+                    # This matches the behavior of os._execvpe().
+                    executable_list = tuple(
+                        os.path.join(os.fsencode(dir), executable)
+                        for dir in os.get_exec_path(env))
+                fds_to_keep = set(pass_fds)
+                fds_to_keep.add(errpipe_write)
+                self.pid = _fork_exec(
+                        args, executable_list,
+                        close_fds, tuple(sorted(map(int, fds_to_keep))),
+                        cwd, env_list,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+                        errread, errwrite,
+                        errpipe_read, errpipe_write,
+                        restore_signals, start_new_session,
+                        process_group, gid, gids, uid, umask,
+                        preexec_fn, _USE_VFORK)
+                self._child_created = True
+            finally:
+                # be sure the FD is closed no matter what
+                os.close(errpipe_write)
+    
+            self._close_pipe_fds(p2cread, p2cwrite,
+                                 c2pread, c2pwrite,
+                                 errread, errwrite)
+    
+            # Wait for exec to fail or succeed; possibly raising an
+            # exception (limited in size)
+            errpipe_data = bytearray()
+            while True:
+                part = os.read(errpipe_read, 50000)
+                errpipe_data += part
+                if not part or len(errpipe_data) > 50000:
+                    break
+        finally:
+            # be sure the FD is closed no matter what
+            os.close(errpipe_read)
+    
+        if errpipe_data:
+            try:
+                pid, sts = os.waitpid(self.pid, 0)
+                if pid == self.pid:
+                    self._handle_exitstatus(sts)
+                else:
+                    self.returncode = sys.maxsize
+            except ChildProcessError:
+                pass
+    
+            try:
+                exception_name, hex_errno, err_msg = (
+                        errpipe_data.split(b':', 2))
+                # The encoding here should match the encoding
+                # written in by the subprocess implementations
+                # like _posixsubprocess
+                err_msg = err_msg.decode()
+            except ValueError:
+                exception_name = b'SubprocessError'
+                hex_errno = b'0'
+                err_msg = 'Bad exception data from child: {!r}'.format(
+                              bytes(errpipe_data))
+            child_exception_type = getattr(
+                    builtins, exception_name.decode('ascii'),
+                    SubprocessError)
+            if issubclass(child_exception_type, OSError) and hex_errno:
+                errno_num = int(hex_errno, 16)
+                if err_msg == "noexec:chdir":
+                    err_msg = ""
+                    # The error must be from chdir(cwd).
+                    err_filename = cwd
+                elif err_msg == "noexec":
+                    err_msg = ""
+                    err_filename = None
+                else:
+                    err_filename = orig_executable
+                if errno_num != 0:
+                    err_msg = os.strerror(errno_num)
+                if err_filename is not None:
+>                   raise child_exception_type(errno_num, err_msg, err_filename)
+E                   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-8080/test_ohne_neuen_stand_werden_r0/lauf1/frieda/betrieb/software-nachziehen.sh'
+
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
+_______________________ test_ohne_aenderung_kein_commit ________________________
+
+sn = {'lauf': <function sn.<locals>.lauf at 0x760975dc18a0>, 'kopf': <function sn.<locals>.kopf at 0x760975dc2a20>, 'schreiben': <function sn.<locals>.schreiben at 0x760975dc2980>, 'tor': <function sn.<locals>.tor at 0x760975dc2b60>, ...}
+
+    def test_ohne_aenderung_kein_commit(sn):  # AC-2
+        vorher = sn["kopf"]()
+>       r, _ = sn["lauf"]("nein")
+               ^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:431: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_software_nachziehen.py:337: in lauf
+    r = subprocess.run([str(klon / "frieda" / "betrieb" / "software-nachziehen.sh")], cwd=klon, env=env,
+/usr/lib/python3.12/subprocess.py:548: in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: 255 args: ['<tmp>/pytest-8080/test_ohne_aen...>
+args = ['<tmp>/pytest-8080/test_ohne_aenderung_kein_commi0/lauf1/frieda/betrieb/software-nachziehen.sh']
+executable = b'<tmp>/pytest-8080/test_ohne_aenderung_kein_commi0/lauf1/frieda/betrieb/software-nachziehen.sh'
+preexec_fn = None, close_fds = True, pass_fds = ()
+cwd = PosixPath('<tmp>/pytest-8080/test_ohne_aenderung_kein_commi0/lauf1')
+env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wY:p1', ...}
+startupinfo = None, creationflags = 0, shell = False, p2cread = -1
+p2cwrite = -1, c2pread = 11, c2pwrite = 12, errread = 13, errwrite = 14
+restore_signals = True, gid = None, gids = None, uid = None, umask = -1
+start_new_session = False, process_group = -1
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds,
+                       pass_fds, cwd, env,
+                       startupinfo, creationflags, shell,
+                       p2cread, p2cwrite,
+                       c2pread, c2pwrite,
+                       errread, errwrite,
+                       restore_signals,
+                       gid, gids, uid, umask,
+                       start_new_session, process_group):
+        """Execute program (POSIX version)"""
+    
+        if isinstance(args, (str, bytes)):
+            args = [args]
+        elif isinstance(args, os.PathLike):
+            if shell:
+                raise TypeError('path-like args is not allowed when '
+                                'shell is true')
+            args = [args]
+        else:
+            args = list(args)
+    
+        if shell:
+            # On Android the default shell is at '/system/bin/sh'.
+            unix_shell = ('/system/bin/sh' if
+                      hasattr(sys, 'getandroidapilevel') else '/bin/sh')
+            args = [unix_shell, "-c"] + args
+            if executable:
+                args[0] = executable
+    
+        if executable is None:
+            executable = args[0]
+    
+        sys.audit("subprocess.Popen", executable, args, cwd, env)
+    
+        if (_USE_POSIX_SPAWN
+                and os.path.dirname(executable)
+                and preexec_fn is None
+                and not close_fds
+                and not pass_fds
+                and cwd is None
+                and (p2cread == -1 or p2cread > 2)
+                and (c2pwrite == -1 or c2pwrite > 2)
+                and (errwrite == -1 or errwrite > 2)
+                and not start_new_session
+                and process_group == -1
+                and gid is None
+                and gids is None
+                and uid is None
+                and umask < 0):
+            self._posix_spawn(args, executable, env, restore_signals,
+                              p2cread, p2cwrite,
+                              c2pread, c2pwrite,
+                              errread, errwrite)
+            return
+    
+        orig_executable = executable
+    
+        # For transferring possible exec failure from child to parent.
+        # Data format: "exception name:hex errno:description"
+        # Pickle is not used; it is complex and involves memory allocation.
+        errpipe_read, errpipe_write = os.pipe()
+        # errpipe_write must not be in the standard io 0, 1, or 2 fd range.
+        low_fds_to_close = []
+        while errpipe_write < 3:
+            low_fds_to_close.append(errpipe_write)
+            errpipe_write = os.dup(errpipe_write)
+        for low_fd in low_fds_to_close:
+            os.close(low_fd)
+        try:
+            try:
+                # We must avoid complex work that could involve
+                # malloc or free in the child process to avoid
+                # potential deadlocks, thus we do all this here.
+                # and pass it to fork_exec()
+    
+                if env is not None:
+                    env_list = []
+                    for k, v in env.items():
+                        k = os.fsencode(k)
+                        if b'=' in k:
+                            raise ValueError("illegal environment variable name")
+                        env_list.append(k + b'=' + os.fsencode(v))
+                else:
+                    env_list = None  # Use execv instead of execve.
+                executable = os.fsencode(executable)
+                if os.path.dirname(executable):
+                    executable_list = (executable,)
+                else:
+                    # This matches the behavior of os._execvpe().
+                    executable_list = tuple(
+                        os.path.join(os.fsencode(dir), executable)
+                        for dir in os.get_exec_path(env))
+                fds_to_keep = set(pass_fds)
+                fds_to_keep.add(errpipe_write)
+                self.pid = _fork_exec(
+                        args, executable_list,
+                        close_fds, tuple(sorted(map(int, fds_to_keep))),
+                        cwd, env_list,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+                        errread, errwrite,
+                        errpipe_read, errpipe_write,
+                        restore_signals, start_new_session,
+                        process_group, gid, gids, uid, umask,
+                        preexec_fn, _USE_VFORK)
+                self._child_created = True
+            finally:
+                # be sure the FD is closed no matter what
+                os.close(errpipe_write)
+    
+            self._close_pipe_fds(p2cread, p2cwrite,
+                                 c2pread, c2pwrite,
+                                 errread, errwrite)
+    
+            # Wait for exec to fail or succeed; possibly raising an
+            # exception (limited in size)
+            errpipe_data = bytearray()
+            while True:
+                part = os.read(errpipe_read, 50000)
+                errpipe_data += part
+                if not part or len(errpipe_data) > 50000:
+                    break
+        finally:
+            # be sure the FD is closed no matter what
+            os.close(errpipe_read)
+    
+        if errpipe_data:
+            try:
+                pid, sts = os.waitpid(self.pid, 0)
+                if pid == self.pid:
+                    self._handle_exitstatus(sts)
+                else:
+                    self.returncode = sys.maxsize
+            except ChildProcessError:
+                pass
+    
+            try:
+                exception_name, hex_errno, err_msg = (
+                        errpipe_data.split(b':', 2))
+                # The encoding here should match the encoding
+                # written in by the subprocess implementations
+                # like _posixsubprocess
+                err_msg = err_msg.decode()
+            except ValueError:
+                exception_name = b'SubprocessError'
+                hex_errno = b'0'
+                err_msg = 'Bad exception data from child: {!r}'.format(
+                              bytes(errpipe_data))
+            child_exception_type = getattr(
+                    builtins, exception_name.decode('ascii'),
+                    SubprocessError)
+            if issubclass(child_exception_type, OSError) and hex_errno:
+                errno_num = int(hex_errno, 16)
+                if err_msg == "noexec:chdir":
+                    err_msg = ""
+                    # The error must be from chdir(cwd).
+                    err_filename = cwd
+                elif err_msg == "noexec":
+                    err_msg = ""
+                    err_filename = None
+                else:
+                    err_filename = orig_executable
+                if errno_num != 0:
+                    err_msg = os.strerror(errno_num)
+                if err_filename is not None:
+>                   raise child_exception_type(errno_num, err_msg, err_filename)
+E                   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-8080/test_ohne_aenderung_kein_commi0/lauf1/frieda/betrieb/software-nachziehen.sh'
+
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
+_______________________ test_rote_reisetests_warnen_nur ________________________
+
+sn = {'lauf': <function sn.<locals>.lauf at 0x760975d6b9c0>, 'kopf': <function sn.<locals>.kopf at 0x7609740684a0>, 'schreiben': <function sn.<locals>.schreiben at 0x760975dc02c0>, 'tor': <function sn.<locals>.tor at 0x760975dc1a80>, ...}
+
+    def test_rote_reisetests_warnen_nur(sn):  # AC-3
+        (sn["tmp"] / "rot-inhalt").touch()
+        vorher = sn["kopf"]()
+>       r, _ = sn["lauf"]("ja")
+               ^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:439: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_software_nachziehen.py:337: in lauf
+    r = subprocess.run([str(klon / "frieda" / "betrieb" / "software-nachziehen.sh")], cwd=klon, env=env,
+/usr/lib/python3.12/subprocess.py:548: in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: 255 args: ['<tmp>/pytest-8080/test_rote_rei...>
+args = ['<tmp>/pytest-8080/test_rote_reisetests_warnen_nu0/lauf1/frieda/betrieb/software-nachziehen.sh']
+executable = b'<tmp>/pytest-8080/test_rote_reisetests_warnen_nu0/lauf1/frieda/betrieb/software-nachziehen.sh'
+preexec_fn = None, close_fds = True, pass_fds = ()
+cwd = PosixPath('<tmp>/pytest-8080/test_rote_reisetests_warnen_nu0/lauf1')
+env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wY:p1', ...}
+startupinfo = None, creationflags = 0, shell = False, p2cread = -1
+p2cwrite = -1, c2pread = 11, c2pwrite = 12, errread = 13, errwrite = 14
+restore_signals = True, gid = None, gids = None, uid = None, umask = -1
+start_new_session = False, process_group = -1
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds,
+                       pass_fds, cwd, env,
+                       startupinfo, creationflags, shell,
+                       p2cread, p2cwrite,
+                       c2pread, c2pwrite,
+                       errread, errwrite,
+                       restore_signals,
+                       gid, gids, uid, umask,
+                       start_new_session, process_group):
+        """Execute program (POSIX version)"""
+    
+        if isinstance(args, (str, bytes)):
+            args = [args]
+        elif isinstance(args, os.PathLike):
+            if shell:
+                raise TypeError('path-like args is not allowed when '
+                                'shell is true')
+            args = [args]
+        else:
+            args = list(args)
+    
+        if shell:
+            # On Android the default shell is at '/system/bin/sh'.
+            unix_shell = ('/system/bin/sh' if
+                      hasattr(sys, 'getandroidapilevel') else '/bin/sh')
+            args = [unix_shell, "-c"] + args
+            if executable:
+                args[0] = executable
+    
+        if executable is None:
+            executable = args[0]
+    
+        sys.audit("subprocess.Popen", executable, args, cwd, env)
+    
+        if (_USE_POSIX_SPAWN
+                and os.path.dirname(executable)
+                and preexec_fn is None
+                and not close_fds
+                and not pass_fds
+                and cwd is None
+                and (p2cread == -1 or p2cread > 2)
+                and (c2pwrite == -1 or c2pwrite > 2)
+                and (errwrite == -1 or errwrite > 2)
+                and not start_new_session
+                and process_group == -1
+                and gid is None
+                and gids is None
+                and uid is None
+                and umask < 0):
+            self._posix_spawn(args, executable, env, restore_signals,
+                              p2cread, p2cwrite,
+                              c2pread, c2pwrite,
+                              errread, errwrite)
+            return
+    
+        orig_executable = executable
+    
+        # For transferring possible exec failure from child to parent.
+        # Data format: "exception name:hex errno:description"
+        # Pickle is not used; it is complex and involves memory allocation.
+        errpipe_read, errpipe_write = os.pipe()
+        # errpipe_write must not be in the standard io 0, 1, or 2 fd range.
+        low_fds_to_close = []
+        while errpipe_write < 3:
+            low_fds_to_close.append(errpipe_write)
+            errpipe_write = os.dup(errpipe_write)
+        for low_fd in low_fds_to_close:
+            os.close(low_fd)
+        try:
+            try:
+                # We must avoid complex work that could involve
+                # malloc or free in the child process to avoid
+                # potential deadlocks, thus we do all this here.
+                # and pass it to fork_exec()
+    
+                if env is not None:
+                    env_list = []
+                    for k, v in env.items():
+                        k = os.fsencode(k)
+                        if b'=' in k:
+                            raise ValueError("illegal environment variable name")
+                        env_list.append(k + b'=' + os.fsencode(v))
+                else:
+                    env_list = None  # Use execv instead of execve.
+                executable = os.fsencode(executable)
+                if os.path.dirname(executable):
+                    executable_list = (executable,)
+                else:
+                    # This matches the behavior of os._execvpe().
+                    executable_list = tuple(
+                        os.path.join(os.fsencode(dir), executable)
+                        for dir in os.get_exec_path(env))
+                fds_to_keep = set(pass_fds)
+                fds_to_keep.add(errpipe_write)
+                self.pid = _fork_exec(
+                        args, executable_list,
+                        close_fds, tuple(sorted(map(int, fds_to_keep))),
+                        cwd, env_list,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+                        errread, errwrite,
+                        errpipe_read, errpipe_write,
+                        restore_signals, start_new_session,
+                        process_group, gid, gids, uid, umask,
+                        preexec_fn, _USE_VFORK)
+                self._child_created = True
+            finally:
+                # be sure the FD is closed no matter what
+                os.close(errpipe_write)
+    
+            self._close_pipe_fds(p2cread, p2cwrite,
+                                 c2pread, c2pwrite,
+                                 errread, errwrite)
+    
+            # Wait for exec to fail or succeed; possibly raising an
+            # exception (limited in size)
+            errpipe_data = bytearray()
+            while True:
+                part = os.read(errpipe_read, 50000)
+                errpipe_data += part
+                if not part or len(errpipe_data) > 50000:
+                    break
+        finally:
+            # be sure the FD is closed no matter what
+            os.close(errpipe_read)
+    
+        if errpipe_data:
+            try:
+                pid, sts = os.waitpid(self.pid, 0)
+                if pid == self.pid:
+                    self._handle_exitstatus(sts)
+                else:
+                    self.returncode = sys.maxsize
+            except ChildProcessError:
+                pass
+    
+            try:
+                exception_name, hex_errno, err_msg = (
+                        errpipe_data.split(b':', 2))
+                # The encoding here should match the encoding
+                # written in by the subprocess implementations
+                # like _posixsubprocess
+                err_msg = err_msg.decode()
+            except ValueError:
+                exception_name = b'SubprocessError'
+                hex_errno = b'0'
+                err_msg = 'Bad exception data from child: {!r}'.format(
+                              bytes(errpipe_data))
+            child_exception_type = getattr(
+                    builtins, exception_name.decode('ascii'),
+                    SubprocessError)
+            if issubclass(child_exception_type, OSError) and hex_errno:
+                errno_num = int(hex_errno, 16)
+                if err_msg == "noexec:chdir":
+                    err_msg = ""
+                    # The error must be from chdir(cwd).
+                    err_filename = cwd
+                elif err_msg == "noexec":
+                    err_msg = ""
+                    err_filename = None
+                else:
+                    err_filename = orig_executable
+                if errno_num != 0:
+                    err_msg = os.strerror(errno_num)
+                if err_filename is not None:
+>                   raise child_exception_type(errno_num, err_msg, err_filename)
+E                   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-8080/test_rote_reisetests_warnen_nu0/lauf1/frieda/betrieb/software-nachziehen.sh'
+
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
+________________ test_tor_rot_ohne_offenes_issue[rot-software] _________________
+
+sn = {'lauf': <function sn.<locals>.lauf at 0x760975dc3600>, 'kopf': <function sn.<locals>.kopf at 0x760975dc2e80>, 'schreiben': <function sn.<locals>.schreiben at 0x760975dc2d40>, 'tor': <function sn.<locals>.tor at 0x760975dc2c00>, ...}
+rot = 'rot-software'
+
+    @pytest.mark.parametrize("rot", ["rot-software", "kaputt-SKI"])
+    def test_tor_rot_ohne_offenes_issue(sn, rot):  # AC-3
+        (sn["tmp"] / rot.replace("SKI", sn["ski"])).touch()
+        vorher = sn["kopf"]()
+>       r, _ = sn["lauf"]("ja")
+               ^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:449: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_software_nachziehen.py:337: in lauf
+    r = subprocess.run([str(klon / "frieda" / "betrieb" / "software-nachziehen.sh")], cwd=klon, env=env,
+/usr/lib/python3.12/subprocess.py:548: in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: 255 args: ['<tmp>/pytest-8080/test_tor_rot_...>
+args = ['<tmp>/pytest-8080/test_tor_rot_ohne_offenes_issu0/lauf1/frieda/betrieb/software-nachziehen.sh']
+executable = b'<tmp>/pytest-8080/test_tor_rot_ohne_offenes_issu0/lauf1/frieda/betrieb/software-nachziehen.sh'
+preexec_fn = None, close_fds = True, pass_fds = ()
+cwd = PosixPath('<tmp>/pytest-8080/test_tor_rot_ohne_offenes_issu0/lauf1')
+env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wY:p1', ...}
+startupinfo = None, creationflags = 0, shell = False, p2cread = -1
+p2cwrite = -1, c2pread = 11, c2pwrite = 12, errread = 13, errwrite = 14
+restore_signals = True, gid = None, gids = None, uid = None, umask = -1
+start_new_session = False, process_group = -1
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds,
+                       pass_fds, cwd, env,
+                       startupinfo, creationflags, shell,
+                       p2cread, p2cwrite,
+                       c2pread, c2pwrite,
+                       errread, errwrite,
+                       restore_signals,
+                       gid, gids, uid, umask,
+                       start_new_session, process_group):
+        """Execute program (POSIX version)"""
+    
+        if isinstance(args, (str, bytes)):
+            args = [args]
+        elif isinstance(args, os.PathLike):
+            if shell:
+                raise TypeError('path-like args is not allowed when '
+                                'shell is true')
+            args = [args]
+        else:
+            args = list(args)
+    
+        if shell:
+            # On Android the default shell is at '/system/bin/sh'.
+            unix_shell = ('/system/bin/sh' if
+                      hasattr(sys, 'getandroidapilevel') else '/bin/sh')
+            args = [unix_shell, "-c"] + args
+            if executable:
+                args[0] = executable
+    
+        if executable is None:
+            executable = args[0]
+    
+        sys.audit("subprocess.Popen", executable, args, cwd, env)
+    
+        if (_USE_POSIX_SPAWN
+                and os.path.dirname(executable)
+                and preexec_fn is None
+                and not close_fds
+                and not pass_fds
+                and cwd is None
+                and (p2cread == -1 or p2cread > 2)
+                and (c2pwrite == -1 or c2pwrite > 2)
+                and (errwrite == -1 or errwrite > 2)
+                and not start_new_session
+                and process_group == -1
+                and gid is None
+                and gids is None
+                and uid is None
+                and umask < 0):
+            self._posix_spawn(args, executable, env, restore_signals,
+                              p2cread, p2cwrite,
+                              c2pread, c2pwrite,
+                              errread, errwrite)
+            return
+    
+        orig_executable = executable
+    
+        # For transferring possible exec failure from child to parent.
+        # Data format: "exception name:hex errno:description"
+        # Pickle is not used; it is complex and involves memory allocation.
+        errpipe_read, errpipe_write = os.pipe()
+        # errpipe_write must not be in the standard io 0, 1, or 2 fd range.
+        low_fds_to_close = []
+        while errpipe_write < 3:
+            low_fds_to_close.append(errpipe_write)
+            errpipe_write = os.dup(errpipe_write)
+        for low_fd in low_fds_to_close:
+            os.close(low_fd)
+        try:
+            try:
+                # We must avoid complex work that could involve
+                # malloc or free in the child process to avoid
+                # potential deadlocks, thus we do all this here.
+                # and pass it to fork_exec()
+    
+                if env is not None:
+                    env_list = []
+                    for k, v in env.items():
+                        k = os.fsencode(k)
+                        if b'=' in k:
+                            raise ValueError("illegal environment variable name")
+                        env_list.append(k + b'=' + os.fsencode(v))
+                else:
+                    env_list = None  # Use execv instead of execve.
+                executable = os.fsencode(executable)
+                if os.path.dirname(executable):
+                    executable_list = (executable,)
+                else:
+                    # This matches the behavior of os._execvpe().
+                    executable_list = tuple(
+                        os.path.join(os.fsencode(dir), executable)
+                        for dir in os.get_exec_path(env))
+                fds_to_keep = set(pass_fds)
+                fds_to_keep.add(errpipe_write)
+                self.pid = _fork_exec(
+                        args, executable_list,
+                        close_fds, tuple(sorted(map(int, fds_to_keep))),
+                        cwd, env_list,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+                        errread, errwrite,
+                        errpipe_read, errpipe_write,
+                        restore_signals, start_new_session,
+                        process_group, gid, gids, uid, umask,
+                        preexec_fn, _USE_VFORK)
+                self._child_created = True
+            finally:
+                # be sure the FD is closed no matter what
+                os.close(errpipe_write)
+    
+            self._close_pipe_fds(p2cread, p2cwrite,
+                                 c2pread, c2pwrite,
+                                 errread, errwrite)
+    
+            # Wait for exec to fail or succeed; possibly raising an
+            # exception (limited in size)
+            errpipe_data = bytearray()
+            while True:
+                part = os.read(errpipe_read, 50000)
+                errpipe_data += part
+                if not part or len(errpipe_data) > 50000:
+                    break
+        finally:
+            # be sure the FD is closed no matter what
+            os.close(errpipe_read)
+    
+        if errpipe_data:
+            try:
+                pid, sts = os.waitpid(self.pid, 0)
+                if pid == self.pid:
+                    self._handle_exitstatus(sts)
+                else:
+                    self.returncode = sys.maxsize
+            except ChildProcessError:
+                pass
+    
+            try:
+                exception_name, hex_errno, err_msg = (
+                        errpipe_data.split(b':', 2))
+                # The encoding here should match the encoding
+                # written in by the subprocess implementations
+                # like _posixsubprocess
+                err_msg = err_msg.decode()
+            except ValueError:
+                exception_name = b'SubprocessError'
+                hex_errno = b'0'
+                err_msg = 'Bad exception data from child: {!r}'.format(
+                              bytes(errpipe_data))
+            child_exception_type = getattr(
+                    builtins, exception_name.decode('ascii'),
+                    SubprocessError)
+            if issubclass(child_exception_type, OSError) and hex_errno:
+                errno_num = int(hex_errno, 16)
+                if err_msg == "noexec:chdir":
+                    err_msg = ""
+                    # The error must be from chdir(cwd).
+                    err_filename = cwd
+                elif err_msg == "noexec":
+                    err_msg = ""
+                    err_filename = None
+                else:
+                    err_filename = orig_executable
+                if errno_num != 0:
+                    err_msg = os.strerror(errno_num)
+                if err_filename is not None:
+>                   raise child_exception_type(errno_num, err_msg, err_filename)
+E                   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-8080/test_tor_rot_ohne_offenes_issu0/lauf1/frieda/betrieb/software-nachziehen.sh'
+
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
+_________________ test_tor_rot_ohne_offenes_issue[kaputt-SKI] __________________
+
+sn = {'lauf': <function sn.<locals>.lauf at 0x760975dc1b20>, 'kopf': <function sn.<locals>.kopf at 0x760975dc3ba0>, 'schreiben': <function sn.<locals>.schreiben at 0x760975dc3b00>, 'tor': <function sn.<locals>.tor at 0x760975dc3ce0>, ...}
+rot = 'kaputt-SKI'
+
+    @pytest.mark.parametrize("rot", ["rot-software", "kaputt-SKI"])
+    def test_tor_rot_ohne_offenes_issue(sn, rot):  # AC-3
+        (sn["tmp"] / rot.replace("SKI", sn["ski"])).touch()
+        vorher = sn["kopf"]()
+>       r, _ = sn["lauf"]("ja")
+               ^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:449: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_software_nachziehen.py:337: in lauf
+    r = subprocess.run([str(klon / "frieda" / "betrieb" / "software-nachziehen.sh")], cwd=klon, env=env,
+/usr/lib/python3.12/subprocess.py:548: in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: 255 args: ['<tmp>/pytest-8080/test_tor_rot_...>
+args = ['<tmp>/pytest-8080/test_tor_rot_ohne_offenes_issu1/lauf1/frieda/betrieb/software-nachziehen.sh']
+executable = b'<tmp>/pytest-8080/test_tor_rot_ohne_offenes_issu1/lauf1/frieda/betrieb/software-nachziehen.sh'
+preexec_fn = None, close_fds = True, pass_fds = ()
+cwd = PosixPath('<tmp>/pytest-8080/test_tor_rot_ohne_offenes_issu1/lauf1')
+env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wY:p1', ...}
+startupinfo = None, creationflags = 0, shell = False, p2cread = -1
+p2cwrite = -1, c2pread = 11, c2pwrite = 12, errread = 13, errwrite = 14
+restore_signals = True, gid = None, gids = None, uid = None, umask = -1
+start_new_session = False, process_group = -1
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds,
+                       pass_fds, cwd, env,
+                       startupinfo, creationflags, shell,
+                       p2cread, p2cwrite,
+                       c2pread, c2pwrite,
+                       errread, errwrite,
+                       restore_signals,
+                       gid, gids, uid, umask,
+                       start_new_session, process_group):
+        """Execute program (POSIX version)"""
+    
+        if isinstance(args, (str, bytes)):
+            args = [args]
+        elif isinstance(args, os.PathLike):
+            if shell:
+                raise TypeError('path-like args is not allowed when '
+                                'shell is true')
+            args = [args]
+        else:
+            args = list(args)
+    
+        if shell:
+            # On Android the default shell is at '/system/bin/sh'.
+            unix_shell = ('/system/bin/sh' if
+                      hasattr(sys, 'getandroidapilevel') else '/bin/sh')
+            args = [unix_shell, "-c"] + args
+            if executable:
+                args[0] = executable
+    
+        if executable is None:
+            executable = args[0]
+    
+        sys.audit("subprocess.Popen", executable, args, cwd, env)
+    
+        if (_USE_POSIX_SPAWN
+                and os.path.dirname(executable)
+                and preexec_fn is None
+                and not close_fds
+                and not pass_fds
+                and cwd is None
+                and (p2cread == -1 or p2cread > 2)
+                and (c2pwrite == -1 or c2pwrite > 2)
+                and (errwrite == -1 or errwrite > 2)
+                and not start_new_session
+                and process_group == -1
+                and gid is None
+                and gids is None
+                and uid is None
+                and umask < 0):
+            self._posix_spawn(args, executable, env, restore_signals,
+                              p2cread, p2cwrite,
+                              c2pread, c2pwrite,
+                              errread, errwrite)
+            return
+    
+        orig_executable = executable
+    
+        # For transferring possible exec failure from child to parent.
+        # Data format: "exception name:hex errno:description"
+        # Pickle is not used; it is complex and involves memory allocation.
+        errpipe_read, errpipe_write = os.pipe()
+        # errpipe_write must not be in the standard io 0, 1, or 2 fd range.
+        low_fds_to_close = []
+        while errpipe_write < 3:
+            low_fds_to_close.append(errpipe_write)
+            errpipe_write = os.dup(errpipe_write)
+        for low_fd in low_fds_to_close:
+            os.close(low_fd)
+        try:
+            try:
+                # We must avoid complex work that could involve
+                # malloc or free in the child process to avoid
+                # potential deadlocks, thus we do all this here.
+                # and pass it to fork_exec()
+    
+                if env is not None:
+                    env_list = []
+                    for k, v in env.items():
+                        k = os.fsencode(k)
+                        if b'=' in k:
+                            raise ValueError("illegal environment variable name")
+                        env_list.append(k + b'=' + os.fsencode(v))
+                else:
+                    env_list = None  # Use execv instead of execve.
+                executable = os.fsencode(executable)
+                if os.path.dirname(executable):
+                    executable_list = (executable,)
+                else:
+                    # This matches the behavior of os._execvpe().
+                    executable_list = tuple(
+                        os.path.join(os.fsencode(dir), executable)
+                        for dir in os.get_exec_path(env))
+                fds_to_keep = set(pass_fds)
+                fds_to_keep.add(errpipe_write)
+                self.pid = _fork_exec(
+                        args, executable_list,
+                        close_fds, tuple(sorted(map(int, fds_to_keep))),
+                        cwd, env_list,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+                        errread, errwrite,
+                        errpipe_read, errpipe_write,
+                        restore_signals, start_new_session,
+                        process_group, gid, gids, uid, umask,
+                        preexec_fn, _USE_VFORK)
+                self._child_created = True
+            finally:
+                # be sure the FD is closed no matter what
+                os.close(errpipe_write)
+    
+            self._close_pipe_fds(p2cread, p2cwrite,
+                                 c2pread, c2pwrite,
+                                 errread, errwrite)
+    
+            # Wait for exec to fail or succeed; possibly raising an
+            # exception (limited in size)
+            errpipe_data = bytearray()
+            while True:
+                part = os.read(errpipe_read, 50000)
+                errpipe_data += part
+                if not part or len(errpipe_data) > 50000:
+                    break
+        finally:
+            # be sure the FD is closed no matter what
+            os.close(errpipe_read)
+    
+        if errpipe_data:
+            try:
+                pid, sts = os.waitpid(self.pid, 0)
+                if pid == self.pid:
+                    self._handle_exitstatus(sts)
+                else:
+                    self.returncode = sys.maxsize
+            except ChildProcessError:
+                pass
+    
+            try:
+                exception_name, hex_errno, err_msg = (
+                        errpipe_data.split(b':', 2))
+                # The encoding here should match the encoding
+                # written in by the subprocess implementations
+                # like _posixsubprocess
+                err_msg = err_msg.decode()
+            except ValueError:
+                exception_name = b'SubprocessError'
+                hex_errno = b'0'
+                err_msg = 'Bad exception data from child: {!r}'.format(
+                              bytes(errpipe_data))
+            child_exception_type = getattr(
+                    builtins, exception_name.decode('ascii'),
+                    SubprocessError)
+            if issubclass(child_exception_type, OSError) and hex_errno:
+                errno_num = int(hex_errno, 16)
+                if err_msg == "noexec:chdir":
+                    err_msg = ""
+                    # The error must be from chdir(cwd).
+                    err_filename = cwd
+                elif err_msg == "noexec":
+                    err_msg = ""
+                    err_filename = None
+                else:
+                    err_filename = orig_executable
+                if errno_num != 0:
+                    err_msg = os.strerror(errno_num)
+                if err_filename is not None:
+>                   raise child_exception_type(errno_num, err_msg, err_filename)
+E                   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-8080/test_tor_rot_ohne_offenes_issu1/lauf1/frieda/betrieb/software-nachziehen.sh'
+
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
+______ test_tor_rot_mit_offenem_issue_kommentiert_den_neuen_stand_einmal _______
+
+sn = {'lauf': <function sn.<locals>.lauf at 0x760975dc09a0>, 'kopf': <function sn.<locals>.kopf at 0x760975dc3560>, 'schreiben': <function sn.<locals>.schreiben at 0x760975dc19e0>, 'tor': <function sn.<locals>.tor at 0x760975dc0b80>, ...}
+
+    def test_tor_rot_mit_offenem_issue_kommentiert_den_neuen_stand_einmal(sn):  # AC-3
+        sn["issue_vorab"]("Software-Stand 0000000 lässt sich nicht automatisch übernehmen")
+        (sn["tmp"] / "rot-software").touch()
+        vorher = sn["kopf"]()
+>       r, _ = sn["lauf"]("ja")
+               ^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:461: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_software_nachziehen.py:337: in lauf
+    r = subprocess.run([str(klon / "frieda" / "betrieb" / "software-nachziehen.sh")], cwd=klon, env=env,
+/usr/lib/python3.12/subprocess.py:548: in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: 255 args: ['<tmp>/pytest-8080/test_tor_rot_...>
+args = ['<tmp>/pytest-8080/test_tor_rot_mit_offenem_issue0/lauf1/frieda/betrieb/software-nachziehen.sh']
+executable = b'<tmp>/pytest-8080/test_tor_rot_mit_offenem_issue0/lauf1/frieda/betrieb/software-nachziehen.sh'
+preexec_fn = None, close_fds = True, pass_fds = ()
+cwd = PosixPath('<tmp>/pytest-8080/test_tor_rot_mit_offenem_issue0/lauf1')
+env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wY:p1', ...}
+startupinfo = None, creationflags = 0, shell = False, p2cread = -1
+p2cwrite = -1, c2pread = 11, c2pwrite = 12, errread = 13, errwrite = 14
+restore_signals = True, gid = None, gids = None, uid = None, umask = -1
+start_new_session = False, process_group = -1
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds,
+                       pass_fds, cwd, env,
+                       startupinfo, creationflags, shell,
+                       p2cread, p2cwrite,
+                       c2pread, c2pwrite,
+                       errread, errwrite,
+                       restore_signals,
+                       gid, gids, uid, umask,
+                       start_new_session, process_group):
+        """Execute program (POSIX version)"""
+    
+        if isinstance(args, (str, bytes)):
+            args = [args]
+        elif isinstance(args, os.PathLike):
+            if shell:
+                raise TypeError('path-like args is not allowed when '
+                                'shell is true')
+            args = [args]
+        else:
+            args = list(args)
+    
+        if shell:
+            # On Android the default shell is at '/system/bin/sh'.
+            unix_shell = ('/system/bin/sh' if
+                      hasattr(sys, 'getandroidapilevel') else '/bin/sh')
+            args = [unix_shell, "-c"] + args
+            if executable:
+                args[0] = executable
+    
+        if executable is None:
+            executable = args[0]
+    
+        sys.audit("subprocess.Popen", executable, args, cwd, env)
+    
+        if (_USE_POSIX_SPAWN
+                and os.path.dirname(executable)
+                and preexec_fn is None
+                and not close_fds
+                and not pass_fds
+                and cwd is None
+                and (p2cread == -1 or p2cread > 2)
+                and (c2pwrite == -1 or c2pwrite > 2)
+                and (errwrite == -1 or errwrite > 2)
+                and not start_new_session
+                and process_group == -1
+                and gid is None
+                and gids is None
+                and uid is None
+                and umask < 0):
+            self._posix_spawn(args, executable, env, restore_signals,
+                              p2cread, p2cwrite,
+                              c2pread, c2pwrite,
+                              errread, errwrite)
+            return
+    
+        orig_executable = executable
+    
+        # For transferring possible exec failure from child to parent.
+        # Data format: "exception name:hex errno:description"
+        # Pickle is not used; it is complex and involves memory allocation.
+        errpipe_read, errpipe_write = os.pipe()
+        # errpipe_write must not be in the standard io 0, 1, or 2 fd range.
+        low_fds_to_close = []
+        while errpipe_write < 3:
+            low_fds_to_close.append(errpipe_write)
+            errpipe_write = os.dup(errpipe_write)
+        for low_fd in low_fds_to_close:
+            os.close(low_fd)
+        try:
+            try:
+                # We must avoid complex work that could involve
+                # malloc or free in the child process to avoid
+                # potential deadlocks, thus we do all this here.
+                # and pass it to fork_exec()
+    
+                if env is not None:
+                    env_list = []
+                    for k, v in env.items():
+                        k = os.fsencode(k)
+                        if b'=' in k:
+                            raise ValueError("illegal environment variable name")
+                        env_list.append(k + b'=' + os.fsencode(v))
+                else:
+                    env_list = None  # Use execv instead of execve.
+                executable = os.fsencode(executable)
+                if os.path.dirname(executable):
+                    executable_list = (executable,)
+                else:
+                    # This matches the behavior of os._execvpe().
+                    executable_list = tuple(
+                        os.path.join(os.fsencode(dir), executable)
+                        for dir in os.get_exec_path(env))
+                fds_to_keep = set(pass_fds)
+                fds_to_keep.add(errpipe_write)
+                self.pid = _fork_exec(
+                        args, executable_list,
+                        close_fds, tuple(sorted(map(int, fds_to_keep))),
+                        cwd, env_list,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+                        errread, errwrite,
+                        errpipe_read, errpipe_write,
+                        restore_signals, start_new_session,
+                        process_group, gid, gids, uid, umask,
+                        preexec_fn, _USE_VFORK)
+                self._child_created = True
+            finally:
+                # be sure the FD is closed no matter what
+                os.close(errpipe_write)
+    
+            self._close_pipe_fds(p2cread, p2cwrite,
+                                 c2pread, c2pwrite,
+                                 errread, errwrite)
+    
+            # Wait for exec to fail or succeed; possibly raising an
+            # exception (limited in size)
+            errpipe_data = bytearray()
+            while True:
+                part = os.read(errpipe_read, 50000)
+                errpipe_data += part
+                if not part or len(errpipe_data) > 50000:
+                    break
+        finally:
+            # be sure the FD is closed no matter what
+            os.close(errpipe_read)
+    
+        if errpipe_data:
+            try:
+                pid, sts = os.waitpid(self.pid, 0)
+                if pid == self.pid:
+                    self._handle_exitstatus(sts)
+                else:
+                    self.returncode = sys.maxsize
+            except ChildProcessError:
+                pass
+    
+            try:
+                exception_name, hex_errno, err_msg = (
+                        errpipe_data.split(b':', 2))
+                # The encoding here should match the encoding
+                # written in by the subprocess implementations
+                # like _posixsubprocess
+                err_msg = err_msg.decode()
+            except ValueError:
+                exception_name = b'SubprocessError'
+                hex_errno = b'0'
+                err_msg = 'Bad exception data from child: {!r}'.format(
+                              bytes(errpipe_data))
+            child_exception_type = getattr(
+                    builtins, exception_name.decode('ascii'),
+                    SubprocessError)
+            if issubclass(child_exception_type, OSError) and hex_errno:
+                errno_num = int(hex_errno, 16)
+                if err_msg == "noexec:chdir":
+                    err_msg = ""
+                    # The error must be from chdir(cwd).
+                    err_filename = cwd
+                elif err_msg == "noexec":
+                    err_msg = ""
+                    err_filename = None
+                else:
+                    err_filename = orig_executable
+                if errno_num != 0:
+                    err_msg = os.strerror(errno_num)
+                if err_filename is not None:
+>                   raise child_exception_type(errno_num, err_msg, err_filename)
+E                   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-8080/test_tor_rot_mit_offenem_issue0/lauf1/frieda/betrieb/software-nachziehen.sh'
+
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
+___________________ test_tor_rot_issue_nennt_den_stand_schon ___________________
+
+sn = {'lauf': <function sn.<locals>.lauf at 0x760975dc1620>, 'kopf': <function sn.<locals>.kopf at 0x760975dc1da0>, 'schreiben': <function sn.<locals>.schreiben at 0x760975dc0c20>, 'tor': <function sn.<locals>.tor at 0x760975dc2200>, ...}
+
+    def test_tor_rot_issue_nennt_den_stand_schon(sn):  # AC-3
+        sn["issue_vorab"](f"Software-Stand {sn['sw']['b7']} lässt sich nicht automatisch übernehmen")
+        (sn["tmp"] / "rot-software").touch()
+>       r, _ = sn["lauf"]("ja")
+               ^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:475: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_software_nachziehen.py:337: in lauf
+    r = subprocess.run([str(klon / "frieda" / "betrieb" / "software-nachziehen.sh")], cwd=klon, env=env,
+/usr/lib/python3.12/subprocess.py:548: in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: 255 args: ['<tmp>/pytest-8080/test_tor_rot_...>
+args = ['<tmp>/pytest-8080/test_tor_rot_issue_nennt_den_s0/lauf1/frieda/betrieb/software-nachziehen.sh']
+executable = b'<tmp>/pytest-8080/test_tor_rot_issue_nennt_den_s0/lauf1/frieda/betrieb/software-nachziehen.sh'
+preexec_fn = None, close_fds = True, pass_fds = ()
+cwd = PosixPath('<tmp>/pytest-8080/test_tor_rot_issue_nennt_den_s0/lauf1')
+env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wY:p1', ...}
+startupinfo = None, creationflags = 0, shell = False, p2cread = -1
+p2cwrite = -1, c2pread = 11, c2pwrite = 12, errread = 13, errwrite = 14
+restore_signals = True, gid = None, gids = None, uid = None, umask = -1
+start_new_session = False, process_group = -1
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds,
+                       pass_fds, cwd, env,
+                       startupinfo, creationflags, shell,
+                       p2cread, p2cwrite,
+                       c2pread, c2pwrite,
+                       errread, errwrite,
+                       restore_signals,
+                       gid, gids, uid, umask,
+                       start_new_session, process_group):
+        """Execute program (POSIX version)"""
+    
+        if isinstance(args, (str, bytes)):
+            args = [args]
+        elif isinstance(args, os.PathLike):
+            if shell:
+                raise TypeError('path-like args is not allowed when '
+                                'shell is true')
+            args = [args]
+        else:
+            args = list(args)
+    
+        if shell:
+            # On Android the default shell is at '/system/bin/sh'.
+            unix_shell = ('/system/bin/sh' if
+                      hasattr(sys, 'getandroidapilevel') else '/bin/sh')
+            args = [unix_shell, "-c"] + args
+            if executable:
+                args[0] = executable
+    
+        if executable is None:
+            executable = args[0]
+    
+        sys.audit("subprocess.Popen", executable, args, cwd, env)
+    
+        if (_USE_POSIX_SPAWN
+                and os.path.dirname(executable)
+                and preexec_fn is None
+                and not close_fds
+                and not pass_fds
+                and cwd is None
+                and (p2cread == -1 or p2cread > 2)
+                and (c2pwrite == -1 or c2pwrite > 2)
+                and (errwrite == -1 or errwrite > 2)
+                and not start_new_session
+                and process_group == -1
+                and gid is None
+                and gids is None
+                and uid is None
+                and umask < 0):
+            self._posix_spawn(args, executable, env, restore_signals,
+                              p2cread, p2cwrite,
+                              c2pread, c2pwrite,
+                              errread, errwrite)
+            return
+    
+        orig_executable = executable
+    
+        # For transferring possible exec failure from child to parent.
+        # Data format: "exception name:hex errno:description"
+        # Pickle is not used; it is complex and involves memory allocation.
+        errpipe_read, errpipe_write = os.pipe()
+        # errpipe_write must not be in the standard io 0, 1, or 2 fd range.
+        low_fds_to_close = []
+        while errpipe_write < 3:
+            low_fds_to_close.append(errpipe_write)
+            errpipe_write = os.dup(errpipe_write)
+        for low_fd in low_fds_to_close:
+            os.close(low_fd)
+        try:
+            try:
+                # We must avoid complex work that could involve
+                # malloc or free in the child process to avoid
+                # potential deadlocks, thus we do all this here.
+                # and pass it to fork_exec()
+    
+                if env is not None:
+                    env_list = []
+                    for k, v in env.items():
+                        k = os.fsencode(k)
+                        if b'=' in k:
+                            raise ValueError("illegal environment variable name")
+                        env_list.append(k + b'=' + os.fsencode(v))
+                else:
+                    env_list = None  # Use execv instead of execve.
+                executable = os.fsencode(executable)
+                if os.path.dirname(executable):
+                    executable_list = (executable,)
+                else:
+                    # This matches the behavior of os._execvpe().
+                    executable_list = tuple(
+                        os.path.join(os.fsencode(dir), executable)
+                        for dir in os.get_exec_path(env))
+                fds_to_keep = set(pass_fds)
+                fds_to_keep.add(errpipe_write)
+                self.pid = _fork_exec(
+                        args, executable_list,
+                        close_fds, tuple(sorted(map(int, fds_to_keep))),
+                        cwd, env_list,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+                        errread, errwrite,
+                        errpipe_read, errpipe_write,
+                        restore_signals, start_new_session,
+                        process_group, gid, gids, uid, umask,
+                        preexec_fn, _USE_VFORK)
+                self._child_created = True
+            finally:
+                # be sure the FD is closed no matter what
+                os.close(errpipe_write)
+    
+            self._close_pipe_fds(p2cread, p2cwrite,
+                                 c2pread, c2pwrite,
+                                 errread, errwrite)
+    
+            # Wait for exec to fail or succeed; possibly raising an
+            # exception (limited in size)
+            errpipe_data = bytearray()
+            while True:
+                part = os.read(errpipe_read, 50000)
+                errpipe_data += part
+                if not part or len(errpipe_data) > 50000:
+                    break
+        finally:
+            # be sure the FD is closed no matter what
+            os.close(errpipe_read)
+    
+        if errpipe_data:
+            try:
+                pid, sts = os.waitpid(self.pid, 0)
+                if pid == self.pid:
+                    self._handle_exitstatus(sts)
+                else:
+                    self.returncode = sys.maxsize
+            except ChildProcessError:
+                pass
+    
+            try:
+                exception_name, hex_errno, err_msg = (
+                        errpipe_data.split(b':', 2))
+                # The encoding here should match the encoding
+                # written in by the subprocess implementations
+                # like _posixsubprocess
+                err_msg = err_msg.decode()
+            except ValueError:
+                exception_name = b'SubprocessError'
+                hex_errno = b'0'
+                err_msg = 'Bad exception data from child: {!r}'.format(
+                              bytes(errpipe_data))
+            child_exception_type = getattr(
+                    builtins, exception_name.decode('ascii'),
+                    SubprocessError)
+            if issubclass(child_exception_type, OSError) and hex_errno:
+                errno_num = int(hex_errno, 16)
+                if err_msg == "noexec:chdir":
+                    err_msg = ""
+                    # The error must be from chdir(cwd).
+                    err_filename = cwd
+                elif err_msg == "noexec":
+                    err_msg = ""
+                    err_filename = None
+                else:
+                    err_filename = orig_executable
+                if errno_num != 0:
+                    err_msg = os.strerror(errno_num)
+                if err_filename is not None:
+>                   raise child_exception_type(errno_num, err_msg, err_filename)
+E                   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-8080/test_tor_rot_issue_nennt_den_s0/lauf1/frieda/betrieb/software-nachziehen.sh'
+
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
+________________________ test_tor_rot_ohne_neuen_stand _________________________
+
+sn = {'lauf': <function sn.<locals>.lauf at 0x760975dc2520>, 'kopf': <function sn.<locals>.kopf at 0x760975dc3e20>, 'schreiben': <function sn.<locals>.schreiben at 0x760975dc1120>, 'tor': <function sn.<locals>.tor at 0x760975dc2700>, ...}
+
+    def test_tor_rot_ohne_neuen_stand(sn):  # AC-3: eine umgestellte Reise baut nicht
+        sn["reste"](sn["ski"])
+        (sn["tmp"] / f"kaputt-{sn['ski']}").touch()
+        vorher = sn["kopf"]()
+>       r, _ = sn["lauf"]("nein")
+               ^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:484: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_software_nachziehen.py:337: in lauf
+    r = subprocess.run([str(klon / "frieda" / "betrieb" / "software-nachziehen.sh")], cwd=klon, env=env,
+/usr/lib/python3.12/subprocess.py:548: in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: 255 args: ['<tmp>/pytest-8080/test_tor_rot_...>
+args = ['<tmp>/pytest-8080/test_tor_rot_ohne_neuen_stand0/lauf1/frieda/betrieb/software-nachziehen.sh']
+executable = b'<tmp>/pytest-8080/test_tor_rot_ohne_neuen_stand0/lauf1/frieda/betrieb/software-nachziehen.sh'
+preexec_fn = None, close_fds = True, pass_fds = ()
+cwd = PosixPath('<tmp>/pytest-8080/test_tor_rot_ohne_neuen_stand0/lauf1')
+env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wY:p1', ...}
+startupinfo = None, creationflags = 0, shell = False, p2cread = -1
+p2cwrite = -1, c2pread = 11, c2pwrite = 12, errread = 13, errwrite = 14
+restore_signals = True, gid = None, gids = None, uid = None, umask = -1
+start_new_session = False, process_group = -1
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds,
+                       pass_fds, cwd, env,
+                       startupinfo, creationflags, shell,
+                       p2cread, p2cwrite,
+                       c2pread, c2pwrite,
+                       errread, errwrite,
+                       restore_signals,
+                       gid, gids, uid, umask,
+                       start_new_session, process_group):
+        """Execute program (POSIX version)"""
+    
+        if isinstance(args, (str, bytes)):
+            args = [args]
+        elif isinstance(args, os.PathLike):
+            if shell:
+                raise TypeError('path-like args is not allowed when '
+                                'shell is true')
+            args = [args]
+        else:
+            args = list(args)
+    
+        if shell:
+            # On Android the default shell is at '/system/bin/sh'.
+            unix_shell = ('/system/bin/sh' if
+                      hasattr(sys, 'getandroidapilevel') else '/bin/sh')
+            args = [unix_shell, "-c"] + args
+            if executable:
+                args[0] = executable
+    
+        if executable is None:
+            executable = args[0]
+    
+        sys.audit("subprocess.Popen", executable, args, cwd, env)
+    
+        if (_USE_POSIX_SPAWN
+                and os.path.dirname(executable)
+                and preexec_fn is None
+                and not close_fds
+                and not pass_fds
+                and cwd is None
+                and (p2cread == -1 or p2cread > 2)
+                and (c2pwrite == -1 or c2pwrite > 2)
+                and (errwrite == -1 or errwrite > 2)
+                and not start_new_session
+                and process_group == -1
+                and gid is None
+                and gids is None
+                and uid is None
+                and umask < 0):
+            self._posix_spawn(args, executable, env, restore_signals,
+                              p2cread, p2cwrite,
+                              c2pread, c2pwrite,
+                              errread, errwrite)
+            return
+    
+        orig_executable = executable
+    
+        # For transferring possible exec failure from child to parent.
+        # Data format: "exception name:hex errno:description"
+        # Pickle is not used; it is complex and involves memory allocation.
+        errpipe_read, errpipe_write = os.pipe()
+        # errpipe_write must not be in the standard io 0, 1, or 2 fd range.
+        low_fds_to_close = []
+        while errpipe_write < 3:
+            low_fds_to_close.append(errpipe_write)
+            errpipe_write = os.dup(errpipe_write)
+        for low_fd in low_fds_to_close:
+            os.close(low_fd)
+        try:
+            try:
+                # We must avoid complex work that could involve
+                # malloc or free in the child process to avoid
+                # potential deadlocks, thus we do all this here.
+                # and pass it to fork_exec()
+    
+                if env is not None:
+                    env_list = []
+                    for k, v in env.items():
+                        k = os.fsencode(k)
+                        if b'=' in k:
+                            raise ValueError("illegal environment variable name")
+                        env_list.append(k + b'=' + os.fsencode(v))
+                else:
+                    env_list = None  # Use execv instead of execve.
+                executable = os.fsencode(executable)
+                if os.path.dirname(executable):
+                    executable_list = (executable,)
+                else:
+                    # This matches the behavior of os._execvpe().
+                    executable_list = tuple(
+                        os.path.join(os.fsencode(dir), executable)
+                        for dir in os.get_exec_path(env))
+                fds_to_keep = set(pass_fds)
+                fds_to_keep.add(errpipe_write)
+                self.pid = _fork_exec(
+                        args, executable_list,
+                        close_fds, tuple(sorted(map(int, fds_to_keep))),
+                        cwd, env_list,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+                        errread, errwrite,
+                        errpipe_read, errpipe_write,
+                        restore_signals, start_new_session,
+                        process_group, gid, gids, uid, umask,
+                        preexec_fn, _USE_VFORK)
+                self._child_created = True
+            finally:
+                # be sure the FD is closed no matter what
+                os.close(errpipe_write)
+    
+            self._close_pipe_fds(p2cread, p2cwrite,
+                                 c2pread, c2pwrite,
+                                 errread, errwrite)
+    
+            # Wait for exec to fail or succeed; possibly raising an
+            # exception (limited in size)
+            errpipe_data = bytearray()
+            while True:
+                part = os.read(errpipe_read, 50000)
+                errpipe_data += part
+                if not part or len(errpipe_data) > 50000:
+                    break
+        finally:
+            # be sure the FD is closed no matter what
+            os.close(errpipe_read)
+    
+        if errpipe_data:
+            try:
+                pid, sts = os.waitpid(self.pid, 0)
+                if pid == self.pid:
+                    self._handle_exitstatus(sts)
+                else:
+                    self.returncode = sys.maxsize
+            except ChildProcessError:
+                pass
+    
+            try:
+                exception_name, hex_errno, err_msg = (
+                        errpipe_data.split(b':', 2))
+                # The encoding here should match the encoding
+                # written in by the subprocess implementations
+                # like _posixsubprocess
+                err_msg = err_msg.decode()
+            except ValueError:
+                exception_name = b'SubprocessError'
+                hex_errno = b'0'
+                err_msg = 'Bad exception data from child: {!r}'.format(
+                              bytes(errpipe_data))
+            child_exception_type = getattr(
+                    builtins, exception_name.decode('ascii'),
+                    SubprocessError)
+            if issubclass(child_exception_type, OSError) and hex_errno:
+                errno_num = int(hex_errno, 16)
+                if err_msg == "noexec:chdir":
+                    err_msg = ""
+                    # The error must be from chdir(cwd).
+                    err_filename = cwd
+                elif err_msg == "noexec":
+                    err_msg = ""
+                    err_filename = None
+                else:
+                    err_filename = orig_executable
+                if errno_num != 0:
+                    err_msg = os.strerror(errno_num)
+                if err_filename is not None:
+>                   raise child_exception_type(errno_num, err_msg, err_filename)
+E                   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-8080/test_tor_rot_ohne_neuen_stand0/lauf1/frieda/betrieb/software-nachziehen.sh'
+
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
+________________ test_wettlauf_mit_dem_schreibweg_stellt_neu_um ________________
+
+sn = {'lauf': <function sn.<locals>.lauf at 0x760975dc1a80>, 'kopf': <function sn.<locals>.kopf at 0x760975dc14e0>, 'schreiben': <function sn.<locals>.schreiben at 0x760975dc22a0>, 'tor': <function sn.<locals>.tor at 0x760975dc2f20>, ...}
+
+    def test_wettlauf_mit_dem_schreibweg_stellt_neu_um(sn):  # AC-4
+        """Zwischen Umstellen und Push schreibt der Schreibweg auf main (mit einem Rest der Vorlage): Das Skript setzt auf
+        origin/main zurück, stellt neu um und übernimmt; der Commit des Schreibwegs bleibt, nichts wird erzwungen."""
+        sn["reste"](sn["ski"])
+        t = sn["tmp"]
+        rest = ausgefuellt("en", "CLAUDE.md").replace("'", "'\\''")
+        ausfuehrbar(t / "beim-bau", f"""#!/bin/sh
+    set -e
+    k={t}/schreiber
+    git clone -q {sn['remote']} "$k"
+    printf '%s' '{rest}' > "$k/reisen/{sn['wanderung']}/CLAUDE.md"
+    git -C "$k" add .
+    git -C "$k" -c user.name=s -c user.email=s@s commit -qm "Schreibweg: Wanderung"
+    git -C "$k" push -q origin HEAD:main
+    """)
+>       r, _ = sn["lauf"]("ja")
+               ^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:506: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_software_nachziehen.py:337: in lauf
+    r = subprocess.run([str(klon / "frieda" / "betrieb" / "software-nachziehen.sh")], cwd=klon, env=env,
+/usr/lib/python3.12/subprocess.py:548: in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: 255 args: ['<tmp>/pytest-8080/test_wettlauf...>
+args = ['<tmp>/pytest-8080/test_wettlauf_mit_dem_schreibw0/lauf1/frieda/betrieb/software-nachziehen.sh']
+executable = b'<tmp>/pytest-8080/test_wettlauf_mit_dem_schreibw0/lauf1/frieda/betrieb/software-nachziehen.sh'
+preexec_fn = None, close_fds = True, pass_fds = ()
+cwd = PosixPath('<tmp>/pytest-8080/test_wettlauf_mit_dem_schreibw0/lauf1')
+env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wY:p1', ...}
+startupinfo = None, creationflags = 0, shell = False, p2cread = -1
+p2cwrite = -1, c2pread = 11, c2pwrite = 12, errread = 13, errwrite = 14
+restore_signals = True, gid = None, gids = None, uid = None, umask = -1
+start_new_session = False, process_group = -1
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds,
+                       pass_fds, cwd, env,
+                       startupinfo, creationflags, shell,
+                       p2cread, p2cwrite,
+                       c2pread, c2pwrite,
+                       errread, errwrite,
+                       restore_signals,
+                       gid, gids, uid, umask,
+                       start_new_session, process_group):
+        """Execute program (POSIX version)"""
+    
+        if isinstance(args, (str, bytes)):
+            args = [args]
+        elif isinstance(args, os.PathLike):
+            if shell:
+                raise TypeError('path-like args is not allowed when '
+                                'shell is true')
+            args = [args]
+        else:
+            args = list(args)
+    
+        if shell:
+            # On Android the default shell is at '/system/bin/sh'.
+            unix_shell = ('/system/bin/sh' if
+                      hasattr(sys, 'getandroidapilevel') else '/bin/sh')
+            args = [unix_shell, "-c"] + args
+            if executable:
+                args[0] = executable
+    
+        if executable is None:
+            executable = args[0]
+    
+        sys.audit("subprocess.Popen", executable, args, cwd, env)
+    
+        if (_USE_POSIX_SPAWN
+                and os.path.dirname(executable)
+                and preexec_fn is None
+                and not close_fds
+                and not pass_fds
+                and cwd is None
+                and (p2cread == -1 or p2cread > 2)
+                and (c2pwrite == -1 or c2pwrite > 2)
+                and (errwrite == -1 or errwrite > 2)
+                and not start_new_session
+                and process_group == -1
+                and gid is None
+                and gids is None
+                and uid is None
+                and umask < 0):
+            self._posix_spawn(args, executable, env, restore_signals,
+                              p2cread, p2cwrite,
+                              c2pread, c2pwrite,
+                              errread, errwrite)
+            return
+    
+        orig_executable = executable
+    
+        # For transferring possible exec failure from child to parent.
+        # Data format: "exception name:hex errno:description"
+        # Pickle is not used; it is complex and involves memory allocation.
+        errpipe_read, errpipe_write = os.pipe()
+        # errpipe_write must not be in the standard io 0, 1, or 2 fd range.
+        low_fds_to_close = []
+        while errpipe_write < 3:
+            low_fds_to_close.append(errpipe_write)
+            errpipe_write = os.dup(errpipe_write)
+        for low_fd in low_fds_to_close:
+            os.close(low_fd)
+        try:
+            try:
+                # We must avoid complex work that could involve
+                # malloc or free in the child process to avoid
+                # potential deadlocks, thus we do all this here.
+                # and pass it to fork_exec()
+    
+                if env is not None:
+                    env_list = []
+                    for k, v in env.items():
+                        k = os.fsencode(k)
+                        if b'=' in k:
+                            raise ValueError("illegal environment variable name")
+                        env_list.append(k + b'=' + os.fsencode(v))
+                else:
+                    env_list = None  # Use execv instead of execve.
+                executable = os.fsencode(executable)
+                if os.path.dirname(executable):
+                    executable_list = (executable,)
+                else:
+                    # This matches the behavior of os._execvpe().
+                    executable_list = tuple(
+                        os.path.join(os.fsencode(dir), executable)
+                        for dir in os.get_exec_path(env))
+                fds_to_keep = set(pass_fds)
+                fds_to_keep.add(errpipe_write)
+                self.pid = _fork_exec(
+                        args, executable_list,
+                        close_fds, tuple(sorted(map(int, fds_to_keep))),
+                        cwd, env_list,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+                        errread, errwrite,
+                        errpipe_read, errpipe_write,
+                        restore_signals, start_new_session,
+                        process_group, gid, gids, uid, umask,
+                        preexec_fn, _USE_VFORK)
+                self._child_created = True
+            finally:
+                # be sure the FD is closed no matter what
+                os.close(errpipe_write)
+    
+            self._close_pipe_fds(p2cread, p2cwrite,
+                                 c2pread, c2pwrite,
+                                 errread, errwrite)
+    
+            # Wait for exec to fail or succeed; possibly raising an
+            # exception (limited in size)
+            errpipe_data = bytearray()
+            while True:
+                part = os.read(errpipe_read, 50000)
+                errpipe_data += part
+                if not part or len(errpipe_data) > 50000:
+                    break
+        finally:
+            # be sure the FD is closed no matter what
+            os.close(errpipe_read)
+    
+        if errpipe_data:
+            try:
+                pid, sts = os.waitpid(self.pid, 0)
+                if pid == self.pid:
+                    self._handle_exitstatus(sts)
+                else:
+                    self.returncode = sys.maxsize
+            except ChildProcessError:
+                pass
+    
+            try:
+                exception_name, hex_errno, err_msg = (
+                        errpipe_data.split(b':', 2))
+                # The encoding here should match the encoding
+                # written in by the subprocess implementations
+                # like _posixsubprocess
+                err_msg = err_msg.decode()
+            except ValueError:
+                exception_name = b'SubprocessError'
+                hex_errno = b'0'
+                err_msg = 'Bad exception data from child: {!r}'.format(
+                              bytes(errpipe_data))
+            child_exception_type = getattr(
+                    builtins, exception_name.decode('ascii'),
+                    SubprocessError)
+            if issubclass(child_exception_type, OSError) and hex_errno:
+                errno_num = int(hex_errno, 16)
+                if err_msg == "noexec:chdir":
+                    err_msg = ""
+                    # The error must be from chdir(cwd).
+                    err_filename = cwd
+                elif err_msg == "noexec":
+                    err_msg = ""
+                    err_filename = None
+                else:
+                    err_filename = orig_executable
+                if errno_num != 0:
+                    err_msg = os.strerror(errno_num)
+                if err_filename is not None:
+>                   raise child_exception_type(errno_num, err_msg, err_filename)
+E                   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-8080/test_wettlauf_mit_dem_schreibw0/lauf1/frieda/betrieb/software-nachziehen.sh'
+
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
+_________________ test_drei_gescheiterte_pushes_rot_ohne_issue _________________
+
+sn = {'lauf': <function sn.<locals>.lauf at 0x760975dc36a0>, 'kopf': <function sn.<locals>.kopf at 0x760975bb99e0>, 'schreiben': <function sn.<locals>.schreiben at 0x760975bb9bc0>, 'tor': <function sn.<locals>.tor at 0x760975bb9a80>, ...}
+
+    def test_drei_gescheiterte_pushes_rot_ohne_issue(sn):  # AC-4
+        sn["reste"](sn["ski"])
+        vorher = sn["kopf"]()
+        ausfuehrbar(sn["remote"] / "hooks" / "pre-receive", f"#!/bin/sh\necho versuch >> {sn['tmp']}/push.log\nexit 1\n")
+>       r, _ = sn["lauf"]("ja")
+               ^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_nachziehen.py:521: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_software_nachziehen.py:337: in lauf
+    r = subprocess.run([str(klon / "frieda" / "betrieb" / "software-nachziehen.sh")], cwd=klon, env=env,
+/usr/lib/python3.12/subprocess.py:548: in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: 255 args: ['<tmp>/pytest-8080/test_drei_ges...>
+args = ['<tmp>/pytest-8080/test_drei_gescheiterte_pushes_0/lauf1/frieda/betrieb/software-nachziehen.sh']
+executable = b'<tmp>/pytest-8080/test_drei_gescheiterte_pushes_0/lauf1/frieda/betrieb/software-nachziehen.sh'
+preexec_fn = None, close_fds = True, pass_fds = ()
+cwd = PosixPath('<tmp>/pytest-8080/test_drei_gescheiterte_pushes_0/lauf1')
+env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wY:p1', ...}
+startupinfo = None, creationflags = 0, shell = False, p2cread = -1
+p2cwrite = -1, c2pread = 11, c2pwrite = 12, errread = 13, errwrite = 14
+restore_signals = True, gid = None, gids = None, uid = None, umask = -1
+start_new_session = False, process_group = -1
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds,
+                       pass_fds, cwd, env,
+                       startupinfo, creationflags, shell,
+                       p2cread, p2cwrite,
+                       c2pread, c2pwrite,
+                       errread, errwrite,
+                       restore_signals,
+                       gid, gids, uid, umask,
+                       start_new_session, process_group):
+        """Execute program (POSIX version)"""
+    
+        if isinstance(args, (str, bytes)):
+            args = [args]
+        elif isinstance(args, os.PathLike):
+            if shell:
+                raise TypeError('path-like args is not allowed when '
+                                'shell is true')
+            args = [args]
+        else:
+            args = list(args)
+    
+        if shell:
+            # On Android the default shell is at '/system/bin/sh'.
+            unix_shell = ('/system/bin/sh' if
+                      hasattr(sys, 'getandroidapilevel') else '/bin/sh')
+            args = [unix_shell, "-c"] + args
+            if executable:
+                args[0] = executable
+    
+        if executable is None:
+            executable = args[0]
+    
+        sys.audit("subprocess.Popen", executable, args, cwd, env)
+    
+        if (_USE_POSIX_SPAWN
+                and os.path.dirname(executable)
+                and preexec_fn is None
+                and not close_fds
+                and not pass_fds
+                and cwd is None
+                and (p2cread == -1 or p2cread > 2)
+                and (c2pwrite == -1 or c2pwrite > 2)
+                and (errwrite == -1 or errwrite > 2)
+                and not start_new_session
+                and process_group == -1
+                and gid is None
+                and gids is None
+                and uid is None
+                and umask < 0):
+            self._posix_spawn(args, executable, env, restore_signals,
+                              p2cread, p2cwrite,
+                              c2pread, c2pwrite,
+                              errread, errwrite)
+            return
+    
+        orig_executable = executable
+    
+        # For transferring possible exec failure from child to parent.
+        # Data format: "exception name:hex errno:description"
+        # Pickle is not used; it is complex and involves memory allocation.
+        errpipe_read, errpipe_write = os.pipe()
+        # errpipe_write must not be in the standard io 0, 1, or 2 fd range.
+        low_fds_to_close = []
+        while errpipe_write < 3:
+            low_fds_to_close.append(errpipe_write)
+            errpipe_write = os.dup(errpipe_write)
+        for low_fd in low_fds_to_close:
+            os.close(low_fd)
+        try:
+            try:
+                # We must avoid complex work that could involve
+                # malloc or free in the child process to avoid
+                # potential deadlocks, thus we do all this here.
+                # and pass it to fork_exec()
+    
+                if env is not None:
+                    env_list = []
+                    for k, v in env.items():
+                        k = os.fsencode(k)
+                        if b'=' in k:
+                            raise ValueError("illegal environment variable name")
+                        env_list.append(k + b'=' + os.fsencode(v))
+                else:
+                    env_list = None  # Use execv instead of execve.
+                executable = os.fsencode(executable)
+                if os.path.dirname(executable):
+                    executable_list = (executable,)
+                else:
+                    # This matches the behavior of os._execvpe().
+                    executable_list = tuple(
+                        os.path.join(os.fsencode(dir), executable)
+                        for dir in os.get_exec_path(env))
+                fds_to_keep = set(pass_fds)
+                fds_to_keep.add(errpipe_write)
+                self.pid = _fork_exec(
+                        args, executable_list,
+                        close_fds, tuple(sorted(map(int, fds_to_keep))),
+                        cwd, env_list,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+                        errread, errwrite,
+                        errpipe_read, errpipe_write,
+                        restore_signals, start_new_session,
+                        process_group, gid, gids, uid, umask,
+                        preexec_fn, _USE_VFORK)
+                self._child_created = True
+            finally:
+                # be sure the FD is closed no matter what
+                os.close(errpipe_write)
+    
+            self._close_pipe_fds(p2cread, p2cwrite,
+                                 c2pread, c2pwrite,
+                                 errread, errwrite)
+    
+            # Wait for exec to fail or succeed; possibly raising an
+            # exception (limited in size)
+            errpipe_data = bytearray()
+            while True:
+                part = os.read(errpipe_read, 50000)
+                errpipe_data += part
+                if not part or len(errpipe_data) > 50000:
+                    break
+        finally:
+            # be sure the FD is closed no matter what
+            os.close(errpipe_read)
+    
+        if errpipe_data:
+            try:
+                pid, sts = os.waitpid(self.pid, 0)
+                if pid == self.pid:
+                    self._handle_exitstatus(sts)
+                else:
+                    self.returncode = sys.maxsize
+            except ChildProcessError:
+                pass
+    
+            try:
+                exception_name, hex_errno, err_msg = (
+                        errpipe_data.split(b':', 2))
+                # The encoding here should match the encoding
+                # written in by the subprocess implementations
+                # like _posixsubprocess
+                err_msg = err_msg.decode()
+            except ValueError:
+                exception_name = b'SubprocessError'
+                hex_errno = b'0'
+                err_msg = 'Bad exception data from child: {!r}'.format(
+                              bytes(errpipe_data))
+            child_exception_type = getattr(
+                    builtins, exception_name.decode('ascii'),
+                    SubprocessError)
+            if issubclass(child_exception_type, OSError) and hex_errno:
+                errno_num = int(hex_errno, 16)
+                if err_msg == "noexec:chdir":
+                    err_msg = ""
+                    # The error must be from chdir(cwd).
+                    err_filename = cwd
+                elif err_msg == "noexec":
+                    err_msg = ""
+                    err_filename = None
+                else:
+                    err_filename = orig_executable
+                if errno_num != 0:
+                    err_msg = os.strerror(errno_num)
+                if err_filename is not None:
+>                   raise child_exception_type(errno_num, err_msg, err_filename)
+E                   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-8080/test_drei_gescheiterte_pushes_0/lauf1/frieda/betrieb/software-nachziehen.sh'
+
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
+_____________ test_ausgefuellte_vorlagen_reste_werden_entfernt[de] _____________
+
+tmp_path = PosixPath('<tmp>/pytest-8080/test_ausgefuellte_vorlagen_res0')
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_ausgefuellte_vorlagen_reste_werden_entfernt(tmp_path, sprache):
+        """AC-6: CLAUDE.md und kontext/herkunft.md, die nur die ausgefüllte frühere Vorlage sind, entfernt die Umstellung."""
+        r = anlegen(tmp_path, sprache=sprache)
+        (r / "CLAUDE.md").write_text(ausgefuellt(sprache, "CLAUDE.md", **WERTE), encoding="utf-8")
+        (r / "kontext").mkdir(exist_ok=True)
+        (r / "kontext" / "herkunft.md").write_text(ausgefuellt(sprache, "kontext/herkunft.md", **WERTE), encoding="utf-8")
+    
+        m = neu.nachziehen(r, schreiben=False)
+>       assert len(m) == 2 and (r / "CLAUDE.md").exists()                 # Probelauf schreibt nichts
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       assert (0 == 2)
+E        +  where 0 = len([])
+
+engine/tests/test_umstellung_250.py:55: AssertionError
+_____________ test_ausgefuellte_vorlagen_reste_werden_entfernt[en] _____________
+
+tmp_path = PosixPath('<tmp>/pytest-8080/test_ausgefuellte_vorlagen_res1')
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_ausgefuellte_vorlagen_reste_werden_entfernt(tmp_path, sprache):
+        """AC-6: CLAUDE.md und kontext/herkunft.md, die nur die ausgefüllte frühere Vorlage sind, entfernt die Umstellung."""
+        r = anlegen(tmp_path, sprache=sprache)
+        (r / "CLAUDE.md").write_text(ausgefuellt(sprache, "CLAUDE.md", **WERTE), encoding="utf-8")
+        (r / "kontext").mkdir(exist_ok=True)
+        (r / "kontext" / "herkunft.md").write_text(ausgefuellt(sprache, "kontext/herkunft.md", **WERTE), encoding="utf-8")
+    
+        m = neu.nachziehen(r, schreiben=False)
+>       assert len(m) == 2 and (r / "CLAUDE.md").exists()                 # Probelauf schreibt nichts
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       assert (0 == 2)
+E        +  where 0 = len([])
+
+engine/tests/test_umstellung_250.py:55: AssertionError
+_______________ test_kopfkommentar_mit_woertlichem_zeilenumbruch _______________
+
+tmp_path = PosixPath('<tmp>/pytest-8080/test_kopfkommentar_mit_woertli0')
+
+    def test_kopfkommentar_mit_woertlichem_zeilenumbruch(tmp_path):
+        """AC-6: Rest von #218, der Kopfkommentar der reise.yaml bekommt echte Zeilenumbrüche; der Inhalt bleibt."""
+        r = anlegen(tmp_path)
+        y = r / "reise.yaml"
+        text = y.read_text(encoding="utf-8")
+        kopf = text.split("\n\n", 1)[0]
+        assert kopf.count("\n") >= 1
+        kaputt = kopf.replace("\n", "\\n", 1) + "\n\n" + text.split("\n\n", 1)[1]
+        y.write_text(kaputt, encoding="utf-8")
+    
+        m = neu.nachziehen(r)
+>       assert len(m) == 1 and "reise.yaml" in m[0]
+E       assert (0 == 1)
+E        +  where 0 = len([])
+
+engine/tests/test_umstellung_250.py:87: AssertionError
+______________ test_eckdaten_status_in_worten[de-Status: Planung] ______________
+
+sprache = 'de', wort = 'Status: Planung'
+
+    @pytest.mark.parametrize("sprache,wort", [("de", "Status: Planung"), ("en", "Status: Planning")])
+    def test_eckdaten_status_in_worten(sprache, wort):
+        """AC-7: Der Status steht in Worten, nicht als Datenwert."""
+        d = {"sprache": sprache, "zeitraum": {"von": "2027-02-06", "bis": "2027-02-13"}, "ziel": "Oberstdorf",
+             "personen": {}, "status": {"wert": "planung"}}
+>       assert wort in reise.eckdaten_text(d)
+E       AssertionError: assert 'Status: Planung' in '- Zeitraum: 6.–13. Februar 2027\n- Ziel: Oberstdorf\n- Status: planung'
+E        +  where '- Zeitraum: 6.–13. Februar 2027\n- Ziel: Oberstdorf\n- Status: planung' = <function eckdaten_text at 0x76097ae705e0>({'sprache': 'de', 'zeitraum': {'von': '2027-02-06', 'bis': '2027-02-13'}, 'ziel': 'Oberstdorf', 'personen': {}, ...})
+E        +    where <function eckdaten_text at 0x76097ae705e0> = reise.eckdaten_text
+
+engine/tests/test_umstellung_250.py:98: AssertionError
+_____________ test_eckdaten_status_in_worten[en-Status: Planning] ______________
+
+sprache = 'en', wort = 'Status: Planning'
+
+    @pytest.mark.parametrize("sprache,wort", [("de", "Status: Planung"), ("en", "Status: Planning")])
+    def test_eckdaten_status_in_worten(sprache, wort):
+        """AC-7: Der Status steht in Worten, nicht als Datenwert."""
+        d = {"sprache": sprache, "zeitraum": {"von": "2027-02-06", "bis": "2027-02-13"}, "ziel": "Oberstdorf",
+             "personen": {}, "status": {"wert": "planung"}}
+>       assert wort in reise.eckdaten_text(d)
+E       AssertionError: assert 'Status: Planning' in '- Period: 6–13 February 2027\n- Destination: Oberstdorf\n- Status: planning'
+E        +  where '- Period: 6–13 February 2027\n- Destination: Oberstdorf\n- Status: planning' = <function eckdaten_text at 0x76097ae705e0>({'sprache': 'en', 'zeitraum': {'von': '2027-02-06', 'bis': '2027-02-13'}, 'ziel': 'Oberstdorf', 'personen': {}, ...})
+E        +    where <function eckdaten_text at 0x76097ae705e0> = reise.eckdaten_text
+
+engine/tests/test_umstellung_250.py:98: AssertionError
+_______________ test_jeder_status_hat_ein_wort_in_jeder_sprache ________________
+
+    def test_jeder_status_hat_ein_wort_in_jeder_sprache():
+        for sp in texte.sprachen():
+            for wert in reise.STATUS:
+                if wert == "idee":
+                    continue
+>               assert texte.t(sp, f"inhalt.eckdaten.status.{wert}") != f"inhalt.eckdaten.status.{wert}"
+E               AssertionError: assert 'inhalt.eckdaten.status.planung' != 'inhalt.eckdaten.status.planung'
+E                +  where 'inhalt.eckdaten.status.planung' = <function t at 0x76097ae56200>('de', 'inhalt.eckdaten.status.planung')
+E                +    where <function t at 0x76097ae56200> = texte.t
+
+engine/tests/test_umstellung_250.py:106: AssertionError
+__________________ test_zweiter_lauf_aendert_keine_datei[de] ___________________
+
+tmp_path = PosixPath('<tmp>/pytest-8080/test_zweiter_lauf_aendert_kein0')
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_zweiter_lauf_aendert_keine_datei(tmp_path, sprache):
+        """AC-2, AC-6: Nach der Umstellung (Reste und Kopfkommentar) ändert ein zweiter Lauf keine Datei der Reise."""
+        r = anlegen(tmp_path, sprache=sprache)
+        (r / "CLAUDE.md").write_text(ausgefuellt(sprache, "CLAUDE.md", **WERTE), encoding="utf-8")
+        y = r / "reise.yaml"
+        kopf, rest = y.read_text(encoding="utf-8").split("\n\n", 1)
+        y.write_text(kopf.replace("\n", "\\n", 1) + "\n\n" + rest, encoding="utf-8")
+>       assert len(neu.nachziehen(r)) == 2
+E       AssertionError: assert 0 == 2
+E        +  where 0 = len([])
+E        +    where [] = <function nachziehen at 0x7609776f20c0>(PosixPath('<tmp>/pytest-8080/test_zweiter_lauf_aendert_kein0/reisen/skiurlaub-im-tal-2027'))
+E        +      where <function nachziehen at 0x7609776f20c0> = neu.nachziehen
+
+engine/tests/test_umstellung_250.py:122: AssertionError
+__________________ test_zweiter_lauf_aendert_keine_datei[en] ___________________
+
+tmp_path = PosixPath('<tmp>/pytest-8080/test_zweiter_lauf_aendert_kein1')
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_zweiter_lauf_aendert_keine_datei(tmp_path, sprache):
+        """AC-2, AC-6: Nach der Umstellung (Reste und Kopfkommentar) ändert ein zweiter Lauf keine Datei der Reise."""
+        r = anlegen(tmp_path, sprache=sprache)
+        (r / "CLAUDE.md").write_text(ausgefuellt(sprache, "CLAUDE.md", **WERTE), encoding="utf-8")
+        y = r / "reise.yaml"
+        kopf, rest = y.read_text(encoding="utf-8").split("\n\n", 1)
+        y.write_text(kopf.replace("\n", "\\n", 1) + "\n\n" + rest, encoding="utf-8")
+>       assert len(neu.nachziehen(r)) == 2
+E       AssertionError: assert 0 == 2
+E        +  where 0 = len([])
+E        +    where [] = <function nachziehen at 0x7609776f20c0>(PosixPath('<tmp>/pytest-8080/test_zweiter_lauf_aendert_kein1/reisen/skiurlaub-im-tal-2027'))
+E        +      where <function nachziehen at 0x7609776f20c0> = neu.nachziehen
+
+engine/tests/test_umstellung_250.py:122: AssertionError
+__________________ test_rest_mit_crlf_und_leerzeilen_am_ende ___________________
+
+tmp_path = PosixPath('<tmp>/pytest-8080/test_rest_mit_crlf_und_leerzei0')
+
+    def test_rest_mit_crlf_und_leerzeilen_am_ende(tmp_path):
+        """AC-6: Normalisiert wird CRLF zu LF und Leerzeilen am Ende; die Datei gilt dann als ausgefüllte Kopie."""
+        r = anlegen(tmp_path)
+        (r / "CLAUDE.md").write_text(ausgefuellt("de", "CLAUDE.md", **WERTE).replace("\n", "\r\n") + "\r\n\r\n",
+                                     encoding="utf-8", newline="")
+        neu.nachziehen(r)
+>       assert not (r / "CLAUDE.md").exists()
+E       AssertionError: assert not True
+E        +  where True = exists()
+E        +    where exists = (PosixPath('<tmp>/pytest-8080/test_rest_mit_crlf_und_leerzei0/reisen/skiurlaub-im-tal-2027') / 'CLAUDE.md').exists
+
+engine/tests/test_umstellung_250.py:134: AssertionError
+_________________ test_platzhalter_steht_fuer_beliebigen_text __________________
+
+tmp_path = PosixPath('<tmp>/pytest-8080/test_platzhalter_steht_fuer_be0')
+
+    def test_platzhalter_steht_fuer_beliebigen_text(tmp_path):
+        """AC-6: Jeder Platzhalter $wort darf durch beliebigen Text ersetzt sein (hier andere Werte als oben)."""
+        r = anlegen(tmp_path)
+        andere = {k: f"Irgendwas {i} mit $ und Sonderzeichen (?)" for i, k in enumerate(WERTE)}
+        (r / "CLAUDE.md").write_text(ausgefuellt("de", "CLAUDE.md", **andere), encoding="utf-8")
+        neu.nachziehen(r)
+>       assert not (r / "CLAUDE.md").exists()
+E       AssertionError: assert not True
+E        +  where True = exists()
+E        +    where exists = (PosixPath('<tmp>/pytest-8080/test_platzhalter_steht_fuer_be0/reisen/skiurlaub-im-tal-2027') / 'CLAUDE.md').exists
+
+engine/tests/test_umstellung_250.py:143: AssertionError
+__________________________ test_jede_datei_fuer_sich ___________________________
+
+tmp_path = PosixPath('<tmp>/pytest-8080/test_jede_datei_fuer_sich0')
+
+    def test_jede_datei_fuer_sich(tmp_path):
+        """AC-6: CLAUDE.md ist ein Rest, kontext/herkunft.md hat eine eigene Zeile: nur CLAUDE.md geht, kontext/ bleibt."""
+        r = anlegen(tmp_path)
+        (r / "CLAUDE.md").write_text(ausgefuellt("de", "CLAUDE.md", **WERTE), encoding="utf-8")
+        (r / "kontext").mkdir(exist_ok=True)
+        herkunft = ausgefuellt("de", "kontext/herkunft.md", **WERTE) + "- 28.10.2026: Status Planung (Ida).\n"
+        (r / "kontext" / "herkunft.md").write_text(herkunft, encoding="utf-8")
+        m = neu.nachziehen(r)
+>       assert len(m) == 1 and "CLAUDE.md" in m[0]
+E       assert (0 == 1)
+E        +  where 0 = len([])
+
+engine/tests/test_umstellung_250.py:163: AssertionError
+____________________ test_kontext_mit_weiterer_datei_bleibt ____________________
+
+tmp_path = PosixPath('<tmp>/pytest-8080/test_kontext_mit_weiterer_date0')
+
+    def test_kontext_mit_weiterer_datei_bleibt(tmp_path):
+        """AC-6: Entfernt wird kontext/ nur, wenn der Ordner durch das Entfernen leer wird."""
+        r = anlegen(tmp_path)
+        (r / "kontext").mkdir(exist_ok=True)
+        (r / "kontext" / "herkunft.md").write_text(ausgefuellt("de", "kontext/herkunft.md", **WERTE), encoding="utf-8")
+        (r / "kontext" / "notizen.md").write_text("Eigenes\n", encoding="utf-8")
+        neu.nachziehen(r)
+>       assert not (r / "kontext" / "herkunft.md").exists() and (r / "kontext" / "notizen.md").exists()
+E       AssertionError: assert (not True)
+E        +  where True = exists()
+E        +    where exists = ((PosixPath('<tmp>/pytest-8080/test_kontext_mit_weiterer_date0/reisen/skiurlaub-im-tal-2027') / 'kontext') / 'herkunft.md').exists
+
+engine/tests/test_umstellung_250.py:175: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_betrieb.py::test_anstoss_einmal_je_neuem_software_stand
+FAILED engine/tests/test_betrieb.py::test_anstoss_wartezeit_ist_einstellbar
+FAILED engine/tests/test_betrieb.py::test_anstoss_merkdatei_nur_nach_erfolg_und_veroeffentlichen_laeuft_weiter
+FAILED engine/tests/test_betrieb.py::test_anstoss_ls_remote_rot_ist_nur_eine_warnung
+FAILED engine/tests/test_betrieb.py::test_wartezeit_vorgabe_sechs_stunden - A...
+FAILED engine/tests/test_neu.py::test_nachziehen_eckdaten_einer_reise_von_vor_217
+FAILED engine/tests/test_software_nachziehen.py::test_python_in_jedem_lauf - ...
+FAILED engine/tests/test_software_nachziehen.py::test_vorlage_ruft_das_skript_mit_dem_stand
+FAILED engine/tests/test_software_nachziehen.py::test_vorlage_skript_fehlt_lauf_rot_mit_hinweis
+FAILED engine/tests/test_software_nachziehen.py::test_nichts_einer_instanz - ...
+FAILED engine/tests/test_software_nachziehen.py::test_skript_erzwingt_nie - F...
+FAILED engine/tests/test_software_nachziehen.py::test_doku_ablauf_anstoss_und_regel
+FAILED engine/tests/test_software_nachziehen.py::test_neuer_stand_ein_commit_mit_submodul_und_umgestellten_reisen
+FAILED engine/tests/test_software_nachziehen.py::test_ohne_neuen_stand_werden_reisen_umgestellt
+FAILED engine/tests/test_software_nachziehen.py::test_ohne_aenderung_kein_commit
+FAILED engine/tests/test_software_nachziehen.py::test_rote_reisetests_warnen_nur
+FAILED engine/tests/test_software_nachziehen.py::test_tor_rot_ohne_offenes_issue[rot-software]
+FAILED engine/tests/test_software_nachziehen.py::test_tor_rot_ohne_offenes_issue[kaputt-SKI]
+FAILED engine/tests/test_software_nachziehen.py::test_tor_rot_mit_offenem_issue_kommentiert_den_neuen_stand_einmal
+FAILED engine/tests/test_software_nachziehen.py::test_tor_rot_issue_nennt_den_stand_schon
+FAILED engine/tests/test_software_nachziehen.py::test_tor_rot_ohne_neuen_stand
+FAILED engine/tests/test_software_nachziehen.py::test_wettlauf_mit_dem_schreibweg_stellt_neu_um
+FAILED engine/tests/test_software_nachziehen.py::test_drei_gescheiterte_pushes_rot_ohne_issue
+FAILED engine/tests/test_umstellung_250.py::test_ausgefuellte_vorlagen_reste_werden_entfernt[de]
+FAILED engine/tests/test_umstellung_250.py::test_ausgefuellte_vorlagen_reste_werden_entfernt[en]
+FAILED engine/tests/test_umstellung_250.py::test_kopfkommentar_mit_woertlichem_zeilenumbruch
+FAILED engine/tests/test_umstellung_250.py::test_eckdaten_status_in_worten[de-Status: Planung]
+FAILED engine/tests/test_umstellung_250.py::test_eckdaten_status_in_worten[en-Status: Planning]
+FAILED engine/tests/test_umstellung_250.py::test_jeder_status_hat_ein_wort_in_jeder_sprache
+FAILED engine/tests/test_umstellung_250.py::test_zweiter_lauf_aendert_keine_datei[de]
+FAILED engine/tests/test_umstellung_250.py::test_zweiter_lauf_aendert_keine_datei[en]
+FAILED engine/tests/test_umstellung_250.py::test_rest_mit_crlf_und_leerzeilen_am_ende
+FAILED engine/tests/test_umstellung_250.py::test_platzhalter_steht_fuer_beliebigen_text
+FAILED engine/tests/test_umstellung_250.py::test_jede_datei_fuer_sich - asser...
+FAILED engine/tests/test_umstellung_250.py::test_kontext_mit_weiterer_datei_bleibt
+35 failed, 955 passed in 958.97s (0:15:58)
