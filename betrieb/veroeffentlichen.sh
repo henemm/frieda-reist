@@ -62,6 +62,11 @@ zustellen() {  # ausstehende Links neuer Reisen (nur wenn welche anstehen)
 
 jetzt() { echo "${VF_JETZT:-$(date +%s)}"; }
 
+einstellungen_summe() {  # <datei>: Prüfsumme, leer ohne lesbare Datei wie in fr_einlesen (Erscheinen und Verschwinden
+  # zählen als Änderung, #242)
+  [ ! -r "$1" ] || sha256sum < "$1" | cut -d' ' -f1
+}
+
 iso() { [[ "${1:-}" =~ ^[0-9]+$ ]] && date -u -d "@$1" +%Y-%m-%dT%H:%M:%SZ || true; }
 
 reise_stand_schreiben() {  # <reise> <zustand> [grund]: Zustand des Reise-Stands für api/stand und publish_status
@@ -307,6 +312,8 @@ abhaengigkeiten() {  # Umgebung der Prüfungen wie in CI (#202): Bibliotheken un
 # Alles steckt in main(), damit bash das Skript ganz einliest, bevor git es mit dem Submodul eventuell ersetzt.
 main() {
   local stand deploy immer="" alt neu reise freischalten aus rc gut="" rote="" warnung grund laufreisen
+  local einstellungen="${FR_EINSTELLUNGEN:-$FR_WURZEL/betrieb/einstellungen.env}" einstellungen_vorher start_ordner="$PWD"
+  case "$einstellungen" in /*) ;; *) einstellungen="$PWD/$einstellungen" ;; esac   # wie gemeinsam.sh sie las, vor dem cd
   wurzel="$FR_WURZEL"
   stand="${VF_STAND:-$FR_DIENST/veroeffentlicht}"
   deploy="${VF_DEPLOY:-$FR_BETRIEB/deploy.sh}"
@@ -340,6 +347,7 @@ main() {
   fi
 
   mkdir -p "$FR_DIENST"   # Zustand des Veröffentlichens (Stand, Rot-Datei, Merker der Warnung, Stempel)
+  einstellungen_vorher="$(einstellungen_summe "$einstellungen")"
   git fetch -q origin main
   software_anstossen || true
   neu="$(git rev-parse origin/main)"
@@ -349,6 +357,15 @@ main() {
   git merge -q --ff-only origin/main || { echo "ERROR: main cannot be fast-forwarded (local commits?)."; return 1; }
   # Software (Submodul) auf den Stand bringen, den main festhält
   git submodule update --init --quiet || { echo "ERROR: the software submodule cannot be fetched."; return 1; }
+  # Geänderte Einstellungen wirken im selben Lauf (#242): gemeinsam.sh hat die Datei schon vor dem Vorspulen gelesen.
+  # Neustart mit denselben Argumenten und ohne die alten Werte (nur die vom Aufruf bleiben), höchstens einmal je Lauf.
+  if [ -z "${_neugestartet:-}" ] && [ "$(einstellungen_summe "$einstellungen")" != "$einstellungen_vorher" ]; then
+    echo "Settings changed by the update, restarting."
+    fr_aufraeumen
+    _neugestartet=1; export _neugestartet
+    cd "$start_ordner"   # $0 und eine relative FR_EINSTELLUNGEN gelten vom Ordner des Aufrufs aus
+    exec "$0" "$@"
+  fi
 
   # Umgebung zuerst (feste Versionen, #202), damit ein bekannter roter Stand sie schon im Fingerabdruck sieht (#203)
   abhaengigkeiten || { echo "ERROR: libraries or Playwright cannot be installed, the next run tries again."; return 1; }
@@ -446,6 +463,7 @@ nachlauf() {
   if [ -n "$nochmal" ] && [ -e "$nochmal" ]; then
     rm -f "$nochmal"
     echo "A new state arrived during the run, publishing again."
+    unset _neugestartet   # der neue Lauf darf wieder einmal neu starten (#242)
     exec "$0"
   fi
   exit "$rc"

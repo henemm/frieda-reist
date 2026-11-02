@@ -1,7 +1,7 @@
 ============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- /home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/engine/.venv/bin/python
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- <repo>/engine/.venv/bin/python
 cachedir: .pytest_cache
-rootdir: /home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao
+rootdir: <repo>
 collecting ... collected 95 items / 83 deselected / 12 selected
 
 engine/tests/test_betrieb.py::test_veroeffentlichen_inhaltsstand_baut_nur_die_geaenderte_reise PASSED [  8%]
@@ -36,7 +36,7 @@ E         Published zweitreise state 1, 0 s after saving.
 E         Done: 3422158 is online.
 E         
 E       assert 0 == 1
-E        +  where 0 = neustarts(CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 3422158 neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 3422158 is online.\n', stderr=''))
+E        +  where 0 = neustarts(CompletedProcess(args=['<repo>/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 3422158 neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 3422158 is online.\n', stderr=''))
 
 engine/tests/test_betrieb.py:359: AssertionError
 ___ test_veroeffentlichen_wert_aus_dem_aufruf_gewinnt_auch_nach_dem_neustart ___
@@ -56,7 +56,7 @@ E         Published zweitreise state 1, 0 s after saving.
 E         Done: 3422158 is online.
 E         
 E       assert 0 == 1
-E        +  where 0 = neustarts(CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 3422158 neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 3422158 is online.\n', stderr=''))
+E        +  where 0 = neustarts(CompletedProcess(args=['<repo>/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 3422158 neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 3422158 is online.\n', stderr=''))
 
 engine/tests/test_betrieb.py:369: AssertionError
 _____________ test_veroeffentlichen_startet_hoechstens_einmal_neu ______________
@@ -76,8 +76,8 @@ E         Published zweitreise state 1, 0 s after saving.
 E         Done: 33093cd is online.
 E         
 E       assert (0 == 0 and 0 == 1)
-E        +  where 0 = CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 33093cd neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 33093cd is online.\n', stderr='').returncode
-E        +  and   0 = neustarts(CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 33093cd neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 33093cd is online.\n', stderr=''))
+E        +  where 0 = CompletedProcess(args=['<repo>/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 33093cd neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 33093cd is online.\n', stderr='').returncode
+E        +  and   0 = neustarts(CompletedProcess(args=['<repo>/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 33093cd neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 33093cd is online.\n', stderr=''))
 
 engine/tests/test_betrieb.py:389: AssertionError
 _________________ test_veroeffentlichen_neustart_behaelt_immer _________________
@@ -98,8 +98,8 @@ E         Published zweitreise state 1, 0 s after saving.
 E         Done: 33093cd is online.
 E         
 E       assert (0 == 0 and 0 == 1)
-E        +  where 0 = CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh', '--immer'], returncode=0, stdout='Publishing 33093cd neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 33093cd is online.\n', stderr='').returncode
-E        +  and   0 = neustarts(CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh', '--immer'], returncode=0, stdout='Publishing 33093cd neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 33093cd is online.\n', stderr=''))
+E        +  where 0 = CompletedProcess(args=['<repo>/betrieb/veroeffentlichen.sh', '--immer'], returncode=0, stdout='Publishing 33093cd neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 33093cd is online.\n', stderr='').returncode
+E        +  and   0 = neustarts(CompletedProcess(args=['<repo>/betrieb/veroeffentlichen.sh', '--immer'], returncode=0, stdout='Publishing 33093cd neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 33093cd is online.\n', stderr=''))
 
 engine/tests/test_betrieb.py:400: AssertionError
 _ test_veroeffentlichen_neue_oder_entfernte_einstellungsdatei_ist_eine_aenderung[neu] _
@@ -131,8 +131,8 @@ E         Published zweitreise state 1, 0 s after saving.
 E         Done: 1067351 is online.
 E         
 E       assert (0 == 0 and 0 == 1)
-E        +  where 0 = CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 1067351 neu angelegt1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 1067351 is online.\n', stderr='').returncode
-E        +  and   0 = neustarts(CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 1067351 neu angelegt1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 1067351 is online.\n', stderr=''))
+E        +  where 0 = CompletedProcess(args=['<repo>/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 1067351 neu angelegt1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 1067351 is online.\n', stderr='').returncode
+E        +  and   0 = neustarts(CompletedProcess(args=['<repo>/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 1067351 neu angelegt1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 1067351 is online.\n', stderr=''))
 
 engine/tests/test_betrieb.py:432: AssertionError
 _ test_veroeffentlichen_neue_oder_entfernte_einstellungsdatei_ist_eine_aenderung[entfernt] _
@@ -164,8 +164,8 @@ E         Published zweitreise state 1, 0 s after saving.
 E         Done: 62fbf8a is online.
 E         
 E       assert (0 == 0 and 0 == 1)
-E        +  where 0 = CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 62fbf8a ohne einstellungen1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 62fbf8a is online.\n', stderr='').returncode
-E        +  and   0 = neustarts(CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 62fbf8a ohne einstellungen1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 62fbf8a is online.\n', stderr=''))
+E        +  where 0 = CompletedProcess(args=['<repo>/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 62fbf8a ohne einstellungen1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 62fbf8a is online.\n', stderr='').returncode
+E        +  and   0 = neustarts(CompletedProcess(args=['<repo>/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 62fbf8a ohne einstellungen1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 62fbf8a is online.\n', stderr=''))
 
 engine/tests/test_betrieb.py:432: AssertionError
 __________________ test_interne_merker_haben_kein_fr_praefix ___________________

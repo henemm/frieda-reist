@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- <repo>/engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: <repo>
+collecting ... collected 95 items / 89 deselected / 6 selected
+
+engine/tests/test_betrieb.py::test_veroeffentlichen_inhaltsstand_baut_nur_die_geaenderte_reise PASSED [ 16%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_uebernimmt_geaenderte_einstellungen_im_selben_lauf PASSED [ 33%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_wert_aus_dem_aufruf_gewinnt_auch_nach_dem_neustart PASSED [ 50%]
+engine/tests/test_betrieb.py::test_interne_merker_haben_kein_fr_praefix PASSED [ 66%]
+engine/tests/test_betrieb.py::test_deploy_startet_dienste_bei_geaenderten_modulen_neu PASSED [ 83%]
+engine/tests/test_betrieb.py::test_handaufrufe_nennen_den_bauordner PASSED [100%]
+
+====================== 6 passed, 89 deselected in 10.65s =======================

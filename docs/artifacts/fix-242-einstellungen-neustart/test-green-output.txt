@@ -1,0 +1,20 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- <repo>/engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: <repo>
+collecting ... collected 95 items / 83 deselected / 12 selected
+
+engine/tests/test_betrieb.py::test_veroeffentlichen_inhaltsstand_baut_nur_die_geaenderte_reise PASSED [  8%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_uebernimmt_geaenderte_einstellungen_im_selben_lauf PASSED [ 16%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_wert_aus_dem_aufruf_gewinnt_auch_nach_dem_neustart PASSED [ 25%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_unveraenderte_einstellungen_starten_nicht_neu PASSED [ 33%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_startet_hoechstens_einmal_neu PASSED [ 41%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_neustart_behaelt_immer PASSED [ 50%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_einstellungen_ausserhalb_des_repos_starten_nicht_neu PASSED [ 58%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_neue_oder_entfernte_einstellungsdatei_ist_eine_aenderung[neu] PASSED [ 66%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_neue_oder_entfernte_einstellungsdatei_ist_eine_aenderung[entfernt] PASSED [ 75%]
+engine/tests/test_betrieb.py::test_interne_merker_haben_kein_fr_praefix PASSED [ 83%]
+engine/tests/test_betrieb.py::test_deploy_startet_dienste_bei_geaenderten_modulen_neu PASSED [ 91%]
+engine/tests/test_betrieb.py::test_handaufrufe_nennen_den_bauordner PASSED [100%]
+
+====================== 12 passed, 83 deselected in 4.01s =======================
