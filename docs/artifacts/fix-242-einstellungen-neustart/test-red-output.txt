@@ -1,0 +1,191 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- /home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao
+collecting ... collected 95 items / 83 deselected / 12 selected
+
+engine/tests/test_betrieb.py::test_veroeffentlichen_inhaltsstand_baut_nur_die_geaenderte_reise PASSED [  8%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_uebernimmt_geaenderte_einstellungen_im_selben_lauf FAILED [ 16%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_wert_aus_dem_aufruf_gewinnt_auch_nach_dem_neustart FAILED [ 25%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_unveraenderte_einstellungen_starten_nicht_neu PASSED [ 33%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_startet_hoechstens_einmal_neu FAILED [ 41%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_neustart_behaelt_immer FAILED [ 50%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_einstellungen_ausserhalb_des_repos_starten_nicht_neu PASSED [ 58%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_neue_oder_entfernte_einstellungsdatei_ist_eine_aenderung[neu] FAILED [ 66%]
+engine/tests/test_betrieb.py::test_veroeffentlichen_neue_oder_entfernte_einstellungsdatei_ist_eine_aenderung[entfernt] FAILED [ 75%]
+engine/tests/test_betrieb.py::test_interne_merker_haben_kein_fr_praefix FAILED [ 83%]
+engine/tests/test_betrieb.py::test_deploy_startet_dienste_bei_geaenderten_modulen_neu PASSED [ 91%]
+engine/tests/test_betrieb.py::test_handaufrufe_nennen_den_bauordner PASSED [100%]
+
+=================================== FAILURES ===================================
+___ test_veroeffentlichen_uebernimmt_geaenderte_einstellungen_im_selben_lauf ___
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x768b46c0c860>, 'deploys': <function vf.<locals>.deploys at 0x768b46c0c5e0>, '...f.<locals>.anzahl_pings at 0x768b46c0ca40>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x768b46c0c680>, ...}
+
+    def test_veroeffentlichen_uebernimmt_geaenderte_einstellungen_im_selben_lauf(vf):
+        """#242: Bringt das Vorspulen eine geänderte Einstellungsdatei, startet sich der Lauf neu und baut mit den neuen Werten,
+        auch den abgeleiteten (FR_KN_ADRESSE)."""
+        setzen, _, gesehen, extra = einstellungen_setup(vf)
+        setzen("FR_ADRESSE=https://neu.example.invalid\n", "neu")
+        r = vf["lauf"](**extra)
+        assert r.returncode == 0, r.stdout + r.stderr
+>       assert neustarts(r) == 1, r.stdout
+E       AssertionError: Publishing 3422158 neu1
+E         Published beispielreise state 1, 0 s after saving.
+E         Published zweitreise state 1, 0 s after saving.
+E         Done: 3422158 is online.
+E         
+E       assert 0 == 1
+E        +  where 0 = neustarts(CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 3422158 neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 3422158 is online.\n', stderr=''))
+
+engine/tests/test_betrieb.py:359: AssertionError
+___ test_veroeffentlichen_wert_aus_dem_aufruf_gewinnt_auch_nach_dem_neustart ___
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x768b4691b740>, 'deploys': <function vf.<locals>.deploys at 0x768b4691b600>, '...f.<locals>.anzahl_pings at 0x768b4691b7e0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x768b4691b6a0>, ...}
+
+    def test_veroeffentlichen_wert_aus_dem_aufruf_gewinnt_auch_nach_dem_neustart(vf):
+        setzen, _, gesehen, extra = einstellungen_setup(vf)
+        setzen("FR_ADRESSE=https://neu.example.invalid\n", "neu")
+        r = vf["lauf"](FR_ADRESSE="https://aufruf.example.invalid", **extra)
+        assert r.returncode == 0, r.stdout + r.stderr
+>       assert neustarts(r) == 1, r.stdout     # die Datei hat sich trotzdem geändert
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Publishing 3422158 neu1
+E         Published beispielreise state 1, 0 s after saving.
+E         Published zweitreise state 1, 0 s after saving.
+E         Done: 3422158 is online.
+E         
+E       assert 0 == 1
+E        +  where 0 = neustarts(CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 3422158 neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 3422158 is online.\n', stderr=''))
+
+engine/tests/test_betrieb.py:369: AssertionError
+_____________ test_veroeffentlichen_startet_hoechstens_einmal_neu ______________
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x768b46c0ce00>, 'deploys': <function vf.<locals>.deploys at 0x768b46c0cd60>, '...f.<locals>.anzahl_pings at 0x768b46c0cfe0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x768b46c0c400>, ...}
+
+    def test_veroeffentlichen_startet_hoechstens_einmal_neu(vf):
+        """Regressionsschutz: keine Endlosschleife."""
+        setzen, _, gesehen, extra = einstellungen_setup(vf)
+        setzen("FR_ADRESSE=https://neu.example.invalid\n", "neu")
+        r = subprocess.run([str(BETRIEB / "veroeffentlichen.sh")], env={**vf["env"], **extra}, capture_output=True, text=True,
+                           timeout=60)
+>       assert r.returncode == 0 and neustarts(r) == 1 and r.stdout.count("Publishing ") == 1, r.stdout
+E       AssertionError: Publishing 33093cd neu1
+E         Published beispielreise state 1, 0 s after saving.
+E         Published zweitreise state 1, 0 s after saving.
+E         Done: 33093cd is online.
+E         
+E       assert (0 == 0 and 0 == 1)
+E        +  where 0 = CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 33093cd neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 33093cd is online.\n', stderr='').returncode
+E        +  and   0 = neustarts(CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 33093cd neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 33093cd is online.\n', stderr=''))
+
+engine/tests/test_betrieb.py:389: AssertionError
+_________________ test_veroeffentlichen_neustart_behaelt_immer _________________
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x768b46931d00>, 'deploys': <function vf.<locals>.deploys at 0x768b46932020>, '...f.<locals>.anzahl_pings at 0x768b46932c00>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x768b46931da0>, ...}
+
+    def test_veroeffentlichen_neustart_behaelt_immer(vf):
+        """Regressionsschutz: --immer übersteht den Neustart (alles wird gebaut)."""
+        setzen, _, gesehen, extra = einstellungen_setup(vf)
+        assert vf["lauf"](**extra).returncode == 0
+        gesehen()
+        setzen("FR_ADRESSE=https://neu.example.invalid\n", "neu")
+        r = vf["lauf"]("--immer", **extra)
+>       assert r.returncode == 0 and neustarts(r) == 1, r.stdout
+E       AssertionError: Publishing 33093cd neu1
+E         Published beispielreise state 1, 0 s after saving.
+E         Published zweitreise state 1, 0 s after saving.
+E         Done: 33093cd is online.
+E         
+E       assert (0 == 0 and 0 == 1)
+E        +  where 0 = CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh', '--immer'], returncode=0, stdout='Publishing 33093cd neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 33093cd is online.\n', stderr='').returncode
+E        +  and   0 = neustarts(CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh', '--immer'], returncode=0, stdout='Publishing 33093cd neu1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 33093cd is online.\n', stderr=''))
+
+engine/tests/test_betrieb.py:400: AssertionError
+_ test_veroeffentlichen_neue_oder_entfernte_einstellungsdatei_ist_eine_aenderung[neu] _
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x768b46930400>, 'deploys': <function vf.<locals>.deploys at 0x768b46930360>, '...f.<locals>.anzahl_pings at 0x768b469304a0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x768b46930540>, ...}
+fall = 'neu'
+
+    @pytest.mark.parametrize("fall", ["neu", "entfernt"])
+    def test_veroeffentlichen_neue_oder_entfernte_einstellungsdatei_ist_eine_aenderung(vf, fall):
+        if fall == "neu":
+            quelle = vf["tmp"] / "quelle"
+            (quelle / "betrieb").mkdir()
+            (quelle / "betrieb" / "einstellungen.env").write_text("FR_ADRESSE=https://neu.example.invalid\n")
+            git(quelle, "add", ".")
+            git(quelle, "commit", "-qm", "neu angelegt")
+            attrappe = ausfuehrbar(vf["tmp"] / "deploy-adressen.sh",
+                                   f'#!/bin/sh\necho "$1 $FR_ADRESSE" >> {vf["tmp"]}/adressen.log\n')
+            extra = {"VF_DEPLOY": str(attrappe)}
+            erwartet = "https://neu.example.invalid"
+        else:
+            _, entfernen, _, extra = einstellungen_setup(vf)
+            entfernen()
+            erwartet = ""
+        r = vf["lauf"](**extra)
+>       assert r.returncode == 0 and neustarts(r) == 1, r.stdout + r.stderr
+E       AssertionError: Publishing 1067351 neu angelegt1
+E         Published beispielreise state 1, 0 s after saving.
+E         Published zweitreise state 1, 0 s after saving.
+E         Done: 1067351 is online.
+E         
+E       assert (0 == 0 and 0 == 1)
+E        +  where 0 = CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 1067351 neu angelegt1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 1067351 is online.\n', stderr='').returncode
+E        +  and   0 = neustarts(CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 1067351 neu angelegt1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 1067351 is online.\n', stderr=''))
+
+engine/tests/test_betrieb.py:432: AssertionError
+_ test_veroeffentlichen_neue_oder_entfernte_einstellungsdatei_ist_eine_aenderung[entfernt] _
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x768b469300e0>, 'deploys': <function vf.<locals>.deploys at 0x768b46930e00>, '...f.<locals>.anzahl_pings at 0x768b46930ea0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x768b46930d60>, ...}
+fall = 'entfernt'
+
+    @pytest.mark.parametrize("fall", ["neu", "entfernt"])
+    def test_veroeffentlichen_neue_oder_entfernte_einstellungsdatei_ist_eine_aenderung(vf, fall):
+        if fall == "neu":
+            quelle = vf["tmp"] / "quelle"
+            (quelle / "betrieb").mkdir()
+            (quelle / "betrieb" / "einstellungen.env").write_text("FR_ADRESSE=https://neu.example.invalid\n")
+            git(quelle, "add", ".")
+            git(quelle, "commit", "-qm", "neu angelegt")
+            attrappe = ausfuehrbar(vf["tmp"] / "deploy-adressen.sh",
+                                   f'#!/bin/sh\necho "$1 $FR_ADRESSE" >> {vf["tmp"]}/adressen.log\n')
+            extra = {"VF_DEPLOY": str(attrappe)}
+            erwartet = "https://neu.example.invalid"
+        else:
+            _, entfernen, _, extra = einstellungen_setup(vf)
+            entfernen()
+            erwartet = ""
+        r = vf["lauf"](**extra)
+>       assert r.returncode == 0 and neustarts(r) == 1, r.stdout + r.stderr
+E       AssertionError: Publishing 62fbf8a ohne einstellungen1
+E         Published beispielreise state 1, 0 s after saving.
+E         Published zweitreise state 1, 0 s after saving.
+E         Done: 62fbf8a is online.
+E         
+E       assert (0 == 0 and 0 == 1)
+E        +  where 0 = CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 62fbf8a ohne einstellungen1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 62fbf8a is online.\n', stderr='').returncode
+E        +  and   0 = neustarts(CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/shimmering-tickling-yao/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing 62fbf8a ohne einstellungen1\nPublished beispielreise state 1, 0 s after saving.\nPublished zweitreise state 1, 0 s after saving.\nDone: 62fbf8a is online.\n', stderr=''))
+
+engine/tests/test_betrieb.py:432: AssertionError
+__________________ test_interne_merker_haben_kein_fr_praefix ___________________
+
+    def test_interne_merker_haben_kein_fr_praefix():
+        """Die neuen Merker (Namen der Aufruf-Werte, Neustart) tragen kein FR_-Präfix: Die Aufräum-Schleife und die
+        Einstellungsvorlage erfassen sie nicht."""
+        gemeinsam = (BETRIEB / "gemeinsam.sh").read_text(encoding="utf-8")
+        ver = (BETRIEB / "veroeffentlichen.sh").read_text(encoding="utf-8")
+>       assert "_aufruf_namen" in gemeinsam, "Merker der Aufruf-Namen fehlt"
+E       AssertionError: Merker der Aufruf-Namen fehlt
+E       assert '_aufruf_namen' in '# Gemeinsame Grundlage der Betriebsskripte (wird mit „. gemeinsam.sh“ eingelesen, nicht aufgerufen).\n#\n# Eine Instanz ist ein Reisen-Repo mit dieser Software als Submodul frieda/ (docs/betrieb.md). Die Skripte hier kennen\n# keine Instanz: Pfade, Adressen, Namen, Meldeweg und Überwachung kommen aus den Einstellungen.\n#\n#   FR_WURZEL         Wurzel des Reisen-Repos. Ohne Angabe das Repo, das diese Software als Submodul einbindet.\n#                     deploy.sh und veroeffentlichen.sh verlangen die Angabe (nur_bauordner, unten).\n#   FR_EINSTELLUNGEN  Einstellungsdatei der Instanz, Vorgabe <FR_WURZEL>/betrieb/einstellungen.env (Vorlage:\n#                     betrieb/einstellungen.beispiel). Darin nur Zeilen NAME=wert mit Namen FR_…, ohne Shell-Auswertung.\n#                     Was schon in der Umgebung steht (systemd, Aufruf von Hand, Tests), gilt vor der Datei.\n#   <FR_DIENST>/betrieb.env  Geheime Werte (Überwachungsadressen, Meldeweg), nur für den Betriebsbenutzer lesbar,\n#                     nie im Repo; gleiche Form, wird nach den Einstellungen gelesen.\n\nFR_BETRIEB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\nfr_wurzel_angegeben="${FR_WURZEL:-}"\n\nif [ -z "${...ie Prüfung von freischalten.sh; veroeffentlichen.sh ruft sie\n  # deshalb einmal je Lauf nach dem Freischalten auf (FR_WEGE_SPAETER), nicht je Reise (frieda-reist#163).\n  local weg fehlen=""\n  [ -n "${FR_KN_ADRESSE:-}" ] || return 0\n  systemctl is-enabled --quiet "$FR_INSTANZ-konnektor" 2>/dev/null || return 0\n  # /manifest.webmanifest, /sw.js, /konto.js: Frieda-App und Schalter für Benachrichtigungen auf Mein Konto (#21)\n  for weg in /gesund /anmelden /kalender/0000000000000000000000000000000000000000.ics /schrift/pruefung.woff2 /favicon.svg \\\n             /manifest.webmanifest /sw.js /konto.js; do\n    curl -sS -I --max-time 10 "$FR_KN_ADRESSE$weg" 2>/dev/null | grep -qi \'^x-frieda:\' || fehlen="$fehlen $weg"\n  done\n  [ -n "$fehlen" ] || return 0\n  echo "Warning: these paths do not reach the connector via $FR_KN_ADRESSE:$fehlen"\n  echo "         nginx: include the block $FR_INSTANZ-konnektor.conf from betrieb/vorlagen/ (einrichten.sh, docs/betrieb.md)."\n  fr_melden high "nginx: paths to the connector missing" "These paths do not reach the connector via $FR_KN_ADRESSE:$fehlen. Include the block $FR_INSTANZ-konnektor.conf from betrieb/vorlagen/ (einrichten.sh)."\n}\n'
+
+engine/tests/test_betrieb.py:442: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_uebernimmt_geaenderte_einstellungen_im_selben_lauf
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_wert_aus_dem_aufruf_gewinnt_auch_nach_dem_neustart
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_startet_hoechstens_einmal_neu
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_neustart_behaelt_immer
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_neue_oder_entfernte_einstellungsdatei_ist_eine_aenderung[neu]
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_neue_oder_entfernte_einstellungsdatei_ist_eine_aenderung[entfernt]
+FAILED engine/tests/test_betrieb.py::test_interne_merker_haben_kein_fr_praefix
+================== 7 failed, 5 passed, 83 deselected in 3.83s ==================
