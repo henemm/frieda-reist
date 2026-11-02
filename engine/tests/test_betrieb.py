@@ -109,7 +109,7 @@ def test_beispiel_einstellungen_sind_vollstaendig():
     for f in BETRIEB.glob("*.sh"):
         gelesen |= set(re.findall(r"\$\{?(FR_[A-Z0-9_]+)", f.read_text(encoding="utf-8")))
     intern = {"FR_WURZEL", "FR_BETRIEB", "FR_EINSTELLUNGEN", "FR_PFAD", "FR_GRUPPE", "FR_HEARTBEAT_VEROEFFENTLICHEN",
-              "FR_GEPRUEFT", "FR_WEGE_SPAETER"}  # reicht veroeffentlichen.sh an deploy.sh weiter
+              "FR_GEPRUEFT", "FR_WEGE_SPAETER", "FR_BIBLIOTHEKEN_NEU"}  # reicht veroeffentlichen.sh an deploy.sh weiter
     assert gelesen - intern - erklaert == set()
 
 
@@ -141,7 +141,7 @@ def vf(tmp_path):
                                                    f'[ ! -e {tmp_path}/rot-reise ]; exit; fi\n'
                                                    f'echo p >> {tmp_path}/pruefen.log\n[ ! -e {tmp_path}/rot ]\n')
     # Meldeweg an den Betrieb (FR_MELDEN) und Meldung an Personen (waechter.py rot-melden) als Attrappen
-    melden = ausfuehrbar(tmp_path / "melden.sh", f'#!/bin/sh\necho "$1|$2" >> {tmp_path}/melden.log\n'
+    melden = ausfuehrbar(tmp_path / "melden.sh", f'#!/bin/sh\necho "$1|$2|$3" >> {tmp_path}/melden.log\n'
                                                  f'[ ! -e {tmp_path}/melden-aus ]\n')
     rotmelden = ausfuehrbar(tmp_path / "rotmelden.sh", f'#!/bin/sh\necho "$@" >> {tmp_path}/rotmelden.log\n')
     # curl-Attrappe: protokolliert Heartbeat-Abrufe statt ins Netz zu gehen
@@ -336,12 +336,14 @@ def test_veroeffentlichen_stempel_nur_bei_erfolg(vf):
 
 
 def test_veroeffentlichen_sperre_je_instanz(vf):
-    """Zwei Instanzen auf einem Server stören sich nicht: die Sperre trägt den Namen der Instanz."""
+    """Zwei Instanzen auf einem Server stören sich nicht: die Sperre liegt im Dienstordner der Instanz (#211)."""
     import fcntl
-    with open(vf["tmp"] / "andere-veroeffentlichen.lock", "w") as f:
+    (vf["tmp"] / "andere-dienst").mkdir()
+    with open(vf["tmp"] / "andere-dienst" / "veroeffentlichen.lock", "w") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         assert "Already running" not in vf["lauf"]().stdout
-    with open(vf["tmp"] / "probe-veroeffentlichen.lock", "w") as f:
+    (vf["tmp"] / "dienst").mkdir(exist_ok=True)
+    with open(vf["tmp"] / "dienst" / "veroeffentlichen.lock", "w") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         assert "Already running" in vf["lauf"]().stdout
 
@@ -603,6 +605,62 @@ def test_veroeffentlichen_installiert_neue_bibliotheken_vor_den_pruefungen(vf):
     assert vf["deploys"]() == ["beispielreise", "zweitreise"]
 
 
+def test_veroeffentlichen_installiert_playwright_fest_und_startet_dienste_einmal_neu(vf):
+    """Playwright kommt in fester Version aus engine/tests/playwright in eine eigene Kopie unter FR_DIENST, nur wenn sich die
+    Sperrdatei geändert hat; die Prüfungen bekommen PLAYWRIGHT_MODUL. Nach neuen Bibliotheken bekommt nur der erste
+    Deploy des Laufs FR_BIBLIOTHEKEN_NEU (Dienste mit FR_PYTHON einmal neu starten), #202."""
+    tmp, quelle, arbeit = vf["tmp"], vf["tmp"] / "quelle", vf["arbeit"]
+    npm_log = tmp / "npm.log"
+    npm = ausfuehrbar(tmp / "npm.sh", f'#!/bin/sh\necho "$PWD|$*" >> {npm_log}\n[ "$1" = ci ] && mkdir -p node_modules/playwright '
+                                      f'&& touch node_modules/playwright/index.mjs\nexit 0\n')
+    pip = ausfuehrbar(tmp / "pip.sh", "#!/bin/sh\nexit 0\n")
+    # Deploy-Attrappe, die festhält, was sie mitbekommt
+    seen = tmp / "seen.log"
+    deploy = ausfuehrbar(tmp / "deploy-seen.sh", f'#!/bin/sh\necho "$1|${{FR_BIBLIOTHEKEN_NEU:-}}" >> {seen}\nexit 0\n')
+    pruefen = ausfuehrbar(tmp / "pruefen-pw.sh", f'#!/bin/sh\necho "$1|${{PLAYWRIGHT_MODUL:-}}" >> {tmp}/pw.log\nexit 0\n')
+    (quelle / "engine/tests/playwright").mkdir(parents=True)
+    (quelle / "engine/tests/playwright/package.json").write_text('{"dependencies": {"playwright": "1.0.0"}}')
+    (quelle / "engine/tests/playwright/package-lock.json").write_text("{}")
+    (quelle / "engine/requirements.txt").write_text("PyYAML==6.0\n")
+    git(quelle, "add", ".")
+    git(quelle, "commit", "-qm", "Versionen")
+    extra = dict(VF_NPM=str(npm), VF_PIP=str(pip), VF_DEPLOY=str(deploy), VF_PRUEFEN=str(pruefen))
+    r = vf["lauf"](**extra)
+    assert r.returncode == 0, r.stdout + r.stderr
+    ziel = tmp / "dienst" / "playwright"
+    aufrufe = npm_log.read_text().splitlines()
+    assert [a.split("|")[1].split()[0] for a in aufrufe] == ["ci", "exec"] and all(a.split("|")[0] == str(ziel) for a in aufrufe), aufrufe
+    assert "playwright install chromium webkit" in aufrufe[1]
+    assert (ziel / "package-lock.json").exists() and (ziel / ".stand").exists()
+    assert all(z.endswith(f"|{ziel}/node_modules/playwright/index.mjs") for z in (tmp / "pw.log").read_text().splitlines())
+    assert seen.read_text().splitlines() == ["beispielreise|1", "zweitreise|"]
+    # Nichts geändert: keine Installation, kein Neustart-Hinweis, PLAYWRIGHT_MODUL trotzdem gesetzt
+    npm_log.unlink(); seen.unlink(); (tmp / "pw.log").unlink()
+    r = vf["lauf"]("--immer", **extra)
+    assert r.returncode == 0 and not npm_log.exists(), r.stdout + r.stderr
+    assert seen.read_text().splitlines() == ["beispielreise|", "zweitreise|"]
+    assert f"{ziel}/node_modules/playwright/index.mjs" in (tmp / "pw.log").read_text()
+    # Ohne npm: Hinweis, kein Abbruch
+    r = vf["lauf"]("--immer", **{**extra, "VF_NPM": str(tmp / "gibt-es-nicht")})
+    assert r.returncode == 0 and "npm missing" in r.stdout, r.stdout + r.stderr
+    assert git(arbeit, "status", "--porcelain").strip() == ""   # nichts im Bauordner
+
+
+def test_veroeffentlichen_sperre_liegt_im_dienstordner(vf):
+    """Die Sperre des Veröffentlichens liegt in FR_DIENST, nicht in FR_SPERREN: Der Schreibweg startet den Lauf aus einem
+    Dienst mit privatem /tmp, eine Sperre dort sähe der Timer nicht (#211). Hält ein anderer Lauf sie, wird übersprungen."""
+    import fcntl
+    sperre = vf["tmp"] / "dienst" / "veroeffentlichen.lock"
+    sperre.parent.mkdir(parents=True, exist_ok=True)
+    with open(sperre, "w") as f:
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        r = vf["lauf"](FR_SPERREN=str(vf["tmp"] / "anderes-tmp"))
+    assert r.returncode == 0 and "Already running" in r.stdout, r.stdout + r.stderr
+    assert vf["deploys"]() == []
+    r = vf["lauf"](FR_SPERREN=str(vf["tmp"] / "anderes-tmp"))
+    assert r.returncode == 0 and vf["deploys"]() == ["beispielreise", "zweitreise"]
+
+
 def test_veroeffentlichen_merge_und_submodulfehler_werden_nicht_gemerkt(vf):
     """Scheitert das Vorspulen (lokaler Commit im Bauordner) oder das Holen des Submoduls, endet der Lauf mit 1,
     es wird nichts gebaut, kein Stand geschrieben und die Rot-Datei weder angelegt noch verändert (AC-18)."""
@@ -759,6 +817,64 @@ def test_veroeffentlichen_alarm_genau_einmal(vf):
     assert vf["lauf"](VF_JETZT=str(T0 + 70 * 60)).returncode == 1
     assert len(hoch(vf)) == 1
     assert vf["rot"]()["seit"] == iso(T0)
+
+
+def test_veroeffentlichen_roter_stand_heilt_sich_selbst(vf):
+    """Ein bekannter roter Stand wird erneut geprüft, wenn sich die Umgebung geändert hat (alle Arten) oder rote Software
+    seit mehr als FR_ROT_NEU_PRUEFEN_MINUTEN nicht geprüft wurde; seit und gemeldet bleiben. Eine alte Rot-Datei ohne
+    Fingerabdruck wird einmal geprüft. Die Meldung nennt die roten Tests (#203)."""
+    tmp = vf["tmp"]
+    # Prüf-Attrappe, die wie pytest rote Tests ausgibt
+    pruefen = ausfuehrbar(tmp / "pruefen-rot.sh", f'#!/bin/sh\necho p >> {tmp}/pruefen.log\n[ -e {tmp}/rot ] || exit 0\n'
+                                                  'echo "E       ModuleNotFoundError: No module named neu"\n'
+                                                  'echo "FAILED engine/tests/test_a.py::test_eins - ModuleNotFoundError"\n'
+                                                  'echo "FAILED engine/tests/test_b.py::test_zwei[webkit] - Timeout"\nexit 1\n')
+    (tmp / "rot").touch()
+    lauf = lambda dt, umgebung="a", *args: vf["lauf"](*args, VF_JETZT=str(T0 + dt * 60), VF_UMGEBUNG=umgebung, VF_PRUEFEN=str(pruefen))
+    assert lauf(0).returncode == 1
+    rot = vf["rot"]()
+    assert rot["art"] == "software" and rot["geprueft"] == str(T0) and rot["umgebung"]
+    assert rot["tests"].startswith("engine/tests/test_a.py::test_eins, engine/tests/test_b.py::test_zwei[webkit] (first error: ")
+    assert vf["zeilen"]("pruefen.log") == ["p"]
+    # Gleiche Umgebung, 59 Minuten: überspringen; 31 Minuten Rot: Alarm mit den roten Tests
+    r = lauf(31)
+    assert r.returncode == 0 and "skipped" in r.stdout and vf["zeilen"]("pruefen.log") == ["p"]
+    alarm = hoch(vf)
+    assert len(alarm) == 1 and "test_a.py::test_eins" in alarm[0]
+    assert lauf(59).returncode == 0 and vf["zeilen"]("pruefen.log") == ["p"]
+    # Umgebung geändert: sofort neu prüfen, seit und gemeldet bleiben, kein zweiter Alarm
+    r = lauf(60, "b")
+    assert r.returncode == 1 and "checking again (environment changed)" in r.stdout, r.stdout
+    assert vf["zeilen"]("pruefen.log") == ["p", "p"]
+    rot = vf["rot"]()
+    assert rot["seit"] == iso(T0) and rot["gemeldet"] == "1" and rot["geprueft"] == str(T0 + 3600) and len(hoch(vf)) == 1
+    # Mehr als 60 Minuten seit der letzten Prüfung: neu prüfen; genau 60: noch nicht
+    assert lauf(120, "b").returncode == 0 and vf["zeilen"]("pruefen.log") == ["p", "p"]
+    r = lauf(121, "b")
+    assert r.returncode == 1 and "more than 60 minutes" in r.stdout and vf["zeilen"]("pruefen.log") == ["p", "p", "p"]
+    # Ursache in der Umgebung behoben, Umgebung geändert: grün, Rot-Datei weg
+    (tmp / "rot").unlink()
+    vf["deploys"]()
+    assert lauf(125, "c").returncode == 0 and vf["rot"]() is None
+    assert vf["deploys"]() == ["beispielreise", "zweitreise"]
+
+
+def test_veroeffentlichen_rote_reise_nur_bei_neuer_umgebung_erneut(vf):
+    """Eine rote Reise (Inhalt) wird nicht nach Zeit erneut geprüft, nur bei geänderter Umgebung; eine Rot-Datei von vor
+    #203 (ohne Fingerabdruck) wird einmal geprüft, dann übersprungen."""
+    tmp = vf["tmp"]
+    (tmp / "kaputt-beispielreise").touch()
+    lauf = lambda dt, umgebung="a": vf["lauf"](VF_JETZT=str(T0 + dt * 60), VF_UMGEBUNG=umgebung)
+    assert lauf(0).returncode == 1
+    vf["deploys"]()
+    assert lauf(300).returncode == 0 and vf["deploys"]() == []
+    assert lauf(301, "b").returncode == 1 and vf["deploys"]() == ["beispielreise", "zweitreise"]
+    # Alte Rot-Datei: ohne umgebung und geprueft
+    datei = tmp / "dienst" / "veroeffentlichen-rot"
+    alt = "".join(z + "\n" for z in datei.read_text().splitlines() if not z.startswith(("umgebung=", "geprueft=", "tests=")))
+    datei.write_text(alt)
+    assert lauf(302, "b").returncode == 1 and vf["deploys"]() == ["beispielreise", "zweitreise"]
+    assert lauf(303, "b").returncode == 0 and vf["deploys"]() == []
 
 
 def test_veroeffentlichen_alarm_art_software_nur_an_den_betrieb(vf):
@@ -1022,7 +1138,7 @@ def fs(tmp_path):
            "FR_ADRESSE": "https://example.invalid", "FR_KN_ADRESSE": "https://example.invalid/mcp",
            "FR_NGINX_SNIPPETS": str(snippets), "FR_SUDO": "",
            "FS_NGINX_TEST": f"{nginx} -t", "FS_NGINX_LADEN": f"{nginx} reload", "FS_ABRUF": str(abruf),
-           "FS_WARTEN": "0"}
+           "FS_WARTEN": "0", "FS_429_WARTEN": "0"}
 
     def lauf(*args):
         return subprocess.run([str(BETRIEB / "freischalten.sh"), *args], env=env, capture_output=True, text=True)
@@ -1065,6 +1181,25 @@ def test_freischalten_wartet_auf_das_neuladen_von_nginx(fs):
     zaehler.unlink()
     fs["env"]["FS_ABRUF"] = str(ausfuehrbar(fs["tmp"] / "abruf-404.sh", f'#!/bin/sh\necho x >> {zaehler}\necho 404\n'))
     assert fs["lauf"]("beispielreise").returncode == 1 and len(zaehler.read_text().split()) == 1
+
+
+def test_freischalten_wartet_bei_429_auf_die_anfragebegrenzung(fs):
+    """429 kommt von der Begrenzung in nginx, nicht von der Reise: warten und erneut fragen, auch beim bestehenden
+    Link (#198, beim Veröffentlichen am 1. und 2.11.2026 blieben dadurch neue Reisen unverknüpft)."""
+    zaehler = fs["tmp"] / "zaehler"
+    fs["env"]["FS_ABRUF"] = str(ausfuehrbar(fs["tmp"] / "abruf-429.sh",
+        f'#!/bin/sh\necho x >> {zaehler}\n[ $(wc -l < {zaehler}) -le 3 ] && echo 429 || echo 200\n'))
+    assert fs["lauf"]("beispielreise").returncode == 0
+    zaehler.unlink()
+    r = fs["lauf"]("beispielreise")                      # bestehender Link: nur ein Versuch, 429 zählt nicht
+    assert r.returncode == 0, r.stdout
+    assert len(zaehler.read_text().split()) == 5        # dreimal 429, dann Seite und Rückmeldedienst
+    # Bleibt es bei 429, ist es nach den Wartezeiten ein Fehler mit dem Code
+    zaehler.unlink()
+    fs["env"]["FS_ABRUF"] = str(ausfuehrbar(fs["tmp"] / "abruf-immer-429.sh", f'#!/bin/sh\necho x >> {zaehler}\necho 429\n'))
+    r = fs["lauf"]("beispielreise")
+    assert r.returncode == 1 and "answers with 429" in r.stdout
+    assert len(zaehler.read_text().split()) == 7         # ein Versuch und sechs Wiederholungen
 
 
 def test_freischalten_link_fuer_die_claude_app(fs):

@@ -66,6 +66,8 @@ neustart() {
   ${FR_SUDO-sudo -n} systemctl restart "$1" 2>/dev/null && echo "$2 restarted." \
     || echo "$2: code changed, please run: sudo systemctl restart $1"
 }
+# Neue Bibliotheken in FR_PYTHON (veroeffentlichen.sh, #202): Dienste, die damit laufen, starten neu
+[ -n "${FR_BIBLIOTHEKEN_NEU:-}" ] && NEU_SB=1 && NEU_PS=1
 # Der Konnektor lädt auch rueckmeldungen.py: ändert sich etwas am Rückmeldedienst, starten beide neu
 [ -n "$NEU_RM" ] && neustart "$FR_INSTANZ-rueckmeldungen" "feedback service"
 [ -n "$NEU_RM$NEU_KN" ] && neustart "$FR_INSTANZ-konnektor" "Konnektor"

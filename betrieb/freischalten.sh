@@ -87,9 +87,16 @@ pfad="$(pfad_aus "$($SUDO cat "$snippet")")"
 url="$BASIS/$pfad/"
 # Nach dem Neuladen braucht nginx einen Moment, bis die neuen Pfade gelten: Ein neuer Link wird deshalb mehrmals versucht.
 versuche=1; [ -n "$neu" ] && versuche="${FS_VERSUCHE:-10}"
+# 429 heißt: Die Anfragebegrenzung von nginx hat gegriffen (je IP, gemeinsam für die API aller Reisen; der Server fragt
+# sich hier selbst von außen ab und teilt sich das Kontingent mit seinen übrigen Prüfungen). Das sagt nichts über die
+# Reise; warten und erneut fragen, ohne dass es als Versuch zählt (#198). Die Zone lässt alle 2 s einen Abruf nach.
 for teil in "page|" "feedback service|api/gesund"; do
+  gedrosselt=0
   for ((i = 1; ; i++)); do
     code="$(abruf "$url${teil#*|}" || true)"
+    if [ "$code" = 429 ] && [ "$gedrosselt" -lt "${FS_429_VERSUCHE:-6}" ]; then
+      gedrosselt=$((gedrosselt + 1)); i=$((i - 1)); sleep "${FS_429_WARTEN:-5}"; continue
+    fi
     { [ "$code" = 200 ] || [ "$i" -ge "$versuche" ]; } && break
     sleep "${FS_WARTEN:-1}"
   done

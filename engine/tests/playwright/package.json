@@ -1,0 +1,8 @@
+{
+  "name": "frieda-reist-browsertests",
+  "private": true,
+  "description": "Feste Playwright-Version für die Browsertests, in CI und auf jeder Instanz gleich (frieda-reist#202)",
+  "dependencies": {
+    "playwright": "1.59.1"
+  }
+}

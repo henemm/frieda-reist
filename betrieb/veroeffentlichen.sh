@@ -50,9 +50,9 @@ zustellen() {  # ausstehende Links neuer Reisen (nur wenn welche anstehen)
 
 jetzt() { echo "${VF_JETZT:-$(date +%s)}"; }
 
-rot_lesen() {  # Rot-Datei in rot_commit, rot_art, rot_reisen, rot_seit, rot_gemeldet (leer, wenn es keine gibt)
+rot_lesen() {  # Rot-Datei in rot_commit, rot_art, rot_reisen, rot_seit, rot_gemeldet, rot_umgebung, rot_geprueft, rot_tests
   local zeile
-  rot_commit=""; rot_art=""; rot_reisen=""; rot_seit=""; rot_gemeldet=""
+  rot_commit=""; rot_art=""; rot_reisen=""; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""
   [ -r "$rot_datei" ] || return 0
   while IFS= read -r zeile || [ -n "$zeile" ]; do
     case "$zeile" in
@@ -61,24 +61,52 @@ rot_lesen() {  # Rot-Datei in rot_commit, rot_art, rot_reisen, rot_seit, rot_gem
       reisen=*) rot_reisen="${zeile#*=}" ;;
       seit=*) rot_seit="${zeile#*=}" ;;
       gemeldet=*) rot_gemeldet="${zeile#*=}" ;;
+      umgebung=*) rot_umgebung="${zeile#*=}" ;;
+      geprueft=*) rot_geprueft="${zeile#*=}" ;;
+      tests=*) rot_tests="${zeile#*=}" ;;
     esac
   done < "$rot_datei"
 }
 
 rot_ablegen() {  # schreibt rot_* in die Rot-Datei (erst daneben, dann umbenennen)
   mkdir -p "$(dirname "$rot_datei")"
-  printf 'commit=%s\nart=%s\nreisen=%s\nseit=%s\ngemeldet=%s\n' \
-    "$rot_commit" "$rot_art" "$rot_reisen" "$rot_seit" "$rot_gemeldet" > "$rot_datei.neu"
+  printf 'commit=%s\nart=%s\nreisen=%s\nseit=%s\ngemeldet=%s\numgebung=%s\ngeprueft=%s\ntests=%s\n' \
+    "$rot_commit" "$rot_art" "$rot_reisen" "$rot_seit" "$rot_gemeldet" "$rot_umgebung" "$rot_geprueft" "$rot_tests" > "$rot_datei.neu"
   mv "$rot_datei.neu" "$rot_datei"
 }
 
-rot_schreiben() {  # <commit> <art> <reisen>: neuer roter Stand; seit und gemeldet bleiben innerhalb einer Rot-Phase
+rot_schreiben() {  # <commit> <art> <reisen> [tests]: roter Stand; seit und gemeldet bleiben innerhalb einer Rot-Phase,
+  # auch wenn derselbe Commit erneut geprüft wurde. Gemerkt werden dazu Umgebung und Zeit der Prüfung (#203).
   rot_lesen
   if [ -z "$rot_seit" ]; then
     rot_seit="$(date -u -d "@$(jetzt)" +%Y-%m-%dT%H:%M:%SZ)"; rot_gemeldet=0
   fi
-  rot_commit="$1"; rot_art="$2"; rot_reisen="$3"
+  rot_commit="$1"; rot_art="$2"; rot_reisen="$3"; rot_tests="${4:-}"
+  rot_umgebung="$(umgebung_stand)"; rot_geprueft="$(jetzt)"
   rot_ablegen
+}
+
+umgebung_stand() {  # Fingerabdruck der Prüfumgebung: installierte Bibliotheken, Python, Node, Playwright (#203)
+  if [ -n "${VF_UMGEBUNG+x}" ]; then printf '%s' "$VF_UMGEBUNG" | sha256sum | cut -c1-16; return; fi
+  # Jeder Teil darf fehlen (kein Python, kein Node, kein Playwright): dann zählt er leer, der Lauf bricht nicht ab
+  {
+    "$FR_PYTHON" --version 2>/dev/null || true
+    "$FR_PYTHON" -m pip freeze --disable-pip-version-check 2>/dev/null || true
+    node --version 2>/dev/null || true
+    if [ -n "${PLAYWRIGHT_MODUL:-}" ]; then grep -m1 '"version"' "$(dirname "$PLAYWRIGHT_MODUL")/package.json" 2>/dev/null || true; fi
+  } | sha256sum | cut -c1-16
+}
+
+rot_erneut_pruefen() {  # Bekannter roter Stand: neu prüfen? Ja, wenn sich die Umgebung geändert hat (alle Arten) oder rote
+  # Software seit mehr als FR_ROT_NEU_PRUEFEN_MINUTEN (Vorgabe 60) nicht geprüft wurde. Sonst blieb ein Stand rot,
+  # obwohl die Ursache in der Umgebung längst behoben war (1./2.11.2026: 7 Stunden). Ausgabe: der Grund.
+  local frist="${FR_ROT_NEU_PRUEFEN_MINUTEN:-60}"
+  [[ "$frist" =~ ^[0-9]+$ ]] || frist=60
+  if [ "$(umgebung_stand)" != "$rot_umgebung" ]; then echo "environment changed"; return 0; fi
+  if [ "$rot_art" = software ] && [[ "$rot_geprueft" =~ ^[0-9]+$ ]] && [ $(( $(jetzt) - rot_geprueft )) -gt $(( frist * 60 )) ]; then
+    echo "last check more than $frist minutes ago"; return 0
+  fi
+  return 1
 }
 
 alarm_senden() {  # <betreff> <text>: wie fr_melden high, aber mit Rückgabewert (Erfolg des Meldewegs)
@@ -105,16 +133,25 @@ alarm_pruefen() {  # Alarm ab der Schwelle: Meldung an die Organisator:innen rot
   fi
   [ "$rot_gemeldet" = 1 ] && return 0
   if alarm_senden "Publishing red for $minuten minutes" \
-    "Kind: $rot_art${rot_reisen:+, trips: $rot_reisen}, state ${rot_commit:0:7}, red since $rot_seit (UTC). Successful trips are online, red ones stay at their last good state. Log: journalctl -u $FR_INSTANZ-veroeffentlichen -n 100"; then
+    "Kind: $rot_art${rot_reisen:+, trips: $rot_reisen}, state ${rot_commit:0:7}, red since $rot_seit (UTC).${rot_tests:+ Red: $rot_tests.} Successful trips are online, red ones stay at their last good state. Log: journalctl -u $FR_INSTANZ-veroeffentlichen -n 100"; then
     rot_gemeldet=1; rot_ablegen
   else
     echo "Warning: alarm to operations not sent, the next run tries again."
   fi
 }
 
-pruefen_lauf() {  # <ordner>: pytest über engine/tests oder tests/ des Reisen-Repos
-  if [ -n "$pruefen" ]; then "$pruefen" "$1"; return; fi
-  "$FR_PYTHON" -m pytest "$1" -q --basetemp "$pruef_tmp"
+pruefen_lauf() {  # <ordner>: pytest über engine/tests oder tests/ des Reisen-Repos; Ausgabe auch nach pruef_log
+  local rc=0
+  if [ -n "$pruefen" ]; then "$pruefen" "$1" 2>&1 | tee "$pruef_log" || rc=${PIPESTATUS[0]}
+  else "$FR_PYTHON" -m pytest "$1" -q --basetemp "$pruef_tmp" 2>&1 | tee "$pruef_log" || rc=${PIPESTATUS[0]}; fi
+  return "$rc"
+}
+
+rote_tests() {  # die ersten roten Tests aus pruef_log und die erste Fehlerzeile, in einer Zeile für Rot-Datei und Meldung
+  local namen erste
+  namen="$({ grep -E '^(FAILED|ERROR) ' "$pruef_log" 2>/dev/null || true; } | sed -E 's/^(FAILED|ERROR) //; s/ - .*//' | head -5 | paste -sd, - | sed 's/,/, /g')" || true
+  erste="$({ grep -m1 -E '^E +[^ ]' "$pruef_log" 2>/dev/null || true; } | sed -E 's/^E +//' | cut -c1-200)" || true
+  printf '%s%s' "$namen" "${erste:+ (first error: $erste)}" | tr -d '\n'
 }
 
 anstoss_weitergeben() {  # Anstoß der Seite: Workflow „Software nachziehen“ starten, Ergebnis für die Seite ablegen
@@ -132,23 +169,44 @@ anstoss_weitergeben() {  # Anstoß der Seite: Workflow „Software nachziehen“
   rm -f "$datei"
 }
 
-abhaengigkeiten() {  # Bibliotheken nach engine/requirements.txt in FR_PYTHON, nur wenn sich die Liste geändert hat.
+abhaengigkeiten() {  # Umgebung der Prüfungen wie in CI (#202): Bibliotheken und Playwright in festen Versionen aus dem Repo.
   # Sonst fehlte nach einem Software-Stand mit neuer Bibliothek nur dem Server etwas, und die Prüfungen blieben rot,
-  # bis jemand von Hand installiert (rot 1.11.2026 wegen pyspellchecker). Gemerkt wird die Prüfsumme der Liste.
+  # bis jemand von Hand installiert (rot 1.11.2026 wegen pyspellchecker). Installiert wird nur, wenn sich eine Liste
+  # geändert hat (Prüfsummen in FR_DIENST).
+  # Bibliotheken: engine/requirements.txt (Versionen und Hashes, erzeugt aus requirements.in) in FR_PYTHON. Danach
+  # starten die Dienste mit FR_PYTHON einmal neu (FR_BIBLIOTHEKEN_NEU an den ersten Deploy des Laufs).
   local liste=engine/requirements.txt merk="$FR_DIENST/requirements.sha256" summe
-  [ -f "$liste" ] || return 0
-  summe="$(sha256sum "$liste" | cut -d' ' -f1)"
-  [ "$summe" = "$(cat "$merk" 2>/dev/null || true)" ] && return 0
-  echo "Installing libraries (engine/requirements.txt changed)."
-  if [ -n "${VF_PIP:-}" ]; then "$VF_PIP" -r "$liste"; else "$FR_PYTHON" -m pip install -q --disable-pip-version-check -r "$liste"; fi \
-    || return 1
-  mkdir -p "$FR_DIENST"
-  echo "$summe" > "$merk"
+  if [ -f "$liste" ]; then
+    summe="$(sha256sum "$liste" | cut -d' ' -f1)"
+    if [ "$summe" != "$(cat "$merk" 2>/dev/null || true)" ]; then
+      echo "Installing libraries (engine/requirements.txt changed)."
+      if [ -n "${VF_PIP:-}" ]; then "$VF_PIP" -r "$liste"; else "$FR_PYTHON" -m pip install -q --disable-pip-version-check -r "$liste"; fi \
+        || return 1
+      mkdir -p "$FR_DIENST"
+      echo "$summe" > "$merk"
+      FR_BIBLIOTHEKEN_NEU=1; export FR_BIBLIOTHEKEN_NEU
+    fi
+  fi
+  # Playwright: eigene Kopie in <FR_DIENST>/playwright nach engine/tests/playwright/package-lock.json, nie ein
+  # Ordner, den andere mitbenutzen. Browser ohne --with-deps (kein sudo); Systembibliotheken richtet einrichten.sh ein.
+  # Ohne npm (Instanz ohne Browsertests) bleibt alles, wie es ist.
+  local pw_quelle=engine/tests/playwright pw_ziel="$FR_DIENST/playwright" npm="${VF_NPM:-npm}"
+  [ -f "$pw_quelle/package-lock.json" ] || return 0
+  command -v "$npm" > /dev/null 2>&1 || { echo "Note: npm missing, browser tests use what playwright_pfad.py finds."; return 0; }
+  summe="$(cat "$pw_quelle/package.json" "$pw_quelle/package-lock.json" | sha256sum | cut -d' ' -f1)"
+  if [ "$summe" != "$(cat "$pw_ziel/.stand" 2>/dev/null || true)" ] || [ ! -e "$pw_ziel/node_modules/playwright/index.mjs" ]; then
+    echo "Installing Playwright (engine/tests/playwright changed)."
+    mkdir -p "$pw_ziel"
+    cp "$pw_quelle/package.json" "$pw_quelle/package-lock.json" "$pw_ziel/"
+    ( cd "$pw_ziel" && "$npm" ci --silent --no-audit --no-fund && "$npm" exec --no -- playwright install chromium webkit ) || return 1
+    echo "$summe" > "$pw_ziel/.stand"
+  fi
+  PLAYWRIGHT_MODUL="$pw_ziel/node_modules/playwright/index.mjs"; export PLAYWRIGHT_MODUL
 }
 
 # Alles steckt in main(), damit bash das Skript ganz einliest, bevor git es mit dem Submodul eventuell ersetzt.
 main() {
-  local stand deploy immer="" alt neu reise freischalten aus rc gut="" rote="" warnung
+  local stand deploy immer="" alt neu reise freischalten aus rc gut="" rote="" warnung grund
   wurzel="$FR_WURZEL"
   stand="${VF_STAND:-$FR_DIENST/veroeffentlicht}"
   deploy="${VF_DEPLOY:-$FR_BETRIEB/deploy.sh}"
@@ -159,7 +217,10 @@ main() {
   warnung="$FR_DIENST/veroeffentlichen-warnung"
   [ "${1:-}" = "--immer" ] && immer=1
 
-  exec 9>"${VF_SPERRE:-$FR_SPERREN/$FR_INSTANZ-veroeffentlichen.lock}"
+  # Sperre in FR_DIENST, nicht in FR_SPERREN (Vorgabe /tmp): Der Schreibweg startet diesen Lauf aus einem Dienst mit
+  # PrivateTmp, sein /tmp ist nicht das des Timers, und die Sperre griff nicht (zwei Läufe gleichzeitig, #211)
+  mkdir -p "$FR_DIENST"
+  exec 9>"${VF_SPERRE:-$FR_DIENST/veroeffentlichen.lock}"
   flock -n 9 || { echo "Already running, skipped."; return 0; }
 
   cd "$wurzel"
@@ -181,24 +242,31 @@ main() {
   # Software (Submodul) auf den Stand bringen, den main festhält
   git submodule update --init --quiet || { echo "ERROR: the software submodule cannot be fetched."; return 1; }
 
-  # Bekannter roter Stand: nicht noch einmal prüfen und bauen (kostet Minuten), kein Stempel, kein Heartbeat
+  # Umgebung zuerst (feste Versionen, #202), damit ein bekannter roter Stand sie schon im Fingerabdruck sieht (#203)
+  abhaengigkeiten || { echo "ERROR: libraries or Playwright cannot be installed, the next run tries again."; return 1; }
+  # Bekannter roter Stand: nicht noch einmal prüfen und bauen (kostet Minuten), kein Stempel, kein Heartbeat; außer die
+  # Umgebung hat sich geändert oder rote Software wurde lange nicht geprüft (rot_erneut_pruefen)
   rot_lesen
   if [ -z "$immer" ] && [ -n "$rot_commit" ] && [ "$rot_commit" = "$neu" ]; then
-    echo "Known red state ${neu:0:7}, skipped (kind: $rot_art${rot_reisen:+, trips: $rot_reisen}). It is checked again with a new commit or --immer."
-    zustellen
-    alarm_pruefen
-    return 0
+    if grund="$(rot_erneut_pruefen)"; then
+      echo "Known red state ${neu:0:7}, checking again ($grund)."
+    else
+      echo "Known red state ${neu:0:7}, skipped (kind: $rot_art${rot_reisen:+, trips: $rot_reisen}). It is checked again with a new commit, a changed environment, after ${FR_ROT_NEU_PRUEFEN_MINUTEN:-60} minutes (software) or with --immer."
+      zustellen
+      alarm_pruefen
+      return 0
+    fi
   fi
 
   echo "Publishing $(git log -1 --format='%h %s')"
-  abhaengigkeiten || { echo "ERROR: libraries from engine/requirements.txt cannot be installed, the next run tries again."; return 1; }
   # Eigener Ordner für die Testdateien: Mit der Vorgabe (/tmp/pytest-of-<user>) räumt jeder weitere pytest-Lauf auf dem
   # Rechner die Ordner älterer Läufe weg, auch die eines noch laufenden (roter Lauf 29.10.2026 bei gleichzeitigen Tests).
-  pruef_tmp="$(mktemp -d)"
+  pruef_tmp="$(mktemp -d)"; pruef_log="$pruef_tmp.log"
   if ! pruefen_lauf engine/tests; then
     rm -rf "$pruef_tmp"
     echo "ERROR: checks red (engine/tests, software), nothing published."
-    rot_schreiben "$neu" software ""
+    rot_schreiben "$neu" software "" "$(rote_tests)"
+    rm -f "$pruef_log"
     alarm_pruefen
     return 1
   fi
@@ -211,13 +279,14 @@ main() {
       echo "$neu" > "$warnung"
     fi
   fi
-  rm -rf "$pruef_tmp"
+  rm -rf "$pruef_tmp" "$pruef_log"
   FR_GEPRUEFT="$(git rev-parse HEAD)"; export FR_GEPRUEFT
   FR_WEGE_SPAETER=1; export FR_WEGE_SPAETER   # Wege zum Konnektor einmal nach dem Freischalten (wege_pruefen)
   for reise in reisen/*/reise.json; do
     [ -e "$reise" ] || continue
     reise="$(basename "$(dirname "$reise")")"
     rc=0; "$deploy" "$reise" || rc=$?
+    unset FR_BIBLIOTHEKEN_NEU   # Dienste mit FR_PYTHON nur beim ersten Deploy neu starten
     case "$rc" in
       0) gut="$gut $reise" ;;
       2) echo "ERROR: build of $reise failed, the trip stays at its last good state."
@@ -247,7 +316,7 @@ main() {
   erfolg_melden
 }
 
-wurzel=""; ausstehend=""; rot_datei=""; pruefen=""; pruef_tmp=""
-rot_commit=""; rot_art=""; rot_reisen=""; rot_seit=""; rot_gemeldet=""
+wurzel=""; ausstehend=""; rot_datei=""; pruefen=""; pruef_tmp=""; pruef_log=""
+rot_commit=""; rot_art=""; rot_reisen=""; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""
 main "$@"
 exit

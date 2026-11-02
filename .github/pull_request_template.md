@@ -19,6 +19,7 @@ Jede Zeile mit „ja“ oder „nein“ beantworten; bei 1 bis 7 heißt die fals
 | 9 | Reiseinhalte entstehen nicht in Claude Code? | |
 | 10 | Dokumentiert in: | |
 | 11 | Oberfläche (ADR-0002, ADR-0003): neue Bausteine an vier Stellen (Kopfkommentar, Stile, Bausteinseite, `docs/design.md`), jedes Ding an genau einer Heimat vollständig; `test_design.py` grün? | |
+| 12 | Meldungstexte, Schnittstellen, Umgebungswerte oder Dateiformate einer Instanz geändert? Wenn ja: Tests der Instanzen mit diesem Branch grün? | |
 
 ## Tests
 

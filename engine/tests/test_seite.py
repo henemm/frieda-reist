@@ -4,6 +4,7 @@ import functools
 import http.server
 import json
 import re
+import time
 import os
 import shutil
 import subprocess
@@ -461,7 +462,14 @@ def test_anmeldeseiten_im_browser(tmp_path, monkeypatch, browser):
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                                 env={**os.environ, "RH_BROWSER": browser})
         assert json.loads(proc.stdout.readline()) == {"bereit": True}, proc.stderr.read()[-2000:]
-        code = re.search(r"(\d{3}) (\d{3})", json.loads((tmp_path / "mails.jsonl").read_text().splitlines()[-1])["text"])
+        # Die Seite zeigt „Code eingeben“, bevor der Dienst die Mail abgelegt hat: auf die Datei warten statt sie einmal zu
+        # lesen (unter Last fehlte sie sonst, #204)
+        mails = tmp_path / "mails.jsonl"
+        for _ in range(150):
+            if mails.exists() and mails.read_text().strip():
+                break
+            time.sleep(0.1)
+        code = re.search(r"(\d{3}) (\d{3})", json.loads(mails.read_text().splitlines()[-1])["text"])
         out, err = proc.communicate(code.expand(r"\1\2") + "\n", timeout=60)
     finally:
         k.shutdown()

@@ -1,5 +1,6 @@
-"""Wo das Playwright-Modul für die Browsertests liegt: PLAYWRIGHT_MODUL, sonst ~/playwright-tool, sonst das global
-installierte Paket (so in Cloud-Sitzungen). Ohne Fund werden die Browsertests übersprungen."""
+"""Wo das Playwright-Modul für die Browsertests liegt: PLAYWRIGHT_MODUL (CI, veroeffentlichen.sh), sonst die feste Version
+in engine/tests/playwright (npm ci dort, #202), sonst ~/playwright-tool, sonst das global installierte Paket (so in
+Cloud-Sitzungen). Ohne Fund werden die Browsertests übersprungen."""
 import os
 import shutil
 import subprocess
@@ -9,6 +10,9 @@ from pathlib import Path
 def finden():
     if os.environ.get("PLAYWRIGHT_MODUL"):
         return Path(os.environ["PLAYWRIGHT_MODUL"])
+    fest = Path(__file__).parent / "playwright/node_modules/playwright/index.mjs"
+    if fest.exists():
+        return fest
     eigen = Path.home() / "playwright-tool/node_modules/playwright/index.mjs"
     if eigen.exists() or not shutil.which("node"):
         return eigen
