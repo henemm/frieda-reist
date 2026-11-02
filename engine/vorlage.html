@@ -3268,10 +3268,10 @@ function tagOrteZeilen(orte) {
 }
 function ansichtTag(m, tid) {
   const mit = R.plaene.filter(p => p.tage.some(t => t.id === tid));
-  // Enthält der Plan der Zeitachse den Tag, zählt die Seite in ihm wie die Übersicht (#144; ohne Pläne die Tage der Reise, #214).
-  // Mit Plan-Baum zählt ein offener Tag im zuletzt geöffneten Plan, solange keiner gewählt ist
-  const zuletzt = TIEFE && !PLAN_FEST ? mit.find(x => x.id === PLAN_ZULETZT) : null;
-  const p = zuletzt || (PLAN_ANSICHT.tage.some(x => x.id === tid) ? PLAN_ANSICHT : mit.find(x => x.id === PLAN_ZULETZT) || mit[0] || planZu(PLAN_ZULETZT));
+  // Enthält der Plan der Zeitachse den Tag, zählt die Seite in ihm wie die Übersicht (#144; ohne Pläne die Tage der Reise, #214),
+  // auch mit Plan-Baum (tiefe steuert die Tagesseiten nicht, #214 Entscheidung 3). Nur ein Tag außerhalb der Zeitachse zählt
+  // im zuletzt geöffneten Plan, der ihn enthält
+  const p = PLAN_ANSICHT.tage.some(x => x.id === tid) ? PLAN_ANSICHT : mit.find(x => x.id === PLAN_ZULETZT) || mit[0] || planZu(PLAN_ZULETZT);
   let imPlan = p && p.tage.find(t => t.id === tid);
   const t = imPlan || R.weitere_tage[tid] || R.tage.find(x => x.id === tid);
   if (!imPlan && p) for (const liste of alternativen(p).values()) for (const {andere, start} of liste) for (const o of andere) {

@@ -116,6 +116,45 @@ def test_tagesseite_zaehlt_im_gewaehlten_plan(tmp_path, zuerst, tiefe):
 
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("tiefe", [False, True])
+def test_tagesseite_zaehlt_wie_die_zeitachse_bei_offenen_plaenen(tmp_path, tiefe):
+    """#214, Entscheidung 3: tiefe steuert die Tagesseiten nicht mehr. Bei offenen Plänen zeigt jede Tagesseite Nummer und
+    Datum ihrer Zeile auf der Zeitachse, auch nachdem ein anderer Plan (Plan X, eine Nacht mehr, zählt anders) offen war."""
+    quelle = tmp_path / "quelle"
+    shutil.copytree(WURZEL / "beispiel/reisen/beispielreise", quelle)
+    fest_mit_abweichenden_plaenen(quelle, "nacht")
+    r = quelle / "plan" / "routen.yaml"
+    t = r.read_text(encoding="utf-8")
+    gewaehlt = '          - {datum: 2026-10-24, status: gewaehlt, wer: Ida, grund: "Test"}\n'
+    i = t.index(gewaehlt, t.index("kürzeste Verbindung zum Bahnhof"))
+    r.write_text(t[:i] + t[i + len(gewaehlt):], encoding="utf-8")   # V-01 wieder offen: kein Plan ist vollständig gewählt
+    if tiefe:
+        eck = quelle / "reise.yaml"
+        eck.write_text(eck.read_text(encoding="utf-8").replace("darstellung:\n", "darstellung:\n  tiefe: true\n", 1), encoding="utf-8")
+    bauen.bauen(quelle, tmp_path / "web" / "beispiel")
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(tmp_path / "web")))
+    threading.Thread(target=s.serve_forever, daemon=True).start()
+    try:
+        aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_tagesplan.mjs"), str(PLAYWRIGHT),
+                              f"http://127.0.0.1:{s.server_address[1]}/beispiel/", "P-X"],
+                             capture_output=True, text=True, timeout=300, env={**os.environ, "RH_BROWSER": "chromium"})
+    finally:
+        s.shutdown()
+    assert aus.returncode == 0, aus.stderr[-2000:]
+    e = json.loads(aus.stdout.strip().splitlines()[-1])
+    assert e["fehler"] == []
+    auf_achse = [t for t in e["tage"] if t["achse"]]
+    assert len(auf_achse) >= 4, e["tage"]
+    for t in auf_achse:
+        assert t["kopf"] == t["achse"], (tiefe, t)
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 def test_tiefe_nur_noch_plan_baum(tmp_path):
     """#214, Entscheidung 3 (K11): darstellung.tiefe steuert nur noch den Plan-Baum im Reiter „Pläne“. Die Startseite ist die
     Zeitachse, die Tage haben Tagesseiten, der Plan P-A öffnet weiter seinen Baum unter „Pläne“."""
