@@ -84,6 +84,10 @@ font-family:inherit;font-size:1.0625rem;font-weight:600;border:0;border-radius:9
 button.leise{background:var(--acc2);color:var(--acc)}button.neutral{background:var(--neutral);color:var(--fg)}
 button.gefahr{background:var(--gefahr);color:var(--card)}
 button.link{background:none;color:var(--acc);min-height:2.75rem;margin:0;padding:.5rem .25rem;font-size:1rem}
+button:disabled{background:var(--neutral);color:var(--mut);cursor:default}
+ol.schritte{margin:0;padding-left:1.3rem;display:flex;flex-direction:column;gap:.35rem}
+#push-geraet{display:flex;flex-direction:column;gap:.5rem}#push-geraet>*{margin:0}#push-geraet .aktiv{font-weight:600;color:var(--acc)}
+[hidden]{display:none!important}
 a{color:var(--acc)}.links{display:flex;justify-content:center;flex-wrap:wrap;gap:0 1.4rem}.links a{font-weight:600;font-size:1rem;text-decoration:none;padding:.6rem .25rem}
 .fuss{display:flex;flex-direction:column;gap:.6rem;padding:0 .4rem;font-size:.875rem;color:var(--mut)}.fuss p{margin:0}
 .fehler{background:var(--warnbg);color:var(--warn);padding:.6rem .8rem;border-radius:12px}
@@ -122,16 +126,20 @@ def esc(t):
     return html.escape(str(t or ""), quote=True)
 
 
-def seite(titel, *teile, kopf=None):
-    """Ganze Seite. kopf: eigener Kopf (Mein Konto); sonst Friedas Zeichen mittig über der Karte."""
+def seite(titel, *teile, kopf=None, skript=False):
+    """Ganze Seite. kopf: eigener Kopf (Mein Konto); sonst Friedas Zeichen mittig über der Karte. Jede Seite trägt das
+    Manifest der Frieda-App (Issue #21: ein Symbol auf dem Home-Bildschirm, Start „Mein Konto“, Scope „/“); skript lädt
+    engine/app/konto.js (nur Mein Konto: Benachrichtigungen je Gerät, Speichern mit Zustand)."""
     rumpf = "".join(teile)
     sp = sprache_der_seite()
     kopf = kopf if kopf is not None else '<header class="kopf"><img src="/favicon.svg" alt="">Frieda</header>'
     return (f'<!DOCTYPE html><html lang="{esc(sp)}" dir="{esc(texte.sprache(sp).RICHTUNG)}"><head><meta charset="utf-8"><meta name="viewport" '
             f'content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
             f'<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/favicon.ico" sizes="48x48">'
-            f'<link rel="apple-touch-icon" href="/apple-touch-icon.png">'
-            f'<title>{esc(titel)} – Frieda</title><style>{CSS}</style></head><body>'
+            f'<link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest">'
+            f'<meta name="apple-mobile-web-app-title" content="Frieda"><meta name="theme-color" content="#f8f8f5">'
+            + ('<script src="/konto.js" defer></script>' if skript else "")
+            + f'<title>{esc(titel)} – Frieda</title><style>{CSS}</style></head><body>'
             f'<main>{kopf}{rumpf}</main></body></html>')
 
 
@@ -147,9 +155,13 @@ def verdeckt(**felder):
     return "".join(f'<input type="hidden" name="{esc(k)}" value="{esc(v)}">' for k, v in felder.items() if v)
 
 
-def formular(ziel, inhalt, knopf, klasse=""):
+def formular(ziel, inhalt, knopf, klasse="", aenderung=False):
+    """aenderung: Einstellungen (Baustein speichernKnopf): Mit Skript ist der Knopf aus, bis sich ein Feld ändert
+    (engine/app/konto.js); ohne Skript bleibt er an. autocomplete=off, damit der Browser beim Neuladen keine alten
+    Eingaben einsetzt, die der Knopf dann nicht als Änderung erkennt."""
     k = f' class="{klasse}"' if klasse else ""
-    return f'<form method="post" action="{esc(ziel)}">{inhalt}<button{k}>{esc(knopf)}</button></form>'
+    a = ' data-aenderung autocomplete="off"' if aenderung else ""
+    return f'<form method="post" action="{esc(ziel)}"{a}>{inhalt}<button{k}>{esc(knopf)}</button></form>'
 
 
 def fuss(*saetze):
@@ -286,7 +298,7 @@ def kalender_karte(k, reise_info, offen=False):
               + f'<p class="klein">{esc(tx("konto.kalender.erinnerung_hinweis"))}</p>')
     einstellungen = (f'<details{" open" if offen else ""}><summary>{esc(tx("konto.kalender.konfigurieren"))}</summary>'
                      f'<div class="inhalt" style="padding:0">'
-                     + formular("/konto", felder, tx("konto.kalender.speichern")) + link
+                     + formular("/konto", felder, tx("konto.kalender.speichern"), aenderung=True) + link
                      + (formular("/konto", verdeckt(aktion="kalender_neu"), tx("konto.kalender.neuer_link"), "neutral") if basis else "")
                      + "</div></details>")
     return (f'<div class="abschnitt"><h2>{esc(tx("konto.kalender.titel"))}</h2>'
@@ -296,9 +308,22 @@ def kalender_karte(k, reise_info, offen=False):
             + "</div>")
 
 
+PUSH_GERAET_TEXTE = ("einschalten", "ausschalten", "an", "blockiert", "nicht_erlaubt", "fehler", "kein_browser",
+                     "installieren", "schritt1", "schritt2", "schritt3")
+
+
+def push_geraet():
+    """Platz für den Schalter dieses Geräts (Baustein pushSchalter): Den Zustand kennt nur der Browser, darum füllt
+    engine/app/konto.js ihn; Texte und den öffentlichen Schlüssel bringt die Seite mit. Ohne Skript bleibt er leer."""
+    texte_json = json.dumps({n: tx("konto.push.geraet." + n) for n in PUSH_GERAET_TEXTE}, ensure_ascii=False)
+    return (f'<div id="push-geraet" hidden data-schluessel="{esc(konten.push_schluessel("vapid_oeffentlich") or "")}" '
+            f'data-texte="{esc(texte_json)}"></div>')
+
+
 def push_karte(k, offen=False):
-    """Benachrichtigungen auf Mein Konto (Issue #21): was aufs Handy kommt und die Ruhezeit, für alle Reisen gleich.
-    Eingeschaltet wird je Gerät im Fuß der Reiseseite (dort liegt der Service Worker, der die Nachricht zeigt)."""
+    """Benachrichtigungen auf Mein Konto (Issue #21, Entscheidung A vom 2.11.2026): ein- und ausschalten je Gerät
+    (pushSchalter, Worker der Frieda-App an der Wurzel), dazu was aufs Handy kommt und die Ruhezeit, für alle Reisen gleich.
+    Eine Heimat (ADR-0003): Der Fuß der Reiseseite verweist nur hierher."""
     import push
     e = push.einstellungen_von(k["id"])
     geraete = len({a["geraet"] or a["endpoint"] for a in konten.push_abos(k["id"])})
@@ -318,12 +343,34 @@ def push_karte(k, offen=False):
     geraete_text = tx("konto.push.geraete", n=geraete) if geraete else tx("konto.push.keine_geraete")
     aus = formular("/konto", verdeckt(aktion="push_aus"), tx("konto.push.alle_aus"), "neutral") if geraete else ""
     einstellungen = (f'<details{" open" if offen else ""}><summary>{esc(tx("konto.kalender.konfigurieren"))}</summary>'
-                     f'<div class="inhalt" style="padding:0">' + formular("/konto", felder, tx("konto.kalender.speichern"))
+                     f'<div class="inhalt" style="padding:0">'
+                     + formular("/konto", felder, tx("konto.kalender.speichern"), aenderung=True)
                      + aus + "</div></details>")
     return (f'<div class="abschnitt" id="push"><h2>{esc(tx("konto.push.titel"))}</h2>'
-            + karte(f'<p>{esc(tx("konto.push.hinweis"))}</p>', f'<p class="klein">{esc(geraete_text)}</p>',
+            + karte(f'<p>{esc(tx("konto.push.hinweis"))}</p>', push_geraet(), f'<p class="klein">{esc(geraete_text)}</p>',
                     f'<div class="kalender-links">{einstellungen}</div>')
             + "</div>")
+
+
+def push_geraet_schalten(k, aktion, f):
+    """Abruf des Schalters (engine/app/konto.js, POST /konto mit Origin-Prüfung): Abo dieses Geräts speichern (push_an,
+    auch das stille Auffrischen beim Öffnen) oder entfernen (push_ab). Antwort ohne Seite: 204, 401 ohne Sitzung,
+    400 mit Grund. Das Abo gehört zu keiner Reise (reise leer): Der Worker der Frieda-App zeigt Nachrichten aller Reisen."""
+    if not k:
+        return 401, [("Content-Type", "text/plain; charset=utf-8")], tx("konto.push.geraet.anmelden").encode("utf-8")
+    try:
+        if aktion == "push_ab":
+            konten.push_abo_entfernen(k["id"], f.get("endpoint") or "")
+        else:
+            try:
+                abo = json.loads(f.get("abo") or "")
+            except ValueError:
+                abo = None
+            basis = konten.basis()
+            konten.push_abo_speichern(k["id"], abo, "", basis + "/konto" if basis else "", f.get("geraet"), f.get("zeitzone"))
+    except konten.KontoFehler as x:
+        return 400, [("Content-Type", "text/plain; charset=utf-8")], x.text(sprache_der_seite()).encode("utf-8")
+    return 204, [], b""
 
 
 def push_formular(f):
@@ -448,7 +495,7 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
                  '<div class="links" style="flex-direction:column;align-items:center">'
                  f'<form method="post" action="/konto">{verdeckt(aktion="alle_abmelden")}<button class="link">{esc(tx("konto.seite.ueberall_abmelden"))}</button></form>'
                  f'<a href="/konto?loeschen=1" style="color:var(--gefahr)">{esc(tx("konto.seite.loeschen_titel"))}</a></div>',
-                 kopf=kopf)
+                 kopf=kopf, skript=True)
 
 
 def loeschen_seite(k):
@@ -592,15 +639,19 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
     if weg == "/":   # Startseite der Adresse ist Mein Konto (#41; nur GET, der Konnektor leitet nur das hierher)
         return weiter("/konto" if k else "/anmelden?zurueck=/konto")
     if weg == "/konto":
+        a = f.get("aktion")
+        if a in ("push_an", "push_ab"):
+            return push_geraet_schalten(k, a, f)
         if not k:
             return weiter("/anmelden?zurueck=/konto")
         if methode == "GET" and q.get("kalender") == "datei":
             return kalender_antwort(k, datei=True)
         if methode == "GET" and q.get("loeschen"):
             return antwort(200, loeschen_seite(k))
+        if methode == "GET" and q.get("push") in ("an", "aus"):    # zurück vom Schalter (engine/app/konto.js)
+            return antwort(200, konto_seite(k, reise_info, hinweis=tx("konto.push.hier_" + q["push"]), offen="push"))
         if methode == "GET":
             return antwort(200, konto_seite(k, reise_info))
-        a = f.get("aktion")
         try:
             if a == "name":
                 konten.name_setzen(k["id"], f.get("name"))

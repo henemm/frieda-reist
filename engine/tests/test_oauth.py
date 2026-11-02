@@ -103,11 +103,18 @@ def test_symbol_von_frieda(welt):
     for pfad, art, anfang in (("/favicon.ico", "image/x-icon", b"\x00\x00\x01\x00"), ("/favicon.svg", "image/svg+xml", b"<svg"),
                               ("/apple-touch-icon.png", "image/png", b"\x89PNG"), ("/icon-512.png", "image/png", b"\x89PNG"),
                               # Schrift der Anmeldeseiten (#60)
-                              ("/schrift/source-sans-3-latin-wght-normal.woff2", "font/woff2", b"wOF2")):
+                              ("/schrift/source-sans-3-latin-wght-normal.woff2", "font/woff2", b"wOF2"),
+                              # Frieda-App (#21): Manifest, Worker nur für Push, Skript von Mein Konto; ohne Zwischenspeicher
+                              ("/manifest.webmanifest", "application/manifest+json", b"{"),
+                              ("/sw.js", "text/javascript; charset=utf-8", b"/*"),
+                              ("/konto.js", "text/javascript; charset=utf-8", b"/*")):
         c = http.client.HTTPConnection(t.hostname, t.port, timeout=10)
         c.request("GET", pfad)
         r = c.getresponse()
         assert r.status == 200 and r.getheader("Content-Type") == art and r.read().startswith(anfang), pfad
+        assert r.getheader("X-Content-Type-Options") == "nosniff"
+        if pfad.endswith((".js", ".webmanifest")):
+            assert r.getheader("Cache-Control") == "no-cache", pfad
     s, h, text = abruf(f"{u.kurl}/anmelden")
     assert '<link rel="icon" href="/favicon.svg"' in text and "img-src 'self'" in kopf(h, "Content-Security-Policy")[0]
     assert "url(/schrift/source-sans-3-latin-wght-normal.woff2)" in text and "font-src 'self'" in kopf(h, "Content-Security-Policy")[0]

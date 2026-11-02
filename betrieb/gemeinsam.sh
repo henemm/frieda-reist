@@ -104,7 +104,9 @@ wege_pruefen() {  # Wege von außen: Jede Art Pfad des Konnektors muss über die
   local weg fehlen=""
   [ -n "${FR_KN_ADRESSE:-}" ] || return 0
   systemctl is-enabled --quiet "$FR_INSTANZ-konnektor" 2>/dev/null || return 0
-  for weg in /gesund /anmelden /kalender/0000000000000000000000000000000000000000.ics /schrift/pruefung.woff2 /favicon.svg; do
+  # /manifest.webmanifest, /sw.js, /konto.js: Frieda-App und Schalter für Benachrichtigungen auf Mein Konto (#21)
+  for weg in /gesund /anmelden /kalender/0000000000000000000000000000000000000000.ics /schrift/pruefung.woff2 /favicon.svg \
+             /manifest.webmanifest /sw.js /konto.js; do
     curl -sS -I --max-time 10 "$FR_KN_ADRESSE$weg" 2>/dev/null | grep -qi '^x-frieda:' || fehlen="$fehlen $weg"
   done
   [ -n "$fehlen" ] || return 0

@@ -649,7 +649,8 @@ def test_veroeffentlichen_prueft_die_wege_einmal_nach_dem_freischalten(vf):
     zeilen = ablauf.read_text().split("\n")[:-1]
     assert zeilen[:2] == ["beispielreise", "zweitreise"], zeilen
     wege = [z.removeprefix("curl https://reisen.example.invalid") for z in zeilen[2:]]
-    assert wege == ["/gesund", "/anmelden", "/kalender/" + "0" * 40 + ".ics", "/schrift/pruefung.woff2", "/favicon.svg"], zeilen
+    assert wege == ["/gesund", "/anmelden", "/kalender/" + "0" * 40 + ".ics", "/schrift/pruefung.woff2", "/favicon.svg",
+                    "/manifest.webmanifest", "/sw.js", "/konto.js"], zeilen
     assert "Warning: these paths" not in r.stdout
 
 
@@ -1100,6 +1101,7 @@ def test_deploy_kopiert_module_des_schreibwegs():
 def test_deploy_kopiert_friedas_symbol():
     deploy = (BETRIEB / "deploy.sh").read_text(encoding="utf-8")
     assert '"$WURZEL/engine/marke/" "$DIENST/marke/"' in deploy
+    assert '"$WURZEL/engine/app/" "$DIENST/app/"' in deploy      # Frieda-App (#21)
 
 
 # ---------- Nur aus dem Bauordner (#137) ----------
@@ -1615,7 +1617,7 @@ http {{ access_log off; {temp}
         for pfad in ("/mcp", "/anmelden?zurueck=/konto", "/konto", "/authorize?x=1", "/token", "/register", "/gesund",
                      "/.well-known/oauth-authorization-server", "/.well-known/oauth-protected-resource/mcp", "/einladung/abc",
                      "/kalender/abc.ics", "/schrift/source-sans-3-latin-wght-normal.woff2", "/favicon.ico", "/favicon.svg",
-                     "/icon-192.png", "/" + "t" * 32):
+                     "/icon-192.png", "/manifest.webmanifest", "/sw.js", "/konto.js", "/" + "t" * 32):
             assert hol(pfad)[:2] == (200, pfad), pfad
         # alter Pfad der Links vor den Konten: Präfix fällt weg
         assert hol("/probe-mcp/" + "t" * 32)[:2] == (200, "/" + "t" * 32)
