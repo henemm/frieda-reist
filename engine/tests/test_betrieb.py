@@ -1121,7 +1121,7 @@ def fs(tmp_path):
            "FR_ADRESSE": "https://example.invalid", "FR_KN_ADRESSE": "https://example.invalid/mcp",
            "FR_NGINX_SNIPPETS": str(snippets), "FR_SUDO": "",
            "FS_NGINX_TEST": f"{nginx} -t", "FS_NGINX_LADEN": f"{nginx} reload", "FS_ABRUF": str(abruf),
-           "FS_WARTEN": "0"}
+           "FS_WARTEN": "0", "FS_429_WARTEN": "0"}
 
     def lauf(*args):
         return subprocess.run([str(BETRIEB / "freischalten.sh"), *args], env=env, capture_output=True, text=True)
@@ -1164,6 +1164,25 @@ def test_freischalten_wartet_auf_das_neuladen_von_nginx(fs):
     zaehler.unlink()
     fs["env"]["FS_ABRUF"] = str(ausfuehrbar(fs["tmp"] / "abruf-404.sh", f'#!/bin/sh\necho x >> {zaehler}\necho 404\n'))
     assert fs["lauf"]("beispielreise").returncode == 1 and len(zaehler.read_text().split()) == 1
+
+
+def test_freischalten_wartet_bei_429_auf_die_anfragebegrenzung(fs):
+    """429 kommt von der Begrenzung in nginx, nicht von der Reise: warten und erneut fragen, auch beim bestehenden
+    Link (#198, beim Veröffentlichen am 1. und 2.11.2026 blieben dadurch neue Reisen unverknüpft)."""
+    zaehler = fs["tmp"] / "zaehler"
+    fs["env"]["FS_ABRUF"] = str(ausfuehrbar(fs["tmp"] / "abruf-429.sh",
+        f'#!/bin/sh\necho x >> {zaehler}\n[ $(wc -l < {zaehler}) -le 3 ] && echo 429 || echo 200\n'))
+    assert fs["lauf"]("beispielreise").returncode == 0
+    zaehler.unlink()
+    r = fs["lauf"]("beispielreise")                      # bestehender Link: nur ein Versuch, 429 zählt nicht
+    assert r.returncode == 0, r.stdout
+    assert len(zaehler.read_text().split()) == 5        # dreimal 429, dann Seite und Rückmeldedienst
+    # Bleibt es bei 429, ist es nach den Wartezeiten ein Fehler mit dem Code
+    zaehler.unlink()
+    fs["env"]["FS_ABRUF"] = str(ausfuehrbar(fs["tmp"] / "abruf-immer-429.sh", f'#!/bin/sh\necho x >> {zaehler}\necho 429\n'))
+    r = fs["lauf"]("beispielreise")
+    assert r.returncode == 1 and "answers with 429" in r.stdout
+    assert len(zaehler.read_text().split()) == 7         # ein Versuch und sechs Wiederholungen
 
 
 def test_freischalten_link_fuer_die_claude_app(fs):
