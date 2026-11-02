@@ -11,7 +11,9 @@ const p = await (await b.newContext({ locale: "de-DE" })).newPage();
 p.on("response", r => { if (r.request().method() === "POST") aus.antworten.push(r.status()); });
 await p.goto(frieda + "/anmelden");
 await p.fill("#email", email);
-await p.click("button");
+// Auf die Antwort des Dienstes warten: waitForLoadState allein kehrt sofort zurück, wenn die neue Seite noch nicht begonnen
+// hat (WebKit unter Last), und die Mail mit dem Code fehlte dann noch (#204)
+await Promise.all([p.waitForResponse(r => r.request().method() === "POST"), p.click("button")]);
 await p.waitForLoadState();
 aus.nachAdresse = await p.locator("h1").textContent();
 console.log(JSON.stringify({bereit: true}));
