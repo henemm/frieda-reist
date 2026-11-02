@@ -10,7 +10,8 @@ Hintergrund und Entscheidungen: docs/produkt.md (26.10.2026). Die Zuordnung der 
   personen    {schluessel: {name, rolle, reist, notiz}}; Rollen gast < mitwirkend < organisator
   bausteine   zuschaltbare Teile (Liste); Plan, Wissen, Suche und Personen sind immer da
   regeln      Spielregeln mit Wert, fehlende kommen aus VORGABEN
-  darstellung Startreiter, Reiternamen, Tiefe, Gruppen (mahnungen: ohne Wirkung seit 29.10.2026, der Kasten ist weg)
+  darstellung Startreiter, Reiternamen, Tiefe (Plan-Baum unter „Pläne“), Gruppen (mahnungen: ohne Wirkung seit 29.10.2026, der Kasten
+              ist weg; plan_reiter: ohne Wirkung seit #214, die Abschnitte stehen unter Wissen)
 
 Fehler brechen den Bau ab (wie beim Routenmodell). Fehlt reise.yaml, kommen Eckdaten und Darstellung aus
 reise.json (alte Form) mit einem Hinweis; Status ist dann „planung“, Personen gibt es keine.
@@ -32,8 +33,11 @@ ROLLEN_ALT = {"reisend": "gast", "einbringer": "mitwirkend", "bestimmer": "organ
 def rolle_neu(rolle):
     """Alter oder neuer Rollenschlüssel -> neuer Schlüssel (Unbekanntes bleibt unverändert)."""
     return ROLLEN_ALT.get(rolle, rolle)
-BAUSTEINE = ("varianten", "karte", "tagesseiten", "rueckmeldungen", "fragen", "aufgaben", "wuensche",
+BAUSTEINE = ("varianten", "karte", "rueckmeldungen", "fragen", "aufgaben", "wuensche",
              "waechter", "profile")
+# Bausteine, die es nicht mehr gibt (#214: Tagesseiten gehören zur Grundform Tag und sind immer da). Eine reise.yaml, die sie
+# nennt, baut weiter; der Eintrag wird gelesen und ist ohne Wirkung.
+ALTE_BAUSTEINE = ("tagesseiten",)
 KERN = ("plan", "wissen", "suche", "personen")           # immer da, nicht abschaltbar
 NOCH_NICHT_GEBAUT = {"profile": "Stufe 3"}
 VORGABEN = {
@@ -56,10 +60,11 @@ REGEL_WERTE = {"konflikt": ("offene_frage",),
 # mehr. Eine reise.yaml, die sie noch nennt, baut weiter; sie bekommt einen Hinweis und die Regeln sind ohne Wirkung.
 ALTE_REGELN = ("entscheidungsweg", "sammelzeit_minuten")
 KONTINGENT_ARTEN = ("punkte", "anzahl")
-DARSTELLUNG = ("start", "tiefe", "varianten_titel", "plan_reiter", "gruppen")
+DARSTELLUNG = ("start", "tiefe", "varianten_titel", "gruppen")
 # Der Kasten „Mahnung“ auf der Seite ist seit dem 29.10.2026 weg (Product Owner); eine reise.yaml mit mahnungen: false
 # baut weiter, der Schlüssel ist ohne Wirkung. Berechnet werden die Mahnungen weiter (Konnektor: ueberblick).
-ALTE_DARSTELLUNG = ("mahnungen",)
+# plan_reiter (Reiter „Plan“ mit Rahmenabschnitten) ist seit #214 ohne Wirkung: die Abschnitte stehen unter Wissen
+ALTE_DARSTELLUNG = ("mahnungen", "plan_reiter")
 PERSON_FELDER = {"name", "rolle", "reist", "notiz", "von", "bis"}   # von/bis: reist nur einen Teil mit
 ALTE_ECKDATEN = ("titel", "untertitel", "pfad", "kurz")
 ZIEL_LAENGE = 80
@@ -496,6 +501,8 @@ class Reise:
             return []
         aus = []
         for b in roh:
+            if b in ALTE_BAUSTEINE:
+                continue
             if b in KERN:
                 self.hinweise.append(texte.satz("pruefung.reise.24", b=b))
             elif b not in BAUSTEINE:
@@ -550,7 +557,7 @@ class Reise:
                 if k not in DARSTELLUNG and k not in ALTE_DARSTELLUNG:
                     self.fehl(texte.satz("pruefung.reise.38", k=k, w1=', '.join(DARSTELLUNG)))
         return {"gruppen": quelle.get("gruppen") or {}, "tiefe": bool(quelle.get("tiefe")),
-                "plan_reiter": quelle.get("plan_reiter"), "varianten_titel": quelle.get("varianten_titel", "Varianten"),
+                "varianten_titel": quelle.get("varianten_titel", "Varianten"),
                 "start": quelle.get("start")}
 
     def daten(self):
