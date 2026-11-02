@@ -803,7 +803,7 @@ TEXTE = {
     "inhalt.schreiben.herkunft.geschrieben": "*Source: {quelle}; written on {datum} by {wer} through the connector.*",
     "schreiben.antwort.datum": "{w1}",
     "inhalt.neu.ids_kopf": "# Highest number ever issued per kind (engine/neu.py). IDs are never issued again.",
-    "inhalt.neu.reise_yaml_kopf": "# Key facts, period, status, people and settings (engine/reise.py, docs/produkt.md).\\n# Only an organiser changes status and settings, with a history entry.",
+    "inhalt.neu.reise_yaml_kopf": "# Key facts, period, status, people and settings (engine/reise.py, docs/produkt.md).\n# Only an organiser changes status and settings, with a history entry.",
     "inhalt.schreiben.reisen_titel": "Trips",
     "inhalt.schreiben.werkzeug_alias": "0",
     "inhalt.schreiben.rolle.organisator": "organiser",

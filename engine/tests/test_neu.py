@@ -57,6 +57,16 @@ def test_neue_reise_baut_im_status_idee(tmp_path):
     assert (r / "medien").is_dir() and (r / "kontext/herkunft.md").exists()
 
 
+@pytest.mark.parametrize("sprache", neu.texte.sprachen())
+def test_kopf_von_reise_yaml_ist_lesbar(tmp_path, sprache):
+    """#218: Jede Zeile des Kopfkommentars beginnt mit „#“, keine enthält „\\n“ als Text."""
+    r = anlegen(tmp_path, sprache=sprache)
+    kopf = (r / "reise.yaml").read_text(encoding="utf-8").split("\n\n", 1)[0].splitlines()
+    assert len(kopf) >= 2
+    for zeile in kopf:
+        assert zeile.startswith("#") and "\\n" not in zeile, zeile
+
+
 def test_eigener_pfad_herkunft_und_ueberblick(tmp_path):
     r = anlegen(tmp_path, pfad="ski-2027", herkunft="Auftrag A-1 aus der Claude-App", ueberblick="Ein Tal mit Schnee.",
                 ziel=None)

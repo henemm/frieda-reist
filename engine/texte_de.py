@@ -803,7 +803,7 @@ TEXTE = {
     "inhalt.schreiben.herkunft.geschrieben": "*Herkunft: {quelle}; geschrieben am {datum} von {wer} über den Konnektor.*",
     "schreiben.antwort.datum": "{w1}",
     "inhalt.neu.ids_kopf": "# Höchste je vergebene Nummer je Art (engine/neu.py). IDs werden nie neu vergeben.",
-    "inhalt.neu.reise_yaml_kopf": "# Eckdaten, Zeitraum, Status, Personen und Einstellungen (engine/reise.py, docs/produkt.md).\\n# Status und Einstellungen ändert nur ein:e Organisator:in, mit Verlaufseintrag.",
+    "inhalt.neu.reise_yaml_kopf": "# Eckdaten, Zeitraum, Status, Personen und Einstellungen (engine/reise.py, docs/produkt.md).\n# Status und Einstellungen ändert nur ein:e Organisator:in, mit Verlaufseintrag.",
     "inhalt.schreiben.reisen_titel": "Reisen",
     "inhalt.schreiben.werkzeug_alias": "1",
     "inhalt.schreiben.rolle.organisator": "organisator",
