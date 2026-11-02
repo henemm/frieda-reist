@@ -219,6 +219,37 @@ def test_aus_auftrag_der_claude_app(tmp_path):
         neu.aus_auftrag(tmp_path, {"id": "A-1", "daten": {}})
 
 
+def test_reise_aus_der_vorlage_im_gespraech_fuellen(tmp_path):
+    """Eine frische Reise aus der Vorlage (ohne plan/routen.yaml und ohne Arten) lässt sich allein über den Schreibweg füllen,
+    wie im Gespräch in der Claude-App: Arten, Orte, Unterkunft, Strecke, Start, erster Tag, Wissen mit Herkunft. Nach jedem
+    Schritt baut sie ohne Warnung (erfundene Testdaten)."""
+    r = anlegen(tmp_path)
+    wer = {"name": "Ida", "rolle": "organisator", "person": "ida"}
+    schritte = [
+        ("art_definieren", {"bezeichnung": "Hotel", "grundform": "aufenthalt", "buchbar": True}),
+        ("art_definieren", {"bezeichnung": "Zugfahrt", "grundform": "bewegung"}),
+        ("ding_anlegen", {"was": "ort", "titel": "Münster", "quelle": "Gespräch", "ausserhalb": True}),
+        ("ding_anlegen", {"was": "ort", "titel": "Oberstdorf", "quelle": "Gespräch"}),
+        ("ding_anlegen", {"was": "unterkunft", "titel": "Hotel am Ort", "ort": "O-02", "art": "hotel", "quelle": "Gespräch"}),
+        ("ding_anlegen", {"was": "strecke", "titel": "Anreise", "von": "O-01", "nach": "O-02", "art": "zugfahrt",
+                          "quelle": "Gespräch"}),
+        ("start_ende_setzen", {"start_datum": "2027-02-06", "start_ort": "O-01", "ende_ort": "O-01", "grund": "Im Gespräch"}),
+        ("tag_anlegen", {"titel": "Anreise", "nacht": "U-01", "strecken": ["E-01"]}),
+        ("wissen_schreiben", {"titel": "Loipen", "text": "Am Ort beginnen zwei Loipen.", "quelle": "Erfundenes Buch, S. 3"}),
+    ]
+    for name, args in schritte:
+        schreiben.WERKZEUGE[name](r, wer, args)
+        assert schreiben.warnungen_des_baus(r) == [], name
+    assert neu.pruefen(r) == (True, [])
+    route = bauen.bauen(r, tmp_path / "dist")["route"]
+    assert [(t["id"], t["datum"]) for t in route["tage"]] == [("T-01", "2027-02-06")]
+    assert (len(route["orte"]), len(route["unterkuenfte"]), len(route["strecken"])) == (2, 1, 1)
+    wissen = (r / "inhalt/wissen.md").read_text(encoding="utf-8")
+    assert "## Loipen" in wissen and "*Herkunft: Erfundenes Buch, S. 3;" in wissen
+    marken = yaml.safe_load((r / "ids.yaml").read_text(encoding="utf-8"))
+    assert {k: marken[k] for k in "OUET"} == {"O": 2, "U": 1, "E": 1, "T": 1}
+
+
 def test_nachziehen_nur_schluessel(tmp_path):
     """Abgleich 29.10.2026 (docs/abgleich-2026-10-29.md): neu.py nachziehen bringt eine Reise mit den alten Schlüsseln
     (typ an Unterkunft und Nacht, bereich und art: planung an Wahlstellen) auf den Stand, ohne eine ID oder einen Wert zu
