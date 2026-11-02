@@ -217,7 +217,10 @@ main() {
   warnung="$FR_DIENST/veroeffentlichen-warnung"
   [ "${1:-}" = "--immer" ] && immer=1
 
-  exec 9>"${VF_SPERRE:-$FR_SPERREN/$FR_INSTANZ-veroeffentlichen.lock}"
+  # Sperre in FR_DIENST, nicht in FR_SPERREN (Vorgabe /tmp): Der Schreibweg startet diesen Lauf aus einem Dienst mit
+  # PrivateTmp, sein /tmp ist nicht das des Timers, und die Sperre griff nicht (zwei Läufe gleichzeitig, #211)
+  mkdir -p "$FR_DIENST"
+  exec 9>"${VF_SPERRE:-$FR_DIENST/veroeffentlichen.lock}"
   flock -n 9 || { echo "Already running, skipped."; return 0; }
 
   cd "$wurzel"

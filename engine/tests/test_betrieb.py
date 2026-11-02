@@ -336,12 +336,14 @@ def test_veroeffentlichen_stempel_nur_bei_erfolg(vf):
 
 
 def test_veroeffentlichen_sperre_je_instanz(vf):
-    """Zwei Instanzen auf einem Server stören sich nicht: die Sperre trägt den Namen der Instanz."""
+    """Zwei Instanzen auf einem Server stören sich nicht: die Sperre liegt im Dienstordner der Instanz (#211)."""
     import fcntl
-    with open(vf["tmp"] / "andere-veroeffentlichen.lock", "w") as f:
+    (vf["tmp"] / "andere-dienst").mkdir()
+    with open(vf["tmp"] / "andere-dienst" / "veroeffentlichen.lock", "w") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         assert "Already running" not in vf["lauf"]().stdout
-    with open(vf["tmp"] / "probe-veroeffentlichen.lock", "w") as f:
+    (vf["tmp"] / "dienst").mkdir(exist_ok=True)
+    with open(vf["tmp"] / "dienst" / "veroeffentlichen.lock", "w") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         assert "Already running" in vf["lauf"]().stdout
 
@@ -642,6 +644,21 @@ def test_veroeffentlichen_installiert_playwright_fest_und_startet_dienste_einmal
     r = vf["lauf"]("--immer", **{**extra, "VF_NPM": str(tmp / "gibt-es-nicht")})
     assert r.returncode == 0 and "npm missing" in r.stdout, r.stdout + r.stderr
     assert git(arbeit, "status", "--porcelain").strip() == ""   # nichts im Bauordner
+
+
+def test_veroeffentlichen_sperre_liegt_im_dienstordner(vf):
+    """Die Sperre des Veröffentlichens liegt in FR_DIENST, nicht in FR_SPERREN: Der Schreibweg startet den Lauf aus einem
+    Dienst mit privatem /tmp, eine Sperre dort sähe der Timer nicht (#211). Hält ein anderer Lauf sie, wird übersprungen."""
+    import fcntl
+    sperre = vf["tmp"] / "dienst" / "veroeffentlichen.lock"
+    sperre.parent.mkdir(parents=True, exist_ok=True)
+    with open(sperre, "w") as f:
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        r = vf["lauf"](FR_SPERREN=str(vf["tmp"] / "anderes-tmp"))
+    assert r.returncode == 0 and "Already running" in r.stdout, r.stdout + r.stderr
+    assert vf["deploys"]() == []
+    r = vf["lauf"](FR_SPERREN=str(vf["tmp"] / "anderes-tmp"))
+    assert r.returncode == 0 and vf["deploys"]() == ["beispielreise", "zweitreise"]
 
 
 def test_veroeffentlichen_merge_und_submodulfehler_werden_nicht_gemerkt(vf):

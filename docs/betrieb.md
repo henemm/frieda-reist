@@ -170,7 +170,7 @@ Voraussetzung: `gh` ist für den Dienstbenutzer angemeldet und darf Workflows de
 | `FR_MELDEN` | leer | Meldeweg (unten) |
 | `FR_ROT_MELDEN_NACH_MINUTEN` | `30` | Minuten Rot beim Veröffentlichen bis zum Alarm (Veröffentlichen) |
 | `FR_NGINX_SNIPPETS`, `FR_SUDO` | `/etc/nginx/snippets`, `sudo -n` | nginx-Bausteine und Rechte |
-| `FR_SPERREN` | `/tmp` | Ordner der Sperrdateien |
+| `FR_SPERREN` | `/tmp` | Ordner der Sperrdateien je Reise im Schreibweg; die Sperre des Veröffentlichens liegt in `<FR_DIENST>/veroeffentlichen.lock`, weil der Schreibweg mit privatem `/tmp` läuft und Timer und Schreibweg sie teilen müssen (#211) |
 | `FR_BENUTZER`, `FR_GRUPPE`, `FR_HOME`, `FR_PFAD` | aufrufender Benutzer | nur für `einrichten.sh`: Benutzer und `PATH` der Dienste |
 | `FR_HEARTBEAT_VEROEFFENTLICHEN` | leer | Überwachungsadresse, nur in `betrieb.env` |
 | `FR_NACHZIEHEN_WORKFLOW` | `software-nachziehen.yml` | Workflow des Reisen-Repos, den ein Anstoß von der Seite startet (Abschnitt „Anstoß“) |
