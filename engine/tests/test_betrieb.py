@@ -1746,6 +1746,9 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     assert "User=reisen" in einh["probe-veroeffentlichen.service"] and "/home/reisen/.local/bin" in einh["probe-veroeffentlichen.service"]
     assert "Nice=10" in einh["probe-veroeffentlichen.service"] and "IOSchedulingClass=best-effort" in einh["probe-veroeffentlichen.service"]
     assert "IOSchedulingPriority=7" in einh["probe-veroeffentlichen.service"]
+    # Tests der Software (CI 16 bis 19 min, Server mit Nice=10 und Last länger), Bau und Deploy in einem Lauf (#258)
+    grenze = re.search(r"^TimeoutStartSec=(\d+)min$", einh["probe-veroeffentlichen.service"], re.M)
+    assert grenze and int(grenze.group(1)) >= 45, "TimeoutStartSec des Veröffentlichens zu knapp"
     assert "Environment=KN_PORT=8772" in einh["probe-konnektor.service"]
     assert "Environment=KN_BASIS=https://example.invalid" in einh["probe-konnektor.service"]
     assert f"ExecStart=/usr/bin/python3 {srv}/_dienst/konnektor.py dienst" in einh["probe-konnektor.service"]

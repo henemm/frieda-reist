@@ -20,4 +20,6 @@ ExecStart=__WURZEL__/frieda/betrieb/veroeffentlichen.sh
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=7
-TimeoutStartSec=15min
+# Zeitgrenze für Tests der Software, Bau und Deploy in einem Lauf: die Tests allein brauchen in CI 16 bis 19 Minuten,
+# auf dem Server mit Nice=10 und Last länger (#258). Der Timer startet keinen zweiten Lauf, solange einer läuft.
+TimeoutStartSec=45min
