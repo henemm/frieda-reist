@@ -438,3 +438,54 @@ def test_dienstfehler_tragen_den_code(tmp_path):
     import rueckmeldungen as rm
     k = texte.satz("dienst.wunsch_aendern.1")
     assert str(k) == "Diesen Wunsch gibt es nicht." and k.text("en") == "This wish does not exist."
+
+
+# Einheitliche Fachwörter im englischen Katalog (docs/sprachen.md „Fachwörter“): diese Wörter sind für ein Ding der Reise
+# bereits an anderer Stelle vergeben (Merkmal = attribute, Strecke = leg, Wahlstelle = choice, Ding = thing, Prüfdatum = check date,
+# verworfen = rejected, übernehmen = copy oder adopt). Schlüssel in AUSNAHMEN sind Beispiele oder ein anderes deutsches Wort.
+VERBOTENE_FACHWOERTER = {
+    r"\bfeatures?\b": "Merkmal heißt attribute",
+    r"\bjourneys?\b": "Strecke heißt leg",
+    r"choice points?": "Wahlstelle heißt choice",
+    r"discard": "verworfen heißt rejected",
+    r"checked date|date checked": "Prüfdatum heißt check date",
+    r"taken over": "Arten werden copied, Entscheidungen adopted",
+    r"(?<!feedback )\bitems?\b": "Ding heißt thing",
+}
+AUSNAHMEN_FACHWOERTER = {
+    ("konnektor.werkzeug.art_definieren", r"\bjourneys?\b"),   # „train journey“ als Beispiel einer Art
+    ("kalender.sorte.fahrten", r"\bjourneys?\b"),               # Fahrten, nicht Strecken
+}
+
+
+def test_englische_fachwoerter_sind_einheitlich():
+    import texte_en
+    falsch = [f"{k}: {grund}" for k, v in texte_en.TEXTE.items() if isinstance(v, str)
+              for muster, grund in VERBOTENE_FACHWOERTER.items()
+              if re.search(muster, v, re.I) and (k, muster) not in AUSNAHMEN_FACHWOERTER]
+    assert not falsch, "\n".join(falsch)
+
+
+def test_stufen_werden_in_jeder_sprache_gelesen():
+    """Die Wörter, die der Katalog für eine Stufe zeigt, nimmt die Eingabe in jeder Sprache an (nicht nur die deutschen)."""
+    import routen
+    for wort, schluessel in (("needed", "pflicht"), ("good to know", "empfohlen"), ("Additional", "angeboten"), ("off", "aus"),
+                             ("required", "pflicht"), ("optional", "angeboten"), ("nötig", "pflicht"), ("noetig", "pflicht"),
+                             ("gut zu wissen", "empfohlen"), ("zusätzlich", "angeboten"), ("pflicht", "pflicht")):
+        assert routen.stufe_schluessel(wort) == schluessel, wort
+    assert routen.stufe_schluessel("unbekannt") is None
+    assert routen.stufe_wort("pflicht", "en") == "needed (required)"
+    assert routen.stufe_wort("pflicht", "de") == "nötig (pflicht)"
+
+
+def test_englische_mengenangaben_im_singular():
+    """Zahlen vor Hauptwörtern des Konnektors laufen über die Pluralkategorien („1 day“, nicht „1 days“)."""
+    import konnektor
+    import texte
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(texte, "aufruf_sprache", lambda sprache=None: sprache or "en")
+        assert konnektor.Handbuch.summe(None, {"tage": 1, "naechte": 0, "min": 90, "auf": 120.4, "ab": 80.6, "km": 12.5}) \
+            == "1 day, 0 nights; Walking time 1:30 h, ↑ 120 m, ↓ 81 m, 12.5 km"
+        assert konnektor.tk("konnektor.brett_text.3", n=1) == "at most 1 wish per person"
+        assert konnektor.tk("konnektor.brett_text.3", n=3) == "at most 3 wishes per person"
+        assert konnektor.tk("konnektor.ausgabe.werkzeug.6", n=1) == "1 point"

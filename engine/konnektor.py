@@ -578,9 +578,10 @@ class Handbuch:
     def summe(self, s):
         if not s:
             return ""
-        z = [tk("konnektor.summe.1", w1=s.get('tage'), w2=s.get('naechte'))]
+        z = [tk("konnektor.summe.tage", n=s.get('tage') or 0) + ", " + tk("konnektor.summe.naechte", n=s.get('naechte') or 0)]
         if s.get("min"):
-            z.append(f"Gehzeit {stunden(s['min'])}, ↑ {s.get('auf'):.0f} Hm, ↓ {s.get('ab'):.0f} Hm, {s.get('km')} km")
+            km = f"{s.get('km') or 0:g}".replace(".", tk("seite.auto.dezimaltrenner"))
+            z.append(tk("konnektor.summe.gehzeit", zeit=stunden(s['min']), auf=f"{s.get('auf') or 0:.0f}", ab=f"{s.get('ab') or 0:.0f}", km=km))
         if s.get("unterkunftstypen"):
             z.append(tk("konnektor.summe.2") + ", ".join(f"{k} {v}" for k, v in s["unterkunftstypen"].items()))
         return "; ".join(z)
@@ -1373,13 +1374,13 @@ def brett_text(b, titel=None):
     k = b["kontingent"]
     punkte = k["art"] == "punkte"
     stelle = lambda ids: ", ".join(f"{x} {titel[x]}" if titel.get(x) else x for x in ids)
-    z = [tk("konnektor.ausgabe.brett_text.2") + (tk("konnektor.brett_text.2", w1=k['je_person']) if punkte else
-                                tk("konnektor.brett_text.3", w1=k['je_person'])) + ")"]
+    z = [tk("konnektor.ausgabe.brett_text.2") + (tk("konnektor.brett_text.2", n=k['je_person']) if punkte else
+                                tk("konnektor.brett_text.3", n=k['je_person'])) + ")"]
     for sp in b["spalten"]:
         liste = [w for w in b["wuensche"] if w["spalte"] == sp["id"]]
-        z.append(f"### {sp['titel']} ({len(liste)})")
+        z.append(f"### {tk('seite.wunsch.stufe_' + sp['id'])} ({len(liste)})")
         for w in sorted(liste, key=lambda w: -w["punkte"]):
-            z.append(f"- {w['id']} · {w['name']}" + (tk("konnektor.ausgabe.brett_text.7", w1=w['punkte']) if punkte and w["punkte"] else "") + f": {w['text']}")
+            z.append(f"- {w['id']} · {w['name']}" + (tk("konnektor.ausgabe.brett_text.7", n=w['punkte']) if punkte and w["punkte"] else "") + f": {w['text']}")
             if w["status"] == "rueckfrage":
                 z.append(tk("konnektor.brett_text.4", w1=w['kommentar']))
             elif w["kommentar"]:
@@ -1397,8 +1398,8 @@ def brett_text(b, titel=None):
                 z.append(tk("konnektor.ausgabe.brett_text.3", w1=w['erlebt']['wer'], w2=w['erlebt']['datum']))
     z.append(tk("konnektor.ausgabe.brett_text.1"))
     for p in b["bilanz"]:
-        z.append(tk("konnektor.brett_text.1", w1=p['name'], w2=p['wuensche'], w3=p['eingeplant'], w4=p['erlebt'])
-                 + (tk("konnektor.ausgabe.brett_text.4", w1=p['frei'], w2=k['je_person']) if punkte else tk("konnektor.brett_text.5", w1=p['frei'])))
+        z.append(tk("konnektor.brett_text.1", w1=p['name'], n=p['wuensche'], w3=p['eingeplant'], w4=p['erlebt'])
+                 + (tk("konnektor.ausgabe.brett_text.4", w1=p['frei'], n=k['je_person']) if punkte else tk("konnektor.brett_text.5", n=p['frei'])))
     return "\n".join(z)
 
 
@@ -1416,7 +1417,7 @@ def wuensche_kurz(reise):
     b = rm.brett(o, rm.zustand(reise))
     if not b["wuensche"]:
         return tk("konnektor.wuensche_kurz.1")
-    zahl = {s["titel"]: sum(1 for w in b["wuensche"] if w["spalte"] == s["id"]) for s in b["spalten"]}
+    zahl = {tk("seite.wunsch.stufe_" + s["id"]): sum(1 for w in b["wuensche"] if w["spalte"] == s["id"]) for s in b["spalten"]}
     return (tk("konnektor.wuensche_kurz.2", w1=len(b['wuensche'])) + ", ".join(f"{t.lower()} {n}" for t, n in zahl.items() if n)
             + tk("konnektor.ausgabe.wuensche_kurz.1"))
 
@@ -2798,7 +2799,7 @@ def werkzeug(zugang, name, args):
         w, fehler = dienst_anfrage("PATCH", f"{reise}/rueckmeldungen/{rid}", roh)
         if fehler:
             return tk("konnektor.ausgabe.frage_beantworten.4", fehler=fehler), True
-        teile = [tk("konnektor.ausgabe.werkzeug.6", w1=w['punkte'])] + (["eingeplant"] if w.get("eingeplant") else []) + (["erlebt"] if w.get("erlebt") else [])
+        teile = [tk("konnektor.ausgabe.werkzeug.6", n=w['punkte'])] + ([tk("konnektor.wunsch.eingeplant")] if w.get("eingeplant") else []) + ([tk("konnektor.wunsch.erlebt")] if w.get("erlebt") else [])
         return tk("konnektor.ausgabe.werkzeug.7", rid=rid) + ", ".join(teile) + ".", False
     if name == "ueberblick":
         return (h.ueberblick() + "\n" + stand_text(reise)

@@ -95,6 +95,33 @@ Fehler und Hinweise der Prüfung beim Bauen („Unterkunft U-01: Ort O-09 gibt e
 - Antwortsätze an die Person tragen Daten als Wert `texte.Datum` (oder `texte.DatumKurz` ohne Jahr), nicht als fertigen Text: Der Satz formatiert sie erst in der Sprache, in der er gelesen wird, auch auf dem Weg vom Dienst zum Konnektor (`{"datum": "JJJJ-MM-TT"}`). Kein `strftime` mit festem Muster in Texten.
 - Titel, Text und Fuß der Commits stehen in der Sprache der Reise, ebenso der Verlauf. Werkzeug- und Parameternamen darin sind die englischen der Schnittstelle (`schreiben.am_rand`), außer eine Sprache erklärt deutsche Aliasse (`inhalt.schreiben.werkzeug_alias`).
 
+### Fachwörter im englischen Katalog
+
+Ein Ding der Reise heißt im englischen Katalog überall gleich. Der Test `test_englische_fachwoerter_sind_einheitlich` (`test_texte.py`) lehnt die verworfenen Wörter ab; Ausnahmen stehen dort mit Grund.
+
+| Deutsch | Englisch | nicht |
+|---|---|---|
+| Merkmal | attribute | feature |
+| Art (einer Reise) | kind | type (`typ` ist der Datentyp eines Merkmals) |
+| Aufenthalt / Bewegung / Folge | stay / movement / sequence | |
+| Strecke (`E-`) | leg | journey |
+| Etappe (mit Dossier) | stage | |
+| Unterkunft / Ort | accommodation / place | |
+| Wahlstelle (`V-`) / Option (`V-01.a`) | choice / option | choice point |
+| Ding | thing | item (nur „feedback item“ für eine Rückmeldung) |
+| Prüfdatum | check date | checked date, date checked |
+| geprüft (Zustand) | checked | |
+| verworfen | rejected | discarded |
+| übernommen (Rückmeldung) | taken up | |
+| Arten aus einer anderen Reise übernehmen | copy | take over |
+| Wert still übernehmen | adopt | |
+| Beleg | booking document | receipt |
+| Zahlung / angezahlt / bezahlt | payment / deposit / paid | |
+| Gehzeit / Höhenmeter | walking time / elevation gain | |
+| Stufe `pflicht` / `empfohlen` / `angeboten` / `aus` | Datenwert required / recommended / optional / off; für die Person needed / good to know / additional / off | |
+
+Die Eingabe einer Stufe (`routen.stufe_schluessel`) nimmt den Schlüssel, die Wörter jeder Sprache und den Datenwert an. Einheiten stehen im Katalog (`konnektor.summe.gehzeit`: „m“ im Englischen, „Hm“ im Deutschen), nie im Code.
+
 ### Datenwerte
 
 Gespeichert wird immer der Datenwert selbst (`organisator`, `gewaehlt`, `blau`, `auswahl`; ADR-0006). Wer ihn **liest**, bekommt ihn in seiner Sprache: Jeder Wert eines Platzhalters, der genau einem Eintrag `wert.<Wert>` des Katalogs entspricht, wird von `texte.t` (und damit von jedem Satz) durch dessen Text ersetzt, bei fehlender Übersetzung durch den englischen. Deutsch zeigt den Wert unverändert (`"wert.organisator": "organisator"`). Ein neuer Datenwert (Rolle, Stufe, Farbe, Typ, Baustein, Schlüssel der Spielregeln) braucht deshalb einen Eintrag `wert.*` in jeder Sprache. Nicht hinein gehören Wörter, die im Englischen genauso lauten (`text`, `plan`, `bus`): sie brauchen keine Übersetzung. Wo der Code Werte selbst aneinanderhängt (f-String, `", ".join(...)`), bleibt der deutsche Wert stehen: dafür gibt es einen Satz im Katalog (`schreiben.antwort.feld_wert`) oder `schreiben.anzeige_text`. Der Test `test_englisch.py` fängt jede Stelle, an der ein deutscher Wert durchrutscht.
@@ -109,3 +136,7 @@ Wer die Sprache nicht auf Deutsch gestellt hat, liest kein deutsches Wort (Engli
 - `test_englisch_schnittstelle.py`: `tools/list` und `initialize` einer englischen Person, über Reise- und Konto-Zugang: Werkzeugnamen, Parameternamen (auch verschachtelt), Aufzählungswerte, Beschreibungen und Anweisungen. Eigennamen aus Beispielen (Orte, Anbieter) stehen in `EIGENNAMEN` des Tests.
 
 Beschreibungen im englischen Katalog nennen nur die Namen, die `tools/list` zeigt (`from_place`, nicht `von`). Ein neuer Parameter braucht deshalb einen englischen Namen in `PARAMETER` der Schnittstelle (`engine/schnittstelle.py`). Die Schuldenlisten (`BEKANNT`) dürfen nur kürzer werden.
+
+### Handwerkzeuge (Kommandozeilen)
+
+Ausgaben der Kommandozeilen für Betreiber (`neu.py`, `waechter.py`, `rueckmeldungen.py`, `bauen.py`, `werkzeuge/*`) sind englisch, auch die Aufrufhilfe (`AUFRUF`), wie die Protokolle der Dienste. Sätze, die diese Werkzeuge aus dem Katalog holen (Prüfmeldungen), kommen englisch, weil der Rückfall Englisch ist. Was die Werkzeuge in Dateien einer Reise schreiben, ist Inhalt der Reise: der Text der Quelle bei `adressen_holen.py`, `punkte_holen.py` und `wissen_punkte_holen.py` („Stand …“, „Suche …“) sowie der Bericht von `wasser_pruefen.py` stehen noch auf Deutsch (offen).

@@ -134,7 +134,7 @@ def ist_link(wert):
 # Für Menschen heißen die Stufen „nötig“, „gut zu wissen“, „zusätzlich“ (Product Owner 29.10.2026); „aus“ bleibt unsichtbar.
 # In Dateien und Werkzeugen bleiben die Schlüssel; die Wörter nimmt der Schreibweg als Eingabe ebenfalls an (stufe_schluessel).
 STUFEN = ("pflicht", "empfohlen", "angeboten", "aus")
-STUFEN_WORTE = texte.gruppe("de", "schreiben.stufe")
+STUFEN_WORTE = texte.gruppe(texte.BESTAND_REISE, "schreiben.stufe")   # die Wörter des Bestands; Eingabe nimmt die jeder Sprache (stufe_schluessel)
 
 
 def stufe_satz(s):
@@ -168,9 +168,11 @@ def stufe_schluessel(text):
     t = re.sub(r"\s+", " ", str(text or "").strip().lower())
     if t in STUFEN:
         return t
-    for k, w in STUFEN_WORTE.items():
-        if t == w or t == w.replace("ö", "oe"):
-            return k
+    for sprache in texte.sprachen():   # die Wörter jeder Sprache, die Antwort nennt sie in der Sprache der Person
+        for k, w in texte.gruppe(sprache, "schreiben.stufe").items():
+            w = w.lower()
+            if t == w or t == w.replace("ö", "oe") or t == texte.datenwert(sprache, k).lower():
+                return k
     return None
 DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage", "einheit", "stufe", "auch", "rolle", "nach_buchung"}
 # nach_buchung: true (Product Owner 31.10.2026): der Wert bleibt sichtbar, wenn das Ding gebucht ist (z. B. „Charakter“ eines
