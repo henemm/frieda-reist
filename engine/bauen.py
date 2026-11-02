@@ -42,6 +42,7 @@ from reise import Reise, eckdaten_text  # noqa: E402
 from routen import FARBEN, Routen, verhalten_anwenden  # noqa: E402
 import gpx  # noqa: E402
 import stand as reisestand  # noqa: E402
+import karte as karte_auto  # noqa: E402
 import texte  # noqa: E402
 
 ZIEL_ID = re.compile(r"^[A-Za-z0-9][\w.\-]{0,79}$", re.ASCII)
@@ -584,13 +585,8 @@ class Bauer:
             for oid, wo in orte_inhalt.items():
                 if route and oid not in route["orte"]:
                     self.fehler.append(texte.satz("pruefung.bauen.23", wo=wo, oid=oid))
-            if route and r_cfg.get("karte"):
-                route["karte"] = self.karte(r_cfg["karte"], route)
-                # Punkte der Etappen-Karten (werkzeuge/punkte_holen.py, docs/werkzeuge.md); Namen im Etappentext werden zu Kartenlinks
-                p_rel = str(Path(r_cfg["karte"]).parent / "punkte.yaml")
-                if (self.reise_dir / p_rel).exists():
-                    route["punkte"] = self.punkte(p_rel, route, etappen)
             if route:
+                self.karte_bauen(r_cfg, route, etappen)
                 self.lage_ergaenzen(route)
             if route:
                 for art in ("tagesplan", "unterkuenfte"):
@@ -841,6 +837,100 @@ class Bauer:
             if u and not u.get("adresse") and not u.get("punkt"):
                 route.setdefault("mahnungen", []).append({"bezug": uid, "text": texte.t(self.eck["sprache"], "pruefung.bauen.lage_fehlt", uid=uid, name=u.get("name"))})
 
+    def karte_bauen(self, r_cfg, route, etappen):
+        """Karte der Reise (Epic #225): handgepflegt aus plan/karte.yaml (reise.json routen.karte), sonst automatisch aus allem
+        mit Lage, wenn der Baustein Karte an ist (engine/karte.py). Ein Kartenfehler lässt den Bau nicht scheitern (K12): Die
+        Seite erscheint ohne Karte, der Kartenstatus (route["karte_status"], overview, setting_set) nennt den Grund."""
+        sprache = self.eck["sprache"]
+        # Aufenthalte ohne Tag (K7, #235): an keinem Tag und in keiner Option; ihre Heimat ist der Reiter mit der Karte
+        stand, _ = karte_auto.dinge_bezug(route)
+        for aid, a in (route.get("aufenthalte") or {}).items():
+            a["ohne_tag"] = aid not in stand
+        alt = self.fehler
+        self.fehler = []
+        status = {"gebaut": False, "art": None, "punkte": 0, "ohne_lage": []}
+        route["karte"] = None
+        try:
+            # Punkte der Etappen-Karten (werkzeuge/punkte_holen.py, docs/werkzeuge.md); Namen im Etappentext werden zu Kartenlinks
+            p_rel = str(Path(r_cfg.get("karte") or r_cfg["datei"]).parent / "punkte.yaml")
+            gpx_wege, wegpunkte = self.strecken_gpx(route)
+            if r_cfg.get("karte"):
+                status["art"] = "hand"
+                route["karte"] = self.karte(r_cfg["karte"], route)
+                if route["karte"]:
+                    status["punkte"] = len(route["karte"].get("orte") or {}) + len(route["karte"].get("punkte") or [])
+            elif "karte" in self.eck["bausteine"]:
+                k, st = karte_auto.auto(route, self.kategorien_laden(), gpx_wege)
+                status.update(st)
+                if k:
+                    self.auto_grundkarte(k)
+                    k["quelle"] = texte.t(sprache, "seite.karte.aus_dem_plan")
+                    route["karte"] = k
+            else:
+                status["grund"] = "baustein_aus"
+            if route.get("karte") and (self.reise_dir / p_rel).exists():
+                route["punkte"] = self.punkte(p_rel, route, etappen)
+            # Benannte Wegpunkte aus GPX-Tracks (K15): nummerierte Punkte, ihre Nennung im Etappentext wird zum Kartenlink
+            for sid, liste in wegpunkte.items():
+                if route.get("karte") and liste and sid not in (route.get("punkte") or {}):
+                    route.setdefault("punkte", {})[sid] = liste
+                    if sid in etappen:
+                        e = etappen[sid]
+                        e["intro"] = punkte_verlinken(e["intro"], sid, liste)
+                        for b in e["bloecke"]:
+                            b["html"] = punkte_verlinken(b["html"], sid, liste)
+        except Exception as e:   # noqa: BLE001 – K12: nie den Bau an der Karte scheitern lassen
+            self.fehler.append(texte.satz("pruefung.bauen.karte_unerwartet", e=e))
+        meldungen, self.fehler = self.fehler, alt
+        if meldungen:
+            route["karte"] = None
+            route.pop("punkte", None)
+            status.update(gebaut=False, grund="fehler", meldungen=[str(m) for m in dict.fromkeys(meldungen)])
+            self.hinweise += [texte.satz("pruefung.bauen.karte_fehler", w1=str(m)) for m in dict.fromkeys(meldungen)]
+        elif route.get("karte"):
+            status["gebaut"] = True
+        route["karte_status"] = status
+
+    def strecken_gpx(self, route):
+        """GPX-Tracks an Strecken (routen.yaml gpx:, K13): Strecken-ID -> vereinfachte Linie, dazu benannte Wegpunkte (K15)."""
+        wege, punkte = {}, {}
+        for sid, s in (route.get("strecken") or {}).items():
+            rel = s.get("gpx")
+            if not rel:
+                continue
+            datei = self.reise_dir / rel
+            try:
+                pts = gpx.lesen(datei)
+                wp = gpx.wegpunkte(datei)
+            except (OSError, gpx.ET.ParseError, ValueError) as e:
+                self.fehler.append(texte.satz("pruefung.bauen.gpx_unlesbar", sid=sid, rel=rel, e=e))
+                continue
+            if len(pts) < 2:
+                self.fehler.append(texte.satz("pruefung.bauen.gpx_leer", sid=sid, rel=rel))
+                continue
+            wege[sid] = [gpx.runden(p) for p in gpx.vereinfachen(pts)]
+            punkte[sid] = [{"name": n, "nr": i, "lage": gpx.runden(p), "quelle": f"GPX {Path(rel).name}", "gpx": True}
+                           for i, (n, p) in enumerate(wp, 1)]
+        return wege, punkte
+
+    def auto_grundkarte(self, k):
+        """Offline-Grundkarte der automatischen Karte (#239): medien/karte/grundkarte.pmtiles und Detailkarten detail-<n>.pmtiles,
+        geholt beim Veröffentlichen (werkzeuge/grundkarte_auto.py). Fehlt sie, bleibt die Karte schematisch."""
+        datei = self.reise_dir / "medien" / "karte" / "grundkarte.pmtiles"
+        if not datei.exists():
+            return
+        self.grundkarte = datei
+        k["grundkarte"] = {"url": "grundkarte.pmtiles", "maxzoom": pmtiles_maxzoom(datei)}
+        k["namensnennung"] = texte.t(self.eck["sprache"], "seite.karte.osm_namensnennung")
+        details = []
+        for d in (k.get("grundkarten") or {}).get("details") or []:
+            f = self.reise_dir / "medien" / "karte" / f"{d['name']}.pmtiles"
+            if f.exists():
+                self.grundkarten[f"karte-{d['name']}.pmtiles"] = f
+                details.append({"url": f"karte-{d['name']}.pmtiles", "rahmen": d["rahmen"], "maxzoom": pmtiles_maxzoom(f)})
+        if details:
+            k["details"] = details
+
     def punkte(self, rel, route, etappen):
         """plan/punkte.yaml prüfen und die Namen im Etappentext mit der Karte verknüpfen."""
         try:
@@ -907,7 +997,10 @@ class Bauer:
         r = k.get("rahmen") or {}
         if not all(isinstance(r.get(x), (int, float)) for x in ("nord", "sued", "west", "ost")):
             self.fehler.append(texte.satz("pruefung.bauen.66", rel=rel))
-        # GPX-Tracks ersetzen die schematischen Wege (25.10.2026)
+        # GPX-Tracks ersetzen die schematischen Wege (25.10.2026); ein Track an der Strecke (routen.yaml gpx:, K13) zählt mit
+        for sid, st in route["strecken"].items():
+            if st.get("gpx") and sid not in (k.get("gpx") or {}):
+                k.setdefault("gpx", {})[sid] = st["gpx"]
         for sid in k.get("gpx") or {}:
             if sid not in route["strecken"] and sid not in self.ids:
                 self.fehler.append(texte.satz("pruefung.bauen.67", rel=rel, sid=sid))

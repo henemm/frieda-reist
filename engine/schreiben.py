@@ -1232,10 +1232,26 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
     if hinweis:
         d["hinweis"] = hinweis
     d["quelle"] = quelle
+    # Lage gleich beim Anlegen (Epic #225, K2/K3): Koordinaten (Ort, Unterkunft, Aufenthalt), Adresse (nicht beim Ort)
+    punkt, adresse = koordinaten_wert(args), text_wert(args, "adresse", laenge=300)
+    if was == "strecke" and (punkt or adresse):
+        raise Ablehnung("schreiben.ding_anlegen.lage_strecke")
+    if was == "ort" and adresse:
+        raise Ablehnung("schreiben.lage_eintragen.ort_adresse")
+    g = datum(args["geprueft"], "geprueft", "Lage") if args.get("geprueft") else heute
+    if adresse:
+        d["adresse"] = {"wert": adresse, "quelle": quelle, "geprueft": g}
+    if punkt:
+        d["punkt"] = {"wert": punkt, "quelle": quelle, "geprueft": g}
     werte = merkmale_werte(args.get("merkmale"), (route.get("merkmale") or {}).get(d.get("art")) or [], heute,
                            {"quelle": quelle, "geprueft": args.get("geprueft")}) if was != "ort" else {}
     did = neue_id(reise_dir, kuerzel)
+    lage = {k: d.pop(k) for k in ("adresse", "punkt") if k in d}
     knoten = fliess_map(d) if was not in ("unterkunft", "aufenthalt") else block_map(d)
+    if lage and was == "ort":
+        knoten = block_map(d)
+    for k, v in lage.items():
+        knoten[k] = fliess_map(v)
     if werte:
         if was == "strecke":
             knoten = block_map(d)
@@ -1249,7 +1265,9 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
             + (S("schreiben.antwort.ding.art", w1=d["art"]) if d.get("art") else "") + (S("schreiben.antwort.ding.merkmale", w1=", ".join(werte)) if werte else "")
             + S("schreiben.antwort.ding.herkunft_punkt", w1=quelle)
             + (S("schreiben.antwort.ding.alternative") if was == "unterkunft" else "")
-            + (S("schreiben.antwort.ding.an_einen_tag") if was == "aufenthalt" else ""))
+            + (S("schreiben.antwort.ding.an_einen_tag") if was == "aufenthalt" else "")
+            + (S("schreiben.antwort.ding.mit_koordinaten", w1=", ".join(map(str, lage["punkt"]["wert"]))) if "punkt" in lage
+               else S("schreiben.antwort.ding.ohne_koordinaten") if was != "strecke" else ""))
     routen_speichern(reise_dir, roh)
     return titel, text
 
@@ -1356,14 +1374,33 @@ def ding_aendern(reise_dir, wer, args, heute=None):
     return titel, text
 
 
+def koordinaten_wert(args):
+    """„koordinaten“ aus der Anfrage („Breite, Länge“ in Grad) -> [Breite, Länge] oder None."""
+    if args.get("koordinaten") in (None, ""):
+        return None
+    try:
+        punkt = [round(float(x), 6) for x in re.split(r"[,;\s]+", str(args["koordinaten"]).strip()) if x]
+    except ValueError:
+        punkt = []
+    if len(punkt) != 2 or not (-90 <= punkt[0] <= 90 and -180 <= punkt[1] <= 180):
+        raise Ablehnung("schreiben.lage_eintragen.3")
+    return punkt
+
+
 def lage_eintragen(reise_dir, wer, args, heute=None):
-    """Lage einer Unterkunft (ADR-0004): Adresse und/oder Koordinaten, je mit Herkunft (quelle) und Prüfdatum. -> (Titel, Text)."""
+    """Lage einer Unterkunft oder eines Aufenthalts (ADR-0004): Adresse und/oder Koordinaten, je mit Herkunft (quelle) und Prüfdatum;
+    bei einem Ort nur Koordinaten (Position auf der Karte, Epic #225). -> (Titel, Text)."""
     heute = heute or datetime.date.today()
     ziel = (text_wert(args, "ziel", pflicht=True, laenge=20) or "").strip()
-    if not re.fullmatch(r"(U|A)-\d+", ziel):
+    if not re.fullmatch(r"(U|A|O)-\d+", ziel):
         raise Ablehnung("schreiben.lage_eintragen.1")
     roh = routen_laden(reise_dir)
-    knoten, bezeichnung = ding_finden(roh, ziel)
+    if ziel.startswith("O-"):
+        knoten, bezeichnung = (roh.get("orte") or {}).get(ziel), ziel
+        if knoten is not None:
+            bezeichnung = f"{ziel} {knoten.get('name', '')}".strip()
+    else:
+        knoten, bezeichnung = ding_finden(roh, ziel)
     if knoten is None:
         raise Ablehnung("schreiben.ding_aendern.2", ziel=ziel)
     quelle = text_wert(args, "quelle", pflicht=True, laenge=600)
@@ -1371,14 +1408,9 @@ def lage_eintragen(reise_dir, wer, args, heute=None):
     if g > heute:
         raise Ablehnung("schreiben.lage_eintragen.2")
     adresse = text_wert(args, "adresse", laenge=300)
-    punkt = None
-    if args.get("koordinaten") not in (None, ""):
-        try:
-            punkt = [round(float(x), 6) for x in re.split(r"[,;\s]+", str(args["koordinaten"]).strip()) if x]
-        except ValueError:
-            punkt = []
-        if len(punkt) != 2 or not (-90 <= punkt[0] <= 90 and -180 <= punkt[1] <= 180):
-            raise Ablehnung("schreiben.lage_eintragen.3")
+    if adresse and ziel.startswith("O-"):
+        raise Ablehnung("schreiben.lage_eintragen.ort_adresse")
+    punkt = koordinaten_wert(args)
     if not adresse and not punkt:
         raise Ablehnung("schreiben.lage_eintragen.4")
     geaendert = []
@@ -1392,8 +1424,11 @@ def lage_eintragen(reise_dir, wer, args, heute=None):
                          + (S("schreiben.antwort.lage.war", w1=", ".join(map(str, alt)) if isinstance(alt, list) else alt) if alt else ""))
     routen_speichern(reise_dir, roh)
     grund = text_wert(args, "grund")
+    # Adresse ohne Koordinaten (K3): Frieda soll Koordinaten recherchieren; bis dahin nennt der Kartenstatus den Eintrag
+    ohne = not isinstance(knoten.get("punkt"), dict)
     return (S("schreiben.titel.lage", w1=bezeichnung),
-            f"{bezeichnung}: " + verbinden(geaendert, "; ") + S("schreiben.antwort.lage.herkunft", w1=quelle, w2=g.isoformat()) + (S("schreiben.antwort.grund", w1=grund) if grund else ""))
+            f"{bezeichnung}: " + verbinden(geaendert, "; ") + S("schreiben.antwort.lage.herkunft", w1=quelle, w2=g.isoformat())
+            + (S("schreiben.antwort.grund", w1=grund) if grund else "") + (S("schreiben.antwort.lage.koordinaten_fehlen") if ohne else ""))
 
 
 def frage_zeile(reise_dir, text, bis=None):
@@ -2003,7 +2038,22 @@ def einstellung_setzen(reise_dir, wer, args, heute=None):
     grund = text_wert(args, "grund")
     reise_yaml_speichern(p, roh)
     return S("schreiben.titel.einstellungen", w1=kurz_namen(geaendert)), \
-        S("schreiben.antwort.einstellungen.kopf") + verbinden(geaendert, "; ") + "." + (S("schreiben.antwort.grund", w1=grund) if grund else "")
+        S("schreiben.antwort.einstellungen.kopf") + verbinden(geaendert, "; ") + "." + (S("schreiben.antwort.grund", w1=grund) if grund else "") \
+        + kartenstatus(reise_dir, roh)
+
+
+def kartenstatus(reise_dir, roh):
+    """Kartenstatus nach einer Änderung der Einstellungen (#233, K11): ist der Baustein Karte an, sagt die Antwort, ob die
+    Karte entsteht, aus wie vielen Punkten, und welche Einträge keine Koordinaten haben (Probebau). -> Satz oder ""."""
+    import karte
+    if "karte" not in list(roh.get("bausteine") or []):
+        return ""
+    try:
+        st = (route_stand(reise_dir) or {}).get("karte_status")
+    except Ablehnung:
+        return ""
+    s = karte.status_satz(st)
+    return S("schreiben.antwort.kartenstatus") + s if s else ""
 
 
 def symbol_setzen(reise_dir, wer, args, heute=None):

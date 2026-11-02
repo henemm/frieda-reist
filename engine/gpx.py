@@ -123,3 +123,15 @@ def einbauen(k, strecken, lade):
         if abstand_m(pk["lage"], best) <= FANG_M:
             pk["lage"] = list(best)
     return fehler
+
+
+def wegpunkte(pfad):
+    """Benannte Wegpunkte (<wpt> mit <name>) einer GPX-Datei -> [(Name, (Breite, Länge))] in Reihenfolge der Datei (K15)."""
+    aus = []
+    for p in ET.parse(pfad).getroot().iter():
+        if p.tag.rsplit("}", 1)[-1] != "wpt":
+            continue
+        name = next((c.text for c in p if c.tag.rsplit("}", 1)[-1] == "name" and (c.text or "").strip()), None)
+        if name:
+            aus.append((name.strip(), (float(p.get("lat")), float(p.get("lon")))))
+    return aus

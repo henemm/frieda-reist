@@ -304,6 +304,8 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .lg-u{width:16px;border-top:3px dotted var(--fg)}
 .lg-s{width:16px;border-top:3px dotted var(--skip)}
 .lg-b{width:16px;border-top:2px dashed var(--bus)}
+.lg-sch{width:16px;border-top:3px dashed var(--plan-a)}
+.legende i.rh-p.lg-p{width:12px;height:12px;border-width:1.5px;box-shadow:none}
 .legende i{display:inline-block;width:12px;height:12px;margin-right:4px;vertical-align:-1px;border-width:1px}
 /* ---------- Listenzeile: Wissen, Praxis, Quellen, Orte ---------- */
 .wliste{display:flex;flex-direction:column}
@@ -644,7 +646,7 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 /* Recherche-Karten (Issue #64): Kategorie des Orts als Farbe, Legende unter der Karte, Regionswahl darüber */
 .wkarte{margin:8px 0 12px}
 .kartenlinks{display:flex;flex-direction:column;gap:2px;margin:4px 0}
-.umschalter.regionen{margin:0 0 8px}   /* Knöpfe: Baustein umschalter (#38) */
+.umschalter.regionen,.umschalter.kartenansichten{margin:0 0 8px}   /* Knöpfe: Baustein umschalter (#38) */
 .rh-p.umriss{background:var(--card);color:var(--pk);border-color:var(--pk)}
 .leaflet-popup-content{font:inherit;font-size:14px;margin:10px 12px;line-height:1.35}
 .leaflet-popup-content .pk{font-size:12px;color:var(--mut)} .leaflet-popup-content .pq{font-size:11px;color:var(--mut);margin-top:4px}
@@ -1091,9 +1093,10 @@ const WUENSCHE = B("wuensche");
    Reiter heißen Reise · Zu tun · Wissen (+ Wünsche, Suche); einen Reiter „Plan“ gibt es nicht: Tage stehen in der Zeitachse
    der Reise, Unterkünfte und Wahlstellen am Element, an dem sie hängen, die Sammelansichten (entscheiden, buchen) in „Zu tun“,
    der Plantext unter Wissen „Über diesen Plan“. Der Vergleich ganzer Pläne steht im Reiter Reise (#plaene). */
+const KARTE_REITER = B("karte") && !!R;   // eigener Reiter „Karte“ (#231), unabhängig vom Baustein Varianten
 const ZU_TUN = !!R || B("aufgaben") || B("fragen") || B("rueckmeldungen");
 const REITER = [
-  ["varianten", () => VARIANTEN_TITEL, !!R], ["etappen", () => T("seite.reiter.etappen"), ETAPPEN_REITER],
+  ["varianten", () => VARIANTEN_TITEL, !!R], ["karte", () => T("seite.reiter.karte"), KARTE_REITER], ["etappen", () => T("seite.reiter.etappen"), ETAPPEN_REITER],
   // Praxis steht im Reiter Wissen; „Zu tun“ (bis 28.10.2026 „Offen“) sammelt Entscheiden, Buchen, Aufgaben, Fragen, Rückmeldungen
   // Quellen stehen seit dem 25.10.2026 ebenfalls im Reiter Wissen; ihr Platz in der Leiste gehört der Suche
   ["wissen", () => G.wissen, hat("wissen") || hat("praxis") || hat("quelle") || (hat("etappe") && !ETAPPEN_REITER) || hat("plan") || !!D.plan_kopf || !R],
@@ -1105,7 +1108,7 @@ const REITER = [
 const START = V.start === "heute" && REITER.some(r => r[0] === "varianten") ? "varianten"
   : REITER.some(r => r[0] === D.reise.start) ? D.reise.start : REITER[0][0];
 // Reihenfolge Reise · Zu tun · Wissen · Wünsche (Seitenordnung 28.10.2026)
-const REIHE = ["varianten", "etappen", "offen", "wissen", "wuensche"];
+const REIHE = ["varianten", "karte", "etappen", "offen", "wissen", "wuensche"];
 REITER.sort((a, b) => REIHE.indexOf(a[0]) - REIHE.indexOf(b[0]));
 REITER.sort((a, b) => (b[0] === START) - (a[0] === START));
 const TYP_REITER = {plan: "wissen", etappe: ETAPPEN_REITER ? "etappen" : "wissen", uebersicht: ETAPPEN_REITER ? "etappen" : "wissen", wissen: "wissen", praxis: "wissen", quelle: "wissen", ort: "varianten"};
@@ -2243,8 +2246,30 @@ function vergleichTabelle(plaene) {
    Küste, Orte und Wege kommen aus plan/karte.yaml. Zoomen: zwei Finger bzw. +/−; das Mausrad erst nach
    einem Klick in die Karte, damit die Seite beim Scrollen nicht hängen bleibt. Farben über CSS-Klassen (rh-…). */
 let KARTE = null;
+// Kartenansicht (#236, K5): Titel der gewählten Ansicht aus routen.yaml karten_ansichten, "" = Übersicht (alles)
+let KANSICHT = (() => { try { return localStorage.getItem(SP + "kartenansicht") || ""; } catch (e) { return ""; } })();
+const kartenAnsicht = () => (R.karten_ansichten || []).find(a => a.titel === KANSICHT) || null;
+// Eine Strecke gehört zur Ansicht, wenn ihr Tag oder sie selbst gewählt ist; ohne Tage und Strecken, wenn ihre Art gewählt ist
+function streckeInAnsicht(a, d, sid) {
+  if (!a) return true;
+  if (a.tage.length || a.strecken.length) return a.tage.includes(d.id) || a.strecken.includes(sid);
+  return !a.arten.length || [].concat((R.strecken[sid] || {}).art || []).some(x => a.arten.includes(x));
+}
+// Ein Punkt gehört zur Ansicht, wenn er zu einem gewählten Tag gehört (auch als Alternative) und seine Art gewählt ist
+function dingInAnsicht(a, x) {
+  if (!a) return true;
+  const tage = [...a.tage, ...R.tage.filter(t => t.strecken.some(st => a.strecken.includes(st.id))).map(t => t.id)];
+  return (!tage.length || x.tage.some(t => tage.includes(t))) && (!a.arten.length || a.arten.includes(x.art));
+}
+// Stand eines Punkts in Worten: am Tag n, Alternative, ohne Tag
+function dingStand(x) {
+  if (x.stand === "alternative") return T("seite.karte.alternative");
+  if (x.stand === "frei") return T("seite.karte.ohne_tag");
+  const t = R.tage.find(d => x.tage.includes(d.id));
+  return t ? T("seite.karte.am_tag", {nr: t.nr}) : "";
+}
 function dunkel() { const t = document.documentElement.dataset.theme; return t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; }
-function karteZeichnen(plaene, info, box) {
+function karteZeichnen(plaene, info, box, ansicht) {
   const K = R.karte, rf = K.rahmen;
   // Offline-Grundkarte: OpenStreetMap-Vektorkarte als PMTiles, gezeichnet von protomaps-leaflet (25.10.2026).
   // Sie liegt im Speicher des Telefons; der Service Worker beantwortet die Bereichsanfragen. Ohne sie: schematische Küste.
@@ -2259,8 +2284,11 @@ function karteZeichnen(plaene, info, box) {
     box.classList.add("osm");
     // Außerhalb des ausgeschnittenen Bereichs (breite Bildschirme) Meeresfarbe der Grundkarte statt grauer Fläche
     box.style.background = dunkel() ? "#31353f" : "#80deea";
-    protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: LOCALE.split("-")[0], maxDataZoom: 15,
+    protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: LOCALE.split("-")[0], maxDataZoom: K.grundkarte.maxzoom || 15,
       attribution: ""}).addTo(karte);
+    // Detailkarten langer Fahrten (#239, K18): genauer in ihren Gebieten, erst ab mittlerem Zoom und nur in ihrem Rahmen
+    for (const g of K.details || []) protomapsL.leafletLayer({url: g.url, flavor: dunkel() ? "dark" : "light", lang: LOCALE.split("-")[0],
+      maxDataZoom: g.maxzoom || 15, minZoom: 10, bounds: L.latLngBounds([g.rahmen.sued, g.rahmen.west], [g.rahmen.nord, g.rahmen.ost]), attribution: ""}).addTo(karte);
   }
   const land = {className: "rh-land", weight: 1.2, fillOpacity: 1, interactive: false};
   if (!osm) L.polygon(K.kueste, land).addTo(karte);
@@ -2309,7 +2337,7 @@ function karteZeichnen(plaene, info, box) {
     for (const d of p.tage) {
       const punkte = [];
       for (const st of d.strecken) {
-        const w = wegVon(st.id); if (!w) continue;
+        const w = wegVon(st.id); if (!w || !streckeInAnsicht(ansicht, d, st.id)) continue;
         const art = (R.strecken[st.id] || {}).art;
         w.forEach(q => bereich.extend(q));
         if (!alleLinien && art && !summiertArt(R.strecken[st.id])) {   // Fahrt (nicht aus eigener Kraft): dünn und gestrichelt, einmal
@@ -2322,8 +2350,10 @@ function karteZeichnen(plaene, info, box) {
           continue;
         }
         const um = (K.unmarkiert || {})[st.id];
+        // Ohne GPX-Track (automatische Karte, K8): gestrichelt, in der Legende „schematisch“
+        const schema = (K.schematisch || []).includes(st.id);
         linie(w, {className: "rh-halo", weight: breite + 3.5});
-        const l = linie(um ? w.slice(um.length - 1) : w, {className: farbe, weight: breite, dashArray: null});
+        const l = linie(um ? w.slice(um.length - 1) : w, {className: farbe, weight: breite, dashArray: schema ? "7 7" : null});
         if (um) linie(um, {className: farbe, weight: Math.max(breite, 3), dashArray: "1 6"});
         merke(d, l, breite);
         treffer(w, st.id, d, p);
@@ -2347,14 +2377,16 @@ function karteZeichnen(plaene, info, box) {
   // Orte: Symbol nach Art der Nacht in den gezeigten Plänen; nur Orte, die ein gezeigter Plan berührt
   const benutzt = new Map();
   for (const p of plaene) for (const d of p.tage) {
-    const beruehrt = [d.start_ort, d.end_ort, ...d.strecken.flatMap(st => { const x = R.strecken[st.id] || {}; return [x.von, x.nach]; })];
+    if (ansicht && !d.strecken.some(st => streckeInAnsicht(ansicht, d, st.id))) continue;
+    const beruehrt = [d.start_ort, d.end_ort, ...d.strecken.filter(st => streckeInAnsicht(ansicht, d, st.id)).flatMap(st => { const x = R.strecken[st.id] || {}; return [x.von, x.nach]; })];
     for (const o of beruehrt) if (o && !benutzt.has(o)) benutzt.set(o, "");
     const n = d.nacht; if (n && n.ort && !n.an_bord) { const k = nachtKat(n); if (k && k !== "offen" && !benutzt.get(n.ort)) benutzt.set(n.ort, k); }
   }
   const zeigeInfo = (titel, zeilen) => (info.hidden = false, info.replaceChildren(el("div", {class: "k"}, titel), ...zeilen.map(z => el("div", {class: "z"}, z))));
   for (const [oid, o] of Object.entries(K.orte || {})) {
     if (!benutzt.has(oid) || !o.lage) continue;
-    const kat = benutzt.get(oid);
+    // Automatische Karte: die Unterkunft steht als eigener Punkt (dinge), der Ort bleibt ein schlichter Punkt mit Namen
+    const kat = K.auto ? "" : benutzt.get(oid);
     const art = kat ? "rh-unterkunft" + katKlasse(kat) : "rh-punkt";
     const mk = L.marker(o.lage, {icon: L.divIcon({className: "rh-ort " + art, iconSize: [26, 26]}), title: ortName(oid), alt: ortName(oid)}).addTo(karte);
     bereich.extend(o.lage);
@@ -2366,6 +2398,16 @@ function karteZeichnen(plaene, info, box) {
       if ((R.orte[oid] || {}).hinweis) z.push(R.orte[oid].hinweis);
       zeigeInfo(ortName(oid), z.length ? z : [T("seite.karte.keine_uebernachtung")]);
     });
+  }
+  // Unterkünfte und Aufenthalte mit Lage (automatische Karte, K2): Farbe und Name aus ihrer Art (K4), Alternativen als Umriss
+  for (const x of K.dinge || []) {
+    if (!dingInAnsicht(ansicht, x)) continue;
+    const lg = (K.legende || {})[x.art] || {}, alt = x.stand === "alternative";
+    const icon = L.divIcon({className: "rh-pw", iconSize: [22, 22],
+      html: `<span class="rh-p rh-ding${alt ? " umriss" : ""}" style="--pk:${katFarbe(lg.farbe)}">${lg.symbol ? symbol(lg.symbol).outerHTML : ""}</span>`});
+    const mk = L.marker(x.lage, {icon, title: x.name, alt: x.name, riseOnHover: true, zIndexOffset: alt ? 0 : 400}).addTo(karte);
+    bereich.extend(x.lage);
+    mk.on("click keypress", () => zeigeInfo(x.name, [[lg.name, dingStand(x)].filter(Boolean).join(" · "), link(x.id, T("seite.karte.zum_eintrag"))]));
   }
   const linienPunkte = new Set(plaene.flatMap(p => p.tage.flatMap(d => d.strecken.flatMap(st => (wegVon(st.id) || []).map(q => q.join(","))))));
   for (const pk of K.punkte || []) {
@@ -2417,7 +2459,7 @@ const katFarbe = f => !f ? "var(--farbe-grau)" : f[0] === "#" ? f : f === "kontr
 const katDef = k => KATEGORIEN[k] || {name: k, farbe: null, arten: {}};
 const punktArt = p => (katDef(p.kat).arten || {})[p.art] || {};
 const punktMarke = (p, inhalt) => {
-  const k = katDef(p.kat), kontrast = k.farbe === "kontrast";
+  const k = p.gpx ? {farbe: "kontrast", arten: {}} : katDef(p.kat), kontrast = k.farbe === "kontrast";   // Wegpunkte aus GPX (K15) wie Wegpunkte des Buchs
   return `<span class="rh-p${punktArt(p).umriss ? " umriss" : ""}${kontrast ? " kontrast" : ""}" style="--pk:${katFarbe(k.farbe)}">${inhalt}</span>`;
 };
 let EKARTEN = [];
@@ -2445,7 +2487,7 @@ function etappenKarte(sid) {
     const gruppen = {};
     punkte.forEach((p, i) => {
       const g = gruppen[p.kat] = gruppen[p.kat] || L.layerGroup().addTo(karte);
-      const nummer = katDef(p.kat).nummeriert, s = nummer ? null : punktArt(p).symbol || katDef(p.kat).symbol;
+      const nummer = p.gpx || katDef(p.kat).nummeriert, s = nummer ? null : punktArt(p).symbol || katDef(p.kat).symbol;
       // Farbe im inneren Element: Pico setzt den Hintergrund von Leaflet-Markierungen zurück
       const icon = L.divIcon({className: "rh-pw", iconSize: nummer ? [22, 22] : [24, 24],
         html: punktMarke(p, nummer ? p.nr : s ? symbol(s).outerHTML : "")});
@@ -2465,10 +2507,70 @@ function etappenKarte(sid) {
   eintrag.sicht = sicht;
   return el("div", {class: "ekarte-rahmen"}, box, hinweis);
 }
+/* Organismus Tageskarte (#237, K6/K17): Ausschnitt der automatischen Karte mit den Strecken des Tages und seinen Punkten
+   (Unterkünfte, Aufenthalte und ihre Alternativen; benannte Wegpunkte aus GPX). Auf der Grundkarte, wenn es sie gibt, sonst
+   schematisch auf dem Land der Karte; Strecken ohne GPX gestrichelt. Ein Tag ohne Strecke mit Linie hat keine Karte. */
+function tagesKarte(t) {
+  const K = R.karte, lagen = K.orte || {};
+  const linien = t.strecken.map(s => [s.id, (K.wege || {})[s.id] || (() => { const x = R.strecken[s.id] || {};
+    const a = (lagen[x.von] || {}).lage, b = (lagen[x.nach] || {}).lage; return a && b && x.von !== x.nach ? [a, b] : null; })()]).filter(([, w]) => w);
+  if (!linien.length) return null;
+  const osm = !!(K.grundkarte && window.protomapsL);
+  const touch = matchMedia("(pointer: coarse)").matches;
+  const box = el("div", {class: "kartenbox ekarte", role: "region", "aria-label": T("seite.karte.tag_label", {titel: t.titel || ""})});
+  const hinweis = touch ? el("p", {class: "ziehhinweis"}, T("seite.karte.ziehhinweis")) : null;
+  const eintraege = linien.map(([sid]) => ({sid, box, karte: null, marken: []}));
+  EKARTEN.push(...eintraege);
+  const zeichnen = () => {
+    if (eintraege[0].karte) return;
+    const rf = K.rahmen;
+    const karte = L.map(box, {zoomSnap: 0.25, scrollWheelZoom: false, dragging: !touch, tap: false, maxZoom: 17,
+      maxBounds: L.latLngBounds([rf.sued, rf.west], [rf.nord, rf.ost]).pad(0.15)});
+    for (const e of eintraege) e.karte = karte;
+    karte.attributionControl.setPrefix(false).addAttribution(K.namensnennung || K.quelle || "");
+    if (osm) {
+      box.style.background = dunkel() ? "#31353f" : "#80deea";
+      protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: LOCALE.split("-")[0], maxDataZoom: K.grundkarte.maxzoom || 15, attribution: ""}).addTo(karte);
+      for (const g of K.details || []) protomapsL.leafletLayer({url: g.url, flavor: dunkel() ? "dark" : "light", lang: LOCALE.split("-")[0],
+        maxDataZoom: g.maxzoom || 15, minZoom: 10, bounds: L.latLngBounds([g.rahmen.sued, g.rahmen.west], [g.rahmen.nord, g.rahmen.ost]), attribution: ""}).addTo(karte);
+    } else L.polygon(K.kueste, {className: "rh-land", weight: 1.2, fillOpacity: 1, interactive: false}).addTo(karte);
+    karte.on("click", () => { karte.scrollWheelZoom.enable(); karte.dragging.enable(); if (hinweis) hinweis.hidden = true; });
+    box.addEventListener("mouseleave", () => karte.scrollWheelZoom.disable());
+    const bereich = L.latLngBounds([]);
+    for (const [sid, w] of linien) {
+      const schema = (K.schematisch || []).includes(sid);
+      L.polyline(w, {className: "rh-halo", weight: 7, interactive: false}).addTo(karte);
+      L.polyline(w, {className: "rh-etappe", weight: 4, dashArray: schema ? "7 7" : null, interactive: false}).addTo(karte);
+      w.forEach(q => bereich.extend(q));
+    }
+    for (const x of (K.dinge || []).filter(x => x.tage.includes(t.id))) {
+      const lg = (K.legende || {})[x.art] || {}, alt = x.stand === "alternative";
+      const mk = L.marker(x.lage, {title: x.name, alt: x.name, riseOnHover: true, zIndexOffset: alt ? 0 : 400, icon: L.divIcon({className: "rh-pw", iconSize: [22, 22],
+        html: `<span class="rh-p rh-ding${alt ? " umriss" : ""}" style="--pk:${katFarbe(lg.farbe)}">${lg.symbol ? symbol(lg.symbol).outerHTML : ""}</span>`})}).addTo(karte);
+      mk.bindPopup(() => el("div", {}, el("b", {}, x.name), el("div", {class: "pk"}, [lg.name, dingStand(x)].filter(Boolean).join(" · ")), el("div", {}, link(x.id, T("seite.karte.zum_eintrag")))), {maxWidth: 260});
+      bereich.extend(x.lage);
+    }
+    for (const e of eintraege) ((R.punkte || {})[e.sid] || []).forEach((p, i) => {
+      const nummer = p.gpx || katDef(p.kat).nummeriert, sy = nummer ? null : punktArt(p).symbol || katDef(p.kat).symbol;
+      const mk = L.marker(p.lage, {title: punktName(p), alt: punktName(p), riseOnHover: true, zIndexOffset: nummer ? 500 : 0,
+        icon: L.divIcon({className: "rh-pw", iconSize: nummer ? [22, 22] : [24, 24], html: punktMarke(p, nummer ? p.nr : sy ? symbol(sy).outerHTML : "")})}).addTo(karte);
+      mk.bindPopup(() => punktPopup(e.sid, i, p), {maxWidth: 260});
+      e.marken[i] = mk;
+    });
+    karte.fitBounds(bereich, {padding: [18, 18], maxZoom: 15});
+  };
+  for (const e of eintraege) e.zeichnen = zeichnen;
+  const sicht = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { sicht.disconnect(); zeichnen(); } });
+  sicht.observe(box);
+  for (const e of eintraege) e.sicht = sicht;
+  const schema = linien.some(([sid]) => (K.schematisch || []).includes(sid));
+  return el("div", {class: "tag-karte"}, el("div", {class: "ekarte-rahmen"}, box, hinweis),
+    schema ? kartenLegende([[el("i", {class: "lg-sch"}), T("seite.karte.schematisch")]], "p") : null);
+}
 function punktPopup(sid, i, p) {
   const d = el("div", {},
-    el("b", {}, katDef(p.kat).nummeriert ? `${p.nr} · ${punktName(p)}` : punktName(p)),
-    el("div", {class: "pk"}, katDef(p.kat).nummeriert ? katDef(p.kat).einzahl || katDef(p.kat).name
+    el("b", {}, p.gpx || katDef(p.kat).nummeriert ? `${p.nr} · ${punktName(p)}` : punktName(p)),
+    el("div", {class: "pk"}, p.gpx ? T("seite.karte.wegpunkt_gpx") : katDef(p.kat).nummeriert ? katDef(p.kat).einzahl || katDef(p.kat).name
       : [katDef(p.kat).name, p.name && punktArt(p).name].filter(Boolean).join(" · ")));
   if (p.trinkbar === "yes") d.append(el("div", {}, T("seite.karte.trinkbar_osm")));
   else if (p.trinkbar === "no") d.append(el("div", {}, T("seite.karte.kein_trinkwasser_osm")));
@@ -2643,26 +2745,64 @@ function ansichtVarianten(m) {
 function uebersichtKarte(m, gezeigt, info) {
   let segmente = {};
   if (R.karte && window.L) {
+    const ansichten = R.karten_ansichten || [], ansicht = kartenAnsicht();
+    if (ansichten.length) m.append(umschalter(T("seite.karte.ansicht_waehlen"), [[{"data-kansicht": ""}, !ansicht, T("seite.karte.uebersicht")],
+      ...ansichten.map(a => [{"data-kansicht": a.titel}, ansicht === a, a.titel])], "kartenansichten"));
     const box = el("div", {class: "kartenbox", role: "region", "aria-label": gezeigt.length > 1 ? T("seite.karte.mit_plaenen") : T("seite.karte.der_reise")});
     m.append(box);
-    segmente = karteZeichnen(gezeigt, info, box).segmente;
+    segmente = karteZeichnen(gezeigt, info, box, ansicht).segmente;
     // Legende nur mit dem, was auf dieser Karte vorkommt
     // Fahrten auf dieser Karte (Bewegungen, die nicht aus eigener Kraft sind): ihre Arten stehen in der Legende
     const K = R.karte, fahrten = [...new Set(gezeigt.flatMap(p => p.tage.flatMap(d => d.strecken.flatMap(st => [].concat((R.strecken[st.id] || {}).art || [])))))]
       .filter(a => a && !(artDef(a) || {}).summiert);
     // Kategorien der Übernachtungen auf dieser Karte, in fester Reihenfolge
     const katDa = new Set(gezeigt.flatMap(p => p.tage.map(d => nachtKat(d.nacht)).filter(k => k && k !== "offen" && k !== "unterwegs")));
-    const kats = Object.keys(R.arten || {}).filter(k => katDa.has(k));
+    const kats = K.auto ? [] : Object.keys(R.arten || {}).filter(k => katDa.has(k));
+    // Automatische Karte: Arten der gezeigten Punkte (Name und Farbe aus der Art, K4), Alternativen, schematische Linien (K8)
+    const dinge = (K.dinge || []).filter(x => dingInAnsicht(ansicht, x));
     m.append(kartenLegende([
       ...kats.map(k => [el("i", {class: "lg-k" + katKlasse(k)}), artName(k)]),
+      ...[...new Set(dinge.map(x => x.art))].filter(a => (K.legende || {})[a]).map(a => [el("i", {class: "rh-p lg-p", style: "--pk:" + katFarbe(K.legende[a].farbe)}), K.legende[a].name]),
+      dinge.some(x => x.stand === "alternative") ? [el("i", {class: "rh-p lg-p umriss", style: "--pk:var(--mut)"}), T("seite.karte.alternative")] : null,
+      (K.schematisch || []).length ? [el("i", {class: "lg-sch"}), T("seite.karte.schematisch")] : null,
       Object.keys(K.unmarkiert || {}).length ? [el("i", {class: "lg-u"}), T("seite.karte.nicht_markiert")] : null,
       (K.ausgelassen || []).length ? [el("i", {class: "lg-s"}), "ausgelassen"] : null,
       K.linien !== "alle" && fahrten.length ? [el("i", {class: "lg-b"}), fahrten.map(artName).join(", ")] : null,
       ...(gezeigt.length > 1 ? gezeigt.map(p => [planMarke(p), p.kurz]) : [])]));
-    m.append(el("p", {class: "meldung"}, [R.karte.linien === "alle" ? T("seite.karte.hinweis_uebersicht") : T("seite.karte.hinweis_schematisch"), hat("etappe") ? T("seite.karte.tippen_etappe") : T("seite.karte.tippen_tag"), gezeigt.length > 1 ? T("seite.karte.plan_waehlen_hinweis") : ""].filter(Boolean).join(" ")));
+    m.append(el("p", {class: "meldung"}, [K.auto ? T("seite.karte.hinweis_auto") : R.karte.linien === "alle" ? T("seite.karte.hinweis_uebersicht") : T("seite.karte.hinweis_schematisch"), hat("etappe") ? T("seite.karte.tippen_etappe") : T("seite.karte.tippen_tag"), gezeigt.length > 1 ? T("seite.karte.plan_waehlen_hinweis") : ""].filter(Boolean).join(" ")));
   }
   return segmente;
 }
+// Organismus Ohne Tag (K7, #235): Aufenthalte, die an keinem Tag und in keiner Option stehen (Märkte, Einkauf, Ausflugsziele
+// vor Ort). Ihre Heimat ist der Reiter „Karte“ (ADR-0003): hier vollständig, auf der Karte als Punkt. Ohne den Baustein
+// Karte bleibt die Reise ihre Heimat (am Ende des Überblicks).
+const OHNE_TAG = R ? Object.entries(R.aufenthalte || {}).filter(([, a]) => a.ohne_tag).map(([id]) => id) : [];
+for (const id of OHNE_TAG) zeileZu.set(id, KARTE_REITER ? "karte" : "varianten");
+function ohneTag(m) {
+  if (!OHNE_TAG.length) return;
+  m.append(el("section", {class: "ohne-tag"}, el("h3", {}, T("seite.karte.ohne_tag_titel", {n: OHNE_TAG.length})),
+    el("p", {class: "meldung"}, T("seite.karte.ohne_tag_hinweis")), ...OHNE_TAG.map(id => aufenthaltZeile(id, true))));
+}
+/* Vorlage Karte (#231, K10): der eigene Reiter „Karte“, sobald der Baustein Karte an ist, auch ohne den Baustein Varianten.
+   Er zeigt den Plan der Zeitachse (PLAN_ANSICHT) und alles mit Lage, dazu die Aufenthalte ohne Tag. Der Start bleibt die Reise. */
+function ansichtKarte(m) {
+  heuteBlock(m);
+  m.append(el("h2", {}, T("seite.reiter.karte")));
+  const p = {id: "", kurz: T("seite.reiter.karte"), titel: "", farbe: "a", tage: PLAN_ANSICHT.tage, auswahl: [], plus: [], minus: [], warnungen: []};
+  const info = el("div", {class: "karte", "aria-live": "polite", hidden: true});
+  const segmente = uebersichtKarte(m, [p], info);
+  if (R.karte && window.L) m.append(info);
+  if (!R.karte) m.append(el("p", {class: "leer"}, T("seite.karte.keine_karte")));
+  ohneTag(m);
+  return segmente;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-kansicht]");
+  if (!b) return;
+  KANSICHT = b.dataset.kansicht;
+  try { localStorage.setItem(SP + "kartenansicht", KANSICHT); } catch (x) {}
+  route(true);
+});
 // Zeilen eines Tages (data-tag) heben beim Zeigen die Linien des Tages auf der Karte hervor
 function kartenZeilen(liste, segmente) {
   liste.querySelectorAll("[data-tag]").forEach(z => {
@@ -2883,6 +3023,7 @@ function ansichtReise(m, p) {
   if (HAT_VARIANTEN) r.append(el("a", {class: "karte", href: "#plaene"},
     el("div", {class: "k"}, T("seite.reise.plaene_zur_wahl", {titel: D.reise.varianten_titel || T("seite.reiter.varianten"), n: R.plaene.length})),
     el("div", {class: "z klein"}, R.plaene.map(x => x.kurz).join(" · "))));
+  if (!KARTE_REITER) ohneTag(r);   // ohne den Reiter „Karte“ ist die Reise die Heimat der Aufenthalte ohne Tag
   const kosten = reiseKosten(p);
   const kz = kennzahlLeiste({...reiseKennzahlen(p), ...(kosten ? {uebernachtungen: kosten.text} : {})});
   const mit = mitreisende();
@@ -3293,7 +3434,8 @@ function ansichtTag(m, tid) {
   if (t.text || !t.strecken.length) m.append(el("h3", {}, T("seite.plan.uebersicht")), t.text ? el("p", {}, t.text) : el("p", {class: "meldung"}, T("seite.tag.noch_kein_programm")));
   const seite = el("div", {class: "tagseite"});
   // Oben: Tageskasten und Karte (Etappen; sonst Strecken mit eigenem Track, Beschreibung über „siehe“)
-  const karten = t.strecken.flatMap(s => {
+  // Automatische Karte (K6, K17): eine Karte des Tages mit allen Strecken und Punkten, für jede Art von Strecke
+  const karten = R.karte && R.karte.auto ? [tagesKarte(t)].filter(Boolean) : t.strecken.flatMap(s => {
     const a = proId.get(s.id), st = R.strecken[s.id] || {};
     if (a && a.typ === "etappe") return [etappenKarte(s.id)];
     const k = summiertArt(st) ? etappenKarte(s.id) : null;
@@ -4659,9 +4801,11 @@ function route(behalten) {
   if (zielB) h = (R.buchungen[h].fuer || [])[0] || "";
   if (q.length >= 2) { zeigeReiter(reiter); ansichtSuche(m, q); window.scrollTo(0, 0); return; }
   // Eine Seitenordnung (#214): ohne Sprungziel der Startreiter; „Plan“ (ältere Links) und „Reise“ führen zur Reise
-  const start = () => { zeigeReiter(START); START === "varianten" ? ansichtStart(m) : START === "offen" ? ansichtZuTun(m) : START === "wuensche" ? ansichtWuensche(m) : START === "etappen" ? ansichtEtappen(m) : ansichtWissen(m); };
+  const start = () => { zeigeReiter(START); START === "varianten" ? ansichtStart(m) : START === "offen" ? ansichtZuTun(m) : START === "wuensche" ? ansichtWuensche(m) : START === "etappen" ? ansichtEtappen(m) : START === "karte" ? ansichtKarte(m) : ansichtWissen(m); };
   if (!h) start();
   else if ((h === "plan" || h === "varianten") && R) { zeigeReiter("varianten"); ansichtStart(m); }
+  else if (h === "karte" && KARTE_REITER) { zeigeReiter("karte"); ansichtKarte(m); }
+  else if (zeileZu.get(h) === "karte") { zeigeReiter("karte"); ansichtKarte(m); ziel = h; }
   else if (h === "plaene" && HAT_VARIANTEN) { zeigeReiter("varianten"); ansichtVarianten(m); }
   else if (h === "etappen" && ETAPPEN_REITER) { zeigeReiter("etappen"); ansichtEtappen(m); }
   else if (h === "etappen") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "weitere-wege"; }
