@@ -235,7 +235,7 @@ def test_anstoss_von_der_seite_startet_den_workflow(vf):
     assert vf["lauf"](**extra).returncode == 0 and vf["zeilen"]("nachziehen.log") == []       # ohne Anstoß nichts
     (ablage / "_anstoss.json").write_text('{"zeit": "2026-11-01T12:00:00+00:00", "reise": "beispielreise", "von": "Ida"}\n')
     r = vf["lauf"](**extra)
-    assert r.returncode == 0 and "Workflow software-nachziehen.yml gestartet" in r.stdout
+    assert r.returncode == 0 and "workflow software-nachziehen.yml started" in r.stdout
     assert vf["zeilen"]("nachziehen.log") == ["los"] and not (ablage / "_anstoss.json").exists()
     assert json.loads((ablage / "_anstoss-ergebnis.json").read_text())["ok"] is True
     vf["lauf"](**extra)
@@ -243,9 +243,9 @@ def test_anstoss_von_der_seite_startet_den_workflow(vf):
     (t / "gh-kaputt").touch()
     (ablage / "_anstoss.json").write_text('{"zeit": "2026-11-01T13:00:00+00:00", "reise": "beispielreise", "von": "Ida"}\n')
     r = vf["lauf"](**extra)
-    assert r.returncode == 0 and "ließ sich nicht starten" in r.stdout
+    assert r.returncode == 0 and "could not be started" in r.stdout
     assert json.loads((ablage / "_anstoss-ergebnis.json").read_text())["ok"] is False
-    assert any("Anstoß gescheitert" in z for z in vf["zeilen"]("melden.log"))
+    assert any("Publish request failed" in z for z in vf["zeilen"]("melden.log"))
 
 
 def test_veroeffentlichen_fehlschlag_wird_wiederholt(vf):

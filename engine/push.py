@@ -354,7 +354,7 @@ def zustellen(senden, jetzt=None):
                         ok += 1
                 except Exception as x:   # Push-Dienst nicht erreichbar, Zeitüberschreitung: später noch einmal
                     erg["fehler"] += 1
-                    print(f"Push an {a['endpoint'][:40]}…: {type(x).__name__}", file=sys.stderr, flush=True)
+                    print(f"Push to {a['endpoint'][:40]}…: {type(x).__name__}", file=sys.stderr, flush=True)
             erg["geraete"] += ok
             erg["weg"] += weg
             ids = [e["id"] for e in eintraege]
@@ -427,7 +427,7 @@ def lauf(senden=None, jetzt=None):
 
 def dienst():
     oeffentlich, _ = schluessel()
-    print(f"push: {rm.ablage()}, vapid {oeffentlich[:12]}", flush=True)
+    print(f"Push service, store {rm.ablage()}, key {oeffentlich[:12]}…", flush=True)
     senden = webpush_sender()
     while True:
         try:
@@ -435,7 +435,7 @@ def dienst():
             if erg["vorgemerkt"] or erg["nachrichten"] or erg["fehler"] or erg["weg"]:
                 print(json.dumps(erg), flush=True)
         except Exception as x:   # ein Fehler in einer Reise hält den Dienst nicht an; der nächste Durchgang versucht es
-            print(f"Fehler: {type(x).__name__}: {x}", file=sys.stderr, flush=True)
+            print(f"Error: {type(x).__name__}: {x}", file=sys.stderr, flush=True)
         time.sleep(PAUSE)
 
 

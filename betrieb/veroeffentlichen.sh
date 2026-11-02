@@ -123,10 +123,10 @@ anstoss_weitergeben() {  # Anstoß der Seite: Workflow „Software nachziehen“
   if [ -n "${VF_NACHZIEHEN:-}" ]; then "$VF_NACHZIEHEN" > /dev/null 2>&1 || ok=false
   else timeout 60 gh workflow run "$FR_NACHZIEHEN_WORKFLOW" --ref main > /dev/null 2>&1 || ok=false; fi
   if [ "$ok" = true ]; then
-    echo "Anstoß von der Seite: Workflow $FR_NACHZIEHEN_WORKFLOW gestartet."
+    echo "Request from the page: workflow $FR_NACHZIEHEN_WORKFLOW started."
   else
-    echo "Warnung: Anstoß von der Seite, Workflow $FR_NACHZIEHEN_WORKFLOW ließ sich nicht starten (gh angemeldet, Rechte actions: write?)."
-    fr_melden normal "Anstoß gescheitert" "Eine Organisator:in hat auf der Seite das Veröffentlichen angestoßen. gh workflow run $FR_NACHZIEHEN_WORKFLOW ist gescheitert (gh angemeldet? Recht, Workflows zu starten?). Log: journalctl -u $FR_INSTANZ-veroeffentlichen -n 50"
+    echo "Warning: request from the page, workflow $FR_NACHZIEHEN_WORKFLOW could not be started (gh signed in, permission actions: write?)."
+    fr_melden normal "Publish request failed" "An organiser requested publishing on the page. gh workflow run $FR_NACHZIEHEN_WORKFLOW failed (gh signed in? permission to run workflows?). Log: journalctl -u $FR_INSTANZ-veroeffentlichen -n 50"
   fi
   printf '{"zeit": "%s", "ok": %s}\n' "$(date -u +%Y-%m-%dT%H:%M:%S+00:00)" "$ok" > "$ergebnis.tmp" && mv "$ergebnis.tmp" "$ergebnis"
   rm -f "$datei"
