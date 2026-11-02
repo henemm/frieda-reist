@@ -1631,7 +1631,7 @@ function buchungBlock(b) {
     b.notiz ? el("div", {class: "z"}, b.notiz) : null,
     leise.length ? el("div", {class: "z klein"}, leise.join(" · ")) : null,
     (b.verlauf || []).length > 1 ? el("details", {class: "verlauf"}, el("summary", {}, T("seite.buchung.verlauf", {n: b.verlauf.length})),
-      b.verlauf.slice().reverse().map(v => el("div", {}, `${datumKurz(v.datum)} ${v.wer || ""}: ${v.was || ""}${v.grund ? " (" + v.grund + ")" : ""}`))) : null,
+      b.verlauf.slice().reverse().map(v => el("div", {}, `${datumKurz(v.datum)} ${v.wer || ""}: ${AG_WAS[v.was] || v.was || ""}${v.grund ? " (" + v.grund + ")" : ""}`))) : null,
   ], T("seite.buchung.einzelheiten_buchung")));
   return k;
 }
