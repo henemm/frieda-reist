@@ -1,25 +1,25 @@
 # Context: Software-Wechsel ohne Handarbeit (#250)
 
 ## Request Summary
-Henning (PO, 2.11.2026) nach der Prüfung „müssen die Reisen nach #214/#217 nachgearbeitet werden?“: „Denke Frieda als
+Product Owner (2.11.2026) nach der Prüfung „müssen die Reisen nach #214/#217 nachgearbeitet werden?“: „Denke Frieda als
 Produkt. Was davon muss im Sinne des Produktes in der Software geändert werden? Ich möchte keine Software, die
 Handarbeit braucht.“ Seine Entscheidungen 1–3 aus dem Prüfbericht hat er mit „ja, mach das“ angenommen (Bericht:
 https://claude.ai/artifact/MxL94dweEfVXX5CQAJDmyo). Spec-Entwurf: `docs/specs/betrieb/software-wechsel-ohne-handarbeit-250.md`.
 
 ## Befund der Prüfung (2.11.2026, Kopien aller sechs Reisen der Instanz)
 - Alle Reisen bauen mit 7430aec (online) und 74a2d29 (main) ohne Fehler, ohne neue Warnungen.
-- #214: `tagesseiten` (GR 221) und `plan_reiter` (Japan) werden ohne Wirkung gelesen, nichts nötig.
-- #217: Oldenburg, Skiurlaub, test-135, test-14 tragen Eckdaten der früheren Vorlage als Text. `neu.py nachziehen`
+- #214: `tagesseiten` (Reise E) und `plan_reiter` (Reise F) werden ohne Wirkung gelesen, nichts nötig.
+- #217: Reisen A, B, C und D tragen Eckdaten der früheren Vorlage als Text. `neu.py nachziehen`
   stellt sie korrekt um. Mit der ALTEN Software baut eine umgestellte Reise nicht („unknown key ziel“) → Reihenfolge
   zwingend; Lösung: Umstellen im selben Commit wie der Software-Wechsel.
-- Skiurlaub: handgeschriebene Zeile „Status: Planung (seit 28.10.2026). Nightjet … gebucht; Buchungsdaten in
-  `inhalt/wissen.md`.“ in W-01 → nach Umstellung doppelter Status. PO hat zugestimmt: Wort „Status:“ streichen, Rest
+- Reise B: handgeschriebene Zeile „Status: Planung (seit …). …“
+  in W-01 → nach Umstellung doppelter Status. PO hat zugestimmt: Wort „Status:“ streichen, Rest
   bleibt. Das ist Inhalt → über den Konnektor (Frieda, Wissen ändern auf W-01), NICHT in Claude Code.
 - `reise.json` wird von `nachziehen` auf `indent=2` gebracht: das ist die kanonische Form der Software (schreiben.py
   schreibt genauso). KEIN Fehler (im Bericht fälschlich als Kleinkram genannt → im Abschlussbericht berichtigen).
 - „Status: planung“ in den Eckdaten: Datenwert statt Wort → Teil dieses Vorhabens (AC-7).
-- CLAUDE.md-Reste: oldenburg, test-135, test-14 = ausgefüllte Kopien der früheren Vorlage (entfernbar);
-  skiurlaub (33 Zeilen), gr221 und japan-2027 (je 60 Zeilen) haben EIGENEN Inhalt (Vorlieben, Entscheidungen,
+- CLAUDE.md-Reste: Reisen A, C, D = ausgefüllte Kopien der früheren Vorlage (entfernbar);
+  Reisen B, E und F haben EIGENEN Inhalt (Vorlieben, Entscheidungen,
   Buchungsnotizen), den weder Seite noch Konnektor sehen. Nicht automatisch anfassen (Sichtbarkeit auf der Seite ist
   eine PO-Entscheidung) → im Abschlussbericht als Entscheidung vorlegen.
 - `kontext/herkunft.md` der vier Reisen: je eine Zeile „angelegt von … (Auftrag …)“ = ausgefüllte Vorlage.
@@ -59,13 +59,13 @@ https://claude.ai/artifact/MxL94dweEfVXX5CQAJDmyo). Spec-Entwurf: `docs/specs/be
   Mal kopiert werden, per PR dort; Instanz-Tests in `Reisen-Repo der Instanz/tests/` auf Bezüge zur yml prüfen).
 
 ## Begleitaufgaben außerhalb des Codes (Stand 2.11.2026 ~16:45 UTC)
-1. Lauf „Software nachziehen“ 41482067829 (von Hand gestartet 16:30 UTC, Freigabe Henning) prüfen; danach ob der
+1. Lauf „Software nachziehen“ 41482067829 (von Hand gestartet 16:30 UTC, Freigabe PO) prüfen; danach ob der
    Bauordner der Instanz veröffentlicht hat (Protokoll des Veröffentlichens, „Published“).
-2. Sichtprüfung nach dem Nachziehen: Japan (tiefe, plan_reiter) und eine Reise ohne Pläne (Oldenburg).
+2. Sichtprüfung nach dem Nachziehen: Reise F (tiefe, plan_reiter) und eine Reise ohne Pläne (Reise A).
 3. Nach Merge: yml in Reisen-Repo der Instanz per PR (Arbeitsordner, nie Bauordner), Workflow starten → Umstellung der vier
    Reisen prüfen.
-4. Skiurlaub-Zeile über Konnektor ändern (nach Umstellung).
-5. Abschlussbericht ans Artefakt: reise.json-Punkt streichen, CLAUDE.md-Inhalte bei gr221/japan/skiurlaub als
+4. Zeile in Reise B über Konnektor ändern (nach Umstellung).
+5. Abschlussbericht ans Artefakt: reise.json-Punkt streichen, CLAUDE.md-Inhalte bei E, F und B als
    Entscheidung.
 6. Eigenes Issue für weitere Handschritte in `docs/betrieb.md` (Push-Dienst: pip install, einrichten.sh, sudo-Regel).
 7. Andere Sitzung frieda-reist-14 arbeitet an #249 (anmeldung.py, konto.js) — keine Überschneidung.
