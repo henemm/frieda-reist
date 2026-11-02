@@ -26,6 +26,7 @@ Ursache war keine einzelne Änderung. Für jede Art von Ding gab es keine Regel,
    | Folge: Tag | Tagesseite | Zeitachse der Reise |
    | Bewegung | Teil der Tagesseite (Tageskasten, Der Weg) | Tageszeile |
    | Aufenthalt: Nacht, Unterkunft | Abschnitt „Nacht“ der Tagesseite | Tageszeile, „Zu tun · Zu buchen“ |
+   | Aufenthalt ohne Tag (vor Ort gesammelt, seit 2.11.2026, #235) | Reiter mit der Karte, unter der Karte („Vor Ort, ohne Tag“); ohne Karte der Plan | Punkt auf der Karte |
    | Buchung (B-…, seit 29.10.2026, #76) | bei ihrem ersten gebuchten Ding (Unterkunftskarte, Aufenthalt oder Strecke der Tagesseite; ohne Tagesseiten im Tageskasten des Plans) | Chip am Ding, „Zu tun · Zu buchen“ |
    | Wahl mit Optionen | das Element, an dem sie hängt (`an:`), mit Vergleich | Marke in der Zeile des Elements, „Zu tun · Zu entscheiden“ |
    | Ort | Ortsseite | Tagesseite, Wissen |
@@ -56,6 +57,8 @@ Ursache war keine einzelne Änderung. Für jede Art von Ding gab es keine Regel,
 - Details der Gestaltung: `docs/design.md`, Abschnitt „Seitenordnung“.
 
 ## Verlauf
+
+- 2.11.2026 (Epic #225): Die Karte hat genau einen Reiter. Mit Plänen nebeneinander heißt er „Varianten“, ist ein Plan gewählt, „Reise“, sonst „Karte“ (#231); der Baustein Varianten ist dafür nicht mehr nötig. Aufenthalte ohne Tag haben ihre Heimat unter der Karte (#235); die Tageskarte auf der Tagesseite ist ein Ausschnitt, keine zweite Heimat.
 
 - 29.10.2026: Abgleich (`docs/abgleich-2026-10-29.md`): Buchung und Unterkunft standen an mehreren Stellen vollständig (bei jedem Ding der Buchung, an jeder Nacht der Unterkunft, als Liste unter dem Plan), ein Link auf eine Buchung an einem Aufenthalt oder einer Fahrt hatte kein Ziel, die Liste der Entscheidungen im Plan zeigte Wahlen vollständig, die schon am Tag standen. Jetzt: Buchung nur an ihrem ersten Ding, Unterkunft nur an ihrer ersten Nacht, Aufenthalt und Fahrt haben ihren Tag als Heimat (`heimat`), Sammellisten zeigen Zeilen.
 - 28.10.2026: Analyse, Konzept (Navigation A, Plantext auflösen, Alternativen an jedem Element) und grafische Ausarbeitung einzeln vom Product Owner freigegeben, gebaut in frieda-reist #84. Am selben Abend als ADR festgehalten.

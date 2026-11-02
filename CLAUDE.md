@@ -9,7 +9,7 @@ Echte Reisen, Namen echter Personen, Serveradressen, geheime Pfade, Zugangsdaten
 ## Aufbau
 
 ```
-engine/            bauen.py (Generator), routen.py (Routenmodell), reise.py (reise.yaml), gpx.py, instanz.py (Vorgaben einer Instanz),
+engine/            bauen.py (Generator), routen.py (Routenmodell), reise.py (reise.yaml), gpx.py, karte.py (Karte aus dem Plan), instanz.py (Vorgaben einer Instanz),
                    konten.py, anmeldung.py, oauth.py (Konten und Anmeldung, ADR-0005),
                    vorlage.html, sw.vorlage.js, rueckmeldungen.py (Dienst), belege.py (Belege zu Buchungen), konnektor.py (MCP), schnittstelle.py (englische Namen mit deutschen Aliasen), texte.py und texte_<kürzel>.py (Textkatalog je Sprache), schreiben.py (Schreibweg:
                    der Konnektor schreibt direkt in die Reise), waechter.py (Wächter und Erinnerer, läuft täglich),
