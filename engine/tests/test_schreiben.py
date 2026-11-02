@@ -1004,6 +1004,11 @@ def test_status_und_einstellungen_der_reise(repo):
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="Unbekannte Bausteine"):
         s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"bausteine": ["karte", "zauber"]}})
+    # Ein alter Baustein (tagesseiten, #214) wird nicht abgelehnt, sondern still herausgenommen und nicht geschrieben
+    a = s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"bausteine": ["varianten", "karte", "tagesseiten", "fragen"]}})
+    assert "bausteine" in a["text"]
+    assert yaml.safe_load(datei_auf_main(origin, "reise.yaml"))["bausteine"] == ["varianten", "karte", "fragen"]
+    s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="Unbekannte Regel"):
         s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"regeln": {"farbe": "rot"}}})
     with pytest.raises(sb.Ablehnung, match="nicht bauen"):

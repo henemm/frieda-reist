@@ -93,7 +93,8 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
 def test_neue_reise_aus_der_vorlage(tmp_path, browser):
-    """Paket H: Eine frisch angelegte Reise (Status idee, ohne Plan) zeigt jede Ansicht ohne Fehler und ohne Leere."""
+    """Paket H: Eine frisch angelegte Reise (Status idee, ohne Plan) zeigt jede Ansicht ohne Fehler und ohne Leere. Ohne Tage
+    beginnt sie mit „Wissen“: die Eckdaten unter „Über diesen Plan“, die offene Frage in „Zu tun“ (#214: kein Reiter „Plan“)."""
     import neu
     r = neu.anlegen(tmp_path / "reisen", "Skiurlaub im Tal", datetime.date(2027, 2, 6), datetime.date(2027, 2, 13),
                     {"ida": {"name": "Ida", "rolle": "organisator"}, "karl": {"name": "Karl", "rolle": "mitwirkend"}},
@@ -116,7 +117,8 @@ def test_neue_reise_aus_der_vorlage(tmp_path, browser):
     e = json.loads(aus.stdout.strip().splitlines()[-1])
     assert e["routen"] > 20 and e["fehler"] == [] and e["leer"] == [] and e["breit"] == []
     dom = json.loads((tmp_path / "dom.json").read_text(encoding="utf-8"))
-    assert "6.–13. Februar 2027" in dom["390#"] and "Offene Fragen: 1" in dom["390#"]
+    assert 'id="ueber-plan"' in dom["390#"] and "6.–13. Februar 2027" in dom["390#W-01"]
+    assert 'id="fragen"' in dom["390#offen"] and "Offene Fragen" in dom["390#offen"]
 
 
 # Erste Einträge einer neuen Reise, wie sie über den Konnektor entstehen (erfunden, Beispielwerte): ein Ort, eine Ferienwohnung
@@ -202,7 +204,8 @@ def test_seite_je_status_und_baustein(tmp_path, browser):
     kein_tag = seite_der_variante(tmp_path / "kein_tag", browser, datum="2027-06-30", status="unterwegs")
     assert kein_tag["heute"] == "Heute"
     wenig = seite_der_variante(tmp_path / "wenig", browser, bausteine=["varianten"])
-    assert "wuensche" not in wenig["reiter"] and "offen" not in wenig["reiter"], wenig
+    # „Zu tun“ mit „Zu entscheiden“ und „Zu buchen“ gibt es in jeder Reise mit Tagen (#214), Wünsche nur mit ihrem Baustein
+    assert "wuensche" not in wenig["reiter"] and "offen" in wenig["reiter"], wenig
     assert wenig["knoepfe"] == 0 and wenig["kennungen"] > 0   # IDs stehen da, aber ohne Rückmeldeknopf
 
 
@@ -349,13 +352,14 @@ def _funktion(quelle, name):
     return m.group(0)
 
 
-def test_stornierte_buchungen_ein_helfer_an_vier_stellen():
-    """#146, AC-6: Strecke, Aufenthalt, Tageskasten und Unterkunft hängen stornierte Buchungen über denselben Helfer an
-    (keine vier Kopien); buchungenBei liefert nur geltende, stornierteBei nur stornierte, jeweils an der Heimat (ADR-0003)."""
+def test_stornierte_buchungen_ein_helfer_an_jeder_heimat():
+    """#146, AC-6: Strecke, Aufenthalt und Unterkunft hängen stornierte Buchungen über denselben Helfer an (keine Kopien);
+    buchungenBei liefert nur geltende, stornierteBei nur stornierte, jeweils an der Heimat (ADR-0003). Der Tageskasten ist seit
+    #214 nirgends mehr Heimat einer Buchung (die vierte Stelle, der Tageskasten im Plan ohne Tagesseiten, ist entfallen)."""
     q = (WURZEL / "engine" / "vorlage.html").read_text(encoding="utf-8")
     assert re.search(r"^function stornierteBuchungen\(|^const stornierteBuchungen = ", q, re.M)
     assert re.search(r"^const stornierteBei = ", q, re.M) or re.search(r"^function stornierteBei\(", q, re.M)
-    for name in ("streckeZeile", "aufenthaltZeile", "tagKarte", "unterkunftKarte"):
+    for name in ("streckeZeile", "aufenthaltZeile", "unterkunftKarte"):
         f = _funktion(q, name)
         assert "stornierteBuchungen(stornierteBei(" in f, name
     # Stornierte nie über buchungenBei voll gezeichnet: der Helfer trennt nach Status

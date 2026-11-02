@@ -19,8 +19,9 @@ const start = await p.evaluate(() => ({
   aktiv: (document.querySelector("#nav a.on") || {getAttribute: () => "#"}).getAttribute("href").slice(1),
   heute: (document.querySelector("section.heute h2") || {}).textContent || null,
 }));
-// Rückmeldeknöpfe an IDs im Plan (ohne Baustein „rueckmeldungen“ und „aufgaben“ nur Text)
-await p.evaluate(() => { location.hash = "plan"; });
+// Rückmeldeknöpfe an IDs auf einer Tagesseite (ohne Baustein „rueckmeldungen“ und „aufgaben“ nur Text); einen Reiter
+// „Plan“ mit Kennungen gibt es seit #214 nicht mehr
+await p.evaluate(() => { location.hash = "T-02"; });
 await p.waitForTimeout(200);
 start.knoepfe = await p.evaluate(() => document.querySelectorAll("#main button.zid").length);
 start.kennungen = await p.evaluate(() => document.querySelectorAll("#main .zid").length);

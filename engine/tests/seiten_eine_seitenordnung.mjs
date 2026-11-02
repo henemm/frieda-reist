@@ -39,7 +39,7 @@ const messen = (auftrag) => {
   return {hash: location.hash, voll, vergleiche, ids, doppelt,
           wahlen: main.querySelectorAll(".ding.wahl, .wm-knopf, .tz-marken .chip.offen").length,   // Wahl, Einstieg, Marke
           tagseite: !!main.querySelector(".tagseite"),
-          kopf: (main.querySelector(".tagseite .tagdatum") || {}).textContent || null,
+          kopf: main.querySelector(".tagseite") ? (main.querySelector("h2.tagkopf .tagdatum") || {}).textContent || null : null,   // Kopf der Tagesseite
           etappe: main.querySelector("[id='E-01']") ? {karte: !!main.querySelector(".maplibregl-map, canvas, svg.karte"),
             weiter: (main.querySelector("a.weiter") || {}).textContent || null} : null,
           reiter: (document.querySelector("#nav a.on") || {getAttribute: () => "#"}).getAttribute("href").slice(1)};
