@@ -18,6 +18,7 @@ import konnektor as kn  # noqa: E402
 import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from schnittstelle_hilfe import N, intern_liste  # noqa: E402
+from conftest import meldet  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 BEISPIEL = WURZEL / "beispiel" / "reisen" / "beispielreise"   # ida organisator, karl mitwirkend
@@ -443,7 +444,7 @@ def test_konnektor_ueberblick_je_status(umgebung):
     text, _ = u.werkzeug(KARL, "ueberblick")
     assert "## Heute: kein Tag im Plan" in text        # die Beispielreise liegt im Mai 2027
     unterwegs = text[text.index("## Wahlstellen"):]
-    assert "unterwegs wählen" in unterwegs and "unterwegs wählen" not in planung
+    assert meldet(unterwegs, "konnektor.ueberblick.4") and not meldet(planung, "konnektor.ueberblick.4")
     # Wahlstellen mit Auslöser rücken vor: nur im Status unterwegs ändert sich die Reihenfolge
     ids = lambda t: [z.split()[1] for z in t.splitlines() if z.startswith("- V-")]
     assert ids(unterwegs)[0] == "V-02" and sorted(ids(unterwegs)) == sorted(ids(planung))

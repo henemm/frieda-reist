@@ -1,0 +1,13 @@
+RED (Validierung #214, Befund aus Phase 7): Tagesseite mit tiefe bei offenen Plänen, vor dem Fix in engine/vorlage.html ansichtTag
+$ engine/.venv/bin/python -m pytest -q engine/tests/test_tagesplan.py -k zeitachse_bei_offenen
+
+        assert len(auf_achse) >= 4, e["tage"]
+        for t in auf_achse:
+>           assert t["kopf"] == t["achse"], (tiefe, t)
+E           AssertionError: (True, {'id': 'T-03', 'achse': 'Tag 3 · Sa 15.5.', 'erwartet': 'Tag 3 · Sa 15.5.', 'kopf': 'Tag 4 · So 16.5.', ...})
+E           assert 'Tag 4 · So 16.5.' == 'Tag 3 · Sa 15.5.'
+
+engine/tests/test_tagesplan.py:154: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_tagesplan.py::test_tagesseite_zaehlt_wie_die_zeitachse_bei_offenen_plaenen[True]
+1 failed, 1 passed, 5 deselected in 6.46s

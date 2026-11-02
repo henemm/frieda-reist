@@ -9,6 +9,8 @@ After=network.target __INSTANZ__-rueckmeldungen.service
 User=__BENUTZER__
 Group=__GRUPPE__
 Environment=RM_ABLAGE=__ABLAGE__
+Environment=FR_DIENST=__DIENST__
+Environment=FR_ZEITZONE=__ZEITZONE__
 Environment=KN_SEITEN=__SEITEN__
 Environment=KN_ZUGAENGE=__KONNEKTOR__/zugaenge.json
 Environment=KN_RUECKMELDEDIENST=http://127.0.0.1:__RM_PORT__

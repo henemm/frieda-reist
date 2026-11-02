@@ -1,0 +1,42 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+__________ test_ausschalten_dieses_geraets_steht_unter_konfigurieren ___________
+
+welt = <function welt.<locals>.neu at 0x7b6ee5f40900>
+
+    def test_ausschalten_dieses_geraets_steht_unter_konfigurieren(welt):
+        """Issue #249: Eingeschaltet steht an der Stelle des Einschaltknopfs nur der Zustand; „Auf diesem Gerät ausschalten“
+        hat seinen Platz in den Einstellungen hinter „Konfigurieren“, vor „Auf allen Geräten ausschalten“."""
+        u = welt()
+        konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
+        karl, _ = anmelden(u, KARL)
+        kid = konten.sitzung(karl)["id"]
+        konten.push_abo_speichern(kid, abo("karl"), "", f"{BASIS}/konto", "geraet-karl-1", "Europe/Berlin")
+        s, _, t = abruf(f"{u.kurl}/konto?push=an", cookie=karl)
+        assert s == 200
+        platz = re.search(r'<div id="push-geraet" hidden[^>]*></div>', t)
+        assert platz, "der Platz des Schalters bleibt leer, bis das Skript ihn füllt"
+        texte_js = json.loads(html.unescape(re.search(r'data-texte="([^"]*)"', platz.group(0)).group(1)))
+>       assert texte_js["aus_wo"] == "Ausschalten unter ‚Konfigurieren‘."
+               ^^^^^^^^^^^^^^^^^^
+E       KeyError: 'aus_wo'
+
+engine/tests/test_push.py:352: KeyError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+GET 200
+_____ test_skript_haengt_ausschalten_nicht_an_die_stelle_des_einschaltens ______
+
+    def test_skript_haengt_ausschalten_nicht_an_die_stelle_des_einschaltens():
+        """Issue #249, Prüfung des Quelltexts (im Testbrowser lässt sich Push nicht abonnieren): Eingeschaltet zeigt
+        #push-geraet nur Zustand und Hinweis; der Knopf zum Ausschalten kommt in #push-geraet-aus."""
+        js = (Path(__file__).resolve().parent.parent / "app" / "konto.js").read_text(encoding="utf-8")
+>       assert 'getElementById("push-geraet-aus")' in js
+E       assert 'getElementById("push-geraet-aus")' in '/* Skript von „Mein Konto“ (Issue #21, Entscheidung A vom 2.11.2026). Ohne Skript bleibt die Seite voll benutzbar; es...ten"));\n    an.addEventListener("click", einschalten);\n    zeigen(...status, an);\n  }\n\n  darstellen("");\n})();\n'
+
+engine/tests/test_push.py:369: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_push.py::test_ausschalten_dieses_geraets_steht_unter_konfigurieren
+FAILED engine/tests/test_push.py::test_skript_haengt_ausschalten_nicht_an_die_stelle_des_einschaltens
+2 failed, 23 deselected in 1.90s

@@ -54,6 +54,9 @@ HTTP (hinter nginx, Präfix /<reise>-<token>/api/ -> /<reise>/):
   GET    /<reise>/push                    öffentlicher Schlüssel für Push-Nachrichten (null: Push-Dienst nicht eingerichtet)
   POST   /<reise>/push                    {abo, geraet, zeitzone, seite} Gerät anmelden | {abmelden: endpoint}; nur angemeldet
                                           (engine/push.py, Issue #21)
+  GET    /<reise>/stand                   Reise-Stand auf dem Server (engine/stand.py, #228): gesichert, veröffentlicht, Zustand
+                                          (wartet, baut, veroeffentlicht, fehlgeschlagen), Grund, Dauer; ohne Anmeldung (nur Zahlen
+                                          und Zeiten). Geht nie über den Speicher des Service Workers (sw.vorlage.js: api/)
   GET    /<reise>/aktualisieren           Stand des Anstoßes „neue Software veröffentlichen“ und ob die Person ihn geben darf
   POST   /<reise>/aktualisieren           Anstoß geben (Organisator:in, angemeldet): legt <ablage>/_anstoss.json an,
                                           betrieb/veroeffentlichen.sh startet damit den Workflow „Software nachziehen“
@@ -78,6 +81,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import belege as bl  # noqa: E402
 import instanz  # noqa: E402
+import stand as reisestand  # noqa: E402
 import konten  # noqa: E402
 import reise as rg  # noqa: E402
 import texte  # noqa: E402
@@ -917,6 +921,8 @@ class Dienst(BaseHTTPRequestHandler):
             return self._antwort(200, {"schluessel": konten.push_schluessel("vapid_oeffentlich")})
         if was == "aktualisieren":
             return self._antwort(200, {"darf": darf_anstossen(wer_ist(self.headers, o.name, lesen=True)), **anstoss_stand()})
+        if was == "stand":
+            return self._antwort(200, reisestand.lesen(o.name))
         if was == "brett":
             return self._antwort(200, brett(o, zustand(o.name)))
         if was == "ich":
@@ -1291,7 +1297,7 @@ def setze(reise, rid, status, kommentar):
 
 def dienstordner():
     """Ordner der Dienste neben der Ablage (<Seiten>/_dienst): Stände, Stempel, vorgemerkte Links neuer Reisen."""
-    return ablage().parent / "_dienst"
+    return instanz.dienst()
 
 
 def aufgaben_text(liste, titel=None, fristen=True, sprache=None):

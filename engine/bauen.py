@@ -38,9 +38,10 @@ except ImportError:
     sys.exit("Parts of the software are missing. Set up once:\n"
              "  python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt\n"
              "Then run:  python3 engine/bauen.py <reise>")
-from reise import Reise  # noqa: E402
+from reise import Reise, eckdaten_text  # noqa: E402
 from routen import FARBEN, Routen, verhalten_anwenden  # noqa: E402
 import gpx  # noqa: E402
+import stand as reisestand  # noqa: E402
 import texte  # noqa: E402
 
 ZIEL_ID = re.compile(r"^[A-Za-z0-9][\w.\-]{0,79}$", re.ASCII)
@@ -623,6 +624,8 @@ class Bauer:
         wissen_karte = self.wissen_karte(c["wissen_punkte"], abschnitte) if c.get("wissen_punkte") else None
 
         kategorien = self.kategorien_laden()   # auch ohne Punkte prüfen, damit ein Fehler in der Datei nicht schlummert
+        if c.get("eckdaten") and not any(a["id"] == c["eckdaten"] for a in abschnitte):
+            self.fehler.append(texte.satz("pruefung.bauen.eckdaten_fehlt", sid=c["eckdaten"]))
         if self.fehler:
             raise BauFehler(list(dict.fromkeys(self.fehler)))
         return {
@@ -955,6 +958,9 @@ class Bauer:
     def wissen(self, eintrag, titel, body, rel, wo):
         sid, typ = eintrag
         self.id_anlegen(sid, wo)
+        if sid == self.cfg.get("eckdaten"):
+            # Eckdaten aus reise.yaml vor dem Text, den eine Person dazuschreibt (#217): Heimat der Daten bleibt reise.yaml
+            body = eckdaten_text(self.eck) + "\n\n" + body.lstrip("\n")
         intro, bl = self.bloecke(sid, body, self.reise_dir / rel, wo)
         return {"id": sid, "typ": typ, "titel": titel, "intro": intro, "bloecke": bl}
 
@@ -1068,6 +1074,8 @@ class Bauer:
 
     def schreiben(self, daten):
         daten = warnungen_in_reisesprache(daten)
+        # Reise-Stand (#223): Nummer und letzte Änderungen aus der Geschichte der Reise; nur beim Schreiben, nicht im Probebau
+        daten = {**daten, "reise_stand": reisestand.fuer_seite(self.reise_dir, daten)}
         vorlage = (Path(__file__).parent / "vorlage.html").read_text(encoding="utf-8")
         vorlage = vorlage.replace("<!--__SYMBOLE__-->", symbole(), 1)
         vorlage = vorlage.replace('data-release="__RELEASE__"', f'data-release="{release_attribut()}"', 1)
@@ -1094,14 +1102,14 @@ class Bauer:
         Dateien: gleicher Inhalt -> gleiche sw.js -> kein Update-Hinweis auf dem Telefon."""
         c, ziel = self.eck, self.ziel_dir
         kurz = c.get("kurz") or c["titel"].split(" – ")[0]
-        motiv = self.reise_dir / "medien" / "icon.svg"  # eigenes App-Symbol der Reise, sonst Kurzname
+        motiv = symbol_motiv(self.reise_dir)  # eigenes App-Symbol der Reise (SVG oder PNG), sonst Kurzname
         (ziel / "manifest.json").write_text(json.dumps({
             "name": c["titel"], "short_name": kurz, "lang": c["sprache"], "dir": texte.sprache(c["sprache"]).RICHTUNG,
             "start_url": "./", "scope": "./", "display": "standalone",
             "background_color": PWA_HINTERGRUND, "theme_color": PWA_FARBE,
             # eigenes Motiv ist für Android-Masken gezeichnet (Motiv im inneren 80 %)
             "icons": [{"src": f"icon-{g}.png", "sizes": f"{g}x{g}", "type": "image/png",
-                       "purpose": "any maskable" if motiv.exists() else "any"} for g in (192, 512)],
+                       "purpose": "any maskable" if motiv else "any"} for g in (192, 512)],
         }, ensure_ascii=False, indent=1), encoding="utf-8")
         # Fremdbibliotheken aus engine/vendor (lokal statt CDN: offline und keine Anfragen vom geheimen Pfad)
         mit_karte = bool(self.grundkarte or self.grundkarten)
@@ -1112,7 +1120,8 @@ class Bauer:
             if not mit_karte and (ziel / name).exists():
                 (ziel / name).unlink()
         for g in ICON_GROESSEN:
-            (icon_aus_svg(motiv, g) if motiv.exists() else icon_zeichnen(kurz, g)).save(ziel / f"icon-{g}.png", optimize=True)
+            (icon_aus_motiv(motiv, g) if motiv else icon_zeichnen(kurz, g)).save(ziel / f"icon-{g}.png", optimize=True)
+        symbol_quelle_schreiben(motiv, ziel)
         # Bilder, die keine Quelle mehr haben, nicht ausliefern und nicht vorab laden
         # Offline-Grundkarte: wird wie die Bilder bei der Installation vorab gespeichert
         karte = ziel / "grundkarte.pmtiles"
@@ -1276,12 +1285,126 @@ PWA_HINTERGRUND = "#f8f8f5"  # = --bg der Vorlage
 ICON_GROESSEN = (32, 180, 192, 512)  # Browser-Tab, iPhone-Homebildschirm, Android/Manifest
 
 
+SYMBOL_DATEIEN = ("icon.svg", "icon.png")   # eigenes App-Symbol in reisen/<reise>/medien/; es gibt höchstens eines (Schreibweg)
+SYMBOL_QUELLEN = ("symbol.svg", "symbol.png")   # die Quelle in der Seite, für den Konnektor (icon_set ohne Bild liest sie)
+SYMBOL_MAX = 40 * 1024        # Bytes; mit Base64 bleibt die Anfrage unter den 64 KB von Konnektor, Schreibweg und nginx
+SYMBOL_PNG_MIN = 512          # Kantenlänge eines PNG in Pixeln (größtes App-Symbol)
+# Was ein SVG-Symbol nicht enthalten darf: es liegt als Datei unter der Adresse der Seite (symbol.svg)
+SVG_VERBOTEN = {"script", "foreignobject", "iframe", "object", "embed", "audio", "video", "handler", "listener", "a"}
+
+
+def symbol_motiv(reise_dir):
+    """Eigenes App-Symbol der Reise (medien/icon.svg vor medien/icon.png) -> Pfad oder None."""
+    return next((p for n in SYMBOL_DATEIEN if (p := Path(reise_dir) / "medien" / n).is_file()), None)
+
+
+def fremde_url(text):
+    """Verweist ein Wert mit url(…) auf etwas anderes als ein Element im selben SVG (url(#verlauf))?"""
+    return any(not u.strip().strip("'\"").startswith("#") for u in re.findall(r"url\(([^)]*)\)", text, re.I))
+
+
+def svg_pruefen(text):
+    """Ein SVG-Symbol prüfen, bevor es in die Reise kommt oder als Datei unter der Adresse der Seite liegt.
+    -> None, wenn es taugt, sonst Schlüssel der Meldung (schreiben.symbol.svg_*): kein Skript, keine Ereignisattribute, nichts
+    Eingebettetes, keine Verweise nach außen, keine DTD; quadratisch (viewBox oder width/height)."""
+    import defusedxml.ElementTree as DET
+    from defusedxml import DefusedXmlException
+    from xml.etree.ElementTree import ParseError
+    if re.search(r"<!DOCTYPE|<!ENTITY", text, re.I):
+        return "schreiben.symbol.svg_dtd"
+    try:
+        wurzel = DET.fromstring(text)
+    except (ParseError, DefusedXmlException, ValueError):
+        return "schreiben.symbol.svg_kaputt"
+
+    def lokal(name):
+        return name.rsplit("}", 1)[-1].lower()
+    if lokal(wurzel.tag) != "svg":
+        return "schreiben.symbol.svg_kaputt"
+    for el in wurzel.iter():
+        if not isinstance(el.tag, str):
+            continue
+        if lokal(el.tag) in SVG_VERBOTEN:
+            return "schreiben.symbol.svg_aktiv"
+        for k, v in el.attrib.items():
+            k = lokal(k)
+            if k.startswith("on"):
+                return "schreiben.symbol.svg_aktiv"
+            v = v.strip().lower()
+            if "javascript:" in v.replace(" ", ""):
+                return "schreiben.symbol.svg_aktiv"
+            if k == "href" and not v.startswith(("#", "data:image/png", "data:image/jpeg")):
+                return "schreiben.symbol.svg_fremd"
+            if fremde_url(v):
+                return "schreiben.symbol.svg_fremd"
+        if lokal(el.tag) == "style" and ("@import" in (el.text or "").lower() or fremde_url(el.text or "")):
+            return "schreiben.symbol.svg_fremd"
+
+    def zahl(x):
+        m = re.fullmatch(r"\s*([0-9.]+)\s*(px)?\s*", x or "")
+        return float(m.group(1)) if m else None
+    box = re.split(r"[\s,]+", (wurzel.get("viewBox") or "").strip())
+    if len(box) == 4:
+        try:
+            b, h = float(box[2]), float(box[3])
+        except ValueError:
+            return "schreiben.symbol.svg_kaputt"
+    else:
+        b, h = zahl(wurzel.get("width")), zahl(wurzel.get("height"))
+        if b is None or h is None:
+            return "schreiben.symbol.svg_groesse"
+    if b <= 0 or h <= 0 or abs(b - h) > 0.01 * max(b, h):
+        return "schreiben.symbol.svg_quadrat"
+    return None
+
+
 def icon_aus_svg(svg, groesse):
-    """App-Symbol aus reisen/<reise>/medien/icon.svg; CairoSVG (LGPL) rechnet es in die Größe um."""
+    """App-Symbol aus reisen/<reise>/medien/icon.svg (Pfad) oder SVG-Bytes; CairoSVG (LGPL) rechnet es in die Größe um.
+    CairoSVG löst ohne unsafe=True keine Verweise auf Dateien und keine Entitäten auf."""
     import io
     import cairosvg
-    png = cairosvg.svg2png(url=str(svg), output_width=groesse, output_height=groesse)
-    return Image.open(io.BytesIO(png)).convert("RGB")  # iOS mag keine Transparenz
+    quelle = {"bytestring": svg} if isinstance(svg, bytes) else {"url": str(svg)}
+    png = cairosvg.svg2png(**quelle, output_width=groesse, output_height=groesse)
+    return flach(Image.open(io.BytesIO(png)))
+
+
+def icon_aus_png(png, groesse):
+    """App-Symbol aus reisen/<reise>/medien/icon.png (Pfad oder Bytes), auf die Größe verkleinert."""
+    import io
+    im = Image.open(io.BytesIO(png) if isinstance(png, bytes) else png)
+    return flach(im).resize((groesse, groesse), Image.LANCZOS)
+
+
+def flach(im):
+    """Durchsichtiges auf Weiß legen: iOS mag keine Transparenz (convert("RGB") allein macht durchsichtige Stellen schwarz)."""
+    im = im.convert("RGBA")
+    grund = Image.new("RGBA", im.size, "white")
+    grund.alpha_composite(im)
+    return grund.convert("RGB")
+
+
+def icon_aus_motiv(motiv, groesse):
+    return icon_aus_svg(motiv, groesse) if motiv.suffix == ".svg" else icon_aus_png(motiv, groesse)
+
+
+def symbol_quelle_schreiben(motiv, ziel):
+    """Quelle des eigenen Symbols neben die Seite legen (symbol.svg oder symbol.png, nicht vorab gespeichert): der Konnektor
+    gibt sie mit icon_set ohne Bild zurück, damit die Claude-App ein Symbol weiterentwickeln kann. Ein SVG nur, wenn es die
+    Prüfung besteht (es liegt als Datei unter der Adresse der Seite); alte Quellen fallen weg."""
+    gewollt = None
+    if motiv:
+        gewollt = "symbol" + motiv.suffix
+        if motiv.suffix == ".svg":
+            try:
+                if svg_pruefen(motiv.read_text(encoding="utf-8")):
+                    gewollt = None
+            except (OSError, UnicodeDecodeError):
+                gewollt = None
+        if gewollt:
+            shutil.copyfile(motiv, ziel / gewollt)
+    for n in SYMBOL_QUELLEN:
+        if n != gewollt and (ziel / n).exists():
+            (ziel / n).unlink()
 
 
 def icon_zeichnen(text, groesse):

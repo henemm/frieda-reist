@@ -21,6 +21,7 @@ sys.path.insert(0, str(ENGINE))
 import bauen  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 import zustellen  # noqa: E402
+from conftest import meldet  # noqa: E402
 
 GIT = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 # Umgebung ohne Werte einer echten Instanz, die die Prüfung verfälschen könnten
@@ -134,7 +135,7 @@ def vf(tmp_path):
     # Infrastrukturfehler (Exit 1)
     attrappe = ausfuehrbar(tmp_path / "deploy.sh", f'#!/bin/sh\necho "$1" >> {protokoll}\necho "$FR_GEPRUEFT" >> {tmp_path}/gepreuft.log\n'
                                                    f'[ -e {tmp_path}/kaputt ] && exit 1\n[ -e {tmp_path}/infra-$1 ] && exit 1\n'
-                                                   f'[ -e {tmp_path}/kaputt-$1 ] && exit 2\nexit 0\n')
+                                                   f'[ -e {tmp_path}/kaputt-$1 ] && {{ cat {tmp_path}/kaputt-$1; exit 2; }}\nexit 0\n')
     # Prüf-Attrappe: aufgerufen mit „engine/tests“ (Software, rot über die Datei rot, Protokoll p) oder „tests“ (Tests des
     # Reisen-Repos, rot über rot-reise, Protokoll r)
     pruefen = ausfuehrbar(tmp_path / "pruefen.sh", f'#!/bin/sh\nif [ "$1" = tests ]; then echo r >> {tmp_path}/pruefen.log; '
@@ -193,8 +194,20 @@ def vf(tmp_path):
     def kopf():
         return git(quelle, "rev-parse", "HEAD").strip()
 
+    def inhalt(reise, text="neu"):
+        """Ein reiner Inhaltsstand: Commit nur in reisen/<reise>/ (wie der Schreibweg)."""
+        datei = quelle / "reisen" / reise / "inhalt.md"
+        datei.write_text((datei.read_text() if datei.exists() else "") + text + "\n")
+        git(quelle, "add", ".")
+        git(quelle, "commit", "-qm", f"{reise}: {text}")
+
+    def lauf_stand(reise):
+        datei = tmp_path / "dienst" / "reise-stand" / f"{reise}.lauf.json"
+        return json.loads(datei.read_text()) if datei.exists() else None
+
     return {"lauf": lauf, "deploys": deploys, "pings": anzahl_pings, "neuer_commit": neuer_commit, "arbeit": arbeit,
-            "tmp": tmp_path, "env": env, "reisetests": reisetests, "rot": rot, "zeilen": zeilen, "kopf": kopf}
+            "tmp": tmp_path, "env": env, "reisetests": reisetests, "rot": rot, "zeilen": zeilen, "kopf": kopf,
+            "inhalt": inhalt, "lauf_stand": lauf_stand}
 
 
 T0 = 1_800_000_000   # erfundener Zeitpunkt für VF_JETZT (Sekunden seit 1970)
@@ -222,6 +235,82 @@ def test_veroeffentlichen_nur_bei_neuem_stand(vf):
     assert (vf["arbeit"] / "neu.txt").exists()
     assert vf["lauf"]("--immer").returncode == 0
     assert vf["deploys"]() == ["beispielreise", "zweitreise"]
+
+
+def test_veroeffentlichen_inhaltsstand_baut_nur_die_geaenderte_reise(vf):
+    """#230: Ein reiner Inhaltsstand (nur reisen/<reise>/ geändert) baut nur diese Reise und überspringt die Prüfungen der
+    Software, die für diese Software schon grün waren; ein Software-Wechsel prüft und baut weiter alles."""
+    vf["reisetests"]()
+    assert vf["lauf"]().returncode == 0 and vf["deploys"]() == ["beispielreise", "zweitreise"]
+    assert vf["zeilen"]("pruefen.log") == ["p", "r"]
+    vf["inhalt"]("zweitreise")
+    r = vf["lauf"]()
+    assert r.returncode == 0 and "content only: zweitreise" in r.stdout and "checks skipped" in r.stdout, r.stdout
+    assert vf["deploys"]() == ["zweitreise"]
+    assert vf["zeilen"]("pruefen.log") == ["p", "r"]                       # weder Software- noch Inhaltstests
+    assert (vf["tmp"] / "gepreuft.log").read_text().split()[-1] == vf["kopf"]()   # deploy.sh prüft nicht selbst
+    assert (vf["tmp"] / "dienst/veroeffentlicht").read_text().strip() == vf["kopf"]()
+    vf["neuer_commit"]()                                                      # außerhalb von reisen/: Software
+    assert vf["lauf"]().returncode == 0 and vf["deploys"]() == ["beispielreise", "zweitreise"]
+    assert vf["zeilen"]("pruefen.log") == ["p", "r", "p", "r"]
+    vf["inhalt"]("beispielreise")
+    assert vf["lauf"]("--immer").returncode == 0 and vf["deploys"]() == ["beispielreise", "zweitreise"]   # --immer: alles
+
+
+def test_veroeffentlichen_schreibt_den_zustand_je_reise(vf):
+    """#228: Je gebauter Reise steht ihr Zustand mit Reise-Stand in <FR_DIENST>/reise-stand/<reise>.lauf.json: veröffentlicht mit
+    Dauer seit dem Sichern (auch im Protokoll), fehlgeschlagen mit dem Grund aus der Ausgabe des Baus."""
+    assert vf["lauf"]().returncode == 0 and vf["deploys"]() == ["beispielreise", "zweitreise"]
+    st = vf["lauf_stand"]("zweitreise")
+    assert st["zustand"] == "veroeffentlicht" and st["nummer"] == 1 and isinstance(st["dauer"], int)
+    assert st["gesichert"].endswith("Z") and st["seit"].endswith("Z")
+    vf["inhalt"]("zweitreise")
+    vf["inhalt"]("zweitreise", "noch mehr")
+    (vf["tmp"] / "kaputt-zweitreise").write_text('Die Seite wurde NICHT gebaut. Das muss zuerst behoben werden:\n'
+                                                 ' - plan/routen.yaml: U-09 gibt es nicht ("Hütte")\n')
+    r = vf["lauf"]()
+    assert r.returncode == 1 and vf["deploys"]() == ["zweitreise"]
+    st = vf["lauf_stand"]("zweitreise")
+    assert st["zustand"] == "fehlgeschlagen" and st["nummer"] == 3
+    assert st["grund"] == "plan/routen.yaml: U-09 gibt es nicht ('Hütte')"
+    assert vf["lauf_stand"]("beispielreise")["nummer"] == 1               # nicht angefasst
+    # Die rote Reise bleibt in jedem Inhaltslauf dabei (ihr Rot gilt weiter), bis ihr Bau gelingt
+    vf["inhalt"]("beispielreise")
+    r = vf["lauf"]()
+    assert r.returncode == 1 and vf["deploys"]() == ["beispielreise", "zweitreise"] and vf["rot"]()["reisen"] == "zweitreise"
+    (vf["tmp"] / "kaputt-zweitreise").unlink()
+    vf["inhalt"]("beispielreise", "wieder")
+    r = vf["lauf"]()
+    assert r.returncode == 0 and vf["deploys"]() == ["beispielreise", "zweitreise"] and vf["rot"]() is None
+    assert "Published zweitreise state 3, " in r.stdout and vf["lauf_stand"]("zweitreise")["zustand"] == "veroeffentlicht"
+    # Die Zeit des Schreibwegs gilt für die Dauer, wenn er diesen Stand gesichert hat
+    (vf["tmp"] / "dienst/reise-stand/beispielreise.gesichert.json").write_text('{"nummer": 4, "commit": "x", "zeit": "%s"}' % iso(T0))
+    vf["inhalt"]("beispielreise", "vierter")
+    r = vf["lauf"](VF_JETZT=str(T0 + 300))
+    assert vf["lauf_stand"]("beispielreise")["dauer"] == 300 and vf["lauf_stand"]("beispielreise")["gesichert"] == iso(T0)
+    assert "Warning: beispielreise state 4 published 300 s after saving, longer than the target of 120 s." in r.stdout
+
+
+def test_veroeffentlichen_holt_einen_waehrend_des_laufs_angestossenen_stand_gleich_nach(vf):
+    """#230: Findet ein Lauf die Sperre belegt (Schreibweg während eines Timer-Laufs), merkt er das; der laufende Lauf
+    veröffentlicht danach gleich noch einmal, statt den neuen Stand bis zum Timer warten zu lassen."""
+    import fcntl
+    assert vf["lauf"]().returncode == 0 and vf["deploys"]() == ["beispielreise", "zweitreise"]
+    sperre = vf["tmp"] / "dienst" / "veroeffentlichen.lock"
+    nochmal = vf["tmp"] / "dienst" / "veroeffentlichen-nochmal"
+    with open(sperre, "w") as f:
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        r = vf["lauf"]()
+    assert "Already running" in r.stdout and nochmal.exists()
+    # Der laufende Lauf, nachgestellt: sein Deploy kündigt währenddessen einen neuen Stand an (wie ein übersprungener Lauf)
+    nochmal.unlink()
+    vf["inhalt"]("zweitreise")
+    kuendigen = ausfuehrbar(vf["tmp"] / "deploy2.sh", f'#!/bin/sh\necho "$1" >> {vf["tmp"]}/deploy.log\n'
+                                                     f'[ -e {vf["tmp"]}/einmal ] || touch {vf["tmp"]}/einmal {nochmal}\nexit 0\n')
+    r = vf["lauf"](VF_DEPLOY=str(kuendigen))
+    assert r.returncode == 0 and "A new state arrived during the run, publishing again." in r.stdout, r.stdout + r.stderr
+    assert r.stdout.count("Publishing ") == 1 and vf["deploys"]() == ["zweitreise"]   # der zweite Lauf findet nichts Neues
+    assert not nochmal.exists()
 
 
 def test_anstoss_von_der_seite_startet_den_workflow(vf):
@@ -1296,7 +1385,7 @@ def test_neue_reise_aus_dem_konnektor_frieda(fs, monkeypatch, capsys):
     einl = [json.loads(z) for z in (fs["tmp"] / "mails.jsonl").read_text().splitlines() if "karl@" in z]
     assert len(einl) == 1 and "Ida hat dich zur Reise" in einl[0]["text"]
     m = rm.meldungen(rm.ordner_neu(), "Ida")[-1]
-    assert "steht in meine_reisen" in m["text"] and "Einladung per Mail an 1 Person" in m["text"]
+    assert meldet(m["text"], "dienst.zustellen.konto") and "Einladung per Mail an 1 Person" in m["text"]
     assert "https://example.invalid/mcp/" not in m["text"]                  # kein App-Link
 
 

@@ -16,7 +16,8 @@ Als Befehl ist neu.py ein Werkzeug des Betreibers für Struktur, nie für Inhalt
   neu.py nachziehen <reise-ordner> [--strecke E-15=kombiniert …]
                                                   Schlüssel einer bestehenden Reise auf den Stand vom 29.10.2026 bringen
                                                   (docs/ontologie.md): typ→art, bereich→art, art→wann an Wahlstellen,
-                                                  rolle kosten, Ebenen in reise.json; keine ID, kein Wert ändert sich
+                                                  rolle kosten, Ebenen in reise.json, Eckdaten aus der früheren Vorlage
+                                                  (#217); keine ID, kein Wert ändert sich
 
 IDs werden nie neu vergeben: ids.yaml hält je Art die höchste je vergebene Nummer fest. Die nächste ID liegt über
 dieser Marke und über jeder Nummer, die irgendwo in der Reise steht (auch im Verlauf von Verworfenem).
@@ -34,9 +35,10 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bauen  # noqa: E402
 import texte  # noqa: E402
-from reise import PFAD_MUSTER, ROLLEN, reise_pfad, rolle_neu, schluessel_aus_name, sprache_pruefen, sprache_von  # noqa: E402
+from reise import (PFAD_MUSTER, ROLLEN, reise_pfad, rolle_neu, schluessel_aus_name, sprache_pruefen, sprache_von,  # noqa: E402
+                   zeitraum_text)
 
-VORLAGEN = Path(__file__).with_name("reisevorlage")   # je Sprache ein Ordner (de, en …); fehlt er, gilt die Vorgabe der Personen (ADR-0006, Punkt 9)
+VORLAGEN = Path(__file__).with_name("reisevorlage")   # je Sprache ein Ordner (de, en …); fehlt er, gilt der englische (texte.VORGABE, ADR-0006, Punkt 9)
 
 
 def vorlage_ordner(sprache):
@@ -53,16 +55,6 @@ class Fehler(Exception):
 # ---------- Hilfen ----------
 def datum_text(d, sprache=None):
     return texte.datum(d, sprache or texte.VORGABE_REISE)
-
-
-def zeitraum_text(von, bis, sprache=None):
-    """Zeitraum in Worten der Sprache der Reise: Muster und Monatsnamen stehen im Katalog (inhalt.zeitraum.*, inhalt.monat.*)."""
-    sprache = sprache or texte.VORGABE_REISE
-    if von.year == bis.year and von.month == bis.month:
-        return texte.t(sprache, "inhalt.zeitraum.gleicher_monat", von=von.day, bis=bis.day, monat=texte.t(sprache, f"inhalt.monat.{von.month}"), jahr=von.year)
-    if von.year == bis.year:
-        return texte.t(sprache, "inhalt.zeitraum.gleiches_jahr", von=von.day, vm=von.month, bis=bis.day, bm=bis.month, jahr=bis.year)
-    return texte.t(sprache, "inhalt.zeitraum.mehrere_jahre", von=datum_text(von, sprache), bis=datum_text(bis, sprache))
 
 
 def json_text(obj, tiefe=0):
@@ -173,15 +165,10 @@ def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, un
         raise Fehler(texte.satz("pruefung.neu.12", pfad=pfad))
 
     # Alles, was die Software in Dateien der Reise schreibt, folgt der Sprache der Reise (ADR-0006, Punkt 5)
+    # Eckdaten (Zeitraum, Ziel, Personen, Status) stehen nur in reise.yaml; Untertitel und Eckdaten-Abschnitt baut der Generator
+    # daraus, damit sie nach trip_update, trip_status_set oder person_invite nicht veralten (#217)
     herkunft = herkunft or texte.t(sprache, "inhalt.neu.herkunft_gespraech")
-    zt = zeitraum_text(von, bis, sprache)
-    werte = {
-        "titel": titel, "zeitraum_text": zt, "ziel_text": ziel or texte.t(sprache, "inhalt.neu.ziel_offen"), "wer": wer,
-        "personen_text": ", ".join(f"{p['name']} ({texte.t(sprache, 'inhalt.neu.rolle.' + p['rolle'])}"
-                                   f"{'' if p.get('reist', True) else texte.t(sprache, 'inhalt.neu.reist_nicht_mit')})" for p in personen.values()),
-        "heute_text": datum_text(heute, sprache), "herkunft": herkunft,
-        "ueberblick": ueberblick or texte.t(sprache, "inhalt.neu.ueberblick_leer"),
-    }
+    werte = {"titel": titel, "ueberblick": ueberblick or texte.t(sprache, "inhalt.neu.ueberblick_leer")}
     vorlage = vorlage_ordner(sprache)
     for f in sorted(vorlage.rglob("*")):
         if f.is_file():
@@ -192,7 +179,8 @@ def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, un
 
     reise = {
         "titel": titel,
-        "untertitel": untertitel or (f"{ziel}, {zt}" if ziel else zt),
+        **({"untertitel": untertitel.strip()} if (untertitel or "").strip() else {}),
+        **({"ziel": ziel.strip()} if (ziel or "").strip() else {}),
         "pfad": pfad,
         "sprache": sprache,
         "zeitraum": {"von": von, "bis": bis},
@@ -207,6 +195,7 @@ def anlegen(reisen_dir, titel, von, bis, personen, wer, ziel=None, pfad=None, un
         + yaml.safe_dump(reise, sort_keys=False, allow_unicode=True, width=110), encoding="utf-8")
     schreib_json(ziel_dir / "reise.json", {
         "plan": "plan/plan.md",
+        "eckdaten": "W-01",
         "fragen": "offene-fragen.md",
         "abschnitte": {
             "plan/plan.md": {texte.wort(sprache, "inhalt.ebene.eckdaten"): ["W-01", "plan"]},
@@ -437,7 +426,8 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
     """Nur Schlüssel, keine Inhalte: Unterkunft und Nacht typ: → art:; Wahlstelle bereich: → art:, art: planung|unterwegs →
     wann:; Strecke ohne art: bekommt die in strecken_arten genannte ({E-15: kombiniert}), sonst wird sie gemeldet; das
     Merkmal mit Schlüssel preis (Typ geld) einer Aufenthalts-Art bekommt rolle: kosten, wenn die Art noch keine Rolle hat;
-    reise.json bekommt die bisherige Vorgabe der Ebene „Unterwegs nachschlagen“, wenn die Reise ein Etappen-Dossier hat.
+    reise.json bekommt die bisherige Vorgabe der Ebene „Unterwegs nachschlagen“, wenn die Reise ein Etappen-Dossier hat;
+    Eckdaten aus der früheren Vorlage stellt eckdaten_nachziehen um (#217).
     Kommentare und Form der Dateien bleiben (ruamel). -> Liste der Meldungen (was geändert oder offen ist)."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from routen import WANN, art_schluessel
@@ -511,6 +501,75 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
             meldungen.append("reise.json: etappen_ebenen with the previous default for “Look up on the way”")
             if schreiben:   # in der Form der Datei (json.dumps mit Einrückung 2), damit nur die neue Zeile im Diff steht
                 cfg_pfad.write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        meldungen += eckdaten_nachziehen(reise_dir, cfg, schreiben)
+    return meldungen
+
+
+def eckdaten_nachziehen(reise_dir, cfg, schreiben=True):
+    """Reisen von vor #217: Die Vorlage schrieb die Eckdaten als festen Text in plan/plan.md (Zeitraum, Ziel, Wer, Satz zur Idee)
+    und den Untertitel als Kopie von Ziel und Zeitraum. Jetzt baut der Generator beides aus reise.yaml. Entfernt werden nur
+    Zeilen genau dieser Form; das Ziel kommt nach reise.yaml, ein Untertitel, der nur die Kopie ist, entfällt, reise.json
+    nennt den Abschnitt unter „eckdaten“. Keine ID ändert sich. -> Meldungen."""
+    import reise as rs
+    import schreiben as sb
+    plan_rel = cfg.get("plan")
+    if cfg.get("eckdaten") or not plan_rel or not (reise_dir / plan_rel).exists() or not (reise_dir / "reise.yaml").exists():
+        return []
+    eck_woerter = texte.inhaltswoerter("inhalt.ebene.eckdaten")
+    zuordnung = (cfg.get("abschnitte") or {}).get(plan_rel) or {}
+    titel = next((t for t in zuordnung if t in eck_woerter), None)
+    if not titel:
+        return []
+    sid = zuordnung[titel][0]
+    anfang = {f: tuple(f"- {texte.t(k, 'inhalt.eckdaten.' + f, zeitraum='', ziel='', personen='')}".rstrip() for k in texte.sprachen())
+              for f in ("zeitraum", "ziel", "wer")}
+    idee = {f"- {texte.t(k, 'inhalt.eckdaten.idee')}" for k in texte.sprachen()}
+    offen = {texte.t(k, "inhalt.neu.ziel_offen") for k in texte.sprachen()}
+    plan_pfad = reise_dir / plan_rel
+    zeilen = plan_pfad.read_text(encoding="utf-8").split("\n")
+    kopf = next((i for i, z in enumerate(zeilen) if z.strip() == f"## {titel}"), None)
+    if kopf is None:
+        return []
+    ende = next((i for i in range(kopf + 1, len(zeilen)) if zeilen[i].startswith("## ")), len(zeilen))
+    behalten, ziel, gefunden = [], None, False
+    for z in zeilen[kopf + 1:ende]:
+        art = next((f for f, a in anfang.items() if z.startswith(a)), None)
+        if art == "ziel":
+            wert = z.split(":", 1)[1].strip()
+            ziel = None if wert in offen else wert
+        if art is None and z.rstrip() not in idee:
+            behalten.append(z)
+        else:
+            gefunden = True
+    if not gefunden:   # eigene Eckdaten, nicht aus der Vorlage: bleiben, wie sie sind
+        return []
+    sprache = rs.sprache_von(reise_dir)   # Meldungen und Untertitel in der Sprache der Reise
+    meldungen = [texte.t(sprache, "pruefung.neu.nachziehen.eckdaten", datei=plan_rel, sid=sid)]
+    p, roh = sb.reise_yaml_laden(reise_dir)
+    if ziel and not roh.get("ziel") and len(ziel) <= rs.ZIEL_LAENGE:
+        roh.insert(list(roh.keys()).index("pfad") if "pfad" in roh else len(roh), "ziel", sb.skalar("ziel", ziel))
+        meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.ziel", ziel=ziel))
+    z = roh.get("zeitraum")
+    if roh.get("untertitel") and isinstance(z, dict) and all(isinstance(z.get(k), datetime.date) for k in ("von", "bis")):
+        kopie = rs.untertitel_aus(roh.get("ziel") or "", {"von": z["von"].isoformat(), "bis": z["bis"].isoformat()}, sprache)
+        if roh["untertitel"] == kopie:
+            del roh["untertitel"]
+            meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.untertitel"))
+    for alt in ("CLAUDE.md", "kontext/herkunft.md"):
+        if (reise_dir / alt).exists():
+            meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.rest", datei=alt))
+    if schreiben:
+        while behalten and not behalten[0].strip():
+            behalten.pop(0)
+        neu_zeilen = zeilen[:kopf + 1] + ([""] + behalten if any(x.strip() for x in behalten) else []) + zeilen[ende:]
+        plan_pfad.write_text("\n".join(neu_zeilen).rstrip("\n") + "\n", encoding="utf-8")
+        sb.reise_yaml_speichern(p, roh)
+        cfg_neu = {}
+        for k, v in cfg.items():   # „eckdaten“ gleich hinter „plan“, in der Form der Datei
+            cfg_neu[k] = v
+            if k == "plan":
+                cfg_neu["eckdaten"] = sid
+        (reise_dir / "reise.json").write_text(json.dumps(cfg_neu, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return meldungen
 
 

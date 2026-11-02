@@ -77,9 +77,18 @@ Ist ein Plan vollständig gewählt (Status fest), soll die Tagesseite Nummer und
 
 - Product Owner bestätigt: „Kommt vor in“ zeigt bei gewähltem Plan nur den gewählten Plan (Empfehlung: ja). Sonst entfällt Punkt 2 samt Kriterium 7, die Tagesseite bleibt unberührt.
 
+## Nachtrag (2.11.2026, #214): Tagesnummer ohne Pläne
+
+Seit #214 hat jede Reise eine Seitenordnung (`docs/specs/oberflaeche/eine-seitenordnung-214.md`). Nummer und Datum der
+Tagesseite kommen aus dem Plan der Zeitachse (`PLAN_ANSICHT`): bei gewähltem Plan aus `PLAN_FEST` (wie oben), bei offenen
+Plänen aus dem aktuellen Plan, **ohne Pläne aus `R.tage`**. Nummer und Datum sind überall gleich (Zeitachse der Übersicht,
+Tagesseite, Blättern). Geprüft in `engine/tests/test_tagesseite.py::test_tagesnummer_ohne_plaene_aus_tage`. Mit
+`darstellung.tiefe` zählt ein Tag, der aus dem Plan-Baum eines offenen Plans geöffnet wird, weiter in diesem Plan.
+
 ## Changelog
 
 - 2026-10-30: Erstfassung (#144)
+- 2026-11-02: Nachtrag #214: Tagesnummer ohne Pläne aus `R.tage`
 - 2026-10-31: Offener Punkt entschieden: Product Owner bestätigt, „Kommt vor in“ zeigt bei gewähltem Plan nur diesen
   (Punkt 2, Kriterium 7). Kalenderexport geprüft (Kriterium 9): `engine/kalender.py` nimmt `route.tage` (aktueller
   Plan, ohne vorläufige Tage), die Kalender-Chips der Seite `R.tage` (`imKalender`); kein Planbezug über `ansichtTag`.

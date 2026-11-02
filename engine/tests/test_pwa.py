@@ -189,3 +189,72 @@ def test_umzug_service_worker(tmp_path, monkeypatch):
     monkeypatch.setenv("FR_UMZUG_NACH", "https://aus-umgebung.example")
     bauen.bauen(r, tmp_path / "env")
     assert 'const UMZUG_NACH = "https://aus-umgebung.example";' in (tmp_path / "env/sw.js").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_reise_stand_im_browser(tmp_path, browser):
+    """Epic #223 (#228, #229): Der Fuß nennt Reise-Stand, Zeit der Veröffentlichung in Ortszeit und das Release; ein Tipp auf die
+    Nummer zeigt die Änderungen mit Person. Hält der Service Worker noch Stand 1, liefert api/stand trotzdem Stand 2 vom Server,
+    der Hinweis „Neu: Reise-Stand 2“ erscheint, und „Aktualisieren“ lädt ihn."""
+    reise = mini_reise(tmp_path)
+
+    def git(*args):
+        subprocess.run(["git", "-C", str(reise), *args], check=True, capture_output=True)
+    git("init", "-q", "-b", "main")
+    git("-c", "user.name=Ida", "-c", "user.email=ida@example.invalid", "add", "-A")
+    git("-c", "user.name=Ida", "-c", "user.email=ida@example.invalid", "commit", "-qm", "Testreise angelegt\n\nFrieda-Person: Ida")
+    web = tmp_path / "web"
+    ziel = web / "test-abc"
+    bauen.bauen(reise, ziel)
+    (reise / "plan.md").write_text((reise / "plan.md").read_text(encoding="utf-8") + "\nNoch ein Satz.\n", encoding="utf-8")
+    git("-c", "user.name=Bot", "-c", "user.email=bot@example.invalid", "commit", "-qam", "Testreise: Plan ergänzt\n\nFrieda-Person: Karl")
+    stand2 = tmp_path / "stand2"
+    bauen.bauen(reise, stand2)
+    server = {"nummer": 1}
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def do_GET(self):
+            if self.path.startswith("/__stand/"):
+                server["nummer"] = int(self.path.rsplit("/", 1)[1])
+                self.send_response(204)
+                self.end_headers()
+            elif self.path.split("?")[0] == "/test-abc/api/stand":
+                daten = json.dumps({"veroeffentlicht": {"nummer": server["nummer"], "zeit": "2026-11-02T08:47:00Z"},
+                                    "gesichert": {"nummer": server["nummer"], "zeit": "2026-11-02T08:46:00Z"},
+                                    "zustand": "veroeffentlicht"}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(daten)
+            elif "/api/" in self.path:
+                self.send_response(404)
+                self.end_headers()
+            else:
+                del self.headers["If-Modified-Since"]
+                super().do_GET()
+
+    handler = functools.partial(Handler, directory=str(web))
+    s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=s.serve_forever, daemon=True).start()
+    try:
+        aus = subprocess.run(["node", str(Path(__file__).parent / "stand_browser.mjs"), str(PLAYWRIGHT),
+                              f"http://localhost:{s.server_address[1]}/test-abc/", str(ziel), str(stand2)],
+                             capture_output=True, text=True, timeout=120, env={**os.environ, "RH_BROWSER": browser})
+    finally:
+        s.shutdown()
+    assert aus.returncode == 0, aus.stderr[-2000:]
+    e = json.loads(aus.stdout.strip().splitlines()[-1])
+    assert e["fuss"].startswith("Reise-Stand 1 · veröffentlicht 02.11., 09:47 Uhr"), e["fuss"]   # 08:47 UTC in Berlin
+    assert [x.startswith("3.11.") for x in e["mitternacht"]] == [True, True, False], e["mitternacht"]   # 23:30 UTC: in Berlin der 3.11.
+    if bauen.software_release()["kennung"]:
+        assert " · Frieda Release" in e["fuss"], e["fuss"]
+    assert e["listeSichtbar"] and e["ausgeklappt"] == "true" and len(e["liste"]) == 1
+    assert e["liste"][0].startswith("1 · ") and "Ida: Testreise angelegt" in e["liste"][0], e["liste"]
+    assert e["hinweis"].startswith("Neu: Reise-Stand 2."), e["hinweis"]
+    assert e["apiStand"] == 2 and e["seiteNochAlt"] == 1
+    assert e["fussNeu"].startswith("Reise-Stand 2 · veröffentlicht"), e["fussNeu"]
+    assert e["fehler"] == []

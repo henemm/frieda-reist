@@ -8,7 +8,7 @@ Die Software kennt genau diese Dinge. Sie gelten für jede Art von Reise (Hütte
 
 | Grundform | Was es ist | ID heute | Datei |
 |---|---|---|---|
-| **Reise** | Rahmen: Titel, Zeitraum, Personen mit Rollen, Status, Bausteine, Regeln | – | `reise.yaml` |
+| **Reise** | Rahmen: Titel, Ziel, Zeitraum, Personen mit Rollen, Status, Bausteine, Regeln; Untertitel und der Abschnitt Eckdaten entstehen beim Bau daraus (#217) | – | `reise.yaml` |
 | **Ort** | ein Punkt oder Gebiet, an dem man ist oder das man passiert; `ausserhalb: true` für einen Ort der An- und Abreise außerhalb der Reisegegend (Flughafen oder Bahnhof daheim; Issue #135), die Seite nennt ihn so, die Karte zeigt ihn nicht | `O-` | `plan/routen.yaml` |
 | **Aufenthalt** | an einem Ort sein: mit Nacht die Unterkunft (`U-`, `unterkuenfte`, am Tag `nacht`), ohne Nacht Besichtigung, Essen, Besuch (`A-`, `aufenthalte`, am Tag `aufenthalte: [A-01]`, mit `zeit` als Text; Paket O-5; Uhrzeit für den Kalender in `beginn` und `ende`, #77) | `U-`, `A-` | `plan/routen.yaml` |
 | **Bewegung** | von Ort zu Ort: Wanderung, Bahn, Bus, Fähre, Flug, Mietwagen …; mit `ab` und `an` (Issue #135: Uhrzeit HH:MM am Tag der Strecke oder Zeitpunkt JJJJ-MM-TTTHH:MM+HH:MM mit Zeitzone; die Software kennt keine Zeitzonen der Orte, sie prüft die Form und meldet, wenn die nächste Strecke des Tags abfährt, bevor diese ankommt) | `E-` | `plan/routen.yaml` |

@@ -8,6 +8,7 @@ pytest
 PyYAML
 ruamel.yaml
 CairoSVG
+defusedxml
 pyspellchecker==0.9.1
 icalendar
 pywebpush

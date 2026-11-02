@@ -20,6 +20,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import schreiben as sb  # noqa: E402
+from conftest import meldet  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 BEISPIEL = WURZEL / "beispiel" / "reisen" / "beispielreise"
@@ -60,6 +61,7 @@ def repo(tmp_path, monkeypatch):
     monkeypatch.setenv("SB_VEROEFFENTLICHEN", str(stub))
     monkeypatch.setenv("FR_KONTEN", str(tmp_path / "konten"))
     monkeypatch.setenv("FR_SPERREN", str(tmp_path))
+    monkeypatch.setenv("FR_DIENST", str(tmp_path / "_dienst"))   # Reise-Stände (engine/stand.py)
     return wurzel, origin, arbeit, stempel
 
 
@@ -157,7 +159,7 @@ def test_art_anlegen_geht_nach_main_und_wird_veroeffentlicht(repo):
     assert r["grundform"] == "aufenthalt" and r["name"] == "Refugi" and r["beschreibung"] == "bewirtschaftete Berghütte"
     assert r["farbe"] not in {x.get("farbe") for k, x in arten.items() if k != "refugi" and x["grundform"] == "aufenthalt"}
     assert "merkmale" not in r                       # Merkmale kommen im Gespräch dazu (merkmal_definieren)
-    assert text.startswith("# Arten und Merkmale dieser Reise") and "Gepflegt im Gespräch" in text and "Ida" in text
+    assert text.startswith("# Arten und Merkmale dieser Reise") and meldet(text, "inhalt.schreiben.gepflegt") and "Ida" in text
     assert "hotel" in arten and arten["hotel"]["merkmale"]["preis"]["name"] == "Preis pro Nacht"   # Bestand unverändert
     nachricht = git(origin, "log", "-1", "--format=%B", "main")
     assert nachricht.startswith("Beispielreise – Malerweg in vier Tagen: Art „Refugi“ (refugi) angelegt")
@@ -492,7 +494,7 @@ def _abbruch_im_anwenden(repo, monkeypatch, capsys, origin_kaputt=True):
 
 def test_zu_langsamer_vorgang_gibt_meldung_in_der_zeit(repo, monkeypatch, capsys):
     code, a, err = _abbruch_im_anwenden(repo, monkeypatch, capsys)
-    assert code == 504 and not a["ok"] and "prüfen, ob es angekommen ist" in a["fehler"]
+    assert code == 504 and not a["ok"] and meldet(a["fehler"], "schreiben.dienst.zu_lange_ungeprueft")
     assert "Timeout art_definieren 504: aborted, unchecked" in err
 
 
@@ -1002,6 +1004,11 @@ def test_status_und_einstellungen_der_reise(repo):
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="Unbekannte Bausteine"):
         s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"bausteine": ["karte", "zauber"]}})
+    # Ein alter Baustein (tagesseiten, #214) wird nicht abgelehnt, sondern still herausgenommen und nicht geschrieben
+    a = s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"bausteine": ["varianten", "karte", "tagesseiten", "fragen"]}})
+    assert "bausteine" in a["text"]
+    assert yaml.safe_load(datei_auf_main(origin, "reise.yaml"))["bausteine"] == ["varianten", "karte", "fragen"]
+    s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="Unbekannte Regel"):
         s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"regeln": {"farbe": "rot"}}})
     with pytest.raises(sb.Ablehnung, match="nicht bauen"):
@@ -1286,7 +1293,7 @@ def test_gemeinsame_frage_bleibt_offen_bis_alles_gewaehlt(repo):
     a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-01.b", "status": "gewaehlt", "grund": "Bahn"}})
     assert "Frage F-01 bleibt offen, weil dort noch V-03 zu entscheiden ist." in a["text"], a["text"]
     # die KI fragt danach einzeln, mit den Möglichkeiten der offenen Wahlstelle zur Auswahl
-    assert "Frag die Person jetzt einzeln nach" in a["text"] and "V-03 Unterkunft in Hohnstein: V-03.a Pension Burgblick, V-03.b Gasthof Polenztal" in a["text"], a["text"]
+    assert meldet(a["text"], "schreiben.antwort.entscheiden.einzeln") and "V-03 Unterkunft in Hohnstein: V-03.a Pension Burgblick, V-03.b Gasthof Polenztal" in a["text"], a["text"]
     assert "| vor Abreise | offen |" in fragen_auf_main(origin)
     s.vorbereiten()
     a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-03.b", "status": "gewaehlt", "grund": "Abendessen"}})
@@ -1428,7 +1435,7 @@ def test_unerwarteter_fehler_gibt_500_und_protokoll(repo, monkeypatch, capsys, t
     code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "art_definieren",
                                  {**IDA, "args": {"bezeichnung": "X", "grundform": "aufenthalt"}})
     err = capsys.readouterr().err
-    assert code == 500 and not a["ok"] and "Fehler im Dienst" in a["fehler"]
+    assert code == 500 and not a["ok"] and meldet(a["fehler"], "schreiben.dienst.fehlgeschlagen")
     assert "Error art_definieren 500: FileNotFoundError" in err
     assert "Done art_definieren 500 in " in err
 
@@ -1588,7 +1595,7 @@ def test_wissen_aendern_und_lesetext_schreiben(repo):
         s.schreiben("beispielreise", "wissen_aendern", {**KARL, "args": {"ziel": "W-07", "text": "x", "quelle": "y", "grund": "z"}})
     a = s.schreiben("beispielreise", "wissen_aendern", {**KARL, "args": {"ziel": "W-01", "text": "Drei Wandertage auf dem Malerweg (Test).",
                                                                          "quelle": "Beispielreise (Test)", "neuer_titel": "Überblick", "grund": "knapper"}})
-    assert "Inhalt ersetzt" in a["text"] and "titel „Übersicht“ → „Überblick“" in a["text"]
+    assert meldet(a["text"], "schreiben.antwort.abschnitt.inhalt_ersetzt") and "titel „Übersicht“ → „Überblick“" in a["text"]
     dossier = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/inhalt/etappen.md"], check=True, capture_output=True, text=True).stdout
     assert "## Überblick\n\nDrei Wandertage auf dem Malerweg (Test).\n\n*Herkunft: Beispielreise (Test); berichtigt am" in dossier
     assert "\n## Übersicht\n" not in dossier and "## Etappe 1:" in dossier
@@ -1942,3 +1949,110 @@ def test_start_ende_setzen_warnung_kommt_als_hinweis(repo):
     assert a["hinweise"] == ["plan: Der aktuelle Plan endet am 16.05., die Reise aber am 18.05. (-2 Tag(e))."]
     r, _ = routen_auf_main(origin)
     assert r["ende"]["datum"] == datetime.date(2027, 5, 18)
+
+
+# ---------- App-Symbol der Reise (Issue #252) ----------
+
+SYMBOL_SVG = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs><linearGradient id="g"><stop offset="0" stop-color="#2c6a86"/>'
+              '<stop offset="1" stop-color="#1f7a57"/></linearGradient></defs><rect width="512" height="512" fill="url(#g)"/>'
+              '<circle cx="256" cy="256" r="120" fill="#d9a441"/></svg>')   # erfundenes Testsymbol
+
+
+def png_base64(b, h=None, farbe=(31, 122, 87, 255)):
+    import base64
+    import io
+    from PIL import Image
+    puffer = io.BytesIO()
+    Image.new("RGBA", (b, h or b), farbe).save(puffer, format="PNG")
+    return base64.b64encode(puffer.getvalue()).decode("ascii")
+
+
+def datei_da(origin, rel):
+    return subprocess.run(["git", "-C", str(origin), "cat-file", "-e", f"main:reisen/beispielreise/{rel}"], capture_output=True).returncode == 0
+
+
+def test_symbol_setzen_ersetzen_entfernen(repo, tmp_path):
+    import bauen
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    with pytest.raises(sb.Ablehnung, match="nur Organisator:innen"):
+        s.schreiben("beispielreise", "symbol_setzen", {**KARL, "args": {"svg": SYMBOL_SVG}})
+    # SVG ersetzt das Symbol der Beispielreise; das alte bleibt im Verlauf (Commit)
+    a = s.schreiben("beispielreise", "symbol_setzen", {**IDA, "args": {"svg": SYMBOL_SVG, "grund": "Entwurf aus der App"}})
+    assert meldet(a["text"], "schreiben.antwort.symbol.ersetzt") and "Grund: Entwurf aus der App" in a["text"]
+    assert datei_auf_main(origin, "medien/icon.svg").strip() == SYMBOL_SVG
+    assert "symbol_setzen" in git(origin, "log", "-1", "--format=%B", "main") or "icon_set" in git(origin, "log", "-1", "--format=%B", "main")
+    # PNG statt SVG: es gibt danach nur das PNG; der Bau nimmt es als App-Symbol
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "symbol_setzen", {**IDA, "args": {"png_base64": "data:image/png;base64," + png_base64(512)}})
+    assert meldet(a["text"], "schreiben.antwort.symbol.ersetzt")
+    assert datei_da(origin, "medien/icon.png") and not datei_da(origin, "medien/icon.svg")
+    git(arbeit, "checkout", "-q", "--detach", "origin/main")
+    ziel = tmp_path / "seite"
+    bauen.bauen(arbeit / "reisen" / "beispielreise", ziel)
+    from PIL import Image
+    with Image.open(ziel / "icon-192.png") as im:
+        assert im.size == (192, 192) and im.getpixel((96, 96)) == (31, 122, 87)
+    assert (ziel / "symbol.png").exists() and not (ziel / "symbol.svg").exists()
+    # Gleiches noch einmal: nichts zu ändern
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="Nichts|nichts"):
+        s.schreiben("beispielreise", "symbol_setzen", {**IDA, "args": {"png_base64": png_base64(512)}})
+    # Entfernen: der Kurzname gilt wieder, ein zweites Entfernen lehnt ab
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "symbol_setzen", {**IDA, "args": {"entfernen": True}})
+    assert meldet(a["text"], "schreiben.antwort.symbol.entfernt")
+    assert not datei_da(origin, "medien/icon.png") and not datei_da(origin, "medien/icon.svg")
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung) as e:
+        s.schreiben("beispielreise", "symbol_setzen", {**IDA, "args": {"entfernen": "ja"}})
+    assert e.value.schluessel == "schreiben.symbol.keines"
+    # Ohne eigenes Symbol baut die Seite das Symbol aus dem Kurznamen, ohne Quelle für den Konnektor
+    bauen.bauen(arbeit / "reisen" / "beispielreise", ziel)
+    assert (ziel / "icon-192.png").exists() and not (ziel / "symbol.png").exists() and not (ziel / "symbol.svg").exists()
+    assert not git(arbeit, "status", "--porcelain")
+
+
+@pytest.mark.parametrize("args, schluessel", [
+    ({}, "schreiben.symbol.eines"),
+    ({"svg": SYMBOL_SVG, "png_base64": "eA=="}, "schreiben.symbol.eines"),
+    ({"svg": SYMBOL_SVG.replace("<circle", '<script>alert(1)</script><circle')}, "schreiben.symbol.svg_aktiv"),
+    ({"svg": SYMBOL_SVG.replace("<circle", '<circle onclick="alert(1)"')}, "schreiben.symbol.svg_aktiv"),
+    ({"svg": SYMBOL_SVG.replace("<circle", '<foreignObject width="9" height="9"><p>x</p></foreignObject><circle')}, "schreiben.symbol.svg_aktiv"),
+    ({"svg": SYMBOL_SVG.replace("<circle", '<a href="javascript:alert(1)"><circle/></a><circle')}, "schreiben.symbol.svg_aktiv"),
+    ({"svg": SYMBOL_SVG.replace("<circle", '<image href="file:///etc/passwd" width="9" height="9"/><circle')}, "schreiben.symbol.svg_fremd"),
+    ({"svg": SYMBOL_SVG.replace("<circle", '<image href="https://example.invalid/x.png" width="9" height="9"/><circle')}, "schreiben.symbol.svg_fremd"),
+    ({"svg": SYMBOL_SVG.replace('fill="url(#g)"', 'fill="url(https://example.invalid/x)"')}, "schreiben.symbol.svg_fremd"),
+    ({"svg": SYMBOL_SVG.replace("<defs>", "<style>@import 'https://example.invalid/a.css';</style><defs>")}, "schreiben.symbol.svg_fremd"),
+    ({"svg": '<!DOCTYPE svg [<!ENTITY x SYSTEM "file:///etc/passwd">]>' + SYMBOL_SVG}, "schreiben.symbol.svg_dtd"),
+    ({"svg": SYMBOL_SVG.replace("0 0 512 512", "0 0 512 300")}, "schreiben.symbol.svg_quadrat"),
+    ({"svg": SYMBOL_SVG.replace(' viewBox="0 0 512 512"', "")}, "schreiben.symbol.svg_groesse"),
+    ({"svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'"}, "schreiben.symbol.svg_kaputt"),
+    ({"svg": "<html><body/></html>"}, "schreiben.symbol.svg_kaputt"),
+    ({"svg": SYMBOL_SVG.replace("</svg>", "<!--" + "x" * 41000 + "--></svg>")}, "schreiben.symbol.zu_gross"),
+    ({"png_base64": "kein base64!"}, "schreiben.symbol.png_base64"),
+    ({"png_base64": "aGFsbG8="}, "schreiben.symbol.png_kaputt"),
+    ({"png_base64": png_base64(512, 400)}, "schreiben.symbol.png_quadrat"),
+    ({"png_base64": png_base64(256)}, "schreiben.symbol.png_klein"),
+])
+def test_symbol_pruefung_lehnt_ab(repo, args, schluessel):
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    vorher = git(origin, "rev-parse", "main")
+    with pytest.raises(sb.Ablehnung) as e:
+        s.schreiben("beispielreise", "symbol_setzen", {**IDA, "args": args})
+    assert e.value.schluessel == schluessel, str(e.value)
+    assert git(origin, "rev-parse", "main") == vorher and not git(arbeit, "status", "--porcelain")
+
+
+def test_unsicheres_svg_von_hand_wird_nicht_als_quelle_veroeffentlicht(tmp_path):
+    """Liegt ein SVG mit Skript von Hand in der Reise, rechnet der Bau trotzdem das App-Symbol, legt die Quelle aber nicht neben die Seite."""
+    import bauen
+    reise = tmp_path / "beispielreise"
+    shutil.copytree(BEISPIEL, reise)
+    (reise / "medien" / "icon.svg").write_text(SYMBOL_SVG.replace("<circle", "<script>alert(1)</script><circle"), encoding="utf-8")
+    bauen.bauen(reise, tmp_path / "seite")
+    assert (tmp_path / "seite" / "icon-512.png").exists() and not (tmp_path / "seite" / "symbol.svg").exists()
+    (reise / "medien" / "icon.svg").write_text(SYMBOL_SVG, encoding="utf-8")
+    bauen.bauen(reise, tmp_path / "seite")
+    assert (tmp_path / "seite" / "symbol.svg").read_text(encoding="utf-8") == SYMBOL_SVG

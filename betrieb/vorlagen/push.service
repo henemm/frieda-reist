@@ -11,6 +11,8 @@ After=network-online.target __INSTANZ__-rueckmeldungen.service
 User=__BENUTZER__
 Group=__GRUPPE__
 Environment=RM_ABLAGE=__ABLAGE__
+Environment=FR_DIENST=__DIENST__
+Environment=FR_ZEITZONE=__ZEITZONE__
 Environment=RM_SEITEN=__SEITEN__
 Environment=KN_ZUGAENGE=__KONNEKTOR__/zugaenge.json
 EnvironmentFile=-__DIENST__/konten.env

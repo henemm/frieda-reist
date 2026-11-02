@@ -218,8 +218,9 @@ def test_englische_reise_wird_angelegt_gebaut_und_erkannt(tmp_path):
     assert [a["titel"] for a in daten["abschnitte"]] == ["Key facts", "Overview", "Sources"]
     assert [a["id"] for a in daten["abschnitte"]] == ["W-01", "W-02", "W-03"]
     assert daten["fragen"]["spalten"] == ["ID", "What", "Until", "Status"] and daten["fragen"]["zeilen"][0]["id"] == "F-01"
-    assert "Ida (organises), Karl (contributes, not travelling)" in (ordner / "plan/plan.md").read_text(encoding="utf-8")
-    assert "created by Ida (conversation in Claude Code)" in (ordner / "kontext/herkunft.md").read_text(encoding="utf-8")
+    w01 = daten["abschnitte"][0]["intro"]   # Eckdaten aus reise.yaml, in der Sprache der Reise (#217)
+    assert "Who: Ida (organises), Karl (contributes, not travelling)" in w01 and "Period: 6–13 February 2027" in w01
+    assert "The trip is an idea." in w01 and not (ordner / "kontext").exists()
     assert daten["reise"]["verlauf"] == [] and daten["reise"]["status"]["verlauf"][0]["grund"] == "Trip created (conversation in Claude Code)"
     assert (ordner / "reise.yaml").read_text(encoding="utf-8").count("Knowledge") == 1   # Gruppennamen in der Sprache der Reise
     assert "resolved" in daten["inhaltswoerter"]["inhalt.frage.geklaert"] and "geklärt" in daten["inhaltswoerter"]["inhalt.frage.geklaert"]
@@ -229,7 +230,7 @@ def test_deutsche_reise_bekommt_deutsche_vorlage(tmp_path):
     ordner, daten, _ = neue_reise_bauen(tmp_path, "de")
     assert [a["titel"] for a in daten["abschnitte"]] == ["Eckdaten", "Überblick", "Quellen"]
     assert daten["reise"]["untertitel"] == "Oberstdorf, 6.–13. Februar 2027"
-    assert "Ida (organisiert), Karl (bringt ein, reist nicht mit)" in (ordner / "plan/plan.md").read_text(encoding="utf-8")
+    assert "Wer: Ida (organisiert), Karl (bringt ein, reist nicht mit)" in daten["abschnitte"][0]["intro"]
 
 
 @ohne_browser

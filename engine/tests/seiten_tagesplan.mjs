@@ -18,16 +18,28 @@ await p.goto(basis);
 await p.waitForSelector("#main *");
 const ids = await p.evaluate(() => R.tage.map(t => t.id));
 await p.close();
+// Mit dritter Angabe (Plan-ID, #214): erst die Zeitachse lesen, dann den Plan öffnen und in derselben Seite zum Tag gehen;
+// erwartet sind Nummer und Datum der Zeile auf der Zeitachse, egal welcher Plan zuletzt offen war
+const erst = process.argv[4];
 for (const id of ids) {
   p = await neu();
-  await p.goto(basis + "#" + id);
+  let achse = null;
+  if (erst) {
+    await p.goto(basis + "#varianten");
+    await p.waitForSelector("#main .tagzeile");
+    achse = await p.evaluate(id => { const z = document.querySelector(`#main .tagzeile[data-tag="${id}"] .tz-datum`);
+      return z ? `Tag ${z.querySelector("b").textContent} · ${z.textContent.slice(z.querySelector("b").textContent.length)}` : null; }, id);
+    await p.evaluate(pid => { location.hash = pid; }, erst);
+    await p.waitForSelector(`#main [id="${erst}"]`);
+    await p.evaluate(id => { location.hash = id; }, id);
+  } else await p.goto(basis + "#" + id);
   await p.waitForSelector(".tagseite");
-  tage.push(await p.evaluate(id => {
+  tage.push(await p.evaluate(([id, achse]) => {
     const t = R.tage.find(x => x.id === id);
-    return {id, erwartet: `Tag ${t.nr} · ${datumText(t.datum, t.wochentag)}`,
+    return {id, achse, erwartet: `Tag ${t.nr} · ${datumText(t.datum, t.wochentag)}`,
       kopf: (document.querySelector("#main .tagdatum") || {}).textContent || "",
       blaettern: [...document.querySelectorAll(".tagseite .blaettern a")].map(a => [a.getAttribute("href"), a.textContent])};
-  }, id));
+  }, [id, achse]));
   await p.close();
 }
 // Ortsseite: Wo kommt der Ort vor, wohin führt der Zurück-Link

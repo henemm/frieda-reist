@@ -4,7 +4,8 @@
  *  - Liegt unter /<reise>-<token>/sw.js, Scope ist genau dieser Pfad.
  *  - Seite, Daten und alle Bilder werden bei der Installation vorab gespeichert, damit das
  *    Handbuch unterwegs ohne Netz vollständig ist (Karten, Höhenprofile).
- *  - /api/ (Rückmeldungen) geht nie über den Speicher; ohne Netz sammelt die Seite selbst.
+ *  - /api/ (Rückmeldungen, api/stand mit dem Reise-Stand auf dem Server, Epic #223) geht nie über den Speicher; ohne Netz
+ *    sammelt die Seite selbst. So sieht die Seite einen neuen Reise-Stand, auch wenn der Worker noch den alten hält.
  *  - Eine neue Version wartet, bis man auf der Seite „Aktualisieren“ tippt. Sofortiges Übernehmen
  *    tauscht die Daten unter einer laufenden Seite aus.
  *  - Ein Update, das nicht vollständig geladen wurde (Funkloch), wird verworfen; die alte,

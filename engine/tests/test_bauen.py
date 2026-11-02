@@ -13,6 +13,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bauen  # noqa: E402
+from conftest import meldet  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 
@@ -498,7 +499,7 @@ def test_alte_regeln_des_einarbeitens_bauen_weiter(reise, tmp_path):
     mit_reise_yaml(reise, lambda r: r.update(regeln={"entscheidungsweg": "auftrag", "sammelzeit_minuten": 5}))
     b = bauen.Bauer(reise, tmp_path / "dist")
     d = b.daten()
-    assert sum("gibt es seit dem 29.10.2026 nicht mehr" in h for h in b.hinweise) == 2
+    assert sum(meldet(h, "pruefung.reise.29") for h in b.hinweise) == 2
     assert "entscheidungsweg" not in d["reise"]["regeln"] and "sammelzeit_minuten" not in d["reise"]["regeln"]
 
 
@@ -512,7 +513,7 @@ def test_zusatzdatei_vorspann(reise, tmp_path):
     """Text unter der Hauptüberschrift geht nicht stillschweigend verloren (Recherche-Dateien, #8)."""
     (reise / "extra.md").write_text("# Große Überschrift\n\nDie Zusammenfassung.\n\n---\n\n## 1. Kapitel\nText\n", encoding="utf-8")
     setze(reise, lambda c: c["abschnitte"].update({"extra.md": {"1. Kapitel": ["W-20", "wissen"]}}))
-    assert "Text vor der ersten ##-Überschrift" in meldungen(reise, tmp_path)
+    assert meldet(meldungen(reise, tmp_path), "pruefung.bauen.14")
     setze(reise, lambda c: c["abschnitte"]["extra.md"].update({"#": ["W-21", "wissen"]}))
     d = baue(reise, tmp_path)
     a = next(x for x in d["abschnitte"] if x["id"] == "W-21")
@@ -635,7 +636,7 @@ def test_unbekannte_unterkunftsart_ist_fehler(tmp_path):
     p.write_text(p.read_text(encoding="utf-8").replace("art: herberge", "art: baumhaus", 1), encoding="utf-8")
     with pytest.raises(bauen.BauFehler) as e:
         bauen.Bauer(kopie, tmp_path / "aus").daten()
-    assert "Art „baumhaus“ steht nicht in plan/arten.yaml" in str(e.value) and "gibt es hier nicht" not in str(e.value)
+    assert "Art „baumhaus“ steht nicht in plan/arten.yaml" in str(e.value) and not meldet(str(e.value), "pruefung.routen.83")
     d = bauen.Bauer(BEISPIEL, tmp_path / "aus2").daten()
     assert d["route"]["arten"]["herberge"]["name"] == "Herberge" and "kategorien" not in d["route"]
     assert {u["art"] for u in d["route"]["unterkuenfte"].values()} == {"hotel", "pension", "gasthof", "herberge"}

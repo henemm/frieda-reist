@@ -1,6 +1,6 @@
 # ADR-0003: Seitenordnung – jede Grundform hat genau eine Heimat
 
-Status: gilt · Entschieden vom Product Owner am 28.10.2026 in Claude Code (Analyse, Konzept und grafische Ausarbeitung einzeln freigegeben) · Umsetzung: frieda-reist #84, #87
+Status: gilt · Entschieden vom Product Owner am 28.10.2026 in Claude Code (Analyse, Konzept und grafische Ausarbeitung einzeln freigegeben) · Umsetzung: frieda-reist #84, #87 · Nachtrag: #214 (2.11.2026)
 
 Gilt für die Seite (PWA) jeder Reise. Steht unter [ADR-0001](0001-kern.md) (die Seite zeigt die Ontologie) und neben [ADR-0002](0002-atomic-design.md) (mit welchen Bausteinen sie das tut).
 
@@ -26,17 +26,29 @@ Ursache war keine einzelne Änderung. Für jede Art von Ding gab es keine Regel,
    | Folge: Tag | Tagesseite | Zeitachse der Reise |
    | Bewegung | Teil der Tagesseite (Tageskasten, Der Weg) | Tageszeile |
    | Aufenthalt: Nacht, Unterkunft | Abschnitt „Nacht“ der Tagesseite | Tageszeile, „Zu tun · Zu buchen“ |
-   | Buchung (B-…, seit 29.10.2026, #76) | bei ihrem ersten gebuchten Ding (Unterkunftskarte, Aufenthalt oder Strecke der Tagesseite; ohne Tagesseiten im Tageskasten des Plans) | Chip am Ding, „Zu tun · Zu buchen“ |
+   | Buchung (B-…, seit 29.10.2026, #76) | bei ihrem ersten gebuchten Ding (Unterkunftskarte, Aufenthalt oder Strecke der Tagesseite) | Chip am Ding, „Zu tun · Zu buchen“ |
    | Wahl mit Optionen | das Element, an dem sie hängt (`an:`), mit Vergleich | Marke in der Zeile des Elements, „Zu tun · Zu entscheiden“ |
    | Ort | Ortsseite | Tagesseite, Wissen |
    | Wissen, Plantext | Reiter „Wissen“ (Plantext unter „Über diesen Plan“) | Tagesseite (Kapitel) |
    | Offenes: Frage, Aufgabe, Rückmeldung, Wunsch | „Zu tun“ bzw. „Wünsche“ | Stand im Überblick, Sprechblase am Element |
 
 2. **Sammelansichten nur mit eigener Aufgabe.** Eine Liste, die Dinge aus mehreren Heimaten sammelt, gibt es nur, wenn sie eine eigene Aufgabe hat: entscheiden oder buchen. Sie zeigt Zeilen, die zur Heimat führen, nie die Dinge in voller Länge.
-3. **Reiter:** Reise · Zu tun · Wissen (+ Wünsche, Suche). Den Reiter „Plan“ gibt es nur, solange kein Plan gewählt ist oder die Reise keine Tagesseiten hat.
+3. **Reiter:** Reise · Zu tun · Wissen (+ Wünsche, Suche). Einen Reiter „Plan“ gibt es nicht (Nachtrag #214, unten).
 4. **Ein Link je Zeile, Zurück an dieselbe Stelle.** Die ganze Zeile ist der eine Link, ohne Kennung. Wer von einem Tag zurückkommt (Link, Zurück-Taste, Blättern), steht wieder an dessen Zeile, mit Fokus.
 5. **Jedes Element kann Alternativen tragen.** Eine Wahl hängt an Tag, Bewegung, Aufenthalt, Ort, Wahl oder Abschnitt des Wissens und erscheint dort immer gleich.
 6. **Text folgt den Daten.** Was als Daten vorliegt (Anreise, Personen, Kennzahlen), steht nicht noch einmal im Lesetext. Hinweise zu einem Tag hängen am Tag. Der Lesetext eines Plans enthält nur die Begründungen.
+
+## Nachtrag (2.11.2026, #214): eine Seitenordnung für alle Reisen
+
+Bis #214 galt diese Ordnung nur für eine Reise mit gewähltem Plan, dem Baustein `tagesseiten` und ohne `darstellung.tiefe`; jede andere Reise, auch jede neue, bekam die alte Plan-Seite (Tageskästen in zwei Spalten, Unterkünfte als Liste, dieselbe Buchung an mehreren Stellen). Der Product Owner hat am 2.11.2026 entschieden: Es gibt eine Seitenordnung, der alte Zweig entfällt. Ob Pläne existieren, ob sie entschieden sind und welche Einstellungen die Reise hat, ändert nur, was am Tag steht (Marke „offen“, Vergleich an der Heimat), nie den Aufbau der Seite.
+
+- **Zu Punkt 3:** Die Reiter hängen nicht an „Plan gewählt“. Jede Reise mit Tagen beginnt mit der Reise (Zeitachse in einer Spalte, je Tag eine Tagesseite); „Zu tun“ mit „Zu entscheiden“ und „Zu buchen“ gibt es immer. Den Reiter „Plan“ gibt es nicht mehr; ein alter Link `#plan` führt zur Reise.
+- **Pläne vor der Entscheidung (Entscheidung 1):** Die Zeitachse zeigt den aktuellen Plan, mit der Marke „offen“ an Tagen mit offener Wahl. Der Vergleich ganzer Pläne bleibt erhalten und ist von der Reise aus erreichbar (`#plaene`, Baustein `varianten`). Ohne Pläne zeigt die Zeitachse die Tage der Reise selbst.
+- **Baustein `tagesseiten` (Entscheidung 2):** entfällt als Schalter. Tagesseiten gehören zur Grundform Tag und gibt es immer. Eine ältere `reise.yaml`, die ihn nennt, bleibt gültig; der Eintrag ist ohne Wirkung.
+- **`darstellung.tiefe` (Entscheidung 3):** steuert nur noch den Plan-Baum (Plan → Tag → Ort) unter dem Vergleich der Pläne, nicht die Startseite, die Tagesseiten oder den Zurück-Link.
+- **`darstellung.plan_reiter` (Entscheidung 4):** ohne Wirkung. Die Rahmenabschnitte stehen im Reiter „Wissen“ unter „Über diesen Plan“.
+- **Etappen (Entscheidung 5):** richten sich nach dem Plan der Zeitachse, auch bei offenen Plänen: Eine Etappe hat ihren Tag als Heimat, der Reiter „Etappen“ entfällt dann wie bei einem gewählten Plan.
+- **Zu Punkt 1:** Die Heimat jedes Dings bestimmt eine Stelle (`heimat` in `engine/vorlage.html`); Tageskasten, Tagesseite und Listen fragen sie. Ein Aufenthalt an mehreren Tagen steht an seinem ersten Tag vollständig, an den übrigen als Zeile; eine Wahl an ihrem ersten Tag mit Vergleich, ein Reiseteil zur Wahl (Wahlstelle in der Route) am ersten Tag seiner Möglichkeiten; an einem Ort oder Abschnitt des Wissens steht eine Wahl als Zeile mit Link, wenn ihre Heimat anderswo ist. Nur die Heimat trägt die Kennung als Sprungziel; keine ID steht doppelt im DOM.
 
 ## Begründung
 
@@ -56,6 +68,8 @@ Ursache war keine einzelne Änderung. Für jede Art von Ding gab es keine Regel,
 - Details der Gestaltung: `docs/design.md`, Abschnitt „Seitenordnung“.
 
 ## Verlauf
+
+- 2.11.2026: Nachtrag #214: eine Seitenordnung für alle Reisen; der alte Zweig der Plan-Seite (`PLAN_DA`) ist entfernt, Baustein `tagesseiten` und `darstellung.plan_reiter` sind ohne Wirkung, `darstellung.tiefe` steuert nur noch den Plan-Baum (fünf Entscheidungen des Product Owners, `docs/specs/oberflaeche/eine-seitenordnung-214.md`). Tests: `engine/tests/test_eine_seitenordnung.py` (vier Fälle: ohne Pläne, Pläne offen, Plan fest, `tiefe`).
 
 - 29.10.2026: Abgleich (`docs/abgleich-2026-10-29.md`): Buchung und Unterkunft standen an mehreren Stellen vollständig (bei jedem Ding der Buchung, an jeder Nacht der Unterkunft, als Liste unter dem Plan), ein Link auf eine Buchung an einem Aufenthalt oder einer Fahrt hatte kein Ziel, die Liste der Entscheidungen im Plan zeigte Wahlen vollständig, die schon am Tag standen. Jetzt: Buchung nur an ihrem ersten Ding, Unterkunft nur an ihrer ersten Nacht, Aufenthalt und Fahrt haben ihren Tag als Heimat (`heimat`), Sammellisten zeigen Zeilen.
 - 28.10.2026: Analyse, Konzept (Navigation A, Plantext auflösen, Alternativen an jedem Element) und grafische Ausarbeitung einzeln vom Product Owner freigegeben, gebaut in frieda-reist #84. Am selben Abend als ADR festgehalten.

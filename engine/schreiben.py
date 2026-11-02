@@ -47,6 +47,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import instanz  # noqa: E402
 import konten  # noqa: E402
+import stand as reisestand  # noqa: E402
 import texte  # noqa: E402
 
 REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
@@ -69,7 +70,7 @@ AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "k
             "tag_anlegen": "plan", "termin_setzen": "plan", "wahlstelle_aendern": "plan", "option_aendern": "alternative",
             "wissen_aendern": "wissen", "lesetext_schreiben": "wissen", "reise_aendern": "einstellung", "plan_anlegen": "plan",
             "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch",
-            "start_ende_setzen": "einstellung"}   # reise.AKTIONEN
+            "start_ende_setzen": "einstellung", "symbol_setzen": "einstellung"}   # reise.AKTIONEN
 HINWEISE_HOECHSTENS = 10   # neue Warnungen des Probebaus in der Antwort (Issue #142)
 S = texte.satz   # Satz des Katalogs, in jeder Sprache lesbar (Bestätigungen, ADR-0006)
 verbinden = texte.Satz.verbinden
@@ -1951,13 +1952,15 @@ def reise_status_setzen(reise_dir, wer, args, heute=None):
 def einstellung_setzen(reise_dir, wer, args, heute=None):
     """Einstellungen der Reise: bausteine (vollständige Liste), regeln (Name: Wert) und sprache (de, en …); nur Organisator:innen. Was gilt, prüft der
     Probebau (reise.py). -> (Titel, Text)."""
-    from reise import BAUSTEINE, KERN, VORGABEN
+    from reise import ALTE_BAUSTEINE, BAUSTEINE, KERN, VORGABEN
     from ruamel.yaml.comments import CommentedMap
     p, roh = reise_yaml_laden(reise_dir)
     geaendert = []
     bausteine = args.get("bausteine")
     if bausteine is not None:
         liste = liste_wert({"b": bausteine}, "b", laenge=20) or []
+        # Bausteine, die es nicht mehr gibt (tagesseiten, #214): still herausnehmen, nicht ablehnen, nicht schreiben
+        liste = [b for b in liste if b not in ALTE_BAUSTEINE]
         fremd = [b for b in liste if b not in BAUSTEINE and b not in KERN]
         if fremd:
             raise Ablehnung("schreiben.einstellung_setzen.1", w1=', '.join(fremd), w2=', '.join(BAUSTEINE))
@@ -2001,6 +2004,73 @@ def einstellung_setzen(reise_dir, wer, args, heute=None):
     reise_yaml_speichern(p, roh)
     return S("schreiben.titel.einstellungen", w1=kurz_namen(geaendert)), \
         S("schreiben.antwort.einstellungen.kopf") + verbinden(geaendert, "; ") + "." + (S("schreiben.antwort.grund", w1=grund) if grund else "")
+
+
+def symbol_setzen(reise_dir, wer, args, heute=None):
+    """App-Symbol der Reise (Issue #252): ein SVG als Text (svg) oder ein PNG als Base64 (png_base64, quadratisch, mindestens
+    512 Pixel) wird medien/icon.svg oder medien/icon.png, das andere fällt weg; entfernen nimmt das eigene Symbol heraus, dann
+    zeichnet der Generator wieder den Kurznamen. Nur Organisator:innen (Aktion einstellung). -> (Titel, Text)."""
+    import base64
+    import binascii
+    import io
+    import bauen
+    svg = args.get("svg")
+    png = args.get("png_base64")
+    entfernen = bool_wert(args, "entfernen")
+    gewaehlt = [x for x in (isinstance(svg, str) and svg.strip(), isinstance(png, str) and png.strip(), entfernen) if x]
+    if len(gewaehlt) != 1:
+        raise Ablehnung("schreiben.symbol.eines")
+    medien = Path(reise_dir) / "medien"
+    vorher = bauen.symbol_motiv(reise_dir)
+    grund = text_wert(args, "grund")
+    zusatz = S("schreiben.antwort.grund", w1=grund) if grund else ""
+    if entfernen:
+        if not vorher:
+            raise Ablehnung("schreiben.symbol.keines")
+        for n in bauen.SYMBOL_DATEIEN:
+            (medien / n).unlink(missing_ok=True)
+        return S("schreiben.titel.symbol_entfernt"), S("schreiben.antwort.symbol.entfernt") + zusatz
+    if isinstance(svg, str) and svg.strip():
+        inhalt = svg.strip().encode("utf-8")
+        name = "icon.svg"
+        if len(inhalt) > bauen.SYMBOL_MAX:
+            raise Ablehnung("schreiben.symbol.zu_gross", kb=bauen.SYMBOL_MAX // 1024)
+        if (fehler := bauen.svg_pruefen(svg.strip())):
+            raise Ablehnung(fehler)
+        try:
+            bauen.icon_aus_svg(inhalt, 64)     # zur Probe rechnen: was CairoSVG nicht zeichnen kann, kommt nicht in die Reise
+        except Exception:   # noqa: BLE001 – CairoSVG wirft je nach Fehler verschiedene Ausnahmen
+            raise Ablehnung("schreiben.symbol.svg_kaputt")
+        inhalt += b"\n"
+    else:
+        try:
+            inhalt = base64.b64decode(re.sub(r"\s+", "", png.strip().split(",", 1)[-1] if png.strip().startswith("data:") else png.strip()),
+                                      validate=True)
+        except (binascii.Error, ValueError):
+            raise Ablehnung("schreiben.symbol.png_base64")
+        name = "icon.png"
+        if len(inhalt) > bauen.SYMBOL_MAX:
+            raise Ablehnung("schreiben.symbol.zu_gross", kb=bauen.SYMBOL_MAX // 1024)
+        from PIL import Image, UnidentifiedImageError
+        try:
+            with Image.open(io.BytesIO(inhalt)) as im:
+                art, (b, h) = im.format, im.size
+                im.load()
+        except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
+            raise Ablehnung("schreiben.symbol.png_kaputt")
+        if art != "PNG":
+            raise Ablehnung("schreiben.symbol.png_kaputt")
+        if b != h:
+            raise Ablehnung("schreiben.symbol.png_quadrat", b=b, h=h)
+        if b < bauen.SYMBOL_PNG_MIN:
+            raise Ablehnung("schreiben.symbol.png_klein", b=b, min=bauen.SYMBOL_PNG_MIN)
+    medien.mkdir(parents=True, exist_ok=True)
+    (medien / name).write_bytes(inhalt)
+    for n in bauen.SYMBOL_DATEIEN:
+        if n != name:
+            (medien / n).unlink(missing_ok=True)
+    return (S("schreiben.titel.symbol_" + ("ersetzt" if vorher else "gesetzt"), w1=name),
+            S("schreiben.antwort.symbol." + ("ersetzt" if vorher else "gesetzt"), w1=name) + zusatz)
 
 
 def reise_anlegen(reisen_dir, wer, args, heute=None):
@@ -2783,14 +2853,15 @@ def lesetext_schreiben(reise_dir, wer, args, heute=None):
 
 
 def reise_aendern(reise_dir, wer, args, heute=None):
-    """Eckdaten der Reise ändern: titel, untertitel, kurz, von, bis (Zeitraum). Nur Organisator:innen, mit grund; der Verlauf
+    """Eckdaten der Reise ändern: titel, untertitel, kurz, ziel, von, bis (Zeitraum). Nur Organisator:innen, mit grund; der Verlauf
     steht in reise.yaml unter verlauf. -> (Titel, Text)."""
     from ruamel.yaml.comments import CommentedSeq
     heute = heute or datetime.date.today()
     grund = text_wert(args, "grund", pflicht=True)
     p, roh = reise_yaml_laden(reise_dir)
     geaendert = []
-    for feld, laenge in (("titel", 120), ("untertitel", 200), ("kurz", 40)):
+    from reise import ZIEL_LAENGE
+    for feld, laenge in (("titel", 120), ("untertitel", 200), ("kurz", 40), ("ziel", ZIEL_LAENGE)):
         if args.get(feld) is not None:
             v = text_wert(args, feld, laenge=laenge) or ""
             if feld == "titel" and not v:
@@ -3126,7 +3197,7 @@ WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_def
              "option_aendern": option_aendern, "wissen_aendern": wissen_aendern, "lesetext_schreiben": lesetext_schreiben,
              "reise_aendern": reise_aendern, "plan_anlegen": plan_anlegen, "plan_aendern": plan_aendern,
              "merkmal_zusammenfuehren": merkmal_zusammenfuehren, "arten_uebernehmen": arten_uebernehmen, "wunsch_vorschlagen": wunsch_vorschlagen,
-             "start_ende_setzen": start_ende_setzen}
+             "start_ende_setzen": start_ende_setzen, "symbol_setzen": symbol_setzen}
 REPO_WERKZEUGE = {"reise_anlegen": reise_anlegen}   # arbeiten auf reisen/, nicht in einer Reise
 
 
@@ -3260,13 +3331,19 @@ class Schreiber:
                      f"{am_rand(sp, text.text(sp) if isinstance(text, texte.Satz) else text)}\n\n"
                      + texte.t(sp, "inhalt.schreiben.commit_fuss", werkzeug=werkzeug_name(sp, werkzeug), wer=wer["name"],
                                rolle=wer["rolle"] if rolle.startswith("inhalt.") else rolle, datum=datetime.date.today().isoformat()) + "\n")
+        # Wer den Eintrag gemacht hat, für die Änderungsliste der Seite (engine/stand.py, #229)
+        nachricht += f"\n{reisestand.PERSON_TRAILER}: {' '.join(wer['name'].split())}\n"
         if os.environ.get("FR_VORGANG"):     # Kennung des Vorgangs: nach einem Abbruch findet vorgang_eingetragen den Eintrag
-            nachricht += f"\nFrieda-Vorgang: {os.environ['FR_VORGANG']}\n"
+            nachricht += f"Frieda-Vorgang: {os.environ['FR_VORGANG']}\n"
         git(self.arbeit, "add", "-A", "--", f"reisen/{reise}")
         git(self.arbeit, "commit", "-q", "-m", nachricht)
         commit = self.hochladen(reise)
+        # Reise-Stand (#226): jeder gesicherte Schreibvorgang ist ein Commit in reisen/<reise>/ und erhöht die Nummer um 1
+        nummer = reisestand.nummer(reise_dir)
+        reisestand.gesichert_schreiben(reise, nummer, commit)
         self.veroeffentlichen_anstossen()
-        antwort = {"ok": True, "text": text, "commit": commit}
+        antwort = {"ok": True, "text": text, "commit": commit,
+                   "stand": {"gesichert": nummer, "veroeffentlicht": reisestand.veroeffentlicht(reise)[0]}}
         if isinstance(text, texte.Satz) and text.mit_schluesseln():   # der Konnektor setzt den Satz in der Sprache der Person zusammen
             antwort["text_teile"] = text.teile_json()
         if (m := re.match(r"^([A-Z]+-\d+(?:\.[\w-]+)?) ", titel)):   # neu angelegtes Ding: seine ID, damit der Konnektor weitermachen kann
@@ -3311,8 +3388,8 @@ class Schreiber:
         raise Ablehnung("schreiben.hochladen.2")
 
     def veroeffentlichen_anstossen(self):
-        """Veröffentlichen im Hintergrund (holt main in den Bauordner, baut, prüft). Hält der Timer die Sperre,
-        meldet das Skript „Läuft schon“, und der Timer holt es in wenigen Minuten nach. Niedrige Priorität wie im Dienst
+        """Veröffentlichen im Hintergrund (holt main in den Bauordner, baut, prüft). Hält ein anderer Lauf die Sperre,
+        merkt das Skript das, und der laufende Lauf veröffentlicht danach gleich noch einmal (#230). Niedrige Priorität wie im Dienst
         veroeffentlichen.service, damit Schreibvorgänge während der Tests nicht warten (fehlen nice oder ionice, ohne sie).
         Die Ausgabe geht nach /dev/null: Die Ausgabe des Anwendens ist die Leitung zum Dienst, die das Skript sonst bis zu
         seinem Ende offen hielte. Ein fehlgeschlagener Lauf wiederholt der Timer, mit Protokoll. Wirft nie."""
@@ -3388,13 +3465,18 @@ def nicht_eingetragen(werkzeug):
     return 504, fehler_antwort("schreiben.dienst.zu_lange_nicht")
 
 
-def nach_abbruch(s, werkzeug, kennung):
+def nach_abbruch(s, werkzeug, kennung, reise=None):
     """Antwort, nachdem das Anwenden von der Frist abgebrochen wurde: Ergebnis auf origin/main nachsehen."""
     ergebnis = vorgang_eingetragen(s, kennung)
     if ergebnis:
         sys.stderr.write(f"Timeout {werkzeug} 504: aborted, saved\n")
         text = S("schreiben.dienst.verzoegert")
-        return 200, {"ok": True, "text": str(text), "text_teile": text.teile_json(), "hinweis": str(text)}
+        antwort = {"ok": True, "text": str(text), "text_teile": text.teile_json(), "hinweis": str(text)}
+        if reise:   # vorgang_eingetragen hat origin/main eben geholt
+            nummer = reisestand.nummer(s.wurzel / "reisen" / reise, "origin/main")
+            reisestand.gesichert_schreiben(reise, nummer)
+            antwort["stand"] = {"gesichert": nummer, "veroeffentlicht": reisestand.veroeffentlicht(reise)[0]}
+        return 200, antwort
     if ergebnis is False:
         return nicht_eingetragen(werkzeug)
     sys.stderr.write(f"Timeout {werkzeug} 504: aborted, unchecked\n")
@@ -3465,7 +3547,7 @@ def vorgang(s, reise, werkzeug, anfrage, start):
                                  env={**os.environ, "FR_WURZEL": str(s.wurzel), "FR_SCHREIBKOPIE": str(s.arbeit),
                                       "FR_VORGANG": kennung})
         except subprocess.TimeoutExpired:
-            return nach_abbruch(s, werkzeug, kennung)
+            return nach_abbruch(s, werkzeug, kennung, reise)
         if r.stderr:
             sys.stderr.write(r.stderr)
         try:

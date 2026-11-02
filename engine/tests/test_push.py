@@ -19,6 +19,7 @@ import konten  # noqa: E402
 import push  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from test_anmeldung import BASIS, IDA, KARL, SEITE, abruf, anmelden, welt  # noqa: E402,F401
+from conftest import meldet  # noqa: E402
 
 MITTAG = datetime.datetime(2027, 5, 14, 10, 0, tzinfo=datetime.timezone.utc).timestamp()   # 12:00 in Berlin
 NACHT = datetime.datetime(2027, 5, 14, 22, 0, tzinfo=datetime.timezone.utc).timestamp()    # 0:00 in Berlin
@@ -128,7 +129,7 @@ def test_geraet_an_und_abmelden_ueber_die_seite(welt):
     assert s == 401 and "anmelden" in t
     assert abruf(url, "POST", json_body=daten, cookie=karl, origin="https://boese.invalid")[0] == 403
     s, _, t = abruf(url, "POST", json_body={**daten, "abo": {"endpoint": "https://x.invalid/y"}}, cookie=karl)
-    assert s == 400 and "kein gültiges Abo" in t
+    assert s == 400 and meldet(t, "konto.fehler.push_abo_ungueltig")
     assert abruf(url, "POST", json_body=daten, cookie=karl)[0] == 200
     kid = konten.sitzung(karl)["id"]
     [a] = konten.push_abos(kid)
@@ -288,14 +289,14 @@ def test_versand_verschluesselt_mit_vapid(monkeypatch):
 def test_kontoseite_benachrichtigungen(reise):
     u = reise
     s, _, t = abruf(f"{u.kurl}/konto", cookie=u.karl)
-    assert s == 200 and "Benachrichtigungen" in t and "1 Gerät bekommt Benachrichtigungen." in t
+    assert s == 200 and "Benachrichtigungen" in t and meldet(t, "konto.push.geraete.one")
     assert 'name="ruhe_von" value="21:30"' in t and 'name="art_version" value="ja" checked' in t
     s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "push_einstellungen", "art_meldung": "ja", "ruhe_von": "22:15",
                                                 "ruhe_bis": "06:45"}, cookie=u.karl)
-    assert s == 200 and "Benachrichtigungen gespeichert." in t
+    assert s == 200 and meldet(t, "konto.push.gespeichert")
     assert push.einstellungen_von(u.karl_id) == {"arten": ["meldung"], "ruhe_von": "22:15", "ruhe_bis": "06:45"}
     s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "push_aus"}, cookie=u.karl)
-    assert "auf allen Geräten ausgeschaltet" in t and konten.push_abos(u.karl_id) == []
+    assert meldet(t, "konto.push.alle_aus_hinweis") and konten.push_abos(u.karl_id) == []
 
 
 def test_kontoseite_schalter_der_frieda_app(welt):
@@ -323,16 +324,55 @@ def test_kontoseite_schalter_der_frieda_app(welt):
     assert abruf(f"{u.kurl}/konto", "POST", felder)[0] == 401
     assert abruf(f"{u.kurl}/konto", "POST", felder, cookie=karl, origin="https://boese.invalid")[0] == 403
     s, _, t = abruf(f"{u.kurl}/konto", "POST", {**felder, "abo": "{kaputt"}, cookie=karl)
-    assert s == 400 and "kein gültiges Abo" in t
+    assert s == 400 and meldet(t, "konto.fehler.push_abo_ungueltig")
     assert abruf(f"{u.kurl}/konto", "POST", felder, cookie=karl)[0] == 204
     [a] = konten.push_abos(kid)
     assert (a["reise"], a["seite"], a["geraet"], a["zeitzone"]) == ("", f"{BASIS}/konto", "geraet-karl-app", "Europe/Berlin")
     assert abruf(f"{u.kurl}/konto", "POST", felder, cookie=karl)[0] == 204 and len(konten.push_abos(kid)) == 1   # auffrischen
     s, _, t = abruf(f"{u.kurl}/konto?push=an", cookie=karl)
-    assert "Benachrichtigungen auf diesem Gerät eingeschaltet." in t and "1 Gerät bekommt Benachrichtigungen." in t
+    assert meldet(t, "konto.push.hier_an") and meldet(t, "konto.push.geraete.one")
     # Ausschalten: nur das eigene Abo
     assert abruf(f"{u.kurl}/konto", "POST", {"aktion": "push_ab", "endpoint": abo("app")["endpoint"]}, cookie=karl)[0] == 204
     assert konten.push_abos(kid) == []
+
+
+def test_ausschalten_dieses_geraets_steht_unter_konfigurieren(welt):
+    """Issue #249: Eingeschaltet steht an der Stelle des Einschaltknopfs nur der Zustand; „Auf diesem Gerät ausschalten“
+    hat seinen Platz in den Einstellungen hinter „Konfigurieren“, vor „Auf allen Geräten ausschalten“."""
+    u = welt()
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
+    karl, _ = anmelden(u, KARL)
+    kid = konten.sitzung(karl)["id"]
+    konten.push_abo_speichern(kid, abo("karl"), "", f"{BASIS}/konto", "geraet-karl-1", "Europe/Berlin")
+    s, _, t = abruf(f"{u.kurl}/konto?push=an", cookie=karl)
+    assert s == 200
+    platz = re.search(r'<div id="push-geraet" hidden[^>]*></div>', t)
+    assert platz, "der Platz des Schalters bleibt leer, bis das Skript ihn füllt"
+    texte_js = json.loads(html.unescape(re.search(r'data-texte="([^"]*)"', platz.group(0)).group(1)))
+    assert texte_js["aus_wo"] == "Ausschalten unter ‚Konfigurieren‘."
+    # Der Platz zum Ausschalten liegt in den aufklappbaren Einstellungen, vor dem Formular push_aus
+    karte = t[t.index('id="push"'):]
+    details = karte[karte.index("<details"):karte.index("</details>")]
+    assert '<div id="push-geraet-aus" hidden></div>' in details
+    assert details.index('id="push-geraet-aus"') < details.index('name="aktion" value="push_aus"')
+    assert t.count('id="push-geraet-aus"') == 1
+    # Auch ohne eingeschaltetes Gerät ist der Platz da (das Skript füllt ihn nur, wenn dieses Gerät an ist)
+    konten.push_abo_entfernen(kid, abo("karl")["endpoint"])
+    _, _, t = abruf(f"{u.kurl}/konto", cookie=karl)
+    assert '<div id="push-geraet-aus" hidden></div>' in t
+
+
+def test_skript_haengt_ausschalten_nicht_an_die_stelle_des_einschaltens():
+    """Issue #249, Prüfung des Quelltexts (im Testbrowser lässt sich Push nicht abonnieren): Eingeschaltet zeigt
+    #push-geraet nur Zustand und Hinweis; der Knopf zum Ausschalten kommt in #push-geraet-aus."""
+    js = (Path(__file__).resolve().parent.parent / "app" / "konto.js").read_text(encoding="utf-8")
+    assert 'getElementById("push-geraet-aus")' in js
+    eingeschaltet = js[js.index("if (a) {"):]
+    eingeschaltet = eingeschaltet[:eingeschaltet.index("\n    }\n")]
+    assert 't("aus_wo")' in eingeschaltet
+    zeigen_aufruf = re.search(r"return zeigen\((.*)\);", eingeschaltet, re.S)
+    assert zeigen_aufruf and "ausschalten" not in zeigen_aufruf.group(1) and not re.search(r"\baus\b", zeigen_aufruf.group(1)), \
+        "der Knopf zum Ausschalten darf nicht in #push-geraet stehen"
 
 
 def test_nachricht_an_die_frieda_app_fuehrt_zur_reise(reise):

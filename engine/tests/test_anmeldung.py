@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import konten  # noqa: E402
 import texte  # noqa: E402
 from test_regeln import Umgebung  # noqa: E402
+from conftest import meldet  # noqa: E402
 
 BASIS = "https://frieda.beispiel.invalid"
 SEITE = f"{BASIS}/beispielreise-0123456789abcdef01234567/"
@@ -73,7 +74,7 @@ def anmelden(u, an, name=None, einladung="", zurueck=""):
     """Ganzer Ablauf über die Seiten. -> (sitzungs_token, Location)"""
     s, _, t = abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "adresse", "email": an, "einladung": einladung,
                                                    "zurueck": zurueck})
-    assert s == 200 and "Code eingeben" in t, t
+    assert s == 200 and meldet(t, "konto.code.titel"), t
     felder = {"schritt": "code", "email": an, "code": code_aus(u, an), "einladung": einladung, "zurueck": zurueck}
     if name:
         felder["name"] = name
@@ -86,7 +87,7 @@ def anmelden(u, an, name=None, einladung="", zurueck=""):
 def test_anmelden_von_null(welt):
     u = welt()
     s, h, t = abruf(f"{u.kurl}/anmelden")
-    assert s == 200 and "<h1>Anmelden</h1>" in t and "jederzeit selbst löschen" in t and "Nur lesen?" in t
+    assert s == 200 and "<h1>Anmelden</h1>" in t and meldet(t, "konto.datenschutz") and "Nur lesen?" in t
     assert "frame-ancestors 'none'" in kopf(h, "Content-Security-Policy")[0]
     s, _, t = abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "adresse", "email": "Ida@Beispiel.invalid"})
     assert s == 200 and IDA in t
@@ -100,7 +101,7 @@ def test_anmelden_von_null(welt):
         assert teil in keks
     token = re.match(r"__Host-frieda=([^;]+)", keks).group(1)
     s, _, t = abruf(f"{u.kurl}/konto", cookie=token)
-    assert s == 200 and "Hallo Ida" in t and "Noch keine Reisen" in t and "Freischaltung anfragen" in t
+    assert s == 200 and "Hallo Ida" in t and meldet(t, "konto.reisen.keine") and meldet(t, "konto.reisen.anlegen_knopf")
 
 
 def test_aenderungen_nur_von_friedas_adresse(welt):
@@ -119,7 +120,7 @@ def test_link_aus_der_mail_ohne_code(welt):
     code = re.search(r"(\d{3}) (\d{3})", m).expand(r"\1\2")
     assert code not in link and "ida%2Breise%40beispiel.invalid" in link
     s, h, t = abruf(f"{u.kurl}{link}")
-    assert s == 200 and "Code eingeben" in t and "ida+reise@beispiel.invalid" in t and not kopf(h, "Set-Cookie")
+    assert s == 200 and meldet(t, "konto.code.titel") and "ida+reise@beispiel.invalid" in t and not kopf(h, "Set-Cookie")
     s, h, _ = abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "code", "email": "ida+reise@beispiel.invalid",
                                                     "code": code, "name": "Ida"})
     assert s == 303 and kopf(h, "Set-Cookie")
@@ -139,13 +140,13 @@ def test_einladung_mit_anderer_adresse(welt):
                     titel="Malerweg")
     link = re.search(r"/einladung/(\S+)", json.loads(u.mails.read_text().splitlines()[-1])["text"]).group(1)
     s, _, t = abruf(f"{u.kurl}/einladung/{link}")
-    assert s == 200 and "Ida lädt Karl zur Reise" in t and "Du bringst ein" in t and "Beispielreise" in t and "andere E-Mail-Adresse" in t
+    assert s == 200 and "Ida lädt Karl zur Reise" in t and meldet(t, "konto.rolle.mitwirkend") and "Beispielreise" in t and "andere E-Mail-Adresse" in t
     token, ziel = anmelden(u, KARL, einladung=link)            # Name kommt aus der Einladung
     assert ziel == SEITE                                         # direkt zur Reise
     s, _, t = abruf(f"{u.kurl}/konto", cookie=token)
-    assert "Hallo Karl" in t and "Beispielreise" in t and "Du bringst ein" in t and SEITE in t
+    assert "Hallo Karl" in t and "Beispielreise" in t and meldet(t, "konto.rolle.mitwirkend") and SEITE in t
     s, _, t = abruf(f"{u.kurl}/einladung/{link}")
-    assert "schon angenommen" in t
+    assert meldet(t, "konto.einladung.angenommen")
     assert abruf(f"{u.kurl}/einladung/{'x' * 40}")[0] == 404
 
 
@@ -195,7 +196,7 @@ def test_regel_noetig(welt):
     assert s == 401 and "melde dich an" in t
     token, _ = anmelden(u, MO, "Mo")                            # angemeldet, aber nicht eingeladen
     s, _, t = mitmachen(u, token)
-    assert s == 403 and "nicht eingeladen" in t
+    assert s == 403 and meldet(t, "dienst.anfrage.2")
     konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
     karl, _ = anmelden(u, KARL)
     ida_t = None
@@ -205,7 +206,7 @@ def test_regel_noetig(welt):
     rid = json.loads(t)["id"]
     # Zurückziehen nur Eigenes
     s, _, t = abruf(f"{u.rurl}/beispielreise/rueckmeldungen/{rid}", "DELETE", cookie=karl)
-    assert s == 403 and "geschrieben hat" in t
+    assert s == 403 and meldet(t, "dienst.do_delete.4")
     assert abruf(f"{u.rurl}/beispielreise/rueckmeldungen/{rid}", "DELETE")[0] == 401
     assert abruf(f"{u.rurl}/beispielreise/rueckmeldungen/{rid}", "DELETE", cookie=ida_t)[0] == 200
     # Aufgaben ebenso
@@ -249,13 +250,13 @@ def test_kontoseite(welt):
     mo_id = konten.konto_per_email(MO)["id"]
     assert abruf(f"{u.kurl}/konto", "POST", {"aktion": "freischalten", "wer": mo_id}, cookie=mo)[0] == 400
     abruf(f"{u.kurl}/konto", "POST", {"aktion": "freischalten", "wer": mo_id}, cookie=ida)
-    assert "Neue Reise? Sag es Frieda" in abruf(f"{u.kurl}/konto", cookie=mo)[2]
+    assert meldet(abruf(f"{u.kurl}/konto", cookie=mo)[2], "konto.reisen.anlegen_darfst")
     # Adresse ändern mit Code an die neue Adresse
     s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "adresse_code", "email": IDA}, cookie=mo)
-    assert "gehört schon zu einem Konto" in t
+    assert meldet(t, "konto.fehler.adresse_belegt")
     neu = "mo.neu@beispiel.invalid"
     s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "adresse_code", "email": neu}, cookie=mo)
-    assert "Code an die neue Adresse" in t
+    assert meldet(t, "konto.adresse.code_gesendet")
     code = re.search(r"(\d{3}) (\d{3})", json.loads(u.mails.read_text().splitlines()[-1])["text"]).expand(r"\1\2")
     assert abruf(f"{u.kurl}/konto", "POST", {"aktion": "adresse", "email": neu, "code": code}, cookie=mo)[0] == 303
     assert konten.konto(mo_id)["email"] == neu
@@ -263,10 +264,10 @@ def test_kontoseite(welt):
     s, h, _ = abruf(f"{u.kurl}/abmelden", "POST", {}, cookie=mo)
     assert s == 303 and "Max-Age=0" in kopf(h, "Set-Cookie")[0] and konten.sitzung(mo) is None
     s, _, t = abruf(f"{u.kurl}/konto?loeschen=1", cookie=ida)                              # erst die Rückfrage (#60)
-    assert s == 200 and "Das wird gelöscht:" in t and "Das bleibt:" in t and 'name="sicher"' in t
+    assert s == 200 and meldet(t, "konto.seite.loeschen_weg") and "Das bleibt:" in t and 'name="sicher"' in t
     assert abruf(f"{u.kurl}/konto", "POST", {"aktion": "loeschen"}, cookie=ida)[0] == 400   # ohne Häkchen nicht
     s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "loeschen", "sicher": "ja"}, cookie=ida)
-    assert s == 200 and "Konto gelöscht" in t and konten.konto_per_email(IDA) is None
+    assert s == 200 and meldet(t, "konto.seite.geloescht") and konten.konto_per_email(IDA) is None
 
 
 def test_konnektor_braucht_das_geheimnis(welt):
@@ -334,11 +335,11 @@ def test_seiten_in_der_sprache_des_browsers_und_des_kontos(welt):
     assert '<html lang="en"' in t and "Hello Karl" in t and "No trips yet" in t and "Language of the pages" in t
     # Sprache auf der Kontoseite wechseln: die Antwort kommt gleich in der neuen Sprache, die Wahl bleibt
     s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "sprache", "sprache": "de"}, cookie=token)
-    assert s == 200 and '<html lang="de"' in t and "Hallo Karl" in t and "Sprache gespeichert." in t
+    assert s == 200 and '<html lang="de"' in t and "Hallo Karl" in t and meldet(t, "konto.sprache.gespeichert")
     s, _, t = abruf(f"{u.kurl}/konto", cookie=token, kopf={"Accept-Language": "en"})
     assert "Hallo Karl" in t and '<option value="de" selected>Deutsch</option>' in t and '<option value="en">English</option>' in t
     s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "sprache", "sprache": "klingonisch"}, cookie=token)
-    assert "Diese Sprache gibt es nicht." in t
+    assert meldet(t, "konto.fehler.sprache_unbekannt")
 
 
 def test_meldungen_auf_mein_konto_und_der_reiseseite(welt):

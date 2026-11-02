@@ -2,6 +2,8 @@
  * ergänzt nur, was ohne Skript nicht geht:
  *  1. Frieda-App: meldet den Worker /sw.js an (nur Push, kein Offline-Speicher, engine/app/sw.js).
  *  2. Benachrichtigungen je Gerät (Baustein pushSchalter, docs/design.md): Zustand dieses Geräts, Ein- und Ausschalten.
+ *     Eingeschaltet steht an der Stelle des Einschaltknopfs nur der Zustand; der Knopf zum Ausschalten kommt in den Platz
+ *     #push-geraet-aus hinter „Konfigurieren“, damit ein zweites Tippen nicht gleich wieder ausschaltet (#249).
  *     iPhone und iPad bekommen Push nur in der App vom Home-Bildschirm; im Browser zeigt die Karte die Schritte dahin.
  *     Die Frage des Systems kommt nur auf Tippen (iOS lehnt sie sonst ab), requestPermission steht deshalb zuerst.
  *  3. Speichern mit Zustand (Baustein speichernKnopf): Formulare mit data-aenderung lassen den Knopf aus, bis sich ein Feld
@@ -35,6 +37,7 @@
   const SW_DA = "serviceWorker" in navigator;
   if (SW_DA) navigator.serviceWorker.register("/sw.js", {scope: "/"}).catch(() => {});
   if (!ort) return;
+  const ausOrt = document.getElementById("push-geraet-aus");
 
   let T = {};
   try { T = JSON.parse(ort.dataset.texte || "{}"); } catch (e) { T = {}; }
@@ -51,6 +54,7 @@
     return e;
   }
   function zeigen(...kinder) { ort.replaceChildren(...kinder); ort.hidden = !kinder.length; }
+  function ausZeigen(...kinder) { if (ausOrt) { ausOrt.replaceChildren(...kinder); ausOrt.hidden = !kinder.length; } }
   function satz(text, klasse) { return el("p", klasse ? {class: klasse} : {}, text); }
 
   function geraetKennung() {
@@ -97,10 +101,10 @@
 
   async function ausschalten() {
     try {
-      const a = await abo();
-      if (a) {
-        await senden({aktion: "push_ab", endpoint: a.endpoint});
-        await a.unsubscribe();
+      const dieses = await abo();
+      if (dieses) {
+        await senden({aktion: "push_ab", endpoint: dieses.endpoint});
+        await dieses.unsubscribe();
       }
       fertig("aus");
     } catch (e) { darstellen(t("fehler")); }
@@ -108,6 +112,7 @@
 
   async function darstellen(meldung) {
     const status = meldung ? [satz(meldung, "fehler")] : [];
+    ausZeigen();
     if (!PUSH_DA) {
       if (APPLE_MOBIL && !ALS_APP) {
         return zeigen(el("p", {}, el("strong", {}, t("installieren"))),
@@ -123,7 +128,8 @@
       senden({aktion: "push_an", abo: JSON.stringify(a.toJSON()), geraet: geraetKennung(), zeitzone: zeitzone()}).catch(() => {});
       const aus = el("button", {type: "button", class: "neutral"}, t("ausschalten"));
       aus.addEventListener("click", ausschalten);
-      return zeigen(...status, el("p", {class: "aktiv"}, t("an")), aus);
+      ausZeigen(aus);
+      return zeigen(...status, el("p", {class: "aktiv"}, t("an")), satz(t("aus_wo"), "klein"));
     }
     const an = el("button", {type: "button"}, t("einschalten"));
     an.addEventListener("click", einschalten);

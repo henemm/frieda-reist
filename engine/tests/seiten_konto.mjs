@@ -22,7 +22,7 @@ await ctx.addInitScript(() => localStorage.setItem("rh-name", "Hanna"));
 await ctx.addInitScript(() => { if (window.Notification) Object.defineProperty(Notification, "permission", {get: () => "default"}); });
 const p = await ctx.newPage();
 p.on("pageerror", e => fehler.push(String(e)));
-await p.goto(basis + "#plan");
+await p.goto(basis + "#T-02");   // eine Tagesseite: Kennungen mit Rückmeldeknopf (einen Reiter „Plan“ gibt es seit #214 nicht)
 await p.waitForSelector("#konto", {timeout: 5000}).catch(() => {});
 const fuerDich = q => q.evaluate(() => { const h = document.querySelector("#fuerDich"); return {hidden: h.hidden, text: h.textContent}; });
 aus.fuerDich = await fuerDich(p);

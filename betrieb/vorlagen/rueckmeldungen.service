@@ -9,6 +9,8 @@ After=network.target
 User=__BENUTZER__
 Group=__GRUPPE__
 Environment=RM_ABLAGE=__ABLAGE__
+Environment=FR_DIENST=__DIENST__
+Environment=FR_ZEITZONE=__ZEITZONE__
 Environment=RM_SEITEN=__SEITEN__
 Environment=RM_HOST=127.0.0.1
 Environment=RM_PORT=__RM_PORT__

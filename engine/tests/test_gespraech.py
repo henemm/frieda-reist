@@ -13,6 +13,7 @@ import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from test_regeln import IDA, KARL, KIM, MAX, anfrage, umgebung  # noqa: E402,F401  (umgebung: Fixture)
 from schnittstelle_hilfe import N  # noqa: E402
+from conftest import meldet  # noqa: E402
 
 BASIS = "https://beispiel.invalid/mcp"
 
@@ -82,7 +83,7 @@ def test_entscheiden_hinweise_ersetzen_und_offene_wahlstelle(umgebung):
     assert not f and "danach offen" in t
     # Unterwegs-Wahlstelle vor der Reise
     t, f = u2.werkzeug(IDA, "entscheiden", option="V-02.b", status="gewaehlt", grund="Wolfsschlucht klingt gut")
-    assert not f and "für unterwegs" in t and "Auslöser" in t
+    assert not f and meldet(t, "konnektor.entscheidung_pruefen.15") and "Auslöser" in t
 
 
 def test_entscheiden_widerspruch_wird_offene_frage(umgebung):
@@ -149,7 +150,7 @@ def test_frage_beantworten_landet_an_der_frage(umgebung):
     assert "F-01" in u.werkzeug(IDA, "offene_fragen")[0]
     # Organisator:innen dürfen auch antworten und werden auf die Entscheidung hingewiesen
     t, f = u.werkzeug(IDA, "frage_beantworten", frage="F-01", antwort="Ich habe angerufen")
-    assert not f and "mit entscheiden entscheiden" in t
+    assert not f and meldet(t, "konnektor.frage_beantworten.6")
 
 
 def test_frage_beantworten_prueft(umgebung):
@@ -290,7 +291,7 @@ def test_einladen_vorhandene_person_bekommt_nur_einen_neuen_link(umgebung):
     # ein:e Mitwirkende:r (bei einladen: mitwirkend) kann keinen Link für ein:e Organisator:in ausstellen
     u2 = umgebung("planung", regeln={"einladen": "mitwirkend"})
     t, f = u2.werkzeug(KARL, "person_einladen", vorname="Ida")
-    assert f and "mindestens dieser Rolle" in t
+    assert f and meldet(t, "konnektor.einladen.10")
 
 
 def test_einladen_doppelter_name_nach_einladung(umgebung):
@@ -308,7 +309,7 @@ def test_einladen_zugaenge_nicht_beschreibbar(umgebung, monkeypatch):
         raise PermissionError("Dateisystem ist schreibgeschützt")
     monkeypatch.setattr(kn, "zugang_ausstellen", nicht_schreibbar)
     t, f = u.werkzeug(IDA, "person_einladen", vorname="Nora")
-    assert f and "nicht schreiben" in t and rm.einladungen_lesen(u.o) == {} and u.schreibweg == []
+    assert f and meldet(t, "konnektor.einladen.17") and rm.einladungen_lesen(u.o) == {} and u.schreibweg == []
 
 
 def test_einladung_gilt_nicht_mehr_doppelt_sobald_reise_yaml_die_person_kennt():

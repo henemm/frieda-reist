@@ -51,6 +51,7 @@ Eine Sprache, deren Datei einen Schlüssel nicht hat, fällt für diesen Text au
 - Deutsche Texte bleiben Zeichen für Zeichen, wie sie sind. Englische Texte: kurz, klar, in der Du-Form („you“), britische Schreibung.
 - Wörter, an denen die Software Inhalte der Reise erkennt (Überschriften wie „Übersicht“, „Quellen“, Fragestatus), stehen unter `inhalt.` und gelten in allen Sprachen zugleich (`texte.inhaltswoerter`), damit eine Reise in jeder Sprache erkannt wird.
 - Im Code: `t(kuerzel, schluessel, **werte)` für Texte; der Konnektor nimmt `tk()` (Sprache des Aufrufs) und `tkd()` (immer Deutsch, für Text, der in der Reise gespeichert wird). Ein Text, den eine Person liest, kommt aus dem Katalog; Text, der in die Reise geschrieben wird, in der Sprache der Reise.
+- In Tests: `meldet(ausgabe, schluessel)` und `text(schluessel)` aus `engine/tests/conftest.py` statt kopierter Sätze. `meldet` prüft die festen Teile des Katalogtexts (Platzhalter beliebig gefüllt), damit eine Umformulierung keinen Test bricht (#204).
 
 ## Verbote im Code
 
