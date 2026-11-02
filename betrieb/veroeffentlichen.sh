@@ -27,6 +27,14 @@
 # Liegt <FR_ABLAGE>/_anstoss.json, startet der Lauf den Workflow „Software nachziehen“ des Reisen-Repos (gh workflow run
 # FR_NACHZIEHEN_WORKFLOW) und schreibt das Ergebnis nach _anstoss-ergebnis.json; die Seite zeigt es. Der Workflow zieht das
 # Submodul nach, und ein späterer Lauf veröffentlicht den neuen Stand wie sonst auch.
+# Reise-Stand (Epic #223, engine/stand.py): Je Reise schreibt der Lauf ihren Zustand nach <FR_DIENST>/reise-stand/<reise>.lauf.json
+# (baut, veroeffentlicht mit Dauer seit dem Sichern, fehlgeschlagen mit Grund); api/stand und publish_status lesen ihn.
+# Zeitziel 2 Minuten vom Sichern bis zur Veröffentlichung (#230): Ein reiner Inhaltsstand (seit dem zuletzt veröffentlichten
+# Stand nur Änderungen unter reisen/) baut nur die geänderten Reisen und überspringt die Prüfungen der Software, die für
+# genau diese Software schon grün waren. Ein Software-Wechsel (alles außerhalb von reisen/, auch das Submodul) prüft weiter
+# vollständig und baut alle Reisen; nur dann laufen auch die Tests des Reisen-Repos (nach dem Bauen, sie sperren nie).
+# Startet ein Lauf, während ein anderer die Sperre hält (Schreibweg während eines Timer-Laufs), merkt er das in
+# <FR_DIENST>/veroeffentlichen-nochmal; der laufende startet danach gleich noch einmal, statt bis zum Timer zu warten.
 # Für Tests überschreibbar: VF_PRUEFEN, VF_STAND, VF_DEPLOY, VF_FREISCHALTEN, VF_AUSSTEHEND, VF_SPERRE, VF_STEMPEL, VF_HEARTBEAT,
 # VF_ROT (Rot-Datei), VF_JETZT (Uhr, Sekunden seit 1970), VF_ROTMELDEN (statt engine/waechter.py rot-melden),
 # VF_NACHZIEHEN (Befehl statt gh workflow run).
@@ -49,6 +57,60 @@ zustellen() {  # ausstehende Links neuer Reisen (nur wenn welche anstehen)
 }
 
 jetzt() { echo "${VF_JETZT:-$(date +%s)}"; }
+
+iso() { [[ "${1:-}" =~ ^[0-9]+$ ]] && date -u -d "@$1" +%Y-%m-%dT%H:%M:%SZ || true; }
+
+reise_stand_schreiben() {  # <reise> <zustand> [grund]: Zustand des Reise-Stands für api/stand und publish_status
+  # (engine/stand.py). nummer wie dort: Commits, die reisen/<reise>/ ändern; im flachen Klon keine. Dauer bei „veroeffentlicht“:
+  # Sekunden seit dem Sichern (Zeit des Schreibwegs, sonst des Commits); steht auch im Protokoll (Messung des Zeitziels).
+  local r="$1" z="$2" g="${3:-}" n c t dauer=null datei gz gn
+  [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = false ] || return 0
+  n="$(git rev-list --count HEAD -- "reisen/$r" 2>/dev/null)" || return 0
+  [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -gt 0 ] || return 0
+  c="$(git log -1 --format=%ct -- "reisen/$r" 2>/dev/null || true)"
+  datei="$FR_DIENST/reise-stand/$r.gesichert.json"
+  gn="$(sed -n 's/.*"nummer": *\([0-9]*\).*/\1/p' "$datei" 2>/dev/null || true)"
+  gz="$(sed -n 's/.*"zeit": *"\([^"]*\)".*/\1/p' "$datei" 2>/dev/null || true)"
+  if [ "$gn" = "$n" ] && [ -n "$gz" ] && gz="$(date -u -d "$gz" +%s 2>/dev/null)"; then c="$gz"; fi
+  t="$(jetzt)"
+  if [ "$z" = veroeffentlicht ] && [[ "$c" =~ ^[0-9]+$ ]]; then
+    dauer=$(( t - c )); [ "$dauer" -ge 0 ] || dauer=0
+    if [ "$dauer" -gt 120 ]; then   # Zeitziel 2 Minuten (Product Owner, E3, 2.11.2026; engine/stand.py ZIEL_SEKUNDEN)
+      echo "Warning: $r state $n published $dauer s after saving, longer than the target of 120 s."
+    else
+      echo "Published $r state $n, $dauer s after saving."
+    fi
+  fi
+  g="$(printf '%s' "$g" | tr '\000-\037' ' ' | sed "s/[\\\\\"]/'/g" | cut -c1-300)"
+  datei="$FR_DIENST/reise-stand/$r.lauf.json"
+  mkdir -p "$FR_DIENST/reise-stand"
+  printf '{"zustand": "%s", "nummer": %s, "gesichert": "%s", "seit": "%s", "dauer": %s, "grund": "%s"}\n' \
+    "$z" "$n" "$(iso "$c")" "$(iso "$t")" "$dauer" "$g" > "$datei.neu" && mv "$datei.neu" "$datei"
+}
+
+baugrund() {  # Grund eines gescheiterten Baus aus der Ausgabe von deploy.sh: die Meldungen von bauen.py („ - …“), sonst die
+  # letzte Zeile mit ERROR
+  local g
+  g="$({ grep -E '^ +- ' "$deploy_log" 2>/dev/null || true; } | sed -E 's/^ +- //' | head -3 | paste -sd '|' - | sed 's/|/; /g')" || true
+  [ -n "$g" ] || g="$({ grep -E 'ERROR' "$deploy_log" 2>/dev/null || true; } | tail -1)" || true
+  printf '%s' "$g"
+}
+
+reisen_des_laufs() {  # <alt> <neu>: Reisen, die dieser Lauf baut, eine je Zeile. Ohne bekannten alten Stand, mit --immer oder
+  # bei einem Software-Wechsel alle; sonst die, deren Ordner sich seit dem zuletzt veröffentlichten Stand geändert hat, und
+  # die zuletzt roten (sie bleiben rot gemeldet, bis ihr Bau gelingt).
+  local r
+  if [ -n "$software" ]; then
+    for r in reisen/*/reise.json; do [ -e "$r" ] && basename "$(dirname "$r")"; done
+    return 0
+  fi
+  { git diff --name-only "$1" "$2" -- reisen | cut -d/ -f2
+    [ "$rot_art" != reise ] || printf '%s\n' ${rot_reisen//,/ }
+  } | sort -u | while read -r r; do
+    if [ -n "$r" ] && [ -e "reisen/$r/reise.json" ]; then echo "$r"; fi
+  done
+  return 0
+}
 
 rot_lesen() {  # Rot-Datei in rot_commit, rot_art, rot_reisen, rot_seit, rot_gemeldet, rot_umgebung, rot_geprueft, rot_tests
   local zeile
@@ -206,7 +268,7 @@ abhaengigkeiten() {  # Umgebung der Prüfungen wie in CI (#202): Bibliotheken un
 
 # Alles steckt in main(), damit bash das Skript ganz einliest, bevor git es mit dem Submodul eventuell ersetzt.
 main() {
-  local stand deploy immer="" alt neu reise freischalten aus rc gut="" rote="" warnung grund
+  local stand deploy immer="" alt neu reise freischalten aus rc gut="" rote="" warnung grund laufreisen
   wurzel="$FR_WURZEL"
   stand="${VF_STAND:-$FR_DIENST/veroeffentlicht}"
   deploy="${VF_DEPLOY:-$FR_BETRIEB/deploy.sh}"
@@ -221,7 +283,14 @@ main() {
   # PrivateTmp, sein /tmp ist nicht das des Timers, und die Sperre griff nicht (zwei Läufe gleichzeitig, #211)
   mkdir -p "$FR_DIENST"
   exec 9>"${VF_SPERRE:-$FR_DIENST/veroeffentlichen.lock}"
-  flock -n 9 || { echo "Already running, skipped."; return 0; }
+  if ! flock -n 9; then
+    # Der laufende Lauf startet danach noch einmal (nachlauf), damit ein neuer Stand nicht bis zum Timer wartet (#230)
+    touch "$FR_DIENST/veroeffentlichen-nochmal"
+    echo "Already running, skipped; the running one publishes again afterwards."
+    return 0
+  fi
+  nochmal="$FR_DIENST/veroeffentlichen-nochmal"
+  rm -f "$nochmal"
 
   cd "$wurzel"
   anstoss_weitergeben
@@ -258,20 +327,49 @@ main() {
     fi
   fi
 
-  echo "Publishing $(git log -1 --format='%h %s')"
-  # Eigener Ordner für die Testdateien: Mit der Vorgabe (/tmp/pytest-of-<user>) räumt jeder weitere pytest-Lauf auf dem
-  # Rechner die Ordner älterer Läufe weg, auch die eines noch laufenden (roter Lauf 29.10.2026 bei gleichzeitigen Tests).
-  pruef_tmp="$(mktemp -d)"; pruef_log="$pruef_tmp.log"
-  if ! pruefen_lauf engine/tests; then
-    rm -rf "$pruef_tmp"
-    echo "ERROR: checks red (engine/tests, software), nothing published."
-    rot_schreiben "$neu" software "" "$(rote_tests)"
-    rm -f "$pruef_log"
-    alarm_pruefen
-    return 1
+  # Software-Wechsel oder reiner Inhaltsstand (#230): Software ist alles außerhalb von reisen/ (Submodul, Werkzeuge, Tests)
+  software=1
+  if [ -z "$immer" ] && [ -n "$alt" ] && git merge-base --is-ancestor "$alt" "$neu" 2>/dev/null \
+     && git diff --quiet "$alt" "$neu" -- . ':(exclude)reisen'; then
+    software=""
   fi
-  # Tests des Reisen-Repos prüfen Inhalt (Schnappschüsse der Reisen): rot sperrt nie, einmal je Commit eine Nachricht
-  if [ -d tests ] && ! pruefen_lauf tests; then
+  laufreisen="$(reisen_des_laufs "$alt" "$neu")"
+  for reise in $laufreisen; do reise_stand_schreiben "$reise" baut; done
+
+  echo "Publishing $(git log -1 --format='%h %s')${software:- (content only: $(echo $laufreisen))}"
+  pruef_tmp="$(mktemp -d)"; pruef_log="$pruef_tmp.log"
+  if [ -n "$software" ]; then
+    # Eigener Ordner für die Testdateien: Mit der Vorgabe (/tmp/pytest-of-<user>) räumt jeder weitere pytest-Lauf auf dem
+    # Rechner die Ordner älterer Läufe weg, auch die eines noch laufenden (roter Lauf 29.10.2026 bei gleichzeitigen Tests).
+    if ! pruefen_lauf engine/tests; then
+      rm -rf "$pruef_tmp"
+      echo "ERROR: checks red (engine/tests, software), nothing published."
+      rot_schreiben "$neu" software "" "$(rote_tests)"
+      rm -f "$pruef_log"
+      alarm_pruefen
+      return 1
+    fi
+  else
+    echo "Software unchanged since ${alt:0:7} (checked then), checks skipped."
+  fi
+  FR_GEPRUEFT="$(git rev-parse HEAD)"; export FR_GEPRUEFT
+  FR_WEGE_SPAETER=1; export FR_WEGE_SPAETER   # Wege zum Konnektor einmal nach dem Freischalten (wege_pruefen)
+  deploy_log="$pruef_tmp.deploy"
+  for reise in $laufreisen; do
+    rc=0; "$deploy" "$reise" 2>&1 | tee "$deploy_log" || rc=${PIPESTATUS[0]}
+    unset FR_BIBLIOTHEKEN_NEU   # Dienste mit FR_PYTHON nur beim ersten Deploy neu starten
+    case "$rc" in
+      0) gut="$gut $reise"; reise_stand_schreiben "$reise" veroeffentlicht ;;
+      2) echo "ERROR: build of $reise failed, the trip stays at its last good state."
+         reise_stand_schreiben "$reise" fehlgeschlagen "$(baugrund)"
+         rote="${rote:+$rote,}$reise" ;;
+      *) echo "ERROR: deploy of $reise failed (exit $rc), the next run tries again."; rm -rf "$pruef_tmp" "$deploy_log"; return 1 ;;
+    esac
+  done
+  rm -f "$deploy_log"
+  # Tests des Reisen-Repos prüfen Inhalt (Schnappschüsse der Reisen): rot sperrt nie, einmal je Commit eine Nachricht. Sie
+  # laufen nach dem Bauen und nur bei einem Software-Wechsel, damit sie keinen neuen Stand aufhalten (#230).
+  if [ -n "$software" ] && [ -d tests ] && ! pruefen_lauf tests; then
     echo "Warning: tests of the trips repo red (they do not block)."
     if [ "$(cat "$warnung" 2>/dev/null || true)" != "$neu" ]; then
       fr_melden normal "Tests of the trips repo red" "State ${neu:0:7}: the tests in tests/ of the trips repo are red. They do not block publishing (docs/betrieb.md, convention for tests/). Log: journalctl -u $FR_INSTANZ-veroeffentlichen -n 100"
@@ -280,20 +378,6 @@ main() {
     fi
   fi
   rm -rf "$pruef_tmp" "$pruef_log"
-  FR_GEPRUEFT="$(git rev-parse HEAD)"; export FR_GEPRUEFT
-  FR_WEGE_SPAETER=1; export FR_WEGE_SPAETER   # Wege zum Konnektor einmal nach dem Freischalten (wege_pruefen)
-  for reise in reisen/*/reise.json; do
-    [ -e "$reise" ] || continue
-    reise="$(basename "$(dirname "$reise")")"
-    rc=0; "$deploy" "$reise" || rc=$?
-    unset FR_BIBLIOTHEKEN_NEU   # Dienste mit FR_PYTHON nur beim ersten Deploy neu starten
-    case "$rc" in
-      0) gut="$gut $reise" ;;
-      2) echo "ERROR: build of $reise failed, the trip stays at its last good state."
-         rote="${rote:+$rote,}$reise" ;;
-      *) echo "ERROR: deploy of $reise failed (exit $rc), the next run tries again."; return 1 ;;
-    esac
-  done
   # Freischalten nur gelungener Reisen: neue bekommen ihren Link, alle werden geprüft (Ausgabe ohne Links, die sind geheim)
   for reise in $gut; do
     aus="$("$freischalten" "$reise" 2>&1)" || echo "Warning: $reise not released (reason in the line below)."
@@ -316,7 +400,20 @@ main() {
   erfolg_melden
 }
 
-wurzel=""; ausstehend=""; rot_datei=""; pruefen=""; pruef_tmp=""; pruef_log=""
+# Nachlauf (#230): Kam während dieses Laufs ein neuer Stand (ein zweiter Lauf fand die Sperre belegt), gleich noch einmal
+# laufen. exec ersetzt den Prozess: Die Sperre (fd 9) wird beim erneuten Öffnen frei und neu genommen.
+nachlauf() {
+  local rc=$?
+  if [ -n "$nochmal" ] && [ -e "$nochmal" ]; then
+    rm -f "$nochmal"
+    echo "A new state arrived during the run, publishing again."
+    exec "$0"
+  fi
+  exit "$rc"
+}
+
+wurzel=""; ausstehend=""; rot_datei=""; pruefen=""; pruef_tmp=""; pruef_log=""; deploy_log=""; nochmal=""; software=1
 rot_commit=""; rot_art=""; rot_reisen=""; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""
+trap nachlauf EXIT
 main "$@"
 exit

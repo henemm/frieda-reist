@@ -72,3 +72,7 @@ FR_ADRESSE=https://reisen.example.org
 # (Name der Software, de,en)
 #FR_KENNUNG=Beispiel-Reisen/1 (betrieb@example.org)
 #FR_SPRACHEN=de,en
+
+# Zeitzone, in der Konnektor und Dienste Zeiten nennen, wenn die der Person unbekannt ist (IANA-Name; die Person bringt ihre
+# eigene mit, sobald ein Gerät Benachrichtigungen eingeschaltet hat). Jede Zeit trägt die Zone. (UTC)
+#FR_ZEITZONE=Europe/Berlin

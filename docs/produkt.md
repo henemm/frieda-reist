@@ -14,7 +14,7 @@ Frieda ist die eine Quelle der Wahrheit für eine Reise, von der ersten Idee bis
 
 1. **Reisemodell.** Bausteine mit festen IDs: Tage, Strecken, Orte, Unterkünfte. Alternativen sind Teil des Modells: Wahlstellen mit Optionen auf jeder Ebene, benannte Pläne. Verworfenes wird nie gelöscht, sondern bekommt einen Verlaufseintrag. Drumherum das Wissen (Dossiers, Geschichte, Praxis, Quellen) und das Offene (Fragen, Aufgaben, Wünsche, Rückmeldungen).
 2. **Spielregeln.** Jede Aussage nennt ihre Herkunft, Annahmen sind markiert, Veränderliches trägt ein Prüfdatum. Organisator:innen entscheiden, mit Datum und Verlauf. Mitwirkende geben Eingaben. Die KI im AI-Client recherchiert, prüft, schlägt vor und trägt über den Konnektor ein, entscheidet aber nie; Frieda prüft die Regeln, baut und veröffentlicht. IDs werden nie neu vergeben.
-3. **Kreislauf.** Festlegen im Gespräch über den Konnektor, Regelprüfung und Schreiben in die Reise, Veröffentlichung in wenigen Minuten. Eingaben über Seite oder App an eine ID (Rückmeldungen) liegen im Eingang, bis eine Organisator:in sie im Gespräch einträgt und mit Kommentar abschließt.
+3. **Kreislauf.** Festlegen im Gespräch über den Konnektor, Regelprüfung und Schreiben in die Reise, Veröffentlichung in höchstens 2 Minuten, nachverfolgbar über den Reise-Stand (Epic #223: jede Schreibantwort nennt den gesicherten Stand, `veroeffentlichung_pruefen` belegt, ob er auf der Seite ist, der Fuß der Seite nennt ihn). Eingaben über Seite oder App an eine ID (Rückmeldungen) liegen im Eingang, bis eine Organisator:in sie im Gespräch einträgt und mit Kommentar abschließt.
 
 Technik (Python-Generator, HTML-Vorlage, Service Worker, nginx, systemd, Git) ist Mittel, nicht Kern.
 
