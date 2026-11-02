@@ -109,7 +109,7 @@ def test_beispiel_einstellungen_sind_vollstaendig():
     for f in BETRIEB.glob("*.sh"):
         gelesen |= set(re.findall(r"\$\{?(FR_[A-Z0-9_]+)", f.read_text(encoding="utf-8")))
     intern = {"FR_WURZEL", "FR_BETRIEB", "FR_EINSTELLUNGEN", "FR_PFAD", "FR_GRUPPE", "FR_HEARTBEAT_VEROEFFENTLICHEN",
-              "FR_GEPRUEFT", "FR_WEGE_SPAETER"}  # reicht veroeffentlichen.sh an deploy.sh weiter
+              "FR_GEPRUEFT", "FR_WEGE_SPAETER", "FR_BIBLIOTHEKEN_NEU"}  # reicht veroeffentlichen.sh an deploy.sh weiter
     assert gelesen - intern - erklaert == set()
 
 
@@ -601,6 +601,47 @@ def test_veroeffentlichen_installiert_neue_bibliotheken_vor_den_pruefungen(vf):
     r = vf["lauf"](VF_PIP=str(pip))
     assert r.returncode == 0 and pips() == ["PyYAML", "neu-bibliothek"], r.stdout + r.stderr
     assert vf["deploys"]() == ["beispielreise", "zweitreise"]
+
+
+def test_veroeffentlichen_installiert_playwright_fest_und_startet_dienste_einmal_neu(vf):
+    """Playwright kommt in fester Version aus engine/tests/playwright in eine eigene Kopie unter FR_DIENST, nur wenn sich die
+    Sperrdatei geändert hat; die Prüfungen bekommen PLAYWRIGHT_MODUL. Nach neuen Bibliotheken bekommt nur der erste
+    Deploy des Laufs FR_BIBLIOTHEKEN_NEU (Dienste mit FR_PYTHON einmal neu starten), #202."""
+    tmp, quelle, arbeit = vf["tmp"], vf["tmp"] / "quelle", vf["arbeit"]
+    npm_log = tmp / "npm.log"
+    npm = ausfuehrbar(tmp / "npm.sh", f'#!/bin/sh\necho "$PWD|$*" >> {npm_log}\n[ "$1" = ci ] && mkdir -p node_modules/playwright '
+                                      f'&& touch node_modules/playwright/index.mjs\nexit 0\n')
+    pip = ausfuehrbar(tmp / "pip.sh", "#!/bin/sh\nexit 0\n")
+    # Deploy-Attrappe, die festhält, was sie mitbekommt
+    seen = tmp / "seen.log"
+    deploy = ausfuehrbar(tmp / "deploy-seen.sh", f'#!/bin/sh\necho "$1|${{FR_BIBLIOTHEKEN_NEU:-}}" >> {seen}\nexit 0\n')
+    pruefen = ausfuehrbar(tmp / "pruefen-pw.sh", f'#!/bin/sh\necho "$1|${{PLAYWRIGHT_MODUL:-}}" >> {tmp}/pw.log\nexit 0\n')
+    (quelle / "engine/tests/playwright").mkdir(parents=True)
+    (quelle / "engine/tests/playwright/package.json").write_text('{"dependencies": {"playwright": "1.0.0"}}')
+    (quelle / "engine/tests/playwright/package-lock.json").write_text("{}")
+    (quelle / "engine/requirements.txt").write_text("PyYAML==6.0\n")
+    git(quelle, "add", ".")
+    git(quelle, "commit", "-qm", "Versionen")
+    extra = dict(VF_NPM=str(npm), VF_PIP=str(pip), VF_DEPLOY=str(deploy), VF_PRUEFEN=str(pruefen))
+    r = vf["lauf"](**extra)
+    assert r.returncode == 0, r.stdout + r.stderr
+    ziel = tmp / "dienst" / "playwright"
+    aufrufe = npm_log.read_text().splitlines()
+    assert [a.split("|")[1].split()[0] for a in aufrufe] == ["ci", "exec"] and all(a.split("|")[0] == str(ziel) for a in aufrufe), aufrufe
+    assert "playwright install chromium webkit" in aufrufe[1]
+    assert (ziel / "package-lock.json").exists() and (ziel / ".stand").exists()
+    assert all(z.endswith(f"|{ziel}/node_modules/playwright/index.mjs") for z in (tmp / "pw.log").read_text().splitlines())
+    assert seen.read_text().splitlines() == ["beispielreise|1", "zweitreise|"]
+    # Nichts geändert: keine Installation, kein Neustart-Hinweis, PLAYWRIGHT_MODUL trotzdem gesetzt
+    npm_log.unlink(); seen.unlink(); (tmp / "pw.log").unlink()
+    r = vf["lauf"]("--immer", **extra)
+    assert r.returncode == 0 and not npm_log.exists(), r.stdout + r.stderr
+    assert seen.read_text().splitlines() == ["beispielreise|", "zweitreise|"]
+    assert f"{ziel}/node_modules/playwright/index.mjs" in (tmp / "pw.log").read_text()
+    # Ohne npm: Hinweis, kein Abbruch
+    r = vf["lauf"]("--immer", **{**extra, "VF_NPM": str(tmp / "gibt-es-nicht")})
+    assert r.returncode == 0 and "npm missing" in r.stdout, r.stdout + r.stderr
+    assert git(arbeit, "status", "--porcelain").strip() == ""   # nichts im Bauordner
 
 
 def test_veroeffentlichen_merge_und_submodulfehler_werden_nicht_gemerkt(vf):

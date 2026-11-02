@@ -132,18 +132,39 @@ anstoss_weitergeben() {  # Anstoß der Seite: Workflow „Software nachziehen“
   rm -f "$datei"
 }
 
-abhaengigkeiten() {  # Bibliotheken nach engine/requirements.txt in FR_PYTHON, nur wenn sich die Liste geändert hat.
+abhaengigkeiten() {  # Umgebung der Prüfungen wie in CI (#202): Bibliotheken und Playwright in festen Versionen aus dem Repo.
   # Sonst fehlte nach einem Software-Stand mit neuer Bibliothek nur dem Server etwas, und die Prüfungen blieben rot,
-  # bis jemand von Hand installiert (rot 1.11.2026 wegen pyspellchecker). Gemerkt wird die Prüfsumme der Liste.
+  # bis jemand von Hand installiert (rot 1.11.2026 wegen pyspellchecker). Installiert wird nur, wenn sich eine Liste
+  # geändert hat (Prüfsummen in FR_DIENST).
+  # Bibliotheken: engine/requirements.txt (Versionen und Hashes, erzeugt aus requirements.in) in FR_PYTHON. Danach
+  # starten die Dienste mit FR_PYTHON einmal neu (FR_BIBLIOTHEKEN_NEU an den ersten Deploy des Laufs).
   local liste=engine/requirements.txt merk="$FR_DIENST/requirements.sha256" summe
-  [ -f "$liste" ] || return 0
-  summe="$(sha256sum "$liste" | cut -d' ' -f1)"
-  [ "$summe" = "$(cat "$merk" 2>/dev/null || true)" ] && return 0
-  echo "Installing libraries (engine/requirements.txt changed)."
-  if [ -n "${VF_PIP:-}" ]; then "$VF_PIP" -r "$liste"; else "$FR_PYTHON" -m pip install -q --disable-pip-version-check -r "$liste"; fi \
-    || return 1
-  mkdir -p "$FR_DIENST"
-  echo "$summe" > "$merk"
+  if [ -f "$liste" ]; then
+    summe="$(sha256sum "$liste" | cut -d' ' -f1)"
+    if [ "$summe" != "$(cat "$merk" 2>/dev/null || true)" ]; then
+      echo "Installing libraries (engine/requirements.txt changed)."
+      if [ -n "${VF_PIP:-}" ]; then "$VF_PIP" -r "$liste"; else "$FR_PYTHON" -m pip install -q --disable-pip-version-check -r "$liste"; fi \
+        || return 1
+      mkdir -p "$FR_DIENST"
+      echo "$summe" > "$merk"
+      FR_BIBLIOTHEKEN_NEU=1; export FR_BIBLIOTHEKEN_NEU
+    fi
+  fi
+  # Playwright: eigene Kopie in <FR_DIENST>/playwright nach engine/tests/playwright/package-lock.json, nie ein
+  # Ordner, den andere mitbenutzen. Browser ohne --with-deps (kein sudo); Systembibliotheken richtet einrichten.sh ein.
+  # Ohne npm (Instanz ohne Browsertests) bleibt alles, wie es ist.
+  local pw_quelle=engine/tests/playwright pw_ziel="$FR_DIENST/playwright" npm="${VF_NPM:-npm}"
+  [ -f "$pw_quelle/package-lock.json" ] || return 0
+  command -v "$npm" > /dev/null 2>&1 || { echo "Note: npm missing, browser tests use what playwright_pfad.py finds."; return 0; }
+  summe="$(cat "$pw_quelle/package.json" "$pw_quelle/package-lock.json" | sha256sum | cut -d' ' -f1)"
+  if [ "$summe" != "$(cat "$pw_ziel/.stand" 2>/dev/null || true)" ] || [ ! -e "$pw_ziel/node_modules/playwright/index.mjs" ]; then
+    echo "Installing Playwright (engine/tests/playwright changed)."
+    mkdir -p "$pw_ziel"
+    cp "$pw_quelle/package.json" "$pw_quelle/package-lock.json" "$pw_ziel/"
+    ( cd "$pw_ziel" && "$npm" ci --silent --no-audit --no-fund && "$npm" exec --no -- playwright install chromium webkit ) || return 1
+    echo "$summe" > "$pw_ziel/.stand"
+  fi
+  PLAYWRIGHT_MODUL="$pw_ziel/node_modules/playwright/index.mjs"; export PLAYWRIGHT_MODUL
 }
 
 # Alles steckt in main(), damit bash das Skript ganz einliest, bevor git es mit dem Submodul eventuell ersetzt.
@@ -191,7 +212,7 @@ main() {
   fi
 
   echo "Publishing $(git log -1 --format='%h %s')"
-  abhaengigkeiten || { echo "ERROR: libraries from engine/requirements.txt cannot be installed, the next run tries again."; return 1; }
+  abhaengigkeiten || { echo "ERROR: libraries or Playwright cannot be installed, the next run tries again."; return 1; }
   # Eigener Ordner für die Testdateien: Mit der Vorgabe (/tmp/pytest-of-<user>) räumt jeder weitere pytest-Lauf auf dem
   # Rechner die Ordner älterer Läufe weg, auch die eines noch laufenden (roter Lauf 29.10.2026 bei gleichzeitigen Tests).
   pruef_tmp="$(mktemp -d)"
@@ -218,6 +239,7 @@ main() {
     [ -e "$reise" ] || continue
     reise="$(basename "$(dirname "$reise")")"
     rc=0; "$deploy" "$reise" || rc=$?
+    unset FR_BIBLIOTHEKEN_NEU   # Dienste mit FR_PYTHON nur beim ersten Deploy neu starten
     case "$rc" in
       0) gut="$gut $reise" ;;
       2) echo "ERROR: build of $reise failed, the trip stays at its last good state."

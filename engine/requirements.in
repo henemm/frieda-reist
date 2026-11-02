@@ -1,0 +1,13 @@
+# Bibliotheken der Software (ohne Versionen). Die Versionen stehen in requirements.txt, erzeugt mit pip-tools (#202):
+#   pip-compile --allow-unsafe --generate-hashes --no-emit-index-url --strip-extras -o engine/requirements.txt engine/requirements.in
+# Neue Bibliothek: hier eintragen, den Befehl ausführen, beide Dateien committen. CI und jede Instanz installieren
+# dann genau diese Versionen (veroeffentlichen.sh).
+markdown
+Pillow
+pytest
+PyYAML
+ruamel.yaml
+CairoSVG
+pyspellchecker==0.9.1
+icalendar
+pywebpush

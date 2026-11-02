@@ -13,6 +13,13 @@ jobs:
   tests:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    # Zweiter Lauf mit den Einstellungen einer Instanz, wie veroeffentlichen.sh sie an pytest weitergibt (#202): Keine
+    # Prüfung darf davon abhängen (conftest.py entfernt sie). So fiel 1.11.2026 eine Fixture erst auf dem Server auf.
+    strategy:
+      fail-fast: false
+      matrix:
+        umgebung: [leer, instanz]
+    name: tests (${{ matrix.umgebung }})
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -28,20 +35,36 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y -q libcairo2 nginx-core   # nginx: Prüfung der Vorlagen (test_betrieb.py)
           pip install -r engine/requirements.txt
-      - name: Playwright und Browser
+      - name: Playwright und Browser (feste Version aus engine/tests/playwright, wie auf jeder Instanz)
         run: |
-          mkdir -p "$RUNNER_TEMP/playwright-tool"
-          cd "$RUNNER_TEMP/playwright-tool"
-          npm init -y >/dev/null
-          npm install playwright
+          cd engine/tests/playwright
+          npm ci --no-audit --no-fund
           npx playwright install --with-deps chromium webkit
           echo "PLAYWRIGHT_MODUL=$PWD/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+      - name: Einstellungen einer Instanz nachstellen
+        if: matrix.umgebung == 'instanz'
+        run: |
+          {
+            echo "FR_WURZEL=/srv/beispiel/_bau"; echo "FR_INSTANZ=beispiel"; echo "FR_TITEL=Beispiel-Reisen"
+            echo "FR_SEITEN=/srv/beispiel"; echo "FR_DIENST=/srv/beispiel/_dienst"; echo "FR_ABLAGE=/srv/beispiel/_rueckmeldungen"
+            echo "FR_KONNEKTOR=/srv/beispiel/_konnektor"; echo "FR_KONTEN=/srv/beispiel/_konten"
+            echo "FR_RM_PORT=8781"; echo "FR_KN_PORT=8782"; echo "FR_SB_PORT=8783"; echo "FR_SCHREIBKOPIE=/srv/beispiel/_bau-schreiben"
+            echo "FR_ADRESSE=https://reisen.example.org"; echo "FR_KN_ADRESSE=https://reisen.example.org"
+            echo "FR_UMZUG_NACH=https://neu.example.org"; echo "FR_SPRACHEN=de,en"; echo "FR_KENNUNG=Beispiel-Reisen/1 (betrieb@example.org)"
+            echo "FR_PYTHON=/srv/beispiel/_bau/engine/.venv/bin/python"; echo "FR_MELDEN=/srv/beispiel/_bau/betrieb/melden.sh"
+            echo "FR_SPERREN=/tmp"; echo "FR_NACHZIEHEN_WORKFLOW=software-nachziehen.yml"; echo "FR_GEPRUEFT=0000000"
+            echo "FR_WEGE_SPAETER=1"; echo "FR_BIBLIOTHEKEN_NEU=1"
+            echo "FR_BASIS=https://reisen.example.org"; echo "FR_SMTP_HOST=smtp.example.org"; echo "FR_SMTP_PORT=587"
+            echo "FR_SMTP_USER=beispiel"; echo "FR_SMTP_PASS=nicht-echt"; echo "FR_ABSENDER=reisen@example.org"; echo "FR_MELDEN_AN=betrieb@example.org"
+            echo "RM_ABLAGE=/srv/beispiel/_rueckmeldungen"; echo "KN_SEITEN=/srv/beispiel"; echo "KN_ZUGAENGE=/srv/beispiel/_konnektor/zugaenge.json"
+            echo "KN_BASIS=https://reisen.example.org"
+          } >> "$GITHUB_ENV"
       - name: Tests
         run: python -m pytest -q -rs engine/tests
         env:
           RH_BILDER: ${{ github.workspace }}/bilder
       - name: Bilder der Bausteinseite (Handy und Rechner, hell und dunkel) zur Durchsicht
-        if: always()
+        if: always() && matrix.umgebung == 'leer'
         uses: actions/upload-artifact@v7
         with:
           name: bausteine
