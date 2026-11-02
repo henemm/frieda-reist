@@ -359,10 +359,10 @@ main() {
   git submodule update --init --quiet || { echo "ERROR: the software submodule cannot be fetched."; return 1; }
   # Geänderte Einstellungen wirken im selben Lauf (#242): gemeinsam.sh hat die Datei schon vor dem Vorspulen gelesen.
   # Neustart mit denselben Argumenten und ohne die alten Werte (nur die vom Aufruf bleiben), höchstens einmal je Lauf.
-  if [ -z "${_neugestartet:-}" ] && [ "$(einstellungen_summe "$einstellungen")" != "$einstellungen_vorher" ]; then
+  if [ "${_neugestartet:-}" != "$$" ] && [ "$(einstellungen_summe "$einstellungen")" != "$einstellungen_vorher" ]; then
     echo "Settings changed by the update, restarting."
     fr_aufraeumen
-    _neugestartet=1; export _neugestartet
+    _neugestartet="$$"; export _neugestartet   # gilt nur für diesen Prozess (exec behält die PID)
     cd "$start_ordner"   # $0 und eine relative FR_EINSTELLUNGEN gelten vom Ordner des Aufrufs aus
     exec "$0" "$@"
   fi

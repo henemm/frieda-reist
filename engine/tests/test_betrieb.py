@@ -380,6 +380,19 @@ def test_veroeffentlichen_unveraenderte_einstellungen_starten_nicht_neu(vf):
     assert r.stdout.count("Publishing ") == 1 and gesehen()
 
 
+def test_veroeffentlichen_geerbte_merker_eines_aeusseren_laufs_stoeren_den_neustart_nicht(vf):
+    """#242, Störung auf dem Server: Die Tests laufen dort unter einem echten Lauf von veroeffentlichen.sh und erben dessen
+    Merker (Namen der Aufruf-Werte, Neustart). Die Merker gelten nur für den Prozess, der sie gesetzt hat (exec behält die PID)."""
+    setzen, _, gesehen, extra = einstellungen_setup(vf)
+    setzen("FR_ADRESSE=https://neu.example.invalid\n", "neu")
+    geerbt = {"_aufruf_namen": " FR_WURZEL_DER_ECHTEN_INSTANZ ", "_aufruf_pid": "1", "_neugestartet": "1"}
+    r = vf["lauf"](**geerbt, **extra)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert neustarts(r) == 1, r.stdout
+    zeilen = gesehen()
+    assert zeilen and all("https://neu.example.invalid" in z for z in zeilen), zeilen
+
+
 def test_veroeffentlichen_startet_hoechstens_einmal_neu(vf):
     """Regressionsschutz: keine Endlosschleife."""
     setzen, _, gesehen, extra = einstellungen_setup(vf)

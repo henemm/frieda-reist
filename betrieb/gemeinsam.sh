@@ -13,10 +13,13 @@
 
 # Namen der Werte, die schon beim Aufruf (systemd, Hand, Tests) in der Umgebung stehen; nur beim ersten Einlesen gebildet,
 # damit sie einen Neustart mit exec überstehen (veroeffentlichen.sh, #242). Kein FR_-Präfix: fr_aufraeumen und die
-# Einstellungsvorlage erfassen den Merker nicht.
-if [ -z "${_aufruf_namen+x}" ]; then
+# Einstellungsvorlage erfassen den Merker nicht. Der Merker gilt nur für den Prozess, der ihn gesetzt hat (exec behält die
+# PID): Ein innerer Lauf, etwa die Tests unter einem echten Lauf, erbt ihn sonst und räumt beim Neustart seine eigenen
+# Werte weg.
+if [ "${_aufruf_pid:-}" != "$$" ]; then
   _aufruf_namen=" $(compgen -e | grep -E '^(FR_|RM_ABLAGE$|KN_SEITEN$|KN_ZUGAENGE$|KN_BASIS$)' | tr '\n' ' ' || true)"
-  export _aufruf_namen
+  _aufruf_pid="$$"
+  export _aufruf_namen _aufruf_pid
 fi
 
 fr_aufraeumen() {  # Werte entfernen, die nicht vom Aufruf stammen (Datei, betrieb.env, Vorgaben, abgeleitete), vor exec
