@@ -42,6 +42,7 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `merkmal_definieren` | Organisator:innen schreiben, Mitwirkende schlagen vor | ein Merkmal einer Art anlegen oder ändern: umbenennen, Typ und Werte, veränderlich, Stufe (für die Person „nötig“, „gut zu wissen“, „zusätzlich“; Schlüssel `pflicht`, `empfohlen`, `angeboten`, beides wird angenommen; `aus` schaltet ab und wird nicht genannt), Hilfe, Frage, weitere Namen, ob der Wert nach der Buchung sichtbar bleibt (`nach_buchung`, z. B. Charakter; 31.10.2026); warnt vor einem ähnlichen vorhandenen Merkmal (`trotzdem` übergeht das). Mit `fuer: buchung` ein Merkmal der Buchungen dieser Art (#166: was erst durch das Buchen entsteht, etwa Ticketart; nur Name, Typ, Werte, Einheit, Hilfe, Frage) |
 | `wert_eintragen` | Mitwirkende, Organisator:innen | einen Wert eines Merkmals an `U-…`, `E-…` oder einer Option `V-01.a` eintragen (auch mehrere je Datum mit `gilt`); schreibt sofort in `plan/routen.yaml`, ersetzt den Wert für dieselben Tage, der alte bleibt im Verlauf; Herkunft (`quelle`) ist Pflicht, bei veränderlichen Merkmalen auch `geprueft` |
 | `reise_status_setzen`, `einstellung_setzen` | Organisator:innen | Status der Reise mit Grund und Verlauf; Bausteine, Spielregeln und Sprache der Reise (`sprache`); schreibt sofort nach `reise.yaml` (ersetzt `auftrag_geben`). `tagesseiten` ist seit #214 kein Baustein mehr (Tagesseiten hat jede Reise); in einer älteren `reise.yaml` ist der Eintrag ohne Wirkung |
+| `symbol_setzen` | Organisator:innen | App-Symbol der Reise (Seite, Homebildschirm, Konnektor) lesen, setzen, ersetzen oder entfernen (#252). Ohne Angaben: das aktuelle Symbol als SVG-Text (wenn es eines gibt) und eine Vorschau als Bild (`icon-192.png`, MCP-Inhalt `image`), damit die Claude-App es weiterentwickeln kann. Mit genau einem von `svg` (SVG als Text), `png_base64` (PNG, quadratisch, mindestens 512 Pixel) oder `entfernen` (danach gilt das Symbol aus dem Kurznamen); schreibt `medien/icon.svg` oder `medien/icon.png` über den Schreibweg, das alte Symbol bleibt im Verlauf. Siehe „Symbol“ |
 | `entscheiden` | Organisator:innen | Option wählen, verwerfen oder ersetzen: sofort geprüft und mit Datum, Person und Grund in den Plan geschrieben (Paket C; seit O-3 direkt) |
 | `tag_aendern` | Organisator:innen | Titel, Text, Nacht, Strecken, Wahlstellen und Aufenthalte ohne Nacht (`aufenthalte`) eines Tags ändern; schreibt sofort |
 | `frage_beantworten` | Mitwirkende | Antwort auf eine offene Frage (F-…); hängt an der Frage, die Entscheidung bleibt bei der Organisator:in (Paket C) |
@@ -209,6 +210,8 @@ Der `ueberblick` endet mit dem Abschnitt „Stand“: wann die Reise zuletzt ver
 
 Der Konnektor meldet beim Verbinden das Symbol der Reise (`serverInfo.icons`, dasselbe Bild wie das App-Symbol der Seite, `icon-32.png` und `icon-192.png` aus der veröffentlichten Seite, als Data-URI). So zeigt die Claude-App beim Konnektor das Symbol der Reise statt des allgemeinen der Domain. Ohne veröffentlichte Symbole entfällt das Feld. Ob und wie die App das Symbol anzeigt, entscheidet die App (Stand 26.10.2026 nicht überall gleich).
 
+Das Symbol entsteht im Gespräch (#252): Die Claude-App entwirft es und gibt es mit `symbol_setzen` (`icon_set`) an Frieda, nur Organisator:innen. Ein SVG wird vor dem Schreiben geprüft und zur Probe gezeichnet; abgelehnt werden DTD und Entitäten, Skript, Ereignisattribute (`on…`), Links (`a`), eingebettete Inhalte (`foreignObject`, `iframe` …), Verweise nach außen (`href`, `url(…)`, `@import`, erlaubt sind nur `#id` und eingebettete PNG- oder JPEG-Bilder) und Formen, die nicht quadratisch sind. Ein PNG muss quadratisch sein und mindestens 512 Pixel haben. Beides höchstens 40 KB, damit die Anfrage mit Base64 unter den 64 KB von Konnektor, Schreibweg und nginx bleibt. Es gibt immer nur eines: `medien/icon.svg` geht vor `medien/icon.png`, der Schreibweg entfernt das jeweils andere. Der Generator rechnet daraus `icon-32`, `-180`, `-192` und `-512.png` (Durchsichtiges auf Weiß) und legt die Quelle als `symbol.svg` oder `symbol.png` neben die Seite (nicht vorab gespeichert); ein SVG nur, wenn es dieselbe Prüfung besteht. Von dort liest `symbol_setzen` ohne Angaben.
+
 ## Sicherheit
 
 - Wer einen Link kennt, kann die Reise lesen und Rückmeldungen schicken. Das ist dasselbe Prinzip wie bei der Webseite. Ein Mitwirkenden-Link kann nicht entscheiden und keine Arten, Status oder Einstellungen setzen. Der Link gehört zu einer Person: Wer ihn weitergibt, gibt ihre Rolle weiter.
@@ -272,6 +275,7 @@ Der Konnektor meldet beim Verbinden das Symbol der Reise (`serverInfo.icons`, da
 | `trip_update` | `reise_aendern` |
 | `trip_status_set` | `reise_status_setzen` |
 | `setting_set` | `einstellung_setzen` |
+| `icon_set` | `symbol_setzen` |
 | `my_trips` | `meine_reisen` |
 | `trip_create` | `reise_anlegen` |
 | `trip_create_request` | `reisen_anlegen_anfragen` |

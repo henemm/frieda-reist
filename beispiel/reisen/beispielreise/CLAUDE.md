@@ -27,4 +27,4 @@ Offen bleibt der letzte Tag (V-01, F-01). Karl favorisiert Plan B; entschieden i
 - `plan/routen.yaml` – Tage, Strecken, Unterkünfte, Wahlstellen, Pläne P-A und P-B
 - `plan/karte.yaml`, `plan/punkte.yaml` – schematische Karte und Punkte je Etappe
 - `inhalt/` – Etappen, Unterkünfte, Wissen, Orte
-- `medien/gpx/` – von Hand gesetzte, schematische Tracks; `medien/skizze-felsen.png` und `medien/icon.svg` sind eigene Zeichnungen
+- `medien/gpx/` – von Hand gesetzte, schematische Tracks; `medien/skizze-felsen.png` und `medien/icon.svg` sind eigene Zeichnungen (das App-Symbol setzt die Claude-App mit `icon_set`, als SVG oder PNG)
