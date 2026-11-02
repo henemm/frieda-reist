@@ -1,7 +1,7 @@
 ============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- /home/hem/frieda-reist/.claude/worktrees/plan-startseite/engine/.venv/bin/python
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- ./engine/.venv/bin/python
 cachedir: .pytest_cache
-rootdir: /home/hem/frieda-reist/.claude/worktrees/plan-startseite
+rootdir: .
 collecting ... collected 25 items
 
 engine/tests/test_eine_seitenordnung.py::test_ohne_plaene_zeitachse_eine_spalte_ein_link FAILED [  4%]

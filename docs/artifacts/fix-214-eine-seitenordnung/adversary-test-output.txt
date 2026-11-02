@@ -1,6 +1,26 @@
-........................................................................ [ 37%]
-........................................................................ [ 74%]
-.................................................                        [100%]
-193 passed in 264.32s (0:04:24)
-...........                                                              [100%]
-11 passed, 13 deselected in 91.39s (0:01:31)
+# Adversary-Lauf Runde 3/4 (fix-214-eine-seitenordnung), 2026-11-02
+
+## Lauf 1: gezielt
+$ engine/.venv/bin/python -m pytest -q engine/tests/test_tagesplan.py engine/tests/test_eine_seitenordnung.py engine/tests/test_seite.py -k "zeitachse or wahl_mit_an or neue_reise"
+..................                                                       [100%]
+18 passed, 39 deselected in 94.26s (0:01:34)
+
+## Lauf 2: volle Dateien test_tagesplan, test_eine_seitenordnung, test_seite, test_tagesseite, test_schreiben, test_texte
+........................................................................ [ 32%]
+........................................................................ [ 64%]
+........................................................................ [ 96%]
+.......                                                                  [100%]
+223 passed in 472.39s (0:07:52)
+(0 failed, 0 übersprungen)
+
+## Gegenproben (nur in Kopie im Scratchpad, Worktree unberührt)
+G1: alte Zeile "const zuletzt = TIEFE && !PLAN_FEST ? mit.find(...)" in ansichtTag wiederhergestellt:
+    test_tagesseite_zaehlt_wie_die_zeitachse_bei_offenen_plaenen[True] FAILED
+    (T-03: kopf 'Tag 4 · So 16.5.' statt Zeitachse 'Tag 3 · Sa 15.5.'); [False] passed. 1 failed, 1 passed.
+G2: Kopie mit "for (const x of w.an_ids || [])" -> "of []" in heimat():
+    test_wahl_mit_an_steht_am_element[plaene_offen-*] 4 passed (kein Fehlschlag: Rückfall auf den Tag der Möglichkeiten, F006).
+G3: Kopie, wahlAn() liefert nichts (filter w => false && ...):
+    test_wahl_mit_an_steht_am_element[plaene_offen-O-03 / E-02 / U-01 / W-05] 4 FAILED.
+G4: Kopie, seiten_tagesplan.mjs um die Tage aus R.weitere_tage erweitert (Plan P-X zuletzt offen, tiefe False und True):
+    T-04, T-07, T-06 ohne Fehler (fehler == []); T-04 'Tag 5 · Mo 17.5.', T-07 'Tag 3 · Sa 15.5.' (Nummern aus P-X),
+    T-06 ohne Kopfzeile und ohne Blätterlinks. T-07 verlinkt "Tag 4 →" auf T-03, das auf der Zeitachse 'Tag 3' heißt.
