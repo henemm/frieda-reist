@@ -193,7 +193,8 @@ def test_genau_einmal_vollstaendig(tmp_path, fall):
         wo = [a["schluessel"] for a in ans for _ in range(a["vergleiche"].get(w["id"], 0))]
         assert len(wo) == 1, (fall, w["id"], wo)
     # Der Link zu einem Ding führt an seine Heimat: dort steht es vollständig
-    for ding, z in e["sprung"].items():
+    for ding in VOLL:   # (sprung enthält auch O-03 und Extras; deren Heimat ist kein Tag)
+        z = e["sprung"][ding]
         assert z["voll"] and z["tagseite"], (fall, ding, z)
 
 

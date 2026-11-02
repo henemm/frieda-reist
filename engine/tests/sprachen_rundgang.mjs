@@ -30,7 +30,7 @@ const B = await neu();
 await B.p.click(`#sprachen button[data-sprache="${sprache}"]`);
 await B.p.waitForTimeout(300);
 const routen = await A.p.evaluate(() => {
-  const r = new Set(["", "plan", "varianten", "offen", "wissen", "etappen", "wuensche", "orte", "praxis", "quellen", "fragen", "aufgaben", "rueckmeldungen"]);
+  const r = new Set(["", "plan", "varianten", "plaene", "offen", "wissen", "etappen", "wuensche", "orte", "praxis", "quellen", "fragen", "aufgaben", "rueckmeldungen"]);
   for (const a of abschnitte) { r.add(a.id); for (const x of a.bloecke) r.add(x.id); }
   if (R) {
     R.tage.forEach(t => r.add(t.id)); Object.keys(R.weitere_tage).forEach(t => r.add(t)); Object.keys(R.unterkuenfte).forEach(u => r.add(u));
@@ -82,6 +82,9 @@ const stale = {}, marke = {};
 for (const h of routen) {
   for (const x of [A, B]) { await x.p.evaluate(h => { location.hash = h; }, h); }
   await A.p.waitForTimeout(12);
+  // „Weiterlesen“ am Weg der Tagesseite entscheidet nach dem nächsten Bild (requestAnimationFrame): erst danach vergleichen
+  // (seit #214 führen Etappen, Unterkünfte und Wahlen auf die Tagesseite)
+  for (const x of [A, B]) await x.p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
   const [a, bb] = [await A.p.evaluate(ansicht), await B.p.evaluate(ansicht)];
   if (a !== bb) {
     let i = 0;
