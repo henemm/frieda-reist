@@ -113,3 +113,17 @@ def test_tagesseite_zaehlt_im_gewaehlten_plan(tmp_path, zuerst, tiefe):
     if tiefe:
         assert e["ort"]["chips"] and all(c.startswith("Plan A:") for c in e["ort"]["chips"]), e["ort"]
         assert e["ort"]["zurueck"] == "#P-A", e["ort"]
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+def test_tiefe_nur_noch_plan_baum(tmp_path):
+    """#214, Entscheidung 3 (K11): darstellung.tiefe steuert nur noch den Plan-Baum im Reiter „Pläne“. Die Startseite ist die
+    Zeitachse, die Tage haben Tagesseiten, der Plan P-A öffnet weiter seinen Baum unter „Pläne“."""
+    from test_eine_seitenordnung import rundgang
+    e, d = rundgang(tmp_path, "tiefe", extra=["P-A"])
+    assert e["start"]["achse"] and e["start"]["tageskaesten"] == 0, e["start"]
+    assert "plan" not in e["reiter"], e["reiter"]
+    seiten = {t: v["tagseite"] for t, v in e["tagesseiten"].items()}
+    assert all(seiten.values()), seiten
+    p = e["sprung"]["P-A"]
+    assert p["ziel"] and p["reiter"] == "varianten" and not p["tagseite"], p
