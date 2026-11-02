@@ -318,7 +318,7 @@ def test_konto_meine_reisen_und_reise_anlegen(dienst, seiten, capsys, monkeypatc
     (o / "auftraege.jsonl").write_text(json.dumps(a, ensure_ascii=False) + "\n")
     assert not (ablage / "beispielreise" / "auftraege.jsonl").exists()
     rm.liste(rm.NEU, False)
-    assert "NEUE REISE von Ida" in capsys.readouterr().out
+    assert "NEW TRIP by Ida" in capsys.readouterr().out
     t, _ = werkzeug(basis, KONTO, "meine_reisen")
     assert "Angefragte neue Reisen:\n- Winterwoche im Allgäu" in t and "wird angelegt" in t
     # Nach dem Anlegen: Meldung mit den Links (schreibt der Betrieb), der Auftrag ist übernommen
@@ -1007,7 +1007,7 @@ def test_buchung_zeigt_zahlstand_und_merkmale(schreibweg):
     schema = next(x for x in rpc(basis, KARL, "tools/list")["tools"] if x["name"] == "buchung_anlegen")["inputSchema"]["properties"]
     assert {"open", "paid", "on_site", "included"} <= set(schema["payment"]["enum"]) and "attributes" in schema
     md = next(x for x in rpc(basis, ALT_ORGANISATOR, "tools/list")["tools"] if x["name"] == "merkmal_definieren")["inputSchema"]["properties"]
-    assert md["for"]["enum"] == ["item", "booking"]
+    assert md["for"]["enum"] == ["thing", "booking"]
     Schreibweg.antwort = (200, {"ok": True, "text": "Buchung B-02 (E-20 …): Zahlung „bezahlt“ → „erstattet“."})
     t, f = werkzeug(basis, KARL, "buchung_aendern", ziel="B-02", zahlung="refunded", merkmale={"wagen": "Wagen 5"})
     assert not f and Schreibweg.anfragen[-1][2]["args"]["zahlung"] == "refunded" and Schreibweg.anfragen[-1][2]["args"]["merkmale"] == {"wagen": "Wagen 5"}
@@ -1218,5 +1218,5 @@ def test_ontologie_text_im_rueckfall_englisch(monkeypatch):
     sind im englischen Rückfall englisch (kein deutsches Wort für eine Person ohne Deutsch)."""
     monkeypatch.setattr(kn.texte, "VORGABE_REISE", "en")
     t = kn.ontologie_text("kategorie_definieren", {"kategorie": "aussicht", "bezeichnung": "Viewpoint", "farbe": "blau", "symbol": "bahn", "stufe": "pflicht"})
-    assert "colour: blue" in t and "symbol: train" in t and "label: Viewpoint" in t and "level: required" in t, t
+    assert "colour: blue" in t and "symbol: train" in t and "label: Viewpoint" in t and "level: needed (required)" in t, t
     assert "farbe" not in t and "bezeichnung" not in t and "blau" not in t

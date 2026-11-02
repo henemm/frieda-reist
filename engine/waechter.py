@@ -353,7 +353,7 @@ def lauf_reise(reise, heute=None, trocken=False):
     d, o = veroeffentlicht(reise), rm.ordner(reise)
     ergebnis = {"aktiv": False, "grund": "", "meldungen": [], "zu_pruefen": [], "bericht": "", "nachricht": False}
     if d is None or o is None:
-        ergebnis["grund"] = "Reise ist nicht veröffentlicht oder nimmt keine Eingaben an."
+        ergebnis["grund"] = "Trip is not published or accepts no input."
         return ergebnis
     ok, grund = aktiv(d)
     ergebnis["grund"] = grund
@@ -401,21 +401,21 @@ def alle_reisen():
 def zeige(reise, heute):
     d = veroeffentlicht(reise)
     if d is None:
-        print(f"{reise}: nicht veröffentlicht.")
+        print(f"{reise}: not published.")
         return
     ok, grund = aktiv(d)
-    print(f"{reise}: " + ("Wächter aktiv" if ok else grund))
+    print(f"{reise}: " + ("watcher active" if ok else grund))
     if not ok:
         return
     items = zu_pruefen(d, heute, regel(d, "waechter_frist_tage"))
-    print(f"Zu prüfen ({len(items)}, Frist {regel(d, 'waechter_frist_tage')} Tage):")
+    print(f"To check ({len(items)}, deadline {regel(d, 'waechter_frist_tage')} days):")
     for t in items:
         print(f"  {t['bezug']} {t['name']}: {t['wert']} – {t['grund']}")
     o = rm.ordner(reise)
     vorlauf = regel(d, "erinnerung_vorlauf_tage")
     for m in (erinnerungen(d, rm.aufgaben(o) if o else [], heute, vorlauf) + buchungsfristen(d, heute, vorlauf)
               + zahlungen_offen(d, heute, vorlauf) + statuswechsel(d, heute)):
-        print(f"  Meldung an {', '.join(m['an']) or '–'}: {m['text']}")
+        print(f"  Message to {', '.join(m['an']) or '–'}: {m['text']}")
 
 
 def lauf(reisen, heute, bericht):
@@ -425,7 +425,7 @@ def lauf(reisen, heute, bericht):
         if not r["aktiv"]:
             print(f"{reise}: {r['grund']}")
             continue
-        print(f"{reise}: {len(r['meldungen'])} neue Meldung(en), {len(r['zu_pruefen'])} Angabe(n) zu prüfen")
+        print(f"{reise}: {len(r['meldungen'])} new message(s), {len(r['zu_pruefen'])} value(s) to check")
         if r["bericht"] and r["nachricht"]:
             berichte.append(r["bericht"])
     if bericht and berichte:
@@ -439,13 +439,13 @@ def main(a):
         try:
             heute = datetime.date.fromisoformat(a[i + 1])
         except (IndexError, ValueError):
-            sys.exit("--heute braucht ein Datum JJJJ-MM-TT.")
+            sys.exit("--heute needs a date YYYY-MM-DD.")
         a = a[:i] + a[i + 2:]
     bericht = None
     if "--bericht" in a:
         i = a.index("--bericht")
         if i + 1 >= len(a):
-            sys.exit("--bericht braucht eine Datei.")
+            sys.exit("--bericht needs a file.")
         bericht = a[i + 1]
         a = a[:i] + a[i + 2:]
     if a[:1] == ["rot-melden"]:
@@ -454,18 +454,29 @@ def main(a):
             seit = a[a.index("--seit") + 1]
             datetime.datetime.strptime(seit, "%Y-%m-%dT%H:%M:%SZ")
         except (ValueError, IndexError):
-            sys.exit("rot-melden braucht --reisen <a,b> und --seit JJJJ-MM-TTTHH:MM:SSZ.")
+            sys.exit("rot-melden needs --reisen <a,b> and --seit YYYY-MM-DDTHH:MM:SSZ.")
         for m in rot_melden(reisen, seit):
-            print(f"Meldung an {', '.join(m['an'])}: {m['schluessel']}")
+            print(f"Message to {', '.join(m['an'])}: {m['schluessel']}")
         return 0
     if a[:1] == ["zeige"] and len(a) == 2:
         zeige(a[1], heute or datetime.date.today())
     elif a[:1] == ["lauf"]:
         lauf(a[1:], heute, bericht)
     else:
-        print(__doc__)
+        print(AUFRUF)
         return 1
     return 0
+
+
+AUFRUF = """Usage:
+  python3 engine/waechter.py zeige <trip> [--heute YYYY-MM-DD]          show what would be due, change nothing
+  python3 engine/waechter.py lauf [<trip>...] [--heute YYYY-MM-DD] [--bericht FILE]
+        create messages (without a trip: all trips in the store); --bericht writes the collective message for
+        the operator to FILE if there is something to report and a trip has the channel nachricht
+  python3 engine/waechter.py rot-melden --reisen <a,b> --seit YYYY-MM-DDTHH:MM:SSZ
+        message to the organisers of every trip that cannot be published since that time
+        (betrieb/veroeffentlichen.sh, issue #142); once per trip and time
+Environment: RM_ABLAGE, RM_SEITEN or KN_SEITEN (default from engine/instanz.py)"""
 
 
 if __name__ == "__main__":

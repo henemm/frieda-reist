@@ -35,9 +35,9 @@ except ImportError:
     venv_python = WURZEL / "engine" / ".venv" / "bin" / "python"
     if venv_python.exists() and Path(sys.prefix).resolve() != (WURZEL / "engine" / ".venv").resolve():
         os.execv(str(venv_python), [str(venv_python), *sys.argv])
-    sys.exit("Es fehlen Programmteile. Einmalig einrichten:\n"
+    sys.exit("Parts of the software are missing. Set up once:\n"
              "  python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt\n"
-             "Danach läuft:  python3 engine/bauen.py <reise>")
+             "Then run:  python3 engine/bauen.py <reise>")
 from reise import Reise  # noqa: E402
 from routen import FARBEN, Routen, verhalten_anwenden  # noqa: E402
 import gpx  # noqa: E402
@@ -812,7 +812,7 @@ class Bauer:
                 aus[bid] = zeigen
                 bloecke[bid]["html"] = punkte_verlinken(bloecke[bid]["html"], bid, zeigen)
         if ohne:
-            self.hinweise.append(texte.satz("pruefung.bauen.53", rel=rel, w1=len(ohne), w2=texte.Satz.verbinden(ohne)))
+            self.hinweise.append(texte.satz("pruefung.bauen.53", rel=rel, n=len(ohne), w2=texte.Satz.verbinden(ohne)))
         if not aus:
             return None
         return {"grundkarten": karten, "punkte": aus,
@@ -1324,29 +1324,29 @@ def bauen(reise_dir, ziel_dir, umzug=None):
     daten = b.daten()
     b.schreiben(daten)
     for h in b.hinweise:
-        print("Hinweis:", h)
+        print("Note:", h)
     return daten
 
 
 def main(argv):
     import argparse
-    ap = argparse.ArgumentParser(prog="engine/bauen.py", description="Baut die Seite einer Reise.")
-    ap.add_argument("reise", help="Ordnername der Reise, z. B. beispielreise")
-    ap.add_argument("--reisen", type=Path, default=Path.cwd() / "reisen", help="Ordner mit den Reisen (Vorgabe ./reisen)")
-    ap.add_argument("--ziel", type=Path, default=Path.cwd() / "dist", help="Ausgabeordner (Vorgabe ./dist)")
-    ap.add_argument("--umzug-nach", default=None, help="Neue Adresse der Seiten (z. B. https://frieda.example): Der Service Worker "
-                    "räumt auf und leitet geöffnete Seiten dorthin (Vorgabe: Umgebung FR_UMZUG_NACH)")
+    ap = argparse.ArgumentParser(prog="engine/bauen.py", description="Builds the page of a trip.")
+    ap.add_argument("reise", help="folder name of the trip, e.g. beispielreise")
+    ap.add_argument("--reisen", type=Path, default=Path.cwd() / "reisen", help="folder with the trips (default ./reisen)")
+    ap.add_argument("--ziel", type=Path, default=Path.cwd() / "dist", help="output folder (default ./dist)")
+    ap.add_argument("--umzug-nach", default=None, help="new address of the pages (e.g. https://frieda.example): the service worker "
+                    "cleans up and sends open pages there (default: environment FR_UMZUG_NACH)")
     a = ap.parse_args(argv[1:])
     reise = a.reise
     try:
         daten = bauen(a.reisen / reise, a.ziel / reise, a.umzug_nach)
     except BauFehler as e:
-        print("Die Seite wurde NICHT gebaut. Das muss zuerst behoben werden:")
+        print("The page was NOT built. This has to be fixed first:")
         for m in e.meldungen:
             print(" -", m)
         return 1
     n_e = sum(1 for a in daten["abschnitte"] if a["typ"] == "etappe")
-    print(f"Fertig: {a.ziel / reise / 'index.html'} ({len(daten['abschnitte'])} Abschnitte, {n_e} Etappen)")
+    print(f"Done: {a.ziel / reise / 'index.html'} ({len(daten['abschnitte'])} sections, {n_e} stages)")
     return 0
 
 

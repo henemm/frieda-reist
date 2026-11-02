@@ -239,7 +239,7 @@ def test_brett_in_der_claude_app(umgebung):
     assert f and "R-…" in t
     t, _ = u.werkzeug(KIM, "wuensche")
     assert "### Eingeplant (1)" in t and f"{rid} · Karl · 4 Punkte: Einmal Kirnitzschtalbahn fahren" in t
-    assert "Eingeplant von Ida" in t and "T-03 " in t and "- Karl: 1 Wünsche, 1 eingeplant, 0 erlebt, 6 von 10 Punkten frei" in t
+    assert "Eingeplant von Ida" in t and "T-03 " in t and "- Karl: 1 Wunsch, 1 eingeplant, 0 erlebt, 6 von 10 Punkten frei" in t
     t, _ = u.werkzeug(KARL, "ueberblick")
     assert "## Wünsche: 1 (eingeplant 1) (Werkzeug wuensche)" in t
 
@@ -260,4 +260,4 @@ def test_liste_zeigt_punkte(umgebung, capsys):
     capsys.readouterr()
     rm.liste("beispielreise", False)
     t = capsys.readouterr().out
-    assert "WUNSCH (7 Punkte von Karl)" in t and "plan/wuensche.yaml" in t and "einplanen nur Organisator:innen" in t
+    assert "WISH (7 points from Karl)" in t and "plan/wuensche.yaml" in t and "only organisers schedule it" in t

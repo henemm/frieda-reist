@@ -116,7 +116,7 @@ def abfragen(ids):
         except urllib.error.HTTPError as e:
             if e.code not in (429, 502, 503, 504) or versuch == 3:
                 raise
-            print(f"Overpass {e.code}, neuer Versuch in {30 * (versuch + 1)} s …", file=sys.stderr)
+            print(f"Overpass {e.code}, retrying in {30 * (versuch + 1)} s …", file=sys.stderr)
             time.sleep(30 * (versuch + 1))
 
 
@@ -147,8 +147,8 @@ def main(reise):
     alle = [p for ps in strecken.values() for p in ps]
     ids = osm_ids(alle)
     if not ids:
-        sys.exit("Keine OSM-Wasserpunkte in punkte.yaml.")
-    print(f"Frage {sum(map(len, ids.values()))} Wasserpunkte bei OpenStreetMap ab …", file=sys.stderr)
+        sys.exit("No OSM water points in punkte.yaml.")
+    print(f"Querying OpenStreetMap for {sum(map(len, ids.values()))} water points …", file=sys.stderr)
     antwort = abfragen(ids)
     osm = {f"{e['type']}/{e['id']}": e for e in antwort["elements"]}
     heute = datetime.date.today()
@@ -173,10 +173,10 @@ def main(reise):
     ziel = rd / "inhalt/recherche/wasserstellen-osm.md"
     ziel.write_text(text, encoding="utf-8")
     print(f"{ziel.relative_to(WURZEL)}: " + ", ".join(f"{sum(1 for x in zeilen if x['stufe'] == s)} {s}" for s in STUFEN)
-          + (f", {len(weg)} nicht mehr in OSM" if weg else ""))
+          + (f", {len(weg)} no longer in OSM" if weg else ""))
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        sys.exit("Aufruf: engine/.venv/bin/python frieda/werkzeuge/wasser_pruefen.py <reise>")
+        sys.exit("Usage: engine/.venv/bin/python frieda/werkzeuge/wasser_pruefen.py <trip>")
     main(sys.argv[1])

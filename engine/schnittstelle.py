@@ -119,7 +119,7 @@ def _werte_aus_dem_katalog():
 
 
 # Weitere Schreibweisen, die als Eingabe gelten (nur Eingabe; Datenwerte bleiben deutsch). Der Katalog liefert die Hauptform.
-ENUM_ALIAS = {**_werte_aus_dem_katalog(), "organizer": "organisator", "gray": "grau", "canceled": "storniert", "favored": "favorisiert"}
+ENUM_ALIAS = {**_werte_aus_dem_katalog(), "item": "ding", "organizer": "organisator", "gray": "grau", "canceled": "storniert", "favored": "favorisiert"}
 # Datenwert -> englisches Wort, wie tools/list es als Wert anbietet (die Hauptform: die, die der Katalog nennt)
 WERT_ENGLISCH = {d: e for e, d in _werte_aus_dem_katalog().items()}
 texte.rand_woerter({i: e for i, e in PARAMETER.items() if i != e})

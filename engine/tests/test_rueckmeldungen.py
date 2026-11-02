@@ -132,10 +132,10 @@ def test_kommandozeile(dienst, capsys):
     _, e = post(basis)
     assert rm.main(["liste", "beispielreise"]) == 0
     aus = capsys.readouterr().out
-    assert e["id"] in aus and "Wir landen erst 21 Uhr." in aus and "1 Rückmeldung(en)" in aus
+    assert e["id"] in aus and "Wir landen erst 21 Uhr." in aus and "1 feedback item(s)" in aus
     rm.main(["setze", "beispielreise", e["id"], "rueckfrage", "Welche", "Uhrzeit?"])
     rm.main(["liste", "beispielreise"])
-    assert "Keine neuen Rückmeldungen" in capsys.readouterr().out
+    assert "No new feedback" in capsys.readouterr().out
     rm.main(["liste", "beispielreise", "--alle"])
     assert "→ Welche Uhrzeit?" in capsys.readouterr().out
     with pytest.raises(SystemExit):

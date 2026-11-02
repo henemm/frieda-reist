@@ -1307,7 +1307,7 @@ def ding_aendern(reise_dir, wer, args, heute=None):
             v = (text_wert(args, "art", pflicht=True, laenge=40) or "").lower()
             g = "aufenthalt" if was in ("unterkunft", "aufenthalt") else "bewegung"
             if v not in arten or arten[v].get("grundform") != g:
-                raise Ablehnung("schreiben.ding_aendern.5", w1=g.capitalize(), w2=', '.join(k for k, a in arten.items() if a.get('grundform') == g) or 'keine')
+                raise Ablehnung("schreiben.ding_aendern.5", w1=S("schreiben.grundform_art." + g), w2=', '.join(k for k, a in arten.items() if a.get('grundform') == g) or 'keine')
         elif feld == "buchungslink":
             v = text_wert(args, feld, laenge=600) or ""
             if v and not v.startswith(("http://", "https://")):
@@ -3076,7 +3076,7 @@ def arten_uebernehmen(reise_dir, wer, args, heute=None):
     arten_speichern(reise_dir, eigene, wer)
     grund = text_wert(args, "grund")
     return S("schreiben.titel.arten_uebernommen", w1=von, w2=", ".join(gewuenscht)), (S("schreiben.antwort.uebernommen", w1=von)
-            + verbinden([S("schreiben.antwort.uebernommen_art", w1=a, w2=fremd[a].get("name", a), w3=len(fremd[a].get("merkmale") or {})) for a in gewuenscht]) + "."
+            + verbinden([S("schreiben.antwort.uebernommen_art", w1=a, w2=fremd[a].get("name", a), n=len(fremd[a].get("merkmale") or {})) for a in gewuenscht]) + "."
             + (S("schreiben.antwort.grund", w1=grund) if grund else ""))
 
 

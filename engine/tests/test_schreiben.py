@@ -1672,7 +1672,7 @@ def test_merkmal_zusammenfuehren_und_arten_uebernehmen(repo, tmp_path):
     with pytest.raises(sb.Ablehnung, match="gibt es hier schon"):
         s.schreiben("beispielreise", "arten_uebernehmen", {**IDA, "args": {"von_reise": "zweite-2027", "arten": ["hotel"]}})
     a = s.schreiben("beispielreise", "arten_uebernehmen", {**IDA, "args": {"von_reise": "zweite-2027", "grund": "wie beim letzten Mal"}})
-    assert "ryokan „Ryokan“ (1 Merkmale)" in a["text"]
+    assert "ryokan „Ryokan“ (1 Merkmal)" in a["text"]
     arten = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/plan/arten.yaml"], check=True, capture_output=True, text=True).stdout)["arten"]
     assert arten["ryokan"]["merkmale"]["onsen"]["werte"] == ["ja", "nein"] and arten["hotel"]["merkmale"]["preis"]["rolle"] == "kosten"
 
