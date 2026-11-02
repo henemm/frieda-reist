@@ -1171,6 +1171,14 @@ def test_keine_namenskollision_der_schnittstelle():
         assert len(set(tab.values())) == len(tab), werkzeug_intern    # kein englischer Name doppelt
 
 
+def test_jedes_werkzeug_hat_einen_englischen_namen():
+    """Jedes Werkzeug, das der Konnektor definiert, heißt nach außen englisch (ADR-0006, Punkt 4)."""
+    import schnittstelle as s
+    namen = {w["name"] for w in vars(kn).values() if isinstance(w, dict) and "inputSchema" in w and isinstance(w.get("name"), str)}
+    assert len(namen) > 40
+    assert sorted(n for n in namen if n not in s.INTERN_ZU_ENGLISCH) == []
+
+
 # ---------- Sprache der Reise im Konnektor (ADR-0006, M10) ----------
 
 @pytest.fixture(scope="module")
