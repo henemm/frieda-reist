@@ -38,7 +38,7 @@ import texte  # noqa: E402
 from reise import (PFAD_MUSTER, ROLLEN, reise_pfad, rolle_neu, schluessel_aus_name, sprache_pruefen, sprache_von,  # noqa: E402
                    zeitraum_text)
 
-VORLAGEN = Path(__file__).with_name("reisevorlage")   # je Sprache ein Ordner (de, en …); fehlt er, gilt die Vorgabe der Personen (ADR-0006, Punkt 9)
+VORLAGEN = Path(__file__).with_name("reisevorlage")   # je Sprache ein Ordner (de, en …); fehlt er, gilt der englische (texte.VORGABE, ADR-0006, Punkt 9)
 
 
 def vorlage_ordner(sprache):
