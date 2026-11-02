@@ -828,7 +828,8 @@ body::after{content:"";position:fixed;z-index:9;left:0;right:0;bottom:calc(0px -
     background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg) 70%,transparent))}
 main{padding-bottom:calc(var(--tabbar-space) + 16px)}
 /* ---------- Fuß: Release der Software (Product Owner 1.11.2026), auf jeder Seite, unauffällig unter dem Inhalt ----------
-   „Frieda Release 412 · 9b4a397“, die Kennung führt zum Quellcode dieses Stands, „Auf Neueres prüfen“ fragt den Server und
+   Vorn der Reise-Stand (Epic #223): „Reise-Stand 42 · veröffentlicht 02.11., 09:47 · “; ein Tipp auf die Nummer zeigt die
+   letzten Änderungen (reiseStandFuss). Dann „Frieda Release 412 · 9b4a397“, die Kennung führt zum Quellcode dieses Stands, „Auf Neueres prüfen“ fragt den Server und
    main und bietet „Jetzt aktualisieren“ oder (Organisator:innen) „Veröffentlichen anstoßen“ an (releaseFuss). Darunter die
    Zeile Benachrichtigungen (pushFuss, angemeldet). Der Fuß rückt in den Freiraum über der Leiste; ohne Zeile bleibt er verborgen. */
 .fuss{max-width:var(--breite);margin:calc(0px - var(--tabbar-space)) auto 0;padding:0 16px calc(var(--tabbar-space) + 16px);
@@ -838,6 +839,11 @@ main{padding-bottom:calc(var(--tabbar-space) + 16px)}
 .fuss button{display:inline-flex;align-items:center;min-height:44px;margin:0;padding:0 4px;border:0;background:none;color:var(--acc);font:inherit;
   text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .fuss .fuss-stand{display:block}
+/* Reise-Stand (Epic #223): die Nummer ist ein Knopf, er klappt die letzten Änderungen auf (Liste ohne Punkte, je Änderung
+   Nummer, Zeit, Person, was; leise, linksbündig auf Lesebreite) */
+.fuss .fuss-aenderungen{list-style:none;margin:4px auto 8px;padding:0;max-width:var(--lese);text-align:start}
+.fuss .fuss-aenderungen li{padding:4px 0;border-top:1px solid var(--line)}
+.fuss .fuss-aenderungen .wann{color:var(--fg)}
 /* Sprache für Gäste (#188): eine kleine Zeile „Sprache: Deutsch · English“, Baustein umschalter als Textknöpfe;
    die gewählte Sprache steht in Tinte, ohne Unterstrich. Angemeldet gilt die Sprache des Kontos, die Zeile fehlt. */
 .fuss .umschalter.fuss-sprachen{display:inline-flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0;margin:0}
@@ -892,7 +898,7 @@ nav a.warn .zahl{background:var(--warn)}
   <div id="offline" class="hinweis glas" role="status" hidden data-t="seite.rahmen.offline">Ohne Netz: gespeicherter Stand. Rückmeldungen werden nachgereicht, Aufgaben erst wieder mit Netz änderbar.</div>
 </div>
 <main id="main" class="pico"></main>
-<footer class="fuss" id="fuss" hidden><div id="release" data-release="__RELEASE__" hidden></div><div id="push" hidden></div><div id="sprachen" hidden></div></footer>
+<footer class="fuss" id="fuss" hidden><div id="release" data-release="__RELEASE__" hidden></div><ol id="aenderungen" class="fuss-aenderungen" hidden></ol><div id="push" hidden></div><div id="sprachen" hidden></div></footer>
 <dialog id="rm" class="pico"></dialog>
 <div class="leiste">
   <nav id="nav" aria-label="Kategorien" data-t-attr="aria-label=seite.rahmen.kategorien"></nav>
@@ -1297,7 +1303,15 @@ function reiseJahre() {
 }
 // Atom Zeit: ein Zeitpunkt einer Bewegung (Issue #135): „18:05“ am Tag der Strecke, mit Datum „25.2. 18:05“, Zeitzone bleibt weg
 function zeitText(t) { const m = /^(?:(\d{4}-\d{2}-\d{2})T)?(\d{2}):(\d{2})/.exec(String(t || "")); return m ? (m[1] ? datumKurz(m[1]) + " " : "") + lokaleZiffern(`${m[2]}:${m[3]}`) : String(t || ""); }
-function datumKurz(iso) { const [j, m, d] = String(iso || "").slice(0, 10).split("-"); return d ? (reiseJahre().has(+j) ? nachMuster(TEXTE[SPRACHE].datum_kurz, +d, +m) : nachMuster(TEXTE[SPRACHE].datum, +d, +m, +j)) : ""; }
+// Ein Zeitpunkt mit Zone (Rückmeldungen, Verlauf, Belege: UTC vom Server) zählt am Tag der Ortszeit des Geräts (#227): 23:30 UTC
+// ist in Mitteleuropa schon der nächste Tag. Ein reines Datum bleibt, wie es ist.
+function ortsDatum(iso) {
+  const s = String(iso || "");
+  if (!/T\d\d:\d\d.*(Z|[+-]\d\d:?\d\d)$/.test(s)) return s.slice(0, 10);
+  const t = new Date(s);
+  return isNaN(t) ? s.slice(0, 10) : `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+}
+function datumKurz(iso) { const [j, m, d] = ortsDatum(iso).split("-"); return d ? (reiseJahre().has(+j) ? nachMuster(TEXTE[SPRACHE].datum_kurz, +d, +m) : nachMuster(TEXTE[SPRACHE].datum, +d, +m, +j)) : ""; }
 function dauer(min) { return T("seite.zeit.dauer", {h: lokaleZiffern(Math.floor(min / 60)), m: lokaleZiffern(String(min % 60).padStart(2, "0"))}); }
 function summeText(s) {
   if (!s) return "";
@@ -1661,7 +1675,7 @@ function belegeListe(b, muster) {
     box.append(el("div", {class: "beleg" + (x.zurueckgezogen ? " weg" : "")},
       el("span", {class: "beleg-art", "aria-hidden": "true"}, dateiArt(x.name)),
       el("span", {class: "beleg-text"}, el("a", {href: BL_API + "/" + x.id, target: "_blank", rel: "noopener"}, x.name.replace(/\.[a-z0-9]{1,4}$/i, "") + " ↗"),
-        el("span", {class: "z klein"}, [groesseText(x.groesse), x.wer, x.hochgeladen ? datumKurz(x.hochgeladen.slice(0, 10)) : "",
+        el("span", {class: "z klein"}, [groesseText(x.groesse), x.wer, x.hochgeladen ? datumKurz(x.hochgeladen) : "",
           x.sichtbar === "alle" ? T("seite.beleg.fuer_alle") : T("seite.beleg.nur_beteiligte"), x.zurueckgezogen ? T("seite.beleg.zurueckgezogen") : ""].filter(Boolean).join(" · "))),
       knoepfe.length ? el("details", {class: "beleg-menue"}, el("summary", {"aria-label": T("seite.beleg.mehr_zu", {name: x.name}), title: T("seite.beleg.mehr")}, "···"),
         el("div", {class: "beleg-menue-liste"}, knoepfe)) : null));
@@ -4844,11 +4858,12 @@ function releaseStandZeile() {
   return [st ? T(st.schluessel, st.werte) : "", ...(st && st.zusatz ? [" ", T(st.zusatz)] : []), ...(st && st.knopf ? [" ", el("button", {type: "button", "data-release-knopf": st.knopf}, T(RELEASE_KNOEPFE[st.knopf]))] : [])];
 }
 function releaseFuss() {
-  const f = $("#release"), r = RELEASE;
-  if (!r.kennung) { f.hidden = true; fussZeigen(); return; }
+  const f = $("#release"), r = RELEASE, rs = reiseStandTeile();
+  if (!r.kennung && !rs.length) { f.hidden = true; fussZeigen(); return; }
   const kennung = r.github ? el("a", {href: `https://github.com/${r.github}/commit/${r.commit}`, target: "_blank", rel: "noopener",
     title: T("seite.rahmen.release.quelle")}, r.kennung) : r.kennung;
-  f.replaceChildren(r.nummer ? T("seite.rahmen.release.nummer", {nummer: r.nummer}) : T("seite.rahmen.release.ohne_nummer"), " · ", kennung,
+  f.replaceChildren(...rs, ...(rs.length && r.kennung ? [" · "] : []),
+    ...(r.kennung ? [r.nummer ? T("seite.rahmen.release.nummer", {nummer: r.nummer}) : T("seite.rahmen.release.ohne_nummer"), " · ", kennung] : []),
     ...(r.github || SW_REG ? [" ", el("button", {type: "button", "data-release-pruefen": "1"}, T("seite.rahmen.release.pruefen"))] : []),
     el("span", {class: "fuss-stand", role: "status"}, ...releaseStandZeile()));
   f.hidden = false;
@@ -4936,13 +4951,74 @@ async function releasePruefen() {
     else releaseZeige("seite.rahmen.release.abseits");
   } catch (e) { releaseZeige(navigator.onLine ? "seite.rahmen.release.fehler" : "seite.rahmen.release.offline"); }
 }
+/* ---------- Reise-Stand (Epic #223, engine/stand.py): Nummer, Zeit, Hinweis auf einen neuen Stand, Änderungsliste ----------
+   Nummer und letzte Änderungen kommen mit der Seite (D.reise_stand, auch offline). Den veröffentlichten Stand fragt die Seite
+   beim Server (api/stand geht nie über den Speicher des Service Workers): Ist er neuer als der eigene, steht oben „Neu:
+   Reise-Stand 43. Aktualisieren.“ (auch als App vom Home-Bildschirm), und „Aktualisieren“ holt ihn (swPruefen). Zeiten stehen in
+   der Ortszeit des Geräts. Die Änderungsliste nennt je Änderung Nummer, Zeit, Person und was, mit Namen statt Kennungen. */
+const RS = D.reise_stand && D.reise_stand.nummer ? D.reise_stand : null;
+let RS_SERVER = null;         // letzte Antwort von api/stand
+let RS_NEU = 0;               // neuerer veröffentlichter Stand, für den der Hinweis gilt
+const standZeit = iso => { try { return new Intl.DateTimeFormat(LOCALE, {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}).format(new Date(iso)); } catch (e) { return ""; } };
+function reiseStandTeile() {
+  if (!RS) return [];
+  const v = RS_SERVER && RS_SERVER.veroeffentlicht;
+  const zeit = v && v.nummer === RS.nummer && v.zeit ? T("seite.rahmen.stand.veroeffentlicht", {zeit: standZeit(v.zeit)})
+             : RS.zeit ? T("seite.rahmen.stand.geaendert", {zeit: standZeit(RS.zeit)}) : "";
+  const offen = !$("#aenderungen").hidden;
+  return [el("button", {type: "button", "data-stand-liste": "1", "aria-expanded": String(offen), "aria-controls": "aenderungen",
+    title: T("seite.rahmen.stand.liste_titel")}, T("seite.rahmen.stand.nummer", {nummer: RS.nummer})), ...(zeit ? [" · ", zeit] : [])];
+}
+function aenderungenZeigen(offen) {
+  const ol = $("#aenderungen");
+  ol.replaceChildren(...((RS && RS.aenderungen) || []).map(a => el("li", {},
+    el("span", {class: "wann"}, T("seite.rahmen.stand.aenderung_kopf", {nummer: a.nummer, zeit: standZeit(a.zeit)})),
+    a.wer ? [" · ", a.wer] : [], ": ", a.was)));
+  if (!ol.children.length) ol.append(el("li", {}, T("seite.rahmen.stand.keine_aenderungen")));
+  ol.hidden = !offen;
+  releaseFuss();
+}
+function neuerStandHinweis() {
+  const v = RS_SERVER && RS_SERVER.veroeffentlicht;
+  if (!RS || !v || !(v.nummer > RS.nummer) || !$("#neu").hidden && RS_NEU === v.nummer) return;
+  RS_NEU = v.nummer;
+  $("#neu").firstElementChild.textContent = T("seite.rahmen.stand.neu", {nummer: v.nummer});
+  $("#neu").hidden = false;
+}
+let RS_ZULETZT = 0;
+async function reiseStandFragen(sofort) {
+  if (!RS || !navigator.onLine || (!sofort && Date.now() - RS_ZULETZT < 60e3)) return;
+  RS_ZULETZT = Date.now();
+  try {
+    const r = await fetch("api/stand", {cache: "no-store"});
+    if (!r.ok) return;
+    RS_SERVER = await r.json();
+  } catch (e) { return; }
+  releaseFuss();
+  neuerStandHinweis();
+}
+// „Aktualisieren“: einen wartenden Worker übernehmen; sonst erst beim Server nachsehen (der neue Stand ist vielleicht noch nicht
+// geladen), dann übernehmen oder ohne Worker neu laden
+async function standLaden() {
+  if (swWartet()) return uebernehmen();
+  $("#neu").firstElementChild.textContent = T("seite.rahmen.release.laedt");
+  const w = await swPruefen();
+  if (w) return uebernehmen();
+  location.reload();
+}
+$("#neuLaden").addEventListener("click", standLaden);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reiseStandFragen(); });
+window.addEventListener("pageshow", () => reiseStandFragen());
+setInterval(() => { if (document.visibilityState === "visible") reiseStandFragen(); }, 5 * 60e3);
 document.addEventListener("click", e => {
+  if (e.target.closest("[data-stand-liste]")) aenderungenZeigen($("#aenderungen").hidden);
   if (e.target.closest("[data-release-pruefen]")) releasePruefen();
   const k = e.target.closest("[data-release-knopf]");
   if (k && k.dataset.releaseKnopf === "aktualisieren") uebernehmen();
   if (k && k.dataset.releaseKnopf === "anstossen") anstossen();
 });
 releaseFuss();
+reiseStandFragen(true);
 
 /* ---------- Benachrichtigungen (Push, Issue #21, engine/push.py): je Gerät im Fuß einschalten ----------
    Nur angemeldet (das Abo gehört zum Konto). iPhone und iPad bekommen Push nur in der App vom Home-Bildschirm; dort fragt
@@ -5043,7 +5119,6 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
       const sw = reg.installing;
       sw && sw.addEventListener("statechange", () => { if (sw.state === "installed") zeigen(); });
     });
-    $("#neuLaden").addEventListener("click", uebernehmen);
     // Als App vom Home-Bildschirm prüft iOS selten von sich aus: beim Zurückholen, beim Wiederherstellen aus dem
     // Zwischenspeicher des Browsers und jede halbe Stunde selbst nachsehen, höchstens einmal je Minute.
     let zuletzt = Date.now();
