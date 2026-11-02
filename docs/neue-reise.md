@@ -2,7 +2,7 @@
 
 Eine neue Reise entsteht im Gespräch. Niemand legt Dateien von Hand an. Es gibt zwei Wege:
 
-- **In der Claude-App** (der Regelfall, ADR-0001): Über den Konnektor „Frieda“ (Konto mit E-Mail-Adresse, ADR-0005; der frühere Konto-Link „Frieda – meine Reisen“ ist der Übergang, `docs/konnektor.md`) nutzt man das Werkzeug `reise_anlegen` mit Titel, Zeitraum, Ziel, Personen und einer Notiz zu dem, was schon bekannt ist; der Schreibweg legt die Reise sofort an, der Betrieb schaltet sie frei und stellt die Links zu.
+- **In der Claude-App** (der Regelfall, ADR-0001): Über den Konnektor „Frieda“ (Konto mit E-Mail-Adresse, ADR-0005; der frühere Konto-Link „Frieda – meine Reisen“ ist der Übergang, `docs/konnektor.md`) nutzt man das Werkzeug `trip_create` (`reise_anlegen`) mit Titel, Zeitraum, Ziel, Sprache, Personen und einer Notiz zu dem, was schon bekannt ist. Der Schreibweg legt die Reise sofort an, der Betrieb schaltet sie frei, verknüpft sie mit dem Konto und lädt die übrigen Personen per Mail ein. Ein Konto ohne das Recht, Reisen anzulegen, hat statt dessen `trip_create_request` (`reisen_anlegen_anfragen`, `docs/konten.md`).
 - **In Claude Code** (Betreiber, etwa beim Einrichten der ersten Reise einer Instanz): `engine/neu.py reise` mit Titel, Zeitraum, Ziel und Personen aufrufen; Quellen mit `neu.py abschnitt` übernehmen.
 
 In beiden Fällen steht die Reise danach im Status `idee` und baut sofort: mit Eckdaten, Wissen, Wünschen und einer ersten offenen Frage.
@@ -14,8 +14,8 @@ In beiden Fällen steht die Reise danach im Status `idee` und baut sofort: mit E
 | Titel | ja | kurz, z. B. „Winterwoche im Allgäu“; daraus und aus dem Jahr wird der Ordnername (`reise_pfad`) |
 | Zeitraum | ja | erster und letzter Tag; steht in `reise.yaml` unter `zeitraum`, schon bevor es einen Plan gibt |
 | Ziel | nein | Ort oder Gegend; erscheint im Untertitel |
-| Sprache | nein | `de` oder `en` (weitere, sobald es eine Sprachdatei gibt); Vorgabe `de`. Die Seite startet in dieser Sprache, Kalender, Wächter-Meldungen und alles, was die Software in Dateien der Reise schreibt, folgen ihr. Der Inhalt der Reise bleibt in der Sprache, in der er geschrieben ist (ADR-0006). Später änderbar mit `einstellung_setzen` (Parameter `sprache`). |
-| Personen | ja | je Person Vorname, Rolle (`gast`, `mitwirkend`, `organisator`), ob sie mitreist; wer anlegt, ist Organisator:innen |
+| Sprache | nein | `de` oder `en` (weitere, sobald es eine Sprachdatei gibt); Vorgabe `de`. Die Seite startet in dieser Sprache, Kalender, Wächter-Meldungen und alles, was die Software in Dateien der Reise schreibt, folgen ihr. Der Inhalt der Reise bleibt in der Sprache, in der er geschrieben ist (ADR-0006). Später änderbar mit `setting_set` (`einstellung_setzen`, Parameter `language`). |
+| Personen | ja | je Person Vorname, Rolle (`gast`, `mitwirkend`, `organisator`), ob sie mitreist, und die E-Mail-Adresse für die Einladung (nur in der App; Adressen kommen nie ins Repo); wer anlegt, ist Organisator:in |
 | Bekanntes | nein | Ideen, schon Gebuchtes, Quellen; in eigenen Worten mit Herkunft |
 
 Claude fragt nur nach Lücken und lässt vor dem Anlegen bestätigen, was genau angelegt wird.
@@ -40,9 +40,19 @@ Die Vorlage gibt es je Sprache (`engine/reisevorlage/de/`, `engine/reisevorlage/
 
 Eingeschaltet sind `rueckmeldungen`, `fragen`, `aufgaben` und `wuensche`. `varianten`, `karte`, `tagesseiten` und `waechter` schaltet ein:e Organisator:in zu, wenn die Planung beginnt. Ein Routenmodell (`plan/routen.yaml`, Aufbau in `engine/routen.py` und in der Beispielreise) kommt mit der Planung dazu: Start und Ende, Orte, Strecken, Unterkünfte, Wahlstellen. Dafür wird in `reise.json` der Eintrag `routen` ergänzt. Dazu gehört `plan/arten.yaml`: die Arten der Reise (Hotel, Hütte, Zugfahrt, Reiseteil …) mit ihren Merkmalen, entwickelt im Gespräch (`docs/ontologie.md`; Anschauung in der Beispielreise). Die Vorlage legt sie leer an.
 
+## Die ersten Schritte im Gespräch
+
+Nach dem Anlegen füllt sich die Reise im Gespräch, Schritt für Schritt und ohne Datei von Hand. Jeder Schritt ist ein Werkzeug des Konnektors (`docs/konnektor.md`); der Schreibweg prüft ihn, schreibt ihn in die Reise und baut sie (`engine/tests/test_neu.py`, `test_reise_aus_der_vorlage_im_gespraech_fuellen`). Eine sinnvolle Folge:
+
+1. **Arten** der Reise klären (`kind_define`): Was für Unterkünfte und Strecken gibt es, etwa Hotel (Grundform Aufenthalt) und Zugfahrt (Bewegung), und was muss zu jeder bekannt sein (`attribute_define`, `docs/ontologie.md`).
+2. **Orte, Unterkünfte, Strecken** anlegen (`item_create`), jeweils mit Herkunft. Orte der An- und Abreise außerhalb der Reisegegend mit `outside`.
+3. **Start und Ende** des Plans setzen (`start_ende_setzen`), dann die **Tage** (`day_create`) mit Nacht und Strecken. Damit entsteht `plan/routen.yaml`.
+4. **Wissen** aus Quellen schreiben (`knowledge_write`, siehe unten), **Fragen** sammeln (`question_create`).
+5. Sobald die Planung beginnt: Status `planung` (`trip_status_set`) und die Bausteine `varianten`, `karte`, `tagesseiten` dazuschalten (`setting_set`); Alternativen mit `choice_create` und `option_create`.
+
 ## Quellen übernehmen
 
-Bücher, Fotos von Buchseiten, PDFs und Links werden zu Wissensabschnitten:
+Bücher, Fotos von Buchseiten, PDFs und Links werden zu Wissensabschnitten. In der Claude-App liest Claude die Quelle (Foto, PDF, Link im Chat) und schreibt mit `knowledge_write` (`wissen_schreiben`) einen neuen Abschnitt oder einen Absatz unter einem vorhandenen. Die Herkunft (`source`) ist Pflicht und steht am Absatz, die W-ID vergibt der Dienst. In Claude Code (Betreiber):
 
 1. Quelle lesen. Originale wie Fotos und PDFs bleiben außerhalb des Repos, im Reisen-Repo im Ordner `privat/`.
 2. Je Thema einen Abschnitt anlegen: `engine/neu.py abschnitt <reise> --titel "…" --gruppe wissen|praxis|quelle [--datei inhalt/….md] [--text-datei <entwurf>]`. Das Skript hängt die Überschrift an, vergibt die nächste freie W-ID und trägt sie in `reise.json` ein.
@@ -62,4 +72,4 @@ IDs werden nie neu vergeben. `engine/neu.py id <reise> <W|F|O|U|A|E|T|V|B>` gibt
 
 ## Freischalten im Betrieb
 
-Damit die Reise erreichbar ist, braucht der Betrieb drei Dinge: die veröffentlichte Seite unter einem geheimen Link, eine Ablage für Rückmeldungen und einen Link für die Claude-App je Person (`konnektor.py zugang <reise> <person>`) oder die Verknüpfung mit dem Konto. Den Link zur Seite trägt er in `seiten.json` neben den Zugängen ein, damit `meine_reisen` ihn zeigt. Die Anfrage aus der App bleibt in `<konten>/neu/` als Beleg (seit 29.10.2026, ADR-0001 O-3, legt der Schreibweg die Reise sofort an: `engine/schreiben.py reise_anlegen`); `veroeffentlichen.sh` stellt die Links zu, sobald die Seite online ist (`betrieb/zustellen.py`, Meldung über `rueckmeldungen.meldung_anlegen` im selben Ordner). Auf dem eigenen Server geschieht das ohne Handarbeit mit `betrieb/` (`docs/betrieb.md`, Neue Reise freischalten). Den Konnektor trägt jede Person einmal selbst in der Claude-App ein (Einstellungen → Konnektoren → Eigenen Konnektor hinzufügen). Das kann kein Server für sie tun.
+Damit die Reise erreichbar ist, braucht der Betrieb drei Dinge: die veröffentlichte Seite unter einem geheimen Link, eine Ablage für Rückmeldungen und die Verknüpfung der Personen mit ihrem Konto (Einladung per Mail, ADR-0005). Links je Person für die Claude-App (`konnektor.py zugang <reise> <person>`) sind der Übergang und werden nicht mehr ausgestellt. Den Link zur Seite trägt er in `seiten.json` neben den Zugängen ein, damit `meine_reisen` ihn zeigt. Die Anfrage aus der App bleibt in `<konten>/neu/` als Beleg (seit 29.10.2026, ADR-0001 O-3, legt der Schreibweg die Reise sofort an: `engine/schreiben.py reise_anlegen`); `veroeffentlichen.sh` stellt die Links zu, sobald die Seite online ist (`betrieb/zustellen.py`, Meldung über `rueckmeldungen.meldung_anlegen` im selben Ordner). Auf dem eigenen Server geschieht das ohne Handarbeit mit `betrieb/` (`docs/betrieb.md`, Neue Reise freischalten). Den Konnektor „Frieda“ trägt jede Person einmal selbst in der Claude-App ein (Einstellungen → Konnektoren → Eigenen Konnektor hinzufügen, URL `<FR_BASIS>/mcp`, dann anmelden mit der E-Mail-Adresse). Das kann kein Server für sie tun. Danach erscheint jede neue Reise der Person dort von selbst (`my_trips`).
