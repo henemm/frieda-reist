@@ -313,6 +313,137 @@ def test_veroeffentlichen_holt_einen_waehrend_des_laufs_angestossenen_stand_glei
     assert not nochmal.exists()
 
 
+# ---------- Veröffentlichen: geänderte Einstellungen wirken im selben Lauf (#242) ----------
+
+def einstellungen_setup(vf):
+    """Origin und Bauordner haben schon eine Einstellungsdatei (alte Adresse); die Deploy-Attrappe protokolliert die
+    Adressen, die sie sieht. Gibt Funktionen zum Ändern der Datei im Origin und das Adressprotokoll zurück."""
+    quelle = vf["tmp"] / "quelle"
+    datei = quelle / "betrieb" / "einstellungen.env"
+
+    def setzen(text, meldung="einstellungen"):
+        datei.parent.mkdir(exist_ok=True)
+        datei.write_text(text)
+        git(quelle, "add", ".")
+        git(quelle, "commit", "-qm", meldung)
+
+    def entfernen():
+        git(quelle, "rm", "-q", "betrieb/einstellungen.env")
+        git(quelle, "commit", "-qm", "ohne einstellungen")
+
+    setzen("FR_ADRESSE=https://alt.example.invalid\n", "alt")
+    git(vf["arbeit"], "pull", "-q", "--ff-only")
+    adressen = vf["tmp"] / "adressen.log"
+    attrappe = ausfuehrbar(vf["tmp"] / "deploy-adressen.sh",
+                           f'#!/bin/sh\necho "$1 $FR_ADRESSE $FR_KN_ADRESSE $KN_BASIS" >> {adressen}\nexit 0\n')
+
+    def gesehen():
+        z = adressen.read_text().splitlines() if adressen.exists() else []
+        adressen.unlink(missing_ok=True)
+        return z
+
+    return setzen, entfernen, gesehen, {"VF_DEPLOY": str(attrappe)}
+
+
+def neustarts(r):
+    return len(re.findall(r"restart", r.stdout, re.I))
+
+
+def test_veroeffentlichen_uebernimmt_geaenderte_einstellungen_im_selben_lauf(vf):
+    """#242: Bringt das Vorspulen eine geänderte Einstellungsdatei, startet sich der Lauf neu und baut mit den neuen Werten,
+    auch den abgeleiteten (FR_KN_ADRESSE)."""
+    setzen, _, gesehen, extra = einstellungen_setup(vf)
+    setzen("FR_ADRESSE=https://neu.example.invalid\n", "neu")
+    r = vf["lauf"](**extra)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert neustarts(r) == 1, r.stdout
+    zeilen = gesehen()
+    assert zeilen and all("https://neu.example.invalid https://neu.example.invalid" in z for z in zeilen), zeilen
+
+
+def test_veroeffentlichen_wert_aus_dem_aufruf_gewinnt_auch_nach_dem_neustart(vf):
+    setzen, _, gesehen, extra = einstellungen_setup(vf)
+    setzen("FR_ADRESSE=https://neu.example.invalid\n", "neu")
+    r = vf["lauf"](FR_ADRESSE="https://aufruf.example.invalid", **extra)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert neustarts(r) == 1, r.stdout     # die Datei hat sich trotzdem geändert
+    zeilen = gesehen()
+    assert zeilen and all("https://aufruf.example.invalid https://aufruf.example.invalid" in z for z in zeilen), zeilen
+
+
+def test_veroeffentlichen_unveraenderte_einstellungen_starten_nicht_neu(vf):
+    """Regressionsschutz: kein Neustart ohne Änderung der Datei."""
+    setzen, _, gesehen, extra = einstellungen_setup(vf)
+    vf["neuer_commit"]()
+    r = vf["lauf"](**extra)
+    assert r.returncode == 0 and neustarts(r) == 0, r.stdout
+    assert r.stdout.count("Publishing ") == 1 and gesehen()
+
+
+def test_veroeffentlichen_startet_hoechstens_einmal_neu(vf):
+    """Regressionsschutz: keine Endlosschleife."""
+    setzen, _, gesehen, extra = einstellungen_setup(vf)
+    setzen("FR_ADRESSE=https://neu.example.invalid\n", "neu")
+    r = subprocess.run([str(BETRIEB / "veroeffentlichen.sh")], env={**vf["env"], **extra}, capture_output=True, text=True,
+                       timeout=60)
+    assert r.returncode == 0 and neustarts(r) == 1 and r.stdout.count("Publishing ") == 1, r.stdout
+    assert vf["lauf"](**extra).stdout.count("Publishing ") == 0     # ein weiterer Lauf: nichts mehr zu tun
+
+
+def test_veroeffentlichen_neustart_behaelt_immer(vf):
+    """Regressionsschutz: --immer übersteht den Neustart (alles wird gebaut)."""
+    setzen, _, gesehen, extra = einstellungen_setup(vf)
+    assert vf["lauf"](**extra).returncode == 0
+    gesehen()
+    setzen("FR_ADRESSE=https://neu.example.invalid\n", "neu")
+    r = vf["lauf"]("--immer", **extra)
+    assert r.returncode == 0 and neustarts(r) == 1, r.stdout
+    assert sorted(z.split()[0] for z in gesehen()) == ["beispielreise", "zweitreise"]
+
+
+def test_veroeffentlichen_einstellungen_ausserhalb_des_repos_starten_nicht_neu(vf):
+    """Regressionsschutz: FR_EINSTELLUNGEN außerhalb des Repos, das Vorspulen ändert sie nicht."""
+    setzen, _, gesehen, extra = einstellungen_setup(vf)
+    aussen = vf["tmp"] / "aussen.env"
+    aussen.write_text("FR_ADRESSE=https://aussen.example.invalid\n")
+    vf["neuer_commit"]()
+    r = vf["lauf"](FR_EINSTELLUNGEN=str(aussen), **extra)
+    assert r.returncode == 0 and neustarts(r) == 0, r.stdout
+    assert all("https://aussen.example.invalid" in z for z in gesehen())
+
+
+@pytest.mark.parametrize("fall", ["neu", "entfernt"])
+def test_veroeffentlichen_neue_oder_entfernte_einstellungsdatei_ist_eine_aenderung(vf, fall):
+    if fall == "neu":
+        quelle = vf["tmp"] / "quelle"
+        (quelle / "betrieb").mkdir()
+        (quelle / "betrieb" / "einstellungen.env").write_text("FR_ADRESSE=https://neu.example.invalid\n")
+        git(quelle, "add", ".")
+        git(quelle, "commit", "-qm", "neu angelegt")
+        attrappe = ausfuehrbar(vf["tmp"] / "deploy-adressen.sh",
+                               f'#!/bin/sh\necho "$1 $FR_ADRESSE" >> {vf["tmp"]}/adressen.log\n')
+        extra = {"VF_DEPLOY": str(attrappe)}
+        erwartet = "https://neu.example.invalid"
+    else:
+        _, entfernen, _, extra = einstellungen_setup(vf)
+        entfernen()
+        erwartet = ""
+    r = vf["lauf"](**extra)
+    assert r.returncode == 0 and neustarts(r) == 1, r.stdout + r.stderr
+    zeilen = (vf["tmp"] / "adressen.log").read_text().splitlines()
+    assert zeilen and all(z.split(" ", 1)[1].split(" ")[0].strip() == erwartet for z in zeilen), zeilen
+
+
+def test_interne_merker_haben_kein_fr_praefix():
+    """Die neuen Merker (Namen der Aufruf-Werte, Neustart) tragen kein FR_-Präfix: Die Aufräum-Schleife und die
+    Einstellungsvorlage erfassen sie nicht."""
+    gemeinsam = (BETRIEB / "gemeinsam.sh").read_text(encoding="utf-8")
+    ver = (BETRIEB / "veroeffentlichen.sh").read_text(encoding="utf-8")
+    assert "_aufruf_namen" in gemeinsam, "Merker der Aufruf-Namen fehlt"
+    assert 'exec "$0" "$@"' in ver and "sha256sum" in ver
+    assert not re.search(r"\bFR_[A-Z_]*(AUFRUF|NEUSTART)", gemeinsam + ver)
+
+
 def test_anstoss_von_der_seite_startet_den_workflow(vf):
     """Organisator:innen stoßen auf der Seite das Veröffentlichen an (api/aktualisieren): der nächste Lauf startet den
     Workflow „Software nachziehen“ und legt das Ergebnis für die Seite ab; gescheitert geht eine Nachricht an den Betrieb."""
