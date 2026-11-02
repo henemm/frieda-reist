@@ -38,7 +38,7 @@ except ImportError:
     sys.exit("Parts of the software are missing. Set up once:\n"
              "  python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt\n"
              "Then run:  python3 engine/bauen.py <reise>")
-from reise import Reise  # noqa: E402
+from reise import Reise, eckdaten_text  # noqa: E402
 from routen import FARBEN, Routen, verhalten_anwenden  # noqa: E402
 import gpx  # noqa: E402
 import stand as reisestand  # noqa: E402
@@ -627,6 +627,8 @@ class Bauer:
         wissen_karte = self.wissen_karte(c["wissen_punkte"], abschnitte) if c.get("wissen_punkte") else None
 
         kategorien = self.kategorien_laden()   # auch ohne Punkte prüfen, damit ein Fehler in der Datei nicht schlummert
+        if c.get("eckdaten") and not any(a["id"] == c["eckdaten"] for a in abschnitte):
+            self.fehler.append(texte.satz("pruefung.bauen.eckdaten_fehlt", sid=c["eckdaten"]))
         if self.fehler:
             raise BauFehler(list(dict.fromkeys(self.fehler)))
         return {
@@ -959,6 +961,9 @@ class Bauer:
     def wissen(self, eintrag, titel, body, rel, wo):
         sid, typ = eintrag
         self.id_anlegen(sid, wo)
+        if sid == self.cfg.get("eckdaten"):
+            # Eckdaten aus reise.yaml vor dem Text, den eine Person dazuschreibt (#217): Heimat der Daten bleibt reise.yaml
+            body = eckdaten_text(self.eck) + "\n\n" + body.lstrip("\n")
         intro, bl = self.bloecke(sid, body, self.reise_dir / rel, wo)
         return {"id": sid, "typ": typ, "titel": titel, "intro": intro, "bloecke": bl}
 

@@ -2784,14 +2784,15 @@ def lesetext_schreiben(reise_dir, wer, args, heute=None):
 
 
 def reise_aendern(reise_dir, wer, args, heute=None):
-    """Eckdaten der Reise ändern: titel, untertitel, kurz, von, bis (Zeitraum). Nur Organisator:innen, mit grund; der Verlauf
+    """Eckdaten der Reise ändern: titel, untertitel, kurz, ziel, von, bis (Zeitraum). Nur Organisator:innen, mit grund; der Verlauf
     steht in reise.yaml unter verlauf. -> (Titel, Text)."""
     from ruamel.yaml.comments import CommentedSeq
     heute = heute or datetime.date.today()
     grund = text_wert(args, "grund", pflicht=True)
     p, roh = reise_yaml_laden(reise_dir)
     geaendert = []
-    for feld, laenge in (("titel", 120), ("untertitel", 200), ("kurz", 40)):
+    from reise import ZIEL_LAENGE
+    for feld, laenge in (("titel", 120), ("untertitel", 200), ("kurz", 40), ("ziel", ZIEL_LAENGE)):
         if args.get(feld) is not None:
             v = text_wert(args, feld, laenge=laenge) or ""
             if feld == "titel" and not v:

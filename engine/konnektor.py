@@ -2640,6 +2640,7 @@ LESETEXT_SCHREIBEN = {"name": "lesetext_schreiben", "description": "@konnektor.w
 REISE_AENDERN = {"name": "reise_aendern", "description": "@konnektor.werkzeug.reise_aendern",
                  "inputSchema": {"type": "object", "properties": {
                      "titel": {"type": "string"}, "untertitel": {"type": "string"}, "kurz": {"type": "string"},
+                     "ziel": {"type": "string", "description": "@konnektor.werkzeug.reise_aendern.ziel"},
                      "von": {"type": "string"}, "bis": {"type": "string"}, "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["grund"]}}
 START_ENDE_SETZEN = {"name": "start_ende_setzen", "description": "@konnektor.werkzeug.start_ende_setzen",
                      "inputSchema": {"type": "object", "properties": {

@@ -13,7 +13,7 @@ In beiden Fällen steht die Reise danach im Status `idee` und baut sofort: mit E
 |---|---|---|
 | Titel | ja | kurz, z. B. „Winterwoche im Allgäu“; daraus und aus dem Jahr wird der Ordnername (`reise_pfad`) |
 | Zeitraum | ja | erster und letzter Tag; steht in `reise.yaml` unter `zeitraum`, schon bevor es einen Plan gibt |
-| Ziel | nein | Ort oder Gegend; erscheint im Untertitel |
+| Ziel | nein | Ort oder Gegend; steht in `reise.yaml` unter `ziel` und erscheint in den Eckdaten und im Untertitel |
 | Sprache | nein | `de` oder `en` (weitere, sobald es eine Sprachdatei gibt); Vorgabe ist die Sprache des Kontos, beim Übergangs-Link die des Zugangs, bei `neu.py reise` Englisch. Die Seite startet in dieser Sprache, Kalender, Wächter-Meldungen und alles, was die Software in Dateien der Reise schreibt, folgen ihr. Der Inhalt der Reise bleibt in der Sprache, in der er geschrieben ist (ADR-0006). Später änderbar mit `setting_set` (`einstellung_setzen`, Parameter `language`). |
 | Personen | ja | je Person Vorname, Rolle (`gast`, `mitwirkend`, `organisator`), ob sie mitreist, und die E-Mail-Adresse für die Einladung (nur in der App; Adressen kommen nie ins Repo); wer anlegt, ist Organisator:in |
 | Bekanntes | nein | Ideen, schon Gebuchtes, Quellen; in eigenen Worten mit Herkunft |
@@ -25,16 +25,18 @@ Claude fragt nur nach Lücken und lässt vor dem Anlegen bestätigen, was genau 
 `engine/reisevorlage/` enthält, was jede Reise braucht. `neu.py` (für `trip_create` und `neu.py reise`) füllt die Platzhalter aus und schreibt `reise.yaml`, `reise.json` und `ids.yaml` selbst:
 
 ```
-reise.yaml          Titel, Untertitel, Ordner, Zeitraum, Status idee mit Verlauf, Personen, Bausteine, Gruppen
-reise.json          Zuordnung: W-01 Eckdaten (Plan), W-02 Überblick (Wissen), W-03 Quellen
+reise.yaml          Titel, Ziel, Ordner, Zeitraum, Status idee mit Verlauf (wann, von wem, auf welchem Weg angelegt),
+                    Personen, Bausteine, Gruppen; Untertitel nur, wenn jemand einen eigenen setzt
+reise.json          Zuordnung: W-01 Eckdaten (Plan, unter „eckdaten“), W-02 Überblick (Wissen), W-03 Quellen
 ids.yaml            höchste vergebene Nummer je Art
-CLAUDE.md           Eckdaten, Vorlieben, Entscheidungen der Reise
 offene-fragen.md    F-01: Ideen sammeln, dann über den Rahmen entscheiden
-plan/plan.md        Eckdaten; der Plan kommt mit der Planung
+plan/plan.md        Abschnitt Eckdaten; der Plan kommt mit der Planung
+plan/arten.yaml     die Arten der Reise, leer
 inhalt/wissen.md    Überblick und Quellen
-kontext/herkunft.md wann, von wem und auf welchem Weg die Reise angelegt wurde
 medien/             für Bilder, Karten, Tracks
 ```
+
+Die Eckdaten (Zeitraum, Ziel, Personen, Status) stehen nur in `reise.yaml`. Der Generator stellt sie an den Anfang des Abschnitts, den `reise.json` unter `eckdaten` nennt, und baut den Untertitel aus Ziel und Zeitraum, wenn keiner gesetzt ist. So zeigen beide nach `trip_update`, `trip_status_set` oder `person_invite` den neuen Stand (#217). Was eine Person unter „Eckdaten“ in `plan/plan.md` schreibt, steht darunter. Reisen aus der früheren Vorlage (Eckdaten als Text, Untertitel als Kopie, `CLAUDE.md` und `kontext/herkunft.md`) bringt `engine/neu.py nachziehen` auf diesen Stand; die beiden Dateien nennt es nur, sie werden nicht mehr gebraucht.
 
 Die Vorlage gibt es je Sprache (`engine/reisevorlage/de/`, `engine/reisevorlage/en/`); `neu.py` nimmt die der Reise (`sprache`), fehlt der Ordner einer Sprache, die englische. Überschriften, Spaltenköpfe der offenen Fragen, Monatsnamen und Rollenwörter folgen der Sprache der Reise; die Seite erkennt die Wörter aller Sprachen des Katalogs (`inhalt.*` in `engine/texte_<sprache>.py`), unabhängig von der Hülle.
 

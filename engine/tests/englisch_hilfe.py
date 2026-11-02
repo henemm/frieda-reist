@@ -63,5 +63,6 @@ def datenformat():
     woerter.update(k[len("wert."):].lower() for k in texte.sprache("de").TEXTE if k.startswith("wert."))   # gespeicherte Datenwerte
     woerter.update({"aufenthalt", "bewegung", "folge", "blau", "braun", "lila", "gruen", "tuerkis", "oliv", "grau", "rosa", "schiefer", "kontrast",
                     "geld", "beispiel", "beispielreise", "veraenderlich", "stufe", "hilfe", "typ", "preis", "merkmale", "grundform",
-                    "tagesplan", "unterkuenfte", "datei"})   # Schlüssel von routen in reise.json
+                    "tagesplan", "unterkuenfte", "datei",   # Schlüssel von routen in reise.json
+                    "eckdaten"})   # Schlüssel eckdaten in reise.json (#217)
     return frozenset(woerter)

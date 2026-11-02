@@ -5,6 +5,7 @@ Hintergrund und Entscheidungen: docs/produkt.md (26.10.2026). Die Zuordnung der 
 
   sprache     de | en | … (texte.SPRACHEN), ohne Feld de (Bestand; neue Reisen bekommen es immer): Sprache der Seite, des Kalenders und aller Texte, die in Dateien der Reise landen (ADR-0006)
   zeitraum    {von, bis} als Datum; schon in der Idee bekannt, bevor es einen Plan gibt (Paket H)
+  ziel        Ort oder Gegend als kurzer Text (optional, #217); mit dem Zeitraum entsteht daraus der Untertitel, wenn keiner gesetzt ist
   status      idee | planung | fest | unterwegs | danach | archiv, mit Verlauf (datum, wert, wer, grund)
   personen    {schluessel: {name, rolle, reist, notiz}}; Rollen gast < mitwirkend < organisator
   bausteine   zuschaltbare Teile (Liste); Plan, Wissen, Suche und Personen sind immer da
@@ -61,6 +62,7 @@ DARSTELLUNG = ("start", "tiefe", "varianten_titel", "plan_reiter", "gruppen")
 ALTE_DARSTELLUNG = ("mahnungen",)
 PERSON_FELDER = {"name", "rolle", "reist", "notiz", "von", "bis"}   # von/bis: reist nur einen Teil mit
 ALTE_ECKDATEN = ("titel", "untertitel", "pfad", "kurz")
+ZIEL_LAENGE = 80
 
 
 # ---------- Regeln, die die Maschine prüft (Paket B, docs/produkt.md) ----------
@@ -171,6 +173,44 @@ MAX_PERSONEN = 20
 def reise_pfad(titel, jahr=None):
     """Titel (und Jahr, falls nicht schon darin) -> Ordnername der Reise, z. B. „winterwoche-allgaeu-2027“."""
     return _klein(titel if jahr is None or str(jahr) in (titel or "") else f"{titel} {jahr}", 40)
+
+
+def zeitraum_text(von, bis, sprache=None):
+    """Zeitraum in Worten der Sprache der Reise: Muster und Monatsnamen stehen im Katalog (inhalt.zeitraum.*, inhalt.monat.*)."""
+    sprache = sprache or texte.VORGABE_REISE
+    if von.year == bis.year and von.month == bis.month:
+        return texte.t(sprache, "inhalt.zeitraum.gleicher_monat", von=von.day, bis=bis.day, monat=texte.t(sprache, f"inhalt.monat.{von.month}"), jahr=von.year)
+    if von.year == bis.year:
+        return texte.t(sprache, "inhalt.zeitraum.gleiches_jahr", von=von.day, vm=von.month, bis=bis.day, bm=bis.month, jahr=bis.year)
+    return texte.t(sprache, "inhalt.zeitraum.mehrere_jahre", von=texte.datum(von, sprache), bis=texte.datum(bis, sprache))
+
+
+def personen_text(personen, sprache):
+    """Personen in einer Zeile: „Ida (organisiert), Mo (liest mit, reist nicht mit)“; personen als Liste oder {schluessel: Person}."""
+    liste = personen.values() if isinstance(personen, dict) else personen
+    return ", ".join(f"{p['name']} ({texte.t(sprache, 'inhalt.neu.rolle.' + rolle_neu(p['rolle']))}"
+                     f"{'' if p.get('reist', True) else texte.t(sprache, 'inhalt.neu.reist_nicht_mit')})" for p in liste)
+
+
+def untertitel_aus(ziel, zeitraum, sprache):
+    """Untertitel aus Ziel und Zeitraum ({von, bis} als ISO-Text), wenn die Reise keinen eigenen hat (#217)."""
+    zt = zeitraum_text(datetime.date.fromisoformat(zeitraum["von"]), datetime.date.fromisoformat(zeitraum["bis"]), sprache) if zeitraum else ""
+    return ", ".join(x for x in (ziel, zt) if x)
+
+
+def eckdaten_text(d):
+    """Die Eckdaten als Markdown-Liste in der Sprache der Reise (d: Eintrag „reise“ aus Reise.daten). Der Generator stellt sie
+    an den Anfang des Abschnitts, den reise.json unter „eckdaten“ nennt; die Heimat der Daten bleibt reise.yaml (#217, ADR-0003)."""
+    sp, z = d["sprache"], []
+    if d.get("zeitraum"):
+        zt = zeitraum_text(datetime.date.fromisoformat(d["zeitraum"]["von"]), datetime.date.fromisoformat(d["zeitraum"]["bis"]), sp)
+        z.append(texte.t(sp, "inhalt.eckdaten.zeitraum", zeitraum=zt))
+    z.append(texte.t(sp, "inhalt.eckdaten.ziel", ziel=d.get("ziel") or texte.t(sp, "inhalt.neu.ziel_offen")))
+    if d.get("personen"):
+        z.append(texte.t(sp, "inhalt.eckdaten.wer", personen=personen_text(d["personen"], sp)))
+    wert = d["status"]["wert"]
+    z.append(texte.t(sp, "inhalt.eckdaten.idee") if wert == "idee" else texte.t(sp, "inhalt.eckdaten.status", status=texte.datenwert(sp, wert)))
+    return "\n".join("- " + x for x in z)
 
 
 def sprache_von(reise_dir):
@@ -333,6 +373,11 @@ class Reise:
                 self.fehl(texte.satz("pruefung.reise.3", k=k))
         e["untertitel"] = e.get("untertitel") or ""
         e["sprache"] = self.sprache(quelle.get("sprache"))
+        ziel = None if self.alt else self.r.get("ziel")
+        if ziel is not None and (not isinstance(ziel, str) or len(ziel) > ZIEL_LAENGE or "\n" in ziel):
+            self.fehl(texte.satz("pruefung.reise.ziel", n=ZIEL_LAENGE))
+            ziel = None
+        e["ziel"] = (ziel or "").strip()
         return e
 
     def sprache(self, wert):
@@ -512,12 +557,14 @@ class Reise:
         """-> Eintrag „reise“ für daten.json; Fehler stehen danach in self.fehler."""
         if not self.alt:
             for k in self.r:
-                if k not in ALTE_ECKDATEN + ("zeitraum", "status", "personen", "bausteine", "regeln", "darstellung", "verlauf", "sprache"):
+                if k not in ALTE_ECKDATEN + ("ziel", "zeitraum", "status", "personen", "bausteine", "regeln", "darstellung", "verlauf", "sprache"):
                     self.fehl(texte.satz("pruefung.reise.39", k=k))
         d = self.eckdaten()
         d["verlauf"] = self.verlauf()
         d.update(self.darstellung())
         d["zeitraum"] = None if self.alt else self.zeitraum()
+        if not d["untertitel"]:   # ohne eigenen Untertitel: aus Ziel und Zeitraum, beim Bau, damit er nie veraltet (#217)
+            d["untertitel"] = untertitel_aus(d["ziel"], d["zeitraum"], d["sprache"])
         d["status"] = self.status()
         d["personen"] = self.personen()
         d["bausteine"] = self.bausteine()

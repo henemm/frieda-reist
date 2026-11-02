@@ -52,9 +52,49 @@ def test_neue_reise_baut_im_status_idee(tmp_path):
     # Vorlage ausgefüllt, nichts bleibt als Platzhalter stehen
     for f in r.rglob("*.md"):
         assert "$" not in f.read_text(encoding="utf-8"), f
-    assert "Ida (organisiert), Karl (bringt ein), Mo (liest mit, reist nicht mit)" in (r / "plan/plan.md").read_text(encoding="utf-8")
+    # Eckdaten nur in reise.yaml; die Seite zeigt sie im Abschnitt W-01, den der Generator daraus baut (#217)
+    assert "Ida" not in (r / "plan/plan.md").read_text(encoding="utf-8")
+    w01 = d["abschnitte"][0]["intro"]
+    assert "Zeitraum: 6.–13. Februar 2027" in w01 and "Ziel: Oberstdorf" in w01 and "Die Reise ist eine Idee." in w01
+    assert "Ida (organisiert), Karl (bringt ein), Mo (liest mit, reist nicht mit)" in w01
+    roh = yaml.safe_load((r / "reise.yaml").read_text(encoding="utf-8"))
+    assert roh["ziel"] == "Oberstdorf" and "untertitel" not in roh
     assert yaml.safe_load((r / "ids.yaml").read_text(encoding="utf-8")) == {"W": 3, "F": 1}
-    assert (r / "medien").is_dir() and (r / "kontext/herkunft.md").exists()
+    assert (r / "medien").is_dir()
+    assert not (r / "CLAUDE.md").exists() and not (r / "kontext").exists()   # Reste von vor ADR-0001 (#217)
+
+
+def test_eckdaten_folgen_reise_yaml(tmp_path):
+    """#217: Zeitraum, Ziel, Status und Personen ändern sich im Gespräch; Untertitel und Eckdaten zeigen danach den neuen Stand,
+    ein eigener Untertitel bleibt, was eine Person unter die Eckdaten schreibt, bleibt darunter stehen (erfundene Testdaten)."""
+    r = anlegen(tmp_path)
+    wer = {"name": "Ida", "rolle": "organisator", "person": "ida"}
+    heute = datetime.date(2026, 11, 2)
+    schreiben.reise_aendern(r, wer, {"von": "2027-03-01", "bis": "2027-03-05", "ziel": "Kleinwalsertal", "grund": "Schnee später"}, heute=heute)
+    schreiben.reise_status_setzen(r, wer, {"status": "planung", "grund": "Es geht los"}, heute=heute)
+    schreiben.person_schreiben(r, wer, {"schluessel": "ben", "vorname": "Ben", "rolle": "mitwirkend"}, heute=heute)
+    plan = r / "plan/plan.md"
+    plan.write_text(plan.read_text(encoding="utf-8") + "\nAnreise mit dem Zug ist gesetzt.\n", encoding="utf-8")
+    d = bauen.bauen(r, tmp_path / "dist")
+    assert d["reise"]["untertitel"] == "Kleinwalsertal, 1.–5. März 2027"
+    w01 = d["abschnitte"][0]["intro"]
+    assert "Zeitraum: 1.–5. März 2027" in w01 and "Ziel: Kleinwalsertal" in w01 and "Status: planung" in w01
+    assert "Ben (bringt ein)" in w01 and "Idee" not in w01
+    assert w01.index("Status: planung") < w01.index("Anreise mit dem Zug ist gesetzt.")
+    schreiben.reise_aendern(r, wer, {"untertitel": "Skiwoche mit Freunden", "grund": "eigener Untertitel"}, heute=heute)
+    assert bauen.bauen(r, tmp_path / "dist")["reise"]["untertitel"] == "Skiwoche mit Freunden"
+    schreiben.reise_aendern(r, wer, {"untertitel": "", "ziel": "", "grund": "zurück"}, heute=heute)
+    d = bauen.bauen(r, tmp_path / "dist")
+    assert d["reise"]["untertitel"] == "1.–5. März 2027" and "Ziel: noch offen" in d["abschnitte"][0]["intro"]
+
+
+def test_eckdaten_abschnitt_muss_es_geben(tmp_path):
+    r = anlegen(tmp_path)
+    cfg = json.loads((r / "reise.json").read_text(encoding="utf-8"))
+    cfg["eckdaten"] = "W-09"
+    (r / "reise.json").write_text(json.dumps(cfg), encoding="utf-8")
+    with pytest.raises(bauen.BauFehler, match="W-09"):
+        bauen.bauen(r, tmp_path / "dist")
 
 
 @pytest.mark.parametrize("sprache", neu.texte.sprachen())
@@ -72,8 +112,10 @@ def test_eigener_pfad_herkunft_und_ueberblick(tmp_path):
                 ziel=None)
     assert r.name == "ski-2027"
     assert "Ein Tal mit Schnee." in (r / "inhalt/wissen.md").read_text(encoding="utf-8")
-    assert "Auftrag A-1 aus der Claude-App" in (r / "kontext/herkunft.md").read_text(encoding="utf-8")
-    assert yaml.safe_load((r / "reise.yaml").read_text(encoding="utf-8"))["untertitel"] == "6.–13. Februar 2027"
+    roh = yaml.safe_load((r / "reise.yaml").read_text(encoding="utf-8"))
+    assert roh["status"]["verlauf"][0]["grund"] == "Reise angelegt (Auftrag A-1 aus der Claude-App)"
+    assert "untertitel" not in roh and "ziel" not in roh
+    assert bauen.bauen(r, tmp_path / "dist")["reise"]["untertitel"] == "6.–13. Februar 2027"
     bauen.bauen(r, tmp_path / "dist")
 
 
@@ -339,3 +381,38 @@ def test_reise_ohne_feld_sprache_bleibt_deutsch(tmp_path):
     y.write_text(y.read_text(encoding="utf-8") + "sprache: xx-unbekannt\n", encoding="utf-8")
     assert reise.sprache_von(r) == "en"                              # unbekannte Sprache: Rückfall, nicht Deutsch
     assert reise.sprache_von(tmp_path / "gibt-es-nicht") == "en"     # keine lesbare Datei: Rückfall
+
+
+def test_nachziehen_eckdaten_einer_reise_von_vor_217(tmp_path):
+    """Eine Reise aus der alten Vorlage (Eckdaten als Text in plan.md, Untertitel als Kopie, CLAUDE.md) kommt mit
+    neu.py nachziehen auf den neuen Stand: Text weg, Ziel in reise.yaml, Untertitel entsteht beim Bau, eigene Zeilen
+    bleiben, keine ID ändert sich (erfundene Testdaten)."""
+    r = anlegen(tmp_path)
+    cfg = json.loads((r / "reise.json").read_text(encoding="utf-8"))
+    del cfg["eckdaten"]
+    (r / "reise.json").write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    ry = (r / "reise.yaml").read_text(encoding="utf-8").replace("ziel: Oberstdorf\n", "untertitel: Oberstdorf, 6.–13. Februar 2027\n")
+    (r / "reise.yaml").write_text(ry, encoding="utf-8")
+    (r / "plan/plan.md").write_text(
+        "# Skiurlaub im Tal – Plan\n\n## Eckdaten\n\n- Zeitraum: 6.–13. Februar 2027\n- Ziel: Oberstdorf\n"
+        "- Wer: Ida (organisiert), Karl (bringt ein), Mo (liest mit, reist nicht mit)\n"
+        "- Die Reise ist eine Idee. Einen Plan mit Tagen, Wegen und Unterkünften gibt es ab der Planung.\n"
+        "- Skipass für alle über die Unterkunft.\n", encoding="utf-8")
+    (r / "CLAUDE.md").write_text("# Skiurlaub im Tal\n", encoding="utf-8")
+    assert bauen.bauen(r, tmp_path / "dist")["reise"]["untertitel"] == "Oberstdorf, 6.–13. Februar 2027"
+
+    m = neu.nachziehen(r, schreiben=False)
+    assert any("W-01" in x for x in m) and any("Oberstdorf" in x for x in m) and any(x.startswith("OFFEN CLAUDE.md") for x in m)
+    assert "Zeitraum" in (r / "plan/plan.md").read_text(encoding="utf-8")         # Probelauf schreibt nichts
+
+    neu.nachziehen(r)
+    assert (r / "plan/plan.md").read_text(encoding="utf-8") == \
+        "# Skiurlaub im Tal – Plan\n\n## Eckdaten\n\n- Skipass für alle über die Unterkunft.\n"
+    roh = yaml.safe_load((r / "reise.yaml").read_text(encoding="utf-8"))
+    assert roh["ziel"] == "Oberstdorf" and "untertitel" not in roh
+    assert list(json.loads((r / "reise.json").read_text(encoding="utf-8")))[:2] == ["plan", "eckdaten"]
+    d = bauen.bauen(r, tmp_path / "dist")
+    assert d["reise"]["untertitel"] == "Oberstdorf, 6.–13. Februar 2027"
+    w01 = d["abschnitte"][0]["intro"]
+    assert w01.count("Zeitraum:") == 1 and "Skipass für alle" in w01
+    assert neu.nachziehen(r) == []                                                # ein zweiter Lauf ändert nichts
