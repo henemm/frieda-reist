@@ -109,7 +109,7 @@ def test_beispiel_einstellungen_sind_vollstaendig():
     for f in BETRIEB.glob("*.sh"):
         gelesen |= set(re.findall(r"\$\{?(FR_[A-Z0-9_]+)", f.read_text(encoding="utf-8")))
     intern = {"FR_WURZEL", "FR_BETRIEB", "FR_EINSTELLUNGEN", "FR_PFAD", "FR_GRUPPE", "FR_HEARTBEAT_VEROEFFENTLICHEN",
-              "FR_GEPRUEFT"}  # FR_GEPRUEFT reicht veroeffentlichen.sh an deploy.sh weiter
+              "FR_GEPRUEFT", "FR_WEGE_SPAETER"}  # reicht veroeffentlichen.sh an deploy.sh weiter
     assert gelesen - intern - erklaert == set()
 
 
@@ -534,12 +534,33 @@ def test_deploy_prueft_die_wege_zum_konnektor_von_aussen(tmp_path):
         assert "Warning: these paths do not reach the connector" in r.stdout and "/kalender/" in r.stdout and "/gesund" not in r.stdout.split("Warning")[1]
         assert "nginx: paths to the connector missing" in meldungen.read_text() and "/kalender/" in meldungen.read_text()
         assert (tmp_path / "seiten" / "beispielreise" / "index.html").exists()
-        fehlt.clear()
+        # Vom Veröffentlichen aufgerufen (FR_WEGE_SPAETER): keine Abfrage je Reise, das macht der Lauf einmal danach
         meldungen.unlink()
+        r = subprocess.run([str(BETRIEB / "deploy.sh"), "beispielreise"], env={**env, "FR_WEGE_SPAETER": "1"},
+                           capture_output=True, text=True)
+        assert r.returncode == 0 and "Warning: these paths" not in r.stdout and not meldungen.exists(), r.stdout + r.stderr
+        fehlt.clear()
         r = subprocess.run([str(BETRIEB / "deploy.sh"), "beispielreise"], env=env, capture_output=True, text=True)
         assert r.returncode == 0 and "Warning: these paths" not in r.stdout and not meldungen.exists(), r.stdout + r.stderr
     finally:
         server.shutdown()
+
+
+def test_veroeffentlichen_prueft_die_wege_einmal_nach_dem_freischalten(vf):
+    """Die Wege zum Konnektor fragt das Veröffentlichen einmal je Lauf ab, nach dem Freischalten aller Reisen, nicht je
+    Reise davor. Die Abrufe kommen vom Server selbst und zählen in nginx in dieselbe Begrenzung wie die Prüfung von
+    freischalten.sh; je Reise abgefragt bekamen die letzten Reisen 429 (frieda-reist#163)."""
+    ablauf = vf["tmp"] / "frei.log"
+    ausfuehrbar(vf["tmp"] / "bin" / "curl", f'#!/bin/sh\nfor a; do u="$a"; done\necho "curl $u" >> {ablauf}\necho "X-Frieda: konnektor"\n')
+    ausfuehrbar(vf["tmp"] / "bin" / "systemctl", '#!/bin/sh\ncase "$*" in *konnektor*) exit 0;; esac\nexit 1\n')
+    r = vf["lauf"](FR_KN_ADRESSE="https://reisen.example.invalid", FR_HEARTBEAT_VEROEFFENTLICHEN="")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert vf["deploys"]() == ["beispielreise", "zweitreise"]
+    zeilen = ablauf.read_text().split("\n")[:-1]
+    assert zeilen[:2] == ["beispielreise", "zweitreise"], zeilen
+    wege = [z.removeprefix("curl https://reisen.example.invalid") for z in zeilen[2:]]
+    assert wege == ["/gesund", "/anmelden", "/kalender/" + "0" * 40 + ".ics", "/schrift/pruefung.woff2", "/favicon.svg"], zeilen
+    assert "Warning: these paths" not in r.stdout
 
 
 def test_veroeffentlichen_merge_und_submodulfehler_werden_nicht_gemerkt(vf):

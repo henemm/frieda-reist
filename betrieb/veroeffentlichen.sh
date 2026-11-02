@@ -198,6 +198,7 @@ main() {
   fi
   rm -rf "$pruef_tmp"
   FR_GEPRUEFT="$(git rev-parse HEAD)"; export FR_GEPRUEFT
+  FR_WEGE_SPAETER=1; export FR_WEGE_SPAETER   # Wege zum Konnektor einmal nach dem Freischalten (wege_pruefen)
   for reise in reisen/*/reise.json; do
     [ -e "$reise" ] || continue
     reise="$(basename "$(dirname "$reise")")"
@@ -214,6 +215,7 @@ main() {
     aus="$("$freischalten" "$reise" 2>&1)" || echo "Warning: $reise not released (reason in the line below)."
     printf '%s\n' "$aus" | grep -E '^(ERROR|Released|Block renewed)' || true
   done
+  [ -z "$gut" ] || wege_pruefen
   if [ -n "$rote" ]; then
     # Teil-Erfolg ist kein fachlicher Erfolg: Stand nicht merken, kein Stempel, kein Heartbeat
     rot_schreiben "$neu" reise "$rote"
