@@ -60,6 +60,8 @@ for m in $(printf '%s\n' $RM_MODULE $KN_MODULE $SB_MODULE $PS_MODULE | sort -u);
 # Friedas Symbol (Favicon, App-Symbol) und die Schrift der Anmeldeseiten; der Konnektor liest die Dateien bei jedem
 # Abruf, kein Neustart nötig
 rsync -a --delete --chmod=D755,F644 --exclude "*.py" "$WURZEL/engine/marke/" "$DIENST/marke/"
+# Frieda-App (#21): Manifest, Worker und Skript von Mein Konto; der Konnektor liefert sie aus app/ (ohne Neustart)
+rsync -a --delete --chmod=D755,F644 "$WURZEL/engine/app/" "$DIENST/app/"
 rsync -a --delete --chmod=D755,F644 --include "*.woff2" --exclude "*" "$WURZEL/engine/vendor/fonts/" "$DIENST/schrift/"
 mkdir -p "$FR_KONNEKTOR" "$FR_KONTEN" && chmod 700 "$FR_KONNEKTOR" "$FR_KONTEN"
 neustart() {

@@ -351,6 +351,14 @@ SCHRIFT = next((d for d in (Path(__file__).resolve().parent / "schrift", Path(__
                 if d.is_dir()), Path(__file__).resolve().parent / "schrift")
 SCHRIFT_DATEIEN = {f"/schrift/{n}": (n, "font/woff2") for n in
                    ("source-sans-3-latin-wght-normal.woff2", "source-sans-3-latin-ext-wght-normal.woff2")}
+# Frieda-App (Issue #21, Entscheidung A): Manifest, Worker nur für Push und Skript von „Mein Konto“ (engine/app/, im Dienst
+# unter app/). Ohne Zwischenspeicher, damit eine neue Fassung sofort gilt; der Worker muss an der Wurzel liegen (Scope „/“).
+APP = Path(__file__).resolve().parent / "app"
+APP_DATEIEN = {"/manifest.webmanifest": ("manifest.webmanifest", "application/manifest+json"),
+               "/sw.js": ("sw.js", "text/javascript; charset=utf-8"),
+               "/konto.js": ("konto.js", "text/javascript; charset=utf-8")}
+FESTE_DATEIEN = {**{p: (MARKE, *w) for p, w in MARKE_DATEIEN.items()}, **{p: (SCHRIFT, *w) for p, w in SCHRIFT_DATEIEN.items()},
+                 **{p: (APP, *w) for p, w in APP_DATEIEN.items()}}
 
 
 def frieda_symbole():
@@ -2927,14 +2935,14 @@ class Dienst(BaseHTTPRequestHandler):
             self.wfile.write(body)
 
     def _marke(self, pfad):
-        ordner, (name, art) = (MARKE, MARKE_DATEIEN[pfad]) if pfad in MARKE_DATEIEN else (SCHRIFT, SCHRIFT_DATEIEN[pfad])
+        ordner, name, art = FESTE_DATEIEN[pfad]
         try:
             body = (ordner / name).read_bytes()
         except OSError:
             return self._senden(404, {"fehler": "unbekannt"})
         self.send_response(200)
         self.send_header("Content-Type", art)
-        self.send_header("Cache-Control", "public, max-age=86400")
+        self.send_header("Cache-Control", "no-cache" if pfad in APP_DATEIEN else "public, max-age=86400")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -2967,8 +2975,10 @@ class Dienst(BaseHTTPRequestHandler):
         self.send_response(code)
         grund = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
                  "Referrer-Policy": "same-origin",   # nicht no-referrer: dann schicken Browser „Origin: null“
-                 "Content-Security-Policy": "default-src 'none'; img-src 'self'; font-src 'self'; style-src 'unsafe-inline'; form-action 'self'; "
-                                            "frame-ancestors 'none'; base-uri 'none'"}
+                 # Eigenes Skript, Manifest, Worker und Abrufe nur von Friedas Adresse (Frieda-App, #21); kein Inline-Skript
+                 "Content-Security-Policy": "default-src 'none'; img-src 'self'; font-src 'self'; style-src 'unsafe-inline'; "
+                                            "script-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; "
+                                            "form-action 'self'; frame-ancestors 'none'; base-uri 'none'"}
         eigene = {k for k, _ in kopf}
         for k, v in [*((k, v) for k, v in grund.items() if k not in eigene), *kopf]:
             self.send_header(k, v)
@@ -2982,7 +2992,7 @@ class Dienst(BaseHTTPRequestHandler):
         # Readiness für BetterStack ohne geheimen Link: Zugänge lesbar und jede verlinkte Reise veröffentlicht
         if self.path.split("?", 1)[0] == "/gesund":
             return self._senden(*gesund())
-        if self.path.split("?", 1)[0] in MARKE_DATEIEN or self.path.split("?", 1)[0] in SCHRIFT_DATEIEN:
+        if self.path.split("?", 1)[0] in FESTE_DATEIEN:
             return self._marke(self.path.split("?", 1)[0])
         # Die Startseite der Adresse ist Mein Konto (#41); POST auf / bleibt unbekannt
         if anmeldung.ist_unsere(self.path) or oauth.ist_unsere(self.path) or self.path.split("?", 1)[0] == "/":
@@ -3001,7 +3011,7 @@ class Dienst(BaseHTTPRequestHandler):
 
     def _erlaubt(self):
         p = self.path.split("?", 1)[0]
-        return "GET, HEAD, OPTIONS" if p.startswith("/kalender/") or p in MARKE_DATEIEN or p in SCHRIFT_DATEIEN \
+        return "GET, HEAD, OPTIONS" if p.startswith("/kalender/") or p in FESTE_DATEIEN \
             or p == "/gesund" else "GET, HEAD, POST, OPTIONS"
 
     def do_OPTIONS(self):
