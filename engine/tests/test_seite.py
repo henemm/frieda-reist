@@ -429,7 +429,8 @@ def test_anmeldung_auf_der_seite(tmp_path, monkeypatch, browser):
     assert ohne["knopf"]["text"] == "Anmelden" and ohne["knopf"]["ziel"].startswith("/anmelden?zurueck=%2Fbeispielreise%2F")
     assert ohne["nameFeld"] == "text" and any("anmelden" in h for h in ohne["hinweis"])
     assert mit["knopf"] == {"text": "Karl", "ziel": "/konto"}
-    assert ohne["push"] is None and mit["push"] == "Benachrichtigungen auf diesem Gerät einschalten"
+    # Den Knopf gibt es nur, wo der Browser Push kann (WebKit unter Linux je nach Playwright-Version nicht)
+    assert ohne["push"] is None and mit["push"] == ("Benachrichtigungen auf diesem Gerät einschalten" if mit["pushDa"] else None)
     assert mit["nameFeld"] == "hidden" and "Du schreibst als Karl." in mit["hinweis"]
     assert "Danke" in ohne["meldung"] and "Danke" in mit["meldung"]
     # Meldungen an die Person (#21): angemeldet als Hinweis, ohne Netz aus dem Speicher, nach „Gelesen“ weg

@@ -30,6 +30,8 @@ aus.knopf = await p.evaluate(() => { const k = document.querySelector("#konto");
 // Benachrichtigungen (Issue #21): angemeldet bietet der Fuß sie an, sobald der Server einen Schlüssel hat; ohne Konto nicht
 await p.waitForFunction(() => !document.querySelector("#push").hidden, null, {timeout: 3000}).catch(() => {});
 aus.push = await p.evaluate(() => { const f = document.querySelector("#push"); return f.hidden ? null : f.textContent; });
+// Kann der Browser Push (dieselbe Bedingung wie PUSH_DA der Seite)? WebKit unter Linux kennt je nach Version kein PushManager
+aus.pushDa = await p.evaluate(() => "PushManager" in window && "serviceWorker" in navigator && "Notification" in window);
 await p.locator("[data-rm]").first().click();
 await p.waitForSelector("#rmForm");
 aus.nameFeld = await p.evaluate(() => { const n = document.querySelector("#rmName"); return n ? n.type : null; });
