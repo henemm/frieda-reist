@@ -92,7 +92,7 @@ def test_waechter_ohne_veroeffentlichte_seite(tmp_path, monkeypatch):
     monkeypatch.setenv("RM_ABLAGE", str(tmp_path / "ablage"))
     monkeypatch.setenv("RM_SEITEN", str(tmp_path / "seiten"))
     r = wa.lauf_reise("beispielreise", D(2026, 11, 1))
-    assert not r["aktiv"] and "nicht veröffentlicht" in r["grund"]
+    assert not r["aktiv"] and "not published" in r["grund"]
     assert wa.alle_reisen() == []
 
 
@@ -273,13 +273,13 @@ def test_lauf_schreibt_sammelnachricht_nur_fuer_den_kanal_nachricht(reise, tmp_p
     datei = tmp_path / "bericht.txt"
     assert wa.main(["lauf", "beispielreise", "--heute", "2026-11-09", "--bericht", str(datei)]) == 0
     aus = capsys.readouterr().out
-    assert "beispielreise: 12 neue Meldung(en), 11 Angabe(n) zu prüfen" in aus and "Prüfauftrag" not in aus   # seit 29.10.2026 auch die Adresse von U-01
+    assert "beispielreise: 12 new message(s), 11 value(s) to check" in aus and "Prüfauftrag" not in aus   # seit 29.10.2026 auch die Adresse von U-01
     text = datei.read_text(encoding="utf-8")
     assert "Karl: Frist in 1 Tag(en)" in text and "Ida: U-01 " in text and "nachschlagen" in text
     # zweiter Lauf am selben Tag: nichts Neues, keine Nachricht
     datei.unlink()
     wa.main(["lauf", "--heute", "2026-11-09", "--bericht", str(datei)])
-    assert "0 neue Meldung(en)" in capsys.readouterr().out and not datei.exists()
+    assert "0 new message(s)" in capsys.readouterr().out and not datei.exists()
     # nur Kanal app: keine Sammelnachricht
     nur_app = reise(regeln={"meldekanal": ["app"]})
     nur_app.aufgabe("Fähre buchen", frist="2026-11-10", zustaendig="Karl")
@@ -293,12 +293,12 @@ def test_zeige_aendert_nichts(reise, capsys):
     r.aufgabe("Fähre buchen", frist="2026-11-10", zustaendig="Karl")
     assert wa.main(["zeige", "beispielreise", "--heute", "2026-11-09"]) == 0
     aus = capsys.readouterr().out
-    assert "Wächter aktiv" in aus and "Zu prüfen (" in aus and "Meldung an Karl" in aus
+    assert "watcher active" in aus and "To check (" in aus and "Message to Karl" in aus
     assert not r.o.joinpath("meldungen.jsonl").exists() and rm.auftraege(r.o) == []
 
 
 def test_aufruf_ohne_argumente_zeigt_hilfe(capsys):
-    assert wa.main([]) == 1 and "Wächter und Erinnerer" in capsys.readouterr().out
+    assert wa.main([]) == 1 and "Usage:" in capsys.readouterr().out
     with pytest.raises(SystemExit):
         wa.main(["zeige", "beispielreise", "--heute", "morgen"])
 

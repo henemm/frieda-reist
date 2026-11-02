@@ -187,18 +187,18 @@ def test_pruefen(tmp_path):
 def test_aufruf(tmp_path, capsys):
     rc = neu.main(["neu.py", "reise", str(tmp_path), "--titel", "Ski", "--von", "2027-02-06", "--bis", "2027-02-13",
                    "--person", "Ida:organisator", "--person", "Karl:mitwirkend", "--wer", "Ida", "--ziel", "Oberstdorf"])
-    assert rc == 0 and "Angelegt: " in capsys.readouterr().out
+    assert rc == 0 and "Created: " in capsys.readouterr().out
     r = tmp_path / "ski-2027"
     assert neu.main(["neu.py", "id", str(r), "O"]) == 0 and capsys.readouterr().out.strip() == "O-01"
     (tmp_path / "text.md").write_text("Eigene Worte.", encoding="utf-8")
     assert neu.main(["neu.py", "abschnitt", str(r), "--titel", "Tal", "--text-datei", str(tmp_path / "text.md")]) == 0
     assert capsys.readouterr().out.strip() == "W-04"
-    assert neu.main(["neu.py", "pruefen", str(r)]) == 0 and "In Ordnung: Ski baut ohne Fehler." in capsys.readouterr().out
+    assert neu.main(["neu.py", "pruefen", str(r)]) == 0 and "OK: Ski builds without errors." in capsys.readouterr().out
     (r / "reise.json").write_text("{", encoding="utf-8")
-    assert neu.main(["neu.py", "pruefen", str(r)]) == 1 and "1 Punkt zu beheben" in capsys.readouterr().out
+    assert neu.main(["neu.py", "pruefen", str(r)]) == 1 and "1 point to fix" in capsys.readouterr().out
     assert neu.main(["neu.py", "reise", str(tmp_path), "--titel", "Ski", "--von", "2027-02-06", "--bis", "2027-02-13",
                      "--person", "Ida:organisator", "--wer", "Ida"]) == 2
-    assert "Nicht möglich: Eine Reise „ski-2027“ gibt es schon" in capsys.readouterr().out
+    assert "Not possible: Eine Reise „ski-2027“ gibt es schon" in capsys.readouterr().out
 
 
 def test_aus_auftrag_der_claude_app(tmp_path):
@@ -275,14 +275,14 @@ def test_nachziehen_nur_schluessel(tmp_path):
     with pytest.raises(bauen.BauFehler, match="E-23: art fehlt"):      # keine Vorgabe-Art mehr (ADR-0001)
         bauen.Bauer(r, tmp_path / "v0").daten()
     m = neu.nachziehen(r, schreiben=False)
-    assert any(t.startswith("OFFEN E-23") for t in m) and "U-01: typ „Hotel“ → art hotel" in m and "V-03: art planung → wann planung" in m
+    assert any(t.startswith("OPEN E-23") for t in m) and "U-01: typ “Hotel” → art hotel" in m and "V-03: art planung → wann planung" in m
     assert "V-03: bereich pension → art pension" in m and "V-02: art unterwegs → wann unterwegs" in m
-    assert "arten.yaml hotel: Merkmal preis bekommt rolle kosten" in m and any(t.startswith("reise.json") for t in m)
+    assert "arten.yaml hotel: attribute preis gets rolle kosten" in m and any(t.startswith("reise.json") for t in m)
     p.write_text(alt.replace("nach: O-01, quelle", "nach: O-01, art: bus, quelle"), encoding="utf-8")
     vorher = bauen.Bauer(r, tmp_path / "v").daten()   # baut über die Brücke der alten Schlüssel
     p.write_text(alt, encoding="utf-8")
     m = neu.nachziehen(r, {"E-23": "bus"})
-    assert "E-23: art bus (angegeben)" in m and not [t for t in m if t.startswith("OFFEN")]
+    assert "E-23: art bus (given)" in m and not [t for t in m if t.startswith("OPEN")]
     text = p.read_text(encoding="utf-8")
     assert "typ:" not in text and "bereich:" not in text and "art: planung" not in text
     assert "# Alle Unterkünfte sind erfunden" in text                     # Kommentare bleiben

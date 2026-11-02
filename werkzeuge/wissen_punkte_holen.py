@@ -47,14 +47,21 @@ def suchen(begriff, mitte, radius_km):
     return treffer[0] if treffer else None
 
 
+AUFRUF = """Usage (in the root of the trips repository):
+  engine/.venv/bin/python frieda/werkzeuge/wissen_punkte_holen.py <trip> [--neu] [--rahmen]
+  --neu      search points that already have lage again (except von_hand: true)
+  --rahmen   propose the extract per base map that contains all points of its area
+Names in languages: FR_SPRACHEN (default de,en; e.g. de,en,ja)"""
+
+
 def main(argv):
     if len(argv) < 2:
-        print(__doc__)
+        print(AUFRUF)
         return 1
     reise = WURZEL / "reisen" / argv[1]
     rel = json.loads((reise / "reise.json").read_text(encoding="utf-8")).get("wissen_punkte")
     if not rel:
-        print("reise.json hat keinen Eintrag wissen_punkte.")
+        print("reise.json has no entry wissen_punkte.")
         return 1
     pfad = reise / rel
     text = pfad.read_text(encoding="utf-8")
@@ -68,7 +75,7 @@ def main(argv):
             if pk:
                 s, n = min(p[0] for p in pk), max(p[0] for p in pk)
                 w, o = min(p[1] for p in pk), max(p[1] for p in pk)
-                print(f"{name}: {{nord: {n + 0.02:.3f}, sued: {s - 0.02:.3f}, west: {w - 0.02:.3f}, ost: {o + 0.02:.3f}}}  ({len(pk)} Punkte)")
+                print(f"{name}: {{nord: {n + 0.02:.3f}, sued: {s - 0.02:.3f}, west: {w - 0.02:.3f}, ost: {o + 0.02:.3f}}}  ({len(pk)} points)")
         return 0
 
     heute = datetime.date.today().isoformat()
@@ -95,9 +102,9 @@ def main(argv):
     d["stand"] = heute
     pfad.write_text(kopf + yaml.dump(d, allow_unicode=True, sort_keys=False, width=200, default_flow_style=None),
                     encoding="utf-8")
-    print(f"Geschrieben: {pfad}")
+    print(f"Written: {pfad}")
     if fehlt:
-        print(f"Nicht gefunden ({len(fehlt)}), bitte von Hand prüfen:")
+        print(f"Not found ({len(fehlt)}), please check by hand:")
         print("\n".join("  " + f for f in fehlt))
     return 0
 

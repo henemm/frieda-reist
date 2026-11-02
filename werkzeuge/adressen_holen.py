@@ -145,9 +145,15 @@ def vorschlaege(roh, punkte, karte, suchen=False, heute=None, abfragen=holen):
     return neu, fehlt
 
 
+AUFRUF = """Usage (in the root of the trips repository):
+  engine/.venv/bin/python frieda/werkzeuge/adressen_holen.py <trip> [--suchen] [--trocken]
+  --suchen   additionally search Nominatim by name and place for accommodations without an OSM point
+  --trocken  only show, write nothing"""
+
+
 def main(argv):
     if len(argv) < 2:
-        print(__doc__)
+        print(AUFRUF)
         return 1
     reise = instanz.wurzel() / "reisen" / argv[1]
     roh = schreiben.routen_laden(reise)
@@ -160,10 +166,10 @@ def main(argv):
                 roh["unterkuenfte"][uid][feld] = schreiben.fliess_map(v)
     if neu and "--trocken" not in argv:
         schreiben.routen_speichern(reise, roh)
-    print(f"\n{len(neu)} Adressen {'gefunden' if '--trocken' in argv else 'eingetragen'}; ohne Adresse {len(fehlt)}:")
+    print(f"\n{len(neu)} addresses {'found' if '--trocken' in argv else 'entered'}; without address {len(fehlt)}:")
     for uid, name, grund in fehlt:
         print(f"  {uid} {name}: {grund}")
-    print("Den Rest im Gespräch mit Frieda eintragen (lage_eintragen).")
+    print("Enter the rest in conversation with Frieda (lage_eintragen).")
     return 0
 
 

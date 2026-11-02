@@ -85,7 +85,7 @@ out center tags;"""
         except urllib.error.HTTPError as e:
             if e.code not in (429, 502, 503, 504) or versuch == 3:
                 raise
-            print(f"Overpass {e.code}, neuer Versuch in {30 * (versuch + 1)} s …", file=sys.stderr)
+            print(f"Overpass {e.code}, retrying in {30 * (versuch + 1)} s …", file=sys.stderr)
             time.sleep(30 * (versuch + 1))
 
 
@@ -166,7 +166,7 @@ def main(reise):
         genannt.setdefault(eid, []).extend(x for x in n if x not in genannt.get(eid, []))
     heute = datetime.date.today().isoformat()
 
-    print("Frage OpenStreetMap ab …", file=sys.stderr)
+    print("Querying OpenStreetMap …", file=sys.stderr)
     osm = abfrage(karte["rahmen"])
     stand = osm.get("osm3s", {}).get("timestamp_osm_base", heute)[:10]
     elemente = []
@@ -256,10 +256,10 @@ def main(reise):
         z = {}
         for x in p:
             z[x["kat"]] = z.get(x["kat"], 0) + 1
-        print(f"{eid}: {z}" + (f"  · im Dossier genannt, nicht gefunden: {', '.join(fehlt[eid])}" if fehlt[eid] else ""))
+        print(f"{eid}: {z}" + (f"  · named in the dossier, not found: {', '.join(fehlt[eid])}" if fehlt[eid] else ""))
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        sys.exit("Aufruf: engine/.venv/bin/python frieda/werkzeuge/punkte_holen.py <reise>")
+        sys.exit("Usage: engine/.venv/bin/python frieda/werkzeuge/punkte_holen.py <trip>")
     main(sys.argv[1])

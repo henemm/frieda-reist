@@ -1226,7 +1226,7 @@ def titel_zu(reise):
 def muss_ordner(reise):
     o = ordner_neu() if reise == NEU else ordner(reise)
     if o is None:
-        sys.exit(f"Reise „{reise}“ nimmt keine Rückmeldungen an (Ordner {ablage() / reise} fehlt).")
+        sys.exit(f"Trip “{reise}” accepts no feedback (folder {ablage() / reise} is missing).")
     return o
 
 
@@ -1235,7 +1235,7 @@ def liste(reise, alle):
     es = [e for e in eintraege(o) + auftraege(o) if alle or e["status"] in ("neu", "konflikt")]
     es.sort(key=lambda e: e.get("erstellt", ""), reverse=True)
     if not es:
-        print("Keine neuen Rückmeldungen." if not alle else "Keine Rückmeldungen.")
+        print("No new feedback." if not alle else "No feedback.")
         return
     titel = titel_zu(reise)
     br = brett_lesen(o)
@@ -1243,31 +1243,31 @@ def liste(reise, alle):
         print(f"{e['id']}  {e['erstellt'][:16].replace('T', ' ')} UTC  {e.get('name')}  [{e['status']}]")
         if e.get("art") == "Wunsch":
             b = br.get(e["id"]) or {}
-            print(f"  WUNSCH ({b.get('punkte') or 0} Punkte von {e.get('name')}): Vorschlag in plan/wuensche.yaml (bezug, notiz "
-                  "mit Herkunft, option); einplanen nur Organisator:innen. Punkte = Priorität, keine Entscheidung."
-                  + (" Schon eingeplant von einer Organisator:in." if b.get("eingeplant") else "")
-                  + (" Schon erlebt." if b.get("erlebt") else ""))
+            print(f"  WISH ({b.get('punkte') or 0} points from {e.get('name')}): proposal in plan/wuensche.yaml (bezug, notiz "
+                  "with source, option); only organisers schedule it. Points = priority, not a decision."
+                  + (" Already scheduled by an organiser." if b.get("eingeplant") else "")
+                  + (" Already experienced." if b.get("erlebt") else ""))
         daten = e.get("daten") or {}
         if daten.get("pruefung"):
-            print("  PRÜFAUFTRAG des Wächters (bis 28.10.2026; seitdem Meldungen): veränderliche Angaben, die nachzuschlagen waren.")
+            print("  CHECK ORDER of the watcher (until 28.10.2026; messages since): changeable details that had to be looked up.")
         elif daten.get("weg") == "direkt":
-            print(f"  ENTSCHEIDUNG von {e.get('name')} im Gespräch (Claude-App, bis 29.10.2026 als Auftrag): bereits geprüft.")
+            print(f"  DECISION by {e.get('name')} in conversation (Claude app, an order until 29.10.2026): already checked.")
         elif daten.get("neue_reise"):
-            print(f"  NEUE REISE von {e.get('name')} (Claude-App): reisen/{daten['neue_reise']['pfad']}, legt der Schreibweg an.")
+            print(f"  NEW TRIP by {e.get('name')} (Claude app): reisen/{daten['neue_reise']['pfad']}, the write path creates it.")
         elif daten.get("einladung"):
-            print(f"  EINLADUNG von {e.get('name')} (Claude-App, bis 29.10.2026 als Auftrag): Zugang und Rolle gelten.")
+            print(f"  INVITATION by {e.get('name')} (Claude app, an order until 29.10.2026): access and role apply.")
         elif e["art"] == "Auftrag":
-            print(f"  ÄNDERUNGSAUFTRAG von {e.get('name')} (Organisator:in, Claude-App, bis 29.10.2026) – zählt als Entscheidung; "
-                  "wird im AI-Client eingetragen und mit rueckmeldung_erledigen abgeschlossen:")
+            print(f"  CHANGE ORDER by {e.get('name')} (organiser, Claude app, until 29.10.2026) – counts as a decision; "
+                  "is entered in the AI client and closed with rueckmeldung_erledigen:")
         if e["status"] == "konflikt":
-            print("  KONFLIKT: widerspricht einer anderen Entscheidung; nichts davon gilt, bis die Organisator:innen es klären.")
-        print(f"  {e['ziel']} ({titel.get(e['ziel'], 'ID nicht auf der Seite')}) [{e['art']}]:")
+            print("  CONFLICT: contradicts another decision; none of it applies until the organisers settle it.")
+        print(f"  {e['ziel']} ({titel.get(e['ziel'], 'ID not on the page')}) [{e['art']}]:")
         print("    " + e["text"].replace("\n", "\n    "))
         if e.get("quelle"):
-            print(f"  Quelle: {e['quelle']}")
+            print(f"  Source: {e['quelle']}")
         if e.get("kommentar"):
             print(f"  → {e['kommentar']}")
-    print(f"\n{len(es)} Rückmeldung(en).")
+    print(f"\n{len(es)} feedback item(s).")
 
 
 def status_setzen(o, rid, status, kommentar, wer=None):
@@ -1340,11 +1340,11 @@ def aufgaben_liste(reise, alle):
     o = muss_ordner(reise)
     es = sorted((a for a in aufgaben(o) if alle or a["status"] in ("offen", "in_arbeit")), key=ag_sortierung)
     if not es:
-        print("Keine offenen Aufgaben." if not alle else "Keine Aufgaben.")
+        print("No open tasks." if not alle else "No tasks.")
         return
     z = zustand(reise)
     print(aufgaben_text(es, titel_zu(reise), rg.verhalten(z["status"])["fristen"] if z else True))
-    print(f"\n{len(es)} Aufgabe(n).")
+    print(f"\n{len(es)} task(s).")
 
 
 def main(a):
@@ -1357,9 +1357,17 @@ def main(a):
     elif a[:1] == ["setze"] and len(a) >= 4:
         setze(a[1], a[2], a[3], " ".join(a[4:]))
     else:
-        print(__doc__)
+        print(AUFRUF)
         return 1
     return 0
+
+
+AUFRUF = """Usage:
+  python3 engine/rueckmeldungen.py liste <trip> [--alle]          show new feedback and conflicts (or all), with orders
+  python3 engine/rueckmeldungen.py setze <trip> R-...|A-... STATUS [COMMENT]
+        STATUS: uebernommen | verworfen | rueckfrage | konflikt | neu
+  python3 engine/rueckmeldungen.py aufgaben <trip> [--alle]       show open (or all) tasks
+  python3 engine/rueckmeldungen.py dienst                          start the service"""
 
 
 if __name__ == "__main__":

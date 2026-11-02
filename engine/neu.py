@@ -449,9 +449,9 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
         if knoten.get("art") is None:
             a = art_schluessel(knoten["typ"])
             knoten.insert(list(knoten.keys()).index("typ"), "art", a)
-            meldungen.append(f"{wo}: typ „{knoten['typ']}“ → art {a}")
+            meldungen.append(f"{wo}: typ “{knoten['typ']}” → art {a}")
         else:
-            meldungen.append(f"{wo}: typ „{knoten['typ']}“ entfernt (art {knoten['art']} steht schon)")
+            meldungen.append(f"{wo}: typ “{knoten['typ']}” removed (art {knoten['art']} is already there)")
         del knoten["typ"]
 
     for uid, u in ((roh or {}).get("unterkuenfte") or {}).items():
@@ -463,9 +463,9 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
         if isinstance(st, dict) and not st.get("art"):
             if sid in strecken_arten:
                 st["art"] = strecken_arten[sid]
-                meldungen.append(f"{sid}: art {strecken_arten[sid]} (angegeben)")
+                meldungen.append(f"{sid}: art {strecken_arten[sid]} (given)")
             else:
-                meldungen.append(f"OFFEN {sid}: keine Art; mit --strecke {sid}=<art> angeben (der Bau verlangt sie)")
+                meldungen.append(f"OPEN {sid}: no kind; give it with --strecke {sid}=<art> (the build requires it)")
     for vid, w in ((roh or {}).get("wahlstellen") or {}).items():
         if not isinstance(w, dict):
             continue
@@ -494,7 +494,7 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
             if isinstance(m, dict) and m.get("typ") == "geld":
                 m["rolle"] = "kosten"
                 geaendert = True
-                meldungen.append(f"arten.yaml {a}: Merkmal preis bekommt rolle kosten")
+                meldungen.append(f"arten.yaml {a}: attribute preis gets rolle kosten")
         if geaendert and schreiben:
             sb.arten_speichern(reise_dir, arten, {"name": "Betrieb (neu.py nachziehen)"})
 
@@ -505,7 +505,7 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
         if cfg.get("etappen_dossier") and "etappen_ebenen" not in cfg:
             cfg["etappen_ebenen"] = {"unterwegs": ["Höhenprofil", "Wegpunkte", "Unterkünfte", "Unterkunft", "Kontakte", "Wasser",
                                                    "Einkehr", "Verpflegung", "Anfahrt", "Abfahrt", "Praktisch"]}
-            meldungen.append("reise.json: etappen_ebenen mit der bisherigen Vorgabe für „Unterwegs nachschlagen“")
+            meldungen.append("reise.json: etappen_ebenen with the previous default for “Look up on the way”")
             if schreiben:   # in der Form der Datei (json.dumps mit Einrückung 2), damit nur die neue Zeile im Diff steht
                 cfg_pfad.write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return meldungen
@@ -514,46 +514,46 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
 # ---------- Aufruf ----------
 def main(argv):
     import argparse
-    ap = argparse.ArgumentParser(prog="engine/neu.py", description="Neue Reise anlegen, IDs vergeben, vor dem Bau prüfen.")
+    ap = argparse.ArgumentParser(prog="engine/neu.py", description="Create a new trip, assign IDs, check before the build.")
     sub = ap.add_subparsers(dest="befehl", required=True)
-    r = sub.add_parser("reise", help="neue Reise aus der Vorlage anlegen")
+    r = sub.add_parser("reise", help="create a new trip from the template")
     r.add_argument("reisen", type=Path)
     r.add_argument("--titel", required=True)
     r.add_argument("--von", required=True, type=datetime.date.fromisoformat)
     r.add_argument("--bis", required=True, type=datetime.date.fromisoformat)
-    r.add_argument("--person", action="append", required=True, help="schluessel=Name:rolle[:reist|nicht]")
-    r.add_argument("--wer", required=True, help="Name der Person, die anlegt (organisator)")
+    r.add_argument("--person", action="append", required=True, help="key=Name:role[:travels|not]")
+    r.add_argument("--wer", required=True, help="name of the person creating the trip (organiser)")
     r.add_argument("--ziel")
     r.add_argument("--pfad")
-    r.add_argument("--sprache", help="Sprachkennung (texte.SPRACHEN), Vorgabe en")
+    r.add_argument("--sprache", help="language code (texte.SPRACHEN), default en")
     r.add_argument("--untertitel")
-    r.add_argument("--herkunft", help="Vorgabe: Gespräch in Claude Code")
+    r.add_argument("--herkunft", help="default: conversation in Claude Code")
     r.add_argument("--ueberblick")
-    i = sub.add_parser("id", help="nächste freie ID vergeben")
+    i = sub.add_parser("id", help="assign the next free ID")
     i.add_argument("reise", type=Path)
     i.add_argument("art", choices=ARTEN)
-    a = sub.add_parser("abschnitt", help="Abschnitt mit neuer W-ID anhängen")
+    a = sub.add_parser("abschnitt", help="append a section with a new W-ID")
     a.add_argument("reise", type=Path)
     a.add_argument("--titel", required=True)
     a.add_argument("--gruppe", default="wissen", choices=GRUPPEN)
     a.add_argument("--datei", default="inhalt/wissen.md")
     a.add_argument("--text-datei", type=Path)
-    p = sub.add_parser("pruefen", help="vor dem Bau prüfen")
+    p = sub.add_parser("pruefen", help="check before the build")
     p.add_argument("reise", type=Path)
-    g = sub.add_parser("arten-ableiten", help="plan/arten.yaml aus den Bestandsdaten der Reise ableiten (Paket O-2)")
+    g = sub.add_parser("arten-ableiten", help="derive plan/arten.yaml from the existing data of the trip (package O-2)")
     g.add_argument("reise", type=Path)
-    g.add_argument("--name", action="append", default=[], help="art=Anzeigename, z. B. faehre=Fähre")
-    g.add_argument("--summiert", default="", help="Arten aus eigener Kraft, Komma-Liste, z. B. wandern,rad")
-    g.add_argument("--definitionen", type=Path, help="YAML {merkmal: {name, typ, …}} als Vorlage für Namen und Hilfetexte")
-    nz = sub.add_parser("nachziehen", help="Schlüssel einer bestehenden Reise auf den Stand vom 29.10.2026 bringen (nur Schlüssel)")
+    g.add_argument("--name", action="append", default=[], help="art=display name, e.g. ferry=Ferry")
+    g.add_argument("--summiert", default="", help="kinds under one's own power, comma list, e.g. hiking,cycling")
+    g.add_argument("--definitionen", type=Path, help="YAML {merkmal: {name, typ, …}} as a template for names and help texts")
+    nz = sub.add_parser("nachziehen", help="bring the keys of an existing trip to the state of 29.10.2026 (keys only)")
     nz.add_argument("reise", type=Path)
-    nz.add_argument("--strecke", action="append", default=[], help="E-ID=art für Strecken ohne Art, z. B. E-15=kombiniert")
+    nz.add_argument("--strecke", action="append", default=[], help="E-ID=art for legs without a kind, e.g. E-15=kombiniert")
     x = ap.parse_args(argv[1:])
     try:
         if x.befehl == "nachziehen":
             m = nachziehen(x.reise, dict(t.split("=", 1) for t in x.strecke))
-            print("\n".join(m) if m else "Nichts nachzuziehen.")
-            return 1 if any(t.startswith("OFFEN") for t in m) else 0
+            print("\n".join(m) if m else "Nothing to bring up to date.")
+            return 1 if any(t.startswith("OPEN") for t in m) else 0
         if x.befehl == "arten-ableiten":
             import yaml
             defs = yaml.safe_load(x.definitionen.read_text(encoding="utf-8")) if x.definitionen else {}
@@ -565,7 +565,7 @@ def main(argv):
                         untertitel=x.untertitel, ueberblick=x.ueberblick,
                         herkunft=x.herkunft or texte.t(sprache_pruefen(x.sprache)[0], "inhalt.neu.herkunft_gespraech_betreiber"))
             ok, m = pruefen(d)
-            print(f"Angelegt: {d} (Status idee)." + ("" if ok else " Prüfung meldet:\n - " + "\n - ".join(m)))
+            print(f"Created: {d} (status idee)." + ("" if ok else " The check reports:\n - " + "\n - ".join(m)))
             return 0 if ok else 1
         if x.befehl == "id":
             print(naechste_id(x.reise, x.art))
@@ -576,14 +576,14 @@ def main(argv):
             return 0
         ok, m = pruefen(x.reise)
         if ok:
-            print(f"In Ordnung: {cfg_titel(x.reise)} baut ohne Fehler.")
+            print(f"OK: {cfg_titel(x.reise)} builds without errors.")
             return 0
-        print(f"Die Reise baut noch nicht. {len(m)} Punkt{'e' if len(m) != 1 else ''} zu beheben:")
+        print(f"The trip does not build yet. {len(m)} point{'s' if len(m) != 1 else ''} to fix:")
         for n, t in enumerate(m, 1):
             print(f" {n}. {t}")
         return 1
     except Fehler as e:
-        print(f"Nicht möglich: {e}")
+        print(f"Not possible: {e}")
         return 2
 
 
