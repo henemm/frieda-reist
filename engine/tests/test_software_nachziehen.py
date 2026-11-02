@@ -523,3 +523,20 @@ def test_drei_gescheiterte_pushes_rot_ohne_issue(sn):  # AC-4
     assert (sn["tmp"] / "push.log").read_text().split() == ["versuch"] * 3
     assert sn["kopf"]() == vorher
     assert not any(a[:2] == ["issue", "create"] for a in sn["gh"]()) and sn["issues"]() == []
+
+
+def test_tor_rot_issue_abfrage_scheitert_rot_ohne_neues_issue(sn):  # AC-3, Gegenprüfung F002
+    """Scheitert `gh issue list`, ist unbekannt, ob schon ein Issue offen ist: kein Issue anlegen (kein Doppel), kein
+    Commit, der Lauf endet rot mit Hinweis, damit GitHub mailt."""
+    t = sn["tmp"]
+    echt = t / "bin" / "gh-echt"
+    (t / "bin" / "gh").rename(echt)
+    ausfuehrbar(t / "bin" / "gh", f'#!/bin/sh\nif [ "$1 $2" = "issue list" ]; then echo "$@" >> {t}/gh-list.log; exit 1; fi\n'
+                                  f'exec {echt} "$@"\n')
+    (t / "rot-software").touch()
+    vorher = sn["kopf"]()
+    r, _ = sn["lauf"]("ja")
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert (t / "gh-list.log").exists() and "::error::" in r.stdout
+    assert sn["kopf"]() == vorher
+    assert not any(a[:2] == ["issue", "create"] for a in sn["gh"]()) and sn["issues"]() == []

@@ -84,6 +84,8 @@ export FR_INSTANZ FR_TITEL FR_SEITEN FR_ABLAGE FR_DIENST FR_KONNEKTOR FR_KONTEN 
 
 # Workflow des Reisen-Repos, den ein Anstoß von der Seite startet (veroeffentlichen.sh, docs/betrieb.md „Anstoß“)
 : "${FR_NACHZIEHEN_WORKFLOW:=software-nachziehen.yml}"
+# Anstoß vom Server (veroeffentlichen.sh, #250): denselben neuen Software-Stand frühestens nach so vielen Stunden erneut
+: "${FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN:=6}"
 # Was die Software (engine/) erwartet; ausdrücklich gesetzte Werte gelten weiter
 : "${RM_ABLAGE:=$FR_ABLAGE}"
 : "${KN_SEITEN:=$FR_SEITEN}"

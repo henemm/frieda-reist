@@ -1,0 +1,14 @@
+== test_umstellung_250 + test_software_nachziehen + test_betrieb -k anstoss + test_neu
+........................................................................ [100%]
+72 passed in 15.02s
+......                                                                   [100%]
+6 passed, 85 deselected in 2.36s
+
+== Probe: Arithmetik mit Wert 08 in bash (F001)
+Aufruf: Funktion f wertet einen Vergleich mit x=08 mal 3600 aus, g ruft f mit Abfangen auf.
+Ausgabe: "08: value too great for base (error token is "08")" ; keine Folgeausgabe, Exit 1.
+== Probe: ist_vorlagen_kopie / reste_nachziehen (Scratchpad p1.py, p2.py)
+filled True / crlf True / trailing blanks True / empty False / extra line False / edited lines False
+Kopfkommentar: zweiter Lauf leer (idempotent); CRLF-Datei wird nach LF geschrieben; Backslash-n vor Leerzeile bleibt.
+
+== Runde 3: test_betrieb.py + test_software_nachziehen.py komplett: 114 passed in 60.51s; voller Lauf laut test-green-output.txt: 992 passed

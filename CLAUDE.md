@@ -34,6 +34,7 @@ Der Generator sucht Reisen in `./reisen/` des aktuellen Ordners (`--reisen`, `--
 - Sichtbare Texte (Seite, Konnektor, Mails, Fehler) stehen in `engine/texte_<sprache>.py` in allen Sprachen, nie im Code ([ADR-0006](docs/adr/0006-mehrsprachigkeit.md)); Werkzeug- und Parameternamen des Konnektors englisch mit deutschem Alias. Der Code kennt keine Sprache beim Namen; eine neue Sprache ist eine Datei und wird gefunden, ohne dass Code geändert wird (Anleitung, Regeln für Schlüssel und die Pseudo-Sprache der Tests: [docs/sprachen.md](docs/sprachen.md)). Die Ausnahmelisten in `engine/tests/test_texte.py` dürfen nur kürzer werden.
 - Bibliotheken statt Eigenbau; neue Fremdbestandteile mit Lizenz in `engine/vendor/` und `THIRD_PARTY.md`.
 - Tests: `engine/.venv/bin/python -m pytest -q engine/tests` muss ohne echte Reisen grün sein. Neue Funktionen bekommen Tests, wenn nötig mit Ergänzungen der Beispielreise (erfunden, als Beispielwert markiert).
+- Jede Änderung am Format der Reisedaten bringt ihre Umstellung in `neu.py nachziehen` mit, mit Test; der Workflow „Software nachziehen“ stellt damit jede Reise im selben Commit wie den neuen Software-Stand um. Ein Handschritt in Reisen oder Instanzen nach einem Software-Wechsel ist ein Fehler der Software (#250).
 - Braucht der Konnektor oder der Rückmeldedienst ein neues eigenes Modul, gehört es in die Liste in `betrieb/deploy.sh` (ein Test prüft das).
 - Sprache der Texte und Kommentare: Deutsch mit korrekten Umlauten.
 - Kleine, thematisch saubere Commits; Änderungen über Pull Requests.

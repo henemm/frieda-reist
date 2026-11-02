@@ -439,6 +439,25 @@ def test_anstoss_ls_remote_rot_ist_nur_eine_warnung(an):
     assert an["deploys"]() == ["beispielreise", "zweitreise"]
 
 
+def test_anstoss_wartezeit_mit_fuehrender_null(an):
+    """Gegenprüfung F001/F005: Wartezeit „08“ und eine gemerkte Zeit mit führender Null gelten dezimal (keine Oktalzahl,
+    die die Arithmetik abbricht); das Veröffentlichen läuft durch. Ohne Merkdatei keine Fehlermeldung beim Lesen."""
+    b = "b" * 40
+    an["remote"](b)
+    r = an["lauf_an"](T0, FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN="08")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "No such file" not in r.stdout + r.stderr
+    assert an["starts"]() == 1 and an["deploys"]() == ["beispielreise", "zweitreise"]
+    (an["tmp"] / "dienst" / "nachziehen-angestossen").write_text(f"{b} 0{T0}\n")
+    r = an["lauf_an"](T0 + 8 * STUNDE - 1, FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN="08")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "value too great" not in r.stdout + r.stderr and an["starts"]() == 0
+    an["lauf_an"](T0 + 8 * STUNDE, FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN="09")
+    assert an["starts"]() == 0
+    an["lauf_an"](T0 + 9 * STUNDE, FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN="09")
+    assert an["starts"]() == 1
+
+
 def test_wartezeit_vorgabe_sechs_stunden(tmp_path):
     r = subprocess.run(["bash", "-c", f'. "{BETRIEB}/gemeinsam.sh"; echo "$FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN"'],
                        capture_output=True, text=True, env={**SAUBER, "FR_WURZEL": str(tmp_path)})

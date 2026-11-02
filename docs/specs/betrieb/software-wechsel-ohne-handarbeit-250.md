@@ -168,3 +168,23 @@ Einmalige Ausnahme beim Einführen: Danach kommt jeder Ablauf mit der Software, 
 mehr. Die Sitzung, die #250 ausliefert, erledigt das selbst (kein Auftrag an den PO). Nach dem Zusammenführen wird
 die Vorlage ein letztes Mal in das Reisen-Repo der Instanz kopiert (PR dort). Der nächste
 Lauf stellt die vier Reisen der Instanz um, die noch Eckdaten der früheren Vorlage tragen.
+
+## Implementation Details
+
+Abweichungen der Umsetzung (2.11.2026), keine Änderung an den Akzeptanzkriterien:
+
+- **Anstoß liest `origin/main` statt `HEAD`.** Die Präzisierung unter „Anstoß vom Server“ nennt
+  `git rev-parse HEAD:frieda` und `.gitmodules` im Arbeitsbaum, direkt nach `anstoss_weitergeben`. Umgesetzt ist
+  `git config --blob origin/main:.gitmodules submodule.frieda.url` und `git rev-parse origin/main:frieda`, direkt nach
+  `git fetch origin main` und vor der frühen Rückkehr bei „nichts Neues“, also weiterhin in jedem Lauf. Grund: Gelesen
+  wird der Stand, den der Lauf gleich baut; `HEAD` kennt ein Submodul, das erst mit diesem Lauf in den Bauordner kommt,
+  noch nicht (Test `test_anstoss_*` in `engine/tests/test_betrieb.py`).
+- **Status in Worten:** planung „Planung“/„Planning“, fest „Plan steht“/„Plan fixed“, unterwegs „Unterwegs“/„Under way“,
+  danach „Nach der Reise“/„After the trip“, archiv „Archiviert“/„Archived“ („Plan steht“ wie in der Beschreibung des
+  Status für den Konnektor).
+- **Veralteter Test:** `engine/tests/test_neu.py::test_eckdaten_folgen_reise_yaml` erwartete „Status: planung“; nach AC-7
+  „Status: Planung“.
+- `betrieb/einstellungen.beispiel` erklärt die neue Vorgabe `FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN` (Pflicht durch
+  `test_beispiel_einstellungen_sind_vollstaendig`).
+- Die Zeilen „von Hand übernommen“ in dieser Spec und in `docs/context/…-250.md` zitieren den früheren Satz; AC-8 meint
+  Doku und Regeln der Software.

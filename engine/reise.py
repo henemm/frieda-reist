@@ -214,7 +214,7 @@ def eckdaten_text(d):
     if d.get("personen"):
         z.append(texte.t(sp, "inhalt.eckdaten.wer", personen=personen_text(d["personen"], sp)))
     wert = d["status"]["wert"]
-    z.append(texte.t(sp, "inhalt.eckdaten.idee") if wert == "idee" else texte.t(sp, "inhalt.eckdaten.status", status=texte.datenwert(sp, wert)))
+    z.append(texte.t(sp, "inhalt.eckdaten.idee") if wert == "idee" else texte.t(sp, "inhalt.eckdaten.status", status=texte.t(sp, f"inhalt.eckdaten.status.{wert}")))
     return "\n".join("- " + x for x in z)
 
 

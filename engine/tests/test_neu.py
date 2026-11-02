@@ -79,9 +79,9 @@ def test_eckdaten_folgen_reise_yaml(tmp_path):
     d = bauen.bauen(r, tmp_path / "dist")
     assert d["reise"]["untertitel"] == "Kleinwalsertal, 1.–5. März 2027"
     w01 = d["abschnitte"][0]["intro"]
-    assert "Zeitraum: 1.–5. März 2027" in w01 and "Ziel: Kleinwalsertal" in w01 and "Status: planung" in w01
+    assert "Zeitraum: 1.–5. März 2027" in w01 and "Ziel: Kleinwalsertal" in w01 and "Status: Planung" in w01
     assert "Ben (bringt ein)" in w01 and "Idee" not in w01
-    assert w01.index("Status: planung") < w01.index("Anreise mit dem Zug ist gesetzt.")
+    assert w01.index("Status: Planung") < w01.index("Anreise mit dem Zug ist gesetzt.")
     schreiben.reise_aendern(r, wer, {"untertitel": "Skiwoche mit Freunden", "grund": "eigener Untertitel"}, heute=heute)
     assert bauen.bauen(r, tmp_path / "dist")["reise"]["untertitel"] == "Skiwoche mit Freunden"
     schreiben.reise_aendern(r, wer, {"untertitel": "", "ziel": "", "grund": "zurück"}, heute=heute)
