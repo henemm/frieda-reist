@@ -22,6 +22,7 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `offene_fragen` | alle | F-Liste mit Frist und Status |
 | `varianten` | alle | Pläne und Wahlstellen mit Dafür/Dagegen und Summen |
 | `rueckmeldungen` | alle | bisherige Rückmeldungen mit Status und Antwort; bei Organisator:innen auch die alten Aufträge (bis 29.10.2026, nur noch Bestand); vorn die Meldungen an die Person (Konflikte, Fristen, Statuswechsel; siehe `docs/waechter.md`) |
+| `veroeffentlichung_pruefen` | alle | Reise-Stand vom Server (Epic #223): gesicherter und veröffentlichter Stand mit Zeit in der Zeitzone der Person, Zustand (wartet, wird gebaut, veröffentlicht, fehlgeschlagen mit Grund und dem Stand, der sichtbar bleibt), Dauer seit dem Sichern gegen das Ziel von 2 Minuten und für eine Nummer „enthalten: ja/nein“ (siehe „Reise-Stand“) |
 | `rueckmeldung_geben` | alle | landet im selben Eingang wie die Rückmeldungen von der Webseite; Art `Wunsch` für Ideen ohne feste Stelle (ziel leer), sichtbar im Reiter „Wünsche“ |
 | `aufgaben` | alle | Aufgaben, Standard nur offene; Filter nach Bezug, Zuständig, Status |
 | `aufgabe_anlegen` | alle | neue Aufgabe, gilt sofort |
@@ -90,7 +91,7 @@ Aufgaben liegen live in `<ablage>/<reise>/aufgaben.json`, nicht im Repo. Der Rü
 
 Gibt es die Person schon, bekommt sie nur einen weiteren Link; ihre Rolle ändert `person_einladen` mit anderer Rolle (nur Organisator:innen, sofort in `reise.yaml`). Einen Link zu sperren geht noch von Hand (Eintrag aus `zugaenge.json` löschen).
 
-**Anleitung:** Beim Verbinden bekommt die KI Rolle, Reisestatus und die Grenzen der sprechenden Person (Mitwirkende:r: kann nicht entscheiden; Link ohne Person: kein Entscheiden und Einladen) und den Hinweis, dass Eingetragenes sofort gilt und die Seite es in wenigen Minuten zeigt.
+**Anleitung:** Beim Verbinden bekommt die KI Rolle, Reisestatus und die Grenzen der sprechenden Person (Mitwirkende:r: kann nicht entscheiden; Link ohne Person: kein Entscheiden und Einladen) und den Hinweis, dass Eingetragenes sofort gilt und die Seite es zeigt, sobald `veroeffentlichung_pruefen` für die Nummer aus der Antwort „enthalten: ja“ meldet (Ziel: 2 Minuten); erst dann sagt die KI, es sei auf der Seite.
 
 **Löschwunsch (#145):** Frieda löscht nie. Sagt eine Person „lösch das“, wählt die KI nach der Anleitung (für jede Rolle) den passenden Weg, lässt kurz bestätigen, was genau und mit welchem Grund, und sagt danach in einem Satz, was geschah, dass nichts gelöscht ist und wie man es zurückholt. Eine Buchung wird storniert (`buchung_aendern`, Status `storniert` mit Grund; zurück mit Status `gebucht`). Eine Option einer Wahlstelle wird verworfen oder ersetzt (`entscheiden`, nur Organisator:innen; zurück mit `entscheiden`, Status `gewaehlt`). Eine Aufgabe entfällt (`aufgabe_aendern`, Status `entfaellt`; zurück mit Status `offen`). Eine offene Frage entfällt (`frage_schliessen`, Status `entfaellt`, nur Organisator:innen); ein Wiedereröffnen gibt es nicht, bei Bedarf wird eine neue Frage angelegt. Für Unterkünfte, Strecken, Orte, Wissen, Tage, Wahlstellen und Pläne gibt es keinen Löschweg (Ändern lässt den alten Wert im Verlauf); dasselbe gilt für Optionen, wenn Mitwirkende sprechen. Dann sagt die KI das ehrlich und bietet eine Rückmeldung an die Organisator:in an (`rueckmeldung_geben`). Die Werkzeugbeschreibungen nennen je ihren Weg, und die Antworten nach Stornieren, Verwerfen oder Ersetzen und nach `entfaellt` enden mit „Nicht gelöscht …“ und dem Rückholweg.
 
@@ -98,7 +99,7 @@ Gibt es die Person schon, bekommt sie nur einen weiteren Link; ihre Rolle änder
 
 Welche Arten eine Reise hat (Hotel, Refugi, Ryokan, Zugfahrt, Reiseteil …) und was zu jeder Sache einer Art bekannt sein muss, legt die Reise im Gespräch fest (`docs/ontologie.md`). Dafür gibt es `art_definieren` und `merkmal_definieren`:
 
-- **Organisator:innen** schreiben damit direkt: Der Konnektor schickt die Anfrage mit Person und Rolle an den **Schreibweg** (`engine/schreiben.py dienst`, nur auf 127.0.0.1, mit dem Dienst-Geheimnis). Der prüft mit `reise.yaml` der Reise noch einmal Rolle und Status (Aktion `ontologie`: Organisator:in, Status mit vollem Schreibrecht), die Form der Angaben (Grundform, Typ, Stufe, Werte bei `auswahl`, kein zweiter Name eines vorhandenen Merkmals), ändert `plan/arten.yaml`, baut die Reise zur Probe (der Generator prüft alles Übrige, etwa ob eingetragene Werte zu neuen Auswahlwerten passen), sichert die Änderung als Commit mit Person und Werkzeug nach `main` und stößt das Veröffentlichen an. Lehnt er ab, bleibt alles unverändert, und die Person bekommt den Grund. Die Antwort heißt dann „Eingetragen und gesichert“; die Seite und die Werkzeuge `merkmale`/`zeige` zeigen den neuen Stand nach dem Veröffentlichen (wenige Minuten). Nur mit persönlichem Link: Jede Änderung gehört einer Person.
+- **Organisator:innen** schreiben damit direkt: Der Konnektor schickt die Anfrage mit Person und Rolle an den **Schreibweg** (`engine/schreiben.py dienst`, nur auf 127.0.0.1, mit dem Dienst-Geheimnis). Der prüft mit `reise.yaml` der Reise noch einmal Rolle und Status (Aktion `ontologie`: Organisator:in, Status mit vollem Schreibrecht), die Form der Angaben (Grundform, Typ, Stufe, Werte bei `auswahl`, kein zweiter Name eines vorhandenen Merkmals), ändert `plan/arten.yaml`, baut die Reise zur Probe (der Generator prüft alles Übrige, etwa ob eingetragene Werte zu neuen Auswahlwerten passen), sichert die Änderung als Commit mit Person und Werkzeug nach `main` und stößt das Veröffentlichen an. Lehnt er ab, bleibt alles unverändert, und die Person bekommt den Grund. Die Antwort heißt dann „Eingetragen und gesichert“ und nennt beide Reise-Stände („Gesichert als Reise-Stand 43. Veröffentlicht ist Stand 42“); die Seite und die Werkzeuge `merkmale`/`zeige` zeigen den neuen Stand, sobald `veroeffentlichung_pruefen` für diese Nummer „enthalten: ja“ meldet (Ziel: 2 Minuten). Nur mit persönlichem Link: Jede Änderung gehört einer Person.
 - **Mitwirkende** schlagen damit vor: Es entsteht eine Rückmeldung der Art `Ergänzung` an die Art („Art festlegen – bezeichnung: Refugi; grundform: aufenthalt“), die Organisator:innen unter `rueckmeldungen` sehen und im Gespräch übernehmen können.
 - Die Grundform einer Art lässt sich nicht ändern (neue Art anlegen); Schlüssel bleiben, nur die Bezeichnung ändert sich (IDs und Werte der Reise hängen am Schlüssel). Eine Bewegung „aus eigener Kraft“ (`summiert`) und eine Folge bekommen ihre berechneten Merkmale (Gehzeit, Länge, Höhenmeter; Tage, Gehzeit, Unterkünfte, Anschluss) beim Anlegen. Ein neues Merkmal, das einem vorhandenen ähnelt (gleicher Wortstamm, zweiter Name), wird erst mit `trotzdem` angelegt.
 - Der Verlauf steht in der Geschichte des Repos (ein Commit je Änderung: Reise, Titel, Text, Person, Werkzeug, Datum). Arten einer früheren Reise derselben Person übernimmt der AI-Client nur auf ausdrückliche Nachfrage, als Kopie (Product Owner, 28.10.2026): `arten_uebernehmen` (seit 29.10.2026; der Konnektor prüft, dass die Person auf beiden Reisen dabei ist).
@@ -190,9 +191,19 @@ Einstellungen → Konnektoren → „Eigenen Konnektor hinzufügen“. Regelfall
 
 Jede Person braucht ein eigenes Claude-Konto, in dem eigene Konnektoren erlaubt sind. Bei Team- oder Firmenkonten muss der Admin sie freigeben.
 
+## Reise-Stand (Epic #223, 2.11.2026)
+
+Jede Reise trägt eine fortlaufende Nummer neben dem Software-Release, etwa „Reise-Stand 42 · Frieda Release 357“. Sie zählt die Commits, die den Ordner der Reise ändern (`engine/stand.py`): Jeder gesicherte Schreibvorgang erhöht sie um 1, ein Software-Update lässt sie stehen, und Stand 43 enthält alles aus Stand 42.
+
+- **Schreibantwort:** Jedes Werkzeug, das über den Schreibweg sichert, hängt an seine Antwort „Gesichert als Reise-Stand 43. Veröffentlicht ist Stand 42; ob Stand 43 auf der Seite ist, zeigt veroeffentlichung_pruefen.“ (zentral beim Aufruf, nicht je Werkzeug). Rückmeldungen, Aufgaben, Wünsche und Belege liegen in der Ablage, gelten sofort und ändern den Reise-Stand nicht.
+- **`veroeffentlichung_pruefen`** (`publish_status`, optional `nummer`): liest den Stand auf dem Server, dieselbe Quelle wie `api/stand` der Seite, nie einen Speicher des Browsers. Zustände: wartet, wird gebaut, veröffentlicht, fehlgeschlagen (mit Grund und dem Stand, der sichtbar bleibt). Dazu die Dauer seit dem Sichern und das Ziel von 2 Minuten (Product Owner, E3, 2.11.2026); eine Überschreitung steht dabei.
+- **So prüft Frieda:** Sie merkt sich die Nummer aus der Schreibantwort und ruft `veroeffentlichung_pruefen` auf. Bei „enthalten: ja“ meldet sie den Erfolg, bei „fehlgeschlagen“ den Grund. Erst dann sagt sie, die Änderung sei sichtbar.
+- **So prüft die Person:** Frieda nennt die Nummer. Steht im Fuß der Seite dieselbe oder eine höhere, ist die Änderung da; bei einer niedrigeren zeigt der Hinweis „Neu: Reise-Stand 43. Aktualisieren“ den Weg.
+- **Zeiten** nennt der Konnektor in der Zeitzone der Person mit Angabe der Zone („02.11.2026 09:47 (MEZ)“): die Zone des Geräts, mit dem die Person zuletzt Benachrichtigungen eingeschaltet hat, sonst `FR_ZEITZONE` der Instanz, sonst UTC (#227).
+
 ## Stand (26.10.2026)
 
-Der `ueberblick` endet mit dem Abschnitt „Stand“: wann die Reise zuletzt veröffentlicht wurde, wann der Konnektor gestartet ist und mit welchem Code (Kurz-Hash von `konnektor.py`, `reise.py`, `rueckmeldungen.py`, `routen.py`). Liegt auf dem Server neuerer Code als der, mit dem der Dienst gestartet ist, steht dort, dass er einen Neustart braucht. So lässt sich in der App prüfen, ob das Veröffentlichen gelaufen ist, ohne auf den Server zu schauen. Der Rückmeldedienst wird dabei nicht geprüft.
+Der `ueberblick` endet mit dem Abschnitt „Stand“: wann die Reise zuletzt veröffentlicht wurde (mit Zeitzone), welcher Reise-Stand auf der Seite ist, wann der Konnektor gestartet ist und mit welchem Code (Kurz-Hash von `konnektor.py`, `reise.py`, `rueckmeldungen.py`, `routen.py`). Liegt auf dem Server neuerer Code als der, mit dem der Dienst gestartet ist, steht dort, dass er einen Neustart braucht. So lässt sich in der App prüfen, ob das Veröffentlichen gelaufen ist, ohne auf den Server zu schauen. Der Rückmeldedienst wird dabei nicht geprüft.
 
 ## Symbol
 
@@ -217,6 +228,7 @@ Der Konnektor meldet beim Verbinden das Symbol der Reise (`serverInfo.icons`, da
 | `open_questions` | `offene_fragen` |
 | `variants` | `varianten` |
 | `feedback_list` | `rueckmeldungen` |
+| `publish_status` | `veroeffentlichung_pruefen` |
 | `feedback_give` | `rueckmeldung_geben` |
 | `feedback_resolve` | `rueckmeldung_erledigen` |
 | `tasks` | `aufgaben` |

@@ -19,6 +19,7 @@ NAMEN = {
     "open_questions": "offene_fragen",
     "variants": "varianten",
     "feedback_list": "rueckmeldungen",
+    "publish_status": "veroeffentlichung_pruefen",
     "feedback_give": "rueckmeldung_geben",
     "feedback_resolve": "rueckmeldung_erledigen",
     "tasks": "aufgaben",

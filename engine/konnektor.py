@@ -67,6 +67,7 @@ import oauth  # noqa: E402
 import belege as bl  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 import schnittstelle  # noqa: E402
+import stand as reisestand  # noqa: E402
 import texte  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
@@ -112,7 +113,7 @@ AID_MUSTER = re.compile(r"^A-\d{8}-\d{6}-[0-9a-f]{4}$")
 
 _sperre = threading.Lock()
 
-CODE_DATEIEN = ("konnektor.py", "reise.py", "rueckmeldungen.py", "routen.py", "schnittstelle.py", "texte.py")
+CODE_DATEIEN = ("konnektor.py", "reise.py", "rueckmeldungen.py", "routen.py", "schnittstelle.py", "stand.py", "texte.py")
 SPRACHDATEIEN = tuple(f"texte_{k}.py" for k in texte._dateien())   # jede Sprachdatei neben dem Code zählt zum Stand
 
 
@@ -388,19 +389,59 @@ def symbole(reise):
     return liste
 
 
-def zeit_de(t, sprache=None):
-    """Zeitpunkt mit Datum in der Sprache (bis M10 die der Reise-Vorgabe, dann die der Person)."""
-    return texte.datum_zeit(t.astimezone(), sprache or texte.aufruf_sprache())
+# ---------- Zeiten mit Zeitzone (#227) ----------
+# Jede Zeit, die der Konnektor nennt, steht in der Zeitzone der Person und trägt sie („02.11.2026 09:47 (MEZ)“). Der Server läuft
+# in UTC; ohne Angabe verglich die Person „zuletzt veröffentlicht 08:30“ mit ihrer Ortszeit 09:30 (2.11.2026).
+_zone = threading.local()
+
+
+def zone_des_zugangs(zugang):
+    """Zeitzone der Person: die ihres zuletzt benutzten Geräts mit Benachrichtigungen (Konto), sonst FR_ZEITZONE der Instanz,
+    sonst UTC."""
+    kid = (zugang or {}).get("konto_id")
+    z = konten.zeitzone_des_kontos(kid) if kid else None
+    return z or instanz.zeitzone()
+
+
+def aufruf_zone(zone=None):
+    """Zeitzone des laufenden Aufrufs setzen (mit Wert) oder lesen."""
+    if zone is not None:
+        _zone.wert = zone
+    return getattr(_zone, "wert", None) or instanz.zeitzone()
+
+
+def zeit_de(t, sprache=None, zone=None):
+    """Zeitpunkt mit Datum in der Sprache und der Zeitzone der Person, mit Angabe der Zone. Ohne Zone gilt t als Ortszeit des
+    Servers; eine unbekannte Zone gilt als UTC."""
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    try:
+        tz = ZoneInfo(zone or aufruf_zone())
+    except (ZoneInfoNotFoundError, ValueError):
+        tz = datetime.timezone.utc
+    lokal = (t if t.tzinfo else t.astimezone()).astimezone(tz)
+    sprache = sprache or texte.aufruf_sprache()
+    abk = lokal.tzname() or "UTC"
+    return texte.t(sprache, "konnektor.zeit.mit_zone", zeit=texte.datum_zeit(lokal, sprache),
+                   zone=texte.gruppe(sprache, "konnektor.zeitzone").get(abk.lower(), abk))
+
+
+def zeit_iso_de(iso, sprache=None):
+    """UTC-Text aus engine/stand.py („2026-11-02T08:47:00Z“) -> Zeit mit Zone, oder None."""
+    t = reisestand.zeit_lesen(iso)
+    return zeit_de(t, sprache) if t else None
 
 
 def stand_text(reise):
     """Woran man in der App sieht, ob das Veröffentlichen gelaufen ist: Bauzeit der Seite und Stand des Dienstes."""
     z = [tk("konnektor.ausgabe.stand_text.1")]
     try:
-        gebaut = datetime.datetime.fromtimestamp((seiten() / reise / "daten.json").stat().st_mtime).astimezone()
+        gebaut = datetime.datetime.fromtimestamp((seiten() / reise / "daten.json").stat().st_mtime, datetime.timezone.utc)
         z.append(tk("konnektor.stand_text.1", w1=zeit_de(gebaut)))
     except OSError:
         z.append(tk("konnektor.stand_text.2"))
+    n, _ = reisestand.veroeffentlicht(reise)
+    if n is not None:
+        z.append(tk("konnektor.stand_text.reise_stand", nummer=n))
     jetzt = code_stand()
     z.append(tk("konnektor.ausgabe.stand_text.2", w1=zeit_de(_START), w2=_CODE_START)
              + ("" if jetzt == _CODE_START else tk("konnektor.stand_text.3", jetzt=jetzt)))
@@ -1131,6 +1172,8 @@ def schreib_anfrage(reise, werkzeug_, anfrage):
             antwort = json.loads(r.read())
         if isinstance(antwort, dict) and antwort.get("text_teile"):   # Bestätigung in der Sprache der Person (ADR-0006)
             antwort["text"] = texte.Satz.aus_json(antwort["text_teile"]).text(texte.aufruf_sprache())
+        if isinstance(antwort, dict) and antwort.get("ok"):
+            stand_merken(antwort.get("stand"))
         return antwort, None
     except urllib.error.HTTPError as e:
         try:
@@ -1142,6 +1185,77 @@ def schreib_anfrage(reise, werkzeug_, anfrage):
             return None, tk("konnektor.ausgabe.schreib_anfrage.1", w1=e.code)
     except (urllib.error.URLError, OSError):
         return None, tk("konnektor.schreib_anfrage.1")
+
+
+# ---------- Reise-Stand in jeder Schreibantwort (#226) ----------
+# Hat ein Werkzeug über den Schreibweg gesichert, nennt die Antwort beide Stände: „Gesichert als Reise-Stand 43. Veröffentlicht
+# ist Stand 42.“ So kann Frieda mit veroeffentlichung_pruefen belegen, wann die Änderung auf der Seite ist, statt zu raten.
+_gesichert = threading.local()
+
+
+def stand_merken(st):
+    """Ergebnis eines Schreibvorgangs dieses Aufrufs merken ({gesichert, veroeffentlicht} vom Schreibweg)."""
+    _gesichert.wert = st if isinstance(st, dict) else {}
+
+
+def stand_satz():
+    """Satz zum Reise-Stand, wenn in diesem Aufruf gesichert wurde, sonst None; danach ist nichts mehr gemerkt."""
+    st = getattr(_gesichert, "wert", None)
+    _gesichert.wert = None
+    if st is None:
+        return None
+    g, v = st.get("gesichert"), st.get("veroeffentlicht")
+    if not isinstance(g, int):
+        return tk("konnektor.stand.gesichert_ohne_nummer")
+    if not isinstance(v, int):
+        return tk("konnektor.stand.gesichert_erster", gesichert=g)
+    return tk("konnektor.stand.gesichert", gesichert=g, veroeffentlicht=v)
+
+
+def mit_stand(t):
+    """Antworttext eines Werkzeugs, dazu der Satz zum Reise-Stand, wenn gesichert wurde."""
+    satz = stand_satz()
+    return antworttext(t) + ("\n\n" + antworttext(satz) if satz else "")
+
+
+def dauer_text(sekunden):
+    m, sek = divmod(int(sekunden), 60)
+    if not m:
+        return tk("konnektor.dauer.sekunden", sekunden=sek)
+    return tk("konnektor.dauer.minuten", minuten=m, sekunden=sek) if sek else tk("konnektor.dauer.minuten_glatt", minuten=m)
+
+
+def veroeffentlichung_text(reise, nummer=None, z=None):
+    """Werkzeug veroeffentlichung_pruefen (publish_status, #228): Zustand der Veröffentlichung je Reise-Stand, vom Server
+    (engine/stand.py; dieselbe Quelle wie api/stand der Seite), nie aus einem Speicher des Browsers."""
+    z = z or reisestand.lesen(reise)
+    g, v = z["gesichert"], z["veroeffentlicht"]
+    zeilen = [tk("konnektor.veroeffentlichung.titel")]
+    if z["zustand"] == "unbekannt":
+        return "\n".join(zeilen + [tk("konnektor.veroeffentlichung.unbekannt")])
+    zeilen.append(tk("konnektor.veroeffentlichung.gesichert", nummer=g["nummer"], zeit=zeit_iso_de(g["zeit"]))
+                  if g.get("zeit") else tk("konnektor.veroeffentlichung.gesichert_ohne_zeit", nummer=g["nummer"]))
+    if v["nummer"] is None:
+        zeilen.append(tk("konnektor.veroeffentlichung.veroeffentlicht_keiner"))
+    else:
+        zeilen.append(tk("konnektor.veroeffentlichung.veroeffentlicht", nummer=v["nummer"], zeit=zeit_iso_de(v["zeit"]))
+                      if v.get("zeit") else tk("konnektor.veroeffentlichung.veroeffentlicht_ohne_zeit", nummer=v["nummer"]))
+    seit = zeit_iso_de(z["seit"]) if z.get("seit") else None
+    zeilen.append(tk(f"konnektor.veroeffentlichung.zustand.{z['zustand']}" + ("" if seit else "_ohne_zeit"), zeit=seit,
+                     sichtbar=v["nummer"] if v["nummer"] is not None else "–"))
+    if z["zustand"] == "fehlgeschlagen":
+        zeilen.append(tk("konnektor.veroeffentlichung.grund_software" if z["grund_art"] == "software" else "konnektor.veroeffentlichung.grund",
+                         grund=z.get("grund") or tk("konnektor.veroeffentlichung.grund_unbekannt")))
+    gefragt = nummer if isinstance(nummer, int) else g["nummer"]
+    drin = reisestand.enthalten(z, gefragt)
+    if drin is not None:
+        zeilen.append(tk("konnektor.veroeffentlichung.enthalten_ja" if drin else "konnektor.veroeffentlichung.enthalten_nein", nummer=gefragt))
+    if z.get("dauer") is not None:
+        schluessel = "konnektor.veroeffentlichung.dauer" if z["zustand"] == "veroeffentlicht" else "konnektor.veroeffentlichung.dauer_laeuft"
+        zeilen.append(tk(schluessel, dauer=dauer_text(z["dauer"]), ziel=dauer_text(z["ziel"]))
+                      + (tk("konnektor.veroeffentlichung.ueber_ziel") if z["ueber_ziel"] else ""))
+    zeilen.append(tk("konnektor.veroeffentlichung.hinweis"))
+    return "\n".join(zeilen)
 
 
 def ontologie_text(name, args):
@@ -2120,8 +2234,9 @@ def frieda_antwort(zugang, nid, methode, p, ok):
         return ok({"tools": schnittstelle.aussen(lokalisiert(frieda_werkzeuge(k), k["sprache"]))})
     if methode == "tools/call":
         name_i, args_i = aufruf_intern(frieda_werkzeuge(k), p.get("name"), p.get("arguments"))
+        _gesichert.wert = None
         t, fehler = frieda_werkzeug(k, name_i, args_i)
-        return ok({"content": [{"type": "text", "text": antworttext(t)}], "isError": fehler})
+        return ok({"content": [{"type": "text", "text": mit_stand(t)}], "isError": fehler})
     return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 
@@ -2149,13 +2264,14 @@ def konto_antwort(konto, nid, methode, p, ok):
         return ok({"tools": schnittstelle.aussen(lokalisiert([MEINE_REISEN, REISE_ANLEGEN], sprache_des_zugangs(konto)))})
     if methode == "tools/call":
         name, args = aufruf_intern([MEINE_REISEN, REISE_ANLEGEN], p.get("name"), p.get("arguments") if isinstance(p.get("arguments"), dict) else {})
+        _gesichert.wert = None
         if name == "meine_reisen":
             t, fehler = meine_reisen(konto), False
         elif name == "reise_anlegen":
             t, fehler = reise_anlegen(konto, args)
         else:
             t, fehler = tk("konnektor.ausgabe.werkzeug.1", name=name), True
-        return ok({"content": [{"type": "text", "text": antworttext(t)}], "isError": fehler})
+        return ok({"content": [{"type": "text", "text": mit_stand(t)}], "isError": fehler})
     return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 
@@ -2205,6 +2321,10 @@ WERKZEUGE = [
      "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}},
     {"name": "rueckmeldungen", "description": "@konnektor.werkzeug.rueckmeldungen",
      "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}},
+    {"name": "veroeffentlichung_pruefen", "description": "@konnektor.werkzeug.veroeffentlichung_pruefen",
+     "inputSchema": {"type": "object", "properties": {
+         "nummer": {"type": "integer", "description": "@konnektor.werkzeug.veroeffentlichung_pruefen.nummer"}}},
+     "annotations": {"readOnlyHint": True}},
     {"name": "rueckmeldung_geben", "description": "@konnektor.werkzeug.rueckmeldung_geben",
      "inputSchema": {"type": "object", "properties": {
          "ziel": {**ZIEL_FELD, "description": "@konnektor.werkzeug.rueckmeldung_geben.ziel"},
@@ -2800,6 +2920,11 @@ def werkzeug(zugang, name, args):
             return tk("konnektor.ausgabe.frage_beantworten.4", fehler=fehler), True
         teile = [tk("konnektor.ausgabe.werkzeug.6", w1=w['punkte'])] + (["eingeplant"] if w.get("eingeplant") else []) + (["erlebt"] if w.get("erlebt") else [])
         return tk("konnektor.ausgabe.werkzeug.7", rid=rid) + ", ".join(teile) + ".", False
+    if name == "veroeffentlichung_pruefen":
+        nummer = args.get("nummer")
+        if isinstance(nummer, str) and nummer.strip().isdigit():
+            nummer = int(nummer.strip())
+        return veroeffentlichung_text(reise, nummer if isinstance(nummer, int) and not isinstance(nummer, bool) else None), False
     if name == "ueberblick":
         return (h.ueberblick() + "\n" + stand_text(reise)
                 + (wuensche_kurz(reise) if "wuensche" in (zustand_von(d)[1] or []) else "")), False
@@ -2850,8 +2975,9 @@ def antwort_auf(zugang, nachricht):
         return ok({"tools": schnittstelle.aussen(lokalisiert(werkzeuge_fuer(zugang), zugang.get("sprache") or texte.VORGABE_REISE))})
     if methode == "tools/call":
         name_i, args_i = aufruf_intern(werkzeuge_fuer(zugang), p.get("name"), p.get("arguments"))
+        _gesichert.wert = None
         t, fehler = werkzeug(zugang, name_i, args_i)
-        return ok({"content": [{"type": "text", "text": antworttext(t)}], "isError": fehler})
+        return ok({"content": [{"type": "text", "text": mit_stand(t)}], "isError": fehler})
     return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 
@@ -3036,6 +3162,7 @@ class Dienst(BaseHTTPRequestHandler):
             return self._senden(404, {"fehler": "unbekannt"})
         zugang = {**zugang, "sprache": zugang.get("sprache") or sprache_des_zugangs(zugang)}
         texte.aufruf_sprache(zugang["sprache"])
+        aufruf_zone(zone_des_zugangs(zugang))
         try:
             laenge = int(self.headers.get("Content-Length", "0"))
         except ValueError:

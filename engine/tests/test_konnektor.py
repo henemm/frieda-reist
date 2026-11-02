@@ -562,7 +562,7 @@ def test_ontologie_organisator_schreibt_direkt(schreibweg):
     anleitung = rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
     assert N("Arten und Merkmale (art_definieren, merkmal_definieren") in anleitung and "schreibt es sofort in die Reise" in anleitung
     t, f = werkzeug(basis, ALT_ORGANISATOR, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt", grund="Hütten am Weg")
-    assert not f and t.startswith("Eingetragen und gesichert (Ida): Art „Refugi“ angelegt") and "wenige Minuten" in t
+    assert not f and t.startswith("Eingetragen und gesichert (Ida): Art „Refugi“ angelegt") and "sobald veröffentlicht ist" in t
     pfad, geheim, body = Schreibweg.anfragen[-1]
     assert pfad == "/beispielreise/art_definieren" and geheim == konten.dienst_geheimnis()
     assert body == {"person": "ida", "name": "Ida", "rolle": "organisator",
@@ -844,7 +844,7 @@ def test_einladen_schreibt_person_direkt(schreibweg, monkeypatch):
     monkeypatch.setenv("KN_BASIS", "https://example.invalid/mcp")
     Schreibweg.antwort = (200, {"ok": True, "text": "Anna steht jetzt in der Reise (anna, Rolle mitwirkend, reist mit)."})
     t, f = werkzeug(basis, ALT_ORGANISATOR, "person_einladen", vorname="Anna", rolle="mitwirkend")
-    assert not f and "Anna ist eingeladen" in t and "in wenigen Minuten" in t
+    assert not f and "Anna ist eingeladen" in t and "publish_status" in t
     pfad, _, body = Schreibweg.anfragen[-1]
     assert pfad == "/beispielreise/person_schreiben" and body["person"] == "ida"
     assert body["args"]["schluessel"] == "anna" and body["args"]["vorname"] == "Anna" and body["args"]["rolle"] == "mitwirkend" and body["args"]["reist"] is True

@@ -664,6 +664,17 @@ def push_abos(kid=None):
         return [dict(z) for z in v.execute("SELECT * FROM push_abos WHERE konto = ? ORDER BY zuletzt DESC", (kid,))]
 
 
+def zeitzone_des_kontos(kid):
+    """Zeitzone der Person (#227): die des Geräts, das sich zuletzt für Benachrichtigungen gemeldet hat, oder None."""
+    try:
+        with closing(db()) as v:
+            z = v.execute("SELECT zeitzone FROM push_abos WHERE konto = ? AND zeitzone != '' ORDER BY zuletzt DESC LIMIT 1",
+                          (kid,)).fetchone()
+    except sqlite3.Error:
+        return None
+    return z["zeitzone"] if z else None
+
+
 def push_einstellungen(kid, neu=None):
     """Gespeicherte Einstellungen der Push-Nachrichten (roh, {} ohne Eintrag); mit neu: speichern. Bereinigt und mit
     Vorgaben ergänzt werden sie in engine/push.py (einstellungen), damit dieses Modul den Push-Dienst nicht laden muss."""
