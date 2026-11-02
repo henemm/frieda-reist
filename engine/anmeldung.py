@@ -308,7 +308,7 @@ def kalender_karte(k, reise_info, offen=False):
             + "</div>")
 
 
-PUSH_GERAET_TEXTE = ("einschalten", "ausschalten", "an", "blockiert", "nicht_erlaubt", "fehler", "kein_browser",
+PUSH_GERAET_TEXTE = ("einschalten", "ausschalten", "an", "aus_wo", "blockiert", "nicht_erlaubt", "fehler", "kein_browser",
                      "installieren", "schritt1", "schritt2", "schritt3")
 
 
@@ -323,7 +323,9 @@ def push_geraet():
 def push_karte(k, offen=False):
     """Benachrichtigungen auf Mein Konto (Issue #21, Entscheidung A vom 2.11.2026): ein- und ausschalten je Gerät
     (pushSchalter, Worker der Frieda-App an der Wurzel), dazu was aufs Handy kommt und die Ruhezeit, für alle Reisen gleich.
-    Eine Heimat (ADR-0003): Der Fuß der Reiseseite verweist nur hierher."""
+    Eine Heimat (ADR-0003): Der Fuß der Reiseseite verweist nur hierher. „Auf diesem Gerät ausschalten“ füllt das Skript
+    in den Platz push-geraet-aus hinter „Konfigurieren“, vor „Auf allen Geräten ausschalten“, nie an die Stelle des
+    Einschaltknopfs (#249); ohne Skript bleibt der Platz leer."""
     import push
     e = push.einstellungen_von(k["id"])
     geraete = len({a["geraet"] or a["endpoint"] for a in konten.push_abos(k["id"])})
@@ -345,7 +347,7 @@ def push_karte(k, offen=False):
     einstellungen = (f'<details{" open" if offen else ""}><summary>{esc(tx("konto.kalender.konfigurieren"))}</summary>'
                      f'<div class="inhalt" style="padding:0">'
                      + formular("/konto", felder, tx("konto.kalender.speichern"), aenderung=True)
-                     + aus + "</div></details>")
+                     + '<div id="push-geraet-aus" hidden></div>' + aus + "</div></details>")
     return (f'<div class="abschnitt" id="push"><h2>{esc(tx("konto.push.titel"))}</h2>'
             + karte(f'<p>{esc(tx("konto.push.hinweis"))}</p>', push_geraet(), f'<p class="klein">{esc(geraete_text)}</p>',
                     f'<div class="kalender-links">{einstellungen}</div>')

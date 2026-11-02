@@ -2836,6 +2836,7 @@ TEXTE = {
     "konto.push.geraet.einschalten": "Switch on on this device",
     "konto.push.geraet.ausschalten": "Switch off on this device",
     "konto.push.geraet.an": "Switched on on this device.",
+    "konto.push.geraet.aus_wo": "Switch off under “Configure”.",
     "konto.push.geraet.blockiert": "Notifications for Frieda are switched off in your device settings. Allow them there, then switch them on here.",
     "konto.push.geraet.nicht_erlaubt": "Without permission, no notifications arrive.",
     "konto.push.geraet.fehler": "That did not work. Please try again later.",

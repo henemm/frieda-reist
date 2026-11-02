@@ -2836,6 +2836,7 @@ TEXTE = {
     "konto.push.geraet.einschalten": "Auf diesem Gerät einschalten",
     "konto.push.geraet.ausschalten": "Auf diesem Gerät ausschalten",
     "konto.push.geraet.an": "Auf diesem Gerät eingeschaltet.",
+    "konto.push.geraet.aus_wo": "Ausschalten unter ‚Konfigurieren‘.",
     "konto.push.geraet.blockiert": "Benachrichtigungen sind für Frieda in den Einstellungen des Geräts ausgeschaltet. Dort erlauben, dann hier einschalten.",
     "konto.push.geraet.nicht_erlaubt": "Ohne Erlaubnis kommen keine Benachrichtigungen.",
     "konto.push.geraet.fehler": "Das ging gerade nicht. Bitte später noch einmal.",
