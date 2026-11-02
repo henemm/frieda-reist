@@ -132,6 +132,20 @@ anstoss_weitergeben() {  # Anstoß der Seite: Workflow „Software nachziehen“
   rm -f "$datei"
 }
 
+abhaengigkeiten() {  # Bibliotheken nach engine/requirements.txt in FR_PYTHON, nur wenn sich die Liste geändert hat.
+  # Sonst fehlte nach einem Software-Stand mit neuer Bibliothek nur dem Server etwas, und die Prüfungen blieben rot,
+  # bis jemand von Hand installiert (rot 1.11.2026 wegen pyspellchecker). Gemerkt wird die Prüfsumme der Liste.
+  local liste=engine/requirements.txt merk="$FR_DIENST/requirements.sha256" summe
+  [ -f "$liste" ] || return 0
+  summe="$(sha256sum "$liste" | cut -d' ' -f1)"
+  [ "$summe" = "$(cat "$merk" 2>/dev/null || true)" ] && return 0
+  echo "Installing libraries (engine/requirements.txt changed)."
+  if [ -n "${VF_PIP:-}" ]; then "$VF_PIP" -r "$liste"; else "$FR_PYTHON" -m pip install -q --disable-pip-version-check -r "$liste"; fi \
+    || return 1
+  mkdir -p "$FR_DIENST"
+  echo "$summe" > "$merk"
+}
+
 # Alles steckt in main(), damit bash das Skript ganz einliest, bevor git es mit dem Submodul eventuell ersetzt.
 main() {
   local stand deploy immer="" alt neu reise freischalten aus rc gut="" rote="" warnung
@@ -177,6 +191,7 @@ main() {
   fi
 
   echo "Publishing $(git log -1 --format='%h %s')"
+  abhaengigkeiten || { echo "ERROR: libraries from engine/requirements.txt cannot be installed, the next run tries again."; return 1; }
   # Eigener Ordner für die Testdateien: Mit der Vorgabe (/tmp/pytest-of-<user>) räumt jeder weitere pytest-Lauf auf dem
   # Rechner die Ordner älterer Läufe weg, auch die eines noch laufenden (roter Lauf 29.10.2026 bei gleichzeitigen Tests).
   pruef_tmp="$(mktemp -d)"
