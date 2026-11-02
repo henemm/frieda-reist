@@ -1,0 +1,470 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- /home/hem/frieda-reist/.claude/worktrees/plan-startseite/engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/hem/frieda-reist/.claude/worktrees/plan-startseite
+collecting ... collected 25 items
+
+engine/tests/test_eine_seitenordnung.py::test_ohne_plaene_zeitachse_eine_spalte_ein_link FAILED [  4%]
+engine/tests/test_eine_seitenordnung.py::test_genau_einmal_vollstaendig[ohne_plaene] FAILED [  8%]
+engine/tests/test_eine_seitenordnung.py::test_genau_einmal_vollstaendig[plaene_offen] FAILED [ 12%]
+engine/tests/test_eine_seitenordnung.py::test_genau_einmal_vollstaendig[plan_fest] FAILED [ 16%]
+engine/tests/test_eine_seitenordnung.py::test_genau_einmal_vollstaendig[tiefe] FAILED [ 20%]
+engine/tests/test_eine_seitenordnung.py::test_keine_doppelte_id[ohne_plaene] FAILED [ 24%]
+engine/tests/test_eine_seitenordnung.py::test_keine_doppelte_id[plaene_offen] FAILED [ 28%]
+engine/tests/test_eine_seitenordnung.py::test_keine_doppelte_id[plan_fest] PASSED [ 32%]
+engine/tests/test_eine_seitenordnung.py::test_keine_doppelte_id[tiefe] PASSED [ 36%]
+engine/tests/test_eine_seitenordnung.py::test_nachtzeile_und_wahlzeile_teilen_keine_id[plaene_offen] FAILED [ 40%]
+engine/tests/test_eine_seitenordnung.py::test_nachtzeile_und_wahlzeile_teilen_keine_id[tiefe] FAILED [ 44%]
+engine/tests/test_eine_seitenordnung.py::test_zu_tun_auch_ohne_plaene FAILED [ 48%]
+engine/tests/test_eine_seitenordnung.py::test_wahl_mit_an_steht_am_element[plaene_offen] FAILED [ 52%]
+engine/tests/test_eine_seitenordnung.py::test_wahl_mit_an_steht_am_element[plan_fest] PASSED [ 56%]
+engine/tests/test_eine_seitenordnung.py::test_wahl_mit_an_steht_am_element[tiefe] FAILED [ 60%]
+engine/tests/test_eine_seitenordnung.py::test_ohne_plaene_keine_marke_und_kein_vergleich PASSED [ 64%]
+engine/tests/test_eine_seitenordnung.py::test_etappen_bei_offenen_plaenen_wie_bei_festem_plan FAILED [ 68%]
+engine/tests/test_seite.py::test_buchung_genau_einmal_vollstaendig[chromium] FAILED [ 72%]
+engine/tests/test_seite.py::test_buchung_genau_einmal_vollstaendig[webkit] FAILED [ 76%]
+engine/tests/test_seite.py::test_stornierte_buchung_eingeklappt_am_ding[chromium] FAILED [ 80%]
+engine/tests/test_seite.py::test_stornierte_buchung_eingeklappt_am_ding[webkit] FAILED [ 84%]
+engine/tests/test_seite.py::test_neue_reise_aus_der_vorlage_im_browser FAILED [ 88%]
+engine/tests/test_tagesseite.py::test_tagesnummer_ohne_plaene_aus_tage FAILED [ 92%]
+engine/tests/test_tagesplan.py::test_tiefe_nur_noch_plan_baum FAILED     [ 96%]
+engine/tests/test_reiseueberblick.py::test_plan_reiter_abschnitte_unter_wissen FAILED [100%]
+
+=================================== FAILURES ===================================
+_______________ test_ohne_plaene_zeitachse_eine_spalte_ein_link ________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_ohne_plaene_zeitachse_ein0')
+
+    @OHNE_BROWSER
+    def test_ohne_plaene_zeitachse_eine_spalte_ein_link(tmp_path):
+        e, d = rundgang(tmp_path, "ohne_plaene")
+        tage = [t["id"] for t in d["route"]["tage"]]
+        s = e["start"]
+>       assert s["achse"], s                                     # die Zeitachse steht auf der Startseite
+        ^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: {'achse': False, 'zeilen': [], 'zeilenNr': [], 'zeilenLinks': [], ...}
+E       assert False
+
+engine/tests/test_eine_seitenordnung.py:172: AssertionError
+_________________ test_genau_einmal_vollstaendig[ohne_plaene] __________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_genau_einmal_vollstaendig0')
+fall = 'ohne_plaene'
+
+    @OHNE_BROWSER
+    @pytest.mark.parametrize("fall", FAELLE)
+    def test_genau_einmal_vollstaendig(tmp_path, fall):
+        e, d = rundgang(tmp_path, fall)
+        ans = _ansichten(e)
+        for ding in VOLL:
+            wo = [a["schluessel"] for a in ans for _ in range(a["voll"][ding])]
+>           assert len(wo) == 1, (fall, ding, wo)
+E           AssertionError: ('ohne_plaene', 'B-01', ['start', 'start', 'start', 'start', '#plan', '#plan', ...])
+E           assert 8 == 1
+E            +  where 8 = len(['start', 'start', 'start', 'start', '#plan', '#plan', ...])
+
+engine/tests/test_eine_seitenordnung.py:189: AssertionError
+_________________ test_genau_einmal_vollstaendig[plaene_offen] _________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_genau_einmal_vollstaendig1')
+fall = 'plaene_offen'
+
+    @OHNE_BROWSER
+    @pytest.mark.parametrize("fall", FAELLE)
+    def test_genau_einmal_vollstaendig(tmp_path, fall):
+        e, d = rundgang(tmp_path, fall)
+        ans = _ansichten(e)
+        for ding in VOLL:
+            wo = [a["schluessel"] for a in ans for _ in range(a["voll"][ding])]
+>           assert len(wo) == 1, (fall, ding, wo)
+E           AssertionError: ('plaene_offen', 'B-01', ['start', 'start', 'start', '#plan', '#plan', '#plan'])
+E           assert 6 == 1
+E            +  where 6 = len(['start', 'start', 'start', '#plan', '#plan', '#plan'])
+
+engine/tests/test_eine_seitenordnung.py:189: AssertionError
+__________________ test_genau_einmal_vollstaendig[plan_fest] ___________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_genau_einmal_vollstaendig2')
+fall = 'plan_fest'
+
+    @OHNE_BROWSER
+    @pytest.mark.parametrize("fall", FAELLE)
+    def test_genau_einmal_vollstaendig(tmp_path, fall):
+        e, d = rundgang(tmp_path, fall)
+        ans = _ansichten(e)
+        for ding in VOLL:
+            wo = [a["schluessel"] for a in ans for _ in range(a["voll"][ding])]
+>           assert len(wo) == 1, (fall, ding, wo)
+E           AssertionError: ('plan_fest', 'A-01', ['#T-02', '#T-03'])
+E           assert 2 == 1
+E            +  where 2 = len(['#T-02', '#T-03'])
+
+engine/tests/test_eine_seitenordnung.py:189: AssertionError
+____________________ test_genau_einmal_vollstaendig[tiefe] _____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_genau_einmal_vollstaendig3')
+fall = 'tiefe'
+
+    @OHNE_BROWSER
+    @pytest.mark.parametrize("fall", FAELLE)
+    def test_genau_einmal_vollstaendig(tmp_path, fall):
+        e, d = rundgang(tmp_path, fall)
+        ans = _ansichten(e)
+        for ding in VOLL:
+            wo = [a["schluessel"] for a in ans for _ in range(a["voll"][ding])]
+>           assert len(wo) == 1, (fall, ding, wo)
+E           AssertionError: ('tiefe', 'B-01', [])
+E           assert 0 == 1
+E            +  where 0 = len([])
+
+engine/tests/test_eine_seitenordnung.py:189: AssertionError
+_____________________ test_keine_doppelte_id[ohne_plaene] ______________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_keine_doppelte_id_ohne_pl0')
+fall = 'ohne_plaene'
+
+    @OHNE_BROWSER
+    @pytest.mark.parametrize("fall", FAELLE)
+    def test_keine_doppelte_id(tmp_path, fall):
+        e, _ = rundgang(tmp_path, fall)
+        doppelt = {a["schluessel"]: a["doppelt"] for a in _ansichten(e) if a["doppelt"]}
+>       assert doppelt == {}, (fall, doppelt)
+E       AssertionError: ('ohne_plaene', {'start': {'B-01': 4, 'B-03': 4, 'A-01': 2}, '#plan': {'B-01': 4, 'B-03': 4, 'A-01': 2}})
+E       assert {'start': {'B...4, 'A-01': 2}} == {}
+E         
+E         Left contains 2 more items:
+E         {'#plan': {'A-01': 2, 'B-01': 4, 'B-03': 4},
+E          'start': {'A-01': 2, 'B-01': 4, 'B-03': 4}}
+E         
+E         Full diff:
+E         - {}...
+E         
+E         ...Full output truncated (12 lines hidden), use '-vv' to show
+
+engine/tests/test_eine_seitenordnung.py:206: AssertionError
+_____________________ test_keine_doppelte_id[plaene_offen] _____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_keine_doppelte_id_plaene_0')
+fall = 'plaene_offen'
+
+    @OHNE_BROWSER
+    @pytest.mark.parametrize("fall", FAELLE)
+    def test_keine_doppelte_id(tmp_path, fall):
+        e, _ = rundgang(tmp_path, fall)
+        doppelt = {a["schluessel"]: a["doppelt"] for a in _ansichten(e) if a["doppelt"]}
+>       assert doppelt == {}, (fall, doppelt)
+E       AssertionError: ('plaene_offen', {'start': {'B-01': 3, 'B-03': 3, 'A-01': 2}, '#plan': {'B-01': 3, 'B-03': 3, 'A-01': 2}})
+E       assert {'start': {'B...3, 'A-01': 2}} == {}
+E         
+E         Left contains 2 more items:
+E         {'#plan': {'A-01': 2, 'B-01': 3, 'B-03': 3},
+E          'start': {'A-01': 2, 'B-01': 3, 'B-03': 3}}
+E         
+E         Full diff:
+E         - {}...
+E         
+E         ...Full output truncated (12 lines hidden), use '-vv' to show
+
+engine/tests/test_eine_seitenordnung.py:206: AssertionError
+_________ test_nachtzeile_und_wahlzeile_teilen_keine_id[plaene_offen] __________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_nachtzeile_und_wahlzeile_0')
+fall = 'plaene_offen'
+
+    @OHNE_BROWSER
+    @pytest.mark.parametrize("fall", ["plaene_offen", "tiefe"])
+    def test_nachtzeile_und_wahlzeile_teilen_keine_id(tmp_path, fall):
+        e, d = rundgang(tmp_path, fall, v03_offen=True)
+        assert [w["offen"] for w in d["route"]["wahlstellen"] if w["id"] == "V-03"] == [True]
+        for a in _ansichten(e):
+            for vid in ("V-02", "V-03"):
+                n = a["ids"].get(vid, 0)
+>               assert n <= 1, (fall, a["schluessel"], vid, n)
+E               AssertionError: ('plaene_offen', 'start', 'V-03', 2)
+E               assert 2 <= 1
+
+engine/tests/test_eine_seitenordnung.py:218: AssertionError
+_____________ test_nachtzeile_und_wahlzeile_teilen_keine_id[tiefe] _____________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_nachtzeile_und_wahlzeile_1')
+fall = 'tiefe'
+
+    @OHNE_BROWSER
+    @pytest.mark.parametrize("fall", ["plaene_offen", "tiefe"])
+    def test_nachtzeile_und_wahlzeile_teilen_keine_id(tmp_path, fall):
+        e, d = rundgang(tmp_path, fall, v03_offen=True)
+        assert [w["offen"] for w in d["route"]["wahlstellen"] if w["id"] == "V-03"] == [True]
+        for a in _ansichten(e):
+            for vid in ("V-02", "V-03"):
+                n = a["ids"].get(vid, 0)
+>               assert n <= 1, (fall, a["schluessel"], vid, n)
+E               AssertionError: ('tiefe', '#T-02', 'V-03', 2)
+E               assert 2 <= 1
+
+engine/tests/test_eine_seitenordnung.py:218: AssertionError
+_________________________ test_zu_tun_auch_ohne_plaene _________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_zu_tun_auch_ohne_plaene0')
+
+    @OHNE_BROWSER
+    def test_zu_tun_auch_ohne_plaene(tmp_path):
+        e, _ = rundgang(tmp_path / "a", "ohne_plaene")
+>       assert "offen" in e["reiter"], e["reiter"]
+E       AssertionError: ['plan', 'etappen', 'wissen']
+E       assert 'offen' in ['plan', 'etappen', 'wissen']
+
+engine/tests/test_eine_seitenordnung.py:227: AssertionError
+_______________ test_wahl_mit_an_steht_am_element[plaene_offen] ________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_wahl_mit_an_steht_am_elem0')
+fall = 'plaene_offen'
+
+    @OHNE_BROWSER
+    @pytest.mark.parametrize("fall", ["plaene_offen", "plan_fest", "tiefe"])
+    def test_wahl_mit_an_steht_am_element(tmp_path, fall):
+        e, d = rundgang(tmp_path, fall, an="O-03")
+        assert d["route"]["wahlstellen"][[w["id"] for w in d["route"]["wahlstellen"]].index("V-02")]["an_ids"] == ["O-03"]
+        t02 = e["tagesseiten"]["T-02"]
+>       assert t02["tagseite"] and t02["vergleiche"].get("V-02") == 1, (fall, t02)   # die Wahl mit Vergleich an ihrem Tag
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: ('plaene_offen', {'hash': '#T-02', 'voll': {'B-01': 3, 'U-01': 1, 'A-01': 2}, 'vergleiche': {'V-02': 1, 'V-01': 1}, 'ids': {'i-plan': 1, 'i-varianten': 1, 'i-etappen': 1, 'i-wissen': 1, ...}, ...})
+E       assert (False)
+
+engine/tests/test_eine_seitenordnung.py:242: AssertionError
+___________________ test_wahl_mit_an_steht_am_element[tiefe] ___________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_wahl_mit_an_steht_am_elem2')
+fall = 'tiefe'
+
+    @OHNE_BROWSER
+    @pytest.mark.parametrize("fall", ["plaene_offen", "plan_fest", "tiefe"])
+    def test_wahl_mit_an_steht_am_element(tmp_path, fall):
+        e, d = rundgang(tmp_path, fall, an="O-03")
+        assert d["route"]["wahlstellen"][[w["id"] for w in d["route"]["wahlstellen"]].index("V-02")]["an_ids"] == ["O-03"]
+        t02 = e["tagesseiten"]["T-02"]
+        assert t02["tagseite"] and t02["vergleiche"].get("V-02") == 1, (fall, t02)   # die Wahl mit Vergleich an ihrem Tag
+        o03 = e["sprung"].get("O-03")
+>       assert o03 and o03["wahlLinks"].count("#V-02") >= 1, (fall, o03)       # am Ort steht eine Zeile mit Link zur Wahl
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: ('tiefe', {'hash': '#O-03', 'tagseite': False, 'ziel': True, 'reiter': 'varianten', ...})
+E       assert ({'hash': '#O-03', 'tagseite': False, 'ziel': True, 'reiter': 'varianten', ...} and 0 >= 1)
+E        +  where 0 = <built-in method count of list object at 0x7cb5b0707680>('#V-02')
+E        +    where <built-in method count of list object at 0x7cb5b0707680> = [].count
+
+engine/tests/test_eine_seitenordnung.py:244: AssertionError
+_____________ test_etappen_bei_offenen_plaenen_wie_bei_festem_plan _____________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_etappen_bei_offenen_plaen0')
+
+    @OHNE_BROWSER
+    def test_etappen_bei_offenen_plaenen_wie_bei_festem_plan(tmp_path):
+        offen, _ = rundgang(tmp_path / "b", "plaene_offen")
+        fest, _ = rundgang(tmp_path / "c", "plan_fest")
+>       assert ("etappen" in offen["reiter"]) == ("etappen" in fest["reiter"]), (offen["reiter"], fest["reiter"])
+E       AssertionError: (['plan', 'varianten', 'etappen', 'wissen', 'wuensche', 'offen'], ['varianten', 'offen', 'wissen', 'wuensche'])
+E       assert ('etappen' in ['plan', 'varianten', 'etappen', 'wissen', 'wuensche', 'offen']) == ('etappen' in ['varianten', 'offen', 'wissen', 'wuensche'])
+
+engine/tests/test_eine_seitenordnung.py:260: AssertionError
+_______________ test_buchung_genau_einmal_vollstaendig[chromium] _______________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_buchung_genau_einmal_voll0')
+browser = 'chromium'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    def test_buchung_genau_einmal_vollstaendig(tmp_path, browser):
+        """Eine Buchung (B-…, #76) wohnt bei ihrem Ding (ADR-0003): in der Unterkunftskarte des Abschnitts „Nacht“ der Tagesseite,
+        genau einmal vollständig, in jeder Reise (#214: mit offenem Plan, mit festem Plan, mit darstellung.tiefe wie bei einer
+        Rundreise; einen Reiter „Plan“ gibt es nicht mehr). #B-01 führt in jedem Fall hin."""
+        for name, variante in (("offen", {}), ("fest", {"fest": True}), ("tiefe", {"darstellung": {"tiefe": True}})):
+            e = seite_der_variante(tmp_path / name, browser, **variante)
+            b = e["buchung"]
+            assert b and b["sichtbar"] and b["nummer"] == "HE-2027-0415", (name, e)
+            assert b["zahlung"] == "angezahlt · Anzahlung 30 €, Rest vor Ort (Beispielwert)", (name, b)   # Zahlstand in Worten (#166)
+>           assert b["reiter"] == "varianten", (name, b)          # Reise, nicht ein Reiter „Plan“
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: ('offen', {'sichtbar': True, 'nummer': 'HE-2027-0415', 'zahlung': 'angezahlt · Anzahlung 30 €, Rest vor Ort (Beispielwert)', 'reiter': 'plan'})
+E           assert 'plan' == 'varianten'
+E             
+E             - varianten
+E             + plan
+
+engine/tests/test_seite.py:219: AssertionError
+________________ test_buchung_genau_einmal_vollstaendig[webkit] ________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_buchung_genau_einmal_voll1')
+browser = 'webkit'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    def test_buchung_genau_einmal_vollstaendig(tmp_path, browser):
+        """Eine Buchung (B-…, #76) wohnt bei ihrem Ding (ADR-0003): in der Unterkunftskarte des Abschnitts „Nacht“ der Tagesseite,
+        genau einmal vollständig, in jeder Reise (#214: mit offenem Plan, mit festem Plan, mit darstellung.tiefe wie bei einer
+        Rundreise; einen Reiter „Plan“ gibt es nicht mehr). #B-01 führt in jedem Fall hin."""
+        for name, variante in (("offen", {}), ("fest", {"fest": True}), ("tiefe", {"darstellung": {"tiefe": True}})):
+            e = seite_der_variante(tmp_path / name, browser, **variante)
+            b = e["buchung"]
+            assert b and b["sichtbar"] and b["nummer"] == "HE-2027-0415", (name, e)
+            assert b["zahlung"] == "angezahlt · Anzahlung 30 €, Rest vor Ort (Beispielwert)", (name, b)   # Zahlstand in Worten (#166)
+>           assert b["reiter"] == "varianten", (name, b)          # Reise, nicht ein Reiter „Plan“
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: ('offen', {'sichtbar': True, 'nummer': 'HE-2027-0415', 'zahlung': 'angezahlt · Anzahlung 30 €, Rest vor Ort (Beispielwert)', 'reiter': 'plan'})
+E           assert 'plan' == 'varianten'
+E             
+E             - varianten
+E             + plan
+
+engine/tests/test_seite.py:219: AssertionError
+____________ test_stornierte_buchung_eingeklappt_am_ding[chromium] _____________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_stornierte_buchung_eingek0')
+browser = 'chromium'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    def test_stornierte_buchung_eingeklappt_am_ding(tmp_path, browser):
+        """#146: Eine stornierte Buchung (B-03 an U-01) steht nicht mehr voll da, sondern an ihrem Ding im zugeklappten Block
+        „Storniert (1)“ mit Hinweis zum Zurückholen; die geltende B-01 steht voll da. #B-03 öffnet den Block. Geprüft mit offenem
+        Plan, mit festem Plan und mit darstellung.tiefe. Seit #214 steht B-01 an genau einem Ding voll (seiner Heimat), die übrigen
+        Dinge zeigen den Chip."""
+        for name, variante in (("plan", {}), ("fest", {"fest": True}), ("tiefe", {"darstellung": {"tiefe": True}})):
+            e = seite_der_variante(tmp_path / name, browser, **variante)
+            # AC-1, AC-2: am Ding mit B-01 steht B-01 voll, B-03 nur im zugeklappten Block „Storniert (1)“, unsichtbar
+            s = e["stornoB01"]
+>           assert len(s["b01"]) == 1, (name, s["b01"])   # #214: genau ein Ding mit vollem Block
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: ('plan', [{'ding': 'T-01', 'sichtbar': True, 'imBlock': False, 'bloecke': [{'summary': 'Storniert (1)', 'offen': False, 'hinweis': 'Zurückholen: im Gespräch mit Frieda.', 'b03': {'chip': [...], 'nummer': 'Nummer: HE-2027-0388', 'verlauf': 'Verlauf (2)', 'grund': True}}], ...}, {'ding': 'U-01', 'sichtbar': True, 'imBlock': False, 'bloecke': [{'summary': 'Storniert (1)', 'offen': False, 'hinweis': 'Zurückholen: im Gespräch mit Frieda.', 'b03': {'chip': [...], 'nummer': 'Nummer: HE-2027-0388', 'verlauf': 'Verlauf (2)', 'grund': True}}], ...}])
+E           assert 2 == 1
+E            +  where 2 = len([{'ding': 'T-01', 'sichtbar': True, 'imBlock': False, 'bloecke': [{'summary': 'Storniert (1)', 'offen': False, 'hinweis': 'Zurückholen: im Gespräch mit Frieda.', 'b03': {'chip': ['storniert'], 'nummer': 'Nummer: HE-2027-0388', 'verlauf': 'Verlauf (2)', 'grund': True}}], ...}, {'ding': 'U-01', 'sichtbar': True, 'imBlock': False, 'bloecke': [{'summary': 'Storniert (1)', 'offen': False, 'hinweis': 'Zurückholen: im Gespräch mit Frieda.', 'b03': {'chip': ['storniert'], 'nummer': 'Nummer: HE-2027-0388', 'verlauf': 'Verlauf (2)', 'grund': True}}], ...}])
+
+engine/tests/test_seite.py:234: AssertionError
+_____________ test_stornierte_buchung_eingeklappt_am_ding[webkit] ______________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_stornierte_buchung_eingek1')
+browser = 'webkit'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    def test_stornierte_buchung_eingeklappt_am_ding(tmp_path, browser):
+        """#146: Eine stornierte Buchung (B-03 an U-01) steht nicht mehr voll da, sondern an ihrem Ding im zugeklappten Block
+        „Storniert (1)“ mit Hinweis zum Zurückholen; die geltende B-01 steht voll da. #B-03 öffnet den Block. Geprüft mit offenem
+        Plan, mit festem Plan und mit darstellung.tiefe. Seit #214 steht B-01 an genau einem Ding voll (seiner Heimat), die übrigen
+        Dinge zeigen den Chip."""
+        for name, variante in (("plan", {}), ("fest", {"fest": True}), ("tiefe", {"darstellung": {"tiefe": True}})):
+            e = seite_der_variante(tmp_path / name, browser, **variante)
+            # AC-1, AC-2: am Ding mit B-01 steht B-01 voll, B-03 nur im zugeklappten Block „Storniert (1)“, unsichtbar
+            s = e["stornoB01"]
+>           assert len(s["b01"]) == 1, (name, s["b01"])   # #214: genau ein Ding mit vollem Block
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: ('plan', [{'ding': 'T-01', 'sichtbar': True, 'imBlock': False, 'bloecke': [{'summary': 'Storniert (1)', 'offen': False, 'hinweis': 'Zurückholen: im Gespräch mit Frieda.', 'b03': {'chip': [...], 'nummer': 'Nummer: HE-2027-0388', 'verlauf': 'Verlauf (2)', 'grund': True}}], ...}, {'ding': 'U-01', 'sichtbar': True, 'imBlock': False, 'bloecke': [{'summary': 'Storniert (1)', 'offen': False, 'hinweis': 'Zurückholen: im Gespräch mit Frieda.', 'b03': {'chip': [...], 'nummer': 'Nummer: HE-2027-0388', 'verlauf': 'Verlauf (2)', 'grund': True}}], ...}])
+E           assert 2 == 1
+E            +  where 2 = len([{'ding': 'T-01', 'sichtbar': True, 'imBlock': False, 'bloecke': [{'summary': 'Storniert (1)', 'offen': False, 'hinweis': 'Zurückholen: im Gespräch mit Frieda.', 'b03': {'chip': ['storniert'], 'nummer': 'Nummer: HE-2027-0388', 'verlauf': 'Verlauf (2)', 'grund': True}}], ...}, {'ding': 'U-01', 'sichtbar': True, 'imBlock': False, 'bloecke': [{'summary': 'Storniert (1)', 'offen': False, 'hinweis': 'Zurückholen: im Gespräch mit Frieda.', 'b03': {'chip': ['storniert'], 'nummer': 'Nummer: HE-2027-0388', 'verlauf': 'Verlauf (2)', 'grund': True}}], ...}])
+
+engine/tests/test_seite.py:234: AssertionError
+__________________ test_neue_reise_aus_der_vorlage_im_browser __________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_neue_reise_aus_der_vorlag0')
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    def test_neue_reise_aus_der_vorlage_im_browser(tmp_path):
+        """#214 (K6): Eine frisch aus engine/reisevorlage angelegte Reise mit ihren ersten Tagen sieht im Browser aus wie die
+        Beispielreise: Zeitachse, Tagesseiten, „Zu tun“, kein Reiter „Plan“, die Buchung genau einmal vollständig."""
+        import neu
+        import yaml
+        from test_eine_seitenordnung import messen
+        r = neu.anlegen(tmp_path / "reisen", "Skiurlaub im Tal", datetime.date(2027, 2, 6), datetime.date(2027, 2, 9),
+                        {"ida": {"name": "Ida", "rolle": "organisator"}, "karl": {"name": "Karl", "rolle": "mitwirkend"}},
+                        "Ida", ziel="Oberstdorf")
+        (r / "plan").mkdir(exist_ok=True)
+        (r / "plan" / "routen.yaml").write_text(yaml.safe_dump(ERSTE_EINTRAEGE, allow_unicode=True, sort_keys=False), encoding="utf-8")
+        import schreiben
+        neu.arten_ableiten(r)             # Art der Ferienwohnung (Grundform aufenthalt)
+        schreiben.plan_sicherstellen(r)   # wie der Schreibweg: den Plan in reise.json eintragen
+        web = tmp_path / "web"
+        bauen.bauen(r, web / r.name)
+        d = json.loads((web / r.name / "daten.json").read_text(encoding="utf-8"))
+        assert d["route"]["plaene"] == [] and [t["id"] for t in d["route"]["tage"]] == ["T-01", "T-02", "T-03", "T-04"]
+        e = messen(web, d, voll={"B-01": "FW-0001"}, pfad=r.name)
+>       assert "plan" not in e["reiter"] and "offen" in e["reiter"], e["reiter"]
+E       AssertionError: ['plan', 'wissen', 'wuensche', 'offen']
+E       assert ('plan' not in ['plan', 'wissen', 'wuensche', 'offen'])
+
+engine/tests/test_seite.py:157: AssertionError
+____________________ test_tagesnummer_ohne_plaene_aus_tage _____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_tagesnummer_ohne_plaene_a0')
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    def test_tagesnummer_ohne_plaene_aus_tage(tmp_path):
+        """#214, Nachtrag zu #144 (K10): Ohne Pläne kommt die Tagesnummer aus R.tage. Übersicht (Zeitachse) und Tagesseite zeigen
+        dieselbe Nummer, jeder Tag hat seine Tagesseite."""
+        from test_eine_seitenordnung import rundgang
+        e, d = rundgang(tmp_path, "ohne_plaene")
+        tage = d["route"]["tage"]
+>       assert e["start"]["zeilenNr"] == [str(t["nr"]) for t in tage], e["start"]
+E       AssertionError: {'achse': False, 'zeilen': [], 'zeilenNr': [], 'zeilenLinks': [], ...}
+E       assert [] == ['1', '2', '3', '4', '5', '6']
+E         
+E         Right contains 6 more items, first extra item: '1'
+E         
+E         Full diff:
+E         + []
+E         - [
+E         -     '1',...
+E         
+E         ...Full output truncated (6 lines hidden), use '-vv' to show
+
+engine/tests/test_tagesseite.py:167: AssertionError
+________________________ test_tiefe_nur_noch_plan_baum _________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_tiefe_nur_noch_plan_baum0')
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    def test_tiefe_nur_noch_plan_baum(tmp_path):
+        """#214, Entscheidung 3 (K11): darstellung.tiefe steuert nur noch den Plan-Baum im Reiter „Pläne“. Die Startseite ist die
+        Zeitachse, die Tage haben Tagesseiten, der Plan P-A öffnet weiter seinen Baum unter „Pläne“."""
+        from test_eine_seitenordnung import rundgang
+        e, d = rundgang(tmp_path, "tiefe", extra=["P-A"])
+>       assert e["start"]["achse"] and e["start"]["tageskaesten"] == 0, e["start"]
+E       AssertionError: {'achse': False, 'zeilen': [], 'zeilenNr': [], 'zeilenLinks': [], ...}
+E       assert (False)
+
+engine/tests/test_tagesplan.py:124: AssertionError
+___________________ test_plan_reiter_abschnitte_unter_wissen ___________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-7870/test_plan_reiter_abschnitte_un0')
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    def test_plan_reiter_abschnitte_unter_wissen(tmp_path):
+        """#214, Entscheidung 4 (K11): darstellung.plan_reiter wird ignoriert; der genannte Abschnitt (Eckdaten, W-02) steht im
+        Reiter „Wissen“, einen Reiter „Plan“ gibt es nicht."""
+        from test_eine_seitenordnung import rundgang
+        e, _ = rundgang(tmp_path, "tiefe", extra=["W-02"])
+>       assert "plan" not in e["reiter"] and "wissen" in e["reiter"], e["reiter"]
+E       AssertionError: ['plan', 'varianten', 'etappen', 'wissen', 'wuensche', 'offen']
+E       assert ('plan' not in ['plan', 'varianten', 'etappen', 'wissen', 'wuensche', 'offen'])
+
+engine/tests/test_reiseueberblick.py:111: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_eine_seitenordnung.py::test_ohne_plaene_zeitachse_eine_spalte_ein_link
+FAILED engine/tests/test_eine_seitenordnung.py::test_genau_einmal_vollstaendig[ohne_plaene]
+FAILED engine/tests/test_eine_seitenordnung.py::test_genau_einmal_vollstaendig[plaene_offen]
+FAILED engine/tests/test_eine_seitenordnung.py::test_genau_einmal_vollstaendig[plan_fest]
+FAILED engine/tests/test_eine_seitenordnung.py::test_genau_einmal_vollstaendig[tiefe]
+FAILED engine/tests/test_eine_seitenordnung.py::test_keine_doppelte_id[ohne_plaene]
+FAILED engine/tests/test_eine_seitenordnung.py::test_keine_doppelte_id[plaene_offen]
+FAILED engine/tests/test_eine_seitenordnung.py::test_nachtzeile_und_wahlzeile_teilen_keine_id[plaene_offen]
+FAILED engine/tests/test_eine_seitenordnung.py::test_nachtzeile_und_wahlzeile_teilen_keine_id[tiefe]
+FAILED engine/tests/test_eine_seitenordnung.py::test_zu_tun_auch_ohne_plaene
+FAILED engine/tests/test_eine_seitenordnung.py::test_wahl_mit_an_steht_am_element[plaene_offen]
+FAILED engine/tests/test_eine_seitenordnung.py::test_wahl_mit_an_steht_am_element[tiefe]
+FAILED engine/tests/test_eine_seitenordnung.py::test_etappen_bei_offenen_plaenen_wie_bei_festem_plan
+FAILED engine/tests/test_seite.py::test_buchung_genau_einmal_vollstaendig[chromium]
+FAILED engine/tests/test_seite.py::test_buchung_genau_einmal_vollstaendig[webkit]
+FAILED engine/tests/test_seite.py::test_stornierte_buchung_eingeklappt_am_ding[chromium]
+FAILED engine/tests/test_seite.py::test_stornierte_buchung_eingeklappt_am_ding[webkit]
+FAILED engine/tests/test_seite.py::test_neue_reise_aus_der_vorlage_im_browser
+FAILED engine/tests/test_tagesseite.py::test_tagesnummer_ohne_plaene_aus_tage
+FAILED engine/tests/test_tagesplan.py::test_tiefe_nur_noch_plan_baum - Assert...
+FAILED engine/tests/test_reiseueberblick.py::test_plan_reiter_abschnitte_unter_wissen
+=================== 21 failed, 4 passed in 125.63s (0:02:05) ===================

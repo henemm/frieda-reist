@@ -119,6 +119,54 @@ def test_neue_reise_aus_der_vorlage(tmp_path, browser):
     assert "6.–13. Februar 2027" in dom["390#"] and "Offene Fragen: 1" in dom["390#"]
 
 
+# Erste Einträge einer neuen Reise, wie sie über den Konnektor entstehen (erfunden, Beispielwerte): ein Ort, eine Ferienwohnung
+# über drei Nächte mit einer Buchung, vier Tage ohne Pläne und ohne Wahlstellen
+ERSTE_EINTRAEGE = {
+    "start": {"datum": datetime.date(2027, 2, 6), "ort": "O-01"},
+    "ende": {"datum": datetime.date(2027, 2, 9), "ort": "O-01"},
+    "orte": {"O-01": {"name": "Talort (erfunden)", "quelle": "erfunden (Beispiel)"}},
+    "unterkuenfte": {"U-01": {"name": "Ferienwohnung am Hang (erfunden)", "ort": "O-01", "art": "ferienwohnung",
+                              "adresse": {"wert": "Hangweg 2 (Beispielwert)", "quelle": "erfunden (Beispiel)"},
+                              "quelle": "erfunden (Beispiel)"}},
+    "buchungen": {"B-01": {"fuer": ["U-01"], "status": "gebucht", "nummer": "FW-0001", "quelle": "erfunden (Beispiel)"}},
+    "tage": {"T-01": {"titel": "Anreise (erfunden)", "nacht": "U-01"}, "T-02": {"titel": "Im Tal (erfunden)", "nacht": "U-01"},
+             "T-03": {"titel": "Am Berg (erfunden)", "nacht": "U-01"}, "T-04": {"titel": "Abreise (erfunden)"}},
+    "route": ["T-01", "T-02", "T-03", "T-04"],
+}
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+def test_neue_reise_aus_der_vorlage_im_browser(tmp_path):
+    """#214 (K6): Eine frisch aus engine/reisevorlage angelegte Reise mit ihren ersten Tagen sieht im Browser aus wie die
+    Beispielreise: Zeitachse, Tagesseiten, „Zu tun“, kein Reiter „Plan“, die Buchung genau einmal vollständig."""
+    import neu
+    import yaml
+    from test_eine_seitenordnung import messen
+    r = neu.anlegen(tmp_path / "reisen", "Skiurlaub im Tal", datetime.date(2027, 2, 6), datetime.date(2027, 2, 9),
+                    {"ida": {"name": "Ida", "rolle": "organisator"}, "karl": {"name": "Karl", "rolle": "mitwirkend"}},
+                    "Ida", ziel="Oberstdorf")
+    (r / "plan").mkdir(exist_ok=True)
+    (r / "plan" / "routen.yaml").write_text(yaml.safe_dump(ERSTE_EINTRAEGE, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    import schreiben
+    neu.arten_ableiten(r)             # Art der Ferienwohnung (Grundform aufenthalt)
+    schreiben.plan_sicherstellen(r)   # wie der Schreibweg: den Plan in reise.json eintragen
+    web = tmp_path / "web"
+    bauen.bauen(r, web / r.name)
+    d = json.loads((web / r.name / "daten.json").read_text(encoding="utf-8"))
+    assert d["route"]["plaene"] == [] and [t["id"] for t in d["route"]["tage"]] == ["T-01", "T-02", "T-03", "T-04"]
+    e = messen(web, d, voll={"B-01": "FW-0001"}, pfad=r.name)
+    assert "plan" not in e["reiter"] and "offen" in e["reiter"], e["reiter"]
+    assert e["start"]["achse"] and e["start"]["zeilen"] == ["T-01", "T-02", "T-03", "T-04"] and e["start"]["tageskaesten"] == 0, e["start"]
+    assert all(v["tagseite"] for v in e["tagesseiten"].values()), {t: v["tagseite"] for t, v in e["tagesseiten"].items()}
+    gesehen, voll = set(), 0
+    for a in e["ansichten"]:
+        if a["schluessel"] not in gesehen:
+            gesehen.add(a["schluessel"])
+            voll += a["voll"]["B-01"]
+    assert voll == 1, [(a["schluessel"], a["voll"]) for a in e["ansichten"]]
+    assert e["zuTun"] and e["zuTun"]["zuBuchen"], e["zuTun"]
+
+
 def seite_der_variante(tmp_path, browser, datum="2027-05-13", skript="seiten_variante.mjs", **variante):
     """Beispielreise mit anderem Status oder anderen Bausteinen bauen (wie test_regeln) und im Browser ansehen."""
     from test_regeln import reise_bauen
@@ -160,28 +208,31 @@ def test_seite_je_status_und_baustein(tmp_path, browser):
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
-def test_buchung_hat_eine_heimat_auch_ohne_tagesseiten(tmp_path, browser):
-    """Eine Buchung (B-…, #76) wohnt bei ihrem Ding (ADR-0003): mit Tagesseiten in der Unterkunftskarte des Abschnitts „Nacht“,
-    ohne Tagesseiten (darstellung.tiefe, wie bei einer Rundreise) im Tageskasten des Plans. #B-01 führt in beiden Fällen hin."""
-    mit = seite_der_variante(tmp_path / "mit", browser)
-    assert mit["buchung"] and mit["buchung"]["sichtbar"] and mit["buchung"]["nummer"] == "HE-2027-0415", mit
-    assert mit["buchung"]["zahlung"] == "angezahlt · Anzahlung 30 €, Rest vor Ort (Beispielwert)", mit   # Zahlstand in Worten (#166)
-    ohne = seite_der_variante(tmp_path / "ohne", browser, darstellung={"tiefe": True})
-    assert ohne["buchung"] and ohne["buchung"]["sichtbar"] and ohne["buchung"]["nummer"] == "HE-2027-0415", ohne
-    assert ohne["buchung"]["reiter"] == "plan"
+def test_buchung_genau_einmal_vollstaendig(tmp_path, browser):
+    """Eine Buchung (B-…, #76) wohnt bei ihrem Ding (ADR-0003): in der Unterkunftskarte des Abschnitts „Nacht“ der Tagesseite,
+    genau einmal vollständig, in jeder Reise (#214: mit offenem Plan, mit festem Plan, mit darstellung.tiefe wie bei einer
+    Rundreise; einen Reiter „Plan“ gibt es nicht mehr). #B-01 führt in jedem Fall hin."""
+    for name, variante in (("offen", {}), ("fest", {"fest": True}), ("tiefe", {"darstellung": {"tiefe": True}})):
+        e = seite_der_variante(tmp_path / name, browser, **variante)
+        b = e["buchung"]
+        assert b and b["sichtbar"] and b["nummer"] == "HE-2027-0415", (name, e)
+        assert b["zahlung"] == "angezahlt · Anzahlung 30 €, Rest vor Ort (Beispielwert)", (name, b)   # Zahlstand in Worten (#166)
+        assert b["reiter"] == "varianten", (name, b)          # Reise, nicht ein Reiter „Plan“
+        assert len(e["stornoB01"]["b01"]) == 1, (name, e["stornoB01"]["b01"])   # genau ein Ding zeigt sie voll
 
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
 def test_stornierte_buchung_eingeklappt_am_ding(tmp_path, browser):
     """#146: Eine stornierte Buchung (B-03 an U-01) steht nicht mehr voll da, sondern an ihrem Ding im zugeklappten Block
-    „Storniert (1)“ mit Hinweis zum Zurückholen; die geltende B-01 steht voll da. #B-03 öffnet den Block. Geprüft im Plan
-    (Plan noch offen), mit Tagesseiten (Plan A fest) und ohne Tagesseiten (darstellung.tiefe)."""
+    „Storniert (1)“ mit Hinweis zum Zurückholen; die geltende B-01 steht voll da. #B-03 öffnet den Block. Geprüft mit offenem
+    Plan, mit festem Plan und mit darstellung.tiefe. Seit #214 steht B-01 an genau einem Ding voll (seiner Heimat), die übrigen
+    Dinge zeigen den Chip."""
     for name, variante in (("plan", {}), ("fest", {"fest": True}), ("tiefe", {"darstellung": {"tiefe": True}})):
         e = seite_der_variante(tmp_path / name, browser, **variante)
-        # AC-1, AC-2: an jedem Ding mit B-01 steht B-01 voll, B-03 nur im zugeklappten Block „Storniert (1)“, unsichtbar
+        # AC-1, AC-2: am Ding mit B-01 steht B-01 voll, B-03 nur im zugeklappten Block „Storniert (1)“, unsichtbar
         s = e["stornoB01"]
-        assert s["b01"], (name, s)
+        assert len(s["b01"]) == 1, (name, s["b01"])   # #214: genau ein Ding mit vollem Block
         for o in s["b01"]:
             assert o["sichtbar"] and not o["imBlock"], (name, o)
             assert len(o["bloecke"]) == 1 and o["b03Draussen"] == 0, (name, o)

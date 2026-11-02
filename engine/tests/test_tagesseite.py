@@ -155,3 +155,16 @@ def test_nacht_volle_breite_nur_bei_offener_wahl(tmp_path, offen):
     assert e["fehler"] == []
     n = e["aus"]["1300"]["nacht"]
     assert (n["voll"], n["inLesen"]) == (offen, not offen), n
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+def test_tagesnummer_ohne_plaene_aus_tage(tmp_path):
+    """#214, Nachtrag zu #144 (K10): Ohne Pläne kommt die Tagesnummer aus R.tage. Übersicht (Zeitachse) und Tagesseite zeigen
+    dieselbe Nummer, jeder Tag hat seine Tagesseite."""
+    from test_eine_seitenordnung import rundgang
+    e, d = rundgang(tmp_path, "ohne_plaene")
+    tage = d["route"]["tage"]
+    assert e["start"]["zeilenNr"] == [str(t["nr"]) for t in tage], e["start"]
+    for t in tage:
+        k = e["tagesseiten"][t["id"]]["kopf"]
+        assert k and k.startswith(f"Tag {t['nr']} · "), (t["id"], k)

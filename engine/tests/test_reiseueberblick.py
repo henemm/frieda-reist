@@ -100,3 +100,14 @@ def test_reiseueberblick_unterwegs(tmp_path):
     """Unterwegs zählt der Tag, nicht die Vorbereitung: Zähler „Tag x von n“, kein Stand der Vorbereitung."""
     for a in ueberblick(tmp_path, "chromium", "2027-05-14", status="unterwegs").values():
         assert a["kopf"] == ["Reise", "Tag 2 von 4"] and a["stand"] == [], a
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+def test_plan_reiter_abschnitte_unter_wissen(tmp_path):
+    """#214, Entscheidung 4 (K11): darstellung.plan_reiter wird ignoriert; der genannte Abschnitt (Eckdaten, W-02) steht im
+    Reiter „Wissen“, einen Reiter „Plan“ gibt es nicht."""
+    from test_eine_seitenordnung import rundgang
+    e, _ = rundgang(tmp_path, "tiefe", extra=["W-02"])
+    assert "plan" not in e["reiter"] and "wissen" in e["reiter"], e["reiter"]
+    w = e["sprung"]["W-02"]
+    assert w["ziel"] and w["reiter"] == "wissen", w
