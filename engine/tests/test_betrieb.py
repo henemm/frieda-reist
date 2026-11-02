@@ -542,6 +542,46 @@ def test_deploy_prueft_die_wege_zum_konnektor_von_aussen(tmp_path):
         server.shutdown()
 
 
+def test_veroeffentlichen_installiert_neue_bibliotheken_vor_den_pruefungen(vf):
+    """Ändert sich engine/requirements.txt, installiert das Veröffentlichen die Bibliotheken vor den Prüfungen, sonst
+    nicht. Scheitert die Installation, endet der Lauf mit 1 ohne Prüfung und Bau; der nächste versucht es wieder (rot
+    1.11.2026: eine neue Bibliothek fehlte nur auf dem Server)."""
+    tmp, quelle = vf["tmp"], vf["tmp"] / "quelle"
+    pip_log = tmp / "pip.log"
+    pip = ausfuehrbar(tmp / "pip.sh", f'#!/bin/sh\ncat "$2" >> {pip_log}\n[ ! -e {tmp}/pip-kaputt ]\n')
+
+    def liste(text):
+        (quelle / "engine").mkdir(exist_ok=True)
+        (quelle / "engine" / "requirements.txt").write_text(text)
+        git(quelle, "add", ".")
+        git(quelle, "commit", "-qm", "Bibliotheken")
+
+    def pips():
+        n = pip_log.read_text().split() if pip_log.exists() else []
+        pip_log.unlink(missing_ok=True)
+        return n
+
+    liste("PyYAML\n")
+    r = vf["lauf"](VF_PIP=str(pip))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert pips() == ["PyYAML"] and vf["deploys"]() == ["beispielreise", "zweitreise"]
+    # Gleiche Liste: keine Installation
+    r = vf["lauf"]("--immer", VF_PIP=str(pip))
+    assert r.returncode == 0 and pips() == [], r.stdout + r.stderr
+    # Neue Bibliothek, Installation scheitert: kein Test, kein Bau; der nächste Lauf versucht es wieder
+    (tmp / "pruefen.log").unlink(missing_ok=True)
+    vf["deploys"]()
+    (tmp / "pip-kaputt").touch()
+    liste("PyYAML\nneu-bibliothek\n")
+    r = vf["lauf"](VF_PIP=str(pip))
+    assert r.returncode == 1 and "cannot be installed" in r.stdout, r.stdout + r.stderr
+    assert pips() == ["PyYAML", "neu-bibliothek"] and vf["deploys"]() == [] and not (tmp / "pruefen.log").exists()
+    (tmp / "pip-kaputt").unlink()
+    r = vf["lauf"](VF_PIP=str(pip))
+    assert r.returncode == 0 and pips() == ["PyYAML", "neu-bibliothek"], r.stdout + r.stderr
+    assert vf["deploys"]() == ["beispielreise", "zweitreise"]
+
+
 def test_veroeffentlichen_merge_und_submodulfehler_werden_nicht_gemerkt(vf):
     """Scheitert das Vorspulen (lokaler Commit im Bauordner) oder das Holen des Submoduls, endet der Lauf mit 1,
     es wird nichts gebaut, kein Stand geschrieben und die Rot-Datei weder angelegt noch verändert (AC-18)."""
