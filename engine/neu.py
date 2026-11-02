@@ -1,14 +1,18 @@
-"""Neue Reise anlegen, Abschnitte mit neuen IDs, Prüfung vor dem Bau (Paket H, docs/neue-reise.md).
+"""Neue Reise anlegen, IDs vergeben, Prüfung vor dem Bau (Paket H, docs/neue-reise.md).
 
-Eine neue Reise entsteht aus Eckdaten und Personen, im Gespräch erfragt (Claude Code oder Claude-App). Grundlage ist
-die Vorlage in engine/reisevorlage/; reise.yaml, reise.json und ids.yaml schreibt dieses Skript. Die Reise steht
-danach im Status „idee“ und baut sofort.
+Als Modul ist neu.py Technik des Schreibwegs: schreiben.py legt Reisen aus der Claude-App an (aus_auftrag), vergibt IDs
+(naechste_id) und hängt Wissensabschnitte an (abschnitt). Reiseinhalte entstehen nur dort, im AI-Client über den
+Konnektor (ADR-0001, Präzisierung 3).
+
+Als Befehl ist neu.py ein Werkzeug des Betreibers für Struktur, nie für Inhalt:
 
   neu.py reise <reisen-ordner> --titel T --von JJJJ-MM-TT --bis JJJJ-MM-TT --person schluessel=Name:rolle[:nicht] …
-         --wer Name [--ziel Ort] [--pfad ordner] [--untertitel U] [--herkunft H] [--ueberblick Text]
-  neu.py id <reise-ordner> <W|F|O|U|E|T|V>        nächste freie ID, wird sofort als vergeben vermerkt
-  neu.py abschnitt <reise-ordner> --titel T [--gruppe wissen|praxis|quelle] [--datei inhalt/wissen.md] [--text-datei P]
+         --wer Name [--ziel Ort] [--pfad ordner] [--sprache S] [--untertitel U] [--herkunft H]
+                                                  nur die erste Reise einer Instanz, leer im Status „idee“
+                                                  (docs/betrieb.md, Neue Instanz einrichten, Schritt 7); alle weiteren
+                                                  Reisen und alle Inhalte entstehen in der Claude-App (trip_create)
   neu.py pruefen <reise-ordner>                   Prüfung vor dem Bau mit verständlichen Meldungen
+  neu.py arten-ableiten <reise-ordner> …          plan/arten.yaml aus den Bestandsdaten ableiten (docs/ontologie.md, O-2)
   neu.py nachziehen <reise-ordner> [--strecke E-15=kombiniert …]
                                                   Schlüssel einer bestehenden Reise auf den Stand vom 29.10.2026 bringen
                                                   (docs/ontologie.md): typ→art, bereich→art, art→wann an Wahlstellen,
@@ -514,9 +518,9 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
 # ---------- Aufruf ----------
 def main(argv):
     import argparse
-    ap = argparse.ArgumentParser(prog="engine/neu.py", description="Neue Reise anlegen, IDs vergeben, vor dem Bau prüfen.")
+    ap = argparse.ArgumentParser(prog="engine/neu.py", description="Erste Reise einer Instanz anlegen, vor dem Bau prüfen, Bestand nachziehen (nur Struktur, nie Inhalt).")
     sub = ap.add_subparsers(dest="befehl", required=True)
-    r = sub.add_parser("reise", help="neue Reise aus der Vorlage anlegen")
+    r = sub.add_parser("reise", help="erste Reise einer Instanz leer aus der Vorlage anlegen")
     r.add_argument("reisen", type=Path)
     r.add_argument("--titel", required=True)
     r.add_argument("--von", required=True, type=datetime.date.fromisoformat)
@@ -527,17 +531,7 @@ def main(argv):
     r.add_argument("--pfad")
     r.add_argument("--sprache", help="Sprachkennung (texte.SPRACHEN), Vorgabe en")
     r.add_argument("--untertitel")
-    r.add_argument("--herkunft", help="Vorgabe: Gespräch in Claude Code")
-    r.add_argument("--ueberblick")
-    i = sub.add_parser("id", help="nächste freie ID vergeben")
-    i.add_argument("reise", type=Path)
-    i.add_argument("art", choices=ARTEN)
-    a = sub.add_parser("abschnitt", help="Abschnitt mit neuer W-ID anhängen")
-    a.add_argument("reise", type=Path)
-    a.add_argument("--titel", required=True)
-    a.add_argument("--gruppe", default="wissen", choices=GRUPPEN)
-    a.add_argument("--datei", default="inhalt/wissen.md")
-    a.add_argument("--text-datei", type=Path)
+    r.add_argument("--herkunft", help="Vorgabe: erste Reise der Instanz durch den Betreiber")
     p = sub.add_parser("pruefen", help="vor dem Bau prüfen")
     p.add_argument("reise", type=Path)
     g = sub.add_parser("arten-ableiten", help="plan/arten.yaml aus den Bestandsdaten der Reise ableiten (Paket O-2)")
@@ -562,18 +556,11 @@ def main(argv):
         if x.befehl == "reise":
             personen = dict(person_aus_text(t) for t in x.person)
             d = anlegen(x.reisen, x.titel, x.von, x.bis, personen, x.wer, ziel=x.ziel, pfad=x.pfad, sprache=x.sprache,
-                        untertitel=x.untertitel, ueberblick=x.ueberblick,
+                        untertitel=x.untertitel,
                         herkunft=x.herkunft or texte.t(sprache_pruefen(x.sprache)[0], "inhalt.neu.herkunft_gespraech_betreiber"))
             ok, m = pruefen(d)
             print(f"Angelegt: {d} (Status idee)." + ("" if ok else " Prüfung meldet:\n - " + "\n - ".join(m)))
             return 0 if ok else 1
-        if x.befehl == "id":
-            print(naechste_id(x.reise, x.art))
-            return 0
-        if x.befehl == "abschnitt":
-            text = x.text_datei.read_text(encoding="utf-8") if x.text_datei else ""
-            print(abschnitt(x.reise, x.titel, x.gruppe, x.datei, text))
-            return 0
         ok, m = pruefen(x.reise)
         if ok:
             print(f"In Ordnung: {cfg_titel(x.reise)} baut ohne Fehler.")

@@ -1,9 +1,9 @@
 # Neue Reise anlegen (Paket H)
 
-Eine neue Reise entsteht im Gespräch. Niemand legt Dateien von Hand an. Es gibt zwei Wege:
+Eine neue Reise entsteht im Gespräch in der Claude-App. Niemand legt Dateien von Hand an, und Claude Code schreibt keine Reiseinhalte (ADR-0001, Präzisierung 3).
 
-- **In der Claude-App** (der Regelfall, ADR-0001): Über den Konnektor „Frieda“ (Konto mit E-Mail-Adresse, ADR-0005; der frühere Konto-Link „Frieda – meine Reisen“ ist der Übergang, `docs/konnektor.md`) nutzt man das Werkzeug `trip_create` (`reise_anlegen`) mit Titel, Zeitraum, Ziel, Sprache, Personen und einer Notiz zu dem, was schon bekannt ist. Der Schreibweg legt die Reise sofort an, der Betrieb schaltet sie frei, verknüpft sie mit dem Konto und lädt die übrigen Personen per Mail ein. Ein Konto ohne das Recht, Reisen anzulegen, hat statt dessen `trip_create_request` (`reisen_anlegen_anfragen`, `docs/konten.md`).
-- **In Claude Code** (Betreiber, etwa beim Einrichten der ersten Reise einer Instanz): `engine/neu.py reise` mit Titel, Zeitraum, Ziel und Personen aufrufen; Quellen mit `neu.py abschnitt` übernehmen.
+- **In der Claude-App** (der einzige Weg für Reisen und ihre Inhalte): Über den Konnektor „Frieda“ (Konto mit E-Mail-Adresse, ADR-0005; der frühere Konto-Link „Frieda – meine Reisen“ ist der Übergang, `docs/konnektor.md`) nutzt man das Werkzeug `trip_create` (`reise_anlegen`) mit Titel, Zeitraum, Ziel, Sprache, Personen und einer Notiz zu dem, was schon bekannt ist. Der Schreibweg legt die Reise sofort an, der Betrieb schaltet sie frei, verknüpft sie mit dem Konto und lädt die übrigen Personen per Mail ein. Ein Konto ohne das Recht, Reisen anzulegen, hat statt dessen `trip_create_request` (`reisen_anlegen_anfragen`, `docs/konten.md`).
+- **Erste Reise einer Instanz (Betreiber):** Solange eine Instanz keine Reise hat, laufen ihre Dienste noch nicht (`deploy.sh` braucht eine Reise, der Konnektor meldet sich erst mit einer freigeschalteten Reise gesund), und `trip_create` steht nicht zur Verfügung. Diese eine Reise legt der Betreiber mit `engine/neu.py reise` an: nur Titel, Zeitraum, Ziel, Sprache und Personen, kein Inhalt (`docs/betrieb.md`, Neue Instanz einrichten, Schritt 7). Alles Weitere entsteht danach in der Claude-App.
 
 In beiden Fällen steht die Reise danach im Status `idee` und baut sofort: mit Eckdaten, Wissen, Wünschen und einer ersten offenen Frage.
 
@@ -22,7 +22,7 @@ Claude fragt nur nach Lücken und lässt vor dem Anlegen bestätigen, was genau 
 
 ## Vorlage
 
-`engine/reisevorlage/` enthält, was jede Reise braucht. `neu.py` füllt die Platzhalter aus und schreibt `reise.yaml`, `reise.json` und `ids.yaml` selbst:
+`engine/reisevorlage/` enthält, was jede Reise braucht. `neu.py` (für `trip_create` und `neu.py reise`) füllt die Platzhalter aus und schreibt `reise.yaml`, `reise.json` und `ids.yaml` selbst:
 
 ```
 reise.yaml          Titel, Untertitel, Ordner, Zeitraum, Status idee mit Verlauf, Personen, Bausteine, Gruppen
@@ -52,23 +52,21 @@ Nach dem Anlegen füllt sich die Reise im Gespräch, Schritt für Schritt und oh
 
 ## Quellen übernehmen
 
-Bücher, Fotos von Buchseiten, PDFs und Links werden zu Wissensabschnitten. In der Claude-App liest Claude die Quelle (Foto, PDF, Link im Chat) und schreibt mit `knowledge_write` (`wissen_schreiben`) einen neuen Abschnitt oder einen Absatz unter einem vorhandenen. Die Herkunft (`source`) ist Pflicht und steht am Absatz, die W-ID vergibt der Dienst. In Claude Code (Betreiber):
+Bücher, Fotos von Buchseiten, PDFs und Links werden zu Wissensabschnitten, immer in der Claude-App: Claude liest die Quelle (Foto, PDF, Link im Chat) und schreibt mit `knowledge_write` (`wissen_schreiben`) einen neuen Abschnitt oder einen Absatz unter einem vorhandenen. Die W-ID vergibt der Dienst, er trägt den Abschnitt in `reise.json` ein und baut die Reise.
 
-1. Quelle lesen. Originale wie Fotos und PDFs bleiben außerhalb des Repos, im Reisen-Repo im Ordner `privat/`.
-2. Je Thema einen Abschnitt anlegen: `engine/neu.py abschnitt <reise> --titel "…" --gruppe wissen|praxis|quelle [--datei inhalt/….md] [--text-datei <entwurf>]`. Das Skript hängt die Überschrift an, vergibt die nächste freie W-ID und trägt sie in `reise.json` ein.
-3. Text in eigenen Worten schreiben, nie abschreiben. Jede Aussage nennt ihre Herkunft: Buch mit Seite, Link mit Lesedatum (Fußnote `[^n]`), Gespräch. Annahmen sind markiert. Veränderliches wie Öffnungszeiten und Preise bekommt ein Prüfdatum.
-4. Die Quelle selbst in den Abschnitt „Quellen“ (W-03) eintragen.
-5. Prüfen und bauen: `engine/neu.py pruefen <reise>`, dann `engine/bauen.py`.
+- Text in eigenen Worten, nie abgeschrieben. Die Herkunft (`source`) ist Pflicht und steht am Absatz: Buch mit Seite, Link mit Lesedatum, Gespräch. Annahmen sind markiert. Veränderliches wie Öffnungszeiten und Preise bekommt ein Prüfdatum.
+- Die Quelle selbst kommt in den Abschnitt „Quellen“ (W-03).
+- Originale wie Fotos und PDFs bleiben außerhalb des Repos.
 
 Texte sind Markdown. Eigenes HTML lehnt der Generator ab (`docs/design.md`, Reisetexte).
 
 ## IDs
 
-IDs werden nie neu vergeben. `engine/neu.py id <reise> <W|F|O|U|A|E|T|V|B>` gibt die nächste freie Nummer aus und vermerkt sie sofort in `ids.yaml`. Die Nummer liegt über der Marke und über jeder Nummer, die irgendwo in der Reise steht, auch im Verlauf von Verworfenem. Ein gelöschter Abschnitt gibt seine Nummer deshalb nicht frei. Für Reisen von vor Paket H entsteht `ids.yaml` beim ersten Aufruf. Führt eine Reise in `ids.yaml` alle IDs als Liste je Art (`ids:`), kommt die neue ID dort dazu; Liste und Kommentare bleiben erhalten.
+IDs werden nie neu vergeben. Der Schreibweg vergibt sie (`neu.naechste_id`, Arten W, F, O, U, A, E, T, V, B) und vermerkt jede Nummer sofort in `ids.yaml`. Die Nummer liegt über der Marke und über jeder Nummer, die irgendwo in der Reise steht, auch im Verlauf von Verworfenem. Ein gelöschter Abschnitt gibt seine Nummer deshalb nicht frei. Für Reisen von vor Paket H entsteht `ids.yaml` beim ersten Aufruf. Führt eine Reise in `ids.yaml` alle IDs als Liste je Art (`ids:`), kommt die neue ID dort dazu; Liste und Kommentare bleiben erhalten.
 
 ## Prüfung vor dem Bau
 
-`engine/neu.py pruefen <reise>` sagt in einfachen Worten, was zu beheben ist, mit Zeile und Spalte bei kaputtem YAML oder JSON. Es meldet auch Dateien, die `reise.json` nennt, die es aber nicht gibt, und alle Fehler des Generators. Ohne Befund: „In Ordnung: … baut ohne Fehler.“
+Der Schreibweg prüft jede Änderung, bevor er sie schreibt. Für den Betreiber sagt `engine/neu.py pruefen <reise>` in einfachen Worten, was zu beheben ist, mit Zeile und Spalte bei kaputtem YAML oder JSON. Es meldet auch Dateien, die `reise.json` nennt, die es aber nicht gibt, und alle Fehler des Generators. Ohne Befund: „In Ordnung: … baut ohne Fehler.“
 
 ## Freischalten im Betrieb
 
