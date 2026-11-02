@@ -298,6 +298,66 @@ def test_kontoseite_benachrichtigungen(reise):
     assert "auf allen Geräten ausgeschaltet" in t and konten.push_abos(u.karl_id) == []
 
 
+def test_kontoseite_schalter_der_frieda_app(welt):
+    """Entscheidung A (2.11.2026): Ein- und ausgeschaltet wird je Gerät auf Mein Konto; das Abo gehört zu keiner Reise.
+    Die Seite bringt Schlüssel und Texte für das Skript mit, Speichern trägt den Zustand (data-aenderung)."""
+    u = welt()
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
+    karl, _ = anmelden(u, KARL)
+    kid = konten.sitzung(karl)["id"]
+    oeffentlich, _ = push.schluessel()
+    s, h, t = abruf(f"{u.kurl}/konto", cookie=karl)
+    assert s == 200 and '<script src="/konto.js" defer></script>' in t and '<link rel="manifest" href="/manifest.webmanifest">' in t
+    platz = re.search(r'<div id="push-geraet" hidden data-schluessel="([^"]*)" data-texte="([^"]*)">', t)
+    assert platz and platz.group(1) == oeffentlich
+    texte_js = json.loads(html.unescape(platz.group(2)))
+    assert texte_js["einschalten"] == "Auf diesem Gerät einschalten" and texte_js["schritt2"].startswith("„Zum Home-Bildschirm“")
+    # Einstellungen merken Änderungen, Handlungen (alle aus) nicht
+    assert t.count("data-aenderung") == 2 and 'action="/konto" data-aenderung autocomplete="off"><input type="hidden" name="aktion" value="push_einstellungen">' in t
+    csp = dict((k.lower(), v) for k, v in h).get("content-security-policy", "")
+    for quelle in ("script-src 'self'", "worker-src 'self'", "manifest-src 'self'", "connect-src 'self'"):
+        assert quelle in csp, csp
+    assert "unsafe-inline" not in csp.split("script-src", 1)[1].split(";", 1)[0]
+    # Einschalten: nur angemeldet und von Friedas Adresse
+    felder = {"aktion": "push_an", "abo": json.dumps(abo("app")), "geraet": "geraet-karl-app", "zeitzone": "Europe/Berlin"}
+    assert abruf(f"{u.kurl}/konto", "POST", felder)[0] == 401
+    assert abruf(f"{u.kurl}/konto", "POST", felder, cookie=karl, origin="https://boese.invalid")[0] == 403
+    s, _, t = abruf(f"{u.kurl}/konto", "POST", {**felder, "abo": "{kaputt"}, cookie=karl)
+    assert s == 400 and "kein gültiges Abo" in t
+    assert abruf(f"{u.kurl}/konto", "POST", felder, cookie=karl)[0] == 204
+    [a] = konten.push_abos(kid)
+    assert (a["reise"], a["seite"], a["geraet"], a["zeitzone"]) == ("", f"{BASIS}/konto", "geraet-karl-app", "Europe/Berlin")
+    assert abruf(f"{u.kurl}/konto", "POST", felder, cookie=karl)[0] == 204 and len(konten.push_abos(kid)) == 1   # auffrischen
+    s, _, t = abruf(f"{u.kurl}/konto?push=an", cookie=karl)
+    assert "Benachrichtigungen auf diesem Gerät eingeschaltet." in t and "1 Gerät bekommt Benachrichtigungen." in t
+    # Ausschalten: nur das eigene Abo
+    assert abruf(f"{u.kurl}/konto", "POST", {"aktion": "push_ab", "endpoint": abo("app")["endpoint"]}, cookie=karl)[0] == 204
+    assert konten.push_abos(kid) == []
+
+
+def test_nachricht_an_die_frieda_app_fuehrt_zur_reise(reise):
+    """Ein Abo ohne Reise (Frieda-App) bekommt die Nachrichten aller Reisen; der Link führt zur Reiseseite."""
+    u = reise
+    konten.push_abo_entfernen(u.karl_id, abo("karl")["endpoint"])
+    konten.push_abo_speichern(u.karl_id, abo("karl-app"), "", f"{BASIS}/konto", "geraet-karl-app", "Europe/Berlin")
+    aufgabe(u, u.ida, titel="Fähre buchen", zustaendig="karl")
+    push.sammeln(MITTAG)
+    push.zustellen(u.senden, MITTAG)
+    [(ziel, inhalt)] = [g for g in u.gesendet if g[0] == "app"]
+    assert inhalt["url"].startswith(SEITE) and inhalt["tag"] == "frieda-beispielreise"
+
+
+def test_dateien_der_frieda_app():
+    """Manifest (Scope /, Start Mein Konto), Worker nur für Push (kein fetch-Handler: er liegt über Anmeldung und OAuth)."""
+    app = Path(__file__).resolve().parent.parent / "app"
+    m = json.loads((app / "manifest.webmanifest").read_text(encoding="utf-8"))
+    assert (m["scope"], m["start_url"], m["display"]) == ("/", "/konto", "standalone")
+    assert {i["src"] for i in m["icons"]} >= {"/icon-192.png", "/icon-512.png"}
+    sw = (app / "sw.js").read_text(encoding="utf-8")
+    assert 'addEventListener("push"' in sw and 'addEventListener("notificationclick"' in sw
+    assert 'addEventListener("fetch"' not in sw and "caches." not in sw
+
+
 # ---------- Anstoß „Veröffentlichen“ (api/aktualisieren) ----------
 
 def test_anstoss_nur_organisatorinnen(reise):

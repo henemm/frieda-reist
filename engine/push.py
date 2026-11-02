@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Push-Nachrichten aufs Handy (Issue #21, Stufe 2; docs/waechter.md „Meldekanäle“, docs/betrieb.md „Push“).
 
-Wer auf der Reiseseite angemeldet ist, kann Benachrichtigungen für dieses Gerät einschalten (Fuß der Seite). Das Gerät
-schließt beim Push-Dienst seines Browsers ein Abo ab und gibt es dem Rückmeldedienst (konten.push_abo_speichern). Dieser
+Wer angemeldet ist, schaltet Benachrichtigungen je Gerät auf „Mein Konto“ ein (Frieda-App, engine/app/; ältere Abos der
+Reiseseiten gelten weiter). Das Gerät schließt beim Push-Dienst seines Browsers ein Abo ab und gibt es Friedas Konto
+(konten.push_abo_speichern). Dieser
 Dienst liest danach, was in den Reisen neu ist, und schickt es an die Geräte der Personen:
 
   meldung       Meldungen an Personen (meldungen.jsonl: Wächter und Erinnerer, Konflikte, Rot beim Veröffentlichen)
