@@ -3082,10 +3082,10 @@ def basis():
 def zugang_anlegen(reise, wen):
     """wen: Schlüssel einer Person aus reise.yaml (personen) oder eine Rolle ohne festen Namen."""
     if not rm.REISE_MUSTER.match(reise):
-        sys.exit("Aufruf: zugang <reise> <person>|<rolle>")
+        sys.exit("Usage: zugang <trip> <person>|<role>")
     d = daten(reise)
     if d is None:
-        sys.exit(f"Reise „{reise}“ ist unter {seiten()} nicht veröffentlicht (erst bauen und veröffentlichen).")
+        sys.exit(f"Trip “{reise}” is not published at {seiten()} (build and publish it first).")
     personen = {p["schluessel"]: p for p in personen_der_reise(reise, d)}
     if wen in personen:
         z = {"reise": reise, "person": wen}
@@ -3094,8 +3094,8 @@ def zugang_anlegen(reise, wen):
         z = {"reise": reise, "rolle": wen}
         wer = tk("konnektor.ausgabe.zugang_anlegen.1", wen=wen)
     else:
-        sys.exit(f"„{wen}“ ist weder eine Person der Reise ({', '.join(personen) or 'keine in reise.yaml'}) "
-                 f"noch eine Rolle ({', '.join(ROLLEN)}).")
+        sys.exit(f"“{wen}” is neither a person of the trip ({', '.join(personen) or 'none in reise.yaml'}) "
+                 f"nor a role ({', '.join(ROLLEN)}).")
     token = zugang_ausstellen(z)
     print(f"{reise} ({wer}): {basis()}/{token}")
 
@@ -3103,7 +3103,7 @@ def zugang_anlegen(reise, wen):
 def konto_anlegen(schluessel, name):
     """Persönlicher Konto-Link: meine Reisen und neue Reise anlegen (Paket H). Wer einen hat, darf Reisen anlegen."""
     if not PERSON_MUSTER.match(schluessel) or not name.strip() or "\n" in name:
-        sys.exit("Aufruf: konto <schluessel> <Name>  (Schlüssel klein, ohne Umlaute, z. B. hanna)")
+        sys.exit("Usage: konto <key> <name>  (key lowercase, no umlauts, e.g. hanna)")
     token = zugang_ausstellen({"konto": schluessel, "name": name.strip()})
     print(f"Konto {schluessel} ({name.strip()}): {basis()}/{token}")
 

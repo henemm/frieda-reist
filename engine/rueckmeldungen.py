@@ -513,7 +513,7 @@ def aufgabe_aendern(o, agid, roh):
         a[k] = v
     if "status" in diff:
         a["erledigt"] = zeit[:10] if a["status"] == "erledigt" else ""
-    eintrag = {"zeit": zeit, "wer": name, "was": "geändert" if diff else "Kommentar"}
+    eintrag = {"zeit": zeit, "wer": name, "was": "geaendert" if diff else "kommentar"}
     if diff:
         eintrag["felder"] = diff
     if kommentar:
@@ -531,8 +531,6 @@ def aufgabe_aendern(o, agid, roh):
 # (plan/wuensche.yaml) und kommt über daten.json. Die Spalte des Bretts wird daraus berechnet, nie gespeichert.
 # Nichts wird gelöscht; ein Wunsch, der nicht passt, gibt seine Punkte frei.
 SPALTEN = ("eingebracht", "geprueft", "eingeplant", "erlebt", "passt_nicht")
-SPALTEN_TITEL = {"eingebracht": "Eingebracht", "geprueft": "Geprüft", "eingeplant": "Eingeplant", "erlebt": "Erlebt",
-                 "passt_nicht": "Passt nicht"}
 MAX_PUNKTE = 100
 ERLEBT_AB = ("unterwegs", "danach")
 
@@ -615,7 +613,7 @@ def brett(o, z=None):
         else:
             zeile["frei"] = max(0, k["je_person"] - aktive_wuensche(liste, name))
         bilanz.append(zeile)
-    return {"kontingent": k, "spalten": [{"id": s, "titel": SPALTEN_TITEL[s]} for s in SPALTEN], "wuensche": aus,
+    return {"kontingent": k, "spalten": [{"id": s} for s in SPALTEN], "wuensche": aus,
             "bilanz": sorted(bilanz, key=lambda x: x["name"].casefold())}
 
 
@@ -706,7 +704,7 @@ def wunsch_aendern(o, rid, roh, z):
     zeit = jetzt_iso()
     for f, (_, v) in diff.items():
         b[f] = v
-    eintrag = {"zeit": zeit, "wer": name, "was": "geändert" if diff else "Kommentar"}
+    eintrag = {"zeit": zeit, "wer": name, "was": "geaendert" if diff else "kommentar"}
     if diff:
         eintrag["felder"] = {f: [a, v] if f == "punkte" else [bool(a), bool(v)] for f, (a, v) in diff.items()}
     if kommentar:

@@ -150,9 +150,7 @@ def erlaubt(aktion, rolle, status, bausteine, ziel=None, regeln=None):
 
 
 def _klein(text, laenge):
-    t = (text or "").strip().casefold()
-    for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
-        t = t.replace(a, b)
+    t = texte.umschrift((text or "").strip())
     t = unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode("ascii")
     return re.sub(r"[^a-z0-9]+", "-", t).strip("-")[:laenge].strip("-")
 

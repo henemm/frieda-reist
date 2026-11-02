@@ -54,6 +54,14 @@ def sprache(kuerzel):
     return _module[kuerzel]
 
 
+_UMSCHRIFT = {0xE4: "ae", 0xF6: "oe", 0xFC: "ue", 0xDF: "ss"}   # Codepunkte von ä, ö, ü, ß: Unicode-Umschrift, keine Sprache
+
+
+def umschrift(text):
+    """Kleingeschrieben und ä ö ü ß als ae oe ue ss (Schlüssel, Dateinamen, Vergleiche); die eine Stelle dieser Umschrift."""
+    return str(text).casefold().translate(_UMSCHRIFT)
+
+
 def gueltig(kuerzel):
     return kuerzel in sprachen()
 

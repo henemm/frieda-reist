@@ -980,7 +980,7 @@ let SORT, SORT_ZAHL;
 function sprachFormate() { SORT = new Intl.Collator(LOCALE); SORT_ZAHL = new Intl.Collator(LOCALE, {numeric: true}); }
 sprachFormate();
 // Zuordnungen Datenwert -> Wort; sie entstehen beim Start und nach jedem Umschalten neu
-let STATUS_TEXT, BUCHUNG_STATUS, RM_STATUS, WU_STATUS, AG_STATUS, AG_FELD;
+let STATUS_TEXT, BUCHUNG_STATUS, RM_STATUS, WU_STATUS, AG_STATUS, AG_FELD, AG_WAS;
 function textKarten() {
   STATUS_TEXT = gruppe("seite.status");
   BUCHUNG_STATUS = gruppe("seite.buchung.status");
@@ -988,6 +988,7 @@ function textKarten() {
   WU_STATUS = gruppe("seite.wunsch.status");
   AG_STATUS = gruppe("seite.aufgabe.status");
   AG_FELD = gruppe("seite.aufgabe.feld");
+  AG_WAS = gruppe("seite.aufgabe.was");   // Verlauf: angelegt, geaendert, kommentar (ältere Einträge zeigen ihren Text unverändert)
 }
 textKarten();
 
@@ -4531,7 +4532,7 @@ function agFormular(agid, bezug, zurueck) {
           T("seite.aufgabe.gilt_sofort")),
         el("button", {type: "submit"}, a ? T("seite.aufgabe.speichern") : T("seite.aufgabe.anlegen"))),
       a ? el("div", {class: "verlauf"}, el("h4", {}, T("seite.aufgabe.verlauf")), a.verlauf.slice().reverse().map(v => el("div", {class: "rmeintrag"},
-        el("div", {class: "kopfzeile"}, `${datumKurz(v.zeit)} · ${v.wer} · ${v.was}`),
+        el("div", {class: "kopfzeile"}, `${datumKurz(v.zeit)} · ${v.wer} · ${AG_WAS[v.was] || v.was}`),
         v.felder ? el("div", {}, Object.entries(v.felder).map(([k, [alt, neu]]) => `${AG_FELD[k] || k}: ${agWert(k, alt)} → ${agWert(k, neu)}`).join("; ")) : null,
         v.kommentar ? el("div", {class: "text"}, v.kommentar) : null))) : null));
   dlg.dataset.ag = agid || "";

@@ -31,8 +31,8 @@ OVERPASS = "https://overpass-api.de/api/interpreter"
 KENNUNG = instanz.kennung()
 GEPRUEFT_JAHRE = 3  # Prüfdatum im Eintrag (check_date, survey:date) gilt so lange als frisch
 
-STUFEN = ("gut belegt", "mit Vorbehalt", "unsicher")
-HARTE_WARNUNGEN = ("laut OSM kein", "drinking_water=", "saisonal", "zeitweise", "Zugang", "Zustand", "Hinweis", "kostenpflichtig")
+STUFEN = ("well documented", "with reservations", "uncertain")
+HARTE_WARNUNGEN = ("no drinking water per OSM", "drinking_water=", "seasonal", "intermittent", "access", "condition", "note in entry", "fee")
 WARNWORTE =re.compile(r"\b(seca|seco|dry|no\s*potable|no\s*beber|not\s*potable|nicht|kein|polluted|contaminad\w*)\b", re.I)
 
 
@@ -55,33 +55,33 @@ def bewerte(tags, heute):
     dw = tags.get("drinking_water")
     trinkwasser = tags.get("amenity") == "drinking_water" and dw != "no" or dw == "yes"
     if dw == "no":
-        warn.append("laut OSM kein Trinkwasser")
+        warn.append("no drinking water per OSM")
     elif dw and dw not in ("yes", "no"):
         warn.append(f"drinking_water={dw}")
     if tags.get("seasonal") not in (None, "no") or tags.get("seasonal:water"):
-        warn.append(f"saisonal ({tags.get('seasonal') or tags.get('seasonal:water')})")
+        warn.append(f"seasonal ({tags.get('seasonal') or tags.get('seasonal:water')})")
     if tags.get("intermittent") not in (None, "no"):
-        warn.append("zeitweise ohne Wasser (intermittent)")
+        warn.append("intermittent: sometimes without water")
     if tags.get("access") in ("private", "no", "customers", "permit"):
-        warn.append(f"Zugang eingeschränkt ({tags['access']})")
+        warn.append(f"access restricted ({tags['access']})")
     if tags.get("operational_status") not in (None, "working", "operational"):
-        warn.append(f"Zustand: {tags['operational_status']}")
+        warn.append(f"condition: {tags['operational_status']}")
     if tags.get("fee") == "yes":
-        warn.append("kostenpflichtig")
+        warn.append("fee required")
     for k in ("note", "description", "note:es", "note:de"):
         if tags.get(k) and WARNWORTE.search(tags[k]):
-            warn.append(f"Hinweis im Eintrag: „{tags[k]}“")
+            warn.append(f"note in entry: “{tags[k]}”")
             break
     datum = pruefdatum(tags)
     if trinkwasser:
-        belege.append("als Trinkwasser eingetragen")
+        belege.append("entered as drinking water")
     else:
-        warn.append("Trinkbarkeit nicht eingetragen (Quelle/Brunnen)")
+        warn.append("drinkability not entered (spring/well)")
     frisch = datum is not None and (heute - datum).days <= GEPRUEFT_JAHRE * 365
     if datum:
-        (belege if frisch else warn).append(f"zuletzt geprüft {datum.isoformat()}")
+        (belege if frisch else warn).append(f"last checked {datum.isoformat()}")
     else:
-        warn.append("kein Prüfdatum im Eintrag")
+        warn.append("no check date in the entry")
     if not warn:
         stufe = STUFEN[0]
     elif trinkwasser and not any(w.startswith(HARTE_WARNUNGEN) for w in warn):
@@ -122,19 +122,19 @@ def abfragen(ids):
 
 def bericht(reise, stand, zeilen):
     z = {s: sum(1 for x in zeilen if x["stufe"] == s) for s in STUFEN}
-    out = [f"# Wasserstellen laut OpenStreetMap: Datenlage ({reise})", "",
-           f"Herkunft: OpenStreetMap-Daten (ODbL), abgefragt am {stand} mit frieda/werkzeuge/wasser_pruefen.py; das sind dieselben Daten, "
-           "die Organic Maps zeigt. Eigene Prüfung der Datenlage, keine Aussage über den Zustand vor Ort.", "",
-           "„Gut belegt“ heißt: als Trinkwasser eingetragen, keine Warnhinweise, Prüfdatum höchstens "
-           f"{GEPRUEFT_JAHRE} Jahre alt. Es heißt nicht, dass die Quelle zur Reisezeit sicher läuft; "
-           "Wasserstellen sind veränderlich und vor der Reise nachzuprüfen.", "",
-           f"Ergebnis: {z[STUFEN[0]]} gut belegt, {z[STUFEN[1]]} mit Vorbehalt, {z[STUFEN[2]]} unsicher.", ""]
+    out = [f"# Water points per OpenStreetMap: state of the data ({reise})", "",
+           f"Source: OpenStreetMap data (ODbL), queried on {stand} with frieda/werkzeuge/wasser_pruefen.py; this is the same data "
+           "that Organic Maps shows. An assessment of the data, not a statement about the condition on site.", "",
+           "“Well documented” means: entered as drinking water, no warnings, check date at most "
+           f"{GEPRUEFT_JAHRE} years old. It does not mean the source is sure to flow at the time of the trip; "
+           "water points change and must be checked again before the trip.", "",
+           f"Result: {z[STUFEN[0]]} {STUFEN[0]}, {z[STUFEN[1]]} {STUFEN[1]}, {z[STUFEN[2]]} {STUFEN[2]}.", ""]
     for eid in dict.fromkeys(x["etappe"] for x in zeilen):
-        out += [f"## {eid}", "", "| Stufe | Name / Art | Lage | OSM | Gründe |", "|---|---|---|---|---|"]
+        out += [f"## {eid}", "", "| Level | Name / kind | Location | OSM | Reasons |", "|---|---|---|---|---|"]
         for x in zeilen:
             if x["etappe"] == eid:
                 lat, lon = x["lage"]
-                out.append(f"| {x['stufe']} | {x['name']} | {lat:.5f}, {lon:.5f} | {x['osm']} (zuletzt bearbeitet {x['bearbeitet']}) "
+                out.append(f"| {x['stufe']} | {x['name']} | {lat:.5f}, {lon:.5f} | {x['osm']} (last edited {x['bearbeitet']}) "
                            f"| {'; '.join(x['gruende'])} |")
         out.append("")
     return "\n".join(out)

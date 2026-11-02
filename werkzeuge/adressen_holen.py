@@ -136,9 +136,9 @@ def vorschlaege(roh, punkte, karte, suchen=False, heute=None, abfragen=holen):
         t = nominatim_suchen(u.get("name"), ort.get("name") or u.get("ort"), mitte, abfragen)
         a = t and adresse_aus_nominatim(t)
         if not a:
-            fehlt.append((uid, u.get("name"), "bei Nominatim keine Unterkunft mit Straße gefunden"))
+            fehlt.append((uid, u.get("name"), "no accommodation with a street found at Nominatim"))
             continue
-        quelle = f"OSM {t.get('osm_type')}/{t.get('osm_id')} (Nominatim, Suche „{u.get('name')}“), {stand}"
+        quelle = f"OSM {t.get('osm_type')}/{t.get('osm_id')} (Nominatim, search “{u.get('name')}”), {stand}"
         neu[uid] = {"adresse": {"wert": a, "quelle": quelle, "geprueft": heute}}
         if not u.get("punkt") and uid not in bezuege:
             neu[uid]["punkt"] = {"wert": [round(float(t["lat"]), 6), round(float(t["lon"]), 6)], "quelle": quelle, "geprueft": heute}

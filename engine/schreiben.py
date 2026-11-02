@@ -1047,7 +1047,7 @@ ID_MUSTER = re.compile(r"^(T-\d+|E-\d+[A-Za-z]?|U-\d+|A-\d+|O-\d+|V-\d+|W-\d+(\.
 
 PLAIN_FELDER = {"id", "status", "wer", "art", "wann", "typ", "ort", "von", "nach", "frage", "siehe", "bereich", "an", "unterkuenfte",
                 "strecken", "folge", "erfordert", "schliesst_aus", "auswahl", "fuer"}
-PLAIN_MUSTER = re.compile(r"^[A-Za-zÄÖÜäöüß][\w .\-äöüÄÖÜß]*$")
+PLAIN_MUSTER = re.compile(r"^[^\W\d_][\w .\-]*$")
 
 
 def skalar(k, v):

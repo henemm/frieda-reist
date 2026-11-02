@@ -213,11 +213,11 @@ ALLE_DATEIEN = ["vorlage.html", "sw.vorlage.js", "app/konto.js", "app/sw.js"] + 
 # Erlaubte Zahl deutscher Literale je Datei. Jedes Paket der Mehrsprachigkeit kürzt seinen Bereich; Einträge dürfen nur
 # kleiner werden, nie größer (docs/auftraege/mehrsprachigkeit/README.md, Regel 5). Am Ende steht überall 0.
 AUSNAHMEN = {
-    "vorlage.html": 2, "konnektor.py": 3, "schreiben.py": 1, "rueckmeldungen.py": 4, "anmeldung.py": 0, "konten.py": 1,
-    "kalender.py": 0, "waechter.py": 0, "routen.py": 6, "bauen.py": 6, "neu.py": 2, "reise.py": 4,
-    "belege.py": 0, "instanz.py": 0, "gpx.py": 1, "oauth.py": 3, "sw.vorlage.js": 0, "schnittstelle.py": 7, "texte.py": 0, "push.py": 0,   # schnittstelle.py: Muster für deutsche Wörter
+    "vorlage.html": 0, "konnektor.py": 0, "schreiben.py": 0, "rueckmeldungen.py": 0, "anmeldung.py": 0, "konten.py": 0,
+    "kalender.py": 0, "waechter.py": 0, "routen.py": 0, "bauen.py": 0, "neu.py": 0, "reise.py": 0,
+    "belege.py": 0, "instanz.py": 0, "gpx.py": 0, "oauth.py": 0, "sw.vorlage.js": 0, "schnittstelle.py": 1, "texte.py": 0, "push.py": 0,
     "app/konto.js": 0, "app/sw.js": 0,
-}
+}   # schnittstelle.py: ein Muster für deutsche Wörter (mit/nur … entscheiden), die Übersetzung deutscher Werkzeugnamen im Fließtext
 # Treffer von Sprachweichen und festen Locale-Strings (Grep-Test); ebenfalls nur kleiner werdend
 WEICHEN_AUSNAHMEN = {datei: 0 for datei in ALLE_DATEIEN}
 # (keine Ausnahmen mehr: die Kontoseite nimmt lang aus der Sprachdatei, M7)
@@ -365,10 +365,16 @@ def _ohne_entwicklerseite(funde, quelltext):
     return [(z, t) for z, t in funde if not von <= z <= bis]
 
 
+def _datenwerte():
+    """Gespeicherte Datenwerte der Reise (Schlüssel wert.<Wert> des Katalogs): Sie stehen unverändert in den Dateien und sind kein Text (ADR-0006)."""
+    return {k[len("wert."):] for k in texte.sprache(texte.BESTAND_REISE).TEXTE if k.startswith("wert.")}
+
+
 def literale(datei):
     quelltext, versatz = _quelltext(datei)
     funde = js_literale(quelltext) if datei.endswith((".html", ".js")) else py_literale(quelltext)
-    return [(z + versatz, t) for z, t in _ohne_entwicklerseite(funde, quelltext)]
+    daten = _datenwerte()
+    return [(z + versatz, t) for z, t in _ohne_entwicklerseite(funde, quelltext) if t not in daten]
 
 
 @pytest.mark.parametrize("datei", ALLE_DATEIEN)

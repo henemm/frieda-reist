@@ -2825,4 +2825,10 @@ TEXTE = {
     "push.mehrere.one": "{n} Neuigkeit: {zuletzt}",
     "push.mehrere.other": "{n} Neuigkeiten, zuletzt: {zuletzt}",
     "push.probe": "Probe: Benachrichtigungen kommen an.",
+    "pruefung.gpx.1": "gpx: {sid}: {rel} nicht lesbar ({e}).",
+    "pruefung.gpx.2": "gpx: {sid}: {rel} enthält keinen Track.",
+    "seite.aufgabe.was.angelegt": "angelegt",
+    "seite.aufgabe.was.geaendert": "geändert",
+    "seite.aufgabe.was.kommentar": "Kommentar",
+    "inhalt.nachziehen.unterwegs": "Höhenprofil|Wegpunkte|Unterkünfte|Unterkunft|Kontakte|Wasser|Einkehr|Verpflegung|Anfahrt|Abfahrt|Praktisch",
 }

@@ -9,6 +9,8 @@ Endpunkte folgen aber den verschobenen Orten.
 import math
 import xml.etree.ElementTree as ET
 
+import texte
+
 # Toleranz der Vereinfachung in Metern: auf dem Telefon nicht zu sehen, spart 80–90 % der Punkte
 TOLERANZ_M = 8
 # Weiter als so weit von jeder Linie entfernt wird ein Wegpunkt nicht verschoben
@@ -86,10 +88,10 @@ def einbauen(k, strecken, lade):
         try:
             pts = lade(rel)
         except (OSError, ET.ParseError) as e:
-            fehler.append(f"gpx: {sid}: {rel} nicht lesbar ({e}).")
+            fehler.append(texte.satz("pruefung.gpx.1", sid=sid, rel=rel, e=e))
             continue
         if len(pts) < 2:
-            fehler.append(f"gpx: {sid}: {rel} enthält keinen Track.")
+            fehler.append(texte.satz("pruefung.gpx.2", sid=sid, rel=rel))
             continue
         linie = [runden(p) for p in vereinfachen(pts)]
         tracks[sid] = linie

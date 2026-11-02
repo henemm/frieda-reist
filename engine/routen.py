@@ -112,9 +112,7 @@ KOMBINIERT = "kombiniert"   # Strecke mit mehreren Arten (bahn und bus): die Rei
 
 def art_schluessel(text):
     """Art aus einer freien Bezeichnung (typ einer Unterkunft): klein, Umlaute und Akzente aufgelöst, Rest zu _."""
-    t = str(text or "").strip().lower()
-    for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss"), ("&", "und")):
-        t = t.replace(a, b)
+    t = texte.umschrift(str(text or "").strip()).replace("&", "und")
     t = "".join(c for c in unicodedata.normalize("NFKD", t) if not unicodedata.combining(c))
     return re.sub(r"[^a-z0-9]+", "_", t).strip("_") or None
 TYPEN = {"text", "geld", "zahl", "auswahl", "link"}
@@ -171,7 +169,7 @@ def stufe_schluessel(text):
     for sprache in texte.sprachen():   # die Wörter jeder Sprache, die Antwort nennt sie in der Sprache der Person
         for k, w in texte.gruppe(sprache, "schreiben.stufe").items():
             w = w.lower()
-            if t == w or t == w.replace("ö", "oe") or t == texte.datenwert(sprache, k).lower():
+            if t == w or t == texte.umschrift(w) or t == texte.datenwert(sprache, k).lower():
                 return k
     return None
 DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage", "einheit", "stufe", "auch", "rolle", "nach_buchung"}
@@ -262,13 +260,14 @@ def kennwerte(k):
     """Kennzahlen einer Strecke (Schlüssel wie im Dossier) -> Zahlen für Summen."""
     k = k or {}
 
-    def such(*namen):
+    def such(*schluessel, roh=()):
+        namen = tuple(w.lower() for s in schluessel for w in texte.inhaltswoerter("inhalt.kennzahl." + s)) + roh
         for n in k:
             if any(n.lower().startswith(x) for x in namen):
                 return k[n]
         return None
     return {"min": minuten(such("gehzeit", "dauer")), "auf": zahl(such("aufstieg")),
-            "ab": zahl(such("abstieg")), "km": zahl(such("länge", "km"))}
+            "ab": zahl(such("abstieg")), "km": zahl(such("laenge", roh=("km",)))}
 
 
 def verhalten_anwenden(route, v, sprache=None):

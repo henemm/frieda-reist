@@ -928,8 +928,8 @@ def liste():
             reisen = ", ".join(f"{m['reise']}:{m['schluessel']}" for m in
                                v.execute("SELECT * FROM mitgliedschaften WHERE konto = ?", (k["id"],)))
             n = v.execute("SELECT COUNT(*) FROM sitzungen WHERE konto = ?", (k["id"],)).fetchone()[0]
-            print(f"{k['id']}  {k['email']}  {k['name']}  rechte: {k['rechte'] or '-'}"
-                  f"{'  GESPERRT' if k['gesperrt'] else ''}  geräte: {n}  reisen: {reisen or '-'}")
+            print(f"{k['id']}  {k['email']}  {k['name']}  rights: {k['rechte'] or '-'}"
+                  f"{'  BLOCKED' if k['gesperrt'] else ''}  devices: {n}  trips: {reisen or '-'}")
 
 
 def sichern():

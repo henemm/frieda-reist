@@ -29,7 +29,7 @@ Regionale Karten der Recherche: `frieda/werkzeuge/karte-holen.sh <reise> <name>`
 
 ## Wasserstellen prüfen
 
-`engine/.venv/bin/python frieda/werkzeuge/wasser_pruefen.py <reise>` holt die OSM-Wasserpunkte aus `plan/punkte.yaml` noch einmal mit allen Tags: Trinkwasser, saisonal, zeitweise, Zugang, Prüfdatum, Hinweise. Danach stuft es sie ein: gut belegt, mit Vorbehalt, unsicher. Das Ergebnis steht zur Durchsicht in `inhalt/recherche/wasserstellen-osm.md`; `punkte.yaml` bleibt unverändert. Die Einstufung beschreibt die Datenlage, nicht den Zustand vor Ort.
+`engine/.venv/bin/python frieda/werkzeuge/wasser_pruefen.py <reise>` holt die OSM-Wasserpunkte aus `plan/punkte.yaml` noch einmal mit allen Tags: Trinkwasser, saisonal, zeitweise, Zugang, Prüfdatum, Hinweise. Danach stuft es sie ein: *well documented* (gut belegt), *with reservations* (mit Vorbehalt), *uncertain* (unsicher); die Ausgabe und der Bericht sind englisch. Das Ergebnis steht zur Durchsicht in `inhalt/recherche/wasserstellen-osm.md`; `punkte.yaml` bleibt unverändert. Die Einstufung beschreibt die Datenlage, nicht den Zustand vor Ort.
 
 ## Seiten vor und nach einer Änderung vergleichen
 

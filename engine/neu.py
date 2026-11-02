@@ -507,8 +507,7 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
     if cfg_pfad.exists():
         cfg = lies_json(cfg_pfad)
         if cfg.get("etappen_dossier") and "etappen_ebenen" not in cfg:
-            cfg["etappen_ebenen"] = {"unterwegs": ["Höhenprofil", "Wegpunkte", "Unterkünfte", "Unterkunft", "Kontakte", "Wasser",
-                                                   "Einkehr", "Verpflegung", "Anfahrt", "Abfahrt", "Praktisch"]}
+            cfg["etappen_ebenen"] = {"unterwegs": texte.t(texte.BESTAND_REISE, "inhalt.nachziehen.unterwegs").split("|")}
             meldungen.append("reise.json: etappen_ebenen with the previous default for “Look up on the way”")
             if schreiben:   # in der Form der Datei (json.dumps mit Einrückung 2), damit nur die neue Zeile im Diff steht
                 cfg_pfad.write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

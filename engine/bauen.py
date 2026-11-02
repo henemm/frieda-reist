@@ -48,7 +48,6 @@ BILD_ENDUNGEN = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 def etappen_muster():
     """Titel einer Etappe („Etappe 3: Name“, englisch „Stage 3: Name“): das Wort aller Sprachen des Katalogs (ADR-0006, Punkt 7)."""
     return r"^(?:" + texte.inhaltsmuster("inhalt.etappe") + r")\s+(\d+[A-Za-z]?)\s*:\s*(.+)$"
-UMLAUTE = {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"}
 # Ebenen der Tagesseite (B2, docs/design.md „Tagesseite“): Jeder Abschnitt einer Etappe gehört zu einer Ebene, erkannt am
 # Anfang seines Titels (Groß- und Kleinschreibung egal). Die Software kennt nur die Form (ADR-0001, kein Katalog): die
 # Zusammenfassung ist „Der Weg“, Eckdaten (die Kennzahlentabelle) und die Unterkünfte-Liste des Dossiers sind „Unterwegs
@@ -78,9 +77,7 @@ class BauFehler(Exception):
 
 
 def slug(text):
-    t = text.lower()
-    for k, v in UMLAUTE.items():
-        t = t.replace(k, v)
+    t = texte.umschrift(text)
     t = unicodedata.normalize("NFKD", t)
     t = "".join(c for c in t if not unicodedata.combining(c))
     t = re.sub(r"[^a-z0-9]+", "-", t).strip("-")
@@ -462,7 +459,7 @@ class Bauer:
                     continue
                 bid = f"{eid}.unterkuenfte-liste"
                 self.id_anlegen(bid, wo)
-                titel_u = "Unterkünfte & Einkehr (Unterkünfte-Dossier)"
+                titel_u = texte.wort(self.eck["sprache"], "inhalt.ebene.unterkuenfte")
                 etappen[eid]["bloecke"].append(
                     {"id": bid, "titel": titel_u, "ebene": self.ebene(titel_u),
                      "html": self.html(body, self.reise_dir / u_rel)})
@@ -1080,7 +1077,7 @@ class Bauer:
         vorlage = vorlage.replace("<!--__GRUNDKARTE__-->", "".join(
             f'<script src="{n}"></script>' for n in VENDOR_GRUNDKARTE.values()) if self.grundkarte or self.grundkarten else "", 1)
         if vorlage.count("/*__DATEN__*/null") != 1 or vorlage.count("/*__TEXTE__*/null") != 1:
-            raise BauFehler(["vorlage.html muss die Platzhalter /*__DATEN__*/null und /*__TEXTE__*/null genau einmal enthalten."])
+            raise BauFehler(["vorlage.html must contain the placeholders /*__DATEN__*/null and /*__TEXTE__*/null exactly once."])
         vorlage = re.sub(r'<html lang="[^"]*">', lambda _: f'<html lang="{daten["reise"]["sprache"]}" dir="{texte.sprache(daten["reise"]["sprache"]).RICHTUNG}">', vorlage, count=1)
         katalog = json.dumps(texte_fuer_seite(), ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
         vorlage = vorlage.replace("/*__TEXTE__*/null", katalog, 1)

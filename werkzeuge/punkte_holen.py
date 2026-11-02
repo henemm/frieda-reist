@@ -242,10 +242,10 @@ def main(reise):
         fehlt[eid] = [n for n in genannt.get(eid, []) if norm(n) not in gefunden
                       and not any(passt(n, x) for p in punkte for x in [p["name"], *(p.get("auch") or [])])]
 
-    kopf = (f"# Punkte der Etappen-Karten, erzeugt mit frieda/werkzeuge/punkte_holen.py {reise} am {heute}.\n"
-            f"# Quellen: Rother-GPX (nur privat, siehe medien/gpx/README.md) und OpenStreetMap (ODbL), Stand {stand}.\n"
-            "# kat: wegpunkt | unterkunft | einkehr | wasser | notfall (Vorschlag des Werkzeugs; die Reise legt sie in\n"
-            "# plan/kategorien.yaml an); bei wasser art trinkwasser (laut OSM) oder quelle (Trinkbarkeit ungeprüft). Von Hand ergänzte Punkte: von_hand: true, quelle mit Prüfdatum; sie bleiben beim Auffrischen.\n")
+    kopf = (f"# Points of the stage maps, generated with frieda/werkzeuge/punkte_holen.py {reise} on {heute}.\n"
+            f"# Sources: Rother GPX (private only, see medien/gpx/README.md) and OpenStreetMap (ODbL), as of {stand}.\n"
+            "# kat: wegpunkt | unterkunft | einkehr | wasser | notfall (suggestion of the tool; the trip defines them in\n"
+            "# plan/kategorien.yaml); for wasser art trinkwasser (per OSM) or quelle (drinkability unchecked). Points added by hand: von_hand: true, quelle with check date; they stay when refreshing.\n")
     zeilen = [f"stand: {stand}", "strecken:"]
     for eid, punkte in ausgabe.items():  # ein Punkt je Zeile: gut zu prüfen und zu ändern
         zeilen.append(f"  {eid}:")

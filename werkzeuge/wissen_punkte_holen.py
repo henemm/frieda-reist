@@ -92,7 +92,7 @@ def main(argv):
                 t = suchen(begriff, g["mitte"], g.get("radius_km", 30))
                 if t:
                     p["lage"] = [round(float(t["lat"]), 6), round(float(t["lon"]), 6)]
-                    p["quelle"] = f"OSM {t['osm_type']}/{t['osm_id']} über Nominatim („{begriff}“), Stand {heute}"
+                    p["quelle"] = f"OSM {t['osm_type']}/{t['osm_id']} via Nominatim (“{begriff}”), as of {heute}"
                     print(f"  {p['name']}: {t.get('display_name', '')[:90]}")
                     break
             else:

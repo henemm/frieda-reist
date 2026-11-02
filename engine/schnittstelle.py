@@ -156,15 +156,15 @@ def _schema_aussen(x, tab):
 # Namen, die im Fließtext als Werkzeugnamen stehen: mit Unterstrich unverwechselbar, die übrigen nur als eigenständiges Wort
 _TEXT_NAMEN = [i for i in INTERN_ZU_ENGLISCH if "_" in i or i in ("ueberblick", "zeige", "suche", "varianten", "merkmale", "kategorien",
                                                                   "aufgaben", "wuensche", "rueckmeldungen")]
-_TEXT_MUSTER = re.compile(r"(?<![\wäöüÄÖÜß.-])(" + "|".join(sorted(map(re.escape, _TEXT_NAMEN), key=len, reverse=True)) + r")(?![\wäöüÄÖÜß-])")
+_TEXT_MUSTER = re.compile(r"(?<![\w.-])(" + "|".join(sorted(map(re.escape, _TEXT_NAMEN), key=len, reverse=True)) + r")(?![\w-])")
 
 
 # „entscheiden“ ist auch ein deutsches Verb: als Werkzeugname nur in den Wendungen „mit/nur/with/Only entscheiden“ und „(entscheiden)“
-_ENTSCHEIDEN = re.compile(r"(?:(?<=mit )|(?<=nur )|(?<=with )|(?<=Only )|(?<=\())entscheiden(?![\wäöüÄÖÜß-])")
+_ENTSCHEIDEN = re.compile(r"(?:(?<=mit )|(?<=nur )|(?<=with )|(?<=Only )|(?<=\())entscheiden(?![\w-])")
 
 
 _STRENG_NAMEN = [i for i in INTERN_ZU_ENGLISCH if "_" in i or i == "ueberblick"]
-_STRENG_MUSTER = re.compile(r"(?<![\wäöüÄÖÜß.-])(" + "|".join(sorted(map(re.escape, _STRENG_NAMEN), key=len, reverse=True)) + r")(?![\wäöüÄÖÜß-])")
+_STRENG_MUSTER = re.compile(r"(?<![\w.-])(" + "|".join(sorted(map(re.escape, _STRENG_NAMEN), key=len, reverse=True)) + r")(?![\w-])")
 
 
 def namen_im_text(text, streng=False):
@@ -197,7 +197,7 @@ def _text_parameter(text, tab):
         "kurz", "auswahl", "farbe", "frist", "stufe", "stufen", "notiz", "lesetext", "wahlstelle", "aufenthalte", "nacht", "titel")]
     if not eindeutig:
         return text
-    muster = re.compile(r"(?<![\wäöüÄÖÜß.-])(" + "|".join(sorted(map(re.escape, eindeutig), key=len, reverse=True)) + r")(?![\wäöüÄÖÜß-])")
+    muster = re.compile(r"(?<![\w.-])(" + "|".join(sorted(map(re.escape, eindeutig), key=len, reverse=True)) + r")(?![\w-])")
     return muster.sub(lambda m: tab[m.group(1)], text)
 
 

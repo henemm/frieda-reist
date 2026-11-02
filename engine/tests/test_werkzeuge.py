@@ -15,34 +15,34 @@ def stufe(tags):
 
 
 def test_trinkwasser_mit_frischem_pruefdatum_ist_gut_belegt():
-    assert stufe({"amenity": "drinking_water", "check_date": "2025-06-01"}) == "gut belegt"
+    assert stufe({"amenity": "drinking_water", "check_date": "2025-06-01"}) == "well documented"
 
 
 def test_trinkwasser_ohne_pruefdatum_hat_vorbehalt():
-    assert stufe({"amenity": "drinking_water"}) == "mit Vorbehalt"
+    assert stufe({"amenity": "drinking_water"}) == "with reservations"
 
 
 def test_altes_pruefdatum_hat_vorbehalt():
-    assert stufe({"amenity": "drinking_water", "survey:date": "2019-04"}) == "mit Vorbehalt"
+    assert stufe({"amenity": "drinking_water", "survey:date": "2019-04"}) == "with reservations"
 
 
 def test_quelle_ohne_trinkbarkeit_ist_unsicher():
-    assert stufe({"natural": "spring", "check_date": "2026-01-01"}) == "unsicher"
+    assert stufe({"natural": "spring", "check_date": "2026-01-01"}) == "uncertain"
 
 
 def test_saisonal_und_zeitweise_sind_unsicher():
-    assert stufe({"amenity": "drinking_water", "seasonal": "summer", "check_date": "2026-01-01"}) == "unsicher"
-    assert stufe({"amenity": "drinking_water", "intermittent": "yes", "check_date": "2026-01-01"}) == "unsicher"
+    assert stufe({"amenity": "drinking_water", "seasonal": "summer", "check_date": "2026-01-01"}) == "uncertain"
+    assert stufe({"amenity": "drinking_water", "intermittent": "yes", "check_date": "2026-01-01"}) == "uncertain"
 
 
 def test_kein_trinkwasser_und_eingeschraenkter_zugang_sind_unsicher():
-    assert stufe({"natural": "spring", "drinking_water": "no"}) == "unsicher"
-    assert stufe({"amenity": "drinking_water", "access": "customers"}) == "unsicher"
+    assert stufe({"natural": "spring", "drinking_water": "no"}) == "uncertain"
+    assert stufe({"amenity": "drinking_water", "access": "customers"}) == "uncertain"
 
 
 def test_warnhinweis_im_notiztext_wird_erkannt():
     s, gruende = wp.bewerte({"amenity": "drinking_water", "note": "fuente seca en verano"}, HEUTE)
-    assert s == "unsicher" and any("seca" in g for g in gruende)
+    assert s == "uncertain" and any("seca" in g for g in gruende)
 
 
 def test_pruefdatum_nimmt_jüngstes_und_teilweise_daten():

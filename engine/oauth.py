@@ -155,13 +155,13 @@ def registrieren(body, ip):
     try:
         roh = json.loads(body.decode("utf-8"))
     except (UnicodeDecodeError, ValueError):
-        return 400, {"error": "invalid_client_metadata", "error_description": "kein JSON"}
+        return 400, {"error": "invalid_client_metadata", "error_description": "not JSON"}
     uris = roh.get("redirect_uris") if isinstance(roh, dict) else None
     if not isinstance(uris, list) or not uris or len(uris) > 10 or not all(redirect_erlaubt(u) for u in uris):
         return 400, {"error": "invalid_redirect_uri",
-                     "error_description": "Erlaubt sind die Claude-Callback-Adresse und Loopback-Adressen."}
+                     "error_description": "Only the Claude callback address and loopback addresses are allowed."}
     if roh.get("token_endpoint_auth_method", "none") != "none":
-        return 400, {"error": "invalid_client_metadata", "error_description": "nur öffentliche Clients (none)"}
+        return 400, {"error": "invalid_client_metadata", "error_description": "public clients only (none)"}
     cid = "c_" + secrets.token_urlsafe(16)
     name = str(roh.get("client_name") or "")[:200]
     konten.oauth_client_speichern(cid, name, uris, "dcr")
@@ -285,7 +285,7 @@ def token(body, content_type):
     if art == "authorization_code":
         v = f.get("code_verifier") or ""
         if not CHALLENGE_MUSTER.match(v):
-            return 400, {"error": "invalid_grant", "error_description": "code_verifier fehlt oder ist ungültig"}
+            return 400, {"error": "invalid_grant", "error_description": "code_verifier is missing or invalid"}
         t = konten.oauth_code_einloesen(f.get("code"), f["client_id"], f.get("redirect_uri"),
                                          lambda ch: secrets.compare_digest(s256(v), ch))
     elif art == "refresh_token":
