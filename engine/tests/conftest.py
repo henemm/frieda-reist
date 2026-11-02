@@ -9,8 +9,7 @@ PRAEFIXE = ("FR_", "RM_", "KN_", "EA_", "VF_", "FS_", "WA_")
 
 
 def instanz_leeren(monkeypatch, tmp_path):
-    """Entfernt die Umgebung der Instanz. Auch für Fixtures mit größerem Geltungsbereich (scope="module"), die vor
-    ohne_instanz laufen: mit pytest.MonkeyPatch.context() aufrufen (sonst griffe z. B. FR_UMZUG_NACH des Servers)."""
+    """Entfernt die Umgebung der Instanz und setzt die Ordner, in die Tests schreiben dürfen, unter tmp_path."""
     for name in list(os.environ):
         if name.startswith(PRAEFIXE):
             monkeypatch.delenv(name)
@@ -19,8 +18,19 @@ def instanz_leeren(monkeypatch, tmp_path):
     monkeypatch.setenv("FR_DIENST", str(tmp_path / "_dienst"))   # Reise-Stände (engine/stand.py) nie in den Ordner des Servers
 
 
+@pytest.fixture(scope="session", autouse=True)
+def ohne_instanz_im_lauf(tmp_path_factory):
+    """Einmal je Lauf, vor allen Fixtures mit größerem Geltungsbereich (scope="module" baut etwa die Beispielreise):
+    sie sehen nie die Umgebung des Servers (sonst griffe z. B. FR_UMZUG_NACH, #204). Eine neue Modul-Fixture braucht
+    dafür nichts selbst zu tun."""
+    with pytest.MonkeyPatch.context() as mp:
+        instanz_leeren(mp, tmp_path_factory.mktemp("lauf"))
+        yield
+
+
 @pytest.fixture(autouse=True)
 def ohne_instanz(tmp_path, monkeypatch):
+    """Je Test eigene Ordner, damit kein Test die Konten oder Stände eines anderen sieht."""
     instanz_leeren(monkeypatch, tmp_path)
 
 
