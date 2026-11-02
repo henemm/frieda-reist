@@ -21,6 +21,7 @@ sys.path.insert(0, str(ENGINE))
 import bauen  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 import zustellen  # noqa: E402
+from conftest import meldet  # noqa: E402
 
 GIT = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 # Umgebung ohne Werte einer echten Instanz, die die Prüfung verfälschen könnten
@@ -1384,7 +1385,7 @@ def test_neue_reise_aus_dem_konnektor_frieda(fs, monkeypatch, capsys):
     einl = [json.loads(z) for z in (fs["tmp"] / "mails.jsonl").read_text().splitlines() if "karl@" in z]
     assert len(einl) == 1 and "Ida hat dich zur Reise" in einl[0]["text"]
     m = rm.meldungen(rm.ordner_neu(), "Ida")[-1]
-    assert "steht in meine_reisen" in m["text"] and "Einladung per Mail an 1 Person" in m["text"]
+    assert meldet(m["text"], "dienst.zustellen.konto") and "Einladung per Mail an 1 Person" in m["text"]
     assert "https://example.invalid/mcp/" not in m["text"]                  # kein App-Link
 
 

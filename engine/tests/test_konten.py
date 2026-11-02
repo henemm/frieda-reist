@@ -13,6 +13,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import konten  # noqa: E402
 import texte  # noqa: E402
+from conftest import meldet  # noqa: E402
 
 IDA, KARL, MO = "ida@beispiel.invalid", "karl@beispiel.invalid", "mo@beispiel.invalid"
 
@@ -46,7 +47,7 @@ def einloggen(umgebung, an, name=None, **kw):
 def test_szenario1_neu_ohne_einladung(umgebung, monkeypatch):
     konten.code_anfordern("  Ida@Beispiel.INVALID ")
     m = mails(umgebung, IDA)[0]
-    assert "Dein Code für Frieda" in m["text"] and "https://frieda.beispiel.invalid/anmelden?schritt=code&email=" in m["text"]
+    assert meldet(m["text"], "mail.code.zeile_code") and "https://frieda.beispiel.invalid/anmelden?schritt=code&email=" in m["text"]
     code = letzter_code(umgebung, IDA)
     with pytest.raises(konten.NameNoetig):
         konten.anmelden(IDA, code)                      # neues Konto braucht einen Namen …
@@ -82,7 +83,7 @@ def test_szenario2_eingeladen_gilt_beim_ersten_anmelden(umgebung):
     assert r == {"sofort": False}
     m = mails(umgebung, KARL)[0]
     assert "Ida hat dich zur Reise „Winterwoche im Allgäu“ eingeladen (du bringst ein)." in m["text"]
-    assert "https://frieda.beispiel.invalid/einladung/" in m["text"] and "Lesen geht ohne Anmeldung" in m["text"]
+    assert "https://frieda.beispiel.invalid/einladung/" in m["text"] and meldet(m["text"], "mail.einladung.lesen")
     _, k = einloggen(umgebung, KARL)                    # Name kommt aus der Einladung
     assert k["name"] == "Karl"
     assert [(x["reise"], x["schluessel"]) for x in konten.mitgliedschaften(k["id"])] == [("winterwoche", "karl")]
@@ -123,7 +124,7 @@ def test_szenario4_konto_und_zweite_reise_sofort(umgebung):
     r = konten.einladen("sommer", "karl", "KARL@beispiel.invalid", "gast", "Karl", "Ida", titel="Sommer am See")
     assert r == {"sofort": True} and konten.mitglied(k["id"], "sommer") == "karl"
     m = mails(umgebung, KARL)[-1]
-    assert "steht ab jetzt bei deinen Reisen" in m["text"] and "/einladung/" not in m["text"]
+    assert meldet(m["text"], "mail.einladung.sofort") and "/einladung/" not in m["text"]
 
 
 def test_szenario5_neues_geraet_gleiches_konto(umgebung):
@@ -145,7 +146,7 @@ def test_szenario6_adresse_aendern(umgebung):
     neu = "ida.neu@beispiel.invalid"
     konten.code_anfordern(neu, zweck="adresse", konto=ida["id"])
     m = mails(umgebung, neu)[-1]
-    assert "neue Adresse bestätigen" in m["betreff"] and "/anmelden?" not in m["text"]
+    assert meldet(m["betreff"], "mail.code.betreff_adresse") and "/anmelden?" not in m["text"]
     code = re.search(r"(\d{3}) (\d{3})", m["text"]).expand(r"\1\2")
     with pytest.raises(konten.KontoFehler):            # Code gehört zu Idas Konto, nicht zu Karls
         konten.adresse_aendern(karl["id"], neu, code)

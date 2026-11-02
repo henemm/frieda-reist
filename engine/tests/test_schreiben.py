@@ -20,6 +20,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import schreiben as sb  # noqa: E402
+from conftest import meldet  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 BEISPIEL = WURZEL / "beispiel" / "reisen" / "beispielreise"
@@ -158,7 +159,7 @@ def test_art_anlegen_geht_nach_main_und_wird_veroeffentlicht(repo):
     assert r["grundform"] == "aufenthalt" and r["name"] == "Refugi" and r["beschreibung"] == "bewirtschaftete Berghütte"
     assert r["farbe"] not in {x.get("farbe") for k, x in arten.items() if k != "refugi" and x["grundform"] == "aufenthalt"}
     assert "merkmale" not in r                       # Merkmale kommen im Gespräch dazu (merkmal_definieren)
-    assert text.startswith("# Arten und Merkmale dieser Reise") and "Gepflegt im Gespräch" in text and "Ida" in text
+    assert text.startswith("# Arten und Merkmale dieser Reise") and meldet(text, "inhalt.schreiben.gepflegt") and "Ida" in text
     assert "hotel" in arten and arten["hotel"]["merkmale"]["preis"]["name"] == "Preis pro Nacht"   # Bestand unverändert
     nachricht = git(origin, "log", "-1", "--format=%B", "main")
     assert nachricht.startswith("Beispielreise – Malerweg in vier Tagen: Art „Refugi“ (refugi) angelegt")
@@ -493,7 +494,7 @@ def _abbruch_im_anwenden(repo, monkeypatch, capsys, origin_kaputt=True):
 
 def test_zu_langsamer_vorgang_gibt_meldung_in_der_zeit(repo, monkeypatch, capsys):
     code, a, err = _abbruch_im_anwenden(repo, monkeypatch, capsys)
-    assert code == 504 and not a["ok"] and "prüfen, ob es angekommen ist" in a["fehler"]
+    assert code == 504 and not a["ok"] and meldet(a["fehler"], "schreiben.dienst.zu_lange_ungeprueft")
     assert "Timeout art_definieren 504: aborted, unchecked" in err
 
 
@@ -1287,7 +1288,7 @@ def test_gemeinsame_frage_bleibt_offen_bis_alles_gewaehlt(repo):
     a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-01.b", "status": "gewaehlt", "grund": "Bahn"}})
     assert "Frage F-01 bleibt offen, weil dort noch V-03 zu entscheiden ist." in a["text"], a["text"]
     # die KI fragt danach einzeln, mit den Möglichkeiten der offenen Wahlstelle zur Auswahl
-    assert "Frag die Person jetzt einzeln nach" in a["text"] and "V-03 Unterkunft in Hohnstein: V-03.a Pension Burgblick, V-03.b Gasthof Polenztal" in a["text"], a["text"]
+    assert meldet(a["text"], "schreiben.antwort.entscheiden.einzeln") and "V-03 Unterkunft in Hohnstein: V-03.a Pension Burgblick, V-03.b Gasthof Polenztal" in a["text"], a["text"]
     assert "| vor Abreise | offen |" in fragen_auf_main(origin)
     s.vorbereiten()
     a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-03.b", "status": "gewaehlt", "grund": "Abendessen"}})
@@ -1429,7 +1430,7 @@ def test_unerwarteter_fehler_gibt_500_und_protokoll(repo, monkeypatch, capsys, t
     code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "art_definieren",
                                  {**IDA, "args": {"bezeichnung": "X", "grundform": "aufenthalt"}})
     err = capsys.readouterr().err
-    assert code == 500 and not a["ok"] and "Fehler im Dienst" in a["fehler"]
+    assert code == 500 and not a["ok"] and meldet(a["fehler"], "schreiben.dienst.fehlgeschlagen")
     assert "Error art_definieren 500: FileNotFoundError" in err
     assert "Done art_definieren 500 in " in err
 
@@ -1589,7 +1590,7 @@ def test_wissen_aendern_und_lesetext_schreiben(repo):
         s.schreiben("beispielreise", "wissen_aendern", {**KARL, "args": {"ziel": "W-07", "text": "x", "quelle": "y", "grund": "z"}})
     a = s.schreiben("beispielreise", "wissen_aendern", {**KARL, "args": {"ziel": "W-01", "text": "Drei Wandertage auf dem Malerweg (Test).",
                                                                          "quelle": "Beispielreise (Test)", "neuer_titel": "Überblick", "grund": "knapper"}})
-    assert "Inhalt ersetzt" in a["text"] and "titel „Übersicht“ → „Überblick“" in a["text"]
+    assert meldet(a["text"], "schreiben.antwort.abschnitt.inhalt_ersetzt") and "titel „Übersicht“ → „Überblick“" in a["text"]
     dossier = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/inhalt/etappen.md"], check=True, capture_output=True, text=True).stdout
     assert "## Überblick\n\nDrei Wandertage auf dem Malerweg (Test).\n\n*Herkunft: Beispielreise (Test); berichtigt am" in dossier
     assert "\n## Übersicht\n" not in dossier and "## Etappe 1:" in dossier

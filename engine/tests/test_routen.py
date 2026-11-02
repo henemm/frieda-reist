@@ -9,6 +9,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from routen import Routen  # noqa: E402
 import routen  # noqa: E402
+from conftest import meldet  # noqa: E402
 
 D = datetime.date
 
@@ -173,14 +174,14 @@ def test_alle_verworfen_ist_fehler():
     r = roh()
     for o in r["wahlstellen"]["V-02"]["optionen"]:
         o["verlauf"] = verlauf(("verworfen", "Ida", {}))
-    assert "alle Optionen sind verworfen" in nur_fehler(r)
+    assert meldet(nur_fehler(r), "pruefung.routen.96")
 
 
 def test_zwei_gewaehlt_ist_fehler():
     r = roh()
     for o in r["wahlstellen"]["V-02"]["optionen"]:
         o["verlauf"] = verlauf(("gewaehlt", "Ida", {}))
-    assert "mehrere Optionen gewählt" in nur_fehler(r)
+    assert meldet(nur_fehler(r), "pruefung.routen.95")
 
 
 def test_unbekannter_status_und_unsortierter_verlauf():
@@ -196,7 +197,7 @@ def test_unbekannter_status_und_unsortierter_verlauf():
 def test_offene_planungswahl_braucht_f_frage():
     r = roh()
     del r["wahlstellen"]["V-02"]["frage"]
-    assert "braucht eine F-Frage" in nur_fehler(r)
+    assert meldet(nur_fehler(r), "pruefung.routen.97")
 
 
 def test_unterwegs_wahl_braucht_keine_f_frage():
@@ -272,14 +273,14 @@ def test_fixpunkt_ort_verfehlt():
 def test_fixpunkt_ausserhalb_des_plans():
     r = roh()
     r["fixpunkte"] = [{"datum": D(2027, 4, 1), "titel": "später"}]
-    assert any("außerhalb des Plans" in t for t in texte(ok(r)))
+    assert any(meldet(t, "pruefung.routen.120") for t in texte(ok(r)))
 
 
 # ---------- Struktur ----------
 def test_tag_in_zwei_optionen_ist_fehler():
     r = roh()
     option(r, "V-01.b")["folge"] = ["T-01", "T-04"]
-    assert "steht in mehreren Optionen" in nur_fehler(r)
+    assert meldet(nur_fehler(r), "pruefung.routen.124")
 
 
 def test_tote_verweise():
@@ -512,8 +513,8 @@ def test_art_schluessel():
 
 def test_arten_yaml_fehler():
     r = roh()
-    assert any("arten.yaml fehlt" in f for f in laufe(r, arten_={})[1])
-    assert any("grundform muss" in f for f in laufe(r, arten_=arten(x={"name": "X"}))[1])
+    assert any(meldet(f, "pruefung.routen.51") for f in laufe(r, arten_={})[1])
+    assert any(meldet(f, "pruefung.routen.53") for f in laufe(r, arten_=arten(x={"name": "X"}))[1])
     assert any("farbe muss" in f for f in laufe(r, arten_=arten(x={"grundform": "folge", "farbe": "pink"}))[1])
     assert any("unbekannte Felder" in f for f in laufe(r, arten_=arten(x={"grundform": "folge", "icon": "x"}))[1])
     assert any("nicht unterwegs" in f for f in laufe(r, arten_=arten(unterwegs={"grundform": "aufenthalt"}))[1])
@@ -547,7 +548,7 @@ def test_merkmal_nach_buchung():
     assert not fehler, fehler
     assert next(k for k in erg["merkmale"]["hotel"] if k["id"] == "charakter")["nach_buchung"] is True
     mit["arten"]["hotel"]["merkmale"]["charakter"]["nach_buchung"] = "ja"
-    assert any("nach_buchung ist true oder false" in f for f in laufe(r, arten_=mit)[1])
+    assert any(meldet(f, "pruefung.routen.nach_buchung") for f in laufe(r, arten_=mit)[1])
 
 
 # ---------- Arten, Werte je Datum, „an“ (Paket 1 der Alternativen, Issue frieda-reist#18) ----------
@@ -644,7 +645,7 @@ def test_neue_art_der_reise_und_wahlstelle_an_beliebiger_id():
     assert w["art"] == "restaurant" and w["wann"] == "planung" and w["an_ids"] == ["O-02", "U-01", "E-01"] and w["an"] == []   # alte Schlüssel art: planung und bereich: werden gelesen
     assert w["optionen"][1]["fehlt"] == []
     assert [k["id"] for k in erg["merkmale"]["restaurant"]] == ["kueche", "preis"]
-    assert not any("nirgends verwendet" in x["text"] for x in erg["warnungen"] if x["bezug"] == "V-05")
+    assert not any(meldet(x["text"], "pruefung.routen.126") for x in erg["warnungen"] if x["bezug"] == "V-05")
 
 
 def test_wahlstelle_an_wissensabschnitt():
@@ -690,7 +691,7 @@ def test_an_fehler(an, meldung):
 
 
 def test_neue_art_braucht_grundform():
-    assert any("grundform muss" in f for f in mk_bauen(roh(), arten(restaurant={}))[1])
+    assert any(meldet(f, "pruefung.routen.53") for f in mk_bauen(roh(), arten(restaurant={}))[1])
 
 
 # ---------- Regeln zwischen Optionen und Anschluss (Paket 4, #18) ----------
@@ -814,7 +815,7 @@ def test_anschluss_stimmt_mit_den_warnungen_der_beispielreise():
                      arten=arten_bsp).bauen()
         erster = opt_aus(erg, oid)["tage"][0]
         luecke = any(w["bezug"] == erster and ("Lücke" in w["text"] or "fehlt" in w["text"]) for w in erg["warnungen"])
-        assert ("Lücke am Anfang" in anschluss(erg, oid)) == luecke, (oid, erg["warnungen"])
+        assert (meldet(anschluss(erg, oid), "pruefung.routen.anschluss_luecke_anfang")) == luecke, (oid, erg["warnungen"])
 
 
 def w_opt(erg, vid):
@@ -1037,7 +1038,7 @@ def test_buchung_zahlstand_und_buchung_merkmale_pruefen_die_form():
     assert "Buchung B-01: merkmale ist {Merkmal: Wert}" in f
     a["arten"]["flug"]["buchung_merkmale"] = ["ticket"]
     _, fehler = laufe(r, FRAGEN, a)
-    assert any("buchung_merkmale muss eine Liste" in x for x in fehler)
+    assert any(meldet(x, "pruefung.routen.135") for x in fehler)
 
 
 def test_zahlung_schluessel_nimmt_englische_aliase_und_worte():

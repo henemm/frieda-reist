@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bauen  # noqa: E402
 import neu  # noqa: E402
 import schreiben  # noqa: E402
+from conftest import meldet  # noqa: E402
 
 VON, BIS = datetime.date(2027, 2, 6), datetime.date(2027, 2, 13)
 PERSONEN = {"ida": {"name": "Ida", "rolle": "organisator"}, "karl": {"name": "Karl", "rolle": "mitwirkend"},
@@ -55,7 +56,7 @@ def test_neue_reise_baut_im_status_idee(tmp_path):
     # Eckdaten nur in reise.yaml; die Seite zeigt sie im Abschnitt W-01, den der Generator daraus baut (#217)
     assert "Ida" not in (r / "plan/plan.md").read_text(encoding="utf-8")
     w01 = d["abschnitte"][0]["intro"]
-    assert "Zeitraum: 6.–13. Februar 2027" in w01 and "Ziel: Oberstdorf" in w01 and "Die Reise ist eine Idee." in w01
+    assert "Zeitraum: 6.–13. Februar 2027" in w01 and "Ziel: Oberstdorf" in w01 and meldet(w01, "inhalt.eckdaten.idee")
     assert "Ida (organisiert), Karl (bringt ein), Mo (liest mit, reist nicht mit)" in w01
     roh = yaml.safe_load((r / "reise.yaml").read_text(encoding="utf-8"))
     assert roh["ziel"] == "Oberstdorf" and "untertitel" not in roh

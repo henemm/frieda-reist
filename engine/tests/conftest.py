@@ -48,3 +48,33 @@ def rueckfall_deutsch(request, monkeypatch):
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "echter_rueckfall: läuft mit dem Rückfall der Software (texte.VORGABE_REISE), nicht mit Deutsch")
+
+
+# ---------- Bedeutung statt Wortlaut (#204) ----------
+# Tests prüfen Meldungen über ihren Schlüssel im Katalog, nicht über den Wortlaut: Wer einen Text in texte_de.py
+# umformuliert, muss keinen Test anfassen. Neue Tests nutzen meldet() und text() statt kopierter Sätze.
+
+def _katalog():
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import texte
+    return texte
+
+
+def text(schluessel, /, sprache="de", **werte):
+    """Der Text zu einem Schlüssel, wie die Software ihn zeigt."""
+    return _katalog().t(sprache, schluessel, **werte)
+
+
+def meldet(ausgabe, schluessel, /, sprache="de"):
+    """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+    Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+    import html
+    import re
+    if isinstance(ausgabe, (list, tuple, set)):
+        return any(meldet(a, schluessel, sprache) for a in ausgabe)
+    ausgabe = str(ausgabe)
+    vorlage = _katalog().t(sprache, schluessel)
+    assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+    teile = [t for t in re.split(r"\{[^{}]*\}", vorlage) if len(t.strip()) >= 2] or [vorlage]
+    return all(t in ausgabe or html.escape(t, quote=False) in ausgabe or html.escape(t) in ausgabe for t in teile)

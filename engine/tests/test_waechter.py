@@ -16,6 +16,7 @@ import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 import waechter as wa  # noqa: E402
 from test_regeln import IDA, KARL, umgebung  # noqa: E402,F401  (umgebung: Fixture)
+from conftest import meldet  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 BEISPIEL = WURZEL / "beispiel" / "reisen" / "beispielreise"
@@ -79,7 +80,7 @@ def test_waechter_arbeitet_nur_mit_baustein_und_ab_fest(reise):
     assert reise(status="unterwegs").lauf(D(2027, 5, 14))["aktiv"]
     for status in ("idee", "planung", "danach", "archiv"):
         r = reise(status=status).lauf(D(2026, 11, 1))
-        assert not r["aktiv"] and "wacht der Wächter nicht" in r["grund"], status
+        assert not r["aktiv"] and meldet(r["grund"], "waechter.wacht_nicht"), status
     aus = reise(bausteine=[b for b in BAUSTEINE if b != "waechter"]).lauf(D(2026, 11, 1))
     assert not aus["aktiv"] and "ausgeschaltet" in aus["grund"]
     trocken = reise()
@@ -131,7 +132,7 @@ def test_pruefmeldungen_je_angabe_an_organisatorinnen_und_wiederholung_nach_fris
     pr = [m for m in erg["meldungen"] if m["art"] == "pruefung"]
     assert 0 < len(pr) <= wa.MAX_PRUEFUNGEN and all(m["an"] == ["Ida"] for m in pr)
     u01 = next(m for m in pr if m["bezug"] == "U-01")
-    assert "nachschlagen" in u01["text"] and "nichts wird still übernommen" in u01["text"] and u01["ziel"] == "U-01"
+    assert "nachschlagen" in u01["text"] and meldet(u01["text"], "waechter.pruefung_bitte") and u01["ziel"] == "U-01"
     assert rm.auftraege(r.o) == []                      # kein Auftrag, keine KI
     assert len({m["schluessel"] for m in pr}) == len(pr)
     gespeichert = [m for m in rm.meldungen(r.o) if m["art"] == "pruefung"]
@@ -149,7 +150,7 @@ def test_pruefmeldungen_begrenzt_die_menge_und_im_bericht(reise, monkeypatch):
     monkeypatch.setattr(wa, "MAX_PRUEFUNGEN", 2)
     erg = r.lauf(D(2026, 11, 1))
     assert len([m for m in erg["meldungen"] if m["art"] == "pruefung"]) == 2
-    assert len(erg["zu_pruefen"]) > 2 and "weitere veränderliche Angaben" in erg["bericht"]
+    assert len(erg["zu_pruefen"]) > 2 and meldet(erg["bericht"], "waechter.weitere")
 
 
 def test_frist_ist_einstellbar(reise):
@@ -262,7 +263,7 @@ def test_regeln_pruefen(tmp_path):
     assert any("waechter_frist_tage" in f for f in regeln(waechter_frist_tage=0))
     assert any("erinnerung_vorlauf_tage" in f for f in regeln(erinnerung_vorlauf_tage=-1))
     assert any("meldekanal" in f for f in regeln(meldekanal="app"))
-    assert any("E-Mail an alle ist noch nicht gebaut" in f for f in regeln(meldekanal=["app", "email"]))
+    assert any(meldet(f, "pruefung.reise.36") for f in regeln(meldekanal=["app", "email"]))
     assert rg.VORGABEN["meldekanal"] == ["app", "nachricht", "push"] and regeln(meldekanal=["push"]) == [] and "waechter" not in rg.NOCH_NICHT_GEBAUT
     assert rg.verhalten("fest")["waechter"] and not rg.verhalten("planung")["waechter"]
 
@@ -313,7 +314,7 @@ def test_konnektor_zeigt_meldungen_im_ueberblick(umgebung):
     rm.meldung_anlegen(u.o, ["Karl"], "erinnerung", a["id"], f"Frist morgen: {a['id']} Fähre buchen.", bezug=a["id"],
                        schluessel="test")
     text, f = u.werkzeug(KARL, "ueberblick")
-    assert not f and "## Meldungen an dich" in text and "Frist morgen" in text
+    assert not f and meldet(text, "konnektor.ausgabe.liste_text.1") and "Frist morgen" in text
     assert "Frist morgen" not in u.werkzeug(IDA, "ueberblick")[0]      # Ida bekommt Karls Meldung nicht
     text, _ = u.werkzeug(KARL, "rueckmeldungen")
     assert "Meldungen an dich" in text and "Frist morgen" in text
@@ -410,7 +411,7 @@ def test_meldungen_in_der_sprache_der_reise(reise):
     assert any(t.startswith("Überfällig seit 3 Tag(en): AG-") and "(Frist 10.5.2027)" in t for t in texte_de)
     assert any(t.startswith("Overdue for 3 days: AG-") and "(deadline 10/5/2027)" in t for t in texte_en)
     assert not any("Überfällig" in t or "Frist" in t for t in texte_en)
-    assert any("zuletzt geprüft" in t or "noch nie geprüft" in t for t in texte_de)
+    assert any("zuletzt geprüft" in t or meldet(t, "waechter.nie_geprueft") for t in texte_de)
     assert any("never checked" in t or "last checked" in t for t in texte_en) and not any("geprüft" in t for t in texte_en)
     assert mahn_de and any("Bitte" in m["text"] for m in mahn_de)
     assert mahn_en and any("Please" in m["text"] for m in mahn_en) and not any("Bitte" in m["text"] for m in mahn_en)
@@ -459,7 +460,7 @@ def test_zahlungsmeldung_in_der_sprache_der_reise(reise):
 def test_regel_waechter_zahlung_ist_ja_oder_nein():
     fehler = []
     rg.Reise({"regeln": {"waechter_zahlung": "ja"}}, {}, fehler, []).regeln()
-    assert any("regeln.waechter_zahlung muss true oder false sein" in f for f in fehler)
+    assert any(meldet(f, "pruefung.reise.40") for f in fehler)
     assert rg.VORGABEN["waechter_zahlung"] is False
 
 

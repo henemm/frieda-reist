@@ -19,6 +19,7 @@ import bauen  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 from playwright_pfad import PLAYWRIGHT  # noqa: E402
+from conftest import meldet  # noqa: E402
 
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
@@ -74,7 +75,7 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
     assert 'class="mk-w"' in u01 and 'class="mk-i"' not in u01 and '<span class="mk-q" role="tooltip" hidden="">Beispielwert, erfunden' in u01
     # Regeln und Anschluss (Paket 4): an der Wahlstelle stehen „Setzt voraus“ und die berechnete Lücke der erfundenen V-01.c
     v01 = dom["1200#V-01"]
-    assert "Setzt voraus: " in v01 and "Schließt aus: " in v01 and "(im Plan)" in v01
+    assert meldet(v01, "seite.vergleich.setzt_voraus_label") and meldet(v01, "seite.vergleich.schliesst_aus_label") and "(im Plan)" in v01
     # die Lücke fällt auf; im Vergleich ohne Knopf (Herkunft dort einmal je Möglichkeit, #58), sonst hinter dem Wert
     assert re.search(r'class="(mk-w )?mk-luecke"[^>]*>Lücke am Anfang: Altendorf → Bad Schandau<', v01)
     # Bausteinseite: alle Ebenen, keine Sprungziele (die echten Stellen bleiben eindeutig), kein „null“

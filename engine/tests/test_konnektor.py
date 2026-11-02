@@ -14,6 +14,7 @@ import bauen  # noqa: E402
 import konnektor as kn  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from schnittstelle_hilfe import N, intern_liste  # noqa: E402
+from conftest import meldet  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 BEISPIEL = WURZEL / "beispiel" / "reisen" / "beispielreise"   # erfundene Reise: ida organisator, karl mitwirkend
@@ -137,11 +138,11 @@ def test_ueberblick_zeigt_stand(dienst, monkeypatch):
     """Man sieht in der App, wann die Reise veröffentlicht wurde und ob der Dienst den neuen Code geladen hat."""
     basis, _ = dienst
     t, f = werkzeug(basis, MITREISEND, "ueberblick")
-    assert not f and "## Stand" in t and "Reise zuletzt veröffentlicht:" in t and f"Code {kn._CODE_START}" in t
+    assert not f and "## Stand" in t and meldet(t, "konnektor.stand_text.1") and f"Code {kn._CODE_START}" in t
     assert "Neustart" not in t
     monkeypatch.setattr(kn, "_CODE_START", "00000000")
     t, _ = werkzeug(basis, MITREISEND, "ueberblick")
-    assert "braucht einen Neustart" in t
+    assert meldet(t, "konnektor.stand_text.3")
 
 
 def test_ueberblick_ohne_einarbeiten(dienst):
@@ -293,7 +294,7 @@ def test_konto_meine_reisen_und_reise_anlegen(dienst, seiten, capsys, monkeypatc
     assert not f and "Deine Reisen (1):" in t and "Status planung, du: organisator" in t
     assert "Seite: https://example.invalid/beispielreise-geheim/" in t and f"Claude-App: https://example.invalid/mcp/{ALT_ORGANISATOR}" in t
     t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Ski", von="2027-02-13", bis="2027-02-06")
-    assert f and "Ende liegt vor dem Anfang" in t
+    assert f and meldet(t, "pruefung.reise_neu.4")
     t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Beispielreise", von="2027-02-06", bis="2027-02-13", pfad="beispielreise")
     assert f and "gibt es schon" in t
     # Ohne eingerichteten Schreibweg legt der Dienst keine Reise an (ADR-0001, O-3): nichts wird gespeichert
@@ -320,7 +321,7 @@ def test_konto_meine_reisen_und_reise_anlegen(dienst, seiten, capsys, monkeypatc
     rm.liste(rm.NEU, False)
     assert "NEW TRIP by Ida" in capsys.readouterr().out
     t, _ = werkzeug(basis, KONTO, "meine_reisen")
-    assert "Angefragte neue Reisen:\n- Winterwoche im Allgäu" in t and "wird angelegt" in t
+    assert "Angefragte neue Reisen:\n- Winterwoche im Allgäu" in t and meldet(t, "konnektor.ausgabe.wird_angelegt")
     # Nach dem Anlegen: Meldung mit den Links (schreibt der Betrieb), der Auftrag ist übernommen
     rm.meldung_anlegen(o, ["Ida"], "neue_reise", "winterwoche-im-allgaeu-2027", "Deine neue Reise ist angelegt: Seite …")
     rm.setze(rm.NEU, a["id"], "uebernommen", "angelegt")
@@ -425,7 +426,7 @@ def test_aufgaben_ueber_konnektor(dienst):
     t, _ = werkzeug(basis, MITREISEND, "aufgaben", bezug="U-02")
     assert "AG-01" in t and "Pension Burgblick" in t
     t, _ = werkzeug(basis, MITREISEND, "zeige", id="T-02")
-    assert "Aufgaben hier" in t and "AG-01" in t
+    assert meldet(t, "konnektor.ausgabe.zeige.2") and "AG-01" in t
     t, _ = werkzeug(basis, MITREISEND, "ueberblick")
     # Fristen zählen erst ab Status fest (test_regeln.py): in der Planung steht die Zahl, aber nichts ist überfällig
     assert "Offene Aufgaben: 2" in t and "überfällig" not in t
@@ -752,16 +753,16 @@ def test_konnektor_haengt_hinweise_an_den_text(schreibweg):
     try:
         Schreibweg.antwort = (200, {"ok": True, "text": "Preis pro Nacht an U-02 Pension Burgblick: 95 €.", "commit": "abc1234"})
         t, f = werkzeug(basis, KARL, "wert_eintragen", ziel="U-02", merkmal="preis", wert="95 €", quelle="Website", geprueft="2026-10-29")
-        assert not f and t.startswith("Eingetragen und gesichert (Karl):") and "Neue Hinweise der Prüfung" not in t
+        assert not f and t.startswith("Eingetragen und gesichert (Karl):") and not meldet(t, "konnektor.ausgabe.hinweise_text.1")
         Schreibweg.antwort = (200, {"ok": True, "text": "Preis pro Nacht an U-02 Pension Burgblick: 95 €.", "commit": "abc1234",
                                     "hinweise": hinweise})
         t, f = werkzeug(basis, KARL, "wert_eintragen", ziel="U-02", merkmal="preis", wert="95 €", quelle="Website", geprueft="2026-10-29")
         assert not f and t.startswith("Eingetragen und gesichert (Karl):")
-        assert "Neue Hinweise der Prüfung" in t and all(f"- {h}" in t for h in hinweise)
+        assert meldet(t, "konnektor.ausgabe.hinweise_text.1") and all(f"- {h}" in t for h in hinweise)
         Schreibweg.antwort = (200, {"ok": True, "text": "Entschieden: V-01.b „Plan B“ ist gewählt (Ida, Grund: Bahn).", "commit": "abc1234",
                                     "hinweise": hinweise})
         t, f = werkzeug(basis, ALT_ORGANISATOR, "entscheiden", option="V-01.b", status="gewaehlt", grund="Karl will die Bahn")
-        assert not f and t.startswith("Entschieden: V-01.b") and "Neue Hinweise der Prüfung" in t and all(f"- {h}" in t for h in hinweise)
+        assert not f and t.startswith("Entschieden: V-01.b") and meldet(t, "konnektor.ausgabe.hinweise_text.1") and all(f"- {h}" in t for h in hinweise)
     finally:
         Schreibweg.antwort = (200, {"ok": True, "text": "ok"})
 
@@ -979,7 +980,7 @@ def test_beleg_anlegen_ueber_den_konnektor(schreibweg, seiten, monkeypatch):
     t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-02", dateiname="Ticket.png", daten_base64=base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"x" * 8).decode())
     assert not f and "Beleg D-02 „Ticket.png“ an B-02 abgelegt" in t and (o / "belege" / "D-02.png").exists()
     t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-02", dateiname="Ticket.png", daten_base64="%%%")
-    assert f and "kein gültiges Base64" in t
+    assert f and meldet(t, "konnektor.beleg_daten.1")
     t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-02", dateiname="x.gif", daten_base64=base64.b64encode(b"GIF89a....").decode())
     assert f and t.startswith("Nicht abgelegt:")
     t, f = werkzeug(basis, KARL, "beleg_anlegen", buchung="B-99", text="x")
@@ -1002,7 +1003,7 @@ def test_buchung_zeigt_zahlstand_und_merkmale(schreibweg):
     t, f = werkzeug(basis, KARL, "zeige", id="B-02")
     assert not f and "Zahlung: bezahlt · Kreditkarte" in t and "Ticketart: Sparpreis" in t
     t, f = werkzeug(basis, ALT_ORGANISATOR, "merkmale", art="bahn")
-    assert not f and "## Merkmale der Buchungen dieser Art" in t and "- ticketart – Ticketart: auswahl (Sparpreis | Flexpreis | Verbundticket)" in t
+    assert not f and meldet(t, "konnektor.ausgabe.merkmale.5") and "- ticketart – Ticketart: auswahl (Sparpreis | Flexpreis | Verbundticket)" in t
     assert "Buchungen dieser Art" not in werkzeug(basis, ALT_ORGANISATOR, "merkmale", art="hotel")[0]
     schema = next(x for x in rpc(basis, KARL, "tools/list")["tools"] if x["name"] == "buchung_anlegen")["inputSchema"]["properties"]
     assert {"open", "paid", "on_site", "included"} <= set(schema["payment"]["enum"]) and "attributes" in schema
@@ -1022,7 +1023,7 @@ def test_beleg_in_einem_schritt_mit_der_buchung(schreibweg, seiten, monkeypatch)
     o = ablage / "beispielreise"
     # Beleg fehlerhaft: die Buchung wird gar nicht erst angelegt
     t, f = werkzeug(basis, KARL, "buchung_anlegen", fuer=["E-21"], quelle="Mail", beleg_base64="%%%", beleg_dateiname="x.pdf")
-    assert f and "kein gültiges Base64" in t and Schreibweg.anfragen == []
+    assert f and meldet(t, "konnektor.beleg_daten.1") and Schreibweg.anfragen == []
     Schreibweg.antwort = (200, {"ok": True, "text": "Buchung B-04 angelegt (gebucht) für E-21 S-Bahn Bad Schandau → Dresden, Nr. DB-7.", "id": "B-04"})
     t, f = werkzeug(basis, KARL, "buchung_anlegen", fuer=["E-21"], nummer="DB-7", quelle="Mail vom 30.10.2026",
                     beleg_text="Buchung DB-7, 19,90 €", beleg_dateiname="Bestätigung Bahn")
@@ -1111,7 +1112,7 @@ def test_aufgabe_entfaellt_nennt_den_rueckholweg(dienst):
     assert not f and t.startswith("Gespeichert (gilt sofort):") and "Nicht gelöscht" not in t
     t, f = werkzeug(basis, ALT_ORGANISATOR, "aufgabe_aendern", id="AG-01", status="entfaellt", name="Ida")
     assert not f and t.startswith("Gespeichert (gilt sofort):")      # bisheriger Satz bleibt vorn (Kriterium 7)
-    assert "Nicht gelöscht" in t and "wieder offen" in t and "Status offen" in t
+    assert "Nicht gelöscht" in t and "wieder offen" in t and meldet(t, "konnektor.werkzeug.7")
 
 
 # ---------- Englische Namen der Schnittstelle mit deutschen Aliasen (ADR-0006, M8b) ----------

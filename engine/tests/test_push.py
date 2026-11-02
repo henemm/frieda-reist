@@ -19,6 +19,7 @@ import konten  # noqa: E402
 import push  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from test_anmeldung import BASIS, IDA, KARL, SEITE, abruf, anmelden, welt  # noqa: E402,F401
+from conftest import meldet  # noqa: E402
 
 MITTAG = datetime.datetime(2027, 5, 14, 10, 0, tzinfo=datetime.timezone.utc).timestamp()   # 12:00 in Berlin
 NACHT = datetime.datetime(2027, 5, 14, 22, 0, tzinfo=datetime.timezone.utc).timestamp()    # 0:00 in Berlin
@@ -128,7 +129,7 @@ def test_geraet_an_und_abmelden_ueber_die_seite(welt):
     assert s == 401 and "anmelden" in t
     assert abruf(url, "POST", json_body=daten, cookie=karl, origin="https://boese.invalid")[0] == 403
     s, _, t = abruf(url, "POST", json_body={**daten, "abo": {"endpoint": "https://x.invalid/y"}}, cookie=karl)
-    assert s == 400 and "kein gültiges Abo" in t
+    assert s == 400 and meldet(t, "konto.fehler.push_abo_ungueltig")
     assert abruf(url, "POST", json_body=daten, cookie=karl)[0] == 200
     kid = konten.sitzung(karl)["id"]
     [a] = konten.push_abos(kid)
@@ -288,14 +289,14 @@ def test_versand_verschluesselt_mit_vapid(monkeypatch):
 def test_kontoseite_benachrichtigungen(reise):
     u = reise
     s, _, t = abruf(f"{u.kurl}/konto", cookie=u.karl)
-    assert s == 200 and "Benachrichtigungen" in t and "1 Gerät bekommt Benachrichtigungen." in t
+    assert s == 200 and "Benachrichtigungen" in t and meldet(t, "konto.push.geraete.one")
     assert 'name="ruhe_von" value="21:30"' in t and 'name="art_version" value="ja" checked' in t
     s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "push_einstellungen", "art_meldung": "ja", "ruhe_von": "22:15",
                                                 "ruhe_bis": "06:45"}, cookie=u.karl)
-    assert s == 200 and "Benachrichtigungen gespeichert." in t
+    assert s == 200 and meldet(t, "konto.push.gespeichert")
     assert push.einstellungen_von(u.karl_id) == {"arten": ["meldung"], "ruhe_von": "22:15", "ruhe_bis": "06:45"}
     s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "push_aus"}, cookie=u.karl)
-    assert "auf allen Geräten ausgeschaltet" in t and konten.push_abos(u.karl_id) == []
+    assert meldet(t, "konto.push.alle_aus_hinweis") and konten.push_abos(u.karl_id) == []
 
 
 def test_kontoseite_schalter_der_frieda_app(welt):
@@ -323,13 +324,13 @@ def test_kontoseite_schalter_der_frieda_app(welt):
     assert abruf(f"{u.kurl}/konto", "POST", felder)[0] == 401
     assert abruf(f"{u.kurl}/konto", "POST", felder, cookie=karl, origin="https://boese.invalid")[0] == 403
     s, _, t = abruf(f"{u.kurl}/konto", "POST", {**felder, "abo": "{kaputt"}, cookie=karl)
-    assert s == 400 and "kein gültiges Abo" in t
+    assert s == 400 and meldet(t, "konto.fehler.push_abo_ungueltig")
     assert abruf(f"{u.kurl}/konto", "POST", felder, cookie=karl)[0] == 204
     [a] = konten.push_abos(kid)
     assert (a["reise"], a["seite"], a["geraet"], a["zeitzone"]) == ("", f"{BASIS}/konto", "geraet-karl-app", "Europe/Berlin")
     assert abruf(f"{u.kurl}/konto", "POST", felder, cookie=karl)[0] == 204 and len(konten.push_abos(kid)) == 1   # auffrischen
     s, _, t = abruf(f"{u.kurl}/konto?push=an", cookie=karl)
-    assert "Benachrichtigungen auf diesem Gerät eingeschaltet." in t and "1 Gerät bekommt Benachrichtigungen." in t
+    assert meldet(t, "konto.push.hier_an") and meldet(t, "konto.push.geraete.one")
     # Ausschalten: nur das eigene Abo
     assert abruf(f"{u.kurl}/konto", "POST", {"aktion": "push_ab", "endpoint": abo("app")["endpoint"]}, cookie=karl)[0] == 204
     assert konten.push_abos(kid) == []
