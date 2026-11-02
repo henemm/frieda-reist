@@ -337,6 +337,114 @@ def test_anstoss_von_der_seite_startet_den_workflow(vf):
     assert any("Publish request failed" in z for z in vf["zeilen"]("melden.log"))
 
 
+# ---------- Anstoß vom Server: neuer Software-Stand startet „Software nachziehen“ (#250, AC-5) ----------
+
+GIT_ERLAUBT = {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "protocol.file.allow", "GIT_CONFIG_VALUE_0": "always"}
+STUNDE = 3600
+
+
+@pytest.fixture
+def an(vf):
+    """vf mit echtem Submodul frieda/ (Software-Repo, Stand A) im Reisen-Repo. VF_LSREMOTE ersetzt `git ls-remote`
+    (Aufrufe in lsremote.log, Antwort im Format von ls-remote aus der Datei remote-stand, rot über lsremote-kaputt),
+    VF_NACHZIEHEN ersetzt `gh workflow run` (Aufrufe in nachziehen.log, rot über gh-kaputt)."""
+    t = vf["tmp"]
+    sw = t / "software"
+    sw.mkdir()
+    (sw / "LIESMICH").write_text("Software\n")
+    git(sw, "init", "-q", "-b", "main")
+    git(sw, "add", ".")
+    git(sw, "commit", "-qm", "A")
+    a = git(sw, "rev-parse", "HEAD").strip()
+    quelle = t / "quelle"
+    subprocess.run(["git", "-C", str(quelle), "submodule", "add", "-q", str(sw), "frieda"], check=True,
+                   capture_output=True, env={**os.environ, **GIT, **GIT_ERLAUBT})
+    git(quelle, "commit", "-qm", "Software eingebunden")
+    lsremote = ausfuehrbar(t / "lsremote.sh", f'#!/bin/sh\necho "$@" >> {t}/lsremote.log\n[ ! -e {t}/lsremote-kaputt ] || exit 128\n'
+                                              f'printf "%s\\trefs/heads/main\\n" "$(cat {t}/remote-stand)"\n')
+    nachziehen = ausfuehrbar(t / "nachziehen.sh", f'#!/bin/sh\necho los >> {t}/nachziehen.log\n[ ! -e {t}/gh-kaputt ]\n')
+    (t / "remote-stand").write_text(a + "\n")
+    extra = {**GIT_ERLAUBT, "VF_LSREMOTE": str(lsremote), "VF_NACHZIEHEN": str(nachziehen), "FR_ABLAGE": str(t / "ablage")}
+
+    def lauf(jetzt, **mehr):
+        return vf["lauf"](VF_JETZT=str(jetzt), **{**extra, **mehr})
+
+    def remote(stand):
+        (t / "remote-stand").write_text(stand + "\n")
+
+    def merk():
+        datei = t / "dienst" / "nachziehen-angestossen"
+        return datei.read_text().split() if datei.exists() else None
+
+    def starts():
+        n = len(vf["zeilen"]("nachziehen.log"))
+        (t / "nachziehen.log").unlink(missing_ok=True)
+        return n
+
+    return {**vf, "lauf_an": lauf, "remote": remote, "merk": merk, "starts": starts, "a": a, "sw": sw}
+
+
+def test_anstoss_einmal_je_neuem_software_stand(an):
+    r = an["lauf_an"](T0)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert an["starts"]() == 0 and an["merk"]() is None                 # eingebunden == main der Software: nichts
+    assert an["deploys"]() == ["beispielreise", "zweitreise"]
+    assert str(an["sw"]) in an["zeilen"]("lsremote.log")[0]           # URL aus .gitmodules
+
+    b = "b" * 40
+    an["remote"](b)
+    r = an["lauf_an"](T0 + 60)
+    assert r.returncode == 0 and an["starts"]() == 1
+    assert an["merk"]() == [b, str(T0 + 60)]                           # „SHA Epoche“
+    for dt in (120, 6 * STUNDE + 59):                                  # derselbe Stand: nicht vor Ablauf der Wartezeit
+        assert an["lauf_an"](T0 + dt).returncode == 0 and an["starts"]() == 0
+    assert an["lauf_an"](T0 + 60 + 6 * STUNDE).returncode == 0 and an["starts"]() == 1
+    assert an["merk"]() == [b, str(T0 + 60 + 6 * STUNDE)]
+
+    c = "c" * 40                                                       # ein weiterer Stand startet sofort
+    an["remote"](c)
+    assert an["lauf_an"](T0 + 60 + 6 * STUNDE + 1).returncode == 0 and an["starts"]() == 1
+    assert an["merk"]()[0] == c
+
+
+def test_anstoss_wartezeit_ist_einstellbar(an):
+    an["remote"]("b" * 40)
+    an["lauf_an"](T0, FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN="1")
+    assert an["starts"]() == 1
+    an["lauf_an"](T0 + STUNDE - 1, FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN="1")
+    assert an["starts"]() == 0
+    an["lauf_an"](T0 + STUNDE, FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN="1")
+    assert an["starts"]() == 1
+
+
+def test_anstoss_merkdatei_nur_nach_erfolg_und_veroeffentlichen_laeuft_weiter(an):
+    an["remote"]("b" * 40)
+    (an["tmp"] / "gh-kaputt").touch()
+    r = an["lauf_an"](T0)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert an["starts"]() == 1 and an["merk"]() is None
+    assert "warning" in r.stdout.lower()
+    assert an["deploys"]() == ["beispielreise", "zweitreise"]          # das Veröffentlichen läuft trotzdem
+    (an["tmp"] / "gh-kaputt").unlink()
+    an["lauf_an"](T0 + 60)                                             # nächster Lauf versucht es wieder
+    assert an["starts"]() == 1 and an["merk"]() == ["b" * 40, str(T0 + 60)]
+
+
+def test_anstoss_ls_remote_rot_ist_nur_eine_warnung(an):
+    (an["tmp"] / "lsremote-kaputt").touch()
+    r = an["lauf_an"](T0)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert an["zeilen"]("lsremote.log") and an["starts"]() == 0 and an["merk"]() is None
+    assert "warning" in r.stdout.lower()
+    assert an["deploys"]() == ["beispielreise", "zweitreise"]
+
+
+def test_wartezeit_vorgabe_sechs_stunden(tmp_path):
+    r = subprocess.run(["bash", "-c", f'. "{BETRIEB}/gemeinsam.sh"; echo "$FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN"'],
+                       capture_output=True, text=True, env={**SAUBER, "FR_WURZEL": str(tmp_path)})
+    assert r.stdout.strip() == "6"
+
+
 def test_veroeffentlichen_fehlschlag_wird_wiederholt(vf):
     """Ein Infrastrukturfehler (Exit 1 aus deploy.sh) beendet den Lauf sofort, wird nicht gemerkt und beim nächsten Lauf
     auf demselben Stand wiederholt (#142, AC-18)."""
