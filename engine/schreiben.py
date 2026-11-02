@@ -1952,13 +1952,15 @@ def reise_status_setzen(reise_dir, wer, args, heute=None):
 def einstellung_setzen(reise_dir, wer, args, heute=None):
     """Einstellungen der Reise: bausteine (vollständige Liste), regeln (Name: Wert) und sprache (de, en …); nur Organisator:innen. Was gilt, prüft der
     Probebau (reise.py). -> (Titel, Text)."""
-    from reise import BAUSTEINE, KERN, VORGABEN
+    from reise import ALTE_BAUSTEINE, BAUSTEINE, KERN, VORGABEN
     from ruamel.yaml.comments import CommentedMap
     p, roh = reise_yaml_laden(reise_dir)
     geaendert = []
     bausteine = args.get("bausteine")
     if bausteine is not None:
         liste = liste_wert({"b": bausteine}, "b", laenge=20) or []
+        # Bausteine, die es nicht mehr gibt (tagesseiten, #214): still herausnehmen, nicht ablehnen, nicht schreiben
+        liste = [b for b in liste if b not in ALTE_BAUSTEINE]
         fremd = [b for b in liste if b not in BAUSTEINE and b not in KERN]
         if fremd:
             raise Ablehnung("schreiben.einstellung_setzen.1", w1=', '.join(fremd), w2=', '.join(BAUSTEINE))
