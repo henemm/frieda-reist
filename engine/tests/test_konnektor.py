@@ -556,7 +556,8 @@ def test_ontologie_organisator_schreibt_direkt(schreibweg):
                    # Abgleich 29.10.2026: Plan, Eckdaten und Ontologie ändern nur Organisator:innen
                    "tag_anlegen", "termin_setzen", "wahlstelle_aendern", "reise_aendern", "plan_anlegen", "plan_aendern",
                    "merkmal_zusammenfuehren", "arten_uebernehmen",
-                   "start_ende_setzen"}   # Issue #142
+                   "start_ende_setzen",   # Issue #142
+                   "kartenansicht_setzen", "kartenpunkte_holen"}   # Epic #225: Karte, nur Organisator:innen
         assert (set(kn.ONTOLOGIE_WERKZEUGE) - nur_org <= namen) is da, token
         assert ("start_ende_setzen" in namen) is (token == ALT_ORGANISATOR), token
     anleitung = rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]

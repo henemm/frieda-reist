@@ -1982,3 +1982,90 @@ def test_start_ende_setzen_warnung_kommt_als_hinweis(repo):
     assert a["hinweise"] == ["plan: Der aktuelle Plan endet am 16.05., die Reise aber am 18.05. (-2 Tag(e))."]
     r, _ = routen_auf_main(origin)
     assert r["ende"]["datum"] == datetime.date(2027, 5, 18)
+
+
+def test_kartenansicht_setzen_legt_an_ersetzt_und_entfernt(repo):
+    """#236 (K5): map_view_set legt eine Ansicht an, ersetzt sie bei gleichem Titel, lehnt Unbekanntes mit Grund ab."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "kartenansicht_setzen", {**IDA, "args": {"titel": "Hohnstein", "tage": ["T-02"], "arten": "pension, gasthof"}})
+    assert "angelegt" in a["text"] and "Tage: T-02" in a["text"]
+    r, _ = routen_auf_main(origin)
+    assert r["karten_ansichten"] == [{"titel": "Hohnstein", "tage": ["T-02"], "arten": ["pension", "gasthof"]}]
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "kartenansicht_setzen", {**IDA, "args": {"titel": "Hohnstein", "strecken": ["E-01"]}})
+    assert "ersetzt" in a["text"]
+    r, _ = routen_auf_main(origin)
+    assert r["karten_ansichten"] == [{"titel": "Hohnstein", "strecken": ["E-01"]}]
+    s.vorbereiten()
+    for args, text in (({"titel": "X", "tage": ["T-99"]}, "T-99, das gibt es"), ({"titel": "X", "arten": ["zelt"]}, "zelt"),
+                       ({"titel": "X"}, "braucht eine Auswahl"), ({"titel": "Gibt es nicht", "entfernen": True}, "gibt es nicht")):
+        with pytest.raises(sb.Ablehnung, match=text):
+            s.schreiben("beispielreise", "kartenansicht_setzen", {**IDA, "args": args})
+    with pytest.raises(sb.Ablehnung, match="Organisator"):
+        s.schreiben("beispielreise", "kartenansicht_setzen", {**KARL, "args": {"titel": "X", "tage": ["T-02"]}})
+    a = s.schreiben("beispielreise", "kartenansicht_setzen", {**IDA, "args": {"titel": "Hohnstein", "entfernen": True}})
+    r, _ = routen_auf_main(origin)
+    assert "karten_ansichten" not in r
+
+
+GPX_TEST = ('<?xml version="1.0"?><gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">'
+            '<wpt lat="50.99" lon="13.9"><name>Pillnitz</name></wpt>'
+            '<trk><trkseg><trkpt lat="51.04" lon="13.732"/><trkpt lat="50.99" lon="13.9"/><trkpt lat="50.9585" lon="14.0325"/></trkseg></trk></gpx>')
+
+
+def test_track_anhaengen_legt_datei_ab_und_ersetzt_die_linie(repo):
+    """#238 (K13): eine GPX-Datei aus dem Gespräch hängt an der Strecke; kaputtes XML wird abgelehnt."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "track_anhaengen", {**KARL, "args": {"ziel": "E-20", "gpx": GPX_TEST, "quelle": "eigene Aufzeichnung (Test)"}})
+    assert "3 Punkten angehängt" in a["text"] and "1 benannter Wegpunkt" in a["text"]
+    r, _ = routen_auf_main(origin)
+    assert r["strecken"]["E-20"]["gpx"]["datei"] == "medien/gpx/e-20.gpx" and r["strecken"]["E-20"]["gpx"]["quelle"] == "eigene Aufzeichnung (Test)"
+    datei = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/medien/gpx/e-20.gpx"], check=True, capture_output=True, text=True).stdout
+    assert "Pillnitz" in datei
+    s.vorbereiten()
+    for gpx_text, text in (("<gpx>kaputt", "keine lesbare GPX"), ('<!DOCTYPE x [<!ENTITY a "b">]><gpx>&a;</gpx>', "keine lesbare GPX"),
+                           ("<gpx><trk><trkseg><trkpt lat='1' lon='2'/></trkseg></trk></gpx>", "keine lesbare GPX")):
+        with pytest.raises(sb.Ablehnung, match=text):
+            s.schreiben("beispielreise", "track_anhaengen", {**KARL, "args": {"ziel": "E-20", "gpx": gpx_text, "quelle": "x"}})
+
+
+def osm_antwort(elemente):
+    return lambda abfrage: {"elements": elemente}
+
+
+def test_kartenpunkte_holen_mit_erfundener_antwort(repo, monkeypatch):
+    """#240 (K14): Treffer längs der Strecke werden Punkte mit Quelle und Stand; ein zweiter Aufruf ersetzt, statt zu verdoppeln."""
+    _, origin, _, _ = repo
+    abfragen = []
+    nah = {"type": "node", "id": 1, "lat": 50.9600, "lon": 14.0700, "tags": {"amenity": "drinking_water", "name": "Brunnen an der Bastei"}}
+    weit = {"type": "node", "id": 2, "lat": 50.5, "lon": 13.0, "tags": {"amenity": "drinking_water"}}
+    quelle = {"type": "way", "id": 3, "center": {"lat": 50.9640, "lon": 14.0850}, "tags": {"natural": "spring"}}
+    monkeypatch.setattr(sb, "overpass_abfragen", lambda q: abfragen.append(q) or {"elements": [nah, weit, quelle]})
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "kartenpunkte_holen", {**IDA, "args": {"strecke": "E-01", "kategorie": "wasser",
+                                                                            "osm": ["amenity=drinking_water", "natural=spring"], "abstand_m": 500}})
+    assert "2 Treffer für Wasser" in a["text"] and "Brunnen an der Bastei" in a["text"] and "ODbL" in a["text"]
+    assert '["amenity"="drinking_water"]' in abfragen[0] and '["natural"="spring"]' in abfragen[0]
+    punkte = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/plan/punkte.yaml"],
+                                           check=True, capture_output=True, text=True).stdout)["strecken"]["E-01"]
+    osm = [p for p in punkte if p.get("osm")]
+    assert [p["osm"] for p in osm] == ["node/1", "way/3"] and osm[0]["art"] == "drinking_water" and osm[1]["art"] == "spring"
+    assert all(p["kat"] == "wasser" and "OpenStreetMap" in p["quelle"] and p["geprueft"] for p in osm)
+    assert any(p.get("name") == "Brunnen am Amselsee" for p in punkte)   # von Hand gesetzte Punkte bleiben
+    s.vorbereiten()
+    s.schreiben("beispielreise", "kartenpunkte_holen", {**IDA, "args": {"strecke": "E-01", "kategorie": "wasser", "osm": ["amenity=drinking_water"], "abstand_m": 500}})
+    punkte = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/plan/punkte.yaml"],
+                                           check=True, capture_output=True, text=True).stdout)["strecken"]["E-01"]
+    assert len([p for p in punkte if p.get("osm")]) == 2   # ersetzt, nicht verdoppelt
+    s.vorbereiten()
+    def limit(q):
+        raise sb.Ablehnung("schreiben.kartenpunkte.limit", w1=429)
+    monkeypatch.setattr(sb, "overpass_abfragen", limit)
+    with pytest.raises(sb.Ablehnung, match="ausgelastet"):
+        s.schreiben("beispielreise", "kartenpunkte_holen", {**IDA, "args": {"strecke": "E-01", "kategorie": "wasser", "osm": ["amenity=drinking_water"]}})
+    for args, text in (({"strecke": "E-01", "kategorie": "gibtsnicht", "osm": ["a=b"]}, "Kategorie „gibtsnicht“"),
+                       ({"strecke": "E-01", "kategorie": "wasser", "osm": ['a"]=b']}, "nicht die Form")):
+        with pytest.raises(sb.Ablehnung, match=text):
+            s.schreiben("beispielreise", "kartenpunkte_holen", {**IDA, "args": args})

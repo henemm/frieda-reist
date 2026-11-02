@@ -208,3 +208,25 @@ def test_zoom_nach_flaeche_kompakt_und_lange_fahrt():
     plan = karte.grundkarten_plan(lang, punkte)
     assert plan["zoom"] < 12 and len(plan["details"]) == 3 and all(d["zoom"] == 15 for d in plan["details"])
     assert all(karte.kacheln(d["rahmen"], d["zoom"]) <= karte.KACHELN_MAX for d in plan["details"])
+
+
+def test_grundkarte_wird_nur_bei_neuem_rahmen_geholt(reise, tmp_path):
+    """#239: Die Grundkarte entsteht beim Veröffentlichen, wenn sich der Rahmen geändert hat; sonst bleibt die vorhandene.
+    Ohne Netz (Holen scheitert) endet das Skript mit 1, die Seite wird trotzdem gebaut."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "werkzeuge"))
+    import grundkarte_auto
+    routen(reise, mit_lagen)
+    geholt = []
+    def holen(reise_dir, name, rahmen, zoom):
+        geholt.append((name, zoom))
+        (reise_dir / "medien" / "karte").mkdir(parents=True, exist_ok=True)
+        (reise_dir / "medien" / "karte" / f"{name}.pmtiles").write_bytes(b"PMTiles")
+        return True
+    assert grundkarte_auto.main(reise, holen) == 0 and geholt == [("grundkarte", 15)]
+    assert grundkarte_auto.main(reise, holen) == 0 and len(geholt) == 1          # unverändert: nichts geholt
+    routen(reise, lambda d: d["orte"]["O-06"].update(punkt=punkt([51.30, 14.50])))
+    assert grundkarte_auto.main(reise, lambda *a: False) == 1                     # ohne Netz: Hinweis, kein Abbruch
+    d, b = daten(reise, tmp_path)
+    assert d["route"]["karte"]["grundkarte"]["url"] == "grundkarte.pmtiles" and b.grundkarte.name == "grundkarte.pmtiles"
+    # Handgepflegte Karte: nichts zu holen
+    assert grundkarte_auto.main(BEISPIEL, holen) == 0 and len(geholt) == 1

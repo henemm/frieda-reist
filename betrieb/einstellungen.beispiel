@@ -60,6 +60,9 @@ FR_ADRESSE=https://reisen.example.org
 # Ein bekannter roter Stand der Software wird nach so vielen Minuten ohne neuen Commit erneut geprüft (#203); geändert
 # hat sich vielleicht nur die Umgebung. Eine geänderte Umgebung (Bibliotheken, Python, Node, Playwright) prüft sofort neu.
 #FR_ROT_NEU_PRUEFEN_MINUTEN=60
+# Offline-Grundkarte der automatischen Karte beim Veröffentlichen holen, wenn sich ihr Rahmen geändert hat (Epic #225, #239;
+# werkzeuge/grundkarte_auto.py, braucht Netz zum Protomaps-Tagesbuild). 0 schaltet es aus. (1)
+#FR_GRUNDKARTE_AUTO=1
 
 # nginx: Ordner der Bausteine und Befehl für Rechte (leer = ohne sudo). (/etc/nginx/snippets, sudo -n)
 #FR_NGINX_SNIPPETS=/etc/nginx/snippets

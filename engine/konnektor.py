@@ -84,7 +84,7 @@ ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "kategorie_defini
                        # Abgleich 29.10.2026 (Paket 3): die Tür für alle Grundformen
                        "tag_anlegen", "termin_setzen", "wahlstelle_aendern", "option_aendern", "wissen_aendern", "lesetext_schreiben",
                        "reise_aendern", "plan_anlegen", "plan_aendern", "merkmal_zusammenfuehren", "arten_uebernehmen", "wunsch_vorschlagen",
-                       "start_ende_setzen")
+                       "start_ende_setzen", "kartenansicht_setzen", "track_anhaengen", "kartenpunkte_holen")
 # Aktion der Regelprüfung je Werkzeug; art_definieren und merkmal_definieren gehen für Mitwirkende als Rückmeldung (Vorschlag)
 ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "kategorie_definieren": "ontologie", "wert_eintragen": "wert",
                     "ding_anlegen": "ding", "ding_aendern": "ding", "lage_eintragen": "ding", "option_anlegen": "alternative",
@@ -94,7 +94,7 @@ ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontolo
                     "tag_anlegen": "plan", "termin_setzen": "plan", "wahlstelle_aendern": "plan", "option_aendern": "alternative",
                     "wissen_aendern": "wissen", "lesetext_schreiben": "wissen", "reise_aendern": "einstellung", "plan_anlegen": "plan",
                     "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch",
-                    "start_ende_setzen": "einstellung"}
+                    "start_ende_setzen": "einstellung", "kartenansicht_setzen": "karte", "track_anhaengen": "ding", "kartenpunkte_holen": "karte"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe", "beleg_anlegen": "buchung",
                   "entscheiden": "entscheiden", "rueckmeldung_erledigen": "rueckmeldung_erledigen",
@@ -2525,6 +2525,30 @@ REISE_AENDERN = {"name": "reise_aendern", "description": "@konnektor.werkzeug.re
                  "inputSchema": {"type": "object", "properties": {
                      "titel": {"type": "string"}, "untertitel": {"type": "string"}, "kurz": {"type": "string"},
                      "von": {"type": "string"}, "bis": {"type": "string"}, "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["grund"]}}
+LISTE = {"type": "array", "items": {"type": "string"}}
+KARTENANSICHT_SETZEN = {"name": "kartenansicht_setzen", "description": "@konnektor.werkzeug.kartenansicht_setzen",
+                        "inputSchema": {"type": "object", "properties": {
+                            "titel": {"type": "string", "description": "@konnektor.werkzeug.kartenansicht_setzen.titel"},
+                            "tage": {**LISTE, "description": "@konnektor.werkzeug.kartenansicht_setzen.tage"},
+                            "strecken": {**LISTE, "description": "@konnektor.werkzeug.kartenansicht_setzen.strecken"},
+                            "arten": {**LISTE, "description": "@konnektor.werkzeug.kartenansicht_setzen.arten"},
+                            "entfernen": {"type": "boolean", "description": "@konnektor.werkzeug.kartenansicht_setzen.entfernen"},
+                            "grund": {"type": "string"}, "vorname": NAME_FELD},
+                            "required": ["titel"]}}
+TRACK_ANHAENGEN = {"name": "track_anhaengen", "description": "@konnektor.werkzeug.track_anhaengen",
+                   "inputSchema": {"type": "object", "properties": {
+                       "ziel": {"type": "string", "description": "@konnektor.werkzeug.track_anhaengen.ziel"},
+                       "gpx": {"type": "string", "description": "@konnektor.werkzeug.track_anhaengen.gpx"},
+                       "quelle": QUELLE_FELD, "grund": {"type": "string"}, "vorname": NAME_FELD},
+                       "required": ["ziel", "gpx", "quelle"]}}
+KARTENPUNKTE_HOLEN = {"name": "kartenpunkte_holen", "description": "@konnektor.werkzeug.kartenpunkte_holen",
+                      "inputSchema": {"type": "object", "properties": {
+                          "strecke": {"type": "string", "description": "@konnektor.werkzeug.kartenpunkte_holen.strecke"},
+                          "kategorie": {"type": "string", "description": "@konnektor.werkzeug.kartenpunkte_holen.kategorie"},
+                          "osm": {**LISTE, "description": "@konnektor.werkzeug.kartenpunkte_holen.osm"},
+                          "abstand_m": {"type": "integer", "description": "@konnektor.werkzeug.kartenpunkte_holen.abstand_m"},
+                          "grund": {"type": "string"}, "vorname": NAME_FELD},
+                          "required": ["strecke", "kategorie", "osm"]}}
 START_ENDE_SETZEN = {"name": "start_ende_setzen", "description": "@konnektor.werkzeug.start_ende_setzen",
                      "inputSchema": {"type": "object", "properties": {
                          "start_datum": {"type": "string"}, "start_ort": {"type": "string", "description": "O-…"},
@@ -2880,7 +2904,7 @@ def werkzeuge_fuer(zugang):
                  FRAGE_ANLEGEN, TAG_AENDERN, WISSEN_SCHREIBEN, FRAGE_SCHLIESSEN, REISE_STATUS_SETZEN, EINSTELLUNG_SETZEN,
                  BUCHUNG_ANLEGEN, BUCHUNG_AENDERN, TAG_ANLEGEN, TERMIN_SETZEN, WAHLSTELLE_AENDERN, OPTION_AENDERN, WISSEN_AENDERN,
                  LESETEXT_SCHREIBEN, REISE_AENDERN, START_ENDE_SETZEN, PLAN_ANLEGEN, PLAN_AENDERN, MERKMAL_ZUSAMMENFUEHREN, ARTEN_UEBERNEHMEN,
-                 WUNSCH_VORSCHLAGEN] if schreibdienst() else []
+                 WUNSCH_VORSCHLAGEN, KARTENANSICHT_SETZEN, TRACK_ANHAENGEN, KARTENPUNKTE_HOLEN] if schreibdienst() else []
     for w in WERKZEUGE + [ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN, RUECKMELDUNG_ERLEDIGEN, BELEG_ANLEGEN] + ontologie:
         n = w["name"]
         if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:

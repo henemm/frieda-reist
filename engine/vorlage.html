@@ -1133,8 +1133,8 @@ function zid(id) {
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, buchungChip
    Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, wahlZustand, belegeListe, stornierteBuchungen, einzelheiten, wegTabelle, herkunftZeile
-   Organismen: nachtZeile, unterkunftKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, nachtAbschnitt, tagZeile, uebersichtKarte, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
-   Vorlagen: tagKachel, leseAbschnitt, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtOffen, ansichtWissen, ansichtPlan, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
+   Organismen: nachtZeile, unterkunftKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
+   Vorlagen: tagKachel, leseAbschnitt, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtKarte, ansichtOffen, ansichtWissen, ansichtPlan, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
    Stile seiner Ebene, auf die Bausteinseite (#bausteine) und in docs/design.md; zeigt er eine Grundform, auch in GRUNDFORMEN.
    Zustände haben feste Namen, die Farbe folgt der Bedeutung, nicht dem Ort:
@@ -3791,12 +3791,12 @@ function markiert(text, begriffe, laenge) {
 /* ENTWICKLERSEITE-ANFANG: Bausteinseite (#bausteine) und Ontologie-Tabelle sind Werkzeug für die Entwicklung (ADR-0002) und bleiben
    deutsch; sie sind keine Seite für Reisende und stehen nicht im Textkatalog (ADR-0006, Ausnahme). */
 const GRUNDFORMEN = [
-  ["reise", "Reise", "–", {zeile: [], vorschau: [reiseEnde, mitreisende, standLeiste], karte: [uebersichtKarte], seite: [ansichtReise]}],
-  ["tag", "Folge: Tag", "T-01", {zeile: [tagZeile], vorschau: [tagKachel], karte: [tagKarte], seite: [ansichtTag, ansichtReise]}],
+  ["reise", "Reise", "–", {zeile: [], vorschau: [reiseEnde, mitreisende, standLeiste], karte: [uebersichtKarte], seite: [ansichtReise, ansichtKarte]}],
+  ["tag", "Folge: Tag", "T-01", {zeile: [tagZeile], vorschau: [tagKachel], karte: [tagKarte, tagesKarte], seite: [ansichtTag, ansichtReise]}],
   ["etappe", "Bewegung: Etappe, Strecke", "E-01", {zeile: [streckeZeile], vorschau: [abschnittKarte], karte: [], seite: [ansichtAbschnitt, tagEbenen]}],
   ["ort", "Ort", "O-01", {zeile: [wegVerlauf], vorschau: [tagOrteZeilen, listenZeile], karte: [], seite: [ansichtOrt]}],
   ["unterkunft", "Aufenthalt mit Nacht: Unterkunft", "U-01", {zeile: [nachtZeile], vorschau: [listenZeile], karte: [unterkunftKarte], seite: [nachtAbschnitt]}],
-  ["aufenthalt", "Aufenthalt ohne Nacht", "A-01", {zeile: [aufenthaltZeile], vorschau: [listenZeile], karte: [], seite: [tagKarte]}],
+  ["aufenthalt", "Aufenthalt ohne Nacht", "A-01", {zeile: [aufenthaltZeile], vorschau: [listenZeile], karte: [], seite: [tagKarte, ohneTag]}],
   ["buchung", "Buchung zu Aufenthalt oder Bewegung", "B-01", {zeile: [buchungChip], vorschau: [listenZeile], karte: [], seite: [buchungBlock]}],
   ["wahlstelle", "Wahl: Wahlstelle", "V-01", {zeile: [wahlZeile], vorschau: [listenZeile], karte: [wahlKarte], seite: [wahlEinstieg, wahlVergleich, nachtAbschnitt]}],
   ["option", "Wahl: Option", "V-01.a", {zeile: [optionBlock], vorschau: [wahlVergleich], karte: [wahlVergleich], seite: [optionEinzelheiten]}],
@@ -4047,6 +4047,13 @@ function ansichtBausteine(m) {
   if (plan && R.karte) { const box = el("div", {}), info = el("div", {class: "karte", "aria-live": "polite"});
     uebersichtKarte(box, [plan], info); box.append(info);
     teil("Organismus", "Karte der Reise", "Karte mit Legende; der Kasten darunter erscheint, wenn man einen Ort antippt.", box); }
+  // Epic #225: Tageskarte der automatischen Karte und die Heimat der Aufenthalte ohne Tag
+  const tk = tag && R.karte && R.karte.auto ? tagesKarte(tag) : null;
+  teil("Organismus", "Tageskarte", "Ausschnitt der automatischen Karte mit den Strecken und Punkten eines Tags; ohne GPX gestrichelt.",
+    tk || el("p", {class: "meldung"}, "Nur mit automatischer Karte und einem Tag mit Strecke (Muster entfällt)."));
+  { const box = el("div", {}); ohneTag(box);
+    teil("Organismus", "Ohne Tag", "Aufenthalte, die an keinem Tag stehen (vor Ort gesammelt): vollständig unter der Karte.",
+      box.childNodes.length ? box : el("p", {class: "meldung"}, "Keine Aufenthalte ohne Tag (Muster entfällt).")); }
   // Kennungen sind auf dieser Seite nur Beispiele: keine Sprungziele, damit sie den echten Stellen nicht im Weg stehen
   m.querySelectorAll("[id]").forEach(x => { x.removeAttribute("id"); x.removeAttribute("data-ziel"); });
 }

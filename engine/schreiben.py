@@ -69,7 +69,7 @@ AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "k
             "tag_anlegen": "plan", "termin_setzen": "plan", "wahlstelle_aendern": "plan", "option_aendern": "alternative",
             "wissen_aendern": "wissen", "lesetext_schreiben": "wissen", "reise_aendern": "einstellung", "plan_anlegen": "plan",
             "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch",
-            "start_ende_setzen": "einstellung"}   # reise.AKTIONEN
+            "start_ende_setzen": "einstellung", "kartenansicht_setzen": "karte", "track_anhaengen": "ding", "kartenpunkte_holen": "karte"}   # reise.AKTIONEN
 HINWEISE_HOECHSTENS = 10   # neue Warnungen des Probebaus in der Antwort (Issue #142)
 S = texte.satz   # Satz des Katalogs, in jeder Sprache lesbar (Bestätigungen, ADR-0006)
 verbinden = texte.Satz.verbinden
@@ -1428,6 +1428,223 @@ def lage_eintragen(reise_dir, wer, args, heute=None):
     return (S("schreiben.titel.lage", w1=bezeichnung),
             f"{bezeichnung}: " + verbinden(geaendert, "; ") + S("schreiben.antwort.lage.herkunft", w1=quelle, w2=g.isoformat())
             + (S("schreiben.antwort.grund", w1=grund) if grund else "") + (S("schreiben.antwort.lage.koordinaten_fehlen") if ohne else ""))
+
+
+# ---------- Karte (Epic #225): Ansichten, GPX-Tracks, Punkte aus OpenStreetMap ----------
+
+def kartenansicht_setzen(reise_dir, wer, args, heute=None):
+    """Kartenansicht (#236, K5): Titel und Auswahl aus Tagen, Strecken und Arten; ersetzt eine Ansicht gleichen Titels, entfernen
+    nimmt sie heraus. Steht als Teil des Plans in routen.yaml (karten_ansichten). -> (Titel, Text)."""
+    from ruamel.yaml.comments import CommentedSeq
+    titel = text_wert(args, "titel", pflicht=True, laenge=80).strip()
+    route = route_stand(reise_dir)
+    auswahl = {}
+    bekannt = {"tage": [t["id"] for t in route.get("tage") or []] + list(route.get("weitere_tage") or {}),
+               "strecken": list(route.get("strecken") or {}), "arten": list(route.get("arten") or {})}
+    for feld in ("tage", "strecken", "arten"):
+        liste = liste_wert(args, feld, laenge=60) or []
+        for x in liste:
+            if x not in bekannt[feld]:
+                raise Ablehnung("schreiben.kartenansicht.unbekannt", feld=feld, x=x, w1=", ".join(bekannt[feld]) or "–")
+        if liste:
+            auswahl[feld] = liste
+    entfernen = bool_wert(args, "entfernen")
+    roh = routen_laden(reise_dir)
+    ansichten = roh.get("karten_ansichten")
+    if ansichten is None:
+        ansichten = roh["karten_ansichten"] = CommentedSeq()
+    alt = next((i for i, a in enumerate(ansichten) if isinstance(a, dict) and a.get("titel") == titel), None)
+    if entfernen:
+        if alt is None:
+            raise Ablehnung("schreiben.kartenansicht.fehlt", titel=titel, w1=", ".join(str(a.get("titel")) for a in ansichten) or "–")
+        del ansichten[alt]
+        if not ansichten:
+            del roh["karten_ansichten"]
+        routen_speichern(reise_dir, roh)
+        return S("schreiben.titel.kartenansicht_entfernt", titel=titel), S("schreiben.antwort.kartenansicht.entfernt", titel=titel)
+    if not auswahl:
+        raise Ablehnung("schreiben.kartenansicht.leer")
+    knoten = fliess_map({"titel": titel, **auswahl})
+    if alt is None:
+        ansichten.append(knoten)
+    else:
+        ansichten[alt] = knoten
+    routen_speichern(reise_dir, roh)
+    worte = "; ".join(f"{S('schreiben.kartenansicht.feld.' + k)}: {', '.join(v)}" for k, v in auswahl.items())
+    return (S("schreiben.titel.kartenansicht", titel=titel),
+            S("schreiben.antwort.kartenansicht." + ("ersetzt" if alt is not None else "angelegt"), titel=titel, w1=worte))
+
+
+# Größte GPX-Datei im Gespräch (Zeichen); der Konnektor nimmt höchstens 64 KB je Anfrage (MAX_BODY)
+MAX_GPX = 60000
+
+
+def track_anhaengen(reise_dir, wer, args, heute=None):
+    """GPX-Track an eine Strecke hängen (K13): die Datei kommt als Text aus dem Gespräch, liegt danach unter medien/gpx/ der Reise
+    und ersetzt auf der Karte die schematische Linie; benannte Wegpunkte werden nummerierte Punkte (K15). -> (Titel, Text)."""
+    from defusedxml import ElementTree as DET
+    heute = heute or datetime.date.today()
+    ziel = (text_wert(args, "ziel", pflicht=True, laenge=20) or "").strip()
+    if not re.fullmatch(r"E-\d+[A-Za-z]?", ziel):
+        raise Ablehnung("schreiben.track.ziel")
+    quelle = text_wert(args, "quelle", pflicht=True, laenge=600)
+    text = args.get("gpx")
+    if not isinstance(text, str) or not text.strip():
+        raise Ablehnung("schreiben.text_wert.1", feld="gpx")
+    if len(text) > MAX_GPX:
+        raise Ablehnung("schreiben.track.gross", n=MAX_GPX)
+    try:
+        wurzel = DET.fromstring(text.encode("utf-8"))
+    except Exception:   # noqa: BLE001 – kaputtes oder gefährliches XML: abgelehnt
+        raise Ablehnung("schreiben.track.kein_gpx")
+    namen = [e.tag.rsplit("}", 1)[-1] for e in wurzel.iter()]
+    punkte = sum(1 for n in namen if n in ("trkpt", "rtept"))
+    if namen[0] != "gpx" or punkte < 2:
+        raise Ablehnung("schreiben.track.kein_gpx")
+    roh = routen_laden(reise_dir)
+    knoten = (roh.get("strecken") or {}).get(ziel)
+    if knoten is None:
+        raise Ablehnung("schreiben.ding_finden.3", ziel=ziel)
+    rel = f"medien/gpx/{ziel.lower()}.gpx"
+    datei = Path(reise_dir) / rel
+    datei.parent.mkdir(parents=True, exist_ok=True)
+    war = datei.exists()
+    datei.write_text(text if text.endswith("\n") else text + "\n", encoding="utf-8")
+    knoten["gpx"] = fliess_map({"datei": rel, "quelle": quelle, "geprueft": heute})
+    routen_speichern(reise_dir, roh)
+    wp = sum(1 for e in wurzel.iter() if e.tag.rsplit("}", 1)[-1] == "wpt" and any(c.tag.rsplit("}", 1)[-1] == "name" and (c.text or "").strip() for c in e))
+    bezeichnung = f"{ziel} {knoten.get('titel', '')}".strip()
+    return (S("schreiben.titel.track", w1=bezeichnung),
+            S("schreiben.antwort.track." + ("ersetzt" if war else "angehaengt"), w1=bezeichnung, n=punkte, w2=rel)
+            + (S("schreiben.antwort.track.wegpunkte", n=wp) if wp else "") + S("schreiben.antwort.lage.herkunft", w1=quelle, w2=heute.isoformat()))
+
+
+# Punkte aus OpenStreetMap (K14): feste Abfrage der Tags, die die Person im Gespräch wählt; keine KI. Overpass-API (ODbL)
+OVERPASS = "https://overpass-api.de/api/interpreter"
+OSM_TAG = re.compile(r"^[a-z][a-z0-9_:]{0,40}(=[A-Za-z0-9_:;. -]{1,60})?$")
+MAX_TREFFER = 200
+OSM_ZEIT = 12   # Sekunden; der Schreibvorgang hat insgesamt ZEIT_GESAMT
+
+
+def overpass_abfragen(abfrage):
+    """Overpass-Abfrage -> JSON (dict). Wirft Ablehnung mit verständlichem Grund (Limit, Zeit, Netz). Tests ersetzen diese Funktion."""
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+    req = urllib.request.Request(OVERPASS, data=urllib.parse.urlencode({"data": abfrage}).encode(),
+                                 headers={"User-Agent": instanz.kennung()})
+    try:
+        with urllib.request.urlopen(req, timeout=OSM_ZEIT) as r:
+            return json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        raise Ablehnung("schreiben.kartenpunkte.limit" if e.code in (429, 504) else "schreiben.kartenpunkte.dienst", w1=e.code)
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
+        raise Ablehnung("schreiben.kartenpunkte.dienst", w1=type(e).__name__)
+
+
+def abstand_zur_linie_m(p, linie):
+    """Kürzester Abstand eines Punkts zu einer Linie (Liste von [Breite, Länge]) in Metern, flache Näherung."""
+    import math
+    b0 = p[0]
+    xy = lambda q: (q[1] * 111320 * math.cos(math.radians(b0)), q[0] * 110540)
+    px, py = xy(p)
+    best = float("inf")
+    for a, b in zip(linie, linie[1:] or linie):
+        (ax, ay), (bx, by) = xy(a), xy(b)
+        dx, dy = bx - ax, by - ay
+        t = 0 if not (dx or dy) else max(0, min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)))
+        best = min(best, math.hypot(px - ax - t * dx, py - ay - t * dy))
+    return best
+
+
+def kartenpunkte_holen(reise_dir, wer, args, heute=None):
+    """Punkte aus OpenStreetMap längs einer Strecke (K14): die Person wählt im Gespräch die Kategorie der Reise (plan/kategorien.yaml,
+    Gruppe punkt) und die OSM-Tags (z. B. amenity=drinking_water). Treffer bis abstand_m von der Linie kommen mit Quelle und Stand
+    nach plan/punkte.yaml; ein zweiter Aufruf ersetzt die Treffer derselben Kategorie an dieser Strecke. -> (Titel, Text)."""
+    import io
+    from ruamel.yaml.comments import CommentedMap, CommentedSeq
+    heute = heute or datetime.date.today()
+    sid = (text_wert(args, "strecke", pflicht=True, laenge=20) or "").strip()
+    kat = (text_wert(args, "kategorie", pflicht=True, laenge=40) or "").strip()
+    tags = liste_wert(args, "osm", laenge=10) or []
+    if not tags:
+        raise Ablehnung("schreiben.text_wert.1", feld="osm")
+    for t in tags:
+        if not OSM_TAG.match(t):
+            raise Ablehnung("schreiben.kartenpunkte.tag", t=t)
+    try:
+        abstand = int(args.get("abstand_m") or 150)
+    except (TypeError, ValueError):
+        raise Ablehnung("schreiben.kartenpunkte.abstand")
+    if not 10 <= abstand <= 3000:
+        raise Ablehnung("schreiben.kartenpunkte.abstand")
+    route = route_stand(reise_dir)
+    import bauen
+    with tempfile.TemporaryDirectory(prefix="frieda-probe-") as tmp:
+        kategorien = bauen.Bauer(reise_dir, tmp).kategorien_laden()
+    punkt_kats = [k for k, d in kategorien.items() if d["gruppe"] == "punkt"]
+    if kat not in punkt_kats:
+        raise Ablehnung("schreiben.kartenpunkte.kategorie", kat=kat, w1=", ".join(punkt_kats) or "–")
+    if sid not in (route.get("strecken") or {}):
+        raise Ablehnung("schreiben.ding_finden.3", ziel=sid)
+    k = route.get("karte") or {}
+    linie = (k.get("wege") or {}).get(sid)
+    if not linie:
+        st, orte = route["strecken"][sid], k.get("orte") or {}
+        a, b = (orte.get(st.get("von")) or {}).get("lage"), (orte.get(st.get("nach")) or {}).get("lage")
+        linie = [a, b] if a and b else None
+    if not linie:
+        raise Ablehnung("schreiben.kartenpunkte.keine_linie", sid=sid)
+    rand_b = abstand / 110540
+    rand_l = abstand / 70000
+    bbox = (f"{min(p[0] for p in linie) - rand_b:.5f},{min(p[1] for p in linie) - rand_l:.5f},"
+            f"{max(p[0] for p in linie) + rand_b:.5f},{max(p[1] for p in linie) + rand_l:.5f}")
+    def filter_von(t):
+        key, _, wert = t.partition("=")
+        return f'["{key}"="{wert}"]' if wert else f'["{key}"]'
+    abfrage = f"[out:json][timeout:{OSM_ZEIT}];(" + "".join(f"nwr{filter_von(t)}({bbox});" for t in tags) + ");out center tags;"
+    antwort = overpass_abfragen(abfrage)
+    treffer, gesehen = [], set()
+    for e in (antwort or {}).get("elements") or []:
+        lat, lon = e.get("lat", (e.get("center") or {}).get("lat")), e.get("lon", (e.get("center") or {}).get("lon"))
+        if lat is None or lon is None:
+            continue
+        lage = [round(float(lat), 6), round(float(lon), 6)]
+        oid = f"{e.get('type', 'node')}/{e.get('id')}"
+        if oid in gesehen or abstand_zur_linie_m(lage, linie) > abstand:
+            continue
+        gesehen.add(oid)
+        tg = e.get("tags") or {}
+        art = next((tg.get(t.partition("=")[0]) for t in tags if tg.get(t.partition("=")[0])), None)
+        p = {"name": tg.get("name"), "kat": kat, "art": art, "lage": lage, "osm": oid,
+             "quelle": S("schreiben.kartenpunkte.quelle", w1=heute.isoformat()).text(texte.aufruf_sprache()), "geprueft": heute}
+        treffer.append({x: v for x, v in p.items() if v not in (None, "")})
+        if len(treffer) >= MAX_TREFFER:
+            break
+    pfad = Path(reise_dir) / "plan" / "punkte.yaml"
+    y = yaml_rund()
+    roh = y.load(pfad.read_text(encoding="utf-8")) if pfad.exists() else None
+    if roh is None:
+        roh = CommentedMap()
+    strecken = roh.get("strecken")
+    if strecken is None:
+        strecken = roh["strecken"] = CommentedMap()
+    liste = strecken.get(sid)
+    if liste is None:
+        liste = strecken[sid] = CommentedSeq()
+    alt = [x for x in liste if isinstance(x, dict) and x.get("kat") == kat and x.get("osm")]
+    for x in alt:
+        liste.remove(x)
+    for p in treffer:
+        liste.append(fliess_map(p))
+    out = io.StringIO()
+    y.dump(roh, out)
+    pfad.write_text(out.getvalue(), encoding="utf-8")
+    name = kategorien[kat]["name"]
+    beispiele = ", ".join(dict.fromkeys(p["name"] for p in treffer if p.get("name")))
+    return (S("schreiben.titel.kartenpunkte", w1=sid, w2=name, n=len(treffer)),
+            S("schreiben.antwort.kartenpunkte", w1=sid, w2=name, n=len(treffer), m=len(alt), w3=", ".join(tags))
+            + (S("schreiben.antwort.kartenpunkte.beispiele", w1=beispiele[:300]) if beispiele else "") + S("schreiben.antwort.kartenpunkte.lizenz"))
 
 
 def frage_zeile(reise_dir, text, bis=None):
@@ -3176,7 +3393,9 @@ WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_def
              "option_aendern": option_aendern, "wissen_aendern": wissen_aendern, "lesetext_schreiben": lesetext_schreiben,
              "reise_aendern": reise_aendern, "plan_anlegen": plan_anlegen, "plan_aendern": plan_aendern,
              "merkmal_zusammenfuehren": merkmal_zusammenfuehren, "arten_uebernehmen": arten_uebernehmen, "wunsch_vorschlagen": wunsch_vorschlagen,
-             "start_ende_setzen": start_ende_setzen}
+             "start_ende_setzen": start_ende_setzen,
+             # Karte (Epic #225)
+             "kartenansicht_setzen": kartenansicht_setzen, "track_anhaengen": track_anhaengen, "kartenpunkte_holen": kartenpunkte_holen}
 REPO_WERKZEUGE = {"reise_anlegen": reise_anlegen}   # arbeiten auf reisen/, nicht in einer Reise
 
 

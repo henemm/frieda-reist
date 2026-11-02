@@ -69,6 +69,9 @@ NAMEN = {
     "trip_create_request": "reisen_anlegen_anfragen",
     "request_decide": "anfrage_entscheiden",
     "calendar": "kalender",
+    "map_view_set": "kartenansicht_setzen",
+    "track_attach": "track_anhaengen",
+    "map_points_fetch": "kartenpunkte_holen",
     "language_set": "sprache_setzen",
     "language_set": "sprache_setzen",
 }
@@ -93,7 +96,7 @@ PARAMETER = {
     "optionen": "options", "ort": "place", "personen": "people", "pfad": "path", "plus": "pros", "preis": "price", "preise": "prices", "zahlung": "payment",
     "prioritaet": "priority", "punkte": "points", "quelle": "source", "regeln": "rules", "reist": "travels", "rolle": "role",
     "rubrik": "heading", "schliesst_aus": "excludes", "schluessel": "key", "siehe": "see", "sprache": "language",
-    "storno": "cancellation", "storno_bis": "cancellation_until", "strecken": "legs", "stufe": "level", "stufen": "levels",
+    "storno": "cancellation", "storno_bis": "cancellation_until", "strecken": "legs", "strecke": "leg", "tage": "days", "gpx": "gpx_text", "osm": "openstreetmap_tags", "abstand_m": "distance_m", "stufe": "level", "stufen": "levels",
     "start_datum": "start_date", "start_ort": "start_place", "summiert": "summed", "titel": "title", "trotzdem": "anyway", "typ": "type", "unterkuenfte": "accommodations",
     "untertitel": "subtitle", "veraenderlich": "changeable", "von": "from", "von_reise": "from_trip", "vor": "before",
     "vorname": "first_name", "wahl": "choices", "wahlstelle": "choice", "wann": "when", "was": "what", "wert": "value",

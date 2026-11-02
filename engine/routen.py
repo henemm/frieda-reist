@@ -72,6 +72,12 @@ BUCHUNG_DATEN = ("frist", "storno_bis", "gebucht_am", "ab")
 ZEIT_MUSTER = re.compile(r"^(?:(\d{4}-\d{2}-\d{2})T)?(\d{2}):(\d{2})(Z|[+-]\d{2}:\d{2})?$")
 
 
+def gpx_datei(s):
+    """GPX-Track einer Strecke (K13): gpx ist der Pfad unter medien/ oder eine Aussage {datei, quelle, geprueft} (track_anhaengen)."""
+    g = s.get("gpx")
+    return g.get("datei") if isinstance(g, dict) else g
+
+
 def zeitpunkt(text):
     """-> datetime (mit Zeitzone, wenn angegeben) oder time oder None (keine gültige Form)."""
     m = ZEIT_MUSTER.match(str(text or "").strip())
@@ -418,8 +424,8 @@ class Routen:
                 if s.get(k) and s[k] not in self.orte:
                     self.fehl(texte.satz("pruefung.routen.6", sid=sid, w1=s[k]))
             # GPX-Track der Strecke (K13): Datei unter medien/ der Reise; der Bau liest sie und ersetzt die schematische Linie
-            g = s.get("gpx")
-            if g is not None and not (isinstance(g, str) and g.startswith("medien/") and g.lower().endswith(".gpx") and ".." not in g):
+            g = gpx_datei(s)
+            if s.get("gpx") is not None and not (isinstance(g, str) and g.startswith("medien/") and g.lower().endswith(".gpx") and ".." not in g):
                 self.fehl(texte.satz("pruefung.routen.gpx", sid=sid))
             z = s.get("zweig_von")
             if z and z not in self.strecken and z not in self.etappen:
@@ -1587,7 +1593,8 @@ class Routen:
                 "buchung": self.buchung_von(s, b, sid), "buchung_id": self.buchung_id(sid),
                 "rolle": s.get("rolle", "haupt"), "zweig_von": s.get("zweig_von"), "kennzahlen": s.get("kennzahlen") or {},
                 "quelle": s.get("quelle"), "siehe": s.get("siehe"), "text": s.get("text", ""),
-                "dossier": bool(s.get("dossier")), "gpx": s.get("gpx"), **merkmale}
+                "dossier": bool(s.get("dossier")), "gpx": gpx_datei(s),
+                "gpx_quelle": s["gpx"].get("quelle") if isinstance(s.get("gpx"), dict) else None, **merkmale}
 
     def buchung_von(self, d, art, did=None):
         """Buchungsstand eines Dings: der Status seiner geltenden Buchung (B-…, #76), sonst der Eintrag buchung:, sonst

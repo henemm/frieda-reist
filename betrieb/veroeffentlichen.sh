@@ -285,6 +285,11 @@ main() {
   for reise in reisen/*/reise.json; do
     [ -e "$reise" ] || continue
     reise="$(basename "$(dirname "$reise")")"
+    # Offline-Grundkarte der automatischen Karte (Epic #225, #239): nur wenn sich ihr Rahmen geändert hat; ohne Netz baut die
+    # Reise trotzdem (die Karte bleibt schematisch oder beim alten Stand)
+    if [ "${FR_GRUNDKARTE_AUTO:-1}" = 1 ]; then
+      "$FR_PYTHON" "${VF_GRUNDKARTE:-$FR_BETRIEB/../werkzeuge/grundkarte_auto.py}" "$reise" || echo "Warning: base map of $reise not fetched, built without the new one."
+    fi
     rc=0; "$deploy" "$reise" || rc=$?
     unset FR_BIBLIOTHEKEN_NEU   # Dienste mit FR_PYTHON nur beim ersten Deploy neu starten
     case "$rc" in
