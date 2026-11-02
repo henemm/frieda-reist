@@ -60,6 +60,7 @@ def repo(tmp_path, monkeypatch):
     monkeypatch.setenv("SB_VEROEFFENTLICHEN", str(stub))
     monkeypatch.setenv("FR_KONTEN", str(tmp_path / "konten"))
     monkeypatch.setenv("FR_SPERREN", str(tmp_path))
+    monkeypatch.setenv("FR_DIENST", str(tmp_path / "_dienst"))   # Reise-Stände (engine/stand.py)
     return wurzel, origin, arbeit, stempel
 
 

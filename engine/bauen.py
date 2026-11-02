@@ -41,6 +41,7 @@ except ImportError:
 from reise import Reise  # noqa: E402
 from routen import FARBEN, Routen, verhalten_anwenden  # noqa: E402
 import gpx  # noqa: E402
+import stand as reisestand  # noqa: E402
 import texte  # noqa: E402
 
 ZIEL_ID = re.compile(r"^[A-Za-z0-9][\w.\-]{0,79}$", re.ASCII)
@@ -1071,6 +1072,8 @@ class Bauer:
 
     def schreiben(self, daten):
         daten = warnungen_in_reisesprache(daten)
+        # Reise-Stand (#223): Nummer und letzte Änderungen aus der Geschichte der Reise; nur beim Schreiben, nicht im Probebau
+        daten = {**daten, "reise_stand": reisestand.fuer_seite(self.reise_dir, daten)}
         vorlage = (Path(__file__).parent / "vorlage.html").read_text(encoding="utf-8")
         vorlage = vorlage.replace("<!--__SYMBOLE__-->", symbole(), 1)
         vorlage = vorlage.replace('data-release="__RELEASE__"', f'data-release="{release_attribut()}"', 1)

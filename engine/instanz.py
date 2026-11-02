@@ -7,6 +7,7 @@ leitet dieses Modul den Rest nach derselben Ordnung ab, ohne Werte einer bestimm
   Seiten   RM_SEITEN, KN_SEITEN, FR_SEITEN; sonst der Ordner über RM_ABLAGE; sonst aus den Einstellungen der Instanz
            (FR_SEITEN bzw. /srv/<FR_INSTANZ>); sonst /srv/frieda
   Ablage   RM_ABLAGE, FR_ABLAGE; sonst <Seiten>/_rueckmeldungen
+  Dienst   FR_DIENST; sonst <Seiten>/_dienst (Code der Dienste, Zustand des Veröffentlichens, Reise-Stände)
   Konten   FR_KONTEN; sonst <Seiten>/_konten (Konten-Datenbank des Dienstes, nicht Teil einer Reise); eine ältere Datenbank
            unter <Ablage>/_konten/ gilt weiter, solange am neuen Ort keine liegt
   Neu      <Konten>/neu (Anfragen nach neuen Reisen und Meldungen an Personen, gehört zu keiner Reise, #72); ein älterer
@@ -67,6 +68,16 @@ def seiten():
 
 def ablage():
     return Path(os.environ.get("RM_ABLAGE") or wert("FR_ABLAGE") or seiten() / "_rueckmeldungen")
+
+
+def dienst():
+    """Dienstordner der Instanz (betrieb/gemeinsam.sh FR_DIENST): Code der Dienste und Zustand des Veröffentlichens."""
+    return Path(wert("FR_DIENST") or seiten() / "_dienst")
+
+
+def zeitzone():
+    """Zeitzone, in der Dienste Zeiten nennen, wenn die der Person unbekannt ist: FR_ZEITZONE (IANA-Name), sonst UTC."""
+    return wert("FR_ZEITZONE", "UTC")
 
 
 def konten():

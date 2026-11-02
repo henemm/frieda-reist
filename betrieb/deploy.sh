@@ -18,13 +18,13 @@ DIENST="$FR_DIENST"
 # Sprachdateien (texte_<kürzel>.py): jede Datei im Ordner engine/ zählt, eine neue Sprache braucht hier keinen Eintrag (docs/sprachen.md)
 SPRACHDATEIEN=""
 for f in "$WURZEL"/engine/texte_??.py "$WURZEL"/engine/texte_???.py; do [ -e "$f" ] && SPRACHDATEIEN="$SPRACHDATEIEN $(basename "$f")"; done
-RM_MODULE="rueckmeldungen.py belege.py reise.py konten.py instanz.py kalender.py texte.py $SPRACHDATEIEN"
-KN_MODULE="konnektor.py schnittstelle.py reise.py routen.py konten.py anmeldung.py oauth.py instanz.py belege.py kalender.py push.py texte.py $SPRACHDATEIEN"
+RM_MODULE="rueckmeldungen.py belege.py reise.py konten.py instanz.py kalender.py stand.py texte.py $SPRACHDATEIEN"
+KN_MODULE="konnektor.py schnittstelle.py reise.py routen.py konten.py anmeldung.py oauth.py instanz.py belege.py kalender.py push.py stand.py texte.py $SPRACHDATEIEN"
 # Schreibweg (engine/schreiben.py dienst, ADR-0001 O-3): der Dienst selbst lädt nur diese Module; den Schreibvorgang führt er
 # mit dem Code der Arbeitskopie <Wurzel>-schreiben aus (dort liegt die ganze Engine auf dem Stand von main).
-SB_MODULE="schreiben.py konten.py reise.py instanz.py kalender.py texte.py $SPRACHDATEIEN"
+SB_MODULE="schreiben.py konten.py reise.py instanz.py kalender.py stand.py texte.py $SPRACHDATEIEN"
 # Push-Dienst (engine/push.py dienst, Issue #21): läuft mit FR_PYTHON (pywebpush), lädt seinen Code aus <FR_DIENST>
-PS_MODULE="push.py rueckmeldungen.py belege.py reise.py konten.py instanz.py kalender.py texte.py $SPRACHDATEIEN"
+PS_MODULE="push.py rueckmeldungen.py belege.py reise.py konten.py instanz.py kalender.py stand.py texte.py $SPRACHDATEIEN"
 
 [ -d "$WURZEL/reisen/$REISE" ] || { echo "Trip '$REISE' does not exist."; exit 1; }
 [ -d "$FR_SEITEN" ] && [ -w "$FR_SEITEN" ] || { echo "$FR_SEITEN is missing or not writable (einrichten.sh, docs/betrieb.md)."; exit 1; }

@@ -47,6 +47,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import instanz  # noqa: E402
 import konten  # noqa: E402
+import stand as reisestand  # noqa: E402
 import texte  # noqa: E402
 
 REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
@@ -3260,13 +3261,19 @@ class Schreiber:
                      f"{am_rand(sp, text.text(sp) if isinstance(text, texte.Satz) else text)}\n\n"
                      + texte.t(sp, "inhalt.schreiben.commit_fuss", werkzeug=werkzeug_name(sp, werkzeug), wer=wer["name"],
                                rolle=wer["rolle"] if rolle.startswith("inhalt.") else rolle, datum=datetime.date.today().isoformat()) + "\n")
+        # Wer den Eintrag gemacht hat, für die Änderungsliste der Seite (engine/stand.py, #229)
+        nachricht += f"\n{reisestand.PERSON_TRAILER}: {' '.join(wer['name'].split())}\n"
         if os.environ.get("FR_VORGANG"):     # Kennung des Vorgangs: nach einem Abbruch findet vorgang_eingetragen den Eintrag
-            nachricht += f"\nFrieda-Vorgang: {os.environ['FR_VORGANG']}\n"
+            nachricht += f"Frieda-Vorgang: {os.environ['FR_VORGANG']}\n"
         git(self.arbeit, "add", "-A", "--", f"reisen/{reise}")
         git(self.arbeit, "commit", "-q", "-m", nachricht)
         commit = self.hochladen(reise)
+        # Reise-Stand (#226): jeder gesicherte Schreibvorgang ist ein Commit in reisen/<reise>/ und erhöht die Nummer um 1
+        nummer = reisestand.nummer(reise_dir)
+        reisestand.gesichert_schreiben(reise, nummer, commit)
         self.veroeffentlichen_anstossen()
-        antwort = {"ok": True, "text": text, "commit": commit}
+        antwort = {"ok": True, "text": text, "commit": commit,
+                   "stand": {"gesichert": nummer, "veroeffentlicht": reisestand.veroeffentlicht(reise)[0]}}
         if isinstance(text, texte.Satz) and text.mit_schluesseln():   # der Konnektor setzt den Satz in der Sprache der Person zusammen
             antwort["text_teile"] = text.teile_json()
         if (m := re.match(r"^([A-Z]+-\d+(?:\.[\w-]+)?) ", titel)):   # neu angelegtes Ding: seine ID, damit der Konnektor weitermachen kann
@@ -3311,8 +3318,8 @@ class Schreiber:
         raise Ablehnung("schreiben.hochladen.2")
 
     def veroeffentlichen_anstossen(self):
-        """Veröffentlichen im Hintergrund (holt main in den Bauordner, baut, prüft). Hält der Timer die Sperre,
-        meldet das Skript „Läuft schon“, und der Timer holt es in wenigen Minuten nach. Niedrige Priorität wie im Dienst
+        """Veröffentlichen im Hintergrund (holt main in den Bauordner, baut, prüft). Hält ein anderer Lauf die Sperre,
+        merkt das Skript das, und der laufende Lauf veröffentlicht danach gleich noch einmal (#230). Niedrige Priorität wie im Dienst
         veroeffentlichen.service, damit Schreibvorgänge während der Tests nicht warten (fehlen nice oder ionice, ohne sie).
         Die Ausgabe geht nach /dev/null: Die Ausgabe des Anwendens ist die Leitung zum Dienst, die das Skript sonst bis zu
         seinem Ende offen hielte. Ein fehlgeschlagener Lauf wiederholt der Timer, mit Protokoll. Wirft nie."""
@@ -3388,13 +3395,18 @@ def nicht_eingetragen(werkzeug):
     return 504, fehler_antwort("schreiben.dienst.zu_lange_nicht")
 
 
-def nach_abbruch(s, werkzeug, kennung):
+def nach_abbruch(s, werkzeug, kennung, reise=None):
     """Antwort, nachdem das Anwenden von der Frist abgebrochen wurde: Ergebnis auf origin/main nachsehen."""
     ergebnis = vorgang_eingetragen(s, kennung)
     if ergebnis:
         sys.stderr.write(f"Timeout {werkzeug} 504: aborted, saved\n")
         text = S("schreiben.dienst.verzoegert")
-        return 200, {"ok": True, "text": str(text), "text_teile": text.teile_json(), "hinweis": str(text)}
+        antwort = {"ok": True, "text": str(text), "text_teile": text.teile_json(), "hinweis": str(text)}
+        if reise:   # vorgang_eingetragen hat origin/main eben geholt
+            nummer = reisestand.nummer(s.wurzel / "reisen" / reise, "origin/main")
+            reisestand.gesichert_schreiben(reise, nummer)
+            antwort["stand"] = {"gesichert": nummer, "veroeffentlicht": reisestand.veroeffentlicht(reise)[0]}
+        return 200, antwort
     if ergebnis is False:
         return nicht_eingetragen(werkzeug)
     sys.stderr.write(f"Timeout {werkzeug} 504: aborted, unchecked\n")
@@ -3465,7 +3477,7 @@ def vorgang(s, reise, werkzeug, anfrage, start):
                                  env={**os.environ, "FR_WURZEL": str(s.wurzel), "FR_SCHREIBKOPIE": str(s.arbeit),
                                       "FR_VORGANG": kennung})
         except subprocess.TimeoutExpired:
-            return nach_abbruch(s, werkzeug, kennung)
+            return nach_abbruch(s, werkzeug, kennung, reise)
         if r.stderr:
             sys.stderr.write(r.stderr)
         try:
