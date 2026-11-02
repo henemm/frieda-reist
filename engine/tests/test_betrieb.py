@@ -141,7 +141,7 @@ def vf(tmp_path):
                                                    f'[ ! -e {tmp_path}/rot-reise ]; exit; fi\n'
                                                    f'echo p >> {tmp_path}/pruefen.log\n[ ! -e {tmp_path}/rot ]\n')
     # Meldeweg an den Betrieb (FR_MELDEN) und Meldung an Personen (waechter.py rot-melden) als Attrappen
-    melden = ausfuehrbar(tmp_path / "melden.sh", f'#!/bin/sh\necho "$1|$2" >> {tmp_path}/melden.log\n'
+    melden = ausfuehrbar(tmp_path / "melden.sh", f'#!/bin/sh\necho "$1|$2|$3" >> {tmp_path}/melden.log\n'
                                                  f'[ ! -e {tmp_path}/melden-aus ]\n')
     rotmelden = ausfuehrbar(tmp_path / "rotmelden.sh", f'#!/bin/sh\necho "$@" >> {tmp_path}/rotmelden.log\n')
     # curl-Attrappe: protokolliert Heartbeat-Abrufe statt ins Netz zu gehen
@@ -800,6 +800,64 @@ def test_veroeffentlichen_alarm_genau_einmal(vf):
     assert vf["lauf"](VF_JETZT=str(T0 + 70 * 60)).returncode == 1
     assert len(hoch(vf)) == 1
     assert vf["rot"]()["seit"] == iso(T0)
+
+
+def test_veroeffentlichen_roter_stand_heilt_sich_selbst(vf):
+    """Ein bekannter roter Stand wird erneut geprüft, wenn sich die Umgebung geändert hat (alle Arten) oder rote Software
+    seit mehr als FR_ROT_NEU_PRUEFEN_MINUTEN nicht geprüft wurde; seit und gemeldet bleiben. Eine alte Rot-Datei ohne
+    Fingerabdruck wird einmal geprüft. Die Meldung nennt die roten Tests (#203)."""
+    tmp = vf["tmp"]
+    # Prüf-Attrappe, die wie pytest rote Tests ausgibt
+    pruefen = ausfuehrbar(tmp / "pruefen-rot.sh", f'#!/bin/sh\necho p >> {tmp}/pruefen.log\n[ -e {tmp}/rot ] || exit 0\n'
+                                                  'echo "E       ModuleNotFoundError: No module named neu"\n'
+                                                  'echo "FAILED engine/tests/test_a.py::test_eins - ModuleNotFoundError"\n'
+                                                  'echo "FAILED engine/tests/test_b.py::test_zwei[webkit] - Timeout"\nexit 1\n')
+    (tmp / "rot").touch()
+    lauf = lambda dt, umgebung="a", *args: vf["lauf"](*args, VF_JETZT=str(T0 + dt * 60), VF_UMGEBUNG=umgebung, VF_PRUEFEN=str(pruefen))
+    assert lauf(0).returncode == 1
+    rot = vf["rot"]()
+    assert rot["art"] == "software" and rot["geprueft"] == str(T0) and rot["umgebung"]
+    assert rot["tests"].startswith("engine/tests/test_a.py::test_eins, engine/tests/test_b.py::test_zwei[webkit] (first error: ")
+    assert vf["zeilen"]("pruefen.log") == ["p"]
+    # Gleiche Umgebung, 59 Minuten: überspringen; 31 Minuten Rot: Alarm mit den roten Tests
+    r = lauf(31)
+    assert r.returncode == 0 and "skipped" in r.stdout and vf["zeilen"]("pruefen.log") == ["p"]
+    alarm = hoch(vf)
+    assert len(alarm) == 1 and "test_a.py::test_eins" in alarm[0]
+    assert lauf(59).returncode == 0 and vf["zeilen"]("pruefen.log") == ["p"]
+    # Umgebung geändert: sofort neu prüfen, seit und gemeldet bleiben, kein zweiter Alarm
+    r = lauf(60, "b")
+    assert r.returncode == 1 and "checking again (environment changed)" in r.stdout, r.stdout
+    assert vf["zeilen"]("pruefen.log") == ["p", "p"]
+    rot = vf["rot"]()
+    assert rot["seit"] == iso(T0) and rot["gemeldet"] == "1" and rot["geprueft"] == str(T0 + 3600) and len(hoch(vf)) == 1
+    # Mehr als 60 Minuten seit der letzten Prüfung: neu prüfen; genau 60: noch nicht
+    assert lauf(120, "b").returncode == 0 and vf["zeilen"]("pruefen.log") == ["p", "p"]
+    r = lauf(121, "b")
+    assert r.returncode == 1 and "more than 60 minutes" in r.stdout and vf["zeilen"]("pruefen.log") == ["p", "p", "p"]
+    # Ursache in der Umgebung behoben, Umgebung geändert: grün, Rot-Datei weg
+    (tmp / "rot").unlink()
+    vf["deploys"]()
+    assert lauf(125, "c").returncode == 0 and vf["rot"]() is None
+    assert vf["deploys"]() == ["beispielreise", "zweitreise"]
+
+
+def test_veroeffentlichen_rote_reise_nur_bei_neuer_umgebung_erneut(vf):
+    """Eine rote Reise (Inhalt) wird nicht nach Zeit erneut geprüft, nur bei geänderter Umgebung; eine Rot-Datei von vor
+    #203 (ohne Fingerabdruck) wird einmal geprüft, dann übersprungen."""
+    tmp = vf["tmp"]
+    (tmp / "kaputt-beispielreise").touch()
+    lauf = lambda dt, umgebung="a": vf["lauf"](VF_JETZT=str(T0 + dt * 60), VF_UMGEBUNG=umgebung)
+    assert lauf(0).returncode == 1
+    vf["deploys"]()
+    assert lauf(300).returncode == 0 and vf["deploys"]() == []
+    assert lauf(301, "b").returncode == 1 and vf["deploys"]() == ["beispielreise", "zweitreise"]
+    # Alte Rot-Datei: ohne umgebung und geprueft
+    datei = tmp / "dienst" / "veroeffentlichen-rot"
+    alt = "".join(z + "\n" for z in datei.read_text().splitlines() if not z.startswith(("umgebung=", "geprueft=", "tests=")))
+    datei.write_text(alt)
+    assert lauf(302, "b").returncode == 1 and vf["deploys"]() == ["beispielreise", "zweitreise"]
+    assert lauf(303, "b").returncode == 0 and vf["deploys"]() == []
 
 
 def test_veroeffentlichen_alarm_art_software_nur_an_den_betrieb(vf):
