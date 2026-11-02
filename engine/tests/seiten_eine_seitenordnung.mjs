@@ -97,7 +97,10 @@ for (const id of [...Object.keys(auftrag.voll), "O-03", ...(auftrag.extra || [])
             reiter: (document.querySelector("#nav a.on") || {getAttribute: () => "#"}).getAttribute("href").slice(1),
             voll: text ? main.textContent.includes(text) : null,
             wahlLinks: am.flatMap(s => [...s.querySelectorAll("a[href^='#V-']")].map(a => a.getAttribute("href"))
-              .concat([...s.querySelectorAll("[id^='V-']")].map(x => "#" + x.id)))};
+              .concat([...s.querySelectorAll("[id^='V-']")].map(x => "#" + x.id))),
+            // Wahlen auf der ganzen Zielseite (Strecke, Unterkunft: am Tageskasten der Tagesseite, #214 K5)
+            wahlLinksSeite: [...main.querySelectorAll("a[href^='#V-']")].map(a => a.getAttribute("href"))
+              .concat([...main.querySelectorAll("[id^='V-']")].map(x => "#" + x.id))};
   }, [id, auftrag.voll[id] || null]);
 }
 await b.close();

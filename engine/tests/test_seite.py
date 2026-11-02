@@ -119,6 +119,9 @@ def test_neue_reise_aus_der_vorlage(tmp_path, browser):
     dom = json.loads((tmp_path / "dom.json").read_text(encoding="utf-8"))
     assert 'id="ueber-plan"' in dom["390#"] and "6.–13. Februar 2027" in dom["390#W-01"]
     assert 'id="fragen"' in dom["390#offen"] and "Offene Fragen" in dom["390#offen"]
+    # die eine Frage der Vorlage (F-01) steht mit ihrem Text in „Zu tun“, nicht nur die Überschrift
+    f01 = next(z for z in (r / "offene-fragen.md").read_text(encoding="utf-8").splitlines() if z.startswith("| F-01 "))
+    assert f01.split("|")[2].strip().split("?")[0] in dom["390#offen"], f01
 
 
 # Erste Einträge einer neuen Reise, wie sie über den Konnektor entstehen (erfunden, Beispielwerte): ein Ort, eine Ferienwohnung

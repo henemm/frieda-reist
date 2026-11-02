@@ -235,14 +235,19 @@ def test_zu_tun_auch_ohne_plaene(tmp_path):
 
 # K5: Wahlen erscheinen an ihrem Element, in allen Fällen mit Wahlstellen (V-02 am Tag T-02, dazu an: O-03 erfunden)
 @OHNE_BROWSER
+@pytest.mark.parametrize("an", ["O-03", "E-02", "U-01", "W-05"])   # Ort, Strecke (anderer Tag als V-02), Unterkunft, Wissen
 @pytest.mark.parametrize("fall", ["plaene_offen", "plan_fest", "tiefe"])
-def test_wahl_mit_an_steht_am_element(tmp_path, fall):
-    e, d = rundgang(tmp_path, fall, an="O-03")
-    assert d["route"]["wahlstellen"][[w["id"] for w in d["route"]["wahlstellen"]].index("V-02")]["an_ids"] == ["O-03"]
+def test_wahl_mit_an_steht_am_element(tmp_path, fall, an):
+    e, d = rundgang(tmp_path, fall, extra=[an] if an != "O-03" else [], an=an)
+    assert d["route"]["wahlstellen"][[w["id"] for w in d["route"]["wahlstellen"]].index("V-02")]["an_ids"] == [an]
     t02 = e["tagesseiten"]["T-02"]
-    assert t02["tagseite"] and t02["vergleiche"].get("V-02") == 1, (fall, t02)   # die Wahl mit Vergleich an ihrem Tag
-    o03 = e["sprung"].get("O-03")
-    assert o03 and o03["wahlLinks"].count("#V-02") >= 1, (fall, o03)       # am Ort steht eine Zeile mit Link zur Wahl
+    assert t02["tagseite"] and t02["vergleiche"].get("V-02") == 1, (fall, an, t02)   # die Wahl mit Vergleich an ihrem Tag
+    ziel = e["sprung"].get(an)
+    assert ziel and ziel["ziel"], (fall, an, ziel)
+    if an in ("E-02", "U-01"):   # Strecke, Unterkunft: Heimat ist die Tagesseite, die Wahl steht dort am Tageskasten
+        assert ziel["tagseite"] and "#V-02" in ziel["wahlLinksSeite"], (fall, an, ziel)
+    else:                        # Ort, Abschnitt des Wissens: Abschnitt „Zur Wahl“ am Element mit Zeile oder Vergleich
+        assert ziel["wahlLinks"].count("#V-02") >= 1, (fall, an, ziel)
 
 
 @OHNE_BROWSER
