@@ -61,6 +61,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import anmeldung  # noqa: E402
 import instanz  # noqa: E402
+import karte  # noqa: E402
 import kalender  # noqa: E402
 import konten  # noqa: E402
 import oauth  # noqa: E402
@@ -821,6 +822,9 @@ class Handbuch:
         if self.r.get("mahnungen"):
             z.append(tk("konnektor.ueberblick.1"))
             z += [f"- {m['text']}" for m in self.r["mahnungen"]]
+        # Kartenstatus (#233, K11): gebaut oder nicht, Grund, Zahl der Punkte, Einträge ohne Lage
+        if self.an("karte") and self.r.get("karte_status"):
+            z.append(tk("konnektor.karte.titel") + f"{karte.status_satz(self.r['karte_status'])}")
         if self.r.get("wahlstellen") and self.an("varianten"):
             z.append(tk("konnektor.ausgabe.ueberblick.5"))
             z += [f"- {w['id']} {w['titel']}" + (tk("konnektor.ausgabe.ueberblick.15") if w.get("offen") else "")
@@ -2350,6 +2354,8 @@ DING_ANLEGEN = {"name": "ding_anlegen", "description": "@konnektor.werkzeug.ding
                     "hinweis": {"type": "string"}, "buchungslink": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.buchungslink"},
                     "frage": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.frage"},
                     "merkmale": MERKMALE_FELD, "quelle": QUELLE_FELD, "geprueft": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.geprueft"},
+                    "koordinaten": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.koordinaten"},
+                    "adresse": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.adresse"},
                     "name": NAME_FELD},
                     "required": ["was", "titel", "quelle"]}}
 DING_AENDERN = {"name": "ding_aendern", "description": "@konnektor.werkzeug.ding_aendern",

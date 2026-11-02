@@ -694,9 +694,49 @@ def test_lage_eintragen(repo):
     assert u["punkt"]["wert"] == [50.9792, 14.1128] and str(u["punkt"]["geprueft"]) == "2026-10-29"
     s.vorbereiten()
     for args, text in (({"ziel": "U-02", "adresse": "x"}, "„quelle“ fehlt"), ({"ziel": "U-02", "quelle": "x"}, "adresse"),
-                       ({"ziel": "U-02", "koordinaten": "91, 0", "quelle": "x"}, "Breite, Länge"), ({"ziel": "O-01", "adresse": "x", "quelle": "x"}, "Unterkunft U-")):
+                       ({"ziel": "U-02", "koordinaten": "91, 0", "quelle": "x"}, "Breite, Länge"), ({"ziel": "O-01", "adresse": "x", "quelle": "x"}, "Ein Ort hat keine Adresse"),
+                       ({"ziel": "T-01", "koordinaten": "1, 2", "quelle": "x"}, "Ort O-")):
         with pytest.raises(sb.Ablehnung, match=text):
             s.schreiben("beispielreise", "lage_eintragen", {**KARL, "args": args})
+
+
+def test_lage_eines_orts_und_adresse_ohne_koordinaten(repo):
+    """Epic #225: Ein Ort bekommt Koordinaten (Position auf der Karte); eine Adresse ohne Koordinaten bittet um Koordinaten (K3)."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "lage_eintragen", {**KARL, "args": {"ziel": "O-01", "koordinaten": "51.04, 13.732", "quelle": "Beispielwert"}})
+    assert "Koordinaten „51.04, 13.732“" in a["text"] and "fehlen noch Koordinaten" not in a["text"]
+    r, _ = routen_auf_main(origin)
+    assert r["orte"]["O-01"]["punkt"]["wert"] == [51.04, 13.732] and r["orte"]["O-01"]["name"] == "Dresden"
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "lage_eintragen", {**KARL, "args": {"ziel": "U-03", "adresse": "Im Tal 1, 01848 Hohnstein", "quelle": "erfunden"}})
+    assert "fehlen noch Koordinaten" in a["text"]
+
+
+def test_ding_anlegen_mit_koordinaten_und_ohne_tag(repo):
+    """Epic #225: Koordinaten gleich beim Anlegen (K2); ein Aufenthalt darf ohne Tag bleiben (K7); ohne Koordinaten der Hinweis (K3)."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "aufenthalt", "titel": "Wochenmarkt", "ort": "O-01", "art": "besichtigung",
+                                                                        "koordinaten": "51.05, 13.74", "quelle": "erfunden (Test)"}})
+    assert "Auf der Karte bei 51.05, 13.74" in a["text"] and "ohne Tag gesammelt" in a["text"]
+    r, _ = routen_auf_main(origin)
+    neu = next(x for x in r["aufenthalte"].values() if x["name"] == "Wochenmarkt")
+    assert neu["punkt"]["wert"] == [51.05, 13.74] and neu["punkt"]["quelle"] == "erfunden (Test)"
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "ort", "titel": "Pirna", "quelle": "erfunden (Test)"}})
+    assert "Noch ohne Koordinaten" in a["text"]
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="Strecke hat keine Lage"):
+        s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "strecke", "titel": "x", "von": "O-01", "nach": "O-02", "art": "bahn",
+                                                                        "koordinaten": "1, 2", "quelle": "x"}})
+
+
+def test_einstellung_mit_baustein_karte_nennt_den_kartenstatus(repo):
+    """#233 (K11): setting_set mit Baustein Karte antwortet mit dem Kartenstatus."""
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"bausteine": ["karte", "tagesseiten", "fragen"], "grund": "Test"}})
+    assert "Karte: handgepflegt (plan/karte.yaml), 8 Punkte." in a["text"], a["text"]
 
 
 def test_uhrzeit_beginn_ende(repo):

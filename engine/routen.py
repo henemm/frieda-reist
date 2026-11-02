@@ -402,8 +402,13 @@ class Routen:
             for i in menge:
                 if not ist(art, i):
                     self.fehl(texte.satz("pruefung.routen.4", i=i, art=art))
-        for oid in self.orte:
+        for oid, o in self.orte.items():
             self.id_anlegen(oid, self.q)
+            # Ein Ort hat keine Adresse, aber eine Position auf der Karte (ADR-0004, Punkt 1; Epic #225, K2)
+            if isinstance(o, dict) and o.get("adresse") is not None:
+                self.fehl(texte.satz("pruefung.routen.ort_adresse", oid=oid))
+            if isinstance(o, dict) and o.get("punkt") is not None:
+                self.lage_pruefen({"punkt": o["punkt"]}, f"Ort {oid}")
         for sid, s in self.strecken.items():
             if sid not in self.etappen:
                 self.id_anlegen(sid, self.q)
@@ -412,6 +417,10 @@ class Routen:
             for k in ("von", "nach"):
                 if s.get(k) and s[k] not in self.orte:
                     self.fehl(texte.satz("pruefung.routen.6", sid=sid, w1=s[k]))
+            # GPX-Track der Strecke (K13): Datei unter medien/ der Reise; der Bau liest sie und ersetzt die schematische Linie
+            g = s.get("gpx")
+            if g is not None and not (isinstance(g, str) and g.startswith("medien/") and g.lower().endswith(".gpx") and ".." not in g):
+                self.fehl(texte.satz("pruefung.routen.gpx", sid=sid))
             z = s.get("zweig_von")
             if z and z not in self.strecken and z not in self.etappen:
                 self.fehl(texte.satz("pruefung.routen.7", sid=sid, z=z))
@@ -1378,7 +1387,8 @@ class Routen:
             "plaene": [] if self.ist_plan else self.plaene(tage),
             "wahlstellen": [self.wahl_aus(vid, w) for vid, w in self.wahl.items()],
             # ausserhalb (Issue #135): ein Ort der An- und Abreise außerhalb der Reisegegend (Flughafen daheim), kein Ort der Reise selbst
-            "orte": {k: {"name": v.get("name", k), "hinweis": v.get("hinweis"), "ausserhalb": bool(v.get("ausserhalb"))} for k, v in self.orte.items()},
+            "orte": {k: {"name": v.get("name", k), "hinweis": v.get("hinweis"), "ausserhalb": bool(v.get("ausserhalb")),
+                         "punkt": dict(self.lage_aus(v))["punkt"]} for k, v in self.orte.items()},
             "strecken": {sid: self.strecke_aus(sid) for sid in sorted(set(self.strecken) | aktiv_strecken)},
             "unterkuenfte": self.unterkuenfte_aus(tage),
             "aufenthalte": self.aufenthalte_aus(tage),
@@ -1392,7 +1402,39 @@ class Routen:
             # Merkmale der Buchungen je Art (#166), Form wie merkmale
             "buchung_merkmale": {b: [{"id": k, **d} for k, d in krit.items()] for b, krit in self.buchung_katalog.items() if krit},
             "warnungen": self.warnungen,
+            "karten_ansichten": self.karten_ansichten(),
         }
+
+    def karten_ansichten(self):
+        """Kartenansichten (#236, K5): Titel und Auswahl aus Tagen, Strecken und Arten; die Übersicht gibt es immer. Sie stehen
+        als Teil des Plans in routen.yaml (karten_ansichten), damit jede Änderung im Verlauf steht."""
+        aus, titel = [], set()
+        roh = self.r.get("karten_ansichten") or []
+        if not isinstance(roh, list):
+            self.fehl(texte.satz("pruefung.routen.ansicht_liste"))
+            return aus
+        for i, a in enumerate(roh, 1):
+            if not isinstance(a, dict) or not isinstance(a.get("titel"), str) or not a["titel"].strip():
+                self.fehl(texte.satz("pruefung.routen.ansicht_titel", nr=i))
+                continue
+            t = a["titel"].strip()
+            if t in titel:
+                self.fehl(texte.satz("pruefung.routen.ansicht_doppelt", titel=t))
+            titel.add(t)
+            if set(a) - {"titel", "tage", "strecken", "arten"}:
+                self.fehl(texte.satz("pruefung.routen.ansicht_felder", titel=t, w1=", ".join(sorted(set(a) - {"titel", "tage", "strecken", "arten"}))))
+            eintrag = {"titel": t}
+            for feld, bekannt in (("tage", set(self.tage)), ("strecken", set(self.strecken) | set(self.etappen)), ("arten", set(self.arten))):
+                liste = a.get(feld) or []
+                if not isinstance(liste, list) or not all(isinstance(x, str) for x in liste):
+                    self.fehl(texte.satz("pruefung.routen.ansicht_feld", titel=t, feld=feld))
+                    liste = []
+                for x in liste:
+                    if x not in bekannt:
+                        self.fehl(texte.satz("pruefung.routen.ansicht_unbekannt", titel=t, feld=feld, x=x))
+                eintrag[feld] = [x for x in liste if x in bekannt]
+            aus.append(eintrag)
+        return aus
 
     def plaene(self, aktuelle_tage):
         """Benannte Pläne (P-A …): feste Kombinationen von Optionen, jeweils vollständig durchgerechnet."""
@@ -1545,7 +1587,7 @@ class Routen:
                 "buchung": self.buchung_von(s, b, sid), "buchung_id": self.buchung_id(sid),
                 "rolle": s.get("rolle", "haupt"), "zweig_von": s.get("zweig_von"), "kennzahlen": s.get("kennzahlen") or {},
                 "quelle": s.get("quelle"), "siehe": s.get("siehe"), "text": s.get("text", ""),
-                "dossier": bool(s.get("dossier")), **merkmale}
+                "dossier": bool(s.get("dossier")), "gpx": s.get("gpx"), **merkmale}
 
     def buchung_von(self, d, art, did=None):
         """Buchungsstand eines Dings: der Status seiner geltenden Buchung (B-…, #76), sonst der Eintrag buchung:, sonst
