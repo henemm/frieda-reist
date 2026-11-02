@@ -26,6 +26,7 @@ Ursache war keine einzelne Änderung. Für jede Art von Ding gab es keine Regel,
    | Folge: Tag | Tagesseite | Zeitachse der Reise |
    | Bewegung | Teil der Tagesseite (Tageskasten, Der Weg) | Tageszeile |
    | Aufenthalt: Nacht, Unterkunft | Abschnitt „Nacht“ der Tagesseite | Tageszeile, „Zu tun · Zu buchen“ |
+   | Aufenthalt ohne Tag (vor Ort gesammelt, seit 2.11.2026, #235) | Reiter „Karte“, unter der Karte („Vor Ort, ohne Tag“); ohne den Baustein Karte der Reiseüberblick | Punkt auf der Karte |
    | Buchung (B-…, seit 29.10.2026, #76) | bei ihrem ersten gebuchten Ding (Unterkunftskarte, Aufenthalt oder Strecke der Tagesseite) | Chip am Ding, „Zu tun · Zu buchen“ |
    | Wahl mit Optionen | das Element, an dem sie hängt (`an:`), mit Vergleich | Marke in der Zeile des Elements, „Zu tun · Zu entscheiden“ |
    | Ort | Ortsseite | Tagesseite, Wissen |
@@ -70,6 +71,7 @@ Bis #214 galt diese Ordnung nur für eine Reise mit gewähltem Plan, dem Baustei
 ## Verlauf
 
 - 2.11.2026: Nachtrag #214: eine Seitenordnung für alle Reisen; der alte Zweig der Plan-Seite (`PLAN_DA`) ist entfernt, Baustein `tagesseiten` und `darstellung.plan_reiter` sind ohne Wirkung, `darstellung.tiefe` steuert nur noch den Plan-Baum (fünf Entscheidungen des Product Owners, `docs/specs/oberflaeche/eine-seitenordnung-214.md`). Tests: `engine/tests/test_eine_seitenordnung.py` (vier Fälle: ohne Pläne, Pläne offen, Plan fest, `tiefe`).
+- 2.11.2026 (Epic #225, Entscheidung des Product Owners 3.11.2026): Die Karte hat einen eigenen Reiter „Karte“, sobald der Baustein Karte an ist, auch ohne den Baustein Varianten (#231). Der Start bleibt immer der Reiseüberblick (#214); der Reiter „Varianten“ bleibt nur für den Planvergleich. Aufenthalte ohne Tag haben ihre Heimat unter der Karte (#235); die Tageskarte auf der Tagesseite ist ein Ausschnitt, keine zweite Heimat.
 
 - 29.10.2026: Abgleich (`docs/abgleich-2026-10-29.md`): Buchung und Unterkunft standen an mehreren Stellen vollständig (bei jedem Ding der Buchung, an jeder Nacht der Unterkunft, als Liste unter dem Plan), ein Link auf eine Buchung an einem Aufenthalt oder einer Fahrt hatte kein Ziel, die Liste der Entscheidungen im Plan zeigte Wahlen vollständig, die schon am Tag standen. Jetzt: Buchung nur an ihrem ersten Ding, Unterkunft nur an ihrer ersten Nacht, Aufenthalt und Fahrt haben ihren Tag als Heimat (`heimat`), Sammellisten zeigen Zeilen.
 - 28.10.2026: Analyse, Konzept (Navigation A, Plantext auflösen, Alternativen an jedem Element) und grafische Ausarbeitung einzeln vom Product Owner freigegeben, gebaut in frieda-reist #84. Am selben Abend als ADR festgehalten.

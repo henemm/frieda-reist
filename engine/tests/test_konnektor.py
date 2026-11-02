@@ -145,6 +145,13 @@ def test_ueberblick_zeigt_stand(dienst, monkeypatch):
     assert meldet(t, "konnektor.stand_text.3")
 
 
+def test_ueberblick_nennt_den_kartenstatus(dienst):
+    """#233 (K11): overview nennt, ob die Karte gebaut ist, woraus und mit wie vielen Punkten."""
+    basis, _ = dienst
+    t, f = werkzeug(basis, MITREISEND, "ueberblick")
+    assert not f and "Karte: handgepflegt (plan/karte.yaml), 8 Punkte." in t
+
+
 def test_ueberblick_ohne_einarbeiten(dienst):
     """ADR-0001, O-3: Es gibt keinen Einarbeiten-Lauf mehr; der Überblick nennt ihn nicht, die Anleitung sagt, dass
     Eingetragenes sofort gilt."""
