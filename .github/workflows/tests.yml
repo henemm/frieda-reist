@@ -12,7 +12,8 @@ permissions:
 jobs:
   tests:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # Die Suite braucht seit 2.11.2026 rund 20 Minuten (#258); Spielraum, damit ein langsamer Runner nicht abbricht
+    timeout-minutes: 40
     # Zweiter Lauf mit den Einstellungen einer Instanz, wie veroeffentlichen.sh sie an pytest weitergibt (#202): Keine
     # Prüfung darf davon abhängen (conftest.py entfernt sie). So fiel 1.11.2026 eine Fixture erst auf dem Server auf.
     strategy:
