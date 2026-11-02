@@ -881,7 +881,7 @@ def test_neue_reise_ueber_den_schreibweg(schreibweg, tmp_path, monkeypatch):
     Schreibweg.antwort = (200, {"ok": True, "text": "Die Reise „Skiwoche“ ist angelegt (Ordner skiwoche-2027, Status Idee)."})
     t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Skiwoche", von="2027-02-06", bis="2027-02-13", personen=[{"vorname": "Karl", "rolle": "mitwirkend"}])
     assert not f, t
-    assert "ist angelegt" in t and "in wenigen minuten ist die seite online" in t.lower()
+    assert "ist angelegt" in t and "sobald die seite online ist" in t.lower()
     pfad, _, body = Schreibweg.anfragen[-1]
     assert pfad == "/skiwoche-2027/reise_anlegen" and body["args"]["auftrag"]["daten"]["neue_reise"]["titel"] == "Skiwoche"
     assert body["args"]["auftrag"]["daten"]["neue_reise"]["sprache"] == "de"   # ohne Angabe die Sprache der Person (hier der Rückfall der Tests), nicht still die des Bestands
