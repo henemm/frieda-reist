@@ -38,7 +38,7 @@ def deutsche_woerter(text, erlaubt=frozenset()):
 
 # Wörter, die keine deutsche Sprache sind, sondern Namen von Dateien, Formaten, Produkten und Beispielen im englischen Text
 BEZEICHNER = frozenset({
-    "yaml", "json", "pdf", "jpeg", "png", "webp", "heic", "txt", "https", "http", "url", "app", "adr", "pmtiles", "openstreetmap", "gpx",
+    "yaml", "json", "pdf", "jpeg", "png", "svg", "viewbox", "webp", "heic", "txt", "https", "http", "url", "app", "adr", "pmtiles", "openstreetmap", "gpx",
     "repo", "frieda", "claude", "rrggbb", "kontext", "herkunft", "reise", "inhalt", "wissen", "plan", "ids", "routen", "arten", "kategorien",
     "wuensche", "offene", "fragen", "ontologie", "rueckmeldungen", "einladungen", "auftraege", "reisen", "produkt", "abschnitte",
 })
