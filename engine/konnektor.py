@@ -2174,8 +2174,9 @@ def frieda_werkzeug(k, name, args):
     if name == "reise_anlegen":
         if not konten.recht(k, "reise_anlegen"):
             return tk("konnektor.frieda_werkzeug.2"), True
+        # ohne Angabe gilt die Sprache des Kontos (ADR-0006, #216), nicht der Rückfall der Software
         return reise_anlegen({"konto": schluessel_aus_name(k["name"]) or "person", "name": k["name"],
-                              "konto_id": k["id"]}, args)
+                              "konto_id": k["id"]}, {**args, "sprache": args.get("sprache") or k["sprache"]})
     if name == "reisen_anlegen_anfragen":
         st = konten.reisen_anlegen_anfragen(k["id"])
         if st == "offen":
@@ -2276,8 +2277,8 @@ def konto_antwort(konto, nid, methode, p, ok):
         _gesichert.wert = None
         if name == "meine_reisen":
             t, fehler = meine_reisen(konto), False
-        elif name == "reise_anlegen":
-            t, fehler = reise_anlegen(konto, args)
+        elif name == "reise_anlegen":   # Übergangs-Link: ohne Angabe die Sprache des Zugangs (#216)
+            t, fehler = reise_anlegen(konto, {**args, "sprache": args.get("sprache") or sprache_des_zugangs(konto)})
         else:
             t, fehler = tk("konnektor.ausgabe.werkzeug.1", name=name), True
         return ok({"content": [{"type": "text", "text": mit_stand(t)}], "isError": fehler})

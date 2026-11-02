@@ -444,3 +444,32 @@ def test_anleitung_und_werkzeuge_in_der_sprache_des_kontos(welt):
     assert de_t.keys() == en_t.keys() and all(de_t[n] != en_t[n] for n in de_t if n != "sprache_setzen" or True)
     assert en_t["meine_reisen"].startswith("Your trips with role, status")
     assert not any("@konnektor" in d or d.startswith("TODO-EN") for d in en_t.values())
+
+
+@pytest.mark.echter_rueckfall
+def test_reise_anlegen_ohne_sprache_in_der_sprache_des_kontos(welt):
+    """#216: Ohne Angabe bekommt die neue Reise die Sprache des Kontos, nicht den Rückfall der Software (Englisch)
+    und nicht die Sprache, die der Thread zuletzt bearbeitet hat."""
+    import texte
+    u = welt()
+    t, _ = verbinden(u, BEN, "Ben")                       # Konto mit Accept-Language: de (Testhelfer)
+    konten.freischalten(konten.konto_per_email(BEN)["id"])
+    auftraege = konten.pfad().parent / "neu" / "auftraege.jsonl"
+
+    def letzte_sprache():
+        return json.loads(auftraege.read_text().splitlines()[-1])["daten"]["neue_reise"]["sprache"]
+
+    text, fehler = aufruf(u, t["access_token"], "reise_anlegen", titel="Winterwoche", von="2027-02-06", bis="2027-02-13")
+    assert not fehler, text
+    assert letzte_sprache() == "de"
+    k = konten.konto_per_email(BEN)
+    texte.aufruf_sprache("en")                           # anderer Stand im Thread: das Konto zählt
+    text, fehler = kn.frieda_werkzeug(k, "reise_anlegen", {"titel": "Herbstwoche", "von": "2027-10-04", "bis": "2027-10-08"})
+    assert not fehler, text
+    assert letzte_sprache() == "de"
+    konten.sprache_setzen(k["id"], "en")
+    texte.aufruf_sprache("de")
+    text, fehler = kn.frieda_werkzeug(konten.konto(k["id"]), "reise_anlegen",
+                                      {"titel": "Frühlingswoche", "von": "2027-04-05", "bis": "2027-04-09"})
+    assert not fehler, text
+    assert letzte_sprache() == "en"

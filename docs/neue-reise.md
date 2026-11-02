@@ -14,7 +14,7 @@ In beiden Fällen steht die Reise danach im Status `idee` und baut sofort: mit E
 | Titel | ja | kurz, z. B. „Winterwoche im Allgäu“; daraus und aus dem Jahr wird der Ordnername (`reise_pfad`) |
 | Zeitraum | ja | erster und letzter Tag; steht in `reise.yaml` unter `zeitraum`, schon bevor es einen Plan gibt |
 | Ziel | nein | Ort oder Gegend; erscheint im Untertitel |
-| Sprache | nein | `de` oder `en` (weitere, sobald es eine Sprachdatei gibt); Vorgabe `de`. Die Seite startet in dieser Sprache, Kalender, Wächter-Meldungen und alles, was die Software in Dateien der Reise schreibt, folgen ihr. Der Inhalt der Reise bleibt in der Sprache, in der er geschrieben ist (ADR-0006). Später änderbar mit `setting_set` (`einstellung_setzen`, Parameter `language`). |
+| Sprache | nein | `de` oder `en` (weitere, sobald es eine Sprachdatei gibt); Vorgabe ist die Sprache des Kontos, beim Übergangs-Link die des Zugangs, bei `neu.py reise` Englisch. Die Seite startet in dieser Sprache, Kalender, Wächter-Meldungen und alles, was die Software in Dateien der Reise schreibt, folgen ihr. Der Inhalt der Reise bleibt in der Sprache, in der er geschrieben ist (ADR-0006). Später änderbar mit `setting_set` (`einstellung_setzen`, Parameter `language`). |
 | Personen | ja | je Person Vorname, Rolle (`gast`, `mitwirkend`, `organisator`), ob sie mitreist, und die E-Mail-Adresse für die Einladung (nur in der App; Adressen kommen nie ins Repo); wer anlegt, ist Organisator:in |
 | Bekanntes | nein | Ideen, schon Gebuchtes, Quellen; in eigenen Worten mit Herkunft |
 
