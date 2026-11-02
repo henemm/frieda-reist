@@ -120,6 +120,8 @@ AKTIONEN = {
     "rueckmeldung_erledigen": {"rolle": "organisator", "baustein": "rueckmeldungen", "ab": ("alles", "nachlese")},
     # O-3: Status und Einstellungen der Reise – nur Organisator:innen, in jedem Status (auch aus dem Archiv zurück)
     "einstellung":  {"rolle": "organisator", "baustein": None, "ab": ("alles", "nachlese", "nichts")},
+    # Epic #225: Kartenansichten festlegen und Punkte aus OpenStreetMap holen – Organisator:innen, Baustein Karte
+    "karte":        {"rolle": "organisator", "baustein": "karte", "ab": ("alles", "nachlese")},
 }
 # Lesende Konnektor-Werkzeuge, die zu einem zuschaltbaren Baustein gehören
 LESE_BAUSTEIN = {"offene_fragen": "fragen", "varianten": "varianten", "merkmale": "varianten",

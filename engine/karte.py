@@ -91,9 +91,17 @@ def gebiete(punkte, abstand=DETAIL_ABSTAND_KM):
     return gruppen
 
 
+def mit_rand(r, anteil=0.15):
+    """Rahmen plus Rand je Seite (wie maxBounds der Seite: auf breiten Bildschirmen bleibt neben dem Rahmen keine leere Fläche)."""
+    db, dl = (r["nord"] - r["sued"]) * anteil, (r["ost"] - r["west"]) * anteil
+    return {"nord": round(r["nord"] + db, 4), "sued": round(r["sued"] - db, 4), "west": round(r["west"] - dl, 4), "ost": round(r["ost"] + dl, 4)}
+
+
 def grundkarten_plan(rahmen, punkte):
-    """Plan der Offline-Grundkarte (#239): die Übersicht in der Zoomstufe nach Fläche; ist sie gröber als ZOOM_MAX (lange
-    Fahrt), dazu Detailkarten der Gebiete, in denen Punkte beieinander liegen. -> {zoom, rahmen, details: [{name, rahmen, zoom}]}"""
+    """Plan der Offline-Grundkarte (#239): die Übersicht (Kartenrahmen mit Rand) in der Zoomstufe nach Fläche; ist sie gröber als
+    ZOOM_MAX (lange Fahrt), dazu Detailkarten der Gebiete, in denen Punkte beieinander liegen.
+    -> {zoom, rahmen, details: [{name, rahmen, zoom}]}"""
+    rahmen = mit_rand(rahmen)
     z = zoom_fuer(rahmen)
     aus = {"rahmen": rahmen, "zoom": z, "details": []}
     if z >= ZOOM_MAX or not punkte:

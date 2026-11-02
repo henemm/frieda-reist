@@ -16,7 +16,13 @@ REISE="${1:?Aufruf: karte-holen.sh <reise> [<regionale Karte>]}"
 REGION="${2:-}"
 WURZEL="$FR_WURZEL"
 PY="$FR_PYTHON"; [ -x "$PY" ] || PY=python3
-if [ -n "$REGION" ]; then
+# Automatische Karte (Epic #225, #239): werkzeuge/grundkarte_auto.py gibt Rahmen, Ziel und Zoom vor
+# (FR_KARTE_BBOX west,sued,ost,nord schon mit Rand; FR_KARTE_ZIEL Dateiname ohne Endung unter medien/karte/; MAXZOOM)
+if [ -n "${FR_KARTE_BBOX:-}" ]; then
+  KARTE="(automatische Karte)"
+  ZIEL="$WURZEL/reisen/$REISE/medien/karte/${FR_KARTE_ZIEL:?FR_KARTE_ZIEL fehlt}.pmtiles"
+  MAXZOOM="${MAXZOOM:-15}"
+elif [ -n "$REGION" ]; then
   KARTE="$WURZEL/reisen/$REISE/$("$PY" -c 'import json, sys; print(json.load(open(sys.argv[1]))["wissen_punkte"])' "$WURZEL/reisen/$REISE/reise.json")"
   ZIEL="$WURZEL/reisen/$REISE/medien/karte/$REGION.pmtiles"
   MAXZOOM="${MAXZOOM:-$("$PY" -c 'import sys, yaml; print(yaml.safe_load(open(sys.argv[1]))["grundkarten"][sys.argv[2]].get("zoom", 14))' "$KARTE" "$REGION")}"
@@ -28,11 +34,11 @@ fi
 PMTILES_VERSION="1.31.2"   # go-pmtiles (BSD-3), github.com/protomaps/go-pmtiles
 WERKZEUG="$WURZEL/engine/.bin/pmtiles"
 
-[ -f "$KARTE" ] || { echo "$KARTE fehlt."; exit 1; }
+[ -n "${FR_KARTE_BBOX:-}" ] || [ -f "$KARTE" ] || { echo "$KARTE fehlt."; exit 1; }
 
 # Ausschnitt: Kartenrahmen plus 15 % Rand je Seite (wie maxBounds in der Vorlage), damit auf breiten
 # Bildschirmen (iPad, Desktop) neben dem Rahmen keine leere Fläche bleibt. Reihenfolge west,sued,ost,nord
-BBOX="$("$PY" -c 'import sys, yaml; d = yaml.safe_load(open(sys.argv[1])); r = d["grundkarten"][sys.argv[2]]["rahmen"] if sys.argv[2] else d["rahmen"]; dx = (r["ost"] - r["west"]) * 0.15; dy = (r["nord"] - r["sued"]) * 0.15; print(",".join(f"{v:.4f}" for v in (r["west"] - dx, r["sued"] - dy, r["ost"] + dx, r["nord"] + dy)))' "$KARTE" "$REGION")"
+[ -n "${FR_KARTE_BBOX:-}" ] && BBOX="$FR_KARTE_BBOX" || BBOX="$("$PY" -c 'import sys, yaml; d = yaml.safe_load(open(sys.argv[1])); r = d["grundkarten"][sys.argv[2]]["rahmen"] if sys.argv[2] else d["rahmen"]; dx = (r["ost"] - r["west"]) * 0.15; dy = (r["nord"] - r["sued"]) * 0.15; print(",".join(f"{v:.4f}" for v in (r["west"] - dx, r["sued"] - dy, r["ost"] + dx, r["nord"] + dy)))' "$KARTE" "$REGION")"
 
 # Werkzeug einmalig holen (liegt in engine/.bin, nicht im Repo)
 if [ ! -x "$WERKZEUG" ]; then

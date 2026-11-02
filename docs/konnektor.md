@@ -31,8 +31,11 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `wunsch_aendern` | Mitwirkende, Organisator:innen | Punkte auf eigene Wünsche, abhaken (unterwegs und danach), einplanen (nur Organisator:innen mit persönlichem Link; auf der Webseite gibt es das nicht); gilt sofort, Regeln prüft der Rückmeldedienst (siehe `docs/produkt.md`, Wunsch-Brett) |
 | `kategorien` | alle | die Kartenkategorien der Reise (`plan/kategorien.yaml`): Schlüssel, Name in der Legende, Farbe, Symbol, Gruppe und die art-Wörter der Punkte; vor `kategorie_definieren` |
 | `merkmale` | alle | welche Merkmale eine Alternative braucht (mit Hinweis zum Recherchieren und Nachfragen), was jede Option hat und was fehlt; zu einer Wahlstelle `V-…`, einer Strecke `E-…` oder einer Art (`art`); siehe `docs/alternativen.md` |
-| `lage_eintragen` | Mitwirkende, Organisator:innen | Lage einer Unterkunft oder eines Aufenthalts ohne Nacht (`A-…`): Adresse und/oder Koordinaten („Breite, Länge“), Herkunft Pflicht, Prüfdatum (Vorgabe heute); ADR-0004 |
+| `lage_eintragen` | Mitwirkende, Organisator:innen | Lage einer Unterkunft oder eines Aufenthalts ohne Nacht (`A-…`): Adresse und/oder Koordinaten („Breite, Länge“); bei einem Ort (`O-…`) nur Koordinaten, seine Position auf der Karte (Epic #225); Herkunft Pflicht, Prüfdatum (Vorgabe heute); eine Adresse ohne Koordinaten bittet um Koordinaten (K3); ADR-0004 |
 | `ding_anlegen`, `ding_aendern` | Mitwirkende, Organisator:innen | Unterkunft, Aufenthalt ohne Nacht (`A-…`: Besichtigung, Essen, Besuch mit `zeit`), Strecke oder Ort anlegen (neue ID aus `ids.yaml`, Herkunft Pflicht, Merkmale gleich mit) und Felder ändern, auch den Buchungsstand `buchung` (die Art nur Organisator:innen); schreibt sofort nach `plan/routen.yaml`. Ein Aufenthalt kommt mit `tag_aendern` (`aufenthalte`) an seinen Tag |
+| `kartenansicht_setzen` | Organisator:innen, Baustein `karte` | Kartenansicht anlegen, ersetzen (gleicher Titel) oder entfernen: Titel und Auswahl aus Tagen, Strecken und Arten; steht in `plan/routen.yaml` (`karten_ansichten`); die Übersicht gibt es immer (#236) |
+| `track_anhaengen` | Mitwirkende, Organisator:innen | GPX-Datei aus dem Gespräch (als Text, höchstens etwa 60 000 Zeichen) an eine Strecke hängen: liegt danach unter `medien/gpx/`, ersetzt die schematische Linie, benannte Wegpunkte werden nummerierte Punkte (#238) |
+| `kartenpunkte_holen` | Organisator:innen, Baustein `karte` | Punkte aus OpenStreetMap längs einer Strecke: Kategorie der Reise (Gruppe `punkt`) und OSM-Tags wählt die Person; Treffer bis `abstand_m` von der Linie mit Quelle und Stand nach `plan/punkte.yaml`, ein zweiter Aufruf ersetzt die Treffer derselben Kategorie; feste Overpass-Abfrage, keine KI (#240) |
 | `option_anlegen`, `wahlstelle_anlegen` | Mitwirkende, Organisator:innen | Alternative als Option an eine Wahlstelle hängen (Status `vorgeschlagen`, Verlauf mit Person und Datum) oder eine neue Wahlstelle mit Optionen anlegen (`an` Tagen, Strecken, Unterkünften, Orten, Abschnitten; `planung` bekommt eine offene Frage mit); ersetzt `alternative_vorschlagen` |
 | `frage_anlegen` | Mitwirkende, Organisator:innen | offene Frage F-… in `offene-fragen.md` anlegen (Baustein `fragen`) |
 | `buchung_anlegen`, `buchung_aendern` | Mitwirkende, Organisator:innen | Buchung als eigenes Ding `B-…` (#76, 29.10.2026): für welche Unterkunft, welchen Aufenthalt oder welche Strecke (`fuer`), Status (angefragt, gebucht, storniert), Nummer, Anbieter, Preis, bezahlt, Frist mit `frist_was`, Stornoregel mit `storno_bis`, Herkunft (Pflicht); ändern mit Verlaufseintrag (Person, Datum, Grund), leerer Text entfernt ein Feld; Mitwirkende ändern nur eigene Buchungen (`wer`), Organisator:innen alle, Stornieren braucht einen Grund (Product Owner 29.10.2026). `zeige B-…` zeigt alles samt Belegen, `ueberblick` zählt und nennt die nächsten Fristen. Seit Issue #135 dazu: `personen` (die Reisenden dieser Buchung mit Angabe je Person, etwa Sitzplatz, Gepäck, Vielfliegernummer; nur Namen aus `reise.yaml`), `preise` (bei mehreren Dingen in `fuer` der Preis je Ding), `ab` mit `ab_was` (ab wann etwas geht, etwa der Online-Check-in; der Wächter erinnert am Tag). Seit Issue #166: `zahlung` (Zahlstand `offen`, `angezahlt`, `bezahlt`, `vor_ort`, `inklusive`, `erstattet`; englisch `open`, `deposit`, `paid`, `on_site`, `included`, `refunded`, gespeichert wird der deutsche Wert; `erstattet` nur bei `storniert`; Einzelheiten in `bezahlt`) und `merkmale` (Merkmale der Buchung, die die Art ihrer Dinge festlegt; `merkmale art` zeigt sie). Den **Beleg** gibt die Person beim Anlegen gleich mit (`beleg_text` als Abschrift oder `beleg_base64` mit `beleg_dateiname`; ein Schritt, der Schreibweg nennt die neue B-ID, der Konnektor legt den Beleg sofort in der Ablage ab), nachträglich mit `beleg_anlegen` oder angemeldet auf der Reiseseite; er liegt in der Ablage, nie im Repo, und ist nur für sie und Organisator:innen sichtbar, bis eine Organisator:in ihn freigibt |
@@ -74,6 +77,17 @@ Gelesen wird die veröffentlichte Seite (`<seiten>/<reise>/daten.json`). Der Kon
 `zeige E-…` nennt auch die Gliederung des Lesetexts der Art (`plan/arten.yaml` `lesetext`, `docs/ontologie.md`), damit der AI-Client den Text am Anfang der Etappe in diesem Aufbau schreibt. `zeige` zu einer ID listet auch die Aufgaben, die daran hängen. `zeige AG-…` zeigt eine Aufgabe mit Verlauf, `ueberblick` die Zahl der offenen und die überfälligen Aufgaben.
 
 Aufgaben liegen live in `<ablage>/<reise>/aufgaben.json`, nicht im Repo. Der Rückmeldedienst ist ihr einziger Schreiber (`GET/POST /<reise>/aufgaben`, `PATCH /<reise>/aufgaben/<AG-id>`). Der Konnektor und die Webseite schreiben beide über ihn. In Claude Code zeigt `python3 engine/rueckmeldungen.py aufgaben <reise> [--alle]` sie an.
+
+## Karte aus dem Plan (Epic #225, 2.11.2026)
+
+Ist der Baustein `karte` an, baut Frieda die Karte aus allem mit Koordinaten: Orte (`punkt`), Unterkünfte und Aufenthalte (`punkt`, ADR-0004). Es braucht mindestens zwei Punkte; `plan/karte.yaml` ist nur noch eine Überschreibung für handgepflegte Karten (`docs/ontologie.md`, „Karte“). So entsteht eine Karte allein im Gespräch:
+
+1. `einstellung_setzen` mit dem Baustein `karte`; die Antwort nennt den Kartenstatus.
+2. Koordinaten recherchieren (der AI-Client, nicht der Server) und mit `lage_eintragen` oder gleich bei `ding_anlegen` (`koordinaten`) eintragen.
+3. `ueberblick` zeigt den Kartenstatus: gebaut oder nicht, Grund, Zahl der Punkte, Einträge ohne Koordinaten mit Namen.
+4. Ausschnitte mit `kartenansicht_setzen` (zum Beispiel je Fahrt ein Tag mit den Arten der Ladestopps), Tracks mit `track_anhaengen`, zusätzliche Punkte aus OpenStreetMap mit `kartenpunkte_holen`.
+
+Name und Farbe eines Punkts kommen aus seiner Art (`plan/arten.yaml`); eine Kartenkategorie mit dem Schlüssel einer Art überschreibt sie nur. Alternativen (Unterkünfte und Aufenthalte, die nur in einer Option oder an einem Tag außerhalb des Plans stehen) erscheinen als Umriss. Strecken ohne GPX verbinden die Stationen eines Tags gestrichelt („schematisch“). Ein Aufenthalt ohne Tag (vor Ort gesammelt) steht auf der Karte und vollständig darunter, nicht im Tagesplan. Die Offline-Grundkarte holt das Veröffentlichen, wenn sich der Rahmen geändert hat (`werkzeuge/grundkarte_auto.py`, Zoom nach Fläche, Detailkarten bei langen Fahrten). Ein Kartenfehler lässt die Seite nicht ausfallen: Sie erscheint ohne Karte, der Kartenstatus nennt den Grund.
 
 ## Entscheiden, Fragen beantworten, Einladen (Paket C, 26.10.2026)
 
@@ -281,6 +295,9 @@ Das Symbol entsteht im Gespräch (#252): Die Claude-App entwirft es und gibt es 
 | `trip_create_request` | `reisen_anlegen_anfragen` |
 | `request_decide` | `anfrage_entscheiden` |
 | `calendar` | `kalender` |
+| `map_view_set` | `kartenansicht_setzen` |
+| `track_attach` | `track_anhaengen` |
+| `map_points_fetch` | `kartenpunkte_holen` |
 | `language_set` | `sprache_setzen` |
 
 Parameternamen (ein Wort hat überall dieselbe Übersetzung, außer wo unten eine Ausnahme steht):
@@ -387,6 +404,11 @@ Parameternamen (ein Wort hat überall dieselbe Übersetzung, außer wo unten ein
 | `storno` | `cancellation` |
 | `storno_bis` | `cancellation_until` |
 | `strecken` | `legs` |
+| `strecke` | `leg` |
+| `tage` | `days` |
+| `gpx` | `gpx_text` |
+| `osm` | `openstreetmap_tags` |
+| `abstand_m` | `distance_m` |
 | `stufe` | `level` |
 | `stufen` | `levels` |
 | `summiert` | `summed` |

@@ -558,7 +558,7 @@ def test_ontologie_organisator_schreibt_direkt(schreibweg):
                    "tag_anlegen", "termin_setzen", "wahlstelle_aendern", "reise_aendern", "plan_anlegen", "plan_aendern",
                    "merkmal_zusammenfuehren", "arten_uebernehmen",
                    "start_ende_setzen",   # Issue #142
-                   "symbol_setzen"}   # Issue #252
+                   "symbol_setzen", "kartenansicht_setzen", "kartenpunkte_holen"}   # Issue #252
         assert (set(kn.ONTOLOGIE_WERKZEUGE) - nur_org <= namen) is da, token
         assert ("start_ende_setzen" in namen) is (token == ALT_ORGANISATOR), token
         assert ("symbol_setzen" in namen) is (token == ALT_ORGANISATOR), token
