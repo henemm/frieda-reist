@@ -125,7 +125,7 @@ Warnungen im Plan sperren nie, weder im Bau noch im Schreibweg (dort stehen neue
 Ohne Handarbeit (`docs/neue-reise.md`): Nach dem Veröffentlichen ruft `veroeffentlichen.sh` für jede Reise `freischalten.sh <reise>` auf.
 
 - **Neue Reise:** Sie bekommt einen nginx-Baustein aus `vorlagen/nginx-reise.conf` mit einem neuen Zufalls-Token (root, 640). Dann `nginx -t`; bei einem Fehler wird der Baustein wieder entfernt. Danach lädt nginx neu. Bis die neuen Pfade gelten, vergeht ein Moment; die Prüfung des neuen Links versucht es deshalb bis zu zehnmal im Sekundenabstand.
-- **Prüfung:** Seite und `api/gesund` müssen mit 200 antworten.
+- **Prüfung:** Seite und `api/gesund` müssen mit 200 antworten. Eine 429 kommt von der Anfragebegrenzung in nginx (je IP, gemeinsam für die API aller Reisen; der Server fragt sich selbst von außen ab), nicht von der Reise: Die Prüfung wartet dann 5 s und fragt erneut, bis zu sechsmal (`FS_429_WARTEN`, `FS_429_VERSUCHE`, #198). Vorher blieben neue Reisen dadurch ohne Verknüpfung mit dem Konto, bis ein späterer Lauf sie freischaltete.
 - **Link:** Der Link zur Seite kommt nach `seiten.json` (für `meine_reisen`).
 - **Vorgemerkte Links:** Links neuer Reisen aus der App merkt der Konnektor in `<FR_KONNEKTOR>/neue-reisen-ausstehend.jsonl` vor (neben den Zugängen; den Dienstordner darf der Konnektor nicht beschreiben). Das Veröffentlichen stellt sie zu (`betrieb/zustellen.py`), sobald die Seite online ist, als Meldung an die Person oder bei einem Konto als Verknüpfung mit der Reise und Einladung per Mail.
 
