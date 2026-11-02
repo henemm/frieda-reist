@@ -40,7 +40,7 @@ Die Eckdaten (Zeitraum, Ziel, Personen, Status) stehen nur in `reise.yaml`. Der 
 
 Die Vorlage gibt es je Sprache (`engine/reisevorlage/de/`, `engine/reisevorlage/en/`); `neu.py` nimmt die der Reise (`sprache`), fehlt der Ordner einer Sprache, die englische. Überschriften, Spaltenköpfe der offenen Fragen, Monatsnamen und Rollenwörter folgen der Sprache der Reise; die Seite erkennt die Wörter aller Sprachen des Katalogs (`inhalt.*` in `engine/texte_<sprache>.py`), unabhängig von der Hülle.
 
-Eingeschaltet sind `rueckmeldungen`, `fragen`, `aufgaben` und `wuensche`. `varianten`, `karte`, `tagesseiten` und `waechter` schaltet ein:e Organisator:in zu, wenn die Planung beginnt. Ein Routenmodell (`plan/routen.yaml`, Aufbau in `engine/routen.py` und in der Beispielreise) kommt mit der Planung dazu: Start und Ende, Orte, Strecken, Unterkünfte, Wahlstellen. Dafür wird in `reise.json` der Eintrag `routen` ergänzt. Dazu gehört `plan/arten.yaml`: die Arten der Reise (Hotel, Hütte, Zugfahrt, Reiseteil …) mit ihren Merkmalen, entwickelt im Gespräch (`docs/ontologie.md`; Anschauung in der Beispielreise). Die Vorlage legt sie leer an (siehe Liste oben).
+Eingeschaltet sind `rueckmeldungen`, `fragen`, `aufgaben` und `wuensche`. `varianten`, `karte` und `waechter` schaltet ein:e Organisator:in zu, wenn die Planung beginnt. Tagesseiten hat jede Reise von Anfang an, sobald sie Tage hat (#214); der frühere Baustein `tagesseiten` ist kein Schalter mehr. Ein Routenmodell (`plan/routen.yaml`, Aufbau in `engine/routen.py` und in der Beispielreise) kommt mit der Planung dazu: Start und Ende, Orte, Strecken, Unterkünfte, Wahlstellen. Dafür wird in `reise.json` der Eintrag `routen` ergänzt. Dazu gehört `plan/arten.yaml`: die Arten der Reise (Hotel, Hütte, Zugfahrt, Reiseteil …) mit ihren Merkmalen, entwickelt im Gespräch (`docs/ontologie.md`; Anschauung in der Beispielreise). Die Vorlage legt sie leer an (siehe Liste oben).
 
 ## Die ersten Schritte im Gespräch
 
@@ -50,7 +50,7 @@ Nach dem Anlegen füllt sich die Reise im Gespräch, Schritt für Schritt und oh
 2. **Orte, Unterkünfte, Strecken** anlegen (`item_create`), jeweils mit Herkunft. Orte der An- und Abreise außerhalb der Reisegegend mit `outside`.
 3. **Start und Ende** des Plans setzen (`start_end_set`), dann die **Tage** (`day_create`) mit Nacht und Strecken. `plan/routen.yaml` entsteht schon mit dem ersten `item_create`; dabei kommen in `reise.json` der Eintrag `routen` und die Abschnitte Tagesplan und Unterkünfte dazu.
 4. **Wissen** aus Quellen schreiben (`knowledge_write`, siehe unten), **Fragen** sammeln (`question_create`).
-5. Sobald die Planung beginnt: Status `planung` (`trip_status_set`) und die Bausteine `varianten`, `karte`, `tagesseiten` dazuschalten (`setting_set`); Alternativen mit `choice_create` und `option_create`.
+5. Sobald die Planung beginnt: Status `planung` (`trip_status_set`) und die Bausteine `varianten` und `karte` dazuschalten (`setting_set`); Alternativen mit `choice_create` und `option_create`.
 
 ## Quellen übernehmen
 
