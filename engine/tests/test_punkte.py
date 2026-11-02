@@ -38,9 +38,10 @@ def test_punkte_pruefung(tmp_path, zeile, meldung):
     r = tmp_path / "beispielreise"
     shutil.copytree(WURZEL / "beispiel/reisen/beispielreise", r)
     (r / "plan/punkte.yaml").write_text("strecken:\n" + zeile + "\n", encoding="utf-8")
-    with pytest.raises(bauen.BauFehler) as e:
-        bauen.Bauer(r, tmp_path / "dist").daten()
-    assert meldung in str(e.value)
+    # Ein Kartenfehler lässt den Bau nicht scheitern (Epic #225, K12): Die Seite entsteht ohne Karte, der Kartenstatus nennt den Grund
+    d = bauen.Bauer(r, tmp_path / "dist").daten()
+    st = d["route"]["karte_status"]
+    assert d["route"]["karte"] is None and st["grund"] == "fehler" and any(meldung in m for m in st["meldungen"]), st
 
 
 def test_punkte_pruefdatum_aus_stand_oder_eigenem_feld(tmp_path):
@@ -55,6 +56,5 @@ def test_punkte_pruefdatum_aus_stand_oder_eigenem_feld(tmp_path):
     d = bauen.Bauer(r, tmp_path / "dist").daten()
     assert [(p["name"], p.get("geprueft")) for p in d["route"]["punkte"]["E-04"]] == [("A", "2026-10-26"), ("B", "2026-10-27")]
     (r / "plan/punkte.yaml").write_text("stand: neulich\nstrecken: {}\n", encoding="utf-8")
-    with pytest.raises(bauen.BauFehler) as e:
-        bauen.Bauer(r, tmp_path / "dist2").daten()
-    assert "stand muss ein Datum sein" in str(e.value)
+    st = bauen.Bauer(r, tmp_path / "dist2").daten()["route"]["karte_status"]
+    assert any("stand muss ein Datum sein" in m for m in st["meldungen"]), st
