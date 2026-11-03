@@ -28,6 +28,7 @@ Aufruf von Hand: `schreiben.py vorbereiten` (Arbeitskopie anlegen), `schreiben.p
 bringen, die der Schreibweg schreibt; in einer Sitzung im Reisen-Repo).
 Für Tests überschreibbar: SB_VEROEFFENTLICHEN (Skript statt betrieb/veroeffentlichen.sh), FR_SCHREIBKOPIE, FR_SB_PORT.
 """
+import copy
 import datetime
 import fcntl
 import hmac
@@ -1993,6 +1994,94 @@ def art_rolle_sichern(art_def, rolle):
     return schl
 
 
+PUNKT_FELDER_ROLLEN = (("nr", "nummer"), ("auch", "alias"), ("art", "sorte"), ("osm", "osm"), ("trinkbar", "trinkbar"), ("offen", "oeffnung"), ("id", "bezug"))
+OSM_BEZUG = re.compile(r"^OSM ((?:node|way|relation)/\d+)")
+
+
+def kartenpunkte_ablegen(reise_dir, wer, an, punkte, heute=None, aktualisieren=False):
+    """Kartenpunkte als Dinge ablegen (ADR-0007, Schritt d; gemeinsam für den Konnektor und die Werkzeuge punkte_holen und
+    wissen_punkte_holen). punkte: Liste von {name, kat (Schlüssel der Art mit gruppe), lage, quelle, nr, auch, art (Sorte), osm, trinkbar, offen,
+    id, hinweis, geprueft}; an: Strecke oder Abschnitt des Wissens, an dem sie hängen. Ein Punkt mit demselben OSM-Bezug (Rolle osm oder
+    „OSM node/…“ am Anfang der Quelle der Koordinaten), sonst mit demselben Namen, Art und Nummer an diesem Elternelement ist schon da: er
+    bleibt unverändert (aktualisieren: Koordinaten und Rollenwerte werden gesetzt). Nichts wird gelöscht, IDs bleiben.
+    -> {"neu": [ID], "vorhanden": [ID], "unbekannt": [Art]} (unbekannt: Arten, die die Reise nicht mit gruppe kennt; ihre Punkte werden nicht abgelegt)."""
+    heute = heute or datetime.date.today()
+    arten = arten_laden(reise_dir)
+    vorher = copy.deepcopy(arten)
+    ergebnis = {"neu": [], "vorhanden": [], "unbekannt": []}
+    roh = routen_laden(reise_dir)
+    aufenthalte = roh.setdefault("aufenthalte", type(roh)())
+
+    def rollen_von(art):   # Rolle -> Schlüssel des Merkmals dieser Art
+        return {d.get("rolle"): k for k, d in ((arten.get(art) or {}).get("merkmale") or {}).items() if isinstance(d, dict) and d.get("rolle")}
+
+    def koordinaten_von(knoten):
+        return next((v for v in (knoten.get("merkmale") or {}).values() if isinstance(v, dict) and v.get("typ") == "koordinaten"), None)
+
+    def schluessel(art, knoten, name=None, osm=None, nummer=None):
+        rollen = rollen_von(art)
+        mk = knoten.get("merkmale") or {} if knoten is not None else {}
+        wert = lambda r: (mk.get(rollen.get(r)) or {}).get("wert") if rollen.get(r) else None
+        o = osm if knoten is None else wert("osm")
+        if not o and knoten is not None:
+            k = koordinaten_von(knoten)
+            o = (OSM_BEZUG.match(str((k or {}).get("quelle") or "")) or [None, None])[1]
+        if o:
+            return ("osm", o)
+        return ("name", art, str(name if knoten is None else knoten.get("name")).casefold(), str((nummer if knoten is None else wert("nummer")) or ""))
+
+    vorhanden = {}
+    for aid, k in aufenthalte.items():
+        if isinstance(k, dict) and k.get("an") == an and k.get("art") in arten:
+            vorhanden[schluessel(k["art"], k)] = (aid, k)
+    quelle_gesamt = S("schreiben.kartenpunkte.quelle", w1=heute.isoformat()).text(sprache_von(reise_dir))
+    for p in punkte:
+        kat = p.get("kat")
+        if not (arten.get(kat) or {}).get("gruppe"):
+            if kat not in ergebnis["unbekannt"]:
+                ergebnis["unbekannt"].append(kat)
+            continue
+        art_def = arten[kat]
+        quelle = p.get("quelle") or quelle_gesamt
+        g = p.get("geprueft") or heute
+        g = g if isinstance(g, datetime.date) else datetime.date.fromisoformat(str(g))
+        name = p.get("name") or art_def.get("einzahl") or art_def.get("name") or kat
+        roll = {}
+        for feld, rolle in PUNKT_FELDER_ROLLEN:
+            wert = p.get(feld)
+            if wert not in (None, "", [], {}):
+                roll[rolle] = "; ".join(wert) if isinstance(wert, list) else wert
+        for rolle in roll:
+            art_rolle_sichern(art_def, rolle)
+        schl = rollen_von(kat)
+        key = schluessel(kat, None, name=name, osm=p.get("osm"), nummer=p.get("nr"))
+        if key in vorhanden:
+            aid, k = vorhanden[key]
+            ergebnis["vorhanden"].append(aid)
+            if aktualisieren:
+                if p.get("lage"):
+                    lage_merkmal_schreiben(k, "koordinaten", [float(x) for x in p["lage"]], quelle, g)
+                for rolle, wert in roll.items():
+                    k.setdefault("merkmale", merkmale_knoten({}))[schl[rolle]] = fliess_map({"wert": wert, "quelle": quelle})
+            continue
+        d = {"name": name, "art": kat, "an": an, "quelle": quelle}
+        if p.get("hinweis"):
+            d["hinweis"] = p["hinweis"]
+        k = block_map(d)
+        if p.get("lage"):
+            lage_merkmal_schreiben(k, "koordinaten", [float(x) for x in p["lage"]], quelle, g)
+        for rolle, wert in roll.items():
+            k.setdefault("merkmale", merkmale_knoten({}))[schl[rolle]] = fliess_map({"wert": wert, "quelle": quelle})
+        aid = neue_id(reise_dir, "A")
+        aufenthalte[aid] = k
+        vorhanden[key] = (aid, k)
+        ergebnis["neu"].append(aid)
+    if arten != vorher:
+        arten_speichern(reise_dir, arten, wer)
+    routen_speichern(reise_dir, roh)
+    return ergebnis
+
+
 def kartenpunkte_holen(reise_dir, wer, args, heute=None):
     """Punkte aus OpenStreetMap längs einer Strecke (K14): die Person wählt im Gespräch die Kategorie der Reise (plan/kategorien.yaml,
     Gruppe punkt) und die OSM-Tags (z. B. amenity=drinking_water). Treffer bis abstand_m von der Linie kommen mit Quelle und Stand
@@ -2057,34 +2146,10 @@ def kartenpunkte_holen(reise_dir, wer, args, heute=None):
             break
     # Treffer werden Dinge (A-…): Aufenthalte der Art kat mit an: <Strecke>, Koordinaten, OSM-Bezug (Rolle osm) und Sorte (Rolle sorte).
     # Ein zweiter Aufruf aktualisiert die Dinge mit demselben OSM-Bezug; nichts wird gelöscht (IDs bleiben).
-    arten_dat = arten_laden(reise_dir)
-    art_def = arten_dat[kat]
-    schluessel = {r: art_rolle_sichern(art_def, r) for r in ("osm", "sorte")}
-    arten_speichern(reise_dir, arten_dat, wer)
-    roh = routen_laden(reise_dir)
-    aufenthalte = roh.setdefault("aufenthalte", type(roh)())
-    vorhanden = {}
-    for aid, k in aufenthalte.items():
-        if isinstance(k, dict) and k.get("art") == kat and k.get("an") == sid:
-            o = ((k.get("merkmale") or {}).get(schluessel["osm"]) or {}).get("wert")
-            if o:
-                vorhanden[o] = (aid, k)
     quelle_text = S("schreiben.kartenpunkte.quelle", w1=heute.isoformat()).text(sprache_von(reise_dir))
-    alt = []
-    for p in treffer:
-        if p["osm"] in vorhanden:
-            alt.append(p["osm"])
-            lage_merkmal_schreiben(vorhanden[p["osm"]][1], "koordinaten", p["lage"], quelle_text, heute)
-            continue
-        d = {"name": p.get("name") or art_def.get("einzahl") or art_def.get("name") or kat, "art": kat, "an": sid, "quelle": quelle_text}
-        k = block_map(d)
-        lage_merkmal_schreiben(k, "koordinaten", p["lage"], quelle_text, heute)
-        mk = k["merkmale"]
-        mk[schluessel["osm"]] = fliess_map({"wert": p["osm"], "quelle": quelle_text})
-        if p.get("art"):
-            mk[schluessel["sorte"]] = fliess_map({"wert": p["art"], "quelle": quelle_text})
-        aufenthalte[neue_id(reise_dir, "A")] = k
-    routen_speichern(reise_dir, roh)
+    ergebnis = kartenpunkte_ablegen(reise_dir, wer, sid, [{**p, "kat": kat, "quelle": quelle_text, "geprueft": heute} for p in treffer], heute=heute,
+                                    aktualisieren=True)
+    alt = ergebnis["vorhanden"]
     name = kategorien[kat]["name"]
     beispiele = ", ".join(dict.fromkeys(p["name"] for p in treffer if p.get("name")))
     return (S("schreiben.titel.kartenpunkte", w1=sid, w2=name, n=len(treffer)),

@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Punkte für die Etappen-Karten: Wegpunkte der GPX-Tracks, Unterkünfte, Einkehr, Wasser, Bus/Notfall.
 
-Erzeugt reisen/<reise>/plan/punkte.yaml einmalig; die Datei wird geprüft und eingecheckt.
-Der Bau (engine/bauen.py) liest nur diese Datei und holt nichts aus dem Netz.
+Seit ADR-0007 (Schritt d) legt das Werkzeug Dinge an (Aufenthalte A-… mit an: <Strecke>, Art, Koordinaten, Quelle und Stand) in
+reisen/<reise>/plan/routen.yaml, nicht mehr plan/punkte.yaml. Die Arten (gruppe: punkt) legt die Reise an (kind_define; Vorschlag
+des Werkzeugs: wegpunkt, unterkunft, einkehr, wasser, notfall); Punkte einer Art, die die Reise nicht kennt, werden nicht abgelegt
+und am Ende genannt. Ein zweiter Lauf ändert nichts an vorhandenen Dingen (auch von Hand korrigierte) und legt nur neue an.
+Der Bau (engine/bauen.py) holt nichts aus dem Netz.
 
 Quellen, in dieser Reihenfolge:
   1. GPX-Wegpunkte (<wpt>) der Tracks aus plan/karte.yaml -> gpx; Name „04_Steinbruch (6)“,
@@ -34,6 +37,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "engine"))
 import gpx  # noqa: E402
 import instanz  # noqa: E402
+import schreiben  # noqa: E402
 
 WURZEL = instanz.wurzel()
 
@@ -157,6 +161,10 @@ def dossier_namen(text):
 
 def main(reise):
     rd = WURZEL / "reisen" / reise
+    if not (rd / "plan/karte.yaml").exists():   # eine Reise ohne Tracks (Städtewochenende) hat nichts, woran die Punkte hängen
+        print("plan/karte.yaml is missing: the tool needs the tracks of the stages (karte.yaml, gpx). Points of such a trip come from "
+              "map_points_fetch in the conversation.", file=sys.stderr)
+        return 1
     karte = yaml.safe_load((rd / "plan/karte.yaml").read_text(encoding="utf-8"))
     route = yaml.safe_load((rd / "plan/routen.yaml").read_text(encoding="utf-8"))
     cfg = json.loads((rd / "reise.json").read_text(encoding="utf-8"))
@@ -178,8 +186,6 @@ def main(reise):
             elemente.append({"osm": f"{e['type']}/{e['id']}", "kat": k[0], "art": k[1], "name": t.get("name", ""),
                              "lage": [round(lat, 6), round(lon, 6)], "tags": t})
 
-    datei = rd / "plan/punkte.yaml"
-    alt = (yaml.safe_load(datei.read_text(encoding="utf-8")) or {}).get("strecken", {}) if datei.exists() else {}
     unterkuenfte = route.get("unterkuenfte") or {}
     ortschaften = [o["lage"] for o in (karte.get("orte") or {}).values() if o.get("lage")] + \
         [p["lage"] for p in karte.get("punkte") or [] if p.get("lage")]
@@ -214,8 +220,8 @@ def main(reise):
                 continue
             if any(norm(p["name"]) == norm(e["name"]) and p["kat"] == "wegpunkt" for p in punkte if e["name"]):
                 continue  # schon als GPX-Wegpunkt da
-            p = {"name": e["name"],  # leer: die Seite zeigt dann die Art (Quelle, Bushaltestelle …)
-                 "kat": e["kat"], "art": e["art"], "lage": e["lage"], "quelle": f"OSM {e['osm']}, Stand {stand}"}
+            p = {"name": e["name"],  # leer: das Ding bekommt den Namen seiner Art (Quelle, Bushaltestelle …)
+                 "kat": e["kat"], "art": e["art"], "lage": e["lage"], "osm": e["osm"], "quelle": f"OSM {e['osm']}, Stand {stand}"}
             if uid:
                 p["id"] = uid
             if nennung and nennung != p["name"]:  # auch bei anderem Akzent oder Großschreibung: der Text verlinkt wörtlich
@@ -228,11 +234,6 @@ def main(reise):
             punkte.append(p)
             if nennung:
                 gefunden.add(norm(nennung))
-        # Von Hand ergänzte Punkte (von_hand: true) bleiben beim Auffrischen erhalten; ihr OSM-Eintrag nicht doppelt
-        for h in alt.get(eid, []):
-            if h.get("von_hand"):
-                punkte = [p for p in punkte if p.get("quelle", "").split(",")[0] != h.get("quelle", "").split(",")[0]]
-                punkte.append(h)
         # Reihenfolge entlang des Tracks
         def lauf(p):
             b0 = p["lage"][0]
@@ -242,24 +243,22 @@ def main(reise):
         fehlt[eid] = [n for n in genannt.get(eid, []) if norm(n) not in gefunden
                       and not any(passt(n, x) for p in punkte for x in [p["name"], *(p.get("auch") or [])])]
 
-    kopf = (f"# Points of the stage maps, generated with frieda/werkzeuge/punkte_holen.py {reise} on {heute}.\n"
-            f"# Sources: Rother GPX (private only, see medien/gpx/README.md) and OpenStreetMap (ODbL), as of {stand}.\n"
-            "# kat: wegpunkt | unterkunft | einkehr | wasser | notfall (suggestion of the tool; the trip defines them in\n"
-            "# plan/kategorien.yaml); for wasser art trinkwasser (per OSM) or quelle (drinkability unchecked). Points added by hand: von_hand: true, quelle with check date; they stay when refreshing.\n")
-    zeilen = [f"stand: {stand}", "strecken:"]
-    for eid, punkte in ausgabe.items():  # ein Punkt je Zeile: gut zu prüfen und zu ändern
-        zeilen.append(f"  {eid}:")
-        zeilen += ["  - " + yaml.safe_dump(p, allow_unicode=True, default_flow_style=True, sort_keys=False, width=10000).strip()
-                   for p in punkte]
-    (rd / "plan/punkte.yaml").write_text(kopf + "\n".join(zeilen) + "\n", encoding="utf-8")
+    # Ablegen als Dinge: vorhandene bleiben (auch von Hand korrigierte), neue bekommen ID, Art, an: <Strecke>, Koordinaten, Quelle
+    wer = {"name": f"Tool punkte_holen {heute}"}
+    unbekannt = set()
     for eid, p in ausgabe.items():
+        res = schreiben.kartenpunkte_ablegen(rd, wer, eid, p, heute=datetime.date.fromisoformat(heute))
+        unbekannt.update(res["unbekannt"])
         z = {}
         for x in p:
             z[x["kat"]] = z.get(x["kat"], 0) + 1
-        print(f"{eid}: {z}" + (f"  · named in the dossier, not found: {', '.join(fehlt[eid])}" if fehlt[eid] else ""))
+        print(f"{eid}: {z} · new {len(res['neu'])}, already there {len(res['vorhanden'])}"
+              + (f"  · named in the dossier, not found: {', '.join(fehlt[eid])}" if fehlt[eid] else ""))
+    if unbekannt:
+        print("Kinds missing in the trip (create them with kind_define, group punkt), their points were not stored: " + ", ".join(sorted(unbekannt)))
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         sys.exit("Usage: engine/.venv/bin/python frieda/werkzeuge/punkte_holen.py <trip>")
-    main(sys.argv[1])
+    sys.exit(main(sys.argv[1]) or 0)
