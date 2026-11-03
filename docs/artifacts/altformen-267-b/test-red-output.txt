@@ -1,0 +1,308 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0
+rootdir: /home/hem/frieda-reist/.claude/worktrees/spur-a-215
+collected 30 items
+
+engine/tests/test_umstellung_267.py FFFFFFFFFFF.F.......F...FFFFFF       [100%]
+
+=================================== FAILURES ===================================
+__________________ test_katalog_hat_den_schluessel[texte_de] ___________________
+
+modul = <module 'texte_de' from '/home/hem/frieda-reist/.claude/worktrees/spur-a-215/engine/texte_de.py'>
+
+    @pytest.mark.parametrize("modul", [texte_de, texte_en])
+    def test_katalog_hat_den_schluessel(modul):
+>       assert SCHLUESSEL in katalog(modul)
+E       AssertionError: assert 'inhalt.nachziehen.sprache_eingetragen' in {'seite.status.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', 'seite.status.verworfen': 'verworfen', ...}
+E        +  where {'seite.status.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', 'seite.status.verworfen': 'verworfen', ...} = katalog(<module 'texte_de' from '/home/hem/frieda-reist/.claude/worktrees/spur-a-215/engine/texte_de.py'>)
+
+engine/tests/test_umstellung_267.py:50: AssertionError
+__________________ test_katalog_hat_den_schluessel[texte_en] ___________________
+
+modul = <module 'texte_en' from '/home/hem/frieda-reist/.claude/worktrees/spur-a-215/engine/texte_en.py'>
+
+    @pytest.mark.parametrize("modul", [texte_de, texte_en])
+    def test_katalog_hat_den_schluessel(modul):
+>       assert SCHLUESSEL in katalog(modul)
+E       AssertionError: assert 'inhalt.nachziehen.sprache_eingetragen' in {'seite.status.vorgeschlagen': 'proposed', 'seite.status.favorisiert': 'favourite', 'seite.status.gewaehlt': 'chosen', 'seite.status.verworfen': 'rejected', ...}
+E        +  where {'seite.status.vorgeschlagen': 'proposed', 'seite.status.favorisiert': 'favourite', 'seite.status.gewaehlt': 'chosen', 'seite.status.verworfen': 'rejected', ...} = katalog(<module 'texte_en' from '/home/hem/frieda-reist/.claude/worktrees/spur-a-215/engine/texte_en.py'>)
+
+engine/tests/test_umstellung_267.py:50: AssertionError
+___________ test_fehlende_oder_leere_sprache_wird_eingetragen[fehlt] ___________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8602/test_fehlende_oder_leere_sprac0')
+wie = 'fehlt'
+
+    @pytest.mark.parametrize("wie", ["fehlt", "leer", "none", "tilde", "blank"])
+    def test_fehlende_oder_leere_sprache_wird_eingetragen(tmp_path, wie):
+        """AC-3: fehlt oder leer (Schlüssel fehlt, None, "", nur Leerzeichen) -> sprache: de und eine Meldung."""
+        r = kopie(tmp_path, sprache=wie)
+        m = neu.nachziehen(r)
+        erwartet = texte.t("de", SCHLUESSEL)
+>       assert erwartet != SCHLUESSEL
+E       AssertionError: assert 'inhalt.nachziehen.sprache_eingetragen' != 'inhalt.nachziehen.sprache_eingetragen'
+
+engine/tests/test_umstellung_267.py:59: AssertionError
+___________ test_fehlende_oder_leere_sprache_wird_eingetragen[leer] ____________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8602/test_fehlende_oder_leere_sprac1')
+wie = 'leer'
+
+    @pytest.mark.parametrize("wie", ["fehlt", "leer", "none", "tilde", "blank"])
+    def test_fehlende_oder_leere_sprache_wird_eingetragen(tmp_path, wie):
+        """AC-3: fehlt oder leer (Schlüssel fehlt, None, "", nur Leerzeichen) -> sprache: de und eine Meldung."""
+        r = kopie(tmp_path, sprache=wie)
+        m = neu.nachziehen(r)
+        erwartet = texte.t("de", SCHLUESSEL)
+>       assert erwartet != SCHLUESSEL
+E       AssertionError: assert 'inhalt.nachziehen.sprache_eingetragen' != 'inhalt.nachziehen.sprache_eingetragen'
+
+engine/tests/test_umstellung_267.py:59: AssertionError
+___________ test_fehlende_oder_leere_sprache_wird_eingetragen[none] ____________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8602/test_fehlende_oder_leere_sprac2')
+wie = 'none'
+
+    @pytest.mark.parametrize("wie", ["fehlt", "leer", "none", "tilde", "blank"])
+    def test_fehlende_oder_leere_sprache_wird_eingetragen(tmp_path, wie):
+        """AC-3: fehlt oder leer (Schlüssel fehlt, None, "", nur Leerzeichen) -> sprache: de und eine Meldung."""
+        r = kopie(tmp_path, sprache=wie)
+        m = neu.nachziehen(r)
+        erwartet = texte.t("de", SCHLUESSEL)
+>       assert erwartet != SCHLUESSEL
+E       AssertionError: assert 'inhalt.nachziehen.sprache_eingetragen' != 'inhalt.nachziehen.sprache_eingetragen'
+
+engine/tests/test_umstellung_267.py:59: AssertionError
+___________ test_fehlende_oder_leere_sprache_wird_eingetragen[tilde] ___________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8602/test_fehlende_oder_leere_sprac3')
+wie = 'tilde'
+
+    @pytest.mark.parametrize("wie", ["fehlt", "leer", "none", "tilde", "blank"])
+    def test_fehlende_oder_leere_sprache_wird_eingetragen(tmp_path, wie):
+        """AC-3: fehlt oder leer (Schlüssel fehlt, None, "", nur Leerzeichen) -> sprache: de und eine Meldung."""
+        r = kopie(tmp_path, sprache=wie)
+        m = neu.nachziehen(r)
+        erwartet = texte.t("de", SCHLUESSEL)
+>       assert erwartet != SCHLUESSEL
+E       AssertionError: assert 'inhalt.nachziehen.sprache_eingetragen' != 'inhalt.nachziehen.sprache_eingetragen'
+
+engine/tests/test_umstellung_267.py:59: AssertionError
+___________ test_fehlende_oder_leere_sprache_wird_eingetragen[blank] ___________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8602/test_fehlende_oder_leere_sprac4')
+wie = 'blank'
+
+    @pytest.mark.parametrize("wie", ["fehlt", "leer", "none", "tilde", "blank"])
+    def test_fehlende_oder_leere_sprache_wird_eingetragen(tmp_path, wie):
+        """AC-3: fehlt oder leer (Schlüssel fehlt, None, "", nur Leerzeichen) -> sprache: de und eine Meldung."""
+        r = kopie(tmp_path, sprache=wie)
+        m = neu.nachziehen(r)
+        erwartet = texte.t("de", SCHLUESSEL)
+>       assert erwartet != SCHLUESSEL
+E       AssertionError: assert 'inhalt.nachziehen.sprache_eingetragen' != 'inhalt.nachziehen.sprache_eingetragen'
+
+engine/tests/test_umstellung_267.py:59: AssertionError
+_________ test_meldung_nennt_die_gesetzte_sprache_in_beiden_katalogen __________
+
+    def test_meldung_nennt_die_gesetzte_sprache_in_beiden_katalogen():
+>       assert "„de“" in texte.t("de", SCHLUESSEL)
+E       AssertionError: assert '„de“' in 'inhalt.nachziehen.sprache_eingetragen'
+E        +  where 'inhalt.nachziehen.sprache_eingetragen' = <function t at 0x7b7a90832f20>('de', 'inhalt.nachziehen.sprache_eingetragen')
+E        +    where <function t at 0x7b7a90832f20> = texte.t
+
+engine/tests/test_umstellung_267.py:68: AssertionError
+__________________________ test_position_hinter_pfad ___________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8602/test_position_hinter_pfad0')
+
+    def test_position_hinter_pfad(tmp_path):
+        """Reihenfolge wie neu.anlegen: titel, untertitel, ziel, pfad, sprache, zeitraum."""
+        r = kopie(tmp_path, "stadtwochenende", sprache="fehlt")
+        neu.nachziehen(r)
+        schluessel = re.findall(r"^([a-z_]+):", (r / "reise.yaml").read_text(encoding="utf-8"), re.M)
+>       assert schluessel.index("sprache") == schluessel.index("pfad") + 1
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       ValueError: 'sprache' is not in list
+
+engine/tests/test_umstellung_267.py:77: ValueError
+_________________ test_ohne_pfad_hinter_dem_letzten_vorgaenger _________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8602/test_ohne_pfad_hinter_dem_letz0')
+
+    def test_ohne_pfad_hinter_dem_letzten_vorgaenger(tmp_path):
+        r = kopie(tmp_path, "stadtwochenende")
+        y = r / "reise.yaml"
+        y.write_text(re.sub(r"^pfad:.*\n", "", y.read_text(encoding="utf-8"), flags=re.M), encoding="utf-8")
+        neu.nachziehen(r)
+        schluessel = re.findall(r"^([a-z_]+):", y.read_text(encoding="utf-8"), re.M)
+>       assert schluessel.index("sprache") == schluessel.index("titel") + 1
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       ValueError: 'sprache' is not in list
+
+engine/tests/test_umstellung_267.py:86: ValueError
+____ test_ohne_alle_vorgaenger_als_erster_schluessel_nach_dem_kopfkommentar ____
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8602/test_ohne_alle_vorgaenger_als_0')
+
+    def test_ohne_alle_vorgaenger_als_erster_schluessel_nach_dem_kopfkommentar(tmp_path):
+        r = kopie(tmp_path, "stadtwochenende")
+        y = r / "reise.yaml"
+        y.write_text(re.sub(r"^(titel|untertitel|ziel|pfad):.*\n", "", y.read_text(encoding="utf-8"), flags=re.M), encoding="utf-8")
+        neu.nachziehen(r)
+        text = y.read_text(encoding="utf-8")
+        zeilen = [z for z in text.splitlines() if z.strip() and not z.startswith("#")]
+>       assert zeilen[0].startswith("sprache:")
+E       AssertionError: assert False
+E        +  where False = <built-in method startswith of str object at 0x7b7a90fb7770>('sprache:')
+E        +    where <built-in method startswith of str object at 0x7b7a90fb7770> = 'zeitraum:'.startswith
+
+engine/tests/test_umstellung_267.py:96: AssertionError
+______________ test_zweiter_lauf_aendert_nichts[stadtwochenende] _______________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8602/test_zweiter_lauf_aendert_nich1')
+name = 'stadtwochenende'
+
+    @pytest.mark.parametrize("name", BEISPIELE)
+    def test_zweiter_lauf_aendert_nichts(tmp_path, name):
+        """AC-4: direkt danach keine Meldung und alle Dateien der Reise byte-gleich."""
+        r = kopie(tmp_path, name)
+>       assert neu.nachziehen(r)
+E       AssertionError: assert []
+E        +  where [] = <function nachziehen at 0x7b7a8ff4d260>(PosixPath('/tmp/pytest-of-hem/pytest-8602/test_zweiter_lauf_aendert_nich1/stadtwochenende'))
+E        +    where <function nachziehen at 0x7b7a8ff4d260> = neu.nachziehen
+
+engine/tests/test_umstellung_267.py:104: AssertionError
+__________________ test_probelauf_meldet_und_schreibt_nichts ___________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8602/test_probelauf_meldet_und_schr0')
+
+    def test_probelauf_meldet_und_schreibt_nichts(tmp_path):
+        r = kopie(tmp_path)
+        vorher = stand(r)
+        m = neu.nachziehen(r, schreiben=False)
+>       assert texte.t("de", SCHLUESSEL) in m
+E       AssertionError: assert 'inhalt.nachziehen.sprache_eingetragen' in ['arten.yaml herberge: attribute preis gets rolle kosten']
+E        +  where 'inhalt.nachziehen.sprache_eingetragen' = <function t at 0x7b7a90832f20>('de', 'inhalt.nachziehen.sprache_eingetragen')
+E        +    where <function t at 0x7b7a90832f20> = texte.t
+
+engine/tests/test_umstellung_267.py:145: AssertionError
+_______________ test_sprache_nachziehen_ist_eine_eigene_funktion _______________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8602/test_sprache_nachziehen_ist_ei0')
+
+    def test_sprache_nachziehen_ist_eine_eigene_funktion(tmp_path):
+        """Festlegung: neu.sprache_nachziehen(reise_dir, schreiben) -> Liste der Meldungen."""
+        r = kopie(tmp_path)
+>       assert neu.sprache_nachziehen(r, False) == [texte.t("de", SCHLUESSEL)]
+               ^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'neu' has no attribute 'sprache_nachziehen'. Did you mean: 'reste_nachziehen'?
+
+engine/tests/test_umstellung_267.py:172: AttributeError
+_____________ test_sprache_steht_vor_den_schritten_die_sie_nutzen ______________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8602/test_sprache_steht_vor_den_sch0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7b7a8f96fe60>
+
+    def test_sprache_steht_vor_den_schritten_die_sie_nutzen(tmp_path, monkeypatch):
+        """Reihenfolge: das Eintragen läuft vor eckdaten_nachziehen und reste_nachziehen."""
+        r = kopie(tmp_path)
+        gesehen = []
+        for name in ("eckdaten_nachziehen", "reste_nachziehen"):
+            orig = getattr(neu, name)
+    
+            def wrap(*a, _o=orig, _n=name, **k):
+                gesehen.append((_n, bool(re.search(r"^sprache:\s*de", (r / "reise.yaml").read_text(encoding="utf-8"), re.M))))
+                return _o(*a, **k)
+            monkeypatch.setattr(neu, name, wrap)
+        neu.nachziehen(r)
+>       assert gesehen and all(da for _, da in gesehen)
+E       AssertionError: assert ([('eckdaten_nachziehen', False), ('reste_nachziehen', False)] and False)
+E        +  where False = all(<generator object test_sprache_steht_vor_den_schritten_die_sie_nutzen.<locals>.<genexpr> at 0x7b7a91767850>)
+
+engine/tests/test_umstellung_267.py:190: AssertionError
+_________ test_reste_nachziehen_liest_nach_dem_eintragen_nicht_falsch __________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8602/test_reste_nachziehen_liest_na0')
+
+    def test_reste_nachziehen_liest_nach_dem_eintragen_nicht_falsch(tmp_path):
+        """Eine Rest-Datei der früheren deutschen Vorlage wird nach dem Eintragen noch erkannt."""
+        r = kopie(tmp_path)
+        (r / "CLAUDE.md").write_text(ausgefuellt("de", "CLAUDE.md", **WERTE), encoding="utf-8")
+        m = neu.nachziehen(r)
+>       assert texte.t("de", SCHLUESSEL) in m
+E       AssertionError: assert 'inhalt.nachziehen.sprache_eingetragen' in ['arten.yaml herberge: attribute preis gets rolle kosten', 'CLAUDE.md: Rest der früheren Vorlage entfernt (nur eine ausgefüllte Kopie; Eckdaten stehen in reise.yaml, die Herkunft im Verlauf)']
+E        +  where 'inhalt.nachziehen.sprache_eingetragen' = <function t at 0x7b7a90832f20>('de', 'inhalt.nachziehen.sprache_eingetragen')
+E        +    where <function t at 0x7b7a90832f20> = texte.t
+
+engine/tests/test_umstellung_267.py:198: AssertionError
+____ test_kopie_ohne_sprache_wird_umgestellt_und_baut_danach[beispielreise] ____
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8602/test_kopie_ohne_sprache_wird_u0')
+name = 'beispielreise'
+
+    @pytest.mark.parametrize("name", BEISPIELE)
+    def test_kopie_ohne_sprache_wird_umgestellt_und_baut_danach(tmp_path, name):
+        """Ende zu Ende: die Umstellung meldet, danach baut die Reise und nachziehen ist still."""
+        r = kopie(tmp_path, name)
+>       assert texte.t("de", SCHLUESSEL) in neu.nachziehen(r)
+E       AssertionError: assert 'inhalt.nachziehen.sprache_eingetragen' in ['arten.yaml herberge: attribute preis gets rolle kosten']
+E        +  where 'inhalt.nachziehen.sprache_eingetragen' = <function t at 0x7b7a90832f20>('de', 'inhalt.nachziehen.sprache_eingetragen')
+E        +    where <function t at 0x7b7a90832f20> = texte.t
+E        +  and   ['arten.yaml herberge: attribute preis gets rolle kosten'] = <function nachziehen at 0x7b7a8ff4d260>(PosixPath('/tmp/pytest-of-hem/pytest-8602/test_kopie_ohne_sprache_wird_u0/beispielreise'))
+E        +    where <function nachziehen at 0x7b7a8ff4d260> = neu.nachziehen
+
+engine/tests/test_umstellung_267.py:206: AssertionError
+___ test_kopie_ohne_sprache_wird_umgestellt_und_baut_danach[stadtwochenende] ___
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8602/test_kopie_ohne_sprache_wird_u1')
+name = 'stadtwochenende'
+
+    @pytest.mark.parametrize("name", BEISPIELE)
+    def test_kopie_ohne_sprache_wird_umgestellt_und_baut_danach(tmp_path, name):
+        """Ende zu Ende: die Umstellung meldet, danach baut die Reise und nachziehen ist still."""
+        r = kopie(tmp_path, name)
+>       assert texte.t("de", SCHLUESSEL) in neu.nachziehen(r)
+E       AssertionError: assert 'inhalt.nachziehen.sprache_eingetragen' in []
+E        +  where 'inhalt.nachziehen.sprache_eingetragen' = <function t at 0x7b7a90832f20>('de', 'inhalt.nachziehen.sprache_eingetragen')
+E        +    where <function t at 0x7b7a90832f20> = texte.t
+E        +  and   [] = <function nachziehen at 0x7b7a8ff4d260>(PosixPath('/tmp/pytest-of-hem/pytest-8602/test_kopie_ohne_sprache_wird_u1/stadtwochenende'))
+E        +    where <function nachziehen at 0x7b7a8ff4d260> = neu.nachziehen
+
+engine/tests/test_umstellung_267.py:206: AssertionError
+______________________ test_alle_altformen_in_einem_lauf _______________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8602/test_alle_altformen_in_einem_l0')
+
+    def test_alle_altformen_in_einem_lauf(tmp_path):
+        """Reise ohne sprache, mit Rest der früheren Vorlage: ein Lauf stellt alles um, danach ist Ruhe und der Bau läuft."""
+        r = kopie(tmp_path)
+        (r / "CLAUDE.md").write_text(ausgefuellt("de", "CLAUDE.md", **WERTE), encoding="utf-8")
+        m = neu.nachziehen(r)
+>       assert texte.t("de", SCHLUESSEL) in m and len(m) >= 2
+E       AssertionError: assert ('inhalt.nachziehen.sprache_eingetragen' in ['arten.yaml herberge: attribute preis gets rolle kosten', 'CLAUDE.md: Rest der früheren Vorlage entfernt (nur eine ausgefüllte Kopie; Eckdaten stehen in reise.yaml, die Herkunft im Verlauf)'])
+E        +  where 'inhalt.nachziehen.sprache_eingetragen' = <function t at 0x7b7a90832f20>('de', 'inhalt.nachziehen.sprache_eingetragen')
+E        +    where <function t at 0x7b7a90832f20> = texte.t
+
+engine/tests/test_umstellung_267.py:216: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_umstellung_267.py::test_katalog_hat_den_schluessel[texte_de]
+FAILED engine/tests/test_umstellung_267.py::test_katalog_hat_den_schluessel[texte_en]
+FAILED engine/tests/test_umstellung_267.py::test_fehlende_oder_leere_sprache_wird_eingetragen[fehlt]
+FAILED engine/tests/test_umstellung_267.py::test_fehlende_oder_leere_sprache_wird_eingetragen[leer]
+FAILED engine/tests/test_umstellung_267.py::test_fehlende_oder_leere_sprache_wird_eingetragen[none]
+FAILED engine/tests/test_umstellung_267.py::test_fehlende_oder_leere_sprache_wird_eingetragen[tilde]
+FAILED engine/tests/test_umstellung_267.py::test_fehlende_oder_leere_sprache_wird_eingetragen[blank]
+FAILED engine/tests/test_umstellung_267.py::test_meldung_nennt_die_gesetzte_sprache_in_beiden_katalogen
+FAILED engine/tests/test_umstellung_267.py::test_position_hinter_pfad - Value...
+FAILED engine/tests/test_umstellung_267.py::test_ohne_pfad_hinter_dem_letzten_vorgaenger
+FAILED engine/tests/test_umstellung_267.py::test_ohne_alle_vorgaenger_als_erster_schluessel_nach_dem_kopfkommentar
+FAILED engine/tests/test_umstellung_267.py::test_zweiter_lauf_aendert_nichts[stadtwochenende]
+FAILED engine/tests/test_umstellung_267.py::test_probelauf_meldet_und_schreibt_nichts
+FAILED engine/tests/test_umstellung_267.py::test_sprache_nachziehen_ist_eine_eigene_funktion
+FAILED engine/tests/test_umstellung_267.py::test_sprache_steht_vor_den_schritten_die_sie_nutzen
+FAILED engine/tests/test_umstellung_267.py::test_reste_nachziehen_liest_nach_dem_eintragen_nicht_falsch
+FAILED engine/tests/test_umstellung_267.py::test_kopie_ohne_sprache_wird_umgestellt_und_baut_danach[beispielreise]
+FAILED engine/tests/test_umstellung_267.py::test_kopie_ohne_sprache_wird_umgestellt_und_baut_danach[stadtwochenende]
+FAILED engine/tests/test_umstellung_267.py::test_alle_altformen_in_einem_lauf
+======================== 19 failed, 11 passed in 3.29s =========================
