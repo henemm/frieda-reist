@@ -434,6 +434,7 @@ details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
 .pico .wm-tab tbody td{background:var(--card)}
 .pico .wm-tab :is(th,td).an{background:var(--acc2)}
 .wm-karten{display:grid;gap:10px}
+.art-uebersicht{display:grid;gap:18px;margin:12px 0}.art-uebersicht h3{margin:0 0 6px}.art-tabelle .wm-tab th a{font-weight:600}
 /* Tabelle mit Möglichkeiten als Zeilen (Rechner): Kopf sortiert, Zeile klappt auf */
 .pico .wm-sort{all:unset;cursor:pointer;font-weight:700}
 .pico .wm-sort:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:4px}
@@ -1140,7 +1141,7 @@ function zid(id) {
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, buchungChip
    Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, wahlZustand, belegeListe, stornierteBuchungen, einzelheiten, wegTabelle, herkunftZeile
-   Organismen: nachtZeile, unterkunftKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
+   Organismen: nachtZeile, unterkunftKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
    Vorlagen: tagKachel, leseAbschnitt, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtKarte, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
    Stile seiner Ebene, auf die Bausteinseite (#bausteine) und in docs/design.md; zeigt er eine Grundform, auch in GRUNDFORMEN.
@@ -1945,6 +1946,56 @@ function wahlVergleich(w, liste, datum) {
   if (belegt.length > zeilen.length) box.append(el("p", {class: "z klein"}, T("seite.vergleich.gleiche_zeilen", {n: belegt.length - zeilen.length})));
   return box;
 }
+/* Organismus Art-Übersicht (ADR-0007, Schritt e; löst #275 ab): alle Dinge einer oder mehrerer Arten mit den Merkmalen „nötig“ und „gut zu
+   wissen“ als Spalten, aus den Daten der Reise (keine Kopie der Werte im Text). Wie der Vergleich der Wahl, ohne Entscheidung: am Rechner eine
+   Tabelle mit sortierbaren Spalten, sonst gestapelte Karten. Jede Zeile führt zur Heimat des Dings (Sammelansicht mit der Aufgabe
+   „nachschlagen“, ADR-0003 Punkt 2), kein Ding steht hier vollständig. Angefordert wird sie nur dort, wo ein Abschnitt des Wissens oder
+   eine Kartenansicht ihre Arten nennt (uebersicht). */
+const ART_SORT = new Map();   // Art -> Kennung der Spalte, nach der sortiert ist
+function artDinge(art) {
+  const aus = [];
+  for (const [id, u] of Object.entries(R.unterkuenfte || {})) if (u.art === art) aus.push({id, name: u.name, merkmale: u.merkmale || {}});
+  for (const [id, a] of Object.entries(R.aufenthalte || {})) if (a.art === art) aus.push({id, name: a.name, merkmale: a.merkmale || {}});
+  for (const [id, s] of Object.entries(R.strecken || {})) if (s.art_schluessel === art) aus.push({id, name: s.titel, merkmale: s.merkmale || {}});
+  return aus;
+}
+function artTabelle(art) {
+  const dinge = artDinge(art), name = (artDef(art) || {}).name || art;
+  const box = el("section", {class: "wm art-tabelle", "data-art": art, "data-ansicht": "karten"}, el("h3", {}, T("seite.art_uebersicht.titel", {art: name, n: dinge.length})));
+  if (!dinge.length) return box.append(el("p", {class: "meldung"}, T("seite.art_uebersicht.leer"))) || box;
+  const spalten = ((R.merkmale || {})[art] || []).filter(k => !k.auto && ["pflicht", "empfohlen"].includes(stufeVon(k)) && dinge.some(d => d.merkmale[k.id]));
+  const text = (d, kid) => { const v = kid === "_name" ? {wert: d.name} : d.merkmale[kid]; return v ? String(v.wert) : ""; };
+  const sortWert = (d, kid) => { const t = text(d, kid), b = t && betrag(t); return b ? b.von : t ? t.toLowerCase() : null; };
+  const sort = ART_SORT.get(art) || null;
+  const reihe = sort ? dinge.slice().sort((a, b) => { const x = sortWert(a, sort), y = sortWert(b, sort);
+    if (x === null || y === null) return (x === null) - (y === null);
+    return typeof x === "number" && typeof y === "number" ? x - y : SORT.compare(String(x), String(y)); }) : dinge;
+  const kopf = (kid, titel) => el("th", {scope: "col", "aria-sort": sort === kid ? "ascending" : null}, el("button", {type: "button", class: "wm-sort", "data-art-sort": art + "|" + kid}, titel));
+  box.append(el("div", {class: "tabelle wm-tabelle"}, el("table", {class: "vergleich mk wm-tab"},
+    el("thead", {}, el("tr", {}, kopf("_name", T("seite.art_uebersicht.ding")), spalten.map(k => kopf(k.id, k.name)))),
+    el("tbody", {}, reihe.map(d => el("tr", {class: "wm-zeile"}, el("th", {scope: "row"}, link(d.id, d.name)),
+      spalten.map(k => el("td", {}, d.merkmale[k.id] ? merkmalWert(d.merkmale[k.id], null, true) : el("span", {class: "mk-nichts", "aria-label": T("seite.leer.keine")}, "–"))))))))); 
+  box.append(el("div", {class: "wm-karten"}, reihe.map(d => el("div", {class: "wm-karte"}, el("div", {class: "k"}, link(d.id, d.name)),
+    merkmalListe(spalten, d.merkmale, null, true) || el("div", {class: "z klein"}, T("seite.vergleich.noch_keine_merkmale"))))));
+  return box;
+}
+function artUebersicht(arten) {
+  return el("div", {class: "art-uebersicht"}, arten.filter(a => (R.arten || {})[a]).map(artTabelle));
+}
+// Am Abschnitt des Wissens (und der Ortsseite): die Arten, die reise.json „uebersichten“ nennt
+function uebersichtAmElement(m, a) {
+  if (R && (a.uebersicht || []).length) m.append(el("section", {class: "am-element"}, el("h3", {}, T("seite.art_uebersicht.kopf")), artUebersicht(a.uebersicht)));
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-art-sort]");
+  if (!b) return;
+  const [art, kid] = b.dataset.artSort.split("|"), sec = b.closest(".art-tabelle");
+  ART_SORT.set(art, ART_SORT.get(art) === kid ? null : kid);
+  const neu = artTabelle(art);
+  sec.replaceWith(neu);
+  const f = neu.querySelector(`[data-art-sort="${CSS.escape(art + "|" + kid)}"]`);
+  if (f) f.focus({preventScroll: true});
+});
 // Neu zeichnen nur des Moduls (nicht der ganzen Seite); der Fokus bleibt auf dem bedienten Element
 function vglNeu(id, fokus) {
   const {w, liste, datum} = vglTeile(id);
@@ -2763,6 +2814,7 @@ function uebersichtKarte(m, gezeigt, info) {
     const box = el("div", {class: "kartenbox", role: "region", "aria-label": gezeigt.length > 1 ? T("seite.karte.mit_plaenen") : T("seite.karte.der_reise")});
     m.append(box);
     segmente = karteZeichnen(gezeigt, info, box, ansicht).segmente;
+    if (ansicht && (ansicht.uebersicht || []).length) m.append(artUebersicht(ansicht.uebersicht));   // Übersicht der Arten dieser Ansicht (ADR-0007, Schritt e)
     // Legende nur mit dem, was auf dieser Karte vorkommt
     // Fahrten auf dieser Karte (Bewegungen, die nicht aus eigener Kraft sind): ihre Arten stehen in der Legende
     const K = R.karte, fahrten = [...new Set(gezeigt.flatMap(p => p.tage.flatMap(d => d.strecken.flatMap(st => [].concat((R.strecken[st.id] || {}).art || [])))))]
@@ -3508,6 +3560,7 @@ function ansichtOrt(m, a) {
   }
   wahlAmElement(m, a.id);   // Alternativen, die an diesem Ort hängen (an: [O-…])
   aufenthalteAmElement(m, a.id);
+  uebersichtAmElement(m, a);
 }
 // Kleine Lagekarte des Orts auf der Übersichtskarte, die anderen Orte als graue Punkte (25.10.2026)
 function ortKarte(m, oid) {
@@ -3692,6 +3745,7 @@ function ansichtAbschnitt(m, a) {
   // Alternativen, die an diesem Abschnitt hängen (an: [W-…] oder [O-…]): am Element, mit Vergleich
   wahlAmElement(m, a.id);
   aufenthalteAmElement(m, a.id);
+  uebersichtAmElement(m, a);
 }
 
 /* ---------- Suche ---------- */
@@ -3757,7 +3811,7 @@ const GRUNDFORMEN = [
   ["option", "Wahl: Option", "V-01.a", {zeile: [optionBlock], vorschau: [wahlVergleich], karte: [wahlVergleich], seite: [optionEinzelheiten]}],
   ["plan", "Folge: Plan", "P-A", {zeile: [planMarke], vorschau: [steckbrief], karte: [], seite: [ansichtPlanDetail]}],
   ["frage", "Offenes: Frage", "F-01", {zeile: [frageZeile], vorschau: [], karte: [], seite: [ansichtFragen]}],
-  ["wissen", "Wissen: Praxis, Quelle, Plantext", "W-01", {zeile: [], vorschau: [listenZeile], karte: [], seite: [ansichtAbschnitt, ansichtWissen]}],
+  ["wissen", "Wissen: Praxis, Quelle, Plantext", "W-01", {zeile: [], vorschau: [listenZeile], karte: [], seite: [ansichtAbschnitt, ansichtWissen, artUebersicht]}],
   ["abschnitt", "Wissen: Abschnitt eines Textes", "E-01.eckdaten", {zeile: [], vorschau: [], karte: [block], seite: [reiseText, reiterGruppe, leseAbschnitt]}],
   ["aufgabe", "Offenes: Aufgabe", "AG-01", {zeile: [agEintrag], vorschau: [], karte: [], seite: [ansichtAufgaben, agFormular]}],
   ["rueckmeldung", "Offenes: Rückmeldung, Wunsch", "R-…", {zeile: [rmEintrag], vorschau: [], karte: [wuKarte], seite: [rmFormular, ansichtWuensche]}],
@@ -4011,6 +4065,9 @@ function ansichtBausteine(m) {
   const tk = tag && R.karte && R.karte.auto ? tagesKarte(tag) : null;
   teil("Organismus", "Tageskarte", "Ausschnitt der automatischen Karte mit den Strecken und Punkten eines Tags; ohne GPX gestrichelt.",
     tk || el("p", {class: "meldung"}, "Nur mit automatischer Karte und einem Tag mit Strecke (Muster entfällt)."));
+  { const art = Object.keys(R.arten || {}).find(a => artDinge(a).length);
+    teil("Organismus", "Art-Übersicht", "Alle Dinge einer Art mit ihren Merkmalen (nötig, gut zu wissen); am Rechner Tabelle mit sortierbaren Spalten, am Telefon gestapelt; jede Zeile führt zur Heimat des Dings.",
+      art ? artUebersicht([art]) : el("p", {class: "meldung"}, "Keine Dinge mit Art (Muster entfällt).")); }
   { const box = el("div", {}); ohneTag(box);
     teil("Organismus", "Ohne Tag", "Aufenthalte, die an keinem Tag stehen (vor Ort gesammelt): vollständig unter der Karte.",
       box.childNodes.length ? box : el("p", {class: "meldung"}, "Keine Aufenthalte ohne Tag (Muster entfällt).")); }

@@ -31,6 +31,17 @@ Jedes Ding in `plan/routen.yaml` (Ort, Strecke, Unterkunft, Aufenthalt, Buchung)
 
 Vorgabe ohne `an:` (nichts Bestehendes ändert sich): Nacht und Strecke am Tag, Aufenthalt mit Tag an seinem ersten Tag im Plan, Aufenthalt ohne Tag an seinem Ort (hat der Ort keine Seite: unter der Karte beziehungsweise im Reiseüberblick, ADR-0003), Buchung an ihrem ersten Ding, Wahlstelle über ihr `an:` (eine Liste, wie bisher). `an:` wird nur geschrieben, wenn es von der Vorgabe abweicht, und vom Bau geprüft: bekanntes Ding der erlaubten Arten, nicht das Ding selbst, kein Kreis. Bei einer **Strecke** war `an:` bis Schritt b die Ankunftszeit: Ein Wert, der eine Kennung ist, gilt als Elternbezug, jeder andere als Zeit. `item_update` (`ding_aendern`) setzt `an` um; ein Aufenthalt mit Tag wird dabei von seinen Tagen gelöst (Sammeltag, #235); ein Tag als Ziel geht über `tag_aendern`.
 
+## Übersicht je Art (ADR-0007, Schritt e, #286; löst #275 ab)
+
+Eine Liste aller Dinge einer oder mehrerer Arten (alle Supermärkte der Reise, alle Pensionen) ist **ein Baustein, keine Daten**: der Organismus `artUebersicht`, gebaut wie der Vergleich der Wahl, aber ohne Entscheidung. Die Spalten sind die Merkmale der Art mit der Stufe „nötig“ und „gut zu wissen“, die mindestens ein Ding belegt; die Werte kommen aus den Merkmalen der Dinge, geändert wird nichts im Text. Am Rechner ist es eine Tabelle mit sortierbaren Spalten, am Telefon sind es gestapelte Karten. Jede Zeile führt zur Heimat des Dings (ADR-0003, Punkt 2: eine Sammelansicht mit der Aufgabe „nachschlagen“), kein Ding steht dort vollständig.
+
+Sie steht nur dort, wo sie **angefordert** wird, es gibt keinen eigenen Reiter und kein Markdown-Kommando:
+
+- **An einem Abschnitt des Wissens:** `reise.json` → `uebersichten: {"W-05": ["supermarkt", "baumarkt"]}`; Konnektor: `wissen_schreiben` und `wissen_aendern` nehmen `uebersicht` (Liste von Arten, leer entfernt); `zeige W-…` nennt sie.
+- **An einer Kartenansicht:** `plan/routen.yaml` → `karten_ansichten: [{titel, …, uebersicht: [Art, …]}]`; `kartenansicht_setzen` nimmt `uebersicht`. Die Übersicht steht unter der Karte, wenn die Ansicht gewählt ist.
+
+Der Bau prüft, dass der Abschnitt und jede Art vorhanden sind.
+
 ## Die Art eines Dings
 
 Welche Arten es gibt (Hotel, Refugi, Ryokan, Nachtfähre, Wanderung, Shinkansen, Reiseteil …), weiß nur die Reise. Sie stehen in **`reisen/<reise>/plan/arten.yaml`**, entwickelt im Gespräch im AI-Client, und werden dort immer wieder geschärft (Art anlegen, Merkmal ergeben, umbenennen, zusammenführen, abschalten; vorschlagen dürfen Mitwirkende, festlegen Organisator:innen, mit Verlauf). Seit 29.10.2026 geht das über die Konnektor-Werkzeuge `art_definieren` und `merkmal_definieren` direkt in die Datei (`docs/konnektor.md`, „Ontologie im Gespräch“; Schreibweg `engine/schreiben.py`); der Verlauf ist die Geschichte des Repos, ein Commit je Änderung mit Person und Grund. Zusammenführen zweier Merkmale (Werte umhängen, das alte wird ein weiterer Name des bleibenden): `merkmal_zusammenfuehren` (seit 29.10.2026). Die Software liefert keine Liste, weder als Pflicht noch als Vorschlag. Der AI-Client darf Standards wie schema.org oder OpenStreetMap als Wissen nutzen, wenn er Merkmale vorschlägt. Die Beispielreise der Software hat eine Anschauungs-`arten.yaml` (erfundene Reise, kein Katalog). Arten einer früheren Reise derselben Person darf der AI-Client nur auf ausdrückliche Nachfrage als Kopie übernehmen (Product Owner, 28.10.2026; Werkzeug `arten_uebernehmen`, nur Reisen, auf denen die Person dabei ist).

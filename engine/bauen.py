@@ -622,6 +622,7 @@ class Bauer:
         # Karten in der Recherche: Orte je Block auf regionalen Offline-Karten (reise.json wissen_punkte; Issue #64)
         wissen_karte = self.wissen_karte(c.get("wissen_punkte"), abschnitte, route) if c.get("wissen_punkte") or (route and kartenpunkte_aus_dingen(route)[1]) else None
 
+        self.uebersichten_anhaengen(c.get("uebersichten"), abschnitte, route)
         kategorien = self.kategorien_laden()   # auch ohne Punkte prüfen, damit ein Fehler in der Datei nicht schlummert
         if c.get("eckdaten") and not any(a["id"] == c["eckdaten"] for a in abschnitte):
             self.fehler.append(texte.satz("pruefung.bauen.eckdaten_fehlt", sid=c["eckdaten"]))
@@ -684,6 +685,28 @@ class Bauer:
             aus[rid] = {"bezug": bezug, "notiz": notiz.strip(), "option": option,
                         "gewaehlt": bool(option) and optionen[option]["status"] == "gewaehlt"}
         return aus
+
+    def uebersichten_anhaengen(self, roh, abschnitte, route):
+        """Übersichten je Art an Abschnitten des Wissens (ADR-0007, Schritt e; reise.json „uebersichten“: {W-…: [Art, …]}): Jeder genannte
+        Abschnitt bekommt die Liste der Arten, deren Übersicht bei ihm steht (abschnitt["uebersicht"]); die Seite zeichnet sie aus den Daten."""
+        if roh is None:
+            return
+        if not isinstance(roh, dict):
+            self.fehler.append(texte.satz("pruefung.bauen.uebersichten_form"))
+            return
+        arten = (route or {}).get("arten") or {}
+        je_id = {a["id"]: a for a in abschnitte}
+        for wid, liste in roh.items():
+            if wid not in je_id:
+                self.fehler.append(texte.satz("pruefung.bauen.uebersicht_abschnitt", wid=wid))
+                continue
+            if not isinstance(liste, list) or not liste or not all(isinstance(x, str) for x in liste):
+                self.fehler.append(texte.satz("pruefung.bauen.uebersicht_liste", wid=wid))
+                continue
+            for x in liste:
+                if x not in arten:
+                    self.fehler.append(texte.satz("pruefung.bauen.uebersicht_art", wid=wid, x=x, w1=", ".join(arten) or "–"))
+            je_id[wid]["uebersicht"] = [x for x in liste if x in arten]
 
     def kategorien_laden(self):
         """Kartenkategorien der Reise -> {Schlüssel: Definition}: die Arten mit gruppe (ADR-0007, Schritt d; eine Art ist die einzige

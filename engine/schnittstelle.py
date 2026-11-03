@@ -100,7 +100,7 @@ PARAMETER = {
     "rubrik": "heading", "schliesst_aus": "excludes", "schluessel": "key", "siehe": "see", "sprache": "language",
     "storno": "cancellation", "storno_bis": "cancellation_until", "strecken": "legs", "strecke": "leg", "tage": "days", "gpx": "gpx_text", "osm": "openstreetmap_tags", "abstand_m": "distance_m", "stufe": "level", "stufen": "levels",
     "start_datum": "start_date", "start_ort": "start_place", "summiert": "summed", "titel": "title", "trotzdem": "anyway", "typ": "type", "unterkuenfte": "accommodations",
-    "untertitel": "subtitle", "veraenderlich": "changeable", "von": "from", "von_reise": "from_trip", "vor": "before",
+    "untertitel": "subtitle", "uebersicht": "overview_kinds", "veraenderlich": "changeable", "von": "from", "von_reise": "from_trip", "vor": "before",
     "vorname": "first_name", "wahl": "choices", "wahlstelle": "choice", "wann": "when", "was": "what", "wert": "value",
     "werte": "values", "wunsch": "wish", "zeit": "time_text", "ziel": "target", "zustaendig": "assignee", "reise": "trip",
 }

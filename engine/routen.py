@@ -1636,10 +1636,11 @@ class Routen:
             if t in titel:
                 self.fehl(texte.satz("pruefung.routen.ansicht_doppelt", titel=t))
             titel.add(t)
-            if set(a) - {"titel", "tage", "strecken", "arten"}:
-                self.fehl(texte.satz("pruefung.routen.ansicht_felder", titel=t, w1=", ".join(sorted(set(a) - {"titel", "tage", "strecken", "arten"}))))
+            if set(a) - {"titel", "tage", "strecken", "arten", "uebersicht"}:
+                self.fehl(texte.satz("pruefung.routen.ansicht_felder", titel=t, w1=", ".join(sorted(set(a) - {"titel", "tage", "strecken", "arten", "uebersicht"}))))
             eintrag = {"titel": t}
-            for feld, bekannt in (("tage", set(self.tage)), ("strecken", set(self.strecken) | set(self.etappen)), ("arten", set(self.arten))):
+            for feld, bekannt in (("tage", set(self.tage)), ("strecken", set(self.strecken) | set(self.etappen)), ("arten", set(self.arten)),
+                                  ("uebersicht", set(self.arten))):   # uebersicht: Arten, deren Übersicht bei der Ansicht steht (ADR-0007, Schritt e)
                 liste = a.get(feld) or []
                 if not isinstance(liste, list) or not all(isinstance(x, str) for x in liste):
                     self.fehl(texte.satz("pruefung.routen.ansicht_feld", titel=t, feld=feld))

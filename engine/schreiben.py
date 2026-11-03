@@ -1868,6 +1868,9 @@ def kartenansicht_setzen(reise_dir, wer, args, heute=None):
                 raise Ablehnung("schreiben.kartenansicht.unbekannt", feld=feld, x=x, w1=", ".join(bekannt[feld]) or "–")
         if liste:
             auswahl[feld] = liste
+    uebersicht = uebersicht_wert(reise_dir, args)   # Arten, deren Übersicht unter der Karte dieser Ansicht steht (ADR-0007, Schritt e)
+    if uebersicht:
+        auswahl["uebersicht"] = uebersicht
     entfernen = bool_wert(args, "entfernen")
     roh = routen_laden(reise_dir)
     ansichten = roh.get("karten_ansichten")
@@ -2466,6 +2469,41 @@ def tag_aendern(reise_dir, wer, args, heute=None):
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 
 
+def uebersicht_wert(reise_dir, args):
+    """Arten, deren Übersicht bei einem Abschnitt oder einer Kartenansicht steht (ADR-0007, Schritt e) aus der Anfrage -> Liste, [] zum
+    Entfernen, None ohne Angabe. Jede Art muss es in der Reise geben."""
+    if args.get("uebersicht") is None:
+        return None
+    if args["uebersicht"] in ("", []):
+        return []
+    liste = liste_wert(args, "uebersicht", laenge=60)
+    arten = (route_stand(reise_dir).get("arten") or {})
+    for x in liste:
+        if x not in arten:
+            raise Ablehnung("schreiben.uebersicht.art", x=x, w1=", ".join(arten) or "–")
+    return liste
+
+
+def uebersicht_setzen(reise_dir, wid, arten):
+    """reise.json uebersichten: {W-…: [Art, …]} für einen Abschnitt setzen oder (leere Liste) entfernen -> Satz oder None (nichts geändert)."""
+    import json
+    p = Path(reise_dir) / "reise.json"
+    cfg = json.loads(p.read_text(encoding="utf-8"))
+    u = cfg.get("uebersichten") or {}
+    if list(u.get(wid) or []) == list(arten):
+        return None
+    if arten:
+        u[wid] = list(arten)
+    else:
+        u.pop(wid, None)
+    if u:
+        cfg["uebersichten"] = u
+    else:
+        cfg.pop("uebersichten", None)
+    p.write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return S("schreiben.antwort.uebersicht.gesetzt", w1=wid, w2=", ".join(arten)) if arten else S("schreiben.antwort.uebersicht.entfernt", w1=wid)
+
+
 def wissen_schreiben(reise_dir, wer, args, heute=None):
     """Wissen in eigenen Worten mit Herkunft: ein neuer Abschnitt (W-ID aus ids.yaml, Zuordnung in reise.json) oder ein Absatz
     unter einem vorhandenen Abschnitt (abschnitt = W-ID oder titel). Herkunft (quelle) ist Pflicht und steht am Absatz. -> (Titel, Text)."""
@@ -2484,6 +2522,7 @@ def wissen_schreiben(reise_dir, wer, args, heute=None):
     titel = text_wert(args, "titel", laenge=120)
     cfg = json.loads((Path(reise_dir) / "reise.json").read_text(encoding="utf-8"))
     zu = cfg.get("abschnitte") or {}
+    uebersicht = uebersicht_wert(reise_dir, args)
     absatz = f"{text}\n\n" + texte.t(sprache_von(reise_dir), "inhalt.schreiben.herkunft.eingetragen", quelle=quelle, datum=texte.datum(heute, sprache_von(reise_dir)), wer=wer["name"])
     # Vorhandener Abschnitt? (W-ID oder Titel in reise.json)
     treffer = None
@@ -2505,14 +2544,18 @@ def wissen_schreiben(reise_dir, wer, args, heute=None):
             ende -= 1
         zeilen[ende:ende] = ["", *absatz.split("\n")]
         f.write_text("\n".join(zeilen).rstrip("\n") + "\n", encoding="utf-8")
-        return S("schreiben.titel.abschnitt_ergaenzt", w1=wid, w2=t), S("schreiben.antwort.abschnitt.ergaenzt_text", w1=wid, w2=t, w3=d_) + S("schreiben.antwort.herkunft", w1=quelle) + "."
+        mehr = uebersicht_setzen(reise_dir, wid, uebersicht) if uebersicht is not None else None
+        return (S("schreiben.titel.abschnitt_ergaenzt", w1=wid, w2=t),
+                S("schreiben.antwort.abschnitt.ergaenzt_text", w1=wid, w2=t, w3=d_) + S("schreiben.antwort.herkunft", w1=quelle) + "." + (" " + mehr if mehr else ""))
     if not titel:
         raise Ablehnung("schreiben.wissen_schreiben.4")
     try:
         wid = neu.abschnitt(Path(reise_dir), titel, gruppe, datei, absatz)
     except neu.Fehler as e:
         raise Ablehnung(str(e))
-    return S("schreiben.titel.titel_angelegt", w1=wid, w2=titel), S("schreiben.antwort.abschnitt.neu", w1=wid, w2=titel, w3=datei, w4=gruppe) + S("schreiben.antwort.herkunft", w1=quelle) + "."
+    mehr = uebersicht_setzen(reise_dir, wid, uebersicht) if uebersicht is not None else None
+    return (S("schreiben.titel.titel_angelegt", w1=wid, w2=titel),
+            S("schreiben.antwort.abschnitt.neu", w1=wid, w2=titel, w3=datei, w4=gruppe) + S("schreiben.antwort.herkunft", w1=quelle) + "." + (" " + mehr if mehr else ""))
 
 
 def frage_schliessen(reise_dir, wer, args, heute=None):
@@ -3483,7 +3526,10 @@ def wissen_aendern(reise_dir, wer, args, heute=None):
     text = text_wert(args, "text", laenge=12000, absaetze=True)
     neuer_titel = text_wert(args, "neuer_titel", laenge=120)
     grund = text_wert(args, "grund", pflicht=True)
+    uebersicht = uebersicht_wert(reise_dir, args)
     geaendert = []
+    if uebersicht is not None and (satz := uebersicht_setzen(reise_dir, wid, uebersicht)):
+        geaendert.append(satz)
     if text:
         quelle = text_wert(args, "quelle", pflicht=True)
         absatz = f"{text}\n\n" + texte.t(sprache_von(reise_dir), "inhalt.schreiben.herkunft.berichtigt", quelle=quelle, datum=texte.datum(heute, sprache_von(reise_dir)), wer=wer["name"], grund=grund)

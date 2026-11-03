@@ -925,6 +925,9 @@ class Handbuch:
                           + (tk("konnektor.ausgabe.zeige.3", w1=', '.join(nah)) if nah else ""))
         titel, t = self.eintraege[id_]
         aus = f"{id_} – {titel}\n\n{t}".strip()
+        ab = next((a for a in self.d.get("abschnitte") or [] if a.get("id") == id_ and a.get("uebersicht")), None)
+        if ab:   # Übersicht der Arten bei diesem Abschnitt (ADR-0007, Schritt e)
+            aus += "\n\n" + tk("konnektor.zeige.uebersicht", w1=", ".join((self.r.get("arten") or {}).get(x, {}).get("name") or x for x in ab["uebersicht"]))
         if self.antworten.get(id_):
             aus += tk("konnektor.ausgabe.zeige.1") + "\n".join(
                 f"- {a['erstellt'][:10]} {a.get('name')}: {a['text']}" + (f" (Quelle: {a['quelle']})" if a.get("quelle") else "")
@@ -2502,6 +2505,7 @@ MERKMALE_FELD = {"type": "object", "description": "@konnektor.feld.merkmale_feld
                  "additionalProperties": True}
 QUELLE_FELD = {"type": "string", "description": "@konnektor.feld.quelle_feld"}
 UHRZEIT_FELD = {"type": "string", "description": "@konnektor.feld.uhrzeit_feld"}
+UEBERSICHT_FELD = {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.uebersicht"}
 DING_ANLEGEN = {"name": "ding_anlegen", "description": "@konnektor.werkzeug.ding_anlegen",
                 "inputSchema": {"type": "object", "properties": {
                     "was": {"type": "string", "enum": ["unterkunft", "aufenthalt", "strecke", "ort"]},
@@ -2583,6 +2587,7 @@ WISSEN_SCHREIBEN = {"name": "wissen_schreiben", "description": "@konnektor.werkz
                         "quelle": QUELLE_FELD,
                         "gruppe": {"type": "string", "enum": ["wissen", "praxis", "quelle"], "description": "@konnektor.werkzeug.wissen_schreiben.gruppe"},
                         "datei": {"type": "string", "description": "@konnektor.werkzeug.wissen_schreiben.datei"},
+                        "uebersicht": UEBERSICHT_FELD,
                         "name": NAME_FELD}, "required": ["text", "quelle"]}}
 FRAGE_SCHLIESSEN = {"name": "frage_schliessen", "description": "@konnektor.werkzeug.frage_schliessen",
                     "inputSchema": {"type": "object", "properties": {
@@ -2680,7 +2685,8 @@ OPTION_AENDERN = {"name": "option_aendern", "description": "@konnektor.werkzeug.
 WISSEN_AENDERN = {"name": "wissen_aendern", "description": "@konnektor.werkzeug.wissen_aendern",
                   "inputSchema": {"type": "object", "properties": {
                       "ziel": {"type": "string", "description": "@konnektor.werkzeug.wissen_aendern.ziel"}, "text": {"type": "string"}, "quelle": QUELLE_FELD,
-                      "neuer_titel": {"type": "string"}, "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["ziel", "grund"]}}
+                      "neuer_titel": {"type": "string"}, "uebersicht": UEBERSICHT_FELD,
+                      "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["ziel", "grund"]}}
 LESETEXT_SCHREIBEN = {"name": "lesetext_schreiben", "description": "@konnektor.werkzeug.lesetext_schreiben",
                       "inputSchema": {"type": "object", "properties": {
                           "ziel": {"type": "string", "description": "@konnektor.werkzeug.lesetext_schreiben.ziel"}, "text": {"type": "string", "description": "@konnektor.werkzeug.lesetext_schreiben.text"},
@@ -2697,6 +2703,7 @@ KARTENANSICHT_SETZEN = {"name": "kartenansicht_setzen", "description": "@konnekt
                             "tage": {**LISTE, "description": "@konnektor.werkzeug.kartenansicht_setzen.tage"},
                             "strecken": {**LISTE, "description": "@konnektor.werkzeug.kartenansicht_setzen.strecken"},
                             "arten": {**LISTE, "description": "@konnektor.werkzeug.kartenansicht_setzen.arten"},
+                            "uebersicht": UEBERSICHT_FELD,
                             "entfernen": {"type": "boolean", "description": "@konnektor.werkzeug.kartenansicht_setzen.entfernen"},
                             "grund": {"type": "string"}, "vorname": NAME_FELD},
                             "required": ["titel"]}}
