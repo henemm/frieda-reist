@@ -1,0 +1,79 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0
+rootdir: /home/hem/frieda-reist/.claude/worktrees/spur-a-215
+collected 7 items
+
+engine/tests/test_altformen_267.py FFFFF..                               [100%]
+
+=================================== FAILURES ===================================
+____________ test_ohne_reise_yaml_bricht_der_bau_ab[beispielreise] _____________
+
+name = 'beispielreise'
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8456/test_ohne_reise_yaml_bricht_de0')
+
+    @pytest.mark.parametrize("name", BEISPIELE)
+    def test_ohne_reise_yaml_bricht_der_bau_ab(name, tmp_path):
+        """AC-1: fehlt reise.yaml, bricht der Bau mit BauFehler ab; der Text kommt aus dem Katalog."""
+        reise = tmp_path / name
+        shutil.copytree(WURZEL / "beispiel" / "reisen" / name, reise)
+        (reise / "reise.yaml").unlink()
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_altformen_267.py:33: Failed
+___________ test_ohne_reise_yaml_bricht_der_bau_ab[stadtwochenende] ____________
+
+name = 'stadtwochenende'
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8456/test_ohne_reise_yaml_bricht_de1')
+
+    @pytest.mark.parametrize("name", BEISPIELE)
+    def test_ohne_reise_yaml_bricht_der_bau_ab(name, tmp_path):
+        """AC-1: fehlt reise.yaml, bricht der Bau mit BauFehler ab; der Text kommt aus dem Katalog."""
+        reise = tmp_path / name
+        shutil.copytree(WURZEL / "beispiel" / "reisen" / name, reise)
+        (reise / "reise.yaml").unlink()
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_altformen_267.py:33: Failed
+_____ test_katalog_hat_neuen_schluessel_und_nicht_mehr_den_alten[texte_de] _____
+
+modul = <module 'texte_de' from '/home/hem/frieda-reist/.claude/worktrees/spur-a-215/engine/texte_de.py'>
+
+    @pytest.mark.parametrize("modul", [texte_de, texte_en])
+    def test_katalog_hat_neuen_schluessel_und_nicht_mehr_den_alten(modul):
+        k = katalog(modul)
+>       assert SCHLUESSEL in k
+E       AssertionError: assert 'pruefung.bauen.reise_yaml_fehlt' in {'seite.status.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', 'seite.status.verworfen': 'verworfen', ...}
+
+engine/tests/test_altformen_267.py:43: AssertionError
+_____ test_katalog_hat_neuen_schluessel_und_nicht_mehr_den_alten[texte_en] _____
+
+modul = <module 'texte_en' from '/home/hem/frieda-reist/.claude/worktrees/spur-a-215/engine/texte_en.py'>
+
+    @pytest.mark.parametrize("modul", [texte_de, texte_en])
+    def test_katalog_hat_neuen_schluessel_und_nicht_mehr_den_alten(modul):
+        k = katalog(modul)
+>       assert SCHLUESSEL in k
+E       AssertionError: assert 'pruefung.bauen.reise_yaml_fehlt' in {'seite.status.vorgeschlagen': 'proposed', 'seite.status.favorisiert': 'favourite', 'seite.status.gewaehlt': 'chosen', 'seite.status.verworfen': 'rejected', ...}
+
+engine/tests/test_altformen_267.py:43: AssertionError
+______________ test_reise_alt_ist_aus_dem_quelltext_verschwunden _______________
+
+    def test_reise_alt_ist_aus_dem_quelltext_verschwunden():
+        """AC-1: keine Zweige auf die alte Form mehr in engine/reise.py."""
+        quelltext = (WURZEL / "engine" / "reise.py").read_text(encoding="utf-8")
+>       assert not re.search(r"\.alt\b", quelltext), "reise.py kennt noch .alt"
+E       AssertionError: reise.py kennt noch .alt
+E       assert not <re.Match object; span=(21590, 21594), match='.alt'>
+E        +  where <re.Match object; span=(21590, 21594), match='.alt'> = <function search at 0x78eb76435760>('\\.alt\\b', '"""Eckdaten, Status, Personen und Einstellungen einer Reise: reisen/<reise>/reise.yaml.\n\nHintergrund und Entscheidu...ne()\n        d["regeln"] = self.regeln()\n        d["verhalten"] = verhalten(d["status"]["wert"])\n        return d\n')
+E        +    where <function search at 0x78eb76435760> = re.search
+
+engine/tests/test_altformen_267.py:50: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_altformen_267.py::test_ohne_reise_yaml_bricht_der_bau_ab[beispielreise]
+FAILED engine/tests/test_altformen_267.py::test_ohne_reise_yaml_bricht_der_bau_ab[stadtwochenende]
+FAILED engine/tests/test_altformen_267.py::test_katalog_hat_neuen_schluessel_und_nicht_mehr_den_alten[texte_de]
+FAILED engine/tests/test_altformen_267.py::test_katalog_hat_neuen_schluessel_und_nicht_mehr_den_alten[texte_en]
+FAILED engine/tests/test_altformen_267.py::test_reise_alt_ist_aus_dem_quelltext_verschwunden
+========================= 5 failed, 2 passed in 0.20s ==========================
