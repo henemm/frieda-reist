@@ -3051,6 +3051,7 @@ TEXTE = {
     "inhalt.rolle.sorte": "Sort",
     "inhalt.rolle.osm": "OpenStreetMap",
     "inhalt.rolle.trinkbar": "Drinkable (OpenStreetMap)",
+    "inhalt.rolle.oeffnung": "Opening hours (OpenStreetMap)",
     "inhalt.rolle.bezug": "Accommodation",
     "schreiben.kartenpunkte.kategorie": "There is no kind “{kat}” with group punkt for map points. Existing: {w1}; kind_define or category_define creates a new one.",
     "schreiben.kartenpunkte.keine_linie": "Leg {sid} has no line on the map yet: its places need coordinates (location_set) or the leg a GPX track.",

@@ -170,7 +170,7 @@ FEST_ALIAS = {"place": "ort", "from_place": "von", "to_place": "nach", "time_tex
 def kartenpunkte_aus_dingen(route):
     """Kartenpunkte (ADR-0007, Schritt d): Aufenthalte, deren Art eine gruppe hat (punkt oder wissen) und die an einer Strecke oder einem
     Abschnitt des Wissens hängen (an:), in der Form der früheren Punkte der Karten -> ({Strecke: [Punkt]}, {Block: [Punkt]}). Werte
-    stehen in den Merkmalen der Art, gelesen nach Rolle (nummer, alias, sorte, osm, trinkbar), nie nach dem Namen."""
+    stehen in den Merkmalen der Art, gelesen nach Rolle (nummer, alias, sorte, osm, trinkbar, oeffnung), nie nach dem Namen."""
     arten = route.get("arten") or {}
     rollen = {a: {m["rolle"]: m["id"] for m in (route.get("merkmale") or {}).get(a, []) if m.get("rolle")} for a in arten}
     je_strecke, je_block = {}, {}
@@ -194,7 +194,7 @@ def kartenpunkte_aus_dingen(route):
             p["nr"] = int(float(nr)) if str(nr).replace(".", "", 1).isdigit() else nr
         if (alias := rolle("alias")):
             p["auch"] = [x.strip() for x in str(alias).split(";") if x.strip()]
-        for r, feld in (("sorte", "art"), ("osm", "osm"), ("trinkbar", "trinkbar"), ("bezug", "id")):
+        for r, feld in (("sorte", "art"), ("osm", "osm"), ("trinkbar", "trinkbar"), ("oeffnung", "offen"), ("bezug", "id")):
             if (w := rolle(r)) not in (None, ""):
                 p[feld] = w
         (je_strecke if gruppe == "punkt" else je_block).setdefault(eltern, []).append(p)
@@ -204,7 +204,8 @@ def kartenpunkte_aus_dingen(route):
 # Rolle -> (Schlüssel des Merkmals, Schlüssel des Namens im Katalog, Typ), wenn die Software ein Merkmal dieser Rolle für eine Art anlegt
 ROLLEN_MERKMAL = {"nummer": ("nummer", "inhalt.rolle.nummer", "zahl"), "alias": ("weitere_namen", "inhalt.rolle.alias", "text"),
                   "sorte": ("sorte", "inhalt.rolle.sorte", "text"), "osm": ("osm", "inhalt.rolle.osm", "text"),
-                  "trinkbar": ("trinkbar", "inhalt.rolle.trinkbar", "text"), "bezug": ("unterkunft", "inhalt.rolle.bezug", "text")}
+                  "trinkbar": ("trinkbar", "inhalt.rolle.trinkbar", "text"),
+                  "oeffnung": ("oeffnungszeiten", "inhalt.rolle.oeffnung", "text"), "bezug": ("unterkunft", "inhalt.rolle.bezug", "text")}
 FEST_NAMEN = frozenset(EINGABE_MERKMALE) | {n for fs in GRUNDFORM_FELDER.values() for n in fs} | frozenset(FEST_ALIAS)
 
 
@@ -335,8 +336,8 @@ DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage",
 # Rolle eines Merkmals -> der Typ, den es braucht. kosten: der Preis, den die Seite summiert (Typ geld). Für die Dinge, die früher
 # Kartenpunkte waren (ADR-0007, Schritt d): nummer (die Nummer eines nummerierten Punkts), alias (weitere Namen, getrennt durch ;, für
 # Kartenlinks im Text), sorte (Zusatzwort der Art, siehe sorten), osm (Bezug zu OpenStreetMap, Typ/Nummer), trinkbar (OSM-Angabe yes/no),
-# bezug (die Kennung einer Unterkunft, die der Punkt ist)
-ROLLEN = {"kosten": "geld", "nummer": "zahl", "alias": "text", "sorte": "text", "osm": "text", "trinkbar": "text", "bezug": "text"}
+# oeffnung (Öffnungszeiten laut OSM, opening_hours), bezug (die Kennung einer Unterkunft, die der Punkt ist)
+ROLLEN = {"kosten": "geld", "nummer": "zahl", "alias": "text", "sorte": "text", "osm": "text", "trinkbar": "text", "oeffnung": "text", "bezug": "text"}
 
 
 def wann_von(w):

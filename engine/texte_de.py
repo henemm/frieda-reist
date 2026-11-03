@@ -3051,6 +3051,7 @@ TEXTE = {
     "inhalt.rolle.sorte": "Sorte",
     "inhalt.rolle.osm": "OpenStreetMap",
     "inhalt.rolle.trinkbar": "Trinkbar (OpenStreetMap)",
+    "inhalt.rolle.oeffnung": "Öffnungszeiten (OpenStreetMap)",
     "inhalt.rolle.bezug": "Unterkunft",
     "schreiben.kartenpunkte.kategorie": "Eine Art „{kat}“ mit gruppe punkt gibt es für Kartenpunkte nicht. Vorhanden: {w1}; eine neue legt art_definieren oder kategorie_definieren an.",
     "schreiben.kartenpunkte.keine_linie": "Strecke {sid} hat noch keine Linie auf der Karte: Ihre Orte brauchen Koordinaten (ding_aendern) oder die Strecke einen GPX-Track.",

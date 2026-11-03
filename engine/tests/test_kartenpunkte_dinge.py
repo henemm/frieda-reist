@@ -98,7 +98,7 @@ def test_nachziehen_gibt_punkten_ohne_namen_den_namen_der_art(tmp_path):
     (q / "plan/kategorien.yaml").write_text(yaml.safe_dump(k, allow_unicode=True, sort_keys=False), encoding="utf-8")
     p = yaml.safe_load((q / "plan/punkte.yaml").read_text(encoding="utf-8"))
     p["strecken"]["E-01"] += [
-        {"kat": "wasser", "art": "quelle", "lage": [51.001, 14.093], "quelle": "erfunden (Beispielwert)"},      # name und kein einzahl → name der Kategorie
+        {"kat": "wasser", "art": "quelle", "lage": [51.001, 14.093], "quelle": "erfunden (Beispielwert)", "offen": "Mo-Fr 08:00-18:00"},   # name und kein einzahl → name der Kategorie
         {"kat": "wegpunkt", "nr": 9, "lage": [51.002, 14.094], "quelle": "erfunden (Beispielwert)"},           # einzahl
         {"name": "", "kat": "pumpe", "lage": [51.003, 14.095], "quelle": "erfunden (Beispielwert)"},           # weder noch → Schlüssel
         {"name": "Brunnen mit Namen", "kat": "wasser", "lage": [51.004, 14.096], "quelle": "erfunden (Beispielwert)"},
@@ -110,7 +110,8 @@ def test_nachziehen_gibt_punkten_ohne_namen_den_namen_der_art(tmp_path):
     assert all(namen)   # kein Aufenthalt ohne Namen
     neue = [v["name"] for v in roh["aufenthalte"].values() if v.get("an") == "E-01" and v["merkmale"]["koordinaten"]["wert"][0] in (51.001, 51.002, 51.003, 51.004)]
     assert neue == ["Wasser", "Wegpunkt im Buch", "pumpe", "Brunnen mit Namen"]
-    bauen.bauen(q, tmp_path / "w" / "x")   # der Bau lehnt nichts ab
+    d = bauen.bauen(q, tmp_path / "w" / "x")   # der Bau lehnt nichts ab
+    assert [p["offen"] for p in d["route"]["punkte"]["E-01"] if p.get("offen")] == ["Mo-Fr 08:00-18:00"]   # Öffnungszeiten (OSM) gehen nicht verloren
     assert neu.nachziehen(q) == []   # idempotent
 
 

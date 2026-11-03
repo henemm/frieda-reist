@@ -424,7 +424,7 @@ def arten_ableiten(reise_dir, namen=None, summiert=(), definitionen=None, schrei
 
 # ---------- Schlüssel einer Reise nachziehen (Abgleich 29.10.2026, docs/abgleich-2026-10-29.md) ----------
 # Feld eines früheren Kartenpunkts -> Rolle des Merkmals, das es ersetzt (routen.ROLLEN, routen.ROLLEN_MERKMAL)
-PUNKT_ROLLEN = {"nr": "nummer", "auch": "alias", "art": "sorte", "osm": "osm", "trinkbar": "trinkbar", "id": "bezug"}
+PUNKT_ROLLEN = {"nr": "nummer", "auch": "alias", "art": "sorte", "osm": "osm", "trinkbar": "trinkbar", "offen": "oeffnung", "id": "bezug"}
 
 
 def kartenpunkte_umstellen(reise_dir, roh, schreiben, meldungen):
@@ -508,7 +508,7 @@ def kartenpunkte_umstellen(reise_dir, roh, schreiben, meldungen):
         if p.get("lage"):
             sb.lage_merkmal_schreiben(knoten, "koordinaten", [float(x) for x in p["lage"]], quelle, g if isinstance(g, (datetime.date, type(None))) else
                                       datetime.date.fromisoformat(str(g)))
-        for feld in ("nr", "auch", "art", "osm", "trinkbar", "id"):
+        for feld in ("nr", "auch", "art", "osm", "trinkbar", "offen", "id"):
             wert = p.get(feld)
             if feld == "art" and wert is None:
                 continue
