@@ -681,7 +681,7 @@ def test_wert_eintragen_ueber_den_schreibweg(schreibweg):
     Schreibweg.antwort = (422, {"ok": False, "fehler": "preis: „quelle“ fehlt."})
     t, f = werkzeug(basis, ALT_ORGANISATOR, "wert_eintragen", ziel="U-02", merkmal="preis", wert="1 €")
     assert f and t == "Nicht eingetragen: preis: „source“ fehlt."
-    assert N("wert_eintragen") in rpc(basis, KARL, "initialize")["instructions"]
+    assert N("ding_aendern") in rpc(basis, KARL, "initialize")["instructions"]
 
 
 def test_dinge_optionen_wahlstellen_fragen_ueber_den_schreibweg(schreibweg):

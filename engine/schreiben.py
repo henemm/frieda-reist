@@ -1150,9 +1150,6 @@ GRUNDFORM_MERKMALE = {"ort": ("koordinaten",), "unterkunft": ("adresse", "koordi
                       "aufenthalt": ("adresse", "koordinaten", "zeitraum", "buchungslink"), "strecke": ("abfahrt", "ankunft", "gpx")}
 
 
-from routen import FEST_ALIAS, GRUNDFORM_FELDER  # noqa: E402  (Namen der festen Merkmale und Felder der Grundformen)
-
-
 def lage_lesen(knoten):
     """Die typisierten Merkmale eines Knotens als feste Felder gelesen (Lesesicht des Bau: adresse, punkt, beginn, ende, ab, an, gpx,
     buchungslink) -> dict. Alte Felder und neue Merkmale ergeben dasselbe."""
@@ -1249,6 +1246,7 @@ def zeitraum_setzen(knoten, beginn, ende, quelle):
 def felder_aus_merkmalen(args, was):
     """Die Felder der Grundform (ort, von, nach, zeit, frage, ausserhalb) aus args["merkmale"] nach oben holen -> neue args.
     Ein Feld, das schon oben steht, darf nicht noch einmal in merkmale stehen."""
+    from routen import FEST_ALIAS, GRUNDFORM_FELDER
     m = args.get("merkmale")
     if not isinstance(m, dict):
         return args
@@ -1267,6 +1265,7 @@ def felder_aus_merkmalen(args, was):
 def merkmale_fest_trennen(args, was, katalog):
     """Aus args["merkmale"] die Merkmale der Grundform (Eingabenamen) herauslösen, die die Art nicht selbst unter diesem Namen
     kennt -> (Rest der Merkmale, {Eingabename: Wert-Angabe}). Ein Name, der nicht zur Grundform gehört, bleibt im Rest."""
+    from routen import FEST_ALIAS
     roh = args.get("merkmale")
     if not isinstance(roh, dict):
         return roh, {}
