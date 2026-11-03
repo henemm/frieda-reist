@@ -1219,6 +1219,8 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
             raise Ablehnung("schreiben.ding_anlegen.6", w1=', '.join(k for k, a in arten.items() if a.get('grundform') == 'bewegung') or 'keine')
         d["art"] = art
         for k in ("ab", "an"):   # Zeitpunkte (Issue #135): HH:MM oder JJJJ-MM-TTTHH:MM+HH:MM
+            if k == "an" and ist_eltern_wert(args.get("an")):   # Elternbezug statt Ankunftszeit (ADR-0007)
+                continue
             if (z := zeit_wert(args, k)):
                 d[k] = z
     if was == "aufenthalt":   # Uhrzeit für den Kalender (#77)
@@ -1227,6 +1229,9 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
                 d[feld] = u
         if d.get("ende") and not d.get("beginn"):
             raise Ablehnung("schreiben.ding_anlegen.7")
+    if (eltern := text_wert(args, "an", laenge=20)) and (was != "strecke" or ist_eltern_wert(eltern)):   # Elternbezug (ADR-0007)
+        eltern_wert_pruefen(reise_dir, roh, None, eltern)
+        d["an"] = eltern
     if was == "ort" and bool_wert(args, "ausserhalb"):
         d["ausserhalb"] = True   # Ort der An- und Abreise außerhalb der Reisegegend (Issue #135)
     if hinweis:
@@ -1272,9 +1277,80 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
     return titel, text
 
 
-AENDERBAR = {"unterkunft": ("name", "ort", "art", "hinweis", "quelle", "buchungslink", "frage"),
-             "aufenthalt": ("name", "ort", "art", "zeit", "beginn", "ende", "hinweis", "quelle", "buchungslink", "frage"),
-             "strecke": ("titel", "von", "nach", "art", "ab", "an", "hinweis", "quelle"), "ort": ("name", "hinweis", "quelle", "ausserhalb")}
+AENDERBAR = {"unterkunft": ("name", "ort", "art", "hinweis", "quelle", "buchungslink", "frage", "an"),
+             "aufenthalt": ("name", "ort", "art", "zeit", "beginn", "ende", "hinweis", "quelle", "buchungslink", "frage", "an"),
+             "strecke": ("titel", "von", "nach", "art", "ab", "an", "hinweis", "quelle"), "ort": ("name", "hinweis", "quelle", "ausserhalb", "an")}
+
+
+def ist_eltern_wert(wert):
+    """Ist der Wert von an ein Elternbezug (Kennung oder „reise“) und keine Uhrzeit? (ADR-0007; bei einer Strecke war an die Ankunftszeit)"""
+    from routen import ist_eltern
+    return ist_eltern(str(wert).strip()) if wert is not None else False
+
+
+def wissen_ids(reise_dir):
+    """Alle Kennungen von Abschnitten des Wissens (W-…) und Etappen der Reise aus reise.json."""
+    import json
+    try:
+        cfg = json.loads((Path(reise_dir) / "reise.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return set()
+    return {wid for titel_zu in (cfg.get("abschnitte") or {}).values() for wid, _g in titel_zu.values()}
+
+
+def eltern_wert_pruefen(reise_dir, roh, did, wert):
+    """Ist wert ein zulässiger Elternbezug für did (bei einem neuen Ding None)? Sonst Ablehnung. Ein Tag geht über tag_aendern."""
+    from routen import ist, ELTERN_ARTEN, REISE_ALS_ELTERN
+    if not ist_eltern_wert(wert):
+        raise Ablehnung("schreiben.ding_aendern.an_form")
+    if wert == did:
+        raise Ablehnung("schreiben.ding_aendern.an_selbst")
+    art = next((a for a in ELTERN_ARTEN if ist(a, wert)), None)
+    if art == "tag":
+        raise Ablehnung("schreiben.ding_aendern.an_tag", tid=wert)
+    if wert == REISE_ALS_ELTERN:
+        return
+    menge = {"ort": "orte", "strecke": "strecken", "aufenthalt": "aufenthalte", "unterkunft": "unterkuenfte"}.get(art)
+    if wert not in (roh.get(menge) or {}) and wert not in wissen_ids(reise_dir):
+        raise Ablehnung("schreiben.ding_aendern.an_unbekannt", x=wert)
+    # Kreis: führt die Kette der Eltern von wert zurück zu did?
+    gruppen = [roh.get(g) or {} for g in ("orte", "strecken", "unterkuenfte", "aufenthalte")]
+    x, schritte = wert, 0
+    while x and schritte < 20:
+        if x == did:
+            raise Ablehnung("schreiben.ding_aendern.an_kreis", ziel=did)
+        n = next((g[x] for g in gruppen if x in g), None)
+        x = n.get("an") if isinstance(n, dict) and ist_eltern_wert(n.get("an")) else None
+        schritte += 1
+
+
+def eltern_aendern(reise_dir, roh, did, was, knoten, wert, geaendert):
+    """Elternbezug (an:, ADR-0007) eines Dings setzen, ändern oder entfernen (leer = Vorgabe der Grundform). Ein Aufenthalt mit Tag,
+    der an ein anderes Ding gehängt wird, wird von seinen Tagen gelöst (#235). Hängt Einträge an geaendert."""
+    alt = knoten.get("an") if ist_eltern_wert(knoten.get("an")) else None
+    if was == "strecke" and knoten.get("an") is not None and alt is None:
+        raise Ablehnung("schreiben.ding_aendern.an_zeit", ziel=did)
+    wert = str(wert).strip()
+    if not wert:
+        if alt is not None:
+            geaendert.append(S("schreiben.antwort.ding.entfernt", w1="an", w2=alt))
+            del knoten["an"]
+        return
+    eltern_wert_pruefen(reise_dir, roh, did, wert)
+    if alt == wert:
+        return
+    knoten["an"] = skalar("an", wert)
+    geaendert.append(S("schreiben.antwort.ding.wechsel", w1="an", w2=alt, w3=wert) if alt is not None else S("schreiben.antwort.ding.neu", w1="an", w2=wert))
+    if was == "aufenthalt":
+        for tid_, t in (roh.get("tage") or {}).items():
+            liste = list(t.get("aufenthalte") or [])
+            if did in liste:
+                liste.remove(did)
+                if liste:
+                    t["aufenthalte"] = fliess_map({"aufenthalte": liste})["aufenthalte"]
+                else:
+                    t.pop("aufenthalte", None)
+                geaendert.append(S("schreiben.antwort.ding.vom_tag_geloest", w1=tid_))
 
 
 def zeit_wert(args, feld):
@@ -1312,8 +1388,13 @@ def ding_aendern(reise_dir, wer, args, heute=None):
     if args.get("neuer_name") is not None:   # der Konnektor nimmt name als Vornamen der sprechenden Person; der neue Name heißt dort neuer_name
         args = {**args, "name": args["neuer_name"]}
     geaendert = []
+    eltern = args.get("an") if args.get("an") is not None and (was != "strecke" or ist_eltern_wert(args.get("an"))) else None
+    if eltern is not None:   # Elternbezug (ADR-0007); an einer Strecke bleibt eine Uhrzeit die Ankunftszeit
+        eltern_aendern(reise_dir, roh, ziel, was, knoten, eltern, geaendert)
     for feld in AENDERBAR[was]:
         if feld not in args or args.get(feld) is None:
+            continue
+        if feld == "an" and eltern is not None:
             continue
         if feld == "name":
             v = text_wert(args, "name", pflicht=True, laenge=120)

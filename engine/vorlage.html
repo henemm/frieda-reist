@@ -1431,7 +1431,7 @@ function aufenthaltZeile(id, voll) {
   if (!a) return null;
   const z = el("div", {class: "z aufenthalt" + (voll ? " ziel" : ""), id: voll ? id : null, "data-ziel": voll ? id : null},
     dingEtikett([artName(a.art), a.zeit, uhrText(a)].filter(Boolean).join(" · "), a.art, a.art),
-    el("div", {class: "titelzeile"}, el("span", {}, a.name), zid(id)));
+    el("div", {class: "titelzeile"}, el("span", {}, !voll && a.ohne_tag && heimat(id) ? link(id, a.name) : a.name), zid(id)));
   // Der Stand steht einmal: voll mit Buchung trägt sie ihn, sonst der Chip
   const bs = voll ? buchungenBei(id) : [];
   if (a.buchung && !bs.length) z.append(el("div", {class: "chips"}, buchungChip(a)));
@@ -2777,11 +2777,14 @@ function uebersichtKarte(m, gezeigt, info) {
 // vor Ort). Ihre Heimat ist der Reiter „Karte“ (ADR-0003): hier vollständig, auf der Karte als Punkt. Ohne den Baustein
 // Karte bleibt die Reise ihre Heimat (am Ende des Überblicks).
 const OHNE_TAG = R ? Object.entries(R.aufenthalte || {}).filter(([, a]) => a.ohne_tag).map(([id]) => id) : [];
-for (const id of OHNE_TAG) zeileZu.set(id, KARTE_REITER ? "karte" : "varianten");
+// Seit ADR-0007 ist die Seite des Elternelements die Heimat (ein Ort mit eigener Seite, ein Abschnitt des Wissens); nur was
+// dort keine Seite hat, steht hier vollständig, alles andere als Zeile mit Link zur Heimat
+const OHNE_TAG_HIER = R ? OHNE_TAG.filter(id => !heimat(id)) : [];
+for (const id of OHNE_TAG_HIER) zeileZu.set(id, KARTE_REITER ? "karte" : "varianten");
 function ohneTag(m) {
   if (!OHNE_TAG.length) return;
   m.append(el("section", {class: "ohne-tag"}, el("h3", {}, T("seite.karte.ohne_tag_titel", {n: OHNE_TAG.length})),
-    el("p", {class: "meldung"}, T("seite.karte.ohne_tag_hinweis")), ...OHNE_TAG.map(id => aufenthaltZeile(id, true))));
+    el("p", {class: "meldung"}, T("seite.karte.ohne_tag_hinweis")), ...OHNE_TAG.map(id => aufenthaltZeile(id, OHNE_TAG_HIER.includes(id)))));
 }
 /* Vorlage Karte (#231, K10): der eigene Reiter „Karte“, sobald der Baustein Karte an ist, auch ohne den Baustein Varianten.
    Er zeigt den Plan der Zeitachse (PLAN_ANSICHT) und alles mit Lage, dazu die Aufenthalte ohne Tag. Der Start bleibt die Reise. */
@@ -3492,6 +3495,7 @@ function ansichtOrt(m, a) {
       listenZeile("wissen", "wissen", w.titel, [w.in, w.notiz].filter(Boolean).join(" · "), w.id))));
   }
   wahlAmElement(m, a.id);   // Alternativen, die an diesem Ort hängen (an: [O-…])
+  aufenthalteAmElement(m, a.id);
 }
 // Kleine Lagekarte des Orts auf der Übersichtskarte, die anderen Orte als graue Punkte (25.10.2026)
 function ortKarte(m, oid) {
@@ -3675,6 +3679,7 @@ function ansichtAbschnitt(m, a) {
   } else m.append(abschnittInhalt(a));
   // Alternativen, die an diesem Abschnitt hängen (an: [W-…] oder [O-…]): am Element, mit Vergleich
   wahlAmElement(m, a.id);
+  aufenthalteAmElement(m, a.id);
 }
 
 /* ---------- Suche ---------- */
@@ -4696,7 +4701,7 @@ document.addEventListener("click", e => {
 }, true);
 window.addEventListener("online", () => agLaden().then(rmNeuZeichnen));
 
-/* ---------- Heimat eines Elements (Seitenordnung, 28.10.2026) ----------
+/* ---------- Heimat eines Elements (Seitenordnung, 28.10.2026; als Regel seit ADR-0007) ----------
    Unterkunft und Wahlstelle haben keine eigene Seite: Ein Link darauf führt zu dem Element, an dem sie hängen (Nacht oder
    Strecke eines Tages, Ort, Abschnitt des Wissens); was an keinem Element hängt, steht in „Zu tun“.
    -> {tag, ziel} | {abschnitt, ziel} (Ort oder Wissen) | {offen: true, ziel} | null; ersatz: Ziel, falls ziel fehlt */
@@ -4704,13 +4709,28 @@ function heimat(id, tiefe = 0) {
   if (!PLAN_ANSICHT || tiefe > 3) return null;
   const imPlan = tid => PLAN_ANSICHT.tage.some(t => t.id === tid);
 
+  // Elternbezug (ADR-0007): Sagt ein Ding mit an:, wo es zu Hause ist, ist seine Heimat die Seite dieses Elternelements.
+  // Ohne Seite (an: reise, ein Ort ohne Abschnitt) gilt die Vorgabe der Grundform weiter.
+  const eltern = (R.eltern || {})[id];
+  if (eltern && eltern !== "reise") {
+    if (imPlan(eltern)) return {tag: eltern, ziel: id};
+    if (ETAPPE_TAG.has(eltern)) return {tag: ETAPPE_TAG.get(eltern), ziel: id};
+    if (proId.has(eltern)) return {abschnitt: eltern, ziel: id};
+    if (R.unterkuenfte[eltern] || R.strecken[eltern] || (R.aufenthalte || {})[eltern]) {
+      const h = heimat(eltern, tiefe + 1);
+      if (h) return {...h, ziel: id};
+    }
+  }
+
   if (R.buchungen && R.buchungen[id]) {   // Buchung: ihr erstes Ding (dort steht der Block)
     const h = heimat((R.buchungen[id].fuer || [])[0], tiefe + 1);
     return h ? {...h, ziel: id} : null;
   }
-  if ((R.aufenthalte || {})[id]) {   // Aufenthalt ohne Nacht: der Tag, an dem er steht
+  if ((R.aufenthalte || {})[id]) {   // Aufenthalt ohne Nacht: der Tag, an dem er steht, ohne Tag die Seite seines Orts (ADR-0007)
     const t = (R.aufenthalte[id].tage || []).find(imPlan);
-    return t ? {tag: t, ziel: id} : null;
+    if (t) return {tag: t, ziel: id};
+    const ort = R.aufenthalte[id].ort;
+    return !R.aufenthalte[id].tage.length && proId.has(ort) && proId.get(ort).typ === "ort" ? {abschnitt: ort, ziel: id} : null;
   }
   if (R.strecken[id] && !ETAPPE_TAG.has(id)) {   // Fahrt ohne Dossier: der Tag, an dem sie gefahren wird
     const t = PLAN_ANSICHT.tage.find(x => x.strecken.some(st => st.id === id));
@@ -4749,6 +4769,11 @@ function wahlAmElement(m, id) {
   const zeilen = ws.filter(w => !heim(w));
   m.append(el("section", {class: "am-element"}, el("h3", {}, T("seite.wahl.zur_wahl")), ws.filter(heim).map(wahlKarte),
     zeilen.length ? el("div", {class: "wliste"}, zeilen.map(wahlListenZeile)) : null));
+}
+// Aufenthalte, deren Heimat dieses Element ist (Ort, Abschnitt des Wissens; an: oder Vorgabe ohne Tag, ADR-0007): vollständig
+function aufenthalteAmElement(m, id) {
+  const ids = Object.keys(R && R.aufenthalte || {}).filter(a => (heimat(a) || {}).abschnitt === id);
+  if (ids.length) m.append(el("section", {class: "am-element"}, el("h3", {}, T("seite.aufenthalt.am_element")), ...ids.map(a => aufenthaltZeile(a, true))));
 }
 // Wahlstellen, die an einem Element hängen (an_ids), ohne die, die der Tag schon über Nacht, Strecke oder wahl: zeigt
 const wahlAn = (ids, ohne) => R ? R.wahlstellen.filter(w => (w.an_ids || []).some(x => ids.includes(x)) && !(ohne || []).includes(w.id)) : [];

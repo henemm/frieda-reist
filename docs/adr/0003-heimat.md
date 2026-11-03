@@ -18,7 +18,7 @@ Ursache war keine einzelne Änderung. Für jede Art von Ding gab es keine Regel,
 
 ## Entscheidung
 
-1. **Eine Heimat je Grundform.** Jedes Ding steht an genau einer Stelle vollständig. Überall sonst erscheint es nur als Zeile oder Vorschau mit genau einem Link dorthin.
+1. **Eine Heimat je Grundform.** Seit [ADR-0007](0007-elternbezug.md) ist die Tabelle unten die Tabelle der **Vorgaben**: Die Heimat eines Dings ist die Seite seines Elternelements (`an:`); wo `an:` fehlt, gilt die Vorgabe der Grundform. Jedes Ding steht an genau einer Stelle vollständig. Überall sonst erscheint es nur als Zeile oder Vorschau mit genau einem Link dorthin.
 
    | Grundform | Heimat | erscheint als Zeile in |
    |---|---|---|
@@ -26,7 +26,7 @@ Ursache war keine einzelne Änderung. Für jede Art von Ding gab es keine Regel,
    | Folge: Tag | Tagesseite | Zeitachse der Reise |
    | Bewegung | Teil der Tagesseite (Tageskasten, Der Weg) | Tageszeile |
    | Aufenthalt: Nacht, Unterkunft | Abschnitt „Nacht“ der Tagesseite | Tageszeile, „Zu tun · Zu buchen“ |
-   | Aufenthalt ohne Tag (vor Ort gesammelt, seit 2.11.2026, #235) | Reiter „Karte“, unter der Karte („Vor Ort, ohne Tag“); ohne den Baustein Karte der Reiseüberblick | Punkt auf der Karte |
+   | Aufenthalt ohne Tag (vor Ort gesammelt, seit 2.11.2026, #235; seit ADR-0007 an seinem Ort) | Ortsseite seines Orts (oder der Abschnitt, an den `an:` ihn hängt); hat der Ort keine Seite: Reiter „Karte“, unter der Karte („Vor Ort, ohne Tag“), ohne den Baustein Karte der Reiseüberblick | Zeile unter der Karte, Punkt auf der Karte |
    | Buchung (B-…, seit 29.10.2026, #76) | bei ihrem ersten gebuchten Ding (Unterkunftskarte, Aufenthalt oder Strecke der Tagesseite) | Chip am Ding, „Zu tun · Zu buchen“ |
    | Wahl mit Optionen | das Element, an dem sie hängt (`an:`), mit Vergleich | Marke in der Zeile des Elements, „Zu tun · Zu entscheiden“ |
    | Ort | Ortsseite | Tagesseite, Wissen |
@@ -71,6 +71,7 @@ Bis #214 galt diese Ordnung nur für eine Reise mit gewähltem Plan, dem Baustei
 ## Verlauf
 
 - 2.11.2026: Nachtrag #214: eine Seitenordnung für alle Reisen; der alte Zweig der Plan-Seite (`PLAN_DA`) ist entfernt, Baustein `tagesseiten` und `darstellung.plan_reiter` sind ohne Wirkung, `darstellung.tiefe` steuert nur noch den Plan-Baum (fünf Entscheidungen des Product Owners, `docs/specs/oberflaeche/eine-seitenordnung-214.md`). Tests: `engine/tests/test_eine_seitenordnung.py` (vier Fälle: ohne Pläne, Pläne offen, Plan fest, `tiefe`).
+- 3.11.2026 (ADR-0007, #282): Die Tabelle der Heimaten ist die Tabelle der Vorgaben; die Heimat ist die Seite des Elternelements (`an:`), ein Aufenthalt ohne Tag hat sie auf der Ortsseite seines Orts (ohne Ortsseite wie bisher unter der Karte).
 - 2.11.2026 (Epic #225, Entscheidung des Product Owners 3.11.2026): Die Karte hat einen eigenen Reiter „Karte“, sobald der Baustein Karte an ist, auch ohne den Baustein Varianten (#231). Der Start bleibt immer der Reiseüberblick (#214); der Reiter „Varianten“ bleibt nur für den Planvergleich. Aufenthalte ohne Tag haben ihre Heimat unter der Karte (#235); die Tageskarte auf der Tagesseite ist ein Ausschnitt, keine zweite Heimat.
 
 - 29.10.2026: Abgleich (`docs/abgleich-2026-10-29.md`): Buchung und Unterkunft standen an mehreren Stellen vollständig (bei jedem Ding der Buchung, an jeder Nacht der Unterkunft, als Liste unter dem Plan), ein Link auf eine Buchung an einem Aufenthalt oder einer Fahrt hatte kein Ziel, die Liste der Entscheidungen im Plan zeigte Wahlen vollständig, die schon am Tag standen. Jetzt: Buchung nur an ihrem ersten Ding, Unterkunft nur an ihrer ersten Nacht, Aufenthalt und Fahrt haben ihren Tag als Heimat (`heimat`), Sammellisten zeigen Zeilen.

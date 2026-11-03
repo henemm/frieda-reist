@@ -35,6 +35,19 @@ ARTEN = WANN                      # alter Name, wird von Bestand gelesen
 UHRZEIT = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+", "aufenthalt": r"A-\d+",
           "tag": r"T-\d+", "wahl": r"V-\d+", "option": r"V-\d+\.[a-z]+", "wissen": r"W-\d+", "buchung": r"B-\d+"}
+# Elternbezug (ADR-0007, #282): jedes Ding darf mit an: sagen, an welchem anderen Ding es zu Hause ist (genau eines). Erlaubt sind
+# Tag, Ort, Strecke, Aufenthalt, Unterkunft, Abschnitt des Wissens und die Reise selbst (an: reise). Ohne an: gilt die Vorgabe
+# der Grundform (Nacht und Strecke am Tag, Aufenthalt am Tag, sonst an seinem Ort). Bei einer Strecke war an: bis zum
+# Schritt b die Ankunftszeit; ein Wert, der eine Kennung ist, gilt als Elternbezug, jeder andere als Zeit.
+ELTERN_ARTEN = ("tag", "ort", "strecke", "aufenthalt", "unterkunft", "wissen")
+REISE_ALS_ELTERN = "reise"
+
+
+def ist_eltern(wert):
+    """Ist wert ein möglicher Elternbezug (eine Kennung oder „reise“)?"""
+    return isinstance(wert, str) and (wert == REISE_ALS_ELTERN or any(ist(a, wert) for a in ELTERN_ARTEN))
+
+
 # Buchung (Product Owner 29.10.2026, frieda-reist #76): eigenes Ding B-… in routen.yaml unter buchungen:, gehört zu einem
 # oder mehreren Aufenthalten (U-, A-) oder Bewegungen (E-) („fuer“). Felder: status, nummer, bei, preis, bezahlt, frist,
 # frist_was, storno, storno_bis, gebucht_am, wer, quelle (Pflicht: Herkunft), notiz, verlauf; seit #166 zahlung (Zahlstand)
@@ -336,7 +349,12 @@ class Routen:
         self.warnungen = []
         self.entscheider = set(self.r.get("entscheider", []) if entscheider is None else entscheider)
         self.orte = self.r.get("orte") or {}
-        self.strecken = self.r.get("strecken") or {}
+        self.strecken = {}
+        for sid, s in (self.r.get("strecken") or {}).items():
+            if isinstance(s, dict) and ist_eltern(s.get("an")):   # an: <Kennung> ist der Elternbezug, nicht die Ankunftszeit
+                s = {k: v for k, v in s.items() if k != "an"} | {"eltern": s["an"]}
+            self.strecken[sid] = s
+        self.eltern = {}          # ID -> Elternelement, nur wo an: gesetzt ist (ADR-0007)
         self.unterkuenfte = self.r.get("unterkuenfte") or {}
         self.aufenthalte = self.r.get("aufenthalte") or {}   # Aufenthalte ohne Nacht: Besichtigung, Essen, Besuch (A-…)
         self.buchungen = self.r.get("buchungen") or {}       # Buchungen (B-…) zu Unterkünften, Aufenthalten, Strecken (#76)
@@ -459,6 +477,7 @@ class Routen:
             self.a_art[aid] = self.art_von(a, f"Aufenthalt {aid}")
             self.lage_pruefen(a, f"Aufenthalt {aid}")
         self.buchungen_pruefen()
+        self.eltern_pruefen()
         for tid, t in self.tage.items():
             self.id_anlegen(tid, self.q)
             for aid in t.get("aufenthalte") or []:
@@ -491,6 +510,37 @@ class Routen:
                 self.warne(vid, texte.satz("pruefung.routen.99", vid=vid, f=f))
         self.regeln_pruefen()
         self.merkmale_pruefen()
+
+    def eltern_pruefen(self):
+        """Elternbezug (an:, ADR-0007): genau ein bekanntes Ding der erlaubten Arten, nicht das Ding selbst, ohne Kreis."""
+        mengen = {"tag": self.tage, "ort": self.orte, "strecke": {**self.etappen, **self.strecken}, "aufenthalt": self.aufenthalte,
+                  "unterkunft": self.unterkuenfte, "wissen": self.wissen}
+        for gruppe in (self.orte, self.strecken, self.unterkuenfte, self.aufenthalte, self.buchungen):
+            for did, d in gruppe.items():
+                if not isinstance(d, dict):
+                    continue
+                an = d.get("eltern") if gruppe is self.strecken else d.get("an")
+                if an is None:
+                    continue
+                if not ist_eltern(an):
+                    self.fehl(texte.satz("pruefung.routen.eltern_art", did=did, x=an))
+                elif an == did:
+                    self.fehl(texte.satz("pruefung.routen.eltern_selbst", did=did))
+                else:
+                    art = next((a for a in ELTERN_ARTEN if ist(a, an)), None)
+                    if art and mengen[art] is not None and an not in mengen[art]:
+                        self.fehl(texte.satz("pruefung.routen.eltern_unbekannt", did=did, x=an))
+                    else:
+                        self.eltern[did] = an
+        for did in list(self.eltern):
+            weg, x = {did}, self.eltern[did]
+            while x in self.eltern:
+                if x in weg:
+                    self.fehl(texte.satz("pruefung.routen.eltern_kreis", did=did))
+                    self.eltern.pop(did, None)
+                    break
+                weg.add(x)
+                x = self.eltern[x]
 
     def buchungen_pruefen(self):
         """Buchungen (B-…, #76): gehören zu vorhandenen Dingen, haben Status, Herkunft und gültige Daten. Eine nicht
@@ -1400,6 +1450,8 @@ class Routen:
             "unterkuenfte": self.unterkuenfte_aus(tage),
             "aufenthalte": self.aufenthalte_aus(tage),
             "buchungen": {bid: self.buchung_aus(bid) for bid in self.buchungen},
+            # Elternbezug (ADR-0007): nur, wo an: gesetzt ist; die Seite berechnet die Heimat daraus (heimat)
+            "eltern": dict(self.eltern),
             # Arten der Reise (plan/arten.yaml): Name, Grundform, Farbe, Symbol, buchbar, kosten (das Merkmal mit der Rolle
             # kosten, das die Seite summiert); die Seite kennt keine Art selbst
             "arten": {a: {**d, "kosten": next((k for k, m in self.katalog.get(a, {}).items() if m.get("rolle") == "kosten"), None)}
