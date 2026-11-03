@@ -152,7 +152,9 @@ def vf(tmp_path):
                        f'#!/bin/sh\necho "$1" >> {tmp_path}/frei.log\necho "Seite: https://example.invalid/$1-geheim/"\n')
     # Einheiten-Abgleich (#260) als Attrappe „alles gleich“: der echte Abgleich läse /etc/systemd/system des Testrechners
     units = ausfuehrbar(tmp_path / "units-gleich.sh", "#!/bin/sh\nexit 0\n")
+    nginx_gleich = ausfuehrbar(tmp_path / "nginx-gleich.sh", "#!/bin/sh\nexit 0\n")   # Abgleich der nginx-Bausteine (#206), sonst läse er /etc/nginx
     env = {**SAUBER, "FR_WURZEL": str(arbeit), "FR_INSTANZ": "probe", "FR_DIENST": str(tmp_path / "dienst"), "VF_UNITS": str(units),
+           "VF_NGINX": str(nginx_gleich),
            "FR_KONNEKTOR": str(tmp_path / "konnektor"), "FR_SPERREN": str(tmp_path), "VF_DEPLOY": str(attrappe), "VF_PRUEFEN": str(pruefen), "VF_FREISCHALTEN": str(frei),
            "FR_HEARTBEAT_VEROEFFENTLICHEN": "https://example.invalid/hb", "PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}",
            "FR_MELDEN": str(melden), "VF_ROTMELDEN": str(rotmelden)}
@@ -1778,17 +1780,18 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     assert "ProtectHome=" not in einh["probe-schreiben.service"]     # schreibt in die Arbeitskopie neben dem Repo
     assert "sudo systemctl enable --now probe-rueckmeldungen probe-konnektor probe-schreiben" in r.stdout
     assert "OnCalendar=" in einh["probe-waechter.timer"] and "Persistent=true" in einh["probe-waechter.timer"]
-    nginx = (aus / "nginx/probe-konnektor.conf").read_text()
+    nginx = (aus / "nginx/probe-konnektor-orte.inc").read_text()
     inc = (aus / "nginx/probe-konnektor.inc").read_text()
     # Konnektor an der Wurzel (#163): /mcp, Anmeldung, OAuth; der alte Pfad bleibt für Links aus der Zeit vor den Konten
-    assert "location ~ ^/(mcp|anmelden|abmelden|konto|authorize|token|register|gesund)?$" in nginx
+    assert "location = /mcp" in nginx and "location = /anmelden" in nginx and "location = /token" in nginx
+    assert "location ~ ^/(konto|abmelden|authorize|gesund)?$" in nginx
     assert "location ^~ /.well-known/oauth-" in nginx and "location ^~ /schrift/" in nginx and "location = /favicon.ico" in nginx
-    assert "location ^~ /probe-mcp/" in nginx and "zone=probe_api" in nginx and "127.0.0.1:8772/" in nginx
+    assert "location ^~ /probe-mcp/" in nginx and "zone=probe_konto" in nginx and "127.0.0.1:8772/" in nginx
     assert "include /etc/nginx/snippets/probe-konnektor.inc;" in nginx
     assert "proxy_pass http://127.0.0.1:8772;" in inc
     # Der Dienst setzt Referrer-Policy „same-origin“; „no-referrer“ von nginx ließe Browser „Origin: null“ schicken
     assert "add_header Referrer-Policy" not in nginx + inc
-    assert "zone=probe_api:10m" in (aus / "nginx/probe-zone.conf").read_text()
+    assert "zone=probe_konto:1m" in (aus / "nginx/probe-zone.conf").read_text()
     assert "sudo systemctl enable --now probe-veroeffentlichen.timer" in r.stdout
     # ohne --installieren wird außerhalb des Ausgabeordners nichts angelegt
     assert not (tmp_path / "srv").exists() and not (tmp_path / "systemd").exists()
@@ -1841,7 +1844,7 @@ def test_nginx_leitet_konnektor_und_reise_richtig(tmp_path):
     r = einrichten(tmp_path, FR_KN_PORT=str(kn_port), FR_NGINX_SNIPPETS=str(snippets))
     assert r.returncode in (0, 2), r.stdout + r.stderr
     aus = tmp_path / "aus/nginx"
-    for n in ("probe-konnektor.conf", "probe-konnektor.inc"):
+    for n in ("probe-konnektor-orte.inc", "probe-konnektor.inc"):
         shutil.copy(aus / n, snippets / n)
     seiten = tmp_path / "seiten"
     (seiten / "reise").mkdir(parents=True)
@@ -1857,10 +1860,12 @@ def test_nginx_leitet_konnektor_und_reise_richtig(tmp_path):
     (tmp_path / "nginx.conf").write_text(f"""{benutzer} pid {tmp_path}/nginx.pid; error_log {tmp_path}/fehler.log; daemon off;
 events {{}}
 http {{ access_log off; {temp}
+  limit_req_zone $binary_remote_addr zone=probe_api:1m rate=30r/m;   # Zone der Reise-Bausteine: liegt bis zur Bereinigung in der gemeinsamen Datei (#206)
   include {aus}/probe-zone.conf;
   server {{ listen 127.0.0.1:{port};
     location ~* \\.(ico|png|svg|woff2|ics)$ {{ return 418; }}
-    include {snippets}/probe-*.conf;
+    include {snippets}/probe-konnektor-orte.inc;
+    include {snippets}/probe-*.conf;   # Reise-Bausteine; der Konnektor-Baustein endet auf .inc und fehlt hier bewusst
   }}
 }}
 """)
@@ -2106,5 +2111,28 @@ def test_veroeffentlichen_meldet_nur_den_rest_nach_dem_installieren(vf):
 def test_veroeffentlichen_unit_abgleich_fehler_stoppt_nichts(vf):
     stub = ausfuehrbar(vf["tmp"] / "units.sh", "#!/bin/sh\necho boom >&2\nexit 1\n")
     assert vf["lauf"](VF_UNITS=str(stub)).returncode == 0
+    assert vf["pings"]() == 1
+    assert not hoch(vf)
+
+
+# ---------- nginx-Bausteine abgleichen beim Veröffentlichen (#206, test_nginx.py prüft den Abgleich selbst) ----------
+
+def test_veroeffentlichen_meldet_nginx_abweichung_einmal_je_fingerabdruck_ohne_zu_installieren(vf):
+    protokoll = vf["tmp"] / "nginx-aufrufe.log"
+    stub = ausfuehrbar(vf["tmp"] / "nginx.sh", f'#!/bin/sh\necho "$@" >> {protokoll}\n'
+                       'echo "probe-zone.conf differs"\necho "sudo install -m 644 x /etc/nginx/conf.d/"\nexit 3\n')
+    assert vf["lauf"](VF_NGINX=str(stub)).returncode == 0
+    log = vf["zeilen"]("melden.log")       # der Text der Meldung ist mehrzeilig
+    assert len([z for z in log if z.startswith("normal|")]) == 1
+    assert "probe-zone.conf differs" in "\n".join(log) and any(z.startswith("sudo install") for z in log)
+    assert protokoll.read_text().split() == ["pruefen"]          # nur geprüft, nie installiert
+    vf["neuer_commit"]()
+    assert vf["lauf"](VF_NGINX=str(stub)).returncode == 0
+    assert len([z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]) == 1
+
+
+def test_veroeffentlichen_nginx_abgleich_fehler_stoppt_nichts(vf):
+    stub = ausfuehrbar(vf["tmp"] / "nginx.sh", "#!/bin/sh\necho boom >&2\nexit 1\n")
+    assert vf["lauf"](VF_NGINX=str(stub)).returncode == 0
     assert vf["pings"]() == 1
     assert not hoch(vf)

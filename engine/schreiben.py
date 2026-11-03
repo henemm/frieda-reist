@@ -57,7 +57,7 @@ MAX_BODY = 64 * 1024
 MAX_TEXT = 500          # Namen, Hilfe, Fragen, Beschreibungen
 MAX_WERTE = 20
 # Zeitgrenzen in Sekunden: ZEIT_GESAMT + ZEIT_PRUEFUNG bleibt unter den 30 s von proxy_read_timeout
-# (betrieb/vorlagen/nginx-konnektor.conf), sonst erreicht die Meldung die App nie
+# (betrieb/vorlagen/nginx-konnektor-orte.inc), sonst erreicht die Meldung die App nie
 ZEIT_GESAMT = 25        # Sperre, Vorbereiten und Anwenden zusammen
 ZEIT_SPERRE = 3         # Wartezeit auf die Sperre der Reise (Teil von ZEIT_GESAMT)
 ZEIT_PRUEFUNG = 3       # nach einem Abbruch: ist der Vorgang trotzdem auf origin/main angekommen?

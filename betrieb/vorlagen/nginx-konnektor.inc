@@ -1,14 +1,13 @@
-# Gemeinsame Einstellungen der Orte des Konnektors (eingebunden von __INSTANZ__-konnektor.conf, erzeugt von
+# Gemeinsame Einstellungen der Orte des Konnektors (eingebunden von __INSTANZ__-konnektor-orte.inc, erzeugt von
 # betrieb/einrichten.sh). Endet auf .inc, damit „include <instanz>-*.conf“ im server-Block sie nicht selbst einbindet.
 client_max_body_size 64k;
 # Ohne Pfad: der Dienst bekommt die Adresse, wie sie kam (/mcp, /anmelden …)
 proxy_pass http://127.0.0.1:__KN_PORT__;
 proxy_http_version 1.1;
-proxy_buffering off;
-# Lesefrist: Der langsamste Weg ist der Schreibweg mit höchstens 28 s (engine/schreiben.py, ZEIT_GESAMT + ZEIT_PRUEFUNG,
-# #118; ein Test prüft die Summe gegen diesen Wert). 60 s lassen dafür doppelten Spielraum und halten hängende
-# Verbindungen trotzdem kurz (Vorlage bis 1.11.2026: 30 s, zu knapp neben 28 s).
-proxy_read_timeout 60s;
+proxy_set_header Connection        "";
+# Keine eigene Lesefrist und kein eigener Puffer: Es gilt die Vorgabe von nginx (60 s, gepuffert), mehr als der längste
+# Schreibweg mit höchstens 28 s (engine/schreiben.py, ZEIT_GESAMT + ZEIT_PRUEFUNG, #118; ein Test prüft die Summe). Nur /mcp
+# setzt beides selbst (nginx-konnektor-orte.inc); eine zweite Angabe hier wäre dort eine doppelte Direktive.
 proxy_set_header Host              $host;
 proxy_set_header X-Forwarded-For   $remote_addr;
 proxy_set_header X-Forwarded-Proto $scheme;

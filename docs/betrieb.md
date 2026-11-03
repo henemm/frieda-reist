@@ -19,7 +19,7 @@ Eine **Instanz** ist eine Reisegruppe mit eigenem Betreiber: ein Reisen-Repo, da
 | Dienstordner | `<FR_DIENST>/` | Code der Dienste, Stände, Stempel, vorgemerkte Links, geheime Einstellungen |
 | Konnektor-Zugänge | `<FR_KONNEKTOR>/zugaenge.json`, `seiten.json` (600) | geheime Links; nie im Repo |
 | systemd | `<instanz>-rueckmeldungen`, `-konnektor`, `-schreiben`, `-push`, `-veroeffentlichen.timer`, `-waechter.timer` | aus `betrieb/vorlagen/`, erzeugt von `einrichten.sh` |
-| nginx | `<FR_NGINX_SNIPPETS>/<instanz>-<reise>.conf` (mit Token), `<instanz>-konnektor.conf` mit `<instanz>-konnektor.inc`, Zone in `conf.d/<instanz>-zone.conf` | aus `betrieb/vorlagen/` |
+| nginx | `<FR_NGINX_SNIPPETS>/<instanz>-<reise>.conf` (mit Token), `<instanz>-konnektor-orte.inc` mit `<instanz>-konnektor.inc`, Zone in `conf.d/<instanz>-zone.conf` | aus `betrieb/vorlagen/` |
 
 Die Skripte rufen sich im Reisen-Repo als `frieda/betrieb/<skript>.sh` auf und finden die Instanz selbst (das Repo, das die Software einbindet; sonst `FR_WURZEL`).
 
@@ -92,7 +92,7 @@ Das Abo folgt dem, was Kalender-Programme erwarten (1.11.2026, nach dem Fehler i
 
 ## Zeitgrenzen und Sperren des Schreibwegs
 
-Ein Schreibvorgang darf samt Wartezeit auf die Sperre nicht länger dauern, als nginx auf den Konnektor wartet (`proxy_read_timeout 60s` in `nginx-konnektor.inc`, Begründung dort; bis 1.11.2026 30 s), sonst erreicht die Meldung die Claude-App nie (#118, #163). Darum gilt (`engine/schreiben.py`; ein Test prüft die Summe gegen jede Lesefrist der nginx-Vorlage): `ZEIT_GESAMT = 25` Sekunden für Sperre, Vorbereiten der Arbeitskopie (jeder `git`-Aufruf mit dem Rest der Frist) und Anwenden zusammen, davon höchstens `ZEIT_SPERRE = 3` Wartezeit auf die Sperre, und danach `ZEIT_PRUEFUNG = 3` Sekunden Reserve für die Ergebnisprüfung. Eine Antwort kommt also nach höchstens 28 Sekunden. Wer die nginx-Grenze ändert, prüft die Werte mit.
+Ein Schreibvorgang darf samt Wartezeit auf die Sperre nicht länger dauern, als nginx auf den Konnektor wartet (`proxy_read_timeout`: 300 s für `/mcp` und 60 s für den alten Pfad in `nginx-konnektor-orte.inc`, sonst die Vorgabe von nginx mit 60 s, Begründung in `nginx-konnektor.inc`; bis 1.11.2026 30 s), sonst erreicht die Meldung die Claude-App nie (#118, #163). Darum gilt (`engine/schreiben.py`; ein Test prüft die Summe gegen jede Lesefrist der nginx-Vorlage): `ZEIT_GESAMT = 25` Sekunden für Sperre, Vorbereiten der Arbeitskopie (jeder `git`-Aufruf mit dem Rest der Frist) und Anwenden zusammen, davon höchstens `ZEIT_SPERRE = 3` Wartezeit auf die Sperre, und danach `ZEIT_PRUEFUNG = 3` Sekunden Reserve für die Ergebnisprüfung. Eine Antwort kommt also nach höchstens 28 Sekunden. Wer die nginx-Grenze ändert, prüft die Werte mit.
 
 Das Anwenden läuft als Unterprozess in eigener Prozessgruppe; bei Fristablauf wird die ganze Gruppe beendet, auch ein laufendes `git push`. Jeder Vorgang bekommt eine kurze Kennung, die als Zeile `Frieda-Vorgang: <Kennung>` in der Commit-Nachricht steht. Nach einem Abbruch im Anwenden holt der Schreibweg `origin/main` und sucht die Kennung (beides zusammen höchstens `ZEIT_PRUEFUNG`). Die Meldungen:
 
@@ -176,7 +176,7 @@ Voraussetzung: `gh` ist für den Dienstbenutzer angemeldet und darf Workflows de
 - **Link der Nachricht:** die Adresse der Seite aus einem Abo derselben Reise, sonst aus `seiten.json` neben den Konnektor-Zugängen (`KN_ZUGAENGE`).
 - **Kontakt:** `FR_BASIS` aus `konten.env` steht als Absender in der VAPID-Unterschrift.
 - **Probe:** `FR_KONTEN=… RM_ABLAGE=… engine/.venv/bin/python <FR_DIENST>/push.py probe <email>` schickt eine Nachricht an alle Geräte eines Kontos. Protokoll: `journalctl -u <instanz>-push`.
-- **Frieda-App (Entscheidung A, 2.11.2026):** Ein- und ausgeschaltet wird je Gerät auf „Mein Konto“ (`engine/app/konto.js`, POST `/konto` mit `aktion=push_an` oder `push_ab`, Sitzung und Origin wie jede Änderung; Antwort 204). Das Abo gehört zu keiner Reise (`reise` leer, `seite` = `<FR_BASIS>/konto`) und bekommt die Nachrichten aller Reisen; gezeigt werden sie vom Worker `/sw.js` der Frieda-App (Scope `/`, nur Push, kein Abfangen, kein Speichern). Manifest, Worker und Skript liefert der Konnektor aus `<FR_DIENST>/app/` (`deploy.sh` kopiert `engine/app/`); der server-Block braucht dafür die Orte `/manifest.webmanifest`, `/sw.js` und `/konto.js` (Baustein `<instanz>-konnektor.conf`, `wege_pruefen` prüft sie). Der Fuß der Reiseseite verweist nur auf „Mein Konto“; `api/push` der Reiseseite bleibt für ältere Abos.
+- **Frieda-App (Entscheidung A, 2.11.2026):** Ein- und ausgeschaltet wird je Gerät auf „Mein Konto“ (`engine/app/konto.js`, POST `/konto` mit `aktion=push_an` oder `push_ab`, Sitzung und Origin wie jede Änderung; Antwort 204). Das Abo gehört zu keiner Reise (`reise` leer, `seite` = `<FR_BASIS>/konto`) und bekommt die Nachrichten aller Reisen; gezeigt werden sie vom Worker `/sw.js` der Frieda-App (Scope `/`, nur Push, kein Abfangen, kein Speichern). Manifest, Worker und Skript liefert der Konnektor aus `<FR_DIENST>/app/` (`deploy.sh` kopiert `engine/app/`); der server-Block braucht dafür die Orte `/manifest.webmanifest`, `/sw.js` und `/konto.js` (Baustein `<instanz>-konnektor-orte.inc`, `wege_pruefen` prüft sie). Der Fuß der Reiseseite verweist nur auf „Mein Konto“; `api/push` der Reiseseite bleibt für ältere Abos.
 - **iPhone und iPad:** Push gibt es nur in der App vom Home-Bildschirm (iOS 16.4 und neuer). Im Browser zeigt „Mein Konto“ die drei Schritte: Teilen, „Zum Home-Bildschirm“, Frieda öffnen und dort einmal anmelden (die App hat eigene Cookies).
 
 ## Wächter
@@ -201,6 +201,7 @@ Voraussetzung: `gh` ist für den Dienstbenutzer angemeldet und darf Workflows de
 | `FR_MELDEN` | leer | Meldeweg (unten) |
 | `FR_ROT_MELDEN_NACH_MINUTEN` | `30` | Minuten Rot beim Veröffentlichen bis zum Alarm (Veröffentlichen) |
 | `FR_NGINX_SNIPPETS`, `FR_SUDO` | `/etc/nginx/snippets`, `sudo -n` | nginx-Bausteine und Rechte |
+| `FR_EIGENE_ADRESSEN` | leer | Adressen, die nicht ins Anfragekontingent von nginx zählen, getrennt durch Leerzeichen: die des Servers selbst (die Schleife `127.0.0.1` und `::1` gilt immer). Abschnitt „nginx-Bausteine abgleichen“ |
 | `FR_SPERREN` | `/tmp` | Ordner der Sperrdateien je Reise im Schreibweg; die Sperre des Veröffentlichens liegt in `<FR_DIENST>/veroeffentlichen.lock`, weil der Schreibweg mit privatem `/tmp` läuft und Timer und Schreibweg sie teilen müssen (#211) |
 | `FR_BENUTZER`, `FR_GRUPPE`, `FR_HOME`, `FR_PFAD` | aufrufender Benutzer | nur für `einrichten.sh`: Benutzer und `PATH` der Dienste |
 | `FR_HEARTBEAT_VEROEFFENTLICHEN` | leer | Überwachungsadresse, nur in `betrieb.env` |
@@ -247,7 +248,7 @@ Der Workflow „Software nachziehen“ (siehe „Neue Instanz einrichten“) lä
    **Anstoß vom Server:** `veroeffentlichen.sh` fragt bei jedem Lauf mit `git ls-remote` nach `main` der Software (URL aus `.gitmodules`). Ist dieser Stand ein anderer als der eingebundene und noch nicht angestoßen, startet es `gh workflow run <FR_NACHZIEHEN_WORKFLOW>` und merkt Stand und Zeit in `<FR_DIENST>/nachziehen-angestossen` (nur nach Erfolg von `gh`). Für denselben Stand startet es erst wieder, wenn seit der gemerkten Zeit `FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN` (Vorgabe 6) vergangen sind; so erzeugt ein rotes Tor eine Fehler-Mail je Software-Stand, nicht eine alle 5 Minuten. Scheitert `ls-remote` oder `gh`, ist das eine Warnung im Protokoll, das Veröffentlichen läuft weiter. Der Zeitplan von GitHub bleibt als Rückfallweg.
 3. **Bauordner auf dem Server:** Klon des Reisen-Repos als Dienstbenutzer, `git submodule update --init`. Danach `python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt`. `git fetch` muss ohne Rückfrage gehen. Lokale Dateien, die nicht ins Repo gehören (etwa `.claude/settings.json`), kommen in `.git/info/exclude`, sonst gilt der Ordner als belegt und das Veröffentlichen setzt aus.
 4. **Einrichten:** `frieda/betrieb/einrichten.sh` prüft die Voraussetzungen. Es erzeugt Units und nginx-Bausteine in einem Ordner und zeigt die Befehle zum Aktivieren. Außerhalb dieses Ordners ändert es nichts. `--installieren` legt nach Rückfrage die Ordner an und kopiert Units und Bausteine nach `/etc`.
-5. **nginx:** Im server-Block der Adresse `include <FR_NGINX_SNIPPETS>/<instanz>-*.conf;` eintragen, `nginx -t`, neu laden. Das bindet die Reiseseiten und den Konnektor ein (`<instanz>-konnektor.conf`, gemeinsame Einstellungen in `<instanz>-konnektor.inc`, das der Stern nicht selbst einbindet). Der Konnektor steht an der Wurzel der Adresse (#163):
+5. **nginx:** Im server-Block der Adresse `include <FR_NGINX_SNIPPETS>/<instanz>-*.conf;` eintragen, `nginx -t`, neu laden. Das bindet die Reiseseiten ein. Der Konnektor kommt mit einer eigenen Zeile `include <FR_NGINX_SNIPPETS>/<instanz>-konnektor-orte.inc;` in den Block seiner Adresse (gemeinsame Einstellungen in `<instanz>-konnektor.inc`). Beide enden bewusst auf `.inc`: Der Stern `<instanz>-*.conf` bindet sie nicht ein, sonst käme der Konnektor in jeden Block, der die Reiseseiten einbindet (etwa den einer zweiten Adresse), und die Orte stünden doppelt. Der Konnektor steht an der Wurzel der Adresse (#163):
    - `/` (Startseite, führt zu Mein Konto; #41), `/mcp` (Claude-App), `/anmelden`, `/abmelden`, `/konto`, `/einladung/…`, OAuth (`/authorize`, `/token`, `/register`, `/.well-known/oauth-…`), `/kalender/…` (Abo), `/schrift/…`, Favicon und App-Symbole, `/gesund`.
    - Reiseseiten und Konnektor teilen sich die Adresse: Die Sitzung (`__Host-frieda`) gilt nur dort, und die Reiseseite fragt mit ihr `api/ich`.
    - Kein `add_header Referrer-Policy "no-referrer"` im server-Block für diese Pfade: Der Dienst setzt `same-origin`, sonst schicken Browser `Origin: null` und jede Anmeldung scheitert an der Prüfung der Herkunft. Cache-Control und Content-Security-Policy setzt ebenfalls der Dienst.
@@ -294,6 +295,38 @@ werden wie bei systemd nur an Leerzeichen und Tab getrennt; Nicht-ASCII ist nur 
 Einmalig und bewusst (Freigabe des Product Owners, kein Teil des automatischen Laufs): Hilfsprogramm und sudoers-Zeile
 installieren, die Befehle nennt `einrichten.sh` am Ende seiner Ausgabe. Ohne installiertes Hilfsprogramm bleibt es bei der
 Meldung. Nach einer Änderung der Vorlage `units-installieren.py` muss die Kopie auf dem Server bewusst erneuert werden.
+
+## nginx-Bausteine abgleichen (#206)
+
+Der Konnektor hat drei Drosseln, je Adresse (`betrieb/vorlagen/nginx-zone.conf`, Zonen mit dem Namen der Instanz in einer eigenen
+Datei `conf.d/<instanz>-zone.conf`; eine gemeinsam genutzte Datei wie `limit-req.conf` bleibt unberührt, damit keine Namen streiten):
+`<instanz>_mcp` großzügig (10 pro Sekunde, burst 40), weil die Claude-App von gemeinsamen Adressen aus aufruft; `<instanz>_anmelden`
+streng (5 pro Minute, burst 10); `<instanz>_konto` für Konto, Einladung, Kalender-Abo und die Übergangs-Links (30 pro Minute, burst 20).
+`/token`, `/register`, die OAuth-Metadaten, Schrift und Symbole haben keine Drossel: Sie kommen von den gemeinsamen Adressen der
+Claude-App, ein Limit träfe alle Nutzer zusammen, der Dienst prüft PKCE, Weiterleitungsadressen und Codes selbst.
+
+**Ausnahme für den Server selbst.** Für die Schleife (`127.0.0.1`, `::1`) und `FR_EIGENE_ADRESSEN` ist der Schlüssel der Zonen leer
+(`geo` und `map`); nginx rechnet Anfragen mit leerem Schlüssel nicht an. Die Prüfungen des Servers laufen so weiter den echten Weg
+über nginx, ohne Kontingent von Besuchern zu verbrauchen. Bedingung: Die Ausnahme ist sicher, solange die Software keine Funktion hat,
+mit der der Server eine fremde Adresse aufruft und deren Antwort nach außen weitergibt (heute gibt es keine). Kommt eine solche
+Funktion, wird die Ausnahme vorher neu bewertet.
+
+**Abgleich.** Nach jedem grünen Lauf vergleicht `veroeffentlichen.sh` mit `nginx.py pruefen` die erzeugten Bausteine mit den
+installierten (`conf.d/<instanz>-zone.conf`, `<instanz>-konnektor-orte.inc`, `<instanz>-konnektor.inc`). Bei einer Abweichung kommt genau eine
+normale Meldung mit dem einen Befehl zum Beheben, danach erst wieder bei einer anderen Abweichung (Merker `<FR_DIENST>/nginx-gemeldet`).
+Sind die Bausteine noch nicht eingerichtet, meldet der Abgleich nichts. **Installiert wird nie automatisch:** Jede nginx-Zeile wirkt
+als Root (ein einziger Ort kann Dateien ausliefern oder, weil nginx beim Start als Root Logdateien öffnet, schreiben); es gibt keine
+harmlose Teilmenge wie bei den Einheiten. Ausgang von `nginx.py pruefen`: 0 gleich oder nicht eingerichtet, 3 weicht ab, 1 Fehler.
+
+Der Befehl aus der Meldung ist `sudo env … nginx.py anwenden` (von Hand, mit Root-Rechten, weil er `/etc/nginx` ändert; der Betriebsbenutzer braucht dafür keine Rechte, `pruefen` liest nur mit `sudo -n cat` unter `/etc/nginx/`, wie bei den Reise-Bausteinen). Er erzeugt das Soll neu, sichert die installierten Dateien in `<FR_DIENST>/nginx-sicherung/<Zeit>/`, installiert, prüft mit `nginx -t` und lädt nur bei bestandener Prüfung neu; besteht sie nicht, stellt er die gesicherten Dateien (und das Fehlen neuer) wieder her und endet mit Fehler; das gilt auch bei einem Abbruch von Hand. Rechte und Besitzer stellt er nicht einzeln wieder her (Zone 644, Bausteine 640, root). Er läuft nie automatisch.
+
+**Hinweis zur Ausnahme:** Die Ausnahme gilt für die Adresse, die nginx sieht (`$remote_addr`). Wird später ein vorgeschalteter Proxy oder CDN verwendet oder `realip` eingeschaltet, erscheint dessen Verkehr als eigene Adresse und wäre unbegrenzt; dann muss die Ausnahme vorher überprüft werden.
+
+**Einmalige Umstellung des Server-Blocks** (bewusst, mit Freigabe des Product Owners): Der Block der Konnektor-Adresse wird auf die Form „fester
+Rahmen plus erzeugter Baustein“ gebracht (`include <snippets>/<instanz>-konnektor-orte.inc;` statt der von Hand gebauten Orte), die Zonendatei
+kommt nach `conf.d`. Danach gilt der Abgleich. Die Zonen `<instanz>_api` der Reise-Bausteine (`nginx-reise.conf`) liegen bis dahin
+weiter in der gemeinsamen Datei; die alten Zeilen der Instanz dort entfernt ein eigener, späterer Schritt (erst dann kann die Reise-Zone
+in die eigene Datei ziehen).
 
 ## Bauordner und Arbeitsordner
 

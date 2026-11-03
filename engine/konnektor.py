@@ -37,7 +37,7 @@ Aufrufe:
                   KN_SEITENLINKS (Links zu den Seiten je Reise, vom Betrieb geschrieben; Standard seiten.json neben
                   KN_ZUGAENGE)
 
-HTTP (hinter nginx an der Wurzel von FR_KN_ADRESSE, Vorlage betrieb/vorlagen/nginx-konnektor.conf, docs/betrieb.md):
+HTTP (hinter nginx an der Wurzel von FR_KN_ADRESSE, Vorlage betrieb/vorlagen/nginx-konnektor-orte.inc, docs/betrieb.md):
   POST /mcp         MCP für den Konnektor „Frieda“ mit OAuth (engine/oauth.py); dazu Anmeldung und Konto (engine/anmeldung.py)
   POST /<token>     MCP über einen geheimen Link aus der Zeit vor den Konten (Übergang; früher unter /<instanz>-mcp/)
   GET  /gesund      Readiness (Zugänge lesbar, verlinkte Reisen veröffentlicht), ohne Token

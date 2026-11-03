@@ -28,12 +28,29 @@ NUR_ERZEUGEN=""
 SYSTEMD="${EI_SYSTEMD:-/etc/systemd/system}"
 SNIPPETS="${FR_NGINX_SNIPPETS:-/etc/nginx/snippets}"
 ZIEL="${EI_ZIEL:-${TMPDIR:-/tmp}/$FR_INSTANZ-einrichten}"
-ZONE="${FR_INSTANZ//-/_}_api"
+ZB="${FR_INSTANZ//-/_}"
+ZONE="${ZB}_api"   # Zone der Reise-Bausteine (freischalten.sh), bis zur Bereinigung der gemeinsamen Drossel-Datei dort definiert (docs/betrieb.md)
 
 probleme=0
 ok()      { echo "  ok      $*"; }
 problem() { echo "  MISSING $*"; probleme=$((probleme + 1)); }
 hinweis() { echo "  NOTE    $*"; }
+
+# Eigene Drosselzonen der Instanz (nginx-zone.conf) und Adressen, die nicht zählen: Schleife immer, dazu FR_EIGENE_ADRESSEN
+EIGENE_ADRESSEN=""; GESEHEN=" "
+set -f   # keine Dateinamen-Erweiterung der Eingabe
+shopt -s globasciiranges   # [0-9] meint nur ASCII-Ziffern
+export LC_COLLATE=C
+for a in 127.0.0.1 ::1 ${FR_EIGENE_ADRESSEN:-}; do
+  # IPv4 oder IPv6 mit Größe des Netzes; kein „/0“ (das nähme jeden aus)
+  if ! [[ "$a" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}(/([1-9]|[12][0-9]|3[0-2]))?$ || "$a" =~ ^[0-9A-Fa-f:]*:[0-9A-Fa-f:]*(/([1-9][0-9]?|1[01][0-9]|12[0-8]))?$ ]]; then
+    problem "FR_EIGENE_ADRESSEN: not an address: $a"; continue
+  fi
+  case "$GESEHEN" in *" $a "*) continue ;; esac
+  GESEHEN="$GESEHEN$a "
+  EIGENE_ADRESSEN="${EIGENE_ADRESSEN:+$EIGENE_ADRESSEN\\n    }$a 1;"
+done
+set +f
 
 if [ -z "$NUR_ERZEUGEN" ]; then
 echo "Instance $FR_INSTANZ ($FR_TITEL), trips repo $FR_WURZEL"
@@ -73,12 +90,14 @@ ersetze() {  # <vorlage> <ziel>
       -e "s|__SEITEN__|$FR_SEITEN|g" -e "s|__ABLAGE__|$FR_ABLAGE|g" -e "s|__DIENST__|$FR_DIENST|g" \
       -e "s|__KONNEKTOR__|$FR_KONNEKTOR|g" -e "s|__KONTEN__|$FR_KONTEN|g" -e "s|__RM_PORT__|$FR_RM_PORT|g" -e "s|__KN_PORT__|$FR_KN_PORT|g" \
       -e "s|__SB_PORT__|$FR_SB_PORT|g" -e "s|__PYTHON__|$FR_PYTHON|g" -e "s|__ZEITZONE__|$FR_ZEITZONE|g" \
-      -e "s|__KN_ADRESSE__|$FR_KN_ADRESSE|g" -e "s|__ZONE__|$ZONE|g" -e "s|__SNIPPETS__|$SNIPPETS|g" "$1" > "$2"
+      -e "s|__KN_ADRESSE__|$FR_KN_ADRESSE|g" -e "s|__ZONE__|$ZONE|g" -e "s|__SNIPPETS__|$SNIPPETS|g" \
+      -e "s|__ZONE_MCP__|${ZB}_mcp|g" -e "s|__ZONE_ANMELDEN__|${ZB}_anmelden|g" -e "s|__ZONE_KONTO__|${ZB}_konto|g" \
+      -e "s|__EIGENE_ADRESSEN__|$EIGENE_ADRESSEN|g" -e "s|__EIGEN__|${ZB}_eigen|g" -e "s|__SCHLUESSEL__|${ZB}_schluessel|g" "$1" > "$2"
 }
 for v in "$FR_BETRIEB"/vorlagen/*.service "$FR_BETRIEB"/vorlagen/*.timer; do
   ersetze "$v" "$ZIEL/systemd/$FR_INSTANZ-$(basename "$v")"
 done
-ersetze "$FR_BETRIEB/vorlagen/nginx-konnektor.conf" "$ZIEL/nginx/$FR_INSTANZ-konnektor.conf"
+ersetze "$FR_BETRIEB/vorlagen/nginx-konnektor-orte.inc" "$ZIEL/nginx/$FR_INSTANZ-konnektor-orte.inc"
 ersetze "$FR_BETRIEB/vorlagen/nginx-konnektor.inc" "$ZIEL/nginx/$FR_INSTANZ-konnektor.inc"
 ersetze "$FR_BETRIEB/vorlagen/nginx-zone.conf" "$ZIEL/nginx/$FR_INSTANZ-zone.conf"
 # Hilfsprogramm mit Root-Rechten für den Abgleich der Einheiten (#260): wird bewusst einmal installiert (docs/betrieb.md)
@@ -97,13 +116,14 @@ sudo install -d -o $FR_BENUTZER -g $FR_GRUPPE -m 750 $FR_ABLAGE
 sudo install -d -o $FR_BENUTZER -g $FR_GRUPPE -m 700 $FR_KONNEKTOR $FR_KONTEN
 sudo install -m 644 $ZIEL/systemd/* $SYSTEMD/
 sudo install -m 644 $ZIEL/nginx/$FR_INSTANZ-zone.conf /etc/nginx/conf.d/
-sudo install -m 640 $ZIEL/nginx/$FR_INSTANZ-konnektor.conf $ZIEL/nginx/$FR_INSTANZ-konnektor.inc $SNIPPETS/
+sudo install -m 640 $ZIEL/nginx/$FR_INSTANZ-konnektor-orte.inc $ZIEL/nginx/$FR_INSTANZ-konnektor.inc $SNIPPETS/
 sudo systemctl daemon-reload
 TEXT
 }
 echo
+echo "NOTE: the trip blocks use the zone ${ZONE}, which $FR_INSTANZ-zone.conf does not define yet: define it elsewhere in the http block (limit_req_zone \$binary_remote_addr zone=${ZONE}:1m rate=30r/m;) until it moves in here (docs/betrieb.md, nginx-Bausteine abgleichen)."
 echo "Activate (once the server block of $FR_ADRESSE contains  include $SNIPPETS/$FR_INSTANZ-*.conf;"
-echo "the connector stands at the root of $FR_KN_ADRESSE, whose server block includes $FR_INSTANZ-konnektor.conf):"
+echo "the connector stands at the root of $FR_KN_ADRESSE, whose server block includes $FR_INSTANZ-konnektor-orte.inc):"
 befehle | sed 's/^/  /'
 cat <<TEXT
   cd $FR_WURZEL && FR_WURZEL=$FR_WURZEL frieda/betrieb/deploy.sh <first trip>   (installs the code of the services; the check fails before the start)

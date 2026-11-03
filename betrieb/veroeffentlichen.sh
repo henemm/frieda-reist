@@ -455,6 +455,7 @@ main() {
   fi
   rm -f "$rot_datei"
   units_abgleichen
+  nginx_abgleichen
   mkdir -p "$(dirname "$stand")"
   echo "$neu" > "$stand"
   zustellen
@@ -486,6 +487,28 @@ units_abgleichen() {
   echo "Warning: installed units differ from the templates (exit $rc)."
   if [ "$(cat "$merker" 2>/dev/null || true)" != "$fp" ]; then
     if fr_melden normal "Units differ from the templates" "$aus"; then
+      { mkdir -p "$(dirname "$merker")" && echo "$fp" > "$merker"; } || true
+    fi
+  fi
+  return 0
+}
+
+# nginx-Bausteine abgleichen (#206): Weichen die installierten Bausteine (Zonen, Konnektor) von den Vorlagen ab, genau eine normale
+# Meldung je Abweichung mit dem einen Befehl zum Beheben (Fingerabdruck in <FR_DIENST>/nginx-gemeldet). Installiert nie etwas:
+# jede nginx-Zeile wirkt als Root, das Installieren bleibt ein bewusster Schritt (docs/betrieb.md). Ein Fehler hier stoppt nichts.
+nginx_abgleichen() {
+  local aus rc=0 merker="$FR_DIENST/nginx-gemeldet" fp
+  local abgleich="${VF_NGINX:-$FR_BETRIEB/nginx.py}"
+  aus="$("$abgleich" pruefen 2>&1)" || rc=$?
+  case "$rc" in
+    0) rm -f "$merker"; return 0 ;;
+    3) ;;
+    *) echo "Warning: nginx comparison failed (exit $rc), skipped."; return 0 ;;
+  esac
+  fp="$(printf '%s' "$aus" | sha256sum | cut -d' ' -f1)"
+  echo "Warning: installed nginx blocks differ from the templates."
+  if [ "$(cat "$merker" 2>/dev/null || true)" != "$fp" ]; then
+    if fr_melden normal "nginx blocks differ from the templates" "$aus"; then
       { mkdir -p "$(dirname "$merker")" && echo "$fp" > "$merker"; } || true
     fi
   fi

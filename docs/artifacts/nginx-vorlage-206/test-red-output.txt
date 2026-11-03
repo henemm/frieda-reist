@@ -1,0 +1,1135 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- /home/hem/frieda-reisen/engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx
+collecting ... collected 10 items
+
+engine/tests/test_nginx.py::test_zonendatei_hat_eigene_zonen_und_die_ausnahme FAILED [ 10%]
+engine/tests/test_nginx.py::test_eigene_adressen_sind_einstellbar FAILED [ 20%]
+engine/tests/test_nginx.py::test_orte_nutzen_die_drei_zonen FAILED       [ 30%]
+engine/tests/test_nginx.py::test_vorlagen_ohne_echte_adressen PASSED     [ 40%]
+engine/tests/test_nginx.py::test_nginx_laedt_die_zonen_und_nimmt_eigene_adressen_aus FAILED [ 50%]
+engine/tests/test_nginx.py::test_abgleich_nicht_eingerichtet_ist_still FAILED [ 60%]
+engine/tests/test_nginx.py::test_abgleich_gleich_endet_mit_0 FAILED      [ 70%]
+engine/tests/test_nginx.py::test_abgleich_abweichung_nennt_datei_und_einen_befehl FAILED [ 80%]
+engine/tests/test_nginx.py::test_abgleich_fehlende_einzeldatei_ist_abweichung FAILED [ 90%]
+engine/tests/test_nginx.py::test_abgleich_fehler_endet_mit_1 FAILED      [100%]
+
+=================================== FAILURES ===================================
+______________ test_zonendatei_hat_eigene_zonen_und_die_ausnahme _______________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8692/test_zonendatei_hat_eigene_zon0')
+
+    def test_zonendatei_hat_eigene_zonen_und_die_ausnahme(tmp_path):
+        zone = (erzeugen(tmp_path) / "probe-zone.conf").read_text()
+>       assert re.search(r"limit_req_zone \$probe_schluessel zone=probe_mcp:\d+m rate=10r/s;", zone)
+E       AssertionError: assert None
+E        +  where None = <function search at 0x78ca211f5440>('limit_req_zone \\$probe_schluessel zone=probe_mcp:\\d+m rate=10r/s;', '# Drossel für Rückmeldedienst und Konnektor der Instanz probe (gehört in den http-Block, z. B. /etc/nginx/conf.d/).\n# Erzeugt von betrieb/einrichten.sh; je Instanz eine eigene Zone.\nlimit_req_zone $binary_remote_addr zone=probe_api:10m rate=30r/m;\n')
+E        +    where <function search at 0x78ca211f5440> = re.search
+
+engine/tests/test_nginx.py:41: AssertionError
+____________________ test_eigene_adressen_sind_einstellbar _____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8692/test_eigene_adressen_sind_eins0')
+
+    def test_eigene_adressen_sind_einstellbar(tmp_path):
+        zone = (erzeugen(tmp_path, FR_EIGENE_ADRESSEN="192.0.2.7 2001:db8::7") / "probe-zone.conf").read_text()
+>       assert "192.0.2.7 1;" in zone and "2001:db8::7 1;" in zone and "127.0.0.1 1;" in zone and "::1 1;" in zone
+E       AssertionError: assert ('192.0.2.7 1;' in '# Drossel für Rückmeldedienst und Konnektor der Instanz probe (gehört in den http-Block, z. B. /etc/nginx/conf.d/).\n# Erzeugt von betrieb/einrichten.sh; je Instanz eine eigene Zone.\nlimit_req_zone $binary_remote_addr zone=probe_api:10m rate=30r/m;\n')
+
+engine/tests/test_nginx.py:53: AssertionError
+_______________________ test_orte_nutzen_die_drei_zonen ________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8692/test_orte_nutzen_die_drei_zone0')
+
+    def test_orte_nutzen_die_drei_zonen(tmp_path):
+        conf = (erzeugen(tmp_path) / "probe-konnektor.conf").read_text()
+>       assert not re.search(r"zone=probe_api\b", conf)
+E       assert not <re.Match object; span=(1552, 1566), match='zone=probe_api'>
+E        +  where <re.Match object; span=(1552, 1566), match='zone=probe_api'> = <function search at 0x78ca211f5440>('zone=probe_api\\b', '# nginx-Baustein für den Konnektor „Frieda“ (Claude-App, Anmeldung, Konto), einmal je Instanz; erzeugt von\n# betrieb/einrichten.sh. Gehört in den server-Block von FR_KN_ADRESSE (Vorgabe: dieselbe Adresse wie die Reiseseiten,\n# FR_ADRESSE), neben die Reise-Bausteine: <FR_NGINX_SNIPPETS>/probe-konnektor.conf.\n#\n# Der Konnektor steht an der Wurzel der Adresse (Paket J, #43, #163): /mcp für die Claude-App, Anmeldung und „Mein\n# Konto“ (engine/anmeldung.py), OAuth (engine/oauth.py), Kalender-Abo, Friedas Zeichen und Schrift. Die Seiten verweisen\n# mit Pfaden ab der Wurzel (/anmelden, /konto, /schrift/…), die OAuth-Metadaten liegen unter /.well-known/. Die Sitzung\n# (Cookie __Host-frieda) gilt nur für diese Adresse; die Reiseseiten brauchen sie für „api/ich“ und liegen deshalb auf\n# derselben Adresse.\n#\n# Gemeinsames (Weiterleitung, Lesefrist, Kopfzeilen) steht in probe-konnektor.inc daneben. Kein Referrer-Policy\n# „no-referrer“ hier: Der Dienst setzt „same-origin“, sonst schicken Browser „Origin: null“ und jede Anmeldung scheitert\n# an der Prüfung der Herkunft. Cache-Control, Content-Security-Policy und nosniff setzt ebenfalls der Dienst.\n# Präfix-Orte (^~) und genaue Or...ng (Paket J): geheime Links je Reise und Person aus der Zeit vor den Konten. An der Wurzel ausgestellt\n# (<FR_KN_ADRESSE>/<token>, freischalten.sh --person) …\nlocation ~ "^/[A-Za-z0-9_-]{20,100}$" {\n    limit_req zone=probe_api burst=20 nodelay;\n    limit_req_status 429;\n    include /etc/nginx/snippets/probe-konnektor.inc;\n}\n# … und unter dem früheren Pfad /probe-mcp/<token>, der bis 1.11.2026 die Vorgabe war. Der Präfix fällt weg.\n# Unbekannte Tokens beantwortet der Dienst mit 404. Entfällt, sobald alle Personen ein Konto haben.\nlocation ^~ /probe-mcp/ {\n    limit_req zone=probe_api burst=20 nodelay;\n    limit_req_status 429;\n    client_max_body_size 64k;\n    proxy_pass http://127.0.0.1:8772/;\n    proxy_http_version 1.1;\n    proxy_buffering off;\n    proxy_read_timeout 60s;\n    proxy_set_header Host              $host;\n    proxy_set_header X-Forwarded-For   $remote_addr;\n    proxy_set_header X-Forwarded-Proto $scheme;\n    proxy_set_header X-Real-IP         $remote_addr;\n    proxy_set_header X-Frieda-Dienst   "";\n    add_header X-Robots-Tag "noindex, nofollow" always;\n    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;\n}\n')
+E        +    where <function search at 0x78ca211f5440> = re.search
+
+engine/tests/test_nginx.py:58: AssertionError
+___________ test_nginx_laedt_die_zonen_und_nimmt_eigene_adressen_aus ___________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8692/test_nginx_laedt_die_zonen_und0')
+
+    @pytest.mark.skipif(not shutil.which("nginx"), reason="nginx fehlt")
+    def test_nginx_laedt_die_zonen_und_nimmt_eigene_adressen_aus(tmp_path):
+        kn_port, port = _frei(), _frei()
+        snippets = tmp_path / "snippets"
+        snippets.mkdir()
+    
+        class Dienst(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.end_headers()
+    
+            def log_message(self, *a):
+                pass
+    
+        s = http.server.ThreadingHTTPServer(("127.0.0.1", kn_port), Dienst)
+        threading.Thread(target=s.serve_forever, daemon=True).start()
+        temp = " ".join(f"{n}_temp_path {tmp_path}/{n};" for n in ("client_body", "proxy", "fastcgi", "uwsgi", "scgi"))
+        benutzer = "user root;" if os.geteuid() == 0 else ""
+    
+        def starten(eigene):
+            aus = erzeugen(tmp_path, FR_KN_PORT=str(kn_port), FR_NGINX_SNIPPETS=str(snippets), FR_EIGENE_ADRESSEN=eigene)
+            for n in ("probe-konnektor.conf", "probe-konnektor.inc"):
+                shutil.copy(aus / n, snippets / n)
+            (tmp_path / "nginx.conf").write_text(f"""{benutzer} pid {tmp_path}/nginx.pid; error_log {tmp_path}/fehler.log; daemon off;
+    events {{}}
+    http {{ access_log off; {temp}
+      include {aus}/probe-zone.conf;
+      server {{ listen 127.0.0.1:{port};
+        include {snippets}/probe-*.conf;
+      }}
+    }}
+    """)
+            args = ["nginx", "-e", str(tmp_path / "fehler.log"), "-c", str(tmp_path / "nginx.conf"), "-p", str(tmp_path)]
+            pruefung = subprocess.run([*args[:1], "-t", *args[1:]], capture_output=True, text=True)
+            assert pruefung.returncode == 0, pruefung.stderr
+            p = subprocess.Popen(args, stderr=subprocess.PIPE)
+            for _ in range(50):
+                try:
+                    socket.create_connection(("127.0.0.1", port), timeout=0.2).close()
+                    return p
+                except OSError:
+                    time.sleep(0.1)
+            raise AssertionError("nginx antwortet nicht")
+    
+        def codes(pfad, n):
+            erg = []
+            for _ in range(n):
+                try:
+                    with urllib.request.urlopen(f"http://127.0.0.1:{port}{pfad}") as a:
+                        erg.append(a.status)
+                except urllib.error.HTTPError as e:
+                    erg.append(e.code)
+            return erg
+    
+        try:
+            # Standard: 127.0.0.1 ist eigene Adresse und wird nie begrenzt (weit über Wiederholungsrate und Burst)
+            ng = starten("")
+            try:
+>               assert set(codes("/konto", 80)) == {200} and set(codes("/mcp", 80)) == {200}
+E               assert ({200, 429} == {200}
+E                 
+E                 Extra items in the left set:
+E                 429
+E                 
+E                 Full diff:
+E                   {
+E                       200,
+E                 +     429,
+E                   })
+
+engine/tests/test_nginx.py:145: AssertionError
+__________________ test_abgleich_nicht_eingerichtet_ist_still __________________
+
+abgleich = {'lauf': <function abgleich.<locals>.lauf at 0x78ca204cefc0>, 'installieren': <function abgleich.<locals>.installieren...ericht0/confd'), 'snippets': PosixPath('/tmp/pytest-of-hem/pytest-8692/test_abgleich_nicht_eingericht0/snippets'), ...}
+
+    def test_abgleich_nicht_eingerichtet_ist_still(abgleich):
+>       r = abgleich["lauf"]()
+            ^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx.py:185: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx.py:174: in lauf
+    return subprocess.run([str(BETRIEB / "nginx.py"), "pruefen"], env={**env, **extra}, capture_output=True, text=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:548: in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: 255 args: ['/home/hem/frieda-reist/.claude/worktrees/mos...>
+args = ['/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py', 'pruefen']
+executable = b'/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+preexec_fn = None, close_fds = True, pass_fds = (), cwd = None
+env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wW:p1', ...}
+startupinfo = None, creationflags = 0, shell = False, p2cread = -1
+p2cwrite = -1, c2pread = 13, c2pwrite = 14, errread = 15, errwrite = 16
+restore_signals = True, gid = None, gids = None, uid = None, umask = -1
+start_new_session = False, process_group = -1
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds,
+                       pass_fds, cwd, env,
+                       startupinfo, creationflags, shell,
+                       p2cread, p2cwrite,
+                       c2pread, c2pwrite,
+                       errread, errwrite,
+                       restore_signals,
+                       gid, gids, uid, umask,
+                       start_new_session, process_group):
+        """Execute program (POSIX version)"""
+    
+        if isinstance(args, (str, bytes)):
+            args = [args]
+        elif isinstance(args, os.PathLike):
+            if shell:
+                raise TypeError('path-like args is not allowed when '
+                                'shell is true')
+            args = [args]
+        else:
+            args = list(args)
+    
+        if shell:
+            # On Android the default shell is at '/system/bin/sh'.
+            unix_shell = ('/system/bin/sh' if
+                      hasattr(sys, 'getandroidapilevel') else '/bin/sh')
+            args = [unix_shell, "-c"] + args
+            if executable:
+                args[0] = executable
+    
+        if executable is None:
+            executable = args[0]
+    
+        sys.audit("subprocess.Popen", executable, args, cwd, env)
+    
+        if (_USE_POSIX_SPAWN
+                and os.path.dirname(executable)
+                and preexec_fn is None
+                and not close_fds
+                and not pass_fds
+                and cwd is None
+                and (p2cread == -1 or p2cread > 2)
+                and (c2pwrite == -1 or c2pwrite > 2)
+                and (errwrite == -1 or errwrite > 2)
+                and not start_new_session
+                and process_group == -1
+                and gid is None
+                and gids is None
+                and uid is None
+                and umask < 0):
+            self._posix_spawn(args, executable, env, restore_signals,
+                              p2cread, p2cwrite,
+                              c2pread, c2pwrite,
+                              errread, errwrite)
+            return
+    
+        orig_executable = executable
+    
+        # For transferring possible exec failure from child to parent.
+        # Data format: "exception name:hex errno:description"
+        # Pickle is not used; it is complex and involves memory allocation.
+        errpipe_read, errpipe_write = os.pipe()
+        # errpipe_write must not be in the standard io 0, 1, or 2 fd range.
+        low_fds_to_close = []
+        while errpipe_write < 3:
+            low_fds_to_close.append(errpipe_write)
+            errpipe_write = os.dup(errpipe_write)
+        for low_fd in low_fds_to_close:
+            os.close(low_fd)
+        try:
+            try:
+                # We must avoid complex work that could involve
+                # malloc or free in the child process to avoid
+                # potential deadlocks, thus we do all this here.
+                # and pass it to fork_exec()
+    
+                if env is not None:
+                    env_list = []
+                    for k, v in env.items():
+                        k = os.fsencode(k)
+                        if b'=' in k:
+                            raise ValueError("illegal environment variable name")
+                        env_list.append(k + b'=' + os.fsencode(v))
+                else:
+                    env_list = None  # Use execv instead of execve.
+                executable = os.fsencode(executable)
+                if os.path.dirname(executable):
+                    executable_list = (executable,)
+                else:
+                    # This matches the behavior of os._execvpe().
+                    executable_list = tuple(
+                        os.path.join(os.fsencode(dir), executable)
+                        for dir in os.get_exec_path(env))
+                fds_to_keep = set(pass_fds)
+                fds_to_keep.add(errpipe_write)
+                self.pid = _fork_exec(
+                        args, executable_list,
+                        close_fds, tuple(sorted(map(int, fds_to_keep))),
+                        cwd, env_list,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+                        errread, errwrite,
+                        errpipe_read, errpipe_write,
+                        restore_signals, start_new_session,
+                        process_group, gid, gids, uid, umask,
+                        preexec_fn, _USE_VFORK)
+                self._child_created = True
+            finally:
+                # be sure the FD is closed no matter what
+                os.close(errpipe_write)
+    
+            self._close_pipe_fds(p2cread, p2cwrite,
+                                 c2pread, c2pwrite,
+                                 errread, errwrite)
+    
+            # Wait for exec to fail or succeed; possibly raising an
+            # exception (limited in size)
+            errpipe_data = bytearray()
+            while True:
+                part = os.read(errpipe_read, 50000)
+                errpipe_data += part
+                if not part or len(errpipe_data) > 50000:
+                    break
+        finally:
+            # be sure the FD is closed no matter what
+            os.close(errpipe_read)
+    
+        if errpipe_data:
+            try:
+                pid, sts = os.waitpid(self.pid, 0)
+                if pid == self.pid:
+                    self._handle_exitstatus(sts)
+                else:
+                    self.returncode = sys.maxsize
+            except ChildProcessError:
+                pass
+    
+            try:
+                exception_name, hex_errno, err_msg = (
+                        errpipe_data.split(b':', 2))
+                # The encoding here should match the encoding
+                # written in by the subprocess implementations
+                # like _posixsubprocess
+                err_msg = err_msg.decode()
+            except ValueError:
+                exception_name = b'SubprocessError'
+                hex_errno = b'0'
+                err_msg = 'Bad exception data from child: {!r}'.format(
+                              bytes(errpipe_data))
+            child_exception_type = getattr(
+                    builtins, exception_name.decode('ascii'),
+                    SubprocessError)
+            if issubclass(child_exception_type, OSError) and hex_errno:
+                errno_num = int(hex_errno, 16)
+                if err_msg == "noexec:chdir":
+                    err_msg = ""
+                    # The error must be from chdir(cwd).
+                    err_filename = cwd
+                elif err_msg == "noexec":
+                    err_msg = ""
+                    err_filename = None
+                else:
+                    err_filename = orig_executable
+                if errno_num != 0:
+                    err_msg = os.strerror(errno_num)
+                if err_filename is not None:
+>                   raise child_exception_type(errno_num, err_msg, err_filename)
+E                   FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
+_______________________ test_abgleich_gleich_endet_mit_0 _______________________
+
+abgleich = {'lauf': <function abgleich.<locals>.lauf at 0x78ca204cf240>, 'installieren': <function abgleich.<locals>.installieren...et_mit0/confd'), 'snippets': PosixPath('/tmp/pytest-of-hem/pytest-8692/test_abgleich_gleich_endet_mit0/snippets'), ...}
+
+    def test_abgleich_gleich_endet_mit_0(abgleich):
+        abgleich["installieren"]()
+>       r = abgleich["lauf"]()
+            ^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx.py:191: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx.py:174: in lauf
+    return subprocess.run([str(BETRIEB / "nginx.py"), "pruefen"], env={**env, **extra}, capture_output=True, text=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:548: in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: 255 args: ['/home/hem/frieda-reist/.claude/worktrees/mos...>
+args = ['/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py', 'pruefen']
+executable = b'/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+preexec_fn = None, close_fds = True, pass_fds = (), cwd = None
+env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wW:p1', ...}
+startupinfo = None, creationflags = 0, shell = False, p2cread = -1
+p2cwrite = -1, c2pread = 11, c2pwrite = 12, errread = 13, errwrite = 14
+restore_signals = True, gid = None, gids = None, uid = None, umask = -1
+start_new_session = False, process_group = -1
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds,
+                       pass_fds, cwd, env,
+                       startupinfo, creationflags, shell,
+                       p2cread, p2cwrite,
+                       c2pread, c2pwrite,
+                       errread, errwrite,
+                       restore_signals,
+                       gid, gids, uid, umask,
+                       start_new_session, process_group):
+        """Execute program (POSIX version)"""
+    
+        if isinstance(args, (str, bytes)):
+            args = [args]
+        elif isinstance(args, os.PathLike):
+            if shell:
+                raise TypeError('path-like args is not allowed when '
+                                'shell is true')
+            args = [args]
+        else:
+            args = list(args)
+    
+        if shell:
+            # On Android the default shell is at '/system/bin/sh'.
+            unix_shell = ('/system/bin/sh' if
+                      hasattr(sys, 'getandroidapilevel') else '/bin/sh')
+            args = [unix_shell, "-c"] + args
+            if executable:
+                args[0] = executable
+    
+        if executable is None:
+            executable = args[0]
+    
+        sys.audit("subprocess.Popen", executable, args, cwd, env)
+    
+        if (_USE_POSIX_SPAWN
+                and os.path.dirname(executable)
+                and preexec_fn is None
+                and not close_fds
+                and not pass_fds
+                and cwd is None
+                and (p2cread == -1 or p2cread > 2)
+                and (c2pwrite == -1 or c2pwrite > 2)
+                and (errwrite == -1 or errwrite > 2)
+                and not start_new_session
+                and process_group == -1
+                and gid is None
+                and gids is None
+                and uid is None
+                and umask < 0):
+            self._posix_spawn(args, executable, env, restore_signals,
+                              p2cread, p2cwrite,
+                              c2pread, c2pwrite,
+                              errread, errwrite)
+            return
+    
+        orig_executable = executable
+    
+        # For transferring possible exec failure from child to parent.
+        # Data format: "exception name:hex errno:description"
+        # Pickle is not used; it is complex and involves memory allocation.
+        errpipe_read, errpipe_write = os.pipe()
+        # errpipe_write must not be in the standard io 0, 1, or 2 fd range.
+        low_fds_to_close = []
+        while errpipe_write < 3:
+            low_fds_to_close.append(errpipe_write)
+            errpipe_write = os.dup(errpipe_write)
+        for low_fd in low_fds_to_close:
+            os.close(low_fd)
+        try:
+            try:
+                # We must avoid complex work that could involve
+                # malloc or free in the child process to avoid
+                # potential deadlocks, thus we do all this here.
+                # and pass it to fork_exec()
+    
+                if env is not None:
+                    env_list = []
+                    for k, v in env.items():
+                        k = os.fsencode(k)
+                        if b'=' in k:
+                            raise ValueError("illegal environment variable name")
+                        env_list.append(k + b'=' + os.fsencode(v))
+                else:
+                    env_list = None  # Use execv instead of execve.
+                executable = os.fsencode(executable)
+                if os.path.dirname(executable):
+                    executable_list = (executable,)
+                else:
+                    # This matches the behavior of os._execvpe().
+                    executable_list = tuple(
+                        os.path.join(os.fsencode(dir), executable)
+                        for dir in os.get_exec_path(env))
+                fds_to_keep = set(pass_fds)
+                fds_to_keep.add(errpipe_write)
+                self.pid = _fork_exec(
+                        args, executable_list,
+                        close_fds, tuple(sorted(map(int, fds_to_keep))),
+                        cwd, env_list,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+                        errread, errwrite,
+                        errpipe_read, errpipe_write,
+                        restore_signals, start_new_session,
+                        process_group, gid, gids, uid, umask,
+                        preexec_fn, _USE_VFORK)
+                self._child_created = True
+            finally:
+                # be sure the FD is closed no matter what
+                os.close(errpipe_write)
+    
+            self._close_pipe_fds(p2cread, p2cwrite,
+                                 c2pread, c2pwrite,
+                                 errread, errwrite)
+    
+            # Wait for exec to fail or succeed; possibly raising an
+            # exception (limited in size)
+            errpipe_data = bytearray()
+            while True:
+                part = os.read(errpipe_read, 50000)
+                errpipe_data += part
+                if not part or len(errpipe_data) > 50000:
+                    break
+        finally:
+            # be sure the FD is closed no matter what
+            os.close(errpipe_read)
+    
+        if errpipe_data:
+            try:
+                pid, sts = os.waitpid(self.pid, 0)
+                if pid == self.pid:
+                    self._handle_exitstatus(sts)
+                else:
+                    self.returncode = sys.maxsize
+            except ChildProcessError:
+                pass
+    
+            try:
+                exception_name, hex_errno, err_msg = (
+                        errpipe_data.split(b':', 2))
+                # The encoding here should match the encoding
+                # written in by the subprocess implementations
+                # like _posixsubprocess
+                err_msg = err_msg.decode()
+            except ValueError:
+                exception_name = b'SubprocessError'
+                hex_errno = b'0'
+                err_msg = 'Bad exception data from child: {!r}'.format(
+                              bytes(errpipe_data))
+            child_exception_type = getattr(
+                    builtins, exception_name.decode('ascii'),
+                    SubprocessError)
+            if issubclass(child_exception_type, OSError) and hex_errno:
+                errno_num = int(hex_errno, 16)
+                if err_msg == "noexec:chdir":
+                    err_msg = ""
+                    # The error must be from chdir(cwd).
+                    err_filename = cwd
+                elif err_msg == "noexec":
+                    err_msg = ""
+                    err_filename = None
+                else:
+                    err_filename = orig_executable
+                if errno_num != 0:
+                    err_msg = os.strerror(errno_num)
+                if err_filename is not None:
+>                   raise child_exception_type(errno_num, err_msg, err_filename)
+E                   FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
+____________ test_abgleich_abweichung_nennt_datei_und_einen_befehl _____________
+
+abgleich = {'lauf': <function abgleich.<locals>.lauf at 0x78ca204ce980>, 'installieren': <function abgleich.<locals>.installieren..._nennt0/confd'), 'snippets': PosixPath('/tmp/pytest-of-hem/pytest-8692/test_abgleich_abweichung_nennt0/snippets'), ...}
+
+    def test_abgleich_abweichung_nennt_datei_und_einen_befehl(abgleich):
+        abgleich["installieren"]()
+        zone = abgleich["confd"] / "probe-zone.conf"
+        zone.write_text(zone.read_text().replace("rate=10r/s", "rate=20r/s"))
+        vorher = {p: p.read_text() for p in (*abgleich["confd"].iterdir(), *abgleich["snippets"].iterdir())}
+>       r = abgleich["lauf"]()
+            ^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx.py:200: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx.py:174: in lauf
+    return subprocess.run([str(BETRIEB / "nginx.py"), "pruefen"], env={**env, **extra}, capture_output=True, text=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:548: in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: 255 args: ['/home/hem/frieda-reist/.claude/worktrees/mos...>
+args = ['/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py', 'pruefen']
+executable = b'/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+preexec_fn = None, close_fds = True, pass_fds = (), cwd = None
+env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wW:p1', ...}
+startupinfo = None, creationflags = 0, shell = False, p2cread = -1
+p2cwrite = -1, c2pread = 11, c2pwrite = 12, errread = 13, errwrite = 14
+restore_signals = True, gid = None, gids = None, uid = None, umask = -1
+start_new_session = False, process_group = -1
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds,
+                       pass_fds, cwd, env,
+                       startupinfo, creationflags, shell,
+                       p2cread, p2cwrite,
+                       c2pread, c2pwrite,
+                       errread, errwrite,
+                       restore_signals,
+                       gid, gids, uid, umask,
+                       start_new_session, process_group):
+        """Execute program (POSIX version)"""
+    
+        if isinstance(args, (str, bytes)):
+            args = [args]
+        elif isinstance(args, os.PathLike):
+            if shell:
+                raise TypeError('path-like args is not allowed when '
+                                'shell is true')
+            args = [args]
+        else:
+            args = list(args)
+    
+        if shell:
+            # On Android the default shell is at '/system/bin/sh'.
+            unix_shell = ('/system/bin/sh' if
+                      hasattr(sys, 'getandroidapilevel') else '/bin/sh')
+            args = [unix_shell, "-c"] + args
+            if executable:
+                args[0] = executable
+    
+        if executable is None:
+            executable = args[0]
+    
+        sys.audit("subprocess.Popen", executable, args, cwd, env)
+    
+        if (_USE_POSIX_SPAWN
+                and os.path.dirname(executable)
+                and preexec_fn is None
+                and not close_fds
+                and not pass_fds
+                and cwd is None
+                and (p2cread == -1 or p2cread > 2)
+                and (c2pwrite == -1 or c2pwrite > 2)
+                and (errwrite == -1 or errwrite > 2)
+                and not start_new_session
+                and process_group == -1
+                and gid is None
+                and gids is None
+                and uid is None
+                and umask < 0):
+            self._posix_spawn(args, executable, env, restore_signals,
+                              p2cread, p2cwrite,
+                              c2pread, c2pwrite,
+                              errread, errwrite)
+            return
+    
+        orig_executable = executable
+    
+        # For transferring possible exec failure from child to parent.
+        # Data format: "exception name:hex errno:description"
+        # Pickle is not used; it is complex and involves memory allocation.
+        errpipe_read, errpipe_write = os.pipe()
+        # errpipe_write must not be in the standard io 0, 1, or 2 fd range.
+        low_fds_to_close = []
+        while errpipe_write < 3:
+            low_fds_to_close.append(errpipe_write)
+            errpipe_write = os.dup(errpipe_write)
+        for low_fd in low_fds_to_close:
+            os.close(low_fd)
+        try:
+            try:
+                # We must avoid complex work that could involve
+                # malloc or free in the child process to avoid
+                # potential deadlocks, thus we do all this here.
+                # and pass it to fork_exec()
+    
+                if env is not None:
+                    env_list = []
+                    for k, v in env.items():
+                        k = os.fsencode(k)
+                        if b'=' in k:
+                            raise ValueError("illegal environment variable name")
+                        env_list.append(k + b'=' + os.fsencode(v))
+                else:
+                    env_list = None  # Use execv instead of execve.
+                executable = os.fsencode(executable)
+                if os.path.dirname(executable):
+                    executable_list = (executable,)
+                else:
+                    # This matches the behavior of os._execvpe().
+                    executable_list = tuple(
+                        os.path.join(os.fsencode(dir), executable)
+                        for dir in os.get_exec_path(env))
+                fds_to_keep = set(pass_fds)
+                fds_to_keep.add(errpipe_write)
+                self.pid = _fork_exec(
+                        args, executable_list,
+                        close_fds, tuple(sorted(map(int, fds_to_keep))),
+                        cwd, env_list,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+                        errread, errwrite,
+                        errpipe_read, errpipe_write,
+                        restore_signals, start_new_session,
+                        process_group, gid, gids, uid, umask,
+                        preexec_fn, _USE_VFORK)
+                self._child_created = True
+            finally:
+                # be sure the FD is closed no matter what
+                os.close(errpipe_write)
+    
+            self._close_pipe_fds(p2cread, p2cwrite,
+                                 c2pread, c2pwrite,
+                                 errread, errwrite)
+    
+            # Wait for exec to fail or succeed; possibly raising an
+            # exception (limited in size)
+            errpipe_data = bytearray()
+            while True:
+                part = os.read(errpipe_read, 50000)
+                errpipe_data += part
+                if not part or len(errpipe_data) > 50000:
+                    break
+        finally:
+            # be sure the FD is closed no matter what
+            os.close(errpipe_read)
+    
+        if errpipe_data:
+            try:
+                pid, sts = os.waitpid(self.pid, 0)
+                if pid == self.pid:
+                    self._handle_exitstatus(sts)
+                else:
+                    self.returncode = sys.maxsize
+            except ChildProcessError:
+                pass
+    
+            try:
+                exception_name, hex_errno, err_msg = (
+                        errpipe_data.split(b':', 2))
+                # The encoding here should match the encoding
+                # written in by the subprocess implementations
+                # like _posixsubprocess
+                err_msg = err_msg.decode()
+            except ValueError:
+                exception_name = b'SubprocessError'
+                hex_errno = b'0'
+                err_msg = 'Bad exception data from child: {!r}'.format(
+                              bytes(errpipe_data))
+            child_exception_type = getattr(
+                    builtins, exception_name.decode('ascii'),
+                    SubprocessError)
+            if issubclass(child_exception_type, OSError) and hex_errno:
+                errno_num = int(hex_errno, 16)
+                if err_msg == "noexec:chdir":
+                    err_msg = ""
+                    # The error must be from chdir(cwd).
+                    err_filename = cwd
+                elif err_msg == "noexec":
+                    err_msg = ""
+                    err_filename = None
+                else:
+                    err_filename = orig_executable
+                if errno_num != 0:
+                    err_msg = os.strerror(errno_num)
+                if err_filename is not None:
+>                   raise child_exception_type(errno_num, err_msg, err_filename)
+E                   FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
+______________ test_abgleich_fehlende_einzeldatei_ist_abweichung _______________
+
+abgleich = {'lauf': <function abgleich.<locals>.lauf at 0x78ca204cf7e0>, 'installieren': <function abgleich.<locals>.installieren...inzeld0/confd'), 'snippets': PosixPath('/tmp/pytest-of-hem/pytest-8692/test_abgleich_fehlende_einzeld0/snippets'), ...}
+
+    def test_abgleich_fehlende_einzeldatei_ist_abweichung(abgleich):
+        abgleich["installieren"]()
+        (abgleich["snippets"] / "probe-konnektor.inc").unlink()
+>       r = abgleich["lauf"]()
+            ^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx.py:213: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx.py:174: in lauf
+    return subprocess.run([str(BETRIEB / "nginx.py"), "pruefen"], env={**env, **extra}, capture_output=True, text=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:548: in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: 255 args: ['/home/hem/frieda-reist/.claude/worktrees/mos...>
+args = ['/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py', 'pruefen']
+executable = b'/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+preexec_fn = None, close_fds = True, pass_fds = (), cwd = None
+env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wW:p1', ...}
+startupinfo = None, creationflags = 0, shell = False, p2cread = -1
+p2cwrite = -1, c2pread = 11, c2pwrite = 12, errread = 13, errwrite = 14
+restore_signals = True, gid = None, gids = None, uid = None, umask = -1
+start_new_session = False, process_group = -1
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds,
+                       pass_fds, cwd, env,
+                       startupinfo, creationflags, shell,
+                       p2cread, p2cwrite,
+                       c2pread, c2pwrite,
+                       errread, errwrite,
+                       restore_signals,
+                       gid, gids, uid, umask,
+                       start_new_session, process_group):
+        """Execute program (POSIX version)"""
+    
+        if isinstance(args, (str, bytes)):
+            args = [args]
+        elif isinstance(args, os.PathLike):
+            if shell:
+                raise TypeError('path-like args is not allowed when '
+                                'shell is true')
+            args = [args]
+        else:
+            args = list(args)
+    
+        if shell:
+            # On Android the default shell is at '/system/bin/sh'.
+            unix_shell = ('/system/bin/sh' if
+                      hasattr(sys, 'getandroidapilevel') else '/bin/sh')
+            args = [unix_shell, "-c"] + args
+            if executable:
+                args[0] = executable
+    
+        if executable is None:
+            executable = args[0]
+    
+        sys.audit("subprocess.Popen", executable, args, cwd, env)
+    
+        if (_USE_POSIX_SPAWN
+                and os.path.dirname(executable)
+                and preexec_fn is None
+                and not close_fds
+                and not pass_fds
+                and cwd is None
+                and (p2cread == -1 or p2cread > 2)
+                and (c2pwrite == -1 or c2pwrite > 2)
+                and (errwrite == -1 or errwrite > 2)
+                and not start_new_session
+                and process_group == -1
+                and gid is None
+                and gids is None
+                and uid is None
+                and umask < 0):
+            self._posix_spawn(args, executable, env, restore_signals,
+                              p2cread, p2cwrite,
+                              c2pread, c2pwrite,
+                              errread, errwrite)
+            return
+    
+        orig_executable = executable
+    
+        # For transferring possible exec failure from child to parent.
+        # Data format: "exception name:hex errno:description"
+        # Pickle is not used; it is complex and involves memory allocation.
+        errpipe_read, errpipe_write = os.pipe()
+        # errpipe_write must not be in the standard io 0, 1, or 2 fd range.
+        low_fds_to_close = []
+        while errpipe_write < 3:
+            low_fds_to_close.append(errpipe_write)
+            errpipe_write = os.dup(errpipe_write)
+        for low_fd in low_fds_to_close:
+            os.close(low_fd)
+        try:
+            try:
+                # We must avoid complex work that could involve
+                # malloc or free in the child process to avoid
+                # potential deadlocks, thus we do all this here.
+                # and pass it to fork_exec()
+    
+                if env is not None:
+                    env_list = []
+                    for k, v in env.items():
+                        k = os.fsencode(k)
+                        if b'=' in k:
+                            raise ValueError("illegal environment variable name")
+                        env_list.append(k + b'=' + os.fsencode(v))
+                else:
+                    env_list = None  # Use execv instead of execve.
+                executable = os.fsencode(executable)
+                if os.path.dirname(executable):
+                    executable_list = (executable,)
+                else:
+                    # This matches the behavior of os._execvpe().
+                    executable_list = tuple(
+                        os.path.join(os.fsencode(dir), executable)
+                        for dir in os.get_exec_path(env))
+                fds_to_keep = set(pass_fds)
+                fds_to_keep.add(errpipe_write)
+                self.pid = _fork_exec(
+                        args, executable_list,
+                        close_fds, tuple(sorted(map(int, fds_to_keep))),
+                        cwd, env_list,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+                        errread, errwrite,
+                        errpipe_read, errpipe_write,
+                        restore_signals, start_new_session,
+                        process_group, gid, gids, uid, umask,
+                        preexec_fn, _USE_VFORK)
+                self._child_created = True
+            finally:
+                # be sure the FD is closed no matter what
+                os.close(errpipe_write)
+    
+            self._close_pipe_fds(p2cread, p2cwrite,
+                                 c2pread, c2pwrite,
+                                 errread, errwrite)
+    
+            # Wait for exec to fail or succeed; possibly raising an
+            # exception (limited in size)
+            errpipe_data = bytearray()
+            while True:
+                part = os.read(errpipe_read, 50000)
+                errpipe_data += part
+                if not part or len(errpipe_data) > 50000:
+                    break
+        finally:
+            # be sure the FD is closed no matter what
+            os.close(errpipe_read)
+    
+        if errpipe_data:
+            try:
+                pid, sts = os.waitpid(self.pid, 0)
+                if pid == self.pid:
+                    self._handle_exitstatus(sts)
+                else:
+                    self.returncode = sys.maxsize
+            except ChildProcessError:
+                pass
+    
+            try:
+                exception_name, hex_errno, err_msg = (
+                        errpipe_data.split(b':', 2))
+                # The encoding here should match the encoding
+                # written in by the subprocess implementations
+                # like _posixsubprocess
+                err_msg = err_msg.decode()
+            except ValueError:
+                exception_name = b'SubprocessError'
+                hex_errno = b'0'
+                err_msg = 'Bad exception data from child: {!r}'.format(
+                              bytes(errpipe_data))
+            child_exception_type = getattr(
+                    builtins, exception_name.decode('ascii'),
+                    SubprocessError)
+            if issubclass(child_exception_type, OSError) and hex_errno:
+                errno_num = int(hex_errno, 16)
+                if err_msg == "noexec:chdir":
+                    err_msg = ""
+                    # The error must be from chdir(cwd).
+                    err_filename = cwd
+                elif err_msg == "noexec":
+                    err_msg = ""
+                    err_filename = None
+                else:
+                    err_filename = orig_executable
+                if errno_num != 0:
+                    err_msg = os.strerror(errno_num)
+                if err_filename is not None:
+>                   raise child_exception_type(errno_num, err_msg, err_filename)
+E                   FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
+_______________________ test_abgleich_fehler_endet_mit_1 _______________________
+
+abgleich = {'lauf': <function abgleich.<locals>.lauf at 0x78ca204cfd80>, 'installieren': <function abgleich.<locals>.installieren...et_mit0/confd'), 'snippets': PosixPath('/tmp/pytest-of-hem/pytest-8692/test_abgleich_fehler_endet_mit0/snippets'), ...}
+
+    def test_abgleich_fehler_endet_mit_1(abgleich):
+>       r = abgleich["lauf"](FR_DIENST="")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx.py:218: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx.py:174: in lauf
+    return subprocess.run([str(BETRIEB / "nginx.py"), "pruefen"], env={**env, **extra}, capture_output=True, text=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:548: in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: 255 args: ['/home/hem/frieda-reist/.claude/worktrees/mos...>
+args = ['/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py', 'pruefen']
+executable = b'/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+preexec_fn = None, close_fds = True, pass_fds = (), cwd = None
+env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wW:p1', ...}
+startupinfo = None, creationflags = 0, shell = False, p2cread = -1
+p2cwrite = -1, c2pread = 11, c2pwrite = 12, errread = 13, errwrite = 14
+restore_signals = True, gid = None, gids = None, uid = None, umask = -1
+start_new_session = False, process_group = -1
+
+    def _execute_child(self, args, executable, preexec_fn, close_fds,
+                       pass_fds, cwd, env,
+                       startupinfo, creationflags, shell,
+                       p2cread, p2cwrite,
+                       c2pread, c2pwrite,
+                       errread, errwrite,
+                       restore_signals,
+                       gid, gids, uid, umask,
+                       start_new_session, process_group):
+        """Execute program (POSIX version)"""
+    
+        if isinstance(args, (str, bytes)):
+            args = [args]
+        elif isinstance(args, os.PathLike):
+            if shell:
+                raise TypeError('path-like args is not allowed when '
+                                'shell is true')
+            args = [args]
+        else:
+            args = list(args)
+    
+        if shell:
+            # On Android the default shell is at '/system/bin/sh'.
+            unix_shell = ('/system/bin/sh' if
+                      hasattr(sys, 'getandroidapilevel') else '/bin/sh')
+            args = [unix_shell, "-c"] + args
+            if executable:
+                args[0] = executable
+    
+        if executable is None:
+            executable = args[0]
+    
+        sys.audit("subprocess.Popen", executable, args, cwd, env)
+    
+        if (_USE_POSIX_SPAWN
+                and os.path.dirname(executable)
+                and preexec_fn is None
+                and not close_fds
+                and not pass_fds
+                and cwd is None
+                and (p2cread == -1 or p2cread > 2)
+                and (c2pwrite == -1 or c2pwrite > 2)
+                and (errwrite == -1 or errwrite > 2)
+                and not start_new_session
+                and process_group == -1
+                and gid is None
+                and gids is None
+                and uid is None
+                and umask < 0):
+            self._posix_spawn(args, executable, env, restore_signals,
+                              p2cread, p2cwrite,
+                              c2pread, c2pwrite,
+                              errread, errwrite)
+            return
+    
+        orig_executable = executable
+    
+        # For transferring possible exec failure from child to parent.
+        # Data format: "exception name:hex errno:description"
+        # Pickle is not used; it is complex and involves memory allocation.
+        errpipe_read, errpipe_write = os.pipe()
+        # errpipe_write must not be in the standard io 0, 1, or 2 fd range.
+        low_fds_to_close = []
+        while errpipe_write < 3:
+            low_fds_to_close.append(errpipe_write)
+            errpipe_write = os.dup(errpipe_write)
+        for low_fd in low_fds_to_close:
+            os.close(low_fd)
+        try:
+            try:
+                # We must avoid complex work that could involve
+                # malloc or free in the child process to avoid
+                # potential deadlocks, thus we do all this here.
+                # and pass it to fork_exec()
+    
+                if env is not None:
+                    env_list = []
+                    for k, v in env.items():
+                        k = os.fsencode(k)
+                        if b'=' in k:
+                            raise ValueError("illegal environment variable name")
+                        env_list.append(k + b'=' + os.fsencode(v))
+                else:
+                    env_list = None  # Use execv instead of execve.
+                executable = os.fsencode(executable)
+                if os.path.dirname(executable):
+                    executable_list = (executable,)
+                else:
+                    # This matches the behavior of os._execvpe().
+                    executable_list = tuple(
+                        os.path.join(os.fsencode(dir), executable)
+                        for dir in os.get_exec_path(env))
+                fds_to_keep = set(pass_fds)
+                fds_to_keep.add(errpipe_write)
+                self.pid = _fork_exec(
+                        args, executable_list,
+                        close_fds, tuple(sorted(map(int, fds_to_keep))),
+                        cwd, env_list,
+                        p2cread, p2cwrite, c2pread, c2pwrite,
+                        errread, errwrite,
+                        errpipe_read, errpipe_write,
+                        restore_signals, start_new_session,
+                        process_group, gid, gids, uid, umask,
+                        preexec_fn, _USE_VFORK)
+                self._child_created = True
+            finally:
+                # be sure the FD is closed no matter what
+                os.close(errpipe_write)
+    
+            self._close_pipe_fds(p2cread, p2cwrite,
+                                 c2pread, c2pwrite,
+                                 errread, errwrite)
+    
+            # Wait for exec to fail or succeed; possibly raising an
+            # exception (limited in size)
+            errpipe_data = bytearray()
+            while True:
+                part = os.read(errpipe_read, 50000)
+                errpipe_data += part
+                if not part or len(errpipe_data) > 50000:
+                    break
+        finally:
+            # be sure the FD is closed no matter what
+            os.close(errpipe_read)
+    
+        if errpipe_data:
+            try:
+                pid, sts = os.waitpid(self.pid, 0)
+                if pid == self.pid:
+                    self._handle_exitstatus(sts)
+                else:
+                    self.returncode = sys.maxsize
+            except ChildProcessError:
+                pass
+    
+            try:
+                exception_name, hex_errno, err_msg = (
+                        errpipe_data.split(b':', 2))
+                # The encoding here should match the encoding
+                # written in by the subprocess implementations
+                # like _posixsubprocess
+                err_msg = err_msg.decode()
+            except ValueError:
+                exception_name = b'SubprocessError'
+                hex_errno = b'0'
+                err_msg = 'Bad exception data from child: {!r}'.format(
+                              bytes(errpipe_data))
+            child_exception_type = getattr(
+                    builtins, exception_name.decode('ascii'),
+                    SubprocessError)
+            if issubclass(child_exception_type, OSError) and hex_errno:
+                errno_num = int(hex_errno, 16)
+                if err_msg == "noexec:chdir":
+                    err_msg = ""
+                    # The error must be from chdir(cwd).
+                    err_filename = cwd
+                elif err_msg == "noexec":
+                    err_msg = ""
+                    err_filename = None
+                else:
+                    err_filename = orig_executable
+                if errno_num != 0:
+                    err_msg = os.strerror(errno_num)
+                if err_filename is not None:
+>                   raise child_exception_type(errno_num, err_msg, err_filename)
+E                   FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
+=========================== short test summary info ============================
+FAILED engine/tests/test_nginx.py::test_zonendatei_hat_eigene_zonen_und_die_ausnahme
+FAILED engine/tests/test_nginx.py::test_eigene_adressen_sind_einstellbar - As...
+FAILED engine/tests/test_nginx.py::test_orte_nutzen_die_drei_zonen - assert n...
+FAILED engine/tests/test_nginx.py::test_nginx_laedt_die_zonen_und_nimmt_eigene_adressen_aus
+FAILED engine/tests/test_nginx.py::test_abgleich_nicht_eingerichtet_ist_still
+FAILED engine/tests/test_nginx.py::test_abgleich_gleich_endet_mit_0 - FileNot...
+FAILED engine/tests/test_nginx.py::test_abgleich_abweichung_nennt_datei_und_einen_befehl
+FAILED engine/tests/test_nginx.py::test_abgleich_fehlende_einzeldatei_ist_abweichung
+FAILED engine/tests/test_nginx.py::test_abgleich_fehler_endet_mit_1 - FileNot...
+========================= 9 failed, 1 passed in 1.70s ==========================
