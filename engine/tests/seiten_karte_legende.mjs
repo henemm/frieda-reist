@@ -25,10 +25,17 @@ await p.locator(".ekarte .leaflet-control-layers-toggle").first().click();
 aus.etappe.ebenen = await imFenster(".ekarte .leaflet-control-layers-list label");
 if (aus.etappe.ebenen.length) {
   // Leaflet klappt die Ebenenwahl beim Verlassen mit der Maus zu; Playwright rollt vor dem Klick, darum schaltet das DOM selbst
-  const schalten = () => p.evaluate(() => document.querySelector(".ekarte .leaflet-control-layers-list input").click());
-  await schalten();
+  // Nach dem Schalten auf die Änderung warten (langsame Läufer); die Diagnose steht in der Fehlermeldung des Tests
+  const schalten = async () => {
+    const vor = await marken();
+    const d = await p.evaluate(() => { const i = document.querySelector(".ekarte .leaflet-control-layers-list input"); i.click();
+      return {angehakt: i.checked, aufgeklappt: i.closest(".leaflet-control-layers").className.includes("expanded"), eingaben: document.querySelectorAll(".ekarte .leaflet-control-layers-selector").length}; });
+    await p.waitForFunction(v => document.querySelectorAll(".ekarte .rh-pw").length !== v, vor, {timeout: 5000}).catch(() => {});
+    return d;
+  };
+  aus.etappe.diagnose = [await schalten()];
   aus.etappe.markenAus = await marken();
-  await schalten();
+  aus.etappe.diagnose.push(await schalten());
   aus.etappe.markenWieder = await marken();
 }
 aus.etappe.waagerecht = await p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
