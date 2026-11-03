@@ -487,7 +487,9 @@ def kartenpunkte_umstellen(reise_dir, roh, schreiben, meldungen):
         art = art_von[kat]
         quelle = p.get("quelle") or sb.lesbar(reise_dir, [sb.S("schreiben.quelle_bestand")])
         g = p.get("geprueft", stand)
-        d = {"name": p.get("name"), "art": art, "an": an, "quelle": quelle}
+        # Ohne Namen (OSM-Treffer wie Trinkwasser) lehnt der Bau den Aufenthalt ab: der Name kommt aus der Art, wie bei map_points_fetch (#295)
+        name = p.get("name") or arten[art].get("einzahl") or arten[art].get("name") or kat
+        d = {"name": name, "art": art, "an": an, "quelle": quelle}
         if p.get("hinweis"):
             d["hinweis"] = p["hinweis"]
         aid = sb.neue_id(reise_dir, "A")
