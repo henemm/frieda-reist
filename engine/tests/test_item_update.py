@@ -28,20 +28,20 @@ ALIASE = (
 
 
 @pytest.mark.parametrize("name, args, erwartet", ALIASE)
-def test_alias_kommt_als_item_update_an(schreibweg, name, args, erwartet):
+def test_alias_kommt_als_item_update_an(schreibweg, monkeypatch, name, args, erwartet):
     basis, _ = schreibweg
-    Schreibweg.antwort = (200, {"ok": True, "text": "ok"})
+    monkeypatch.setattr(Schreibweg, "antwort", (200, {"ok": True, "text": "ok"}))   # der Stummel ist klassenweit: nach dem Test zurück
     t, f = werkzeug(basis, KARL, name, **args)
     pfad, _, body = Schreibweg.anfragen[-1]
     assert not f and pfad == "/beispielreise/ding_aendern", (t, pfad)
     assert body["args"] == erwartet
 
 
-def test_alte_parameter_von_item_create_gelten_weiter(schreibweg):
+def test_alte_parameter_von_item_create_gelten_weiter(schreibweg, monkeypatch):
     """Laufende Gespräche: ort, von, nach, ab, an, beginn, adresse … (deutsch und englisch) stehen nicht mehr im Schema, werden aber
     angenommen und unverändert an den Schreibweg gegeben."""
     basis, _ = schreibweg
-    Schreibweg.antwort = (200, {"ok": True, "text": "ok"})
+    monkeypatch.setattr(Schreibweg, "antwort", (200, {"ok": True, "text": "ok"}))
     werkzeug(basis, KARL, "item_create", what="strecke", title="Bus", kind="bus", from_place="O-01", to_place="O-02", departure="09:00", arrival="10:00",
              source="Fahrplan")
     a = Schreibweg.anfragen[-1][2]["args"]
