@@ -54,7 +54,8 @@ def test_punkte_pruefdatum_aus_stand_oder_eigenem_feld(tmp_path):
         "  - {name: A, kat: einkehr, lage: [50.95, 14.1], quelle: q}\n"
         "  - {name: B, kat: einkehr, lage: [50.95, 14.1], quelle: q, geprueft: 2026-10-27}\n", encoding="utf-8")
     d = bauen.Bauer(r, tmp_path / "dist").daten()
-    assert [(p["name"], p.get("geprueft")) for p in d["route"]["punkte"]["E-04"]] == [("A", "2026-10-26"), ("B", "2026-10-27")]
+    # zuerst die Punkte der Datei, dahinter die Punkte als Dinge (ADR-0007, Schritt d)
+    assert [(p["name"], p.get("geprueft")) for p in d["route"]["punkte"]["E-04"]][:2] == [("A", "2026-10-26"), ("B", "2026-10-27")]
     (r / "plan/punkte.yaml").write_text("stand: neulich\nstrecken: {}\n", encoding="utf-8")
     st = bauen.Bauer(r, tmp_path / "dist2").daten()["route"]["karte_status"]
     assert any("stand muss ein Datum sein" in m for m in st["meldungen"]), st

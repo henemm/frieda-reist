@@ -235,6 +235,7 @@ def aufruf_intern(werkzeuge, name, args):
 # Aliase (ADR-0007, Schritt c): Diese Werkzeuge stehen nicht mehr in tools/list, laufende Gespräche rufen sie weiter und der Schreibweg
 # bekommt sie als item_update (ding_aendern)
 ALIAS_ZU_DING_AENDERN = ("wert_eintragen", "lage_eintragen", "track_anhaengen")
+ALIAS_ZU_ART = ("kategorie_definieren",)   # eine Kartenkategorie ist eine Art mit gruppe (ADR-0007, Schritt d): Alias von art_definieren
 
 
 def sprache_setzen_werkzeug(sprache):
@@ -2389,9 +2390,10 @@ WERT_SCHEMA = {"type": "object", "properties": {
     "wert": {"type": "string"}, "quelle": {"type": "string"}, "geprueft": {"type": "string"}, "notiz": {"type": "string"},
     "gilt": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}],
              "description": "@konnektor.feld.wert_schema.gilt"}}, "required": ["wert"]}
+# kategorien: Alias (ADR-0007, Schritt d), steht nicht mehr in tools/list; die Kartenkategorien sind Arten mit gruppe
+KATEGORIEN_LESEN = {"name": "kategorien", "description": "@konnektor.werkzeug.kategorien",
+                    "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}}
 WERKZEUGE += [
-    {"name": "kategorien", "description": "@konnektor.werkzeug.kategorien",
-     "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}},
     {"name": "merkmale", "description": "@konnektor.werkzeug.merkmale",
      "inputSchema": {"type": "object", "properties": {
          "ziel": {"type": "string", "description": "@konnektor.werkzeug.merkmale.ziel"},
@@ -2453,6 +2455,9 @@ ART_DEFINIEREN = {"name": "art_definieren", "description": "@konnektor.werkzeug.
                       "summiert": {"type": "boolean", "description": "@konnektor.werkzeug.art_definieren.summiert"},
                       "symbol": {"type": "string", "enum": list(SYMBOLE_ARTEN), "description": "@konnektor.werkzeug.art_definieren.symbol"},
                       "buchbar": {"type": "boolean", "description": "@konnektor.werkzeug.art_definieren.buchbar"},
+                      "gruppe": {"type": "string", "enum": ["punkt", "wissen"], "description": "@konnektor.werkzeug.art_definieren.gruppe"},
+                      "einzahl": {"type": "string", "description": "@konnektor.werkzeug.art_definieren.einzahl"},
+                      "nummeriert": {"type": "boolean", "description": "@konnektor.werkzeug.art_definieren.nummeriert"},
                       "lesetext": {"type": "array", "items": {"type": "object", "properties": {"rubrik": {"type": "string"}, "name": {"type": "string"}, "hilfe": {"type": "string"}}, "required": ["name"]},
                                    "description": "@konnektor.werkzeug.art_definieren.lesetext"},
                       "grund": {"type": "string", "description": "@konnektor.werkzeug.art_definieren.grund"},
@@ -2760,7 +2765,7 @@ WERT_EINTRAGEN = {"name": "wert_eintragen", "description": "@konnektor.werkzeug.
                                 "description": "@konnektor.werkzeug.wert_eintragen.werte"},
                       "name": NAME_FELD},
                       "required": ["ziel", "merkmal"]}}
-ALIAS_WERKZEUGE = [WERT_EINTRAGEN, LAGE_EINTRAGEN, TRACK_ANHAENGEN]   # nicht mehr in tools/list, gelten als Aliase von item_update
+ALIAS_WERKZEUGE = [WERT_EINTRAGEN, LAGE_EINTRAGEN, TRACK_ANHAENGEN, KATEGORIE_DEFINIEREN, KATEGORIEN_LESEN]   # nicht mehr in tools/list: Aliase von item_update und kind_define
 
 
 ENTSCHEIDEN = {"name": "entscheiden", "description": "@konnektor.werkzeug.entscheiden",
@@ -3069,7 +3074,7 @@ def werkzeuge_fuer(zugang):
     wer = wer_spricht(zugang, d) or {"rolle": "gast"}
     _, bausteine = zustand_von(d)
     werkzeuge = []
-    ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN, KATEGORIE_DEFINIEREN, DING_ANLEGEN, DING_AENDERN, OPTION_ANLEGEN, WAHLSTELLE_ANLEGEN,
+    ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN, DING_ANLEGEN, DING_AENDERN, OPTION_ANLEGEN, WAHLSTELLE_ANLEGEN,
                  FRAGE_ANLEGEN, TAG_AENDERN, WISSEN_SCHREIBEN, FRAGE_SCHLIESSEN, REISE_STATUS_SETZEN, EINSTELLUNG_SETZEN,
                  BUCHUNG_ANLEGEN, BUCHUNG_AENDERN, TAG_ANLEGEN, TERMIN_SETZEN, WAHLSTELLE_AENDERN, OPTION_AENDERN, WISSEN_AENDERN,
                  LESETEXT_SCHREIBEN, REISE_AENDERN, START_ENDE_SETZEN, PLAN_ANLEGEN, PLAN_AENDERN, MERKMAL_ZUSAMMENFUEHREN, ARTEN_UEBERNEHMEN,

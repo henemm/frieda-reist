@@ -22,6 +22,7 @@ Als Befehl ist neu.py ein Werkzeug des Betreibers für Struktur, nie für Inhalt
 IDs werden nie neu vergeben: ids.yaml hält je Art die höchste je vergebene Nummer fest. Die nächste ID liegt über
 dieser Marke und über jeder Nummer, die irgendwo in der Reise steht (auch im Verlauf von Verworfenem).
 """
+import copy
 import datetime
 import json
 import re
@@ -422,6 +423,123 @@ def arten_ableiten(reise_dir, namen=None, summiert=(), definitionen=None, schrei
 
 
 # ---------- Schlüssel einer Reise nachziehen (Abgleich 29.10.2026, docs/abgleich-2026-10-29.md) ----------
+# Feld eines früheren Kartenpunkts -> Rolle des Merkmals, das es ersetzt (routen.ROLLEN, routen.ROLLEN_MERKMAL)
+PUNKT_ROLLEN = {"nr": "nummer", "auch": "alias", "art": "sorte", "osm": "osm", "trinkbar": "trinkbar", "id": "bezug"}
+
+
+def kartenpunkte_umstellen(reise_dir, roh, schreiben, meldungen):
+    """ADR-0007, Schritt d: Kartenpunkte (plan/punkte.yaml, Punkte in der Datei reise.json wissen_punkte) werden Aufenthalte (A-…) mit
+    Art, ID, Herkunft, Koordinaten und an: (der Strecke, an der sie liegen, oder dem Block des Wissens); die Kategorien
+    (plan/kategorien.yaml) gehen in den Arten (arten.yaml) auf, mit den Rollen der Merkmale für Nummer, weitere Namen, Sorte, OSM-Bezug und
+    Trinkbarkeit. Neue IDs aus ids.yaml; die alten Dateien entfallen. Probelauf (schreiben=False): nur melden."""
+    import schreiben as sb
+    from routen import SYMBOLE_ARTEN
+    reise_dir = Path(reise_dir)
+    plan = reise_dir / "plan"
+    kat_datei, punkte_datei = plan / "kategorien.yaml", plan / "punkte.yaml"
+    cfg_datei = reise_dir / "reise.json"
+    cfg = json.loads(cfg_datei.read_text(encoding="utf-8")) if cfg_datei.exists() else {}
+    wissen_rel = cfg.get("wissen_punkte")
+    wissen_datei = reise_dir / wissen_rel if wissen_rel else None
+    lies = lambda p: (yaml.safe_load(p.read_text(encoding="utf-8")) or {}) if p and p.exists() else {}
+    kategorien = (lies(kat_datei).get("kategorien") or {}) if kat_datei.exists() else {}
+    punkte, wissen = lies(punkte_datei), lies(wissen_datei)
+    je_strecke = punkte.get("strecken") or {}
+    je_block = wissen.get("bloecke") or {}
+    if not (kategorien or je_strecke or je_block):
+        return
+    anzahl = sum(len(v or []) for v in list(je_strecke.values()) + list(je_block.values()))
+    meldungen.append(f"{anzahl} map points → things (A-…), {len(kategorien)} categories → kinds (arten.yaml)")
+    if not schreiben:
+        return
+    arten = sb.arten_laden(reise_dir)
+    vorher = copy.deepcopy(arten)
+    art_von = {}   # Kategorie -> Schlüssel der Art
+    gruppe_von = {}
+    for k, d in kategorien.items():
+        d = d if isinstance(d, dict) else {}
+        art = k if (k not in arten or (arten[k] or {}).get("grundform") == "aufenthalt") else f"punkt_{k}"
+        a = arten.setdefault(art, {"grundform": "aufenthalt"})
+        art_von[k], gruppe_von[k] = art, d.get("gruppe") or "punkt"
+        for feld, wert in (("name", d.get("name")), ("einzahl", d.get("einzahl")), ("farbe", d.get("farbe")),
+                           ("symbol", d.get("symbol") if d.get("symbol") in SYMBOLE_ARTEN else None), ("gruppe", d.get("gruppe")),
+                           ("nummeriert", True if d.get("nummeriert") else None), ("sorten", d.get("arten") or None)):
+            if wert not in (None, "", {}) and feld not in a:
+                a[feld] = wert
+        a.setdefault("buchbar", False)
+    stand = punkte.get("stand") or wissen.get("stand")
+    ida = {}   # Art -> {feld: Schlüssel des Merkmals}, damit jede Art die Rollen nur einmal bekommt
+
+    def merkmal_schluessel(art, feld):
+        return sb.art_rolle_sichern(arten[art], PUNKT_ROLLEN[feld])
+
+    ids = {}
+    aufenthalte = roh.setdefault("aufenthalte", type(roh)())
+
+    def anlegen(an, p, wo):
+        kat = p.get("kat")
+        if kat not in art_von:   # Kategorie fehlt: Punkt bleibt als Hinweis in der Meldung, nichts geht verloren
+            meldungen.append(f"OPEN {wo} {p.get('name')}: category {kat} is not defined; the point was not moved")
+            return False
+        if p.get("ohne_karte"):
+            meldungen.append(f"{wo} {p.get('name')}: marked ohne_karte, not moved")
+            return False
+        art = art_von[kat]
+        quelle = p.get("quelle") or sb.lesbar(reise_dir, [sb.S("schreiben.quelle_bestand")])
+        g = p.get("geprueft", stand)
+        d = {"name": p.get("name"), "art": art, "an": an, "quelle": quelle}
+        if p.get("hinweis"):
+            d["hinweis"] = p["hinweis"]
+        aid = sb.neue_id(reise_dir, "A")
+        knoten = sb.block_map(d)
+        if p.get("lage"):
+            sb.lage_merkmal_schreiben(knoten, "koordinaten", [float(x) for x in p["lage"]], quelle, g if isinstance(g, (datetime.date, type(None))) else
+                                      datetime.date.fromisoformat(str(g)))
+        for feld in ("nr", "auch", "art", "osm", "trinkbar", "id"):
+            wert = p.get(feld)
+            if feld == "art" and wert is None:
+                continue
+            if wert in (None, ""):
+                continue
+            schl = merkmal_schluessel(art, feld)
+            wert = "; ".join(wert) if isinstance(wert, list) else wert
+            mk = knoten.get("merkmale")
+            if mk is None:
+                mk = knoten["merkmale"] = sb.merkmale_knoten({})
+            mk[schl] = sb.fliess_map({"wert": wert, "quelle": quelle})
+        aufenthalte[aid] = knoten   # der Punkt einer Unterkunft trägt deren Kennung (Rolle bezug) und liefert ihr die Lage wie bisher
+        return True
+
+    for sid, liste in je_strecke.items():
+        for p in liste or []:
+            anlegen(sid, p, sid)
+    for bid, liste in je_block.items():
+        for p in liste or []:
+            anlegen(bid, p, bid)
+    # Rollen nur, wo sie gebraucht werden; nummeriert braucht die Rolle nummer
+    neue_arten = {a: d for a, d in arten.items() if a not in vorher}
+    geaendert = [a for a in vorher if vorher[a] != arten[a]]
+    arten_datei = plan / "arten.yaml"
+    if arten_datei.exists() and not geaendert:   # nur neue Arten: anhängen, damit die Kommentare der Datei bleiben
+        text = arten_datei.read_text(encoding="utf-8")
+        neu_text = yaml.safe_dump(neue_arten, sort_keys=False, allow_unicode=True, width=120)
+        arten_datei.write_text(text.rstrip("\n") + "\n  # map points (formerly plan/kategorien.yaml, ADR-0007): kinds with gruppe\n"
+                               + "".join("  " + z + "\n" for z in neu_text.splitlines()), encoding="utf-8")
+    else:
+        sb.arten_speichern(reise_dir, arten, {"name": "Betrieb (neu.py nachziehen)"})
+    for datei in (kat_datei, punkte_datei):
+        datei.unlink(missing_ok=True)
+    if wissen_datei and wissen_datei.exists():
+        rest = {k: v for k, v in wissen.items() if k != "bloecke"}
+        if set(rest) - {"stand"}:
+            kopf = "".join(z for z in wissen_datei.read_text(encoding="utf-8").splitlines(keepends=True) if z.startswith("#"))
+            wissen_datei.write_text(kopf + yaml.safe_dump(rest, sort_keys=False, allow_unicode=True), encoding="utf-8")
+        else:
+            wissen_datei.unlink()
+            cfg.pop("wissen_punkte", None)
+            cfg_datei.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
 def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
     """Nur Schlüssel, keine Inhalte: Unterkunft und Nacht typ: → art:; Wahlstelle bereich: → art:, art: planung|unterwegs →
     wann:; Strecke ohne art: bekommt die in strecken_arten genannte ({E-15: kombiniert}), sonst wird sie gemeldet; das
@@ -464,8 +582,10 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
     for gruppe, wort in (("orte", "Ort"), ("strecken", "Strecke"), ("unterkuenfte", "Unterkunft"), ("aufenthalte", "Aufenthalt")):
         for did, k in ((roh or {}).get(gruppe) or {}).items():
             if isinstance(k, dict):
-                for feld in sb.felder_zu_merkmalen(k):
+                for feld in sb.felder_zu_merkmalen(k, sb.lesbar(reise_dir, [sb.S("schreiben.quelle_bestand")])):
                     meldungen.append(f"{did}: {feld} → merkmale (typisiert)")
+    if roh is not None:
+        kartenpunkte_umstellen(reise_dir, roh, schreiben, meldungen)
     for vid, w in ((roh or {}).get("wahlstellen") or {}).items():
         if not isinstance(w, dict):
             continue

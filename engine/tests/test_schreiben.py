@@ -5,6 +5,7 @@ im Repo (wie der Verweis engine -> frieda/engine einer Instanz). Veröffentliche
 gerufen wurde."""
 import datetime
 import json
+import re
 import os
 import shutil
 import subprocess
@@ -109,36 +110,37 @@ def warten_auf(datei, versuche=50):
 
 # ---------- Kategorien der Kartenpunkte (O-7) ----------
 
-def kategorien_auf_main(origin):
-    text = git(origin, "show", "main:reisen/beispielreise/plan/kategorien.yaml")
-    return yaml.safe_load(text)["kategorien"], text
-
-
 def test_kategorie_anlegen_aendern_und_ablehnen(repo):
+    """Seit ADR-0007 (Schritt d) ist eine Kartenkategorie eine Art der Grundform aufenthalt mit gruppe (kategorie_definieren ist ein Alias
+    von art_definieren); plan/kategorien.yaml entfällt."""
     wurzel, origin, arbeit, stempel = repo
     s = schreiber(repo)
     a = s.schreiben("beispielreise", "kategorie_definieren", {**IDA, "args": {
         "kategorie": "aussicht", "bezeichnung": "Aussichtspunkte", "gruppe": "punkt", "farbe": "#336699", "symbol": "karte"}})
     assert a["ok"] and "aussicht" in a["text"]
-    k, text = kategorien_auf_main(origin)
-    assert k["aussicht"] == {"gruppe": "punkt", "name": "Aussichtspunkte", "farbe": "#336699", "symbol": "karte"}
-    assert k["wasser"]["arten"]["quelle"]["umriss"] is True            # Bestand der Beispielreise unverändert
-    assert text.startswith("# Kategorien der Kartenpunkte dieser Reise") and "Ida" in text
-    # ändern: Art-Zusatz und Name; die Gruppe lässt sich nicht ändern
+    k, text = arten_auf_main(origin)
+    assert k["aussicht"] == {"grundform": "aufenthalt", "name": "Aussichtspunkte", "farbe": "#336699", "symbol": "karte", "buchbar": False,
+                             "gruppe": "punkt"}   # eine Art ohne Merkmale
+    assert k["wasser"]["sorten"]["quelle"]["umriss"] is True            # Bestand der Beispielreise unverändert
+    assert text.startswith("# Arten und Merkmale") and "Ida" in text
+    # ändern: Zusatz (Sorte) und Name; die Gruppe lässt sich nicht ändern
     a = s.schreiben("beispielreise", "kategorie_definieren", {**IDA, "args": {
         "kategorie": "aussicht", "bezeichnung": "Aussicht", "art": "viewpoint", "art_bezeichnung": "Aussichtspunkt"}})
     assert a["ok"]
-    k, _ = kategorien_auf_main(origin)
-    assert k["aussicht"]["name"] == "Aussicht" and k["aussicht"]["arten"]["viewpoint"] == {"name": "Aussichtspunkt"}
+    k, _ = arten_auf_main(origin)
+    assert k["aussicht"]["name"] == "Aussicht" and k["aussicht"]["sorten"]["viewpoint"] == {"name": "Aussichtspunkt"}
     for args, grund in (({"kategorie": "aussicht", "gruppe": "wissen"}, "Gruppe"),
                         ({"kategorie": "neu", "bezeichnung": "Neu"}, "braucht"),
                         ({"kategorie": "neu", "bezeichnung": "N", "gruppe": "punkt", "farbe": "rot"}, "farbe"),
                         ({"kategorie": "aussicht", "symbol": "nix"}, "symbol"),
-                        ({"kategorie": "aussicht", "art_hinweis": "x", "bezeichnung": "Aussicht"}, "art")):
+                        ({"kategorie": "aussicht", "art_hinweis": "x", "bezeichnung": "Aussicht"}, "art"),
+                        ({"kategorie": "bahn", "bezeichnung": "Bahn", "gruppe": "punkt", "farbe": "rot"}, "farbe")):
         with pytest.raises(sb.Ablehnung, match=grund):
             s.schreiben("beispielreise", "kategorie_definieren", {**IDA, "args": args})
     with pytest.raises(sb.Ablehnung, match="nichts daran soll sich ändern"):
         s.schreiben("beispielreise", "kategorie_definieren", {**IDA, "args": {"kategorie": "aussicht", "bezeichnung": "Aussicht"}})
+    with pytest.raises(sb.Ablehnung, match="keine Art der Grundform Aufenthalt"):   # eine Bewegung ist keine Kartenkategorie
+        s.schreiben("beispielreise", "kategorie_definieren", {**IDA, "args": {"kategorie": "wandern", "bezeichnung": "W", "gruppe": "punkt", "farbe": "blau"}})
 
 
 # ---------- Arten ----------
@@ -1147,26 +1149,27 @@ def test_aufenthalt_ohne_nacht_anlegen_an_den_tag_haengen_und_buchen(repo):
     a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {
         "was": "aufenthalt", "titel": "Festung Königstein", "ort": "O-05", "art": "besichtigung", "zeit": "14–16 Uhr",
         "quelle": "erfunden (Test)", "geprueft": "2026-10-29", "merkmale": {"geoeffnet": "ja"}}})
-    assert a["text"].startswith("Aufenthalt A-02 „Festung Königstein“ angelegt in Bad Schandau, Art besichtigung, Merkmale: geoeffnet.")
+    aid = re.search(r"Aufenthalt (A-\d+) ", a["text"]).group(1)   # die nächste freie Nummer (die Beispielreise hat Punkte als Dinge, ADR-0007)
+    assert a["text"].startswith(f"Aufenthalt {aid} „Festung Königstein“ angelegt in Bad Schandau, Art besichtigung, Merkmale: geoeffnet.")
     assert "tag_aendern" in a["text"]
     r, _ = routen_auf_main(origin)
-    x = r["aufenthalte"]["A-02"]
+    x = r["aufenthalte"][aid]
     assert x["ort"] == "O-05" and x["art"] == "besichtigung" and x["zeit"] == "14–16 Uhr" and "typ" not in x
     s.vorbereiten()
-    a = s.schreiben("beispielreise", "tag_aendern", {**IDA, "args": {"ziel": "T-04", "aufenthalte": ["A-02"]}})
-    assert "aufenthalte [] → ['A-02']" in a["text"]
+    a = s.schreiben("beispielreise", "tag_aendern", {**IDA, "args": {"ziel": "T-04", "aufenthalte": [aid]}})
+    assert "aufenthalte [] → ['" + aid + "']" in a["text"]
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="nur als Buchung"):
-        s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "A-02", "buchung": "Zeitfenster 14 Uhr gebucht"}})
+        s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": aid, "buchung": "Zeitfenster 14 Uhr gebucht"}})
     with pytest.raises(sb.Ablehnung, match="nur als Buchung"):
         s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "aufenthalt", "titel": "y", "ort": "O-05", "art": "besichtigung",
                                                                        "quelle": "x", "buchung": "gebucht"}})
-    a = s.schreiben("beispielreise", "buchung_anlegen", {**KARL, "args": {"fuer": "A-02", "status": "gebucht", "nummer": "Z-14",
+    a = s.schreiben("beispielreise", "buchung_anlegen", {**KARL, "args": {"fuer": aid, "status": "gebucht", "nummer": "Z-14",
                                                                           "quelle": "Zeitfenster-Ticket per Mail (Test)"}})
     assert a["ok"]
     r, _ = routen_auf_main(origin)
-    assert r["tage"]["T-04"]["aufenthalte"] == ["A-02"] and "buchung" not in r["aufenthalte"]["A-02"]
-    assert r["buchungen"]["B-04"]["fuer"] == ["A-02"] and r["buchungen"]["B-04"]["status"] == "gebucht"
+    assert r["tage"]["T-04"]["aufenthalte"] == [aid] and "buchung" not in r["aufenthalte"][aid]
+    assert r["buchungen"]["B-04"]["fuer"] == [aid] and r["buchungen"]["B-04"]["status"] == "gebucht"
     with pytest.raises(Exception, match="Aufenthalts-Art"):
         s.vorbereiten()
         s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "aufenthalt", "titel": "x", "ort": "O-05", "art": "bahn", "quelle": "x"}})
@@ -2158,7 +2161,8 @@ def osm_antwort(elemente):
 
 
 def test_kartenpunkte_holen_mit_erfundener_antwort(repo, monkeypatch):
-    """#240 (K14): Treffer längs der Strecke werden Punkte mit Quelle und Stand; ein zweiter Aufruf ersetzt, statt zu verdoppeln."""
+    """#240 (K14), seit ADR-0007 (Schritt d): Treffer längs der Strecke werden Dinge (Aufenthalte der Art mit an: <Strecke>) mit Quelle und
+    Stand; ein zweiter Aufruf aktualisiert dieselben Dinge, statt zu verdoppeln, und löscht nichts."""
     _, origin, _, _ = repo
     abfragen = []
     nah = {"type": "node", "id": 1, "lat": 50.9600, "lon": 14.0700, "tags": {"amenity": "drinking_water", "name": "Brunnen an der Bastei"}}
@@ -2170,24 +2174,30 @@ def test_kartenpunkte_holen_mit_erfundener_antwort(repo, monkeypatch):
                                                                             "osm": ["amenity=drinking_water", "natural=spring"], "abstand_m": 500}})
     assert "2 Treffer für Wasser" in a["text"] and "Brunnen an der Bastei" in a["text"] and "ODbL" in a["text"]
     assert '["amenity"="drinking_water"]' in abfragen[0] and '["natural"="spring"]' in abfragen[0]
-    punkte = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/plan/punkte.yaml"],
-                                           check=True, capture_output=True, text=True).stdout)["strecken"]["E-01"]
-    osm = [p for p in punkte if p.get("osm")]
-    assert [p["osm"] for p in osm] == ["node/1", "way/3"] and osm[0]["art"] == "drinking_water" and osm[1]["art"] == "spring"
-    assert all(p["kat"] == "wasser" and "OpenStreetMap" in p["quelle"] and p["geprueft"] for p in osm)
-    assert any(p.get("name") == "Brunnen am Amselsee" for p in punkte)   # von Hand gesetzte Punkte bleiben
+    r, _ = routen_auf_main(origin)
+    arten, _ = arten_auf_main(origin)
+    rollen = {m["rolle"]: k for k, m in arten["wasser"]["merkmale"].items() if m.get("rolle")}
+    osm = [(aid, d) for aid, d in r["aufenthalte"].items() if d.get("art") == "wasser" and d.get("an") == "E-01" and rollen["osm"] in d.get("merkmale", {})]
+    assert [d["merkmale"][rollen["osm"]]["wert"] for _, d in osm] == ["node/1", "way/3"]
+    assert [d["merkmale"][rollen["sorte"]]["wert"] for _, d in osm] == ["drinking_water", "spring"]
+    assert all("OpenStreetMap" in d["quelle"] and lese(d)["punkt"]["geprueft"] for _, d in osm)
+    assert any(d.get("name") == "Brunnen am Amselsee" for d in r["aufenthalte"].values())   # von Hand gesetzte Punkte bleiben
+    ids = [aid for aid, _ in osm]
     s.vorbereiten()
+    verschoben = {**nah, "lat": 50.9601}   # der Treffer liegt jetzt ein paar Meter weiter
+    monkeypatch.setattr(sb, "overpass_abfragen", lambda q: {"elements": [verschoben, quelle]})
     s.schreiben("beispielreise", "kartenpunkte_holen", {**IDA, "args": {"strecke": "E-01", "kategorie": "wasser", "osm": ["amenity=drinking_water"], "abstand_m": 500}})
-    punkte = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/plan/punkte.yaml"],
-                                           check=True, capture_output=True, text=True).stdout)["strecken"]["E-01"]
-    assert len([p for p in punkte if p.get("osm")]) == 2   # ersetzt, nicht verdoppelt
+    r, _ = routen_auf_main(origin)
+    osm = [aid for aid, d in r["aufenthalte"].items() if d.get("art") == "wasser" and d.get("an") == "E-01" and rollen["osm"] in d.get("merkmale", {})]
+    assert osm == ids   # aktualisiert, nicht verdoppelt, nichts gelöscht
+    assert lese(r["aufenthalte"][ids[0]])["punkt"]["wert"][0] == 50.9601
     s.vorbereiten()
     def limit(q):
         raise sb.Ablehnung("schreiben.kartenpunkte.limit", w1=429)
     monkeypatch.setattr(sb, "overpass_abfragen", limit)
     with pytest.raises(sb.Ablehnung, match="ausgelastet"):
         s.schreiben("beispielreise", "kartenpunkte_holen", {**IDA, "args": {"strecke": "E-01", "kategorie": "wasser", "osm": ["amenity=drinking_water"]}})
-    for args, text in (({"strecke": "E-01", "kategorie": "gibtsnicht", "osm": ["a=b"]}, "Kategorie „gibtsnicht“"),
+    for args, text in (({"strecke": "E-01", "kategorie": "gibtsnicht", "osm": ["a=b"]}, "Art „gibtsnicht“"),
                        ({"strecke": "E-01", "kategorie": "wasser", "osm": ['a"]=b']}, "nicht die Form")):
         with pytest.raises(sb.Ablehnung, match=text):
             s.schreiben("beispielreise", "kartenpunkte_holen", {**IDA, "args": args})

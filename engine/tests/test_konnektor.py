@@ -566,8 +566,8 @@ def test_ontologie_organisator_schreibt_direkt(schreibweg):
                    "merkmal_zusammenfuehren", "arten_uebernehmen",
                    "start_ende_setzen",   # Issue #142
                    "symbol_setzen", "kartenansicht_setzen", "kartenpunkte_holen"}   # Issue #252
-        assert (set(kn.ONTOLOGIE_WERKZEUGE) - nur_org - set(kn.ALIAS_ZU_DING_AENDERN) <= namen) is da, token
-        assert not set(kn.ALIAS_ZU_DING_AENDERN) & namen   # Aliase von item_update (ADR-0007, Schritt c) stehen nicht mehr in der Liste
+        assert (set(kn.ONTOLOGIE_WERKZEUGE) - nur_org - set(kn.ALIAS_ZU_DING_AENDERN) - set(kn.ALIAS_ZU_ART) <= namen) is da, token
+        assert not (set(kn.ALIAS_ZU_DING_AENDERN) | set(kn.ALIAS_ZU_ART) | {"kategorien"}) & namen   # Aliase von item_update (ADR-0007, Schritt c) stehen nicht mehr in der Liste
         assert ("start_ende_setzen" in namen) is (token == ALT_ORGANISATOR), token
         assert ("symbol_setzen" in namen) is (token == ALT_ORGANISATOR), token
     anleitung = rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
@@ -637,7 +637,9 @@ def test_kategorie_definieren_ueber_den_schreibweg(schreibweg):
     import konten
     basis, ablage = schreibweg
     for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (MITREISEND, True), (GAST, False)):
-        assert ("kategorie_definieren" in {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}) is da, token
+        namen = {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}
+        assert "kategorie_definieren" not in namen and "kategorien" not in namen, token   # Alias von art_definieren (ADR-0007, Schritt d)
+        assert ("art_definieren" in namen) is da, token
     Schreibweg.antwort = (200, {"ok": True, "text": "Kategorie „Aussicht“ angelegt: Schlüssel aussicht, Gruppe punkt, Farbe #336699."})
     t, f = werkzeug(basis, ALT_ORGANISATOR, "kategorie_definieren", kategorie="aussicht", bezeichnung="Aussicht", gruppe="punkt", farbe="#336699")
     assert not f and "Kategorie „Aussicht“ angelegt" in t

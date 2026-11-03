@@ -34,7 +34,7 @@ ARTEN = WANN                      # alter Name, wird von Bestand gelesen
 # Uhrzeit eines Aufenthalts ohne Nacht (beginn, ende; #77 Kalender), Ortszeit; Bewegungen haben ab und an (#135)
 UHRZEIT = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+", "aufenthalt": r"A-\d+",
-          "tag": r"T-\d+", "wahl": r"V-\d+", "option": r"V-\d+\.[a-z]+", "wissen": r"W-\d+", "buchung": r"B-\d+"}
+          "tag": r"T-\d+", "wahl": r"V-\d+", "option": r"V-\d+\.[a-z]+", "wissen": r"W-\d+(?:\.[a-z0-9-]+)?", "buchung": r"B-\d+"}
 # Elternbezug (ADR-0007, #282): jedes Ding darf mit an: sagen, an welchem anderen Ding es zu Hause ist (genau eines). Erlaubt sind
 # Tag, Ort, Strecke, Aufenthalt, Unterkunft, Abschnitt des Wissens und die Reise selbst (an: reise). Ohne an: gilt die Vorgabe
 # der Grundform (Nacht und Strecke am Tag, Aufenthalt am Tag, sonst an seinem Ort). Bei einer Strecke war an: bis zum
@@ -110,14 +110,19 @@ def zeitpunkt(text):
 GRUNDFORMEN = ("aufenthalt", "bewegung", "folge")
 AUTO_JE_GRUNDFORM = {"bewegung": ("gehzeit", "laenge", "hoehenmeter"), "folge": ("tage", "gehzeit", "unterkuenfte", "anschluss")}
 ART_MUSTER = r"[a-z][a-z0-9_]*"
-ART_FELDER = {"grundform", "name", "farbe", "symbol", "buchbar", "merkmale", "beschreibung", "summiert", "lesetext", "buchung_merkmale"}
+# gruppe, einzahl, nummeriert, sorten: Felder einer früheren Kartenkategorie (ADR-0007, Schritt d): gruppe punkt (Punkte an einer Strecke, Karte der
+# Etappe) oder wissen (Punkte an einem Abschnitt des Wissens), einzahl (ein Punkt der Art), nummeriert (der Punkt zeigt seine Nummer),
+# sorten (Zusatz je Wort: name, symbol, hinweis, umriss)
+ART_FELDER = {"grundform", "name", "farbe", "symbol", "buchbar", "merkmale", "beschreibung", "summiert", "lesetext", "buchung_merkmale",
+              "gruppe", "einzahl", "nummeriert", "sorten"}
+ART_GRUPPEN = ("punkt", "wissen")
 # Merkmale der Buchungen einer Art (Product Owner 31.10.2026, #166): was erst durch das Buchen entsteht (Ticketart, Tarif,
 # Lager oder Zimmer, Zeitfenster). Form wie ein Merkmal, aber ohne Stufe, Rolle, auto und Prüfdatum: der Wert ist eine gebuchte
 # Tatsache und erbt die Herkunft (quelle) der Buchung.
 BUCHUNG_DEF_FELDER = {"name", "typ", "werte", "einheit", "hilfe", "frage"}
 # Symbole der Seite, die eine Art tragen darf (engine/bauen.py SYMBOLE, Lucide); ohne Angabe das Symbol der Grundform
 SYMBOLE_ARTEN = ("unterkunft", "zelt", "einkehr", "ticket", "museum", "wandern", "bus", "bahn", "schiff", "flug", "auto", "rad",
-                 "taxi", "strecke", "ort", "karte", "plan")
+                 "taxi", "strecke", "ort", "karte", "plan", "wasser", "apotheke")
 GRUNDFORM_SYMBOL = {"aufenthalt": "unterkunft", "bewegung": "strecke", "folge": "plan"}
 # Gliederung des Lesetexts einer Art (docs/ontologie.md „Lesetext“): Rubriken in ihrer Reihenfolge, jede mit Namen (das
 # Stichwort am Anfang eines Absatzes) und Hilfe für den AI-Client. Welche Rubriken es gibt, sagt allein die Reise.
@@ -162,6 +167,44 @@ FEST_ALIAS = {"place": "ort", "from_place": "von", "to_place": "nach", "time_tex
               "booking_link": "buchungslink", "gpx_text": "gpx"}
 
 
+def kartenpunkte_aus_dingen(route):
+    """Kartenpunkte (ADR-0007, Schritt d): Aufenthalte, deren Art eine gruppe hat (punkt oder wissen) und die an einer Strecke oder einem
+    Abschnitt des Wissens hängen (an:), in der Form der früheren Punkte der Karten -> ({Strecke: [Punkt]}, {Block: [Punkt]}). Werte
+    stehen in den Merkmalen der Art, gelesen nach Rolle (nummer, alias, sorte, osm, trinkbar), nie nach dem Namen."""
+    arten = route.get("arten") or {}
+    rollen = {a: {m["rolle"]: m["id"] for m in (route.get("merkmale") or {}).get(a, []) if m.get("rolle")} for a in arten}
+    je_strecke, je_block = {}, {}
+    for aid, d in (route.get("aufenthalte") or {}).items():
+        art = d.get("art")
+        gruppe = (arten.get(art) or {}).get("gruppe")
+        eltern = (route.get("eltern") or {}).get(aid)
+        if not gruppe or not eltern:
+            continue
+        mk = d.get("merkmale") or {}
+
+        def rolle(r, mk=mk, art=art):
+            v = mk.get(rollen.get(art, {}).get(r))
+            return v.get("wert") if v else None
+        p = {"name": d.get("name"), "kat": art, "lage": (d.get("punkt") or {}).get("wert"), "quelle": d.get("quelle")}
+        if (d.get("punkt") or {}).get("geprueft"):
+            p["geprueft"] = d["punkt"]["geprueft"]
+        if d.get("hinweis"):
+            p["hinweis"] = d["hinweis"]
+        if (nr := rolle("nummer")) not in (None, ""):
+            p["nr"] = int(float(nr)) if str(nr).replace(".", "", 1).isdigit() else nr
+        if (alias := rolle("alias")):
+            p["auch"] = [x.strip() for x in str(alias).split(";") if x.strip()]
+        for r, feld in (("sorte", "art"), ("osm", "osm"), ("trinkbar", "trinkbar"), ("bezug", "id")):
+            if (w := rolle(r)) not in (None, ""):
+                p[feld] = w
+        (je_strecke if gruppe == "punkt" else je_block).setdefault(eltern, []).append(p)
+    return je_strecke, je_block
+
+
+# Rolle -> (Schlüssel des Merkmals, Schlüssel des Namens im Katalog, Typ), wenn die Software ein Merkmal dieser Rolle für eine Art anlegt
+ROLLEN_MERKMAL = {"nummer": ("nummer", "inhalt.rolle.nummer", "zahl"), "alias": ("weitere_namen", "inhalt.rolle.alias", "text"),
+                  "sorte": ("sorte", "inhalt.rolle.sorte", "text"), "osm": ("osm", "inhalt.rolle.osm", "text"),
+                  "trinkbar": ("trinkbar", "inhalt.rolle.trinkbar", "text"), "bezug": ("unterkunft", "inhalt.rolle.bezug", "text")}
 FEST_NAMEN = frozenset(EINGABE_MERKMALE) | {n for fs in GRUNDFORM_FELDER.values() for n in fs} | frozenset(FEST_ALIAS)
 
 
@@ -289,7 +332,11 @@ DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage",
 # Rolle eines Merkmals (Form eines Merkmals, docs/ontologie.md; Product Owner 29.10.2026): kosten = der Preis des Dings
 # (Typ geld), den die Seite über die Reise summiert („Übernachtungen“). Die Software kennt die Rolle, die Reise sagt,
 # welches ihrer Merkmale sie trägt; ohne Rolle wird nichts summiert. Kein Katalog: der Schlüssel des Merkmals ist frei.
-ROLLEN = ("kosten",)
+# Rolle eines Merkmals -> der Typ, den es braucht. kosten: der Preis, den die Seite summiert (Typ geld). Für die Dinge, die früher
+# Kartenpunkte waren (ADR-0007, Schritt d): nummer (die Nummer eines nummerierten Punkts), alias (weitere Namen, getrennt durch ;, für
+# Kartenlinks im Text), sorte (Zusatzwort der Art, siehe sorten), osm (Bezug zu OpenStreetMap, Typ/Nummer), trinkbar (OSM-Angabe yes/no),
+# bezug (die Kennung einer Unterkunft, die der Punkt ist)
+ROLLEN = {"kosten": "geld", "nummer": "zahl", "alias": "text", "sorte": "text", "osm": "text", "trinkbar": "text", "bezug": "text"}
 
 
 def wann_von(w):
@@ -565,7 +612,7 @@ class Routen:
             if not isinstance(a, dict) or not a.get("name"):
                 self.fehl(texte.satz("pruefung.routen.11", aid=aid))
                 continue
-            if a.get("ort") not in self.orte:
+            if a.get("ort") not in self.orte and not (a.get("ort") is None and (a.get("an") is not None or a.get("eltern") is not None)):   # mit an: ist ort freiwillig
                 self.fehl(texte.satz("pruefung.routen.12", aid=aid, w1=a.get('ort')))
             if not a.get("quelle"):
                 self.fehl(texte.satz("pruefung.routen.13", aid=aid))
@@ -903,15 +950,23 @@ class Routen:
                 continue
             if set(d) - ART_FELDER:
                 self.fehl(texte.satz("pruefung.routen.54", wo=wo, w1=', '.join(sorted(set(d) - ART_FELDER))))
-            if d.get("farbe") and d["farbe"] not in FARBEN:
-                self.fehl(texte.satz("pruefung.routen.55", wo=wo, w1=', '.join(FARBEN)))
+            if d.get("farbe") and d["farbe"] not in FARBEN and d["farbe"] != "kontrast" and not re.fullmatch(r"#[0-9a-fA-F]{6}", str(d["farbe"])):
+                self.fehl(texte.satz("pruefung.routen.55", wo=wo, w1=', '.join((*FARBEN, "kontrast", "#rrggbb"))))
+            if d.get("gruppe") is not None and d["gruppe"] not in ART_GRUPPEN:
+                self.fehl(texte.satz("pruefung.routen.art_gruppe", wo=wo, w1=' | '.join(ART_GRUPPEN)))
+            if d.get("gruppe") and d["grundform"] != "aufenthalt":
+                self.fehl(texte.satz("pruefung.routen.art_gruppe_form", wo=wo))
             if d.get("symbol") and d["symbol"] not in SYMBOLE_ARTEN:
                 self.fehl(texte.satz("pruefung.routen.56", wo=wo, w1=', '.join(SYMBOLE_ARTEN)))
             # buchbar: das Ding dieser Art hat einen Buchungsstand (Zu buchen, Stand der Vorbereitung); Vorgabe: Aufenthalte ja
             self.arten[a] = {"name": str(d.get("name") or a), "grundform": d["grundform"], "farbe": d.get("farbe") or "grau",
-                             "symbol": d.get("symbol") or GRUNDFORM_SYMBOL[d["grundform"]],
+                             "symbol": d.get("symbol") or (None if d.get("gruppe") else GRUNDFORM_SYMBOL[d["grundform"]]),   # ein Kartenpunkt hat kein Vorgabesymbol
                              "buchbar": bool(d.get("buchbar", d["grundform"] == "aufenthalt")),
-                             "summiert": bool(d.get("summiert")), "beschreibung": d.get("beschreibung")}
+                             "summiert": bool(d.get("summiert")), "beschreibung": d.get("beschreibung"),
+                             **({"gruppe": d["gruppe"]} if d.get("gruppe") in ART_GRUPPEN else {}),
+                             **({"einzahl": str(d["einzahl"])} if d.get("einzahl") else {}),
+                             **({"nummeriert": True} if d.get("nummeriert") else {}),
+                             **({"sorten": d["sorten"]} if isinstance(d.get("sorten"), dict) and d["sorten"] else {})}
             if "lesetext" in d:
                 self.arten[a]["lesetext"] = self.lesetext_pruefen(wo, d["lesetext"])
             self.katalog[a] = self.definitionen(wo, d.get("merkmale") or {}, a, grundform=d["grundform"], neu=True)
@@ -1051,8 +1106,8 @@ class Routen:
             if d.get("rolle"):
                 if d["rolle"] not in ROLLEN:
                     self.fehl(texte.satz("pruefung.routen.77", wo=wo, k=k, w1=', '.join(ROLLEN)))
-                elif typ != "geld":
-                    self.fehl(texte.satz("pruefung.routen.78", wo=wo, k=k))
+                elif typ != ROLLEN[d["rolle"]]:
+                    self.fehl(texte.satz("pruefung.routen.78", wo=wo, k=k, rolle=d["rolle"], typ=ROLLEN[d["rolle"]]))
                 elif neu and any(x.get("rolle") == d["rolle"] for x in aus.values()):
                     self.fehl(texte.satz("pruefung.routen.79", wo=wo, k=k, w1=d['rolle']))
             if "nach_buchung" in d and not isinstance(d["nach_buchung"], bool):

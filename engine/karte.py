@@ -219,6 +219,8 @@ def auto(route, kategorien=None, gpx_wege=None):
             ohne.append(o.get("name") or oid)
     for menge in ("unterkuenfte", "aufenthalte"):
         for did, d in (route.get(menge) or {}).items():
+            if (arten.get(d.get("art")) or {}).get("gruppe"):
+                continue   # Kartenpunkte (Art mit gruppe, ADR-0007) stehen auf den Karten der Etappen und des Wissens, nicht auf der Übersicht
             p = punkt_von(d)
             if not p:
                 ohne.append(d.get("name") or did)

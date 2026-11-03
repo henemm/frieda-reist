@@ -346,6 +346,12 @@ def art_definieren(reise_dir, wer, args):
     if symbol is not None and symbol.lower() not in SYMBOLE_ARTEN:
         raise Ablehnung("schreiben.art_definieren.5", w1=', '.join(SYMBOLE_ARTEN))
     lesetext = lesetext_gliederung(args.get("lesetext"))
+    # Kartenpunkte (ADR-0007, Schritt d): gruppe macht aus der Art eine Kartenkategorie (punkt: Karte der Etappe, wissen: Karte im Wissen)
+    from routen import ART_GRUPPEN
+    gruppe = text_wert(args, "gruppe", laenge=20)
+    if gruppe is not None and gruppe.lower() not in ART_GRUPPEN:
+        raise Ablehnung("schreiben.kategorie_definieren.2", w1=', '.join(ART_GRUPPEN))
+    einzahl, nummeriert = text_wert(args, "einzahl", laenge=80), bool_wert(args, "nummeriert")
     grund = text_wert(args, "grund")
     neu = key not in arten
     if neu:
@@ -372,6 +378,11 @@ def art_definieren(reise_dir, wer, args):
             a["beschreibung"] = beschreibung
         if lesetext:
             a["lesetext"] = lesetext
+        if gruppe or einzahl or nummeriert:
+            if grundform != "aufenthalt":
+                raise Ablehnung("schreiben.art_definieren.gruppe_form")
+            a.update({k: v for k, v in (("gruppe", gruppe.lower() if gruppe else None), ("einzahl", einzahl), ("nummeriert", True if nummeriert else None)) if v})
+            a["buchbar"] = False if gruppe else a.get("buchbar", True)
         auto = AUTO_JE_GRUNDFORM.get(grundform, ()) if (grundform == "folge" or summiert) else ()
         if auto:
             sp = sprache_von(reise_dir)   # die Namen stehen in der Sprache der Reise
@@ -413,10 +424,21 @@ def art_definieren(reise_dir, wer, args):
         if lesetext is not None and lesetext != a.get("lesetext"):
             geaendert.append(S("schreiben.antwort.art.lesetext", w1=", ".join(r["name"] for r in lesetext.values())))
             a["lesetext"] = lesetext
+        for feld, wert in (("gruppe", gruppe.lower() if gruppe else None), ("einzahl", einzahl)):
+            if wert is not None and wert != a.get(feld):
+                if a.get("grundform") != "aufenthalt":
+                    raise Ablehnung("schreiben.art_definieren.gruppe_form")
+                a[feld] = wert
+                geaendert.append(S("schreiben.antwort.feld_wert", w1=feld, w2=wert))
+        if nummeriert is not None and bool(a.get("nummeriert")) != nummeriert:
+            if nummeriert:
+                a["nummeriert"] = True
+            else:
+                a.pop("nummeriert", None)
+            geaendert.append(S("schreiben.antwort.kategorie.nummeriert" if nummeriert else "schreiben.antwort.kategorie.nicht_nummeriert"))
         if not geaendert:
             raise Ablehnung("schreiben.art_definieren.10", w1=a.get('name', key), key=key)
-        arten[key] = {k: a[k] for k in ("grundform", "name", "farbe", "symbol", "buchbar", "summiert", "beschreibung", "merkmale",
-                                        "lesetext", "buchung_merkmale") if k in a}
+        arten[key] = {k: a[k] for k in ART_FELDER_REIHE if k in a}
         titel = S("schreiben.titel.art_geaendert", w1=a['name'], w2=key)
         text = S("schreiben.antwort.art.geaendert", w1=a["name"], w2=key) + verbinden(geaendert) + "."
     arten_speichern(reise_dir, arten, wer)
@@ -456,44 +478,51 @@ def kategorien_speichern(reise_dir, kategorien, wer):
 
 
 def kategorie_definieren(reise_dir, wer, args):
-    """Eine Kategorie der Kartenpunkte anlegen oder ändern, auch den Zusatz zu einer art. -> (Titel, Text)."""
-    from bauen import KATEGORIE_FARBEN, KATEGORIE_GRUPPEN, KATEGORIE_MUSTER, SYMBOLE
-    kategorien = kategorien_laden(reise_dir)
+    """Eine Kartenkategorie anlegen oder ändern (ADR-0007, Schritt d: eine Kategorie ist eine Art der Grundform aufenthalt mit gruppe,
+    auch ohne Merkmale), dazu der Zusatz zu einer art (sorten). Alias von kind_define (art_definieren). -> (Titel, Text)"""
+    from routen import ART_GRUPPEN, ART_MUSTER, SYMBOLE_ARTEN
+    from bauen import KATEGORIE_FARBEN, KATEGORIE_MUSTER
+    arten = arten_laden(reise_dir)
     name = text_wert(args, "bezeichnung", laenge=80)
     key = text_wert(args, "kategorie", pflicht=True, laenge=40).lower()
-    if not re.fullmatch(KATEGORIE_MUSTER, key):
+    if not re.fullmatch(KATEGORIE_MUSTER, key) or not re.fullmatch(ART_MUSTER, key):
         raise Ablehnung("schreiben.kategorie_definieren.1", key=key)
     gruppe = text_wert(args, "gruppe", laenge=20)
-    if gruppe is not None and gruppe.lower() not in KATEGORIE_GRUPPEN:
-        raise Ablehnung("schreiben.kategorie_definieren.2", w1=', '.join(KATEGORIE_GRUPPEN))
+    if gruppe is not None and gruppe.lower() not in ART_GRUPPEN:
+        raise Ablehnung("schreiben.kategorie_definieren.2", w1=', '.join(ART_GRUPPEN))
     farbe = text_wert(args, "farbe", laenge=20)
     if farbe is not None and farbe.lower() not in KATEGORIE_FARBEN and not re.fullmatch(r"#[0-9a-fA-F]{6}", farbe):
         raise Ablehnung("schreiben.kategorie_definieren.3", w1=', '.join(KATEGORIE_FARBEN))
     symbol = text_wert(args, "symbol", laenge=20)
-    if symbol is not None and symbol not in SYMBOLE:
-        raise Ablehnung("schreiben.kategorie_definieren.4", w1=', '.join(SYMBOLE))
+    if symbol is not None and symbol not in SYMBOLE_ARTEN:
+        raise Ablehnung("schreiben.kategorie_definieren.4", w1=', '.join(SYMBOLE_ARTEN))
     einzahl = text_wert(args, "einzahl", laenge=80)
     nummeriert = bool_wert(args, "nummeriert")
-    art = text_wert(args, "art", laenge=40)
-    art_name, art_symbol = text_wert(args, "art_bezeichnung", laenge=80), text_wert(args, "art_symbol", laenge=20)
-    art_hinweis, art_umriss = text_wert(args, "art_hinweis"), bool_wert(args, "art_umriss")
-    if art_symbol is not None and art_symbol not in SYMBOLE:
-        raise Ablehnung("schreiben.kategorie_definieren.5", w1=', '.join(SYMBOLE))
-    if art is None and any(x is not None for x in (art_name, art_symbol, art_hinweis, art_umriss)):
+    sorte = text_wert(args, "art", laenge=40)
+    sorte_name, sorte_symbol = text_wert(args, "art_bezeichnung", laenge=80), text_wert(args, "art_symbol", laenge=20)
+    sorte_hinweis, sorte_umriss = text_wert(args, "art_hinweis"), bool_wert(args, "art_umriss")
+    if sorte_symbol is not None and sorte_symbol not in SYMBOLE_ARTEN:
+        raise Ablehnung("schreiben.kategorie_definieren.5", w1=', '.join(SYMBOLE_ARTEN))
+    if sorte is None and any(x is not None for x in (sorte_name, sorte_symbol, sorte_hinweis, sorte_umriss)):
         raise Ablehnung("schreiben.kategorie_definieren.6")
     grund = text_wert(args, "grund")
     geaendert = []
-    if key not in kategorien:
+    if key not in arten:
         if name is None or gruppe is None or farbe is None:
             raise Ablehnung("schreiben.kategorie_definieren.7")
-        k = {"gruppe": gruppe.lower(), "name": name}
+        k = {"grundform": "aufenthalt", "name": name, "gruppe": gruppe.lower()}
         titel, kopf = S("schreiben.titel.kategorie_angelegt", w1=name, w2=key), S("schreiben.antwort.kategorie.angelegt", w1=name, w2=key, w3=k["gruppe"], w4=farbe)
         neu = True
     else:
-        k = kategorien[key]
+        k = arten[key]
         neu = False
+        if k.get("grundform") != "aufenthalt":
+            raise Ablehnung("schreiben.kategorie_definieren.keine_aufenthaltsart", w1=k.get("name", key))
         if gruppe is not None and gruppe.lower() != k.get("gruppe"):
-            raise Ablehnung("schreiben.kategorie_definieren.8", w1=k.get('name', key), w2=k.get('gruppe'))
+            if k.get("gruppe"):
+                raise Ablehnung("schreiben.kategorie_definieren.8", w1=k.get('name', key), w2=k.get('gruppe'))
+            k["gruppe"] = gruppe.lower()
+            geaendert.append(S("schreiben.antwort.feld_wert", w1="gruppe", w2=gruppe.lower()))
         if name is not None and name != k.get("name"):
             geaendert.append(S("schreiben.antwort.art.name", w1=k.get("name"), w2=name))
             k["name"] = name
@@ -502,35 +531,43 @@ def kategorie_definieren(reise_dir, wer, args):
             k[feld] = wert
             geaendert.append(S("schreiben.antwort.feld_wert", w1=feld, w2=wert))
     if nummeriert is not None and bool(k.get("nummeriert")) != nummeriert:
-        k["nummeriert"] = nummeriert or None
-        if not nummeriert:
+        if nummeriert:
+            k["nummeriert"] = True
+        else:
             k.pop("nummeriert", None)
         geaendert.append(S("schreiben.antwort.kategorie.nummeriert" if nummeriert else "schreiben.antwort.kategorie.nicht_nummeriert"))
-    if art is not None:
-        arten = k.setdefault("arten", {})
-        a = arten.get(art) if isinstance(arten.get(art), dict) else {}
-        for feld, wert in (("name", art_name), ("symbol", art_symbol), ("hinweis", art_hinweis)):
+    if sorte is not None:
+        sorten = k.setdefault("sorten", {})
+        a = sorten.get(sorte) if isinstance(sorten.get(sorte), dict) else {}
+        for feld, wert in (("name", sorte_name), ("symbol", sorte_symbol), ("hinweis", sorte_hinweis)):
             if wert is not None and wert != a.get(feld):
                 a[feld] = wert
-                geaendert.append(S("schreiben.antwort.kategorie.art_feld", w1=art, w2=feld, w3=wert))
-        if art_umriss is not None and bool(a.get("umriss")) != art_umriss:
-            a["umriss"] = True if art_umriss else None
-            if not art_umriss:
+                geaendert.append(S("schreiben.antwort.kategorie.art_feld", w1=sorte, w2=feld, w3=wert))
+        if sorte_umriss is not None and bool(a.get("umriss")) != sorte_umriss:
+            if sorte_umriss:
+                a["umriss"] = True
+            else:
                 a.pop("umriss", None)
-            geaendert.append(S("schreiben.antwort.kategorie.umriss" if art_umriss else "schreiben.antwort.kategorie.ohne_umriss", w1=art))
-        arten[art] = a
+            geaendert.append(S("schreiben.antwort.kategorie.umriss" if sorte_umriss else "schreiben.antwort.kategorie.ohne_umriss", w1=sorte))
+        sorten[sorte] = a
     if neu:
         k["farbe"] = farbe
-        kategorien[key] = {f: k[f] for f in ("gruppe", "name", "einzahl", "farbe", "symbol", "nummeriert", "arten") if k.get(f)}
+        k["buchbar"] = False   # ein Kartenpunkt wird nicht gebucht
+        arten[key] = {f: k[f] for f in ("grundform", "name", "farbe", "symbol", "buchbar", "gruppe", "einzahl", "nummeriert", "sorten") if k.get(f) not in (None, "") or f == "buchbar"}
         text = kopf + (S("schreiben.antwort.kategorie.ausserdem", w1=verbinden(geaendert, ", ")) if geaendert else "") + "."
     else:
         if not geaendert:
             raise Ablehnung("schreiben.kategorie_definieren.9", w1=k.get('name', key), key=key)
-        kategorien[key] = {f: k[f] for f in ("gruppe", "name", "einzahl", "farbe", "symbol", "nummeriert", "arten") if k.get(f)}
+        arten[key] = {f: k[f] for f in ART_FELDER_REIHE if f in k}
         titel = S("schreiben.titel.kategorie_geaendert", w1=k['name'], w2=key)
         text = S("schreiben.antwort.kategorie.geaendert", w1=k["name"], w2=key) + verbinden(geaendert) + "."
-    kategorien_speichern(reise_dir, kategorien, wer)
+    arten_speichern(reise_dir, arten, wer)
     return titel, text + (S("schreiben.antwort.grund", w1=grund) if grund else "")
+
+
+# Felder einer Art in der Reihenfolge, in der die Datei sie schreibt (ADR-0007: dazu die Felder einer früheren Kartenkategorie)
+ART_FELDER_REIHE = ("grundform", "name", "farbe", "symbol", "buchbar", "summiert", "beschreibung", "merkmale", "lesetext", "buchung_merkmale",
+                    "gruppe", "einzahl", "nummeriert", "sorten")
 
 
 def rolle_pruefen(merkmale, key, rolle, typ):
@@ -1205,12 +1242,12 @@ def lage_merkmal_entfernen(knoten, name):
     return True
 
 
-def felder_zu_merkmalen(knoten):
+def felder_zu_merkmalen(knoten, bestand=None):
     """Umstellung (neu.py nachziehen, ADR-0007 Schritt b): die festen Felder adresse, punkt, gpx, beginn/ende, ab, an (Zeit) und
     buchungslink eines Knotens werden typisierte Merkmale mit denselben Werten. Herkunft: die der Aussage, sonst die des Dings,
     sonst „Bestand“. -> Liste der umgestellten Felder (leer: nichts zu tun)."""
     from routen import ist_eltern
-    bestand = knoten.get("quelle") or S("schreiben.quelle_bestand")
+    bestand = knoten.get("quelle") or bestand or "Bestand"
     umgestellt = []
     for feld, name in (("adresse", "adresse"), ("punkt", "koordinaten"), ("gpx", "gpx"), ("ab", "abfahrt"), ("an", "ankunft"),
                        ("buchungslink", "buchungslink")):
@@ -1940,6 +1977,19 @@ def abstand_zur_linie_m(p, linie):
     return best
 
 
+def art_rolle_sichern(art_def, rolle):
+    """Der Schlüssel des Merkmals einer Art (Wörterbuch aus arten.yaml) mit dieser Rolle; fehlt es, wird es angelegt (ADR-0007, Schritt d)
+    -> Schlüssel."""
+    from routen import ROLLEN_MERKMAL
+    mk = art_def.setdefault("merkmale", {})
+    for k, d in mk.items():
+        if isinstance(d, dict) and d.get("rolle") == rolle:
+            return k
+    schl, name_key, typ = ROLLEN_MERKMAL[rolle]
+    mk[schl] = {"name": texte.t(texte.VORGABE_REISE, name_key), "typ": typ, "rolle": rolle, "stufe": "angeboten"}
+    return schl
+
+
 def kartenpunkte_holen(reise_dir, wer, args, heute=None):
     """Punkte aus OpenStreetMap längs einer Strecke (K14): die Person wählt im Gespräch die Kategorie der Reise (plan/kategorien.yaml,
     Gruppe punkt) und die OSM-Tags (z. B. amenity=drinking_water). Treffer bis abstand_m von der Linie kommen mit Quelle und Stand
@@ -1962,9 +2012,7 @@ def kartenpunkte_holen(reise_dir, wer, args, heute=None):
     if not 10 <= abstand <= 3000:
         raise Ablehnung("schreiben.kartenpunkte.abstand")
     route = route_stand(reise_dir)
-    import bauen
-    with tempfile.TemporaryDirectory(prefix="frieda-probe-") as tmp:
-        kategorien = bauen.Bauer(reise_dir, tmp).kategorien_laden()
+    kategorien = {k: d for k, d in (route.get("arten") or {}).items() if d.get("gruppe")}   # Arten mit gruppe (ADR-0007, Schritt d)
     punkt_kats = [k for k, d in kategorien.items() if d["gruppe"] == "punkt"]
     if kat not in punkt_kats:
         raise Ablehnung("schreiben.kartenpunkte.kategorie", kat=kat, w1=", ".join(punkt_kats) or "–")
@@ -2004,25 +2052,36 @@ def kartenpunkte_holen(reise_dir, wer, args, heute=None):
         treffer.append({x: v for x, v in p.items() if v not in (None, "")})
         if len(treffer) >= MAX_TREFFER:
             break
-    pfad = Path(reise_dir) / "plan" / "punkte.yaml"
-    y = yaml_rund()
-    roh = y.load(pfad.read_text(encoding="utf-8")) if pfad.exists() else None
-    if roh is None:
-        roh = CommentedMap()
-    strecken = roh.get("strecken")
-    if strecken is None:
-        strecken = roh["strecken"] = CommentedMap()
-    liste = strecken.get(sid)
-    if liste is None:
-        liste = strecken[sid] = CommentedSeq()
-    alt = [x for x in liste if isinstance(x, dict) and x.get("kat") == kat and x.get("osm")]
-    for x in alt:
-        liste.remove(x)
+    # Treffer werden Dinge (A-…): Aufenthalte der Art kat mit an: <Strecke>, Koordinaten, OSM-Bezug (Rolle osm) und Sorte (Rolle sorte).
+    # Ein zweiter Aufruf aktualisiert die Dinge mit demselben OSM-Bezug; nichts wird gelöscht (IDs bleiben).
+    arten_dat = arten_laden(reise_dir)
+    art_def = arten_dat[kat]
+    schluessel = {r: art_rolle_sichern(art_def, r) for r in ("osm", "sorte")}
+    arten_speichern(reise_dir, arten_dat, wer)
+    roh = routen_laden(reise_dir)
+    aufenthalte = roh.setdefault("aufenthalte", type(roh)())
+    vorhanden = {}
+    for aid, k in aufenthalte.items():
+        if isinstance(k, dict) and k.get("art") == kat and k.get("an") == sid:
+            o = ((k.get("merkmale") or {}).get(schluessel["osm"]) or {}).get("wert")
+            if o:
+                vorhanden[o] = (aid, k)
+    quelle_text = S("schreiben.kartenpunkte.quelle", w1=heute.isoformat()).text(sprache_von(reise_dir))
+    alt = []
     for p in treffer:
-        liste.append(fliess_map(p))
-    out = io.StringIO()
-    y.dump(roh, out)
-    pfad.write_text(out.getvalue(), encoding="utf-8")
+        if p["osm"] in vorhanden:
+            alt.append(p["osm"])
+            lage_merkmal_schreiben(vorhanden[p["osm"]][1], "koordinaten", p["lage"], quelle_text, heute)
+            continue
+        d = {"name": p.get("name") or art_def.get("einzahl") or art_def.get("name") or kat, "art": kat, "an": sid, "quelle": quelle_text}
+        k = block_map(d)
+        lage_merkmal_schreiben(k, "koordinaten", p["lage"], quelle_text, heute)
+        mk = k["merkmale"]
+        mk[schluessel["osm"]] = fliess_map({"wert": p["osm"], "quelle": quelle_text})
+        if p.get("art"):
+            mk[schluessel["sorte"]] = fliess_map({"wert": p["art"], "quelle": quelle_text})
+        aufenthalte[neue_id(reise_dir, "A")] = k
+    routen_speichern(reise_dir, roh)
     name = kategorien[kat]["name"]
     beispiele = ", ".join(dict.fromkeys(p["name"] for p in treffer if p.get("name")))
     return (S("schreiben.titel.kartenpunkte", w1=sid, w2=name, n=len(treffer)),

@@ -1,0 +1,15 @@
+# Orte der Wissens-Abschnitte für die Karten in der Recherche (reise.json wissen_punkte).
+# Koordinaten von Hand geschätzt (26.10.2026), Lage ungefähr.
+# Hinweis: Die Seite zeigt diese Karten nur mit regionaler Offline-Grundkarte (grundkarten: … und
+# medien/karte/<name>.pmtiles). Das Beispiel liefert keine PMTiles mit; die Punkte werden geprüft,
+# erscheinen aber nicht auf einer Karte.
+stand: '2026-10-26'
+namensnennung: Beispielreise · Lage geschätzt
+bloecke:
+  W-05.die-basteibruecke:
+    - {name: Basteibrücke, kat: sehenswert, lage: [50.9625, 14.076], quelle: 'eigene Schätzung, 26.10.2026'}
+  W-05.der-hockstein:
+    - {name: Hockstein, kat: sehenswert, lage: [50.976, 14.1045], quelle: 'eigene Schätzung, 26.10.2026'}
+  W-06.kirnitzschtalbahn:
+    - {name: Lichtenhainer Wasserfall, kat: verkehr, lage: [50.9335, 14.234], quelle: 'eigene Schätzung, 26.10.2026'}
+    - {name: Kurpark, kat: verkehr, lage: [50.9185, 14.1585], quelle: 'eigene Schätzung, 26.10.2026'}

@@ -103,6 +103,245 @@ aufenthalte:
       geoeffnet: {wert: ja, quelle: "erfunden (Beispiel)", geprueft: 2026-10-29}
       eintritt: {wert: "6 €", quelle: "erfunden (Beispiel)", geprueft: 2026-10-29}
       zeitraum: {typ: zeitraum, wert: {beginn: "16:00", ende: "18:00"}, quelle: "erfunden (Beispiel)"}
+  A-02:
+    name: "Stadt Wehlen"
+    art: wegpunkt
+    an: E-01
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9585, 14.0325], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 1, quelle: "eigene Schätzung, 26.10.2026"}
+  A-03:
+    name: "Basteibrücke"
+    art: wegpunkt
+    an: E-01
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9625, 14.076], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 2, quelle: "eigene Schätzung, 26.10.2026"}
+      weitere_namen: {wert: "Bastei", quelle: "eigene Schätzung, 26.10.2026"}
+  A-04:
+    name: "Schwedenlöcher"
+    art: wegpunkt
+    an: E-01
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.964, 14.085], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 3, quelle: "eigene Schätzung, 26.10.2026"}
+  A-05:
+    name: "Amselsee"
+    art: wegpunkt
+    an: E-01
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9615, 14.0935], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 4, quelle: "eigene Schätzung, 26.10.2026"}
+  A-06:
+    name: "Brunnen am Amselsee"
+    art: wasser
+    an: E-01
+    quelle: "erfunden (Beispielwert), Trinkbarkeit ungeprüft"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9618, 14.0938], quelle: "erfunden (Beispielwert), Trinkbarkeit ungeprüft", geprueft: 2026-10-26}
+      sorte: {wert: "quelle", quelle: "erfunden (Beispielwert), Trinkbarkeit ungeprüft"}
+  A-07:
+    name: "Hockstein"
+    art: wegpunkt
+    an: E-01
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.976, 14.1045], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 5, quelle: "eigene Schätzung, 26.10.2026"}
+  A-08:
+    name: "Hohnstein"
+    art: wegpunkt
+    an: E-01
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.979, 14.1125], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 6, quelle: "eigene Schätzung, 26.10.2026"}
+  A-09:
+    name: "Pension Burgblick"
+    art: unterkunft
+    an: E-01
+    quelle: "erfunden (Beispiel)"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9792, 14.1128], quelle: "erfunden (Beispiel)", geprueft: 2026-10-26}
+      sorte: {wert: "guest_house", quelle: "erfunden (Beispiel)"}
+      unterkunft: {wert: "U-02", quelle: "erfunden (Beispiel)"}
+  A-10:
+    name: "Hohnstein"
+    art: wegpunkt
+    an: E-02
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.979, 14.1125], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 1, quelle: "eigene Schätzung, 26.10.2026"}
+  A-11:
+    name: "Gautschgrotte"
+    art: wegpunkt
+    an: E-02
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.972, 14.12], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 2, quelle: "eigene Schätzung, 26.10.2026"}
+  A-12:
+    name: "Brandaussicht"
+    art: wegpunkt
+    an: E-02
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.956, 14.124], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 3, quelle: "eigene Schätzung, 26.10.2026"}
+  A-13:
+    name: "Gasthaus an der Brandaussicht"
+    art: einkehr
+    an: E-02
+    quelle: "erfunden (Beispielwert), Öffnungszeiten nicht geprüft"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9562, 14.1236], quelle: "erfunden (Beispielwert), Öffnungszeiten nicht geprüft", geprueft: 2026-10-26}
+      sorte: {wert: "restaurant", quelle: "erfunden (Beispielwert), Öffnungszeiten nicht geprüft"}
+  A-14:
+    name: "Waitzdorf"
+    art: wegpunkt
+    an: E-02
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.959, 14.16], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 4, quelle: "eigene Schätzung, 26.10.2026"}
+  A-15:
+    name: "Kohlmühle"
+    art: wegpunkt
+    an: E-02
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.942, 14.169], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 5, quelle: "eigene Schätzung, 26.10.2026"}
+  A-16:
+    name: "Altendorf"
+    art: wegpunkt
+    an: E-02
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9275, 14.187], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 6, quelle: "eigene Schätzung, 26.10.2026"}
+  A-17:
+    name: "Wanderherberge Altendorf"
+    art: unterkunft
+    an: E-02
+    quelle: "erfunden (Beispiel)"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9278, 14.1873], quelle: "erfunden (Beispiel)", geprueft: 2026-10-26}
+      sorte: {wert: "hostel", quelle: "erfunden (Beispiel)"}
+      unterkunft: {wert: "U-04", quelle: "erfunden (Beispiel)"}
+  A-18:
+    name: "Altendorf"
+    art: wegpunkt
+    an: E-03
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9275, 14.187], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 1, quelle: "eigene Schätzung, 26.10.2026"}
+  A-19:
+    name: "Schrammtor"
+    art: wegpunkt
+    an: E-03
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.917, 14.2], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 2, quelle: "eigene Schätzung, 26.10.2026"}
+  A-20:
+    name: "Schrammsteinaussicht"
+    art: wegpunkt
+    an: E-03
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9135, 14.2105], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 3, quelle: "eigene Schätzung, 26.10.2026"}
+  A-21:
+    name: "Ostrau"
+    art: wegpunkt
+    an: E-03
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9165, 14.17], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 4, quelle: "eigene Schätzung, 26.10.2026"}
+  A-22:
+    name: "Bad Schandau"
+    art: wegpunkt
+    an: E-03
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.918, 14.155], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 5, quelle: "eigene Schätzung, 26.10.2026"}
+  A-23:
+    name: "Kurpark (Kirnitzschtalbahn)"
+    art: notfall
+    an: E-03
+    quelle: "Endhaltestelle laut Wikipedia (W-06); Lage geschätzt, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9185, 14.1585], quelle: "Endhaltestelle laut Wikipedia (W-06); Lage geschätzt, 26.10.2026", geprueft: 2026-10-26}
+      sorte: {wert: "bus", quelle: "Endhaltestelle laut Wikipedia (W-06); Lage geschätzt, 26.10.2026"}
+  A-24:
+    name: "Altendorf"
+    art: wegpunkt
+    an: E-04
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9275, 14.187], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 1, quelle: "eigene Schätzung, 26.10.2026"}
+  A-25:
+    name: "Schrammsteinaussicht"
+    art: wegpunkt
+    an: E-04
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9135, 14.2105], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 2, quelle: "eigene Schätzung, 26.10.2026"}
+  A-26:
+    name: "Gratweg"
+    art: wegpunkt
+    an: E-04
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.915, 14.225], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 3, quelle: "eigene Schätzung, 26.10.2026"}
+  A-27:
+    name: "Lichtenhainer Wasserfall"
+    art: wegpunkt
+    an: E-04
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9335, 14.234], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+      nummer: {wert: 4, quelle: "eigene Schätzung, 26.10.2026"}
+  A-28:
+    name: "Basteibrücke"
+    art: sehenswert
+    an: W-05.die-basteibruecke
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9625, 14.076], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+  A-29:
+    name: "Hockstein"
+    art: sehenswert
+    an: W-05.der-hockstein
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.976, 14.1045], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+  A-30:
+    name: "Lichtenhainer Wasserfall"
+    art: verkehr
+    an: W-06.kirnitzschtalbahn
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9335, 14.234], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+  A-31:
+    name: "Kurpark"
+    art: verkehr
+    an: W-06.kirnitzschtalbahn
+    quelle: "eigene Schätzung, 26.10.2026"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9185, 14.1585], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
 
 # Buchungen (B-…, #76): eigenes Ding zu einer Unterkunft, einem Aufenthalt oder einer Strecke (fuer, auch mehrere).
 # Felder: status (angefragt | gebucht | storniert), nummer, bei, preis, zahlung (Zahlstand, #166), bezahlt (Einzelheiten),

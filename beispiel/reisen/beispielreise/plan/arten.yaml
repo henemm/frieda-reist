@@ -126,3 +126,108 @@ arten:
       anschluss:    {name: Anschluss, auto: anschluss}
       kosten:       {name: Kosten grob, typ: geld, veraenderlich: true, stufe: angeboten,
                      hilfe: "Unterkünfte plus Fahrkarten, grob und für zwei Personen; Rechnung in die Notiz"}
+  # map points (formerly plan/kategorien.yaml, ADR-0007): kinds with gruppe
+  wegpunkt:
+    grundform: aufenthalt
+    name: Wegpunkte aus dem Buch
+    einzahl: Wegpunkt im Buch
+    farbe: kontrast
+    gruppe: punkt
+    nummeriert: true
+    buchbar: false
+    merkmale:
+      nummer:
+        name: Number
+        typ: zahl
+        rolle: nummer
+        stufe: angeboten
+      weitere_namen:
+        name: Other names
+        typ: text
+        rolle: alias
+        stufe: angeboten
+  unterkunft:
+    grundform: aufenthalt
+    name: Unterkünfte
+    farbe: '#2f5d8a'
+    symbol: unterkunft
+    gruppe: punkt
+    sorten:
+      hostel:
+        name: Herberge
+      guest_house:
+        name: Pension
+    buchbar: false
+    merkmale:
+      sorte:
+        name: Sort
+        typ: text
+        rolle: sorte
+        stufe: angeboten
+      unterkunft:
+        name: Accommodation
+        typ: text
+        rolle: bezug
+        stufe: angeboten
+  einkehr:
+    grundform: aufenthalt
+    name: Einkehr
+    farbe: '#b0632b'
+    symbol: einkehr
+    gruppe: punkt
+    sorten:
+      restaurant:
+        name: Restaurant
+    buchbar: false
+    merkmale:
+      sorte:
+        name: Sort
+        typ: text
+        rolle: sorte
+        stufe: angeboten
+  wasser:
+    grundform: aufenthalt
+    name: Wasser
+    farbe: '#1f86b5'
+    symbol: wasser
+    gruppe: punkt
+    sorten:
+      quelle:
+        name: Quelle oder Brunnen
+        hinweis: Trinkbarkeit ungeprüft
+        umriss: true
+    buchbar: false
+    merkmale:
+      sorte:
+        name: Sort
+        typ: text
+        rolle: sorte
+        stufe: angeboten
+  notfall:
+    grundform: aufenthalt
+    name: Bus und Notfall
+    farbe: '#6b4a8b'
+    gruppe: punkt
+    sorten:
+      bus:
+        name: Bushaltestelle
+        symbol: bus
+    buchbar: false
+    merkmale:
+      sorte:
+        name: Sort
+        typ: text
+        rolle: sorte
+        stufe: angeboten
+  sehenswert:
+    grundform: aufenthalt
+    name: Sehenswert
+    farbe: '#1e5a43'
+    gruppe: wissen
+    buchbar: false
+  verkehr:
+    grundform: aufenthalt
+    name: Bahnhof und Hafen
+    farbe: '#5b6168'
+    gruppe: wissen
+    buchbar: false

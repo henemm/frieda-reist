@@ -47,7 +47,8 @@ def a01_an_ort(t):
 
 def test_ohne_an_gilt_die_vorgabe(tmp_path):
     d = bauen.bauen(kopie(tmp_path), tmp_path / "web" / "b")
-    assert d["route"]["eltern"] == {}
+    # nur die früheren Kartenpunkte hängen mit an: an Strecken und Blöcken (ADR-0007, Schritt d); A-01 hat die Vorgabe
+    assert "A-01" not in d["route"]["eltern"] and all(v[:2] in ("E-", "W-") for v in d["route"]["eltern"].values())
     assert d["route"]["aufenthalte"]["A-01"]["tage"] == ["T-02"]
 
 
@@ -55,7 +56,7 @@ def test_an_wird_gelesen(tmp_path):
     q = kopie(tmp_path)
     routen_aendern(q, a01_an_ort)
     d = bauen.bauen(q, tmp_path / "web" / "b")
-    assert d["route"]["eltern"] == {"A-01": "O-03"}
+    assert d["route"]["eltern"]["A-01"] == "O-03"
     assert d["route"]["aufenthalte"]["A-01"]["tage"] == [] and d["route"]["aufenthalte"]["A-01"]["ohne_tag"]
 
 

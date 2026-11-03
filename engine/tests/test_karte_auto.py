@@ -128,8 +128,9 @@ def test_kategorie_ueberschreibt_farbe_und_name_einer_art(reise, tmp_path):
         mit_lagen(d)
         d["unterkuenfte"]["U-02"]["punkt"] = punkt([50.9792, 14.1128])
     routen(reise, aendere)
+    # alte Form (plan/kategorien.yaml) wird weiter gelesen; eine Art gleichen Schlüssels mit gruppe (neue Form) gilt zuerst
     k = reise / "plan" / "kategorien.yaml"
-    k.write_text(k.read_text(encoding="utf-8") + "  pension:\n    gruppe: punkt\n    name: Kleine Häuser\n    farbe: rosa\n", encoding="utf-8")
+    k.write_text("kategorien:\n  pension:\n    gruppe: punkt\n    name: Kleine Häuser\n    farbe: rosa\n", encoding="utf-8")
     d, _ = daten(reise, tmp_path)
     leg = d["route"]["karte"]["legende"]["pension"]
     assert (leg["name"], leg["farbe"]) == ("Kleine Häuser", "rosa")

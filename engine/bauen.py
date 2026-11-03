@@ -39,7 +39,7 @@ except ImportError:
              "  python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt\n"
              "Then run:  python3 engine/bauen.py <reise>")
 from reise import Reise, eckdaten_text  # noqa: E402
-from routen import FARBEN, Routen, verhalten_anwenden  # noqa: E402
+from routen import FARBEN, Routen, kartenpunkte_aus_dingen, verhalten_anwenden  # noqa: E402
 import gpx  # noqa: E402
 import stand as reisestand  # noqa: E402
 import karte as karte_auto  # noqa: E402
@@ -274,7 +274,8 @@ class Bauer:
         self.umzug = (umzug or os.environ.get("FR_UMZUG_NACH") or "").rstrip("/") or None  # neue Adresse (Ursprung), siehe sw.vorlage.js
         self.ziel_dir = Path(ziel_dir)
         self.fehler = []
-        self._kategorien = None  # plan/kategorien.yaml, beim ersten Gebrauch geladen
+        self._kategorien = None  # plan/kategorien.yaml, beim ersten Gebrauch geladen (alte Form, ADR-0007 Schritt d)
+        self._art_kategorien = {}  # Kategorien aus den Arten der Reise mit gruppe (neue Form)
         self.ids = {}
         self.bilder = {}  # Quelldatei -> relativer Zielpfad
         self.grundkarte = None  # PMTiles-Datei der Offline-Karte, falls vorhanden
@@ -582,6 +583,7 @@ class Bauer:
                            entscheider=organisator if self.reise_roh is not None else None,
                            wissen={i for i in self.ids if i.startswith("W-")}, sprache=self.eck["sprache"]).bauen()
             verhalten_anwenden(route, self.eck["verhalten"], self.eck["sprache"])
+            self._art_kategorien = kategorien_aus_arten(route) if route else {}
             for oid, wo in orte_inhalt.items():
                 if route and oid not in route["orte"]:
                     self.fehler.append(texte.satz("pruefung.bauen.23", wo=wo, oid=oid))
@@ -617,7 +619,7 @@ class Bauer:
             self.orte_wissen(c["orte_wissen"], abschnitte)
 
         # Karten in der Recherche: Orte je Block auf regionalen Offline-Karten (reise.json wissen_punkte; Issue #64)
-        wissen_karte = self.wissen_karte(c["wissen_punkte"], abschnitte) if c.get("wissen_punkte") else None
+        wissen_karte = self.wissen_karte(c.get("wissen_punkte"), abschnitte, route) if c.get("wissen_punkte") or (route and kartenpunkte_aus_dingen(route)[1]) else None
 
         kategorien = self.kategorien_laden()   # auch ohne Punkte prüfen, damit ein Fehler in der Datei nicht schlummert
         if c.get("eckdaten") and not any(a["id"] == c["eckdaten"] for a in abschnitte):
@@ -683,7 +685,12 @@ class Bauer:
         return aus
 
     def kategorien_laden(self):
-        """plan/kategorien.yaml der Reise -> {Schlüssel: Definition}; fehlt die Datei, ist es leer. Wer Punkte hat,
+        """Kartenkategorien der Reise -> {Schlüssel: Definition}: die Arten mit gruppe (ADR-0007, Schritt d; eine Art ist die einzige
+        Taxonomie) und, in der alten Form, plan/kategorien.yaml (eine Art gleichen Schlüssels gilt zuerst)."""
+        return {**self.kategorien_datei(), **self._art_kategorien}
+
+    def kategorien_datei(self):
+        """plan/kategorien.yaml der Reise (alte Form) -> {Schlüssel: Definition}; fehlt die Datei, ist es leer. Wer Punkte hat,
         braucht Kategorien (kategorie_pruefen meldet es je Punkt)."""
         if self._kategorien is not None:
             return self._kategorien
@@ -743,15 +750,19 @@ class Bauer:
         else:
             self.fehler.append(texte.satz("pruefung.bauen.44", wo=wo, w1=', '.join(gueltig)))
 
-    def wissen_karte(self, rel, abschnitte):
+    def wissen_karte(self, rel, abschnitte, route=None):
         """Punkte je Wissens-Block (W-….<slug>) mit regionalen Grundkarten. Erzeugt vom Betrieb (Punkte aus OpenStreetMap),
         von Hand geprüft. Punkte ohne Lage (nicht gefunden) oder außerhalb jeder Grundkarte kommen nicht auf die
         Karte und werden gemeldet; Namen der gezeigten Punkte werden im Blocktext zu Kartenlinks."""
         try:
-            roh = yaml.safe_load(self.lesen(rel)) or {}
+            roh = (yaml.safe_load(self.lesen(rel)) or {}) if rel and (self.reise_dir / rel).exists() else {}
         except yaml.YAMLError as e:
             self.fehler.append(texte.satz("pruefung.bauen.45", rel=rel, e=e))
             return None
+        # Punkte als Dinge (ADR-0007, Schritt d): Aufenthalte mit an: <Block des Wissens>, deren Art die gruppe wissen hat
+        if route_blocke := kartenpunkte_aus_dingen(route)[1] if route else {}:
+            roh = {**roh, "bloecke": {**(roh.get("bloecke") or {}),
+                                      **{b: [*((roh.get("bloecke") or {}).get(b) or []), *l] for b, l in route_blocke.items()}}}
         stand = roh.get("stand")
         if stand is not None and als_datum(stand) is None:
             self.fehler.append(texte.satz("pruefung.bauen.46", rel=rel))
@@ -845,7 +856,8 @@ class Bauer:
         # Aufenthalte ohne Tag (K7, #235): an keinem Tag und in keiner Option; ihre Heimat ist der Reiter mit der Karte
         stand, _ = karte_auto.dinge_bezug(route)
         for aid, a in (route.get("aufenthalte") or {}).items():
-            a["ohne_tag"] = aid not in stand
+            # ein Kartenpunkt (Art mit gruppe, ADR-0007 Schritt d) steht auf der Karte, nicht in der Liste „ohne Tag“
+            a["ohne_tag"] = aid not in stand and not ((route.get("arten") or {}).get(a.get("art")) or {}).get("gruppe")
         alt = self.fehler
         self.fehler = []
         status = {"gebaut": False, "art": None, "punkte": 0, "ohne_lage": []}
@@ -868,7 +880,7 @@ class Bauer:
                     route["karte"] = k
             else:
                 status["grund"] = "baustein_aus"
-            if route.get("karte") and (self.reise_dir / p_rel).exists():
+            if route.get("karte") and ((self.reise_dir / p_rel).exists() or kartenpunkte_aus_dingen(route)[0]):
                 route["punkte"] = self.punkte(p_rel, route, etappen)
             # Benannte Wegpunkte aus GPX-Tracks (K15): nummerierte Punkte, ihre Nennung im Etappentext wird zum Kartenlink
             for sid, liste in wegpunkte.items():
@@ -934,7 +946,7 @@ class Bauer:
     def punkte(self, rel, route, etappen):
         """plan/punkte.yaml prüfen und die Namen im Etappentext mit der Karte verknüpfen."""
         try:
-            roh = yaml.safe_load(self.lesen(rel)) or {}
+            roh = (yaml.safe_load(self.lesen(rel)) or {}) if (self.reise_dir / rel).exists() else {}
         except yaml.YAMLError as e:
             self.fehler.append(texte.satz("pruefung.bauen.54", rel=rel, e=e))
             return {}
@@ -961,6 +973,12 @@ class Bauer:
                 if p["geprueft"] is None:
                     del p["geprueft"]
             aus[sid] = liste or []
+        # Kartenpunkte als Dinge (ADR-0007, Schritt d): Aufenthalte mit an: <Strecke>, deren Art eine gruppe hat
+        for sid, liste in kartenpunkte_aus_dingen(route)[0].items():
+            if sid not in route["strecken"] and sid not in etappen:
+                continue
+            aus[sid] = [*(aus.get(sid) or []), *liste]
+        for sid in aus:
             if sid in etappen:
                 e = etappen[sid]
                 e["intro"] = punkte_verlinken(e["intro"], sid, aus[sid])
@@ -1293,6 +1311,15 @@ def release_attribut():
 
 
 # plan/kategorien.yaml. Die Software prüft nur die Form: Gruppe, Name, Farbe (Palette der Seite oder #rrggbb), Symbol (aus SYMBOLE).
+def kategorien_aus_arten(route):
+    """Kartenkategorien aus den Arten mit gruppe (ADR-0007, Schritt d) in der Form der alten plan/kategorien.yaml:
+    {Art: {gruppe, name, einzahl, farbe, symbol, nummeriert, arten (die sorten der Art)}}."""
+    return {a: {"gruppe": d["gruppe"], "name": d.get("name") or a, "einzahl": d.get("einzahl"), "farbe": d.get("farbe"),
+                "symbol": d.get("symbol"), "nummeriert": bool(d.get("nummeriert")),
+                "arten": {w: (x if isinstance(x, dict) else {"name": x}) for w, x in (d.get("sorten") or {}).items()}}
+            for a, d in (route.get("arten") or {}).items() if d.get("gruppe")}
+
+
 KATEGORIE_GRUPPEN = ("punkt", "wissen")       # punkt: Etappen-Karte (plan/punkte.yaml), wissen: Karte im Wissensabschnitt
 KATEGORIE_FELDER = {"gruppe", "name", "einzahl", "farbe", "symbol", "nummeriert", "arten"}
 KATEGORIE_ART_FELDER = {"name", "symbol", "hinweis", "umriss"}
