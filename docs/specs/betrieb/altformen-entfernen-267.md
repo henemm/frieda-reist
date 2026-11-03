@@ -11,15 +11,15 @@ Product Owner (2.11.2026): „Ich möchte keine Software, die Handarbeit braucht
 keine Reise sie mehr nutzt oder wo die Software die Umstellung selbst mitbringt (`neu.py nachziehen`, Lauf „Software
 nachziehen“, #250).
 
-### Befund an den Daten (3.11.2026, lesend gegen `/home/hem/frieda-reisen/reisen` und `beispiel/reisen`)
+### Befund an den Daten (3.11.2026, lesend gegen `<Reisen-Repo>/reisen` und `beispiel/reisen`)
 
 | Altform | Genutzt? | Folge |
 |---|---|---|
 | Reise ohne `reise.yaml` (`Reise.alt`) | Nein: alle 6 echten und beide Beispielreisen haben die Datei | entfernen; fehlende Datei = Baufehler |
-| `sprache` fehlt in `reise.yaml` (Bestand `de`) | Ja: 4 von 6 echten Reisen (gr221, japan-2027, skiurlaub-zillertal-2027, test-135); die Beispielreisen und die übrigen zwei Reisen tragen `sprache: de` | erst automatisch umstellen, dann den Fallback entfernen |
+| `sprache` fehlt in `reise.yaml` (Bestand `de`) | Ja: 4 von 6 echten Reisen (gr221, <Reise J>, skiurlaub-zillertal-2027, test-135); die Beispielreisen und die übrigen zwei Reisen tragen `sprache: de` | erst automatisch umstellen, dann den Fallback entfernen |
 | `typ` statt `art` an Unterkunft und Nacht | Nein: kein `typ:` in den `routen.yaml` der echten Reisen und der Beispielreisen | Lesepfad im Bau kann fallen; `nachziehen` bleibt die Umstellung |
 | Einzelwert statt Liste bei Merkmalen | Nein: 0 Skalare; die Listenform „Wert je Datum“ (gr221) ist die reguläre Form | bleibt (siehe Entscheidung 2) |
-| `varianten_titel` | Ja (japan-2027) | bleibt, ist keine Altform |
+| `varianten_titel` | Ja (<Reise J>) | bleibt, ist keine Altform |
 
 ## Lösung
 
@@ -123,7 +123,7 @@ PR c darf erst auf `main`, wenn gleichzeitig gilt:
 1. PR b ist auf `main`, und der Lauf „Software nachziehen“ im Reisen-Repo hat den neuen Software-Stand übernommen
    (Commit des Bots mit der Meldung zur Sprache je Reise).
 2. Lesende Prüfung am Stand von `main` des Reisen-Repos: In jeder `reisen/*/reise.yaml` steht ein gültiges Feld
-   `sprache` (Befehl im PR-Text: `grep -L '^sprache:' /home/hem/frieda-reisen/reisen/*/reise.yaml` ohne Treffer, die Werte aus `grep -h '^sprache:'` sind Kürzel aus `texte.SPRACHEN`; der Probelauf des Baus mit dem Branch prüft die Gültigkeit endgültig).
+   `sprache` (Befehl im PR-Text: `grep -L '^sprache:' <Reisen-Repo>/reisen/*/reise.yaml` ohne Treffer, die Werte aus `grep -h '^sprache:'` sind Kürzel aus `texte.SPRACHEN`; der Probelauf des Baus mit dem Branch prüft die Gültigkeit endgültig).
    Gleiches gilt für jedes weitere Reisen-Repo, das die Software einbindet.
 3. Der Bau jeder Reise mit dem Stand von PR c ist grün (Probelauf lokal mit dem Branch; `engine/tests` der einbindenden
    Instanz mit dem Branch).

@@ -1,6 +1,6 @@
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0
-rootdir: /home/hem/frieda-reist/.claude/worktrees/spur-a-215
+rootdir: <Arbeitsordner>
 collected 7 items
 
 engine/tests/test_altformen_267.py FFFFF..                               [100%]
@@ -38,7 +38,7 @@ E       Failed: DID NOT RAISE BauFehler
 engine/tests/test_altformen_267.py:33: Failed
 _____ test_katalog_hat_neuen_schluessel_und_nicht_mehr_den_alten[texte_de] _____
 
-modul = <module 'texte_de' from '/home/hem/frieda-reist/.claude/worktrees/spur-a-215/engine/texte_de.py'>
+modul = <module 'texte_de' from '<Arbeitsordner>/engine/texte_de.py'>
 
     @pytest.mark.parametrize("modul", [texte_de, texte_en])
     def test_katalog_hat_neuen_schluessel_und_nicht_mehr_den_alten(modul):
@@ -49,7 +49,7 @@ E       AssertionError: assert 'pruefung.bauen.reise_yaml_fehlt' in {'seite.stat
 engine/tests/test_altformen_267.py:43: AssertionError
 _____ test_katalog_hat_neuen_schluessel_und_nicht_mehr_den_alten[texte_en] _____
 
-modul = <module 'texte_en' from '/home/hem/frieda-reist/.claude/worktrees/spur-a-215/engine/texte_en.py'>
+modul = <module 'texte_en' from '<Arbeitsordner>/engine/texte_en.py'>
 
     @pytest.mark.parametrize("modul", [texte_de, texte_en])
     def test_katalog_hat_neuen_schluessel_und_nicht_mehr_den_alten(modul):

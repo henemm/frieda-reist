@@ -25,7 +25,7 @@ folgt in PR 2, der einmalige Schritt auf dem Server in PR 3).
 
 ## Manuelle Test-Schritte
 
-1. Auf dem Server `FR_WURZEL=/srv/frieda-reisen/_bau frieda/betrieb/units.py pruefen`: nennt genau die Abweichung
+1. Auf dem Server `FR_WURZEL=<Instanzordner>/_bau frieda/betrieb/units.py pruefen`: nennt genau die Abweichung
    `FR_DIENST`/`FR_ZEITZONE` in konnektor, push, rueckmeldungen (Stand 3.11.2026), Ausgang 3.
 
 ## Acceptance Criteria
