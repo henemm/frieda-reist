@@ -95,3 +95,103 @@ def test_pruefen_ausgang_0_3_4(tmp_path):
     assert r.returncode == 4 and "BLOCKED" in r.stdout
     (systemd / "probe-waechter.service").unlink()
     assert "probe-waechter.service" in lauf().stdout
+
+
+def test_dropin_ordner_ist_eine_gesperrte_abweichung(tmp_path):
+    systemd, env = _installierte_einheiten(tmp_path)
+    (systemd / "probe-konnektor.service.d").mkdir()
+    r = subprocess.run([sys.executable, str(BETRIEB / "units.py"), "pruefen"], env=env, capture_output=True, text=True)
+    assert r.returncode == 4 and "probe-konnektor.service" in r.stdout and "drop-in" in r.stdout.lower(), r.stdout
+
+
+def test_unicode_leerraum_und_leeres_environment_sind_gesperrt():
+    u = units()
+    neu = EINHEIT.replace("User=hem", " User=hem")
+    assert u.abgleich(neu, EINHEIT, "probe-x.service")[2]
+    setzen, entfernen, gesperrt = u.abgleich(EINHEIT + "Environment=\n", EINHEIT, "probe-x.service")
+    assert gesperrt and setzen == []
+
+
+def test_erlaubnisliste_ist_eine_feste_namensliste():
+    erlaubt = units().ERLAUBT
+    assert set(erlaubt) == {("Service", "Environment:FR_DIENST"), ("Service", "Environment:FR_ZEITZONE"), ("Service", "TimeoutStartSec")}
+    for zeile in ("Environment=FR_WURZEL=/tmp/x", "Environment=RM_ABLAGE=/tmp/x", "Environment=KN_PORT=1"):
+        setzen, _, gesperrt = units().abgleich(EINHEIT + zeile + "\n", EINHEIT, "probe-x.service")
+        assert setzen == [] and len(gesperrt) == 1
+
+
+# ---------- Installieren (AC-7) ----------
+
+def _installierte_einheiten(tmp_path):
+    systemd = tmp_path / "systemd"
+    systemd.mkdir()
+    env = instanz_env(tmp_path, EI_SYSTEMD=str(systemd))
+    ziel = tmp_path / "soll"
+    subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], env={**env, "EI_ZIEL": str(ziel)}, check=True)
+    for datei in (ziel / "systemd").iterdir():
+        shutil.copy(datei, systemd / datei.name)
+    return systemd, env
+
+
+def _attrappen(tmp_path, env, systemd):
+    """Hilfsprogramm-Attrappe (schreibt stdin in die Einheit und protokolliert) und systemctl-Attrappe (protokolliert)."""
+    protokoll = tmp_path / "protokoll.log"
+    helfer = tmp_path / "helfer.sh"
+    helfer.write_text(f'#!/bin/sh\necho "helfer $1" >> {protokoll}\ncat > {systemd}/$1\n')
+    helfer.chmod(0o755)
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    (bin_ / "systemctl").write_text(f'#!/bin/sh\necho "systemctl $*" >> {protokoll}\n')
+    (bin_ / "systemctl").chmod(0o755)
+    env.update({"FR_SUDO": "", "FR_UNITS_HELFER": str(helfer), "PATH": f"{bin_}:{os.environ['PATH']}"})
+    return protokoll
+
+
+def _installieren(env):
+    return subprocess.run([sys.executable, str(BETRIEB / "units.py"), "installieren"], env=env, capture_output=True, text=True)
+
+
+def test_installieren_nur_erlaubte_abweichungen_dann_ausgang_0(tmp_path):
+    systemd, env = _installierte_einheiten(tmp_path)
+    protokoll = _attrappen(tmp_path, env, systemd)
+    for art in ("konnektor", "push", "veroeffentlichen"):
+        datei = systemd / f"probe-{art}.service"
+        datei.write_text(re.sub(r"(?m)^(Environment=FR_ZEITZONE=.*|TimeoutStartSec=.*)\n", "", datei.read_text()))
+    r = _installieren(env)
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    zeilen = protokoll.read_text().splitlines()
+    assert sorted(z for z in zeilen if z.startswith("helfer")) == ["helfer probe-konnektor.service", "helfer probe-push.service",
+                                                                  "helfer probe-veroeffentlichen.service"]
+    # Neustart nur der Dauerdienste: veroeffentlichen und waechter nie
+    neustarts = [z for z in zeilen if z.startswith("systemctl restart")]
+    assert sorted(neustarts) == ["systemctl restart probe-konnektor", "systemctl restart probe-push"]
+
+
+def test_installieren_gesperrtes_wird_nicht_uebergeben_und_bleibt_ausgang_4(tmp_path):
+    systemd, env = _installierte_einheiten(tmp_path)
+    protokoll = _attrappen(tmp_path, env, systemd)
+    konnektor = systemd / "probe-konnektor.service"
+    konnektor.write_text(re.sub(r"(?m)^Environment=FR_ZEITZONE=.*\n", "", konnektor.read_text()))
+    waechter = systemd / "probe-waechter.service"
+    waechter.write_text(waechter.read_text().replace("User=", "User=x"))
+    r = _installieren(env)
+    assert r.returncode == 4 and "probe-waechter.service" in r.stdout
+    zeilen = protokoll.read_text().splitlines()
+    assert [z for z in zeilen if z.startswith("helfer")] == ["helfer probe-konnektor.service"]
+    assert not any("waechter" in z for z in zeilen)
+
+
+def test_installieren_ohne_hilfsprogramm_meldet_ausgang_5(tmp_path):
+    systemd, env = _installierte_einheiten(tmp_path)
+    _attrappen(tmp_path, env, systemd)
+    env["FR_UNITS_HELFER"] = str(tmp_path / "gibt-es-nicht")
+    konnektor = systemd / "probe-konnektor.service"
+    konnektor.write_text(re.sub(r"(?m)^Environment=FR_ZEITZONE=.*\n", "", konnektor.read_text()))
+    assert _installieren(env).returncode == 5
+
+
+def test_installieren_ohne_abweichung_tut_nichts(tmp_path):
+    systemd, env = _installierte_einheiten(tmp_path)
+    protokoll = _attrappen(tmp_path, env, systemd)
+    assert _installieren(env).returncode == 0
+    assert not protokoll.exists()

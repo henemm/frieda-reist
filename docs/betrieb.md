@@ -271,10 +271,29 @@ normale Meldung (Issue, kein Alarm), danach erst wieder bei einer anderen Abweic
 Ein Fehler im Abgleich stoppt das Veröffentlichen nie.
 
 Ausgang von `units.py pruefen`: 0 alles gleich, 3 nur erlaubte Abweichungen, 4 auch gesperrte, 1 Fehler. Erlaubt sind nur
-`Environment=` mit Namen `FR_`/`KN_`/`RM_` und engem Wertmuster sowie `TimeoutStartSec=` (Erlaubnisliste `ERLAUBT` in
-`units.py`; ein neuer Eintrag ist eine Sicherheitsentscheidung). Alles andere (User, Startbefehle, Rechte, Timer, nicht
-installierte Einheiten) ist gesperrt und braucht einen bewussten Schritt (`einrichten.sh --installieren`). Installiert wird
-automatisch noch nichts: Das Hilfsprogramm mit Root-Rechten folgt in einem weiteren PR (#260).
+die Zeilen `Environment=FR_DIENST=…`, `Environment=FR_ZEITZONE=…` und `TimeoutStartSec=…` jeweils mit engem Wertmuster
+(feste Namensliste `ERLAUBT`, gleich in `units.py` und im Hilfsprogramm; ein neuer Eintrag ist eine Sicherheitsentscheidung des
+Product Owners). Alles andere (User, Startbefehle, Rechte, Reihenfolge, Drop-in-Ordner `<einheit>.d`, Timer, nicht
+installierte Einheiten) ist gesperrt und braucht einen bewussten Schritt (`einrichten.sh --installieren`).
+
+**Automatisch installieren (Hilfsprogramm mit Root-Rechten).** Hat der Abgleich nur erlaubte Abweichungen, ruft
+`veroeffentlichen.sh` `units.py installieren` auf. Das übergibt jede betroffene Einheit samt neuer Datei (stdin) an
+`sudo -n /usr/local/sbin/<instanz>-units-installieren <einheit>`, startet danach die Dauerdienste (`rueckmeldungen`,
+`konnektor`, `schreiben`, `push`; nie `veroeffentlichen` oder `waechter`) neu und prüft erneut; was dann noch abweicht, wird
+einmal gemeldet. Das Hilfsprogramm (Vorlage `betrieb/vorlagen/units-installieren.py`, von `einrichten.sh` mit Instanz und
+Benutzer erzeugt) gehört auf dem Server root und liegt außerhalb des Repos, die Software kann es nicht ändern. Es
+nimmt nur die sechs Dienst-Einheiten der Instanz an, liest die installierte Datei selbst, ersetzt nur dann, wenn sich beide
+Dateien allein in den erlaubten Zeilen unterscheiden (alles andere in gleicher Reihenfolge), verlangt `User=` mit dem
+Betriebsbenutzer in beiden, lehnt Fortsetzungszeilen, Steuerzeichen, Nicht-UTF-8, Eingaben über 64 KiB, Symlinks und Drop-ins ab,
+ersetzt atomar und führt `systemctl daemon-reload` aus. Es liest weder Umgebung noch Argumente für Pfade oder Programme.
+Ausgang 0 installiert, 2 nichts zu tun, 3 abgelehnt. Bekannte, bewusst offene Grenze (Gegenprüfung F101): Die Position der
+erlaubten Zeilen zu den übrigen wird nicht verglichen; steht in der Einheit ein `TimeoutSec=`, kann ein verschobenes
+`TimeoutStartSec=` den wirksamen Start-Timeout ändern (begrenzt durch das Wertmuster, keine Rechteausweitung). Die Zeilen
+werden wie bei systemd nur an Leerzeichen und Tab getrennt; Nicht-ASCII ist nur in Kommentaren und Werten anderer Zeilen möglich.
+
+Einmalig und bewusst (Freigabe des Product Owners, kein Teil des automatischen Laufs): Hilfsprogramm und sudoers-Zeile
+installieren, die Befehle nennt `einrichten.sh` am Ende seiner Ausgabe. Ohne installiertes Hilfsprogramm bleibt es bei der
+Meldung. Nach einer Änderung der Vorlage `units-installieren.py` muss die Kopie auf dem Server bewusst erneuert werden.
 
 ## Bauordner und Arbeitsordner
 

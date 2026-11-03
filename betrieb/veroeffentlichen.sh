@@ -467,7 +467,16 @@ main() {
 # (Ausgang 1) stoppt nichts. Ausgang 0 = alles gleich: der Merker wird gelöscht, eine spätere Abweichung meldet wieder.
 units_abgleichen() {
   local aus rc=0 merker="$FR_DIENST/units-gemeldet" fp
-  aus="$("${VF_UNITS:-$FR_BETRIEB/units.py}" pruefen 2>&1)" || rc=$?
+  local units="${VF_UNITS:-$FR_BETRIEB/units.py}"
+  aus="$("$units" pruefen 2>&1)" || rc=$?
+  if [ "$rc" = 3 ]; then
+    # Nur erlaubte Abweichungen: über das Hilfsprogramm mit Root-Rechten installieren (ohne es bleibt es bei der Meldung). Was
+    # danach noch abweicht, steht in der neuen Prüfung; ein Fehler beim Installieren stoppt nichts.
+    local inst
+    inst="$("$units" installieren 2>&1)" || true
+    rc=0; aus="$("$units" pruefen 2>&1)" || rc=$?
+    [ "$rc" = 0 ] || aus="$aus"$'\n'"Install attempt: ${inst:-no output}"
+  fi
   case "$rc" in
     0) rm -f "$merker"; return 0 ;;
     3|4) ;;

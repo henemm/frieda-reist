@@ -2078,6 +2078,31 @@ def test_veroeffentlichen_meldet_unit_abweichung_einmal_je_fingerabdruck_und_ble
     assert len([z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]) == 1   # gleiche Abweichung: keine zweite Meldung
 
 
+def _units_attrappe(vf, nach_installieren):
+    """Attrappe für units.py: pruefen endet mit 3, nach installieren mit nach_installieren (Zahl, Ausgabe wie ein echter Rest)."""
+    marker = vf["tmp"] / "installiert"
+    protokoll = vf["tmp"] / "units-aufrufe.log"
+    return ausfuehrbar(vf["tmp"] / "units-install.sh",
+                       f'#!/bin/sh\necho "$1" >> {protokoll}\n'
+                       f'if [ "$1" = installieren ]; then touch {marker}; exit 0; fi\n'
+                       f'if [ -e {marker} ]; then [ {nach_installieren} -ne 0 ] && echo "probe-waechter.service: BLOCKED, rest"; exit {nach_installieren}; fi\n'
+                       f'echo "probe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC"\nexit 3\n'), protokoll
+
+
+def test_veroeffentlichen_installiert_erlaubte_abweichungen_und_meldet_nichts(vf):
+    stub, protokoll = _units_attrappe(vf, 0)
+    assert vf["lauf"](VF_UNITS=str(stub)).returncode == 0
+    assert protokoll.read_text().split() == ["pruefen", "installieren", "pruefen"]
+    assert not [z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]
+
+
+def test_veroeffentlichen_meldet_nur_den_rest_nach_dem_installieren(vf):
+    stub, protokoll = _units_attrappe(vf, 4)
+    assert vf["lauf"](VF_UNITS=str(stub)).returncode == 0
+    meldungen = [z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]
+    assert len(meldungen) == 1 and "BLOCKED" in meldungen[0] and "FR_ZEITZONE" not in meldungen[0]
+
+
 def test_veroeffentlichen_unit_abgleich_fehler_stoppt_nichts(vf):
     stub = ausfuehrbar(vf["tmp"] / "units.sh", "#!/bin/sh\necho boom >&2\nexit 1\n")
     assert vf["lauf"](VF_UNITS=str(stub)).returncode == 0

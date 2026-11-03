@@ -81,6 +81,9 @@ done
 ersetze "$FR_BETRIEB/vorlagen/nginx-konnektor.conf" "$ZIEL/nginx/$FR_INSTANZ-konnektor.conf"
 ersetze "$FR_BETRIEB/vorlagen/nginx-konnektor.inc" "$ZIEL/nginx/$FR_INSTANZ-konnektor.inc"
 ersetze "$FR_BETRIEB/vorlagen/nginx-zone.conf" "$ZIEL/nginx/$FR_INSTANZ-zone.conf"
+# Hilfsprogramm mit Root-Rechten für den Abgleich der Einheiten (#260): wird bewusst einmal installiert (docs/betrieb.md)
+mkdir -p "$ZIEL/sbin"
+ersetze "$FR_BETRIEB/vorlagen/units-installieren.py" "$ZIEL/sbin/$FR_INSTANZ-units-installieren"
 if grep -rn "__[A-Z_]*__" "$ZIEL" > /dev/null; then
   problem "placeholder not replaced: $(grep -rho "__[A-Z_]*__" "$ZIEL" | sort -u | tr '\n' ' ')"
 fi
@@ -110,6 +113,9 @@ cat <<TEXT
 Check:  curl -s 127.0.0.1:$FR_SB_PORT/gesund  answers {"gesund": true};  journalctl -u $FR_INSTANZ-veroeffentlichen -n 20
 deploy.sh needs for $FR_BENUTZER: sudo -n systemctl restart $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben $FR_INSTANZ-push;
 freischalten.sh needs: sudo -n nginx -t, systemctl reload nginx, install/test/cat/rm in $SNIPPETS (sudoers, docs/betrieb.md).
+Units helper (#260, once, deliberately; without it only differences are reported, nothing is installed):
+  sudo install -m 755 -o root -g root $ZIEL/sbin/$FR_INSTANZ-units-installieren /usr/local/sbin/
+  sudoers for $FR_BENUTZER: NOPASSWD: /usr/local/sbin/$FR_INSTANZ-units-installieren
 TEXT
 
 if [ "$probleme" -gt 0 ]; then echo; echo "$probleme prerequisite(s) missing."; [ -z "$INSTALLIEREN" ] || exit 1; exit 2; fi
