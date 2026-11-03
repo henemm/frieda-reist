@@ -1,6 +1,6 @@
 # ADR-0007: Ein Elternbezug je Ding, typisierte Merkmale statt Sonderfelder, Kartenpunkte sind Dinge
 
-Status: **Entwurf** · zur Entscheidung des Product Owners · Anlass: frieda-reist #235, #236, #275 und die Frage des Product Owners vom 3.11.2026, ob die wachsende Zahl der Parameter des Konnektors der richtige Weg ist · Issue: frieda-reist #280
+Status: gilt · Entschieden vom Product Owner am 3.11.2026 in Claude Code (Fragewerkzeug) · Anlass: frieda-reist #235, #236, #275 und die Frage des Product Owners vom 3.11.2026, ob die wachsende Zahl der Parameter des Konnektors der richtige Weg ist · Issue: frieda-reist #280
 
 Steht unter [ADR-0001](0001-kern.md) (Grundformen in der Software, Arten in der Reise) und ändert [ADR-0003](0003-heimat.md) (die Heimat wird berechnet statt tabelliert) und [ADR-0004](0004-lage.md) (die Lage wird ein Merkmal-Typ). ADR-0002 bleibt unverändert; die Dichte-Achse wird nur konsequent angewandt.
 
@@ -24,7 +24,7 @@ Befund (Cloud-Sitzung 3.11.2026, gelesen gegen `engine/konnektor.py`, `engine/sc
 
 Für den AI-Client ist das die schwierigere Schnittstelle: 61 Werkzeuge mit 105 Namen kosten bei jedem Gespräch Kontext, und jeder Sonderfall ist eine Stelle, an der ein Aufruf scheitert.
 
-## Entscheidung (Vorschlag)
+## Entscheidung
 
 1. **Jedes Ding hat einen Elternbezug `an:`.** Wie heute die Wahlstelle: Ein Ding hängt an genau einem anderen Ding (Tag, Ort, Strecke, Aufenthalt, Unterkunft, Wissensabschnitt, Reise). Vorgabe nach Grundform, damit nichts Bestehendes bricht: Nacht und Strecke am Tag, Aufenthalt mit Tag am Tag, Aufenthalt ohne Tag an seinem Ort, Buchung an ihrem ersten Ding, Wahlstelle wie bisher. Die Felder `ort`, `tage`, `naechte`, `fuer` bleiben als Daten (sie tragen Bedeutung: Gegend, Zeit, Nacht, gebuchte Dinge); `an:` sagt nur, wo das Ding zu Hause ist.
 2. **Die Heimat wird berechnet, nicht tabelliert.** Heimat = die Seite des Elternelements; bei mehreren Tagen der erste im Plan. Die Dichte folgt dem Abstand: auf der eigenen Seite vollständig (Seite), auf der Seite des Elternelements als Karte, überall sonst als Zeile mit einem Link (ADR-0003, Punkt 1 bleibt). `heimat()` in der Vorlage wird eine Regel statt einer Fallunterscheidung. Die Tabelle in ADR-0003 beschreibt dann die Vorgaben, nicht mehr die einzige Möglichkeit.
@@ -52,12 +52,12 @@ Für den AI-Client ist das die schwierigere Schnittstelle: 61 Werkzeuge mit 105 
 - **Prüfstelle ADR-0001:** 1 ja (Elternbezug und Typen sind Form, mit Wanderung und Städtewochenende durchzuspielen), 2 ja (kein Merkmalname in der Software, nur Typ und Rolle), 3 ja, 4 ja (`item_create`, `item_update`), 5 ja (jedes typisierte Merkmal ist eine Aussage mit Herkunft), 6 nicht berührt, 7 ja (Punkte bekommen neue IDs, alte Schlüssel bleiben lesbar), 8 Rundgang nötig, 9 ja, 10 dieses ADR, `docs/ontologie.md`, `docs/design.md`, `docs/konnektor.md`, ADR-0003 und ADR-0004 mit Verweis hierher.
 - **Reihenfolge, wenn entschieden:** (a) `an:` lesen und Heimat berechnen, Aufenthalt ohne Tag zum Ort; (b) typisierte Merkmale lesen, alte Felder abbilden; (c) Konnektor auf die neue Form, Aliase; (d) Punkte und Kategorien überführen; (e) `artUebersicht`; je Schritt ein PR mit Nachziehen und Instanz-Tests.
 
-## Offene Fragen an den Product Owner
+## Entschiedene Fragen (Product Owner, 3.11.2026)
 
-1. Darf ein Ding an **mehreren** Eltern hängen (ein Aufenthalt an zwei Tagen, ein Punkt an zwei Strecken)? Vorschlag: nein, ein Elternbezug; weitere Bezüge sind Daten (`tage`), und dort steht das Ding als Zeile.
-2. Sollen die Kartenkategorien wirklich entfallen, oder bleibt eine Kategorie als Art ohne Merkmale erlaubt? Vorschlag: entfallen, eine Art darf leer sein.
-3. Ist eine **Übersicht je Art** auch ohne Wissensabschnitt gewünscht (etwa als eigener Reiter), oder nur dort, wo sie angefordert wird? Vorschlag: nur angefordert (ADR-0003, Punkt 2: Sammelansichten nur mit eigener Aufgabe).
+1. **Genau ein Elternbezug.** Ein Ding hängt an genau einem Elternelement. Weitere Bezüge (ein Aufenthalt an zwei Tagen, ein Punkt an zwei Strecken) sind Daten (`tage`, Strecken), und dort steht das Ding als Zeile mit Link.
+2. **Kartenkategorien entfallen.** Es gibt je Reise eine Taxonomie, die Arten. Eine Art darf ohne Merkmale sein (etwa „Wasserstelle“). Bestehende Kategorien werden beim Nachziehen zu Arten.
+3. **Übersicht je Art nur, wo sie angefordert wird**: an einem Wissensabschnitt oder in einer Kartenansicht. Keine neue Sammelseite und kein eigener Reiter (ADR-0003, Punkt 2).
 
 ## Verlauf
 
-- 3.11.2026: Entwurf nach der Frage des Product Owners (Cloud-Sitzung). Die Analyse hat er gelesen und den Entwurf angefordert; entschieden ist noch nichts.
+- 3.11.2026: Entwurf nach der Frage des Product Owners (Cloud-Sitzung), am selben Tag von ihm entschieden (Fragewerkzeug): genau ein Elternbezug, Kartenkategorien entfallen, Übersicht je Art nur angefordert; Status „gilt“. Umsetzung in fünf Schritten: frieda-reist #282 (a), #283 (b), #284 (c), #285 (d), #286 (e), Epic #280.
