@@ -40,7 +40,7 @@ in einer Reise oder Instanz.
 
 ### PR b: `nachziehen` trägt `sprache: de` ein
 
-- `neu.py nachziehen` (ab Z. 425, bis vor `_zeilen_normal`) ergänzt in `reise.yaml` das Feld `sprache: de`, wenn es fehlt (oder leer ist). Der Wert
+- `neu.py nachziehen` (`def nachziehen`, Z. 543 ff.) ergänzt in `reise.yaml` das Feld `sprache: de`, wenn es fehlt (oder leer ist). Der Wert
   ist ausdrücklich `de`: Das ist, was für diese Reisen bisher galt, die Umstellung ändert also kein Verhalten.
 - Idempotent: Steht `sprache` schon, bleibt die Datei Byte für Byte gleich; ein zweiter Lauf ändert nichts.
   Kommentare und Form der Datei bleiben (ruamel, wie bei den übrigen Umstellungen). Das Feld steht an der Stelle, an der
@@ -204,6 +204,28 @@ Kein neues Python-Modul, daher keine Änderung an `betrieb/deploy.sh`.
   und die lesende Prüfung aus der Abnahmebedingung stehen im PR-Text.
 - **AC-13 (alle):** Vor dem Vorspulen jedes PR laufen die Tests der einbindenden Instanzen mit dem Branch; rot darf dort
   nur sein, was auf `main` ohne den Branch schon rot ist (Vergleichslauf der Instanz auf `main` zuerst, Ergebnis im PR-Text).
+
+## Festlegungen für PR b (Workflow altformen-267-b)
+
+- **Funktion:** `neu.sprache_nachziehen(reise_dir, schreiben)` in `engine/neu.py`, in `nachziehen` aufgerufen vor
+  `eckdaten_nachziehen` und `reste_nachziehen` und unabhängig von `reise.json`. Ohne `reise.yaml`: nichts tun.
+- **Prüfung des Felds über YAML (ruamel), nicht über `sprache_von`:** `sprache_von` liest per Regex und würde bei
+  `sprache:` ohne Wert das erste Wort der Folgezeile als Sprache lesen. „Leer“ heißt: Schlüssel fehlt, Wert `None`, `""` oder nur Leerzeichen; jeder andere Wert (auch Liste oder Zahl) gilt als fremde Eingabe und bleibt unberührt.
+  Steht ein anderer Wert (gültig oder unbekannt), wird die Datei nicht angefasst (kein Speichern, Byte-Gleichheit); der
+  Bau meldet eine unbekannte Sprache weiter.
+- **Position:** hinter `pfad` (Reihenfolge von `anlegen`: titel, untertitel, ziel, pfad, sprache, zeitraum); fehlt `pfad`,
+  hinter dem letzten vorhandenen dieser Vorgänger, sonst als erster Schlüssel der Datei (nach dem Kopfkommentar). Ein leerer vorhandener Schlüssel
+  wird ersetzt, nicht doppelt eingefügt.
+- **Meldung:** über den Katalog in der Sprache der Reise nach dem Eintragen; das ist immer `de`, weil genau `de` eingetragen wird (Aufruf `texte.t("de", "inhalt.nachziehen.sprache_eingetragen")`).
+  Wortlaut de: „reise.yaml: sprache „de“ eingetragen (die bisherige Vorgabe für Reisen ohne Angabe)“; en entsprechend.
+  Schlüssel in `texte_de.py` und `texte_en.py` (Pflicht in allen Sprachen).
+- **Probelauf** (`schreiben=False`) meldet, schreibt nichts.
+- **Nachweis nach der Lieferung:** AC-5 und der Bot-Nachweis aus AC-12 entstehen erst nach dem Vorspulen von PR b (Lauf im Reisen-Repo). PR b gilt mit den grünen Tests als geliefert; der Nachweis (Commit des Bots, lesende Prüfung) wird als Kommentar in #267 nachgetragen und ist Voraussetzung für PR c (AC-6), nicht für PR b.
+- **Tests:** `engine/tests/test_umstellung_267.py` (neu, enthält auch den Lauf mit allen Altformen in einer Kopie; `test_umstellung_250.py` bleibt unverändert): fehlt / leer / `None` → Eintrag und Meldung; Position hinter `pfad`;
+  zweiter Lauf `[]` und alle Dateien byte-gleich; `de`, `en` und unbekannte Sprache bleiben unberührt; Kommentare bleiben;
+  Probelauf schreibt nicht; beide Beispielreisen melden nichts; Kopie ohne `sprache` wird umgestellt und baut danach;
+  `reste_nachziehen` liest nach dem Eintragen nicht falsch. `test_neu.py`: Erwartungen bei `reise.yaml` ohne `sprache`
+  um die neue Zeile ergänzen (Erwartung angepasst, nicht abgeschwächt).
 
 ## Abgrenzung
 
