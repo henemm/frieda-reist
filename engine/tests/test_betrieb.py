@@ -1086,6 +1086,9 @@ def test_deploy_exit_2_bei_baufehler_sonst_1(tmp_path):
     r = subprocess.run([str(BETRIEB / "deploy.sh"), "kaputtreise"], env=env, capture_output=True, text=True)
     assert r.returncode == 2, r.stdout + r.stderr
     assert not (tmp_path / "seiten" / "kaputtreise").exists()
+    # Naht zu publish_status (#223): veroeffentlichen.sh holt den Grund aus den Zeilen „ - …“ dieser echten Ausgabe
+    # (baugrund); ohne sie bliebe „fehlgeschlagen“ ohne Grund
+    assert re.search(r"(?m)^ +- \S", r.stdout), r.stdout
     r = subprocess.run([str(BETRIEB / "deploy.sh"), "kaputtreise"], env={**env, "FR_SEITEN": str(tmp_path / "fehlt")},
                        capture_output=True, text=True)
     assert r.returncode == 1, r.stdout + r.stderr
