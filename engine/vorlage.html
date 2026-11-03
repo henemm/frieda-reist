@@ -1138,7 +1138,7 @@ function zid(id) {
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, buchungChip
    Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, wahlZustand, belegeListe, stornierteBuchungen, einzelheiten, wegTabelle, herkunftZeile
    Organismen: nachtZeile, unterkunftKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, nachtAbschnitt, tagZeile, uebersichtKarte, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
-   Vorlagen: tagKachel, leseAbschnitt, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtOffen, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
+   Vorlagen: tagKachel, leseAbschnitt, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
    Stile seiner Ebene, auf die Bausteinseite (#bausteine) und in docs/design.md; zeigt er eine Grundform, auch in GRUNDFORMEN.
    Zustände haben feste Namen, die Farbe folgt der Bedeutung, nicht dem Ort:
@@ -1214,7 +1214,7 @@ function chips(a) {
 }
 
 function abschnittKarte(a) {
-  const titel = a.typ === "etappe" ? a.titel : a.titel;
+  const titel = a.titel;
   const k = el("a", {class: "karte vorschau", href: "#" + a.id}, el("div", {class: "k"}, titel, zid(a.id)));
   if (a.typ === "etappe") k.append(...[chips(a), kennzahlLeiste(a.kennzahlen, fahrtVon(a.id))].filter(Boolean));
   return k;
@@ -3506,7 +3506,7 @@ function zuBuchen(m) {
   s.append(el("div", {class: "wliste"}, liste.map(x => listenZeile("nacht", x.sym, x.titel, x.unter, x.href, null, chip(x.zustand, x.text)))));
   m.append(s);
 }
-function ansichtOffen(m) {
+function ansichtZuTun(m) {
   const oben = el("div", {class: "tun-raster"});
   zuEntscheiden(oben); zuBuchen(oben);
   if (oben.childNodes.length) m.append(oben);
@@ -4659,7 +4659,7 @@ function route(behalten) {
   if (zielB) h = (R.buchungen[h].fuer || [])[0] || "";
   if (q.length >= 2) { zeigeReiter(reiter); ansichtSuche(m, q); window.scrollTo(0, 0); return; }
   // Eine Seitenordnung (#214): ohne Sprungziel der Startreiter; „Plan“ (ältere Links) und „Reise“ führen zur Reise
-  const start = () => { zeigeReiter(START); START === "varianten" ? ansichtStart(m) : START === "offen" ? ansichtOffen(m) : START === "wuensche" ? ansichtWuensche(m) : START === "etappen" ? ansichtEtappen(m) : ansichtWissen(m); };
+  const start = () => { zeigeReiter(START); START === "varianten" ? ansichtStart(m) : START === "offen" ? ansichtZuTun(m) : START === "wuensche" ? ansichtWuensche(m) : START === "etappen" ? ansichtEtappen(m) : ansichtWissen(m); };
   if (!h) start();
   else if ((h === "plan" || h === "varianten") && R) { zeigeReiter("varianten"); ansichtStart(m); }
   else if (h === "plaene" && HAT_VARIANTEN) { zeigeReiter("varianten"); ansichtVarianten(m); }
@@ -4674,11 +4674,11 @@ function route(behalten) {
   else if (h === "orte") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "orte"; }
   else if (h === "praxis") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "praxis"; }
   else if (h === "quellen") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "quellen"; }
-  else if (h === "offen" && ZU_TUN) { zeigeReiter("offen"); ansichtOffen(m); }
-  else if ((h === "zu-entscheiden" || h === "zu-buchen") && ZU_TUN) { zeigeReiter("offen"); ansichtOffen(m); ziel = h; }
+  else if (h === "offen" && ZU_TUN) { zeigeReiter("offen"); ansichtZuTun(m); }
+  else if ((h === "zu-entscheiden" || h === "zu-buchen") && ZU_TUN) { zeigeReiter("offen"); ansichtZuTun(m); ziel = h; }
   else if (h === "wuensche" && WUENSCHE) { zeigeReiter("wuensche"); ansichtWuensche(m); }
-  else if ((h === "rueckmeldungen" || h === "aufgaben" || h === "fragen") && B(h)) { zeigeReiter("offen"); ansichtOffen(m); ziel = h; }
-  else if (/^F-\d+$/.test(h) && zeileZu.get(h) === "fragen" && B("fragen")) { zeigeReiter("offen"); ansichtOffen(m); ziel = h; }
+  else if ((h === "rueckmeldungen" || h === "aufgaben" || h === "fragen") && B(h)) { zeigeReiter("offen"); ansichtZuTun(m); ziel = h; }
+  else if (/^F-\d+$/.test(h) && zeileZu.get(h) === "fragen" && B("fragen")) { zeigeReiter("offen"); ansichtZuTun(m); ziel = h; }
   // Plan-Baum (darstellung.tiefe): Plan → Tag → Ort, unter dem Reiter Reise
   else if (TIEFE && planZu(h)) { zeigeReiter("varianten"); ansichtPlanDetail(m, planZu(h)); }
   else if (TIEFE && ortAbschnitt(h)) { zeigeReiter("varianten"); ansichtOrt(m, ortAbschnitt(h)); }
@@ -4691,7 +4691,7 @@ function route(behalten) {
     const x = heimat(h);
     if (x.tag) { zeigeReiter("varianten"); ansichtTag(m, x.tag); }
     else if (x.abschnitt) { const a = proId.get(x.abschnitt); zeigeReiter(TYP_REITER[a.typ]); ansichtAbschnitt(m, a); }
-    else { zeigeReiter("offen"); ansichtOffen(m); }
+    else { zeigeReiter("offen"); ansichtZuTun(m); }
     ziel = document.getElementById(x.ziel) || !x.ersatz ? x.ziel : x.ersatz;
   }
   else { start(); if (document.getElementById(h)) ziel = h; }
