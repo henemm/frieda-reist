@@ -1,7 +1,7 @@
 ---
 spec_file: docs/specs/betrieb/altformen-entfernen-267.md
-spec_sha256: 715b9eddd2e4dc9f525c54c3518b58b6c53c6a21e8f4927c6bb0bcdc98f53a51
-spec_frozen_sha256: cf417fc384977110d9593693fe59f16db03f2c2b7fcd4cc19b7df6c2a810797d
+spec_sha256: b6b787f06a4fdb4c148d1834a7830c9c2d76eb51875abd013fce2b177753df98
+spec_frozen_sha256: c7cf222a419639b05d5d0d43a260aa21e26e7bf30e5341557c1a58a310605dec
 ---
 
 # PO-Briefing: altformen-267-b
@@ -12,21 +12,21 @@ spec_frozen_sha256: cf417fc384977110d9593693fe59f16db03f2c2b7fcd4cc19b7df6c2a810
 
 ## Was gebaut wird
 
-Das automatische Nachziehen trägt in Reisen ohne Sprachangabe die Sprache Deutsch ein, damit später kein Notbehelf dafür mehr nötig ist.
+Das Nachziehen trägt in Reisen ohne Sprachangabe automatisch Deutsch ein, damit der stille Notbehelf später entfallen kann.
 
 ## Definition of Done
 
-Fehlt die Sprache, steht sie nach dem Nachziehen als Deutsch in der Reisedatei; ein zweiter Lauf ändert nichts, andere Angaben bleiben unberührt.
+Fehlt die Sprache, steht nach dem Nachziehen „Deutsch“ in der Reisedatei; ein zweiter Lauf ändert nichts, vorhandene Angaben bleiben unberührt.
 
 ## Wie geprüft wird
 
-Automatische Tests prüfen Eintrag, Meldung und Unveränderlichkeit; dass der Server-Lauf die vier echten Reisen wirklich umstellt, zeigt erst ein späterer manueller Nachweis.
+Automatische Tests prüfen Eintrag, Meldung und Unveränderlichkeit; ob der Server-Lauf die vier echten Reisen umstellt, zeigt erst ein manueller Nachweis danach.
 
 ## Kritische Anmerkungen
 
-- Ohne Test: Die Umstellung der vier echten Reisen ist erst nach der Auslieferung prüfbar, nicht vor Freigabe.
-- Die Spec nennt zwei Orte für die neuen Tests; maßgeblich ist die spätere Festlegung.
+- Umstellung der vier echten Reisen ist erst nach Auslieferung prüfbar; die Spec macht sie ausdrücklich zur Voraussetzung für den nächsten Schritt.
 - Eine unbekannte Sprache bleibt bewusst unverändert; der Bau meldet sie weiter.
+- Seit dem letzten Briefing nur Überschrift umbenannt (Acceptance Criteria), inhaltlich unverändert.
 
 ## Freigabe-Frage
 

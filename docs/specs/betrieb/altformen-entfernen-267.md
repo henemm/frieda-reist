@@ -173,7 +173,7 @@ Kein neues Python-Modul, daher keine Änderung an `betrieb/deploy.sh`.
 - Vor jedem Vorspulen: `engine/.venv/bin/python -m pytest -q engine/tests` grün ohne echte Reisen (CI auf dem vorgespulten
   Commit; die Suite braucht rund 20 Minuten, deshalb kleine, gebündelte PRs).
 
-## Akzeptanzkriterien
+## Acceptance Criteria (Akzeptanzkriterien)
 
 - **AC-1 (a):** Fehlt `reise.yaml`, bricht der Bau mit einem `BauFehler` ab, dessen Text aus dem Katalog kommt (de und
   en vorhanden); `Reise.alt` und alle Zweige darauf sind aus dem Quelltext verschwunden (Suche nach `.alt` in
