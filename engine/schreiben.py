@@ -2082,6 +2082,35 @@ def kartenpunkte_ablegen(reise_dir, wer, an, punkte, heute=None, aktualisieren=F
     return ergebnis
 
 
+def kartenpunkte_lesen(reise_dir):
+    """Die Kartenpunkte einer Reise, wie sie als Dinge stehen (ADR-0007, Schritt d; Gegenstück zu kartenpunkte_ablegen, gelesen von den
+    Werkzeugen adressen_holen und wasser_pruefen): Aufenthalte, deren Art eine gruppe hat und die an einer Strecke oder einem Abschnitt
+    hängen (an:). Werte stehen in den Merkmalen der Art und werden nach Rolle gelesen (nummer, alias, sorte, osm, trinkbar, oeffnung,
+    bezug), nie nach dem Namen der Art oder des Merkmals.
+    -> [{id, name, art, gruppe, an, lage, quelle, nummer, alias, sorte, osm, trinkbar, oeffnung, bezug}] (fehlende Werte None)."""
+    from routen import ist_eltern
+    arten = arten_laden(reise_dir)
+    aufenthalte = (routen_laden(reise_dir) or {}).get("aufenthalte") or {}
+    aus = []
+    for aid, k in aufenthalte.items():
+        if not isinstance(k, dict):
+            continue
+        art = arten.get(k.get("art"))
+        if not isinstance(art, dict) or not art.get("gruppe") or not ist_eltern(k.get("an")):
+            continue
+        mk = k.get("merkmale") or {}
+        rollen = {d.get("rolle"): s for s, d in (art.get("merkmale") or {}).items() if isinstance(d, dict) and d.get("rolle")}
+        koordinaten = next((v for v in mk.values() if isinstance(v, dict) and v.get("typ") == "koordinaten"), None)
+        p = {"id": aid, "name": k.get("name"), "art": k["art"], "gruppe": art["gruppe"], "an": k["an"],
+             "lage": [float(x) for x in koordinaten["wert"]] if koordinaten and koordinaten.get("wert") else None,
+             "quelle": (koordinaten or {}).get("quelle") or k.get("quelle")}
+        for rolle in ("nummer", "alias", "sorte", "osm", "trinkbar", "oeffnung", "bezug"):
+            v = mk.get(rollen.get(rolle)) if rollen.get(rolle) else None
+            p[rolle] = v.get("wert") if isinstance(v, dict) else None
+        aus.append(p)
+    return aus
+
+
 def kartenpunkte_holen(reise_dir, wer, args, heute=None):
     """Punkte aus OpenStreetMap längs einer Strecke (K14): die Person wählt im Gespräch die Kategorie der Reise (plan/kategorien.yaml,
     Gruppe punkt) und die OSM-Tags (z. B. amenity=drinking_water). Treffer bis abstand_m von der Linie kommen mit Quelle und Stand

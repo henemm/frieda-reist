@@ -2,8 +2,10 @@
 """Lage der Unterkünfte aus OpenStreetMap vorfüllen (ADR-0004): Adresse und Koordinaten mit Quelle und Prüfdatum.
 
 Für jede Unterkunft in plan/routen.yaml ohne Adresse:
-  1. Hat plan/punkte.yaml einen Punkt mit ihrer ID (id: U-…) und einem OSM-Objekt als Quelle („OSM way/123“), schlägt
-     Nominatim dieses Objekt nach (/lookup); aus Straße (oder Platz), Hausnummer, Postleitzahl und Ort wird die Adresse.
+  1. Gibt es ein Ding (Kartenpunkt, ADR-0007: Aufenthalt A-… mit an: <Strecke>), dessen Merkmal mit der Rolle bezug ihre ID nennt
+     und dessen Merkmal mit der Rolle osm ein OSM-Objekt („way/123“) nennt, schlägt Nominatim dieses Objekt nach (/lookup); aus
+     Straße (oder Platz), Hausnummer, Postleitzahl und Ort wird die Adresse. Gelesen wird nach Rolle, nie nach dem Namen der Art. Die
+     Altform (Punkt mit id: U-… und „OSM way/123“ als Quelle in plan/punkte.yaml) wird weiter gelesen, solange es die Datei gibt.
   2. Sonst (nur mit --suchen) fragt das Skript Nominatim nach „Name, Ort“, begrenzt auf 3 km um den Ort aus plan/karte.yaml.
      Übernommen wird nur ein Treffer, der eine Unterkunft ist (tourism=hotel, guest_house, hostel, alpine_hut, apartment …)
      und eine Straße hat; dann auch die Koordinaten, wenn die Unterkunft noch keine hat.
@@ -65,10 +67,19 @@ def adresse_aus(tags):
     return f"{teil1}, {ort}" if ort else teil1
 
 
-def osm_bezuege(punkte):
-    """plan/punkte.yaml -> {U-…: (typ, nummer, [Breite, Länge])} aus Punkten mit id und OSM-Quelle."""
+OSM_OBJEKT = re.compile(r"(node|way|relation)/(\d+)")
+
+
+def osm_bezuege(punkte, dinge=()):
+    """Kartenpunkte -> {U-…: (typ, nummer, [Breite, Länge])} aus Punkten mit Unterkunfts-ID und OSM-Objekt.
+    dinge: schreiben.kartenpunkte_lesen (Rollen bezug und osm, sonst „OSM way/123“ am Anfang der Quelle der Koordinaten);
+    punkte: Inhalt der Altform plan/punkte.yaml (id und OSM-Quelle). Die Dinge gehen vor."""
     aus = {}
-    for liste in (punkte.get("strecken") or {}).values():
+    for p in dinge or ():
+        m = OSM_OBJEKT.search(str(p.get("osm") or "")) or OSM_MUSTER.search(str(p.get("quelle") or ""))
+        if p.get("bezug") and m and p["bezug"] not in aus:
+            aus[p["bezug"]] = (m.group(1), int(m.group(2)), p.get("lage"))
+    for liste in ((punkte or {}).get("strecken") or {}).values():
         for p in liste or []:
             m = OSM_MUSTER.search(str(p.get("quelle") or ""))
             if p.get("id") and m and p["id"] not in aus:
@@ -106,13 +117,13 @@ def adresse_aus_nominatim(t):
     return adresse_aus({k: v for k, v in tags.items() if v})
 
 
-def vorschlaege(roh, punkte, karte, suchen=False, heute=None, abfragen=holen):
-    """-> (neu {U-…: {adresse?, punkt?}}, fehlt [(U-…, Name, Grund)])."""
+def vorschlaege(roh, punkte, karte, suchen=False, heute=None, abfragen=holen, dinge=()):
+    """-> (neu {U-…: {adresse?, punkt?}}, fehlt [(U-…, Name, Grund)]). punkte: Altform plan/punkte.yaml, dinge: Kartenpunkte als Dinge."""
     heute = heute or datetime.date.today()
     stand = f"Stand {heute.isoformat()}"
     unterkuenfte = roh.get("unterkuenfte") or {}
     offen = {uid: u for uid, u in unterkuenfte.items() if not schreiben.lage_lesen(u).get("adresse")}   # Lage als typisiertes Merkmal oder altes Feld (ADR-0007)
-    bezuege = {uid: b for uid, b in osm_bezuege(punkte).items() if uid in offen}
+    bezuege = {uid: b for uid, b in osm_bezuege(punkte, dinge).items() if uid in offen}
     treffer = nachschlagen(bezuege, abfragen)
     neu, fehlt = {}, []
     for uid, u in offen.items():
@@ -126,7 +137,7 @@ def vorschlaege(roh, punkte, karte, suchen=False, heute=None, abfragen=holen):
                 fehlt.append((uid, u.get("name"), f"OSM {typ}/{nr} hat keine Adresse"))
                 continue
         if not suchen:
-            fehlt.append((uid, u.get("name"), "kein OSM-Punkt in plan/punkte.yaml (--suchen versucht Nominatim)"))
+            fehlt.append((uid, u.get("name"), "no OSM point stored for it (--suchen tries Nominatim)"))
             continue
         ort = (roh.get("orte") or {}).get(u.get("ort")) or {}
         mitte = ((karte.get("orte") or {}).get(u.get("ort")) or {}).get("lage")
@@ -158,7 +169,8 @@ def main(argv):
     reise = instanz.wurzel() / "reisen" / argv[1]
     roh = schreiben.routen_laden(reise)
     lies = lambda name: yaml.safe_load((reise / "plan" / name).read_text(encoding="utf-8")) if (reise / "plan" / name).exists() else {}
-    neu, fehlt = vorschlaege(roh, lies("punkte.yaml") or {}, lies("karte.yaml") or {}, suchen="--suchen" in argv)
+    neu, fehlt = vorschlaege(roh, lies("punkte.yaml") or {}, lies("karte.yaml") or {}, suchen="--suchen" in argv,
+                             abfragen=holen, dinge=schreiben.kartenpunkte_lesen(reise))
     for uid, felder in neu.items():
         print(f"{uid} {roh['unterkuenfte'][uid].get('name')}: {felder['adresse']['wert']}  ({felder['adresse']['quelle']})")
         if "--trocken" not in argv:
