@@ -84,13 +84,16 @@ def test_an_im_kreis(tmp_path):
 
 
 def test_an_einer_strecke_ist_der_elternbezug_nur_bei_einer_kennung(tmp_path):
-    """Bei einer Strecke bleibt an: mit einer Uhrzeit die Ankunft; eine Kennung ist der Elternbezug."""
+    """Bei einer Strecke im alten Format bleibt an: mit einer Uhrzeit die Ankunft; eine Kennung ist der Elternbezug. Im neuen
+    Format steht die Ankunft als Merkmal, an: ist frei für den Elternbezug."""
     q = kopie(tmp_path, "stadtwochenende")
+    routen_aendern(q, lambda t: t.replace('    nach: O-02\n    art: bahn\n', '    nach: O-02\n    art: bahn\n    an: "11:25"\n', 1)
+                                 .replace('      ankunft: {typ: zeitpunkt, rolle: ankunft, wert: "11:25", quelle: "erfunden (Beispiel); Fahrplan nicht geprüft"}\n', '', 1))
     d = bauen.bauen(q, tmp_path / "web" / "b")
     assert d["route"]["strecken"]["E-01"]["an"] == "11:25" and d["route"]["eltern"] == {}
-    routen_aendern(q, lambda t: t.replace('ab: "09:10", an: "11:25"', 'ab: "09:10", an: O-02'))
+    routen_aendern(q, lambda t: t.replace('    an: "11:25"\n', '    an: O-02\n', 1).replace('      abfahrt:', '      ankunft: {typ: zeitpunkt, rolle: ankunft, wert: "11:25", quelle: "x"}\n      abfahrt:', 1))
     d = bauen.bauen(q, tmp_path / "web2" / "b")
-    assert d["route"]["eltern"] == {"E-01": "O-02"} and d["route"]["strecken"]["E-01"]["an"] is None
+    assert d["route"]["eltern"] == {"E-01": "O-02"} and d["route"]["strecken"]["E-01"]["an"] == "11:25"
 
 
 def test_nachziehen_schreibt_an_nicht_um(tmp_path):

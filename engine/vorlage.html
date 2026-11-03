@@ -1723,10 +1723,21 @@ function giltAm(v, datum) {
   for (const e of v.je_datum || []) if ((e.gilt || []).includes(datum)) return e;
   return v.gilt ? null : v;
 }
-// Atom Wert: der Wert, „ungeprüft“, Herkunft hinter dem Wert (Knopf mit gepunkteter Linie; eine Webseite bleibt Link und
+// Atom Wert (zeigt auch die Typen der Lage, Zeit und Track, ADR-0007): der Wert, „ungeprüft“, Herkunft hinter dem Wert (Knopf mit gepunkteter Linie; eine Webseite bleibt Link und
 // zeigt die Herkunft beim Darüberfahren und beim Fokus). Mit Datum (Nacht im Tag) nur der Wert für dieses Datum,
 // ohne Datum bei Werten je Datum alle Einträge untereinander.
 // ohneHerkunft: im Vergleich (#58) steht die Herkunft einmal je Möglichkeit (herkunftZeile), nicht hinter einem i je Wert
+// Der Wert eines Merkmals mit einem der Typen adresse, koordinaten, gpx, uhrzeit, zeitpunkt, zeitraum (ADR-0007): je Typ ein Baustein
+// (Adresse und Koordinaten mit Kartenlinks, Zeiten wie zeitText). Gehört zum Atom Wert.
+function wertNachTyp(v) {
+  const w = v.wert;
+  if (v.typ === "adresse") return [w, " ", kartenLinks({name: w, adresse: {wert: w}})];
+  if (v.typ === "koordinaten") return [w.map(x => zahlText(x, {minimumFractionDigits: 4, maximumFractionDigits: 4})).join(" · "), " ", kartenLinks({name: w.join(", "), punkt: {wert: w}})];
+  if (v.typ === "zeitraum") return [w.beginn, w.ende].filter(Boolean).map(zeitText).join("–");
+  if (v.typ === "uhrzeit" || v.typ === "zeitpunkt") return zeitText(w);
+  if (v.typ === "gpx") return String(w).split("/").pop();
+  return String(w);
+}
 function merkmalWert(v, datum, ohneHerkunft) {
   if (v && v.je_datum && datum) {
     const e = giltAm(v, datum);
@@ -1738,9 +1749,10 @@ function merkmalWert(v, datum, ohneHerkunft) {
   const herkunft = [v.notiz, v.geprueft ? T("seite.label.geprueft") + datumKurz(v.geprueft) : "", v.quelle ? T("seite.label.quelle") + v.quelle : ""].filter(Boolean).join(" · ");
   // „unklar“ und berechnete Lücken (Anschluss) fallen auf
   const auffaellig = /^unklar$/i.test(String(v.wert)) ? "mk-unklar" : v.auto && /^Lücke/.test(String(v.wert)) ? "mk-luecke" : null;
-  const q = herkunft && !ohneHerkunft ? el("span", {class: "mk-q", role: "tooltip", hidden: true}, herkunft) : null;
+  const q = herkunft && !ohneHerkunft && !v.typ ? el("span", {class: "mk-q", role: "tooltip", hidden: true}, herkunft) : null;
   let wert;
-  if (v.link) { wert = webLink(v.wert); if (q) wert.setAttribute("data-mk-h", ""); }
+  if (v.typ) wert = el("span", {title: herkunft || null}, wertNachTyp(v));   // Typ der Form eines Merkmals (ADR-0007): Lage, Zeit, Track
+  else if (v.link) { wert = webLink(v.wert); if (q) wert.setAttribute("data-mk-h", ""); }
   else if (q) wert = el("button", {type: "button", class: ["mk-w", auffaellig].filter(Boolean).join(" "), "data-mk-i": "", "aria-expanded": "false"},
     String(v.wert), el("span", {class: "unsichtbar"}, " · " + T("seite.merkmal.herkunft_zeigen")));
   else wert = el("span", {class: auffaellig}, v.wert);
@@ -3825,7 +3837,12 @@ function ansichtBausteine(m) {
     fall("unklar", merkmalWert(echt(v => /^unklar$/i.test(v.wert), {wert: "unklar", notiz: "noch zu prüfen"}))),
     fall("offen", merkmalWert(null)),
     fall("je Datum", merkmalWert(jeDatum)),
-    fall("je Datum, an einer Nacht", merkmalWert(jeDatum, jeDatum.je_datum[0].gilt[0])));
+    fall("je Datum, an einer Nacht", merkmalWert(jeDatum, jeDatum.je_datum[0].gilt[0])),
+    fall("Adresse (Typ adresse)", merkmalWert({typ: "adresse", wert: "Musterweg 1, 01067 Dresden", quelle: "Muster"})),
+    fall("Koordinaten (Typ koordinaten)", merkmalWert({typ: "koordinaten", wert: [51.0504, 13.7373], quelle: "Muster"})),
+    fall("Zeitraum (Typ zeitraum)", merkmalWert({typ: "zeitraum", wert: {beginn: "16:00", ende: "18:00"}, quelle: "Muster"})),
+    fall("Zeitpunkt (Typ zeitpunkt)", merkmalWert({typ: "zeitpunkt", wert: "2027-05-14T07:45+02:00", quelle: "Muster"})),
+    fall("Track (Typ gpx)", merkmalWert({typ: "gpx", wert: "medien/gpx/muster.gpx", quelle: "Muster"})));
   // Kennung in ihren Zuständen: leer, mit Rückmeldungen, mit offener Aufgabe (Muster, die Daten der Seite bleiben unberührt)
   const kennungMuster = (rm, ag) => { const r0 = RM, a0 = AG; RM = rm; AG = ag; try { return zid("Muster"); } finally { RM = r0; AG = a0; } };
   const rmMuster = {ziel: "Muster", status: "neu"}, agMuster = {id: "AG-00", status: "offen", bezug: ["Muster"]};

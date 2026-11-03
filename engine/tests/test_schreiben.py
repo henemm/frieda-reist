@@ -523,6 +523,12 @@ def test_aufruf_anwenden(repo, capsys):
 
 # ---------- Werte an Dingen (plan/routen.yaml) ----------
 
+def lese(ding):
+    """Ein Ding aus routen.yaml, wie der Bau es liest: Lage, Zeit und Link aus den typisierten Merkmalen (ADR-0007) als Felder."""
+    import routen
+    return routen.lage_merkmale_falten(ding, "", lambda *a, **k: None)
+
+
 def routen_auf_main(origin):
     text = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/plan/routen.yaml"],
                           check=True, capture_output=True, text=True).stdout
@@ -641,7 +647,7 @@ def test_ding_option_wahlstelle_und_frage_anlegen(repo):
         "geprueft": "2026-10-29", "buchungslink": "https://pension-elbblick.example/buchen", "merkmale": {"preis": "90 €", "fruehstueck": "inklusive"}}})
     assert a["text"].startswith("Unterkunft U-05 „Pension Elbblick“ angelegt in Rathen, Art pension, Merkmale: preis, fruehstueck.")
     r, text = routen_auf_main(origin)
-    u = r["unterkuenfte"]["U-05"]
+    u = lese(r["unterkuenfte"]["U-05"])
     assert u["ort"] == "O-07" and u["art"] == "pension" and "typ" not in u and u["buchungslink"].startswith("https://")
     assert u["merkmale"]["preis"] == {"wert": "90 €", "quelle": "Website pension-elbblick.example", "geprueft": datetime.date(2026, 10, 29)}
     assert r["orte"]["O-07"] == {"name": "Rathen", "hinweis": "Kurort", "quelle": "Karte"}
@@ -691,7 +697,7 @@ def test_lage_eintragen(repo):
                     "koordinaten": "50.9792, 14.1128", "quelle": "erfunden (Beispiel)", "geprueft": "2026-10-29"}})
     assert "Adresse „Burgstraße 1, 01848 Hohnstein“" in a["text"] and "Koordinaten „50.9792, 14.1128“" in a["text"]
     r, _ = routen_auf_main(origin)
-    u = r["unterkuenfte"]["U-02"]
+    u = lese(r["unterkuenfte"]["U-02"])
     assert u["adresse"]["wert"] == "Burgstraße 1, 01848 Hohnstein" and u["adresse"]["quelle"] == "erfunden (Beispiel)"
     assert u["punkt"]["wert"] == [50.9792, 14.1128] and str(u["punkt"]["geprueft"]) == "2026-10-29"
     s.vorbereiten()
@@ -709,7 +715,7 @@ def test_lage_eines_orts_und_adresse_ohne_koordinaten(repo):
     a = s.schreiben("beispielreise", "lage_eintragen", {**KARL, "args": {"ziel": "O-01", "koordinaten": "51.04, 13.732", "quelle": "Beispielwert"}})
     assert "Koordinaten „51.04, 13.732“" in a["text"] and "fehlen noch Koordinaten" not in a["text"]
     r, _ = routen_auf_main(origin)
-    assert r["orte"]["O-01"]["punkt"]["wert"] == [51.04, 13.732] and r["orte"]["O-01"]["name"] == "Dresden"
+    assert lese(r["orte"]["O-01"])["punkt"]["wert"] == [51.04, 13.732] and r["orte"]["O-01"]["name"] == "Dresden"
     s.vorbereiten()
     a = s.schreiben("beispielreise", "lage_eintragen", {**KARL, "args": {"ziel": "U-03", "adresse": "Im Tal 1, 01848 Hohnstein", "quelle": "erfunden"}})
     assert "fehlen noch Koordinaten" in a["text"]
@@ -723,7 +729,7 @@ def test_ding_anlegen_mit_koordinaten_und_ohne_tag(repo):
                                                                         "koordinaten": "51.05, 13.74", "quelle": "erfunden (Test)"}})
     assert "Auf der Karte bei 51.05, 13.74" in a["text"] and "ohne Tag gesammelt" in a["text"]
     r, _ = routen_auf_main(origin)
-    neu = next(x for x in r["aufenthalte"].values() if x["name"] == "Wochenmarkt")
+    neu = lese(next(x for x in r["aufenthalte"].values() if x["name"] == "Wochenmarkt"))
     assert neu["punkt"]["wert"] == [51.05, 13.74] and neu["punkt"]["quelle"] == "erfunden (Test)"
     s.vorbereiten()
     a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "ort", "titel": "Pirna", "quelle": "erfunden (Test)"}})
@@ -748,7 +754,8 @@ def test_uhrzeit_beginn_ende(repo):
     a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "A-01", "beginn": "9:05", "ende": "09:52"}})
     assert "beginn „16:00“ → „09:05“" in a["text"] and "ende „18:00“ → „09:52“" in a["text"]
     r, text = routen_auf_main(origin)
-    assert (r["aufenthalte"]["A-01"]["beginn"], r["aufenthalte"]["A-01"]["ende"]) == ("09:05", "09:52") and 'beginn: "09:05"' in text
+    assert (lese(r["aufenthalte"]["A-01"])["beginn"], lese(r["aufenthalte"]["A-01"])["ende"]) == ("09:05", "09:52") and 'beginn: "09:05"' in text
+    assert r["aufenthalte"]["A-01"]["merkmale"]["zeitraum"]["typ"] == "zeitraum" and "beginn" not in r["aufenthalte"]["A-01"]
     s.vorbereiten()
     a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "A-01", "beginn": "", "ende": ""}})
     assert "beginn entfernt" in a["text"]
@@ -758,7 +765,7 @@ def test_uhrzeit_beginn_ende(repo):
     s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "aufenthalt", "titel": "Abendessen", "ort": "O-04",
                                                                     "art": "besichtigung", "beginn": "19:00", "quelle": "Beispiel"}})
     r, _ = routen_auf_main(origin)
-    assert any(x.get("beginn") == "19:00" for x in r["aufenthalte"].values())
+    assert any(lese(x).get("beginn") == "19:00" for x in r["aufenthalte"].values())
     s.vorbereiten()
     for args, text in (({"ziel": "A-01", "beginn": "25:00"}, "Uhrzeit HH:MM"), ({"ziel": "A-01", "ende": "10:00"}, "nur zusammen mit")):
         with pytest.raises(sb.Ablehnung, match=text):
@@ -1803,13 +1810,13 @@ def test_strecke_mit_zeiten_und_ort_ausserhalb(repo):
                                                                        "ab": "2027-05-14T07:45+02:00", "an": "09:10", "quelle": "Fahrplan"}})
     assert a["ok"]
     r, text = routen_auf_main(origin)
-    e = r["strecken"]["E-24"]
-    assert e["ab"] == "2027-05-14T07:45+02:00" and e["an"] == "09:10" and 'an: "09:10"' in text
+    e = lese(r["strecken"]["E-24"])
+    assert e["ab"] == "2027-05-14T07:45+02:00" and e["an"] == "09:10" and 'wert: "09:10"' in text
     s.vorbereiten()
     a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "E-24", "an": "", "ab": "08:00"}})
     assert "ab „2027-05-14T07:45+02:00“ → „08:00“" in a["text"] and "an entfernt" in a["text"]
     r, _ = routen_auf_main(origin)
-    assert r["strecken"]["E-24"]["ab"] == "08:00" and "an" not in r["strecken"]["E-24"]
+    assert lese(r["strecken"]["E-24"])["ab"] == "08:00" and "an" not in lese(r["strecken"]["E-24"])
     s.vorbereiten()
     a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "O-07", "ausserhalb": False}})
     r, _ = routen_auf_main(origin)
@@ -2135,7 +2142,8 @@ def test_track_anhaengen_legt_datei_ab_und_ersetzt_die_linie(repo):
     a = s.schreiben("beispielreise", "track_anhaengen", {**KARL, "args": {"ziel": "E-20", "gpx": GPX_TEST, "quelle": "eigene Aufzeichnung (Test)"}})
     assert "3 Punkten angehängt" in a["text"] and "1 benannter Wegpunkt" in a["text"]
     r, _ = routen_auf_main(origin)
-    assert r["strecken"]["E-20"]["gpx"]["datei"] == "medien/gpx/e-20.gpx" and r["strecken"]["E-20"]["gpx"]["quelle"] == "eigene Aufzeichnung (Test)"
+    g = lese(r["strecken"]["E-20"])["gpx"]
+    assert g["datei"] == "medien/gpx/e-20.gpx" and g["quelle"] == "eigene Aufzeichnung (Test)"
     datei = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/medien/gpx/e-20.gpx"], check=True, capture_output=True, text=True).stdout
     assert "Pillnitz" in datei
     s.vorbereiten()

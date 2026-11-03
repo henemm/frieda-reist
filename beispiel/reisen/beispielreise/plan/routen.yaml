@@ -25,7 +25,15 @@ strecken:
   E-03: {von: O-04, nach: O-05, art: wandern, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
   E-04: {von: O-04, nach: O-06, art: wandern, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
   # ab/an (#135) erscheinen mit Uhrzeit im Kalender (#77); hier erfundene Beispielwerte
-  E-20: {titel: "S-Bahn Dresden → Stadt Wehlen, Fähre über die Elbe", von: O-01, nach: O-02, art: bahn, ab: "08:12", an: "08:40", quelle: "Beispiel; Fahrplan nicht geprüft"}
+  E-20:
+    titel: "S-Bahn Dresden → Stadt Wehlen, Fähre über die Elbe"
+    von: O-01
+    nach: O-02
+    art: bahn
+    quelle: "Beispiel; Fahrplan nicht geprüft"
+    merkmale:
+      abfahrt: {typ: zeitpunkt, rolle: abfahrt, wert: "08:12", quelle: "Beispiel; Fahrplan nicht geprüft"}
+      ankunft: {typ: zeitpunkt, rolle: ankunft, wert: "08:40", quelle: "Beispiel; Fahrplan nicht geprüft"}
   E-21: {titel: "S-Bahn Bad Schandau → Dresden", von: O-05, nach: O-01, art: bahn, quelle: "Beispiel; Fahrplan nicht geprüft"}
   E-23: {titel: "Bus Bad Schandau → Dresden", von: O-05, nach: O-01, art: bus, quelle: "erfunden (Beispiel)"}
   E-22: {titel: "Kirnitzschtalbahn Lichtenhainer Wasserfall → Bad Schandau", von: O-06, nach: O-05, art: bahn, siehe: W-06, quelle: "Strecke laut Wikipedia (W-06); Fahrplan nicht geprüft"}
@@ -37,7 +45,6 @@ unterkuenfte:
     ort: O-01
     art: hotel
     hinweis: "erfundenes Beispielhotel in der Altstadt"
-    adresse: {wert: "Terrassenufer 1, 01067 Dresden", quelle: "erfunden (Beispiel)", notiz: "Beispielwert"}
     # Buchungsstand: aus der Buchung B-01 (unten); ohne Buchung gilt „offen“, ein eigener Eintrag buchung: ginge auch
     quelle: "erfunden (Beispiel)"
     merkmale:
@@ -47,6 +54,7 @@ unterkuenfte:
         - {wert: "140 €", gilt: 2027-05-15, quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden: Samstag teurer"}
       fruehstueck: {wert: inklusive, quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
       charakter: {wert: "Altes Bürgerhaus am Fluss, kleine Zimmer mit Blick auf die Elbe; abends ruhig (Beispielwert)", quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
+      adresse: {typ: adresse, wert: "Terrassenufer 1, 01067 Dresden", quelle: "erfunden (Beispiel)", notiz: "Beispielwert"}
   U-02:
     name: Pension Burgblick
     ort: O-03
@@ -89,13 +97,12 @@ aufenthalte:
     ort: O-03
     art: besichtigung
     zeit: "nach der Wanderung, 16–18 Uhr"
-    beginn: "16:00"   # Beispielwert, erfunden (#77, Kalender)
-    ende: "18:00"
     hinweis: "erfundenes Beispiel; Burg über dem Polenztal"
     quelle: "erfunden (Beispiel)"
     merkmale:
       geoeffnet: {wert: ja, quelle: "erfunden (Beispiel)", geprueft: 2026-10-29}
       eintritt: {wert: "6 €", quelle: "erfunden (Beispiel)", geprueft: 2026-10-29}
+      zeitraum: {typ: zeitraum, wert: {beginn: "16:00", ende: "18:00"}, quelle: "erfunden (Beispiel)"}
 
 # Buchungen (B-…, #76): eigenes Ding zu einer Unterkunft, einem Aufenthalt oder einer Strecke (fuer, auch mehrere).
 # Felder: status (angefragt | gebucht | storniert), nummer, bei, preis, zahlung (Zahlstand, #166), bezahlt (Einzelheiten),

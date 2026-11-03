@@ -351,8 +351,8 @@ def test_buchung_und_anschluss_mit_namen(tmp_path, browser):
     shutil.copytree(WURZEL / "beispiel/reisen/beispielreise", reise)
     datei = reise / "plan/routen.yaml"
     text = datei.read_text(encoding="utf-8")
-    for alt, neu in (('an: "08:40", quelle', 'an: "2027-05-13T08:40+02:00", quelle'),
-                     ("E-01: {von: O-02, nach: O-03, art: wandern,", 'E-01: {von: O-02, nach: O-03, art: wandern, ab: "08:30",'),
+    for alt, neu in (('wert: "08:40", quelle', 'wert: "2027-05-13T08:40+02:00", quelle'),
+                     ("E-01: {von: O-02, nach: O-03, art: wandern,", 'E-01: {von: O-02, nach: O-03, art: wandern, ab: "08:30",'),   # altes Feld wird weiter gelesen
                      ("    fuer: [E-20]\n    status: gebucht\n", '    fuer: [E-20, E-21]\n    preise: {E-20: "12 €", E-21: "8 €"}\n    status: angefragt\n')):
         assert alt in text, alt
         text = text.replace(alt, neu)

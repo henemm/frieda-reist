@@ -110,11 +110,17 @@ def test_uhrzeit_im_modell_wird_geprueft(tmp_path):
     shutil.copytree(BEISPIEL, q)
     p = q / "plan" / "routen.yaml"
     text = p.read_text(encoding="utf-8")
+    # seit ADR-0007 steht die Uhrzeit als Merkmal zeitraum: eine ungültige Uhrzeit oder ein Ende ohne Beginn passt nicht zum Typ
     p.write_text(text.replace('beginn: "16:00"', 'beginn: "16 Uhr"'), encoding="utf-8")
-    with pytest.raises(bauen.BauFehler, match="beginn muss eine Uhrzeit HH:MM"):
+    with pytest.raises(bauen.BauFehler, match="passt nicht zum Typ zeitraum"):
         bauen.bauen(q, tmp_path / "ziel")
-    p.write_text(text.replace('beginn: "16:00"', ""), encoding="utf-8")
-    with pytest.raises(bauen.BauFehler, match="ende ohne beginn"):
+    p.write_text(text.replace('beginn: "16:00", ', ""), encoding="utf-8")
+    with pytest.raises(bauen.BauFehler, match="passt nicht zum Typ zeitraum"):
+        bauen.bauen(q, tmp_path / "ziel")
+    # das alte Feld beginn/ende wird weiter gelesen: Ende ohne Beginn bleibt ein Fehler
+    p.write_text(text.replace('{typ: zeitraum, wert: {beginn: "16:00", ende: "18:00"}, quelle: "erfunden (Beispiel)"}', '{typ: text}', 1)
+                 .replace('    name: Burg Hohnstein\n', '    name: Burg Hohnstein\n    ende: "18:00"\n'), encoding="utf-8")
+    with pytest.raises(bauen.BauFehler):
         bauen.bauen(q, tmp_path / "ziel")
 
 
@@ -286,7 +292,7 @@ def test_konnektor_werkzeug_kalender(umgebung, monkeypatch):
 
 def test_uhrzeit_im_konnektor_lesbar(umgebung):
     d = yaml.safe_load((BEISPIEL / "plan" / "routen.yaml").read_text(encoding="utf-8"))
-    assert d["aufenthalte"]["A-01"]["beginn"] == "16:00"
+    assert d["aufenthalte"]["A-01"]["merkmale"]["zeitraum"]["wert"]["beginn"] == "16:00"
     import konnektor as kn
     text, _ = kn.frieda_werkzeug(konten.konto("k-ida"), "zeige", {"id": "T-02"})
     assert "16:00–18:00 Uhr" in text

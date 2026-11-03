@@ -111,7 +111,7 @@ def vorschlaege(roh, punkte, karte, suchen=False, heute=None, abfragen=holen):
     heute = heute or datetime.date.today()
     stand = f"Stand {heute.isoformat()}"
     unterkuenfte = roh.get("unterkuenfte") or {}
-    offen = {uid: u for uid, u in unterkuenfte.items() if not u.get("adresse")}
+    offen = {uid: u for uid, u in unterkuenfte.items() if not schreiben.lage_lesen(u).get("adresse")}   # Lage als typisiertes Merkmal oder altes Feld (ADR-0007)
     bezuege = {uid: b for uid, b in osm_bezuege(punkte).items() if uid in offen}
     treffer = nachschlagen(bezuege, abfragen)
     neu, fehlt = {}, []
@@ -140,7 +140,7 @@ def vorschlaege(roh, punkte, karte, suchen=False, heute=None, abfragen=holen):
             continue
         quelle = f"OSM {t.get('osm_type')}/{t.get('osm_id')} (Nominatim, search “{u.get('name')}”), {stand}"
         neu[uid] = {"adresse": {"wert": a, "quelle": quelle, "geprueft": heute}}
-        if not u.get("punkt") and uid not in bezuege:
+        if not schreiben.lage_lesen(u).get("punkt") and uid not in bezuege:
             neu[uid]["punkt"] = {"wert": [round(float(t["lat"]), 6), round(float(t["lon"]), 6)], "quelle": quelle, "geprueft": heute}
     return neu, fehlt
 
@@ -162,8 +162,8 @@ def main(argv):
     for uid, felder in neu.items():
         print(f"{uid} {roh['unterkuenfte'][uid].get('name')}: {felder['adresse']['wert']}  ({felder['adresse']['quelle']})")
         if "--trocken" not in argv:
-            for feld, v in felder.items():
-                roh["unterkuenfte"][uid][feld] = schreiben.fliess_map(v)
+            for feld, v in felder.items():   # Lage als typisiertes Merkmal (ADR-0007)
+                schreiben.lage_merkmal_schreiben(roh["unterkuenfte"][uid], "adresse" if feld == "adresse" else "koordinaten", v["wert"], v["quelle"], v["geprueft"])
     if neu and "--trocken" not in argv:
         schreiben.routen_speichern(reise, roh)
     print(f"\n{len(neu)} addresses {'found' if '--trocken' in argv else 'entered'}; without address {len(fehlt)}:")

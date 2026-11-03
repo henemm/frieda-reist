@@ -94,7 +94,7 @@ Ein Merkmal ist eine Definition in `arten.yaml` und ein Wert am Ding.
 | Feld der Definition | Bedeutung |
 |---|---|
 | `name` | Anzeige |
-| `typ` | `text` (Vorgabe), `geld`, `zahl`, `auswahl` (mit `werte`), `link` (Adresse mit `https://` oder `http://`; die Seite zeigt jeden Wert dieses Typs gleich als Link nach außen, mit dem Namen der Webseite und der Herkunft beim Darüberfahren; seit #165, 31.10.2026) |
+| `typ` | `text` (Vorgabe), `geld`, `zahl`, `auswahl` (mit `werte`), `link` (Adresse mit `https://` oder `http://`; die Seite zeigt jeden Wert dieses Typs gleich als Link nach außen, mit dem Namen der Webseite und der Herkunft beim Darüberfahren; seit #165, 31.10.2026), dazu seit ADR-0007 (Schritt b, #283) `adresse`, `koordinaten`, `gpx`, `uhrzeit`, `zeitpunkt`, `zeitraum` (siehe „Typisierte Merkmale der Grundformen“) |
 | `veraenderlich` | der Wert braucht ein Prüfdatum; ohne steht „ungeprüft“ daneben, ab Status `fest` eine Mahnung, der Wächter meldet alte Prüfdaten |
 | `stufe` | `pflicht`, `empfohlen` (Vorgabe), `angeboten`, `aus`. Für Menschen heißen sie **„nötig“**, **„gut zu wissen“** und **„zusätzlich“** (Product Owner 29.10.2026); `aus` bleibt unsichtbar. In Dateien und Werkzeugen bleiben die Schlüssel, der Schreibweg nimmt auch die Wörter an (`routen.stufe_schluessel`), der Konnektor sagt die Wörter (`routen.stufe_wort`; bei einer Stufe je Unterkunftstyp „sonst“ für `*` und „gilt nicht“ für `aus`), die Seite erklärt den Vergleich in Worten. Nötig und gut zu wissen sind die Spalten im Vergleich der Alternativen (zusätzlich steht dort nur in den Einzelheiten, `docs/design.md`); nur **nötig** zählt als „Fehlt noch“ und im Zähler des Vergleichs (seit Paket O-5); gut zu wissen ohne Wert ist keine Lücke und keine Mahnung (Product Owner 29.10.2026); zusätzlich erscheint nur mit Wert; aus gilt nicht. Eine Wahlstelle kann die Stufe für sich ändern (`merkmale: {abendessen: {stufe: empfohlen}}`) |
 | `auto` | berechnet, nie eingetragen (siehe Grundformen) |
@@ -103,6 +103,39 @@ Ein Merkmal ist eine Definition in `arten.yaml` und ein Wert am Ding.
 | `auch` | weitere Namen, unter denen dasselbe gemeint ist (Zuordnung ähnlicher Vorschläge innerhalb der Reise) |
 | `nach_buchung` | `true` (Product Owner 31.10.2026): der Wert bleibt auf der Seite sichtbar, wenn das Ding gebucht ist, etwa der Charakter eines Hotels; alle übrigen Merkmale stehen dann zugeklappt „Aus der Planung“, weil nach der Buchung die Buchung gilt. Vorgabe: keines. Nur bei Merkmalen des Dings, nicht bei Merkmalen der Buchung |
 | `rolle` | `kosten` (Product Owner 29.10.2026): dieses Merkmal (Typ `geld`) ist der Preis des Dings, den die Seite über die Reise summiert („Übernachtungen“ im Reiseüberblick: Preis je Nacht am Datum der Nacht, bei offener Wahl die Spanne). Die Software kennt die Rolle, nicht den Namen des Merkmals; je Art trägt sie höchstens ein Merkmal, ohne Rolle wird nichts summiert (die Herberge der Beispielreise mit „Preis pro Person“ hat keine) |
+
+### Typisierte Merkmale der Grundformen (ADR-0007, Schritt b, #283)
+
+Lage, Zeit und Track waren feste Felder (`adresse`, `punkt`, `beginn`, `ende`, `ab`, `an`, `buchungslink`, `gpx`). Sie sind Merkmale mit einem **Typ**, den die Software kennt und mit genau einem Baustein zeigt (Atom Wert, `merkmalWert`; `kartenLinks`, `lageZeile`, `zeitText`, Karte, Track):
+
+| Typ | Wert | Baustein / Verwendung |
+|---|---|---|
+| `adresse` | Text (Postadresse) | `lageZeile` mit `kartenLinks`; die Lage eines Aufenthalts oder einer Unterkunft (ADR-0004) |
+| `koordinaten` | `[Breite, Länge]` | Punkt auf der Karte, `kartenLinks`; Lage von Ort, Unterkunft, Aufenthalt |
+| `gpx` | Datei unter `medien/….gpx` | Track einer Bewegung auf der Karte (`track_attach`) |
+| `uhrzeit` | `HH:MM` (Ortszeit) | `zeitText`; mit Rolle `beginn` oder `ende` |
+| `zeitpunkt` | `HH:MM` oder `JJJJ-MM-TTTHH:MM+HH:MM` | `zeitText`; mit Rolle `abfahrt` oder `ankunft` einer Bewegung (Anschlussprüfung, Kalender) |
+| `zeitraum` | `{beginn: HH:MM, ende: HH:MM}` (ende freiwillig) | `uhrzeit` des Aufenthalts im Kalender (#77) |
+
+Welche dieser Merkmale eine **Grundform** fest trägt, sagt die Software (wie `rolle: kosten`), kein Katalog: Aufenthalt und Unterkunft `adresse`, `koordinaten`, `buchungslink` (ein `link` mit Rolle `buchung`), der Aufenthalt dazu `zeitraum`; Bewegung `abfahrt`, `ankunft`, `gpx`; Ort `koordinaten`. Welche Merkmale eine **Art** trägt, sagt weiter die Reise (`arten.yaml`); sie darf auch ein gewöhnliches Merkmal mit einem dieser Typen definieren (etwa die Adresse eines Parkplatzes), das als Merkmal erscheint.
+
+```yaml
+aufenthalte:
+  A-01:
+    name: Burg Hohnstein
+    ort: O-03
+    art: besichtigung
+    merkmale:
+      eintritt: {wert: "6 €", quelle: "…", geprueft: 2026-10-29}      # Merkmal der Art (arten.yaml)
+      adresse: {typ: adresse, wert: "Markt 1, 01848 Hohnstein", quelle: "…", geprueft: 2026-11-01}
+      koordinaten: {typ: koordinaten, wert: [50.9792, 14.1128], quelle: "…", geprueft: 2026-11-01}
+      zeitraum: {typ: zeitraum, wert: {beginn: "16:00", ende: "18:00"}, quelle: "…"}
+```
+
+- **Der Wert trägt seinen Typ** (`typ:`, bei `uhrzeit`, `zeitpunkt` und `link` dazu `rolle:`); sein Name ist ein Schlüssel der Reise. Gelesen wird nur Typ und Rolle, nie der Name (ADR-0001, Frage 2). Eine Grundform trägt je Typ (und Rolle) höchstens ein solches Merkmal; steht dasselbe als altes Feld und als Merkmal da, bricht der Bau ab.
+- **Herkunft wie jede Aussage:** `quelle` ist beim Schreiben Pflicht, `geprueft` freiwillig (bei Lage empfohlen).
+- **Alte Felder** (`adresse`, `punkt`, `beginn`, `ende`, `ab`, `an` als Zeit, `buchungslink`, `gpx`) werden weiter gelesen und nie mehr geschrieben. `neu.py nachziehen` stellt sie in jeder Reise um (Herkunft der Aussage, sonst die des Dings, sonst „Bestand der Reise“); der Schreibweg stellt eine noch nicht umgestellte Datei beim ersten Schreiben am Ding um. Beim Lesen faltet der Bau die Merkmale zurück in die Felder, die Karte, Kalender, Anschlussprüfung, Mahnung (ab `fest` ohne Lage) und Seite lesen; deshalb sehen alte und neue Form gleich aus. Ist `an` einer Strecke eine Kennung, ist es der Elternbezug (siehe oben), keine Zeit.
+- **Konnektor:** `ding_anlegen` nimmt die Merkmale der Grundform unter ihren Namen in `merkmale` (`adresse`, `koordinaten`, `zeitraum`, `abfahrt`, `ankunft`, `buchungslink`) oder wie bisher als Parameter; `ding_aendern`, `lage_eintragen` und `track_anhaengen` schreiben dieselben Merkmale. Eine Art, die ein Merkmal unter demselben Namen selbst definiert, behält ihr Merkmal.
 
 ### Angebot und Buchung (Product Owner 31.10.2026, Issue #166)
 

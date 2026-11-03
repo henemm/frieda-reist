@@ -1046,7 +1046,7 @@ DING_ARTEN = {"unterkunft": ("U", "unterkuenfte"), "aufenthalt": ("A", "aufentha
 ID_MUSTER = re.compile(r"^(T-\d+|E-\d+[A-Za-z]?|U-\d+|A-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?|F-\d+|B-\d+)$")
 
 
-PLAIN_FELDER = {"id", "status", "wer", "art", "wann", "typ", "ort", "von", "nach", "frage", "siehe", "bereich", "an", "unterkuenfte",
+PLAIN_FELDER = {"id", "status", "wer", "art", "wann", "typ", "rolle", "ort", "von", "nach", "frage", "siehe", "bereich", "an", "unterkuenfte",
                 "strecken", "folge", "erfordert", "schliesst_aus", "auswahl", "fuer"}
 PLAIN_MUSTER = re.compile(r"^[^\W\d_][\w .\-]*$")
 
@@ -1143,6 +1143,154 @@ def merkmale_knoten(werte):
     return m
 
 
+# Typisierte Merkmale der Grundformen (ADR-0007, Schritt b): Lage, Zeit und Track stehen als Merkmale mit Typ (und Rolle) am Ding.
+# Welche die Grundform fest trägt, legt diese Tabelle fest (Eingabenamen, siehe routen.EINGABE_MERKMALE); die Namen sind
+# Schlüssel der Reise, gelesen wird nur nach Typ und Rolle.
+GRUNDFORM_MERKMALE = {"ort": ("koordinaten",), "unterkunft": ("adresse", "koordinaten", "buchungslink"),
+                      "aufenthalt": ("adresse", "koordinaten", "zeitraum", "buchungslink"), "strecke": ("abfahrt", "ankunft")}
+
+
+def lage_lesen(knoten):
+    """Die typisierten Merkmale eines Knotens als feste Felder gelesen (Lesesicht des Bau: adresse, punkt, beginn, ende, ab, an, gpx,
+    buchungslink) -> dict. Alte Felder und neue Merkmale ergeben dasselbe."""
+    from routen import lage_merkmale_falten
+    return lage_merkmale_falten(dict(knoten), "", lambda *a, **k: None)
+
+
+def lage_merkmal_schreiben(knoten, name, wert, quelle, geprueft=None, notiz=None):
+    """Das typisierte Merkmal name (Eingabename aus routen.EINGABE_MERKMALE) am Knoten setzen: ein vorhandenes mit gleichem Typ und
+    gleicher Rolle wird ersetzt (gleich unter welchem Namen), sonst entsteht es unter name. Der Wert trägt Typ und Rolle selbst."""
+    from routen import EINGABE_MERKMALE
+    typ, rolle = EINGABE_MERKMALE[name]
+    if isinstance(wert, dict):   # zeitraum: Uhrzeiten in Anführungszeichen, damit YAML sie nicht als Zahl liest
+        wert = fliess_map({k: skalar("wert", v) for k, v in wert.items()})
+    e = {"typ": typ, **({"rolle": rolle} if rolle else {}), "wert": wert, "quelle": quelle,
+         **({"geprueft": geprueft} if geprueft else {}), **({"notiz": notiz} if notiz else {})}
+    mk = knoten.get("merkmale")
+    if mk is None:
+        mk = knoten["merkmale"] = merkmale_knoten({})
+    vorhanden = next((k for k, v in mk.items() if isinstance(v, dict) and v.get("typ") == typ and (typ == "zeitraum" or v.get("rolle") == rolle)), None)
+    mk[vorhanden or name] = fliess_map(e)
+    altes_feld_entfernen(knoten, name)
+
+
+ALTE_FELDER = {"adresse": ("adresse",), "koordinaten": ("punkt",), "gpx": ("gpx",), "zeitraum": ("beginn", "ende"), "abfahrt": ("ab",),
+               "ankunft": ("an",), "buchungslink": ("buchungslink",)}
+
+
+def altes_feld_entfernen(knoten, name):
+    """Das feste Feld, das das Merkmal name ersetzt, vom Knoten nehmen (eine Datei, die noch nicht nachgezogen ist, wird beim ersten
+    Schreiben umgestellt). An einer Strecke ist an eine Kennung der Elternbezug und bleibt."""
+    from routen import ist_eltern
+    for feld in ALTE_FELDER[name]:
+        if feld == "an" and ist_eltern(knoten.get("an")):
+            continue
+        if feld in knoten:
+            del knoten[feld]
+
+
+def lage_merkmal_entfernen(knoten, name):
+    """Das typisierte Merkmal name (nach Typ und Rolle gesucht) entfernen -> True, wenn eines da war."""
+    from routen import EINGABE_MERKMALE
+    typ, rolle = EINGABE_MERKMALE[name]
+    mk = knoten.get("merkmale") or {}
+    k = next((k for k, v in mk.items() if isinstance(v, dict) and v.get("typ") == typ and (typ == "zeitraum" or v.get("rolle") == rolle)), None)
+    alt = any(f in knoten for f in ALTE_FELDER[name])
+    altes_feld_entfernen(knoten, name)
+    if k is None:
+        return alt
+    del mk[k]
+    if not mk:
+        del knoten["merkmale"]
+    return True
+
+
+def felder_zu_merkmalen(knoten):
+    """Umstellung (neu.py nachziehen, ADR-0007 Schritt b): die festen Felder adresse, punkt, gpx, beginn/ende, ab, an (Zeit) und
+    buchungslink eines Knotens werden typisierte Merkmale mit denselben Werten. Herkunft: die der Aussage, sonst die des Dings,
+    sonst „Bestand“. -> Liste der umgestellten Felder (leer: nichts zu tun)."""
+    from routen import ist_eltern
+    bestand = knoten.get("quelle") or S("schreiben.quelle_bestand")
+    umgestellt = []
+    for feld, name in (("adresse", "adresse"), ("punkt", "koordinaten"), ("gpx", "gpx"), ("ab", "abfahrt"), ("an", "ankunft"),
+                       ("buchungslink", "buchungslink")):
+        v = knoten.get(feld)
+        if v is None or (feld == "an" and ist_eltern(v)):
+            continue
+        if isinstance(v, dict):
+            wert, q, g, n = v.get("datei") if feld == "gpx" else v.get("wert"), v.get("quelle") or bestand, v.get("geprueft"), v.get("notiz")
+        else:
+            wert, q, g, n = v, bestand, None, None
+        del knoten[feld]
+        lage_merkmal_schreiben(knoten, name, wert, q, g, n)
+        umgestellt.append(feld)
+    if knoten.get("beginn") is not None:
+        b, e = knoten.pop("beginn"), knoten.pop("ende", None)
+        lage_merkmal_schreiben(knoten, "zeitraum", {"beginn": b, **({"ende": e} if e else {})}, bestand)
+        umgestellt.append("beginn")
+        if e:
+            umgestellt.append("ende")
+    if umgestellt and hasattr(knoten, "fa") and knoten.fa.flow_style():
+        knoten.fa.set_block_style()   # ein langer Fließ-Eintrag wird lesbar
+    return umgestellt
+
+
+def zeitraum_setzen(knoten, beginn, ende, quelle):
+    """beginn und ende (Uhrzeit HH:MM oder None) als Merkmal zeitraum setzen; ohne beginn entfällt es."""
+    if not beginn:
+        lage_merkmal_entfernen(knoten, "zeitraum")
+        return
+    lage_merkmal_schreiben(knoten, "zeitraum", {"beginn": beginn, **({"ende": ende} if ende else {})}, quelle)
+
+
+def merkmale_fest_trennen(args, was, katalog):
+    """Aus args["merkmale"] die Merkmale der Grundform (Eingabenamen) herauslösen, die die Art nicht selbst unter diesem Namen
+    kennt -> (Rest der Merkmale, {Eingabename: Wert-Angabe}). Ein Name, der nicht zur Grundform gehört, bleibt im Rest."""
+    roh = args.get("merkmale")
+    if not isinstance(roh, dict):
+        return roh, {}
+    fest, rest = {}, {}
+    for k, v in roh.items():
+        n = str(k).lower()
+        if n in GRUNDFORM_MERKMALE.get(was, ()) and not any(x["id"] == n or n in (x.get("auch") or []) for x in katalog):
+            fest[n] = v
+        else:
+            rest[k] = v
+    return rest, fest
+
+
+def fest_wert(name, v, quelle, geprueft):
+    """Angabe eines festen Merkmals aus der Anfrage -> (wert, quelle, geprueft). v: Wert oder {wert, quelle, geprueft}. Prüft den Typ."""
+    from routen import EINGABE_MERKMALE, lage_wert_gueltig, ist_link, UHRZEIT
+    a = dict(v) if isinstance(v, dict) and "wert" in v else {"wert": v}
+    w = a["wert"]
+    typ = EINGABE_MERKMALE[name][0]
+    if name == "koordinaten":
+        w = koordinaten_wert({"koordinaten": w if not isinstance(w, list) else ", ".join(map(str, w))})
+    elif name == "zeitraum":
+        if isinstance(w, str):
+            w = dict(zip(("beginn", "ende"), [x.strip() for x in re.split(r"\s*[-–]\s*", w) if x.strip()]))
+        if not lage_wert_gueltig("zeitraum", w):
+            raise Ablehnung("schreiben.fest_wert.zeitraum")
+    elif name in ("abfahrt", "ankunft"):
+        w = zeit_wert({"x": w}, "x")
+        if not w:
+            raise Ablehnung("schreiben.fest_wert.leer", name=name)
+    elif name == "buchungslink":
+        w = str(w).strip()
+        if not ist_link(w):
+            raise Ablehnung("schreiben.ding_anlegen.4")
+    elif typ == "adresse":
+        w = str(w).strip()
+        if not lage_wert_gueltig("adresse", w):
+            raise Ablehnung("schreiben.fest_wert.leer", name=name)
+    q = a.get("quelle") or quelle
+    if not q:
+        raise Ablehnung("schreiben.text_wert.1", feld="quelle")
+    g = a.get("geprueft")
+    return w, q, (datum(g, "geprueft", name) if g else geprueft)
+
+
 def route_stand(reise_dir):
     """Probebau des heutigen Stands -> d["route"] (Arten, Merkmale je Art, Wahlstellen mit Kriterien)."""
     import bauen
@@ -1189,6 +1337,7 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
     quelle = text_wert(args, "quelle", pflicht=True)
     hinweis = text_wert(args, "hinweis")
     d = {}
+    fest = {}   # feste Merkmale der Grundform aus der Anfrage: Eingabename -> Wert (ADR-0007, Schritt b)
     if was == "ort":
         d["name"] = text_wert(args, "name_des_dings", laenge=120) or text_wert(args, "titel", pflicht=True, laenge=120)
     elif was in ("unterkunft", "aufenthalt"):
@@ -1205,7 +1354,7 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
         if (link := text_wert(args, "buchungslink", laenge=600)):
             if not link.startswith(("http://", "https://")):
                 raise Ablehnung("schreiben.ding_anlegen.4")
-            d["buchungslink"] = link
+            fest["buchungslink"] = link
         if (frage := text_wert(args, "frage", laenge=10)):
             if not re.fullmatch(r"F-\d+", frage):
                 raise Ablehnung("schreiben.ding_anlegen.5")
@@ -1218,17 +1367,17 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
         if art not in arten or arten[art].get("grundform") != "bewegung":
             raise Ablehnung("schreiben.ding_anlegen.6", w1=', '.join(k for k, a in arten.items() if a.get('grundform') == 'bewegung') or 'keine')
         d["art"] = art
-        for k in ("ab", "an"):   # Zeitpunkte (Issue #135): HH:MM oder JJJJ-MM-TTTHH:MM+HH:MM
+        for k, name in (("ab", "abfahrt"), ("an", "ankunft")):   # Zeitpunkte (Issue #135): HH:MM oder JJJJ-MM-TTTHH:MM+HH:MM
             if k == "an" and ist_eltern_wert(args.get("an")):   # Elternbezug statt Ankunftszeit (ADR-0007)
                 continue
             if (z := zeit_wert(args, k)):
-                d[k] = z
-    if was == "aufenthalt":   # Uhrzeit für den Kalender (#77)
-        for feld in ("beginn", "ende"):
-            if (u := uhrzeit_wert(args, feld)):
-                d[feld] = u
-        if d.get("ende") and not d.get("beginn"):
+                fest[name] = z
+    if was == "aufenthalt":   # Uhrzeit für den Kalender (#77), als Merkmal zeitraum
+        zr = {feld: u for feld in ("beginn", "ende") if (u := uhrzeit_wert(args, feld))}
+        if zr.get("ende") and not zr.get("beginn"):
             raise Ablehnung("schreiben.ding_anlegen.7")
+        if zr:
+            fest["zeitraum"] = zr
     if (eltern := text_wert(args, "an", laenge=20)) and (was != "strecke" or ist_eltern_wert(eltern)):   # Elternbezug (ADR-0007)
         eltern_wert_pruefen(reise_dir, roh, None, eltern)
         d["an"] = eltern
@@ -1245,22 +1394,35 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
         raise Ablehnung("schreiben.lage_eintragen.ort_adresse")
     g = datum(args["geprueft"], "geprueft", "Lage") if args.get("geprueft") else heute
     if adresse:
-        d["adresse"] = {"wert": adresse, "quelle": quelle, "geprueft": g}
+        fest["adresse"] = adresse
     if punkt:
-        d["punkt"] = {"wert": punkt, "quelle": quelle, "geprueft": g}
-    werte = merkmale_werte(args.get("merkmale"), (route.get("merkmale") or {}).get(d.get("art")) or [], heute,
+        fest["koordinaten"] = punkt
+    katalog = (route.get("merkmale") or {}).get(d.get("art")) or []
+    rest_merkmale, aus_merkmalen = merkmale_fest_trennen(args, was, katalog) if was != "ort" else (None, {})
+    if was == "ort" and isinstance(args.get("merkmale"), dict):
+        aus_merkmalen = {str(k).lower(): v for k, v in args["merkmale"].items() if str(k).lower() in GRUNDFORM_MERKMALE["ort"]}
+    for name, v in aus_merkmalen.items():
+        if name in fest:
+            raise Ablehnung("schreiben.fest_wert.doppelt", name=name)
+        fest[name] = v
+    erlaubt = GRUNDFORM_MERKMALE[was]
+    for name in fest:
+        if name not in erlaubt:
+            raise Ablehnung("schreiben.fest_wert.nicht_fuer", name=name, was=S("schreiben.ding_wort." + was), w1=", ".join(erlaubt))
+    festwerte = {name: fest_wert(name, v, quelle, g) for name, v in fest.items()}
+    werte = merkmale_werte(rest_merkmale, katalog, heute,
                            {"quelle": quelle, "geprueft": args.get("geprueft")}) if was != "ort" else {}
     did = neue_id(reise_dir, kuerzel)
-    lage = {k: d.pop(k) for k in ("adresse", "punkt") if k in d}
     knoten = fliess_map(d) if was not in ("unterkunft", "aufenthalt") else block_map(d)
-    if lage and was == "ort":
+    if festwerte and was in ("ort", "strecke"):
         knoten = block_map(d)
-    for k, v in lage.items():
-        knoten[k] = fliess_map(v)
     if werte:
         if was == "strecke":
             knoten = block_map(d)
         knoten["merkmale"] = merkmale_knoten(werte)
+    for name, (w, q, gp) in festwerte.items():
+        lage_merkmal_schreiben(knoten, name, w, q, gp if name in ("adresse", "koordinaten") else None)
+    lage = {"punkt": {"wert": festwerte["koordinaten"][0]}} if "koordinaten" in festwerte else {}
     roh.setdefault(abschnitt, type(roh)())
     roh[abschnitt][did] = knoten
     name = d.get("name") or d.get("titel")
@@ -1388,6 +1550,8 @@ def ding_aendern(reise_dir, wer, args, heute=None):
     if args.get("neuer_name") is not None:   # der Konnektor nimmt name als Vornamen der sprechenden Person; der neue Name heißt dort neuer_name
         args = {**args, "name": args["neuer_name"]}
     geaendert = []
+    zeit_neu = {}
+    quelle_fest = knoten.get("quelle") or text_wert(args, "quelle", laenge=600) or S("schreiben.quelle_gespraech", w1=wer.get("name", ""))
     eltern = args.get("an") if args.get("an") is not None and (was != "strecke" or ist_eltern_wert(args.get("an"))) else None
     if eltern is not None:   # Elternbezug (ADR-0007); an einer Strecke bleibt eine Uhrzeit die Ankunftszeit
         eltern_aendern(reise_dir, roh, ziel, was, knoten, eltern, geaendert)
@@ -1432,6 +1596,19 @@ def ding_aendern(reise_dir, wer, args, heute=None):
             continue
         else:
             v = text_wert(args, feld, laenge=600 if feld == "quelle" else MAX_TEXT) or ""
+        if feld in ("beginn", "ende"):   # Merkmal zeitraum (ADR-0007): beide zusammen am Schluss
+            zeit_neu[feld] = v
+            continue
+        if feld in ("ab", "an", "buchungslink"):   # typisierte Merkmale abfahrt, ankunft, buchungslink
+            name = {"ab": "abfahrt", "an": "ankunft"}.get(feld, feld)
+            alt = lage_lesen(knoten).get(feld)
+            if v == "":
+                if lage_merkmal_entfernen(knoten, name) and alt is not None:
+                    geaendert.append(S("schreiben.antwort.ding.entfernt", w1=feld, w2=alt))
+            elif str(alt) != str(v):
+                lage_merkmal_schreiben(knoten, name, v, quelle_fest)
+                geaendert.append(S("schreiben.antwort.ding.wechsel", w1=feld, w2=alt, w3=v) if alt is not None else S("schreiben.antwort.ding.neu", w1=feld, w2=v))
+            continue
         alt = knoten.get(feld) if feld != "art" else (knoten.get("art") or art_schluessel(knoten.get("typ")))
         if v == "" and feld in ("hinweis", "buchungslink", "frage", "zeit", "beginn", "ende", "ab", "an"):
             if feld in knoten:
@@ -1444,10 +1621,20 @@ def ding_aendern(reise_dir, wer, args, heute=None):
         knoten[feld] = skalar(feld, v)
         if feld == "art" and "typ" in knoten:   # Brücke typ: entfällt, sobald art: steht
             del knoten["typ"]
+    if zeit_neu:   # beginn und ende zusammen als Merkmal zeitraum
+        gelesen = lage_lesen(knoten)
+        b, e = (zeit_neu.get(k, gelesen.get(k)) or None for k in ("beginn", "ende"))
+        if e and not b:
+            raise Ablehnung("schreiben.ding_anlegen.7")
+        for k in ("beginn", "ende"):
+            alt, neu_ = gelesen.get(k), (b, e)[k == "ende"]
+            if k in zeit_neu and alt != neu_:
+                geaendert.append(S("schreiben.antwort.ding.wechsel", w1=k, w2=alt, w3=neu_) if alt and neu_ else
+                                 S("schreiben.antwort.ding.neu", w1=k, w2=neu_) if neu_ else S("schreiben.antwort.ding.entfernt", w1=k, w2=alt))
+        if any(k in zeit_neu and gelesen.get(k) != (b, e)[k == "ende"] for k in ("beginn", "ende")):
+            zeitraum_setzen(knoten, b, e, quelle_fest)
     if not geaendert:
         raise Ablehnung("schreiben.ding_aendern.6", bezeichnung=bezeichnung, w2=', '.join(AENDERBAR[was]))
-    if knoten.get("ende") and not knoten.get("beginn"):
-        raise Ablehnung("schreiben.ding_anlegen.7")
     grund = text_wert(args, "grund")
     routen_speichern(reise_dir, roh)
     titel = S("schreiben.titel.geaendert", w1=bezeichnung, w2=kurz_namen(geaendert))
@@ -1495,18 +1682,19 @@ def lage_eintragen(reise_dir, wer, args, heute=None):
     if not adresse and not punkt:
         raise Ablehnung("schreiben.lage_eintragen.4")
     geaendert = []
+    gelesen = lage_lesen(knoten)
     for feld, wert in (("adresse", adresse), ("punkt", punkt)):
         if not wert:
             continue
-        alt = (knoten.get(feld) or {}).get("wert") if isinstance(knoten.get(feld), dict) else None
-        knoten[feld] = fliess_map({"wert": wert, "quelle": quelle, "geprueft": g})
+        alt = (gelesen.get(feld) or {}).get("wert") if isinstance(gelesen.get(feld), dict) else None
+        lage_merkmal_schreiben(knoten, "adresse" if feld == "adresse" else "koordinaten", wert, quelle, g)
         text = ", ".join(map(str, wert)) if feld == "punkt" else wert
         geaendert.append(S("schreiben.antwort.lage.koordinaten" if feld == "punkt" else "schreiben.antwort.lage.adresse", w1=text)
                          + (S("schreiben.antwort.lage.war", w1=", ".join(map(str, alt)) if isinstance(alt, list) else alt) if alt else ""))
     routen_speichern(reise_dir, roh)
     grund = text_wert(args, "grund")
     # Adresse ohne Koordinaten (K3): Frieda soll Koordinaten recherchieren; bis dahin nennt der Kartenstatus den Eintrag
-    ohne = not isinstance(knoten.get("punkt"), dict)
+    ohne = not isinstance(lage_lesen(knoten).get("punkt"), dict)
     return (S("schreiben.titel.lage", w1=bezeichnung),
             f"{bezeichnung}: " + verbinden(geaendert, "; ") + S("schreiben.antwort.lage.herkunft", w1=quelle, w2=g.isoformat())
             + (S("schreiben.antwort.grund", w1=grund) if grund else "") + (S("schreiben.antwort.lage.koordinaten_fehlen") if ohne else ""))
@@ -1592,7 +1780,7 @@ def track_anhaengen(reise_dir, wer, args, heute=None):
     datei.parent.mkdir(parents=True, exist_ok=True)
     war = datei.exists()
     datei.write_text(text if text.endswith("\n") else text + "\n", encoding="utf-8")
-    knoten["gpx"] = fliess_map({"datei": rel, "quelle": quelle, "geprueft": heute})
+    lage_merkmal_schreiben(knoten, "gpx", rel, quelle, heute)
     routen_speichern(reise_dir, roh)
     wp = sum(1 for e in wurzel.iter() if e.tag.rsplit("}", 1)[-1] == "wpt" and any(c.tag.rsplit("}", 1)[-1] == "name" and (c.text or "").strip() for c in e))
     bezeichnung = f"{ziel} {knoten.get('titel', '')}".strip()

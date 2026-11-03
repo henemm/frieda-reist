@@ -134,7 +134,88 @@ def art_schluessel(text):
     t = texte.umschrift(str(text or "").strip()).replace("&", "und")
     t = "".join(c for c in unicodedata.normalize("NFKD", t) if not unicodedata.combining(c))
     return re.sub(r"[^a-z0-9]+", "_", t).strip("_") or None
-TYPEN = {"text", "geld", "zahl", "auswahl", "link"}
+# Typisierte Merkmale der Grundformen (ADR-0007, Schritt b, #283): Lage, Zeit und Track waren feste Felder (adresse, punkt, beginn,
+# ende, ab, an, buchungslink, gpx) und sind Merkmale mit einem Typ, den die Software kennt und mit je einem Baustein zeigt.
+# Ein solches Merkmal trägt seinen Typ (und, wo er mehrdeutig ist, seine Rolle) am Wert; sein Name ist ein Schlüssel der Reise.
+# Die Software liest nur Typ und Rolle, nie den Namen (ADR-0001, Frage 2). Beim Lesen werden sie in die Felder gefaltet, die
+# der Rest des Codes (Karte, Kalender, Anschluss, Mahnung, Seite) liest.
+LAGE_TYPEN = ("adresse", "koordinaten", "gpx", "uhrzeit", "zeitpunkt", "zeitraum")
+TYPEN = {"text", "geld", "zahl", "auswahl", "link", *LAGE_TYPEN}
+# (Typ, Rolle) -> Feld, in das gefaltet wird; zeitraum belegt beginn und ende
+TYP_FELD = {("adresse", None): "adresse", ("koordinaten", None): "punkt", ("gpx", None): "gpx", ("uhrzeit", "beginn"): "beginn",
+            ("uhrzeit", "ende"): "ende", ("zeitpunkt", "abfahrt"): "ab", ("zeitpunkt", "ankunft"): "an", ("zeitraum", None): "beginn",
+            ("link", "buchung"): "buchungslink"}
+# Festes Feld -> Merkmal (Schlüssel beim Schreiben, Typ, Rolle); die Umstellung (neu.py nachziehen) und der Schreibweg nutzen es
+FELD_MERKMAL = {"adresse": ("adresse", "adresse", None), "punkt": ("koordinaten", "koordinaten", None), "gpx": ("gpx", "gpx", None),
+                "ab": ("abfahrt", "zeitpunkt", "abfahrt"), "an": ("ankunft", "zeitpunkt", "ankunft"),
+                "buchungslink": ("buchungslink", "link", "buchung")}
+# Merkmale, die der Konnektor beim Anlegen und Ändern unter diesem Namen annimmt (Eingabe), je Grundform: Name -> (Typ, Rolle)
+EINGABE_MERKMALE = {"adresse": ("adresse", None), "koordinaten": ("koordinaten", None), "gpx": ("gpx", None), "zeitraum": ("zeitraum", None),
+                    "abfahrt": ("zeitpunkt", "abfahrt"), "ankunft": ("zeitpunkt", "ankunft"), "buchungslink": ("link", "buchung")}
+
+
+def lage_wert_gueltig(typ, w):
+    """Ist w ein gültiger Wert dieses Typs? adresse: Text; koordinaten: [Breite, Länge]; gpx: Datei unter medien/; uhrzeit: HH:MM;
+    zeitpunkt: Uhrzeit oder Zeitpunkt mit Datum; zeitraum: {beginn, ende} (Uhrzeiten)."""
+    if typ == "adresse":
+        return isinstance(w, str) and bool(w.strip())
+    if typ == "koordinaten":
+        return (isinstance(w, list) and len(w) == 2 and all(isinstance(x, (int, float)) for x in w)
+                and -90 <= w[0] <= 90 and -180 <= w[1] <= 180)
+    if typ == "gpx":
+        return isinstance(w, str) and w.startswith("medien/") and w.lower().endswith(".gpx") and ".." not in w
+    if typ == "uhrzeit":
+        return isinstance(w, str) and UHRZEIT.match(w) is not None
+    if typ == "zeitpunkt":
+        return zeitpunkt(w) is not None
+    if typ == "zeitraum":
+        return (isinstance(w, dict) and not set(w) - {"beginn", "ende"} and isinstance(w.get("beginn"), str) and UHRZEIT.match(w["beginn"]) is not None
+                and (w.get("ende") is None or (isinstance(w["ende"], str) and UHRZEIT.match(w["ende"]) is not None)))
+    return True
+
+
+def lage_merkmale_falten(d, wo, fehl):
+    """Kopie des Dings, in der die typisierten Merkmale (Typ aus LAGE_TYPEN oder link mit Rolle buchung) in die festen Felder
+    gefaltet sind, die der Rest des Codes liest; die übrigen Merkmale bleiben. Fehler gehen an fehl(Schlüssel, **werte)."""
+    mk = d.get("merkmale") if isinstance(d, dict) else None
+    if not isinstance(mk, dict):
+        return d
+    neu, rest, belegt = dict(d), {}, set()
+    for k, v in mk.items():
+        t, rolle = (v.get("typ"), v.get("rolle")) if isinstance(v, dict) else (None, None)
+        if t not in LAGE_TYPEN and not (t == "link" and rolle == "buchung"):
+            rest[k] = v
+            continue
+        feld = TYP_FELD.get((t, rolle if t in ("uhrzeit", "zeitpunkt", "link") else None))
+        if feld is None:
+            fehl("pruefung.routen.lage_rolle", wo=wo, k=k, typ=t)
+            continue
+        wert = v.get("wert")
+        if (t != "link" and not lage_wert_gueltig(t, wert)) or (t == "link" and not ist_link(wert)):
+            fehl("pruefung.routen.lage_wert", wo=wo, k=k, typ=t)
+            continue
+        felder = ("beginn", "ende") if t == "zeitraum" else (feld,)
+        if any(x in belegt or d.get(x) is not None for x in felder):
+            fehl("pruefung.routen.lage_doppelt", wo=wo, k=k, feld=feld)
+            continue
+        belegt.update(felder)
+        herkunft = {x: v.get(x) for x in ("quelle", "notiz", "geprueft") if x in v}
+        if t == "zeitraum":
+            neu["beginn"] = wert["beginn"]
+            if wert.get("ende") is not None:
+                neu["ende"] = wert["ende"]
+        elif t == "gpx":
+            neu["gpx"] = {"datei": wert, **herkunft}
+        elif t in ("adresse", "koordinaten"):
+            neu[feld] = {"wert": wert, "quelle": v.get("quelle"), "notiz": v.get("notiz"), "geprueft": v.get("geprueft")}
+        else:
+            neu[feld] = wert
+    neu["merkmale"] = rest
+    if not rest:
+        neu.pop("merkmale")
+    return neu
+
+
 LINK_MUSTER = re.compile(r"https?://[^\s<>\"]+\Z", re.I)
 
 
@@ -348,15 +429,19 @@ class Routen:
         self.q = quelle
         self.warnungen = []
         self.entscheider = set(self.r.get("entscheider", []) if entscheider is None else entscheider)
-        self.orte = self.r.get("orte") or {}
+        # Typisierte Merkmale (Lage, Zeit, Track; ADR-0007) werden in die Felder gefaltet, die der Rest des Codes liest
+        falten = lambda gruppe, wort: {k: lage_merkmale_falten(v, f"{wort} {k}", lambda s, **kw: self.fehl(texte.satz(s, **kw)))
+                                       for k, v in (gruppe or {}).items()}
+        self.orte = falten(self.r.get("orte"), "Ort")
         self.strecken = {}
         for sid, s in (self.r.get("strecken") or {}).items():
             if isinstance(s, dict) and ist_eltern(s.get("an")):   # an: <Kennung> ist der Elternbezug, nicht die Ankunftszeit
                 s = {k: v for k, v in s.items() if k != "an"} | {"eltern": s["an"]}
             self.strecken[sid] = s
+        self.strecken = falten(self.strecken, "Strecke")
         self.eltern = {}          # ID -> Elternelement, nur wo an: gesetzt ist (ADR-0007)
-        self.unterkuenfte = self.r.get("unterkuenfte") or {}
-        self.aufenthalte = self.r.get("aufenthalte") or {}   # Aufenthalte ohne Nacht: Besichtigung, Essen, Besuch (A-…)
+        self.unterkuenfte = falten(self.r.get("unterkuenfte"), "Unterkunft")
+        self.aufenthalte = falten(self.r.get("aufenthalte"), "Aufenthalt")   # Aufenthalte ohne Nacht: Besichtigung, Essen, Besuch (A-…)
         self.buchungen = self.r.get("buchungen") or {}       # Buchungen (B-…) zu Unterkünften, Aufenthalten, Strecken (#76)
         self.buchung_je_ding = {}                            # U-01/A-01/E-01 -> B-ID der geltenden Buchung (nicht storniert)
         self.tage = self.r.get("tage") or {}
@@ -1040,6 +1125,8 @@ class Routen:
             self.fehl(texte.satz("pruefung.routen.90", wo=wo, k=k))
         if d["typ"] == "link" and not ist_link(w):
             self.fehl(texte.satz("pruefung.routen.91", wo=wo, k=k, w=w))
+        if d["typ"] in LAGE_TYPEN and not lage_wert_gueltig(d["typ"], w):
+            self.fehl(texte.satz("pruefung.routen.lage_wert", wo=wo, k=k, typ=d["typ"]))
         g = e.get("geprueft")
         if g is not None and not isinstance(g, datetime.date):
             self.fehl(texte.satz("pruefung.routen.92", wo=wo, k=k))
@@ -1059,6 +1146,9 @@ class Routen:
             out["gilt"] = gilt
         if d["typ"] == "link":
             out["link"] = True   # die Seite zeigt den Wert als Link, überall gleich
+        if d["typ"] in LAGE_TYPEN:
+            out["typ"] = d["typ"]   # die Seite zeigt den Wert mit dem Baustein seines Typs (merkmalWert)
+            out["wert"] = w if d["typ"] in ("koordinaten", "zeitraum") else str(w)
         return out
 
     def merkmale_pruefen(self):

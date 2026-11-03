@@ -460,6 +460,12 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
                 meldungen.append(f"{sid}: art {strecken_arten[sid]} (given)")
             else:
                 meldungen.append(f"OPEN {sid}: no kind; give it with --strecke {sid}=<art> (the build requires it)")
+    # Typisierte Merkmale (ADR-0007, Schritt b): feste Felder adresse, punkt, beginn/ende, ab, an (Zeit), buchungslink, gpx → merkmale:
+    for gruppe, wort in (("orte", "Ort"), ("strecken", "Strecke"), ("unterkuenfte", "Unterkunft"), ("aufenthalte", "Aufenthalt")):
+        for did, k in ((roh or {}).get(gruppe) or {}).items():
+            if isinstance(k, dict):
+                for feld in sb.felder_zu_merkmalen(k):
+                    meldungen.append(f"{did}: {feld} → merkmale (typisiert)")
     for vid, w in ((roh or {}).get("wahlstellen") or {}).items():
         if not isinstance(w, dict):
             continue

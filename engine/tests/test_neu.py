@@ -337,7 +337,7 @@ def test_nachziehen_nur_schluessel(tmp_path):
     m = neu.nachziehen(r, {"E-23": "bus"})
     assert "E-23: art bus (given)" in m and not [t for t in m if t.startswith("OPEN")]
     text = p.read_text(encoding="utf-8")
-    assert "typ:" not in text and "bereich:" not in text and "art: planung" not in text
+    assert "typ: Hotel" not in text and "typ: Pension" not in text and "bereich:" not in text and "art: planung" not in text
     assert "# Alle Unterkünfte sind erfunden" in text                     # Kommentare bleiben
     nachher = bauen.Bauer(r, tmp_path / "n").daten()
     assert nachher["route"]["unterkuenfte"] == vorher["route"]["unterkuenfte"]
