@@ -52,8 +52,8 @@ def ueberblick(tmp_path, browser, datum, status=None):
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
 def test_reiseueberblick(tmp_path, browser):
     for breite, a in ueberblick(tmp_path, browser, "2026-10-28").items():
-        # Seitenordnung (28.10.2026): Reise · Zu tun · Wissen · Wünsche, kein Reiter „Plan“
-        assert a["reiter"] == ["Reise", "Zu tun", "Wissen", "Wünsche"] and a["aktiv"] == "Reise", a["reiter"]
+        # Seitenordnung (28.10.2026): Reise · Karte (Baustein karte, #231) · Zu tun · Wissen · Wünsche, kein Reiter „Plan“
+        assert a["reiter"] == ["Reise", "Karte", "Zu tun", "Wissen", "Wünsche"] and a["aktiv"] == "Reise", a["reiter"]
         assert not a["planname"] and a["steckbriefe"] == 0                      # kein Planname, keine anderen Pläne
         assert a["kopf"] == ["Reise", "noch 197 Tage"], a["kopf"]
         assert a["kennzahlen"] == ["Tage", "Gehzeit", "Strecke", "Höhenmeter", "Übernachtungen"], a["kennzahlen"]

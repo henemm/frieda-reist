@@ -13,7 +13,7 @@ for (const breite of [390, 1300]) {
   await ctx.route("**/api/**", r => r.abort());
   const p = await ctx.newPage();
   p.on("pageerror", e => fehler.push(`${breite}: ${e}`));
-  await p.goto(basis + "#varianten");
+  await p.goto(basis + "#karte");
   await p.waitForSelector(".kartenbox .leaflet-marker-icon", {state: "attached"});
   const a = aus[breite] = await p.evaluate(() => ({
     reiter: [...document.querySelectorAll("#nav a")].map(x => x.textContent.trim()),
