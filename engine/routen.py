@@ -1649,6 +1649,8 @@ class Routen:
                     if x not in bekannt:
                         self.fehl(texte.satz("pruefung.routen.ansicht_unbekannt", titel=t, feld=feld, x=x))
                 eintrag[feld] = [x for x in liste if x in bekannt]
+            if not eintrag.get("uebersicht"):
+                eintrag.pop("uebersicht", None)   # nur, wo die Ansicht eine Übersicht anfordert
             aus.append(eintrag)
         return aus
 
