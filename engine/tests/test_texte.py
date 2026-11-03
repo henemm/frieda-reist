@@ -64,6 +64,14 @@ def test_paritaet_schluessel_und_platzhalter():
             assert set(PLATZHALTER.findall(text)) == set(PLATZHALTER.findall(de[s])), f"{k}: Platzhalter von {s} weichen ab"
 
 
+@pytest.mark.parametrize("kuerzel", ["de", "en"])
+def test_reise_yaml_ist_pflicht_im_katalog(kuerzel):
+    """#267, PR a: Ohne reise.yaml bricht der Bau ab; der Hinweis auf die alte Form ist weg."""
+    katalog = texte.sprache(kuerzel).TEXTE
+    assert "{pfad}" in katalog["pruefung.bauen.reise_yaml_fehlt"] and "docs/produkt.md" in katalog["pruefung.bauen.reise_yaml_fehlt"]
+    assert "pruefung.reise.2" not in katalog
+
+
 def test_leerzeichen_am_rand_wie_im_deutschen():
     """Texte, die der Code aneinanderhängt, tragen ihre Leerzeichen am Rand in jeder Sprache gleich (", geprüft " und ", checked"
     ergab „checked2026-…“)."""

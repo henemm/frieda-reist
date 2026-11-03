@@ -13,8 +13,7 @@ Hintergrund und Entscheidungen: docs/produkt.md (26.10.2026). Die Zuordnung der 
   darstellung Startreiter, Reiternamen, Tiefe (Plan-Baum unter „Pläne“), Gruppen (mahnungen: ohne Wirkung seit 29.10.2026, der Kasten
               ist weg; plan_reiter: ohne Wirkung seit #214, die Abschnitte stehen unter Wissen)
 
-Fehler brechen den Bau ab (wie beim Routenmodell). Fehlt reise.yaml, kommen Eckdaten und Darstellung aus
-reise.json (alte Form) mit einem Hinweis; Status ist dann „planung“, Personen gibt es keine.
+Fehler brechen den Bau ab (wie beim Routenmodell). reise.yaml ist Pflicht; fehlt sie, bricht schon der Bau ab (#267).
 """
 import datetime
 import re
@@ -350,9 +349,8 @@ def regeln_mit_vorgaben(eigen):
 
 class Reise:
     def __init__(self, roh, cfg, fehler, hinweise, quelle="reise.yaml"):
-        """roh: geladenes reise.yaml (None, wenn die Datei fehlt). cfg: reise.json (für die alte Form).
+        """roh: geladenes reise.yaml. cfg: reise.json (Felder dort, die nach reise.yaml gehören, sind Fehler).
         fehler/hinweise: Listen des Bauers, in die geschrieben wird."""
-        self.alt = roh is None
         self.r = roh or {}
         self.cfg = cfg or {}
         self.fehler = fehler
@@ -364,21 +362,17 @@ class Reise:
 
     # ---------- Teile ----------
     def eckdaten(self):
-        quelle = self.cfg if self.alt else self.r
-        if self.alt:
-            self.hinweise.append(texte.satz("pruefung.reise.2"))
-        else:
-            for k in ALTE_ECKDATEN + DARSTELLUNG + ("funktionen",):
-                if k in self.cfg:
-                    self.fehl(texte.satz("pruefung.reise.noch_in_json.bausteine" if k == "funktionen" else
-                                         "pruefung.reise.noch_in_json.darstellung" if k in DARSTELLUNG else "pruefung.reise.noch_in_json", k=k))
-        e = {k: quelle.get(k) for k in ALTE_ECKDATEN}
+        for k in ALTE_ECKDATEN + DARSTELLUNG + ("funktionen",):
+            if k in self.cfg:
+                self.fehl(texte.satz("pruefung.reise.noch_in_json.bausteine" if k == "funktionen" else
+                                     "pruefung.reise.noch_in_json.darstellung" if k in DARSTELLUNG else "pruefung.reise.noch_in_json", k=k))
+        e = {k: self.r.get(k) for k in ALTE_ECKDATEN}
         for k in ("titel", "pfad"):
             if not isinstance(e.get(k), str) or not e[k].strip():
                 self.fehl(texte.satz("pruefung.reise.3", k=k))
         e["untertitel"] = e.get("untertitel") or ""
-        e["sprache"] = self.sprache(quelle.get("sprache"))
-        ziel = None if self.alt else self.r.get("ziel")
+        e["sprache"] = self.sprache(self.r.get("sprache"))
+        ziel = self.r.get("ziel")
         if ziel is not None and (not isinstance(ziel, str) or len(ziel) > ZIEL_LAENGE or "\n" in ziel):
             self.fehl(texte.satz("pruefung.reise.ziel", n=ZIEL_LAENGE))
             ziel = None
@@ -418,8 +412,6 @@ class Reise:
         return {"von": z["von"].isoformat(), "bis": z["bis"].isoformat()}
 
     def status(self):
-        if self.alt:
-            return {"wert": "planung", "verlauf": []}
         st = self.r.get("status")
         if not isinstance(st, dict) or st.get("wert") not in STATUS:
             self.fehl(texte.satz("pruefung.reise.7", w1=', '.join(STATUS)))
@@ -479,7 +471,7 @@ class Reise:
                     self.fehl(texte.satz("pruefung.reise.20", k=k, f=f))
             aus.append({"schluessel": str(k), "name": p["name"], "rolle": rolle_neu(p["rolle"]),
                         "reist": bool(p.get("reist", True)), "notiz": p.get("notiz") or "", **teil})
-        if not self.alt and not any(p["rolle"] == "organisator" for p in aus):
+        if not any(p["rolle"] == "organisator" for p in aus):
             self.fehl(texte.satz("pruefung.reise.21"))
         return aus
 
@@ -490,8 +482,6 @@ class Reise:
         return {p.get("name") for p in roh.values() if isinstance(p, dict) and rolle_neu(p.get("rolle")) == "organisator"}
 
     def bausteine(self):
-        if self.alt:
-            return [b for b in BAUSTEINE if b not in NOCH_NICHT_GEBAUT and b != "wuensche"]
         roh = self.r.get("bausteine")
         if roh is None:
             self.fehl(texte.satz("pruefung.reise.22"))
@@ -548,28 +538,26 @@ class Reise:
         return r
 
     def darstellung(self):
-        quelle = self.cfg if self.alt else (self.r.get("darstellung") or {})
+        quelle = self.r.get("darstellung") or {}
         if not isinstance(quelle, dict):
             self.fehl(texte.satz("pruefung.reise.37"))
             quelle = {}
-        if not self.alt:
-            for k in quelle:
-                if k not in DARSTELLUNG and k not in ALTE_DARSTELLUNG:
-                    self.fehl(texte.satz("pruefung.reise.38", k=k, w1=', '.join(DARSTELLUNG)))
+        for k in quelle:
+            if k not in DARSTELLUNG and k not in ALTE_DARSTELLUNG:
+                self.fehl(texte.satz("pruefung.reise.38", k=k, w1=', '.join(DARSTELLUNG)))
         return {"gruppen": quelle.get("gruppen") or {}, "tiefe": bool(quelle.get("tiefe")),
                 "varianten_titel": quelle.get("varianten_titel", "Varianten"),
                 "start": quelle.get("start")}
 
     def daten(self):
         """-> Eintrag „reise“ für daten.json; Fehler stehen danach in self.fehler."""
-        if not self.alt:
-            for k in self.r:
-                if k not in ALTE_ECKDATEN + ("ziel", "zeitraum", "status", "personen", "bausteine", "regeln", "darstellung", "verlauf", "sprache"):
-                    self.fehl(texte.satz("pruefung.reise.39", k=k))
+        for k in self.r:
+            if k not in ALTE_ECKDATEN + ("ziel", "zeitraum", "status", "personen", "bausteine", "regeln", "darstellung", "verlauf", "sprache"):
+                self.fehl(texte.satz("pruefung.reise.39", k=k))
         d = self.eckdaten()
         d["verlauf"] = self.verlauf()
         d.update(self.darstellung())
-        d["zeitraum"] = None if self.alt else self.zeitraum()
+        d["zeitraum"] = self.zeitraum()
         if not d["untertitel"]:   # ohne eigenen Untertitel: aus Ziel und Zeitraum, beim Bau, damit er nie veraltet (#217)
             d["untertitel"] = untertitel_aus(d["ziel"], d["zeitraum"], d["sprache"])
         d["status"] = self.status()

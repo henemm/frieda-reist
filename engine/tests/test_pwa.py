@@ -1,4 +1,5 @@
 """Tests für die PWA-Hülle (Issue #6): Manifest, Icons, sw.js mit Inhalts-Hash, Browser-Prüfung."""
+import datetime
 import functools
 import http.server
 import json
@@ -11,6 +12,7 @@ import threading
 from pathlib import Path
 
 import pytest
+import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bauen  # noqa: E402
@@ -27,8 +29,14 @@ def mini_reise(tmp_path):
     Image.new("RGB", (40, 30), "red").save(r / "medien/karte.png")
     (r / "plan.md").write_text("# Plan\n\n## Tagesplan\n\nTag 1\n\n![Karte](medien/karte.png)\n", encoding="utf-8")
     (r / "reise.json").write_text(json.dumps({
-        "titel": "Testreise – Untertitel", "pfad": "test", "plan": "plan.md",
-        "abschnitte": {"plan.md": {"Tagesplan": ["W-01", "plan"]}}}), encoding="utf-8")
+        "plan": "plan.md", "abschnitte": {"plan.md": {"Tagesplan": ["W-01", "plan"]}}}), encoding="utf-8")
+    # reise.yaml ist Pflicht (#267): Eckdaten, eine Organisatorin, alle gebauten Bausteine außer Wünschen
+    (r / "reise.yaml").write_text(yaml.safe_dump({
+        "titel": "Testreise – Untertitel", "pfad": "test",
+        "status": {"wert": "planung", "verlauf": [{"datum": datetime.date(2026, 10, 26), "wert": "planung", "wer": "Hanna"}]},
+        "personen": {"hanna": {"name": "Hanna", "rolle": "organisator"}},
+        "bausteine": ["varianten", "karte", "rueckmeldungen", "fragen", "aufgaben", "waechter"]},
+        allow_unicode=True, sort_keys=False), encoding="utf-8")
     return r
 
 

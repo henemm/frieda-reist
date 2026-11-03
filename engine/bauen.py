@@ -287,13 +287,14 @@ class Bauer:
         if not pfad.exists():
             raise BauFehler([texte.satz("pruefung.bauen.datei_fehlt", pfad=pfad)])
         self.cfg = json.loads(pfad.read_text(encoding="utf-8"))
-        # Eckdaten, Status, Personen, Bausteine, Regeln, Darstellung (docs/produkt.md); fehlt die Datei, alte Form
-        self.reise_roh = None
-        if (self.reise_dir / "reise.yaml").exists():
-            try:
-                self.reise_roh = yaml.safe_load((self.reise_dir / "reise.yaml").read_text(encoding="utf-8")) or {}
-            except yaml.YAMLError as e:
-                raise BauFehler([texte.satz("pruefung.bauen.yaml_reise", e=e)])
+        # Eckdaten, Status, Personen, Bausteine, Regeln, Darstellung (docs/produkt.md); ohne die Datei kein Bau (#267)
+        pfad = self.reise_dir / "reise.yaml"
+        if not pfad.exists():
+            raise BauFehler([texte.satz("pruefung.bauen.reise_yaml_fehlt", pfad=pfad)])
+        try:
+            self.reise_roh = yaml.safe_load(pfad.read_text(encoding="utf-8")) or {}
+        except yaml.YAMLError as e:
+            raise BauFehler([texte.satz("pruefung.bauen.yaml_reise", e=e)])
         self.eck = Reise(self.reise_roh, self.cfg, self.fehler, self.hinweise).daten()
         self.etappen_muster = re.compile(self.cfg.get("etappen_muster", etappen_muster()))
 
@@ -569,7 +570,7 @@ class Bauer:
                 self.fehler.append(texte.satz("pruefung.bauen.20", r_rel=r_rel, e=e))
                 roh = {}
             status = {z["id"]: z["status"] for z in fragen["zeilen"]}
-            if "entscheider" in roh and self.reise_roh is not None:
+            if "entscheider" in roh:
                 self.fehler.append(texte.satz("pruefung.bauen.21", r_rel=r_rel))
             organisator = [p["name"] for p in self.eck["personen"] if p["rolle"] == "organisator"]
             # Arten und Merkmale der Reise (docs/ontologie.md): plan/arten.yaml neben routen.yaml
@@ -580,7 +581,7 @@ class Bauer:
                 self.fehler.append(texte.satz("pruefung.bauen.22", a_rel=a_rel, e=e))
                 arten = None
             route = Routen(roh, etappen, status, self.fehler, self.id_anlegen, r_rel, arten=arten,
-                           entscheider=organisator if self.reise_roh is not None else None,
+                           entscheider=organisator,
                            wissen={i for i in self.ids if i.startswith("W-")}, sprache=self.eck["sprache"]).bauen()
             verhalten_anwenden(route, self.eck["verhalten"], self.eck["sprache"])
             self._art_kategorien = kategorien_aus_arten(route) if route else {}

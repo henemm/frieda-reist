@@ -92,7 +92,7 @@ FRAGEN = """# Fragen
 """
 
 CFG = {
-    "titel": "Test", "untertitel": "x", "pfad": "test", "plan": "plan/plan.md",
+    "plan": "plan/plan.md",
     "fragen": "fragen.md", "etappen_dossier": "inhalt/e.md", "unterkuenfte_dossier": "inhalt/u.md",
     "bilder_max_breite": 1600,
     "abschnitte": {
@@ -102,7 +102,14 @@ CFG = {
     },
     "tabellen": {"Tagesplan": ["W-05", "plan", "tage"], "Unterkünfte": ["W-06", "plan", "unterkuenfte"]},
     "etappen_kennzahlen": ["Gehzeit"],
-    "gruppen": {"wissen": "Wissen"},
+}
+# Eckdaten der kleinen Reise (reise.yaml ist Pflicht, #267): eine Organisatorin, Status planung, alle gebauten Bausteine außer Wünschen
+GRUND_YAML = {
+    "titel": "Test", "untertitel": "x", "pfad": "test",
+    "status": {"wert": "planung", "verlauf": [{"datum": datetime.date(2026, 10, 26), "wert": "planung", "wer": "Hanna"}]},
+    "personen": {"hanna": {"name": "Hanna", "rolle": "organisator"}},
+    "bausteine": ["varianten", "karte", "rueckmeldungen", "fragen", "aufgaben", "waechter"],
+    "darstellung": {"gruppen": {"wissen": "Wissen"}},
 }
 
 
@@ -117,6 +124,7 @@ def reise(tmp_path):
     Image.new("RGB", (2400, 1200), "red").save(r / "medien/gross.jpg")
     Image.new("RGB", (400, 200), "blue").save(r / "medien/klein.png")
     (r / "reise.json").write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    (r / "reise.yaml").write_text(yaml.safe_dump(GRUND_YAML, allow_unicode=True, sort_keys=False), encoding="utf-8")
     return r
 
 
@@ -398,15 +406,10 @@ def mit_reise_yaml(reise, aendere=None):
 
 
 def test_alte_form_ohne_reise_yaml(reise, tmp_path):
-    """Ohne reise.yaml kommen Eckdaten aus reise.json; Status planung, keine Personen, Hinweis."""
-    d = baue(reise, tmp_path)
-    r = d["reise"]
-    assert r["titel"] == "Test" and r["status"] == {"wert": "planung", "verlauf": []} and r["personen"] == []
-    assert "wuensche" not in r["bausteine"] and "varianten" in r["bausteine"]
-    assert r["regeln"]["kontingent"] == {"art": "punkte", "je_person": 10} and "sammelzeit_minuten" not in r["regeln"]
-    setze(reise, lambda c: c.update(funktionen=["wuensche"]))
-    mit_reise_yaml(reise)
-    assert "„funktionen“ steht noch in reise.json" in meldungen(reise, tmp_path)
+    """Ohne reise.yaml bricht der Bau ab (#267): Katalogtext pruefung.bauen.reise_yaml_fehlt, kein Bauergebnis."""
+    (reise / "reise.yaml").unlink()
+    assert meldet(meldungen(reise, tmp_path), "pruefung.bauen.reise_yaml_fehlt")
+    assert not (tmp_path / "dist").exists()
 
 
 def test_reise_yaml(reise, tmp_path):
