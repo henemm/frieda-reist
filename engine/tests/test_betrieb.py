@@ -150,7 +150,9 @@ def vf(tmp_path):
     ausfuehrbar(tmp_path / "bin/curl", f'#!/bin/sh\necho ping >> {pings}\n')
     frei = ausfuehrbar(tmp_path / "freischalten.sh",
                        f'#!/bin/sh\necho "$1" >> {tmp_path}/frei.log\necho "Seite: https://example.invalid/$1-geheim/"\n')
-    env = {**SAUBER, "FR_WURZEL": str(arbeit), "FR_INSTANZ": "probe", "FR_DIENST": str(tmp_path / "dienst"),
+    # Einheiten-Abgleich (#260) als Attrappe „alles gleich“: der echte Abgleich läse /etc/systemd/system des Testrechners
+    units = ausfuehrbar(tmp_path / "units-gleich.sh", "#!/bin/sh\nexit 0\n")
+    env = {**SAUBER, "FR_WURZEL": str(arbeit), "FR_INSTANZ": "probe", "FR_DIENST": str(tmp_path / "dienst"), "VF_UNITS": str(units),
            "FR_KONNEKTOR": str(tmp_path / "konnektor"), "FR_SPERREN": str(tmp_path), "VF_DEPLOY": str(attrappe), "VF_PRUEFEN": str(pruefen), "VF_FREISCHALTEN": str(frei),
            "FR_HEARTBEAT_VEROEFFENTLICHEN": "https://example.invalid/hb", "PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}",
            "FR_MELDEN": str(melden), "VF_ROTMELDEN": str(rotmelden)}
@@ -2062,3 +2064,22 @@ def test_freischalten_erneuert_auch_einen_von_hand_benannten_baustein(fs):
     sn.write_text("# leer\n")
     r = fs["lauf"]("beispielreise")
     assert r.returncode == 1 and "no path in the" in r.stdout
+
+
+# ---------- Einheiten abgleichen beim Veröffentlichen (#260, test_units.py prüft den Abgleich selbst) ----------
+
+def test_veroeffentlichen_meldet_unit_abweichung_einmal_je_fingerabdruck_und_bleibt_gruen(vf):
+    stub = ausfuehrbar(vf["tmp"] / "units.sh", '#!/bin/sh\necho "probe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC"\nexit 3\n')
+    assert vf["lauf"](VF_UNITS=str(stub)).returncode == 0
+    meldungen = [z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]
+    assert len(meldungen) == 1 and "FR_ZEITZONE" in meldungen[0]
+    vf["neuer_commit"]()
+    assert vf["lauf"](VF_UNITS=str(stub)).returncode == 0
+    assert len([z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]) == 1   # gleiche Abweichung: keine zweite Meldung
+
+
+def test_veroeffentlichen_unit_abgleich_fehler_stoppt_nichts(vf):
+    stub = ausfuehrbar(vf["tmp"] / "units.sh", "#!/bin/sh\necho boom >&2\nexit 1\n")
+    assert vf["lauf"](VF_UNITS=str(stub)).returncode == 0
+    assert vf["pings"]() == 1
+    assert not hoch(vf)

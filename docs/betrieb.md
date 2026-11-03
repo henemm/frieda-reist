@@ -262,6 +262,20 @@ Der Workflow „Software nachziehen“ (siehe „Neue Instanz einrichten“) lä
 
 **Zwei Instanzen auf einem Server** brauchen verschiedene `FR_INSTANZ`, `FR_SEITEN` (und damit Ablage und Dienstordner) und Ports. `einrichten.sh` bricht ab, wenn eine andere installierte Instanz dieselben Ports nutzt. Unit-Namen, nginx-Bausteine, Drossel-Zone und Sperrdateien tragen den Namen der Instanz. Jede Instanz braucht eine eigene Adresse (Host), weil ihr Konnektor an der Wurzel steht.
 
+## Einheiten abgleichen (#260)
+
+Die systemd-Einheiten in `/etc/systemd/system` entstehen aus `betrieb/vorlagen/`. Damit eine geänderte Vorlage nicht still
+vom Server abweicht, vergleicht `veroeffentlichen.sh` nach jedem grünen Lauf `units.py pruefen` (erzeugt die Soll-Einheiten
+mit `einrichten.sh --erzeugen` und vergleicht Zeile für Zeile; es ändert nichts). Bei einer Abweichung kommt genau eine
+normale Meldung (Issue, kein Alarm), danach erst wieder bei einer anderen Abweichung (Merker `<FR_DIENST>/units-gemeldet`).
+Ein Fehler im Abgleich stoppt das Veröffentlichen nie.
+
+Ausgang von `units.py pruefen`: 0 alles gleich, 3 nur erlaubte Abweichungen, 4 auch gesperrte, 1 Fehler. Erlaubt sind nur
+`Environment=` mit Namen `FR_`/`KN_`/`RM_` und engem Wertmuster sowie `TimeoutStartSec=` (Erlaubnisliste `ERLAUBT` in
+`units.py`; ein neuer Eintrag ist eine Sicherheitsentscheidung). Alles andere (User, Startbefehle, Rechte, Timer, nicht
+installierte Einheiten) ist gesperrt und braucht einen bewussten Schritt (`einrichten.sh --installieren`). Installiert wird
+automatisch noch nichts: Das Hilfsprogramm mit Root-Rechten folgt in einem weiteren PR (#260).
+
 ## Bauordner und Arbeitsordner
 
 Der **Bauordner** spiegelt nur `main`. Timer, Schreibweg und Wächter laufen von dort, ihre Units nennen ihn mit `FR_WURZEL`. Von Hand wird darin nichts geändert, kein Branch ausgecheckt und nichts committet. Sonst setzt das Veröffentlichen aus (es überspringt jeden Lauf, solange der Ordner nicht auf `main` oder nicht sauber ist). `deploy.sh` und `veroeffentlichen.sh` laufen nur mit `FR_WURZEL`. `deploy.sh` baut außerdem nur, wenn der Ordner auf dem Branch `main` steht. Ein Aufruf aus einem anderen Klon bricht damit ab, statt von dort zu veröffentlichen (#137). Was nicht im Repo liegt, hat der Bauordner selbst: die Python-Umgebung (`engine/.venv`), die Werkzeuge (`engine/.bin`) und die Grundkarten. Für automatische Karten holt `veroeffentlichen.sh` die Grundkarte vor dem Bau selbst, wenn sich ihr Rahmen geändert hat (`werkzeuge/grundkarte_auto.py`, `FR_GRUNDKARTE_AUTO`, Epic #225; ohne Netz baut die Reise trotzdem). Eine neue Grundkarte einer handgepflegten Karte kommt mit `FR_WURZEL=<Bauordner> frieda/werkzeuge/karte-holen.sh <reise>` direkt dorthin (ignorierte Dateien, `main` bleibt sauber), danach `FR_WURZEL=<Bauordner> frieda/betrieb/veroeffentlichen.sh --immer`.

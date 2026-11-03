@@ -454,11 +454,33 @@ main() {
     return 1
   fi
   rm -f "$rot_datei"
+  units_abgleichen
   mkdir -p "$(dirname "$stand")"
   echo "$neu" > "$stand"
   zustellen
   echo "Done: $(git log -1 --format='%h') is online."
   erfolg_melden
+}
+
+# Einheiten abgleichen (#260): Weichen die installierten systemd-Einheiten von den Vorlagen ab, genau eine normale Meldung je
+# Abweichung (Fingerabdruck der Ausgabe in <FR_DIENST>/units-gemeldet). Nur melden: kein Alarm, kein Abbruch, ein Fehler hier
+# (Ausgang 1) stoppt nichts. Ausgang 0 = alles gleich: der Merker wird gelöscht, eine spätere Abweichung meldet wieder.
+units_abgleichen() {
+  local aus rc=0 merker="$FR_DIENST/units-gemeldet" fp
+  aus="$("${VF_UNITS:-$FR_BETRIEB/units.py}" pruefen 2>&1)" || rc=$?
+  case "$rc" in
+    0) rm -f "$merker"; return 0 ;;
+    3|4) ;;
+    *) echo "Warning: unit comparison failed (exit $rc), skipped."; return 0 ;;
+  esac
+  fp="$(printf '%s' "$aus" | sha256sum | cut -d' ' -f1)"
+  echo "Warning: installed units differ from the templates (exit $rc)."
+  if [ "$(cat "$merker" 2>/dev/null || true)" != "$fp" ]; then
+    if fr_melden normal "Units differ from the templates" "$aus"; then
+      { mkdir -p "$(dirname "$merker")" && echo "$fp" > "$merker"; } || true
+    fi
+  fi
+  return 0
 }
 
 # Nachlauf (#230): Kam während dieses Laufs ein neuer Stand (ein zweiter Lauf fand die Sperre belegt), gleich noch einmal

@@ -17,6 +17,10 @@ set -euo pipefail
 
 INSTALLIEREN=""
 [ "${1:-}" = "--installieren" ] && INSTALLIEREN=1
+# --erzeugen: nur die Einheiten und Bausteine nach EI_ZIEL schreiben (ohne Prüfungen, ohne Ausgabe, ohne Änderung an /etc);
+# der Abgleich der Einheiten (units.py, #260) nutzt dieselbe Ersetzung wie die Einrichtung
+NUR_ERZEUGEN=""
+[ "${1:-}" = "--erzeugen" ] && NUR_ERZEUGEN=1
 : "${FR_BENUTZER:=$(id -un)}"
 : "${FR_GRUPPE:=$(id -gn "$FR_BENUTZER")}"
 : "${FR_HOME:=$(getent passwd "$FR_BENUTZER" | cut -d: -f6)}"
@@ -31,6 +35,7 @@ ok()      { echo "  ok      $*"; }
 problem() { echo "  MISSING $*"; probleme=$((probleme + 1)); }
 hinweis() { echo "  NOTE    $*"; }
 
+if [ -z "$NUR_ERZEUGEN" ]; then
 echo "Instance $FR_INSTANZ ($FR_TITEL), trips repo $FR_WURZEL"
 echo "Prerequisites:"
 [ -f "$FR_WURZEL/engine/bauen.py" ] && ok "software under engine/" || problem "engine/ is missing (submodule frieda and link engine -> frieda/engine, docs/betrieb.md)"
@@ -58,6 +63,7 @@ for d in "$SYSTEMD"/*-rueckmeldungen.service "$SYSTEMD"/*-konnektor.service "$SY
     problem "Port $FR_RM_PORT, $FR_KN_PORT or $FR_SB_PORT is already used by $(basename "$d"); change FR_RM_PORT/FR_KN_PORT/FR_SB_PORT"
   fi
 done
+fi   # NUR_ERZEUGEN
 
 # Einheiten und Bausteine erzeugen
 rm -rf "$ZIEL"; mkdir -p "$ZIEL/systemd" "$ZIEL/nginx"
@@ -78,6 +84,7 @@ ersetze "$FR_BETRIEB/vorlagen/nginx-zone.conf" "$ZIEL/nginx/$FR_INSTANZ-zone.con
 if grep -rn "__[A-Z_]*__" "$ZIEL" > /dev/null; then
   problem "placeholder not replaced: $(grep -rho "__[A-Z_]*__" "$ZIEL" | sort -u | tr '\n' ' ')"
 fi
+if [ -n "$NUR_ERZEUGEN" ]; then [ "$probleme" -eq 0 ] || exit 1; exit 0; fi
 echo "Generated in $ZIEL:"; (cd "$ZIEL" && find . -type f | sort | sed 's|^\./|  |')
 
 befehle() {
