@@ -37,6 +37,21 @@ Drei Gruppen, die sich nie mischen sollen:
 
 Der Name der Instanz (`FR_INSTANZ`) steht vor Units, Zonen und nginx-Bausteinen und nennt nur diese Instanz, nicht die Software. Eine zweite Reisegruppe bekommt eine zweite Instanz mit eigenem Namen, eigenem Reisen-Repo und eigenen Ordnern, ihre Daten sind damit von denen der ersten getrennt (#15). Ein gemeinsamer Ort für mehrere Gruppen mit Trennung je Mandant ist #68.
 
+## Datenschutz je Instanz (#15)
+
+Jede Instanz ist für ihre Daten selbst verantwortlich; es wird nichts mit anderen Instanzen geteilt. Die Software legt fest, wer was sieht und wie gelöscht wird. Der Betreiber der Instanz legt die Aufbewahrung der Sicherungen fest.
+
+| Daten | Wer sieht sie | Löschen auf Wunsch einer Person | Aufbewahrung |
+|---|---|---|---|
+| Konto (Adresse, Name, Sprache, Geräte, Kalender-Abo, Benachrichtigungen) | die Person selbst („Mein Konto“); der Betreiber in der Datenbank | Konto löschen (Mein Konto oder `engine/konten.py loeschen <adresse>`): Mitgliedschaften, Anfragen, Abos und Anmeldungen (auch der Claude-App) entfallen, die Adresse ist wieder frei | bis zum Löschen |
+| Namen in Verlauf und Reise-Stand (Git-Verlauf der Reise) | alle Mitglieder der Reise | bleiben bewusst stehen, weil der Verlauf nur wächst (`main` wird nicht umgeschrieben) | dauerhaft mit der Reise |
+| Reise (Pläne, Personen, Entscheidungen) | Mitglieder nach Rolle (`reisend`, `einbringer`, `bestimmer`), nie öffentlich ohne Link | die Reise liegt im Reisen-Repo der Gruppe; über sie entscheidet die Gruppe | bis die Gruppe sie entfernt |
+| Rückmeldungen, Aufgaben, Antworten (Ablage) | Organisator:innen der Reise, Absender sehen ihre eigenen | nur durch den Betreiber in der Ablage | bis zum Löschen der Reise |
+| Belege zu Buchungen | hochladende Person und Organisator:innen, bei Freigabe alle der Reise | werden nie vom Dienst gelöscht, zurückgezogene bleiben als Datei; Löschen nur durch den Betreiber in `<FR_ABLAGE>/<reise>/belege/` | bis zum Löschen der Reise |
+| Sicherungen (Konten-Schnappschuss, Archiv der Ablage) | nur der Betreiber | verschwinden mit der Aufbewahrungsfrist der Sicherung | Frist bestimmt der Betreiber der Instanz |
+
+Die KI-Läufe gehören nicht dazu: Frieda enthält keine eigene KI, Reiseinhalte entstehen im AI-Client der Person über den Konnektor (ADR-0001). Es fallen auf dem Server keine Kosten für KI-Läufe an.
+
 ## Der Kreislauf
 
 1. **Schreiben:** Was im AI-Client über den Konnektor festgelegt wird (Arten, Merkmale, Werte, Dinge, Optionen, Entscheidungen, Fragen, Wissen, Personen, Status, Einstellungen, neue Reisen), prüft der **Schreibweg** nach den Regeln der Reise und schreibt es sofort nach `main` (siehe „Schreibweg“).
