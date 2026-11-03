@@ -660,6 +660,8 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .pico .leaflet-control-layers{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .pico .leaflet-control-layers label{display:flex;align-items:center;gap:6px;margin:2px 0;font-size:14px}
 .pico .leaflet-control-layers input{margin:0;width:18px;height:18px}
+/* Am Telefon Tippflächen von 44 px (docs/design.md): Schalter der Ebenenwahl und jede Zeile (frieda-reist#296) */
+@media (pointer:coarse){.pico .leaflet-container a.leaflet-control-layers-toggle{width:44px;height:44px}.pico .leaflet-control-layers label{min-height:44px;margin:0}}
 .ziehhinweis{font-size:var(--t-etikett);color:var(--mut);margin:4px 0 0}
 .rh-ort::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:1.5px solid var(--land)}
 .rh-ort.rh-unterkunft::after{width:12px;height:12px;border-radius:3px;background:var(--kat,var(--farbe-grau))}
