@@ -446,10 +446,18 @@ def kartenpunkte_umstellen(reise_dir, roh, schreiben, meldungen):
     punkte, wissen = lies(punkte_datei), lies(wissen_datei)
     je_strecke = punkte.get("strecken") or {}
     je_block = wissen.get("bloecke") or {}
-    if not (kategorien or je_strecke or je_block):
+    # Was nicht zum Ding wird (ohne_karte mit Begründung, ohne Lage mit Suchbegriffen, unbekannte Kategorie), bleibt mit allen Feldern in der
+    # Datei: nichts geht verloren, der Bau liest es wie vorher, ein zweiter Lauf findet nichts mehr zu tun
+    verschiebbar = lambda p: isinstance(p, dict) and not p.get("ohne_karte") and p.get("lage") is not None and p.get("kat") in kategorien
+    anzahl = sum(1 for v in list(je_strecke.values()) + list(je_block.values()) for p in v or [] if verschiebbar(p))
+    if not (kategorien or anzahl):
         return
-    anzahl = sum(len(v or []) for v in list(je_strecke.values()) + list(je_block.values()))
     meldungen.append(f"{anzahl} map points → things (A-…), {len(kategorien)} categories → kinds (arten.yaml)")
+    # gebiet, suche und von_hand dienten dem Suchwerkzeug; das Ergebnis steht in lage und quelle des Dings (sichtbar machen statt still verwerfen)
+    suchfelder = sum(1 for v in list(je_strecke.values()) + list(je_block.values()) for p in v or []
+                     if verschiebbar(p) and any(p.get(f) for f in ("gebiet", "suche", "von_hand")))
+    if suchfelder:
+        meldungen.append(f"{suchfelder} moved points had gebiet, suche or von_hand: not carried over, the result stands in lage and quelle")
     if not schreiben:
         return
     arten = sb.arten_laden(reise_dir)
@@ -478,11 +486,14 @@ def kartenpunkte_umstellen(reise_dir, roh, schreiben, meldungen):
 
     def anlegen(an, p, wo):
         kat = p.get("kat")
-        if kat not in art_von:   # Kategorie fehlt: Punkt bleibt als Hinweis in der Meldung, nichts geht verloren
-            meldungen.append(f"OPEN {wo} {p.get('name')}: category {kat} is not defined; the point was not moved")
-            return False
         if p.get("ohne_karte"):
-            meldungen.append(f"{wo} {p.get('name')}: marked ohne_karte, not moved")
+            meldungen.append(f"{wo} {p.get('name')}: marked ohne_karte, not moved (stays in the file)")
+            return False
+        if p.get("lage") is None:
+            meldungen.append(f"{wo} {p.get('name')}: no lage yet, not moved (stays in the file)")
+            return False
+        if kat not in art_von:   # Kategorie fehlt: der Punkt bleibt in der Datei, nichts geht verloren
+            meldungen.append(f"OPEN {wo} {p.get('name')}: category {kat} is not defined; the point was not moved (stays in the file)")
             return False
         art = art_von[kat]
         quelle = p.get("quelle") or sb.lesbar(reise_dir, [sb.S("schreiben.quelle_bestand")])
@@ -512,12 +523,15 @@ def kartenpunkte_umstellen(reise_dir, roh, schreiben, meldungen):
         aufenthalte[aid] = knoten   # der Punkt einer Unterkunft trägt deren Kennung (Rolle bezug) und liefert ihr die Lage wie bisher
         return True
 
+    bleibt_strecken, bleibt_bloecke = {}, {}
     for sid, liste in je_strecke.items():
         for p in liste or []:
-            anlegen(sid, p, sid)
+            if not anlegen(sid, p, sid):
+                bleibt_strecken.setdefault(sid, []).append(dict(p, kat=art_von.get(p.get("kat"), p.get("kat"))))
     for bid, liste in je_block.items():
         for p in liste or []:
-            anlegen(bid, p, bid)
+            if not anlegen(bid, p, bid):
+                bleibt_bloecke.setdefault(bid, []).append(dict(p, kat=art_von.get(p.get("kat"), p.get("kat"))))
     # Rollen nur, wo sie gebraucht werden; nummeriert braucht die Rolle nummer
     neue_arten = {a: d for a, d in arten.items() if a not in vorher}
     geaendert = [a for a in vorher if vorher[a] != arten[a]]
@@ -529,10 +543,17 @@ def kartenpunkte_umstellen(reise_dir, roh, schreiben, meldungen):
                                + "".join("  " + z + "\n" for z in neu_text.splitlines()), encoding="utf-8")
     else:
         sb.arten_speichern(reise_dir, arten, {"name": "Betrieb (neu.py nachziehen)"})
-    for datei in (kat_datei, punkte_datei):
-        datei.unlink(missing_ok=True)
+    kat_datei.unlink(missing_ok=True)
+    if bleibt_strecken:
+        kopf = "".join(z for z in punkte_datei.read_text(encoding="utf-8").splitlines(keepends=True) if z.startswith("#"))
+        punkte_datei.write_text(kopf + yaml.safe_dump({k: v for k, v in {"stand": punkte.get("stand"), "strecken": bleibt_strecken}.items() if v},
+                                                      sort_keys=False, allow_unicode=True, width=10000), encoding="utf-8")
+    else:
+        punkte_datei.unlink(missing_ok=True)
     if wissen_datei and wissen_datei.exists():
         rest = {k: v for k, v in wissen.items() if k != "bloecke"}
+        if bleibt_bloecke:
+            rest["bloecke"] = bleibt_bloecke
         if set(rest) - {"stand"}:
             kopf = "".join(z for z in wissen_datei.read_text(encoding="utf-8").splitlines(keepends=True) if z.startswith("#"))
             wissen_datei.write_text(kopf + yaml.safe_dump(rest, sort_keys=False, allow_unicode=True), encoding="utf-8")

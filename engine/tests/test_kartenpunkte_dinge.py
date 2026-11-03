@@ -112,3 +112,25 @@ def test_nachziehen_gibt_punkten_ohne_namen_den_namen_der_art(tmp_path):
     assert neue == ["Wasser", "Wegpunkt im Buch", "pumpe", "Brunnen mit Namen"]
     bauen.bauen(q, tmp_path / "w" / "x")   # der Bau lehnt nichts ab
     assert neu.nachziehen(q) == []   # idempotent
+
+
+def test_nachziehen_laesst_nicht_verschobene_punkte_in_der_datei(tmp_path):
+    """Punkte, die nicht zu Dingen werden (ohne_karte mit Begründung, ohne Lage mit Suchbegriffen, unbekannte Kategorie), gehen nicht verloren:
+    Sie bleiben in plan/punkte.yaml bzw. inhalt/wissen-punkte.yaml, mit allen Feldern; der Bau liest sie wie vorher. Zweiter Lauf: nichts zu tun."""
+    q = alte_form(tmp_path)
+    p = yaml.safe_load((q / "plan/punkte.yaml").read_text(encoding="utf-8"))
+    p["strecken"]["E-01"] += [{"name": "Nicht sicher verortet", "kat": "wasser", "ohne_karte": "in OSM nicht gefunden", "suche": ["Brunnen X"], "gebiet": "elbe"},
+                              {"name": "Unbekannte Kategorie", "kat": "gibtsnicht", "lage": [51.001, 14.001], "quelle": "erfunden (Beispielwert)"}]
+    (q / "plan/punkte.yaml").write_text(yaml.safe_dump(p, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    w = yaml.safe_load((q / "inhalt/wissen-punkte.yaml").read_text(encoding="utf-8"))
+    block = next(iter(w["bloecke"]))
+    w["bloecke"][block] += [{"name": "Ohne Lage", "kat": "sehenswert", "gebiet": "elbe", "suche": ["Ohne Lage 1", "Ohne Lage 2"]}]
+    (q / "inhalt/wissen-punkte.yaml").write_text(yaml.safe_dump(w, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    meldungen = neu.nachziehen(q)
+    assert any("not moved" in m for m in meldungen)
+    rest = yaml.safe_load((q / "plan/punkte.yaml").read_text(encoding="utf-8"))
+    assert rest["strecken"] == {"E-01": [p["strecken"]["E-01"][-2], p["strecken"]["E-01"][-1]]}
+    wrest = yaml.safe_load((q / "inhalt/wissen-punkte.yaml").read_text(encoding="utf-8"))
+    assert wrest["bloecke"] == {block: [{"name": "Ohne Lage", "kat": "sehenswert", "gebiet": "elbe", "suche": ["Ohne Lage 1", "Ohne Lage 2"]}]}
+    bauen.bauen(q, tmp_path / "w" / "x")
+    assert neu.nachziehen(q) == []   # zweimal nichts zu tun, nichts wird erneut verschoben
