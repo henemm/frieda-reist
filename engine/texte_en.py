@@ -2954,6 +2954,7 @@ TEXTE = {
     "seite.aufgabe.was.angelegt": "created",
     "seite.aufgabe.was.geaendert": "changed",
     "seite.aufgabe.was.kommentar": "comment",
+    "inhalt.nachziehen.sprache_eingetragen": "reise.yaml: sprache “de” added (this is what applied to the trip so far, nothing changes)",
     "inhalt.nachziehen.unterwegs": "Elevation profile|Waypoints|Accommodation|Contacts|Water|Dining|Food supplies|Arrival|Departure|Practical",
     "pruefung.routen.ort_adresse": "Place {oid}: a place has no address, only a position on the map (punkt); the address belongs to the accommodation or stay (ADR-0004).",
     "pruefung.routen.gpx": "Route {sid}: gpx must be a GPX file under the trip's medien/ folder (medien/gpx/….gpx).",

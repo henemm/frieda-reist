@@ -216,3 +216,27 @@ def test_alle_altformen_in_einem_lauf(tmp_path):
     assert texte.t("de", SCHLUESSEL) in m and len(m) >= 2
     assert neu.nachziehen(r) == []
     bauen.Bauer(r, tmp_path / "dist").daten()
+
+
+@pytest.mark.parametrize("wie", ["fehlt", "leer"])
+def test_crlf_bleibt_erhalten(tmp_path, wie):
+    """F001: reise.yaml mit CRLF behält alle Zeilenenden; nur die eine Zeile sprache: de kommt dazu (bzw. ersetzt die leere),
+    mit CRLF; ein zweiter Lauf ändert kein Byte."""
+    r = kopie(tmp_path, sprache=wie)
+    y = r / "reise.yaml"
+    vorher = y.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+    y.write_bytes(vorher)
+    assert neu.sprache_nachziehen(r)
+    nachher = y.read_bytes()
+    assert nachher.count(b"\n") == nachher.count(b"\r\n")
+    alt, neu_z = vorher.split(b"\r\n"), nachher.split(b"\r\n")
+    if wie == "fehlt":
+        assert len(neu_z) == len(alt) + 1
+        i = neu_z.index(b"sprache: de")
+        assert neu_z[:i] + neu_z[i + 1:] == alt
+    else:
+        assert len(neu_z) == len(alt)
+        abweichend = [k for k, (a, b) in enumerate(zip(alt, neu_z)) if a != b]
+        assert len(abweichend) == 1 and neu_z[abweichend[0]] == b"sprache: de"
+    assert neu.sprache_nachziehen(r) == []
+    assert y.read_bytes() == nachher

@@ -568,14 +568,15 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
     wann:; Strecke ohne art: bekommt die in strecken_arten genannte ({E-15: kombiniert}), sonst wird sie gemeldet; das
     Merkmal mit Schlüssel preis (Typ geld) einer Aufenthalts-Art bekommt rolle: kosten, wenn die Art noch keine Rolle hat;
     reise.json bekommt die bisherige Vorgabe der Ebene „Unterwegs nachschlagen“, wenn die Reise ein Etappen-Dossier hat;
-    Eckdaten aus der früheren Vorlage stellt eckdaten_nachziehen um (#217).
+    Eckdaten aus der früheren Vorlage stellt eckdaten_nachziehen um (#217); reise.yaml ohne sprache bekommt sprache: de
+    (sprache_nachziehen, #267), vor den Schritten, die die Sprache der Reise lesen.
     Kommentare und Form der Dateien bleiben (ruamel). -> Liste der Meldungen (was geändert oder offen ist)."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from routen import WANN, art_schluessel
     import schreiben as sb
     reise_dir = Path(reise_dir)
     strecken_arten = dict(strecken_arten or {})
-    meldungen = []
+    meldungen = sprache_nachziehen(reise_dir, schreiben)
     roh = sb.routen_laden(reise_dir) if (reise_dir / "plan" / "routen.yaml").exists() else None   # ohne Plan (Status idee): nur arten.yaml und reise.json
 
     def typ_zu_art(knoten, wo):
@@ -653,6 +654,53 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
         meldungen += eckdaten_nachziehen(reise_dir, cfg, schreiben)
     meldungen += reste_nachziehen(reise_dir, schreiben)
     return meldungen
+
+
+SPRACHE_NACHZIEHEN = "de"   # was für Reisen ohne Feld sprache bisher galt (Bestand von vor ADR-0006); die Umstellung ändert kein Verhalten
+VOR_SPRACHE = ("titel", "untertitel", "ziel", "pfad")   # Schlüssel vor sprache, Reihenfolge wie in anlegen
+
+
+def sprache_nachziehen(reise_dir, schreiben=True):
+    """reise.yaml ohne sprache (oder leer) bekommt sprache: de (#267). Nur diese eine Zeile ändert sich: Sie ersetzt eine
+    leere Zeile sprache: oder steht hinter dem letzten der Schlüssel aus VOR_SPRACHE, ohne sie als erster Schlüssel nach dem
+    Kopfkommentar. Steht schon ein Wert (auch ein unbekannter), bleibt die Datei unberührt; den Wert prüft der Bau. -> Meldungen."""
+    import schreiben as sb
+    y = Path(reise_dir) / "reise.yaml"
+    if not y.is_file():
+        return []
+    text = y.read_bytes().decode("utf-8")   # ohne Übersetzung der Zeilenenden: eine Datei mit CRLF behält sie (F001)
+    roh = sb.yaml_rund().load(text)
+    if not isinstance(roh, dict):
+        return []
+    wert = roh.get("sprache")
+    if wert is not None and not (isinstance(wert, str) and not wert.strip()):
+        return []
+    zeilen = text.splitlines(keepends=True)
+    nl = "\r\n" if "\r\n" in text else "\n"   # Zeilenende der Datei für die neue Zeile
+    neu_zeile = f"sprache: {SPRACHE_NACHZIEHEN}"
+    if "sprache" in roh:   # leer: dieselbe Zeile, ein Kommentar dahinter bleibt
+        i = roh.lc.key("sprache")[0]
+        rest = re.search(r"\s#.*$", zeilen[i].rstrip("\r\n"))
+        ende = zeilen[i][len(zeilen[i].rstrip("\r\n")):]
+        zeilen[i] = neu_zeile + (rest.group(0) if rest else "") + ende
+    else:
+        schluessel = list(roh.keys())
+        vor = [k for k in VOR_SPRACHE if k in roh]
+        if vor:
+            k = vor[-1]
+            i = roh.lc.key(k)[0] + 1
+            naechste = schluessel.index(k) + 1
+            bis = roh.lc.key(schluessel[naechste])[0] if naechste < len(schluessel) else len(zeilen)
+            while i < bis and zeilen[i][:1] in (" ", "\t"):   # mehrzeiliger Wert des Vorgängers
+                i += 1
+        else:
+            i = roh.lc.key(schluessel[0])[0] if schluessel else len(zeilen)
+        if i > 0 and i == len(zeilen) and not zeilen[-1].endswith("\n"):
+            zeilen[-1] += nl
+        zeilen.insert(i, neu_zeile + nl)
+    if schreiben:
+        y.write_bytes("".join(zeilen).encode("utf-8"))
+    return [texte.t(SPRACHE_NACHZIEHEN, "inhalt.nachziehen.sprache_eingetragen")]
 
 
 VORLAGE_VOR_217 = Path(__file__).resolve().parent / "altformen" / "vorlage-vor-217"   # <sprache>/CLAUDE.md, kontext/herkunft.md

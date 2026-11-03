@@ -2954,6 +2954,7 @@ TEXTE = {
     "seite.aufgabe.was.angelegt": "angelegt",
     "seite.aufgabe.was.geaendert": "geändert",
     "seite.aufgabe.was.kommentar": "Kommentar",
+    "inhalt.nachziehen.sprache_eingetragen": "reise.yaml: sprache „de“ eingetragen (so galt es bisher für diese Reise, es ändert sich nichts)",
     "inhalt.nachziehen.unterwegs": "Höhenprofil|Wegpunkte|Unterkünfte|Unterkunft|Kontakte|Wasser|Einkehr|Verpflegung|Anfahrt|Abfahrt|Praktisch",
     "pruefung.routen.ort_adresse": "Ort {oid}: Ein Ort hat keine Adresse, nur eine Position auf der Karte (punkt); die Adresse gehört an die Unterkunft oder den Aufenthalt (ADR-0004).",
     "pruefung.routen.gpx": "Strecke {sid}: gpx muss eine GPX-Datei unter medien/ der Reise sein (medien/gpx/….gpx).",
