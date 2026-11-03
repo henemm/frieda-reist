@@ -154,6 +154,17 @@ EINGABE_MERKMALE = {"adresse": ("adresse", None), "koordinaten": ("koordinaten",
                     "abfahrt": ("zeitpunkt", "abfahrt"), "ankunft": ("zeitpunkt", "ankunft"), "buchungslink": ("link", "buchung")}
 
 
+# Felder der Grundform, die in `merkmale` der Eingabe stehen dürfen (ADR-0007, Schritt c): Beziehungen und Angaben, die Bedeutung tragen und
+# als Felder des Dings bleiben (ort, von, nach, zeit, frage, ausserhalb). Englische Namen gelten als Eingabe.
+GRUNDFORM_FELDER = {"unterkunft": ("ort", "frage"), "aufenthalt": ("ort", "zeit", "frage"), "strecke": ("von", "nach"), "ort": ("ausserhalb",)}
+FEST_ALIAS = {"place": "ort", "from_place": "von", "to_place": "nach", "time_text": "zeit", "question": "frage", "outside": "ausserhalb",
+              "address": "adresse", "coordinates": "koordinaten", "time_span": "zeitraum", "departure": "abfahrt", "arrival": "ankunft",
+              "booking_link": "buchungslink", "gpx_text": "gpx"}
+
+
+FEST_NAMEN = frozenset(EINGABE_MERKMALE) | {n for fs in GRUNDFORM_FELDER.values() for n in fs} | frozenset(FEST_ALIAS)
+
+
 def lage_wert_gueltig(typ, w):
     """Ist w ein gültiger Wert dieses Typs? adresse: Text; koordinaten: [Breite, Länge]; gpx: Datei unter medien/; uhrzeit: HH:MM;
     zeitpunkt: Uhrzeit oder Zeitpunkt mit Datum; zeitraum: {beginn, ende} (Uhrzeiten)."""

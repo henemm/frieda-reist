@@ -566,7 +566,8 @@ def test_ontologie_organisator_schreibt_direkt(schreibweg):
                    "merkmal_zusammenfuehren", "arten_uebernehmen",
                    "start_ende_setzen",   # Issue #142
                    "symbol_setzen", "kartenansicht_setzen", "kartenpunkte_holen"}   # Issue #252
-        assert (set(kn.ONTOLOGIE_WERKZEUGE) - nur_org <= namen) is da, token
+        assert (set(kn.ONTOLOGIE_WERKZEUGE) - nur_org - set(kn.ALIAS_ZU_DING_AENDERN) <= namen) is da, token
+        assert not set(kn.ALIAS_ZU_DING_AENDERN) & namen   # Aliase von item_update (ADR-0007, Schritt c) stehen nicht mehr in der Liste
         assert ("start_ende_setzen" in namen) is (token == ALT_ORGANISATOR), token
         assert ("symbol_setzen" in namen) is (token == ALT_ORGANISATOR), token
     anleitung = rpc(basis, ALT_ORGANISATOR, "initialize")["instructions"]
@@ -656,19 +657,20 @@ def test_kategorie_definieren_ueber_den_schreibweg(schreibweg):
 def test_wert_eintragen_ueber_den_schreibweg(schreibweg):
     basis, ablage = schreibweg
     for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (MITREISEND, True), (GAST, False)):
-        assert ("wert_eintragen" in {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}) is da, token
+        assert "wert_eintragen" not in {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}, token   # Alias von item_update (ADR-0007)
+        assert ("ding_aendern" in {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}) is da, token
     Schreibweg.antwort = (200, {"ok": True, "text": "Preis pro Nacht an U-02 Pension Burgblick: 95 € (vorher: 85 €). Herkunft: Website."})
     t, f = werkzeug(basis, KARL, "wert_eintragen", ziel="U-02", merkmal="preis", wert="95 €", quelle="Website", geprueft="2026-10-29")
     assert not f and t.startswith("Eingetragen und gesichert (Karl): Preis pro Nacht an U-02")
     pfad, _, body = Schreibweg.anfragen[-1]
-    assert pfad == "/beispielreise/wert_eintragen" and body["person"] == "karl" and body["rolle"] == "mitwirkend"
+    assert pfad == "/beispielreise/ding_aendern" and body["person"] == "karl"   # kommt als item_update an (ADR-0007, Schritt c) and body["rolle"] == "mitwirkend"
     assert body["args"] == {"ziel": "U-02", "merkmal": "preis", "wert": "95 €", "quelle": "Website", "geprueft": "2026-10-29"}
     assert rm.eintraege(ablage / "beispielreise") == []
     # Eine unbekannte Stelle prüft der Schreibweg mit dem Repo, nicht der Konnektor mit der veröffentlichten Seite (Issue #135:
     # gerade Angelegtes ist sofort nutzbar); ohne Namen braucht es den Vornamen
     Schreibweg.antwort = (422, {"ok": False, "fehler": "Die Unterkunft U-77 gibt es nicht."})
     t, f = werkzeug(basis, KARL, "wert_eintragen", ziel="U-77", merkmal="preis", wert="1 €", quelle="x")
-    assert f and t == "Nicht eingetragen: Die Unterkunft U-77 gibt es nicht." and Schreibweg.anfragen[-1][0] == "/beispielreise/wert_eintragen"
+    assert f and t == "Nicht eingetragen: Die Unterkunft U-77 gibt es nicht." and Schreibweg.anfragen[-1][0] == "/beispielreise/ding_aendern"
     Schreibweg.antwort = (200, {"ok": True, "text": "ok"})
     t, f = werkzeug(basis, MITREISEND, "wert_eintragen", ziel="U-02", merkmal="lage", wert="x", quelle="x")
     assert f and "Name fehlt" in t
@@ -1130,21 +1132,23 @@ def test_tools_list_zeigt_englische_namen_und_parameter(schreibweg):
     basis, _ = schreibweg
     liste = rpc(basis, ALT_ORGANISATOR, "tools/list")
     aussen = {w["name_aussen"]: w for w in liste["tools"]}
-    assert {"overview", "value_set", "decide", "item_create", "question_create"} <= set(aussen)
-    assert not {"ueberblick", "wert_eintragen", "entscheiden", "ding_anlegen"} & set(aussen)
-    eig = aussen["value_set"]["inputSchema"]
-    assert {"target", "attribute", "value", "source", "checked"} <= set(eig["properties"]) and "quelle" not in eig["properties"]
-    assert set(eig["required"]) == {"target", "attribute"}
+    assert {"overview", "item_update", "decide", "item_create", "question_create"} <= set(aussen)
+    assert not {"ueberblick", "wert_eintragen", "entscheiden", "ding_anlegen", "value_set", "location_set", "track_attach"} & set(aussen)
+    eig = aussen["item_update"]["inputSchema"]
+    assert {"target", "title", "kind", "parent", "hint", "source", "attributes", "checked", "reason"} <= set(eig["properties"]) and "quelle" not in eig["properties"]
+    assert set(eig["required"]) == {"target"}
     # Beschreibungen nennen die Namen, die der Client sieht
-    assert "attributes" in aussen["value_set"]["description"] and "merkmale" not in aussen["value_set"]["description"]
-    # Strecken: dasselbe Wort, andere Bedeutung (von/nach/ab/an) hat in ding_anlegen eigene Namen
-    assert {"from_place", "to_place", "departure", "arrival"} <= set(aussen["item_create"]["inputSchema"]["properties"])
+    assert "attributes" in aussen["item_update"]["description"] and "merkmale" not in aussen["item_update"]["description"]
+    # item_create ist auf die Form geschrumpft (ADR-0007, Schritt c): höchstens 8 Parameter, Sonderfelder stehen in attributes
+    erstellen = aussen["item_create"]["inputSchema"]["properties"]
+    assert set(erstellen) == {"what", "kind", "parent", "title", "source", "attributes", "hint", "checked"} and len(erstellen) <= 8
+    assert not {"from_place", "to_place", "departure", "arrival", "place", "coordinates", "address"} & set(erstellen)
 
 
 def test_aufruf_englisch_deutsch_und_gemischt_liefert_dasselbe(schreibweg):
     basis, _ = schreibweg
     Schreibweg.antwort = (200, {"ok": True, "text": "Preis an U-02: 95 €."})
-    varianten = (("value_set", dict(target="U-02", attribute="preis", value="95 €", source="Website", checked="2026-10-29")),
+    varianten = (("value_set", dict(target="U-02", attribute="preis", value="95 €", source="Website", checked="2026-10-29")),   # Alias von item_update
                  ("wert_eintragen", dict(ziel="U-02", merkmal="preis", wert="95 €", quelle="Website", geprueft="2026-10-29")),
                  ("value_set", dict(ziel="U-02", attribute="preis", wert="95 €", source="Website", geprueft="2026-10-29")))
     ergebnisse = []
@@ -1153,7 +1157,7 @@ def test_aufruf_englisch_deutsch_und_gemischt_liefert_dasselbe(schreibweg):
         pfad, _, body = Schreibweg.anfragen[-1]
         ergebnisse.append((t, f, pfad, body["args"]))
     assert ergebnisse[0] == ergebnisse[1] == ergebnisse[2] and not ergebnisse[0][1]
-    assert ergebnisse[0][2] == "/beispielreise/wert_eintragen"      # unter dem Rand bleibt alles deutsch
+    assert ergebnisse[0][2] == "/beispielreise/ding_aendern"      # unter dem Rand bleibt alles deutsch; der Alias kommt als item_update an
     # bei Doppelung gewinnt der englische Name
     werkzeug(basis, KARL, "value_set", ziel="U-01", target="U-02", attribute="preis", wert="1 €", source="x")
     assert Schreibweg.anfragen[-1][2]["args"]["ziel"] == "U-02"

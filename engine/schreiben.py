@@ -1147,7 +1147,10 @@ def merkmale_knoten(werte):
 # Welche die Grundform fest trägt, legt diese Tabelle fest (Eingabenamen, siehe routen.EINGABE_MERKMALE); die Namen sind
 # Schlüssel der Reise, gelesen wird nur nach Typ und Rolle.
 GRUNDFORM_MERKMALE = {"ort": ("koordinaten",), "unterkunft": ("adresse", "koordinaten", "buchungslink"),
-                      "aufenthalt": ("adresse", "koordinaten", "zeitraum", "buchungslink"), "strecke": ("abfahrt", "ankunft")}
+                      "aufenthalt": ("adresse", "koordinaten", "zeitraum", "buchungslink"), "strecke": ("abfahrt", "ankunft", "gpx")}
+
+
+from routen import FEST_ALIAS, GRUNDFORM_FELDER  # noqa: E402  (Namen der festen Merkmale und Felder der Grundformen)
 
 
 def lage_lesen(knoten):
@@ -1243,6 +1246,24 @@ def zeitraum_setzen(knoten, beginn, ende, quelle):
     lage_merkmal_schreiben(knoten, "zeitraum", {"beginn": beginn, **({"ende": ende} if ende else {})}, quelle)
 
 
+def felder_aus_merkmalen(args, was):
+    """Die Felder der Grundform (ort, von, nach, zeit, frage, ausserhalb) aus args["merkmale"] nach oben holen -> neue args.
+    Ein Feld, das schon oben steht, darf nicht noch einmal in merkmale stehen."""
+    m = args.get("merkmale")
+    if not isinstance(m, dict):
+        return args
+    oben, rest = {}, {}
+    for k, v in m.items():
+        n = FEST_ALIAS.get(str(k).lower(), str(k).lower())
+        if n in GRUNDFORM_FELDER.get(was, ()):
+            if args.get(n) not in (None, "") or n in oben:
+                raise Ablehnung("schreiben.fest_wert.doppelt", name=n)
+            oben[n] = v
+        else:
+            rest[k] = v
+    return {**args, **oben, "merkmale": rest}
+
+
 def merkmale_fest_trennen(args, was, katalog):
     """Aus args["merkmale"] die Merkmale der Grundform (Eingabenamen) herauslösen, die die Art nicht selbst unter diesem Namen
     kennt -> (Rest der Merkmale, {Eingabename: Wert-Angabe}). Ein Name, der nicht zur Grundform gehört, bleibt im Rest."""
@@ -1251,7 +1272,7 @@ def merkmale_fest_trennen(args, was, katalog):
         return roh, {}
     fest, rest = {}, {}
     for k, v in roh.items():
-        n = str(k).lower()
+        n = FEST_ALIAS.get(str(k).lower(), str(k).lower())
         if n in GRUNDFORM_MERKMALE.get(was, ()) and not any(x["id"] == n or n in (x.get("auch") or []) for x in katalog):
             fest[n] = v
         else:
@@ -1270,6 +1291,8 @@ def fest_wert(name, v, quelle, geprueft):
     elif name == "zeitraum":
         if isinstance(w, str):
             w = dict(zip(("beginn", "ende"), [x.strip() for x in re.split(r"\s*[-–]\s*", w) if x.strip()]))
+        elif isinstance(w, dict):   # englische Schlüssel (start_time, end_time) gelten als Eingabe
+            w = {{"start_time": "beginn", "end_time": "ende"}.get(k, k): x for k, x in w.items()}
         if not lage_wert_gueltig("zeitraum", w):
             raise Ablehnung("schreiben.fest_wert.zeitraum")
     elif name in ("abfahrt", "ankunft"):
@@ -1330,6 +1353,7 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
     was = (text_wert(args, "was", pflicht=True, laenge=20) or "").lower()
     if was not in DING_ARTEN:
         raise Ablehnung("schreiben.ding_anlegen.1")
+    args = felder_aus_merkmalen(args, was)   # ort, von, nach, zeit, frage, ausserhalb dürfen in merkmale stehen (ADR-0007, Schritt c)
     kuerzel, abschnitt = DING_ARTEN[was]
     route = route_stand(reise_dir)
     roh = routen_laden(reise_dir)
@@ -1405,7 +1429,7 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
         if name in fest:
             raise Ablehnung("schreiben.fest_wert.doppelt", name=name)
         fest[name] = v
-    erlaubt = GRUNDFORM_MERKMALE[was]
+    erlaubt = [n for n in GRUNDFORM_MERKMALE[was] if n != "gpx"]   # ein Track kommt mit item_update an eine vorhandene Strecke
     for name in fest:
         if name not in erlaubt:
             raise Ablehnung("schreiben.fest_wert.nicht_fuer", name=name, was=S("schreiben.ding_wort." + was), w1=", ".join(erlaubt))
@@ -1530,7 +1554,96 @@ def zeit_wert(args, feld):
 
 
 def ding_aendern(reise_dir, wer, args, heute=None):
-    """Felder einer Unterkunft, Strecke oder eines Orts ändern (nicht die Merkmale: wert_eintragen). -> (Titel, Text)."""
+    """item_update (ADR-0007, Schritt c): Felder und Merkmale eines Dings ändern, der Elternbezug an, die Lage, Zeiten, der Track und
+    die Merkmale der Art in einem Werkzeug. Verteilt auf die Teile: Felder (_ding_aendern_felder), Lage (lage_eintragen), Track
+    (track_anhaengen) und je Merkmal der Art wert_eintragen. Die Gestalten der früheren Werkzeuge wert_eintragen (merkmal, wert),
+    lage_eintragen (adresse, koordinaten) und track_anhaengen (gpx) gelten weiter. -> (Titel, Text)."""
+    heute = heute or datetime.date.today()
+    ziel = (text_wert(args, "ziel", pflicht=True, laenge=20) or "").strip()
+    if args.get("merkmal") is not None and (args.get("wert") is not None or args.get("werte") is not None):   # Gestalt von wert_eintragen
+        return wert_eintragen(reise_dir, wer, args, heute)
+    if isinstance(args.get("gpx"), str) and re.fullmatch(r"E-\d+[A-Za-z]?", ziel):   # Gestalt von track_anhaengen
+        return track_anhaengen(reise_dir, wer, args, heute)
+    ist_option = bool(re.fullmatch(r"V-\d+\.[a-z]+", ziel))
+    was = next((w for w, (k, _) in DING_ARTEN.items() if ziel.startswith(k + "-")), None)
+    merkmale = args.get("merkmale")
+    if merkmale in (None, "", {}) and not ist_option and not any(args.get(k) is not None for k in ("adresse", "koordinaten")):
+        return _ding_aendern_felder(reise_dir, wer, args, heute)
+    if merkmale not in (None, "", {}) and not isinstance(merkmale, dict):
+        raise Ablehnung("schreiben.klammer.merkmale")
+    if was is None and not ist_option:
+        raise Ablehnung("schreiben.ding_aendern.1")
+    merkmale = dict(merkmale or {})
+    args = {**args, "merkmale": merkmale}
+    teile = []   # (Titel, Text)
+    if was:
+        args = felder_aus_merkmalen(args, was)
+        merkmale = args["merkmale"]
+        route = route_stand(reise_dir)
+        roh = routen_laden(reise_dir)
+        knoten, _ = ding_finden(roh, ziel) if was != "ort" else ((roh.get("orte") or {}).get(ziel), ziel)
+        if knoten is None:
+            raise Ablehnung("schreiben.ding_aendern.2", ziel=ziel)
+        art = knoten.get("art") or art_schluessel_von(knoten)
+        katalog = (route.get("merkmale") or {}).get(art) or []
+        merkmale, fest = merkmale_fest_trennen({"merkmale": merkmale}, was if was != "strecke" else "strecke", katalog)
+        merkmale = merkmale or {}
+        # feste Merkmale der Grundform -> die Parameter der Teile
+        felder = {k: v for k, v in args.items() if k not in ("merkmale", "adresse", "koordinaten", "gpx", "grund", "geprueft")}
+        lage = {k: args[k] for k in ("adresse", "koordinaten") if args.get(k) is not None}
+        for name, v in fest.items():
+            if name in ("adresse", "koordinaten"):
+                if name in lage:
+                    raise Ablehnung("schreiben.fest_wert.doppelt", name=name)
+                lage[name] = v["wert"] if isinstance(v, dict) and "wert" in v else v
+            elif name == "zeitraum":
+                zr = fest_wert("zeitraum", v, "x", None)[0]
+                felder["beginn"], felder["ende"] = zr["beginn"], zr.get("ende", "")
+            elif name == "abfahrt":
+                felder["ab"] = fest_wert("abfahrt", v, "x", None)[0]
+            elif name == "ankunft":
+                if ist_eltern_wert(felder.get("an")):
+                    raise Ablehnung("schreiben.fest_wert.doppelt", name="ankunft")
+                felder["an"] = fest_wert("ankunft", v, "x", None)[0]
+            elif name == "buchungslink":
+                felder["buchungslink"] = fest_wert("buchungslink", v, "x", None)[0]
+            elif name == "gpx":
+                gpx_text = v
+        if "merkmal" in felder:
+            felder.pop("merkmal")
+        brauchbar = {k for k in felder if k not in ("ziel", "vorname", "name", "grund")}
+        if lage or fest.get("gpx") is not None or merkmale:   # quelle gehört dann den Angaben, nicht dem Ding
+            brauchbar.discard("quelle")
+        if brauchbar:
+            teile.append(_ding_aendern_felder(reise_dir, wer, {k: v for k, v in felder.items() if k != "quelle" or "quelle" in brauchbar}, heute))
+        if lage:
+            teile.append(lage_eintragen(reise_dir, wer, {**{k: args[k] for k in ("quelle", "geprueft", "grund") if args.get(k) is not None},
+                                                         "ziel": ziel, **lage}, heute))
+        if fest.get("gpx") is not None:
+            teile.append(track_anhaengen(reise_dir, wer, {"ziel": ziel, "gpx": gpx_text, "quelle": args.get("quelle"), "grund": args.get("grund")}, heute))
+    for k, v in merkmale.items():   # Merkmale der Art: je eines wie wert_eintragen
+        a = {"ziel": ziel, "merkmal": str(k), **{x: args[x] for x in ("quelle", "geprueft", "grund") if args.get(x) is not None}}
+        if isinstance(v, list):
+            a["werte"] = v
+        elif isinstance(v, dict):
+            a.update(v)
+        else:
+            a["wert"] = v
+        teile.append(wert_eintragen(reise_dir, wer, a, heute))
+    if not teile:
+        raise Ablehnung("schreiben.ding_aendern.6", bezeichnung=ziel, w2=', '.join(AENDERBAR.get(was or "", ())))
+    if len(teile) == 1:
+        return teile[0]
+    return teile[0][0], texte.Satz.verbinden([t for _, t in teile], " ")
+
+
+def art_schluessel_von(knoten):
+    from routen import art_schluessel
+    return art_schluessel(knoten.get("typ"))
+
+
+def _ding_aendern_felder(reise_dir, wer, args, heute=None):
+    """Felder einer Unterkunft, Strecke oder eines Orts ändern (Name, Ort, Art, Hinweis, Elternbezug, Zeiten …). -> (Titel, Text)."""
     from reise import darf
     from routen import art_schluessel
     ziel = (text_wert(args, "ziel", pflicht=True, laenge=20) or "").strip()
@@ -1646,8 +1759,9 @@ def koordinaten_wert(args):
     """„koordinaten“ aus der Anfrage („Breite, Länge“ in Grad) -> [Breite, Länge] oder None."""
     if args.get("koordinaten") in (None, ""):
         return None
+    roh = args["koordinaten"]
     try:
-        punkt = [round(float(x), 6) for x in re.split(r"[,;\s]+", str(args["koordinaten"]).strip()) if x]
+        punkt = [round(float(x), 6) for x in (roh if isinstance(roh, list) else re.split(r"[,;\s]+", str(roh).strip())) if x != ""]
     except ValueError:
         punkt = []
     if len(punkt) != 2 or not (-90 <= punkt[0] <= 90 and -180 <= punkt[1] <= 180):

@@ -105,9 +105,11 @@ PARAMETER = {
     "werte": "values", "wunsch": "wish", "zeit": "time_text", "ziel": "target", "zustaendig": "assignee", "reise": "trip",
 }
 # Gleiches Wort, andere Bedeutung: bei Strecken (ding_anlegen, ding_aendern) sind von/nach Start und Ziel, ab/an Abfahrt und Ankunft
-STRECKE = {"von": "from_place", "nach": "to_place", "ab": "departure", "an": "arrival"}
+# item_create und item_update (ADR-0007, Schritt c) nehmen den Elternbezug an (englisch parent); die früheren Parameter ort, von, nach, ab, an
+# (Zeit), beginn, ende, zeit, adresse, koordinaten, buchungslink, frage, ausserhalb stehen nicht mehr im Schema, gelten aber weiter
+# (deutsch und englisch, siehe PARAMETER_VERSTECKT) und stehen jetzt in merkmale
 PARAMETER_JE_WERKZEUG = {
-    "ding_anlegen": STRECKE, "ding_aendern": STRECKE,
+    "ding_anlegen": {"an": "parent"}, "ding_aendern": {"an": "parent"},
     "aufgabe_anlegen": {"ab": "earliest"}, "aufgabe_aendern": {"ab": "earliest"},
     "tag_aendern": {"nacht": "night", "wahl": "choices"},
     "buchung_anlegen": {"ab": "available_from"}, "buchung_aendern": {"ab": "available_from"},
@@ -134,8 +136,14 @@ def parameter_zu_englisch(werkzeug):
     return {**PARAMETER, **PARAMETER_JE_WERKZEUG.get(werkzeug, {})}
 
 
+# Englische Namen früherer Parameter, die nicht mehr im Schema stehen: als Eingabe weiter angenommen (laufende Gespräche brechen nicht)
+PARAMETER_VERSTECKT = {w: {"from_place": "von", "to_place": "nach", "departure": "ab", "arrival": "an", "place": "ort", "start_time": "beginn",
+                           "end_time": "ende", "time_text": "zeit", "address": "adresse", "coordinates": "koordinaten", "booking_link": "buchungslink",
+                           "question": "frage", "outside": "ausserhalb"} for w in ("ding_anlegen", "ding_aendern")}
+
+
 def parameter_zu_intern(werkzeug):
-    return {e: i for i, e in parameter_zu_englisch(werkzeug).items()}
+    return {**PARAMETER_VERSTECKT.get(werkzeug, {}), **{e: i for i, e in parameter_zu_englisch(werkzeug).items()}}
 
 
 # ---------- Werkzeugliste nach außen ----------
@@ -251,11 +259,12 @@ def intern_argumente(werkzeug, args, schema=None):
     zu_intern = parameter_zu_intern(werkzeug)
     props = ((schema or {}).get("properties")) or {}
     neu = {}
+    versteckt = PARAMETER_VERSTECKT.get(werkzeug, {})
     for k, v in args.items():
-        if k in zu_intern and k not in props and zu_intern[k] in props:   # englischer Name
+        if k in zu_intern and k not in props and (zu_intern[k] in props or k in versteckt):   # englischer Name
             neu[zu_intern[k]] = v
     for k, v in args.items():
-        if k in zu_intern and k not in props and zu_intern[k] in props:
+        if k in zu_intern and k not in props and (zu_intern[k] in props or k in versteckt):
             continue
         neu.setdefault(k, v)
     for k, v in list(neu.items()):

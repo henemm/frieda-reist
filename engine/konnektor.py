@@ -72,7 +72,7 @@ import stand as reisestand  # noqa: E402
 import texte  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
-from routen import FARBEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, ZAHLUNG, ZAHLUNG_ALIAS, art_schluessel, zahlung_wort, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
+from routen import FARBEN, FEST_NAMEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, ZAHLUNG, ZAHLUNG_ALIAS, art_schluessel, zahlung_wort, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
 
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "rueckmeldung_erledigen",
@@ -228,8 +228,13 @@ def aufruf_intern(werkzeuge, name, args):
     """tools/call von außen -> (interner Name, interne Argumente): englische und deutsche Namen gelten gleich, auch gemischt
     (ADR-0006, Punkt 4). werkzeuge ist die interne Liste, aus der das Schema des Werkzeugs stammt."""
     intern = schnittstelle.intern_name(name) if isinstance(name, str) else name
-    schema = next((w["inputSchema"] for w in werkzeuge if w["name"] == intern), None)
+    schema = next((w["inputSchema"] for w in list(werkzeuge) + ALIAS_WERKZEUGE if w["name"] == intern), None)
     return intern, schnittstelle.intern_argumente(intern, args, schema)
+
+
+# Aliase (ADR-0007, Schritt c): Diese Werkzeuge stehen nicht mehr in tools/list, laufende Gespräche rufen sie weiter und der Schreibweg
+# bekommt sie als item_update (ding_aendern)
+ALIAS_ZU_DING_AENDERN = ("wert_eintragen", "lage_eintragen", "track_anhaengen")
 
 
 def sprache_setzen_werkzeug(sprache):
@@ -1338,7 +1343,7 @@ def merkmal_hinweise(d, art, merkmale):
     krit = ((d.get("route") or {}).get("merkmale") or {}).get(art)
     if krit is None:   # die Art ist der Seite noch nicht bekannt (gerade angelegt): der Schreibweg prüft mit dem Repo
         return None
-    bekannt = {k["id"] for k in krit} | {x for k in krit for x in (k.get("auch") or [])}
+    bekannt = {k["id"] for k in krit} | {x for k in krit for x in (k.get("auch") or [])} | FEST_NAMEN   # FEST_NAMEN: Merkmale der Grundform (ADR-0007)
     fremd = [str(k) for k in merkmale if str(k).lower() not in bekannt]
     if not fremd:
         return None
@@ -1422,7 +1427,8 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
         return tk("konnektor.ontologie_werkzeug.6"), True
     if beleg and beleg_daten(args, "beleg_")[0] is None:   # Beleg vorher prüfen: die Buchung soll nicht ohne ihn angelegt werden
         return beleg_daten(args, "beleg_")[1], True
-    antwort, fehler = schreib_anfrage(reise, name, {"person": zugang.get("person"), "name": wer["name"], "rolle": wer["rolle"], "args": rest})
+    antwort, fehler = schreib_anfrage(reise, "ding_aendern" if name in ALIAS_ZU_DING_AENDERN else name,
+                                      {"person": zugang.get("person"), "name": wer["name"], "rolle": wer["rolle"], "args": rest})
     if fehler:
         return tk("konnektor.ausgabe.ontologie_werkzeug.1", fehler=fehler), True
     text = (tk("konnektor.ontologie_werkzeug.1", w1=wer['name'], w2=antwort.get('text', ''))) + hinweise_text(antwort)
@@ -2494,32 +2500,27 @@ UHRZEIT_FELD = {"type": "string", "description": "@konnektor.feld.uhrzeit_feld"}
 DING_ANLEGEN = {"name": "ding_anlegen", "description": "@konnektor.werkzeug.ding_anlegen",
                 "inputSchema": {"type": "object", "properties": {
                     "was": {"type": "string", "enum": ["unterkunft", "aufenthalt", "strecke", "ort"]},
-                    "titel": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.titel"},
-                    "ort": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.ort"},
-                    "zeit": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.zeit"},
-                    "beginn": UHRZEIT_FELD, "ende": {**UHRZEIT_FELD, "description": "@konnektor.werkzeug.ding_anlegen.ende"},
-                    "von": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.von"}, "nach": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.nach"},
-                    "ab": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.ab"},
-                    "an": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.an"},
-                    "ausserhalb": {"type": "boolean", "description": "@konnektor.werkzeug.ding_anlegen.ausserhalb"},
                     "art": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.art"},
-                    "hinweis": {"type": "string"}, "buchungslink": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.buchungslink"},
-                    "frage": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.frage"},
-                    "merkmale": MERKMALE_FELD, "quelle": QUELLE_FELD, "geprueft": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.geprueft"},
-                    "koordinaten": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.koordinaten"},
-                    "adresse": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.adresse"},
-                    "name": NAME_FELD},
+                    "an": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.an"},
+                    "titel": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.titel"},
+                    "quelle": QUELLE_FELD,
+                    "merkmale": {**MERKMALE_FELD, "description": "@konnektor.werkzeug.ding_anlegen.merkmale"},
+                    "hinweis": {"type": "string"},
+                    "geprueft": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.geprueft"}},
                     "required": ["was", "titel", "quelle"]}}
+# item_update (ADR-0007, Schritt c): Felder und Merkmale eines Dings in einem Werkzeug; value_set, location_set und track_attach
+# (wert_eintragen, lage_eintragen, track_anhaengen) gelten als Aliase und kommen beim Schreibweg als item_update an
 DING_AENDERN = {"name": "ding_aendern", "description": "@konnektor.werkzeug.ding_aendern",
                 "inputSchema": {"type": "object", "properties": {
-                    "ziel": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.ziel"}, "zeit": {"type": "string"},
-                    "neuer_name": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.neuer_name"}, "titel": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.titel"},
-                    "beginn": UHRZEIT_FELD, "ende": {**UHRZEIT_FELD, "description": "@konnektor.werkzeug.ding_aendern.ende"},
-                    "ort": {"type": "string"}, "von": {"type": "string"}, "nach": {"type": "string"}, "art": {"type": "string"},
-                    "ab": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.ab"},
-                    "an": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.an"}, "ausserhalb": {"type": "boolean", "description": "@konnektor.werkzeug.ding_aendern.ausserhalb"},
-                    "hinweis": {"type": "string"}, "quelle": {"type": "string"}, "buchungslink": {"type": "string"}, "frage": {"type": "string"},
-                    "grund": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.grund"}, "vorname": NAME_FELD},
+                    "ziel": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.ziel"},
+                    "titel": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.titel"},
+                    "art": {"type": "string"},
+                    "an": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.an"},
+                    "hinweis": {"type": "string"},
+                    "quelle": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.quelle"},
+                    "merkmale": {**MERKMALE_FELD, "description": "@konnektor.werkzeug.ding_aendern.merkmale"},
+                    "geprueft": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.geprueft"},
+                    "grund": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.grund"}},
                     "required": ["ziel"]}}
 LAGE_EINTRAGEN = {"name": "lage_eintragen", "description": "@konnektor.werkzeug.lage_eintragen",
                   "inputSchema": {"type": "object", "properties": {
@@ -2759,6 +2760,7 @@ WERT_EINTRAGEN = {"name": "wert_eintragen", "description": "@konnektor.werkzeug.
                                 "description": "@konnektor.werkzeug.wert_eintragen.werte"},
                       "name": NAME_FELD},
                       "required": ["ziel", "merkmal"]}}
+ALIAS_WERKZEUGE = [WERT_EINTRAGEN, LAGE_EINTRAGEN, TRACK_ANHAENGEN]   # nicht mehr in tools/list, gelten als Aliase von item_update
 
 
 ENTSCHEIDEN = {"name": "entscheiden", "description": "@konnektor.werkzeug.entscheiden",
@@ -3067,11 +3069,11 @@ def werkzeuge_fuer(zugang):
     wer = wer_spricht(zugang, d) or {"rolle": "gast"}
     _, bausteine = zustand_von(d)
     werkzeuge = []
-    ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN, KATEGORIE_DEFINIEREN, WERT_EINTRAGEN, DING_ANLEGEN, DING_AENDERN, LAGE_EINTRAGEN, OPTION_ANLEGEN, WAHLSTELLE_ANLEGEN,
+    ontologie = [ART_DEFINIEREN, MERKMAL_DEFINIEREN, KATEGORIE_DEFINIEREN, DING_ANLEGEN, DING_AENDERN, OPTION_ANLEGEN, WAHLSTELLE_ANLEGEN,
                  FRAGE_ANLEGEN, TAG_AENDERN, WISSEN_SCHREIBEN, FRAGE_SCHLIESSEN, REISE_STATUS_SETZEN, EINSTELLUNG_SETZEN,
                  BUCHUNG_ANLEGEN, BUCHUNG_AENDERN, TAG_ANLEGEN, TERMIN_SETZEN, WAHLSTELLE_AENDERN, OPTION_AENDERN, WISSEN_AENDERN,
                  LESETEXT_SCHREIBEN, REISE_AENDERN, START_ENDE_SETZEN, PLAN_ANLEGEN, PLAN_AENDERN, MERKMAL_ZUSAMMENFUEHREN, ARTEN_UEBERNEHMEN,
-                 WUNSCH_VORSCHLAGEN, SYMBOL_SETZEN, KARTENANSICHT_SETZEN, TRACK_ANHAENGEN, KARTENPUNKTE_HOLEN] if schreibdienst() else []
+                 WUNSCH_VORSCHLAGEN, SYMBOL_SETZEN, KARTENANSICHT_SETZEN, KARTENPUNKTE_HOLEN] if schreibdienst() else []
     for w in WERKZEUGE + [ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN, RUECKMELDUNG_ERLEDIGEN, BELEG_ANLEGEN] + ontologie:
         n = w["name"]
         if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:
