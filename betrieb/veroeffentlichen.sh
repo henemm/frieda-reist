@@ -414,7 +414,7 @@ main() {
   for reise in $laufreisen; do
     # Offline-Grundkarte der automatischen Karte (Epic #225, #239): nur wenn sich ihr Rahmen geändert hat; ohne Netz baut die
     # Reise trotzdem (die Karte bleibt schematisch oder beim alten Stand)
-    if [ "${FR_GRUNDKARTE_AUTO:-1}" = 1 ]; then
+    if [ "${FR_GRUNDKARTE_AUTO:-1}" = 1 ] && [ -x "${FR_PYTHON:-}" ]; then
       "$FR_PYTHON" "${VF_GRUNDKARTE:-$FR_BETRIEB/../werkzeuge/grundkarte_auto.py}" "$reise" || echo "Warning: base map of $reise not fetched, built without the new one."
     fi
     rc=0; "$deploy" "$reise" 2>&1 | tee "$deploy_log" || rc=${PIPESTATUS[0]}
