@@ -90,6 +90,43 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
     assert 'class="textmerkmale"' in b and 'class="tabelle stapel"' in b and 'role="tablist"' in b
 
 
+def test_zweite_beispielreise_ohne_wanderung_baut_sauber(tmp_path):
+    """Stadtwochenende (#266): eine Reise ohne Etappen, Varianten und Tagesseiten baut ohne Fehler und Warnungen; die
+    Software kennt nur Grundformen (ADR-0001, Frage 1)."""
+    ziel = tmp_path / "web" / "stadt"
+    bauen.bauen(WURZEL / "beispiel/reisen/stadtwochenende", ziel)
+    d = json.loads((ziel / "daten.json").read_text(encoding="utf-8"))
+    assert not [a for a in d["abschnitte"] if a["typ"] == "etappe"]
+    r = d["route"]
+    assert [t["titel"] for t in r["tage"]] == ["Anreise und Ankommen bei Tante Anna", "Samstag in Beispielstadt", "Museum und Rückfahrt"]
+    assert r["wahlstellen"] == [] and r["plaene"] == [] and r["warnungen"] == []
+    assert set(r["arten"]) == {"gastzimmer", "essen", "museum", "bahn"}
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_alle_ansichten_der_zweiten_beispielreise(tmp_path, browser):
+    """Derselbe Rundgang wie bei der Wanderung, jetzt an einer Reise anderen Typs (#266, ADR-0001 Frage 1)."""
+    bauen.bauen(WURZEL / "beispiel/reisen/stadtwochenende", tmp_path / "web" / "stadt")
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(tmp_path / "web")))
+    threading.Thread(target=s.serve_forever, daemon=True).start()
+    try:
+        aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_browser.mjs"), str(PLAYWRIGHT),
+                              f"http://127.0.0.1:{s.server_address[1]}/stadt/"],
+                             capture_output=True, text=True, timeout=300, env={**os.environ, "RH_BROWSER": browser})
+    finally:
+        s.shutdown()
+    assert aus.returncode == 0, aus.stderr[-2000:]
+    e = json.loads(aus.stdout.strip().splitlines()[-1])
+    assert e["routen"] > 20
+    assert e["fehler"] == [] and e["leer"] == [] and e["breit"] == [] and e["schrift"] == {} and e["ohneArt"] == []
+
+
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
 def test_neue_reise_aus_der_vorlage(tmp_path, browser):

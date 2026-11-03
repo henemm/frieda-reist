@@ -1,0 +1,36 @@
+# Arten der zweiten Beispielreise (erfunden): ein Wochenende in der Stadt, ohne Wanderung, ohne Varianten, ohne Etappen
+# und ohne Tagesseiten. Sie prüft, dass die Software nur Grundformen kennt (ADR-0001, Frage 1).
+arten:
+  gastzimmer:
+    grundform: aufenthalt
+    name: Gästezimmer bei Verwandten
+    farbe: braun
+    merkmale:
+      schluessel: {name: Schlüssel, typ: text, hilfe: "Wer öffnet, wann ist jemand zu Hause", frage: "Wann seid ihr zu Hause?"}
+      lage:       {name: Lage, typ: text, stufe: angeboten}
+  essen:
+    grundform: aufenthalt
+    name: Essen
+    farbe: oliv
+    symbol: einkehr
+    buchbar: true
+    merkmale:
+      geoeffnet: {name: Geöffnet am Reisedatum, typ: auswahl, werte: [ja, nein, unklar], veraenderlich: true, stufe: pflicht,
+                  hilfe: "Website oder Anruf; Ruhetag beachten"}
+  museum:
+    grundform: aufenthalt
+    name: Museum
+    farbe: lila
+    symbol: museum
+    merkmale:
+      geoeffnet: {name: Geöffnet am Reisedatum, typ: auswahl, werte: [ja, nein, unklar], veraenderlich: true, stufe: pflicht}
+      eintritt:  {name: Eintritt, typ: geld, veraenderlich: true, rolle: kosten}
+  bahn:
+    grundform: bewegung
+    name: Bahn
+    farbe: schiefer
+    symbol: bahn
+    buchbar: true
+    merkmale:
+      preis: {name: Preis, typ: geld, veraenderlich: true, rolle: kosten, hilfe: "Fahrplanauskunft des Betreibers"}
+      dauer: {name: Dauer, typ: text, veraenderlich: true}

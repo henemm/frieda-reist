@@ -1,0 +1,70 @@
+# Beispielstadt – Wochenende bei Verwandten: erfundenes Beispiel einer Reise ohne Alternativen, Wanderetappen und
+# Tagesseiten (ADR-0001, Frage 1: jede Funktion an zwei Reisetypen durchspielen). Alle Angaben sind erfunden.
+
+start: {datum: 2027-03-12, ort: O-01}
+ende: {datum: 2027-03-14, ort: O-01}
+fixpunkte:
+  - {datum: 2027-03-13, ort: O-02, titel: "Mittagessen bei Onkel Paul um 13 Uhr (Beispiel)", quelle: "erfunden (Beispiel)"}
+
+orte:
+  O-01: {name: Heimatstadt, quelle: "erfunden (Beispiel)"}
+  O-02: {name: Beispielstadt, quelle: "erfunden (Beispiel)"}
+
+strecken:
+  E-01: {titel: "Regionalzug Heimatstadt → Beispielstadt", von: O-01, nach: O-02, art: bahn, ab: "09:10", an: "11:25", quelle: "erfunden (Beispiel); Fahrplan nicht geprüft"}
+  E-02: {titel: "Regionalzug Beispielstadt → Heimatstadt", von: O-02, nach: O-01, art: bahn, ab: "17:40", an: "19:55", quelle: "erfunden (Beispiel); Fahrplan nicht geprüft"}
+
+unterkuenfte:
+  U-01:
+    name: Gästezimmer bei Tante Anna
+    ort: O-02
+    art: gastzimmer
+    hinweis: "erfunden; zwei Nächte, Frühstück gehört dazu"
+    quelle: "erfunden (Beispiel)"
+    merkmale:
+      schluessel: {wert: "Tante Anna ist ab Freitag 12 Uhr zu Hause (Beispielwert)", quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
+
+aufenthalte:
+  A-01:
+    name: Mittagessen bei Onkel Paul
+    ort: O-02
+    art: essen
+    zeit: "13 Uhr"
+    beginn: "13:00"
+    ende: "15:00"
+    quelle: "erfunden (Beispiel)"
+    merkmale:
+      geoeffnet: {wert: ja, quelle: "erfunden (Beispiel)", geprueft: 2026-11-01}
+  A-02:
+    name: Stadtmuseum
+    ort: O-02
+    art: museum
+    zeit: "Sonntag Vormittag"
+    beginn: "10:30"
+    ende: "12:30"
+    quelle: "erfunden (Beispiel)"
+    merkmale:
+      geoeffnet: {wert: ja, quelle: "erfunden (Beispiel)", geprueft: 2026-11-01}
+      eintritt: {wert: "8 €", quelle: "erfunden (Beispiel)", geprueft: 2026-11-01}
+
+buchungen:
+  B-01:
+    fuer: [E-01, E-02]
+    status: gebucht
+    nummer: "DB-XYZ789"
+    bei: "bahn.de"
+    preis: "58 € für zwei Personen, hin und zurück"
+    zahlung: bezahlt
+    bezahlt: "Kreditkarte"
+    gebucht_am: 2026-11-01
+    wer: Tom
+    quelle: "Buchungsbestätigung bahn.de vom 1.11.2026 (erfunden, Beispiel)"
+    verlauf:
+      - {datum: 2026-11-01, wer: Tom, was: angelegt}
+
+tage:
+  T-01: {titel: "Anreise und Ankommen bei Tante Anna", strecken: [E-01], nacht: U-01, text: "Zug am Vormittag, am Nachmittag Spaziergang durch die Altstadt."}
+  T-02: {titel: "Samstag in Beispielstadt", aufenthalte: [A-01], nacht: U-01}
+  T-03: {titel: "Museum und Rückfahrt", aufenthalte: [A-02], strecken: [E-02]}
+
+route: [T-01, T-02, T-03]

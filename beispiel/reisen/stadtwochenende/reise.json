@@ -1,0 +1,21 @@
+{
+  "plan": "plan/plan.md",
+  "eckdaten": "W-01",
+  "fragen": "offene-fragen.md",
+  "abschnitte": {
+    "plan/plan.md": {
+      "Eckdaten": ["W-01", "plan"],
+      "Tagesplan": ["W-04", "plan"],
+      "Unterkünfte": ["W-05", "plan"]
+    },
+    "inhalt/wissen.md": {
+      "Überblick": ["W-02", "wissen"],
+      "Quellen": ["W-03", "quelle"]
+    }
+  },
+  "routen": {
+    "datei": "plan/routen.yaml",
+    "tagesplan": ["W-04", "Tagesplan"],
+    "unterkuenfte": ["W-05", "Unterkünfte"]
+  }
+}

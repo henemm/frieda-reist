@@ -1,0 +1,33 @@
+# Eckdaten, Zeitraum, Status, Personen und Einstellungen (engine/reise.py, docs/produkt.md).
+# Status und Einstellungen ändert nur ein:e Organisator:in, mit Verlaufseintrag.
+
+titel: Beispielstadt – Wochenende bei Verwandten
+pfad: stadtwochenende
+sprache: de
+zeitraum:
+  von: 2027-03-12
+  bis: 2027-03-14
+status:
+  wert: idee
+  verlauf:
+  - datum: 2026-11-03
+    wert: idee
+    wer: Tom
+    grund: Reise angelegt (erste Reise der Instanz, vom Betreiber angelegt (engine/neu.py reise, docs/neue-reise.md))
+personen:
+  tom:
+    name: Tom
+    rolle: organisator
+  lea:
+    name: Lea
+    rolle: mitwirkend
+bausteine:
+- rueckmeldungen
+- fragen
+- aufgaben
+- wuensche
+darstellung:
+  gruppen:
+    wissen: Wissen
+    praxis: Praxis
+    quelle: Quellen

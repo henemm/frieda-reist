@@ -39,7 +39,7 @@ mein-reisen-repo/
   reisen/<reise>/  reise.yaml, reise.json, plan/routen.yaml, inhalt/, medien/
 ```
 
-Aufbau einer Reise: `beispiel/reisen/beispielreise/`, Modell in `engine/routen.py` und `engine/reise.py`, Reise-Ontologie (Grundformen, Arten und Merkmale je Reise) in `docs/ontologie.md`, Produktbild in `docs/produkt.md`, Alternativen in `docs/alternativen.md`, Design und Bausteine in `docs/design.md`, Claude-App in `docs/konnektor.md`, neue Reise anlegen in `docs/neue-reise.md`, Sprachen und eine neue Sprache hinzufügen in `docs/sprachen.md`.
+Aufbau einer Reise: `beispiel/reisen/beispielreise/` (Wanderung) und `beispiel/reisen/stadtwochenende/` (Wochenende ohne Wanderung), Modell in `engine/routen.py` und `engine/reise.py`, Reise-Ontologie (Grundformen, Arten und Merkmale je Reise) in `docs/ontologie.md`, Produktbild in `docs/produkt.md`, Alternativen in `docs/alternativen.md`, Design und Bausteine in `docs/design.md`, Claude-App in `docs/konnektor.md`, neue Reise anlegen in `docs/neue-reise.md`, Sprachen und eine neue Sprache hinzufügen in `docs/sprachen.md`.
 
 ## Auf dem eigenen Server
 

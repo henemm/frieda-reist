@@ -4,7 +4,7 @@ Dieses Repo enthält nur die Software (Generator, Vorlage, Service Worker, Rück
 
 ## Was nie hierher gehört
 
-Echte Reisen, Namen echter Personen, Serveradressen, geheime Pfade, Zugangsdaten, Konnektor-Links, Buchungen, Texte oder Fotos aus Reiseführern. Beispiele und Tests nutzen nur die Beispielreise (`beispiel/reisen/beispielreise`, Personen Ida und Karl) oder erfundene Testdaten.
+Echte Reisen, Namen echter Personen, Serveradressen, geheime Pfade, Zugangsdaten, Konnektor-Links, Buchungen, Texte oder Fotos aus Reiseführern. Beispiele und Tests nutzen nur die beiden Beispielreisen (`beispiel/reisen/beispielreise`, eine Wanderung mit Varianten, Personen Ida und Karl; `beispiel/reisen/stadtwochenende`, ein Wochenende bei Verwandten ohne Wanderung, Personen Tom und Lea) oder erfundene Testdaten.
 
 ## Aufbau
 
@@ -17,7 +17,7 @@ engine/            bauen.py (Generator), routen.py (Routenmodell), reise.py (rei
 betrieb/           Betrieb einer Instanz: Schreibweg, Veröffentlichen, Deploy, Freischalten, Zustellen der Links neuer Reisen,
                    Wächter-Lauf, Einrichten, Vorlagen für systemd und nginx, einstellungen.beispiel (keine KI auf dem Server)
 werkzeuge/         Werkzeuge für Inhalte aus dem Netz: Grundkarte, Punkte und Adressen aus OpenStreetMap, Wasserstellen
-beispiel/reisen/   erfundene Beispielreise, Demo und Testgrundlage
+beispiel/reisen/   erfundene Beispielreisen (Wanderung und Städtewochenende), Demo und Testgrundlage; jede Funktion gegen beide denken (ADR-0001, Frage 1)
 docs/              Produktbild, Alternativen und Merkmale, Design und Bausteine, Konnektor, Sprachen, Betrieb, Werkzeuge;
                    adr/ Architektur-Entscheidungen, ADR-0001 ist der Kern und die Prüfstelle, ADR-0002 Atomic Design, ADR-0003 eine Heimat je Grundform,
                    ADR-0004 Lage eines Aufenthalts, ADR-0005 Konten und Anmeldung; abgleich-2026-10-29.md Prüfbericht und Backlog
