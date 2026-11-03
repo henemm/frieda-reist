@@ -51,11 +51,12 @@ def test_pruefdatum_nimmt_jüngstes_und_teilweise_daten():
 
 
 def test_osm_ids_nur_wasserpunkte_mit_osm_quelle():
-    punkte = [{"kat": "wasser", "quelle": "OSM node/12, Stand 2026-10-25"},
-              {"kat": "wasser", "quelle": "Ida, 2026-10-01"},
-              {"kat": "einkehr", "quelle": "OSM node/99, Stand 2026-10-25"},
-              {"kat": "wasser", "quelle": "OSM way/7, Stand 2026-10-25"}]
-    assert wp.osm_ids(punkte) == {"node": [12], "way": [7]}
+    """Altform plan/punkte.yaml (kat: wasser); die Dinge testet test_werkzeuge_dinge.py."""
+    punkte = [{"kat": "wasser", "lage": [1, 2], "quelle": "OSM node/12, Stand 2026-10-25"},
+              {"kat": "wasser", "lage": [1, 2], "quelle": "Ida, 2026-10-01"},
+              {"kat": "einkehr", "lage": [1, 2], "quelle": "OSM node/99, Stand 2026-10-25"},
+              {"kat": "wasser", "lage": [1, 2], "quelle": "OSM way/7, Stand 2026-10-25"}]
+    assert wp.osm_ids(wp.wasserpunkte([], {"strecken": {"E-01": punkte}})) == {"node": [12], "way": [7]}
 
 
 def test_werkzeuge_ohne_werte_einer_instanz():
