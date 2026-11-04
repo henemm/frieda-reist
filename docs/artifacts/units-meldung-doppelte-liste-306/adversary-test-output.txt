@@ -1,0 +1,31 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- /home/hem/frieda-reist/.claude/worktrees/deep-rolling-pelican/engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/hem/frieda-reist/.claude/worktrees/deep-rolling-pelican
+collecting ... collected 23 items
+
+engine/tests/test_units.py::test_einrichten_erzeugen_schreibt_die_einheiten_ohne_ausgabe PASSED [  4%]
+engine/tests/test_units.py::test_einrichten_erzeugen_schreibt_nur_nach_ei_ziel PASSED [  8%]
+engine/tests/test_units.py::test_gleiche_einheit_ist_kein_unterschied PASSED [ 13%]
+engine/tests/test_units.py::test_erlaubt_sind_nur_umgebungswerte_und_zeitgrenze PASSED [ 17%]
+engine/tests/test_units.py::test_alles_andere_ist_gesperrt[User=root] PASSED [ 21%]
+engine/tests/test_units.py::test_alles_andere_ist_gesperrt[ExecStart=/bin/sh -c evil] PASSED [ 26%]
+engine/tests/test_units.py::test_alles_andere_ist_gesperrt[Environment=PATH=/tmp] PASSED [ 30%]
+engine/tests/test_units.py::test_alles_andere_ist_gesperrt[Environment=FR_X=$(id)] PASSED [ 34%]
+engine/tests/test_units.py::test_alles_andere_ist_gesperrt[Environment=FR_X=a b] PASSED [ 39%]
+engine/tests/test_units.py::test_alles_andere_ist_gesperrt[Environment=FR_X="a"] PASSED [ 43%]
+engine/tests/test_units.py::test_alles_andere_ist_gesperrt[Environment=FR_X=a;b] PASSED [ 47%]
+engine/tests/test_units.py::test_alles_andere_ist_gesperrt[TimeoutStartSec=$X] PASSED [ 52%]
+engine/tests/test_units.py::test_alles_andere_ist_gesperrt[ExecStartPre=/bin/true] PASSED [ 56%]
+engine/tests/test_units.py::test_alles_andere_ist_gesperrt[ReadWritePaths=/] PASSED [ 60%]
+engine/tests/test_units.py::test_timer_und_fehlende_einheit_sind_gesperrt PASSED [ 65%]
+engine/tests/test_units.py::test_pruefen_ausgang_0_3_4 PASSED            [ 69%]
+engine/tests/test_units.py::test_dropin_ordner_ist_eine_gesperrte_abweichung PASSED [ 73%]
+engine/tests/test_units.py::test_unicode_leerraum_und_leeres_environment_sind_gesperrt PASSED [ 78%]
+engine/tests/test_units.py::test_erlaubnisliste_ist_eine_feste_namensliste PASSED [ 82%]
+engine/tests/test_units.py::test_installieren_nur_erlaubte_abweichungen_dann_ausgang_0 PASSED [ 86%]
+engine/tests/test_units.py::test_installieren_gesperrtes_wird_nicht_uebergeben_und_bleibt_ausgang_4 PASSED [ 91%]
+engine/tests/test_units.py::test_installieren_ohne_hilfsprogramm_meldet_ausgang_5 PASSED [ 95%]
+engine/tests/test_units.py::test_installieren_ohne_abweichung_tut_nichts PASSED [100%]
+
+============================== 23 passed in 1.92s ==============================

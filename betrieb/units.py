@@ -166,7 +166,6 @@ def installieren(ziel, systemd):
     fehler, geaendert = False, []
     if not os.path.exists(helfer):
         print(f"units helper {helfer} is not installed, nothing installed (docs/betrieb.md, Einheiten abgleichen).")
-        ausgeben(erg)
         return 5
     for einheit in zu_tun:
         soll = lies(os.path.join(ziel, "systemd", einheit)) or ""
