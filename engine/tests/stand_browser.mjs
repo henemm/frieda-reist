@@ -40,7 +40,9 @@ ergebnis.apiStand = await p.evaluate(async () => (await (await fetch("api/stand"
 ergebnis.seiteNochAlt = await p.evaluate(() => D.reise_stand.nummer);
 await Promise.all([p.waitForEvent("load", {timeout: 30000}), p.click("#neuLaden")]);
 await p.waitForFunction(() => D.reise_stand.nummer === 2, null, {timeout: 30000});
-await p.waitForFunction(() => /Reise-Stand 2/.test(document.querySelector("#release").textContent), null, {timeout: 15000});
+// Die Fußzeile zeigt erst „geändert <Zeit des Baus>“ und wechselt auf „veröffentlicht“, sobald api/stand geantwortet hat (#321):
+// auf „Reise-Stand 2“ allein zu warten liest je nach Tempo den Zwischenzustand mit der echten Uhrzeit des Laufs.
+await p.waitForFunction(() => /Reise-Stand 2 · veröffentlicht/.test(document.querySelector("#release").textContent), null, {timeout: 15000});
 ergebnis.fussNeu = (await p.textContent("#release")).replace(/\s+/g, " ").trim();
 ergebnis.fehler = fehler;
 console.log(JSON.stringify(ergebnis));

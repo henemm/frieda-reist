@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -231,7 +232,9 @@ def test_reise_stand_im_browser(tmp_path, browser):
                 self.send_response(204)
                 self.end_headers()
             elif self.path.split("?")[0] == "/test-abc/api/stand":
-                daten = json.dumps({"veroeffentlicht": {"nummer": server["nummer"], "zeit": "2026-11-02T08:47:00Z"},
+                if server["nummer"] >= 2:
+                    time.sleep(1)   # ab Stand 2 antwortet der Server spät: die Fußzeile steht vorher im Zwischenzustand „geändert“ (#321)
+                daten =json.dumps({"veroeffentlicht": {"nummer": server["nummer"], "zeit": "2026-11-02T08:47:00Z"},
                                     "gesichert": {"nummer": server["nummer"], "zeit": "2026-11-02T08:46:00Z"},
                                     "zustand": "veroeffentlicht"}).encode()
                 self.send_response(200)
