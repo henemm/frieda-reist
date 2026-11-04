@@ -12,8 +12,9 @@ permissions:
 jobs:
   tests:
     runs-on: ubuntu-24.04
-    # Die Suite braucht seit 2.11.2026 rund 20 Minuten (#258); Spielraum, damit ein langsamer Runner nicht abbricht
-    timeout-minutes: 40
+    # Die Suite lief seit 2.11.2026 20 Minuten hintereinander (#258) und läuft parallel (pytest-xdist, #322): gemessen 7 Minuten
+    # mit drei Prozessen; Spielraum, damit ein langsamer Runner nicht abbricht
+    timeout-minutes: 25
     # Zweiter Lauf mit den Einstellungen einer Instanz, wie veroeffentlichen.sh sie an pytest weitergibt (#202): Keine
     # Prüfung darf davon abhängen (conftest.py entfernt sie). So fiel 1.11.2026 eine Fixture erst auf dem Server auf.
     strategy:
@@ -61,7 +62,7 @@ jobs:
             echo "KN_BASIS=https://reisen.example.org"
           } >> "$GITHUB_ENV"
       - name: Tests
-        run: python -m pytest -q -rs engine/tests
+        run: python -m pytest -q -rs -n auto engine/tests
         env:
           RH_BILDER: ${{ github.workspace }}/bilder
       - name: Bilder der Bausteinseite (Handy und Rechner, hell und dunkel) zur Durchsicht

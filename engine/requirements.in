@@ -5,6 +5,7 @@
 markdown
 Pillow
 pytest
+pytest-xdist
 PyYAML
 ruamel.yaml
 CairoSVG
