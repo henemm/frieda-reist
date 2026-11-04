@@ -1,0 +1,328 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- ./engine/.venv/bin/python
+rootdir: .
+plugins: xdist-3.8.0
+collecting ... collected 303 items / 286 deselected / 17 selected
+
+engine/tests/test_routen.py::test_strecken_summe_zaehlt_nur_summierte_arten FAILED [  5%]
+engine/tests/test_routen.py::test_tag_kennzahlen_je_tag_und_summe_gleich_summe_der_tage FAILED [ 11%]
+engine/tests/test_routen.py::test_tag_kennzahlen_2h_und_length_zaehlen FAILED [ 17%]
+engine/tests/test_routen.py::test_mit_kennzahlen_wanderung_wahr_nur_bus_falsch FAILED [ 23%]
+engine/tests/test_routen.py::test_kombinierte_art_summe_tag_und_strecke_gleich[False] FAILED [ 29%]
+engine/tests/test_routen.py::test_kombinierte_art_summe_tag_und_strecke_gleich[True] FAILED [ 35%]
+engine/tests/test_routen.py::test_summierte_strecke_ohne_angaben_fehlend_und_mit_kennzahlen FAILED [ 41%]
+engine/tests/test_routen.py::test_plan_tage_tragen_kennzahlen_ihrer_eigenen_wahl FAILED [ 47%]
+engine/tests/test_bauen.py::test_kennzahlen_je_tag_beider_beispielreisen[beispielreise-True] FAILED [ 52%]
+engine/tests/test_bauen.py::test_kennzahlen_je_tag_beider_beispielreisen[stadtwochenende-False] FAILED [ 58%]
+engine/tests/test_texte.py::test_englische_mengenangaben_im_singular PASSED [ 64%]
+engine/tests/test_texte.py::test_handbuch_summe_mit_und_ohne_kennzahlen FAILED [ 70%]
+engine/tests/test_texte.py::test_handbuch_summe_angaben_fehlen FAILED    [ 76%]
+engine/tests/test_texte.py::test_neue_kennzahl_schluessel_in_allen_sprachen FAILED [ 82%]
+engine/tests/test_design.py::test_vorlage_ohne_eigene_tagessumme_und_summiert_nur_von_strecke FAILED [ 88%]
+engine/tests/test_seite_sprachen.py::test_seite_zeigt_kennzahlen_aus_dem_routenmodell[de] FAILED [ 94%]
+engine/tests/test_seite_sprachen.py::test_seite_zeigt_kennzahlen_aus_dem_routenmodell[en] FAILED [100%]
+
+=================================== FAILURES ===================================
+________________ test_strecken_summe_zaehlt_nur_summierte_arten ________________
+
+    def test_strecken_summe_zaehlt_nur_summierte_arten():
+        """GIVEN eine Wanderstrecke (summiert) und eine Busstrecke (nicht summiert) WHEN strecken_summe THEN zählt nur die
+        Wanderung; fehlend bleibt leer (der Bus muss keine Angaben haben)."""
+        r = Routen(roh(), {}, FRAGEN, [], lambda *a: None, arten=ARTEN)
+        r.bauen()
+>       s = r.strecken_summe(["E-01", "E-03"])
+            ^^^^^^^^^^^^^^^^
+E       AttributeError: 'Routen' object has no attribute 'strecken_summe'
+
+engine/tests/test_routen.py:1180: AttributeError
+__________ test_tag_kennzahlen_je_tag_und_summe_gleich_summe_der_tage __________
+
+    def test_tag_kennzahlen_je_tag_und_summe_gleich_summe_der_tage():
+        """GIVEN die Testreise (T-01 E-01 3:30 h, T-02 E-02 2:00 h, T-03 ohne Strecke) WHEN bauen() THEN trägt jeder Tag seine
+        Kennzahlen als Zahlen, und die Summe der Tage ist die Summe der Reise."""
+        erg = ok(roh())
+>       k = [t["kennzahlen"] for t in erg["tage"]]
+             ^^^^^^^^^^^^^^^
+E       KeyError: 'kennzahlen'
+
+engine/tests/test_routen.py:1188: KeyError
+__________________ test_tag_kennzahlen_2h_und_length_zaehlen ___________________
+
+    def test_tag_kennzahlen_2h_und_length_zaehlen():
+        """GIVEN eine Wanderstrecke mit „2 h“ statt h:mm und dem englischen Schlüssel „Length“ WHEN bauen() THEN zählen beide
+        im Tageswert (2 h = 120 min, Length = km), wie in der Summe."""
+        r = roh()
+        r["strecken"]["E-01"]["kennzahlen"] = {"Dauer": "2 h", "Length": "8 km", "Aufstieg (Hm)": "400", "Abstieg (Hm)": "100"}
+        erg = ok(r)
+>       k = erg["tage"][0]["kennzahlen"]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'kennzahlen'
+
+engine/tests/test_routen.py:1204: KeyError
+______________ test_mit_kennzahlen_wanderung_wahr_nur_bus_falsch _______________
+
+    def test_mit_kennzahlen_wanderung_wahr_nur_bus_falsch():
+        """GIVEN die Testreise WHEN bauen() THEN mit_kennzahlen ist wahr (summierte Strecken); die Option „Mit Bus“ hat keine
+        summierte Strecke, ihre Summe hat mit_kennzahlen falsch."""
+        erg = ok(roh())
+>       assert erg["summe"]["mit_kennzahlen"] is True
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'mit_kennzahlen'
+
+engine/tests/test_routen.py:1213: KeyError
+___________ test_kombinierte_art_summe_tag_und_strecke_gleich[False] ___________
+
+summiert = False
+
+    @pytest.mark.parametrize("summiert", [False, True])
+    def test_kombinierte_art_summe_tag_und_strecke_gleich(summiert):
+        """GIVEN E-01 mit art [wandern, bus] und der Art kombiniert (summiert ja/nein) WHEN bauen() THEN gilt dieselbe Regel in
+        der Summe, im Tageswert und an der Strecke: die Art kombiniert entscheidet, nicht „irgendeine der Arten“."""
+        r = roh()
+        r["strecken"]["E-01"]["art"] = ["wandern", "bus"]
+        kombi = {"grundform": "bewegung", "name": "Wanderung und Bus", **({"summiert": True} if summiert else {})}
+        erg, fehler = laufe(r, arten_=arten(kombiniert=kombi))
+        assert fehler == [], fehler
+        assert erg["strecken"]["E-01"]["summiert"] is summiert
+>       k = erg["tage"][0]["kennzahlen"]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'kennzahlen'
+
+engine/tests/test_routen.py:1228: KeyError
+___________ test_kombinierte_art_summe_tag_und_strecke_gleich[True] ____________
+
+summiert = True
+
+    @pytest.mark.parametrize("summiert", [False, True])
+    def test_kombinierte_art_summe_tag_und_strecke_gleich(summiert):
+        """GIVEN E-01 mit art [wandern, bus] und der Art kombiniert (summiert ja/nein) WHEN bauen() THEN gilt dieselbe Regel in
+        der Summe, im Tageswert und an der Strecke: die Art kombiniert entscheidet, nicht „irgendeine der Arten“."""
+        r = roh()
+        r["strecken"]["E-01"]["art"] = ["wandern", "bus"]
+        kombi = {"grundform": "bewegung", "name": "Wanderung und Bus", **({"summiert": True} if summiert else {})}
+        erg, fehler = laufe(r, arten_=arten(kombiniert=kombi))
+        assert fehler == [], fehler
+        assert erg["strecken"]["E-01"]["summiert"] is summiert
+>       k = erg["tage"][0]["kennzahlen"]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'kennzahlen'
+
+engine/tests/test_routen.py:1228: KeyError
+________ test_summierte_strecke_ohne_angaben_fehlend_und_mit_kennzahlen ________
+
+    def test_summierte_strecke_ohne_angaben_fehlend_und_mit_kennzahlen():
+        """GIVEN summierte Strecken ganz ohne Kennzahlen WHEN bauen() THEN mit_kennzahlen ist wahr, fehlend nennt alle Felder
+        (im Tag und in der Summe) – keine stille Null, die nach „keine Wanderdaten“ aussieht."""
+        r = roh()
+        del r["strecken"]["E-01"]["kennzahlen"]
+        del r["strecken"]["E-02"]["kennzahlen"]
+        erg = ok(r)
+>       assert erg["summe"]["mit_kennzahlen"] is True
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'mit_kennzahlen'
+
+engine/tests/test_routen.py:1240: KeyError
+_____________ test_plan_tage_tragen_kennzahlen_ihrer_eigenen_wahl ______________
+
+    def test_plan_tage_tragen_kennzahlen_ihrer_eigenen_wahl():
+        """GIVEN zwei Pläne mit verschiedenen Wahlen WHEN bauen() THEN trägt jeder p.tage[i].kennzahlen die Werte seiner eigenen
+        Wahl, und die Summe der Tage ist die Summe des Plans."""
+        r = roh()
+        r["plaene"] = [{"id": "P-A", "kurz": "Zu Fuß", "auswahl": ["V-01.a"]},
+                       {"id": "P-B", "kurz": "Bus", "auswahl": ["V-01.b", "V-02.b"]}]
+        erg = ok(r)
+        a, b = erg["plaene"]
+>       assert [t["kennzahlen"]["min"] for t in a["tage"]] == [210, 120, 0]
+                ^^^^^^^^^^^^^^^
+E       KeyError: 'kennzahlen'
+
+engine/tests/test_routen.py:1254: KeyError
+_______ test_kennzahlen_je_tag_beider_beispielreisen[beispielreise-True] _______
+
+tmp_path = PosixPath('<tmp>/pytest-8968/test_kennzahlen_je_tag_beider_0')
+ordner = 'beispielreise', mit = True
+
+    @pytest.mark.parametrize("ordner, mit", [("beispielreise", True), ("stadtwochenende", False)])
+    def test_kennzahlen_je_tag_beider_beispielreisen(tmp_path, ordner, mit):
+        """#268, AC-1/AC-2/AC-9: Jeder Tag trägt seine Kennzahlen aus dem Routenmodell; die Summe der Tage ist die Summe der
+        Reise und jedes Plans (eigene Wahl je Plan). Wanderung: mit_kennzahlen wahr, 595 min / 25,4 km / ↑1075 / ↓1025,
+        P-A 610 min, P-B 595 min. Stadtwochenende: keine summierte Strecke, mit_kennzahlen falsch, Tageswerte null ohne Lücken."""
+        d = bauen.Bauer(WURZEL / "beispiel/reisen" / ordner, tmp_path / "aus").daten()
+        r = d["route"]
+        s = r["summe"]
+>       assert s["mit_kennzahlen"] is mit
+               ^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'mit_kennzahlen'
+
+engine/tests/test_bauen.py:672: KeyError
+_____ test_kennzahlen_je_tag_beider_beispielreisen[stadtwochenende-False] ______
+
+tmp_path = PosixPath('<tmp>/pytest-8968/test_kennzahlen_je_tag_beider_1')
+ordner = 'stadtwochenende', mit = False
+
+    @pytest.mark.parametrize("ordner, mit", [("beispielreise", True), ("stadtwochenende", False)])
+    def test_kennzahlen_je_tag_beider_beispielreisen(tmp_path, ordner, mit):
+        """#268, AC-1/AC-2/AC-9: Jeder Tag trägt seine Kennzahlen aus dem Routenmodell; die Summe der Tage ist die Summe der
+        Reise und jedes Plans (eigene Wahl je Plan). Wanderung: mit_kennzahlen wahr, 595 min / 25,4 km / ↑1075 / ↓1025,
+        P-A 610 min, P-B 595 min. Stadtwochenende: keine summierte Strecke, mit_kennzahlen falsch, Tageswerte null ohne Lücken."""
+        d = bauen.Bauer(WURZEL / "beispiel/reisen" / ordner, tmp_path / "aus").daten()
+        r = d["route"]
+        s = r["summe"]
+>       assert s["mit_kennzahlen"] is mit
+               ^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'mit_kennzahlen'
+
+engine/tests/test_bauen.py:672: KeyError
+_________________ test_handbuch_summe_mit_und_ohne_kennzahlen __________________
+
+    def test_handbuch_summe_mit_und_ohne_kennzahlen():
+        """AC-10: Ob eine Gehzeit-Zeile steht, entscheidet summe.mit_kennzahlen aus dem Routenmodell, nicht der Wert min."""
+        import konnektor
+        basis = {"tage": 2, "naechte": 1, "min": 0, "auf": 0, "ab": 0, "km": 0, "fehlend": [], "unvollstaendig": False}
+        ohne = konnektor.Handbuch.summe(None, {**basis, "mit_kennzahlen": False, "min": 90})
+>       assert konnektor.tk("konnektor.summe.gehzeit", zeit="1:30 h", auf="0", ab="0", km="0") not in ohne
+E       AssertionError: assert 'Gehzeit 1:3...↓ 0 Hm, 0 km' not in '2 Tage, 1 N...↓ 0 Hm, 0 km'
+E         
+E         'Gehzeit 1:30 h, ↑ 0 Hm, ↓ 0 Hm, 0 km' is contained here:
+E           2 Tage, 1 Nacht; Gehzeit 1:30 h, ↑ 0 Hm, ↓ 0 Hm, 0 km
+
+engine/tests/test_texte.py:621: AssertionError
+______________________ test_handbuch_summe_angaben_fehlen ______________________
+
+    def test_handbuch_summe_angaben_fehlen():
+        """AC-5: Hat ein Plan summierte Strecken ohne Angaben, steht dort der Katalogtext „Angaben fehlen“ statt nichts oder 0:00."""
+        import konnektor
+        s = {"tage": 2, "naechte": 1, "min": 0, "auf": 0, "ab": 0, "km": 0, "mit_kennzahlen": True,
+             "fehlend": ["ab", "auf", "km", "min"], "unvollstaendig": True}
+        aus = konnektor.Handbuch.summe(None, s)
+>       assert konnektor.tk("konnektor.summe.angaben_fehlen") in aus, aus
+E       AssertionError: 2 Tage, 1 Nacht
+E       assert 'konnektor.summe.angaben_fehlen' in '2 Tage, 1 Nacht'
+E        +  where 'konnektor.summe.angaben_fehlen' = <function tk at 0x792ce7b53a60>('konnektor.summe.angaben_fehlen')
+E        +    where <function tk at 0x792ce7b53a60> = <module 'konnektor' from './engine/konnektor.py'>.tk
+
+engine/tests/test_texte.py:634: AssertionError
+_______________ test_neue_kennzahl_schluessel_in_allen_sprachen ________________
+
+    def test_neue_kennzahl_schluessel_in_allen_sprachen():
+        """AC-7: Die Texte für Höhenmeter (Seite, auto_werte) und „Angaben fehlen“ (Konnektor) stehen in jeder Sprache."""
+        for k in texte.SPRACHEN:
+            katalog = texte.sprache(k).TEXTE
+            for s in ("seite.kennzahl.hoehe_auf", "seite.kennzahl.hoehe_ab", "routen.auto.hoehenmeter", "konnektor.summe.angaben_fehlen"):
+>               assert s in katalog, (k, s)
+E               AssertionError: ('de', 'seite.kennzahl.hoehe_auf')
+E               assert 'seite.kennzahl.hoehe_auf' in {'seite.status.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', 'seite.status.verworfen': 'verworfen', ...}
+
+engine/tests/test_texte.py:643: AssertionError
+_______ test_vorlage_ohne_eigene_tagessumme_und_summiert_nur_von_strecke _______
+
+    def test_vorlage_ohne_eigene_tagessumme_und_summiert_nur_von_strecke():
+        """#268, AC-6/AC-7: Kennzahlen rechnet nur das Routenmodell. Die Vorlage hat keine eigene Tagessumme (tagKm, tagMin),
+        entscheidet „hat Kennzahlen“ über summe.mit_kennzahlen und „summiert“ über strecke.summiert; die Kartenlegende bleibt
+        auf der Ebene der Art. Höhenmeter-Texte kommen aus dem Katalog."""
+        js = skript()
+>       assert "tagKm" not in js and "tagMin" not in js
+E       assert ('tagKm' not in '<script>\n"...=> {});\n}\n'
+E         
+E         'tagKm' is contained here:
+E           <script>
+E           "use strict";
+E           const D = /*__DATEN__*/null;
+E           const TEXTE = /*__TEXTE__*/null;   // Katalog aller Sprachen (engine/texte_<sprache>.py), liegt in der Seite, damit der Umschalter offline geht
+E           ...
+E         
+E         ...Full output truncated (4372 lines hidden), use '-vv' to show)
+
+engine/tests/test_design.py:166: AssertionError
+_____________ test_seite_zeigt_kennzahlen_aus_dem_routenmodell[de] _____________
+
+tmp_path = PosixPath('<tmp>/pytest-8968/test_seite_zeigt_kennzahlen_au0')
+sprache = 'de'
+
+    @ohne_browser
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_seite_zeigt_kennzahlen_aus_dem_routenmodell(tmp_path, sprache):
+        """#268, AC-3/AC-5/AC-8: Die Seite rechnet keine Tagessumme selbst. Die Tageszeile zeigt tag.kennzahlen (hier ein Tag mit
+        2 h und 8 km, wie „Dauer: 2 h“ und „Length: 8 km“ sie ergeben), formatiert in der Sprache der Hülle; Steckbrief und
+        Reiseüberblick entscheiden über summe.mit_kennzahlen und zeigen „Angaben fehlen“ statt nichts."""
+        web = seite_bauen(tmp_path, sprache)
+        (web / "beispiel").rename(web / "reise")
+        tag = '({...R.tage[0], strecken: [], kennzahlen: {min: 120, km: 8, auf: 0, ab: 0, fehlend: [], gezaehlt: true}})'
+        luecke = ('({...R.plaene[0], summe: {...R.plaene[0].summe, mit_kennzahlen: true, min: 0, km: 0, auf: 0, ab: 0, '
+                  'fehlend: ["ab", "auf", "km", "min"], unvollstaendig: true, laengster: null}})')
+        ohne = '({...R.plaene[0], summe: {...R.plaene[0].summe, mit_kennzahlen: false}})'
+        werte = ausdruecke(web, [
+            f'tagZeile({tag}).querySelector(".tz-zeit").textContent === [dauer(120), kmText(8)].join(" · ")',
+            f'steckbrief({luecke}, true).textContent.includes(T("seite.steckbrief.angaben_fehlen"))',
+            f'Object.keys(reiseKennzahlen({ohne})).includes("gehzeit")',
+            f'Object.keys(reiseKennzahlen({ohne})).includes("naechte")',
+        ])
+>       assert werte == [True, True, False, True], werte
+E       AssertionError: [False, False, True, False]
+E       assert [False, False, True, False] == [True, True, False, True]
+E         
+E         At index 0 diff: False != True
+E         
+E         Full diff:
+E           [
+E         -     True,
+E         +     False,...
+E         
+E         ...Full output truncated (5 lines hidden), use '-vv' to show
+
+engine/tests/test_seite_sprachen.py:273: AssertionError
+_____________ test_seite_zeigt_kennzahlen_aus_dem_routenmodell[en] _____________
+
+tmp_path = PosixPath('<tmp>/pytest-8968/test_seite_zeigt_kennzahlen_au1')
+sprache = 'en'
+
+    @ohne_browser
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_seite_zeigt_kennzahlen_aus_dem_routenmodell(tmp_path, sprache):
+        """#268, AC-3/AC-5/AC-8: Die Seite rechnet keine Tagessumme selbst. Die Tageszeile zeigt tag.kennzahlen (hier ein Tag mit
+        2 h und 8 km, wie „Dauer: 2 h“ und „Length: 8 km“ sie ergeben), formatiert in der Sprache der Hülle; Steckbrief und
+        Reiseüberblick entscheiden über summe.mit_kennzahlen und zeigen „Angaben fehlen“ statt nichts."""
+        web = seite_bauen(tmp_path, sprache)
+        (web / "beispiel").rename(web / "reise")
+        tag = '({...R.tage[0], strecken: [], kennzahlen: {min: 120, km: 8, auf: 0, ab: 0, fehlend: [], gezaehlt: true}})'
+        luecke = ('({...R.plaene[0], summe: {...R.plaene[0].summe, mit_kennzahlen: true, min: 0, km: 0, auf: 0, ab: 0, '
+                  'fehlend: ["ab", "auf", "km", "min"], unvollstaendig: true, laengster: null}})')
+        ohne = '({...R.plaene[0], summe: {...R.plaene[0].summe, mit_kennzahlen: false}})'
+        werte = ausdruecke(web, [
+            f'tagZeile({tag}).querySelector(".tz-zeit").textContent === [dauer(120), kmText(8)].join(" · ")',
+            f'steckbrief({luecke}, true).textContent.includes(T("seite.steckbrief.angaben_fehlen"))',
+            f'Object.keys(reiseKennzahlen({ohne})).includes("gehzeit")',
+            f'Object.keys(reiseKennzahlen({ohne})).includes("naechte")',
+        ])
+>       assert werte == [True, True, False, True], werte
+E       AssertionError: [False, False, True, False]
+E       assert [False, False, True, False] == [True, True, False, True]
+E         
+E         At index 0 diff: False != True
+E         
+E         Full diff:
+E           [
+E         -     True,
+E         +     False,...
+E         
+E         ...Full output truncated (5 lines hidden), use '-vv' to show
+
+engine/tests/test_seite_sprachen.py:273: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_routen.py::test_strecken_summe_zaehlt_nur_summierte_arten
+FAILED engine/tests/test_routen.py::test_tag_kennzahlen_je_tag_und_summe_gleich_summe_der_tage
+FAILED engine/tests/test_routen.py::test_tag_kennzahlen_2h_und_length_zaehlen
+FAILED engine/tests/test_routen.py::test_mit_kennzahlen_wanderung_wahr_nur_bus_falsch
+FAILED engine/tests/test_routen.py::test_kombinierte_art_summe_tag_und_strecke_gleich[False]
+FAILED engine/tests/test_routen.py::test_kombinierte_art_summe_tag_und_strecke_gleich[True]
+FAILED engine/tests/test_routen.py::test_summierte_strecke_ohne_angaben_fehlend_und_mit_kennzahlen
+FAILED engine/tests/test_routen.py::test_plan_tage_tragen_kennzahlen_ihrer_eigenen_wahl
+FAILED engine/tests/test_bauen.py::test_kennzahlen_je_tag_beider_beispielreisen[beispielreise-True]
+FAILED engine/tests/test_bauen.py::test_kennzahlen_je_tag_beider_beispielreisen[stadtwochenende-False]
+FAILED engine/tests/test_texte.py::test_handbuch_summe_mit_und_ohne_kennzahlen
+FAILED engine/tests/test_texte.py::test_handbuch_summe_angaben_fehlen - Asser...
+FAILED engine/tests/test_texte.py::test_neue_kennzahl_schluessel_in_allen_sprachen
+FAILED engine/tests/test_design.py::test_vorlage_ohne_eigene_tagessumme_und_summiert_nur_von_strecke
+FAILED engine/tests/test_seite_sprachen.py::test_seite_zeigt_kennzahlen_aus_dem_routenmodell[de]
+FAILED engine/tests/test_seite_sprachen.py::test_seite_zeigt_kennzahlen_aus_dem_routenmodell[en]
+================= 16 failed, 1 passed, 286 deselected in 5.28s =================

@@ -661,6 +661,28 @@ def test_volllauf_beispiel(tmp_path):
     assert (tmp_path / "beispiel/index.html").exists()
 
 
+@pytest.mark.parametrize("ordner, mit", [("beispielreise", True), ("stadtwochenende", False)])
+def test_kennzahlen_je_tag_beider_beispielreisen(tmp_path, ordner, mit):
+    """#268, AC-1/AC-2/AC-9: Jeder Tag trägt seine Kennzahlen aus dem Routenmodell; die Summe der Tage ist die Summe der
+    Reise und jedes Plans (eigene Wahl je Plan). Wanderung: mit_kennzahlen wahr, 595 min / 25,4 km / ↑1075 / ↓1025,
+    P-A 610 min, P-B 595 min. Stadtwochenende: keine summierte Strecke, mit_kennzahlen falsch, Tageswerte null ohne Lücken."""
+    d = bauen.Bauer(WURZEL / "beispiel/reisen" / ordner, tmp_path / "aus").daten()
+    r = d["route"]
+    s = r["summe"]
+    assert s["mit_kennzahlen"] is mit
+    for tage, summe in [(r["tage"], s)] + [(p["tage"], p["summe"]) for p in r["plaene"]]:
+        k = [t["kennzahlen"] for t in tage]
+        assert sum(x["min"] for x in k) == summe["min"]
+        assert round(sum(x["km"] for x in k), 1) == summe["km"]
+        assert sum(x["auf"] for x in k) == summe["auf"] and sum(x["ab"] for x in k) == summe["ab"]
+    if mit:
+        assert (s["min"], s["km"], s["auf"], s["ab"], s["fehlend"]) == (595, 25.4, 1075, 1025, [])
+        assert {p["id"]: p["summe"]["min"] for p in r["plaene"]} == {"P-A": 610, "P-B": 595}
+        assert all(p["summe"]["mit_kennzahlen"] for p in r["plaene"])
+    else:
+        assert all(t["kennzahlen"] == {"min": 0, "km": 0, "auf": 0, "ab": 0, "fehlend": [], "gezaehlt": False} for t in r["tage"])
+
+
 def test_unbekannte_unterkunftsart_ist_fehler(tmp_path):
     """Eine Art, die die Reise nicht in plan/arten.yaml definiert hat, ist ein Baufehler (docs/ontologie.md)."""
     kopie = tmp_path / "bsp"

@@ -604,8 +604,42 @@ def test_englische_mengenangaben_im_singular():
     import texte
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(texte, "aufruf_sprache", lambda sprache=None: sprache or "en")
-        assert konnektor.Handbuch.summe(None, {"tage": 1, "naechte": 0, "min": 90, "auf": 120.4, "ab": 80.6, "km": 12.5}) \
+        assert konnektor.Handbuch.summe(None, {"tage": 1, "naechte": 0, "min": 90, "auf": 120.4, "ab": 80.6, "km": 12.5,
+                                               "mit_kennzahlen": True, "fehlend": []}) \
             == "1 day, 0 nights; Walking time 1:30 h, ↑ 120 m, ↓ 81 m, 12.5 km"
         assert konnektor.tk("konnektor.brett_text.3", n=1) == "at most 1 wish per person"
         assert konnektor.tk("konnektor.brett_text.3", n=3) == "at most 3 wishes per person"
         assert konnektor.tk("konnektor.ausgabe.werkzeug.6", n=1) == "1 point"
+
+
+# ---------- Kennzahlen an einer Stelle (#268) ----------
+def test_handbuch_summe_mit_und_ohne_kennzahlen():
+    """AC-10: Ob eine Gehzeit-Zeile steht, entscheidet summe.mit_kennzahlen aus dem Routenmodell, nicht der Wert min."""
+    import konnektor
+    basis = {"tage": 2, "naechte": 1, "min": 0, "auf": 0, "ab": 0, "km": 0, "fehlend": [], "unvollstaendig": False}
+    ohne = konnektor.Handbuch.summe(None, {**basis, "mit_kennzahlen": False, "min": 90})
+    assert konnektor.tk("konnektor.summe.gehzeit", zeit="1:30 h", auf="0", ab="0", km="0") not in ohne
+    assert "1:30" not in ohne
+    voll = konnektor.Handbuch.summe(None, {**basis, "mit_kennzahlen": True, "min": 90, "auf": 120, "ab": 80, "km": 12.5})
+    assert konnektor.tk("konnektor.summe.gehzeit", zeit=konnektor.stunden(90), auf="120", ab="80",
+                        km="12" + konnektor.tk("seite.auto.dezimaltrenner") + "5") in voll
+
+
+def test_handbuch_summe_angaben_fehlen():
+    """AC-5: Hat ein Plan summierte Strecken ohne Angaben, steht dort der Katalogtext „Angaben fehlen“ statt nichts oder 0:00."""
+    import konnektor
+    s = {"tage": 2, "naechte": 1, "min": 0, "auf": 0, "ab": 0, "km": 0, "mit_kennzahlen": True,
+         "fehlend": ["ab", "auf", "km", "min"], "unvollstaendig": True}
+    aus = konnektor.Handbuch.summe(None, s)
+    assert konnektor.tk("konnektor.summe.angaben_fehlen") in aus, aus
+    assert "0:00" not in aus
+
+
+def test_neue_kennzahl_schluessel_in_allen_sprachen():
+    """AC-7: Die Texte für Höhenmeter (Seite, auto_werte) und „Angaben fehlen“ (Konnektor) stehen in jeder Sprache."""
+    for k in texte.SPRACHEN:
+        katalog = texte.sprache(k).TEXTE
+        for s in ("seite.kennzahl.hoehe_auf", "seite.kennzahl.hoehe_ab", "routen.auto.hoehenmeter", "konnektor.summe.angaben_fehlen"):
+            assert s in katalog, (k, s)
+    assert texte.t("de", "seite.kennzahl.hoehe_auf", v=480) == "↑ 480 m"
+    assert texte.t("de", "routen.auto.hoehenmeter", auf=400, ab=100) == "↑ 400 m, ↓ 100 m"

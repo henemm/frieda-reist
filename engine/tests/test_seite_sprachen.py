@@ -250,3 +250,24 @@ def test_seite_erkennt_fragestatus_in_beiden_sprachen(tmp_path, sprache):
                               '["Walking time", "Gehzeit", "Duration", "Dauer"].every(t => REGEL.gehzeit.test(t))',
                               '["Length", "Länge", "Laenge"].every(t => REGEL.laenge.test(t))'])
     assert muster == ["Hut|Hütte", "x|x", True, True]
+
+
+@ohne_browser
+@pytest.mark.parametrize("sprache", ["de", "en"])
+def test_seite_zeigt_kennzahlen_aus_dem_routenmodell(tmp_path, sprache):
+    """#268, AC-3/AC-5/AC-8: Die Seite rechnet keine Tagessumme selbst. Die Tageszeile zeigt tag.kennzahlen (hier ein Tag mit
+    2 h und 8 km, wie „Dauer: 2 h“ und „Length: 8 km“ sie ergeben), formatiert in der Sprache der Hülle; Steckbrief und
+    Reiseüberblick entscheiden über summe.mit_kennzahlen und zeigen „Angaben fehlen“ statt nichts."""
+    web = seite_bauen(tmp_path, sprache)
+    (web / "beispiel").rename(web / "reise")
+    tag = '({...R.tage[0], strecken: [], kennzahlen: {min: 120, km: 8, auf: 0, ab: 0, fehlend: [], gezaehlt: true}})'
+    luecke = ('({...R.plaene[0], summe: {...R.plaene[0].summe, mit_kennzahlen: true, min: 0, km: 0, auf: 0, ab: 0, '
+              'fehlend: ["ab", "auf", "km", "min"], unvollstaendig: true, laengster: null}})')
+    ohne = '({...R.plaene[0], summe: {...R.plaene[0].summe, mit_kennzahlen: false}})'
+    werte = ausdruecke(web, [
+        f'tagZeile({tag}).querySelector(".tz-zeit").textContent === [dauer(120), kmText(8)].join(" · ")',
+        f'steckbrief({luecke}, true).textContent.includes(T("seite.steckbrief.angaben_fehlen"))',
+        f'Object.keys(reiseKennzahlen({ohne})).includes("gehzeit")',
+        f'Object.keys(reiseKennzahlen({ohne})).includes("naechte")',
+    ])
+    assert werte == [True, True, False, True], werte

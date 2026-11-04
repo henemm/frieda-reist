@@ -149,3 +149,28 @@ def test_gedrueckt_ist_tinte_nicht_akzent():
     for titel, klasse in (("seite.vergleich.moeglichkeiten", "wm-wahl"), ("seite.vergleich.darstellung", "wm-ansicht"), ("seite.karte.region", "regionen")):
         assert re.search(rf'umschalter\(T\("{titel}"\),.{{0,300}}?"{klasse}"\)', js, flags=re.S), klasse
     assert 'el("fieldset", {class: "wm-' not in js and 'el("div", {class: "regionen"' not in js
+
+
+def _funktion(name):
+    """Rumpf einer Funktion der Vorlage (vom Kopf bis zur schließenden Klammer am Zeilenanfang)."""
+    m = re.search(rf"^function {name}\(.*?^\}}", skript(), re.S | re.M)
+    assert m, name
+    return m.group(0)
+
+
+def test_vorlage_ohne_eigene_tagessumme_und_summiert_nur_von_strecke():
+    """#268, AC-6/AC-7: Kennzahlen rechnet nur das Routenmodell. Die Vorlage hat keine eigene Tagessumme (tagKm, tagMin),
+    entscheidet „hat Kennzahlen“ über summe.mit_kennzahlen und „summiert“ über strecke.summiert; die Kartenlegende bleibt
+    auf der Ebene der Art. Höhenmeter-Texte kommen aus dem Katalog."""
+    js = skript()
+    assert "tagKm" not in js and "tagMin" not in js
+    assert "s.min || s.km || s.auf" not in js
+    for name in ("summeText", "steckbrief", "reiseKennzahlen"):
+        assert "mit_kennzahlen" in _funktion(name), name
+    for name in ("streckeZeile", "wegVerlauf"):
+        assert not re.search(r"artDef\([^)]*\)[^;]{0,20}\.summiert", _funktion(name)), name
+    summiert = re.search(r"^const summiertArt = .*$", js, re.M)
+    assert summiert and "artDef" not in summiert.group(0) and ".summiert" in summiert.group(0)
+    assert "↑ ${v} m" not in js and "↓ ${v} m" not in js
+    routen = (WURZEL / "engine/routen.py").read_text(encoding="utf-8")
+    assert 'f"↑ {' not in routen and "↓ {s['ab']" not in routen

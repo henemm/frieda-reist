@@ -1167,3 +1167,92 @@ def test_strecke_mit_zeiten_und_anschluss():
     r["strecken"]["E-12"]["ab"] = "morgens"
     _, fehler = laufe(r, FRAGEN, a)
     assert any("Strecke E-12: ab muss eine Uhrzeit HH:MM oder ein Zeitpunkt" in x for x in fehler)
+
+
+# ---------- Kennzahlen an einer Stelle (#268) ----------
+# Nur das Routenmodell rechnet Gehzeit, Länge und Höhenmeter: je Tag (tag.kennzahlen), für die Summe (summe.mit_kennzahlen)
+# und für jede Strecke (summiert). Seite und Konnektor zeigen das Ergebnis.
+def test_strecken_summe_zaehlt_nur_summierte_arten():
+    """GIVEN eine Wanderstrecke (summiert) und eine Busstrecke (nicht summiert) WHEN strecken_summe THEN zählt nur die
+    Wanderung; fehlend bleibt leer (der Bus muss keine Angaben haben)."""
+    r = Routen(roh(), {}, FRAGEN, [], lambda *a: None, arten=ARTEN)
+    r.bauen()
+    s = r.strecken_summe(["E-01", "E-03"])
+    assert (s["min"], s["auf"], s["ab"], s["km"], s["fehlend"]) == (210, 400, 100, 10.5, [])
+
+
+def test_tag_kennzahlen_je_tag_und_summe_gleich_summe_der_tage():
+    """GIVEN die Testreise (T-01 E-01 3:30 h, T-02 E-02 2:00 h, T-03 ohne Strecke) WHEN bauen() THEN trägt jeder Tag seine
+    Kennzahlen als Zahlen, und die Summe der Tage ist die Summe der Reise."""
+    erg = ok(roh())
+    k = [t["kennzahlen"] for t in erg["tage"]]
+    assert [x["min"] for x in k] == [210, 120, 0]
+    assert [x["km"] for x in k] == [10.5, 6.0, 0]
+    assert [x["auf"] for x in k] == [400, 100, 0] and [x["ab"] for x in k] == [100, 300, 0]
+    assert all(x["fehlend"] == [] for x in k)
+    assert [x["gezaehlt"] for x in k] == [True, True, False]
+    s = erg["summe"]
+    assert sum(x["min"] for x in k) == s["min"] and round(sum(x["km"] for x in k), 1) == s["km"]
+
+
+def test_tag_kennzahlen_2h_und_length_zaehlen():
+    """GIVEN eine Wanderstrecke mit „2 h“ statt h:mm und dem englischen Schlüssel „Length“ WHEN bauen() THEN zählen beide
+    im Tageswert (2 h = 120 min, Length = km), wie in der Summe."""
+    r = roh()
+    r["strecken"]["E-01"]["kennzahlen"] = {"Dauer": "2 h", "Length": "8 km", "Aufstieg (Hm)": "400", "Abstieg (Hm)": "100"}
+    erg = ok(r)
+    k = erg["tage"][0]["kennzahlen"]
+    assert (k["min"], k["km"], k["fehlend"]) == (120, 8.0, [])
+    assert erg["summe"]["min"] == 240 and erg["summe"]["km"] == 14.0
+
+
+def test_mit_kennzahlen_wanderung_wahr_nur_bus_falsch():
+    """GIVEN die Testreise WHEN bauen() THEN mit_kennzahlen ist wahr (summierte Strecken); die Option „Mit Bus“ hat keine
+    summierte Strecke, ihre Summe hat mit_kennzahlen falsch."""
+    erg = ok(roh())
+    assert erg["summe"]["mit_kennzahlen"] is True
+    b = next(o for w in erg["wahlstellen"] for o in w["optionen"] if o["id"] == "V-01.b")
+    assert b["summe"]["mit_kennzahlen"] is False
+
+
+@pytest.mark.parametrize("summiert", [False, True])
+def test_kombinierte_art_summe_tag_und_strecke_gleich(summiert):
+    """GIVEN E-01 mit art [wandern, bus] und der Art kombiniert (summiert ja/nein) WHEN bauen() THEN gilt dieselbe Regel in
+    der Summe, im Tageswert und an der Strecke: die Art kombiniert entscheidet, nicht „irgendeine der Arten“."""
+    r = roh()
+    r["strecken"]["E-01"]["art"] = ["wandern", "bus"]
+    kombi = {"grundform": "bewegung", "name": "Wanderung und Bus", **({"summiert": True} if summiert else {})}
+    erg, fehler = laufe(r, arten_=arten(kombiniert=kombi))
+    assert fehler == [], fehler
+    assert erg["strecken"]["E-01"]["summiert"] is summiert
+    k = erg["tage"][0]["kennzahlen"]
+    assert k["gezaehlt"] is summiert and k["min"] == (210 if summiert else 0)
+    assert erg["summe"]["min"] == (330 if summiert else 120)
+
+
+def test_summierte_strecke_ohne_angaben_fehlend_und_mit_kennzahlen():
+    """GIVEN summierte Strecken ganz ohne Kennzahlen WHEN bauen() THEN mit_kennzahlen ist wahr, fehlend nennt alle Felder
+    (im Tag und in der Summe) – keine stille Null, die nach „keine Wanderdaten“ aussieht."""
+    r = roh()
+    del r["strecken"]["E-01"]["kennzahlen"]
+    del r["strecken"]["E-02"]["kennzahlen"]
+    erg = ok(r)
+    assert erg["summe"]["mit_kennzahlen"] is True
+    assert erg["summe"]["fehlend"] == ["ab", "auf", "km", "min"] and erg["summe"]["unvollstaendig"]
+    k = erg["tage"][0]["kennzahlen"]
+    assert k["gezaehlt"] is True and k["fehlend"] == ["ab", "auf", "km", "min"]
+
+
+def test_plan_tage_tragen_kennzahlen_ihrer_eigenen_wahl():
+    """GIVEN zwei Pläne mit verschiedenen Wahlen WHEN bauen() THEN trägt jeder p.tage[i].kennzahlen die Werte seiner eigenen
+    Wahl, und die Summe der Tage ist die Summe des Plans."""
+    r = roh()
+    r["plaene"] = [{"id": "P-A", "kurz": "Zu Fuß", "auswahl": ["V-01.a"]},
+                   {"id": "P-B", "kurz": "Bus", "auswahl": ["V-01.b", "V-02.b"]}]
+    erg = ok(r)
+    a, b = erg["plaene"]
+    assert [t["kennzahlen"]["min"] for t in a["tage"]] == [210, 120, 0]
+    assert [t["kennzahlen"]["min"] for t in b["tage"]] == [0, 0]
+    for p in (a, b):
+        assert sum(t["kennzahlen"]["min"] for t in p["tage"]) == p["summe"]["min"]
+    assert a["summe"]["mit_kennzahlen"] is True and b["summe"]["mit_kennzahlen"] is False
