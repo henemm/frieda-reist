@@ -185,7 +185,7 @@ def sprache_des_zugangs(zugang):
         if k:
             return k["sprache"]
     s = (((daten(zugang.get("reise") or "") or {}).get("reise") or {}).get("sprache")) if zugang.get("reise") else None
-    # ohne Konto und ohne lesbare Reise (alte Konto-Links): die Sprache des Bestands
+    # ohne Konto und ohne lesbare Reise (alte Konto-Links): der Rückfall (texte.VORGABE_REISE)
     return s if texte.gueltig(s or "") else texte.VORGABE_REISE
 
 
@@ -197,7 +197,7 @@ def zellen_von(zeile):
 
 def tk(schluessel, /, **werte):
     """Text des Konnektors aus dem Katalog in der Sprache des laufenden Aufrufs (texte.aufruf_sprache); ohne Aufruf (Tests, Skripte)
-    ist es die Sprache des Bestands."""
+    ist es der Rückfall (texte.VORGABE_REISE)."""
     return texte.t(texte.aufruf_sprache(), schluessel, **werte)
 
 
@@ -207,7 +207,7 @@ def dw(wert):
 
 
 def tkd(schluessel, /, **werte):
-    """Wie tk, aber immer in der Sprache des Bestands: für Text, der in die Ablage der Reise geschrieben wird (Einträge, Herkunft)."""
+    """Wie tk, aber immer im Rückfall (texte.VORGABE_REISE): für Text, der in die Ablage der Reise geschrieben wird (Einträge, Herkunft)."""
     return texte.t(texte.VORGABE_REISE, schluessel, **werte)
 
 
@@ -1323,7 +1323,7 @@ def ontologie_text(name, args):
         if f == "stufe":   # für Menschen in Worten (nötig, gut zu wissen, zusätzlich; Product Owner 29.10.2026)
             s = stufe_schluessel(v)
             v = tkd("konnektor.ausgabe.ontologie.aus") if s == "aus" else stufe_wort(s, texte.VORGABE_REISE) if s else v
-        # Die Rückmeldung liegt in der Ablage, also in der Sprache des Bestands: Feldnamen, Symbole und Datenwerte in ihr
+        # Die Rückmeldung liegt in der Ablage, also im Rückfall (texte.VORGABE_REISE): Feldnamen, Symbole und Datenwerte in ihr
         sprache = texte.VORGABE_REISE
         wort = (lambda x: texte.wert_in(sprache, texte.Wert(str(x)))) if f in ("symbol", "art_symbol") else (lambda x: texte.datenwert(sprache, x))
         v = " | ".join(str(wort(x)) for x in v) if isinstance(v, list) else wort(v)
@@ -2038,7 +2038,7 @@ def reise_anlegen(konto, args):
     Reise anlegen. Sobald die Seite online ist, bekommt die Person eine Meldung mit den Links (meine_reisen).
     -> (Text, ist_fehler)"""
     o = rm.ordner_neu(anlegen=True)
-    if not args.get("sprache"):   # ohne Angabe schreibt die neue Reise in der Sprache der Person, nicht in der des Bestands
+    if not args.get("sprache"):   # ohne Angabe schreibt die neue Reise in der Sprache der Person, nicht im Rückfall (texte.VORGABE_REISE)
         args = {**args, "sprache": texte.aufruf_sprache()}
     with _sperre:
         neu, fehler = neue_reise_pruefen(args, konto["name"], vergebene_pfade())

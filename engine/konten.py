@@ -70,7 +70,7 @@ EINLADUNG_TAGE = 30
 
 class KontoFehler(Exception):
     """Fehler mit einem Satz, der so dem Menschen gezeigt werden kann. Der Satz steht im Katalog (konto.fehler.*, ADR-0006);
-    str(fehler) ist der Satz in der Vorgabe der Reisen (Bestand), text(sprache) der in der Sprache der Person."""
+    str(fehler) ist der Satz im Rückfall (texte.VORGABE_REISE), text(sprache) der in der Sprache der Person."""
 
     def __init__(self, schluessel, **werte):
         self.schluessel, self.werte = schluessel, werte

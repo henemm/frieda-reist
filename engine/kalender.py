@@ -272,7 +272,7 @@ def erinnerungen(schluessel, sprache=None):
     return {w: texte.t(sprache or texte.VORGABE_REISE, "kalender.erinnerung." + k) for w, k in schluessel.items()}
 
 
-SORTEN = sorten()   # in der Sprache des Bestands (Schlüssel und Reihenfolge für Prüfungen)
+SORTEN = sorten()   # im Rückfall (texte.VORGABE_REISE; Schlüssel und Reihenfolge für Prüfungen)
 ERINNERUNG_FRISTEN = erinnerungen(ERINNERUNG_FRISTEN_SCHLUESSEL)
 ERINNERUNG_TERMINE = erinnerungen(ERINNERUNG_TERMINE_SCHLUESSEL)
 VORGABE = {"sorten": list(SORTEN), "nur_meine_aufgaben": False, "erinnerung_fristen": "", "erinnerung_termine": "", "reisen_aus": []}

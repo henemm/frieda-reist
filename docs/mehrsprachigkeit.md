@@ -34,7 +34,7 @@ Stand 30.10.2026. Entscheidungen: [ADR-0006](adr/0006-mehrsprachigkeit.md) (gilt
 
 ```
 engine/texte.py       SPRACHEN: Reihenfolge der Sprachen = Reihenfolge der Sprachdateien (de, en, …); VORGABE = "en" für Personen,
-                      Reisen ohne Feld bauen mit "de" (Bestand);
+                      Reisen ohne Feld sprache bauen nicht (pruefung.reise.sprache_fehlt);
                       t(sprache, schluessel, **werte) -> str; Plural: Wert n -> Kategorie über plural() der Sprachdatei ->
                       Schlüssel {schluessel}.<kategorie>, Rückfall auf .other; fehlender Schlüssel -> Rückfall auf "en",
                       dann der Schlüssel selbst (nie Absturz);

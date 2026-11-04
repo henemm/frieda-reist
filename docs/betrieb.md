@@ -113,7 +113,7 @@ Sperre und Arbeitskopie (`<wurzel>-schreiben-<reise>`) gibt es je Reise (#119): 
 
 ## Sprachen
 
-Die Texte der Software stehen in `engine/texte_<kürzel>.py`. `deploy.sh` nimmt jede Sprachdatei im Ordner `engine/` von selbst in die Modullisten von Rückmeldedienst, Konnektor und Schreibweg auf (`SPRACHDATEIEN`); eine neue Sprache braucht dort keinen Eintrag ([sprachen.md](sprachen.md)). Die Sprache einer Person steht in der Spalte `konten.sprache` der Kontendatenbank; auf einer vorhandenen Datenbank fügt der erste Start des neuen Stands die Spalte selbst hinzu (`ALTER TABLE`), von Hand ist nichts zu migrieren. Die Sprache einer Reise steht in ihrer `reise.yaml`; fehlt das Feld, gilt `de`. Meldungen des Wächters (`meldungen.jsonl`) und der Kalender folgen der Sprache der Reise.
+Die Texte der Software stehen in `engine/texte_<kürzel>.py`. `deploy.sh` nimmt jede Sprachdatei im Ordner `engine/` von selbst in die Modullisten von Rückmeldedienst, Konnektor und Schreibweg auf (`SPRACHDATEIEN`); eine neue Sprache braucht dort keinen Eintrag ([sprachen.md](sprachen.md)). Die Sprache einer Person steht in der Spalte `konten.sprache` der Kontendatenbank; auf einer vorhandenen Datenbank fügt der erste Start des neuen Stands die Spalte selbst hinzu (`ALTER TABLE`), von Hand ist nichts zu migrieren. Die Sprache einer Reise steht in ihrer `reise.yaml`; fehlt das Feld, bricht der Bau (`pruefung.reise.sprache_fehlt`), `neu.py nachziehen` trägt `de` ein. Meldungen des Wächters (`meldungen.jsonl`) und der Kalender folgen der Sprache der Reise.
 
 ## Veröffentlichen
 
