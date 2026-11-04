@@ -3543,9 +3543,12 @@ function ansichtTag(m, tid) {
   if (nachschlagen.length) seite.append(el("div", {class: "tag-spalte"}, nachschlagen));
   if (imPlan && !imPlan.alt) {
     const i = p.tage.indexOf(imPlan), vor = p.tage[i - 1], nach = p.tage[i + 1];
+    // Die Nummer im Link ist die, die die Zielseite zeigt (#247): ein Tag der Zeitachse zählt dort, auch wenn dieser Tag
+    // außerhalb der Zeitachse im Plan p zählt
+    const nrDort = x => (p !== PLAN_ANSICHT && PLAN_ANSICHT.tage.find(y => y.id === x.id) || x).nr;
     seite.append(el("div", {class: "blaettern"},
-      vor ? el("a", {href: "#" + vor.id}, T("seite.tag.vor", {nr: vor.nr})) : el("span", {}),
-      nach ? el("a", {href: "#" + nach.id}, T("seite.tag.nr_pfeil", {nr: nach.nr})) : el("span", {})));
+      vor ? el("a", {href: "#" + vor.id}, T("seite.tag.vor", {nr: nrDort(vor)})) : el("span", {}),
+      nach ? el("a", {href: "#" + nach.id}, T("seite.tag.nr_pfeil", {nr: nrDort(nach)})) : el("span", {})));
   }
   m.append(seite);
 }
