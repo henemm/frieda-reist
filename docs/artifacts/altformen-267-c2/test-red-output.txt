@@ -1,0 +1,338 @@
+.F..F.F.......................FF.FFFFFF.F.                               [100%]
+=================================== FAILURES ===================================
+___________________ test_bestand_reise_kommt_nicht_mehr_vor ____________________
+
+    def test_bestand_reise_kommt_nicht_mehr_vor():
+        """Die Bestandssprache (Reise ohne Feld sprache gilt als deutsch) ist aus engine/ verschwunden (#267 c2, AC-4); der Name
+        wird zusammengesetzt, damit der Test sich nicht selbst findet."""
+        name = "BESTAND" + "_REISE"
+        treffer = [str(p.relative_to(ENGINE)) for p in ENGINE.rglob("*.py")
+                   if ".venv" not in p.parts and "vendor" not in p.parts and "tests" not in p.parts and name in p.read_text(encoding="utf-8")]
+>       assert not treffer, treffer
+E       AssertionError: ['neu.py', 'texte.py', 'schreiben.py', 'reise.py']
+E       assert not ['neu.py', 'texte.py', 'schreiben.py', 'reise.py']
+
+engine/tests/test_texte.py:167: AssertionError
+____________ test_namen_der_schnittstelle_steht_in_der_sprachdatei _____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x736722e3d640>
+
+    def test_namen_der_schnittstelle_steht_in_der_sprachdatei(monkeypatch):
+        """Ob die Namen der Schnittstelle Wörter einer Sprache sind, sagt deren Sprachdatei (NAMEN_DER_SCHNITTSTELLE), nicht der Code
+        (#267 c2, AC-5, ADR-0006): nur texte_de.py trägt das Feld, es ist kein Pflichtfeld."""
+        monkeypatch.setenv("FR_TEXTE_ZUSATZ", "xx")
+        mit = [k for k in texte.SPRACHEN if getattr(texte.sprache(k), "NAMEN_DER_SCHNITTSTELLE", False) is True]
+>       assert mit == ["de"], mit
+E       AssertionError: []
+E       assert [] == ['de']
+E         
+E         Right contains one more item: 'de'
+E         Use -v to get more diff
+
+engine/tests/test_texte.py:203: AssertionError
+____________________ test_neue_schluessel_der_sprachpflicht ____________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x736721731070>
+
+    def test_neue_schluessel_der_sprachpflicht(monkeypatch):
+        """Die Meldung „Feld sprache fehlt“ und „nicht gesetzt“ stehen in jeder Sprache, mit denselben Platzhaltern (#267 c2, AC-10)."""
+        monkeypatch.setenv("FR_TEXTE_ZUSATZ", "xx")
+        for kuerzel in texte.SPRACHEN:
+            katalog = texte.sprache(kuerzel).TEXTE
+>           assert "pruefung.reise.sprache_fehlt" in katalog, kuerzel
+E           AssertionError: de
+E           assert 'pruefung.reise.sprache_fehlt' in {'seite.status.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', 'seite.status.verworfen': 'verworfen', ...}
+
+engine/tests/test_texte.py:222: AssertionError
+_________________ test_sprache_von_ohne_feld_ist_der_rueckfall _________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_sprache_von_ohne_feld_ist0')
+
+    @pytest.mark.echter_rueckfall
+    def test_sprache_von_ohne_feld_ist_der_rueckfall(tmp_path):
+        """sprache_von kennt keinen Bestand mehr (#267 c2, AC-7): ohne Zeile sprache gilt texte.VORGABE_REISE wie für unbekannte
+        Kürzel und unlesbare Dateien; ein gültiges Kürzel gilt."""
+        import reise
+        import texte
+        r = anlegen(tmp_path, sprache="de")
+        assert reise.sprache_von(r) == "de"
+        y = _ohne_feld_sprache(r)
+>       assert reise.sprache_von(r) == texte.VORGABE_REISE == "en"
+E       AssertionError: assert 'de' == 'en'
+E         
+E         - en
+E         + de
+
+engine/tests/test_neu.py:389: AssertionError
+____________ test_reise_ohne_feld_sprache_baut_erst_nach_nachziehen ____________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_reise_ohne_feld_sprache_b0')
+
+    @pytest.mark.echter_rueckfall
+    def test_reise_ohne_feld_sprache_baut_erst_nach_nachziehen(tmp_path):
+        """Eine reise.yaml ohne Feld sprache bricht den Bau (#267 c2, AC-1, AC-3); neu.py nachziehen trägt de ein, danach baut
+        die Reise deutsch wie bisher."""
+        r = anlegen(tmp_path, sprache="de")
+        y = _ohne_feld_sprache(r)
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_neu.py:401: Failed
+________________________ test_sprache_pruefen_ohne_leer ________________________
+
+    def test_sprache_pruefen_ohne_leer():
+        """sprache_pruefen kennt keinen Ersatzwert für den Bestand mehr (#267 c2, AC-8)."""
+        import inspect
+        import reise
+        import texte
+>       assert list(inspect.signature(reise.sprache_pruefen).parameters) == ["wert"]
+E       AssertionError: assert ['wert', 'leer'] == ['wert']
+E         
+E         Left contains one more item: 'leer'
+E         Use -v to get more diff
+
+engine/tests/test_neu.py:433: AssertionError
+________________ test_reise_ohne_sprache_bricht_den_bau[fehlt] _________________
+
+reise = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_reise_ohne_sprache_bricht0/reise')
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_reise_ohne_sprache_bricht0')
+wert = 'fehlt'
+
+    @pytest.mark.parametrize("wert", ["fehlt", None, ""])
+    def test_reise_ohne_sprache_bricht_den_bau(reise, tmp_path, wert):
+        """sprache ist Pflicht in reise.yaml (#267 c2, AC-1, AC-2): fehlt das Feld oder ist es leer, bricht der Bau mit
+        pruefung.reise.sprache_fehlt; kein Bauergebnis."""
+        def aendere(r):
+            if wert == "fehlt":
+                r.pop("sprache")
+            else:
+                r["sprache"] = wert
+        mit_reise_yaml(reise, aendere)
+>       assert meldet(meldungen(reise, tmp_path), "pruefung.reise.sprache_fehlt")
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bauen.py:425: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_reise_ohne_sprache_bricht0/reise')
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_reise_ohne_sprache_bricht0')
+
+    def meldungen(reise, tmp_path):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_bauen.py:142: Failed
+_________________ test_reise_ohne_sprache_bricht_den_bau[None] _________________
+
+reise = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_reise_ohne_sprache_bricht1/reise')
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_reise_ohne_sprache_bricht1')
+wert = None
+
+    @pytest.mark.parametrize("wert", ["fehlt", None, ""])
+    def test_reise_ohne_sprache_bricht_den_bau(reise, tmp_path, wert):
+        """sprache ist Pflicht in reise.yaml (#267 c2, AC-1, AC-2): fehlt das Feld oder ist es leer, bricht der Bau mit
+        pruefung.reise.sprache_fehlt; kein Bauergebnis."""
+        def aendere(r):
+            if wert == "fehlt":
+                r.pop("sprache")
+            else:
+                r["sprache"] = wert
+        mit_reise_yaml(reise, aendere)
+>       assert meldet(meldungen(reise, tmp_path), "pruefung.reise.sprache_fehlt")
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bauen.py:425: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_reise_ohne_sprache_bricht1/reise')
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_reise_ohne_sprache_bricht1')
+
+    def meldungen(reise, tmp_path):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_bauen.py:142: Failed
+___________________ test_reise_ohne_sprache_bricht_den_bau[] ___________________
+
+reise = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_reise_ohne_sprache_bricht2/reise')
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_reise_ohne_sprache_bricht2')
+wert = ''
+
+    @pytest.mark.parametrize("wert", ["fehlt", None, ""])
+    def test_reise_ohne_sprache_bricht_den_bau(reise, tmp_path, wert):
+        """sprache ist Pflicht in reise.yaml (#267 c2, AC-1, AC-2): fehlt das Feld oder ist es leer, bricht der Bau mit
+        pruefung.reise.sprache_fehlt; kein Bauergebnis."""
+        def aendere(r):
+            if wert == "fehlt":
+                r.pop("sprache")
+            else:
+                r["sprache"] = wert
+        mit_reise_yaml(reise, aendere)
+>       assert meldet(meldungen(reise, tmp_path), "pruefung.reise.sprache_fehlt")
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bauen.py:425: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_reise_ohne_sprache_bricht2/reise')
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_reise_ohne_sprache_bricht2')
+
+    def meldungen(reise, tmp_path):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_bauen.py:142: Failed
+_______________ test_sprache_fehlt_nennt_kuerzel_und_nachziehen ________________
+
+reise = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_sprache_fehlt_nennt_kuerz0/reise')
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_sprache_fehlt_nennt_kuerz0')
+
+    def test_sprache_fehlt_nennt_kuerzel_und_nachziehen(reise, tmp_path):
+        """Die Meldung nennt jede bekannte Sprache und den Weg, auf dem das Feld in die Datei kommt (#267 c2, AC-1)."""
+        import texte
+        mit_reise_yaml(reise, lambda r: r.pop("sprache"))
+>       m = meldungen(reise, tmp_path)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bauen.py:433: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_sprache_fehlt_nennt_kuerz0/reise')
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_sprache_fehlt_nennt_kuerz0')
+
+    def meldungen(reise, tmp_path):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_bauen.py:142: Failed
+________________________ test_sprache_unbekannt_bleibt _________________________
+
+reise = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_sprache_unbekannt_bleibt0/reise')
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_sprache_unbekannt_bleibt0')
+
+    def test_sprache_unbekannt_bleibt(reise, tmp_path):
+        """Ein unbekanntes Kürzel meldet weiter pruefung.reise.sprache_unbekannt, nicht sprache_fehlt (#267 c2, AC-2)."""
+        mit_reise_yaml(reise, lambda r: r.update(sprache="klingonisch"))
+        m = meldungen(reise, tmp_path)
+        assert meldet(m, "pruefung.reise.sprache_unbekannt")
+>       assert not meldet(m, "pruefung.reise.sprache_fehlt")   # meldet() prüft zugleich, dass der Schlüssel im Katalog steht
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bauen.py:442: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'reise.yaml: sprache: unbekannt „klingonisch“ (bekannt: de, en).'
+schluessel = 'pruefung.reise.sprache_fehlt', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel pruefung.reise.sprache_fehlt fehlt im Katalog
+E       assert 'pruefung.reise.sprache_fehlt' != 'pruefung.reise.sprache_fehlt'
+
+engine/tests/conftest.py:78: AssertionError
+___________ test_einstellung_sprache_ohne_feld_meldet_nicht_gesetzt ____________
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-8814/test_einstellung_sprache_ohne_0/reisen'), PosixPath('/tmp/pytest-of-hem/pyt...ohne_0/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-8814/test_einstellung_sprache_ohne_0/veroeffentlicht'))
+
+    def test_einstellung_sprache_ohne_feld_meldet_nicht_gesetzt(repo):
+        """Ohne Feld sprache gilt kein Bestand mehr: Die Antwort nennt als alten Wert „nicht gesetzt“ (Katalog), trägt das Kürzel ein,
+        und auch de ist eine Änderung (keine Ablehnung „nichts zu ändern“)."""
+        from conftest import text
+        wurzel, origin, _, _ = repo
+        y = wurzel / "reisen" / "beispielreise" / "reise.yaml"
+        y.write_text("".join(z for z in y.read_text(encoding="utf-8").splitlines(True) if not z.startswith("sprache:")), encoding="utf-8")
+        git(wurzel, "commit", "-q", "-am", "ohne Feld sprache (Test)")
+        git(wurzel, "push", "-q")
+>       a = schreiber(repo).schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"sprache": "de"}})
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_schreiben.py:2259: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_schreiben.py:83: in pruefen
+    antwort = original(self, *args, **kw)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/schreiben.py:4180: in schreiben
+    titel, text = WERKZEUGE[werkzeug](reise_dir, wer, args)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('/tmp/pytest-of-hem/pytest-8814/test_einstellung_sprache_ohne_0/reisen-schreiben/reisen/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator', 'person': 'ida', 'titel': 'Beispielreise – Malerweg in vier Tagen'}
+args = {'sprache': 'de'}, heute = None
+
+    def einstellung_setzen(reise_dir, wer, args, heute=None):
+        """Einstellungen der Reise: bausteine (vollständige Liste), regeln (Name: Wert) und sprache (de, en …); nur Organisator:innen. Was gilt, prüft der
+        Probebau (reise.py). -> (Titel, Text)."""
+        from reise import ALTE_BAUSTEINE, BAUSTEINE, KERN, VORGABEN
+        from ruamel.yaml.comments import CommentedMap
+        p, roh = reise_yaml_laden(reise_dir)
+        geaendert = []
+        bausteine = args.get("bausteine")
+        if bausteine is not None:
+            liste = liste_wert({"b": bausteine}, "b", laenge=20) or []
+            # Bausteine, die es nicht mehr gibt (tagesseiten, #214): still herausnehmen, nicht ablehnen, nicht schreiben
+            liste = [b for b in liste if b not in ALTE_BAUSTEINE]
+            fremd = [b for b in liste if b not in BAUSTEINE and b not in KERN]
+            if fremd:
+                raise Ablehnung("schreiben.einstellung_setzen.1", w1=', '.join(fremd), w2=', '.join(BAUSTEINE))
+            liste = [b for b in dict.fromkeys(liste) if b not in KERN]
+            if list(roh.get("bausteine") or []) != liste:
+                geaendert.append(wechsel("bausteine", list(roh.get("bausteine") or []), liste))
+                roh["bausteine"] = fliess_map({"bausteine": liste})["bausteine"]
+        regeln = args.get("regeln")
+        if regeln not in (None, {}):
+            if not isinstance(regeln, dict):
+                raise Ablehnung("schreiben.klammer.regeln")
+            r = roh.get("regeln")
+            if r is None:
+                r = CommentedMap()
+                roh["regeln"] = r
+            for k, v in regeln.items():
+                if k not in VORGABEN:
+                    raise Ablehnung("schreiben.einstellung_setzen.2", k=k, w2=', '.join(VORGABEN))
+                if isinstance(v, str) and v.strip().lstrip("-").isdigit():
+                    v = int(v)
+                if isinstance(VORGABEN[k], bool):   # ja/nein-Regeln (waechter_zahlung)
+                    if isinstance(v, str) and v.strip().lower() in ("true", "ja", "an", "false", "nein", "aus"):
+                        v = v.strip().lower() in ("true", "ja", "an")
+                    if not isinstance(v, bool):
+                        raise Ablehnung("schreiben.regeln.bool", k=k)
+                if r.get(k) == v:
+                    continue
+                geaendert.append(S("schreiben.antwort.einstellung.regel", w1=k, w2=anzeige_text(r.get(k, VORGABEN[k])), w3=anzeige_text(v)))
+                r[k] = skalar(k, v) if isinstance(v, str) else v
+        sprache = args.get("sprache")
+        if sprache not in (None, ""):
+            sprache = str(sprache).strip().lower()
+            if not texte.gueltig(sprache):
+                raise Ablehnung("schreiben.einstellung_setzen.3", sprache=sprache, w2=', '.join(texte.SPRACHEN))
+            if str(roh.get("sprache") or texte.BESTAND_REISE) != sprache:
+                geaendert.append(S("schreiben.antwort.einstellung.sprache", w1=roh.get("sprache") or texte.BESTAND_REISE, w2=sprache))
+                roh["sprache"] = sprache
+        if not geaendert:
+>           raise Ablehnung("schreiben.einstellung_setzen.4")
+E           schreiben.Ablehnung: Nichts zu ändern (bausteine als Liste, regeln als Objekt oder sprache angeben).
+
+engine/schreiben.py:2843: Ablehnung
+=========================== short test summary info ============================
+FAILED engine/tests/test_texte.py::test_bestand_reise_kommt_nicht_mehr_vor - ...
+FAILED engine/tests/test_texte.py::test_namen_der_schnittstelle_steht_in_der_sprachdatei
+FAILED engine/tests/test_texte.py::test_neue_schluessel_der_sprachpflicht - A...
+FAILED engine/tests/test_neu.py::test_sprache_von_ohne_feld_ist_der_rueckfall
+FAILED engine/tests/test_neu.py::test_reise_ohne_feld_sprache_baut_erst_nach_nachziehen
+FAILED engine/tests/test_neu.py::test_sprache_pruefen_ohne_leer - AssertionEr...
+FAILED engine/tests/test_bauen.py::test_reise_ohne_sprache_bricht_den_bau[fehlt]
+FAILED engine/tests/test_bauen.py::test_reise_ohne_sprache_bricht_den_bau[None]
+FAILED engine/tests/test_bauen.py::test_reise_ohne_sprache_bricht_den_bau[]
+FAILED engine/tests/test_bauen.py::test_sprache_fehlt_nennt_kuerzel_und_nachziehen
+FAILED engine/tests/test_bauen.py::test_sprache_unbekannt_bleibt - AssertionE...
+FAILED engine/tests/test_schreiben.py::test_einstellung_sprache_ohne_feld_meldet_nicht_gesetzt
+12 failed, 30 passed, 280 deselected in 4.94s
