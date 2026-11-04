@@ -143,7 +143,7 @@ def sprache_von(reise_dir):
 
 class Ablehnung(Exception):
     """Der Schreibweg lehnt ab; der Text ist für den AI-Client (einfache Worte, nennt den Grund). Der Satz steht im Katalog
-    (schreiben.*, ADR-0006): Ablehnung("schreiben.werkzeug.n", feld=wert …). str(e) ist der Satz auf Deutsch (Bestand, Protokoll),
+    (schreiben.*, ADR-0006): Ablehnung("schreiben.werkzeug.n", feld=wert …). str(e) ist der Satz im Rückfall (texte.VORGABE_REISE; Protokoll),
     text(sprache) der in der Sprache der Person; der Dienst schickt Schlüssel und Werte mit, der Konnektor setzt den Satz zusammen.
     Ein fertiger Satz ohne Schlüssel gilt weiter, wie er ist."""
 

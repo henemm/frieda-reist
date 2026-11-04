@@ -240,3 +240,12 @@ def test_crlf_bleibt_erhalten(tmp_path, wie):
         assert len(abweichend) == 1 and neu_z[abweichend[0]] == b"sprache: de"
     assert neu.sprache_nachziehen(r) == []
     assert y.read_bytes() == nachher
+
+
+def test_sprache_ohne_wert_liest_nicht_die_naechste_zeile_319(tmp_path, monkeypatch):
+    """#319: „sprache:“ ohne Wert gilt als fehlend (Rückfall), statt den Schlüssel der nächsten Zeile als Sprache zu lesen."""
+    monkeypatch.setattr(texte, "VORGABE_REISE", "en")
+    (tmp_path / "reise.yaml").write_text("titel: Test\nsprache:\nde: erfundener Schlüssel\n", encoding="utf-8")
+    assert reise.sprache_von(tmp_path) == texte.VORGABE_REISE
+    (tmp_path / "reise.yaml").write_text("titel: Test\nsprache:   de  \n", encoding="utf-8")
+    assert reise.sprache_von(tmp_path) == "de"

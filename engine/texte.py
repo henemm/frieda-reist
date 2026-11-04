@@ -339,7 +339,7 @@ def _teil(sprache, k, w):
 
 
 class Satz(str):
-    """Ein Satz aus dem Katalog: als Text ist er der deutsche Satz (Bestand, Protokolle, Dateien), dazu trägt er Schlüssel und Werte, aus
+    """Ein Satz aus dem Katalog: als Text ist er der Satz im Rückfall (texte.VORGABE_REISE; Protokolle), dazu trägt er Schlüssel und Werte, aus
     denen sich der Satz in jeder Sprache bauen lässt (text(sprache)); in f-Strings erscheint er in der Sprache des laufenden Aufrufs.
     Mit + lassen sich Sätze und feste Stücke aneinanderhängen; die Folge bleibt ein Satz, der in jeder Sprache lesbar ist (teile).
     Über JSON (teile_json, aus_json) reist er vom Dienst zum Konnektor, der ihn in der Sprache der Person setzt."""

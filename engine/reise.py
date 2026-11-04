@@ -224,7 +224,7 @@ def sprache_von(reise_dir):
         text = (Path(reise_dir) / "reise.yaml").read_text(encoding="utf-8")
     except OSError:
         return texte.VORGABE_REISE
-    m = re.search(r"^sprache:\s*['\"]?([A-Za-z-]+)", text, re.M)
+    m = re.search(r"^sprache:[ \t]*['\"]?([A-Za-z-]+)", text, re.M)   # [ \t]: ohne Wert nicht die nächste Zeile lesen (#319)
     if not m:
         return texte.VORGABE_REISE
     return m.group(1).lower() if texte.gueltig(m.group(1).lower()) else texte.VORGABE_REISE
