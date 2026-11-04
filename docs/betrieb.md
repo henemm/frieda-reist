@@ -301,7 +301,7 @@ Meldung. Nach einer Änderung der Vorlage `units-installieren.py` muss die Kopie
 Der Konnektor hat drei Drosseln und die Reise-Seiten eine vierte, je Adresse (`betrieb/vorlagen/nginx-zone.conf`, Zonen mit dem Namen der Instanz in einer eigenen
 Datei `conf.d/<instanz>-zone.conf`; eine gemeinsam genutzte Datei wie `limit-req.conf` bleibt unberührt, damit keine Namen streiten):
 `<instanz>_mcp` großzügig (10 pro Sekunde, burst 40), weil die Claude-App von gemeinsamen Adressen aus aufruft; `<instanz>_anmelden`
-streng (5 pro Minute, burst 10); `<instanz>_konto` für Konto, Einladung, Kalender-Abo (30 pro Minute, burst 20); `<instanz>_api` für den Rückmeldedienst der Reise-Seiten (30 pro Minute, burst 10; Zone der Reise-Bausteine, #316).
+streng (5 pro Minute, burst 10); `<instanz>_konto` für Konto, Einladung, Kalender-Abo (30 pro Minute, burst 20); `<instanz>_api` für den Rückmeldedienst der Reise-Seiten (120 pro Minute, burst 10; Zone der Reise-Bausteine, #316; ein Seitenaufruf macht sieben Abfragen, bei 30 pro Minute wurde am 4.11.2026 ein Besucher über fail2ban ausgesperrt).
 `/token`, `/register`, die OAuth-Metadaten, Schrift und Symbole haben keine Drossel: Sie kommen von den gemeinsamen Adressen der
 Claude-App, ein Limit träfe alle Nutzer zusammen, der Dienst prüft PKCE, Weiterleitungsadressen und Codes selbst.
 

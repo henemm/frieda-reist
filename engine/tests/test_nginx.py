@@ -42,7 +42,7 @@ def test_zonendatei_hat_eigene_zonen_und_die_ausnahme(tmp_path):
     assert re.search(r"limit_req_zone \$probe_schluessel zone=probe_anmelden:\d+m rate=5r/m;", zone)
     assert re.search(r"limit_req_zone \$probe_schluessel zone=probe_konto:\d+m rate=30r/m;", zone)
     # Zone der Reise-Bausteine (Rückmeldedienst), ebenfalls mit dem Schlüssel ohne die eigenen Adressen (#316)
-    assert re.search(r"limit_req_zone \$probe_schluessel zone=probe_api:1m rate=30r/m;", zone)
+    assert re.search(r"limit_req_zone \$probe_schluessel zone=probe_api:1m rate=120r/m;", zone)
     assert zone.count("limit_req_zone") == 4
     # keine Namen aus der gemeinsamen Datei
     assert not re.search(r"zone=(login|frieda\w*)\b", zone)
@@ -384,3 +384,14 @@ def test_nginx_nimmt_vorher_und_nachher_und_lehnt_doppelte_zone_ab(abgleich, tmp
     assert pruefe().returncode != 0          # doppelte Zone: genau der Zwischenstand, den der eine Lauf vermeidet
     (confd / "probe-zone.conf").write_text(re.sub(r"limit_req_zone \$probe_schluessel zone=probe_api[^\n]*\n", "", nachher))
     assert pruefe().returncode == 0          # Stand vor dem Umzug
+
+
+def test_reise_zone_traegt_zwei_seitenaufrufe_kurz_hintereinander(tmp_path):
+    """Ein Seitenaufruf macht sieben Abfragen an api/ (ich, belege, rueckmeldungen, brett, aufgaben, stand, Zeitzeichen).
+    Wer neu lädt, ruft innerhalb weniger Sekunden ein zweites Mal auf. Bei 30 pro Minute lief das in 429 und über fail2ban in die Sperre (4.11.2026)."""
+    abfragen = 7
+    zone = (erzeugen(tmp_path) / "probe-zone.conf").read_text()
+    rate = int(re.search(r"zone=probe_api:\d+m rate=(\d+)r/m;", zone).group(1)) / 60      # Abfragen je Sekunde
+    bursts = {int(b) for b in re.findall(r"limit_req zone=__ZONE__ burst=(\d+) nodelay", (BETRIEB / "vorlagen" / "nginx-reise.conf").read_text())}
+    assert len(bursts) == 1
+    assert min(bursts) + rate * 3 >= 2 * abfragen, (min(bursts), rate)
