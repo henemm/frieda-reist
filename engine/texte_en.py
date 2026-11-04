@@ -2428,6 +2428,7 @@ TEXTE = {
     "schreiben.antwort.lage.adresse": "Address “{w1}”",
     "schreiben.antwort.lage.herkunft": ". Source: {w1}, checked {w2}.",
     "schreiben.antwort.lage.koordinaten": "Coordinates “{w1}”",
+    "schreiben.antwort.lage.koordinaten_entfernt": "Coordinates removed (were “{w1}”), the entry is no longer on the map",
     "schreiben.antwort.lage.war": " (was “{w1}”)",
     "schreiben.antwort.wert.am": " (on {w1})",
     "schreiben.antwort.wert.kopf": "{w1} on {w2}: {w3}",

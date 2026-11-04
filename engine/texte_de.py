@@ -2428,6 +2428,7 @@ TEXTE = {
     "schreiben.antwort.lage.adresse": "Adresse „{w1}“",
     "schreiben.antwort.lage.herkunft": ". Herkunft: {w1}, geprüft {w2}.",
     "schreiben.antwort.lage.koordinaten": "Koordinaten „{w1}“",
+    "schreiben.antwort.lage.koordinaten_entfernt": "Koordinaten herausgenommen (waren „{w1}“), der Eintrag steht nicht mehr auf der Karte",
     "schreiben.antwort.lage.war": " (war „{w1}“)",
     "schreiben.antwort.wert.am": " (am {w1})",
     "schreiben.antwort.wert.kopf": "{w1} an {w2}: {w3}",

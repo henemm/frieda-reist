@@ -102,3 +102,24 @@ def test_item_create_nimmt_ort_zeit_und_festes_in_merkmale(repo):
     with pytest.raises(sb.Ablehnung):   # ort doppelt: oben und in merkmale
         s.schreiben("beispielreise", "ding_anlegen", {**KARL_S, "args": {"was": "aufenthalt", "titel": "Y", "art": "besichtigung", "quelle": "q",
                                                                           "ort": "O-03", "merkmale": {"ort": "O-01"}}})
+
+
+def test_item_update_nimmt_koordinaten_heraus(repo):
+    """Leerer Text entfernt einen Wert, auch die Koordinaten (PO 4.11.2026): Das Ding bleibt mit Adresse, steht aber nicht mehr
+    auf der Karte; der alte Wert steht in der Antwort und im Verlauf (Commit)."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    s.schreiben("beispielreise", "ding_aendern", {**KARL_S, "args": {"ziel": "A-01", "quelle": "Test",
+                "merkmale": {"adresse": "Burgweg 1, 01848 Hohnstein", "koordinaten": [50.9785, 14.114]}}})
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "ding_aendern", {**KARL_S, "args": {"ziel": "A-01", "quelle": "Ida im Gespräch (Test)",
+                    "grund": "zu weit weg", "merkmale": {"koordinaten": ""}}})
+    assert a["ok"] and "50.9785, 14.114" in a["text"] and "nicht mehr auf der Karte" in a["text"], a["text"]
+    assert "fehlen noch Koordinaten" not in a["text"]
+    r, _ = routen_auf_main(origin)
+    m = r["aufenthalte"]["A-01"]["merkmale"]
+    assert not any(isinstance(v, dict) and v.get("typ") == "koordinaten" for v in m.values()), m
+    assert "punkt" not in r["aufenthalte"]["A-01"] and m["adresse"]["wert"] == "Burgweg 1, 01848 Hohnstein"
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung):   # ohne Koordinaten gibt es nichts herauszunehmen
+        s.schreiben("beispielreise", "ding_aendern", {**KARL_S, "args": {"ziel": "A-01", "quelle": "x", "merkmale": {"koordinaten": ""}}})

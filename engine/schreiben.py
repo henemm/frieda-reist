@@ -1832,10 +1832,19 @@ def lage_eintragen(reise_dir, wer, args, heute=None):
     if adresse and ziel.startswith("O-"):
         raise Ablehnung("schreiben.lage_eintragen.ort_adresse")
     punkt = koordinaten_wert(args)
-    if not adresse and not punkt:
+    gelesen = lage_lesen(knoten)
+    # Leerer Text nimmt die Koordinaten heraus (PO 4.11.2026): das Ding bleibt, steht aber nicht mehr auf der Karte
+    weg = args.get("koordinaten") == "" and isinstance(gelesen.get("punkt"), dict)
+    if not adresse and not punkt and not weg:
         raise Ablehnung("schreiben.lage_eintragen.4")
     geaendert = []
-    gelesen = lage_lesen(knoten)
+    if weg:
+        alt = gelesen["punkt"].get("wert")
+        mk = knoten.get("merkmale") or {}
+        for k in [k for k, v in mk.items() if isinstance(v, dict) and v.get("typ") == "koordinaten"]:
+            del mk[k]
+        altes_feld_entfernen(knoten, "koordinaten")
+        geaendert.append(S("schreiben.antwort.lage.koordinaten_entfernt", w1=", ".join(map(str, alt)) if isinstance(alt, list) else alt))
     for feld, wert in (("adresse", adresse), ("punkt", punkt)):
         if not wert:
             continue
@@ -1847,7 +1856,7 @@ def lage_eintragen(reise_dir, wer, args, heute=None):
     routen_speichern(reise_dir, roh)
     grund = text_wert(args, "grund")
     # Adresse ohne Koordinaten (K3): Frieda soll Koordinaten recherchieren; bis dahin nennt der Kartenstatus den Eintrag
-    ohne = not isinstance(lage_lesen(knoten).get("punkt"), dict)
+    ohne = not weg and not isinstance(lage_lesen(knoten).get("punkt"), dict)
     return (S("schreiben.titel.lage", w1=bezeichnung),
             f"{bezeichnung}: " + verbinden(geaendert, "; ") + S("schreiben.antwort.lage.herkunft", w1=quelle, w2=g.isoformat())
             + (S("schreiben.antwort.grund", w1=grund) if grund else "") + (S("schreiben.antwort.lage.koordinaten_fehlen") if ohne else ""))
