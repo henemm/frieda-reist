@@ -225,6 +225,10 @@ weder Gehzeit noch km. Testdaten: nur erfundene Daten und die beiden Beispielrei
 ## Changelog
 
 - 2026-11-04: Initial spec created (kennzahlen-268).
+- 2026-11-04 (Validierung): Der Seitentest zu AC-2 steht in `engine/tests/test_seite_sprachen.py`
+  (`test_stadtwochenende_zeigt_keine_kennzahlen`, im Browser) statt in `test_eine_seitenordnung.py`. Die Textschlüssel heißen
+  `seite.auto.hoehenmeter` u. a., dazu `konnektor.summe.fehlt` („–“ für ein einzelnes fehlendes Feld, mit dem Zusatz „unvollständig“).
+  Volle Suite: 1358 bestanden, 0 übersprungen.
 
 ## Approval
 
