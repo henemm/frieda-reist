@@ -1,0 +1,3 @@
+AC-C1-2 (#267 c1): Bau beider Beispielreisen (beispielreise, stadtwochenende), Branch altformen-267-c gegen origin/main (engine per git archive).
+28 Dateien je Seite. diff -r ohne die Zeilen data-release / VERSION / RELEASE / STAND (kommen aus Git bzw. Hashes davon): GLEICH.
+Unterschiede davor nur: Release-Nummer/Kennung (Branch hat Git-Kontext, main-Kopie nicht) und davon abhängige Hashes.

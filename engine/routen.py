@@ -287,7 +287,6 @@ def ist_link(wert):
 # Für Menschen heißen die Stufen „nötig“, „gut zu wissen“, „zusätzlich“ (Product Owner 29.10.2026); „aus“ bleibt unsichtbar.
 # In Dateien und Werkzeugen bleiben die Schlüssel; die Wörter nimmt der Schreibweg als Eingabe ebenfalls an (stufe_schluessel).
 STUFEN = ("pflicht", "empfohlen", "angeboten", "aus")
-STUFEN_WORTE = texte.gruppe(texte.BESTAND_REISE, "schreiben.stufe")   # die Wörter des Bestands; Eingabe nimmt die jeder Sprache (stufe_schluessel)
 
 
 def stufe_satz(s):
@@ -297,7 +296,7 @@ def stufe_satz(s):
         return texte.Satz.verbinden(
             [texte.satz("schreiben.stufe_je_typ", typ=texte.satz("schreiben.stufe_sonst") if t == "*" else t,
                         stufe=texte.satz("schreiben.stufe_gilt_nicht") if v == "aus" else stufe_satz(v)) for t, v in s.items()], ", ")
-    if isinstance(s, str) and s in STUFEN_WORTE and s != "aus":
+    if isinstance(s, str) and s in STUFEN and s != "aus":
         return texte.satz("schreiben.stufe_mit_wert", w1=texte.satz("schreiben.stufe." + s), w2=s)
     if s == "aus":
         return texte.satz("schreiben.stufe.aus")
