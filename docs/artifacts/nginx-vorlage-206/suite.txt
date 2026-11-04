@@ -1,7 +1,7 @@
 ============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- /home/hem/frieda-reisen/engine/.venv/bin/python
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- ~/frieda-reisen/engine/.venv/bin/python
 cachedir: .pytest_cache
-rootdir: /home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx
+rootdir: ~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx
 collecting ... collected 1246 items
 
 engine/tests/test_altformen_267.py::test_ohne_reise_yaml_bricht_der_bau_ab[beispielreise] PASSED [  0%]

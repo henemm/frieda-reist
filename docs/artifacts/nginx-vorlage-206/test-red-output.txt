@@ -1,7 +1,7 @@
 ============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- /home/hem/frieda-reisen/engine/.venv/bin/python
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- ~/frieda-reisen/engine/.venv/bin/python
 cachedir: .pytest_cache
-rootdir: /home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx
+rootdir: ~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx
 collecting ... collected 10 items
 
 engine/tests/test_nginx.py::test_zonendatei_hat_eigene_zonen_und_die_ausnahme FAILED [ 10%]
@@ -145,9 +145,9 @@ engine/tests/test_nginx.py:174: in lauf
     self._execute_child(args, executable, preexec_fn, close_fds,
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = <Popen: returncode: 255 args: ['/home/hem/frieda-reist/.claude/worktrees/mos...>
-args = ['/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py', 'pruefen']
-executable = b'/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+self = <Popen: returncode: 255 args: ['~/frieda-reist/.claude/worktrees/mos...>
+args = ['~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py', 'pruefen']
+executable = b'~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
 preexec_fn = None, close_fds = True, pass_fds = (), cwd = None
 env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wW:p1', ...}
 startupinfo = None, creationflags = 0, shell = False, p2cread = -1
@@ -320,7 +320,7 @@ start_new_session = False, process_group = -1
                     err_msg = os.strerror(errno_num)
                 if err_filename is not None:
 >                   raise child_exception_type(errno_num, err_msg, err_filename)
-E                   FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+E                   FileNotFoundError: [Errno 2] No such file or directory: '~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
 
 /usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
 _______________________ test_abgleich_gleich_endet_mit_0 _______________________
@@ -344,9 +344,9 @@ engine/tests/test_nginx.py:174: in lauf
     self._execute_child(args, executable, preexec_fn, close_fds,
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = <Popen: returncode: 255 args: ['/home/hem/frieda-reist/.claude/worktrees/mos...>
-args = ['/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py', 'pruefen']
-executable = b'/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+self = <Popen: returncode: 255 args: ['~/frieda-reist/.claude/worktrees/mos...>
+args = ['~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py', 'pruefen']
+executable = b'~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
 preexec_fn = None, close_fds = True, pass_fds = (), cwd = None
 env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wW:p1', ...}
 startupinfo = None, creationflags = 0, shell = False, p2cread = -1
@@ -519,7 +519,7 @@ start_new_session = False, process_group = -1
                     err_msg = os.strerror(errno_num)
                 if err_filename is not None:
 >                   raise child_exception_type(errno_num, err_msg, err_filename)
-E                   FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+E                   FileNotFoundError: [Errno 2] No such file or directory: '~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
 
 /usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
 ____________ test_abgleich_abweichung_nennt_datei_und_einen_befehl _____________
@@ -546,9 +546,9 @@ engine/tests/test_nginx.py:174: in lauf
     self._execute_child(args, executable, preexec_fn, close_fds,
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = <Popen: returncode: 255 args: ['/home/hem/frieda-reist/.claude/worktrees/mos...>
-args = ['/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py', 'pruefen']
-executable = b'/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+self = <Popen: returncode: 255 args: ['~/frieda-reist/.claude/worktrees/mos...>
+args = ['~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py', 'pruefen']
+executable = b'~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
 preexec_fn = None, close_fds = True, pass_fds = (), cwd = None
 env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wW:p1', ...}
 startupinfo = None, creationflags = 0, shell = False, p2cread = -1
@@ -721,7 +721,7 @@ start_new_session = False, process_group = -1
                     err_msg = os.strerror(errno_num)
                 if err_filename is not None:
 >                   raise child_exception_type(errno_num, err_msg, err_filename)
-E                   FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+E                   FileNotFoundError: [Errno 2] No such file or directory: '~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
 
 /usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
 ______________ test_abgleich_fehlende_einzeldatei_ist_abweichung _______________
@@ -746,9 +746,9 @@ engine/tests/test_nginx.py:174: in lauf
     self._execute_child(args, executable, preexec_fn, close_fds,
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = <Popen: returncode: 255 args: ['/home/hem/frieda-reist/.claude/worktrees/mos...>
-args = ['/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py', 'pruefen']
-executable = b'/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+self = <Popen: returncode: 255 args: ['~/frieda-reist/.claude/worktrees/mos...>
+args = ['~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py', 'pruefen']
+executable = b'~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
 preexec_fn = None, close_fds = True, pass_fds = (), cwd = None
 env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wW:p1', ...}
 startupinfo = None, creationflags = 0, shell = False, p2cread = -1
@@ -921,7 +921,7 @@ start_new_session = False, process_group = -1
                     err_msg = os.strerror(errno_num)
                 if err_filename is not None:
 >                   raise child_exception_type(errno_num, err_msg, err_filename)
-E                   FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+E                   FileNotFoundError: [Errno 2] No such file or directory: '~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
 
 /usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
 _______________________ test_abgleich_fehler_endet_mit_1 _______________________
@@ -944,9 +944,9 @@ engine/tests/test_nginx.py:174: in lauf
     self._execute_child(args, executable, preexec_fn, close_fds,
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = <Popen: returncode: 255 args: ['/home/hem/frieda-reist/.claude/worktrees/mos...>
-args = ['/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py', 'pruefen']
-executable = b'/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+self = <Popen: returncode: 255 args: ['~/frieda-reist/.claude/worktrees/mos...>
+args = ['~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py', 'pruefen']
+executable = b'~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
 preexec_fn = None, close_fds = True, pass_fds = (), cwd = None
 env = {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wW:p1', ...}
 startupinfo = None, creationflags = 0, shell = False, p2cread = -1
@@ -1119,7 +1119,7 @@ start_new_session = False, process_group = -1
                     err_msg = os.strerror(errno_num)
                 if err_filename is not None:
 >                   raise child_exception_type(errno_num, err_msg, err_filename)
-E                   FileNotFoundError: [Errno 2] No such file or directory: '/home/hem/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
+E                   FileNotFoundError: [Errno 2] No such file or directory: '~/frieda-reist/.claude/worktrees/mossy-sauteeing-sphinx/betrieb/nginx.py'
 
 /usr/lib/python3.12/subprocess.py:1955: FileNotFoundError
 =========================== short test summary info ============================
