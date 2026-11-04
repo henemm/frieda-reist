@@ -2337,6 +2337,21 @@ function dingStand(x) {
   const t = R.tage.find(d => x.tage.includes(d.id));
   return t ? T("seite.karte.am_tag", {nr: t.nr}) : "";
 }
+// Punkt eines Dings auf der automatischen Karte (#310): Kurztext beim Überfahren, Popup am Punkt mit Name, Art, Stand, den
+// Merkmalen der Stufen „nötig“ und „gut zu wissen“ und dem Link zum Eintrag (wie die Punkte der Etappenkarte)
+function dingMarke(karte, x, lg) {
+  const alt = x.stand === "alternative";
+  const mk = L.marker(x.lage, {title: x.name, alt: x.name, riseOnHover: true, zIndexOffset: alt ? 0 : 400, icon: L.divIcon({className: "rh-pw", iconSize: [22, 22],
+    html: `<span class="rh-p rh-ding${alt ? " umriss" : ""}" style="--pk:${katFarbe(lg.farbe)}">${lg.symbol ? symbol(lg.symbol).outerHTML : ""}</span>`})}).addTo(karte);
+  mk.bindTooltip([x.name, lg.name].filter(Boolean).join(" · "), {direction: "top", offset: [0, -12], className: "rh-lbl"});
+  mk.bindPopup(() => {
+    const ding = (R.unterkuenfte || {})[x.id] || (R.aufenthalte || {})[x.id] || {};
+    const kriterien = ((R.merkmale || {})[x.art] || []).filter(k => !k.auto && ["pflicht", "empfohlen"].includes(stufeVon(k)));
+    return el("div", {}, el("b", {}, x.name), el("div", {class: "pk"}, [lg.name, dingStand(x)].filter(Boolean).join(" · ")),
+      merkmalListe(kriterien, ding.merkmale || {}, null, true), el("div", {}, link(x.id, T("seite.karte.zum_eintrag"))));
+  }, {maxWidth: 260, autoPanPadding: [16, 16]});
+  return mk;
+}
 function dunkel() { const t = document.documentElement.dataset.theme; return t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; }
 function karteZeichnen(plaene, info, box, ansicht) {
   const K = R.karte, rf = K.rahmen;
@@ -2471,12 +2486,8 @@ function karteZeichnen(plaene, info, box, ansicht) {
   // Unterkünfte und Aufenthalte mit Lage (automatische Karte, K2): Farbe und Name aus ihrer Art (K4), Alternativen als Umriss
   for (const x of K.dinge || []) {
     if (!dingInAnsicht(ansicht, x)) continue;
-    const lg = (K.legende || {})[x.art] || {}, alt = x.stand === "alternative";
-    const icon = L.divIcon({className: "rh-pw", iconSize: [22, 22],
-      html: `<span class="rh-p rh-ding${alt ? " umriss" : ""}" style="--pk:${katFarbe(lg.farbe)}">${lg.symbol ? symbol(lg.symbol).outerHTML : ""}</span>`});
-    const mk = L.marker(x.lage, {icon, title: x.name, alt: x.name, riseOnHover: true, zIndexOffset: alt ? 0 : 400}).addTo(karte);
+    dingMarke(karte, x, (K.legende || {})[x.art] || {});
     bereich.extend(x.lage);
-    mk.on("click keypress", () => zeigeInfo(x.name, [[lg.name, dingStand(x)].filter(Boolean).join(" · "), link(x.id, T("seite.karte.zum_eintrag"))]));
   }
   const linienPunkte = new Set(plaene.flatMap(p => p.tage.flatMap(d => d.strecken.flatMap(st => (wegVon(st.id) || []).map(q => q.join(","))))));
   for (const pk of K.punkte || []) {
@@ -2487,7 +2498,7 @@ function karteZeichnen(plaene, info, box, ansicht) {
   }
   // Namen, die sich überdecken, ausblenden; Übernachtungsorte zuerst (danach Wegpunkte, Gipfel)
   const namen = [];
-  karte.eachLayer(lyr => { const t = lyr.getTooltip && lyr.getTooltip(); if (t) namen.push([t, lyr.options.icon && /rh-unterkunft/.test(lyr.options.icon.options.className) ? 0 : /klein/.test(t.options.className) ? 2 : 1]); });
+  karte.eachLayer(lyr => { const t = lyr.getTooltip && lyr.getTooltip(); if (t && t.options.permanent) namen.push([t, lyr.options.icon && /rh-unterkunft/.test(lyr.options.icon.options.className) ? 0 : /klein/.test(t.options.className) ? 2 : 1]); });
   namen.sort((a, b) => a[1] - b[1]);
   const entzerren = () => {
     const frei = [];
@@ -2613,10 +2624,7 @@ function tagesKarte(t) {
       w.forEach(q => bereich.extend(q));
     }
     for (const x of (K.dinge || []).filter(x => x.tage.includes(t.id))) {
-      const lg = (K.legende || {})[x.art] || {}, alt = x.stand === "alternative";
-      const mk = L.marker(x.lage, {title: x.name, alt: x.name, riseOnHover: true, zIndexOffset: alt ? 0 : 400, icon: L.divIcon({className: "rh-pw", iconSize: [22, 22],
-        html: `<span class="rh-p rh-ding${alt ? " umriss" : ""}" style="--pk:${katFarbe(lg.farbe)}">${lg.symbol ? symbol(lg.symbol).outerHTML : ""}</span>`})}).addTo(karte);
-      mk.bindPopup(() => el("div", {}, el("b", {}, x.name), el("div", {class: "pk"}, [lg.name, dingStand(x)].filter(Boolean).join(" · ")), el("div", {}, link(x.id, T("seite.karte.zum_eintrag")))), {maxWidth: 260});
+      dingMarke(karte, x, (K.legende || {})[x.art] || {});
       bereich.extend(x.lage);
     }
     for (const e of eintraege) ((R.punkte || {})[e.sid] || []).forEach((p, i) => {
