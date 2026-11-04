@@ -298,10 +298,10 @@ Meldung. Nach einer Änderung der Vorlage `units-installieren.py` muss die Kopie
 
 ## nginx-Bausteine abgleichen (#206)
 
-Der Konnektor hat drei Drosseln, je Adresse (`betrieb/vorlagen/nginx-zone.conf`, Zonen mit dem Namen der Instanz in einer eigenen
+Der Konnektor hat drei Drosseln und die Reise-Seiten eine vierte, je Adresse (`betrieb/vorlagen/nginx-zone.conf`, Zonen mit dem Namen der Instanz in einer eigenen
 Datei `conf.d/<instanz>-zone.conf`; eine gemeinsam genutzte Datei wie `limit-req.conf` bleibt unberührt, damit keine Namen streiten):
 `<instanz>_mcp` großzügig (10 pro Sekunde, burst 40), weil die Claude-App von gemeinsamen Adressen aus aufruft; `<instanz>_anmelden`
-streng (5 pro Minute, burst 10); `<instanz>_konto` für Konto, Einladung, Kalender-Abo (30 pro Minute, burst 20).
+streng (5 pro Minute, burst 10); `<instanz>_konto` für Konto, Einladung, Kalender-Abo (30 pro Minute, burst 20); `<instanz>_api` für den Rückmeldedienst der Reise-Seiten (30 pro Minute, burst 10; Zone der Reise-Bausteine, #316).
 `/token`, `/register`, die OAuth-Metadaten, Schrift und Symbole haben keine Drossel: Sie kommen von den gemeinsamen Adressen der
 Claude-App, ein Limit träfe alle Nutzer zusammen, der Dienst prüft PKCE, Weiterleitungsadressen und Codes selbst.
 
@@ -324,9 +324,14 @@ Der Befehl aus der Meldung ist `sudo env … nginx.py anwenden` (von Hand, mit R
 
 **Einmalige Umstellung des Server-Blocks** (bewusst, mit Freigabe des Product Owners): Der Block der Konnektor-Adresse wird auf die Form „fester
 Rahmen plus erzeugter Baustein“ gebracht (`include <snippets>/<instanz>-konnektor-orte.inc;` statt der von Hand gebauten Orte), die Zonendatei
-kommt nach `conf.d`. Danach gilt der Abgleich. Die Zonen `<instanz>_api` der Reise-Bausteine (`nginx-reise.conf`) liegen bis dahin
-weiter in der gemeinsamen Datei; die alten Zeilen der Instanz dort entfernt ein eigener, späterer Schritt (erst dann kann die Reise-Zone
-in die eigene Datei ziehen).
+kommt nach `conf.d`. Danach gilt der Abgleich. Die Zone `<instanz>_api` der Reise-Bausteine (`nginx-reise.conf`) steht ebenfalls in der eigenen Zonendatei (#316).
+
+**Zone aus einer gemeinsamen Datei umziehen.** Stand die Zone früher in einer gemeinsam genutzten `conf.d/*.conf` (etwa `limit-req.conf`), meldet
+`nginx.py pruefen` das als Abweichung (Ausgang 3). `nginx.py anwenden` entfernt dort im selben Lauf genau die Zeile der Instanz samt dem
+Kommentarblock direkt darüber, installiert die Zonendatei, sichert beide Dateien (die fremde unter `nginx-sicherung/<Zeit>/fremd/`), prüft
+einmal mit `nginx -t` und stellt bei einem Fehler beide wieder her. Das muss ein Lauf sein: nginx verbietet doppelte Zonen, und ohne Definition
+laden die Reise-Bausteine nicht. Alle anderen Zeilen und die Rechte der fremden Datei bleiben. Ist die Definition nicht eindeutig (zweimal,
+oder weitere Direktiven in derselben Zeile), ändert `anwenden` nichts und endet mit Fehler. Weitere Instanzen brauchen keinen Handschritt.
 
 ## Bauordner und Arbeitsordner
 

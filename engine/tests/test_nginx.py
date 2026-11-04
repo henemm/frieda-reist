@@ -41,9 +41,11 @@ def test_zonendatei_hat_eigene_zonen_und_die_ausnahme(tmp_path):
     assert re.search(r"limit_req_zone \$probe_schluessel zone=probe_mcp:\d+m rate=10r/s;", zone)
     assert re.search(r"limit_req_zone \$probe_schluessel zone=probe_anmelden:\d+m rate=5r/m;", zone)
     assert re.search(r"limit_req_zone \$probe_schluessel zone=probe_konto:\d+m rate=30r/m;", zone)
-    assert zone.count("limit_req_zone") == 3
-    # keine Namen aus der gemeinsamen Datei, keine Zone der Reise-Bausteine (die bleibt dort bis zur Bereinigung)
-    assert not re.search(r"zone=(login|probe_api|frieda\w*)\b", zone)
+    # Zone der Reise-Bausteine (Rückmeldedienst), ebenfalls mit dem Schlüssel ohne die eigenen Adressen (#316)
+    assert re.search(r"limit_req_zone \$probe_schluessel zone=probe_api:1m rate=30r/m;", zone)
+    assert zone.count("limit_req_zone") == 4
+    # keine Namen aus der gemeinsamen Datei
+    assert not re.search(r"zone=(login|frieda\w*)\b", zone)
     assert re.search(r"geo \$probe_eigen \{[^}]*127\.0\.0\.1 1;[^}]*::1 1;", zone, re.S)
     assert re.search(r'map \$probe_eigen \$probe_schluessel \{[^}]*0 \$binary_remote_addr;[^}]*1 "";', zone, re.S)
 
@@ -51,6 +53,12 @@ def test_zonendatei_hat_eigene_zonen_und_die_ausnahme(tmp_path):
 def test_eigene_adressen_sind_einstellbar(tmp_path):
     zone = (erzeugen(tmp_path, FR_EIGENE_ADRESSEN="192.0.2.7 2001:db8::7") / "probe-zone.conf").read_text()
     assert "192.0.2.7 1;" in zone and "2001:db8::7 1;" in zone and "127.0.0.1 1;" in zone and "::1 1;" in zone
+
+
+def test_einrichten_meldet_die_zone_der_reise_bausteine_nicht_mehr_als_fehlend(tmp_path):
+    env = {**SAUBER, "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "EI_ZIEL": str(tmp_path / "soll")}
+    r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh")], env=env, capture_output=True, text=True)
+    assert "does not define yet" not in r.stdout + r.stderr
 
 
 def test_orte_nutzen_die_drei_zonen(tmp_path):
@@ -270,3 +278,109 @@ def test_einrichten_lehnt_ungueltige_eigene_adressen_ab(tmp_path):
         r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], env={**basis, "FR_EIGENE_ADRESSEN": gut},
                            capture_output=True, text=True)
         assert r.returncode == 0, (gut, r.stdout)
+
+
+# ---------- Zone der Reise-Bausteine zieht aus der gemeinsamen Datei um (#316) ----------
+
+GETEILT = """# Rate-Limit-Zonen für Login
+limit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;
+
+# Rückmeldedienst der Reise-Seiten: zweite Bremse vor dem Dienst,
+# der selbst je Reise drosselt.
+limit_req_zone $binary_remote_addr zone=probe_api:1m rate=30r/m;
+
+# Anderer Dienst
+limit_req_zone $binary_remote_addr zone=mcp_api:10m rate=20r/s;
+"""
+GETEILT_NACHHER = """# Rate-Limit-Zonen für Login
+limit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;
+
+# Anderer Dienst
+limit_req_zone $binary_remote_addr zone=mcp_api:10m rate=20r/s;
+"""
+
+
+def test_abgleich_meldet_zone_in_fremder_datei(abgleich):
+    abgleich["installieren"]()
+    (abgleich["confd"] / "limit-req.conf").write_text(GETEILT)
+    r = abgleich["lauf"]()
+    assert r.returncode == 3 and "limit-req.conf" in r.stdout and "probe_api" in r.stdout, r.stdout + r.stderr
+    (abgleich["confd"] / "limit-req.conf").write_text(GETEILT_NACHHER)
+    assert abgleich["lauf"]().returncode == 0
+    # Kommentare, die den Namen nennen, und Zonen anderer Namen zählen nicht
+    (abgleich["confd"] / "andere.conf").write_text("# früher zone=probe_api:1m\nlimit_req_zone $binary_remote_addr zone=probe_apix:1m rate=1r/s;\n")
+    assert abgleich["lauf"]().returncode == 0
+
+
+def test_anwenden_zieht_die_zone_in_einem_lauf_um(abgleich, tmp_path):
+    abgleich["installieren"]()
+    zone = abgleich["confd"] / "probe-zone.conf"
+    soll = zone.read_text()
+    zone.write_text(re.sub(r"limit_req_zone \$probe_schluessel zone=probe_api[^\n]*\n", "", soll))   # Stand vor dem Umzug
+    geteilt = abgleich["confd"] / "limit-req.conf"
+    geteilt.write_text(GETEILT)
+    geteilt.chmod(0o640)
+    r, log = _anwenden(abgleich, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert zone.read_text() == soll and geteilt.read_text() == GETEILT_NACHHER and log == ["test", "laden"]
+    assert oct(geteilt.stat().st_mode & 0o777) == "0o640"
+    sicherung = next((abgleich["dienst"] / "nginx-sicherung").iterdir())
+    assert GETEILT in [p.read_text() for p in sicherung.rglob("limit-req.conf")]
+    assert abgleich["lauf"]().returncode == 0
+    r, log = _anwenden(abgleich, tmp_path)
+    assert r.returncode == 0 and "nothing to do" in r.stdout and log == ["test", "laden"]
+
+
+def test_anwenden_rollt_auch_die_fremde_datei_zurueck(abgleich, tmp_path):
+    abgleich["installieren"]()
+    zone = abgleich["confd"] / "probe-zone.conf"
+    alt = re.sub(r"limit_req_zone \$probe_schluessel zone=probe_api[^\n]*\n", "", zone.read_text())
+    zone.write_text(alt)
+    geteilt = abgleich["confd"] / "limit-req.conf"
+    geteilt.write_text(GETEILT)
+    r, log = _anwenden(abgleich, tmp_path, test_ok=False)
+    assert r.returncode == 1 and log == ["test"], r.stdout + r.stderr
+    assert zone.read_text() == alt and geteilt.read_text() == GETEILT
+
+
+def test_erste_einrichtung_zieht_die_zone_ebenfalls_um(abgleich, tmp_path):
+    (abgleich["confd"] / "limit-req.conf").write_text(GETEILT)
+    r, log = _anwenden(abgleich, tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (abgleich["confd"] / "limit-req.conf").read_text() == GETEILT_NACHHER and (abgleich["confd"] / "probe-zone.conf").exists()
+
+
+@pytest.mark.parametrize("inhalt", [
+    GETEILT + "limit_req_zone $binary_remote_addr zone=probe_api:1m rate=30r/m;\n",                 # doppelt
+    "limit_req_zone $binary_remote_addr zone=probe_api:1m rate=30r/m; limit_req_zone $x zone=y:1m rate=1r/s;\n",   # mehrere Direktiven in einer Zeile
+])
+def test_mehrdeutige_fremde_datei_wird_nicht_angefasst(abgleich, tmp_path, inhalt):
+    abgleich["installieren"]()
+    geteilt = abgleich["confd"] / "limit-req.conf"
+    geteilt.write_text(inhalt)
+    zone = abgleich["confd"] / "probe-zone.conf"
+    vorher = zone.read_text()
+    r, log = _anwenden(abgleich, tmp_path)
+    assert r.returncode == 1 and "limit-req.conf" in r.stderr and log == [], r.stdout + r.stderr
+    assert geteilt.read_text() == inhalt and zone.read_text() == vorher
+
+
+@pytest.mark.skipif(not shutil.which("nginx"), reason="nginx fehlt")
+def test_nginx_nimmt_vorher_und_nachher_und_lehnt_doppelte_zone_ab(abgleich, tmp_path):
+    abgleich["installieren"]()
+    confd = abgleich["confd"]
+    nachher = (confd / "probe-zone.conf").read_text()
+    temp = " ".join(f"{n}_temp_path {tmp_path}/{n};" for n in ("client_body", "proxy", "fastcgi", "uwsgi", "scgi"))
+    benutzer = "user root;" if os.geteuid() == 0 else ""
+
+    def pruefe():
+        (tmp_path / "ng.conf").write_text(f"{benutzer} pid {tmp_path}/ng.pid; error_log {tmp_path}/ng.log; events {{}}\n"
+                                          f"http {{ access_log off; {temp} include {confd}/*.conf; }}\n")
+        return subprocess.run(["nginx", "-t", "-e", str(tmp_path / "ng.log"), "-c", str(tmp_path / "ng.conf"), "-p", str(tmp_path)],
+                              capture_output=True, text=True)
+    (confd / "limit-req.conf").write_text(GETEILT_NACHHER)
+    assert pruefe().returncode == 0
+    (confd / "limit-req.conf").write_text(GETEILT)
+    assert pruefe().returncode != 0          # doppelte Zone: genau der Zwischenstand, den der eine Lauf vermeidet
+    (confd / "probe-zone.conf").write_text(re.sub(r"limit_req_zone \$probe_schluessel zone=probe_api[^\n]*\n", "", nachher))
+    assert pruefe().returncode == 0          # Stand vor dem Umzug

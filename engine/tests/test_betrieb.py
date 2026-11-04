@@ -1895,7 +1895,6 @@ def test_nginx_leitet_konnektor_und_reise_richtig(tmp_path):
     (tmp_path / "nginx.conf").write_text(f"""{benutzer} pid {tmp_path}/nginx.pid; error_log {tmp_path}/fehler.log; daemon off;
 events {{}}
 http {{ access_log off; {temp}
-  limit_req_zone $binary_remote_addr zone=probe_api:1m rate=30r/m;   # Zone der Reise-Bausteine: liegt bis zur Bereinigung in der gemeinsamen Datei (#206)
   include {aus}/probe-zone.conf;
   server {{ listen 127.0.0.1:{port};
     location ~* \\.(ico|png|svg|woff2|ics)$ {{ return 418; }}

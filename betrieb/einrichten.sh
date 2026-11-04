@@ -29,7 +29,7 @@ SYSTEMD="${EI_SYSTEMD:-/etc/systemd/system}"
 SNIPPETS="${FR_NGINX_SNIPPETS:-/etc/nginx/snippets}"
 ZIEL="${EI_ZIEL:-${TMPDIR:-/tmp}/$FR_INSTANZ-einrichten}"
 ZB="${FR_INSTANZ//-/_}"
-ZONE="${ZB}_api"   # Zone der Reise-Bausteine (freischalten.sh), bis zur Bereinigung der gemeinsamen Drossel-Datei dort definiert (docs/betrieb.md)
+ZONE="${ZB}_api"   # Zone der Reise-Bausteine (freischalten.sh), definiert in nginx-zone.conf (#316)
 
 probleme=0
 ok()      { echo "  ok      $*"; }
@@ -91,7 +91,7 @@ ersetze() {  # <vorlage> <ziel>
       -e "s|__KONNEKTOR__|$FR_KONNEKTOR|g" -e "s|__KONTEN__|$FR_KONTEN|g" -e "s|__RM_PORT__|$FR_RM_PORT|g" -e "s|__KN_PORT__|$FR_KN_PORT|g" \
       -e "s|__SB_PORT__|$FR_SB_PORT|g" -e "s|__PYTHON__|$FR_PYTHON|g" -e "s|__ZEITZONE__|$FR_ZEITZONE|g" \
       -e "s|__KN_ADRESSE__|$FR_KN_ADRESSE|g" -e "s|__ZONE__|$ZONE|g" -e "s|__SNIPPETS__|$SNIPPETS|g" \
-      -e "s|__ZONE_MCP__|${ZB}_mcp|g" -e "s|__ZONE_ANMELDEN__|${ZB}_anmelden|g" -e "s|__ZONE_KONTO__|${ZB}_konto|g" \
+      -e "s|__ZONE_API__|$ZONE|g" -e "s|__ZONE_MCP__|${ZB}_mcp|g" -e "s|__ZONE_ANMELDEN__|${ZB}_anmelden|g" -e "s|__ZONE_KONTO__|${ZB}_konto|g" \
       -e "s|__EIGENE_ADRESSEN__|$EIGENE_ADRESSEN|g" -e "s|__EIGEN__|${ZB}_eigen|g" -e "s|__SCHLUESSEL__|${ZB}_schluessel|g" "$1" > "$2"
 }
 for v in "$FR_BETRIEB"/vorlagen/*.service "$FR_BETRIEB"/vorlagen/*.timer; do
@@ -121,7 +121,6 @@ sudo systemctl daemon-reload
 TEXT
 }
 echo
-echo "NOTE: the trip blocks use the zone ${ZONE}, which $FR_INSTANZ-zone.conf does not define yet: define it elsewhere in the http block (limit_req_zone \$binary_remote_addr zone=${ZONE}:1m rate=30r/m;) until it moves in here (docs/betrieb.md, nginx-Bausteine abgleichen)."
 echo "Activate (once the server block of $FR_ADRESSE contains  include $SNIPPETS/$FR_INSTANZ-*.conf;"
 echo "the connector stands at the root of $FR_KN_ADRESSE, whose server block includes $FR_INSTANZ-konnektor-orte.inc):"
 befehle | sed 's/^/  /'

@@ -20,7 +20,7 @@ dem einen Befehl. Es wird nichts automatisch installiert und am Server nichts ge
 
 ## Was darf sich nicht ändern
 
-- Reise-Bausteine (`nginx-reise.conf`, `freischalten.sh`) und ihre Zone `<instanz>_api`.
+- Reise-Bausteine (`nginx-reise.conf`, `freischalten.sh`); die Zone `<instanz>_api` zieht um, siehe zone-api-eigene-datei-316.
 - Nichts am Server, nichts in `/etc`; nginx wird nie automatisch geändert oder neu geladen.
 - Ein Fehler im Abgleich stoppt das Veröffentlichen nie.
 
