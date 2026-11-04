@@ -9,6 +9,7 @@ DATUM_KURZ = "%-d.%-m."
 ZEIT = "%-H:%M"
 DATUM_ZEIT = "%d.%m.%Y %H:%M"   # Zeitpunkt mit Datum, wie ihn Stand und Protokolle zeigen
 WOCHENTAGE_KURZ = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")   # Montag bis Sonntag
+NAMEN_DER_SCHNITTSTELLE = True   # die Namen der Schnittstelle (Parameter, Werte) sind deutsche Wörter: kein Rückfall auf ihre englischen Namen
 
 
 def PLURAL(n):
@@ -873,6 +874,7 @@ TEXTE = {
     "schreiben.antwort.kategorie.art_feld": "art {w1}: {w2} {w3}",
     "schreiben.antwort.einstellung.regel": "regeln.{w1} „{w2}“ → „{w3}“",
     "schreiben.antwort.einstellung.sprache": "sprache „{w1}“ → „{w2}“",
+    "schreiben.antwort.einstellung.sprache_ungesetzt": "nicht gesetzt",
     "schreiben.titel.buchung_merkmal_angelegt": "Merkmal der Buchung „{w1}“ ({w2}) an {w3} angelegt",
     "schreiben.titel.buchung_merkmal_geaendert": "Merkmal der Buchung „{w1}“ ({w2}) an {w3} geändert",
     "schreiben.titel.merkmal_angelegt": "Merkmal „{w1}“ ({w2}) an {w3} angelegt",
@@ -2735,6 +2737,7 @@ TEXTE = {
     "pruefung.reise.noch_in_json.bausteine": "„{k}“ steht noch in reise.json; es gehört nach reise.yaml (bausteine).",
     "pruefung.reise.noch_in_json.darstellung": "„{k}“ steht noch in reise.json; es gehört nach reise.yaml (darstellung).",
     "pruefung.reise.sprache_unbekannt": "sprache: unbekannt „{wert}“ (bekannt: {bekannt}).",
+    "pruefung.reise.sprache_fehlt": "sprache: fehlt in reise.yaml (bekannt: {bekannt}); engine/neu.py nachziehen trägt das Feld ein.",
     "pruefung.bauen.1": "{wo}: ID „{id_}“ passt nicht zum erlaubten Muster.",
     "pruefung.bauen.2": "Doppelte ID {id_}: {w1} und {wo}.",
     "pruefung.bauen.3": "Datei fehlt: {rel} (steht in reise.json).",

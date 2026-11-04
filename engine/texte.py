@@ -15,7 +15,6 @@ ERSTE = ("de", "en")    # stehen in der Liste vorn (Reihenfolge der Knöpfe); je
 ORDNER = os.path.dirname(os.path.abspath(__file__))
 VORGABE = "en"          # Sprache einer Person, deren Wunsch nicht erkennbar ist
 VORGABE_REISE = "en"    # Sprache der Software, wo keine Sprache bekannt ist (Rückfall); lieber Englisch als eine falsche Sprache
-BESTAND_REISE = "de"    # Sprache einer Reise, deren reise.yaml kein Feld sprache hat (Bestand von vor ADR-0006): sie bleibt deutsch
 PFLICHTFELDER = ("NAME", "LOCALE", "RICHTUNG", "PLURAL", "DATUM", "DATUM_KURZ", "ZEIT", "DATUM_ZEIT", "WOCHENTAGE_KURZ", "TEXTE")
 KATEGORIEN = ("zero", "one", "two", "few", "many", "other")   # Pluralkategorien nach CLDR
 
@@ -112,7 +111,8 @@ _RAND = {}   # englische Namen der Schnittstelle (Parameter), von schnittstelle.
 
 
 def rand_woerter(tabelle):
-    """Namen, die die Schnittstelle englisch zeigt (interner Name -> englischer Name), für Sätze in jeder Sprache außer der des Bestands."""
+    """Namen, die die Schnittstelle englisch zeigt (interner Name -> englischer Name), für Sätze in jeder Sprache, deren Sprachdatei
+    nicht NAMEN_DER_SCHNITTSTELLE = True trägt (dort sind die Namen schon Wörter der Sprache)."""
     _RAND.update(tabelle)
 
 
@@ -139,9 +139,12 @@ _TRENNER = re.compile(r"(, | \| |; | \+ )")
 
 
 def _einzeln(kuerzel, wert):
-    """Übersetzung eines einzelnen Datenwerts oder None, wenn es keiner ist."""
+    """Übersetzung eines einzelnen Datenwerts oder None, wenn es keiner ist. Ohne Katalogtext gilt der englische Name der
+    Schnittstelle (_RAND), außer die Sprachdatei trägt NAMEN_DER_SCHNITTSTELLE = True: dort sind die Namen schon Wörter der Sprache."""
     gefunden = _uebersetzt(kuerzel, "wert", wert)
-    if gefunden is None and kuerzel != BESTAND_REISE and wert in _RAND and (sprache(kuerzel) is None or "wert." + wert not in sprache(kuerzel).TEXTE):
+    modul = sprache(kuerzel)
+    if (gefunden is None and wert in _RAND and not getattr(modul, "NAMEN_DER_SCHNITTSTELLE", False)
+            and (modul is None or "wert." + wert not in modul.TEXTE)):
         return _RAND[wert]
     return gefunden
 
@@ -268,7 +271,7 @@ _aufruf = threading.local()   # Sprache des Aufrufs, den dieser Thread gerade be
 
 
 def aufruf_sprache(sprache=None):
-    """Sprache der Person im laufenden Aufruf setzen (mit Wert) oder lesen; Vorgabe ist die Sprache des Bestands."""
+    """Sprache der Person im laufenden Aufruf setzen (mit Wert) oder lesen; Vorgabe ist der Rückfall (VORGABE_REISE)."""
     if sprache is not None:
         _aufruf.sprache = sprache
     return getattr(_aufruf, "sprache", VORGABE_REISE)

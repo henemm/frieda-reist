@@ -400,7 +400,9 @@ def test_reise_ohne_feld_sprache_baut_erst_nach_nachziehen(tmp_path):
     y = _ohne_feld_sprache(r)
     with pytest.raises(bauen.BauFehler) as e:
         bauen.bauen(r, tmp_path / "dist0")
-    assert meldet("\n".join(e.value.meldungen), "pruefung.reise.sprache_fehlt")
+    import texte
+    # Prüfsätze stehen als Text im Rückfall der Software (texte.satz), unter echter_rueckfall also englisch
+    assert meldet("\n".join(e.value.meldungen), "pruefung.reise.sprache_fehlt", sprache=texte.VORGABE_REISE)
     neu.nachziehen(r)
     assert yaml.safe_load(y.read_text(encoding="utf-8"))["sprache"] == "de"
     d = bauen.bauen(r, tmp_path / "dist")

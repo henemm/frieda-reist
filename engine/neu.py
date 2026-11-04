@@ -647,7 +647,8 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
     if cfg_pfad.exists():
         cfg = lies_json(cfg_pfad)
         if cfg.get("etappen_dossier") and "etappen_ebenen" not in cfg:
-            cfg["etappen_ebenen"] = {"unterwegs": texte.t(texte.BESTAND_REISE, "inhalt.nachziehen.unterwegs").split("|")}
+            # die frühere Vorgabe war deutsch (#217): Wert der Umstellung, unabhängig von der Sprache der Reise
+            cfg["etappen_ebenen"] = {"unterwegs": texte.t("de", "inhalt.nachziehen.unterwegs").split("|")}
             meldungen.append("reise.json: etappen_ebenen with the previous default for “Look up on the way”")
             if schreiben:   # in der Form der Datei (json.dumps mit Einrückung 2), damit nur die neue Zeile im Diff steht
                 cfg_pfad.write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -656,7 +657,7 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
     return meldungen
 
 
-SPRACHE_NACHZIEHEN = "de"   # was für Reisen ohne Feld sprache bisher galt (Bestand von vor ADR-0006); die Umstellung ändert kein Verhalten
+SPRACHE_NACHZIEHEN = "de"   # trägt nachziehen ein, weil für Reisen ohne Feld sprache bisher Deutsch galt (keine Lesetoleranz mehr); die Umstellung ändert kein Verhalten
 VOR_SPRACHE = ("titel", "untertitel", "ziel", "pfad")   # Schlüssel vor sprache, Reihenfolge wie in anlegen
 
 

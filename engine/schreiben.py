@@ -2836,8 +2836,9 @@ def einstellung_setzen(reise_dir, wer, args, heute=None):
         sprache = str(sprache).strip().lower()
         if not texte.gueltig(sprache):
             raise Ablehnung("schreiben.einstellung_setzen.3", sprache=sprache, w2=', '.join(texte.SPRACHEN))
-        if str(roh.get("sprache") or texte.BESTAND_REISE) != sprache:
-            geaendert.append(S("schreiben.antwort.einstellung.sprache", w1=roh.get("sprache") or texte.BESTAND_REISE, w2=sprache))
+        if roh.get("sprache") != sprache:   # ohne Feld ist jede Angabe eine Änderung
+            geaendert.append(S("schreiben.antwort.einstellung.sprache",
+                               w1=roh.get("sprache") or S("schreiben.antwort.einstellung.sprache_ungesetzt"), w2=sprache))
             roh["sprache"] = sprache
     if not geaendert:
         raise Ablehnung("schreiben.einstellung_setzen.4")
