@@ -1,9 +1,3 @@
----
-spec_file: docs/specs/betrieb/altformen-sprache-bestand-267-c2.md
-spec_sha256: b8ecd392b425e7c5fe537f5a05051e125d50434015b11a8d780120865bd053c5
-spec_frozen_sha256: 2696e658516554405c58851abe1e116ed8a95c17a78ebd847b30c333c20bb6b0
----
-
 # PO-Briefing: altformen-267-c2
 
 - **Spec:** docs/specs/betrieb/altformen-sprache-bestand-267-c2.md
@@ -24,8 +18,9 @@ Automatische Tests prüfen Fehlermeldung, Nachziehen und Einstellung; Gleichheit
 
 ## Kritische Anmerkungen
 
-- Jede Reise ohne Sprachfeld baut danach nicht; Nachweis liegt vor (8 von 8 Reisen), wird vor Auslieferung erneut geprüft.
-- Ticket-Kommentare waren nicht direkt lesbar; Abgleich stützte sich auf Spec und Kontextdokument.
+- Jede Reise ohne Sprachfeld baut danach nicht; Nachweis liegt vor, wird vor Auslieferung erneut geprüft.
+- Berichtigung: Deutsch bekommt eine eigene Kennzeichnung für die Namen der Schnittstelle, weil der Katalog nicht alle Werte enthält.
+- Ticket-Kommentare waren nicht lesbar; Abgleich stützt sich auf Spec und Gesamtspec.
 
 ## Freigabe-Frage
 
