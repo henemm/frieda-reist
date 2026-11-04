@@ -1,6 +1,6 @@
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0
-rootdir: /home/hem/frieda-reist/.claude/worktrees/spur-a-215
+rootdir: ~/frieda-reist/.claude/worktrees/spur-a-215
 collected 30 items
 
 engine/tests/test_umstellung_267.py FFFFFFFFFFF.F.......F...FFFFFF       [100%]
@@ -8,24 +8,24 @@ engine/tests/test_umstellung_267.py FFFFFFFFFFF.F.......F...FFFFFF       [100%]
 =================================== FAILURES ===================================
 __________________ test_katalog_hat_den_schluessel[texte_de] ___________________
 
-modul = <module 'texte_de' from '/home/hem/frieda-reist/.claude/worktrees/spur-a-215/engine/texte_de.py'>
+modul = <module 'texte_de' from '~/frieda-reist/.claude/worktrees/spur-a-215/engine/texte_de.py'>
 
     @pytest.mark.parametrize("modul", [texte_de, texte_en])
     def test_katalog_hat_den_schluessel(modul):
 >       assert SCHLUESSEL in katalog(modul)
 E       AssertionError: assert 'inhalt.nachziehen.sprache_eingetragen' in {'seite.status.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', 'seite.status.verworfen': 'verworfen', ...}
-E        +  where {'seite.status.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', 'seite.status.verworfen': 'verworfen', ...} = katalog(<module 'texte_de' from '/home/hem/frieda-reist/.claude/worktrees/spur-a-215/engine/texte_de.py'>)
+E        +  where {'seite.status.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', 'seite.status.verworfen': 'verworfen', ...} = katalog(<module 'texte_de' from '~/frieda-reist/.claude/worktrees/spur-a-215/engine/texte_de.py'>)
 
 engine/tests/test_umstellung_267.py:50: AssertionError
 __________________ test_katalog_hat_den_schluessel[texte_en] ___________________
 
-modul = <module 'texte_en' from '/home/hem/frieda-reist/.claude/worktrees/spur-a-215/engine/texte_en.py'>
+modul = <module 'texte_en' from '~/frieda-reist/.claude/worktrees/spur-a-215/engine/texte_en.py'>
 
     @pytest.mark.parametrize("modul", [texte_de, texte_en])
     def test_katalog_hat_den_schluessel(modul):
 >       assert SCHLUESSEL in katalog(modul)
 E       AssertionError: assert 'inhalt.nachziehen.sprache_eingetragen' in {'seite.status.vorgeschlagen': 'proposed', 'seite.status.favorisiert': 'favourite', 'seite.status.gewaehlt': 'chosen', 'seite.status.verworfen': 'rejected', ...}
-E        +  where {'seite.status.vorgeschlagen': 'proposed', 'seite.status.favorisiert': 'favourite', 'seite.status.gewaehlt': 'chosen', 'seite.status.verworfen': 'rejected', ...} = katalog(<module 'texte_en' from '/home/hem/frieda-reist/.claude/worktrees/spur-a-215/engine/texte_en.py'>)
+E        +  where {'seite.status.vorgeschlagen': 'proposed', 'seite.status.favorisiert': 'favourite', 'seite.status.gewaehlt': 'chosen', 'seite.status.verworfen': 'rejected', ...} = katalog(<module 'texte_en' from '~/frieda-reist/.claude/worktrees/spur-a-215/engine/texte_en.py'>)
 
 engine/tests/test_umstellung_267.py:50: AssertionError
 ___________ test_fehlende_oder_leere_sprache_wird_eingetragen[fehlt] ___________

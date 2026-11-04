@@ -7,10 +7,10 @@ Mitgeschleppte Altformen aus Engine und Konnektor entfernen, aber nur dort, wo k
 | Altform | Genutzt? | Folge |
 |---|---|---|
 | Alte Form ohne `reise.yaml` (`Reise.alt`) | Nein, alle 6 echten und beide Beispielreisen haben `reise.yaml` | entfernen, fehlende Datei = Baufehler |
-| Bestandssprache `de` ohne `sprache` | Ja, 4 von 6 echten Reisen (gr221, <Reise J>, skiurlaub-zillertal-2027, test-135) | erst automatisch umstellen (`neu.py nachziehen`), dann Fallback entfernen |
+| Bestandssprache `de` ohne `sprache` | Ja, 4 von 6 echten Reisen (<Reise G>, <Reise J>, <Reise S>, <Testreise>) | erst automatisch umstellen (`neu.py nachziehen`), dann Fallback entfernen |
 | Schlüssel `typ` statt `art` | Nein (kein `typ:` in routen.yaml der echten Reisen); `neu.py nachziehen` schreibt `typ` schon in `art` um (Zeile 433–449) | Lesepfad in `routen.py` (`art_von`, Nacht) und `neu.py` kann fallen; ein Rest bleibt, wenn eine Instanz alte Reisen hat: nachziehen bleibt die Umstellung |
 | Merkmalswert als Skalar | Nein (0 Skalare) | Lesepfad in `schreiben.py` 1002–1004 und `routen.py` prüfen |
-| Merkmalswert als Liste | Ja (gr221, 14), aber das ist die reguläre Form „Wert je Datum“, keine Altform | bleibt |
+| Merkmalswert als Liste | Ja (<Reise G>, 14), aber das ist die reguläre Form „Wert je Datum“, keine Altform | bleibt |
 | `varianten_titel` | Ja (<Reise J>) | bleibt |
 
 ## Related Files

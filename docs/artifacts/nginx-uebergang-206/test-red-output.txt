@@ -20,7 +20,7 @@ tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8733/test_einrichten_erzeugt_ein
         einh = {p.name: p.read_text() for p in (aus / "systemd").iterdir()}
         assert f"ExecStart={tmp_path}/repo/frieda/betrieb/veroeffentlichen.sh" in einh["probe-veroeffentlichen.service"]
         assert f"Environment=FR_WURZEL={tmp_path}/repo" in einh["probe-veroeffentlichen.service"]
-        assert "User=reisen" in einh["probe-veroeffentlichen.service"] and "/home/reisen/.local/bin" in einh["probe-veroeffentlichen.service"]
+        assert "User=reisen" in einh["probe-veroeffentlichen.service"] and "~/.local/bin" in einh["probe-veroeffentlichen.service"]
         assert "Nice=10" in einh["probe-veroeffentlichen.service"] and "IOSchedulingClass=best-effort" in einh["probe-veroeffentlichen.service"]
         assert "IOSchedulingPriority=7" in einh["probe-veroeffentlichen.service"]
         # Tests der Software (CI 16 bis 19 min, Server mit Nice=10 und Last länger), Bau und Deploy in einem Lauf (#258)

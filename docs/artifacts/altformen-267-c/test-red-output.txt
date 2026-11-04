@@ -1,7 +1,7 @@
 ============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- /home/hem/frieda-reist/.claude/worktrees/spur-a-215/engine/.venv/bin/python
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- ~/frieda-reist/.claude/worktrees/spur-a-215/engine/.venv/bin/python
 cachedir: .pytest_cache
-rootdir: /home/hem/frieda-reist/.claude/worktrees/spur-a-215
+rootdir: ~/frieda-reist/.claude/worktrees/spur-a-215
 collecting ... collected 75 items / 72 deselected / 3 selected
 
 engine/tests/test_texte.py::test_stufe_satz_in_beiden_sprachen PASSED    [ 33%]

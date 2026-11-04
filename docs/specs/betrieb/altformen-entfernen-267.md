@@ -16,9 +16,9 @@ nachziehen“, #250).
 | Altform | Genutzt? | Folge |
 |---|---|---|
 | Reise ohne `reise.yaml` (`Reise.alt`) | Nein: alle 6 echten und beide Beispielreisen haben die Datei | entfernen; fehlende Datei = Baufehler |
-| `sprache` fehlt in `reise.yaml` (Bestand `de`) | Ja: 4 von 6 echten Reisen (gr221, <Reise J>, skiurlaub-zillertal-2027, test-135); die Beispielreisen und die übrigen zwei Reisen tragen `sprache: de` | erst automatisch umstellen, dann den Fallback entfernen |
+| `sprache` fehlt in `reise.yaml` (Bestand `de`) | Ja: 4 von 6 echten Reisen (<Reise G>, <Reise J>, <Reise S>, <Testreise>); die Beispielreisen und die übrigen zwei Reisen tragen `sprache: de` | erst automatisch umstellen, dann den Fallback entfernen |
 | `typ` statt `art` an Unterkunft und Nacht | Nein: kein `typ:` in den `routen.yaml` der echten Reisen und der Beispielreisen | Lesepfad im Bau kann fallen; `nachziehen` bleibt die Umstellung |
-| Einzelwert statt Liste bei Merkmalen | Nein: 0 Skalare; die Listenform „Wert je Datum“ (gr221) ist die reguläre Form | bleibt (siehe Entscheidung 2) |
+| Einzelwert statt Liste bei Merkmalen | Nein: 0 Skalare; die Listenform „Wert je Datum“ (<Reise G>) ist die reguläre Form | bleibt (siehe Entscheidung 2) |
 | `varianten_titel` | Ja (<Reise J>) | bleibt, ist keine Altform |
 
 ## Lösung

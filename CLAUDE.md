@@ -4,7 +4,7 @@ Dieses Repo enthält nur die Software (Generator, Vorlage, Service Worker, Rück
 
 ## Was nie hierher gehört
 
-Echte Reisen, Namen echter Personen, Serveradressen, geheime Pfade, Zugangsdaten, Konnektor-Links, Buchungen, Texte oder Fotos aus Reiseführern. Beispiele und Tests nutzen nur die beiden Beispielreisen (`beispiel/reisen/beispielreise`, eine Wanderung mit Varianten, Personen Ida und Karl; `beispiel/reisen/stadtwochenende`, ein Wochenende bei Verwandten ohne Wanderung, Personen Tom und Lea) oder erfundene Testdaten.
+Echte Reisen, Namen echter Personen, Serveradressen, geheime Pfade, Zugangsdaten, Konnektor-Links, Buchungen, Texte oder Fotos aus Reiseführern. Das gilt auch für Protokolle, Nachweise und Specs (`docs/artifacts/`, `docs/specs/`, `docs/context/`): kopierte Testausgaben mit Pfaden relativ zum Repo oder zu `~`, echte Reisen nur als Platzhalter (`<Reise A>`); `engine/tests/test_protokolle_ohne_pfade.py` prüft die Pfade. Beispiele und Tests nutzen nur die beiden Beispielreisen (`beispiel/reisen/beispielreise`, eine Wanderung mit Varianten, Personen Ida und Karl; `beispiel/reisen/stadtwochenende`, ein Wochenende bei Verwandten ohne Wanderung, Personen Tom und Lea) oder erfundene Testdaten.
 
 ## Aufbau
 
