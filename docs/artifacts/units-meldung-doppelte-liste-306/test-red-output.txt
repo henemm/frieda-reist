@@ -1,0 +1,30 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____________ test_installieren_ohne_hilfsprogramm_meldet_ausgang_5 _____________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8921/test_installieren_ohne_hilfspr0')
+
+    def test_installieren_ohne_hilfsprogramm_meldet_ausgang_5(tmp_path):
+        systemd, env = _installierte_einheiten(tmp_path)
+        _attrappen(tmp_path, env, systemd)
+        env["FR_UNITS_HELFER"] = str(tmp_path / "gibt-es-nicht")
+        konnektor = systemd / "probe-konnektor.service"
+        konnektor.write_text(re.sub(r"(?m)^Environment=FR_ZEITZONE=.*\n", "", konnektor.read_text()))
+        r = _installieren(env)
+        assert r.returncode == 5
+        # nur die Meldung, nicht noch einmal die Liste der Abweichungen: veroeffentlichen.sh hängt diese Ausgabe an die Prüfung an,
+        # die dieselbe Liste enthält (#306)
+>       assert "is not installed" in r.stdout and "FR_ZEITZONE" not in r.stdout, r.stdout
+E       AssertionError: units helper /tmp/pytest-of-hem/pytest-8921/test_installieren_ohne_hilfspr0/gibt-es-nicht is not installed, nothing installed (docs/betrieb.md, Einheiten abgleichen).
+E         probe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC
+E         
+E       assert ('is not installed' in 'units helper /tmp/pytest-of-hem/pytest-8921/test_installieren_ohne_hilfspr0/gibt-es-nicht is not installed, nothing i...docs/betrieb.md, Einheiten abgleichen).\nprobe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC\n' and 'FR_ZEITZONE' not in 'units helpe...ITZONE=UTC\n'
+E        +  where 'units helper /tmp/pytest-of-hem/pytest-8921/test_installieren_ohne_hilfspr0/gibt-es-nicht is not installed, nothing i...docs/betrieb.md, Einheiten abgleichen).\nprobe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC\n' = CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/deep-rolling-pelican/engine/.venv/bin/python', '/home....md, Einheiten abgleichen).\nprobe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC\n', stderr='').stdout
+E         
+E         'FR_ZEITZONE' is contained here:
+E           vironment=FR_ZEITZONE=UTC)
+
+engine/tests/test_units.py:194: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_units.py::test_installieren_ohne_hilfsprogramm_meldet_ausgang_5
+1 failed, 22 deselected in 0.33s

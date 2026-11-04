@@ -187,7 +187,11 @@ def test_installieren_ohne_hilfsprogramm_meldet_ausgang_5(tmp_path):
     env["FR_UNITS_HELFER"] = str(tmp_path / "gibt-es-nicht")
     konnektor = systemd / "probe-konnektor.service"
     konnektor.write_text(re.sub(r"(?m)^Environment=FR_ZEITZONE=.*\n", "", konnektor.read_text()))
-    assert _installieren(env).returncode == 5
+    r = _installieren(env)
+    assert r.returncode == 5
+    # nur die Meldung, nicht noch einmal die Liste der Abweichungen: veroeffentlichen.sh hängt diese Ausgabe an die Prüfung an,
+    # die dieselbe Liste enthält (#306)
+    assert "is not installed" in r.stdout and "FR_ZEITZONE" not in r.stdout, r.stdout
 
 
 def test_installieren_ohne_abweichung_tut_nichts(tmp_path):
