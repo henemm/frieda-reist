@@ -639,7 +639,23 @@ def test_neue_kennzahl_schluessel_in_allen_sprachen():
     """AC-7: Die Texte für Höhenmeter (Seite, auto_werte) und „Angaben fehlen“ (Konnektor) stehen in jeder Sprache."""
     for k in texte.SPRACHEN:
         katalog = texte.sprache(k).TEXTE
-        for s in ("seite.kennzahl.hoehe_auf", "seite.kennzahl.hoehe_ab", "routen.auto.hoehenmeter", "konnektor.summe.angaben_fehlen"):
+        for s in ("seite.kennzahl.hoehe_auf", "seite.kennzahl.hoehe_ab", "seite.auto.hoehenmeter", "konnektor.summe.angaben_fehlen"):
             assert s in katalog, (k, s)
     assert texte.t("de", "seite.kennzahl.hoehe_auf", v=480) == "↑ 480 m"
-    assert texte.t("de", "routen.auto.hoehenmeter", auf=400, ab=100) == "↑ 400 m, ↓ 100 m"
+    assert texte.t("de", "seite.auto.hoehenmeter", auf=400, ab=100) == "↑ 400 m, ↓ 100 m"
+
+
+def test_handbuch_summe_teilweise_angaben():
+    """Fehlen nur einige Angaben, bleiben die bekannten Summen sichtbar, ein Feld ohne jede Angabe trägt einen Strich statt einer
+    Null (keine „0:00“), und der Zusatz „unvollständig“ steht dabei – wie auf der Seite (seite.summe.unvollstaendig)."""
+    import konnektor
+    basis = {"tage": 2, "naechte": 1, "min": 210, "auf": 400, "ab": 100, "km": 10.5, "mit_kennzahlen": True, "unvollstaendig": True}
+    zusatz = konnektor.tk("seite.summe.unvollstaendig")
+    teil = konnektor.Handbuch.summe(None, {**basis, "fehlend": ["km"]})
+    assert konnektor.stunden(210) in teil and zusatz in teil, teil
+    assert konnektor.tk("konnektor.summe.angaben_fehlen") not in teil
+    ohne_zeit = konnektor.Handbuch.summe(None, {**basis, "min": 0, "fehlend": ["min"]})
+    strich = konnektor.tk("konnektor.summe.fehlt")
+    assert konnektor.tk("konnektor.summe.gehzeit", zeit=strich, auf="400", ab="100",
+                        km="10" + konnektor.tk("seite.auto.dezimaltrenner") + "5") + zusatz in ohne_zeit, ohne_zeit
+    assert "0:00" not in ohne_zeit

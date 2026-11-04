@@ -1264,7 +1264,7 @@ class Routen:
         f = set(s["fehlend"])
         werte = {"gehzeit": dauer(s["min"]) if s["min"] and "min" not in f else None,
                  "laenge": self.t("seite.auto.laenge", km=f"{s['km']:g}".replace(".", self.t("seite.auto.dezimaltrenner"))) if s["km"] and "km" not in f else None,
-                 "hoehenmeter": f"↑ {s['auf']:.0f} m, ↓ {s['ab']:.0f} m" if s["auf"] and not {"auf", "ab"} & f else None,
+                 "hoehenmeter": self.t("seite.auto.hoehenmeter", auf=f"{s['auf']:.0f}", ab=f"{s['ab']:.0f}") if s["auf"] and not {"auf", "ab"} & f else None,
                  "tage": (self.t("seite.auto.tage_viele", n=s["tage"]) if s["tage"] != 1 else self.t("seite.auto.tage_eins")) if g == "folge" else None,
                  "unterkuenfte": ", ".join(f"{n}× {k}" for k, n in s["unterkunftstypen"].items()) or None}
         return {k: {"wert": v, "auto": True} for k, v in werte.items() if v}
@@ -1532,6 +1532,7 @@ class Routen:
                          "titel": t.get("titel", ""), "text": t.get("text", ""),
                          "start_ort": start_ort, "end_ort": pos,
                          "strecken": [{"id": s, "wahl": v} for s, v in strecken],
+                         "kennzahlen": self.strecken_summe([s for s, _ in strecken]),
                          "aufenthalte": [a for a in t.get("aufenthalte") or [] if a in self.aufenthalte],
                          "wahlstellen": unterwegs, "nacht": n})
 
@@ -1707,22 +1708,15 @@ class Routen:
         """tage: [{strecken: [E-ID oder {id}], nacht}] -> Kennzahlen; fehlend = Felder, für die Angaben fehlen."""
         s = {"tage": len(tage), "naechte": sum(1 for t in tage if t["nacht"]), "min": 0, "auf": 0, "ab": 0, "km": 0.0,
              "fehlend": set(), "laengster": None, "unterkunftstypen": {}}
+        gezaehlt = False
         for nr, t in enumerate(tage, 1):
-            tag_min = 0
-            for x in t["strecken"]:
-                st = self.strecke(x["id"] if isinstance(x, dict) else x)
-                # Kennzahlen (Gehzeit, Höhenmeter, Länge) summieren nur Arten mit summiert: true (aus eigener Kraft)
-                if not (self.arten.get(self.strecken_art(st)) or {}).get("summiert"):
-                    continue
-                w = kennwerte(st.get("kennzahlen"))
-                for k in ("min", "auf", "ab", "km"):
-                    if w[k] is None:
-                        s["fehlend"].add(k)
-                    else:
-                        s[k] += w[k]
-                tag_min += w["min"] or 0
-            if tag_min and (not s["laengster"] or tag_min > s["laengster"]["min"]):
-                s["laengster"] = {"min": tag_min, "nr": nr, "id": t.get("id")}
+            w = self.strecken_summe(t["strecken"])
+            for k in ("min", "auf", "ab", "km"):
+                s[k] += w[k]
+            s["fehlend"] |= set(w["fehlend"])
+            gezaehlt = gezaehlt or w["gezaehlt"]
+            if w["min"] and (not s["laengster"] or w["min"] > s["laengster"]["min"]):
+                s["laengster"] = {"min": w["min"], "nr": nr, "id": t.get("id")}
             n = t["nacht"] or {}
             a = self.u_art.get(n["unterkunft"]) if n.get("unterkunft") in self.unterkuenfte else n.get("art")
             if n and not n.get("an_bord"):
@@ -1731,6 +1725,32 @@ class Routen:
         s["km"] = round(s["km"], 1)
         s["fehlend"] = sorted(s["fehlend"])
         s["unvollstaendig"] = bool(s["fehlend"])
+        # mit_kennzahlen: mindestens eine summierte Strecke kam vor; fehlen ihre Angaben, sagt das fehlend (keine stille Null)
+        s["mit_kennzahlen"] = gezaehlt
+        return s
+
+    def ist_summiert(self, st):
+        """Zählt eine Strecke in die Kennzahlen? Das Merkmal summiert ihrer Art (eine Liste mehrerer Arten: der Art kombiniert).
+        Die eine Regel für Summe, Tageswerte und die Strecke auf der Seite."""
+        return bool((self.arten.get(self.strecken_art(st)) or {}).get("summiert"))
+
+    def strecken_summe(self, strecken):
+        """Strecken (E-ID oder {id}) -> {min, auf, ab, km, fehlend, gezaehlt}: Kennzahlen (Gehzeit, Höhenmeter, Länge) nur der
+        summierten Strecken; fehlend = Felder, für die Angaben fehlen; gezaehlt = mindestens eine summierte Strecke."""
+        s = {"min": 0, "auf": 0, "ab": 0, "km": 0, "fehlend": set(), "gezaehlt": False}
+        for x in strecken:
+            st = self.strecke(x["id"] if isinstance(x, dict) else x)
+            if not self.ist_summiert(st):
+                continue
+            s["gezaehlt"] = True
+            w = kennwerte(st.get("kennzahlen"))
+            for k in ("min", "auf", "ab", "km"):
+                if w[k] is None:
+                    s["fehlend"].add(k)
+                else:
+                    s[k] += w[k]
+        s["km"] = round(s["km"], 1)
+        s["fehlend"] = sorted(s["fehlend"])
         return s
 
     def option_summe(self, o):
@@ -1803,7 +1823,7 @@ class Routen:
         # art: wie in der Datei (eine Art oder eine Liste); art_schluessel: der Schlüssel in plan/arten.yaml (kombiniert bei Liste)
         return {"titel": s.get("titel", sid), "von": s.get("von"), "nach": s.get("nach"), "art": s.get("art"), "art_schluessel": b,
                 "ab": str(s["ab"]) if s.get("ab") is not None else None, "an": str(s["an"]) if s.get("an") is not None else None,
-                "summiert": bool((self.arten.get(b) or {}).get("summiert")),
+                "summiert": self.ist_summiert(s),
                 "buchung": self.buchung_von(s, b, sid), "buchung_id": self.buchung_id(sid),
                 "rolle": s.get("rolle", "haupt"), "zweig_von": s.get("zweig_von"), "kennzahlen": s.get("kennzahlen") or {},
                 "quelle": s.get("quelle"), "siehe": s.get("siehe"), "text": s.get("text", ""),

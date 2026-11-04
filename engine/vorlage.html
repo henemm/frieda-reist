@@ -1270,7 +1270,8 @@ const GRUNDFORM_SYM = {aufenthalt: "unterkunft", bewegung: "strecke", folge: "pl
 const artSym = (k, grundform) => (artDef(k) || {}).symbol || GRUNDFORM_SYM[(artDef(k) || {}).grundform || grundform] || "strecke";
 // Bewegung aus eigener Kraft (summiert in plan/arten.yaml): die Seite kennt keine Art, nur dieses Merkmal der Art (ADR-0001).
 // Es entscheidet über Etappenkarte, Tageskilometer, Gehzeit statt Dauer, Linienstil und Legende; bis 29.10.2026 stand hier „wandern“.
-const summiertArt = s => [].concat((s || {}).art || []).some(a => (artDef(a) || {}).summiert);
+// summiert rechnet das Routenmodell je Strecke (Art der Strecke, bei mehreren Arten die Art kombiniert); die Seite liest es nur
+const summiertArt = s => !!(s || {}).summiert;
 const fahrtVon = id => !!(R && R.strecken[id] && R.strecken[id].art && !summiertArt(R.strecken[id]));
 // Molekül Buchungsstand eines Dings, einmal für alle (Chip, Zeitachse, Zu buchen, Zähler): aus der geltenden Buchung (B-…)
 // oder dem Bestandsfeld buchung; null = kein Stand (Art nicht buchbar). offen und angefragt sind nicht gebucht.
@@ -1326,16 +1327,19 @@ function dauer(min) { return T("seite.zeit.dauer", {h: lokaleZiffern(Math.floor(
 function summeText(s) {
   if (!s) return "";
   const t = [T("seite.anzahl.tage", {n: s.tage})];
-  if (s.km) t.push(kmText(s.km), T("seite.kennzahl.auf_ab", {auf: s.auf, ab: s.ab}), T("seite.kennzahl.gehzeit_wert", {dauer: dauer(s.min)}));
+  // Kennzahlen, wenn das Routenmodell summierte Strecken gezählt hat; fehlende Angaben entfallen und die Summe heißt unvollständig
+  const f = s.fehlend || [];
+  if (s.mit_kennzahlen) t.push(...[f.includes("km") ? "" : kmText(s.km), f.includes("auf") || f.includes("ab") ? "" : T("seite.kennzahl.auf_ab", {auf: s.auf, ab: s.ab}),
+    f.includes("min") ? "" : T("seite.kennzahl.gehzeit_wert", {dauer: dauer(s.min)})].filter(Boolean));
   const ty = Object.entries(s.unterkunftstypen || {}).map(([k, v]) => `${v}× ${k}`);
   if (ty.length) t.push(ty.join(", "));
-  return t.join(" · ") + (s.unvollstaendig && s.km ? T("seite.summe.unvollstaendig") : "");
+  return t.join(" · ") + (s.unvollstaendig && s.mit_kennzahlen ? T("seite.summe.unvollstaendig") : "");
 }
 
 // Molekül Kennzahlenleiste: Gehzeit, Aufstieg, Abstieg, Strecke mit Etikett; Namen aus routen.yaml werden vereinheitlicht
 // fahrt: eine Bewegung, die nicht aus eigener Kraft ist (Bahn, Bus …): ihre Zeit heißt Dauer, nicht Gehzeit
 function kennzahlPaar(n, v, fahrt) {
-  return REGEL.aufstieg.test(n) ? ["aufstieg", `↑ ${v} m`] : REGEL.abstieg.test(n) ? ["abstieg", `↓ ${v} m`]
+  return REGEL.aufstieg.test(n) ? ["aufstieg", T("seite.kennzahl.hoehe_auf", {v})] : REGEL.abstieg.test(n) ? ["abstieg", T("seite.kennzahl.hoehe_ab", {v})]
     : REGEL.gehzeit.test(n) ? [fahrt ? "dauer" : "gehzeit", v] : REGEL.laenge.test(n) ? ["strecke", /^[\d.,]+$/.test(v) ? kmText(v) : v] : [n, v];
 }
 // Je Kennzahl eine Kachel; die bekannten tragen ihr Symbol im Etikett
@@ -1407,7 +1411,7 @@ function streckeZeile(id, wahl, ohneKennung, voll) {
   // art: ein Verkehrsmittel oder eine Liste in Reihenfolge, z. B. [bahn, bus]
   // Name der Art aus plan/arten.yaml; eine Bewegung aus eigener Kraft (summiert) zeigt stattdessen ihre Kennzahlen
   const arten = [].concat(s.art || []);
-  const art = !arten.length ? T("seite.strecke.verkehrsmittel_offen") : arten.some(a => (artDef(a) || {}).summiert) ? "" : arten.map(artName).join(" + ");
+  const art = !arten.length ? T("seite.strecke.verkehrsmittel_offen") : s.summiert ? "" : arten.map(artName).join(" + ");
   const z = el("div", {class: "z"}, el("div", {class: "titelzeile"}, el("span", {}, symbol(artSym(arten[0], "bewegung"), "etikett-sym"), " ", s.dossier || proId.has(id) ? link(id, s.titel) : s.titel), ohneKennung ? null : zid(id)));
   // Kennzahlen als Leiste mit Etiketten (Gehzeit, Aufstieg, Abstieg, Strecke); Verkehrsmittel als Textzeile
   const kz = kennzahlLeiste(s.kennzahlen, !!s.art && !summiertArt(s));
@@ -1473,7 +1477,7 @@ function wegVerlauf(t, ohneKennung, tagseite) {
   t.strecken.forEach((x, i) => {
     const s = R.strecken[x.id] || {};
     if (s.von && s.von !== zuletzt) v.append(ort(s.von, i === 0 ? "start" : "mitte"), ...bei(s.von));
-    v.append(el("div", {class: "wv-strecke" + ([].concat(s.art || []).some(a => (artDef(a) || {}).summiert) ? "" : " fahrt")}, streckeZeile(x.id, x.wahl, ohneKennung && ohneKennung(x.id), voll(x.id))));
+    v.append(el("div", {class: "wv-strecke" + (s.summiert ? "" : " fahrt")}, streckeZeile(x.id, x.wahl, ohneKennung && ohneKennung(x.id), voll(x.id))));
     if (s.nach) { v.append(ort(s.nach, i === t.strecken.length - 1 ? "ziel" : "mitte"), ...bei(s.nach)); zuletzt = s.nach; }
     else zuletzt = null;
   });
@@ -2240,22 +2244,6 @@ function nachtName(n) {
   if (n.unterkunft) return R.unterkuenfte[n.unterkunft].name;
   return n.hinweis || ortName(n.ort);
 }
-// Wegstrecke eines Tages in km (Wanderstrecken, Kennzahl Länge oder Strecke); 0, wenn keine bekannt ist
-function tagKm(t) {
-  let km = 0;
-  for (const s of t.strecken) { const st = R.strecken[s.id] || {}; if (!summiertArt(st)) continue;
-    const g = Object.entries(st.kennzahlen || {}).find(([k]) => /^(länge|strecke|km)/i.test(k));
-    const x = g && /(\d+(?:[.,]\d+)?)\s*km/.exec(g[1]); if (x) km += +x[1].replace(",", "."); }
-  return Math.round(km * 10) / 10;
-}
-function tagMin(t) {
-  let m = 0;
-  for (const s of t.strecken) { const st = R.strecken[s.id] || {}; if (!summiertArt(st)) continue;
-    const g = Object.entries(st.kennzahlen || {}).find(([k]) => REGEL.gehzeit.test(k));
-    const x = g && /(\d+):(\d{2})/.exec(g[1]); if (x) m += +x[1] * 60 + +x[2]; }
-  return m;
-}
-
 function steckbrief(p, imPlan) {
   const s = p.summe, f = s.fehlend || [];
   const k = imPlan ? el("div", {class: "karte steckbrief", style: `--farbe:${planFarbe(p)}`})
@@ -2264,11 +2252,11 @@ function steckbrief(p, imPlan) {
   if (TIEFE ? planFest(p) : p.aktuell) k.append(el("div", {class: "chips"}, chip("plan", TIEFE ? T("seite.status.gewaehlt") : T("seite.plan.entspricht_aktuell"))));
   if (TIEFE && p.text && !imPlan) k.append(el("p", {class: "z klein"}, p.text.length > 220 ? p.text.slice(0, 220).replace(/\s\S*$/, "") + " …" : p.text));
   const ty = Object.entries(s.unterkunftstypen).map(([a, n]) => `${n} ${a === "offen" ? T("seite.wahl.noch_offen") : a}`).join(" · ");
-  // Gehzeit, Strecke, Höhenmeter nur bei Plänen mit Wanderdaten (Wanderung ja, Rundreise mit Bahn nein)
-  const wandern = s.min || s.km || s.auf;
+  // Gehzeit, Strecke, Höhenmeter nur bei Plänen mit summierten Strecken (summe.mit_kennzahlen aus dem Routenmodell)
+  const wandern = s.mit_kennzahlen;
   const zeilen = [["tage", `${s.tage}`], ["gehzeit", f.includes("min") ? T("seite.steckbrief.unvollstaendig") : dauer(s.min)],
     ["strecke", f.includes("km") ? T("seite.steckbrief.angaben_fehlen") : kmText(s.km)],
-    ["hoehenmeter", f.includes("auf") ? T("seite.steckbrief.angaben_fehlen") : T("seite.steckbrief.auf_ab", {auf: s.auf, ab: s.ab})],
+    ["hoehenmeter", f.includes("auf") || f.includes("ab") ? T("seite.steckbrief.angaben_fehlen") : T("seite.steckbrief.auf_ab", {auf: s.auf, ab: s.ab})],
     ["laengster", s.laengster ? T("seite.steckbrief.laengster_wert", {dauer: dauer(s.laengster.min), nr: s.laengster.nr}) : "–"], ["naechte", ty]]
     .filter(([a]) => wandern || !["gehzeit", "strecke", "hoehenmeter", "laengster"].includes(a));
   k.append(el("dl", {}, zeilen.flatMap(([a, b]) => [el("dt", {}, T("seite.kennzahl." + a)), el("dd", {}, b)])));
@@ -2288,7 +2276,7 @@ function vergleichTabelle(plaene) {
     const p = plaene[0];
     t.append(el("tr", {}, [T("seite.tabelle.tag"), T("seite.tabelle.datum"), T("seite.tabelle.etappe"), T("seite.tabelle.zeit"), T("seite.etikett.nacht")].map(x => el("th", {}, x))));
     for (const d of p.tage) {
-      const m = tagMin(d), n = d.nacht;
+      const m = (d.kennzahlen || {}).min, n = d.nacht;
       const tr = el("tr", {"data-tag": d.id},
         el("td", {class: "nr plan-nr", style: `--farbe:${planFarbe(p)}`}, String(d.nr)), el("td", {}, datumText(d.datum, d.wochentag)),
         el("td", {}, link(d.id, d.titel)), el("td", {}, m ? dauer(m) : "–"),
@@ -2301,7 +2289,7 @@ function vergleichTabelle(plaene) {
   const max = Math.max(...plaene.map(p => p.tage.length));
   for (let i = 0; i < max; i++) {
     const ds = plaene.map(p => p.tage[i]);
-    const zelle = d => d ? [link(d.id, d.titel), tagMin(d) ? ` · ${dauer(tagMin(d))}` : "",
+    const zelle = d => d ? [link(d.id, d.titel), (d.kennzahlen || {}).min ? ` · ${dauer(d.kennzahlen.min)}` : "",
       d.nacht ? el("div", {}, el("span", {class: "nacht " + nachtKat(d.nacht) + katKlasse(nachtKat(d.nacht))}, nachtName(d.nacht))) : ""] : "–";
     const tr = el("tr", {}, el("td", {class: "nr"}, String(i + 1), el("div", {class: "z klein"}, ds[0] ? datumText(ds[0].datum, ds[0].wochentag) : "")));
     if (ds.every(d => d && d.id === ds[0].id)) tr.append(el("td", {colspan: plaene.length}, zelle(ds[0])));
@@ -2916,7 +2904,8 @@ function nachtStand(n) {
 // Organismus Tag als Zeile der Zeitachse: Nummer und Datum, Titel mit Marken (feste Termine, Wahl am Tag), Gehzeit und
 // Strecke, Nacht mit Stand. Genau ein Link: die ganze Zeile führt zum Tag (Seitenordnung 28.10.2026), keine Kennung.
 function tagZeile(t) {
-  const m = tagMin(t), s = nachtStand(t.nacht), km = tagKm(t);
+  // Gehzeit und Strecke des Tags rechnet das Routenmodell (tag.kennzahlen); die Seite formatiert sie nur
+  const {min: m, km} = t.kennzahlen || {}, s = nachtStand(t.nacht);
   const wahl = (t.wahlstellen || []).map(v => wahlZu.get(v)).filter(w => w && gueltigeOptionen(w).length > 1 && w.id !== (t.nacht || {}).wahl);
   // Feste Termine des ersten und letzten Tags stehen schon bei An- und Abreise
   const p = PLAN_FEST, rand = p && (t === p.tage[0] || t === p.tage[p.tage.length - 1]);
@@ -2931,11 +2920,11 @@ function tagZeile(t) {
     s ? el("span", {class: "tz-nacht"}, symbol("unterkunft", "etikett-sym"), el("span", {class: "tz-unterkunft"}, s.name), s.text ? chip(s.zustand, s.text) : null) : null);
 }
 // Kennzahlen der ganzen Reise aus der Summe des Plans: mit Wanderdaten Tage, Gehzeit, Strecke, Höhenmeter; sonst Tage,
-// Nächte, Orte. Fehlende Angaben entfallen statt eine Lücke zu zeigen.
+// Nächte, Orte. Ob es Wanderdaten gibt, sagt summe.mit_kennzahlen; fehlende Angaben heißen so statt einer Null.
 function reiseKennzahlen(p) {
-  const s = p.summe, f = s.fehlend || [];
-  if (s.min || s.km || s.auf) return {tage: String(s.tage), ...(f.includes("min") ? {} : {gehzeit: dauer(s.min)}),
-    ...(f.includes("km") ? {} : {strecke: kmText(s.km)}), ...(f.includes("auf") ? {} : {hoehenmeter: T("seite.steckbrief.auf_ab_eng", {auf: s.auf, ab: s.ab})})};
+  const s = p.summe, f = s.fehlend || [], fehlt = T("seite.steckbrief.angaben_fehlen");
+  if (s.mit_kennzahlen) return {tage: String(s.tage), gehzeit: f.includes("min") ? fehlt : dauer(s.min),
+    strecke: f.includes("km") ? fehlt : kmText(s.km), hoehenmeter: f.includes("auf") || f.includes("ab") ? fehlt : T("seite.steckbrief.auf_ab_eng", {auf: s.auf, ab: s.ab})};
   const n = p.tage.map(d => d.nacht).filter(x => x && !x.an_bord);
   return {tage: String(s.tage), naechte: String(n.length), orte: String(new Set(n.map(x => x.ort).filter(Boolean)).size)};
 }

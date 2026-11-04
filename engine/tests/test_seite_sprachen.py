@@ -271,3 +271,41 @@ def test_seite_zeigt_kennzahlen_aus_dem_routenmodell(tmp_path, sprache):
         f'Object.keys(reiseKennzahlen({ohne})).includes("naechte")',
     ])
     assert werte == [True, True, False, True], werte
+
+
+@ohne_browser
+def test_stadtwochenende_zeigt_keine_kennzahlen(tmp_path):
+    """#268, AC-2: Das Stadtwochenende hat keine summierte Strecke. Die gebaute Seite zeigt in Tageszeilen und Reiseüberblick
+    weder Gehzeit noch Strecke noch Höhenmeter noch „Angaben fehlen“; der Überblick zeigt Tage, Nächte und Orte."""
+    web = tmp_path / "web"
+    bauen.bauen(WURZEL / "beispiel/reisen/stadtwochenende", web / "reise")
+    werte = ausdruecke(web, [
+        "R.summe.mit_kennzahlen",
+        "[...document.querySelectorAll('.tz-zeit')].length > 0",
+        "[...document.querySelectorAll('.tz-zeit')].every(x => x.textContent === '')",
+        "R.tage.every(t => tagZeile(t).querySelector('.tz-zeit').textContent === '')",
+        "!!document.querySelector('.reise-zahlen .kz')",
+        "(() => { const z = document.querySelector('.reise-zahlen').textContent; return ['seite.kennzahl.gehzeit', 'seite.kennzahl.strecke',"
+        " 'seite.kennzahl.hoehenmeter', 'seite.steckbrief.angaben_fehlen'].filter(k => z.includes(T(k))); })()",
+        "Object.keys(reiseKennzahlen({summe: R.summe, tage: R.tage}))",
+        "document.body.innerText.includes(T('seite.steckbrief.angaben_fehlen'))",  # innerText: ohne den Katalog im Skript
+    ])
+    assert werte == [False, True, True, True, True, [], ["tage", "naechte", "orte"], False], werte
+
+
+@ohne_browser
+def test_seite_zeigt_bei_teilweise_fehlenden_angaben_keine_null(tmp_path):
+    """#268, AC-5: Fehlen nur Gehzeit und Abstieg, zeigen Steckbrief und Reiseüberblick dort „unvollständig“ bzw. „Angaben fehlen“
+    statt 0:00 oder ↓ 0; die bekannte Strecke bleibt stehen."""
+    web = seite_bauen(tmp_path)
+    (web / "beispiel").rename(web / "reise")
+    teil = ('({...R.plaene[0], summe: {...R.plaene[0].summe, mit_kennzahlen: true, min: 0, km: 8, auf: 400, ab: 0, '
+            'fehlend: ["ab", "min"], unvollstaendig: true, laengster: null}})')
+    werte = ausdruecke(web, [
+        f'(() => {{ const k = reiseKennzahlen({teil}), f = T("seite.steckbrief.angaben_fehlen"); '
+        f'return [k.gehzeit === f, k.hoehenmeter === f, k.strecke === kmText(8)]; }})()',
+        f'(() => {{ const z = steckbrief({teil}, true).textContent; return [z.includes(dauer(0)), z.includes(kmText(8)), '
+        f'z.includes(T("seite.steckbrief.unvollstaendig"))]; }})()',
+        f'summeText({teil}.summe).includes(dauer(0))',
+    ])
+    assert werte == [[True, True, True], [False, True, True], False], werte

@@ -665,9 +665,18 @@ class Handbuch:
         if not s:
             return ""
         z = [tk("konnektor.summe.tage", n=s.get('tage') or 0) + ", " + tk("konnektor.summe.naechte", n=s.get('naechte') or 0)]
-        if s.get("min"):
+        # Ob Kennzahlen dazugehören, sagt das Routenmodell (summierte Strecken gezählt). Fehlen Angaben, steht keine Null: ganz ohne
+        # Werte „Angaben fehlen“; sonst die bekannten Summen, ein Strich für ein Feld ohne jede Angabe und der Zusatz „unvollständig“
+        f = set(s.get("fehlend") or [])
+        if s.get("mit_kennzahlen") and f and not any(s.get(k) for k in ("min", "km", "auf", "ab")):
+            z.append(tk("konnektor.summe.angaben_fehlen"))
+        elif s.get("mit_kennzahlen"):
+            def wert(k, text):
+                return tk("konnektor.summe.fehlt") if k in f and not s.get(k) else text
             km = f"{s.get('km') or 0:g}".replace(".", tk("seite.auto.dezimaltrenner"))
-            z.append(tk("konnektor.summe.gehzeit", zeit=stunden(s['min']), auf=f"{s.get('auf') or 0:.0f}", ab=f"{s.get('ab') or 0:.0f}", km=km))
+            z.append(tk("konnektor.summe.gehzeit", zeit=wert("min", stunden(s.get('min') or 0)), auf=wert("auf", f"{s.get('auf') or 0:.0f}"),
+                        ab=wert("ab", f"{s.get('ab') or 0:.0f}"), km=wert("km", km))
+                     + (tk("seite.summe.unvollstaendig") if f else ""))
         if s.get("unterkunftstypen"):
             z.append(tk("konnektor.summe.2") + ", ".join(f"{k} {v}" for k, v in s["unterkunftstypen"].items()))
         return "; ".join(z)
