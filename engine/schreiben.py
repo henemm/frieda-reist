@@ -1040,6 +1040,8 @@ def wert_eintragen(reise_dir, wer, args, heute=None):
     if merkmale is None:
         merkmale = CommentedMap()
         knoten["merkmale"] = merkmale
+    # Einzelform (ein Eintrag ohne Liste) ist gültig und bleibt Lesetoleranz; der Bau liest dieselbe Form (routen.py,
+    # v if isinstance(v, list) else [v]). Kein Umstellen: ein nackter Wert hat keine Herkunft, die nachziehen erfinden dürfte (ADR-0001).
     alt = merkmale.get(k)
     alte = list(alt) if isinstance(alt, list) else [alt] if alt is not None else []
     alte = [x if isinstance(x, dict) else {"wert": x} for x in alte]
@@ -1623,7 +1625,7 @@ def ding_aendern(reise_dir, wer, args, heute=None):
         knoten, _ = ding_finden(roh, ziel) if was != "ort" else ((roh.get("orte") or {}).get(ziel), ziel)
         if knoten is None:
             raise Ablehnung("schreiben.ding_aendern.2", ziel=ziel)
-        art = knoten.get("art") or art_schluessel_von(knoten)
+        art = knoten.get("art")
         katalog = (route.get("merkmale") or {}).get(art) or []
         merkmale, fest = merkmale_fest_trennen({"merkmale": merkmale}, was if was != "strecke" else "strecke", katalog)
         merkmale = merkmale or {}
@@ -1676,15 +1678,9 @@ def ding_aendern(reise_dir, wer, args, heute=None):
     return teile[0][0], texte.Satz.verbinden([t for _, t in teile], " ")
 
 
-def art_schluessel_von(knoten):
-    from routen import art_schluessel
-    return art_schluessel(knoten.get("typ"))
-
-
 def _ding_aendern_felder(reise_dir, wer, args, heute=None):
     """Felder einer Unterkunft, Strecke oder eines Orts ändern (Name, Ort, Art, Hinweis, Elternbezug, Zeiten …). -> (Titel, Text)."""
     from reise import darf
-    from routen import art_schluessel
     ziel = (text_wert(args, "ziel", pflicht=True, laenge=20) or "").strip()
     was = next((w for w, (k, _) in DING_ARTEN.items() if ziel.startswith(k + "-")), None)
     if was is None or not ID_MUSTER.match(ziel):
@@ -1761,7 +1757,7 @@ def _ding_aendern_felder(reise_dir, wer, args, heute=None):
                 lage_merkmal_schreiben(knoten, name, v, quelle_fest)
                 geaendert.append(S("schreiben.antwort.ding.wechsel", w1=feld, w2=alt, w3=v) if alt is not None else S("schreiben.antwort.ding.neu", w1=feld, w2=v))
             continue
-        alt = knoten.get(feld) if feld != "art" else (knoten.get("art") or art_schluessel(knoten.get("typ")))
+        alt = knoten.get(feld)
         if v == "" and feld in ("hinweis", "buchungslink", "frage", "zeit", "beginn", "ende", "ab", "an"):
             if feld in knoten:
                 geaendert.append(S("schreiben.antwort.ding.entfernt", w1=feld, w2=alt))
@@ -1771,7 +1767,7 @@ def _ding_aendern_felder(reise_dir, wer, args, heute=None):
             continue
         geaendert.append(S("schreiben.antwort.ding.wechsel", w1=feld, w2=alt, w3=v) if alt is not None else S("schreiben.antwort.ding.neu", w1=feld, w2=v))
         knoten[feld] = skalar(feld, v)
-        if feld == "art" and "typ" in knoten:   # Brücke typ: entfällt, sobald art: steht
+        if feld == "art" and "typ" in knoten:   # räumt einen früheren typ: auf, sobald art: steht
             del knoten["typ"]
     if zeit_neu:   # beginn und ende zusammen als Merkmal zeitraum
         gelesen = lage_lesen(knoten)
@@ -3951,7 +3947,7 @@ def merkmal_zusammenfuehren(reise_dir, wer, args, heute=None):
     menge = {"aufenthalt": ("unterkuenfte", "aufenthalte"), "bewegung": ("strecken",), "folge": ()}.get(grundform, ())
     for abschnitt in menge:
         for did, knoten in (roh.get(abschnitt) or {}).items():
-            if isinstance(knoten, dict) and (knoten.get("art") or art_schluessel_von(knoten)) == art:
+            if isinstance(knoten, dict) and knoten.get("art") == art:
                 umhaengen(did, knoten)
     for w in route.get("wahlstellen") or []:
         if w.get("art") != art:
@@ -3971,11 +3967,6 @@ def merkmal_zusammenfuehren(reise_dir, wer, args, heute=None):
     return S("schreiben.titel.zusammengefuehrt", w1=art, w2=von, w3=nach), (S("schreiben.antwort.zusammen.aufgegangen", w1=von, w2=art, w3=nach, w4=len(umgehaengt))
             + (S("schreiben.antwort.zusammen.behalten", w1=", ".join(behalten), w2=nach) if behalten else "")
             + S("schreiben.antwort.zusammen.name", w1=von, w2=nach, w3=grund))
-
-
-def art_schluessel_von(knoten):
-    from routen import art_schluessel
-    return art_schluessel(knoten.get("typ")) if knoten.get("typ") else None
 
 
 def arten_uebernehmen(reise_dir, wer, args, heute=None):

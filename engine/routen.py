@@ -1041,10 +1041,11 @@ class Routen:
         return (self.arten.get(art) or {}).get("grundform")
 
     def art_von(self, eintrag, wo):
-        """Art einer Unterkunft oder Nacht: art:, sonst aus typ; an Bord ohne Angabe: unterwegs. Prüft gegen arten.yaml."""
-        a = eintrag.get("art") or art_schluessel(eintrag.get("typ"))
+        """Art einer Unterkunft, eines Aufenthalts oder einer Nacht: art:; an Bord ohne Angabe: unterwegs. Prüft gegen arten.yaml.
+        Steht statt art: noch der frühere Schlüssel typ:, bricht der Bau mit 62 (auch an Bord); typ wird nie als Art gelesen."""
+        a = eintrag.get("art")
         if not a:
-            if eintrag.get("an_bord"):
+            if eintrag.get("an_bord") and "typ" not in eintrag:
                 return UNTERWEGS
             self.fehl(texte.satz("pruefung.routen.62", wo=wo))
             return None
@@ -1417,6 +1418,7 @@ class Routen:
         if isinstance(n, dict):
             if n.get("ort") and n["ort"] not in self.orte:
                 self.fehl(texte.satz("pruefung.routen.106", tid=tid, w1=n['ort']))
+            # typ bleibt in der Bedingung, damit eine nicht umgestellte Nacht laut mit 62 bricht, nicht still ohne Art
             a = self.art_von(n, f"{tid} nacht") if (n.get("typ") or n.get("art") or n.get("an_bord")) else None
             return {"ort": n.get("ort"), "hinweis": n.get("hinweis"), "an_bord": bool(n.get("an_bord")), "art": a,
                     "art_name": (self.arten.get(a) or {}).get("name")}

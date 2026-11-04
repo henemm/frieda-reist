@@ -2612,7 +2612,7 @@ TEXTE = {
     "pruefung.routen.59": "{wo}: Rubrik {k} braucht einen Namen (name: …), er steht als Stichwort vor dem Absatz.",
     "pruefung.routen.60": "{wo}: Rubrik {k}: unbekannte Felder {w1}.",
     "pruefung.routen.61": "{wo}: Rubrik {k}: Name „{w1}“ gibt es schon.",
-    "pruefung.routen.62": "{wo}: braucht typ oder art (eine Art aus plan/arten.yaml).",
+    "pruefung.routen.62": "{wo}: braucht art (eine Art aus plan/arten.yaml). Steht noch der frühere Schlüssel typ, stellt „neu.py nachziehen“ ihn auf art um.",
     "pruefung.routen.63": "{wo}: Art „{a}“ steht nicht in plan/arten.yaml. Im Gespräch anlegen (docs/ontologie.md), bekannt: {w1}.",
     "pruefung.routen.64": "{wo}: Art „{a}“ ist {w1}, hier braucht es einen Aufenthalt.",
     "pruefung.routen.65": "{wo}: art fehlt. Jede Strecke nennt ihre Art aus plan/arten.yaml (Grundform bewegung, bekannt: {w1}).",

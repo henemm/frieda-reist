@@ -485,8 +485,9 @@ def test_favorisiert_mit_grund_ok():
 
 
 def fehler_62(fehler, wo):
-    """Fehler 62 (Art fehlt) für wo, im neuen Wortlaut: nennt nur art und den Weg über nachziehen (#267 d, AC-10)."""
-    treffer = [f for f in fehler if f.startswith(f"{wo}:") and meldet(f, "pruefung.routen.62")]
+    """Fehler 62 (Art fehlt) für wo, im neuen Wortlaut: nennt nur art und den Weg über nachziehen (#267 d, AC-10).
+    Jede Meldung beginnt mit dem Dateipräfix plan/routen.yaml, deshalb wird wo im Text gesucht, nicht am Anfang."""
+    treffer = [f for f in fehler if f"{wo}:" in f and meldet(f, "pruefung.routen.62")]
     assert treffer, fehler
     assert all("nachziehen" in f and "typ oder art" not in f for f in treffer), treffer
     return treffer

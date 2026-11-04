@@ -2611,7 +2611,7 @@ TEXTE = {
     "pruefung.routen.59": "{wo}: section {k} needs a name (name: …); it is shown as the keyword before the paragraph.",
     "pruefung.routen.60": "{wo}: section {k}: unknown fields {w1}.",
     "pruefung.routen.61": "{wo}: section {k}: name “{w1}” already exists.",
-    "pruefung.routen.62": "{wo}: needs typ or art (a kind from plan/arten.yaml).",
+    "pruefung.routen.62": '{wo}: needs art (a kind from plan/arten.yaml). If the old key typ is still there, "neu.py nachziehen" converts it to art.',
     "pruefung.routen.63": "{wo}: kind “{a}” is not in plan/arten.yaml. Create it in the conversation (docs/ontologie.md), known: {w1}.",
     "pruefung.routen.64": "{wo}: kind “{a}” is {w1}, a stay is needed here.",
     "pruefung.routen.65": "{wo}: art is missing. Every leg names its kind from plan/arten.yaml (basic form movement, known: {w1}).",
