@@ -1035,7 +1035,11 @@ function beschrifte() {
 beschrifte();
 
 /* ---------- Daten ---------- */
-const abschnitte = D.abschnitte;
+// Abschnitte, die nur aus reise.json routen.tagesplan/routen.unterkuenfte stammen und keinen eigenen Text haben (#276):
+// Tage und Unterkünfte stehen in der Zeitachse der Reise (#214); unter Wissen wären sie leer. Ihre IDs führen zum Plan.
+const PLAN_VERWEIS = new Set(D.abschnitte.filter(a => a.route_ansicht && !(a.intro || "").trim() && !(a.nach || "").trim()
+  && !a.bloecke.length && !a.tabelle && !a.kennzahlen).map(a => a.id));
+const abschnitte = D.abschnitte.filter(a => !PLAN_VERWEIS.has(a.id));
 const proId = new Map();      // Abschnitts-ID -> Abschnitt
 const blockZu = new Map();    // Block-ID -> Abschnitt
 const zeileZu = new Map();    // Zeilen-ID (T-, U-, F-) -> Abschnitt oder "fragen"
@@ -4911,7 +4915,7 @@ function route(behalten) {
   // Eine Seitenordnung (#214): ohne Sprungziel der Startreiter; „Plan“ (ältere Links) und „Reise“ führen zur Reise
   const start = () => { zeigeReiter(START); START === "varianten" ? ansichtStart(m) : START === "offen" ? ansichtZuTun(m) : START === "wuensche" ? ansichtWuensche(m) : START === "etappen" ? ansichtEtappen(m) : START === "karte" ? ansichtKarte(m) : ansichtWissen(m); };
   if (!h) start();
-  else if ((h === "plan" || h === "varianten") && R) { zeigeReiter("varianten"); ansichtStart(m); }
+  else if ((h === "plan" || h === "varianten" || PLAN_VERWEIS.has(h)) && R) { zeigeReiter("varianten"); ansichtStart(m); }
   else if (h === "karte" && KARTE_REITER) { zeigeReiter("karte"); ansichtKarte(m); }
   else if (zeileZu.get(h) === "karte") { zeigeReiter("karte"); ansichtKarte(m); ziel = h; }
   else if (h === "plaene" && HAT_VARIANTEN) { zeigeReiter("varianten"); ansichtVarianten(m); }
