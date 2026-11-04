@@ -930,6 +930,39 @@ def test_veroeffentlichen_prueft_die_wege_einmal_nach_dem_freischalten(vf):
     assert "Warning: these paths" not in r.stdout
 
 
+def test_wegepruefung_wartet_bei_429_und_meldet_keinen_fehlenden_ort(tmp_path):
+    """429 kommt von der Anfragebegrenzung in nginx (5/min auf /anmelden), nicht von einem fehlenden Ort: die Prüfung
+    wartet und fragt erneut. Erst ein Weg ohne Kopf X-Frieda nach allen Versuchen gilt als fehlend (#279)."""
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    ausfuehrbar(bin_ / "systemctl", "#!/bin/sh\nexit 0\n")
+    zaehler = tmp_path / "zaehler"
+    meldungen = tmp_path / "meldungen.log"
+    melden = ausfuehrbar(tmp_path / "melden.sh", f'#!/bin/sh\necho "$1|$2|$3" >> {meldungen}\n')
+
+    def lauf(curl_text):
+        zaehler.write_text("")
+        ausfuehrbar(bin_ / "curl", curl_text)
+        env = {**SAUBER, "PATH": f"{bin_}:{SAUBER.get('PATH', os.environ['PATH'])}", "FR_WURZEL": str(tmp_path),
+               "FR_INSTANZ": "probe", "FR_KN_ADRESSE": "https://reisen.example.invalid", "FR_MELDEN": str(melden),
+               "FR_WEGE_429_WARTEN": "0"}
+        return subprocess.run(["bash", "-c", f'. "{BETRIEB}/gemeinsam.sh"; wege_pruefen'], env=env, capture_output=True, text=True)
+
+    # /anmelden: dreimal 429, dann 200 mit Kopf: kein Alarm
+    r = lauf(f'#!/bin/sh\nfor a; do u="$a"; done\ncase "$u" in */anmelden) echo x >> {zaehler}\n'
+             f'[ $(wc -l < {zaehler}) -le 3 ] && {{ echo "HTTP/1.1 429 Too Many Requests"; exit 0; }};; esac\n'
+             'echo "HTTP/1.1 200 OK"\necho "X-Frieda: konnektor"\n')
+    assert r.returncode == 0 and "Warning" not in r.stdout and not meldungen.exists(), r.stdout + r.stderr
+    assert len(zaehler.read_text().split()) == 4
+    # Bleibt es bei 429, wird nach vier Versuchen gemeldet; ein Weg ohne Kopf und ohne 429 wird nicht wiederholt
+    r = lauf(f'#!/bin/sh\nfor a; do u="$a"; done\ncase "$u" in */anmelden) echo x >> {zaehler}\n'
+             'echo "HTTP/1.1 429 Too Many Requests"; exit 0;;\n'
+             '*/sw.js) echo "HTTP/1.1 404 Not Found"; exit 0;; esac\necho "X-Frieda: konnektor"\n')
+    assert "Warning: these paths do not reach the connector" in r.stdout and "/anmelden" in r.stdout and "/sw.js" in r.stdout
+    assert len(zaehler.read_text().split()) == 4
+    assert "nginx: paths to the connector missing" in meldungen.read_text()
+
+
 def test_veroeffentlichen_installiert_neue_bibliotheken_vor_den_pruefungen(vf):
     """Ändert sich engine/requirements.txt, installiert das Veröffentlichen die Bibliotheken vor den Prüfungen, sonst
     nicht. Scheitert die Installation, endet der Lauf mit 1 ohne Prüfung und Bau; der nächste versucht es wieder (rot

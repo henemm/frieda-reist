@@ -32,6 +32,9 @@ FR_ADRESSE=https://reisen.example.org
 # gilt immer). Dann zählen die Prüfungen des Servers nicht gegen Besucher (docs/betrieb.md, nginx-Bausteine abgleichen). (leer)
 #FR_EIGENE_ADRESSEN=203.0.113.10 2001:db8::10
 
+# Sekunden, die die Wegeprüfung bei 429 (Anfragebegrenzung von nginx) vor dem nächsten von vier Versuchen wartet. (13)
+#FR_WEGE_429_WARTEN=13
+
 # Ports von Rückmeldedienst, Konnektor und Schreibweg auf 127.0.0.1. (8771, 8772, 8773)
 #FR_RM_PORT=8781
 #FR_KN_PORT=8782

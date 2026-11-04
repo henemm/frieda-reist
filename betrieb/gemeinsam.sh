@@ -122,13 +122,20 @@ wege_pruefen() {  # Wege von außen: Jede Art Pfad des Konnektors muss über die
   # (1.11.2026). Nur Warnung und Meldung: Die Reiseseite selbst ist davon nicht betroffen. Die Abrufe kommen vom Server
   # selbst und zählen in nginx in dieselbe Begrenzung wie die Prüfung von freischalten.sh; veroeffentlichen.sh ruft sie
   # deshalb einmal je Lauf nach dem Freischalten auf (FR_WEGE_SPAETER), nicht je Reise (frieda-reist#163).
-  local weg fehlen=""
+  # 429 heißt: Die Anfragebegrenzung von nginx (5/min auf /anmelden) hat gegriffen, der Ort ist da. Dann wartet die Prüfung
+  # und fragt erneut, statt „fehlt“ zu melden (#279: 48 Fehlalarme an einem Tag).
+  local weg fehlen="" kopf versuch
   [ -n "${FR_KN_ADRESSE:-}" ] || return 0
   systemctl is-enabled --quiet "$FR_INSTANZ-konnektor" 2>/dev/null || return 0
   # /manifest.webmanifest, /sw.js, /konto.js: Frieda-App und Schalter für Benachrichtigungen auf Mein Konto (#21)
   for weg in /gesund /anmelden /kalender/0000000000000000000000000000000000000000.ics /schrift/pruefung.woff2 /favicon.svg \
              /manifest.webmanifest /sw.js /konto.js; do
-    curl -sS -I --max-time 10 "$FR_KN_ADRESSE$weg" 2>/dev/null | grep -qi '^x-frieda:' || fehlen="$fehlen $weg"
+    for versuch in 1 2 3 4; do
+      kopf=$(curl -sS -I --max-time 10 "$FR_KN_ADRESSE$weg" 2>/dev/null)
+      case "$kopf" in HTTP/*" 429"*) [ "$versuch" -lt 4 ] && { sleep "${FR_WEGE_429_WARTEN:-13}"; continue; } ;; esac
+      break
+    done
+    printf '%s\n' "$kopf" | grep -qi '^x-frieda:' || fehlen="$fehlen $weg"
   done
   [ -n "$fehlen" ] || return 0
   echo "Warning: these paths do not reach the connector via $FR_KN_ADRESSE:$fehlen"
