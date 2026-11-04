@@ -2203,3 +2203,35 @@ def test_kartenpunkte_holen_mit_erfundener_antwort(repo, monkeypatch):
                        ({"strecke": "E-01", "kategorie": "wasser", "osm": ['a"]=b']}, "nicht die Form")):
         with pytest.raises(sb.Ablehnung, match=text):
             s.schreiben("beispielreise", "kartenpunkte_holen", {**IDA, "args": args})
+
+
+TABELLE = "Vergleich der Hütten:\n\n| Hütte | Preis |\n|:--|--:|\n| Oben | 30 € |\n| Unten | 25 € |"
+LISTE = "Mitnehmen:\n\n- Stirnlampe\n- Wasser   \n- Karte"
+
+
+def test_text_wert_absaetze_behaelt_zeilen_274():
+    """#274: Einfache Zeilenumbrüche im Absatz bleiben (Tabellen, enge Listen); bereinigt wird nur am Zeilenende."""
+    assert sb.text_wert({"t": TABELLE.replace("\n", "\r\n") + "  \n\n\n\n"}, "t", absaetze=True) == TABELLE
+    assert sb.text_wert({"t": LISTE}, "t", absaetze=True) == "Mitnehmen:\n\n- Stirnlampe\n- Wasser\n- Karte"
+    assert sb.text_wert({"t": "\n\nA\n\n\n\nB\n"}, "t", absaetze=True) == "A\n\nB"
+    assert sb.text_wert({"t": "A\n  - eingerückt"}, "t", absaetze=True) == "A\n  - eingerückt"
+    assert sb.text_wert({"t": "ein\nfeld"}, "t") == "ein feld"     # ohne absaetze wie bisher
+
+
+def test_wissen_tabelle_und_liste_kommen_an_274(repo):
+    import markdown
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    s.schreiben("beispielreise", "wissen_schreiben", {**KARL, "args": {"titel": "Hütten im Vergleich", "text": TABELLE,
+                                                                       "quelle": "Test", "gruppe": "wissen"}})
+    wissen = datei_auf_main(origin, "inhalt/wissen.md")
+    assert TABELLE in wissen
+    abschnitt = wissen.split("## Hütten im Vergleich")[1].split("\n## ")[0]
+    html = markdown.Markdown(extensions=["tables"]).convert(abschnitt)
+    assert "<table>" in html and ">Oben</td>" in html and ">30 €</td>" in html
+    s.vorbereiten()
+    s.schreiben("beispielreise", "wissen_aendern", {**KARL, "args": {"ziel": "W-01", "text": LISTE, "quelle": "Test", "grund": "Liste"}})
+    dossier = datei_auf_main(origin, "inhalt/etappen.md")
+    assert "Mitnehmen:\n\n- Stirnlampe\n- Wasser\n- Karte" in dossier
+    html = markdown.Markdown().convert(dossier.split("Mitnehmen:")[1].split("*Herkunft")[0])
+    assert html.count("<li>") == 3

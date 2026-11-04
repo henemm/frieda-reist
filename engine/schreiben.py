@@ -217,8 +217,9 @@ def schreibkopie(w=None):
 
 
 def text_wert(args, feld, pflicht=False, laenge=MAX_TEXT, absaetze=False):
-    """Ein Textfeld der Anfrage, bereinigt -> str oder None (fehlt oder leer). absaetze: Absätze (Leerzeilen) bleiben, für
-    Lesetexte und Wissen; sonst wird jeder Weißraum ein Leerzeichen."""
+    """Ein Textfeld der Anfrage, bereinigt -> str oder None (fehlt oder leer). absaetze: für Lesetexte und Wissen bleiben
+    Zeilen und Absätze, damit Tabellen und Listen im Markdown ankommen (#274); bereinigt wird nur am Zeilenende, mehrere
+    Leerzeilen werden eine. Sonst wird jeder Weißraum ein Leerzeichen."""
     v = args.get(feld)
     if v is None or (isinstance(v, str) and not v.strip()):
         if pflicht:
@@ -227,7 +228,8 @@ def text_wert(args, feld, pflicht=False, laenge=MAX_TEXT, absaetze=False):
     if not isinstance(v, str):
         raise Ablehnung("schreiben.text_wert.2", feld=feld)
     if absaetze:
-        v = "\n\n".join(" ".join(a.split()) for a in re.split(r"\n\s*\n", v.replace("\r\n", "\n")) if a.strip())
+        zeilen = [z.rstrip() for z in v.replace("\r\n", "\n").replace("\r", "\n").split("\n")]
+        v = re.sub(r"\n{3,}", "\n\n", "\n".join(zeilen)).strip()
     else:
         v = " ".join(v.split())
     if len(v) > laenge:
