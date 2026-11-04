@@ -1,0 +1,142 @@
+FF..FFFFF                                                                [100%]
+=================================== FAILURES ===================================
+__________ test_1_strecken_tragen_titel_und_kennzahlen_mit_kennungen ___________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-9141/test_1_strecken_tragen_titel_u0')
+
+    def test_1_strecken_tragen_titel_und_kennzahlen_mit_kennungen(tmp_path):
+        """Test 1 / K1: jede wandern-Strecke hat Titel und Kennzahlen; kein Abschnitt vom Typ etappe mehr."""
+        d, s = strecken(BEISPIELE / "beispielreise", tmp_path)
+        for eid, (minuten, auf, ab, km) in VORHER.items():
+            st = s[eid]
+            assert st.get("titel")
+            k = st["kennzahlen"]
+>           assert KENNUNGEN <= set(k), (eid, k)
+E           AssertionError: ('E-01', {'Gehzeit': 'ca. 3:40 h', 'Aufstieg (Hm)': '485', 'Abstieg (Hm)': '285', 'Länge (km)': '8,1 km'})
+E           assert {'abstieg', '...it', 'laenge'} <= {'Abstieg (Hm... 'Länge (km)'}
+E             
+E             Extra items in the left set:
+E             'aufstieg'
+E             'laenge'
+E             'gehzeit'
+E             'abstieg'
+
+engine/tests/test_etappe_als_art.py:51: AssertionError
+_________ test_2_nachziehen_stellt_beispielreise_um_und_ist_idempotent _________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-9141/test_2_nachziehen_stellt_beisp0')
+
+    def test_2_nachziehen_stellt_beispielreise_um_und_ist_idempotent(tmp_path):
+        """Test 2 / K4: Altformat (Dossier „Etappe N: Name“, etappen_kennzahlen) wird ohne Handschritt umgestellt."""
+        r = kopie("beispielreise", tmp_path)
+        p = r / "plan/routen.yaml"
+        t = re.sub(r", kennzahlen: \{[^}]*\}", "", p.read_text(encoding="utf-8"))
+        p.write_text(re.sub(r"(E-0[1-4]: \{)titel: \"[^\"]*\", ", r"\1", t), encoding="utf-8")
+        dossier = r / "inhalt/etappen.md"
+        t = dossier.read_text(encoding="utf-8")
+        for n in range(1, 5):
+            t = re.sub(rf"^## E-0{n} (.+)$", rf"## Etappe {n}: \1", t, flags=re.M)
+        dossier.write_text(t, encoding="utf-8")
+        cfg = json.loads((r / "reise.json").read_text(encoding="utf-8"))
+        cfg["etappen_kennzahlen"] = ["Gehzeit", "Aufstieg (Hm)", "Abstieg (Hm)", "Länge (km)"]
+        cfg["etappen_muster"] = r"^Etappe\s+(\d+[a-z]?):\s*(.+)$"
+        (r / "reise.json").write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        neu.nachziehen(r)
+        _, s = strecken(r, tmp_path)
+        for eid in VORHER:
+>           assert s[eid].get("titel") and KENNUNGEN <= set(s[eid]["kennzahlen"]), eid
+E           AssertionError: E-01
+E           assert ('Etappe 1: Stadt Wehlen – Bastei – Hohnstein' and {'abstieg', '...it', 'laenge'} <= {'Abstieg (Hm... 'Länge (km)'}
+E            +  where 'Etappe 1: Stadt Wehlen – Bastei – Hohnstein' = <built-in method get of dict object at 0x78d718730080>('titel')
+E            +    where <built-in method get of dict object at 0x78d718730080> = {'titel': 'Etappe 1: Stadt Wehlen – Bastei – Hohnstein', 'von': 'O-02', 'nach': 'O-03', 'art': 'wandern', ...}.get
+E             
+E             Extra items in the left set:
+E             'aufstieg'
+E             'laenge'
+E             'gehzeit'
+E             'abstieg')
+
+engine/tests/test_etappe_als_art.py:76: AssertionError
+________________ test_5_vorlage_ohne_namenssuche_und_typ_etappe ________________
+
+    def test_5_vorlage_ohne_namenssuche_und_typ_etappe():
+        """Test 5 / K2: die Seite kennt weder Kennzahlnamen noch den Typ etappe; der Bau kein etappen_muster."""
+        q = (WURZEL / "engine/vorlage.html").read_text(encoding="utf-8")
+        for s in ("REGEL.gehzeit", "REGEL.aufstieg", "REGEL.abstieg", "REGEL.laenge", "kennzahlPaar", 'typ === "etappe"'):
+>           assert s not in q, s
+E           AssertionError: REGEL.gehzeit
+E           assert 'REGEL.gehzeit' not in '<!doctype h...>\n</html>\n'
+E             
+E             'REGEL.gehzeit' is contained here:
+E               m`]
+E                   : REGEL.gehzeit.test(n) ? [fahrt ? "dauer" : "gehzeit", v] : REGEL.laenge.test(n) ? ["strecke", /^[\d.,]+$/.test(v) ? kmText(v) : v] : [n, v];
+E             ?       +++++++++++++
+E               }
+E               // Je Kennzahl eine Kachel; die bekannten tragen ihr Symbol im Etikett...
+E             
+E             ...Full output truncated (3958 lines hidden), use '-vv' to show
+
+engine/tests/test_etappe_als_art.py:112: AssertionError
+_______________________ test_6_kennwerte_liest_kennungen _______________________
+
+    def test_6_kennwerte_liest_kennungen():
+        """Test 6: Summen aus Kennungen; Namen in Landessprache werden nicht mehr gesucht."""
+        k = routen.kennwerte({"gehzeit": "3:30", "aufstieg": 380, "abstieg": 220, "laenge": 11.5})
+        assert k == {"min": 210, "auf": 380, "ab": 220, "km": 11.5}
+>       assert routen.kennwerte({"Gehzeit": "3:30", "Aufstieg (Hm)": 380}) == {"min": None, "auf": None, "ab": None, "km": None}
+E       AssertionError: assert {'min': 210, ...e, 'km': None} == {'min': None,...e, 'km': None}
+E         
+E         Omitting 2 identical items, use -vv to show
+E         Differing items:
+E         {'auf': 380.0} != {'auf': None}
+E         {'min': 210} != {'min': None}
+E         Use -v to get more diff
+
+engine/tests/test_etappe_als_art.py:120: AssertionError
+_______________ test_7_dossier_abschnitt_ohne_strecke_bricht_ab ________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-9141/test_7_dossier_abschnitt_ohne_0')
+
+    def test_7_dossier_abschnitt_ohne_strecke_bricht_ab(tmp_path):
+        """Test 7: ein Abschnitt mit unbekannter ID wird gemeldet, nicht still ignoriert (Text aus dem Katalog)."""
+        r = kopie("beispielreise", tmp_path)
+        d = r / "inhalt/etappen.md"
+        d.write_text(d.read_text(encoding="utf-8") + "\n## E-99 Gibt es nicht\n\n### Zusammenfassung\nText.\n", encoding="utf-8")
+        with pytest.raises(bauen.BauFehler) as e:
+            bauen.Bauer(r, tmp_path / "dist").daten()
+        assert "E-99" in "\n".join(e.value.meldungen)
+>       assert "pruefung.bauen.dossier_ohne_strecke" in katalog(texte_de)   # eigene Meldung, nicht die allgemeine „Abschnitt ohne ID“
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: assert 'pruefung.bauen.dossier_ohne_strecke' in {'seite.status.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', 'seite.status.verworfen': 'verworfen', ...}
+E        +  where {'seite.status.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', 'seite.status.verworfen': 'verworfen', ...} = katalog(texte_de)
+
+engine/tests/test_etappe_als_art.py:131: AssertionError
+_______________ test_8_angaben_fehlen_im_katalog_aller_sprachen ________________
+
+    def test_8_angaben_fehlen_im_katalog_aller_sprachen():
+        """Test 8 / K7: der Text „Angaben fehlen“ am Tag mit summierter Strecke ohne Gehzeit steht in jeder Sprache und in der Seite."""
+        for m in (texte_de, texte_en):
+>           assert "seite.tag.angaben_fehlen" in katalog(m)
+E           AssertionError: assert 'seite.tag.angaben_fehlen' in {'seite.status.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', 'seite.status.verworfen': 'verworfen', ...}
+E            +  where {'seite.status.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', 'seite.status.verworfen': 'verworfen', ...} = katalog(<module 'texte_de' from 'engine/texte_de.py'>)
+
+engine/tests/test_etappe_als_art.py:137: AssertionError
+_____________ test_9_neue_schluessel_der_meldung_in_jeder_sprache ______________
+
+    def test_9_neue_schluessel_der_meldung_in_jeder_sprache():
+        """Test 9: die neue Meldung „Dossier-Abschnitt ohne Strecke“ gibt es in jeder Sprache."""
+        for m in (texte_de, texte_en):
+>           assert "pruefung.bauen.dossier_ohne_strecke" in katalog(m)
+E           AssertionError: assert 'pruefung.bauen.dossier_ohne_strecke' in {'seite.status.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', 'seite.status.verworfen': 'verworfen', ...}
+E            +  where {'seite.status.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', 'seite.status.verworfen': 'verworfen', ...} = katalog(<module 'texte_de' from 'engine/texte_de.py'>)
+
+engine/tests/test_etappe_als_art.py:144: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_etappe_als_art.py::test_1_strecken_tragen_titel_und_kennzahlen_mit_kennungen
+FAILED engine/tests/test_etappe_als_art.py::test_2_nachziehen_stellt_beispielreise_um_und_ist_idempotent
+FAILED engine/tests/test_etappe_als_art.py::test_5_vorlage_ohne_namenssuche_und_typ_etappe
+FAILED engine/tests/test_etappe_als_art.py::test_6_kennwerte_liest_kennungen
+FAILED engine/tests/test_etappe_als_art.py::test_7_dossier_abschnitt_ohne_strecke_bricht_ab
+FAILED engine/tests/test_etappe_als_art.py::test_8_angaben_fehlen_im_katalog_aller_sprachen
+FAILED engine/tests/test_etappe_als_art.py::test_9_neue_schluessel_der_meldung_in_jeder_sprache
+7 failed, 2 passed in 0.83s
