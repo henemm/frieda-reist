@@ -1,0 +1,147 @@
+..FF..                                                                   [100%]
+=================================== FAILURES ===================================
+______________ test_einrichten_erzeugt_einheiten_ohne_platzhalter ______________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8733/test_einrichten_erzeugt_einhei0')
+
+    def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
+        r = einrichten(tmp_path)
+        assert r.returncode in (0, 2), r.stdout + r.stderr          # 2: Voraussetzungen fehlen hier (kein Python, kein gh)
+        aus = tmp_path / "aus"
+        namen = sorted(p.name for p in (aus / "systemd").iterdir())
+        # kein Einarbeiten mehr (ADR-0001, O-3): keine Einheit ruft Claude Code auf, kein Pfad-Wächter auf die Ablage
+        assert namen == ["probe-konnektor.service", "probe-push.service", "probe-rueckmeldungen.service", "probe-schreiben.service",
+                         "probe-veroeffentlichen.service", "probe-veroeffentlichen.timer", "probe-waechter.service",
+                         "probe-waechter.timer"]
+        for p in [*(aus / "systemd").iterdir(), *(aus / "nginx").iterdir()]:
+            assert not re.search(r"__[A-Z_]+__", p.read_text()), p.name
+            assert "einarbeiten" not in p.read_text() and "claude -p" not in p.read_text(), p.name
+        srv = tmp_path / "srv/probe"
+        einh = {p.name: p.read_text() for p in (aus / "systemd").iterdir()}
+        assert f"ExecStart={tmp_path}/repo/frieda/betrieb/veroeffentlichen.sh" in einh["probe-veroeffentlichen.service"]
+        assert f"Environment=FR_WURZEL={tmp_path}/repo" in einh["probe-veroeffentlichen.service"]
+        assert "User=reisen" in einh["probe-veroeffentlichen.service"] and "/home/reisen/.local/bin" in einh["probe-veroeffentlichen.service"]
+        assert "Nice=10" in einh["probe-veroeffentlichen.service"] and "IOSchedulingClass=best-effort" in einh["probe-veroeffentlichen.service"]
+        assert "IOSchedulingPriority=7" in einh["probe-veroeffentlichen.service"]
+        # Tests der Software (CI 16 bis 19 min, Server mit Nice=10 und Last länger), Bau und Deploy in einem Lauf (#258)
+        grenze = re.search(r"^TimeoutStartSec=(\d+)min$", einh["probe-veroeffentlichen.service"], re.M)
+        assert grenze and int(grenze.group(1)) >= 45, "TimeoutStartSec des Veröffentlichens zu knapp"
+        assert "Environment=KN_PORT=8772" in einh["probe-konnektor.service"]
+        assert "Environment=KN_BASIS=https://example.invalid" in einh["probe-konnektor.service"]
+        assert f"ExecStart=/usr/bin/python3 {srv}/_dienst/konnektor.py dienst" in einh["probe-konnektor.service"]
+        # Schreibweg (O-3): Konnektor kennt die Adresse, der Dienst läuft mit dem Python der Software aus dem Dienstordner
+        assert "Environment=KN_SCHREIBDIENST=http://127.0.0.1:8773" in einh["probe-konnektor.service"]
+        assert "Environment=FR_SB_PORT=8773" in einh["probe-schreiben.service"]
+        assert f"ExecStart={tmp_path}/repo/engine/.venv/bin/python {srv}/_dienst/schreiben.py dienst" in einh["probe-schreiben.service"]
+        assert f"Environment=FR_WURZEL={tmp_path}/repo" in einh["probe-schreiben.service"]
+        assert "ProtectHome=" not in einh["probe-schreiben.service"]     # schreibt in die Arbeitskopie neben dem Repo
+        assert "sudo systemctl enable --now probe-rueckmeldungen probe-konnektor probe-schreiben" in r.stdout
+        assert "OnCalendar=" in einh["probe-waechter.timer"] and "Persistent=true" in einh["probe-waechter.timer"]
+        nginx = (aus / "nginx/probe-konnektor-orte.inc").read_text()
+        inc = (aus / "nginx/probe-konnektor.inc").read_text()
+        # Konnektor an der Wurzel (#163): /mcp, Anmeldung, OAuth; der alte Pfad bleibt für Links aus der Zeit vor den Konten
+        assert "location = /mcp" in nginx and "location = /anmelden" in nginx and "location = /token" in nginx
+        assert "location ~ ^/(konto|abmelden|authorize|gesund)?$" in nginx
+        assert "location ^~ /.well-known/oauth-" in nginx and "location ^~ /schrift/" in nginx and "location = /favicon.ico" in nginx
+        assert "zone=probe_konto" in nginx
+        # die Links aus der Zeit vor den Konten sind auf dem Server abgeschaltet: die Vorlage öffnet sie nicht wieder (#206)
+>       assert "probe-mcp" not in nginx and "A-Za-z0-9_-" not in nginx
+E       AssertionError: assert ('probe-mcp' not in '# nginx-Bau...always;\n}\n'
+E         
+E         'probe-mcp' is contained here:
+E           ren Pfad /probe-mcp/<token>, der bis 1.11.2026 die Vorgabe war. Der Präfix fällt weg.
+E         ?           +++++++++
+E           # Unbekannte Tokens beantwortet der Dienst mit 404. Entfällt, sobald alle Personen ein Konto haben.
+E           location ^~ /probe-mcp/ {
+E               limit_req zone=probe_konto burst=20 nodelay;...
+E         
+E         ...Full output truncated (14 lines hidden), use '-vv' to show)
+
+engine/tests/test_betrieb.py:1791: AssertionError
+________________ test_nginx_leitet_konnektor_und_reise_richtig _________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8733/test_nginx_leitet_konnektor_un0')
+
+    @pytest.mark.skipif(not shutil.which("nginx"), reason="nginx fehlt")
+    def test_nginx_leitet_konnektor_und_reise_richtig(tmp_path):
+        """Die erzeugten Bausteine in einem echten nginx: Konnektor-Pfade an der Wurzel gehen an den Dienst, auch wenn der
+        server-Block vorher eine allgemeine Regel für Dateiendungen hat; die Reiseseite kommt aus ihrem Ordner (#163)."""
+        import http.server
+        import threading
+        import urllib.error
+        import urllib.request
+        kn_port, port = _frei(), _frei()
+        snippets = tmp_path / "snippets"
+        snippets.mkdir()
+        r = einrichten(tmp_path, FR_KN_PORT=str(kn_port), FR_NGINX_SNIPPETS=str(snippets))
+        assert r.returncode in (0, 2), r.stdout + r.stderr
+        aus = tmp_path / "aus/nginx"
+        for n in ("probe-konnektor-orte.inc", "probe-konnektor.inc"):
+            shutil.copy(aus / n, snippets / n)
+        seiten = tmp_path / "seiten"
+        (seiten / "reise").mkdir(parents=True)
+        (seiten / "reise/index.html").write_text("Reiseseite")
+        reise = (BETRIEB / "vorlagen/nginx-reise.conf").read_text()
+        for k, v in {"__INSTANZ__": "probe", "__REISE__": "reise", "__TOKEN__": "geheim", "__SEITEN__": str(seiten),
+                     "__ZONE__": "probe_api", "__RM_PORT__": str(_frei())}.items():
+            reise = reise.replace(k, v)
+        (snippets / "probe-reise.conf").write_text(reise)
+        temp = " ".join(f"{n}_temp_path {tmp_path}/{n};" for n in ("client_body", "proxy", "fastcgi", "uwsgi", "scgi"))
+        # Als root laufen die Arbeiter sonst als „nobody“ und lesen den Testordner nicht
+        benutzer = "user root;" if os.geteuid() == 0 else ""
+        (tmp_path / "nginx.conf").write_text(f"""{benutzer} pid {tmp_path}/nginx.pid; error_log {tmp_path}/fehler.log; daemon off;
+    events {{}}
+    http {{ access_log off; {temp}
+      limit_req_zone $binary_remote_addr zone=probe_api:1m rate=30r/m;   # Zone der Reise-Bausteine: liegt bis zur Bereinigung in der gemeinsamen Datei (#206)
+      include {aus}/probe-zone.conf;
+      server {{ listen 127.0.0.1:{port};
+        location ~* \\.(ico|png|svg|woff2|ics)$ {{ return 418; }}
+        include {snippets}/probe-konnektor-orte.inc;
+        include {snippets}/probe-*.conf;   # Reise-Bausteine; der Konnektor-Baustein endet auf .inc und fehlt hier bewusst
+      }}
+    }}
+    """)
+    
+        class Dienst(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header("X-Pfad", self.path)
+                self.end_headers()
+    
+            do_POST = do_GET
+    
+            def log_message(self, *a):
+                pass
+    
+        s = http.server.ThreadingHTTPServer(("127.0.0.1", kn_port), Dienst)
+        threading.Thread(target=s.serve_forever, daemon=True).start()
+        pruefung = subprocess.run(["nginx", "-t", "-e", str(tmp_path / "fehler.log"), "-c", str(tmp_path / "nginx.conf"), "-p", str(tmp_path)], capture_output=True, text=True)
+        assert pruefung.returncode == 0, pruefung.stderr
+        ng = subprocess.Popen(["nginx", "-e", str(tmp_path / "fehler.log"), "-c", str(tmp_path / "nginx.conf"), "-p", str(tmp_path)], stderr=subprocess.PIPE)
+        try:
+            def hol(pfad):
+                import time
+                for _ in range(50):
+                    try:
+                        with urllib.request.urlopen(f"http://127.0.0.1:{port}{pfad}") as a:
+                            return a.status, a.headers.get("X-Pfad"), a.read().decode()
+                    except urllib.error.HTTPError as e:
+                        return e.code, None, ""
+                    except OSError:
+                        time.sleep(0.1)
+                raise AssertionError("nginx antwortet nicht")
+            # Konnektor an der Wurzel: Pfad kommt unverändert an
+            for pfad in ("/mcp", "/anmelden?zurueck=/konto", "/konto", "/authorize?x=1", "/token", "/register", "/gesund",
+                         "/.well-known/oauth-authorization-server", "/.well-known/oauth-protected-resource/mcp", "/einladung/abc",
+                         "/kalender/abc.ics", "/schrift/source-sans-3-latin-wght-normal.woff2", "/favicon.ico", "/favicon.svg",
+                         "/icon-192.png", "/manifest.webmanifest", "/sw.js", "/konto.js"):
+                assert hol(pfad)[:2] == (200, pfad), pfad
+            # Links aus der Zeit vor den Konten bleiben abgeschaltet, wie auf dem Server (#206)
+>           assert hol("/probe-mcp/" + "t" * 32)[0] == 404 and hol("/" + "t" * 32)[0] == 404
+E           assert (200 == 404)
+
+engine/tests/test_betrieb.py:1910: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_betrieb.py::test_einrichten_erzeugt_einheiten_ohne_platzhalter
+FAILED engine/tests/test_betrieb.py::test_nginx_leitet_konnektor_und_reise_richtig
+2 failed, 4 passed, 102 deselected in 3.85s

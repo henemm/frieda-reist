@@ -1786,7 +1786,9 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     assert "location = /mcp" in nginx and "location = /anmelden" in nginx and "location = /token" in nginx
     assert "location ~ ^/(konto|abmelden|authorize|gesund)?$" in nginx
     assert "location ^~ /.well-known/oauth-" in nginx and "location ^~ /schrift/" in nginx and "location = /favicon.ico" in nginx
-    assert "location ^~ /probe-mcp/" in nginx and "zone=probe_konto" in nginx and "127.0.0.1:8772/" in nginx
+    assert "zone=probe_konto" in nginx
+    # die Links aus der Zeit vor den Konten sind auf dem Server abgeschaltet: die Vorlage öffnet sie nicht wieder (#206)
+    assert "probe-mcp" not in nginx and "A-Za-z0-9_-" not in nginx
     assert "include /etc/nginx/snippets/probe-konnektor.inc;" in nginx
     assert "proxy_pass http://127.0.0.1:8772;" in inc
     # Der Dienst setzt Referrer-Policy „same-origin“; „no-referrer“ von nginx ließe Browser „Origin: null“ schicken
@@ -1902,10 +1904,10 @@ http {{ access_log off; {temp}
         for pfad in ("/mcp", "/anmelden?zurueck=/konto", "/konto", "/authorize?x=1", "/token", "/register", "/gesund",
                      "/.well-known/oauth-authorization-server", "/.well-known/oauth-protected-resource/mcp", "/einladung/abc",
                      "/kalender/abc.ics", "/schrift/source-sans-3-latin-wght-normal.woff2", "/favicon.ico", "/favicon.svg",
-                     "/icon-192.png", "/manifest.webmanifest", "/sw.js", "/konto.js", "/" + "t" * 32):
+                     "/icon-192.png", "/manifest.webmanifest", "/sw.js", "/konto.js"):
             assert hol(pfad)[:2] == (200, pfad), pfad
-        # alter Pfad der Links vor den Konten: Präfix fällt weg
-        assert hol("/probe-mcp/" + "t" * 32)[:2] == (200, "/" + "t" * 32)
+        # Links aus der Zeit vor den Konten bleiben abgeschaltet, wie auf dem Server (#206)
+        assert hol("/probe-mcp/" + "t" * 32)[0] == 404 and hol("/" + "t" * 32)[0] == 404
         # Reiseseite aus ihrem Ordner, Fremdes nicht an den Dienst
         assert hol("/reise-geheim/") == (200, None, "Reiseseite")
         assert hol("/etwas.png")[0] == 418 and hol("/anderes")[0] == 404

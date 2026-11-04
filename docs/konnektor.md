@@ -6,8 +6,8 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 
 - **Der Konnektor schreibt direkt in die Reise** (seit 29.10.2026, ADR-0001 Paket O-3): Frieda enthält keine KI; was im Gespräch festgelegt wird, prüfen Regeln im Code (`engine/schreiben.py`, siehe „Ontologie im Gespräch“) und schreiben es sofort in das Reisen-Repo. Bis zum 29.10.2026 änderte sich der Plan nur beim Einarbeiten durch Claude Code auf dem Server (Aufträge, Rückmeldungen); dieser Weg ist abgeschaltet.
 - Nutzen dürfen ihn **alle Personen der Reise** (`reise.yaml personen`). Seit 26.10.2026 gehört ein Link zu einer Person; ihre Rolle entscheidet: `gast` liest, `mitwirkend` gibt Rückmeldungen, Wünsche, Vorschläge und Aufgaben und schreibt Werte, Dinge, Optionen, Fragen und Wissen (Eingaben), `organisator` entscheidet dazu, legt Arten und Merkmale fest, setzt Status und Einstellungen und lädt ein. Alte Links mit Rolle `mitreisend` gelten als `mitwirkend`.
-- **Regelfall ist das Konto** (ADR-0005, Paket J3): Die Person meldet sich im Konnektor „Frieda“ mit ihrer E-Mail-Adresse an, ein Konnektor für alle Reisen. Die Links je Reise und Person in diesem Abschnitt sind der Übergang und werden nicht mehr ausgestellt; was unten über „den Link“ steht, gilt für das Konto ebenso (die Person steht fest).
-- **Ein Link pro Reise und Person** (Übergang).
+- **Regelfall ist das Konto** (ADR-0005, Paket J3): Die Person meldet sich im Konnektor „Frieda“ mit ihrer E-Mail-Adresse an, ein Konnektor für alle Reisen. Die Links je Reise und Person in diesem Abschnitt sind der Übergang, werden nicht mehr ausgestellt und sind seit 1.11.2026 abgeschaltet (nginx antwortet 404); was unten über „den Link“ steht, gilt für das Konto ebenso (die Person steht fest).
+- **Ein Link pro Reise und Person** (Übergang, abgeschaltet).
 - Gehört der Link zu einer Person, steht der Name fest. Bei einem Link ohne Person (nur Rolle) fragt Claude einmal nach dem Vornamen.
 - **Rückmeldungen** (`rueckmeldung_geben`, `frage_beantworten`, die Formulare der Webseite) sind Eingaben: Sie liegen in der Ablage der Reise, bis eine Organisator:in sie im AI-Client prüft, mit den Schreibwerkzeugen einträgt und mit `rueckmeldung_erledigen` abschließt (Kommentar für die Seite in einfachen Worten).
 - **Aufgaben** (AG-01 …) darf jede:r über die App und über die Webseite sofort anlegen, ändern und abhaken. Eine Aufgabe hängt an einer oder mehreren IDs oder an der Reise allgemein. Sie hat Titel, Zuständig, Priorität, „ab wann möglich“, Frist, Notiz, Status (offen, in Arbeit, erledigt, entfällt) und einen Verlauf. Gelöscht wird nie.
@@ -130,7 +130,7 @@ Betrieb: `docs/betrieb.md`, Abschnitt „Schreibweg“. Ohne eingerichteten Schr
 
 ## Konnektor „Frieda“ mit Anmeldung (Paket J3, 27.10.2026)
 
-Ein Konnektor für alle Reisen einer Person (ADR-0005). Er ist seit der Umstellung der Regelfall und ersetzt die Konnektoren je Reise und den Konto-Link; die Links bleiben als Übergang lesbar.
+Ein Konnektor für alle Reisen einer Person (ADR-0005). Er ist seit der Umstellung der Regelfall und ersetzt die Konnektoren je Reise und den Konto-Link; die Links je Reise und Person waren der Übergang und sind seit 1.11.2026 abgeschaltet (nginx antwortet 404).
 Die Adresse ist für alle gleich, `<FR_BASIS>/mcp`, und enthält kein Geheimnis.
 
 **Anmelden:** Beim Hinzufügen in der Claude-App öffnet sich Friedas Anmeldeseite. Man gibt die E-Mail-Adresse und
@@ -202,7 +202,7 @@ In einer Instanz erledigen das `betrieb/einrichten.sh`, `deploy.sh` und `freisch
 
 ## In der Claude-App eintragen
 
-Einstellungen → Konnektoren → „Eigenen Konnektor hinzufügen“. Regelfall (ADR-0005): Name „Frieda“, URL `<FR_BASIS>/mcp`, dann anmelden mit der E-Mail-Adresse. Übergang: als Name den Titel der Reise, als URL den Link je Reise und Person, ohne Anmeldung. Danach kann man im Chat z. B. fragen: „Was steht an T-02 an?“, „Welche Fragen sind offen?“, „Gib als Rückmeldung zu U-02: …“.
+Einstellungen → Konnektoren → „Eigenen Konnektor hinzufügen“. Regelfall (ADR-0005): Name „Frieda“, URL `<FR_BASIS>/mcp`, dann anmelden mit der E-Mail-Adresse. Die frühere Einrichtung mit einem Link je Reise und Person gibt es nicht mehr. Danach kann man im Chat z. B. fragen: „Was steht an T-02 an?“, „Welche Fragen sind offen?“, „Gib als Rückmeldung zu U-02: …“.
 
 Jede Person braucht ein eigenes Claude-Konto, in dem eigene Konnektoren erlaubt sind. Bei Team- oder Firmenkonten muss der Admin sie freigeben.
 

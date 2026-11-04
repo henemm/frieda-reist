@@ -92,7 +92,7 @@ Das Abo folgt dem, was Kalender-Programme erwarten (1.11.2026, nach dem Fehler i
 
 ## Zeitgrenzen und Sperren des Schreibwegs
 
-Ein Schreibvorgang darf samt Wartezeit auf die Sperre nicht länger dauern, als nginx auf den Konnektor wartet (`proxy_read_timeout`: 300 s für `/mcp` und 60 s für den alten Pfad in `nginx-konnektor-orte.inc`, sonst die Vorgabe von nginx mit 60 s, Begründung in `nginx-konnektor.inc`; bis 1.11.2026 30 s), sonst erreicht die Meldung die Claude-App nie (#118, #163). Darum gilt (`engine/schreiben.py`; ein Test prüft die Summe gegen jede Lesefrist der nginx-Vorlage): `ZEIT_GESAMT = 25` Sekunden für Sperre, Vorbereiten der Arbeitskopie (jeder `git`-Aufruf mit dem Rest der Frist) und Anwenden zusammen, davon höchstens `ZEIT_SPERRE = 3` Wartezeit auf die Sperre, und danach `ZEIT_PRUEFUNG = 3` Sekunden Reserve für die Ergebnisprüfung. Eine Antwort kommt also nach höchstens 28 Sekunden. Wer die nginx-Grenze ändert, prüft die Werte mit.
+Ein Schreibvorgang darf samt Wartezeit auf die Sperre nicht länger dauern, als nginx auf den Konnektor wartet (`proxy_read_timeout`: 300 s für `/mcp` in `nginx-konnektor-orte.inc`, sonst die Vorgabe von nginx mit 60 s, Begründung in `nginx-konnektor.inc`; bis 1.11.2026 30 s), sonst erreicht die Meldung die Claude-App nie (#118, #163). Darum gilt (`engine/schreiben.py`; ein Test prüft die Summe gegen jede Lesefrist der nginx-Vorlage): `ZEIT_GESAMT = 25` Sekunden für Sperre, Vorbereiten der Arbeitskopie (jeder `git`-Aufruf mit dem Rest der Frist) und Anwenden zusammen, davon höchstens `ZEIT_SPERRE = 3` Wartezeit auf die Sperre, und danach `ZEIT_PRUEFUNG = 3` Sekunden Reserve für die Ergebnisprüfung. Eine Antwort kommt also nach höchstens 28 Sekunden. Wer die nginx-Grenze ändert, prüft die Werte mit.
 
 Das Anwenden läuft als Unterprozess in eigener Prozessgruppe; bei Fristablauf wird die ganze Gruppe beendet, auch ein laufendes `git push`. Jeder Vorgang bekommt eine kurze Kennung, die als Zeile `Frieda-Vorgang: <Kennung>` in der Commit-Nachricht steht. Nach einem Abbruch im Anwenden holt der Schreibweg `origin/main` und sucht die Kennung (beides zusammen höchstens `ZEIT_PRUEFUNG`). Die Meldungen:
 
@@ -253,7 +253,7 @@ Der Workflow „Software nachziehen“ (siehe „Neue Instanz einrichten“) lä
    - Reiseseiten und Konnektor teilen sich die Adresse: Die Sitzung (`__Host-frieda`) gilt nur dort, und die Reiseseite fragt mit ihr `api/ich`.
    - Kein `add_header Referrer-Policy "no-referrer"` im server-Block für diese Pfade: Der Dienst setzt `same-origin`, sonst schicken Browser `Origin: null` und jede Anmeldung scheitert an der Prüfung der Herkunft. Cache-Control und Content-Security-Policy setzt ebenfalls der Dienst.
    - Präfix-Orte (`^~`) und genaue Orte (`=`) gehen allgemeinen Regeln für Dateiendungen vor; Regeln mit `^~` oder `=` für dieselben Pfade im server-Block dürfen nicht stehen.
-   - Übergang: Links aus der Zeit vor den Konten (`/<token>`, früher `/<instanz>-mcp/<token>`) gehen weiter an den Konnektor.
+   - Die Links aus der Zeit vor den Konten (`/<token>`, früher `/<instanz>-mcp/<token>`) sind abgeschaltet (Frist 1.11.2026); die Vorlage hat keine Orte dafür, nginx antwortet 404.
 6. **sudo** für den Dienstbenutzer, ohne Passwort und nur für diese Befehle:
    - `systemctl restart <instanz>-rueckmeldungen <instanz>-konnektor <instanz>-schreiben <instanz>-push`
    - `nginx -t` und `systemctl reload nginx`
@@ -301,7 +301,7 @@ Meldung. Nach einer Änderung der Vorlage `units-installieren.py` muss die Kopie
 Der Konnektor hat drei Drosseln, je Adresse (`betrieb/vorlagen/nginx-zone.conf`, Zonen mit dem Namen der Instanz in einer eigenen
 Datei `conf.d/<instanz>-zone.conf`; eine gemeinsam genutzte Datei wie `limit-req.conf` bleibt unberührt, damit keine Namen streiten):
 `<instanz>_mcp` großzügig (10 pro Sekunde, burst 40), weil die Claude-App von gemeinsamen Adressen aus aufruft; `<instanz>_anmelden`
-streng (5 pro Minute, burst 10); `<instanz>_konto` für Konto, Einladung, Kalender-Abo und die Übergangs-Links (30 pro Minute, burst 20).
+streng (5 pro Minute, burst 10); `<instanz>_konto` für Konto, Einladung, Kalender-Abo (30 pro Minute, burst 20).
 `/token`, `/register`, die OAuth-Metadaten, Schrift und Symbole haben keine Drossel: Sie kommen von den gemeinsamen Adressen der
 Claude-App, ein Limit träfe alle Nutzer zusammen, der Dienst prüft PKCE, Weiterleitungsadressen und Codes selbst.
 

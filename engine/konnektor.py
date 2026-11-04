@@ -39,7 +39,7 @@ Aufrufe:
 
 HTTP (hinter nginx an der Wurzel von FR_KN_ADRESSE, Vorlage betrieb/vorlagen/nginx-konnektor-orte.inc, docs/betrieb.md):
   POST /mcp         MCP für den Konnektor „Frieda“ mit OAuth (engine/oauth.py); dazu Anmeldung und Konto (engine/anmeldung.py)
-  POST /<token>     MCP über einen geheimen Link aus der Zeit vor den Konten (Übergang; früher unter /<instanz>-mcp/)
+  POST /<token>     MCP über einen geheimen Link aus der Zeit vor den Konten; der Dienst kennt den Pfad noch, nginx lässt ihn nicht mehr durch (abgeschaltet seit 1.11.2026)
   GET  /gesund      Readiness (Zugänge lesbar, verlinkte Reisen veröffentlicht), ohne Token
 """
 import base64

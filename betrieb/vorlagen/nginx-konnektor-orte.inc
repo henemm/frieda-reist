@@ -65,28 +65,5 @@ location = /manifest.webmanifest   { include __SNIPPETS__/__INSTANZ__-konnektor.
 location = /sw.js                  { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 location = /konto.js               { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 
-# Übergang (Paket J): geheime Links je Reise und Person aus der Zeit vor den Konten. An der Wurzel ausgestellt
-# (<FR_KN_ADRESSE>/<token>, freischalten.sh --person) …
-location ~ "^/[A-Za-z0-9_-]{20,100}$" {
-    limit_req zone=__ZONE_KONTO__ burst=20 nodelay;
-    limit_req_status 429;
-    include __SNIPPETS__/__INSTANZ__-konnektor.inc;
-}
-# … und unter dem früheren Pfad /__INSTANZ__-mcp/<token>, der bis 1.11.2026 die Vorgabe war. Der Präfix fällt weg.
-# Unbekannte Tokens beantwortet der Dienst mit 404. Entfällt, sobald alle Personen ein Konto haben.
-location ^~ /__INSTANZ__-mcp/ {
-    limit_req zone=__ZONE_KONTO__ burst=20 nodelay;
-    limit_req_status 429;
-    client_max_body_size 64k;
-    proxy_pass http://127.0.0.1:__KN_PORT__/;
-    proxy_http_version 1.1;
-    proxy_buffering off;
-    proxy_read_timeout 60s;
-    proxy_set_header Host              $host;
-    proxy_set_header X-Forwarded-For   $remote_addr;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header X-Real-IP         $remote_addr;
-    proxy_set_header X-Frieda-Dienst   "";
-    add_header X-Robots-Tag "noindex, nofollow" always;
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-}
+# Die Links je Reise und Person aus der Zeit vor den Konten (am Anfang der Adresse und unter dem früheren Pfad der Instanz) sind abgeschaltet
+# (Frist 1.11.2026, auf dem Server 404): Die Vorlage öffnet sie nicht wieder.
