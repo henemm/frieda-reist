@@ -158,6 +158,73 @@ def test_stufen_konstante_der_bestandssprache_ist_weg():
     assert not treffer, treffer
 
 
+def test_bestand_reise_kommt_nicht_mehr_vor():
+    """Die Bestandssprache (Reise ohne Feld sprache gilt als deutsch) ist aus engine/ verschwunden (#267 c2, AC-4); der Name
+    wird zusammengesetzt, damit der Test sich nicht selbst findet."""
+    name = "BESTAND" + "_REISE"
+    treffer = [str(p.relative_to(ENGINE)) for p in ENGINE.rglob("*.py")
+               if ".venv" not in p.parts and "vendor" not in p.parts and "tests" not in p.parts and name in p.read_text(encoding="utf-8")]
+    assert not treffer, treffer
+    assert not hasattr(texte, name)
+
+
+def _rand():
+    import schnittstelle  # noqa: F401  (trägt die englischen Namen der Schnittstelle in texte._RAND ein)
+    assert texte._RAND
+    return texte._RAND
+
+
+def test_einzeln_de_liefert_deutsche_namen():
+    """Die Namen der Schnittstelle sind deutsche Wörter: Deutsch bekommt nie ihren englischen Namen aus _RAND, sondern den
+    Katalogtext wert.<w> oder None (das Wort bleibt) (#267 c2, AC-5; Sicherungstest: grün vor und nach dem Paket)."""
+    de = texte.sprache("de").TEXTE
+    for w, englisch in _rand().items():
+        ergebnis = texte._einzeln("de", w)
+        assert ergebnis == de.get("wert." + w), (w, ergebnis)
+        assert englisch == w or ergebnis != englisch, (w, ergebnis)
+
+
+def test_einzeln_en_und_pseudo_fallen_auf_rand_zurueck(monkeypatch):
+    """Sprachen, in denen die Namen der Schnittstelle keine Wörter sind, fallen ohne Katalogtext auf den englischen Namen zurück
+    (#267 c2, AC-5): unverändert für en und die Pseudo-Sprache der Tests."""
+    monkeypatch.setenv("FR_TEXTE_ZUSATZ", "xx")
+    for kuerzel in ("en", "xx"):
+        katalog = texte.sprache(kuerzel).TEXTE
+        for w, englisch in _rand().items():
+            if "wert." + w not in katalog:
+                assert texte._einzeln(kuerzel, w) == englisch, (kuerzel, w)
+
+
+def test_namen_der_schnittstelle_steht_in_der_sprachdatei(monkeypatch):
+    """Ob die Namen der Schnittstelle Wörter einer Sprache sind, sagt deren Sprachdatei (NAMEN_DER_SCHNITTSTELLE), nicht der Code
+    (#267 c2, AC-5, ADR-0006): nur texte_de.py trägt das Feld, es ist kein Pflichtfeld."""
+    monkeypatch.setenv("FR_TEXTE_ZUSATZ", "xx")
+    mit = [k for k in texte.SPRACHEN if getattr(texte.sprache(k), "NAMEN_DER_SCHNITTSTELLE", False) is True]
+    assert mit == ["de"], mit
+    assert "NAMEN_DER_SCHNITTSTELLE" not in texte.PFLICHTFELDER
+    quelle = (ENGINE / "texte.py").read_text(encoding="utf-8")
+    assert "NAMEN_DER_SCHNITTSTELLE" in quelle   # _einzeln liest das Feld aus der Sprachdatei
+
+
+def test_datenwerte_paritaet_de_en():
+    """Die Datenwerte (wert.*) sind in jeder Sprache dieselben; _datenwerte() liest sie aus texte.VORGABE (#267 c2, AC-6)."""
+    de = {k for k in texte.sprache("de").TEXTE if k.startswith("wert.")}
+    en = {k for k in texte.sprache("en").TEXTE if k.startswith("wert.")}
+    assert de == en, de ^ en
+    assert _datenwerte() == {k[len("wert."):] for k in de}
+
+
+def test_neue_schluessel_der_sprachpflicht(monkeypatch):
+    """Die Meldung „Feld sprache fehlt“ und „nicht gesetzt“ stehen in jeder Sprache, mit denselben Platzhaltern (#267 c2, AC-10)."""
+    monkeypatch.setenv("FR_TEXTE_ZUSATZ", "xx")
+    for kuerzel in texte.SPRACHEN:
+        katalog = texte.sprache(kuerzel).TEXTE
+        assert "pruefung.reise.sprache_fehlt" in katalog, kuerzel
+        assert "schreiben.antwort.einstellung.sprache_ungesetzt" in katalog, kuerzel
+        assert PLATZHALTER.findall(katalog["pruefung.reise.sprache_fehlt"]) == ["bekannt"], kuerzel
+    assert "neu.py nachziehen" in texte.t("de", "pruefung.reise.sprache_fehlt")
+
+
 def test_aus_header():
     assert texte.aus_header("de-AT,de;q=0.9,en;q=0.8") == "de"
     assert texte.aus_header("en-GB,en;q=0.9,de;q=0.8") == "en"
@@ -398,7 +465,7 @@ def _ohne_entwicklerseite(funde, quelltext):
 
 def _datenwerte():
     """Gespeicherte Datenwerte der Reise (Schlüssel wert.<Wert> des Katalogs): Sie stehen unverändert in den Dateien und sind kein Text (ADR-0006)."""
-    return {k[len("wert."):] for k in texte.sprache(texte.BESTAND_REISE).TEXTE if k.startswith("wert.")}
+    return {k[len("wert."):] for k in texte.sprache(texte.VORGABE).TEXTE if k.startswith("wert.")}
 
 
 def literale(datei):

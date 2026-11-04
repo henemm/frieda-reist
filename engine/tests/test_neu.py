@@ -357,12 +357,12 @@ def test_frage_schliessen_schreibt_in_der_sprache_der_reise(tmp_path):
         assert titel.startswith("F-01")
 
 
-# ---------- Rückfall der Software und Bestand (texte.VORGABE_REISE, texte.BESTAND_REISE) ----------
+# ---------- Rückfall der Software (texte.VORGABE_REISE); sprache ist Pflicht in reise.yaml (#267 c2) ----------
 
 @pytest.mark.echter_rueckfall
 def test_rueckfall_ist_englisch_und_neue_reisen_tragen_die_sprache_ausdruecklich(tmp_path):
     import texte
-    assert texte.VORGABE_REISE == "en" and texte.BESTAND_REISE == "de"
+    assert texte.VORGABE_REISE == "en"
     r = anlegen(tmp_path)   # ohne Angabe
     roh = yaml.safe_load((r / "reise.yaml").read_text(encoding="utf-8"))
     assert roh["sprache"] == "en"                                    # steht in der Datei, kein stilles Verlassen auf eine Vorgabe
@@ -370,18 +370,72 @@ def test_rueckfall_ist_englisch_und_neue_reisen_tragen_die_sprache_ausdruecklich
     assert bauen.bauen(r, tmp_path / "dist")["reise"]["sprache"] == "en"
 
 
-@pytest.mark.echter_rueckfall
-def test_reise_ohne_feld_sprache_bleibt_deutsch(tmp_path):
-    import reise
-    r = anlegen(tmp_path, sprache="de")
+def _ohne_feld_sprache(r):
     y = r / "reise.yaml"
     y.write_text("".join(z for z in y.read_text(encoding="utf-8").splitlines(True) if not z.startswith("sprache:")), encoding="utf-8")
     assert "sprache:" not in y.read_text(encoding="utf-8")
-    assert reise.sprache_von(r) == "de"                              # Bestand von vor ADR-0006
-    assert bauen.bauen(r, tmp_path / "dist")["reise"]["sprache"] == "de"
+    return y
+
+
+@pytest.mark.echter_rueckfall
+def test_sprache_von_ohne_feld_ist_der_rueckfall(tmp_path):
+    """sprache_von kennt keinen Bestand mehr (#267 c2, AC-7): ohne Zeile sprache gilt texte.VORGABE_REISE wie für unbekannte
+    Kürzel und unlesbare Dateien; ein gültiges Kürzel gilt."""
+    import reise
+    import texte
+    r = anlegen(tmp_path, sprache="de")
+    assert reise.sprache_von(r) == "de"
+    y = _ohne_feld_sprache(r)
+    assert reise.sprache_von(r) == texte.VORGABE_REISE == "en"
     y.write_text(y.read_text(encoding="utf-8") + "sprache: xx-unbekannt\n", encoding="utf-8")
-    assert reise.sprache_von(r) == "en"                              # unbekannte Sprache: Rückfall, nicht Deutsch
+    assert reise.sprache_von(r) == "en"                              # unbekannte Sprache: Rückfall
     assert reise.sprache_von(tmp_path / "gibt-es-nicht") == "en"     # keine lesbare Datei: Rückfall
+
+
+@pytest.mark.echter_rueckfall
+def test_reise_ohne_feld_sprache_baut_erst_nach_nachziehen(tmp_path):
+    """Eine reise.yaml ohne Feld sprache bricht den Bau (#267 c2, AC-1, AC-3); neu.py nachziehen trägt de ein, danach baut
+    die Reise deutsch wie bisher."""
+    r = anlegen(tmp_path, sprache="de")
+    y = _ohne_feld_sprache(r)
+    with pytest.raises(bauen.BauFehler) as e:
+        bauen.bauen(r, tmp_path / "dist0")
+    assert meldet("\n".join(e.value.meldungen), "pruefung.reise.sprache_fehlt")
+    neu.nachziehen(r)
+    assert yaml.safe_load(y.read_text(encoding="utf-8"))["sprache"] == "de"
+    d = bauen.bauen(r, tmp_path / "dist")
+    assert d["reise"]["sprache"] == "de"
+    assert 'lang="de"' in next((tmp_path / "dist").rglob("index.html")).read_text(encoding="utf-8")
+
+
+@pytest.mark.echter_rueckfall
+def test_nachziehen_unterwegs_vorgabe_ist_deutsch(tmp_path):
+    """Die frühere Vorgabe „Unterwegs nachschlagen“ war deutsch (#217): nachziehen trägt sie deutsch ein, unabhängig von der
+    Sprache der Reise und vom Rückfall der Software (#267 c2, AC-3; Sicherungstest)."""
+    import shutil
+    beispiel = Path(__file__).resolve().parents[2] / "beispiel/reisen/beispielreise"
+    r = tmp_path / "bsp"
+    shutil.copytree(beispiel, r)
+    cfg = json.loads((r / "reise.json").read_text(encoding="utf-8"))
+    cfg.pop("etappen_ebenen")
+    (r / "reise.json").write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    y = r / "reise.yaml"
+    y.write_text(y.read_text(encoding="utf-8").replace("sprache: de", "sprache: en"), encoding="utf-8")
+    neu.nachziehen(r)
+    assert json.loads((r / "reise.json").read_text(encoding="utf-8"))["etappen_ebenen"]["unterwegs"][0] == "Höhenprofil"
+
+
+def test_sprache_pruefen_ohne_leer():
+    """sprache_pruefen kennt keinen Ersatzwert für den Bestand mehr (#267 c2, AC-8)."""
+    import inspect
+    import reise
+    import texte
+    assert list(inspect.signature(reise.sprache_pruefen).parameters) == ["wert"]
+    assert reise.sprache_pruefen(None) == (texte.VORGABE_REISE, None)
+    assert reise.sprache_pruefen("") == (texte.VORGABE_REISE, None)
+    assert reise.sprache_pruefen(" EN ") == ("en", None)
+    kuerzel, fehler = reise.sprache_pruefen("klingonisch")
+    assert kuerzel == texte.VORGABE_REISE and meldet(fehler, "pruefung.reise.sprache_unbekannt")
 
 
 def test_nachziehen_eckdaten_einer_reise_von_vor_217(tmp_path):

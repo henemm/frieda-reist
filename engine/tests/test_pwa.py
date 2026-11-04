@@ -32,7 +32,7 @@ def mini_reise(tmp_path):
         "plan": "plan.md", "abschnitte": {"plan.md": {"Tagesplan": ["W-01", "plan"]}}}), encoding="utf-8")
     # reise.yaml ist Pflicht (#267): Eckdaten, eine Organisatorin, alle gebauten Bausteine außer Wünschen
     (r / "reise.yaml").write_text(yaml.safe_dump({
-        "titel": "Testreise – Untertitel", "pfad": "test",
+        "titel": "Testreise – Untertitel", "pfad": "test", "sprache": "de",
         "status": {"wert": "planung", "verlauf": [{"datum": datetime.date(2026, 10, 26), "wert": "planung", "wer": "Hanna"}]},
         "personen": {"hanna": {"name": "Hanna", "rolle": "organisator"}},
         "bausteine": ["varianten", "karte", "rueckmeldungen", "fragen", "aufgaben", "waechter"]},

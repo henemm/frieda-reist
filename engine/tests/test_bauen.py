@@ -105,7 +105,7 @@ CFG = {
 }
 # Eckdaten der kleinen Reise (reise.yaml ist Pflicht, #267): eine Organisatorin, Status planung, alle gebauten Bausteine außer Wünschen
 GRUND_YAML = {
-    "titel": "Test", "untertitel": "x", "pfad": "test",
+    "titel": "Test", "untertitel": "x", "pfad": "test", "sprache": "de",
     "status": {"wert": "planung", "verlauf": [{"datum": datetime.date(2026, 10, 26), "wert": "planung", "wer": "Hanna"}]},
     "personen": {"hanna": {"name": "Hanna", "rolle": "organisator"}},
     "bausteine": ["varianten", "karte", "rueckmeldungen", "fragen", "aufgaben", "waechter"],
@@ -385,7 +385,7 @@ def test_reise_ohne_dossiers_und_plan_tabellen(reise, tmp_path):
 
 
 REISE_YAML = {
-    "titel": "Test", "untertitel": "x", "pfad": "test",
+    "titel": "Test", "untertitel": "x", "pfad": "test", "sprache": "de",
     "status": {"wert": "planung", "verlauf": [{"datum": datetime.date(2026, 10, 26), "wert": "planung", "wer": "Hanna"}]},
     "personen": {"hanna": {"name": "Hanna", "rolle": "organisator"},
                  "ben": {"name": "Ben", "rolle": "mitwirkend", "reist": False, "notiz": "kennt die Gegend"},
@@ -410,6 +410,36 @@ def test_alte_form_ohne_reise_yaml(reise, tmp_path):
     (reise / "reise.yaml").unlink()
     assert meldet(meldungen(reise, tmp_path), "pruefung.bauen.reise_yaml_fehlt")
     assert not (tmp_path / "dist").exists()
+
+
+@pytest.mark.parametrize("wert", ["fehlt", None, ""])
+def test_reise_ohne_sprache_bricht_den_bau(reise, tmp_path, wert):
+    """sprache ist Pflicht in reise.yaml (#267 c2, AC-1, AC-2): fehlt das Feld oder ist es leer, bricht der Bau mit
+    pruefung.reise.sprache_fehlt; kein Bauergebnis."""
+    def aendere(r):
+        if wert == "fehlt":
+            r.pop("sprache")
+        else:
+            r["sprache"] = wert
+    mit_reise_yaml(reise, aendere)
+    assert meldet(meldungen(reise, tmp_path), "pruefung.reise.sprache_fehlt")
+    assert not (tmp_path / "dist").exists()
+
+
+def test_sprache_fehlt_nennt_kuerzel_und_nachziehen(reise, tmp_path):
+    """Die Meldung nennt jede bekannte Sprache und den Weg, auf dem das Feld in die Datei kommt (#267 c2, AC-1)."""
+    import texte
+    mit_reise_yaml(reise, lambda r: r.pop("sprache"))
+    m = meldungen(reise, tmp_path)
+    assert all(k in m for k in texte.SPRACHEN) and "neu.py nachziehen" in m, m
+
+
+def test_sprache_unbekannt_bleibt(reise, tmp_path):
+    """Ein unbekanntes Kürzel meldet weiter pruefung.reise.sprache_unbekannt, nicht sprache_fehlt (#267 c2, AC-2)."""
+    mit_reise_yaml(reise, lambda r: r.update(sprache="klingonisch"))
+    m = meldungen(reise, tmp_path)
+    assert meldet(m, "pruefung.reise.sprache_unbekannt")
+    assert not meldet(m, "pruefung.reise.sprache_fehlt")   # meldet() prüft zugleich, dass der Schlüssel im Katalog steht
 
 
 def test_reise_yaml(reise, tmp_path):

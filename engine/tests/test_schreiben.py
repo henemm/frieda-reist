@@ -2235,3 +2235,35 @@ def test_wissen_tabelle_und_liste_kommen_an_274(repo):
     assert "Mitnehmen:\n\n- Stirnlampe\n- Wasser\n- Karte" in dossier
     html = markdown.Markdown().convert(dossier.split("Mitnehmen:")[1].split("*Herkunft")[0])
     assert html.count("<li>") == 3
+
+
+# ---------- Sprache der Reise ohne Bestand (#267 c2, AC-9) ----------
+
+def test_einstellung_sprache_mit_feld(repo):
+    """Mit Feld sprache meldet die Antwort den alten und den neuen Wert wie bisher."""
+    _, origin, _, _ = repo
+    a = schreiber(repo).schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"sprache": "en"}})
+    assert "sprache „de“ → „en“" in a["text"], a["text"]
+    assert yaml.safe_load(datei_auf_main(origin, "reise.yaml"))["sprache"] == "en"
+
+
+def test_einstellung_sprache_ohne_feld_meldet_nicht_gesetzt(repo):
+    """Ohne Feld sprache gilt kein Bestand mehr: Die Antwort nennt als alten Wert „nicht gesetzt“ (Katalog), trägt das Kürzel ein,
+    und auch de ist eine Änderung (keine Ablehnung „nichts zu ändern“)."""
+    from conftest import text
+    wurzel, origin, _, _ = repo
+    y = wurzel / "reisen" / "beispielreise" / "reise.yaml"
+    y.write_text("".join(z for z in y.read_text(encoding="utf-8").splitlines(True) if not z.startswith("sprache:")), encoding="utf-8")
+    git(wurzel, "commit", "-q", "-am", "ohne Feld sprache (Test)")
+    git(wurzel, "push", "-q")
+    a = schreiber(repo).schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"sprache": "de"}})
+    assert f"sprache „{text('schreiben.antwort.einstellung.sprache_ungesetzt')}“ → „de“" in a["text"], a["text"]
+    assert yaml.safe_load(datei_auf_main(origin, "reise.yaml"))["sprache"] == "de"
+
+
+def test_einstellung_gleiche_sprache_ablehnung(repo):
+    """Dasselbe Kürzel wie das gesetzte ist keine Änderung: Ablehnung einstellung_setzen.4."""
+    s = schreiber(repo)
+    with pytest.raises(sb.Ablehnung) as e:
+        s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"sprache": "de"}})
+    assert meldet(str(e.value), "schreiben.einstellung_setzen.4")
