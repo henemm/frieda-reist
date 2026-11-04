@@ -19,7 +19,7 @@ E       AssertionError: units helper /tmp/pytest-of-hem/pytest-8921/test_install
 E         probe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC
 E         
 E       assert ('is not installed' in 'units helper /tmp/pytest-of-hem/pytest-8921/test_installieren_ohne_hilfspr0/gibt-es-nicht is not installed, nothing i...docs/betrieb.md, Einheiten abgleichen).\nprobe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC\n' and 'FR_ZEITZONE' not in 'units helpe...ITZONE=UTC\n'
-E        +  where 'units helper /tmp/pytest-of-hem/pytest-8921/test_installieren_ohne_hilfspr0/gibt-es-nicht is not installed, nothing i...docs/betrieb.md, Einheiten abgleichen).\nprobe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC\n' = CompletedProcess(args=['/home/hem/frieda-reist/.claude/worktrees/deep-rolling-pelican/engine/.venv/bin/python', '/home....md, Einheiten abgleichen).\nprobe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC\n', stderr='').stdout
+E        +  where 'units helper /tmp/pytest-of-hem/pytest-8921/test_installieren_ohne_hilfspr0/gibt-es-nicht is not installed, nothing i...docs/betrieb.md, Einheiten abgleichen).\nprobe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC\n' = CompletedProcess(args=['~/frieda-reist/engine/.venv/bin/python', '/home....md, Einheiten abgleichen).\nprobe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC\n', stderr='').stdout
 E         
 E         'FR_ZEITZONE' is contained here:
 E           vironment=FR_ZEITZONE=UTC)

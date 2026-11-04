@@ -1,7 +1,7 @@
 ============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- /home/hem/frieda-reist/.claude/worktrees/deep-rolling-pelican/engine/.venv/bin/python
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- ~/frieda-reist/engine/.venv/bin/python
 cachedir: .pytest_cache
-rootdir: /home/hem/frieda-reist/.claude/worktrees/deep-rolling-pelican
+rootdir: ~/frieda-reist
 collecting ... collected 23 items
 
 engine/tests/test_units.py::test_einrichten_erzeugen_schreibt_die_einheiten_ohne_ausgabe PASSED [  4%]
