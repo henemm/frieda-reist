@@ -1,0 +1,27 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- /home/hem/frieda-reist/.claude/worktrees/spur-a-215/engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/hem/frieda-reist/.claude/worktrees/spur-a-215
+collecting ... collected 75 items / 72 deselected / 3 selected
+
+engine/tests/test_texte.py::test_stufe_satz_in_beiden_sprachen PASSED    [ 33%]
+engine/tests/test_texte.py::test_stufen_konstante_der_bestandssprache_ist_weg FAILED [ 66%]
+engine/tests/test_texte.py::test_stufen_werden_in_jeder_sprache_gelesen PASSED [100%]
+
+=================================== FAILURES ===================================
+______________ test_stufen_konstante_der_bestandssprache_ist_weg _______________
+
+    def test_stufen_konstante_der_bestandssprache_ist_weg():
+        """Die Konstante mit den Wörtern des Bestands ist aus engine/ verschwunden (#267 c1, AC-8); der Name wird zusammengesetzt,
+        damit der Test sich nicht selbst findet."""
+        name = "STUFEN" + "_WORTE"
+        treffer = [str(p.relative_to(ENGINE)) for p in ENGINE.rglob("*.py")
+                   if ".venv" not in p.parts and "vendor" not in p.parts and "tests" not in p.parts and name in p.read_text(encoding="utf-8")]
+>       assert not treffer, treffer
+E       AssertionError: ['routen.py']
+E       assert not ['routen.py']
+
+engine/tests/test_texte.py:158: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_texte.py::test_stufen_konstante_der_bestandssprache_ist_weg
+================== 1 failed, 2 passed, 72 deselected in 0.20s ==================
