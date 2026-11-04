@@ -132,7 +132,30 @@ def test_deutsch_wortlaut_der_vorhandenen_zuordnungen():
     assert schreiben.BUCHUNG_WORTE["bei"] == "Gebucht bei"
     assert schreiben.BUCHUNG_WORTE["preise"] == "Preise je Ding"
     assert len(schreiben.BUCHUNG_WORTE) == 19
-    assert routen.STUFEN_WORTE == {"pflicht": "nötig", "empfohlen": "gut zu wissen", "angeboten": "zusätzlich", "aus": "aus"}
+
+
+def test_stufe_satz_in_beiden_sprachen():
+    """stufe_satz liefert je Sprache den Katalogtext; unbekannte Werte bleiben Text (#267 c1, AC-8)."""
+    import routen
+    erwartet = {
+        "de": {"pflicht": "nötig (pflicht)", "empfohlen": "gut zu wissen (empfohlen)", "angeboten": "zusätzlich (angeboten)", "aus": "aus"},
+        "en": {"pflicht": "needed (required)", "empfohlen": "good to know (recommended)", "angeboten": "additional (optional)", "aus": "off"},
+    }
+    for sprache, stufen in erwartet.items():
+        for schluessel, text in stufen.items():
+            assert routen.stufe_satz(schluessel).text(sprache) == text, (sprache, schluessel)
+        assert routen.stufe_satz("unbekannt").text(sprache) == "unbekannt"
+    assert routen.stufe_satz({"*": "aus", "refugi": "empfohlen"}).text("de") == "sonst: gilt nicht, refugi: gut zu wissen (empfohlen)"
+    assert routen.stufe_satz({"*": "aus", "refugi": "empfohlen"}).text("en") == "otherwise: does not apply, refugi: good to know (recommended)"
+
+
+def test_stufen_konstante_der_bestandssprache_ist_weg():
+    """Die Konstante mit den Wörtern des Bestands ist aus engine/ verschwunden (#267 c1, AC-8); der Name wird zusammengesetzt,
+    damit der Test sich nicht selbst findet."""
+    name = "STUFEN" + "_WORTE"
+    treffer = [str(p.relative_to(ENGINE)) for p in ENGINE.rglob("*.py")
+               if ".venv" not in p.parts and "vendor" not in p.parts and "tests" not in p.parts and name in p.read_text(encoding="utf-8")]
+    assert not treffer, treffer
 
 
 def test_aus_header():
