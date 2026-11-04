@@ -399,7 +399,7 @@ def test_stornierte_buchungen_ein_helfer_an_jeder_heimat():
     q = (WURZEL / "engine" / "vorlage.html").read_text(encoding="utf-8")
     assert re.search(r"^function stornierteBuchungen\(|^const stornierteBuchungen = ", q, re.M)
     assert re.search(r"^const stornierteBei = ", q, re.M) or re.search(r"^function stornierteBei\(", q, re.M)
-    for name in ("streckeZeile", "aufenthaltZeile", "unterkunftKarte"):
+    for name in ("streckeZeile", "aufenthaltZeile", "dingKarte"):
         f = _funktion(q, name)
         assert "stornierteBuchungen(stornierteBei(" in f, name
     # Stornierte nie über buchungenBei voll gezeichnet: der Helfer trennt nach Status

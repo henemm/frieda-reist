@@ -20,6 +20,10 @@ const messen = (p, aid) => p.evaluate(aid => ({
   zeilen: [...document.querySelectorAll("#main .z.aufenthalt")].filter(z => !z.hasAttribute("data-ziel") && z.textContent.includes(aid) || false).length,
   links: [...document.querySelectorAll(`#main a[href="#${aid}"]`)].length,
   tagseite: !!document.querySelector(".tagseite"),
+  // #328: vollständig steht das Ding als Karte (Organismus dingKarte) mit eigenem Rand; die Zeile eines Aufenthalts nur in der Zeitleiste
+  alsKarte: [...document.querySelectorAll(`#main [data-ziel="${aid}"]`)].filter(x => x.classList.contains("karte")
+    && parseFloat(getComputedStyle(x).borderTopWidth) > 0).length,
+  zeilenAusserhalbZeitleiste: [...document.querySelectorAll("#main .z.aufenthalt")].filter(z => !z.closest(".wv-aufenthalt")).length,
 }), aid);
 const out = {};
 let p = await seite(ort);

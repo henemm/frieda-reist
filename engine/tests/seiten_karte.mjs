@@ -22,7 +22,9 @@ for (const breite of [390, 1300]) {
     legende: [...document.querySelectorAll("#main .legende span")].map(x => x.textContent.trim()),
     gestrichelt: [...document.querySelectorAll(".kartenbox path")].filter(x => x.getAttribute("stroke-dasharray") === "7 7").length,
     ansichten: [...document.querySelectorAll(".kartenansichten button")].map(x => x.textContent.trim()),
-    ohneTag: [...document.querySelectorAll(".ohne-tag .titelzeile > span:first-child")].map(x => x.textContent.trim()),
+    // vollständig als Karte (dingKarte), mit Heimat anderswo als Listenzeile (#328)
+    ohneTag: [...[...document.querySelectorAll(".ohne-tag .karte > .k")].map(x => x.firstChild.textContent),
+              ...[...document.querySelectorAll(".ohne-tag .wzeile .wt")].map(x => x.textContent)].map(x => x.trim()),
     breit: document.documentElement.scrollWidth > innerWidth + 1,
   }));
   a.punkte = {uebersicht: await punkte(p)};
