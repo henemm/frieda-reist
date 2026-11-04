@@ -27,9 +27,9 @@ BASIS = {
         "E-03": {"titel": "Bus B → C", "von": "O-02", "nach": "O-03", "art": "bus"},
     },
     "unterkuenfte": {
-        "U-01": {"name": "Hotel B1", "ort": "O-02", "typ": "Hotel"},
-        "U-02": {"name": "Hotel B2", "ort": "O-02", "typ": "Hotel"},
-        "U-03": {"name": "Hütte C", "ort": "O-03", "typ": "Hütte", "frage": "F-02"},
+        "U-01": {"name": "Hotel B1", "ort": "O-02", "art": "hotel"},
+        "U-02": {"name": "Hotel B2", "ort": "O-02", "art": "hotel"},
+        "U-03": {"name": "Hütte C", "ort": "O-03", "art": "huette", "frage": "F-02"},
     },
     "tage": {
         "T-01": {"titel": "A nach B", "strecken": ["E-01"], "nacht": "V-02"},
@@ -386,7 +386,7 @@ def test_plan_fehler():
 
 def test_laengster_tag_und_nacht_ohne_unterkunft():
     r = roh()
-    r["tage"]["T-02"]["nacht"] = {"ort": "O-03", "typ": "Hotel", "hinweis": "noch offen"}
+    r["tage"]["T-02"]["nacht"] = {"ort": "O-03", "art": "hotel", "hinweis": "noch offen"}
     s = ok(r)["summe"]
     assert s["laengster"] == {"min": 210, "nr": 1, "id": "T-01"}
     assert s["unterkunftstypen"] == {"Hotel": 2}
@@ -463,7 +463,7 @@ def test_merkmale_der_art_und_der_wahlstelle():
     (lambda r: r.update(merkmale={"hotel": {}}), "gibt es nicht mehr"),
     (lambda r: r["wahlstellen"]["V-03"].update(merkmale={"x": {"name": "X", "auto": "tage"}}), "für die Grundform bewegung nicht"),
     (lambda r: r["wahlstellen"]["V-02"].update(merkmale={"preis": {"name": "Preis"}}), "schon"),
-    (lambda r: r["unterkuenfte"]["U-01"].update(typ="Iglu"), "steht nicht in plan/arten.yaml"),
+    (lambda r: r["unterkuenfte"]["U-01"].update(art="iglu"), "steht nicht in plan/arten.yaml"),
     (lambda r: r["unterkuenfte"]["U-01"].update(art="wandern"), "braucht es einen Aufenthalt"),
     (lambda r: r["strecken"]["E-03"].update(art="hotel"), "braucht eine Bewegung"),
     (lambda r: r["wahlstellen"]["V-02"].update(bereich="schloss"), "steht nicht in plan/arten.yaml"),
@@ -484,25 +484,79 @@ def test_favorisiert_mit_grund_ok():
     assert mk_bauen(r)[1] == []
 
 
-def test_unterkunft_art_aus_typ_oder_ausdruecklich():
-    """Die Art kommt aus art: oder aus typ (klein, Umlaute aufgelöst) und muss in arten.yaml stehen (docs/ontologie.md)."""
+def fehler_62(fehler, wo):
+    """Fehler 62 (Art fehlt) für wo, im neuen Wortlaut: nennt nur art und den Weg über nachziehen (#267 d, AC-10)."""
+    treffer = [f for f in fehler if f.startswith(f"{wo}:") and meldet(f, "pruefung.routen.62")]
+    assert treffer, fehler
+    assert all("nachziehen" in f and "typ oder art" not in f for f in treffer), treffer
+    return treffer
+
+
+def test_unterkunft_typ_ohne_art_bricht_mit_62():
+    """Der frühere Schlüssel typ ersetzt art nicht mehr (#267 d, AC-1): der Bau bricht laut und nennt die Umstellung."""
     r = roh()
-    a = arten(refugi={"grundform": "aufenthalt", "name": "Refugi", "farbe": "gruen"},
-              nachtzug={"grundform": "aufenthalt", "name": "Nachtzug", "farbe": "schiefer"})
-    r["unterkuenfte"]["U-02"].update(typ="Refugi")
-    r["unterkuenfte"]["U-03"].update(typ="Tempel", art="huette")   # art: geht vor typ
-    r["tage"]["T-03"]["nacht"] = {"ort": "O-03", "typ": "Nachtzug"}
-    erg, fehler = laufe(r, arten_=a)
+    del r["unterkuenfte"]["U-02"]["art"]
+    r["unterkuenfte"]["U-02"]["typ"] = "Hotel"
+    erg, fehler = laufe(r)
+    fehler_62(fehler, "Unterkunft U-02")
+    assert erg["unterkuenfte"]["U-02"]["art"] is None   # typ wird nicht als Art gelesen
+
+
+def test_unterkunft_art_gilt_typ_daneben_ignoriert():
+    """Steht typ neben art, gilt art; typ wird nicht ausgewertet und ist kein Fehler (#267 d, AC-5)."""
+    r = roh()
+    r["unterkuenfte"]["U-03"].update(typ="Tempel", art="huette")
+    erg, fehler = laufe(r)
     assert fehler == [], fehler
-    u = erg["unterkuenfte"]
-    assert [u[k]["art"] for k in ("U-01", "U-02", "U-03")] == ["hotel", "refugi", "huette"]
-    assert "typ" not in u["U-02"]   # die Brücke typ: wird gelesen, die Ausgabe nennt nur die Art
-    t = {x["id"]: x for x in erg["tage"]}
-    assert t["T-03"]["nacht"]["art"] == "nachtzug"
-    assert erg["summe"]["unterkunftstypen"] == {"Hotel": 1, "Hütte": 1, "Nachtzug": 1}   # Nächte je Art, Name der Reise
+    assert erg["unterkuenfte"]["U-03"]["art"] == "huette" and "typ" not in erg["unterkuenfte"]["U-03"]
+
+
+def test_aufenthalt_typ_ohne_art_bricht_mit_62():
+    """Ein Aufenthalt ohne Nacht mit nur typ bricht mit 62 (#267 d, AC-2)."""
+    r, a = staedtereise()
+    del r["aufenthalte"]["A-02"]["art"]
+    r["aufenthalte"]["A-02"]["typ"] = "Essen"
+    _, fehler = laufe(r, FRAGEN, a)
+    fehler_62(fehler, "Aufenthalt A-02")
+
+
+def test_nacht_nur_typ_bricht_laut_mit_62():
+    """Eine Nacht mit nur typ wird geprüft und bricht mit 62, statt still ohne Art zu bleiben (#267 d, AC-3)."""
+    r = roh()
+    a = arten(nachtzug={"grundform": "aufenthalt", "name": "Nachtzug", "farbe": "schiefer"})
+    r["tage"]["T-03"]["nacht"] = {"ort": "O-03", "typ": "Nachtzug"}
+    _, fehler = laufe(r, arten_=a)
+    fehler_62(fehler, "T-03 nacht")
+
+
+def test_nacht_an_bord_mit_typ_bricht_mit_62():
+    """An Bord mit typ, aber ohne art: 62 statt still unterwegs (#267 d, AC-3b); an Bord ohne beides bleibt unterwegs."""
+    r = roh()
+    a = arten(nachtzug={"grundform": "aufenthalt", "name": "Nachtzug", "farbe": "schiefer"})
+    r["tage"]["T-03"]["nacht"] = {"ort": "O-03", "an_bord": True, "typ": "Nachtzug"}
+    erg, fehler = laufe(r, arten_=a)
+    fehler_62(fehler, "T-03 nacht")
+    assert {x["id"]: x for x in erg["tage"]}["T-03"]["nacht"]["art"] != "unterwegs"
     r["tage"]["T-03"]["nacht"] = {"ort": "O-03", "an_bord": True}
     erg, fehler = laufe(r, arten_=a)
     assert fehler == [] and {x["id"]: x for x in erg["tage"]}["T-03"]["nacht"]["art"] == "unterwegs"
+
+
+def test_unterkunft_nacht_aufenthalt_mit_art_bauen():
+    """Mit art: an Unterkunft, Nacht und Aufenthalt baut die Reise und nennt Art und Artname (#267 d, AC-4)."""
+    r = roh()
+    a = arten(nachtzug={"grundform": "aufenthalt", "name": "Nachtzug", "farbe": "schiefer"})
+    r["tage"]["T-03"]["nacht"] = {"ort": "O-03", "art": "nachtzug"}
+    erg, fehler = laufe(r, arten_=a)
+    assert fehler == [], fehler
+    u = erg["unterkuenfte"]
+    assert [u[k]["art"] for k in ("U-01", "U-02", "U-03")] == ["hotel", "hotel", "huette"]
+    n = {x["id"]: x for x in erg["tage"]}["T-03"]["nacht"]
+    assert (n["art"], n["art_name"]) == ("nachtzug", "Nachtzug")
+    assert erg["summe"]["unterkunftstypen"] == {"Hotel": 1, "Hütte": 1, "Nachtzug": 1}   # Nächte je Art, Name der Reise
+    r2, a2 = staedtereise()
+    erg, fehler = laufe(r2, FRAGEN, a2)
+    assert fehler == [] and erg["aufenthalte"]["A-02"]["art"] == "essen"
 
 
 def test_art_schluessel():

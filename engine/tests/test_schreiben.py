@@ -2267,3 +2267,55 @@ def test_einstellung_gleiche_sprache_ablehnung(repo):
     with pytest.raises(sb.Ablehnung) as e:
         s.schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"sprache": "de"}})
     assert meldet(str(e.value), "schreiben.einstellung_setzen.4")
+
+
+# ---------- Lesepfade typ im Schreibweg (#267 d) ----------
+
+def _beispiel_kopie(tmp_path):
+    r = tmp_path / "bsp"
+    shutil.copytree(BEISPIEL, r)
+    return r, r / "plan" / "routen.yaml"
+
+
+def test_ding_aendern_katalog_nach_art(tmp_path):
+    """Der Merkmalskatalog von ding_aendern richtet sich nach art; aus typ wird keiner abgeleitet (#267 d, AC-8). Das Setzen von
+    art räumt einen früheren typ aus dem Knoten (Aufräumen bleibt)."""
+    r, p = _beispiel_kopie(tmp_path)
+    a = sb.ding_aendern(r, IDA, {"ziel": "U-02", "merkmale": {"preis": "95 €"}, "quelle": "Test", "geprueft": "2026-11-04"})
+    assert "95 €" in a[1]
+    assert yaml.safe_load(p.read_text(encoding="utf-8"))["unterkuenfte"]["U-02"]["merkmale"]["preis"]["wert"] == "95 €"
+    # nur typ, ohne art: kein Katalog aus typ, der Probebau lehnt ab (62), die Datei bleibt unverändert
+    p.write_text(p.read_text(encoding="utf-8").replace("    art: pension\n", "    typ: Pension\n", 1), encoding="utf-8")
+    vorher = p.read_text(encoding="utf-8")
+    with pytest.raises(sb.Ablehnung) as e:
+        sb.ding_aendern(r, IDA, {"ziel": "U-02", "merkmale": {"preis": "96 €"}, "quelle": "Test", "geprueft": "2026-11-04"})
+    assert meldet(str(e.value), "pruefung.routen.62")
+    assert p.read_text(encoding="utf-8") == vorher
+    # art und ein früherer typ daneben: art gilt; art setzen entfernt typ
+    p.write_text(p.read_text(encoding="utf-8").replace("    typ: Pension\n", "    art: pension\n", 1)
+                 .replace("    art: gasthof\n", "    art: gasthof\n    typ: Tempel\n", 1), encoding="utf-8")
+    sb.ding_aendern(r, IDA, {"ziel": "U-03", "art": "pension", "grund": "eher eine Pension"})
+    u = yaml.safe_load(p.read_text(encoding="utf-8"))["unterkuenfte"]["U-03"]
+    assert u["art"] == "pension" and "typ" not in u
+
+
+def test_schreiben_ohne_art_schluessel_von():
+    """Im Schreibweg gibt es keinen Lesepfad typ mehr (#267 d, AC-9); der Name wird zusammengesetzt, damit der Test sich nicht
+    selbst findet."""
+    quelle = (WURZEL / "engine" / "schreiben.py").read_text(encoding="utf-8")
+    assert ("art_schluessel" + "_von") not in quelle
+    assert 'knoten.get("typ")' not in quelle and "knoten.get('typ')" not in quelle
+    assert not hasattr(sb, "art_schluessel" + "_von")
+
+
+def test_merkmal_einzelform_bleibt_les_und_schreibbar(tmp_path):
+    """Ein Merkmal mit einem einzelnen Eintrag ohne Liste bleibt gültig (Lesetoleranz, #267 Entscheidung 2, AC-11): wert_eintragen
+    führt es als Liste weiter, der alte Eintrag bleibt; der Kommentar zur Einzelform steht an der Stelle."""
+    import inspect
+    r, p = _beispiel_kopie(tmp_path)
+    assert isinstance(yaml.safe_load(p.read_text(encoding="utf-8"))["unterkuenfte"]["U-02"]["merkmale"]["preis"], dict)   # Einzelform
+    sb.wert_eintragen(r, IDA, {"ziel": "U-02", "merkmal": "preis", "wert": "99 €", "gilt": "2027-05-15", "quelle": "Test", "geprueft": "2026-11-04"})
+    preis = yaml.safe_load(p.read_text(encoding="utf-8"))["unterkuenfte"]["U-02"]["merkmale"]["preis"]
+    assert preis == [{"wert": "85 €", "quelle": "erfunden (Beispiel)", "notiz": "Beispielwert, erfunden"},
+                     {"wert": "99 €", "gilt": datetime.date(2027, 5, 15), "geprueft": datetime.date(2026, 11, 4), "quelle": "Test"}]
+    assert "Einzelform" in inspect.getsource(sb.wert_eintragen)

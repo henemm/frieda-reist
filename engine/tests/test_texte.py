@@ -158,6 +158,21 @@ def test_stufen_konstante_der_bestandssprache_ist_weg():
     assert not treffer, treffer
 
 
+def test_text_62_nennt_art_und_nachziehen():
+    """pruefung.routen.62 (Art fehlt an Unterkunft, Aufenthalt, Nacht) nennt nur noch art, nicht „typ oder art“, und den Weg über
+    neu.py nachziehen; {wo} ist der einzige Platzhalter, der Befehl bleibt unübersetzt (#267 d, AC-10)."""
+    erwartet = {
+        "de": "{wo}: braucht art (eine Art aus plan/arten.yaml). Steht noch der frühere Schlüssel typ, stellt „neu.py nachziehen“ ihn auf art um.",
+        "en": '{wo}: needs art (a kind from plan/arten.yaml). If the old key typ is still there, "neu.py nachziehen" converts it to art.',
+    }
+    for k, text in erwartet.items():
+        assert texte.sprache(k).TEXTE["pruefung.routen.62"] == text, k
+    for k in _sprachen():
+        text = texte.sprache(k).TEXTE["pruefung.routen.62"]
+        assert set(PLATZHALTER.findall(text)) == set(PLATZHALTER.findall("{wo}")), k
+        assert "neu.py nachziehen" in text and "art" in text, k
+
+
 def test_bestand_reise_kommt_nicht_mehr_vor():
     """Die Bestandssprache (Reise ohne Feld sprache gilt als deutsch) ist aus engine/ verschwunden (#267 c2, AC-4); der Name
     wird zusammengesetzt, damit der Test sich nicht selbst findet."""

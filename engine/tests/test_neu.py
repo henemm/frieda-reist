@@ -331,9 +331,9 @@ def test_nachziehen_nur_schluessel(tmp_path):
     assert any(t.startswith("OPEN E-23") for t in m) and "U-01: typ “Hotel” → art hotel" in m and "V-03: art planung → wann planung" in m
     assert "V-03: bereich pension → art pension" in m and "V-02: art unterwegs → wann unterwegs" in m
     assert "arten.yaml hotel: attribute preis gets rolle kosten" in m and any(t.startswith("reise.json") for t in m)
-    p.write_text(alt.replace("nach: O-01, quelle", "nach: O-01, art: bus, quelle"), encoding="utf-8")
-    vorher = bauen.Bauer(r, tmp_path / "v").daten()   # baut über die Brücke der alten Schlüssel
-    p.write_text(alt, encoding="utf-8")
+    unveraendert = tmp_path / "bsp-unveraendert"   # Vergleichsstand: die Beispielreise selbst (der Bau liest typ nicht mehr, #267 d)
+    shutil.copytree(beispiel, unveraendert)
+    vorher = bauen.Bauer(unveraendert, tmp_path / "v").daten()
     m = neu.nachziehen(r, {"E-23": "bus"})
     assert "E-23: art bus (given)" in m and not [t for t in m if t.startswith("OPEN")]
     text = p.read_text(encoding="utf-8")
@@ -345,6 +345,38 @@ def test_nachziehen_nur_schluessel(tmp_path):
     assert nachher["route"]["arten"]["hotel"]["kosten"] == "preis" and nachher["route"]["arten"]["herberge"]["kosten"] == "preis"   # pauschal; „pro Person“ nimmt die Organisator:in mit merkmal_definieren (rolle keine) heraus
     assert json.loads((r / "reise.json").read_text(encoding="utf-8"))["etappen_ebenen"]["unterwegs"][0] == "Höhenprofil"
     assert neu.nachziehen(r) == []                                        # zweiter Lauf: nichts mehr zu tun
+
+
+def test_nachziehen_stellt_typ_an_unterkunft_und_nacht_um_bau_gruen(tmp_path):
+    """Ende zu Ende (#267 d, AC-7): eine Reise mit dem früheren typ an einer Unterkunft und einer Nacht baut nicht (62, laut);
+    neu.py nachziehen stellt beide Stellen auf art um, danach baut sie grün; ein zweiter Lauf ändert keine Datei."""
+    import shutil
+    beispiel = Path(__file__).resolve().parents[2] / "beispiel/reisen/beispielreise"
+    r = tmp_path / "bsp"
+    shutil.copytree(beispiel, r)
+    p = r / "plan/routen.yaml"
+    text = p.read_text(encoding="utf-8")
+    assert text.count("strecken: [E-02], nacht: U-04}") == 1 and text.count("    art: pension\n") == 1
+    text = text.replace("strecken: [E-02], nacht: U-04}", "strecken: [E-02], nacht: {ort: O-04, art: herberge}}")   # Nacht als Eintrag
+    p.write_text(text, encoding="utf-8")
+    vorher = bauen.Bauer(r, tmp_path / "v0").daten()["route"]
+    p.write_text(text.replace("    art: pension\n", "    typ: Pension\n").replace("nacht: {ort: O-04, art: herberge}", "nacht: {ort: O-04, typ: Herberge}"),
+                 encoding="utf-8")
+    with pytest.raises(bauen.BauFehler) as e:
+        bauen.Bauer(r, tmp_path / "v1").daten()
+    assert meldet("\n".join(e.value.meldungen), "pruefung.routen.62") and "nachziehen" in "\n".join(e.value.meldungen)
+    m = neu.nachziehen(r)
+    assert "U-02: typ “Pension” → art pension" in m and "T-03 nacht: typ “Herberge” → art herberge" in m
+    neu_text = p.read_text(encoding="utf-8")
+    assert "typ: Pension" not in neu_text and "typ: Herberge" not in neu_text
+    assert "nacht: {ort: O-04, art: herberge}" in neu_text
+    nachher = bauen.Bauer(r, tmp_path / "v2").daten()["route"]
+    assert nachher["unterkuenfte"]["U-02"]["art"] == vorher["unterkuenfte"]["U-02"]["art"] == "pension"
+    n = lambda d: next(t for t in d["tage"] if t["id"] == "T-03")["nacht"]   # noqa: E731
+    assert n(nachher)["art"] == n(vorher)["art"] == "herberge"
+    stand = {f: f.read_bytes() for f in r.rglob("*") if f.is_file()}
+    assert neu.nachziehen(r) == []                                        # zweiter Lauf: nichts mehr zu tun
+    assert {f: f.read_bytes() for f in r.rglob("*") if f.is_file()} == stand
 
 
 def test_frage_schliessen_schreibt_in_der_sprache_der_reise(tmp_path):

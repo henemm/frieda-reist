@@ -1,0 +1,51 @@
+F.FFF.F.FFFF                                                             [100%]
+=================================== FAILURES ===================================
+E   AssertionError: []
+    assert []
+/home/hem/frieda-reist/.claude/worktrees/twinkly-yawning-peacock/engine/tests/test_routen.py:490: AssertionError: []
+E   AssertionError: []
+    assert []
+/home/hem/frieda-reist/.claude/worktrees/twinkly-yawning-peacock/engine/tests/test_routen.py:490: AssertionError: []
+E   AssertionError: []
+    assert []
+/home/hem/frieda-reist/.claude/worktrees/twinkly-yawning-peacock/engine/tests/test_routen.py:490: AssertionError: []
+E   AssertionError: []
+    assert []
+/home/hem/frieda-reist/.claude/worktrees/twinkly-yawning-peacock/engine/tests/test_routen.py:490: AssertionError: []
+E   AssertionError: de
+    assert '{wo}: brauch.../arten.yaml).' == '{wo}: brauch...n auf art um.'
+      
+      - {wo}: braucht art (eine Art aus plan/arten.yaml). Steht noch der frühere Schlüssel typ, stellt „neu.py nachziehen“ ihn auf art um.
+      + {wo}: braucht typ oder art (eine Art aus plan/arten.yaml).
+/home/hem/frieda-reist/.claude/worktrees/twinkly-yawning-peacock/engine/tests/test_texte.py:169: AssertionError: de
+E   Failed: DID NOT RAISE BauFehler
+/home/hem/frieda-reist/.claude/worktrees/twinkly-yawning-peacock/engine/tests/test_neu.py:365: Failed: DID NOT RAISE BauFehler
+E   Failed: DID NOT RAISE Ablehnung
+/home/hem/frieda-reist/.claude/worktrees/twinkly-yawning-peacock/engine/tests/test_schreiben.py:2290: Failed: DID NOT RAISE Ablehnung
+E   assert 'art_schluessel_von' not in '"""Schreibw...argv[1:]))\n'
+      
+      'art_schluessel_von' is contained here:
+        "art") or art_schluessel_von(knoten)
+                katalog = (route.get("merkmale") or {}).get(art) or []
+                merkmale, fest = merkmale_fest_trennen({"merkmale": merkmale}, was if was != "strecke" else "strecke", katalog)
+                merkmale = merkmale or {}
+                # feste Merkmale der Grundform -> die Parameter der Teile...
+      
+      ...Full output truncated (2881 lines hidden), use '-vv' to show
+/home/hem/frieda-reist/.claude/worktrees/twinkly-yawning-peacock/engine/tests/test_schreiben.py:2306: assert 'art_schluessel_von' not in '"""Schreibw...argv[1:]))\n'
+E   assert 'Einzelform' in 'def wert_eintragen(reise_dir, wer, args, heute=None):\n    """Einen oder mehrere Werte eines Merkmals an U-…, E-… ode...eue if "geprueft" in e))) if any("geprueft" in e for e in neue) else "")\n            + ".")\n    return titel, text\n'
+     +  where 'def wert_eintragen(reise_dir, wer, args, heute=None):\n    """Einen oder mehrere Werte eines Merkmals an U-…, E-… ode...eue if "geprueft" in e))) if any("geprueft" in e for e in neue) else "")\n            + ".")\n    return titel, text\n' = <function getsource at 0x7812f33eda80>(<function wert_eintragen at 0x7812f1194d60>)
+     +    where <function getsource at 0x7812f33eda80> = <module 'inspect' from '/usr/lib/python3.12/inspect.py'>.getsource
+     +    and   <function wert_eintragen at 0x7812f1194d60> = sb.wert_eintragen
+/home/hem/frieda-reist/.claude/worktrees/twinkly-yawning-peacock/engine/tests/test_schreiben.py:2321: assert 'Einzelform' in 'def wert_eintragen(reise_dir, wer, args, heute=None):\n    """Einen oder mehrere Werte eines Merkmals an U-…, E-… ode...eue if "geprueft" in e))) if any("geprueft" in e for e in neue) else "")\n            + ".")\n    return titel, text\n'
+=========================== short test summary info ============================
+FAILED engine/tests/test_routen.py::test_unterkunft_typ_ohne_art_bricht_mit_62
+FAILED engine/tests/test_routen.py::test_aufenthalt_typ_ohne_art_bricht_mit_62
+FAILED engine/tests/test_routen.py::test_nacht_nur_typ_bricht_laut_mit_62 - A...
+FAILED engine/tests/test_routen.py::test_nacht_an_bord_mit_typ_bricht_mit_62
+FAILED engine/tests/test_texte.py::test_text_62_nennt_art_und_nachziehen - As...
+FAILED engine/tests/test_neu.py::test_nachziehen_stellt_typ_an_unterkunft_und_nacht_um_bau_gruen
+FAILED engine/tests/test_schreiben.py::test_ding_aendern_katalog_nach_art - F...
+FAILED engine/tests/test_schreiben.py::test_schreiben_ohne_art_schluessel_von
+FAILED engine/tests/test_schreiben.py::test_merkmal_einzelform_bleibt_les_und_schreibbar
+9 failed, 3 passed, 329 deselected in 7.52s
