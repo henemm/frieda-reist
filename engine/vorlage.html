@@ -3722,22 +3722,35 @@ function zuEntscheiden(m) {
 }
 // Zu buchen: je Nacht die Unterkunft (vorläufig, solange die Wahl offen ist), dazu Bewegungen und Aufenthalte mit Buchungsstand;
 // jede Zeile führt zur Heimat (Nacht des Tags, Tagesseite)
+// Erledigtes steht zugeklappt (#314): Gebuchtes unter „Gebucht (n)“; ist alles gebucht, wird ganz „Zu buchen“ zugeklappt und
+// steht am Ende von „Zu tun“ (Rückgabe true), damit Aufgaben und Fragen vorn stehen
 function zuBuchen(m) {
-  if (!PLAN_ANSICHT) return;
+  if (!PLAN_ANSICHT) return false;
   const liste = buchungen(PLAN_ANSICHT);
-  if (!liste.length) return;
-  const gebucht = liste.filter(x => x.gebucht).length;
-  const s = el("section", {class: "ziel", id: "zu-buchen"}, listenTitel(T("seite.wahl.zu_buchen"), T("seite.stand.von_gesamt", {a: gebucht, b: liste.length}), gebucht < liste.length));
-  s.append(el("div", {class: "wliste"}, liste.map(x => listenZeile("nacht", x.sym, x.titel, x.unter, x.href, null, chip(x.zustand, x.text)))));
+  if (!liste.length) return false;
+  const zeile = x => listenZeile("nacht", x.sym, x.titel, x.unter, x.href, null, chip(x.zustand, x.text));
+  const offen = liste.filter(x => !x.gebucht), gebucht = liste.filter(x => x.gebucht);
+  const titel = listenTitel(T("seite.wahl.zu_buchen"), T("seite.stand.von_gesamt", {a: gebucht.length, b: liste.length}), offen.length > 0);
+  if (!offen.length) {
+    const d = el("details", {class: "weg ziel", id: "zu-buchen"}, el("summary", {}, titel), el("div", {class: "wliste"}, gebucht.map(zeile)));
+    d.open = decodeURIComponent(location.hash.slice(1)) === "zu-buchen";   // ein Link dorthin zeigt ihn offen, auch nach neuem Zeichnen
+    m.append(d);
+    return true;
+  }
+  const s = el("section", {class: "ziel", id: "zu-buchen"}, titel, el("div", {class: "wliste"}, offen.map(zeile)));
+  if (gebucht.length) s.append(el("details", {class: "weg"}, el("summary", {}, T("seite.wahl.gebucht_n", {n: gebucht.length})), el("div", {class: "wliste"}, gebucht.map(zeile))));
   m.append(s);
+  return false;
 }
 function ansichtZuTun(m) {
-  const oben = el("div", {class: "tun-raster"});
-  zuEntscheiden(oben); zuBuchen(oben);
+  const oben = el("div", {class: "tun-raster"}), unten = el("div", {});
+  zuEntscheiden(oben);
+  zuBuchen(el("div", {})) ? zuBuchen(unten) : zuBuchen(oben);
   if (oben.childNodes.length) m.append(oben);
   if (B("aufgaben")) { const a = el("section", {class: "ziel", id: "aufgaben"}); ansichtAufgaben(a); m.append(a); }
   if (B("fragen")) ansichtFragen(m);
   if (B("rueckmeldungen")) { const r = el("section", {class: "ziel", id: "rueckmeldungen"}); ansichtRueckmeldungen(r); m.append(r); }
+  if (unten.childNodes.length) m.append(...unten.childNodes);
 }
 
 function ansichtGruppe(m, typ, titel) {

@@ -78,9 +78,9 @@ def test_reiseueberblick(tmp_path, browser):
         assert karte[0] == "https://www.google.com/maps/search/?api=1&query=50.9792%2C14.1128", karte
         assert karte[1:] in ([], ["https://maps.apple.com/?q=Pension%20Burgblick&ll=50.9792,14.1128"]), karte
         # je Tag: Nacht, dann Bewegungen und Aufenthalte mit Buchungsstand; eine Buchung (B-…, #76) ist das Ziel und nennt
-        # ihre Frist, sonst führen Bewegung und Aufenthalt zum Tag
-        assert [x[1] for x in a["buchen"]] == ["gebucht", "nicht gebucht", "gebucht · Frist 13.5."] + ["nicht gebucht"] * 3, a["buchen"]   # Datum im Jahr der Reise ohne Jahr
-        assert [x[0] for x in a["buchen"]][:4] == ["#B-01", "#U-02", "#B-02", "#T-02"], a["buchen"]
+        # ihre Frist, sonst führen Bewegung und Aufenthalt zum Tag. Offenes zuerst, Gebuchtes danach (zugeklappt, #314)
+        assert [x[1] for x in a["buchen"]] == ["nicht gebucht"] * 4 + ["gebucht", "gebucht · Frist 13.5."], a["buchen"]   # Datum im Jahr der Reise ohne Jahr
+        assert [x[0] for x in a["buchen"]] == ["#U-02", "#T-02", "#U-04", "#T-04", "#B-01", "#B-02"], a["buchen"]
         assert a["ueberPlan"] > 0
         assert [x[0] for x in a["tage"]] == ["#T-01", "#T-02", "#T-03", "#T-04"]
         assert [x[2] for x in a["tage"]] == ["gebucht", "nicht gebucht", "nicht gebucht", None], a["tage"]

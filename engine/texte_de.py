@@ -552,6 +552,7 @@ TEXTE = {
     "seite.wahl.vergleich_schliessen": "Vergleich schließen",
     "seite.wahl.verworfen_n": "Verworfen ({n})",
     "seite.wahl.vorlaeufig": " (vorläufig)",
+    "seite.wahl.gebucht_n": "Gebucht ({n})",
     "seite.wahl.zu_buchen": "Zu buchen",
     "seite.wahl.zu_entscheiden": "Zu entscheiden",
     "seite.wahl.zur_wahl": "Zur Wahl",
