@@ -69,3 +69,125 @@ Stufe 1 des Epics #345 (Weg C, Entscheidung des Product Owners 5.11.2026): Reise
 - **Tests**: kein echtes Git nötig, schnell; Testdauer der Suite nicht spürbar erhöhen.
 - **Parallele Sitzung** zu #347 (Stufe 2) läuft in der Cloud; die Schnittstelle des Speichers (Funktionsnamen, Vorgangs-Nummer) muss dort passen — in der Spec klar benennen.
 - **Texte**: Ausgaben der Befehle für den Betreiber folgen dem Muster von `konten.py` (englisch, kein Katalog); Fehler, die ein Mensch über den Konnektor sieht, kommen erst in Stufe 2.
+
+## Analysis
+
+### Type
+Feature (Stufe 1 des Epics #345, Weg C)
+
+### Entscheidung zur Kernfrage: Was ist eine Version? (Variante B)
+
+| Variante | Stand-Nummer | Vorteil | Nachteil |
+|---|---|---|---|
+| A: eine Tabelle, Zeile je Datei-Version (Wortlaut Issue) | Zahl der Datei-Versionen | wörtlich wie im Issue | Import = +N, ein Vorgang mit 3 Dateien = +3; „Reise-Stand“ auf der Seite (#226: je Schreibvorgang +1) springt; Person/Grund N-fach |
+| **B: `vorgaenge` + `versionen` (gewählt)** | höchster `stand` der Reise, je Vorgang +1 | wie heute (`stand.nummer` zählt Commits = Vorgänge); atomar; Angaben einmal je Vorgang | zwei Tabellen, ein Join |
+| C: A plus Spalte `vorgang`, Stand = COUNT(DISTINCT vorgang) | wie B | nah am Wortlaut | Angaben doppelt, Stimmigkeit nur per Konvention |
+
+Auslegung, keine Abweichung: Das Issue nennt die Vorgangs-Nummer selbst als Spalte der Versionen. „Stand-Nummer = Zahl ihrer Versionen“ ist die Kurzform des heutigen Verhaltens (ein Schreibvorgang = +1). Das steht im ADR-0008 und als Kommentar in #346.
+
+**Stand-Nummer eindeutig festgelegt:** Jeder Vorgang einer Reise bekommt `stand = max(stand der Reise) + 1` innerhalb von `BEGIN IMMEDIATE`; der Anfangsvorgang beim Import bekommt `stand = ab + 1` (Vorgabe `ab = 0`; Stufe 3 übergibt die bisherige Git-Zahl, damit Seiten nicht zurückspringen). `stand_nummer(reise)` liefert `max(stand)`, nie `COUNT`; `None` für eine unbekannte Reise (wie `stand.nummer`).
+
+### Schema (`PRAGMA user_version = 1`, `CREATE … IF NOT EXISTS` wie konten.py)
+
+```
+vorgaenge(
+  nummer   INTEGER PRIMARY KEY AUTOINCREMENT,  -- global, nie neu vergeben
+  reise    TEXT NOT NULL,
+  stand    INTEGER NOT NULL,                   -- Stand-Nummer der Reise
+  wann     TEXT NOT NULL,                      -- UTC „…Z“ (stand.zeit_iso)
+  wer      TEXT NOT NULL, rolle TEXT NOT NULL DEFAULT '',
+  werkzeug TEXT NOT NULL, titel TEXT NOT NULL, grund TEXT NOT NULL DEFAULT '',
+  kennung  TEXT UNIQUE,                        -- Wert des Aufrufers (heute FR_VORGANG), NULL erlaubt
+  herkunft TEXT NOT NULL DEFAULT '',           -- „import:<ordnername>“, „zuruecksetzen:<stand>“
+  UNIQUE(reise, stand), UNIQUE(nummer, reise))
+versionen(
+  vorgang INTEGER NOT NULL, reise TEXT NOT NULL, pfad TEXT NOT NULL,
+  inhalt BLOB,                                 -- NULL = gelöscht (Tombstone)
+  pruefsumme TEXT,                             -- SHA-256 hex der Bytes, NULL bei Tombstone
+  PRIMARY KEY(vorgang, pfad),
+  FOREIGN KEY(vorgang, reise) REFERENCES vorgaenge(nummer, reise))
+INDEX versionen_pfad ON versionen(reise, pfad, vorgang)
+```
+
+- `titel` und `rolle` ergänzen das Issue-Schema: Der Commit trägt heute Titel und Text, `stand.aenderungen()` zeigt den Titel; ohne Spalte verlöre Stufe 2 die Anzeige.
+- Stand `s` einer Reise = je Pfad die Zeile mit dem höchsten `vorgang` unter den Vorgängen mit `stand <= s`; `inhalt IS NULL` → Datei fehlt.
+- Unveränderte Dateien (gleiche Prüfsumme) erzeugen keine Zeile; ein Vorgang ganz ohne Änderung wird abgelehnt (wie „nichts geändert“ im Schreibweg).
+
+### Die acht Fragen aus dem Kontext
+
+1. **Version:** Variante B (oben).
+2. **Gelöschte Dateien:** Tombstone-Zeile (`inhalt` und `pruefsumme` NULL). Export und Zurücksetzen lassen sie weg; Wiederkehr = neue Version.
+3. **Binärdateien:** schon jetzt als BLOB in derselben Tabelle (Akzeptanz Byte-gleich; Beispiele < 200 KB). Auslagerung/inhaltsadressierte Ablage erst Stufe 4.
+4. **Was zum Ordner zählt:** alle regulären Dateien rekursiv, auch versteckte (`.gitkeep`). Nicht: `.git`; Symlinks → Import bricht mit Fehler ab (kein stilles Auslassen); leere Ordner nicht erhaltbar (ADR). Rechte und Zeitstempel werden nicht gespeichert; Export schreibt Dateien 0644, Ordner 0755. Byte-gleich = gleiche Pfadmenge und gleiche Bytes. `reise.json` ist Quelle und kommt mit. Pfade: POSIX, relativ, kein `..`, kein NUL; der Export prüft, dass jeder aufgelöste Pfad im Ziel bleibt.
+5. **Nur anhängen:** zwei Schichten. (a) Trigger `BEFORE UPDATE/DELETE … RAISE(ABORT)` auf beiden Tabellen plus `PRAGMA recursive_triggers = ON` (sonst löscht `INSERT OR REPLACE`, ohne dass ein DELETE-Trigger feuert). (b) `set_authorizer` in der Verbindung von `db()`, erst nach dem Schema-Aufbau: verweigert UPDATE/DELETE auf beide Tabellen, DROP TABLE/TRIGGER/INDEX, ALTER, `PRAGMA writable_schema`. Ehrliche Grenze im ADR: Schutz gegen Software-Fehler und Fehlbedienung, nicht gegen jemanden mit Schreibzugriff auf die Datei; Gegenmittel sind `pruefen` (Prüfsummen nachrechnen) und die Sicherung außer Haus. `SQLITE_DBCONFIG_DEFENSIVE` im Test ausprobieren, keine Voraussetzung.
+6. **Zurücksetzen:** neuer Vorgang, `werkzeug = 'zuruecksetzen'`, `herkunft = 'zuruecksetzen:<stand>'`, Person und Grund Pflicht; neue Versionen für alle Pfade, die vom Ziel-Stand abweichen (alter Inhalt oder Tombstone). Ohne Abweichung: Fehler, kein Vorgang.
+7. **Eine Datenbank je Instanz** (`reise` in jeder Zeile, Aufteilung später möglich). WAL, `BEGIN IMMEDIATE`, `timeout = 10`; Sperrfehler als `sqlite3.OperationalError` weiterreichen. Der Messlauf in #347 bestätigt das.
+8. **Sicherung:** wie `konten.sichern()` nach `<Speicher>/sicherung/reisen.db` (Online-Backup, `journal_mode = DELETE` in der Kopie, `integrity_check`, `os.replace`). Rückspieltest als Test: Schnappschuss → als neue Datenbank öffnen → Export vergleichen. Wegbringen außer Haus = Server-Backup der Instanz (Doku).
+
+### Öffentliche Schnittstelle `engine/reisespeicher.py` (Grundlage für #347, Feinheiten in der Spec)
+
+```
+pfad() -> Path                     # instanz.speicher() / "reisen.db"
+db() -> sqlite3.Connection         # Ordner 700, Datei 600, WAL, foreign_keys, recursive_triggers, Schema, Authorizer
+vorgang_schreiben(reise, dateien: dict[str, bytes | None], wer, werkzeug, titel,
+                  grund="", kennung=None, rolle="", wann=None, herkunft="") -> Vorgang(nummer, stand)
+    # eine Transaktion; None = löschen; unverändert übersprungen; leer → Fehler;
+    # schon vorhandene Kennung → VorgangVorhanden(nummer, stand) (Wiederholung ungefährlich)
+stand_nummer(reise) -> int | None
+aktueller_stand(reise, bis=None) -> dict[str, bytes]     # bis = Stand-Nummer
+vorgang_eingetragen(kennung) -> Vorgang | None          # ersetzt git log --grep Frieda-Vorgang
+verlauf(reise, n=None) -> list[dict]   # nummer=stand, zeit, was=titel, wer (wie stand.aenderungen) + vorgang, werkzeug, grund, dateien; neueste zuerst
+exportieren(reise, ziel, bis=None)     # ziel fehlt oder ist leer
+importieren(ordner, reise, wer, grund="", ab=0) -> Vorgang
+zuruecksetzen(reise, bis, wer, grund) -> Vorgang
+pruefen(reise=None) -> list            # Abweichungen der Prüfsummen
+sichern() -> Path | None
+main(a): importieren | exportieren [--bis N] | verlauf | zuruecksetzen | pruefen | sichern
+```
+
+`stand` (je Reise, zeigt die Seite) und `nummer` (global) sind verschiedene Dinge. Die Kennung erzeugt der Aufrufer vor dem Schreiben; nur so geht die Nachprüfung nach einer Zeitüberschreitung. Die Sperre je Reise bleibt in `schreiben.py`.
+
+### Affected Files (with changes)
+
+| File | Change Type | Description |
+|------|-------------|-------------|
+| `engine/reisespeicher.py` | CREATE | Modul wie oben (~300 Zeilen) |
+| `engine/tests/test_reisespeicher.py` | CREATE | Import/Export Byte-gleich (beide Beispielreisen, auch `bis=`), Tombstone, nur anhängen auf der Dienst-Verbindung (UPDATE, DELETE, `INSERT OR REPLACE`, DROP TRIGGER, DROP TABLE), Kennung idempotent, Stand-Nummer (`max`, `ab`), Zurücksetzen, Symlink abgelehnt, Pfad-Ausbruch abgelehnt, Sicherung mit Rückspieltest, `pruefen`, Befehle (~250 Zeilen, < 1 s) |
+| `engine/instanz.py` | MODIFY | `speicher()`: `FR_SPEICHER`, Vorgabe `seiten() / "_speicher"`, im Kopfkommentar dokumentiert (Muster `konten()`) |
+| `betrieb/einstellungen.beispiel` | MODIFY | Zeile `FR_SPEICHER` (`test_beispiel_einstellungen_sind_vollstaendig` verlangt jeden FR_-Namen) |
+| `betrieb/waechter.sh` | MODIFY | zweite Sicherung `reisespeicher.py sichern`, Fehlschlag → `fr_melden high`, Kopfkommentar |
+| `engine/tests/test_betrieb.py` | MODIFY | Wächter-Attrappe und Erwartung `gesichert == "konten.py\n"` auf beide Sicherungen erweitern |
+| `engine/tests/conftest.py` / `engine/tests/test_konten.py` | MODIFY | `FR_SPEICHER` in die Env-Listen, damit Tests sie nicht erben |
+| `engine/tests/test_texte.py` | MODIFY (optional) | Modul in `PY_DATEIEN`, falls es sichtbare Texte hat (Befehlsausgaben für Betreiber englisch wie `konten.py`) |
+| `docs/adr/0008-reisespeicher.md` | CREATE | Entscheidung Weg C, Begründung, Messwerte aus #345 (anonym), Variante B, Grenzen (nur anhängen, leere Ordner, Rechte), Folgen für Stufen 2–4 |
+| `docs/adr/README.md` | MODIFY | Index-Zeile 0008 |
+| `docs/betrieb.md` | MODIFY | Tabelle „Was wohin gehört“, Sicherung/Zurückholen, Wächter |
+| `betrieb/deploy.sh` | — | erst Stufe 2 (kein Dienst importiert das Modul) |
+
+### Scope Assessment
+- Files: 2–3 neu, 8–9 geändert
+- Estimated LoC: +≈700 / −≈5 (davon ~300 Modul, ~250 Tests, ~120 Doku)
+- Risk Level: LOW–MEDIUM — neues, isoliertes Modul, das in Stufe 1 kein Dienst nutzt; Berührung mit Bestehendem nur in Wächter, Einstellungen und Doku. Mittel nur wegen der Schnittstelle, auf die Stufe 2 baut.
+
+### Technical Approach
+Variante B mit Schema und Schnittstelle wie oben; Vorbild `konten.py` für `db()`/`sichern()`. Reihenfolge: ADR-0008 und Spec (Schnittstelle früh für #347) → Tests rot → Modul → `instanz.speicher()`, Einstellungen, Wächter mit Attrappe → Doku → Gesamtlauf.
+
+Für die Spec festhalten:
+- `PRAGMA foreign_keys = ON` und `recursive_triggers = ON` je Verbindung; `executescript` committet implizit, Schema getrennt von Transaktionen.
+- Authorizer erst nach dem Schema; `sichern()` und `pruefen` mit eigenen Verbindungen.
+- Dateien nur binär lesen/schreiben (kein `read_text`, keine Zeilenend-Umwandlung).
+- Kein `neu.py nachziehen` nötig: Das Format der Reisedaten ändert sich nicht.
+- Keine Instanzwerte: Ort nur über `instanz.speicher()`; Tests über `tmp_path` und `FR_SPEICHER`.
+
+### Dependencies
+- Upstream: Standardbibliothek (`sqlite3`, `hashlib`), `instanz.py`, `stand.zeit_iso`.
+- Downstream ab Stufe 2 (#347): `schreiben.py` (Vorgang, Nachprüfung), `stand.py` (`nummer`, `aenderungen`), `konnektor.py`, Rückmeldedienst, `deploy.sh`; ab Stufe 3 Veröffentlichen und Nachziehen (Import mit `ab`).
+
+### Spätere Stufen / Hinweise fürs ADR (blockieren Stufe 1 nicht)
+- Alter Git-Verlauf bei der Umstellung (Stufe 3): Anfangsvorgang mit Vermerk „vorher in Git“ und übernommener Stand-Nummer (`ab`) genügt aus Sicht des Tech Leads; jeden Commit nachzuspielen ist optional. Entscheidung erst in Stufe 3.
+- Grenze der Unveränderlichkeit wird im ADR ehrlich benannt (s. Frage 5).
+- Hash-Kette über Vorgänge, inhaltsadressierte Ablage für Fotos: später, nicht jetzt.
+- Schnittstelle als Kommentar in #347 veröffentlicht, Sitzung „347“ benachrichtigt.
+
+### Open Questions
+Keine, die Stufe 1 blockieren.
