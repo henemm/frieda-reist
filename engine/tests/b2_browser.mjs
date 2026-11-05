@@ -47,27 +47,24 @@ for (const [breite, hoehe] of [[390, 844], [820, 1180], [1300, 900]]) {
     if (!box) return null;
     const tab = box.querySelector(".wm-tabelle"), karten = [...box.querySelectorAll(".wm-karte")];
     const werte = vglTeile(box.dataset.vgl);
-    // jede Quelle eines gezeigten Werts steht in der Herkunftszeile ihrer Möglichkeit
-    const quellenDa = werte.w.optionen.filter(o => box.querySelector(`tr.wm-zeile[data-vgl-zeile$="|${o.id}"]`)).every(o => {
-      const zeile = box.querySelector(`tr.wm-zeile[data-vgl-zeile$="|${o.id}"]`), hk = zeile.nextElementSibling;
-      const q = Object.values(o.merkmale || {}).flatMap(v => [v, ...(v.je_datum || [])]).map(v => v.quelle).filter(Boolean);
-      return !q.length || (hk && hk.classList.contains("wm-herkunft") && q.every(x => hk.textContent.includes(x))); });
     return {id: box.dataset.vgl, tabelle: tab ? sichtbar(tab) : false, karten: karten.filter(sichtbar).length,
       iImVergleich: box.querySelectorAll(":is(.wm-karte, tr.wm-zeile) :is(.mk-i, [data-mk-i], [data-mk-h])").length,
-      herkunftKarten: karten.filter(k => k.querySelector(".herkunft")).length, herkunftZeilen: box.querySelectorAll("tr.wm-herkunft").length,
-      herkunftText: (box.querySelector(".herkunft") || {}).textContent || "", quellenDa,
-      herkunftOhneAufklappen: [...box.querySelectorAll("tr.wm-herkunft")].every(r => !r.hasAttribute("data-vgl-zeile")),
+      // #342: die Herkunft steht nie als eigene Zeile oder offen im Vergleich; Karte: zugeklappt hinter „Herkunft“, Tabelle: in den Einzelheiten
+      herkunftKarten: karten.filter(k => k.querySelector("details.wm-herkunft:not([open]) .herkunft")).length, herkunftZeilen: box.querySelectorAll("tr.wm-herkunft").length,
+      herkunftOffenZugeklappt: [...box.querySelectorAll(".wm-tab .herkunft")].length,
+      herkunftText: (box.querySelector(".wm-karte details.wm-herkunft .herkunft") || {}).textContent || "",
       ueberlauf: document.documentElement.scrollWidth > innerWidth}; }, sicht);
   if (vergleich) vergleich.inSpalte = inSpalte;
-  if (breite === 1300 && vergleich && vergleich.herkunftZeilen) {
-    // Sortieren nimmt die Herkunftszeile mit: sie steht danach weiter direkt unter ihrer Möglichkeit
+  if (breite === 1300 && vergleich) {
     const box = `#main [data-vgl="${vergleich.id}"]`;
-    await p.locator(`${box} [data-vgl-sort]`).nth(1).click(); await p.waitForTimeout(200);
-    vergleich.nachSortieren = await p.evaluate(box => { const r = [...document.querySelectorAll(`${box} tr.wm-herkunft`)];
-      return r.length > 0 && r.every(x => x.previousElementSibling.classList.contains("wm-zeile")); }, box);
     // Aufgeklappte Einzelheiten gehören zum Vergleich: auch dort kein i (#58)
     await p.locator(`${box} tr.wm-zeile`).first().click({position: {x: 12, y: 12}}); await p.waitForTimeout(200);
     vergleich.aufgeklappt = await p.evaluate(box => ({mehr: document.querySelectorAll(`${box} tr.wm-mehr`).length,
+      // die Herkunft aller Quellen der Möglichkeit steht jetzt in ihren aufgeklappten Einzelheiten (#342)
+      herkunft: (() => { const z = document.querySelector(`${box} tr.wm-zeile.auf`), h = document.querySelector(`${box} tr.wm-mehr .herkunft`);
+        const o = vglTeile(document.querySelector(box).dataset.vgl).w.optionen.find(x => z && z.dataset.vglZeile.endsWith("|" + x.id));
+        const q = Object.values((o && o.merkmale) || {}).flatMap(v => [v, ...(v.je_datum || [])]).map(v => v.quelle).filter(Boolean);
+        return !!h && h.textContent.startsWith("Quellen: ") && q.every(x => h.textContent.includes(x)); })(),
       iImKasten: document.querySelectorAll(`${box} :is(.wm-tabelle, .wm-karten) :is(.mk-i, [data-mk-i], [data-mk-h])`).length}), box);
     // Knöpfe im Kasten nach Art (für die Abnahme-Seite)
     vergleich.knopfArten = await p.evaluate(box => { const n = {};

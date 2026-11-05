@@ -320,7 +320,7 @@ def test_stornierte_buchung_eingeklappt_am_ding(tmp_path, browser):
 def test_b2_wissen_orte_vergleich(tmp_path, browser):
     """#58 (Entscheidung PO 1.11.2026), Plan A fest: Weitere Wege am Rechner als Tabelle, am Handy und Tablet als Einträge mit
     einer Zeile Kennzahlen, nie als Kacheln; Ortsseite als Ebenen ohne Kasten in einer Lesespalte; Vergleich ohne „i“, die
-    Herkunft einmal je Möglichkeit (Karte unten, Tabelle als Zeile darunter), Tabelle nur am Rechner (in breitem Behälter
+    Herkunft einmal je Möglichkeit nur auf Anfrage (Karte hinter „Herkunft“, Tabelle in den aufgeklappten Einzelheiten, #342), Tabelle nur am Rechner (in breitem Behälter
     von Anfang an, in einer Spalte unter 960 px zum Umschalten, #332)."""
     # Erfundene Abwandlung: der Gasthof in Hohnstein (V-03.b) ist nicht verworfen, damit die Nacht zwei gültige Möglichkeiten
     # mit Quellen hat; V-03.a bleibt gewählt, der Plan bleibt fest (sonst gäbe es keine „Weiteren Wege“)
@@ -334,15 +334,15 @@ def test_b2_wissen_orte_vergleich(tmp_path, browser):
         assert w["zahlen"] and all(z.strip() for z in w["zahlen"]), (breite, w)
         assert o["spalte"] and o["abschnitte"] == 2 and o["kaesten"] == 0 and o["allesSichtbar"], (breite, o)
         assert v and v["iImVergleich"] == 0 and not v["ueberlauf"], (breite, v)
-        assert v["herkunftZeilen"] >= 1 and v["herkunftOhneAufklappen"] and v["quellenDa"], (breite, v)
+        assert v["herkunftZeilen"] == 0 and v["herkunftOffenZugeklappt"] == 0, (breite, v)   # #342: nie dauerhaft sichtbar
         assert v["herkunftText"].startswith("Quellen: "), (breite, v)
         if breite == "1300":
-            assert v["tabelle"] and v["karten"] == 0 and v["nachSortieren"], (breite, v)   # nach dem Umschalten die Tabelle
+            assert v["tabelle"] and v["karten"] == 0, (breite, v)   # nach dem Umschalten die Tabelle
             # Behälter statt Fenster (#332, Schritt D; Entscheidung 5.11.2026, Option B): in der Spalte der Tagesseite (unter 960 px)
             # am Rechner zuerst Karten mit dem Umschalter „Tabelle“, keine Tabelle von Anfang an
             sp = v["inSpalte"]
             assert sp["breite"] < 960 and not sp["tabelle"] and sp["karten"] >= 2 and sp["umschalter"], (breite, v)
-            assert v["aufgeklappt"]["mehr"] == 1 and v["aufgeklappt"]["iImKasten"] == 0, (breite, v)
+            assert v["aufgeklappt"]["mehr"] == 1 and v["aufgeklappt"]["iImKasten"] == 0 and v["aufgeklappt"]["herkunft"], (breite, v)
         else:
             assert not v["tabelle"] and v["karten"] >= 2 and v["herkunftKarten"] >= 1, (breite, v)
     assert e["1300"]["ort"]["breite"] <= 44 * 17 + 1   # Lesebreite --lese (44rem bei 106,25 % Schrift), nicht die volle Breite

@@ -44,7 +44,7 @@ for (const breite of [390, 820, 1300]) {
   const nacht = "#main .ebene-nacht";
   a.vergleich = await p.evaluate(`(() => { const n = document.querySelector("${nacht}"), m = n.querySelector(".wahl-modul"), s = getComputedStyle(m);
     const sicht = e => !!e && e.getClientRects().length > 0 && getComputedStyle(e).display !== "none";
-    return {rahmen: parseFloat(s.borderTopWidth) > 0 || s.boxShadow !== "none", i: n.querySelectorAll(".mk-i").length, werte: [...n.querySelectorAll(":is(.wm-tabelle, .wm-karten) [data-mk-i]")].filter(sicht).length, herkunft: [...n.querySelectorAll(".herkunft")].filter(sicht).length,
+    return {rahmen: parseFloat(s.borderTopWidth) > 0 || s.boxShadow !== "none", i: n.querySelectorAll(".mk-i").length, werte: [...n.querySelectorAll(":is(.wm-tabelle, .wm-karten) [data-mk-i]")].filter(sicht).length, herkunft: [...n.querySelectorAll(".herkunft")].filter(x => sicht(x) && !x.closest("details:not([open])")).length,
       tabelle: sicht(n.querySelector(".wm-tabelle")), karten: sicht(n.querySelector(".wm-karten")), umschalter: sicht(n.querySelector(".wm-ansicht")),
       einzeln: sicht(n.querySelector("details.wm-einzeln")), kennung: /\\bF-\\d/.test(n.textContent), frage: (n.querySelector('a[href="#F-02"]') || {}).textContent || null,
       kaesten: (${kaesten})(n).filter(k => !/wm-karte|wm-einzeln/.test(k))}; })()`);

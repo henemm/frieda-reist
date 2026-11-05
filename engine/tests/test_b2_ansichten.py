@@ -73,9 +73,9 @@ def test_b2_auf_reise_ort_wissen_vergleich(basis, browser):
         assert "6,6 km" in w["wege"][0][1] and "190 m" in w["wege"][0][1] and "Variante" in w["wege"][0][1], (breite, w)
         assert w["kopf"] == rechner, (breite, w)
         # V1–V4: Wahlstelle ohne Rahmen, im Vergleich kein Knopf am Wert, die Herkunft einmal je Möglichkeit
-        # (Herkunftszeile, #58); Tabelle nur am Rechner, Frage mit Namen
+        # (Herkunftszeile, #58), nur auf Anfrage sichtbar (#342); Tabelle nur am Rechner, Frage mit Namen
         v = a["vergleich"]
-        assert not v["rahmen"] and v["kaesten"] == [] and v["i"] == 0 and v["werte"] == 0 and v["herkunft"] > 0, (breite, v)
+        assert not v["rahmen"] and v["kaesten"] == [] and v["i"] == 0 and v["werte"] == 0 and v["herkunft"] == 0, (breite, v)
         assert v["tabelle"] == rechner and v["karten"] == (not rechner), (breite, v)
         assert v["umschalter"] == (int(breite) < 960), (breite, v)     # Karten oder Tabelle wählt, wer in einem Behälter unter 960 px mit Maus oder Finger sitzt (#332, Option B; die Seite hier füllt die Breite)
         assert v["einzeln"] == (not rechner), (breite, v)              # ohne Tabelle die Einzelheiten zum Aufklappen
