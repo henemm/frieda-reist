@@ -11,6 +11,7 @@ Echte Reisen, Namen echter Personen, Serveradressen, geheime Pfade, Zugangsdaten
 ```
 engine/            bauen.py (Generator), routen.py (Routenmodell), reise.py (reise.yaml), gpx.py, karte.py (Karte aus dem Plan), instanz.py (Vorgaben einer Instanz),
                    konten.py, anmeldung.py, oauth.py (Konten und Anmeldung, ADR-0005),
+                   reisespeicher.py (Reisedaten als Versionen in SQLite, nur anhängen, ADR-0008),
                    vorlage.html, sw.vorlage.js, rueckmeldungen.py (Dienst), belege.py (Belege zu Buchungen), konnektor.py (MCP), schnittstelle.py (englische Namen mit deutschen Aliasen), texte.py und texte_<kürzel>.py (Textkatalog je Sprache), schreiben.py (Schreibweg:
                    der Konnektor schreibt direkt in die Reise), waechter.py (Wächter und Erinnerer, läuft täglich),
                    neu.py (Anlegen, IDs, Abschnitte für den Schreibweg; als Befehl nur Struktur: erste Reise, pruefen, arten-ableiten, nachziehen), reisevorlage/, vendor/ (Fremdbibliotheken, siehe THIRD_PARTY.md), tests/
@@ -20,7 +21,7 @@ werkzeuge/         Werkzeuge für Inhalte aus dem Netz: Grundkarte, Punkte und A
 beispiel/reisen/   erfundene Beispielreisen (Wanderung und Städtewochenende), Demo und Testgrundlage; jede Funktion gegen beide denken (ADR-0001, Frage 1)
 docs/              Produktbild, Alternativen und Merkmale, Design und Bausteine, Konnektor, Sprachen, Betrieb, Werkzeuge;
                    adr/ Architektur-Entscheidungen, ADR-0001 ist der Kern und die Prüfstelle, ADR-0002 Atomic Design, ADR-0003 eine Heimat je Grundform,
-                   ADR-0004 Lage eines Aufenthalts, ADR-0005 Konten und Anmeldung; abgleich-2026-10-29.md Prüfbericht und Backlog
+                   ADR-0004 Lage eines Aufenthalts, ADR-0005 Konten und Anmeldung, ADR-0008 Reisespeicher; abgleich-2026-10-29.md Prüfbericht und Backlog
 ```
 
 Der Generator sucht Reisen in `./reisen/` des aktuellen Ordners (`--reisen`, `--ziel` zum Ändern).

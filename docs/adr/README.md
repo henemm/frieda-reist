@@ -12,5 +12,6 @@ Hier stehen die Entscheidungen, die die Software als Ganzes prägen, je eine Dat
 | [0006](0006-mehrsprachigkeit.md) | Mehrsprachigkeit: Deutsch und Englisch als Vorgabe, Katalog in der Software, Sprache an Reise und Konto, englische Werkzeugnamen mit deutschen Aliasen | gilt |
 | [0007](0007-elternbezug.md) | Ein Elternbezug je Ding, typisierte Merkmale statt Sonderfelder, Kartenpunkte sind Dinge | gilt |
 | [0008](0008-ort.md) | Der Ort ist eine Station der Reise; „liegt in“ nur für die Anzeige, Art freiwillig, eine Lage je Stelle | gilt |
+| [0009](0009-reisespeicher.md) | Reisespeicher: Reisedaten als unveränderliche Versionen in SQLite, nur anhängen | gilt |
 
 ADR-0001 ist zugleich die **Prüfstelle**: Jedes Issue, jedes Paket und jeder Pull Request beantwortet die zehn Fragen im Abschnitt „Prüfstelle“. Das PR-Template (`.github/pull_request_template.md`) enthält sie.

@@ -16,6 +16,7 @@ Eine **Instanz** ist eine Reisegruppe mit eigenem Betreiber: ein Reisen-Repo, da
 | Seiten | `<FR_SEITEN>/<reise>/` | gebaute Seiten, nginx liefert sie aus |
 | Ablage | `<FR_ABLAGE>/<reise>/` (`eingang.jsonl`, `status.json`, `aufgaben.json`, …) | Eingaben der Mitreisenden; nie im Repo |
 | Konten | `<FR_KONTEN>/` (`konten.db`, Dienst-Geheimnis, `sicherung/konten.db`, `neu/` mit Anfragen nach neuen Reisen und Meldungen an Personen) | Konten, Anmeldungen, Einladungen und alles Personenbezogene ohne Reise; nie im Repo, nie in einer Reise |
+| Reisespeicher | `<FR_SPEICHER>/` (`reisen.db`, `sicherung/reisen.db`; Vorgabe `<FR_SEITEN>/_speicher`) | Reisedaten als unveränderliche Versionen in SQLite (`engine/reisespeicher.py`, [ADR-0008](adr/0008-reisespeicher.md), #346); in Stufe 1 schreibt nur der Betreiber hinein, der Schreibweg bleibt auf Git |
 | Dienstordner | `<FR_DIENST>/` | Code der Dienste, Stände, Stempel, vorgemerkte Links, geheime Einstellungen |
 | Konnektor-Zugänge | `<FR_KONNEKTOR>/zugaenge.json`, `seiten.json` (600) | geheime Links; nie im Repo |
 | systemd | `<instanz>-rueckmeldungen`, `-konnektor`, `-schreiben`, `-push`, `-veroeffentlichen.timer`, `-waechter.timer` | aus `betrieb/vorlagen/`, erzeugt von `einrichten.sh` |
@@ -32,6 +33,8 @@ Drei Gruppen, die sich nie mischen sollen:
 3. **Daten der Nutzer**: Konten und Anmeldungen (`<FR_KONTEN>/`), Zugänge zum Konnektor (`<FR_KONNEKTOR>/`), Anfragen nach neuen Reisen samt Meldungen an Personen (`<FR_KONTEN>/neu/`, Rechte 700) und der Mailzugang (`konten.env`). Sie gehören nicht in das Reisen-Repo und gehören nicht einer einzelnen Reise. Betriebsdaten des Konnektors bleiben in `<FR_KONNEKTOR>/` (`seiten.json`, `neue-reisen-ausstehend.jsonl`; `zugaenge.json` entfällt mit den alten Links, #43).
 
 **Sicherung:** Das Server-Backup sichert `<FR_KONTEN>/` und `<FR_ABLAGE>/`. Die Reisen selbst liegen im Reisen-Repo, die Seiten entstehen daraus neu. `konten.db` läuft im WAL-Modus; eine Kopie der Datei im laufenden Betrieb kann unbrauchbar sein. Darum schreibt der Wächter-Lauf täglich einen sauberen Schnappschuss über die Backup-API von SQLite nach `<FR_KONTEN>/sicherung/konten.db` (`engine/konten.py sichern`, geprüft mit `integrity_check`, ohne WAL-Dateien). Zurückholen: Dienste anhalten, den Schnappschuss als `<FR_KONTEN>/konten.db` einsetzen (alte `-wal`/`-shm` entfernen), Dienste starten.
+
+**Reisespeicher (#346, [ADR-0008](adr/0008-reisespeicher.md)):** `<FR_SPEICHER>/reisen.db` hält die Reisedaten als Versionen, nur anhängen (Ordner 700, Datei 600, WAL). Der Wächter-Lauf schreibt täglich einen Schnappschuss nach `<FR_SPEICHER>/sicherung/reisen.db` (`engine/reisespeicher.py sichern`, wie bei den Konten über die Backup-API, geprüft mit `integrity_check`, ohne WAL-Dateien); scheitert ein Schnappschuss, bleibt die letzte gute Sicherung stehen. Das Wegbringen außer Haus ist Sache des Server-Backups der Instanz: Es sichert `<FR_SPEICHER>/sicherung/` mit. Zurückholen: Schreiber anhalten, den Schnappschuss als `<FR_SPEICHER>/reisen.db` einsetzen (alte `-wal`/`-shm` entfernen), dann `engine/reisespeicher.py pruefen` (muss `ok` melden) und zur Kontrolle eine Reise mit `engine/reisespeicher.py exportieren <reise> <leerer Ordner>` ausgeben und mit dem erwarteten Stand vergleichen. Weitere Befehle: `importieren <ordner> <reise> <wer> [--grund TEXT] [--ab N]`, `verlauf <reise> [n]`, `exportieren <reise> <ziel> [--bis N]` (auch ein alter Stand), `zuruecksetzen <reise> <bis> <wer> <grund>` (ein neuer Vorgang, der Verlauf bleibt). Der Schutz gegen Ändern und Löschen hält Software-Fehler und Fehlbedienung ab, nicht jemanden mit Schreibzugriff auf die Datei; `pruefen` rechnet deshalb alle Prüfsummen nach.
 
 **Umzug von `_neu` (#72, 1.11.2026):** Früher lagen Anfragen und Meldungen ohne Reise in `<FR_ABLAGE>/_neu/`. Dieser Ort gilt weiter, solange in `<FR_KONTEN>/neu/` nichts liegt. Umziehen bei angehaltenen Diensten: `mv <FR_ABLAGE>/_neu <FR_KONTEN>/neu && chmod 700 <FR_KONTEN>/neu`.
 
@@ -181,7 +184,7 @@ Voraussetzung: `gh` ist für den Dienstbenutzer angemeldet und darf Workflows de
 
 ## Wächter
 
-`betrieb/waechter.sh` läuft täglich und ruft `engine/waechter.py lauf` auf (`docs/waechter.md`). Es berücksichtigt nur Reisen mit Baustein `waechter` und Status `fest` oder `unterwegs`. Hat es etwas zu melden, geht eine Sammelnachricht an den Betreiber; ein Fehler wird dringend gemeldet. Danach schreibt es den Schnappschuss der Konten (`engine/konten.py sichern`, siehe „Sicherung“); schlägt er fehl, kommt ebenfalls eine dringende Meldung, und der Stempel bleibt aus.
+`betrieb/waechter.sh` läuft täglich und ruft `engine/waechter.py lauf` auf (`docs/waechter.md`). Es berücksichtigt nur Reisen mit Baustein `waechter` und Status `fest` oder `unterwegs`. Hat es etwas zu melden, geht eine Sammelnachricht an den Betreiber; ein Fehler wird dringend gemeldet. Danach schreibt es die Schnappschüsse der Konten (`engine/konten.py sichern`) und des Reisespeichers (`engine/reisespeicher.py sichern`), siehe „Sicherung“; schlägt einer fehl, kommt je Sicherung eine dringende Meldung, die andere Sicherung läuft trotzdem, und der Stempel bleibt aus.
 
 ## Einstellungen
 
@@ -194,7 +197,7 @@ Voraussetzung: `gh` ist für den Dienstbenutzer angemeldet und darf Workflows de
 | `FR_ADRESSE` | – | öffentliche Adresse der Seiten (nötig zum Freischalten) |
 | `FR_KN_ADRESSE` | `<FR_ADRESSE>` | Adresse des Konnektors, ohne Pfad: Er steht an ihrer Wurzel (`/mcp` für die Claude-App, Anmeldung, „Mein Konto“, OAuth). Gleich `FR_BASIS` in `konten.env`. Bis 1.11.2026 war die Vorgabe `<FR_ADRESSE>/<FR_INSTANZ>-mcp` (#163) |
 | `FR_UMZUG_NACH` | leer | neue Adresse der Seiten bei einem Umzug auf eine andere Domain: Der Generator baut dann einen Service Worker, der gespeicherte Seiten verwirft und sich abmeldet, und eine Seite, die auf denselben Pfad der neuen Adresse weiterleitet. Erst danach darf der Server von der alten Adresse umleiten (ein umgeleitetes `sw.js` lehnt der Browser als Update ab). Kann auch als `bauen.py --umzug-nach` übergeben werden |
-| `FR_SEITEN`, `FR_ABLAGE`, `FR_DIENST`, `FR_KONNEKTOR`, `FR_KONTEN` | `/srv/<instanz>`, darunter `_rueckmeldungen`, `_dienst`, `_konnektor`, `_konten` | Ordner auf dem Server |
+| `FR_SEITEN`, `FR_ABLAGE`, `FR_DIENST`, `FR_KONNEKTOR`, `FR_KONTEN`, `FR_SPEICHER` | `/srv/<instanz>`, darunter `_rueckmeldungen`, `_dienst`, `_konnektor`, `_konten`, `_speicher` | Ordner auf dem Server |
 | `FR_RM_PORT`, `FR_KN_PORT`, `FR_SB_PORT` | `8771`, `8772`, `8773` | Ports auf 127.0.0.1 (Rückmeldedienst, Konnektor, Schreibweg) |
 | `FR_SCHREIBKOPIE` | `<Wurzel>-schreiben` | Arbeitskopie des Schreibwegs (Git-Worktree, legt der Dienst an) |
 | `FR_PYTHON` | `<Wurzel>/engine/.venv/bin/python` | Python mit den Paketen der Software |
