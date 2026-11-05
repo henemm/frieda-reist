@@ -74,7 +74,7 @@ for (const breite of [390, 1300]) {
     selbst: document.querySelectorAll('.ebene-nacht a[href="#U-02"]').length,
     // Lage (ADR-0004): Punkt aus plan/punkte.yaml, Link zu Google Maps; Apple Karten nur auf Apple-Geräten
     karte: [...document.querySelectorAll('.ebene-nacht .lage a')].map(a => a.href)}));
-  await p.evaluate(() => { location.hash = "offen"; });
+  await p.evaluate(() => { location.hash = "zu-tun"; });
   await p.waitForSelector("#zu-buchen");
   a.buchen = await p.evaluate(() => [...document.querySelectorAll("#zu-buchen .wzeile")].map(z => [z.getAttribute("href"), z.querySelector(".chip").textContent]));
   await p.evaluate(() => { location.hash = "wissen"; });

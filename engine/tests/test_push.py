@@ -183,9 +183,9 @@ def test_rueckmeldung_meldung_und_aufgabe_kommen_an(reise):
     an = dict(u.gesendet)
     assert an["ida"]["text"] == "Karl schreibt: Wir landen erst 21 Uhr." and an["ida"]["url"] == SEITE + "#T-01"
     assert an["ida"]["titel"] == "Beispiel" and an["ida"]["tag"] == "frieda-beispielreise"
-    # Karl: zwei Neuigkeiten in einer Nachricht, die neueste zuerst genannt, Tippen öffnet „Offen“
+    # Karl: zwei Neuigkeiten in einer Nachricht, die neueste zuerst genannt, Tippen öffnet „Zu tun“
     assert an["karl"]["text"] == "2 Neuigkeiten, zuletzt: Neue Aufgabe für dich: Tickets kaufen (von Ida)"
-    assert an["karl"]["url"] == SEITE + "#offen"
+    assert an["karl"]["url"] == SEITE + "#zu-tun"
     u.gesendet.clear()
     assert push.zustellen(u.senden, MITTAG)["nachrichten"] == 0 and not u.gesendet
 

@@ -894,7 +894,7 @@ main{padding-bottom:calc(var(--tabbar-space) + 16px)}
 .fuss .fuss-sprachen button[aria-pressed="true"] span{text-decoration:none}
 .fuss .fuss-sprachen button+button::before{content:"·";color:var(--mut);margin-inline-end:8px}
 @media (hover:hover){nav a:hover,#suchKnopf:hover{color:var(--fg)} .rund:hover{border-color:var(--acc)}}
-/* Zahl am Reiter „Offen“: offene Aufgaben + nicht gesendete Rückmeldungen */
+/* Zahl am Reiter „Zu tun“: offene Aufgaben + nicht gesendete Rückmeldungen */
 nav a{position:relative}
 nav a .zahl{position:absolute;top:3px;left:calc(50% + 4px);min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--acc);color:var(--bg);font-size:0.6562rem;font-weight:700;line-height:17px;text-align:center;letter-spacing:0}
 nav a.warn .zahl{background:var(--warn)}
@@ -1144,14 +1144,17 @@ const REITER = [
   // Quellen stehen seit dem 25.10.2026 ebenfalls im Reiter Wissen; ihr Platz in der Leiste gehört der Suche
   ["wissen", () => G.wissen, hat("wissen") || hat("praxis") || hat("quelle") || (HAT_ETAPPEN && !ETAPPEN_REITER) || hat("plan") || !!D.plan_kopf || !R],
   // Wünsche der Mitreisenden: eigener Reiter, wenn die Reise ihn einschaltet (reise.yaml bausteine; 25.10.2026)
-  ["wuensche", () => T("seite.reiter.wuensche"), WUENSCHE], ["offen", () => T("seite.reiter.offen"), ZU_TUN],
+  ["wuensche", () => T("seite.reiter.wuensche"), WUENSCHE], ["zu-tun", () => T("seite.reiter.offen"), ZU_TUN],
 ].filter(r => r[2]);
+// Frühere Namen von Routen (Lesetoleranz für Lesezeichen und versandte Push-Adressen): „offen“ heißt seit #215 „zu-tun“
+const ROUTE_ALIAS = {"offen": "zu-tun"};
+const routeName = h => ROUTE_ALIAS[h] || h;
 // Startreiter steht vorn und öffnet ohne Sprungziel: reise.json „start“, sonst die Reise (ohne Tage: Wissen mit den Eckdaten)
 // Unterwegs beginnt die Seite mit „Heute“ und der Reise (Verhalten je Status)
 const START = V.start === "heute" && REITER.some(r => r[0] === "varianten") ? "varianten"
-  : REITER.some(r => r[0] === D.reise.start) ? D.reise.start : REITER[0][0];
+  : REITER.some(r => r[0] === routeName(D.reise.start)) ? routeName(D.reise.start) : REITER[0][0];
 // Reihenfolge Reise · Zu tun · Wissen · Wünsche (Seitenordnung 28.10.2026)
-const REIHE = ["varianten", "karte", "etappen", "offen", "wissen", "wuensche"];
+const REIHE = ["varianten", "karte", "etappen", "zu-tun", "wissen", "wuensche"];
 REITER.sort((a, b) => REIHE.indexOf(a[0]) - REIHE.indexOf(b[0]));
 REITER.sort((a, b) => (b[0] === START) - (a[0] === START));
 const TYP_REITER = {plan: "wissen", strecke: ETAPPEN_REITER ? "etappen" : "wissen", uebersicht: ETAPPEN_REITER ? "etappen" : "wissen", wissen: "wissen", praxis: "wissen", quelle: "wissen", ort: "varianten"};
@@ -3035,8 +3038,8 @@ function kartenZeilen(liste, segmente) {
 /* ---------- Vorlage Reiseüberblick (28.10.2026): erster Reiter „Reise“, sobald ein Plan gewählt ist ----------
    Die Seite spricht dann von der Reise, nicht vom Plan: kein Planname, keine anderen Pläne (deren Daten bleiben). Kopf mit
    Zähler, Karte, Kennzahlen, Stand der Vorbereitung und die Tage als Zeilen; alles aus den Daten, für jede Reise gleich. */
-// Stand einer Nacht: Name, Zustand und ob sie als Unterkunft zählt (an Bord nicht). Gebucht ist, was in routen.yaml
-// eine andere Buchung als „offen“ trägt (z. B. buchung: gebucht).
+// Stand einer Nacht: Name, Zustand und ob sie als Unterkunft zählt (an Bord nicht). Gebucht ist, was eine geltende
+// Buchung (B-…) mit Status gebucht hat (berechneter Stand d.buchung aus routen.py).
 function nachtStand(n) {
   if (!n) return null;
   if (n.an_bord) return {name: T("seite.nacht.an_bord"), zaehlt: false};
@@ -5030,12 +5033,12 @@ function zeigeReiter(name) {
   nav.classList.toggle("viele", REITER.length > 5);
   nav.style.flexGrow = REITER.length;   // jeder Reiter so breit wie der Suchknopf
   nav.replaceChildren(...REITER.map(([k, t]) => el("a", {href: "#" + k, class: k === name ? "on" : false, "aria-current": k === name ? "page" : false},
-    symbol(k === "varianten" ? "karte" : k), el("span", {}, t()), k === "offen" ? el("span", {class: "zahl", hidden: true}) : null)));
+    symbol(k === "varianten" ? "karte" : k), el("span", {}, t()), k === "zu-tun" ? el("span", {class: "zahl", hidden: true}) : null)));
   offenZahl();
 }
-// Zahl am Reiter „Offen“; Warnfarbe bei überfälligen Aufgaben oder nicht gesendeten Rückmeldungen
+// Zahl am Reiter „Zu tun“; Warnfarbe bei überfälligen Aufgaben oder nicht gesendeten Rückmeldungen
 function offenZahl() {
-  const k = document.querySelector('#nav a[href="#offen"]');
+  const k = document.querySelector('#nav a[href="#zu-tun"]');
   if (!k) return;
   const z = k.querySelector(".zahl");
   const ag = AG.filter(agOffen), ueber = ag.filter(ueberfaellig).length, aus = AUSGANG.length;
@@ -5072,12 +5075,14 @@ function route(behalten) {
   m.replaceChildren();
   let ziel = null;
   let h = decodeURIComponent(location.hash.slice(1));
+  // Alter Name einer Route (#offen): die Adresszeile zeigt den neuen, ohne zusätzlichen Verlaufseintrag
+  if (routeName(h) !== h) { h = routeName(h); history.replaceState(history.state, "", "#" + h); }
   // Eine Buchung (B-…, #76) wohnt bei ihrem ersten Ding (ADR-0003): dorthin, und der Block der Buchung ist das Ziel
   const zielB = R && R.buchungen && R.buchungen[h] ? h : null;
   if (zielB) h = (R.buchungen[h].fuer || [])[0] || "";
   if (q.length >= 2) { zeigeReiter(reiter); ansichtSuche(m, q); window.scrollTo(0, 0); return; }
   // Eine Seitenordnung (#214): ohne Sprungziel der Startreiter; „Plan“ (ältere Links) und „Reise“ führen zur Reise
-  const start = () => { zeigeReiter(START); START === "varianten" ? ansichtStart(m) : START === "offen" ? ansichtZuTun(m) : START === "wuensche" ? ansichtWuensche(m) : START === "etappen" ? ansichtEtappen(m) : START === "karte" ? ansichtKarte(m) : ansichtWissen(m); };
+  const start = () => { zeigeReiter(START); START === "varianten" ? ansichtStart(m) : START === "zu-tun" ? ansichtZuTun(m) : START === "wuensche" ? ansichtWuensche(m) : START === "etappen" ? ansichtEtappen(m) : START === "karte" ? ansichtKarte(m) : ansichtWissen(m); };
   if (!h) start();
   else if ((h === "plan" || h === "varianten" || PLAN_VERWEIS.has(h)) && R) { zeigeReiter("varianten"); ansichtStart(m); }
   else if (h === "karte" && KARTE_REITER) { zeigeReiter("karte"); ansichtKarte(m); }
@@ -5094,11 +5099,11 @@ function route(behalten) {
   else if (h === "orte") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "orte"; }
   else if (h === "praxis") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "praxis"; }
   else if (h === "quellen") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "quellen"; }
-  else if (h === "offen" && ZU_TUN) { zeigeReiter("offen"); ansichtZuTun(m); }
-  else if ((h === "zu-entscheiden" || h === "zu-buchen") && ZU_TUN) { zeigeReiter("offen"); ansichtZuTun(m); ziel = h; }
+  else if (h === "zu-tun" && ZU_TUN) { zeigeReiter("zu-tun"); ansichtZuTun(m); }
+  else if ((h === "zu-entscheiden" || h === "zu-buchen") && ZU_TUN) { zeigeReiter("zu-tun"); ansichtZuTun(m); ziel = h; }
   else if (h === "wuensche" && WUENSCHE) { zeigeReiter("wuensche"); ansichtWuensche(m); }
-  else if ((h === "rueckmeldungen" || h === "aufgaben" || h === "fragen") && B(h)) { zeigeReiter("offen"); ansichtZuTun(m); ziel = h; }
-  else if (/^F-\d+$/.test(h) && zeileZu.get(h) === "fragen" && B("fragen")) { zeigeReiter("offen"); ansichtZuTun(m); ziel = h; }
+  else if ((h === "rueckmeldungen" || h === "aufgaben" || h === "fragen") && B(h)) { zeigeReiter("zu-tun"); ansichtZuTun(m); ziel = h; }
+  else if (/^F-\d+$/.test(h) && zeileZu.get(h) === "fragen" && B("fragen")) { zeigeReiter("zu-tun"); ansichtZuTun(m); ziel = h; }
   // Plan-Baum (darstellung.tiefe): Plan → Tag → Ort, unter dem Reiter Reise
   else if (TIEFE && planZu(h)) { zeigeReiter("varianten"); ansichtPlanDetail(m, planZu(h)); }
   else if (TIEFE && ortAbschnitt(h)) { zeigeReiter("varianten"); ansichtOrt(m, ortAbschnitt(h)); }
@@ -5112,7 +5117,7 @@ function route(behalten) {
     if (x.kreis) { start(); m.prepend(warnungen([{text: T("seite.kreis.hinweis", {titel: titelZu(h) || h}), bezug: ""}])); }
     else if (x.tag) { zeigeReiter("varianten"); ansichtTag(m, x.tag); }
     else if (x.abschnitt) { const a = proId.get(x.abschnitt); zeigeReiter(TYP_REITER[a.typ]); ansichtAbschnitt(m, a); }
-    else { zeigeReiter("offen"); ansichtZuTun(m); }
+    else { zeigeReiter("zu-tun"); ansichtZuTun(m); }
     ziel = document.getElementById(x.ziel) || !x.ersatz ? x.ziel : x.ersatz;
   }
   else { start(); if (document.getElementById(h)) ziel = h; }

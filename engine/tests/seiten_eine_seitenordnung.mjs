@@ -81,8 +81,8 @@ for (const t of auftrag.tage) {
 }
 // „Zu tun“
 let zuTun = null;
-if (reiter.includes("offen")) {
-  await gehe("offen");
+if (reiter.includes("zu-tun")) {
+  await gehe("zu-tun");
   zuTun = await p.evaluate(() => ({zuBuchen: !!document.querySelector("#main #zu-buchen"),
                                    zuEntscheiden: !!document.querySelector("#main #zu-entscheiden")}));
 }

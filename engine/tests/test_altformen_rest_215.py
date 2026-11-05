@@ -24,8 +24,8 @@ from playwright_pfad import PLAYWRIGHT  # noqa: E402
 WURZEL = Path(__file__).resolve().parent.parent.parent
 BEISPIELE = ["beispielreise", "stadtwochenende"]
 SCHLUESSEL_PRUEFUNG = "pruefung.routen.buchung_feld"
-SCHLUESSEL_QUELLE = "nachziehen.buchung.quelle"
-SCHLUESSEL_PRUEFEN = "nachziehen.buchung.pruefen"
+SCHLUESSEL_QUELLE = "inhalt.nachziehen.buchung_quelle"   # Bereiche der Schlüssel: docs/sprachen.md, test_texte.test_schluessel_form
+SCHLUESSEL_PRUEFEN = "pruefung.neu.nachziehen.buchung_pruefen"
 OHNE_BROWSER = pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 
 

@@ -920,10 +920,10 @@ def staedtereise():
     r["ende"] = {"datum": D(2027, 3, 3), "ort": "O-01"}
     r["aufenthalte"] = {
         "A-01": {"name": "Stadtmuseum", "ort": "O-01", "art": "museum", "zeit": "10–12 Uhr", "quelle": "erfunden",
-                 "buchung": "Zeitfenster gebucht", "merkmale": {"geoeffnet": "ja"}},
+                 "merkmale": {"geoeffnet": "ja"}},
         "A-02": {"name": "Trattoria", "ort": "O-01", "art": "essen", "zeit": "abends", "quelle": "erfunden"},
     }
-    r["strecken"]["E-10"] = {"titel": "Flug A → A (Rundflug, erfunden)", "von": "O-01", "nach": "O-01", "art": "flug", "buchung": "gebucht"}
+    r["strecken"]["E-10"] = {"titel": "Flug A → A (Rundflug, erfunden)", "von": "O-01", "nach": "O-01", "art": "flug"}
     r["tage"] = {"T-01": {"titel": "Ankunft", "nacht": "U-01", "aufenthalte": ["A-02"]},
                  "T-02": {"titel": "Museum", "strecken": ["E-10"], "nacht": "U-01", "aufenthalte": ["A-01", "A-02"]},
                  "T-03": {"titel": "Abreise"}}
@@ -939,6 +939,8 @@ def staedtereise():
 
 def test_aufenthalte_ohne_nacht_in_der_zeitleiste_des_tags():
     r, a = staedtereise()
+    r["buchungen"] = {"B-01": {"fuer": ["A-01"], "status": "gebucht", "notiz": "Zeitfenster", "quelle": "erfunden"},
+                      "B-02": {"fuer": ["E-10"], "status": "gebucht", "quelle": "erfunden"}}
     erg, fehler = laufe(r, FRAGEN, a)
     assert fehler == [], fehler
     assert [t["aufenthalte"] for t in erg["tage"]] == [["A-02"], ["A-01", "A-02"], []]
@@ -946,8 +948,8 @@ def test_aufenthalte_ohne_nacht_in_der_zeitleiste_des_tags():
     assert m["name"] == "Stadtmuseum" and m["art"] == "museum" and m["zeit"] == "10–12 Uhr" and m["tage"] == ["T-02"]
     assert m["merkmale"]["geoeffnet"]["wert"] == "ja" and m["fehlt"] == ["ticket"]      # nur pflicht zählt
     assert erg["aufenthalte"]["A-02"]["tage"] == ["T-01", "T-02"]
-    # Buchungsstand: buchung: am Ding; sonst „offen“ bei buchbarer Art, sonst keiner (Essen ohne Reservierung)
-    assert m["buchung"] == "Zeitfenster gebucht" and erg["aufenthalte"]["A-02"]["buchung"] is None
+    # Buchungsstand: aus der Buchung B-…; sonst „offen“ bei buchbarer Art, sonst keiner (Essen ohne Reservierung)
+    assert m["buchung"] == "gebucht" and erg["aufenthalte"]["A-02"]["buchung"] is None
     assert erg["strecken"]["E-10"]["buchung"] == "gebucht" and erg["strecken"]["E-01"]["buchung"] is None
     assert erg["unterkuenfte"]["U-01"]["buchung"] == "offen"
     # Symbol und buchbar stehen an der Art; ohne Angabe das Symbol der Grundform
@@ -1002,7 +1004,7 @@ def test_buchung_als_eigenes_ding_bei_zwei_reisetypen():
     assert b["B-01"]["verlauf"] == [{"datum": "2026-10-29", "wer": "Ida", "was": "angelegt"}]
     assert b["B-02"]["fuer"] == ["E-10", "A-01"] and b["B-02"]["status"] == "angefragt" and b["B-02"]["frist"] == "2027-01-15"
     assert b["B-03"]["fuer"] == ["A-02"]
-    # Buchungsstand der Dinge kommt aus der geltenden Buchung; die stornierte zählt nicht, der alte Eintrag buchung: bleibt Rückfall
+    # Buchungsstand der Dinge kommt aus der geltenden Buchung; die stornierte zählt nicht (das frühere Feld buchung: gilt nicht mehr, #215)
     assert erg["unterkuenfte"]["U-01"]["buchung"] == "gebucht" and erg["unterkuenfte"]["U-01"]["buchung_id"] == "B-01"
     assert erg["strecken"]["E-10"]["buchung"] == "angefragt" and erg["strecken"]["E-10"]["buchung_id"] == "B-02"
     assert erg["aufenthalte"]["A-01"]["buchung"] == "angefragt" and erg["aufenthalte"]["A-01"]["buchung_id"] == "B-02"

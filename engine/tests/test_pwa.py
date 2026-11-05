@@ -162,7 +162,8 @@ def test_offline_im_browser(tmp_path, browser):
     # Manuelles Update im Fuß: Server gefragt, „Jetzt aktualisieren“ übernimmt den neuen Stand
     assert e["version3"] == "neu2" and "bereit" in e["fussBereit"]
     if browser == "chromium":
-        assert e["push"] == [{"titel": "Testreise", "text": "Neue Aufgabe für dich", "url": e["basis"] + "#offen", "tag": "frieda-test"}]
+        assert e["push"] == [{"titel": "Testreise", "text": "Neue Aufgabe für dich", "url": e["basis"] + h, "tag": "frieda-test"}
+                             for h in ("#zu-tun", "#offen")]   # neue Adresse und alte (#215)
     assert e["fehler"] == []
 
 

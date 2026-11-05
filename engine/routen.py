@@ -689,7 +689,12 @@ class Routen:
 
     def buchungen_pruefen(self):
         """Buchungen (B-…, #76): gehören zu vorhandenen Dingen, haben Status, Herkunft und gültige Daten. Eine nicht
-        stornierte Buchung setzt den Buchungsstand ihrer Dinge (buchung_je_ding); zwei geltende für dasselbe Ding sind eine Warnung."""
+        stornierte Buchung setzt den Buchungsstand ihrer Dinge (buchung_je_ding); zwei geltende für dasselbe Ding sind eine Warnung.
+        Ein übrig gebliebenes Feld buchung: an einem Ding ist ein Fehler, kein stilles Ignorieren (#215)."""
+        for gruppe in (self.unterkuenfte, self.aufenthalte, self.strecken):
+            for did, d in gruppe.items():
+                if isinstance(d, dict) and "buchung" in d:
+                    self.fehl(texte.satz("pruefung.routen.buchung_feld", wo=did))
         for bid, b in self.buchungen.items():
             self.id_anlegen(bid, self.q)
             if not isinstance(b, dict):
@@ -1833,12 +1838,10 @@ class Routen:
                 "gpx_quelle": s["gpx"].get("quelle") if isinstance(s.get("gpx"), dict) else None, **merkmale}
 
     def buchung_von(self, d, art, did=None):
-        """Buchungsstand eines Dings: der Status seiner geltenden Buchung (B-…, #76), sonst der Eintrag buchung:, sonst
-        „offen“ bei einer buchbaren Art, sonst None (kein Stand)."""
+        """Buchungsstand eines Dings: der Status seiner geltenden Buchung (B-…, #76), sonst „offen“ bei einer buchbaren Art,
+        sonst None (kein Stand). Das frühere Eingabefeld buchung: gilt nicht mehr (#215, neu.py nachziehen stellt es um)."""
         if did and did in self.buchung_je_ding:
             return str(self.buchungen[self.buchung_je_ding[did]].get("status") or "gebucht")
-        if d.get("buchung") is not None:
-            return str(d["buchung"])
         return "offen" if (self.arten.get(art) or {}).get("buchbar") or did in self.buchung_je_ding else None
 
     def buchung_id(self, did):

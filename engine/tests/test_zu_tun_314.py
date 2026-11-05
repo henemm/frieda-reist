@@ -25,12 +25,15 @@ def _seite(tmp_path, alle_gebucht):
     if alle_gebucht:
         r = quelle / "plan" / "routen.yaml"
         d = yaml.safe_load(r.read_text(encoding="utf-8"))
-        for gruppe in ("unterkuenfte", "strecken", "aufenthalte"):   # Beispielwert: alles gebucht
-            for x in d.get(gruppe, {}).values():
-                if isinstance(x, dict):
-                    x["buchung"] = "gebucht"
         for bu in d.get("buchungen", {}).values():
             bu["status"] = "gebucht"
+        mit = {x for bu in d.get("buchungen", {}).values() for x in bu.get("fuer") or []}
+        n = len(d.get("buchungen", {}))
+        for gruppe in ("unterkuenfte", "strecken", "aufenthalte"):   # Beispielwert: alles gebucht, je Ding eine Buchung B-… (#215)
+            for did, x in d.get(gruppe, {}).items():
+                if isinstance(x, dict) and did not in mit:
+                    n += 1
+                    d.setdefault("buchungen", {})[f"B-{n:02d}"] = {"fuer": [did], "status": "gebucht", "quelle": "Beispielwert (Test)"}
         r.write_text(yaml.safe_dump(d, allow_unicode=True, sort_keys=False), encoding="utf-8")
     bauen.bauen(quelle, tmp_path / "web" / "beispiel")
 

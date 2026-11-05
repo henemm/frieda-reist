@@ -128,12 +128,15 @@ if (chromium) {
   await cdp.send("ServiceWorker.enable");
   for (let i = 0; i < 50 && !regs.some(r => r.scopeURL === basis && !r.isDeleted); i++) await leise(100);
   const reg = regs.find(r => r.scopeURL === basis && !r.isDeleted);
-  await cdp.send("ServiceWorker.deliverPushMessage", {origin: new URL(basis).origin, registrationId: reg.registrationId,
-    data: JSON.stringify({titel: "Testreise", text: "Neue Aufgabe für dich", url: basis + "#offen", tag: "frieda-test"})});
-  for (let i = 0; i < 50; i++) {
-    ergebnis.push = await worker.evaluate(() => self.GEZEIGT.map(n => ({titel: n.titel, text: n.body, url: n.data && n.data.url, tag: n.tag})));
-    if (ergebnis.push.length) break;
-    await leise(100);
+  // Neue Push-Adressen tragen #zu-tun; bereits versandte mit #offen (bis #215) zeigt der Worker genauso (die Seite leitet um)
+  for (const [n, url] of [[1, basis + "#zu-tun"], [2, basis + "#offen"]]) {
+    await cdp.send("ServiceWorker.deliverPushMessage", {origin: new URL(basis).origin, registrationId: reg.registrationId,
+      data: JSON.stringify({titel: "Testreise", text: "Neue Aufgabe für dich", url, tag: "frieda-test"})});
+    for (let i = 0; i < 50; i++) {
+      ergebnis.push = await worker.evaluate(() => self.GEZEIGT.map(n => ({titel: n.titel, text: n.body, url: n.data && n.data.url, tag: n.tag})));
+      if (ergebnis.push.length >= n) break;
+      await leise(100);
+    }
   }
 }
 ergebnis.basis = basis;

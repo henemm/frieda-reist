@@ -225,12 +225,12 @@ def test_nachtzeile_und_wahlzeile_teilen_keine_id(tmp_path, fall):
 @OHNE_BROWSER
 def test_zu_tun_auch_ohne_plaene(tmp_path):
     e, _ = rundgang(tmp_path / "a", "ohne_plaene")
-    assert "offen" in e["reiter"], e["reiter"]
+    assert "zu-tun" in e["reiter"], e["reiter"]
     tun = e["zuTun"]
     assert tun and tun["zuBuchen"], tun
     assert not tun["zuEntscheiden"], tun   # keine Wahlstelle: nichts zu entscheiden
     e2, _ = rundgang(tmp_path / "a2", "ohne_plaene", wahl_offen=True)
-    assert "offen" in e2["reiter"] and e2["zuTun"] and e2["zuTun"]["zuEntscheiden"] and e2["zuTun"]["zuBuchen"], e2["zuTun"]
+    assert "zu-tun" in e2["reiter"] and e2["zuTun"] and e2["zuTun"]["zuEntscheiden"] and e2["zuTun"]["zuBuchen"], e2["zuTun"]
 
 
 # K5: Wahlen erscheinen an ihrem Element, in allen Fällen mit Wahlstellen (V-02 am Tag T-02, dazu an: O-03 erfunden)

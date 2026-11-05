@@ -30,7 +30,7 @@ const B = await neu();
 await B.p.click(`#sprachen button[data-sprache="${sprache}"]`);
 await B.p.waitForTimeout(300);
 const routen = await A.p.evaluate(() => {
-  const r = new Set(["", "plan", "varianten", "plaene", "offen", "wissen", "etappen", "wuensche", "orte", "praxis", "quellen", "fragen", "aufgaben", "rueckmeldungen"]);
+  const r = new Set(["", "plan", "varianten", "plaene", "zu-tun", "wissen", "etappen", "wuensche", "orte", "praxis", "quellen", "fragen", "aufgaben", "rueckmeldungen"]);
   for (const a of abschnitte) { r.add(a.id); for (const x of a.bloecke) r.add(x.id); }
   if (R) {
     R.tage.forEach(t => r.add(t.id)); Object.keys(R.weitere_tage).forEach(t => r.add(t)); Object.keys(R.unterkuenfte).forEach(u => r.add(u));

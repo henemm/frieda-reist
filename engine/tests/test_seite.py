@@ -162,10 +162,10 @@ def test_neue_reise_aus_der_vorlage(tmp_path, browser):
     assert e["routen"] > 20 and e["fehler"] == [] and e["leer"] == [] and e["breit"] == []
     dom = json.loads((tmp_path / "dom.json").read_text(encoding="utf-8"))
     assert 'id="ueber-plan"' in dom["390#"] and "6.–13. Februar 2027" in dom["390#W-01"]
-    assert 'id="fragen"' in dom["390#offen"] and "Offene Fragen" in dom["390#offen"]
+    assert 'id="fragen"' in dom["390#zu-tun"] and "Offene Fragen" in dom["390#zu-tun"]
     # die eine Frage der Vorlage (F-01) steht mit ihrem Text in „Zu tun“, nicht nur die Überschrift
     f01 = next(z for z in (r / "offene-fragen.md").read_text(encoding="utf-8").splitlines() if z.startswith("| F-01 "))
-    assert f01.split("|")[2].strip().split("?")[0] in dom["390#offen"], f01
+    assert f01.split("|")[2].strip().split("?")[0] in dom["390#zu-tun"], f01
 
 
 # Erste Einträge einer neuen Reise, wie sie über den Konnektor entstehen (erfunden, Beispielwerte): ein Ort, eine Ferienwohnung
@@ -204,7 +204,7 @@ def test_neue_reise_aus_der_vorlage_im_browser(tmp_path):
     d = json.loads((web / r.name / "daten.json").read_text(encoding="utf-8"))
     assert d["route"]["plaene"] == [] and [t["id"] for t in d["route"]["tage"]] == ["T-01", "T-02", "T-03", "T-04"]
     e = messen(web, d, voll={"B-01": "FW-0001"}, pfad=r.name)
-    assert "plan" not in e["reiter"] and "offen" in e["reiter"], e["reiter"]
+    assert "plan" not in e["reiter"] and "zu-tun" in e["reiter"], e["reiter"]
     assert e["start"]["achse"] and e["start"]["zeilen"] == ["T-01", "T-02", "T-03", "T-04"] and e["start"]["tageskaesten"] == 0, e["start"]
     assert all(v["tagseite"] for v in e["tagesseiten"].values()), {t: v["tagseite"] for t, v in e["tagesseiten"].items()}
     gesehen, voll = set(), 0
@@ -245,14 +245,14 @@ def test_seite_je_status_und_baustein(tmp_path, browser):
     """Paket B auf der Seite: unterwegs beginnt mit Heute und der Karte; ausgeschaltete Bausteine verschwinden."""
     planung = seite_der_variante(tmp_path / "planung", browser)
     assert planung["heute"] is None
-    assert {"wuensche", "offen"} <= set(planung["reiter"]) and planung["knoepfe"] > 0
+    assert {"wuensche", "zu-tun"} <= set(planung["reiter"]) and planung["knoepfe"] > 0
     unterwegs = seite_der_variante(tmp_path / "unterwegs", browser, status="unterwegs")
     assert unterwegs["aktiv"] == "varianten" and unterwegs["heute"].startswith("Heute · Tag 1: "), unterwegs
     kein_tag = seite_der_variante(tmp_path / "kein_tag", browser, datum="2027-06-30", status="unterwegs")
     assert kein_tag["heute"] == "Heute"
     wenig = seite_der_variante(tmp_path / "wenig", browser, bausteine=["varianten"])
     # „Zu tun“ mit „Zu entscheiden“ und „Zu buchen“ gibt es in jeder Reise mit Tagen (#214), Wünsche nur mit ihrem Baustein
-    assert "wuensche" not in wenig["reiter"] and "offen" in wenig["reiter"], wenig
+    assert "wuensche" not in wenig["reiter"] and "zu-tun" in wenig["reiter"], wenig
     assert wenig["knoepfe"] == 0 and wenig["kennungen"] > 0   # IDs stehen da, aber ohne Rückmeldeknopf
 
 

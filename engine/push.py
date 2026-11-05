@@ -310,7 +310,7 @@ def nachricht(kid, reise, eintraege):
         text, ziel = e["text"], e["ziel"]
     else:
         text = texte.t(sp, "push.mehrere", n=len(eintraege), zuletzt=eintraege[-1]["text"])
-        ziel = "offen" if all(e["art"] in ("meldung", "rueckmeldung", "aufgabe") for e in eintraege) else ""
+        ziel = "zu-tun" if all(e["art"] in ("meldung", "rueckmeldung", "aufgabe") for e in eintraege) else ""
     url = seite + (f"#{ziel}" if ziel else "")
     if any(e["art"] == "version" for e in eintraege) and seite:
         url = seite + "?aktualisieren=1" + (f"#{ziel}" if ziel else "")

@@ -15,7 +15,7 @@ const zeilen = () => p.evaluate(() => {
   const sichtbar = s ? [...s.querySelectorAll(".wzeile")].filter(z => z.checkVisibility()) : [];
   return {da: !!s, offen: sichtbar.filter(z => z.querySelector(".chip.offen")).length, gebucht: sichtbar.filter(z => !z.querySelector(".chip.offen")).length};
 });
-await p.goto(basis + "#offen");
+await p.goto(basis + "#zu-tun");
 await p.waitForSelector("#titel:not(:empty)");
 await p.waitForTimeout(400);
 const reihe = await p.evaluate(() => [...document.querySelectorAll("#main section.ziel, #main details.ziel")].map(s => s.id));

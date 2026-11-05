@@ -760,7 +760,8 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
     reise.json bekommt die bisherige Vorgabe der Ebene „Unterwegs nachschlagen“, wenn die Reise ein Etappen-Dossier hat;
     Eckdaten aus der früheren Vorlage stellt eckdaten_nachziehen um (#217); reise.yaml ohne sprache bekommt sprache: de
     (sprache_nachziehen, #267), vor den Schritten, die die Sprache der Reise lesen; Titel und Kennzahlen der Etappen kommen aus
-    dem Dossier an die Strecken (etappen_nachziehen, #269).
+    dem Dossier an die Strecken (etappen_nachziehen, #269); das frühere Feld buchung: an Dingen wird zur Buchung B-…
+    (buchung_nachziehen, #215).
     Kommentare und Form der Dateien bleiben (ruamel). -> Liste der Meldungen (was geändert oder offen ist)."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from routen import WANN, art_schluessel
@@ -814,6 +815,7 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
                 w.insert(list(w.keys()).index("bereich"), "art", bereich)
                 meldungen.append(f"{vid}: bereich {bereich} → art {bereich}")
             del w["bereich"]
+    buchung_nachziehen(reise_dir, roh, schreiben, meldungen)   # #215: Feld buchung: an Dingen -> Buchung B-…
     kennzahlen_kennungen(roh, sprache_von(reise_dir), meldungen)   # #269: Namen der Kennzahlen in routen.yaml -> Kennungen
     dossier_fertig = etappen_nachziehen(reise_dir, roh, schreiben, meldungen)   # #269: Titel und Kennzahlen an die Strecken
     if schreiben and roh is not None:
@@ -849,6 +851,68 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
         meldungen += eckdaten_nachziehen(reise_dir, cfg, schreiben)
     meldungen += reste_nachziehen(reise_dir, schreiben)
     return meldungen
+
+
+BUCHUNG_STAND_ALT = ("angefragt", "gebucht")   # Werte des früheren Felds buchung:, die als Status der Buchung bleiben
+
+
+def buchung_nachziehen(reise_dir, roh, schreiben, meldungen):
+    """Das frühere Feld buchung: an Unterkünften, Aufenthalten und Strecken (#215) wird zur Buchung B-…: offen oder leer
+    entfällt (ohne Buchung gilt „offen“); hat das Ding schon eine geltende Buchung, entfällt nur das Feld; angefragt und
+    gebucht werden eine Buchung mit diesem Status; jeder andere Text eine Buchung gebucht mit dem Text als Notiz und einer
+    Meldung zum Prüfen. Die Nummer folgt den vorhandenen IDs. Ohne das Feld bleibt alles, wie es ist. Ändert roh."""
+    if not isinstance(roh, dict):
+        return
+    import schreiben as sb
+    sprache = sprache_von(reise_dir)
+    buchungen = roh.get("buchungen") if isinstance(roh.get("buchungen"), dict) else {}
+
+    def geltende(did):
+        for bid, b in buchungen.items():
+            fuer = b.get("fuer") if isinstance(b, dict) else None
+            fuer = [fuer] if isinstance(fuer, str) else list(fuer or [])
+            if did in fuer and b.get("status", "gebucht") != "storniert":
+                return bid
+        return None
+
+    zaehler = [None]
+
+    def neue_bid():
+        if schreiben:
+            return naechste_id(reise_dir, "B")
+        if zaehler[0] is None:   # ohne Schreiben: nur rechnen, ids.yaml bleibt
+            datei = Path(reise_dir) / "ids.yaml"
+            marken = (yaml.safe_load(datei.read_text(encoding="utf-8")) or {}) if datei.exists() else {}
+            zaehler[0] = max(int(marken.get("B") or 0), _nummern(Path(reise_dir), "B"))
+        zaehler[0] += 1
+        return f"B-{zaehler[0]:02d}"
+
+    for gruppe in ("unterkuenfte", "aufenthalte", "strecken"):
+        for did, d in (roh.get(gruppe) or {}).items():
+            if not isinstance(d, dict) or "buchung" not in d:
+                continue
+            wert = d["buchung"]
+            text = "" if wert is None else str(wert).strip()
+            del d["buchung"]
+            if not text or text == "offen":
+                meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.buchung_entfernt", wo=did))
+                continue
+            alt = geltende(did)
+            if alt:
+                meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.buchung_vorhanden", wo=did, bid=alt))
+                continue
+            status = text if text in BUCHUNG_STAND_ALT else "gebucht"
+            neu_b = {"fuer": [did], "status": status, "quelle": texte.t(sprache, "inhalt.nachziehen.buchung_quelle")}
+            if text not in BUCHUNG_STAND_ALT:
+                neu_b["notiz"] = text
+            bid = neue_bid()
+            if not isinstance(roh.get("buchungen"), dict):
+                roh["buchungen"] = type(roh)()
+                buchungen = roh["buchungen"]
+            roh["buchungen"][bid] = sb.block_map(neu_b)
+            meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.buchung", wo=did, status=text, bid=bid))
+            if text not in BUCHUNG_STAND_ALT:
+                meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.buchung_pruefen", wo=did, text=text))
 
 
 SPRACHE_NACHZIEHEN = "de"   # trägt nachziehen ein, weil für Reisen ohne Feld sprache bisher Deutsch galt (keine Lesetoleranz mehr); die Umstellung ändert kein Verhalten

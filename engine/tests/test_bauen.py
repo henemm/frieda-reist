@@ -288,9 +288,9 @@ def test_symbole_eingebettet_mit_lizenz(reise, tmp_path):
     seite = (tmp_path / "dist/index.html").read_text(encoding="utf-8")
     assert "<!--__SYMBOLE__-->" not in seite
     assert "Lucide 1.55.0, ISC-Lizenz" in seite
-    definiert = set(re.findall(r'<symbol id="i-([a-z]+)"', seite))
+    definiert = set(re.findall(r'<symbol id="i-([a-z-]+)"', seite))
     assert definiert == set(bauen.SYMBOLE)
-    assert set(re.findall(r'href="#i-([a-z]+)"', seite)) <= definiert   # feste Knöpfe
+    assert set(re.findall(r'href="#i-([a-z-]+)"', seite)) <= definiert   # feste Knöpfe
     assert {"plan", "wissen"} <= definiert                               # Kategorien (per JS)
     assert (Path(bauen.__file__).parent / "vendor" / bauen.LUCIDE / "LICENSE").exists()
 

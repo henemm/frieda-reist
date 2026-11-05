@@ -45,7 +45,7 @@ unterkuenfte:
     ort: O-01
     art: hotel
     hinweis: "erfundenes Beispielhotel in der Altstadt"
-    # Buchungsstand: aus der Buchung B-01 (unten); ohne Buchung gilt „offen“, ein eigener Eintrag buchung: ginge auch
+    # Buchungsstand: aus der Buchung B-01 (unten); ohne Buchung gilt „offen“
     quelle: "erfunden (Beispiel)"
     merkmale:
       # Wert je Datum (docs/alternativen.md): ein Eintrag ohne „gilt“ für alle übrigen Tage
