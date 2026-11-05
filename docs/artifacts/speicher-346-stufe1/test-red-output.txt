@@ -1,0 +1,153 @@
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEF.FEF........FFFF....                [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of test_beispielreise_geht_byte_gleich_durch_import_und_export[beispielreise] _
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_ ERROR at setup of test_beispielreise_geht_byte_gleich_durch_import_und_export[stadtwochenende] _
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_ ERROR at setup of test_import_nimmt_versteckte_und_binaere_dateien_ohne_git_und_leere_ordner _
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_____________ ERROR at setup of test_export_rechte_und_leeres_ziel _____________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_________ ERROR at setup of test_erneuter_import_wirkt_wie_ein_vorgang _________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_______________ ERROR at setup of test_export_eines_alten_stands _______________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+______ ERROR at setup of test_tombstone_hat_weder_inhalt_noch_pruefsumme _______
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_ ERROR at setup of test_verlauf_laesst_sich_ueber_db_weder_aendern_noch_loeschen _
+E   ModuleNotFoundError: No module named 'reisespeicher'
+________ ERROR at setup of test_trigger_schuetzen_auch_ohne_authorizer _________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+______________ ERROR at setup of test_db_legt_datei_geschuetzt_an ______________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+___________ ERROR at setup of test_bekannte_kennung_schreibt_nichts ____________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+__ ERROR at setup of test_stand_nummer_zaehlt_vorgaenge_ab_uebernommener_zahl __
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_______ ERROR at setup of test_wann_wird_gespeichert_sonst_jetzt_in_utc ________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_______ ERROR at setup of test_unveraenderte_dateien_ergeben_keine_zeile _______
+E   ModuleNotFoundError: No module named 'reisespeicher'
+__________ ERROR at setup of test_zuruecksetzen_ist_ein_neuer_vorgang __________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_ ERROR at setup of test_zuruecksetzen_ohne_abweichung_oder_ohne_angaben_scheitert _
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_____ ERROR at setup of test_zuruecksetzen_auf_stand_mit_geloeschter_datei _____
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_____________ ERROR at setup of test_symlink_bricht_den_import_ab ______________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_________ ERROR at setup of test_schlechte_pfade_im_vorgang[../aus.md] _________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_____ ERROR at setup of test_schlechte_pfade_im_vorgang[plan/../../aus.md] _____
+E   ModuleNotFoundError: No module named 'reisespeicher'
+__________ ERROR at setup of test_schlechte_pfade_im_vorgang[/aus.md] __________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_______ ERROR at setup of test_schlechte_pfade_im_vorgang[plan/a\x00.md] _______
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_____________ ERROR at setup of test_schlechte_pfade_im_vorgang[] ______________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+________ ERROR at setup of test_schlechte_pfade_im_vorgang[plan//a.md] _________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+___________ ERROR at setup of test_schlechte_pfade_im_vorgang[plan/] ___________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_____________ ERROR at setup of test_schlechte_pfade_im_vorgang[.] _____________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+________ ERROR at setup of test_schlechte_pfade_im_vorgang[plan/./a.md] ________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_ ERROR at setup of test_export_prueft_pfade_und_schreibt_nichts_ausserhalb[../aus.md] _
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_ ERROR at setup of test_export_prueft_pfade_und_schreibt_nichts_ausserhalb[plan/a\x00.md] _
+E   ModuleNotFoundError: No module named 'reisespeicher'
+_________ ERROR at setup of test_export_in_nicht_leeres_ziel_scheitert _________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+______________ ERROR at setup of test_sichern_und_zurueckspielen _______________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+________ ERROR at setup of test_pruefen_findet_verfaelschte_pruefsumme _________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+__________ ERROR at setup of test_pruefen_findet_inhalt_in_tombstone ___________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+________________________ ERROR at setup of test_befehle ________________________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+___________ ERROR at setup of test_befehl_pruefen_meldet_abweichung ____________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+___________________ ERROR at setup of test_ort_des_speichers ___________________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+____________________ ERROR at setup of test_laeuft_ohne_git ____________________
+E   ModuleNotFoundError: No module named 'reisespeicher'
+=================================== FAILURES ===================================
+E   AssertionError: assert None
+     +  where None = <function search at 0x7f55740313a0>('^#?FR_SPEICHER=', '# Einstellungen einer Instanz (docs/betrieb.md). Kopie nach <Reisen-Repo>/betrieb/einstellungen.env und anpassen.\n# ... sobald ein Gerät Benachrichtigungen eingeschaltet hat). Jede Zeit trägt die Zone. (UTC)\n#FR_ZEITZONE=Europe/Berlin\n', re.MULTILINE)
+     +    where <function search at 0x7f55740313a0> = re.search
+     +    and   re.MULTILINE = re.M
+./engine/tests/test_reisespeicher.py:488: AssertionError: assert None
+E   AssertionError: assert False
+     +  where False = exists()
+     +    where exists = PosixPath('./docs/adr/0008-reisespeicher.md').exists
+./engine/tests/test_reisespeicher.py:505: AssertionError: assert False
+E   FileNotFoundError: [Errno 2] No such file or directory: './engine/reisespeicher.py'
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError: [Errno 2] No such file or directory: './engine/reisespeicher.py'
+E   AssertionError: assert ['konten.py'] == ['konten.py',...espeicher.py']
+      
+      Right contains one more item: 'reisespeicher.py'
+      Use -v to get more diff
+./engine/tests/test_betrieb.py:1739: AssertionError: assert ['konten.py'] == ['konten.py',...espeicher.py']
+E   AssertionError: assert 'reisespeicher.py' in ['konten.py']
+     +  where ['konten.py'] = <built-in method split of str object at 0x7f5571303630>()
+     +    where <built-in method split of str object at 0x7f5571303630> = 'konten.py\n'.split
+     +      where 'konten.py\n' = read_text()
+     +        where read_text = PosixPath('<tmp>').read_text
+     +          where PosixPath('<tmp>') = <function wa.<locals>.lauf at 0x7f557127c4a0>.gesichert
+./engine/tests/test_betrieb.py:1746: AssertionError: assert 'reisespeicher.py' in ['konten.py']
+E   AssertionError: assert (0 == 1)
+     +  where 0 = CompletedProcess(args=['./betrieb/waechter.sh'], returncode=0, stdout='', stderr='').returncode
+./engine/tests/test_betrieb.py:1752: AssertionError: assert (0 == 1)
+E   AssertionError: assert (1 == 1 and 1 == 2)
+     +  where 1 = CompletedProcess(args=['./betrieb/waechter.sh'], returncode=1, stdout='', stderr='').returncode
+     +  and   1 = len(['high|Probe: Account backup failed|The snapshot of konten.db was not created; the backup holds the state of the previous day. Log: journalctl -u frieda-waechter -n 100|'])
+./engine/tests/test_betrieb.py:1760: AssertionError: assert (1 == 1 and 1 == 2)
+=========================== short test summary info ============================
+FAILED engine/tests/test_reisespeicher.py::test_einstellungen_beispiel_nennt_den_speicher
+FAILED engine/tests/test_reisespeicher.py::test_adr_und_betriebsdoku - Assert...
+FAILED engine/tests/test_reisespeicher.py::test_quelltext_ohne_instanzwerte
+FAILED engine/tests/test_betrieb.py::test_waechter_ohne_neues_keine_nachricht
+FAILED engine/tests/test_betrieb.py::test_waechter_sicherung_fehlgeschlagen_meldet_sich
+FAILED engine/tests/test_betrieb.py::test_waechter_reisen_sicherung_fehlgeschlagen_meldet_sich
+FAILED engine/tests/test_betrieb.py::test_waechter_beide_sicherungen_fehlgeschlagen
+ERROR engine/tests/test_reisespeicher.py::test_beispielreise_geht_byte_gleich_durch_import_und_export[beispielreise]
+ERROR engine/tests/test_reisespeicher.py::test_beispielreise_geht_byte_gleich_durch_import_und_export[stadtwochenende]
+ERROR engine/tests/test_reisespeicher.py::test_import_nimmt_versteckte_und_binaere_dateien_ohne_git_und_leere_ordner
+ERROR engine/tests/test_reisespeicher.py::test_export_rechte_und_leeres_ziel
+ERROR engine/tests/test_reisespeicher.py::test_erneuter_import_wirkt_wie_ein_vorgang
+ERROR engine/tests/test_reisespeicher.py::test_export_eines_alten_stands - Mo...
+ERROR engine/tests/test_reisespeicher.py::test_tombstone_hat_weder_inhalt_noch_pruefsumme
+ERROR engine/tests/test_reisespeicher.py::test_verlauf_laesst_sich_ueber_db_weder_aendern_noch_loeschen
+ERROR engine/tests/test_reisespeicher.py::test_trigger_schuetzen_auch_ohne_authorizer
+ERROR engine/tests/test_reisespeicher.py::test_db_legt_datei_geschuetzt_an - ...
+ERROR engine/tests/test_reisespeicher.py::test_bekannte_kennung_schreibt_nichts
+ERROR engine/tests/test_reisespeicher.py::test_stand_nummer_zaehlt_vorgaenge_ab_uebernommener_zahl
+ERROR engine/tests/test_reisespeicher.py::test_wann_wird_gespeichert_sonst_jetzt_in_utc
+ERROR engine/tests/test_reisespeicher.py::test_unveraenderte_dateien_ergeben_keine_zeile
+ERROR engine/tests/test_reisespeicher.py::test_zuruecksetzen_ist_ein_neuer_vorgang
+ERROR engine/tests/test_reisespeicher.py::test_zuruecksetzen_ohne_abweichung_oder_ohne_angaben_scheitert
+ERROR engine/tests/test_reisespeicher.py::test_zuruecksetzen_auf_stand_mit_geloeschter_datei
+ERROR engine/tests/test_reisespeicher.py::test_symlink_bricht_den_import_ab
+ERROR engine/tests/test_reisespeicher.py::test_schlechte_pfade_im_vorgang[../aus.md]
+ERROR engine/tests/test_reisespeicher.py::test_schlechte_pfade_im_vorgang[plan/../../aus.md]
+ERROR engine/tests/test_reisespeicher.py::test_schlechte_pfade_im_vorgang[/aus.md]
+ERROR engine/tests/test_reisespeicher.py::test_schlechte_pfade_im_vorgang[plan/a\x00.md]
+ERROR engine/tests/test_reisespeicher.py::test_schlechte_pfade_im_vorgang[]
+ERROR engine/tests/test_reisespeicher.py::test_schlechte_pfade_im_vorgang[plan//a.md]
+ERROR engine/tests/test_reisespeicher.py::test_schlechte_pfade_im_vorgang[plan/]
+ERROR engine/tests/test_reisespeicher.py::test_schlechte_pfade_im_vorgang[.]
+ERROR engine/tests/test_reisespeicher.py::test_schlechte_pfade_im_vorgang[plan/./a.md]
+ERROR engine/tests/test_reisespeicher.py::test_export_prueft_pfade_und_schreibt_nichts_ausserhalb[../aus.md]
+ERROR engine/tests/test_reisespeicher.py::test_export_prueft_pfade_und_schreibt_nichts_ausserhalb[plan/a\x00.md]
+ERROR engine/tests/test_reisespeicher.py::test_export_in_nicht_leeres_ziel_scheitert
+ERROR engine/tests/test_reisespeicher.py::test_sichern_und_zurueckspielen - M...
+ERROR engine/tests/test_reisespeicher.py::test_pruefen_findet_verfaelschte_pruefsumme
+ERROR engine/tests/test_reisespeicher.py::test_pruefen_findet_inhalt_in_tombstone
+ERROR engine/tests/test_reisespeicher.py::test_befehle - ModuleNotFoundError:...
+ERROR engine/tests/test_reisespeicher.py::test_befehl_pruefen_meldet_abweichung
+ERROR engine/tests/test_reisespeicher.py::test_ort_des_speichers - ModuleNotF...
+ERROR engine/tests/test_reisespeicher.py::test_laeuft_ohne_git - ModuleNotFou...
+7 failed, 13 passed, 95 deselected, 37 errors in 3.10s

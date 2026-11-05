@@ -16,6 +16,7 @@ def instanz_leeren(monkeypatch, tmp_path):
     monkeypatch.setenv("FR_WURZEL", str(tmp_path / "keine-instanz"))   # keine betrieb/einstellungen.env
     monkeypatch.setenv("FR_KONTEN", str(tmp_path / "_konten"))
     monkeypatch.setenv("FR_DIENST", str(tmp_path / "_dienst"))   # Reise-Stände (engine/stand.py) nie in den Ordner des Servers
+    monkeypatch.setenv("FR_SPEICHER", str(tmp_path / "_speicher"))   # Reisespeicher (engine/reisespeicher.py, #346)
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -348,7 +348,7 @@ def test_befehle(umgebung, capsys):
 def test_konten_ordner_alt_und_neu(tmp_path, monkeypatch):
     """Die Datenbank liegt neben der Ablage in _konten; eine ältere unter <Ablage>/_konten gilt, bis am neuen Ort eine liegt."""
     import instanz
-    for n in ("RM_SEITEN", "KN_SEITEN", "FR_SEITEN", "FR_KONTEN", "FR_EINSTELLUNGEN"):
+    for n in ("RM_SEITEN", "KN_SEITEN", "FR_SEITEN", "FR_KONTEN", "FR_SPEICHER", "FR_EINSTELLUNGEN"):
         monkeypatch.delenv(n, raising=False)
     monkeypatch.setenv("RM_ABLAGE", str(tmp_path / "_rueckmeldungen"))
     monkeypatch.chdir(tmp_path)

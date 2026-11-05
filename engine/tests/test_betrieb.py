@@ -1706,10 +1706,11 @@ def test_neue_reise_aus_dem_konnektor_frieda(fs, monkeypatch, capsys):
 def wa(tmp_path):
     """Attrappe für Python (schreibt den Bericht, wenn WA_BERICHT gesetzt ist) und für den Meldeweg."""
     ausfuehrbar(tmp_path / "python", f'''#!/bin/sh
-# Aufruf: python engine/waechter.py lauf --bericht DATEI, danach python engine/konten.py sichern
+# Aufruf: python engine/waechter.py lauf --bericht DATEI, danach python engine/konten.py sichern und
+# python engine/reisespeicher.py sichern; WA_SICHERN_FEHLER nennt die Module, deren Sicherung scheitert
 if [ "$2" = sichern ]; then
   echo "${{1##*/}}" >> {tmp_path}/gesichert
-  [ -z "$WA_SICHERN_FEHLER" ] || exit 2
+  case " $WA_SICHERN_FEHLER " in *" ${{1##*/}} "*) exit 2;; esac
   exit 0
 fi
 [ -z "$WA_FEHLER" ] || exit 3
@@ -1734,13 +1735,29 @@ exit 0
 def test_waechter_ohne_neues_keine_nachricht(wa):
     r, nachrichten = wa()
     assert r.returncode == 0 and nachrichten == [] and wa.stempel.exists()
-    assert wa.gesichert.read_text() == "konten.py\n"                     # täglicher Schnappschuss der Konten (#72)
+    # täglicher Schnappschuss der Konten (#72) und des Reisespeichers (#346); die Reihenfolge ist nicht festgelegt
+    assert sorted(wa.gesichert.read_text().split()) == ["konten.py", "reisespeicher.py"]
 
 
 def test_waechter_sicherung_fehlgeschlagen_meldet_sich(wa):
-    r, nachrichten = wa(WA_SICHERN_FEHLER="1")
+    r, nachrichten = wa(WA_SICHERN_FEHLER="konten.py")
     assert r.returncode == 1 and not wa.stempel.exists()
     assert len(nachrichten) == 1 and nachrichten[0].startswith("high|") and "Account backup" in nachrichten[0]
+    assert "reisespeicher.py" in wa.gesichert.read_text().split()      # die andere Sicherung läuft trotzdem
+
+
+def test_waechter_reisen_sicherung_fehlgeschlagen_meldet_sich(wa):
+    """#346: Scheitert die Sicherung des Reisespeichers, meldet der Wächter dringend; die Konten werden trotzdem gesichert."""
+    r, nachrichten = wa(WA_SICHERN_FEHLER="reisespeicher.py")
+    assert r.returncode == 1 and not wa.stempel.exists()
+    assert len(nachrichten) == 1 and nachrichten[0].startswith("high|")
+    assert "konten.db" not in nachrichten[0] and "reisen.db" in nachrichten[0]
+    assert sorted(wa.gesichert.read_text().split()) == ["konten.py", "reisespeicher.py"]
+
+
+def test_waechter_beide_sicherungen_fehlgeschlagen(wa):
+    r, nachrichten = wa(WA_SICHERN_FEHLER="konten.py reisespeicher.py")
+    assert r.returncode == 1 and len(nachrichten) == 2 and all(n.startswith("high|") for n in nachrichten)
 
 
 def test_waechter_fehler_sichert_trotzdem(wa):
