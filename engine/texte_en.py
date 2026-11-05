@@ -405,7 +405,7 @@ TEXTE = {
     "seite.label.naechte": "Nights: ",
     "seite.label.orte": "Places:",
     "seite.label.quelle": "Source: ",
-    "seite.herkunft.titel": "Sources",
+    "seite.herkunft.titel": "Sources and notes",
     "seite.herkunft.quellen": "Sources: {quellen}",
     "seite.herkunft.quelle_geprueft": "{quelle} (checked {datum})",
     "seite.herkunft.notizen": "Note: {notizen}",
