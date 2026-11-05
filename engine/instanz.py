@@ -10,6 +10,7 @@ leitet dieses Modul den Rest nach derselben Ordnung ab, ohne Werte einer bestimm
   Dienst   FR_DIENST; sonst <Seiten>/_dienst (Code der Dienste, Zustand des Veröffentlichens, Reise-Stände)
   Konten   FR_KONTEN; sonst <Seiten>/_konten (Konten-Datenbank des Dienstes, nicht Teil einer Reise); eine ältere Datenbank
            unter <Ablage>/_konten/ gilt weiter, solange am neuen Ort keine liegt
+  Speicher FR_SPEICHER; sonst <Seiten>/_speicher (Reisespeicher reisen.db, Versionen aller Reisen, ADR-0008, #346)
   Neu      <Konten>/neu (Anfragen nach neuen Reisen und Meldungen an Personen, gehört zu keiner Reise, #72); ein älterer
            Ordner <Ablage>/_neu/ gilt weiter, solange am neuen Ort nichts liegt
   Zugänge  KN_ZUGAENGE; sonst <FR_KONNEKTOR bzw. <Seiten>/_konnektor>/zugaenge.json
@@ -85,6 +86,11 @@ def konten():
     neu = Path(os.environ.get("FR_KONTEN") or wert("FR_KONTEN") or seiten() / "_konten")
     alt = ablage() / "_konten"
     return alt if not (neu / "konten.db").exists() and (alt / "konten.db").exists() else neu
+
+
+def speicher():
+    """Ordner des Reisespeichers (engine/reisespeicher.py, ADR-0008): Reisedaten als Versionen in SQLite, mit Sicherung."""
+    return Path(wert("FR_SPEICHER") or seiten() / "_speicher")
 
 
 def _belegt(p):

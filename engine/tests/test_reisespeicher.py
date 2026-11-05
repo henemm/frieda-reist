@@ -221,6 +221,32 @@ def test_db_legt_datei_geschuetzt_an(rs):
     rs.db().close()                                                   # zweites Öffnen: Schema mit IF NOT EXISTS
 
 
+def test_pragma_mit_wert_und_attach_scheitern_ueber_db(rs, drei, tmp_path):
+    """Befund F001: Über db() lässt sich der Schutz nicht per PRAGMA abschalten (recursive_triggers=OFF hätte
+    INSERT OR REPLACE an den Triggern vorbeigelassen) und die Datei nicht ein zweites Mal ohne Schutz anhängen."""
+    vorher = _inhalt_der_tabellen(rs)
+    v = rs.db()
+    for a in ["PRAGMA recursive_triggers = OFF", "PRAGMA foreign_keys = OFF", "PRAGMA ignore_check_constraints = ON",
+              "PRAGMA trusted_schema = ON", "PRAGMA writable_schema = ON", "PRAGMA writable_schema",
+              f"ATTACH DATABASE '{rs.pfad()}' AS zweit", "DETACH DATABASE main"]:
+        with pytest.raises(sqlite3.DatabaseError):
+            v.execute(a)
+    assert v.execute("PRAGMA recursive_triggers").fetchone()[0] == 1        # lesende PRAGMAs bleiben erlaubt
+    assert v.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+    for a in [f"INSERT OR REPLACE INTO vorgaenge (nummer, reise, stand, wann, wer, werkzeug, titel) "
+              f"VALUES ({drei[0].nummer}, 'probe', 1, '2026-01-01T00:00:00Z', 'x', 'x', 'x')",
+              f"INSERT OR REPLACE INTO versionen (vorgang, reise, pfad, inhalt, pruefsumme) "
+              f"VALUES ({drei[0].nummer}, 'probe', 'plan/a.md', x'00', '00')"]:
+        with pytest.raises(sqlite3.DatabaseError):
+            v.execute(a)
+            v.commit()
+        v.rollback()
+    v.close()
+    assert _inhalt_der_tabellen(rs) == vorher
+    _schreiben(rs, "probe", {"plan/a.md": A1})                         # der normale Weg geht weiter
+    assert rs.stand_nummer("probe") == 5
+
+
 # ---------- Test 4: Kennung idempotent (AC-4) ----------
 
 def test_bekannte_kennung_schreibt_nichts(rs):
@@ -364,6 +390,58 @@ def test_export_in_nicht_leeres_ziel_scheitert(rs, tmp_path):
     (tmp_path / "datei").write_bytes(b"x")
     with pytest.raises(FileExistsError):
         rs.exportieren("probe", tmp_path / "datei")
+
+
+@pytest.mark.parametrize("pfad", ["plan\\a.md", "..\\aus.md", ".git/HEAD", "plan/.git/config", ".git"])
+def test_backslash_und_git_pfade_im_vorgang(rs, pfad):
+    """Befund F003: Backslashes und ein Teil .git werden abgelehnt (der Import lässt .git aus, der Export legt es nie an)."""
+    with pytest.raises(ValueError):
+        _schreiben(rs, "probe", {pfad: A1})
+    assert rs.stand_nummer("probe") is None
+
+
+def test_datei_und_ordner_gleichen_namens_werden_abgelehnt(rs, tmp_path):
+    """Befund F004: q und q/r zugleich ließen sich nicht exportieren; schon der Vorgang lehnt das ab, auch gegen den
+    aktuellen Stand. Nach dem Löschen von q geht q/r."""
+    with pytest.raises(ValueError):
+        _schreiben(rs, "probe", {"q": A1, "q/r": B1})
+    assert rs.stand_nummer("probe") is None
+    _schreiben(rs, "probe", {"q": A1})
+    vorher = _inhalt_der_tabellen(rs)
+    with pytest.raises(ValueError):
+        _schreiben(rs, "probe", {"q/r": B1})
+    with pytest.raises(ValueError):
+        _schreiben(rs, "probe", {"p/q": B1, "p": A1})
+    assert _inhalt_der_tabellen(rs) == vorher
+    assert _schreiben(rs, "probe", {"q": None, "q/r": B1}).stand == 2
+    assert rs.aktueller_stand("probe") == {"q/r": B1}
+
+
+def test_export_mit_kollision_schreibt_nichts(rs, tmp_path):
+    """Befund F004: Kam eine Kollision an den Regeln vorbei in die Datei (rohe Verbindung), prüft der Export alle
+    Zielpfade vorher und schreibt nichts."""
+    v = _schreiben(rs, "probe", {"a/b.md": A1, "q": A2})
+    with closing(_roh(rs)) as roh:
+        n = roh.execute("INSERT INTO vorgaenge (reise, stand, wann, wer, werkzeug, titel) "
+                        "VALUES ('probe', ?, '2026-11-05T08:00:00Z', 'x', 'x', 'x')", (v.stand + 1,)).lastrowid
+        roh.execute("INSERT INTO versionen (vorgang, reise, pfad, inhalt, pruefsumme) VALUES (?, 'probe', 'q/r', ?, ?)",
+                    (n, B1, "0" * 64))
+        roh.commit()
+    ziel = tmp_path / "ziel"
+    with pytest.raises(ValueError):
+        rs.exportieren("probe", ziel)
+    assert not ziel.exists() or not any(ziel.rglob("*"))
+
+
+def test_export_in_symlink_als_ziel_scheitert(rs, tmp_path):
+    """Befund F005: Ein Ziel, das ein Symlink ist (auch auf einen leeren Ordner), wird abgelehnt."""
+    _schreiben(rs, "probe", {"plan/a.md": A1})
+    fremd = tmp_path / "fremd"
+    fremd.mkdir()
+    (tmp_path / "verweis").symlink_to(fremd)
+    with pytest.raises(ValueError):
+        rs.exportieren("probe", tmp_path / "verweis")
+    assert not any(fremd.iterdir())
 
 
 # ---------- Test 9: Sicherung und Rückspieltest (AC-9) ----------

@@ -21,12 +21,13 @@ FR_ADRESSE=https://reisen.example.org
 # Reiseseiten brauchen dieselbe Adresse für die Anmeldung; FR_BASIS in konten.env hat denselben Wert. (<FR_ADRESSE>)
 #FR_KN_ADRESSE=https://reisen.example.org
 
-# Ordner auf dem Server. (/srv/<FR_INSTANZ>; darunter _rueckmeldungen, _dienst, _konnektor, _konten)
+# Ordner auf dem Server. (/srv/<FR_INSTANZ>; darunter _rueckmeldungen, _dienst, _konnektor, _konten, _speicher)
 #FR_SEITEN=/srv/beispiel
 #FR_ABLAGE=/srv/beispiel/_rueckmeldungen
 #FR_DIENST=/srv/beispiel/_dienst
 #FR_KONNEKTOR=/srv/beispiel/_konnektor
 #FR_KONTEN=/srv/beispiel/_konten
+#FR_SPEICHER=/srv/beispiel/_speicher
 
 # Adressen, die nicht ins Anfragekontingent von nginx zählen (die des Servers selbst, getrennt durch Leerzeichen; die Schleife
 # gilt immer). Dann zählen die Prüfungen des Servers nicht gegen Besucher (docs/betrieb.md, nginx-Bausteine abgleichen). (leer)
