@@ -574,9 +574,11 @@ ART_FELDER_REIHE = ("grundform", "name", "farbe", "symbol", "buchbar", "summiert
 
 
 def rolle_pruefen(merkmale, key, rolle, typ):
-    """Die Rolle kosten braucht den Typ geld und gilt je Art nur einmal."""
+    """Die Rolle kosten braucht den Typ geld, die Rolle hero den Typ text; jede Rolle gilt je Art nur einmal."""
     if rolle == "kosten" and typ != "geld":
         raise Ablehnung("schreiben.rolle_pruefen.1")
+    if rolle == "hero" and typ != "text":
+        raise Ablehnung("schreiben.rolle_pruefen.3")
     andere = next((k for k, d in merkmale.items() if k != key and isinstance(d, dict) and d.get("rolle") == rolle), None)
     if andere:
         raise Ablehnung("schreiben.rolle_pruefen.2", rolle=rolle, w2=merkmale[andere].get('name', andere), andere=andere)

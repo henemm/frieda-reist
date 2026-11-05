@@ -6,7 +6,8 @@
 # aus eigener Kraft: Gehzeit, Länge, Höhenmeter werden summiert), merkmale. Felder je Merkmal: name, typ (text | geld |
 # zahl | auswahl mit werte), veraenderlich (braucht Prüfdatum), stufe (pflicht = nötig | empfohlen = gut zu wissen |
 # angeboten = zusätzlich | aus), rolle (kosten: der Preis des Dings, Typ geld, den die Seite über die Reise summiert; die
-# Herberge unten hat keine, weil ihr Preis pro Person gilt), auto
+# Herberge unten hat keine, weil ihr Preis pro Person gilt; hero: ein Text, der im Vergleich ganz oben über alle Spalten steht, hier die
+# Einschätzung von Pension und Gasthof), auto
 # (berechnet: Bewegung gehzeit, laenge, hoehenmeter; Folge tage, gehzeit, unterkuenfte, anschluss), hilfe, frage, auch.
 # buchung_merkmale: Merkmale der Buchungen einer Art (was erst durch das Buchen entsteht), je Merkmal name, typ, werte,
 # einheit, hilfe, frage.
@@ -40,6 +41,8 @@ arten:
       webseite:    {name: Webseite, typ: link, hilfe: "Offizielle Website des Hauses (nicht das Buchungsportal)"}
       geoeffnet:   {name: Geöffnet am Reisedatum, typ: auswahl, werte: [ja, nein, unklar], veraenderlich: true, stufe: pflicht,
                     hilfe: "Website oder Anruf; kleine Häuser haben Betriebsferien", frage: "Weißt du, ob das Haus an dem Tag offen hat?"}
+      einschaetzung: {name: Einschätzung, typ: text, rolle: hero, stufe: angeboten,
+                    hilfe: "Was macht das Haus besonders, für wen passt es? Ein, zwei Sätze, mit Herkunft"}
   gasthof:
     grundform: aufenthalt
     name: Gasthof
@@ -48,6 +51,8 @@ arten:
       preis:       {name: Preis pro Nacht, typ: geld, veraenderlich: true, rolle: kosten}
       abendessen:  {name: Abendessen, typ: auswahl, werte: [im Haus, im Haus mit Vorbestellung, im Ort, keins, unklar]}
       ruhetag:     {name: Ruhetag, typ: text, veraenderlich: true, stufe: angeboten, hilfe: "Website; Küche oft an einem Wochentag zu"}
+      einschaetzung: {name: Einschätzung, typ: text, rolle: hero, stufe: angeboten,
+                    hilfe: "Was macht das Haus besonders, für wen passt es? Ein, zwei Sätze, mit Herkunft"}
   herberge:
     grundform: aufenthalt
     name: Herberge

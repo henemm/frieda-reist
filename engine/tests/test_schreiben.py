@@ -2361,3 +2361,18 @@ def test_merkmal_einzelform_bleibt_les_und_schreibbar(tmp_path):
     assert preis == [{"wert": "85 €", "quelle": "erfunden (Beispiel)", "notiz": "Beispielwert, erfunden"},
                      {"wert": "99 €", "gilt": datetime.date(2027, 5, 15), "geprueft": datetime.date(2026, 11, 4), "quelle": "Test"}]
     assert "Einzelform" in inspect.getsource(sb.wert_eintragen)
+
+
+def test_merkmal_rolle_hero(repo):
+    """#343: die Rolle hero (ein Text, der im Vergleich ganz oben steht) braucht den Typ text und gilt je Art nur einmal."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    with pytest.raises(sb.Ablehnung, match="Rolle hero braucht den Typ text"):
+        s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "hotel", "bezeichnung": "Einschätzung", "typ": "geld", "rolle": "hero"}})
+    s.vorbereiten()
+    s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "hotel", "bezeichnung": "Einschätzung", "typ": "text", "rolle": "hero"}})
+    arten, _ = arten_auf_main(origin)
+    assert arten["hotel"]["merkmale"]["einschaetzung"]["rolle"] == "hero"
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="Rolle hero hat an dieser Art schon"):
+        s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "hotel", "bezeichnung": "Zweite", "typ": "text", "rolle": "hero"}})

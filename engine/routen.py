@@ -335,8 +335,9 @@ DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage",
 # Rolle eines Merkmals -> der Typ, den es braucht. kosten: der Preis, den die Seite summiert (Typ geld). Für die Dinge, die früher
 # Kartenpunkte waren (ADR-0007, Schritt d): nummer (die Nummer eines nummerierten Punkts), alias (weitere Namen, getrennt durch ;, für
 # Kartenlinks im Text), sorte (Zusatzwort der Art, siehe sorten), osm (Bezug zu OpenStreetMap, Typ/Nummer), trinkbar (OSM-Angabe yes/no),
-# oeffnung (Öffnungszeiten laut OSM, opening_hours), bezug (die Kennung einer Unterkunft, die der Punkt ist)
-ROLLEN = {"kosten": "geld", "nummer": "zahl", "alias": "text", "sorte": "text", "osm": "text", "trinkbar": "text", "oeffnung": "text", "bezug": "text"}
+# oeffnung (Öffnungszeiten laut OSM, opening_hours), bezug (die Kennung einer Unterkunft, die der Punkt ist), hero (Typ text:
+# das Merkmal steht in jeder Möglichkeit des Vergleichs ganz oben über alle Spalten, #343)
+ROLLEN = {"kosten": "geld", "hero": "text", "nummer": "zahl", "alias": "text", "sorte": "text", "osm": "text", "trinkbar": "text", "oeffnung": "text", "bezug": "text"}
 
 
 def wann_von(w):

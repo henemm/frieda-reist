@@ -2502,7 +2502,7 @@ MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "@konnektor.w
                           "hilfe": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.hilfe"},
                           "frage": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.frage"},
                           "auch": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.merkmal_definieren.auch"},
-                          "rolle": {"type": "string", "enum": ["kosten", "keine"], "description": "@konnektor.werkzeug.merkmal_definieren.rolle"},
+                          "rolle": {"type": "string", "enum": ["kosten", "hero", "keine"], "description": "@konnektor.werkzeug.merkmal_definieren.rolle"},
                           "trotzdem": {"type": "boolean", "description": "@konnektor.werkzeug.merkmal_definieren.trotzdem"},
                           "grund": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.grund"},
                           "name": NAME_FELD},

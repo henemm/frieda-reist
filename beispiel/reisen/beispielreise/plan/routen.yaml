@@ -69,6 +69,7 @@ unterkuenfte:
       abendessen: {wert: im Ort, quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
       webseite: {wert: "https://example.org/pension-burgblick", quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
       lage: {wert: "am Markt, zwei Minuten vom Malerweg", quelle: "erfunden (Beispiel)"}
+      einschaetzung: {wert: "Ruhig und gemütlich, liegt direkt am Weg: das Haus für alle, die morgens ohne Anstieg losgehen wollen (Beispielwert)", quelle: "Einschätzung von Claude, erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
   U-03:
     name: Gasthof Polenztal
     ort: O-03
@@ -79,6 +80,7 @@ unterkuenfte:
     merkmale:
       preis: {wert: "70 €", quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
       abendessen: {wert: im Haus, quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
+      einschaetzung: {wert: "Günstig und mit Küche im Haus, dafür morgens 15 Minuten Anstieg: das Haus für alle, die abends nicht mehr weit wollen (Beispielwert)", quelle: "Einschätzung von Claude, erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
   U-04:
     name: Wanderherberge Altendorf
     ort: O-04

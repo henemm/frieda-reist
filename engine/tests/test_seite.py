@@ -336,6 +336,10 @@ def test_b2_wissen_orte_vergleich(tmp_path, browser):
         assert v and v["iImVergleich"] == 0 and not v["ueberlauf"], (breite, v)
         assert v["herkunftZeilen"] == 0 and v["herkunftOffenZugeklappt"] == 0, (breite, v)   # #342: nie dauerhaft sichtbar
         assert v["herkunftText"].startswith("Quellen: "), (breite, v)
+        # Hero-Feld (#343): Einschätzung ganz oben über alle Spalten, nie als Spalte
+        assert v["heroKarten"] >= 2 and not v["heroSpalte"], (breite, v)
+        if breite == "1300":
+            assert len(v["heroZeilen"]) >= 2 and all(h[0] == v["spaltenZahl"] and h[1] and h[2] == "Einschätzung" and h[3] and h[4] == 1 for h in v["heroZeilen"]), (breite, v)
         if breite == "1300":
             assert v["tabelle"] and v["karten"] == 0, (breite, v)   # nach dem Umschalten die Tabelle
             # Behälter statt Fenster (#332, Schritt D; Entscheidung 5.11.2026, Option B): in der Spalte der Tagesseite (unter 960 px)

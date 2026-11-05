@@ -52,6 +52,13 @@ for (const [breite, hoehe] of [[390, 844], [820, 1180], [1300, 900]]) {
       // #342: die Herkunft steht nie als eigene Zeile oder offen im Vergleich; Karte: zugeklappt hinter „Herkunft“, Tabelle: in den Einzelheiten
       herkunftKarten: karten.filter(k => k.querySelector("details.wm-herkunft:not([open]) .herkunft")).length, herkunftZeilen: box.querySelectorAll("tr.wm-herkunft").length,
       herkunftOffenZugeklappt: [...box.querySelectorAll(".wm-tab .herkunft")].length,
+      // #343: das Hero-Merkmal ist keine Spalte, sondern steht in jeder Möglichkeit ganz oben über alle Spalten (Tabelle: Zeile unter der Möglichkeit, Karte: unter dem Namen)
+      heroZeilen: [...box.querySelectorAll("tr.wm-hero")].map(r => [r.querySelector("td").colSpan, r.previousElementSibling.classList.contains("wm-zeile"),
+        r.querySelector(".hero-name").textContent, r.querySelector(".hero-text").textContent.length > 10, r.querySelectorAll("td").length]),
+      heroSpalte: [...box.querySelectorAll(".wm-tab thead th")].some(t => /Einschätzung/.test(t.textContent)),
+      spaltenZahl: box.querySelectorAll(".wm-tab thead th").length,
+      heroKarten: karten.filter(k => k.querySelector(".hero .hero-text")).length,
+      heroKartenOben: karten.every(k => !k.querySelector(".hero") || k.querySelector(".hero").previousElementSibling.classList.contains("chips") || k.querySelector(".hero").previousElementSibling.classList.contains("k")),
       herkunftText: (box.querySelector(".wm-karte details.wm-herkunft .herkunft") || {}).textContent || "",
       ueberlauf: document.documentElement.scrollWidth > innerWidth}; }, sicht);
   if (vergleich) vergleich.inSpalte = inSpalte;

@@ -429,6 +429,14 @@ details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
 .wm-karte details.wm-herkunft>summary{cursor:pointer}
 .wm-karte details.wm-herkunft .herkunft{margin-top:4px}
 .wm-weitere>.herkunft{margin-top:6px}
+/* Hero-Zeile (#343): ein Text ganz oben in der Möglichkeit über die volle Breite; in der Tabelle eine Zeile unter der Möglichkeit */
+.hero{display:flex;flex-direction:column;gap:2px;overflow-wrap:anywhere}
+.hero-name{font-size:var(--t-klein);color:var(--mut)}
+.wm-karte .hero{margin:6px 0 8px}
+.pico .wm-tab tr.wm-zeile:has(+ .wm-hero)>:is(th,td){border-bottom:0}
+.pico .wm-tab tr.wm-hero>td{padding-top:0;padding-inline-start:calc(10px + 1em)}
+.pico .wm-tab tr.wm-hero.an>td{background:var(--acc2)}
+.pico .wm-tab tr.wm-hero.auf>td{background:var(--tint);border-bottom:0}
 /* Einstieg „Alternativen vergleichen“: hellgrüne Pille mit Zahl; offen mit Rand statt Fläche */
 .pico .wm-knopf{width:auto;margin:0;box-shadow:none;font:600 var(--t-klein)/1.2 var(--font-text);display:inline-flex;align-items:center;gap:8px;min-height:40px;
   padding:6px 8px 6px 14px;border-radius:var(--r-pille);border:1px solid transparent;background:var(--acc2);color:var(--acc);--pico-color:var(--acc);cursor:pointer}
@@ -1184,7 +1192,7 @@ function zid(id) {
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke
-   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile
+   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile
    Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtKarte, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
@@ -1946,6 +1954,14 @@ function herkunftZeile(kriterien, werte, datum) {
     notizen.size ? T("seite.herkunft.notizen", {notizen: [...notizen].join(" · ")}) : ""].filter(Boolean);
   return teile.length ? el("div", {class: "herkunft"}, teile.map(t => el("span", {}, t))) : null;
 }
+// Molekül Hero-Zeile (#343): das Merkmal mit der Rolle hero (plan/arten.yaml, ein Text je Art, etwa eine Einschätzung) steht in jeder
+// Möglichkeit ganz oben und über die ganze Breite, mit seinem Namen als kleiner Überschrift; es ist dann keine Spalte und
+// kein Eintrag der Merkmalliste mehr. Mit Datum (Nacht im Tag) gilt der Wert für dieses Datum. Ohne Wert: nichts.
+const heroKriterium = w => w.kriterien.find(k => k.rolle === "hero" && stufeVon(k) !== "aus") || null;
+function heroZeile(w, werte, datum) {
+  const k = heroKriterium(w), v = k && werte && werte[k.id], x = v && (datum && v.je_datum ? giltAm(v, datum) : v);
+  return x && x.wert ? el("div", {class: "hero"}, el("span", {class: "hero-name"}, k.name), el("span", {class: "hero-text"}, String(x.wert))) : null;
+}
 function fehltZeile(w, o) {
   if (w.wann !== "planung" || !w.offen || weg(o.status) || !o.fehlt.length) return null;
   const name = Object.fromEntries(w.kriterien.map(k => [k.id, k.name]));
@@ -2033,7 +2049,7 @@ function wahlVergleich(w, liste, datum) {
   // 29.10.2026): pflicht („nötig“) und empfohlen („gut zu wissen“) stehen im Vergleich, angeboten („zusätzlich“) nur in
   // den Einzelheiten, aus gar nicht. Hat keines davon einen Wert, stehen alle belegten im Vergleich.
   const istRegel = k => k.id.startsWith("_");
-  const alleBelegt = [{id: "_wann", name: T("seite.vergleich.wann")}, ...w.kriterien.filter(k => stufeVon(k) !== "aus"), ...REGEL_ZEILEN].filter(k => g.some(o => werte(o)[k.id]));
+  const alleBelegt = [{id: "_wann", name: T("seite.vergleich.wann")}, ...w.kriterien.filter(k => stufeVon(k) !== "aus" && k.rolle !== "hero"), ...REGEL_ZEILEN].filter(k => g.some(o => werte(o)[k.id]));
   const vorn = alleBelegt.filter(k => istRegel(k) || ["pflicht", "empfohlen"].includes(stufeVon(k)));
   const belegt = vorn.some(k => !istRegel(k)) ? vorn : alleBelegt;
   const nebenbei = alleBelegt.filter(k => !belegt.includes(k));
@@ -2065,23 +2081,25 @@ function wahlVergleich(w, liste, datum) {
   // Erste Spalte: Name, „vorläufig im Plan“ (nur dort ein Zustand, sonst stünde in jeder Zeile „vorgeschlagen“), Webseite
   // Weitere Merkmale in den aufgeklappten Einzelheiten: auch dort ohne i, die Herkunft einmal darunter (#58)
   // Herkunft aller Werte der Möglichkeit (Spalten und weitere Merkmale) einmal, nur hier in den Einzelheiten (#342)
-  const weitereMerkmale = o => { const ml = merkmalListe(nebenbei, werte(o), datum, true), hk = herkunftZeile([...zeilen, ...nebenbei], werte(o), datum);
+  const weitereMerkmale = o => { const ml = merkmalListe(nebenbei, werte(o), datum, true), hk = herkunftZeile([...zeilen, ...nebenbei, ...(heroKriterium(w) ? [heroKriterium(w)] : [])], werte(o), datum);
     return ml || hk ? el("div", {class: "wm-weitere"}, ml, hk) : null; };
   const imPlan = o => o.aktiv && !w.optionen.every(x => x.aktiv) ? chip("", w.wann === "unterwegs" ? T("seite.vergleich.standard") : (w.offen ? T("seite.vergleich.vorlaeufig_im_plan") : T("seite.chip.im_plan"))) : null;
   if (zeilen.length) box.append(el("div", {class: "tabelle wm-tabelle"}, el("table", {class: "vergleich mk wm-tab"},
     el("thead", {}, el("tr", {}, spaltenKopf("_titel", T("seite.vergleich.moeglichkeit")), zeilen.map(k => spaltenKopf(k.id, k.name)))),
-    el("tbody", {}, reihe.flatMap(o => { const auf = z.auf.includes(o.id);
+    el("tbody", {}, reihe.flatMap(o => { const auf = z.auf.includes(o.id), hero = heroZeile(w, werte(o), datum);
       return [el("tr", {class: ["wm-zeile", an(o), auf ? "auf" : ""].filter(Boolean).join(" "), id: o.id, "data-ziel": o.id, tabindex: "0",
           "aria-expanded": String(auf), "data-vgl-zeile": s + "|" + o.id},
         el("th", {scope: "row"}, el("span", {class: "wm-titel"}, el("span", {class: "wm-pfeil", "aria-hidden": "true"}, "›"), o.titel),
           el("span", {class: "wm-unter"}, imPlan(o))),
         zeilen.map(k => el("td", {}, zelle(k, werte(o)[k.id])))),
+        // Hero (#343): eine Zeile über alle Spalten direkt unter der Möglichkeit; wandert beim Sortieren mit, klappt nichts auf
+        hero ? el("tr", {class: "wm-hero" + (an(o) ? " an" : "") + (auf ? " auf" : "")}, el("td", {colspan: String(zeilen.length + 1)}, hero)) : null,
         auf ? el("tr", {class: "wm-mehr" + (an(o) ? " an" : "")}, el("td", {colspan: String(zeilen.length + 1)}, optionEinzelheiten(w, o, weitereMerkmale(o)))) : null].filter(Boolean); })))));
   if (nebenbei.length) box.append(el("p", {class: "z klein"}, T("seite.vergleich.weitere_merkmale", {merkmale: nebenbei.map(k => k.name).join(", ")})
     + T("seite.vergleich.spalten_hinweis")));
   box.append(el("div", {class: "wm-karten"}, opts.map(o => el("div", {class: "wm-karte" + (an(o) ? " an" : "")},
-    el("div", {class: "k"}, o.titel), optionChips(w, o), merkmalListe(zeilen, werte(o), datum, true) || el("div", {class: "z klein"}, belegt.length ? T("seite.vergleich.keine_unterschiede") : T("seite.vergleich.noch_keine_merkmale")),
-    (hk => hk ? el("details", {class: "wm-herkunft"}, el("summary", {}, T("seite.herkunft.titel")), hk) : null)(herkunftZeile(zeilen, werte(o), datum))))));
+    el("div", {class: "k"}, o.titel), optionChips(w, o), heroZeile(w, werte(o), datum), merkmalListe(zeilen, werte(o), datum, true) || el("div", {class: "z klein"}, belegt.length ? T("seite.vergleich.keine_unterschiede") : T("seite.vergleich.noch_keine_merkmale")),
+    (hk => hk ? el("details", {class: "wm-herkunft"}, el("summary", {}, T("seite.herkunft.titel")), hk) : null)(herkunftZeile([...zeilen, ...(heroKriterium(w) ? [heroKriterium(w)] : [])], werte(o), datum))))));
   if (belegt.length > zeilen.length) box.append(el("p", {class: "z klein"}, T("seite.vergleich.gleiche_zeilen", {n: belegt.length - zeilen.length})));
   // Ändert sich die Breite des Behälters (erstes Einsetzen, schmale Spalte, Fenster gedreht), stimmt die Zahl der gezeigten
   // Möglichkeiten neu: zu viele fallen weg, zuerst die, die nicht im Plan stehen
@@ -2215,8 +2233,9 @@ function optionBlock(w, o, ohneMerkmale, ohneId) {
   b.append(el("div", {class: "k"}, o.titel, zid(o.id)), optionChips(w, o));
   if (o.ausloeser) b.append(el("div", {class: "z"}, el("b", {}, T("seite.label.wann")), o.ausloeser));
   if (o.text) b.append(el("div", {class: "z"}, o.text));
+  const hero = ohneMerkmale ? null : heroZeile(w, o.merkmale); if (hero) b.append(hero);
   // Kennzahlen eigener Strecken stehen schon unter der Strecke
-  const mk = ohneMerkmale ? null : merkmalListe(w.kriterien.filter(k => stufeVon(k) !== "aus" && !(k.auto && (o.strecken || []).length)), o.merkmale), luecke = fehltZeile(w, o);
+  const mk = ohneMerkmale ? null : merkmalListe(w.kriterien.filter(k => stufeVon(k) !== "aus" && k.rolle !== "hero" && !(k.auto && (o.strecken || []).length)), o.merkmale), luecke = fehltZeile(w, o);
   if (mk) b.append(mk);
   if (luecke) b.append(luecke);
   b.append(...regelZeilen(o));
@@ -4147,6 +4166,9 @@ function ansichtBausteine(m) {
   const mitHerkunft = R.wahlstellen.flatMap(w => w.optionen.map(o => [w, o])).find(([w, o]) => Object.values(o.merkmale || {}).some(x => x.quelle));
   teil("Molekül", "Herkunftszeile", "Herkunft aller gezeigten Werte einer Möglichkeit einmal, leise (Vergleich, #58); Quellen mit Prüfdatum, Notizen für sich.",
     mitHerkunft ? herkunftZeile(mitHerkunft[0].kriterien, mitHerkunft[1].merkmale) : herkunftZeile([{id: "m"}], {m: {wert: "inklusive", quelle: "Muster", geprueft: "2026-10-23"}}));
+  const mitHero = R.wahlstellen.flatMap(w => w.optionen.map(o => [w, o])).find(([w, o]) => heroKriterium(w) && heroZeile(w, o.merkmale));
+  teil("Molekül", "Hero-Zeile", "Das Merkmal mit der Rolle hero steht in jeder Möglichkeit ganz oben über die ganze Breite (Vergleich, #343).",
+    mitHero ? heroZeile(mitHero[0], mitHero[1].merkmale) : el("div", {class: "hero"}, el("span", {class: "hero-name"}, "Einschätzung"), el("span", {class: "hero-text"}, "Muster: ein, zwei Sätze, was das Haus besonders macht und für wen es passt.")));
   teil("Molekül", "Merkmalliste", null, u ? merkmalListe((R.merkmale || {})[u[1].art], u[1].merkmale) : el("p", {class: "meldung"}, "Keine Unterkunft mit Merkmalen."));
   // Reisetext: Tabellen aus dem Text, geordnet vom Generator (zweispaltig als Merkmalliste, breit gestapelt bei wenig Platz)
   const etappenBloecke = abschnitte.filter(istEtappe).flatMap(a => a.bloecke.map(b => [a, b]));
