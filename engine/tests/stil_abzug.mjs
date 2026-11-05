@@ -1,6 +1,6 @@
 // Abzug der berechneten Stile aller Elemente auf allen Routen einer gebauten Reise (Werkzeug, kein Test).
 // Für Umbauten der Stile ohne sichtbare Änderung (z. B. Regeln umordnen): vor und nach dem Umbau abziehen, dann vergleichen.
-//   node stil_abzug.mjs <playwright-modul> <basis-url> <datei.json>     Abzug (390 und 1200 px, hell und dunkel)
+//   node stil_abzug.mjs <playwright-modul> <basis-url> <datei.json>     Abzug (390 und 1200 px, hell und dunkel; RH_BREITEN=320,700,… wählt andere Breiten)
 //   node stil_abzug.mjs vergleich <vorher.json> <nachher.json>           Abweichungen je Route (erste je Route)
 // Je Element: Tag, Klassen, Lage und Größe, rund 50 berechnete Eigenschaften, ::before und ::after.
 import fs from "node:fs";
@@ -29,7 +29,8 @@ const P = ["color", "background-color", "background-image", "border-top-width", 
   "opacity", "box-shadow", "text-decoration-line", "text-decoration-color", "position", "flex-direction", "align-items", "justify-content",
   "white-space", "max-width", "min-height", "order", "outline-style", "fill", "stroke", "visibility", "overflow-x", "text-align"];
 const erg = {};
-for (const [breite, schema] of [[390, "light"], [1200, "light"], [390, "dark"], [1200, "dark"]]) {
+const BREITEN = (process.env.RH_BREITEN || "390,1200").split(",").map(Number);   // z. B. 320,390,700,900,1100,1300 (#332, Schritt D)
+for (const [breite, schema] of [...BREITEN.map(b => [b, "light"]), ...BREITEN.map(b => [b, "dark"])]) {
   const ctx = await b.newContext({viewport: {width: breite, height: 900}, serviceWorkers: "block", colorScheme: schema});
   await ctx.route("**/api/**", r => r.abort());
   const p = await ctx.newPage();
