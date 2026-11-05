@@ -795,7 +795,7 @@ def test_ding_aendern_und_ablehnungen(repo):
     s.vorbereiten()
     a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "O-03", "neuer_name": "Hohnstein (Sächs. Schweiz)", "hinweis": ""}})
     r, _ = routen_auf_main(origin)
-    assert r["orte"]["O-03"] == {"name": "Hohnstein (Sächs. Schweiz)", "quelle": "OpenStreetMap; Hinweis Wikipedia (W-05)"}
+    assert r["orte"]["O-03"] == {"name": "Hohnstein (Sächs. Schweiz)", "art": "ort_am_weg", "quelle": "OpenStreetMap; Hinweis Wikipedia (W-05)"}
     s.vorbereiten()
     stand = git(origin, "rev-parse", "main")
     for werkzeug, args, text in (
