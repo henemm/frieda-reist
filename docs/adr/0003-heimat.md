@@ -26,7 +26,7 @@ Ursache war keine einzelne Änderung. Für jede Art von Ding gab es keine Regel,
    | Folge: Tag | Tagesseite | Zeitachse der Reise |
    | Bewegung | Teil der Tagesseite (Tageskasten, Der Weg) | Tageszeile |
    | Aufenthalt: Nacht, Unterkunft | Abschnitt „Nacht“ der Tagesseite | Tageszeile, „Zu tun · Zu buchen“ |
-   | Aufenthalt ohne Tag (vor Ort gesammelt, seit 2.11.2026, #235; seit ADR-0007 an seinem Ort) | Ortsseite seines Orts (oder der Abschnitt, an den `an:` ihn hängt); hat der Ort keine Seite: Reiter „Karte“, unter der Karte („Vor Ort, ohne Tag“), ohne den Baustein Karte der Reiseüberblick | Zeile unter der Karte, Punkt auf der Karte |
+   | Aufenthalt ohne Tag (vor Ort gesammelt, seit 2.11.2026, #235; seit ADR-0007 an seinem Ort) | Ortsseite seines Orts (oder der Abschnitt, an den `an:` ihn hängt); hat der Ort keine Seite: Reiter „Karte“, unter der Karte („Ohne Tag“), ohne den Baustein Karte der Reiseüberblick | Zeile unter der Karte, Punkt auf der Karte |
    | Buchung (B-…, seit 29.10.2026, #76) | bei ihrem ersten gebuchten Ding (Unterkunftskarte, Aufenthalt oder Strecke der Tagesseite) | Chip am Ding, „Zu tun · Zu buchen“ |
    | Wahl mit Optionen | das Element, an dem sie hängt (`an:`), mit Vergleich | Marke in der Zeile des Elements, „Zu tun · Zu entscheiden“ |
    | Ort | Ortsseite | Tagesseite, Wissen |

@@ -258,6 +258,25 @@ def test_seite_je_status_und_baustein(tmp_path, browser):
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_aufenthalt_ohne_ort_an_der_strecke_steht_nach_seiner_strecke(tmp_path, browser):
+    """#287: Ein Aufenthalt ohne Nacht, der an keinem Ort der Strecken des Tags liegt (Ladestopp, Bäckerei unterwegs), steht in der
+    Zeitleiste nach der Strecke, zu der seine Uhrzeit passt, nicht am Ende nach „Ziel“. Erfundene Abwandlung der Beispielreise:
+    eine Bäckerei um 08:20, zwischen Abfahrt (08:12) und Ankunft (08:40) der S-Bahn."""
+    ersetzen = [("  O-05: {name: Bad Schandau, quelle: \"OpenStreetMap\"}\n", "  O-05: {name: Bad Schandau, quelle: \"OpenStreetMap\"}\n  O-07: {name: Pirna, quelle: \"erfunden (Beispiel)\"}\n"),
+                ("aufenthalte: [A-01]", "aufenthalte: [A-01, A-90]"),
+                ("  A-02:\n    name: \"Stadt Wehlen\"", "  A-90:\n    name: Bäckerei in Pirna\n    ort: O-07\n    art: besichtigung\n    quelle: \"erfunden (Beispiel)\"\n    merkmale:\n"
+                 "      zeitraum: {typ: zeitraum, wert: {beginn: \"08:20\", ende: \"08:30\"}, quelle: \"erfunden (Beispiel)\"}\n  A-02:\n    name: \"Stadt Wehlen\"")]
+    e = seite_der_variante(tmp_path, browser, skript="seiten_wegverlauf.mjs", routen_ersetzen=ersetzen)
+    namen = [z[1] for z in e["verlauf"]]
+    bak = next((i for i, n in enumerate(namen) if "Bäckerei in Pirna" in n), None)
+    assert bak is not None, "\n".join(n[:70] for n in namen)
+    strecke = next(i for i, z in enumerate(e["verlauf"]) if "wv-strecke" in z[0])
+    ziel = next(i for i, n in enumerate(namen) if n.startswith("Stadt Wehlen"))   # der Ort nach der S-Bahn
+    assert strecke < bak < ziel, e["verlauf"]
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
 def test_buchung_genau_einmal_vollstaendig(tmp_path, browser):
     """Eine Buchung (B-…, #76) wohnt bei ihrem Ding (ADR-0003): in der Unterkunftskarte des Abschnitts „Nacht“ der Tagesseite,
     genau einmal vollständig, in jeder Reise (#214: mit offenem Plan, mit festem Plan, mit darstellung.tiefe wie bei einer

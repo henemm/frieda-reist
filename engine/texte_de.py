@@ -3023,7 +3023,7 @@ TEXTE = {
     "seite.karte.uebersicht": "Übersicht",
     "seite.karte.schematisch": "schematisch (ohne GPX-Track)",
     "seite.karte.hinweis_auto": "Karte aus dem Plan; gestrichelte Linien verbinden die Stationen in Tagesreihenfolge und zeigen nicht den Fahrweg.",
-    "seite.karte.ohne_tag_titel": "Vor Ort, ohne Tag ({n})",
+    "seite.karte.ohne_tag_titel": "Ohne Tag ({n})",
     "seite.karte.ohne_tag_hinweis": "Orte zum Sammeln: Sie stehen an keinem Tag des Plans, nur hier und auf der Karte.",
     "seite.karte.keine_karte": "Noch keine Karte: Es braucht mindestens zwei Einträge mit Koordinaten.",
     "schreiben.lage_eintragen.ort_adresse": "Ein Ort hat keine Adresse, nur Koordinaten (seine Position auf der Karte); die Adresse gehört an die Unterkunft oder den Aufenthalt.",

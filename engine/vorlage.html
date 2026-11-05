@@ -1519,6 +1519,28 @@ function aufenthaltZeile(id, voll) {
 // Ort des Wegs liegt, steht am Ende. voll (Tagesseite): Aufenthalte vollständig.
 // tagseite: auf der Tagesseite steht jedes Ding vollständig, dessen Heimat dieser Tag ist (heimat, ADR-0003); an jedem
 // weiteren Tag nur als Zeile
+// Aufenthalte ohne Ort an der Strecke (Ladestopp auf halber Strecke): sie stehen nicht nach „Ziel“, sondern nach der Strecke, zu der sie
+// gehören (#287): nach Uhrzeit (die erste Strecke, die nicht vor der Zeit des Aufenthalts ankommt), sonst nach Lage (die Strecke, deren
+// Gerade zwischen Start und Ziel dem Aufenthalt am nächsten liegt); ohne beides am Ende wie bisher. Innerhalb einer Strecke nach Uhrzeit.
+const minuten = z => { const m = /(\d{2}):(\d{2})/.exec(String(z && typeof z === "object" ? z.wert : z) || ""); return m ? +m[1] * 60 + +m[2] : null; };
+function streckeZuAufenthalt(strecken, a) {
+  const t = minuten(a.beginn);
+  if (t !== null) {
+    const i = strecken.findIndex(x => { const an = minuten((R.strecken[x.id] || {}).an); return an !== null && an >= t; });
+    if (i >= 0) return i;
+  }
+  const p = a.punkt && a.punkt.wert;
+  if (!p) return -1;
+  const abstand = x => {
+    const s = R.strecken[x.id] || {}, v = ((R.orte[s.von] || {}).punkt || {}).wert, n = ((R.orte[s.nach] || {}).punkt || {}).wert;
+    if (!v || !n) return Infinity;
+    const [dx, dy] = [n[0] - v[0], n[1] - v[1]], l = dx * dx + dy * dy;
+    const u = l ? Math.max(0, Math.min(1, ((p[0] - v[0]) * dx + (p[1] - v[1]) * dy) / l)) : 0;
+    return Math.hypot(p[0] - (v[0] + u * dx), p[1] - (v[1] + u * dy));
+  };
+  const ab = strecken.map(abstand), best = Math.min(...ab);
+  return best === Infinity ? -1 : ab.indexOf(best);
+}
 function wegVerlauf(t, ohneKennung, tagseite) {
   const v = el("div", {class: "wv"}), voll = id => !!tagseite && heimTag(id) === t.id;
   const rest = new Set(t.aufenthalte || []);
@@ -1526,10 +1548,21 @@ function wegVerlauf(t, ohneKennung, tagseite) {
   const ort = (id, art) => el("div", {class: "wv-ort " + art}, el("span", {class: "wv-punkt", "aria-hidden": "true"}),
     el("span", {class: "wv-name"}, art !== "mitte" ? el("span", {class: "wv-etikett"}, art === "start" ? T("seite.weg.start") : T("seite.weg.ziel")) : null, ortName(id)));
   let zuletzt = null;
+  // Aufenthalte, die an keinem Ort der Strecken liegen, ordnen sich nach der Strecke, zu der sie gehören (#287)
+  const imWeg = new Set(t.strecken.flatMap(x => [(R.strecken[x.id] || {}).von, (R.strecken[x.id] || {}).nach]));
+  const zwischen = t.strecken.map(() => []);
+  for (const a of [...rest]) {
+    const d = (R.aufenthalte || {})[a] || {};
+    if (imWeg.has(d.ort)) continue;
+    const i = streckeZuAufenthalt(t.strecken, d);
+    if (i >= 0) { rest.delete(a); zwischen[i].push([minuten(d.beginn), a]); }
+  }
+  zwischen.forEach(z => z.sort((p, q) => (p[0] === null) - (q[0] === null) || p[0] - q[0]));
   t.strecken.forEach((x, i) => {
     const s = R.strecken[x.id] || {};
     if (s.von && s.von !== zuletzt) v.append(ort(s.von, i === 0 ? "start" : "mitte"), ...bei(s.von));
     v.append(el("div", {class: "wv-strecke" + (s.summiert ? "" : " fahrt")}, streckeZeile(x.id, x.wahl, ohneKennung && ohneKennung(x.id), voll(x.id))));
+    for (const [, a] of zwischen[i]) v.append(el("div", {class: "wv-aufenthalt"}, aufenthaltZeile(a, voll(a))));
     if (s.nach) { v.append(ort(s.nach, i === t.strecken.length - 1 ? "ziel" : "mitte"), ...bei(s.nach)); zuletzt = s.nach; }
     else zuletzt = null;
   });
