@@ -1145,10 +1145,10 @@ function zid(id) {
    statt dieselbe Sache selbst zu zeichnen; die Stile stehen im <style> in derselben Ordnung. Diese vier Zeilen sind die eine
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
-   Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, buchungChip
-   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, wahlZustand, belegeListe, stornierteBuchungen, einzelheiten, wegTabelle, herkunftZeile
-   Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
-   Vorlagen: tagKachel, leseAbschnitt, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtKarte, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
+   Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke
+   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile
+   Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
+   Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtKarte, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
    Stile seiner Ebene, auf die Bausteinseite (#bausteine) und in docs/design.md; zeigt er eine Grundform, auch in GRUNDFORMEN.
    Zustände haben feste Namen, die Farbe folgt der Bedeutung, nicht dem Ort:
@@ -1280,7 +1280,7 @@ function buchungsStand(d) {
   const offen = d.buchung === "offen" || d.buchung === "angefragt";
   return {zustand: offen ? "offen" : "plan", text: d.buchung === "offen" ? T("seite.buchung.nicht_gebucht") : d.buchung, gebucht: !offen, nichtGebucht: d.buchung === "offen", bid: d.buchung_id || null};
 }
-// Atom Zustand Buchung: der Stand als Chip; kommt er aus einer Buchung (B-…, #76), führt der Chip zu ihr
+// Molekül Zustand Buchung: der Stand als Chip; kommt er aus einer Buchung (B-…, #76), führt der Chip zu ihr
 const buchungChip = d => { const st = buchungsStand(d); return st ? chip(st.zustand, st.text, st.bid ? {href: "#" + st.bid} : null) : null; };
 // Buchungen (B-…) eines Dings in der Reihenfolge der Reise
 const buchungenZu = id => Object.values(R && R.buchungen || {}).filter(b => (b.fuer || []).includes(id));
@@ -1655,7 +1655,7 @@ function buchungBlock(b) {
   ], T("seite.buchung.einzelheiten_buchung")));
   return k;
 }
-// Molekül Stornierte Buchungen (#146): alle stornierten Buchungen eines Dings zugeklappt in einem Block, oben der Hinweis
+// Organismus Stornierte Buchungen (#146): alle stornierten Buchungen eines Dings zugeklappt in einem Block, oben der Hinweis
 // zum Zurückholen; jede Buchung darin unverändert. Leere Liste ohne stornierte, so lässt er sich überall anhängen.
 function stornierteBuchungen(bs) {
   if (!(bs || []).length) return [];
@@ -2539,6 +2539,17 @@ const punktMarke = (p, inhalt) => {
   return `<span class="rh-p${punktArt(p).umriss ? " umriss" : ""}${kontrast ? " kontrast" : ""}" style="--pk:${katFarbe(k.farbe)}">${inhalt}</span>`;
 };
 let EKARTEN = [];
+// Gemeinsam für Etappen-, Tages- und Abschnittskarte: die Karte erst nach einem Klick zoombar machen (sonst schluckt sie das
+// Scrollen der Seite) und erst zeichnen, wenn sie in Sicht kommt
+function karteBedienbar(karte, box, hinweis) {
+  karte.on("click", () => { karte.scrollWheelZoom.enable(); karte.dragging.enable(); if (hinweis) hinweis.hidden = true; });
+  box.addEventListener("mouseleave", () => karte.scrollWheelZoom.disable());
+}
+function beiSicht(eintraege, box, zeichnen) {
+  const sicht = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { sicht.disconnect(); zeichnen(); } });
+  sicht.observe(box);
+  for (const e of eintraege) e.sicht = sicht;
+}
 const punktName = p => p.name || punktArt(p).name || katDef(p.kat).name;
 function etappenKarte(sid) {
   const K = R && R.karte, punkte = (R && R.punkte || {})[sid] || [], weg = K && K.wege && K.wege[sid];
@@ -2556,8 +2567,7 @@ function etappenKarte(sid) {
     karte.attributionControl.setPrefix(false).addAttribution(K.namensnennung || "");
     box.style.background = dunkel() ? "#31353f" : "#80deea";
     protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: LOCALE.split("-")[0], maxDataZoom: 15, attribution: ""}).addTo(karte);
-    karte.on("click", () => { karte.scrollWheelZoom.enable(); karte.dragging.enable(); if (hinweis) hinweis.hidden = true; });
-    box.addEventListener("mouseleave", () => karte.scrollWheelZoom.disable());
+    karteBedienbar(karte, box, hinweis);
     L.polyline(weg, {className: "rh-halo", weight: 7, interactive: false}).addTo(karte);
     const linie = L.polyline(weg, {className: "rh-etappe", weight: 4, interactive: false}).addTo(karte);
     const gruppen = {};
@@ -2578,9 +2588,7 @@ function etappenKarte(sid) {
     karte.fitBounds(linie.getBounds(), {padding: [18, 18]});
   };
   eintrag.zeichnen = zeichnen;
-  const sicht = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { sicht.disconnect(); zeichnen(); } });
-  sicht.observe(box);
-  eintrag.sicht = sicht;
+  beiSicht([eintrag], box, zeichnen);
   return el("div", {class: "ekarte-rahmen"}, box, hinweis);
 }
 /* Organismus Tageskarte (#237, K6/K17): Ausschnitt der automatischen Karte mit den Strecken des Tages und seinen Punkten
@@ -2610,8 +2618,7 @@ function tagesKarte(t) {
       for (const g of K.details || []) protomapsL.leafletLayer({url: g.url, flavor: dunkel() ? "dark" : "light", lang: LOCALE.split("-")[0],
         maxDataZoom: g.maxzoom || 15, minZoom: 10, bounds: L.latLngBounds([g.rahmen.sued, g.rahmen.west], [g.rahmen.nord, g.rahmen.ost]), attribution: ""}).addTo(karte);
     } else L.polygon(K.kueste, {className: "rh-land", weight: 1.2, fillOpacity: 1, interactive: false}).addTo(karte);
-    karte.on("click", () => { karte.scrollWheelZoom.enable(); karte.dragging.enable(); if (hinweis) hinweis.hidden = true; });
-    box.addEventListener("mouseleave", () => karte.scrollWheelZoom.disable());
+    karteBedienbar(karte, box, hinweis);
     const bereich = L.latLngBounds([]);
     for (const [sid, w] of linien) {
       const schema = (K.schematisch || []).includes(sid);
@@ -2633,9 +2640,7 @@ function tagesKarte(t) {
     karte.fitBounds(bereich, {padding: [18, 18], maxZoom: 15});
   };
   for (const e of eintraege) e.zeichnen = zeichnen;
-  const sicht = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { sicht.disconnect(); zeichnen(); } });
-  sicht.observe(box);
-  for (const e of eintraege) e.sicht = sicht;
+  beiSicht(eintraege, box, zeichnen);
   const schema = linien.some(([sid]) => (K.schematisch || []).includes(sid));
   return el("div", {class: "tag-karte"}, el("div", {class: "ekarte-rahmen"}, box, hinweis),
     schema ? kartenLegende([[el("i", {class: "lg-sch"}), T("seite.karte.schematisch")]], "p") : null);
@@ -2699,8 +2704,7 @@ function wissenKarte(bid) {
     const karte = eintrag.karte = L.map(box, {zoomSnap: 0.25, scrollWheelZoom: false, dragging: !touch, tap: false, maxZoom: 17});
     karte.attributionControl.setPrefix(false).addAttribution(WK.namensnennung || "");
     box.style.background = dunkel() ? "#31353f" : "#80deea";
-    karte.on("click", () => { karte.scrollWheelZoom.enable(); karte.dragging.enable(); if (hinweis) hinweis.hidden = true; });
-    box.addEventListener("mouseleave", () => karte.scrollWheelZoom.disable());
+    karteBedienbar(karte, box, hinweis);
     punkte.forEach((p, i) => {
       const icon = L.divIcon({className: "rh-pw", iconSize: [24, 24], html: punktMarke(p, i + 1)});
       const mk = L.marker(p.lage, {icon, title: p.name, alt: p.name, riseOnHover: true});
@@ -2713,9 +2717,7 @@ function wissenKarte(bid) {
   // Text-Link auf einen Punkt in einer anderen Region: erst die Region wechseln
   eintrag.vorPunkt = i => zeigeRegion(punkte[i].karte);
   eintrag.punktZoom = i => Math.min(15, WK.grundkarten[punkte[i].karte].maxzoom + 2);
-  const sicht = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { sicht.disconnect(); zeichnen(); } });
-  sicht.observe(box);
-  eintrag.sicht = sicht;
+  beiSicht([eintrag], box, zeichnen);
   return el("div", {class: "ekarte-rahmen wkarte"}, tasten, box, hinweis, legende);
 }
 function wissenPopup(bid, i, p) {
@@ -3420,7 +3422,7 @@ function wegKurz(inhalt) {
   requestAnimationFrame(() => { if (inhalt.scrollHeight > inhalt.clientHeight + 4) knopf.hidden = false; else inhalt.classList.remove("kurz"); });
   return knopf;
 }
-// Vorlage Leseabschnitt: Titel mit Sprechblase, Text ohne Rahmen; Orte und Karte des Abschnitts, wenn es sie gibt
+// Organismus Leseabschnitt: Titel mit Sprechblase, Text ohne Rahmen; Orte und Karte des Abschnitts, wenn es sie gibt
 const leseAbschnitt = (b, kz) => el("div", {class: "lese-abschnitt ziel", id: b.id, "data-ziel": b.id},
   el("div", {class: "lese-kopf"}, el("h4", {}, b.titel), zid(b.id)), b.orte ? ortChips(b.orte) : null, wissenKarte(b.id), reiseText(b.html, kz));
 // Abschnitte eines Orts als Ebenen ohne Kasten, alle offen, in einer Lesespalte (B2-Regel 3, #58). Eine Spalte gilt für
@@ -4084,9 +4086,10 @@ function ansichtBausteine(m) {
   if (tag) teil("Vorlage", "Tageskachel", "Ein Tag als Vorschau in „Varianten“: Kopf, Marken, Nacht.", tagKachel(tag, tag.datum, tag.nr));
   const etappenAmTag = tag ? tag.strecken.map(x => proId.get(x.id)).filter(a => a && a.typ === "etappe") : [];
   if (etappenAmTag.length) { const e = tagEbenen(tag, etappenAmTag);
-    teil("Organismus", "Ebenen der Tagesseite", "Der Weg, Unterwegs nachschlagen, Hintergrund, Quellen und Prüfung (Vorlage leseAbschnitt im Weg).",
+    teil("Organismus", "Ebenen der Tagesseite", "Der Weg, Unterwegs nachschlagen, Hintergrund, Quellen und Prüfung (Organismus leseAbschnitt in den Quellen).",
       [e.weg, e.unterwegs, e.hintergrund, e.quellen].filter(Boolean)); }
   const ortMitText = abschnitte.find(a => a.typ === "ort" && a.bloecke.length);
+  if (ortMitText) teil("Organismus", "Leseabschnitt", "Ein Abschnitt als Lesetext: Titel mit Kennung, Orte und Karte des Abschnitts, Text ohne Rahmen.", leseAbschnitt(ortMitText.bloecke[0]));
   if (ortMitText) teil("Organismus", "Ebenen eines Orts", "Abschnitte eines Orts ohne Kasten, alle offen, in einer Lesespalte (#58).", ortEbenen(ortMitText.bloecke.slice(0, 2)));
   if (tag && tagOrte(tag).length) teil("Organismus", "Orte des Tages", "Je Ort eine Zeile mit Kurztext und Kennung.", tagOrteZeilen(tagOrte(tag)));
   if (plan) teil("Molekül", "An- und Abreise", "Erster und letzter Tag mit festen Terminen und Fahrten; führt zum Tag.",

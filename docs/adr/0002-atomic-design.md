@@ -38,6 +38,7 @@ Die Oberfläche folgt Brad Frosts Atomic Design. Dazu kommt die Abbildung der On
 
 ## Verlauf
 
+- 5.11.2026: Die Ebenenregel (Punkt 1) prüft `engine/tests/test_design.py` (#332, Schritt A): kein Baustein ruft einen höherer Ebene auf; Zeichner mit eigenen Klassen außerhalb des Inventars stehen auf der Liste `EIGENE_FLAECHEN`, die nur kürzer werden darf. Dabei umgestellt: `buchungChip` ist ein Molekül (nutzt `buchungsStand`), `stornierteBuchungen` und `leseAbschnitt` sind Organismen; die drei Kartenzeichner teilen `karteBedienbar` und `beiSicht`.
 - 29.10.2026: Abgleich (`docs/abgleich-2026-10-29.md`): Die Seite kannte die Art „wandern“ noch an sieben Stellen und die Arten „flug“ und „faehre“ in Legende und Linienstil; jetzt entscheidet allein `summiert` der Art. Buchungsstand, Datum, Zustand einer Wahl, Zählmarke, Terminzeile und Kontakt sind je ein Baustein statt mehrfach gezeichnet; Radien und Schatten kommen aus Tokens; die drei Bausteinlisten sind eine Liste, die Bausteinseite zeichnet jeden Baustein, ein Test prüft die vier Stellen.
 - 26.10.2026: Designsystem nach Atomic Design (frieda-reist #18), Stilblock nach Ebenen geordnet.
 - 28.10.2026: Als ADR festgehalten auf Wunsch des Product Owners. Zuerst als ADR 0001 angelegt; umnummeriert zu 0002, weil am selben Tag ADR-0001 „Der Kern“ entstand.

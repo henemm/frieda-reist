@@ -48,7 +48,7 @@ def test_jeder_baustein_steht_in_design_md_und_umgekehrt():
 
 def test_bausteinseite_zeichnet_jeden_baustein():
     """Atome, Moleküle und Organismen werden auf #bausteine mit ihrer Funktion gezeichnet; Vorlagen sind ganze Ansichten
-    oder Formulare und zeichnen sich nicht auf einer anderen Seite (tagKachel und leseAbschnitt ausgenommen)."""
+    oder Formulare und zeichnen sich nicht auf einer anderen Seite (tagKachel ausgenommen)."""
     js = skript()
     start = js.index("function ansichtBausteine(")
     ende = js.index("\nfunction ", start + 10)
@@ -174,3 +174,48 @@ def test_vorlage_ohne_eigene_tagessumme_und_summiert_nur_von_strecke():
     assert "↑ ${v} m" not in js and "↓ ${v} m" not in js
     routen = (WURZEL / "engine/routen.py").read_text(encoding="utf-8")
     assert 'f"↑ {' not in routen and "↓ {s['ab']" not in routen
+
+
+def _rumpfe():
+    """-> Wörterbuch Name -> Rumpf ohne Kommentare, für jede Funktion und Konstante der Vorlage auf oberster Ebene."""
+    js = skript()
+    starts = [(m.start(), m.group(1) or m.group(2)) for m in re.finditer(r"(?m)^(?:function (\w+)\(|const (\w+) = )", js)]
+    aus = {}
+    for i, (anfang, name) in enumerate(starts):
+        text = js[anfang:starts[i + 1][0] if i + 1 < len(starts) else len(js)]
+        text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+        aus[name] = re.sub(r"(?m)(^|\s)//.*$", "", text)
+    return aus
+
+
+def test_kein_baustein_ruft_einen_baustein_hoeherer_ebene_auf():
+    """ADR-0002, Punkt 1 (#332, Schritt A): Ein Baustein nutzt nur Bausteine derselben oder einer tieferen Ebene.
+    Atome < Moleküle < Organismen < Vorlagen; geprüft wird der Rumpf jedes Bausteins ohne Kommentare."""
+    rang = {n: i for i, e in enumerate(EBENEN) for n in bausteine()[e]}
+    rumpf = _rumpfe()
+    verstoesse = [f"{EBENEN[rang[n]]} {n} -> {EBENEN[rang[m]]} {m}" for n in rang if n in rumpf for m in rang
+                  if rang[m] > rang[n] and re.search(rf"\b{m}\b", rumpf[n])]
+    assert verstoesse == [], verstoesse
+
+
+# Zeichner mit eigenen Klassen, die weder im Inventar stehen noch zu den Ansichten gehören (Bestand 5.11.2026, #332).
+# Ein Zeichner kommt ins Inventar (Kopfkommentar, Stile, Bausteinseite, docs/design.md) oder wird auf einen Baustein
+# zurückgeführt; die Liste darf nur kürzer werden (Muster test_texte.py).
+EIGENE_FLAECHEN = {
+    "abschnittInhalt", "aenderungenZeigen", "ansichtEtappen", "ansichtGruppe", "ansichtRueckmeldungen", "ansichtSuche",
+    "ansichtVarianten", "artTabelle", "aufenthalteAmElement", "chips", "dingMarke", "etappeTeil",
+    "etappenKarte", "festeTermine", "fuerDich", "heuteBlock", "jetztSenden", "kalenderChip",
+    "karteZeichnen", "listenTitel", "naechsteFristen", "ontologieTabelle", "optionVerlauf", "ortChips",
+    "ortKarte", "punktPopup", "regelZeilen", "releaseFuss", "tagKopf", "uebersichtAmElement",
+    "vergleichTabelle", "wahlAmElement", "warnungen", "wegKurz", "wissenKarte", "wissenPopup",
+    "zeigeReiter",
+}
+
+
+def test_eigene_flaechen_ausserhalb_des_inventars_werden_nur_weniger():
+    """ADR-0002 nennt eine Fläche mit eigenen Klassen neben den Bausteinen einen Fehler (#332, Schritt A): Wer Klassen
+    zeichnet, steht im Inventar oder auf EIGENE_FLAECHEN. Ist ein Eintrag erledigt, muss er von der Liste."""
+    inventar = {n for l in bausteine().values() for n in l}
+    frei = {n for n, text in _rumpfe().items() if n not in inventar and re.search(r"\bclass: ", text)}
+    assert frei - EIGENE_FLAECHEN == set(), f"neuer Zeichner mit eigenen Klassen, ins Inventar aufnehmen: {sorted(frei - EIGENE_FLAECHEN)}"
+    assert EIGENE_FLAECHEN - frei == set(), f"erledigt, von EIGENE_FLAECHEN streichen: {sorted(EIGENE_FLAECHEN - frei)}"
