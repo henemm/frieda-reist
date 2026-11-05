@@ -2182,9 +2182,9 @@ function optionBlock(w, o, ohneMerkmale, ohneId) {
     }
     const andere = o.tage.filter(tid => R.weitere_tage[tid]);
     if (andere.length) {
-      const d = el("details", {class: "weg"}, el("summary", {}, T("seite.wahl.tage_dieser_variante", {n: andere.length})));
-      for (const tid of andere) d.append(tagKarte(R.weitere_tage[tid]));
-      b.append(d);
+      // Tiefenregel (ADR-0003, Nachtrag #332): Tage haben ihre Heimat auf der Tagesseite; eine Option zeigt sie nie als Karte
+      b.append(el("div", {class: "z klein"}, T("seite.wahl.tage_dieser_variante", {n: andere.length})),
+        el("div", {class: "tagzeilen"}, andere.map(tid => tagZeile(R.weitere_tage[tid]))));
     }
   }
   if (o.siehe && proId.has(o.siehe)) b.append(el("div", {class: "z klein"}, link(o.siehe, "→ " + proId.get(o.siehe).titel)));
@@ -2928,6 +2928,9 @@ function uebersichtKarte(m, gezeigt, info) {
 // Organismus Ohne Tag (K7, #235): Aufenthalte, die an keinem Tag und in keiner Option stehen (Märkte, Einkauf, Ausflugsziele
 // vor Ort). Ihre Heimat ist der Reiter „Karte“ (ADR-0003): hier vollständig, auf der Karte als Punkt. Ohne den Baustein
 // Karte bleibt die Reise ihre Heimat (am Ende des Überblicks).
+// Tiefenregel (ADR-0003, Nachtrag #332): Ketten von Elternbezügen sind höchstens HEIMAT_TIEFE lang. Ein Kreis kommt bei gültigen
+// Daten nicht vor (der Generator meldet ihn); ist die Kette trotzdem zu lang, endet sie sichtbar: {kreis: true}, nicht null
+const HEIMAT_TIEFE = 3;
 const OHNE_TAG = R ? Object.entries(R.aufenthalte || {}).filter(([, a]) => a.ohne_tag).map(([id]) => id) : [];
 // Seit ADR-0007 ist die Seite des Elternelements die Heimat (ein Ort mit eigener Seite, ein Abschnitt des Wissens); nur was
 // dort keine Seite hat, steht hier vollständig, alles andere als Zeile mit Link zur Heimat
@@ -4934,7 +4937,8 @@ function seiteVon(x, tiefe) {
   return null;
 }
 function heimat(id, tiefe = 0) {
-  if (!PLAN_ANSICHT || tiefe > 3) return null;
+  if (!PLAN_ANSICHT) return null;
+  if (tiefe > HEIMAT_TIEFE) { console.warn("parent chain too deep or circular:", id); return {kreis: true, ziel: id}; }
   const eltern = (R.eltern || {})[id], v = vorgabeEltern(id);   // an: gilt vor der Vorgabe; an: reise hat keine Seite
   for (const von of [eltern && eltern !== "reise" ? eltern : null, ...v.von]) {
     const h = von && seiteVon(von, tiefe);
@@ -5049,7 +5053,8 @@ function route(behalten) {
   else if (zeileZu.get(h) === "varianten") { zeigeReiter("varianten"); HAT_VARIANTEN ? ansichtVarianten(m) : ansichtStart(m); ziel = h; }
   else if (heimat(h)) {
     const x = heimat(h);
-    if (x.tag) { zeigeReiter("varianten"); ansichtTag(m, x.tag); }
+    if (x.kreis) { start(); m.prepend(warnungen([{text: T("seite.kreis.hinweis", {titel: titelZu(h) || h}), bezug: ""}])); }
+    else if (x.tag) { zeigeReiter("varianten"); ansichtTag(m, x.tag); }
     else if (x.abschnitt) { const a = proId.get(x.abschnitt); zeigeReiter(TYP_REITER[a.typ]); ansichtAbschnitt(m, a); }
     else { zeigeReiter("offen"); ansichtZuTun(m); }
     ziel = document.getElementById(x.ziel) || !x.ersatz ? x.ziel : x.ersatz;

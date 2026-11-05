@@ -229,6 +229,19 @@ def test_dichte_ist_eine_regel_und_heimat_hat_keine_fallunterscheidung_je_grundf
     assert "dichteHier(" in _funktion("amElement") and "zeigeDing(" in _funktion("amElement")
 
 
+def test_tiefenregel_option_zeigt_tage_nie_als_karte_und_ein_kreis_endet_sichtbar():
+    """#332, Schritt C (ADR-0003, Nachtrag Tiefe): Ein Ding steht höchstens zwei Ebenen tief voll (Seite, Karte); was in einer
+    Karte steckt, ist eine Zeile mit Link. Eine Option zeigt ihre Tage nie als Karte (nur tagZeile), und eine zu lange Kette von
+    Elternbezügen oder ein Kreis endet sichtbar ({kreis: true} mit Hinweis im Router), nicht still mit null."""
+    for name in ("optionBlock", "optionEinzelheiten"):
+        assert not re.search(r"\b(tagKarte|tagesKarte|tagKachel)\b", _funktion(name)), name
+    assert "tagZeile(" in _funktion("optionBlock")
+    heimat = _funktion("heimat")
+    assert "HEIMAT_TIEFE" in heimat and "kreis: true" in heimat
+    assert not re.search(r"tiefe\s*>\s*\d", heimat), "die Grenze heißt HEIMAT_TIEFE"
+    assert "x.kreis" in skript() and "seite.kreis.hinweis" in skript()
+
+
 def test_eigene_flaechen_ausserhalb_des_inventars_werden_nur_weniger():
     """ADR-0002 nennt eine Fläche mit eigenen Klassen neben den Bausteinen einen Fehler (#332, Schritt A): Wer Klassen
     zeichnet, steht im Inventar oder auf EIGENE_FLAECHEN. Ist ein Eintrag erledigt, muss er von der Liste."""

@@ -18,6 +18,7 @@ def PLURAL(n):
 
 TEXTE = {
     # Status einer Option (Wahlstelle) auf der Seite
+    "seite.kreis.hinweis": "“{titel}” points around in a circle or too deeply at other things and has no place here. Please check its parent link (an) in the trip.",
     "seite.status.vorgeschlagen": "proposed",
     "seite.status.favorisiert": "favourite",
     "seite.status.gewaehlt": "chosen",

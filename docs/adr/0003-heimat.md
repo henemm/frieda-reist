@@ -1,6 +1,6 @@
 # ADR-0003: Seitenordnung – jede Grundform hat genau eine Heimat
 
-Status: gilt · Entschieden vom Product Owner am 28.10.2026 in Claude Code (Analyse, Konzept und grafische Ausarbeitung einzeln freigegeben) · Umsetzung: frieda-reist #84, #87 · Nachtrag: #214 (2.11.2026)
+Status: gilt · Entschieden vom Product Owner am 28.10.2026 in Claude Code (Analyse, Konzept und grafische Ausarbeitung einzeln freigegeben) · Umsetzung: frieda-reist #84, #87 · Nachträge: #214 (2.11.2026), #332 (5.11.2026)
 
 Gilt für die Seite (PWA) jeder Reise. Steht unter [ADR-0001](0001-kern.md) (die Seite zeigt die Ontologie) und neben [ADR-0002](0002-atomic-design.md) (mit welchen Bausteinen sie das tut).
 
@@ -51,6 +51,15 @@ Bis #214 galt diese Ordnung nur für eine Reise mit gewähltem Plan, dem Baustei
 - **Etappen (Entscheidung 5):** richten sich nach dem Plan der Zeitachse, auch bei offenen Plänen: Eine Etappe hat ihren Tag als Heimat, der Reiter „Etappen“ entfällt dann wie bei einem gewählten Plan.
 - **Zu Punkt 1:** Die Heimat jedes Dings bestimmt eine Stelle (`heimat` in `engine/vorlage.html`); Tageskasten, Tagesseite und Listen fragen sie. Ein Aufenthalt an mehreren Tagen steht an seinem ersten Tag vollständig, an den übrigen als Zeile; eine Wahl an ihrem ersten Tag mit Vergleich, ein Reiseteil zur Wahl (Wahlstelle in der Route) am ersten Tag seiner Möglichkeiten; an einem Ort oder Abschnitt des Wissens steht eine Wahl als Zeile mit Link, wenn ihre Heimat anderswo ist. Nur die Heimat trägt die Kennung als Sprungziel; keine ID steht doppelt im DOM.
 
+## Nachtrag (5.11.2026, #332): Tiefe der Kaskaden
+
+Entschieden vom Product Owner am 5.11.2026 in Claude Code (drei Fragen, alle nach Empfehlung). Anlass: Eine Wahl zeigte ihre Optionen voll, eine Option zeigte ganze Tageskarten (`tagKarte` im Aufklapper), ein Tag zeigt seine Wahlen: Tag → Wahl → Option → Tag war möglich, und der einzige Schutz war ein stilles `null` ab Tiefe 3.
+
+- **Zu Punkt 1: höchstens zwei Ebenen voll.** Ein Ding steht auf der Seite seiner Heimat (Ebene 1) und als Karte darauf (Ebene 2) vollständig. Was in einer Karte steckt, erscheint nur als Zeile mit einem Link zur Heimat.
+- **Eine Option zeigt Tage nie als Karte**, sondern als Zeilen (`tagZeile`) mit Link zur Tagesseite. Der Aufklapper „Tage dieser Variante“ mit ganzen Tageskarten entfällt; Strecken und Unterkünfte einer Option bleiben Zeilen.
+- **Ein Kreis wird sichtbar abgefangen.** Einen Kreis in den Elternbezügen meldet der Generator als Fehler (`pruefung.routen.eltern_kreis`, ADR-0007). Ist eine Kette trotzdem länger als `HEIMAT_TIEFE`, liefert `heimat()` `{kreis: true}` statt `null`; der Router zeigt dazu den Hinweis „verweist im Kreis oder zu tief auf andere Dinge“ mit dem Titel des Dings (Text `seite.kreis.hinweis`) und schreibt eine Warnung in die Konsole.
+- Geprüft von `test_tiefenregel_option_zeigt_tage_nie_als_karte_und_ein_kreis_endet_sichtbar` in `engine/tests/test_design.py`.
+
 ## Begründung
 
 - Recherche vom 28.10.2026 (Reise-Apps, Wanderführer, Karten-Apps, NN/g, Baymard, Material, Inclusive Components):
@@ -70,6 +79,7 @@ Bis #214 galt diese Ordnung nur für eine Reise mit gewähltem Plan, dem Baustei
 
 ## Verlauf
 
+- 5.11.2026 (#332, Schritt C): Nachtrag Tiefe: höchstens zwei Ebenen voll, eine Option zeigt Tage nur als Zeilen, ein Kreis endet sichtbar. `optionBlock` umgebaut, `heimat()` mit `HEIMAT_TIEFE` und `{kreis: true}`.
 - 2.11.2026: Nachtrag #214: eine Seitenordnung für alle Reisen; der alte Zweig der Plan-Seite (`PLAN_DA`) ist entfernt, Baustein `tagesseiten` und `darstellung.plan_reiter` sind ohne Wirkung, `darstellung.tiefe` steuert nur noch den Plan-Baum (fünf Entscheidungen des Product Owners, `docs/specs/oberflaeche/eine-seitenordnung-214.md`). Tests: `engine/tests/test_eine_seitenordnung.py` (vier Fälle: ohne Pläne, Pläne offen, Plan fest, `tiefe`).
 - 5.11.2026 (#332, Schritt B): Die Vorgaben der Tabelle stehen als Regel im Code: `heimat()` fragt `vorgabeEltern` je Grundform und nimmt die Seite des Elternelements; die Dichte wählt `dichteHier` nach dem Abstand, `zeigeDing` zeichnet das Ding in dieser Dichte (Bewegung, Ort, Buchung, Frage und Aufgabe haben dafür die Karte `dingKurzKarte`). Die Entscheidungen bleiben dieselben.
 - 3.11.2026 (ADR-0007, #282): Die Tabelle der Heimaten ist die Tabelle der Vorgaben; die Heimat ist die Seite des Elternelements (`an:`), ein Aufenthalt ohne Tag hat sie auf der Ortsseite seines Orts (ohne Ortsseite wie bisher unter der Karte).
