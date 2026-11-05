@@ -116,3 +116,12 @@ def test_konto_zugang_einer_englischen_person_ohne_deutsches_wort(seiten, monkey
         je_ort.update(aus)
     funde = _funde(je_ort, erlaubt)
     assert not funde, f"deutsche Wörter im Konto-Zugang: {funde}"
+
+
+def test_bausteine_englisch_oder_deutsch_als_eingabe():
+    """#287: die englischen Namen der Bausteine aus der Werkzeugbeschreibung (und der Werkzeugnamen) gelten als Eingabe von
+    einstellung_setzen; gespeichert werden die deutschen Schlüssel."""
+    import schnittstelle
+    schema = {"properties": {"bausteine": {"type": "array", "items": {"type": "string"}}}}
+    a = schnittstelle.intern_argumente("einstellung_setzen", {"bausteine": ["variants", "Map", "feedback_list", "tasks", "wishes", "watcher", "profiles", "fragen"]}, schema)
+    assert a["bausteine"] == ["varianten", "karte", "rueckmeldungen", "aufgaben", "wuensche", "waechter", "profile", "fragen"]

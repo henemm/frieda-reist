@@ -214,7 +214,7 @@ def test_art_aendern_und_ablehnungen(repo):
         ({"bezeichnung": "X", "grundform": "aufenthalt", "farbe": "neon"}, "„farbe“ muss"),
         ({"bezeichnung": "X", "grundform": "aufenthalt", "summiert": True}, "nur bei Bewegung"),
         ({"bezeichnung": "X", "grundform": "sonstwas"}, "„grundform“ muss"),
-        ({"art": "unterwegs", "bezeichnung": "X", "grundform": "aufenthalt"}, "taugt nicht"),
+        ({"art": "unterwegs", "bezeichnung": "X", "grundform": "aufenthalt"}, "kann keine Art heißen"),
         ({"art": "Groß", "bezeichnung": "X", "grundform": "aufenthalt"}, "taugt nicht"),
     ):
         with pytest.raises(sb.Ablehnung, match=text):
@@ -2361,6 +2361,15 @@ def test_merkmal_einzelform_bleibt_les_und_schreibbar(tmp_path):
     assert preis == [{"wert": "85 €", "quelle": "erfunden (Beispiel)", "notiz": "Beispielwert, erfunden"},
                      {"wert": "99 €", "gilt": datetime.date(2027, 5, 15), "geprueft": datetime.date(2026, 11, 4), "quelle": "Test"}]
     assert "Einzelform" in inspect.getsource(sb.wert_eintragen)
+
+
+def test_art_schluessel_fehlermeldungen_trennen_zeichen_und_reserviert(repo):
+    """#287: ein Bindestrich im Schlüssel einer Art wird mit Vorschlag abgelehnt, die reservierten Wörter mit eigener Meldung."""
+    s = schreiber(repo)
+    with pytest.raises(sb.Ablehnung, match="kein Bindestrich.*Vorschlag: „ladestopp_alternative“"):
+        s.schreiben("beispielreise", "art_definieren", {**IDA, "args": {"art": "ladestopp-alternative", "bezeichnung": "Ladestopp", "grundform": "aufenthalt"}})
+    with pytest.raises(sb.Ablehnung, match="„unterwegs“ kann keine Art heißen.*reserviert"):
+        s.schreiben("beispielreise", "art_definieren", {**IDA, "args": {"art": "unterwegs", "bezeichnung": "Unterwegs", "grundform": "aufenthalt"}})
 
 
 def test_merkmal_rolle_hero(repo):

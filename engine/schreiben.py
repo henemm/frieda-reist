@@ -334,8 +334,10 @@ def art_definieren(reise_dir, wer, args):
             raise Ablehnung("schreiben.art_definieren.1")
         key = art_schluessel(name)
     key = key.lower()
-    if not re.fullmatch(ART_MUSTER, key) or key in (UNTERWEGS, ALLGEMEIN):
-        raise Ablehnung("schreiben.art_definieren.2", key=key, w2=UNTERWEGS, w3=ALLGEMEIN)
+    if key in (UNTERWEGS, ALLGEMEIN):
+        raise Ablehnung("schreiben.art_definieren.reserviert", key=key, w2=UNTERWEGS, w3=ALLGEMEIN)
+    if not re.fullmatch(ART_MUSTER, key):
+        raise Ablehnung("schreiben.art_definieren.2", key=key, w2=art_schluessel(key) or key)
     grundform = text_wert(args, "grundform", laenge=20)
     if grundform is not None and grundform.lower() not in GRUNDFORMEN:
         raise Ablehnung("schreiben.art_definieren.3", w1=', '.join(GRUNDFORMEN))

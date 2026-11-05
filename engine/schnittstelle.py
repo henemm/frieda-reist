@@ -132,6 +132,11 @@ ENUM_ALIAS = {**_werte_aus_dem_katalog(), "item": "ding", "organizer": "organisa
 WERT_ENGLISCH = {d: e for e, d in _werte_aus_dem_katalog().items()}
 texte.rand_woerter({i: e for i, e in PARAMETER.items() if i != e})
 
+# Bausteine einer Reise (einstellung_setzen, bausteine): die englischen Wörter der Werkzeugbeschreibung gelten als Eingabe, auch die der
+# Werkzeugnamen (feedback_list, tasks, wishes); gespeichert werden die deutschen Schlüssel (#287)
+BAUSTEIN_ALIAS = {"variants": "varianten", "map": "karte", "feedback": "rueckmeldungen", "feedback_list": "rueckmeldungen", "questions": "fragen",
+                  "open_questions": "fragen", "tasks": "aufgaben", "wishes": "wuensche", "watcher": "waechter", "profiles": "profile"}
+
 
 def parameter_zu_englisch(werkzeug):
     """interner Parametername -> englischer Name für dieses Werkzeug"""
@@ -278,4 +283,6 @@ def intern_argumente(werkzeug, args, schema=None):
             neu[k] = ENUM_ALIAS[v]
         elif isinstance(s, dict) and isinstance(s.get("items"), dict) and isinstance(v, list):
             neu[k] = [intern_argumente(werkzeug, e, s["items"]) if isinstance(e, dict) else e for e in v]
+    if werkzeug == "einstellung_setzen" and isinstance(neu.get("bausteine"), list):
+        neu["bausteine"] = [BAUSTEIN_ALIAS.get(b.lower(), b) if isinstance(b, str) else b for b in neu["bausteine"]]
     return neu
