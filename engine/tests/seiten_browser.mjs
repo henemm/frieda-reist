@@ -121,7 +121,9 @@ for (const [breite, schema] of [[390, "light"], [390, "dark"], [1200, "light"], 
   if (process.env.RH_BILDER) {
     const datei = `${process.env.RH_BILDER}/bausteine-${process.env.RH_BROWSER || "chromium"}-${breite}-${schema === "dark" ? "dunkel" : "hell"}.png`;
     await p.addStyleTag({content: ".leiste,body::after{display:none!important}"});
-    await p.screenshot({path: datei, fullPage: true});
+    // Chromium nimmt nichts über 32767 Pixel auf (die Bausteinseite wächst mit jedem Baustein): dann die ersten 32000
+    const hoehe = await p.evaluate(() => document.documentElement.scrollHeight);
+    await p.screenshot(hoehe > 32000 ? {path: datei, fullPage: true, clip: {x: 0, y: 0, width: breite, height: 32000}} : {path: datei, fullPage: true});
     bilder.push(datei);
   }
   await ctx.close();
