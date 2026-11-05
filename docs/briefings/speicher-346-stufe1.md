@@ -1,7 +1,7 @@
 ---
 spec_file: docs/specs/betrieb/reisespeicher-346.md
-spec_sha256: 60493c4a440cca895eebe3a6803cf86ce13ba1e361da3b3eb19e2761fda7e894
-spec_frozen_sha256: 26f3a0796f0c6893e1dbca1c6c81804bfe74275cd7dd45d13fc97b5f99d88b6e
+spec_sha256: 740de4e6a9c97b1773c9f1b5fd5786331ae3f17c20d3f701f720630c3046fc94
+spec_frozen_sha256: 018605695e1c939a67ca7183975c8a343a285bfb3bba7ce5d5827286fca8a01b
 ---
 
 # PO-Briefing: speicher-346-stufe1
@@ -25,7 +25,7 @@ Automatische Tests belegen jede Anforderung; nicht bewiesen ist Schutz gegen jem
 ## Kritische Anmerkungen
 
 - Stand-Nummer zählt Schreibvorgänge statt, wie im Ticket wörtlich, Datei-Versionen; zusätzlich Spalten Titel und Rolle.
-- Issue-Text nicht abrufbar; geprüft gegen das Kontextdokument.
+- Ticket-Text nicht abrufbar; nur gegen das Kontextdokument geprüft.
 
 ## Freigabe-Frage
 

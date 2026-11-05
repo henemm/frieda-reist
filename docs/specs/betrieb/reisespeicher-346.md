@@ -219,22 +219,22 @@ Fertig ist diese Änderung, wenn:
 
 ## Acceptance Criteria
 
-- [ ] AC-1: Import und Export beider Beispielreisen (`beispiel/reisen/beispielreise`, `beispiel/reisen/stadtwochenende`) liefern einen Ordner mit gleicher Pfadmenge und Byte für Byte gleichen Dateien (Test 1).
-- [ ] AC-2: `exportieren(reise, ziel, bis=N)` liefert den Stand N einschließlich fehlender (gelöschter) Dateien und Dateien in alter Fassung (Test 2).
-- [ ] AC-3: Über `db()` scheitern UPDATE, DELETE, `INSERT OR REPLACE`, `DROP TRIGGER` und `DROP TABLE` auf beiden Tabellen; die Daten bleiben unverändert (Test 3).
-- [ ] AC-4: Eine bekannte Kennung schreibt nichts und löst `VorgangVorhanden(nummer, stand)` aus; `vorgang_eingetragen(kennung)` findet den Vorgang (Test 4).
-- [ ] AC-5: `stand_nummer` ist `max(stand)`: Import mit `ab=N` ergibt `N+1`, jeder weitere Vorgang `+1` unabhängig von der Zahl der Dateien; unbekannte Reise gibt `None` (Test 5).
-- [ ] AC-6: Unveränderte Dateien erzeugen keine Versionszeile; ein Vorgang ohne jede Änderung ist ein Fehler und legt nichts an (Test 6).
-- [ ] AC-7: `zuruecksetzen` erzeugt einen neuen Vorgang mit Person und Grund, der Verlauf bleibt vollständig, und der neue Stand gleicht dem Ziel-Stand (Test 7).
-- [ ] AC-8: Symlinks, Pfade mit `..` oder NUL, ein nicht leeres Export-Ziel werden abgelehnt, und außerhalb des Ziels wird nichts geschrieben (Test 8).
-- [ ] AC-9: `sichern()` erzeugt `<Speicher>/sicherung/reisen.db` mit bestandenem `integrity_check`; der Rückspieltest (Schnappschuss als neue Datenbank, Export vergleichen) ist grün (Test 9).
-- [ ] AC-10: `pruefen()` findet eine manipulierte Prüfsumme und meldet Reise und Pfad; bei gesunden Daten ist die Liste leer (Test 10).
-- [ ] AC-11: `instanz.speicher()` folgt `FR_SPEICHER` mit Vorgabe `seiten() / "_speicher"`; `betrieb/einstellungen.beispiel` enthält `FR_SPEICHER`; `engine/reisespeicher.py` enthält keine Instanzwerte (Ort nur über `instanz.speicher()`) (Test 12, Test 16 und `test_beispiel_einstellungen_sind_vollstaendig`).
-- [ ] AC-12: `betrieb/waechter.sh` sichert täglich beide Datenbanken; ein Fehlschlag der Reisen-Sicherung meldet `fr_melden high`, ohne die Konten-Sicherung zu verhindern (Test 13).
-- [ ] AC-13: Weder `betrieb/deploy.sh` noch Schreibweg, Konnektor, Rückmeldedienst oder `stand.py` binden `reisespeicher` ein; der Test zur Modulliste ist grün, und der Schreibweg schreibt nicht in den Speicher (Test 14).
-- [ ] AC-14: ADR-0008 (`docs/adr/0008-reisespeicher.md`) mit Index-Zeile in `docs/adr/README.md` und die Ergänzungen in `docs/betrieb.md` liegen vor; ADR-0008 nennt die ehrliche Grenze des Nur-anhängen-Schutzes (Test 15); `engine/tests/test_protokolle_ohne_pfade.py` bleibt grün.
-- [ ] AC-15: Import, Vorgang, Export und Sicherung gelingen ohne auffindbares `git` (Test 16).
-- [ ] AC-16: Die Befehle `importieren`, `exportieren [--bis N]`, `verlauf`, `zuruecksetzen`, `pruefen`, `sichern` über `main` liefern die erwartete Ausgabe und Exitcode 0, bei Fehlern einen Exitcode ungleich 0 (Test 11).
+- **AC-1:** Import und Export beider Beispielreisen (`beispiel/reisen/beispielreise`, `beispiel/reisen/stadtwochenende`) liefern einen Ordner mit gleicher Pfadmenge und Byte für Byte gleichen Dateien (Test 1).
+- **AC-2:** `exportieren(reise, ziel, bis=N)` liefert den Stand N einschließlich fehlender (gelöschter) Dateien und Dateien in alter Fassung (Test 2).
+- **AC-3:** Über `db()` scheitern UPDATE, DELETE, `INSERT OR REPLACE`, `DROP TRIGGER` und `DROP TABLE` auf beiden Tabellen; die Daten bleiben unverändert (Test 3).
+- **AC-4:** Eine bekannte Kennung schreibt nichts und löst `VorgangVorhanden(nummer, stand)` aus; `vorgang_eingetragen(kennung)` findet den Vorgang (Test 4).
+- **AC-5:** `stand_nummer` ist `max(stand)`: Import mit `ab=N` ergibt `N+1`, jeder weitere Vorgang `+1` unabhängig von der Zahl der Dateien; unbekannte Reise gibt `None` (Test 5).
+- **AC-6:** Unveränderte Dateien erzeugen keine Versionszeile; ein Vorgang ohne jede Änderung ist ein Fehler und legt nichts an (Test 6).
+- **AC-7:** `zuruecksetzen` erzeugt einen neuen Vorgang mit Person und Grund, der Verlauf bleibt vollständig, und der neue Stand gleicht dem Ziel-Stand (Test 7).
+- **AC-8:** Symlinks, Pfade mit `..` oder NUL, ein nicht leeres Export-Ziel werden abgelehnt, und außerhalb des Ziels wird nichts geschrieben (Test 8).
+- **AC-9:** `sichern()` erzeugt `<Speicher>/sicherung/reisen.db` mit bestandenem `integrity_check`; der Rückspieltest (Schnappschuss als neue Datenbank, Export vergleichen) ist grün (Test 9).
+- **AC-10:** `pruefen()` findet eine manipulierte Prüfsumme und meldet Reise und Pfad; bei gesunden Daten ist die Liste leer (Test 10).
+- **AC-11:** `instanz.speicher()` folgt `FR_SPEICHER` mit Vorgabe `seiten() / "_speicher"`; `betrieb/einstellungen.beispiel` enthält `FR_SPEICHER`; `engine/reisespeicher.py` enthält keine Instanzwerte (Ort nur über `instanz.speicher()`) (Test 12, Test 16 und `test_beispiel_einstellungen_sind_vollstaendig`).
+- **AC-12:** `betrieb/waechter.sh` sichert täglich beide Datenbanken; ein Fehlschlag der Reisen-Sicherung meldet `fr_melden high`, ohne die Konten-Sicherung zu verhindern (Test 13).
+- **AC-13:** Weder `betrieb/deploy.sh` noch Schreibweg, Konnektor, Rückmeldedienst oder `stand.py` binden `reisespeicher` ein; der Test zur Modulliste ist grün, und der Schreibweg schreibt nicht in den Speicher (Test 14).
+- **AC-14:** ADR-0008 (`docs/adr/0008-reisespeicher.md`) mit Index-Zeile in `docs/adr/README.md` und die Ergänzungen in `docs/betrieb.md` liegen vor; ADR-0008 nennt die ehrliche Grenze des Nur-anhängen-Schutzes (Test 15); `engine/tests/test_protokolle_ohne_pfade.py` bleibt grün.
+- **AC-15:** Import, Vorgang, Export und Sicherung gelingen ohne auffindbares `git` (Test 16).
+- **AC-16:** Die Befehle `importieren`, `exportieren [--bis N]`, `verlauf`, `zuruecksetzen`, `pruefen`, `sichern` über `main` liefern die erwartete Ausgabe und Exitcode 0, bei Fehlern einen Exitcode ungleich 0 (Test 11).
 
 ## Known Limitations
 

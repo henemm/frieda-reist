@@ -1,0 +1,11 @@
+$ pytest -q engine/tests/test_reisespeicher.py engine/tests/test_betrieb.py engine/tests/test_protokolle_ohne_pfade.py --durations=3
+........................................................................ [ 44%]
+........................................................................ [ 88%]
+...................                                                      [100%]
+============================= slowest 3 durations ==============================
+4.09s call     engine/tests/test_betrieb.py::test_deploy_prueft_die_wege_zum_konnektor_von_aussen
+2.56s call     engine/tests/test_betrieb.py::test_einrichten_erkennt_belegte_ports_einer_anderen_instanz
+1.98s call     engine/tests/test_betrieb.py::test_veroeffentlichen_schreibt_den_zustand_je_reise
+163 passed in 67.36s (0:01:07)
+
+test_reisespeicher.py allein: 50 passed in 1.66s (unter 5 s)
