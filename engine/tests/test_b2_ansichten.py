@@ -77,7 +77,7 @@ def test_b2_auf_reise_ort_wissen_vergleich(basis, browser):
         v = a["vergleich"]
         assert not v["rahmen"] and v["kaesten"] == [] and v["i"] == 0 and v["werte"] == 0 and v["herkunft"] > 0, (breite, v)
         assert v["tabelle"] == rechner and v["karten"] == (not rechner), (breite, v)
-        assert v["umschalter"] == (int(breite) < 700), (breite, v)     # Karten oder Tabelle wählt nur das Handy
+        assert v["umschalter"] == (int(breite) < 960), (breite, v)     # Karten oder Tabelle wählt, wer in einem Behälter unter 960 px mit Maus oder Finger sitzt (#332, Option B; die Seite hier füllt die Breite)
         assert v["einzeln"] == (not rechner), (breite, v)              # ohne Tabelle die Einzelheiten zum Aufklappen
         assert not v["kennung"] and v["frage"].startswith("Zu klären: „Unterkunft in Hohnstein wählen"), (breite, v)
         assert not v["ueber"], (breite, v)

@@ -320,7 +320,8 @@ def test_stornierte_buchung_eingeklappt_am_ding(tmp_path, browser):
 def test_b2_wissen_orte_vergleich(tmp_path, browser):
     """#58 (Entscheidung PO 1.11.2026), Plan A fest: Weitere Wege am Rechner als Tabelle, am Handy und Tablet als Einträge mit
     einer Zeile Kennzahlen, nie als Kacheln; Ortsseite als Ebenen ohne Kasten in einer Lesespalte; Vergleich ohne „i“, die
-    Herkunft einmal je Möglichkeit (Karte unten, Tabelle als Zeile darunter), Tabelle nur am Rechner."""
+    Herkunft einmal je Möglichkeit (Karte unten, Tabelle als Zeile darunter), Tabelle nur am Rechner (in breitem Behälter
+    von Anfang an, in einer Spalte unter 960 px zum Umschalten, #332)."""
     # Erfundene Abwandlung: der Gasthof in Hohnstein (V-03.b) ist nicht verworfen, damit die Nacht zwei gültige Möglichkeiten
     # mit Quellen hat; V-03.a bleibt gewählt, der Plan bleibt fest (sonst gäbe es keine „Weiteren Wege“)
     offen = [('- {datum: 2026-10-20, status: verworfen, wer: Ida, grund: "Anstieg am Morgen"}',
@@ -336,9 +337,11 @@ def test_b2_wissen_orte_vergleich(tmp_path, browser):
         assert v["herkunftZeilen"] >= 1 and v["herkunftOhneAufklappen"] and v["quellenDa"], (breite, v)
         assert v["herkunftText"].startswith("Quellen: "), (breite, v)
         if breite == "1300":
-            assert v["tabelle"] and v["karten"] == 0 and v["nachSortieren"], (breite, v)   # im breiten Behälter (1100 px) die Tabelle
-            # Behälter statt Fenster (#332, Schritt D): in der Spalte der Tagesseite (unter 960 px) am Rechner Karten, keine Tabelle
-            assert v["inSpalte"]["breite"] < 960 and not v["inSpalte"]["tabelle"] and v["inSpalte"]["karten"] >= 2, (breite, v)
+            assert v["tabelle"] and v["karten"] == 0 and v["nachSortieren"], (breite, v)   # nach dem Umschalten die Tabelle
+            # Behälter statt Fenster (#332, Schritt D; Entscheidung 5.11.2026, Option B): in der Spalte der Tagesseite (unter 960 px)
+            # am Rechner zuerst Karten mit dem Umschalter „Tabelle“, keine Tabelle von Anfang an
+            sp = v["inSpalte"]
+            assert sp["breite"] < 960 and not sp["tabelle"] and sp["karten"] >= 2 and sp["umschalter"], (breite, v)
             assert v["aufgeklappt"]["mehr"] == 1 and v["aufgeklappt"]["iImKasten"] == 0, (breite, v)
         else:
             assert not v["tabelle"] and v["karten"] >= 2 and v["herkunftKarten"] >= 1, (breite, v)

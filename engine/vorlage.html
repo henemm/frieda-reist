@@ -481,24 +481,27 @@ tr.auf .wm-pfeil{transform:rotate(90deg)}
 .wm-einzeln{margin-top:10px}
 .wm-karte{border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;background:var(--card)}
 .wm-karte.an{border-color:var(--acc);box-shadow:inset 3px 0 0 var(--acc)}
-/* Der Vergleich richtet sich nach der Breite seines Behälters, nicht des Fensters (#332, Schritt D; ADR-0002, Nachtrag):
-   breit (ab 960 px, mit Maus: planen) die Tabelle; mittel (630 bis 959 px, oder breit mit Finger) Karten nebeneinander ohne
-   Umschalter; schmal (unter 630 px, Handy oder schmale Spalte) Karten oder Tabelle zum Umschalten (#58: am Tablet war die
-   Tabelle breiter als der Bildschirm). Das Zeigergerät ist keine Breite und bleibt eine Media-Query. */
+/* Der Vergleich richtet sich nach der Breite seines Behälters, nicht des Fensters (#332, Schritt D; Entscheidung des Product Owners
+   5.11.2026, Option B): breit (ab 960 px, mit Maus: planen) die Tabelle; mittel (630 bis 959 px) Karten, mit Maus dazu der
+   Umschalter „Tabelle“, mit Finger nur Karten (#58: am Tablet war die Tabelle breiter als der Bildschirm); schmal (unter 630 px,
+   Handy oder schmale Spalte) Karten oder Tabelle zum Umschalten. Das Zeigergerät ist keine Breite und bleibt eine Media-Query. */
 .wm,.wm-gruppe{container:wm / inline-size}
 /* Ein Behälter fängt die Ränder seiner Kinder ein (Layout-Containment). Damit der Abstand um den Vergleich bleibt, wie er war,
    trägt die Gruppe die Ränder von Vergleich (oben 10 px) und Einzelnem (unten 1 rem), und die Tabelle am Rechner endet ohne Rand
-   (Abweichung am Rechner: unter dem offenen Vergleich einer Entscheidung 6 px mehr, auf der Bausteinseite unter einer Karte 7 px weniger). */
+   (Abweichungen am Rechner: unter dem offenen Vergleich einer Entscheidung 6 px mehr, geschlossen 17 px mehr, auf der Bausteinseite unter einer Karte 7 px weniger). */
 .wm-gruppe{margin:10px 0 1rem}
 .wm-gruppe>.wm{margin-top:0}
 .wm-gruppe>.wm[hidden]+.wm-einzeln{margin-top:0}
 .wm-gruppe>.wm-einzeln{margin-bottom:0}
 @media (pointer:fine){@container wm (min-width:960px){.wm:not(.art-tabelle) .wm-tabelle,.wm-gruppe>.wm{margin-bottom:0}.wm-karten,.wm-ansicht,.wm-wahl,.wm-anzahl,.pico details.wm-einzeln{display:none}.wm.ohne-tabelle .wm-karten{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}}
-@container wm (min-width:630px) and (max-width:959px){.wm-tabelle,.wm-ansicht{display:none}.wm-karten{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
-@media (pointer:coarse){@container wm (min-width:960px){.wm-tabelle,.wm-ansicht{display:none}.wm-karten{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}}
+@container wm (min-width:630px) and (max-width:959px){.wm-karten{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
+@media (pointer:coarse){@container wm (min-width:630px){.wm-tabelle,.wm-ansicht{display:none}.wm-karten{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}}
 @container wm (max-width:629px){.wm[data-ansicht=karten] .wm-tabelle,.wm[data-ansicht=tabelle] .wm-karten{display:none}
   .pico .wm-tab th[scope=row]{white-space:normal;min-width:5.5em;max-width:6.5em;font-size:var(--t-klein);padding-left:6px;padding-right:6px}
   .pico .wm-tab td,.pico .wm-tab thead th{min-width:7.5em;padding-left:7px;padding-right:7px}}
+@media (pointer:fine){@container wm (min-width:630px) and (max-width:959px){.wm[data-ansicht=karten] .wm-tabelle,.wm[data-ansicht=tabelle] .wm-karten{display:none}
+  .pico .wm-tab th[scope=row]{white-space:normal;min-width:5.5em;max-width:6.5em;font-size:var(--t-klein);padding-left:6px;padding-right:6px}
+  .pico .wm-tab td,.pico .wm-tab thead th{min-width:7.5em;padding-left:7px;padding-right:7px}}}
 .option{border-top:1px solid var(--line);padding:8px 0 4px;margin-top:8px}
 .option.aktiv{border-left:3px solid var(--acc);padding-left:10px;margin-left:-14px}
 .option .k{font-weight:600}

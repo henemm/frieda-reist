@@ -30,18 +30,18 @@ for (const [breite, hoehe] of [[390, 844], [820, 1180], [1300, 900]]) {
       breite: s ? Math.round(s.getBoundingClientRect().width) : 0, allesSichtbar: s ? [...s.querySelectorAll(".lese-abschnitt")].every(sichtbar) : false}; }, sicht);
   await auf("V-03");
   if (!await p.locator('#main [data-vgl^="V-03"]:not([hidden])').count()) { const k = p.locator('#main [data-vgl-auf^="V-03"]:visible'); if (await k.count()) { await k.first().click(); await p.waitForTimeout(300); } }
-  // Der Vergleich richtet sich nach der Breite seines Behälters, nicht des Fensters (#332, Schritt D): V-03 steht auf der Tagesseite
-  // in einer Spalte unter 960 px, also zeigt er auch am Rechner Karten und keine Tabelle. Für die Bedienung der Tabelle (sortieren,
-  // aufklappen) steht er danach in einem breiten Behälter (1100 px).
+  // Der Vergleich richtet sich nach der Breite seines Behälters, nicht des Fensters (#332, Schritt D; Entscheidung des Product Owners
+  // 5.11.2026, Option B): V-03 steht auf der Tagesseite in einer Spalte unter 960 px, also zeigt er auch am Rechner Karten, dazu mit
+  // Maus den Umschalter „Tabelle“. Für die Bedienung der Tabelle (sortieren, aufklappen) wird in der Spalte umgeschaltet.
   let inSpalte = null;
   if (breite === 1300) {
-    inSpalte = await p.evaluate(async () => { const box = document.querySelector('#main [data-vgl^="V-03"]:not([hidden])');
+    inSpalte = await p.evaluate(() => { const box = document.querySelector('#main [data-vgl^="V-03"]:not([hidden])');
       if (!box) return null;
-      const t = box.querySelector(".wm-tabelle"), r = {breite: Math.round(box.getBoundingClientRect().width), tabelle: !!t && getComputedStyle(t).display !== "none", karten: box.querySelectorAll(".wm-karte").length};
-      const host = document.createElement("div");
-      host.id = "breiterBehaelter"; host.style.width = "1100px"; box.parentElement.insertBefore(host, box); host.append(box);
-      await new Promise(x => setTimeout(x, 500));
-      return r; });
+      const t = box.querySelector(".wm-tabelle"), u = box.querySelector(".wm-ansicht");
+      return {breite: Math.round(box.getBoundingClientRect().width), tabelle: !!t && getComputedStyle(t).display !== "none", karten: box.querySelectorAll(".wm-karte").length,
+        umschalter: !!u && getComputedStyle(u).display !== "none"}; });
+    const tab = p.locator('#main [data-vgl^="V-03"]:not([hidden]) [data-vgl-ansicht$="|tabelle"]:visible');
+    if (await tab.count()) { await tab.first().click(); await p.waitForTimeout(400); }
   }
   const vergleich = await p.evaluate(sicht => { const sichtbar = eval(sicht), box = document.querySelector('#main [data-vgl^="V-03"]:not([hidden])');
     if (!box) return null;
