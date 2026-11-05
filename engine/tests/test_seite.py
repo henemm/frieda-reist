@@ -50,6 +50,13 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
     assert e["breit"] == []          # keine Ansicht steht auf dem Handy seitlich über
     assert e["schrift"] == {}        # jeder Text hat eine Stufe der Schriftleiter (Größe -> Ansicht und Element)
     assert e["ohneArt"] == []        # jede Kennung gehört einer Art der Ontologie mit Bausteinen an
+    # Behälter statt Fenster (#332, Schritt D): bei 320, 700, 900, 1100 und 1300 px kein seitlicher Überstand; in einer schmalen
+    # Spalte (340 px) am Rechner (1300 px) zeigen Vergleich und Kennzahlen die schmale Darstellung
+    assert e["behaelter"]["ueberstand"] == []
+    sp = e["behaelter"]["spalte"]
+    assert sp["vergleich"]["breite"] == 340 and not sp["vergleich"]["ueberstand"], sp
+    assert sp["vergleich"]["karten"] <= 2 and sp["vergleich"]["tabelle"] == "none" and sp["vergleich"]["umschalter"] != "none", sp
+    assert sp["kennzahlen"]["spaltenNach"] == 2 and sp["kennzahlen"]["kacheln"] > 2, sp
     # Wahl-Modul: öffnet an der Stelle, zeigt mindestens 2 Möglichkeiten (Handy als Karten, höchstens 2; Rechner als Tabelle
     # mit allen gültigen, sortierbar, Zeile klappt auf; Alternativen D1, 29.10.2026)
     for breite, v in e["vergleich"].items():
@@ -329,7 +336,9 @@ def test_b2_wissen_orte_vergleich(tmp_path, browser):
         assert v["herkunftZeilen"] >= 1 and v["herkunftOhneAufklappen"] and v["quellenDa"], (breite, v)
         assert v["herkunftText"].startswith("Quellen: "), (breite, v)
         if breite == "1300":
-            assert v["tabelle"] and v["karten"] == 0 and v["nachSortieren"], (breite, v)
+            assert v["tabelle"] and v["karten"] == 0 and v["nachSortieren"], (breite, v)   # im breiten Behälter (1100 px) die Tabelle
+            # Behälter statt Fenster (#332, Schritt D): in der Spalte der Tagesseite (unter 960 px) am Rechner Karten, keine Tabelle
+            assert v["inSpalte"]["breite"] < 960 and not v["inSpalte"]["tabelle"] and v["inSpalte"]["karten"] >= 2, (breite, v)
             assert v["aufgeklappt"]["mehr"] == 1 and v["aufgeklappt"]["iImKasten"] == 0, (breite, v)
         else:
             assert not v["tabelle"] and v["karten"] >= 2 and v["herkunftKarten"] >= 1, (breite, v)

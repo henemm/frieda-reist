@@ -173,6 +173,47 @@ for (const app of [true, false]) {
   leiste[app ? "app" : "browser"] = m;
   await ctx.close();
 }
+// Behälter (#332, Schritt D): kein seitlicher Überstand bei allen sechs Breiten (der Rundgang oben deckt 390 und 1200 ab), und die
+// schmale Spalte am Rechner: bei 1300 px Fenster richten sich Vergleich und Kennzahlen nach ihrem Behälter, hier künstlich 340 px breit
+const behaelter = {ueberstand: [], spalte: {}};
+for (const breite of [320, 700, 900, 1100, 1300]) {
+  const ctx = await b.newContext({viewport: {width: breite, height: 900}, serviceWorkers: "block"});
+  await ctx.route("**/api/**", r => r.abort());
+  const p = await ctx.newPage();
+  await p.clock.setFixedTime(new Date("2026-10-27T10:00:00"));
+  p.on("pageerror", e => fehler.push(`${breite} Behälter: ${e}`));
+  await p.goto(basis);
+  await p.waitForSelector("#titel:not(:empty)");
+  await p.waitForTimeout(300);
+  const routen = await p.evaluate(() => ["", "plan", "etappen", "varianten", "offen", "wuensche", ...(R ? [...R.tage.map(t => t.id), ...R.wahlstellen.map(v => v.id)] : [])]);
+  let offen = null;
+  for (const h of routen) {
+    await p.evaluate(h => { location.hash = h; }, h);
+    await p.waitForTimeout(15);
+    const knopf = p.locator('#main [data-vgl-auf][aria-expanded="false"]:visible').first();
+    if (await knopf.count() && !offen) { offen = await knopf.getAttribute("data-vgl-auf"); await knopf.click(); await p.waitForTimeout(100); }
+    if (await p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) behaelter.ueberstand.push(`${breite}#${h}`);
+  }
+  if (breite === 1300 && offen) {
+    const m = await p.evaluate(async id => {
+      const box = document.querySelector(`#main [data-vgl="${CSS.escape(id)}"]`), host = document.createElement("div");
+      host.id = "schmaleSpalte"; host.style.width = "340px";
+      box.parentElement.insertBefore(host, box); host.append(document.querySelector(`[data-vgl-auf="${CSS.escape(id)}"]`) || "", box);
+      await new Promise(r => setTimeout(r, 300));
+      const w = document.querySelector(`[data-vgl="${CSS.escape(id)}"]`), an = x => { const e = w.querySelector(x); return e ? getComputedStyle(e).display : null; };
+      return {karten: w.querySelectorAll(".wm-karte").length, tabelle: an(".wm-tabelle"), umschalter: an(".wm-ansicht"), ueberstand: host.scrollWidth > host.clientWidth + 1, breite: Math.round(host.getBoundingClientRect().width)};
+    }, offen);
+    behaelter.spalte.vergleich = m;
+    for (const h of routen) {
+      await p.evaluate(h => { location.hash = h; }, h);
+      await p.waitForTimeout(15);
+      const k = await p.evaluate(() => { const e = document.querySelector("#main .kz-huelle"); if (!e) return null; const kz = e.querySelector(".kz"), vor = getComputedStyle(kz).gridTemplateColumns.split(" ").length;
+        e.style.width = "340px"; return {breiteVor: Math.round(e.parentElement.getBoundingClientRect().width), spaltenVor: vor, spaltenNach: getComputedStyle(kz).gridTemplateColumns.split(" ").length, kacheln: kz.children.length}; });
+      if (k) { behaelter.spalte.kennzahlen = k; break; }
+    }
+  }
+  await ctx.close();
+}
 await b.close();
 if (domDatei) fs.writeFileSync(domDatei, JSON.stringify(dom));
-console.log(JSON.stringify({routen: Object.keys(dom).length, leer, breit, fehler, vergleich, bilder, leiste, ohneArt, schrift}));
+console.log(JSON.stringify({routen: Object.keys(dom).length, leer, breit, fehler, vergleich, bilder, leiste, ohneArt, schrift, behaelter}));

@@ -249,3 +249,32 @@ def test_eigene_flaechen_ausserhalb_des_inventars_werden_nur_weniger():
     frei = {n for n, text in _rumpfe().items() if n not in inventar and re.search(r"\bclass: ", text)}
     assert frei - EIGENE_FLAECHEN == set(), f"neuer Zeichner mit eigenen Klassen, ins Inventar aufnehmen: {sorted(frei - EIGENE_FLAECHEN)}"
     assert EIGENE_FLAECHEN - frei == set(), f"erledigt, von EIGENE_FLAECHEN streichen: {sorted(EIGENE_FLAECHEN - frei)}"
+
+
+# Seitenraster (#332, Schritt D; ADR-0002, Nachtrag): Hier folgt das Layout dem Fenster, weil es die Seite aufteilt (Ränder, Spalten,
+# Navigation) und nicht ein Baustein, der überall stehen kann. Alle Organismen richten sich nach der Breite ihres Behälters
+# (@container), das Zeigergerät (pointer, hover) bleibt eine Media-Query. Die Liste darf nur kürzer werden.
+RASTER_BREITEN = {
+    "details:not([open])>summary .zid-box,.vorschau .zid-box",   # Sprechblase unterwegs (Handy und Tablet) ausgeblendet
+    ".ebene-unterwegs",                                          # gleicht den Rand von main aus
+    ".achse .tagzeile",                                          # Zeitachse in der rechten Spalte des Seitenrasters
+    "dialog#rm", ".reise-seite", ".tagseite", "nav a,#suchKnopf", ":root",
+}
+
+
+def test_breiten_media_queries_nur_fuers_seitenraster():
+    css = VORLAGE[:VORLAGE.index("<script>")]
+    benutzt = {m.group(2).strip() for m in re.finditer(r"@media\s*([^{]*(?:min|max)-width[^{]*)\{\s*(?:/\*.*?\*/\s*)?([^{}]*)\{", css, re.S)}
+    assert benutzt - RASTER_BREITEN == set(), f"Breite im Organismus: @container statt @media verwenden: {sorted(benutzt - RASTER_BREITEN)}"
+    assert RASTER_BREITEN - benutzt == set(), f"erledigt, von RASTER_BREITEN streichen: {sorted(RASTER_BREITEN - benutzt)}"
+    assert not re.search(r"matchMedia\(\s*[\"'`][^\"'`]*(?:min|max)-width", skript()), "Breite im Skript: die Breite des Behälters messen"
+
+
+def test_container_haben_namen_und_jede_anfrage_ihren_behaelter():
+    """Eine unbenannte Anfrage träfe den nächsten Behälter, wer er auch sei; deshalb haben alle Behälter einen Namen."""
+    css = VORLAGE[:VORLAGE.index("<script>")]
+    behaelter = set(re.findall(r"container:\s*([a-z]+)\s*/\s*inline-size", css))
+    assert not re.search(r"container-type\s*:", css), "benannt schreiben: container: name / inline-size"
+    anfragen = set(re.findall(r"@container\s+([a-z]+)\s*\(", css))
+    assert not re.search(r"@container\s*\(", css), "@container ohne Namen"
+    assert anfragen <= behaelter, sorted(anfragen - behaelter)
