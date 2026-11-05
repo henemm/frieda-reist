@@ -151,6 +151,13 @@ def test_adressen_holen_main_liest_den_osm_bezug_aus_dem_ding(tmp_path, monkeypa
     assert "U-02" in capsys.readouterr().out
 
 
+def test_punkte_holen_liest_die_kennung_der_dossier_ueberschrift():
+    """#269: Das Etappen-Dossier nennt die Strecke am Anfang der Überschrift („## E-01 Name“), nicht mehr „Etappe 1: Name“."""
+    text = "## Übersicht\n**Nicht hier**\n## E-01 Anfang – Mitte\n1. **Bastei**\n## E-02V Variante\n| Name | Typ |\n|---|---|\n| Hotel A | Hotel |\n"
+    assert ph.dossier_namen(text) == {"E-01": ["Bastei"], "E-02V": ["Hotel A"]}
+    assert ph.dossier_namen((WURZEL / "beispiel/reisen/beispielreise/inhalt/etappen.md").read_text(encoding="utf-8")).keys() == {"E-01", "E-02", "E-03", "E-04"}
+
+
 def test_adressen_holen_staedtewochenende_ohne_punkte(tmp_path):
     reise = kopie(tmp_path, "stadtwochenende")
     assert schreiben.kartenpunkte_lesen(reise) == []

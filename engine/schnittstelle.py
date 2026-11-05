@@ -91,7 +91,7 @@ PARAMETER = {
     "erfordert": "requires", "ergebnis": "result", "erlauben": "allow", "erlebt": "experienced", "ersetzt_durch": "replaced_by",
     "farbe": "colour", "favorisiert": "favoured", "folge": "sequence", "frage": "question", "frist": "deadline",
     "frist_was": "deadline_what", "fuer": "for", "gebucht_am": "booked_on", "geprueft": "checked", "gilt": "valid_for",
-    "grund": "reason", "grundform": "basic_form", "gruppe": "group", "hilfe": "help", "hinweis": "hint", "kategorie": "category",
+    "grund": "reason", "grundform": "basic_form", "gruppe": "group", "hilfe": "help", "hinweis": "hint", "kategorie": "category", "kennzahlen": "figures",
     "kommentar": "comment", "koordinaten": "coordinates", "kurz": "short", "lesetext": "reading_text", "merkmal": "attribute",
     "merkmale": "attributes", "minus": "cons", "nach": "after", "nach_buchung": "visible_after_booking", "nacht": "night", "neu": "new", "neuer_name": "new_name",
     "neuer_titel": "new_title", "notiz": "note", "nummer": "number", "nummeriert": "numbered", "ohne_route": "without_route",
@@ -125,6 +125,8 @@ def _werte_aus_dem_katalog():
 
 
 # Weitere Schreibweisen, die als Eingabe gelten (nur Eingabe; Datenwerte bleiben deutsch). Der Katalog liefert die Hauptform.
+# Kennungen der Kennzahlen einer Strecke (routen.KENNZAHLEN, #269): englischer Name als Eingabe, gespeichert wird die Kennung
+KENNZAHL_ALIAS = {"walking_time": "gehzeit", "ascent": "aufstieg", "descent": "abstieg", "length": "laenge"}
 ENUM_ALIAS = {**_werte_aus_dem_katalog(), "item": "ding", "organizer": "organisator", "gray": "grau", "canceled": "storniert", "favored": "favorisiert"}
 # Datenwert -> englisches Wort, wie tools/list es als Wert anbietet (die Hauptform: die, die der Katalog nennt)
 WERT_ENGLISCH = {d: e for e, d in _werte_aus_dem_katalog().items()}

@@ -1,8 +1,8 @@
 # Beispielreise – Routenmodell: alle Möglichkeiten, Entscheidungen und Kandidaten.
 # Aufbau und Regeln: engine/routen.py. Status gewaehlt, verworfen, ersetzt setzt nur ein:e Organisator:in
 # (reise.yaml, hier Ida); Vorschläge anderer höchstens vorgeschlagen oder favorisiert (mit Begründung).
-# Die Reise ist erfunden; Orte und Wege gibt es wirklich. Kennzahlen der Etappen stehen im Etappen-Dossier
-# (inhalt/etappen.md) und sind aus den schematischen Tracks gerechnet (Beispielwerte).
+# Die Reise ist erfunden; Orte und Wege gibt es wirklich. Kennzahlen der Etappen stehen an den Strecken (kennzahlen,
+# #269) und sind aus den schematischen Tracks gerechnet (Beispielwerte); den Lesetext hat das Etappen-Dossier (inhalt/etappen.md).
 
 start: {datum: 2027-05-13, ort: O-01}
 ende: {datum: 2027-05-16, ort: O-01}
@@ -18,12 +18,12 @@ orte:   # Orte gibt es wirklich; Herkunft je Ort (Kern jedes Dings, docs/ontolog
   O-05: {name: Bad Schandau, quelle: "OpenStreetMap"}
   O-06: {name: Lichtenhainer Wasserfall, hinweis: "Endhaltestelle der Kirnitzschtalbahn", quelle: "OpenStreetMap; Hinweis Wikipedia (W-06)"}
 
-# Wanderetappen kommen aus dem Etappen-Dossier (Titel, Kennzahlen); hier nur Anfang und Ende.
+# Etappen sind Strecken einer summierten Art (wandern): Titel und Kennzahlen hier, Lesetext im Dossier unter „## E-0N Name“.
 strecken:
-  E-01: {von: O-02, nach: O-03, art: wandern, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
-  E-02: {von: O-03, nach: O-04, art: wandern, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
-  E-03: {von: O-04, nach: O-05, art: wandern, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
-  E-04: {von: O-04, nach: O-06, art: wandern, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
+  E-01: {titel: "Stadt Wehlen – Bastei – Hohnstein", von: O-02, nach: O-03, art: wandern, kennzahlen: {gehzeit: "ca. 3:40 h", aufstieg: 485, abstieg: 285, laenge: "8,1 km"}, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
+  E-02: {titel: "Hohnstein – Brand – Altendorf", von: O-03, nach: O-04, art: wandern, kennzahlen: {gehzeit: "ca. 4:00 h", aufstieg: 400, abstieg: 390, laenge: "10,7 km"}, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
+  E-03: {titel: "Altendorf – Schrammsteine – Bad Schandau", von: O-04, nach: O-05, art: wandern, kennzahlen: {gehzeit: "ca. 2:30 h", aufstieg: 200, abstieg: 400, laenge: "7,4 km"}, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
+  E-04: {titel: "Altendorf – Schrammsteine – Lichtenhainer Wasserfall", von: O-04, nach: O-06, art: wandern, kennzahlen: {gehzeit: "ca. 2:15 h", aufstieg: 190, abstieg: 350, laenge: "6,6 km"}, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
   # ab/an (#135) erscheinen mit Uhrzeit im Kalender (#77); hier erfundene Beispielwerte
   E-20:
     titel: "S-Bahn Dresden → Stadt Wehlen, Fähre über die Elbe"

@@ -130,14 +130,14 @@ Neue Datei `engine/tests/test_etappe_als_art.py`, Umstellungen in den bestehende
 
 ## Acceptance Criteria
 
-- [ ] K1 (Test 1, 10): Die Seite der Beispielreise zeigt Etappenseiten, Tagesseiten, Kennzahlen und Karte inhaltlich wie vorher (Werte gleich, Reihenfolge gleich).
-- [ ] K2 (Test 5): `grep` auf `REGEL.gehzeit`, `kennzahlPaar`, `typ === "etappe"`, `etappen_muster` in `engine/` (außer `neu.py nachziehen` und Tests der Umstellung) findet nichts.
-- [ ] K3 (alle Tests): `engine/.venv/bin/python -m pytest -q engine/tests` ist ohne echte Reisen grün (beide Beispielreisen, auch `stadtwochenende` ohne Etappen).
-- [ ] K4 (Test 2, 3): `neu.py nachziehen` stellt die Beispielreise ohne Handschritt um, ist idempotent und lässt Reisen ohne Dossier unberührt.
-- [ ] K5 (Test 4): Eine Reise mit anderer summierter Art (nicht `wandern`) bekommt ihre Etappen im Reiter „Etappen“, ohne dass Code den Artnamen kennt.
-- [ ] K6 (Test 9): Das Wort „Etappe“ steht nur im Textkatalog (alle Sprachen); `test_texte.py` bleibt grün.
-- [ ] K7 (Test 8): Tag mit summierter Strecke ohne Angaben zeigt „Angaben fehlen“.
-- [ ] K8 (Prozess, kein Test): Umsetzung beginnt erst, wenn #268 auf `main` ist (vor dem ersten Edit an `routen.py`/`vorlage.html` geprüft); der Branch setzt auf diesen Stand auf.
+- **AC-1:** (Test 1, 10): Die Seite der Beispielreise zeigt Etappenseiten, Tagesseiten, Kennzahlen und Karte inhaltlich wie vorher (Werte gleich, Reihenfolge gleich).
+- **AC-2:** (Test 5): `grep` auf `REGEL.gehzeit`, `kennzahlPaar`, `typ === "etappe"`, `etappen_muster` in `engine/` (außer `neu.py nachziehen` und Tests der Umstellung) findet nichts.
+- **AC-3:** (alle Tests): `engine/.venv/bin/python -m pytest -q engine/tests` ist ohne echte Reisen grün (beide Beispielreisen, auch `stadtwochenende` ohne Etappen).
+- **AC-4:** (Test 2, 3): `neu.py nachziehen` stellt die Beispielreise ohne Handschritt um, ist idempotent und lässt Reisen ohne Dossier unberührt.
+- **AC-5:** (Test 4): Eine Reise mit anderer summierter Art (nicht `wandern`) bekommt ihre Etappen im Reiter „Etappen“, ohne dass Code den Artnamen kennt.
+- **AC-6:** (Test 9): Das Wort „Etappe“ steht nur im Textkatalog (alle Sprachen); `test_texte.py` bleibt grün.
+- **AC-7:** (Test 8): Tag mit summierter Strecke ohne Angaben zeigt „Angaben fehlen“.
+- **AC-8:** (Prozess, kein Test): Umsetzung beginnt erst, wenn #268 auf `main` ist (vor dem ersten Edit an `routen.py`/`vorlage.html` geprüft); der Branch setzt auf diesen Stand auf.
 
 ## Definition of Done
 

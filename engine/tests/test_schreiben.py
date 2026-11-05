@@ -1633,6 +1633,48 @@ def test_wahlstelle_und_option_aendern(repo):
     assert not git(arbeit, "status", "--porcelain")
 
 
+def test_kennzahlen_an_strecken_schreiben(repo):
+    """#269: item_create und item_update nehmen kennzahlen (Kennung -> Wert) an einer Strecke an; Zahlen bleiben Zahlen, ein leerer
+    Wert entfernt eine Kennzahl, der englische Name der Schnittstelle (descent) wird zur Kennung, eine falsche Form wird abgelehnt."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    s.schreiben("beispielreise", "ding_anlegen", {**IDA, "args": {"was": "strecke", "titel": "Rundweg Hohnstein", "von": "O-03", "nach": "O-03",
+                                                                 "art": "wandern", "quelle": "eigene Rechnung (Test)",
+                                                                 "kennzahlen": {"gehzeit": "1:30", "aufstieg": 120, "laenge": 4.5}}})
+    r, text = routen_auf_main(origin)
+    assert r["strecken"]["E-24"]["kennzahlen"] == {"gehzeit": "1:30", "aufstieg": 120, "laenge": 4.5}
+    assert "kennzahlen: {gehzeit: \"1:30\", aufstieg: 120, laenge: 4.5}" in text
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "E-24", "kennzahlen": {"descent": 120, "laenge": ""}}})
+    assert "kennzahlen" in a["text"]
+    r, _ = routen_auf_main(origin)
+    assert r["strecken"]["E-24"]["kennzahlen"] == {"gehzeit": "1:30", "aufstieg": 120, "abstieg": 120}
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="Kennung → Wert"):
+        s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "E-24", "kennzahlen": {"gehzeit": ["1:30"]}}})
+    with pytest.raises(sb.Ablehnung, match="Kennung → Wert"):   # gehzeit ist Text h:mm, keine Zahl (F008)
+        s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "E-24", "kennzahlen": {"gehzeit": 210}}})
+    # F004: item_create nennt kennzahlen im Schema als Feld der Grundform in attributes (ADR-0007, Schritt c: höchstens 8 Parameter);
+    # englisch figures mit walking_time …, so wie ein AI-Client es nach dem Schema schickt
+    import konnektor
+    import texte
+    beschreibung = konnektor.DING_ANLEGEN["inputSchema"]["properties"]["merkmale"]["description"]
+    assert "figures" in texte.t("en", beschreibung.lstrip("@")) and "kennzahlen" in texte.t("de", beschreibung.lstrip("@"))
+    s.vorbereiten()
+    s.schreiben("beispielreise", "ding_anlegen", {**IDA, "args": {"was": "strecke", "titel": "Abstecher Brand", "von": "O-03", "nach": "O-04",
+                                                                 "art": "wandern", "quelle": "eigene Rechnung (Test)",
+                                                                 "merkmale": {"figures": {"walking_time": "0:45", "length": 2.5}}}})
+    r, _ = routen_auf_main(origin)
+    assert r["strecken"]["E-25"]["kennzahlen"] == {"gehzeit": "0:45", "laenge": 2.5}
+    # F108: item_update hat keinen eigenen Parameter kennzahlen mehr, figures steht in attributes wie bei item_create;
+    # F105: Katalognamen („Aufstieg (Hm)“) werden zur Kennung, eigene Namen („Km-Stand“) bleiben, wie sie sind
+    assert "kennzahlen" not in konnektor.DING_AENDERN["inputSchema"]["properties"]
+    s.vorbereiten()
+    s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "E-25", "merkmale": {"figures": {"Aufstieg (Hm)": 130, "Km-Stand": 12}}}})
+    r, _ = routen_auf_main(origin)
+    assert r["strecken"]["E-25"]["kennzahlen"] == {"gehzeit": "0:45", "laenge": 2.5, "aufstieg": 130, "Km-Stand": 12}
+
+
 def test_wissen_aendern_und_lesetext_schreiben(repo):
     _, origin, arbeit, _ = repo
     s = schreiber(repo)
@@ -1650,7 +1692,7 @@ def test_wissen_aendern_und_lesetext_schreiben(repo):
     assert meldet(a["text"], "schreiben.antwort.abschnitt.inhalt_ersetzt") and "titel „Übersicht“ → „Überblick“" in a["text"]
     dossier = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/inhalt/etappen.md"], check=True, capture_output=True, text=True).stdout
     assert "## Überblick\n\nDrei Wandertage auf dem Malerweg (Test).\n\n*Herkunft: Beispielreise (Test); berichtigt am" in dossier
-    assert "\n## Übersicht\n" not in dossier and "## Etappe 1:" in dossier
+    assert "\n## Übersicht\n" not in dossier and "## E-01 " in dossier
     cfg = json.loads(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/reise.json"], check=True, capture_output=True, text=True).stdout)
     assert cfg["abschnitte"]["inhalt/etappen.md"]["Überblick"] == ["W-01", "uebersicht"] and "Übersicht" not in cfg["abschnitte"]["inhalt/etappen.md"]
     # Lesetext: Rubriken der Art (wandern), fremdes Stichwort abgelehnt, Zusammenfassung ersetzt

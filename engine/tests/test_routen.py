@@ -20,9 +20,9 @@ BASIS = {
     "orte": {"O-01": {"name": "A"}, "O-02": {"name": "B"}, "O-03": {"name": "C"}, "O-04": {"name": "Abzweig"}},
     "strecken": {
         "E-01": {"titel": "A → B", "von": "O-01", "nach": "O-02", "art": "wandern",
-                 "kennzahlen": {"Gehzeit": "3:30 h", "Aufstieg (Hm)": "400", "Abstieg (Hm)": "100", "Länge (km)": "10,5 km"}},
+                 "kennzahlen": {"gehzeit": "3:30 h", "aufstieg": "400", "abstieg": "100", "laenge": "10,5 km"}},
         "E-02": {"titel": "B → C", "von": "O-02", "nach": "O-03", "art": "wandern",
-                 "kennzahlen": {"Gehzeit": "2:00 h", "Aufstieg (Hm)": "100", "Abstieg (Hm)": "300", "Länge (km)": "6 km"}},
+                 "kennzahlen": {"gehzeit": "2:00 h", "aufstieg": "100", "abstieg": "300", "laenge": "6 km"}},
         "E-02V": {"titel": "Abzweig → C", "von": "O-04", "nach": "O-03", "art": "wandern", "zweig_von": "E-02", "rolle": "alternative"},
         "E-03": {"titel": "Bus B → C", "von": "O-02", "nach": "O-03", "art": "bus"},
     },
@@ -1196,10 +1196,10 @@ def test_tag_kennzahlen_je_tag_und_summe_gleich_summe_der_tage():
 
 
 def test_tag_kennzahlen_2h_und_length_zaehlen():
-    """GIVEN eine Wanderstrecke mit „2 h“ statt h:mm und dem englischen Schlüssel „Length“ WHEN bauen() THEN zählen beide
-    im Tageswert (2 h = 120 min, Length = km), wie in der Summe."""
+    """GIVEN eine Wanderstrecke mit „2 h“ statt h:mm und der Länge als Text „8 km“ WHEN bauen() THEN zählen beide im Tageswert
+    (2 h = 120 min, 8 km), wie in der Summe. Seit #269 tragen Kennzahlen Kennungen; Namen wie „Length“ werden nicht gesucht."""
     r = roh()
-    r["strecken"]["E-01"]["kennzahlen"] = {"Dauer": "2 h", "Length": "8 km", "Aufstieg (Hm)": "400", "Abstieg (Hm)": "100"}
+    r["strecken"]["E-01"]["kennzahlen"] = {"gehzeit": "2 h", "laenge": "8 km", "aufstieg": "400", "abstieg": "100"}
     erg = ok(r)
     k = erg["tage"][0]["kennzahlen"]
     assert (k["min"], k["km"], k["fehlend"]) == (120, 8.0, [])

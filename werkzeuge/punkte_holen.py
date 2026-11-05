@@ -140,11 +140,10 @@ def wegpunkte(pfad):
 
 def dossier_namen(text):
     """Etappe-ID -> [(Name, Quelle im Dossier)] aus Wegpunkt-Kurzliste (fett) und Unterkunftstabellen."""
-    teile = re.split(r"^## Etappe (\S+?):.*$", text, flags=re.M)
+    teile = re.split(r"^## (E-\d+[A-Za-z]?)(?:\s.*)?$", text, flags=re.M)   # Überschrift mit der Kennung der Strecke (#269)
     out = {}
     for i in range(1, len(teile), 2):
-        nr, body = teile[i], teile[i + 1]
-        eid = "E-" + (nr.zfill(3) if nr[-1].isalpha() else nr.zfill(2))
+        eid, body = teile[i], teile[i + 1]
         namen = []
         for m in re.finditer(r"\*\*([^*]+?)\*\*", body):
             n = re.sub(r"\s*\(\d+\)\s*$", "", m.group(1)).strip()

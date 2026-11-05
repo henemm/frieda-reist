@@ -1,7 +1,7 @@
 ---
 spec_file: docs/specs/oberflaeche/etappe-als-art-269.md
-spec_sha256: 7317410b4d4ff16a45e97ad5bb28236f416d3378aac63b7dca45093cbe43123a
-spec_frozen_sha256: 1c7059d236a0c216a24a56499f618cba01318ecd1788f2036a6cfed290bfa3fa
+spec_sha256: c12d3d4d5c0d631c72b7988263a92d519eb8cfe9db2964c93f44c8f4ac335604
+spec_frozen_sha256: df3db2b997ff40ee47049a1000886f2a542cb4e5e6e9e57cb2f1b503386c53a0
 ---
 
 # PO-Briefing: etappe-als-art-269

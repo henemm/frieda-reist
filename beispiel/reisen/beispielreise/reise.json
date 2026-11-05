@@ -4,7 +4,9 @@
   "etappen_dossier": "inhalt/etappen.md",
   "unterkuenfte_dossier": "inhalt/unterkuenfte.md",
   "bilder_max_breite": 1600,
-  "etappen_ebenen": {"unterwegs": ["Höhenprofil", "Wegpunkte", "Unterkünfte", "Unterkunft", "Kontakte", "Wasser", "Einkehr", "Verpflegung", "Anfahrt", "Abfahrt", "Praktisch"]},
+  "etappen_ebenen": {
+    "unterwegs": ["Höhenprofil", "Wegpunkte", "Unterkünfte", "Unterkunft", "Kontakte", "Wasser", "Einkehr", "Verpflegung", "Anfahrt", "Abfahrt", "Praktisch"]
+  },
   "abschnitte": {
     "inhalt/etappen.md": {
       "Übersicht": ["W-01", "uebersicht"]
@@ -21,21 +23,13 @@
       "Quellen": ["W-07", "quelle"]
     }
   },
-  "etappen_kennzahlen": [
-    "Gehzeit",
-    "Aufstieg (Hm)",
-    "Abstieg (Hm)",
-    "Länge (km)"
-  ],
   "routen": {
     "datei": "plan/routen.yaml",
     "karte": "plan/karte.yaml",
     "tagesplan": ["W-03", "Tagesplan"],
     "unterkuenfte": ["W-04", "Unterkünfte"]
   },
-  "orte_dossiers": [
-    "inhalt/orte.md"
-  ],
+  "orte_dossiers": ["inhalt/orte.md"],
   "orte_wissen": "inhalt/orte-wissen.yaml",
   "wissen_punkte": "inhalt/wissen-punkte.yaml"
 }

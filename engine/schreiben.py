@@ -1432,6 +1432,8 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
         if art not in arten or arten[art].get("grundform") != "bewegung":
             raise Ablehnung("schreiben.ding_anlegen.6", w1=', '.join(k for k, a in arten.items() if a.get('grundform') == 'bewegung') or 'keine')
         d["art"] = art
+        if args.get("kennzahlen") is not None:   # Kennzahlen an der Strecke (#269)
+            d["kennzahlen"] = fliess_map(kennzahlen_wert(args))
         for k, name in (("ab", "abfahrt"), ("an", "ankunft")):   # Zeitpunkte (Issue #135): HH:MM oder JJJJ-MM-TTTHH:MM+HH:MM
             if k == "an" and ist_eltern_wert(args.get("an")):   # Elternbezug statt Ankunftszeit (ADR-0007)
                 continue
@@ -1506,7 +1508,30 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
 
 AENDERBAR = {"unterkunft": ("name", "ort", "art", "hinweis", "quelle", "buchungslink", "frage", "an"),
              "aufenthalt": ("name", "ort", "art", "zeit", "beginn", "ende", "hinweis", "quelle", "buchungslink", "frage", "an"),
-             "strecke": ("titel", "von", "nach", "art", "ab", "an", "hinweis", "quelle"), "ort": ("name", "hinweis", "quelle", "ausserhalb", "an")}
+             "strecke": ("titel", "von", "nach", "art", "ab", "an", "hinweis", "quelle", "kennzahlen"), "ort": ("name", "hinweis", "quelle", "ausserhalb", "an")}
+
+
+def kennzahlen_wert(args, alt=None):
+    """Kennzahlen einer Strecke (#269): Kennung -> Wert (routen.KENNZAHLEN: gehzeit als Text h:mm, aufstieg, abstieg in m, laenge in
+    km; eigene Namen der Reise erlaubt). Zahlen bleiben Zahlen; ein leerer Wert entfernt die Kennzahl. alt: die bisherigen. -> dict"""
+    from schnittstelle import KENNZAHL_ALIAS
+    from routen import KENNZAHLEN
+    from neu import kennung_der_kennzahl   # Katalognamen („Gehzeit“, „Aufstieg (Hm)“) -> Kennung, nur ganze Namen (F105)
+    k = args.get("kennzahlen")
+    if not isinstance(k, dict) or not k:
+        raise Ablehnung("schreiben.kennzahlen.form")
+    neu = dict(alt or {})
+    for n, v in k.items():
+        n = str(n).strip()
+        n = KENNZAHL_ALIAS.get(n.lower()) or kennung_der_kennzahl(n)   # Namen der Schnittstelle und des Katalogs -> Kennung
+        if not n or len(n) > 40 or isinstance(v, bool) or not isinstance(v, (str, int, float)) or len(str(v)) > 80 \
+                or (n == KENNZAHLEN[0] and not isinstance(v, str)):   # gehzeit ist Text h:mm
+            raise Ablehnung("schreiben.kennzahlen.form")
+        if isinstance(v, str) and not v.strip():
+            neu.pop(n, None)
+        else:
+            neu[n] = v.strip() if isinstance(v, str) else v
+    return neu
 
 
 def ist_eltern_wert(wert):
@@ -1731,6 +1756,17 @@ def _ding_aendern_felder(reise_dir, wer, args, heute=None):
             v = uhrzeit_wert(args, feld) or ""
         elif feld in ("ab", "an"):
             v = zeit_wert(args, feld)
+        elif feld == "kennzahlen":   # Kennung -> Wert an der Strecke (#269), mit den bisherigen zusammengeführt
+            alt = dict(knoten.get("kennzahlen") or {})
+            v = kennzahlen_wert(args, alt)
+            if v != alt:
+                zeile = lambda d: ", ".join(f"{n} {w}" for n, w in d.items()) or "–"
+                geaendert.append(S("schreiben.antwort.ding.wechsel", w1=feld, w2=zeile(alt), w3=zeile(v)))
+                if v:
+                    knoten["kennzahlen"] = fliess_map(v)
+                else:
+                    del knoten["kennzahlen"]
+            continue
         elif feld == "ausserhalb":
             v = bool_wert(args, feld)
             if v is False and feld in knoten:
@@ -3670,13 +3706,12 @@ def lesetext_schreiben(reise_dir, wer, args, heute=None):
     if not d_rel or not (Path(reise_dir) / d_rel).exists():
         raise Ablehnung("schreiben.lesetext_schreiben.2")
     import bauen
-    muster = re.compile(cfg.get("etappen_muster") or bauen.etappen_muster())
     f = Path(reise_dir) / d_rel
     zeilen = f.read_text(encoding="utf-8").split("\n")
     start = None
-    for i, z in enumerate(zeilen):
-        m = z.startswith("## ") and muster.match(z[3:].strip())
-        if m and "E-" + (m.group(1).zfill(3) if m.group(1)[-1].isalpha() else m.group(1).zfill(2)) == eid:
+    for i, z in enumerate(zeilen):   # der Abschnitt der Strecke: Überschrift „## E-03 Name“ (#269)
+        m = z.startswith("## ") and bauen.STRECKE_UEBERSCHRIFT.match(z[3:].strip())
+        if m and m.group(1).upper() == eid:
             start = i
             break
     if start is None:

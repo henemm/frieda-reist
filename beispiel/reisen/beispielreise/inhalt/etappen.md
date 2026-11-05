@@ -13,7 +13,7 @@ Drei Wandertage auf Abschnitten des Malerwegs, dazu eine Alternative für den le
 | 3 | Altendorf – Schrammsteine – Bad Schandau | ca. 2:30 h | 200 | 400 | 7,4 km |
 | 4 | Altendorf – Schrammsteine – Lichtenhainer Wasserfall | ca. 2:15 h | 190 | 350 | 6,6 km |
 
-## Etappe 1: Stadt Wehlen – Bastei – Hohnstein
+## E-01 Stadt Wehlen – Bastei – Hohnstein
 *Vom Elbufer hinauf zur Bastei und durch Gründe nach Hohnstein*
 
 ### Zusammenfassung
@@ -30,10 +30,6 @@ Drei Wandertage auf Abschnitten des Malerwegs, dazu eine Alternative für den le
 ### Eckdaten
 | Merkmal | Wert |
 |---|---|
-| Gehzeit | ca. 3:40 h |
-| Aufstieg (Hm) | 485 |
-| Abstieg (Hm) | 285 |
-| Länge (km) | 8,1 km |
 | Höchster Punkt | Bastei, ca. 300 m (aus dem schematischen Track) |
 | Markierung | Malerweg (laut Wikipedia führt der Weg über die Bastei und den Hockstein) |
 | Herkunft | Kennzahlen: eigene Rechnung aus dem schematischen Track, Beispielwerte |
@@ -58,7 +54,7 @@ An der Bastei ist es ab dem späten Vormittag voll; wer mit der ersten S-Bahn f�
 - Verlauf: Wikipedia, Artikel „Malerweg“ (gelesen am 20.10.2026), Beispielangabe
 - Kennzahlen: eigene Rechnung aus dem schematischen Track, nicht vor Ort geprüft (Beispielwerte)
 
-## Etappe 2: Hohnstein – Brand – Altendorf
+## E-02 Hohnstein – Brand – Altendorf
 *Über die Brandaussicht und durch zwei Täler*
 
 ### Zusammenfassung
@@ -67,10 +63,6 @@ Aus Hohnstein geht es zuerst bergab an der Gautschgrotte vorbei und dann auf die
 ### Eckdaten
 | Merkmal | Wert |
 |---|---|
-| Gehzeit | ca. 4:00 h |
-| Aufstieg (Hm) | 400 |
-| Abstieg (Hm) | 390 |
-| Länge (km) | 10,7 km |
 | Höchster Punkt | Waitzdorf, ca. 330 m (aus dem schematischen Track) |
 | Herkunft | Kennzahlen: eigene Rechnung aus dem schematischen Track, Beispielwerte |
 
@@ -82,7 +74,7 @@ Aus Hohnstein geht es zuerst bergab an der Gautschgrotte vorbei und dann auf die
 5. Kohlmühle
 6. Altendorf
 
-## Etappe 3: Altendorf – Schrammsteine – Bad Schandau
+## E-03 Altendorf – Schrammsteine – Bad Schandau
 *Zur Schrammsteinaussicht und hinunter an die Elbe*
 
 ### Zusammenfassung
@@ -91,10 +83,6 @@ Von Altendorf führt der Weg zum Schrammtor und auf Stiegen zur Schrammsteinauss
 ### Eckdaten
 | Merkmal | Wert |
 |---|---|
-| Gehzeit | ca. 2:30 h |
-| Aufstieg (Hm) | 200 |
-| Abstieg (Hm) | 400 |
-| Länge (km) | 7,4 km |
 | Höchster Punkt | Schrammsteinaussicht, ca. 417 m (aus dem schematischen Track) |
 | Herkunft | Kennzahlen: eigene Rechnung aus dem schematischen Track, Beispielwerte |
 
@@ -105,7 +93,7 @@ Von Altendorf führt der Weg zum Schrammtor und auf Stiegen zur Schrammsteinauss
 4. Ostrau
 5. Bad Schandau
 
-## Etappe 4: Altendorf – Schrammsteine – Lichtenhainer Wasserfall
+## E-04 Altendorf – Schrammsteine – Lichtenhainer Wasserfall
 *Alternative für den letzten Tag: über den Grat zur Kirnitzschtalbahn*
 
 ### Zusammenfassung
@@ -114,10 +102,6 @@ Bis zur Schrammsteinaussicht gleich wie Etappe 3. Dann bleibt man oben, folgt de
 ### Eckdaten
 | Merkmal | Wert |
 |---|---|
-| Gehzeit | ca. 2:15 h |
-| Aufstieg (Hm) | 190 |
-| Abstieg (Hm) | 350 |
-| Länge (km) | 6,6 km |
 | Höchster Punkt | Schrammsteinaussicht, ca. 417 m (aus dem schematischen Track) |
 | Herkunft | Kennzahlen: eigene Rechnung aus dem schematischen Track, Beispielwerte |
 

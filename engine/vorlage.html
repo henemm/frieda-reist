@@ -961,7 +961,7 @@ function gruppe(praefix) {
     for (const [s, v] of Object.entries(TEXTE[k].texte)) if (s.startsWith(p) && !s.slice(p.length).includes(".")) aus[s.slice(p.length)] = v;
   return aus;
 }
-// Wörter, an denen die Seite Inhalt der Reise erkennt (Fragestatus, „Tag n“, Kennzahlen …): aus dem Katalog, alle Sprachen zugleich,
+// Wörter, an denen die Seite Inhalt der Reise erkennt (Fragestatus, „Tag n“ …; Kennzahlen tragen seit #269 Kennungen): aus dem Katalog, alle Sprachen zugleich,
 // denn der Inhalt einer Reise steht in der Sprache der Reise, nicht in der der Hülle
 const IW = D.inhaltswoerter || {};
 const iwMuster = (...schluessel) => schluessel.flatMap(k => IW[k] || []).sort((a, b) => b.length - a.length).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
@@ -971,10 +971,6 @@ const REGEL = {
   frageOffen: new RegExp("^(?:" + iwMuster("inhalt.frage.offen") + ")\\b[\\s:,–-]*", "i"),
   tagNr: new RegExp("^(?:" + iwMuster("inhalt.tag") + ")\\s+\\d+\\s*:?\\s*"),
   uebersicht: new RegExp("^(?:" + iwMuster("inhalt.uebersicht") + "):\\s*"),
-  gehzeit: new RegExp("^(?:" + iwMuster("inhalt.kennzahl.gehzeit", "inhalt.kennzahl.dauer") + ")", "i"),
-  aufstieg: new RegExp("^(?:" + iwMuster("inhalt.kennzahl.aufstieg") + ")", "i"),
-  abstieg: new RegExp("^(?:" + iwMuster("inhalt.kennzahl.abstieg") + ")", "i"),
-  laenge: new RegExp("^(?:" + iwMuster("inhalt.kennzahl.laenge") + ")", "i"),
   fristWort: new RegExp("^(?:" + iwMuster("inhalt.frist.praeposition") + ")\\b", "i"),
   nummerWort: new RegExp("\\s*\\b(?:" + iwMuster("inhalt.auftrag", "inhalt.rueckmeldung", "inhalt.anfrage") + ")\\s+[AR]-[\\w-]+(?:\\s+(?:" + iwMuster("inhalt.herkunft.aus_app") + "|(?:" + iwMuster("inhalt.herkunft.von") + ") [^;,·)]+))?", "g"),
 };
@@ -1048,6 +1044,12 @@ for (const a of abschnitte) {
   for (const b of a.bloecke) blockZu.set(b.id, a);
   if (a.tabelle) for (const z of a.tabelle.zeilen) zeileZu.set(z.id, a);
 }
+// Etappe (#269): der Lesetext einer Strecke, deren Art summiert ist (plan/arten.yaml, im Routenmodell strecke.summiert). Die Seite
+// kennt keinen Typ „etappe“ und keinen Artnamen; „Etappe“ ist nur ein Wort der Oberfläche (Textkatalog). Ein Prädikat für alle Stellen.
+const istEtappe = a => !!(a && R && R.strecken && (R.strecken[a.id] || {}).summiert);
+const etappeZu = id => istEtappe(proId.get(id)) ? proId.get(id) : null;
+// Kennzahlen einer Strecke: Kennung -> Wert, so wie das Routenmodell sie liefert (routen.yaml kennzahlen)
+const kzVon = id => ((R && R.strecken && R.strecken[id]) || {}).kennzahlen || {};
 for (const z of D.fragen.zeilen) zeileZu.set(z.id, "fragen");
 const R = D.route;
 // Bausteine und Verhalten je Status (reise.yaml, docs/produkt.md, Paket B): Ausgeschaltetes verschwindet aus der Seite,
@@ -1093,8 +1095,9 @@ const HAT_VARIANTEN = B("varianten") && !!(R && R.plaene.length > 1 && !PLAN_FES
 // der Reiter „Etappen“ entfällt, übrige Wege stehen unter Wissen (25.10.2026; seit #214 auch bei offenen Plänen)
 const ETAPPE_TAG = new Map();
 if (PLAN_ANSICHT) for (const t of PLAN_ANSICHT.tage) for (const s of t.strecken)
-  if ((proId.get(s.id) || {}).typ === "etappe" && !ETAPPE_TAG.has(s.id)) ETAPPE_TAG.set(s.id, t.id);
-const ETAPPEN_REITER = hat("etappe") && !PLAN_ANSICHT;
+  if (etappeZu(s.id) && !ETAPPE_TAG.has(s.id)) ETAPPE_TAG.set(s.id, t.id);
+const HAT_ETAPPEN = abschnitte.some(istEtappe);
+const ETAPPEN_REITER = HAT_ETAPPEN && !PLAN_ANSICHT;
 const WUENSCHE = B("wuensche");
 /* Seitenordnung (28.10.2026, docs/design.md „Seitenordnung“; seit #214 für jede Reise): Jede Art hat genau eine Heimat. Die
    Reiter heißen Reise · Zu tun · Wissen (+ Wünsche, Suche); einen Reiter „Plan“ gibt es nicht: Tage stehen in der Zeitachse
@@ -1106,7 +1109,7 @@ const REITER = [
   ["varianten", () => VARIANTEN_TITEL, !!R], ["karte", () => T("seite.reiter.karte"), KARTE_REITER], ["etappen", () => T("seite.reiter.etappen"), ETAPPEN_REITER],
   // Praxis steht im Reiter Wissen; „Zu tun“ (bis 28.10.2026 „Offen“) sammelt Entscheiden, Buchen, Aufgaben, Fragen, Rückmeldungen
   // Quellen stehen seit dem 25.10.2026 ebenfalls im Reiter Wissen; ihr Platz in der Leiste gehört der Suche
-  ["wissen", () => G.wissen, hat("wissen") || hat("praxis") || hat("quelle") || (hat("etappe") && !ETAPPEN_REITER) || hat("plan") || !!D.plan_kopf || !R],
+  ["wissen", () => G.wissen, hat("wissen") || hat("praxis") || hat("quelle") || (HAT_ETAPPEN && !ETAPPEN_REITER) || hat("plan") || !!D.plan_kopf || !R],
   // Wünsche der Mitreisenden: eigener Reiter, wenn die Reise ihn einschaltet (reise.yaml bausteine; 25.10.2026)
   ["wuensche", () => T("seite.reiter.wuensche"), WUENSCHE], ["offen", () => T("seite.reiter.offen"), ZU_TUN],
 ].filter(r => r[2]);
@@ -1118,7 +1121,7 @@ const START = V.start === "heute" && REITER.some(r => r[0] === "varianten") ? "v
 const REIHE = ["varianten", "karte", "etappen", "offen", "wissen", "wuensche"];
 REITER.sort((a, b) => REIHE.indexOf(a[0]) - REIHE.indexOf(b[0]));
 REITER.sort((a, b) => (b[0] === START) - (a[0] === START));
-const TYP_REITER = {plan: "wissen", etappe: ETAPPEN_REITER ? "etappen" : "wissen", uebersicht: ETAPPEN_REITER ? "etappen" : "wissen", wissen: "wissen", praxis: "wissen", quelle: "wissen", ort: "varianten"};
+const TYP_REITER = {plan: "wissen", strecke: ETAPPEN_REITER ? "etappen" : "wissen", uebersicht: ETAPPEN_REITER ? "etappen" : "wissen", wissen: "wissen", praxis: "wissen", quelle: "wissen", ort: "varianten"};
 
 /* ---------- Bausteine ---------- */
 // Symbol aus dem eingebetteten Lucide-Satz (<symbol id="i-…">), für Screenreader ausgeblendet
@@ -1151,6 +1154,8 @@ function zid(id) {
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtKarte, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
    Stile seiner Ebene, auf die Bausteinseite (#bausteine) und in docs/design.md; zeigt er eine Grundform, auch in GRUNDFORMEN.
+   Eine Etappe ist der Lesetext einer Strecke mit summierter Art (Prädikat istEtappe, #269); Kennzahlen kommen mit Kennungen
+   aus dem Routenmodell (kzVon), die Kennzahlenleiste formatiert sie (KZ_ANZEIGE), Namen sucht die Seite nicht.
    Zustände haben feste Namen, die Farbe folgt der Bedeutung, nicht dem Ort:
      plan      entschieden oder im Plan (Akzent)       offen  braucht noch eine Entscheidung (Warnfarbe)
      unterwegs erst unterwegs zu entscheiden           weg    verworfen oder ersetzt (durchgestrichen)
@@ -1179,8 +1184,10 @@ function zeilenKarte(spalten, z) {
 }
 
 // Molekül Reisetext: HTML eines Abschnitts. Steht die Kennzahlenleiste auf derselben Seite, entfallen in den
-// Merkmallisten die Zeilen, die sie schon zeigt (ein Wert steht einmal; kennzahlen = die gezeigten, wie in routen.yaml).
-const normKz = t => t.toLowerCase().replace(/\s+/g, " ").trim();
+// Merkmallisten die Zeilen, die sie schon zeigt (ein Wert steht einmal; kennzahlen = die gezeigten, Kennung -> Wert wie in
+// routen.yaml): Zeilen, deren Merkmal eine gezeigte Kennung oder ein eigener Name der Reise ist. Die Kennzahl-Zeilen der
+// Eckdaten-Tabelle hat neu.py nachziehen an die Strecke gebracht (#269); die Seite sucht keine Namen und vergleicht keine Werte
+const normKz = t => String(t).toLowerCase().replace(/\s+/g, " ").trim();
 function reiseText(html, kennzahlen) {
   const d = el("div", {class: "inhalt", html});
   const kz = new Set(Object.keys(kennzahlen || {}).map(normKz));
@@ -1226,7 +1233,7 @@ function chips(a) {
 function abschnittKarte(a) {
   const titel = a.titel;
   const k = el("a", {class: "karte vorschau", href: "#" + a.id}, el("div", {class: "k"}, titel, zid(a.id)));
-  if (a.typ === "etappe") k.append(...[chips(a), kennzahlLeiste(a.kennzahlen, fahrtVon(a.id))].filter(Boolean));
+  if (istEtappe(a)) k.append(...[chips(a), kennzahlLeiste(kzVon(a.id), fahrtVon(a.id))].filter(Boolean));
   return k;
 }
 
@@ -1234,7 +1241,7 @@ function abschnittKarte(a) {
 // rechtsbündig untereinander), am Handy und Tablet je Weg ein Eintrag mit Name, Chips und einer Zeile Kennzahlen. Die
 // Spalten sind die Kennzahlen, die die Wege tragen (die Reise kann eigene haben); große Kacheln bleiben dem Tag.
 function wegTabelle(liste) {
-  const paare = new Map(liste.map(a => [a.id, Object.fromEntries(Object.entries(a.kennzahlen || {}).map(([n, v]) => kennzahlPaar(n, v, fahrtVon(a.id))))]));
+  const paare = new Map(liste.map(a => [a.id, Object.fromEntries(Object.entries(kzVon(a.id)).map(([n, v]) => kzAnzeige(n, v, fahrtVon(a.id))))]));
   const spalten = [...new Set(liste.flatMap(a => Object.keys(paare.get(a.id))))];
   return el("div", {class: "tabelle wege"}, el("table", {},
     el("thead", {}, el("tr", {}, el("th", {scope: "col"}, T("seite.wege.weg")),
@@ -1336,18 +1343,20 @@ function summeText(s) {
   return t.join(" · ") + (s.unvollstaendig && s.mit_kennzahlen ? T("seite.summe.unvollstaendig") : "");
 }
 
-// Molekül Kennzahlenleiste: Gehzeit, Aufstieg, Abstieg, Strecke mit Etikett; Namen aus routen.yaml werden vereinheitlicht
+// Molekül Kennzahlenleiste: Gehzeit, Aufstieg, Abstieg, Strecke mit Etikett. Die Kennungen (gehzeit, aufstieg, abstieg, laenge)
+// kommen fertig aus dem Routenmodell (routen.yaml kennzahlen, #269); die Seite formatiert nur, sie sucht keine Namen
 // fahrt: eine Bewegung, die nicht aus eigener Kraft ist (Bahn, Bus …): ihre Zeit heißt Dauer, nicht Gehzeit
-function kennzahlPaar(n, v, fahrt) {
-  return REGEL.aufstieg.test(n) ? ["aufstieg", T("seite.kennzahl.hoehe_auf", {v})] : REGEL.abstieg.test(n) ? ["abstieg", T("seite.kennzahl.hoehe_ab", {v})]
-    : REGEL.gehzeit.test(n) ? [fahrt ? "dauer" : "gehzeit", v] : REGEL.laenge.test(n) ? ["strecke", /^[\d.,]+$/.test(v) ? kmText(v) : v] : [n, v];
-}
+const KZ_ANZEIGE = {
+  aufstieg: v => ["aufstieg", T("seite.kennzahl.hoehe_auf", {v})], abstieg: v => ["abstieg", T("seite.kennzahl.hoehe_ab", {v})],
+  gehzeit: (v, fahrt) => [fahrt ? "dauer" : "gehzeit", v], laenge: v => ["strecke", /^[\d.,]+$/.test(String(v)) ? kmText(v) : v],
+};
+const kzAnzeige = (n, v, fahrt) => KZ_ANZEIGE[n] ? KZ_ANZEIGE[n](v, fahrt) : [n, v];
 // Je Kennzahl eine Kachel; die bekannten tragen ihr Symbol im Etikett
 // Die Kennungen der Kennzahlen sind stabil (gehzeit, aufstieg …); der Name kommt aus dem Katalog, unbekannte Namen der Reise bleiben, wie sie sind
 const KZ_SYM = {gehzeit: "gehzeit", dauer: "gehzeit", aufstieg: "aufstieg", abstieg: "abstieg", strecke: "strecke", tage: "plan", hoehenmeter: "aufstieg", naechte: "unterkunft", orte: "ort", uebernachtungen: "unterkunft"};
 const kennzahlName = id => KZ_SYM[id] ? T("seite.kennzahl." + id) : id;
 function kennzahlLeiste(kennzahlen, fahrt) {
-  const kz = Object.entries(kennzahlen || {}).map(([n, v]) => kennzahlPaar(n, v, fahrt));
+  const kz = Object.entries(kennzahlen || {}).map(([n, v]) => kzAnzeige(n, v, fahrt));
   return kz.length ? el("div", {class: "kz"}, kz.map(([n, v]) => el("div", {},
     el("span", {class: "kzn"}, KZ_SYM[n] ? symbol(KZ_SYM[n]) : null, kennzahlName(n)), el("span", {class: "kzw"}, v)))) : null;
 }
@@ -1518,7 +1527,7 @@ function tagKarte(t, ohneKopf, vorschau) {
   // Unterwegs rücken Wahlstellen mit Auslöser nach vorn (Verhalten je Status)
   const vorn = V.ausloeser_vor ? wahlZeilen.filter(([w]) => w.wann === "unterwegs") : [];
   for (const [, z] of vorn) { z[0].classList.add("vorn"); k.append(...z.filter(Boolean)); }
-  if (t.strecken.length || (t.aufenthalte || []).length) k.append(wegVerlauf(t, tagseite ? id => (proId.get(id) || {}).typ === "etappe" : null, tagseite));
+  if (t.strecken.length || (t.aufenthalte || []).length) k.append(wegVerlauf(t, tagseite ? id => !!etappeZu(id) : null, tagseite));
   for (const [w, z] of wahlZeilen) if (!vorn.some(([x]) => x === w)) k.append(...z.filter(Boolean));
   if (t.text) k.append(el("div", {class: "z"}, t.text));
   if (t.nacht) {
@@ -2470,8 +2479,8 @@ function karteZeichnen(plaene, info, box, ansicht) {
   // Linie oder Tagesnummer antippen öffnet die Etappe, bei anderen Strecken den Tag (25.10.2026).
   // Eine unsichtbare breite Linie darüber fängt den Finger; die sichtbaren Linien bleiben unberührt.
   const tagOffen = tagBekannt;   // jeder Tag hat seine Tagesseite (#214)
-  const zielVon = (sid, d) => (proId.get(sid) || {}).typ === "etappe" ? sid : tagOffen(d.id) ? d.id : null;
-  const titelVon = (sid, d, p) => (proId.get(sid) || {}).typ === "etappe" ? proId.get(sid).titel
+  const zielVon = (sid, d) => etappeZu(sid) ? sid : tagOffen(d.id) ? d.id : null;
+  const titelVon = (sid, d, p) => etappeZu(sid) ? etappeZu(sid).titel
     : (plaene.length > 1 ? p.kurz + ", " : "") + T("seite.tag.nr_titel_doppelpunkt", {nr: d.nr, titel: d.titel || ""});
   const treffer = (w, sid, d, p) => { const z = zielVon(sid, d); if (!z) return;
     L.polyline(w, {className: "rh-treffer", weight: 22, opacity: 0, lineCap: "round"}).addTo(karte)
@@ -2838,10 +2847,10 @@ document.addEventListener("click", e => {
 // Ganze Etappe auf ihrer eigenen Seite: Kennzahlen, Karte, Beschreibung (am Tag: Vorlage Tagesseite)
 function etappeTeil(a) {
   const s = el("div", {class: "etappe"});
-  s.append(...[chips(a), kennzahlLeiste(a.kennzahlen, fahrtVon(a.id))].filter(Boolean));
+  s.append(...[chips(a), kennzahlLeiste(kzVon(a.id), fahrtVon(a.id))].filter(Boolean));
   const k = etappenKarte(a.id);
   if (k) s.append(k);
-  s.append(abschnittInhalt(a, true, a.kennzahlen));
+  s.append(abschnittInhalt(a, true, kzVon(a.id)));
   return s;
 }
 
@@ -2912,7 +2921,7 @@ function uebersichtKarte(m, gezeigt, info) {
       (K.ausgelassen || []).length ? [el("i", {class: "lg-s"}), "ausgelassen"] : null,
       K.linien !== "alle" && fahrten.length ? [el("i", {class: "lg-b"}), fahrten.map(artName).join(", ")] : null,
       ...(gezeigt.length > 1 ? gezeigt.map(p => [planMarke(p), p.kurz]) : [])]));
-    m.append(el("p", {class: "meldung"}, [K.auto ? T("seite.karte.hinweis_auto") : R.karte.linien === "alle" ? T("seite.karte.hinweis_uebersicht") : T("seite.karte.hinweis_schematisch"), hat("etappe") ? T("seite.karte.tippen_etappe") : T("seite.karte.tippen_tag"), gezeigt.length > 1 ? T("seite.karte.plan_waehlen_hinweis") : ""].filter(Boolean).join(" ")));
+    m.append(el("p", {class: "meldung"}, [K.auto ? T("seite.karte.hinweis_auto") : R.karte.linien === "alle" ? T("seite.karte.hinweis_uebersicht") : T("seite.karte.hinweis_schematisch"), HAT_ETAPPEN ? T("seite.karte.tippen_etappe") : T("seite.karte.tippen_tag"), gezeigt.length > 1 ? T("seite.karte.plan_waehlen_hinweis") : ""].filter(Boolean).join(" ")));
   }
   return segmente;
 }
@@ -2988,7 +2997,9 @@ function nachtStand(n) {
 // Strecke, Nacht mit Stand. Genau ein Link: die ganze Zeile führt zum Tag (Seitenordnung 28.10.2026), keine Kennung.
 function tagZeile(t) {
   // Gehzeit und Strecke des Tags rechnet das Routenmodell (tag.kennzahlen); die Seite formatiert sie nur
-  const {min: m, km} = t.kennzahlen || {}, s = nachtStand(t.nacht);
+  // Hat der Tag eine summierte Strecke ohne Gehzeit (gezaehlt, fehlend), steht dort „Angaben fehlen“ statt einer leeren Zeile (#269)
+  const {min: m, km, gezaehlt, fehlend} = t.kennzahlen || {}, s = nachtStand(t.nacht);
+  const ohneZeit = !m && gezaehlt && (fehlend || []).includes("min");
   const wahl = (t.wahlstellen || []).map(v => wahlZu.get(v)).filter(w => w && gueltigeOptionen(w).length > 1 && w.id !== (t.nacht || {}).wahl);
   // Feste Termine des ersten und letzten Tags stehen schon bei An- und Abreise
   const p = PLAN_FEST, rand = p && (t === p.tage[0] || t === p.tage[p.tage.length - 1]);
@@ -2999,7 +3010,7 @@ function tagZeile(t) {
     el("span", {class: "tz-punkt", "aria-hidden": "true"}),
     el("span", {class: "tz-datum"}, el("b", {}, String(t.nr)), t.datum ? datumText(t.datum, t.wochentag) : null),
     el("span", {class: "tz-titel"}, el("span", {class: "tz-name"}, t.titel), marken.length ? el("span", {class: "chips tz-marken"}, marken) : null),
-    el("span", {class: "tz-zeit"}, [m ? dauer(m) : "", km ? kmText(km) : ""].filter(Boolean).join(" · ")),
+    el("span", {class: "tz-zeit"}, [m ? dauer(m) : ohneZeit ? T("seite.tag.angaben_fehlen") : "", km ? kmText(km) : ""].filter(Boolean).join(" · ")),
     s ? el("span", {class: "tz-nacht"}, symbol("unterkunft", "etikett-sym"), el("span", {class: "tz-unterkunft"}, s.name), s.text ? chip(s.zustand, s.text) : null) : null);
 }
 // Kennzahlen der ganzen Reise aus der Summe des Plans: mit Wanderdaten Tage, Gehzeit, Strecke, Höhenmeter; sonst Tage,
@@ -3583,14 +3594,14 @@ function ansichtTag(m, tid) {
   if (!mit.some(planFest)) for (const x of mit) kopf.append(chip("leise", x.kurz, {href: "#" + x.id}));
   if (R.plaene.length && !mit.length && !(imPlan && imPlan.alt)) kopf.append(chip("offen", T("seite.tag.variante_innerhalb")));
   if (kopf.childNodes.length) m.append(kopf);
-  const etappen = t.strecken.map(s => proId.get(s.id)).filter(a => a && a.typ === "etappe");
+  const etappen = t.strecken.map(s => etappeZu(s.id)).filter(Boolean);
   if (t.text || !t.strecken.length) m.append(el("h3", {}, T("seite.plan.uebersicht")), t.text ? el("p", {}, t.text) : el("p", {class: "meldung"}, T("seite.tag.noch_kein_programm")));
   const seite = el("div", {class: "tagseite"});
   // Oben: Tageskasten und Karte (Etappen; sonst Strecken mit eigenem Track, Beschreibung über „siehe“)
   // Automatische Karte (K6, K17): eine Karte des Tages mit allen Strecken und Punkten, für jede Art von Strecke
   const karten = R.karte && R.karte.auto ? [tagesKarte(t)].filter(Boolean) : t.strecken.flatMap(s => {
-    const a = proId.get(s.id), st = R.strecken[s.id] || {};
-    if (a && a.typ === "etappe") return [etappenKarte(s.id)];
+    const st = R.strecken[s.id] || {};
+    if (etappeZu(s.id)) return [etappenKarte(s.id)];
     const k = summiertArt(st) ? etappenKarte(s.id) : null;
     return k ? [el("div", {class: "tag-karte"}, el("div", {class: "etikett"}, T("seite.label.weg") + st.titel), k,
       st.quelle ? el("p", {class: "meldung"}, T("seite.label.angaben") + st.quelle) : null,
@@ -3678,7 +3689,7 @@ function ansichtEtappen(m) {
   for (const u of abschnitte.filter(x => x.typ === "uebersicht"))
     m.append(el("details", {class: "block"}, el("summary", {}, u.titel, zid(u.id)),
       el("div", {class: "inhalt", html: u.intro + u.bloecke.map(b => b.html).join("")})));
-  const et = abschnitte.filter(x => x.typ === "etappe");
+  const et = abschnitte.filter(istEtappe);
   for (const a of et.filter(x => !x.nebenroute)) m.append(abschnittKarte(a));
   const neben = et.filter(x => x.nebenroute);
   if (neben.length) {
@@ -3722,8 +3733,8 @@ function ansichtWissen(m) {
     m.append(el("details", {class: "block"}, el("summary", {}, T("seite.ort.alle_orte_n", {n: alle.length})), el("div", {class: "wliste"}, alle.map(zeile))));
   }
   // Plan entschieden: Etappen, die nicht im Plan stehen, als „Weitere Wege“ (die Plan-Etappen stehen am Tag)
-  if (!ETAPPEN_REITER && hat("etappe")) {
-    const weitere = abschnitte.filter(x => x.typ === "etappe" && !ETAPPE_TAG.has(x.id));
+  if (!ETAPPEN_REITER && HAT_ETAPPEN) {
+    const weitere = abschnitte.filter(x => istEtappe(x) && !ETAPPE_TAG.has(x.id));
     const ueb = abschnitte.filter(x => x.typ === "uebersicht");
     if (weitere.length || ueb.length) {
       leer = false;
@@ -3836,7 +3847,7 @@ function ansichtGruppe(m, typ, titel) {
 function ansichtAbschnitt(m, a) {
   const zurueck = TYP_REITER[a.typ] || START;
   m.append(el("a", {class: "zurueck", href: "#" + zurueck}, T("seite.nav.zurueck")));
-  if (a.typ === "etappe") {
+  if (istEtappe(a)) {
     m.append(el("h2", {class: "ziel", id: a.id, "data-ziel": a.id}, a.titel, zid(a.id)));
     const s = etappeTeil(a);
     s.querySelector("section").removeAttribute("id");
@@ -3924,7 +3935,7 @@ function grundformVon(id) {
   if (planZu(id)) return "plan";
   if (R && tagBekannt(id)) return "tag";
   if (blockZu.has(id)) return "abschnitt";
-  if (proId.has(id)) return {etappe: "etappe", ort: "ort"}[proId.get(id).typ] || "wissen";
+  if (proId.has(id)) return {strecke: "etappe", ort: "ort"}[proId.get(id).typ] || "wissen";
   if (R && R.strecken[id]) return "etappe";
   if (R && R.orte[id]) return "ort";
   if (zeileZu.get(id) === "fragen") return "frage";
@@ -4070,7 +4081,7 @@ function ansichtBausteine(m) {
   const mitKz = strecken.find(([, x]) => Object.keys(x.kennzahlen || {}).length);
   const u = Object.entries(R.unterkuenfte).find(([, x]) => Object.keys(x.merkmale || {}).length);
   teil("Molekül", "Kennzahlenleiste", null, mitKz ? kennzahlLeiste(mitKz[1].kennzahlen) : el("p", {class: "meldung"}, "Keine Strecke mit Kennzahlen."));
-  const mitKzListe = abschnitte.filter(a => a.typ === "etappe" && Object.keys(a.kennzahlen || {}).length).slice(0, 3);
+  const mitKzListe = abschnitte.filter(a => istEtappe(a) && Object.keys(kzVon(a.id)).length).slice(0, 3);
   teil("Molekül", "Wegtabelle", "Wege mit Kennzahlen (#58): am Rechner Tabelle, am Handy und Tablet je Weg ein Eintrag mit Zahlenzeile.",
     mitKzListe.length ? wegTabelle(mitKzListe) : el("p", {class: "meldung"}, "Keine Etappe mit Kennzahlen."));
   const mitHerkunft = R.wahlstellen.flatMap(w => w.optionen.map(o => [w, o])).find(([w, o]) => Object.values(o.merkmale || {}).some(x => x.quelle));
@@ -4078,7 +4089,7 @@ function ansichtBausteine(m) {
     mitHerkunft ? herkunftZeile(mitHerkunft[0].kriterien, mitHerkunft[1].merkmale) : herkunftZeile([{id: "m"}], {m: {wert: "inklusive", quelle: "Muster", geprueft: "2026-10-23"}}));
   teil("Molekül", "Merkmalliste", null, u ? merkmalListe((R.merkmale || {})[u[1].art], u[1].merkmale) : el("p", {class: "meldung"}, "Keine Unterkunft mit Merkmalen."));
   // Reisetext: Tabellen aus dem Text, geordnet vom Generator (zweispaltig als Merkmalliste, breit gestapelt bei wenig Platz)
-  const etappenBloecke = abschnitte.filter(a => a.typ === "etappe").flatMap(a => a.bloecke.map(b => [a, b]));
+  const etappenBloecke = abschnitte.filter(istEtappe).flatMap(a => a.bloecke.map(b => [a, b]));
   const mitTabelle = art => etappenBloecke.find(([, b]) => b.html.includes(art));
   const zwei = mitTabelle('class="textmerkmale"'), breit = mitTabelle('class="tabelle stapel"');
   teil("Molekül", "Reisetext: Tabellen", "Zweispaltig als Merkmalliste, breiter als Tabelle; in schmalem Behälter steht das Merkmal über dem Wert und jede Zeile wird ein Eintrag.",
@@ -4123,7 +4134,7 @@ function ansichtBausteine(m) {
       wahlVergleich(w, true), el("div", {class: "karte"}, optionBlock(w, o, false, true)), el("div", {class: "karte"}, optionEinzelheiten(w, o)));
     teil("Organismus", "Wahl-Modul", "Alles zusammen ohne Rahmen: Einstieg, Vergleich (Tabelle am Rechner, Karten an Handy und Tablet) und Optionen; die Frage mit Namen. Im Vergleich die Herkunft einmal je Möglichkeit (Herkunftszeile, #58).", wahlKarte(w)); }
   else teil("Organismus", "Wahl-Modul", "Diese Reise hat keine Wahlstelle (Muster entfällt).");
-  const abschnittE = abschnitte.find(a => a.typ === "etappe");
+  const abschnittE = abschnitte.find(istEtappe);
   if (abschnittE) teil("Organismus", "Abschnitt als Karte", "Etappe oder Abschnitt des Wissens als Vorschau mit Kennzahlen.", abschnittKarte(abschnittE));
   teil("Organismus", "Steckbrief eines Plans", "Kennzahlen, Nächte, Dafür und Dagegen eines benannten Plans.",
     R.plaene.length ? steckbrief(R.plaene[0], true) : el("p", {class: "meldung"}, "Keine benannten Pläne."));
@@ -4147,7 +4158,7 @@ function ansichtBausteine(m) {
   if (tag) teil("Organismus", "Tageskasten", `Tag ${tag.nr} mit allen Bausteinen als Kasten, wie die Tage einer Möglichkeit (Zeitleiste: Molekül wegVerlauf).`, tagKarte(tag));
   if (tag) teil("Organismus", "Tageskasten der Tagesseite", "Dort die einzige Fläche: weiß, ohne Rahmen, weicher Schatten.", tagKarte({...tag, text: ""}, true));
   if (tag) teil("Vorlage", "Tageskachel", "Ein Tag als Vorschau in „Varianten“: Kopf, Marken, Nacht.", tagKachel(tag, tag.datum, tag.nr));
-  const etappenAmTag = tag ? tag.strecken.map(x => proId.get(x.id)).filter(a => a && a.typ === "etappe") : [];
+  const etappenAmTag = tag ? tag.strecken.map(x => etappeZu(x.id)).filter(Boolean) : [];
   if (etappenAmTag.length) { const e = tagEbenen(tag, etappenAmTag);
     teil("Organismus", "Ebenen der Tagesseite", "Der Weg, Unterwegs nachschlagen, Hintergrund, Quellen und Prüfung (Organismus leseAbschnitt in den Quellen).",
       [e.weg, e.unterwegs, e.hintergrund, e.quellen].filter(Boolean)); }

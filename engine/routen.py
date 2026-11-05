@@ -161,10 +161,10 @@ EINGABE_MERKMALE = {"adresse": ("adresse", None), "koordinaten": ("koordinaten",
 
 # Felder der Grundform, die in `merkmale` der Eingabe stehen dürfen (ADR-0007, Schritt c): Beziehungen und Angaben, die Bedeutung tragen und
 # als Felder des Dings bleiben (ort, von, nach, zeit, frage, ausserhalb). Englische Namen gelten als Eingabe.
-GRUNDFORM_FELDER = {"unterkunft": ("ort", "frage"), "aufenthalt": ("ort", "zeit", "frage"), "strecke": ("von", "nach"), "ort": ("ausserhalb",)}
+GRUNDFORM_FELDER = {"unterkunft": ("ort", "frage"), "aufenthalt": ("ort", "zeit", "frage"), "strecke": ("von", "nach", "kennzahlen"), "ort": ("ausserhalb",)}
 FEST_ALIAS = {"place": "ort", "from_place": "von", "to_place": "nach", "time_text": "zeit", "question": "frage", "outside": "ausserhalb",
               "address": "adresse", "coordinates": "koordinaten", "time_span": "zeitraum", "departure": "abfahrt", "arrival": "ankunft",
-              "booking_link": "buchungslink", "gpx_text": "gpx"}
+              "booking_link": "buchungslink", "gpx_text": "gpx", "figures": "kennzahlen"}
 
 
 def kartenpunkte_aus_dingen(route):
@@ -414,18 +414,15 @@ def minuten(text):
     return round(z * 60) if z is not None else None
 
 
-def kennwerte(k):
-    """Kennzahlen einer Strecke (Schlüssel wie im Dossier) -> Zahlen für Summen."""
-    k = k or {}
+# Kennungen der Kennzahlen einer Strecke (routen.yaml kennzahlen, #269): fest, nicht die Namen der Reise. Gehzeit als Text h:mm,
+# Auf- und Abstieg in Metern, Länge in km; eigene Kennzahlen der Reise stehen unter ihrem Namen daneben und zählen nicht in Summen.
+KENNZAHLEN = ("gehzeit", "aufstieg", "abstieg", "laenge")
 
-    def such(*schluessel, roh=()):
-        namen = tuple(w.lower() for s in schluessel for w in texte.inhaltswoerter("inhalt.kennzahl." + s)) + roh
-        for n in k:
-            if any(n.lower().startswith(x) for x in namen):
-                return k[n]
-        return None
-    return {"min": minuten(such("gehzeit", "dauer")), "auf": zahl(such("aufstieg")),
-            "ab": zahl(such("abstieg")), "km": zahl(such("laenge", roh=("km",)))}
+
+def kennwerte(k):
+    """Kennzahlen einer Strecke (Kennung -> Wert, KENNZAHLEN) -> Zahlen für Summen. Namen werden nicht gesucht (#269)."""
+    w = {n: k.get(n) for n in KENNZAHLEN} if isinstance(k, dict) else dict.fromkeys(KENNZAHLEN)
+    return {"min": minuten(w["gehzeit"]), "auf": zahl(w["aufstieg"]), "ab": zahl(w["abstieg"]), "km": zahl(w["laenge"])}
 
 
 def verhalten_anwenden(route, v, sprache=None):
@@ -460,9 +457,10 @@ def verhalten_anwenden(route, v, sprache=None):
 
 
 class Routen:
-    def __init__(self, roh, etappen, fragen, fehler, id_anlegen, quelle="plan/routen.yaml", zwang=None, arten=None,
+    def __init__(self, roh, lesetext, fragen, fehler, id_anlegen, quelle="plan/routen.yaml", zwang=None, arten=None,
                  entscheider=None, wissen=None, sprache=None):
-        """roh: geladenes YAML. etappen: {E-ID: Etappe aus dem Dossier}. fragen: {F-ID: Status-Text}.
+        """roh: geladenes YAML. lesetext: E-IDs der Strecken mit Lesetext im Dossier (nur das Kennzeichen dossier; Titel und
+        Kennzahlen stehen an der Strecke, #269). fragen: {F-ID: Status-Text}.
         entscheider: Namen, die gewaehlt/verworfen/ersetzt setzen dürfen (Organisator:innen aus reise.yaml); None: aus dem YAML.
         zwang: {V-ID: Option-ID} – für benannte Pläne; erzwingt eine Option, auch eine verworfene.
         arten: geladenes plan/arten.yaml der Reise (Arten und Merkmale, docs/ontologie.md).
@@ -480,7 +478,7 @@ class Routen:
         self.mk_option = {}       # V-01.a -> {Merkmal: Wert}
         self.mk_unterkunft = {}   # U-01 -> {Merkmal: Wert}
         self.mk_strecke = {}      # E-01 -> {Merkmal: Wert} (Bewegungen: Fähre, Flug, Bahn …)
-        self.etappen = etappen
+        self.lesetext = set(lesetext or ())
         self.fragen = fragen
         self.fehler = fehler
         self.id_anlegen = id_anlegen
@@ -539,12 +537,9 @@ class Routen:
         self.fehler.append(texte.Satz(f"{self.q}: ") + text)
 
     def strecke(self, sid):
-        """Strecke mit Titel und Kennzahlen; Dossier-Etappen werden um von/nach ergänzt."""
+        """Strecke mit Titel und Kennzahlen (beides an der Strecke, #269); dossier: sie hat Lesetext im Dossier."""
         s = dict(self.strecken.get(sid) or {})
-        e = self.etappen.get(sid)
-        if e:
-            s.setdefault("titel", e["titel"])
-            s.setdefault("kennzahlen", e.get("kennzahlen", {}))
+        if sid in self.lesetext:
             s["dossier"] = True
         return s
 
@@ -578,10 +573,17 @@ class Routen:
             if isinstance(o, dict) and o.get("punkt") is not None:
                 self.lage_pruefen({"punkt": o["punkt"]}, f"Ort {oid}")
         for sid, s in self.strecken.items():
-            if sid not in self.etappen:
-                self.id_anlegen(sid, self.q)
-                if not s.get("titel"):
-                    self.fehl(texte.satz("pruefung.routen.5", sid=sid))
+            self.id_anlegen(sid, self.q)
+            if not s.get("titel"):
+                self.fehl(texte.satz("pruefung.routen.5", sid=sid))
+            # Kennzahlen (#269): Kennung -> Wert (KENNZAHLEN) oder eigener Name der Reise -> Wert, je ein einzelner Wert
+            k = s.get("kennzahlen")
+            if k is not None and not (isinstance(k, dict) and all(isinstance(v, (str, int, float)) and not isinstance(v, bool)
+                                                                  for v in k.values())):
+                self.fehl(texte.satz("pruefung.routen.kennzahlen", sid=sid, w1=", ".join(KENNZAHLEN)))
+            elif isinstance(k, dict) and isinstance(k.get(KENNZAHLEN[0]), (int, float)):
+                # gehzeit ist Text h:mm; ohne Anführungszeichen liest YAML „3:30“ als Zahl 210 (Sexagesimal), das wäre eine stille Fehlsumme
+                self.fehl(texte.satz("pruefung.routen.kennzahlen_gehzeit", sid=sid, w1=k[KENNZAHLEN[0]]))
             for k in ("von", "nach"):
                 if s.get(k) and s[k] not in self.orte:
                     self.fehl(texte.satz("pruefung.routen.6", sid=sid, w1=s[k]))
@@ -590,7 +592,7 @@ class Routen:
             if s.get("gpx") is not None and not (isinstance(g, str) and g.startswith("medien/") and g.lower().endswith(".gpx") and ".." not in g):
                 self.fehl(texte.satz("pruefung.routen.gpx", sid=sid))
             z = s.get("zweig_von")
-            if z and z not in self.strecken and z not in self.etappen:
+            if z and z not in self.strecken:
                 self.fehl(texte.satz("pruefung.routen.7", sid=sid, z=z))
         self.arten_pruefen()
         for sid, s in self.strecken.items():
@@ -656,7 +658,7 @@ class Routen:
 
     def eltern_pruefen(self):
         """Elternbezug (an:, ADR-0007): genau ein bekanntes Ding der erlaubten Arten, nicht das Ding selbst, ohne Kreis."""
-        mengen = {"tag": self.tage, "ort": self.orte, "strecke": {**self.etappen, **self.strecken}, "aufenthalt": self.aufenthalte,
+        mengen = {"tag": self.tage, "ort": self.orte, "strecke": self.strecken, "aufenthalt": self.aufenthalte,
                   "unterkunft": self.unterkuenfte, "wissen": self.wissen}
         for gruppe in (self.orte, self.strecken, self.unterkuenfte, self.aufenthalte, self.buchungen):
             for did, d in gruppe.items():
@@ -701,7 +703,7 @@ class Routen:
             if not fuer:
                 self.fehl(texte.satz("pruefung.routen.21", bid=bid))
             for x in fuer:
-                if not (x in self.unterkuenfte or x in self.aufenthalte or x in self.strecken or x in self.etappen):
+                if not (x in self.unterkuenfte or x in self.aufenthalte or x in self.strecken):
                     self.fehl(texte.satz("pruefung.routen.22", bid=bid, x=x))
             if b.get("status", "gebucht") not in BUCHUNG_STATUS:
                 self.fehl(texte.satz("pruefung.routen.23", bid=bid, w1=', '.join(BUCHUNG_STATUS)))
@@ -817,7 +819,7 @@ class Routen:
             self.fehl(texte.satz("pruefung.routen.34", vid=vid))
             return
         for x in an:
-            for art, menge in (("tag", self.tage), ("strecke", {**self.etappen, **self.strecken}),
+            for art, menge in (("tag", self.tage), ("strecke", self.strecken),
                                ("unterkunft", self.unterkuenfte), ("ort", self.orte), ("wahl", self.wahl),
                                ("wissen", self.wissen)):
                 if ist(art, x):
@@ -1003,7 +1005,7 @@ class Routen:
             return self.u_art[x]
         if x in self.a_art:
             return self.a_art[x]
-        if x in self.strecken or x in self.etappen:
+        if x in self.strecken:
             return self.strecken_art(self.strecke(x))
         return None
 
@@ -1407,7 +1409,7 @@ class Routen:
             else:
                 aus.append((el, None))
         for s, _ in aus:
-            if s not in self.strecken and s not in self.etappen:
+            if s not in self.strecken:
                 self.fehl(texte.satz("pruefung.routen.105", tid=tid, s=s))
         return aus
 
@@ -1642,7 +1644,7 @@ class Routen:
             if set(a) - {"titel", "tage", "strecken", "arten", "uebersicht"}:
                 self.fehl(texte.satz("pruefung.routen.ansicht_felder", titel=t, w1=", ".join(sorted(set(a) - {"titel", "tage", "strecken", "arten", "uebersicht"}))))
             eintrag = {"titel": t}
-            for feld, bekannt in (("tage", set(self.tage)), ("strecken", set(self.strecken) | set(self.etappen)), ("arten", set(self.arten)),
+            for feld, bekannt in (("tage", set(self.tage)), ("strecken", set(self.strecken)), ("arten", set(self.arten)),
                                   ("uebersicht", set(self.arten))):   # uebersicht: Arten, deren Übersicht bei der Ansicht steht (ADR-0007, Schritt e)
                 liste = a.get(feld) or []
                 if not isinstance(liste, list) or not all(isinstance(x, str) for x in liste):
@@ -1675,7 +1677,7 @@ class Routen:
                 if vid in zwang:
                     self.fehl(texte.satz("pruefung.routen.129", pid=pid, vid=vid, w1=zwang[vid], oid=oid))
                 zwang[vid] = oid
-            r = Routen(self.r, self.etappen, self.fragen, [], lambda *a: None, self.q, zwang, self.arten_roh,
+            r = Routen(self.r, self.lesetext, self.fragen, [], lambda *a: None, self.q, zwang, self.arten_roh,
                        entscheider=sorted(self.entscheider), sprache=self.sprache)
             erg = r.bauen()
             if not erg:

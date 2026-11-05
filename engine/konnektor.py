@@ -758,10 +758,7 @@ class Handbuch:
     def sammeln(self):
         e = self.eintraege
         for a in self.d.get("abschnitte", []):
-            z = []
-            if a.get("kennzahlen"):
-                z.append("; ".join(f"{k}: {v}" for k, v in a["kennzahlen"].items()))
-            z.append(text(a.get("intro")))
+            z = [text(a.get("intro"))]
             if a.get("tabelle"):
                 t = a["tabelle"]
                 z.append(" | ".join(t["spalten"]))
@@ -798,7 +795,7 @@ class Handbuch:
         for sid, s in (r.get("strecken") or {}).items():
             z = [f"{self.ort(s.get('von'))} → {self.ort(s.get('nach'))}" + (f" ({' + '.join(s['art']) if isinstance(s['art'], list) else s['art']})" if s.get("art") else "")
                  + (tk("konnektor.ausgabe.sammeln.18", w1=s['ab']) if s.get("ab") else "") + (tk("konnektor.ausgabe.sammeln.14", w1=s['an']) if s.get("an") else "")]
-            if s.get("kennzahlen") and sid not in e:  # bei Etappen stehen sie schon im Dossier
+            if s.get("kennzahlen"):  # Kennung -> Wert an der Strecke (#269), auch bei Etappen mit Lesetext im Dossier
                 z.append("; ".join(f"{k}: {v}" for k, v in s["kennzahlen"].items()))
             if s.get("buchung"):   # eine Zeile mit Verweis auf die Heimat der Buchung (ADR-0003)
                 z.append(tk("konnektor.ausgabe.sammeln.15", w1=dw(s['buchung'])) + (tk("konnektor.ausgabe.zeige_hinweis", w1=s['buchung_id']) if s.get("buchung_id") else ""))

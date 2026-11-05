@@ -29,7 +29,7 @@ Text mit Liste:
 |---|---|
 | 1 | 2 |
 
-## Etappe 1: Anfang – Mitte
+## E-01 Anfang – Mitte
 *Untertitel*
 
 ### Eckdaten
@@ -43,7 +43,7 @@ Text mit Liste:
 ### Karten
 - [Karte1](../medien/klein.png) (Quelle X)
 
-## Etappe 2V: Variante
+## E-02V Variante
 ### Zusammenfassung
 Kurz.
 
@@ -52,7 +52,7 @@ Kurz.
 """
 
 UNTERKUENFTE = """# U
-## Etappe 1: Anfang – Mitte
+## E-01 Anfang – Mitte
 | Name | Typ |
 |---|---|
 | Hotel A | Hotel |
@@ -101,8 +101,14 @@ CFG = {
         "plan/plan.md": {"Eckdaten": ["W-04", "plan"]},
     },
     "tabellen": {"Tagesplan": ["W-05", "plan", "tage"], "Unterkünfte": ["W-06", "plan", "unterkuenfte"]},
-    "etappen_kennzahlen": ["Gehzeit"],
+    "routen": {"datei": "plan/routen.yaml"},
 }
+# Strecken der kleinen Reise (#269): Titel, Art und Kennzahlen an der Strecke, das Dossier liefert nur den Lesetext
+ROUTEN = {"start": {"datum": datetime.date(2027, 1, 1), "ort": "O-01"}, "orte": {"O-01": {"name": "Anfang"}, "O-02": {"name": "Mitte"}},
+          "strecken": {"E-01": {"titel": "Anfang – Mitte", "von": "O-01", "nach": "O-02", "art": "wandern",
+                                "kennzahlen": {"gehzeit": "5:00 h"}},
+                       "E-02V": {"titel": "Variante", "von": "O-01", "nach": "O-02", "art": "wandern"}}}
+ARTEN = {"arten": {"wandern": {"grundform": "bewegung", "name": "Wanderung", "summiert": True}}}
 # Eckdaten der kleinen Reise (reise.yaml ist Pflicht, #267): eine Organisatorin, Status planung, alle gebauten Bausteine außer Wünschen
 GRUND_YAML = {
     "titel": "Test", "untertitel": "x", "pfad": "test", "sprache": "de",
@@ -125,6 +131,8 @@ def reise(tmp_path):
     Image.new("RGB", (400, 200), "blue").save(r / "medien/klein.png")
     (r / "reise.json").write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
     (r / "reise.yaml").write_text(yaml.safe_dump(GRUND_YAML, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    (r / "plan/routen.yaml").write_text(yaml.safe_dump(ROUTEN, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    (r / "plan/arten.yaml").write_text(yaml.safe_dump(ARTEN, allow_unicode=True, sort_keys=False), encoding="utf-8")
     return r
 
 
@@ -177,10 +185,11 @@ def test_ids(reise, tmp_path):
 
 
 def test_etappe_kennzahlen(reise, tmp_path):
+    """#269: Kennzahlen und Titel stehen an der Strecke; der Dossier-Abschnitt ist nur Lesetext (typ strecke, ohne Kennzahlen)."""
     d = baue(reise, tmp_path)
-    e = {a["id"]: a for a in d["abschnitte"] if a["typ"] == "etappe"}
-    assert e["E-01"]["kennzahlen"] == {"Gehzeit": "5:00 h"}
-    assert d["route"] is None
+    e = {a["id"]: a for a in d["abschnitte"] if a["typ"] == "strecke"}
+    assert set(e) == {"E-01", "E-02V"} and "kennzahlen" not in e["E-01"] and e["E-01"]["titel"] == "Anfang – Mitte"
+    assert d["route"]["strecken"]["E-01"]["kennzahlen"] == {"gehzeit": "5:00 h"} and d["route"]["strecken"]["E-01"]["dossier"]
 
 
 def test_tabellen_zeilen_und_pipe_im_text(reise, tmp_path):
@@ -303,13 +312,13 @@ def test_fehler_doppelte_id(reise, tmp_path):
 
 
 def test_fehler_doppelter_unterabschnitt(reise, tmp_path):
-    (reise / "inhalt/e.md").write_text(DOSSIER + "\n## Etappe 3: X\n### Eckdaten\na\n### Eckdaten\nb\n", encoding="utf-8")
+    (reise / "inhalt/e.md").write_text(DOSSIER + "\n## E-03 X\n### Eckdaten\na\n### Eckdaten\nb\n", encoding="utf-8")
     assert "Doppelte ID E-03.eckdaten" in meldungen(reise, tmp_path)
 
 
 def test_fehler_unbekannte_etappe_in_unterkuenften(reise, tmp_path):
-    (reise / "inhalt/u.md").write_text(UNTERKUENFTE + "\n## Etappe 9: Nirgends\n| a |\n|---|\n| b |\n", encoding="utf-8")
-    assert "Etappe 9: Nirgends" in meldungen(reise, tmp_path)
+    (reise / "inhalt/u.md").write_text(UNTERKUENFTE + "\n## E-09 Nirgends\n| a |\n|---|\n| b |\n", encoding="utf-8")
+    assert "E-09 Nirgends" in meldungen(reise, tmp_path)
 
 
 def test_fehler_bildlink_ohne_datei(reise, tmp_path):
@@ -352,7 +361,7 @@ def test_reise_ohne_etappen(reise, tmp_path):
     (reise / "inhalt/e.md").write_text("## Übersicht\nNur Text.\n\n## Quellen zu Dingen\n- x\n", encoding="utf-8")
     (reise / "inhalt/u.md").write_text("## Hütten – Übersicht\nText\n", encoding="utf-8")
     d = baue(reise, tmp_path)
-    assert not [a for a in d["abschnitte"] if a["typ"] == "etappe"]
+    assert not [a for a in d["abschnitte"] if a["typ"] == "strecke"]
 
 
 def test_ignorierte_ueberschrift_und_zusatzdatei(reise, tmp_path):
@@ -376,7 +385,7 @@ def test_reise_ohne_dossiers_und_plan_tabellen(reise, tmp_path):
     (reise / "extra.md").write_text("## Alles\nText\n", encoding="utf-8")
 
     def aendere(c):
-        for k in ("etappen_dossier", "unterkuenfte_dossier", "plan", "tabellen", "etappen_kennzahlen"):
+        for k in ("etappen_dossier", "unterkuenfte_dossier", "plan", "tabellen", "routen"):
             c.pop(k, None)
         c["abschnitte"] = {"extra.md": {"Alles": ["W-01", "wissen"]}}
     setze(reise, aendere)
@@ -625,6 +634,7 @@ def test_kategorien_form(reise, tmp_path):
     k.write_text("kategorien:\n  a: {gruppe: mitte, name: A, farbe: blau}\n  b: {gruppe: punkt, name: B, farbe: rot}\n"
                  "  c: {gruppe: punkt, name: C, farbe: '#12345', symbol: nix, quatsch: 1}\n"
                  "  D: {gruppe: punkt, name: D, farbe: blau}\n", encoding="utf-8")
+    setze(reise, lambda c: c.pop("routen"))   # ohne Routenmodell: nur die alte Datei zählt (wie vor #269 in dieser kleinen Reise)
     m = meldungen(reise, tmp_path)
     assert "kategorien.yaml a: gruppe muss punkt oder wissen sein" in m and "kategorien.yaml b: farbe muss" in m
     assert "c: farbe muss" in m and "c: symbol muss" in m and "c: unbekannte Felder quatsch" in m and "D: Schlüssel nur" in m
@@ -700,7 +710,7 @@ def test_unbekannte_unterkunftsart_ist_fehler(tmp_path):
 def test_ebenen_der_etappen(reise, tmp_path):
     """B2 (#53): Jeder Abschnitt einer Etappe gehört zu einer Ebene der Tagesseite, nach dem Titelanfang; reise.json
     etappen_ebenen gilt vor der Vorgabe; eine unbekannte Ebene ist ein Baufehler."""
-    ebene = lambda d: {b["id"]: b["ebene"] for a in d["abschnitte"] if a["typ"] == "etappe" for b in a["bloecke"]}
+    ebene = lambda d: {b["id"]: b["ebene"] for a in d["abschnitte"] if a["typ"] == "strecke" for b in a["bloecke"]}
     # Vorgabe nur für die Form (ADR-0001, kein Wandervokabular in der Software): Zusammenfassung, Eckdaten, Unterkünfte-Liste,
     # Quellen; was eine Reise sonst unterwegs nachschlagen will (Höhenprofil …), sagt sie in reise.json
     assert ebene(baue(reise, tmp_path)) == {"E-01.eckdaten": "unterwegs", "E-01.hoehenprofil": "hintergrund", "E-01.karten": "quellen",

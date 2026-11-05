@@ -232,8 +232,9 @@ def test_lesen(dienst):
     t, f = werkzeug(basis, MITREISEND, "zeige", id="E-01")
     assert not f and "Bastei" in t and "E-01.eckdaten" in t
     assert "Gliederung des Lesetexts" in t and "- Charakter: Wie sich der Tag anfühlt" in t   # arten.yaml lesetext
+    assert "gehzeit: ca. 3:40 h; aufstieg: 485" in t   # Kennzahlen an der Strecke (#269), nicht mehr in den Eckdaten des Dossiers
     t, f = werkzeug(basis, MITREISEND, "zeige", id="E-01.eckdaten")
-    assert "- Gehzeit: ca. 3:40 h" in t   # zweispaltige Tabelle als Merkmalliste (#54)
+    assert "- Höchster Punkt: Bastei, ca. 300 m" in t and "Gehzeit" not in t   # zweispaltige Tabelle als Merkmalliste (#54)
     t, f = werkzeug(basis, MITREISEND, "zeige", id="V-03.a")
     assert "gewaehlt" in t and "Ida" in t
     t, f = werkzeug(basis, MITREISEND, "zeige", id="T-99")

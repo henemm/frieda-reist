@@ -17,7 +17,8 @@ Als Befehl ist neu.py ein Werkzeug des Betreibers für Struktur, nie für Inhalt
                                                   Schlüssel einer bestehenden Reise auf den Stand vom 29.10.2026 bringen
                                                   (docs/ontologie.md): typ→art, bereich→art, art→wann an Wahlstellen,
                                                   rolle kosten, Ebenen in reise.json, Eckdaten aus der früheren Vorlage
-                                                  (#217); keine ID, kein Wert ändert sich
+                                                  (#217), Titel und Kennzahlen der Etappen aus dem Dossier an die Strecken
+                                                  (#269); keine ID, kein Wert ändert sich
 
 IDs werden nie neu vergeben: ids.yaml hält je Art die höchste je vergebene Nummer fest. Die nächste ID liegt über
 dieser Marke und über jeder Nummer, die irgendwo in der Reise steht (auch im Verlauf von Verworfenem).
@@ -563,13 +564,203 @@ def kartenpunkte_umstellen(reise_dir, roh, schreiben, meldungen):
             cfg_datei.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+# ---------- Etappe als Strecke einer Art (#269) ----------
+# Bis #269 legte das Etappen-Dossier über die Überschrift „Etappe N: Name“ Titel und Kennung fest, die Kennzahlen kamen aus seiner
+# Eckdaten-Tabelle (Namen in reise.json etappen_kennzahlen). Jetzt stehen Titel und Kennzahlen an der Strecke in routen.yaml, die
+# Überschrift trägt die Kennung („## E-03 Name“). Nur hier, beim Umstellen, werden Namen der Reise einmal Kennungen zugeordnet.
+def alte_etappen_ueberschrift(cfg):
+    """Die frühere Regel der Überschrift („Etappe 3: Name“, englisch „Stage 3: Name“; reise.json etappen_muster)."""
+    return re.compile(cfg.get("etappen_muster") or
+                      r"^(?:" + texte.inhaltsmuster("inhalt.etappe") + r")\s+(\d+[A-Za-z]?)\s*:\s*(.+)$")
+
+
+def alte_etappen_id(nummer):
+    return "E-" + (nummer.zfill(3) if nummer[-1].isalpha() else nummer.zfill(2))
+
+
+def kennung_der_kennzahl(name):
+    """Name einer Kennzahl („Gehzeit“, „Aufstieg (Hm)“, „Länge (km)“, in jeder Sprache des Katalogs) -> Kennung (routen.KENNZAHLEN).
+    Nur der ganze Name zählt, eine Einheit in Klammern darf folgen; ein Anfang reicht nicht: „Km-Stand“, „Dauer der Pause“ oder
+    „Aufstiegshilfe“ bleiben eigene Namen der Reise, wie jeder andere Name."""
+    n = re.sub(r"\s*\([^)]*\)\s*$", "", str(name)).strip().lower()
+    for kennung, schluessel, roh in (("gehzeit", ("gehzeit", "dauer"), ()), ("aufstieg", ("aufstieg",), ()),
+                                     ("abstieg", ("abstieg",), ()), ("laenge", ("laenge",), ("km",))):
+        if n == kennung or n in roh or n in {w.lower() for s in schluessel for w in texte.inhaltswoerter("inhalt.kennzahl." + s)}:
+            return kennung
+    return name
+
+
+def kennzahl_wert(text):
+    """Zahlen bleiben Zahlen („485“ -> 485, „10,7“ -> 10.7); jede andere Schreibweise („ca. 3:40 h“, „8,1 km“) bleibt Text."""
+    t = str(text).strip()
+    if re.fullmatch(r"\d+", t):
+        return int(t)
+    if re.fullmatch(r"\d+[.,]\d+", t):
+        return float(t.replace(",", "."))
+    return t
+
+
+def gleicher_wert(a, b):
+    """Derselbe Wert in Dossier und Strecke? „485“ und 485, „10,7“ und 10.7 sind gleich; Text muss gleich lauten."""
+    x, y = kennzahl_wert(a), kennzahl_wert(b)
+    return float(x) == float(y) if all(isinstance(v, (int, float)) for v in (x, y)) else str(x) == str(y)
+
+
+def kennzahlen_kennungen(roh, sprache, meldungen):
+    """#269: Kennzahlen, die eine Strecke in routen.yaml schon unter Namen trug („Gehzeit“, „Länge (km)“), bekommen ihre Kennung;
+    eigene Namen der Reise bleiben. gehzeit steht in Anführungszeichen (ohne liest YAML „3:30“ als Zahl). Ein zweiter Lauf findet nichts."""
+    from ruamel.yaml.scalarstring import DoubleQuotedScalarString
+    for sid, st in ((roh or {}).get("strecken") or {}).items():
+        km = st.get("kennzahlen") if isinstance(st, dict) else None
+        if not hasattr(km, "insert"):
+            continue
+        for k in list(km.keys()):
+            neu = kennung_der_kennzahl(str(k))
+            if neu != k and neu in km:   # zwei Werte für eine Kennzahl: nichts umstellen, offen melden
+                meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.kennzahl_kollision", sid=sid, alt=k, neu=neu, w1=km[k], w2=km[neu]))
+            elif neu != k:
+                pos, v = list(km.keys()).index(k), km.pop(k)
+                km.insert(pos, neu, v)
+                meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.kennzahl_kennung", sid=sid, alt=k, neu=neu))
+        g = km.get("gehzeit")
+        if isinstance(g, str) and not isinstance(g, DoubleQuotedScalarString):
+            km["gehzeit"] = DoubleQuotedScalarString(g)
+
+
+def eckdaten_zeilen(zeilen, start, ende):
+    """Ein Parser für Lesen und Entfernen (F102): Eckdaten-Unterabschnitt im Abschnitt zeilen[start:ende] ->
+    (Zeilen von Überschrift bis Unterabschnittsende, Tabellenzeilen, [(Zeile, Name ohne Sternchen, Wert)]); ohne Eckdaten None."""
+    kopf = next((j for j in range(start, ende) if zeilen[j].startswith("### ") and bauen.slug(zeilen[j][4:]) == "eckdaten"), None)
+    if kopf is None:
+        return None
+    schluss = next((j for j in range(kopf + 1, ende) if zeilen[j].startswith("### ")), ende)
+    tabelle = [j for j in range(kopf + 1, schluss) if bauen.ist_tabellenzeile(zeilen[j])]
+    daten = [(j, c[0].strip("* "), c[1].strip() if len(c) > 1 else "") for j in tabelle[2:] for c in [bauen.zellen(zeilen[j])]]
+    return range(kopf, schluss), tabelle, daten
+
+
+def eckdaten_raus(zeilen, eck, raus):
+    """Zu entfernende Zeilen: die übertragenen; bleibt keine Datenzeile, auch Kopf und Trennlinie, und steht dann nichts mehr im
+    Unterabschnitt, auch die Überschrift „Eckdaten“ (F107)."""
+    bereich, tabelle, daten = eck
+    if not daten or not raus >= {j for j, _, _ in daten}:
+        return raus
+    raus = raus | set(tabelle[:2])
+    return raus | set(bereich) if all(j in raus or not zeilen[j].strip() for j in bereich[1:]) else raus
+
+
+def etappen_nachziehen(reise_dir, roh, schreiben, meldungen):
+    """#269: Titel und fehlende Kennzahlen der Etappen aus dem Dossier an die Strecken in routen.yaml (vorhandene bleiben), die
+    Überschriften „Etappe N: Name“ in Etappen- und Unterkünfte-Dossier werden „E-0N Name“, reise.json verliert etappen_kennzahlen und
+    etappen_muster. Nie Daten verlieren: eine Eckdaten-Zeile entfällt nur, wenn ihr Wert nachgelesen an der Strecke steht. Bei jeder
+    Unsicherheit (keine Strecke, doppelte Nummer, zwei Namen einer Kennung, anderer Wert an der Strecke) OFFEN-Meldung, der Abschnitt
+    bleibt, wie er ist, und die Einstellungen bleiben für einen späteren Lauf. Ein zweiter Lauf findet nichts."""
+    import io
+    from ruamel.yaml.scalarstring import DoubleQuotedScalarString
+    import schreiben as sb
+    cfg_pfad = reise_dir / "reise.json"
+    if not cfg_pfad.exists():
+        return lambda: None
+    cfg = lies_json(cfg_pfad)
+    sprache = sprache_von(reise_dir)
+    muster = alte_etappen_ueberschrift(cfg)
+    gewuenscht = cfg.get("etappen_kennzahlen") or []
+    strecken = (roh or {}).get("strecken") or {}
+    dateien, offen, unsicher = {}, False, set()
+    for schluessel in ("etappen_dossier", "unterkuenfte_dossier"):
+        rel = cfg.get(schluessel)
+        if not rel or not (reise_dir / rel).exists():
+            continue
+        zeilen = (reise_dir / rel).read_text(encoding="utf-8").split("\n")
+        geaendert, raus = False, set()
+        # Zwei Überschriften mit derselben Nummer sind nicht eindeutig zuzuordnen: offen melden statt zu raten (Spec, Risiken)
+        ids = [alte_etappen_id(m.group(1)) for z in zeilen if (m := z.startswith("## ") and muster.match(z[3:].strip()))]
+        doppelt = {e for e in ids if ids.count(e) > 1}
+        for eid in sorted(doppelt):
+            meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.etappe_doppelt", eid=eid, datei=rel))
+            offen = True
+        for i, z in enumerate(zeilen):
+            m = z.startswith("## ") and muster.match(z[3:].strip())
+            if not m or alte_etappen_id(m.group(1)) in doppelt | unsicher:
+                continue
+            eid, name = alte_etappen_id(m.group(1)), m.group(2).strip()
+            st = strecken.get(eid)
+            if not isinstance(st, dict):
+                meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.etappe_ohne_strecke", eid=eid, titel=z[3:].strip(), datei=rel))
+                offen = True
+                continue
+            if schluessel == "etappen_dossier":
+                ende = next((j for j in range(i + 1, len(zeilen)) if zeilen[j].startswith("## ")), len(zeilen))
+                eck = eckdaten_zeilen(zeilen, i + 1, ende)
+                was, erster, raus_e = [], {}, {}
+                if not st.get("titel"):
+                    st.insert(0, "titel", DoubleQuotedScalarString(name))
+                    was.append("titel")
+                if not hasattr(st.get("kennzahlen"), "insert"):
+                    pos = list(st.keys()).index("quelle") if "quelle" in st else len(st)
+                    st.insert(pos, "kennzahlen", sb.fliess_map({}))
+                km = st["kennzahlen"]
+                for n in gewuenscht:   # Reihenfolge der Reise; die erste Zeile einer Kennung gilt wie bisher, keine wird überschrieben
+                    for j, _, w in [d for d in (eck[2] if eck else []) if d[1] == n and d[2]]:
+                        k, melde = kennung_der_kennzahl(n), None
+                        if k in erster:
+                            melde = texte.t(sprache, "pruefung.neu.nachziehen.etappe_kennzahl_doppelt", eid=eid, name=n, erster=erster[k], kennung=k, datei=rel)
+                        elif k not in km:
+                            km[k] = sb.skalar(k, w if k == "gehzeit" else kennzahl_wert(w))   # gehzeit bleibt Text
+                            was.append(k)
+                        erster.setdefault(k, n)
+                        if melde is None and gleicher_wert(km[k], w):
+                            raus_e[j] = (n, k, w)
+                        else:
+                            meldungen.append(melde or texte.t(sprache, "pruefung.neu.nachziehen.etappe_kennzahl_anders", eid=eid, name=n, kennung=k, w1=w, w2=km[k], datei=rel))
+                            unsicher.add(eid)
+                if raus_e:   # nachgelesen, wie der Bau routen.yaml liest (PyYAML): nur was dort gleich steht, verlässt das Dossier
+                    aus = io.StringIO()
+                    sb.yaml_rund().dump(roh, aus)
+                    g = ((((yaml.safe_load(aus.getvalue()) or {}).get("strecken") or {}).get(eid) or {}).get("kennzahlen") or {})
+                    for j, (n, k, w) in list(raus_e.items()):
+                        if g.get(k) is None or (k == "gehzeit" and not isinstance(g[k], str)) or not gleicher_wert(g[k], w):
+                            meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.etappe_kennzahl_anders", eid=eid, name=n, kennung=k, w1=w, w2=g.get(k), datei=rel))
+                            unsicher.add(eid)
+                if not km:
+                    del st["kennzahlen"]
+                if was:
+                    meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.etappe", eid=eid, was=", ".join(was), datei=rel))
+                if eid in unsicher:   # Abschnitt bleibt, wie er ist; ein späterer Lauf macht weiter
+                    offen = True
+                    continue
+                raus |= eckdaten_raus(zeilen, eck, set(raus_e)) if eck else set()
+            neu = f"## {eid} {name}"
+            meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.etappe_ueberschrift", datei=rel, alt=z[3:].strip(), neu=neu[3:]))
+            zeilen[i] = neu
+            geaendert = True
+        if geaendert:
+            dateien[reise_dir / rel] = "\n".join(z for j, z in enumerate(zeilen) if j not in raus)
+    # Bleibt eine Etappe offen, bleiben auch die Einstellungen, damit ein Lauf nach dem Anlegen der Strecke sie noch umstellen kann
+    alt = [] if offen else [k for k in ("etappen_kennzahlen", "etappen_muster") if k in cfg]
+    if alt:
+        meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.etappe_einstellungen"))
+
+    def fertig():   # erst nach dem Speichern von routen.yaml: das Dossier gibt nur ab, was dort schon steht
+        if not schreiben:
+            return
+        for p, text in dateien.items():
+            p.write_text(text, encoding="utf-8")
+        if alt:
+            for k in alt:
+                del cfg[k]
+            schreib_json(cfg_pfad, cfg)
+    return fertig
+
+
 def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
     """Nur Schlüssel, keine Inhalte: Unterkunft und Nacht typ: → art:; Wahlstelle bereich: → art:, art: planung|unterwegs →
     wann:; Strecke ohne art: bekommt die in strecken_arten genannte ({E-15: kombiniert}), sonst wird sie gemeldet; das
     Merkmal mit Schlüssel preis (Typ geld) einer Aufenthalts-Art bekommt rolle: kosten, wenn die Art noch keine Rolle hat;
     reise.json bekommt die bisherige Vorgabe der Ebene „Unterwegs nachschlagen“, wenn die Reise ein Etappen-Dossier hat;
     Eckdaten aus der früheren Vorlage stellt eckdaten_nachziehen um (#217); reise.yaml ohne sprache bekommt sprache: de
-    (sprache_nachziehen, #267), vor den Schritten, die die Sprache der Reise lesen.
+    (sprache_nachziehen, #267), vor den Schritten, die die Sprache der Reise lesen; Titel und Kennzahlen der Etappen kommen aus
+    dem Dossier an die Strecken (etappen_nachziehen, #269).
     Kommentare und Form der Dateien bleiben (ruamel). -> Liste der Meldungen (was geändert oder offen ist)."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from routen import WANN, art_schluessel
@@ -623,8 +814,11 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
                 w.insert(list(w.keys()).index("bereich"), "art", bereich)
                 meldungen.append(f"{vid}: bereich {bereich} → art {bereich}")
             del w["bereich"]
+    kennzahlen_kennungen(roh, sprache_von(reise_dir), meldungen)   # #269: Namen der Kennzahlen in routen.yaml -> Kennungen
+    dossier_fertig = etappen_nachziehen(reise_dir, roh, schreiben, meldungen)   # #269: Titel und Kennzahlen an die Strecken
     if schreiben and roh is not None:
         sb.routen_speichern(reise_dir, roh)
+    dossier_fertig()   # Dossier und reise.json erst nach routen.yaml
 
     # arten.yaml: rolle kosten am Merkmal preis (Typ geld) der Aufenthalts-Arten
     if (reise_dir / "plan" / "arten.yaml").exists():

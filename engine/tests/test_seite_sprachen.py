@@ -244,11 +244,11 @@ def test_seite_erkennt_fragestatus_in_beiden_sprachen(tmp_path, sprache):
     arten = ausdruecke(web, ausdruck)
     assert arten == ["offen", "offen", "zu", "zu", "zu", "zu", "zu", "aufgabe", "aufgabe"], arten
     assert ausdruecke(web, ['frageStand("resolved 30/10/2026: Ida, chosen").rest'])[0] == "30/10/2026: Ida, chosen"
-    # Tag n, Übersicht, Kennzahlen: Wörter beider Sprachen
+    # Tag n, Übersicht: Wörter beider Sprachen; Kennzahlen tragen seit #269 Kennungen, die Seite sucht keine Namen mehr
     muster = ausdruecke(web, ['["Day 3: Hut", "Tag 3: Hütte"].map(t => t.replace(REGEL.tagNr, "")).join("|")',
                               '["Overview: x", "Übersicht: x"].map(t => t.replace(REGEL.uebersicht, "")).join("|")',
-                              '["Walking time", "Gehzeit", "Duration", "Dauer"].every(t => REGEL.gehzeit.test(t))',
-                              '["Length", "Länge", "Laenge"].every(t => REGEL.laenge.test(t))'])
+                              '["gehzeit", "aufstieg", "abstieg", "laenge"].every(k => k in KZ_ANZEIGE)',
+                              'typeof REGEL.gehzeit === "undefined" && typeof REGEL.laenge === "undefined"'])
     assert muster == ["Hut|Hütte", "x|x", True, True]
 
 

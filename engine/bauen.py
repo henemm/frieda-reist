@@ -47,9 +47,9 @@ import texte  # noqa: E402
 
 ZIEL_ID = re.compile(r"^[A-Za-z0-9][\w.\-]{0,79}$", re.ASCII)
 BILD_ENDUNGEN = (".jpg", ".jpeg", ".png", ".webp", ".gif")
-def etappen_muster():
-    """Titel einer Etappe („Etappe 3: Name“, englisch „Stage 3: Name“): das Wort aller Sprachen des Katalogs (ADR-0006, Punkt 7)."""
-    return r"^(?:" + texte.inhaltsmuster("inhalt.etappe") + r")\s+(\d+[A-Za-z]?)\s*:\s*(.+)$"
+# Lesetext einer Strecke im Dossier (#269): die Überschrift beginnt mit der Kennung der Strecke („## E-03 Name“); Titel, Art und
+# Kennzahlen stehen an der Strecke in routen.yaml, der Abschnitt liefert nur Einleitung, Blöcke und Ebenen
+STRECKE_UEBERSCHRIFT = re.compile(r"^(E-\d+[A-Za-z]?)(?:\s+(.*))?$")
 # Ebenen der Tagesseite (B2, docs/design.md „Tagesseite“): Jeder Abschnitt einer Etappe gehört zu einer Ebene, erkannt am
 # Anfang seines Titels (Groß- und Kleinschreibung egal). Die Software kennt nur die Form (ADR-0001, kein Katalog): die
 # Zusammenfassung ist „Der Weg“, Eckdaten (die Kennzahlentabelle) und die Unterkünfte-Liste des Dossiers sind „Unterwegs
@@ -296,7 +296,6 @@ class Bauer:
         except yaml.YAMLError as e:
             raise BauFehler([texte.satz("pruefung.bauen.yaml_reise", e=e)])
         self.eck = Reise(self.reise_roh, self.cfg, self.fehler, self.hinweise).daten()
-        self.etappen_muster = re.compile(self.cfg.get("etappen_muster", etappen_muster()))
 
     # ---------- Hilfen ----------
     def id_anlegen(self, id_, wo):
@@ -413,33 +412,30 @@ class Bauer:
         return self.html(intro, quelldatei) if intro.strip() else "", bl
 
     # ---------- Bauen ----------
-    def etappen_id(self, nummer):
-        return "E-" + (nummer.zfill(3) if nummer[-1].isalpha() else nummer.zfill(2))
-
-    def daten(self):
+    def dossier_lesen(self, abschnitte, benutzt):
+        """Etappen-Dossier und Unterkünfte-Dossier (#269): Abschnitte „## E-… Name“ sind Lesetext einer Strecke (Einleitung,
+        Blöcke mit Ebene), alle anderen Wissen wie in reise.json abschnitte. -> {E-ID: Abschnitt}; die Strecke selbst (Titel,
+        Art, Kennzahlen) steht in routen.yaml, geprüft wird nach dem Routenmodell (strecken_lesetext)."""
         c = self.cfg
-        self.ebenen_pruefen()
-        abschnitte, etappen = [], {}
-        benutzt = {}
-        d_rel, u_rel, p_rel = c.get("etappen_dossier"), c.get("unterkuenfte_dossier"), c.get("plan")
-
-        # Etappen-Dossier und Wissensabschnitte
+        lesetexte, wo_von = {}, {}
+        d_rel, u_rel = c.get("etappen_dossier"), c.get("unterkuenfte_dossier")
         text = self.lesen(d_rel)
         _, teile = zerlege(text, 2)
         benutzt[d_rel] = set()
         for titel, nr, body in teile:
             wo = f"{d_rel}:{nr}"
-            m = self.etappen_muster.match(titel)
+            m = STRECKE_UEBERSCHRIFT.match(titel)
             if m:
-                eid = self.etappen_id(m.group(1))
-                self.id_anlegen(eid, wo)
+                eid = m.group(1)
+                if eid in lesetexte:
+                    self.fehler.append(texte.satz("pruefung.bauen.2", id_=eid, w1=wo_von[eid], wo=wo))
+                    continue
+                wo_von[eid] = wo
                 intro, bl = self.bloecke(eid, body, self.reise_dir / d_rel, wo)
                 for b in bl:
                     b["ebene"] = self.ebene(b["titel"])
-                etappen[eid] = {"id": eid, "typ": "etappe", "nr": m.group(1), "titel": titel,
-                                "name": m.group(2), "intro": intro, "bloecke": bl,
-                                "kennzahlen": self.kennzahlen(body, wo)}
-                abschnitte.append(etappen[eid])
+                lesetexte[eid] = {"id": eid, "typ": "strecke", "titel": m.group(2) or eid, "intro": intro, "bloecke": bl}
+                abschnitte.append(lesetexte[eid])
                 continue
             if self.ignoriert(d_rel, titel):
                 continue
@@ -455,16 +451,16 @@ class Bauer:
         benutzt[u_rel] = set()
         for titel, nr, body in teile:
             wo = f"{u_rel}:{nr}"
-            m = self.etappen_muster.match(titel)
+            m = STRECKE_UEBERSCHRIFT.match(titel)
             if m:
-                eid = self.etappen_id(m.group(1))
-                if eid not in etappen:
+                eid = m.group(1)
+                if eid not in lesetexte:
                     self.fehler.append(texte.satz("pruefung.bauen.10", wo=wo, titel=titel))
                     continue
                 bid = f"{eid}.unterkuenfte-liste"
                 self.id_anlegen(bid, wo)
                 titel_u = texte.wort(self.eck["sprache"], "inhalt.ebene.unterkuenfte")
-                etappen[eid]["bloecke"].append(
+                lesetexte[eid]["bloecke"].append(
                     {"id": bid, "titel": titel_u, "ebene": self.ebene(titel_u),
                      "html": self.html(body, self.reise_dir / u_rel)})
                 continue
@@ -475,6 +471,58 @@ class Bauer:
                 self.fehler.append(texte.satz("pruefung.bauen.11", wo=wo, titel=titel))
                 continue
             abschnitte.append(self.wissen(eintrag, titel, body, u_rel, wo))
+        self.lesetext_wo = wo_von
+        return lesetexte
+
+    def strecken_lesetext(self, lesetexte, route):
+        """Lesetext der Dossiers gegen das Routenmodell (#269): jeder Abschnitt gehört zu einer Strecke (sonst eine Meldung, nicht
+        still ignoriert); Titel aus der Strecke; im Plan, Optionen, Nebenroute für Reiter und Chips; Gliederung der Art."""
+        strecken = (route or {}).get("strecken") or {}
+        for eid, e in list(lesetexte.items()):
+            if eid not in strecken:
+                self.fehler.append(texte.satz("pruefung.bauen.dossier_ohne_strecke", wo=self.lesetext_wo[eid], eid=eid))
+                continue
+            e["titel"] = strecken[eid].get("titel") or e["titel"]
+        if not route:
+            return
+        aktiv = set(route["aktiv_strecken"])
+        for e in lesetexte.values():
+            e["im_plan"] = e["id"] in aktiv
+            e["optionen"] = [o["id"] for w in route["wahlstellen"] for o in w["optionen"]
+                             if e["id"] in o["alle_strecken"] and not o["aktiv"]]
+            e["nebenroute"] = not e["im_plan"] and not e["optionen"]
+        self.lesetext_pruefen(lesetexte, route)
+
+    def orte_lesen(self, abschnitte):
+        """Orte mit Übersicht und Highlights: je Datei Abschnitte „## O-xx Name“ (reise.json -> orte_dossiers). Die O-ID legt
+        routen.yaml an; hier nur Inhalt und Blöcke, geprüft wird nach dem Routenmodell. -> {O-ID: Fundstelle}"""
+        orte_inhalt = {}
+        for rel in self.cfg.get("orte_dossiers", []):
+            _, teile = zerlege(self.lesen(rel), 2)
+            for titel, nr, body in teile:
+                wo = f"{rel}:{nr}"
+                m = re.match(r"^(O-\d+)\s+(.+)$", titel)
+                if not m:
+                    self.fehler.append(texte.satz("pruefung.bauen.16", wo=wo, titel=titel))
+                    continue
+                oid, name = m.groups()
+                if oid in orte_inhalt:
+                    self.fehler.append(texte.satz("pruefung.bauen.17", wo=wo, oid=oid, w1=orte_inhalt[oid]))
+                    continue
+                orte_inhalt[oid] = wo
+                intro, bl = self.bloecke(oid, body, self.reise_dir / rel, wo)
+                abschnitte.append({"id": oid, "typ": "ort", "titel": name, "intro": intro, "bloecke": bl})
+        return orte_inhalt
+
+    def daten(self):
+        c = self.cfg
+        self.ebenen_pruefen()
+        abschnitte = []
+        benutzt = {}
+        d_rel, u_rel, p_rel = c.get("etappen_dossier"), c.get("unterkuenfte_dossier"), c.get("plan")
+
+        # Etappen-Dossier (Lesetext der Strecken) und Wissensabschnitte, Unterkünfte-Dossier
+        lesetexte = self.dossier_lesen(abschnitte, benutzt)
 
         # Plan
         text = self.lesen(p_rel)
@@ -529,24 +577,7 @@ class Bauer:
                     continue
                 abschnitte.append(self.wissen(eintrag, titel, body, rel, wo))
 
-        # Orte mit Übersicht und Highlights: je Datei Abschnitte „## O-xx Name“ (reise.json -> orte_dossiers).
-        # Die O-ID legt routen.yaml an; hier nur Inhalt und Blöcke, geprüft wird nach dem Routenmodell.
-        orte_inhalt = {}
-        for rel in c.get("orte_dossiers", []):
-            _, teile = zerlege(self.lesen(rel), 2)
-            for titel, nr, body in teile:
-                wo = f"{rel}:{nr}"
-                m = re.match(r"^(O-\d+)\s+(.+)$", titel)
-                if not m:
-                    self.fehler.append(texte.satz("pruefung.bauen.16", wo=wo, titel=titel))
-                    continue
-                oid, name = m.groups()
-                if oid in orte_inhalt:
-                    self.fehler.append(texte.satz("pruefung.bauen.17", wo=wo, oid=oid, w1=orte_inhalt[oid]))
-                    continue
-                orte_inhalt[oid] = wo
-                intro, bl = self.bloecke(oid, body, self.reise_dir / rel, wo)
-                abschnitte.append({"id": oid, "typ": "ort", "titel": name, "intro": intro, "bloecke": bl})
+        orte_inhalt = self.orte_lesen(abschnitte)
 
         fragen = self.fragen(c["fragen"]) if c.get("fragen") else {"spalten": [], "zeilen": []}
 
@@ -580,7 +611,7 @@ class Bauer:
             except yaml.YAMLError as e:
                 self.fehler.append(texte.satz("pruefung.bauen.22", a_rel=a_rel, e=e))
                 arten = None
-            route = Routen(roh, etappen, status, self.fehler, self.id_anlegen, r_rel, arten=arten,
+            route = Routen(roh, set(lesetexte), status, self.fehler, self.id_anlegen, r_rel, arten=arten,
                            entscheider=organisator,
                            wissen={i for i in self.ids if i.startswith("W-")}, sprache=self.eck["sprache"]).bauen()
             verhalten_anwenden(route, self.eck["verhalten"], self.eck["sprache"])
@@ -589,7 +620,7 @@ class Bauer:
                 if route and oid not in route["orte"]:
                     self.fehler.append(texte.satz("pruefung.bauen.23", wo=wo, oid=oid))
             if route:
-                self.karte_bauen(r_cfg, route, etappen)
+                self.karte_bauen(r_cfg, route, lesetexte)
                 self.lage_ergaenzen(route)
             if route:
                 for art in ("tagesplan", "unterkuenfte"):
@@ -602,13 +633,9 @@ class Bauer:
                         a = {"id": sid, "typ": "plan", "titel": titel, "intro": "", "bloecke": []}
                         abschnitte.insert(0, a)
                     a["route_ansicht"] = art
-                aktiv = set(route["aktiv_strecken"])
-                for e in etappen.values():
-                    e["im_plan"] = e["id"] in aktiv
-                    e["optionen"] = [o["id"] for w in route["wahlstellen"] for o in w["optionen"]
-                                     if e["id"] in o["alle_strecken"] and not o["aktiv"]]
-                    e["nebenroute"] = not e["im_plan"] and not e["optionen"]
-                self.lesetext_pruefen(etappen, route)
+        # Lesetext ohne Strecke wird gemeldet; scheitert schon das Routenmodell, steht dessen Meldung (keine Folgemeldungen)
+        if route or not r_cfg:
+            self.strecken_lesetext(lesetexte, route)
 
         # Claudes Vorschläge zu Wünschen (Wunsch-Brett, Paket G): plan/wuensche.yaml neben routen.yaml
         wunsch_vorschlaege = {}
@@ -1138,17 +1165,6 @@ class Bauer:
             if k not in EBENEN:
                 self.fehler.append(texte.satz("pruefung.bauen.74", k=k, w1=', '.join(EBENEN)))
 
-    def kennzahlen(self, body, wo):
-        gewuenscht = self.cfg.get("etappen_kennzahlen", [])
-        block = next((b for b in zerlege(body, 3)[1] if slug(b[0]) == "eckdaten"), None)
-        if not block or not gewuenscht:
-            return {}
-        t = tabelle_lesen(block[2], wo, [])
-        if not t:
-            return {}
-        werte = {z[0]: z[1] for z in t[2] if len(z) >= 2}
-        return {k: werte[k] for k in gewuenscht if k in werte}
-
     def tabellen_abschnitt(self, sid, typ, art, titel, body, rel, wo):
         self.id_anlegen(sid, wo)
         t = tabelle_lesen(body, wo, self.fehler)
@@ -1606,7 +1622,7 @@ def main(argv):
         for m in e.meldungen:
             print(" -", m)
         return 1
-    n_e = sum(1 for a in daten["abschnitte"] if a["typ"] == "etappe")
+    n_e = sum(1 for s in ((daten.get("route") or {}).get("strecken") or {}).values() if s.get("summiert"))
     print(f"Done: {a.ziel / reise / 'index.html'} ({len(daten['abschnitte'])} sections, {n_e} stages)")
     return 0
 

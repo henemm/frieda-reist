@@ -96,7 +96,7 @@ def test_zweite_beispielreise_ohne_wanderung_baut_sauber(tmp_path):
     ziel = tmp_path / "web" / "stadt"
     bauen.bauen(WURZEL / "beispiel/reisen/stadtwochenende", ziel)
     d = json.loads((ziel / "daten.json").read_text(encoding="utf-8"))
-    assert not [a for a in d["abschnitte"] if a["typ"] == "etappe"]
+    assert not [a for a in d["abschnitte"] if a["typ"] == "strecke"]
     r = d["route"]
     assert [t["titel"] for t in r["tage"]] == ["Anreise und Ankommen bei Tante Anna", "Samstag in Beispielstadt", "Museum und Rückfahrt"]
     assert r["wahlstellen"] == [] and r["plaene"] == [] and r["warnungen"] == []
@@ -352,7 +352,7 @@ def test_buchung_und_anschluss_mit_namen(tmp_path, browser):
     datei = reise / "plan/routen.yaml"
     text = datei.read_text(encoding="utf-8")
     for alt, neu in (('wert: "08:40", quelle', 'wert: "2027-05-13T08:40+02:00", quelle'),
-                     ("E-01: {von: O-02, nach: O-03, art: wandern,", 'E-01: {von: O-02, nach: O-03, art: wandern, ab: "08:30",'),   # altes Feld wird weiter gelesen
+                     ("von: O-02, nach: O-03, art: wandern,", 'von: O-02, nach: O-03, art: wandern, ab: "08:30",'),   # altes Feld wird weiter gelesen
                      ("    fuer: [E-20]\n    status: gebucht\n", '    fuer: [E-20, E-21]\n    preise: {E-20: "12 €", E-21: "8 €"}\n    status: angefragt\n')):
         assert alt in text, alt
         text = text.replace(alt, neu)
