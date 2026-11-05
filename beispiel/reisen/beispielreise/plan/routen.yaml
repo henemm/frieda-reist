@@ -11,11 +11,11 @@ fixpunkte:
   - {datum: 2027-05-15, ort: O-04, titel: "Abendessen in Altendorf, Tisch um 19 Uhr reserviert (Beispiel)", quelle: "erfunden (Beispiel)"}
 
 orte:   # Orte gibt es wirklich; Herkunft je Ort (Kern jedes Dings, docs/ontologie.md)
-  O-01: {name: Dresden, quelle: "OpenStreetMap"}
-  O-02: {name: Stadt Wehlen, quelle: "OpenStreetMap"}
-  O-03: {name: Hohnstein, hinweis: "Burgstadt über dem Polenztal", quelle: "OpenStreetMap; Hinweis Wikipedia (W-05)"}
-  O-04: {name: Altendorf, quelle: "OpenStreetMap"}
-  O-05: {name: Bad Schandau, quelle: "OpenStreetMap"}
+  O-01: {name: Dresden, art: stadt, quelle: "OpenStreetMap"}
+  O-02: {name: Stadt Wehlen, art: ort_am_weg, quelle: "OpenStreetMap"}
+  O-03: {name: Hohnstein, art: ort_am_weg, hinweis: "Burgstadt über dem Polenztal", quelle: "OpenStreetMap; Hinweis Wikipedia (W-05)"}
+  O-04: {name: Altendorf, art: ort_am_weg, quelle: "OpenStreetMap"}
+  O-05: {name: Bad Schandau, art: ort_am_weg, quelle: "OpenStreetMap"}
   O-06: {name: Lichtenhainer Wasserfall, hinweis: "Endhaltestelle der Kirnitzschtalbahn", quelle: "OpenStreetMap; Hinweis Wikipedia (W-06)"}
 
 # Etappen sind Strecken einer summierten Art (wandern): Titel und Kennzahlen hier, Lesetext im Dossier unter „## E-0N Name“.

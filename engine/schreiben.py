@@ -806,7 +806,7 @@ def merkmal_definieren(reise_dir, wer, args):
 # ---------- Werte an Dingen (plan/routen.yaml) ----------
 # Die Routendatei wird mit ruamel.yaml rund gelesen und geschrieben: Kommentare, Reihenfolge und Fließform bleiben; nur von
 # Hand umbrochene Fließ-Mappings werden in eine Zeile gezogen (einmalige Normalform, danach ändert ein Schreibvorgang nur seine Stelle).
-ZIEL_MUSTER = re.compile(r"^(U-\d+|A-\d+|E-\d+[A-Za-z]?|V-\d+\.[a-z])$")
+ZIEL_MUSTER = re.compile(r"^(U-\d+|A-\d+|O-\d+|E-\d+[A-Za-z]?|V-\d+\.[a-z])$")
 
 
 def yaml_rund():
@@ -887,7 +887,12 @@ def routen_normalisieren(reise_dir):
 
 
 def ding_finden(roh, ziel):
-    """-> (Knoten in der Routendatei, Beschreibung) für U-…, A-…, E-… oder eine Option V-01.a."""
+    """-> (Knoten in der Routendatei, Beschreibung) für U-…, A-…, O-…, E-… oder eine Option V-01.a."""
+    if ziel.startswith("O-"):
+        k = (roh.get("orte") or {}).get(ziel)
+        if k is None:
+            raise Ablehnung("schreiben.ding_aendern.2", ziel=ziel)
+        return k, f"{ziel} {k.get('name', '')}".strip()
     if ziel.startswith("U-"):
         k = (roh.get("unterkuenfte") or {}).get(ziel)
         if k is None:
@@ -1014,6 +1019,14 @@ def wert_eintragen(reise_dir, wer, args, heute=None):
             raise Ablehnung("schreiben.ding_finden.4", ziel=ziel)
         krit = w.get("kriterien") or []
         heutige = next(o for o in w["optionen"] if o["id"] == ziel).get("merkmale") or {}
+    elif ziel.startswith("O-"):   # Ort mit Art (ADR-0008, Punkt 3)
+        u = (route.get("orte") or {}).get(ziel)
+        if u is None:
+            raise Ablehnung("schreiben.ding_aendern.2", ziel=ziel)
+        if not u.get("art"):
+            raise Ablehnung("schreiben.wert_eintragen.ort_ohne_art", ziel=ziel)
+        krit = (route.get("merkmale") or {}).get(u.get("art")) or []
+        heutige = u.get("merkmale") or {}
     elif ziel.startswith(("U-", "A-")):
         u = (route.get("unterkuenfte" if ziel.startswith("U-") else "aufenthalte") or {}).get(ziel)
         if u is None:
@@ -1409,6 +1422,10 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
     fest = {}   # feste Merkmale der Grundform aus der Anfrage: Eingabename -> Wert (ADR-0007, Schritt b)
     if was == "ort":
         d["name"] = text_wert(args, "name_des_dings", laenge=120) or text_wert(args, "titel", pflicht=True, laenge=120)
+        if (art := (text_wert(args, "art", laenge=40) or "").lower()):   # freiwillig (ADR-0008, Punkt 3)
+            if art not in arten or arten[art].get("grundform") != "ort":
+                raise Ablehnung("schreiben.ding_anlegen.ort_art", w1=', '.join(k for k, a in arten.items() if a.get('grundform') == 'ort') or 'keine')
+            d["art"] = art
     elif was in ("unterkunft", "aufenthalt"):
         d["name"] = text_wert(args, "name_des_dings", laenge=120) or text_wert(args, "titel", pflicht=True, laenge=120)
         d["ort"] = (id_liste(args, "ort", r"O-\d+", roh, "orte", pflicht=True) or [None])[0]
@@ -1450,7 +1467,7 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
         if zr:
             fest["zeitraum"] = zr
     if (eltern := text_wert(args, "an", laenge=20)) and (was != "strecke" or ist_eltern_wert(eltern)):   # Elternbezug (ADR-0007)
-        eltern_wert_pruefen(reise_dir, roh, None, eltern)
+        eltern_wert_pruefen(reise_dir, roh, None, eltern, was)
         d["an"] = eltern
     if was == "ort" and bool_wert(args, "ausserhalb"):
         d["ausserhalb"] = True   # Ort der An- und Abreise außerhalb der Reisegegend (Issue #135)
@@ -1469,8 +1486,8 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
     if punkt:
         fest["koordinaten"] = punkt
     katalog = (route.get("merkmale") or {}).get(d.get("art")) or []
-    rest_merkmale, aus_merkmalen = merkmale_fest_trennen(args, was, katalog) if was != "ort" else (None, {})
-    if was == "ort" and isinstance(args.get("merkmale"), dict):
+    rest_merkmale, aus_merkmalen = merkmale_fest_trennen(args, was, katalog) if was != "ort" or d.get("art") else (None, {})
+    if was == "ort" and not d.get("art") and isinstance(args.get("merkmale"), dict):
         aus_merkmalen = {str(k).lower(): v for k, v in args["merkmale"].items() if str(k).lower() in GRUNDFORM_MERKMALE["ort"]}
     for name, v in aus_merkmalen.items():
         if name in fest:
@@ -1482,13 +1499,13 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
             raise Ablehnung("schreiben.fest_wert.nicht_fuer", name=name, was=S("schreiben.ding_wort." + was), w1=", ".join(erlaubt))
     festwerte = {name: fest_wert(name, v, quelle, g) for name, v in fest.items()}
     werte = merkmale_werte(rest_merkmale, katalog, heute,
-                           {"quelle": quelle, "geprueft": args.get("geprueft")}) if was != "ort" else {}
+                           {"quelle": quelle, "geprueft": args.get("geprueft")}) if was != "ort" or d.get("art") else {}
     did = neue_id(reise_dir, kuerzel)
     knoten = fliess_map(d) if was not in ("unterkunft", "aufenthalt") else block_map(d)
     if festwerte and was in ("ort", "strecke"):
         knoten = block_map(d)
     if werte:
-        if was == "strecke":
+        if was in ("strecke", "ort"):
             knoten = block_map(d)
         knoten["merkmale"] = merkmale_knoten(werte)
     for name, (w, q, gp) in festwerte.items():
@@ -1512,7 +1529,7 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
 
 AENDERBAR = {"unterkunft": ("name", "ort", "art", "hinweis", "quelle", "buchungslink", "frage", "an"),
              "aufenthalt": ("name", "ort", "art", "zeit", "beginn", "ende", "hinweis", "quelle", "buchungslink", "frage", "an"),
-             "strecke": ("titel", "von", "nach", "art", "ab", "an", "hinweis", "quelle", "kennzahlen"), "ort": ("name", "hinweis", "quelle", "ausserhalb", "an")}
+             "strecke": ("titel", "von", "nach", "art", "ab", "an", "hinweis", "quelle", "kennzahlen"), "ort": ("name", "art", "hinweis", "quelle", "ausserhalb", "an")}
 
 
 def kennzahlen_wert(args, alt=None):
@@ -1554,14 +1571,17 @@ def wissen_ids(reise_dir):
     return {wid for titel_zu in (cfg.get("abschnitte") or {}).values() for wid, _g in titel_zu.values()}
 
 
-def eltern_wert_pruefen(reise_dir, roh, did, wert):
-    """Ist wert ein zulässiger Elternbezug für did (bei einem neuen Ding None)? Sonst Ablehnung. Ein Tag geht über tag_aendern."""
+def eltern_wert_pruefen(reise_dir, roh, did, wert, was=None):
+    """Ist wert ein zulässiger Elternbezug für did (bei einem neuen Ding None, dann sagt was die Grundform)? Sonst Ablehnung.
+    Ein Tag geht über tag_aendern; ein Ort liegt nur in einem Ort (ADR-0008, Punkt 2)."""
     from routen import ist, ELTERN_ARTEN, REISE_ALS_ELTERN
     if not ist_eltern_wert(wert):
         raise Ablehnung("schreiben.ding_aendern.an_form")
     if wert == did:
         raise Ablehnung("schreiben.ding_aendern.an_selbst")
     art = next((a for a in ELTERN_ARTEN if ist(a, wert)), None)
+    if (was == "ort" or (did and ist("ort", did))) and art != "ort":
+        raise Ablehnung("schreiben.ding_aendern.an_ort", x=wert)
     if art == "tag":
         raise Ablehnung("schreiben.ding_aendern.an_tag", tid=wert)
     if wert == REISE_ALS_ELTERN:
@@ -1745,7 +1765,7 @@ def _ding_aendern_felder(reise_dir, wer, args, heute=None):
             if not darf(wer["rolle"], "organisator"):
                 raise Ablehnung("schreiben.ding_aendern.4")
             v = (text_wert(args, "art", pflicht=True, laenge=40) or "").lower()
-            g = "aufenthalt" if was in ("unterkunft", "aufenthalt") else "bewegung"
+            g = "aufenthalt" if was in ("unterkunft", "aufenthalt") else "ort" if was == "ort" else "bewegung"
             if v not in arten or arten[v].get("grundform") != g:
                 raise Ablehnung("schreiben.ding_aendern.5", w1=S("schreiben.grundform_art." + g), w2=', '.join(k for k, a in arten.items() if a.get('grundform') == g) or 'keine')
         elif feld == "buchungslink":

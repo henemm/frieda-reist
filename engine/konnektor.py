@@ -790,8 +790,20 @@ class Handbuch:
         for tid, t in (r.get("weitere_tage") or {}).items():
             e[tid] = (tk("konnektor.ausgabe.sammeln.2", w1=t['titel']), tk("konnektor.sammeln.3")
                       + self.tag_text(t, datum=False))
+        eltern = r.get("eltern") or {}
         for oid, o in self.orte.items():
-            e.setdefault(oid, (o.get("name") or oid, o.get("hinweis") or ""))
+            titel, txt = e.get(oid) or (o.get("name") or oid, o.get("hinweis") or "")
+            # Art, „liegt in“ und die Orte darin (ADR-0008): ein Ort liegt in höchstens einem Ort, nur für die Anzeige
+            z = []
+            if o.get("art"):
+                z.append(tk("konnektor.ausgabe.ort.art", w1=((r.get("arten") or {}).get(o["art"]) or {}).get("name") or o["art"], w2=o["art"]))
+            if str(eltern.get(oid) or "").startswith("O-"):
+                z.append(tk("konnektor.ausgabe.ort.liegt_in", w1=self.ort(eltern[oid]), w2=eltern[oid]))
+            if (kinder := [k for k, v in eltern.items() if v == oid and k.startswith("O-")]):
+                z.append(tk("konnektor.ausgabe.ort.orte_darin") + ", ".join(f"{self.ort(k)} ({k})" for k in kinder))
+            if o.get("merkmale"):
+                z.append("; ".join(f"{k}: {v.get('wert')}" for k, v in o["merkmale"].items() if isinstance(v, dict)))
+            e[oid] = (titel, "\n\n".join(x for x in ("\n".join(z), txt) if x))
         for sid, s in (r.get("strecken") or {}).items():
             z = [f"{self.ort(s.get('von'))} → {self.ort(s.get('nach'))}" + (f" ({' + '.join(s['art']) if isinstance(s['art'], list) else s['art']})" if s.get("art") else "")
                  + (tk("konnektor.ausgabe.sammeln.18", w1=s['ab']) if s.get("ab") else "") + (tk("konnektor.ausgabe.sammeln.14", w1=s['an']) if s.get("an") else "")]

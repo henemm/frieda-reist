@@ -1,6 +1,6 @@
 # Arten und Merkmale der Beispielreise (erfunden). Jede Reise legt ihre eigenen fest, im Gespräch im AI-Client;
 # diese Datei ist Anschauung, kein Katalog (docs/ontologie.md, ADR-0001). Felder je Art: grundform (aufenthalt |
-# bewegung | folge), name, farbe (blau, braun, lila, gruen, tuerkis, oliv, grau, rosa, schiefer), symbol (Zeichen der Seite:
+# bewegung | folge | ort; ort ist freiwillig, ADR-0008), name, farbe (blau, braun, lila, gruen, tuerkis, oliv, grau, rosa, schiefer), symbol (Zeichen der Seite:
 # unterkunft, zelt, einkehr, ticket, museum, wandern, bus, bahn, schiff, flug, auto, rad, taxi; ohne Angabe das der Grundform),
 # buchbar (hat einen Buchungsstand; Vorgabe: Aufenthalte ja, Bewegungen nein), summiert (Bewegung
 # aus eigener Kraft: Gehzeit, Länge, Höhenmeter werden summiert), merkmale. Felder je Merkmal: name, typ (text | geld |
@@ -236,3 +236,13 @@ arten:
     farbe: '#5b6168'
     gruppe: wissen
     buchbar: false
+  stadt:
+    grundform: ort
+    name: Stadt
+    farbe: schiefer
+    beschreibung: "Beispielwert: Ort mit Bahnhof, an dem die Reise beginnt und endet"
+  ort_am_weg:
+    grundform: ort
+    name: Ort am Weg
+    farbe: oliv
+    beschreibung: "Beispielwert: Etappenort; der Lichtenhainer Wasserfall hat bewusst keine Art (freiwillig, ADR-0008)"

@@ -107,7 +107,7 @@ def zeitpunkt(text):
 # Folge (Tag, Reiseteil). Welche Arten es davon gibt (Hotel, Refugi, Wanderung, Bahn, Reiseteil …) und welche Merkmale
 # eine Art hat, sagt allein die Reise in plan/arten.yaml. Die Software kennt nur die Grundformen, die Form eines
 # Merkmals und die berechneten Kennzahlen je Grundform.
-GRUNDFORMEN = ("aufenthalt", "bewegung", "folge")
+GRUNDFORMEN = ("aufenthalt", "bewegung", "folge", "ort")   # ort: freiwillige Art eines Orts (ADR-0008)
 AUTO_JE_GRUNDFORM = {"bewegung": ("gehzeit", "laenge", "hoehenmeter"), "folge": ("tage", "gehzeit", "unterkuenfte", "anschluss")}
 ART_MUSTER = r"[a-z][a-z0-9_]*"
 # gruppe, einzahl, nummeriert, sorten: Felder einer früheren Kartenkategorie (ADR-0007, Schritt d): gruppe punkt (Punkte an einer Strecke, Karte der
@@ -123,7 +123,7 @@ BUCHUNG_DEF_FELDER = {"name", "typ", "werte", "einheit", "hilfe", "frage"}
 # Symbole der Seite, die eine Art tragen darf (engine/bauen.py SYMBOLE, Lucide); ohne Angabe das Symbol der Grundform
 SYMBOLE_ARTEN = ("unterkunft", "zelt", "einkehr", "ticket", "museum", "wandern", "bus", "bahn", "schiff", "flug", "auto", "rad",
                  "taxi", "strecke", "ort", "karte", "plan", "wasser", "apotheke")
-GRUNDFORM_SYMBOL = {"aufenthalt": "unterkunft", "bewegung": "strecke", "folge": "plan"}
+GRUNDFORM_SYMBOL = {"aufenthalt": "unterkunft", "bewegung": "strecke", "folge": "plan", "ort": "ort"}
 # Gliederung des Lesetexts einer Art (docs/ontologie.md „Lesetext“): Rubriken in ihrer Reihenfolge, jede mit Namen (das
 # Stichwort am Anfang eines Absatzes) und Hilfe für den AI-Client. Welche Rubriken es gibt, sagt allein die Reise.
 RUBRIK_FELDER = {"name", "hilfe"}
@@ -471,7 +471,9 @@ class Routen:
         self.arten_roh = arten
         self.arten = {}           # Art -> {name, grundform, farbe, symbol, buchbar, summiert}, aus plan/arten.yaml der Reise
         self.a_art = {}           # A-01 -> Art (Aufenthalt ohne Nacht, Paket O-5)
+        self.o_art = {}           # O-01 -> Art (freiwillig, Grundform ort; ADR-0008)
         self.mk_aufenthalt = {}   # A-01 -> {Merkmal: Wert}
+        self.mk_ort = {}          # O-01 -> {Merkmal: Wert} (Ort mit Art, ADR-0008)
         self.katalog = {}         # Art -> {Merkmal: Definition}
         self.buchung_katalog = {} # Art -> {Merkmal der Buchung: Definition} (#166)
         self.u_art = {}           # U-01 -> Art
@@ -573,6 +575,16 @@ class Routen:
                 self.fehl(texte.satz("pruefung.routen.ort_adresse", oid=oid))
             if isinstance(o, dict) and o.get("punkt") is not None:
                 self.lage_pruefen({"punkt": o["punkt"]}, f"Ort {oid}")
+        self.arten_pruefen()
+        for oid, o in self.orte.items():
+            # Art eines Orts ist freiwillig (ADR-0008, Punkt 3); wenn gesetzt, eine Art der Reise mit Grundform ort
+            if isinstance(o, dict) and o.get("art"):
+                a = str(o["art"])
+                if a not in self.arten or self.grundform(a) != "ort":
+                    self.fehl(texte.satz("pruefung.routen.ort_art", oid=oid, a=a,
+                                         w1=", ".join(k for k, v in self.arten.items() if v["grundform"] == "ort") or "keine"))
+                else:
+                    self.o_art[oid] = a
         for sid, s in self.strecken.items():
             self.id_anlegen(sid, self.q)
             if not s.get("titel"):
@@ -676,6 +688,8 @@ class Routen:
                     art = next((a for a in ELTERN_ARTEN if ist(a, an)), None)
                     if art and mengen[art] is not None and an not in mengen[art]:
                         self.fehl(texte.satz("pruefung.routen.eltern_unbekannt", did=did, x=an))
+                    elif gruppe is self.orte and art != "ort":   # ein Ort liegt nur in einem Ort (ADR-0008, Punkt 2)
+                        self.fehl(texte.satz("pruefung.routen.eltern_ort", did=did, x=an))
                     else:
                         self.eltern[did] = an
         for did in list(self.eltern):
@@ -1011,6 +1025,8 @@ class Routen:
             return self.u_art[x]
         if x in self.a_art:
             return self.a_art[x]
+        if x in self.o_art:
+            return self.o_art[x]
         if x in self.strecken:
             return self.strecken_art(self.strecke(x))
         return None
@@ -1253,6 +1269,9 @@ class Routen:
         for aid, a in self.aufenthalte.items():
             if self.a_art.get(aid) is not None and isinstance(a, dict):
                 self.mk_aufenthalt[aid] = self.werte(aid, a.get("merkmale"), self.katalog.get(self.a_art[aid], {}))
+        for oid, o in self.orte.items():
+            if self.o_art.get(oid) is not None and isinstance(o, dict):
+                self.mk_ort[oid] = self.werte(oid, o.get("merkmale"), self.katalog.get(self.o_art[oid], {}))
         # Bewegungen: Werte dürfen an der Strecke stehen, wie bei Unterkünften an U-…
         for sid, st in self.strecken.items():
             if st.get("merkmale") is None:
@@ -1612,7 +1631,8 @@ class Routen:
             "wahlstellen": [self.wahl_aus(vid, w) for vid, w in self.wahl.items()],
             # ausserhalb (Issue #135): ein Ort der An- und Abreise außerhalb der Reisegegend (Flughafen daheim), kein Ort der Reise selbst
             "orte": {k: {"name": v.get("name", k), "hinweis": v.get("hinweis"), "ausserhalb": bool(v.get("ausserhalb")),
-                         "punkt": dict(self.lage_aus(v))["punkt"]} for k, v in self.orte.items()},
+                         "punkt": dict(self.lage_aus(v))["punkt"], "art": self.o_art.get(k),
+                         **({"merkmale": self.mk_ort[k]} if self.mk_ort.get(k) else {})} for k, v in self.orte.items()},
             "strecken": {sid: self.strecke_aus(sid) for sid in sorted(set(self.strecken) | aktiv_strecken)},
             "unterkuenfte": self.unterkuenfte_aus(tage),
             "aufenthalte": self.aufenthalte_aus(tage),

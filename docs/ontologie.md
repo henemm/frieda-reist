@@ -52,7 +52,7 @@ Welche Arten es gibt (Hotel, Refugi, Ryokan, Nachtfähre, Wanderung, Shinkansen,
 # reisen/<reise>/plan/arten.yaml – Arten und Merkmale dieser Reise (docs/ontologie.md)
 arten:
   hotel:
-    grundform: aufenthalt          # aufenthalt | bewegung | folge
+    grundform: aufenthalt          # aufenthalt | bewegung | folge | ort (ADR-0008, freiwillig)
     name: Hotel                    # Anzeige
     farbe: blau                    # Darstellung auf Karte, Legende, Vergleich (Palette der Seite, siehe unten)
     symbol: unterkunft             # Zeichen der Seite (siehe Darstellung); ohne Angabe das der Grundform

@@ -128,7 +128,7 @@ def test_deutsch_wortlaut_der_vorhandenen_zuordnungen():
     import schreiben
     assert konnektor.WORT == {"gewaehlt": "gewählt", "verworfen": "verworfen", "ersetzt": "ersetzt"}
     assert schreiben.WORT == konnektor.WORT
-    assert schreiben.GRUNDFORM_WORT == {"aufenthalt": "Aufenthalt", "bewegung": "Bewegung", "folge": "Folge"}
+    assert schreiben.GRUNDFORM_WORT == {"aufenthalt": "Aufenthalt", "bewegung": "Bewegung", "folge": "Folge", "ort": "Ort"}
     assert schreiben.BUCHUNG_WORTE["bei"] == "Gebucht bei"
     assert schreiben.BUCHUNG_WORTE["preise"] == "Preise je Ding"
     assert len(schreiben.BUCHUNG_WORTE) == 19
