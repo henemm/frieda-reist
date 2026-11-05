@@ -1147,7 +1147,7 @@ function zid(id) {
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke
    Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile
-   Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
+   Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtKarte, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
    Stile seiner Ebene, auf die Bausteinseite (#bausteine) und in docs/design.md; zeigt er eine Grundform, auch in GRUNDFORMEN.
@@ -1354,7 +1354,7 @@ function kennzahlLeiste(kennzahlen, fahrt) {
 /* Organismus Ding (Designsystem 2b): ein Aufenthalt, eine Bewegung oder eine Folge sieht überall gleich aus.
    Etikett oben (was es ist, mit Symbol der Art und Punkt in der Farbe der Kategorie), Titel, Unterzeile, Zustand, Kennung. */
 // Symbol je Art eines Dings: Nacht und Unterkunft ein Bett, eine Wahl ein Abzweig
-const DING_SYM = {nacht: "unterkunft", unterkunft: "unterkunft", wahl: "varianten", ticket: "ticket"};
+const DING_SYM = {nacht: "unterkunft", unterkunft: "unterkunft", wahl: "varianten", ticket: "ticket", ort: "karte"};
 // art: nacht, unterkunft, wahl oder eine Art der Reise (dann ihr Symbol)
 function dingEtikett(text, kat, art) {
   const sym = DING_SYM[art] || (artDef(art) ? artSym(art) : null);
@@ -1584,6 +1584,77 @@ function dingKarte(id, tid, mehr, ohneOrt) {
     : (u.tage || []).some(imKalender);
   if (imKal) k.append(kalenderChip(id));
   return k;
+}
+
+/* ---------- Ding in einer Dichte (ADR-0007 Punkt 2, #332 Schritt B) ----------
+   Eine Funktion „zeige Ding X in Dichte Y“: Die Grundform (grundformVon) wählt den Baustein, die Dichte folgt dem Abstand zur
+   Seite, auf der das Ding gezeigt wird (dichteHier). GRUNDFORMEN (Bausteinseite, docs/design.md) beschreibt dieselbe Zuordnung. */
+// Was die Kurzkarte und die Zeile von Bewegung, Ort, Buchung, Frage und Aufgabe zeigen: Etikett, Name, wenige Angaben, Zustand
+function kurzDaten(id) {
+  const form = grundformVon(id);
+  const fakt = (name, wert) => wert ? [name, wert] : null;
+  let d = null;
+  if (form === "etappe" || form === "ort") {
+    const s = R && (R.strecken || {})[id], o = R && (R.orte || {})[id];
+    if (s) {
+      const arten = [].concat(s.art || []);
+      d = {etikett: arten.length ? arten.map(artName).join(" + ") : T("seite.strecke.verkehrsmittel_offen"), art: arten[0], titel: s.titel,
+        fakten: [[null, [s.ab ? T("seite.strecke.ab_zeit", {zeit: zeitText(s.ab)}) : "", s.an ? T("seite.strecke.an_zeit", {zeit: zeitText(s.an)}) : ""].filter(Boolean).join(" · ")]],
+        extra: [kennzahlLeiste(s.kennzahlen, !!s.art && !summiertArt(s))], marken: s.buchung ? [buchungChip(s)] : []};
+    } else d = {etikett: T("seite.etikett.ort"), art: "ort", titel: (o && o.name) || titelZu(id) || id,
+      fakten: [[null, o && o.ausserhalb ? T("seite.ort.ausserhalb") : ""], [null, (o && o.hinweis) || ""]]};
+  } else if (form === "buchung") {
+    const b = R.buchungen[id], zu = b.status === "storniert";
+    d = {etikett: T("seite.etikett.buchung"), art: "ticket", titel: b.titel || (b.fuer || []).map(x => titelZu(x) || x).join(", "),
+      fakten: [fakt(T("seite.buchung.nummer"), b.nummer), fakt(T("seite.buchung.frist"), b.frist ? datumKurz(b.frist) : ""), fakt(T("seite.buchung.preis"), b.preis)],
+      marken: [chip(zu ? "weg" : b.status === "gebucht" ? "plan" : "offen", BUCHUNG_STATUS[b.status] || b.status)]};
+  } else if (form === "frage") {
+    const z = D.fragen.zeilen.find(x => x.id === id), i = spaltenName(D.fragen.spalten, "was"), j = spaltenName(D.fragen.spalten, "bis");
+    const stand = frageStand(frageStatusText(z)), bis = j >= 0 && z.zellen[j] && z.zellen[j] !== "–" ? z.zellen[j] : "";
+    d = {etikett: T("seite.etikett.frage"), titel: kennungenAufloesen(z.zellen[i >= 0 ? i : 1]).teile,
+      fakten: [fakt(T("seite.label.bis").trim(), bis)], marken: [chip(stand.art === "zu" ? "plan" : "offen", stand.wort)]};
+  } else if (form === "aufgabe") {
+    const a = AG.find(x => x.id === id);
+    if (a) d = {etikett: T("seite.etikett.aufgabe"), titel: a.titel,
+      fakten: [fakt(T("seite.label.bis").trim(), a.frist ? datumKurz(a.frist) : ""), [null, a.zustaendig || ""]],
+      marken: [chip(ueberfaellig(a) ? "offen" : agOffen(a) ? "" : "plan", AG_STATUS[a.status] || a.status)]};
+  }
+  return d;
+}
+// Organismus Ding als Kurzkarte (#332): die Karte für Bewegung, Ort, Buchung, Frage und Aufgabe, im Rahmen der dingKarte: Etikett
+// mit Art, Name mit Kennung, wenige Angaben, Zustand als Chip. Die Einzelheiten stehen an der Heimat des Dings.
+function dingKurzKarte(id) {
+  const d = kurzDaten(id);
+  if (!d) return null;
+  const k = el("div", {class: "karte ziel", id, "data-ziel": id}, dingEtikett(d.etikett, null, d.art), el("div", {class: "k"}, d.titel, zid(id)));
+  for (const f of d.fakten || []) if (f && f[1]) k.append(el("div", {class: "z"}, f[0] ? el("b", {}, f[0] + ": ") : null, f[1]));
+  k.append(...(d.extra || []).filter(Boolean));
+  if ((d.marken || []).length) k.append(el("div", {class: "chips"}, ...d.marken));
+  return k;
+}
+// Dichte eines Dings auf der Seite eines Elements (Ortsseite, Abschnitt, Tag; null = keine Elementseite, etwa der Reiter Karte):
+// seine eigene Seite zeigt es ganz („seite“), die Seite seines Elternelements als Karte, überall sonst steht eine Zeile mit Link
+function dichteHier(id, seite) {
+  if (id === seite) return "seite";
+  const h = heimat(id), heim = h ? h.tag || h.abschnitt || null : null;
+  return heim === seite ? "karte" : "zeile";
+}
+// Organismus Ding in Dichte: dichte „zeile“ (Listenzeile mit Link zur Heimat) oder „karte“; „seite“ ist die Ansicht selbst, sie
+// zeichnet der Router. Fehlt einer Grundform die Karte, gilt die Zeile; opt: tid, mehr, ohneOrt für die dingKarte.
+function zeigeDing(id, dichte, opt = {}) {
+  const form = grundformVon(id), w = wahlZu.get(id);
+  const wege = {
+    unterkunft: {karte: () => dingKarte(id, opt.tid, opt.mehr, opt.ohneOrt)},
+    aufenthalt: {zeile: () => ohneTagZeile(id), karte: () => dingKarte(id, null, null, opt.ohneOrt)},
+    wahlstelle: {zeile: () => wahlListenZeile(w), karte: () => wahlKarte(w)},
+    etappe: {karte: () => dingKurzKarte(id)}, ort: {karte: () => dingKurzKarte(id)}, buchung: {karte: () => dingKurzKarte(id)},
+    frage: {karte: () => dingKurzKarte(id)}, aufgabe: {karte: () => dingKurzKarte(id)},
+  };
+  const weg = wege[form] || {};
+  if (dichte === "karte" && weg.karte) return weg.karte();
+  if (weg.zeile) return weg.zeile();
+  const d = kurzDaten(id);   // ohne eigene Zeile: Listenzeile mit Etikett, Name und Link zur Heimat
+  return listenZeile(form || "wissen", d && (DING_SYM[d.art] || (artDef(d.art) ? artSym(d.art) : null)) || "wissen", d ? d.titel : titelZu(id) || id, d ? d.etikett : null, id, id);
 }
 
 /* ---------- Buchung (B-…, #76, Product Owner 29.10.2026): eigenes Ding zu Unterkunft, Aufenthalt oder Strecke ----------
@@ -1999,10 +2070,6 @@ function artTabelle(art) {
 }
 function artUebersicht(arten) {
   return el("div", {class: "art-uebersicht"}, arten.filter(a => (R.arten || {})[a]).map(artTabelle));
-}
-// Am Abschnitt des Wissens (und der Ortsseite): die Arten, die reise.json „uebersichten“ nennt
-function uebersichtAmElement(m, a) {
-  if (R && (a.uebersicht || []).length) m.append(el("section", {class: "am-element"}, el("h3", {}, T("seite.art_uebersicht.kopf")), artUebersicht(a.uebersicht)));
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-art-sort]");
@@ -2865,8 +2932,8 @@ function ohneTagZeile(id) {
 function ohneTag(m) {
   if (!OHNE_TAG.length) return;
   m.append(el("section", {class: "ohne-tag"}, el("h3", {}, T("seite.karte.ohne_tag_titel", {n: OHNE_TAG.length})),
-    el("p", {class: "meldung"}, T("seite.karte.ohne_tag_hinweis")), ...OHNE_TAG_HIER.map(id => dingKarte(id)),
-    OHNE_TAG.length > OHNE_TAG_HIER.length ? el("div", {class: "wliste"}, OHNE_TAG.filter(id => !OHNE_TAG_HIER.includes(id)).map(ohneTagZeile)) : null));
+    el("p", {class: "meldung"}, T("seite.karte.ohne_tag_hinweis")), ...OHNE_TAG_HIER.map(id => zeigeDing(id, dichteHier(id, null))),
+    OHNE_TAG.length > OHNE_TAG_HIER.length ? el("div", {class: "wliste"}, OHNE_TAG.filter(id => !OHNE_TAG_HIER.includes(id)).map(id => zeigeDing(id, dichteHier(id, null)))) : null));
 }
 /* Vorlage Karte (#231, K10): der eigene Reiter „Karte“, sobald der Baustein Karte an ist, auch ohne den Baustein Varianten.
    Er zeigt den Plan der Zeitachse (PLAN_ANSICHT) und alles mit Lage, dazu die Aufenthalte ohne Tag. Der Start bleibt die Reise. */
@@ -3580,9 +3647,7 @@ function ansichtOrt(m, a) {
     m.append(el("div", {class: "wliste"}, a.wissen.map(w =>
       listenZeile("wissen", "wissen", w.titel, [w.in, w.notiz].filter(Boolean).join(" · "), w.id))));
   }
-  wahlAmElement(m, a.id);   // Alternativen, die an diesem Ort hängen (an: [O-…])
-  aufenthalteAmElement(m, a.id);
-  uebersichtAmElement(m, a);
+  amElement(m, a);   // Alternativen, Aufenthalte und Übersichten, die an diesem Ort hängen (an: [O-…])
 }
 // Kleine Lagekarte des Orts auf der Übersichtskarte, die anderen Orte als graue Punkte (25.10.2026)
 function ortKarte(m, oid) {
@@ -3778,9 +3843,7 @@ function ansichtAbschnitt(m, a) {
     m.append(s);
   } else m.append(abschnittInhalt(a));
   // Alternativen, die an diesem Abschnitt hängen (an: [W-…] oder [O-…]): am Element, mit Vergleich
-  wahlAmElement(m, a.id);
-  aufenthalteAmElement(m, a.id);
-  uebersichtAmElement(m, a);
+  amElement(m, a);
 }
 
 /* ---------- Suche ---------- */
@@ -3837,18 +3900,18 @@ function markiert(text, begriffe, laenge) {
 const GRUNDFORMEN = [
   ["reise", "Reise", "–", {zeile: [], vorschau: [reiseEnde, mitreisende, standLeiste], karte: [uebersichtKarte], seite: [ansichtReise, ansichtKarte]}],
   ["tag", "Folge: Tag", "T-01", {zeile: [tagZeile], vorschau: [tagKachel], karte: [tagKarte, tagesKarte], seite: [ansichtTag, ansichtReise]}],
-  ["etappe", "Bewegung: Etappe, Strecke", "E-01", {zeile: [streckeZeile], vorschau: [abschnittKarte], karte: [], seite: [ansichtAbschnitt, tagEbenen]}],
-  ["ort", "Ort", "O-01", {zeile: [wegVerlauf], vorschau: [tagOrteZeilen, listenZeile], karte: [], seite: [ansichtOrt]}],
+  ["etappe", "Bewegung: Etappe, Strecke", "E-01", {zeile: [streckeZeile], vorschau: [abschnittKarte], karte: [dingKurzKarte], seite: [ansichtAbschnitt, tagEbenen]}],
+  ["ort", "Ort", "O-01", {zeile: [wegVerlauf], vorschau: [tagOrteZeilen, listenZeile], karte: [dingKurzKarte], seite: [ansichtOrt]}],
   ["unterkunft", "Aufenthalt mit Nacht: Unterkunft", "U-01", {zeile: [nachtZeile], vorschau: [listenZeile], karte: [dingKarte], seite: [nachtAbschnitt]}],
   ["aufenthalt", "Aufenthalt ohne Nacht", "A-01", {zeile: [aufenthaltZeile], vorschau: [listenZeile], karte: [dingKarte], seite: [tagKarte, ohneTag, ansichtOrt, ansichtAbschnitt]}],
-  ["buchung", "Buchung zu Aufenthalt oder Bewegung", "B-01", {zeile: [buchungChip], vorschau: [listenZeile], karte: [], seite: [buchungBlock]}],
+  ["buchung", "Buchung zu Aufenthalt oder Bewegung", "B-01", {zeile: [buchungChip], vorschau: [listenZeile], karte: [dingKurzKarte], seite: [buchungBlock]}],
   ["wahlstelle", "Wahl: Wahlstelle", "V-01", {zeile: [wahlZeile], vorschau: [listenZeile], karte: [wahlKarte], seite: [wahlEinstieg, wahlVergleich, nachtAbschnitt]}],
   ["option", "Wahl: Option", "V-01.a", {zeile: [optionBlock], vorschau: [wahlVergleich], karte: [wahlVergleich], seite: [optionEinzelheiten]}],
   ["plan", "Folge: Plan", "P-A", {zeile: [planMarke], vorschau: [steckbrief], karte: [], seite: [ansichtPlanDetail]}],
-  ["frage", "Offenes: Frage", "F-01", {zeile: [frageZeile], vorschau: [], karte: [], seite: [ansichtFragen]}],
+  ["frage", "Offenes: Frage", "F-01", {zeile: [frageZeile], vorschau: [], karte: [dingKurzKarte], seite: [ansichtFragen]}],
   ["wissen", "Wissen: Praxis, Quelle, Plantext", "W-01", {zeile: [], vorschau: [listenZeile], karte: [], seite: [ansichtAbschnitt, ansichtWissen, artUebersicht]}],
   ["abschnitt", "Wissen: Abschnitt eines Textes", "E-01.eckdaten", {zeile: [], vorschau: [], karte: [block], seite: [reiseText, reiterGruppe, leseAbschnitt]}],
-  ["aufgabe", "Offenes: Aufgabe", "AG-01", {zeile: [agEintrag], vorschau: [], karte: [], seite: [ansichtAufgaben, agFormular]}],
+  ["aufgabe", "Offenes: Aufgabe", "AG-01", {zeile: [agEintrag], vorschau: [], karte: [dingKurzKarte], seite: [ansichtAufgaben, agFormular]}],
   ["rueckmeldung", "Offenes: Rückmeldung, Wunsch", "R-…", {zeile: [rmEintrag], vorschau: [], karte: [wuKarte], seite: [rmFormular, ansichtWuensche]}],
 ];
 // Grundform einer Kennung aus den Daten (nicht aus dem Muster der Kennung)
@@ -4108,6 +4171,17 @@ function ansichtBausteine(m) {
   { const box = el("div", {}); ohneTag(box);
     teil("Organismus", "Ohne Tag", "Aufenthalte, die an keinem Tag stehen (vor Ort gesammelt): vollständig unter der Karte.",
       box.childNodes.length ? box : el("p", {class: "meldung"}, "Keine Aufenthalte ohne Tag (Muster entfällt).")); }
+  { // Ding in Dichte (#332): dieselben Dinge der Reise als Zeile und als Karte, gewählt nach Grundform und Abstand
+    const proben = [["Bewegung", Object.keys(R && R.strecken || {})[0]], ["Ort", Object.keys(R && R.orte || {})[0]], ["Buchung", Object.keys(R && R.buchungen || {})[0]],
+      ["Frage", (D.fragen.zeilen[0] || {}).id], ["Aufgabe", (AG[0] || {}).id]].filter(([, id]) => id);
+    teil("Organismus", "Ding in Dichte", "zeigeDing(Kennung, Dichte) wählt nach der Grundform den Baustein; dingKurzKarte ist die Karte für Bewegung, Ort, Buchung, Frage und Aufgabe. "
+      + "Das Muster steht nur für Dinge, die diese Reise hat.",
+      proben.length ? proben.map(([n, id]) => fall(n + " als Karte", dingKurzKarte(id))) : el("p", {class: "meldung"}, "Keine Dinge dieser Grundformen (Muster entfällt)."),
+      proben.map(([n, id]) => fall(n + " als Zeile", zeigeDing(id, "zeile"))));
+    const ort = abschnitte.find(x => x.typ === "ort"), box = el("div", {});
+    if (ort) amElement(box, ort);
+    teil("Organismus", "Am Element", "Was an einem Ort oder Abschnitt hängt, je Ding in der Dichte seines Abstands: Wahlstellen und Aufenthalte hier als Karte, die anderer Heimat als Zeile.",
+      box.childNodes.length ? box : el("p", {class: "meldung"}, "An keinem Ort dieser Reise hängt etwas (Muster entfällt).")); }
   // Kennungen sind auf dieser Seite nur Beispiele: keine Sprungziele, damit sie den echten Stellen nicht im Weg stehen
   m.querySelectorAll("[id]").forEach(x => { x.removeAttribute("id"); x.removeAttribute("data-ziel"); });
 }
@@ -4812,80 +4886,67 @@ document.addEventListener("click", e => {
 }, true);
 window.addEventListener("online", () => agLaden().then(rmNeuZeichnen));
 
-/* ---------- Heimat eines Elements (Seitenordnung, 28.10.2026; als Regel seit ADR-0007) ----------
+/* ---------- Heimat eines Elements (Seitenordnung, 28.10.2026; als Regel seit ADR-0007, #332 Schritt B) ----------
    Unterkunft und Wahlstelle haben keine eigene Seite: Ein Link darauf führt zu dem Element, an dem sie hängen (Nacht oder
    Strecke eines Tages, Ort, Abschnitt des Wissens); was an keinem Element hängt, steht in „Zu tun“.
+   Die Regel: Heimat = die Seite des Elternelements (an:, sonst die Vorgabe der Grundform, vorgabeEltern); hat das Elternelement
+   keine eigene Seite, die Heimat seines Elternelements. Die Dichte folgt dem Abstand (dichteHier, zeigeDing).
    -> {tag, ziel} | {abschnitt, ziel} (Ort oder Wissen) | {offen: true, ziel} | null; ersatz: Ziel, falls ziel fehlt */
-function heimat(id, tiefe = 0) {
-  if (!PLAN_ANSICHT || tiefe > 3) return null;
-  const imPlan = tid => PLAN_ANSICHT.tage.some(t => t.id === tid);
-
-  // Elternbezug (ADR-0007): Sagt ein Ding mit an:, wo es zu Hause ist, ist seine Heimat die Seite dieses Elternelements.
-  // Ohne Seite (an: reise, ein Ort ohne Abschnitt) gilt die Vorgabe der Grundform weiter.
-  const eltern = (R.eltern || {})[id];
-  if (eltern && eltern !== "reise") {
-    if (imPlan(eltern)) return {tag: eltern, ziel: id};
-    if (ETAPPE_TAG.has(eltern)) return {tag: ETAPPE_TAG.get(eltern), ziel: id};
-    if (proId.has(eltern)) return {abschnitt: eltern, ziel: id};
-    if (R.unterkuenfte[eltern] || R.strecken[eltern] || (R.aufenthalte || {})[eltern]) {
-      const h = heimat(eltern, tiefe + 1);
-      if (h) return {...h, ziel: id};
-    }
-  }
-
-  if (R.buchungen && R.buchungen[id]) {   // Buchung: ihr erstes Ding (dort steht der Block)
-    const h = heimat((R.buchungen[id].fuer || [])[0], tiefe + 1);
-    return h ? {...h, ziel: id} : null;
-  }
-  if ((R.aufenthalte || {})[id]) {   // Aufenthalt ohne Nacht: der Tag, an dem er steht, ohne Tag die Seite seines Orts (ADR-0007)
-    const t = (R.aufenthalte[id].tage || []).find(imPlan);
-    if (t) return {tag: t, ziel: id};
-    const ort = R.aufenthalte[id].ort;
-    return !R.aufenthalte[id].tage.length && proId.has(ort) && proId.get(ort).typ === "ort" ? {abschnitt: ort, ziel: id} : null;
+// Vorgabe des Elternbezugs je Grundform (ADR-0007, Punkt 1), wenn ein Ding kein an: hat: {von: Elternelemente, der erste mit
+// Seite gilt; ersatz: Wahlstelle, deren Heimat ersatzweise gilt; offen: ohne Seite „Zu tun“}
+function vorgabeEltern(id) {
+  const a = (R.aufenthalte || {})[id];
+  if (R.buchungen && R.buchungen[id]) return {von: [(R.buchungen[id].fuer || [])[0]]};   // Buchung: ihr erstes Ding (dort steht der Block)
+  if (a) {   // Aufenthalt ohne Nacht: der Tag, an dem er steht, ohne Tag die Seite seines Orts
+    const ortSeite = !a.tage.length && proId.has(a.ort) && proId.get(a.ort).typ === "ort";
+    return {von: a.tage.length ? a.tage : ortSeite ? [a.ort] : []};
   }
   if (R.strecken[id] && !ETAPPE_TAG.has(id)) {   // Fahrt ohne Dossier: der Tag, an dem sie gefahren wird
     const t = PLAN_ANSICHT.tage.find(x => x.strecken.some(st => st.id === id));
-    return t ? {tag: t.id, ziel: id} : null;
+    return {von: t ? [t.id] : []};
   }
-  if (R.unterkuenfte[id]) {
-    const t = R.unterkuenfte[id].naechte.find(imPlan);
-    if (t) return {tag: t, ziel: id};
+  if (R.unterkuenfte[id]) {   // Nacht am Tag; sonst die Option, in der sie steht
     const o = R.wahlstellen.flatMap(w => w.optionen).find(x => (x.unterkuenfte || []).includes(id));
-    return o ? {...heimat(o.id, tiefe + 1), ziel: id} : null;
+    return {von: [...R.unterkuenfte[id].naechte, ...(o ? [o.id] : [])]};
   }
   const w = wahlZu.get(id) || (optionZu.get(id) || [])[0];
-  if (!w) return null;
-  const t = w.an.find(imPlan);
-  if (t) return {tag: t, ziel: id, ersatz: w.id};
-  for (const x of w.an_ids || []) {
-    if (imPlan(x)) return {tag: x, ziel: id, ersatz: w.id};
-    if (ETAPPE_TAG.has(x)) return {tag: ETAPPE_TAG.get(x), ziel: id, ersatz: w.id};
-    if (proId.has(x)) return {abschnitt: x, ziel: id, ersatz: w.id};
-    const h = R.unterkuenfte[x] || wahlZu.has(x) || R.strecken[x] || (R.aufenthalte || {})[x] ? heimat(x, tiefe + 1) : null;
-    if (h) return {...h, ziel: id, ersatz: w.id};
+  if (!w) return {von: []};
+  // Wahlstelle und Option: ihre Tage und Elemente (an:), zuletzt der erste Tag ihrer Möglichkeiten im Plan (Reiseteil zur Wahl)
+  return {von: [...w.an, ...(w.an_ids || []), ...w.optionen.flatMap(o => o.tage || [])], ersatz: w.id, offen: true};
+}
+// Seite eines Elternelements: sein Tag im Plan, der Tag seiner Etappe, sein Abschnitt; sonst die Heimat dessen, was selbst hängt
+function seiteVon(x, tiefe) {
+  if (PLAN_ANSICHT.tage.some(t => t.id === x)) return {tag: x};
+  if (ETAPPE_TAG.has(x)) return {tag: ETAPPE_TAG.get(x)};
+  if (proId.has(x)) return {abschnitt: x};
+  if (R.unterkuenfte[x] || R.strecken[x] || (R.aufenthalte || {})[x] || wahlZu.has(x) || optionZu.has(x)) return heimat(x, tiefe + 1);
+  return null;
+}
+function heimat(id, tiefe = 0) {
+  if (!PLAN_ANSICHT || tiefe > 3) return null;
+  const eltern = (R.eltern || {})[id], v = vorgabeEltern(id);   // an: gilt vor der Vorgabe; an: reise hat keine Seite
+  for (const von of [eltern && eltern !== "reise" ? eltern : null, ...v.von]) {
+    const h = von && seiteVon(von, tiefe);
+    if (h) return {...h, ziel: id, ...(v.ersatz && von !== eltern ? {ersatz: v.ersatz} : {})};
   }
-  // Reiseteil zur Wahl (Wahlstelle in der Route, ohne an:): der erste Tag ihrer Möglichkeiten im Plan der Zeitachse
-  const ot = w.optionen.flatMap(o => o.tage || []).find(imPlan);
-  if (ot) return {tag: ot, ziel: id, ersatz: w.id};
-  return {offen: true, ziel: id, ersatz: w.id};
+  return v.offen ? {offen: true, ziel: id, ersatz: v.ersatz} : null;
 }
 // Tag, an dem ein Ding vollständig steht (Etappe: der Tag, an dem sie gegangen wird); sonst undefined
 const heimTag = id => ETAPPE_TAG.get(id) || (heimat(id) || {}).tag;
-// Wahlstellen am Element (Ort, Abschnitt des Wissens; an: […]): an der Heimat vollständig mit Vergleich, sonst als Zeile mit
-// Link zur Heimat (#214)
-function wahlAmElement(m, id) {
+// Organismus Am Element (#332): was an einem Ort oder Abschnitt des Wissens hängt (an:, Vorgabe der Grundform), je Ding in der
+// Dichte seines Abstands (dichteHier, zeigeDing): Wahlstellen und Aufenthalte hat dieses Element als Heimat vollständig, die
+// Wahlstellen anderer Heimat stehen als Zeile mit Link (#214); dazu die Übersichten der Arten, die reise.json „uebersichten“ nennt
+function amElement(m, a) {
+  const id = a.id, bereich = (titel, ...inhalt) => m.append(el("section", {class: "am-element"}, el("h3", {}, titel), ...inhalt));
   const ws = wahlAn([id]);
-  if (!ws.length) return;
-  const heim = w => { const h = heimat(w.id); return !!h && h.abschnitt === id; };
-  const zeilen = ws.filter(w => !heim(w));
-  m.append(el("section", {class: "am-element"}, el("h3", {}, T("seite.wahl.zur_wahl")), ws.filter(heim).map(wahlKarte),
-    zeilen.length ? el("div", {class: "wliste"}, zeilen.map(wahlListenZeile)) : null));
-}
-// Aufenthalte, deren Heimat dieses Element ist (Ort, Abschnitt des Wissens; an: oder Vorgabe ohne Tag, ADR-0007): vollständig
-function aufenthalteAmElement(m, id) {
-  const ids = Object.keys(R && R.aufenthalte || {}).filter(a => (heimat(a) || {}).abschnitt === id);
-  // Heimat: vollständig als Karte (#328); den Ort nennt eine Ortsseite schon
-  if (ids.length) m.append(el("section", {class: "am-element"}, el("h3", {}, T("seite.aufenthalt.am_element")), ...ids.map(a => dingKarte(a, null, null, (R.aufenthalte[a] || {}).ort === id))));
+  if (ws.length) {
+    const karten = ws.filter(w => dichteHier(w.id, id) === "karte"), zeilen = ws.filter(w => !karten.includes(w));
+    bereich(T("seite.wahl.zur_wahl"), karten.map(w => zeigeDing(w.id, "karte")), zeilen.length ? el("div", {class: "wliste"}, zeilen.map(w => zeigeDing(w.id, "zeile"))) : null);
+  }
+  // Aufenthalte vollständig als Karte (#328); den Ort nennt eine Ortsseite schon
+  const auf = Object.keys(R && R.aufenthalte || {}).filter(x => dichteHier(x, id) === "karte");
+  if (auf.length) bereich(T("seite.aufenthalt.am_element"), ...auf.map(x => zeigeDing(x, "karte", {ohneOrt: R.aufenthalte[x].ort === id})));
+  if (R && (a.uebersicht || []).length) bereich(T("seite.art_uebersicht.kopf"), artUebersicht(a.uebersicht));
 }
 // Wahlstellen, die an einem Element hängen (an_ids), ohne die, die der Tag schon über Nacht, Strecke oder wahl: zeigt
 const wahlAn = (ids, ohne) => R ? R.wahlstellen.filter(w => (w.an_ids || []).some(x => ids.includes(x)) && !(ohne || []).includes(w.id)) : [];

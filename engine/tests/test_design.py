@@ -203,13 +203,30 @@ def test_kein_baustein_ruft_einen_baustein_hoeherer_ebene_auf():
 # zurückgeführt; die Liste darf nur kürzer werden (Muster test_texte.py).
 EIGENE_FLAECHEN = {
     "abschnittInhalt", "aenderungenZeigen", "ansichtEtappen", "ansichtGruppe", "ansichtRueckmeldungen", "ansichtSuche",
-    "ansichtVarianten", "artTabelle", "aufenthalteAmElement", "chips", "dingMarke", "etappeTeil",
+    "ansichtVarianten", "artTabelle", "chips", "dingMarke", "etappeTeil",
     "etappenKarte", "festeTermine", "fuerDich", "heuteBlock", "jetztSenden", "kalenderChip",
     "karteZeichnen", "listenTitel", "naechsteFristen", "ontologieTabelle", "optionVerlauf", "ortChips",
-    "ortKarte", "punktPopup", "regelZeilen", "releaseFuss", "tagKopf", "uebersichtAmElement",
-    "vergleichTabelle", "wahlAmElement", "warnungen", "wegKurz", "wissenKarte", "wissenPopup",
+    "ortKarte", "punktPopup", "regelZeilen", "releaseFuss", "tagKopf",
+    "vergleichTabelle", "warnungen", "wegKurz", "wissenKarte", "wissenPopup",
     "zeigeReiter",
 }
+
+
+def test_dichte_ist_eine_regel_und_heimat_hat_keine_fallunterscheidung_je_grundform():
+    """#332, Schritt B (ADR-0007, Punkt 2): Eine Funktion zeigt ein Ding in einer Dichte und wählt den Baustein nach der Grundform;
+    jede Grundform mit eigener Karte steht in GRUNDFORMEN mit ihr (auch Bewegung, Ort, Buchung, Frage, Aufgabe). heimat() ist
+    die Regel „Seite des Elternelements“ und fragt die Vorgabe je Grundform in vorgabeEltern ab."""
+    js = skript()
+    block = js[js.index("const GRUNDFORMEN = ["):js.index("];", js.index("const GRUNDFORMEN = ["))]
+    for kennung in ("etappe", "ort", "buchung", "frage", "aufgabe"):
+        zeile = re.search(rf'\["{kennung}",.*', block).group(0)
+        assert "karte: [dingKurzKarte]" in zeile, kennung
+    heimat = _funktion("heimat")
+    assert "vorgabeEltern(" in heimat and "seiteVon(" in heimat
+    assert not re.search(r"R\.(unterkuenfte|aufenthalte|buchungen|strecken)\[id\]", heimat), "heimat() liest keine Grundform, die Vorgabe tut es"
+    for stelle in ("wahlAmElement", "aufenthalteAmElement", "uebersichtAmElement"):
+        assert stelle not in js, stelle   # eine Stelle (amElement) wählt die Dichte nach dem Abstand
+    assert "dichteHier(" in _funktion("amElement") and "zeigeDing(" in _funktion("amElement")
 
 
 def test_eigene_flaechen_ausserhalb_des_inventars_werden_nur_weniger():
