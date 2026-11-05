@@ -34,7 +34,20 @@ for (const breite of [390, 1300]) {
     a.punkte[titel] = await punkte(p);
   }
   if (a.ansichten.length) await p.click('.kartenansichten button:text-is("Übersicht")');
-  if (fall === "offen") {
+  if (fall === "plaene") {
+    // Linien tragen die Klasse rh-plan-<farbe> des Plans (vorlage.html, Karte); die Farben müssen sich unterscheiden
+    // Mehrere Pläne stehen nebeneinander auf dem Reiter „Varianten“; der Reiter „Karte“ zeigt nur den Plan der Zeitachse
+    await p.goto(basis + "#plaene");
+    await p.waitForSelector(".kartenbox path");
+    a.auto = await p.evaluate(() => !![...document.querySelectorAll("#main .legende span")].find(x => /schematisch/.test(x.textContent)));
+    a.planLegende = await p.evaluate(() => [...document.querySelectorAll("#main .legende span")].map(x => x.textContent.trim()));
+    Object.assign(a, await p.evaluate(() => {
+      const pfade = [...document.querySelectorAll(".kartenbox path")];
+      const klassen = [...new Set(pfade.flatMap(x => [...x.classList]).filter(c => /^rh-plan-/.test(c)))];
+      const farben = Object.fromEntries(klassen.map(c => [c, getComputedStyle(pfade.find(x => x.classList.contains(c))).stroke]));
+      return {planKlassen: klassen, planFarben: farben};
+    }));
+  } else if (fall === "offen") {
     await p.goto(basis + "#plan");
     await p.waitForSelector("#main h2");
     a.imTagesplan = (await p.textContent("#main")).includes("Wochenmarkt");

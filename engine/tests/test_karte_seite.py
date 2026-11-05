@@ -20,7 +20,7 @@ from test_karte_auto import LAGEN, punkt  # noqa: E402
 from test_tagesseite import PLAYWRIGHT, WURZEL, plan_fest  # noqa: E402
 
 
-def seite(tmp_path, browser, fest=False, bausteine="[karte, tagesseiten, rueckmeldungen, fragen, aufgaben]"):
+def seite(tmp_path, browser, fest=False, bausteine="[karte, tagesseiten, rueckmeldungen, fragen, aufgaben]", fall=None):
     quelle = tmp_path / "quelle"
     shutil.copytree(WURZEL / "beispiel/reisen/beispielreise", quelle)
     if fest:
@@ -53,7 +53,7 @@ def seite(tmp_path, browser, fest=False, bausteine="[karte, tagesseiten, rueckme
     threading.Thread(target=s.serve_forever, daemon=True).start()
     try:
         aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_karte.mjs"), str(PLAYWRIGHT),
-                              f"http://127.0.0.1:{s.server_address[1]}/beispiel/", "fest" if fest else "offen"],
+                              f"http://127.0.0.1:{s.server_address[1]}/beispiel/", fall or ("fest" if fest else "offen")],
                              capture_output=True, text=True, timeout=300, env={**os.environ, "RH_BROWSER": browser})
     finally:
         s.shutdown()
@@ -94,3 +94,15 @@ def test_tageskarte_am_tag_mit_strecke(tmp_path, browser):
         assert a["tag2"] == {"karten": 1, "gefuellt": 2, "umriss": 1, "schematisch": True}, a["tag2"]
         # Tag 1 hat keine Strecke: keine Karte, kein leerer Rahmen
         assert a["tag1"] == {"karten": 0, "gefuellt": 0, "umriss": 0, "schematisch": False}, a["tag1"]
+
+
+@ohne_browser
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_zwei_plaene_erscheinen_auf_der_automatischen_karte_in_zwei_farben(tmp_path, browser):
+    """K16 (#234): Mit Baustein Varianten und zwei offenen Plänen zeichnet die automatische Karte auf dem Reiter „Varianten“ die Strecken in den Planfarben
+    der Pläne (Plan A = a, Plan B = b); Strecken beider Pläne einmal neutral. Die Beispielwerte kommen aus der Beispielreise."""
+    for breite, a in seite(tmp_path, browser, bausteine="[varianten, karte, tagesseiten, fragen]", fall="plaene").items():
+        assert a["auto"], "die Karte muss die automatische sein (ohne plan/karte.yaml)"
+        assert {"Plan A", "Plan B"} <= set(a["planLegende"]), a["planLegende"]
+        assert {"rh-plan-a", "rh-plan-b"} <= set(a["planKlassen"]), a["planKlassen"]
+        assert a["planFarben"]["rh-plan-a"] != a["planFarben"]["rh-plan-b"], a["planFarben"]
