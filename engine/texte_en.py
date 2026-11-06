@@ -1603,7 +1603,7 @@ TEXTE = {
     "schreiben.option_aendern.8": "Nothing to change at {oid} (titel, text, plus, minus, erfordert, schliesst_aus, ausloeser, siehe, unterkuenfte, strecken, aufenthalte, orte, sequence, source, favoured).",
     "schreiben.option_anlegen.1": "The choice {vid} does not exist (variants lists all); create a new one with wahlstelle_anlegen.",
     "schreiben.option_anlegen.2": "{vid} already has 26 options.",
-    "schreiben.option_bauen.1": "Every option is an object with titel and content (unterkuenfte, strecken or sequence).",
+    "schreiben.option_bauen.1": "Every option is an object with titel and content (unterkuenfte, strecken, aufenthalte, orte or sequence).",
     "schreiben.option_bauen.2": "Option “{w1}”: only one of unterkuenfte, sequence or (strecken, aufenthalte, orte); strecken, aufenthalte and orte may stand together.",
     "schreiben.option_bauen.3": "Option “{w1}”: {f} {w3} does not exist.",
     "schreiben.option_bauen.4": "“siehe” must be an ID (e.g. W-05).",

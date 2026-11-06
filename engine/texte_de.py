@@ -1604,7 +1604,7 @@ TEXTE = {
     "schreiben.option_aendern.8": "Nichts zu ändern an {oid} (titel, text, plus, minus, erfordert, schliesst_aus, ausloeser, siehe, unterkuenfte, strecken, aufenthalte, orte, folge, quelle, favorisiert).",
     "schreiben.option_anlegen.1": "Die Wahlstelle {vid} gibt es nicht (varianten zeigt alle); eine neue mit wahlstelle_anlegen.",
     "schreiben.option_anlegen.2": "{vid} hat schon 26 Optionen.",
-    "schreiben.option_bauen.1": "Jede Option ist ein Objekt mit titel und Inhalt (unterkuenfte, strecken oder folge).",
+    "schreiben.option_bauen.1": "Jede Option ist ein Objekt mit titel und Inhalt (unterkuenfte, strecken, aufenthalte, orte oder folge).",
     "schreiben.option_bauen.2": "Option „{w1}“: nur eines von unterkuenfte, folge oder (strecken, aufenthalte, orte); strecken, aufenthalte und orte dürfen zusammen stehen.",
     "schreiben.option_bauen.3": "Option „{w1}“: {f} {w3} gibt es nicht.",
     "schreiben.option_bauen.4": "„siehe“ muss eine ID sein (z. B. W-05).",
