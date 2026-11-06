@@ -46,7 +46,7 @@ VORLAGEN = Path(__file__).with_name("reisevorlage")   # je Sprache ein Ordner (d
 
 def vorlage_ordner(sprache):
     return VORLAGEN / sprache if (VORLAGEN / sprache).is_dir() else VORLAGEN / texte.VORGABE
-ARTEN = ("W", "F", "O", "U", "A", "E", "T", "V", "B")     # nummerierte IDs (A = Aufenthalt ohne Nacht, B = Buchung); Pläne (P-A) und Aufgaben (AG, live) nicht
+ARTEN = ("W", "F", "O", "U", "A", "E", "T", "V", "B", "G")     # nummerierte IDs (A = Aufenthalt ohne Nacht, B = Buchung, G = Gegenstand der Packliste); Pläne (P-A) und Aufgaben (AG, live) nicht
 GRUPPEN = ("wissen", "praxis", "quelle")
 BAUSTEINE_IDEE = ["rueckmeldungen", "fragen", "aufgaben", "wuensche"]
 

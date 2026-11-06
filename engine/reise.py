@@ -32,7 +32,7 @@ ROLLEN_ALT = {"reisend": "gast", "einbringer": "mitwirkend", "bestimmer": "organ
 def rolle_neu(rolle):
     """Alter oder neuer Rollenschlüssel -> neuer Schlüssel (Unbekanntes bleibt unverändert)."""
     return ROLLEN_ALT.get(rolle, rolle)
-BAUSTEINE = ("varianten", "karte", "rueckmeldungen", "fragen", "aufgaben", "wuensche",
+BAUSTEINE = ("varianten", "karte", "rueckmeldungen", "fragen", "aufgaben", "wuensche", "packliste",
              "waechter", "profile")
 # Bausteine, die es nicht mehr gibt (#214: Tagesseiten gehören zur Grundform Tag und sind immer da). Eine reise.yaml, die sie
 # nennt, baut weiter; der Eintrag wird gelesen und ist ohne Wirkung.
@@ -93,6 +93,11 @@ AKTIONEN = {
     "wunsch_erlebt":    {"rolle": "mitwirkend", "baustein": "wuensche", "ab": ("alles", "nachlese")},
     "wunsch_einplanen": {"rolle": "organisator", "baustein": "wuensche", "ab": ("alles",)},
     "aufgabe":      {"rolle": "mitwirkend", "baustein": "aufgaben", "ab": ("alles", "nachlese")},
+    # ADR-0010 (#370): Gegenstände der Packliste anlegen und ändern, abhaken (Packstand). In jedem Status schreibbar, auch unterwegs
+    # (Nachkaufen vor Ort) und in der Nachlese; im Archiv nicht. Ändern eigener Einträge und alle anderen Regeln prüft der Schreibweg.
+    "gegenstand":   {"rolle": "mitwirkend", "baustein": "packliste", "ab": ("alles", "nachlese")},
+    "packliste_uebernehmen": {"rolle": "organisator", "baustein": "packliste", "ab": ("alles",)},
+    "packen":       {"rolle": "mitwirkend", "baustein": "packliste", "ab": ("alles", "nachlese")},
     "alternative":  {"rolle": "mitwirkend", "baustein": "varianten", "ab": ("alles",)},
     # Paket C: Gespräch für alle. Entscheiden gilt für Wahlstellen (Baustein varianten); eine Antwort auf eine Frage
     # braucht den Baustein fragen; wer einladen darf, steht je Reise in regeln.einladen (hier nur die Vorgabe).
@@ -124,7 +129,7 @@ AKTIONEN = {
 }
 # Lesende Konnektor-Werkzeuge, die zu einem zuschaltbaren Baustein gehören
 LESE_BAUSTEIN = {"offene_fragen": "fragen", "varianten": "varianten", "merkmale": "varianten",
-                 "aufgaben": "aufgaben", "rueckmeldungen": "rueckmeldungen", "wuensche": "wuensche"}
+                 "aufgaben": "aufgaben", "rueckmeldungen": "rueckmeldungen", "wuensche": "wuensche", "packliste": "packliste"}
 ENTSCHEIDUNGEN = ("gewaehlt", "verworfen", "ersetzt")
 
 

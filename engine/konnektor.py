@@ -65,6 +65,7 @@ import karte  # noqa: E402
 import kalender  # noqa: E402
 import konten  # noqa: E402
 import oauth  # noqa: E402
+import packliste  # noqa: E402
 import belege as bl  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 import schnittstelle  # noqa: E402
@@ -76,7 +77,8 @@ from routen import FARBEN, FEST_NAMEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN
 
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "rueckmeldung_erledigen",
-                     "frage_beantworten", "entscheiden", "person_einladen", "person_entfernen", "wunsch_aendern", "beleg_anlegen"}
+                     "frage_beantworten", "entscheiden", "person_einladen", "person_entfernen", "wunsch_aendern", "beleg_anlegen",
+                     "gegenstand_packen"}
 # Werkzeuge, die direkt in die Ontologie der Reise schreiben (ADR-0001, O-3; engine/schreiben.py): nur bei Instanzen mit
 # Schreibweg (KN_SCHREIBDIENST); Organisator:innen schreiben, Mitwirkende schlagen vor (Rückmeldung der Art Ergänzung)
 ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "kategorie_definieren", "wert_eintragen", "ding_anlegen", "ding_aendern", "lage_eintragen",
@@ -85,7 +87,9 @@ ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "kategorie_defini
                        # Abgleich 29.10.2026 (Paket 3): die Tür für alle Grundformen
                        "tag_anlegen", "termin_setzen", "wahlstelle_aendern", "option_aendern", "wissen_aendern", "lesetext_schreiben",
                        "reise_aendern", "plan_anlegen", "plan_aendern", "merkmal_zusammenfuehren", "arten_uebernehmen", "wunsch_vorschlagen",
-                       "start_ende_setzen", "symbol_setzen", "kartenansicht_setzen", "track_anhaengen", "kartenpunkte_holen")
+                       "start_ende_setzen", "symbol_setzen", "kartenansicht_setzen", "track_anhaengen", "kartenpunkte_holen",
+                       # Packliste (ADR-0010, #370)
+                       "gegenstand_anlegen", "gegenstand_aendern", "packliste_uebernehmen")
 # Aktion der Regelprüfung je Werkzeug; art_definieren und merkmal_definieren gehen für Mitwirkende als Rückmeldung (Vorschlag)
 ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "kategorie_definieren": "ontologie", "wert_eintragen": "wert",
                     "ding_anlegen": "ding", "ding_aendern": "ding", "lage_eintragen": "ding", "option_anlegen": "alternative",
@@ -95,13 +99,16 @@ ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontolo
                     "tag_anlegen": "plan", "termin_setzen": "plan", "wahlstelle_aendern": "plan", "option_aendern": "alternative",
                     "wissen_aendern": "wissen", "lesetext_schreiben": "wissen", "reise_aendern": "einstellung", "plan_anlegen": "plan",
                     "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch",
-                    "start_ende_setzen": "einstellung", "symbol_setzen": "einstellung", "kartenansicht_setzen": "karte", "track_anhaengen": "ding", "kartenpunkte_holen": "karte"}
+                    "start_ende_setzen": "einstellung", "symbol_setzen": "einstellung", "kartenansicht_setzen": "karte", "track_anhaengen": "ding", "kartenpunkte_holen": "karte",
+                    "gegenstand_anlegen": "gegenstand", "gegenstand_aendern": "gegenstand", "packliste_uebernehmen": "packliste_uebernehmen"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe", "beleg_anlegen": "buchung",
                   "entscheiden": "entscheiden", "rueckmeldung_erledigen": "rueckmeldung_erledigen",
                   "frage_beantworten": "antwort", "person_einladen": "einladen", "person_entfernen": "entfernen",
                   # Wunsch-Brett: sichtbar für alle, die abhaken dürfen; Punkte und Einplanen prüft der Dienst genauer
-                  "wunsch_aendern": "wunsch_erlebt"}
+                  "wunsch_aendern": "wunsch_erlebt",
+                  # Packstand (ADR-0010): abhaken dürfen alle Mitwirkenden; wer packt, prüft der Dienst
+                  "gegenstand_packen": "packen"}
 # Werkzeuge, die zusätzlich eine zweite Aktion brauchen: eine Antwort landet als Rückmeldung (Art Antwort) im Eingang
 ZUSATZ_AKTION = {"frage_beantworten": "rueckmeldung"}
 WORT = texte.gruppe("de", "konnektor.wort")   # Wörter der Entscheidungen; Katalog in texte_de.py (ADR-0006)
@@ -554,9 +561,10 @@ def datum_de(iso, sprache=None):
 class Handbuch:
     """Alles, was eine Reise-Seite zeigt, nach ID nachschlagbar."""
 
-    def __init__(self, d, aufgaben=None, offene_entscheidungen=None, antworten=None, meldungen=None, belege=None):
+    def __init__(self, d, aufgaben=None, offene_entscheidungen=None, antworten=None, meldungen=None, belege=None, packstand=None):
         self.d = d
         self.aufgaben = aufgaben
+        self.packstand = packstand or {}   # G-ID -> {Person: Zeitpunkt} (Packliste, ADR-0010)
         self.belege = belege or {}       # B-ID -> Belege aus der Ablage (Rückmeldedienst), soweit die Person sie sehen darf
         self.meldungen = meldungen or []   # Meldungen an die sprechende Person (Wächter, Erinnerer, Konflikte)
         self.offene_entscheidungen = offene_entscheidungen or {}   # Option-ID -> eingetragene, noch nicht eingearbeitete Entscheidungen
@@ -623,6 +631,35 @@ class Handbuch:
             z.append(tk("konnektor.ausgabe.buchung_text.10") + "; ".join(f"{datum_de(v['datum'])} {v.get('wer')}: {v.get('was')}" + (f" ({v['grund']})" if v.get("grund") else "")
                                              for v in b["verlauf"] if v.get("datum")))
         return "\n".join(z)
+
+    def gegenstaende_sammeln(self, e):
+        """Gegenstände der Packliste (G-…, ADR-0010) als eigene Einträge und als Zeile „Mitnehmen“ bei dem Ding, an dem sie hängen."""
+        p = self.d.get("packliste") or {}
+        kategorien = {k["art"]: k for k in p.get("kategorien") or []}
+        je_ding = {}
+        for g in p.get("gegenstaende") or []:
+            k = kategorien.get(g["art"]) or {}
+            z = [tk("konnektor.gegenstand.kategorie", w1=k.get("name") or g["art"])]
+            if (mk := gegenstand_merkmal_text(g, k)):
+                z.append(mk)
+            if g.get("an"):
+                z.append(tk("konnektor.gegenstand.gehoert_zu", w1=f"{g['an']} {g.get('an_name') or ''}".strip()))
+                if g.get("status") != "entfaellt":
+                    je_ding.setdefault(g["an"], []).append(f"{g['id']} {g['titel']}")
+            z.append(tk("konnektor.gegenstand.packt", w1=g["wer"]) if g.get("wer") else tk("konnektor.gegenstand.packt_jede"))
+            if g.get("status") == "entfaellt":
+                z.append(tk("konnektor.gegenstand.weggelassen"))
+            if g.get("an_verworfen"):
+                z.append(tk("konnektor.gegenstand.an_verworfen"))
+            if g.get("notiz"):
+                z.append(g["notiz"])
+            if g.get("verlauf"):
+                z.append(tk("konnektor.gegenstand.verlauf") + "; ".join(f"{datum_de(v['datum'])} {v.get('wer')}: {v.get('was')}" + (f" ({v['grund']})" if v.get("grund") else "")
+                                                                         for v in g["verlauf"] if v.get("datum")))
+            e[g["id"]] = (g["titel"], "\n".join(z))
+        for x, namen in je_ding.items():   # bei der Strecke, dem Aufenthalt, der Unterkunft oder dem Ort: was dort mitkommt
+            if x in e:
+                e[x] = (e[x][0], e[x][1] + "\n" + tk("konnektor.packliste.mitnehmen", w1="; ".join(namen)))
 
     def titel_von(self, x):
         r = self.r
@@ -852,6 +889,7 @@ class Handbuch:
             e.setdefault(aid, (a.get("name") or aid, "\n".join(z)))
         for bid, b in (r.get("buchungen") or {}).items():   # Buchung als eigenes Ding (#76)
             e[bid] = (tk("konnektor.ausgabe.sammeln.3", w1=dw(b.get('status')), w2=b.get('titel') or bid), self.buchung_text(b))
+        self.gegenstaende_sammeln(e)
         for p in r.get("plaene", []):
             z = [p.get("text") or "", tk("konnektor.ausgabe.sammeln.10") + ", ".join(p.get("auswahl") or [])]
             if p.get("aktuell"):
@@ -917,6 +955,11 @@ class Handbuch:
             z += [f"- {b['id']} {b.get('titel')}: " + ", ".join(x for x in (
                 tk("konnektor.ausgabe.fristen.1", w1=datum_de(b['frist'])) + (f" ({b['frist_was']})" if b.get("frist_was") else "") + (tk("konnektor.buchung.ueberfaellig") if b["frist"] < heute else "") if b.get("frist") else "",
                 tk("konnektor.ausgabe.fristen.2", w1=datum_de(b['storno_bis'])) if b.get("storno_bis") else "") if x) for b in fristen]
+        if self.an("packliste") and (self.d.get("packliste") or {}).get("gegenstaende"):
+            p = self.d["packliste"]
+            aktiv = [g for g in p["gegenstaende"] if g.get("status") != "entfaellt"]
+            summen = "; ".join(x for x in (summe_text(s) for s in p.get("summen") or []) if x)
+            z.append(tk("konnektor.packliste.ueberblick", n=len(aktiv), k=len([k for k in p["kategorien"] if k["gegenstaende"]])) + (f" {summen}." if summen else ""))
         if self.meldungen:
             z.append(tk("konnektor.ausgabe.liste_text.1"))
             z += [f"- {m['erstellt'][:10]}: {m['text']}" for m in self.meldungen[:10]]
@@ -948,6 +991,8 @@ class Handbuch:
                           + (tk("konnektor.ausgabe.zeige.3", w1=', '.join(nah)) if nah else ""))
         titel, t = self.eintraege[id_]
         aus = f"{id_} – {titel}\n\n{t}".strip()
+        if id_.startswith("G-") and (g := next((x for x in (self.d.get("packliste") or {}).get("gegenstaende") or [] if x["id"] == id_), None)):
+            aus += "\n" + gepackt_text(g, self.packstand)   # Packstand (live), nicht Teil der Seite
         ab = next((a for a in self.d.get("abschnitte") or [] if a.get("id") == id_ and a.get("uebersicht")), None)
         if ab:   # Übersicht der Arten bei diesem Abschnitt (ADR-0007, Schritt e)
             aus += "\n\n" + tk("konnektor.zeige.uebersicht", w1=", ".join((self.r.get("arten") or {}).get(x, {}).get("name") or x for x in ab["uebersicht"]))
@@ -1397,6 +1442,95 @@ def hinweise_text(antwort):
     return (tk("konnektor.ausgabe.hinweise_text.1") + "\n".join(f"- {x}" for x in h)) if h else ""
 
 
+# ---------- Packliste (ADR-0010, #370) ----------
+
+def packstand_von(reise):
+    """Packstand der Reise {G-ID: {Person: Zeitpunkt}} aus der Ablage des Rückmeldedienstes (leer, wenn es keinen gibt)."""
+    return rm.packstand_lesen(rm.ordner(reise))
+
+
+def summe_text(s):
+    """Summen eines Merkmals ({name, summen: [{wert, einheit}]}) als „Gewicht 2690 g“; mehrere Einheiten (Währungen) mit Komma."""
+    teile = [f"{packliste.zahl_text(z['wert'])}{(' ' + z['einheit']) if z['einheit'] else ''}" for z in s.get("summen") or s.get("wert") and [s] or []]
+    return f"{s['name']} " + ", ".join(teile) if teile else ""
+
+
+def gegenstand_merkmal_text(g, kategorie):
+    """Merkmale eines Gegenstands als „Gewicht 420 g; Raum Rucksack“ in der Reihenfolge der Kategorie."""
+    namen = {m["id"]: m for m in kategorie.get("merkmale") or []}
+    z = []
+    for k, m in namen.items():
+        v = (g.get("merkmale") or {}).get(k)
+        if not v:
+            continue
+        einheit = f" {m['einheit']}" if m.get("einheit") and m.get("typ") == "zahl" else ""
+        z.append(f"{m['name']} {v['wert']}{einheit}" + (tk("konnektor.gegenstand.ungeprueft") if v.get("ungeprueft") else ""))
+    return "; ".join(z)
+
+
+def gepackt_text(g, stand, person=None):
+    """Packstand eines Gegenstands als Satz: von wem er schon gepackt ist; bei einem Gegenstand mit wer: ob die Person es getan hat."""
+    wer = (stand.get(g["id"]) or {})
+    if g.get("wer"):
+        getan = any(p.casefold() == g["wer"].casefold() for p in wer)
+        return tk("konnektor.gegenstand.packt_gepackt" if getan else "konnektor.gegenstand.packt_offen", w1=g["wer"])
+    if wer:
+        return tk("konnektor.gegenstand.gepackt_von", w1=", ".join(sorted(wer, key=str.casefold)))
+    return tk("konnektor.gegenstand.noch_nicht")
+
+
+def gegenstand_zeile(g, kategorie, stand, person=None, namen=None):
+    mk = gegenstand_merkmal_text(g, kategorie)
+    z = [f"- {g['id']} {g['titel']}" + (f" – {mk}" if mk else "")]
+    if g.get("an"):
+        z.append(tk("konnektor.gegenstand.gehoert_zu", w1=f"{g['an']} {g.get('an_name') or ''}".strip()))
+    if g.get("status") == "entfaellt":
+        z.append(tk("konnektor.gegenstand.weggelassen"))
+    else:
+        z.append(gepackt_text(g, stand, person))
+    if g.get("an_verworfen"):
+        z.append(tk("konnektor.gegenstand.an_verworfen"))
+    if g.get("notiz"):
+        z.append(g["notiz"])
+    return " · ".join(z)
+
+
+def packliste_text(d, stand, person=None, art=None, alle=False):
+    """Die Packliste für die Claude-App: je Kategorie die Gegenstände mit Merkmalen und Packstand, Summen je Kategorie und gesamt."""
+    p = d.get("packliste") or {}
+    kategorien = p.get("kategorien") or []
+    titel = ((d.get("reise") or {}).get("titel")) or ""
+    if not kategorien and not p.get("gegenstaende"):
+        return tk("konnektor.packliste.leer")
+    if art:
+        gewaehlt = [k for k in kategorien if k["art"] == art.lower() or str(k["name"]).casefold() == art.casefold()]
+        if not gewaehlt:
+            return tk("konnektor.packliste.keine_kategorie", art=art, w1=", ".join(k["art"] for k in kategorien))
+        kategorien = gewaehlt
+    je_id = {g["id"]: g for g in p.get("gegenstaende") or []}
+    gepackt, gesamt = packliste.packstand_zeilen(p, stand, person)
+    z = [tk("konnektor.packliste.kopf", titel=titel) + (tk("konnektor.packliste.fortschritt", w1=gepackt, w2=gesamt, person=person) if person and gesamt else "")]
+    weg = 0
+    for k in kategorien:
+        gs = [je_id[i] for i in k["gegenstaende"] if i in je_id]
+        sichtbar = [g for g in gs if alle or g.get("status") != "entfaellt"]
+        weg += len(gs) - len([g for g in gs if g.get("status") != "entfaellt"]) if not alle else 0
+        summen = "; ".join(x for x in (summe_text(s) for s in k.get("summen") or []) if x)
+        z.append(f"\n{k['name']} ({k['art']})" + (f" – {tk('konnektor.packliste.summe', w1=summen)}" if summen else ""))
+        if k.get("merkmale"):   # die Schlüssel, die gegenstand_anlegen und gegenstand_aendern in merkmale annehmen
+            z.append(tk("konnektor.packliste.merkmale") + "; ".join(
+                f"{m['id']} = {m['name']} ({dw(m['typ'])}" + (f", {m['einheit']}" if m.get("einheit") else "")
+                + (", " + tk("konnektor.packliste.wird_summiert") if m.get("summe") else "")
+                + (", " + " | ".join(map(str, m["werte"])) if m.get("werte") else "") + ")" for m in k["merkmale"]))
+        z += [gegenstand_zeile(g, k, stand, person) for g in sichtbar] or [tk("konnektor.packliste.keine_gegenstaende")]
+    gesamt_summen = "; ".join(x for x in (summe_text(s) for s in p.get("summen") or []) if x)
+    if gesamt_summen and not art:
+        z.append("\n" + tk("konnektor.packliste.gesamt", w1=gesamt_summen))
+    if weg:
+        z.append(tk("konnektor.packliste.weggelassen", n=weg))
+    return "\n".join(z)
+
+
 def ontologie_werkzeug(reise, d, wer, zugang, name, args):
     """Werkzeuge, die direkt in die Reise schreiben (ADR-0001, O-3; engine/schreiben.py): Rolle und Status prüft der Konnektor vor dem
     Senden, der Schreibweg noch einmal mit reise.yaml. art_definieren und merkmal_definieren gehen für Mitwirkende als Rückmeldung
@@ -1436,7 +1570,7 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
                 return (tk("konnektor.ontologie_werkzeug.12", art=art, w2=aehnlich['id'], w3=aehnlich['name'])), True
     # Was die veröffentlichte Seite noch nicht kennt (gerade angelegt, Issue #135), prüft der Schreibweg mit dem Repo: hier
     # keine Ablehnung wegen einer unbekannten ID, nur Hinweise, die der veröffentlichte Stand sicher weiß
-    if name == "arten_uebernehmen":
+    if name in ("arten_uebernehmen", "packliste_uebernehmen"):
         # nur Reisen derselben Person (Product Owner 28.10.2026): Konto oder Zugang muss auf beiden Reisen stehen
         von = str(args.get("von_reise") or "").strip()
         dv = daten(von) if rm.REISE_MUSTER.match(von) else None
@@ -2753,6 +2887,45 @@ KARTENPUNKTE_HOLEN = {"name": "kartenpunkte_holen", "description": "@konnektor.w
                           "abstand_m": {"type": "integer", "description": "@konnektor.werkzeug.kartenpunkte_holen.abstand_m"},
                           "grund": {"type": "string"}, "vorname": NAME_FELD},
                           "required": ["strecke", "kategorie", "osm"]}}
+# Packliste (ADR-0010, #370): lesen, Gegenstände anlegen und ändern, abhaken, aus einer früheren Reise übernehmen
+GEGENSTAND_MERKMALE_FELD = {"type": "object", "additionalProperties": True, "description": "@konnektor.feld.gegenstand_merkmale"}
+PACKLISTE_LESEN = {"name": "packliste", "description": "@konnektor.werkzeug.packliste",
+                   "inputSchema": {"type": "object", "properties": {
+                       "art": {"type": "string", "description": "@konnektor.werkzeug.packliste.art"},
+                       "alle": {"type": "boolean", "description": "@konnektor.werkzeug.packliste.alle"}}},
+                   "annotations": {"readOnlyHint": True}}
+GEGENSTAND_ANLEGEN = {"name": "gegenstand_anlegen", "description": "@konnektor.werkzeug.gegenstand_anlegen",
+                      "inputSchema": {"type": "object", "properties": {
+                          "art": {"type": "string", "description": "@konnektor.werkzeug.gegenstand.art"},
+                          "titel": {"type": "string", "description": "@konnektor.werkzeug.gegenstand.titel"},
+                          "merkmale": GEGENSTAND_MERKMALE_FELD,
+                          "an": {"type": "string", "description": "@konnektor.werkzeug.gegenstand.an"},
+                          "wer": {"type": "string", "description": "@konnektor.werkzeug.gegenstand.wer"},
+                          "notiz": {"type": "string", "description": "@konnektor.werkzeug.gegenstand.notiz"},
+                          "grund": {"type": "string"}, "name": NAME_FELD},
+                          "required": ["art", "titel"]}}
+GEGENSTAND_AENDERN = {"name": "gegenstand_aendern", "description": "@konnektor.werkzeug.gegenstand_aendern",
+                      "inputSchema": {"type": "object", "properties": {
+                          "ziel": {"type": "string", "description": "@konnektor.werkzeug.gegenstand_aendern.ziel"},
+                          "art": {"type": "string", "description": "@konnektor.werkzeug.gegenstand_aendern.art"},
+                          "titel": {"type": "string"}, "merkmale": GEGENSTAND_MERKMALE_FELD,
+                          "an": {"type": "string", "description": "@konnektor.werkzeug.gegenstand_aendern.an"},
+                          "wer": {"type": "string", "description": "@konnektor.werkzeug.gegenstand_aendern.wer"},
+                          "notiz": {"type": "string", "description": "@konnektor.werkzeug.gegenstand_aendern.notiz"},
+                          "status": {"type": "string", "enum": ["entfaellt", "aktiv"], "description": "@konnektor.werkzeug.gegenstand_aendern.status"},
+                          "grund": {"type": "string", "description": "@konnektor.werkzeug.gegenstand_aendern.grund"}, "name": NAME_FELD},
+                          "required": ["ziel"]}}
+GEGENSTAND_PACKEN = {"name": "gegenstand_packen", "description": "@konnektor.werkzeug.gegenstand_packen",
+                     "inputSchema": {"type": "object", "properties": {
+                         "ziel": {"type": "string", "description": "@konnektor.werkzeug.gegenstand_packen.ziel"},
+                         "gepackt": {"type": "boolean", "description": "@konnektor.werkzeug.gegenstand_packen.gepackt"},
+                         "name": NAME_FELD}, "required": ["ziel"]}}
+PACKLISTE_UEBERNEHMEN = {"name": "packliste_uebernehmen", "description": "@konnektor.werkzeug.packliste_uebernehmen",
+                         "inputSchema": {"type": "object", "properties": {
+                             "von_reise": {"type": "string", "description": "@konnektor.werkzeug.packliste_uebernehmen.von_reise"},
+                             "arten": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.packliste_uebernehmen.arten"},
+                             "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["von_reise"]}}
+WERKZEUGE += [PACKLISTE_LESEN, GEGENSTAND_PACKEN]
 START_ENDE_SETZEN = {"name": "start_ende_setzen", "description": "@konnektor.werkzeug.start_ende_setzen",
                      "inputSchema": {"type": "object", "properties": {
                          "start_datum": {"type": "string"}, "start_ort": {"type": "string", "description": "O-…"},
@@ -2917,6 +3090,8 @@ def anleitung(zugang, d):
         z.append(anl(sp, "waechter"))
     if "wuensche" in (bausteine or []):
         z.append(anl(sp, "wuensche"))
+    if "packliste" in (bausteine or []):
+        z.append(anl(sp, "packliste"))
     z.append(anl(sp, "antwortsprache"))
     return " ".join(z)
 
@@ -2992,7 +3167,24 @@ def werkzeug(zugang, name, args):
     if d is None:
         return tk("konnektor.werkzeug.6"), True
     h = Handbuch(d, aufgaben_von(reise), offene_entscheidungen(reise), antworten_von(reise),
-                 meldungen_fuer(reise, wer["name"], d), belege_von(reise, wer))
+                 meldungen_fuer(reise, wer["name"], d), belege_von(reise, wer), packstand_von(reise))
+    if name == "packliste":
+        return packliste_text(d, h.packstand, wer["name"] or None, str(args.get("art") or "").strip() or None, bool(args.get("alle"))), False
+    if name == "gegenstand_packen":
+        ids = [x.strip().upper() for x in re.split(r"[,\s]+", str(args.get("ziel") or "")) if x.strip()]
+        if not ids or not all(re.fullmatch(r"G-\d+", x) for x in ids):
+            return tk("konnektor.gegenstand.ziel"), True
+        name_ = wer["name"] or args.get("name")
+        if not isinstance(name_, str) or not name_.strip():
+            return tk("konnektor.frage_beantworten.4"), True
+        gepackt = args.get("gepackt") if isinstance(args.get("gepackt"), bool) else True
+        unbekannt = [x for x in ids if x not in h.eintraege] if (d.get("packliste") or {}).get("gegenstaende") else []
+        if unbekannt:
+            return tk("konnektor.gegenstand.unbekannt", w1=", ".join(unbekannt)), True
+        antwort, fehler = dienst_anfrage("PATCH", f"{reise}/packstand", {"name": name_.strip(), "gepackt": {x: gepackt for x in ids}})
+        if fehler:
+            return tk("konnektor.ausgabe.frage_beantworten.4", fehler=fehler), True
+        return tk("konnektor.gegenstand.gepackt" if gepackt else "konnektor.gegenstand.zurueckgenommen", w1=", ".join(ids), person=name_.strip()), False
     if name == "entscheiden":
         return entscheiden(reise, d, h, {**wer, "person": zugang.get("person")}, args)
     if name == "frage_beantworten":
@@ -3117,7 +3309,8 @@ def werkzeuge_fuer(zugang):
                  FRAGE_ANLEGEN, TAG_AENDERN, WISSEN_SCHREIBEN, FRAGE_SCHLIESSEN, REISE_STATUS_SETZEN, EINSTELLUNG_SETZEN,
                  BUCHUNG_ANLEGEN, BUCHUNG_AENDERN, TAG_ANLEGEN, TERMIN_SETZEN, WAHLSTELLE_AENDERN, OPTION_AENDERN, WISSEN_AENDERN,
                  LESETEXT_SCHREIBEN, REISE_AENDERN, START_ENDE_SETZEN, PLAN_ANLEGEN, PLAN_AENDERN, MERKMAL_ZUSAMMENFUEHREN, ARTEN_UEBERNEHMEN,
-                 WUNSCH_VORSCHLAGEN, SYMBOL_SETZEN, KARTENANSICHT_SETZEN, KARTENPUNKTE_HOLEN] if schreibdienst() else []
+                 WUNSCH_VORSCHLAGEN, SYMBOL_SETZEN, KARTENANSICHT_SETZEN, KARTENPUNKTE_HOLEN,
+                 GEGENSTAND_ANLEGEN, GEGENSTAND_AENDERN, PACKLISTE_UEBERNEHMEN] if schreibdienst() else []
     for w in WERKZEUGE + [ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN, RUECKMELDUNG_ERLEDIGEN, BELEG_ANLEGEN] + ontologie:
         n = w["name"]
         if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:

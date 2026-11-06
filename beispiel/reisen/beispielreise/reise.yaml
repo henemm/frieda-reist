@@ -19,8 +19,8 @@ personen:
   karl: {name: Karl, rolle: mitwirkend, reist: true, von: 2027-05-14, notiz: "wünscht sich die Fahrt mit der Kirnitzschtalbahn; kommt erst am zweiten Tag dazu (Beispielwert)"}
 
 # Immer da: Plan, Wissen, Suche, Personen. Zuschaltbar: varianten, karte, tagesseiten, rueckmeldungen,
-# fragen, aufgaben, wuensche (waechter und profile sind noch nicht gebaut).
-bausteine: [varianten, karte, tagesseiten, rueckmeldungen, fragen, aufgaben, wuensche]
+# fragen, aufgaben, wuensche, packliste (waechter und profile sind noch nicht gebaut).
+bausteine: [varianten, karte, tagesseiten, rueckmeldungen, fragen, aufgaben, wuensche, packliste]
 
 regeln:
   kontingent: {art: punkte, je_person: 10}

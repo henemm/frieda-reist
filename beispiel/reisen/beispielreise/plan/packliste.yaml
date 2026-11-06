@@ -1,0 +1,40 @@
+# Packliste der Beispielreise (erfunden, alles Beispielwerte). Gegenstände (G-…) mit der Kategorie als Art (plan/arten.yaml, grundform
+# gegenstand), Merkmalen, Verlauf; an: hängt einen Gegenstand an eine Strecke, einen Aufenthalt, eine Unterkunft oder einen Ort (nie an einen
+# Tag), wer: wer ihn packt (ohne wer packt ihn jede Person für sich). Abgehakt wird nicht hier, sondern live auf der Seite (Packstand).
+# Eine Herkunft (quelle) braucht ein Gegenstand nicht (docs/adr/0010-gegenstand.md).
+gegenstaende:
+  - {id: G-01, art: kleidung, titel: Regenjacke, merkmale: {gewicht: 420, raum: Tagesrucksack}, verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]}
+  - {id: G-02, art: kleidung, titel: Wanderschuhe, merkmale: {gewicht: 900, raum: am Körper}, verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]}
+  - {id: G-03, art: kleidung, titel: Wandersocken, merkmale: {gewicht: 240, anzahl: 3, raum: Rucksack}, verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]}
+  - {id: G-04, art: ausruestung, titel: Trinkflasche, merkmale: {gewicht: 180, raum: Tagesrucksack}, verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]}
+  - id: G-05
+    art: ausruestung
+    titel: Wanderstöcke
+    merkmale: {gewicht: 480, preis: 45 €, raum: Rucksack}
+    an: E-01
+    notiz: "Für die vielen Stufen an der Bastei (Beispiel)"
+    verlauf:
+      - {datum: 2026-10-02, wer: Ida, was: angelegt, grund: "Wegen der Treppen auf dem ersten Tag"}
+  - id: G-06
+    art: ausruestung
+    titel: Stirnlampe
+    merkmale: {gewicht: 90, preis: 25 €, raum: Rucksack}
+    an: U-04
+    notiz: "Für den Weg zur Herberge, falls es dunkel wird (Beispiel)"
+    verlauf: [{datum: 2026-10-03, wer: Karl, was: angelegt}]
+  - id: G-07
+    art: apotheke
+    titel: Erste-Hilfe-Set
+    merkmale: {gewicht: 350, raum: Tagesrucksack}
+    wer: Ida
+    notiz: "Gemeinsam, trägt Ida"
+    verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]
+  - {id: G-08, art: apotheke, titel: Blasenpflaster, merkmale: {gewicht: 30, raum: Tagesrucksack}, verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]}
+  - id: G-09
+    art: apotheke
+    titel: Sonnencreme
+    merkmale: {gewicht: 120, raum: Tagesrucksack}
+    status: entfaellt
+    verlauf:
+      - {datum: 2026-10-02, wer: Ida, was: angelegt}
+      - {datum: 2026-10-05, wer: Karl, was: weggelassen, grund: "Karl hat eigene dabei (Beispiel)"}

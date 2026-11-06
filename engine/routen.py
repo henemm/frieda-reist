@@ -34,7 +34,8 @@ ARTEN = WANN                      # alter Name, wird von Bestand gelesen
 # Uhrzeit eines Aufenthalts ohne Nacht (beginn, ende; #77 Kalender), Ortszeit; Bewegungen haben ab und an (#135)
 UHRZEIT = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+", "aufenthalt": r"A-\d+",
-          "tag": r"T-\d+", "wahl": r"V-\d+", "option": r"V-\d+\.[a-z]+", "wissen": r"W-\d+(?:\.[a-z0-9-]+)?", "buchung": r"B-\d+"}
+          "tag": r"T-\d+", "wahl": r"V-\d+", "option": r"V-\d+\.[a-z]+", "wissen": r"W-\d+(?:\.[a-z0-9-]+)?", "buchung": r"B-\d+",
+          "gegenstand": r"G-\d+"}
 # Elternbezug (ADR-0007, #282): jedes Ding darf mit an: sagen, an welchem anderen Ding es zu Hause ist (genau eines). Erlaubt sind
 # Tag, Ort, Strecke, Aufenthalt, Unterkunft, Abschnitt des Wissens und die Reise selbst (an: reise). Ohne an: gilt die Vorgabe
 # der Grundform (Nacht und Strecke am Tag, Aufenthalt am Tag, sonst an seinem Ort). Bei einer Strecke war an: bis zum
@@ -107,7 +108,8 @@ def zeitpunkt(text):
 # Folge (Tag, Reiseteil). Welche Arten es davon gibt (Hotel, Refugi, Wanderung, Bahn, Reiseteil …) und welche Merkmale
 # eine Art hat, sagt allein die Reise in plan/arten.yaml. Die Software kennt nur die Grundformen, die Form eines
 # Merkmals und die berechneten Kennzahlen je Grundform.
-GRUNDFORMEN = ("aufenthalt", "bewegung", "folge", "ort")   # ort: freiwillige Art eines Orts (ADR-0008)
+# gegenstand: etwas, das mitkommt (Packliste, ADR-0010); die Arten davon sind die Kategorien der Packliste
+GRUNDFORMEN = ("aufenthalt", "bewegung", "folge", "ort", "gegenstand")   # ort: freiwillige Art eines Orts (ADR-0008)
 AUTO_JE_GRUNDFORM = {"bewegung": ("gehzeit", "laenge", "hoehenmeter"), "folge": ("tage", "gehzeit", "unterkuenfte", "anschluss")}
 ART_MUSTER = r"[a-z][a-z0-9_]*"
 # gruppe, einzahl, nummeriert, sorten: Felder einer früheren Kartenkategorie (ADR-0007, Schritt d): gruppe punkt (Punkte an einer Strecke, Karte der
@@ -122,8 +124,8 @@ ART_GRUPPEN = ("punkt", "wissen")
 BUCHUNG_DEF_FELDER = {"name", "typ", "werte", "einheit", "hilfe", "frage"}
 # Symbole der Seite, die eine Art tragen darf (engine/bauen.py SYMBOLE, Lucide); ohne Angabe das Symbol der Grundform
 SYMBOLE_ARTEN = ("unterkunft", "zelt", "einkehr", "ticket", "museum", "wandern", "bus", "bahn", "schiff", "flug", "auto", "rad",
-                 "taxi", "strecke", "ort", "karte", "plan", "wasser", "apotheke")
-GRUNDFORM_SYMBOL = {"aufenthalt": "unterkunft", "bewegung": "strecke", "folge": "plan", "ort": "ort"}
+                 "taxi", "strecke", "ort", "karte", "plan", "wasser", "apotheke", "packliste")
+GRUNDFORM_SYMBOL = {"aufenthalt": "unterkunft", "bewegung": "strecke", "folge": "plan", "ort": "ort", "gegenstand": "packliste"}
 # Gliederung des Lesetexts einer Art (docs/ontologie.md „Lesetext“): Rubriken in ihrer Reihenfolge, jede mit Namen (das
 # Stichwort am Anfang eines Absatzes) und Hilfe für den AI-Client. Welche Rubriken es gibt, sagt allein die Reise.
 RUBRIK_FELDER = {"name", "hilfe"}
@@ -380,7 +382,18 @@ DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage",
 # oeffnung (Öffnungszeiten laut OSM, opening_hours), bezug (die Kennung einer Unterkunft oder eines Orts, die der Punkt ist;
 # zeigt er auf einen Ort, liegt der Punkt dort, ADR-0008), hero (Typ text:
 # das Merkmal steht in jeder Möglichkeit des Vergleichs ganz oben über alle Spalten, #343)
-ROLLEN = {"kosten": "geld", "hero": "text", "nummer": "zahl", "alias": "text", "sorte": "text", "osm": "text", "trinkbar": "text", "oeffnung": "text", "bezug": "text"}
+# summe (ADR-0010, #370): allgemeine Rolle „wird summiert“ (Typ zahl oder geld): die Seite summiert das Merkmal über alle Dinge der
+# Art (Gewicht der Packliste, Preis), je Art und gesamt, mit der Einheit des Merkmals. Mehrere Merkmale einer Art dürfen sie tragen.
+# kosten bleibt als Alias für summe mit dem Typ geld (je Art nur eines, es ist zugleich der Preis der Nacht einer Unterkunft).
+ROLLEN = {"kosten": "geld", "summe": ("zahl", "geld"), "hero": "text", "nummer": "zahl", "alias": "text", "sorte": "text", "osm": "text", "trinkbar": "text", "oeffnung": "text", "bezug": "text"}
+SUMMEN_ROLLEN = ("summe", "kosten")      # Rollen, deren Merkmal summiert wird
+ROLLEN_MEHRFACH = ("summe",)             # Rollen, die eine Art mehr als einmal tragen darf
+
+
+def rolle_typen(rolle):
+    """Typen, die eine Rolle zulässt (ein Typ oder mehrere)."""
+    t = ROLLEN[rolle]
+    return (t,) if isinstance(t, str) else tuple(t)
 
 
 def wann_von(w):
@@ -596,6 +609,13 @@ class Routen:
 
     def ort_name(self, oid):
         return (self.orte.get(oid) or {}).get("name", oid)
+
+    def nur_in_verworfenen(self, art, x):
+        """Steht das Ding (art: strecke, aufenthalt, unterkunft, ort) nur in Möglichkeiten, die verworfen oder ersetzt sind (ADR-0010:
+        ein Gegenstand an einem solchen Ding zeigt die Seite wie eine Buchung an einer verworfenen Option)?"""
+        feld = {"strecke": "strecken", "aufenthalt": "aufenthalte", "unterkunft": "unterkuenfte", "ort": "orte"}[art]
+        optionen = [o for _, o in self.option.values() if x in (o.get(feld) or [])]
+        return bool(optionen) and all(self.status(o) in UNGUELTIG for o in optionen)
 
     # ---------- Bausteine prüfen ----------
     def uhrzeit_pruefen(self, d, wo):
@@ -1189,9 +1209,9 @@ class Routen:
             if d.get("rolle"):
                 if d["rolle"] not in ROLLEN:
                     self.fehl(texte.satz("pruefung.routen.77", wo=wo, k=k, w1=', '.join(ROLLEN)))
-                elif typ != ROLLEN[d["rolle"]]:
-                    self.fehl(texte.satz("pruefung.routen.78", wo=wo, k=k, rolle=d["rolle"], typ=ROLLEN[d["rolle"]]))
-                elif neu and any(x.get("rolle") == d["rolle"] for x in aus.values()):
+                elif typ not in rolle_typen(d["rolle"]):
+                    self.fehl(texte.satz("pruefung.routen.78", wo=wo, k=k, rolle=d["rolle"], typ=" / ".join(rolle_typen(d["rolle"]))))
+                elif neu and d["rolle"] not in ROLLEN_MEHRFACH and any(x.get("rolle") == d["rolle"] for x in aus.values()):
                     self.fehl(texte.satz("pruefung.routen.79", wo=wo, k=k, w1=d['rolle']))
             if "nach_buchung" in d and not isinstance(d["nach_buchung"], bool):
                 self.fehl(texte.satz("pruefung.routen.nach_buchung", wo=wo, k=k))
@@ -1756,7 +1776,11 @@ class Routen:
             "eltern": dict(self.eltern),
             # Arten der Reise (plan/arten.yaml): Name, Grundform, Farbe, Symbol, buchbar, kosten (das Merkmal mit der Rolle
             # kosten, das die Seite summiert); die Seite kennt keine Art selbst
-            "arten": {a: {**d, "kosten": next((k for k, m in self.katalog.get(a, {}).items() if m.get("rolle") == "kosten"), None)}
+            # summen: die Merkmale mit der Rolle summe oder kosten, die die Seite über die Dinge der Art summiert (ADR-0010)
+            "arten": {a: {**d, "kosten": next((k for k, m in self.katalog.get(a, {}).items()
+                                               if m.get("rolle") in SUMMEN_ROLLEN and m.get("typ") == "geld"), None),
+                          **({"summen": [k for k, m in self.katalog.get(a, {}).items() if m.get("rolle") in SUMMEN_ROLLEN]}
+                             if any(m.get("rolle") in SUMMEN_ROLLEN for m in self.katalog.get(a, {}).values()) else {})}
                       for a, d in self.arten.items()},
             "aktiv_strecken": sorted(aktiv_strecken),
             "merkmale": {b: [{"id": k, **d} for k, d in krit.items()] for b, krit in self.katalog.items()},

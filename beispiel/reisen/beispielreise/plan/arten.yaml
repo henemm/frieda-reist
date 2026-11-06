@@ -11,6 +11,9 @@
 # (berechnet: Bewegung gehzeit, laenge, hoehenmeter; Folge tage, gehzeit, unterkuenfte, anschluss), hilfe, frage, auch.
 # buchung_merkmale: Merkmale der Buchungen einer Art (was erst durch das Buchen entsteht), je Merkmal name, typ, werte,
 # einheit, hilfe, frage.
+# Packliste (ADR-0010): Arten mit grundform gegenstand sind die Kategorien der Packliste (plan/packliste.yaml). Die Rolle summe macht
+# aus einem Merkmal (Typ zahl oder geld) eine Summe je Kategorie und gesamt, mit der Einheit des Merkmals; eine Art darf mehrere haben
+# (Gewicht und Preis). Raum ist ein gewöhnliches Merkmal: Die Seite kann die Packliste danach gruppieren (Ansicht Packen). Beispielwerte.
 arten:
   hotel:
     grundform: aufenthalt
@@ -258,3 +261,28 @@ arten:
       ankommen:   {name: Ankommen, hilfe: "Wo der Weg ankommt und was man am Abend noch erreicht"}
       versorgung: {name: Versorgung, hilfe: "Einkaufen, Essen, Wasser im Allgemeinen; ein bestimmtes Lokal ist ein eigenes Ding am Ort"}
       umschauen:  {name: Umschauen, hilfe: "Was den Ort ausmacht, in zwei, drei Sätzen"}
+  # Kategorien der Packliste (erfunden): was mitkommt, nach Gewicht und Raum geordnet
+  kleidung:
+    grundform: gegenstand
+    name: Kleidung
+    farbe: tuerkis
+    merkmale:
+      gewicht: {name: Gewicht, typ: zahl, einheit: g, rolle: summe, hilfe: "Waage oder Herstellerangabe; für den ganzen Eintrag"}
+      raum:    {name: Raum, typ: auswahl, werte: [am Körper, Tagesrucksack, Rucksack], hilfe: "Wo es unterwegs steckt"}
+      anzahl:  {name: Anzahl, typ: zahl, stufe: angeboten}
+  ausruestung:
+    grundform: gegenstand
+    name: Ausrüstung
+    farbe: braun
+    merkmale:
+      gewicht: {name: Gewicht, typ: zahl, einheit: g, rolle: summe}
+      preis:   {name: Anschaffung, typ: geld, rolle: summe, stufe: angeboten, hilfe: "Nur, was noch gekauft werden muss"}
+      raum:    {name: Raum, typ: auswahl, werte: [am Körper, Tagesrucksack, Rucksack]}
+  apotheke:
+    grundform: gegenstand
+    name: Apotheke
+    farbe: rosa
+    symbol: apotheke
+    merkmale:
+      gewicht: {name: Gewicht, typ: zahl, einheit: g, rolle: summe}
+      raum:    {name: Raum, typ: auswahl, werte: [am Körper, Tagesrucksack, Rucksack]}

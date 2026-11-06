@@ -1,0 +1,6 @@
+# Packliste des Städtewochenendes (erfunden, Beispielwerte): klein, ohne Gewicht und ohne Raum (ADR-0010).
+gegenstaende:
+  - {id: G-01, art: papiere, titel: Fahrkarte hin und zurück, an: E-01, verlauf: [{datum: 2026-11-03, wer: Tom, was: angelegt}]}
+  - {id: G-02, art: papiere, titel: Personalausweis, wer: Lea, verlauf: [{datum: 2026-11-03, wer: Tom, was: angelegt}]}
+  - {id: G-03, art: kleidung, titel: Etwas Schickes fürs Abendessen, merkmale: {anzahl: 1}, an: A-01, verlauf: [{datum: 2026-11-03, wer: Tom, was: angelegt}]}
+  - {id: G-04, art: kleidung, titel: Bequeme Schuhe, merkmale: {anzahl: 1}, verlauf: [{datum: 2026-11-03, wer: Tom, was: angelegt}]}

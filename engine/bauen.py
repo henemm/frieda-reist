@@ -637,9 +637,10 @@ class Bauer:
             except yaml.YAMLError as e:
                 self.fehler.append(texte.satz("pruefung.bauen.22", a_rel=a_rel, e=e))
                 arten = None
-            route = Routen(roh, set(lesetexte), status, self.fehler, self.id_anlegen, r_rel, arten=arten,
-                           entscheider=organisator,
-                           wissen={i for i in self.ids if i.startswith("W-")}, sprache=self.eck["sprache"]).bauen()
+            routen = Routen(roh, set(lesetexte), status, self.fehler, self.id_anlegen, r_rel, arten=arten,
+                            entscheider=organisator,
+                            wissen={i for i in self.ids if i.startswith("W-")}, sprache=self.eck["sprache"])
+            route = routen.bauen()
             verhalten_anwenden(route, self.eck["verhalten"], self.eck["sprache"])
             self._art_kategorien = kategorien_aus_arten(route) if route else {}
             for oid, wo in orte_inhalt.items():
@@ -665,6 +666,11 @@ class Bauer:
             self.strecken_lesetext(lesetexte, route)
         if route:
             self.orte_lesetext_pruefen(abschnitte, route)
+
+        # Packliste (ADR-0010): plan/packliste.yaml neben routen.yaml; ihre Gegenstände hängen über an: an Dingen der Route
+        packliste = None
+        if route:
+            packliste = self.packliste_bauen(routen, str(Path(r_cfg["datei"]).parent / "packliste.yaml"))
 
         # Claudes Vorschläge zu Wünschen (Wunsch-Brett, Paket G): plan/wuensche.yaml neben routen.yaml
         wunsch_vorschlaege = {}
@@ -692,10 +698,26 @@ class Bauer:
             "abschnitte": abschnitte,
             "fragen": fragen,
             "route": route,
+            "packliste": packliste,
             "wissen_karte": wissen_karte,
             "kategorien": kategorien,
             "wunsch_vorschlaege": wunsch_vorschlaege,
         }
+
+    def packliste_bauen(self, routen, rel):
+        """plan/packliste.yaml der Reise prüfen und aufbereiten (engine/packliste.py, ADR-0010) -> dict oder None (keine Datei und keine
+        Art mit Grundform gegenstand)."""
+        import packliste as pl
+        roh = None
+        if (self.reise_dir / rel).exists():
+            try:
+                roh = yaml.safe_load(self.lesen(rel))
+            except yaml.YAMLError as e:
+                self.fehler.append(texte.satz("pruefung.bauen.packliste_yaml", rel=rel, e=e))
+                return None
+            roh = roh if roh is not None else {}
+        return pl.pruefen_und_bauen(routen, roh, [p["name"] for p in self.eck["personen"]],
+                                    lambda satz: self.fehler.append(satz), self.id_anlegen, rel)
 
     def wunsch_vorschlaege(self, rel, route):
         """Claudes Vorschläge zu Wünschen (Paket G): je Wunsch (R-…) die Stellen, an die er passt (bezug), eine kurze

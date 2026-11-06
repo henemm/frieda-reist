@@ -77,7 +77,8 @@ AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "k
             "tag_anlegen": "plan", "termin_setzen": "plan", "wahlstelle_aendern": "plan", "option_aendern": "alternative",
             "wissen_aendern": "wissen", "lesetext_schreiben": "wissen", "reise_aendern": "einstellung", "plan_anlegen": "plan",
             "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch",
-            "start_ende_setzen": "einstellung", "symbol_setzen": "einstellung", "kartenansicht_setzen": "karte", "track_anhaengen": "ding", "kartenpunkte_holen": "karte"}   # reise.AKTIONEN
+            "start_ende_setzen": "einstellung", "symbol_setzen": "einstellung", "kartenansicht_setzen": "karte", "track_anhaengen": "ding", "kartenpunkte_holen": "karte",
+            "gegenstand_anlegen": "gegenstand", "gegenstand_aendern": "gegenstand", "packliste_uebernehmen": "packliste_uebernehmen"}   # reise.AKTIONEN
 HINWEISE_HOECHSTENS = 10   # neue Warnungen des Probebaus in der Antwort (Issue #142)
 S = texte.satz   # Satz des Katalogs, in jeder Sprache lesbar (Bestätigungen, ADR-0006)
 verbinden = texte.Satz.verbinden
@@ -571,11 +572,17 @@ ART_FELDER_REIHE = ("grundform", "name", "farbe", "symbol", "buchbar", "summiert
 
 
 def rolle_pruefen(merkmale, key, rolle, typ):
-    """Die Rolle kosten braucht den Typ geld, die Rolle hero den Typ text; jede Rolle gilt je Art nur einmal."""
+    """Die Rolle kosten braucht den Typ geld, summe den Typ zahl oder geld, hero den Typ text; jede Rolle gilt je Art nur einmal,
+    summe darf mehrfach vorkommen (Gewicht und Preis, ADR-0010)."""
+    from routen import ROLLEN_MEHRFACH
     if rolle == "kosten" and typ != "geld":
         raise Ablehnung("schreiben.rolle_pruefen.1")
+    if rolle == "summe" and typ not in ("zahl", "geld"):
+        raise Ablehnung("schreiben.rolle_pruefen.summe")
     if rolle == "hero" and typ != "text":
         raise Ablehnung("schreiben.rolle_pruefen.3")
+    if rolle in ROLLEN_MEHRFACH:
+        return
     andere = next((k for k, d in merkmale.items() if k != key and isinstance(d, dict) and d.get("rolle") == rolle), None)
     if andere:
         raise Ablehnung("schreiben.rolle_pruefen.2", rolle=rolle, w2=merkmale[andere].get('name', andere), andere=andere)
@@ -919,9 +926,10 @@ def datum(text, feld, k):
         raise Ablehnung("schreiben.datum.1", k=k, feld=feld)
 
 
-def wert_eintraege(args, k, definition, heute):
+def wert_eintraege(args, k, definition, heute, herkunft=True):
     """Die neuen Werte aus der Anfrage prüfen -> Liste von Einträgen {wert, quelle, geprueft?, notiz?, gilt?} (Daten als date).
-    Herkunftspflicht: jeder Wert braucht quelle; ein veränderliches Merkmal auch geprueft (nicht in der Zukunft)."""
+    Herkunftspflicht: jeder Wert braucht quelle; ein veränderliches Merkmal auch geprueft (nicht in der Zukunft).
+    herkunft=False: ausdrückliche Ausnahme der Gegenstände der Packliste (ADR-0010): keine Herkunft nötig, das Prüfdatum bleibt."""
     roh = args.get("werte")
     if roh in (None, "", []):
         roh = [{f: args.get(f) for f in ("wert", "quelle", "geprueft", "notiz", "gilt")}]
@@ -949,9 +957,11 @@ def wert_eintraege(args, k, definition, heute):
             except ValueError:
                 raise Ablehnung("schreiben.wert_eintraege.3", k=k)
         quelle = x.get("quelle")
-        if not isinstance(quelle, str) or not quelle.strip():
+        if herkunft and (not isinstance(quelle, str) or not quelle.strip()):
             raise Ablehnung("schreiben.wert_eintraege.4", k=k)
-        e = {"wert": wert, "quelle": " ".join(quelle.split())[:MAX_TEXT]}
+        e = {"wert": wert}
+        if isinstance(quelle, str) and quelle.strip():
+            e["quelle"] = " ".join(quelle.split())[:MAX_TEXT]
         g = x.get("geprueft")
         if g not in (None, ""):
             e["geprueft"] = datum(g, "geprueft", k)
@@ -1097,7 +1107,7 @@ def wert_eintragen(reise_dir, wer, args, heute=None):
 
 # ---------- Dinge, Wahlstellen, Optionen (plan/routen.yaml) ----------
 DING_ARTEN = {"unterkunft": ("U", "unterkuenfte"), "aufenthalt": ("A", "aufenthalte"), "strecke": ("E", "strecken"), "ort": ("O", "orte")}
-ID_MUSTER = re.compile(r"^(T-\d+|E-\d+[A-Za-z]?|U-\d+|A-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?|F-\d+|B-\d+)$")
+ID_MUSTER = re.compile(r"^(T-\d+|E-\d+[A-Za-z]?|U-\d+|A-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?|F-\d+|B-\d+|G-\d+)$")
 
 
 PLAIN_FELDER = {"id", "status", "wer", "art", "wann", "typ", "rolle", "ort", "von", "nach", "frage", "siehe", "bereich", "an", "unterkuenfte", "aufenthalte", "orte",
@@ -1158,7 +1168,7 @@ def id_liste(args, feld, muster, roh, menge=None, pflicht=False):
     return v
 
 
-def merkmale_werte(roh_merkmale, krit, heute, vorgabe=None):
+def merkmale_werte(roh_merkmale, krit, heute, vorgabe=None, herkunft=True):
     """Merkmale eines neuen Dings oder einer Option aus der Anfrage -> {schluessel: Eintrag | [Einträge]} (geprüft wie wert_eintragen)."""
     if roh_merkmale in (None, "", {}):
         return {}
@@ -1181,7 +1191,7 @@ def merkmale_werte(roh_merkmale, krit, heute, vorgabe=None):
         for f, w in (vorgabe or {}).items():     # quelle und geprueft dürfen einmal für alle Merkmale stehen
             if w not in (None, "") and a.get(f) in (None, ""):
                 a[f] = w
-        eintraege = wert_eintraege(a, d["id"], d, heute)
+        eintraege = wert_eintraege(a, d["id"], d, heute, herkunft)
         aus[d["id"]] = eintraege[0] if len(eintraege) == 1 and "gilt" not in eintraege[0] else eintraege
     return aus
 
@@ -4188,6 +4198,403 @@ def wunsch_vorschlagen(reise_dir, wer, args, heute=None):
             + (S("schreiben.antwort.wunsch.option", w1=option) if option else "") + S("schreiben.antwort.wunsch.brett", w1=notiz))
 
 
+# ---------- Packliste (plan/packliste.yaml, ADR-0010, Issue #370) ----------
+# Gegenstände (G-…) mit der Kategorie als Art (grundform gegenstand). Ein Schreibvorgang je Werkzeug, Verlaufseintrag mit Person, Datum
+# und Grund. Der Packstand (abgehakt, je Person) liegt nicht hier, sondern live beim Rückmeldedienst. Eine Herkunft braucht ein
+# Gegenstand nicht (ausdrückliche Ausnahme von ADR-0001, Punkt 5); Merkmale mit veraenderlich behalten ihr Prüfdatum.
+GEGENSTAND_ELTERN = ("strecke", "aufenthalt", "unterkunft", "ort")
+GEGENSTAND_MENGE = {"strecke": "strecken", "aufenthalt": "aufenthalte", "unterkunft": "unterkuenfte", "ort": "orte"}
+GEGENSTAND_TITEL_MAX = 120
+
+
+def packliste_laden(reise_dir):
+    """plan/packliste.yaml rund gelesen -> Wörterbuch mit Liste gegenstaende; eine Reise ohne Datei bekommt eine leere mit Kopfkommentar."""
+    from ruamel.yaml.comments import CommentedMap, CommentedSeq
+    p = Path(reise_dir) / "plan" / "packliste.yaml"
+    roh = None
+    if p.exists():
+        try:
+            roh = yaml_rund().load(p.read_text(encoding="utf-8"))
+        except Exception as e:   # ruamel wirft verschiedene Fehlerklassen
+            raise Ablehnung("schreiben.packliste_laden.1", __name__=type(e).__name__)
+    if roh is None:
+        roh = CommentedMap()
+        roh.yaml_set_start_comment(texte.t(sprache_von(reise_dir), "inhalt.schreiben.packliste_kopf"))
+    if not isinstance(roh, dict) or not isinstance(roh.get("gegenstaende") or [], list):
+        raise Ablehnung("schreiben.packliste_laden.1", __name__="Form")
+    if roh.get("gegenstaende") is None:
+        roh["gegenstaende"] = CommentedSeq()
+    return roh
+
+
+def packliste_speichern(reise_dir, roh):
+    import io
+    out = io.StringIO()
+    yaml_rund().dump(roh, out)
+    p = Path(reise_dir) / "plan" / "packliste.yaml"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(out.getvalue(), encoding="utf-8")
+
+
+def gegenstand_arten(reise_dir):
+    """Arten der Reise mit Grundform gegenstand -> {Schlüssel: Definition}."""
+    return {k: a for k, a in arten_laden(reise_dir).items() if isinstance(a, dict) and a.get("grundform") == "gegenstand"}
+
+
+def gegenstand_art(reise_dir, text, pflicht=True):
+    """Kategorie aus der Anfrage -> Schlüssel; sonst Ablehnung mit den vorhandenen Kategorien."""
+    arten = gegenstand_arten(reise_dir)
+    if not arten:
+        raise Ablehnung("schreiben.gegenstand.keine_arten")
+    art = (text or "").strip().lower()
+    if not art:
+        if pflicht:
+            raise Ablehnung("schreiben.gegenstand.art_fehlt", w1=", ".join(arten))
+        return None
+    if art not in arten:
+        # Name statt Schlüssel („Kleidung“) nimmt die Software an, wenn er eindeutig ist
+        gleich = [k for k, a in arten.items() if str(a.get("name", "")).casefold() == art]
+        if len(gleich) == 1:
+            return gleich[0]
+        raise Ablehnung("schreiben.gegenstand.art_unbekannt", art=art, w1=", ".join(arten))
+    return art
+
+
+def gegenstand_krit(route, art):
+    """Merkmale einer Art, wie merkmale_werte sie erwartet ([{id, name, typ, …}]) aus dem Probebau."""
+    return (route.get("merkmale") or {}).get(art) or []
+
+
+def gegenstand_an(roh_route, wert):
+    """Elternbezug eines Gegenstands prüfen -> Kennung. Strecke, Aufenthalt, Unterkunft oder Ort der Reise; ein Tag nicht (ADR-0007)."""
+    from routen import ist
+    x = str(wert).strip()
+    art = next((a for a in GEGENSTAND_ELTERN if ist(a, x)), None)
+    if art is None:
+        raise Ablehnung("schreiben.gegenstand.an_form", x=x, w1=", ".join(GEGENSTAND_ELTERN))
+    if x not in (roh_route.get(GEGENSTAND_MENGE[art]) or {}):
+        raise Ablehnung("schreiben.gegenstand.an_unbekannt", x=x)
+    return x
+
+
+def gegenstand_person(reise_dir, text):
+    """Person der Reise (Name oder Schlüssel, Groß- und Kleinschreibung egal) -> ihr Name; sonst Ablehnung."""
+    _, roh = reise_yaml_laden(reise_dir)
+    personen = {}
+    for k, v in (roh.get("personen") or {}).items():
+        if isinstance(v, dict) and v.get("name"):
+            personen[str(v["name"]).casefold()] = str(v["name"])
+            personen.setdefault(str(k).casefold(), str(v["name"]))
+    name = personen.get(str(text).strip().casefold())
+    if name is None:
+        raise Ablehnung("schreiben.gegenstand.wer_unbekannt", x=str(text).strip(), w1=", ".join(dict.fromkeys(personen.values())) or "–")
+    return name
+
+
+def gegenstand_wert_knoten(e):
+    """Wert eines Merkmals für die Datei: ein einfacher Wert steht schlicht („gewicht: 420“), mit Prüfdatum oder Notiz als Wörterbuch."""
+    if set(e) == {"wert"}:
+        return e["wert"]
+    return fliess_map(e)
+
+
+def gegenstand_merkmale(args, krit, heute, alt=None):
+    """Merkmale aus der Anfrage prüfen -> (neue Werte der Datei {Schlüssel: Wert | None}, Wörter für die Antwort). None entfernt ein Merkmal
+    (leerer Wert). Nur Merkmale der Art; Gültigkeit je Datum gibt es für Gegenstände nicht."""
+    roh = args.get("merkmale")
+    if roh in (None, "", {}):
+        return {}
+    if not isinstance(roh, dict):
+        raise Ablehnung("schreiben.klammer.merkmale")
+    aus = {}
+    for k, v in roh.items():
+        if v is None or (isinstance(v, str) and not v.strip()):
+            d = next((x for x in krit if x["id"] == str(k).lower()), None)
+            if d is None:
+                raise Ablehnung("schreiben.merkmale_werte.1", k=str(k).lower(), w2=", ".join(x["id"] for x in krit) or "keine")
+            aus[d["id"]] = None
+            continue
+        for sk, e in merkmale_werte({k: v}, krit, heute, herkunft=False).items():
+            if isinstance(e, list) or "gilt" in e:
+                raise Ablehnung("schreiben.gegenstand.gilt", k=sk)
+            aus[sk] = e
+    return aus
+
+
+def gegenstand_finden(roh, gid):
+    for g in roh.get("gegenstaende") or []:
+        if isinstance(g, dict) and g.get("id") == gid:
+            return g
+    return None
+
+
+def gegenstand_eintrag_text(g, art_name=None):
+    return f"{g.get('id')} {g.get('titel')}" + (f" ({art_name})" if art_name else "")
+
+
+def gegenstand_anlegen(reise_dir, wer, args, heute=None):
+    """Einen Gegenstand der Packliste anlegen (neue G-ID): Kategorie (Art), Titel, Merkmale, an, wer packt, Notiz. -> (Titel, Text)."""
+    heute = heute or datetime.date.today()
+    route = route_stand(reise_dir)
+    roh_route = routen_laden(reise_dir)
+    art = gegenstand_art(reise_dir, text_wert(args, "art", laenge=40))
+    titel = text_wert(args, "titel", pflicht=True, laenge=GEGENSTAND_TITEL_MAX)
+    werte = {k: v for k, v in gegenstand_merkmale(args, gegenstand_krit(route, art), heute).items() if v is not None}
+    d = {"id": None, "art": art, "titel": titel}
+    an = text_wert(args, "an", laenge=20)
+    if an:
+        d["an"] = gegenstand_an(roh_route, an)
+    traeger = text_wert(args, "wer", laenge=80)
+    if traeger:
+        d["wer"] = gegenstand_person(reise_dir, traeger)
+    if (notiz := text_wert(args, "notiz")):
+        d["notiz"] = notiz
+    grund = text_wert(args, "grund")
+    gid = neue_id(reise_dir, "G")
+    d["id"] = gid
+    from ruamel.yaml.comments import CommentedSeq
+    knoten = block_map({k: v for k, v in d.items() if k != "id"})
+    knoten.insert(0, "id", gid)
+    if werte:
+        knoten.insert(list(knoten).index("art") + 2, "merkmale", fliess_map({}))
+        for k, e in werte.items():
+            knoten["merkmale"][k] = gegenstand_wert_knoten(e)
+    verlauf = CommentedSeq()
+    verlauf.append(fliess_map({"datum": heute, "wer": wer["name"], "was": "angelegt", **({"grund": grund} if grund else {})}))
+    knoten["verlauf"] = verlauf
+    roh = packliste_laden(reise_dir)
+    roh["gegenstaende"].append(knoten)
+    packliste_speichern(reise_dir, roh)
+    art_name = arten_laden(reise_dir)[art].get("name", art)
+    defs = {x["id"]: x for x in gegenstand_krit(route, art)}
+    mk_text = ", ".join(f"{defs[k]['name']} {e['wert']}{(' ' + defs[k]['einheit']) if defs[k].get('einheit') else ''}" for k, e in werte.items())
+    return (S("schreiben.titel.gegenstand_angelegt", w1=gid, w2=titel, w3=art_name),
+            S("schreiben.antwort.gegenstand.angelegt", w1=gid, w2=titel, w3=art_name) + (S("schreiben.antwort.gegenstand.merkmale", w1=mk_text) if mk_text else "")
+            + (S("schreiben.antwort.gegenstand.an", w1=d["an"]) if d.get("an") else "")
+            + (S("schreiben.antwort.gegenstand.wer", w1=d["wer"]) if d.get("wer") else "") + "."
+            + (S("schreiben.antwort.grund", w1=grund) if grund else ""))
+
+
+def gegenstand_eigen(g, wer):
+    """Darf eine Mitwirkende diesen Gegenstand ändern? Ja, wenn sie ihn angelegt hat oder er ihr zugewiesen ist (wer)."""
+    name = wer["name"].casefold()
+    if str(g.get("wer") or "").casefold() == name:
+        return True
+    erster = next((e for e in g.get("verlauf") or [] if isinstance(e, dict)), None)
+    return bool(erster) and str(erster.get("wer") or "").casefold() == name
+
+
+def gegenstand_aendern(reise_dir, wer, args, heute=None):
+    """Einen Gegenstand ändern: Kategorie, Titel, Merkmale, an, wer packt, Notiz, Status (entfaellt mit Grund; aktiv holt ihn zurück). Leerer
+    Text entfernt ein Feld. Mitwirkende ändern eigene (angelegt oder zugewiesen), Organisator:innen alle. -> (Titel, Text)."""
+    heute = heute or datetime.date.today()
+    gid = (text_wert(args, "ziel", pflicht=True, laenge=10) or "").strip().upper()
+    if not re.fullmatch(r"G-\d+", gid):
+        raise Ablehnung("schreiben.gegenstand.ziel_form")
+    roh = packliste_laden(reise_dir)
+    g = gegenstand_finden(roh, gid)
+    if g is None:
+        raise Ablehnung("schreiben.gegenstand.ziel_unbekannt", gid=gid)
+    if wer["rolle"] != "organisator" and not gegenstand_eigen(g, wer):
+        raise Ablehnung("schreiben.gegenstand.fremd", gid=gid)
+    route = route_stand(reise_dir)
+    roh_route = routen_laden(reise_dir)
+    arten = arten_laden(reise_dir)
+    grund = text_wert(args, "grund")
+    geaendert, kurz = [], []
+
+    def feld(name, neu_wert, wort):
+        """Textfeld setzen (leer entfernt es); Eintrag für Antwort und Verlauf."""
+        alt = g.get(name)
+        if neu_wert in ("", None):
+            if name in g:
+                geaendert.append(S("schreiben.antwort.ding.entfernt", w1=wort, w2=alt))
+                kurz.append(wort)
+                del g[name]
+            return
+        if alt == neu_wert:
+            return
+        geaendert.append(S("schreiben.antwort.ding.wechsel", w1=wort, w2=alt, w3=neu_wert) if alt is not None else S("schreiben.antwort.ding.neu", w1=wort, w2=neu_wert))
+        kurz.append(wort)
+        if name not in g and "verlauf" in g:   # der Verlauf bleibt am Ende des Eintrags
+            g.insert(list(g).index("verlauf"), name, skalar(name, neu_wert))
+        else:
+            g[name] = skalar(name, neu_wert)
+
+    art_neu = gegenstand_art(reise_dir, text_wert(args, "art", laenge=40), pflicht=False)
+    art = art_neu or g.get("art")
+    krit = gegenstand_krit(route, art)
+    if art_neu and art_neu != g.get("art"):
+        # Werte, die die neue Kategorie nicht kennt, müssen im selben Aufruf ausdrücklich entfernt werden (leerer Wert); nichts entfällt still
+        ids = {x["id"] for x in krit}
+        entfernen = {k for k, v in (args.get("merkmale") or {}).items() if v in ("", None)} if isinstance(args.get("merkmale"), dict) else set()
+        fremd = [k for k in (g.get("merkmale") or {}) if k not in ids and k not in entfernen]
+        if fremd:
+            raise Ablehnung("schreiben.gegenstand.art_merkmale", art=art_neu, w1=", ".join(fremd))
+        feld("art", art_neu, S("schreiben.gegenstand.wort.kategorie"))
+        for k in [k for k in (g.get("merkmale") or {}) if k not in ids]:
+            alt = g["merkmale"][k]
+            geaendert.append(S("schreiben.antwort.ding.entfernt", w1=k, w2=alt.get("wert") if isinstance(alt, dict) else alt))
+            kurz.append(k)
+            del g["merkmale"][k]
+        if "merkmale" in g and not g["merkmale"]:
+            del g["merkmale"]
+        args = {**args, "merkmale": {k: v for k, v in args["merkmale"].items() if k in ids}} if isinstance(args.get("merkmale"), dict) else args
+    titel = text_wert(args, "titel", laenge=GEGENSTAND_TITEL_MAX)
+    if titel is not None:
+        if not titel:
+            raise Ablehnung("schreiben.gegenstand.titel_leer")
+        feld("titel", titel, S("schreiben.gegenstand.wort.titel"))
+    if args.get("an") is not None:
+        an = text_wert(args, "an", laenge=20)
+        feld("an", gegenstand_an(roh_route, an) if an else "", "an")
+    if args.get("wer") is not None:
+        traeger = text_wert(args, "wer", laenge=80)
+        feld("wer", gegenstand_person(reise_dir, traeger) if traeger else "", S("schreiben.gegenstand.wort.wer"))
+    if args.get("notiz") is not None:
+        feld("notiz", text_wert(args, "notiz"), S("schreiben.gegenstand.wort.notiz"))
+    defs = {x["id"]: x for x in krit}
+    for k, e in gegenstand_merkmale(args, krit, heute).items():
+        name = defs[k]["name"]
+        alt = (g.get("merkmale") or {}).get(k)
+        alt_w = alt.get("wert") if isinstance(alt, dict) else alt
+        if e is None:
+            if alt is not None:
+                geaendert.append(S("schreiben.antwort.ding.entfernt", w1=name, w2=alt_w))
+                kurz.append(name)
+                del g["merkmale"][k]
+                if not g["merkmale"]:
+                    del g["merkmale"]
+            continue
+        neu_k = gegenstand_wert_knoten(e)
+        if alt == neu_k or (isinstance(alt, dict) and isinstance(neu_k, dict) and dict(alt) == dict(neu_k)):
+            continue
+        geaendert.append(S("schreiben.antwort.ding.wechsel", w1=name, w2=alt_w, w3=e["wert"]) if alt is not None else S("schreiben.antwort.ding.neu", w1=name, w2=e["wert"]))
+        kurz.append(name)
+        if "merkmale" not in g:
+            g.insert(list(g).index("art") + 2, "merkmale", fliess_map({}))
+        g["merkmale"][k] = neu_k
+    status = text_wert(args, "status", laenge=20)
+    weggelassen = False
+    if status is not None:
+        status = status.lower()
+        if status not in ("entfaellt", "aktiv"):
+            raise Ablehnung("schreiben.gegenstand.status")
+        if status == "entfaellt" and g.get("status") != "entfaellt":
+            if not grund:
+                raise Ablehnung("schreiben.gegenstand.status_grund")
+            if "verlauf" in g:
+                g.insert(list(g).index("verlauf"), "status", "entfaellt")
+            else:
+                g["status"] = "entfaellt"
+            geaendert.append(S("schreiben.antwort.gegenstand.entfaellt"))
+            kurz.append(S("schreiben.gegenstand.wort.weggelassen"))
+            weggelassen = True
+        elif status == "aktiv" and g.get("status") == "entfaellt":
+            del g["status"]
+            geaendert.append(S("schreiben.antwort.gegenstand.aktiv"))
+            kurz.append(S("schreiben.gegenstand.wort.zurueckgeholt"))
+    if not geaendert:
+        raise Ablehnung("schreiben.gegenstand.nichts_geaendert", gid=gid)
+    from ruamel.yaml.comments import CommentedSeq
+    if g.get("verlauf") is None:
+        g["verlauf"] = CommentedSeq()
+    g["verlauf"].append(fliess_map({"datum": heute, "wer": wer["name"], "was": lesbar(reise_dir, kurz), **({"grund": grund} if grund else {})}))
+    packliste_speichern(reise_dir, roh)
+    art_name = (arten.get(art) or {}).get("name", art)
+    return (S("schreiben.titel.geaendert", w1=gid, w2=verbinden(kurz, "; ")),
+            S("schreiben.antwort.gegenstand.kopf", w1=gid, w2=g.get("titel"), w3=art_name) + verbinden(geaendert, "; ") + "."
+            + (S("schreiben.antwort.grund", w1=grund) if grund else "") + (S("schreiben.antwort.gegenstand.nicht_geloescht") if weggelassen else ""))
+
+
+def fremde_datei(reise_dir, von, rel):
+    """Datei einer anderen Reise der Instanz lesen -> Text oder None: aus dem Ordner neben dieser Reise (Git-Weg), sonst aus dem Reisespeicher."""
+    p = Path(reise_dir).parent / von / rel
+    if p.exists():
+        return p.read_text(encoding="utf-8")
+    try:
+        import reisespeicher
+        return reisespeicher.datei(von, rel).decode("utf-8")
+    except (ImportError, KeyError, OSError, sqlite3.Error, UnicodeDecodeError):
+        return None
+
+
+def packliste_uebernehmen(reise_dir, wer, args, heute=None):
+    """Kategorien (Arten mit grundform gegenstand) und Gegenstände einer anderen Reise derselben Person als Vorschlag übernehmen: Kopie mit
+    neuen G-IDs, ohne Packstand, ohne an: (die Dinge der alten Reise gibt es hier nicht) und ohne wer; weggelassene Gegenstände bleiben
+    weg. Gibt es die Kategorie hier schon, kommen ihre Gegenstände hinein; Werte von Merkmalen, die sie nicht kennt, entfallen. Der
+    Konnektor prüft, dass die Person auf beiden Reisen dabei ist. Nur Organisator:innen. -> (Titel, Text)"""
+    import copy
+    import yaml
+    heute = heute or datetime.date.today()
+    von = (text_wert(args, "von_reise", pflicht=True, laenge=60) or "").strip()
+    if not REISE_MUSTER.match(von) or von == Path(reise_dir).name:
+        raise Ablehnung("schreiben.packliste_uebernehmen.1")
+    try:
+        fremd_arten = yaml.safe_load(fremde_datei(reise_dir, von, "plan/arten.yaml") or "") or {}
+        fremd_liste = yaml.safe_load(fremde_datei(reise_dir, von, "plan/packliste.yaml") or "") or {}
+    except yaml.YAMLError:
+        raise Ablehnung("schreiben.packliste_uebernehmen.2", von=von)
+    fremd_arten = {k: a for k, a in ((fremd_arten.get("arten") if isinstance(fremd_arten, dict) else None) or {}).items()
+                   if isinstance(a, dict) and a.get("grundform") == "gegenstand"}
+    if not fremd_arten:
+        raise Ablehnung("schreiben.packliste_uebernehmen.2", von=von)
+    gewuenscht = liste_wert(args, "arten", laenge=40)
+    gewuenscht = [a.lower() for a in gewuenscht] if gewuenscht else list(fremd_arten)
+    fehlt = [a for a in gewuenscht if a not in fremd_arten]
+    if fehlt:
+        raise Ablehnung("schreiben.packliste_uebernehmen.3", von=von, w2=", ".join(fehlt), w3=", ".join(fremd_arten))
+    eigene = arten_laden(reise_dir)
+    for a in gewuenscht:     # eine Kategorie hier mit anderer Grundform wäre ein Widerspruch
+        if a in eigene and eigene[a].get("grundform") != "gegenstand":
+            raise Ablehnung("schreiben.packliste_uebernehmen.4", art=a, w1=eigene[a].get("grundform"))
+    neue_arten = [a for a in gewuenscht if a not in eigene]
+    for a in neue_arten:
+        eigene[a] = copy.deepcopy(fremd_arten[a])
+    if neue_arten:
+        arten_speichern(reise_dir, eigene, wer)
+    quellen = [g for g in (fremd_liste.get("gegenstaende") if isinstance(fremd_liste, dict) else None) or []
+               if isinstance(g, dict) and g.get("art") in gewuenscht and g.get("status") != "entfaellt" and g.get("titel")]
+    route = route_stand(reise_dir)
+    roh = packliste_laden(reise_dir)
+    from ruamel.yaml.comments import CommentedSeq
+    angelegt, verloren = [], []
+    for q in quellen:
+        krit = {x["id"]: x for x in gegenstand_krit(route, q["art"])}
+        d = {"art": q["art"], "titel": str(q["titel"])[:GEGENSTAND_TITEL_MAX]}
+        if q.get("notiz"):
+            d["notiz"] = str(q["notiz"])[:MAX_TEXT]
+        gid = neue_id(reise_dir, "G")
+        knoten = block_map(d)
+        knoten.insert(0, "id", gid)
+        mk = {}
+        for k, v in (q.get("merkmale") or {}).items():
+            if k in krit and not krit[k].get("auto"):
+                e = dict(v) if isinstance(v, dict) else {"wert": v}
+                mk[k] = {f: e[f] for f in ("wert", "geprueft", "notiz") if e.get(f) not in (None, "")}
+            else:
+                verloren.append(f"{q['titel']}: {k}")
+        if mk:
+            knoten.insert(list(knoten).index("titel") + 1, "merkmale", fliess_map({}))
+            for k, e in mk.items():
+                knoten["merkmale"][k] = gegenstand_wert_knoten(e)
+        verlauf = CommentedSeq()
+        verlauf.append(fliess_map({"datum": heute, "wer": wer["name"], "was": lesbar(reise_dir, [S("schreiben.gegenstand.wort.uebernommen_aus", w1=von)]),
+                                   **({"grund": g_} if (g_ := text_wert(args, "grund")) else {})}))
+        knoten["verlauf"] = verlauf
+        roh["gegenstaende"].append(knoten)
+        angelegt.append(gid)
+    if not neue_arten and not angelegt:
+        raise Ablehnung("schreiben.packliste_uebernehmen.5", von=von)
+    packliste_speichern(reise_dir, roh)
+    grund = text_wert(args, "grund")
+    return (S("schreiben.titel.packliste_uebernommen", w1=von, w2=len(angelegt)),
+            S("schreiben.antwort.packliste.uebernommen", w1=von, n=len(angelegt))
+            + (S("schreiben.antwort.packliste.kategorien", w1=", ".join(neue_arten)) if neue_arten else "")
+            + (S("schreiben.antwort.packliste.verloren", w1="; ".join(verloren)) if verloren else "")
+            + S("schreiben.antwort.packliste.vorschlag") + (S("schreiben.antwort.grund", w1=grund) if grund else ""))
+
+
 WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_definieren, "kategorie_definieren": kategorie_definieren, "wert_eintragen": wert_eintragen,
              "ding_anlegen": ding_anlegen, "ding_aendern": ding_aendern, "option_anlegen": option_anlegen,
              "wahlstelle_anlegen": wahlstelle_anlegen, "frage_anlegen": frage_anlegen, "entscheiden": entscheiden,
@@ -4201,7 +4608,9 @@ WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_def
              "merkmal_zusammenfuehren": merkmal_zusammenfuehren, "arten_uebernehmen": arten_uebernehmen, "wunsch_vorschlagen": wunsch_vorschlagen,
              "start_ende_setzen": start_ende_setzen, "symbol_setzen": symbol_setzen,
              # Karte (Epic #225)
-             "kartenansicht_setzen": kartenansicht_setzen, "track_anhaengen": track_anhaengen, "kartenpunkte_holen": kartenpunkte_holen}
+             "kartenansicht_setzen": kartenansicht_setzen, "track_anhaengen": track_anhaengen, "kartenpunkte_holen": kartenpunkte_holen,
+             # Packliste (ADR-0010, #370)
+             "gegenstand_anlegen": gegenstand_anlegen, "gegenstand_aendern": gegenstand_aendern, "packliste_uebernehmen": packliste_uebernehmen}
 REPO_WERKZEUGE = {"reise_anlegen": reise_anlegen}   # arbeiten auf reisen/, nicht in einer Reise
 
 

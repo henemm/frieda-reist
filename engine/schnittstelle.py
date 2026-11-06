@@ -75,7 +75,11 @@ NAMEN = {
     "track_attach": "track_anhaengen",
     "map_points_fetch": "kartenpunkte_holen",
     "language_set": "sprache_setzen",
-    "language_set": "sprache_setzen",
+    "packing_list": "packliste",
+    "gear_create": "gegenstand_anlegen",
+    "gear_update": "gegenstand_aendern",
+    "gear_pack": "gegenstand_packen",
+    "packing_list_adopt": "packliste_uebernehmen",
 }
 INTERN_ZU_ENGLISCH = {i: e for e, i in NAMEN.items()}
 
@@ -103,13 +107,14 @@ PARAMETER = {
     "untertitel": "subtitle", "uebersicht": "overview_kinds", "veraenderlich": "changeable", "von": "from", "von_reise": "from_trip", "vor": "before",
     "vorname": "first_name", "wahl": "choices", "wahlstelle": "choice", "wann": "when", "was": "what", "wert": "value",
     "werte": "values", "wunsch": "wish", "zeit": "time_text", "ziel": "target", "zustaendig": "assignee", "reise": "trip",
+    "wer": "packer", "gepackt": "packed",
 }
 # Gleiches Wort, andere Bedeutung: bei Strecken (ding_anlegen, ding_aendern) sind von/nach Start und Ziel, ab/an Abfahrt und Ankunft
 # item_create und item_update (ADR-0007, Schritt c) nehmen den Elternbezug an (englisch parent); die früheren Parameter ort, von, nach, ab, an
 # (Zeit), beginn, ende, zeit, adresse, koordinaten, buchungslink, frage, ausserhalb stehen nicht mehr im Schema, gelten aber weiter
 # (deutsch und englisch, siehe PARAMETER_VERSTECKT) und stehen jetzt in merkmale
 PARAMETER_JE_WERKZEUG = {
-    "ding_anlegen": {"an": "parent"}, "ding_aendern": {"an": "parent"},
+    "ding_anlegen": {"an": "parent"}, "ding_aendern": {"an": "parent"}, "gegenstand_anlegen": {"an": "parent"}, "gegenstand_aendern": {"an": "parent"},
     "aufgabe_anlegen": {"ab": "earliest"}, "aufgabe_aendern": {"ab": "earliest"},
     "tag_aendern": {"nacht": "night", "wahl": "choices"},
     "buchung_anlegen": {"ab": "available_from"}, "buchung_aendern": {"ab": "available_from"},
@@ -175,7 +180,7 @@ def _schema_aussen(x, tab):
 
 # Namen, die im Fließtext als Werkzeugnamen stehen: mit Unterstrich unverwechselbar, die übrigen nur als eigenständiges Wort
 _TEXT_NAMEN = [i for i in INTERN_ZU_ENGLISCH if "_" in i or i in ("ueberblick", "zeige", "suche", "varianten", "merkmale", "kategorien",
-                                                                  "aufgaben", "wuensche", "rueckmeldungen")]
+                                                                  "aufgaben", "wuensche", "rueckmeldungen", "packliste")]
 _TEXT_MUSTER = re.compile(r"(?<![\w.-])(" + "|".join(sorted(map(re.escape, _TEXT_NAMEN), key=len, reverse=True)) + r")(?![\w-])")
 
 

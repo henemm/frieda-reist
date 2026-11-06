@@ -566,7 +566,8 @@ def test_ontologie_organisator_schreibt_direkt(schreibweg):
                    "tag_anlegen", "termin_setzen", "wahlstelle_aendern", "reise_aendern", "plan_anlegen", "plan_aendern",
                    "merkmal_zusammenfuehren", "arten_uebernehmen",
                    "start_ende_setzen",   # Issue #142
-                   "symbol_setzen", "kartenansicht_setzen", "kartenpunkte_holen"}   # Issue #252
+                   "symbol_setzen", "kartenansicht_setzen", "kartenpunkte_holen",   # Issue #252
+                   "packliste_uebernehmen"}   # #370
         assert (set(kn.ONTOLOGIE_WERKZEUGE) - nur_org - set(kn.ALIAS_ZU_DING_AENDERN) - set(kn.ALIAS_ZU_ART) <= namen) is da, token
         assert not (set(kn.ALIAS_ZU_DING_AENDERN) | set(kn.ALIAS_ZU_ART) | {"kategorien"}) & namen   # Aliase von item_update (ADR-0007, Schritt c) stehen nicht mehr in der Liste
         assert ("start_ende_setzen" in namen) is (token == ALT_ORGANISATOR), token

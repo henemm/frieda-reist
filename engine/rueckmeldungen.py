@@ -528,6 +528,83 @@ def aufgabe_aendern(o, agid, roh):
     return a, None, 200
 
 
+# ---------- Packstand der Packliste (ADR-0010, Issue #370) ----------
+# Was eine Person schon eingepackt hat, liegt live in <ablage>/<reise>/packstand.json, nicht als Version im Reisespeicher: So geht Abhaken
+# ohne Netz auf der Seite, ohne dass jeder Haken ein Verlaufseintrag wird. Form: {G-ID: {Name der Person: Zeitpunkt (UTC)}}. Ein Gegenstand
+# mit wer wird von dieser Person abgehakt, einer ohne wer von jeder Person für sich. Dieser Dienst ist der einzige Schreiber.
+GID_MUSTER = re.compile(r"^G-\d+$")
+MAX_PACKSTAND = 4000      # Haken je Reise
+
+
+def packstand_lesen(o):
+    """-> {G-ID: {Person: Zeitpunkt}}; fehlt die Datei oder ist sie kaputt: leer."""
+    if o is None:
+        return {}
+    try:
+        roh = json.loads((o / "packstand.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return roh if isinstance(roh, dict) else {}
+
+
+def packliste_veroeffentlicht(reise):
+    """Die Packliste der veröffentlichten Seite (daten.json, Schlüssel packliste) oder None, wenn sie nicht lesbar ist."""
+    try:
+        alles = json.loads((seiten() / reise / "daten.json").read_text(encoding="utf-8"))
+        p = alles.get("packliste")
+        return p if isinstance(p, dict) else None
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
+def packstand_aendern(o, roh, z):
+    """Haken setzen oder zurücknehmen: roh = {name, gepackt: {G-ID: true|false}}. Die Person ist name (der Dienst hat sie geprüft). Nur
+    echte Änderungen werden geschrieben (Nachreichen ohne Netz ist wiederholbar). z: zustand(reise) oder None (dann nur technische
+    Prüfungen). -> (Packstand der betroffenen Gegenstände, fehler, code). Aufrufer hält _sperre."""
+    if not isinstance(roh, dict):
+        return None, texte.satz("dienst.pruefen.1"), 400
+    name, fehler = wer(roh)
+    if fehler:
+        return None, fehler, 400
+    haken = roh.get("gepackt")
+    if not isinstance(haken, dict) or not haken or not all(isinstance(k, str) and GID_MUSTER.match(k) and isinstance(v, bool) for k, v in haken.items()):
+        return None, texte.satz("dienst.packstand.1"), 400
+    if len(haken) > 500:
+        return None, texte.satz("dienst.packstand.2", n=500), 400
+    if z is not None:
+        ok, grund = rg.erlaubt("packen", rolle_von(z, name), z["status"], z["bausteine"], regeln=z.get("regeln"))
+        if not ok:
+            return None, grund, 403
+    liste = {g["id"]: g for g in (packliste_veroeffentlicht(o.name) or {}).get("gegenstaende") or [] if isinstance(g, dict) and g.get("id")}
+    for gid, v in haken.items():     # nur prüfen, was die veröffentlichte Seite kennt; Neues (noch nicht veröffentlicht) wird angenommen
+        g = liste.get(gid)
+        if g is None or v is False:
+            continue
+        if g.get("status") == "entfaellt":
+            return None, texte.satz("dienst.packstand.3", gid=gid), 409
+        if g.get("wer") and _schluessel(g["wer"]) != _schluessel(name):
+            return None, texte.satz("dienst.packstand.4", gid=gid, w1=g["wer"]), 403
+    alle = packstand_lesen(o)
+    jetzt, geaendert = jetzt_iso(), False
+    for gid, v in haken.items():
+        je = alle.get(gid) if isinstance(alle.get(gid), dict) else {}
+        if v and name not in je:
+            je[name] = jetzt
+            geaendert = True
+        elif not v and name in je:
+            del je[name]
+            geaendert = True
+        if je:
+            alle[gid] = je
+        else:
+            alle.pop(gid, None)
+    if sum(len(v) for v in alle.values() if isinstance(v, dict)) > MAX_PACKSTAND:
+        return None, texte.satz("dienst.packstand.5"), 409
+    if geaendert:
+        schreiben(o / "packstand.json", json.dumps(alle, ensure_ascii=False, indent=1, sort_keys=True) + "\n")
+    return {gid: alle.get(gid, {}) for gid in haken}, None, 200
+
+
 # ---------- Wunsch-Brett (Paket G) ----------
 # Zu jedem Wunsch (Rückmeldung der Art Wunsch) hält brett.json fest, was nicht von Claude kommt: die Punkte der Person,
 # die ihn eingebracht hat (wie wichtig er ihr ist), „eingeplant“ (nur Organisator:innen) und „erlebt“ (alle Mitwirkenden, unterwegs
@@ -925,6 +1002,8 @@ class Dienst(BaseHTTPRequestHandler):
             return self._antwort(200, reisestand.lesen(o.name))
         if was == "brett":
             return self._antwort(200, brett(o, zustand(o.name)))
+        if was == "packstand":
+            return self._antwort(200, packstand_lesen(o))
         if was == "ich":
             z = zustand(o.name)
             i = wer_ist(self.headers, o.name, z, lesen=True)
@@ -982,6 +1061,24 @@ class Dienst(BaseHTTPRequestHandler):
             with _sperre:
                 b, nein = bl.aendern(o, did, roh, name, rolle)
             return self._antwort(nein[0], {"fehler": nein[1]}) if nein else self._antwort(200, b)
+        if t and t[1] == "packstand" and (t[2] is None or GID_MUSTER.match(t[2])):
+            # Packstand (ADR-0010): {name, gepackt: {G-ID: bool}} für mehrere Gegenstände, oder .../packstand/<G-ID> mit {name, gepackt: bool}
+            roh, fehlt = self._json()
+            if fehlt:
+                return
+            if not isinstance(roh, dict):
+                return self._antwort(400, {"fehler": texte.satz("dienst.pruefen.1")})
+            if t[2] is not None and isinstance(roh.get("gepackt"), bool):
+                roh = {**roh, "gepackt": {t[2]: roh["gepackt"]}}
+            z = zustand(t[0].name)
+            name, nein = name_fuer(wer_ist(self.headers, t[0].name, z), z, roh.get("name"))
+            if nein:
+                return self._antwort(nein[0], {"fehler": nein[1]})
+            with _sperre:
+                if gedrosselt(t[0]):
+                    return self._antwort(429, {"fehler": texte.satz("dienst.do_patch.5")})
+                stand, fehler, code = packstand_aendern(t[0], {**roh, "name": name}, z)
+            return self._antwort(code, {"fehler": fehler} if fehler else stand)
         wunsch = bool(t) and t[1] == "rueckmeldungen" and bool(RID_MUSTER.match(t[2] or ""))
         erledigen = bool(t) and t[1] == "rueckmeldungen" and bool(AID_MUSTER.match(t[2] or ""))
         if not t or not (wunsch or erledigen) and (t[1] != "aufgaben" or not AG_MUSTER.match(t[2] or "")):

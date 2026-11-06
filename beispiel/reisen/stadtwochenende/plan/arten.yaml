@@ -46,3 +46,14 @@ arten:
     merkmale:
       preis: {name: Preis, typ: geld, veraenderlich: true, rolle: kosten, hilfe: "Fahrplanauskunft des Betreibers"}
       dauer: {name: Dauer, typ: text, veraenderlich: true}
+  # Kategorien der Packliste (erfunden, Beispielwerte): ohne Gewicht und ohne Raum, ein Wochenende braucht beides nicht (ADR-0010)
+  papiere:
+    grundform: gegenstand
+    name: Papiere
+    farbe: blau
+  kleidung:
+    grundform: gegenstand
+    name: Kleidung
+    farbe: tuerkis
+    merkmale:
+      anzahl: {name: Anzahl, typ: zahl}
