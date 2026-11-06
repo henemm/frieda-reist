@@ -359,8 +359,8 @@ def test_beispielreise_hat_wahlstelle_mit_orten(tmp_path):
 
 
 def test_stadtwochenende_baut_unveraendert(tmp_path):
-    """AC-15: das Stadtwochenende (keine Wahlstelle, Orte ohne Art) baut ohne Fehler und Warnung; eine erfundene Wahlstelle mit
-    seinen Orten (ohne Art) baut ebenso, ohne Merkmale und ohne Warnung."""
+    """AC-15: das Stadtwochenende (keine Wahlstelle) baut ohne Fehler und Warnung; eine erfundene Wahlstelle mit seinen Orten
+    (O-01 ohne Art, O-02 mit der Art „stadt“ ohne Merkmale, seit #334) baut ebenso, ohne Merkmale und ohne Warnung."""
     d = bauen.bauen(REISEN / "stadtwochenende", tmp_path / "web" / "a")
     assert d["route"].get("warnungen") == [] and not d["route"].get("wahlstellen")
     v90 = wahlstelle("V-90", option("V-90.a", "In Beispielstadt bleiben (Beispiel)", orte=["O-02"]),
@@ -368,7 +368,8 @@ def test_stadtwochenende_baut_unveraendert(tmp_path):
     d2 = gebaut(tmp_path / "zwei", reise="stadtwochenende", wahl=[v90], tag="T-02", ort_merkmal=False)
     a, b = wahl_von(d2, "V-90")["optionen"]
     assert a.get("orte") == ["O-02"] and b.get("orte") == ["O-01"]
-    assert wahl_von(d2, "V-90")["art"] == "allgemein" and not a["merkmale"] and not b["fehlt"]
+    assert wahl_von(d2, "V-90")["art"] == "stadt", "die erste Art unter den Möglichkeiten (AC-8)"
+    assert not a["merkmale"] and not b["merkmale"] and not a["fehlt"] and not b["fehlt"]
     assert d2["route"].get("warnungen") == []
 
 
