@@ -1105,7 +1105,7 @@ DING_ARTEN = {"unterkunft": ("U", "unterkuenfte"), "aufenthalt": ("A", "aufentha
 ID_MUSTER = re.compile(r"^(T-\d+|E-\d+[A-Za-z]?|U-\d+|A-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?|F-\d+|B-\d+)$")
 
 
-PLAIN_FELDER = {"id", "status", "wer", "art", "wann", "typ", "rolle", "ort", "von", "nach", "frage", "siehe", "bereich", "an", "unterkuenfte",
+PLAIN_FELDER = {"id", "status", "wer", "art", "wann", "typ", "rolle", "ort", "von", "nach", "frage", "siehe", "bereich", "an", "unterkuenfte", "aufenthalte",
                 "strecken", "folge", "erfordert", "schliesst_aus", "auswahl", "fuer"}
 PLAIN_MUSTER = re.compile(r"^[^\W\d_][\w .\-]*$")
 
@@ -2298,9 +2298,10 @@ def option_bauen(roh, route, vid, o, wer, heute, bereich):
     u = id_liste(o, "unterkuenfte", r"U-\d+", roh, "unterkuenfte")
     st = id_liste(o, "strecken", r"E-\d+[A-Za-z]?", roh, "strecken")
     fo = id_liste(o, "folge", r"T-\d+", roh, "tage")
-    if sum(1 for x in (u, st, fo) if x) > 1:
+    au = id_liste(o, "aufenthalte", r"A-\d+", roh, "aufenthalte")
+    if not option_inhalt_ok({"unterkuenfte": u, "strecken": st, "folge": fo, "aufenthalte": au}):
         raise Ablehnung("schreiben.option_bauen.2", w1=d['titel'])
-    for k, v in (("unterkuenfte", u), ("strecken", st), ("folge", fo)):
+    for k, v in (("unterkuenfte", u), ("strecken", st), ("folge", fo), ("aufenthalte", au)):
         if v:
             d[k] = v
     optionen_ids = {x["id"] for w in route.get("wahlstellen") or [] for x in w["optionen"]}
@@ -2395,10 +2396,10 @@ def wahlstelle_anlegen(reise_dir, wer, args, heute=None):
         if bereich not in arten:
             raise Ablehnung("schreiben.wahlstelle_anlegen.2", w1=', '.join(arten) or 'keine')
         d["art"] = bereich
-    an = id_liste(args, "an", r"(T-\d+|E-\d+[A-Za-z]?|U-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?)", roh)
+    an = id_liste(args, "an", r"(T-\d+|E-\d+[A-Za-z]?|U-\d+|A-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?)", roh)
     if an:
         for x in an:
-            menge = {"T": "tage", "E": "strecken", "U": "unterkuenfte", "O": "orte", "V": "wahlstellen"}.get(x[0])
+            menge = {"T": "tage", "E": "strecken", "U": "unterkuenfte", "A": "aufenthalte", "O": "orte", "V": "wahlstellen"}.get(x[0])
             if menge and x not in (roh.get(menge) or {}):
                 raise Ablehnung("schreiben.wahlstelle_anlegen.3", x=x)
         d["an"] = an
@@ -3567,6 +3568,13 @@ def wahlstelle_aendern(reise_dir, wer, args, heute=None):
     return S("schreiben.titel.geaendert", w1=vid, w2=kurz_namen(geaendert)), S("schreiben.antwort.wahlstelle.kopf", w1=vid, w2=w.get("titel", "")) + verbinden(geaendert, "; ") + "." + (S("schreiben.antwort.grund", w1=grund) if grund else "")
 
 
+def option_inhalt_ok(neu):
+    """Was eine Möglichkeit enthält: Unterkünfte, Strecken, Aufenthalte ohne Nacht oder ein Reiseteil (folge). Genau eine dieser Sorten;
+    nur eine Strecke darf Aufenthalte mitbringen (Gipfelalternative: Weg und Rast, #353)."""
+    sorten = {k for k, v in neu.items() if v}
+    return len(sorten) <= 1 or sorten == {"strecken", "aufenthalte"}
+
+
 def option_aendern(reise_dir, wer, args, heute=None):
     """Felder einer Option ändern: titel, text, plus, minus, erfordert, schliesst_aus, ausloeser, siehe, unterkuenfte, strecken,
     folge, quelle; favorisieren (favorisiert: true mit grund) als Verlaufseintrag (Mitwirkende dürfen; gewählt, verworfen,
@@ -3615,12 +3623,13 @@ def option_aendern(reise_dir, wer, args, heute=None):
                 geaendert.append(wechsel(feld, list(knoten.get(feld) or []), l))
                 (knoten.__setitem__(feld, fliess_map({feld: l})[feld]) if l else knoten.pop(feld, None))
     inhalt = {}
-    for feld, muster, menge in (("unterkuenfte", r"U-\d+", "unterkuenfte"), ("strecken", r"E-\d+[A-Za-z]?", "strecken"), ("folge", r"T-\d+", "tage")):
+    for feld, muster, menge in (("unterkuenfte", r"U-\d+", "unterkuenfte"), ("strecken", r"E-\d+[A-Za-z]?", "strecken"), ("folge", r"T-\d+", "tage"),
+                                ("aufenthalte", r"A-\d+", "aufenthalte")):
         if args.get(feld) is not None:
             inhalt[feld] = id_liste(args, feld, muster, roh, menge) or []
     if inhalt:
-        neu = {f: (inhalt[f] if f in inhalt else list(knoten.get(f) or [])) for f in ("unterkuenfte", "strecken", "folge")}
-        if sum(1 for v in neu.values() if v) > 1:
+        neu = {f: (inhalt[f] if f in inhalt else list(knoten.get(f) or [])) for f in ("unterkuenfte", "strecken", "folge", "aufenthalte")}
+        if not option_inhalt_ok(neu):
             raise Ablehnung("schreiben.option_aendern.5")
         for f, l in inhalt.items():
             if list(knoten.get(f) or []) != l:

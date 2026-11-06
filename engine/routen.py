@@ -478,6 +478,7 @@ class Routen:
         self.buchung_katalog = {} # Art -> {Merkmal der Buchung: Definition} (#166)
         self.u_art = {}           # U-01 -> Art
         self.kriterien = {}       # V-ID -> (Art, {Merkmal: Definition})
+        self.wahl_eigene = {}     # V-ID -> Merkmale, die die Wahlstelle selbst definiert (gelten für jede Möglichkeit)
         self.mk_option = {}       # V-01.a -> {Merkmal: Wert}
         self.mk_unterkunft = {}   # U-01 -> {Merkmal: Wert}
         self.mk_strecke = {}      # E-01 -> {Merkmal: Wert} (Bewegungen: Fähre, Flug, Bahn …)
@@ -658,6 +659,9 @@ class Routen:
                     continue
                 self.id_anlegen(oid, self.q)
                 self.option[oid] = (vid, o)
+                for aid in o.get("aufenthalte") or []:
+                    if aid not in self.aufenthalte:
+                        self.fehl(texte.satz("pruefung.routen.option_aufenthalt", vid=vid, oid=oid, aid=aid))
                 self.verlauf_pruefen(oid, o)
             self.waehle(vid, w)
         for vid, f, offen, n_gueltig in self.fragen_offen:
@@ -1158,6 +1162,9 @@ class Routen:
             for u in o.get("unterkuenfte") or []:
                 if self.u_art.get(u):
                     return self.u_art[u]
+            for a in o.get("aufenthalte") or []:
+                if self.a_art.get(a):
+                    return self.a_art[a]
         arten = {self.strecken_art(self.strecken[sid]) for o in opts for sid in o.get("strecken") or [] if sid in self.strecken}
         if arten:
             a = next(iter(arten)) if len(arten) == 1 else None
@@ -1166,6 +1173,14 @@ class Routen:
             folgen = [a for a, d in self.arten.items() if d["grundform"] == "folge"]
             return folgen[0] if len(folgen) == 1 else ALLGEMEIN
         return ALLGEMEIN
+
+    def arten_der_option(self, o):
+        """Arten der Dinge einer Möglichkeit (Unterkünfte, Aufenthalte ohne Nacht, Strecken), in der Reihenfolge ihres Auftretens.
+        Eine Wahlstelle darf Dinge verschiedener Arten mischen (Product Owner, 6.11.2026, #353): jede Möglichkeit bringt die Merkmale
+        ihrer eigenen Art mit."""
+        a = [self.u_art.get(u) for u in o.get("unterkuenfte") or []] + [self.a_art.get(x) for x in o.get("aufenthalte") or []]
+        a += [self.strecken_art(self.strecken[s]) for s in o.get("strecken") or [] if s in self.strecken]
+        return list(dict.fromkeys(x for x in a if x and x in self.arten))
 
     def werte(self, wo, roh, kriterien):
         """Werte einer Option, Unterkunft oder Strecke prüfen -> {Merkmal: {wert, quelle, geprueft, notiz, ungeprueft}}.
@@ -1246,21 +1261,29 @@ class Routen:
         self.arten_pruefen()
         if self.r.get("merkmale") is not None:
             self.fehl(texte.satz("pruefung.routen.94"))
-        u_extra, s_extra = {}, {}
+        u_extra, a_extra, s_extra = {}, {}, {}
         for vid, w in self.wahl.items():
             b = self.art_der_wahl(w, vid)
             krit = dict(self.katalog.get(b, {}))
-            krit.update(self.definitionen(f"Wahlstelle {vid}", w.get("merkmale") or {}, b, grundform=self.grundform(b)))
+            eigene = self.definitionen(f"Wahlstelle {vid}", w.get("merkmale") or {}, b, grundform=self.grundform(b))
+            # Ohne ausdrückliche Art der Wahlstelle zeigt der Vergleich die Merkmale aller beteiligten Arten (gemischte Wahlstelle)
+            if not art_der_dinge(w):
+                for o in w.get("optionen") or []:
+                    for art in self.arten_der_option(o):
+                        for k, d in self.katalog.get(art, {}).items():
+                            krit.setdefault(k, d)
+            krit.update(eigene)
             self.kriterien[vid] = (b, krit)
+            self.wahl_eigene[vid] = set(eigene)
             for o in w.get("optionen") or []:
                 if o.get("id") in self.option:
                     self.mk_option[o["id"]] = self.werte(o["id"], o.get("merkmale"), krit)
-                if self.grundform(b) == "aufenthalt":
-                    for u in o.get("unterkuenfte") or []:
-                        u_extra.setdefault(u, {}).update(krit)
-                else:
-                    for sid in o.get("strecken") or []:
-                        s_extra.setdefault(sid, {}).update(krit)
+                for u in o.get("unterkuenfte") or []:
+                    u_extra.setdefault(u, {}).update(krit)
+                for a in o.get("aufenthalte") or []:
+                    a_extra.setdefault(a, {}).update(krit)
+                for sid in o.get("strecken") or []:
+                    s_extra.setdefault(sid, {}).update(krit)
         for uid, u in self.unterkuenfte.items():
             if self.u_art.get(uid) is None:   # Art unbekannt, schon gemeldet
                 continue
@@ -1268,7 +1291,7 @@ class Routen:
             self.mk_unterkunft[uid] = self.werte(uid, u.get("merkmale"), krit)
         for aid, a in self.aufenthalte.items():
             if self.a_art.get(aid) is not None and isinstance(a, dict):
-                self.mk_aufenthalt[aid] = self.werte(aid, a.get("merkmale"), self.katalog.get(self.a_art[aid], {}))
+                self.mk_aufenthalt[aid] = self.werte(aid, a.get("merkmale"), {**self.katalog.get(self.a_art[aid], {}), **a_extra.get(aid, {})})
         for oid, o in self.orte.items():
             if self.o_art.get(oid) is not None and isinstance(o, dict):
                 self.mk_ort[oid] = self.werte(oid, o.get("merkmale"), self.katalog.get(self.o_art[oid], {}))
@@ -1334,19 +1357,22 @@ class Routen:
         b, krit = self.kriterien.get(vid, (ALLGEMEIN, {}))
         g = self.grundform(b)
         mk = {}
-        if g == "aufenthalt":
-            for u in (o.get("unterkuenfte") or [])[:1]:
-                mk.update(self.mk_unterkunft.get(u, {}))
-        elif g == "bewegung":
-            for sid in (o.get("strecken") or [])[:1]:
-                mk.update(self.mk_strecke.get(sid, {}))
+        for u in (o.get("unterkuenfte") or [])[:1]:
+            mk.update(self.mk_unterkunft.get(u, {}))
+        for a in (o.get("aufenthalte") or [])[:1]:
+            mk.update(self.mk_aufenthalt.get(a, {}))
+        for sid in (o.get("strecken") or [])[:1]:
+            mk.update(self.mk_strecke.get(sid, {}))
         mk.update(self.mk_option.get(o.get("id"), {}))
         auto = self.auto_werte(b, o)
         if g == "folge":
             auto.update(self.anschluss(vid, o))
         mk.update({k: auto[d["auto"]] for k, d in krit.items() if d.get("auto") in auto})
         art = next((self.u_art.get(u) for u in (o.get("unterkuenfte") or [])[:1]), None)
-        return {k: mk[k] for k in krit if k in mk}, [k for k, d in krit.items() if zaehlt(d, art) and k not in mk]
+        # Gemischte Wahlstelle: gefordert ist, was die Art der eigenen Dinge dieser Möglichkeit oder die Wahlstelle selbst verlangt
+        arten = self.arten_der_option(o)
+        gefordert = {k for a in arten for k in self.katalog.get(a, {})} | self.wahl_eigene.get(vid, set()) if len(arten) > 1 or (arten and arten[0] != b) else None
+        return {k: mk[k] for k in krit if k in mk}, [k for k, d in krit.items() if zaehlt(d, art) and k not in mk and (gefordert is None or k in gefordert)]
 
     def frage_wird_gebraucht(self, frage, ausser):
         """Hängt die Frage noch an einer anderen, offenen Wahlstelle? Dann bleibt sie offen, auch wenn eine entschieden ist."""
@@ -1475,6 +1501,18 @@ class Routen:
         self.fehl(texte.satz("pruefung.routen.112", tid=tid, w1=n))
         return None
 
+    def aufenthalte_des_tages(self, t, nur_offene=False):
+        """Aufenthalte ohne Nacht eines Tags: die eigenen (aufenthalte:) und die der gewählten Möglichkeit jeder Wahlstelle des Tags
+        (wahl:), wie bei der Nacht (#353). nur_offene: nur die aus einer noch offenen Planungs-Wahlstelle (der Kalender zeigt nur Entschiedenes)."""
+        eigene = [] if nur_offene else [a for a in t.get("aufenthalte") or [] if a in self.aufenthalte]
+        for v in t.get("wahl") or []:
+            oid = self.auswahl.get(v)
+            w = self.wahl.get(v) or {}
+            offen = wann_von(w) == "planung" and not any(self.status(o) == "gewaehlt" for o in w.get("optionen") or [])
+            if oid in self.option and (offen or not nur_offene):
+                eigene +=[a for a in self.option[oid][1].get("aufenthalte") or [] if a in self.aufenthalte and a not in eigene]
+        return eigene
+
     def tag_lauf(self, tid, pos, warnen=False):
         """Ein Tag im aktuellen Plan: (Strecken, Nacht, Ort am Abend, Ort am Anfang). Der Anfang ist der Start der
         ersten Strecke, an einem Tag ohne Strecke der Ort der Nacht. warnen: Lücken melden (nur der Plan selbst)."""
@@ -1560,7 +1598,7 @@ class Routen:
                          "start_ort": start_ort, "end_ort": pos,
                          "strecken": [{"id": s, "wahl": v} for s, v in strecken],
                          "kennzahlen": self.strecken_summe([s for s, _ in strecken]),
-                         "aufenthalte": [a for a in t.get("aufenthalte") or [] if a in self.aufenthalte],
+                         "aufenthalte": self.aufenthalte_des_tages(t), "aufenthalte_offen": self.aufenthalte_des_tages(t, nur_offene=True),
                          "wahlstellen": unterwegs, "nacht": n})
 
         # Tage unter einer offenen Planungs-Wahlstelle sind vorläufig (#77): der Kalender zeigt nur Entschiedenes
@@ -1621,7 +1659,7 @@ class Routen:
             weitere[tid] = {"id": tid, "titel": t.get("titel", ""), "text": t.get("text", ""),
                             "strecken": [{"id": s, "wahl": v} for s, v in self.strecken_des_tages(tid, t.get("strecken"))],
                             "wahlstellen": [el for el in t.get("strecken") or [] if ist("wahl", el)] + list(t.get("wahl") or []),
-                            "aufenthalte": [a for a in t.get("aufenthalte") or [] if a in self.aufenthalte],
+                            "aufenthalte": self.aufenthalte_des_tages(t),
                             "nacht": self.nacht(tid, t.get("nacht"))}
         return {
             "tage": tage,
@@ -1808,7 +1846,7 @@ class Routen:
                              else str(e.get("datum"))} for e in o.get("verlauf") or []],
                 "text": o.get("text", ""), "plus": o.get("plus", []), "minus": o.get("minus", []),
                 "ausloeser": o.get("ausloeser"), "quelle": o.get("quelle"), "siehe": o.get("siehe"),
-                "strecken": o.get("strecken"), "unterkuenfte": o.get("unterkuenfte"),
+                "strecken": o.get("strecken"), "unterkuenfte": o.get("unterkuenfte"), "aufenthalte": o.get("aufenthalte"),
                 "tage": [t for t, _ in self.folge(o.get("folge"), oid)] if o.get("folge") else None,
                 "folge": list(o.get("folge") or []),
                 "alle_strecken": sorted(self.alle_strecken(o)),

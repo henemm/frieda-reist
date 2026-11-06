@@ -2276,6 +2276,8 @@ function optionBlock(w, o, ohneMerkmale, ohneId) {
   if (o.plus.length) b.append(el("ul", {}, o.plus.map(x => el("li", {}, "+ " + x))));
   if (o.minus.length) b.append(el("ul", {}, o.minus.map(x => el("li", {}, "– " + x))));
   for (const sid of o.strecken || []) b.append(streckeZeile(sid));
+  // Aufenthalte ohne Nacht der Möglichkeit (Museum, Ladestopp, Gipfel; #353): Zeile mit Zeit und Art, dazu die Lage
+  for (const aid of o.aufenthalte || []) if ((R.aufenthalte || {})[aid]) b.append(...[aufenthaltZeile(aid), lageZeile(R.aufenthalte[aid], true)].filter(Boolean));
   // Unterkunft der Möglichkeit: sie steht hier (Heimat), also Kontakt und Webseite statt eines Links auf dieselbe Seite.
   // Ist die Wahl entschieden, steht die gewählte Unterkunft schon mit Lage und Kontakt in ihrer Nacht
   const inNacht = o.aktiv && !w.offen && w.wann === "planung";
@@ -2318,6 +2320,8 @@ function optionEinzelheiten(w, o, weitere) {
   if (luecke) b.append(luecke);
   if (o.plus.length || o.minus.length) b.append(el("ul", {class: "pm"}, o.plus.map(x => el("li", {}, "+ " + x)), o.minus.map(x => el("li", {}, "– " + x))));
   for (const sid of o.strecken || []) b.append(streckeZeile(sid));
+  // Aufenthalte ohne Nacht der Möglichkeit (Museum, Ladestopp, Gipfel; #353): Zeile mit Zeit und Art, dazu die Lage
+  for (const aid of o.aufenthalte || []) if ((R.aufenthalte || {})[aid]) b.append(...[aufenthaltZeile(aid), lageZeile(R.aufenthalte[aid], true)].filter(Boolean));
   for (const uid of o.unterkuenfte || []) if (R.unterkuenfte[uid]) { const u = R.unterkuenfte[uid];
     const kontakt = kontaktText(u);
     b.append(...[lageZeile(u, true), kontakt ? el("div", {class: "z"}, el("b", {}, T("seite.label.kontakt")), kontakt) : null].filter(Boolean)); }

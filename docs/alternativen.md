@@ -18,7 +18,7 @@ Die Merkmale einer Art gelten für alle Mitreisenden gemeinsam. Vorlieben Einzel
 
 ## Arten statt eines festen Satzes von Bereichen
 
-Reisen enthalten drei Grundformen von Dingen: **Aufenthalt** (Unterkunft, Essen, Erlebnis), **Bewegung** (Wanderweg, Fähre, Flug, Bahn, Bus, Mietwagen) und **Folge** (ein Abschnitt aus beidem, vom Tag bis zum Reiseteil). Gewählt wird auf drei Arten: eine von mehreren, mit oder ohne, wie lange. Die Art eines Dings bestimmt seine Merkmale. Eine Reise legt eine neue Art in `plan/arten.yaml` an (im Gespräch: `art_definieren`, `merkmal_definieren`), ohne dass jemand programmiert, und nutzt sie an einer Wahlstelle:
+Reisen enthalten drei Grundformen von Dingen: **Aufenthalt** (Unterkunft, Essen, Erlebnis), **Bewegung** (Wanderweg, Fähre, Flug, Bahn, Bus, Mietwagen) und **Folge** (ein Abschnitt aus beidem, vom Tag bis zum Reiseteil). Gewählt wird auf drei Arten: eine von mehreren, mit oder ohne, wie lange. Alternativen kann jedes Ding sein, nur der Tag nicht: eine Unterkunft, eine Strecke, ein Aufenthalt ohne Nacht (Museum, Ladestopp, Gipfel; `aufenthalte: [A-…]` an der Option, #353) oder ein Reiseteil; eine Wahlstelle darf diese Dinge mischen (Museum oder Wanderung). Die Art eines Dings bestimmt seine Merkmale. Eine Reise legt eine neue Art in `plan/arten.yaml` an (im Gespräch: `art_definieren`, `merkmal_definieren`), ohne dass jemand programmiert, und nutzt sie an einer Wahlstelle:
 
 ```yaml
 # plan/arten.yaml

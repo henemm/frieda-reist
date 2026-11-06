@@ -131,7 +131,7 @@ def eintraege(daten, aufgaben=None):
                   + "".join(tx("strecke_" + k, w1=s[k]) for k in ("ab", "an") if s.get(k))
                   for sid, s in weg]
         zeilen += [f"{a.get('name', aid)}" + (f", {a['zeit']}" if a.get("zeit") else "")
-                   for aid in t.get("aufenthalte") or [] if (a := aufenth.get(aid))]
+                   for aid in t.get("aufenthalte") or [] if aid not in (t.get("aufenthalte_offen") or []) and (a := aufenth.get(aid))]
         zeilen += list(t.get("fixpunkte") or [])
         if uid and uid in unterk:
             zeilen.append(tx("nacht", w1=unterk[uid].get("name", uid)))
@@ -151,7 +151,7 @@ def eintraege(daten, aufgaben=None):
                             + _buchung_text(r, s.get("buchung_id"), sprache)})
         for aid in t.get("aufenthalte") or []:
             a = aufenth.get(aid)
-            if not a:
+            if not a or aid in (t.get("aufenthalte_offen") or []):
                 continue
             text = "\n".join(x for x in (a.get("zeit"), a.get("hinweis")) if x) + _buchung_text(r, a.get("buchung_id"), sprache)
             e = {"sorte": "aufenthalte", "id": aid, "uid": f"{aid}-{tag.isoformat()}", "titel": a.get("name") or aid, "ort": lage(a), "text": text.strip()}

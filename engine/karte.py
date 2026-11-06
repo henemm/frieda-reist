@@ -137,6 +137,10 @@ def dinge_bezug(route):
     for t in route.get("tage") or []:
         for aid in t.get("aufenthalte") or []:
             dazu(aid, "plan", t["id"])
+        for vid in t.get("wahlstellen") or []:   # Aufenthalte in den Möglichkeiten einer Wahlstelle des Tags (#353)
+            for o in (wahl.get(vid) or {}).get("optionen") or []:
+                for aid in o.get("aufenthalte") or []:
+                    dazu(aid, "plan" if o.get("aktiv") else "alternative", t["id"])
         n = t.get("nacht") or {}
         if n.get("unterkunft"):
             dazu(n["unterkunft"], "plan", t["id"])
@@ -150,7 +154,7 @@ def dinge_bezug(route):
         for o in w["optionen"]:
             for tid in o.get("tage") or []:
                 tag_an.setdefault(tid, []).extend(w.get("an") or [])
-            for uid in o.get("unterkuenfte") or []:
+            for uid in (o.get("unterkuenfte") or []) + (o.get("aufenthalte") or []):
                 if stand.get(uid) != "plan":
                     dazu(uid, "alternative")
                 for tid in w.get("an") or []:

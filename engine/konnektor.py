@@ -2561,6 +2561,7 @@ OPTION_FELDER = {"titel": {"type": "string", "description": "@konnektor.feld.opt
                  "text": {"type": "string", "description": "@konnektor.feld.option_felder.text"},
                  "unterkuenfte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.unterkuenfte"},
                  "strecken": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.strecken"},
+                 "aufenthalte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.aufenthalte"},
                  "folge": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.folge"},
                  "plus": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.plus"},
                  "minus": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.minus"},
