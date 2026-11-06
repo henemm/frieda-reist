@@ -32,7 +32,7 @@ Bisher sind die Reisedaten Dateien in einem Git-Repo, und jeder Schreibvorgang d
 - Stufe 1 (#346): Modul mit Import, Byte-gleichem Export (auch eines alten Stands), Verlauf, Zurücksetzen, Prüfen und Sicherung mit Rückspieltest; Ort über `instanz.speicher()` (`FR_SPEICHER`), tägliche Sicherung im Wächter. Der Schreibweg bleibt in Stufe 1 auf Git und schreibt nicht zusätzlich in den Speicher; `betrieb/deploy.sh` nimmt das Modul erst mit Stufe 2 auf.
 - Byte-gleich heißt gleiche Pfadmenge und gleiche Bytes. Leere Ordner, Rechte und Zeitstempel der Dateien bleiben nicht erhalten; der Ordner `.git` gehört nicht dazu, ein Symlink bricht den Import ab.
 - Das Format der Reisedaten ändert sich nicht; `neu.py nachziehen` braucht keine Umstellung.
-- Stufe 2 (#347): Der Schreibweg (`engine/schreiben.py`, `engine/stand.py`, Konnektor) schreibt in den Speicher statt in Git; die Sperre je Reise bleibt im Schreibweg, die Kennung ersetzt die Suche nach dem Vorgang im Git-Verlauf.
+- Stufe 2 (#347): Der Schreibweg (`engine/schreiben.py`, `engine/stand.py`) schreibt in den Speicher statt in Git; die Sperre je Reise bleibt im Schreibweg, die Kennung ersetzt die Suche nach dem Vorgang im Git-Verlauf (Nachprüfung lokal). Übergangsregel: Ein Schalter je Reise (`FR_SPEICHERREISEN`, Vorgabe leer) wählt den Weg; der Git-Weg lebt bis Stufe 5 in `engine/schreiben_git.py` und `engine/stand_git.py` und lehnt Reisen der Liste ab. Zusätze der Schnittstelle: `vorgang_schreiben(..., erwartet=)` mit `StandGeaendert`, `db(timeout)`, `datei(reise, pfad, bis)`, `reisen()` und der Baustein `ordner_als_vorgang` (auch für `reise_anlegen`, später `nachziehen`). Konnektor und Rückmeldedienst lesen erst ab Stufe 3. Umgeschaltet wird eine echte Reise erst nach Stufe 3 und nach gesicherter Sicherung außer Haus.
 - Stufe 3: Veröffentlichen und Nachziehen lesen aus dem Speicher. Der alte Git-Verlauf wird nicht nachgebaut: Ein Anfangsvorgang je Reise mit dem Vermerk „vorher in Git“ und der übernommenen Stand-Nummer genügt.
 - Stufe 4: Auslagerung großer Fotos aus der Datenbank; später eine Hash-Kette über die Vorgänge.
 - Eine Datenbank je Instanz sperrt beim Schreiben die ganze Datei. Bei den gemessenen Raten genügt WAL mit 10 Sekunden Wartezeit; der Messlauf in #347 bestätigt das.
@@ -40,3 +40,4 @@ Bisher sind die Reisedaten Dateien in einem Git-Repo, und jeder Schreibvorgang d
 ## Verlauf
 
 - 5.11.2026: Weg C vom Product Owner entschieden (Epic #345); Stufe 1 mit diesem ADR gebaut (#346).
+- 6.11.2026: Stufe 2 gebaut (#347): Schalter `FR_SPEICHERREISEN` je Reise (Option A, Product Owner), Git-Weg in `schreiben_git.py` und `stand_git.py` bis Stufe 5, Zusätze der Schnittstelle (siehe Konsequenzen).

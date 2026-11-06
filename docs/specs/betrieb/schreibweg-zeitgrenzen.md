@@ -10,6 +10,8 @@ tags: [schreibweg, betrieb, timeout, sperre]
 
 # Schreibweg: Zeitgrenzen, Sperre je Reise, Priorität, Ablehnungsgrund (#118–#121)
 
+> **Speicherweg (#347):** Fristen (25/3/3 s) und Meldungstabelle gelten unverändert auch für den Speicherweg (Reisen aus `FR_SPEICHERREISEN`, `docs/specs/betrieb/schreibweg-speicher-347.md`). Dort ist die Nachprüfung nach einem Abbruch lokal: Die Kennung wird in der Datenbank des Reisespeichers gesucht statt mit fetch und `git log`; „Prüfung nicht möglich“ heißt dort: Datenbank nicht lesbar.
+
 ## Approval
 
 - [ ] Approved
@@ -147,3 +149,4 @@ Automatische Tests (jeweils an eine AC oben gebunden):
 - 2026-10-29: AC-7 (Ergebnisprüfung nach Abbruch, Prozessgruppe) und AC-8 (Dauer im Protokoll) ergänzt nach Tech-Lead-Prüfung
 - 2026-10-29: Zeitbudget geschlossen (kein Mindestwert fürs Anwenden, Fetch und Suche unter einer Frist), Protokollcode bei „eingetragen trotz Abbruch“ festgelegt (Validator-Befund, 2. Lauf)
 - 2026-10-29: Meldungstabelle, geschlossenes Zeitbudget (25 + 3 s Reserve) und Widersprüche zwischen AC-2/AC-3/AC-7 und Known Limitations bereinigt (Validator-Befund)
+- 2026-11-06: Hinweis Speicherweg (#347): Fristen und Meldungstabelle gelten auch dort, die Nachprüfung ist lokal im Speicher

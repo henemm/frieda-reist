@@ -10,18 +10,22 @@ Zwei Teile:
   Dienst   `schreiben.py dienst` auf 127.0.0.1:<FR_SB_PORT> (8773), nur für den Konnektor (Header X-Frieda-Dienst, das
            gemeinsame Dienst-Geheimnis). POST /<reise>/<werkzeug> mit {"person", "name", "rolle", "args"}; die Antwort
            nennt bei einem neuen Ding seine ID. GET /<reise>/buchung/<B-id> sagt, ob es die Buchung auf origin/main schon
-           gibt (Beleg vor dem Veröffentlichen, Issue #135). Ein Schreibvorgang zur Zeit (Sperre). Je Anfrage bringt er die Arbeitskopie auf origin/main und startet dort einen
-           Unterprozess `anwenden` mit dem Code dieser Arbeitskopie, damit Code und Daten denselben Stand haben.
+           gibt (Beleg vor dem Veröffentlichen, Issue #135). Ein Schreibvorgang je Reise zur Zeit (Sperre).
   Arbeit   `schreiben.py anwenden` liest die Anfrage als JSON von stdin, prüft Rolle und Status, ändert die Dateien,
-           baut zur Probe, committet, pusht nach main, stößt das Veröffentlichen an und antwortet auf stdout als JSON.
+           baut zur Probe, sichert, stößt das Veröffentlichen an und antwortet auf stdout als JSON.
 
-Arbeitskopie: <Wurzel>-schreiben (FR_SCHREIBKOPIE), ein Git-Worktree des Reisen-Repos ohne eigenen Branch (steht auf
-origin/main). Sie gehört allein dem Schreibweg. Veröffentlicht wird wie nach jedem Zusammenführen: betrieb/veroeffentlichen.sh
-holt main in den Bauordner (im Hintergrund; hält der Timer gerade die Sperre, holt er es nach).
+Zwei Wege, gewählt je Reise (FR_SPEICHERREISEN, engine/instanz.py; Stufe 2, #347, ADR-0009):
+  Speicherweg  Reise in der Liste: Die Arbeitskopie ist ein Export des Reisespeichers (engine/reisespeicher.py) in einen
+           temporären Ordner; `anwenden` läuft mit dem Code dieses Dienstes und trägt das Ergebnis als genau einen Vorgang
+           ein (erwartet = Stand des Exports). Nach einem Abbruch wird lokal im Speicher nachgesehen. Kein git.
+  Git-Weg  jede andere Reise, bis Stufe 5 (engine/schreiben_git.py): Arbeitskopie <Wurzel>-schreiben-<reise>
+           (FR_SCHREIBKOPIE) auf origin/main, `anwenden` mit dem Code dieser Arbeitskopie, Commit und Push nach main.
+Veröffentlicht wird wie nach jedem Zusammenführen: betrieb/veroeffentlichen.sh (im Hintergrund; bis Stufe 3, #348, baut es nur
+aus Git, eine Speicher-Reise wartet so lange).
 
 Regeln vor dem Schreiben (Prüfstelle ADR-0001): Rolle und Status (reise.erlaubt mit reise.yaml der Arbeitskopie, nicht
 nur mit dem, was der Konnektor sagt), Form der Arten und Merkmale (docs/ontologie.md), Probebau (routen.arten_pruefen und
-alles andere, was der Generator prüft). Lehnt der Schreibweg ab, bleibt die Arbeitskopie unverändert und der AI-Client
+alles andere, was der Generator prüft). Lehnt der Schreibweg ab, bleibt der Stand der Reise unverändert und der AI-Client
 bekommt den Grund in einfachen Worten.
 
 Aufruf von Hand: `schreiben.py vorbereiten` (Arbeitskopie anlegen), `schreiben.py normalisieren <reise>` (Routendatei in die Form
@@ -38,9 +42,11 @@ import re
 import secrets
 import shutil
 import signal
+import sqlite3
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -60,7 +66,7 @@ MAX_WERTE = 20
 # (betrieb/vorlagen/nginx-konnektor-orte.inc), sonst erreicht die Meldung die App nie
 ZEIT_GESAMT = 25        # Sperre, Vorbereiten und Anwenden zusammen
 ZEIT_SPERRE = 3         # Wartezeit auf die Sperre der Reise (Teil von ZEIT_GESAMT)
-ZEIT_PRUEFUNG = 3       # nach einem Abbruch: ist der Vorgang trotzdem auf origin/main angekommen?
+ZEIT_PRUEFUNG = 3       # nach einem Abbruch: ist der Vorgang trotzdem eingetragen (Speicher lokal, Git auf origin/main)?
 LOG_LAENGE = 200        # Zeichen eines Ablehnungsgrunds im Protokoll
 AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "kategorie_definieren": "ontologie", "wert_eintragen": "wert",
             "ding_anlegen": "ding", "ding_aendern": "ding", "option_anlegen": "alternative", "wahlstelle_anlegen": "alternative",
@@ -194,17 +200,6 @@ def befehl_mit_frist(argv, eingabe, frist, env=None):
                 pass
         raise subprocess.TimeoutExpired(argv, frist)
     return subprocess.CompletedProcess(argv, p.returncode, out, err)
-
-
-def git(ordner, *args, fehler=True, frist=None):
-    """git-Aufruf -> stdout; mit `frist` (Sekunden) wird er danach samt Unterprozessen beendet (subprocess.TimeoutExpired)."""
-    if frist is None:
-        r = subprocess.run(["git", "-C", str(ordner), *args], capture_output=True, text=True)
-    else:
-        r = befehl_mit_frist(["git", "-C", str(ordner), *args], "", frist)
-    if fehler and r.returncode != 0:
-        raise RuntimeError(f"git {' '.join(args)}: {r.stderr.strip() or r.stdout.strip()}")
-    return r.stdout.strip()
 
 
 def wurzel():
@@ -4141,7 +4136,9 @@ def neue_hinweise(vorher, nachher):
 
 
 class Schreiber:
-    """Arbeitskopie des Reisen-Repos für den Schreibweg: holen, ändern, prüfen, sichern, veröffentlichen."""
+    """Arbeitskopie einer Reise für den Schreibweg: ändern, prüfen, sichern, veröffentlichen. Zwei Träger: der Reisespeicher
+    (basis gesetzt: die Arbeitskopie ist ein Export des Stands basis, Stufe 2, #347) oder bis Stufe 5 eine Git-Arbeitskopie
+    (basis None, engine/schreiben_git.py)."""
 
     def __init__(self, wurzel, arbeit=None, veroeffentlichen=None):
         self.wurzel = Path(wurzel)
@@ -4149,25 +4146,16 @@ class Schreiber:
         self.veroeffentlichen = veroeffentlichen or os.environ.get("SB_VEROEFFENTLICHEN") \
             or str(self.wurzel / "frieda" / "betrieb" / "veroeffentlichen.sh")
         self.ende = None     # time.monotonic(), bis zu der ein Vorgang fertig sein muss (anwenden_extern); None: ohne Frist
+        self.basis = None    # Speicherweg: Stand-Nummer, aus der die Arbeitskopie stammt (0: neue Reise); None: Git-Weg
 
     def rest(self):
         """Sekunden bis self.ende (None: ohne Frist)."""
         return None if self.ende is None else self.ende - time.monotonic()
 
     def vorbereiten(self):
-        """Arbeitskopie anlegen oder auf origin/main bringen; eigene Reste verwerfen. Jeder git-Aufruf bekommt den Rest der
-        Frist (subprocess.TimeoutExpired, wenn sie abläuft)."""
-        git(self.wurzel, "fetch", "-q", "origin", "main", frist=self.rest())
-        if not (self.arbeit / ".git").exists():
-            self.arbeit.parent.mkdir(parents=True, exist_ok=True)
-            git(self.wurzel, "worktree", "prune", frist=self.rest())
-            git(self.wurzel, "worktree", "add", "-q", "--detach", str(self.arbeit), "origin/main", frist=self.rest())
-        else:
-            git(self.arbeit, "reset", "-q", "--hard", frist=self.rest())
-            git(self.arbeit, "clean", "-qfd", "--", "reisen", frist=self.rest())
-            git(self.arbeit, "checkout", "-q", "--detach", "origin/main", frist=self.rest())
-        if (self.arbeit / ".gitmodules").exists():
-            git(self.arbeit, "submodule", "update", "--init", "--quiet", frist=self.rest())
+        """Git-Weg: Arbeitskopie anlegen oder auf origin/main bringen (engine/schreiben_git.py)."""
+        import schreiben_git
+        schreiben_git.vorbereiten(self)
 
     def wer_pruefen(self, reise_dir, anfrage, werkzeug):
         """Person, Rolle und Status mit reise.yaml der Arbeitskopie prüfen -> {"name", "rolle", "person"}."""
@@ -4208,8 +4196,16 @@ class Schreiber:
         except bauen.BauFehler:
             return []
 
-    def schreiben(self, reise, werkzeug, anfrage):
-        """Ein Schreibvorgang in der vorbereiteten Arbeitskopie -> {"ok": True, "text", "commit"}; sonst Ablehnung."""
+    def verwerfen(self, reise=None):
+        """Nach einer Ablehnung: Reste in der Arbeitskopie verwerfen. Speicherweg: nichts zu tun (die Arbeitskopie ist je
+        Vorgang frisch und wird gelöscht); Git-Weg: zurücksetzen (reise None: alle Reisen, reise_anlegen)."""
+        if self.basis is None:
+            import schreiben_git
+            schreiben_git.verwerfen(self, reise)
+
+    def anwenden_im_ordner(self, reise, werkzeug, anfrage):
+        """Anfrage prüfen, Rolle und Status prüfen, das Werkzeug in der Arbeitskopie anwenden und zur Probe bauen ->
+        (reise, reise_dir, wer, titel, text, hinweise); sonst Ablehnung (die Arbeitskopie ist dann verworfen)."""
         if not REISE_MUSTER.match(reise or ""):
             raise Ablehnung("schreiben.schreiben.1")
         if werkzeug not in WERKZEUGE and werkzeug not in REPO_WERKZEUGE:
@@ -4228,8 +4224,7 @@ class Schreiber:
                 reise_dir = self.arbeit / "reisen" / reise
                 self.probebau(reise_dir)
             except Ablehnung:
-                git(self.arbeit, "reset", "-q", "--hard")
-                git(self.arbeit, "clean", "-qfd", "--", "reisen")
+                self.verwerfen()
                 raise
         else:
             if not (reise_dir / "reise.json").exists():
@@ -4240,29 +4235,24 @@ class Schreiber:
                 titel, text = WERKZEUGE[werkzeug](reise_dir, wer, args)
                 hinweise = neue_hinweise(vorher, self.probebau(reise_dir))
             except Ablehnung:
-                git(self.arbeit, "checkout", "-q", "--", f"reisen/{reise}")
-                git(self.arbeit, "clean", "-qfd", "--", f"reisen/{reise}")
+                self.verwerfen(reise)
                 raise
-        if not git(self.arbeit, "status", "--porcelain", "--", f"reisen/{reise}"):
-            raise Ablehnung("schreiben.schreiben.4")
-        sp = sprache_von(reise_dir)   # Titel, Text und Fuß des Commits stehen in der Sprache der Reise (Variante A)
+        return reise, reise_dir, wer, titel, text, hinweise
+
+    def nachricht(self, reise_dir, werkzeug, wer, titel, text):
+        """Kopf (Titel der Reise), Titel, Text und Fuß des Vorgangs in der Sprache der Reise (Variante A) -> (kopf, titel,
+        text, fuss). Der Git-Weg macht daraus die Commit-Nachricht, der Speicherweg Titel und Grund des Vorgangs."""
+        sp = sprache_von(reise_dir)
         rolle = texte.t(sp, "inhalt.schreiben.rolle." + str(wer["rolle"]))
-        nachricht = (f"{texte.t(sp, 'inhalt.schreiben.reisen_titel') if werkzeug in REPO_WERKZEUGE else wer['titel']}: "
-                     f"{am_rand(sp, titel.text(sp) if isinstance(titel, texte.Satz) else titel)}\n\n"
-                     f"{am_rand(sp, text.text(sp) if isinstance(text, texte.Satz) else text)}\n\n"
-                     + texte.t(sp, "inhalt.schreiben.commit_fuss", werkzeug=werkzeug_name(sp, werkzeug), wer=wer["name"],
-                               rolle=wer["rolle"] if rolle.startswith("inhalt.") else rolle, datum=datetime.date.today().isoformat()) + "\n")
-        # Wer den Eintrag gemacht hat, für die Änderungsliste der Seite (engine/stand.py, #229)
-        nachricht += f"\n{reisestand.PERSON_TRAILER}: {' '.join(wer['name'].split())}\n"
-        if os.environ.get("FR_VORGANG"):     # Kennung des Vorgangs: nach einem Abbruch findet vorgang_eingetragen den Eintrag
-            nachricht += f"Frieda-Vorgang: {os.environ['FR_VORGANG']}\n"
-        git(self.arbeit, "add", "-A", "--", f"reisen/{reise}")
-        git(self.arbeit, "commit", "-q", "-m", nachricht)
-        commit = self.hochladen(reise)
-        # Reise-Stand (#226): jeder gesicherte Schreibvorgang ist ein Commit in reisen/<reise>/ und erhöht die Nummer um 1
-        nummer = reisestand.nummer(reise_dir)
-        reisestand.gesichert_schreiben(reise, nummer, commit)
-        self.veroeffentlichen_anstossen()
+        kopf = texte.t(sp, "inhalt.schreiben.reisen_titel") if werkzeug in REPO_WERKZEUGE else wer["titel"]
+        fuss = texte.t(sp, "inhalt.schreiben.commit_fuss", werkzeug=werkzeug_name(sp, werkzeug), wer=wer["name"],
+                       rolle=wer["rolle"] if rolle.startswith("inhalt.") else rolle, datum=datetime.date.today().isoformat())
+        return (kopf, am_rand(sp, titel.text(sp) if isinstance(titel, texte.Satz) else titel),
+                am_rand(sp, text.text(sp) if isinstance(text, texte.Satz) else text), fuss)
+
+    def antwort(self, reise, titel, text, hinweise, commit, nummer):
+        """Antwort eines gelungenen Schreibvorgangs: commit ist der Commit (Git) bzw. die Vorgangs-Nummer (Speicher),
+        nummer der neue Reise-Stand."""
         antwort = {"ok": True, "text": text, "commit": commit,
                    "stand": {"gesichert": nummer, "veroeffentlicht": reisestand.veroeffentlicht(reise)[0]}}
         if isinstance(text, texte.Satz) and text.mit_schluesseln():   # der Konnektor setzt den Satz in der Sprache der Person zusammen
@@ -4274,46 +4264,52 @@ class Schreiber:
             antwort["hinweise_teile"] = [h.teile_json() if isinstance(h, texte.Satz) else str(h) for h in hinweise]
         return antwort
 
-    def buchung_im_repo(self, reise, bid):
-        """Gibt es die Buchung B-… auf origin/main (auch wenn die Seite noch nicht neu gebaut ist)? -> {"gibt_es", "fuer", "wer"}.
-        Liest nur (git show), ohne Sperre und ohne Arbeitskopie; der Konnektor fragt so, bevor er einen Beleg ablegt (Issue #135)."""
-        import yaml
-        if not REISE_MUSTER.match(reise or "") or not re.fullmatch(r"B-\d+", bid or ""):
-            return {"gibt_es": False}
-        git(self.wurzel, "fetch", "-q", "origin", "main", frist=ZEIT_PRUEFUNG)
-        text = git(self.wurzel, "show", f"origin/main:reisen/{reise}/plan/routen.yaml", fehler=False, frist=ZEIT_PRUEFUNG)
+    def schreiben(self, reise, werkzeug, anfrage):
+        """Ein Schreibvorgang in der vorbereiteten Arbeitskopie -> {"ok": True, "text", "commit", "stand"}; sonst Ablehnung.
+        Speicherweg: genau ein Vorgang im Reisespeicher (erwartet=basis, Wartezeit der Datenbank = Rest der Frist);
+        reisespeicher.StandGeaendert und sqlite3.Error gehen an anwenden. Git-Weg: Commit nach main (schreiben_git)."""
+        if self.basis is None:
+            import schreiben_git
+            return schreiben_git.schreiben(self, reise, werkzeug, anfrage)
+        import reisespeicher
+        reise, reise_dir, wer, titel, text, hinweise = self.anwenden_im_ordner(reise, werkzeug, anfrage)
+        _, titel_, text_, fuss = self.nachricht(reise_dir, werkzeug, wer, titel, text)
+        rest = self.rest()
         try:
-            b = ((yaml.safe_load(text) or {}).get("buchungen") or {}).get(bid) if text else None
-        except yaml.YAMLError:
-            b = None
-        if not isinstance(b, dict):
-            return {"gibt_es": False}
-        fuer = b.get("fuer")
-        return {"gibt_es": True, "fuer": [fuer] if isinstance(fuer, str) else [str(x) for x in (fuer or [])], "wer": b.get("wer")}
+            v = reisespeicher.ordner_als_vorgang(
+                reise, reise_dir, self.basis, wer=" ".join(wer["name"].split()), werkzeug=werkzeug,
+                titel=(str(titel_).splitlines() or [""])[0], grund=f"{text_}\n\n{fuss}", kennung=os.environ.get("FR_VORGANG") or None,
+                rolle=str(wer["rolle"]), timeout=10 if rest is None else max(0.1, rest))
+        except reisespeicher.NichtsGeaendert:
+            raise Ablehnung("schreiben.schreiben.4")
+        reisestand.gesichert_schreiben(reise, v.stand, str(v.nummer))
+        self.veroeffentlichen_anstossen()
+        return self.antwort(reise, titel, text, hinweise, str(v.nummer), v.stand)
 
-    def hochladen(self, reise):
-        """Nach main pushen; kam inzwischen etwas anderes an, darauf aufsetzen (höchstens dreimal)."""
-        for versuch in range(3):
-            r = subprocess.run(["git", "-C", str(self.arbeit), "push", "-q", "origin", "HEAD:main"], capture_output=True, text=True)
-            if r.returncode == 0:
-                return git(self.arbeit, "rev-parse", "HEAD")
-            sys.stderr.write(f"Upload attempt {versuch + 1}: git push failed: {r.stderr.strip()}\n")
-            git(self.arbeit, "fetch", "-q", "origin", "main")
-            rb = subprocess.run(["git", "-C", str(self.arbeit), "rebase", "-q", "origin/main"], capture_output=True, text=True)
-            if rb.returncode != 0:
-                sys.stderr.write(f"Upload attempt {versuch + 1}: git rebase failed: {rb.stderr.strip() or rb.stdout.strip()}\n")
-                git(self.arbeit, "rebase", "--abort", fehler=False)
-                git(self.arbeit, "reset", "-q", "--hard", "origin/main")
-                raise Ablehnung("schreiben.hochladen.1", reise=reise)
-        git(self.arbeit, "reset", "-q", "--hard", "origin/main")
-        raise Ablehnung("schreiben.hochladen.2")
+    def buchung_im_repo(self, reise, bid):
+        """Git-Reise: gibt es die Buchung B-… auf origin/main? (engine/schreiben_git.py, Issue #135)."""
+        import schreiben_git
+        return schreiben_git.buchung_im_repo(self, reise, bid)
+
+    def buchung_im_speicher(self, reise, bid):
+        """Speicher-Reise: gibt es die Buchung B-… im neuesten Stand? -> {"gibt_es", "fuer", "wer"}. Liest nur
+        plan/routen.yaml, ohne Sperre; fehlt Reise oder Datei: gibt es nicht. Datenbank nicht lesbar: sqlite3.Error."""
+        import reisespeicher
+        if not buchung_anfrage_gueltig(reise, bid):
+            return {"gibt_es": False}
+        try:
+            text = reisespeicher.datei(reise, "plan/routen.yaml").decode("utf-8", errors="replace")
+        except KeyError:
+            return {"gibt_es": False}
+        return buchung_aus_routen(text, bid)
 
     def veroeffentlichen_anstossen(self):
         """Veröffentlichen im Hintergrund (holt main in den Bauordner, baut, prüft). Hält ein anderer Lauf die Sperre,
         merkt das Skript das, und der laufende Lauf veröffentlicht danach gleich noch einmal (#230). Niedrige Priorität wie im Dienst
         veroeffentlichen.service, damit Schreibvorgänge während der Tests nicht warten (fehlen nice oder ionice, ohne sie).
         Die Ausgabe geht nach /dev/null: Die Ausgabe des Anwendens ist die Leitung zum Dienst, die das Skript sonst bis zu
-        seinem Ende offen hielte. Ein fehlgeschlagener Lauf wiederholt der Timer, mit Protokoll. Wirft nie."""
+        seinem Ende offen hielte. Ein fehlgeschlagener Lauf wiederholt der Timer, mit Protokoll. Wirft nie.
+        Für eine Speicher-Reise bleibt es bis Stufe 3 (#348) ohne Wirkung: das Veröffentlichen baut noch aus Git."""
         if not self.veroeffentlichen or not Path(self.veroeffentlichen).exists():
             return
         env = {**os.environ, "FR_WURZEL": str(self.wurzel)}
@@ -4328,19 +4324,62 @@ class Schreiber:
                 sys.stderr.write(f"Publishing not started ({' '.join(argv[:1])}): {e}\n")
 
 
-def anwenden(wurzel_, arbeit, reise, werkzeug, anfrage):
-    """Ein Schreibvorgang (Arbeitskopie ist vorbereitet) -> Antwort-Objekt mit HTTP-Code."""
+def buchung_anfrage_gueltig(reise, bid):
+    return bool(REISE_MUSTER.match(reise or "")) and bool(re.fullmatch(r"B-\d+", bid or ""))
+
+
+def buchung_aus_routen(text, bid):
+    """Buchung bid aus dem Text von plan/routen.yaml -> {"gibt_es", "fuer", "wer"}."""
+    import yaml
+    try:
+        b = ((yaml.safe_load(text) or {}).get("buchungen") or {}).get(bid) if text else None
+    except yaml.YAMLError:
+        b = None
+    if not isinstance(b, dict):
+        return {"gibt_es": False}
+    fuer = b.get("fuer")
+    return {"gibt_es": True, "fuer": [fuer] if isinstance(fuer, str) else [str(x) for x in (fuer or [])], "wer": b.get("wer")}
+
+
+def abgelehnt(werkzeug, e):
+    """Antwort auf eine Ablehnung -> (422, Antwort); der Grund steht im Protokoll (Werkzeug, Code, Regel; ein Zeilenumbruch
+    oder Überlänge hat dort nichts zu suchen)."""
+    grund = " ".join(str(e).split())[:LOG_LAENGE]
+    sys.stderr.write(f"Rejected {werkzeug} 422: {grund}\n")
+    antwort = {"ok": False, "fehler": str(e)}
+    if e.schluessel:   # der Konnektor setzt den Satz in der Sprache der Person zusammen
+        antwort.update(fehler_code=e.schluessel, werte=e.werte_json())
+    return 422, antwort
+
+
+def speicher_fehler(werkzeug, e):
+    """Datenbank nicht erreichbar, nicht lesbar oder über die Frist gesperrt -> (503, Antwort)."""
+    sys.stderr.write(f"Store {werkzeug} 503: {' '.join(f'{type(e).__name__}: {e}'.split())[:LOG_LAENGE]}\n")
+    return 503, fehler_antwort("schreiben.dienst.speicher_nicht_erreichbar")
+
+
+def anwenden(wurzel_, arbeit, reise, werkzeug, anfrage, basis=None, frist=None):
+    """Ein Schreibvorgang (Arbeitskopie ist vorbereitet) -> Antwort-Objekt mit HTTP-Code. basis gesetzt: Speicherweg mit
+    der Frist frist (Sekunden ab jetzt) für das Eintragen; sonst Git-Weg."""
     s = Schreiber(wurzel_, arbeit)
+    if basis is not None:
+        s.basis = basis
+        # etwas vor der Frist des Dienstes, damit die eigene Antwort ihn noch erreicht
+        s.ende = None if frist is None else time.monotonic() + max(0.1, frist - 0.5)
     try:
         return 200, s.schreiben(reise, werkzeug, anfrage)
     except Ablehnung as e:
-        # Grund ins Protokoll (Werkzeug, Code, Regel; ein Zeilenumbruch oder Überlänge hat dort nichts zu suchen)
-        grund = " ".join(str(e).split())[:LOG_LAENGE]
-        sys.stderr.write(f"Rejected {werkzeug} 422: {grund}\n")
-        antwort = {"ok": False, "fehler": str(e)}
-        if e.schluessel:   # der Konnektor setzt den Satz in der Sprache der Person zusammen
-            antwort.update(fehler_code=e.schluessel, werte=e.werte_json())
-        return 422, antwort
+        return abgelehnt(werkzeug, e)
+    except Exception as e:
+        if s.basis is None:
+            raise
+        import reisespeicher
+        if isinstance(e, reisespeicher.StandGeaendert):
+            sys.stderr.write(f"Conflict {werkzeug} 503: {e}\n")
+            return 503, fehler_antwort("schreiben.dienst.stand_geaendert")
+        if isinstance(e, sqlite3.Error):
+            return speicher_fehler(werkzeug, e)
+        raise
 
 
 # ---------- Dienst ----------
@@ -4370,15 +4409,21 @@ def sperre_nehmen(f, frist=None):
 
 
 def vorgang_eingetragen(s, kennung):
-    """Ist der Vorgang mit dieser Kennung auf origin/main angekommen? -> True, False oder None (Prüfung nicht möglich).
-    Holen und Suchen zusammen höchstens ZEIT_PRUEFUNG Sekunden; der alte Stand von origin/main gilt nicht als Antwort."""
-    ende = time.monotonic() + ZEIT_PRUEFUNG
+    """Git-Weg: ist der Vorgang mit dieser Kennung auf origin/main angekommen? -> True, False oder None (engine/schreiben_git.py)."""
+    import schreiben_git
+    return schreiben_git.vorgang_eingetragen(s, kennung)
+
+
+def vorgang_vorhanden(kennung):
+    """Speicherweg: ist der Vorgang mit dieser Kennung eingetragen? -> Vorgang, False oder None (Prüfung nicht möglich).
+    Liest nur, lokal im Reisespeicher, mit der Prüffrist ZEIT_PRUEFUNG als Wartezeit der Datenbank. Ein getöteter
+    Unterprozess hat seine Transaktion zurückgerollt: „nicht eingetragen“ ist sicher."""
+    import reisespeicher
     try:
-        git(s.wurzel, "fetch", "-q", "origin", "main", frist=ende - time.monotonic())
-        return bool(git(s.wurzel, "log", "--format=%H", "--fixed-strings", f"--grep=Frieda-Vorgang: {kennung}", "origin/main",
-                        frist=ende - time.monotonic()))
-    except (RuntimeError, subprocess.TimeoutExpired):
+        v = reisespeicher.vorgang_eingetragen(kennung, timeout=ZEIT_PRUEFUNG)
+    except (sqlite3.Error, OSError):
         return None
+    return v or False
 
 
 def nicht_eingetragen(werkzeug):
@@ -4386,33 +4431,61 @@ def nicht_eingetragen(werkzeug):
     return 504, fehler_antwort("schreiben.dienst.zu_lange_nicht")
 
 
-def nach_abbruch(s, werkzeug, kennung, reise=None):
-    """Antwort, nachdem das Anwenden von der Frist abgebrochen wurde: Ergebnis auf origin/main nachsehen."""
-    ergebnis = vorgang_eingetragen(s, kennung)
-    if ergebnis:
-        sys.stderr.write(f"Timeout {werkzeug} 504: aborted, saved\n")
-        text = S("schreiben.dienst.verzoegert")
-        antwort = {"ok": True, "text": str(text), "text_teile": text.teile_json(), "hinweis": str(text)}
-        if reise:   # vorgang_eingetragen hat origin/main eben geholt
-            nummer = reisestand.nummer(s.wurzel / "reisen" / reise, "origin/main")
-            reisestand.gesichert_schreiben(reise, nummer)
-            antwort["stand"] = {"gesichert": nummer, "veroeffentlicht": reisestand.veroeffentlicht(reise)[0]}
-        return 200, antwort
-    if ergebnis is False:
-        return nicht_eingetragen(werkzeug)
+def ungeprueft(werkzeug):
     sys.stderr.write(f"Timeout {werkzeug} 504: aborted, unchecked\n")
     return 504, fehler_antwort("schreiben.dienst.zu_lange_ungeprueft")
 
 
+def eingetragen_trotz_abbruch(werkzeug, reise=None, nummer=None, commit=None):
+    """Antwort, wenn der Vorgang trotz Abbruch eingetragen ist; mit reise auch der Stand (gesichert.json wie nach Erfolg)."""
+    sys.stderr.write(f"Timeout {werkzeug} 504: aborted, saved\n")
+    text = S("schreiben.dienst.verzoegert")
+    antwort = {"ok": True, "text": str(text), "text_teile": text.teile_json(), "hinweis": str(text)}
+    if reise:
+        reisestand.gesichert_schreiben(reise, nummer, commit)
+        antwort["stand"] = {"gesichert": nummer, "veroeffentlicht": reisestand.veroeffentlicht(reise)[0]}
+    if commit:
+        antwort["commit"] = commit
+    return 200, antwort
+
+
+def nach_abbruch(s, werkzeug, kennung, reise=None):
+    """Speicherweg: Antwort, nachdem das Anwenden von der Frist abgebrochen wurde; nachgesehen wird lokal im Speicher
+    (Meldungstabelle in docs/specs/betrieb/schreibweg-zeitgrenzen.md). Der Git-Weg hat schreiben_git.nach_abbruch."""
+    ergebnis = vorgang_vorhanden(kennung)
+    if ergebnis:
+        return eingetragen_trotz_abbruch(werkzeug, reise, ergebnis.stand, str(ergebnis.nummer))
+    if ergebnis is False:
+        return nicht_eingetragen(werkzeug)
+    return ungeprueft(werkzeug)
+
+
+def ausgabe_lesen(r):
+    """Ausgabe des Unterprozesses `anwenden` -> (Code, Antwort); sein Protokoll geht ins eigene."""
+    if r.stderr:
+        sys.stderr.write(r.stderr)
+    try:
+        code, antwort = json.loads(r.stdout)
+        return int(code), antwort
+    except (ValueError, TypeError):
+        sys.stderr.write(f"apply: code {r.returncode}, output: {r.stdout[-500:]}\n")
+        return 500, fehler_antwort("schreiben.dienst.fehlgeschlagen")
+
+
 def anwenden_extern(s, reise, werkzeug, anfrage):
-    """Arbeitskopie holen und `anwenden` mit dem Code der Arbeitskopie ausführen -> (Code, Antwort).
+    """Ein Schreibvorgang des Dienstes -> (Code, Antwort). Der Weg richtet sich nach der Reise: steht sie in
+    FR_SPEICHERREISEN, über den Reisespeicher (vorgang_speicher), sonst bis Stufe 5 über Git (schreiben_git.vorgang).
     Sperre und Arbeitskopie gibt es je Reise: Was bei einer Reise hängt, hält die anderen nicht auf (flock gilt auch zwischen
     Threads, jeder öffnet die Datei selbst). Alles zusammen dauert höchstens ZEIT_GESAMT + ZEIT_PRUEFUNG Sekunden; die Dauer
     jedes Vorgangs steht im Protokoll, auch nach einem unerwarteten Fehler (500)."""
     start = time.monotonic()
     code, antwort = 500, fehler_antwort("schreiben.dienst.fehlgeschlagen")
     try:
-        code, antwort = vorgang(s, reise, werkzeug, anfrage, start)
+        if reise in instanz.speicherreisen():
+            code, antwort = vorgang_speicher(s, reise, werkzeug, anfrage, start)
+        else:
+            import schreiben_git
+            code, antwort = schreiben_git.vorgang(s, reise, werkzeug, anfrage, start)
     except Exception as e:
         grund = " ".join(f"{type(e).__name__}: {e}".split())[:LOG_LAENGE]
         sys.stderr.write(f"Error {werkzeug} 500: {grund}\n")
@@ -4421,62 +4494,101 @@ def anwenden_extern(s, reise, werkzeug, anfrage):
     return code, antwort
 
 
-def git_sperren_raeumen(arbeit):
-    """Veraltete Sperren von git (index.lock, HEAD.lock …) im eigenen git-Ordner der Arbeitskopie entfernen: Ein nach Fristablauf
-    beendetes git kann sie hinterlassen. Nur unter der Sperre der Reise aufrufen; der gemeinsame git-Ordner des Repos bleibt
-    unberührt (dort arbeiten andere Reisen und das Veröffentlichen). Die Arbeitskopie ist ein Worktree: .git ist eine Datei
-    „gitdir: <Repo>/.git/worktrees/<Name>“."""
-    punkt_git = Path(arbeit) / ".git"
-    if punkt_git.is_file():
-        zeile = punkt_git.read_text(encoding="utf-8").strip()
-        if not zeile.startswith("gitdir:"):
-            return
-        gitdir = Path(arbeit) / zeile[len("gitdir:"):].strip()     # absolut bleibt absolut
-    elif punkt_git.is_dir():
-        gitdir = punkt_git
-    else:
-        return
-    for f in gitdir.glob("*.lock"):
-        f.unlink(missing_ok=True)
-        sys.stderr.write(f"Working copy: stale lock {f.name} removed\n")
+def git_reisen(wurzel_):
+    """Namen der Reisen im Ordner reisen/ des Reisen-Repos (Git-Reisen), ohne Git zu fragen."""
+    try:
+        return [p.name for p in (Path(wurzel_) / "reisen").iterdir() if p.is_dir() and REISE_MUSTER.match(p.name)]
+    except OSError:
+        return []
 
 
-def vorgang(s, reise, werkzeug, anfrage, start):
-    s = Schreiber(s.wurzel, Path(f"{s.arbeit}-{reise}"), s.veroeffentlichen)
-    s.ende = start + ZEIT_GESAMT
-    with open(sperrdatei(reise), "w") as f:
+def vorgang_speicher(s, reise, werkzeug, anfrage, start):
+    """Ein Schreibvorgang über den Reisespeicher (Stufe 2, #347, ADR-0009) -> (Code, Antwort). Sperre der Reise (bei
+    reise_anlegen der Reisen), Reise im Speicher?, Arbeitskopie als Export des Stands basis in einem temporären Ordner,
+    dann `anwenden` mit dem Code dieses Dienstes (im Betrieb <FR_DIENST>) in der Frist; der Unterprozess trägt den Vorgang
+    selbst ein (eine Transaktion, erwartet=basis). Der temporäre Ordner wird in jedem Fall gelöscht."""
+    import reisespeicher
+    ende = start + ZEIT_GESAMT
+    if not REISE_MUSTER.match(reise or ""):
+        return abgelehnt(werkzeug, Ablehnung("schreiben.schreiben.1"))
+    if werkzeug not in WERKZEUGE and werkzeug not in REPO_WERKZEUGE:
+        return abgelehnt(werkzeug, Ablehnung("schreiben.schreiben.2", werkzeug=werkzeug))
+    neue_reise = werkzeug in REPO_WERKZEUGE
+    with open(sperrdatei("reisen" if neue_reise else reise), "w") as f:
         if not sperre_nehmen(f):
             sys.stderr.write(f"Locked {werkzeug} 429: lock of the trip still held after {ZEIT_SPERRE} s\n")
             return 429, fehler_antwort("schreiben.dienst.besetzt")
-        try:
-            git_sperren_raeumen(s.arbeit)     # unter der Sperre der Reise: kein anderes git arbeitet in dieser Kopie
-            s.vorbereiten()
-        except subprocess.TimeoutExpired:
-            return nicht_eingetragen(werkzeug)     # noch nichts angewendet, keine Prüfung nötig
-        except RuntimeError as e:
-            sys.stderr.write(f"Arbeitskopie: {e}\n")
-            return 503, fehler_antwort("schreiben.dienst.repo_nicht_erreichbar_spaeter")
-        skript = s.arbeit / "engine" / "schreiben.py"
-        if not skript.exists():
-            sys.stderr.write(f"Working copy: {skript} missing\n")
-            return 503, fehler_antwort("schreiben.dienst.software_alt")
-        if s.rest() <= 0:
-            return nicht_eingetragen(werkzeug)
         kennung = secrets.token_hex(6)
+        tmp = Path(tempfile.mkdtemp(prefix="frieda-schreiben-"))
+        arbeit = tmp / "kopie"
+        abgebrochen = threading.Event()
+        ergebnis = {}
+
+        def vorbereiten():
+            """Reise im Speicher?, Stand merken, exportieren. Läuft in einem Faden, damit ein hängender Speicher die Frist
+            nicht überdauert; wird er nach Fristablauf doch noch fertig, räumt er den temporären Ordner selbst weg."""
+            try:
+                bekannt = reisespeicher.reisen()
+                if not neue_reise and reise not in bekannt:   # nie aus einer leeren Arbeitskopie schreiben
+                    ergebnis["basis"] = None
+                elif neue_reise:
+                    # bekannte Reisen als leere Ordner: neu.py prüft Namen und IDs wie in einem Repo
+                    (arbeit / "reisen").mkdir(parents=True)
+                    for name in sorted(set(bekannt) | set(git_reisen(s.wurzel))):
+                        (arbeit / "reisen" / name).mkdir(exist_ok=True)
+                    ergebnis["basis"] = 0
+                else:
+                    basis = reisespeicher.stand_nummer(reise)
+                    reisespeicher.exportieren(reise, arbeit / "reisen" / reise, bis=basis)
+                    ergebnis["basis"] = basis
+            except BaseException as e:   # an den Dienst-Faden weitergeben
+                ergebnis["fehler"] = e
+            finally:
+                if abgebrochen.is_set():
+                    shutil.rmtree(tmp, ignore_errors=True)
+
         try:
-            r = befehl_mit_frist([sys.executable, str(skript), "anwenden", reise, werkzeug], json.dumps(anfrage), s.rest(),
-                                 env={**os.environ, "FR_WURZEL": str(s.wurzel), "FR_SCHREIBKOPIE": str(s.arbeit),
-                                      "FR_VORGANG": kennung})
-        except subprocess.TimeoutExpired:
-            return nach_abbruch(s, werkzeug, kennung, reise)
-        if r.stderr:
-            sys.stderr.write(r.stderr)
-        try:
-            code, antwort = json.loads(r.stdout)
-            return int(code), antwort
-        except (ValueError, TypeError):
-            sys.stderr.write(f"apply: code {r.returncode}, output: {r.stdout[-500:]}\n")
-            return 500, fehler_antwort("schreiben.dienst.fehlgeschlagen")
+            (tmp / "tmp").mkdir()     # temporäre Ordner des Unterprozesses (Probebau), mit diesem gelöscht
+            faden = threading.Thread(target=vorbereiten, daemon=True)
+            faden.start()
+            faden.join(max(0.0, ende - time.monotonic()))
+            if faden.is_alive():
+                abgebrochen.set()
+                return nicht_eingetragen(werkzeug)     # noch nichts angewendet, keine Prüfung nötig
+            if isinstance(ergebnis.get("fehler"), (sqlite3.Error, OSError)):
+                return speicher_fehler(werkzeug, ergebnis["fehler"])
+            if "fehler" in ergebnis:
+                raise ergebnis["fehler"]
+            basis = ergebnis["basis"]
+            if basis is None:
+                sys.stderr.write(f"Store {werkzeug} 503: trip {reise} is in FR_SPEICHERREISEN but not in the store\n")
+                return 503, fehler_antwort("schreiben.dienst.reise_nicht_im_speicher")
+            if time.monotonic() >= ende:
+                return nicht_eingetragen(werkzeug)     # noch nichts angewendet, keine Prüfung nötig
+            env = {**os.environ, "FR_WURZEL": str(s.wurzel), "FR_SCHREIBKOPIE": str(arbeit), "FR_VORGANG": kennung,
+                   "FR_SPEICHER_BASIS": str(basis), "FR_SB_FRIST": f"{ende - time.monotonic():.3f}", "TMPDIR": str(tmp / "tmp")}
+            try:
+                r = befehl_mit_frist([sys.executable, str(Path(__file__).resolve()), "anwenden", reise, werkzeug],
+                                     json.dumps(anfrage), ende - time.monotonic(), env=env)
+            except subprocess.TimeoutExpired:
+                return nach_abbruch(s, werkzeug, kennung, reise)
+            return ausgabe_lesen(r)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+def speicher_gesund():
+    """Antwortet die Datenbank des Reisespeichers (SELECT 1, Wartezeit ZEIT_PRUEFUNG)?"""
+    import reisespeicher
+    from contextlib import closing
+    if not reisespeicher.pfad().exists():   # fehlt die Datenbank, ist der Speicher nicht da (nichts anlegen)
+        return False
+    try:
+        with closing(reisespeicher.db(timeout=ZEIT_PRUEFUNG)) as v:
+            v.execute("SELECT 1").fetchone()
+        return True
+    except (sqlite3.Error, OSError):
+        return False
 
 
 class Dienst(BaseHTTPRequestHandler):
@@ -4496,16 +4608,27 @@ class Dienst(BaseHTTPRequestHandler):
     def do_GET(self):
         pfad = self.path.split("?", 1)[0]
         if pfad == "/gesund":
+            # Speicher-Reisen: die Datenbank antwortet; Git-Reisen (keine Liste oder ein Repo neben ihr): der Git-Teil
             s = self.schreiber or Schreiber(wurzel())
-            ok = (s.wurzel / ".git").exists() and subprocess.run(["git", "-C", str(s.wurzel), "rev-parse", "--git-dir"],
-                                                               capture_output=True).returncode == 0
+            liste = instanz.speicherreisen()
+            ok = speicher_gesund() if liste else True
+            if ok and (not liste or (s.wurzel / ".git").exists()):
+                import schreiben_git
+                ok = schreiben_git.gesund(s)
             return self._senden(200 if ok else 503, {"gesund": ok})
         teile = pfad.strip("/").split("/")
-        if len(teile) == 3 and teile[1] == "buchung":   # GET /<reise>/buchung/<B-id>: gibt es sie im Repo? (Beleg vor dem Veröffentlichen)
+        if len(teile) == 3 and teile[1] == "buchung":   # GET /<reise>/buchung/<B-id>: gibt es sie schon? (Beleg vor dem Veröffentlichen)
             if not hmac.compare_digest(self.headers.get("X-Frieda-Dienst", ""), konten.dienst_geheimnis()):
                 return self._senden(403, fehler_antwort("schreiben.dienst.nur_konnektor", mit_ok=False))
+            s = self.schreiber or Schreiber(wurzel())
+            if teile[0] in instanz.speicherreisen():
+                try:
+                    return self._senden(200, s.buchung_im_speicher(teile[0], teile[2]))
+                except (sqlite3.Error, OSError) as e:
+                    sys.stderr.write(f"Error buchung 503: {' '.join(str(e).split())[:LOG_LAENGE]}\n")
+                    return self._senden(503, fehler_antwort("schreiben.dienst.speicher_nicht_erreichbar", mit_ok=False))
             try:
-                return self._senden(200, (self.schreiber or Schreiber(wurzel())).buchung_im_repo(teile[0], teile[2]))
+                return self._senden(200, s.buchung_im_repo(teile[0], teile[2]))
             except (RuntimeError, subprocess.TimeoutExpired) as e:
                 sys.stderr.write(f"Error buchung 503: {' '.join(str(e).split())[:LOG_LAENGE]}\n")
                 return self._senden(503, fehler_antwort("schreiben.dienst.repo_nicht_erreichbar", mit_ok=False))
@@ -4550,16 +4673,18 @@ def main(a):
         dienst()
     elif a[:1] == ["anwenden"] and len(a) == 3:
         anfrage = json.loads(sys.stdin.read() or "{}")
-        code, antwort = anwenden(wurzel(), schreibkopie(), a[1], a[2], anfrage)
+        basis = os.environ.get("FR_SPEICHER_BASIS")      # gesetzt: Speicherweg (vorgang_speicher), sonst Git-Weg
+        frist = os.environ.get("FR_SB_FRIST")
+        code, antwort = anwenden(wurzel(), schreibkopie(), a[1], a[2], anfrage, basis=int(basis) if basis else None,
+                                 frist=float(frist) if frist else None)
         print(json.dumps([code, antwort], ensure_ascii=False))
     elif a[:1] == ["normalisieren"] and len(a) == 2:
         # Routendatei einer Reise einmal rund schreiben (Normalform des Schreibwegs), in einer Sitzung im Reisen-Repo
         geaendert = routen_normalisieren(wurzel() / "reisen" / a[1])
         print(f"reisen/{a[1]}/plan/routen.yaml " + ("in Normalform gebracht." if geaendert else "war schon in Normalform."))
     elif a[:1] == ["vorbereiten"]:
-        s = Schreiber(wurzel())
-        s.vorbereiten()
-        print(f"Arbeitskopie {s.arbeit} steht auf {git(s.arbeit, 'rev-parse', '--short', 'HEAD')}.")
+        import schreiben_git
+        schreiben_git.vorbereiten_aufruf()
     else:
         print(__doc__)
         return 1
@@ -4567,4 +4692,7 @@ def main(a):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    # Als Modul „schreiben“ ausführen, nicht als __main__: schreiben_git importiert schreiben, und zwei Kopien hätten zwei
+    # Klassen Ablehnung (eine Ablehnung des Git-Wegs käme sonst als Fehler 500 an)
+    import schreiben
+    sys.exit(schreiben.main(sys.argv[1:]))

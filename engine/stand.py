@@ -1,13 +1,14 @@
 """Reise-Stand (Epic #223): eine fortlaufende Nummer je Reise und der Weg eines Stands vom Sichern bis auf die Seite.
 
-Nummer: die Zahl der Commits, die den Ordner der Reise ändern (git rev-list --count HEAD -- <ordner>). Jeder gesicherte
-Schreibvorgang ist ein Commit in reisen/<reise>/ und erhöht sie um 1; ein Software-Update (Submodul frieda/) ändert den
-Ordner nicht und lässt sie stehen. main wächst nur (vorspulen, docs/betrieb.md), deshalb steigt die Nummer und Stand 43
-enthält alles aus Stand 42. Die Nummer gehört zur Reise, nicht zum Bau: Der Bau liest sie nur ab. In einem flachen Klon
-wäre die Zahl falsch und fehlt deshalb; ohne Git fehlt sie auch.
+Nummer: je gesichertem Schreibvorgang +1. Für eine Reise aus FR_SPEICHERREISEN ist sie die Stand-Nummer im Reisespeicher
+(engine/reisespeicher.py, ADR-0009, ab Stufe 2, #347), die Änderungsliste kommt aus seinem Verlauf. Für jede andere Reise
+zählt bis Stufe 5 weiter Git (engine/stand_git.py): die Zahl der Commits, die den Ordner der Reise ändern; ein
+Software-Update ändert den Ordner nicht und lässt sie stehen. Die Nummer steigt nur, Stand 43 enthält alles aus Stand 42.
+Sie gehört zur Reise, nicht zum Bau: Der Bau liest sie nur ab. Fehlt die Quelle (Reise ohne Speichereintrag, ohne Git,
+flacher Klon), fehlt die Nummer.
 
 Weg eines Stands (docs/betrieb.md, „Reise-Stand“):
-  gesichert      der Schreibweg (engine/schreiben.py) hat den Commit nach main gebracht
+  gesichert      der Schreibweg (engine/schreiben.py) hat den Vorgang eingetragen (Speicher) bzw. nach main gebracht (Git)
   wird gebaut    betrieb/veroeffentlichen.sh baut die Seite der Reise neu
   veröffentlicht die Seite dieses Stands liegt auf dem Server (<Seiten>/<reise>/daten.json, reise_stand.nummer)
   auf dem Gerät  nur die Person sieht das, im Fuß der Seite
@@ -22,10 +23,11 @@ Workers. Zeiten stehen als UTC mit „Z“; angezeigt werden sie in der Ortszeit
 der Person, sonst FR_ZEITZONE der Instanz, sonst UTC, immer mit Angabe der Zone).
 """
 import datetime
+import importlib
 import json
 import os
 import re
-import subprocess
+import sqlite3
 from pathlib import Path
 
 import instanz
@@ -37,21 +39,10 @@ ID_MUSTER = re.compile(r"(?<![\w-])([A-Z]{1,2}-\d+(?:\.[a-z0-9]+)?)(?![\w-])")
 PERSON_TRAILER = "Frieda-Person"   # Zeile im Commit des Schreibwegs: wer den Eintrag gemacht hat
 
 
-def git(ordner, *args):
-    """git im Ordner -> Ausgabe ohne Rand oder None (kein Git, Fehler)."""
-    try:
-        r = subprocess.run(["git", "-C", str(ordner), *args], capture_output=True, text=True, timeout=10)
-    except (OSError, subprocess.SubprocessError):
-        return None
-    return r.stdout.strip() if r.returncode == 0 else None
-
-
 def nummer(ordner, rev="HEAD"):
-    """Reise-Stand des Ordners auf rev -> int oder None (ohne Git, flacher Klon, nichts eingecheckt)."""
-    if not Path(ordner).is_dir() or git(ordner, "rev-parse", "--is-shallow-repository") != "false":
-        return None
-    n = git(ordner, "rev-list", "--count", rev, "--", ".")
-    return int(n) if n and n.isdigit() and int(n) > 0 else None
+    """Reise-Stand einer Git-Reise auf rev -> int oder None (engine/stand_git.py, bis Stufe 5)."""
+    import stand_git
+    return stand_git.nummer(ordner, rev)
 
 
 def zeit_iso(t=None):
@@ -121,44 +112,49 @@ def ohne_kennungen(text, namen):
     return re.sub(r"\s{2,}", " ", re.sub(r"^\s+|\(\s*\)", "", neu)).strip()
 
 
-def _person(nachricht, autor):
-    """Wer eine Änderung gemacht hat: die Zeile Frieda-Person des Schreibwegs, sonst der Autor des Commits."""
-    for z in reversed(nachricht.splitlines()):
-        if z.startswith(PERSON_TRAILER + ":"):
-            return z.split(":", 1)[1].strip() or None
-    return autor or None
-
-
 def aenderungen(ordner, namen=None, n=AENDERUNGEN):
-    """Die letzten n Änderungen der Reise -> [{nummer, zeit, was, wer}], neueste zuerst. was ist die erste Zeile des Commits
-    ohne den Titel der Reise davor, mit Namen statt Kennungen."""
-    gesamt = nummer(ordner)
-    if not gesamt:
-        return []
-    roh = git(ordner, "log", f"-{n}", "--format=%ct%x1f%an%x1f%B%x1e", "--", ".")
-    if not roh:
-        return []
-    liste = []
-    for i, eintrag in enumerate(x for x in roh.split("\x1e") if x.strip()):
-        teile = eintrag.strip("\n").split("\x1f", 2)
-        if len(teile) != 3 or not teile[0].strip().isdigit():
-            continue
-        zeit, autor, nachricht = int(teile[0].strip()), teile[1].strip(), teile[2].strip()
-        was = (nachricht.splitlines() or [""])[0]
-        if ": " in was:   # „<Titel der Reise>: <was>“ (Schreibweg)
-            was = was.split(": ", 1)[1]
-        liste.append({"nummer": gesamt - i, "zeit": zeit_iso(zeit), "was": ohne_kennungen(was, namen or {}),
-                      "wer": _person(nachricht, autor)})
-    return liste
+    """Die letzten n Änderungen einer Git-Reise -> [{nummer, zeit, was, wer}], neueste zuerst (engine/stand_git.py)."""
+    import stand_git
+    return stand_git.aenderungen(ordner, namen, n)
+
+
+def _aus_dem_speicher(reise, namen):
+    """Nummer und Änderungsliste einer Reise aus dem Reisespeicher -> (nummer, liste) oder (None, []) ohne Eintrag. Liest
+    nur; ohne Datenbank wird keine angelegt, eine nicht lesbare zählt wie keine (der Bau bricht daran nicht ab).
+    Der Speicher wird über importlib geladen: reisespeicher importiert seinerseits stand (zeit_iso), und Konnektor und
+    Rückmeldedienst, die stand laden, rufen fuer_seite nie (sie lesen den Speicher erst ab Stufe 3, #348); das Modul
+    liegt über SB_MODULE (betrieb/deploy.sh) im selben Dienstordner."""
+    # Bewusst kein „import reisespeicher“: Die Prüfung der Modullisten (engine/tests/test_betrieb.py) folgt auch Importen in
+    # Funktionen und verlangte reisespeicher.py dann in RM_MODULE und KN_MODULE, was der Test zu Stufe 2 (AC-23,
+    # test_reisespeicher.py) bis Stufe 3 verbietet. Ruft künftig ein anderer Dienst als Bau und Schreibweg fuer_seite (oder
+    # liest er sonst den Speicher), braucht er reisespeicher.py in seiner Modulliste in betrieb/deploy.sh; mit Stufe 3 wird
+    # daraus ein normaler Import und die Listen werden ergänzt.
+    rs = importlib.import_module("reisespeicher")
+    try:
+        if not rs.pfad().exists():
+            return None, []
+        gesamt = rs.stand_nummer(reise)
+        if gesamt is None:
+            return None, []
+        verlauf = rs.verlauf(reise, n=AENDERUNGEN)
+    except (sqlite3.Error, OSError):
+        return None, []
+    return gesamt, [{"nummer": e["nummer"], "zeit": e["zeit"], "was": ohne_kennungen(e["was"], namen), "wer": e["wer"] or None}
+                    for e in verlauf]
 
 
 def fuer_seite(ordner, daten):
-    """Reise-Stand für die Seite (daten.reise_stand): {nummer, zeit, aenderungen} oder None ohne Git. zeit ist der Zeitpunkt
-    der letzten Änderung (Commit). Keine Bauzeit: gleicher Inhalt ergibt dieselbe Seite (Service Worker, bauen.py)."""
-    n = nummer(ordner)
+    """Reise-Stand für die Seite (daten.reise_stand): {nummer, zeit, aenderungen} oder None ohne Quelle. Der Bau kennt nur
+    den Ordner; die Reise ist sein Name. Steht sie in FR_SPEICHERREISEN, kommt alles aus dem Reisespeicher (ohne Eintrag:
+    None), sonst aus Git (engine/stand_git.py, bis Stufe 5). zeit ist der Zeitpunkt der letzten Änderung. Keine Bauzeit:
+    gleicher Inhalt ergibt dieselbe Seite (Service Worker, bauen.py)."""
+    if Path(ordner).name in instanz.speicherreisen():
+        n, liste = _aus_dem_speicher(Path(ordner).name, namen_der_ids(daten))
+    else:
+        n = nummer(ordner)
+        liste = aenderungen(ordner, namen_der_ids(daten)) if n is not None else []
     if n is None:
         return None
-    liste = aenderungen(ordner, namen_der_ids(daten))
     return {"nummer": n, "zeit": liste[0]["zeit"] if liste else None, "aenderungen": liste}
 
 

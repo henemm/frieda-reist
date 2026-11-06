@@ -353,6 +353,30 @@ def test_speicherweg_haelt_die_fristen(speicher, monkeypatch, capsys):
     assert zustand(speicher, "beispielreise") == vorher
 
 
+def test_haengender_export_ueberdauert_die_frist_nicht(speicher, monkeypatch, capsys):
+    """Adversary F001 (AC-12): Ein Export, der länger hängt als ZEIT_GESAMT + ZEIT_PRUEFUNG, hält die Antwort nicht auf:
+    504 „nicht eingetragen“ in der Frist, ohne Unterprozess, Stand unverändert, temporärer Ordner weg (auch nachdem der
+    hängende Export doch noch fertig wird), genau eine Zeile „Done …“."""
+    rs = speicher.rs
+    vorher = zustand(speicher, "beispielreise")
+    original = rs.exportieren
+    gestartet = []
+    monkeypatch.setattr(sb, "ZEIT_GESAMT", 0.5)
+    haengt = 0.5 + sb.ZEIT_PRUEFUNG + 1
+    monkeypatch.setattr(rs, "exportieren", lambda *a, **k: (time.sleep(haengt), original(*a, **k))[1])
+    monkeypatch.setattr(sb, "befehl_mit_frist", lambda *a, **k: gestartet.append(a))
+    capsys.readouterr()
+    start = time.monotonic()
+    code, a = schreib(speicher, "beispielreise", "art_definieren", {**IDA, "args": ART})
+    dauer = time.monotonic() - start
+    assert dauer < 0.5 + sb.ZEIT_PRUEFUNG + 0.5, dauer
+    assert code == 504 and a["fehler_code"] == "schreiben.dienst.zu_lange_nicht" and not gestartet, (code, a)
+    assert DONE.findall(capsys.readouterr().err) == [("art_definieren", "504")]
+    assert zustand(speicher, "beispielreise") == vorher and not list(speicher.tmp.iterdir())
+    time.sleep(max(0.0, haengt + 1 - dauer))                         # der hängende Export wird fertig und räumt auf
+    assert zustand(speicher, "beispielreise") == vorher and not list(speicher.tmp.iterdir())
+
+
 # ---------- AC-13: Buchung aus dem Speicher ----------
 
 def test_buchung_wird_aus_dem_speicher_gelesen(speicher, monkeypatch, tmp_path):
@@ -383,6 +407,17 @@ def test_gesund_prueft_die_datenbank(speicher, monkeypatch, tmp_path):
         assert d.get("gesund", geheim=False) == (200, {"gesund": True})     # ohne .git: der Speicher genügt
         kaputter_speicher(tmp_path, monkeypatch)
         assert d.get("gesund", geheim=False) == (503, {"gesund": False})
+
+
+def test_gesund_ohne_datenbank_ist_ungesund_und_legt_nichts_an(speicher, monkeypatch, tmp_path):
+    """Adversary F002 (AC-14): Fehlt reisen.db (falscher Ort, nicht eingerichtet), ist der Speicher nicht gesund; /gesund
+    legt die Datenbank dabei nicht an."""
+    leer = tmp_path / "leer"
+    leer.mkdir()
+    monkeypatch.setenv("FR_SPEICHER", str(leer))
+    with Dienst(speicher.schreiber()) as d:
+        assert d.get("gesund", geheim=False) == (503, {"gesund": False})
+    assert not speicher.rs.pfad().exists() and not list(leer.iterdir())
 
 
 # ---------- AC-15: neue Reise im Speicher ----------

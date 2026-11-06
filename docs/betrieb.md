@@ -16,7 +16,7 @@ Eine **Instanz** ist eine Reisegruppe mit eigenem Betreiber: ein Reisen-Repo, da
 | Seiten | `<FR_SEITEN>/<reise>/` | gebaute Seiten, nginx liefert sie aus |
 | Ablage | `<FR_ABLAGE>/<reise>/` (`eingang.jsonl`, `status.json`, `aufgaben.json`, …) | Eingaben der Mitreisenden; nie im Repo |
 | Konten | `<FR_KONTEN>/` (`konten.db`, Dienst-Geheimnis, `sicherung/konten.db`, `neu/` mit Anfragen nach neuen Reisen und Meldungen an Personen) | Konten, Anmeldungen, Einladungen und alles Personenbezogene ohne Reise; nie im Repo, nie in einer Reise |
-| Reisespeicher | `<FR_SPEICHER>/` (`reisen.db`, `sicherung/reisen.db`; Vorgabe `<FR_SEITEN>/_speicher`) | Reisedaten als unveränderliche Versionen in SQLite (`engine/reisespeicher.py`, [ADR-0009](adr/0009-reisespeicher.md), #346); in Stufe 1 schreibt nur der Betreiber hinein, der Schreibweg bleibt auf Git |
+| Reisespeicher | `<FR_SPEICHER>/` (`reisen.db`, `sicherung/reisen.db`; Vorgabe `<FR_SEITEN>/_speicher`) | Reisedaten als unveränderliche Versionen in SQLite (`engine/reisespeicher.py`, [ADR-0009](adr/0009-reisespeicher.md), #346); ab Stufe 2 (#347) schreibt der Schreibweg die Reisen aus `FR_SPEICHERREISEN` hinein (Speicherweg), alle anderen bis Stufe 5 über Git |
 | Dienstordner | `<FR_DIENST>/` | Code der Dienste, Stände, Stempel, vorgemerkte Links, geheime Einstellungen |
 | Konnektor-Zugänge | `<FR_KONNEKTOR>/zugaenge.json`, `seiten.json` (600) | geheime Links; nie im Repo |
 | systemd | `<instanz>-rueckmeldungen`, `-konnektor`, `-schreiben`, `-push`, `-veroeffentlichen.timer`, `-waechter.timer` | aus `betrieb/vorlagen/`, erzeugt von `einrichten.sh` |
@@ -81,6 +81,14 @@ Die Routendatei (`plan/routen.yaml`; neue IDs über `ids.yaml`, Fragen in `offen
 
 Der Dienst läuft als Dienstbenutzer mit dessen `git`-Anmeldung (`gh` als Credential-Helfer, `PATH` aus `FR_PFAD`), ohne `ProtectHome`, weil die Arbeitskopie neben dem Repo liegt. `GET /gesund` antwortet `{"gesund": true}`, wenn das Repo erreichbar ist. Von Hand: `frieda/betrieb/…`: `FR_WURZEL=<Bauordner> engine/.venv/bin/python engine/schreiben.py vorbereiten` legt die Arbeitskopie an. Protokoll: `journalctl -u <instanz>-schreiben`. Eine Instanz ohne diesen Dienst setzt `KN_SCHREIBDIENST` nicht; der Konnektor bietet die Schreibwerkzeuge dann nicht an, und neue Reisen lassen sich aus der Claude-App nicht anlegen.
 
+### Speicherweg (Stufe 2, #347, ADR-0009)
+
+Welcher Weg schreibt, entscheidet die Instanz je Reise mit `FR_SPEICHERREISEN` in `betrieb/einstellungen.env` (kommagetrennte Reisenamen, Vorgabe leer). Eine Reise in der Liste schreibt über den Reisespeicher (`engine/reisespeicher.py`), jede andere bis Stufe 5 wie oben über Git (`engine/schreiben_git.py`, `engine/stand_git.py`); der Git-Weg lehnt eine Reise der Liste ab (503, kein Doppelschreiben). Steht eine Reise in der Liste, hat aber noch keinen Eintrag im Speicher, antwortet der Schreibweg 503 ohne jede Wirkung; ist die Datenbank nicht erreichbar, ebenfalls 503 („Speicher nicht erreichbar“).
+
+Ablauf des Speicherwegs: Sperre der Reise wie oben (bei `reise_anlegen` die Sperre „reisen“), Stand-Nummer merken und den Stand in einen temporären Ordner exportieren, dann `schreiben.py anwenden` mit dem Code aus `<FR_DIENST>` (deshalb enthält `SB_MODULE` alle Module von Werkzeugen und Probebau, dazu Vorlage, `vendor/` und `reisevorlage/`). Rolle, Werkzeug und Probebau wie oben; der Unterprozess trägt das Ergebnis als genau einen Vorgang ein (Person, Rolle, Werkzeug, Titel, Grund, Kennung; eine Transaktion, `erwartet` = gemerkter Stand). Hat jemand dazwischen geschrieben, antwortet er 503 „bitte noch einmal“, ohne etwas zu überschreiben. Die Antwort nennt in `commit` die Vorgangs-Nummer. Der temporäre Ordner wird in jedem Fall gelöscht; kein git, kein Push. `GET /gesund` fragt die Datenbank (bei Git-Reisen daneben auch das Repo), `GET /<reise>/buchung/<B-id>` liest `plan/routen.yaml` aus dem Speicher.
+
+Grenzen bis Stufe 3 (#348): `betrieb/veroeffentlichen.sh` baut noch nur aus Git. Eine Speicher-Reise wird nicht neu gebaut, `publish_status` zeigt „wartet“. Deshalb wird in Stufe 2 keine echte Reise umgeschaltet. Vorbedingung vor dem ersten Umschalten einer echten Reise: Das Server-Backup der Instanz sichert `<FR_SPEICHER>/sicherung/` außer Haus, und ein Rückspielversuch ist gelungen. Die Datenbank (Modus 600) müssen Dienstbenutzer des Schreibwegs und Wächter öffnen können; falsche Rechte zeigen sich als 503 „Speicher nicht erreichbar“. Messen: `betrieb/messlauf-schreibweg.py --weg speicher|git` (Kennzahlen nacheinander und parallel).
+
 **Fehlerfälle:** Lehnt der Schreibweg ab (Rolle, Status, Form, Probebau), bleibt alles unverändert, und der AI-Client bekommt den Grund im Gespräch. Scheitert `git push` (Konflikt nach drei Versuchen, kein Netz), meldet er „bitte noch einmal“; nichts ist halb geschrieben. Bleibt der Dienst stehen (`failed`), sieht das der Monitor der Instanz (siehe „Überwachung“), der Konnektor meldet der Person „Schreibweg nicht erreichbar“.
 
 ## Belege
@@ -108,7 +116,9 @@ Das Anwenden läuft als Unterprozess in eigener Prozessgruppe; bei Fristablauf w
 | abgelehnt | 422 | Grund der Regel | `Rejected <werkzeug> 422: <Grund>` (#121) |
 | unerwarteter Fehler im Dienst | 500 | „Schreiben fehlgeschlagen (Fehler im Dienst) …“ | `Error <werkzeug> 500: <Art>: <Text>` |
 
-Ein Restrisiko bleibt: Wird ein `git push` im Moment der Übertragung beendet, kann der Eintrag noch ankommen, nachdem „nicht eingetragen“ gemeldet wurde; eine Wiederholung kann ihn dann doppelt eintragen.
+Auf dem Speicherweg ist die Nachprüfung lokal im Speicher: Der Schreibweg sucht die Kennung in der Datenbank (nur lesen, höchstens `ZEIT_PRUEFUNG`), ohne fetch; ein getöteter Unterprozess hat seine Transaktion zurückgerollt, „nicht eingetragen“ ist dort also sicher. Läuft die Frist schon beim Export ab, ist nichts angewendet (504 „nicht eingetragen“). Die Fristen und die Tabelle gelten für beide Wege; „Prüfung nicht möglich“ heißt dort: Datenbank nicht lesbar.
+
+Ein Restrisiko bleibt beim Git-Weg: Wird ein `git push` im Moment der Übertragung beendet, kann der Eintrag noch ankommen, nachdem „nicht eingetragen“ gemeldet wurde; eine Wiederholung kann ihn dann doppelt eintragen.
 
 Ein beendetes `git` kann Sperrdateien (`index.lock` u. ä.) hinterlassen. Vor dem Vorbereiten entfernt der Schreibweg darum veraltete `*.lock` im eigenen git-Ordner der Arbeitskopie (`<Repo>/.git/worktrees/<Name>/`); das ist sicher, weil er dabei die Sperre der Reise hält. Sperren im gemeinsamen git-Ordner des Repos fasst er nicht an, dort arbeiten andere Reisen und das Veröffentlichen.
 

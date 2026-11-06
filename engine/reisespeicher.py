@@ -10,8 +10,9 @@ INSERT OR REPLACE an ihnen vorbei), der Authorizer der Verbindung aus db() verwe
 ALTER TABLE und PRAGMA writable_schema. Das schützt vor Software-Fehlern und Fehlbedienung, nicht vor jemandem mit
 Schreibzugriff auf die Datei; dagegen helfen `pruefen` und die Sicherung außer Haus (ADR-0009).
 
-In Stufe 1 schreibt der Schreibweg nicht hierher; die Datenbank beschreiben nur die Befehle unten. Der Schreibweg
-(engine/schreiben.py) nutzt die Funktionen ab Stufe 2 (#347).
+Ab Stufe 2 (#347) schreibt der Schreibweg (engine/schreiben.py) jede Reise aus FR_SPEICHERREISEN hierher: ein Vorgang je
+Schreibvorgang über ordner_als_vorgang, mit erwartet= gegen verlorene Änderungen; die übrigen Reisen schreiben bis Stufe 5
+weiter über Git (engine/schreiben_git.py). Daneben beschreiben die Datenbank nur die Befehle unten.
 
 Ablage: <FR_SPEICHER, sonst <Seiten>/_speicher>/reisen.db (SQLite, WAL), nur für den Betreiber lesbar;
 Schnappschuss unter <Speicher>/sicherung/reisen.db.
@@ -44,6 +45,18 @@ class VorgangVorhanden(Exception):
     def __init__(self, nummer, stand):
         self.nummer, self.stand = nummer, stand
         super().__init__(f"operation already recorded: {nummer} (stand {stand})")
+
+
+class NichtsGeaendert(ValueError):
+    """Gegenüber dem Stand ändert sich nichts: kein Vorgang (der Schreibweg antwortet „nichts geändert“)."""
+
+
+class StandGeaendert(Exception):
+    """Der Stand der Reise ist nicht mehr der erwartete (jemand hat zwischenzeitlich geschrieben): nichts geschrieben."""
+
+    def __init__(self, erwartet, aktuell):
+        self.erwartet, self.aktuell = erwartet, aktuell
+        super().__init__(f"stand changed: expected {erwartet}, current {aktuell}")
 
 
 SCHEMA = """
@@ -87,15 +100,17 @@ def _waechter(aktion, a1, a2, datenbank, ausloeser):
     return sqlite3.SQLITE_OK
 
 
-def db():
+def db(timeout=10):
     """Verbindung zum Reisespeicher; legt ihn beim ersten Mal an (Ordner 700, Datei 600, WAL). Schema und Trigger
-    entstehen vor dem Authorizer (executescript committet selbst), danach ist nur noch Anhängen erlaubt."""
+    entstehen vor dem Authorizer (executescript committet selbst), danach ist nur noch Anhängen erlaubt. timeout ist die
+    Wartezeit auf die Sperre der Datenbank in Sekunden (der Schreibweg gibt die Restzeit seiner Frist); danach
+    sqlite3.OperationalError."""
     p = pfad()
     neu = not p.exists()
     if neu:
         p.parent.mkdir(parents=True, exist_ok=True)
         os.chmod(p.parent, 0o700)
-    v = sqlite3.connect(p, timeout=10)
+    v = sqlite3.connect(p, timeout=timeout)
     v.row_factory = sqlite3.Row
     v.execute("PRAGMA foreign_keys = ON")
     v.execute("PRAGMA recursive_triggers = ON")
@@ -152,12 +167,17 @@ def _stand(v, reise, bis=None, spalte="inhalt"):
 
 
 def _eintragen(v, reise, dateien, wer, werkzeug, titel, grund="", kennung=None, rolle="", wann=None, herkunft="",
-               ab=0):
-    """Ein Vorgang in der laufenden Transaktion von v (BEGIN IMMEDIATE beim Aufrufer)."""
+               ab=0, erwartet=None):
+    """Ein Vorgang in der laufenden Transaktion von v (BEGIN IMMEDIATE beim Aufrufer). Erst die Kennung, dann der
+    erwartete Stand (0: es gibt noch keinen)."""
     if kennung is not None:
         z = v.execute("SELECT nummer, stand FROM vorgaenge WHERE kennung = ?", (kennung,)).fetchone()
         if z:
             raise VorgangVorhanden(z[0], z[1])
+    if erwartet is not None:
+        aktuell = v.execute("SELECT MAX(stand) FROM vorgaenge WHERE reise = ?", (reise,)).fetchone()[0] or 0
+        if aktuell != erwartet:
+            raise StandGeaendert(erwartet, aktuell)
     for p, inhalt in dateien.items():
         _pfad_pruefen(p)
         if inhalt is not None and not isinstance(inhalt, (bytes, bytearray, memoryview)):
@@ -177,7 +197,7 @@ def _eintragen(v, reise, dateien, wer, werkzeug, titel, grund="", kennung=None, 
             if bisher.get(p) != summe:
                 neu[p] = (inhalt, summe)
     if not neu:
-        raise ValueError(f"{reise}: nothing changed")
+        raise NichtsGeaendert(f"{reise}: nothing changed")
     weg = {p for p, (inhalt, _) in neu.items() if inhalt is None}
     _kollision_pruefen((set(bisher) - weg) | (set(neu) - weg))
     hoechster = v.execute("SELECT MAX(stand) FROM vorgaenge WHERE reise = ?", (reise,)).fetchone()[0]
@@ -191,9 +211,9 @@ def _eintragen(v, reise, dateien, wer, werkzeug, titel, grund="", kennung=None, 
     return Vorgang(nummer, stand)
 
 
-def _transaktion(arbeit):
+def _transaktion(arbeit, timeout=10):
     """arbeit(v) in einer Schreib-Transaktion (BEGIN IMMEDIATE); bei einem Fehler wird nichts geschrieben."""
-    with closing(db()) as v:
+    with closing(db(timeout)) as v:
         v.execute("BEGIN IMMEDIATE")
         try:
             ergebnis = arbeit(v)
@@ -204,11 +224,62 @@ def _transaktion(arbeit):
         return ergebnis
 
 
-def vorgang_schreiben(reise, dateien, wer, werkzeug, titel, grund="", kennung=None, rolle="", wann=None, herkunft=""):
+def vorgang_schreiben(reise, dateien, wer, werkzeug, titel, grund="", kennung=None, rolle="", wann=None, herkunft="",
+                      erwartet=None, timeout=10):
     """Ein Vorgang: dateien ist Pfad -> Bytes (None = löschen). Unveränderte Dateien werden übersprungen; bleibt nichts,
-    ValueError. Bekannte Kennung: VorgangVorhanden. -> Vorgang(nummer, stand)."""
+    ValueError. Bekannte Kennung: VorgangVorhanden. erwartet: Stand-Nummer, von der der Schreiber ausging (0: neue Reise);
+    weicht der Stand in der Transaktion ab, StandGeaendert ohne Schreiben (None: keine Prüfung). timeout: Wartezeit auf
+    die Sperre der Datenbank. -> Vorgang(nummer, stand)."""
     return _transaktion(lambda v: _eintragen(v, reise, dateien, wer, werkzeug, titel, grund, kennung, rolle, wann,
-                                             herkunft))
+                                             herkunft, erwartet=erwartet), timeout)
+
+
+def ordner_als_vorgang(reise, ordner, basis, wer, werkzeug, titel, grund, kennung, rolle, timeout=10):
+    """Baustein „Ordner vorher/nachher -> ein Vorgang“ (#347): vergleicht den Ordner (nachher) mit aktueller_stand(reise,
+    basis) (vorher) und schreibt die Unterschiede als einen Vorgang, fehlende Dateien als Tombstone, mit erwartet=basis.
+    basis=0: neue Reise. Ohne Unterschied ValueError. Genutzt vom Schreibweg (auch reise_anlegen), später von
+    `neu.py nachziehen` (#348). -> Vorgang(nummer, stand)."""
+    nachher = _ordner_lesen(ordner)
+    try:
+        vorher = aktueller_stand(reise, basis) if basis else {}
+    except KeyError:
+        vorher = {}
+    dateien = {p: None for p in vorher if p not in nachher}
+    dateien.update({p: b for p, b in nachher.items() if vorher.get(p) != b})
+    if not dateien:
+        raise NichtsGeaendert(f"{reise}: nothing changed")
+    return vorgang_schreiben(reise, dateien, wer, werkzeug, titel, grund, kennung, rolle, erwartet=basis,
+                             timeout=timeout)
+
+
+def reisen():
+    """Alle Reisen mit mindestens einem Vorgang, sortiert. Liest nur; ohne Datenbank: leer (legt sie nicht an)."""
+    if not pfad().exists():
+        return []
+    with closing(db()) as v:
+        return [z[0] for z in v.execute("SELECT DISTINCT reise FROM vorgaenge ORDER BY reise")]
+
+
+def datei(reise, pfad_, bis=None):
+    """Inhalt einer Datei im Stand bis (ohne: neuester) -> bytes, ohne die übrigen Dateien zu laden. Unbekannte Reise,
+    Stand oder Datei, auch gelöscht: KeyError. Pfadregeln wie vorgang_schreiben."""
+    _pfad_pruefen(pfad_)
+    if not pfad().exists():
+        raise KeyError(reise)
+    with closing(db()) as v:
+        hoechster = v.execute("SELECT MAX(stand) FROM vorgaenge WHERE reise = ?", (reise,)).fetchone()[0]
+        if hoechster is None:
+            raise KeyError(reise)
+        if bis is None:
+            bis = hoechster
+        elif not v.execute("SELECT 1 FROM vorgaenge WHERE reise = ? AND stand = ?", (reise, bis)).fetchone():
+            raise KeyError(f"{reise}: stand {bis}")
+        z = v.execute("""SELECT s.inhalt FROM versionen s JOIN vorgaenge g ON g.nummer = s.vorgang
+                         WHERE g.reise = ? AND s.pfad = ? AND g.stand <= ? ORDER BY s.vorgang DESC LIMIT 1""",
+                      (reise, pfad_, bis)).fetchone()
+    if z is None or z[0] is None:
+        raise KeyError(f"{reise}: {pfad_}")
+    return bytes(z[0])
 
 
 def stand_nummer(reise):
@@ -223,9 +294,9 @@ def aktueller_stand(reise, bis=None):
         return {p: bytes(b) for p, b in _stand(v, reise, bis).items()}
 
 
-def vorgang_eingetragen(kennung):
-    """Vorgang mit dieser Kennung oder None (Nachprüfung nach einer Zeitüberschreitung)."""
-    with closing(db()) as v:
+def vorgang_eingetragen(kennung, timeout=10):
+    """Vorgang mit dieser Kennung oder None (Nachprüfung nach einer Zeitüberschreitung; liest nur)."""
+    with closing(db(timeout)) as v:
         z = v.execute("SELECT nummer, stand FROM vorgaenge WHERE kennung = ?", (kennung,)).fetchone()
     return Vorgang(z[0], z[1]) if z else None
 

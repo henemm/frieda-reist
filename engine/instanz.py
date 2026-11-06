@@ -11,6 +11,8 @@ leitet dieses Modul den Rest nach derselben Ordnung ab, ohne Werte einer bestimm
   Konten   FR_KONTEN; sonst <Seiten>/_konten (Konten-Datenbank des Dienstes, nicht Teil einer Reise); eine ältere Datenbank
            unter <Ablage>/_konten/ gilt weiter, solange am neuen Ort keine liegt
   Speicher FR_SPEICHER; sonst <Seiten>/_speicher (Reisespeicher reisen.db, Versionen aller Reisen, ADR-0009, #346)
+  Speicherreisen FR_SPEICHERREISEN: kommagetrennte Namen (Ordner) der Reisen, die der Schreibweg über den Reisespeicher
+           schreibt (Stufe 2, #347); Vorgabe leer: jede Reise schreibt über Git wie bisher (bis Stufe 5)
   Neu      <Konten>/neu (Anfragen nach neuen Reisen und Meldungen an Personen, gehört zu keiner Reise, #72); ein älterer
            Ordner <Ablage>/_neu/ gilt weiter, solange am neuen Ort nichts liegt
   Zugänge  KN_ZUGAENGE; sonst <FR_KONNEKTOR bzw. <Seiten>/_konnektor>/zugaenge.json
@@ -91,6 +93,13 @@ def konten():
 def speicher():
     """Ordner des Reisespeichers (engine/reisespeicher.py, ADR-0009): Reisedaten als Versionen in SQLite, mit Sicherung."""
     return Path(wert("FR_SPEICHER") or seiten() / "_speicher")
+
+
+def speicherreisen():
+    """Reisen, die über den Reisespeicher geschrieben werden (FR_SPEICHERREISEN, kommagetrennt; Leerzeichen und leere Teile
+    fallen weg). Ein gesetzter, auch leerer Wert in der Umgebung gilt vor der Datei. Vorgabe: keine (alles über Git)."""
+    roh = os.environ["FR_SPEICHERREISEN"] if "FR_SPEICHERREISEN" in os.environ else einstellungen().get("FR_SPEICHERREISEN", "")
+    return [r.strip() for r in roh.split(",") if r.strip()]
 
 
 def _belegt(p):

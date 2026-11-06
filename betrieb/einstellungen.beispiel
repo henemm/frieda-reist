@@ -29,6 +29,11 @@ FR_ADRESSE=https://reisen.example.org
 #FR_KONTEN=/srv/beispiel/_konten
 #FR_SPEICHER=/srv/beispiel/_speicher
 
+# Reisen (Ordnernamen, kommagetrennt), die der Schreibweg über den Reisespeicher schreibt statt über Git (Stufe 2, #347).
+# Jede andere Reise schreibt weiter über Git. Erst umschalten, wenn das Server-Backup <FR_SPEICHER>/sicherung/ außer Haus
+# sichert und ein Rückspielversuch gelungen ist; bis Stufe 3 (#348) baut das Veröffentlichen nicht aus dem Speicher. (leer)
+#FR_SPEICHERREISEN=beispielreise,stadtwochenende
+
 # Adressen, die nicht ins Anfragekontingent von nginx zählen (die des Servers selbst, getrennt durch Leerzeichen; die Schleife
 # gilt immer). Dann zählen die Prüfungen des Servers nicht gegen Besucher (docs/betrieb.md, nginx-Bausteine abgleichen). (leer)
 #FR_EIGENE_ADRESSEN=203.0.113.10 2001:db8::10

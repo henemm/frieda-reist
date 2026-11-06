@@ -1,0 +1,48 @@
+Adversary-Nachweis speicher-347-stufe2 (Pfade relativ zum Repo)
+
+1) Gezielte Tests (engine/.venv/bin/python -m pytest -q <Dateien> -n auto -p no:cacheprovider --tb=line)
+   test_schreiben_speicher.py test_reisespeicher.py test_stand.py test_texte.py test_betrieb.py test_protokolle_ohne_pfade.py
+   -> 293 passed in 29.63s
+   test_schreiben.py test_software_nachziehen.py test_pwa.py test_art_uebersicht.py test_bauen.py (Git-Weg, AC-20)
+   -> 253 passed in 89.08s
+   Gesamtlauf (Implementierer): 1519 passed (test-green-output.txt)
+   Die Testdateien test_schreiben.py, test_stand.py (Bestand), test_betrieb.py (Bestand) sind seit dem RED-Commit unveraendert.
+
+2) Eigene Sonden (kein Code geaendert)
+   a) Lesezugriffe waehrend fremder Schreibsperre (BEGIN IMMEDIATE, WAL):
+      reisen 0.0 s, stand_nummer 0.0 s, datei 0.0 s, vorgang_eingetragen 0.0 s, speicher_gesund 0.0 s;
+      vorgang_schreiben(timeout=0.3) -> OperationalError nach 0.31 s.
+   b) speicher_gesund() ohne vorhandene Datenbank: True, und reisen.db (Modus 600) wurde dabei angelegt  -> F002.
+   c) Dienstordner-Simulation: genau die Dateien aus SB_MODULE plus vorlage.html, sw.vorlage.js, vendor/, reisevorlage/ in
+      einen leeren Ordner kopiert; Speicher-Vorgaenge (frage_anlegen, art_definieren, reise_anlegen) mit dem Code dieses
+      Ordners: alle 200, Stand +1 bzw. 1, temporaerer Ordner leer. Transitive Importhuelle von schreiben.py+schreiben_git.py:
+      bauen gpx instanz kalender karte konten neu reise reisespeicher routen schnittstelle schreiben schreiben_git stand
+      stand_git texte -> fehlt in SB_MODULE: nichts.
+   d) Hartes Abbrechen: ZEIT_GESAMT von 0.25 bis 1.43 s in 60 Schritten, echter Unterprozess wird per SIGKILL beendet:
+      15x 504 nicht eingetragen (Stand unveraendert), 45x 200 (Stand +1); kein Fall mit 504 und veraendertem Stand,
+      keiner mit 200 und unveraendertem Stand; temporaerer Ordner jedes Mal geloescht.
+   e) Haengender Export (rs.exportieren schlaeft 6 s), ZEIT_GESAMT=1: Antwort 504 nach 6.0 s, erlaubt waeren 1+3=4 s  -> F001.
+   f) Messlauf: --weg speicher --anzahl 24 --parallel 6: nacheinander Mittel 0.44 s, Max 0.91 s; parallel Mittel 0.88 s,
+      Max 2.49 s; 504/429/5xx je 0. --weg git --anzahl 12 --parallel 4: zwei Laeufe, einmal 1x 5xx (Rebase-Wettlauf des
+      Git-Wegs, Verhalten wie vorher), einmal sauber.
+   g) Nutzer entfernter Namen (schreiben.git, schreiben.vorgang, git_sperren_raeumen, Schreiber.hochladen, stand.git,
+      stand._person) in engine/, betrieb/, werkzeuge/: keine. Von werkzeuge/ und neu.py genutzte Namen aus schreiben.py
+      sind alle vorhanden.
+
+3) Runde 3 (nach Nachbesserung)
+   Gezielte Tests: Speicher, Stand, Betrieb, Texte, Pfade -> 241 passed in 37.46s; Gesamtlauf Entwickler 1521 passed.
+   Sonde Export 3 s bei ZEIT_GESAMT=1, 5 Wiederholungen: jede Antwort 504 nach 1.0 s (vorher 6.0 s bei 6 s Export);
+   gleichzeitig hoechstens 3 Faeden, nach dem Auslaufen 0 Faeden, tmp leer, Stand unveraendert;
+   Folgevorgang danach: 200, Stand +1, tmp leer.
+   speicher_gesund ohne Datenbank: legt nichts mehr an (Test gruen).
+
+=== Roh-Ausgabe (Orchestrator, gezielte Tests: schreiben_speicher, reisespeicher, stand, betrieb, texte, protokolle_ohne_pfade) ===
+bringing up nodes...
+bringing up nodes...
+
+........................................................................ [ 24%]
+........................................................................ [ 48%]
+........................................................................ [ 73%]
+........................................................................ [ 97%]
+.......                                                                  [100%]
+295 passed in 33.89s
