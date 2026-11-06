@@ -64,6 +64,11 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `merkmal_zusammenfuehren` | Organisator:innen | zwei Merkmale einer Art zusammenführen: Werte umhängen, das alte entfällt und wird weiterer Name des bleibenden; mit Grund |
 | `arten_uebernehmen` | Organisator:innen | Arten einer anderen Reise derselben Person als Kopie übernehmen (nur fehlende, nur auf ausdrückliche Nachfrage; Product Owner 28.10.2026) |
 | `wunsch_vorschlagen` | Mitwirkende, Organisator:innen | nach dem Prüfen eines Wunschs den Vorschlag eintragen (`plan/wuensche.yaml`: Stellen, Notiz mit Herkunft, Option); das Brett zeigt ihn unter „geprüft“ |
+| `packliste` | alle | die Packliste lesen (Baustein `packliste`): je Kategorie die Gegenstände mit Merkmalen, wer sie packt, Packstand, dazu Summen je Kategorie und gesamt und die Schlüssel der Merkmale; mit `art` nur eine Kategorie, mit `alle` auch weggelassene. Einen Gegenstand zeigt `zeige G-…`; bei einer Strecke, einem Aufenthalt, einer Unterkunft und einem Ort steht „Mitnehmen“ (ADR-0010) |
+| `gegenstand_anlegen` | Mitwirkende, Organisator:innen | einen Gegenstand auf die Packliste setzen: Kategorie (`art`), `titel`, `merkmale`, `an` (Strecke, Aufenthalt, Unterkunft oder Ort, nie ein Tag), `wer`, `notiz`; ohne Herkunft (ADR-0010); neue ID `G-…` |
+| `gegenstand_aendern` | Mitwirkende (eigene), Organisator:innen | Kategorie, Titel, Merkmale (leer entfernt), `an`, `wer`, Notiz, Status ändern; Weglassen ist `entfaellt` mit Grund (gelöscht wird nie), `aktiv` holt zurück; Verlaufseintrag mit Person, Datum, Grund |
+| `gegenstand_packen` | Mitwirkende, Organisator:innen | Gegenstände für die sprechende Person abhaken (`gepackt`: true) oder zurücknehmen (false); ein Gegenstand mit `wer` nur von dieser Person; der Packstand liegt live beim Rückmeldedienst (`GET/PATCH /<reise>/packstand`), nicht im Verlauf der Reise |
+| `packliste_uebernehmen` | Organisator:innen | Kategorien und Gegenstände einer früheren Reise (derselben Person) als Vorschlag kopieren: neue IDs, ohne Packstand, ohne `an` und `wer`, weggelassene bleiben weg; danach im Gespräch streichen und ergänzen |
 | `person_einladen` | je nach `regeln.einladen` (Vorgabe Organisator:innen) | legt eine Person mit Rolle an und stellt ihren persönlichen Link aus (Paket C); seit O-3 steht sie sofort in `reise.yaml` (`person_schreiben`), `person_entfernen` macht sie zum Gast, der nicht mitreist (niemand wird gestrichen) |
 
 Schreibende Werkzeuge (`rueckmeldung_geben`, `frage_beantworten`, `aufgabe_*`, `wunsch_aendern`, die Werkzeuge des Schreibwegs) sehen nur Mitwirkende und Organisator:innen; `entscheiden`, `reise_status_setzen` und `einstellung_setzen` nur Organisator:innen, `person_einladen` wer `regeln.einladen` erreicht. Welche Werkzeuge es gibt und was sie dürfen, hängt zusätzlich vom Status der Reise und den eingeschalteten Bausteinen ab (Paket B, `docs/produkt.md`): `danach` sperrt neue Wünsche, Punkte und Alternativen (Abhaken geht noch), `archiv` alles Schreiben außer dem Status der Reise; ein ausgeschalteter Baustein nimmt seine Werkzeuge mit (`aufgaben`, `varianten`, `offene_fragen`, `rueckmeldungen`, `wuensche`). Geprüft wird bei jedem Aufruf, nicht nur in der Liste; der Dienst nennt den Grund.
@@ -261,6 +266,11 @@ Das Symbol entsteht im Gespräch (#252): Die Claude-App entwirft es und gibt es 
 | `attribute_merge` | `merkmal_zusammenfuehren` |
 | `kind_define` | `art_definieren` |
 | `kinds_adopt` | `arten_uebernehmen` |
+| `packing_list` | `packliste` |
+| `gear_create` | `gegenstand_anlegen` |
+| `gear_update` | `gegenstand_aendern` |
+| `gear_pack` | `gegenstand_packen` |
+| `packing_list_adopt` | `packliste_uebernehmen` |
 | `value_set` | `wert_eintragen` |
 | `location_set` | `lage_eintragen` |
 | `item_create` | `ding_anlegen` |

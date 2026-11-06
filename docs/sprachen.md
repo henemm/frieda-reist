@@ -110,6 +110,7 @@ Ein Ding der Reise heißt im englischen Katalog überall gleich. Der Test `test_
 | Unterkunft / Ort | accommodation / place | |
 | Wahlstelle (`V-`) / Option (`V-01.a`) | choice / option | choice point |
 | Ding | thing | item (nur „feedback item“ für eine Rückmeldung) |
+| Gegenstand (`G-`, Packliste) | gear (zählbar: piece of gear) | item |
 | Prüfdatum | check date | checked date, date checked |
 | geprüft (Zustand) | checked | |
 | verworfen | rejected | discarded |
