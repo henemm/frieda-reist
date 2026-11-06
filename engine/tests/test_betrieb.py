@@ -2429,9 +2429,41 @@ def test_rotes_software_tor_haelt_speicher_reisen_auf_altem_stand(sp):
     sp["deploys"]()
     sp["neuer_commit"]()
     (sp["tmp"] / "rot").write_text("")                                        # Tests der Software rot (pruefen.sh)
+    # Zwischenlauf: Der Speicher-Teil läuft vor git fetch und sieht den neuen Stand noch nicht; erst dieser Lauf spult vor,
+    # das Tor ist rot. Danach trägt der Bauordner die neue, ungeprüfte Software (Spec, Entscheidung 7).
+    sp["lauf"]()
+    sp["deploys"]()
     sp["speicher"].vorgang_schreiben("stadtwochenende", {"t.md": b"1"}, "Test", "test", "t")   # auch kein Inhaltsbau
     sp["lauf"]()
     assert gebaut.read_text() == vorher
     assert "stadtwochenende" not in sp["deploys"]()
     assert "nachziehen-speicher" not in " ".join(sp["zeilen"]("py.log"))
     assert sp["rot"]()["art"] == "software"
+
+
+# ---------- Nachträge aus der Prüfung (Adversary, F001, F002) ----------
+
+def test_kaputte_speicher_reise_beim_nachziehen_haelt_die_anderen_nicht_auf(sp):
+    """F001: Scheitert das Umstellen einer Reise (kaputte reise.yaml im Speicher), ist nur sie rot; die andere
+    Speicher-Reise wird umgestellt und gebaut, der Lauf ist keine Störung."""
+    sp["env"]["FR_SPEICHERREISEN"] = "stadtwochenende,beispielreise"          # die kaputte zuerst
+    sp["lauf"]()
+    sp["speicher"].vorgang_schreiben("stadtwochenende", {"reise.yaml": b"titel: [kaputt\n  sprache: :\n"},
+                                     "Test", "test", "kaputt")
+    sp["neuer_commit"]()
+    r = sp["lauf"]()
+    assert "cannot be read from the trip store" not in r.stdout, r.stdout
+    assert (sp["tmp"] / "dienst/reise-stand/beispielreise.gebaut").read_text().split()[1] == sp["kopf"]()
+    assert "stadtwochenende" in sp["rot"]()["reisen"]
+    assert sp["lauf_stand"]("stadtwochenende")["zustand"] == "fehlgeschlagen"
+
+
+def test_vergleichslauf_ohne_liste_meldet_unlesbaren_speicher(sp):
+    """F002: Ohne Reiseliste und mit nicht lesbarer Datenbank ist das ein Fehler (Exit 2), kein stilles Überspringen."""
+    db = sp["tmp"] / "_speicher" / "reisen.db"
+    for rest in ("-wal", "-shm"):
+        Path(f"{db}{rest}").unlink(missing_ok=True)
+    db.write_bytes(b"kein sqlite" * 100)
+    r = subprocess.run([str(BETRIEB / "vergleichslauf.sh")], env=sp["env"], capture_output=True, text=True)
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert "ERROR" in r.stdout

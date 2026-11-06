@@ -284,3 +284,45 @@ def test_nachziehen_speicher_wiederholt_bei_wettlauf_hoechstens_dreimal(rs, tmp_
     monkeypatch.setattr(rs, "ordner_als_vorgang", einmal)
     assert neu.main(["nachziehen-speicher", reise, str(tmp_path / "b")]) == 0
     assert len(aufrufe) == 2 and "zwischen.md" in rs.aktueller_stand(reise)
+
+
+# ---------- Nachträge aus der Prüfung (Adversary, F001, F003, F005) ----------
+
+def test_nachziehen_speicher_kaputte_reise_ist_rot_nicht_stoerung(rs, tmp_path, capsys):
+    """F001: Scheitert das Umstellen selbst (kaputte reise.yaml im Speicher), zählt das wie ein gescheiterter Bau: Exit 2,
+    nichts geschrieben. Exit 1 hieße Störung und hielte den ganzen Lauf an."""
+    reise = _importiert(rs, "stadtwochenende")
+    rs.vorgang_schreiben(reise, {"reise.yaml": b"titel: [kaputt\n  sprache: :\n"}, "Test", "test", "kaputt")
+    n = rs.stand_nummer(reise)
+    import neu
+    assert neu.main(["nachziehen-speicher", reise, str(tmp_path / "a")]) == 2
+    assert capsys.readouterr().out.startswith("ERROR:")
+    assert rs.stand_nummer(reise) == n
+
+
+def test_ist_speicherreise_zuverlaessig_unter_pipefail(tmp_path):
+    """F003: Unter set -euo pipefail (wie in den Skripten) darf die Frage nie falsch negativ sein, auch bei langer Liste
+    (eine Pipe mit grep -q liefe in SIGPIPE)."""
+    liste = ",".join(f"r{i}" for i in range(3000))
+    p = subprocess.run(["bash", "-c", f'set -euo pipefail; source "{WURZEL}/betrieb/gemeinsam.sh"; f=0; '
+                        'for i in $(seq 20); do ist_speicherreise r0 || f=$((f+1)); done; '
+                        'ist_speicherreise r2999 || f=$((f+1)); ! ist_speicherreise r3000 || f=$((f+1)); echo "$f"'],
+                       capture_output=True, text=True,
+                       env={**os.environ, "FR_WURZEL": str(tmp_path), "FR_SPEICHERREISEN": liste})
+    assert p.stdout.split() == ["0"], p.stdout + p.stderr
+
+
+def test_reise_ohne_plaene_materialisieren_vergleichen_nachziehen(rs, tmp_path):
+    """Fehler- und Randfälle: eine erfundene Reise im Status Idee (ohne plan/routen.yaml) läuft durch Materialisieren,
+    Vergleich und nachziehen-speicher ohne Fehler."""
+    import datetime
+    import neu
+    d = neu.anlegen(tmp_path / "reisen", titel="Idee am Meer", von=datetime.date(2027, 6, 1), bis=datetime.date(2027, 6, 3),
+                    personen={"ida": {"name": "Ida", "rolle": "organisator"}}, wer="Ida", heute=datetime.date(2026, 11, 6))
+    assert not (d / "plan" / "routen.yaml").exists()
+    rs.importieren(d, d.name, "Test", grund="Anfang")
+    ziel = tmp_path / "m" / d.name
+    assert _cli(rs, "materialisieren", d.name, str(ziel))[0] == 0
+    assert _cli(rs, "vergleichen", d.name, str(d))[0] == 0
+    p = _neu("nachziehen-speicher", d.name, str(ziel))
+    assert p.returncode == 0, p.stdout + p.stderr

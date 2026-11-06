@@ -35,7 +35,11 @@ abruf() {  # <url> -> HTTP-Code
 }
 
 [[ "$REISE" =~ ^[a-z0-9][a-z0-9-]{1,39}$ ]] || { echo "ERROR: trip “$REISE”: lowercase letters, digits and hyphen only."; exit 1; }
-[ -f "$WURZEL/reisen/$REISE/reise.yaml" ] || [ -f "$WURZEL/reisen/$REISE/reise.json" ] \
+# Ordner der Reisen: eine Reise aus dem Reisespeicher liegt materialisiert im Bau-Ordner (Stufe 3, #348), sonst in Git
+if [ -n "${FR_REISENORDNER:-}" ]; then REISENORDNER="$FR_REISENORDNER"
+elif ist_speicherreise "$REISE"; then REISENORDNER="$FR_DIENST/bau/reisen"
+else REISENORDNER="$WURZEL/reisen"; fi
+[ -f "$REISENORDNER/$REISE/reise.yaml" ] || [ -f "$REISENORDNER/$REISE/reise.json" ] \
   || { echo "ERROR: trip “$REISE” does not exist."; exit 1; }
 [ -n "$BASIS" ] || { echo "ERROR: FR_ADRESSE is not set (settings of the instance)."; exit 1; }
 

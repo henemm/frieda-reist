@@ -289,3 +289,4 @@ Alle Tests in `engine/tests/test_schreiben_speicher.py`, wenn nicht anders genan
 ## Changelog
 
 - 2026-11-06: Initial spec created
+- 2026-11-06: Mit Stufe 3 (#348, `speicher-348-stufe3.md`) entfällt „bis Stufe 3 wartet“: Das Veröffentlichen baut Reisen aus `FR_SPEICHERREISEN` aus dem Speicher.

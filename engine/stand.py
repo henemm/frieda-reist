@@ -23,7 +23,6 @@ Workers. Zeiten stehen als UTC mit „Z“; angezeigt werden sie in der Ortszeit
 der Person, sonst FR_ZEITZONE der Instanz, sonst UTC, immer mit Angabe der Zone).
 """
 import datetime
-import importlib
 import json
 import os
 import re
@@ -118,25 +117,31 @@ def aenderungen(ordner, namen=None, n=AENDERUNGEN):
     return stand_git.aenderungen(ordner, namen, n)
 
 
-def _aus_dem_speicher(reise, namen):
+def _materialisierter_stand(ordner):
+    """Stand, den reisespeicher.materialisieren für diesen Ordner festhielt (<ordner>.stand), oder None (#348)."""
+    try:
+        text = Path(f"{ordner}.stand").read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return int(text) if text.isdigit() else None
+
+
+def _aus_dem_speicher(reise, namen, bis=None):
     """Nummer und Änderungsliste einer Reise aus dem Reisespeicher -> (nummer, liste) oder (None, []) ohne Eintrag. Liest
-    nur; ohne Datenbank wird keine angelegt, eine nicht lesbare zählt wie keine (der Bau bricht daran nicht ab).
-    Der Speicher wird über importlib geladen: reisespeicher importiert seinerseits stand (zeit_iso), und Konnektor und
-    Rückmeldedienst, die stand laden, rufen fuer_seite nie (sie lesen den Speicher erst ab Stufe 3, #348); das Modul
-    liegt über SB_MODULE (betrieb/deploy.sh) im selben Dienstordner."""
-    # Bewusst kein „import reisespeicher“: Die Prüfung der Modullisten (engine/tests/test_betrieb.py) folgt auch Importen in
-    # Funktionen und verlangte reisespeicher.py dann in RM_MODULE und KN_MODULE, was der Test zu Stufe 2 (AC-23,
-    # test_reisespeicher.py) bis Stufe 3 verbietet. Ruft künftig ein anderer Dienst als Bau und Schreibweg fuer_seite (oder
-    # liest er sonst den Speicher), braucht er reisespeicher.py in seiner Modulliste in betrieb/deploy.sh; mit Stufe 3 wird
-    # daraus ein normaler Import und die Listen werden ergänzt.
-    rs = importlib.import_module("reisespeicher")
+    nur; ohne Datenbank wird keine angelegt, eine nicht lesbare zählt wie keine (der Bau bricht daran nicht ab). bis: der
+    Stand des gebauten Inhalts (materialisiert), sonst der neueste.
+    Import in der Funktion, weil reisespeicher seinerseits stand lädt (zeit_iso). Jede Modulliste in betrieb/deploy.sh,
+    die stand.py trägt, trägt deshalb auch reisespeicher.py (Stufe 3, #348)."""
+    import reisespeicher as rs
     try:
         if not rs.pfad().exists():
             return None, []
         gesamt = rs.stand_nummer(reise)
         if gesamt is None:
             return None, []
-        verlauf = rs.verlauf(reise, n=AENDERUNGEN)
+        if bis is not None and bis <= gesamt:
+            gesamt = bis
+        verlauf = rs.verlauf(reise, n=AENDERUNGEN, bis=gesamt)
     except (sqlite3.Error, OSError):
         return None, []
     return gesamt, [{"nummer": e["nummer"], "zeit": e["zeit"], "was": ohne_kennungen(e["was"], namen), "wer": e["wer"] or None}
@@ -146,10 +151,11 @@ def _aus_dem_speicher(reise, namen):
 def fuer_seite(ordner, daten):
     """Reise-Stand für die Seite (daten.reise_stand): {nummer, zeit, aenderungen} oder None ohne Quelle. Der Bau kennt nur
     den Ordner; die Reise ist sein Name. Steht sie in FR_SPEICHERREISEN, kommt alles aus dem Reisespeicher (ohne Eintrag:
-    None), sonst aus Git (engine/stand_git.py, bis Stufe 5). zeit ist der Zeitpunkt der letzten Änderung. Keine Bauzeit:
+    None), mit dem Stand aus <ordner>.stand, wenn materialisieren ihn festhielt, sonst aus Git (engine/stand_git.py, bis Stufe 5). zeit ist der Zeitpunkt der letzten Änderung. Keine Bauzeit:
     gleicher Inhalt ergibt dieselbe Seite (Service Worker, bauen.py)."""
     if Path(ordner).name in instanz.speicherreisen():
-        n, liste = _aus_dem_speicher(Path(ordner).name, namen_der_ids(daten))
+        # Stand des gebauten Inhalts (veroeffentlichen.sh materialisiert ihn, #348); fehlt die Datei, der neueste
+        n, liste = _aus_dem_speicher(Path(ordner).name, namen_der_ids(daten), _materialisierter_stand(ordner))
     else:
         n = nummer(ordner)
         liste = aenderungen(ordner, namen_der_ids(daten)) if n is not None else []

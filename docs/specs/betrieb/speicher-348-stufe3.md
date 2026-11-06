@@ -442,6 +442,7 @@ Die Tests sind den Acceptance Criteria oben zugeordnet; RED vor dem Bauen (`40-t
 - Das Submodul rückt nur über den Workflow vor (O-1).
 - Fotos liegen bis Stufe 4 als BLOB in der Datenbank und verlängern Materialisieren, Vergleich und Bau.
 - Der Vergleichslauf wird in Stufe 3 nicht erzwungen (A-3).
+- Eine neu aufgenommene Speicher-Reise ohne Stempel `.gebaut` wird ohne `nachziehen-speicher` gebaut und erst beim nächsten Software-Wechsel auf das neue Format umgestellt; ohne Stempel entfällt dort die Prüfung „getestet?“ (`deploy.sh` testet dann selbst). Grund: AC-13 und AC-14 verlangen einen Bau vor jeder Datei `veroeffentlicht`, AC-25 keinen Aufruf ohne Software-Wechsel.
 
 ## Changelog
 
