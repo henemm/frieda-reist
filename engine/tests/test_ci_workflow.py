@@ -38,14 +38,14 @@ def test_playwright_schritt_hat_eigene_zeitgrenze():
 
 
 def test_playwright_install_wird_wiederholt():
-    _, schritt = _playwright_schritt()
+    i_pw, schritt = _playwright_schritt()
     run = schritt["run"]
     # Schleife mit zwei Versuchen, je Versuch mit timeout
     assert re.search(r"for\s+\w+\s+in\s+1\s+2\b", run), "keine Schleife mit zwei Versuchen"
     assert re.search(r"\btimeout\s+\d+\s+npx playwright install", run), "Versuch ohne timeout"
     # playwright install steht nur im Schritt mit der Schleife
-    for s in _schritte():
-        if s is schritt:
+    for i, s in enumerate(_schritte()):
+        if i == i_pw:
             continue
         assert "playwright install" not in str(s.get("run", ""))
 

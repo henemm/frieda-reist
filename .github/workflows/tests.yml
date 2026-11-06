@@ -32,16 +32,44 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+      # Hängt der Ubuntu-Spiegel, bricht apt einen stehenden Download nach 30 s ab und versucht es bis zu dreimal (#356).
+      # Als Datei, damit es auch für das apt gilt, das Playwright aufruft; einzige Quelle dieser Optionen.
+      - name: apt-Zeitgrenzen
+        run: |
+          printf '%s\n' 'Acquire::Retries "3";' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' \
+            | sudo tee /etc/apt/apt.conf.d/80-ci-zeitgrenzen
       - name: Python-Pakete
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q libcairo2 nginx-core   # nginx: Prüfung der Vorlagen (test_betrieb.py)
           pip install -r engine/requirements.txt
+      # Browser je Playwright-Version zwischenspeichern; die Systempakete kommen trotzdem aus apt (#356)
+      - name: Browser-Cache
+        id: browser-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('engine/tests/playwright/package-lock.json') }}
+      # Eigene Zeitgrenze als Notbremse und zwei Versuche mit je 4 Minuten, statt bis zur Job-Grenze zu hängen (#356)
       - name: Playwright und Browser (feste Version aus engine/tests/playwright, wie auf jeder Instanz)
+        timeout-minutes: 10
         run: |
           cd engine/tests/playwright
           npm ci --no-audit --no-fund
-          npx playwright install --with-deps chromium webkit
+          ok=0
+          for versuch in 1 2; do
+            if [ "${{ steps.browser-cache.outputs.cache-hit }}" = "true" ]; then
+              # Browser aus dem Cache: nur die Systempakete nachinstallieren
+              timeout 240 npx playwright install-deps chromium webkit && { ok=1; break; }
+            else
+              timeout 240 npx playwright install --with-deps chromium webkit && { ok=1; break; }
+            fi
+            echo "::warning::Playwright-Installation, Versuch $versuch gescheitert (Exit-Code $?, 124 = Zeitgrenze von 240 s)"
+          done
+          if [ "$ok" != 1 ]; then
+            echo "::error::Playwright-Installation zweimal gescheitert (Ubuntu-Spiegel oder Playwright-CDN antwortet nicht), Abbruch"
+            exit 1
+          fi
           echo "PLAYWRIGHT_MODUL=$PWD/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
       - name: Einstellungen einer Instanz nachstellen
         if: matrix.umgebung == 'instanz'

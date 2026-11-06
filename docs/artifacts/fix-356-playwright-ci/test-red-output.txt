@@ -1,6 +1,6 @@
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0
-rootdir: /home/hem/frieda-reist/.claude/worktrees/foamy-mixing-thunder
+rootdir: .
 plugins: xdist-3.8.0
 collected 5 items
 
