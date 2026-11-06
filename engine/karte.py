@@ -123,9 +123,10 @@ def _farbe_name(art, arten, kategorien):
 
 
 def dinge_bezug(route):
-    """Stand und Tage je Unterkunft und Aufenthalt: plan (an einem Tag des Plans), alternative (nur in einer Option oder an einem
+    """Stand und Tage je Unterkunft, Aufenthalt und Ort einer Möglichkeit (#353): plan (an einem Tag des Plans), alternative (nur in einer Option oder an einem
     Tag außerhalb des Plans) oder frei (an keinem Tag, in keiner Option; K7). Tage: Tage des Plans, an denen das Ding steht,
-    und die Tage, an denen eine Wahlstelle mit ihm als Option hängt (für Ansichten „Tag mit Alternativen“)."""
+    und die Tage, an denen eine Wahlstelle mit ihm als Option hängt (für Ansichten „Tag mit Alternativen“). Orte (O-…) stehen nur
+    darin, wenn sie Möglichkeit einer Wahlstelle sind."""
     stand, tage = {}, {}
     def dazu(did, s, tid=None):
         if stand.get(did) != "plan":
@@ -138,9 +139,9 @@ def dinge_bezug(route):
     for t in route.get("tage") or []:
         for aid in t.get("aufenthalte") or []:
             dazu(aid, "plan", t["id"])
-        for vid in t.get("wahlstellen") or []:   # Aufenthalte in den Möglichkeiten einer Wahlstelle des Tags (#353)
+        for vid in t.get("wahlstellen") or []:   # Aufenthalte und Orte in den Möglichkeiten einer Wahlstelle des Tags (#353)
             for o in (wahl.get(vid) or {}).get("optionen") or []:
-                for aid in o.get("aufenthalte") or []:
+                for aid in (o.get("aufenthalte") or []) + (o.get("orte") or []):
                     dazu(aid, "plan" if o.get("aktiv") else "alternative", t["id"])
         n = t.get("nacht") or {}
         if n.get("unterkunft"):
@@ -155,7 +156,7 @@ def dinge_bezug(route):
         for o in w["optionen"]:
             for tid in o.get("tage") or []:
                 tag_an.setdefault(tid, []).extend(w.get("an") or [])
-            for uid in (o.get("unterkuenfte") or []) + (o.get("aufenthalte") or []):
+            for uid in (o.get("unterkuenfte") or []) + (o.get("aufenthalte") or []) + (o.get("orte") or []):
                 if stand.get(uid) != "plan":
                     dazu(uid, "alternative")
                 for tid in w.get("an") or []:
@@ -186,12 +187,14 @@ def regionen(route):
 
 def orte_im_plan(route, stand):
     """Orte, die im Plan vorkommen (ADR-0008, Punkt 5): Station einer Strecke, Anfang oder Ende eines Tags, Ort einer Unterkunft oder
-    eines Aufenthalts, der an einem Tag oder in einer Option steht. Ein Ort ohne Verwendung erscheint nicht auf der Übersicht."""
+    eines Aufenthalts, der an einem Tag oder in einer Option steht, oder selbst Möglichkeit einer Wahlstelle (#353). Ein Ort ohne
+    Verwendung erscheint nicht auf der Übersicht."""
     orte = route.get("orte") or {}
     im = {s.get(k) for s in (route.get("strecken") or {}).values() for k in ("von", "nach")}
     im |= {t.get(k) for t in route.get("tage") or [] for k in ("start_ort", "end_ort")}
     for menge in ("unterkuenfte", "aufenthalte"):
         im |= {d.get("ort") for did, d in (route.get(menge) or {}).items() if stand.get(did, "frei") != "frei"}
+    im |= {oid for oid in orte if stand.get(oid, "frei") != "frei"}
     return {o for o in im if o in orte}
 
 

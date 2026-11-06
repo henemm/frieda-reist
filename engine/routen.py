@@ -698,6 +698,9 @@ class Routen:
                 for aid in o.get("aufenthalte") or []:
                     if aid not in self.aufenthalte:
                         self.fehl(texte.satz("pruefung.routen.option_aufenthalt", vid=vid, oid=oid, aid=aid))
+                for ort in o.get("orte") or []:   # Ort als Möglichkeit (#353, Schritt 2): ein Ziel ohne Rechenbedeutung
+                    if ort not in self.orte:
+                        self.fehl(texte.satz("pruefung.routen.option_ort", vid=vid, oid=oid, ort=ort))
                 self.verlauf_pruefen(oid, o)
             self.waehle(vid, w)
         for vid, f, offen, n_gueltig in self.fragen_offen:
@@ -1186,7 +1189,7 @@ class Routen:
 
     def art_der_wahl(self, w, vid):
         """Art der Dinge, zwischen denen eine Wahlstelle wählt: art: (alt bereich:), sonst aus den Optionen (erste Unterkunft,
-        gemeinsame Art der Strecken, die eine Folge-Art der Reise). Ohne Art: allgemein, keine Merkmale."""
+        erster Aufenthalt, erster Ort mit Art, gemeinsame Art der Strecken, die eine Folge-Art der Reise). Ohne Art: allgemein, keine Merkmale."""
         b = art_der_dinge(w)
         if b:
             if b != ALLGEMEIN and b not in self.arten:
@@ -1201,6 +1204,9 @@ class Routen:
             for a in o.get("aufenthalte") or []:
                 if self.a_art.get(a):
                     return self.a_art[a]
+            for x in o.get("orte") or []:   # ein Ort ohne Art zählt nicht (ADR-0008: Art freiwillig)
+                if self.o_art.get(x):
+                    return self.o_art[x]
         arten = {self.strecken_art(self.strecken[sid]) for o in opts for sid in o.get("strecken") or [] if sid in self.strecken}
         if arten:
             a = next(iter(arten)) if len(arten) == 1 else None
@@ -1211,10 +1217,11 @@ class Routen:
         return ALLGEMEIN
 
     def arten_der_option(self, o):
-        """Arten der Dinge einer Möglichkeit (Unterkünfte, Aufenthalte ohne Nacht, Strecken), in der Reihenfolge ihres Auftretens.
+        """Arten der Dinge einer Möglichkeit (Unterkünfte, Aufenthalte ohne Nacht, Orte, Strecken), in der Reihenfolge ihres Auftretens.
         Eine Wahlstelle darf Dinge verschiedener Arten mischen (Product Owner, 6.11.2026, #353): jede Möglichkeit bringt die Merkmale
         ihrer eigenen Art mit."""
         a = [self.u_art.get(u) for u in o.get("unterkuenfte") or []] + [self.a_art.get(x) for x in o.get("aufenthalte") or []]
+        a += [self.o_art.get(x) for x in o.get("orte") or []]
         a += [self.strecken_art(self.strecken[s]) for s in o.get("strecken") or [] if s in self.strecken]
         return list(dict.fromkeys(x for x in a if x and x in self.arten))
 
@@ -1297,7 +1304,7 @@ class Routen:
         self.arten_pruefen()
         if self.r.get("merkmale") is not None:
             self.fehl(texte.satz("pruefung.routen.94"))
-        u_extra, a_extra, s_extra = {}, {}, {}
+        u_extra, a_extra, o_extra, s_extra = {}, {}, {}, {}
         for vid, w in self.wahl.items():
             b = self.art_der_wahl(w, vid)
             krit = dict(self.katalog.get(b, {}))
@@ -1318,6 +1325,8 @@ class Routen:
                     u_extra.setdefault(u, {}).update(krit)
                 for a in o.get("aufenthalte") or []:
                     a_extra.setdefault(a, {}).update(krit)
+                for x in o.get("orte") or []:
+                    o_extra.setdefault(x, {}).update(krit)
                 for sid in o.get("strecken") or []:
                     s_extra.setdefault(sid, {}).update(krit)
         for uid, u in self.unterkuenfte.items():
@@ -1335,7 +1344,7 @@ class Routen:
                     self.fehl(texte.satz("pruefung.routen.bezug_ort", did=aid, x=w))
         for oid, o in self.orte.items():
             if self.o_art.get(oid) is not None and isinstance(o, dict):
-                self.mk_ort[oid] = self.werte(oid, o.get("merkmale"), self.katalog.get(self.o_art[oid], {}))
+                self.mk_ort[oid] = self.werte(oid, o.get("merkmale"), {**self.katalog.get(self.o_art[oid], {}), **o_extra.get(oid, {})})
         # Bewegungen: Werte dürfen an der Strecke stehen, wie bei Unterkünften an U-…
         for sid, st in self.strecken.items():
             if st.get("merkmale") is None:
@@ -1402,6 +1411,8 @@ class Routen:
             mk.update(self.mk_unterkunft.get(u, {}))
         for a in (o.get("aufenthalte") or [])[:1]:
             mk.update(self.mk_aufenthalt.get(a, {}))
+        for x in (o.get("orte") or [])[:1]:
+            mk.update(self.mk_ort.get(x, {}))
         for sid in (o.get("strecken") or [])[:1]:
             mk.update(self.mk_strecke.get(sid, {}))
         mk.update(self.mk_option.get(o.get("id"), {}))
@@ -1410,9 +1421,12 @@ class Routen:
             auto.update(self.anschluss(vid, o))
         mk.update({k: auto[d["auto"]] for k, d in krit.items() if d.get("auto") in auto})
         art = next((self.u_art.get(u) for u in (o.get("unterkuenfte") or [])[:1]), None)
-        # Gemischte Wahlstelle: gefordert ist, was die Art der eigenen Dinge dieser Möglichkeit oder die Wahlstelle selbst verlangt
+        # Gemischte Wahlstelle: gefordert ist, was die Art der eigenen Dinge dieser Möglichkeit oder die Wahlstelle selbst verlangt.
+        # Ohne art: an der Wahlstelle gilt das für jede Möglichkeit mit Dingen, auch wenn ihr Ding keine Art hat (Ort ohne Art, #353)
         arten = self.arten_der_option(o)
-        gefordert = {k for a in arten for k in self.katalog.get(a, {})} | self.wahl_eigene.get(vid, set()) if len(arten) > 1 or (arten and arten[0] != b) else None
+        eigene_dinge = not art_der_dinge(self.wahl.get(vid) or {}) and any(o.get(f) for f in ("unterkuenfte", "aufenthalte", "orte", "strecken"))
+        gefordert = ({k for a in arten for k in self.katalog.get(a, {})} | self.wahl_eigene.get(vid, set())
+                     if eigene_dinge or len(arten) > 1 or (arten and arten[0] != b) else None)
         return {k: mk[k] for k in krit if k in mk}, [k for k, d in krit.items() if zaehlt(d, art) and k not in mk and (gefordert is None or k in gefordert)]
 
     def frage_wird_gebraucht(self, frage, ausser):
@@ -1530,6 +1544,9 @@ class Routen:
                 if u not in self.unterkuenfte:
                     self.fehl(texte.satz("pruefung.routen.109", w1=n, u=u))
             orte = {self.unterkuenfte[u].get("ort") for u in uids if u in self.unterkuenfte}
+            # Ort der Nacht kommt nur aus Unterkünften; Orte als Möglichkeit sind Ziele ohne Rechenbedeutung (#353, Variante b vertagt)
+            if not uids and any(o.get("orte") for o in self.wahl[n].get("optionen") or []):
+                self.warne(n, texte.satz("pruefung.routen.nacht_nur_orte", vid=n))
             if len(orte) > 1:
                 self.warne(n, texte.satz("pruefung.routen.110", w1=n, w2=', '.join(map(self.ort_name, orte))))
             oid = self.auswahl.get(n)
@@ -1889,7 +1906,7 @@ class Routen:
                              else str(e.get("datum"))} for e in o.get("verlauf") or []],
                 "text": o.get("text", ""), "plus": o.get("plus", []), "minus": o.get("minus", []),
                 "ausloeser": o.get("ausloeser"), "quelle": o.get("quelle"), "siehe": o.get("siehe"),
-                "strecken": o.get("strecken"), "unterkuenfte": o.get("unterkuenfte"), "aufenthalte": o.get("aufenthalte"),
+                "strecken": o.get("strecken"), "unterkuenfte": o.get("unterkuenfte"), "aufenthalte": o.get("aufenthalte"), "orte": o.get("orte"),
                 "tage": [t for t, _ in self.folge(o.get("folge"), oid)] if o.get("folge") else None,
                 "folge": list(o.get("folge") or []),
                 "alle_strecken": sorted(self.alle_strecken(o)),

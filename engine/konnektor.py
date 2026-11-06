@@ -735,6 +735,8 @@ class Handbuch:
             z.append(tk("konnektor.option_text.3") + "; ".join(o["plus"]))
         if o.get("minus"):
             z.append(tk("konnektor.ausgabe.option_text.6") + "; ".join(o["minus"]))
+        if o.get("orte"):   # Orte der Möglichkeit mit Namen (#353, Schritt 2)
+            z.append(tk("konnektor.ausgabe.option_text.orte") + ", ".join(f"{self.ort(x)} ({x})" for x in o["orte"]))
         if o.get("tage"):
             z.append(tk("konnektor.ausgabe.option_text.7") + ", ".join(o["tage"]))
         for k, name in (("erfordert", tk("konnektor.ausgabe.option_text.4")), ("schliesst_aus", tk("konnektor.option_text.2"))):
@@ -2563,6 +2565,7 @@ OPTION_FELDER = {"titel": {"type": "string", "description": "@konnektor.feld.opt
                  "unterkuenfte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.unterkuenfte"},
                  "strecken": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.strecken"},
                  "aufenthalte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.aufenthalte"},
+                 "orte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.orte"},
                  "folge": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.folge"},
                  "plus": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.plus"},
                  "minus": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.minus"},

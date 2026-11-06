@@ -2112,7 +2112,8 @@ function wahlVergleich(w, liste, datum) {
     return typeof x === "number" && typeof y === "number" ? x - y : SORT.compare(String(x), String(y)); }) : g;
   const spaltenKopf = (kid, name) => el("th", {scope: "col", "aria-sort": z.sort === kid ? "ascending" : null},
     el("button", {type: "button", class: "wm-sort", "data-vgl-sort": s + "|" + kid}, name));
-  // Erste Spalte: Name, „vorläufig im Plan“ (nur dort ein Zustand, sonst stünde in jeder Zeile „vorgeschlagen“), Webseite
+  // Erste Spalte: Name, „vorläufig im Plan“ (nur dort ein Zustand, sonst stünde in jeder Zeile „vorgeschlagen“), Webseite;
+  // ist die Möglichkeit ein Ort (#353), dessen Name mit Link zum Ort (Heimat bleibt dort, ADR-0003), ebenso in der Karte
   // Weitere Merkmale in den aufgeklappten Einzelheiten: auch dort ohne i, die Herkunft einmal darunter (#58)
   // Herkunft aller Werte der Möglichkeit (Spalten und weitere Merkmale) einmal, nur hier in den Einzelheiten (#342)
   const weitereMerkmale = o => { const ml = merkmalListe(nebenbei, werte(o), datum, true), hk = herkunftZeile([...zeilen, ...nebenbei, ...(heroKriterium(w) ? [heroKriterium(w)] : [])], werte(o), datum);
@@ -2124,7 +2125,7 @@ function wahlVergleich(w, liste, datum) {
       return [el("tr", {class: ["wm-zeile", an(o), auf ? "auf" : ""].filter(Boolean).join(" "), id: o.id, "data-ziel": o.id, tabindex: "0",
           "aria-expanded": String(auf), "data-vgl-zeile": s + "|" + o.id},
         el("th", {scope: "row"}, el("span", {class: "wm-titel"}, el("span", {class: "wm-pfeil", "aria-hidden": "true"}, "›"), o.titel),
-          el("span", {class: "wm-unter"}, imPlan(o))),
+          el("span", {class: "wm-unter"}, imPlan(o)), (o.orte || []).length ? ortChips(o.orte) : null),
         zeilen.map(k => el("td", {}, zelle(k, werte(o)[k.id])))),
         // Hero (#343): eine Zeile über alle Spalten direkt unter der Möglichkeit; wandert beim Sortieren mit, klappt nichts auf
         hero ? el("tr", {class: "wm-hero" + (an(o) ? " an" : "") + (auf ? " auf" : "")}, el("td", {colspan: String(zeilen.length + 1)}, hero)) : null,
@@ -2132,7 +2133,7 @@ function wahlVergleich(w, liste, datum) {
   if (nebenbei.length) box.append(el("p", {class: "z klein"}, T("seite.vergleich.weitere_merkmale", {merkmale: nebenbei.map(k => k.name).join(", ")})
     + T("seite.vergleich.spalten_hinweis")));
   box.append(el("div", {class: "wm-karten"}, opts.map(o => el("div", {class: "wm-karte" + (an(o) ? " an" : "")},
-    el("div", {class: "k"}, o.titel), optionChips(w, o), heroZeile(w, werte(o), datum), merkmalListe(zeilen, werte(o), datum, true) || el("div", {class: "z klein"}, belegt.length ? T("seite.vergleich.keine_unterschiede") : T("seite.vergleich.noch_keine_merkmale")),
+    el("div", {class: "k"}, o.titel), optionChips(w, o), (o.orte || []).length ? ortChips(o.orte) : null, heroZeile(w, werte(o), datum), merkmalListe(zeilen, werte(o), datum, true) || el("div", {class: "z klein"}, belegt.length ? T("seite.vergleich.keine_unterschiede") : T("seite.vergleich.noch_keine_merkmale")),
     (hk => hk ? el("details", {class: "wm-herkunft"}, el("summary", {}, T("seite.herkunft.titel")), hk) : null)(herkunftZeile([...zeilen, ...(heroKriterium(w) ? [heroKriterium(w)] : [])], werte(o), datum))))));
   if (belegt.length > zeilen.length) box.append(el("p", {class: "z klein"}, T("seite.vergleich.gleiche_zeilen", {n: belegt.length - zeilen.length})));
   // Ändert sich die Breite des Behälters (erstes Einsetzen, schmale Spalte, Fenster gedreht), stimmt die Zahl der gezeigten
@@ -2279,6 +2280,8 @@ function optionBlock(w, o, ohneMerkmale, ohneId) {
   for (const sid of o.strecken || []) b.append(streckeZeile(sid));
   // Aufenthalte ohne Nacht der Möglichkeit (Museum, Ladestopp, Gipfel; #353): Zeile mit Zeit und Art, dazu die Lage
   for (const aid of o.aufenthalte || []) if ((R.aufenthalte || {})[aid]) b.append(...[aufenthaltZeile(aid), lageZeile(R.aufenthalte[aid], true)].filter(Boolean));
+  // Orte der Möglichkeit (Ziel ohne Rechenbedeutung, #353): Namen mit Link zum Ort, die Heimat des Orts bleibt dort (ADR-0003)
+  if ((o.orte || []).length) b.append(ortChips(o.orte));
   // Unterkunft der Möglichkeit: sie steht hier (Heimat), also Kontakt und Webseite statt eines Links auf dieselbe Seite.
   // Ist die Wahl entschieden, steht die gewählte Unterkunft schon mit Lage und Kontakt in ihrer Nacht
   const inNacht = o.aktiv && !w.offen && w.wann === "planung";
@@ -2323,6 +2326,8 @@ function optionEinzelheiten(w, o, weitere) {
   for (const sid of o.strecken || []) b.append(streckeZeile(sid));
   // Aufenthalte ohne Nacht der Möglichkeit (Museum, Ladestopp, Gipfel; #353): Zeile mit Zeit und Art, dazu die Lage
   for (const aid of o.aufenthalte || []) if ((R.aufenthalte || {})[aid]) b.append(...[aufenthaltZeile(aid), lageZeile(R.aufenthalte[aid], true)].filter(Boolean));
+  // Orte der Möglichkeit (Ziel ohne Rechenbedeutung, #353): Namen mit Link zum Ort, die Heimat des Orts bleibt dort (ADR-0003)
+  if ((o.orte || []).length) b.append(ortChips(o.orte));
   for (const uid of o.unterkuenfte || []) if (R.unterkuenfte[uid]) { const u = R.unterkuenfte[uid];
     const kontakt = kontaktText(u);
     b.append(...[lageZeile(u, true), kontakt ? el("div", {class: "z"}, el("b", {}, T("seite.label.kontakt")), kontakt) : null].filter(Boolean)); }

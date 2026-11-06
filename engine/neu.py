@@ -369,6 +369,10 @@ def arten_ableiten(reise_dir, namen=None, summiert=(), definitionen=None, schrei
                 for sid in o.get("strecken") or []:
                     sa = ((r.get("strecken") or {}).get(sid) or {}).get("art")
                     b = b or (sa and ("kombiniert" if isinstance(sa, list) else str(sa)))
+                # Ort als Möglichkeit (#353): seine Art nur, wenn sie auch sonst abgeleitet wird (Orte bekommen hier keine eigene Art)
+                for oid in o.get("orte") or []:
+                    oa = ((r.get("orte") or {}).get(oid) or {}).get("art")
+                    b = b or (oa if oa in arten else None)
         if b in arten:
             for o in opts:
                 if o.get("merkmale"):
