@@ -2,7 +2,10 @@
 """Messlauf des Schreibwegs (Stufe 2, #347, docs/specs/betrieb/schreibweg-speicher-347.md): wie lange dauert ein
 Schreibvorgang über den Reisespeicher bzw. über Git? Kein Teil der Testläufe; die Werte kommen als Kommentar ins Issue.
 
-    messlauf-schreibweg.py [--weg speicher|git] [--anzahl N] [--parallel P]
+    messlauf-schreibweg.py [--weg speicher|git] [--anzahl N] [--parallel P] [--auffuellen MB]
+
+--auffuellen MB legt zusätzlich die erfundene Reise `gross-erfunden` an: eine Kopie der Beispielreise, deren Ordner `medien/`
+mit Zufallsdateien (je 1 MB, als `foto-NNN.jpg`) auf MB Megabyte aufgefüllt ist. Ihre Zeiten stehen einzeln in der Ausgabe.
 
 Baut eine temporäre Instanz (alles unter TMPDIR, wird danach gelöscht) mit beiden Beispielreisen und je einer Kopie unter
 anderem Namen, und schickt einen Werkzeugmix (Frage anlegen, Art anlegen, Wissen schreiben) über den Eingang des Dienstes
@@ -53,9 +56,25 @@ def umgebung(tmp, wurzel):
     os.environ["SB_VEROEFFENTLICHEN"] = str(tmp / "ohne-veroeffentlichen")   # gibt es nicht: kein Veröffentlichen
 
 
+GROSS = {}   # leer oder {"gross-erfunden": Quellordner}, gesetzt von main() bei --auffuellen
+ZEITEN_JE_REISE = {}
+
+
 def reisen_mit_kopien():
-    """Reise -> (Quellordner, Person): die Beispielreisen und je eine Kopie unter anderem Namen."""
-    return {**{r: (BEISPIEL / r, p) for r, p in REISEN.items()}, **{f"{r}-kopie": (BEISPIEL / r, p) for r, p in REISEN.items()}}
+    """Reise -> (Quellordner, Person): die Beispielreisen und je eine Kopie unter anderem Namen (und die aufgefüllte)."""
+    reisen = {**{r: (BEISPIEL / r, p) for r, p in REISEN.items()}, **{f"{r}-kopie": (BEISPIEL / r, p) for r, p in REISEN.items()}}
+    for name, quelle in GROSS.items():
+        reisen[name] = (quelle, REISEN["beispielreise"])
+    return reisen
+
+
+def aufgefuellte_reise(ziel, megabyte):
+    """Kopie der Beispielreise mit megabyte MB Zufallsdateien in medien/ (erfunden; Fotos stehen bis Stufe 4 in der Datenbank)."""
+    shutil.copytree(BEISPIEL / "beispielreise", ziel)
+    (ziel / "medien").mkdir(exist_ok=True)
+    for i in range(megabyte):
+        (ziel / "medien" / f"foto-{i:03d}.jpg").write_bytes(os.urandom(1024 * 1024))
+    return ziel
 
 
 def instanz_speicher(tmp):
@@ -124,7 +143,9 @@ def lauf(sb, wurzel, reisen, anzahl, faeden, zaehler):
         werkzeug, args = auftrag(i, zaehler.naechste())
         start = time.monotonic()
         code, _ = sb.anwenden_extern(sb.Schreiber(wurzel), reise, werkzeug, {**reisen[reise][1], "args": args})
-        return code, time.monotonic() - start
+        dauer = time.monotonic() - start
+        ZEITEN_JE_REISE.setdefault(reise, []).append(dauer)
+        return code, dauer
 
     if faeden == 1:
         return [ein_vorgang(i) for i in range(anzahl)]
@@ -178,9 +199,12 @@ def main():
     a.add_argument("--weg", choices=("speicher", "git"), default="speicher")
     a.add_argument("--anzahl", type=int, default=40, help="Vorgänge je Lauf")
     a.add_argument("--parallel", type=int, default=4, help="Fäden im parallelen Lauf")
+    a.add_argument("--auffuellen", type=int, default=0, help="zusätzliche Reise gross-erfunden auf MB Megabyte auffüllen")
     o = a.parse_args()
     tmp = Path(tempfile.mkdtemp(prefix="frieda-messlauf-"))
     try:
+        if o.auffuellen:
+            GROSS["gross-erfunden"] = aufgefuellte_reise(tmp / "quelle-gross", o.auffuellen)
         wurzel, reisen = instanz_speicher(tmp) if o.weg == "speicher" else instanz_git(tmp)
         import schreiben as sb
         zaehler = Zaehler()
@@ -188,6 +212,10 @@ def main():
         kennzahlen("nacheinander", lauf(sb, wurzel, reisen, o.anzahl, 1, zaehler))
         kennzahlen("parallel", lauf(sb, wurzel, reisen, o.anzahl, max(2, o.parallel), zaehler))
         teilzeiten(o.weg, reisen)
+        if "gross-erfunden" in ZEITEN_JE_REISE:
+            z = ZEITEN_JE_REISE["gross-erfunden"]
+            print(f"gross-erfunden ({o.auffuellen} MB) einzeln: Anzahl {len(z)}, Mittel {statistics.mean(z):.2f} s, "
+                  f"p90 {quantil(z, 0.9):.2f} s, Maximum {max(z):.2f} s")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return 0
