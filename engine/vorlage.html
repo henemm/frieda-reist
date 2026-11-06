@@ -2653,7 +2653,7 @@ function karteZeichnen(plaene, info, box, ansicht) {
   }
   const zeigeInfo = (titel, zeilen) => (info.hidden = false, info.replaceChildren(el("div", {class: "k"}, titel), ...zeilen.map(z => el("div", {class: "z"}, z))));
   for (const [oid, o] of Object.entries(K.orte || {})) {
-    if (!benutzt.has(oid) || !o.lage) continue;
+    if (!benutzt.has(oid) || !o.lage || o.punkt === false) continue;   // Region oder Ort ohne Verwendung: kein Punkt (ADR-0008)
     // Automatische Karte: die Unterkunft steht als eigener Punkt (dinge), der Ort bleibt ein schlichter Punkt mit Namen
     const kat = K.auto ? "" : benutzt.get(oid);
     const art = kat ? "rh-unterkunft" + katKlasse(kat) : "rh-punkt";
@@ -2844,6 +2844,7 @@ function punktPopup(sid, i, p) {
   else if (punktArt(p).hinweis) d.append(el("div", {}, punktArt(p).hinweis));
   if (p.offen) d.append(el("div", {}, T("seite.karte.oeffnungszeiten_osm") + p.offen));
   if (p.id && R.unterkuenfte[p.id]) d.append(el("div", {}, link(p.id, R.unterkuenfte[p.id].name + T("seite.karte.im_plan_suffix"))));
+  else if (p.id && R.orte[p.id]) d.append(el("div", {}, link(p.id, R.orte[p.id].name)));   // Wegpunkt, der ein Ort ist (bezug, ADR-0008)
   const imText = document.querySelector(`a.kp[data-p="${sid}:${i}"]`);
   if (imText) d.append(el("button", {type: "button"}, T("seite.karte.im_text_zeigen")));
   d.append(el("div", {class: "pq"}, punktHerkunft(p)));
@@ -3790,7 +3791,7 @@ function ortKarte(m, oid) {
   if (osm) protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: LOCALE.split("-")[0], maxDataZoom: 15, attribution: ""}).addTo(karte);
   else for (const poly of [K.kueste, ...(K.inseln || [])]) L.polygon(poly, {className: "rh-land", weight: 1.2, fillOpacity: 1, interactive: false}).addTo(karte);
   for (const [id, o] of Object.entries(K.orte)) {
-    if (id === oid || !o.lage || !ortAbschnitt(id)) continue;
+    if (id === oid || !o.lage || o.punkt === false || !ortAbschnitt(id)) continue;
     const mk = L.marker(o.lage, {icon: L.divIcon({className: "rh-ort rh-punkt", iconSize: [18, 18]}), title: ortName(id), keyboard: false}).addTo(karte);
     mk.bindTooltip(o.name || ortName(id), {direction: "right", className: "rh-lbl klein"});
     mk.on("click", () => { location.hash = id; });

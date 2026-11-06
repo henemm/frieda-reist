@@ -15,6 +15,7 @@ keine KI; Koordinaten recherchiert der AI-Client. Fehler lassen den Bau nicht sc
 """
 import math
 
+import routen
 import texte
 
 # Mindestens so viele Punkte mit Lage braucht eine automatische Karte (K1)
@@ -173,14 +174,25 @@ def dinge_bezug(route):
 
 
 def ort_lagen(route):
-    """Lage je Ort: eigener Punkt, sonst der erste Punkt einer Unterkunft oder eines Aufenthalts an diesem Ort."""
-    lage = {oid: punkt_von(o) for oid, o in (route.get("orte") or {}).items()}
+    """Lage je Ort: eigener Punkt, sonst der erste Punkt einer Unterkunft oder eines Aufenthalts an diesem Ort (routen.ort_lagen)."""
+    return routen.ort_lagen(route)
+
+
+def regionen(route):
+    """Orte, an denen andere Orte hängen (an: O-…, ADR-0008, Punkt 5): kein Punkt auf der Karte."""
+    orte = route.get("orte") or {}
+    return {e for k, e in (route.get("eltern") or {}).items() if k in orte and e in orte}
+
+
+def orte_im_plan(route, stand):
+    """Orte, die im Plan vorkommen (ADR-0008, Punkt 5): Station einer Strecke, Anfang oder Ende eines Tags, Ort einer Unterkunft oder
+    eines Aufenthalts, der an einem Tag oder in einer Option steht. Ein Ort ohne Verwendung erscheint nicht auf der Übersicht."""
+    orte = route.get("orte") or {}
+    im = {s.get(k) for s in (route.get("strecken") or {}).values() for k in ("von", "nach")}
+    im |= {t.get(k) for t in route.get("tage") or [] for k in ("start_ort", "end_ort")}
     for menge in ("unterkuenfte", "aufenthalte"):
-        for d in (route.get(menge) or {}).values():
-            p = punkt_von(d)
-            if p and d.get("ort") in lage and not lage[d["ort"]]:
-                lage[d["ort"]] = p
-    return {oid: p for oid, p in lage.items() if p}
+        im |= {d.get("ort") for did, d in (route.get(menge) or {}).items() if stand.get(did, "frei") != "frei"}
+    return {o for o in im if o in orte}
 
 
 def schematische_wege(route, orte):
@@ -217,9 +229,11 @@ def auto(route, kategorien=None, gpx_wege=None):
     arten = route.get("arten") or {}
     orte = ort_lagen(route)
     stand, tage = dinge_bezug(route)
+    # Übersicht (ADR-0008, Punkt 5): nur Orte des Plans, Regionen ohne Punkt; die Lage aller Orte bleibt für die Linien
+    ohne_punkt = regionen(route) | (set(route.get("orte") or {}) - orte_im_plan(route, stand))
     dinge, ohne = [], []
     for oid, o in (route.get("orte") or {}).items():
-        if oid not in orte and not o.get("ausserhalb"):
+        if oid not in orte and oid not in ohne_punkt and not o.get("ausserhalb"):
             ohne.append(o.get("name") or oid)
     for menge in ("unterkuenfte", "aufenthalte"):
         for did, d in (route.get(menge) or {}).items():
@@ -231,7 +245,7 @@ def auto(route, kategorien=None, gpx_wege=None):
                 continue
             dinge.append({"id": did, "name": d.get("name") or did, "art": d.get("art"), "lage": p,
                           "stand": stand.get(did, "frei"), "tage": tage.get(did, [])})
-    punkte = list(orte.values()) + [d["lage"] for d in dinge]
+    punkte = [p for oid, p in orte.items() if oid not in ohne_punkt] + [d["lage"] for d in dinge]
     eindeutig = {tuple(p) for p in punkte}
     status = {"gebaut": False, "art": "auto", "punkte": len(eindeutig), "ohne_lage": ohne}
     if len(eindeutig) < MIN_PUNKTE:
@@ -250,7 +264,7 @@ def auto(route, kategorien=None, gpx_wege=None):
         # Land als großes Rechteck (ohne Grundkarte zeichnet die Seite es als Hintergrund, wie bei der Beispielreise)
         "kueste": [[rahmen["nord"] + breit, rahmen["west"] - breit], [rahmen["nord"] + breit, rahmen["ost"] + breit],
                    [rahmen["sued"] - breit, rahmen["ost"] + breit], [rahmen["sued"] - breit, rahmen["west"] - breit]],
-        "orte": {oid: {"lage": p} for oid, p in orte.items()},
+        "orte": {oid: {"lage": p, **({"punkt": False} if oid in ohne_punkt else {})} for oid, p in orte.items()},
         "wege": wege,
         "schematisch": sorted(sid for sid in wege if sid not in gpx_wege),
         "linien": "alle",
