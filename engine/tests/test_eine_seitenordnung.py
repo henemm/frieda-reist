@@ -72,6 +72,7 @@ def fall_bauen(tmp, fall, an=None, wahl_offen=False, v03_offen=False):
         v03 = r["wahlstellen"]["V-03"]
         r.pop("wahlstellen")
         r["tage"]["T-02"].pop("wahl")
+        r["tage"]["T-03"].pop("wahl", None)   # V-06: Orte als Möglichkeit (#353, Schritt 2)
         r["tage"]["T-02"]["nacht"] = "U-02"
         for t in ("T-05", "T-06"):   # nur über V-01 erreichbar
             r["tage"].pop(t)

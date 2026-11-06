@@ -438,7 +438,7 @@ buchungen:
 tage:
   T-01: {titel: "Ankunft und Stadttag in Dresden", nacht: U-01, text: "Ankunft mittags mit dem Zug, Nachmittag in der Altstadt (Frauenkirche, Elbufer). Siehe Ortsseite O-01."}
   T-02: {titel: "Stadt Wehlen → Bastei → Hohnstein", strecken: [E-20, E-01], wahl: [V-02], aufenthalte: [A-01], nacht: V-03, text: "Erster Wandertag. Früh fahren: An der Bastei ist es ab dem späten Vormittag voll (Annahme)."}
-  T-03: {titel: "Hohnstein → Brand → Altendorf", strecken: [E-02], nacht: U-04}
+  T-03: {titel: "Hohnstein → Brand → Altendorf", wahl: [V-06], strecken: [E-02], nacht: U-04}
   T-04: {titel: "Altendorf → Schrammsteine → Bad Schandau, Zug nach Dresden", strecken: [E-03, E-21]}
   T-05: {titel: "Altendorf → Schrammsteine → Lichtenhainer Wasserfall, Kirnitzschtalbahn, Zug nach Dresden", strecken: [E-04, E-22, E-21]}
   T-06: {titel: "Mit dem Bus von Bad Schandau nach Dresden (erfundenes Beispiel)", strecken: [E-23]}
@@ -511,6 +511,29 @@ wahlstellen:
         quelle: "Wikipedia (W-05); Annahme zur Nässe"
         verlauf:
           - {datum: 2026-10-20, status: vorgeschlagen, wer: Ida, grund: "Abenteuer, wenn es trocken ist"}
+
+  # Orte als Möglichkeiten (#353, Schritt 2): ein Ort ist ein Ziel ohne Rechenbedeutung; Nacht und Anschluss bleiben, wie sie sind.
+  # Altendorf hat eine Art (Ort am Weg), der Lichtenhainer Wasserfall keine: dann zeigt der Vergleich nur Text, Plus und Minus.
+  V-06:
+    titel: "Tag 3, Nachmittag: Altendorf oder Wasserfall (Beispiel)"
+    wann: unterwegs
+    text: "Nach der Ankunft bleibt der Nachmittag frei (erfundenes Beispiel)."
+    optionen:
+      - id: V-06.a
+        titel: "Nachmittag in Altendorf (Beispiel)"
+        orte: [O-04]
+        plus: ["kein weiterer Weg (Beispiel)"]
+        quelle: "erfunden (Beispiel)"
+        verlauf:
+          - {datum: 2026-11-06, status: vorgeschlagen, wer: Claude}
+      - id: V-06.b
+        titel: "Zum Lichtenhainer Wasserfall (Beispiel)"
+        orte: [O-06]
+        plus: ["kühl bei Hitze (Beispiel)"]
+        minus: ["Hin und zurück mit der Kirnitzschtalbahn (Beispiel)"]
+        quelle: "erfunden (Beispiel)"
+        verlauf:
+          - {datum: 2026-11-06, status: vorgeschlagen, wer: Claude}
 
   V-03:
     titel: Unterkunft in Hohnstein

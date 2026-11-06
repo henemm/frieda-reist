@@ -270,7 +270,7 @@ def test_ort_der_moeglichkeit_bekommt_punkt_auf_uebersicht(tmp_path):
 def test_nacht_nur_mit_orten_warnt_und_aendert_nichts(tmp_path):
     """AC-10: nacht: V-…, deren Möglichkeiten nur orte haben: Warnung nacht_nur_orte, kein Fehler, Ort der Nacht None."""
     v95 = wahlstelle("V-95", option("V-95.a", "Altendorf (Beispiel)", orte=["O-04"]),
-                     option("V-95.b", "Wasserfall (Beispiel)", orte=["O-06"]), wann="planung", an=["T-03"])
+                     option("V-95.b", "Wasserfall (Beispiel)", orte=["O-06"]), wann="planung", an=["T-03"], frage="F-01")   # offene Planungswahl braucht eine Frage (pruefung.routen.97)
 
     def nacht(r):
         r["tage"]["T-03"]["nacht"] = "V-95"

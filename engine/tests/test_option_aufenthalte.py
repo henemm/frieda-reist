@@ -26,8 +26,8 @@ AUFENTHALT = ("  A-02:\n    name: \"Stadt Wehlen\"", """  A-90:
       eintritt: {wert: "12 €", quelle: "erfunden (Beispiel)", geprueft: 2026-11-01}
   A-02:
     name: "Stadt Wehlen\"""")
-TAG = ("  T-03: {titel: \"Hohnstein → Brand → Altendorf\", strecken: [E-02], nacht: U-04}",
-       "  T-03: {titel: \"Hohnstein → Brand → Altendorf\", strecken: [E-02], wahl: [V-90], nacht: U-04}")
+TAG = ("  T-03: {titel: \"Hohnstein → Brand → Altendorf\", wahl: [V-06], strecken: [E-02], nacht: U-04}",
+       "  T-03: {titel: \"Hohnstein → Brand → Altendorf\", wahl: [V-06, V-90], strecken: [E-02], nacht: U-04}")
 WAHL = ("wahlstellen:\n  V-01:", """wahlstellen:
   V-90:
     titel: "Nachmittag: Festung oder Wanderung (erfundenes Beispiel)"
@@ -112,8 +112,9 @@ def test_schreibweg_nimmt_aufenthalte_in_optionen(repo):
     o = next(o for o in r["wahlstellen"]["V-02"]["optionen"] if o["id"] == "V-02.c")
     assert o["aufenthalte"] == ["A-01"] and o["strecken"] == ["E-04"]
     s.vorbereiten()
-    with pytest.raises(sb.Ablehnung, match="nur eines von"):
+    with pytest.raises(sb.Ablehnung) as e:
         s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-02.c", "unterkuenfte": ["U-02"]}})
+    assert e.value.schluessel == "schreiben.option_aendern.5"
     with pytest.raises(sb.Ablehnung, match="gibt es nicht"):
         s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-02", "titel": "X", "aufenthalte": ["A-77"], "quelle": "x"}})
 

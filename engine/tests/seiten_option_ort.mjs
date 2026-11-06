@@ -25,15 +25,27 @@ if (!links_block.length) {
   await p.waitForTimeout(300);
   links_block = await linksIn('[id^="V-91."] a[href^="#O-"], [data-ziel^="V-91."] a[href^="#O-"], .option a[href^="#O-"]');
 }
-// Einzelheiten im Vergleich: jede Zeile aufklappen, dann die Links in .wm-einzelheiten
+// Einzelheiten im Vergleich: Vergleich öffnen, falls die Seite neu geladen wurde (WebKit lädt bei goto neu, der Zustand ist weg),
+// Darstellung Tabelle wählen (in der schmalen Spalte des Tags stehen sonst Karten, wie in b2_browser.mjs),
+// jede Zeile der Wahlstelle V-91 aufklappen (Klick auf den Namen), dann die Links in .wm-einzelheiten
+const tabelle = async () => {
+  if (!(await p.locator('[data-vgl="V-91"]:not([hidden])').count())) {
+    const k = p.locator('[data-ziel="V-91"] button, [data-ziel="V-91"] summary').first();
+    if (await k.count()) { await k.click().catch(() => {}); await p.waitForTimeout(300); }
+  }
+  const t = p.locator('[data-vgl="V-91"] [data-vgl-ansicht="V-91|tabelle"]:visible');
+  if (await t.count()) { await t.first().click().catch(() => {}); await p.waitForTimeout(300); } };
+const aufklappen = async sel => { for (const z of await p.locator(sel).all()) await z.click({timeout: 500}).catch(() => {}); };
 await p.goto(basis + "#T-03");
 await p.waitForSelector(".tagseite");
-for (const z of await p.locator(".tagseite .wm tr, .tagseite .wm .wm-zeile").all()) await z.click({timeout: 500}).catch(() => {});
+await tabelle();
+await aufklappen('.tagseite [data-vgl-zeile^="V-91|"] .wm-titel');
 let links_einzelheiten = await linksIn(".wm-einzelheiten a[href^='#O-']");
 if (!links_einzelheiten.length) {
   await p.goto(basis + "#V-91");
   await p.waitForTimeout(300);
-  for (const z of await p.locator(".wm tr, .wm .wm-zeile").all()) await z.click({timeout: 500}).catch(() => {});
+  await tabelle();
+  await aufklappen('[data-vgl-zeile^="V-91|"] .wm-titel');
   links_einzelheiten = await linksIn(".wm-einzelheiten a[href^='#O-']");
 }
 await b.close();

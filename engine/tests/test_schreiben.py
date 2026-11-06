@@ -678,13 +678,13 @@ def test_ding_option_wahlstelle_und_frage_anlegen(repo):
     a = s.schreiben("beispielreise", "wahlstelle_anlegen", {**KARL, "args": {"titel": "Anreise nach Stadt Wehlen", "an": ["T-01"], "art": "bahn",
         "optionen": [{"titel": "S-Bahn wie bisher", "strecken": ["E-20"], "quelle": "Fahrplan"},
                      {"titel": "Mit dem Auto", "text": "Parken in Wehlen", "minus": ["Auto steht vier Tage"], "quelle": "Karl im Gespräch"}]}})
-    assert "V-04" in a["text"] and "F-04" in a["text"]
+    assert "V-07" in a["text"] and "F-04" in a["text"]
     r, _ = routen_auf_main(origin)
-    w = r["wahlstellen"]["V-04"]
+    w = r["wahlstellen"]["V-07"]
     assert w["wann"] == "planung" and w["an"] == ["T-01"] and w["art"] == "bahn" and w["frage"] == "F-04" and "bereich" not in w
-    assert [o["id"] for o in w["optionen"]] == ["V-04.a", "V-04.b"] and w["optionen"][1]["minus"] == ["Auto steht vier Tage"]
+    assert [o["id"] for o in w["optionen"]] == ["V-07.a", "V-07.b"] and w["optionen"][1]["minus"] == ["Auto steht vier Tage"]
     fragen = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/offene-fragen.md"], check=True, capture_output=True, text=True).stdout
-    assert "| F-04 | Anreise nach Stadt Wehlen: welche Option? (V-04) | vor Abreise | offen |" in fragen
+    assert "| F-04 | Anreise nach Stadt Wehlen: welche Option? (V-07) | vor Abreise | offen |" in fragen
     s.vorbereiten()
     a = s.schreiben("beispielreise", "frage_anlegen", {**KARL, "args": {"text": "Hat die Pension im Mai offen?", "bis": "März 2027", "bezug": ["U-05"]}})
     assert a["text"].startswith("Offene Frage F-05 angelegt: Hat die Pension im Mai offen? (U-05), bis März 2027")
@@ -901,7 +901,7 @@ def test_tag_aendern_nur_organisator(repo):
     assert "nacht „U-04“ → „V-03“" in a["text"] and "Grund: Probe" in a["text"]
     r, text = routen_auf_main(origin)
     assert r["tage"]["T-03"]["nacht"] == "V-03" and r["tage"]["T-03"]["text"] == "Nacht jetzt zur Wahl" and r["tage"]["T-03"]["strecken"] == ["E-02"]
-    assert 'T-03: {titel: "Hohnstein → Brand → Altendorf", strecken: [E-02], nacht: V-03, text: "Nacht jetzt zur Wahl"}' in text
+    assert 'T-03: {titel: "Hohnstein → Brand → Altendorf", wahl: [V-06], strecken: [E-02], nacht: V-03, text: "Nacht jetzt zur Wahl"}' in text
     s.vorbereiten()
     a = s.schreiben("beispielreise", "tag_aendern", {**IDA, "args": {"ziel": "T-04", "strecken": ["E-03", "E-23"]}})
     r, _ = routen_auf_main(origin)
