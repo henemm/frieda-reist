@@ -1,0 +1,41 @@
+engine/tests/test_option_orte.py:166: AssertionError: assert False is True
+engine/tests/test_option_orte.py:166: AssertionError: assert False is True
+engine/tests/test_option_orte.py:166: AssertionError: assert False is True
+engine/tests/test_option_orte.py:141: Failed: DID NOT RAISE BauFehler
+engine/tests/test_option_orte.py:245: AssertionError: assert None == ['O-04']
+engine/tests/test_option_orte.py:123: AssertionError: dict_keys(['merkmale', 'fehlt', 'id', 'titel', 'status', 'aktiv', 'verlauf', 'text', 'plus', 'minus', 'ausloeser', 'qu...n', 'unterkuenfte', 'aufenthalte', 'tage', 'f
+engine/tests/test_option_orte.py:180: AssertionError: assert [None, None] == [['O-04'], ['O-06']]
+engine/tests/test_option_orte.py:260: AssertionError: orte fehlt in der Ausgabe der Optionen
+engine/tests/test_option_orte.py:132: AssertionError: assert None == ['O-06']
+engine/tests/test_option_orte.py:231: AssertionError: assert None == ['O-04']
+engine/tests/test_option_orte.py:296: AssertionError: assert None == ['O-04']
+engine/tests/test_option_orte.py:310: AssertionError: assert None == ['O-04']
+engine/tests/test_option_orte.py:350: AssertionError: keine Wahlstelle mit Orten in der Beispielreise
+engine/tests/test_texte.py:671: AssertionError: ('de', 'konnektor.feld.option_felder.orte')
+engine/tests/test_option_orte.py:370: AssertionError: assert (None == ['O-02'])
+engine/tests/test_option_orte.py:339: AssertionError: Unterwegs wählenV-91: erfundenes BeispielNachmittag in Altendorf (Beispiel)Zum Lichtenhainer Wasserfall (Beispiel)unterwegs entscheidenVergleich schließen2 || nur Unt
+engine/tests/test_option_orte.py:380: AssertionError: ('V-01.a', dict_keys(['merkmale', 'fehlt', 'id', 'titel', 'status', 'aktiv', 'verlauf', 'text', 'plus', 'minus', 'ausl...', 'unterkuenfte', 'aufenthalte', 'tage', 'fo
+engine/tests/test_option_orte.py:339: AssertionError: Unterwegs wählenV-91: erfundenes BeispielNachmittag in Altendorf (Beispiel)Zum Lichtenhainer Wasserfall (Beispiel)unterwegs entscheidenVergleich schließen2 || nur Unt
+engine/tests/test_option_orte.py:398: AssertionError: Merkmal der Möglichkeit landet an der Art des ersten Orts mit Art
+FAILED engine/tests/test_option_orte.py::test_sortenregel_orte_mit_aufenthalten_und_strecken[inhalt3-True]
+FAILED engine/tests/test_option_orte.py::test_sortenregel_orte_mit_aufenthalten_und_strecken[inhalt1-True]
+FAILED engine/tests/test_option_orte.py::test_sortenregel_orte_mit_aufenthalten_und_strecken[inhalt2-True]
+FAILED engine/tests/test_option_orte.py::test_konnektor_schema_und_show_kennen_orte
+FAILED engine/tests/test_option_orte.py::test_unbekannter_ort_in_option_ist_ein_fehler
+FAILED engine/tests/test_option_orte.py::test_art_der_wahlstelle_aus_erstem_ort_mit_art
+FAILED engine/tests/test_option_orte.py::test_ort_als_option_wird_gelesen_und_verglichen
+FAILED engine/tests/test_option_orte.py::test_schreibweg_nimmt_orte_in_optionen
+FAILED engine/tests/test_option_orte.py::test_nacht_nur_mit_orten_warnt_und_aendert_nichts
+FAILED engine/tests/test_option_orte.py::test_ort_der_moeglichkeit_bekommt_punkt_auf_uebersicht
+FAILED engine/tests/test_option_orte.py::test_ort_ohne_art_ist_erlaubt_und_vergleicht_nur_text
+FAILED engine/tests/test_option_orte.py::test_gemischter_vergleich_ort_und_aufenthalt
+FAILED engine/tests/test_option_orte.py::test_orte_in_option_aendern_nachtort_und_anschluss_nicht
+FAILED engine/tests/test_option_orte.py::test_kalender_hat_keinen_eintrag_fuer_orte
+FAILED engine/tests/test_option_orte.py::test_beispielreise_hat_wahlstelle_mit_orten
+FAILED engine/tests/test_texte.py::test_neue_schluessel_der_orte_in_allen_sprachen
+FAILED engine/tests/test_option_orte.py::test_stadtwochenende_baut_unveraendert
+FAILED engine/tests/test_option_orte.py::test_seite_zeigt_ort_der_option[chromium]
+FAILED engine/tests/test_option_orte.py::test_bestand_ohne_orte_bleibt_gleich
+FAILED engine/tests/test_option_orte.py::test_seite_zeigt_ort_der_option[webkit]
+FAILED engine/tests/test_option_orte.py::test_arten_ableiten_kennt_orte_in_optionen
+21 failed, 9 passed in 6.65s

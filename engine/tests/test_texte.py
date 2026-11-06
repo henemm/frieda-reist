@@ -659,3 +659,16 @@ def test_handbuch_summe_teilweise_angaben():
     assert konnektor.tk("konnektor.summe.gehzeit", zeit=strich, auf="400", ab="100",
                         km="10" + konnektor.tk("seite.auto.dezimaltrenner") + "5") + zusatz in ohne_zeit, ohne_zeit
     assert "0:00" not in ohne_zeit
+
+
+def test_neue_schluessel_der_orte_in_allen_sprachen():
+    """#353, Schritt 2 (AC-17): Orte als Möglichkeit haben ihre Texte in jeder Sprache; die geänderten Ablehnungen nennen die
+    neue Sorte orte und die änderbaren Felder aufenthalte und orte."""
+    for k in texte.SPRACHEN:
+        katalog = texte.sprache(k).TEXTE
+        for s in ("konnektor.feld.option_felder.orte", "konnektor.ausgabe.option_text.orte",
+                  "pruefung.routen.option_ort", "pruefung.routen.nacht_nur_orte"):
+            assert s in katalog, (k, s)
+        for s in ("schreiben.option_bauen.2", "schreiben.option_aendern.5", "schreiben.option_aendern.8"):
+            assert re.search(r"\borte\b", katalog[s]), (k, s, katalog[s])
+        assert re.search(r"\baufenthalte\b", katalog["schreiben.option_aendern.8"]), (k, katalog["schreiben.option_aendern.8"])
