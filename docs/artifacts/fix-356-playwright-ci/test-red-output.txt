@@ -1,0 +1,61 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0
+rootdir: /home/hem/frieda-reist/.claude/worktrees/foamy-mixing-thunder
+plugins: xdist-3.8.0
+collected 5 items
+
+engine/tests/test_ci_workflow.py FFFF.                                   [100%]
+
+=================================== FAILURES ===================================
+________________ test_playwright_schritt_hat_eigene_zeitgrenze _________________
+
+    def test_playwright_schritt_hat_eigene_zeitgrenze():
+        _, schritt = _playwright_schritt()
+>       assert "timeout-minutes" in schritt, "Der Schritt hat keine eigene Zeitgrenze"
+E       AssertionError: Der Schritt hat keine eigene Zeitgrenze
+E       assert 'timeout-minutes' in {'name': 'Playwright und Browser (feste Version aus engine/tests/playwright, wie auf jeder Instanz)', 'run': 'cd engin...nstall --with-deps chromium webkit\necho "PLAYWRIGHT_MODUL=$PWD/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"\n'}
+
+engine/tests/test_ci_workflow.py:36: AssertionError
+___________________ test_playwright_install_wird_wiederholt ____________________
+
+    def test_playwright_install_wird_wiederholt():
+        _, schritt = _playwright_schritt()
+        run = schritt["run"]
+        # Schleife mit zwei Versuchen, je Versuch mit timeout
+>       assert re.search(r"for\s+\w+\s+in\s+1\s+2\b", run), "keine Schleife mit zwei Versuchen"
+E       AssertionError: keine Schleife mit zwei Versuchen
+E       assert None
+E        +  where None = <function search at 0x7b60ba8313a0>('for\\s+\\w+\\s+in\\s+1\\s+2\\b', 'cd engine/tests/playwright\nnpm ci --no-audit --no-fund\nnpx playwright install --with-deps chromium webkit\necho "PLAYWRIGHT_MODUL=$PWD/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"\n')
+E        +    where <function search at 0x7b60ba8313a0> = re.search
+
+engine/tests/test_ci_workflow.py:44: AssertionError
+___________________________ test_apt_hat_zeitgrenzen ___________________________
+
+    def test_apt_hat_zeitgrenzen():
+        schritte = _schritte()
+        i_pakete = _index(lambda s: s.get("name") == "Python-Pakete")
+        vorher = [s for s in schritte[:i_pakete] if "Acquire::Retries" in str(s.get("run", ""))
+                  and "Acquire::http::Timeout" in str(s.get("run", ""))]
+>       assert vorher, "Kein Schritt vor „Python-Pakete“ setzt die apt-Zeitgrenzen"
+E       AssertionError: Kein Schritt vor „Python-Pakete“ setzt die apt-Zeitgrenzen
+E       assert []
+
+engine/tests/test_ci_workflow.py:58: AssertionError
+________________ test_browser_cache_schluessel_aus_package_lock ________________
+
+    def test_browser_cache_schluessel_aus_package_lock():
+        schritte = _schritte()
+        i_pw, _ = _playwright_schritt()
+        caches = [(i, s) for i, s in enumerate(schritte)
+                  if str(s.get("uses", "")).startswith("actions/cache@")]
+>       assert caches, "kein actions/cache-Schritt"
+E       AssertionError: kein actions/cache-Schritt
+E       assert []
+
+engine/tests/test_ci_workflow.py:70: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_ci_workflow.py::test_playwright_schritt_hat_eigene_zeitgrenze
+FAILED engine/tests/test_ci_workflow.py::test_playwright_install_wird_wiederholt
+FAILED engine/tests/test_ci_workflow.py::test_apt_hat_zeitgrenzen - Assertion...
+FAILED engine/tests/test_ci_workflow.py::test_browser_cache_schluessel_aus_package_lock
+========================= 4 failed, 1 passed in 0.11s ==========================
