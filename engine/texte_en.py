@@ -3010,6 +3010,7 @@ TEXTE = {
     "pruefung.routen.eltern_art": "{did}: an “{x}” is neither a day, place, leg, stay, accommodation, knowledge section (W-…) nor “reise”.",
     "pruefung.routen.eltern_selbst": "{did}: an must not be the thing itself.",
     "pruefung.routen.eltern_unbekannt": "{did}: an “{x}” does not exist in this trip.",
+    "pruefung.routen.bezug_ort": "{did}: the reference “{x}” is not a place of this trip (ADR-0008).",
     "pruefung.routen.eltern_ort": "{did}: a place lies only within another place (an: O-…), not at “{x}” (ADR-0008).",
     "pruefung.routen.ort_art": "Place {oid}: kind “{a}” is not a kind of place in plan/arten.yaml (grundform: ort). Known: {w1}.",
     "pruefung.routen.eltern_kreis": "{did}: an leads in a circle back to {did}.",

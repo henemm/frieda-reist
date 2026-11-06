@@ -3011,6 +3011,7 @@ TEXTE = {
     "pruefung.routen.eltern_art": "{did}: an „{x}“ ist weder Tag, Ort, Strecke, Aufenthalt, Unterkunft, Abschnitt des Wissens (W-…) noch „reise“.",
     "pruefung.routen.eltern_selbst": "{did}: an darf nicht das Ding selbst sein.",
     "pruefung.routen.eltern_unbekannt": "{did}: an „{x}“ gibt es in dieser Reise nicht.",
+    "pruefung.routen.bezug_ort": "{did}: Der Bezug „{x}“ ist kein Ort dieser Reise (ADR-0008).",
     "pruefung.routen.eltern_ort": "{did}: Ein Ort liegt nur in einem anderen Ort (an: O-…), nicht an „{x}“ (ADR-0008).",
     "pruefung.routen.ort_art": "Ort {oid}: Art „{a}“ ist keine Art eines Orts in plan/arten.yaml (grundform: ort). Bekannt: {w1}.",
     "pruefung.routen.eltern_kreis": "{did}: an führt im Kreis zurück zu {did}.",

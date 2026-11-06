@@ -209,6 +209,41 @@ ROLLEN_MERKMAL = {"nummer": ("nummer", "inhalt.rolle.nummer", "zahl"), "alias": 
 FEST_NAMEN = frozenset(EINGABE_MERKMALE) | {n for fs in GRUNDFORM_FELDER.values() for n in fs} | frozenset(FEST_ALIAS)
 
 
+def ort_lagen(route):
+    """Lage je Ort (ADR-0008, Punkt 4): eigene Koordinaten, sonst der erste eigene Punkt einer Unterkunft oder eines Aufenthalts an
+    diesem Ort (ort:). Eine Lage, die selbst über bezug vom Ort kommt, zählt dafür nicht. -> {O-…: [Breite, Länge]}."""
+    def wert(d):
+        p = (d or {}).get("punkt")
+        w = p.get("wert") if isinstance(p, dict) and not p.get("von") else None
+        return [float(w[0]), float(w[1])] if lage_wert_gueltig("koordinaten", list(w) if isinstance(w, (list, tuple)) else w) else None
+    lage = {oid: wert(o) for oid, o in (route.get("orte") or {}).items()}
+    for menge in ("unterkuenfte", "aufenthalte"):
+        for d in (route.get(menge) or {}).values():
+            p = wert(d)
+            if p and d.get("ort") in lage and not lage[d["ort"]]:
+                lage[d["ort"]] = p
+    return {oid: p for oid, p in lage.items() if p}
+
+
+def lage_ueber_bezug(route):
+    """Eine Lage je Stelle (ADR-0008, Punkt 4): Ein Aufenthalt ohne eigene Koordinaten, dessen Merkmal der Rolle bezug auf einen Ort
+    zeigt (O-…), liegt beim Ort; punkt bekommt die Lage des Orts mit von: O-… (Herkunft des Orts). Eigene Koordinaten gehen vor.
+    Ändert route (Ausgabe von Routen.daten) an Ort und Stelle."""
+    orte = route.get("orte") or {}
+    rollen = {a: next((m["id"] for m in liste if m.get("rolle") == "bezug"), None) for a, liste in (route.get("merkmale") or {}).items()}
+    lagen = ort_lagen(route)
+    for d in (route.get("aufenthalte") or {}).values():
+        if d.get("punkt") or not rollen.get(d.get("art")):
+            continue
+        v = (d.get("merkmale") or {}).get(rollen[d["art"]])
+        oid = v.get("wert") if isinstance(v, dict) else None
+        if not isinstance(oid, str) or oid not in orte or oid not in lagen:
+            continue
+        eigen = orte[oid].get("punkt") or {}
+        d["punkt"] = {"wert": lagen[oid], "quelle": eigen.get("quelle") or orte[oid].get("quelle"), "notiz": None,
+                      "geprueft": eigen.get("geprueft"), "von": oid}
+
+
 def lage_wert_gueltig(typ, w):
     """Ist w ein gültiger Wert dieses Typs? adresse: Text; koordinaten: [Breite, Länge]; gpx: Datei unter medien/; uhrzeit: HH:MM;
     zeitpunkt: Uhrzeit oder Zeitpunkt mit Datum; zeitraum: {beginn, ende} (Uhrzeiten)."""
@@ -335,7 +370,8 @@ DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage",
 # Rolle eines Merkmals -> der Typ, den es braucht. kosten: der Preis, den die Seite summiert (Typ geld). Für die Dinge, die früher
 # Kartenpunkte waren (ADR-0007, Schritt d): nummer (die Nummer eines nummerierten Punkts), alias (weitere Namen, getrennt durch ;, für
 # Kartenlinks im Text), sorte (Zusatzwort der Art, siehe sorten), osm (Bezug zu OpenStreetMap, Typ/Nummer), trinkbar (OSM-Angabe yes/no),
-# oeffnung (Öffnungszeiten laut OSM, opening_hours), bezug (die Kennung einer Unterkunft, die der Punkt ist), hero (Typ text:
+# oeffnung (Öffnungszeiten laut OSM, opening_hours), bezug (die Kennung einer Unterkunft oder eines Orts, die der Punkt ist;
+# zeigt er auf einen Ort, liegt der Punkt dort, ADR-0008), hero (Typ text:
 # das Merkmal steht in jeder Möglichkeit des Vergleichs ganz oben über alle Spalten, #343)
 ROLLEN = {"kosten": "geld", "hero": "text", "nummer": "zahl", "alias": "text", "sorte": "text", "osm": "text", "trinkbar": "text", "oeffnung": "text", "bezug": "text"}
 
@@ -1292,6 +1328,11 @@ class Routen:
         for aid, a in self.aufenthalte.items():
             if self.a_art.get(aid) is not None and isinstance(a, dict):
                 self.mk_aufenthalt[aid] = self.werte(aid, a.get("merkmale"), {**self.katalog.get(self.a_art[aid], {}), **a_extra.get(aid, {})})
+                # bezug auf einen Ort (ADR-0008, Punkt 4): der Ort muss es geben, sonst hätte der Punkt keine Lage
+                rk = next((k for k, d in self.katalog.get(self.a_art[aid], {}).items() if d.get("rolle") == "bezug"), None)
+                w = (self.mk_aufenthalt[aid].get(rk) or {}).get("wert") if rk else None
+                if isinstance(w, str) and re.fullmatch(r"O-\d+", w) and w not in self.orte:
+                    self.fehl(texte.satz("pruefung.routen.bezug_ort", did=aid, x=w))
         for oid, o in self.orte.items():
             if self.o_art.get(oid) is not None and isinstance(o, dict):
                 self.mk_ort[oid] = self.werte(oid, o.get("merkmale"), self.katalog.get(self.o_art[oid], {}))
@@ -1661,7 +1702,7 @@ class Routen:
                             "wahlstellen": [el for el in t.get("strecken") or [] if ist("wahl", el)] + list(t.get("wahl") or []),
                             "aufenthalte": self.aufenthalte_des_tages(t),
                             "nacht": self.nacht(tid, t.get("nacht"))}
-        return {
+        aus = {
             "tage": tage,
             "weitere_tage": weitere,
             "summe": self.summe(tage),
@@ -1688,6 +1729,8 @@ class Routen:
             "warnungen": self.warnungen,
             "karten_ansichten": self.karten_ansichten(),
         }
+        lage_ueber_bezug(aus)
+        return aus
 
     def karten_ansichten(self):
         """Kartenansichten (#236, K5): Titel und Auswahl aus Tagen, Strecken und Arten; die Übersicht gibt es immer. Sie stehen
