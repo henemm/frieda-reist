@@ -672,3 +672,12 @@ def test_neue_schluessel_der_orte_in_allen_sprachen():
         for s in ("schreiben.option_bauen.2", "schreiben.option_aendern.5", "schreiben.option_aendern.8"):
             assert re.search(r"\borte\b", katalog[s]), (k, s, katalog[s])
         assert re.search(r"\baufenthalte\b", katalog["schreiben.option_aendern.8"]), (k, katalog["schreiben.option_aendern.8"])
+
+
+def test_option_bauen_hinweis_nennt_alle_sorten():
+    """#364: Der Hinweis zum Inhalt einer Option nennt alle Sorten (unterkuenfte, strecken, aufenthalte, orte, Folge)."""
+    folge = {"de": "folge", "en": "sequence"}
+    for k in ("de", "en"):
+        text = texte.sprache(k).TEXTE["schreiben.option_bauen.1"]
+        for s in ("unterkuenfte", "strecken", "aufenthalte", "orte", folge[k]):
+            assert re.search(rf"\b{s}\b", text), (k, s, text)

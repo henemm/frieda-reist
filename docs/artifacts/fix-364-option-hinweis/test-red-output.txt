@@ -1,0 +1,12 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________________ test_option_bauen_hinweis_nennt_alle_sorten __________________
+engine/tests/test_texte.py:683: in test_option_bauen_hinweis_nennt_alle_sorten
+    assert re.search(rf"\b{s}\b", text), (k, s, text)
+E   AssertionError: ('de', 'aufenthalte', 'Jede Option ist ein Objekt mit titel und Inhalt (unterkuenfte, strecken oder folge).')
+E   assert None
+E    +  where None = <function search at 0x77b1dc231300>('\\baufenthalte\\b', 'Jede Option ist ein Objekt mit titel und Inhalt (unterkuenfte, strecken oder folge).')
+E    +    where <function search at 0x77b1dc231300> = re.search
+=========================== short test summary info ============================
+FAILED engine/tests/test_texte.py::test_option_bauen_hinweis_nennt_alle_sorten
+1 failed, 87 deselected in 0.14s
