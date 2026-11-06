@@ -1,0 +1,77 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0
+rootdir: /home/hem/frieda-reist/.claude/worktrees/adaptive-petting-lighthouse
+plugins: anyio-4.13.0
+collected 64 items / 50 deselected / 14 selected
+
+engine/tests/test_reisespeicher.py ....F........F                        [100%]
+
+=================================== FAILURES ===================================
+______________ test_stand_holt_inhalt_nur_fuer_neueste_versionen _______________
+
+rs = <module 'reisespeicher' from '/home/hem/frieda-reist/.claude/worktrees/adaptive-petting-lighthouse/engine/reisespeicher.py'>
+drei = [Vorgang(nummer=1, stand=1), Vorgang(nummer=2, stand=2), Vorgang(nummer=3, stand=3), Vorgang(nummer=4, stand=4)]
+
+    def test_stand_holt_inhalt_nur_fuer_neueste_versionen(rs, drei):
+        """AC-1: Zwei Stufen in einer Abfrage: Die Fenster-Unterabfrage sieht den Inhalt nicht; die gewünschte Spalte wird
+        erst für die Gewinner-Zeilen über den Primärschlüssel (vorgang, pfad) von versionen gelesen."""
+        gesehen = []
+        with closing(rs.db()) as v:
+            v.set_trace_callback(gesehen.append)
+            rs._stand(v, "probe", None, "inhalt")
+            abfragen = [s for s in gesehen if "ROW_NUMBER" in s.upper()]
+            assert len(abfragen) == 1, "eine Abfrage, keine Schleife je Pfad"
+            plan = " | ".join(z[3] for z in v.execute("EXPLAIN QUERY PLAN " + abfragen[0]))
+        assert "sqlite_autoindex_versionen" in plan, plan                  # Gewinner-Zeilen per Primärschlüssel nachgeschlagen
+        innen = abfragen[0].upper().split("ROW_NUMBER")[0]
+>       assert "INHALT" not in innen.replace("INHALT IS NULL", ""), "Inhalt darf nicht in der Fenster-Unterabfrage stehen"
+E       AssertionError: Inhalt darf nicht in der Fenster-Unterabfrage stehen
+E       assert 'INHALT' not in '\n        S...            '
+E         
+E         'INHALT' is contained here:
+E           
+E                   SELECT PFAD, INHALT FROM (
+E         ?                      ++++++
+E                     SELECT S.PFAD, S.INHALT, S. AS WEG,
+
+engine/tests/test_reisespeicher.py:775: AssertionError
+________ test_ordner_als_vorgang_holt_keine_inhalte_des_vorher_standes _________
+
+rs = <module 'reisespeicher' from '/home/hem/frieda-reist/.claude/worktrees/adaptive-petting-lighthouse/engine/reisespeicher.py'>
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-11615/test_ordner_als_vorgang_holt_k0')
+drei = [Vorgang(nummer=1, stand=1), Vorgang(nummer=2, stand=2), Vorgang(nummer=3, stand=3), Vorgang(nummer=4, stand=4)]
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a7b901324e0>
+
+    def test_ordner_als_vorgang_holt_keine_inhalte_des_vorher_standes(rs, tmp_path, drei, monkeypatch):
+        rs.exportieren("probe", tmp_path / "kopie")
+        (tmp_path / "kopie" / "plan" / "a.md").write_bytes(A1)
+        aufrufe = []
+        echt = rs._stand
+    
+        def spur(v, reise, bis=None, spalte="inhalt"):
+            aufrufe.append(spalte)
+            return echt(v, reise, bis, spalte)
+    
+        monkeypatch.setattr(rs, "_stand", spur)
+        monkeypatch.setattr(rs, "aktueller_stand", lambda *a, **k: pytest.fail("aktueller_stand holt alle Bytes"))
+>       rs.ordner_als_vorgang("probe", tmp_path / "kopie", basis=4, wer="Karl", werkzeug="item_update", titel="t", grund="",
+                              kennung=None, rolle="")
+
+engine/tests/test_reisespeicher.py:847: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/reisespeicher.py:244: in ordner_als_vorgang
+    vorher = aktueller_stand(reise, basis) if basis else {}
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = ('probe', 4), k = {}
+
+>   monkeypatch.setattr(rs, "aktueller_stand", lambda *a, **k: pytest.fail("aktueller_stand holt alle Bytes"))
+                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: aktueller_stand holt alle Bytes
+
+engine/tests/test_reisespeicher.py:846: Failed
+=========================== short test summary info ============================
+FAILED engine/tests/test_reisespeicher.py::test_stand_holt_inhalt_nur_fuer_neueste_versionen
+FAILED engine/tests/test_reisespeicher.py::test_ordner_als_vorgang_holt_keine_inhalte_des_vorher_standes
+================= 2 failed, 12 passed, 50 deselected in 0.81s ==================

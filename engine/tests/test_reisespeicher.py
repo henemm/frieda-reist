@@ -738,3 +738,112 @@ def test_quelltext_ohne_instanzwerte():
     assert "environ" not in quelle and "getenv" not in quelle         # Werte nur über instanz
     assert not re.search(r"[\w.+-]+@[\w-]+\.[a-z]{2,}", quelle)        # keine Mail-Adressen
     assert not re.search(r"\b[\w-]+\.(?:com|de|org|net|invalid|eu)\b", quelle)   # keine Domains
+
+
+# ---------- Tempo-Umbau (#347): _stand in zwei Stufen, ordner_als_vorgang über Prüfsummen ----------
+
+def _referenz_stand(rs, reise, bis, spalte):
+    """Die Abfrage in der alten Form (vor dem Umbau, #347): Verhalten, an dem der Umbau gemessen wird."""
+    with closing(sqlite3.connect(rs.pfad())) as v:
+        zeilen = v.execute(f"""
+            SELECT pfad, {spalte} FROM (
+              SELECT s.pfad, s.{spalte}, s.inhalt IS NULL AS weg,
+                     ROW_NUMBER() OVER (PARTITION BY s.pfad ORDER BY s.vorgang DESC) AS rang
+              FROM versionen s JOIN vorgaenge g ON g.nummer = s.vorgang
+              WHERE g.reise = ? AND g.stand <= ?)
+            WHERE rang = 1 AND NOT weg ORDER BY pfad""", (reise, bis))
+        return {z[0]: z[1] for z in zeilen}
+
+
+def _stand_roh(rs, reise, bis=None, spalte="inhalt"):
+    with closing(rs.db()) as v:
+        return rs._stand(v, reise, bis, spalte)
+
+
+def test_stand_holt_inhalt_nur_fuer_neueste_versionen(rs, drei):
+    """AC-1: Zwei Stufen in einer Abfrage: Die Fenster-Unterabfrage sieht den Inhalt nicht; die gewünschte Spalte wird
+    erst für die Gewinner-Zeilen über den Primärschlüssel (vorgang, pfad) von versionen gelesen."""
+    gesehen = []
+    with closing(rs.db()) as v:
+        v.set_trace_callback(gesehen.append)
+        rs._stand(v, "probe", None, "inhalt")
+        abfragen = [s for s in gesehen if "ROW_NUMBER" in s.upper()]
+        assert len(abfragen) == 1, "eine Abfrage, keine Schleife je Pfad"
+        plan = " | ".join(z[3] for z in v.execute("EXPLAIN QUERY PLAN " + abfragen[0]))
+    assert "sqlite_autoindex_versionen" in plan, plan                  # Gewinner-Zeilen per Primärschlüssel nachgeschlagen
+    innen = abfragen[0].upper().split("ROW_NUMBER")[0]
+    assert "INHALT" not in innen.replace("INHALT IS NULL", ""), "Inhalt darf nicht in der Fenster-Unterabfrage stehen"
+
+
+@pytest.mark.parametrize("spalte", ["inhalt", "pruefsumme"])
+def test_stand_gleich_referenz(rs, drei, spalte):
+    for bis in (1, 2, 3, 4):
+        erwartet = _referenz_stand(rs, "probe", bis, spalte)
+        assert erwartet and list(_stand_roh(rs, "probe", bis, spalte).items()) == list(erwartet.items())
+    assert _stand_roh(rs, "probe", None, spalte) == _referenz_stand(rs, "probe", 4, spalte)
+
+
+def test_stand_tombstone_und_neu_angelegt(rs, drei):
+    assert "inhalt/b.md" not in _stand_roh(rs, "probe", 3)             # gelöscht
+    assert _stand_roh(rs, "probe", 4)["inhalt/b.md"] == B2             # gelöscht, danach neu angelegt
+
+
+def test_stand_leere_datei_ist_nicht_geloescht(rs, tmp_path):
+    import hashlib
+    rs.importieren(_ordner(tmp_path / "q", {"leer.md": b"", "voll.md": b"x"}), "probe", wer="Ida")
+    assert _stand_roh(rs, "probe")["leer.md"] == b""
+    assert _stand_roh(rs, "probe", spalte="pruefsumme")["leer.md"] == hashlib.sha256(b"").hexdigest()
+
+
+def test_stand_bis_und_unbekannt(rs, drei):
+    assert _stand_roh(rs, "probe", 2) == _referenz_stand(rs, "probe", 2, "inhalt")
+    for reise, bis in (("gibtsnicht", None), ("probe", 99)):
+        with pytest.raises(KeyError):
+            _stand_roh(rs, reise, bis)
+
+
+def test_ordner_als_vorgang_ohne_aenderung(rs, tmp_path, drei):
+    rs.exportieren("probe", tmp_path / "kopie")
+    with pytest.raises(rs.NichtsGeaendert):
+        rs.ordner_als_vorgang("probe", tmp_path / "kopie", basis=4, wer="Karl", werkzeug="item_update", titel="nichts",
+                              grund="", kennung=None, rolle="")
+
+
+def test_ordner_als_vorgang_aenderung_und_loeschung(rs, tmp_path, drei):
+    rs.exportieren("probe", tmp_path / "kopie")
+    kopie = tmp_path / "kopie"
+    (kopie / "plan" / "a.md").write_bytes(A1)
+    (kopie / "inhalt" / "b.md").unlink()
+    (kopie / "inhalt" / "c.md").write_bytes(C1)
+    v = rs.ordner_als_vorgang("probe", kopie, basis=4, wer="Karl", werkzeug="item_update", titel="t", grund="",
+                              kennung=None, rolle="")
+    assert sorted(rs.verlauf("probe", n=1)[0]["dateien"]) == ["inhalt/b.md", "inhalt/c.md", "plan/a.md"]
+    with closing(sqlite3.connect(rs.pfad())) as roh:
+        assert roh.execute("SELECT inhalt FROM versionen WHERE vorgang = ? AND pfad = 'inhalt/b.md'",
+                           (v.nummer,)).fetchone() == (None,)
+
+
+def test_ordner_als_vorgang_unbekannte_basis_und_basis_null(rs, tmp_path):
+    n = rs.ordner_als_vorgang("neu", BEISPIEL / "stadtwochenende", basis=0, wer="Tom", werkzeug="reise_anlegen",
+                              titel="Neu", grund="", kennung=None, rolle="organisator")
+    assert n.stand == 1 and rs.aktueller_stand("neu") == _baum(BEISPIEL / "stadtwochenende")
+    with pytest.raises(rs.StandGeaendert):                             # unbekannte Basis: Vorher leer, Schutz greift wie bisher
+        rs.ordner_als_vorgang("unbekannt", BEISPIEL / "stadtwochenende", basis=7, wer="Tom", werkzeug="x", titel="x",
+                              grund="", kennung=None, rolle="")
+
+
+def test_ordner_als_vorgang_holt_keine_inhalte_des_vorher_standes(rs, tmp_path, drei, monkeypatch):
+    rs.exportieren("probe", tmp_path / "kopie")
+    (tmp_path / "kopie" / "plan" / "a.md").write_bytes(A1)
+    aufrufe = []
+    echt = rs._stand
+
+    def spur(v, reise, bis=None, spalte="inhalt"):
+        aufrufe.append(spalte)
+        return echt(v, reise, bis, spalte)
+
+    monkeypatch.setattr(rs, "_stand", spur)
+    monkeypatch.setattr(rs, "aktueller_stand", lambda *a, **k: pytest.fail("aktueller_stand holt alle Bytes"))
+    rs.ordner_als_vorgang("probe", tmp_path / "kopie", basis=4, wer="Karl", werkzeug="item_update", titel="t", grund="",
+                          kennung=None, rolle="")
+    assert "pruefsumme" in aufrufe and "inhalt" not in aufrufe
