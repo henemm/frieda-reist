@@ -388,6 +388,14 @@ aufenthalte:
     quelle: "eigene Schätzung, 26.10.2026"
     merkmale:
       koordinaten: {typ: koordinaten, wert: [50.9185, 14.1585], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+  # Aufenthalt ohne Tag an einem Ort ohne eigenen Abschnitt (#387): Er steht an keinem Tag, und sein Ort hat keinen Text; der
+  # Start der Seite muss mit diesem Fall zurechtkommen (Test test_seite_startet.py)
+  A-32:
+    name: "Fischbrötchen am Elbufer"
+    ort: O-02
+    art: besichtigung
+    hinweis: "erfundenes Beispiel; Imbiss zum Sammeln, an keinem Tag"
+    quelle: "erfunden (Beispiel)"
 
 # Buchungen (B-…, #76): eigenes Ding zu einer Unterkunft, einem Aufenthalt oder einer Strecke (fuer, auch mehrere).
 # Felder: status (angefragt | gebucht | storniert), nummer, bei, preis, zahlung (Zahlstand, #166), bezahlt (Einzelheiten),
