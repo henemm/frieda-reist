@@ -4117,6 +4117,9 @@ function indexBauen() {
       for (const o of w.optionen) add(o.id, o.titel, w.titel, [STATUS_TEXT[o.status], o.text, o.ausloeser, ...Object.values(o.merkmale || {}).map(v => v.wert)].filter(Boolean).join(" · "));
     }
   }
+  // Gegenstände der Packliste (ADR-0010): ihre Kennung führt in den Reiter Packliste
+  if (PACKLISTE) for (const g of PL.gegenstaende) add(g.id, g.titel, T("seite.reiter.packliste"),
+    [(PL_KAT.get(g.art) || {}).name, g.notiz, g.wer, ...Object.values(g.merkmale || {}).map(v => v.wert)].filter(Boolean).join(" · "));
 }
 
 function markiert(text, begriffe, laenge) {

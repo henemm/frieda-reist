@@ -13,6 +13,7 @@
 - **Tagesplan, Etappen, Orte, Unterkünfte** mit festen IDs (T-, E-, O-, U-, W- …), damit sich jede Rückmeldung genau zuordnen lässt.
 - **Alternativen im Modell:** Wahlstellen mit Optionen auf jeder Ebene, benannte Pläne mit Summen (Gehzeit, Strecke, Höhenmeter, Nächte je Art) und ein Verlauf. Verworfenes wird nie gelöscht, entscheiden dürfen nur Organisator:innen.
 - **Arten und Merkmale je Reise:** Hotel, Refugi, Ryokan, Nachtfähre, Museum und was dazu bekannt sein muss, stehen in `plan/arten.yaml` der Reise, entwickelt im Gespräch; die Seite nimmt Name, Farbe und Symbol daraus (`docs/ontologie.md`).
+- **Packliste:** Gegenstände mit Kategorien (Arten der Reise), Merkmalen wie Gewicht oder Raum und Summen; sie entsteht im Gespräch, die Seite plant (Summen je Kategorie) und packt (Gruppierung, Abhaken je Person, auch ohne Netz). Frieda führt kein Inventar (`docs/adr/0010-gegenstand.md`).
 - **Quellen und Prüfdaten:** Fußnoten mit Titel, Link und Datum; Merkmale wie Preise tragen ein Prüfdatum.
 - **Offline:** Die Seite ist eine PWA mit Vorab-Speicher, Update-Hinweis und Ausgang für Rückmeldungen ohne Netz. Karten mit nummerierten Orten (Leaflet, optional OpenStreetMap-Vektorkarten als PMTiles).
 - **Mitreisende:** Rückmeldungen, Wünsche und Aufgaben zu jeder ID, über die Seite oder über die Claude-App (MCP-Konnektor). Personen haben Rollen: `gast` (lesen), `mitwirkend` (Eingaben) und `organisator` (entscheiden).

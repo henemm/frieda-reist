@@ -14,6 +14,7 @@
 
 - **Day plan, stages, places, stays** with fixed IDs, so that every comment can be matched to exactly one item.
 - **Alternatives in the model:** choices with options on every level, named plans with totals, and a history. Nothing rejected is ever deleted.
+- **Packing list:** gear with categories (the trip's kinds), attributes such as weight or room, and totals; it is built in conversation, the page plans (totals per category) and packs (grouping, ticking off per person, also offline). Frieda keeps no inventory (`docs/adr/0010-gegenstand.md`, German).
 - **Offline:** the page is a PWA with an offline cache, an update notice and an outbox for feedback without a network; maps with numbered places.
 - **Fellow travellers:** feedback, wishes and tasks on every ID, through the page or through the Claude app. Roles: `gast` (read), `mitwirkend` (contribute), `organisator` (decide).
 - **The connector writes directly:** what is settled in conversation is checked against the trip's rules and saved to the repository at once, with person and source; a few minutes later it is on the page.
