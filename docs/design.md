@@ -38,6 +38,8 @@ Die Bausteine sind auf die Grundformen der Reise-Ontologie abgebildet (ADR-0001,
 | Offenes: Aufgabe | AG-01 | `agEintrag` | – | `dingKurzKarte` | `ansichtAufgaben`, `agFormular` |
 | Offenes: Rückmeldung, Wunsch | R-… | `rmEintrag` | – | `wuKarte` | `rmFormular`, `ansichtWuensche` |
 
+Ist die Möglichkeit ein Ort (`orte: [O-…]`, #353, Schritt 2), zeigen `optionBlock`, `optionEinzelheiten` sowie Zeile und Karte im `wahlVergleich` seinen Namen mit Link zum Ort über das vorhandene Molekül `ortChips` (kein neuer Baustein); die Heimat des Orts bleibt seine Ortsseite (ADR-0003).
+
 Dichten: **Zeile** steht in einem größeren Ganzen (im Tag, in einer Liste), **Vorschau** führt zur ganzen Seite, **Karte** steht für sich, **Seite** zeigt alles. Jede Art trägt die Kennung (Atom `zid`).
 
 **Die Dichte ist eine Regel** (ADR-0007, Punkt 2; #332, Schritt B): `zeigeDing(Kennung, Dichte)` wählt nach der Grundform (`grundformVon`) den Baustein der Tabelle; fehlt eine Karte, gilt die Zeile (Listenzeile mit Etikett, Name und Link). Welche Dichte ein Ding auf einer Seite bekommt, sagt `dichteHier(Kennung, Seite)`: auf der eigenen Seite „seite“, auf der Seite seines Elternelements „karte“, überall sonst „zeile“ mit Link. `heimat()` ist dieselbe Regel für den Ort: die Seite des Elternelements (`an:`, sonst die Vorgabe der Grundform in `vorgabeEltern`), hat es keine, die Heimat seines Elternelements. Wer ein Ding auf einer Seite zeigt, ruft `zeigeDing` und wählt die Dichte nicht von Hand.

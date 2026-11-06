@@ -338,6 +338,11 @@ Abnahme (außerhalb der Suite): über den Konnektor an einer frischen Testreise,
     `match="nur eines von"` (Text von `option_aendern.5`, der sich ändert): auf `e.value.schluessel` umstellen.
   - AC-5 prüft die Ablehnung über `Ablehnung.schluessel == "schreiben.option_aendern.5"`; AC-6 sucht den Vorsatz
     `konnektor.ausgabe.option_text.orte` in `zeige("V-91.b")` (Handbuch spricht die Vorgabesprache).
+- 2026-11-06 (GREEN, Adversary F001, Entscheidung des Tech Leads): Die Mahnregel in `merkmale_aus` gilt für jede Wahlstelle ohne
+    `art:` und jede Möglichkeit mit Dingen: gemahnt werden nur die Pflichtmerkmale der eigenen Arten und der Wahlstelle (AC-7
+    verallgemeinert). Folge im Bestand: weniger Mahnungen, nie mehr (z. B. Gasthof gegen Pension: der Gasthof mahnt kein
+    Pflichtmerkmal der Pension mehr). Begründung: dieselbe Regel für alle Sorten statt einer Sonderregel für Orte. Seite: `ortChips`
+    verlinkt immer; ein Ort ohne Ortsseite kommt bei gültiger Reise nicht vor (`option_ort`).
 
 ## Approval
 

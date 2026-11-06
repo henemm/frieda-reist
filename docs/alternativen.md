@@ -18,7 +18,7 @@ Die Merkmale einer Art gelten für alle Mitreisenden gemeinsam. Vorlieben Einzel
 
 ## Arten statt eines festen Satzes von Bereichen
 
-Reisen enthalten drei Grundformen von Dingen: **Aufenthalt** (Unterkunft, Essen, Erlebnis), **Bewegung** (Wanderweg, Fähre, Flug, Bahn, Bus, Mietwagen) und **Folge** (ein Abschnitt aus beidem, vom Tag bis zum Reiseteil). Gewählt wird auf drei Arten: eine von mehreren, mit oder ohne, wie lange. Alternativen kann jedes Ding sein, nur der Tag nicht: eine Unterkunft, eine Strecke, ein Aufenthalt ohne Nacht (Museum, Ladestopp, Gipfel; `aufenthalte: [A-…]` an der Option, #353) oder ein Reiseteil; eine Wahlstelle darf diese Dinge mischen (Museum oder Wanderung). Die Art eines Dings bestimmt seine Merkmale. Eine Reise legt eine neue Art in `plan/arten.yaml` an (im Gespräch: `art_definieren`, `merkmal_definieren`), ohne dass jemand programmiert, und nutzt sie an einer Wahlstelle:
+Reisen enthalten drei Grundformen von Dingen: **Aufenthalt** (Unterkunft, Essen, Erlebnis), **Bewegung** (Wanderweg, Fähre, Flug, Bahn, Bus, Mietwagen) und **Folge** (ein Abschnitt aus beidem, vom Tag bis zum Reiseteil). Gewählt wird auf drei Arten: eine von mehreren, mit oder ohne, wie lange. Alternativen kann jedes Ding sein, nur der Tag nicht: eine Unterkunft, eine Strecke, ein Aufenthalt ohne Nacht (Museum, Ladestopp, Gipfel; `aufenthalte: [A-…]` an der Option, #353), ein Ort (Schlechtwetter- oder Gipfelalternative; `orte: [O-…]`, #353, Schritt 2) oder ein Reiseteil; `unterkuenfte` und `folge` stehen allein in einer Möglichkeit, `strecken`, `aufenthalte` und `orte` dürfen zusammen stehen; eine Wahlstelle darf diese Dinge mischen (Museum oder Wanderung). Die Art eines Dings bestimmt seine Merkmale. Eine Reise legt eine neue Art in `plan/arten.yaml` an (im Gespräch: `art_definieren`, `merkmal_definieren`), ohne dass jemand programmiert, und nutzt sie an einer Wahlstelle:
 
 ```yaml
 # plan/arten.yaml
@@ -94,6 +94,25 @@ Manche Optionen gehen nur zusammen mit einer anderen (der Bus fährt nur, wenn d
 ## Anschluss (berechnet)
 
 Bei Reiseteilen (Arten der Grundform `folge`) berechnet der Generator das Merkmal **Anschluss**: Passt die Option an ihre Stelle im aktuellen Plan? Verglichen wird, wo der Plan davor endet, mit dem Anfang ihres ersten Tages (Start der ersten Strecke, sonst Ort der Nacht), und wo sie endet, mit dem, was danach kommt (nächster Tag oder Reiseende). Werte: „nahtlos“, „Lücke am Anfang: A → B“, „Lücke am Ende: A → B“, bei einer Option ohne Tage „Lücke: A → B“. Hinter dem Wert (gepunktete Linie) steht, wovon die Rechnung ausgeht. Die Lücken sind dieselben, die der Plan als Warnung meldet, sobald die Option gilt; so sieht man vor der Entscheidung, welche Variante einen fehlenden Weg mitbringt. Optionen ohne `folge` (noch nicht ausgearbeitet) und Wahlstellen außerhalb des aktuellen Plans bekommen keinen Wert.
+
+## Orte als Möglichkeit (#353, Schritt 2)
+
+Ein gewählter Ort ist ein **Ziel ohne Rechenbedeutung** (Entscheidung des Tech Leads, 6.11.2026): Er steht im Wahlstellen-Block des
+Tags (`wahl:` am Tag), im Vergleich (Name mit Link zum Ort, Merkmale seiner Art, wenn er eine hat) und auf der Übersichtskarte (er
+zählt als im Plan verwendet, ADR-0008, Punkt 5). Anschluss, Anfang und Ende der Tage und der Ort der Nacht ändern sich nicht; der
+Kalender bekommt keinen Eintrag (ein Ort hat keine Zeit). Ein unbekannter Ort ist ein Prüffehler (`option_ort`).
+
+Grenzen: Der Kartenpunkt eines Orts, der nur Alternative ist, sieht aus wie ein Planort (keine eigene Kennzeichnung). Ein Ort, der nur
+in einer Möglichkeit steht, zählt für die Regeln (`erfordert`, `schliesst_aus`, `im_plan`) nicht als im Plan; `an: O-…` einer anderen
+Wahlstelle erreicht ihn so nicht (wie bei Aufenthalten in Schritt 1).
+
+Mahnung in gemischten Wahlstellen: Hat eine Wahlstelle kein `art:`, mahnt jede Möglichkeit mit Dingen nur die Pflichtmerkmale der
+Arten ihrer eigenen Dinge und die der Wahlstelle selbst, nicht die der anderen Möglichkeiten (ein Ort ohne Art mahnt nichts). Das gilt
+für alle Sorten, auch für zwei Unterkünfte verschiedener Art (#353, Schritt 2).
+
+**Vertagt: Ort der Nacht aus `orte:` (Variante b).** Die Beispiele des Product Owners sind Ziele, keine Nachtorte; „Übernachten in A
+oder B“ ist die Unterkunft am Ort. Steht `nacht: V-…` an einem Tag und hat keine Möglichkeit der Wahlstelle eine Unterkunft, aber
+welche haben Orte, warnt der Bau (`nacht_nur_orte`); der Ort der Nacht bleibt leer.
 
 ## Darstellung auf der Seite
 
