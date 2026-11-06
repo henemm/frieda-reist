@@ -1668,7 +1668,7 @@ TEXTE = {
     "schreiben.wahlstelle_anlegen.1": "“wann” of a choice is planning (decide before departure) or travelling (with a trigger).",
     "schreiben.wahlstelle_anlegen.2": "“art” must be a kind of this trip ({w1}): the kind of the things chosen between.",
     "schreiben.wahlstelle_anlegen.3": "“an”: {x} does not exist.",
-    "schreiben.wahlstelle_anlegen.4": "“optionen” is missing: at least one option (titel and unterkuenfte, strecken or sequence).",
+    "schreiben.wahlstelle_anlegen.4": "“optionen” is missing: at least one option (titel and unterkuenfte, strecken, aufenthalte, orte or sequence).",
     "schreiben.wahlstelle_anlegen.5": "At most 26 options.",
     "schreiben.wer_pruefen.1": "Writing is only possible with a person (name missing).",
     "schreiben.wert_eintraege.1": "{k}: “wert” is missing. If there is no value, enter nothing.",

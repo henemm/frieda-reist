@@ -1669,7 +1669,7 @@ TEXTE = {
     "schreiben.wahlstelle_anlegen.1": "„wann“ einer Wahlstelle ist planung (vor der Abreise entscheiden) oder unterwegs (mit Auslöser).",
     "schreiben.wahlstelle_anlegen.2": "„art“ muss eine Art dieser Reise sein ({w1}): die Art der Dinge, zwischen denen gewählt wird.",
     "schreiben.wahlstelle_anlegen.3": "„an“: {x} gibt es nicht.",
-    "schreiben.wahlstelle_anlegen.4": "„optionen“ fehlt: mindestens eine Option (titel und unterkuenfte, strecken oder folge).",
+    "schreiben.wahlstelle_anlegen.4": "„optionen“ fehlt: mindestens eine Option (titel und unterkuenfte, strecken, aufenthalte, orte oder folge).",
     "schreiben.wahlstelle_anlegen.5": "Höchstens 26 Optionen.",
     "schreiben.wer_pruefen.1": "Schreiben geht nur mit einer Person (Name fehlt).",
     "schreiben.wert_eintraege.1": "{k}: „wert“ fehlt. Fehlt der Wert, nichts eintragen.",

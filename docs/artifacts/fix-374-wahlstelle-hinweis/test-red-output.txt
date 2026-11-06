@@ -1,0 +1,20 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________ test_wahlstelle_anlegen_hinweis_nennt_alle_sorten _______________
+
+    def test_wahlstelle_anlegen_hinweis_nennt_alle_sorten():
+        """#374: Der Hinweis zu den Optionen einer neuen Wahlstelle nennt alle Sorten (unterkuenfte, strecken, aufenthalte, orte, Folge)."""
+        folge = {"de": "folge", "en": "sequence"}
+        for k in ("de", "en"):
+            text = texte.sprache(k).TEXTE["schreiben.wahlstelle_anlegen.4"]
+            for s in ("unterkuenfte", "strecken", "aufenthalte", "orte", folge[k]):
+>               assert re.search(rf"\b{s}\b", text), (k, s, text)
+E               AssertionError: ('de', 'aufenthalte', '„optionen“ fehlt: mindestens eine Option (titel und unterkuenfte, strecken oder folge).')
+E               assert None
+E                +  where None = <function search at 0x75f28aa31300>('\\baufenthalte\\b', '„optionen“ fehlt: mindestens eine Option (titel und unterkuenfte, strecken oder folge).')
+E                +    where <function search at 0x75f28aa31300> = re.search
+
+engine/tests/test_texte.py:692: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_texte.py::test_wahlstelle_anlegen_hinweis_nennt_alle_sorten
+1 failed, 88 deselected in 0.20s

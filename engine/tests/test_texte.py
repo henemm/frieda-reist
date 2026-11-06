@@ -681,3 +681,12 @@ def test_option_bauen_hinweis_nennt_alle_sorten():
         text = texte.sprache(k).TEXTE["schreiben.option_bauen.1"]
         for s in ("unterkuenfte", "strecken", "aufenthalte", "orte", folge[k]):
             assert re.search(rf"\b{s}\b", text), (k, s, text)
+
+
+def test_wahlstelle_anlegen_hinweis_nennt_alle_sorten():
+    """#374: Der Hinweis zu den Optionen einer neuen Wahlstelle nennt alle Sorten (unterkuenfte, strecken, aufenthalte, orte, Folge)."""
+    folge = {"de": "folge", "en": "sequence"}
+    for k in ("de", "en"):
+        text = texte.sprache(k).TEXTE["schreiben.wahlstelle_anlegen.4"]
+        for s in ("unterkuenfte", "strecken", "aufenthalte", "orte", folge[k]):
+            assert re.search(rf"\b{s}\b", text), (k, s, text)
