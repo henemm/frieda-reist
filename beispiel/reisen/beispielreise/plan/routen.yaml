@@ -12,8 +12,14 @@ fixpunkte:
 
 orte:   # Orte gibt es wirklich; Herkunft je Ort (Kern jedes Dings, docs/ontologie.md)
   O-01: {name: Dresden, art: stadt, quelle: "OpenStreetMap"}
-  O-02: {name: Stadt Wehlen, art: ort_am_weg, quelle: "OpenStreetMap"}
-  # Hohnstein trägt seine Lage selbst; die Wegpunkte im Ort verweisen mit station (Rolle bezug) darauf (ADR-0008, eine Lage je Stelle)
+  O-02:
+    name: Stadt Wehlen
+    art: ort_am_weg
+    quelle: "OpenStreetMap"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9585, 14.0325], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+  # Eine Lage je Stelle (ADR-0008): Orte tragen ihre Koordinaten, die gleichnamigen Wegpunkte verweisen mit station (Rolle bezug) darauf
+  # (zusammengeführt von neu.py nachziehen, Schritt c)
   O-03:
     name: Hohnstein
     art: ort_am_weg
@@ -21,9 +27,24 @@ orte:   # Orte gibt es wirklich; Herkunft je Ort (Kern jedes Dings, docs/ontolog
     quelle: "OpenStreetMap; Hinweis Wikipedia (W-05)"
     merkmale:
       koordinaten: {typ: koordinaten, wert: [50.979, 14.1125], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
-  O-04: {name: Altendorf, art: ort_am_weg, quelle: "OpenStreetMap"}
-  O-05: {name: Bad Schandau, art: ort_am_weg, quelle: "OpenStreetMap"}
-  O-06: {name: Lichtenhainer Wasserfall, hinweis: "Endhaltestelle der Kirnitzschtalbahn", quelle: "OpenStreetMap; Hinweis Wikipedia (W-06)"}
+  O-04:
+    name: Altendorf
+    art: ort_am_weg
+    quelle: "OpenStreetMap"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9275, 14.187], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+  O-05:
+    name: Bad Schandau
+    art: ort_am_weg
+    quelle: "OpenStreetMap"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.918, 14.155], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
+  O-06:
+    name: Lichtenhainer Wasserfall
+    hinweis: "Endhaltestelle der Kirnitzschtalbahn"
+    quelle: "OpenStreetMap; Hinweis Wikipedia (W-06)"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.9335, 14.234], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
 
 # Etappen sind Strecken einer summierten Art (wandern): Titel und Kennzahlen hier, Lesetext im Dossier unter „## E-0N Name“.
 strecken:
@@ -118,8 +139,8 @@ aufenthalte:
     an: E-01
     quelle: "eigene Schätzung, 26.10.2026"
     merkmale:
-      koordinaten: {typ: koordinaten, wert: [50.9585, 14.0325], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
       nummer: {wert: 1, quelle: "eigene Schätzung, 26.10.2026"}
+      station: {wert: "O-02", quelle: "eigene Schätzung, 26.10.2026"}
   A-03:
     name: "Basteibrücke"
     art: wegpunkt
@@ -232,8 +253,8 @@ aufenthalte:
     an: E-02
     quelle: "eigene Schätzung, 26.10.2026"
     merkmale:
-      koordinaten: {typ: koordinaten, wert: [50.9275, 14.187], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
       nummer: {wert: 6, quelle: "eigene Schätzung, 26.10.2026"}
+      station: {wert: "O-04", quelle: "eigene Schätzung, 26.10.2026"}
   A-17:
     name: "Wanderherberge Altendorf"
     art: unterkunft
@@ -249,8 +270,8 @@ aufenthalte:
     an: E-03
     quelle: "eigene Schätzung, 26.10.2026"
     merkmale:
-      koordinaten: {typ: koordinaten, wert: [50.9275, 14.187], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
       nummer: {wert: 1, quelle: "eigene Schätzung, 26.10.2026"}
+      station: {wert: "O-04", quelle: "eigene Schätzung, 26.10.2026"}
   A-19:
     name: "Schrammtor"
     art: wegpunkt
@@ -281,8 +302,8 @@ aufenthalte:
     an: E-03
     quelle: "eigene Schätzung, 26.10.2026"
     merkmale:
-      koordinaten: {typ: koordinaten, wert: [50.918, 14.155], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
       nummer: {wert: 5, quelle: "eigene Schätzung, 26.10.2026"}
+      station: {wert: "O-05", quelle: "eigene Schätzung, 26.10.2026"}
   A-23:
     name: "Kurpark (Kirnitzschtalbahn)"
     art: notfall
@@ -297,8 +318,8 @@ aufenthalte:
     an: E-04
     quelle: "eigene Schätzung, 26.10.2026"
     merkmale:
-      koordinaten: {typ: koordinaten, wert: [50.9275, 14.187], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
       nummer: {wert: 1, quelle: "eigene Schätzung, 26.10.2026"}
+      station: {wert: "O-04", quelle: "eigene Schätzung, 26.10.2026"}
   A-25:
     name: "Schrammsteinaussicht"
     art: wegpunkt
@@ -321,8 +342,8 @@ aufenthalte:
     an: E-04
     quelle: "eigene Schätzung, 26.10.2026"
     merkmale:
-      koordinaten: {typ: koordinaten, wert: [50.9335, 14.234], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
       nummer: {wert: 4, quelle: "eigene Schätzung, 26.10.2026"}
+      station: {wert: "O-06", quelle: "eigene Schätzung, 26.10.2026"}
   A-28:
     name: "Basteibrücke"
     art: sehenswert

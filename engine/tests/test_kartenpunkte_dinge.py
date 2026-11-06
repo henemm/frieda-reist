@@ -26,6 +26,8 @@ def alte_form(tmp_path):
         shutil.copy(ALT / datei, q / ziel / datei)
     r = yaml.safe_load((q / "plan/routen.yaml").read_text(encoding="utf-8"))
     r["aufenthalte"] = {k: v for k, v in r["aufenthalte"].items() if k == "A-01"}
+    for oid in ("O-02", "O-04", "O-05", "O-06"):   # Orte ohne eigene Lage wie vor ADR-0008 (die Lage stand am Wegpunkt)
+        r["orte"][oid].pop("merkmale", None)
     (q / "plan/routen.yaml").write_text(yaml.safe_dump(r, allow_unicode=True, sort_keys=False), encoding="utf-8")
     a = yaml.safe_load((q / "plan/arten.yaml").read_text(encoding="utf-8"))
     a["arten"] = {k: v for k, v in a["arten"].items() if k not in KATEGORIEN}
@@ -58,7 +60,11 @@ def test_nachziehen_stellt_punkte_und_kategorien_um(tmp_path):
     assert "bloecke" not in wissen
     neu_ = bauen.bauen(q, tmp_path / "wb" / "x")
     # dieselben Punkte mit denselben Namen, Lagen, Kategorien, Nummern und Sorten; dieselben Kategorien mit Farben und Symbolen
-    assert neu_["route"]["punkte"] == alt["route"]["punkte"]
+    # ADR-0008, Schritt c: gleichnamige Wegpunkte verweisen auf ihren Ort (id), Lage und alles andere bleiben gleich
+    ohne_ort = lambda pk: {s: [{k: v for k, v in p.items() if not (k == "id" and str(v).startswith("O-"))} for p in l] for s, l in pk.items()}
+    assert ohne_ort(neu_["route"]["punkte"]) == ohne_ort(alt["route"]["punkte"])
+    assert {p["name"]: p["id"] for l in neu_["route"]["punkte"].values() for p in l if str(p.get("id", "")).startswith("O-")} == {
+        "Stadt Wehlen": "O-02", "Hohnstein": "O-03", "Altendorf": "O-04", "Bad Schandau": "O-05", "Lichtenhainer Wasserfall": "O-06"}
     assert neu_["kategorien"] == alt["kategorien"]
     assert neu.nachziehen(q) == []   # zweimal nichts zu tun
 
@@ -108,7 +114,7 @@ def test_nachziehen_gibt_punkten_ohne_namen_den_namen_der_art(tmp_path):
     roh = yaml.safe_load((q / "plan/routen.yaml").read_text(encoding="utf-8"))
     namen = [v["name"] for v in roh["aufenthalte"].values()]
     assert all(namen)   # kein Aufenthalt ohne Namen
-    neue = [v["name"] for v in roh["aufenthalte"].values() if v.get("an") == "E-01" and v["merkmale"]["koordinaten"]["wert"][0] in (51.001, 51.002, 51.003, 51.004)]
+    neue = [v["name"] for v in roh["aufenthalte"].values() if v.get("an") == "E-01" and (v["merkmale"].get("koordinaten") or {"wert": [0]})["wert"][0] in (51.001, 51.002, 51.003, 51.004)]
     assert neue == ["Wasser", "Wegpunkt im Buch", "pumpe", "Brunnen mit Namen"]
     d = bauen.bauen(q, tmp_path / "w" / "x")   # der Bau lehnt nichts ab
     assert [p["offen"] for p in d["route"]["punkte"]["E-01"] if p.get("offen")] == ["Mo-Fr 08:00-18:00"]   # Öffnungszeiten (OSM) gehen nicht verloren

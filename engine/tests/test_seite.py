@@ -262,7 +262,7 @@ def test_aufenthalt_ohne_ort_an_der_strecke_steht_nach_seiner_strecke(tmp_path, 
     """#287: Ein Aufenthalt ohne Nacht, der an keinem Ort der Strecken des Tags liegt (Ladestopp, Bäckerei unterwegs), steht in der
     Zeitleiste nach der Strecke, zu der seine Uhrzeit passt, nicht am Ende nach „Ziel“. Erfundene Abwandlung der Beispielreise:
     eine Bäckerei um 08:20, zwischen Abfahrt (08:12) und Ankunft (08:40) der S-Bahn."""
-    ersetzen = [("  O-05: {name: Bad Schandau, art: ort_am_weg, quelle: \"OpenStreetMap\"}\n", "  O-05: {name: Bad Schandau, art: ort_am_weg, quelle: \"OpenStreetMap\"}\n  O-07: {name: Pirna, quelle: \"erfunden (Beispiel)\"}\n"),
+    ersetzen = [("  O-06:\n", "  O-07: {name: Pirna, quelle: \"erfunden (Beispiel)\"}\n  O-06:\n"),
                 ("aufenthalte: [A-01]", "aufenthalte: [A-01, A-90]"),
                 ("  A-02:\n    name: \"Stadt Wehlen\"", "  A-90:\n    name: Bäckerei in Pirna\n    ort: O-07\n    art: besichtigung\n    quelle: \"erfunden (Beispiel)\"\n    merkmale:\n"
                  "      zeitraum: {typ: zeitraum, wert: {beginn: \"08:20\", ende: \"08:30\"}, quelle: \"erfunden (Beispiel)\"}\n  A-02:\n    name: \"Stadt Wehlen\"")]

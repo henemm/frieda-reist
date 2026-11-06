@@ -81,7 +81,7 @@ def test_ort_liegt_nur_in_einem_ort(tmp_path):
 def test_konnektor_zeigt_art_liegt_in_und_orte_darin(tmp_path):
     q = kopie(tmp_path)
     aendern(q / "plan" / "routen.yaml", lambda t: t.replace(
-        'O-06: {name: Lichtenhainer Wasserfall,', 'O-06: {name: Lichtenhainer Wasserfall, an: O-05,'))
+        '    name: Lichtenhainer Wasserfall\n', '    name: Lichtenhainer Wasserfall\n    an: O-05\n', 1))
     h = kn.Handbuch(bauen.bauen(q, tmp_path / "web" / "b"))
     _, t5 = h.eintraege["O-05"]
     _, t6 = h.eintraege["O-06"]

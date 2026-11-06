@@ -68,7 +68,7 @@ def test_ohne_karte_yaml_entsteht_die_karte_aus_den_orten(reise, tmp_path):
 
 
 def test_nur_ein_punkt_keine_karte_mit_grund(reise, tmp_path):
-    routen(reise, lambda d: (d["orte"]["O-03"].pop("merkmale"), mit_lagen(d, {"O-01": LAGEN["O-01"]})))   # Hohnstein ohne eigene Lage
+    routen(reise, lambda d: ([d["orte"][o].pop("merkmale", None) for o in d["orte"]], mit_lagen(d, {"O-01": LAGEN["O-01"]})))   # die anderen Orte ohne eigene Lage
     d, _ = daten(reise, tmp_path)
     st = d["route"]["karte_status"]
     assert d["route"]["karte"] is None and not st["gebaut"] and st["grund"] == "zu_wenig_punkte" and st["punkte"] == 1
