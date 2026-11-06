@@ -702,6 +702,7 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .rh-ort.rh-unterkunft::after{width:12px;height:12px;border-radius:3px;background:var(--kat,var(--farbe-grau))}
 .farbe-blau{--kat:var(--farbe-blau)}.farbe-braun{--kat:var(--farbe-braun)}.farbe-lila{--kat:var(--farbe-lila)}.farbe-gruen{--kat:var(--farbe-gruen)}.farbe-tuerkis{--kat:var(--farbe-tuerkis)}.farbe-oliv{--kat:var(--farbe-oliv)}.farbe-schiefer{--kat:var(--farbe-schiefer)}.farbe-rosa{--kat:var(--farbe-rosa)}.farbe-grau{--kat:var(--farbe-grau)}
 .rh-ort.rh-punkt::after{width:7px;height:7px;border-radius:50%;background:var(--fg);border:0}
+.rh-ort.rh-darin::after{width:11px;height:11px;border-radius:50%;background:var(--acc);border:2px solid var(--bg)}
 .rh-gipfel{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:11px solid var(--peak);background:none}
 .rh-meer{font-style:italic;font-size:13px;color:var(--mut);white-space:nowrap;transform:translate(-50%,-50%)}
 .rh-tag{display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:11px;font-weight:700;color:var(--bg);border:2px solid var(--land)}
@@ -1192,8 +1193,8 @@ function zid(id) {
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke
-   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile
-   Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
+   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn
+   Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtKarte, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
    Stile seiner Ebene, auf die Bausteinseite (#bausteine) und in docs/design.md; zeigt er eine Grundform, auch in GRUNDFORMEN.
@@ -1686,7 +1687,7 @@ function kurzDaten(id) {
       d = {etikett: arten.length ? arten.map(artName).join(" + ") : T("seite.strecke.verkehrsmittel_offen"), art: arten[0], titel: s.titel,
         fakten: [[null, [s.ab ? T("seite.strecke.ab_zeit", {zeit: zeitText(s.ab)}) : "", s.an ? T("seite.strecke.an_zeit", {zeit: zeitText(s.an)}) : ""].filter(Boolean).join(" · ")]],
         extra: [kennzahlLeiste(s.kennzahlen, !!s.art && !summiertArt(s))], marken: s.buchung ? [buchungChip(s)] : []};
-    } else d = {etikett: T("seite.etikett.ort"), art: "ort", titel: (o && o.name) || titelZu(id) || id,
+    } else d = {etikett: o && o.art && artDef(o.art) ? artName(o.art) : T("seite.etikett.ort"), art: "ort", titel: (o && o.name) || titelZu(id) || id,
       fakten: [[null, o && o.ausserhalb ? T("seite.ort.ausserhalb") : ""], [null, (o && o.hinweis) || ""]]};
   } else if (form === "buchung") {
     const b = R.buchungen[id], zu = b.status === "storniert";
@@ -3759,6 +3760,8 @@ function ansichtOrt(m, a) {
   m.append(inPlan || p ? el("a", {class: "zurueck", href: "#" + (p ? p.id : "varianten")}, "← " + (p ? `${p.kurz}: ${p.titel}` : T("seite.plan.alle_plaene")))
     : el("a", {class: "zurueck", href: "#orte"}, T("seite.ort.alle_orte_zurueck")));
   m.append(el("h2", {class: "ziel", id: a.id, "data-ziel": a.id}, a.titel, zid(a.id)));
+  const liegt = ortLiegtIn(a.id);
+  if (liegt) m.append(liegt);
   ortKarte(m, a.id);
   m.append(el("h3", {}, T("seite.plan.uebersicht")));
   if (a.intro) m.append(el("div", {html: a.intro}));
@@ -3775,13 +3778,54 @@ function ansichtOrt(m, a) {
     m.append(el("div", {class: "wliste"}, a.wissen.map(w =>
       listenZeile("wissen", "wissen", w.titel, [w.in, w.notiz].filter(Boolean).join(" · "), w.id))));
   }
+  const darin = ortDarin(a.id);
+  if (darin) m.append(darin);
   amElement(m, a);   // Alternativen, Aufenthalte und Übersichten, die an diesem Ort hängen (an: [O-…])
 }
-// Kleine Lagekarte des Orts auf der Übersichtskarte, die anderen Orte als graue Punkte (25.10.2026)
+/* Ort im Ort (ADR-0008, Punkt 2, #335 Schritt d): „liegt in“ (an: O-…) und die Orte darin, nur für Anzeige und Navigation.
+   Heimat jedes Orts bleibt seine eigene Ortsseite (ADR-0003); ein Ort ohne eigene Seite steht als Zeile auf der Seite des
+   Orts, in dem er liegt (dort ist er zu Hause). */
+const ortEltern = oid => { const e = R && (R.eltern || {})[oid]; return e && R.orte[e] ? e : null; };
+const unterorte = oid => R ? Object.keys(R.orte).filter(x => ortEltern(x) === oid).sort((a, b) => SORT.compare(ortName(a), ortName(b))) : [];
+// Seite eines Orts: sein Abschnitt (Ortstext); ohne Text nur, wenn Orte darin liegen (eine Region braucht eine Seite für sie)
+function ortSeiteZu(oid) {
+  const a = proId.get(oid);
+  if (a) return a.typ === "ort" ? a : null;
+  return R && R.orte[oid] && unterorte(oid).length ? {id: oid, typ: "ort", titel: ortName(oid), intro: "", bloecke: []} : null;
+}
+// Molekül Liegt in: eine Zeile unter dem Titel mit dem übergeordneten Ort (Link, wenn er eine Seite hat)
+function ortLiegtIn(oid) {
+  const e = ortEltern(oid);
+  if (!e) return null;
+  return el("p", {class: "z klein ort-liegt-in"}, symbol("ort", "etikett-sym"), " " + T("seite.ort.liegt_in") + " ",
+    ortSeiteZu(e) ? link(e, ortName(e)) : el("span", {}, ortName(e)));
+}
+// Organismus Orte darin: je Ort eine Zeile mit Link zu seiner Seite
+function ortDarin(oid) {
+  const u = unterorte(oid);
+  if (!u.length) return null;
+  return el("section", {class: "am-element ort-darin"}, el("h3", {}, T("seite.ort.orte_darin_n", {n: u.length})),
+    el("div", {class: "wliste"}, u.map(x => { const z = zeigeDing(x, "zeile"); if (!ortSeiteZu(x)) z.id = x; return z; })));
+}
+// Karte eines Orts (ADR-0008, Punkt 5): die Dinge an diesem Ort (Unterkünfte und Aufenthalte mit Lage) und die Orte darin;
+// ein Ort ohne Punkt (eine Region) bestimmt nur den Ausschnitt. Ohne beides die Lage des Orts in der Reise, die anderen
+// Orte als graue Punkte (25.10.2026)
 function ortKarte(m, oid) {
-  const K = R.karte, hier = K && (K.orte[oid] || {}).lage;
-  if (!hier || !window.L) return;
-  const box = el("div", {class: "kartenbox klein", role: "region", "aria-label": T("seite.karte.lage_von") + ortName(oid)});
+  const K = R && R.karte;
+  if (!K || !window.L) return;
+  const lage = x => (K.orte[x] || {}).lage, punkt = x => lage(x) && (K.orte[x] || {}).punkt !== false;
+  const hier = punkt(oid) ? lage(oid) : null;
+  const darin = unterorte(oid).filter(lage);
+  // Dinge am Ort: Unterkünfte und Aufenthalte mit eigener Lage, deren Ort oder Elternbezug dieser Ort ist (auch bei einer Karte
+  // von Hand); ein Wegpunkt, der über bezug die Stelle des Orts ist, ist kein eigenes Ding
+  const auto = new Map((K.dinge || []).map(x => [x.id, x]));
+  const dinge = [...Object.entries(R.unterkuenfte || {}), ...Object.entries(R.aufenthalte || {})].flatMap(([id, d]) => {
+    const p = d.punkt;
+    if (!p || p.von || !Array.isArray(p.wert) || ![d.ort, (R.eltern || {})[id]].includes(oid)) return [];
+    return [auto.get(id) || {id, name: d.name || id, art: d.art, lage: p.wert, stand: "plan", tage: []}];
+  });
+  if (!hier && !darin.length && !dinge.length) return;
+  const box = el("div", {class: "kartenbox klein ortskarte", role: "region", "aria-label": T("seite.karte.lage_von") + ortName(oid)});
   m.append(box);
   const rf = K.rahmen;
   const karte = KARTE = L.map(box, {zoomSnap: 0.5, scrollWheelZoom: false, dragging: !L.Browser.mobile, tap: false, zoomControl: true,
@@ -3790,15 +3834,34 @@ function ortKarte(m, oid) {
   const osm = !!(K.grundkarte && window.protomapsL);
   if (osm) protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: LOCALE.split("-")[0], maxDataZoom: 15, attribution: ""}).addTo(karte);
   else for (const poly of [K.kueste, ...(K.inseln || [])]) L.polygon(poly, {className: "rh-land", weight: 1.2, fillOpacity: 1, interactive: false}).addTo(karte);
+  const bereich = L.latLngBounds([]);
   for (const [id, o] of Object.entries(K.orte)) {
-    if (id === oid || !o.lage || o.punkt === false || !ortAbschnitt(id)) continue;
-    const mk = L.marker(o.lage, {icon: L.divIcon({className: "rh-ort rh-punkt", iconSize: [18, 18]}), title: ortName(id), keyboard: false}).addTo(karte);
-    mk.bindTooltip(o.name || ortName(id), {direction: "right", className: "rh-lbl klein"});
-    mk.on("click", () => { location.hash = id; });
+    if (id === oid || !o.lage || o.punkt === false) continue;
+    const drin = darin.includes(id);
+    if (!drin && !ortAbschnitt(id)) continue;
+    const mk = L.marker(o.lage, {icon: L.divIcon({className: "rh-ort " + (drin ? "rh-darin" : "rh-punkt"), iconSize: [18, 18]}), title: ortName(id), keyboard: false}).addTo(karte);
+    mk.bindTooltip(o.name || ortName(id), {permanent: drin, direction: "right", className: "rh-lbl klein"});
+    if (ortSeiteZu(id) || drin) mk.on("click", () => { location.hash = id; });
+    if (drin) bereich.extend(o.lage);
   }
-  L.marker(hier, {icon: L.divIcon({className: "rh-ort rh-hier", iconSize: [26, 26]}), interactive: false, keyboard: false}).addTo(karte)
-    .bindTooltip(K.orte[oid].name || ortName(oid), {permanent: true, direction: "right", className: "rh-lbl"});
-  karte.setView(hier, 6);
+  for (const x of dinge) {
+    const a = artDef(x.art) || {};
+    dingMarke(karte, x, (K.legende || {})[x.art] || {name: artName(x.art), farbe: a.farbe, symbol: a.symbol});
+    bereich.extend(x.lage);
+  }
+  if (hier) {
+    L.marker(hier, {icon: L.divIcon({className: "rh-ort rh-hier", iconSize: [26, 26]}), interactive: false, keyboard: false}).addTo(karte)
+      .bindTooltip(K.orte[oid].name || ortName(oid), {permanent: true, direction: "right", className: "rh-lbl"});
+    bereich.extend(hier);
+  }
+  // Ausschnitt erst, wenn die Karte im Dokument hängt und ihre Größe hat (die Ortsseite hängt sie nach dem Bau ein)
+  const ausschnitt = () => {
+    if (!box.isConnected) return;
+    karte.invalidateSize({animate: false});
+    darin.length || dinge.length ? karte.fitBounds(bereich, {padding: [24, 24], maxZoom: 14, animate: false}) : karte.setView(hier, 6, {animate: false});
+  };
+  ausschnitt();
+  requestAnimationFrame(ausschnitt);
 }
 
 function ansichtEtappen(m) {
@@ -3969,6 +4032,16 @@ function ansichtAbschnitt(m, a) {
     const s = etappeTeil(a);
     s.querySelector("section").removeAttribute("id");
     m.append(s);
+  } else if (a.typ === "ort") {
+    // Ortsseite (ADR-0008, Schritt d): unter dem Titel „liegt in“ und die Karte des Orts, nach dem Text die Orte darin
+    const s = abschnittInhalt(a), h = s.querySelector("h2"), oben = el("div", {});
+    const liegt = ortLiegtIn(a.id);
+    if (liegt) oben.append(liegt);
+    ortKarte(oben, a.id);
+    h.after(...oben.childNodes);
+    m.append(s);
+    const darin = ortDarin(a.id);
+    if (darin) m.append(darin);
   } else m.append(abschnittInhalt(a));
   // Alternativen, die an diesem Abschnitt hängen (an: [W-…] oder [O-…]): am Element, mit Vergleich
   amElement(m, a);
@@ -4029,7 +4102,7 @@ const GRUNDFORMEN = [
   ["reise", "Reise", "–", {zeile: [], vorschau: [reiseEnde, mitreisende, standLeiste], karte: [uebersichtKarte], seite: [ansichtReise, ansichtKarte]}],
   ["tag", "Folge: Tag", "T-01", {zeile: [tagZeile], vorschau: [tagKachel], karte: [tagKarte, tagesKarte], seite: [ansichtTag, ansichtReise]}],
   ["etappe", "Bewegung: Etappe, Strecke", "E-01", {zeile: [streckeZeile], vorschau: [abschnittKarte], karte: [dingKurzKarte], seite: [ansichtAbschnitt, tagEbenen]}],
-  ["ort", "Ort", "O-01", {zeile: [wegVerlauf], vorschau: [tagOrteZeilen, listenZeile], karte: [dingKurzKarte], seite: [ansichtOrt]}],
+  ["ort", "Ort", "O-01", {zeile: [wegVerlauf, ortLiegtIn], vorschau: [tagOrteZeilen, ortDarin, listenZeile], karte: [dingKurzKarte], seite: [ansichtOrt]}],
   ["unterkunft", "Aufenthalt mit Nacht: Unterkunft", "U-01", {zeile: [nachtZeile], vorschau: [listenZeile], karte: [dingKarte], seite: [nachtAbschnitt]}],
   ["aufenthalt", "Aufenthalt ohne Nacht", "A-01", {zeile: [aufenthaltZeile], vorschau: [listenZeile], karte: [dingKarte], seite: [tagKarte, ohneTag, ansichtOrt, ansichtAbschnitt]}],
   ["buchung", "Buchung zu Aufenthalt oder Bewegung", "B-01", {zeile: [buchungChip], vorschau: [listenZeile], karte: [dingKurzKarte], seite: [buchungBlock]}],
@@ -4286,6 +4359,12 @@ function ansichtBausteine(m) {
   if (ortMitText) teil("Organismus", "Leseabschnitt", "Ein Abschnitt als Lesetext: Titel mit Kennung, Orte und Karte des Abschnitts, Text ohne Rahmen.", leseAbschnitt(ortMitText.bloecke[0]));
   if (ortMitText) teil("Organismus", "Ebenen eines Orts", "Abschnitte eines Orts ohne Kasten, alle offen, in einer Lesespalte (#58).", ortEbenen(ortMitText.bloecke.slice(0, 2)));
   if (tag && tagOrte(tag).length) teil("Organismus", "Orte des Tages", "Je Ort eine Zeile mit Kurztext und Kennung.", tagOrteZeilen(tagOrte(tag)));
+  // Ort im Ort (ADR-0008, #335 Schritt d)
+  const imOrt = R && Object.keys(R.orte).find(ortEltern), mitOrten = imOrt && ortEltern(imOrt);
+  teil("Molekül", "Liegt in", "Unter dem Titel einer Ortsseite: der Ort, in dem dieser Ort liegt (an: O-…), mit Link zu seiner Seite.",
+    imOrt ? ortLiegtIn(imOrt) : el("p", {class: "meldung"}, "Kein Ort liegt in einem anderen (Muster entfällt)."));
+  teil("Organismus", "Orte darin", "Auf der Ortsseite nach dem Text: je Ort, der hier liegt, eine Zeile mit Link zu seiner Seite; ein Ort ohne eigene Seite ist hier zu Hause.",
+    mitOrten ? ortDarin(mitOrten) : el("p", {class: "meldung"}, "Kein Ort hat Orte darin (Muster entfällt)."));
   if (plan) teil("Molekül", "An- und Abreise", "Erster und letzter Tag mit festen Terminen und Fahrten; führt zum Tag.",
     reiseEnde("anreise", plan.tage[0]), reiseEnde("abreise", plan.tage[plan.tage.length - 1]));
   teil("Molekül", "Mitreisende", "Wer reist, wer nur einen Teil.", mitreisende() || el("p", {class: "meldung"}, "Niemand reist (Muster entfällt)."));
@@ -5029,7 +5108,7 @@ function vorgabeEltern(id) {
   const a = (R.aufenthalte || {})[id];
   if (R.buchungen && R.buchungen[id]) return {von: [(R.buchungen[id].fuer || [])[0]]};   // Buchung: ihr erstes Ding (dort steht der Block)
   if (a) {   // Aufenthalt ohne Nacht: der Tag, an dem er steht, ohne Tag die Seite seines Orts
-    const ortSeite = !a.tage.length && proId.has(a.ort) && proId.get(a.ort).typ === "ort";
+    const ortSeite = !a.tage.length && !!ortSeiteZu(a.ort);
     return {von: a.tage.length ? a.tage : ortSeite ? [a.ort] : []};
   }
   if (R.strecken[id] && !ETAPPE_TAG.has(id)) {   // Fahrt ohne Dossier: der Tag, an dem sie gefahren wird
@@ -5049,7 +5128,7 @@ function vorgabeEltern(id) {
 function seiteVon(x, tiefe) {
   if (PLAN_ANSICHT.tage.some(t => t.id === x)) return {tag: x};
   if (ETAPPE_TAG.has(x)) return {tag: ETAPPE_TAG.get(x)};
-  if (proId.has(x)) return {abschnitt: x};
+  if (proId.has(x) || ortSeiteZu(x)) return {abschnitt: x};
   if (R.unterkuenfte[x] || R.strecken[x] || (R.aufenthalte || {})[x] || wahlZu.has(x) || optionZu.has(x)) return heimat(x, tiefe + 1);
   return null;
 }
@@ -5166,7 +5245,9 @@ function route(behalten) {
   else if (TIEFE && planZu(h)) { zeigeReiter("varianten"); ansichtPlanDetail(m, planZu(h)); }
   else if (TIEFE && ortAbschnitt(h)) { zeigeReiter("varianten"); ansichtOrt(m, ortAbschnitt(h)); }
   else if (TIEFE && blockZu.has(h) && blockZu.get(h).typ === "ort") { zeigeReiter("varianten"); ansichtOrt(m, blockZu.get(h)); ziel = h; }
+  else if (TIEFE && ortSeiteZu(h)) { zeigeReiter("varianten"); ansichtOrt(m, ortSeiteZu(h)); }
   else if (proId.has(h)) { const a = proId.get(h); zeigeReiter(TYP_REITER[a.typ]); ansichtAbschnitt(m, a); }
+  else if (ortSeiteZu(h)) { zeigeReiter(TYP_REITER.ort); ansichtAbschnitt(m, ortSeiteZu(h)); }
   else if (blockZu.has(h)) { const a = blockZu.get(h); zeigeReiter(TYP_REITER[a.typ]); ansichtAbschnitt(m, a); ziel = h; }
   // Ein Plan: im Vergleich der Pläne, solange keiner gewählt ist; sonst die Reise
   else if (zeileZu.get(h) === "varianten") { zeigeReiter("varianten"); HAT_VARIANTEN ? ansichtVarianten(m) : ansichtStart(m); ziel = h; }
@@ -5174,7 +5255,8 @@ function route(behalten) {
     const x = heimat(h);
     if (x.kreis) { start(); m.prepend(warnungen([{text: T("seite.kreis.hinweis", {titel: titelZu(h) || h}), bezug: ""}])); }
     else if (x.tag) { zeigeReiter("varianten"); ansichtTag(m, x.tag); }
-    else if (x.abschnitt) { const a = proId.get(x.abschnitt); zeigeReiter(TYP_REITER[a.typ]); ansichtAbschnitt(m, a); }
+    else if (x.abschnitt) { const a = proId.get(x.abschnitt) || ortSeiteZu(x.abschnitt); zeigeReiter(TYP_REITER[a.typ]);
+      TIEFE && a.typ === "ort" ? ansichtOrt(m, a) : ansichtAbschnitt(m, a); }
     else { zeigeReiter("zu-tun"); ansichtZuTun(m); }
     ziel = document.getElementById(x.ziel) || !x.ersatz ? x.ziel : x.ersatz;
   }
