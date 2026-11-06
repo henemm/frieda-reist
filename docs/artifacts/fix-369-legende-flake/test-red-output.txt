@@ -1,0 +1,19 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_______________ test_messskript_wartet_auf_ausgelegte_ebenenwahl _______________
+
+    def test_messskript_wartet_auf_ausgelegte_ebenenwahl():
+        """#369: Zwischen dem Klick auf den Schalter der Ebenenwahl und dem Messen ihrer Zeilen steht ein Wartepunkt, bis die Liste
+        aufgeklappt ist und eine Zeile Breite hat; sonst misst der Test auf langsamen Läufern Breite 0."""
+        quelle = (Path(__file__).parent / "seiten_karte_legende.mjs").read_text(encoding="utf-8")
+        klick = quelle.index('.ekarte .leaflet-control-layers-toggle").first().click()')
+        messen = quelle.index('aus.etappe.ebenen = await imFenster(')
+        warten = quelle[klick:messen]
+>       assert "waitForFunction" in warten, "kein Wartepunkt zwischen Klick und Messung"
+E       AssertionError: kein Wartepunkt zwischen Klick und Messung
+E       assert 'waitForFunction' in '.ekarte .leaflet-control-layers-toggle").first().click();\n'
+
+engine/tests/test_karte_legende.py:97: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_karte_legende.py::test_messskript_wartet_auf_ausgelegte_ebenenwahl
+1 failed, 4 deselected in 0.16s

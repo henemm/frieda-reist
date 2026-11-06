@@ -21,8 +21,29 @@ await p.locator(".ekarte").first().scrollIntoViewIfNeeded();   // gezeichnet wir
 await p.waitForSelector(".ekarte .leaflet-marker-icon", {state: "attached"});
 const marken = () => p.evaluate(() => document.querySelectorAll(".ekarte .rh-pw").length);
 aus.etappe = {markenVorher: await marken(), schalter: await imFenster(".ekarte .leaflet-control-layers-toggle")};
-await p.locator(".ekarte .leaflet-control-layers-toggle").first().click();
-aus.etappe.ebenen = await imFenster(".ekarte .leaflet-control-layers-list label");
+// Erst messen, wenn die Liste aufgeklappt und ausgelegt ist (#369): auf langsamen Läufern haben die Zeilen sonst Breite 0, und
+// Leaflet klappt die Liste auf Touch-Geräten manchmal gleich wieder zu. Darum liefert die Wartebedingung die Messung selbst:
+// Prüfung und Messwerte stammen aus demselben Augenblick. Zeigt die Seite keine Ebenen, läuft die Zeitgrenze ab, und die
+// Messung danach zeigt es wie bisher.
+let schnappschuss = null;
+for (let versuch = 0; versuch < 4 && !schnappschuss; versuch++) {
+  // Klick nur, solange die Liste zu ist: ein Klick auf eine offene Liste würde sie wieder zuklappen; Leaflet ignoriert Klicks
+  // kurz nach dem Aufklappen (_expandSafely) und auf langsamen Läufern geht der erste Klick ins Leere.
+  if (!await p.evaluate(() => !!document.querySelector(".ekarte .leaflet-control-layers-expanded")))
+    await p.locator(".ekarte .leaflet-control-layers-toggle").first().click();
+  try {
+    schnappschuss = await (await p.waitForFunction(() => {
+      const zeilen = [...document.querySelectorAll(".ekarte .leaflet-control-layers-list label")];
+      if (!document.querySelector(".ekarte .leaflet-control-layers-expanded") || !zeilen.length) return false;
+      const werte = zeilen.map(x => {
+        const r = x.getBoundingClientRect();
+        return {text: x.textContent.trim(), links: Math.round(r.left), rechts: Math.round(r.right), breit: Math.round(r.width), hoch: Math.round(r.height), innen: r.left >= -1 && r.right <= innerWidth + 1};
+      });
+      return werte.every(w => w.breit > 0 && w.hoch > 0) ? werte : false;
+    }, null, {timeout: 2000})).jsonValue();
+  } catch (e) { /* Zeitgrenze: nächster Versuch, am Ende weiter wie bisher */ }
+}
+aus.etappe.ebenen = schnappschuss || await imFenster(".ekarte .leaflet-control-layers-list label");
 if (aus.etappe.ebenen.length) {
   // Leaflet klappt die Ebenenwahl beim Verlassen mit der Maus zu; Playwright rollt vor dem Klick, darum schaltet das DOM selbst
   // Leaflet ignoriert Klicks kurz nach dem Aufklappen (Control.Layers._expandSafely): auf langsamen Läufern erst warten, dann klicken, bis das

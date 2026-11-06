@@ -85,3 +85,15 @@ def test_legende_nach_arten(tmp_path, browser, breite):
     erlaubt = {arten[k].get("einzahl") or arten[k]["name"] for k, d in arten.items() if d.get("gruppe") == "wissen"}
     assert w["legende"] and {x["text"] for x in w["legende"]} <= erlaubt, (w["legende"], erlaubt)
     assert all(x["innen"] for x in w["legende"]) and not w["waagerecht"], w
+
+
+def test_messskript_wartet_auf_ausgelegte_ebenenwahl():
+    """#369: Zwischen dem Klick auf den Schalter der Ebenenwahl und dem Messen ihrer Zeilen steht ein Wartepunkt, bis die Liste
+    aufgeklappt ist und eine Zeile Breite hat; sonst misst der Test auf langsamen Läufern Breite 0."""
+    quelle = (Path(__file__).parent / "seiten_karte_legende.mjs").read_text(encoding="utf-8")
+    klick = quelle.index('.ekarte .leaflet-control-layers-toggle").first().click()')
+    messen = quelle.index('aus.etappe.ebenen = ')
+    warten = quelle[klick:messen]
+    assert "waitForFunction" in warten, "kein Wartepunkt zwischen Klick und Messung"
+    assert "leaflet-control-layers-expanded" in warten and "getBoundingClientRect" in warten, warten
+    assert ".every(" in warten and ".some(" not in warten, "alle Zeilen müssen ausgelegt sein, nicht nur eine"
