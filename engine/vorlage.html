@@ -406,6 +406,21 @@ details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
 .pico button.haken{width:30px;height:30px;flex:none;padding:0;margin:0;border-radius:var(--r-klein);border:2px solid var(--acc);background:transparent;color:var(--acc);font-size:var(--t-text);line-height:1;box-shadow:none}
 .pico button.haken.an{background:var(--acc);color:var(--bg)}
 
+/* ---------- Packliste (ADR-0010, #370): Summe, Mitnehmen und Zeile zum Packen ---------- */
+.pack-summe{display:flex;flex-wrap:wrap;gap:2px 16px;margin:2px 0 8px;font-size:var(--t-klein);color:var(--mut)}
+.pack-summe b{color:var(--fg);font-weight:700}
+.pack-summe.gesamt{margin:6px 0 4px;font-size:var(--t-text)}
+.pico a.mitnehmen,a.mitnehmen{display:flex;gap:8px;align-items:flex-start;margin:8px 0 0;font-size:var(--t-klein);color:var(--fg);text-decoration:none;max-width:var(--lese)}
+a.mitnehmen b{font-weight:700}
+a.mitnehmen:hover span{text-decoration:underline}
+.pack-zeile{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)}
+.pack-zeile .haken-platz{width:30px;height:30px;flex:none;display:inline-flex;align-items:center;justify-content:center;color:var(--acc);font-size:var(--t-text)}
+.pack-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pack-titel{font-weight:600;line-height:1.3}
+.pack-unter{font-size:var(--t-klein);color:var(--mut);line-height:1.35}
+.pack-zeile .chips{margin:3px 0 0}
+.pack-zeile.gepackt .pack-titel{color:var(--mut);text-decoration:line-through}
+.pack-zeile.weg{opacity:.65}
 /* ==================== 5 Organismen ==================== */
 /* ---------- Ding (Designsystem 2b, frieda-reist#18): Aufenthalt, Bewegung, Wahl als Zeile ---------- */
 .ding{display:flex;gap:10px;align-items:flex-start;margin:10px 0 2px;padding-top:9px;border-top:1px solid var(--line)}
@@ -777,6 +792,16 @@ dialog#rm::backdrop{background:rgba(0,0,0,.35)}
 .wu-leer .sym{width:1.6rem;height:1.6rem;color:var(--acc);margin-bottom:4px}
 .wu-leer b{color:var(--fg)}
 
+/* ---------- Packliste (ADR-0010): Tabelle der Kategorie (Planen) und Gruppe (Packen) ---------- */
+.pack-tabelle .wm-tab th[scope=row]{font-weight:600;color:var(--fg)}
+.pico .pack-tabelle .wm-tab tfoot :is(th,td){font-weight:700;border-top:2px solid var(--line);background:var(--card)}
+.pack-tabelle h3{display:flex;align-items:center;gap:6px}
+.pico .pack-tabelle .wm-tab tr.weg>:is(th,td){opacity:.65}
+.pack-gruppe{margin:0 0 14px}
+.pack-gruppe>h3{display:flex;align-items:center;gap:10px;font-size:var(--t-untertitel);margin:18px 0 2px}
+.pack-fortschritt{font-size:var(--t-klein);font-weight:400;color:var(--mut)}
+.pico details.pack-weg{margin:14px 0 0;max-width:var(--lese)}
+.pico details.pack-weg>summary{color:var(--mut);font-size:var(--t-klein)}
 /* ==================== 6 Vorlagen: Teile der Ansichten ==================== */
 .zurueck{display:inline-block;margin:0 0 8px;padding:6px 0;text-decoration:none;font-weight:600}
 a.weiter{display:inline-block;margin-top:8px;font-weight:600;color:var(--acc);text-decoration:none}
@@ -819,6 +844,11 @@ details.neben>summary{font-weight:700;padding:10px 2px;color:var(--warn)}
 /* Tageskasten neben der Karte: nach der Breite der Tagesseite (Behälter), am Rechner mit Maus (Zeigergerät bleibt Media-Query) */
 @media (pointer:fine){@container tagseite (min-width:960px){.tag-oben{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:20px;align-items:start}}}
 
+/* Packliste (Reiter): oben Planen oder Packen und, beim Packen, die Gruppierung */
+.pack-kopf{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center}
+.pack-kopf .umschalter{margin:0}
+.pico .pack-kopf label{display:flex;align-items:center;gap:8px;margin:0;font-size:var(--t-klein)}
+.pico .pack-kopf select{width:auto;margin:0;min-height:40px}
 /* ==================== 7 Rahmen der Seite: Kopf, Meldungen, Glas, Leiste, Fuß ==================== */
 /* ---------- Kopf: großer Titel am Seitenanfang (iOS Large Title), scrollt mit ---------- */
 header{max-width:var(--breite);margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px 2px 16px}
@@ -1140,6 +1170,11 @@ if (PLAN_ANSICHT) for (const t of PLAN_ANSICHT.tage) for (const s of t.strecken)
 const HAT_ETAPPEN = abschnitte.some(istEtappe);
 const ETAPPEN_REITER = HAT_ETAPPEN && !PLAN_ANSICHT;
 const WUENSCHE = B("wuensche");
+// Packliste (ADR-0010, #370): Gegenstände G-…, Kategorien sind Arten der Reise; ohne Gegenstände zeigt der Reiter, wie man beginnt
+const PACKLISTE = B("packliste");
+const PL = D.packliste || {kategorien: [], gegenstaende: [], summen: []};
+const PL_JE = new Map(PL.gegenstaende.map(g => [g.id, g]));
+const PL_KAT = new Map(PL.kategorien.map(k => [k.art, k]));
 /* Seitenordnung (28.10.2026, docs/design.md „Seitenordnung“; seit #214 für jede Reise): Jede Art hat genau eine Heimat. Die
    Reiter heißen Reise · Zu tun · Wissen (+ Wünsche, Suche); einen Reiter „Plan“ gibt es nicht: Tage stehen in der Zeitachse
    der Reise, Unterkünfte und Wahlstellen am Element, an dem sie hängen, die Sammelansichten (entscheiden, buchen) in „Zu tun“,
@@ -1152,7 +1187,7 @@ const REITER = [
   // Quellen stehen seit dem 25.10.2026 ebenfalls im Reiter Wissen; ihr Platz in der Leiste gehört der Suche
   ["wissen", () => G.wissen, hat("wissen") || hat("praxis") || hat("quelle") || (HAT_ETAPPEN && !ETAPPEN_REITER) || hat("plan") || !!D.plan_kopf || !R],
   // Wünsche der Mitreisenden: eigener Reiter, wenn die Reise ihn einschaltet (reise.yaml bausteine; 25.10.2026)
-  ["wuensche", () => T("seite.reiter.wuensche"), WUENSCHE], ["zu-tun", () => T("seite.reiter.offen"), ZU_TUN],
+  ["wuensche", () => T("seite.reiter.wuensche"), WUENSCHE], ["packliste", () => T("seite.reiter.packliste"), PACKLISTE], ["zu-tun", () => T("seite.reiter.offen"), ZU_TUN],
 ].filter(r => r[2]);
 // Frühere Namen von Routen (Lesetoleranz für Lesezeichen und versandte Push-Adressen): „offen“ heißt seit #215 „zu-tun“
 const ROUTE_ALIAS = {"offen": "zu-tun"};
@@ -1162,7 +1197,7 @@ const routeName = h => ROUTE_ALIAS[h] || h;
 const START = V.start === "heute" && REITER.some(r => r[0] === "varianten") ? "varianten"
   : REITER.some(r => r[0] === routeName(D.reise.start)) ? routeName(D.reise.start) : REITER[0][0];
 // Reihenfolge Reise · Zu tun · Wissen · Wünsche (Seitenordnung 28.10.2026)
-const REIHE = ["varianten", "karte", "etappen", "zu-tun", "wissen", "wuensche"];
+const REIHE = ["varianten", "karte", "etappen", "zu-tun", "wissen", "wuensche", "packliste"];
 REITER.sort((a, b) => REIHE.indexOf(a[0]) - REIHE.indexOf(b[0]));
 REITER.sort((a, b) => (b[0] === START) - (a[0] === START));
 const TYP_REITER = {plan: "wissen", strecke: ETAPPEN_REITER ? "etappen" : "wissen", uebersicht: ETAPPEN_REITER ? "etappen" : "wissen", wissen: "wissen", praxis: "wissen", quelle: "wissen", ort: "varianten"};
@@ -1193,9 +1228,9 @@ function zid(id) {
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke
-   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn
-   Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte
-   Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtKarte, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPlanDetail, ansichtBausteine
+   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile
+   Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe
+   Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtKarte, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
    Stile seiner Ebene, auf die Bausteinseite (#bausteine) und in docs/design.md; zeigt er eine Grundform, auch in GRUNDFORMEN.
    Eine Etappe ist der Lesetext einer Strecke mit summierter Art (Prädikat istEtappe, #269); Kennzahlen kommen mit Kennungen
@@ -1476,6 +1511,8 @@ function streckeZeile(id, wahl, ohneKennung, voll) {
   if (s.quelle) z.append(el("div", {class: "z klein"}, T("seite.label.quelle") + s.quelle));
   if (s.siehe && proId.has(s.siehe)) z.append(el("div", {class: "z klein"}, link(s.siehe, "→ " + proId.get(s.siehe).titel)));
   if (voll) { for (const b of buchungenBei(id)) z.append(buchungBlock(b)); z.append(...stornierteBuchungen(stornierteBei(id))); }
+  const mitnehmen = voll && mitnehmenZeile(id);   // was bei dieser Strecke mitkommt (Packliste, ADR-0010)
+  if (mitnehmen) z.append(mitnehmen);
   return z;
 }
 
@@ -1514,6 +1551,8 @@ function aufenthaltZeile(id, voll) {
   for (const b of bs) z.append(buchungBlock(b));
   if (teil.block) z.append(teil.block);
   z.append(...stornierteBuchungen(stornierteBei(id)));
+  const mitnehmen = mitnehmenZeile(id);
+  if (mitnehmen) z.append(mitnehmen);
   if ((a.tage || []).some(imKalender)) z.append(kalenderChip(id));
   return z;
 }
@@ -1668,6 +1707,8 @@ function dingKarte(id, tid, mehr, ohneOrt) {
   for (const b of bs) k.append(buchungBlock(b));
   if (teil.block) k.append(teil.block);
   k.append(...stornierteBuchungen(stornierteBei(id)));
+  const mitnehmen = mitnehmenZeile(id);
+  if (mitnehmen) k.append(mitnehmen);
   const imKal = nachtDing
     ? naechteListe.some(x => { const n = (R.tage.find(y => y.id === x) || {}).nacht || {}; return imKalender(x) && n.unterkunft === id && !nachtVorlaeufig(n.wahl); })
     : (u.tage || []).some(imKalender);
@@ -4114,6 +4155,7 @@ const GRUNDFORMEN = [
   ["unterkunft", "Aufenthalt mit Nacht: Unterkunft", "U-01", {zeile: [nachtZeile], vorschau: [listenZeile], karte: [dingKarte], seite: [nachtAbschnitt]}],
   ["aufenthalt", "Aufenthalt ohne Nacht", "A-01", {zeile: [aufenthaltZeile], vorschau: [listenZeile], karte: [dingKarte], seite: [tagKarte, ohneTag, ansichtOrt, ansichtAbschnitt]}],
   ["buchung", "Buchung zu Aufenthalt oder Bewegung", "B-01", {zeile: [buchungChip], vorschau: [listenZeile], karte: [dingKurzKarte], seite: [buchungBlock]}],
+  ["gegenstand", "Gegenstand der Packliste", "G-01", {zeile: [mitnehmenZeile, gegenstandZeile], vorschau: [], karte: [packTabelle, packGruppe], seite: [ansichtPackliste]}],
   ["wahlstelle", "Wahl: Wahlstelle", "V-01", {zeile: [wahlZeile], vorschau: [listenZeile], karte: [wahlKarte], seite: [wahlEinstieg, wahlVergleich, nachtAbschnitt]}],
   ["option", "Wahl: Option", "V-01.a", {zeile: [optionBlock], vorschau: [wahlVergleich], karte: [wahlVergleich], seite: [optionEinzelheiten]}],
   ["plan", "Folge: Plan", "P-A", {zeile: [planMarke], vorschau: [steckbrief], karte: [], seite: [ansichtPlanDetail]}],
@@ -4130,6 +4172,7 @@ function grundformVon(id) {
   if (R && R.unterkuenfte[id]) return "unterkunft";
   if (R && (R.aufenthalte || {})[id]) return "aufenthalt";
   if (R && (R.buchungen || {})[id]) return "buchung";
+  if (PL_JE.has(id)) return "gegenstand";
   if (planZu(id)) return "plan";
   if (R && tagBekannt(id)) return "tag";
   if (blockZu.has(id)) return "abschnitt";
@@ -4274,6 +4317,19 @@ function ansichtBausteine(m) {
     wk.querySelectorAll("button").forEach(k => { k.disabled = true; });
     teil("Molekül", "Wunschkarte", "Ein Wunsch auf dem Brett mit Punkten, Vorschlag von Claude und Haken (unterwegs).", wk);
   }
+  // Packliste (ADR-0010, #370): Muster, wo die Reise keine Gegenstände hat
+  const pg = PL.gegenstaende.find(plAktiv) || {id: "G-00", art: "muster", titel: "Regenjacke (Muster)", merkmale: {}, wer: null, an: null, status: "aktiv", verlauf: []};
+  const pk = PL.kategorien.find(k => k.gegenstaende.length) || {art: "muster", name: "Kleidung (Muster)", symbol: "packliste", merkmale: [], summen: [], gegenstaende: []};
+  const pan = (PL.gegenstaende.find(g => g.an && plAktiv(g)) || {}).an;
+  teil("Molekül", "Packsumme", "Die Summen der Merkmale mit der Rolle summe (Gewicht, Preis …), mit der Einheit des Merkmals; die ganze Liste größer.",
+    packSumme(PL.summen.length ? PL.summen : [{name: "Gewicht (Muster)", wert: 2690, einheit: "g"}], true) || packSumme([{name: "Gewicht (Muster)", wert: 2690, einheit: "g"}]));
+  teil("Molekül", "Mitnehmen", "Eine Zeile bei der Strecke, dem Aufenthalt, der Unterkunft oder dem Ort, an dem Gegenstände hängen; die ganze Zeile führt zur Packliste.",
+    (pan && mitnehmenZeile(pan)) || el("p", {class: "meldung"}, "Muster: ohne Gegenstände mit Bezug zeigt die Reise keine Zeile."));
+  teil("Molekül", "Gegenstandszeile", "Ein Gegenstand beim Packen: Haken (nur für die Person, die ihn packt), Titel mit Kennung, Merkmale, Bezug und Stand.",
+    el("div", {class: "pack-gruppe"}, gegenstandZeile(pg)));
+  teil("Organismus", "Packtabelle", "Die Kategorie mit den Merkmalen als Spalten und den Summen (Ansicht Planen).", pk.gegenstaende.length ? packTabelle(pk) : el("p", {class: "meldung"}, "Muster: die Reise hat noch keine Gegenstände."));
+  teil("Organismus", "Packgruppe", "Eine Gruppe beim Packen (Kategorie, Raum …) mit Fortschritt, Summen und Zeilen zum Abhaken.",
+    packGruppe(pk.name, PL.gegenstaende.filter(g => g.art === pk.art && plAktiv(g)).slice(0, 3).concat(pk.gegenstaende.length ? [] : [pg])));
   if (!R) return;
   const strecken = Object.entries(R.strecken);
   const mitKz = strecken.find(([, x]) => Object.keys(x.kennzahlen || {}).length);
@@ -4504,7 +4560,7 @@ function titelZu(id) {
   if (!TITEL) { if (!index) indexBauen(); TITEL = new Map(index.map(e => [e.id, e.titel])); }
   // Dinge der Route, die keinen eigenen Text haben (Strecke ohne Dossier, Aufenthalt, Ort), stehen nicht im Suchindex;
   // ihr Name kommt aus der Route, damit nirgends eine rohe Kennung steht (#189)
-  const d = R && ((R.strecken || {})[id] || (R.unterkuenfte || {})[id] || (R.aufenthalte || {})[id] || (R.orte || {})[id]);
+  const d = (R && ((R.strecken || {})[id] || (R.unterkuenfte || {})[id] || (R.aufenthalte || {})[id] || (R.orte || {})[id])) || PL_JE.get(id);
   return TITEL.get(id) || (d && (d.titel || d.name)) || (id === "allgemein" ? T("seite.rueckmeldung.allgemein_zur_reise") : id === "wuensche" ? T("seite.wunsch.wunschliste") : "");
 }
 
@@ -4887,6 +4943,241 @@ document.addEventListener("click", e => {
 }, true);
 window.addEventListener("online", () => brLaden().then(rmNeuZeichnen));
 
+/* ---------- Packliste (ADR-0010, #370) ----------
+   Gegenstände (G-…) sind die Grundform „etwas, das mitkommt“; ihre Kategorien sind Arten der Reise (grundform gegenstand), ihre
+   Heimat ist dieser Reiter (ADR-0003). Ansicht Planen: je Kategorie eine Tabelle mit den Merkmalen als Spalten und den Summen
+   (rechnet der Bau, plan/arten.yaml rolle summe). Ansicht Packen: Gruppierung nach einem beliebigen Merkmal (Raum), Abhaken je
+   Person. Der Packstand liegt live beim Rückmeldedienst (api/packstand, nicht im Verlauf der Reise); Haken ohne Netz bleiben im
+   Browser und werden nachgereicht, auch das Zurücknehmen (es betrifft nur den eigenen Haken). Ein Gegenstand mit wer wird nur von
+   dieser Person abgehakt, einer ohne wer von jeder Person für sich. */
+const PS_API = "api/packstand";
+let PS = lies("packstand", {});                   // letzte Antwort von api/packstand (offline lesbar): {G-ID: {Person: Zeitpunkt}}
+let PS_AUSGANG = lies("packstand-ausgang", []);   // ohne Netz geändert: [{gid, name, gepackt}]
+let PL_ANSICHT = lies("packliste-ansicht", "planen");
+let PL_GRUPPE = lies("packliste-gruppe", "_kategorie");
+const KANN_PACKEN = PACKLISTE && V.schreiben !== "nichts";
+const plAktiv = g => g.status !== "entfaellt";
+const plHaengtAn = id => PL.gegenstaende.filter(g => g.an === id && plAktiv(g));
+
+// Beitrag eines Werts zur Summe wie engine/packliste.py: Zahl, bei Geld Betrag mit Währung (eine Spanne zählt nicht)
+function plZahl(typ, wert) {
+  if (typ === "geld") { const b = betrag(String(wert)); return b && b.von === b.bis ? {wert: b.von, einheit: b.waehrung} : null; }
+  const x = parseFloat(String(wert).replace(",", "."));
+  return Number.isFinite(x) ? {wert: x, einheit: ""} : null;
+}
+// Summen der summierten Merkmale über Gegenstände -> [{name, wert, einheit}]; weggelassene zählen nicht
+function plSummenVon(gs) {
+  const je = new Map();
+  for (const g of gs) {
+    if (!plAktiv(g)) continue;
+    for (const m of (PL_KAT.get(g.art) || {merkmale: []}).merkmale) {
+      const v = m.summe && (g.merkmale || {})[m.id], z = v && plZahl(m.typ, v.wert);
+      if (!z) continue;
+      const einheit = z.einheit || m.einheit || "", s = m.id + "|" + einheit, e = je.get(s) || {name: m.name, wert: 0, einheit};
+      e.wert += z.wert; je.set(s, e);
+    }
+  }
+  return [...je.values()];
+}
+const plFlach = summen => summen.flatMap(s => s.summen.map(z => ({name: s.name, wert: z.wert, einheit: z.einheit})));
+const plSummeText = s => zahlText(s.wert, {maximumFractionDigits: 2}) + (s.einheit ? " " + s.einheit : "");
+// Personen, die den Gegenstand gepackt haben, mit den Haken, die noch nachgereicht werden
+function plPackenVon(g) {
+  const aus = new Map(Object.keys(PS[g.id] || {}).map(p => [p.toLowerCase(), p]));
+  for (const a of PS_AUSGANG) if (a.gid === g.id) { if (a.gepackt) aus.set(a.name.toLowerCase(), a.name); else aus.delete(a.name.toLowerCase()); }
+  return [...aus.values()];
+}
+const plGepackt = (g, name) => plPackenVon(g).some(p => gleicherName(p, name));
+const plMeinAusgang = (g, name) => PS_AUSGANG.some(a => a.gid === g.id && gleicherName(a.name, name));
+// Gepackt von den Gegenständen, die diese Person packen muss (ihre und die ohne wer)
+function plFortschritt(name) {
+  let a = 0, n = 0;
+  for (const g of PL.gegenstaende) {
+    if (!plAktiv(g) || (g.wer && !gleicherName(g.wer, name))) continue;
+    n++; if (plGepackt(g, g.wer || name)) a++;
+  }
+  return [a, n];
+}
+
+// Molekül Packsumme: Summen als „Gewicht 1560 g · Anschaffung 70 €“; gesamt hebt die Summe der ganzen Liste hervor
+function packSumme(summen, gesamt) {
+  if (!summen.length) return null;
+  return el("div", {class: "pack-summe" + (gesamt ? " gesamt" : "")}, summen.flatMap((s, i) => [i ? " " : "", el("span", {}, s.name + " ", el("b", {}, plSummeText(s)))]));
+}
+// Molekül Mitnehmen: eine Zeile bei einer Strecke, einem Aufenthalt, einer Unterkunft oder einem Ort mit den Gegenständen, die dort
+// hängen; die ganze Zeile ist der eine Link zur Packliste, ihrer Heimat (ADR-0003)
+function mitnehmenZeile(id) {
+  const gs = PACKLISTE ? plHaengtAn(id) : [];
+  if (!gs.length) return null;
+  return el("a", {class: "mitnehmen", href: "#packliste", title: T("seite.packliste.zur_liste")}, symbol("packliste", "etikett-sym"),
+    el("span", {}, el("b", {}, T("seite.packliste.mitnehmen") + " "), gs.map(g => g.titel).join(", ")));
+}
+// Molekül Gegenstandszeile (Ansicht Packen): Haken, Titel mit Kennung, darunter Merkmale, wer packt, Bezug und wer ihn schon gepackt hat.
+// ohneMerkmal: das Merkmal, nach dem gruppiert wird (die Gruppe nennt es schon)
+function gegenstandZeile(g, ohneMerkmal) {
+  const k = PL_KAT.get(g.art) || {merkmale: []}, ich = NAME, packer = g.wer || ich;
+  const von = plPackenVon(g), gepackt = !!packer && von.some(p => gleicherName(p, packer));
+  const darf = KANN_PACKEN && plAktiv(g) && (!g.wer || !ich || gleicherName(g.wer, ich));
+  const haken = darf
+    ? el("button", {type: "button", class: "haken" + (gepackt ? " an" : ""), role: "checkbox", "aria-checked": String(gepackt), "data-pack": g.id,
+      "aria-label": T(gepackt ? "seite.packliste.haken_zurueck" : "seite.packliste.haken_packen", {titel: g.titel})}, gepackt ? "✓" : "")
+    : el("span", {class: "haken-platz", "aria-hidden": "true"}, gepackt ? "✓" : "");
+  const mk = k.merkmale.filter(m => m.id !== ohneMerkmal && (g.merkmale || {})[m.id]).map(m => {
+    const v = g.merkmale[m.id];
+    return `${m.name} ${v.wert}${m.einheit && m.typ === "zahl" ? " " + m.einheit : ""}`;
+  });
+  const andere = von.filter(p => !gleicherName(p, packer));
+  const chips = el("div", {class: "chips"},
+    g.wer ? chip("leise", T("seite.packliste.packt_x", {wer: g.wer})) : null,
+    g.an ? chip("leise", g.an_name || g.an, {href: "#" + g.an}) : null,
+    !g.wer && andere.length ? chip("plan", T("seite.packliste.gepackt_von", {wer: andere.join(", ")})) : null,
+    plMeinAusgang(g, packer) ? chip("offen", T("seite.packliste.wird_nachgereicht")) : null,
+    g.an_verworfen ? chip("weg", T("seite.packliste.an_verworfen")) : null,
+    plAktiv(g) ? null : chip("weg", T("seite.packliste.weggelassen")),
+    Object.values(g.merkmale || {}).some(v => v.ungeprueft) ? chip("offen", T("seite.chip.ungeprueft")) : null);
+  return el("div", {class: "pack-zeile" + (gepackt ? " gepackt" : "") + (!plAktiv(g) || g.an_verworfen ? " weg" : ""), id: g.id, "data-ziel": g.id},
+    haken, el("div", {class: "pack-text"}, el("div", {class: "pack-titel"}, g.titel, zid(g.id)),
+      mk.length ? el("div", {class: "pack-unter"}, mk.join(" · ")) : null, g.notiz ? el("div", {class: "pack-unter"}, g.notiz) : null,
+      chips.childNodes.length ? chips : null));
+}
+// Organismus Packtabelle (Ansicht Planen): die Gegenstände einer Kategorie mit den Merkmalen als Spalten wie in der Übersicht je Art
+// (artUebersicht), dazu wer packt und wo er gebraucht wird, unten die Summen; weggelassene zugeklappt darunter
+function packTabelle(k) {
+  const alle = PL.gegenstaende.filter(g => g.art === k.art), gs = alle.filter(plAktiv), weg = alle.filter(g => !plAktiv(g));
+  const box = el("section", {class: "wm pack-tabelle", "data-art": k.art},
+    el("h3", {}, symbol(k.symbol || "packliste", "etikett-sym"), " ", T("seite.packliste.kategorie_titel", {art: k.name, n: gs.length})));
+  if (!gs.length && !weg.length) return box.append(el("p", {class: "meldung"}, T("seite.packliste.kategorie_leer"))) || box;
+  const spalten = k.merkmale.filter(m => !m.auto && (m.stufe || "empfohlen") !== "aus" && gs.some(g => (g.merkmale || {})[m.id]));
+  const hatWer = gs.some(g => g.wer), hatAn = gs.some(g => g.an);
+  const zelle = (g, m) => {
+    const v = (g.merkmale || {})[m.id];
+    return v ? el("span", {}, merkmalWert(v, null, true), m.einheit && m.typ === "zahl" ? " " + m.einheit : "") : el("span", {class: "mk-nichts", "aria-label": T("seite.leer.keine")}, "–");
+  };
+  const zeilen = gs.map(g => el("tr", {class: "wm-zeile" + (g.an_verworfen ? " weg" : ""), id: g.id, "data-ziel": g.id},
+    el("th", {scope: "row"}, g.titel, zid(g.id), g.notiz ? el("div", {class: "z klein"}, g.notiz) : null, g.an_verworfen ? chip("weg", T("seite.packliste.an_verworfen")) : null),
+    spalten.map(m => el("td", {}, zelle(g, m))),
+    hatWer ? el("td", {}, g.wer || "–") : null,
+    hatAn ? el("td", {}, g.an ? link(g.an, g.an_name || g.an) : "–") : null));
+  const fuss = (k.summen || []).length ? el("tfoot", {}, el("tr", {}, el("th", {scope: "row"}, T("seite.packliste.summe")),
+    spalten.map(m => el("td", {}, (k.summen.find(s => s.merkmal === m.id) || {summen: []}).summen.map(plSummeText).join(", "))),
+    hatWer ? el("td", {}) : null, hatAn ? el("td", {}) : null)) : null;
+  if (gs.length) box.append(el("div", {class: "tabelle"}, el("table", {class: "vergleich mk wm-tab"},
+    el("thead", {}, el("tr", {}, el("th", {scope: "col"}, T("seite.packliste.gegenstand")), spalten.map(m => el("th", {scope: "col"}, m.name)),
+      hatWer ? el("th", {scope: "col"}, T("seite.packliste.packt")) : null, hatAn ? el("th", {scope: "col"}, T("seite.packliste.gehoert_zu")) : null)),
+    el("tbody", {}, zeilen), fuss)));
+  if (weg.length) box.append(el("details", {class: "pack-weg"}, el("summary", {}, T("seite.packliste.weggelassen_n", {n: weg.length})),
+    el("ul", {}, weg.map(g => el("li", {id: g.id, "data-ziel": g.id}, g.titel, zid(g.id),
+      (g.verlauf || []).length ? " – " + (g.verlauf[g.verlauf.length - 1].grund || g.verlauf[g.verlauf.length - 1].was) : "")))));
+  return box;
+}
+// Organismus Packgruppe (Ansicht Packen): eine Gruppe von Gegenständen (Raum, Kategorie …) mit ihrem Fortschritt, den Summen und
+// den Zeilen zum Abhaken
+function packGruppe(titel, gs, ohneMerkmal) {
+  const ich = NAME, mein = gs.filter(g => plAktiv(g) && (!g.wer || !ich || gleicherName(g.wer, ich)));
+  const fertig = mein.filter(g => plGepackt(g, g.wer || ich)).length;
+  return el("section", {class: "pack-gruppe", "data-gruppe": titel},
+    el("h3", {}, titel, " ", el("span", {class: "pack-fortschritt"}, ich && mein.length ? T("seite.packliste.gepackt_n", {a: fertig, b: mein.length}) : zahlMarke(gs.length))),
+    packSumme(plSummenVon(gs)), gs.map(g => gegenstandZeile(g, ohneMerkmal)));
+}
+
+// Vorlage Packliste (Reiter): oben die Wahl Planen oder Packen und die Summe der ganzen Liste, dann die Kategorien (Planen) oder die
+// Gruppen nach einem Merkmal (Packen)
+function ansichtPackliste(m) {
+  m.append(el("h2", {}, T("seite.packliste.titel")));
+  if (!PL.gegenstaende.length) {
+    m.append(el("div", {class: "leer"}, symbol("packliste"), el("b", {}, T("seite.packliste.noch_keine")), el("span", {}, T("seite.packliste.der_erste"))));
+    return;
+  }
+  m.append(el("p", {class: "meldung"}, T("seite.packliste.einleitung")));
+  const ansicht = PL_ANSICHT === "packen" ? "packen" : "planen";
+  const kopf = el("div", {class: "pack-kopf"}, umschalter(T("seite.packliste.ansicht"), [
+    [{"data-pl-ansicht": "planen"}, ansicht === "planen", T("seite.packliste.planen")],
+    [{"data-pl-ansicht": "packen"}, ansicht === "packen", T("seite.packliste.packen")]]));
+  const gruppierbar = new Map();
+  for (const k of PL.kategorien) for (const mk of k.merkmale) if (["auswahl", "text"].includes(mk.typ) && !gruppierbar.has(mk.id)) gruppierbar.set(mk.id, mk);
+  if (ansicht === "packen" && gruppierbar.size) kopf.append(el("label", {for: "plGruppe"}, T("seite.packliste.gruppieren"),
+    el("select", {id: "plGruppe"}, el("option", {value: "_kategorie", selected: PL_GRUPPE === "_kategorie"}, T("seite.packliste.kategorie")),
+      [...gruppierbar.values()].map(mk => el("option", {value: mk.id, selected: PL_GRUPPE === mk.id}, mk.name)))));
+  m.append(kopf);
+  if (ansicht === "packen") {
+    const ich = NAME;
+    if (ich) { const [a, n] = plFortschritt(ich); if (n) m.append(el("p", {class: "meldung"}, T("seite.packliste.fortschritt", {a, b: n, wer: ich}))); }
+    else if (KANN_PACKEN) m.append(el("p", {class: "meldung"}, T("seite.packliste.name_beim_ersten_haken")));
+    if (API_OK === false || PS_AUSGANG.length) m.append(el("p", {class: "meldung"}, T("seite.packliste.offline_hinweis")));
+    const gruppe = PL_GRUPPE !== "_kategorie" && gruppierbar.has(PL_GRUPPE) ? gruppierbar.get(PL_GRUPPE) : null;
+    const gs = PL.gegenstaende.filter(plAktiv), gruppen = new Map();
+    if (!gruppe) for (const k of PL.kategorien) gruppen.set(k.name, gs.filter(g => g.art === k.art));
+    else {
+      const folge = gruppe.werte || [];
+      const wert = g => { const v = (g.merkmale || {})[gruppe.id]; return v ? String(v.wert) : ""; };
+      const schluessel = [...new Set(gs.map(wert))].sort((a, b) => !a - !b || (folge.indexOf(a) + 1 || 99) - (folge.indexOf(b) + 1 || 99) || SORT.compare(a, b));
+      for (const s of schluessel) gruppen.set(s || T("seite.packliste.ohne_angabe"), gs.filter(g => wert(g) === s));
+    }
+    for (const [titel, liste] of gruppen) if (liste.length) m.append(packGruppe(titel, liste, gruppe ? gruppe.id : null));
+    const weg = PL.gegenstaende.filter(g => !plAktiv(g));
+    if (weg.length) m.append(el("details", {class: "pack-weg"}, el("summary", {}, T("seite.packliste.weggelassen_n", {n: weg.length})), weg.map(g => gegenstandZeile(g))));
+  } else {
+    m.append(packSumme(PL.summen, true));
+    for (const k of PL.kategorien) m.append(packTabelle(k));
+  }
+}
+
+async function psLaden() {
+  if (!PACKLISTE) return;
+  try {
+    const r = await fetch(PS_API, {cache: "no-store"});
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    if (!d || typeof d !== "object" || Array.isArray(d)) throw 0;
+    PS = d; merke("packstand", PS);
+  } catch (e) { return; }
+  if (PS_AUSGANG.length) await psSenden();
+}
+// Haken nachreichen: je Person eine Anfrage mit allen Änderungen (idempotent: gesetzt wird der Endzustand). Ohne Netz bleibt alles im
+// Ausgang; was der Dienst ablehnt, wird verworfen und genannt.
+async function psSenden() {
+  if (!PS_AUSGANG.length) return;
+  const je = new Map();
+  for (const a of PS_AUSGANG) { if (!je.has(a.name)) je.set(a.name, {}); je.get(a.name)[a.gid] = a.gepackt; }
+  let rest = PS_AUSGANG.slice(), abgelehnt = "", gesendet = false;
+  for (const [name, haken] of je) {
+    let r, d;
+    try { r = await fetch(PS_API, {method: "PATCH", headers: {"Content-Type": "application/json"}, body: JSON.stringify({name, gepackt: haken})}); d = await r.json().catch(() => ({})); }
+    catch (e) { break; }
+    if (r.status >= 500 || r.status === 429 || (r.status === 404 && !d.fehler)) break;
+    if (!r.ok) abgelehnt = dienstFehler(d) || T("seite.fehler.abgelehnt");
+    else gesendet = true;
+    rest = rest.filter(a => !(a.name === name && a.gid in haken && a.gepackt === haken[a.gid]));
+  }
+  PS_AUSGANG = rest; merke("packstand-ausgang", PS_AUSGANG);
+  if (gesendet) await psLaden();
+  if (abgelehnt) alert(T("seite.fehler.nicht_gespeichert") + abgelehnt);
+}
+// Einen Haken setzen oder zurücknehmen: sofort sichtbar, dann senden (ohne Netz später)
+async function plPacken(gid) {
+  const g = PL_JE.get(gid);
+  if (!g || !plAktiv(g) || !KANN_PACKEN) return;
+  const name = nameHolen();
+  if (!name) return;
+  if (g.wer && !gleicherName(g.wer, name)) { alert(T("seite.packliste.nur_wer", {wer: g.wer})); return; }
+  const neu = !plGepackt(g, g.wer || name);
+  PS_AUSGANG = [...PS_AUSGANG.filter(a => !(a.gid === gid && gleicherName(a.name, name))), {gid, name, gepackt: neu}];
+  merke("packstand-ausgang", PS_AUSGANG);
+  route(true);
+  await psSenden();
+  route(true);
+}
+document.addEventListener("click", e => {
+  const h = e.target.closest("[data-pack]");
+  if (h) { e.preventDefault(); plPacken(h.dataset.pack); return; }
+  const a = e.target.closest("[data-pl-ansicht]");
+  if (a) { e.preventDefault(); PL_ANSICHT = a.dataset.plAnsicht; merke("packliste-ansicht", PL_ANSICHT); route(true); }
+}, true);
+document.addEventListener("change", e => {
+  if (e.target.id === "plGruppe") { PL_GRUPPE = e.target.value; merke("packliste-gruppe", PL_GRUPPE); route(true); }
+});
+window.addEventListener("online", () => psLaden().then(() => { if (reiter === "packliste") route(true); }));
+
 // Kennung kopieren (Knopf im Rückmeldefenster), um im Gespräch auf eine Stelle zu zeigen
 document.addEventListener("click", e => {
   const k = e.target.closest("[data-kopieren]");
@@ -5166,6 +5457,8 @@ function amElement(m, a) {
   const auf = Object.keys(R && R.aufenthalte || {}).filter(x => dichteHier(x, id) === "karte");
   if (auf.length) bereich(T("seite.aufenthalt.am_element"), ...auf.map(x => zeigeDing(x, "karte", {ohneOrt: R.aufenthalte[x].ort === id})));
   if (R && (a.uebersicht || []).length) bereich(T("seite.art_uebersicht.kopf"), artUebersicht(a.uebersicht));
+  const mitnehmen = mitnehmenZeile(id);   // Gegenstände der Packliste, die an diesem Ort oder dieser Strecke hängen (ADR-0010)
+  if (mitnehmen) m.append(mitnehmen);
 }
 // Wahlstellen, die an einem Element hängen (an_ids), ohne die, die der Tag schon über Nacht, Strecke oder wahl: zeigt
 const wahlAn = (ids, ohne) => R ? R.wahlstellen.filter(w => (w.an_ids || []).some(x => ids.includes(x)) && !(ohne || []).includes(w.id)) : [];
@@ -5247,6 +5540,8 @@ function route(behalten) {
   else if (h === "zu-tun" && ZU_TUN) { zeigeReiter("zu-tun"); ansichtZuTun(m); }
   else if ((h === "zu-entscheiden" || h === "zu-buchen") && ZU_TUN) { zeigeReiter("zu-tun"); ansichtZuTun(m); ziel = h; }
   else if (h === "wuensche" && WUENSCHE) { zeigeReiter("wuensche"); ansichtWuensche(m); }
+  else if (h === "packliste" && PACKLISTE) { zeigeReiter("packliste"); ansichtPackliste(m); }
+  else if (PACKLISTE && PL_JE.has(h)) { zeigeReiter("packliste"); ansichtPackliste(m); ziel = h; }   // ein Gegenstand wohnt in der Packliste (ADR-0010)
   else if ((h === "rueckmeldungen" || h === "aufgaben" || h === "fragen") && B(h)) { zeigeReiter("zu-tun"); ansichtZuTun(m); ziel = h; }
   else if (/^F-\d+$/.test(h) && zeileZu.get(h) === "fragen" && B("fragen")) { zeigeReiter("zu-tun"); ansichtZuTun(m); ziel = h; }
   // Plan-Baum (darstellung.tiefe): Plan → Tag → Ort, unter dem Reiter Reise
@@ -5323,7 +5618,7 @@ window.addEventListener("hashchange", () => { if (document.body.classList.contai
 route();
 rmKnopf();
 agKnopf();
-Promise.all([ichLaden(), rmLaden(), agLaden(), brLaden(), blLaden()]).then(() => route(true));
+Promise.all([ichLaden(), rmLaden(), agLaden(), brLaden(), blLaden(), psLaden()]).then(() => route(true));
 
 /* ---------- Höhe als App vom Home-Bildschirm (iOS) ----------
    Nach dem Schließen der Tastatur bleibt die Höhe des Fensters manchmal auf dem Stand mit Tastatur stehen, bis die App

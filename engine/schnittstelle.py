@@ -140,7 +140,8 @@ texte.rand_woerter({i: e for i, e in PARAMETER.items() if i != e})
 # Bausteine einer Reise (einstellung_setzen, bausteine): die englischen Wörter der Werkzeugbeschreibung gelten als Eingabe, auch die der
 # Werkzeugnamen (feedback_list, tasks, wishes); gespeichert werden die deutschen Schlüssel (#287)
 BAUSTEIN_ALIAS = {"variants": "varianten", "map": "karte", "feedback": "rueckmeldungen", "feedback_list": "rueckmeldungen", "questions": "fragen",
-                  "open_questions": "fragen", "tasks": "aufgaben", "wishes": "wuensche", "watcher": "waechter", "profiles": "profile"}
+                  "open_questions": "fragen", "tasks": "aufgaben", "wishes": "wuensche", "watcher": "waechter", "profiles": "profile",
+                  "packing_list": "packliste"}
 
 
 def parameter_zu_englisch(werkzeug):

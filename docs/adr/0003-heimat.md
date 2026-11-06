@@ -87,3 +87,8 @@ Entschieden vom Product Owner am 5.11.2026 in Claude Code (drei Fragen, alle nac
 
 - 29.10.2026: Abgleich (`docs/abgleich-2026-10-29.md`): Buchung und Unterkunft standen an mehreren Stellen vollständig (bei jedem Ding der Buchung, an jeder Nacht der Unterkunft, als Liste unter dem Plan), ein Link auf eine Buchung an einem Aufenthalt oder einer Fahrt hatte kein Ziel, die Liste der Entscheidungen im Plan zeigte Wahlen vollständig, die schon am Tag standen. Jetzt: Buchung nur an ihrem ersten Ding, Unterkunft nur an ihrer ersten Nacht, Aufenthalt und Fahrt haben ihren Tag als Heimat (`heimat`), Sammellisten zeigen Zeilen.
 - 28.10.2026: Analyse, Konzept (Navigation A, Plantext auflösen, Alternativen an jedem Element) und grafische Ausarbeitung einzeln vom Product Owner freigegeben, gebaut in frieda-reist #84. Am selben Abend als ADR festgehalten.
+
+## Nachtrag (6.11.2026, #370, ADR-0010): Heimat des Gegenstands
+
+Der Gegenstand der Packliste (`G-…`) ist eine eigene Grundform. **Heimat** ist der Reiter „Packliste“ (Baustein `packliste`). An der Strecke, dem Aufenthalt, der Unterkunft oder dem Ort, an dem er hängt (`an:`, ADR-0007), steht er nur als Zeile „Mitnehmen“ mit einem Link zur Packliste; an einem Tag steht er nie (ein Tag ist kein Elternelement). Der Reiter steht nach „Wünsche“ und vor der Suche. Die Tabelle oben ist die der Vorgaben; die Zeile für den Gegenstand steht in `docs/design.md`.
+

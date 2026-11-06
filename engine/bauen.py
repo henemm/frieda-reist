@@ -1511,6 +1511,7 @@ def punkte_verlinken(html, sid, punkte):
 SYMBOLE = {"plan": "calendar-days", "varianten": "split", "etappen": "footprints", "wissen": "book-open",
            "praxis": "backpack", "quellen": "library", "suche": "search", "rueckmeldungen": "message-circle", "zu": "x",
            "aufgaben": "list-checks", "karte": "map", "zu-tun": "list-checks", "wuensche": "sparkles",
+           "packliste": "backpack",
            # Kategorien der Etappen-Karten
            "einkehr": "utensils", "wasser": "droplet", "bus": "bus", "unterkunft": "bed-double", "apotheke": "pill",
            "taxi": "car-taxi-front",

@@ -14,7 +14,7 @@ Eine **Instanz** ist eine Reisegruppe mit eigenem Betreiber: ein Reisen-Repo, da
 | Arbeitsordner | eigener Klon des Reisen-Repos, Branches erlaubt | hier wird gearbeitet, über Pull Requests nach `main` |
 | Arbeitskopie des Schreibwegs | `<Bauordner>-schreiben-<reise>` | Git-Worktree je Reise, legt der Dienst selbst an |
 | Seiten | `<FR_SEITEN>/<reise>/` | gebaute Seiten, nginx liefert sie aus |
-| Ablage | `<FR_ABLAGE>/<reise>/` (`eingang.jsonl`, `status.json`, `aufgaben.json`, …) | Eingaben der Mitreisenden; nie im Repo |
+| Ablage | `<FR_ABLAGE>/<reise>/` (`eingang.jsonl`, `status.json`, `aufgaben.json`, `brett.json`, `packstand.json` (Packliste, ADR-0010), …) | Eingaben der Mitreisenden; nie im Repo |
 | Konten | `<FR_KONTEN>/` (`konten.db`, Dienst-Geheimnis, `sicherung/konten.db`, `neu/` mit Anfragen nach neuen Reisen und Meldungen an Personen) | Konten, Anmeldungen, Einladungen und alles Personenbezogene ohne Reise; nie im Repo, nie in einer Reise |
 | Reisespeicher | `<FR_SPEICHER>/` (`reisen.db`, `sicherung/reisen.db`; Vorgabe `<FR_SEITEN>/_speicher`) | Reisedaten als unveränderliche Versionen in SQLite (`engine/reisespeicher.py`, [ADR-0009](adr/0009-reisespeicher.md), #346); ab Stufe 2 (#347) schreibt der Schreibweg die Reisen aus `FR_SPEICHERREISEN` hinein (Speicherweg), alle anderen bis Stufe 5 über Git |
 | Dienstordner | `<FR_DIENST>/` | Code der Dienste, Stände, Stempel, vorgemerkte Links, geheime Einstellungen |

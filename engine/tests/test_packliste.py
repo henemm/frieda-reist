@@ -2,10 +2,15 @@
 Schreibweg, Übernahme aus einer früheren Reise, Packstand beim Rückmeldedienst, Konnektor. Gegen beide Beispielreisen
 (Wanderung mit Gewicht und Raum, Städtewochenende ohne beides)."""
 import datetime
+import functools
+import http.server
 import json
+import os
 import shutil
+import subprocess
 import sys
 import tempfile
+import threading
 from pathlib import Path
 
 import pytest
@@ -20,6 +25,7 @@ import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 import schreiben as sb  # noqa: E402
 from conftest import meldet  # noqa: E402
+from playwright_pfad import PLAYWRIGHT  # noqa: E402
 from test_konnektor import ALT_ORGANISATOR, GAST, KARL, dienst, rpc, schreibweg, seiten, werkzeug, Schreibweg  # noqa: E402,F401
 from test_regeln import anfrage, umgebung  # noqa: E402,F401  (umgebung: Fixture)
 
@@ -543,3 +549,57 @@ def test_englische_namen_der_werkzeuge(schreibweg):
     tab = schnittstelle.parameter_zu_englisch("gegenstand_anlegen")
     assert tab["an"] == "parent" and tab["wer"] == "packer" and schnittstelle.parameter_zu_englisch("gegenstand_packen")["gepackt"] == "packed"
     assert schnittstelle.parameter_zu_intern("gegenstand_aendern")["parent"] == "an"
+
+
+# ---------- Seite im Browser ----------
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_packliste_im_browser(tmp_path, monkeypatch, browser):
+    """Reiter Packliste mit dem echten Rückmeldedienst: Planen (Tabellen, Summen), Packen (Gruppen nach Raum, Haken je Person, ohne Netz
+    abhaken und zurücknehmen, nachreichen), Zeile „Mitnehmen“ am Ding, Kennung als Sprungziel; nichts steht am Handy über."""
+    from test_regeln import reise_bauen, starten
+    seiten = reise_bauen(tmp_path, fest=True)
+    o = tmp_path / "ablage" / "beispielreise"
+    o.mkdir(parents=True)
+    monkeypatch.setenv("RM_ABLAGE", str(tmp_path / "ablage"))
+    monkeypatch.setenv("KN_SEITEN", str(seiten))
+    rm._zeiten.clear()
+    dienst, durl = starten(rm.Dienst)
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(seiten)))
+    threading.Thread(target=s.serve_forever, daemon=True).start()
+    try:
+        aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_packliste.mjs"), str(PLAYWRIGHT),
+                              f"http://127.0.0.1:{s.server_address[1]}/beispielreise/", durl, "Karl"],
+                             capture_output=True, text=True, timeout=240, env={**os.environ, "RH_BROWSER": browser})
+    finally:
+        s.shutdown()
+        dienst.shutdown()
+    assert aus.returncode == 0, aus.stderr[-2000:]
+    e = json.loads(aus.stdout.strip().splitlines()[-1])
+    assert e["fehler"] == []
+    # Planen
+    assert e["planen"]["reiter"] == "#packliste"
+    assert e["planen"]["kategorien"] == ["Kleidung (3)", "Ausrüstung (3)", "Apotheke (2)"]
+    assert e["planen"]["gesamt"] == ["Gewicht 2690 g Anschaffung 70 €"]
+    assert e["planen"]["spalten"][:2] == ["Gegenstand", "Gewicht"]
+    assert e["planen"]["summen"] == ["Summe 1560 g", "Summe 750 g 70 €", "Summe 380 g"]
+    assert e["planen"]["weggelassen"] == ["1 weggelassen"] and not e["planen"]["breit"]
+    # Packen: Karl packt alles außer dem Erste-Hilfe-Set, das Ida trägt; es gibt dort keinen Haken für ihn
+    assert e["packen"]["gruppen"][0].startswith("Kleidung") and e["packen"]["haekchenFuerKarl"] == 7 and e["packen"]["ohneHakenIda"] == 0
+    assert e["haken"] == {"gepackt": ["Regenjacke"], "checked": "true"} and e["nachNeuladen"] == ["Regenjacke"]
+    assert e["fortschritt"] == ["Karl: 1 von 7 gepackt"]
+    assert [g.split(" ")[0] for g in e["raum"]["gruppen"]] == ["am", "Tagesrucksack", "Rucksack"] and e["raum"]["mitRaum"] == 0
+    assert e["raum"]["summen"][1] == "Gewicht 980 g"                        # Tagesrucksack: Jacke 420, Flasche 180, Set 350, Pflaster 30
+    # ohne Netz: abhaken und zurücknehmen werden gemerkt, dann nachgereicht
+    assert e["offline"]["ausgang"] == 2 and e["offline"]["gepackt"] == ["Wanderstöcke"] and "wird nachgereicht" in e["offline"]["nachreichen"]
+    assert e["nachgereicht"] == {"ausgang": 0, "gepackt": ["Wanderstöcke"]}
+    assert list(rm.packstand_lesen(o)) == ["G-05"] and list(rm.packstand_lesen(o)["G-05"]) == ["Karl"]
+    # Mitnehmen und Kennung
+    assert e["mitnehmen"]["text"] == ["Mitnehmen: Wanderstöcke"] and e["mitnehmen"]["href"] == "#packliste" and e["mitnehmen"]["danach"] == "#packliste"
+    assert e["kennung"] == {"reiter": "#packliste", "da": 1} and not e["breit"]
