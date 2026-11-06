@@ -135,3 +135,34 @@ def test_nachziehen_laesst_nicht_verschobene_punkte_in_der_datei(tmp_path):
     assert wrest["bloecke"] == {block: [{"name": "Ohne Lage", "kat": "sehenswert", "gebiet": "elbe", "suche": ["Ohne Lage 1", "Ohne Lage 2"]}]}
     bauen.bauen(q, tmp_path / "w" / "x")
     assert neu.nachziehen(q) == []   # zweimal nichts zu tun, nichts wird erneut verschoben
+
+
+def test_punkt_an_einer_strecke_ohne_eintrag_im_plan_bleibt_in_der_datei(tmp_path):
+    """#357: Ein Punkt an einer Strecke, die es in plan/routen.yaml nicht gibt, würde mit an: ins Leere zeigen und den Bau brechen. Er bleibt
+    in plan/punkte.yaml, die Umstellung meldet ihn als offen, scheitert aber nicht, und der Bau läuft."""
+    q = alte_form(tmp_path)
+    p = yaml.safe_load((q / "plan/punkte.yaml").read_text(encoding="utf-8"))
+    p["strecken"]["E-77"] = [{"name": "Brunnen an der Etappe, die es nicht gibt", "kat": "wasser", "lage": [51.001, 14.001], "quelle": "erfunden (Beispielwert)"}]
+    (q / "plan/punkte.yaml").write_text(yaml.safe_dump(p, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    meldungen = neu.nachziehen(q)
+    assert any(m.startswith("ARCHIV E-77") for m in meldungen) and not [m for m in meldungen if m.startswith("OFFEN")], meldungen
+    rest = yaml.safe_load((q / "plan/punkte.yaml").read_text(encoding="utf-8"))
+    assert list(rest["strecken"]) == ["E-77"] and rest["strecken"]["E-77"][0]["name"].startswith("Brunnen")
+    r = bauen.bauen(q, tmp_path / "w" / "x")["route"]
+    assert not any(a.get("eltern") == "E-77" or r["eltern"].get(aid) == "E-77" for aid, a in r["aufenthalte"].items())
+
+
+def test_alte_etappen_ueberschrift_ohne_strecke_ist_archiv_text_und_bricht_nichts(tmp_path):
+    """#357: Ein Dossier-Abschnitt im alten Format („Etappe 77: …“), zu dem der Plan keine Strecke hat, bleibt Text in der Datei: der Bau läuft,
+    der Abschnitt erscheint nicht auf der Seite. Eine Überschrift mit unbekannter Kennung („E-99 …“) bleibt ein Fehler (Tippfehler-Schutz)."""
+    q = tmp_path / "quelle"
+    shutil.copytree(WURZEL / "beispiel/reisen/beispielreise", q)
+    d = q / "inhalt/etappen.md"
+    alt = d.read_text(encoding="utf-8")
+    d.write_text(alt + "\n## Etappe 77: Gibt es im Plan nicht\n\n### Zusammenfassung\nArchivtext.\n", encoding="utf-8")
+    daten = bauen.bauen(q, tmp_path / "w" / "x")
+    assert "Archivtext" not in str(daten) and "Gibt es im Plan nicht" not in str(daten["route"])
+    assert "Etappe 77" in d.read_text(encoding="utf-8")   # nichts gelöscht
+    d.write_text(alt + "\n## E-99 Tippfehler\n\n### Zusammenfassung\nText.\n", encoding="utf-8")
+    with pytest.raises(bauen.BauFehler):
+        bauen.bauen(q, tmp_path / "w2" / "x")

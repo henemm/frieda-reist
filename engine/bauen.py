@@ -50,6 +50,7 @@ BILD_ENDUNGEN = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 # Lesetext einer Strecke im Dossier (#269): die Überschrift beginnt mit der Kennung der Strecke („## E-03 Name“); Titel, Art und
 # Kennzahlen stehen an der Strecke in routen.yaml, der Abschnitt liefert nur Einleitung, Blöcke und Ebenen
 STRECKE_UEBERSCHRIFT = re.compile(r"^(E-\d+[A-Za-z]?)(?:\s+(.*))?$")
+ETAPPE_ALT = re.compile(r"^Etappe\s+(\d+)\b")   # Überschrift vor der Umstellung auf Kennungen („Etappe 10: …“)
 # Ebenen der Tagesseite (B2, docs/design.md „Tagesseite“): Jeder Abschnitt einer Etappe gehört zu einer Ebene, erkannt am
 # Anfang seines Titels (Groß- und Kleinschreibung egal). Die Software kennt nur die Form (ADR-0001, kein Katalog): die
 # Zusammenfassung ist „Der Weg“, Eckdaten (die Kennzahlentabelle) und die Unterkünfte-Liste des Dossiers sind „Unterwegs
@@ -412,6 +413,27 @@ class Bauer:
         return self.html(intro, quelldatei) if intro.strip() else "", bl
 
     # ---------- Bauen ----------
+    def etappe_ohne_strecke(self, titel):
+        """E-ID eines Dossier-Abschnitts im alten Format („Etappe 10: …“), zu dem der Plan keine Strecke hat, sonst None. Er hat nie eine
+        Kennung bekommen und kann keine bekommen (die Umstellung kennt Start und Ziel nicht): Archiv-Text, nicht gezeigt, kein Fehler (#357).
+        Der Text bleibt in der Datei. Eine Überschrift mit Kennung („E-99 …“) ohne Strecke bleibt ein Fehler (Tippfehler-Schutz, #269)."""
+        a = ETAPPE_ALT.match(titel)
+        if not a:
+            return None
+        eid = f"E-{int(a.group(1)):02d}"
+        if not hasattr(self, "_plan_strecken"):
+            r_cfg = self.cfg.get("routen")
+            try:
+                roh = (yaml.safe_load((self.reise_dir / r_cfg["datei"]).read_text(encoding="utf-8")) or {}) if r_cfg else {}
+            except (OSError, yaml.YAMLError):
+                roh = {}
+            self._plan_strecken = set((roh.get("strecken") or {}).keys())
+            self.archiv_etappen = []
+        if not self._plan_strecken or eid in self._plan_strecken:
+            return None
+        self.archiv_etappen.append(eid)
+        return eid
+
     def dossier_lesen(self, abschnitte, benutzt):
         """Etappen-Dossier und Unterkünfte-Dossier (#269): Abschnitte „## E-… Name“ sind Lesetext einer Strecke (Einleitung,
         Blöcke mit Ebene), alle anderen Wissen wie in reise.json abschnitte. -> {E-ID: Abschnitt}; die Strecke selbst (Titel,
@@ -424,6 +446,8 @@ class Bauer:
         benutzt[d_rel] = set()
         for titel, nr, body in teile:
             wo = f"{d_rel}:{nr}"
+            if self.etappe_ohne_strecke(titel):
+                continue
             m = STRECKE_UEBERSCHRIFT.match(titel)
             if m:
                 eid = m.group(1)
@@ -451,6 +475,8 @@ class Bauer:
         benutzt[u_rel] = set()
         for titel, nr, body in teile:
             wo = f"{u_rel}:{nr}"
+            if self.etappe_ohne_strecke(titel):
+                continue
             m = STRECKE_UEBERSCHRIFT.match(titel)
             if m:
                 eid = m.group(1)
@@ -1108,6 +1134,9 @@ class Bauer:
                 continue
             for e in liste or []:
                 e = {"ziel": e} if isinstance(e, str) else e
+                if e.get("ziel") not in ziele and re.match(r"E-\d+[A-Za-z]?", str(e.get("ziel"))) \
+                        and re.match(r"E-\d+[A-Za-z]?", str(e.get("ziel"))).group(0) in set(getattr(self, "archiv_etappen", [])):
+                    continue   # der Abschnitt ist Archiv-Text (Strecke nicht im Plan, #357)
                 if e.get("ziel") not in ziele:
                     self.fehler.append(texte.satz("pruefung.bauen.71", rel=rel, oid=oid, w1=e.get('ziel')))
                     continue

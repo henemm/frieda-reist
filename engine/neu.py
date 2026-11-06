@@ -527,6 +527,13 @@ def kartenpunkte_umstellen(reise_dir, roh, schreiben, meldungen):
     bleibt_strecken, bleibt_bloecke = {}, {}
     for sid, liste in je_strecke.items():
         for p in liste or []:
+            # Eine Strecke, die es in plan/routen.yaml nicht gibt, kann nichts tragen (an: würde ins Leere zeigen und den Bau brechen, #357):
+            # der Punkt bleibt in der Datei, wie vorher gelesen, und die Umstellung scheitert nicht
+            if sid not in (roh.get("strecken") or {}):
+                if verschiebbar(p):
+                    meldungen.append(texte.t(sprache_von(reise_dir), "pruefung.neu.nachziehen.punkt_ohne_strecke", sid=sid, name=p.get("name") or "?"))
+                bleibt_strecken.setdefault(sid, []).append(dict(p, kat=art_von.get(p.get("kat"), p.get("kat"))))
+                continue
             if not anlegen(sid, p, sid):
                 bleibt_strecken.setdefault(sid, []).append(dict(p, kat=art_von.get(p.get("kat"), p.get("kat"))))
     for bid, liste in je_block.items():
@@ -687,12 +694,11 @@ def etappen_nachziehen(reise_dir, roh, schreiben, meldungen):
             st = strecken.get(eid)
             if not isinstance(st, dict):
                 meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.etappe_ohne_strecke", eid=eid, titel=z[3:].strip(), datei=rel))
-                offen = True
-                continue
+                continue   # Archiv-Text: bleibt in der Datei, der Bau übergeht ihn (#357); nichts bleibt für die Hand offen
             if schluessel == "etappen_dossier":
                 ende = next((j for j in range(i + 1, len(zeilen)) if zeilen[j].startswith("## ")), len(zeilen))
                 eck = eckdaten_zeilen(zeilen, i + 1, ende)
-                was, erster, raus_e = [], {}, {}
+                was, erster, raus_e, konflikt = [], {}, {}, set()
                 if not st.get("titel"):
                     st.insert(0, "titel", DoubleQuotedScalarString(name))
                     was.append("titel")
@@ -713,7 +719,7 @@ def etappen_nachziehen(reise_dir, roh, schreiben, meldungen):
                             raus_e[j] = (n, k, w)
                         else:
                             meldungen.append(melde or texte.t(sprache, "pruefung.neu.nachziehen.etappe_kennzahl_anders", eid=eid, name=n, kennung=k, w1=w, w2=km[k], datei=rel))
-                            unsicher.add(eid)
+                            konflikt.add(j)   # es gilt der Wert an der Strecke, die abweichende Zeile bleibt als Text stehen (#357)
                 if raus_e:   # nachgelesen, wie der Bau routen.yaml liest (PyYAML): nur was dort gleich steht, verlässt das Dossier
                     aus = io.StringIO()
                     sb.yaml_rund().dump(roh, aus)
@@ -721,15 +727,12 @@ def etappen_nachziehen(reise_dir, roh, schreiben, meldungen):
                     for j, (n, k, w) in list(raus_e.items()):
                         if g.get(k) is None or (k == "gehzeit" and not isinstance(g[k], str)) or not gleicher_wert(g[k], w):
                             meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.etappe_kennzahl_anders", eid=eid, name=n, kennung=k, w1=w, w2=g.get(k), datei=rel))
-                            unsicher.add(eid)
+                            konflikt.add(j)
                 if not km:
                     del st["kennzahlen"]
                 if was:
                     meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.etappe", eid=eid, was=", ".join(was), datei=rel))
-                if eid in unsicher:   # Abschnitt bleibt, wie er ist; ein späterer Lauf macht weiter
-                    offen = True
-                    continue
-                raus |= eckdaten_raus(zeilen, eck, set(raus_e)) if eck else set()
+                raus |= eckdaten_raus(zeilen, eck, set(raus_e) - konflikt) if eck else set()
             neu = f"## {eid} {name}"
             meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.etappe_ueberschrift", datei=rel, alt=z[3:].strip(), neu=neu[3:]))
             zeilen[i] = neu

@@ -265,9 +265,10 @@ def test_f101_vorhandene_teil_kennzahlen_werden_ergaenzt_nicht_ueberschrieben(tm
     d = altform(r, kz='{gehzeit: "ca. 5:00 h"}')
     m = neu.nachziehen(r)
     assert any(x.startswith("OFFEN E-01") and "ca. 5:00 h" in x and "ca. 3:40 h" in x for x in m), m
-    assert plan_kz(r)["gehzeit"] == "ca. 5:00 h"   # offen: der Bau meldet die alte Überschrift, also routen.yaml lesen
+    assert plan_kz(r)["gehzeit"] == "ca. 5:00 h"   # es gilt der Wert an der Strecke (#357)
     t = d.read_text(encoding="utf-8")
-    assert "| Gehzeit | ca. 3:40 h |" in t and "## Etappe 1: " in t and "etappen_kennzahlen" in einstellungen(r)
+    # die abweichende Zeile bleibt als Text stehen, die Überschrift bekommt ihre Kennung, nichts bleibt für die Hand offen
+    assert "| Gehzeit | ca. 3:40 h |" in t and "## E-01 " in t and "## Etappe 1: " not in t and "etappen_kennzahlen" not in einstellungen(r)
     assert all("pruefung.neu.nachziehen.etappe_kennzahl_anders" in katalog(x) for x in (texte_de, texte_en))
 
 
@@ -288,7 +289,7 @@ def test_f103_zwei_namen_einer_kennung_ueberschreiben_nicht(tmp_path):
     m = neu.nachziehen(r)
     assert any(x.startswith("OFFEN E-01") and "Dauer" in x for x in m), m
     assert plan_kz(r)["gehzeit"] == "ca. 3:40 h"
-    assert "| Dauer | 5:00 h |" in d.read_text(encoding="utf-8") and "etappen_kennzahlen" in einstellungen(r)
+    assert "| Dauer | 5:00 h |" in d.read_text(encoding="utf-8") and "etappen_kennzahlen" not in einstellungen(r)   # bleibt als Text (#357)
     assert all("pruefung.neu.nachziehen.etappe_kennzahl_doppelt" in katalog(x) for x in (texte_de, texte_en))
     r = kopie("beispielreise", tmp_path / "b")
     altform(r, zeilen=E01_ZEILEN + "| Gehzeit mit Pausen | 5:00 h |\n",
