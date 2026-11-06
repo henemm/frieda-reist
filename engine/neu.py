@@ -18,7 +18,8 @@ Als Befehl ist neu.py ein Werkzeug des Betreibers für Struktur, nie für Inhalt
                                                   (docs/ontologie.md): typ→art, bereich→art, art→wann an Wahlstellen,
                                                   rolle kosten, Ebenen in reise.json, Eckdaten aus der früheren Vorlage
                                                   (#217), Titel und Kennzahlen der Etappen aus dem Dossier an die Strecken
-                                                  (#269); keine ID, kein Wert ändert sich
+                                                  (#269), eine Lage je Ort und gleichnamigem Wegpunkt (ADR-0008);
+                                                  keine ID, kein Wert ändert sich
 
 IDs werden nie neu vergeben: ids.yaml hält je Art die höchste je vergebene Nummer fest. Die nächste ID liegt über
 dieser Marke und über jeder Nummer, die irgendwo in der Reise steht (auch im Verlauf von Verworfenem).
@@ -656,6 +657,120 @@ def eckdaten_raus(zeilen, eck, raus):
     return raus | set(bereich) if all(j in raus or not zeilen[j].strip() for j in bereich[1:]) else raus
 
 
+STELLE_METER = 100   # gleichnamige Wegpunkte so nah beieinander sind dieselbe Stelle (Etappenende und -anfang im selben Dorf: real bis 37 m)
+
+
+def name_gleich(s):
+    """Name für den genauen Vergleich: Unicode-Form NFC, Leerraum am Rand weg."""
+    import unicodedata
+    return unicodedata.normalize("NFC", str(s or "")).strip()
+
+
+def name_aehnlich(s):
+    """Name für den Vergleich „nur ähnlich“: ohne Akzente, Groß- und Kleinschreibung und Satzzeichen."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode().casefold()
+    return re.sub(r"[^a-z0-9]+", " ", s).strip()
+
+
+def abstand_m(a, b):
+    """Abstand zweier Punkte [Breite, Länge] in Metern (Haversine)."""
+    import math
+    la1, lo1, la2, lo2 = (math.radians(float(x)) for x in (a[0], a[1], b[0], b[1]))
+    h = math.sin((la2 - la1) / 2) ** 2 + math.cos(la1) * math.cos(la2) * math.sin((lo2 - lo1) / 2) ** 2
+    return 2 * 6371000 * math.asin(math.sqrt(h))
+
+
+def orte_lage_zusammenfuehren(reise_dir, roh, schreiben, meldungen):
+    """ADR-0008, Schritt c (#335): eine Lage je Stelle. Ein Ort und die gleichnamigen Wegpunkte (Aufenthalte an einer Strecke mit
+    eigenen Koordinaten) werden zusammengeführt: Der Ort übernimmt Koordinaten und Herkunft des ersten Wegpunkts, wenn er keine eigenen
+    hat; jeder Wegpunkt verliert seine Koordinaten und verweist mit dem Merkmal der Rolle bezug auf den Ort (fehlt es der Art, legt
+    arten.yaml es an). Ein Wegpunkt, der schon die Lage einer Unterkunft an diesem Ort ist, bleibt, wie er ist: der Ort liegt über
+    die Unterkunft dort. Gemeldet statt geraten wird: Wegpunkte mehr als STELLE_METER vom Ort oder voneinander, ein Wegpunkt, der auf
+    etwas anderes verweist, ein Name, der nur ähnlich ist, und ein Ort mit Unterorten (Region, kein Punkt). Orte außerhalb bleiben.
+    IDs bleiben, nichts wird gelöscht."""
+    import schreiben as sb
+    orte, auf, strecken = (roh.get(g) or {} for g in ("orte", "aufenthalte", "strecken"))
+    if not orte or not auf:
+        return
+    sprache = sprache_von(reise_dir)
+    arten = sb.arten_laden(reise_dir)
+    arten_neu = False
+    unterorte = {o.get("an") for o in orte.values() if isinstance(o, dict)}
+    unterkuenfte = {k: v for k, v in (roh.get("unterkuenfte") or {}).items() if isinstance(v, dict)}
+
+    def koordinaten(d):
+        for v in (d.get("merkmale") or {}).values():
+            if isinstance(v, dict) and v.get("typ") == "koordinaten" and not v.get("rolle"):
+                w = v.get("wert")
+                return (v, [float(w[0]), float(w[1])]) if isinstance(w, (list, tuple)) and len(w) == 2 else (None, None)
+        return None, None
+
+    def bezug_schluessel(art):
+        mk = (arten.get(art) or {}).get("merkmale") or {}
+        return next((k for k, d in mk.items() if isinstance(d, dict) and d.get("rolle") == "bezug"), None)
+
+    def bezug(a):
+        k = bezug_schluessel(a.get("art"))
+        v = (a.get("merkmale") or {}).get(k) if k else None
+        return str(v.get("wert") if isinstance(v, dict) else v) if v is not None else None
+
+    for oid, o in orte.items():
+        if not isinstance(o, dict) or o.get("ausserhalb") or not name_gleich(o.get("name")):
+            continue
+        name = name_gleich(o["name"])
+        wegpunkte = [(aid, a) for aid, a in auf.items() if isinstance(a, dict) and a.get("an") in strecken and koordinaten(a)[1]]
+        for aid, a in wegpunkte:
+            if name_gleich(a.get("name")) != name and name_aehnlich(a.get("name")) == name_aehnlich(name):
+                meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.ort_aehnlich", oid=oid, name=name, aid=aid, wp=a.get("name")))
+        paare = [(aid, a) for aid, a in wegpunkte if name_gleich(a.get("name")) == name]
+        if not paare:
+            continue
+        if oid in unterorte:
+            meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.ort_region", oid=oid, name=name, ids=", ".join(i for i, _ in paare)))
+            continue
+        # verweist der Wegpunkt auf eine Unterkunft an diesem Ort, ist er deren Lage und der Ort liegt schon über sie dort (ort_lagen)
+        fremd = [(aid, b) for aid, a in paare if (b := bezug(a)) and b != oid and (unterkuenfte.get(b) or {}).get("ort") != oid]
+        for aid, b in fremd:
+            meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.ort_fremd", oid=oid, name=name, aid=aid, bezug=b))
+        paare = [(aid, a) for aid, a in paare if not bezug(a)]
+        if not paare:
+            continue
+        eigen_v, eigen = koordinaten(o)
+        bezugspunkt = eigen or koordinaten(paare[0][1])[1]
+        weit = max(abstand_m(bezugspunkt, koordinaten(a)[1]) for _, a in paare)
+        if weit > STELLE_METER:
+            meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.ort_weit", oid=oid, name=name, ids=", ".join(i for i, _ in paare),
+                                     m=round(weit), grenze=STELLE_METER))
+            continue
+        if not eigen:
+            v, w = koordinaten(paare[0][1])
+            if schreiben:
+                if hasattr(o, "fa") and o.fa.flow_style():
+                    o.fa.set_block_style()   # ein langer Fließ-Eintrag wird lesbar
+                sb.lage_merkmal_schreiben(o, "koordinaten", w, v.get("quelle") or paare[0][1].get("quelle"), v.get("geprueft"), v.get("notiz"))
+            meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.ort_lage", oid=oid, name=name, aid=paare[0][0]))
+        for aid, a in paare:
+            if not schreiben:
+                continue
+            k = bezug_schluessel(a.get("art"))
+            if k is None:   # die Art kennt noch keinen Bezug: Merkmal „Ort“ mit Rolle bezug (wie station in der Beispielreise)
+                art_def = arten.setdefault(a.get("art"), {"grundform": "aufenthalt"})
+                art_def.setdefault("merkmale", {})["station"] = {"name": texte.t(sprache, "inhalt.rolle.bezug_ort"), "typ": "text",
+                                                                 "rolle": "bezug", "stufe": "angeboten"}
+                k, arten_neu = "station", True
+            v, _ = koordinaten(a)
+            quelle = v.get("quelle") or a.get("quelle")
+            sb.lage_merkmal_entfernen(a, "koordinaten")
+            mk = a.get("merkmale")
+            if mk is None:
+                mk = a["merkmale"] = sb.merkmale_knoten({})
+            mk[k] = sb.fliess_map({"wert": oid, "quelle": quelle})
+        meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.ort_bezug", oid=oid, name=name, ids=", ".join(i for i, _ in paare)))
+    if arten_neu:
+        sb.arten_speichern(reise_dir, arten, {"name": "Betrieb (neu.py nachziehen)"})
+
+
 def etappen_nachziehen(reise_dir, roh, schreiben, meldungen):
     """#269: Titel und fehlende Kennzahlen der Etappen aus dem Dossier an die Strecken in routen.yaml (vorhandene bleiben), die
     Überschriften „Etappe N: Name“ in Etappen- und Unterkünfte-Dossier werden „E-0N Name“, reise.json verliert etappen_kennzahlen und
@@ -764,7 +879,7 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
     Eckdaten aus der früheren Vorlage stellt eckdaten_nachziehen um (#217); reise.yaml ohne sprache bekommt sprache: de
     (sprache_nachziehen, #267), vor den Schritten, die die Sprache der Reise lesen; Titel und Kennzahlen der Etappen kommen aus
     dem Dossier an die Strecken (etappen_nachziehen, #269); das frühere Feld buchung: an Dingen wird zur Buchung B-…
-    (buchung_nachziehen, #215).
+    (buchung_nachziehen, #215); Ort und gleichnamige Wegpunkte bekommen eine Lage (orte_lage_zusammenfuehren, ADR-0008).
     Kommentare und Form der Dateien bleiben (ruamel). -> Liste der Meldungen (was geändert oder offen ist)."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from routen import WANN, art_schluessel
@@ -805,6 +920,7 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
                     meldungen.append(f"{did}: {feld} → merkmale (typisiert)")
     if roh is not None:
         kartenpunkte_umstellen(reise_dir, roh, schreiben, meldungen)
+        orte_lage_zusammenfuehren(reise_dir, roh, schreiben, meldungen)   # ADR-0008, Schritt c: eine Lage je Stelle
     for vid, w in ((roh or {}).get("wahlstellen") or {}).items():
         if not isinstance(w, dict):
             continue
