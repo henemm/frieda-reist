@@ -567,13 +567,138 @@ def test_einstellungen_beispiel_nennt_den_speicher():
     assert "FR_SPEICHER" in (ENGINE / "instanz.py").read_text(encoding="utf-8").split('"""')[1]   # im Kopfkommentar
 
 
-# ---------- Test 14: Schreibweg bleibt auf Git (AC-13, Regressionsschutz) ----------
+# ---------- Test 14: nur Schreibweg und Stand binden den Speicher ein (Stufe 2, #347, AC-23) ----------
 
-def test_schreibweg_und_dienste_binden_den_speicher_nicht_ein():
-    for datei in ("schreiben.py", "konnektor.py", "rueckmeldungen.py", "stand.py"):
+def test_nur_schreibweg_und_stand_binden_den_speicher_ein():
+    """Ersetzt den Stufe-1-Test „Schreibweg bindet den Speicher nicht ein“: Ab Stufe 2 schreiben schreiben.py und stand.py
+    über den Speicher, deploy.sh liefert das Modul an den Schreibweg. Konnektor und Rückmeldedienst lesen erst ab Stufe 3."""
+    for datei in ("schreiben.py", "stand.py"):
+        assert "reisespeicher" in (ENGINE / datei).read_text(encoding="utf-8"), datei
+    for datei in ("konnektor.py", "rueckmeldungen.py"):
         assert "reisespeicher" not in (ENGINE / datei).read_text(encoding="utf-8"), datei
     deploy = (WURZEL / "betrieb" / "deploy.sh").read_text(encoding="utf-8")
-    assert "reisespeicher" not in deploy
+    sb_module = re.search(r'^SB_MODULE="([^"]*)"', deploy, re.M).group(1).split()
+    assert "reisespeicher.py" in sb_module
+    for liste in ("RM_MODULE", "KN_MODULE"):
+        assert "reisespeicher.py" not in re.search(rf'^{liste}="([^"]*)"', deploy, re.M).group(1).split(), liste
+
+
+# ---------- Stufe 2 (#347): Zusätze der Schnittstelle ----------
+
+def test_erwartet_schuetzt_vor_verlorenen_aenderungen(rs, drei):
+    """AC-1: erwartet= ist die Stand-Nummer, von der der Schreiber ausging. Nur bei Gleichheit entsteht ein Vorgang;
+    sonst StandGeaendert(erwartet, aktuell) ohne Zeile. Die Kennungsprüfung hat Vorrang; None prüft nichts (Stufe 1)."""
+    assert issubclass(rs.StandGeaendert, Exception)
+    vorher = _inhalt_der_tabellen(rs)
+    for erwartet in (3, 5, 0):                                          # darunter, darüber, „noch kein Stand“
+        with pytest.raises(rs.StandGeaendert) as e:
+            _schreiben(rs, "probe", {"plan/a.md": A1}, erwartet=erwartet)
+        assert (e.value.erwartet, e.value.aktuell) == (erwartet, 4)
+    assert _inhalt_der_tabellen(rs) == vorher and rs.stand_nummer("probe") == 4
+    v = _schreiben(rs, "probe", {"plan/a.md": A1}, erwartet=4)          # gleich: geht
+    assert v.stand == 5 and rs.aktueller_stand("probe")["plan/a.md"] == A1
+    assert _schreiben(rs, "probe", {"plan/a.md": A2}, erwartet=None).stand == 6     # ohne Prüfung wie Stufe 1
+    assert _schreiben(rs, "probe", {"plan/a.md": A1}).stand == 7
+    # neue Reise: erwartet=0 heißt „es gibt noch keinen Stand“
+    assert _schreiben(rs, "neu", {"plan/a.md": A1}, erwartet=0).stand == 1
+    with pytest.raises(rs.StandGeaendert) as e:
+        _schreiben(rs, "neu", {"plan/a.md": A2}, erwartet=0)
+    assert (e.value.erwartet, e.value.aktuell) == (0, 1)
+    with pytest.raises(rs.StandGeaendert):
+        _schreiben(rs, "gibtsnicht", {"plan/a.md": A1}, erwartet=3)
+    assert rs.stand_nummer("gibtsnicht") is None
+    # Kennung vor Stand: eine Wiederholung bleibt ungefährlich, auch wenn der Stand inzwischen weiter ist
+    w = _schreiben(rs, "probe", {"plan/a.md": A2}, kennung="k-347", erwartet=7)
+    with pytest.raises(rs.VorgangVorhanden) as e:
+        _schreiben(rs, "probe", {"plan/a.md": B1}, kennung="k-347", erwartet=7)
+    assert (e.value.nummer, e.value.stand) == (w.nummer, w.stand)
+
+
+def test_db_timeout_richtet_sich_nach_dem_parameter(rs):
+    """AC-2: db(timeout) ist die Wartezeit auf die Schreibsperre in Sekunden (Vorgabe 10). Hält eine andere Verbindung die
+    Sperre, kommt sqlite3.OperationalError nach etwa timeout Sekunden. Unter WAL blockieren Leser nicht; geprüft wird
+    deshalb ein zweiter Schreiber (BEGIN IMMEDIATE)."""
+    import inspect
+    import time
+    assert inspect.signature(rs.db).parameters["timeout"].default == 10
+    _schreiben(rs, "probe", {"plan/a.md": A1})
+    halter = sqlite3.connect(rs.pfad(), timeout=0)
+    halter.execute("BEGIN IMMEDIATE")
+    try:
+        with closing(rs.db(timeout=0.2)) as v:
+            start = time.monotonic()
+            with pytest.raises(sqlite3.OperationalError):
+                v.execute("BEGIN IMMEDIATE")
+            dauer = time.monotonic() - start
+        assert 0.1 <= dauer < 2, dauer
+    finally:
+        halter.rollback()
+        halter.close()
+    with closing(rs.db(timeout=0.2)) as v:                              # Sperre frei: geht sofort
+        v.execute("BEGIN IMMEDIATE")
+        v.rollback()
+
+
+def test_datei_und_reisen(rs, drei):
+    """AC-3: datei(reise, pfad, bis=None) liefert die Bytes genau einer Datei, ohne die übrigen zu laden; reisen() alle
+    Reisen mit mindestens einem Vorgang, sortiert."""
+    assert rs.reisen() == ["probe"]
+    rs.importieren(BEISPIEL / "stadtwochenende", "stadtwochenende", wer="Tom")
+    assert rs.reisen() == ["probe", "stadtwochenende"]
+    routen = (BEISPIEL / "stadtwochenende" / "plan" / "routen.yaml").read_bytes()
+    assert rs.datei("stadtwochenende", "plan/routen.yaml") == routen
+    assert isinstance(rs.datei("stadtwochenende", "plan/routen.yaml"), bytes)
+    assert rs.datei("probe", "plan/a.md") == A2
+    assert rs.datei("probe", "plan/a.md", bis=1) == A1
+    assert rs.datei("probe", "inhalt/b.md", bis=1) == B1
+    assert rs.datei("probe", "inhalt/b.md") == B2
+    for reise, p, bis in (("gibtsnicht", "plan/a.md", None), ("probe", "plan/a.md", 99),
+                          ("probe", "inhalt/b.md", 3),                  # in Stand 3 gelöscht (Tombstone)
+                          ("probe", "plan/fehlt.md", None)):
+        with pytest.raises(KeyError):
+            rs.datei(reise, p, bis=bis)
+    with pytest.raises(ValueError):
+        rs.datei("probe", "../reise.yaml")
+    vorher = _inhalt_der_tabellen(rs)
+    rs.reisen()
+    assert _inhalt_der_tabellen(rs) == vorher                          # liest nur
+
+
+def test_ordner_als_vorgang(rs, tmp_path, drei):
+    """AC-4: Der Baustein vergleicht einen Ordner (nachher) mit aktueller_stand(reise, basis) (vorher) und schreibt die
+    Unterschiede als genau einen Vorgang, fehlende Dateien als Tombstone, mit erwartet=basis. Ohne Unterschied ValueError;
+    basis=0 legt eine neue Reise an."""
+    rs.exportieren("probe", tmp_path / "kopie", bis=4)
+    kopie = tmp_path / "kopie"
+    (kopie / "plan" / "a.md").write_bytes(A1)                           # geändert
+    (kopie / "inhalt" / "b.md").unlink()                                # fehlt
+    (kopie / "inhalt" / "c.md").write_bytes(C1)                         # neu
+    v = rs.ordner_als_vorgang("probe", kopie, basis=4, wer="Karl", werkzeug="item_update", titel="Probe geändert",
+                              grund="Probe", kennung="k-ordner", rolle="mitwirkend")
+    assert v.stand == 5 and rs.stand_nummer("probe") == 5
+    assert rs.aktueller_stand("probe") == {"reise.yaml": b"titel: Probe\n", "plan/a.md": A1, "inhalt/c.md": C1}
+    e = rs.verlauf("probe", n=1)[0]
+    assert (e["was"], e["wer"], e["werkzeug"], e["grund"], e["vorgang"]) == ("Probe geändert", "Karl", "item_update", "Probe",
+                                                                             v.nummer)
+    assert sorted(e["dateien"]) == ["inhalt/b.md", "inhalt/c.md", "plan/a.md"]
+    with closing(sqlite3.connect(rs.pfad())) as roh:
+        assert roh.execute("SELECT rolle, kennung FROM vorgaenge WHERE nummer = ?", (v.nummer,)).fetchone() == \
+            ("mitwirkend", "k-ordner")
+        assert roh.execute("SELECT inhalt FROM versionen WHERE vorgang = ? AND pfad = 'inhalt/b.md'",
+                           (v.nummer,)).fetchone() == (None,)
+    vorher = _inhalt_der_tabellen(rs)
+    with pytest.raises(ValueError):                                     # ohne Unterschied
+        rs.ordner_als_vorgang("probe", kopie, basis=5, wer="Karl", werkzeug="item_update", titel="nichts", grund="",
+                              kennung=None, rolle="")
+    (kopie / "plan" / "a.md").write_bytes(A2)
+    with pytest.raises(rs.StandGeaendert):                              # veraltete Basis: nichts geschrieben
+        rs.ordner_als_vorgang("probe", kopie, basis=4, wer="Karl", werkzeug="item_update", titel="alt", grund="",
+                              kennung=None, rolle="")
+    assert _inhalt_der_tabellen(rs) == vorher
+    # neue Reise mit basis=0: die Beispielreise als erster Vorgang
+    n = rs.ordner_als_vorgang("stadtwochenende", BEISPIEL / "stadtwochenende", basis=0, wer="Tom", werkzeug="reise_anlegen",
+                              titel="Neue Reise", grund="", kennung=None, rolle="organisator")
+    assert n.stand == 1 and rs.aktueller_stand("stadtwochenende") == _baum(BEISPIEL / "stadtwochenende")
 
 
 # ---------- Test 15: Dokumentation (AC-14) ----------

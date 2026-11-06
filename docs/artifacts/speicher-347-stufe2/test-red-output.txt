@@ -1,0 +1,199 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0
+rootdir: .
+plugins: xdist-3.8.0
+created: 3/3 workers
+3 workers [28 items]
+
+FFFFFFFFFFFFFFFFFFFFFFFFF.FF                                             [100%]
+=================================== FAILURES ===================================
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+    assert 503 == 200
+----------------------------- Captured stderr call -----------------------------
+Arbeitskopie: git fetch -q origin main: fatal: not a git repository (or any of the parent directories): .git
+Done art_definieren 503 in 0.0 s
+engine/tests/test_schreiben_speicher.py:200: AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+    assert (503 == 200)
+----------------------------- Captured stderr call -----------------------------
+Arbeitskopie: git fetch -q origin main: fatal: not a git repository (or any of the parent directories): .git
+Done frage_anlegen 503 in 0.0 s
+engine/tests/test_schreiben_speicher.py:175: AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'instanz' has no attribute 'speicherreisen'
+engine/tests/test_schreiben_speicher.py:143: AttributeError: module 'instanz' has no attribute 'speicherreisen'
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+    assert 503 == 200
+----------------------------- Captured stderr call -----------------------------
+Arbeitskopie: git fetch -q origin main: fatal: not a git repository (or any of the parent directories): .git
+Done art_definieren 503 in 0.0 s
+engine/tests/test_schreiben_speicher.py:200: AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+    assert (503 == 503 and False is False and 'schreiben.di...chbar_spaeter' == 'schreiben.di...t_im_speicher'
+      
+      - schreiben.dienst.reise_nicht_im_speicher
+      + schreiben.dienst.repo_nicht_erreichbar_spaeter)
+----------------------------- Captured stderr call -----------------------------
+Arbeitskopie: git fetch -q origin main: fatal: not a git repository (or any of the parent directories): .git
+Done art_definieren 503 in 0.0 s
+engine/tests/test_schreiben_speicher.py:229: AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+    assert (503 == 200)
+----------------------------- Captured stderr call -----------------------------
+Arbeitskopie: git fetch -q origin main: fatal: not a git repository (or any of the parent directories): .git
+Done frage_anlegen 503 in 0.0 s
+engine/tests/test_schreiben_speicher.py:175: AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'ok': False, 'fehler': 'Das Schreiben hat zu lange gedauert und ist nicht eingetragen; bitte noch einmal versuchen.', 'fehler_code': 'schreiben.dienst.zu_lange_nicht', 'werte': {}}
+    assert (504 == 504 and 'schreiben.di...u_lange_nicht' == 'schreiben.di...ge_ungeprueft'
+      
+      - schreiben.dienst.zu_lange_ungeprueft
+      ?                           - ^^^^^^^
+      + schreiben.dienst.zu_lange_nicht
+      ?                            ^^^)
+engine/tests/test_schreiben_speicher.py:306: AssertionError: {'ok': False, 'fehler': 'Das Schreiben hat zu lange gedauert und ist nicht eingetragen; bitte noch einmal versuchen.', 'fehler_code': 'schreiben.dienst.zu_lange_nicht', 'werte': {}}
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'reisespeicher' has no attribute 'datei'
+engine/tests/test_schreiben_speicher.py:360: AttributeError: module 'reisespeicher' has no attribute 'datei'
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+E   ModuleNotFoundError: No module named 'schreiben_git'
+engine/tests/test_schreiben_speicher.py:240: ModuleNotFoundError: No module named 'schreiben_git'
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: (500, {'ok': False, 'fehler': 'Schreiben fehlgeschlagen (Fehler im Dienst); der Betreiber sieht es im Protokoll.', 'fe...test-11171/popen-gw1/test_speicherweg_haelt_die_fri0/instanz', 'fetch', '-q', 'origin', ...], '', 0.9997729298193008)])
+    assert (500 == 504)
+----------------------------- Captured stderr call -----------------------------
+Error art_definieren 500: AttributeError: 'NoneType' object has no attribute 'returncode'
+Done art_definieren 500 in 0.0 s
+engine/tests/test_schreiben_speicher.py:335: AssertionError: (500, {'ok': False, 'fehler': 'Schreiben fehlgeschlagen (Fehler im Dienst); der Betreiber sieht es im Protokoll.', 'fe...test-11171/popen-gw1/test_speicherweg_haelt_die_fri0/instanz', 'fetch', '-q', 'origin', ...], '', 0.9997729298193008)])
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: (503, {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}})
+    assert (503 == 503 and 'schreiben.di...chbar_spaeter' == 'schreiben.di...and_geaendert'
+      
+      - schreiben.dienst.stand_geaendert
+      + schreiben.dienst.repo_nicht_erreichbar_spaeter)
+----------------------------- Captured stderr call -----------------------------
+Arbeitskopie: git fetch -q origin main: fatal: not a git repository (or any of the parent directories): .git
+Done art_definieren 503 in 0.0 s
+engine/tests/test_schreiben_speicher.py:272: AssertionError: (503, {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}})
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+    assert (503 == 200)
+----------------------------- Captured stderr call -----------------------------
+Arbeitskopie: git fetch -q origin main: fatal: not a git repository (or any of the parent directories): .git
+Done reise_anlegen 503 in 0.0 s
+engine/tests/test_schreiben_speicher.py:403: AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+    assert (503 == 200)
+----------------------------- Captured stderr call -----------------------------
+Arbeitskopie: git fetch -q origin main: 
+Done art_definieren 503 in 0.0 s
+engine/tests/test_schreiben_speicher.py:480: AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: assert False
+     +  where False = exists()
+     +    where exists = PosixPath('betrieb/messlauf-schreibweg.py').exists
+engine/tests/test_schreiben_speicher.py:516: AssertionError: assert False
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: assert False
+     +  where False = exists()
+     +    where exists = PosixPath('betrieb/messlauf-schreibweg.py').exists
+engine/tests/test_schreiben_speicher.py:516: AssertionError: assert False
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: FR_SPEICHERREISEN
+    assert 'FR_SPEICHERREISEN' in '# Betrieb einer Instanz\n\nWie Frieda auf einem eigenen Server läuft: Seiten ausliefern, Rückmeldungen annehmen, was ...dungen`, dann `rueckmeldung_erledigen`); `python3 engine/rueckmeldungen.py liste <reise>` zeigt sie auf dem Server |\n'
+engine/tests/test_schreiben_speicher.py:533: AssertionError: FR_SPEICHERREISEN
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: schreiben.py
+    assert 'reisespeicher' in '"""Schreibweg: Der Konnektor schreibt direkt in die Ontologie der Reise (ADR-0001, Paket O-3).\n\nFrieda enthält kein...    print(__doc__)\n        return 1\n    return 0\n\n\nif __name__ == "__main__":\n    sys.exit(main(sys.argv[1:]))\n'
+     +  where '"""Schreibweg: Der Konnektor schreibt direkt in die Ontologie der Reise (ADR-0001, Paket O-3).\n\nFrieda enthält kein...    print(__doc__)\n        return 1\n    return 0\n\n\nif __name__ == "__main__":\n    sys.exit(main(sys.argv[1:]))\n' = read_text(encoding='utf-8')
+     +    where read_text = (PosixPath('engine') / 'schreiben.py').read_text
+engine/tests/test_reisespeicher.py:576: AssertionError: schreiben.py
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'reisespeicher' has no attribute 'StandGeaendert'
+engine/tests/test_reisespeicher.py:591: AttributeError: module 'reisespeicher' has no attribute 'StandGeaendert'
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   KeyError: 'timeout'
+engine/tests/test_reisespeicher.py:623: KeyError: 'timeout'
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: schreiben.py
+    assert ['def git (Z..... 4260)', ...] == []
+      
+      Left contains 30 more items, first extra item: 'def git (Z. 199)'
+      Use -v to get more diff
+engine/tests/test_schreiben_speicher.py:461: AssertionError: schreiben.py
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: ('de', 'schreiben.dienst.speicher_nicht_erreichbar')
+    assert 'schreiben.dienst.speicher_nicht_erreichbar' in {'seite.kreis.hinweis': '„{titel}“ verweist im Kreis oder zu tief auf andere Dinge und hat hier keinen Platz. Bitte in...us.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', ...}
+     +  where {'seite.kreis.hinweis': '„{titel}“ verweist im Kreis oder zu tief auf andere Dinge und hat hier keinen Platz. Bitte in...us.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', ...} = <module 'texte_de' from 'engine/texte_de.py'>.TEXTE
+     +    where <module 'texte_de' from 'engine/texte_de.py'> = <function sprache at 0x7337d4a2e660>('de')
+     +      where <function sprache at 0x7337d4a2e660> = <module 'texte' from 'engine/texte.py'>.sprache
+engine/tests/test_schreiben_speicher.py:506: AssertionError: ('de', 'schreiben.dienst.speicher_nicht_erreichbar')
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'reisespeicher' has no attribute 'reisen'
+engine/tests/test_reisespeicher.py:645: AttributeError: module 'reisespeicher' has no attribute 'reisen'
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+E   ModuleNotFoundError: No module named 'stand_git'
+engine/tests/test_stand.py:127: ModuleNotFoundError: No module named 'stand_git'
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'reisespeicher' has no attribute 'ordner_als_vorgang'
+engine/tests/test_reisespeicher.py:676: AttributeError: module 'reisespeicher' has no attribute 'ordner_als_vorgang'
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: assert {'bauen.py', ...stand_git.py'} <= {'bauen.py', ...nten.py', ...}
+      
+      Extra items in the left set:
+      'schreiben_git.py'
+      'stand_git.py'
+      'reisespeicher.py'
+engine/tests/test_betrieb.py:1423: AssertionError: assert {'bauen.py', ...stand_git.py'} <= {'bauen.py', ...nten.py', ...}
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: assert (503, {'gesund': False}) == (200, {'gesund': True})
+      
+      At index 0 diff: 503 != 200
+      Use -v to get more diff
+----------------------------- Captured stderr call -----------------------------
+GET /gesund 503
+engine/tests/test_schreiben_speicher.py:383: AssertionError: assert (503, {'gesund': False}) == (200, {'gesund': True})
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+    assert 503 == 200
+----------------------------- Captured stderr call -----------------------------
+Arbeitskopie: git fetch -q origin main: fatal: not a git repository (or any of the parent directories): .git
+Done art_definieren 503 in 0.0 s
+engine/tests/test_schreiben_speicher.py:429: AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+==================================== PASSES ====================================
+=========================== short test summary info ============================
+PASSED engine/tests/test_stand.py::test_probebau_ohne_stand
+FAILED engine/tests/test_schreiben_speicher.py::test_abgelehnte_vorgaenge_lassen_den_stand_unveraendert[stadtwochenende]
+FAILED engine/tests/test_schreiben_speicher.py::test_speicherweg_schreibt_einen_vorgang[stadtwochenende]
+FAILED engine/tests/test_schreiben_speicher.py::test_schalter_vorgabe_ist_git
+FAILED engine/tests/test_schreiben_speicher.py::test_abgelehnte_vorgaenge_lassen_den_stand_unveraendert[beispielreise]
+FAILED engine/tests/test_schreiben_speicher.py::test_reise_der_liste_ohne_eintrag_gibt_503_ohne_wirkung
+FAILED engine/tests/test_schreiben_speicher.py::test_speicherweg_schreibt_einen_vorgang[beispielreise]
+FAILED engine/tests/test_schreiben_speicher.py::test_nach_abbruch_prueft_lokal_im_speicher
+FAILED engine/tests/test_schreiben_speicher.py::test_buchung_wird_aus_dem_speicher_gelesen
+FAILED engine/tests/test_schreiben_speicher.py::test_git_weg_lehnt_reise_der_liste_ab
+FAILED engine/tests/test_schreiben_speicher.py::test_speicherweg_haelt_die_fristen
+FAILED engine/tests/test_schreiben_speicher.py::test_zwischenzeitliche_aenderung_gibt_stand_geaendert
+FAILED engine/tests/test_schreiben_speicher.py::test_reise_anlegen_schreibt_den_ersten_vorgang
+FAILED engine/tests/test_schreiben_speicher.py::test_speicherweg_ruft_nie_git_auf
+FAILED engine/tests/test_schreiben_speicher.py::test_messlauf_skript_gibt_kennzahlen_aus[speicher]
+FAILED engine/tests/test_schreiben_speicher.py::test_messlauf_skript_gibt_kennzahlen_aus[git]
+FAILED engine/tests/test_schreiben_speicher.py::test_doku_nennt_schalter_und_vorbedingungen
+FAILED engine/tests/test_reisespeicher.py::test_nur_schreibweg_und_stand_binden_den_speicher_ein
+FAILED engine/tests/test_reisespeicher.py::test_erwartet_schuetzt_vor_verlorenen_aenderungen
+FAILED engine/tests/test_reisespeicher.py::test_db_timeout_richtet_sich_nach_dem_parameter
+FAILED engine/tests/test_schreiben_speicher.py::test_schreiben_und_stand_enthalten_kein_git
+FAILED engine/tests/test_schreiben_speicher.py::test_neue_schluessel_in_allen_sprachen
+FAILED engine/tests/test_reisespeicher.py::test_datei_und_reisen - AttributeE...
+FAILED engine/tests/test_stand.py::test_fuer_seite_je_weg - ModuleNotFoundErr...
+FAILED engine/tests/test_reisespeicher.py::test_ordner_als_vorgang - Attribut...
+FAILED engine/tests/test_betrieb.py::test_sb_module_deckt_die_importe_des_schreibwegs
+FAILED engine/tests/test_schreiben_speicher.py::test_gesund_prueft_die_datenbank
+FAILED engine/tests/test_schreiben_speicher.py::test_gesichert_json_traegt_stand_und_vorgangsnummer
+========================= 27 failed, 1 passed in 1.40s =========================

@@ -116,6 +116,56 @@ def test_bau_ohne_git_hat_keinen_reise_stand(tmp_path):
     assert json.loads((tmp_path / "s" / "daten.json").read_text())["reise_stand"] is None
 
 
+# ---------- Stufe 2 (#347): Stand je Weg ----------
+
+def test_fuer_seite_je_weg(reisen_repo, tmp_path, monkeypatch):
+    """AC-17: Eine Reise in FR_SPEICHERREISEN mit Speichereintrag bekommt Nummer, Zeit und Änderungsliste aus dem Speicher
+    (der Bau kennt nur den Ordner; die Reise ist sein Name). Eine Git-Reise liefert dasselbe wie vor der Verschiebung
+    (stand_git). Ohne Eintrag und ohne Git bleibt es bei None."""
+    import shutil
+    import reisespeicher
+    import stand_git
+    w, commit = reisen_repo
+    commit("Beispielreise: zweiter Stand", person="Karl")
+    git_ordner = w / "reisen" / "beispielreise"
+    s = stand.fuer_seite(git_ordner, {})
+    assert s["nummer"] == 2 == stand_git.nummer(git_ordner)
+    assert s["aenderungen"] == stand_git.aenderungen(git_ordner, {}) and s["aenderungen"][0]["wer"] == "Karl"
+    # Speicher-Reise
+    stadt = BEISPIEL.parent / "stadtwochenende"
+    monkeypatch.setenv("FR_SPEICHERREISEN", "stadtwochenende")
+    reisespeicher.importieren(stadt, "stadtwochenende", wer="Tom")
+    reisespeicher.vorgang_schreiben("stadtwochenende", {"inhalt/notiz.md": b"Beispielwert\n"}, wer="Lea",
+                                    werkzeug="item_update", titel="U-01 geändert: Preis", wann="2026-11-06T09:00:00Z")
+    ordner = tmp_path / "bau" / "stadtwochenende"
+    reisespeicher.exportieren("stadtwochenende", ordner)
+    daten = {"dinge": {"U-01": {"name": "Pension Beispiel"}}}
+    s = stand.fuer_seite(ordner, daten)
+    assert s["nummer"] == 2 and s["zeit"] == "2026-11-06T09:00:00Z"
+    assert s["aenderungen"][0] == {"nummer": 2, "zeit": "2026-11-06T09:00:00Z", "was": "„Pension Beispiel“ geändert: Preis",
+                                   "wer": "Lea"}
+    assert [a["nummer"] for a in s["aenderungen"]] == [2, 1] and s["aenderungen"][1]["wer"] == "Tom"
+    bauen.bauen(ordner, tmp_path / "seite")
+    assert json.loads((tmp_path / "seite" / "daten.json").read_text())["reise_stand"]["nummer"] == 2
+    # Reise der Liste ohne Eintrag und ohne Git; Reise im Speicher, aber nicht in der Liste: kein Stand
+    monkeypatch.setenv("FR_SPEICHERREISEN", "stadtwochenende,beispielreise")
+    shutil.copytree(BEISPIEL, tmp_path / "ohne" / "beispielreise")
+    assert stand.fuer_seite(tmp_path / "ohne" / "beispielreise", {}) is None
+    monkeypatch.setenv("FR_SPEICHERREISEN", "")
+    assert stand.fuer_seite(ordner, daten) is None
+
+
+def test_probebau_ohne_stand(monkeypatch, tmp_path):
+    """AC-17: Probebau und Rollenprüfung des Schreibwegs brauchen keinen Stand; die Arbeitskopie hat keinen Bezug zum
+    Speicher. Wächtertest: Bauer.daten() ruft fuer_seite nicht (nur Bauer.schreiben)."""
+    import shutil
+    import schreiben
+    monkeypatch.setattr(stand, "fuer_seite", lambda *a, **k: pytest.fail("Probebau fragt den Stand"))
+    shutil.copytree(BEISPIEL, tmp_path / "beispielreise")
+    assert schreiben.warnungen_des_baus(tmp_path / "beispielreise") == []
+    assert bauen.Bauer(tmp_path / "beispielreise", tmp_path / "ziel").eck
+
+
 # ---------- S3–S5: Zustand auf dem Server ----------
 
 @pytest.fixture

@@ -1410,6 +1410,22 @@ def test_deploy_kopiert_module_des_schreibwegs():
     assert 'neustart "$FR_INSTANZ-schreiben"' in deploy and 'is-enabled --quiet "$FR_INSTANZ-schreiben"' in deploy
 
 
+def test_sb_module_deckt_die_importe_des_schreibwegs():
+    """Stufe 2 (#347, AC-22): Der Unterprozess `anwenden` läuft mit dem Code aus <FR_DIENST>, nicht mehr mit dem einer
+    Git-Arbeitskopie. Deshalb muss SB_MODULE jedes eigene Modul enthalten, das schreiben.py lädt, auch in Funktionen
+    (Probebau: bauen, routen …; Werkzeuge: neu, schnittstelle …), samt reisespeicher.py und den Modulen des Git-Wegs."""
+    kopiert = _deploy_liste("SB_MODULE")
+    offen, gesehen = ["schreiben.py"], set()
+    while offen:
+        d = offen.pop()
+        gesehen.add(d)
+        offen += [m for m in _eigene_importe(d) if m not in gesehen]
+    assert {"reisespeicher.py", "bauen.py", "routen.py", "schreiben_git.py", "stand_git.py"} <= gesehen
+    fehlt = gesehen - kopiert
+    assert not fehlt, f"deploy.sh SB_MODULE kopiert nicht: {sorted(fehlt)}"
+    assert (ENGINE / "stand_git.py").exists() and "stand_git.py" in kopiert
+
+
 def test_deploy_kopiert_friedas_symbol():
     deploy = (BETRIEB / "deploy.sh").read_text(encoding="utf-8")
     assert '"$WURZEL/engine/marke/" "$DIENST/marke/"' in deploy
