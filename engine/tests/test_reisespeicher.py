@@ -1,4 +1,4 @@
-"""Tests für engine/reisespeicher.py (Reisespeicher Stufe 1, #346, Epic #345, ADR-0008): Reisedaten als unveränderliche
+"""Tests für engine/reisespeicher.py (Reisespeicher Stufe 1, #346, Epic #345, ADR-0009): Reisedaten als unveränderliche
 Versionen in SQLite, nur anhängen. Ohne Git, alles unter tmp_path; die Reisen sind die beiden erfundenen Beispielreisen
 oder erfundene Testdaten.
 
@@ -101,7 +101,7 @@ def test_beispielreise_geht_byte_gleich_durch_import_und_export(rs, tmp_path, re
 
 def test_import_nimmt_versteckte_und_binaere_dateien_ohne_git_und_leere_ordner(rs, tmp_path):
     """Byte-gleich heißt gleiche Pfadmenge und gleiche Bytes: kein Umwandeln von Zeilenenden, versteckte Dateien zählen,
-    .git und leere Ordner nicht (ADR-0008)."""
+    .git und leere Ordner nicht (ADR-0009)."""
     quelle = _ordner(tmp_path / "probe", {"reise.yaml": b"titel: Probe\r\n", "medien/.gitkeep": b"",
                                           "medien/bild.bin": bytes(range(256)) + b"\r\n\x00", "reise.json": b"{}",
                                           ".git/HEAD": b"ref: refs/heads/main\n"})
@@ -579,14 +579,14 @@ def test_schreibweg_und_dienste_binden_den_speicher_nicht_ein():
 # ---------- Test 15: Dokumentation (AC-14) ----------
 
 def test_adr_und_betriebsdoku():
-    adr = WURZEL / "docs" / "adr" / "0008-reisespeicher.md"
+    adr = WURZEL / "docs" / "adr" / "0009-reisespeicher.md"
     assert adr.exists()
     text = adr.read_text(encoding="utf-8")
     for abschnitt in ("Status", "Kontext", "Entscheidung", "Begründung", "Konsequenzen", "Verlauf"):
         assert re.search(rf"^##\s+{abschnitt}\b", text, re.M), abschnitt
     assert "Schreibzugriff auf die Datei" in text and "0001" in text
     index = (WURZEL / "docs" / "adr" / "README.md").read_text(encoding="utf-8")
-    assert any("0008" in z for z in index.splitlines())
+    assert any("(0009-reisespeicher.md)" in z for z in index.splitlines())
     betrieb = (WURZEL / "docs" / "betrieb.md").read_text(encoding="utf-8")
     assert "FR_SPEICHER" in betrieb and "reisespeicher.py sichern" in betrieb
 

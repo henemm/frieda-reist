@@ -1,4 +1,4 @@
-# ADR-0008: Reisespeicher: Reisedaten als unveränderliche Versionen in SQLite, nur anhängen
+# ADR-0009: Reisespeicher: Reisedaten als unveränderliche Versionen in SQLite, nur anhängen
 
 ## Status
 

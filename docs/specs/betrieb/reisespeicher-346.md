@@ -255,3 +255,4 @@ Fertig ist diese Änderung, wenn:
 - 2026-11-05: Definition of Done ergänzt; Tests 14–16 für AC-13, AC-14, AC-15 und „keine Instanzwerte“ (Befund des Spec-Validators)
 - 2026-11-05: Laufzeit und Gesamtlauf aus AC-15 in die Definition of Done; AC-11 und AC-14 präzisiert (zweiter Validator-Lauf)
 - 2026-11-05: NUL-Pfad in Test 8, Instanzwerte in Test 16, AC-13 als prüfbare Aussage, AC-16 für die Befehle (dritter Validator-Lauf)
+- 2026-11-06: ADR-Nummer 0008 war auf main inzwischen an „Der Ort ist eine Station der Reise“ (#335) vergeben; das ADR dieser Spec heißt deshalb ADR-0009 (`docs/adr/0009-reisespeicher.md`). Wo oben ADR-0008 steht, ist ADR-0009 gemeint.

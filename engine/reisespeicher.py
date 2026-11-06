@@ -1,4 +1,4 @@
-"""Reisespeicher (Stufe 1, #346, Epic #345, ADR-0008): Reisedaten als unveränderliche Versionen in SQLite, nur anhängen.
+"""Reisespeicher (Stufe 1, #346, Epic #345, ADR-0009): Reisedaten als unveränderliche Versionen in SQLite, nur anhängen.
 
 Ein Vorgang ist ein Schreibvorgang (Person, Rolle, Werkzeug, Titel, Grund, Zeit, Kennung); je Vorgang gibt es eine
 Version je geänderter Datei (Bytes und SHA-256, ein Tombstone ohne Inhalt für eine gelöschte Datei). Die Stand-Nummer
@@ -8,7 +8,7 @@ Version unter den Vorgängen mit stand <= s; ein Tombstone heißt: die Datei feh
 Nur anhängen: Trigger verweigern UPDATE und DELETE auf beiden Tabellen (mit recursive_triggers, sonst löschte
 INSERT OR REPLACE an ihnen vorbei), der Authorizer der Verbindung aus db() verweigert dazu UPDATE, DELETE, DROP,
 ALTER TABLE und PRAGMA writable_schema. Das schützt vor Software-Fehlern und Fehlbedienung, nicht vor jemandem mit
-Schreibzugriff auf die Datei; dagegen helfen `pruefen` und die Sicherung außer Haus (ADR-0008).
+Schreibzugriff auf die Datei; dagegen helfen `pruefen` und die Sicherung außer Haus (ADR-0009).
 
 In Stufe 1 schreibt der Schreibweg nicht hierher; die Datenbank beschreiben nur die Befehle unten. Der Schreibweg
 (engine/schreiben.py) nutzt die Funktionen ab Stufe 2 (#347).

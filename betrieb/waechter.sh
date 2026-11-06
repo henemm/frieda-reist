@@ -5,7 +5,7 @@
 # Baustein waechter und mit Status vor „fest“ werden übersprungen. Ohne Neues kostet der Lauf nichts.
 # Nachricht an den Betreiber über FR_MELDEN: eine Sammelnachricht, wenn es etwas zu melden gibt (erledigt), und bei einem
 # Fehler eine dringende Meldung. Danach je ein sauberer Schnappschuss der Konten-Datenbank und des Reisespeichers über die
-# Backup-API von SQLite nach <FR_KONTEN>/sicherung/konten.db (#72) und <Speicher>/sicherung/reisen.db (#346, ADR-0008;
+# Backup-API von SQLite nach <FR_KONTEN>/sicherung/konten.db (#72) und <Speicher>/sicherung/reisen.db (#346, ADR-0009;
 # eine Kopie der Datei im laufenden Betrieb kann wegen WAL unbrauchbar sein). Scheitert eine Sicherung, kommt eine
 # dringende Meldung, die andere läuft trotzdem. Nach Erfolg von allem wird <FR_DIENST>/waechter-erfolg berührt (für die
 # Überwachung).
