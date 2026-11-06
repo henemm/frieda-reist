@@ -343,6 +343,9 @@ Abnahme (außerhalb der Suite): über den Konnektor an einer frischen Testreise,
     verallgemeinert). Folge im Bestand: weniger Mahnungen, nie mehr (z. B. Gasthof gegen Pension: der Gasthof mahnt kein
     Pflichtmerkmal der Pension mehr). Begründung: dieselbe Regel für alle Sorten statt einer Sonderregel für Orte. Seite: `ortChips`
     verlinkt immer; ein Ort ohne Ortsseite kommt bei gültiger Reise nicht vor (`option_ort`).
+- 2026-11-06 (Validierung): Der Hinweis `schreiben.option_bauen.1` nennt `aufenthalte` und `orte` noch nicht als Inhalt einer
+  Option (Adversary F003, nur Text, im Bestand schon für `aufenthalte`); erfasst als #364. Die Beispielreise nutzt für AC-1 O-04
+  (Art `ort_am_weg`), nicht O-05 wie in Lösung und AC-1 notiert. Der AC-9-Test prüft den Stand `alternative` jetzt ohne Bedingung.
 
 ## Approval
 

@@ -250,8 +250,8 @@ def test_art_der_wahlstelle_aus_erstem_ort_mit_art(tmp_path):
 def test_ort_der_moeglichkeit_bekommt_punkt_auf_uebersicht(tmp_path):
     """AC-9: ein Ort nur in einer Möglichkeit am Tag hat einen Punkt; Stand plan für die aktive, alternative für die andere;
     ein Ort ohne Verwendung bleibt ohne Punkt (#335)."""
-    v91 = wahlstelle("V-91", option("V-91.a", "Turm (Beispiel)", orte=["O-90"]),
-                     option("V-91.b", "Wasserfall (Beispiel)", orte=["O-06"]))
+    v91 = wahlstelle("V-91", option("V-91.a", "Wasserfall (Beispiel)", orte=["O-06"]),
+                     option("V-91.b", "Turm (Beispiel)", orte=["O-90"]))
     d = gebaut(tmp_path, wahl=[v91], orte={"O-90": O90, "O-91": O91}, ohne_karte=True)
     route = d["route"]
     opts = wahl_von(d, "V-91")["optionen"]
@@ -260,8 +260,8 @@ def test_ort_der_moeglichkeit_bekommt_punkt_auf_uebersicht(tmp_path):
     assert aktiv.get("orte") and andere.get("orte"), "orte fehlt in der Ausgabe der Optionen"
     stand, tage = karte.dinge_bezug(route)
     assert stand.get(aktiv["orte"][0]) == "plan" and "T-03" in tage.get(aktiv["orte"][0], [])
-    if andere["orte"][0] == "O-90":
-        assert stand.get("O-90") == "alternative"
+    assert andere["orte"] == ["O-90"], "die zweite Möglichkeit ist die Alternative"
+    assert stand.get("O-90") == "alternative", "Ort nur in der nicht aktiven Möglichkeit"
     k = route["karte"]
     assert k["orte"]["O-90"].get("punkt") is not False, "Ort der Möglichkeit steht auf der Übersicht"
     assert k["orte"]["O-91"].get("punkt") is False, "Ort ohne Verwendung bleibt ohne Punkt"
