@@ -40,6 +40,7 @@ def seite(tmp_path, browser, fest=False, bausteine="[karte, tagesseiten, rueckme
     d["aufenthalte"]["A-01"]["punkt"] = punkt([50.9785, 14.1140])
     d["aufenthalte"]["A-02"] = {"name": "Wochenmarkt", "ort": "O-01", "art": "besichtigung", "quelle": "erfunden (Test)",
                                 "punkt": punkt([51.050, 13.740])}
+    d["aufenthalte"].pop("A-32", None)   # Fischbrötchen (ohne Tag, #387) gehört nicht zu diesem Fall
     d["karten_ansichten"] = [{"titel": "Hohnstein", "tage": ["T-02"]}, {"titel": "Vor Ort", "arten": ["besichtigung"]}]
     r.write_text(yaml.safe_dump(d, allow_unicode=True, sort_keys=False), encoding="utf-8")
     bauen.bauen(quelle, tmp_path / "web" / "beispiel")
