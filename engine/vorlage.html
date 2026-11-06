@@ -3833,9 +3833,11 @@ function ansichtOrt(m, a) {
 }
 /* Ort im Ort (ADR-0008, Punkt 2, #335 Schritt d): „liegt in“ (an: O-…) und die Orte darin, nur für Anzeige und Navigation.
    Heimat jedes Orts bleibt seine eigene Ortsseite (ADR-0003); ein Ort ohne eigene Seite steht als Zeile auf der Seite des
-   Orts, in dem er liegt (dort ist er zu Hause). */
-const ortEltern = oid => { const e = R && (R.eltern || {})[oid]; return e && R.orte[e] ? e : null; };
-const unterorte = oid => R ? Object.keys(R.orte).filter(x => ortEltern(x) === oid).sort((a, b) => SORT.compare(ortName(a), ortName(b))) : [];
+   Orts, in dem er liegt (dort ist er zu Hause).
+   Als function, nicht als const: Die Startanweisung „Ohne Tag“ (Heimat, weiter oben) erreicht beide über heimat → ortSeiteZu; eine
+   function steht ab dem Anfang des Skripts bereit, eine const erst ab ihrer Zeile (#387, test_startreihenfolge.py). */
+function ortEltern(oid) { const e = R && (R.eltern || {})[oid]; return e && R.orte[e] ? e : null; }
+function unterorte(oid) { return R ? Object.keys(R.orte).filter(x => ortEltern(x) === oid).sort((x, y) => SORT.compare(ortName(x), ortName(y))) : []; }
 // Seite eines Orts: sein Abschnitt (Ortstext); ohne Text nur, wenn Orte darin liegen (eine Region braucht eine Seite für sie)
 function ortSeiteZu(oid) {
   const a = proId.get(oid);
