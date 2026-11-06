@@ -48,7 +48,8 @@ def a01_an_ort(t):
 def test_ohne_an_gilt_die_vorgabe(tmp_path):
     d = bauen.bauen(kopie(tmp_path), tmp_path / "web" / "b")
     # nur die früheren Kartenpunkte hängen mit an: an Strecken und Blöcken (ADR-0007, Schritt d); A-01 hat die Vorgabe
-    assert "A-01" not in d["route"]["eltern"] and all(v[:2] in ("E-", "W-") for v in d["route"]["eltern"].values())
+    # (die Orte am Weg liegen in der Region O-07, ADR-0008)
+    assert "A-01" not in d["route"]["eltern"] and all(v[:2] in ("E-", "W-") for k, v in d["route"]["eltern"].items() if not k.startswith("O-"))
     assert d["route"]["aufenthalte"]["A-01"]["tage"] == ["T-02"]
 
 
