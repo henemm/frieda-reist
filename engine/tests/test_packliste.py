@@ -616,3 +616,10 @@ def test_anleitung_nennt_ausgeschaltete_packliste_und_wie_man_sie_einschaltet(di
     aus = kn.anleitung(zugang, d).split("Bei dieser Reise ausgeschaltet", 1)[1].split(".", 1)[0]
     assert "packliste" in aus and "einstellung_setzen" in aus and "vollständigen Liste" in aus
     assert "Bei dieser Reise ausgeschaltet" not in an or "packliste" not in an.split("Bei dieser Reise ausgeschaltet", 1)[1].split(".", 1)[0]
+
+
+def test_grundform_im_text_nennt_den_wert_des_schemas():
+    """Der Client sieht im Schema nur basic_form gear: Hinweise sagen nicht „grundform gegenstand“, das er nicht übergeben kann."""
+    import schnittstelle
+    assert schnittstelle.namen_im_text("art_definieren mit grundform gegenstand") == "kind_define mit basic_form gear"
+    assert schnittstelle.namen_im_text("grundform ort", streng=True) == "basic_form place"

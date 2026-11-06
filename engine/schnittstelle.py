@@ -193,12 +193,17 @@ _STRENG_NAMEN = [i for i in INTERN_ZU_ENGLISCH if "_" in i or i == "ueberblick"]
 _STRENG_MUSTER = re.compile(r"(?<![\w.-])(" + "|".join(sorted(map(re.escape, _STRENG_NAMEN), key=len, reverse=True)) + r")(?![\w-])")
 
 
+# „grundform gegenstand“ im Text: der Client sieht im Schema nur den englischen Wert (basic_form gear)
+_GRUNDFORM_WERT = re.compile(r"\b(?:grundform|basic_form) (aufenthalt|bewegung|folge|ort|gegenstand)\b")
+
+
 def namen_im_text(text, streng=False):
     """Werkzeugnamen im Text durch die Namen ersetzen, die tools/list zeigt. Eigene Texte (Anleitung, Beschreibungen) ersetzen auch
     die Namen, die zugleich deutsche Wörter sind (suche, zeige …); streng=True (Antworten, die Inhalt der Reise enthalten) nur die
     unverwechselbaren Namen mit Unterstrich und ueberblick."""
     if not isinstance(text, str):
         return text
+    text = _GRUNDFORM_WERT.sub(lambda m: "basic_form " + WERT_ENGLISCH.get(m.group(1), m.group(1)), text)
     if streng:
         return _STRENG_MUSTER.sub(lambda m: INTERN_ZU_ENGLISCH[m.group(1)], text)
     return _ENTSCHEIDEN.sub(INTERN_ZU_ENGLISCH["entscheiden"], _TEXT_MUSTER.sub(lambda m: INTERN_ZU_ENGLISCH[m.group(1)], text))
