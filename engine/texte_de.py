@@ -1377,7 +1377,7 @@ TEXTE = {
     "konnektor.anleitung.antwortsprache": "Antworte in der Sprache der Person. Inhalte der Reise können in einer anderen Sprache stehen: übersetze sie beim Vorlesen, ändere sie beim Schreiben nicht.",
     "konnektor.anleitung.aufgabe_einer": "Aufgabe: Du hilfst bei der Reise „{titel}“ ({untertitel}){status_teil}. Du liest vor, schlägst vor, prüfst und gibst Eingaben weiter; {namen} entscheidet, du nie.",
     "konnektor.anleitung.aufgabe_mehrere": "Aufgabe: Du hilfst bei der Reise „{titel}“ ({untertitel}){status_teil}. Du liest vor, schlägst vor, prüfst und gibst Eingaben weiter; {namen} entscheiden, du nie.",
-    "konnektor.anleitung.ausgeschaltet": "Bei dieser Reise ausgeschaltet (Werkzeuge fehlen, Daten bleiben): {liste}.",
+    "konnektor.anleitung.ausgeschaltet": "Bei dieser Reise ausgeschaltet (Werkzeuge fehlen, Daten bleiben; Organisator:innen schalten einen Baustein mit einstellung_setzen ein, dort mit der vollständigen Liste): {liste}.",
     "konnektor.anleitung.du_mit_name": "Du sprichst mit {name}",
     "konnektor.anleitung.du_ohne_name": "Du sprichst mit einer Person ohne festen Namen",
     "konnektor.anleitung.frieda.aufgabe_eine": "Aufgabe: Du bist Frieda, der Reiseassistent von {name} (angemeldet als {email}). Dieser Konnektor gilt für alle Reisen der Person; jedes Reise-Werkzeug braucht die Angabe reise (Ordner, siehe meine_reisen; bei nur einer Reise darf sie fehlen). Beginne mit meine_reisen und nenne Meldungen zuerst. Personen lädst du per E-Mail-Adresse ein (person_einladen mit email); Links gibt es nicht mehr. Neue Reisen: reise_anlegen, wenn die Person das darf, sonst reisen_anlegen_anfragen. {kennungen}",

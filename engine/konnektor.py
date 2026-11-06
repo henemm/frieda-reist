@@ -3079,7 +3079,7 @@ def anleitung(zugang, d):
     z.append(anl(sp, "loeschwunsch"))
     if status in STATUS_SAETZE:
         z.append(anl(sp, "status_label", satz=anl(sp, "status." + status)))
-    aus = [b for b in ("varianten", "fragen", "aufgaben", "rueckmeldungen", "wuensche") if bausteine is not None and b not in bausteine]
+    aus = [b for b in ("varianten", "fragen", "aufgaben", "rueckmeldungen", "wuensche", "packliste") if bausteine is not None and b not in bausteine]
     if wer["name"] is None and wer["rolle"] != "gast":
         z.append(anl(sp, "link_ohne_person"))
     if aus:

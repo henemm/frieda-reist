@@ -524,10 +524,10 @@ def test_konnektor_werkzeuge_je_rolle(schreibweg):
     assert "gear_create" in anleitung and "packing_list" in anleitung      # die Anleitung nennt die Werkzeuge mit ihren Namen am Rand
 
 
-def test_konnektor_schreibt_gegenstaende_ueber_den_schreibweg(schreibweg):
+def test_konnektor_schreibt_gegenstaende_ueber_den_schreibweg(schreibweg, monkeypatch):
     import konten
     basis, _ = schreibweg
-    Schreibweg.antwort = (200, {"ok": True, "text": "Gegenstand G-10 angelegt."})
+    monkeypatch.setattr(Schreibweg, "antwort", (200, {"ok": True, "text": "Gegenstand G-10 angelegt."}))   # der Zustand der Klasse gilt für alle Tests
     t, f = werkzeug(basis, KARL, "gegenstand_anlegen", art="kleidung", titel="Mütze", merkmale={"gewicht": 60}, an="E-02")
     assert not f and "G-10" in t
     pfad, geheim, body = Schreibweg.anfragen[-1]
@@ -603,3 +603,16 @@ def test_packliste_im_browser(tmp_path, monkeypatch, browser):
     # Mitnehmen und Kennung
     assert e["mitnehmen"]["text"] == ["Mitnehmen: Wanderstöcke"] and e["mitnehmen"]["href"] == "#packliste" and e["mitnehmen"]["danach"] == "#packliste"
     assert e["kennung"] == {"reiter": "#packliste", "da": 1} and not e["breit"]
+
+
+def test_anleitung_nennt_ausgeschaltete_packliste_und_wie_man_sie_einschaltet(dienst):
+    """Ist der Baustein aus, fehlen die Werkzeuge; die Anleitung sagt dem AI-Client, dass er aus ist und wie ein:e Organisator:in ihn einschaltet."""
+    import copy
+    d = copy.deepcopy(kn.daten("beispielreise"))
+    zugang = {"reise": "beispielreise", "person": "ida", "sprache": "de"}
+    assert "packliste" in d["reise"]["bausteine"]
+    an = kn.anleitung(zugang, d)
+    d["reise"]["bausteine"] = [b for b in d["reise"]["bausteine"] if b != "packliste"]
+    aus = kn.anleitung(zugang, d).split("Bei dieser Reise ausgeschaltet", 1)[1].split(".", 1)[0]
+    assert "packliste" in aus and "einstellung_setzen" in aus and "vollständigen Liste" in aus
+    assert "Bei dieser Reise ausgeschaltet" not in an or "packliste" not in an.split("Bei dieser Reise ausgeschaltet", 1)[1].split(".", 1)[0]

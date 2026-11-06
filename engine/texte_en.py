@@ -1376,7 +1376,7 @@ TEXTE = {
     "konnektor.anleitung.antwortsprache": "Reply in the person's language. Trip content may be in another language: translate it when reading aloud, do not change it when writing.",
     "konnektor.anleitung.aufgabe_einer": "Task: You are helping with the trip “{titel}” ({untertitel}){status_teil}. You read aloud, suggest, check and pass on input; {namen} decides, you never do.",
     "konnektor.anleitung.aufgabe_mehrere": "Task: You are helping with the trip “{titel}” ({untertitel}){status_teil}. You read aloud, suggest, check and pass on input; {namen} decide, you never do.",
-    "konnektor.anleitung.ausgeschaltet": "Switched off for this trip (tools are missing, data stays): {liste}.",
+    "konnektor.anleitung.ausgeschaltet": "Switched off for this trip (tools are missing, data stays; organisers switch a block on with einstellung_setzen, always with the complete list): {liste}.",
     "konnektor.anleitung.du_mit_name": "You are speaking with {name}",
     "konnektor.anleitung.du_ohne_name": "You are speaking with a person without a fixed name",
     "konnektor.anleitung.frieda.aufgabe_eine": "Task: You are Frieda, the travel assistant of {name} (signed in as {email}). This connector covers all trips of the person; every trip tool needs the parameter reise (folder, see meine_reisen; with only one trip it may be omitted). Start with meine_reisen and mention messages first. You invite people by email address (person_einladen with email); links no longer exist. New trips: reise_anlegen if the person is allowed to, otherwise reisen_anlegen_anfragen. {kennungen}",
