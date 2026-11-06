@@ -662,6 +662,8 @@ class Bauer:
         # Lesetext ohne Strecke wird gemeldet; scheitert schon das Routenmodell, steht dessen Meldung (keine Folgemeldungen)
         if route or not r_cfg:
             self.strecken_lesetext(lesetexte, route)
+        if route:
+            self.orte_lesetext_pruefen(abschnitte, route)
 
         # Claudes Vorschläge zu Wünschen (Wunsch-Brett, Paket G): plan/wuensche.yaml neben routen.yaml
         wunsch_vorschlaege = {}
@@ -1172,6 +1174,22 @@ class Bauer:
                 for wort in STICHWORT.findall(b["html"]):
                     if wort.strip().rstrip(".:").strip().casefold() not in namen:
                         self.hinweise.append(texte.satz("pruefung.bauen.72", eid=eid, w1=wort.strip().rstrip('.:'), art=art, w2=', '.join(r['name'] for r in rubriken)))
+
+    def orte_lesetext_pruefen(self, abschnitte, route):
+        """Wie lesetext_pruefen, für den Text oben auf der Ortsseite (Einleitung unter „## O-…“) gegen die Gliederung der Art
+        des Orts (ADR-0008, #334). Ein unbekanntes Stichwort ist ein Hinweis; ohne Art oder Gliederung wird nichts geprüft."""
+        orte, arten = route.get("orte") or {}, route.get("arten") or {}
+        for a in abschnitte:
+            if a.get("typ") != "ort":
+                continue
+            art = (orte.get(a["id"]) or {}).get("art")
+            rubriken = (arten.get(art) or {}).get("lesetext")
+            if not rubriken:
+                continue
+            namen = {r["name"].casefold() for r in rubriken}
+            for wort in STICHWORT.findall(a.get("intro") or ""):
+                if wort.strip().rstrip(".:").strip().casefold() not in namen:
+                    self.hinweise.append(texte.satz("pruefung.bauen.72", eid=a["id"], w1=wort.strip().rstrip('.:'), art=art, w2=', '.join(r['name'] for r in rubriken)))
 
     def ebene(self, titel):
         """Ebene eines Etappen-Abschnitts auf der Tagesseite: zuerst die Titelanfänge der Reise, dann die Vorgabe."""

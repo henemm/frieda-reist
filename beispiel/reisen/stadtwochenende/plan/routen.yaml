@@ -8,7 +8,7 @@ fixpunkte:
 
 orte:
   O-01: {name: Heimatstadt, quelle: "erfunden (Beispiel)"}
-  O-02: {name: Beispielstadt, quelle: "erfunden (Beispiel)"}
+  O-02: {name: Beispielstadt, art: stadt, quelle: "erfunden (Beispiel)"}
 
 strecken:
   E-01:

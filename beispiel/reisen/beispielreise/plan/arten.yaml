@@ -251,3 +251,7 @@ arten:
     name: Ort am Weg
     farbe: oliv
     beschreibung: "Beispielwert: Etappenort; der Lichtenhainer Wasserfall hat bewusst keine Art (freiwillig, ADR-0008)"
+    lesetext:     # Gliederung des Texts oben auf der Ortsseite (Beispielwert, #334); die Stadt Dresden hat keine, ihr Text bleibt frei
+      ankommen:   {name: Ankommen, hilfe: "Wo der Weg ankommt und was man am Abend noch erreicht"}
+      versorgung: {name: Versorgung, hilfe: "Einkaufen, Essen, Wasser im Allgemeinen; ein bestimmtes Lokal ist ein eigenes Ding am Ort"}
+      umschauen:  {name: Umschauen, hilfe: "Was den Ort ausmacht, in zwei, drei Sätzen"}

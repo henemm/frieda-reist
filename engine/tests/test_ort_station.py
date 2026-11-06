@@ -35,9 +35,9 @@ def test_beispielreise_orte_mit_und_ohne_art(tmp_path):
     assert d["route"]["arten"]["stadt"]["grundform"] == "ort"
 
 
-def test_stadtwochenende_ohne_ortsarten_bleibt_wie_es_ist(tmp_path):
+def test_stadtwochenende_ort_ohne_art_bleibt_wie_er_ist(tmp_path):
     d = bauen.bauen(kopie(tmp_path, "stadtwochenende"), tmp_path / "web" / "s")
-    assert all(o["art"] is None for o in d["route"]["orte"].values())
+    assert d["route"]["orte"]["O-01"]["art"] is None and d["route"]["orte"]["O-02"]["art"] == "stadt"   # Art seit #334 nur am Ziel
 
 
 def test_unbekannte_oder_fremde_art_am_ort(tmp_path):
@@ -64,7 +64,7 @@ def test_ort_mit_merkmal_seiner_art(tmp_path):
 def test_ort_liegt_nur_in_einem_ort(tmp_path):
     q = kopie(tmp_path, "stadtwochenende")
     aendern(q / "plan" / "routen.yaml", lambda t: t.replace(
-        'O-02: {name: Beispielstadt, quelle: "erfunden (Beispiel)"}', 'O-02: {name: Beispielstadt, an: O-01, quelle: "erfunden (Beispiel)"}'))
+        'O-02: {name: Beispielstadt, art: stadt, quelle: "erfunden (Beispiel)"}', 'O-02: {name: Beispielstadt, art: stadt, an: O-01, quelle: "erfunden (Beispiel)"}'))
     d = bauen.bauen(q, tmp_path / "web" / "ok")
     assert d["route"]["eltern"]["O-02"] == "O-01"
     # Anschluss bleibt exakte Gleichheit: die Tage rechnen wie vorher
@@ -72,7 +72,7 @@ def test_ort_liegt_nur_in_einem_ort(tmp_path):
     assert [t.get("end_ort") for t in d["route"]["tage"]] == [t.get("end_ort") for t in vorher["route"]["tage"]]
     q2 = kopie(tmp_path / "x", "stadtwochenende")
     aendern(q2 / "plan" / "routen.yaml", lambda t: t.replace(
-        'O-02: {name: Beispielstadt, quelle: "erfunden (Beispiel)"}', 'O-02: {name: Beispielstadt, an: E-01, quelle: "erfunden (Beispiel)"}'))
+        'O-02: {name: Beispielstadt, art: stadt, quelle: "erfunden (Beispiel)"}', 'O-02: {name: Beispielstadt, art: stadt, an: E-01, quelle: "erfunden (Beispiel)"}'))
     with pytest.raises(bauen.BauFehler) as e:
         bauen.bauen(q2, tmp_path / "web" / "x")
     assert meldet(e.value.args[0], "pruefung.routen.eltern_ort")

@@ -3719,12 +3719,25 @@ def wissen_aendern(reise_dir, wer, args, heute=None):
     return S("schreiben.titel.geaendert", w1=wid, w2=verbinden(geaendert, "; ")), S("schreiben.antwort.abschnitt.kopf", w1=wid, w2=neuer_titel or titel, w3=datei) + verbinden(geaendert, "; ") + S("schreiben.antwort.abschnitt.grund_ende", w1=grund)
 
 
+def rubriken_pruefen(text, rubriken, ziel):
+    """Jedes fette Stichwort am Absatzanfang muss eine Rubrik der Gliederung sein, wenn die Art eine hat (docs/ontologie.md)."""
+    if not rubriken:
+        return
+    namen = {r["name"].casefold() for r in rubriken}
+    fremd = [w for w in re.findall(r"^\*\*([^*]{1,60})\*\*", text, flags=re.M) if w.strip().rstrip(".:").casefold() not in namen]
+    if fremd:
+        raise Ablehnung("schreiben.lesetext_schreiben.4", w1=fremd[0].strip().rstrip('.:'), w2=', '.join(r['name'] for r in rubriken), eid=ziel)
+
+
 def lesetext_schreiben(reise_dir, wer, args, heute=None):
-    """Den Lesetext einer Etappe (Abschnitt „Zusammenfassung“ im Etappen-Dossier, Ebene „Der Weg“) schreiben oder ersetzen,
-    gegliedert nach den Rubriken der Art (je Absatz „**Rubrik.** …“); Herkunft Pflicht. -> (Titel, Text)."""
+    """Den Lesetext einer Etappe (Abschnitt „Zusammenfassung“ im Etappen-Dossier, Ebene „Der Weg“) oder eines Orts (Text unter
+    „## O-… Name“ im Ortsdossier, ADR-0008, #334) schreiben oder ersetzen, gegliedert nach den Rubriken der Art (je Absatz
+    „**Rubrik.** …“); Herkunft Pflicht. -> (Titel, Text)."""
     import json
     heute = heute or datetime.date.today()
     eid = (text_wert(args, "ziel", pflicht=True, laenge=12) or "").strip().upper()
+    if re.fullmatch(r"O-\d+[A-Za-z]?", eid):
+        return ort_lesetext_schreiben(reise_dir, wer, args, eid, heute)
     if not re.fullmatch(r"E-\d+[A-Za-z]?", eid):
         raise Ablehnung("schreiben.lesetext_schreiben.1")
     text = text_wert(args, "text", pflicht=True, laenge=12000, absaetze=True)
@@ -3748,12 +3761,7 @@ def lesetext_schreiben(reise_dir, wer, args, heute=None):
     # Rubriken der Art prüfen: jedes fette Stichwort am Absatzanfang muss eine Rubrik sein, wenn die Art eine Gliederung hat
     route = route_stand(reise_dir)
     st = (route.get("strecken") or {}).get(eid) or {}
-    rubriken = (((route.get("arten") or {}).get(st.get("art_schluessel"))) or {}).get("lesetext") or []
-    if rubriken:
-        namen = {r["name"].casefold() for r in rubriken}
-        fremd = [w for w in re.findall(r"^\*\*([^*]{1,60})\*\*", text, flags=re.M) if w.strip().rstrip(".:").casefold() not in namen]
-        if fremd:
-            raise Ablehnung("schreiben.lesetext_schreiben.4", w1=fremd[0].strip().rstrip('.:'), w2=', '.join(r['name'] for r in rubriken), eid=eid)
+    rubriken_pruefen(text, (((route.get("arten") or {}).get(st.get("art_schluessel"))) or {}).get("lesetext") or [], eid)
     absatz = f"{text}\n\n" + texte.t(sprache_von(reise_dir), "inhalt.schreiben.herkunft.geschrieben", quelle=quelle, datum=texte.datum(heute, sprache_von(reise_dir)), wer=wer["name"])
     zs = next((i for i in range(start + 1, ende) if re.fullmatch(r"###\s+Zusammenfassung\s*", zeilen[i])), None)
     if zs is not None:
@@ -3769,6 +3777,59 @@ def lesetext_schreiben(reise_dir, wer, args, heute=None):
         was = "angelegt"
     f.write_text("\n".join(zeilen).rstrip("\n") + "\n", encoding="utf-8")
     return S("schreiben.titel.lesetext_" + was, w1=eid), S("schreiben.antwort.lesetext." + was, w1=eid, w2=d_rel) + S("schreiben.antwort.herkunft", w1=quelle) + "."
+
+
+FUSSNOTE = re.compile(r"^\[\^[^\]]+\]:")
+
+
+def ort_lesetext_schreiben(reise_dir, wer, args, oid, heute):
+    """Lesetext eines Orts: der Text unter „## O-… Name“ vor dem ersten Unterabschnitt im Ortsdossier (reise.json orte_dossiers),
+    auf der Ortsseite oben. Unterabschnitte (### …) und Fußnoten bleiben. Fehlt der Abschnitt, kommt er ans Ende des ersten
+    Ortsdossiers; fehlt das Dossier, entsteht inhalt/orte.md und wird in reise.json eingetragen. Rubriken der Art des Orts."""
+    import json
+    text = text_wert(args, "text", pflicht=True, laenge=12000, absaetze=True)
+    quelle = text_wert(args, "quelle", pflicht=True)
+    route = route_stand(reise_dir)
+    o = (route.get("orte") or {}).get(oid)
+    if o is None:
+        raise Ablehnung("schreiben.lesetext_schreiben.ort_fehlt", oid=oid)
+    rubriken_pruefen(text, (((route.get("arten") or {}).get(o.get("art"))) or {}).get("lesetext") or [], oid)
+    absatz = f"{text}\n\n" + texte.t(sprache_von(reise_dir), "inhalt.schreiben.herkunft.geschrieben", quelle=quelle, datum=texte.datum(heute, sprache_von(reise_dir)), wer=wer["name"])
+    p_cfg = Path(reise_dir) / "reise.json"
+    cfg = json.loads(p_cfg.read_text(encoding="utf-8"))
+    dossiers = [d for d in (cfg.get("orte_dossiers") or []) if isinstance(d, str)]
+    kopf = re.compile(r"^##\s+(O-\d+[A-Za-z]?)\s")
+    for d_rel in dossiers:   # der Abschnitt des Orts, wo er schon steht
+        f = Path(reise_dir) / d_rel
+        zeilen = f.read_text(encoding="utf-8").split("\n") if f.exists() else []
+        start = next((i for i, z in enumerate(zeilen) if (m := kopf.match(z + " ")) and m.group(1).upper() == oid), None)
+        if start is not None:
+            break
+    else:
+        start = None
+    if start is not None:
+        ende = next((i for i in range(start + 1, len(zeilen)) if zeilen[i].startswith("## ")), len(zeilen))
+        erster = next((i for i in range(start + 1, ende) if zeilen[i].startswith("### ")), ende)
+        fussnoten = [z for z in zeilen[start + 1:erster] if FUSSNOTE.match(z)]   # Belege der Unterabschnitte bleiben
+        neu = ["", *absatz.split("\n"), ""] + (fussnoten + [""] if fussnoten else [])
+        zeilen[start + 1:erster] = neu
+        was = "ersetzt"
+    else:
+        if not dossiers:
+            d_rel = "inhalt/orte.md"
+            cfg["orte_dossiers"] = [d_rel]
+            p_cfg.write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        else:
+            d_rel = dossiers[0]
+        f = Path(reise_dir) / d_rel
+        zeilen = f.read_text(encoding="utf-8").rstrip("\n").split("\n") if f.exists() and f.read_text(encoding="utf-8").strip() else []
+        name = o.get("name") or oid
+        zeilen += ([""] if zeilen else []) + [f"## {oid} {name}", "", *absatz.split("\n")]
+        was = "angelegt"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text("\n".join(zeilen).rstrip("\n") + "\n", encoding="utf-8")
+    return (S("schreiben.titel.lesetext_" + was, w1=oid),
+            S("schreiben.antwort.lesetext.ort_" + was, w1=oid, w2=d_rel) + S("schreiben.antwort.herkunft", w1=quelle) + ".")
 
 
 def reise_aendern(reise_dir, wer, args, heute=None):

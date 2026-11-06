@@ -1,6 +1,15 @@
 # Arten der zweiten Beispielreise (erfunden): ein Wochenende in der Stadt, ohne Wanderung, ohne Varianten, ohne Etappen
 # und ohne Tagesseiten. Sie prüft, dass die Software nur Grundformen kennt (ADR-0001, Frage 1).
 arten:
+  stadt:
+    grundform: ort
+    name: Stadt
+    farbe: schiefer
+    beschreibung: "Beispielwert: die Stadt, in der man das Wochenende verbringt"
+    lesetext:     # eine Stadt erzählt man anders als einen Etappenort (Beispielwert, #334)
+      ueberblick: {name: Überblick, hilfe: "Was die Stadt für dieses Wochenende ausmacht"}
+      essen:      {name: Essen, hilfe: "Küche der Gegend, wann man isst; ein bestimmtes Lokal ist ein Aufenthalt am Ort"}
+      unterwegs:  {name: Unterwegs, hilfe: "Wie man sich in der Stadt bewegt"}
   gastzimmer:
     grundform: aufenthalt
     name: Gästezimmer bei Verwandten

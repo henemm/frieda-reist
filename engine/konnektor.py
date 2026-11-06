@@ -803,6 +803,7 @@ class Handbuch:
                 z.append(tk("konnektor.ausgabe.ort.orte_darin") + ", ".join(f"{self.ort(k)} ({k})" for k in kinder))
             if o.get("merkmale"):
                 z.append("; ".join(f"{k}: {v.get('wert')}" for k, v in o["merkmale"].items() if isinstance(v, dict)))
+            z += self.lesetext_zeilen({"art_schluessel": o.get("art")})   # Gliederung je Art des Orts (#334)
             e[oid] = (titel, "\n\n".join(x for x in ("\n".join(z), txt) if x))
         for sid, s in (r.get("strecken") or {}).items():
             z = [f"{self.ort(s.get('von'))} → {self.ort(s.get('nach'))}" + (f" ({' + '.join(s['art']) if isinstance(s['art'], list) else s['art']})" if s.get("art") else "")
@@ -987,7 +988,7 @@ class Handbuch:
         return "\n".join([" | ".join(f.get("spalten", []))] + [" | ".join(zellen_von(z)) for z in zeilen])
 
     def lesetext_zeilen(self, s):
-        """Gliederung des Lesetexts der Art einer Strecke (plan/arten.yaml lesetext, docs/ontologie.md) als Anleitung für
+        """Gliederung des Lesetexts der Art einer Strecke oder eines Orts (plan/arten.yaml lesetext, docs/ontologie.md) als Anleitung für
         den AI-Client: Rubriken in ihrer Reihenfolge, jede als Absatz mit fettem Stichwort."""
         art = s.get("art_schluessel")
         rubriken = (((self.r.get("arten") or {}).get(art)) or {}).get("lesetext")

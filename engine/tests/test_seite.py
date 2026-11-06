@@ -107,7 +107,7 @@ def test_zweite_beispielreise_ohne_wanderung_baut_sauber(tmp_path):
     r = d["route"]
     assert [t["titel"] for t in r["tage"]] == ["Anreise und Ankommen bei Tante Anna", "Samstag in Beispielstadt", "Museum und Rückfahrt"]
     assert r["wahlstellen"] == [] and r["plaene"] == [] and r["warnungen"] == []
-    assert set(r["arten"]) == {"gastzimmer", "essen", "museum", "bahn"}
+    assert set(r["arten"]) == {"stadt", "gastzimmer", "essen", "museum", "bahn"}
 
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
