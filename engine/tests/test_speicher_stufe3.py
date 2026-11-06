@@ -231,3 +231,56 @@ def test_keine_neue_einheit_fuer_stufe3():
     import units
     assert "vergleichslauf" not in " ".join(vorlagen)
     assert hasattr(units, "ERLAUBT")
+
+
+# ---------- Teil 3 in-process: roter Probebau (AC-22), Wettlauf (AC-23) ----------
+# Festgelegte Stellen: `neu.probebau(ordner)` (Probebau mit der laufenden Software, Exception = rot) und
+# `reisespeicher.ordner_als_vorgang` (Eintragen, wirft StandGeaendert).
+
+def _alte_reise(rs, tmp_path, reise="stadtwochenende"):
+    alt = tmp_path / "alt" / reise
+    shutil.copytree(BEISPIEL / reise, alt)
+    _alt_machen(reise, alt)
+    rs.importieren(alt, reise, "Test", grund="alt")
+    return reise
+
+
+def test_nachziehen_speicher_schreibt_nichts_bei_rotem_bau(rs, tmp_path, monkeypatch, capsys):
+    reise = _alte_reise(rs, tmp_path)
+    import neu
+    n = rs.stand_nummer(reise)
+
+    def rot(ordner):
+        raise ValueError("Bau gescheitert")
+    monkeypatch.setattr(neu, "probebau", rot)
+    assert neu.main(["nachziehen-speicher", reise, str(tmp_path / "a")]) == 2
+    assert "Bau gescheitert" in capsys.readouterr().out
+    assert rs.stand_nummer(reise) == n
+
+
+def test_nachziehen_speicher_wiederholt_bei_wettlauf_hoechstens_dreimal(rs, tmp_path, monkeypatch):
+    reise = _alte_reise(rs, tmp_path)
+    import neu
+    n = rs.stand_nummer(reise)
+    echt = rs.ordner_als_vorgang
+    aufrufe = []
+
+    def wettlauf(*a, **k):
+        aufrufe.append(1)
+        raise rs.StandGeaendert(n, n + 1)
+    monkeypatch.setattr(rs, "ordner_als_vorgang", wettlauf)
+    assert neu.main(["nachziehen-speicher", reise, str(tmp_path / "a")]) == 1
+    assert len(aufrufe) == 3 and rs.stand_nummer(reise) == n          # höchstens dreimal, kein Vorgang
+
+    # ein Fehlschlag, dann gelingt es: neu materialisiert, kein Verlust der Schreib-Änderung
+    aufrufe.clear()
+
+    def einmal(*a, **k):
+        aufrufe.append(1)
+        if len(aufrufe) == 1:
+            rs.vorgang_schreiben(reise, {"zwischen.md": b"x"}, "Test", "test", "dazwischen")
+            raise rs.StandGeaendert(n, n + 1)
+        return echt(*a, **k)
+    monkeypatch.setattr(rs, "ordner_als_vorgang", einmal)
+    assert neu.main(["nachziehen-speicher", reise, str(tmp_path / "b")]) == 0
+    assert len(aufrufe) == 2 and "zwischen.md" in rs.aktueller_stand(reise)

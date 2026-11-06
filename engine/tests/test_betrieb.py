@@ -2379,3 +2379,59 @@ def test_vergleichslauf_schreibt_stempel_und_exit_codes(sp):
     assert json.loads(stempel.read_text())["ergebnis"] == "unterschied"
     assert lauf("beispielreise", FR_SPEICHER=str(sp["tmp"] / "kein-speicher")).returncode == 2
     assert git(sp["arbeit"], "status", "--porcelain").strip() == ""
+
+
+# ---------- Stufe 3, Teil 3: Software-Wechsel auf dem Server (AC-25, AC-26, AC-30) ----------
+# Im Test ohne Submodul: Software-Kennung = `git rev-parse HEAD` (Spec, Entscheidung 5); ein Commit außerhalb von reisen/
+# ist ein Software-Wechsel.
+
+def _py_protokoll(sp):
+    py = ausfuehrbar(sp["tmp"] / "python-protokoll", f'#!/bin/sh\necho "$@" >> {sp["tmp"]}/py.log\nexec {sys.executable} "$@"\n')
+    sp["env"]["FR_PYTHON"] = str(py)
+
+
+def test_software_wechsel_stellt_speicher_reisen_auf_dem_server_um(sp):
+    _py_protokoll(sp)
+    sp["env"]["FR_SPEICHERREISEN"] = "stadtwochenende"
+    sp["lauf"]()
+    gebaut = sp["tmp"] / "dienst/reise-stand/stadtwochenende.gebaut"
+    alt = gebaut.read_text().split()[1]
+    assert "nachziehen-speicher" not in " ".join(sp["zeilen"]("py.log"))    # ohne Wechsel kein Aufruf
+    sp["neuer_commit"]()                                                      # Software-Wechsel
+    sp["deploys"]()
+    sp["lauf"]()
+    assert any("nachziehen-speicher" in z and "stadtwochenende" in z for z in sp["zeilen"]("py.log"))
+    assert "stadtwochenende" in sp["deploys"]()
+    assert gebaut.read_text().split()[1] == sp["kopf"]() != alt
+
+
+def test_software_wechsel_braucht_keinen_handschritt(sp):
+    """Die Reise im alten Format wird vom Lauf umgestellt, ohne dass jemand neu.py aufruft."""
+    sp["env"]["FR_SPEICHERREISEN"] = "stadtwochenende"
+    sp["lauf"]()
+    alt = {p: b for p, b in sp["speicher"].aktueller_stand("stadtwochenende").items()}
+    text = alt["reise.yaml"].decode().splitlines()
+    sp["speicher"].vorgang_schreiben("stadtwochenende",
+                                     {"reise.yaml": ("\n".join(z for z in text if not z.startswith("sprache:")) + "\n").encode()},
+                                     "Test", "test", "altes Format")
+    sp["neuer_commit"]()
+    sp["lauf"]()
+    assert b"sprache:" in sp["speicher"].aktueller_stand("stadtwochenende")["reise.yaml"]
+    assert sp["speicher"].verlauf("stadtwochenende", 1)[0]["wer"] == "Software-Nachziehen"
+
+
+def test_rotes_software_tor_haelt_speicher_reisen_auf_altem_stand(sp):
+    _py_protokoll(sp)
+    sp["env"]["FR_SPEICHERREISEN"] = "stadtwochenende"
+    sp["lauf"]()
+    gebaut = sp["tmp"] / "dienst/reise-stand/stadtwochenende.gebaut"
+    vorher = gebaut.read_text()
+    sp["deploys"]()
+    sp["neuer_commit"]()
+    (sp["tmp"] / "rot").write_text("")                                        # Tests der Software rot (pruefen.sh)
+    sp["speicher"].vorgang_schreiben("stadtwochenende", {"t.md": b"1"}, "Test", "test", "t")   # auch kein Inhaltsbau
+    sp["lauf"]()
+    assert gebaut.read_text() == vorher
+    assert "stadtwochenende" not in sp["deploys"]()
+    assert "nachziehen-speicher" not in " ".join(sp["zeilen"]("py.log"))
+    assert sp["rot"]()["art"] == "software"
