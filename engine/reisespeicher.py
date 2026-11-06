@@ -156,13 +156,17 @@ def _stand(v, reise, bis=None, spalte="inhalt"):
         bis = hoechster
     elif not v.execute("SELECT 1 FROM vorgaenge WHERE reise = ? AND stand = ?", (reise, bis)).fetchone():
         raise KeyError(f"{reise}: stand {bis}")
+    # Zwei Stufen (#347): innen nur Kennzahlen (pfad, vorgang, weg), erst für die Gewinner-Zeilen wird die Spalte gelesen.
+    # Erst eine schlanke Zeilenliste (nur Kennzahlen, materialisiert), damit die Fensterfunktion keine Inhalte mitsortiert.
     zeilen = v.execute(f"""
-        SELECT pfad, {spalte} FROM (
-          SELECT s.pfad, s.{spalte}, s.inhalt IS NULL AS weg,
-                 ROW_NUMBER() OVER (PARTITION BY s.pfad ORDER BY s.vorgang DESC) AS rang
+        WITH k AS MATERIALIZED (
+          SELECT s.pfad, s.vorgang, s.inhalt IS NULL AS weg
           FROM versionen s JOIN vorgaenge g ON g.nummer = s.vorgang
-          WHERE g.reise = ? AND g.stand <= ?)
-        WHERE rang = 1 AND NOT weg ORDER BY pfad""", (reise, bis))
+          WHERE g.reise = ? AND g.stand <= ?),
+        w AS (
+          SELECT pfad, vorgang, weg, ROW_NUMBER() OVER (PARTITION BY pfad ORDER BY vorgang DESC) AS rang FROM k)
+        SELECT w.pfad, s.{spalte} FROM w JOIN versionen s ON s.vorgang = w.vorgang AND s.pfad = w.pfad
+        WHERE w.rang = 1 AND NOT w.weg ORDER BY w.pfad""", (reise, bis))
     return {z[0]: z[1] for z in zeilen}
 
 
@@ -235,17 +239,20 @@ def vorgang_schreiben(reise, dateien, wer, werkzeug, titel, grund="", kennung=No
 
 
 def ordner_als_vorgang(reise, ordner, basis, wer, werkzeug, titel, grund, kennung, rolle, timeout=10):
-    """Baustein „Ordner vorher/nachher -> ein Vorgang“ (#347): vergleicht den Ordner (nachher) mit aktueller_stand(reise,
-    basis) (vorher) und schreibt die Unterschiede als einen Vorgang, fehlende Dateien als Tombstone, mit erwartet=basis.
+    """Baustein „Ordner vorher/nachher -> ein Vorgang“ (#347): vergleicht den Ordner (nachher) über Prüfsummen mit dem Stand
+    basis (vorher) und schreibt die Unterschiede als einen Vorgang, fehlende Dateien als Tombstone, mit erwartet=basis.
     basis=0: neue Reise. Ohne Unterschied ValueError. Genutzt vom Schreibweg (auch reise_anlegen), später von
     `neu.py nachziehen` (#348). -> Vorgang(nummer, stand)."""
     nachher = _ordner_lesen(ordner)
-    try:
-        vorher = aktueller_stand(reise, basis) if basis else {}
-    except KeyError:
-        vorher = {}
+    vorher = {}
+    if basis:
+        try:
+            with closing(db(timeout)) as v:
+                vorher = _stand(v, reise, basis, "pruefsumme")
+        except KeyError:
+            vorher = {}
     dateien = {p: None for p in vorher if p not in nachher}
-    dateien.update({p: b for p, b in nachher.items() if vorher.get(p) != b})
+    dateien.update({p: b for p, b in nachher.items() if vorher.get(p) != _summe(b)})
     if not dateien:
         raise NichtsGeaendert(f"{reise}: nothing changed")
     return vorgang_schreiben(reise, dateien, wer, werkzeug, titel, grund, kennung, rolle, erwartet=basis,

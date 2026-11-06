@@ -1,6 +1,6 @@
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0
-rootdir: /home/hem/frieda-reist/.claude/worktrees/adaptive-petting-lighthouse
+rootdir: ~/frieda-reist/.claude/worktrees/adaptive-petting-lighthouse
 plugins: anyio-4.13.0
 collected 64 items / 50 deselected / 14 selected
 
@@ -9,7 +9,7 @@ engine/tests/test_reisespeicher.py ....F........F                        [100%]
 =================================== FAILURES ===================================
 ______________ test_stand_holt_inhalt_nur_fuer_neueste_versionen _______________
 
-rs = <module 'reisespeicher' from '/home/hem/frieda-reist/.claude/worktrees/adaptive-petting-lighthouse/engine/reisespeicher.py'>
+rs = <module 'reisespeicher' from 'engine/reisespeicher.py'>
 drei = [Vorgang(nummer=1, stand=1), Vorgang(nummer=2, stand=2), Vorgang(nummer=3, stand=3), Vorgang(nummer=4, stand=4)]
 
     def test_stand_holt_inhalt_nur_fuer_neueste_versionen(rs, drei):
@@ -37,7 +37,7 @@ E                     SELECT S.PFAD, S.INHALT, S. AS WEG,
 engine/tests/test_reisespeicher.py:775: AssertionError
 ________ test_ordner_als_vorgang_holt_keine_inhalte_des_vorher_standes _________
 
-rs = <module 'reisespeicher' from '/home/hem/frieda-reist/.claude/worktrees/adaptive-petting-lighthouse/engine/reisespeicher.py'>
+rs = <module 'reisespeicher' from 'engine/reisespeicher.py'>
 tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-11615/test_ordner_als_vorgang_holt_k0')
 drei = [Vorgang(nummer=1, stand=1), Vorgang(nummer=2, stand=2), Vorgang(nummer=3, stand=3), Vorgang(nummer=4, stand=4)]
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a7b901324e0>
