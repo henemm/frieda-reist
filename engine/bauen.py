@@ -648,6 +648,7 @@ class Bauer:
             if route:
                 self.karte_bauen(r_cfg, route, lesetexte)
                 self.lage_ergaenzen(route)
+                self.dinge_lesetext(route, r_rel)
             if route:
                 for art in ("tagesplan", "unterkuenfte"):
                     if art not in r_cfg:
@@ -1174,6 +1175,30 @@ class Bauer:
                 for wort in STICHWORT.findall(b["html"]):
                     if wort.strip().rstrip(".:").strip().casefold() not in namen:
                         self.hinweise.append(texte.satz("pruefung.bauen.72", eid=eid, w1=wort.strip().rstrip('.:'), art=art, w2=', '.join(r['name'] for r in rubriken)))
+
+    def dinge_lesetext(self, route, r_rel):
+        """Lesetext an Unterkunft und Aufenthalt (Feld lesetext in routen.yaml, #334) als HTML mit Herkunftszeile; ein fettes
+        Stichwort, das keine Rubrik der Art ist, ist ein Hinweis (wie bei Strecke und Ort). Ohne Gliederung der Art frei."""
+        arten, sprache = route.get("arten") or {}, self.eck["sprache"]
+        for gruppe in ("unterkuenfte", "aufenthalte"):
+            for did, d in (route.get(gruppe) or {}).items():
+                lt = d.get("lesetext")
+                if not isinstance(lt, dict):
+                    continue
+                datum = lt.get("geschrieben")
+                try:
+                    datum = texte.datum(datetime.date.fromisoformat(datum), sprache) if datum else ""
+                except ValueError:
+                    pass
+                herkunft = texte.t(sprache, "inhalt.schreiben.herkunft.geschrieben", quelle=lt["quelle"], datum=datum or "–", wer=lt.get("wer") or "–")
+                d["lesetext"] = self.html(lt["text"] + "\n\n" + herkunft, self.reise_dir / r_rel)
+                rubriken = (arten.get(d.get("art")) or {}).get("lesetext")
+                if not rubriken:
+                    continue
+                namen = {r["name"].casefold() for r in rubriken}
+                for wort in STICHWORT.findall(d["lesetext"]):
+                    if wort.strip().rstrip(".:").strip().casefold() not in namen:
+                        self.hinweise.append(texte.satz("pruefung.bauen.72", eid=did, w1=wort.strip().rstrip('.:'), art=d.get("art"), w2=', '.join(r['name'] for r in rubriken)))
 
     def orte_lesetext_pruefen(self, abschnitte, route):
         """Wie lesetext_pruefen, für den Text oben auf der Ortsseite (Einleitung unter „## O-…“) gegen die Gliederung der Art

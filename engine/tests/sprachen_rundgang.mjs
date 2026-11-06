@@ -80,7 +80,8 @@ const ohneMarke = (marke) => {
 };
 const stale = {}, marke = {};
 for (const h of routen) {
-  for (const x of [A, B]) { await x.p.evaluate(h => { location.hash = h; }, h); }
+  // Der Zeiger steht in A noch am Sprachknopf: weg damit, sonst öffnet ein Element darunter seinen Tooltip (Hover, keine Sprache)
+  for (const x of [A, B]) { await x.p.mouse.move(0, 0); await x.p.evaluate(h => { location.hash = h; }, h); }
   await A.p.waitForTimeout(12);
   // „Weiterlesen“ am Weg der Tagesseite entscheidet nach dem nächsten Bild (requestAnimationFrame): erst danach vergleichen
   // (seit #214 führen Etappen, Unterkünfte und Wahlen auf die Tagesseite)

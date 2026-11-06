@@ -61,3 +61,4 @@ Für den AI-Client ist das die schwierigere Schnittstelle: 61 Werkzeuge mit 105 
 ## Verlauf
 
 - 3.11.2026: Entwurf nach der Frage des Product Owners (Cloud-Sitzung), am selben Tag von ihm entschieden (Fragewerkzeug): genau ein Elternbezug, Kartenkategorien entfallen, Übersicht je Art nur angefordert; Status „gilt“. Umsetzung in fünf Schritten: frieda-reist #282 (a), #283 (b), #284 (c), #285 (d), #286 (e), Epic #280.
+- 6.11.2026 (#334, Nachtrag): Lesetext für jedes Ding. Strecke und Ort tragen ihn im Dossier (ADR-0008), Unterkunft und Aufenthalt als Feld `lesetext` am Ding (`text`, `quelle`, `geschrieben`, `wer`; Product Owner: die allgemeinste Form, ohne Dossier je Grundform). Gegliedert wird nach der Art. Empfehlungen sind Dinge mit `an:`, kein Text.

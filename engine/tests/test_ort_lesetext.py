@@ -90,7 +90,7 @@ def test_unbekannter_ort_und_falsches_ziel(tmp_path):
         schreib(q, "O-99", "x")
     assert meldet(str(e.value), "schreiben.lesetext_schreiben.ort_fehlt")
     with pytest.raises(sb.Ablehnung) as e:
-        schreib(q, "U-01", "x")
+        schreib(q, "T-01", "x")
     assert meldet(str(e.value), "schreiben.lesetext_schreiben.1")
 
 

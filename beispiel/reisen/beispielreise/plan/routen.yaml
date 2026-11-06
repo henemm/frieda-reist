@@ -106,6 +106,14 @@ unterkuenfte:
       webseite: {wert: "https://example.org/pension-burgblick", quelle: "erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
       lage: {wert: "am Markt, zwei Minuten vom Malerweg", quelle: "erfunden (Beispiel)"}
       einschaetzung: {wert: "Ruhig und gemütlich, liegt direkt am Weg: das Haus für alle, die morgens ohne Anstieg losgehen wollen (Beispielwert)", quelle: "Einschätzung von Claude, erfunden (Beispiel)", notiz: "Beispielwert, erfunden"}
+    lesetext:
+      text: |
+        **Das Haus.** Ein altes Bürgerhaus am Markt mit sechs Zimmern, geführt von einer Familie (Beispielwert, erfunden).
+
+        **Ankommen.** Vom Malerweg zwei Minuten über den Markt; nach 18 Uhr klingeln (Beispielwert, erfunden).
+      quelle: "erfunden (Beispiel)"
+      geschrieben: 2026-11-06
+      wer: Ida
   U-03:
     name: Gasthof Polenztal
     ort: O-03

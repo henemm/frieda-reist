@@ -134,6 +134,13 @@ ALLGEMEIN = "allgemein"     # Wahlstelle ohne Art: keine Merkmale
 KOMBINIERT = "kombiniert"   # Strecke mit mehreren Arten (bahn und bus): die Reise definiert diese Art, wenn sie vorkommt
 
 
+def lesetext_aus(lt):
+    """Lesetext am Ding für den Bau: Text und Herkunft; der Bau macht daraus HTML mit Herkunftszeile (#334)."""
+    g = lt.get("geschrieben")
+    return {"text": str(lt.get("text") or ""), "quelle": str(lt.get("quelle") or ""), "wer": str(lt.get("wer") or ""),
+            "geschrieben": g.isoformat() if isinstance(g, datetime.date) else (str(g) if g else None)}
+
+
 def art_schluessel(text):
     """Art aus einer freien Bezeichnung (typ einer Unterkunft): klein, Umlaute und Akzente aufgelöst, Rest zu _."""
     t = texte.umschrift(str(text or "").strip()).replace("&", "und")
@@ -1104,6 +1111,14 @@ class Routen:
             aus.append({"id": k, "name": str(d["name"]), "hilfe": d.get("hilfe")})
         return aus
 
+    def lesetext_am_ding(self, did, lt):
+        """Form des Lesetexts an einer Unterkunft oder einem Aufenthalt (#334): text und quelle Pflicht, dazu geschrieben
+        (Datum) und wer. Ohne Herkunft kein Text (ADR-0001, Frage 5)."""
+        if not isinstance(lt, dict) or not str(lt.get("text") or "").strip() or not str(lt.get("quelle") or "").strip():
+            self.fehl(texte.satz("pruefung.routen.lesetext_ding", did=did))
+        elif set(lt) - {"text", "quelle", "geschrieben", "wer"}:
+            self.fehl(texte.satz("pruefung.routen.lesetext_ding_felder", did=did, w1=", ".join(sorted(map(str, set(lt) - {"text", "quelle", "geschrieben", "wer"})))))
+
     def grundform(self, art):
         return (self.arten.get(art) or {}).get("grundform")
 
@@ -1342,6 +1357,10 @@ class Routen:
                 w = (self.mk_aufenthalt[aid].get(rk) or {}).get("wert") if rk else None
                 if isinstance(w, str) and re.fullmatch(r"O-\d+", w) and w not in self.orte:
                     self.fehl(texte.satz("pruefung.routen.bezug_ort", did=aid, x=w))
+        # Lesetext am Ding (#334): ein Feld der Form {text, quelle, geschrieben, wer}; gegliedert nach der Art prüft der Bau
+        for did, d in [*self.unterkuenfte.items(), *self.aufenthalte.items()]:
+            if isinstance(d, dict) and "lesetext" in d:
+                self.lesetext_am_ding(did, d["lesetext"])
         for oid, o in self.orte.items():
             if self.o_art.get(oid) is not None and isinstance(o, dict):
                 self.mk_ort[oid] = self.werte(oid, o.get("merkmale"), {**self.katalog.get(self.o_art[oid], {}), **o_extra.get(oid, {})})
@@ -1986,6 +2005,7 @@ class Routen:
             art = self.a_art.get(aid)
             mk = self.mk_aufenthalt.get(aid, {})
             aus[aid] = {**{k: a.get(k) for k in ("name", "ort", "zeit", "beginn", "ende", "kontakt", "hinweis", "quelle", "frage", "buchungslink")},
+                        **({"lesetext": lesetext_aus(a["lesetext"])} if isinstance(a.get("lesetext"), dict) else {}),
                         **dict(self.lage_aus(a)), "art": art, "buchung": self.buchung_von(a, art, aid), "buchung_id": self.buchung_id(aid),
                         "tage": an_tagen.get(aid, []),
                         "merkmale": mk, "fehlt": [k for k, d in self.katalog.get(art, {}).items() if zaehlt(d) and k not in mk]}
@@ -2003,6 +2023,8 @@ class Routen:
         aus = {}
         for uid, u in self.unterkuenfte.items():
             aus[uid] = {k: u.get(k) for k in ("name", "ort", "kontakt", "hinweis", "quelle", "frage", "buchungslink")}
+            if isinstance(u.get("lesetext"), dict):
+                aus[uid]["lesetext"] = lesetext_aus(u["lesetext"])
             # Lage (ADR-0004): Adresse und Punkt als Aussage mit Herkunft; der Bau ergänzt den Punkt aus plan/punkte.yaml
             for feld in ("adresse", "punkt"):
                 v = u.get(feld) if isinstance(u.get(feld), dict) else None

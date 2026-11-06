@@ -3740,6 +3740,8 @@ def lesetext_schreiben(reise_dir, wer, args, heute=None):
     eid = (text_wert(args, "ziel", pflicht=True, laenge=12) or "").strip().upper()
     if re.fullmatch(r"O-\d+[A-Za-z]?", eid):
         return ort_lesetext_schreiben(reise_dir, wer, args, eid, heute)
+    if re.fullmatch(r"[UA]-\d+[A-Za-z]?", eid):
+        return ding_lesetext_schreiben(reise_dir, wer, args, eid, heute)
     if not re.fullmatch(r"E-\d+[A-Za-z]?", eid):
         raise Ablehnung("schreiben.lesetext_schreiben.1")
     text = text_wert(args, "text", pflicht=True, laenge=12000, absaetze=True)
@@ -3779,6 +3781,29 @@ def lesetext_schreiben(reise_dir, wer, args, heute=None):
         was = "angelegt"
     f.write_text("\n".join(zeilen).rstrip("\n") + "\n", encoding="utf-8")
     return S("schreiben.titel.lesetext_" + was, w1=eid), S("schreiben.antwort.lesetext." + was, w1=eid, w2=d_rel) + S("schreiben.antwort.herkunft", w1=quelle) + "."
+
+
+def ding_lesetext_schreiben(reise_dir, wer, args, did, heute):
+    """Lesetext einer Unterkunft oder eines Aufenthalts (#334): Feld lesetext am Ding in routen.yaml ({text, quelle,
+    geschrieben, wer}); die Karte des Dings an seiner Heimat zeigt ihn. Rubriken der Art des Dings. Ersetzt einen alten Text."""
+    text = text_wert(args, "text", pflicht=True, laenge=12000, absaetze=True)
+    quelle = text_wert(args, "quelle", pflicht=True)
+    route = route_stand(reise_dir)
+    d = (route.get("unterkuenfte" if did.startswith("U-") else "aufenthalte") or {}).get(did)
+    if d is None:
+        raise Ablehnung("schreiben.lesetext_schreiben.ding_fehlt", did=did)
+    rubriken_pruefen(text, (((route.get("arten") or {}).get(d.get("art"))) or {}).get("lesetext") or [], did)
+    roh = routen_laden(reise_dir)
+    knoten, _ = ding_finden(roh, did)
+    if knoten is None:
+        raise Ablehnung("schreiben.lesetext_schreiben.ding_fehlt", did=did)
+    from ruamel.yaml.scalarstring import LiteralScalarString
+    was = "ersetzt" if knoten.get("lesetext") else "angelegt"
+    knoten["lesetext"] = {"text": LiteralScalarString(text.rstrip("\n") + "\n") if "\n" in text else text, "quelle": quelle,
+                          "geschrieben": heute, "wer": wer["name"]}
+    routen_speichern(reise_dir, roh)
+    return (S("schreiben.titel.lesetext_" + was, w1=did),
+            S("schreiben.antwort.lesetext.ding_" + was, w1=f"{did} {d.get('name') or ''}".strip()) + S("schreiben.antwort.herkunft", w1=quelle) + ".")
 
 
 FUSSNOTE = re.compile(r"^\[\^[^\]]+\]:")

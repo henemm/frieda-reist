@@ -708,14 +708,8 @@ class Handbuch:
         for w in self.r.get("wahlstellen", []):
             if id_ == w["id"] or any(o["id"] == id_ for o in w["optionen"]):
                 return w, w.get("art") or "allgemein", w.get("kriterien") or []
-        if id_ in (self.r.get("aufenthalte") or {}):   # Aufenthalt ohne Nacht (A-…): Zeile wie im Tag, dann Merkmale
-            a = self.r["aufenthalte"][id_]
-            z = [self.aufenthalt(id_), tk("konnektor.ausgabe.aufenthalt.in", w1=self.ort(a.get("ort"))), *( [a["hinweis"]] if a.get("hinweis") else []),
-                 *( [tk("konnektor.ausgabe.kriterien_von.1") + ", ".join(a["tage"])] if a.get("tage") else []), *( [tk("konnektor.ausgabe.option_text.2") + a["quelle"]] if a.get("quelle") else [])]
-            z += self.merkmal_zeilen((self.r.get("merkmale") or {}).get(a.get("art")), a.get("merkmale"), a.get("fehlt"))
-            return "\n".join(z)
-        if id_ in (self.r.get("unterkuenfte") or {}):   # Aufenthalt: Merkmale seiner Art (plan/arten.yaml)
-            b = self.r["unterkuenfte"][id_].get("art")
+        if id_ in (self.r.get("unterkuenfte") or {}) or id_ in (self.r.get("aufenthalte") or {}):   # Merkmale seiner Art (plan/arten.yaml)
+            b = ((self.r.get("unterkuenfte") or {}).get(id_) or (self.r.get("aufenthalte") or {}).get(id_)).get("art")
             return None, b, (self.r.get("merkmale") or {}).get(b) or []
         st = (self.r.get("strecken") or {}).get(id_)
         if st is not None:   # Bewegung: Merkmale ihrer Art
@@ -847,7 +841,15 @@ class Handbuch:
             if u.get("merkmale") or u.get("fehlt"):
                 z.append(tk("konnektor.ausgabe.option_text.1"))
                 z += self.merkmal_zeilen((r.get("merkmale") or {}).get(u.get("art")), u.get("merkmale"), u.get("fehlt"))
+            z += self.ding_lesetext_zeilen(u)
             e[uid] = (u.get("name") or uid, "\n".join(z))
+        for aid, a in (r.get("aufenthalte") or {}).items():   # Aufenthalt ohne Nacht (A-…): Zeile wie im Tag, dann Merkmale
+            z = [self.aufenthalt(aid), tk("konnektor.ausgabe.aufenthalt.in", w1=self.ort(a.get("ort"))), *([a["hinweis"]] if a.get("hinweis") else []),
+                 *([tk("konnektor.ausgabe.kriterien_von.1") + ", ".join(a["tage"])] if a.get("tage") else []),
+                 *([tk("konnektor.ausgabe.option_text.2") + a["quelle"]] if a.get("quelle") else [])]
+            z += self.merkmal_zeilen((r.get("merkmale") or {}).get(a.get("art")), a.get("merkmale"), a.get("fehlt"))
+            z += self.ding_lesetext_zeilen(a)
+            e.setdefault(aid, (a.get("name") or aid, "\n".join(z)))
         for bid, b in (r.get("buchungen") or {}).items():   # Buchung als eigenes Ding (#76)
             e[bid] = (tk("konnektor.ausgabe.sammeln.3", w1=dw(b.get('status')), w2=b.get('titel') or bid), self.buchung_text(b))
         for p in r.get("plaene", []):
@@ -999,6 +1001,13 @@ class Handbuch:
         return [tk("konnektor.lesetext_zeilen.1") + rubriken[0]["name"] + tk("konnektor.ausgabe.lesetext_zeilen.1")] + [
             f"- {x['name']}" + (f": {x['hilfe']}" if x.get("hilfe") else "") for x in rubriken]
 
+    def ding_lesetext_zeilen(self, d):
+        """Lesetext einer Unterkunft oder eines Aufenthalts (#334): erst die Gliederung der Art, dann der Text, wie er steht."""
+        z = self.lesetext_zeilen({"art_schluessel": d.get("art")})
+        if d.get("lesetext"):
+            z += ["", tk("konnektor.ausgabe.lesetext_ding"), text(d["lesetext"])]
+        return z
+
     def merkmale(self, ziel, bereich):
         """Welche Merkmale eine Alternative braucht, was schon da ist und was fehlt (Werkzeug merkmale)."""
         katalog = self.r.get("merkmale") or {}
@@ -1044,8 +1053,8 @@ class Handbuch:
                 z.append(f"## {o['id']} {o['titel']} ({dw(o.get('status'))})")
                 z += self.merkmal_zeilen(krit, o.get("merkmale"), [] if o.get("status") in ("verworfen", "ersetzt")
                                          else o.get("fehlt")) or [tk("konnektor.ausgabe.merkmale.4")]
-        elif ziel in (self.r.get("unterkuenfte") or {}):
-            u = self.r["unterkuenfte"][ziel]
+        elif ziel in (self.r.get("unterkuenfte") or {}) or ziel in (self.r.get("aufenthalte") or {}):
+            u = (self.r.get("unterkuenfte") or {}).get(ziel) or self.r["aufenthalte"][ziel]
             z.append(f"## {ziel} {u.get('name')}")
             z += self.merkmal_zeilen(krit, u.get("merkmale"), u.get("fehlt")) or [tk("konnektor.ausgabe.merkmale.4")]
         elif ziel:

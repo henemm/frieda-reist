@@ -43,6 +43,9 @@ arten:
                     hilfe: "Website oder Anruf; kleine Häuser haben Betriebsferien", frage: "Weißt du, ob das Haus an dem Tag offen hat?"}
       einschaetzung: {name: Einschätzung, typ: text, rolle: hero, stufe: angeboten,
                     hilfe: "Was macht das Haus besonders, für wen passt es? Ein, zwei Sätze, mit Herkunft"}
+    lesetext:     # Gliederung des Texts auf der Karte der Unterkunft (Beispielwert, #334); Preis, Frühstück usw. bleiben Merkmale
+      haus:      {name: Das Haus, hilfe: "Wie das Haus ist und wer es führt; zwei, drei Sätze"}
+      ankommen:  {name: Ankommen, hilfe: "Wie man vom Weg hinkommt, wann jemand da ist"}
   gasthof:
     grundform: aufenthalt
     name: Gasthof

@@ -176,7 +176,7 @@ Die Software prüft nur die Form: bekannte Felder, erlaubte Typen, Stufen und Ro
 
 ## Lesetext und seine Gliederung
 
-Zu einem Ding gehört oft ein **Lesetext**: der Text am Anfang einer Etappe (Abschnitt „Zusammenfassung“, auf der Seite die Ebene „Der Weg“, `docs/design.md`) oder oben auf der Seite eines Orts (unter `## O-… Name` im Ortsdossier vor den Unterabschnitten, ADR-0008, #334). Er ist Wissen (Grundform), hängt aber an einer Bewegung oder einem Ort. Ein bestimmtes Lokal, Museum oder eine Unterkunft ist kein Text, sondern ein Ding am Ort (`an: O-…`); die Rubrik „Essen“ erzählt nur, was kein Ding ist (Küche der Gegend, wann man isst). Wie er aufgebaut ist, legt die Reise **je Art** fest, denn eine Wanderung erzählt man anders als eine Bahnfahrt oder einen Stadttag. Die Software kennt nur die Form einer Gliederung, keine Rubriken (ADR-0001, kein Katalog).
+Zu einem Ding gehört oft ein **Lesetext**: der Text am Anfang einer Etappe (Abschnitt „Zusammenfassung“, auf der Seite die Ebene „Der Weg“, `docs/design.md`) oder oben auf der Seite eines Orts (unter `## O-… Name` im Ortsdossier vor den Unterabschnitten, ADR-0008, #334) oder auf der Karte einer Unterkunft oder eines Aufenthalts. Er ist Wissen (Grundform), hängt aber an einer Bewegung, einem Ort oder einem Aufenthalt. Ein bestimmtes Lokal, Museum oder eine Unterkunft ist kein Text, sondern ein Ding am Ort (`an: O-…`); die Rubrik „Essen“ erzählt nur, was kein Ding ist (Küche der Gegend, wann man isst). Wie er aufgebaut ist, legt die Reise **je Art** fest, denn eine Wanderung erzählt man anders als eine Bahnfahrt oder einen Stadttag. Die Software kennt nur die Form einer Gliederung, keine Rubriken (ADR-0001, kein Katalog).
 
 ```yaml
 # plan/arten.yaml
@@ -190,10 +190,22 @@ arten:
       ankommen:  {name: Ankommen, hilfe: "Wann man ankommt und was am Ziel bleibt"}
 ```
 
+- **Am Aufenthalt** (Unterkunft und Aufenthalt ohne Nacht, #334, Product Owner 6.11.2026: die allgemeinste Form, ohne eigenes Dossier je Grundform): ein Feld am Ding in `routen.yaml`, mit Herkunft wie jede Aussage. Der Bau zeigt ihn mit einer Herkunftszeile auf der Karte des Dings an seiner Heimat, nie in einer Zeile oder Kachel. Preis, Frühstück und andere Fakten bleiben Merkmale.
+
+  ```yaml
+  unterkuenfte:
+    U-02:
+      lesetext:
+        text: |
+          **Das Haus.** …
+        quelle: "Website des Hauses"
+        geschrieben: 2026-11-06
+        wer: Ida
+  ```
 - **Form im Text:** je Rubrik ein Absatz, der mit ihrem Namen als fettem Stichwort beginnt (`**Charakter.** …`). Rubriken ohne Inhalt fallen weg; die Reihenfolge der Datei ist die Lesereihenfolge. Die Herkunft steht wie bisher darunter.
-- **Prüfung:** Die Software prüft die Form der Gliederung (Schlüssel, Name, bekannte Felder `name` und `hilfe`, kein Name doppelt). Beim Bauen ist ein Stichwort im Lesetext, das keine Rubrik der Art der Strecke oder des Orts ist, ein Hinweis (kein Fehler). Ohne Gliederung der Art wird nichts geprüft.
-- **Konnektor:** `zeige E-…` und `zeige O-…` nennen die Gliederung der Art mit der Hilfe je Rubrik, damit der AI-Client den Text in diesem Aufbau schreibt; `lesetext_schreiben` schreibt oder ersetzt ihn (ein fremdes Stichwort lehnt der Schreibweg ab), `art_definieren` pflegt die Gliederung (`lesetext`) und erhält sie beim Ändern anderer Felder (seit 29.10.2026).
-- **Herkunft des Aufbaus** (Recherche 29.10.2026): Wanderführer und Tourenportale trennen den erzählenden Text von der Wegbeschreibung. Rother stellt jeder Tour Kopfdaten (Ausgangspunkt, Anforderungen, Einkehr, Varianten) und eine kurze Einleitung voran, dann folgt die Beschreibung; Cicerone nennt je Etappe Kennzahlen und Verpflegung vor dem Text. Outdooractive unterscheidet Kurzbeschreibung (Teaser, 50–300 Zeichen), Beschreibung (Erlebnis, Charakter und Sehenswertes, 900–2000 Zeichen) und Wegbeschreibung (so genau, dass man danach gehen kann), dazu Tipp, Sicherheitshinweise und Ausrüstung als eigene Felder. Wikivoyage gibt für Reiserouten ein Grundgerüst vor, von dem man weglässt, was nicht passt. Daraus der Grundaufbau Kurzzeile, Charakter, Verlauf in groben Zügen, Höhepunkte, Anforderungen, Ankommen; was eine Reise darüber hinaus wichtig findet (etwa „Im Vergleich zu gestern“, „Was andere sagen“, „Jahreszeit“), ergänzt sie in ihrer Gliederung. Die Beispielreise zeigt eine Gliederung für Wanderung und eine kürzere für Bahn. Für Orte zeigt sie eine Gliederung für Etappenorte (Ankommen, Versorgung, Umschauen), das Städtewochenende eine für die Stadt (Überblick, Essen, Unterwegs).
+- **Prüfung:** Die Software prüft die Form der Gliederung (Schlüssel, Name, bekannte Felder `name` und `hilfe`, kein Name doppelt). Beim Bauen ist ein Stichwort im Lesetext, das keine Rubrik der Art des Dings ist, ein Hinweis (kein Fehler); ein Lesetext am Aufenthalt ohne `text` oder `quelle` ist ein Fehler. Ohne Gliederung der Art wird nichts geprüft.
+- **Konnektor:** `zeige E-…`, `O-…`, `U-…` und `A-…` nennen die Gliederung der Art mit der Hilfe je Rubrik, damit der AI-Client den Text in diesem Aufbau schreibt; `lesetext_schreiben` schreibt oder ersetzt ihn (ein fremdes Stichwort lehnt der Schreibweg ab), `art_definieren` pflegt die Gliederung (`lesetext`) und erhält sie beim Ändern anderer Felder (seit 29.10.2026).
+- **Herkunft des Aufbaus** (Recherche 29.10.2026): Wanderführer und Tourenportale trennen den erzählenden Text von der Wegbeschreibung. Rother stellt jeder Tour Kopfdaten (Ausgangspunkt, Anforderungen, Einkehr, Varianten) und eine kurze Einleitung voran, dann folgt die Beschreibung; Cicerone nennt je Etappe Kennzahlen und Verpflegung vor dem Text. Outdooractive unterscheidet Kurzbeschreibung (Teaser, 50–300 Zeichen), Beschreibung (Erlebnis, Charakter und Sehenswertes, 900–2000 Zeichen) und Wegbeschreibung (so genau, dass man danach gehen kann), dazu Tipp, Sicherheitshinweise und Ausrüstung als eigene Felder. Wikivoyage gibt für Reiserouten ein Grundgerüst vor, von dem man weglässt, was nicht passt. Daraus der Grundaufbau Kurzzeile, Charakter, Verlauf in groben Zügen, Höhepunkte, Anforderungen, Ankommen; was eine Reise darüber hinaus wichtig findet (etwa „Im Vergleich zu gestern“, „Was andere sagen“, „Jahreszeit“), ergänzt sie in ihrer Gliederung. Die Beispielreise zeigt eine Gliederung für Wanderung und eine kürzere für Bahn. Für Orte zeigt sie eine Gliederung für Etappenorte (Ankommen, Versorgung, Umschauen), das Städtewochenende eine für die Stadt (Überblick, Essen, Unterwegs). Für Aufenthalte: die Pension der Wanderung (Das Haus, Ankommen, mit Text an der Pension Burgblick), das Museum des Städtewochenendes (Sammlung, Zeit).
 
 ## Sprache der Reise
 

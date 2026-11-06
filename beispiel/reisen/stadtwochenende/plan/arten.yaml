@@ -34,6 +34,9 @@ arten:
     merkmale:
       geoeffnet: {name: Geöffnet am Reisedatum, typ: auswahl, werte: [ja, nein, unklar], veraenderlich: true, stufe: pflicht}
       eintritt:  {name: Eintritt, typ: geld, veraenderlich: true, rolle: kosten}
+    lesetext:     # ein Museum erzählt man anders als eine Pension (Beispielwert, #334)
+      sammlung: {name: Sammlung, hilfe: "Was es zu sehen gibt, in eigenen Worten"}
+      zeit:     {name: Zeit, hilfe: "Wie lange man braucht, wann es ruhig ist"}
   bahn:
     grundform: bewegung
     name: Bahn
