@@ -16,7 +16,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bauen  # noqa: E402
-from test_karte_auto import LAGEN, punkt  # noqa: E402
+from test_karte_auto import mit_lagen, punkt  # noqa: E402
 from test_tagesseite import PLAYWRIGHT, WURZEL  # noqa: E402
 
 
@@ -32,8 +32,7 @@ def _seite(tmp_path, browser):
                                                        "bausteine: [karte, tagesseiten, rueckmeldungen, fragen, aufgaben]"), encoding="utf-8")
     r = quelle / "plan" / "routen.yaml"
     d = yaml.safe_load(r.read_text(encoding="utf-8"))
-    for oid, lage in LAGEN.items():
-        d["orte"][oid]["punkt"] = punkt(lage)
+    mit_lagen(d)
     a01 = d["aufenthalte"]["A-01"]
     a01["punkt"] = punkt([50.9785, 14.1140])
     a01["merkmale"]["eintritt"] = {"wert": "6 €", "quelle": "erfunden (Test)"}         # Stufe „gut zu wissen“ (Vorgabe)

@@ -13,7 +13,14 @@ fixpunkte:
 orte:   # Orte gibt es wirklich; Herkunft je Ort (Kern jedes Dings, docs/ontologie.md)
   O-01: {name: Dresden, art: stadt, quelle: "OpenStreetMap"}
   O-02: {name: Stadt Wehlen, art: ort_am_weg, quelle: "OpenStreetMap"}
-  O-03: {name: Hohnstein, art: ort_am_weg, hinweis: "Burgstadt über dem Polenztal", quelle: "OpenStreetMap; Hinweis Wikipedia (W-05)"}
+  # Hohnstein trägt seine Lage selbst; die Wegpunkte im Ort verweisen mit station (Rolle bezug) darauf (ADR-0008, eine Lage je Stelle)
+  O-03:
+    name: Hohnstein
+    art: ort_am_weg
+    hinweis: "Burgstadt über dem Polenztal"
+    quelle: "OpenStreetMap; Hinweis Wikipedia (W-05)"
+    merkmale:
+      koordinaten: {typ: koordinaten, wert: [50.979, 14.1125], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
   O-04: {name: Altendorf, art: ort_am_weg, quelle: "OpenStreetMap"}
   O-05: {name: Bad Schandau, art: ort_am_weg, quelle: "OpenStreetMap"}
   O-06: {name: Lichtenhainer Wasserfall, hinweis: "Endhaltestelle der Kirnitzschtalbahn", quelle: "OpenStreetMap; Hinweis Wikipedia (W-06)"}
@@ -160,8 +167,8 @@ aufenthalte:
     an: E-01
     quelle: "eigene Schätzung, 26.10.2026"
     merkmale:
-      koordinaten: {typ: koordinaten, wert: [50.979, 14.1125], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
       nummer: {wert: 6, quelle: "eigene Schätzung, 26.10.2026"}
+      station: {wert: "O-03", quelle: "eigene Schätzung, 26.10.2026"}
   A-09:
     name: "Pension Burgblick"
     art: unterkunft
@@ -177,8 +184,8 @@ aufenthalte:
     an: E-02
     quelle: "eigene Schätzung, 26.10.2026"
     merkmale:
-      koordinaten: {typ: koordinaten, wert: [50.979, 14.1125], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
       nummer: {wert: 1, quelle: "eigene Schätzung, 26.10.2026"}
+      station: {wert: "O-03", quelle: "eigene Schätzung, 26.10.2026"}
   A-11:
     name: "Gautschgrotte"
     art: wegpunkt

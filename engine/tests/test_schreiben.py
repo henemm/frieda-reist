@@ -795,7 +795,8 @@ def test_ding_aendern_und_ablehnungen(repo):
     s.vorbereiten()
     a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "O-03", "neuer_name": "Hohnstein (Sächs. Schweiz)", "hinweis": ""}})
     r, _ = routen_auf_main(origin)
-    assert r["orte"]["O-03"] == {"name": "Hohnstein (Sächs. Schweiz)", "art": "ort_am_weg", "quelle": "OpenStreetMap; Hinweis Wikipedia (W-05)"}
+    assert {k: v for k, v in r["orte"]["O-03"].items() if k != "merkmale"} == {"name": "Hohnstein (Sächs. Schweiz)", "art": "ort_am_weg", "quelle": "OpenStreetMap; Hinweis Wikipedia (W-05)"}
+    assert r["orte"]["O-03"]["merkmale"]["koordinaten"]["wert"] == [50.979, 14.1125]   # die Lage des Orts bleibt (ADR-0008)
     s.vorbereiten()
     stand = git(origin, "rev-parse", "main")
     for werkzeug, args, text in (

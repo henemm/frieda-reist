@@ -16,7 +16,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bauen  # noqa: E402
-from test_karte_auto import LAGEN, punkt  # noqa: E402
+from test_karte_auto import mit_lagen, punkt  # noqa: E402
 from test_tagesseite import PLAYWRIGHT, WURZEL, plan_fest  # noqa: E402
 
 
@@ -34,8 +34,7 @@ def seite(tmp_path, browser, fest=False, bausteine="[karte, tagesseiten, rueckme
                                                        f"bausteine: {bausteine}"), encoding="utf-8")
     r = quelle / "plan" / "routen.yaml"
     d = yaml.safe_load(r.read_text(encoding="utf-8"))
-    for oid, lage in LAGEN.items():
-        d["orte"][oid]["punkt"] = punkt(lage)
+    mit_lagen(d)
     d["unterkuenfte"]["U-02"]["punkt"] = punkt([50.9792, 14.1128])
     d["unterkuenfte"]["U-03"]["punkt"] = punkt([50.9700, 14.1000])
     d["aufenthalte"]["A-01"]["punkt"] = punkt([50.9785, 14.1140])

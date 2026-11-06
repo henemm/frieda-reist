@@ -151,6 +151,11 @@ arten:
         typ: text
         rolle: alias
         stufe: angeboten
+      station:   # Wegpunkt, der ein Ort der Reise ist: liegt beim Ort (bezug, ADR-0008)
+        name: Place
+        typ: text
+        rolle: bezug
+        stufe: angeboten
   unterkunft:
     grundform: aufenthalt
     name: Unterkünfte
