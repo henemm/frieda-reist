@@ -99,7 +99,7 @@ def test_vorlage_vergleicht_nie_mit_anzeigetext_und_haelt_einheiten_im_katalog()
 
 
 def test_schluessel_form():
-    muster = re.compile(r"^(?:(?:seite|konnektor|schreiben|dienst|konto|mail|kalender|waechter|push|inhalt|pruefung)(?:\.[a-z0-9_]+)+|(?:wert|symbol)\.[\wÄÖÜäöüß]+)$")
+    muster = re.compile(r"^(?:(?:seite|konnektor|schreiben|dienst|konto|mail|kalender|waechter|push|inhalt|pruefung|warteliste)(?:\.[a-z0-9_]+)+|(?:wert|symbol)\.[\wÄÖÜäöüß]+)$")
     for s in texte.sprache("de").TEXTE:
         assert muster.match(s), f"Schlüssel {s} hält die Form nicht ein"
 

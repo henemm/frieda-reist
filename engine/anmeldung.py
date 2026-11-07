@@ -1,5 +1,6 @@
 """Anmeldeseiten für Konten (Paket J2, Issues #43 und #46). Der Konnektor-Dienst liefert sie unter Friedas eigener
-Adresse aus (FR_BASIS): /anmelden, /einladung/<token>, /konto, /abmelden.
+Adresse aus (FR_BASIS): /anmelden, /einladung/<token>, /konto, /abmelden, dazu die Warteliste (/warteliste,
+/warteliste/bestaetigen/<wort>, #382).
 
 Ablauf: E-Mail-Adresse eingeben -> Code per Mail -> Code eingeben (beim ersten Mal auch den Namen) -> angemeldet.
 Der Code ist der Hauptweg; der Link aus der Mail enthält keinen Code und öffnet nur die Code-Seite (Mailprogramme rufen
@@ -231,6 +232,37 @@ def code_seite(email, zurueck="", einladung="", code="", meldung="", name_noetig
         f'<div class="links">{neuer_code}{andere}</div>')
 
 
+def warteliste_seite(email="", meldung=""):
+    """Öffentliche Seite der Warteliste (#382): Adresse eintragen, Hinweis auf die Alpha und das bezahlte Claude-Konto."""
+    return seite(tx("warteliste.titel"), karte(
+        f"<div><h1>{esc(tx('warteliste.titel'))}</h1>",
+        f'<p class="lead">{esc(tx("warteliste.alpha"))}</p></div>',
+        f'<p class="kasten">{esc(tx("warteliste.voraussetzung"))}</p>',
+        fehler(meldung),
+        formular("/warteliste", f'<label for="email">{esc(tx("konto.email_adresse"))}</label>'
+                 f'<input id="email" type="email" name="email" value="{esc(email)}" autocomplete="email" required '
+                 f'placeholder="{esc(tx("konto.email_beispiel"))}" autofocus>', tx("warteliste.knopf"))))
+
+
+def warteliste_hinweis(schluessel, code=200):
+    """Seite mit einem Satz: gesendet, bestätigt oder „Link gilt nicht mehr“ (mit Weg zum neuen Eintrag)."""
+    weg = (f'<a class="knopf" href="/warteliste">{esc(tx("warteliste.neu_eintragen"))}</a>'
+           if schluessel == "warteliste.link_ungueltig" else "")
+    return antwort(code, seite(tx("warteliste.titel"), karte(f"<h1>{esc(tx('warteliste.titel'))}</h1>",
+                                                            f"<p>{esc(tx(schluessel))}</p>", weg)))
+
+
+def warteliste_karte():
+    """Abschnitt „Warteliste“ auf Mein Konto, nur für Betreiber: bestätigte Einträge mit Knopf „Freigeben“."""
+    eintraege = "".join(
+        karte(f'<div><strong>{esc(e["email"])}</strong><p class="klein" style="margin:0">{esc(e["bestaetigt"][:10])}</p></div>',
+              formular("/konto", verdeckt(aktion="warteliste_freigeben", wer=e["email"]), tx("konto.warteliste.freigeben"), "leise"))
+        for e in konten.warteliste())
+    return (f'<div class="abschnitt"><h2>{esc(tx("konto.warteliste.titel"))}</h2>'
+            + (eintraege or f'<p class="hinweis">{esc(tx("konto.warteliste.keine"))}</p>')
+            + f'<p class="klein">{esc(tx("konto.warteliste.unbestaetigt", n=konten.warteliste_unbestaetigt()))}</p></div>')
+
+
 def kalender_reisen(k):
     """[(reise, daten, aufgaben, name der person)] aller veröffentlichten Reisen des Kontos (für den Kalender, #77)."""
     aus = []
@@ -455,7 +487,8 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
                   + "</div>")
             for a in offen_anfragen)
         betreiber = (f'<div class="abschnitt"><h2>{esc(tx("konto.betreiber.titel"))}</h2>'
-                     + (bitten or f'<p class="hinweis">{esc(tx("konto.betreiber.keine"))}</p>') + "</div>")
+                     + (bitten or f'<p class="hinweis">{esc(tx("konto.betreiber.keine"))}</p>') + "</div>"
+                     + warteliste_karte())
     geraete = konten.geraete(k["id"])
     geraete_liste = "".join(f'<li>{esc(g["geraet"] or tx("konto.geraete.geraet"))} <span class="klein">{esc(tx("konto.geraete.zuletzt", datum=g["zuletzt"][:10]))}</span>'
                             "</li>" for g in geraete)
@@ -557,7 +590,8 @@ def geraet(headers):
 
 def ist_unsere(pfad):
     p = pfad.split("?", 1)[0]
-    return p in ("/anmelden", "/konto", "/abmelden") or p.startswith(("/einladung/", "/kalender/"))
+    return p in ("/anmelden", "/konto", "/abmelden", "/warteliste") or p.startswith(("/einladung/", "/kalender/",
+                                                                                     "/warteliste/bestaetigen/"))
 
 
 def bearbeiten(methode, pfad, headers, body, ip, reise_info):
@@ -607,6 +641,32 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
             e = konten.einladung(einl)
             ziel = ((reise_info(e["reise"]) or {}).get("seite") if e else None) or "/konto"
         return weiter(ziel, [cookie_setzen(neu)])
+
+    if weg == "/warteliste":
+        if methode == "GET":
+            return antwort(200, warteliste_seite())
+        try:
+            konten.warteliste_eintragen(f.get("email"), ip=ip, sprache=sprache_der_seite())
+        except konten.KontoFehler as x:
+            return antwort(200, warteliste_seite(f.get("email", ""), x.text(sprache_der_seite())))
+        return warteliste_hinweis("warteliste.gesendet")     # immer derselbe Satz, er verrät nichts über den Stand
+
+    if weg.startswith("/warteliste/bestaetigen/"):
+        wort = weg.rsplit("/", 1)[1]
+        if methode == "GET":     # Mailprogramme rufen Links vorab auf: erst der Knopf bestätigt
+            if not konten.warteliste_wort_gilt(wort):
+                return warteliste_hinweis("warteliste.link_ungueltig", 404)
+            return antwort(200, seite(tx("warteliste.titel"), karte(
+                f"<div><h1>{esc(tx('warteliste.titel'))}</h1>",
+                f'<p class="lead">{esc(tx("warteliste.bestaetigen_text"))}</p></div>',
+                formular(weg, "", tx("warteliste.bestaetigen_knopf")))))
+        try:
+            e = konten.warteliste_bestaetigen(wort)
+        except konten.KontoFehler:
+            return warteliste_hinweis("warteliste.link_ungueltig", 404)
+        betreiber_melden(None, "anfrage_warteliste",
+                         texte.t(texte.VORGABE_REISE, "konto.betreiber.warteliste", email=e["email"]))
+        return warteliste_hinweis("warteliste.bestaetigt")
 
     if weg == "/abmelden":
         if methode == "POST" and token:
@@ -676,6 +736,9 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
             if a in ("freischalten", "ablehnen") and konten.recht(k, "betreiber"):
                 konten.freischalten(f.get("wer"), ja=a == "freischalten")
                 return weiter("/konto")
+            if a == "warteliste_freigeben" and konten.recht(k, "betreiber"):
+                konten.freigeben(f.get("wer"))
+                return weiter("/konto")
             if a == "kalender_neu":
                 konten.kalender_token(k["id"], erneuern=True)
                 return antwort(200, konto_seite(k, reise_info, hinweis=tx("konto.kalender.neuer_link_hinweis"), offen="kalender"))
@@ -704,11 +767,12 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
     return antwort(404, seite(tx("konto.nicht_gefunden"), karte(f"<h1>{esc(tx('konto.nicht_gefunden'))}</h1>")))
 
 
-def betreiber_melden(k):
-    """Bitte „Reisen anlegen“: Meldung an alle Betreiber (stehen in der Claude-App bei meine_reisen)."""
+def betreiber_melden(k, art="anfrage_reisen", text=None):
+    """Meldung an alle Betreiber (stehen in der Claude-App bei meine_reisen): die Bitte „Reisen anlegen“ des Kontos k
+    oder, mit art und text, etwas anderes (bestätigter Eintrag der Warteliste, #382)."""
     with konten.closing(konten.db()) as v:
         namen = [z["name"] for z in v.execute("SELECT name, rechte FROM konten WHERE gesperrt = 0")
                  if "betreiber" in z["rechte"].split(",")]
     if namen:
-        rm.meldung_anlegen(rm.ordner_neu(anlegen=True), namen, "anfrage_reisen", "reise",
+        rm.meldung_anlegen(rm.ordner_neu(anlegen=True), namen, art, "reise", text or
                            texte.t(texte.VORGABE_REISE, "konto.betreiber.meldung", name=k["name"], email=k["email"]))

@@ -62,6 +62,19 @@ def test_apt_hat_zeitgrenzen():
             assert i > i_conf, "apt-get läuft vor der Vorbereitung"
 
 
+def test_apt_wartet_auf_die_sperre():
+    """#390: `timeout` erreicht den per sudo gestarteten apt-get nicht; er läuft nach der Zeitgrenze weiter und hält
+    den dpkg-Lock. Ohne Wartezeit auf die Sperre scheitert Versuch 2 sofort (Exit 100) und kann nie gelingen."""
+    conf = [s for s in _schritte() if s.get("name") == "apt-Zeitgrenzen"]
+    assert conf, "Schritt „apt-Zeitgrenzen“ fehlt"
+    m = re.search(r'DPkg::Lock::Timeout\s+"(\d+)"', conf[0]["run"])
+    assert m, "apt wartet nicht auf die dpkg-Sperre (DPkg::Lock::Timeout)"
+    # länger als die Zeitgrenze eines Versuchs, damit Versuch 2 das Ende des ersten apt abwartet
+    _, schritt = _playwright_schritt()
+    versuch = int(re.search(r"\btimeout\s+(\d+)\s+npx", schritt["run"]).group(1))
+    assert int(m.group(1)) > versuch
+
+
 def test_browser_cache_schluessel_aus_package_lock():
     schritte = _schritte()
     i_pw, _ = _playwright_schritt()

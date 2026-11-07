@@ -1,0 +1,39 @@
+bringing up nodes...
+bringing up nodes...
+
+FFF.FFFF......FFFFFF..FF.F.F............................................ [ 49%]
+.......................................................FF.F.FF..FFFFFFFF [ 99%]
+F                                                                        [100%]
+=========================== short test summary info ============================
+FAILED engine/tests/test_speicher_stufe3.py::test_zustand_meldet_alter_der_sicherung_und_schreibt_nichts
+FAILED engine/tests/test_speicher_stufe3.py::test_doku_beschreibt_die_pruefbaren_zustaende
+FAILED engine/tests/test_speicher_stufe3.py::test_speicherreisen_shell_und_python_stimmen_ueberein
+FAILED engine/tests/test_speicher_stufe3.py::test_materialisieren_ersetzt_den_ordner_byte_gleich[beispielreise]
+FAILED engine/tests/test_speicher_stufe3.py::test_nachziehen_speicher_schreibt_nichts_bei_rotem_bau
+FAILED engine/tests/test_speicher_stufe3.py::test_nachziehen_speicher_wiederholt_bei_wettlauf_hoechstens_dreimal
+FAILED engine/tests/test_speicher_stufe3.py::test_materialisieren_ersetzt_den_ordner_byte_gleich[stadtwochenende]
+FAILED engine/tests/test_speicher_stufe3.py::test_materialisieren_haelt_nummer_und_inhalt_zusammen
+FAILED engine/tests/test_speicher_stufe3.py::test_vergleichen_beispielreisen_ohne_unterschied[beispielreise]
+FAILED engine/tests/test_speicher_stufe3.py::test_vergleichen_beispielreisen_ohne_unterschied[stadtwochenende]
+FAILED engine/tests/test_speicher_stufe3.py::test_vergleichen_nennt_jeden_unterschied_exit_1
+FAILED engine/tests/test_speicher_stufe3.py::test_vergleichen_fehler_geben_exit_2
+FAILED engine/tests/test_speicher_stufe3.py::test_vergleichen_liest_keine_inhalte
+FAILED engine/tests/test_speicher_stufe3.py::test_nachziehen_speicher_schreibt_einen_vorgang[beispielreise]
+FAILED engine/tests/test_speicher_stufe3.py::test_nachziehen_speicher_schreibt_einen_vorgang[stadtwochenende]
+FAILED engine/tests/test_speicher_stufe3.py::test_nachziehen_speicher_ist_idempotent[beispielreise]
+FAILED engine/tests/test_speicher_stufe3.py::test_nachziehen_speicher_ist_idempotent[stadtwochenende]
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_baut_speicher_reise_bis_zur_seite[stadtwochenende]
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_baut_speicher_reise_bis_zur_seite[beispielreise]
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_baut_speicher_reise_nur_bei_neuer_nummer
+FAILED engine/tests/test_betrieb.py::test_gemischter_betrieb_baut_beide_quellen_unabhaengig
+FAILED engine/tests/test_betrieb.py::test_speicher_reise_wird_ohne_github_veroeffentlicht
+FAILED engine/tests/test_betrieb.py::test_speicher_teil_laeuft_vor_git_fetch
+FAILED engine/tests/test_betrieb.py::test_vergleichslauf_schreibt_stempel_und_exit_codes
+FAILED engine/tests/test_betrieb.py::test_speicher_rot_meldet_ohne_gh - TypeE...
+FAILED engine/tests/test_betrieb.py::test_software_wechsel_stellt_speicher_reisen_auf_dem_server_um
+FAILED engine/tests/test_betrieb.py::test_speicher_reise_rot_haelt_die_anderen_nicht_auf
+FAILED engine/tests/test_betrieb.py::test_speicher_teil_uebergeht_reise_ohne_eintrag
+FAILED engine/tests/test_betrieb.py::test_stempel_gebaut_nur_nach_gelungenem_deploy
+FAILED engine/tests/test_betrieb.py::test_rotes_software_tor_haelt_speicher_reisen_auf_altem_stand
+FAILED engine/tests/test_betrieb.py::test_software_wechsel_braucht_keinen_handschritt
+31 failed, 114 passed in 24.18s

@@ -14,31 +14,40 @@ ZIEL="$FR_SEITEN/$REISE"
 DIENST="$FR_DIENST"
 
 # Module, die Rückmeldedienst und Konnektor aus <FR_DIENST> laden. Neue Module, die einer davon (auch mittelbar)
-# importiert, hier ergänzen; engine/tests/test_betrieb.py prüft das.
+# importiert, hier ergänzen; engine/tests/test_betrieb.py prüft das. stand.py lädt reisespeicher.py (Stufe 3, #348): Jede
+# Liste mit stand.py trägt es mit; Rückmeldedienst und Konnektor lesen den Speicher nicht selbst.
 # Sprachdateien (texte_<kürzel>.py): jede Datei im Ordner engine/ zählt, eine neue Sprache braucht hier keinen Eintrag (docs/sprachen.md)
 SPRACHDATEIEN=""
 for f in "$WURZEL"/engine/texte_??.py "$WURZEL"/engine/texte_???.py; do [ -e "$f" ] && SPRACHDATEIEN="$SPRACHDATEIEN $(basename "$f")"; done
-RM_MODULE="rueckmeldungen.py belege.py reise.py konten.py instanz.py kalender.py stand.py stand_git.py texte.py $SPRACHDATEIEN"
-KN_MODULE="konnektor.py schnittstelle.py reise.py routen.py packliste.py karte.py konten.py anmeldung.py oauth.py instanz.py belege.py kalender.py push.py stand.py texte.py $SPRACHDATEIEN"
+RM_MODULE="rueckmeldungen.py belege.py reise.py konten.py instanz.py kalender.py stand.py reisespeicher.py stand_git.py texte.py $SPRACHDATEIEN"
+KN_MODULE="konnektor.py schnittstelle.py reise.py routen.py packliste.py karte.py konten.py anmeldung.py oauth.py instanz.py belege.py kalender.py push.py stand.py reisespeicher.py texte.py $SPRACHDATEIEN"
 # Schreibweg (engine/schreiben.py dienst, ADR-0001 O-3): Für eine Reise aus FR_SPEICHERREISEN (Stufe 2, #347) läuft auch der
 # Schreibvorgang (`anwenden`: Werkzeuge, Probebau, Reisespeicher) mit dem Code aus <FR_DIENST>, deshalb steht hier jedes
 # Modul, das schreiben.py auch in Funktionen lädt (engine/tests/test_betrieb.py prüft es gegen die Importe), dazu unten
 # Vorlage, vendor/ und reisevorlage/. Für Git-Reisen kommt der Code des Schreibvorgangs bis Stufe 5 aus der Arbeitskopie.
 SB_MODULE="schreiben.py schreiben_git.py reisespeicher.py bauen.py routen.py packliste.py gpx.py karte.py neu.py schnittstelle.py konten.py reise.py instanz.py kalender.py stand.py stand_git.py texte.py $SPRACHDATEIEN"
 # Push-Dienst (engine/push.py dienst, Issue #21): läuft mit FR_PYTHON (pywebpush), lädt seinen Code aus <FR_DIENST>
-PS_MODULE="push.py rueckmeldungen.py belege.py reise.py konten.py instanz.py kalender.py stand.py stand_git.py texte.py $SPRACHDATEIEN"
+PS_MODULE="push.py rueckmeldungen.py belege.py reise.py konten.py instanz.py kalender.py stand.py reisespeicher.py stand_git.py texte.py $SPRACHDATEIEN"
 
-[ -d "$WURZEL/reisen/$REISE" ] || { echo "Trip '$REISE' does not exist."; exit 1; }
+# Quelle der Reise (Stufe 3, #348): Eine Reise aus FR_SPEICHERREISEN baut aus dem Ordner, in den veroeffentlichen.sh sie aus
+# dem Reisespeicher materialisiert hat (<FR_DIENST>/bau/reisen/<reise>, außerhalb des Git-Bauordners); jede andere aus Git.
+if ist_speicherreise "$REISE"; then
+  REISEN="$DIENST/bau/reisen"; GIT_PFADE="engine"; GIT_TEXT="engine/"
+else
+  REISEN="$WURZEL/reisen"; GIT_PFADE="engine reisen/$REISE"; GIT_TEXT="engine/ or reisen/$REISE"
+fi
+[ -d "$REISEN/$REISE" ] || { echo "Trip '$REISE' does not exist."; exit 1; }
 [ -d "$FR_SEITEN" ] && [ -w "$FR_SEITEN" ] || { echo "$FR_SEITEN is missing or not writable (einrichten.sh, docs/betrieb.md)."; exit 1; }
 
 # Nur gesicherten Stand veröffentlichen: ungesicherte Änderungen an Software oder Reise brechen ab
-if ! git -C "$WURZEL" diff --quiet HEAD -- engine "reisen/$REISE" || [ -n "$(git -C "$WURZEL" ls-files --others --exclude-standard -- engine "reisen/$REISE")" ]; then
-  echo "ERROR: uncommitted changes in engine/ or reisen/$REISE. Commit first, then publish."; exit 1
+# shellcheck disable=SC2086
+if ! git -C "$WURZEL" diff --quiet HEAD -- $GIT_PFADE || [ -n "$(git -C "$WURZEL" ls-files --others --exclude-standard -- $GIT_PFADE)" ]; then
+  echo "ERROR: uncommitted changes in $GIT_TEXT. Commit first, then publish."; exit 1
 fi
 # Bau: der erste Schritt mit Wirkung. Scheitert er (Baufehler dieser Reise, deterministisch), endet deploy.sh mit 2;
 # veroeffentlichen.sh macht dann mit den anderen Reisen weiter, die Seite bleibt auf ihrem letzten guten Stand.
 # Warnungen im Plan sperren nie (bauen.py endet dann mit 0).
-"$FR_PYTHON" "$WURZEL/engine/bauen.py" --reisen "$WURZEL/reisen" --ziel "$WURZEL/dist" "$REISE" \
+"$FR_PYTHON" "$WURZEL/engine/bauen.py" --reisen "$REISEN" --ziel "$WURZEL/dist" "$REISE" \
   || { echo "ERROR: build of $REISE failed, the page stays at the last good state."; exit 2; }
 # Prüfungen nur der Software (engine/tests); tests/ des Reisen-Repos prüft Inhalt und sperrt nie (docs/betrieb.md).
 # veroeffentlichen.sh prüft einmal für alle Reisen und setzt FR_GEPRUEFT auf den geprüften Stand

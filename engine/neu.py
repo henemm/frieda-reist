@@ -20,6 +20,9 @@ Als Befehl ist neu.py ein Werkzeug des Betreibers für Struktur, nie für Inhalt
                                                   (#217), Titel und Kennzahlen der Etappen aus dem Dossier an die Strecken
                                                   (#269), eine Lage je Ort und gleichnamigem Wegpunkt (ADR-0008);
                                                   keine ID, kein Wert ändert sich
+  neu.py nachziehen-speicher <reise> <ordner>     dasselbe für eine Reise im Reisespeicher (#348), auf dem Server vom Lauf
+                                                  veroeffentlichen.sh: materialisieren, nachziehen, Probebau, ein Vorgang;
+                                                  Exit 0 umgestellt oder nichts umzustellen, 2 Bau rot, 1 nochmal versuchen
 
 IDs werden nie neu vergeben: ids.yaml hält je Art die höchste je vergebene Nummer fest. Die nächste ID liegt über
 dieser Marke und über jeder Nummer, die irgendwo in der Reise steht (auch im Verlauf von Verworfenem).
@@ -976,6 +979,64 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
     return meldungen
 
 
+def probebau(ordner):
+    """Probebau mit der laufenden Software wie im Tor; ein Baufehler wirft (bauen.BauFehler)."""
+    with tempfile.TemporaryDirectory(prefix="frieda-probe-") as ziel:
+        bauen.Bauer(Path(ordner), ziel).daten()
+
+
+def software_kennung():
+    """Stand der laufenden Software (Commit des Ordners der Software; in einer Instanz das Submodul frieda/) oder ''."""
+    import subprocess
+    try:
+        return subprocess.run(["git", "-C", str(Path(__file__).resolve().parent), "rev-parse", "HEAD"],
+                              capture_output=True, text=True, timeout=10).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+NACHZIEHEN_VERSUCHE = 3   # wie der Workflow beim Push: bei einem Wettlauf mit dem Schreibweg neu, nie erzwungen
+
+
+def nachziehen_speicher(reise, ordner):
+    """Eine Reise aus dem Reisespeicher auf den Stand der laufenden Software umstellen (#348, auf dem Server vom Lauf
+    veroeffentlichen.sh): materialisieren nach ordner, nachziehen, Probebau, dann genau ein Vorgang (Person
+    „Software-Nachziehen“, Werkzeug nachziehen). Nur Schlüssel, keine Inhalte. -> (Exit, Ausgabe): 0 umgestellt oder nichts
+    umzustellen, 2 Probebau rot (nichts geschrieben), 1 dreimal Wettlauf mit dem Schreibweg (der nächste Lauf wiederholt)."""
+    import sqlite3
+    import reisespeicher as rs
+    ordner = Path(ordner)
+    kennung = software_kennung()[:12] or "unknown"
+    for _ in range(NACHZIEHEN_VERSUCHE):
+        basis = rs.materialisieren(reise, ordner)
+        try:
+            meldungen = nachziehen(ordner)
+        except (OSError, sqlite3.Error):   # Ordner oder Speicher nicht erreichbar: Störung, der nächste Lauf wiederholt
+            raise
+        except Exception as e:   # die Reise selbst lässt sich nicht umstellen (etwa kaputte reise.yaml): wie ein roter Bau
+            return 2, [f"ERROR: {reise} cannot be converted, nothing written: {type(e).__name__}: {e}"]
+        warnungen = [f"Warning: {m}" for m in meldungen if m.startswith(("OPEN", "OFFEN"))]
+        if not rs.vergleichen(reise, ordner, bis=basis):
+            return 0, warnungen + ["nichts umzustellen"]
+        try:
+            probebau(ordner)
+        except Exception as e:   # jeder Fehler des Baus sperrt: nichts eintragen
+            gruende = list(getattr(e, "meldungen", None) or [e])
+            return 2, warnungen + [f"ERROR: build of {reise} after the conversion failed, nothing written:"] \
+                + [f" - {g}" for g in gruende]
+        try:
+            v = rs.ordner_als_vorgang(reise, ordner, basis, wer="Software-Nachziehen", werkzeug="nachziehen",
+                                      titel=f"software {kennung}", grund="\n".join(meldungen),
+                                      kennung=f"nachziehen:{kennung}:{reise}:{basis}", rolle="")
+        except rs.StandGeaendert:
+            continue
+        except (rs.VorgangVorhanden, rs.NichtsGeaendert):
+            return 0, warnungen + ["nichts umzustellen"]
+        rs.stand_datei(ordner).write_text(f"{v.stand}\n", encoding="utf-8")
+        return 0, warnungen + meldungen + [f"umgestellt, stand {v.stand}"]
+    return 1, [f"ERROR: {reise} changed {NACHZIEHEN_VERSUCHE} times during the conversion, the next run tries again."]
+
+
 BUCHUNG_STAND_ALT = ("angefragt", "gebucht")   # Werte des früheren Felds buchung:, die als Status der Buchung bleiben
 
 
@@ -1239,8 +1300,24 @@ def main(argv):
     nz = sub.add_parser("nachziehen", help="bring the keys of an existing trip to the state of 29.10.2026 (keys only)")
     nz.add_argument("reise", type=Path)
     nz.add_argument("--strecke", action="append", default=[], help="E-ID=art for legs without a kind, e.g. E-15=kombiniert")
-    x = ap.parse_args(argv[1:])
+    ns = sub.add_parser("nachziehen-speicher", help="bring a trip in the trip store up to date on the server (keys only, one operation)")
+    ns.add_argument("reise")
+    ns.add_argument("ordner", type=Path, help="working folder, replaced (e.g. <FR_DIENST>/bau/reisen/<trip>)")
+    # mit oder ohne Programmnamen vorn (sys.argv oder nur die Angaben)
+    x = ap.parse_args(argv if argv and argv[0] in sub.choices else argv[1:])
     try:
+        if x.befehl == "nachziehen-speicher":
+            import sqlite3
+            try:
+                rc, zeilen = nachziehen_speicher(x.reise, x.ordner)
+            except KeyError as e:
+                rc, zeilen = 2, [f"ERROR: unknown trip in the trip store: {e.args[0] if e.args else ''}"]
+            except ValueError as e:
+                rc, zeilen = 2, [f"ERROR: {e}"]
+            except (OSError, sqlite3.Error) as e:   # Datenbank gesperrt oder nicht lesbar: der nächste Lauf wiederholt
+                rc, zeilen = 1, [f"ERROR: {e}"]
+            print("\n".join(zeilen))
+            return rc
         if x.befehl == "nachziehen":
             m = nachziehen(x.reise, dict(t.split("=", 1) for t in x.strecke))
             print("\n".join(m) if m else "Nothing to bring up to date.")

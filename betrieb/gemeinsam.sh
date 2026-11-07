@@ -97,9 +97,31 @@ fr_einlesen "$FR_DIENST/betrieb.env"
 : "${FR_SPERREN:=/tmp}"
 : "${FR_EIGENE_ADRESSEN:=}"   # Adressen, die nicht ins Anfragekontingent zählen: die des Servers selbst, getrennt durch Leerzeichen (nginx-zone.conf, #206)
 : "${FR_ZEITZONE:=UTC}"   # Zeitzone der Zeiten in Konnektor und Diensten, wenn die der Person unbekannt ist (#227)
+: "${FR_SPEICHER:=$FR_SEITEN/_speicher}"   # Reisespeicher (engine/reisespeicher.py, ADR-0009), wie instanz.speicher()
+: "${FR_SPEICHERREISEN:=}"   # Reisen aus dem Reisespeicher, kommagetrennt (Vorgabe: keine, alles über Git)
 case "$FR_MELDEN" in ""|/*) ;; *) FR_MELDEN="$FR_WURZEL/$FR_MELDEN" ;; esac   # relativ zur Wurzel
 export FR_INSTANZ FR_TITEL FR_SEITEN FR_ABLAGE FR_DIENST FR_KONNEKTOR FR_KONTEN FR_RM_PORT FR_KN_PORT FR_SB_PORT FR_SCHREIBKOPIE \
-  FR_ADRESSE FR_KN_ADRESSE FR_PYTHON FR_MELDEN FR_SPERREN FR_UMZUG_NACH FR_NACHZIEHEN_WORKFLOW FR_ZEITZONE FR_EIGENE_ADRESSEN
+  FR_ADRESSE FR_KN_ADRESSE FR_PYTHON FR_MELDEN FR_SPERREN FR_UMZUG_NACH FR_NACHZIEHEN_WORKFLOW FR_ZEITZONE FR_EIGENE_ADRESSEN \
+  FR_SPEICHER FR_SPEICHERREISEN
+
+speicherreisen() {  # Reisen aus FR_SPEICHERREISEN, eine je Zeile; Leerzeichen und leere Teile fallen weg wie in
+  # instanz.speicherreisen()
+  local r
+  local IFS=,
+  for r in $FR_SPEICHERREISEN; do
+    r="${r#"${r%%[![:space:]]*}"}"; r="${r%"${r##*[![:space:]]}"}"   # wie strip(): nur am Rand
+    [ -z "$r" ] || printf '%s\n' "$r"
+  done
+}
+
+ist_speicherreise() {  # <reise>: kommt sie aus dem Reisespeicher (Stufe 3, #348)? Sonst aus Git.
+  # Ohne Pipe: grep -q endete beim ersten Treffer, der Schreiber stürbe an SIGPIPE, und unter pipefail wäre die Antwort
+  # zufällig „nein“
+  local r
+  [ -n "${1:-}" ] || return 1
+  while IFS= read -r r; do [ "$r" != "$1" ] || return 0; done <<< "$(speicherreisen)"
+  return 1
+}
 
 # Workflow des Reisen-Repos, den ein Anstoß von der Seite startet (veroeffentlichen.sh, docs/betrieb.md „Anstoß“)
 : "${FR_NACHZIEHEN_WORKFLOW:=software-nachziehen.yml}"

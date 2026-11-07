@@ -25,6 +25,8 @@ Aufrufe:
   python3 engine/konten.py liste                               alle Konten mit Reisen und Rechten
   python3 engine/konten.py anfragen                            offene Bitten „Reisen anlegen“
   python3 engine/konten.py freischalten <email> [--nein]       Reisen anlegen erlauben (oder Bitte ablehnen)
+  python3 engine/konten.py warteliste                          bestätigte Einträge der Warteliste, Zahl der unbestätigten
+  python3 engine/konten.py freigeben <email>                   Eintrag freigeben: Mail „Du bist dabei“, Recht Reisen anlegen
   python3 engine/konten.py betreiber <email>                   Betreiber-Recht geben (sieht Anfragen, schaltet frei)
   python3 engine/konten.py sperren|entsperren <email>          sperren meldet alle Geräte ab
   python3 engine/konten.py loeschen <email>                    Konto und Adresse löschen
@@ -66,6 +68,8 @@ JE_ADRESSE = (3, 15 * 60)        # höchstens 3 Codes je Adresse in 15 Minuten
 JE_IP = (10, 60 * 60)            # höchstens 10 Codes je IP in der Stunde
 SITZUNG_TAGE = 365               # rollierend: jede Nutzung verlängert
 EINLADUNG_TAGE = 30
+WARTELISTE_TAGE = 7              # so lange gilt der Bestätigungslink; unbestätigte Einträge verfallen danach
+WARTELISTE_MAX_UNBESTAETIGT = 1000   # mehr unbestätigte Einträge zugleich nimmt die Warteliste nicht an
 
 
 class KontoFehler(Exception):
@@ -120,6 +124,9 @@ CREATE TABLE IF NOT EXISTS einladungen (
   konto TEXT);
 CREATE TABLE IF NOT EXISTS anfragen (
   konto TEXT PRIMARY KEY, erstellt TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'offen', entschieden TEXT);
+CREATE TABLE IF NOT EXISTS warteliste (
+  email TEXT PRIMARY KEY, sprache TEXT NOT NULL DEFAULT '', erstellt REAL NOT NULL, hash TEXT, ablauf REAL,
+  bestaetigt REAL, freigegeben REAL);
 CREATE TABLE IF NOT EXISTS versand (schluessel TEXT NOT NULL, zeit REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS kalender_abo (
   konto TEXT PRIMARY KEY, stand INTEGER NOT NULL DEFAULT 0, einstellungen TEXT NOT NULL DEFAULT '{}');
@@ -371,8 +378,11 @@ def anmelden(roh, code, name=None, geraet="", einladung=None, sprache=None):
                 raise NameNoetig("konto.fehler.name_noetig")   # Code bleibt gültig
             n = name_pruefen(name or vorschlag)
             kid = "K-" + secrets.token_hex(8)
-            v.execute("INSERT INTO konten (id, email, name, angelegt, sprache) VALUES (?,?,?,?,?)",
-                      (kid, e, n, _datum(), sprache if texte.gueltig(sprache or "") else ""))
+            # Freigabe von der Warteliste (#382): das Recht „Reisen anlegen“ gilt ab dem ersten Anmelden
+            frei = v.execute("SELECT 1 FROM warteliste WHERE email = ? AND freigegeben IS NOT NULL", (e,)).fetchone()
+            v.execute("INSERT INTO konten (id, email, name, angelegt, sprache, rechte) VALUES (?,?,?,?,?,?)",
+                      (kid, e, n, _datum(), sprache if texte.gueltig(sprache or "") else "",
+                       "reise_anlegen" if frei else ""))
             z = v.execute("SELECT * FROM konten WHERE id = ?", (kid,)).fetchone()
         if z["gesperrt"]:
             raise KontoFehler("konto.fehler.gesperrt")
@@ -550,6 +560,117 @@ def freischalten(kid, ja=True):
         v.execute("INSERT INTO anfragen (konto, erstellt, status, entschieden) VALUES (?,?,?,?) "
                   "ON CONFLICT (konto) DO UPDATE SET status = excluded.status, entschieden = excluded.entschieden",
                   (kid, _datum(), "freigeschaltet" if ja else "abgelehnt", _datum()))
+
+
+# ---------------------------------------------------------------- Warteliste (#382)
+# Wer sich einträgt, bekommt einen Bestätigungslink (Double-Opt-In, 7 Tage, einmal); erst bestätigte Einträge sieht der
+# Betreiber. Die Freigabe schickt die Mail „Du bist dabei“ und gibt das Recht reise_anlegen, sofort oder beim ersten
+# Anmelden. Die freie Anmeldung bleibt offen; die Warteliste steuert nur, wer Reisen anlegen darf.
+
+def _mail_eingerichtet():
+    return bool(os.environ.get("FR_MAIL_DATEI") or (os.environ.get("FR_SMTP_HOST") and os.environ.get("FR_ABSENDER")))
+
+
+def warteliste_eintragen(roh, ip="", sprache=None):
+    """Adresse auf die Warteliste setzen und den Bestätigungslink schicken. Gibt nie etwas zurück, das den Stand verrät:
+    Eine bestätigte (oder freigegebene) Adresse bekommt keine Mail mehr, eine unbestätigte ihren Link erneut."""
+    sprache = sprache if texte.gueltig(sprache or "") else texte.VORGABE_REISE
+    wort = secrets.token_urlsafe(24)
+    jetzt = _jetzt()
+    with closing(db()) as v, v:
+        e = adresse(roh)            # Prüfungen vor jedem Schreiben: eine Ablehnung speichert nichts
+        if not _mail_eingerichtet():
+            raise KontoFehler("konto.fehler.mail_nicht_eingerichtet")
+        v.execute("DELETE FROM warteliste WHERE bestaetigt IS NULL AND ablauf < ?", (jetzt,))
+        # Die Begrenzung zählt jeden Versuch, vor jeder Unterscheidung nach dem Stand: sonst verriete sie ihn
+        if _begrenzt(v, "warteliste:" + e, JE_ADRESSE) or (ip and _begrenzt(v, "warteliste-ip:" + ip, JE_IP)):
+            raise KontoFehler("konto.fehler.zu_viele_codes")
+        v.execute("INSERT INTO versand VALUES (?, ?)", ("warteliste:" + e, jetzt))
+        if ip:
+            v.execute("INSERT INTO versand VALUES (?, ?)", ("warteliste-ip:" + ip, jetzt))
+        z = v.execute("SELECT bestaetigt FROM warteliste WHERE email = ?", (e,)).fetchone()
+        if z and z["bestaetigt"] is not None:
+            return None                                  # bestätigt oder freigegeben: keine Mail mehr
+        ablauf = jetzt + WARTELISTE_TAGE * 86400
+        if z:
+            v.execute("UPDATE warteliste SET hash = ?, ablauf = ?, sprache = ? WHERE email = ?",
+                      (_hash("warteliste", wort), ablauf, sprache, e))
+        else:
+            if v.execute("SELECT COUNT(*) FROM warteliste WHERE bestaetigt IS NULL").fetchone()[0] \
+                    >= WARTELISTE_MAX_UNBESTAETIGT:
+                raise KontoFehler("konto.fehler.warteliste_voll")
+            v.execute("INSERT INTO warteliste (email, sprache, erstellt, hash, ablauf) VALUES (?,?,?,?,?)",
+                      (e, sprache, jetzt, _hash("warteliste", wort), ablauf))
+    zeilen = [texte.t(sprache, "mail.warteliste.zeile_link", tage=WARTELISTE_TAGE),
+              f"{basis()}/warteliste/bestaetigen/{wort}", "", texte.t(sprache, "mail.warteliste.zeile_loeschen")]
+    mail_senden(e, texte.t(sprache, "mail.warteliste.betreff"), "\n".join(zeilen))
+    return None
+
+
+def _warteliste_wort(v, wort):
+    """Unbestätigter, noch gültiger Eintrag zum Wort aus dem Link oder None."""
+    if not isinstance(wort, str) or not 20 <= len(wort) <= 100:
+        return None
+    return v.execute("SELECT * FROM warteliste WHERE hash = ? AND bestaetigt IS NULL AND ablauf >= ?",
+                     (_hash("warteliste", wort), _jetzt())).fetchone()
+
+
+def warteliste_wort_gilt(wort):
+    """Gilt der Link noch? Ändert nichts (Mailprogramme rufen Links vorab auf)."""
+    with closing(db()) as v:
+        return _warteliste_wort(v, wort) is not None
+
+
+def warteliste_bestaetigen(wort):
+    """Bestätigt den Eintrag zum Wort aus dem Link (einmal, 7 Tage). -> {email, sprache} oder KontoFehler."""
+    with closing(db()) as v, v:
+        z = _warteliste_wort(v, wort)
+        if not z:
+            raise KontoFehler("konto.fehler.warteliste_link")
+        v.execute("UPDATE warteliste SET bestaetigt = ?, hash = NULL WHERE email = ?", (_jetzt(), z["email"]))
+        return {"email": z["email"], "sprache": z["sprache"]}
+
+
+def warteliste():
+    """Bestätigte, noch nicht freigegebene Einträge, älteste zuerst."""
+    with closing(db()) as v:
+        return [{"email": z["email"], "sprache": z["sprache"], "bestaetigt": _datum(z["bestaetigt"])}
+                for z in v.execute("SELECT * FROM warteliste WHERE bestaetigt IS NOT NULL AND freigegeben IS NULL "
+                                   "ORDER BY bestaetigt, erstellt")]
+
+
+def warteliste_unbestaetigt():
+    """Zahl der unbestätigten, noch gültigen Einträge."""
+    with closing(db()) as v:
+        return v.execute("SELECT COUNT(*) FROM warteliste WHERE bestaetigt IS NULL AND ablauf >= ?",
+                         (_jetzt(),)).fetchone()[0]
+
+
+def freigeben(roh):
+    """Bestätigten Eintrag freigeben (Betreiber): Recht reise_anlegen (sofort bei vorhandenem Konto, sonst beim ersten
+    Anmelden) und Mail „Du bist dabei“ in der Sprache des Eintrags. -> True; False, wenn schon freigegeben.
+    Erst die Mail, dann die Freigabe: Scheitert der Versand, bleibt der Eintrag wartend und der Fehler geht an den Aufrufer
+    (die Mail nicht in der offenen Schreibsperre: ein langsamer SMTP-Server hielte sonst jede Anmeldung auf)."""
+    e = adresse(roh)
+    with closing(db()) as v:
+        z = v.execute("SELECT * FROM warteliste WHERE email = ?", (e,)).fetchone()
+    if not z or z["bestaetigt"] is None:
+        raise KontoFehler("konto.fehler.warteliste_nicht_bestaetigt")
+    if z["freigegeben"] is not None:
+        return False
+    sprache = z["sprache"] if texte.gueltig(z["sprache"]) else texte.VORGABE_REISE
+    zeilen = [texte.t(sprache, "mail.freigabe.zeile_anmelden"), f"{basis()}/anmelden", "",
+              texte.t(sprache, "mail.freigabe.zeile_claude")]
+    mail_senden(e, texte.t(sprache, "mail.freigabe.betreff"), "\n".join(zeilen))
+    with closing(db()) as v, v:
+        if v.execute("UPDATE warteliste SET freigegeben = ? WHERE email = ? AND freigegeben IS NULL",
+                     (_jetzt(), e)).rowcount == 0:
+            return False     # gleichzeitig schon freigegeben (oder gelöscht)
+        k = v.execute("SELECT id, rechte FROM konten WHERE email = ?", (e,)).fetchone()
+        if k:   # in derselben Verbindung: eine zweite schreibende wartete hier auf diese
+            rechte = set(filter(None, k["rechte"].split(","))) | {"reise_anlegen"}
+            v.execute("UPDATE konten SET rechte = ? WHERE id = ?", (",".join(sorted(rechte)), k["id"]))
+    return True
 
 
 # ---------------------------------------------------------------- Mitgliedschaften und Einladungen
@@ -998,6 +1119,12 @@ def main(a):
             z = sichern()   # ohne Datenbank: nichts zu sichern, keine Ausgabe
             if z:
                 print(z)
+        elif a[:1] == ["warteliste"] and len(a) == 1:
+            for z in warteliste():
+                print(f"{z['bestaetigt']}  {z['email']}  {z['sprache']}")
+            print(f"unconfirmed: {warteliste_unbestaetigt()}")
+        elif a[:1] == ["freigeben"] and len(a) == 2:
+            print("released" if freigeben(a[1]) else "already released")
         elif a[:1] == ["einladen"] and len(a) == 7:
             print("valid immediately" if einladen(*a[1:])["sofort"] else "invitation sent")
         else:

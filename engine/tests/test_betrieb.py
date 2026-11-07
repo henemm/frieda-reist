@@ -2203,3 +2203,267 @@ def test_veroeffentlichen_nginx_abgleich_fehler_stoppt_nichts(vf):
     assert vf["lauf"](VF_NGINX=str(stub)).returncode == 0
     assert vf["pings"]() == 1
     assert not hoch(vf)
+
+
+# ---------- Stufe 3 des Reisespeichers (#348, Spec docs/specs/betrieb/speicher-348-stufe3.md) ----------
+# RED: Der Speicher-Teil von veroeffentlichen.sh, betrieb/vergleichslauf.sh und die Liste FR_SPEICHERREISEN in der Shell
+# gibt es noch nicht. Nicht in diesem Block (brauchen ein Submodul im Bauordner): AC-17, AC-25, AC-26, AC-28, AC-30.
+
+SPEICHER_REISEN = ["beispielreise", "stadtwochenende"]
+
+
+@pytest.fixture
+def sp(vf):
+    """Speicher-Aufbau über vf: FR_SPEICHER im tmp, echtes Python, Deploy-Attrappe, die den materialisierten Ordner prüft
+    und wie der echte Bau daten.json mit reise_stand.nummer in die Seite schreibt."""
+    tmp = vf["tmp"]
+    speicher, seiten = tmp / "_speicher", tmp / "seiten"
+    deploy = ausfuehrbar(tmp / "deploy-speicher.sh", f"""#!/bin/sh
+echo "$1" >> {tmp}/deploy.log
+[ -e {tmp}/infra-$1 ] && exit 1
+[ -e {tmp}/kaputt-$1 ] && {{ cat {tmp}/kaputt-$1; exit 2; }}
+ordner="$FR_DIENST/bau/reisen/$1"
+if [ -d "$ordner" ]; then
+  nummer=$(cat "$ordner.stand")
+  mkdir -p "{seiten}/$1"
+  for d in index.html sw.js manifest.json; do : > "{seiten}/$1/$d"; done
+  printf '{{"reise_stand": {{"nummer": %s}}}}' "$nummer" > "{seiten}/$1/daten.json"
+fi
+exit 0
+""")
+    vf["env"].update({"FR_SPEICHER": str(speicher), "FR_SEITEN": str(seiten), "FR_PYTHON": sys.executable,
+                      "VF_DEPLOY": str(deploy), "FR_SPEICHERREISEN": ",".join(SPEICHER_REISEN)})
+    sys.path.insert(0, str(ENGINE))
+    os.environ["FR_SPEICHER"] = str(speicher)
+    import reisespeicher
+    for r in SPEICHER_REISEN:
+        reisespeicher.importieren(WURZEL / "beispiel" / "reisen" / r, r, "Test", grund="Anfang")
+    vf["speicher"] = reisespeicher
+    vf["seiten"] = seiten
+    yield vf
+    os.environ.pop("FR_SPEICHER", None)
+
+
+def _nummer_der_seite(sp, reise):
+    return json.loads((sp["seiten"] / reise / "daten.json").read_text())["reise_stand"]["nummer"]
+
+
+@pytest.mark.parametrize("reise", SPEICHER_REISEN)
+def test_veroeffentlichen_baut_speicher_reise_bis_zur_seite(sp, reise):
+    sp["speicher"].vorgang_schreiben(reise, {"nachtrag.md": b"Frage"}, "Test", "test", "Frage anlegen")
+    r = sp["lauf"]()
+    assert reise in sp["deploys"](), r.stdout + r.stderr
+    assert _nummer_der_seite(sp, reise) == sp["speicher"].stand_nummer(reise)
+    for d in ("index.html", "sw.js", "manifest.json"):
+        assert (sp["seiten"] / reise / d).exists()
+    assert sp["lauf_stand"](reise)["zustand"] == "veroeffentlicht"
+
+
+def test_veroeffentlichen_baut_speicher_reise_nur_bei_neuer_nummer(sp):
+    sp["lauf"]()
+    sp["deploys"]()
+    sp["lauf"]()
+    assert [r for r in sp["deploys"]() if r in SPEICHER_REISEN] == []
+    sp["speicher"].vorgang_schreiben("stadtwochenende", {"x.md": b"1"}, "Test", "test", "x")
+    sp["lauf"]()
+    assert [r for r in sp["deploys"]() if r in SPEICHER_REISEN] == ["stadtwochenende"]
+
+
+def test_gemischter_betrieb_baut_beide_quellen_unabhaengig(sp):
+    """Git-Reise `zweitreise` (A) und Speicher-Reise `stadtwochenende` (B); scheitert eine, wird die andere trotzdem gebaut."""
+    sp["env"]["FR_SPEICHERREISEN"] = "stadtwochenende"
+    (sp["tmp"] / "kaputt-zweitreise").write_text("Bau gescheitert")
+    sp["lauf"]()
+    assert "stadtwochenende" in sp["deploys"]()
+    assert sp["rot"]()["art"] == "reise" and "zweitreise" in sp["rot"]()["reisen"]
+    (sp["tmp"] / "kaputt-zweitreise").unlink()
+    (sp["tmp"] / "kaputt-stadtwochenende").write_text("Bau gescheitert")
+    sp["speicher"].vorgang_schreiben("stadtwochenende", {"y.md": b"1"}, "Test", "test", "y")
+    sp["lauf"]("--immer")
+    assert "zweitreise" in sp["deploys"]() and "stadtwochenende" in sp["rot"]()["reisen"]
+
+
+def test_ohne_speicherreisen_bleibt_alles_wie_vorher(sp):
+    py = ausfuehrbar(sp["tmp"] / "python-falle", f'#!/bin/sh\necho "$@" >> {sp["tmp"]}/py.log\nexec {sys.executable} "$@"\n')
+    sp["env"].update({"FR_SPEICHERREISEN": "", "FR_PYTHON": str(py)})
+    sp["lauf"]()
+    assert "reisespeicher" not in " ".join(sp["zeilen"]("py.log"))
+    assert sp["deploys"]() == ["beispielreise", "zweitreise"]
+
+
+def test_speicher_reise_wird_ohne_github_veroeffentlicht(sp):
+    sp["speicher"].vorgang_schreiben("stadtwochenende", {"z.md": b"1"}, "Test", "test", "z")
+    git(sp["arbeit"], "remote", "set-url", "origin", str(sp["tmp"] / "gibtes-nicht"))
+    ausfuehrbar(sp["tmp"] / "bin/gh", f'#!/bin/sh\ntouch {sp["tmp"]}/gh-gerufen\nexit 1\n')
+    ausfuehrbar(sp["tmp"] / "ls-remote.sh", "#!/bin/sh\nexit 1\n")
+    r = sp["lauf"](VF_LSREMOTE=str(sp["tmp"] / "ls-remote.sh"))
+    assert r.returncode != 0                                          # git fetch scheitert wie bisher
+    assert _nummer_der_seite(sp, "stadtwochenende") == sp["speicher"].stand_nummer("stadtwochenende")
+    assert not (sp["tmp"] / "gh-gerufen").exists()
+    assert not (sp["tmp"] / "dienst/veroeffentlichen-erfolg").exists() and sp["pings"]() == 0
+
+
+def test_speicher_teil_laeuft_vor_git_fetch(sp):
+    ausfuehrbar(sp["tmp"] / "bin/git", f"""#!/bin/sh
+case "$*" in *fetch*) [ -e {sp["seiten"]}/stadtwochenende/daten.json ] && echo vorher >> {sp["tmp"]}/ablauf.log || echo nachher >> {sp["tmp"]}/ablauf.log; exit 1;; esac
+exec /usr/bin/git "$@"
+""")
+    sp["lauf"]()
+    assert sp["zeilen"]("ablauf.log") == ["vorher"]
+
+
+def test_speicher_reise_rot_haelt_die_anderen_nicht_auf(sp):
+    (sp["tmp"] / "kaputt-beispielreise").write_text("Bau gescheitert: Grund X")
+    sp["lauf"]()
+    assert "stadtwochenende" in sp["zeilen"]("deploy.log")
+    assert sp["rot"]()["art"] == "reise" and "beispielreise" in sp["rot"]()["reisen"]
+    lauf = sp["lauf_stand"]("beispielreise")
+    assert lauf["zustand"] == "fehlgeschlagen" and "Grund X" in json.dumps(lauf)
+    assert not (sp["tmp"] / "dienst/veroeffentlichen-erfolg").exists() and sp["pings"]() == 0
+    (sp["tmp"] / "kaputt-beispielreise").unlink()
+    (sp["tmp"] / "infra-beispielreise").write_text("")                # Infrastruktur-Störung: Exit 1
+    sp["speicher"].vorgang_schreiben("beispielreise", {"q.md": b"1"}, "Test", "test", "q")
+    assert sp["lauf"]().returncode == 1
+    assert not (sp["tmp"] / "dienst/reise-stand/beispielreise.gebaut").exists()
+
+
+def test_speicher_rot_meldet_ohne_gh(sp):
+    sp["env"]["FR_SPEICHERREISEN"] = "stadtwochenende"                 # nur im Speicher, nicht in Git
+    ausfuehrbar(sp["tmp"] / "bin/gh", f'#!/bin/sh\ntouch {sp["tmp"]}/gh-gerufen\n')
+    (sp["tmp"] / "kaputt-stadtwochenende").write_text("Bau gescheitert")
+    sp["speicher"].vorgang_schreiben("stadtwochenende", {"r.md": b"1"}, "Test", "test", "r")
+    sp["lauf"](VF_JETZT=str(T0))
+    assert "stadtwochenende" in sp["rot"]()["reisen"]
+    sp["lauf"](VF_JETZT=str(T0 + 7200))                               # über der Schwelle
+    assert hoch(sp) and sp["zeilen"]("rotmelden.log")
+    assert not (sp["tmp"] / "gh-gerufen").exists()
+
+
+def test_speicher_teil_uebergeht_reise_ohne_eintrag(sp):
+    sp["env"]["FR_SPEICHERREISEN"] = "stadtwochenende,gibtesnicht"
+    r = sp["lauf"]()
+    assert "gibtesnicht" not in sp["zeilen"]("deploy.log") and "gibtesnicht" in r.stdout
+    assert "stadtwochenende" in sp["zeilen"]("deploy.log")
+
+
+def test_stempel_gebaut_nur_nach_gelungenem_deploy(sp):
+    sp["lauf"]()
+    gebaut = sp["tmp"] / "dienst/reise-stand/stadtwochenende.gebaut"
+    assert gebaut.read_text().split()[0] == str(sp["speicher"].stand_nummer("stadtwochenende"))
+    vorher = gebaut.read_text()
+    (sp["tmp"] / "kaputt-stadtwochenende").write_text("Bau gescheitert")
+    sp["speicher"].vorgang_schreiben("stadtwochenende", {"w.md": b"1"}, "Test", "test", "w")
+    sp["lauf"]()
+    assert gebaut.read_text() == vorher
+
+
+def test_vergleichslauf_schreibt_stempel_und_exit_codes(sp):
+    """Git-Reise `beispielreise` im Bauordner (aus der Beispielreise) und dieselbe im Speicher."""
+    ziel = sp["arbeit"] / "reisen" / "beispielreise"
+    shutil.rmtree(ziel)
+    shutil.copytree(BEISPIEL, ziel)
+    git(sp["arbeit"], "add", ".")
+    git(sp["arbeit"], "commit", "-qm", "beispielreise")
+    skript = BETRIEB / "vergleichslauf.sh"
+
+    def lauf(*a, **e):
+        return subprocess.run([str(skript), *a], env={**sp["env"], **e}, capture_output=True, text=True)
+    stempel = sp["tmp"] / "dienst/vergleich/beispielreise.json"
+    r = lauf("beispielreise")
+    assert r.returncode == 0, r.stdout + r.stderr
+    s = json.loads(stempel.read_text())
+    assert s["ergebnis"] == "gleich" and s["git"] == git(sp["arbeit"], "rev-parse", "HEAD").strip()
+    assert {"zeit", "stand", "git", "unterschiede"} <= set(s)
+    sp["speicher"].vorgang_schreiben("beispielreise", {"extra.md": b"1"}, "Test", "test", "extra")
+    assert lauf("beispielreise").returncode == 1
+    assert json.loads(stempel.read_text())["ergebnis"] == "unterschied"
+    assert lauf("beispielreise", FR_SPEICHER=str(sp["tmp"] / "kein-speicher")).returncode == 2
+    assert git(sp["arbeit"], "status", "--porcelain").strip() == ""
+
+
+# ---------- Stufe 3, Teil 3: Software-Wechsel auf dem Server (AC-25, AC-26, AC-30) ----------
+# Im Test ohne Submodul: Software-Kennung = `git rev-parse HEAD` (Spec, Entscheidung 5); ein Commit außerhalb von reisen/
+# ist ein Software-Wechsel.
+
+def _py_protokoll(sp):
+    py = ausfuehrbar(sp["tmp"] / "python-protokoll", f'#!/bin/sh\necho "$@" >> {sp["tmp"]}/py.log\nexec {sys.executable} "$@"\n')
+    sp["env"]["FR_PYTHON"] = str(py)
+
+
+def test_software_wechsel_stellt_speicher_reisen_auf_dem_server_um(sp):
+    _py_protokoll(sp)
+    sp["env"]["FR_SPEICHERREISEN"] = "stadtwochenende"
+    sp["lauf"]()
+    gebaut = sp["tmp"] / "dienst/reise-stand/stadtwochenende.gebaut"
+    alt = gebaut.read_text().split()[1]
+    assert "nachziehen-speicher" not in " ".join(sp["zeilen"]("py.log"))    # ohne Wechsel kein Aufruf
+    sp["neuer_commit"]()                                                      # Software-Wechsel
+    sp["deploys"]()
+    sp["lauf"]()
+    assert any("nachziehen-speicher" in z and "stadtwochenende" in z for z in sp["zeilen"]("py.log"))
+    assert "stadtwochenende" in sp["deploys"]()
+    assert gebaut.read_text().split()[1] == sp["kopf"]() != alt
+
+
+def test_software_wechsel_braucht_keinen_handschritt(sp):
+    """Die Reise im alten Format wird vom Lauf umgestellt, ohne dass jemand neu.py aufruft."""
+    sp["env"]["FR_SPEICHERREISEN"] = "stadtwochenende"
+    sp["lauf"]()
+    alt = {p: b for p, b in sp["speicher"].aktueller_stand("stadtwochenende").items()}
+    text = alt["reise.yaml"].decode().splitlines()
+    sp["speicher"].vorgang_schreiben("stadtwochenende",
+                                     {"reise.yaml": ("\n".join(z for z in text if not z.startswith("sprache:")) + "\n").encode()},
+                                     "Test", "test", "altes Format")
+    sp["neuer_commit"]()
+    sp["lauf"]()
+    assert b"sprache:" in sp["speicher"].aktueller_stand("stadtwochenende")["reise.yaml"]
+    assert sp["speicher"].verlauf("stadtwochenende", 1)[0]["wer"] == "Software-Nachziehen"
+
+
+def test_rotes_software_tor_haelt_speicher_reisen_auf_altem_stand(sp):
+    _py_protokoll(sp)
+    sp["env"]["FR_SPEICHERREISEN"] = "stadtwochenende"
+    sp["lauf"]()
+    gebaut = sp["tmp"] / "dienst/reise-stand/stadtwochenende.gebaut"
+    vorher = gebaut.read_text()
+    sp["deploys"]()
+    sp["neuer_commit"]()
+    (sp["tmp"] / "rot").write_text("")                                        # Tests der Software rot (pruefen.sh)
+    # Zwischenlauf: Der Speicher-Teil läuft vor git fetch und sieht den neuen Stand noch nicht; erst dieser Lauf spult vor,
+    # das Tor ist rot. Danach trägt der Bauordner die neue, ungeprüfte Software (Spec, Entscheidung 7).
+    sp["lauf"]()
+    sp["deploys"]()
+    sp["speicher"].vorgang_schreiben("stadtwochenende", {"t.md": b"1"}, "Test", "test", "t")   # auch kein Inhaltsbau
+    sp["lauf"]()
+    assert gebaut.read_text() == vorher
+    assert "stadtwochenende" not in sp["deploys"]()
+    assert "nachziehen-speicher" not in " ".join(sp["zeilen"]("py.log"))
+    assert sp["rot"]()["art"] == "software"
+
+
+# ---------- Nachträge aus der Prüfung (Adversary, F001, F002) ----------
+
+def test_kaputte_speicher_reise_beim_nachziehen_haelt_die_anderen_nicht_auf(sp):
+    """F001: Scheitert das Umstellen einer Reise (kaputte reise.yaml im Speicher), ist nur sie rot; die andere
+    Speicher-Reise wird umgestellt und gebaut, der Lauf ist keine Störung."""
+    sp["env"]["FR_SPEICHERREISEN"] = "stadtwochenende,beispielreise"          # die kaputte zuerst
+    sp["lauf"]()
+    sp["speicher"].vorgang_schreiben("stadtwochenende", {"reise.yaml": b"titel: [kaputt\n  sprache: :\n"},
+                                     "Test", "test", "kaputt")
+    sp["neuer_commit"]()
+    r = sp["lauf"]()
+    assert "cannot be read from the trip store" not in r.stdout, r.stdout
+    assert (sp["tmp"] / "dienst/reise-stand/beispielreise.gebaut").read_text().split()[1] == sp["kopf"]()
+    assert "stadtwochenende" in sp["rot"]()["reisen"]
+    assert sp["lauf_stand"]("stadtwochenende")["zustand"] == "fehlgeschlagen"
+
+
+def test_vergleichslauf_ohne_liste_meldet_unlesbaren_speicher(sp):
+    """F002: Ohne Reiseliste und mit nicht lesbarer Datenbank ist das ein Fehler (Exit 2), kein stilles Überspringen."""
+    db = sp["tmp"] / "_speicher" / "reisen.db"
+    for rest in ("-wal", "-shm"):
+        Path(f"{db}{rest}").unlink(missing_ok=True)
+    db.write_bytes(b"kein sqlite" * 100)
+    r = subprocess.run([str(BETRIEB / "vergleichslauf.sh")], env=sp["env"], capture_output=True, text=True)
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert "ERROR" in r.stdout

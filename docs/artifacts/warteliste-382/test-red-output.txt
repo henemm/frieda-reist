@@ -1,0 +1,719 @@
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF                                 [100%]
+=================================== FAILURES ===================================
+_____________ test_eintrag_legt_zeile_an_und_schickt_mail_mit_link _____________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_eintrag_legt_zeile_an_und0'), 'uhr': {'t': 1800000000.0}}
+
+    def test_eintrag_legt_zeile_an_und_schickt_mail_mit_link(umgebung):
+>       konten.warteliste_eintragen("  Ida@Beispiel.INVALID ", sprache="de")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'warteliste_eintragen'
+
+engine/tests/test_warteliste.py:57: AttributeError
+__________ test_bestaetigungswort_liegt_nur_als_hash_in_der_datenbank __________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_bestaetigungswort_liegt_n0'), 'uhr': {'t': 1800000000.0}}
+
+    def test_bestaetigungswort_liegt_nur_als_hash_in_der_datenbank(umgebung):
+>       konten.warteliste_eintragen(IDA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'warteliste_eintragen'
+
+engine/tests/test_warteliste.py:65: AttributeError
+________ test_ungueltige_adresse_wird_abgewiesen_und_nichts_gespeichert ________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_ungueltige_adresse_wird_a0'), 'uhr': {'t': 1800000000.0}}
+
+    def test_ungueltige_adresse_wird_abgewiesen_und_nichts_gespeichert(umgebung):
+        for roh in ("keine-adresse", "", None, "a@b"):
+            with pytest.raises(konten.KontoFehler) as f:
+>               konten.warteliste_eintragen(roh)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               AttributeError: module 'konten' has no attribute 'warteliste_eintragen'
+
+engine/tests/test_warteliste.py:75: AttributeError
+_ test_doppelter_eintrag_kein_zweiter_datensatz_mail_nur_solange_unbestaetigt __
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_doppelter_eintrag_kein_zw0'), 'uhr': {'t': 1800000000.0}}
+
+    def test_doppelter_eintrag_kein_zweiter_datensatz_mail_nur_solange_unbestaetigt(umgebung):
+        mf = umgebung["tmp"] / "mails.jsonl"
+>       konten.warteliste_eintragen(IDA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'warteliste_eintragen'
+
+engine/tests/test_warteliste.py:82: AttributeError
+___________________ test_antwort_ist_fuer_jeden_stand_gleich ___________________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_antwort_ist_fuer_jeden_st0'), 'uhr': {'t': 1800000000.0}}
+
+    def test_antwort_ist_fuer_jeden_stand_gleich(umgebung):
+        mf = umgebung["tmp"] / "mails.jsonl"
+        konten.code_anfordern(KARL)
+        code = re.search(r"(\d{3}) (\d{3})", mails(mf, KARL)[-1]["text"]).expand(r"\1\2")
+        konten.anmelden(KARL, code, name="Karl")                    # Karl hat schon ein Konto
+>       eintragen_und_bestaetigen(umgebung, IDA)
+
+engine/tests/test_warteliste.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_antwort_ist_fuer_jeden_st0'), 'uhr': {'t': 1800000000.0}}
+adresse = 'ida@beispiel.invalid', kw = {}
+
+    def eintragen_und_bestaetigen(umgebung, adresse, **kw):
+>       konten.warteliste_eintragen(adresse, **kw)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'warteliste_eintragen'
+
+engine/tests/test_warteliste.py:49: AttributeError
+_________________ test_bestaetigung_einmal_und_nur_sieben_tage _________________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_bestaetigung_einmal_und_n0'), 'uhr': {'t': 1800000000.0}}
+
+    def test_bestaetigung_einmal_und_nur_sieben_tage(umgebung):
+        mf = umgebung["tmp"] / "mails.jsonl"
+>       konten.warteliste_eintragen(IDA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'warteliste_eintragen'
+
+engine/tests/test_warteliste.py:109: AttributeError
+__________ test_liste_zeigt_aelteste_zuerst_und_zaehlt_unbestaetigte ___________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_liste_zeigt_aelteste_zuer0'), 'uhr': {'t': 1800000000.0}}
+
+    def test_liste_zeigt_aelteste_zuerst_und_zaehlt_unbestaetigte(umgebung):
+>       eintragen_und_bestaetigen(umgebung, MO)
+
+engine/tests/test_warteliste.py:128: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_liste_zeigt_aelteste_zuer0'), 'uhr': {'t': 1800000000.0}}
+adresse = 'mo@beispiel.invalid', kw = {}
+
+    def eintragen_und_bestaetigen(umgebung, adresse, **kw):
+>       konten.warteliste_eintragen(adresse, **kw)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'warteliste_eintragen'
+
+engine/tests/test_warteliste.py:49: AttributeError
+____________ test_grenze_je_adresse_drei_mails_in_fuenfzehn_minuten ____________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_grenze_je_adresse_drei_ma0'), 'uhr': {'t': 1800000000.0}}
+
+    def test_grenze_je_adresse_drei_mails_in_fuenfzehn_minuten(umgebung):
+        for _ in range(3):
+>           konten.warteliste_eintragen(IDA)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'konten' has no attribute 'warteliste_eintragen'
+
+engine/tests/test_warteliste.py:140: AttributeError
+________________ test_grenze_je_ip_zehn_eintraege_in_der_stunde ________________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_grenze_je_ip_zehn_eintrae0'), 'uhr': {'t': 1800000000.0}}
+
+    def test_grenze_je_ip_zehn_eintraege_in_der_stunde(umgebung):
+        for i in range(10):
+>           konten.warteliste_eintragen(f"x{i}@beispiel.invalid", ip="203.0.113.7")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'konten' has no attribute 'warteliste_eintragen'
+
+engine/tests/test_warteliste.py:151: AttributeError
+___________________ test_obergrenze_unbestaetigter_eintraege ___________________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_obergrenze_unbestaetigter0'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x796a05645af0>
+
+    def test_obergrenze_unbestaetigter_eintraege(umgebung, monkeypatch):
+>       monkeypatch.setattr(konten, "WARTELISTE_MAX_UNBESTAETIGT", 2)
+E       AttributeError: <module 'konten' from 'engine/konten.py'> has no attribute 'WARTELISTE_MAX_UNBESTAETIGT'
+
+engine/tests/test_warteliste.py:159: AttributeError
+___________ test_unbestaetigte_eintraege_verfallen_nach_sieben_tagen ___________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_unbestaetigte_eintraege_v0'), 'uhr': {'t': 1800000000.0}}
+
+    def test_unbestaetigte_eintraege_verfallen_nach_sieben_tagen(umgebung):
+>       konten.warteliste_eintragen(IDA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'warteliste_eintragen'
+
+engine/tests/test_warteliste.py:170: AttributeError
+______________ test_ohne_mail_einrichtung_wird_nichts_gespeichert ______________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_ohne_mail_einrichtung_wir0'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x796a05647770>
+
+    def test_ohne_mail_einrichtung_wird_nichts_gespeichert(umgebung, monkeypatch):
+        monkeypatch.delenv("FR_MAIL_DATEI")
+        monkeypatch.delenv("FR_SMTP_HOST", raising=False)
+        monkeypatch.delenv("FR_ABSENDER", raising=False)
+        with pytest.raises(konten.KontoFehler) as f:
+>           konten.warteliste_eintragen(IDA)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'konten' has no attribute 'warteliste_eintragen'
+
+engine/tests/test_warteliste.py:183: AttributeError
+_____________ test_nur_bestaetigte_eintraege_lassen_sich_freigeben _____________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_nur_bestaetigte_eintraege0'), 'uhr': {'t': 1800000000.0}}
+
+    def test_nur_bestaetigte_eintraege_lassen_sich_freigeben(umgebung):
+        with pytest.raises(konten.KontoFehler) as f:
+>           konten.freigeben(IDA)                                   # unbekannt
+            ^^^^^^^^^^^^^^^^
+E           AttributeError: module 'konten' has no attribute 'freigeben'
+
+engine/tests/test_warteliste.py:192: AttributeError
+_ test_freigabe_mit_konto_setzt_das_recht_sofort_und_schickt_mail_in_der_sprache_des_eintrags _
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_freigabe_mit_konto_setzt_0'), 'uhr': {'t': 1800000000.0}}
+
+    def test_freigabe_mit_konto_setzt_das_recht_sofort_und_schickt_mail_in_der_sprache_des_eintrags(umgebung):
+        mf = umgebung["tmp"] / "mails.jsonl"
+        konten.code_anfordern(IDA)
+        code = re.search(r"(\d{3}) (\d{3})", mails(mf, IDA)[-1]["text"]).expand(r"\1\2")
+        _, k = konten.anmelden(IDA, code, name="Ida")
+        assert not konten.recht(konten.konto(k["id"]), "reise_anlegen")
+>       eintragen_und_bestaetigen(umgebung, IDA, sprache="en")
+
+engine/tests/test_warteliste.py:205: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_freigabe_mit_konto_setzt_0'), 'uhr': {'t': 1800000000.0}}
+adresse = 'ida@beispiel.invalid', kw = {'sprache': 'en'}
+
+    def eintragen_und_bestaetigen(umgebung, adresse, **kw):
+>       konten.warteliste_eintragen(adresse, **kw)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'warteliste_eintragen'
+
+engine/tests/test_warteliste.py:49: AttributeError
+______________ test_freigabe_ohne_konto_gilt_beim_ersten_anmelden ______________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_freigabe_ohne_konto_gilt_0'), 'uhr': {'t': 1800000000.0}}
+
+    def test_freigabe_ohne_konto_gilt_beim_ersten_anmelden(umgebung):
+        mf = umgebung["tmp"] / "mails.jsonl"
+>       eintragen_und_bestaetigen(umgebung, LEA, sprache="de")
+
+engine/tests/test_warteliste.py:216: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_freigabe_ohne_konto_gilt_0'), 'uhr': {'t': 1800000000.0}}
+adresse = 'lea@beispiel.invalid', kw = {'sprache': 'de'}
+
+    def eintragen_und_bestaetigen(umgebung, adresse, **kw):
+>       konten.warteliste_eintragen(adresse, **kw)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'warteliste_eintragen'
+
+engine/tests/test_warteliste.py:49: AttributeError
+__________ test_zweite_freigabe_aendert_nichts_und_schickt_keine_mail __________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_zweite_freigabe_aendert_n0'), 'uhr': {'t': 1800000000.0}}
+
+    def test_zweite_freigabe_aendert_nichts_und_schickt_keine_mail(umgebung):
+        mf = umgebung["tmp"] / "mails.jsonl"
+>       eintragen_und_bestaetigen(umgebung, IDA)
+
+engine/tests/test_warteliste.py:232: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_zweite_freigabe_aendert_n0'), 'uhr': {'t': 1800000000.0}}
+adresse = 'ida@beispiel.invalid', kw = {}
+
+    def eintragen_und_bestaetigen(umgebung, adresse, **kw):
+>       konten.warteliste_eintragen(adresse, **kw)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'warteliste_eintragen'
+
+engine/tests/test_warteliste.py:49: AttributeError
+____________________ test_befehle_warteliste_und_freigeben _____________________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_befehle_warteliste_und_fr0'), 'uhr': {'t': 1800000000.0}}
+capsys = <_pytest.capture.CaptureFixture object at 0x796a0617e390>
+
+    def test_befehle_warteliste_und_freigeben(umgebung, capsys):
+>       eintragen_und_bestaetigen(umgebung, IDA)
+
+engine/tests/test_warteliste.py:242: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-12045/test_befehle_warteliste_und_fr0'), 'uhr': {'t': 1800000000.0}}
+adresse = 'ida@beispiel.invalid', kw = {}
+
+    def eintragen_und_bestaetigen(umgebung, adresse, **kw):
+>       konten.warteliste_eintragen(adresse, **kw)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'warteliste_eintragen'
+
+engine/tests/test_warteliste.py:49: AttributeError
+_________________ test_seite_zeigt_formular_und_voraussetzung __________________
+
+welt = <function welt.<locals>.neu at 0x796a048bc5e0>
+
+    def test_seite_zeigt_formular_und_voraussetzung(welt):
+        u = welt()
+        s, _, t = abruf(f"{u.kurl}/warteliste")
+>       assert s == 200 and meldet(t, "warteliste.titel") and meldet(t, "warteliste.voraussetzung") and 'name="email"' in t
+E       assert (404 == 200)
+
+engine/tests/test_warteliste.py:266: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+____________ test_eintrag_ueber_die_seite_antwort_ist_immer_gleich _____________
+
+welt = <function welt.<locals>.neu at 0x796a0439fc40>
+
+    def test_eintrag_ueber_die_seite_antwort_ist_immer_gleich(welt):
+        u = welt()
+        seite_anmelden(u, KARL, "Karl")                              # Karl hat ein Konto
+        antworten = []
+        for adresse in (LEA, LEA, KARL):
+            s, _, t = abruf(f"{u.kurl}/warteliste", "POST", {"email": adresse})
+>           assert s == 200 and meldet(t, "warteliste.gesendet")
+E           assert (404 == 200)
+
+engine/tests/test_warteliste.py:275: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 404
+________________________ test_falsche_herkunft_ist_403 _________________________
+
+welt = <function welt.<locals>.neu at 0x796a048bc360>
+
+    def test_falsche_herkunft_ist_403(welt):
+        u = welt()
+>       assert abruf(f"{u.kurl}/warteliste", "POST", {"email": LEA}, origin="https://boese.invalid")[0] == 403
+E       assert 404 == 403
+
+engine/tests/test_warteliste.py:286: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 404
+__ test_link_bestaetigt_erst_per_knopf_und_meldet_den_betreibern_genau_einmal __
+
+welt = <function welt.<locals>.neu at 0x796a048bc400>
+
+    def test_link_bestaetigt_erst_per_knopf_und_meldet_den_betreibern_genau_einmal(welt):
+        u = welt()
+        betreiber_und_nutzer(u)
+        abruf(f"{u.kurl}/warteliste", "POST", {"email": LEA})
+>       wort = bestaetigungswort(mails(u.mails, LEA)[-1])
+                                 ^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: list index out of range
+
+engine/tests/test_warteliste.py:295: IndexError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 404
+____________ test_unbekanntes_wort_zeigt_seite_link_gilt_nicht_mehr ____________
+
+welt = <function welt.<locals>.neu at 0x796a048bc5e0>
+
+    def test_unbekanntes_wort_zeigt_seite_link_gilt_nicht_mehr(welt):
+        u = welt()
+        s, _, t = abruf(f"{u.kurl}/warteliste/bestaetigen/gibtesnicht")
+>       assert s == 404 and meldet(t, "warteliste.link_ungueltig") and "/warteliste" in t
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_warteliste.py:314: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = '{"fehler": "unbekannt"}', schluessel = 'warteliste.link_ungueltig'
+sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel warteliste.link_ungueltig fehlt im Katalog
+E       assert 'warteliste.link_ungueltig' != 'warteliste.link_ungueltig'
+
+engine/tests/conftest.py:79: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+_ test_abschnitt_auf_konto_nur_fuer_betreiber_und_freigeben_ohne_recht_abgelehnt _
+
+welt = <function welt.<locals>.neu at 0x796a0439f9c0>
+
+    def test_abschnitt_auf_konto_nur_fuer_betreiber_und_freigeben_ohne_recht_abgelehnt(welt):
+        u = welt()
+        ida, mo = betreiber_und_nutzer(u)
+        abruf(f"{u.kurl}/warteliste", "POST", {"email": LEA})
+>       abruf(f"{u.kurl}/warteliste/bestaetigen/{bestaetigungswort(mails(u.mails, LEA)[-1])}", "POST", {})
+                                                                   ^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: list index out of range
+
+engine/tests/test_warteliste.py:321: IndexError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 404
+_________________ test_nginx_vorlage_enthaelt_die_neuen_pfade __________________
+
+    def test_nginx_vorlage_enthaelt_die_neuen_pfade():
+        inc = (Path(__file__).resolve().parents[2] / "betrieb" / "vorlagen" / "nginx-konnektor-orte.inc").read_text()
+>       assert re.search(r"location\s+(=|\^~)\s+/warteliste", inc)
+E       AssertionError: assert None
+E        +  where None = <function search at 0x796a06c313a0>('location\\s+(=|\\^~)\\s+/warteliste', '# nginx-Baustein für den Konnektor „Frieda“ (Claude-App, Anmeldung, Konto), einmal je Instanz; erzeugt von\n# betrieb...n Pfad der Instanz) sind abgeschaltet\n# (Frist 1.11.2026, auf dem Server 404): Die Vorlage öffnet sie nicht wieder.\n')
+E        +    where <function search at 0x796a06c313a0> = re.search
+
+engine/tests/test_warteliste.py:338: AssertionError
+____________ test_texte_in_allen_sprachen[mail.warteliste.betreff] _____________
+
+schluessel = 'mail.warteliste.betreff'
+
+    @pytest.mark.parametrize("schluessel", [
+        "mail.warteliste.betreff", "mail.warteliste.zeile_link", "mail.freigabe.betreff", "mail.freigabe.zeile_anmelden",
+        "mail.freigabe.zeile_claude", "warteliste.titel", "warteliste.voraussetzung", "warteliste.gesendet",
+        "warteliste.bestaetigen_knopf", "warteliste.bestaetigt", "warteliste.link_ungueltig", "konto.warteliste.titel",
+        "konto.fehler.warteliste_voll", "konto.fehler.warteliste_link", "konto.fehler.warteliste_nicht_bestaetigt",
+        "konto.betreiber.warteliste"])
+    def test_texte_in_allen_sprachen(schluessel):
+        for sprache in texte.SPRACHEN:
+>           assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+E           AssertionError: mail.warteliste.betreff fehlt in de
+E           assert 'mail.warteliste.betreff' != 'mail.warteliste.betreff'
+E            +  where 'mail.warteliste.betreff' = <function t at 0x796a05728540>('de', 'mail.warteliste.betreff')
+E            +    where <function t at 0x796a05728540> = texte.t
+
+engine/tests/test_warteliste.py:350: AssertionError
+___________ test_texte_in_allen_sprachen[mail.warteliste.zeile_link] ___________
+
+schluessel = 'mail.warteliste.zeile_link'
+
+    @pytest.mark.parametrize("schluessel", [
+        "mail.warteliste.betreff", "mail.warteliste.zeile_link", "mail.freigabe.betreff", "mail.freigabe.zeile_anmelden",
+        "mail.freigabe.zeile_claude", "warteliste.titel", "warteliste.voraussetzung", "warteliste.gesendet",
+        "warteliste.bestaetigen_knopf", "warteliste.bestaetigt", "warteliste.link_ungueltig", "konto.warteliste.titel",
+        "konto.fehler.warteliste_voll", "konto.fehler.warteliste_link", "konto.fehler.warteliste_nicht_bestaetigt",
+        "konto.betreiber.warteliste"])
+    def test_texte_in_allen_sprachen(schluessel):
+        for sprache in texte.SPRACHEN:
+>           assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+E           AssertionError: mail.warteliste.zeile_link fehlt in de
+E           assert 'mail.warteliste.zeile_link' != 'mail.warteliste.zeile_link'
+E            +  where 'mail.warteliste.zeile_link' = <function t at 0x796a05728540>('de', 'mail.warteliste.zeile_link')
+E            +    where <function t at 0x796a05728540> = texte.t
+
+engine/tests/test_warteliste.py:350: AssertionError
+_____________ test_texte_in_allen_sprachen[mail.freigabe.betreff] ______________
+
+schluessel = 'mail.freigabe.betreff'
+
+    @pytest.mark.parametrize("schluessel", [
+        "mail.warteliste.betreff", "mail.warteliste.zeile_link", "mail.freigabe.betreff", "mail.freigabe.zeile_anmelden",
+        "mail.freigabe.zeile_claude", "warteliste.titel", "warteliste.voraussetzung", "warteliste.gesendet",
+        "warteliste.bestaetigen_knopf", "warteliste.bestaetigt", "warteliste.link_ungueltig", "konto.warteliste.titel",
+        "konto.fehler.warteliste_voll", "konto.fehler.warteliste_link", "konto.fehler.warteliste_nicht_bestaetigt",
+        "konto.betreiber.warteliste"])
+    def test_texte_in_allen_sprachen(schluessel):
+        for sprache in texte.SPRACHEN:
+>           assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+E           AssertionError: mail.freigabe.betreff fehlt in de
+E           assert 'mail.freigabe.betreff' != 'mail.freigabe.betreff'
+E            +  where 'mail.freigabe.betreff' = <function t at 0x796a05728540>('de', 'mail.freigabe.betreff')
+E            +    where <function t at 0x796a05728540> = texte.t
+
+engine/tests/test_warteliste.py:350: AssertionError
+__________ test_texte_in_allen_sprachen[mail.freigabe.zeile_anmelden] __________
+
+schluessel = 'mail.freigabe.zeile_anmelden'
+
+    @pytest.mark.parametrize("schluessel", [
+        "mail.warteliste.betreff", "mail.warteliste.zeile_link", "mail.freigabe.betreff", "mail.freigabe.zeile_anmelden",
+        "mail.freigabe.zeile_claude", "warteliste.titel", "warteliste.voraussetzung", "warteliste.gesendet",
+        "warteliste.bestaetigen_knopf", "warteliste.bestaetigt", "warteliste.link_ungueltig", "konto.warteliste.titel",
+        "konto.fehler.warteliste_voll", "konto.fehler.warteliste_link", "konto.fehler.warteliste_nicht_bestaetigt",
+        "konto.betreiber.warteliste"])
+    def test_texte_in_allen_sprachen(schluessel):
+        for sprache in texte.SPRACHEN:
+>           assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+E           AssertionError: mail.freigabe.zeile_anmelden fehlt in de
+E           assert 'mail.freigabe.zeile_anmelden' != 'mail.freigabe.zeile_anmelden'
+E            +  where 'mail.freigabe.zeile_anmelden' = <function t at 0x796a05728540>('de', 'mail.freigabe.zeile_anmelden')
+E            +    where <function t at 0x796a05728540> = texte.t
+
+engine/tests/test_warteliste.py:350: AssertionError
+___________ test_texte_in_allen_sprachen[mail.freigabe.zeile_claude] ___________
+
+schluessel = 'mail.freigabe.zeile_claude'
+
+    @pytest.mark.parametrize("schluessel", [
+        "mail.warteliste.betreff", "mail.warteliste.zeile_link", "mail.freigabe.betreff", "mail.freigabe.zeile_anmelden",
+        "mail.freigabe.zeile_claude", "warteliste.titel", "warteliste.voraussetzung", "warteliste.gesendet",
+        "warteliste.bestaetigen_knopf", "warteliste.bestaetigt", "warteliste.link_ungueltig", "konto.warteliste.titel",
+        "konto.fehler.warteliste_voll", "konto.fehler.warteliste_link", "konto.fehler.warteliste_nicht_bestaetigt",
+        "konto.betreiber.warteliste"])
+    def test_texte_in_allen_sprachen(schluessel):
+        for sprache in texte.SPRACHEN:
+>           assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+E           AssertionError: mail.freigabe.zeile_claude fehlt in de
+E           assert 'mail.freigabe.zeile_claude' != 'mail.freigabe.zeile_claude'
+E            +  where 'mail.freigabe.zeile_claude' = <function t at 0x796a05728540>('de', 'mail.freigabe.zeile_claude')
+E            +    where <function t at 0x796a05728540> = texte.t
+
+engine/tests/test_warteliste.py:350: AssertionError
+________________ test_texte_in_allen_sprachen[warteliste.titel] ________________
+
+schluessel = 'warteliste.titel'
+
+    @pytest.mark.parametrize("schluessel", [
+        "mail.warteliste.betreff", "mail.warteliste.zeile_link", "mail.freigabe.betreff", "mail.freigabe.zeile_anmelden",
+        "mail.freigabe.zeile_claude", "warteliste.titel", "warteliste.voraussetzung", "warteliste.gesendet",
+        "warteliste.bestaetigen_knopf", "warteliste.bestaetigt", "warteliste.link_ungueltig", "konto.warteliste.titel",
+        "konto.fehler.warteliste_voll", "konto.fehler.warteliste_link", "konto.fehler.warteliste_nicht_bestaetigt",
+        "konto.betreiber.warteliste"])
+    def test_texte_in_allen_sprachen(schluessel):
+        for sprache in texte.SPRACHEN:
+>           assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+E           AssertionError: warteliste.titel fehlt in de
+E           assert 'warteliste.titel' != 'warteliste.titel'
+E            +  where 'warteliste.titel' = <function t at 0x796a05728540>('de', 'warteliste.titel')
+E            +    where <function t at 0x796a05728540> = texte.t
+
+engine/tests/test_warteliste.py:350: AssertionError
+____________ test_texte_in_allen_sprachen[warteliste.voraussetzung] ____________
+
+schluessel = 'warteliste.voraussetzung'
+
+    @pytest.mark.parametrize("schluessel", [
+        "mail.warteliste.betreff", "mail.warteliste.zeile_link", "mail.freigabe.betreff", "mail.freigabe.zeile_anmelden",
+        "mail.freigabe.zeile_claude", "warteliste.titel", "warteliste.voraussetzung", "warteliste.gesendet",
+        "warteliste.bestaetigen_knopf", "warteliste.bestaetigt", "warteliste.link_ungueltig", "konto.warteliste.titel",
+        "konto.fehler.warteliste_voll", "konto.fehler.warteliste_link", "konto.fehler.warteliste_nicht_bestaetigt",
+        "konto.betreiber.warteliste"])
+    def test_texte_in_allen_sprachen(schluessel):
+        for sprache in texte.SPRACHEN:
+>           assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+E           AssertionError: warteliste.voraussetzung fehlt in de
+E           assert 'warteliste.voraussetzung' != 'warteliste.voraussetzung'
+E            +  where 'warteliste.voraussetzung' = <function t at 0x796a05728540>('de', 'warteliste.voraussetzung')
+E            +    where <function t at 0x796a05728540> = texte.t
+
+engine/tests/test_warteliste.py:350: AssertionError
+______________ test_texte_in_allen_sprachen[warteliste.gesendet] _______________
+
+schluessel = 'warteliste.gesendet'
+
+    @pytest.mark.parametrize("schluessel", [
+        "mail.warteliste.betreff", "mail.warteliste.zeile_link", "mail.freigabe.betreff", "mail.freigabe.zeile_anmelden",
+        "mail.freigabe.zeile_claude", "warteliste.titel", "warteliste.voraussetzung", "warteliste.gesendet",
+        "warteliste.bestaetigen_knopf", "warteliste.bestaetigt", "warteliste.link_ungueltig", "konto.warteliste.titel",
+        "konto.fehler.warteliste_voll", "konto.fehler.warteliste_link", "konto.fehler.warteliste_nicht_bestaetigt",
+        "konto.betreiber.warteliste"])
+    def test_texte_in_allen_sprachen(schluessel):
+        for sprache in texte.SPRACHEN:
+>           assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+E           AssertionError: warteliste.gesendet fehlt in de
+E           assert 'warteliste.gesendet' != 'warteliste.gesendet'
+E            +  where 'warteliste.gesendet' = <function t at 0x796a05728540>('de', 'warteliste.gesendet')
+E            +    where <function t at 0x796a05728540> = texte.t
+
+engine/tests/test_warteliste.py:350: AssertionError
+__________ test_texte_in_allen_sprachen[warteliste.bestaetigen_knopf] __________
+
+schluessel = 'warteliste.bestaetigen_knopf'
+
+    @pytest.mark.parametrize("schluessel", [
+        "mail.warteliste.betreff", "mail.warteliste.zeile_link", "mail.freigabe.betreff", "mail.freigabe.zeile_anmelden",
+        "mail.freigabe.zeile_claude", "warteliste.titel", "warteliste.voraussetzung", "warteliste.gesendet",
+        "warteliste.bestaetigen_knopf", "warteliste.bestaetigt", "warteliste.link_ungueltig", "konto.warteliste.titel",
+        "konto.fehler.warteliste_voll", "konto.fehler.warteliste_link", "konto.fehler.warteliste_nicht_bestaetigt",
+        "konto.betreiber.warteliste"])
+    def test_texte_in_allen_sprachen(schluessel):
+        for sprache in texte.SPRACHEN:
+>           assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+E           AssertionError: warteliste.bestaetigen_knopf fehlt in de
+E           assert 'warteliste.bestaetigen_knopf' != 'warteliste.bestaetigen_knopf'
+E            +  where 'warteliste.bestaetigen_knopf' = <function t at 0x796a05728540>('de', 'warteliste.bestaetigen_knopf')
+E            +    where <function t at 0x796a05728540> = texte.t
+
+engine/tests/test_warteliste.py:350: AssertionError
+_____________ test_texte_in_allen_sprachen[warteliste.bestaetigt] ______________
+
+schluessel = 'warteliste.bestaetigt'
+
+    @pytest.mark.parametrize("schluessel", [
+        "mail.warteliste.betreff", "mail.warteliste.zeile_link", "mail.freigabe.betreff", "mail.freigabe.zeile_anmelden",
+        "mail.freigabe.zeile_claude", "warteliste.titel", "warteliste.voraussetzung", "warteliste.gesendet",
+        "warteliste.bestaetigen_knopf", "warteliste.bestaetigt", "warteliste.link_ungueltig", "konto.warteliste.titel",
+        "konto.fehler.warteliste_voll", "konto.fehler.warteliste_link", "konto.fehler.warteliste_nicht_bestaetigt",
+        "konto.betreiber.warteliste"])
+    def test_texte_in_allen_sprachen(schluessel):
+        for sprache in texte.SPRACHEN:
+>           assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+E           AssertionError: warteliste.bestaetigt fehlt in de
+E           assert 'warteliste.bestaetigt' != 'warteliste.bestaetigt'
+E            +  where 'warteliste.bestaetigt' = <function t at 0x796a05728540>('de', 'warteliste.bestaetigt')
+E            +    where <function t at 0x796a05728540> = texte.t
+
+engine/tests/test_warteliste.py:350: AssertionError
+___________ test_texte_in_allen_sprachen[warteliste.link_ungueltig] ____________
+
+schluessel = 'warteliste.link_ungueltig'
+
+    @pytest.mark.parametrize("schluessel", [
+        "mail.warteliste.betreff", "mail.warteliste.zeile_link", "mail.freigabe.betreff", "mail.freigabe.zeile_anmelden",
+        "mail.freigabe.zeile_claude", "warteliste.titel", "warteliste.voraussetzung", "warteliste.gesendet",
+        "warteliste.bestaetigen_knopf", "warteliste.bestaetigt", "warteliste.link_ungueltig", "konto.warteliste.titel",
+        "konto.fehler.warteliste_voll", "konto.fehler.warteliste_link", "konto.fehler.warteliste_nicht_bestaetigt",
+        "konto.betreiber.warteliste"])
+    def test_texte_in_allen_sprachen(schluessel):
+        for sprache in texte.SPRACHEN:
+>           assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+E           AssertionError: warteliste.link_ungueltig fehlt in de
+E           assert 'warteliste.link_ungueltig' != 'warteliste.link_ungueltig'
+E            +  where 'warteliste.link_ungueltig' = <function t at 0x796a05728540>('de', 'warteliste.link_ungueltig')
+E            +    where <function t at 0x796a05728540> = texte.t
+
+engine/tests/test_warteliste.py:350: AssertionError
+_____________ test_texte_in_allen_sprachen[konto.warteliste.titel] _____________
+
+schluessel = 'konto.warteliste.titel'
+
+    @pytest.mark.parametrize("schluessel", [
+        "mail.warteliste.betreff", "mail.warteliste.zeile_link", "mail.freigabe.betreff", "mail.freigabe.zeile_anmelden",
+        "mail.freigabe.zeile_claude", "warteliste.titel", "warteliste.voraussetzung", "warteliste.gesendet",
+        "warteliste.bestaetigen_knopf", "warteliste.bestaetigt", "warteliste.link_ungueltig", "konto.warteliste.titel",
+        "konto.fehler.warteliste_voll", "konto.fehler.warteliste_link", "konto.fehler.warteliste_nicht_bestaetigt",
+        "konto.betreiber.warteliste"])
+    def test_texte_in_allen_sprachen(schluessel):
+        for sprache in texte.SPRACHEN:
+>           assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+E           AssertionError: konto.warteliste.titel fehlt in de
+E           assert 'konto.warteliste.titel' != 'konto.warteliste.titel'
+E            +  where 'konto.warteliste.titel' = <function t at 0x796a05728540>('de', 'konto.warteliste.titel')
+E            +    where <function t at 0x796a05728540> = texte.t
+
+engine/tests/test_warteliste.py:350: AssertionError
+__________ test_texte_in_allen_sprachen[konto.fehler.warteliste_voll] __________
+
+schluessel = 'konto.fehler.warteliste_voll'
+
+    @pytest.mark.parametrize("schluessel", [
+        "mail.warteliste.betreff", "mail.warteliste.zeile_link", "mail.freigabe.betreff", "mail.freigabe.zeile_anmelden",
+        "mail.freigabe.zeile_claude", "warteliste.titel", "warteliste.voraussetzung", "warteliste.gesendet",
+        "warteliste.bestaetigen_knopf", "warteliste.bestaetigt", "warteliste.link_ungueltig", "konto.warteliste.titel",
+        "konto.fehler.warteliste_voll", "konto.fehler.warteliste_link", "konto.fehler.warteliste_nicht_bestaetigt",
+        "konto.betreiber.warteliste"])
+    def test_texte_in_allen_sprachen(schluessel):
+        for sprache in texte.SPRACHEN:
+>           assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+E           AssertionError: konto.fehler.warteliste_voll fehlt in de
+E           assert 'konto.fehler.warteliste_voll' != 'konto.fehler.warteliste_voll'
+E            +  where 'konto.fehler.warteliste_voll' = <function t at 0x796a05728540>('de', 'konto.fehler.warteliste_voll')
+E            +    where <function t at 0x796a05728540> = texte.t
+
+engine/tests/test_warteliste.py:350: AssertionError
+__________ test_texte_in_allen_sprachen[konto.fehler.warteliste_link] __________
+
+schluessel = 'konto.fehler.warteliste_link'
+
+    @pytest.mark.parametrize("schluessel", [
+        "mail.warteliste.betreff", "mail.warteliste.zeile_link", "mail.freigabe.betreff", "mail.freigabe.zeile_anmelden",
+        "mail.freigabe.zeile_claude", "warteliste.titel", "warteliste.voraussetzung", "warteliste.gesendet",
+        "warteliste.bestaetigen_knopf", "warteliste.bestaetigt", "warteliste.link_ungueltig", "konto.warteliste.titel",
+        "konto.fehler.warteliste_voll", "konto.fehler.warteliste_link", "konto.fehler.warteliste_nicht_bestaetigt",
+        "konto.betreiber.warteliste"])
+    def test_texte_in_allen_sprachen(schluessel):
+        for sprache in texte.SPRACHEN:
+>           assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+E           AssertionError: konto.fehler.warteliste_link fehlt in de
+E           assert 'konto.fehler.warteliste_link' != 'konto.fehler.warteliste_link'
+E            +  where 'konto.fehler.warteliste_link' = <function t at 0x796a05728540>('de', 'konto.fehler.warteliste_link')
+E            +    where <function t at 0x796a05728540> = texte.t
+
+engine/tests/test_warteliste.py:350: AssertionError
+____ test_texte_in_allen_sprachen[konto.fehler.warteliste_nicht_bestaetigt] ____
+
+schluessel = 'konto.fehler.warteliste_nicht_bestaetigt'
+
+    @pytest.mark.parametrize("schluessel", [
+        "mail.warteliste.betreff", "mail.warteliste.zeile_link", "mail.freigabe.betreff", "mail.freigabe.zeile_anmelden",
+        "mail.freigabe.zeile_claude", "warteliste.titel", "warteliste.voraussetzung", "warteliste.gesendet",
+        "warteliste.bestaetigen_knopf", "warteliste.bestaetigt", "warteliste.link_ungueltig", "konto.warteliste.titel",
+        "konto.fehler.warteliste_voll", "konto.fehler.warteliste_link", "konto.fehler.warteliste_nicht_bestaetigt",
+        "konto.betreiber.warteliste"])
+    def test_texte_in_allen_sprachen(schluessel):
+        for sprache in texte.SPRACHEN:
+>           assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+E           AssertionError: konto.fehler.warteliste_nicht_bestaetigt fehlt in de
+E           assert 'konto.fehler.warteliste_nicht_bestaetigt' != 'konto.fehler.warteliste_nicht_bestaetigt'
+E            +  where 'konto.fehler.warteliste_nicht_bestaetigt' = <function t at 0x796a05728540>('de', 'konto.fehler.warteliste_nicht_bestaetigt')
+E            +    where <function t at 0x796a05728540> = texte.t
+
+engine/tests/test_warteliste.py:350: AssertionError
+___________ test_texte_in_allen_sprachen[konto.betreiber.warteliste] ___________
+
+schluessel = 'konto.betreiber.warteliste'
+
+    @pytest.mark.parametrize("schluessel", [
+        "mail.warteliste.betreff", "mail.warteliste.zeile_link", "mail.freigabe.betreff", "mail.freigabe.zeile_anmelden",
+        "mail.freigabe.zeile_claude", "warteliste.titel", "warteliste.voraussetzung", "warteliste.gesendet",
+        "warteliste.bestaetigen_knopf", "warteliste.bestaetigt", "warteliste.link_ungueltig", "konto.warteliste.titel",
+        "konto.fehler.warteliste_voll", "konto.fehler.warteliste_link", "konto.fehler.warteliste_nicht_bestaetigt",
+        "konto.betreiber.warteliste"])
+    def test_texte_in_allen_sprachen(schluessel):
+        for sprache in texte.SPRACHEN:
+>           assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+E           AssertionError: konto.betreiber.warteliste fehlt in de
+E           assert 'konto.betreiber.warteliste' != 'konto.betreiber.warteliste'
+E            +  where 'konto.betreiber.warteliste' = <function t at 0x796a05728540>('de', 'konto.betreiber.warteliste')
+E            +    where <function t at 0x796a05728540> = texte.t
+
+engine/tests/test_warteliste.py:350: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_warteliste.py::test_eintrag_legt_zeile_an_und_schickt_mail_mit_link
+FAILED engine/tests/test_warteliste.py::test_bestaetigungswort_liegt_nur_als_hash_in_der_datenbank
+FAILED engine/tests/test_warteliste.py::test_ungueltige_adresse_wird_abgewiesen_und_nichts_gespeichert
+FAILED engine/tests/test_warteliste.py::test_doppelter_eintrag_kein_zweiter_datensatz_mail_nur_solange_unbestaetigt
+FAILED engine/tests/test_warteliste.py::test_antwort_ist_fuer_jeden_stand_gleich
+FAILED engine/tests/test_warteliste.py::test_bestaetigung_einmal_und_nur_sieben_tage
+FAILED engine/tests/test_warteliste.py::test_liste_zeigt_aelteste_zuerst_und_zaehlt_unbestaetigte
+FAILED engine/tests/test_warteliste.py::test_grenze_je_adresse_drei_mails_in_fuenfzehn_minuten
+FAILED engine/tests/test_warteliste.py::test_grenze_je_ip_zehn_eintraege_in_der_stunde
+FAILED engine/tests/test_warteliste.py::test_obergrenze_unbestaetigter_eintraege
+FAILED engine/tests/test_warteliste.py::test_unbestaetigte_eintraege_verfallen_nach_sieben_tagen
+FAILED engine/tests/test_warteliste.py::test_ohne_mail_einrichtung_wird_nichts_gespeichert
+FAILED engine/tests/test_warteliste.py::test_nur_bestaetigte_eintraege_lassen_sich_freigeben
+FAILED engine/tests/test_warteliste.py::test_freigabe_mit_konto_setzt_das_recht_sofort_und_schickt_mail_in_der_sprache_des_eintrags
+FAILED engine/tests/test_warteliste.py::test_freigabe_ohne_konto_gilt_beim_ersten_anmelden
+FAILED engine/tests/test_warteliste.py::test_zweite_freigabe_aendert_nichts_und_schickt_keine_mail
+FAILED engine/tests/test_warteliste.py::test_befehle_warteliste_und_freigeben
+FAILED engine/tests/test_warteliste.py::test_seite_zeigt_formular_und_voraussetzung
+FAILED engine/tests/test_warteliste.py::test_eintrag_ueber_die_seite_antwort_ist_immer_gleich
+FAILED engine/tests/test_warteliste.py::test_falsche_herkunft_ist_403 - asser...
+FAILED engine/tests/test_warteliste.py::test_link_bestaetigt_erst_per_knopf_und_meldet_den_betreibern_genau_einmal
+FAILED engine/tests/test_warteliste.py::test_unbekanntes_wort_zeigt_seite_link_gilt_nicht_mehr
+FAILED engine/tests/test_warteliste.py::test_abschnitt_auf_konto_nur_fuer_betreiber_und_freigeben_ohne_recht_abgelehnt
+FAILED engine/tests/test_warteliste.py::test_nginx_vorlage_enthaelt_die_neuen_pfade
+FAILED engine/tests/test_warteliste.py::test_texte_in_allen_sprachen[mail.warteliste.betreff]
+FAILED engine/tests/test_warteliste.py::test_texte_in_allen_sprachen[mail.warteliste.zeile_link]
+FAILED engine/tests/test_warteliste.py::test_texte_in_allen_sprachen[mail.freigabe.betreff]
+FAILED engine/tests/test_warteliste.py::test_texte_in_allen_sprachen[mail.freigabe.zeile_anmelden]
+FAILED engine/tests/test_warteliste.py::test_texte_in_allen_sprachen[mail.freigabe.zeile_claude]
+FAILED engine/tests/test_warteliste.py::test_texte_in_allen_sprachen[warteliste.titel]
+FAILED engine/tests/test_warteliste.py::test_texte_in_allen_sprachen[warteliste.voraussetzung]
+FAILED engine/tests/test_warteliste.py::test_texte_in_allen_sprachen[warteliste.gesendet]
+FAILED engine/tests/test_warteliste.py::test_texte_in_allen_sprachen[warteliste.bestaetigen_knopf]
+FAILED engine/tests/test_warteliste.py::test_texte_in_allen_sprachen[warteliste.bestaetigt]
+FAILED engine/tests/test_warteliste.py::test_texte_in_allen_sprachen[warteliste.link_ungueltig]
+FAILED engine/tests/test_warteliste.py::test_texte_in_allen_sprachen[konto.warteliste.titel]
+FAILED engine/tests/test_warteliste.py::test_texte_in_allen_sprachen[konto.fehler.warteliste_voll]
+FAILED engine/tests/test_warteliste.py::test_texte_in_allen_sprachen[konto.fehler.warteliste_link]
+FAILED engine/tests/test_warteliste.py::test_texte_in_allen_sprachen[konto.fehler.warteliste_nicht_bestaetigt]
+FAILED engine/tests/test_warteliste.py::test_texte_in_allen_sprachen[konto.betreiber.warteliste]
+40 failed in 12.71s

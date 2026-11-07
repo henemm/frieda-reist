@@ -72,11 +72,17 @@ iso() { [[ "${1:-}" =~ ^[0-9]+$ ]] && date -u -d "@$1" +%Y-%m-%dT%H:%M:%SZ || tr
 reise_stand_schreiben() {  # <reise> <zustand> [grund]: Zustand des Reise-Stands für api/stand und publish_status
   # (engine/stand.py). nummer wie dort: Commits, die reisen/<reise>/ ändern; im flachen Klon keine. Dauer bei „veroeffentlicht“:
   # Sekunden seit dem Sichern (Zeit des Schreibwegs, sonst des Commits); steht auch im Protokoll (Messung des Zeitziels).
-  local r="$1" z="$2" g="${3:-}" n c t dauer=null datei gz gn
-  [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = false ] || return 0
-  n="$(git rev-list --count HEAD -- "reisen/$r" 2>/dev/null)" || return 0
+  # Reise aus dem Reisespeicher (#348): nummer ist die Stand-Nummer des materialisierten Inhalts (<ordner>.stand), die Zeit
+  # des Sicherns kommt nur vom Schreibweg.
+  local r="$1" z="$2" g="${3:-}" n c="" t dauer=null datei gz gn
+  if ist_speicherreise "$r"; then
+    n="$(cat "$FR_DIENST/bau/reisen/$r.stand" 2>/dev/null || true)"
+  else
+    [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = false ] || return 0
+    n="$(git rev-list --count HEAD -- "reisen/$r" 2>/dev/null)" || return 0
+    c="$(git log -1 --format=%ct -- "reisen/$r" 2>/dev/null || true)"
+  fi
   [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -gt 0 ] || return 0
-  c="$(git log -1 --format=%ct -- "reisen/$r" 2>/dev/null || true)"
   datei="$FR_DIENST/reise-stand/$r.gesichert.json"
   gn="$(sed -n 's/.*"nummer": *\([0-9]*\).*/\1/p' "$datei" 2>/dev/null || true)"
   gz="$(sed -n 's/.*"zeit": *"\([^"]*\)".*/\1/p' "$datei" 2>/dev/null || true)"
@@ -98,26 +104,126 @@ reise_stand_schreiben() {  # <reise> <zustand> [grund]: Zustand des Reise-Stands
 }
 
 baugrund() {  # Grund eines gescheiterten Baus aus der Ausgabe von deploy.sh: die Meldungen von bauen.py („ - …“), sonst die
-  # letzte Zeile mit ERROR
+  # letzte Zeile mit ERROR, sonst die letzte Zeile überhaupt
   local g
   g="$({ grep -E '^ +- ' "$deploy_log" 2>/dev/null || true; } | sed -E 's/^ +- //' | head -3 | paste -sd '|' - | sed 's/|/; /g')" || true
   [ -n "$g" ] || g="$({ grep -E 'ERROR' "$deploy_log" 2>/dev/null || true; } | tail -1)" || true
+  [ -n "$g" ] || g="$({ grep -v '^[[:space:]]*$' "$deploy_log" 2>/dev/null || true; } | tail -1)" || true
   printf '%s' "$g"
 }
 
 reisen_des_laufs() {  # <alt> <neu>: Reisen, die dieser Lauf baut, eine je Zeile. Ohne bekannten alten Stand, mit --immer oder
   # bei einem Software-Wechsel alle; sonst die, deren Ordner sich seit dem zuletzt veröffentlichten Stand geändert hat, und
-  # die zuletzt roten (sie bleiben rot gemeldet, bis ihr Bau gelingt).
+  # die zuletzt roten (sie bleiben rot gemeldet, bis ihr Bau gelingt). Reisen aus dem Reisespeicher baut der Speicher-Teil;
+  # ihre Git-Kopie bleibt bis Stufe 5 liegen und wird nie gebaut (#348).
   local r
   if [ -n "$software" ]; then
-    for r in reisen/*/reise.json; do [ -e "$r" ] && basename "$(dirname "$r")"; done
+    for r in reisen/*/reise.json; do
+      [ -e "$r" ] || continue
+      r="$(basename "$(dirname "$r")")"
+      ist_speicherreise "$r" || echo "$r"
+    done
     return 0
   fi
   { git diff --name-only "$1" "$2" -- reisen | cut -d/ -f2
     [ "$rot_art" != reise ] || printf '%s\n' ${rot_reisen//,/ }
   } | sort -u | while read -r r; do
-    if [ -n "$r" ] && [ -e "reisen/$r/reise.json" ]; then echo "$r"; fi
+    if [ -n "$r" ] && [ -e "reisen/$r/reise.json" ] && ! ist_speicherreise "$r"; then echo "$r"; fi
   done
+  return 0
+}
+
+software_kennung() {  # [<commit>]: Stand der Software eines Commits im Bauordner: das Submodul frieda/, ohne Submodul (Tests)
+  # der Commit selbst. Beschreibt, mit welcher Software eine Reise aus dem Reisespeicher gebaut wurde (#348).
+  local c="${1:-HEAD}"
+  git rev-parse -q --verify "$c:frieda" 2>/dev/null || git rev-parse -q --verify "$c^{commit}" 2>/dev/null || true
+}
+
+rot_vereinigt() {  # <reisen…>: Liste der roten Reisen für die Rot-Datei, Git-Reisen und Reisen aus dem Speicher zusammen
+  printf '%s\n' "$@" | tr ', ' '\n\n' | sed '/^$/d' | sort -u | paste -sd, -
+}
+
+speicher_reisen_lauf() {  # Speicher-Teil (Stufe 3, #348): Reisen aus FR_SPEICHERREISEN aus dem Reisespeicher bauen, vor
+  # git fetch und ohne Netz (kein git fetch, kein gh, kein ls-remote). Gebaut wird eine Reise, wenn ihre Stand-Nummer im
+  # Speicher nicht die der Seite ist, mit --immer, ohne Stempel <FR_DIENST>/reise-stand/<reise>.gebaut („<nummer>
+  # <software-kennung>“, nur nach gelungenem Deploy) oder nach einem Software-Wechsel; dann stellt neu.py
+  # nachziehen-speicher sie vorher um (ein Vorgang, nur bei grünem Probebau). Eine neue Software-Kennung gilt erst, wenn der
+  # Git-Teil sie vollständig veröffentlicht hat (Datei veroeffentlicht); bis dahin bleibt jede Reise mit älterem Stempel
+  # stehen. Ergebnis: speicher_gut, speicher_rote; Exit 1 bei einer Störung (Speicher nicht lesbar, deploy Exit 1).
+  local liste r n pub gn gk modus rc ordner aus kennung geprueft="" vorher log gepr_stand=""
+  liste="$(speicherreisen | tr '\n' ' ')"
+  [ -n "${liste// /}" ] || return 0
+  speicher_aktiv=1
+  kennung="$(software_kennung HEAD)"
+  speicher_kennung="$kennung"
+  vorher="$(cat "$stand" 2>/dev/null || true)"
+  if [ -n "$vorher" ] && [ -n "$kennung" ] && [ "$(software_kennung "$vorher")" = "$kennung" ]; then
+    geprueft=1; gepr_stand="$(git rev-parse HEAD)"   # deploy.sh prüft dann nicht selbst (wie FR_GEPRUEFT im Git-Teil)
+  fi
+  # shellcheck disable=SC2086
+  aus="$("$FR_PYTHON" "$FR_BETRIEB/../engine/reisespeicher.py" staende $liste)" \
+    || { echo "ERROR: the trip store cannot be read ($aus), the next run tries again."; return 1; }
+  log="$(mktemp)"
+  while read -r -u 3 r n pub; do   # eigener Kanal: deploy.sh und Python lesen sonst die Liste mit
+    [ -n "$r" ] || continue
+    if [ "$n" = - ]; then
+      echo "Note: $r is in FR_SPEICHERREISEN but has no entry in the trip store, skipped."; continue
+    fi
+    gn=""; gk=""
+    if [ -r "$FR_DIENST/reise-stand/$r.gebaut" ]; then read -r gn gk < "$FR_DIENST/reise-stand/$r.gebaut" || true; fi
+    if [ -n "$gk" ] && [ "$gk" != "$kennung" ]; then
+      if [ -z "$geprueft" ]; then
+        echo "Note: software ${kennung:0:7} is not published yet (checks of the git part), $r waits at its last good state."
+        speicher_wartet=1; continue
+      fi
+      modus=nachziehen
+    elif [ -n "$immer" ] || [ -z "$gk" ] || [ "$n" != "$pub" ]; then
+      modus=bauen
+    else
+      continue
+    fi
+    ordner="$FR_DIENST/bau/reisen/$r"
+    mkdir -p "$FR_DIENST/bau/reisen"
+    rc=0
+    if [ "$modus" = nachziehen ]; then
+      echo "Software changed (${gk:0:7} -> ${kennung:0:7}): converting $r from the trip store."
+      "$FR_PYTHON" "$FR_BETRIEB/../engine/neu.py" nachziehen-speicher "$r" "$ordner" > "$log" 2>&1 || rc=$?
+      sed 's/^/  /' "$log"
+    else
+      "$FR_PYTHON" "$FR_BETRIEB/../engine/reisespeicher.py" materialisieren "$r" "$ordner" > "$log" 2>&1 || rc=$?
+    fi
+    case "$rc" in
+      0) ;;
+      2) if [ "$modus" = nachziehen ]; then
+           echo "ERROR: $r cannot be converted to the new software, the trip stays at its last good state."
+           deploy_log="$log"; reise_stand_schreiben "$r" fehlgeschlagen "$(baugrund)"
+           speicher_rote="${speicher_rote:+$speicher_rote,}$r"; continue
+         fi
+         echo "ERROR: $r cannot be read from the trip store ($(tail -1 "$log")), the next run tries again."; rm -f "$log"; return 1 ;;
+      *) echo "ERROR: $r cannot be read from the trip store ($(tail -1 "$log")), the next run tries again."; rm -f "$log"; return 1 ;;
+    esac
+    reise_stand_schreiben "$r" baut
+    echo "Publishing $r from the trip store, state $(cat "$ordner.stand" 2>/dev/null)."
+    rc=0; FR_GEPRUEFT="$gepr_stand" FR_WEGE_SPAETER=1 "$deploy" "$r" 2>&1 | tee "$log" || rc=${PIPESTATUS[0]}
+    case "$rc" in
+      0) mkdir -p "$FR_DIENST/reise-stand"
+         echo "$(cat "$ordner.stand") $kennung" > "$FR_DIENST/reise-stand/$r.gebaut.neu"
+         mv "$FR_DIENST/reise-stand/$r.gebaut.neu" "$FR_DIENST/reise-stand/$r.gebaut"
+         reise_stand_schreiben "$r" veroeffentlicht
+         speicher_gut="$speicher_gut $r" ;;
+      2) echo "ERROR: build of $r failed, the trip stays at its last good state."
+         deploy_log="$log"; reise_stand_schreiben "$r" fehlgeschlagen "$(baugrund)"
+         speicher_rote="${speicher_rote:+$speicher_rote,}$r" ;;
+      *) echo "ERROR: deploy of $r failed (exit $rc), the next run tries again."; rm -f "$log"; return 1 ;;
+    esac
+  done 3<<< "$aus"
+  rm -f "$log"; deploy_log=""
+  # Freischalten wie bei Git-Reisen (Ausgabe ohne Links), die Wege zum Konnektor einmal danach
+  for r in $speicher_gut; do
+    aus="$("$freischalten" "$r" 2>&1)" || echo "Warning: $r not released (reason in the line below)."
+    printf '%s\n' "$aus" | grep -E '^(ERROR|Released|Block renewed)' || true
+  done
+  [ -z "$speicher_gut" ] || wege_pruefen
   return 0
 }
 
@@ -347,12 +453,19 @@ main() {
   fi
 
   mkdir -p "$FR_DIENST"   # Zustand des Veröffentlichens (Stand, Rot-Datei, Merker der Warnung, Stempel)
+  # Reisen aus dem Reisespeicher zuerst und ohne Netz (#348): Scheitert git fetch (kein GitHub), sind sie schon veröffentlicht.
+  # Ohne FR_SPEICHERREISEN geschieht hier nichts.
+  speicher_reisen_lauf || return 1
   einstellungen_vorher="$(einstellungen_summe "$einstellungen")"
   git fetch -q origin main
   software_anstossen || true
   neu="$(git rev-parse origin/main)"
   alt="$(cat "$stand" 2>/dev/null || true)"
-  if [ -z "$immer" ] && [ "$neu" = "$alt" ]; then zustellen; rm -f "$rot_datei"; erfolg_melden; return 0; fi
+  if [ -z "$immer" ] && [ "$neu" = "$alt" ]; then
+    zustellen
+    if [ -n "$speicher_rote" ]; then speicher_rot_melden; return 1; fi
+    rm -f "$rot_datei"; erfolg_melden; return 0
+  fi
 
   git merge -q --ff-only origin/main || { echo "ERROR: main cannot be fast-forwarded (local commits?)."; return 1; }
   # Software (Submodul) auf den Stand bringen, den main festhält
@@ -378,6 +491,12 @@ main() {
     else
       echo "Known red state ${neu:0:7}, skipped (kind: $rot_art${rot_reisen:+, trips: $rot_reisen}). It is checked again with a new commit, a changed environment, after ${FR_ROT_NEU_PRUEFEN_MINUTEN:-60} minutes (software) or with --immer."
       zustellen
+      if [ -n "$speicher_aktiv" ] && [ "$rot_art" = reise ]; then
+        # Die Reisen aus dem Speicher wurden eben neu gebaut: ihr Ergebnis gilt statt des gemerkten
+        local rot_neu
+        rot_neu="$(rot_vereinigt "$(printf '%s\n' ${rot_reisen//,/ } | while read -r r; do ist_speicherreise "$r" || echo "$r"; done)" "$speicher_rote")"
+        [ "$rot_neu" = "$rot_reisen" ] || rot_schreiben "$rot_commit" reise "$rot_neu" "$rot_tests"
+      fi
       alarm_pruefen
       return 0
     fi
@@ -446,21 +565,37 @@ main() {
   done
   [ -z "$gut" ] || wege_pruefen
   if [ -n "$rote" ]; then
-    # Teil-Erfolg ist kein fachlicher Erfolg: Stand nicht merken, kein Stempel, kein Heartbeat
+    # Teil-Erfolg ist kein fachlicher Erfolg: Stand nicht merken, kein Stempel, kein Heartbeat. Die Rot-Datei nennt die roten
+    # Reisen beider Quellen (#348).
+    rote="$(rot_vereinigt "$rote" "$speicher_rote")"
     rot_schreiben "$neu" reise "$rote"
     zustellen
     echo "Red: $(git log -1 --format='%h') partly online, not built: $rote."
     alarm_pruefen
     return 1
   fi
-  rm -f "$rot_datei"
+  [ -n "$speicher_rote" ] || rm -f "$rot_datei"
   units_abgleichen
   nginx_abgleichen
   mkdir -p "$(dirname "$stand")"
   echo "$neu" > "$stand"
+  # Software-Wechsel (#348): Die Reisen aus dem Speicher übernehmen die Software erst jetzt, da sie geprüft und veröffentlicht
+  # ist; der Nachlauf startet den Speicher-Teil gleich noch einmal, statt bis zum nächsten Takt zu warten.
+  if [ -n "$speicher_aktiv" ] && { [ -n "$speicher_wartet" ] || [ "$(software_kennung HEAD)" != "$speicher_kennung" ]; }; then
+    echo "Software changed, trips from the trip store follow in a second run."
+    touch "$nochmal"
+  fi
   zustellen
+  if [ -n "$speicher_rote" ]; then speicher_rot_melden; return 1; fi
   echo "Done: $(git log -1 --format='%h') is online."
   erfolg_melden
+}
+
+speicher_rot_melden() {  # Git-Teil grün, Reisen aus dem Speicher rot: Rot-Datei (art=reise), Alarm nach der Schwelle, kein
+  # Stempel, kein Heartbeat (#348). Der Server legt kein Issue an (A-2).
+  rot_schreiben "$neu" reise "$(rot_vereinigt "$speicher_rote")"
+  echo "Red: trips from the trip store not built: $speicher_rote."
+  alarm_pruefen
 }
 
 # Einheiten abgleichen (#260): Weichen die installierten systemd-Einheiten von den Vorlagen ab, genau eine normale Meldung je
@@ -529,6 +664,7 @@ nachlauf() {
 }
 
 wurzel=""; ausstehend=""; rot_datei=""; pruefen=""; pruef_tmp=""; pruef_log=""; deploy_log=""; nochmal=""; software=1
+speicher_aktiv=""; speicher_kennung=""; speicher_wartet=""; speicher_gut=""; speicher_rote=""
 rot_commit=""; rot_art=""; rot_reisen=""; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""
 trap nachlauf EXIT
 main "$@"

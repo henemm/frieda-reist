@@ -114,6 +114,27 @@ erkannt und bekommt darüber jederzeit wieder Zugang.
 - Ein schon benutzter Refresh-Token widerruft die ganze Familie.
 - „Überall abmelden“, Sperren und Löschen beenden auch den Zugriff der Claude-App.
 
+## Warteliste (#382, Alpha)
+
+Grundsatz (Product Owner, 6.11.2026): Die freie Anmeldung bleibt offen. Die Warteliste steuert nur, wer Reisen anlegen
+darf; sie lädt zur Nutzung des Dienstes ein, nicht zu einer Reise.
+
+1. Auf `/warteliste` trägt sich jemand mit der Adresse ein. Die Seite nennt die Voraussetzung (bezahltes Claude-Konto für
+   den Konnektor) und antwortet immer gleich („Wir haben dir eine Mail geschickt“), egal ob die Adresse neu, schon
+   eingetragen, bestätigt, freigegeben oder schon ein Konto ist.
+2. Eine Mail bringt den Link `/warteliste/bestaetigen/<wort>` (7 Tage, einmal, nur als SHA-256 gespeichert). Der Link zeigt
+   nur einen Knopf; erst der Knopfdruck bestätigt. Danach sehen die Betreiber den Eintrag und bekommen eine Meldung.
+3. Der Betreiber gibt frei (`konten.py freigeben <email>` oder Knopf auf Mein Konto). Die Mail „Du bist dabei“ geht in der
+   Sprache des Eintrags; das Recht `reise_anlegen` gilt sofort, wenn die Adresse schon ein Konto hat, sonst beim ersten
+   Anmelden. Eine zweite Freigabe ändert nichts. Scheitert die Mail, bleibt der Eintrag wartend und der Fehler wird
+   gemeldet; die Freigabe lässt sich dann wiederholen.
+
+- Mails gehen nur an neue und an noch unbestätigte Einträge. Auch wer schon ein Konto hat, wird eingetragen, bestätigt
+  und freigegeben wie alle (Product Owner, 7.11.2026); daneben bleibt die Bitte „Reisen anlegen“ auf Mein Konto.
+- Begrenzung: je Adresse 3 Mails in 15 Minuten, je IP 10 in der Stunde (eigene Zähler, getrennt von den Anmeldecodes),
+  höchstens 1000 unbestätigte Einträge zugleich. Unbestätigte Einträge verfallen nach 7 Tagen.
+- Löschen und Exportieren von Einträgen: #381.
+
 ## Betrieb
 
 Umgebung:
@@ -127,5 +148,6 @@ Umgebung:
 | `FR_CIMD_HOSTS` | Hosts, von denen Client ID Metadata Documents geladen werden (Vorgabe `claude.ai`) |
 
 Befehle für den Betreiber: `python3 engine/konten.py liste | anfragen | freischalten <email> [--nein] |
+warteliste | freigeben <email> |
 betreiber <email> | sperren <email> | entsperren <email> | loeschen <email> | zusammenfuehren <von> <nach> |
 einladen <reise> <schluessel> <email> <rolle> <Name> <von>`.

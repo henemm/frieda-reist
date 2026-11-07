@@ -569,18 +569,22 @@ def test_einstellungen_beispiel_nennt_den_speicher():
 
 # ---------- Test 14: nur Schreibweg und Stand binden den Speicher ein (Stufe 2, #347, AC-23) ----------
 
-def test_nur_schreibweg_und_stand_binden_den_speicher_ein():
-    """Ersetzt den Stufe-1-Test „Schreibweg bindet den Speicher nicht ein“: Ab Stufe 2 schreiben schreiben.py und stand.py
-    über den Speicher, deploy.sh liefert das Modul an den Schreibweg. Konnektor und Rückmeldedienst lesen erst ab Stufe 3."""
-    for datei in ("schreiben.py", "stand.py"):
-        assert "reisespeicher" in (ENGINE / datei).read_text(encoding="utf-8"), datei
+def test_jede_modulliste_mit_stand_traegt_reisespeicher():
+    """Ersetzt den Stufe-2-Test (AC-23) mit Stufe 3 (#348, AC-19): stand.py lädt den Speicher mit einem normalen Import,
+    deshalb trägt jede Modulliste in deploy.sh, die stand.py enthält, auch reisespeicher.py. Konnektor und Rückmeldedienst
+    lesen den Speicher weiter nicht selbst (sie gehen über stand)."""
+    stand_text = (ENGINE / "stand.py").read_text(encoding="utf-8")
+    assert re.search(r"^\s*import reisespeicher\b", stand_text, re.M) and "importlib" not in stand_text
+    assert "reisespeicher" in (ENGINE / "schreiben.py").read_text(encoding="utf-8")
     for datei in ("konnektor.py", "rueckmeldungen.py"):
         assert "reisespeicher" not in (ENGINE / datei).read_text(encoding="utf-8"), datei
     deploy = (WURZEL / "betrieb" / "deploy.sh").read_text(encoding="utf-8")
-    sb_module = re.search(r'^SB_MODULE="([^"]*)"', deploy, re.M).group(1).split()
-    assert "reisespeicher.py" in sb_module
-    for liste in ("RM_MODULE", "KN_MODULE"):
-        assert "reisespeicher.py" not in re.search(rf'^{liste}="([^"]*)"', deploy, re.M).group(1).split(), liste
+    listen = dict(re.findall(r'^([A-Z]{2}_MODULE)="([^"]*)"', deploy, re.M))
+    assert {"RM_MODULE", "KN_MODULE", "SB_MODULE", "PS_MODULE"} <= set(listen)
+    for name, inhalt in listen.items():
+        module = inhalt.split()
+        if "stand.py" in module:
+            assert "reisespeicher.py" in module, name
 
 
 # ---------- Stufe 2 (#347): Zusätze der Schnittstelle ----------

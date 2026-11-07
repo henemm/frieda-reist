@@ -319,8 +319,8 @@ def sn(tmp_path, software):
 
     zaehler = {"n": 0}
 
-    def lauf(neu_da="ja", alt=None, neu_=None):
-        """Ein Lauf des Workflows in einem frischen Klon. Gibt (Ergebnis, Klon) zurück."""
+    def lauf(neu_da="ja", alt=None, neu_=None, **umgebung):
+        """Ein Lauf des Workflows in einem frischen Klon (umgebung: zusätzliche Werte). Gibt (Ergebnis, Klon) zurück."""
         zaehler["n"] += 1
         klon = t / f"lauf{zaehler['n']}"
         subprocess.run(["git", "clone", "-q", "--recurse-submodules", str(remote), str(klon)], check=True,
@@ -333,7 +333,7 @@ def sn(tmp_path, software):
         env = {**SAUBER, **GIT_ERLAUBT, "PATH": f"{t / 'bin'}:{os.environ['PATH']}", "ALT": alt, "NEU": neu_,
                "NEU_DA": neu_da, "GH_TOKEN": "probe", "GITHUB_SERVER_URL": "https://github.com",
                "GITHUB_REPOSITORY": "probe/reisen", "GITHUB_RUN_ID": "42", "RUNNER_TEMP": str(t / "runner"),
-               "SN_PAUSE": "0", "HOME": str(t)}
+               "SN_PAUSE": "0", "HOME": str(t), **umgebung}
         r = subprocess.run([str(klon / "frieda" / "betrieb" / "software-nachziehen.sh")], cwd=klon, env=env,
                            capture_output=True, text=True, timeout=300)
         return r, klon
@@ -540,3 +540,35 @@ def test_tor_rot_issue_abfrage_scheitert_rot_ohne_neues_issue(sn):  # AC-3, Gege
     assert (t / "gh-list.log").exists() and "::error::" in r.stdout
     assert sn["kopf"]() == vorher
     assert not any(a[:2] == ["issue", "create"] for a in sn["gh"]()) and sn["issues"]() == []
+
+
+# ---------- Stufe 3 des Reisespeichers (#348, AC-28): Reisen aus dem Speicher überspringt der Workflow ----------
+
+def _speicher_liste(sn, text):
+    sn["schreiben"]("betrieb/einstellungen" + ".env", text, "Einstellungen")
+
+
+def test_speicher_reisen_werden_im_workflow_uebersprungen(sn):  # AC-28
+    """Die Wanderung steht in FR_SPEICHERREISEN: Der Workflow stellt ihre veraltete Git-Kopie nicht um und baut sie nicht;
+    der Skiurlaub (Git-Reise) wird umgestellt und gebaut wie bisher."""
+    _speicher_liste(sn, f"FR_INSTANZ=probe\nFR_SPEICHERREISEN= {sn['wanderung']} ,\n")
+    sn["reste"](sn["ski"])
+    sn["reste"](sn["wanderung"])
+    r, _ = sn["lauf"]("nein")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert not auf_main(sn, f"reisen/{sn['ski']}/CLAUDE.md")                    # Git-Reise umgestellt
+    assert auf_main(sn, f"reisen/{sn['wanderung']}/CLAUDE.md")                  # Speicher-Reise unberührt
+    t = sn["tor"]()
+    assert f"bau {sn['ski']}" in t and f"bau {sn['wanderung']}" not in t
+
+
+def test_workflow_liest_die_liste_wie_der_server(sn):  # AC-28, F004
+    """Wie fr_einlesen (betrieb/gemeinsam.sh): die erste Zeile gilt, ein Wert aus der Umgebung vor der Datei."""
+    _speicher_liste(sn, f"FR_SPEICHERREISEN={sn['wanderung']}\nFR_SPEICHERREISEN=\n")
+    sn["reste"](sn["wanderung"])
+    r, _ = sn["lauf"]("nein")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert auf_main(sn, f"reisen/{sn['wanderung']}/CLAUDE.md")                  # erste Zeile: übersprungen
+    r, _ = sn["lauf"]("nein", FR_SPEICHERREISEN="")                             # Umgebung leer: gilt vor der Datei
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert not auf_main(sn, f"reisen/{sn['wanderung']}/CLAUDE.md")

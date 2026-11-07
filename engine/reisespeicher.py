@@ -14,6 +14,12 @@ Ab Stufe 2 (#347) schreibt der Schreibweg (engine/schreiben.py) jede Reise aus F
 Schreibvorgang über ordner_als_vorgang, mit erwartet= gegen verlorene Änderungen; die übrigen Reisen schreiben bis Stufe 5
 weiter über Git (engine/schreiben_git.py). Daneben beschreiben die Datenbank nur die Befehle unten.
 
+Ab Stufe 3 (#348) baut betrieb/veroeffentlichen.sh diese Reisen aus dem Speicher: materialisieren bringt einen Stand in
+einen Ordner für den Generator (<FR_DIENST>/bau/reisen/<reise>, Nummer in <ordner>.stand), staende nennt je Reise die
+Nummer im Speicher und auf der Seite. vergleichen hält den Export gegen einen Ordner (betrieb/vergleichslauf.sh: gegen
+den Dateistand aus Git), zustand ist der prüfbare Zustand der Sicherung für den Monitor der Instanz. Diese Befehle lesen
+nur und legen keine Datenbank an.
+
 Ablage: <FR_SPEICHER, sonst <Seiten>/_speicher>/reisen.db (SQLite, WAL), nur für den Betreiber lesbar;
 Schnappschuss unter <Speicher>/sicherung/reisen.db.
 
@@ -24,12 +30,18 @@ Aufrufe:
   python3 engine/reisespeicher.py zuruecksetzen <reise> <bis> <wer> <grund>  neuer Vorgang mit dem Inhalt von Stand <bis>
   python3 engine/reisespeicher.py pruefen [reise]                            Prüfsummen und Stand-Folge nachrechnen
   python3 engine/reisespeicher.py sichern                                    sauberer Schnappschuss nach <Speicher>/sicherung/
+  python3 engine/reisespeicher.py materialisieren <reise> <ordner> [--bis N] Stand in einen Ordner bringen (ersetzt ihn)
+  python3 engine/reisespeicher.py vergleichen <reise> <ordner> [--bis N]     Exit 0 gleich, 1 Unterschied, 2 Fehler
+  python3 engine/reisespeicher.py zustand [--sicherung-max-stunden H]        Exit 0 in Ordnung, 1 Sicherung fehlt/alt, 2 Fehler
+  python3 engine/reisespeicher.py staende <reise> …                          je Reise „<reise> <Speicher> <Seite>“ (- = keine)
 """
 import collections
 import hashlib
 import os
+import shutil
 import sqlite3
 import sys
+import time
 from contextlib import closing
 from pathlib import Path
 
@@ -241,8 +253,8 @@ def vorgang_schreiben(reise, dateien, wer, werkzeug, titel, grund="", kennung=No
 def ordner_als_vorgang(reise, ordner, basis, wer, werkzeug, titel, grund, kennung, rolle, timeout=10):
     """Baustein „Ordner vorher/nachher -> ein Vorgang“ (#347): vergleicht den Ordner (nachher) über Prüfsummen mit dem Stand
     basis (vorher) und schreibt die Unterschiede als einen Vorgang, fehlende Dateien als Tombstone, mit erwartet=basis.
-    basis=0: neue Reise. Ohne Unterschied ValueError. Genutzt vom Schreibweg (auch reise_anlegen), später von
-    `neu.py nachziehen` (#348). -> Vorgang(nummer, stand)."""
+    basis=0: neue Reise. Ohne Unterschied ValueError. Genutzt vom Schreibweg (auch reise_anlegen) und von
+    `neu.py nachziehen-speicher` (#348). -> Vorgang(nummer, stand)."""
     nachher = _ordner_lesen(ordner)
     vorher = {}
     if basis:
@@ -308,11 +320,12 @@ def vorgang_eingetragen(kennung, timeout=10):
     return Vorgang(z[0], z[1]) if z else None
 
 
-def verlauf(reise, n=None):
-    """Vorgänge der Reise, neueste zuerst; nummer ist der Stand (wie stand.aenderungen), vorgang die Vorgangs-Nummer."""
+def verlauf(reise, n=None, bis=None):
+    """Vorgänge der Reise, neueste zuerst; nummer ist der Stand (wie stand.aenderungen), vorgang die Vorgangs-Nummer.
+    bis: nur Vorgänge bis zu diesem Stand (die Seite eines materialisierten Stands, #348)."""
     with closing(db()) as v:
-        zeilen = v.execute("SELECT * FROM vorgaenge WHERE reise = ? ORDER BY stand DESC LIMIT ?",
-                           (reise, -1 if n is None else int(n))).fetchall()
+        zeilen = v.execute("SELECT * FROM vorgaenge WHERE reise = ? AND stand <= ? ORDER BY stand DESC LIMIT ?",
+                           (reise, 2 ** 62 if bis is None else int(bis), -1 if n is None else int(n))).fetchall()
         return [{"nummer": z["stand"], "zeit": z["wann"], "was": z["titel"], "wer": z["wer"], "vorgang": z["nummer"],
                  "werkzeug": z["werkzeug"], "grund": z["grund"],
                  "dateien": [d[0] for d in v.execute("SELECT pfad FROM versionen WHERE vorgang = ? ORDER BY pfad",
@@ -349,8 +362,9 @@ def exportieren(reise, ziel, bis=None):
         os.chmod(aus, 0o644)
 
 
-def _ordner_lesen(ordner):
-    """Pfad -> Bytes aller regulären Dateien (auch versteckte, ohne .git); ein Symlink oder Sonderdatei: ValueError."""
+def _ordner_lesen(ordner, summen=False):
+    """Pfad -> Bytes aller regulären Dateien (auch versteckte, ohne .git); ein Symlink oder Sonderdatei: ValueError.
+    summen=True: Pfad -> SHA-256 statt der Bytes (der Vergleich hält keine Inhalte, #348)."""
     ordner = Path(ordner)
     if ordner.is_symlink() or not ordner.is_dir():
         raise ValueError(f"not a folder: {ordner}")
@@ -368,11 +382,97 @@ def _ordner_lesen(ordner):
                     lesen(e.path)
                 elif e.is_file(follow_symlinks=False):
                     with open(e.path, "rb") as f:
-                        dateien[_pfad_pruefen(relativ)] = f.read()
+                        dateien[_pfad_pruefen(relativ)] = hashlib.file_digest(f, "sha256").hexdigest() if summen \
+                            else f.read()
                 else:
                     raise ValueError(f"not a regular file: {relativ}")
     lesen(ordner)
     return dateien
+
+
+def _nur_lesen(timeout=10):
+    """Lesende Verbindung für die Befehle des Betriebs (materialisieren, vergleichen, zustand, staende): legt nichts an
+    und schreibt nichts. Ohne Datenbank FileNotFoundError."""
+    p = pfad()
+    if not p.exists():
+        raise FileNotFoundError(f"no trip store: {p}")
+    v = sqlite3.connect(p.resolve().as_uri() + "?mode=ro", uri=True, timeout=timeout)
+    v.row_factory = sqlite3.Row
+    return v
+
+
+def _hoechster(v, reise):
+    return v.execute("SELECT MAX(stand) FROM vorgaenge WHERE reise = ?", (reise,)).fetchone()[0]
+
+
+def stand_datei(ordner):
+    """Datei neben dem materialisierten Ordner mit dessen Stand-Nummer (nie darin: _ordner_lesen läse sie als Reisedatei)."""
+    return Path(f"{ordner}.stand")
+
+
+def materialisieren(reise, ordner, bis=None):
+    """Bringt Stand bis (ohne: den neuesten) der Reise in ordner, für den Generator (#348). Ein vorhandener Ordner wird
+    ersetzt: erst nach <ordner>.neu exportieren, dann umbenennen, nie ein halber Ordner. Die Nummer wird zuerst gelesen
+    und genau dieser Stand exportiert; sie steht danach in <ordner>.stand. -> Stand-Nummer."""
+    ordner = Path(ordner)
+    with closing(_nur_lesen()) as v:
+        n = _hoechster(v, reise)
+    if n is None:
+        raise KeyError(reise)
+    if bis is not None:
+        n = int(bis)
+    neu, alt = Path(f"{ordner}.neu"), Path(f"{ordner}.alt")
+    for x in (neu, alt):
+        if x.is_symlink() or x.is_file():
+            x.unlink()
+        elif x.exists():
+            shutil.rmtree(x)
+    exportieren(reise, neu, bis=n)
+    if ordner.exists():
+        os.rename(ordner, alt)
+    os.rename(neu, ordner)
+    shutil.rmtree(alt, ignore_errors=True)
+    s = stand_datei(ordner)
+    tmp = Path(f"{s}.{os.getpid()}")
+    tmp.write_text(f"{n}\n", encoding="utf-8")
+    os.replace(tmp, s)
+    return n
+
+
+def vergleichen(reise, ordner, bis=None):
+    """Export der Reise (Stand bis, ohne: neuester) gegen einen Ordner, nur über Prüfsummen (#348). Gleich heißt: gleiche
+    Pfadmenge und gleiche Bytes; leere Ordner, Rechte, Zeitstempel und .git zählen nicht. -> sortierte Liste
+    [(art, pfad)] mit art „nur im Speicher“, „nur im Ordner“ oder „verschieden“; leer = gleich."""
+    im_ordner = _ordner_lesen(ordner, summen=True)
+    with closing(_nur_lesen()) as v:
+        im_speicher = _stand(v, reise, bis, "pruefsumme")
+    unterschiede = []
+    for p in sorted(set(im_speicher) | set(im_ordner)):
+        if p not in im_ordner:
+            unterschiede.append(("nur im Speicher", p))
+        elif p not in im_speicher:
+            unterschiede.append(("nur im Ordner", p))
+        elif im_speicher[p] != im_ordner[p]:
+            unterschiede.append(("verschieden", p))
+    return unterschiede
+
+
+SICHERUNG_MAX_STUNDEN = 36   # wie der Stempel waechter-erfolg (docs/betrieb.md, Überwachung)
+
+
+def zustand(max_stunden=SICHERUNG_MAX_STUNDEN):
+    """Prüfbarer Zustand für den Monitor der Instanz (#348), liest nur -> (in_ordnung, [(name, wert)]). In Ordnung: keine
+    Datenbank (Instanz ohne Speicher) oder eine Sicherung nicht älter als max_stunden (Änderungszeit von
+    <Speicher>/sicherung/reisen.db). Nicht lesbare Datenbank: sqlite3.Error."""
+    p = pfad()
+    if not p.exists():
+        return True, [("reisen", 0), ("sicherung_alter_s", "keine"), ("datenbank", "fehlt")]
+    with closing(_nur_lesen()) as v:
+        n = v.execute("SELECT COUNT(DISTINCT reise) FROM vorgaenge").fetchone()[0]
+    s = p.parent / "sicherung" / "reisen.db"
+    alter = max(0, int(time.time() - s.stat().st_mtime)) if s.exists() else None
+    ok = alter is not None and alter <= float(max_stunden) * 3600
+    return ok, [("reisen", n), ("sicherung_alter_s", "keine" if alter is None else alter), ("datenbank", "vorhanden")]
 
 
 def importieren(ordner, reise, wer, grund="", ab=0):
@@ -515,6 +615,45 @@ def main(a):
             z = sichern()   # ohne Datenbank: nichts zu sichern, keine Ausgabe
             if z:
                 print(z)
+        elif befehl == "materialisieren":
+            rest, o = _optionen(rest, ("--bis",))
+            if len(rest) != 2:
+                raise _Hilfe()
+            print(f"stand {materialisieren(*rest, bis=int(o['bis']) if 'bis' in o else None)}")
+        elif befehl == "vergleichen":
+            # Exit 1 heißt hier nur „Unterschied“: falsche Angaben geben wie jeder Fehler 2
+            try:
+                rest, o = _optionen(rest, ("--bis",))
+            except _Hilfe:
+                rest = []
+            if len(rest) != 2:
+                print("ERROR: usage: reisespeicher.py vergleichen <reise> <ordner> [--bis N]")
+                return 2
+            unterschiede = vergleichen(*rest, bis=int(o["bis"]) if "bis" in o else None)
+            for art, p in unterschiede:
+                print(f"{art}: {p}")
+            n = len(unterschiede)
+            print("gleich" if not n else f"{n} Unterschied" if n == 1 else f"{n} Unterschiede")
+            return 1 if n else 0
+        elif befehl == "zustand":
+            rest, o = _optionen(rest, ("--sicherung-max-stunden",))
+            if rest:
+                raise _Hilfe()
+            ok, werte = zustand(float(o.get("sicherung-max-stunden", SICHERUNG_MAX_STUNDEN)))
+            for name, wert in werte:
+                print(f"{name} {wert}")
+            return 0 if ok else 1
+        elif befehl == "staende" and rest:
+            import stand
+            v = _nur_lesen() if pfad().exists() else None   # ohne Datenbank: keine Reise hat einen Eintrag
+            try:
+                for r in rest:
+                    n = _hoechster(v, r) if v else None
+                    pub = stand.veroeffentlicht(r)[0]
+                    print(f"{r} {'-' if n is None else n} {'-' if pub is None else pub}")
+            finally:
+                if v:
+                    v.close()
         else:
             raise _Hilfe()
     except _Hilfe:

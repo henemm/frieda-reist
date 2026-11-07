@@ -5,6 +5,8 @@
 #
 # Ablauf (docs/betrieb.md, „Software nachziehen“):
 # 1. Umstellen: neu.py nachziehen für jede Reise mit reise.json, in jedem Lauf, auch ohne neuen Stand (idempotent).
+#    Reisen aus dem Reisespeicher (FR_SPEICHERREISEN in betrieb/einstellungen.env, #348) überspringen Umstellen und Tor:
+#    Sie stellt der Server beim Veröffentlichen selbst um, ihre Git-Kopie ist veraltet.
 #    Ein offener Punkt (OPEN/OFFEN) sperrt nicht, er erscheint als Warnung; sperren kann nur der Bau.
 # 2. Nichts geändert (weder Submodul noch Reisen): Ende, grün, kein Commit.
 # 3. Tor wie beim Veröffentlichen (#142, #168): engine/tests nur bei neuem Stand, der Bau jeder Reise in jedem Lauf mit
@@ -73,12 +75,46 @@ main() {
   return 1
 }
 
+speicherreisen_der_instanz() {  # FR_SPEICHERREISEN, eine Reise je Zeile, gelesen wie fr_einlesen (betrieb/gemeinsam.sh):
+  # ein Wert aus der Umgebung gilt vor betrieb/einstellungen.env des Reisen-Repos, dort die erste Zeile; ohne
+  # Shell-Auswertung, Leerzeichen und leere Teile fallen weg. Fehlt beides: keine.
+  local zeile wert r
+  if [ -n "${FR_SPEICHERREISEN+x}" ]; then
+    wert="$FR_SPEICHERREISEN"
+  else
+    [ -r betrieb/einstellungen.env ] || return 0
+    zeile=""
+    while IFS= read -r r || [ -n "$r" ]; do
+      case "$r" in FR_SPEICHERREISEN=*) zeile="$r"; break ;; esac
+    done < betrieb/einstellungen.env
+    [ -n "$zeile" ] || return 0
+    wert="${zeile#*=}"; wert="${wert%$'\r'}"
+    case "$wert" in \"*\") wert="${wert:1:${#wert}-2}" ;; \'*\') wert="${wert:1:${#wert}-2}" ;; esac
+  fi
+  local IFS=,
+  for r in $wert; do
+    r="${r#"${r%%[![:space:]]*}"}"; r="${r%"${r##*[![:space:]]}"}"
+    [ -z "$r" ] || printf '%s\n' "$r"
+  done
+}
+
+aus_dem_speicher() {  # <reise>: Reise aus dem Reisespeicher (Stufe 3, #348)? Die stellt der Server selbst um
+  # (neu.py nachziehen-speicher); ihre Git-Kopie bleibt bis Stufe 5 unberührt liegen und wird hier weder umgestellt noch gebaut.
+  # ohne Pipe zu grep -q (SIGPIPE unter pipefail, wie ist_speicherreise in gemeinsam.sh)
+  local r
+  while IFS= read -r r; do [ "$r" != "$1" ] || return 0; done <<< "$(speicherreisen_der_instanz)"
+  return 1
+}
+
 umstellen() {  # neu.py nachziehen je Reise; Meldungen geänderter Reisen nach $meldungen, offene Punkte als Warnung
   local r reise ausgabe zeile
   : > "$meldungen"
   for r in reisen/*/reise.json; do
     [ -e "$r" ] || continue
     reise="$(basename "$(dirname "$r")")"
+    if aus_dem_speicher "$reise"; then
+      echo "Übersprungen: $reise (Reisespeicher, der Server stellt sie um)"; continue
+    fi
     # Exit 1 bei offenen Punkten: sperrt nicht (das kann nur der Bau)
     ausgabe="$(python frieda/engine/neu.py nachziehen "reisen/$reise" 2>&1)" || true
     while IFS= read -r zeile; do
@@ -107,6 +143,7 @@ tor() {  # 0 grün, 1 rot; rot_text nennt, was sperrt
   for r in reisen/*/reise.json; do
     [ -e "$r" ] || continue
     reise="$(basename "$(dirname "$r")")"
+    aus_dem_speicher "$reise" && continue
     if ! python frieda/engine/bauen.py --reisen reisen --ziel "${RUNNER_TEMP:-$tmp}/dist" "$reise"; then
       echo "::error::Bau von $reise gescheitert"
       rote="$rote $reise"
