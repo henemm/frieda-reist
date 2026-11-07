@@ -134,9 +134,9 @@ tor() {  # 0 grün, 1 rot; rot_text nennt, was sperrt
   if [ "$NEU_DA" = ja ]; then
     # Wie bisher über den Link engine -> frieda/engine des Reisen-Repos; ohne Link im Ordner der Software
     if [ -d engine/tests ]; then
-      python -m pytest -q -rs engine/tests || rot_text="die Tests der Software (engine/tests)"
+      python -m pytest -q -rs -n auto engine/tests || rot_text="die Tests der Software (engine/tests)"
     else
-      (cd frieda && python -m pytest -q -rs engine/tests) || rot_text="die Tests der Software (engine/tests)"
+      (cd frieda && python -m pytest -q -rs -n auto engine/tests) || rot_text="die Tests der Software (engine/tests)"
     fi
   fi
   # Jede Reise wie beim Veröffentlichen; Warnungen im Plan sperren nie (bauen.py endet dann mit 0)
