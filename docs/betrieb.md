@@ -185,7 +185,8 @@ Mail-Einrichtung, lehnt die Seite ab und speichert nichts.
   die Mail, meldet der Befehl `ERROR` (Exit 2) und die Seite den Fehler; der Eintrag bleibt wartend, ein zweiter Versuch geht.
 - nginx: `location = /warteliste` (Drossel wie `/anmelden`, weil sie Mails auslöst) und
   `location ^~ /warteliste/bestaetigen/` (Drossel wie Konto) in `vorlagen/nginx-konnektor-orte.inc`; der Abgleich der
-  nginx-Bausteine übernimmt sie ohne Handschritt.
+  nginx-Bausteine meldet die Abweichung als Issue; übernommen wird sie mit `nginx.py anwenden` (von Hand, mit Root-Rechten,
+  siehe „nginx-Bausteine abgleichen“ unten), vorher ist `/warteliste` auf dem Server nicht erreichbar.
 
 ## Reise-Stand (Epic #223)
 
