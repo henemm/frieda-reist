@@ -4810,7 +4810,9 @@ class Schreiber:
         Das Veröffentlichen baut auch Reisen aus dem Reisespeicher (Stufe 3, #348)."""
         if not self.veroeffentlichen or not Path(self.veroeffentlichen).exists():
             return
-        env = {**os.environ, "FR_WURZEL": str(self.wurzel)}
+        # Ohne TMPDIR: Der Schreib-Unterprozess setzt es auf seinen Arbeitsordner, der mit dem Vorgang verschwindet; das Skript
+        # (mktemp) fand dann keinen Ordner und baute eine Speicher-Reise erst im nächsten Takt des Timers (#398).
+        env = {**{k: v for k, v in os.environ.items() if k not in ("TMPDIR", "TMP", "TEMP")}, "FR_WURZEL": str(self.wurzel)}
         prioritaet = (["nice", "-n", "10"] if shutil.which("nice") else []) + \
                      (["ionice", "-c", "2", "-n", "7"] if shutil.which("ionice") else [])
         try:

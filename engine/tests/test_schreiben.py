@@ -1406,7 +1406,9 @@ def test_anstoss_schreibt_seine_ausgabe_in_ein_protokoll(repo, monkeypatch, tmp_
             gesehen.append(k)
 
     monkeypatch.setattr(sb.subprocess, "Popen", Stummel)
+    monkeypatch.setenv("TMPDIR", str(tmp_path / "weg"))   # der Arbeitsordner des Schreib-Unterprozesses, danach gelöscht
     s.veroeffentlichen_anstossen()
+    assert "TMPDIR" not in gesehen[0]["env"] and gesehen[0]["env"]["FR_WURZEL"] == str(s.wurzel)   # #398: sonst scheitert mktemp
     assert gesehen[0]["stdout"].name == str(dienst / "veroeffentlichen-anstoss.log")
     assert gesehen[0]["stderr"] is gesehen[0]["stdout"]
     assert (dienst / "veroeffentlichen-anstoss.log").read_text().startswith("--- ")
