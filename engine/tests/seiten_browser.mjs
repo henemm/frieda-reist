@@ -170,6 +170,12 @@ for (const app of [true, false]) {
   m.zu = await unten();
   await hoehe(800);
   m.voll = await unten();
+  // Wackelkontakt (Foto 7.11.2026): innerHeight meldet kurz zu wenig, obwohl das Fenster und die Leiste stimmen; die Leiste
+  // darf dann nicht aus dem Bild rücken. Nachgestellt, indem nur innerHeight lügt (das Fenster bleibt 800 hoch).
+  await p.evaluate(() => { Object.defineProperty(window, "innerHeight", {get: () => 740, configurable: true}); dispatchEvent(new Event("resize")); });
+  await p.waitForTimeout(100);
+  m.luege = await unten();
+  await p.evaluate(() => { delete window.innerHeight; dispatchEvent(new Event("resize")); });
   leiste[app ? "app" : "browser"] = m;
   await ctx.close();
 }

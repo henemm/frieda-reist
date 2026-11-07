@@ -5627,24 +5627,31 @@ Promise.all([ichLaden(), rmLaden(), agLaden(), brLaden(), blLaden(), psLaden()])
 
 /* ---------- Höhe als App vom Home-Bildschirm (iOS) ----------
    Nach dem Schließen der Tastatur bleibt die Höhe des Fensters manchmal auf dem Stand mit Tastatur stehen, bis die App
-   neu startet: Die Leiste schwebt dann in der Mitte (WebKit, iOS 26, in Safari selbst nicht). Gemerkt wird die größte
-   Höhe je Breite (die Breite trennt Hoch- und Querformat); ohne Eingabefeld im Fokus rückt alles Untere um den
+   neu startet: Die Leiste schwebt dann in der Mitte (WebKit, iOS 26, in Safari selbst nicht). Gemessen wird nicht
+   window.innerHeight, sondern die Unterkante eines unsichtbaren Ankers mit position:fixed;bottom:0: Genau dort sitzt auch
+   die Leiste. innerHeight meldet auf iOS zeitweise zu wenig, obwohl alles richtig sitzt (Foto 7.11.2026: Leiste 60 px zu
+   tief, halb abgeschnitten); nach innerHeight verschoben, rutschte die Leiste dann aus dem Bild. Gemerkt wird die größte
+   Unterkante je Breite (die Breite trennt Hoch- und Querformat); ohne Eingabefeld im Fokus rückt alles Untere um den
    Fehlbetrag nach unten. Ein zu kleiner Messwert zur falschen Zeit schadet nicht, das Maximum übergeht ihn. Mit Fokus
    ist die Tastatur wirklich offen, dann bleibt die Leiste über ihr (die Suche steht in der Leiste). */
 (function () {
   const alsApp = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
   if (!alsApp) return;
-  const hoechste = new Map();   // Breite in px -> größte gesehene Höhe
+  const anker = document.createElement("div");   // Unterkante des festen Bezugs, unabhängig von --hoehe-fehlt
+  anker.setAttribute("aria-hidden", "true");
+  anker.style.cssText = "position:fixed;left:0;bottom:0;width:1px;height:0;visibility:hidden;pointer-events:none";
+  document.body.append(anker);
+  const hoechste = new Map();   // Breite in px -> größte gesehene Unterkante
   const tippt = () => {
     const e = document.activeElement;
     return !!e && (e.isContentEditable || e.matches("textarea, select, input:not([type=checkbox],[type=radio],[type=button],[type=submit],[type=reset],[type=range],[type=color],[type=file])"));
   };
   function messen() {
-    const breite = window.innerWidth, hoehe = window.innerHeight;
-    if (!breite || !hoehe) return;   // im Hintergrund kann 0 kommen, das ist keine Messung
-    const max = Math.max(hoechste.get(breite) || 0, hoehe);
+    const breite = window.innerWidth, unten = anker.getBoundingClientRect().bottom;
+    if (!breite || !unten) return;   // im Hintergrund kann 0 kommen, das ist keine Messung
+    const max = Math.max(hoechste.get(breite) || 0, unten);
     hoechste.set(breite, max);
-    const fehlt = tippt() ? 0 : max - hoehe;
+    const fehlt = tippt() ? 0 : max - unten;
     document.documentElement.style.setProperty("--hoehe-fehlt", (fehlt > 1 ? fehlt : 0) + "px");
   }
   messen();
