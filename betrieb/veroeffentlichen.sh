@@ -112,6 +112,17 @@ baugrund() {  # Grund eines gescheiterten Baus aus der Ausgabe von deploy.sh: di
   printf '%s' "$g"
 }
 
+haengende_reisen() {  # Reisen, die nach einem abgebrochenen Lauf auf „baut“ stehen geblieben sind (#397). Die Sperre hält dieser
+  # Lauf, es baut also keiner mehr: Sie gehören in diesen Lauf, sonst zeigte publish_status „wird gebaut“ bis zum nächsten
+  # Software-Wechsel. Nur Git-Reisen, die es gibt (Reisen aus dem Speicher baut der Speicher-Teil).
+  local f r
+  { grep -l '"zustand": "baut"' "$FR_DIENST"/reise-stand/*.lauf.json 2>/dev/null || true; } | while read -r f; do
+    r="$(basename "$f" .lauf.json)"
+    if [ -e "reisen/$r/reise.json" ] && ! ist_speicherreise "$r"; then echo "$r"; fi
+  done
+  return 0
+}
+
 reisen_des_laufs() {  # <alt> <neu>: Reisen, die dieser Lauf baut, eine je Zeile. Ohne bekannten alten Stand, mit --immer oder
   # bei einem Software-Wechsel alle; sonst die, deren Ordner sich seit dem zuletzt veröffentlichten Stand geändert hat, und
   # die zuletzt roten (sie bleiben rot gemeldet, bis ihr Bau gelingt). Reisen aus dem Reisespeicher baut der Speicher-Teil;
@@ -127,6 +138,7 @@ reisen_des_laufs() {  # <alt> <neu>: Reisen, die dieser Lauf baut, eine je Zeile
   fi
   { git diff --name-only "$1" "$2" -- reisen | cut -d/ -f2
     [ "$rot_art" != reise ] || printf '%s\n' ${rot_reisen//,/ }
+    haengende_reisen
   } | sort -u | while read -r r; do
     if [ -n "$r" ] && [ -e "reisen/$r/reise.json" ] && ! ist_speicherreise "$r"; then echo "$r"; fi
   done
@@ -467,7 +479,7 @@ main() {
   software_anstossen || true
   neu="$(git rev-parse origin/main)"
   alt="$(cat "$stand" 2>/dev/null || true)"
-  if [ -z "$immer" ] && [ "$neu" = "$alt" ]; then
+  if [ -z "$immer" ] && [ "$neu" = "$alt" ] && [ -z "$(haengende_reisen)" ]; then
     zustellen
     if [ -n "$speicher_rote" ]; then speicher_rot_melden; return 1; fi
     rm -f "$rot_datei"; erfolg_melden; return 0

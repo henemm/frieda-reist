@@ -261,6 +261,23 @@ def test_veroeffentlichen_inhaltsstand_baut_nur_die_geaenderte_reise(vf):
     assert vf["lauf"]("--immer").returncode == 0 and vf["deploys"]() == ["beispielreise", "zweitreise"]   # --immer: alles
 
 
+def test_veroeffentlichen_heilt_haengendes_baut_ohne_neuen_stand(vf):
+    """#397: Ein abgebrochener Lauf lässt eine Reise auf „baut“ stehen. Der nächste Lauf baut sie auch ohne neuen Stand
+    (nur sie, nur eine Git-Reise, die es gibt) und setzt den Zustand auf „veröffentlicht“; ohne Hänger tut ein Lauf ohne neuen Stand nichts."""
+    assert vf["lauf"]().returncode == 0 and vf["deploys"]() == ["beispielreise", "zweitreise"]
+    assert vf["lauf"]().returncode == 0 and vf["deploys"]() == []
+    stand = vf["tmp"] / "dienst/reise-stand"
+    hing = stand / "zweitreise.lauf.json"
+    hing.write_text(hing.read_text().replace('"veroeffentlicht"', '"baut"'))
+    (stand / "gibt-es-nicht.lauf.json").write_text('{"zustand": "baut", "nummer": 1}\n')   # eine Reise, die es nicht gibt
+    assert vf["lauf_stand"]("zweitreise")["zustand"] == "baut"
+    r = vf["lauf"]()
+    assert r.returncode == 0, r.stdout
+    assert vf["deploys"]() == ["zweitreise"]
+    assert vf["lauf_stand"]("zweitreise")["zustand"] == "veroeffentlicht"
+    assert vf["lauf"]().returncode == 0 and vf["deploys"]() == []
+
+
 def test_veroeffentlichen_schreibt_den_zustand_je_reise(vf):
     """#228: Je gebauter Reise steht ihr Zustand mit Reise-Stand in <FR_DIENST>/reise-stand/<reise>.lauf.json: veröffentlicht mit
     Dauer seit dem Sichern (auch im Protokoll), fehlgeschlagen mit dem Grund aus der Ausgabe des Baus."""

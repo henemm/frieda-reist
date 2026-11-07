@@ -1391,6 +1391,31 @@ def test_veroeffentlichen_startet_mit_niedriger_prioritaet(repo, monkeypatch):
     assert argv[0] == "nice" and "ionice" in argv and argv[-1] == s.veroeffentlichen
 
 
+def test_anstoss_schreibt_seine_ausgabe_in_ein_protokoll(repo, monkeypatch, tmp_path):
+    """#398: Die Ausgabe des Anstoßes geht nicht nach /dev/null, sondern in <FR_DIENST>/veroeffentlichen-anstoss.log;
+    ohne beschreibbaren Dienstordner bleibt es bei /dev/null, und der Anstoß wirft nie."""
+    wurzel, _, arbeit, _ = repo
+    s = sb.Schreiber(wurzel, arbeit)
+    dienst = tmp_path / "dienst"
+    dienst.mkdir()
+    monkeypatch.setenv("FR_DIENST", str(dienst))
+    gesehen = []
+
+    class Stummel:
+        def __init__(self, argv, *a, **k):
+            gesehen.append(k)
+
+    monkeypatch.setattr(sb.subprocess, "Popen", Stummel)
+    s.veroeffentlichen_anstossen()
+    assert gesehen[0]["stdout"].name == str(dienst / "veroeffentlichen-anstoss.log")
+    assert gesehen[0]["stderr"] is gesehen[0]["stdout"]
+    assert (dienst / "veroeffentlichen-anstoss.log").read_text().startswith("--- ")
+    monkeypatch.setenv("FR_DIENST", str(tmp_path / "gibt-es-nicht"))
+    gesehen.clear()
+    s.veroeffentlichen_anstossen()
+    assert gesehen[0]["stdout"] is sb.subprocess.DEVNULL
+
+
 def test_nach_abbruch_sagt_die_antwort_ob_eingetragen_wurde(repo, monkeypatch, capsys):
     wurzel, _, arbeit, _ = repo
     # Die Prüfung selbst: Kennung auf origin/main gefunden / nicht gefunden

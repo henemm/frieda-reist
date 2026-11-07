@@ -4804,21 +4804,34 @@ class Schreiber:
         """Veröffentlichen im Hintergrund (holt main in den Bauordner, baut, prüft). Hält ein anderer Lauf die Sperre,
         merkt das Skript das, und der laufende Lauf veröffentlicht danach gleich noch einmal (#230). Niedrige Priorität wie im Dienst
         veroeffentlichen.service, damit Schreibvorgänge während der Tests nicht warten (fehlen nice oder ionice, ohne sie).
-        Die Ausgabe geht nach /dev/null: Die Ausgabe des Anwendens ist die Leitung zum Dienst, die das Skript sonst bis zu
-        seinem Ende offen hielte. Ein fehlgeschlagener Lauf wiederholt der Timer, mit Protokoll. Wirft nie.
-        Für eine Speicher-Reise bleibt es bis Stufe 3 (#348) ohne Wirkung: das Veröffentlichen baut noch aus Git."""
+        Die Ausgabe geht in <FR_DIENST>/veroeffentlichen-anstoss.log (nach /dev/null, wenn die Datei nicht zu öffnen ist): Die
+        Ausgabe des Anwendens ist die Leitung zum Dienst, die das Skript sonst bis zu seinem Ende offen hielte; die Datei
+        zeigt, was der Anstoß tat (#398). Ein fehlgeschlagener Lauf wiederholt der Timer, mit Protokoll. Wirft nie.
+        Das Veröffentlichen baut auch Reisen aus dem Reisespeicher (Stufe 3, #348)."""
         if not self.veroeffentlichen or not Path(self.veroeffentlichen).exists():
             return
         env = {**os.environ, "FR_WURZEL": str(self.wurzel)}
         prioritaet = (["nice", "-n", "10"] if shutil.which("nice") else []) + \
                      (["ionice", "-c", "2", "-n", "7"] if shutil.which("ionice") else [])
+        try:
+            datei = instanz.dienst() / "veroeffentlichen-anstoss.log"
+            if datei.exists() and datei.stat().st_size > 1_000_000:   # wächst nicht ohne Ende: ab 1 MB von vorn
+                datei.unlink()
+            protokoll = open(datei, "ab")
+        except OSError:
+            protokoll = subprocess.DEVNULL
         for argv in ([*prioritaet, self.veroeffentlichen], [self.veroeffentlichen]):
             try:
-                subprocess.Popen(argv, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                if protokoll is not subprocess.DEVNULL:
+                    protokoll.write(f"--- {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} {' '.join(argv[:1])}\n".encode()); protokoll.flush()
+                subprocess.Popen(argv, env=env, stdin=subprocess.DEVNULL, stdout=protokoll, stderr=protokoll,
                                  start_new_session=True)
                 return
             except OSError as e:
                 sys.stderr.write(f"Publishing not started ({' '.join(argv[:1])}): {e}\n")
+            finally:
+                if protokoll is not subprocess.DEVNULL:
+                    protokoll.flush()
 
 
 def buchung_anfrage_gueltig(reise, bid):
