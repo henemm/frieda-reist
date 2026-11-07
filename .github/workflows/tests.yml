@@ -34,9 +34,11 @@ jobs:
           node-version: 22
       # Hängt der Ubuntu-Spiegel, bricht apt einen stehenden Download nach 30 s ab und versucht es bis zu dreimal (#356).
       # Als Datei, damit es auch für das apt gilt, das Playwright aufruft; einzige Quelle dieser Optionen.
+      # Lock::Timeout (#390): `timeout` erreicht das per sudo gestartete apt nicht; es läuft nach der Zeitgrenze weiter und
+      # hält die dpkg-Sperre. Versuch 2 wartet darauf, statt sofort mit Exit 100 zu scheitern, und findet dann die Pakete vor.
       - name: apt-Zeitgrenzen
         run: |
-          printf '%s\n' 'Acquire::Retries "3";' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' \
+          printf '%s\n' 'Acquire::Retries "3";' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' 'DPkg::Lock::Timeout "420";' \
             | sudo tee /etc/apt/apt.conf.d/80-ci-zeitgrenzen
       - name: Python-Pakete
         run: |
@@ -52,7 +54,7 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('engine/tests/playwright/package-lock.json') }}
       # Eigene Zeitgrenze als Notbremse und zwei Versuche mit je 4 Minuten, statt bis zur Job-Grenze zu hängen (#356)
       - name: Playwright und Browser (feste Version aus engine/tests/playwright, wie auf jeder Instanz)
-        timeout-minutes: 10
+        timeout-minutes: 12
         run: |
           cd engine/tests/playwright
           npm ci --no-audit --no-fund
