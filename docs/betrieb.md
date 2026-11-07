@@ -47,6 +47,7 @@ Jede Instanz ist für ihre Daten selbst verantwortlich; es wird nichts mit ander
 | Daten | Wer sieht sie | Löschen auf Wunsch einer Person | Aufbewahrung |
 |---|---|---|---|
 | Konto (Adresse, Name, Sprache, Geräte, Kalender-Abo, Benachrichtigungen) | die Person selbst („Mein Konto“); der Betreiber in der Datenbank | Konto löschen (Mein Konto oder `engine/konten.py loeschen <adresse>`): Mitgliedschaften, Anfragen, Abos und Anmeldungen (auch der Claude-App) entfallen, die Adresse ist wieder frei | bis zum Löschen |
+| Eintrag der Warteliste (Adresse, Sprache, Zeiten) | nur der Betreiber (`konten.py warteliste`, Mein Konto) | Löschen und Export folgen mit #381 | unbestätigt 7 Tage, bestätigt bis zum Löschen |
 | Namen in Verlauf und Reise-Stand (Git-Verlauf der Reise) | alle Mitglieder der Reise | bleiben bewusst stehen, weil der Verlauf nur wächst (`main` wird nicht umgeschrieben) | dauerhaft mit der Reise |
 | Reise (Pläne, Personen, Entscheidungen) | Mitglieder nach Rolle (`reisend`, `einbringer`, `bestimmer`), nie öffentlich ohne Link | die Reise liegt im Reisen-Repo der Gruppe; über sie entscheidet die Gruppe | bis die Gruppe sie entfernt |
 | Rückmeldungen, Aufgaben, Antworten (Ablage) | Organisator:innen der Reise, Absender sehen ihre eigenen | nur durch den Betreiber in der Ablage | bis zum Löschen der Reise |
@@ -167,6 +168,24 @@ Ohne Handarbeit (`docs/neue-reise.md`): Nach dem Veröffentlichen ruft `veroeffe
 - **Vorgemerkte Links:** Links neuer Reisen aus der App merkt der Konnektor in `<FR_KONNEKTOR>/neue-reisen-ausstehend.jsonl` vor (neben den Zugängen; den Dienstordner darf der Konnektor nicht beschreiben). Das Veröffentlichen stellt sie zu (`betrieb/zustellen.py`), sobald die Seite online ist, als Meldung an die Person oder bei einem Konto als Verknüpfung mit der Reise und Einladung per Mail.
 
 Links von Hand: `freischalten.sh <reise>` für die Seite, `freischalten.sh <reise> --person <schlüssel>` für die Claude-App. Links stehen nie im Protokoll, im Repo, in Issues oder Nachrichten.
+
+## Warteliste (#382)
+
+Interessenten tragen sich auf `<FR_BASIS>/warteliste` ein und bestätigen ihre Adresse über den Link aus der Mail
+(`/warteliste/bestaetigen/<wort>`). Ablauf und Grenzen: `docs/konten.md`, „Warteliste“. Neue Einstellungen gibt es nicht:
+Absender, SMTP und Links kommen wie bei den Anmeldecodes aus `FR_ABSENDER`, `FR_SMTP_*` und `FR_BASIS`; fehlt die
+Mail-Einrichtung, lehnt die Seite ab und speichert nichts.
+
+- Jeder bestätigte Eintrag erzeugt eine Meldung an die Betreiber (wie die Bitte „Reisen anlegen“, in der Claude-App bei
+  `meine_reisen`).
+- `python3 engine/konten.py warteliste` listet die bestätigten, noch nicht freigegebenen Einträge (älteste zuerst) und die
+  Zahl der unbestätigten.
+- `python3 engine/konten.py freigeben <email>` (oder der Knopf im Abschnitt „Warteliste“ auf Mein Konto, nur mit Recht
+  `betreiber`) schickt die Mail „Du bist dabei“ und gibt das Recht „Reisen anlegen“, auch Adressen mit Konto. Scheitert
+  die Mail, meldet der Befehl `ERROR` (Exit 2) und die Seite den Fehler; der Eintrag bleibt wartend, ein zweiter Versuch geht.
+- nginx: `location = /warteliste` (Drossel wie `/anmelden`, weil sie Mails auslöst) und
+  `location ^~ /warteliste/bestaetigen/` (Drossel wie Konto) in `vorlagen/nginx-konnektor-orte.inc`; der Abgleich der
+  nginx-Bausteine übernimmt sie ohne Handschritt.
 
 ## Reise-Stand (Epic #223)
 

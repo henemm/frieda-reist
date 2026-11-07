@@ -98,8 +98,8 @@ def test_antwort_ist_fuer_jeden_stand_gleich(umgebung):
     # keine Ausnahme, kein Rückgabewert, der den Stand verrät
     ergebnisse = [konten.warteliste_eintragen(a) for a in (MO, MO, IDA, KARL)]
     assert ergebnisse == [None] * 4
-    assert len(mails(mf, KARL)) == 1                            # nur die Anmeldecode-Mail, keine Wartelisten-Mail
-    assert len(mails(mf, IDA)) == 3      # Eintrag, Freigabe, nichts Neues beim erneuten Eintragen
+    assert len(mails(mf, KARL)) == 2      # Anmeldecode und Bestätigung: Konten werden wie alle eingetragen (PO, 7.11.2026)
+    assert len(mails(mf, IDA)) == 2      # Eintrag, Freigabe, nichts Neues beim erneuten Eintragen
 
 
 # ---------------------------------------------------------------- Modell: Bestätigung (AC-3)
@@ -236,6 +236,29 @@ def test_zweite_freigabe_aendert_nichts_und_schickt_keine_mail(umgebung):
     assert len(mails(mf, IDA)) == n
 
 
+def test_scheitert_die_mail_der_freigabe_bleibt_der_eintrag_wartend(umgebung, monkeypatch):
+    mf = umgebung["tmp"] / "mails.jsonl"
+    konten.code_anfordern(IDA)
+    code = re.search(r"(\d{3}) (\d{3})", mails(mf, IDA)[-1]["text"]).expand(r"\1\2")
+    _, k = konten.anmelden(IDA, code, name="Ida")
+    eintragen_und_bestaetigen(umgebung, IDA)
+    echt = konten.mail_senden
+
+    def kaputt(*a):
+        raise konten.KontoFehler("konto.fehler.mail_fehlgeschlagen")
+    monkeypatch.setattr(konten, "mail_senden", kaputt)
+    with pytest.raises(konten.KontoFehler) as f:
+        konten.freigeben(IDA)
+    assert meldet(f.value.text("de"), "konto.fehler.mail_fehlgeschlagen")
+    assert [z["email"] for z in konten.warteliste()] == [IDA]       # nicht stumm freigegeben
+    assert not konten.recht(konten.konto(k["id"]), "reise_anlegen")
+    n = len(mails(mf, IDA))
+    monkeypatch.setattr(konten, "mail_senden", echt)
+    assert konten.freigeben(IDA) is True                            # zweiter Versuch: Mail und Recht
+    assert len(mails(mf, IDA)) == n + 1 and meldet(mails(mf, IDA)[-1]["betreff"], "mail.freigabe.betreff")
+    assert konten.recht(konten.konto(k["id"]), "reise_anlegen") and konten.warteliste() == []
+
+
 # ---------------------------------------------------------------- Befehle
 
 def test_befehle_warteliste_und_freigeben(umgebung, capsys):
@@ -278,11 +301,12 @@ def test_eintrag_ueber_die_seite_antwort_ist_immer_gleich(welt):
     # ungültig: verständliche Ablehnung, nichts gespeichert
     s, _, t = abruf(f"{u.kurl}/warteliste", "POST", {"email": "unsinn"})
     assert meldet(t, "konto.fehler.keine_adresse") and not meldet(t, "warteliste.gesendet")
-    assert {z[0] for z in sqlite3.connect(konten.pfad()).execute("SELECT email FROM warteliste")} == {LEA}
+    assert {z[0] for z in sqlite3.connect(konten.pfad()).execute("SELECT email FROM warteliste")} == {LEA, KARL}
 
 
 def test_falsche_herkunft_ist_403(welt):
     u = welt()
+    konten.db().close()                                          # Datenbank anlegen, damit die Prüfung unten lesen kann
     assert abruf(f"{u.kurl}/warteliste", "POST", {"email": LEA}, origin="https://boese.invalid")[0] == 403
     assert abruf(f"{u.kurl}/warteliste/bestaetigen/abc", "POST", {}, origin="https://boese.invalid")[0] == 403
     assert not sqlite3.connect(konten.pfad()).execute("SELECT 1 FROM warteliste").fetchall()

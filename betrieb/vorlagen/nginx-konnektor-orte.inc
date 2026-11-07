@@ -32,6 +32,17 @@ location = /anmelden {
     limit_req_status 429;
     include __SNIPPETS__/__INSTANZ__-konnektor.inc;
 }
+# Warteliste (#382): Eintragen schickt eine Mail, darum streng wie /anmelden; der Bestätigungslink wie Konto
+location = /warteliste {
+    limit_req zone=__ZONE_ANMELDEN__ burst=10 nodelay;
+    limit_req_status 429;
+    include __SNIPPETS__/__INSTANZ__-konnektor.inc;
+}
+location ^~ /warteliste/bestaetigen/ {
+    limit_req zone=__ZONE_KONTO__ burst=20 nodelay;
+    limit_req_status 429;
+    include __SNIPPETS__/__INSTANZ__-konnektor.inc;
+}
 location = /token                  { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 location = /register               { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 location ^~ /.well-known/oauth-    { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
