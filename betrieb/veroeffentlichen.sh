@@ -320,7 +320,13 @@ alarm_pruefen() {  # Alarm ab der Schwelle: Meldung an die Organisator:innen rot
 pruefen_lauf() {  # <ordner>: pytest über engine/tests oder tests/ des Reisen-Repos; Ausgabe auch nach pruef_log
   local rc=0
   if [ -n "$pruefen" ]; then "$pruefen" "$1" 2>&1 | tee "$pruef_log" || rc=${PIPESTATUS[0]}
-  else "$FR_PYTHON" -m pytest "$1" -q --basetemp "$pruef_tmp" 2>&1 | tee "$pruef_log" || rc=${PIPESTATUS[0]}; fi
+  else
+    # Software-Tests parallel (pytest-xdist, #395): seriell mit Nice=10 rund 30 Minuten, die CI braucht parallel 7. Ohne xdist
+    # in FR_PYTHON seriell wie bisher; FR_PRUEF_PROZESSE (Vorgabe auto) begrenzt die Zahl der Prozesse.
+    local parallel=()
+    if [ "$1" = engine/tests ] && "$FR_PYTHON" -c 'import xdist' 2>/dev/null; then parallel=(-n "${FR_PRUEF_PROZESSE:-auto}"); fi
+    "$FR_PYTHON" -m pytest "$1" -q "${parallel[@]}" --basetemp "$pruef_tmp" 2>&1 | tee "$pruef_log" || rc=${PIPESTATUS[0]}
+  fi
   return "$rc"
 }
 

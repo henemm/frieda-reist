@@ -138,7 +138,7 @@ Die Texte der Software stehen in `engine/texte_<kürzel>.py`. `deploy.sh` nimmt 
 **Was sperrt (#142):** Eine Inhaltsfrage einer Reise hält das Veröffentlichen nie an. Sperren können nur zwei Dinge:
 
 - **Tests der Software rot** (`pytest engine/tests`): Keine Reise wird angefasst, Exit 1.
-- **Bau einer Reise gescheitert** (Baufehler, `deploy.sh` endet mit Exit 2): Nur diese Reise bleibt auf ihrem letzten guten Stand, die anderen werden gebaut und freigeschaltet. Der Lauf endet mit Exit 1, der Stand wird nicht gemerkt.
+- **Bau oder Startprobe einer Reise gescheitert** (Baufehler, `deploy.sh` endet mit Exit 2): Nur diese Reise bleibt auf ihrem letzten guten Stand, die anderen werden gebaut und freigeschaltet. Die **Startprobe** (`betrieb/startprobe.mjs`, #395, Lehre aus #387) lädt die gebaute Seite im Browser; ein Seitenfehler beim Start, `console.error` oder eine leere Seite machen sie rot. Ohne Playwright gibt es nur eine Warnung. Die Software-Tests laufen mit pytest-xdist parallel (`FR_PRUEF_PROZESSE`, Vorgabe `auto`), wenn `FR_PYTHON` es hat. Der Lauf endet mit Exit 1, der Stand wird nicht gemerkt.
 
 Warnungen im Plan sperren nie, weder im Bau noch im Schreibweg (dort stehen neue Warnungen als Hinweise in der Antwort). Die Tests in `tests/` des Reisen-Repos laufen danach weiter, sperren aber nicht: Sind sie rot, steht „Warnung: Tests des Reisen-Repos rot (sperren nicht)“ im Protokoll, und der Betrieb bekommt je Commit einmal eine Nachricht (`normal`; Merker `<FR_DIENST>/veroeffentlichen-warnung`).
 

@@ -53,8 +53,19 @@ fi
 # veroeffentlichen.sh prüft einmal für alle Reisen und setzt FR_GEPRUEFT auf den geprüften Stand
 if [ "${FR_GEPRUEFT:-}" != "$(git -C "$WURZEL" rev-parse HEAD)" ]; then
   pruef_tmp="$(mktemp -d)"   # eigener Ordner für die Testdateien, Grund in veroeffentlichen.sh
-  "$FR_PYTHON" -m pytest "$WURZEL/engine/tests" -q --basetemp "$pruef_tmp" || { rm -rf "$pruef_tmp"; exit 1; }
+  parallel=(); "$FR_PYTHON" -c 'import xdist' 2>/dev/null && parallel=(-n "${FR_PRUEF_PROZESSE:-auto}")   # #395
+  "$FR_PYTHON" -m pytest "$WURZEL/engine/tests" -q "${parallel[@]}" --basetemp "$pruef_tmp" || { rm -rf "$pruef_tmp"; exit 1; }
   rm -rf "$pruef_tmp"
+fi
+
+# Startprobe (#395, Lehre aus #387): die gebaute Seite im Browser laden; ein Seitenfehler beim Start oder eine leere Seite
+# heißt Exit 2, die Seite bleibt auf dem letzten guten Stand. Ohne Playwright nur eine Warnung (HTTP 200 allein hätte #387 nicht gefunden).
+PW_MODUL="${PLAYWRIGHT_MODUL:-$WURZEL/engine/tests/playwright/node_modules/playwright/index.mjs}"
+if [ -e "$PW_MODUL" ] && command -v node > /dev/null; then
+  probe_aus="$(node "$FR_BETRIEB/startprobe.mjs" "$PW_MODUL" "$WURZEL/dist/$REISE" 2>&1)" \
+    || { echo "$probe_aus" | head -10; echo "ERROR: start probe of $REISE failed (page error or empty page), the page stays at the last good state."; exit 2; }
+else
+  echo "Warning: start probe skipped (Playwright or node missing, PLAYWRIGHT_MODUL)."
 fi
 
 mkdir -p "$ZIEL"
