@@ -94,6 +94,7 @@ erkannt und bekommt darüber jederzeit wieder Zugang.
   - Oben rechts steht „Anmelden“ oder der eigene Name (Molekül `kontoKnopf`, nur auf Friedas eigener Adresse).
   - Angemeldet entfällt das Namensfeld (`nameFeld`).
   - Antwortet der Dienst mit 401, bleibt der Eintrag im Ausgang und geht nach dem Anmelden los.
+- **Mit Claude verbinden (#422):** Mein Konto erklärt in vier Schritten, wie man Frieda als Konnektor in die Claude-App einträgt (Adresse `<FR_BASIS>/mcp` zum Kopieren, Hinweis auf bezahlte Konten); die Einladungsmail verweist mit `<FR_BASIS>/konto#verbinden` darauf.
 - **Archivierte Reisen (#416):** Auf Mein Konto stehen Reisen im Status archiv nicht in der Liste, sondern in einem eingeklappten Abschnitt „Archivierte Reisen (n)“ darunter; `meine_reisen` nennt sie nur in einer Schlusszeile. Nichts wird gelöscht, die Reisen bleiben mit ihrem Ordnernamen ansprechbar (Status zurücksetzen mit `reise_status_setzen`).
 - **Personen einer Reise (#406):** Auf Mein Konto klappt unter jeder Reise die Liste der Personen auf, in der Claude-App liest das Werkzeug `personen` dasselbe. Alle Mitglieder sehen Name, Rolle, „reist mit“ und von/bis. Den Zugang (angemeldet, eingeladen, noch keiner) sehen nur Organisator:innen (Product Owner, 8.11.2026). E-Mail-Adressen und Notizen zeigt keine der beiden Stellen. Beides nutzt `rueckmeldungen.personen_zeilen`.
 

@@ -993,6 +993,8 @@ def einladen(reise, schluessel, roh, rolle, name, von, titel=None, seite=None, s
             zeilen += [f"{basis()}/einladung/{token}"]
     if seite:
         zeilen += ["", texte.t(sprache, "mail.einladung.lesen"), seite]
+    if basis():
+        zeilen += ["", texte.t(sprache, "mail.einladung.verbinden"), f"{basis()}/konto#verbinden"]
     zeilen += ["", texte.t(sprache, "mail.einladung.schluss")]
     mail_senden(e, texte.t(sprache, "mail.einladung.betreff", titel=titel), "\n".join(zeilen))
     return {"sofort": sofort}

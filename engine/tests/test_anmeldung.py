@@ -342,6 +342,19 @@ def test_seiten_in_der_sprache_des_browsers_und_des_kontos(welt):
     assert meldet(t, "konto.fehler.sprache_unbekannt")
 
 
+def test_anleitung_mit_claude_verbinden(welt):
+    """#422: Mein Konto erklärt, wie man Frieda in der Claude-App verbindet (Adresse zum Kopieren); die Einladungsmail
+    verweist darauf."""
+    u = welt()
+    ida, _ = anmelden(u, IDA, "Ida")
+    t = abruf(f"{u.kurl}/konto", cookie=ida)[2]
+    assert 'id="verbinden"' in t and meldet(t, "konto.verbinden.titel") and meldet(t, "konto.verbinden.bezahlt")
+    assert f'value="{BASIS}/mcp"' in t and meldet(t, "konto.verbinden.schritt1") and meldet(t, "konto.verbinden.schritt4")
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
+    mail = [json.loads(z) for z in u.mails.read_text().splitlines() if json.loads(z)["an"] == KARL][-1]["text"]
+    assert f"{BASIS}/konto#verbinden" in mail
+
+
 def test_archivierte_reisen_ausgeblendet(welt):
     """#416: Archivierte Reisen stehen nicht in der Liste, sondern eingeklappt darunter (Mein Konto) oder als Schlusszeile
     (meine_reisen); ansprechbar bleiben sie."""

@@ -627,6 +627,18 @@ def personen_block(reise, z, ich):
             f"<ul>{liste}</ul></details>")
 
 
+def verbinden_karte():
+    """Anleitung, Frieda in der Claude-App als Konnektor hinzuzufügen, mit der Adresse zum Kopieren (#422)."""
+    adresse = (konten.basis() or "") + "/mcp"
+    schritte = "".join(f"<li>{esc(tx(f'konto.verbinden.schritt{n}'))}</li>" for n in (1, 2, 3, 4))
+    schritte = schritte.replace("</li><li>" + esc(tx("konto.verbinden.schritt4")),
+                                f'<input type="text" readonly aria-label="{esc(tx("konto.verbinden.adresse_label"))}" value="{esc(adresse)}">'
+                                "</li><li>" + esc(tx("konto.verbinden.schritt4")), 1)
+    return (f'<div class="abschnitt" id="verbinden"><h2>{esc(tx("konto.verbinden.titel"))}</h2>'
+            + karte(f'<p>{esc(tx("konto.verbinden.einleitung"))}</p><ol>{schritte}</ol>'
+                    f'<p class="klein">{esc(tx("konto.verbinden.bezahlt"))}</p>') + "</div>")
+
+
 def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen=""):
     """Mein Konto (Gestalt #60), zugleich die Startseite (#41): Meldungen, Reisen, dann Kalender, Freischaltungen
     (Betreiber), Einstellungen als Liste, unten Abmelden auf allen Geräten und Konto löschen. offen: Einstellung, die
@@ -701,6 +713,7 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
                  fehler(meldung), f'<p class="kasten">{esc(hinweis)}</p>' if hinweis else "",
                  meldungen_abschnitt(k, reise_info),
                  f'<div class="abschnitt"><h2>{esc(tx("konto.seite.meine_reisen"))}</h2>{reisen}{anlegen}</div>',
+                 verbinden_karte(),
                  kalender_karte(k, reise_info, offen == "kalender"),
                  push_karte(k, offen == "push"),
                  betreiber,
