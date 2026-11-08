@@ -5017,6 +5017,9 @@ def anwenden_extern(s, reise, werkzeug, anfrage):
         else:
             import schreiben_git
             code, antwort = schreiben_git.vorgang(s, reise, werkzeug, anfrage, start)
+    except instanz.EinstellungenNichtLesbar as e:      # #361: nie auf den Git-Weg ausweichen, wenn die Liste unbekannt ist
+        sys.stderr.write(f"Error {werkzeug} 503: settings not readable: {' '.join(str(e).split())[:LOG_LAENGE]}\n")
+        code, antwort = 503, fehler_antwort("schreiben.dienst.einstellungen_nicht_lesbar")
     except Exception as e:
         grund = " ".join(f"{type(e).__name__}: {e}".split())[:LOG_LAENGE]
         sys.stderr.write(f"Error {werkzeug} 500: {grund}\n")
@@ -5143,7 +5146,11 @@ class Dienst(BaseHTTPRequestHandler):
         if pfad == "/gesund":
             # Speicher-Reisen: die Datenbank antwortet; Git-Reisen (keine Liste oder ein Repo neben ihr): der Git-Teil
             s = self.schreiber or Schreiber(wurzel())
-            liste = instanz.speicherreisen()
+            try:
+                liste = instanz.speicherreisen()
+            except instanz.EinstellungenNichtLesbar as e:      # #361: unbekannte Liste ist nicht gesund
+                sys.stderr.write(f"Error gesund 503: settings not readable: {' '.join(str(e).split())[:LOG_LAENGE]}\n")
+                return self._senden(503, {"gesund": False})
             ok = speicher_gesund() if liste else True
             if ok and (not liste or (s.wurzel / ".git").exists()):
                 import schreiben_git
@@ -5154,7 +5161,12 @@ class Dienst(BaseHTTPRequestHandler):
             if not hmac.compare_digest(self.headers.get("X-Frieda-Dienst", ""), konten.dienst_geheimnis()):
                 return self._senden(403, fehler_antwort("schreiben.dienst.nur_konnektor", mit_ok=False))
             s = self.schreiber or Schreiber(wurzel())
-            if teile[0] in instanz.speicherreisen():
+            try:
+                im_speicher = teile[0] in instanz.speicherreisen()
+            except instanz.EinstellungenNichtLesbar as e:      # #361
+                sys.stderr.write(f"Error buchung 503: settings not readable: {' '.join(str(e).split())[:LOG_LAENGE]}\n")
+                return self._senden(503, fehler_antwort("schreiben.dienst.einstellungen_nicht_lesbar", mit_ok=False))
+            if im_speicher:
                 try:
                     return self._senden(200, s.buchung_im_speicher(teile[0], teile[2]))
                 except (sqlite3.Error, OSError) as e:

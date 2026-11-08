@@ -82,7 +82,10 @@ speicherreisen_der_instanz() {  # FR_SPEICHERREISEN, eine Reise je Zeile, gelese
   if [ -n "${FR_SPEICHERREISEN+x}" ]; then
     wert="$FR_SPEICHERREISEN"
   else
-    [ -r betrieb/einstellungen.env ] || return 0
+    if [ ! -e betrieb/einstellungen.env ] && [ ! -L betrieb/einstellungen.env ]; then return 0; fi   # fehlt: keine
+    if [ ! -f betrieb/einstellungen.env ] || [ ! -r betrieb/einstellungen.env ]; then   # vorhanden, aber nicht lesbar (#361)
+      echo "ERROR: betrieb/einstellungen.env exists but cannot be read." >&2; return 1
+    fi
     zeile=""
     while IFS= read -r r || [ -n "$r" ]; do
       case "$r" in FR_SPEICHERREISEN=*) zeile="$r"; break ;; esac
@@ -101,8 +104,9 @@ speicherreisen_der_instanz() {  # FR_SPEICHERREISEN, eine Reise je Zeile, gelese
 aus_dem_speicher() {  # <reise>: Reise aus dem Reisespeicher (Stufe 3, #348)? Die stellt der Server selbst um
   # (neu.py nachziehen-speicher); ihre Git-Kopie bleibt bis Stufe 5 unberührt liegen und wird hier weder umgestellt noch gebaut.
   # ohne Pipe zu grep -q (SIGPIPE unter pipefail, wie ist_speicherreise in gemeinsam.sh)
-  local r
-  while IFS= read -r r; do [ "$r" != "$1" ] || return 0; done <<< "$(speicherreisen_der_instanz)"
+  local r liste
+  liste="$(speicherreisen_der_instanz)" || exit 1     # Liste unbekannt (Datei nicht lesbar): nichts umstellen, nichts übernehmen (#361)
+  while IFS= read -r r; do [ "$r" != "$1" ] || return 0; done <<< "$liste"
   return 1
 }
 

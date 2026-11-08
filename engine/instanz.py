@@ -38,11 +38,17 @@ def _datei():
 
 
 def einstellungen():
-    """Werte aus der Einstellungsdatei der Instanz -> {NAME: wert}; nur Namen FR_…, ohne Shell-Auswertung."""
+    """Werte aus der Einstellungsdatei der Instanz -> {NAME: wert}; nur Namen FR_…, ohne Shell-Auswertung.
+    Nachsichtig: eine fehlende oder unlesbare Datei gibt {} (Pfade, Ablage, Zeitzone brauchen weiter ihre Vorgaben)."""
     try:
-        zeilen = _datei().read_text(encoding="utf-8").splitlines()
+        return _lesen()
     except OSError:
         return {}
+
+
+def _lesen():
+    """Wie einstellungen(), aber Lesefehler (FileNotFoundError, PermissionError, …) gehen an den Aufrufer."""
+    zeilen = _datei().read_text(encoding="utf-8").splitlines()
     werte = {}
     for z in zeilen:
         z = z.strip()
@@ -101,10 +107,25 @@ def speicher_ablage():
     return speicher() / "ablage"
 
 
+class EinstellungenNichtLesbar(OSError):
+    """Die Einstellungsdatei der Instanz existiert, kann aber nicht gelesen werden (#361): Welche Reisen im Speicher liegen,
+    ist dann unbekannt. Wer darüber den Weg einer Reise wählt, muss laut abbrechen, nicht auf den Git-Weg ausweichen."""
+
+
 def speicherreisen():
     """Reisen, die über den Reisespeicher geschrieben werden (FR_SPEICHERREISEN, kommagetrennt; Leerzeichen und leere Teile
-    fallen weg). Ein gesetzter, auch leerer Wert in der Umgebung gilt vor der Datei. Vorgabe: keine (alles über Git)."""
-    roh = os.environ["FR_SPEICHERREISEN"] if "FR_SPEICHERREISEN" in os.environ else einstellungen().get("FR_SPEICHERREISEN", "")
+    fallen weg). Ein gesetzter, auch leerer Wert in der Umgebung gilt vor der Datei. Vorgabe: keine (alles über Git).
+    Fehlt die Einstellungsdatei, gibt es keine Speicher-Reisen; ist sie vorhanden, aber nicht lesbar, wird
+    EinstellungenNichtLesbar ausgelöst (fail closed, #361). einstellungen() und wert() bleiben nachsichtig."""
+    if "FR_SPEICHERREISEN" in os.environ:
+        roh = os.environ["FR_SPEICHERREISEN"]
+    else:
+        try:
+            roh = _lesen().get("FR_SPEICHERREISEN", "")
+        except FileNotFoundError:
+            roh = ""
+        except OSError as e:
+            raise EinstellungenNichtLesbar(f"{_datei().name}: {e.strerror or type(e).__name__}") from e
     return [r.strip() for r in roh.split(",") if r.strip()]
 
 

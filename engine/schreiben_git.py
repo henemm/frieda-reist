@@ -169,7 +169,12 @@ def git_sperren_raeumen(arbeit):
 def vorgang(s, reise, werkzeug, anfrage, start):
     """Ein Schreibvorgang über Git -> (Code, Antwort): Sperre der Reise, Arbeitskopie auf origin/main, `anwenden` mit dem Code
     der Arbeitskopie in der Frist. Eine Reise aus FR_SPEICHERREISEN wird abgelehnt, bevor etwas geholt wird."""
-    if reise in instanz.speicherreisen():
+    try:
+        im_speicher = reise in instanz.speicherreisen()
+    except instanz.EinstellungenNichtLesbar as e:     # #361: Liste unbekannt -> nichts holen, nichts schreiben
+        sys.stderr.write(f"Refused {werkzeug} 503: settings not readable: {' '.join(str(e).split())[:sb.LOG_LAENGE]}\n")
+        return 503, sb.fehler_antwort("schreiben.dienst.einstellungen_nicht_lesbar")
+    if im_speicher:
         sys.stderr.write(f"Refused {werkzeug} 503: trip {reise} is written through the store, not through git\n")
         return 503, sb.fehler_antwort("schreiben.dienst.reise_im_speicher")
     s = sb.Schreiber(s.wurzel, Path(f"{s.arbeit}-{reise}"), s.veroeffentlichen)

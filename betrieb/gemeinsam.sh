@@ -60,7 +60,10 @@ nur_bauordner() {  # [--main]: ohne FR_WURZEL abbrechen; mit --main auch, wenn H
 
 fr_einlesen() {  # <datei>: NAME=wert-Zeilen übernehmen, Vorhandenes bleibt; nur Namen FR_…
   local zeile name wert
-  [ -r "$1" ] || return 0
+  if [ ! -e "$1" ] && [ ! -L "$1" ]; then return 0; fi    # fehlende Datei ist normal (Beispielreisen, Instanzen ohne Einstellungen)
+  if [ ! -f "$1" ] || [ ! -r "$1" ]; then   # vorhanden, aber nicht lesbar: nicht still überspringen (#361)
+    echo "ERROR: $1 exists but cannot be read." >&2; exit 1
+  fi
   while IFS= read -r zeile || [ -n "$zeile" ]; do
     zeile="${zeile%$'\r'}"
     case "$zeile" in ''|'#'*) continue ;; esac

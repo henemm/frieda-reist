@@ -867,6 +867,7 @@ TEXTE = {
     "schreiben.dienst.kein_json": "not JSON",
     "schreiben.dienst.kein_objekt": "not an object",
     "schreiben.dienst.speicher_nicht_erreichbar": "The trip store cannot be reached right now; please try again later.",
+    "schreiben.dienst.einstellungen_nicht_lesbar": "The instance settings cannot be read right now; nothing is written. The operator has to fix this.",
     "schreiben.dienst.reise_nicht_im_speicher": "This trip is to be written through the store but is not in it yet; the operator has to move it there first.",
     "schreiben.dienst.reise_im_speicher": "This trip is written through the store, no longer through the repository.",
     "schreiben.dienst.stand_geaendert": "Someone else has written to this trip in the meantime; please try again.",

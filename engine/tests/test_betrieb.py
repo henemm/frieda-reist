@@ -90,6 +90,41 @@ def test_fr_einlesen_fehlende_datei_ist_ok(tmp_path):
     assert r.returncode == 0 and "erreicht" in r.stdout, r.stderr
 
 
+def nachziehen_weiche(tmp_path, reise, **umgebung):
+    """Die beiden Funktionen aus software-nachziehen.sh (Speicher-Reise ja/nein) einzeln laufen lassen, im Ordner tmp_path."""
+    text = (BETRIEB / "software-nachziehen.sh").read_text(encoding="utf-8")
+    teil = text[text.index("speicherreisen_der_instanz() {"):text.index("umstellen() {")]
+    skript = f'{teil}\nif aus_dem_speicher "$1"; then echo SPEICHER; else echo GIT; fi'
+    return subprocess.run(["bash", "-c", skript, "x", reise], capture_output=True, text=True, cwd=tmp_path,
+                          env={**SAUBER, **umgebung})
+
+
+def test_nachziehen_weiche_unlesbare_datei_bricht_ab(tmp_path):
+    """#361 (Adversary F001): Auch die Weiche des Workflows „Software nachziehen“ darf eine Speicher-Reise bei unlesbarer
+    Einstellungsdatei nicht als Git-Reise umstellen."""
+    (tmp_path / "betrieb" / "einstellungen.env").mkdir(parents=True)
+    r = nachziehen_weiche(tmp_path, "beispielreise")
+    assert r.returncode != 0 and "SPEICHER" not in r.stdout and "GIT" not in r.stdout
+    assert "exists but cannot be read" in r.stderr
+
+
+def test_nachziehen_weiche_fehlende_datei_und_umgebung(tmp_path):
+    (tmp_path / "betrieb").mkdir()
+    r = nachziehen_weiche(tmp_path, "beispielreise")
+    assert r.returncode == 0 and r.stdout.strip() == "GIT", r.stderr
+    (tmp_path / "betrieb" / "einstellungen.env").write_text("FR_SPEICHERREISEN=beispielreise\n")
+    assert nachziehen_weiche(tmp_path, "beispielreise").stdout.strip() == "SPEICHER"
+    assert nachziehen_weiche(tmp_path, "stadtwochenende").stdout.strip() == "GIT"
+
+
+def test_unlesbare_datei_ueber_symlink_schleife_bricht_ab(tmp_path):
+    """#361 (Adversary F002): Eine Symlink-Schleife zählt nicht als „fehlt“, sondern als nicht lesbar."""
+    (tmp_path / "betrieb").mkdir()
+    (tmp_path / "betrieb" / "einstellungen.env").symlink_to("einstellungen.env")
+    assert gemeinsam_laden(tmp_path).returncode != 0
+    assert nachziehen_weiche(tmp_path, "beispielreise").returncode != 0
+
+
 def test_umgebung_gilt_vor_der_datei_und_fremdes_wird_ignoriert(tmp_path):
     r, w = einstellungen(tmp_path, "FR_INSTANZ=probe\nPATH=/nirgends\nRM_ABLAGE=/falsch\nFR_SEITEN=/srv/datei\n",
                          FR_SEITEN="/srv/umgebung")
