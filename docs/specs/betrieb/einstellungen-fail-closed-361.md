@@ -41,7 +41,7 @@ Eine **fehlende** Datei bleibt normal (Beispielreisen, Tests, Instanzen ohne Spe
 
 ## Scope
 
-- **Affected Files:** `betrieb/software-nachziehen.sh`, `engine/instanz.py`, `engine/schreiben.py`, `engine/schreiben_git.py`, `engine/stand.py`, `engine/texte_*.py`, `betrieb/gemeinsam.sh`; Tests in `engine/tests/test_schreiben_speicher.py`, `test_stand.py`, `test_betrieb.py` und die neue Datei `test_instanz.py`
+- **Affected Files:** `engine/instanz.py`, `engine/schreiben.py`, `engine/schreiben_git.py`, `engine/stand.py`, `engine/texte_*.py`, `betrieb/gemeinsam.sh`; Tests in `engine/tests/test_schreiben_speicher.py`, `test_stand.py`, `test_betrieb.py` und die neue Datei `test_instanz.py`
 - **Estimated Changes:** ca. +70/-5 Zeilen Code, +90 Zeilen Tests
 - **Nicht im Scope:** Umschalten echter Reisen (#350); Nachsicht von `einstellungen()`/`wert()` ändern; Format der Reisedaten (kein `nachziehen` nötig); neue Überwachung (`/gesund` und das Protokoll melden den Fehler bereits über den vorhandenen Monitor).
 
@@ -81,8 +81,6 @@ gemeinsam.sh fr_einlesen:
 - **Unverändert:** Datei fehlt -> alles über Git. `FR_SPEICHERREISEN` in der Umgebung gilt weiter vor der Datei, auch bei unlesbarer Datei. Der Dienst startet und beantwortet Anfragen weiter; nur die vier Weichen lehnen ab.
 
 ## Known Limitations
-
-- Nachtrag aus der Adversary-Prüfung (F001, F002): Dieselbe Weiche gibt es in `betrieb/software-nachziehen.sh` (`speicherreisen_der_instanz`, `aus_dem_speicher`); sie bricht bei vorhandener, nicht lesbarer Datei ab wie `fr_einlesen` (Tests: `test_nachziehen_weiche_unlesbare_datei_bricht_ab`, `test_nachziehen_weiche_fehlende_datei_und_umgebung`). Eine Symlink-Schleife gilt in der Shell als nicht lesbar (`test_unlesbare_datei_ueber_symlink_schleife_bricht_ab`). Ein Symlink ins Leere zählt in der Shell als nicht lesbar (Abbruch), in Python als fehlend; ein Elternteil, der eine Datei ist (`NotADirectoryError`), löst in Python aus, in der Shell gilt die Datei als fehlend. Die Shell ist also höchstens strenger.
 
 - Eine Datei, die lesbar, aber inhaltlich falsch ist (Tippfehler im Namen), bleibt ein Betriebsfehler außerhalb dieser Änderung.
 - Unter `root` greifen entzogene Dateirechte nicht; der Test mit `chmod 000` wird dort übersprungen, die Ersatztests (Verzeichnis statt Datei, gepatchtes Lesen) laufen immer.
