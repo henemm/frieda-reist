@@ -416,6 +416,35 @@ def test_nacht_ohne_doppelten_namen(seiten, tmp_path, monkeypatch):
     assert "Nacht: Wanderherberge Altendorf (U-04)" in t
 
 
+def _konto_mit_einladung(reise="beispielreise"):
+    """Ida hat ein Konto und ist verknüpft; für Karl liegt eine offene Einladung vor (erfundene Adresse)."""
+    import konten
+    from contextlib import closing
+    with closing(konten.db()) as v, v:
+        v.execute("INSERT INTO konten (id, email, name, angelegt) VALUES ('K-ida', 'ida@example.invalid', 'Ida', '2026-11-08')")
+        v.execute("INSERT INTO einladungen (hash, reise, schluessel, email, rolle, name, von, erstellt, ablauf) "
+                  "VALUES ('h1', ?, 'karl', 'karl@example.invalid', 'mitwirkend', 'Karl', 'Ida', 0, 9999999999)", (reise,))
+    konten.verknuepfen("K-ida", reise, "ida")
+
+
+def test_personen_ueber_konnektor(dienst):
+    """#406: Alle Mitglieder sehen Name, Rolle, reist mit und von/bis; den Zugangsstand nur Organisator:innen;
+    E-Mail-Adressen und Notizen nie."""
+    basis, _ = dienst
+    _konto_mit_einladung()
+    for token in (MITREISEND, KARL, GAST, ALT_ORGANISATOR):
+        assert "personen" in {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}
+    for token in (MITREISEND, KARL, GAST):
+        t, f = werkzeug(basis, token, "personen")
+        assert not f and meldet(t, "konnektor.personen.kopf") and "Ida" in t and "Karl" in t
+        assert "organisator" in t and "mitwirkend" in t and "14.5." in t
+        assert not meldet(t, "konnektor.personen.zugang_angemeldet") and not meldet(t, "konnektor.personen.zugang_eingeladen")
+        assert "@" not in t and "example.invalid" not in t and "Kirnitzschtalbahn" not in t
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "personen")
+    assert not f and meldet(t, "konnektor.personen.zugang_angemeldet") and meldet(t, "konnektor.personen.zugang_eingeladen")
+    assert "@" not in t and "example.invalid" not in t and "Kirnitzschtalbahn" not in t
+
+
 def test_aufgaben_ueber_konnektor(dienst):
     basis, ablage = dienst
     m = {t["name"] for t in rpc(basis, MITREISEND, "tools/list")["tools"]}

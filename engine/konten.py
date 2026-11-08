@@ -702,6 +702,19 @@ def konto_von_person(reise, schluessel):
         return z["konto"] if z else None
 
 
+def zugangsstand(reise):
+    """Zugang der Personen einer Reise -> {schluessel: "angemeldet" | "eingeladen"}; wer fehlt, hat keinen eigenen Zugang.
+    Nur Organisator:innen bekommen das zu sehen (#406); Adressen gibt diese Funktion nicht heraus."""
+    stand = {}
+    with closing(db()) as v:
+        for z in v.execute("SELECT schluessel FROM einladungen WHERE reise = ? AND eingeloest IS NULL AND ablauf >= ?",
+                           (reise, _jetzt())):
+            stand[z["schluessel"]] = "eingeladen"
+        for z in v.execute("SELECT schluessel FROM mitgliedschaften WHERE reise = ?", (reise,)):
+            stand[z["schluessel"]] = "angemeldet"
+    return stand
+
+
 def verknuepfen(kid, reise, schluessel):
     """Konto direkt mit einer Person der Reise verknüpfen (z. B. wer eine Reise anlegt, ist dort Organisator:in)."""
     if not REISE_MUSTER.match(reise or "") or not PERSON_MUSTER.match(schluessel or ""):

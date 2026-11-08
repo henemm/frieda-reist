@@ -109,6 +109,7 @@ Eine Tabelle `NAMEN` im Konnektor bildet englische Werkzeugnamen auf die interne
 | `receipt_add` | `beleg_anlegen` |
 | `person_invite` | `person_einladen` |
 | `person_remove` | `person_entfernen` |
+| `people` | `personen` |
 | `trip_update` | `reise_aendern` |
 | `trip_status_set` | `reise_status_setzen` |
 | `setting_set` | `einstellung_setzen` |

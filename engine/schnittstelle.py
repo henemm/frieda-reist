@@ -61,6 +61,7 @@ NAMEN = {
     "person_invite": "person_einladen",
     "person_write": "person_schreiben",
     "person_remove": "person_entfernen",
+    "people": "personen",
     "trip_update": "reise_aendern",
     "start_end_set": "start_ende_setzen",
     "trip_status_set": "reise_status_setzen",
