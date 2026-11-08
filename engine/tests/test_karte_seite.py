@@ -68,10 +68,12 @@ ohne_browser = pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("n
 
 @ohne_browser
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
-def test_reiter_karte_ohne_varianten_mit_ansichten_und_ohne_tag(tmp_path, browser):
+def test_karte_unter_reise_ohne_varianten_mit_ansichten_und_ohne_tag(tmp_path, browser):
     for breite, a in seite(tmp_path, browser).items():
         # Baustein Karte allein bringt den Reiter „Karte“ (K10); keine Pläne nebeneinander
-        assert a["reiter"][1] == "Karte" and a["reiter"][0] != "Karte", a["reiter"]   # eigener Reiter hinter dem Start, der Start bleibt die Reise (#214)
+        assert "Karte" not in a["reiter"], a["reiter"]   # kein eigener Reiter mehr: die Karte steht unter Reise (#425)
+        assert a["vergroessert"]["gross"] and a["vergroessert"]["hoehe"] > a["klein"]["hoehe"] and not a["klein"]["gross"], a
+        assert a["vergroessert"]["hoehe"] >= a["vergroessert"]["fenster"] * 0.5 and not a["zu"]["gross"] and a["knopfSchliesst"], a
         assert a["kartenboxen"] == 1 and a["steckbriefe"] == 0, a
         # Übersicht: alle Punkte mit Lage (U-02, U-03 als Alternative, A-01, A-02), Farbe der Art, Alternative als Umriss
         assert a["punkte"]["uebersicht"] == {"gefuellt": 3, "umriss": 1}, a["punkte"]

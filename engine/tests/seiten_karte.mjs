@@ -28,6 +28,21 @@ for (const breite of [390, 1300]) {
     breit: document.documentElement.scrollWidth > innerWidth + 1,
   }));
   a.punkte = {uebersicht: await punkte(p)};
+  // Vergrößern (#425): Knopf an der Karte unter Reise, Vollbild per CSS (auch am iPhone), Schließen mit Knopf und Esc
+  const gross = () => p.evaluate(() => {
+    const s = document.querySelector("#main .reise-karte"), k = s && s.querySelector(".kartenbox");
+    return {gross: !!s && s.classList.contains("gross"), hoehe: k ? Math.round(k.getBoundingClientRect().height) : 0, fenster: innerHeight};
+  });
+  a.klein = await gross();
+  await p.click("#main .karte-gross");
+  await p.waitForFunction(() => document.querySelector("#main .reise-karte.gross"));
+  a.vergroessert = await gross();
+  await p.keyboard.press("Escape");
+  await p.waitForFunction(() => !document.querySelector("#main .reise-karte.gross"));
+  a.zu = await gross();
+  await p.click("#main .karte-gross");
+  await p.click("#main .karte-gross");
+  a.knopfSchliesst = !(await gross()).gross;
   for (const titel of a.ansichten.slice(1)) {
     await p.click(`.kartenansichten button:text-is("${titel}")`);
     await p.waitForSelector(".kartenbox .leaflet-marker-icon", {state: "attached"});
@@ -50,7 +65,7 @@ for (const breite of [390, 1300]) {
   } else if (fall === "offen") {
     await p.goto(basis + "#plan");
     await p.waitForSelector("#main h2");
-    a.imTagesplan = (await p.textContent("#main")).includes("Wochenmarkt");
+    a.imTagesplan = (await p.textContent("#main .tagzeilen.achse")).includes("Wochenmarkt");   // Zeitachse der Tage; der Ort ohne Tag steht am Ende der Reise (#425)
   } else {
     for (const tag of ["T-01", "T-02"]) {
       await p.goto(basis + "#" + tag);

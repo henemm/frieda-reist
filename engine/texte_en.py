@@ -3093,6 +3093,8 @@ TEXTE = {
     "seite.karte.schematisch": "schematic (no GPX track)",
     "seite.karte.hinweis_auto": "Map from the plan; dashed lines connect the stops in the order of the day and do not show the actual route.",
     "seite.karte.ohne_tag_titel": "No day ({n})",
+    "seite.karte.vergroessern": "Enlarge map",
+    "seite.karte.verkleinern": "Shrink map",
     "seite.karte.ohne_tag_hinweis": "Places collected for later: they are not on any day of the plan, only here and on the map.",
     "seite.karte.keine_karte": "No map yet: at least two entries with coordinates are needed.",
     "schreiben.lage_eintragen.ort_adresse": "A place has no address, only coordinates (its position on the map); the address belongs to the accommodation or stay.",

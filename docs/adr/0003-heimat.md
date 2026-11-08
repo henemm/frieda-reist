@@ -26,7 +26,7 @@ Ursache war keine einzelne Änderung. Für jede Art von Ding gab es keine Regel,
    | Folge: Tag | Tagesseite | Zeitachse der Reise |
    | Bewegung | Teil der Tagesseite (Tageskasten, Der Weg) | Tageszeile |
    | Aufenthalt: Nacht, Unterkunft | Abschnitt „Nacht“ der Tagesseite | Tageszeile, „Zu tun · Zu buchen“ |
-   | Aufenthalt ohne Tag (vor Ort gesammelt, seit 2.11.2026, #235; seit ADR-0007 an seinem Ort) | Ortsseite seines Orts (oder der Abschnitt, an den `an:` ihn hängt); hat der Ort keine Seite: Reiter „Karte“, unter der Karte („Ohne Tag“), ohne den Baustein Karte der Reiseüberblick | Zeile unter der Karte, Punkt auf der Karte |
+   | Aufenthalt ohne Tag (vor Ort gesammelt, seit 2.11.2026, #235; seit ADR-0007 an seinem Ort) | Ortsseite seines Orts (oder der Abschnitt, an den `an:` ihn hängt); hat der Ort keine Seite: am Ende des Reiseüberblicks („Ohne Tag“, seit #425; vorher der Reiter „Karte“) | Zeile im Überblick, Punkt auf der Karte |
    | Buchung (B-…, seit 29.10.2026, #76) | bei ihrem ersten gebuchten Ding (Unterkunftskarte, Aufenthalt oder Strecke der Tagesseite) | Chip am Ding, „Zu tun · Zu buchen“ |
    | Wahl mit Optionen | das Element, an dem sie hängt (`an:`), mit Vergleich | Marke in der Zeile des Elements, „Zu tun · Zu entscheiden“ |
    | Ort | Ortsseite | Tagesseite, Wissen |
@@ -91,4 +91,4 @@ Entschieden vom Product Owner am 5.11.2026 in Claude Code (drei Fragen, alle nac
 ## Nachtrag (6.11.2026, #370, ADR-0010): Heimat des Gegenstands
 
 Der Gegenstand der Packliste (`G-…`) ist eine eigene Grundform. **Heimat** ist der Reiter „Packliste“ (Baustein `packliste`). An der Strecke, dem Aufenthalt, der Unterkunft oder dem Ort, an dem er hängt (`an:`, ADR-0007), steht er nur als Zeile „Mitnehmen“ mit einem Link zur Packliste; an einem Tag steht er nie (ein Tag ist kein Elternelement). Der Reiter steht nach „Wünsche“ und vor der Suche. Die Tabelle oben ist die der Vorgaben; die Zeile für den Gegenstand steht in `docs/design.md`.
-
+- 8.11.2026 (#425, Entscheidung des Product Owners): Der Reiter „Karte“ entfällt. Die Karte steht nur unter „Reise“ und lässt sich dort auf Fenstergröße vergrößern (Schalter „Karte vergrößern“, Schließen mit Knopf und Esc); die alte Adresse `#karte` führt zur Reise. Aufenthalte ohne Tag sind eine Krücke: Ihre Heimat ist das Wissen (ADR-0007); nur wer dort keine Seite hat, steht am Ende der Reise. Der Nachtrag vom 2.11.2026 (#231) gilt damit nicht mehr; der Baustein Karte braucht weiter keinen Baustein Varianten.

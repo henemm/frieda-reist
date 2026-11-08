@@ -611,6 +611,10 @@ details.quellen>summary{min-height:44px;display:flex;align-items:center;font-wei
 .reise>.reisekopf+.anab{margin-top:-16px}
 .pico .reise h3.reise-titel{font:700 var(--t-untertitel)/1.3 var(--font-text);margin:0 0 6px}
 .reise-karte{display:flex;flex-direction:column;gap:8px}
+.reise-karte .karte-gross{align-self:flex-end;width:auto;margin:0}
+.reise-karte.gross{position:fixed;inset:0;z-index:50;background:var(--bg);padding:12px;padding-top:calc(12px + env(safe-area-inset-top));overflow:auto}
+.reise-karte.gross .kartenbox{height:calc(100dvh - 11rem);min-height:320px}
+body.karte-offen{overflow:hidden}
 .pico .reise-karte .meldung{margin:0}
 .reise-zahlen{display:flex;flex-direction:column;gap:10px}
 .pico .reise-zahlen :is(.meldung,.mitreisende){margin:0}
@@ -1185,10 +1189,9 @@ const PL_KAT = new Map(PL.kategorien.map(k => [k.art, k]));
    Reiter heißen Reise · Zu tun · Wissen (+ Wünsche, Suche); einen Reiter „Plan“ gibt es nicht: Tage stehen in der Zeitachse
    der Reise, Unterkünfte und Wahlstellen am Element, an dem sie hängen, die Sammelansichten (entscheiden, buchen) in „Zu tun“,
    der Plantext unter Wissen „Über diesen Plan“. Der Vergleich ganzer Pläne steht im Reiter Reise (#plaene). */
-const KARTE_REITER = B("karte") && !!R;   // eigener Reiter „Karte“ (#231), unabhängig vom Baustein Varianten
 const ZU_TUN = !!R || B("aufgaben") || B("fragen") || B("rueckmeldungen");
 const REITER = [
-  ["varianten", () => VARIANTEN_TITEL, !!R], ["karte", () => T("seite.reiter.karte"), KARTE_REITER], ["etappen", () => T("seite.reiter.etappen"), ETAPPEN_REITER],
+  ["varianten", () => VARIANTEN_TITEL, !!R], ["etappen", () => T("seite.reiter.etappen"), ETAPPEN_REITER],
   // Praxis steht im Reiter Wissen; „Zu tun“ (bis 28.10.2026 „Offen“) sammelt Entscheiden, Buchen, Aufgaben, Fragen, Rückmeldungen
   // Quellen stehen seit dem 25.10.2026 ebenfalls im Reiter Wissen; ihr Platz in der Leiste gehört der Suche
   ["wissen", () => G.wissen, hat("wissen") || hat("praxis") || hat("quelle") || (HAT_ETAPPEN && !ETAPPEN_REITER) || hat("plan") || !!D.plan_kopf || !R],
@@ -1234,9 +1237,9 @@ function zid(id) {
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke
-   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile, Rechtszeile (HTML im Fuß)
+   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile, Rechtszeile (HTML im Fuß)
    Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe
-   Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtKarte, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
+   Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
    Stile seiner Ebene, auf die Bausteinseite (#bausteine) und in docs/design.md; zeigt er eine Grundform, auch in GRUNDFORMEN.
    Eine Etappe ist der Lesetext einer Strecke mit summierter Art (Prädikat istEtappe, #269); Kennzahlen kommen mit Kennungen
@@ -3106,7 +3109,7 @@ const OHNE_TAG = R ? Object.entries(R.aufenthalte || {}).filter(([, a]) => a.ohn
 // Seit ADR-0007 ist die Seite des Elternelements die Heimat (ein Ort mit eigener Seite, ein Abschnitt des Wissens); nur was
 // dort keine Seite hat, steht hier vollständig, alles andere als Zeile mit Link zur Heimat
 const OHNE_TAG_HIER = R ? OHNE_TAG.filter(id => !heimat(id)) : [];
-for (const id of OHNE_TAG_HIER) zeileZu.set(id, KARTE_REITER ? "karte" : "varianten");
+for (const id of OHNE_TAG_HIER) zeileZu.set(id, "varianten");
 // Aufenthalt ohne Tag mit Heimat anderswo: Listenzeile mit Link dorthin (#328; die Zeile der Zeitleiste gehört in die Zeitleiste)
 function ohneTagZeile(id) {
   const a = R.aufenthalte[id];
@@ -3117,19 +3120,6 @@ function ohneTag(m) {
   m.append(el("section", {class: "ohne-tag"}, el("h3", {}, T("seite.karte.ohne_tag_titel", {n: OHNE_TAG.length})),
     el("p", {class: "meldung"}, T("seite.karte.ohne_tag_hinweis")), ...OHNE_TAG_HIER.map(id => zeigeDing(id, dichteHier(id, null))),
     OHNE_TAG.length > OHNE_TAG_HIER.length ? el("div", {class: "wliste"}, OHNE_TAG.filter(id => !OHNE_TAG_HIER.includes(id)).map(id => zeigeDing(id, dichteHier(id, null)))) : null));
-}
-/* Vorlage Karte (#231, K10): der eigene Reiter „Karte“, sobald der Baustein Karte an ist, auch ohne den Baustein Varianten.
-   Er zeigt den Plan der Zeitachse (PLAN_ANSICHT) und alles mit Lage, dazu die Aufenthalte ohne Tag. Der Start bleibt die Reise. */
-function ansichtKarte(m) {
-  heuteBlock(m);
-  m.append(el("h2", {}, T("seite.reiter.karte")));
-  const p = {id: "", kurz: T("seite.reiter.karte"), titel: "", farbe: "a", tage: PLAN_ANSICHT.tage, auswahl: [], plus: [], minus: [], warnungen: []};
-  const info = el("div", {class: "karte", "aria-live": "polite", hidden: true});
-  const segmente = uebersichtKarte(m, [p], info);
-  if (R.karte && window.L) m.append(info);
-  if (!R.karte) m.append(el("p", {class: "leer"}, T("seite.karte.keine_karte")));
-  ohneTag(m);
-  return segmente;
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-kansicht]");
@@ -3340,6 +3330,26 @@ function reiseZaehler(p) {
   if (h <= bis) return chip("", T("seite.reise.tag_von", {a: h - von + 1, b: bis - von + 1}));
   return null;
 }
+// Karte vergrößern (#425): derselbe Abschnitt füllt das Fenster (CSS, geht auch am iPhone), mit Ansichtswahl und Legende; Schließen mit
+// dem Knopf oder Esc. Die Karte passt sich über das Größenereignis des Fensters an (Leaflet lauscht darauf).
+function karteGrossKnopf(abschnitt) {
+  const knopf = el("button", {type: "button", class: "karte-gross klein secondary", "aria-pressed": "false"}, T("seite.karte.vergroessern"));
+  const setze = an => {
+    abschnitt.classList.toggle("gross", an);
+    document.body.classList.toggle("karte-offen", an);
+    knopf.setAttribute("aria-pressed", String(an));
+    knopf.textContent = T(an ? "seite.karte.verkleinern" : "seite.karte.vergroessern");
+    window.dispatchEvent(new Event("resize"));
+    if (an) knopf.focus();
+  };
+  knopf.addEventListener("click", () => setze(!abschnitt.classList.contains("gross")));
+  const esc = e => {
+    if (!abschnitt.isConnected) { document.removeEventListener("keydown", esc); document.body.classList.remove("karte-offen"); return; }
+    if (e.key === "Escape" && abschnitt.classList.contains("gross")) setze(false);
+  };
+  document.addEventListener("keydown", esc);
+  return knopf;
+}
 // Erster Reiter: der Reiseüberblick mit der Zeitachse des Plans der Zeitachse, für jede Reise (#214)
 const ansichtStart = m => ansichtReise(m, PLAN_ANSICHT);
 function ansichtReise(m, p) {
@@ -3356,12 +3366,12 @@ function ansichtReise(m, p) {
   const karte = el("section", {class: "reise-karte"});
   const info = el("div", {class: "karte", "aria-live": "polite", hidden: true});
   const segmente = uebersichtKarte(karte, [p], info);
-  if (R.karte && window.L) { karte.append(info); r.append(karte); }
+  if (R.karte && window.L) { karte.append(info); karte.prepend(karteGrossKnopf(karte)); r.append(karte); }
   // Mehrere Pläne, keiner gewählt: der Vergleich ganzer Pläne (#plaene) ist von hier erreichbar (#214, Entscheidung 1)
   if (HAT_VARIANTEN) r.append(el("a", {class: "karte", href: "#plaene"},
     el("div", {class: "k"}, T("seite.reise.plaene_zur_wahl", {titel: D.reise.varianten_titel || T("seite.reiter.varianten"), n: R.plaene.length})),
     el("div", {class: "z klein"}, R.plaene.map(x => x.kurz).join(" · "))));
-  if (!KARTE_REITER) ohneTag(r);   // ohne den Reiter „Karte“ ist die Reise die Heimat der Aufenthalte ohne Tag
+  ohneTag(r);   // die Reise ist die Heimat der Aufenthalte ohne Tag und ohne Elternelement (seit #425 gibt es keinen Reiter „Karte“)
   const kosten = reiseKosten(p);
   const kz = kennzahlLeiste({...reiseKennzahlen(p), ...(kosten ? {uebernachtungen: kosten.text} : {})});
   const mit = mitreisende();
@@ -4160,7 +4170,7 @@ function markiert(text, begriffe, laenge) {
 /* ENTWICKLERSEITE-ANFANG: Bausteinseite (#bausteine) und Ontologie-Tabelle sind Werkzeug für die Entwicklung (ADR-0002) und bleiben
    deutsch; sie sind keine Seite für Reisende und stehen nicht im Textkatalog (ADR-0006, Ausnahme). */
 const GRUNDFORMEN = [
-  ["reise", "Reise", "–", {zeile: [], vorschau: [reiseEnde, mitreisende, standLeiste], karte: [uebersichtKarte], seite: [ansichtReise, ansichtKarte]}],
+  ["reise", "Reise", "–", {zeile: [], vorschau: [reiseEnde, mitreisende, standLeiste], karte: [uebersichtKarte], seite: [ansichtReise]}],
   ["tag", "Folge: Tag", "T-01", {zeile: [tagZeile], vorschau: [tagKachel], karte: [tagKarte, tagesKarte], seite: [ansichtTag, ansichtReise]}],
   ["etappe", "Bewegung: Etappe, Strecke", "E-01", {zeile: [streckeZeile], vorschau: [abschnittKarte], karte: [dingKurzKarte], seite: [ansichtAbschnitt, tagEbenen]}],
   ["ort", "Ort", "O-01", {zeile: [wegVerlauf, ortLiegtIn], vorschau: [tagOrteZeilen, ortDarin, listenZeile], karte: [dingKurzKarte], seite: [ansichtOrt]}],
@@ -4446,6 +4456,7 @@ function ansichtBausteine(m) {
     mitOrten ? ortDarin(mitOrten) : el("p", {class: "meldung"}, "Kein Ort hat Orte darin (Muster entfällt)."));
   if (plan) teil("Molekül", "An- und Abreise", "Erster und letzter Tag mit festen Terminen und Fahrten; führt zum Tag.",
     reiseEnde("anreise", plan.tage[0]), reiseEnde("abreise", plan.tage[plan.tage.length - 1]));
+  teil("Molekül", "Karte vergrößern", "Schalter an der Karte unter Reise: füllt das Fenster, schließt mit Knopf und Esc.", (() => { const a = el("div", {class: "reise-karte"}); a.append(karteGrossKnopf(a)); return a; })());
   teil("Molekül", "Mitreisende", "Wer reist, wer nur einen Teil.", mitreisende() || el("p", {class: "meldung"}, "Niemand reist (Muster entfällt)."));
   if (plan && R.karte) { const box = el("div", {}), info = el("div", {class: "karte", "aria-live": "polite"});
     uebersichtKarte(box, [plan], info); box.append(info);
@@ -5547,11 +5558,9 @@ function route(behalten) {
   if (zielB) h = (R.buchungen[h].fuer || [])[0] || "";
   if (q.length >= 2) { zeigeReiter(reiter); ansichtSuche(m, q); window.scrollTo(0, 0); return; }
   // Eine Seitenordnung (#214): ohne Sprungziel der Startreiter; „Plan“ (ältere Links) und „Reise“ führen zur Reise
-  const start = () => { zeigeReiter(START); START === "varianten" ? ansichtStart(m) : START === "zu-tun" ? ansichtZuTun(m) : START === "wuensche" ? ansichtWuensche(m) : START === "etappen" ? ansichtEtappen(m) : START === "karte" ? ansichtKarte(m) : ansichtWissen(m); };
+  const start = () => { zeigeReiter(START); START === "varianten" ? ansichtStart(m) : START === "zu-tun" ? ansichtZuTun(m) : START === "wuensche" ? ansichtWuensche(m) : START === "etappen" ? ansichtEtappen(m) : ansichtWissen(m); };
   if (!h) start();
-  else if ((h === "plan" || h === "varianten" || PLAN_VERWEIS.has(h)) && R) { zeigeReiter("varianten"); ansichtStart(m); }
-  else if (h === "karte" && KARTE_REITER) { zeigeReiter("karte"); ansichtKarte(m); }
-  else if (zeileZu.get(h) === "karte") { zeigeReiter("karte"); ansichtKarte(m); ziel = h; }
+  else if ((h === "plan" || h === "varianten" || h === "karte" || PLAN_VERWEIS.has(h)) && R) { zeigeReiter("varianten"); ansichtStart(m); }
   else if (h === "plaene" && HAT_VARIANTEN) { zeigeReiter("varianten"); ansichtVarianten(m); }
   else if (h === "etappen" && ETAPPEN_REITER) { zeigeReiter("etappen"); ansichtEtappen(m); }
   else if (h === "etappen") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "weitere-wege"; }
