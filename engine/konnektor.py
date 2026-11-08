@@ -289,23 +289,12 @@ def recht(rolle, d, aktion, ziel=None):
 def personen_text(reise, d, wer):
     """Werkzeug personen (#406): Name, Rolle, reist mit, von/bis für alle Mitglieder; den Zugang (angemeldet, eingeladen,
     noch keiner) nur für Organisator:innen. Adressen und Notizen nie."""
-    sp = texte.aufruf_sprache()
     personen = personen_der_reise(reise, d)
     if not personen:
         return tk("konnektor.personen.leer")
     stand = konten.zugangsstand(reise) if darf(wer["rolle"], "organisator") else None
-    zeilen = [tk("konnektor.personen.kopf", n=len(personen))]
-    for p in personen:
-        angaben = [tk("konnektor.personen.reist" if p.get("reist", True) else "konnektor.personen.reist_nicht")]
-        if p.get("von"):
-            angaben.append(tk("konnektor.personen.ab", datum=texte.datum_kurz(p["von"], sp)))
-        if p.get("bis"):
-            angaben.append(tk("konnektor.personen.bis", datum=texte.datum_kurz(p["bis"], sp)))
-        if stand is not None:
-            z = "eingeladen" if p.get("eingeladen") else stand.get(p.get("schluessel"))
-            angaben.append(tk("konnektor.personen.zugang_" + {"angemeldet": "angemeldet", "eingeladen": "eingeladen"}.get(z, "keiner")))
-        zeilen.append(tk("konnektor.personen.zeile", name=p["name"], rolle=rolle_neu(p.get("rolle")), angaben=", ".join(angaben)))
-    return "\n".join(zeilen)
+    return "\n".join([tk("konnektor.personen.kopf", n=len(personen)),
+                      *("- " + z for z in rm.personen_zeilen(personen, stand, texte.aufruf_sprache()))])
 
 
 def organisator_namen(d):

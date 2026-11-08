@@ -126,6 +126,8 @@ details.weitere>.liste-innen>*,details.gelesen>.liste-innen>*{border-top:1px sol
 .zeile.meldung.ungelesen .meldungstext{font-weight:600}.leer{padding:.9rem 1rem;color:var(--mut);font-size:.9375rem}
 .zeile .wert{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%}
 details>.inhalt{padding:0 1rem 1rem;display:flex;flex-direction:column;gap:.5rem}
+.personen summary{padding:.2rem 1rem .7rem;color:var(--mut);font-size:.875rem;cursor:pointer}
+.personen ul{margin:0;padding:0 1rem 1rem 2.2rem;display:flex;flex-direction:column;gap:.3rem;font-size:.9375rem}
 .kalender-links{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 1rem}
 .kalender-links>a,.kalender-links summary{font-weight:600;color:var(--acc);text-decoration:none;padding:.4rem 0;cursor:pointer;list-style:none}
 .kalender-links summary::-webkit-details-marker{display:none}.kalender-links details[open]{flex-basis:100%}
@@ -608,6 +610,18 @@ def meldung_oeffnen(k, mid, reise_info):
                               f'<div class="links"><a href="/konto">{esc(tx("konto.seite.titel"))}</a></div>'))
 
 
+def personen_block(reise, z, ich):
+    """Die Personen einer Reise, aufklappbar unter ihrer Zeile auf Mein Konto (#406). Alle Mitglieder sehen Name, Rolle,
+    reist mit und von/bis; den Zugang (angemeldet, eingeladen, noch keiner) nur Organisator:innen."""
+    personen = (z or {}).get("personen") or []
+    if not personen:
+        return ""
+    stand = konten.zugangsstand(reise) if rolle_neu(ich.get("rolle")) == "organisator" else None
+    liste = "".join(f"<li>{esc(t)}</li>" for t in rm.personen_zeilen(personen, stand, sprache_der_seite()))
+    return (f'<details class="personen"><summary>{esc(tx("konnektor.personen.titel", n=len(personen)))}</summary>'
+            f"<ul>{liste}</ul></details>")
+
+
 def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen=""):
     """Mein Konto (Gestalt #60), zugleich die Startseite (#41): Meldungen, Reisen, dann Kalender, Freischaltungen
     (Betreiber), Einstellungen als Liste, unten Abmelden auf allen Geräten und Konto löschen. offen: Einstellung, die
@@ -619,8 +633,9 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
         p = next((x for x in z.get("personen") or [] if x.get("schluessel") == m["schluessel"]), {})
         inhalt = (f'<span class="was"><span class="titel">{esc(info.get("titel") or m["reise"])}</span>'
                   f"{rolle_marke(p.get('rolle'))}</span>")
-        zeilen.append(f'<a class="zeile" href="{esc(info["seite"])}">{inhalt}</a>' if info.get("seite")
-                      else f'<div class="zeile">{inhalt}</div>')
+        kopf = (f'<a class="zeile" href="{esc(info["seite"])}">{inhalt}</a>' if info.get("seite")
+                else f'<div class="zeile">{inhalt}</div>')
+        zeilen.append(f'<div class="reise">{kopf}{personen_block(m["reise"], z, p)}</div>')
     reisen = f'<div class="liste">{"".join(zeilen)}</div>' if zeilen else karte(f'<p class="hinweis">{esc(tx("konto.reisen.keine"))}</p>')
     if konten.recht(k, "reise_anlegen"):
         anlegen = f'<p class="hinweis">{esc(tx("konto.reisen.anlegen_darfst"))}</p>'

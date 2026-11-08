@@ -342,6 +342,27 @@ def test_seiten_in_der_sprache_des_browsers_und_des_kontos(welt):
     assert meldet(t, "konto.fehler.sprache_unbekannt")
 
 
+def test_personen_auf_mein_konto(welt):
+    """#406: Auf Mein Konto zeigt jede Reise ihre Personen (Name, Rolle, reist mit, von/bis); den Zugang sehen nur
+    Organisator:innen. Adressen und Notizen stehen nie dort."""
+    u = welt()
+    ida, _ = anmelden(u, IDA, "Ida")
+    konten.verknuepfen(konten.konto_per_email(IDA)["id"], "beispielreise", "ida")
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")      # noch nicht angemeldet
+    t = abruf(f"{u.kurl}/konto", cookie=ida)[2]
+    assert meldet(t, "konnektor.personen.titel") and 'class="personen"' in t
+    block = t.split('class="personen"', 1)[1].split("</details>", 1)[0]
+    assert "Ida" in block and "Karl" in block and "14.5." in block
+    assert meldet(block, "konnektor.personen.zugang_angemeldet") and meldet(block, "konnektor.personen.zugang_eingeladen")
+    assert "@" not in block and "invalid" not in block and "Kirnitzschtalbahn" not in block
+    karl, _ = anmelden(u, KARL)
+    t = abruf(f"{u.kurl}/konto", cookie=karl)[2]
+    block = t.split('class="personen"', 1)[1].split("</details>", 1)[0]
+    assert "Ida" in block and "Karl" in block and "14.5." in block
+    assert not meldet(block, "konnektor.personen.zugang_angemeldet") and not meldet(block, "konnektor.personen.zugang_eingeladen")
+    assert "@" not in block and "invalid" not in block and "Kirnitzschtalbahn" not in block
+
+
 def test_meldungen_auf_mein_konto_und_der_reiseseite(welt):
     """#21 Stufe 1 und #41: Die Adresse führt zu Mein Konto; dort stehen die Meldungen an die Person über alle Reisen,
     auf der Reiseseite (api/ich) die dieser Reise. Eine Quelle für beides und für meine_reisen in der Claude-App."""

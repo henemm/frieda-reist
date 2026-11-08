@@ -94,6 +94,7 @@ erkannt und bekommt darüber jederzeit wieder Zugang.
   - Oben rechts steht „Anmelden“ oder der eigene Name (Molekül `kontoKnopf`, nur auf Friedas eigener Adresse).
   - Angemeldet entfällt das Namensfeld (`nameFeld`).
   - Antwortet der Dienst mit 401, bleibt der Eintrag im Ausgang und geht nach dem Anmelden los.
+- **Personen einer Reise (#406):** Auf Mein Konto klappt unter jeder Reise die Liste der Personen auf, in der Claude-App liest das Werkzeug `personen` dasselbe. Alle Mitglieder sehen Name, Rolle, „reist mit“ und von/bis. Den Zugang (angemeldet, eingeladen, noch keiner) sehen nur Organisator:innen (Product Owner, 8.11.2026). E-Mail-Adressen und Notizen zeigt keine der beiden Stellen. Beides nutzt `rueckmeldungen.personen_zeilen`.
 
 ## Claude-App (J3)
 

@@ -213,6 +213,24 @@ def personen_mit_einladungen(personen, o):
     return aus
 
 
+def personen_zeilen(personen, stand, sprache):
+    """Eine Zeile je Person für Konnektor (personen) und Mein Konto (#406): Name, Rolle, reist mit, von/bis; der Zugang nur,
+    wenn `stand` (konten.zugangsstand) übergeben wird, also für Organisator:innen. Adressen und Notizen kommen nie vor."""
+    zeilen = []
+    for p in personen:
+        angaben = [texte.t(sprache, "konnektor.personen.reist" if p.get("reist", True) else "konnektor.personen.reist_nicht")]
+        if p.get("von"):
+            angaben.append(texte.t(sprache, "konnektor.personen.ab", datum=texte.datum_kurz(p["von"], sprache)))
+        if p.get("bis"):
+            angaben.append(texte.t(sprache, "konnektor.personen.bis", datum=texte.datum_kurz(p["bis"], sprache)))
+        if stand is not None:
+            z = "eingeladen" if p.get("eingeladen") else stand.get(p.get("schluessel"))
+            angaben.append(texte.t(sprache, "konnektor.personen.zugang_" + (z if z in ("angemeldet", "eingeladen") else "keiner")))
+        zeilen.append(texte.t(sprache, "konnektor.personen.zeile", name=p["name"], rolle=rg.rolle_neu(p.get("rolle")),
+                              angaben=", ".join(angaben)))
+    return zeilen
+
+
 def rolle_von(z, name):
     """Rolle einer Person aus reise.yaml nach Namen. Wer auf der Seite einen unbekannten Namen eintippt, kommt über den
     geheimen Link der Reise und gilt als Mitwirkende:r; eine bekannte Person hat die Rolle aus reise.yaml (gast: nur lesen)."""
