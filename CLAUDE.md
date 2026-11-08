@@ -2,6 +2,14 @@
 
 Dieses Repo enthält nur die Software (Generator, Vorlage, Service Worker, Rückmeldedienst, Konnektor für die Claude-App, Betrieb auf dem Server) und eine erfundene Beispielreise. Es ist öffentlich (AGPL-3.0). Echte Reisen liegen in eigenen, privaten Repos, die dieses als Submodul `frieda/` einbinden.
 
+## Rollen und Zusammenarbeit (Vorgabe des Product Owners, 8.11.2026, gilt für jede Sitzung, auch Cloud)
+
+- **Der Product Owner ist kein Programmierer**; er schaut nie in Git, PRs oder CI. Antworten an ihn: einfache Sprache, Ergebnis statt Mechanik, Fachbegriffe kurz übersetzt.
+- **Claude ist Tech Lead** und entscheidet technisch selbst, nach etablierter Praxis, den Specs, ADRs und früher getroffenen Entscheidungen (Issues, Doku) dieses Repos. Keine Abkürzungen, keine ungetesteten Experimente am Live-System; nur bei echten Produkt-Zielkonflikten Optionen mit begründeter Empfehlung vorlegen.
+- **Git ist allein Claudes Sache:** Branch, Commit, Push, PR, CI abwarten, Vorspulen auf `main`, Deploy, Issues, ohne Rückfrage und ohne Bericht darüber, nach dem Lieferweg unten (PR, grüne Pflichtprüfungen, dann `git push origin HEAD:main`). Das hebt die Standardvorsicht („Commit/Push nur auf Nachfrage“) für dieses Repo ausdrücklich auf. Andere Sitzungen und Instanzen sind ebenfalls Claude Code; nie Arbeit an den Product Owner abgeben.
+- **Den Product Owner fragen nur zu Produktentscheidungen** (Freigabe von Anforderungen, fachliche Zielkonflikte), per `AskUserQuestion`, nie als Freitext. Tooling, Git, Hooks und Server-Mechanik klärt Claude selbst.
+- **Aufgaben nur als GitHub-Issues** in diesem Repo; ein Issue erst schließen, wenn es end-to-end erledigt ist.
+
 ## Was nie hierher gehört
 
 Echte Reisen, Namen echter Personen, Serveradressen, geheime Pfade, Zugangsdaten, Konnektor-Links, Buchungen, Texte oder Fotos aus Reiseführern. Das gilt auch für Protokolle, Nachweise und Specs (`docs/artifacts/`, `docs/specs/`, `docs/context/`): kopierte Testausgaben mit Pfaden relativ zum Repo oder zu `~`, echte Reisen nur als Platzhalter (`<Reise A>`); `engine/tests/test_protokolle_ohne_pfade.py` prüft die Pfade. Beispiele und Tests nutzen nur die beiden Beispielreisen (`beispiel/reisen/beispielreise`, eine Wanderung mit Varianten, Personen Ida und Karl; `beispiel/reisen/stadtwochenende`, ein Wochenende bei Verwandten ohne Wanderung, Personen Tom und Lea) oder erfundene Testdaten.
