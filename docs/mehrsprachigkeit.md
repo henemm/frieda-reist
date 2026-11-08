@@ -130,7 +130,7 @@ Parameternamen: feste Wörter über alle Werkzeuge gleich übersetzen, zum Beisp
 | Seite (Startwert), Manifest, Kalender, Wächter-Meldungen, alles, was in Dateien der Reise geschrieben wird, Commit-Nachrichten | `reise.yaml sprache` | `de` | `trip_create` (Parameter `language`, Vorgabe: Sprache des Kontos), `setting_set` (nur Organisator:innen, mit Grund) |
 | Seite (Hülle), nach dem Umschalten | `localStorage` der Person | Sprache der Reise | Umschalter auf der Seite |
 | Konnektor (Anleitung, Beschreibungen, Ergebnisse, Fehler), Kontoseiten, Mails an die Person | `konten.sprache` | aus `Accept-Language` beim Anlegen des Kontos, sonst `en` | Kontoseite, Werkzeug `language_set` |
-| Übergangs-Links ohne Konto (`zugaenge.json`) | Sprache der Reise | | |
+| Übergangs-Links ohne Konto (`zugaenge.json`, abgeschafft #421) | – | | |
 | Rückmeldedienst | Feld `sprache` der Anfrage; die Seite schickt `SPRACHE`, der Konnektor die Sprache der Person | Sprache der Reise | |
 
 ### Was nie übersetzt wird

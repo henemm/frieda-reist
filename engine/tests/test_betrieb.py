@@ -47,7 +47,7 @@ def einstellungen(tmp_path, datei_text, **umgebung):
     (tmp_path / "betrieb").mkdir(exist_ok=True)
     (tmp_path / "betrieb/einstellungen.env").write_text(datei_text)
     namen = ["FR_INSTANZ", "FR_TITEL", "FR_SEITEN", "FR_ABLAGE", "FR_DIENST", "FR_KN_ADRESSE", "FR_PYTHON", "RM_ABLAGE",
-             "KN_SEITEN", "KN_ZUGAENGE", "KN_BASIS", "FR_ADRESSE", "FR_UMZUG_NACH"]
+             "KN_SEITEN", "KN_ZUGAENGE", "FR_KONNEKTOR", "KN_BASIS", "FR_ADRESSE", "FR_UMZUG_NACH"]
     skript = f'. "{BETRIEB}/gemeinsam.sh"; ' + "; ".join(f'echo "{n}=${{{n}:-}}"' for n in namen)
     r = subprocess.run(["bash", "-c", skript], capture_output=True, text=True,
                        env={**SAUBER, "FR_WURZEL": str(tmp_path), **umgebung})
@@ -59,7 +59,8 @@ def test_einstellungen_aus_datei_mit_vorgaben(tmp_path):
                                    "FR_TITEL=$(touch boese)\n")
     assert r.returncode == 0, r.stderr
     assert w["FR_INSTANZ"] == "probe" and w["FR_SEITEN"] == "/srv/probe" and w["FR_ABLAGE"] == "/srv/probe/_rueckmeldungen"
-    assert w["RM_ABLAGE"] == "/srv/probe/_rueckmeldungen" and w["KN_ZUGAENGE"] == "/srv/probe/_konnektor/zugaenge.json"
+    assert w["RM_ABLAGE"] == "/srv/probe/_rueckmeldungen" and w["FR_KONNEKTOR"] == "/srv/probe/_konnektor"
+    assert w["KN_ZUGAENGE"] == ""        # die Datei der alten Links gibt es nicht mehr (#421)
     assert w["FR_KN_ADRESSE"] == w["KN_BASIS"] == "https://reisen.example.org"   # Konnektor an der Wurzel (#163)
     assert w["FR_PYTHON"] == f"{tmp_path}/engine/.venv/bin/python"
     assert w["FR_UMZUG_NACH"] == ""
@@ -1637,14 +1638,11 @@ def test_freischalten_wartet_bei_429_auf_die_anfragebegrenzung(fs):
     assert len(zaehler.read_text().split()) == 7         # ein Versuch und sechs Wiederholungen
 
 
-def test_freischalten_link_fuer_die_claude_app(fs):
+def test_freischalten_kennt_keine_links_fuer_die_claude_app(fs):
+    """Links je Person für die Claude-App sind abgeschafft (#421): --person lehnt das Skript ab, ohne etwas zu tun."""
     r = fs["lauf"]("beispielreise", "--person", "ida")
-    assert r.returncode == 0, r.stdout + r.stderr
-    app = next(z for z in r.stdout.splitlines() if z.startswith("Claude-App: ")).split(": ", 1)[1]
-    token = app.rsplit("/", 1)[1]
-    assert app.startswith("https://example.invalid/mcp/")
-    assert json.loads((fs["tmp"] / "konnektor/zugaenge.json").read_text())[token]["person"] == "ida"
-    assert fs["lauf"]("beispielreise", "--person", "niemand").returncode != 0
+    assert r.returncode == 1 and "no longer exist" in r.stdout and "Claude-App" not in r.stdout
+    assert not (fs["tmp"] / "konnektor/zugaenge.json").exists()
 
 
 def test_freischalten_nginx_lehnt_ab_alles_zurueck(fs):
@@ -1676,12 +1674,12 @@ def _zustellen_umgebung(fs, monkeypatch):
         monkeypatch.setenv(k, fs["env"][k])
     monkeypatch.setenv("RM_ABLAGE", fs["env"]["FR_ABLAGE"])
     monkeypatch.setenv("KN_SEITEN", str(fs["seiten"]))
-    monkeypatch.setenv("KN_ZUGAENGE", str(fs["tmp"] / "konnektor/zugaenge.json"))
     monkeypatch.setenv("KN_BASIS", "https://example.invalid/mcp")
 
 
 def test_ausstehende_links_zustellen(fs, monkeypatch, capsys):
-    """Links einer neuen Reise gehen an die Person, sobald ihre Seite veröffentlicht ist; Unveröffentlichtes wartet."""
+    """Eine neue Reise wird zugestellt, sobald ihre Seite veröffentlicht ist; Unveröffentlichtes wartet. Eine ältere Anfrage
+    ohne Konto (aus der Zeit der Links) wird nur freigeschaltet und gemeldet, ohne Link für die Claude-App (#421)."""
     _zustellen_umgebung(fs, monkeypatch)
     datei = fs["tmp"] / "ausstehend.jsonl"
     datei.write_text(json.dumps({"ordner": "beispielreise", "aid": "A-1", "name": "Ida", "person": "ida"}) + "\n"
@@ -1693,8 +1691,9 @@ def test_ausstehende_links_zustellen(fs, monkeypatch, capsys):
     m = rm.meldungen(rm.ordner_neu(), "Ida")[0]
     assert m["art"] == "neue_reise" and m["auftraege"] == ["A-1"]
     assert "„Beispielreise – Malerweg in vier Tagen“ ist angelegt" in m["text"]
-    assert "Seite: https://example.invalid/beispielreise-" in m["text"] and "https://example.invalid/mcp/" in m["text"]
+    assert "Seite: https://example.invalid/beispielreise-" in m["text"] and "https://example.invalid/mcp/" not in m["text"]
     assert m["t"] == [["konto.meldungen.text.neue_reise", {"titel": "Beispielreise – Malerweg in vier Tagen"}]]   # #407: ohne Adresse
+    assert not (fs["tmp"] / "konnektor/zugaenge.json").exists()      # eine Anfrage ohne Konto bekommt keinen App-Link (#421)
     # Freischalten scheitert: Eintrag bleibt, Fehlerzeile ohne Links
     (fs["seiten"] / "spaeter").mkdir()
     (fs["seiten"] / "spaeter" / "daten.json").write_text("{}")
@@ -2074,7 +2073,13 @@ def test_instanz_vorgaben(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     # ohne alles: allgemeine Vorgabe, kein Name einer Instanz
     assert instanz.seiten() == Path("/srv/frieda") and instanz.ablage() == Path("/srv/frieda/_rueckmeldungen")
-    assert instanz.zugaenge() == Path("/srv/frieda/_konnektor/zugaenge.json") and "frieda-reist" in instanz.kennung()
+    assert instanz.konnektor() == Path("/srv/frieda/_konnektor") and "frieda-reist" in instanz.kennung()
+    monkeypatch.setenv("KN_ZUGAENGE", "/srv/alt/_konnektor/zugaenge.json")      # ältere Unit: ihr Ordner gilt (#421)
+    assert instanz.konnektor() == Path("/srv/alt/_konnektor")
+    monkeypatch.setenv("FR_KONNEKTOR", "/srv/neu/_konnektor")
+    assert instanz.konnektor() == Path("/srv/neu/_konnektor")
+    monkeypatch.delenv("KN_ZUGAENGE")
+    monkeypatch.delenv("FR_KONNEKTOR")
     # Einstellungen der Instanz im aktuellen Ordner (Aufruf von Hand im Reisen-Repo)
     (tmp_path / "betrieb").mkdir()
     (tmp_path / "betrieb/einstellungen.env").write_text("# x\nFR_INSTANZ=probe\nFR_KENNUNG=\"Probe/1 (ida@example.org)\"\n")
@@ -2083,11 +2088,11 @@ def test_instanz_vorgaben(tmp_path, monkeypatch):
     # ein Dienst, der nur die Ablage kennt, findet die Seiten daneben
     monkeypatch.chdir("/")
     monkeypatch.setenv("RM_ABLAGE", "/srv/andere/_rueckmeldungen")
-    assert instanz.seiten() == Path("/srv/andere") and instanz.zugaenge() == Path("/srv/andere/_konnektor/zugaenge.json")
+    assert instanz.seiten() == Path("/srv/andere") and instanz.konnektor() == Path("/srv/andere/_konnektor")
     # ausdrücklich gesetzte Werte gelten
     monkeypatch.setenv("KN_SEITEN", "/x/seiten")
-    monkeypatch.setenv("KN_ZUGAENGE", "/x/z.json")
-    assert instanz.seiten() == Path("/x/seiten") and instanz.zugaenge() == Path("/x/z.json")
+    monkeypatch.setenv("FR_KONNEKTOR", "/x/k")
+    assert instanz.seiten() == Path("/x/seiten") and instanz.konnektor() == Path("/x/k")
     assert instanz.ablage() == Path("/srv/andere/_rueckmeldungen")
 
 

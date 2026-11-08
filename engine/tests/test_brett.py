@@ -231,8 +231,8 @@ def test_brett_in_der_claude_app(umgebung):
     t, f = u.werkzeug(IDA, "wunsch_aendern", id=rid, eingeplant=True, bezug=["T-03"])
     assert not f and "eingeplant" in t, t
     # Link ohne Person: Einplanen ist eine Entscheidung und gehört genau einer Person
-    import konnektor as kn
-    kn.zugaenge_pfad().write_text(json.dumps({**kn.zugaenge(), "b" * 32: {"reise": "beispielreise", "rolle": "organisator"}}))
+    from conftest import zugang_dazu
+    zugang_dazu("b" * 32, reise="beispielreise", rolle="organisator")
     t, f = u.werkzeug("b" * 32, "wunsch_aendern", id=rid, eingeplant=False)
     assert f and "persönlichen Link" in t
     t, f = u.werkzeug(KARL, "wunsch_aendern", id="R-1", punkte=1)

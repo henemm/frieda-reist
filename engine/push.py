@@ -274,7 +274,7 @@ def seite_von(reise):
     for a in konten.push_abos():
         if a["reise"] == reise and a["seite"]:
             return a["seite"]
-    p = Path(os.environ.get("KN_SEITENLINKS") or instanz.zugaenge().with_name("seiten.json"))
+    p = Path(os.environ.get("KN_SEITENLINKS") or instanz.konnektor() / "seiten.json")
     try:
         links = json.loads(p.read_text(encoding="utf-8"))
         return links.get(reise) if isinstance(links, dict) else None

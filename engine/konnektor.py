@@ -1,25 +1,21 @@
 #!/usr/bin/env python3
-"""Konnektor für Frieda: macht eine Reise in der Claude-App nutzbar (MCP über HTTP).
+"""Konnektor für Frieda: macht die Reisen einer Person in der Claude-App nutzbar (MCP über HTTP).
 
-In der Claude-App (Einstellungen → Konnektoren → eigenen Konnektor hinzufügen) wird ein geheimer Link
-eingetragen. Danach kann Claude im Chat die Reise lesen (Tagesplan, Etappen, Varianten, offene Fragen,
-Wissen) und Rückmeldungen abgeben. Ein Link gehört zu genau einer Reise und einer Person aus reise.yaml
-(personen); die Rolle der Person entscheidet, was geht (docs/produkt.md, 26.10.2026):
+Die Person trägt in der Claude-App einen Konnektor „Frieda“ ein und meldet sich mit ihrer E-Mail-Adresse an (OAuth, ADR-0005,
+engine/oauth.py). Ein Konnektor gilt für alle Reisen des Kontos; jedes Reise-Werkzeug hat die Angabe reise. Die Rolle der
+Person in der Reise (reise.yaml personen) entscheidet, was geht (docs/produkt.md, 26.10.2026):
 
   gast      lesen
   mitwirkend   dazu Rückmeldungen, Wünsche, Aufgaben (AG-…) und über den Schreibweg Werte, Dinge, Optionen, Wahlstellen,
                Fragen und Wissen (Eingaben, keine Entscheidungen); alles gilt sofort, auch auf der Webseite
   organisator    dazu Entscheidungen (entscheiden), Arten und Merkmale, Plan eines Tags, Status und Einstellungen der
-               Reise, Einladungen (person_einladen). Seit 29.10.2026 (ADR-0001, Paket O-3) schreibt der Konnektor alles
-               über den Schreibweg (engine/schreiben.py, Rollen- und Regelprüfung, Probebau) sofort ins Reisen-Repo;
-               Änderungsaufträge (A-…, auftraege.jsonl) und der Einarbeiten-Lauf mit Claude Code sind entfallen.
-  Paket C (26.10.2026): Mitwirkende beantworten Fragen (frage_beantworten); einladen darf, wer regeln.einladen
-               erlaubt (Vorgabe: Organisator:innen); person_einladen legt die Person an und stellt ihren Zugang aus.
+               Reise, Einladungen per E-Mail-Adresse (person_einladen). Der Konnektor schreibt alles über den Schreibweg
+               (engine/schreiben.py, Rollen- und Regelprüfung, Probebau) sofort in die Reise (ADR-0001, Paket O-3).
 
-Paket H (27.10.2026): Ein Konto-Link gehört zu einer Person, nicht zu einer Reise („Frieda – meine Reisen“). Er zeigt die
-eigenen Reisen (meine_reisen) und legt neue an (reise_anlegen); Anfragen und Meldungen liegen in <konten>/neu/ (#72).
-
-Alte Links mit rolle mitreisend (vor dem 26.10.2026) gelten weiter als mitwirkend ohne festen Namen. Ein Link ohne Person (zugang <reise> mitwirkend) fragt nach dem Vornamen.
+Intern sieht der Konnektor eine Reise immer als Zugang {"reise", "person"} (antwort_auf, werkzeuge_fuer, werkzeug); der
+Konnektor „Frieda“ setzt ihn je Aufruf aus Konto und Angabe reise zusammen. Die geheimen Links je Reise und Person und
+der Konto-Link (Paket H) sind abgeschafft (#421, seit 1.11.2026 schon abgeschaltet); neue Reisen und Meldungen ohne Reise
+liegen in <konten>/neu/ (#72).
 
 Gelesen wird die veröffentlichte Seite (<seiten>/<reise>/daten.json), also genau der Stand der Webseite.
 Rückmeldungen gehen per HTTP an den Rückmeldedienst (ein Schreiber für eingang.jsonl), Aufträge schreibt
@@ -27,25 +23,19 @@ nur dieser Dienst.
 
 Aufrufe:
   python3 engine/konnektor.py dienst                       Dienst starten
-  python3 engine/konnektor.py zugang <reise> <person>|<rolle>      neuen geheimen Link anlegen (person aus reise.yaml
-                                                           oder eingeladen; in der App geht das mit person_einladen)
-  python3 engine/konnektor.py konto <schluessel> <Name>    persönlichen Konto-Link anlegen (meine Reisen, neue Reise)
-  python3 engine/konnektor.py zugaenge                     angelegte Links zeigen
-        Umgebung: KN_SEITEN, KN_ZUGAENGE (Standard aus engine/instanz.py: <Seiten>/_konnektor/zugaenge.json),
+        Umgebung: KN_SEITEN, FR_KONNEKTOR (Ordner des Konnektors, Standard aus engine/instanz.py: <Seiten>/_konnektor),
                   KN_RUECKMELDEDIENST (http://127.0.0.1:8771), KN_HOST (127.0.0.1), KN_PORT (8772),
-                  KN_BASIS (öffentliche Adresse des Dienstes, für die Links), RM_ABLAGE wie beim Rückmeldedienst,
-                  KN_SEITENLINKS (Links zu den Seiten je Reise, vom Betrieb geschrieben; Standard seiten.json neben
-                  KN_ZUGAENGE)
+                  KN_BASIS (öffentliche Adresse des Dienstes), RM_ABLAGE wie beim Rückmeldedienst,
+                  KN_SEITENLINKS (Links zu den Seiten je Reise, vom Betrieb geschrieben; Standard seiten.json im Ordner
+                  des Konnektors)
 
 HTTP (hinter nginx an der Wurzel von FR_KN_ADRESSE, Vorlage betrieb/vorlagen/nginx-konnektor-orte.inc, docs/betrieb.md):
   POST /mcp         MCP für den Konnektor „Frieda“ mit OAuth (engine/oauth.py); dazu Anmeldung und Konto (engine/anmeldung.py)
-  POST /<token>     MCP über einen geheimen Link aus der Zeit vor den Konten; der Dienst kennt den Pfad noch, nginx lässt ihn nicht mehr durch (abgeschaltet seit 1.11.2026)
-  GET  /gesund      Readiness (Zugänge lesbar, verlinkte Reisen veröffentlicht), ohne Token
+  GET  /gesund      Readiness (jede freigeschaltete Reise veröffentlicht), ohne Anmeldung
 """
 import base64
 import datetime
 import hashlib
-import hmac
 import json
 import os
 import re
@@ -116,7 +106,6 @@ MAX_GRUND = 500
 PROTOKOLLE = ("2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05")
 MAX_BODY = 64 * 1024
 MAX_AUFTRAG = 4000
-TOKEN_MUSTER = re.compile(r"^[A-Za-z0-9_-]{20,100}$")
 AID_MUSTER = re.compile(r"^A-\d{8}-\d{6}-[0-9a-f]{4}$")
 
 _sperre = threading.Lock()
@@ -151,48 +140,20 @@ def seiten():
     return instanz.seiten()
 
 
-def zugaenge_pfad():
-    return instanz.zugaenge()
-
-
-def zugaenge():
-    try:
-        return json.loads(zugaenge_pfad().read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        return {}
-
-
-def zugang_zu(token):
-    """Token -> {"reise", "person"} bzw. {"reise", "rolle"} oder None. Bei jeder Anfrage neu gelesen: neue Links ohne Neustart."""
-    if not TOKEN_MUSTER.match(token or ""):
-        return None
-    try:
-        alle = zugaenge().items()
-    except (OSError, ValueError, AttributeError):  # Datei kaputt oder unlesbar: niemand kommt rein, kein Absturz
-        return None
-    for t, z in alle:
-        if hmac.compare_digest(t, token):
-            if isinstance(z, dict) and "konto" in z:
-                ok = isinstance(z["konto"], str) and PERSON_MUSTER.match(z["konto"]) and isinstance(z.get("name"), str) \
-                    and z["name"].strip() and "reise" not in z
-                return z if ok else None
-            if not isinstance(z, dict) or not rm.REISE_MUSTER.match(z.get("reise", "")):
-                return None
-            if isinstance(z.get("person"), str) and PERSON_MUSTER.match(z["person"]):
-                return z
-            return z if rolle_neu(z.get("rolle")) in ROLLEN else None
-    return None
+def konnektor_ordner():
+    """Ordner des Konnektors (seiten.json, neue-reisen-ausstehend.jsonl; engine/instanz.py)."""
+    return instanz.konnektor()
 
 
 def sprache_des_zugangs(zugang):
-    """Sprache für diese Anfrage (ADR-0006): die des Kontos; bei Übergangs-Links ohne Konto die der Reise (veröffentlichte Daten);
-    sonst die Vorgabe der Personen."""
+    """Sprache für diese Anfrage (ADR-0006): die des Kontos; im Zugang einer Reise ohne Konto (intern, Tests) die der Reise
+    (veröffentlichte Daten); sonst die Vorgabe der Personen."""
     if zugang.get("konto_id"):
         k = konten.konto(zugang["konto_id"])
         if k:
             return k["sprache"]
     s = (((daten(zugang.get("reise") or "") or {}).get("reise") or {}).get("sprache")) if zugang.get("reise") else None
-    # ohne Konto und ohne lesbare Reise (alte Konto-Links): der Rückfall (texte.VORGABE_REISE)
+    # ohne Konto und ohne lesbare Reise: der Rückfall (texte.VORGABE_REISE)
     return s if texte.gueltig(s or "") else texte.VORGABE_REISE
 
 
@@ -1283,10 +1244,10 @@ class Handbuch:
 # ---------- Rückmeldungen und Aufträge ----------
 
 def ausstehend_datei():
-    """Links neuer Reisen, die veroeffentlichen.sh zustellt (betrieb/zustellen.py), sobald die Seite online ist. Liegt
-    neben den Zugängen im Ordner des Konnektors: Nur den darf der Konnektor beschreiben, der Dienstordner ist für ihn
-    schreibgeschützt (betrieb/vorlagen/konnektor.service)."""
-    return Path(os.environ.get("KN_AUSSTEHEND") or zugaenge_pfad().with_name("neue-reisen-ausstehend.jsonl"))
+    """Neue Reisen, die veroeffentlichen.sh zustellt (betrieb/zustellen.py), sobald die Seite online ist. Liegt im Ordner
+    des Konnektors: Nur den darf der Konnektor beschreiben, der Dienstordner ist für ihn schreibgeschützt
+    (betrieb/vorlagen/konnektor.service)."""
+    return Path(os.environ.get("KN_AUSSTEHEND") or konnektor_ordner() / "neue-reisen-ausstehend.jsonl")
 
 
 def rueckmeldung_senden(reise, eintrag):
@@ -1934,30 +1895,15 @@ def frage_beantworten(reise, d, h, wer, args):
 
 # ---------- Personen einladen (Paket C) ----------
 
-def zugang_ausstellen(z):
-    """Neuen geheimen Link anlegen -> Token. z: {"reise", "person"} oder {"reise", "rolle"}. Schreibt zugaenge.json
-    (Rechte 600); der Dienst braucht dafür Schreibrecht auf den Ordner (Einstellung des Dienstes im Betrieb)."""
-    p = zugaenge_pfad()
-    with _sperre:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        alle = zugaenge()
-        token = secrets.token_urlsafe(24)
-        alle[token] = {**z, "angelegt": datetime.date.today().isoformat()}
-        rm.schreiben(p, json.dumps(alle, ensure_ascii=False, indent=1) + "\n")
-        os.chmod(p, 0o600)
-    return token
-
-
-def einladen(reise, d, wer, args, mit_konto=False):
-    """person_einladen: Person mit Rolle anlegen und ihren Zugang ausstellen. Eine Person, die es schon gibt, bekommt
-    einen weiteren Link (ihre Rolle ändert sich dabei nie: das ist eine Einstellung der Reise). -> (Text, ist_fehler)
-    mit_konto (Konnektor „Frieda“, Paket J): statt eines Links geht eine Einladung an die E-Mail-Adresse; sie gilt beim
-    Anmelden (docs/konten.md). Auch eine Person, die es schon gibt, lässt sich so mit ihrem Konto verknüpfen."""
-    if mit_konto:
-        try:
-            email = konten.adresse(args.get("email"))
-        except konten.KontoFehler:
-            return tk("konnektor.einladen.24"), True
+def einladen(reise, d, wer, args):
+    """person_einladen: Person mit Rolle anlegen und eine Einladung an ihre E-Mail-Adresse schicken; sie gilt beim
+    Anmelden (Paket J, docs/konten.md). Auch eine Person, die es schon gibt, lässt sich so mit ihrem Konto verknüpfen;
+    ihre Rolle ändert person_einladen nur auf ausdrücklichen Wunsch einer Organisator:in. Links gibt es nicht mehr
+    (#421). -> (Text, ist_fehler)"""
+    try:
+        email = konten.adresse(args.get("email"))
+    except konten.KontoFehler:
+        return tk("konnektor.einladen.24"), True
     vorname = args.get("vorname")
     rolle = rolle_neu(args.get("rolle") or "mitwirkend")
     notiz = args.get("notiz") or ""
@@ -1974,8 +1920,6 @@ def einladen(reise, d, wer, args, mit_konto=False):
     name_von = wer["name"]
     if not name_von:
         return (tk("konnektor.einladen.6")), True
-    if not mit_konto and not os.environ.get("KN_BASIS"):
-        return tk("konnektor.einladen.7"), True
     o = rm.ordner(reise)
     if o is None:
         return tk("konnektor.einladen.8"), True
@@ -2009,41 +1953,15 @@ def einladen(reise, d, wer, args, mit_konto=False):
         with _sperre:
             if len(rm.einladungen_lesen(o)) >= rm.MAX_EINLADUNGEN:
                 return tk("konnektor.einladen.28"), True
-    if mit_konto:
-        # Eine Person, die schon in der Reise steht, mit einem Konto verknüpfen heißt: wer die Adresse hat, spricht als sie.
-        # Deshalb nur durch Organisator:innen, und Organisator:innen selbst verknüpft nur der Betreiber (konten.py einladen), sonst könnte
-        # man sich per eigener Adresse als eine andere Organisator:in ausgeben (Prüfung J3, 27.10.2026).
-        if not neu and not darf(wer["rolle"], "organisator"):
-            return (tk("konnektor.einladen.15")), True
-        if not neu and vorhanden["rolle"] == "organisator":
-            return (tk("konnektor.einladen.16", w1=vorhanden['name'])), True
-        return einladen_per_mail(reise, d, o, wer, args, vorname if neu else vorhanden["name"], rolle, schluessel, neu,
-                                 notiz, email)
-    try:
-        token = zugang_ausstellen({"reise": reise, "person": schluessel})
-    except OSError:
-        return (tk("konnektor.einladen.17")), True
-    link = f"{basis()}/{token}"
-    heute = datetime.date.today().isoformat()
-    if neu:
-        eintrag = {"name": vorname, "rolle": rolle, "reist": args.get("reist", True) is not False,
-                   "notiz": notiz or tkd("konnektor.einladen.18", name_von=name_von, w2=datum_de(heute)),
-                   "eingeladen_von": name_von, "datum": heute}
-        with _sperre:
-            alle = rm.einladungen_lesen(o)
-            alle[schluessel] = eintrag
-            rm.schreiben(o / "einladungen.json", json.dumps(alle, ensure_ascii=False, indent=1) + "\n")
-        text_ = (tkd("konnektor.einladen.1", name_von=name_von, vorname=vorname, rolle=rolle, schluessel=schluessel, w5='ja' if eintrag['reist'] else 'nein', w6=eintrag['notiz']))
-        person_sichern(reise, wer, text_, schluessel, eintrag, name_von)
-    z = [(tk("konnektor.ausgabe.einladen.eingeladen", w1=vorname) if neu else tk("konnektor.einladen.19", w1=vorhanden['name'])) + tk("konnektor.ausgabe.einladen.1", rolle=rolle),
-         link, "",
-         tk("konnektor.einladen.20") + vorname + tk("konnektor.einladen.11"),
-         {"gast": tk("konnektor.einladen.21"),
-          "mitwirkend": tk("konnektor.einladen.22"),
-          "organisator": tk("konnektor.einladen.23")}[rolle]]
-    if neu:
-        z.append(tk("konnektor.einladen.12"))
-    return "\n".join(z), False
+    # Eine Person, die schon in der Reise steht, mit einem Konto verknüpfen heißt: wer die Adresse hat, spricht als sie.
+    # Deshalb nur durch Organisator:innen, und Organisator:innen selbst verknüpft nur der Betreiber (konten.py einladen), sonst könnte
+    # man sich per eigener Adresse als eine andere Organisator:in ausgeben (Prüfung J3, 27.10.2026).
+    if not neu and not darf(wer["rolle"], "organisator"):
+        return (tk("konnektor.einladen.15")), True
+    if not neu and vorhanden["rolle"] == "organisator":
+        return (tk("konnektor.einladen.16", w1=vorhanden['name'])), True
+    return einladen_per_mail(reise, d, o, wer, args, vorname if neu else vorhanden["name"], rolle, schluessel, neu,
+                             notiz, email)
 
 
 def person_sichern(reise, wer, text_, schluessel, eintrag, name_von):
@@ -2065,7 +1983,7 @@ def person_sichern(reise, wer, text_, schluessel, eintrag, name_von):
 # ---------- Konto: meine Reisen und neue Reise (Paket H) ----------
 def seitenlinks():
     """Links zu den Seiten je Reise {reise: url}; schreibt der Betrieb beim Freischalten (fehlt die Datei: keine)."""
-    p = Path(os.environ.get("KN_SEITENLINKS") or zugaenge_pfad().with_name("seiten.json"))
+    p = Path(os.environ.get("KN_SEITENLINKS") or konnektor_ordner() / "seiten.json")
     try:
         d = json.loads(p.read_text(encoding="utf-8"))
         return d if isinstance(d, dict) else {}
@@ -2100,12 +2018,6 @@ def person_entfernen(reise, d, wer, args):
         return (tk("konnektor.person_entfernen.3", w1=p['name'])), True
     grund = str(args.get("grund") or "").strip()[:300]
     konten.entfernen(reise, p["schluessel"])
-    with _sperre:
-        alle = zugaenge()
-        rest = {t: z for t, z in alle.items() if not (z.get("reise") == reise and z.get("person") == p["schluessel"])}
-        if len(rest) != len(alle):
-            rm.schreiben(zugaenge_pfad(), json.dumps(rest, ensure_ascii=False, indent=1) + "\n")
-            os.chmod(zugaenge_pfad(), 0o600)
     o = rm.ordner(reise)
     if p.get("eingeladen") and o is not None:
         with _sperre:
@@ -2159,55 +2071,6 @@ def reise_kurz(reise):
     return {"titel": (d.get("reise") or {}).get("titel", reise), "seite": seitenlinks().get(reise)}
 
 
-def reisen_von(konto):
-    """Veröffentlichte Reisen, auf denen die Person des Kontos dabei ist (Schlüssel oder Name) -> Liste von Einträgen."""
-    name = konto["name"].casefold()
-    links, zug = seitenlinks(), zugaenge()
-    aus = []
-    for f in sorted(seiten().glob("*/daten.json")) if seiten().is_dir() else []:
-        reise = f.parent.name
-        d = daten(reise)
-        if not d:
-            continue
-        p = next((x for x in personen_der_reise(reise, d)
-                  if x.get("schluessel") == konto["konto"] or str(x.get("name", "")).casefold() == name), None)
-        if not p:
-            continue
-        rs = d.get("reise") or {}
-        apps = [t for t, z in zug.items() if z.get("reise") == reise and z.get("person") == p["schluessel"]]
-        aus.append({"reise": reise, "titel": rs.get("titel", reise), "untertitel": rs.get("untertitel", ""),
-                    "status": (rs.get("status") or {}).get("wert"), "rolle": p["rolle"], "seite": links.get(reise),
-                    "app": f"{basis()}/{apps[-1]}" if apps and os.environ.get("KN_BASIS") else None})
-    return aus
-
-
-def meine_reisen(konto):
-    """Text für das Werkzeug meine_reisen: Meldungen, eigene Reisen mit Links, angefragte neue Reisen."""
-    z = []
-    o = rm.ordner_neu()
-    if o:
-        ms = rm.meldungen_aktuell(o, konto["name"])
-        if ms:
-            z.append(tk("konnektor.ausgabe.meine_reisen.5"))
-            z += [f"- {datum_de(m['erstellt'][:10])}: {m['text']}" for m in ms]
-            z.append("")
-    reisen = reisen_von(konto)
-    z.append(tk("konnektor.ausgabe.meine_reisen.1", w1=len(reisen)) if reisen else tk("konnektor.meine_reisen.1"))
-    for r in reisen:
-        z.append(tk("konnektor.ausgabe.meine_reisen.2", w1=r['titel'], w2=r['untertitel'], w3=r['status'], w4=r['rolle']))
-        z.append(tk("konnektor.ausgabe.meine_reisen.3", w1=r['seite'] or tk("konnektor.ausgabe.meine_reisen.7")))
-        z.append(tk("konnektor.ausgabe.meine_reisen.4", w1=r['app'] or tk("konnektor.meine_reisen.2")))
-    if o:
-        offen = [e for e in rm.auftraege(o) if e.get("name") == konto["name"] and (e.get("daten") or {}).get("neue_reise")
-                 and e["status"] in ("neu", "rueckfrage")]
-        if offen:
-            z += ["", tk("konnektor.ausgabe.meine_reisen.6")]
-            z += [f"- {e['daten']['neue_reise']['titel']} ({e['id']}): "
-                  + (tk("konnektor.ausgabe.wird_angelegt") if e["status"] == "neu" else tk("konnektor.meine_reisen.3", w1=e.get('kommentar') or tk("konnektor.ausgabe.siehe_betreiber")))
-                  for e in offen]
-    return "\n".join(z)
-
-
 def reise_anlegen(konto, args):
     """reise_anlegen: prüft die Eingaben sofort, legt in <konten>/neu die Anfrage als Beleg ab und lässt den Schreibweg die
     Reise anlegen. Sobald die Seite online ist, bekommt die Person eine Meldung mit den Links (meine_reisen).
@@ -2231,23 +2094,22 @@ def reise_anlegen(konto, args):
         e = {"id": f"A-{jetzt:%Y%m%d-%H%M%S}-{secrets.token_hex(2)}", "erstellt": jetzt.isoformat(timespec="seconds"),
              "name": konto["name"], "konto": konto["konto"], "art": tkn("konnektor.ausgabe.reise_anlegen.1"), "ziel": "allgemein",
              "text": text_[:MAX_AUFTRAG], "quelle": "Claude-App", "daten": {"neue_reise": neu}}
-        if konto.get("konto_id"):
-            # Konnektor „Frieda“: wer anlegt, wird nach dem Anlegen mit seinem Konto verknüpft; wer eine Adresse hat,
-            # bekommt eine Einladung per Mail (im Betrieb, sobald die Seite online ist). Adressen nie ins Repo.
-            e["konto_id"] = konto["konto_id"]
-            mails = []
-            for x in args.get("personen") or []:
-                if isinstance(x, dict) and x.get("email"):
-                    try:
-                        adr = konten.adresse(x["email"])
-                    except konten.KontoFehler:
-                        return tk("konnektor.reise_anlegen.6", w1=x.get('vorname')), True
-                    schl = next((k_ for k_, p_ in neu["personen"].items() if p_["name"] == str(x.get("vorname")).strip()),
-                                None)
-                    if schl:
-                        mails.append({"schluessel": schl, "email": adr, "rolle": neu["personen"][schl]["rolle"],
-                                      "name": neu["personen"][schl]["name"]})
-            e["einladen"] = mails
+        # wer anlegt, wird nach dem Anlegen mit seinem Konto verknüpft; wer eine Adresse hat,
+        # bekommt eine Einladung per Mail (im Betrieb, sobald die Seite online ist). Adressen nie ins Repo.
+        e["konto_id"] = konto["konto_id"]
+        mails = []
+        for x in args.get("personen") or []:
+            if isinstance(x, dict) and x.get("email"):
+                try:
+                    adr = konten.adresse(x["email"])
+                except konten.KontoFehler:
+                    return tk("konnektor.reise_anlegen.6", w1=x.get('vorname')), True
+                schl = next((k_ for k_, p_ in neu["personen"].items() if p_["name"] == str(x.get("vorname")).strip()),
+                            None)
+                if schl:
+                    mails.append({"schluessel": schl, "email": adr, "rolle": neu["personen"][schl]["rolle"],
+                                  "name": neu["personen"][schl]["name"]})
+        e["einladen"] = mails
         with (o / "auftraege.jsonl").open("a", encoding="utf-8") as f:
             f.write(json.dumps(e, ensure_ascii=False) + "\n")
             f.flush()
@@ -2312,13 +2174,9 @@ def frieda_werkzeuge(k):
     for n, w in je_name.items():
         schema = dict(w["inputSchema"])
         eig = {k_: v for k_, v in schema.get("properties", {}).items() if k_ != "name"}   # der Name kommt aus dem Konto
-        if n == "person_einladen":
-            eig["email"] = EMAIL_FELD
         eig["reise"] = {"type": "string", "enum": wo[n],
                         "description": "@konnektor.feld.reise_ordner" if len(reisen) > 1 else "@konnektor.feld.reise_ordner_optional"}
         pflicht = [x for x in schema.get("required", []) if x != "name"]
-        if n == "person_einladen":
-            pflicht.append("email")
         if len(reisen) > 1:
             pflicht.append("reise")
         aus.append({**w, "inputSchema": {**schema, "properties": eig, "required": pflicht}})
@@ -2478,37 +2336,6 @@ def frieda_antwort(zugang, nid, methode, p, ok):
 
 MEINE_REISEN = {"name": "meine_reisen", "description": "@konnektor.werkzeug.meine_reisen",
                 "inputSchema": {"type": "object", "properties": {}}}
-
-
-def anleitung_konto(konto, sprache=None):
-    sprache = sprache or konto.get("sprache") or texte.VORGABE_REISE
-    return (anl(sprache, "konto.aufgabe", name=konto["name"], kennungen=anl(sprache, "kennungen_regel"))
-            + " " + anl(sprache, "antwortsprache"))
-
-
-def konto_antwort(konto, nid, methode, p, ok):
-    if methode == "initialize":
-        gewuenscht = p.get("protocolVersion") if isinstance(p, dict) else None
-        return ok({"protocolVersion": gewuenscht if gewuenscht in PROTOKOLLE else PROTOKOLLE[0],
-                   "capabilities": {"tools": {}},
-                   "serverInfo": {"name": "frieda", "title": tk("konnektor.ausgabe.konto_antwort.1"), "version": "1",
-                                  "icons": frieda_symbole()},
-                   "instructions": schnittstelle.namen_im_text(anleitung_konto(konto))})
-    if methode == "ping":
-        return ok({})
-    if methode == "tools/list":
-        return ok({"tools": schnittstelle.aussen(lokalisiert([MEINE_REISEN, REISE_ANLEGEN], sprache_des_zugangs(konto)))})
-    if methode == "tools/call":
-        name, args = aufruf_intern([MEINE_REISEN, REISE_ANLEGEN], p.get("name"), p.get("arguments") if isinstance(p.get("arguments"), dict) else {})
-        _gesichert.wert = None
-        if name == "meine_reisen":
-            t, fehler = meine_reisen(konto), False
-        elif name == "reise_anlegen":   # Übergangs-Link: ohne Angabe die Sprache des Zugangs (#216)
-            t, fehler = reise_anlegen(konto, {**args, "sprache": args.get("sprache") or sprache_des_zugangs(konto)})
-        else:
-            t, fehler = tk("konnektor.ausgabe.werkzeug.1", name=name), True
-        return ok({"content": inhalt(t), "isError": fehler})
-    return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 
 def meldungen_fuer(reise, name, d):
@@ -3023,7 +2850,7 @@ PERSON_EINLADEN = {"name": "person_einladen", "description": "@konnektor.werkzeu
                        "reist": {"type": "boolean", "description": "@konnektor.werkzeug.person_einladen.reist"},
                        "notiz": {"type": "string", "description": "@konnektor.werkzeug.person_einladen.notiz"},
                        "schluessel": {"type": "string", "description": "@konnektor.werkzeug.person_einladen.schluessel"},
-                       "name": NAME_FELD}, "required": ["vorname"]}}
+                       "email": EMAIL_FELD, "name": NAME_FELD}, "required": ["vorname", "email"]}}
 
 
 PERSON_ENTFERNEN = {"name": "person_entfernen", "description": "@konnektor.werkzeug.person_entfernen",
@@ -3088,7 +2915,7 @@ def anleitung(zugang, d):
     if wer["rolle"] == "organisator":
         z.append(anl(sp, "org", name=name,
                      pruefung=anl(sp, "org.pruefung_direkt" if direkt else "org.pruefung_ohne"),
-                     einladen=anl(sp, "org.einladen_konto" if "konto_id" in zugang else "org.einladen_link"),
+                     einladen=anl(sp, "org.einladen_konto"),
                      direkt=anl(sp, "org.direkt") if direkt else ""))
     elif wer["rolle"] == "mitwirkend":
         z.append(anl(sp, "mit", name=name, namen=namen, direkt=anl(sp, "mit.direkt") if direkt else "",
@@ -3100,8 +2927,6 @@ def anleitung(zugang, d):
     if status in STATUS_SAETZE:
         z.append(anl(sp, "status_label", satz=anl(sp, "status." + status)))
     aus = [b for b in ("varianten", "fragen", "aufgaben", "rueckmeldungen", "wuensche", "packliste") if bausteine is not None and b not in bausteine]
-    if wer["name"] is None and wer["rolle"] != "gast":
-        z.append(anl(sp, "link_ohne_person"))
     if aus:
         z.append(anl(sp, "ausgeschaltet", liste=", ".join(aus)))
     if bausteine is None or "varianten" in bausteine:
@@ -3210,7 +3035,7 @@ def werkzeug(zugang, name, args):
     if name == "frage_beantworten":
         return frage_beantworten(reise, d, h, wer, args)
     if name == "person_einladen":
-        return einladen(reise, d, {**wer, "person": zugang.get("person")}, args, mit_konto="konto_id" in zugang)
+        return einladen(reise, d, {**wer, "person": zugang.get("person")}, args)
     if name == "person_entfernen":
         return person_entfernen(reise, d, {**wer, "person": zugang.get("person")}, args)
     if name == "personen":
@@ -3285,6 +3110,17 @@ def werkzeug(zugang, name, args):
     return tk("konnektor.ausgabe.werkzeug.1", name=name), True
 
 
+def antwort_fuer(zugang, roh):
+    """Eine Anfrage (JSON-RPC-Nachricht oder Liste davon) für einen Zugang: Sprache und Zeitzone der Anfrage setzen, dann
+    beantworten. Zugang ist {"konto_id"} (Konnektor „Frieda“) oder intern {"reise", "person"}. -> Antwort, Liste oder None."""
+    zugang = {**zugang, "sprache": zugang.get("sprache") or sprache_des_zugangs(zugang)}
+    texte.aufruf_sprache(zugang["sprache"])
+    aufruf_zone(zone_des_zugangs(zugang))
+    if isinstance(roh, list):
+        return [a for a in (antwort_auf(zugang, n) for n in roh) if a is not None] or None
+    return antwort_auf(zugang, roh)
+
+
 def antwort_auf(zugang, nachricht):
     """Eine JSON-RPC-Nachricht -> Antwort-Objekt oder None (Benachrichtigung)."""
     if not isinstance(nachricht, dict) or nachricht.get("jsonrpc") != "2.0" or not isinstance(nachricht.get("method"), str):
@@ -3298,8 +3134,6 @@ def antwort_auf(zugang, nachricht):
 
     if "konto_id" in zugang:
         return frieda_antwort(zugang, nid, methode, p, ok)
-    if "konto" in zugang:
-        return konto_antwort(zugang, nid, methode, p, ok)
     if methode == "initialize":
         gewuenscht = p.get("protocolVersion") if isinstance(p, dict) else None
         rs = (daten(zugang["reise"]) or {}).get("reise", {})
@@ -3357,12 +3191,9 @@ def werkzeuge_fuer(zugang):
 
 
 def gesund():
-    """-> (HTTP-Code, Antwort). Verrät weder Tokens noch Reisen. Bereit, wenn jede freigeschaltete Reise (seiten.json) und
-    jede Reise mit altem Link veröffentlicht ist; ohne alte Links zählen nur die freigeschalteten."""
-    try:
-        reisen = {z.get("reise") for z in zugaenge().values() if "konto" not in z} | set(seitenlinks())
-    except (OSError, ValueError, AttributeError):
-        return 503, {"gesund": False}
+    """-> (HTTP-Code, Antwort). Verrät keine Reisen. Bereit, wenn es eine freigeschaltete Reise (seiten.json) gibt und
+    jede veröffentlicht ist."""
+    reisen = set(seitenlinks())
     if not reisen or any(daten(r) is None for r in reisen):
         return 503, {"gesund": False}
     return 200, {"gesund": True}
@@ -3407,10 +3238,6 @@ class Dienst(BaseHTTPRequestHandler):
         if self.command != "HEAD":
             self.wfile.write(body)
 
-    def _zugang(self):
-        teile = self.path.split("?", 1)[0].strip("/").split("/")
-        return zugang_zu(teile[0]) if len(teile) == 1 else None
-
     def _anmeldung(self):
         """Friedas Anmeldeseiten (engine/anmeldung.py, Paket J2) und OAuth-Endpunkte (engine/oauth.py, J3)."""
         body = b""
@@ -3447,7 +3274,7 @@ class Dienst(BaseHTTPRequestHandler):
             self.wfile.write(inhalt)
 
     def do_GET(self):
-        # Readiness für BetterStack ohne geheimen Link: Zugänge lesbar und jede verlinkte Reise veröffentlicht
+        # Readiness für die Überwachung, ohne Anmeldung: jede freigeschaltete Reise veröffentlicht
         if self.path.split("?", 1)[0] == "/gesund":
             return self._senden(*gesund())
         if self.path.split("?", 1)[0] in FESTE_DATEIEN:
@@ -3459,10 +3286,8 @@ class Dienst(BaseHTTPRequestHandler):
             if not oauth.basis() or not konten.oauth_konto(oauth.bearer(self.headers) or ""):
                 return self._senden(401, {"fehler": tk("konnektor.do_get.1")}, {"WWW-Authenticate": oauth.www_authenticate()})
             return self._senden(405, {"fehler": "nur POST"}, {"Allow": "POST"})
-        # Kein SSE-Kanal: der Dienst schickt nie von sich aus etwas (Streamable HTTP erlaubt 405).
-        if self._zugang() is None:
-            return self._senden(404, {"fehler": "unbekannt"})
-        self._senden(405, {"fehler": "nur POST"}, {"Allow": "POST"})
+        # Alles andere gibt es nicht; die geheimen Links je Reise sind abgeschafft (#421)
+        self._senden(404, {"fehler": "unbekannt"})
 
     do_DELETE = do_GET
     do_HEAD = do_GET    # Kalender-Apps und Prüfdienste fragen mit HEAD, ob es die Adresse gibt; 501 lässt das Abo scheitern
@@ -3490,21 +3315,16 @@ class Dienst(BaseHTTPRequestHandler):
     def do_POST(self):
         if anmeldung.ist_unsere(self.path) or oauth.ist_unsere(self.path):
             return self._anmeldung()
-        if self.path.split("?", 1)[0] == "/mcp":
-            # Konnektor „Frieda“ (Paket J3): Bearer-Token aus OAuth; ohne gültiges 401 mit Zeiger auf die Metadaten
-            t = oauth.bearer(self.headers)
-            k = konten.oauth_konto(t) if t and oauth.basis() else None
-            if not k:
-                return self._senden(401, {"fehler": tk("konnektor.do_get.1")},
-                                    {"WWW-Authenticate": oauth.www_authenticate(fehler=bool(t))})
-            zugang = {"konto_id": k["id"], "sprache": k["sprache"]}
-        else:
-            zugang = self._zugang()
-        if zugang is None:
+        if self.path.split("?", 1)[0] != "/mcp":   # die geheimen Links je Reise sind abgeschafft (#421)
             return self._senden(404, {"fehler": "unbekannt"})
-        zugang = {**zugang, "sprache": zugang.get("sprache") or sprache_des_zugangs(zugang)}
-        texte.aufruf_sprache(zugang["sprache"])
-        aufruf_zone(zone_des_zugangs(zugang))
+        # Konnektor „Frieda“ (Paket J3): Bearer-Token aus OAuth; ohne gültiges 401 mit Zeiger auf die Metadaten
+        t = oauth.bearer(self.headers)
+        k = konten.oauth_konto(t) if t and oauth.basis() else None
+        if not k:
+            return self._senden(401, {"fehler": tk("konnektor.do_get.1")},
+                                {"WWW-Authenticate": oauth.www_authenticate(fehler=bool(t))})
+        zugang = {"konto_id": k["id"], "sprache": k["sprache"]}
+        texte.aufruf_sprache(k["sprache"])      # auch für die Fehler unten
         try:
             laenge = int(self.headers.get("Content-Length", "0"))
         except ValueError:
@@ -3515,11 +3335,8 @@ class Dienst(BaseHTTPRequestHandler):
             roh = json.loads(self.rfile.read(laenge).decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
             return self._senden(400, {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "kein JSON"}})
-        if isinstance(roh, list):
-            antworten = [a for a in (antwort_auf(zugang, n) for n in roh) if a is not None]
-            return self._senden(200, antworten) if antworten else self._senden(202)
-        a = antwort_auf(zugang, roh)
-        return self._senden(200, a) if a is not None else self._senden(202)
+        a = antwort_fuer(zugang, roh)
+        return self._senden(200, a) if a else self._senden(202)
 
     def log_message(self, fmt, *args):
         # Kein Token und keine Inhalte ins Protokoll
@@ -3529,7 +3346,7 @@ class Dienst(BaseHTTPRequestHandler):
 def dienst():
     host = os.environ.get("KN_HOST", "127.0.0.1")
     port = int(os.environ.get("KN_PORT", "8772"))
-    print(f"Connector on {host}:{port}, pages {seiten()}, access list {zugaenge_pfad()}", flush=True)
+    print(f"Connector on {host}:{port}, pages {seiten()}, folder {konnektor_ordner()}", flush=True)
     ThreadingHTTPServer((host, port), Dienst).serve_forever()
 
 
@@ -3537,56 +3354,9 @@ def basis():
     return os.environ.get("KN_BASIS", "http://127.0.0.1:8772").rstrip("/")
 
 
-def zugang_anlegen(reise, wen):
-    """wen: Schlüssel einer Person aus reise.yaml (personen) oder eine Rolle ohne festen Namen."""
-    if not rm.REISE_MUSTER.match(reise):
-        sys.exit("Usage: zugang <trip> <person>|<role>")
-    d = daten(reise)
-    if d is None:
-        sys.exit(f"Trip “{reise}” is not published at {seiten()} (build and publish it first).")
-    personen = {p["schluessel"]: p for p in personen_der_reise(reise, d)}
-    if wen in personen:
-        z = {"reise": reise, "person": wen}
-        wer = f"{personen[wen]['name']}, {personen[wen]['rolle']}"
-    elif wen in ROLLEN:
-        z = {"reise": reise, "rolle": wen}
-        wer = tk("konnektor.ausgabe.zugang_anlegen.1", wen=wen)
-    else:
-        sys.exit(f"“{wen}” is neither a person of the trip ({', '.join(personen) or 'none in reise.yaml'}) "
-                 f"nor a role ({', '.join(ROLLEN)}).")
-    token = zugang_ausstellen(z)
-    print(f"{reise} ({wer}): {basis()}/{token}")
-
-
-def konto_anlegen(schluessel, name):
-    """Persönlicher Konto-Link: meine Reisen und neue Reise anlegen (Paket H). Wer einen hat, darf Reisen anlegen."""
-    if not PERSON_MUSTER.match(schluessel) or not name.strip() or "\n" in name:
-        sys.exit("Usage: konto <key> <name>  (key lowercase, no umlauts, e.g. hanna)")
-    token = zugang_ausstellen({"konto": schluessel, "name": name.strip()})
-    print(f"Konto {schluessel} ({name.strip()}): {basis()}/{token}")
-
-
-def zugaenge_zeigen():
-    alle = zugaenge()
-    if not alle:
-        print("No access entries.")
-    for t, z in alle.items():
-        if "konto" in z:
-            print(f"Konto {z['konto']} ({z.get('name')}, {z.get('angelegt', '?')}): {basis()}/{t}")
-            continue
-        wer = z.get("person") or tk("konnektor.ausgabe.zugaenge_zeigen.1", w1=z.get('rolle'))
-        print(f"{z.get('reise')} ({wer}, {z.get('angelegt', '?')}): {basis()}/{t}")
-
-
 def main(a):
     if a[:1] == ["dienst"]:
         dienst()
-    elif a[:1] == ["zugang"] and len(a) == 3:
-        zugang_anlegen(a[1], a[2])
-    elif a[:1] == ["konto"] and len(a) == 3:
-        konto_anlegen(a[1], a[2])
-    elif a[:1] == ["zugaenge"]:
-        zugaenge_zeigen()
     else:
         print(__doc__)
         return 1

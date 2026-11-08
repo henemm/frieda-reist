@@ -348,11 +348,12 @@ def test_betreiber_entscheidet_bitten(welt):
     assert not fehler and konten.recht(konten.konto_per_email(BEN), "reise_anlegen")
 
 
-def test_alter_link_geht_weiter(welt):
-    """Übergang: Die bisherigen Konnektor-Links funktionieren neben dem neuen Konnektor weiter."""
+def test_alte_links_gibt_es_nicht_mehr(welt):
+    """Die geheimen Konnektor-Links je Reise und Person sind abgeschafft (#421): Ihr Pfad antwortet 404, nur /mcp mit
+    Anmeldung führt in die Reisen."""
+    from test_regeln import KARL as KARL_LINK, anfrage
     u = welt()
-    from test_regeln import KARL as KARL_LINK
-    assert "rueckmeldung_geben" in u.werkzeuge(KARL_LINK)
+    assert anfrage(f"{u.kurl}/{KARL_LINK}", {"jsonrpc": "2.0", "id": 1, "method": "tools/list"})[0] == 404
 
 
 def test_person_entfernen(welt):
@@ -361,7 +362,6 @@ def test_person_entfernen(welt):
     konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
     ida, _ = verbinden(u, IDA)
     karl, _ = verbinden(u, KARL)
-    from test_regeln import KARL as KARL_LINK
     assert "person_entfernen" not in {w["name"] for w in mcp(u, karl["access_token"], "tools/list")[2]["result"]["tools"]}
     assert aufruf(u, ida["access_token"], "person_entfernen", person="Ida")[1]          # sich selbst nicht
     # Die Person wird über den Schreibweg zum Gast, der nicht mitreist (hier nachgestellt)
@@ -373,7 +373,6 @@ def test_person_entfernen(welt):
     assert not fehler and "endet sofort" in text, text
     assert konten.mitglied(konten.konto_per_email(KARL)["id"], "beispielreise") is None
     assert "Noch keine Reise" in aufruf(u, karl["access_token"], "meine_reisen")[0]
-    assert KARL_LINK not in json.loads(Path(__import__("os").environ["KN_ZUGAENGE"]).read_text())   # alter Link weg
     assert geschrieben and geschrieben[-1][1] == "person_schreiben" and geschrieben[-1][2]["args"]["schluessel"] == "karl"
     assert geschrieben[-1][2]["args"]["rolle"] == "gast" and geschrieben[-1][2]["args"]["ausgeschieden"] == "fährt nicht mit"   # den Satz der Notiz schreibt der Schreibweg in der Sprache der Reise
 

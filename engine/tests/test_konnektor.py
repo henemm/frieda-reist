@@ -14,7 +14,7 @@ import bauen  # noqa: E402
 import konnektor as kn  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from schnittstelle_hilfe import N, intern_liste  # noqa: E402
-from conftest import meldet  # noqa: E402
+from conftest import mcp_intern, meldet, zugaenge_datei  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 BEISPIEL = WURZEL / "beispiel" / "reisen" / "beispielreise"   # erfundene Reise: ida organisator, karl mitwirkend
@@ -23,7 +23,7 @@ MITREISEND = "m" * 32    # alter Link (rolle mitreisend) -> Mitwirkende ohne fes
 KARL = "f" * 32          # Link einer Person (reise.yaml personen: karl, mitwirkend)
 GAST = "r" * 32       # Link mit Rolle gast, nur lesen
 WEG = "w" * 32           # Link einer Person, die es in reise.yaml nicht (mehr) gibt
-KONTO = "c" * 32         # Konto-Link von Ida: meine Reisen, neue Reise (Paket H)
+IDA_KONTO = {"konto": "ida", "name": "Ida", "konto_id": "k-ida"}   # wie der Konnektor „Frieda“ reise_anlegen ruft
 
 
 @pytest.fixture(scope="module")
@@ -72,7 +72,7 @@ def anfrage(url, daten=None, methode="POST"):
 
 
 def rpc(basis, token, methode, params=None, nid=1):
-    code, a = anfrage(f"{basis}/{token}", {"jsonrpc": "2.0", "id": nid, "method": methode, "params": params or {}})
+    code, a = mcp_intern(token, {"jsonrpc": "2.0", "id": nid, "method": methode, "params": params or {}})
     assert code == 200, a
     return intern_liste(a["result"]) if methode == "tools/list" else a["result"]
 
@@ -98,14 +98,14 @@ def test_initialize_und_protokoll(dienst):
     assert "Beispielreise" in r["serverInfo"]["title"]
     assert "Vornamen" in r["instructions"]
     assert rpc(basis, MITREISEND, "initialize", {"protocolVersion": "1999-01-01"})["protocolVersion"] == kn.PROTOKOLLE[0]
-    # Benachrichtigung: 202 ohne Inhalt
-    req = urllib.request.Request(f"{basis}/{MITREISEND}", method="POST", headers={"Content-Type": "application/json"},
-                                 data=json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}).encode())
-    with urllib.request.urlopen(req) as a:
-        assert a.status == 202
-    assert anfrage(f"{basis}/{MITREISEND}", methode="GET")[0] == 405
-    code, a = anfrage(f"{basis}/{MITREISEND}", {"jsonrpc": "2.0", "id": 7, "method": "gibtsnicht"})
+    # Benachrichtigung: keine Antwort (über HTTP 202)
+    assert mcp_intern(MITREISEND, {"jsonrpc": "2.0", "method": "notifications/initialized"}) == (202, None)
+    code, a = mcp_intern(MITREISEND, {"jsonrpc": "2.0", "id": 7, "method": "gibtsnicht"})
     assert a["error"]["code"] == -32601
+    # Die geheimen Links je Reise sind abgeschafft (#421): über HTTP gibt es den Weg nicht mehr
+    for methode in ("POST", "GET"):
+        assert anfrage(f"{basis}/{MITREISEND}", {"jsonrpc": "2.0", "id": 1, "method": "ping"} if methode == "POST" else None,
+                       methode=methode)[0] == 404
 
 
 def test_initialize_meldet_symbol_der_reise(dienst, seiten):
@@ -176,7 +176,7 @@ def test_status_mit_kommentar_erscheint_beim_absender(dienst):
 
 def test_stapel(dienst):
     basis, _ = dienst
-    code, a = anfrage(f"{basis}/{MITREISEND}", [{"jsonrpc": "2.0", "id": 1, "method": "ping"},
+    code, a = mcp_intern(MITREISEND, [{"jsonrpc": "2.0", "id": 1, "method": "ping"},
                                                 {"jsonrpc": "2.0", "method": "notifications/initialized"},
                                                 {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}])
     assert code == 200 and [x["id"] for x in a] == [1, 2]
@@ -220,7 +220,6 @@ def test_rollen_aus_reise_yaml(dienst):
     assert "Du sprichst mit Ida (Organisator:in)" in kn.anleitung({"reise": "beispielreise", "person": "ida"}, d)
     # Frieda spricht in Namen, nicht in Kennungen (28.10.2026)
     assert "Namen statt Kennungen" in a and "IDs in Antworten nennen" not in a
-    assert "Namen statt Kennungen" in kn.anleitung_konto({"name": "Ida"})
     assert "nur lesen" in kn.anleitung({"reise": "beispielreise", "rolle": "gast"}, d)
     assert "Vornamen" in kn.anleitung({"reise": "beispielreise", "rolle": "mitreisend"}, d)
 
@@ -282,82 +281,27 @@ def test_rueckmeldung_alter_organisator_name_fest(dienst):
     assert rm.eintraege(ablage / "beispielreise")[0]["name"] == "Ida"
 
 
-def test_konto_meine_reisen_und_reise_anlegen(dienst, seiten, capsys, monkeypatch, tmp_path):
-    """Paket H: Ein Konto-Link gehört zu einer Person, nicht zu einer Reise. Er zeigt ihre Reisen mit Links und legt neue an;
-    der Dienst prüft sofort, die Reise entsteht erst im Betrieb. Reise-Links können keine Reise anlegen."""
+def test_reise_anlegen_prueft_und_braucht_den_schreibweg(dienst, capsys):
+    """reise_anlegen (Konnektor „Frieda“) prüft die Eingaben sofort; ohne eingerichteten Schreibweg legt der Dienst nichts
+    an (ADR-0001, O-3). Den alten Konto-Link (Paket H) gibt es nicht mehr (#421)."""
     basis, ablage = dienst
-    zug = Path(kn.os.environ["KN_ZUGAENGE"])
-    alle = json.loads(zug.read_text())
-    alle[KONTO] = {"konto": "ida", "name": "Ida"}
-    alle["k" * 32] = {"konto": "x y", "name": "Kaputt"}
-    zug.write_text(json.dumps(alle))
-    (zug.parent / "seiten.json").write_text(json.dumps({"beispielreise": "https://example.invalid/beispielreise-geheim/"}))
-    monkeypatch.setenv("KN_BASIS", "https://example.invalid/mcp")
-    assert anfrage(f"{basis}/{'k' * 32}", {"jsonrpc": "2.0", "id": 1, "method": "ping"})[0] == 404
-    init = rpc(basis, KONTO, "initialize")
-    assert init["serverInfo"]["title"] == "Frieda – meine Reisen" and "Frieda, die Reiseplanung von Ida" in init["instructions"]
-    assert {t["name"] for t in rpc(basis, KONTO, "tools/list")["tools"]} == {"meine_reisen", "reise_anlegen"}
-    assert "reise_anlegen" not in {t["name"] for t in rpc(basis, ALT_ORGANISATOR, "tools/list")["tools"]}
-    t, f = werkzeug(basis, KONTO, "meine_reisen")
-    assert not f and "Deine Reisen (1):" in t and "Status planung, du: organisator" in t
-    assert "Seite: https://example.invalid/beispielreise-geheim/" in t and f"Claude-App: https://example.invalid/mcp/{ALT_ORGANISATOR}" in t
-    t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Ski", von="2027-02-13", bis="2027-02-06")
+    assert anfrage(f"{basis}/{'c' * 32}", {"jsonrpc": "2.0", "id": 1, "method": "ping"})[0] == 404
+    t, f = kn.reise_anlegen(IDA_KONTO, {"titel": "Ski", "von": "2027-02-13", "bis": "2027-02-06"})
     assert f and meldet(t, "pruefung.reise_neu.4")
-    t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Beispielreise", von="2027-02-06", bis="2027-02-13", pfad="beispielreise")
+    t, f = kn.reise_anlegen(IDA_KONTO, {"titel": "Beispielreise", "von": "2027-02-06", "bis": "2027-02-13", "pfad": "beispielreise"})
     assert f and "gibt es schon" in t
-    # Ohne eingerichteten Schreibweg legt der Dienst keine Reise an (ADR-0001, O-3): nichts wird gespeichert
-    t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Winterwoche im Allgäu", von="2027-02-06", bis="2027-02-13",
-                    ziel="Oberstdorf",
-                    personen=[{"vorname": "Karl", "rolle": "mitwirkend"}, {"vorname": "Mo", "rolle": "gast", "reist": False}],
-                    notiz="Hotel schon gebucht (Bestätigung vom 1.10.2026).")
+    t, f = kn.reise_anlegen(IDA_KONTO, {"titel": "Winterwoche im Allgäu", "von": "2027-02-06", "bis": "2027-02-13",
+                                        "personen": [{"vorname": "Karl", "rolle": "mitwirkend"}]})
     assert f and "Schreibweg dieser Instanz ist nicht eingerichtet" in t
     o = rm.ordner_neu()
     assert not (o and (o / "auftraege.jsonl").exists()) and not (ablage / rm.NEU).exists()
-    # Die Anfrage, die der Schreibweg als Beleg in der Ablage hinterlässt (test_neue_reise_ueber_den_schreibweg), zeigt
-    # meine_reisen, bis die Seite online ist; sie gehört zu keiner Reise
-    from reise import neue_reise_pruefen
-    neu, fehler = neue_reise_pruefen({"titel": "Winterwoche im Allgäu", "von": "2027-02-06", "bis": "2027-02-13",
-                                      "ziel": "Oberstdorf", "notiz": "Hotel schon gebucht (Bestätigung vom 1.10.2026).",
-                                      "personen": [{"vorname": "Karl", "rolle": "mitwirkend"},
-                                                   {"vorname": "Mo", "rolle": "gast", "reist": False}]}, "Ida")
-    assert fehler is None and neu["pfad"] == "winterwoche-im-allgaeu-2027" and neu["personen"]["mo"]["reist"] is False
-    o = rm.ordner_neu(anlegen=True)
-    a = {"id": "A-20261027-100000-0001", "erstellt": rm.jetzt_iso(), "name": "Ida", "konto": "ida", "art": "Auftrag",
-         "ziel": "allgemein", "text": "Neue Reise", "quelle": "Claude-App", "daten": {"neue_reise": neu}}
-    (o / "auftraege.jsonl").write_text(json.dumps(a, ensure_ascii=False) + "\n")
-    assert not (ablage / "beispielreise" / "auftraege.jsonl").exists()
-    rm.liste(rm.NEU, False)
-    assert "NEW TRIP by Ida" in capsys.readouterr().out
-    t, _ = werkzeug(basis, KONTO, "meine_reisen")
-    assert "Angefragte neue Reisen:\n- Winterwoche im Allgäu" in t and meldet(t, "konnektor.ausgabe.wird_angelegt")
-    # Nach dem Anlegen: Meldung mit den Links (schreibt der Betrieb), der Auftrag ist übernommen
-    rm.meldung_anlegen(o, ["Ida"], "neue_reise", "winterwoche-im-allgaeu-2027", "Deine neue Reise ist angelegt: Seite …")
-    rm.setze(rm.NEU, a["id"], "uebernommen", "angelegt")
-    t, _ = werkzeug(basis, KONTO, "meine_reisen")
-    assert t.startswith("Meldungen an dich:\n- ") and "Deine neue Reise ist angelegt" in t and "Angefragte" not in t
-    # Ein Konto-Link hält den Dienst gesund, auch ohne Reise
-    assert kn.gesund()[0] == 200
 
 
-def test_zugang_anlegen(seiten, tmp_path, monkeypatch, capsys):
-    monkeypatch.setenv("KN_SEITEN", str(seiten))
-    monkeypatch.setenv("KN_ZUGAENGE", str(tmp_path / "k" / "z.json"))
-    kn.zugang_anlegen("beispielreise", "karl")
-    aus = capsys.readouterr().out.strip()
-    assert "Karl, mitwirkend" in aus
-    token = aus.split()[-1].rsplit("/", 1)[1]
-    assert kn.zugang_zu(token) == {"reise": "beispielreise", "person": "karl", "angelegt": kn.datetime.date.today().isoformat()}
-    assert (tmp_path / "k" / "z.json").stat().st_mode & 0o777 == 0o600
-    kn.zugang_anlegen("beispielreise", "mitwirkend")   # Rolle ohne festen Namen
-    token = capsys.readouterr().out.strip().split()[-1].rsplit("/", 1)[1]
-    assert kn.zugang_zu(token)["rolle"] == "mitwirkend"
-    assert kn.zugang_zu("kurz") is None
-    with pytest.raises(SystemExit):
-        kn.zugang_anlegen("andere-reise", "ida")  # nicht veröffentlicht
-    with pytest.raises(SystemExit):
-        kn.zugang_anlegen("beispielreise", "chef")   # weder Person noch Rolle
-    kn.zugaenge_zeigen()
-    assert "(karl," in capsys.readouterr().out
+def test_alte_befehle_fuer_links_gibt_es_nicht_mehr(capsys):
+    """zugang, konto und zugaenge stellten geheime Links aus; seit #421 kennt die Kommandozeile nur noch dienst."""
+    for befehl in (["zugang", "beispielreise", "karl"], ["konto", "ida", "Ida"], ["zugaenge"]):
+        assert kn.main(befehl) == 1
+    assert not hasattr(kn, "zugang_ausstellen") and not hasattr(kn, "zugang_zu")
 
 
 def test_text_aus_html():
@@ -370,35 +314,18 @@ def test_text_aus_html():
 
 
 def test_gesund_ohne_token(dienst, tmp_path, monkeypatch):
+    """Bereit, wenn es freigeschaltete Reisen gibt (seiten.json im Ordner des Konnektors) und jede veröffentlicht ist; die
+    Antwort verrät keine Reise."""
     basis, _ = dienst
-    code, a = anfrage(f"{basis}/gesund", methode="GET")
-    assert (code, a) == (200, {"gesund": True})
-    # Link auf eine nicht veröffentlichte Reise -> nicht bereit, ohne Details zu verraten
-    zug = tmp_path / "zugaenge.json"
-    z = json.loads(zug.read_text())
-    z["k" * 32] = {"reise": "gibtsnicht", "rolle": "mitreisend"}
-    zug.write_text(json.dumps(z))
-    code, a = anfrage(f"{basis}/gesund", methode="GET")
-    assert (code, a) == (503, {"gesund": False})
-    zug.write_text("{kaputt")
-    assert anfrage(f"{basis}/gesund", methode="GET")[0] == 503
-    # Alte Links abgeschaltet: gesund, solange die freigeschalteten Reisen veröffentlicht sind
-    zug.write_text("{}")
-    assert anfrage(f"{basis}/gesund", methode="GET")[0] == 503
+    assert kn.konnektor_ordner() == tmp_path
+    assert anfrage(f"{basis}/gesund", methode="GET") == (503, {"gesund": False})      # noch keine Reise freigeschaltet
     links = tmp_path / "seiten.json"
     links.write_text(json.dumps({"beispielreise": "https://beispiel.invalid/beispielreise/"}))
     assert anfrage(f"{basis}/gesund", methode="GET") == (200, {"gesund": True})
     links.write_text(json.dumps({"beispielreise": "…", "gibtsnicht": "…"}))
+    assert anfrage(f"{basis}/gesund", methode="GET") == (503, {"gesund": False})
+    links.write_text("{kaputt")
     assert anfrage(f"{basis}/gesund", methode="GET")[0] == 503
-
-
-def test_kaputte_zugaenge(tmp_path, monkeypatch):
-    z = tmp_path / "z.json"
-    z.write_text("{kaputt")
-    monkeypatch.setenv("KN_ZUGAENGE", str(z))
-    assert kn.zugang_zu(ALT_ORGANISATOR) is None
-    z.write_text("[]")
-    assert kn.zugang_zu(ALT_ORGANISATOR) is None
 
 
 def test_nacht_ohne_doppelten_namen(seiten, tmp_path, monkeypatch):
@@ -782,9 +709,9 @@ def test_entscheiden_ueber_den_schreibweg_und_widerspruch(schreibweg):
     assert not f and "Nicht entschieden" not in t                        # dieselbe Person darf ihre Wahl ändern
     assert Schreibweg.anfragen[-1][0] == "/beispielreise/entscheiden"
     # Zweite Organisatorin über die Rolle: konflikte() vergleicht Personen; wir stellen Idas Wahl als fremde dar, indem Karl Organisator wird
-    zug = json.loads(Path(kn.zugaenge_pfad()).read_text())
+    zug = json.loads(zugaenge_datei().read_text())
     zug["o" * 32] = {"reise": "beispielreise", "rolle": "organisator"}   # Rollen-Link ohne Namen: kein Entscheiden
-    Path(kn.zugaenge_pfad()).write_text(json.dumps(zug))
+    zugaenge_datei().write_text(json.dumps(zug))
     t, f = werkzeug(basis, "o" * 32, "entscheiden", option="V-03.a", status="verworfen", grund="zu teuer")
     assert f and "persönlichen Link" in t
 
@@ -884,12 +811,12 @@ def test_rueckmeldung_erledigen_und_wissen_und_fragen(schreibweg):
     assert not f and Schreibweg.anfragen[-1][2]["args"] == {"frage": "F-03", "ergebnis": "Fahrplan steht"}
 
 
-def test_einladen_schreibt_person_direkt(schreibweg, monkeypatch):
+def test_einladen_schreibt_person_direkt(schreibweg, monkeypatch, tmp_path):
     basis, ablage = schreibweg
-    monkeypatch.setenv("KN_BASIS", "https://example.invalid/mcp")
+    monkeypatch.setenv("FR_MAIL_DATEI", str(tmp_path / "mails.jsonl"))      # die Einladung geht per Mail (#421)
     Schreibweg.antwort = (200, {"ok": True, "text": "Anna steht jetzt in der Reise (anna, Rolle mitwirkend, reist mit)."})
-    t, f = werkzeug(basis, ALT_ORGANISATOR, "person_einladen", vorname="Anna", rolle="mitwirkend")
-    assert not f and "Anna ist eingeladen" in t and "publish_status" in t
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "person_einladen", vorname="Anna", rolle="mitwirkend", email="anna@beispiel.invalid")
+    assert not f and "Anna" in t and "anna@beispiel.invalid" in t
     pfad, _, body = Schreibweg.anfragen[-1]
     assert pfad == "/beispielreise/person_schreiben" and body["person"] == "ida"
     assert body["args"]["schluessel"] == "anna" and body["args"]["vorname"] == "Anna" and body["args"]["rolle"] == "mitwirkend" and body["args"]["reist"] is True
@@ -918,13 +845,11 @@ def test_status_einstellungen_und_kein_auftrag_mehr(schreibweg):
 
 def test_neue_reise_ueber_den_schreibweg(schreibweg, tmp_path, monkeypatch):
     basis, ablage = schreibweg
-    zug = Path(kn.os.environ["KN_ZUGAENGE"])
-    zug.write_text(json.dumps({**json.loads(zug.read_text()), KONTO: {"konto": "ida", "name": "Ida"}}))
-    monkeypatch.setenv("KN_BASIS", "https://example.invalid/mcp")
     ausstehend = tmp_path / "ausstehend.jsonl"
     monkeypatch.setenv("KN_AUSSTEHEND", str(ausstehend))
     Schreibweg.antwort = (200, {"ok": True, "text": "Die Reise „Skiwoche“ ist angelegt (Ordner skiwoche-2027, Status Idee)."})
-    t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Skiwoche", von="2027-02-06", bis="2027-02-13", personen=[{"vorname": "Karl", "rolle": "mitwirkend"}])
+    t, f = kn.reise_anlegen(IDA_KONTO, {"titel": "Skiwoche", "von": "2027-02-06", "bis": "2027-02-13", "sprache": "de",
+                                        "personen": [{"vorname": "Karl", "rolle": "mitwirkend"}]})
     assert not f, t
     assert "ist angelegt" in t and "sobald die seite online ist" in t.lower()
     pfad, _, body = Schreibweg.anfragen[-1]
@@ -936,7 +861,7 @@ def test_neue_reise_ueber_den_schreibweg(schreibweg, tmp_path, monkeypatch):
     assert rm.status_lesen(o)[zeile["aid"]]["status"] == "uebernommen"
     # lehnt der Schreibweg ab, bleibt die Anfrage als Rückfrage stehen
     Schreibweg.antwort = (422, {"ok": False, "fehler": "Den Ordner reisen/skiwoche-2027 gibt es schon."})
-    t, f = werkzeug(basis, KONTO, "reise_anlegen", titel="Skiwoche zwei", von="2027-02-06", bis="2027-02-13", personen=[])
+    t, f = kn.reise_anlegen(IDA_KONTO, {"titel": "Skiwoche zwei", "von": "2027-02-06", "bis": "2027-02-13", "personen": []})
     assert f and "Nicht angelegt" in t
     assert any(v["status"] == "rueckfrage" for v in rm.status_lesen(o).values())
 

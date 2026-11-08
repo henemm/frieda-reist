@@ -42,7 +42,7 @@ Rollen gelten je Reise, nicht je Person. Rechte sind gestuft, jede Stufe enthäl
 
 Mehrere Organisator:innen sind möglich. Jede Entscheidung hat genau eine Person und ein Datum. Zwei verschiedene Entscheidungen an derselben Stelle überschreiben sich nicht: Der Schreibweg macht daraus eine offene Frage und meldet den Konflikt beiden (Regel `konflikt: offene_frage`). Die KI im AI-Client ist die vierte Rolle: Assistent, schlägt vor, prüft, trägt über den Konnektor ein, entscheidet nie.
 
-Personen und Rollen stehen je Reise in `reisen/<reise>/reise.yaml` unter `personen:`. Wer nur einen Teil der Reise mitreist, bekommt `von` und `bis` (Datum); der Reiseüberblick zeigt dann „ab“ und „bis“. Wer spricht, sagt das Konto der Person (E-Mail-Adresse, ADR-0005); ein Link je Reise und Person ist nur noch der Übergang (`konnektor.py zugang <reise> <person>`).
+Personen und Rollen stehen je Reise in `reisen/<reise>/reise.yaml` unter `personen:`. Wer nur einen Teil der Reise mitreist, bekommt `von` und `bis` (Datum); der Reiseüberblick zeigt dann „ab“ und „bis“. Wer spricht, sagt das Konto der Person (E-Mail-Adresse, ADR-0005); die Links je Reise und Person sind abgeschafft (#421).
 
 ## Einstellungen je Reise (`reise.yaml`)
 

@@ -17,14 +17,14 @@
 # PID): Ein innerer Lauf, etwa die Tests unter einem echten Lauf, erbt ihn sonst und räumt beim Neustart seine eigenen
 # Werte weg.
 if [ "${_aufruf_pid:-}" != "$$" ]; then
-  _aufruf_namen=" $(compgen -e | grep -E '^(FR_|RM_ABLAGE$|KN_SEITEN$|KN_ZUGAENGE$|KN_BASIS$)' | tr '\n' ' ' || true)"
+  _aufruf_namen=" $(compgen -e | grep -E '^(FR_|RM_ABLAGE$|KN_SEITEN$|KN_BASIS$)' | tr '\n' ' ' || true)"
   _aufruf_pid="$$"
   export _aufruf_namen _aufruf_pid
 fi
 
 fr_aufraeumen() {  # Werte entfernen, die nicht vom Aufruf stammen (Datei, betrieb.env, Vorgaben, abgeleitete), vor exec
   local name
-  for name in $(compgen -v FR_ || true) RM_ABLAGE KN_SEITEN KN_ZUGAENGE KN_BASIS; do
+  for name in $(compgen -v FR_ || true) RM_ABLAGE KN_SEITEN KN_BASIS; do
     case "$_aufruf_namen" in *" $name "*) ;; *) unset "$name" ;; esac
   done
 }
@@ -130,8 +130,7 @@ ist_speicherreise() {  # <reise>: kommt sie aus dem Reisespeicher (Stufe 3, #348
 # Was die Software (engine/) erwartet; ausdrücklich gesetzte Werte gelten weiter
 : "${RM_ABLAGE:=$FR_ABLAGE}"
 : "${KN_SEITEN:=$FR_SEITEN}"
-: "${KN_ZUGAENGE:=$FR_KONNEKTOR/zugaenge.json}"
-export RM_ABLAGE KN_SEITEN KN_ZUGAENGE
+export RM_ABLAGE KN_SEITEN
 [ -z "$FR_KN_ADRESSE" ] || { : "${KN_BASIS:=$FR_KN_ADRESSE}"; export KN_BASIS; }
 
 fr_melden() {  # <normal|high> <betreff> <text> [erledigt]: Nachricht an den Betreiber über FR_MELDEN, sonst nichts

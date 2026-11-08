@@ -18,7 +18,7 @@ Eine **Instanz** ist eine Reisegruppe mit eigenem Betreiber: ein Reisen-Repo, da
 | Konten | `<FR_KONTEN>/` (`konten.db`, Dienst-Geheimnis, `sicherung/konten.db`, `neu/` mit Anfragen nach neuen Reisen und Meldungen an Personen) | Konten, Anmeldungen, Einladungen und alles Personenbezogene ohne Reise; nie im Repo, nie in einer Reise |
 | Reisespeicher | `<FR_SPEICHER>/` (`reisen.db`, `sicherung/reisen.db`; Vorgabe `<FR_SEITEN>/_speicher`) | Reisedaten als unveränderliche Versionen in SQLite (`engine/reisespeicher.py`, [ADR-0009](adr/0009-reisespeicher.md), #346); ab Stufe 2 (#347) schreibt der Schreibweg die Reisen aus `FR_SPEICHERREISEN` hinein (Speicherweg), alle anderen bis Stufe 5 über Git |
 | Dienstordner | `<FR_DIENST>/` | Code der Dienste, Stände, Stempel, vorgemerkte Links, geheime Einstellungen |
-| Konnektor-Zugänge | `<FR_KONNEKTOR>/zugaenge.json`, `seiten.json` (600) | geheime Links; nie im Repo |
+| Ordner des Konnektors | `<FR_KONNEKTOR>/seiten.json` (600), `neue-reisen-ausstehend.jsonl` | Links zu den Seiten, vorgemerkte neue Reisen; nie im Repo (die Datei `zugaenge.json` der alten Links ist abgeschafft, #421, und kann weg) |
 | systemd | `<instanz>-rueckmeldungen`, `-konnektor`, `-schreiben`, `-push`, `-veroeffentlichen.timer`, `-waechter.timer` | aus `betrieb/vorlagen/`, erzeugt von `einrichten.sh` |
 | nginx | `<FR_NGINX_SNIPPETS>/<instanz>-<reise>.conf` (mit Token), `<instanz>-konnektor-orte.inc` mit `<instanz>-konnektor.inc`, Zone in `conf.d/<instanz>-zone.conf` | aus `betrieb/vorlagen/` |
 
@@ -30,7 +30,7 @@ Drei Gruppen, die sich nie mischen sollen:
 
 1. **Die Software** (dieses Repo): Code, Vorlagen, Werkzeuge. Auf dem Server liegt eine Kopie des Dienst-Codes in `<FR_DIENST>/*.py`, die `deploy.sh` anlegt. Sie ist für jede Instanz gleich und enthält nichts Eigenes.
 2. **Die Daten einer Reisegruppe** (das Reisen-Repo und seine Ordner): Reisen, Seiten, Ablage mit Rückmeldungen, Aufträgen, Aufgaben und Belegen, Einstellungen und Meldeweg der Instanz.
-3. **Daten der Nutzer**: Konten und Anmeldungen (`<FR_KONTEN>/`), Zugänge zum Konnektor (`<FR_KONNEKTOR>/`), Anfragen nach neuen Reisen samt Meldungen an Personen (`<FR_KONTEN>/neu/`, Rechte 700) und der Mailzugang (`konten.env`). Sie gehören nicht in das Reisen-Repo und gehören nicht einer einzelnen Reise. Betriebsdaten des Konnektors bleiben in `<FR_KONNEKTOR>/` (`seiten.json`, `neue-reisen-ausstehend.jsonl`; `zugaenge.json` entfällt mit den alten Links, #43).
+3. **Daten der Nutzer**: Konten und Anmeldungen (`<FR_KONTEN>/`), Ordner des Konnektors (`<FR_KONNEKTOR>/`), Anfragen nach neuen Reisen samt Meldungen an Personen (`<FR_KONTEN>/neu/`, Rechte 700) und der Mailzugang (`konten.env`). Sie gehören nicht in das Reisen-Repo und gehören nicht einer einzelnen Reise. Betriebsdaten des Konnektors bleiben in `<FR_KONNEKTOR>/` (`seiten.json`, `neue-reisen-ausstehend.jsonl`; `zugaenge.json` ist mit den alten Links entfallen, #43, #421).
 
 **Sicherung:** Das Server-Backup sichert `<FR_KONTEN>/` und `<FR_ABLAGE>/`. Die Reisen selbst liegen im Reisen-Repo, die Seiten entstehen daraus neu. `konten.db` läuft im WAL-Modus; eine Kopie der Datei im laufenden Betrieb kann unbrauchbar sein. Darum schreibt der Wächter-Lauf täglich einen sauberen Schnappschuss über die Backup-API von SQLite nach `<FR_KONTEN>/sicherung/konten.db` (`engine/konten.py sichern`, geprüft mit `integrity_check`, ohne WAL-Dateien). Zurückholen: Dienste anhalten, den Schnappschuss als `<FR_KONTEN>/konten.db` einsetzen (alte `-wal`/`-shm` entfernen), Dienste starten.
 
@@ -169,9 +169,9 @@ Ohne Handarbeit (`docs/neue-reise.md`): Nach dem Veröffentlichen ruft `veroeffe
 - **Neue Reise:** Sie bekommt einen nginx-Baustein aus `vorlagen/nginx-reise.conf` mit einem neuen Zufalls-Token (root, 640). Dann `nginx -t`; bei einem Fehler wird der Baustein wieder entfernt. Danach lädt nginx neu. Bis die neuen Pfade gelten, vergeht ein Moment; die Prüfung des neuen Links versucht es deshalb bis zu zehnmal im Sekundenabstand.
 - **Prüfung:** Seite und `api/gesund` müssen mit 200 antworten. Eine 429 kommt von der Anfragebegrenzung in nginx (je IP, gemeinsam für die API aller Reisen; der Server fragt sich selbst von außen ab), nicht von der Reise: Die Prüfung wartet dann 5 s und fragt erneut, bis zu sechsmal (`FS_429_WARTEN`, `FS_429_VERSUCHE`, #198). Vorher blieben neue Reisen dadurch ohne Verknüpfung mit dem Konto, bis ein späterer Lauf sie freischaltete.
 - **Link:** Der Link zur Seite kommt nach `seiten.json` (für `meine_reisen`).
-- **Vorgemerkte Links:** Links neuer Reisen aus der App merkt der Konnektor in `<FR_KONNEKTOR>/neue-reisen-ausstehend.jsonl` vor (neben den Zugängen; den Dienstordner darf der Konnektor nicht beschreiben). Das Veröffentlichen stellt sie zu (`betrieb/zustellen.py`), sobald die Seite online ist, als Meldung an die Person oder bei einem Konto als Verknüpfung mit der Reise und Einladung per Mail.
+- **Vorgemerkte neue Reisen:** Neue Reisen aus der App merkt der Konnektor in `<FR_KONNEKTOR>/neue-reisen-ausstehend.jsonl` vor (den Dienstordner darf der Konnektor nicht beschreiben). Das Veröffentlichen stellt sie zu (`betrieb/zustellen.py`), sobald die Seite online ist: Verknüpfung des Kontos mit der Reise, Einladungen per Mail und die Meldung „neue Reise“. Links für die Claude-App gibt es nicht mehr (#421).
 
-Links von Hand: `freischalten.sh <reise>` für die Seite, `freischalten.sh <reise> --person <schlüssel>` für die Claude-App. Links stehen nie im Protokoll, im Repo, in Issues oder Nachrichten.
+Von Hand: `freischalten.sh <reise>` für die Seite (die Option `--person` ist mit den Links für die Claude-App entfallen). Links stehen nie im Protokoll, im Repo, in Issues oder Nachrichten.
 
 ## Warteliste (#382)
 
@@ -218,7 +218,7 @@ Voraussetzung: `gh` ist für den Dienstbenutzer angemeldet und darf Workflows de
 
 - **Schlüssel:** Das VAPID-Schlüsselpaar legt der erste Start an (`konten.db`, Tabelle `push_schluessel`); `engine/push.py schluessel` zeigt den öffentlichen. Ihn bringt „Mein Konto“ für den Schalter mit (`data-schluessel`); ohne ihn bietet die Seite keine Benachrichtigungen an. Wird der Schlüssel ersetzt, müssen alle Geräte neu einschalten.
 - **Geräte:** Abos je Gerät in `konten.db` (`push_abos`: Adresse beim Push-Dienst, Schlüssel, Reise und Adresse der Seite, Zeitzone), höchstens 10 je Konto. Sperren, Löschen und „Auf allen Geräten ausschalten“ (Mein Konto) entfernen sie.
-- **Link der Nachricht:** die Adresse der Seite aus einem Abo derselben Reise, sonst aus `seiten.json` neben den Konnektor-Zugängen (`KN_ZUGAENGE`).
+- **Link der Nachricht:** die Adresse der Seite aus einem Abo derselben Reise, sonst aus `seiten.json` im Ordner des Konnektors (`FR_KONNEKTOR`).
 - **Kontakt:** `FR_BASIS` aus `konten.env` steht als Absender in der VAPID-Unterschrift.
 - **Probe:** `FR_KONTEN=… RM_ABLAGE=… engine/.venv/bin/python <FR_DIENST>/push.py probe <email>` schickt eine Nachricht an alle Geräte eines Kontos. Protokoll: `journalctl -u <instanz>-push`.
 - **Frieda-App (Entscheidung A, 2.11.2026):** Ein- und ausgeschaltet wird je Gerät auf „Mein Konto“ (`engine/app/konto.js`, POST `/konto` mit `aktion=push_an` oder `push_ab`, Sitzung und Origin wie jede Änderung; Antwort 204). Das Abo gehört zu keiner Reise (`reise` leer, `seite` = `<FR_BASIS>/konto`) und bekommt die Nachrichten aller Reisen; gezeigt werden sie vom Worker `/sw.js` der Frieda-App (Scope `/`, nur Push, kein Abfangen, kein Speichern). Manifest, Worker und Skript liefert der Konnektor aus `<FR_DIENST>/app/` (`deploy.sh` kopiert `engine/app/`); der server-Block braucht dafür die Orte `/manifest.webmanifest`, `/sw.js` und `/konto.js` (Baustein `<instanz>-konnektor-orte.inc`, `wege_pruefen` prüft sie). Der Fuß der Reiseseite verweist nur auf „Mein Konto“; `api/push` der Reiseseite bleibt für ältere Abos.
@@ -257,7 +257,7 @@ Voraussetzung: `gh` ist für den Dienstbenutzer angemeldet und darf Workflows de
 | `FR_KENNUNG`, `FR_SPRACHEN` | Name der Software, `de,en` | Kennung mit Kontakt gegenüber OpenStreetMap und Sprachen der Namen (`docs/werkzeuge.md`) |
 | `FR_BETREIBER_NAME`, `FR_BETREIBER_ANSCHRIFT`, `FR_BETREIBER_KONTAKT` | leer | Betreiber der Instanz im Impressum (`/impressum`, #383): Name, Anschrift (eine Zeile) und Kontakt, alle drei Pflicht, kein Telefon. Fehlt einer, zeigt das Impressum „nicht eingerichtet“; Warteliste und Anmeldung bleiben nutzbar. Der Konnektor läuft mit `ProtectHome=yes` und ohne `FR_WURZEL`, sieht also `betrieb/einstellungen.env` des Reisen-Repos nicht; er liest die Werte über `engine/instanz.py` aus der Umgebung der Unit, und die kommt aus `<FR_DIENST>/konten.env` (600, Zeilen `NAME=wert`; danach `systemctl restart <FR_INSTANZ>-konnektor`). Echte Angaben nur dort, nie im öffentlichen Repo |
 
-Die Skripte setzen daraus die Umgebung der Software (`RM_ABLAGE`, `KN_SEITEN`, `KN_ZUGAENGE`, `KN_BASIS`; die Unit des Konnektors zusätzlich `KN_SCHREIBDIENST`). Ausdrücklich gesetzte Werte bleiben. Fehlt etwas, etwa bei einem Aufruf von Hand wie `python3 engine/rueckmeldungen.py liste <reise>` in der Wurzel des Reisen-Repos, leitet `engine/instanz.py` die Ordner nach derselben Ordnung ab, notfalls aus der Einstellungsdatei. Die Software selbst kennt keine Instanz, ihre letzte Vorgabe ist `/srv/frieda`.
+Die Skripte setzen daraus die Umgebung der Software (`RM_ABLAGE`, `KN_SEITEN`, `KN_BASIS`, dazu `FR_KONNEKTOR`; die Unit des Konnektors zusätzlich `KN_SCHREIBDIENST`; ältere Units setzen noch `KN_ZUGAENGE`, dessen Ordner gilt dann als `FR_KONNEKTOR`, #421). Ausdrücklich gesetzte Werte bleiben. Fehlt etwas, etwa bei einem Aufruf von Hand wie `python3 engine/rueckmeldungen.py liste <reise>` in der Wurzel des Reisen-Repos, leitet `engine/instanz.py` die Ordner nach derselben Ordnung ab, notfalls aus der Einstellungsdatei. Die Software selbst kennt keine Instanz, ihre letzte Vorgabe ist `/srv/frieda`.
 
 **Meldeweg:** `FR_MELDEN` ist eine ausführbare Datei der Instanz (ein relativer Pfad gilt ab der Wurzel des Reisen-Repos), aufgerufen als `<befehl> <normal|high> <betreff> <text> [erledigt]`. `erledigt` heißt: Das ist ein reiner Bericht, es ist nichts zu tun. Fehler kommen ohne `erledigt` und sollen offen bleiben, bis jemand sie ansieht. Wie die Nachricht ankommt (Mail, Telegram, eine Warteschlange), entscheidet die Instanz in ihrem Skript.
 
@@ -398,7 +398,7 @@ Gearbeitet wird in einem eigenen **Arbeitsordner**, einem normalen Klon mit eige
 
 - **Seite:** den schlechten Stand auf `main` mit `git revert <commit>` zurücknehmen (in einem Arbeitsordner, über einen PR). Der Timer veröffentlicht den neuen Stand, der Service Worker bietet den alten Inhalt als neue Version an. Im Bauordner wird nichts ausgecheckt.
 - **Dienste:** der Code liegt in `<FR_DIENST>/`. Ein Revert der Software (neuer Stand des Submoduls auf `main`) bringt den alten Code beim nächsten Veröffentlichen zurück.
-- **Link sperren:** Eintrag aus `zugaenge.json` löschen (Konnektor, wirkt sofort) bzw. den Token im nginx-Baustein ändern (Seite).
+- **Zugang sperren:** Person mit `person_entfernen` aus der Reise nehmen oder das Konto sperren (`konten.py`); der Link zur Seite wird gesperrt, indem man den Token im nginx-Baustein ändert.
 
 ## Wenn etwas klemmt
 
@@ -406,7 +406,7 @@ Gearbeitet wird in einem eigenen **Arbeitsordner**, einem normalen Klon mit eige
 |---|---|
 | Seite antwortet nicht | `ls <FR_SEITEN>/<reise>/index.html`, `sudo nginx -t`, Fehlerlog von nginx |
 | `api/gesund` antwortet nicht | `systemctl status <instanz>-rueckmeldungen`, `journalctl -u <instanz>-rueckmeldungen -n 50` |
-| Konnektor `gesund` 503 | `zugaenge.json` unlesbar, keine Reise freigeschaltet (`seiten.json`) und kein alter Link, oder eine freigeschaltete oder verlinkte Reise nicht veröffentlicht |
+| Konnektor `gesund` 503 | keine Reise freigeschaltet (`seiten.json` fehlt oder ist unlesbar) oder eine freigeschaltete Reise nicht veröffentlicht |
 | Konnektor meldet „Schreibweg nicht erreichbar“ oder „nicht eingerichtet“ | `systemctl status <instanz>-schreiben`, `journalctl -u <instanz>-schreiben -n 50`; steht `KN_SCHREIBDIENST` in der Unit des Konnektors? Geht `git push` als Dienstbenutzer ohne Rückfrage? |
 | Nichts geht online | `journalctl -u <instanz>-veroeffentlichen -n 50`; ist der Bauordner auf `main` und sauber? |
 | Eingetragenes erscheint nicht auf der Seite | `journalctl -u <instanz>-schreiben -n 50` (Commit und Push da?), dann `journalctl -u <instanz>-veroeffentlichen -n 50` |

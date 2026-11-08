@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Schaltet eine veröffentlichte Reise frei, ohne Handarbeit (docs/neue-reise.md, docs/betrieb.md).
 #
-#   frieda/betrieb/freischalten.sh <reise>                    geheimer Link zur Seite (falls noch keiner da ist), Prüfung, seiten.json
-#   frieda/betrieb/freischalten.sh <reise> --person <schl.>   dazu ein persönlicher Link für die Claude-App (Person aus reise.yaml)
+#   frieda/betrieb/freischalten.sh <reise>    geheimer Link zur Seite (falls noch keiner da ist), Prüfung, seiten.json
+#   (Links für die Claude-App je Person gibt es nicht mehr, #421: Personen kommen über ihr Konto)
 #
 # Gibt es noch kein nginx-Baustein <FR_NGINX_SNIPPETS>/<instanz>-<reise>.conf, entsteht er aus vorlagen/nginx-reise.conf
 # mit einem neuen Zufalls-Token (root, 640). nginx wird geprüft und neu geladen; schlägt die Prüfung fehl, wird der
@@ -10,25 +10,23 @@
 # Gibt es den Baustein schon, bleibt der Link, wie er ist (beliebig oft aufrufbar; veroeffentlichen.sh ruft es je Reise auf);
 # hat sich nur die Vorlage geändert, wird der Baustein mit demselben Pfad erneuert (nginx geprüft, sonst alter Stand). Der
 # Pfad wird aus dem Baustein gelesen und muss nicht mit dem Ordner der Reise beginnen (von Hand angelegte Bausteine).
-# Der Link zur Seite kommt nach seiten.json neben den Konnektor-Zugängen (für das Werkzeug meine_reisen).
+# Der Link zur Seite kommt nach seiten.json im Ordner des Konnektors (für das Werkzeug meine_reisen).
 #
 # Voraussetzung (einmalig, einrichten.sh): Im server-Block von FR_ADRESSE steht  include <FR_NGINX_SNIPPETS>/<instanz>-*.conf;
-# Ausgabe: „Seite: <url>“ und mit --person „Claude-App: <url>“. Links nie ins Repo, in Issues oder Nachrichten.
+# Ausgabe: „Seite: <url>“. Links nie ins Repo, in Issues oder Nachrichten.
 # Für Tests überschreibbar: FS_SNIPPETS, FS_BASIS, FS_SUDO, FS_NGINX_TEST, FS_NGINX_LADEN, FS_ABRUF, KN_SEITENLINKS.
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
 
-REISE="${1:?usage: freischalten.sh <trip> [--person <key>]}"
-PERSON=""
-[ "${2:-}" = "--person" ] && PERSON="${3:?--person needs a key from reise.yaml}"
+REISE="${1:?usage: freischalten.sh <trip>}"
+[ -z "${2:-}" ] || { echo "ERROR: freischalten.sh takes only the trip; links for the Claude app no longer exist (#421)."; exit 1; }
 WURZEL="$FR_WURZEL"
 SNIPPETS="${FS_SNIPPETS:-${FR_NGINX_SNIPPETS:-/etc/nginx/snippets}}"
 BASIS="${FS_BASIS:-$FR_ADRESSE}"
 SUDO="${FS_SUDO-${FR_SUDO-sudo -n}}"
 NGINX_TEST="${FS_NGINX_TEST:-$SUDO nginx -t -q}"
 NGINX_LADEN="${FS_NGINX_LADEN:-$SUDO systemctl reload nginx}"
-ZUGAENGE="$KN_ZUGAENGE"
-SEITENLINKS="${KN_SEITENLINKS:-$(dirname "$ZUGAENGE")/seiten.json}"
+SEITENLINKS="${KN_SEITENLINKS:-$FR_KONNEKTOR/seiten.json}"
 
 abruf() {  # <url> -> HTTP-Code
   if [ -n "${FS_ABRUF:-}" ]; then $FS_ABRUF "$1"; else curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$1"; fi
@@ -108,7 +106,7 @@ for teil in "page|" "feedback service|api/gesund"; do
 done
 [ -n "$neu" ] && echo "Released: $REISE"
 
-# Link zur Seite für meine_reisen (Datei nur für den Betreiber lesbar, wie die Zugänge)
+# Link zur Seite für meine_reisen (Datei nur für den Betreiber lesbar)
 python3 - "$SEITENLINKS" "$REISE" "$url" <<'PY'
 import json, os, sys
 from pathlib import Path
@@ -126,10 +124,3 @@ if d.get(reise) != url:
     tmp.replace(p)
 PY
 echo "Seite: $url"
-
-if [ -n "$PERSON" ]; then
-  [ -n "${KN_BASIS:-}" ] || { echo "ERROR: FR_KN_ADRESSE is not set (settings of the instance)."; exit 1; }
-  link="$(python3 "$WURZEL/engine/konnektor.py" zugang "$REISE" "$PERSON" | grep -oE 'https?://[^ ]+$')"
-  [ -n "$link" ] || { echo "ERROR: no link issued for the Claude app."; exit 1; }
-  echo "Claude-App: $link"
-fi

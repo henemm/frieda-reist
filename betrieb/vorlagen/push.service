@@ -14,7 +14,7 @@ Environment=RM_ABLAGE=__ABLAGE__
 Environment=FR_DIENST=__DIENST__
 Environment=FR_ZEITZONE=__ZEITZONE__
 Environment=RM_SEITEN=__SEITEN__
-Environment=KN_ZUGAENGE=__KONNEKTOR__/zugaenge.json
+Environment=FR_KONNEKTOR=__KONNEKTOR__
 EnvironmentFile=-__DIENST__/konten.env
 ExecStart=__PYTHON__ __DIENST__/push.py dienst
 Restart=on-failure

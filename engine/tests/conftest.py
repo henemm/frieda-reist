@@ -79,3 +79,37 @@ def meldet(ausgabe, schluessel, /, sprache="de"):
     assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
     teile = [t for t in re.split(r"\{[^{}]*\}", vorlage) if len(t.strip()) >= 2] or [vorlage]
     return all(t in ausgabe or html.escape(t, quote=False) in ausgabe or html.escape(t) in ausgabe for t in teile)
+
+
+def mcp_intern(token, nachricht):
+    """Den Konnektor als eine Person einer Reise aufrufen, ohne Anmeldung über OAuth. Die Tests geben Personen Kurznamen in
+    einer Datei (KN_ZUGAENGE, {kurzname: {"reise", "person"} oder {"reise", "rolle"}}); das waren bis #421 die geheimen
+    Links, heute gibt es sie nur noch hier. Aufgerufen wird intern (konnektor.antwort_fuer), so wie der Konnektor „Frieda“
+    je Aufruf aus Konto und Angabe reise einen Zugang bildet. -> (HTTP-Code, Antwort) wie früher über HTTP."""
+    import json
+    from pathlib import Path
+    import konnektor as kn
+    try:
+        z = json.loads(Path(os.environ["KN_ZUGAENGE"]).read_text(encoding="utf-8")).get(token)
+    except (KeyError, OSError, ValueError, AttributeError):
+        z = None
+    if not isinstance(z, dict) or "reise" not in z:
+        return 404, {"fehler": "unbekannt"}
+    a = kn.antwort_fuer({k: v for k, v in z.items() if k in ("reise", "person", "rolle", "sprache")}, nachricht)
+    return (200, a) if a else (202, None)
+
+
+def zugaenge_datei():
+    """Die Datei der Kurznamen für mcp_intern (nur in Tests)."""
+    from pathlib import Path
+    return Path(os.environ["KN_ZUGAENGE"])
+
+
+def zugang_dazu(kurzname, **zugang):
+    """Einen Kurznamen für mcp_intern ergänzen, etwa für eine eben eingeladene Person: zugang_dazu("j" * 32, reise=…, person=…)."""
+    import json
+    p = zugaenge_datei()
+    alle = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    alle[kurzname] = zugang
+    p.write_text(json.dumps(alle), encoding="utf-8")
+    return kurzname

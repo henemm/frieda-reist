@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Links neuer Reisen zustellen (betrieb/veroeffentlichen.sh, docs/betrieb.md „Neue Reise freischalten“).
+"""Neue Reisen zustellen (betrieb/veroeffentlichen.sh, docs/betrieb.md „Neue Reise freischalten“).
 
 Eine neue Reise aus der Claude-App legt der Schreibweg sofort an (engine/schreiben.py reise_anlegen). Der Konnektor
 merkt sie in <FR_KONNEKTOR>/neue-reisen-ausstehend.jsonl vor, je Zeile {ordner, aid, name, person}. Sobald ihre Seite
-veröffentlicht ist, schaltet dieses Skript sie frei (freischalten.sh) und stellt der Person die Links zu: als Meldung in
-meine_reisen, bei einem Konto als Verknüpfung mit der Reise und Einladungen per Mail. Links und Adressen stehen nie im
-Protokoll. Was noch nicht veröffentlicht ist oder scheitert, bleibt für den nächsten Lauf stehen.
+veröffentlicht ist, schaltet dieses Skript sie frei (freischalten.sh), verknüpft das Konto, das sie angelegt hat, mit
+der Reise, schickt die Einladungen per Mail und legt die Meldung „neue Reise“ an. Einen Link für die Claude-App gibt es
+nicht mehr (#421). Links und Adressen stehen nie im Protokoll. Was noch nicht veröffentlicht ist oder scheitert, bleibt
+für den nächsten Lauf stehen.
 
 Die Logik steckt hier statt in der Shell, damit sie getestet werden kann (engine/tests/test_betrieb.py).
 Aufruf:  zustellen.py <wurzel> <datei>   (mit dem Python der Software; <wurzel> ist das Reisen-Repo, engine/ darin
@@ -20,10 +21,11 @@ from pathlib import Path
 
 
 def ausstehend(wurzel, datei, seiten=None, freischalten=None):
-    """Links neuer Reisen zustellen, sobald die Seite veröffentlicht ist -> Zahl der Fehlschläge.
-    Kam die Anfrage aus dem Konnektor „Frieda“ (konto_id, Paket J): kein App-Link, sondern das Konto wird mit der Reise
-    verknüpft, und wer eine Adresse hat, bekommt die Einladung per Mail. Die Adressen stehen nur in der Anfrage in der
-    Ablage, nie in dieser Datei oder im Protokoll; schon Eingeladene merkt sich der Eintrag (eingeladen)."""
+    """Neue Reisen zustellen, sobald die Seite veröffentlicht ist -> Zahl der Fehlschläge.
+    Das Konto der Anfrage (konto_id, Paket J) wird mit der Reise verknüpft, und wer eine Adresse hat, bekommt die
+    Einladung per Mail. Die Adressen stehen nur in der Anfrage in der Ablage, nie in dieser Datei oder im Protokoll; schon
+    Eingeladene merkt sich der Eintrag (eingeladen). Eine ältere Anfrage ohne Konto (aus der Zeit der Links, #421) wird
+    nur freigeschaltet und gemeldet."""
     sys.path.insert(0, str(Path(wurzel) / "engine"))
     import konten  # noqa: E402
     import rueckmeldungen as rm  # noqa: E402
@@ -49,17 +51,17 @@ def ausstehend(wurzel, datei, seiten=None, freischalten=None):
         mit_konto = bool(auftrag.get("konto_id"))
         sprache = ((auftrag.get("daten") or {}).get("neue_reise") or {}).get("sprache")   # Meldung und Einladung: Sprache der neuen Reise
         sprache = sprache if texte.gueltig(sprache or "") else texte.VORGABE_REISE
-        aufruf = [freischalten, e["ordner"]] + ([] if mit_konto else ["--person", e["person"]])
-        r = subprocess.run(aufruf, capture_output=True, text=True)
-        links = dict(z.split(": ", 1) for z in r.stdout.splitlines() if z.startswith(("Seite: ", "Claude-App: ")))
-        if r.returncode != 0 or not ({"Seite"} if mit_konto else {"Seite", "Claude-App"}) <= set(links):
+        r = subprocess.run([freischalten, e["ordner"]], capture_output=True, text=True)
+        links = dict(z.split(": ", 1) for z in r.stdout.splitlines() if z.startswith("Seite: "))
+        if r.returncode != 0 or "Seite" not in links:
             fehlschlaege += 1
             # Links sind geheim: nur die Fehlerzeilen ins Protokoll
-            fehler = [z for z in (r.stdout + r.stderr).splitlines() if not z.startswith(("Seite: ", "Claude-App: "))]
+            fehler = [z for z in (r.stdout + r.stderr).splitlines() if not z.startswith("Seite: ")]
             print(f"ERROR: {e['ordner']} not released: {' '.join(fehler)[-300:]}")
             rest.append(zeile)
             continue
         titel = (json.loads(daten.read_text(encoding="utf-8")).get("reise") or {}).get("titel", e["ordner"])
+        n = 0
         if mit_konto:
             try:
                 konten.verknuepfen(auftrag["konto_id"], e["ordner"], e["person"])
@@ -77,17 +79,13 @@ def ausstehend(wurzel, datei, seiten=None, freischalten=None):
                 rest.append(json.dumps(e, ensure_ascii=False))
                 continue
             n = len(auftrag.get("einladen") or [])
-            # Teile für Mein Konto (#407 Stufe C): ohne Adresse, in der Sprache des Kontos; der Text bleibt für den Konnektor
-            rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [e["name"]], "neue_reise", e["ordner"],
-                               texte.t(sprache, "dienst.zustellen.konto", titel=titel, seite=links["Seite"])
-                               + (texte.t(sprache, "dienst.zustellen.einladungen_eine" if n == 1 else "dienst.zustellen.einladungen_viele", n=n)
-                                  if n else ""), auftraege=[e["aid"]],
-                               teile=[("konto.meldungen.text.neue_reise", {"titel": titel})]
-                               + ([("konto.meldungen.text.einladungen", {"n": n})] if n else []))
-        else:
-            rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [e["name"]], "neue_reise", e["ordner"],
-                               texte.t(sprache, "dienst.zustellen.app", titel=titel, seite=links["Seite"], link=links["Claude-App"]),
-                               auftraege=[e["aid"]], teile=[("konto.meldungen.text.neue_reise", {"titel": titel})])
+        # Teile für Mein Konto (#407 Stufe C): ohne Adresse, in der Sprache des Kontos; der Text bleibt für den Konnektor
+        rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [e["name"]], "neue_reise", e["ordner"],
+                           texte.t(sprache, "dienst.zustellen.konto", titel=titel, seite=links["Seite"])
+                           + (texte.t(sprache, "dienst.zustellen.einladungen_eine" if n == 1 else "dienst.zustellen.einladungen_viele", n=n)
+                              if n else ""), auftraege=[e["aid"]],
+                           teile=[("konto.meldungen.text.neue_reise", {"titel": titel})]
+                           + ([("konto.meldungen.text.einladungen", {"n": n})] if n else []))
         print(f"Delivered: {e['ordner']} to {e['name']}")
     p.write_text("".join(z + "\n" for z in rest), encoding="utf-8")
     return fehlschlaege

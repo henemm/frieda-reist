@@ -15,7 +15,8 @@ leitet dieses Modul den Rest nach derselben Ordnung ab, ohne Werte einer bestimm
            schreibt (Stufe 2, #347); Vorgabe leer: jede Reise schreibt über Git wie bisher (bis Stufe 5)
   Neu      <Konten>/neu (Anfragen nach neuen Reisen und Meldungen an Personen, gehört zu keiner Reise, #72); ein älterer
            Ordner <Ablage>/_neu/ gilt weiter, solange am neuen Ort nichts liegt
-  Zugänge  KN_ZUGAENGE; sonst <FR_KONNEKTOR bzw. <Seiten>/_konnektor>/zugaenge.json
+  Konnektor FR_KONNEKTOR; sonst der Ordner von KN_ZUGAENGE (alter Name aus den Units, bis sie neu erzeugt sind);
+           sonst <Seiten>/_konnektor (seiten.json, neue-reisen-ausstehend.jsonl; die alten Links sind abgeschafft, #421)
 
 Einstellungen der Instanz: <FR_WURZEL bzw. aktueller Ordner>/betrieb/einstellungen.env, Zeilen NAME=wert wie in
 betrieb/einstellungen.beispiel. Die Umgebung gilt vor der Datei.
@@ -118,10 +119,14 @@ def neu():
     return alt if not _belegt(neu) and _belegt(alt) else neu
 
 
-def zugaenge():
+def konnektor():
+    """Ordner des Konnektors (seiten.json, neue-reisen-ausstehend.jsonl). KN_ZUGAENGE nannte bis #421 die Datei der alten
+    Links darin; ältere Units setzen nur sie, darum gilt ihr Ordner, solange FR_KONNEKTOR fehlt."""
+    if os.environ.get("FR_KONNEKTOR"):
+        return Path(os.environ["FR_KONNEKTOR"])
     if os.environ.get("KN_ZUGAENGE"):
-        return Path(os.environ["KN_ZUGAENGE"])
-    return Path(wert("FR_KONNEKTOR") or seiten() / "_konnektor") / "zugaenge.json"
+        return Path(os.environ["KN_ZUGAENGE"]).parent
+    return Path(wert("FR_KONNEKTOR") or seiten() / "_konnektor")
 
 
 def kennung():

@@ -1,6 +1,7 @@
 """Tests für Paket B: Regeln im Code (Rechte je Rolle, Verhalten je Status, Bausteine, Konflikt) gegen die Beispielreise."""
 import datetime
 import json
+import os
 import shutil
 import sys
 import threading
@@ -18,7 +19,7 @@ import konnektor as kn  # noqa: E402
 import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from schnittstelle_hilfe import N, intern_liste  # noqa: E402
-from conftest import meldet  # noqa: E402
+from conftest import mcp_intern, meldet  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 BEISPIEL = WURZEL / "beispiel" / "reisen" / "beispielreise"   # ida organisator, karl mitwirkend
@@ -92,6 +93,9 @@ class Umgebung:
         monkeypatch.setenv("RM_ABLAGE", str(self.ablage))
         monkeypatch.setenv("KN_SEITEN", str(self.seiten))
         monkeypatch.setenv("KN_ZUGAENGE", str(zug))
+        if not os.environ.get("FR_MAIL_DATEI"):      # Einladungen gehen nur noch per Mail (#421)
+            monkeypatch.setenv("FR_MAIL_DATEI", str(tmp / "mails.jsonl"))
+        self.mails = Path(os.environ["FR_MAIL_DATEI"])
         rm._zeiten.clear()
         self.rs, self.rurl = starten(rm.Dienst)
         monkeypatch.setenv("KN_RUECKMELDEDIENST", self.rurl)
@@ -124,7 +128,7 @@ class Umgebung:
         self.ss.shutdown()
 
     def rpc(self, token, methode, params=None):
-        code, a = anfrage(f"{self.kurl}/{token}", {"jsonrpc": "2.0", "id": 1, "method": methode, "params": params or {}})
+        code, a = mcp_intern(token, {"jsonrpc": "2.0", "id": 1, "method": methode, "params": params or {}})
         assert code == 200, a
         return intern_liste(a["result"]) if methode == "tools/list" else a["result"]
 
@@ -464,7 +468,7 @@ def test_verfassung_ist_kurz_und_nennt_aufgabe_grenzen_rollen(umgebung):
     u = umgebung("fest")
     for token, rolle in ((IDA, "Organisator:in"), (KARL, "Mitwirkende:r"), (KIM, "gast")):
         text = u.rpc(token, "initialize")["instructions"]
-        assert len(text) < 4500, len(text)   # mit Schreibweg: alle Werkzeuge in einem Satz; + Löschwunsch-Absatz, #145; + Satz zur Antwortsprache (ADR-0006); + Satz zur Packliste (#370)
+        assert len(text) < 4600, len(text)   # mit Schreibweg: alle Werkzeuge in einem Satz; + Löschwunsch-Absatz, #145; + Satz zur Antwortsprache (ADR-0006); + Satz zur Packliste (#370); + Einladen per Adresse statt Link (#421)
         assert text.startswith("Aufgabe:") and "Grenzen:" in text and "Rollen:" in text and rolle in text
         assert "Status: Der Plan steht" in text
 

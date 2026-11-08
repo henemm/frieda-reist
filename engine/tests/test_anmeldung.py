@@ -535,8 +535,10 @@ def test_meldung_anker_und_text_ohne_adresse():
     en = {"art": "neue_reise", "text": "Your new trip “Beispielstadt – Wochenende bei Verwandten” has been created (status idea) "
                                        "and appears in my_trips. Page: https://frieda.beispiel.invalid/stadtwochenende-abc/"}
     assert anmeldung.meldung_text(en) == "Your new trip “Beispielstadt – Wochenende bei Verwandten” has been created (status idea)."
-    app = {"art": "neue_reise", "text": texte.t("de", "dienst.zustellen.app", titel="Beispielstadt", seite="https://x.invalid/a/",
-                                                link="https://x.invalid/mcp/geheim")}
+    # Wortlaut der Meldung mit App-Link, wie zustellen.py sie bis #421 anlegte (gespeichert, darum hier fest)
+    app = {"art": "neue_reise", "text": "Deine neue Reise „Beispielstadt“ ist angelegt (Status Idee). Seite: https://x.invalid/a/ "
+                                        "· Link für die Claude-App, nur für dich, einmal als eigenen Konnektor eintragen: "
+                                        "https://x.invalid/mcp/geheim"}
     assert anmeldung.meldung_text(app) == "Deine neue Reise „Beispielstadt“ ist angelegt (Status Idee)."
     quelle = {"art": "pruefung", "text": "Preis ist alt; bisherige Quelle: https://quelle.invalid/preise. Bitte prüfen."}
     assert anmeldung.meldung_text(quelle) == quelle["text"]

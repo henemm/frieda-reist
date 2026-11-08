@@ -13,7 +13,7 @@ import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from test_regeln import IDA, KARL, KIM, MAX, anfrage, umgebung  # noqa: E402,F401  (umgebung: Fixture)
 from schnittstelle_hilfe import N  # noqa: E402
-from conftest import meldet  # noqa: E402
+from conftest import meldet, zugaenge_datei, zugang_dazu  # noqa: E402
 
 BASIS = "https://beispiel.invalid/mcp"
 
@@ -21,12 +21,6 @@ BASIS = "https://beispiel.invalid/mcp"
 @pytest.fixture(autouse=True)
 def link_adresse(monkeypatch):
     monkeypatch.setenv("KN_BASIS", BASIS)
-
-
-def token_aus(text):
-    """Den Link aus der Antwort von person_einladen lesen -> Token."""
-    link = next(z for z in text.splitlines() if z.startswith(BASIS + "/"))
-    return link.rsplit("/", 1)[1]
 
 
 def ruf(u, token, werkzeug, **args):
@@ -111,7 +105,7 @@ def test_entscheiden_nur_organisator_mit_persoenlichem_link(umgebung):
         assert f and soll in t, token
     assert u.schreibweg == []
     # Link nur mit Rolle (kein Name): keine Entscheidung, sie gehört genau einer Person
-    kn.zugaenge_pfad().write_text(json.dumps({**kn.zugaenge(), "b" * 32: {"reise": "beispielreise", "rolle": "organisator"}}))
+    zugaenge_datei().write_text(json.dumps({**json.loads(zugaenge_datei().read_text()), "b" * 32: {"reise": "beispielreise", "rolle": "organisator"}}))
     t, f = u.werkzeug("b" * 32, "entscheiden", **args)
     assert f and "persönlichen Link" in t and u.schreibweg == []
     assert "entscheiden" in u.werkzeuge(IDA) and "entscheiden" not in u.werkzeuge(KARL) | u.werkzeuge(KIM)
@@ -171,7 +165,7 @@ def test_frage_beantworten_prueft(umgebung):
 
 def test_frage_beantworten_ohne_namen_fragt_nach(umgebung):
     u = umgebung("planung")
-    kn.zugaenge_pfad().write_text(json.dumps({**kn.zugaenge(), "e" * 32: {"reise": "beispielreise", "rolle": "mitwirkend"}}))
+    zugaenge_datei().write_text(json.dumps({**json.loads(zugaenge_datei().read_text()), "e" * 32: {"reise": "beispielreise", "rolle": "mitwirkend"}}))
     t, f = u.werkzeug("e" * 32, "frage_beantworten", frage="F-01", antwort="Bahn")
     assert f and "Name fehlt" in t
     t, f = ruf(u, "e" * 32, "frage_beantworten", frage="F-01", antwort="Bahn", name="Lena")
@@ -196,19 +190,19 @@ def test_frage_beantworten_braucht_bausteine(umgebung):
 
 # ---------- person_einladen ----------
 
-def test_einladen_legt_person_an_und_stellt_zugang_aus(umgebung, capsys):
+def test_einladen_legt_person_an_und_laedt_per_mail_ein(umgebung):
+    """person_einladen legt die Person an und schickt die Einladung an ihre Adresse; Links gibt es nicht mehr (#421)."""
     u = umgebung("planung")
-    t, f = u.werkzeug(IDA, "person_einladen", vorname="Jörg", rolle="mitwirkend", notiz="Karls Bruder")
-    assert not f and "Jörg ist eingeladen" in t and "Rolle mitwirkend" in t
-    token = token_aus(t)
-    assert kn.zugang_zu(token)["person"] == "joerg"
-    assert (kn.zugaenge_pfad().stat().st_mode & 0o777) == 0o600
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="Jörg", rolle="mitwirkend", notiz="Karls Bruder", email="joerg@beispiel.invalid")
+    assert not f and "Jörg" in t and "mitwirkend" in t and "joerg@beispiel.invalid" in t and BASIS not in t
+    assert any(json.loads(z)["an"] == "joerg@beispiel.invalid" for z in u.mails.read_text().splitlines())
     e = rm.einladungen_lesen(u.o)["joerg"]
     assert (e["name"], e["rolle"], e["reist"], e["eingeladen_von"], e["notiz"]) == ("Jörg", "mitwirkend", True, "Ida", "Karls Bruder")
     pfad, body = u.schreibweg[-1]      # die Person steht sofort in reise.yaml (person_schreiben über den Schreibweg)
     assert pfad == "/beispielreise/person_schreiben" and body["name"] == "Ida"
     assert body["args"] == {"schluessel": "joerg", "vorname": "Jörg", "rolle": "mitwirkend", "reist": True, "notiz": "Karls Bruder"}
-    # Der Link funktioniert sofort: Name und Rolle stehen fest, ohne dass reise.yaml schon geändert ist
+    # Als Person der Reise (nach dem Anmelden): Name und Rolle stehen fest, ohne dass reise.yaml schon geändert ist
+    token = zugang_dazu("j" * 32, reise="beispielreise", person="joerg")
     t, f = ruf(u, token, "rueckmeldung_geben", ziel="T-03", art="Kommentar", text="Schön!", name="Jemand")
     assert not f and rm.eintraege(u.o)[0]["name"] == "Jörg"
     assert "Du sprichst mit Jörg (Mitwirkende:r)" in u.rpc(token, "initialize")["instructions"]
@@ -216,16 +210,13 @@ def test_einladen_legt_person_an_und_stellt_zugang_aus(umgebung, capsys):
     assert "person_einladen" not in u.werkzeuge(token)   # Vorgabe: nur Organisator:innen laden ein
     # Auch der Rückmeldedienst kennt ihn jetzt als Mitwirkende:r
     assert rm.rolle_von(rm.zustand("beispielreise"), "Jörg") == "mitwirkend"
-    # Die Kommandozeile findet die Person ebenfalls
-    kn.zugang_anlegen("beispielreise", "joerg")
-    assert "Jörg, mitwirkend" in capsys.readouterr().out
 
 
 def test_einladen_gast_darf_nur_lesen(umgebung):
     u = umgebung("planung")
-    t, f = u.werkzeug(IDA, "person_einladen", vorname="Mia", rolle="gast", reist=False)
-    assert not f and "nur lesen" in t
-    token = token_aus(t)
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="Mia", rolle="gast", reist=False, email="mia@beispiel.invalid")
+    assert not f
+    token = zugang_dazu("m" * 32, reise="beispielreise", person="mia")
     assert rm.einladungen_lesen(u.o)["mia"]["reist"] is False
     assert not u.werkzeuge(token) & kn.SCHREIB_WERKZEUGE
     t, f = ruf(u, token, "rueckmeldung_geben", ziel="T-03", art="Kommentar", text="x", name="Mia")
@@ -238,17 +229,18 @@ def test_einladen_gast_darf_nur_lesen(umgebung):
 def test_einladen_rolle_nie_hoeher_als_die_eigene(umgebung):
     u = umgebung("planung", regeln={"einladen": "mitwirkend"})
     assert "person_einladen" in u.werkzeuge(KARL) and "person_einladen" not in u.werkzeuge(KIM)
-    t, f = u.werkzeug(KARL, "person_einladen", vorname="Nora", rolle="organisator")
+    t, f = u.werkzeug(KARL, "person_einladen", vorname="Nora", rolle="organisator", email="nora@beispiel.invalid")
     assert f and "höchstens eine Rolle" in t and rm.einladungen_lesen(u.o) == {}
-    t, f = u.werkzeug(KARL, "person_einladen", vorname="Nora")   # Standard mitwirkend
+    t, f = u.werkzeug(KARL, "person_einladen", vorname="Nora", email="nora@beispiel.invalid")   # Standard mitwirkend
     assert not f and rm.einladungen_lesen(u.o)["nora"]["rolle"] == "mitwirkend"
     assert "Karl" in rm.einladungen_lesen(u.o)["nora"]["eingeladen_von"]
-    t, f = u.werkzeug(KIM, "person_einladen", vorname="Olga")
+    t, f = u.werkzeug(KIM, "person_einladen", vorname="Olga", email="olga@beispiel.invalid")
     assert f and "nur lesen" in t
     # Organisator:innen vergeben jede Rolle, auch organisator
-    t, f = u.werkzeug(IDA, "person_einladen", vorname="Paul", rolle="organisator")
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="Paul", rolle="organisator", email="paul@beispiel.invalid")
     assert not f
-    t, _ = u.werkzeug(token_aus(t), "entscheiden", option="V-01.b", status="gewaehlt", grund="Bahn")
+    t, _ = u.werkzeug(zugang_dazu("p" * 32, reise="beispielreise", person="paul"), "entscheiden", option="V-01.b",
+                      status="gewaehlt", grund="Bahn")
     assert "nur Organisator:innen" not in t and rm.rolle_von(rm.zustand("beispielreise"), "Paul") == "organisator"
 
 
@@ -264,52 +256,39 @@ def test_einladen_pruefungen(umgebung, monkeypatch, tmp_path):
                        ({"vorname": "Nora", "rolle": "chef"}, "Rolle muss"),
                        ({"vorname": "Nora", "notiz": "x" * 301}, "Notiz"),
                        ({"vorname": "???"}, "Schlüssel")):
-        t, f = u.werkzeug(IDA, "person_einladen", **args)
+        t, f = u.werkzeug(IDA, "person_einladen", email="nora@beispiel.invalid", **args)
         assert f and soll in t, (args, t)
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="Nora")              # ohne Adresse: Links gibt es nicht mehr (#421)
+    assert f and meldet(t, "konnektor.einladen.24")
     assert rm.einladungen_lesen(u.o) == {} and u.schreibweg == []
     # Link ohne Namen kann nicht einladen
-    kn.zugaenge_pfad().write_text(json.dumps({**kn.zugaenge(), "b" * 32: {"reise": "beispielreise", "rolle": "organisator"}}))
-    t, f = u.werkzeug("b" * 32, "person_einladen", vorname="Nora")
-    assert f and "persönlichen Link" in t
-    # ohne eingerichtete Link-Adresse
-    monkeypatch.delenv("KN_BASIS")
-    t, f = u.werkzeug(IDA, "person_einladen", vorname="Nora")
-    assert f and "KN_BASIS" in t and rm.einladungen_lesen(u.o) == {}
+    zugaenge_datei().write_text(json.dumps({**json.loads(zugaenge_datei().read_text()), "b" * 32: {"reise": "beispielreise", "rolle": "organisator"}}))
+    t, f = u.werkzeug("b" * 32, "person_einladen", vorname="Nora", email="nora@beispiel.invalid")
+    assert f and "persönlichen Link" in t and rm.einladungen_lesen(u.o) == {}
 
 
-def test_einladen_vorhandene_person_bekommt_nur_einen_neuen_link(umgebung):
+def test_einladen_vorhandene_person_wird_mit_ihrem_konto_verknuepft(umgebung):
     u = umgebung("planung")
-    vorher = set(kn.zugaenge())
-    t, f = u.werkzeug(IDA, "person_einladen", vorname="karl")   # Schreibweise egal
-    assert not f and "Neuer Link für Karl" in t and "Rolle mitwirkend" in t
-    neu = set(kn.zugaenge()) - vorher
-    assert len(neu) == 1 and kn.zugaenge()[neu.pop()]["person"] == "karl"
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="karl", email="karl@beispiel.invalid")   # Schreibweise egal
+    assert not f
+    assert "Einladung für Karl (Rolle mitwirkend) verschickt" in t
     assert rm.einladungen_lesen(u.o) == {} and u.schreibweg == []   # keine zweite Person, nichts geschrieben
     # Rolle ändern: Organisator:in, direkt nach reise.yaml
-    t, f = u.werkzeug(IDA, "person_einladen", vorname="Karl", rolle="organisator")
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="Karl", rolle="organisator", email="karl@beispiel.invalid")
     assert not f and "hat jetzt die Rolle organisator" in t and u.schreibweg[-1][1]["args"] == {"schluessel": "karl", "rolle": "organisator"}
-    # ein:e Mitwirkende:r (bei einladen: mitwirkend) kann keinen Link für ein:e Organisator:in ausstellen
+    # ein:e Mitwirkende:r (bei einladen: mitwirkend) kann keine Organisator:in einladen
     u2 = umgebung("planung", regeln={"einladen": "mitwirkend"})
-    t, f = u2.werkzeug(KARL, "person_einladen", vorname="Ida")
+    t, f = u2.werkzeug(KARL, "person_einladen", vorname="Ida", email="ida@beispiel.invalid")
     assert f and meldet(t, "konnektor.einladen.10")
 
 
 def test_einladen_doppelter_name_nach_einladung(umgebung):
     u = umgebung("planung")
-    assert not u.werkzeug(IDA, "person_einladen", vorname="Nora")[1]
-    t, f = u.werkzeug(IDA, "person_einladen", vorname="NORA", rolle="organisator")   # Schreibweise egal: Rolle ändern, keine zweite Person
+    assert not u.werkzeug(IDA, "person_einladen", vorname="Nora", email="nora@beispiel.invalid")[1]
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="NORA", rolle="organisator", email="nora@beispiel.invalid")   # Schreibweise egal: Rolle ändern, keine zweite Person
     assert not f and "hat jetzt die Rolle organisator" in t and len(rm.einladungen_lesen(u.o)) == 1
-    t, f = u.werkzeug(IDA, "person_einladen", vorname="Nora")   # weiterer Link für dieselbe Person
-    assert not f and "Neuer Link für Nora" in t and len(rm.einladungen_lesen(u.o)) == 1
-
-
-def test_einladen_zugaenge_nicht_beschreibbar(umgebung, monkeypatch):
-    u = umgebung("planung")
-    def nicht_schreibbar(z):
-        raise PermissionError("Dateisystem ist schreibgeschützt")
-    monkeypatch.setattr(kn, "zugang_ausstellen", nicht_schreibbar)
-    t, f = u.werkzeug(IDA, "person_einladen", vorname="Nora")
-    assert f and meldet(t, "konnektor.einladen.17") and rm.einladungen_lesen(u.o) == {} and u.schreibweg == []
+    t, f = u.werkzeug(IDA, "person_einladen", vorname="Nora", email="nora@beispiel.invalid")   # noch einmal einladen: dieselbe Person
+    assert not f and "Einladung für Nora" in t and len(rm.einladungen_lesen(u.o)) == 1
 
 
 def test_einladung_gilt_nicht_mehr_doppelt_sobald_reise_yaml_die_person_kennt():
@@ -321,7 +300,7 @@ def test_einladung_gilt_nicht_mehr_doppelt_sobald_reise_yaml_die_person_kennt():
 
 def test_einladung_wird_von_reise_yaml_abgeloest(umgebung):
     u = umgebung("planung")
-    assert not u.werkzeug(IDA, "person_einladen", vorname="Karl")[1]
+    assert not u.werkzeug(IDA, "person_einladen", vorname="Karl", email="karl@beispiel.invalid")[1]
     # Eine Einladung, die reise.yaml schon enthält (hier: von Hand in die Datei geschrieben), überschreibt die Rolle nicht
     u.o.joinpath("einladungen.json").write_text(json.dumps({"karl": {"name": "Karl", "rolle": "organisator"}}))
     assert rm.rolle_von(rm.zustand("beispielreise"), "Karl") == "mitwirkend"
@@ -406,7 +385,7 @@ def test_gespraech_auf_englisch_mit_englischen_namen(umgebung, tmp_path):
     """Konto `en`, englische Werkzeug- und Parameternamen: dieselben Antworten und Ablehnungen wie auf Deutsch, aber englisch; was
     zum Schreibweg geht, trägt die internen (deutschen) Namen, und die Datenwerte bleiben deutsch."""
     u = umgebung("planung")
-    zug = Path(kn.zugaenge_pfad())
+    zug = zugaenge_datei()
     daten = json.loads(zug.read_text(encoding="utf-8"))
     for token in daten:
         daten[token]["sprache"] = "en"

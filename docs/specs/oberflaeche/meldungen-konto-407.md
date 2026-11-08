@@ -143,9 +143,9 @@ Zeilen, für Sprachen ohne den Schlüssel und für die Sammelnachricht an den Be
 - Alte Zeilen ohne `t`: Beim Zeigen auf Mein Konto werden Adressen der eigenen Instanz (`FR_BASIS`) und das Stück
   „ und steht in meine_reisen“ (Katalogtext, alle Sprachen) aus dem Text genommen. Das ist eine Darstellungsregel mit
   Test, keine Änderung der Datei.
-- Der Link für die Claude-App (Zustellen ohne Konto, `dienst.zustellen.app`) ist geheim. Auf Mein Konto steht er nicht als
-  Text, sondern hinter dem Knopf „Link für die Claude-App kopieren“ im Ziel. Bis das gebaut ist, bleibt er in der
-  Zeile verborgen und die Zeile führt zur Reise.
+- Der Link für die Claude-App (Zustellen ohne Konto, `dienst.zustellen.app`) ist geheim und steht auf Mein Konto nie.
+  Einen Knopf „Link für die Claude-App kopieren“ gibt es nicht: Der Product Owner hat am 8.11.2026 entschieden, die
+  alten Links ganz abzuschaffen (#421). Alte Meldungen zeigen die Zeile ohne Link-Text, sie führt zur Reise.
 
 Teile tragen bisher die Meldungen „neue Reise“ (`betrieb/zustellen.py`) und die Bitten an Betreiber
 (`anmeldung.betreiber_melden`: Reisen anlegen, Warteliste). Meldungen des Wächters, Konflikte und technische Hinweise
