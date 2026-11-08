@@ -51,9 +51,12 @@ aus.packen = {
   ohneHakenIda: await p.locator("#G-07 [data-pack]").count(),      // das Erste-Hilfe-Set packt Ida
 };
 if (process.env.RH_BILDER) await p.screenshot({path: `${process.env.RH_BILDER}/packliste-390.png`, fullPage: true});
-// Abhaken geht sofort, bleibt beim Dienst und überlebt das Neuladen
+// Abhaken geht sofort, bleibt beim Dienst und überlebt das Neuladen. Die Seite zeigt den Haken vor der Antwort des
+// Dienstes; neu geladen wird erst, wenn das Speichern beantwortet ist, sonst gewinnt das Neuladen den Wettlauf (#413).
+const gespeichert = p.waitForResponse(r => r.url().includes("api/packstand") && r.request().method() === "PATCH");
 await haken(p, "Regenjacke").click();
 await warte(p, () => document.querySelector(".pack-zeile.gepackt"));
+await gespeichert;
 aus.haken = {gepackt: await texte(p, ".pack-zeile.gepackt .pack-titel"), checked: await haken(p, "Regenjacke").getAttribute("aria-checked")};
 await p.reload();
 await p.waitForSelector(".pack-zeile");
