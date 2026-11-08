@@ -85,14 +85,15 @@ erkannt und bekommt darüber jederzeit wieder Zugang.
   - Der Konnektor schickt das Dienst-Geheimnis (`X-Frieda-Dienst`, Datei `dienst-geheimnis` neben der Datenbank).
   - Alles andere gilt als Seite (fail-closed). Name und Rolle kommen aus Sitzung und Mitgliedschaft, ein eingetippter
     Name wird überschrieben.
-- **Regel `anmeldung` je Reise:**
-  - `uebergang` (Vorgabe, solange umgestellt wird): ohne Anmeldung geht weiter ein eingetippter Name.
-  - `noetig`: ohne Sitzung 401, ohne Mitgliedschaft 403.
+- **Mitmachen nur angemeldet** (seit #421, Product Owner 8.11.2026): ohne Sitzung 401, ohne Mitgliedschaft 403. Die frühere
+  Regel `anmeldung` je Reise (`uebergang`: auch ein eingetippter Name; `noetig`) ist entfallen; steht sie noch in einer
+  `reise.yaml`, baut die Reise mit Hinweis, und `neu.py nachziehen` nimmt sie heraus. Lesen geht weiter ohne Anmeldung
+  über den geheimen Link zur Seite.
 - **Einplanen** auf dem Wunsch-Brett: auch angemeldet auf der Seite, aber nur als Organisator:in.
 - **Zurückziehen:** Angemeldet geht es nur bei eigenen Rückmeldungen.
 - **Reiseseite:** `GET api/ich` sagt, wer angemeldet ist.
   - Oben rechts steht „Anmelden“ oder der eigene Name (Molekül `kontoKnopf`, nur auf Friedas eigener Adresse).
-  - Angemeldet entfällt das Namensfeld (`nameFeld`).
+  - Angemeldet nennt `nameFeld` den Namen, unter dem man schreibt; sonst steht dort der Hinweis zum Anmelden (ein Feld für einen eingetippten Namen gibt es nicht mehr, #421).
   - Antwortet der Dienst mit 401, bleibt der Eintrag im Ausgang und geht nach dem Anmelden los.
 - **Mit Claude verbinden (#422):** Mein Konto erklärt in vier Schritten, wie man Frieda als Konnektor in die Claude-App einträgt (Adresse `<FR_BASIS>/mcp` zum Kopieren, Hinweis auf bezahlte Konten); die Einladungsmail verweist mit `<FR_BASIS>/konto#verbinden` darauf.
 - **Archivierte Reisen (#416):** Auf Mein Konto stehen Reisen im Status archiv nicht in der Liste, sondern in einem eingeklappten Abschnitt „Archivierte Reisen (n)“ darunter; `meine_reisen` nennt sie nur in einer Schlusszeile. Nichts wird gelöscht, die Reisen bleiben mit ihrem Ordnernamen ansprechbar (Status zurücksetzen mit `reise_status_setzen`).

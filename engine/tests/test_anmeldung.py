@@ -175,7 +175,7 @@ def test_rueckmeldung_traegt_den_namen_aus_der_sitzung(welt):
     s, _, t = abruf(f"{u.rurl}/beispielreise/ich", cookie=token)
     ich = json.loads(t)
     assert ich["person"] == {"schluessel": "karl", "name": "Karl", "rolle": "mitwirkend"}
-    assert ich["konto"]["email"] == KARL and ich["basis"] == BASIS and ich["anmeldung"] == "uebergang"
+    assert ich["konto"]["email"] == KARL and ich["basis"] == BASIS and "anmeldung" not in ich   # Regel entfallen (#421)
     # die Seite folgt angemeldet der Sprache des Kontos (#188)
     assert ich["konto"]["sprache"] in texte.SPRACHEN
     andere = next(c for c in texte.SPRACHEN if c != ich["konto"]["sprache"])
@@ -185,13 +185,14 @@ def test_rueckmeldung_traegt_den_namen_aus_der_sitzung(welt):
     # mit Sitzung, aber von fremder Adresse (CSRF): nein
     s, _, t = mitmachen(u, token, origin="https://www.beispiel.invalid", name="Karl")
     assert s == 403 and "nicht von Frieda" in t
-    # Übergang: ohne Anmeldung geht der eingetippte Name noch
+    # ohne Anmeldung zählt ein eingetippter Name nicht (die Regel anmeldung: uebergang ist seit #421 entfallen)
     s, _, t = mitmachen(u, name="Hanna", text="Ohne Anmeldung")
-    assert s == 201 and json.loads(t)["name"] == "Hanna"
+    assert s == 401
 
 
-def test_regel_noetig(welt):
-    u = welt(regeln={"anmeldung": "noetig"})
+def test_mitmachen_nur_angemeldet(welt):
+    """Seit #421 für jede Reise (früher Regel anmeldung: noetig): ohne Sitzung 401, ohne Mitgliedschaft 403."""
+    u = welt()
     s, _, t = mitmachen(u, name="Hanna")
     assert s == 401 and "melde dich an" in t
     token, _ = anmelden(u, MO, "Mo")                            # angemeldet, aber nicht eingeladen
@@ -227,7 +228,7 @@ def test_einplanen_als_angemeldete_organisatorin(welt):
     rid = json.loads(t)["id"]
     url = f"{u.rurl}/beispielreise/rueckmeldungen/{rid}"
     assert abruf(url, "PATCH", cookie=karl_t, json_body={"eingeplant": True})[0] == 403
-    assert abruf(url, "PATCH", json_body={"name": "Ida", "eingeplant": True})[0] == 403    # nur eingetippt
+    assert abruf(url, "PATCH", json_body={"name": "Ida", "eingeplant": True})[0] == 401    # nur eingetippt: nicht angemeldet
     s, _, t = abruf(url, "PATCH", cookie=ida_t, json_body={"eingeplant": True, "bezug": ["T-02"]})
     assert s == 200 and json.loads(t)["eingeplant"]["wer"] == "Ida"
 

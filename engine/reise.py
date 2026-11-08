@@ -49,15 +49,17 @@ VORGABEN = {
     "waechter_zahlung": False,           # offene Zahlungen gebuchter Buchungen melden (#166; je Reise einschaltbar)
     # app: beim Öffnen der Claude-App; nachricht: Sammelnachricht an den Betreiber; push: aufs Handy (engine/push.py)
     "meldekanal": ["app", "nachricht", "push"],
-    # Paket J (Konten): uebergang = auf der Seite geht auch ein eingetippter Name; noetig = Mitmachen nur angemeldet
-    "anmeldung": "uebergang",
 }
 KANAELE = ("app", "nachricht", "push")   # E-Mail an alle gibt es (noch) nicht
 REGEL_WERTE = {"konflikt": ("offene_frage",),
-               "einladen": ("organisator", "mitwirkend"), "anmeldung": ("uebergang", "noetig")}
+               "einladen": ("organisator", "mitwirkend")}
 # Regeln des Einarbeiten-Laufs (bis 29.10.2026, ADR-0001 Paket O-3): der Konnektor schreibt direkt, es gibt keinen Lauf
 # mehr. Eine reise.yaml, die sie noch nennt, baut weiter; sie bekommt einen Hinweis und die Regeln sind ohne Wirkung.
 ALTE_REGELN = ("entscheidungsweg", "sammelzeit_minuten")
+# Regel anmeldung (Paket J: uebergang = auf der Seite ging auch ein eingetippter Name, noetig = nur angemeldet) ist seit #421
+# entfallen: Mitmachen geht immer nur angemeldet. Eine reise.yaml, die sie noch nennt, baut mit Hinweis; neu.py nachziehen
+# nimmt den Eintrag heraus.
+ENTFALLEN_421 = ("anmeldung",)
 KONTINGENT_ARTEN = ("punkte", "anzahl")
 DARSTELLUNG = ("start", "tiefe", "varianten_titel", "gruppen")
 # Der Kasten „Mahnung“ auf der Seite ist seit dem 29.10.2026 weg (Product Owner); eine reise.yaml mit mahnungen: false
@@ -522,6 +524,8 @@ class Reise:
         for k in eigen:
             if k in ALTE_REGELN:
                 self.hinweise.append(texte.satz("pruefung.reise.29", k=k))
+            elif k in ENTFALLEN_421:
+                self.hinweise.append(texte.satz("pruefung.reise.anmeldung_entfallen", k=k))
             elif k not in VORGABEN:
                 self.fehl(texte.satz("pruefung.reise.30", k=k, w1=', '.join(VORGABEN)))
         r = regeln_mit_vorgaben({k: v for k, v in eigen.items() if k in VORGABEN})

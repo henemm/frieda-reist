@@ -26,9 +26,13 @@ def dienst(tmp_path, monkeypatch):
     s.shutdown()
 
 
-def anfrage(url, methode="GET", daten=None, roh=None, kopf=None):
+def anfrage(url, methode="GET", daten=None, roh=None, kopf=None, als_dienst=True):
+    """Anfrage an den Rückmeldedienst. als_dienst: mit dem Dienst-Geheimnis wie der Konnektor, der Name im Body zählt (die
+    Rolle prüft der Dienst trotzdem); ohne ist es die Seite, und die schreibt nur angemeldet (#421)."""
+    import konten
     body = roh if roh is not None else (json.dumps(daten).encode() if daten is not None else None)
-    req = urllib.request.Request(url, data=body, method=methode, headers={"Content-Type": "application/json", **(kopf or {})})
+    dienst = {"X-Frieda-Dienst": konten.dienst_geheimnis()} if als_dienst else {}
+    req = urllib.request.Request(url, data=body, method=methode, headers={"Content-Type": "application/json", **dienst, **(kopf or {})})
     try:
         with urllib.request.urlopen(req) as r:
             return r.status, json.loads(r.read() or b"null")
@@ -254,9 +258,9 @@ def test_beleg_hochladen_sehen_freigeben_zurueckziehen(belege_welt):
     import belege as bl
     basis, ablage = belege_welt
     u = basis + "/beispielreise/belege"
-    # Hochladen nur angemeldet (Product Owner 29.10.2026): die Seite mit bloß eingetipptem Namen wird abgewiesen, auch bei der
-    # Übergangsregel; hier über den Dienst-Header mit genannter Person (wie der Konnektor), Typ am Inhalt
-    code, e = anfrage(u + "/B-01?name=Karl", "POST", roh=PDF)
+    # Hochladen nur angemeldet (Product Owner 29.10.2026): die Seite mit bloß eingetipptem Namen wird abgewiesen; hier über
+    # den Dienst-Header mit genannter Person (wie der Konnektor), Typ am Inhalt
+    code, e = anfrage(u + "/B-01?name=Karl", "POST", roh=PDF, als_dienst=False)
     assert code == 401 and "melde dich an" in e["fehler"]
     code, b, _ = _dienst_anfrage(u + "/B-01?name=Karl", "POST", roh=PDF)
     assert code == 201 and b["id"] == "D-01" and b["buchung"] == "B-01" and b["wer"] == "Karl" and b["typ"] == "application/pdf"
@@ -275,14 +279,14 @@ def test_beleg_hochladen_sehen_freigeben_zurueckziehen(belege_welt):
     assert _dienst_anfrage(u + "?name=Anna")[1] == []
     code, daten, kopf = _dienst_anfrage(u + "/D-01?name=Ida")
     assert code == 200 and daten == PDF and kopf["Content-Type"] == "application/pdf" and "inline" in kopf["Content-Disposition"]
-    assert anfrage(u + "/D-01")[0] == 404 and _dienst_anfrage(u + "/D-01?name=Anna")[0] == 404
+    assert anfrage(u + "/D-01", als_dienst=False)[0] == 404 and _dienst_anfrage(u + "/D-01?name=Anna")[0] == 404
     # Freigeben für alle: nur Organisator:innen; danach sieht auch die Seite ohne Anmeldung den Beleg
     code, e, _ = _dienst_anfrage(u + "/D-01", "PATCH", {"name": "Karl", "sichtbar": "alle"})
     assert code == 403 and "Organisator" in e["fehler"]
     code, e, _ = _dienst_anfrage(u + "/D-01", "PATCH", {"name": "Ida", "sichtbar": "alle"})
     assert code == 200 and e["sichtbar"] == "alle"
-    assert [x["id"] for x in anfrage(u)[1]] == ["D-01"] and urllib.request.urlopen(u + "/D-01").status == 200
-    assert anfrage(u + "/D-01", "PATCH", {"name": "Ida", "sichtbar": "beteiligte"})[0] == 401   # eingetippter Name genügt nicht
+    assert [x["id"] for x in anfrage(u, als_dienst=False)[1]] == ["D-01"] and urllib.request.urlopen(u + "/D-01").status == 200
+    assert anfrage(u + "/D-01", "PATCH", {"name": "Ida", "sichtbar": "beteiligte"}, als_dienst=False)[0] == 401   # eingetippter Name genügt nicht
     # Zurückziehen: wer hochlud oder Organisator:in; die Datei bleibt, Gäste sehen den Beleg nicht mehr
     assert _dienst_anfrage(u + "/D-02", "PATCH", {"name": "Karl", "zurueckziehen": True})[0] == 403
     code, e, _ = _dienst_anfrage(u + "/D-01", "PATCH", {"name": "Karl", "zurueckziehen": True})

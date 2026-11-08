@@ -22,6 +22,7 @@ import bauen  # noqa: E402
 import konnektor as kn  # noqa: E402
 import packliste  # noqa: E402
 import reise as rg  # noqa: E402
+import konten  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 import schreiben as sb  # noqa: E402
 from conftest import meldet  # noqa: E402
@@ -576,7 +577,8 @@ def test_packliste_im_browser(tmp_path, monkeypatch, browser):
     try:
         aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_packliste.mjs"), str(PLAYWRIGHT),
                               f"http://127.0.0.1:{s.server_address[1]}/beispielreise/", durl, "Karl"],
-                             capture_output=True, text=True, timeout=240, env={**os.environ, "RH_BROWSER": browser})
+                             capture_output=True, text=True, timeout=240,
+                             env={**os.environ, "RH_BROWSER": browser, "FR_TEST_DIENST": konten.dienst_geheimnis()})
     finally:
         s.shutdown()
         dienst.shutdown()

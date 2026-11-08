@@ -136,7 +136,7 @@ def test_einplanen_nur_organisator(umgebung):
     assert w["spalte"] == "eingeplant" and w["eingeplant"] == {"wer": "Ida", "datum": w["eingeplant"]["datum"],
                                                                "bezug": ["T-02"]}
     assert aendern(u, a, name="Ida", eingeplant=True, bezug=["T-03"])[0] == 200   # andere Stelle: geändert
-    # Ohne Dienst-Geheimnis ist es die Seite (auch ohne X-Forwarded-For): ein eingetippter Name plant nie ein
+    # Ohne Dienst-Geheimnis ist es die Seite (auch ohne X-Forwarded-For): ohne Anmeldung schreibt sie nicht (#421)
     for kopf in ({}, {"X-Forwarded-For": "203.0.113.5"}, {"X-Frieda-Dienst": "falsch"}):
         import urllib.error
         import urllib.request
@@ -145,7 +145,7 @@ def test_einplanen_nur_organisator(umgebung):
                                      headers={"Content-Type": "application/json", **kopf})
         with pytest.raises(urllib.error.HTTPError) as f:
             urllib.request.urlopen(req)
-        assert f.value.code == 403 and "Organisator:in" in json.loads(f.value.read())["fehler"]
+        assert f.value.code == 401
     assert brett(u)["wuensche"][0]["eingeplant"]["bezug"] == ["T-03"]
     assert len(brett(u)["wuensche"][0]["verlauf"]) == 2
     assert aendern(u, "R-20991231-000000-0000", name="Ida", eingeplant=True)[0] == 404

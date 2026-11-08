@@ -14,7 +14,10 @@ async function seite(breite, hash) {
   await ctx.route("**/api/**", async r => {
     if (!netz) return r.abort();
     const pfad = new URL(r.request().url()).pathname.split("/api/")[1];
-    r.fulfill({response: await r.fetch({url: `${dienst}/${reise}/${pfad}`})});
+    // Wer spricht: der Name aus dem Speicher des Browsers, beglaubigt wie vom Konnektor (Dienst-Geheimnis aus der Umgebung);
+    // ohne Anmeldung nimmt der Dienst seit #421 keinen eingetippten Namen mehr an
+    const kopf = {...await r.request().allHeaders(), "x-frieda-dienst": process.env.FR_TEST_DIENST || ""};
+    r.fulfill({response: await r.fetch({url: `${dienst}/${reise}/${pfad}`, headers: kopf})});
   });
   await ctx.addInitScript(n => localStorage.setItem("rh-name", n), name);
   const p = await ctx.newPage();

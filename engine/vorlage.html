@@ -4238,7 +4238,7 @@ function ansichtBausteine(m) {
     el("div", {class: "tagzeilen"}, terminZeile("#bausteine", [el("b", {}, "2"), "Fr 14.5."], "Beispieltermin (Muster)", "Ida"),
       terminZeile("#bausteine", [el("b", {}, "1.5."), "überfällig"], "Beispielfrist (Muster)", "Karl", "ueber")));
   teil("Molekül", "Ebenenkopf", "Titel einer Ebene der Tagesseite, rechts die Kennung.", ebeneKopf("Titel einer Ebene (Muster)", zid("Muster")));
-  teil("Molekül", "Namensfeld", "Wer schreibt: aus dem Konto, sonst ein Feld für den Vornamen.", nameFeld("bs-name"));
+  teil("Molekül", "Namensfeld", "Wer schreibt: aus dem Konto, sonst der Hinweis zum Anmelden.", nameFeld("bs-name"));
   const rmMusterVoll = {ziel: "Muster", status: "neu", art: "Kommentar", name: "Muster", erstellt: "2027-01-02T00:00:00Z", text: "Beispieltext (Muster)."};
   const gruppenBox = el("div", {});
   eintragGruppen(gruppenBox, [["Neu", e => e.status === "neu"]], [rmMusterVoll], e => rmEintrag(e, false));
@@ -4564,14 +4564,13 @@ function kontoKnopf(ich) {
 }
 // Satz mit einem Link darin: der Text im Katalog trägt {link}; davor und danach bleibt Text, der Link selbst ein Knoten
 function mitLink(schluessel, knoten) { const [vor, nach] = T(schluessel, {link: "\u0000"}).split("\u0000"); return [vor, knoten, nach]; }
-// Molekül Namensfeld: ohne Konto „Dein Name“, angemeldet nur der Hinweis, unter welchem Namen man schreibt
+// Molekül Namensfeld: angemeldet der Hinweis, unter welchem Namen man schreibt; sonst der Hinweis zum Anmelden. Einen
+// eingetippten Namen gibt es seit #421 nicht mehr: Mitmachen geht nur angemeldet.
 function nameFeld(id) {
   if (MIT_KONTO()) return [el("input", {id, type: "hidden", value: ICH.person.name}),
     el("p", {class: "meldung"}, T("seite.konto.du_schreibst_als") + ICH.person.name + ".")];
-  if (ICH && ICH.anmeldung === "noetig") return el("p", {class: "meldung"}, mitLink("seite.konto.zum_mitmachen",
+  return el("p", {class: "meldung"}, mitLink("seite.konto.zum_mitmachen",
     KONTO_HIER() ? el("a", {href: ANMELDEN()}, T("seite.konto.anmelden_verb")) : T("seite.konto.anmelden_verb")));
-  return [el("label", {for: id}, T("seite.konto.dein_name")), el("input", {id, required: true, maxlength: 80, value: NAME, autocomplete: "name"}),
-    KONTO_HIER() ? el("p", {class: "meldung"}, mitLink("seite.konto.oder_anmelden", el("a", {href: ANMELDEN()}, T("seite.konto.anmelden_verb")))) : null];
 }
 function anmeldeHinweis(ziel) {
   $(ziel).replaceChildren(...mitLink("seite.konto.gespeichert_anmelden", el("a", {href: ANMELDEN()}, T("seite.konto.anmelden_verb"))));
@@ -4680,12 +4679,11 @@ function rmFormular(id) {
   dlg.dataset.ziel = id;
   dlg.dataset.ag = "";
   if (!dlg.open) dlg.showModal();
-  if (KANN_RM && !liste.length && !agZu(id).length) { if (!NAME) $("#rmName").focus(); else $("#rmText").focus(); }
+  if (KANN_RM && !liste.length && !agZu(id).length) $("#rmText").focus();   // ein Namensfeld gibt es nicht mehr (#421)
 }
 
 // Senden oder ohne Netz in den Ausgang legen. -> Fehlertext, wenn der Dienst ablehnt, sonst null
 async function rmSpeichern(name, art, ziel, text, quelle) {
-  if (!MIT_KONTO()) { NAME = name; try { localStorage.setItem("rh-name", NAME); } catch (e) {} }
   const e = {name, art, ziel, text, quelle,
     erstellt: new Date().toISOString(), lokal: Date.now() + "-" + Math.random().toString(16).slice(2, 6)};
   try {
@@ -4702,8 +4700,9 @@ async function rmSpeichern(name, art, ziel, text, quelle) {
 
 async function rmAbschicken() {
   const ziel = $("#rm").dataset.ziel;
+  // der Name kommt aus dem Konto; ohne Anmeldung bleibt die Rückmeldung im Ausgang, bis man angemeldet ist (#421)
   const text = $("#rmText").value.trim(), name = ($("#rmName") || {value: ""}).value.trim();
-  if (!text || !name) return;
+  if (!text) return;
   const fehler = await rmSpeichern(name, $("#rmArt").value, ziel, text, $("#rmQuelle").value.trim());
   if (fehler) { $("#rmMeldung").textContent = T("seite.fehler.nicht_angenommen") + fehler; return; }
   rmKnopf(); route(true); rmFormular(ziel);
@@ -4925,7 +4924,7 @@ function ansichtWuensche(m) {
 
 async function wuAbschicken() {
   const text = $("#wuText").value.trim(), name = ($("#wuName") || {value: ""}).value.trim();
-  if (!text || !name) return;
+  if (!text) return;
   const fehler = await rmSpeichern(name, "Wunsch", "wuensche", text, $("#wuQuelle").value.trim());
   if (fehler) { $("#wuMeldung").textContent = T("seite.fehler.nicht_angenommen") + fehler; return; }
   WU_ENTWURF = {text: "", quelle: ""};
@@ -5360,9 +5359,7 @@ function agFormular(agid, bezug, zurueck) {
 
 async function agSpeichern() {
   const dlg = $("#rm"), agid = dlg.dataset.ag, m = $("#agMeldung");
-  const name = ($("#ag-name") || {value: ""}).value.trim();
-  if (!name) return;
-  if (!MIT_KONTO()) { NAME = name; try { localStorage.setItem("rh-name", NAME); } catch (e) {} }
+  const name = ($("#ag-name") || {value: ""}).value.trim();   // aus dem Konto; ohne Anmeldung lehnt der Dienst ab (#421)
   const body = {name, titel: $("#ag-titel").value.trim(), bezug: $("#ag-bezug").value.split(/[,\s]+/).filter(Boolean),
     zustaendig: $("#ag-zustaendig").value.trim(), prioritaet: $("#ag-prioritaet").value,
     ab: $("#ag-ab").value, frist: $("#ag-frist").value, notiz: $("#ag-notiz").value.trim()};

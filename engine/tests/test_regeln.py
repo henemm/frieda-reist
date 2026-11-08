@@ -16,6 +16,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bauen  # noqa: E402
 import konnektor as kn  # noqa: E402
+import konten  # noqa: E402
 import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 from schnittstelle_hilfe import N, intern_liste  # noqa: E402
@@ -70,9 +71,12 @@ def starten(handler):
     return s, f"http://127.0.0.1:{s.server_address[1]}"
 
 
-def anfrage(url, daten=None, methode="POST"):
+def anfrage(url, daten=None, methode="POST", als_dienst=True):
+    """als_dienst: mit dem Dienst-Geheimnis wie der Konnektor (der Name im Body zählt, die Rolle prüft der Dienst trotzdem);
+    ohne ist es die Seite, und die schreibt nur angemeldet (#421)."""
     body = json.dumps(daten).encode() if daten is not None else None
-    req = urllib.request.Request(url, data=body, method=methode, headers={"Content-Type": "application/json"})
+    dienst = {"X-Frieda-Dienst": konten.dienst_geheimnis()} if als_dienst else {}
+    req = urllib.request.Request(url, data=body, method=methode, headers={"Content-Type": "application/json", **dienst})
     try:
         with urllib.request.urlopen(req) as r:
             return r.status, json.loads(r.read() or b"null")

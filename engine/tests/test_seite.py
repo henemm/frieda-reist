@@ -489,7 +489,8 @@ def test_wunsch_brett(tmp_path, monkeypatch, browser):
     try:
         aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_brett.mjs"), str(PLAYWRIGHT),
                               f"http://127.0.0.1:{s.server_address[1]}/beispielreise/", durl, "Karl"],
-                             capture_output=True, text=True, timeout=180, env={**os.environ, "RH_BROWSER": browser})
+                             capture_output=True, text=True, timeout=180,
+                             env={**os.environ, "RH_BROWSER": browser, "FR_TEST_DIENST": __import__("konten").dienst_geheimnis()})
     finally:
         s.shutdown()
         dienst.shutdown()
@@ -516,8 +517,9 @@ def test_wunsch_brett(tmp_path, monkeypatch, browser):
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
 def test_anmeldung_auf_der_seite(tmp_path, monkeypatch, browser):
-    """Paket J2: ohne Konto „Anmelden“ und Namensfeld (Übergang: eingetippter Name geht), angemeldet der eigene Name
-    oben rechts, kein Namensfeld, die Rückmeldung trägt den Namen aus dem Konto."""
+    """Paket J2: ohne Konto „Anmelden“ und der Hinweis zum Anmelden statt eines Namensfelds; die Rückmeldung bleibt
+    gespeichert, bis man angemeldet ist (#421: kein eingetippter Name). Angemeldet der eigene Name oben rechts, die
+    Rückmeldung trägt den Namen aus dem Konto."""
     from test_regeln import reise_bauen, starten
     import konten
     import rueckmeldungen as rm
@@ -559,19 +561,19 @@ def test_anmeldung_auf_der_seite(tmp_path, monkeypatch, browser):
         dienst.shutdown()
     assert ohne["fehler"] == [] and mit["fehler"] == []
     assert ohne["knopf"]["text"] == "Anmelden" and ohne["knopf"]["ziel"].startswith("/anmelden?zurueck=%2Fbeispielreise%2F")
-    assert ohne["nameFeld"] == "text" and any("anmelden" in h for h in ohne["hinweis"])
+    assert ohne["nameFeld"] is None and any("anmelden" in h for h in ohne["hinweis"])
     assert mit["knopf"] == {"text": "Karl", "ziel": "/konto"}
     # Benachrichtigungen haben ihre Heimat auf Mein Konto (#21, Entscheidung A): angemeldet nur ein Verweis dorthin
     assert ohne["push"] is None and mit["push"] == {"text": "Benachrichtigungen: unter „Mein Konto“", "ziel": "/konto#push"}
     assert mit["nameFeld"] == "hidden" and "Du schreibst als Karl." in mit["hinweis"]
-    assert "Danke" in ohne["meldung"] and "Danke" in mit["meldung"]
+    assert "Gespeichert" in ohne["meldung"] and "anmelden" in ohne["meldung"] and "Danke" in mit["meldung"]
     # Meldungen an die Person (#21): angemeldet als Hinweis, ohne Netz aus dem Speicher, nach „Gelesen“ weg
     assert ohne["fuerDich"]["hidden"] and ohne["fuerDichOffline"]["hidden"]
     assert not mit["fuerDich"]["hidden"] and mit["fuerDich"]["text"].startswith("Für dich") and "8:40 Uhr" in mit["fuerDich"]["text"]
     assert mit["fuerDichOffline"] == mit["fuerDich"]
     assert mit["fuerDichGelesen"]["hidden"] and mit["fuerDichDanach"]["hidden"]
     namen = [json.loads(z)["name"] for z in (tmp_path / "ablage/beispielreise/eingang.jsonl").read_text().splitlines()]
-    assert namen == ["Hanna", "Karl"]
+    assert namen == ["Karl"]          # ohne Anmeldung kommt nichts beim Dienst an
 
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")

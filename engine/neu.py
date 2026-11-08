@@ -886,7 +886,8 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
     Eckdaten aus der früheren Vorlage stellt eckdaten_nachziehen um (#217); reise.yaml ohne sprache bekommt sprache: de
     (sprache_nachziehen, #267), vor den Schritten, die die Sprache der Reise lesen; Titel und Kennzahlen der Etappen kommen aus
     dem Dossier an die Strecken (etappen_nachziehen, #269); das frühere Feld buchung: an Dingen wird zur Buchung B-…
-    (buchung_nachziehen, #215); Ort und gleichnamige Wegpunkte bekommen eine Lage (orte_lage_zusammenfuehren, ADR-0008).
+    (buchung_nachziehen, #215); Ort und gleichnamige Wegpunkte bekommen eine Lage (orte_lage_zusammenfuehren, ADR-0008); die entfallene Regel anmeldung
+    kommt aus reise.yaml heraus (anmeldung_nachziehen, #421).
     Kommentare und Form der Dateien bleiben (ruamel). -> Liste der Meldungen (was geändert oder offen ist)."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from routen import WANN, art_schluessel
@@ -894,6 +895,7 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
     reise_dir = Path(reise_dir)
     strecken_arten = dict(strecken_arten or {})
     meldungen = sprache_nachziehen(reise_dir, schreiben)
+    meldungen += anmeldung_nachziehen(reise_dir, schreiben)
     roh = sb.routen_laden(reise_dir) if (reise_dir / "plan" / "routen.yaml").exists() else None   # ohne Plan (Status idee): nur arten.yaml und reise.json
 
     def typ_zu_art(knoten, wo):
@@ -1171,6 +1173,31 @@ def sprache_nachziehen(reise_dir, schreiben=True):
     if schreiben:
         y.write_bytes("".join(zeilen).encode("utf-8"))
     return [texte.t(SPRACHE_NACHZIEHEN, "inhalt.nachziehen.sprache_eingetragen")]
+
+
+def anmeldung_nachziehen(reise_dir, schreiben=True):
+    """Die Regel anmeldung (uebergang | noetig) ist seit #421 entfallen: Mitmachen geht immer nur angemeldet. Steht sie noch
+    in reise.yaml unter regeln, kommt genau diese Zeile heraus (und regeln:, wenn danach nichts mehr darunter steht); sonst
+    bleibt die Datei unberührt. -> Meldungen."""
+    import schreiben as sb
+    y = Path(reise_dir) / "reise.yaml"
+    if not y.is_file():
+        return []
+    text = y.read_bytes().decode("utf-8")
+    roh = sb.yaml_rund().load(text)
+    regeln = roh.get("regeln") if isinstance(roh, dict) else None
+    if not isinstance(regeln, dict) or "anmeldung" not in regeln:
+        return []
+    zeilen = text.splitlines(keepends=True)
+    weg = [regeln.lc.key("anmeldung")[0]]
+    if len(regeln) == 1:
+        weg.append(roh.lc.key("regeln")[0])
+    for i in sorted(weg, reverse=True):
+        del zeilen[i]
+    if schreiben:
+        y.write_bytes("".join(zeilen).encode("utf-8"))
+    sprache = roh.get("sprache") if texte.gueltig(str(roh.get("sprache") or "")) else texte.VORGABE_REISE
+    return [texte.t(sprache, "inhalt.nachziehen.anmeldung_entfernt")]
 
 
 VORLAGE_VOR_217 = Path(__file__).resolve().parent / "altformen" / "vorlage-vor-217"   # <sprache>/CLAUDE.md, kontext/herkunft.md

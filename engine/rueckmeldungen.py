@@ -65,8 +65,8 @@ HTTP (hinter nginx, Präfix /<reise>-<token>/api/ -> /<reise>/):
 
 Wer schreibt (Paket J, docs/konten.md): Der Konnektor schickt das Dienst-Geheimnis (X-Frieda-Dienst) und den Namen der
 Person, die er erkannt hat. Alles andere gilt als Seite: Name und Rolle kommen aus der Sitzung (Cookie __Host-frieda,
-Origin muss Friedas Adresse sein) und der Mitgliedschaft; ohne Sitzung 401, ohne Mitgliedschaft 403. Solange die Reise
-die Regel anmeldung: uebergang hat, geht auf der Seite auch ein eingetippter Name (wie bisher).
+Origin muss Friedas Adresse sein) und der Mitgliedschaft; ohne Sitzung 401, ohne Mitgliedschaft 403. Ein eingetippter Name
+zählt nicht (die Regel anmeldung: uebergang ist seit #421 entfallen).
 """
 import datetime
 import json
@@ -878,8 +878,7 @@ def wunsch_aendern(o, rid, roh, z):
 # ---------- Wer schreibt? (Paket J, Konten) ----------
 # Nur der Konnektor kennt das Dienst-Geheimnis (Header X-Frieda-Dienst); er hat die Person schon selbst erkannt und
 # schickt ihren Namen mit. Alles andere ist die Seite (fail-closed, auch ohne X-Forwarded-For). Auf der Seite kommt der
-# Name aus der Sitzung (Cookie) und der Mitgliedschaft in der Reise; ein eingetippter Name zählt nur, solange die Reise
-# die Regel anmeldung: uebergang hat.
+# Name aus der Sitzung (Cookie) und der Mitgliedschaft in der Reise; ein eingetippter Name zählt nicht (#421).
 COOKIE = "__Host-frieda"
 
 
@@ -915,20 +914,15 @@ def hmac_gleich(a, b):
     return bool(a) and bool(b) and secrets.compare_digest(a.encode(), b.encode())
 
 
-def anmeldung_regel(z):
-    return ((z or {}).get("regeln") or {}).get("anmeldung") or rg.VORGABEN["anmeldung"]
-
-
 def name_fuer(ident, z, getippt):
-    """Name, unter dem geschrieben wird. -> (name, None) oder (None, (code, fehler))."""
+    """Name, unter dem geschrieben wird: der des Konnektors (Dienst) oder der Person des Kontos in dieser Reise; ein
+    eingetippter Name zählt auf der Seite nicht (#421). -> (name, None) oder (None, (code, fehler))."""
     if ident["art"] == "dienst":
         return getippt, None
     if ident["art"] == "fremd":
         return None, (403, texte.satz("dienst.anfrage.1"))
     if ident["art"] == "konto" and ident["person"]:
         return ident["person"]["name"], None
-    if anmeldung_regel(z) == "uebergang" or z is None:
-        return getippt, None
     if ident["art"] == "konto":
         return None, (403, texte.satz("dienst.anfrage.2"))
     return None, (401, texte.satz("dienst.anfrage.3"))
@@ -1093,7 +1087,7 @@ class Dienst(BaseHTTPRequestHandler):
                 neue_reise_gesehen(k, o.name)
             gelesen = konten.gelesen(k["id"]) if p else set()
             return self._antwort(200, {
-                "basis": konten.basis(), "anmeldung": anmeldung_regel(z),
+                "basis": konten.basis(),
                 # sprache: angemeldet folgt die Seite der Sprache des Kontos (#188)
                 "konto": {"name": k["name"], "email": k["email"], "sprache": k["sprache"]} if k else None,
                 "person": {f: p.get(f) for f in ("schluessel", "name", "rolle")} if p else None,

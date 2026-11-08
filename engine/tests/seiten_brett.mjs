@@ -16,7 +16,10 @@ async function seite(breite) {
     if (!netz) return r.abort();
     if (einmal429 && r.request().method() === "PATCH") { einmal429 = false; return r.fulfill({status: 429, contentType: "text/html", body: "<html>429</html>"}); }
     const pfad = new URL(r.request().url()).pathname.split("/api/")[1];
-    r.fulfill({response: await r.fetch({url: `${dienst}/${reise}/${pfad}`})});
+    // Wer spricht: der Name aus dem Speicher des Browsers, beglaubigt wie vom Konnektor (Dienst-Geheimnis aus der Umgebung);
+    // ohne Anmeldung nimmt der Dienst seit #421 keinen eingetippten Namen mehr an
+    const kopf = {...await r.request().allHeaders(), "x-frieda-dienst": process.env.FR_TEST_DIENST || ""};
+    r.fulfill({response: await r.fetch({url: `${dienst}/${reise}/${pfad}`, headers: kopf})});
   });
   await ctx.addInitScript(n => localStorage.setItem("rh-name", n), name);
   const p = await ctx.newPage();

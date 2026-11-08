@@ -507,3 +507,24 @@ def test_nachziehen_eckdaten_einer_reise_von_vor_217(tmp_path):
     assert w01.count("Zeitraum:") == 1 and "Skipass für alle" in w01
     assert (r / "CLAUDE.md").read_text(encoding="utf-8") == "# Skiurlaub im Tal\n"  # eigene Datei bleibt (#250)
     assert neu.nachziehen(r) == []                                                # ein zweiter Lauf ändert nichts
+
+
+def test_nachziehen_nimmt_die_entfallene_regel_anmeldung_heraus(tmp_path):
+    """#421: Die Regel anmeldung (uebergang | noetig) ist entfallen, Mitmachen geht nur angemeldet. Eine reise.yaml, die sie
+    noch nennt, baut mit Hinweis; neu.py nachziehen nimmt genau diese Zeile heraus (und regeln:, wenn es leer wird),
+    Kommentare und andere Regeln bleiben. Ein zweiter Lauf ändert nichts."""
+    import texte
+    r = anlegen(tmp_path, sprache="de")
+    y = r / "reise.yaml"
+    text = y.read_text(encoding="utf-8")
+    y.write_text(text + "regeln:\n  einladen: mitwirkend   # Beispielwert\n  anmeldung: uebergang\n", encoding="utf-8")
+    d = bauen.bauen(r, tmp_path / "dist0")
+    assert d["reise"]["regeln"].get("anmeldung") is None
+    assert texte.t("de", "inhalt.nachziehen.anmeldung_entfernt") in neu.nachziehen(r)
+    neu_text = y.read_text(encoding="utf-8")
+    assert neu_text == text + "regeln:\n  einladen: mitwirkend   # Beispielwert\n"
+    assert neu.anmeldung_nachziehen(r) == [] and y.read_text(encoding="utf-8") == neu_text
+    # allein unter regeln: auch regeln: kommt heraus
+    y.write_text(text + "regeln:\n  anmeldung: noetig\n", encoding="utf-8")
+    neu.anmeldung_nachziehen(r)
+    assert y.read_text(encoding="utf-8") == text
