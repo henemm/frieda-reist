@@ -3,7 +3,7 @@ entity_id: meldungen-konto-407
 type: module
 created: 2026-11-08
 updated: 2026-11-08
-status: draft
+status: approved
 version: "0.1"
 tags: [konto, meldungen, waechter, push, anmeldung, lesestand]
 ---
@@ -15,7 +15,7 @@ Mockups: `docs/artifacts/meldungen-konto-407/mockup.html` und die Bildschirmfoto
 
 ## Approval
 
-- [ ] Approved (Product Owner; die vier offenen Fragen sind am 8.11.2026 entschieden, siehe Ende)
+- [x] Approved (Product Owner, 8.11.2026: freigegeben, Stufen A bis C nacheinander bauen; die vier offenen Fragen sind entschieden, siehe Ende)
 
 ## Purpose
 
