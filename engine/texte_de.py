@@ -2865,6 +2865,8 @@ TEXTE = {
     "pruefung.bauen.76": "{wo}: Tag „{w1}“ ist keine Nummer.",
     "pruefung.bauen.77": "{rel}: keine Tabelle gefunden.",
     "pruefung.bauen.78": "{rel}: „{w1}“ ist keine Frage-ID (F-01…).",
+    "pruefung.bauen.79": "{w1}: Datei „{ziel}“ fehlt in der Ablage des Speichers (Prüfsumme {summe}).",
+    "pruefung.bauen.80": "{w1}: Datei „{ziel}“ in der Ablage des Speichers ist beschädigt (Prüfsumme stimmt nicht).",
     "pruefung.neu.1": "Person „{text}“: bitte als Name:rolle angeben, z. B. Hanna:mitwirkend.",
     "pruefung.neu.2": "Person {name}: Rolle „{rolle}“ gibt es nicht; möglich sind {w1}.",
     "pruefung.neu.3": "Person {name}: drittes Feld ist „reist“ oder „nicht“ (reist nicht mit).",

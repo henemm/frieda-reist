@@ -2864,6 +2864,8 @@ TEXTE = {
     "pruefung.bauen.76": "{wo}: day “{w1}” is not a number.",
     "pruefung.bauen.77": "{rel}: no table found.",
     "pruefung.bauen.78": "{rel}: “{w1}” is not a question ID (F-01…).",
+    "pruefung.bauen.79": "{w1}: file “{ziel}” is missing from the store (checksum {summe}).",
+    "pruefung.bauen.80": "{w1}: file “{ziel}” in the store is damaged (checksum does not match).",
     "pruefung.neu.1": "Person “{text}”: please give it as name:role, e.g. Hanna:contributor.",
     "pruefung.neu.2": "Person {name}: role “{rolle}” does not exist; possible are {w1}.",
     "pruefung.neu.3": "Person {name}: the third field is “reist” or “nicht” (does not travel along).",

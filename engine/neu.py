@@ -1017,7 +1017,8 @@ def nachziehen_speicher(reise, ordner):
             return 2, [f"ERROR: {reise} cannot be converted, nothing written: {type(e).__name__}: {e}"]
         warnungen = [f"Warning: {m}" for m in meldungen if m.startswith(("OPEN", "OFFEN"))]
         if not rs.vergleichen(reise, ordner, bis=basis):
-            return 0, warnungen + ["nichts umzustellen"]
+            zeilen = warnungen
+            break
         try:
             probebau(ordner)
         except Exception as e:   # jeder Fehler des Baus sperrt: nichts eintragen
@@ -1031,10 +1032,36 @@ def nachziehen_speicher(reise, ordner):
         except rs.StandGeaendert:
             continue
         except (rs.VorgangVorhanden, rs.NichtsGeaendert):
-            return 0, warnungen + ["nichts umzustellen"]
+            zeilen = warnungen
+            break
         rs.stand_datei(ordner).write_text(f"{v.stand}\n", encoding="utf-8")
-        return 0, warnungen + meldungen + [f"umgestellt, stand {v.stand}"]
-    return 1, [f"ERROR: {reise} changed {NACHZIEHEN_VERSUCHE} times during the conversion, the next run tries again."]
+        zeilen = warnungen + meldungen + [f"umgestellt, stand {v.stand}"]
+        break
+    else:
+        return 1, [f"ERROR: {reise} changed {NACHZIEHEN_VERSUCHE} times during the conversion, the next run tries again."]
+    return ablage_umstellen(reise, ordner, zeilen)
+
+
+def ablage_umstellen(reise, ordner, zeilen):
+    """Zweiter, getrennter Vorgang des Nachziehens (Stufe 4, #349): Medien, deren Bytes noch in der Datenbank liegen, in die
+    Ablage des Speichers (reisespeicher.auslagern, Inhalt unverändert, kein Probebau). zeilen: Ausgabe des ersten Teils.
+    -> (Exit, Ausgabe): 0 umgestellt oder nichts umzustellen, 1 dreimal Wettlauf mit dem Schreibweg."""
+    import reisespeicher as rs
+    for _ in range(NACHZIEHEN_VERSUCHE):
+        basis = rs.stand_nummer(reise) or 0
+        try:
+            v = rs.auslagern(reise, basis, wer="Software-Nachziehen", werkzeug="nachziehen", titel="ablage-umstellung",
+                             grund="media moved to the store (#349)", kennung=f"ablage:{reise}:{basis}")
+        except rs.StandGeaendert:
+            continue
+        except rs.VorgangVorhanden:
+            v = None
+        if v is None:
+            return 0, zeilen if any(z.startswith("umgestellt") for z in zeilen) else zeilen + ["nichts umzustellen"]
+        rs.materialisieren(reise, ordner, bis=v.stand)
+        return 0, zeilen + [f"ablage-umstellung, stand {v.stand}"]
+    return 1, zeilen + [f"ERROR: {reise} changed {NACHZIEHEN_VERSUCHE} times while moving media to the store, "
+                        "the next run tries again."]
 
 
 BUCHUNG_STAND_ALT = ("angefragt", "gebucht")   # Werte des früheren Felds buchung:, die als Status der Buchung bleiben
@@ -1308,12 +1335,15 @@ def main(argv):
     try:
         if x.befehl == "nachziehen-speicher":
             import sqlite3
+            import reisespeicher as rs
             try:
                 rc, zeilen = nachziehen_speicher(x.reise, x.ordner)
             except KeyError as e:
                 rc, zeilen = 2, [f"ERROR: unknown trip in the trip store: {e.args[0] if e.args else ''}"]
             except ValueError as e:
                 rc, zeilen = 2, [f"ERROR: {e}"]
+            except (rs.AblageFehlt, rs.AblageFehler) as e:   # Ablage lückenhaft oder beschädigt: rote Reise (#349)
+                rc, zeilen = 2, rs.ablage_ausgabe(e, x.reise)
             except (OSError, sqlite3.Error) as e:   # Datenbank gesperrt oder nicht lesbar: der nächste Lauf wiederholt
                 rc, zeilen = 1, [f"ERROR: {e}"]
             print("\n".join(zeilen))

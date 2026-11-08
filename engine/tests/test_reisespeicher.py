@@ -212,7 +212,7 @@ def test_db_legt_datei_geschuetzt_an(rs):
     v = rs.db()
     assert v.row_factory is sqlite3.Row
     assert v.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
-    assert v.execute("PRAGMA user_version").fetchone()[0] == 1
+    assert v.execute("PRAGMA user_version").fetchone()[0] == 2   # Stufe 4 (#349): Spalte ausgelagert
     assert v.execute("PRAGMA foreign_keys").fetchone()[0] == 1
     v.close()
     assert rs.pfad() == Path(os.environ["FR_SPEICHER"]) / "reisen.db"
@@ -463,6 +463,7 @@ def test_sichern_und_zurueckspielen(rs, tmp_path, monkeypatch):
     anders = tmp_path / "zurueck"
     anders.mkdir()
     shutil.copy(ziel, anders / "reisen.db")
+    shutil.copytree(Path(os.environ["FR_SPEICHER"]) / "ablage", anders / "ablage")   # Stufe 4 (#349): Medien liegen dort
     monkeypatch.setenv("FR_SPEICHER", str(anders))
     for reise, inhalt in erwartet.items():
         rs.exportieren(reise, tmp_path / f"aus-{reise}")

@@ -234,6 +234,32 @@ def test_reise_der_liste_ohne_eintrag_gibt_503_ohne_wirkung(speicher, monkeypatc
     assert code == 503 and a["fehler_code"] == "schreiben.dienst.speicher_nicht_erreichbar", a
 
 
+@pytest.mark.parametrize("art", ["fehlt", "beschaedigt"])
+def test_ablagefehler_gibt_saubere_antwort_ohne_wirkung(speicher, art):
+    """Stufe 4 (#349, F002): Fehlt eine Datei der Ablage oder ist sie beschädigt, antwortet der Schreibweg mit 503 und
+    pruefung.bauen.79/.80 (Schlüssel und Werte für den Konnektor), schreibt nichts und hinterlässt keinen Ordner; eine
+    andere Reise liest die Datei als „nicht lesbar“ (fremde_datei)."""
+    rs = speicher.rs
+    with closing(sqlite3.connect(rs.pfad())) as v:
+        pfad, summe = v.execute("SELECT pfad, pruefsumme FROM versionen WHERE reise = 'beispielreise' "
+                                "AND ausgelagert = 1 ORDER BY pfad LIMIT 1").fetchone()
+    f = rs.ablage_pfad(summe)
+    os.chmod(f.parent, 0o700)
+    if art == "fehlt":
+        f.unlink()
+    else:
+        os.chmod(f, 0o600)
+        f.write_bytes(b"kaputt")
+    vorher = rs.stand_nummer("beispielreise")
+    org, _ = REISEN["beispielreise"]
+    code, a = schreib(speicher, "beispielreise", "frage_anlegen", {**org, "args": {"text": "Markt? (Beispielwert)"}})
+    schluessel = "pruefung.bauen.79" if art == "fehlt" else "pruefung.bauen.80"
+    assert code == 503 and a["ok"] is False and a["fehler_code"] == schluessel, a
+    assert a["werte"]["ziel"] == pfad and a["werte"]["w1"] == "beispielreise" and "{" not in a["fehler"]
+    assert rs.stand_nummer("beispielreise") == vorher and not list(speicher.tmp.iterdir())
+    assert sb.fremde_datei(speicher.wurzel / "reisen" / "stadtwochenende", "beispielreise", pfad) is None
+
+
 # ---------- AC-9: der Git-Weg lehnt eine Reise der Liste ab ----------
 
 def test_git_weg_lehnt_reise_der_liste_ab(repo, monkeypatch):

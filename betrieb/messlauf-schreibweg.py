@@ -6,6 +6,7 @@ Schreibvorgang über den Reisespeicher bzw. über Git? Kein Teil der Testläufe;
 
 --auffuellen MB legt zusätzlich die erfundene Reise `gross-erfunden` an: eine Kopie der Beispielreise, deren Ordner `medien/`
 mit Zufallsdateien (je 1 MB, als `foto-NNN.jpg`) auf MB Megabyte aufgefüllt ist. Ihre Zeiten stehen einzeln in der Ausgabe.
+Auf dem Speicherweg kommen die Fotos wie jedes Medium in die Ablage des Speichers (Stufe 4, #349), nicht in die Datenbank.
 
 Baut eine temporäre Instanz (alles unter TMPDIR, wird danach gelöscht) mit beiden Beispielreisen und je einer Kopie unter
 anderem Namen, und schickt einen Werkzeugmix (Frage anlegen, Art anlegen, Wissen schreiben) über den Eingang des Dienstes
@@ -69,7 +70,7 @@ def reisen_mit_kopien():
 
 
 def aufgefuellte_reise(ziel, megabyte):
-    """Kopie der Beispielreise mit megabyte MB Zufallsdateien in medien/ (erfunden; Fotos stehen bis Stufe 4 in der Datenbank)."""
+    """Kopie der Beispielreise mit megabyte MB Zufallsdateien in medien/ (erfunden; im Speicher landen die Fotos in der Ablage, #349)."""
     shutil.copytree(BEISPIEL / "beispielreise", ziel)
     (ziel / "medien").mkdir(exist_ok=True)
     for i in range(megabyte):

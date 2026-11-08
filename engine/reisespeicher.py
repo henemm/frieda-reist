@@ -23,6 +23,12 @@ nur und legen keine Datenbank an.
 Ablage: <FR_SPEICHER, sonst <Seiten>/_speicher>/reisen.db (SQLite, WAL), nur für den Betreiber lesbar;
 Schnappschuss unter <Speicher>/sicherung/reisen.db.
 
+Ab Stufe 4 (#349) liegen Medien (Dateien unter medien/ mit einer Endung aus AUSLAGERN, ohne medien/icon.svg und
+medien/icon.png) nicht mehr in der Datenbank, sondern einmal je Inhalt als Datei in <Speicher>/ablage/<aa>/<summe>
+(SHA-256, Ordner 700, Dateien 400). Die Zeile in versionen bleibt als Verweis (inhalt NULL, Prüfsumme gesetzt,
+ausgelagert = 1); ein Tombstone hat weder Inhalt noch Prüfsumme. Die Datei wird vor der Zeile geschrieben, nie geändert
+und nie gelöscht (verwaiste Dateien räumt nur der Betreiber auf); beim Lesen wird ihre Prüfsumme nachgerechnet.
+
 Aufrufe:
   python3 engine/reisespeicher.py importieren <ordner> <reise> <wer> [--grund TEXT] [--ab N]   Reiseordner als Vorgang
   python3 engine/reisespeicher.py exportieren <reise> <ziel> [--bis N]       Stand in einen leeren Ordner schreiben
@@ -36,10 +42,13 @@ Aufrufe:
   python3 engine/reisespeicher.py staende <reise> …                          je Reise „<reise> <Speicher> <Seite>“ (- = keine)
 """
 import collections
+import errno
 import hashlib
 import os
-import shutil
+import re
+import secrets
 import sqlite3
+import stat
 import sys
 import time
 from contextlib import closing
@@ -49,6 +58,12 @@ import instanz
 from stand import zeit_iso
 
 Vorgang = collections.namedtuple("Vorgang", "nummer stand")
+Verweis = collections.namedtuple("Verweis", "summe")   # Stand einer ausgelagerten Datei: die Bytes liegen in der Ablage
+
+AUSLAGERN = ("png", "jpg", "jpeg", "webp", "gif", "gpx", "pmtiles")   # Endungen der Medien, die in die Ablage kommen
+NICHT_AUSLAGERN = ("medien/icon.svg", "medien/icon.png")   # klein, der Bau braucht sie: bleiben in der Datenbank
+SCHEMA_VERSION = 2
+_SUMME = re.compile(r"[0-9a-f]{64}")
 
 
 class VorgangVorhanden(Exception):
@@ -71,6 +86,22 @@ class StandGeaendert(Exception):
         super().__init__(f"stand changed: expected {erwartet}, current {aktuell}")
 
 
+class AblageFehlt(Exception):
+    """Eine verwiesene Datei fehlt in der Ablage des Speichers (Stufe 4, #349)."""
+
+    def __init__(self, pfad, summe):
+        self.pfad, self.summe = pfad, summe
+        super().__init__(f"file missing in store: {pfad} (checksum {summe})")
+
+
+class AblageFehler(Exception):
+    """Eine Datei der Ablage ist beschädigt (Prüfsumme oder Größe stimmen nicht, keine reguläre Datei); nie repariert."""
+
+    def __init__(self, pfad, summe):
+        self.pfad, self.summe = pfad, summe
+        super().__init__(f"store file damaged: {pfad} (checksum {summe})")
+
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS vorgaenge (
   nummer INTEGER PRIMARY KEY AUTOINCREMENT, reise TEXT NOT NULL, stand INTEGER NOT NULL, wann TEXT NOT NULL,
@@ -79,6 +110,7 @@ CREATE TABLE IF NOT EXISTS vorgaenge (
   UNIQUE (reise, stand), UNIQUE (nummer, reise));
 CREATE TABLE IF NOT EXISTS versionen (
   vorgang INTEGER NOT NULL, reise TEXT NOT NULL, pfad TEXT NOT NULL, inhalt BLOB, pruefsumme TEXT,
+  ausgelagert INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (vorgang, pfad), FOREIGN KEY (vorgang, reise) REFERENCES vorgaenge (nummer, reise));
 CREATE INDEX IF NOT EXISTS versionen_pfad ON versionen (reise, pfad, vorgang);
 CREATE TRIGGER IF NOT EXISTS vorgaenge_kein_update BEFORE UPDATE ON vorgaenge
@@ -107,6 +139,8 @@ def _waechter(aktion, a1, a2, datenbank, ausloeser):
         return sqlite3.SQLITE_DENY
     if aktion in VERBOTEN:
         return sqlite3.SQLITE_DENY
+    if aktion == sqlite3.SQLITE_PRAGMA and (a1 or "").lower() == "table_info":
+        return sqlite3.SQLITE_OK   # liest nur das Schema einer Tabelle (Spalte ausgelagert, #349)
     if aktion == sqlite3.SQLITE_PRAGMA and (a2 is not None or (a1 or "").lower() == "writable_schema"):
         return sqlite3.SQLITE_DENY   # nur lesende PRAGMAs ohne Wert; db() setzt seine vor dem Authorizer
     return sqlite3.SQLITE_OK
@@ -130,10 +164,122 @@ def db(timeout=10):
         os.chmod(p, 0o600)
         v.execute("PRAGMA journal_mode = WAL")
     v.executescript(SCHEMA)
-    if v.execute("PRAGMA user_version").fetchone()[0] < 1:
-        v.execute("PRAGMA user_version = 1")
+    if not _hat_spalte(v):   # Speicher der Stufe 3 (#349): Spalte ergänzen, vor dem Authorizer (er verbietet ALTER TABLE)
+        try:
+            v.execute("ALTER TABLE versionen ADD COLUMN ausgelagert INTEGER NOT NULL DEFAULT 0")
+        except sqlite3.OperationalError as e:   # ein anderer Prozess war schneller
+            if "duplicate column" not in str(e):
+                raise
+    if v.execute("PRAGMA user_version").fetchone()[0] < SCHEMA_VERSION:
+        v.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     v.set_authorizer(_waechter)
     return v
+
+
+def _hat_spalte(v):
+    """Hat versionen die Spalte ausgelagert? (Lesende Verbindungen sehen auch einen Speicher, der noch nicht gehoben ist.)"""
+    return any(z[1] == "ausgelagert" for z in v.execute("PRAGMA table_info(versionen)"))
+
+
+def auszulagern(p):
+    """Kommt die Datei mit diesem Pfad in die Ablage? Nur Pfad und Endung zählen (Entscheidung 3 der Spec 349)."""
+    klein = p.lower()
+    name = klein.rsplit("/", 1)[-1]
+    return (klein.startswith("medien/") and klein not in NICHT_AUSLAGERN and "." in name
+            and name.rsplit(".", 1)[1] in AUSLAGERN)
+
+
+def ablage_pfad(summe):
+    """Ort einer Datei in der Ablage: <Speicher>/ablage/<aa>/<summe>. Der Name kommt nur aus der Prüfsumme (64 Hexzeichen,
+    klein); alles andere: ValueError."""
+    if not isinstance(summe, str) or not _SUMME.fullmatch(summe):
+        raise ValueError(f"invalid checksum: {summe!r}")
+    return instanz.speicher_ablage() / summe[:2] / summe
+
+
+def _ablage_oeffnen(summe, pfad_):
+    """Ablagedatei zum Lesen öffnen: nur eine reguläre Datei, kein Symlink. Fehlt sie: AblageFehlt, sonst AblageFehler."""
+    f = ablage_pfad(summe)
+    try:
+        st = os.lstat(f)
+    except FileNotFoundError:
+        raise AblageFehlt(pfad_, summe) from None
+    if not stat.S_ISREG(st.st_mode):
+        raise AblageFehler(pfad_, summe)
+    try:
+        return os.fdopen(os.open(f, os.O_RDONLY | os.O_NOFOLLOW), "rb")
+    except FileNotFoundError:
+        raise AblageFehlt(pfad_, summe) from None
+    except OSError as e:
+        if e.errno == errno.ELOOP:   # zwischen lstat und open zum Symlink geworden
+            raise AblageFehler(pfad_, summe) from None
+        raise
+
+
+def _ablage_pruefen(summe, pfad_="", groesse=None):
+    """Prüft eine Ablagedatei streamend (vorhanden, regulär, Größe, SHA-256), ohne sie zu laden; liest nur."""
+    with _ablage_oeffnen(summe, pfad_) as f:
+        if groesse is not None and os.fstat(f.fileno()).st_size != groesse:
+            raise AblageFehler(pfad_, summe)
+        if hashlib.file_digest(f, "sha256").hexdigest() != summe:
+            raise AblageFehler(pfad_, summe)
+
+
+def ablage_lesen(summe, pfad_=""):
+    """Bytes einer Ablagedatei, Prüfsumme nachgerechnet. Fehlt sie: AblageFehlt; Summe falsch oder Symlink: AblageFehler."""
+    with _ablage_oeffnen(summe, pfad_) as f:
+        inhalt = f.read()
+    if _summe(inhalt) != summe:
+        raise AblageFehler(pfad_, summe)
+    return inhalt
+
+
+def _ordner_anlegen(o):
+    """Ordner der Ablage anlegen (700); einen vorhandenen lässt es, wie er ist."""
+    try:
+        o.mkdir()
+    except FileExistsError:
+        return
+    os.chmod(o, 0o700)
+
+
+def ablage_ablegen(summe, inhalt, pfad_=""):
+    """Legt die Bytes unter ihrer Prüfsumme in die Ablage (Datei 400): temporär im Ordner schreiben, fsync, os.link auf den
+    Endnamen (nie ersetzen), Temporärdatei weg, fsync des Ordners. Liegt die Datei schon da, wird sie nur geprüft; stimmt
+    sie nicht, AblageFehler, und nichts wird überschrieben. -> Pfad der Ablagedatei."""
+    inhalt = bytes(inhalt)
+    if _summe(inhalt) != summe:
+        raise ValueError(f"checksum does not match the content: {pfad_}")
+    ziel = ablage_pfad(summe)
+    try:
+        _ablage_pruefen(summe, pfad_, len(inhalt))
+        return ziel
+    except AblageFehlt:
+        pass
+    wurzel = instanz.speicher_ablage()
+    wurzel.parent.mkdir(parents=True, exist_ok=True)
+    _ordner_anlegen(wurzel)
+    _ordner_anlegen(ziel.parent)
+    tmp = ziel.parent / f".{summe}.{os.getpid()}.{secrets.token_hex(4)}"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o400)
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(inhalt)
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(tmp, 0o400)
+        try:
+            os.link(tmp, ziel)
+        except FileExistsError:   # ein zweiter Schreiber war schneller: gilt als „schon da“, wenn sie stimmt
+            _ablage_pruefen(summe, pfad_, len(inhalt))
+    finally:
+        os.unlink(tmp)   # nur die eigene Temporärdatei
+    o = os.open(ziel.parent, os.O_RDONLY)
+    try:
+        os.fsync(o)
+    finally:
+        os.close(o)
+    return ziel
 
 
 def _pfad_pruefen(p):
@@ -160,7 +306,8 @@ def _summe(inhalt):
 
 
 def _stand(v, reise, bis=None, spalte="inhalt"):
-    """Pfad -> Spalte (inhalt oder pruefsumme) im Stand bis (ohne: neuester); unbekannte Reise oder Stand: KeyError."""
+    """Pfad -> Spalte (inhalt oder pruefsumme) im Stand bis (ohne: neuester); unbekannte Reise oder Stand: KeyError.
+    Bei inhalt steht für eine ausgelagerte Datei Verweis(summe) statt der Bytes; gelesen wird nur die Datenbank."""
     hoechster = v.execute("SELECT MAX(stand) FROM vorgaenge WHERE reise = ?", (reise,)).fetchone()[0]
     if hoechster is None:
         raise KeyError(reise)
@@ -170,33 +317,35 @@ def _stand(v, reise, bis=None, spalte="inhalt"):
         raise KeyError(f"{reise}: stand {bis}")
     # Zwei Stufen (#347): innen nur Kennzahlen (pfad, vorgang, weg), erst für die Gewinner-Zeilen wird die Spalte gelesen.
     # Erst eine schlanke Zeilenliste (nur Kennzahlen, materialisiert), damit die Fensterfunktion keine Inhalte mitsortiert.
+    # Ein Tombstone hat weder Inhalt noch Prüfsumme; ein Verweis in die Ablage (#349) nur keinen Inhalt.
+    lesen = "s.inhalt, s.pruefsumme" if spalte == "inhalt" else f"s.{spalte}"
     zeilen = v.execute(f"""
         WITH k AS MATERIALIZED (
-          SELECT s.pfad, s.vorgang, s.inhalt IS NULL AS weg
+          SELECT s.pfad, s.vorgang, s.inhalt IS NULL AND s.pruefsumme IS NULL AS weg
           FROM versionen s JOIN vorgaenge g ON g.nummer = s.vorgang
           WHERE g.reise = ? AND g.stand <= ?),
         w AS (
           SELECT pfad, vorgang, weg, ROW_NUMBER() OVER (PARTITION BY pfad ORDER BY vorgang DESC) AS rang FROM k)
-        SELECT w.pfad, s.{spalte} FROM w JOIN versionen s ON s.vorgang = w.vorgang AND s.pfad = w.pfad
+        SELECT w.pfad, {lesen} FROM w JOIN versionen s ON s.vorgang = w.vorgang AND s.pfad = w.pfad
         WHERE w.rang = 1 AND NOT w.weg ORDER BY w.pfad""", (reise, bis))
+    if spalte == "inhalt":
+        return {z[0]: Verweis(z[2]) if z[1] is None else z[1] for z in zeilen}
     return {z[0]: z[1] for z in zeilen}
 
 
 def _eintragen(v, reise, dateien, wer, werkzeug, titel, grund="", kennung=None, rolle="", wann=None, herkunft="",
                ab=0, erwartet=None):
     """Ein Vorgang in der laufenden Transaktion von v (BEGIN IMMEDIATE beim Aufrufer). Erst die Kennung, dann der
-    erwartete Stand (0: es gibt noch keinen)."""
+    erwartete Stand (0: es gibt noch keinen). Medien (auszulagern) kommen vor der Zeile in die Ablage, auch wenn der
+    Vorgang danach scheitert: eine verwaiste Ablagedatei ist harmlos, ein Verweis ohne Datei entsteht so nie (#349).
+    Verweis(summe) als Inhalt trägt eine vorhandene Ablagedatei neu ein (zuruecksetzen)."""
     if kennung is not None:
         z = v.execute("SELECT nummer, stand FROM vorgaenge WHERE kennung = ?", (kennung,)).fetchone()
         if z:
             raise VorgangVorhanden(z[0], z[1])
-    if erwartet is not None:
-        aktuell = v.execute("SELECT MAX(stand) FROM vorgaenge WHERE reise = ?", (reise,)).fetchone()[0] or 0
-        if aktuell != erwartet:
-            raise StandGeaendert(erwartet, aktuell)
     for p, inhalt in dateien.items():
         _pfad_pruefen(p)
-        if inhalt is not None and not isinstance(inhalt, (bytes, bytearray, memoryview)):
+        if inhalt is not None and not isinstance(inhalt, (bytes, bytearray, memoryview, Verweis)):
             raise TypeError(f"content must be bytes or None: {p}")
     try:
         bisher = _stand(v, reise, spalte="pruefsumme")
@@ -207,11 +356,23 @@ def _eintragen(v, reise, dateien, wer, werkzeug, titel, grund="", kennung=None, 
         if inhalt is None:
             if p in bisher:
                 neu[p] = (None, None)
+        elif isinstance(inhalt, Verweis):
+            if bisher.get(p) != inhalt.summe:
+                neu[p] = (inhalt, inhalt.summe)
         else:
             inhalt = bytes(inhalt)
             summe = _summe(inhalt)
             if bisher.get(p) != summe:
                 neu[p] = (inhalt, summe)
+    for p, (inhalt, summe) in sorted(neu.items()):   # Datei vor Datenbank (Entscheidung 6 der Spec 349)
+        if isinstance(inhalt, Verweis):
+            _ablage_pruefen(summe, p)
+        elif inhalt is not None and auszulagern(p):
+            ablage_ablegen(summe, inhalt, p)
+    if erwartet is not None:
+        aktuell = v.execute("SELECT MAX(stand) FROM vorgaenge WHERE reise = ?", (reise,)).fetchone()[0] or 0
+        if aktuell != erwartet:
+            raise StandGeaendert(erwartet, aktuell)
     if not neu:
         raise NichtsGeaendert(f"{reise}: nothing changed")
     weg = {p for p, (inhalt, _) in neu.items() if inhalt is None}
@@ -222,8 +383,12 @@ def _eintragen(v, reise, dateien, wer, werkzeug, titel, grund="", kennung=None, 
         "INSERT INTO vorgaenge (reise, stand, wann, wer, rolle, werkzeug, titel, grund, kennung, herkunft) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (reise, stand, wann or zeit_iso(), wer, rolle, werkzeug, titel, grund, kennung, herkunft)).lastrowid
-    v.executemany("INSERT INTO versionen (vorgang, reise, pfad, inhalt, pruefsumme) VALUES (?, ?, ?, ?, ?)",
-                  [(nummer, reise, p, inhalt, summe) for p, (inhalt, summe) in sorted(neu.items())])
+    zeilen = []
+    for p, (inhalt, summe) in sorted(neu.items()):
+        aus = isinstance(inhalt, Verweis) or (inhalt is not None and auszulagern(p))
+        zeilen.append((nummer, reise, p, None if aus else inhalt, summe, 1 if aus else 0))
+    v.executemany("INSERT INTO versionen (vorgang, reise, pfad, inhalt, pruefsumme, ausgelagert) "
+                  "VALUES (?, ?, ?, ?, ?, ?)", zeilen)
     return Vorgang(nummer, stand)
 
 
@@ -293,11 +458,13 @@ def datei(reise, pfad_, bis=None):
             bis = hoechster
         elif not v.execute("SELECT 1 FROM vorgaenge WHERE reise = ? AND stand = ?", (reise, bis)).fetchone():
             raise KeyError(f"{reise}: stand {bis}")
-        z = v.execute("""SELECT s.inhalt FROM versionen s JOIN vorgaenge g ON g.nummer = s.vorgang
+        z = v.execute("""SELECT s.inhalt, s.pruefsumme FROM versionen s JOIN vorgaenge g ON g.nummer = s.vorgang
                          WHERE g.reise = ? AND s.pfad = ? AND g.stand <= ? ORDER BY s.vorgang DESC LIMIT 1""",
                       (reise, pfad_, bis)).fetchone()
-    if z is None or z[0] is None:
+    if z is None or (z[0] is None and z[1] is None):
         raise KeyError(f"{reise}: {pfad_}")
+    if z[0] is None:   # ausgelagert (#349)
+        return ablage_lesen(z[1], pfad_)
     return bytes(z[0])
 
 
@@ -308,9 +475,11 @@ def stand_nummer(reise):
 
 
 def aktueller_stand(reise, bis=None):
-    """Pfad -> Bytes der Reise im Stand bis (ohne: neuester); unbekannte Reise oder Stand: KeyError."""
+    """Pfad -> Bytes der Reise im Stand bis (ohne: neuester); unbekannte Reise oder Stand: KeyError. Ausgelagerte Dateien
+    kommen aus der Ablage (AblageFehlt, AblageFehler)."""
     with closing(db()) as v:
-        return {p: bytes(b) for p, b in _stand(v, reise, bis).items()}
+        st = _stand(v, reise, bis)
+    return {p: ablage_lesen(b.summe, p) if isinstance(b, Verweis) else bytes(b) for p, b in st.items()}
 
 
 def vorgang_eingetragen(kennung, timeout=10):
@@ -335,8 +504,11 @@ def verlauf(reise, n=None, bis=None):
 
 def exportieren(reise, ziel, bis=None):
     """Schreibt den Stand in ziel (fehlt oder leerer Ordner, sonst FileExistsError). Alle Pfade werden vorher geprüft;
-    ein Pfad, der aus dem Ziel führte, bricht mit ValueError ab, bevor etwas geschrieben ist."""
-    dateien = aktueller_stand(reise, bis)
+    ein Pfad, der aus dem Ziel führte, bricht mit ValueError ab, bevor etwas geschrieben ist. Ausgelagerte Dateien werden
+    vorher alle geprüft (vorhanden, regulär, Prüfsumme; sonst AblageFehlt/AblageFehler, ehe etwas geschrieben ist) und
+    dann als Hardlink aus der Ablage angelegt, auf einem anderen Dateisystem als Kopie (#349)."""
+    with closing(db()) as v:
+        dateien = _stand(v, reise, bis)
     ziel = Path(ziel)
     if ziel.is_symlink():
         raise ValueError(f"target is a symlink: {ziel}")
@@ -350,13 +522,24 @@ def exportieren(reise, ziel, bis=None):
         aus = (basis / p).resolve()
         if basis not in aus.parents:
             raise ValueError(f"path leaves the target: {p!r}")
-        plan.append((aus, inhalt))
+        plan.append((p, aus, inhalt))
+    for p, _, inhalt in plan:   # Vorab-Runde: kein halber Ordner, wenn die Ablage lückenhaft oder beschädigt ist
+        if isinstance(inhalt, Verweis):
+            _ablage_pruefen(inhalt.summe, p)
     ziel.mkdir(parents=True, exist_ok=True)
-    for aus, inhalt in plan:
+    for p, aus, inhalt in plan:
         fehlend = [o for o in [aus.parent, *aus.parent.parents] if basis in o.parents and not o.exists()]
         aus.parent.mkdir(parents=True, exist_ok=True)
         for o in fehlend:
             os.chmod(o, 0o755)
+        if isinstance(inhalt, Verweis):
+            try:
+                os.link(ablage_pfad(inhalt.summe), aus, follow_symlinks=False)
+                continue   # Hardlink behält den Modus 400 der Ablagedatei
+            except FileExistsError:
+                raise
+            except OSError:   # anderes Dateisystem oder nicht unterstützt: Kopie
+                inhalt = ablage_lesen(inhalt.summe, p)
         with open(aus, "xb") as f:
             f.write(inhalt)
         os.chmod(aus, 0o644)
@@ -410,6 +593,21 @@ def stand_datei(ordner):
     return Path(f"{ordner}.stand")
 
 
+def _bauordner_entfernen(ordner):
+    """Entfernt einen Bauordner (<ordner>.neu oder .alt) samt Inhalt; Symlinks darin werden nur selbst entfernt, nie
+    verfolgt. Ein Hardlink aus der Ablage verliert nur diesen Namen, die Ablagedatei bleibt."""
+    for wurzel, ordner_namen, datei_namen in os.walk(ordner, topdown=False):
+        for name in datei_namen:
+            os.unlink(os.path.join(wurzel, name))
+        for name in ordner_namen:
+            p = os.path.join(wurzel, name)
+            if os.path.islink(p):
+                os.unlink(p)
+            else:
+                os.rmdir(p)
+    os.rmdir(ordner)
+
+
 def materialisieren(reise, ordner, bis=None):
     """Bringt Stand bis (ohne: den neuesten) der Reise in ordner, für den Generator (#348). Ein vorhandener Ordner wird
     ersetzt: erst nach <ordner>.neu exportieren, dann umbenennen, nie ein halber Ordner. Die Nummer wird zuerst gelesen
@@ -426,12 +624,15 @@ def materialisieren(reise, ordner, bis=None):
         if x.is_symlink() or x.is_file():
             x.unlink()
         elif x.exists():
-            shutil.rmtree(x)
+            _bauordner_entfernen(x)
     exportieren(reise, neu, bis=n)
     if ordner.exists():
         os.rename(ordner, alt)
     os.rename(neu, ordner)
-    shutil.rmtree(alt, ignore_errors=True)
+    try:
+        _bauordner_entfernen(alt)
+    except OSError:
+        pass
     s = stand_datei(ordner)
     tmp = Path(f"{s}.{os.getpid()}")
     tmp.write_text(f"{n}\n", encoding="utf-8")
@@ -466,13 +667,31 @@ def zustand(max_stunden=SICHERUNG_MAX_STUNDEN):
     <Speicher>/sicherung/reisen.db). Nicht lesbare Datenbank: sqlite3.Error."""
     p = pfad()
     if not p.exists():
-        return True, [("reisen", 0), ("sicherung_alter_s", "keine"), ("datenbank", "fehlt")]
+        return True, [("reisen", 0), ("sicherung_alter_s", "keine"), ("datenbank", "fehlt"), ("ablage_fehlt", 0)]
     with closing(_nur_lesen()) as v:
         n = v.execute("SELECT COUNT(DISTINCT reise) FROM vorgaenge").fetchone()[0]
+        fehlt = len(_fehlende_ablagedateien(v))
     s = p.parent / "sicherung" / "reisen.db"
     alter = max(0, int(time.time() - s.stat().st_mtime)) if s.exists() else None
-    ok = alter is not None and alter <= float(max_stunden) * 3600
-    return ok, [("reisen", n), ("sicherung_alter_s", "keine" if alter is None else alter), ("datenbank", "vorhanden")]
+    ok = alter is not None and alter <= float(max_stunden) * 3600 and not fehlt
+    return ok, [("reisen", n), ("sicherung_alter_s", "keine" if alter is None else alter), ("datenbank", "vorhanden"),
+                ("ablage_fehlt", fehlt)]
+
+
+def _fehlende_ablagedateien(v):
+    """Verwiesene Summen (ausgelagert = 1), zu denen in der Ablage keine reguläre Datei liegt -> [(summe, pfad)]. Nur
+    Vorhandensein, schnell, ohne Summen (die volle Prüfung ist pruefen)."""
+    if not _hat_spalte(v):
+        return []
+    fehlt = []
+    for summe, pf in v.execute("SELECT pruefsumme, MIN(pfad) FROM versionen WHERE ausgelagert = 1 "
+                               "AND pruefsumme IS NOT NULL GROUP BY pruefsumme ORDER BY pruefsumme"):
+        try:
+            if not stat.S_ISREG(os.lstat(ablage_pfad(summe)).st_mode):
+                fehlt.append((summe, pf))
+        except (FileNotFoundError, ValueError):
+            fehlt.append((summe, pf))
+    return fehlt
 
 
 def importieren(ordner, reise, wer, grund="", ab=0):
@@ -494,15 +713,18 @@ def importieren(ordner, reise, wer, grund="", ab=0):
 
 def zuruecksetzen(reise, bis, wer, grund):
     """Neuer Vorgang mit dem Inhalt von Stand bis (alte Fassungen, Tombstones); Person und Grund Pflicht, der Verlauf
-    wird nie gekürzt. Keine Abweichung: ValueError."""
+    wird nie gekürzt. Keine Abweichung: ValueError. Ausgelagerte alte Fassungen werden als Verweis neu eingetragen, wenn
+    ihre Ablagedatei stimmt (sonst AblageFehlt/AblageFehler, kein Vorgang)."""
     if not wer or not grund:
         raise ValueError("person and reason are required")
     bis = int(bis)
 
     def arbeit(v):
-        alt, jetzt = _stand(v, reise, bis), _stand(v, reise)
+        alt, jetzt = _stand(v, reise, bis, "pruefsumme"), _stand(v, reise, spalte="pruefsumme")
+        inhalte = _stand(v, reise, bis)
         dateien = {p: None for p in jetzt if p not in alt}
-        dateien.update({p: bytes(b) for p, b in alt.items() if jetzt.get(p) != b})
+        dateien.update({p: inhalte[p] if isinstance(inhalte[p], Verweis) else bytes(inhalte[p])
+                        for p, s in alt.items() if jetzt.get(p) != s})
         if not dateien:
             raise ValueError(f"{reise}: stand {bis} equals the current stand")
         return _eintragen(v, reise, dateien, wer, "zuruecksetzen", f"zuruecksetzen:{bis}", grund,
@@ -510,9 +732,43 @@ def zuruecksetzen(reise, bis, wer, grund):
     return _transaktion(arbeit)
 
 
+def auslagern(reise, erwartet, wer, werkzeug, titel, grund="", kennung=None):
+    """Umstellung bestehender Medien auf die Ablage (Stufe 4, #349, neu.py nachziehen-speicher): Medien im Stand der
+    Reise, deren Bytes noch in der Datenbank liegen, kommen in die Ablage und bekommen in einem Vorgang je eine Verweiszeile
+    mit gleicher Summe (nur hier darf eine Datei mit gleicher Summe erneut eingetragen werden). Der Inhalt der Reise
+    ändert sich nicht. Bekannte Kennung: VorgangVorhanden; anderer Stand als erwartet: StandGeaendert (nichts
+    geschrieben, die abgelegten Dateien bleiben). -> Vorgang oder None (nichts umzustellen)."""
+    def arbeit(v):
+        if kennung is not None:
+            z = v.execute("SELECT nummer, stand FROM vorgaenge WHERE kennung = ?", (kennung,)).fetchone()
+            if z:
+                raise VorgangVorhanden(z[0], z[1])
+        vorher = _stand(v, reise, spalte="pruefsumme")
+        offen = {p: bytes(b) for p, b in _stand(v, reise).items() if not isinstance(b, Verweis) and auszulagern(p)}
+        if not offen:
+            return None
+        summen = {p: _summe(b) for p, b in offen.items()}
+        for p, b in sorted(offen.items()):
+            ablage_ablegen(summen[p], b, p)
+        aktuell = _hoechster(v, reise) or 0
+        if aktuell != erwartet:
+            raise StandGeaendert(erwartet, aktuell)
+        nummer = v.execute(
+            "INSERT INTO vorgaenge (reise, stand, wann, wer, rolle, werkzeug, titel, grund, kennung, herkunft) "
+            "VALUES (?, ?, ?, ?, '', ?, ?, ?, ?, ?)",
+            (reise, aktuell + 1, zeit_iso(), wer, werkzeug, titel, grund, kennung, titel)).lastrowid
+        v.executemany("INSERT INTO versionen (vorgang, reise, pfad, inhalt, pruefsumme, ausgelagert) "
+                      "VALUES (?, ?, ?, NULL, ?, 1)", [(nummer, reise, p, summen[p]) for p in sorted(offen)])
+        if _stand(v, reise, spalte="pruefsumme") != vorher:   # der Inhalt darf sich nicht ändern
+            raise RuntimeError(f"{reise}: offloading changed the content, nothing written")
+        return Vorgang(nummer, aktuell + 1)
+    return _transaktion(arbeit)
+
+
 def pruefen(reise=None):
     """Rechnet die SHA-256 jeder Version neu, prüft integrity_check, die Stand-Folge je Reise und Tombstones ohne
-    Inhalt. -> Liste der Abweichungen (leer = in Ordnung). Eigene Verbindung, schreibt nichts."""
+    Inhalt, für ausgelagerte Versionen die Ablagedatei (vorhanden, regulär, Prüfsumme; nur gelesen). -> Liste der
+    Abweichungen (leer = in Ordnung). Eigene Verbindung, schreibt nichts."""
     p = pfad()
     if not p.exists():
         return []
@@ -528,10 +784,28 @@ def pruefen(reise=None):
             if r in letzter and stand <= letzter[r]:
                 funde.append(f"{r}: stand {stand} of operation {nummer} does not follow stand {letzter[r]}")
             letzter[r] = stand
-        for r, vorgang, pf, inhalt, summe in v.execute(
-                f"SELECT reise, vorgang, pfad, inhalt, pruefsumme FROM versionen {bedingung} ORDER BY vorgang, pfad",
-                werte):
-            if inhalt is None:
+        spalte = "ausgelagert" if _hat_spalte(v) else "0"
+        ablage = {}   # Summe -> Fund (None: in Ordnung); jede Ablagedatei wird nur einmal gelesen
+        for r, vorgang, pf, inhalt, summe, aus in v.execute(
+                f"SELECT reise, vorgang, pfad, inhalt, pruefsumme, {spalte} FROM versionen {bedingung} "
+                "ORDER BY vorgang, pfad", werte):
+            if aus:
+                if inhalt is not None:
+                    funde.append(f"{r} {pf} (operation {vorgang}): externalized with content in the database")
+                elif summe is None:
+                    funde.append(f"{r} {pf} (operation {vorgang}): externalized without checksum")
+                else:
+                    if summe not in ablage:
+                        try:
+                            _ablage_pruefen(summe, pf)
+                            ablage[summe] = None
+                        except AblageFehlt:
+                            ablage[summe] = "file missing in store"
+                        except (AblageFehler, ValueError):
+                            ablage[summe] = "store checksum mismatch"
+                    if ablage[summe]:
+                        funde.append(f"{r} {pf} (operation {vorgang}): {ablage[summe]}")
+            elif inhalt is None:
                 if summe is not None:
                     funde.append(f"{r} {pf} (operation {vorgang}): tombstone with checksum")
             elif summe is None:
@@ -543,7 +817,9 @@ def pruefen(reise=None):
 
 def sichern():
     """Schnappschuss über die Backup-API von SQLite wie konten.sichern(): geprüft mit integrity_check, ohne WAL, ersetzt
-    den vorigen erst, wenn er fertig ist, unter <Speicher>/sicherung/reisen.db (600). -> Pfad oder None ohne Datenbank."""
+    den vorigen erst, wenn er fertig ist, unter <Speicher>/sicherung/reisen.db (600). Fehlt eine verwiesene Datei in der
+    Ablage: AblageFehlt, der vorige bleibt. Die Ablage selbst sichert das Server-Backup (nur anhängend, #349).
+    -> Pfad oder None ohne Datenbank."""
     p = pfad()
     if not p.exists():
         return None
@@ -559,10 +835,27 @@ def sichern():
             kopie.execute("PRAGMA journal_mode = DELETE")   # eine Datei ohne -wal, so wie sie im Backup liegt
             if kopie.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                 raise sqlite3.DatabaseError("integrity_check")
+            fehlt = _fehlende_ablagedateien(kopie)   # ein Schnappschuss mit Verweisen ohne Datei ist wertlos (#349)
+            if fehlt:
+                raise AblageFehlt(fehlt[0][1], fehlt[0][0])
         os.replace(tmp, ziel)
     finally:
         tmp.unlink(missing_ok=True)
     return ziel
+
+
+def ablage_satz(fehler, w1):
+    """Satz des Katalogs zu AblageFehlt (pruefung.bauen.79) oder AblageFehler (pruefung.bauen.80); w1 ist die Reise."""
+    import texte
+    if isinstance(fehler, AblageFehler):
+        return texte.satz("pruefung.bauen.80", w1=w1, ziel=fehler.pfad, summe=fehler.summe)
+    return texte.satz("pruefung.bauen.79", w1=w1, ziel=fehler.pfad, summe=fehler.summe)
+
+
+def ablage_ausgabe(fehler, w1):
+    """Ausgabe eines Baus aus dem Speicher, der an der Ablage scheitert: ERROR-Zeile und der Satz als „ - …“ (so liest
+    veroeffentlichen.sh einen roten Bau, baugrund), in der Sprache des Aufrufs."""
+    return [f"ERROR: the trip {w1} cannot be built from the trip store:", f" - {ablage_satz(fehler, w1)}"]
 
 
 class _Hilfe(Exception):
@@ -619,7 +912,11 @@ def main(a):
             rest, o = _optionen(rest, ("--bis",))
             if len(rest) != 2:
                 raise _Hilfe()
-            print(f"stand {materialisieren(*rest, bis=int(o['bis']) if 'bis' in o else None)}")
+            try:
+                print(f"stand {materialisieren(*rest, bis=int(o['bis']) if 'bis' in o else None)}")
+            except (AblageFehlt, AblageFehler) as f:   # Bau aus dem Speicher rot, Exit 2 mit Katalogtext (#349)
+                print("\n".join(ablage_ausgabe(f, rest[0])))
+                return 2
         elif befehl == "vergleichen":
             # Exit 1 heißt hier nur „Unterschied“: falsche Angaben geben wie jeder Fehler 2
             try:
@@ -662,7 +959,7 @@ def main(a):
     except KeyError as f:
         print(f"ERROR: unknown trip or stand: {f.args[0] if f.args else ''}")
         return 2
-    except (ValueError, OSError, sqlite3.Error, VorgangVorhanden) as f:
+    except (ValueError, OSError, sqlite3.Error, VorgangVorhanden, AblageFehlt, AblageFehler) as f:
         print(f"ERROR: {f}")
         return 2
     return 0

@@ -95,6 +95,11 @@ def speicher():
     return Path(wert("FR_SPEICHER") or seiten() / "_speicher")
 
 
+def speicher_ablage():
+    """Ablage des Reisespeichers für Medien (Stufe 4, #349): eine Datei je Inhalt, benannt nach der Prüfsumme."""
+    return speicher() / "ablage"
+
+
 def speicherreisen():
     """Reisen, die über den Reisespeicher geschrieben werden (FR_SPEICHERREISEN, kommagetrennt; Leerzeichen und leere Teile
     fallen weg). Ein gesetzter, auch leerer Wert in der Umgebung gilt vor der Datei. Vorgabe: keine (alles über Git)."""

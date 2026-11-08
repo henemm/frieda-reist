@@ -4514,9 +4514,12 @@ def fremde_datei(reise_dir, von, rel):
         return p.read_text(encoding="utf-8")
     try:
         import reisespeicher
-        return reisespeicher.datei(von, rel).decode("utf-8")
-    except (ImportError, KeyError, OSError, sqlite3.Error, UnicodeDecodeError):
+    except ImportError:
         return None
+    try:
+        return reisespeicher.datei(von, rel).decode("utf-8")
+    except (KeyError, OSError, sqlite3.Error, UnicodeDecodeError, reisespeicher.AblageFehlt, reisespeicher.AblageFehler):
+        return None   # nicht lesbar, auch eine fehlende oder beschädigte Datei der Ablage (#349)
 
 
 def packliste_uebernehmen(reise_dir, wer, args, heute=None):
@@ -4870,6 +4873,20 @@ def speicher_fehler(werkzeug, e):
     return 503, fehler_antwort("schreiben.dienst.speicher_nicht_erreichbar")
 
 
+def ist_ablage_fehler(e):
+    """Fehlt eine Datei in der Ablage des Reisespeichers oder ist sie beschädigt (Stufe 4, #349)?"""
+    import reisespeicher
+    return isinstance(e, (reisespeicher.AblageFehlt, reisespeicher.AblageFehler))
+
+
+def ablage_fehler(werkzeug, reise, e):
+    """Datei der Ablage fehlt oder ist beschädigt -> (503, Antwort mit pruefung.bauen.79/.80); nichts geschrieben."""
+    import reisespeicher
+    sys.stderr.write(f"Store {werkzeug} 503: {' '.join(f'{type(e).__name__}: {e}'.split())[:LOG_LAENGE]}\n")
+    a = Ablehnung(reisespeicher.ablage_satz(e, reise))
+    return 503, {"ok": False, "fehler": str(a), "fehler_code": a.schluessel, "werte": a.werte_json()}
+
+
 def anwenden(wurzel_, arbeit, reise, werkzeug, anfrage, basis=None, frist=None):
     """Ein Schreibvorgang (Arbeitskopie ist vorbereitet) -> Antwort-Objekt mit HTTP-Code. basis gesetzt: Speicherweg mit
     der Frist frist (Sekunden ab jetzt) für das Eintragen; sonst Git-Weg."""
@@ -4891,6 +4908,8 @@ def anwenden(wurzel_, arbeit, reise, werkzeug, anfrage, basis=None, frist=None):
             return 503, fehler_antwort("schreiben.dienst.stand_geaendert")
         if isinstance(e, sqlite3.Error):
             return speicher_fehler(werkzeug, e)
+        if ist_ablage_fehler(e):
+            return ablage_fehler(werkzeug, reise, e)
         raise
 
 
@@ -5069,6 +5088,8 @@ def vorgang_speicher(s, reise, werkzeug, anfrage, start):
                 return nicht_eingetragen(werkzeug)     # noch nichts angewendet, keine Prüfung nötig
             if isinstance(ergebnis.get("fehler"), (sqlite3.Error, OSError)):
                 return speicher_fehler(werkzeug, ergebnis["fehler"])
+            if "fehler" in ergebnis and ist_ablage_fehler(ergebnis["fehler"]):
+                return ablage_fehler(werkzeug, reise, ergebnis["fehler"])
             if "fehler" in ergebnis:
                 raise ergebnis["fehler"]
             basis = ergebnis["basis"]

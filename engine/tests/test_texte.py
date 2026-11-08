@@ -531,6 +531,7 @@ if __name__ == "__main__":
 # ---------- Sätze mit Schlüssel (Fehler, ADR-0006 Punkt 6) ----------
 
 def test_satz_ist_deutsch_als_text_und_sprachfaehig_in_fstrings():
+    import schnittstelle  # noqa: F401  (englischer Name „title“ kommt aus texte._RAND; sonst hängt der Test von der Reihenfolge ab)
     s = texte.satz("schreiben.text_wert.1", feld="titel")
     assert str(s) == "„titel“ fehlt." and s.schluessel == "schreiben.text_wert.1" and s.werte == {"feld": "titel"}
     assert s.text("en") == "“title” is missing."

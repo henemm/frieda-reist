@@ -79,6 +79,13 @@ class BauFehler(Exception):
         super().__init__("\n".join(self.meldungen))
 
 
+def ablage_meldung(fehler, w1):
+    """Satz für eine Datei, die in der Ablage des Reisespeichers fehlt (AblageFehlt) oder beschädigt ist (AblageFehler),
+    Stufe 4 (#349); ein Bau aus dem Speicher endet damit mit Exit 2."""
+    import reisespeicher
+    return reisespeicher.ablage_satz(fehler, w1)
+
+
 def slug(text):
     t = texte.umschrift(text)
     t = unicodedata.normalize("NFKD", t)

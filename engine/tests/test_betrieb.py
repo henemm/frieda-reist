@@ -2485,3 +2485,129 @@ def test_vergleichslauf_ohne_liste_meldet_unlesbaren_speicher(sp):
     r = subprocess.run([str(BETRIEB / "vergleichslauf.sh")], env=sp["env"], capture_output=True, text=True)
     assert r.returncode == 2, r.stdout + r.stderr
     assert "ERROR" in r.stdout
+
+
+# ---------- Stufe 4 des Reisespeichers (#349, Spec docs/specs/betrieb/speicher-349-stufe4.md): Ablage der Medien ----------
+
+STUFE3_SCHEMA = """
+CREATE TABLE vorgaenge (
+  nummer INTEGER PRIMARY KEY AUTOINCREMENT, reise TEXT NOT NULL, stand INTEGER NOT NULL, wann TEXT NOT NULL,
+  wer TEXT NOT NULL, rolle TEXT NOT NULL DEFAULT '', werkzeug TEXT NOT NULL, titel TEXT NOT NULL,
+  grund TEXT NOT NULL DEFAULT '', kennung TEXT UNIQUE, herkunft TEXT NOT NULL DEFAULT '',
+  UNIQUE (reise, stand), UNIQUE (nummer, reise));
+CREATE TABLE versionen (
+  vorgang INTEGER NOT NULL, reise TEXT NOT NULL, pfad TEXT NOT NULL, inhalt BLOB, pruefsumme TEXT,
+  PRIMARY KEY (vorgang, pfad), FOREIGN KEY (vorgang, reise) REFERENCES vorgaenge (nummer, reise));
+"""
+
+
+def _ausgelagert(db, muster):
+    import sqlite3
+    from contextlib import closing
+    with closing(sqlite3.connect(db)) as v:
+        return v.execute("SELECT pfad, pruefsumme, ausgelagert FROM versionen WHERE pfad LIKE ? ORDER BY vorgang DESC",
+                         (muster,)).fetchall()
+
+
+def test_software_wechsel_lagert_medien_ohne_handschritt_aus(sp):
+    """AC-23: Ein Speicher im Format der Stufe 3 (Medien als BLOB) wird von den Läufen von veroeffentlichen.sh umgestellt,
+    ohne dass jemand neu.py oder reisespeicher.py aufruft."""
+    import hashlib
+    import sqlite3
+    from contextlib import closing
+    alt = sp["tmp"] / "_speicher3"
+    alt.mkdir(mode=0o700)
+    sp["env"].update({"FR_SPEICHER": str(alt), "FR_SPEICHERREISEN": "beispielreise"})
+    os.environ["FR_SPEICHER"] = str(alt)
+    with closing(sqlite3.connect(alt / "reisen.db")) as v:
+        v.executescript(STUFE3_SCHEMA)
+        v.execute("INSERT INTO vorgaenge (nummer, reise, stand, wann, wer, werkzeug, titel) "
+                  "VALUES (1, 'beispielreise', 1, '2026-11-01T10:00:00+00:00', 'Test', 'test', 'Anfang')")
+        for f in sorted(BEISPIEL.rglob("*")):
+            if f.is_file() and ".git" not in f.relative_to(BEISPIEL).parts:
+                b = f.read_bytes()
+                v.execute("INSERT INTO versionen VALUES (1, 'beispielreise', ?, ?, ?)",
+                          (f.relative_to(BEISPIEL).as_posix(), b, hashlib.sha256(b).hexdigest()))
+        v.execute("PRAGMA user_version = 1")
+        v.commit()
+    rs = sp["speicher"]
+    assert sp["lauf"]().returncode == 0
+    assert _ausgelagert(alt / "reisen.db", "medien/%.gpx")[0][2] == 0   # gehoben, aber noch nicht umgestellt
+    sp["neuer_commit"]()
+    r = sp["lauf"]()
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert any(e["was"] == "ablage-umstellung" and e["wer"] == "Software-Nachziehen" for e in rs.verlauf("beispielreise"))
+    medien = _ausgelagert(alt / "reisen.db", "medien/%.gpx")
+    assert medien[0][2] == 1 and rs.ablage_pfad(medien[0][1]).is_file()
+    assert not rs.vergleichen("beispielreise", sp["tmp"] / "dienst" / "bau" / "reisen" / "beispielreise")
+
+
+@pytest.mark.parametrize("art", ["fehlt", "beschaedigt"])
+def test_fehlende_ablagedatei_macht_die_speicher_reise_rot(sp, art):
+    """AC-10/AC-11, Fehlerfälle der Spec 349: Fehlt eine Ablagedatei oder ist sie beschädigt, ist die Reise rot (Grund =
+    Katalogtext), kein Stempel, keine Störung; die andere Speicher-Reise wird trotzdem gebaut."""
+    rs = sp["speicher"]
+    assert sp["lauf"]().returncode == 0
+    gebaut = sp["tmp"] / "dienst/reise-stand/beispielreise.gebaut"
+    vorher = gebaut.read_text()
+    erfolg = sp["tmp"] / "dienst/veroeffentlichen-erfolg"
+    erfolg.unlink(missing_ok=True)
+    sp["pings"]()                                                        # zählt ab hier
+    sp["deploys"]()
+    summe = _ausgelagert(sp["tmp"] / "_speicher" / "reisen.db", "medien/%.png")[0][1]
+    f = rs.ablage_pfad(summe)
+    os.chmod(f.parent, 0o700)
+    if art == "fehlt":
+        f.unlink()
+    else:
+        os.chmod(f, 0o600)
+        f.write_bytes(b"kaputt")
+    r = sp["lauf"]("--immer")
+    assert "cannot be read from the trip store" not in r.stdout, r.stdout + r.stderr
+    assert "beispielreise" in sp["rot"]()["reisen"] and "stadtwochenende" in sp["deploys"]()
+    lauf = sp["lauf_stand"]("beispielreise")
+    assert lauf["zustand"] == "fehlgeschlagen" and "medien/" in json.dumps(lauf, ensure_ascii=False)
+    assert gebaut.read_text() == vorher                                   # kein neuer Stempel
+    assert not erfolg.exists() and sp["pings"]() == 0, r.stdout          # kein Erfolg, kein Heartbeat
+
+
+def test_doku_nennt_keinen_handschritt_fuer_die_ablage():
+    """AC-23: docs/betrieb.md beschreibt die Umstellung auf die Ablage ohne Handschritt; der Neuaufbau ist freiwillig."""
+    text = (WURZEL / "docs" / "betrieb.md").read_text(encoding="utf-8")
+    absatz = next(z for z in text.splitlines() if z.startswith("**Ablage der Medien"))
+    assert "Kein Handschritt" in absatz and "nachziehen-speicher" in absatz
+    assert "ablage-umstellen" in absatz and "freiwillig" in absatz
+    assert "ablage/" in absatz and "Wiederherstellung" in absatz
+
+
+def _dist(ordner):
+    aus = {}
+    for p in sorted(Path(ordner).rglob("*")):
+        if p.is_file():
+            rel = p.relative_to(ordner).as_posix()
+            if rel == "daten.json":
+                d = json.loads(p.read_text(encoding="utf-8"))
+                d.pop("reise_stand", None)
+                aus[rel] = d
+            else:
+                aus[rel] = p.read_bytes()
+    return aus
+
+
+@pytest.mark.parametrize("reise", SPEICHER_REISEN)
+def test_speicher_reise_mit_ablage_baut_wie_aus_dem_ordner(sp, reise):
+    """AC-24: Eine Speicher-Reise mit ausgelagerten Medien, veröffentlicht über veroeffentlichen.sh (Stufe-3-Weg), baut
+    dieselbe Seite wie die Reise aus ihrem Ordner (bis auf reise_stand in daten.json)."""
+    if reise == "beispielreise":
+        assert _ausgelagert(sp["tmp"] / "_speicher" / "reisen.db", "medien/%.png")[0][2] == 1
+    assert sp["lauf"]().returncode == 0
+    ordner = sp["tmp"] / "dienst" / "bau" / "reisen" / reise
+    quelle = sp["tmp"] / "ordner" / reise
+    shutil.copytree(WURZEL / "beispiel" / "reisen" / reise, quelle, ignore=shutil.ignore_patterns(".git"))
+    bauen.bauen(ordner, sp["tmp"] / "dist-speicher" / reise)
+    daten = bauen.bauen(quelle, sp["tmp"] / "dist-ordner" / reise)
+    a, b = _dist(sp["tmp"] / "dist-speicher" / reise), _dist(sp["tmp"] / "dist-ordner" / reise)
+    assert sorted(set(a) ^ set(b)) == [] and a == b
+    assert "sw.js" in a and "manifest.json" in a
+    if reise == "beispielreise":
+        assert (daten.get("route") or {}).get("strecken")

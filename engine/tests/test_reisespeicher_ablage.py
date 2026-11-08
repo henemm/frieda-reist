@@ -279,6 +279,34 @@ def test_fehlende_datei_bricht_den_bau_mit_katalogtext_in_allen_sprachen_ab(kuer
     assert "reise-a" in s and "medien/a.png" in s and "ab" * 32 in s and "{" not in s
 
 
+@pytest.mark.parametrize("art", ["fehlt", "beschaedigt"])
+@pytest.mark.parametrize("kuerzel", _sprachen())
+def test_materialisieren_meldet_ablagefehler_mit_katalogtext_und_exit_2(rs, tmp_path, capsys, kuerzel, art):
+    """AC-10/AC-11 zur Laufzeit: Der Befehl materialisieren (Bau aus dem Speicher in veroeffentlichen.sh) endet bei einer
+    fehlenden oder beschädigten Ablagedatei mit Exit 2 und pruefung.bauen.79/.80 in der Sprache des Aufrufs, als Zeile
+    „ - …“ (so liest veroeffentlichen.sh einen roten Bau); kein Ordner entsteht."""
+    import texte
+    rs.vorgang_schreiben("t", {"reise.yaml": b"a\n", "medien/a.png": PNG}, "T", "t", "A")
+    s = _summe(PNG)
+    if art == "fehlt":
+        _weg(rs, s)
+    else:
+        f = rs.ablage_pfad(s)
+        os.chmod(f, 0o600)
+        f.write_bytes(b"kaputt")
+    schluessel = "pruefung.bauen.79" if art == "fehlt" else "pruefung.bauen.80"
+    erwartet = texte.t(kuerzel, schluessel, w1="t", ziel="medien/a.png", summe=s)
+    texte.aufruf_sprache(kuerzel)
+    try:
+        code = rs.main(["materialisieren", "t", str(tmp_path / "bau")])
+    finally:
+        texte.aufruf_sprache(texte.VORGABE_REISE)
+    aus = capsys.readouterr().out
+    assert code == 2 and f" - {erwartet}" in aus.splitlines(), aus
+    assert "{" not in aus and "medien/a.png" in aus and (s in aus or art != "fehlt")
+    assert not (tmp_path / "bau").exists()
+
+
 def test_bau_uebersetzt_ablagefehler_in_katalogtext(rs):
     """bauen.ablage_meldung(fehler, w1) macht aus AblageFehlt/AblageFehler den Satz pruefung.bauen.79/.80;
     der Speicher-Bau von bauen.py endet damit mit Exit 2 (AC-10)."""
@@ -444,7 +472,16 @@ def test_nachziehen_speicher_lagert_bestehende_medien_aus(rs, tmp_path, reise):
     medien = [r for r in _zeilen(rs, reise) if r[3] == 1]
     assert medien and all(rs.ablage_pfad(r[2]).is_file() for r in medien)
     rs.exportieren(reise, tmp_path / "ex")
-    assert _baum(tmp_path / "ex") == _baum(q)
+    # Byte-gleich mit dem Stand davor, nicht mit dem Quellordner: Der Formatvorgang der Stufe 3 davor stellt in der
+    # beispielreise plan/arten.yaml um (bestehendes Verhalten von neu.py nachziehen, unabhängig von Stufe 4).
+    n = rs.stand_nummer(reise)
+    with closing(rs.db()) as v:
+        assert v.execute("SELECT titel FROM vorgaenge WHERE reise = ? AND stand = ?", (reise, n)).fetchone()[0] \
+            == "ablage-umstellung"
+    rs.exportieren(reise, tmp_path / "davor", bis=n - 1)
+    assert _baum(tmp_path / "ex") == _baum(tmp_path / "davor")
+    assert {p: b for p, b in _baum(tmp_path / "ex").items() if p.startswith("medien/")} == \
+        {p: b for p, b in _baum(q).items() if p.startswith("medien/")}
     _weg(rs, medien[0][2])   # alle Wege lesen aus der Ablage, nicht mehr aus dem alten BLOB
     with pytest.raises(rs.AblageFehlt):
         rs.exportieren(reise, tmp_path / "ex2")

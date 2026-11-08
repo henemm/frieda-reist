@@ -211,6 +211,12 @@ speicher_reisen_lauf() {  # Speicher-Teil (Stufe 3, #348): Reisen aus FR_SPEICHE
            deploy_log="$log"; reise_stand_schreiben "$r" fehlgeschlagen "$(baugrund)"
            speicher_rote="${speicher_rote:+$speicher_rote,}$r"; continue
          fi
+         if grep -q '^ - ' "$log"; then   # Datei der Ablage fehlt oder ist beschädigt (#349): roter Bau, keine Störung
+           sed 's/^/  /' "$log"
+           echo "ERROR: build of $r failed, the trip stays at its last good state."
+           deploy_log="$log"; reise_stand_schreiben "$r" fehlgeschlagen "$(baugrund)"
+           speicher_rote="${speicher_rote:+$speicher_rote,}$r"; continue
+         fi
          echo "ERROR: $r cannot be read from the trip store ($(tail -1 "$log")), the next run tries again."; rm -f "$log"; return 1 ;;
       *) echo "ERROR: $r cannot be read from the trip store ($(tail -1 "$log")), the next run tries again."; rm -f "$log"; return 1 ;;
     esac
