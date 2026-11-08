@@ -1,0 +1,191 @@
+FFF....FFF.FFF.............                                              [100%]
+=================================== FAILURES ===================================
+________________ test_speicherreisen_unlesbare_datei_loest_aus _________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-13556/test_speicherreisen_unlesbare_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7802a3f62420>
+
+    def test_speicherreisen_unlesbare_datei_loest_aus(tmp_path, monkeypatch):
+        datei_als_verzeichnis(tmp_path, monkeypatch)
+>       assert issubclass(instanz.EinstellungenNichtLesbar, OSError)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'instanz' has no attribute 'EinstellungenNichtLesbar'
+
+engine/tests/test_instanz.py:30: AttributeError
+________________ test_speicherreisen_gepatchtes_lesen_loest_aus ________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-13556/test_speicherreisen_gepatchtes0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7802a3f69190>
+
+    def test_speicherreisen_gepatchtes_lesen_loest_aus(tmp_path, monkeypatch):
+        d = tmp_path / "einstellungen.env"
+        d.write_text("FR_SPEICHERREISEN=beispielreise\n", encoding="utf-8")
+        monkeypatch.setenv("FR_EINSTELLUNGEN", str(d))
+    
+        def kaputt(self, *a, **k):
+            raise OSError(5, "Input/output error")
+        monkeypatch.setattr(Path, "read_text", kaputt)
+>       with pytest.raises(instanz.EinstellungenNichtLesbar):
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'instanz' has no attribute 'EinstellungenNichtLesbar'
+
+engine/tests/test_instanz.py:43: AttributeError
+________________________ test_speicherreisen_chmod_000 _________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-13556/test_speicherreisen_chmod_0000')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7802a3f61eb0>
+
+    @pytest.mark.skipif(os.geteuid() == 0, reason="unter root greifen entzogene Rechte nicht")
+    def test_speicherreisen_chmod_000(tmp_path, monkeypatch):
+        d = tmp_path / "einstellungen.env"
+        d.write_text("FR_SPEICHERREISEN=beispielreise\n", encoding="utf-8")
+        d.chmod(0)
+        monkeypatch.setenv("FR_EINSTELLUNGEN", str(d))
+        try:
+>           with pytest.raises(instanz.EinstellungenNichtLesbar):
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'instanz' has no attribute 'EinstellungenNichtLesbar'
+
+engine/tests/test_instanz.py:54: AttributeError
+_______________ test_unlesbare_einstellungen_lehnen_ab_ohne_git ________________
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-13556/test_unlesbare_einstellungen_l0/reisen'), PosixPath('/tmp/pytest-of-hem/py...en_l0/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-13556/test_unlesbare_einstellungen_l0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7802a3f683b0>
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-13556/test_unlesbare_einstellungen_l0')
+capsys = <_pytest.capture.CaptureFixture object at 0x7802a3f68b90>
+
+    def test_unlesbare_einstellungen_lehnen_ab_ohne_git(repo, monkeypatch, tmp_path, capsys):
+        import schreiben_git
+        wurzel, origin, arbeit, _ = repo
+        vorher = git(origin, "rev-parse", "main")
+        unlesbare_einstellungen(tmp_path, monkeypatch)
+        aufrufe = []
+        monkeypatch.setattr(schreiben_git, "vorgang", lambda *a, **k: aufrufe.append("git") or (200, {}))
+        monkeypatch.setattr(sb, "vorgang_speicher", lambda *a, **k: aufrufe.append("speicher") or (200, {}))
+        for reise in ("beispielreise", "stadtwochenende"):
+            code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), reise, "art_definieren", {**IDA, "args": ART})
+>           assert code == 503 and a["ok"] is False and a["fehler_code"] == "schreiben.dienst.einstellungen_nicht_lesbar", (code, a)
+E           AssertionError: (200, {})
+E           assert (200 == 503)
+
+engine/tests/test_schreiben_speicher.py:185: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Done art_definieren 200 in 0.0 s
+_______________ test_git_vorgang_direkt_unlesbare_einstellungen ________________
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-13556/test_git_vorgang_direkt_unlesb0/reisen'), PosixPath('/tmp/pytest-of-hem/py...lesb0/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-13556/test_git_vorgang_direkt_unlesb0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7802a3f62090>
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-13556/test_git_vorgang_direkt_unlesb0')
+
+    def test_git_vorgang_direkt_unlesbare_einstellungen(repo, monkeypatch, tmp_path):
+        import schreiben_git
+        wurzel, origin, arbeit, _ = repo
+        vorher = git(origin, "rev-parse", "main")
+        unlesbare_einstellungen(tmp_path, monkeypatch)
+        git(wurzel, "remote", "set-url", "origin", str(wurzel / "gibt-es-nicht.git"))   # ein fetch fiele auf (503 Repo)
+        code, a = schreiben_git.vorgang(sb.Schreiber(wurzel, arbeit), "beispielreise", "art_definieren",
+                                        {**IDA, "args": ART}, time.monotonic())
+>       assert code == 503 and a["fehler_code"] == "schreiben.dienst.einstellungen_nicht_lesbar", (code, a)
+E       AssertionError: (503, {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}})
+E       assert (503 == 503 and 'schreiben.di...chbar_spaeter' == 'schreiben.di..._nicht_lesbar'
+E         
+E         - schreiben.dienst.einstellungen_nicht_lesbar
+E         + schreiben.dienst.repo_nicht_erreichbar_spaeter)
+
+engine/tests/test_schreiben_speicher.py:201: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Arbeitskopie: git fetch -q origin main: fatal: '/tmp/pytest-of-hem/pytest-13556/test_git_vorgang_direkt_unlesb0/reisen/gibt-es-nicht.git' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+_______________ test_gesund_und_buchung_unlesbare_einstellungen ________________
+
+speicher = namespace(rs=<module 'reisespeicher' from '<Repo>/engi...6/test_gesund_und_buchung_unlesb0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7802a15de700>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7802a3f62870>
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-13556/test_gesund_und_buchung_unlesb0')
+
+    def test_gesund_und_buchung_unlesbare_einstellungen(speicher, monkeypatch, tmp_path):
+        with Dienst(speicher.schreiber()) as d:
+            assert d.get("gesund", geheim=False) == (200, {"gesund": True})
+            unlesbare_einstellungen(tmp_path, monkeypatch)
+            assert d.get("gesund", geheim=False) == (503, {"gesund": False})
+            code, b = d.get("beispielreise/buchung/B-01")
+>           assert code == 503 and b["fehler_code"] == "schreiben.dienst.einstellungen_nicht_lesbar", b
+E           AssertionError: {'fehler': 'Das Repo ist gerade nicht erreichbar.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar', 'werte': {}}
+E           assert (503 == 503 and 'schreiben.di...ht_erreichbar' == 'schreiben.di..._nicht_lesbar'
+E             
+E             - schreiben.dienst.einstellungen_nicht_lesbar
+E             + schreiben.dienst.repo_nicht_erreichbar)
+
+engine/tests/test_schreiben_speicher.py:213: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET /gesund 200
+GET /gesund 503
+Error buchung 503: git fetch -q origin main: fatal: not a git repository (or any of the parent directories): .git
+GET /beispielreise/buchung/B-01 503
+____________________ test_neue_schluessel_in_allen_sprachen ____________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7802a3f5cec0>
+
+    def test_neue_schluessel_in_allen_sprachen(monkeypatch):
+        import texte
+        monkeypatch.setenv("FR_TEXTE_ZUSATZ", "xx")   # die Pseudo-Sprache der Tests zählt mit
+        sprachen = texte.sprachen()
+        assert {"de", "en", "xx"} <= set(sprachen)
+        for sp in sprachen:
+            for k in NEUE_SCHLUESSEL:
+                schluessel = f"schreiben.dienst.{k}"
+>               assert schluessel in texte.sprache(sp).TEXTE, (sp, schluessel)
+E               AssertionError: ('de', 'schreiben.dienst.einstellungen_nicht_lesbar')
+E               assert 'schreiben.dienst.einstellungen_nicht_lesbar' in {'seite.kreis.hinweis': '„{titel}“ verweist im Kreis oder zu tief auf andere Dinge und hat hier keinen Platz. Bitte in...us.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', ...}
+E                +  where {'seite.kreis.hinweis': '„{titel}“ verweist im Kreis oder zu tief auf andere Dinge und hat hier keinen Platz. Bitte in...us.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', ...} = <module 'texte_de' from '<Repo>/engine/texte_de.py'>.TEXTE
+E                +    where <module 'texte_de' from '<Repo>/engine/texte_de.py'> = <function sprache at 0x7802a42a5760>('de')
+E                +      where <function sprache at 0x7802a42a5760> = <module 'texte' from '<Repo>/engine/texte.py'>.sprache
+
+engine/tests/test_schreiben_speicher.py:630: AssertionError
+______________ test_fuer_seite_unlesbare_einstellungen_bricht_ab _______________
+
+reisen_repo = (PosixPath('/tmp/pytest-of-hem/pytest-13556/test_fuer_seite_unlesbare_eins0/repo'), <function reisen_repo.<locals>.commit at 0x7802a152dee0>)
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-13556/test_fuer_seite_unlesbare_eins0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7802a3f5cd40>
+
+    def test_fuer_seite_unlesbare_einstellungen_bricht_ab(reisen_repo, tmp_path, monkeypatch):
+        """#361 (AC-8): Ist die Einstellungsdatei vorhanden, aber nicht lesbar, weiß der Bau nicht, welche Reisen im Speicher
+        liegen: er bricht laut ab und nimmt nie einen Stand aus Git."""
+        import instanz
+        w, _ = reisen_repo
+        unlesbar = tmp_path / "einstellungen-unlesbar.env"
+        unlesbar.mkdir()
+        monkeypatch.delenv("FR_SPEICHERREISEN", raising=False)
+        monkeypatch.setenv("FR_EINSTELLUNGEN", str(unlesbar))
+>       with pytest.raises(instanz.EinstellungenNichtLesbar):
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'instanz' has no attribute 'EinstellungenNichtLesbar'
+
+engine/tests/test_stand.py:167: AttributeError
+__________________ test_fr_einlesen_unlesbare_datei_bricht_ab __________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-13556/test_fr_einlesen_unlesbare_dat0')
+
+    def test_fr_einlesen_unlesbare_datei_bricht_ab(tmp_path):
+        """#361 (AC-11): Eine vorhandene, aber nicht lesbare Einstellungsdatei darf nicht still übersprungen werden, sonst
+        baut das Veröffentlichen eine Speicher-Reise aus Git. (Verzeichnis statt Datei: gilt auch unter root.)"""
+        (tmp_path / "betrieb" / "einstellungen.env").mkdir(parents=True)
+        r = gemeinsam_laden(tmp_path)
+>       assert r.returncode != 0 and "erreicht" not in r.stdout
+E       assert (0 != 0)
+E        +  where 0 = CompletedProcess(args=['bash', '-c', '. "<Repo>/betrie.../.claude/worktrees/ethereal-strolling-feigenbaum/betrieb/gemeinsam.sh: line 64: read: read error: 0: Is a directory\n').returncode
+
+engine/tests/test_betrieb.py:83: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_instanz.py::test_speicherreisen_unlesbare_datei_loest_aus
+FAILED engine/tests/test_instanz.py::test_speicherreisen_gepatchtes_lesen_loest_aus
+FAILED engine/tests/test_instanz.py::test_speicherreisen_chmod_000 - Attribut...
+FAILED engine/tests/test_schreiben_speicher.py::test_unlesbare_einstellungen_lehnen_ab_ohne_git
+FAILED engine/tests/test_schreiben_speicher.py::test_git_vorgang_direkt_unlesbare_einstellungen
+FAILED engine/tests/test_schreiben_speicher.py::test_gesund_und_buchung_unlesbare_einstellungen
+FAILED engine/tests/test_schreiben_speicher.py::test_neue_schluessel_in_allen_sprachen
+FAILED engine/tests/test_stand.py::test_fuer_seite_unlesbare_einstellungen_bricht_ab
+FAILED engine/tests/test_betrieb.py::test_fr_einlesen_unlesbare_datei_bricht_ab
+9 failed, 18 passed, 166 deselected in 21.69s
