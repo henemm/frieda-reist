@@ -155,6 +155,19 @@ def test_fuer_seite_je_weg(reisen_repo, tmp_path, monkeypatch):
     assert stand.fuer_seite(ordner, daten) is None
 
 
+def test_fuer_seite_unlesbare_einstellungen_bricht_ab(reisen_repo, tmp_path, monkeypatch):
+    """#361 (AC-8): Ist die Einstellungsdatei vorhanden, aber nicht lesbar, weiß der Bau nicht, welche Reisen im Speicher
+    liegen: er bricht laut ab und nimmt nie einen Stand aus Git."""
+    import instanz
+    w, _ = reisen_repo
+    unlesbar = tmp_path / "einstellungen-unlesbar.env"
+    unlesbar.mkdir()
+    monkeypatch.delenv("FR_SPEICHERREISEN", raising=False)
+    monkeypatch.setenv("FR_EINSTELLUNGEN", str(unlesbar))
+    with pytest.raises(instanz.EinstellungenNichtLesbar):
+        stand.fuer_seite(w / "reisen" / "beispielreise", {})
+
+
 def test_probebau_ohne_stand(monkeypatch, tmp_path):
     """AC-17: Probebau und Rollenprüfung des Schreibwegs brauchen keinen Stand; die Arbeitskopie hat keinen Bezug zum
     Speicher. Wächtertest: Bauer.daten() ruft fuer_seite nicht (nur Bauer.schreiben)."""

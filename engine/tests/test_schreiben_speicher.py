@@ -162,6 +162,68 @@ def test_schalter_vorgabe_ist_git(repo, monkeypatch, tmp_path):
     assert not reisespeicher.pfad().exists()
 
 
+# ---------- #361: Einstellungsdatei vorhanden, aber nicht lesbar -> fail closed (AC-5 bis AC-7, AC-9) ----------
+
+def unlesbare_einstellungen(tmp_path, monkeypatch):
+    """Die Einstellungsdatei existiert, ist aber keine lesbare Datei; FR_SPEICHERREISEN fehlt in der Umgebung."""
+    d = tmp_path / "einstellungen-unlesbar.env"
+    d.mkdir()
+    monkeypatch.delenv("FR_SPEICHERREISEN", raising=False)
+    monkeypatch.setenv("FR_EINSTELLUNGEN", str(d))
+
+
+def test_unlesbare_einstellungen_lehnen_ab_ohne_git(repo, monkeypatch, tmp_path, capsys):
+    import schreiben_git
+    wurzel, origin, arbeit, _ = repo
+    vorher = git(origin, "rev-parse", "main")
+    unlesbare_einstellungen(tmp_path, monkeypatch)
+    aufrufe = []
+    monkeypatch.setattr(schreiben_git, "vorgang", lambda *a, **k: aufrufe.append("git") or (200, {}))
+    monkeypatch.setattr(sb, "vorgang_speicher", lambda *a, **k: aufrufe.append("speicher") or (200, {}))
+    for reise in ("beispielreise", "stadtwochenende"):
+        code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), reise, "art_definieren", {**IDA, "args": ART})
+        assert code == 503 and a["ok"] is False and a["fehler_code"] == "schreiben.dienst.einstellungen_nicht_lesbar", (code, a)
+    assert aufrufe == []
+    err = capsys.readouterr().err
+    assert "Error art_definieren 503: settings not readable" in err and "Done art_definieren 503" in err
+    assert git(origin, "rev-parse", "main") == vorher
+    assert not Path(f"{arbeit}-beispielreise").exists()
+
+
+def test_git_vorgang_direkt_unlesbare_einstellungen(repo, monkeypatch, tmp_path):
+    import schreiben_git
+    wurzel, origin, arbeit, _ = repo
+    vorher = git(origin, "rev-parse", "main")
+    unlesbare_einstellungen(tmp_path, monkeypatch)
+    git(wurzel, "remote", "set-url", "origin", str(wurzel / "gibt-es-nicht.git"))   # ein fetch fiele auf (503 Repo)
+    code, a = schreiben_git.vorgang(sb.Schreiber(wurzel, arbeit), "beispielreise", "art_definieren",
+                                    {**IDA, "args": ART}, time.monotonic())
+    assert code == 503 and a["fehler_code"] == "schreiben.dienst.einstellungen_nicht_lesbar", (code, a)
+    assert not Path(f"{arbeit}-beispielreise").exists()
+    git(wurzel, "remote", "set-url", "origin", str(origin))
+    assert git(origin, "rev-parse", "main") == vorher
+
+
+def test_gesund_und_buchung_unlesbare_einstellungen(speicher, monkeypatch, tmp_path):
+    with Dienst(speicher.schreiber()) as d:
+        assert d.get("gesund", geheim=False) == (200, {"gesund": True})
+        unlesbare_einstellungen(tmp_path, monkeypatch)
+        assert d.get("gesund", geheim=False) == (503, {"gesund": False})
+        code, b = d.get("beispielreise/buchung/B-01")
+        assert code == 503 and b["fehler_code"] == "schreiben.dienst.einstellungen_nicht_lesbar", b
+        assert "ok" not in b
+
+
+def test_fehlende_einstellungen_git_weg_unveraendert(repo, monkeypatch, tmp_path):
+    wurzel, origin, arbeit, _ = repo
+    monkeypatch.delenv("FR_SPEICHERREISEN", raising=False)
+    monkeypatch.setenv("FR_EINSTELLUNGEN", str(tmp_path / "gibt-es-nicht.env"))
+    vorher = git(origin, "rev-parse", "main")
+    code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "art_definieren", {**IDA, "args": ART})
+    assert code == 200 and a["ok"], a
+    assert git(origin, "rev-parse", "main") == a["commit"] != vorher
+
+
 # ---------- AC-6: ein Vorgang je Schreibvorgang ----------
 
 @pytest.mark.parametrize("reise", sorted(REISEN))
@@ -553,7 +615,8 @@ def test_speicherweg_ruft_nie_git_auf(speicher, monkeypatch, tmp_path):
 
 # ---------- AC-21: neue Texte in allen Sprachen ----------
 
-NEUE_SCHLUESSEL = ("speicher_nicht_erreichbar", "reise_nicht_im_speicher", "reise_im_speicher", "stand_geaendert")
+NEUE_SCHLUESSEL = ("speicher_nicht_erreichbar", "reise_nicht_im_speicher", "reise_im_speicher", "stand_geaendert",
+                   "einstellungen_nicht_lesbar")
 
 
 def test_neue_schluessel_in_allen_sprachen(monkeypatch):

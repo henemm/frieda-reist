@@ -70,6 +70,26 @@ def test_einstellungen_aus_datei_mit_vorgaben(tmp_path):
     assert w["FR_TITEL"] == "$(touch boese)" and not (Path.cwd() / "boese").exists()
 
 
+def gemeinsam_laden(tmp_path):
+    return subprocess.run(["bash", "-c", f'. "{BETRIEB}/gemeinsam.sh"; echo erreicht'], capture_output=True, text=True,
+                          env={**SAUBER, "FR_WURZEL": str(tmp_path)})
+
+
+def test_fr_einlesen_unlesbare_datei_bricht_ab(tmp_path):
+    """#361 (AC-11): Eine vorhandene, aber nicht lesbare Einstellungsdatei darf nicht still übersprungen werden, sonst
+    baut das Veröffentlichen eine Speicher-Reise aus Git. (Verzeichnis statt Datei: gilt auch unter root.)"""
+    (tmp_path / "betrieb" / "einstellungen.env").mkdir(parents=True)
+    r = gemeinsam_laden(tmp_path)
+    assert r.returncode != 0 and "erreicht" not in r.stdout
+    assert "exists but cannot be read" in r.stderr and "einstellungen.env" in r.stderr
+
+
+def test_fr_einlesen_fehlende_datei_ist_ok(tmp_path):
+    (tmp_path / "betrieb").mkdir()
+    r = gemeinsam_laden(tmp_path)
+    assert r.returncode == 0 and "erreicht" in r.stdout, r.stderr
+
+
 def test_umgebung_gilt_vor_der_datei_und_fremdes_wird_ignoriert(tmp_path):
     r, w = einstellungen(tmp_path, "FR_INSTANZ=probe\nPATH=/nirgends\nRM_ABLAGE=/falsch\nFR_SEITEN=/srv/datei\n",
                          FR_SEITEN="/srv/umgebung")
