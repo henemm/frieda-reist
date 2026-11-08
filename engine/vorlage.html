@@ -4515,6 +4515,11 @@ async function ichLaden() {
   // Meldungen an die Person (#21): der letzte Stand bleibt im Browser, damit der Hinweis auch ohne Netz steht; abgemeldet leer
   if (geladen) merke("fuer-dich", MIT_KONTO() ? ICH.meldungen || [] : []);
   FUER_DICH = geladen ? (MIT_KONTO() && ICH.meldungen) || [] : lies("fuer-dich", []);
+  // Was hier ohne Netz als gelesen gemerkt wurde, geht beim nächsten Kontakt an das Konto (#407)
+  if (geladen && MIT_KONTO()) {
+    const lokal = new Set(lies("gelesen", []));
+    gelesenSenden(FUER_DICH.filter(m => m && !m.gelesen && lokal.has(m.id)).map(m => m.id));
+  }
   // Angemeldet spricht die Seite die Sprache des Kontos (#188); gemerkt wie eine Wahl, damit sie beim nächsten Öffnen gleich gilt
   ICH_BEKANNT = true;
   const kontoSprache = ICH && ICH.konto && ICH.konto.sprache;
@@ -4527,16 +4532,26 @@ async function ichLaden() {
   pushFuss();
 }
 /* Hinweis „Für dich“ (Rahmen, Meldungen; #21 Stufe 1): Meldungen an die angemeldete Person in dieser Reise, die noch nicht
-   als gelesen gelten, die neuesten drei, dazu „und n weitere“. Alle Meldungen über alle Reisen stehen auf Mein Konto. */
+   als gelesen gelten, die neuesten drei, dazu „und n weitere“. Alle Meldungen über alle Reisen stehen auf Mein Konto.
+   Gelesen ist der Stand des Kontos (#407, api/ich: gelesen); „Gelesen“ merkt es dort (api/gelesen) und im Browser, damit
+   der Hinweis auch ohne Netz verschwindet. */
 let FUER_DICH = [];
 const FD_ZEIGEN = 3;
+function gelesenSenden(ids) {
+  if (!ids.length) return;
+  fetch("api/gelesen", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ids})}).catch(() => {});
+}
 function fuerDich() {
   const box = $("#fuerDich"), gelesen = new Set(lies("gelesen", []));
-  const offen = FUER_DICH.filter(m => m && m.id && !gelesen.has(m.id));
+  const offen = FUER_DICH.filter(m => m && m.id && !m.gelesen && !gelesen.has(m.id));
   box.hidden = !offen.length;
   if (!offen.length) return box.replaceChildren();
   const ok = el("button", {type: "button"}, T("seite.fuer_dich.gelesen"));
-  ok.addEventListener("click", () => { merke("gelesen", [...gelesen, ...offen.map(m => m.id)].slice(-200)); fuerDich(); });
+  ok.addEventListener("click", () => {
+    merke("gelesen", [...gelesen, ...offen.map(m => m.id)].slice(-200));
+    gelesenSenden(offen.map(m => m.id));
+    fuerDich();
+  });
   const mehr = offen.length - FD_ZEIGEN;
   box.replaceChildren(el("span", {class: "fd-text"}, el("b", {}, T("seite.fuer_dich.titel")),
     offen.slice(0, FD_ZEIGEN).map(m => el("span", {}, m.text)),

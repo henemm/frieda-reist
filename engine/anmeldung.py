@@ -117,7 +117,13 @@ background:var(--acc2);color:var(--acc);font-weight:700;font-size:.85rem;display
 .meldung-kopf .marke{font-size:.75rem;padding:.05rem .5rem;flex:none}
 .meldung-kopf .reise{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.meldung-kopf .zeit{flex:none}
 .zeile.meldung .meldungstext{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-details.weitere>summary{color:var(--mut);font-weight:600}details.weitere>.liste-innen>*{border-top:1px solid var(--line)}
+details.weitere>summary,details.gelesen>summary{color:var(--mut);font-weight:600}
+details.weitere>.liste-innen>*,details.gelesen>.liste-innen>*{border-top:1px solid var(--line)}
+.abschnitt-kopf{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;margin:0 .25rem}.abschnitt-kopf h2{margin:0}
+.abschnitt-kopf form{flex:none}.abschnitt-kopf button.link{min-height:2.75rem;padding:.2rem 0;font-size:.9375rem}
+.zahl{font-size:.8125rem;font-weight:700;color:var(--card);background:var(--acc);border-radius:999px;padding:.05rem .55rem;margin-left:.4rem;vertical-align:.15em}
+.neu-punkt{flex:none;width:.5rem;height:.5rem;border-radius:50%;background:var(--acc);margin-top:.55rem}.ohne-punkt{flex:none;width:.5rem}
+.zeile.meldung.ungelesen .meldungstext{font-weight:600}.leer{padding:.9rem 1rem;color:var(--mut);font-size:.9375rem}
 .zeile .wert{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%}
 details>.inhalt{padding:0 1rem 1rem;display:flex;flex-direction:column;gap:.5rem}
 .kalender-links{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 1rem}
@@ -506,13 +512,14 @@ def meldung_text(m):
 
 
 def meldungen_ordnen(ms, zone):
-    """Ordnung auf Mein Konto (#407): Prüfmeldungen einer Reise vom selben Tag werden eine Zeile, Konflikte stehen oben,
-    sonst die neueste zuerst. -> [{art, reise, zeit, text, anker}]."""
+    """Ordnung auf Mein Konto (#407): Prüfmeldungen einer Reise vom selben Tag werden eine Zeile; ungelesene stehen vor
+    gelesenen, ungelesene Konflikte ganz oben (Entscheidung des Product Owners 8.11.2026), sonst die neueste zuerst.
+    -> [{art, reise, zeit, text, anker, ids, gelesen}]; ids: alle Meldungen der Zeile, gelesen: alle davon gelesen."""
     aus, pruefungen = [], {}
     for m in ms:
         z = meldung_zeitpunkt(m.get("erstellt"), zone)
         e = {"art": m.get("art"), "reise": m.get("reise"), "zeit": z, "text": meldung_text(m), "anker": rm.meldung_anker(m),
-             "erstellt": m.get("erstellt") or ""}
+             "erstellt": m.get("erstellt") or "", "ids": [m.get("id")], "gelesen": bool(m.get("gelesen"))}
         if e["art"] == "pruefung" and e["reise"]:
             pruefungen.setdefault((e["reise"], z.date() if z else None), []).append(e)
         else:
@@ -522,45 +529,83 @@ def meldungen_ordnen(ms, zone):
             aus.append(gruppe[0])
         else:
             neueste = max(gruppe, key=lambda e: e["erstellt"])
-            aus.append(neueste | {"text": tx("konto.meldungen.pruefungen", n=len(gruppe)), "anker": "zu-tun"})
+            aus.append(neueste | {"text": tx("konto.meldungen.pruefungen", n=len(gruppe)), "anker": "zu-tun",
+                                  "ids": [i for e in gruppe for i in e["ids"]], "gelesen": all(e["gelesen"] for e in gruppe)})
     aus.sort(key=lambda e: e["erstellt"], reverse=True)
-    aus.sort(key=lambda e: e["art"] != "konflikt")      # stabil: Konflikte oben, darin die neueste zuerst
+    aus.sort(key=lambda e: (e["gelesen"], e["gelesen"] or e["art"] != "konflikt"))   # stabil, darin die neueste zuerst
     return aus
 
 
+def meldung_ziel(e, reise_info):
+    """Adresse der Stelle, an die eine Zeile führt (#407): Seite der Reise mit Sprungmarke, Bitten zu den Freischaltungen
+    auf Mein Konto; None ohne Ziel."""
+    info = (reise_info(e["reise"]) or {}) if e["reise"] else {}
+    if info.get("seite"):
+        return info["seite"] + (f'#{e["anker"]}' if e["anker"] else "")
+    if e["art"] in ("anfrage_reisen", "anfrage_warteliste") and not e["reise"]:
+        return "/konto#freischalten"
+    return None
+
+
 def meldung_zeile(e, reise_info, heute):
-    """Molekül meldungZeile (#407): Marke der Art, Reise und Zeit klein, darunter der Text; die ganze Zeile führt an die
-    Stelle (Reise mit Sprungmarke, Freischaltungen auf dieser Seite). Ohne Ziel bleibt sie ohne Link."""
+    """Molekül meldungZeile (#407): Punkt, solange ungelesen; Marke der Art, Reise und Zeit klein, darunter der Text. Die
+    ganze Zeile führt über /konto?meldung=<id> (merkt gelesen) an die Stelle; ohne Ziel bleibt sie ohne Link."""
     info = (reise_info(e["reise"]) or {}) if e["reise"] else {}
     marken = texte.gruppe(sprache_der_seite(), "konto.meldungen.art")
     marke = (f'<span class="marke{" warm" if e["art"] in MELDUNG_WARM else " leise"}">{esc(marken[e["art"]])}</span>'
              if e["art"] in marken else "")
     reise = f'<span class="reise">{esc(info.get("titel") or e["reise"])}</span><span>·</span>' if e["reise"] else ""
-    inhalt = (f'<span class="was"><span class="meldung-kopf">{marke}{reise}<span class="zeit">{esc(meldung_wann(e["zeit"], heute))}</span></span>'
+    punkt = ('<span class="ohne-punkt"></span>' if e["gelesen"] else
+             f'<span class="neu-punkt" role="img" aria-label="{esc(tx("konto.meldungen.neu_punkt"))}"></span>')
+    inhalt = (f'{punkt}<span class="was"><span class="meldung-kopf">{marke}{reise}<span class="zeit">{esc(meldung_wann(e["zeit"], heute))}</span></span>'
               f'<span class="meldungstext">{esc(e["text"])}</span></span>')
-    if info.get("seite"):
-        ziel = info["seite"] + (f'#{e["anker"]}' if e["anker"] else "")
-    elif e["art"] in ("anfrage_reisen", "anfrage_warteliste") and not e["reise"]:
-        ziel = "#freischalten"
-    else:
-        return f'<div class="zeile meldung ohne-link">{inhalt}</div>'
-    return f'<a class="zeile meldung" href="{esc(ziel)}">{inhalt}</a>'
+    klasse = "zeile meldung" + ("" if e["gelesen"] else " ungelesen")
+    if not meldung_ziel(e, reise_info) or not e["ids"][0]:
+        return f'<div class="{klasse} ohne-link">{inhalt}</div>'
+    return f'<a class="{klasse}" href="/konto?{esc(urllib.parse.urlencode({"meldung": e["ids"][0]}))}">{inhalt}</a>'
+
+
+def meldungen_zone(k):
+    """Zeitzone, in der Mein Konto Zeiten nennt: die des Geräts aus den Benachrichtigungen, sonst die der Instanz."""
+    return konten.zeitzone_des_kontos(k["id"]) or instanz.zeitzone()
 
 
 def meldungen_abschnitt(k, reise_info):
-    """Meldungen an die Person über alle Reisen (#21 Stufe 1, #41, #407), dieselbe Quelle wie meine_reisen. Jede Zeile führt
-    an ihre Stelle; die ersten MELDUNGEN_ZEIGEN stehen offen, der Rest zugeklappt. Ohne Meldungen: nichts."""
-    zone = konten.zeitzone_des_kontos(k["id"]) or instanz.zeitzone()
+    """Meldungen an die Person über alle Reisen (#21 Stufe 1, #41, #407), dieselbe Quelle wie meine_reisen. Oben die
+    ungelesenen mit Zahl und „Alle gelesen“, die ersten MELDUNGEN_ZEIGEN offen, der Rest zugeklappt; darunter zugeklappt
+    „Gelesen (n)“. Jede Zeile führt an ihre Stelle. Ohne Meldungen: nichts."""
+    zone = meldungen_zone(k)
     jetzt = meldung_zeitpunkt(datetime.datetime.now(datetime.timezone.utc).isoformat(), zone)
     heute = jetzt.date() if jetzt else datetime.date.today()
-    zeilen = [meldung_zeile(e, reise_info, heute) for e in meldungen_ordnen(rm.meldungen_des_kontos(k), zone)]
-    if not zeilen:
+    alle = meldungen_ordnen(rm.meldungen_des_kontos(k), zone)
+    if not alle:
         return ""
-    rest = zeilen[MELDUNGEN_ZEIGEN:]
-    weitere = (f'<details class="weitere"><summary class="zeile">{esc(tx("konto.meldungen.weitere", n=len(rest)))}</summary>'
-               f'<div class="liste-innen">{"".join(rest)}</div></details>') if rest else ""
-    return (f'<div class="abschnitt" id="meldungen"><h2>{esc(tx("konto.meldungen.titel"))}</h2>'
-            f'<div class="liste">{"".join(zeilen[:MELDUNGEN_ZEIGEN])}{weitere}</div></div>')
+    neu = [meldung_zeile(e, reise_info, heute) for e in alle if not e["gelesen"]]
+    alt = [meldung_zeile(e, reise_info, heute) for e in alle if e["gelesen"]]
+    rest = neu[MELDUNGEN_ZEIGEN:]
+    teile = "".join(neu[:MELDUNGEN_ZEIGEN]) if neu else f'<div class="leer">{esc(tx("konto.meldungen.keine_neuen"))}</div>'
+    if rest:
+        teile += (f'<details class="weitere"><summary class="zeile">{esc(tx("konto.meldungen.weitere", n=len(rest)))}</summary>'
+                  f'<div class="liste-innen">{"".join(rest)}</div></details>')
+    if alt:
+        teile += (f'<details class="gelesen"><summary class="zeile">{esc(tx("konto.meldungen.gelesen", n=len(alt)))}</summary>'
+                  f'<div class="liste-innen">{"".join(alt)}</div></details>')
+    zahl = f'<span class="zahl">{esc(tx("konto.meldungen.neu", n=len(neu)))}</span>' if neu else ""
+    knopf = (f'<form method="post" action="/konto">{verdeckt(aktion="meldungen_gelesen")}'
+             f'<button class="link">{esc(tx("konto.meldungen.alle_gelesen"))}</button></form>') if neu else ""
+    return (f'<div class="abschnitt" id="meldungen"><div class="abschnitt-kopf"><h2>{esc(tx("konto.meldungen.titel"))}{zahl}</h2>'
+            f'{knopf}</div><div class="liste">{teile}</div></div>')
+
+
+def meldung_oeffnen(k, mid, reise_info):
+    """Zeile auf Mein Konto angetippt (#407): ihre Meldungen (bei gebündelten alle) als gelesen merken und an die Stelle
+    weiterleiten. Eine Meldung, die nicht an dieses Konto geht oder nicht mehr gilt: 404, nichts wird gemerkt."""
+    for e in meldungen_ordnen(rm.meldungen_des_kontos(k), meldungen_zone(k)):
+        if mid in e["ids"]:
+            konten.gelesen_merken(k["id"], e["ids"])
+            return weiter(meldung_ziel(e, reise_info) or "/konto#meldungen")
+    return antwort(404, seite(tx("konto.nicht_gefunden"), karte(f"<h1>{esc(tx('konto.nicht_gefunden'))}</h1>"),
+                              f'<div class="links"><a href="/konto">{esc(tx("konto.seite.titel"))}</a></div>'))
 
 
 def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen=""):
@@ -875,6 +920,8 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
             return kalender_antwort(k, datei=True)
         if methode == "GET" and q.get("loeschen"):
             return antwort(200, loeschen_seite(k))
+        if methode == "GET" and q.get("meldung"):      # Zeile der Meldungen: gelesen merken, an die Stelle (#407)
+            return meldung_oeffnen(k, q["meldung"], reise_info)
         if methode == "GET" and q.get("push") in ("an", "aus"):    # zurück vom Schalter (engine/app/konto.js)
             return antwort(200, konto_seite(k, reise_info, hinweis=tx("konto.push.hier_" + q["push"]), offen="push"))
         if methode == "GET":
@@ -918,6 +965,9 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
                 for abo in konten.push_abos(k["id"]):
                     konten.push_abo_entfernen(k["id"], abo["endpoint"])
                 return antwort(200, konto_seite(k, reise_info, hinweis=tx("konto.push.alle_aus_hinweis"), offen="push"))
+            if a == "meldungen_gelesen":
+                konten.gelesen_merken(k["id"], [m["id"] for m in rm.meldungen_des_kontos(k) if not m["gelesen"] and m["id"]])
+                return weiter("/konto")
             if a == "alle_abmelden":
                 konten.alle_abmelden(k["id"])
                 return weiter("/anmelden", [cookie_loeschen()])

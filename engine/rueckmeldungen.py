@@ -44,7 +44,9 @@ HTTP (hinter nginx, Präfix /<reise>-<token>/api/ -> /<reise>/):
   PATCH  /<reise>/rueckmeldungen/<R-id|A-id>  nur vom Konnektor (Organisator:in erledigt im Gespräch): {status, kommentar} setzt
                                           uebernommen, verworfen oder rueckfrage mit Kommentar für die Seite (O-3)
   GET    /<reise>/ich                     angemeldet als (Konto, Person der Reise), Regel anmeldung, Basis-Adresse,
-                                          Meldungen an die Person in dieser Reise
+                                          Meldungen an die Person in dieser Reise mit Lesestand (gelesen, #407); öffnet die Seite
+                                          einer neuen Reise, gilt deren Meldung „neue Reise“ als gelesen
+  POST   /<reise>/gelesen                 {ids: [M-…]} Meldungen des Hinweises „Für dich“ als gelesen merken; nur angemeldet (#407)
   GET    /<reise>/belege[?buchung=B-01]   Belege zu Buchungen, die die Person sehen darf (engine/belege.py, #76)
   GET    /<reise>/belege/<D-id>           die Datei selbst (PDF, Bild), wenn die Person sie sehen darf
   POST   /<reise>/belege/<B-id>           Datei hochladen (Body = Datei, X-Frieda-Datei = Name, ?name= bei eingetipptem Namen)
@@ -328,7 +330,8 @@ def meldungen_des_kontos(k):
     """Alle Meldungen an ein Konto, die noch gelten (#21, #41): die ohne Reise (Name des Kontos) und die jeder Reise, in der
     das Konto Mitglied ist (Name der Person dort). Eine Quelle für meine_reisen, Mein Konto und die Reiseseiten.
     Eine Meldung „neue Reise“ gehört zu der Reise in ziel, sobald das Konto dort Mitglied ist (#407: Link statt Adresse).
-    -> [{reise (None ohne Reise), id, erstellt, text, art, ziel, bezug}], neueste zuerst."""
+    gelesen: das Konto hat sie gelesen (#407, Lesestand in konten.db).
+    -> [{reise (None ohne Reise), id, erstellt, text, art, ziel, bezug, gelesen}], neueste zuerst."""
     aus = []
     o = ordner_neu()
     meine = {mg["reise"] for mg in konten.mitgliedschaften(k["id"])}
@@ -341,7 +344,20 @@ def meldungen_des_kontos(k):
         if p:
             aus += [m | {"reise": mg["reise"]} for m in meldungen_der_person(mg["reise"], p.get("name"), z)]
     aus.sort(key=lambda m: m.get("erstellt", ""), reverse=True)
-    return [{f: m.get(f) for f in ("reise", "id", "erstellt", "text", "art", "ziel", "bezug")} for m in aus]
+    gelesen = konten.gelesen(k["id"])
+    return [{f: m.get(f) for f in ("reise", "id", "erstellt", "text", "art", "ziel", "bezug")} | {"gelesen": m.get("id") in gelesen}
+            for m in aus]
+
+
+def neue_reise_gesehen(k, reise):
+    """Die Person hat die Seite der Reise angemeldet geöffnet: ihre Meldung „neue Reise“ gilt als gelesen (#407,
+    Entscheidung des Product Owners 8.11.2026). Andere Meldungen dieser Reise bleiben, wie sie sind."""
+    o = ordner_neu()
+    if not o:
+        return
+    ids = [m["id"] for m in meldungen(o, k["name"]) if m.get("art") == "neue_reise" and m.get("ziel") == reise and m.get("id")]
+    if ids and not set(ids) <= konten.gelesen(k["id"]):
+        konten.gelesen_merken(k["id"], ids)
 
 
 def schreiben(pfad, text):
@@ -1026,13 +1042,17 @@ class Dienst(BaseHTTPRequestHandler):
             i = wer_ist(self.headers, o.name, z, lesen=True)
             k = i.get("konto") if i["art"] == "konto" else None
             p = i.get("person") if k else None
+            if p:
+                neue_reise_gesehen(k, o.name)
+            gelesen = konten.gelesen(k["id"]) if p else set()
             return self._antwort(200, {
                 "basis": konten.basis(), "anmeldung": anmeldung_regel(z),
                 # sprache: angemeldet folgt die Seite der Sprache des Kontos (#188)
                 "konto": {"name": k["name"], "email": k["email"], "sprache": k["sprache"]} if k else None,
                 "person": {f: p.get(f) for f in ("schluessel", "name", "rolle")} if p else None,
-                # Meldungen an die Person in dieser Reise (#21 Stufe 1): die Seite zeigt sie als Hinweis, auch offline
-                "meldungen": [{f: m.get(f) for f in ("id", "erstellt", "text")}
+                # Meldungen an die Person in dieser Reise (#21 Stufe 1): die Seite zeigt die ungelesenen als Hinweis, auch
+                # offline; gelesen ist der Stand des Kontos (#407)
+                "meldungen": [{f: m.get(f) for f in ("id", "erstellt", "text")} | {"gelesen": m.get("id") in gelesen}
                               for m in meldungen_der_person(o.name, p.get("name"), z)] if p else []})
         if was != "rueckmeldungen":
             return self._antwort(404, {"fehler": texte.satz("dienst.do_get.2")})
@@ -1184,7 +1204,8 @@ class Dienst(BaseHTTPRequestHandler):
         return self._antwort(nein[0], {"fehler": nein[1]}) if nein else self._antwort(201, b)
 
     def _konto_anfrage(self, o, was):
-        """POST push (Gerät für Push-Nachrichten an- oder abmelden) und aktualisieren (Anstoß): nur angemeldet."""
+        """POST push (Gerät für Push-Nachrichten an- oder abmelden), aktualisieren (Anstoß) und gelesen (Meldungen des
+        Hinweises „Für dich“, #407): nur angemeldet."""
         roh, fehlt = self._json()
         if fehlt:
             return
@@ -1196,6 +1217,11 @@ class Dienst(BaseHTTPRequestHandler):
         if ident["art"] != "konto":
             return self._antwort(401, {"fehler": texte.satz("dienst.push.anmelden")})
         kid = ident["konto"]["id"]
+        if was == "gelesen":     # Hinweis „Für dich“: nur Meldungen an diese Person in dieser Reise (#407)
+            p = ident.get("person")
+            eigene = {m["id"] for m in meldungen_der_person(o.name, p.get("name"), zustand(o.name))} if p else set()
+            ids = [i for i in roh.get("ids") or [] if i in eigene] if isinstance(roh.get("ids"), list) else []
+            return self._antwort(200, {"gelesen": konten.gelesen_merken(kid, ids)})
         if was == "aktualisieren":
             if not darf_anstossen(ident):
                 return self._antwort(403, {"fehler": texte.satz("dienst.anstoss.recht")})
@@ -1213,7 +1239,7 @@ class Dienst(BaseHTTPRequestHandler):
         t = self._teile()
         if t and t[1] == "belege" and t[2]:
             return self._beleg_hochladen(t[0], t[2])
-        if t and t[1] in ("push", "aktualisieren") and t[2] is None:
+        if t and t[1] in ("push", "aktualisieren", "gelesen") and t[2] is None:
             return self._konto_anfrage(t[0], t[1])
         if not t or t[1] not in ("rueckmeldungen", "aufgaben") or t[2] is not None:
             return self._antwort(404, {"fehler": texte.satz("dienst.do_get.2")})

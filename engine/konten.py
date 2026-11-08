@@ -145,6 +145,8 @@ CREATE TABLE IF NOT EXISTS push_abos (
   seite TEXT NOT NULL DEFAULT '', geraet TEXT NOT NULL DEFAULT '', zeitzone TEXT NOT NULL DEFAULT '', erstellt REAL NOT NULL,
   zuletzt REAL NOT NULL, zuletzt_ok REAL);
 CREATE TABLE IF NOT EXISTS push_einstellungen (konto TEXT PRIMARY KEY, einstellungen TEXT NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS meldung_gelesen (konto TEXT NOT NULL, meldung TEXT NOT NULL, wann REAL NOT NULL,
+  PRIMARY KEY (konto, meldung));
 CREATE TABLE IF NOT EXISTS push_schluessel (name TEXT PRIMARY KEY, wert TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS push_stand (schluessel TEXT PRIMARY KEY, wert TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS push_warteschlange (
@@ -476,7 +478,8 @@ def loeschen(kid):
     """Konto und Adresse löschen (auf Wunsch der Person). Verlaufseinträge der Reisen behalten den Namen."""
     with closing(db()) as v, v:
         _widerrufen(v, kid)
-        for t in ("mitgliedschaften", "anfragen", "kalender_abo", "push_abos", "push_einstellungen", "push_warteschlange"):
+        for t in ("mitgliedschaften", "anfragen", "kalender_abo", "push_abos", "push_einstellungen", "push_warteschlange",
+                  "meldung_gelesen"):
             v.execute(f"DELETE FROM {t} WHERE konto = ?", (kid,))
         v.execute("DELETE FROM konten WHERE id = ?", (kid,))
 
@@ -509,6 +512,9 @@ def zusammenfuehren(von, nach):
         v.execute("UPDATE push_abos SET konto = ? WHERE konto = ?", (nach, von))
         v.execute("DELETE FROM push_einstellungen WHERE konto = ?", (von,))
         v.execute("DELETE FROM push_warteschlange WHERE konto = ?", (von,))
+        v.execute("INSERT OR IGNORE INTO meldung_gelesen (konto, meldung, wann) SELECT ?, meldung, wann FROM meldung_gelesen "
+                  "WHERE konto = ?", (nach, von))
+        v.execute("DELETE FROM meldung_gelesen WHERE konto = ?", (von,))
         _widerrufen(v, von)
         v.execute("DELETE FROM konten WHERE id = ?", (von,))
 
@@ -757,6 +763,31 @@ def push_abo_speichern(kid, abo, reise="", seite="", geraet="", zeitzone=""):
                                                  (kid,)).fetchall()[MAX_PUSH_ABOS:]]
         for e in alte:
             v.execute("DELETE FROM push_abos WHERE endpoint = ?", (e,))
+
+
+MAX_GELESEN = 200     # so viele Kennungen nimmt ein Aufruf an (die Seite schickt höchstens ihre Meldungen)
+
+
+def gelesen_merken(kid, ids):
+    """Meldungen als gelesen merken (#407): Der Lesestand gehört dem Konto und gilt auf jedem Gerät, auf Mein Konto und im
+    Hinweis „Für dich“ der Reiseseiten. Nichts wird gelöscht; Gelesenes steht zugeklappt unter „Gelesen (n)“."""
+    ids = [str(i) for i in list(ids or [])[:MAX_GELESEN] if isinstance(i, str) and 0 < len(i) <= 80]
+    if not ids:
+        return 0
+    with closing(db()) as v, v:
+        jetzt = time.time()
+        v.executemany("INSERT OR IGNORE INTO meldung_gelesen (konto, meldung, wann) VALUES (?, ?, ?)",
+                      [(kid, i, jetzt) for i in ids])
+    return len(ids)
+
+
+def gelesen(kid):
+    """Kennungen der Meldungen, die das Konto gelesen hat (#407)."""
+    try:
+        with closing(db()) as v:
+            return {z["meldung"] for z in v.execute("SELECT meldung FROM meldung_gelesen WHERE konto = ?", (kid,))}
+    except sqlite3.Error:
+        return set()
 
 
 def push_abo_entfernen(kid, endpoint):

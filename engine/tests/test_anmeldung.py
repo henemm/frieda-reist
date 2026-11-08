@@ -363,21 +363,24 @@ def test_meldungen_auf_mein_konto_und_der_reiseseite(welt):
     abschnitt = t.split('id="meldungen"', 1)[1].split('class="abschnitt"', 1)[0]
     assert "Meldungen an dich" in t and "Treffpunkt am Bahnhof" in abschnitt and "Deine neue Reise ist angelegt." in abschnitt
     assert "Nur für Ida" not in t
-    assert f'<a class="zeile meldung" href="{SEITE}">' in abschnitt and "Beispielreise" in abschnitt   # führt zur Reise
+    href = re.search(r'<a class="zeile meldung ungelesen" href="([^"]*)">[^<]*<span[^>]*></span><span class="was">'
+                     r'<span class="meldung-kopf"><span class="reise">Beispielreise', abschnitt).group(1)
     assert t.index('id="meldungen"') < t.index("Deine Reisen")
     ich = json.loads(abruf(f"{u.rurl}/beispielreise/ich", cookie=karl)[2])
     assert [m["text"] for m in ich["meldungen"]] == ["Treffpunkt am Bahnhof ist jetzt 8:40 Uhr."]
-    assert set(ich["meldungen"][0]) == {"id", "erstellt", "text"}
+    assert set(ich["meldungen"][0]) == {"id", "erstellt", "text", "gelesen"}
     assert json.loads(abruf(f"{u.rurl}/beispielreise/ich")[2])["meldungen"] == []           # ohne Anmeldung nichts
     text = kn.meine_reisen_konto(konten.konto_per_email(KARL))
     assert text.startswith("Meldungen an dich:\n- ") and ", Beispielreise – Malerweg in vier Tagen: Treffpunkt am Bahnhof" in text
     assert "Deine neue Reise ist angelegt." in text and "Nur für Ida" not in text
+    assert kopf(abruf(u.kurl + href.replace("&amp;", "&"), cookie=karl)[1], "Location") == [SEITE]   # führt zur Reise
 
 
 def test_meldungen_fuehren_an_die_stelle_mit_marke_und_buendel(welt):
-    """#407 Stufe A: Jede Zeile führt an ihre Stelle (Reise mit Sprungmarke; neue Reise über ziel), trägt die Marke ihrer
-    Art (warm, wenn etwas zu tun ist), Konflikte stehen oben, Prüfmeldungen eines Tages sind eine Zeile, Adressen und der
-    Werkzeugname meine_reisen stehen nicht im Text, mehr als fünf stehen hinter „n weitere zeigen“."""
+    """#407 Stufe A und B: Jede Zeile führt über /konto?meldung=… an ihre Stelle (Reise mit Sprungmarke; neue Reise über
+    ziel) und merkt sie dabei als gelesen; sie trägt die Marke ihrer Art (warm, wenn etwas zu tun ist), ungelesene
+    Konflikte stehen oben, Prüfmeldungen eines Tages sind eine Zeile, Adressen und der Werkzeugname meine_reisen stehen
+    nicht im Text, mehr als fünf neue stehen hinter „n weitere zeigen“, Gelesenes unter „Gelesen (n)“."""
     import datetime
     import rueckmeldungen as rm
     u = welt(bausteine=["varianten", "karte", "rueckmeldungen", "fragen", "aufgaben", "wuensche", "packliste", "waechter"])
@@ -395,25 +398,73 @@ def test_meldungen_fuehren_an_die_stelle_mit_marke_und_buendel(welt):
                        "Deine neue Reise „Beispielreise“ ist angelegt (Status Idee) und steht in meine_reisen. "
                        "Seite: https://frieda.beispiel.invalid/beispielreise-0123/ · Einladung per Mail an 2 Personen verschickt.",
                        zeit=vor(2))
-    s, _, t = abruf(f"{u.kurl}/konto", cookie=karl)
-    abschnitt = t.split('id="meldungen"', 1)[1].split('<div class="abschnitt"', 1)[0]
-    zeilen = re.findall(r'<a class="zeile meldung" href="([^"]*)">(.*?)</a>', abschnitt)
-    assert [h for h, _ in zeilen] == [SEITE + "#V-01.a", SEITE + "#zu-tun", SEITE + "#B-02", SEITE]
+
+    def abschnitt():
+        return abruf(f"{u.kurl}/konto", cookie=karl)[2].split('id="meldungen"', 1)[1].split('<div class="abschnitt"', 1)[0]
+
+    teil = abschnitt()
+    zeilen = re.findall(r'<a class="zeile meldung ungelesen" href="([^"]*)">(.*?)</a>', teil)
+    assert len(zeilen) == 4 and '<span class="zahl">4 neu</span>' in teil and "Alle gelesen" in teil
     konflikt, buendel, frist, neu = (z for _, z in zeilen)
     assert '<span class="marke warm">Konflikt</span>' in konflikt and '<span class="marke warm">Frist</span>' in frist
     assert '<span class="marke warm">Prüfen</span>' in buendel and "3 Angaben zu prüfen" in buendel and "heute" in buendel
     assert "gestern" in frist and "Beispielreise – Malerweg in vier Tagen" in frist
-    assert '<span class="marke leise">Neue Reise</span>' in neu
+    assert '<span class="marke leise">Neue Reise</span>' in neu and 'class="neu-punkt"' in neu
     assert "Deine neue Reise „Beispielreise“ ist angelegt (Status Idee). Einladung per Mail an 2 Personen verschickt." in neu
-    sichtbar = re.sub(r"<[^>]+>", " ", abschnitt)
+    sichtbar = re.sub(r"<[^>]+>", " ", teil)
     assert "https://" not in sichtbar and "meine_reisen" not in sichtbar and "weitere zeigen" not in sichtbar
     for i in range(3):
         rm.meldung_anlegen(u.o, ["Karl"], "hinweis", "reise", f"Hinweis {i} (Beispielwert).")
-    abschnitt = abruf(f"{u.kurl}/konto", cookie=karl)[2].split('id="meldungen"', 1)[1].split('<div class="abschnitt"', 1)[0]
-    oben, unten = abschnitt.split('<details class="weitere">', 1)
+    oben, unten = abschnitt().split('<details class="weitere">', 1)
     assert oben.count('class="zeile meldung') == 5 and "2 weitere zeigen" in unten and unten.count('class="zeile meldung') == 2
-    assert '<div class="zeile meldung ohne-link">' not in abschnitt     # Hinweise ohne Kennung führen zur Reise
-    assert abschnitt.count(f'href="{SEITE}"') == 4
+    # Antippen: an die Stelle, gebündelte Prüfungen alle gelesen; fremde oder alte Kennung: 404
+    ziele = []
+    for h, _ in zeilen:
+        s, k, _ = abruf(u.kurl + h.replace("&amp;", "&"), cookie=karl)
+        assert s == 303
+        ziele.append(kopf(k, "Location")[0])
+    assert ziele == [SEITE + "#V-01.a", SEITE + "#zu-tun", SEITE + "#B-02", SEITE]
+    assert abruf(f"{u.kurl}/konto?meldung=M-gibt-es-nicht", cookie=karl)[0] == 404
+    teil = abschnitt()
+    assert '<span class="zahl">3 neu</span>' in teil and "Gelesen (4)" in teil
+    assert teil.count("zeile meldung ungelesen") == 3 and teil.split('<details class="gelesen">', 1)[1].count("zeile meldung") == 4
+    s, k, _ = abruf(f"{u.kurl}/konto", "POST", {"aktion": "meldungen_gelesen"}, cookie=karl)
+    assert s == 303
+    teil = abschnitt()
+    assert "Keine neuen Meldungen." in teil and "Gelesen (7)" in teil
+    assert "meldungen_gelesen" not in teil and '<span class="zahl">' not in teil and "ungelesen" not in teil
+
+
+def test_lesestand_gilt_fuer_konto_reiseseite_und_konnektor(welt):
+    """#407 Stufe B: Der Lesestand gehört dem Konto: api/ich meldet ihn, api/gelesen merkt nur eigene Meldungen der Reise,
+    die Seite einer neuen Reise zu öffnen liest deren Meldung „neue Reise“, meine_reisen nennt Gelesenes nur als Zahl, und
+    mit dem Konto verschwindet der Lesestand."""
+    import konnektor as kn
+    import rueckmeldungen as rm
+    u = welt()
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
+    karl, _ = anmelden(u, KARL)
+    zwei, _ = anmelden(u, KARL)       # zweites Gerät desselben Kontos
+    m1 = rm.meldung_anlegen(u.o, ["Karl"], "hinweis", "reise", "Treffpunkt am Bahnhof (Beispielwert).")
+    m2 = rm.meldung_anlegen(u.o, ["Karl"], "hinweis", "reise", "Rucksack leichter packen (Beispielwert).")
+    ida = rm.meldung_anlegen(u.o, ["Ida"], "hinweis", "reise", "Nur für Ida.")
+    neu = rm.meldung_anlegen(rm.ordner_neu(anlegen=True), ["Karl"], "neue_reise", "beispielreise", "Deine neue Reise ist angelegt.")
+    assert abruf(f"{u.rurl}/beispielreise/gelesen", "POST", json_body={"ids": [m1["id"]]})[0] == 401
+    ich = json.loads(abruf(f"{u.rurl}/beispielreise/ich", cookie=karl)[2])
+    assert {m["id"]: m["gelesen"] for m in ich["meldungen"]} == {m1["id"]: False, m2["id"]: False}
+    assert konten.gelesen(konten.konto_per_email(KARL)["id"]) == {neu["id"]}    # Seite der neuen Reise geöffnet
+    s, _, t = abruf(f"{u.rurl}/beispielreise/gelesen", "POST", json_body={"ids": [m1["id"], ida["id"], "M-erfunden"]}, cookie=karl)
+    assert s == 200 and json.loads(t) == {"gelesen": 1}
+    ich = json.loads(abruf(f"{u.rurl}/beispielreise/ich", cookie=zwei)[2])     # gilt auf dem anderen Gerät
+    assert {m["id"]: m["gelesen"] for m in ich["meldungen"]} == {m1["id"]: True, m2["id"]: False}
+    teil = abruf(f"{u.kurl}/konto", cookie=zwei)[2].split('id="meldungen"', 1)[1].split('<div class="abschnitt"', 1)[0]
+    assert '<span class="zahl">1 neu</span>' in teil and "Gelesen (2)" in teil
+    text = kn.meine_reisen_konto(konten.konto_per_email(KARL))
+    assert "Rucksack leichter packen" in text and "Treffpunkt am Bahnhof" not in text and "Deine neue Reise" not in text
+    assert texte.t("de", "konnektor.ausgabe.meine_reisen.gelesen", n=2) in text
+    kid = konten.konto_per_email(KARL)["id"]
+    konten.loeschen(kid)
+    assert konten.gelesen(kid) == set()
 
 
 def test_meldung_anker_und_text_ohne_adresse():

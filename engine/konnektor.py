@@ -2347,7 +2347,10 @@ def meine_reisen_konto(k):
     ms = rm.meldungen_des_kontos(k)   # dieselbe Quelle wie Mein Konto und die Reiseseiten (#21, #41)
     if ms:
         titel = {r: (reise_kurz(r) or {}).get("titel", r) for r in {m["reise"] for m in ms if m["reise"]}}
-        z += [tk("konnektor.ausgabe.meine_reisen.5"), *[meldung_zeile(m, titel.get(m["reise"])) for m in ms], ""]
+        # ungelesene einzeln, gelesene (auf Mein Konto oder der Reiseseite) nur als Zahl; Vorlesen zählt nicht (#407)
+        gelesen = sum(1 for m in ms if m.get("gelesen"))
+        z += [tk("konnektor.ausgabe.meine_reisen.5"), *[meldung_zeile(m, titel.get(m["reise"])) for m in ms if not m.get("gelesen")],
+              *([tk("konnektor.ausgabe.meine_reisen.gelesen", n=gelesen)] if gelesen else []), ""]
     reisen = reisen_des_kontos(k)
     z.append(tk("konnektor.ausgabe.meine_reisen.1", w1=len(reisen)) if reisen else
              tk("konnektor.meine_reisen_konto.1"))
