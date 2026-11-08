@@ -543,6 +543,19 @@ def test_konnektor_schreibt_gegenstaende_ueber_den_schreibweg(schreibweg, monkey
     assert f and "gibtsnicht" in t
 
 
+def test_rolle_summe_ist_im_werkzeug_waehlbar(schreibweg, monkeypatch):
+    """Ohne die Rolle summe im Schema konnte der AI-Client das Gewicht einer Packliste nie als summiert markieren, die Seite
+    zeigte keine Summe; attribute_define bietet sie an (englisch sum) und gibt sie als summe an den Schreibweg."""
+    basis, _ = schreibweg
+    liste = rpc(basis, ALT_ORGANISATOR, "tools/list")
+    schema = next(w for w in liste["tools"] if w["name_aussen"] == "attribute_define")["inputSchema"]["properties"]["role"]
+    assert "sum" in schema["enum"] and "summe:" in schema["description"]
+    monkeypatch.setattr(Schreibweg, "antwort", (200, {"ok": True, "text": "ok"}))
+    werkzeug(basis, ALT_ORGANISATOR, "attribute_define", kind="kleidung", attribute="gewicht", role="sum")
+    pfad, _, body = Schreibweg.anfragen[-1]
+    assert pfad == "/beispielreise/merkmal_definieren" and body["args"]["rolle"] == "summe"
+
+
 def test_englische_namen_der_werkzeuge(schreibweg):
     import schnittstelle
     assert {schnittstelle.NAMEN[e] for e in ("packing_list", "gear_create", "gear_update", "gear_pack", "packing_list_adopt")} == \
