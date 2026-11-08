@@ -130,11 +130,12 @@ gelesen und öffnet „Zu tun“ der Reise. Andere Arten werden nicht gebündelt
 
 ## Texte zur Anzeigezeit
 
-Neue Meldungen speichern neben `text` den Schlüssel und die Werte: `"t": "dienst.zustellen.konto", "werte": {...}`.
-Beim Zeigen formuliert `texte.t(<Sprache des Kontos>, t, **werte)` den Satz. `text` bleibt als Rückfall für alte
+Neue Meldungen speichern neben `text` ihre Teile aus dem Katalog: `"t": [["konto.meldungen.text.neue_reise", {"titel": …}],
+["konto.meldungen.text.einladungen", {"n": 2}]]` (`meldung_anlegen(…, teile=…)`). Beim Zeigen formuliert
+`rueckmeldungen.meldung_text_in(m, <Sprache des Kontos>)` die Teile nacheinander. `text` bleibt als Rückfall für alte
 Zeilen, für Sprachen ohne den Schlüssel und für die Sammelnachricht an den Betreiber.
 
-- Adressen kommen nie in `werte`. Das Ziel ergibt sich aus `ziel`/`bezug` und der aktuellen Adresse der Reise
+- Adressen kommen nie in die Werte der Teile (`meldung_anlegen` lehnt sie ab). Das Ziel ergibt sich aus `ziel`/`bezug` und der aktuellen Adresse der Reise
   (`reise_info`). So stimmen alte Meldungen auch nach einem Umzug der Instanz.
 - Neue Schlüssel ohne Adresse und ohne Werkzeugnamen für die Seite, z. B.
   `konto.meldungen.text.neue_reise`: „Deine neue Reise ist angelegt (Status Idee).“
@@ -146,7 +147,12 @@ Zeilen, für Sprachen ohne den Schlüssel und für die Sammelnachricht an den Be
   Text, sondern hinter dem Knopf „Link für die Claude-App kopieren“ im Ziel. Bis das gebaut ist, bleibt er in der
   Zeile verborgen und die Zeile führt zur Reise.
 
-`meldungen.jsonl` bekommt zwei zusätzliche, freiwillige Felder. Alte Zeilen bleiben gültig; `neu.py nachziehen` muss
+Teile tragen bisher die Meldungen „neue Reise“ (`betrieb/zustellen.py`) und die Bitten an Betreiber
+(`anmeldung.betreiber_melden`: Reisen anlegen, Warteliste). Meldungen des Wächters, Konflikte und technische Hinweise
+behalten ihren gespeicherten Text: Sie folgen der Sprache der Reise (`docs/produkt.md`, „Sprache“), und ihre Werte sind
+zum Teil selbst schon formulierte Sätze.
+
+`meldungen.jsonl` bekommt ein zusätzliches, freiwilliges Feld `t`. Alte Zeilen bleiben gültig; `neu.py nachziehen` muss
 nichts umstellen (CLAUDE.md, #250). Ein Test belegt, dass eine Zeile von heute unverändert gezeigt wird.
 
 ## Heimat (ADR-0003)
@@ -158,9 +164,9 @@ Link dorthin, ohne eigene Liste. Neu ist nur, dass er denselben Lesestand nutzt.
 
 - **Files:** `engine/anmeldung.py` (`meldungen_abschnitt`, Abfrage `/konto?meldung=<id>`, Aktion `meldungen_gelesen`,
   Stile `.neu-punkt`, `.marke.warm`, `.meldung-kopf`), `engine/rueckmeldungen.py` (`meldung_ziel`, `meldungen_des_kontos`
-  gibt `ziel`, `bezug`, `gelesen`, `t`, `werte` weiter, Bündeln), `engine/konten.py` (Tabelle und Funktionen
+  gibt `ziel`, `bezug`, `gelesen`, `t` weiter, Bündeln), `engine/konten.py` (Tabelle und Funktionen
   `gelesen_merken`, `gelesen`), `engine/push.py` (nutzt `meldung_ziel`), `engine/vorlage.html` (`fuerDich`),
-  `betrieb/zustellen.py`, `engine/waechter.py`, `engine/konnektor.py` (`t`/`werte` beim Anlegen),
+  `betrieb/zustellen.py` und `anmeldung.betreiber_melden` (Teile `t` beim Anlegen),
   `engine/texte_*.py` (neue Schlüssel in allen Sprachen), `docs/design.md`, `docs/konten.md`.
 - **Neuer Baustein** `meldungZeile` an den vier Stellen aus ADR-0002 (die Kontoseiten haben keine Bausteinseite;
   `docs/design.md` Abschnitt „Anmelde- und Kontoseiten“ nennt ihn).
@@ -173,7 +179,7 @@ Jede Stufe ist ein eigener PR mit grünen Tests und für sich nützlich.
 |---|---|---|
 | A | Ziel je Meldung (`meldung_ziel`, auch für Push), Link bei neuen Reisen, Adressen und Werkzeugnamen aus dem Text, Marke je Art, Zeit „heute/gestern“, Prüfungen bündeln, höchstens fünf | keine Änderung |
 | B | Lesestand in `konten.db`, Punkt, „Alle gelesen“, „Gelesen (n)“, Weiterleitung `/konto?meldung=<id>`, Reiseseite über `api/ich` und `api/gelesen` | neue Tabelle, angelegt beim Öffnen |
-| C | `t`/`werte` beim Anlegen, Formulieren beim Zeigen in der Sprache des Kontos | zwei freiwillige Felder |
+| C | Teile `t` beim Anlegen, Formulieren beim Zeigen in der Sprache des Kontos | ein freiwilliges Feld |
 
 ## Tests (je Stufe, gegen beide Beispielreisen)
 
@@ -187,7 +193,7 @@ Jede Stufe ist ein eigener PR mit grünen Tests und für sich nützlich.
   Konto löschen löscht den Lesestand. Seite der neuen Reise angemeldet öffnen → ihre Meldung `neue_reise` ist gelesen,
   andere Meldungen dieser Reise nicht. Ein älterer ungelesener Konflikt steht vor einer neueren Frist. Playwright: Punkt und Zahlmarke verschwinden nach dem Antippen, hell und dunkel.
 - C: Meldung mit `t` in Deutsch angelegt, Konto auf Englisch → englischer Text. Meldung ohne `t` → gespeicherter Text.
-  `werte` mit Adresse → Test schlägt fehl (Prüfung beim Anlegen).
+  Teile mit Adresse in den Werten → `meldung_anlegen` lehnt ab.
 
 ## Prüfstelle (ADR-0001)
 

@@ -501,9 +501,13 @@ def meldung_wann(z, heute):
 
 
 def meldung_text(m):
-    """Text einer Meldung für die Webseite. Meldungen „neue Reise“ trugen bis #407 die Adresse der Seite (und ohne Konto
-    den Link für die Claude-App) und den Namen des Werkzeugs meine_reisen im Text; beides fällt hier weg: Die Zeile ist der
-    Link, und der Link für die Claude-App gehört nicht als Text auf die Seite."""
+    """Text einer Meldung für die Webseite: aus ihren Teilen in der Sprache der Seite, sonst der gespeicherte Text.
+    Meldungen „neue Reise“ ohne Teile trugen die Adresse der Seite (und ohne Konto den Link für die Claude-App) und den
+    Namen des Werkzeugs meine_reisen im Text; beides fällt hier weg: Die Zeile ist der Link, und der Link für die Claude-App
+    gehört nicht als Text auf die Seite."""
+    neu = rm.meldung_text_in(m, sprache_der_seite())     # seit #407 Stufe C: formuliert in der Sprache des Kontos
+    if neu is not None:
+        return neu
     text = m.get("text") or ""
     if m.get("art") != "neue_reise":
         return text
@@ -890,7 +894,8 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
         except konten.KontoFehler:
             return warteliste_hinweis("warteliste.link_ungueltig", 404)
         betreiber_melden(None, "anfrage_warteliste",
-                         texte.t(texte.VORGABE_REISE, "konto.betreiber.warteliste", email=e["email"]))
+                         texte.t(texte.VORGABE_REISE, "konto.betreiber.warteliste", email=e["email"]),
+                         [("konto.meldungen.text.anfrage_warteliste", {"email": e["email"]})])
         return warteliste_hinweis("warteliste.bestaetigt")
 
     if weg == "/abmelden":
@@ -998,12 +1003,15 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
     return antwort(404, seite(tx("konto.nicht_gefunden"), karte(f"<h1>{esc(tx('konto.nicht_gefunden'))}</h1>")))
 
 
-def betreiber_melden(k, art="anfrage_reisen", text=None):
+def betreiber_melden(k, art="anfrage_reisen", text=None, teile=None):
     """Meldung an alle Betreiber (stehen in der Claude-App bei meine_reisen): die Bitte „Reisen anlegen“ des Kontos k
-    oder, mit art und text, etwas anderes (bestätigter Eintrag der Warteliste, #382)."""
+    oder, mit art, text und teile, etwas anderes (bestätigter Eintrag der Warteliste, #382). teile: für Mein Konto, in
+    der Sprache jedes Betreibers (#407 Stufe C)."""
     with konten.closing(konten.db()) as v:
         namen = [z["name"] for z in v.execute("SELECT name, rechte FROM konten WHERE gesperrt = 0")
                  if "betreiber" in z["rechte"].split(",")]
     if namen:
         rm.meldung_anlegen(rm.ordner_neu(anlegen=True), namen, art, "reise", text or
-                           texte.t(texte.VORGABE_REISE, "konto.betreiber.meldung", name=k["name"], email=k["email"]))
+                           texte.t(texte.VORGABE_REISE, "konto.betreiber.meldung", name=k["name"], email=k["email"]),
+                           teile=teile or ([("konto.meldungen.text.anfrage_reisen", {"name": k["name"], "email": k["email"]})]
+                                           if k else None))

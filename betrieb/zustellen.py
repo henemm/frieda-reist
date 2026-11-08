@@ -77,14 +77,17 @@ def ausstehend(wurzel, datei, seiten=None, freischalten=None):
                 rest.append(json.dumps(e, ensure_ascii=False))
                 continue
             n = len(auftrag.get("einladen") or [])
+            # Teile für Mein Konto (#407 Stufe C): ohne Adresse, in der Sprache des Kontos; der Text bleibt für den Konnektor
             rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [e["name"]], "neue_reise", e["ordner"],
                                texte.t(sprache, "dienst.zustellen.konto", titel=titel, seite=links["Seite"])
                                + (texte.t(sprache, "dienst.zustellen.einladungen_eine" if n == 1 else "dienst.zustellen.einladungen_viele", n=n)
-                                  if n else ""), auftraege=[e["aid"]])
+                                  if n else ""), auftraege=[e["aid"]],
+                               teile=[("konto.meldungen.text.neue_reise", {"titel": titel})]
+                               + ([("konto.meldungen.text.einladungen", {"n": n})] if n else []))
         else:
             rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [e["name"]], "neue_reise", e["ordner"],
                                texte.t(sprache, "dienst.zustellen.app", titel=titel, seite=links["Seite"], link=links["Claude-App"]),
-                               auftraege=[e["aid"]])
+                               auftraege=[e["aid"]], teile=[("konto.meldungen.text.neue_reise", {"titel": titel})])
         print(f"Delivered: {e['ordner']} to {e['name']}")
     p.write_text("".join(z + "\n" for z in rest), encoding="utf-8")
     return fehlschlaege

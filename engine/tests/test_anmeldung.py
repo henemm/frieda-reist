@@ -517,3 +517,33 @@ def test_pruefungen_buendeln_je_reise_und_tag():
     assert [(e["reise"], e["anker"]) for e in aus] == [("stadtwochenende", "zu-tun"), ("beispielreise", "U-01"),
                                                          ("stadtwochenende", "O-03")]
     assert aus[0]["text"] == texte.t(texte.VORGABE, "konto.meldungen.pruefungen", n=2)
+
+
+def test_meldung_aus_teilen_in_der_sprache_des_kontos(welt):
+    """#407 Stufe C: Eine Meldung mit Teilen aus dem Katalog wird auf Mein Konto erst beim Zeigen formuliert, in der Sprache
+    des Kontos; ohne Teile oder mit unbekanntem Schlüssel gilt der gespeicherte Text; Adressen in den Werten lehnt
+    meldung_anlegen ab. Bitten an Betreiber tragen ihre Teile."""
+    import rueckmeldungen as rm
+    import anmeldung
+    u = welt()
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
+    karl, _ = anmelden(u, KARL)
+    o = rm.ordner_neu(anlegen=True)
+    rm.meldung_anlegen(o, ["Karl"], "neue_reise", "beispielreise", "Deine neue Reise „Beispielreise“ ist angelegt (deutsch gespeichert).",
+                       teile=[("konto.meldungen.text.neue_reise", {"titel": "Beispielreise"}), ("konto.meldungen.text.einladungen", {"n": 2})])
+    rm.meldung_anlegen(o, ["Karl"], "hinweis", "reise", "Gespeicherter Text (Beispielwert).", teile=[("konto.meldungen.gibt_es_nicht", {})])
+    with pytest.raises(ValueError):
+        rm.meldung_anlegen(o, ["Karl"], "neue_reise", "beispielreise", "x", teile=[("konto.meldungen.text.neue_reise",
+                                                                                     {"titel": "https://frieda.beispiel.invalid/x/"})])
+    t = abruf(f"{u.kurl}/konto", cookie=karl)[2]
+    assert "Deine neue Reise „Beispielreise“ ist angelegt (Status Idee). Einladungen per Mail an 2 Personen verschickt." in t
+    assert "Gespeicherter Text (Beispielwert)." in t and "deutsch gespeichert" not in t
+    abruf(f"{u.kurl}/konto", "POST", {"aktion": "sprache", "sprache": "en"}, cookie=karl)
+    t = abruf(f"{u.kurl}/konto", cookie=karl)[2]
+    assert "Your new trip “Beispielreise” has been created (status idea). Invitations sent by email to 2 people." in t
+    k = konten.konto_per_email(KARL)
+    konten.recht_setzen(k["id"], "betreiber")
+    anmeldung.betreiber_melden(k)
+    [m] = [x for x in rm.meldungen(o, "Karl") if x["art"] == "anfrage_reisen"]
+    assert m["t"] == [["konto.meldungen.text.anfrage_reisen", {"name": "Karl", "email": KARL}]]
+    assert f"Karl ({KARL}) asks to be allowed to create trips." in abruf(f"{u.kurl}/konto", cookie=karl)[2]

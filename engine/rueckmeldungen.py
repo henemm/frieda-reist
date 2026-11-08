@@ -258,13 +258,24 @@ def status_lesen(o):
 
 # ---------- Meldungen an Personen (Konflikte; Zustellung folgt mit Paket E) ----------
 
-def meldung_anlegen(o, an, art, ziel, text, auftraege=(), schluessel=None, bezug=None, zeit=None, extra=None):
+ADRESSE = re.compile(r"https?://", re.I)
+
+
+def meldung_anlegen(o, an, art, ziel, text, auftraege=(), schluessel=None, bezug=None, zeit=None, extra=None, teile=None):
     """Meldung an Personen (Namen) in meldungen.jsonl. Der Konnektor zeigt sie der Person (Überblick, rueckmeldungen).
     schluessel: Kennung gegen doppelte Meldungen (Wächter und Erinnerer, Paket E); bezug: AG-… oder „reise“, damit eine
-    erledigte Meldung verschwindet (meldungen_aktuell); zeit: nur für Tests; extra: weitere Felder (status_bei)."""
+    erledigte Meldung verschwindet (meldungen_aktuell); zeit: nur für Tests; extra: weitere Felder (status_bei).
+    teile: [(Schlüssel, Werte), …] aus dem Textkatalog (#407 Stufe C): Mein Konto formuliert die Meldung damit erst beim
+    Zeigen, in der Sprache des Kontos; text bleibt der Wortlaut für den Konnektor und der Rückfall. Adressen gehören nie
+    in die Werte (die Seite führt über ziel und bezug an die Stelle)."""
+    t = [[str(k), dict(w or {})] for k, w in teile or []]
+    if any(isinstance(v, str) and ADRESSE.search(v) for _, w in t for v in w.values()):
+        raise ValueError("teile: url")
     jetzt = zeit or datetime.datetime.now(datetime.timezone.utc)
     m = {"id": f"M-{jetzt:%Y%m%d-%H%M%S}-{secrets.token_hex(2)}", "erstellt": jetzt.isoformat(timespec="seconds"),
          "an": sorted(set(an)), "art": art, "ziel": ziel, "text": text, "auftraege": list(auftraege)}
+    if t:
+        m["t"] = t
     if schluessel:
         m["schluessel"] = schluessel
     if bezug:
@@ -275,6 +286,23 @@ def meldung_anlegen(o, an, art, ziel, text, auftraege=(), schluessel=None, bezug
         f.flush()
         os.fsync(f.fileno())
     return m
+
+
+def meldung_text_in(m, sprache):
+    """Text einer Meldung in einer Sprache aus ihren Teilen (#407 Stufe C); None ohne Teile oder wenn ein Schlüssel im
+    Katalog fehlt (dann gilt der gespeicherte Text)."""
+    teile = m.get("t")
+    if not isinstance(teile, list) or not teile:
+        return None
+    aus = []
+    for teil in teile:
+        if not (isinstance(teil, list) and len(teil) == 2 and isinstance(teil[0], str) and isinstance(teil[1], dict)):
+            return None
+        satz = texte.t(sprache, teil[0], **teil[1])
+        if satz == teil[0]:
+            return None
+        aus.append(satz)
+    return "".join(aus)
 
 
 def meldungen(o, an=None):
@@ -349,7 +377,8 @@ def meldungen_des_kontos(k):
     das Konto Mitglied ist (Name der Person dort). Eine Quelle für meine_reisen, Mein Konto und die Reiseseiten.
     Eine Meldung „neue Reise“ gehört zu der Reise in ziel, sobald das Konto dort Mitglied ist (#407: Link statt Adresse).
     gelesen: das Konto hat sie gelesen (#407, Lesestand in konten.db).
-    -> [{reise (None ohne Reise), id, erstellt, text, art, ziel, bezug, gelesen}], neueste zuerst."""
+    t: Teile des Textes aus dem Katalog (meldung_text_in), falls die Meldung welche trägt.
+    -> [{reise (None ohne Reise), id, erstellt, text, art, ziel, bezug, t, gelesen}], neueste zuerst."""
     aus = []
     o = ordner_neu()
     meine = {mg["reise"] for mg in konten.mitgliedschaften(k["id"])}
@@ -363,7 +392,7 @@ def meldungen_des_kontos(k):
             aus += [m | {"reise": mg["reise"]} for m in meldungen_der_person(mg["reise"], p.get("name"), z)]
     aus.sort(key=lambda m: m.get("erstellt", ""), reverse=True)
     gelesen = konten.gelesen(k["id"])
-    return [{f: m.get(f) for f in ("reise", "id", "erstellt", "text", "art", "ziel", "bezug")} | {"gelesen": m.get("id") in gelesen}
+    return [{f: m.get(f) for f in ("reise", "id", "erstellt", "text", "art", "ziel", "bezug", "t")} | {"gelesen": m.get("id") in gelesen}
             for m in aus]
 
 

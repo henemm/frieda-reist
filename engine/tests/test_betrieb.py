@@ -1694,6 +1694,7 @@ def test_ausstehende_links_zustellen(fs, monkeypatch, capsys):
     assert m["art"] == "neue_reise" and m["auftraege"] == ["A-1"]
     assert "„Beispielreise – Malerweg in vier Tagen“ ist angelegt" in m["text"]
     assert "Seite: https://example.invalid/beispielreise-" in m["text"] and "https://example.invalid/mcp/" in m["text"]
+    assert m["t"] == [["konto.meldungen.text.neue_reise", {"titel": "Beispielreise – Malerweg in vier Tagen"}]]   # #407: ohne Adresse
     # Freischalten scheitert: Eintrag bleibt, Fehlerzeile ohne Links
     (fs["seiten"] / "spaeter").mkdir()
     (fs["seiten"] / "spaeter" / "daten.json").write_text("{}")
@@ -1731,6 +1732,8 @@ def test_neue_reise_aus_dem_konnektor_frieda(fs, monkeypatch, capsys):
     m = rm.meldungen(rm.ordner_neu(), "Ida")[-1]
     assert meldet(m["text"], "dienst.zustellen.konto") and "Einladung per Mail an 1 Person" in m["text"]
     assert "https://example.invalid/mcp/" not in m["text"]                  # kein App-Link
+    assert m["t"] == [["konto.meldungen.text.neue_reise", {"titel": "Beispielreise – Malerweg in vier Tagen"}],
+                      ["konto.meldungen.text.einladungen", {"n": 1}]]
 
 
 # ---------- Wächter-Lauf ----------
