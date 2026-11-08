@@ -74,7 +74,7 @@ erkannt und bekommt darüber jederzeit wieder Zugang.
   - `/anmelden`: Adresse, dann Code, beim ersten Mal auch der Name
   - `/einladung/<token>`: Einladung ansehen, annehmen oder mit einer anderen Adresse anmelden
   - `/`: Startseite der Adresse, führt zu `/konto` (ohne Anmeldung über `/anmelden`; #41)
-  - `/konto`: Meldungen an die Person über alle Reisen (#21 Stufe 1, dieselbe Quelle wie `meine_reisen`: `rueckmeldungen.meldungen_des_kontos`; je Zeile ein Link zur Reise), Name, Adresse, Reisen, Kalender (Abo-Link, Download, Einstellungen; #77), Benachrichtigungen (Arten, Ruhezeit, auf allen Geräten ausschalten; #21, `docs/betrieb.md` „Push-Nachrichten“), Bitte „Reisen anlegen“, Geräte, Konto löschen; für Betreiber die offenen Bitten
+  - `/konto`: Meldungen an die Person über alle Reisen (#21 Stufe 1, dieselbe Quelle wie `meine_reisen`: `rueckmeldungen.meldungen_des_kontos`; je Zeile ein Link an die Stelle der Reise, #407), Name, Adresse, Reisen, Kalender (Abo-Link, Download, Einstellungen; #77), Benachrichtigungen (Arten, Ruhezeit, auf allen Geräten ausschalten; #21, `docs/betrieb.md` „Push-Nachrichten“), Bitte „Reisen anlegen“, Geräte, Konto löschen; für Betreiber die offenen Bitten
   - `/abmelden`
 - **Sitzung:** Cookie `__Host-frieda` (HttpOnly, Secure, SameSite=Lax, ein Jahr, rollierend).
 - **Herkunft:** Jede Änderung muss von Friedas eigener Adresse kommen (`Origin`), sonst 403. SameSite trennt nicht von

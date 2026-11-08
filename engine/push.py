@@ -219,9 +219,9 @@ def sammeln_reise(reise, jetzt=None):
     for m in neue(_jsonl(o / "meldungen.jsonl"), f"meldungen:{reise}"):
         if not an or (m.get("art") in rm.WAECHTER_ARTEN and "waechter" not in (z.get("bausteine") or [])):
             continue
-        ziel = m.get("bezug") if str(m.get("bezug", "")).startswith("AG-") else m.get("ziel", "")
+        ziel = rm.meldung_anker(m)      # dieselbe Stelle wie auf Mein Konto (#407)
         for kid in _empfaenger(reise, personen, m.get("an") or []):
-            n += einreihen(kid, reise, "meldung", m.get("text", ""), "" if ziel in ("reise", "") else ziel, jetzt)
+            n += einreihen(kid, reise, "meldung", m.get("text", ""), ziel, jetzt)
     # Rückmeldungen von der Seite an die Organisator:innen, nicht an die Person, die sie geschrieben hat
     organisatoren = [p["name"] for p in personen if rg.rolle_neu(p.get("rolle")) == "organisator" and p.get("name")]
     for e in neue(_jsonl(o / "eingang.jsonl"), f"eingang:{reise}"):

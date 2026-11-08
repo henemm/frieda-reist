@@ -29,7 +29,7 @@ alles gleich laut, nichts wird gelesen. Nach dieser Spec gilt in einfachen Worte
 - **Man sieht, was zu tun ist.** Eine kleine Marke sagt die Art: „Konflikt“, „Frist“, „Status“, „Prüfen“, „Freischalten“,
   „Hinweis“, „Neue Reise“. Was Handeln verlangt, hat eine warme Marke; reine Info eine leise.
 - **Keine Flut.** Prüfmeldungen des Wächters einer Reise werden zu einer Zeile („7 Angaben zu prüfen“). Mehr als fünf
-  neue Meldungen: die ersten fünf, dann „Alle 12 neuen zeigen“.
+  neue Meldungen: die ersten fünf, dann „7 weitere zeigen“.
 - **Text in der Sprache des Kontos.** Neue Meldungen werden beim Zeigen aus dem Katalog formuliert, nicht beim Anlegen.
   Alte Meldungen zeigen ihren gespeicherten Text, ohne Adressen.
 
@@ -101,7 +101,7 @@ gelesen und öffnet „Zu tun“ der Reise. Andere Arten werden nicht gebündelt
 
 1. Ungelesene, neueste zuerst; ungelesene Konflikte immer ganz oben, auch ältere (Entscheidung 4). Sie verlangen
    Handeln von mehreren Personen. Keine Gruppen je Reise (Entscheidung 3).
-2. Mehr als fünf ungelesene: die ersten fünf, darunter die Zeile „Alle 12 neuen zeigen“ (`<details>`, ohne Skript).
+2. Mehr als fünf ungelesene: die ersten fünf, darunter die Zeile „7 weitere zeigen“ (`<details>`, ohne Skript).
 3. „Gelesen (n)“ als zugeklappte Zeile am Ende der Liste (`<details>`). Darin die gelesenen, die noch gelten.
 4. Alles gelesen: Die Liste zeigt nur „Keine neuen Meldungen“ (leise) und „Gelesen (n)“. Gilt keine Meldung mehr, fällt
    der Abschnitt weg wie heute.
@@ -117,7 +117,7 @@ gelesen und öffnet „Zu tun“ der Reise. Andere Arten werden nicht gebündelt
 - **Ort:** Tabelle `meldung_gelesen (konto TEXT, meldung TEXT, wann TEXT, PRIMARY KEY (konto, meldung))` in
   `konten.db`. Sie wird beim Öffnen angelegt (`CREATE TABLE IF NOT EXISTS`), keine Migration von Hand. Löscht jemand
   das Konto, fallen die Zeilen mit.
-- **Gelesen wird eine Meldung,** wenn die Person (a) die Zeile auf Mein Konto antippt: `GET /konto/meldung/<id>` merkt
+- **Gelesen wird eine Meldung,** wenn die Person (a) die Zeile auf Mein Konto antippt: `GET /konto?meldung=<id>` merkt
   sie und leitet zum Ziel weiter (303); (b) „Alle gelesen“ drückt; (c) auf der Reiseseite im Hinweis „Für dich“
   „Gelesen“ tippt: `POST api/gelesen` mit den IDs; (d) nur bei `neue_reise`: die Seite dieser Reise angemeldet
   öffnet (`api/ich` der Reise aus `ziel` merkt sie, Entscheidung 2). Push-Tippen öffnet die Stelle ohne Umweg und zählt
@@ -156,7 +156,7 @@ Link dorthin, ohne eigene Liste. Neu ist nur, dass er denselben Lesestand nutzt.
 
 ## Source
 
-- **Files:** `engine/anmeldung.py` (`meldungen_abschnitt`, Route `/konto/meldung/<id>`, Aktion `meldungen_gelesen`,
+- **Files:** `engine/anmeldung.py` (`meldungen_abschnitt`, Abfrage `/konto?meldung=<id>`, Aktion `meldungen_gelesen`,
   Stile `.neu-punkt`, `.marke.warm`, `.meldung-kopf`), `engine/rueckmeldungen.py` (`meldung_ziel`, `meldungen_des_kontos`
   gibt `ziel`, `bezug`, `gelesen`, `t`, `werte` weiter, Bündeln), `engine/konten.py` (Tabelle und Funktionen
   `gelesen_merken`, `gelesen`), `engine/push.py` (nutzt `meldung_ziel`), `engine/vorlage.html` (`fuerDich`),
@@ -172,7 +172,7 @@ Jede Stufe ist ein eigener PR mit grünen Tests und für sich nützlich.
 | Stufe | Inhalt | Format |
 |---|---|---|
 | A | Ziel je Meldung (`meldung_ziel`, auch für Push), Link bei neuen Reisen, Adressen und Werkzeugnamen aus dem Text, Marke je Art, Zeit „heute/gestern“, Prüfungen bündeln, höchstens fünf | keine Änderung |
-| B | Lesestand in `konten.db`, Punkt, „Alle gelesen“, „Gelesen (n)“, Weiterleitung `/konto/meldung/<id>`, Reiseseite über `api/ich` und `api/gelesen` | neue Tabelle, angelegt beim Öffnen |
+| B | Lesestand in `konten.db`, Punkt, „Alle gelesen“, „Gelesen (n)“, Weiterleitung `/konto?meldung=<id>`, Reiseseite über `api/ich` und `api/gelesen` | neue Tabelle, angelegt beim Öffnen |
 | C | `t`/`werte` beim Anlegen, Formulieren beim Zeigen in der Sprache des Kontos | zwei freiwillige Felder |
 
 ## Tests (je Stufe, gegen beide Beispielreisen)
@@ -180,9 +180,9 @@ Jede Stufe ist ein eigener PR mit grünen Tests und für sich nützlich.
 - A: Meldung `neue_reise` mit `ziel` = Ordner der Beispielreise → Zeile ist ein Link auf deren Seite; Text enthält keine
   `https://` und kein `meine_reisen`. Meldung `erinnerung` mit `bezug` AG-… → Link endet auf `#AG-…`, Push bekommt
   dasselbe Ziel. Acht Prüfmeldungen des Stadtwochenendes → eine Zeile mit Zahl. Sieben ungelesene → fünf plus
-  „Alle 7 neuen zeigen“. Marke fehlt für unbekannte Art, Seite baut. Pseudo-Sprache der Tests zeigt alle neuen Texte
+  „2 weitere zeigen“. Marke fehlt für unbekannte Art, Seite baut. Pseudo-Sprache der Tests zeigt alle neuen Texte
   (`test_texte.py`).
-- B: `/konto/meldung/<id>` merkt und leitet weiter, fremde ID → 404 ohne Merken, ohne Anmeldung → Anmeldung. „Alle
+- B: `/konto?meldung=<id>` merkt und leitet weiter, fremde ID → 404 ohne Merken, ohne Anmeldung → Anmeldung. „Alle
   gelesen“ → nur „Gelesen (n)“. Ein Gerät liest, das andere sieht es (zwei Sitzungen). `api/ich` meldet `gelesen`.
   Konto löschen löscht den Lesestand. Seite der neuen Reise angemeldet öffnen → ihre Meldung `neue_reise` ist gelesen,
   andere Meldungen dieser Reise nicht. Ein älterer ungelesener Konflikt steht vor einer neueren Frist. Playwright: Punkt und Zahlmarke verschwinden nach dem Antippen, hell und dunkel.

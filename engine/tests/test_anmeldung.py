@@ -363,7 +363,7 @@ def test_meldungen_auf_mein_konto_und_der_reiseseite(welt):
     abschnitt = t.split('id="meldungen"', 1)[1].split('class="abschnitt"', 1)[0]
     assert "Meldungen an dich" in t and "Treffpunkt am Bahnhof" in abschnitt and "Deine neue Reise ist angelegt." in abschnitt
     assert "Nur für Ida" not in t
-    assert f'<a class="zeile" href="{SEITE}">' in abschnitt and "Beispielreise" in abschnitt   # führt zur Reise
+    assert f'<a class="zeile meldung" href="{SEITE}">' in abschnitt and "Beispielreise" in abschnitt   # führt zur Reise
     assert t.index('id="meldungen"') < t.index("Deine Reisen")
     ich = json.loads(abruf(f"{u.rurl}/beispielreise/ich", cookie=karl)[2])
     assert [m["text"] for m in ich["meldungen"]] == ["Treffpunkt am Bahnhof ist jetzt 8:40 Uhr."]
@@ -372,3 +372,76 @@ def test_meldungen_auf_mein_konto_und_der_reiseseite(welt):
     text = kn.meine_reisen_konto(konten.konto_per_email(KARL))
     assert text.startswith("Meldungen an dich:\n- ") and ", Beispielreise – Malerweg in vier Tagen: Treffpunkt am Bahnhof" in text
     assert "Deine neue Reise ist angelegt." in text and "Nur für Ida" not in text
+
+
+def test_meldungen_fuehren_an_die_stelle_mit_marke_und_buendel(welt):
+    """#407 Stufe A: Jede Zeile führt an ihre Stelle (Reise mit Sprungmarke; neue Reise über ziel), trägt die Marke ihrer
+    Art (warm, wenn etwas zu tun ist), Konflikte stehen oben, Prüfmeldungen eines Tages sind eine Zeile, Adressen und der
+    Werkzeugname meine_reisen stehen nicht im Text, mehr als fünf stehen hinter „n weitere zeigen“."""
+    import datetime
+    import rueckmeldungen as rm
+    u = welt(bausteine=["varianten", "karte", "rueckmeldungen", "fragen", "aufgaben", "wuensche", "packliste", "waechter"])
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
+    karl, _ = anmelden(u, KARL)
+    jetzt = datetime.datetime.now(datetime.timezone.utc)
+    vor = lambda tage: jetzt - datetime.timedelta(days=tage)   # noqa: E731
+    rm.meldung_anlegen(u.o, ["Karl"], "konflikt", "V-01.a", "Ida hat anders entschieden (Beispielwert).", zeit=vor(3))
+    rm.meldung_anlegen(u.o, ["Karl"], "erinnerung", "B-02", "Frist morgen: Anzahlung (Beispielwert).", bezug="B-02",
+                       zeit=vor(1))
+    for i in range(3):
+        rm.meldung_anlegen(u.o, ["Karl"], "pruefung", f"U-0{i + 1}", f"Preis U-0{i + 1} prüfen (Beispielwert).",
+                           bezug=f"U-0{i + 1}", zeit=jetzt - datetime.timedelta(seconds=i))
+    rm.meldung_anlegen(rm.ordner_neu(anlegen=True), ["Karl"], "neue_reise", "beispielreise",
+                       "Deine neue Reise „Beispielreise“ ist angelegt (Status Idee) und steht in meine_reisen. "
+                       "Seite: https://frieda.beispiel.invalid/beispielreise-0123/ · Einladung per Mail an 2 Personen verschickt.",
+                       zeit=vor(2))
+    s, _, t = abruf(f"{u.kurl}/konto", cookie=karl)
+    abschnitt = t.split('id="meldungen"', 1)[1].split('<div class="abschnitt"', 1)[0]
+    zeilen = re.findall(r'<a class="zeile meldung" href="([^"]*)">(.*?)</a>', abschnitt)
+    assert [h for h, _ in zeilen] == [SEITE + "#V-01.a", SEITE + "#zu-tun", SEITE + "#B-02", SEITE]
+    konflikt, buendel, frist, neu = (z for _, z in zeilen)
+    assert '<span class="marke warm">Konflikt</span>' in konflikt and '<span class="marke warm">Frist</span>' in frist
+    assert '<span class="marke warm">Prüfen</span>' in buendel and "3 Angaben zu prüfen" in buendel and "heute" in buendel
+    assert "gestern" in frist and "Beispielreise – Malerweg in vier Tagen" in frist
+    assert '<span class="marke leise">Neue Reise</span>' in neu
+    assert "Deine neue Reise „Beispielreise“ ist angelegt (Status Idee). Einladung per Mail an 2 Personen verschickt." in neu
+    sichtbar = re.sub(r"<[^>]+>", " ", abschnitt)
+    assert "https://" not in sichtbar and "meine_reisen" not in sichtbar and "weitere zeigen" not in sichtbar
+    for i in range(3):
+        rm.meldung_anlegen(u.o, ["Karl"], "hinweis", "reise", f"Hinweis {i} (Beispielwert).")
+    abschnitt = abruf(f"{u.kurl}/konto", cookie=karl)[2].split('id="meldungen"', 1)[1].split('<div class="abschnitt"', 1)[0]
+    oben, unten = abschnitt.split('<details class="weitere">', 1)
+    assert oben.count('class="zeile meldung') == 5 and "2 weitere zeigen" in unten and unten.count('class="zeile meldung') == 2
+    assert '<div class="zeile meldung ohne-link">' not in abschnitt     # Hinweise ohne Kennung führen zur Reise
+    assert abschnitt.count(f'href="{SEITE}"') == 4
+
+
+def test_meldung_anker_und_text_ohne_adresse():
+    """#407: Sprungmarke nur aus Kennungen (Push und Mein Konto teilen sie); alte Meldungen „neue Reise“ verlieren Adressen,
+    den Link für die Claude-App und den Werkzeugnamen, in jeder Sprache. Andere Arten bleiben, wie sie sind."""
+    import anmeldung
+    import rueckmeldungen as rm
+    assert rm.meldung_anker({"bezug": "AG-03", "ziel": "T-01"}) == "AG-03"
+    assert rm.meldung_anker({"ziel": "V-01.a"}) == "V-01.a"
+    assert rm.meldung_anker({"ziel": "reise", "bezug": "reise"}) == "" and rm.meldung_anker({"ziel": "stadtwochenende"}) == ""
+    en = {"art": "neue_reise", "text": "Your new trip “Beispielstadt – Wochenende bei Verwandten” has been created (status idea) "
+                                       "and appears in my_trips. Page: https://frieda.beispiel.invalid/stadtwochenende-abc/"}
+    assert anmeldung.meldung_text(en) == "Your new trip “Beispielstadt – Wochenende bei Verwandten” has been created (status idea)."
+    app = {"art": "neue_reise", "text": texte.t("de", "dienst.zustellen.app", titel="Beispielstadt", seite="https://x.invalid/a/",
+                                                link="https://x.invalid/mcp/geheim")}
+    assert anmeldung.meldung_text(app) == "Deine neue Reise „Beispielstadt“ ist angelegt (Status Idee)."
+    quelle = {"art": "pruefung", "text": "Preis ist alt; bisherige Quelle: https://quelle.invalid/preise. Bitte prüfen."}
+    assert anmeldung.meldung_text(quelle) == quelle["text"]
+
+
+def test_pruefungen_buendeln_je_reise_und_tag():
+    """#407: Prüfmeldungen werden je Reise und Tag eine Zeile; eine einzelne bleibt mit ihrer Stelle stehen."""
+    import anmeldung
+    ms = [{"reise": "stadtwochenende", "art": "pruefung", "erstellt": "2027-05-13T09:00:00+00:00", "text": "a", "ziel": "O-01"},
+          {"reise": "stadtwochenende", "art": "pruefung", "erstellt": "2027-05-13T08:00:00+00:00", "text": "b", "ziel": "O-02"},
+          {"reise": "stadtwochenende", "art": "pruefung", "erstellt": "2027-05-12T08:00:00+00:00", "text": "c", "ziel": "O-03"},
+          {"reise": "beispielreise", "art": "pruefung", "erstellt": "2027-05-13T07:00:00+00:00", "text": "d", "ziel": "U-01"}]
+    aus = anmeldung.meldungen_ordnen(ms, "Europe/Berlin")
+    assert [(e["reise"], e["anker"]) for e in aus] == [("stadtwochenende", "zu-tun"), ("beispielreise", "U-01"),
+                                                         ("stadtwochenende", "O-03")]
+    assert aus[0]["text"] == texte.t(texte.VORGABE, "konto.meldungen.pruefungen", n=2)

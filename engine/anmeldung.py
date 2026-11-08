@@ -10,12 +10,14 @@ SameSite=Lax, ein Jahr, rollierend). Jede Änderung (POST) muss von Friedas eige
 
 Reiseseiten bleiben zum Lesen über ihren geheimen Link offen; mitmachen geht nach dem Anmelden (Rückmeldedienst).
 """
+import datetime
 import html
 import json
 import os
 import re
 import threading
 import urllib.parse
+from zoneinfo import ZoneInfo
 
 import instanz
 import kalender
@@ -109,6 +111,13 @@ background:var(--acc2);color:var(--acc);font-weight:700;font-size:.85rem;display
 .zeile .was{flex:1;min-width:0;display:flex;flex-direction:column;gap:.2rem}.zeile .titel{font-weight:600}
 .zeile.ohne-link{cursor:default}.zeile.ohne-link::after{content:none}
 .zeile .meldungstext{overflow-wrap:anywhere}
+.marke.warm{color:var(--warn);background:var(--warnbg)}
+.zeile.meldung{align-items:flex-start}.zeile.meldung::after{align-self:center}
+.meldung-kopf{display:flex;align-items:center;gap:.4rem;min-width:0;font-size:.8125rem;color:var(--mut)}
+.meldung-kopf .marke{font-size:.75rem;padding:.05rem .5rem;flex:none}
+.meldung-kopf .reise{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.meldung-kopf .zeit{flex:none}
+.zeile.meldung .meldungstext{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+details.weitere>summary{color:var(--mut);font-weight:600}details.weitere>.liste-innen>*{border-top:1px solid var(--line)}
 .zeile .wert{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%}
 details>.inhalt{padding:0 1rem 1rem;display:flex;flex-direction:column;gap:.5rem}
 .kalender-links{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 1rem}
@@ -454,22 +463,104 @@ def einstellung(name, titel, wert, inhalt, offen=False):
             f'<span class="wert">{esc(wert)}</span></summary><div class="inhalt">{inhalt}</div></details>')
 
 
+# Arten von Meldungen, die Handeln verlangen: ihre Marke ist warm, die der übrigen leise (#407). Die Arten sind Begriffe der
+# Software (Wächter, Konflikt, Zustellen, Freischalten), keine Arten der Reise.
+MELDUNG_WARM = ("konflikt", "erinnerung", "status", "pruefung", "technik", "betrieb", "anfrage_reisen", "anfrage_warteliste")
+MELDUNGEN_ZEIGEN = 5          # so viele stehen offen, der Rest hinter „n weitere zeigen“
+_ADRESSE = re.compile(r"\s*(?:·\s*)?[^.·]*?:\s*https?://\S+")
+
+
+def meldung_zeitpunkt(erstellt, zone):
+    """Zeitpunkt einer Meldung in der Zeitzone der Person, None bei kaputtem Wert."""
+    try:
+        z = datetime.datetime.fromisoformat(erstellt)
+        z = z if z.tzinfo else z.replace(tzinfo=datetime.timezone.utc)
+        return z.astimezone(ZoneInfo(zone))
+    except (TypeError, ValueError, KeyError, OSError):
+        return None
+
+
+def meldung_wann(z, heute):
+    """„heute 9:14“, „gestern“, sonst das kurze Datum (#407)."""
+    if z is None:
+        return ""
+    tage = (heute - z.date()).days
+    if tage == 0:
+        return tx("konto.meldungen.heute", zeit=texte.zeit(z, sprache_der_seite()))
+    if tage == 1:
+        return tx("konto.meldungen.gestern")
+    return texte.datum_kurz(z.date(), sprache_der_seite())
+
+
+def meldung_text(m):
+    """Text einer Meldung für die Webseite. Meldungen „neue Reise“ trugen bis #407 die Adresse der Seite (und ohne Konto
+    den Link für die Claude-App) und den Namen des Werkzeugs meine_reisen im Text; beides fällt hier weg: Die Zeile ist der
+    Link, und der Link für die Claude-App gehört nicht als Text auf die Seite."""
+    text = m.get("text") or ""
+    if m.get("art") != "neue_reise":
+        return text
+    text = _ADRESSE.sub("", text)
+    for kuerzel in texte.SPRACHEN:
+        text = text.replace(texte.t(kuerzel, "konto.meldungen.alt_werkzeug"), "")
+    return re.sub(r"\.\s*·\s*", ". ", re.sub(r"\s{2,}", " ", text)).strip(" ·")
+
+
+def meldungen_ordnen(ms, zone):
+    """Ordnung auf Mein Konto (#407): Prüfmeldungen einer Reise vom selben Tag werden eine Zeile, Konflikte stehen oben,
+    sonst die neueste zuerst. -> [{art, reise, zeit, text, anker}]."""
+    aus, pruefungen = [], {}
+    for m in ms:
+        z = meldung_zeitpunkt(m.get("erstellt"), zone)
+        e = {"art": m.get("art"), "reise": m.get("reise"), "zeit": z, "text": meldung_text(m), "anker": rm.meldung_anker(m),
+             "erstellt": m.get("erstellt") or ""}
+        if e["art"] == "pruefung" and e["reise"]:
+            pruefungen.setdefault((e["reise"], z.date() if z else None), []).append(e)
+        else:
+            aus.append(e)
+    for gruppe in pruefungen.values():
+        if len(gruppe) == 1:
+            aus.append(gruppe[0])
+        else:
+            neueste = max(gruppe, key=lambda e: e["erstellt"])
+            aus.append(neueste | {"text": tx("konto.meldungen.pruefungen", n=len(gruppe)), "anker": "zu-tun"})
+    aus.sort(key=lambda e: e["erstellt"], reverse=True)
+    aus.sort(key=lambda e: e["art"] != "konflikt")      # stabil: Konflikte oben, darin die neueste zuerst
+    return aus
+
+
+def meldung_zeile(e, reise_info, heute):
+    """Molekül meldungZeile (#407): Marke der Art, Reise und Zeit klein, darunter der Text; die ganze Zeile führt an die
+    Stelle (Reise mit Sprungmarke, Freischaltungen auf dieser Seite). Ohne Ziel bleibt sie ohne Link."""
+    info = (reise_info(e["reise"]) or {}) if e["reise"] else {}
+    marken = texte.gruppe(sprache_der_seite(), "konto.meldungen.art")
+    marke = (f'<span class="marke{" warm" if e["art"] in MELDUNG_WARM else " leise"}">{esc(marken[e["art"]])}</span>'
+             if e["art"] in marken else "")
+    reise = f'<span class="reise">{esc(info.get("titel") or e["reise"])}</span><span>·</span>' if e["reise"] else ""
+    inhalt = (f'<span class="was"><span class="meldung-kopf">{marke}{reise}<span class="zeit">{esc(meldung_wann(e["zeit"], heute))}</span></span>'
+              f'<span class="meldungstext">{esc(e["text"])}</span></span>')
+    if info.get("seite"):
+        ziel = info["seite"] + (f'#{e["anker"]}' if e["anker"] else "")
+    elif e["art"] in ("anfrage_reisen", "anfrage_warteliste") and not e["reise"]:
+        ziel = "#freischalten"
+    else:
+        return f'<div class="zeile meldung ohne-link">{inhalt}</div>'
+    return f'<a class="zeile meldung" href="{esc(ziel)}">{inhalt}</a>'
+
+
 def meldungen_abschnitt(k, reise_info):
-    """Meldungen an die Person über alle Reisen (#21 Stufe 1, #41), dieselbe Quelle wie meine_reisen. Jede Zeile führt
-    zur Seite ihrer Reise; Meldungen ohne Reise (neue Reise angelegt, Anfragen) stehen ohne Link. Ohne Meldungen: nichts."""
-    zeilen = []
-    for m in rm.meldungen_des_kontos(k):
-        info = (reise_info(m["reise"]) or {}) if m["reise"] else {}
-        wann = texte.datum_kurz(m["erstellt"], sprache_der_seite())
-        unter = f'{wann} · {info.get("titel") or m["reise"]}' if m["reise"] else wann
-        inhalt = (f'<span class="was"><span class="klein">{esc(unter)}</span>'
-                  f'<span class="meldungstext">{esc(m["text"])}</span></span>')
-        zeilen.append(f'<a class="zeile" href="{esc(info["seite"])}">{inhalt}</a>' if info.get("seite")
-                      else f'<div class="zeile ohne-link">{inhalt}</div>')
+    """Meldungen an die Person über alle Reisen (#21 Stufe 1, #41, #407), dieselbe Quelle wie meine_reisen. Jede Zeile führt
+    an ihre Stelle; die ersten MELDUNGEN_ZEIGEN stehen offen, der Rest zugeklappt. Ohne Meldungen: nichts."""
+    zone = konten.zeitzone_des_kontos(k["id"]) or instanz.zeitzone()
+    jetzt = meldung_zeitpunkt(datetime.datetime.now(datetime.timezone.utc).isoformat(), zone)
+    heute = jetzt.date() if jetzt else datetime.date.today()
+    zeilen = [meldung_zeile(e, reise_info, heute) for e in meldungen_ordnen(rm.meldungen_des_kontos(k), zone)]
     if not zeilen:
         return ""
+    rest = zeilen[MELDUNGEN_ZEIGEN:]
+    weitere = (f'<details class="weitere"><summary class="zeile">{esc(tx("konto.meldungen.weitere", n=len(rest)))}</summary>'
+               f'<div class="liste-innen">{"".join(rest)}</div></details>') if rest else ""
     return (f'<div class="abschnitt" id="meldungen"><h2>{esc(tx("konto.meldungen.titel"))}</h2>'
-            f'<div class="liste">{"".join(zeilen)}</div></div>')
+            f'<div class="liste">{"".join(zeilen[:MELDUNGEN_ZEIGEN])}{weitere}</div></div>')
 
 
 def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen=""):
@@ -503,7 +594,7 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
                   + formular("/konto", verdeckt(aktion="ablehnen", wer=a["konto"]), tx("konto.betreiber.ablehnen"), "neutral").replace("<form ", '<form style="flex:1" ', 1)
                   + "</div>")
             for a in offen_anfragen)
-        betreiber = (f'<div class="abschnitt"><h2>{esc(tx("konto.betreiber.titel"))}</h2>'
+        betreiber = (f'<div class="abschnitt" id="freischalten"><h2>{esc(tx("konto.betreiber.titel"))}</h2>'
                      + (bitten or f'<p class="hinweis">{esc(tx("konto.betreiber.keine"))}</p>') + "</div>"
                      + warteliste_karte())
     geraete = konten.geraete(k["id"])

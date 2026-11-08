@@ -310,21 +310,38 @@ def meldungen_der_person(reise, name, z=None):
     return meldungen_aktuell(o, name, aufgaben(o), z.get("status"), z.get("bausteine"))
 
 
+# Kennung eines Dings als Sprungmarke der Seite (T-01, AG-03, B-02, V-01.a); Ordnernamen und „reise“ sind keine
+KENNUNG = re.compile(r"^[A-Z]{1,2}-[\w.-]+$")
+
+
+def meldung_anker(m):
+    """Stelle der Reiseseite, an die eine Meldung führt (#407): bezug, sonst ziel, wenn es eine Kennung ist; sonst "".
+    Eine Regel für Mein Konto und Push, damit beide an dieselbe Stelle führen."""
+    for feld in ("bezug", "ziel"):
+        v = str(m.get(feld) or "")
+        if KENNUNG.match(v):
+            return v
+    return ""
+
+
 def meldungen_des_kontos(k):
     """Alle Meldungen an ein Konto, die noch gelten (#21, #41): die ohne Reise (Name des Kontos) und die jeder Reise, in der
     das Konto Mitglied ist (Name der Person dort). Eine Quelle für meine_reisen, Mein Konto und die Reiseseiten.
-    -> [{reise (None ohne Reise), id, erstellt, text, art}], neueste zuerst."""
+    Eine Meldung „neue Reise“ gehört zu der Reise in ziel, sobald das Konto dort Mitglied ist (#407: Link statt Adresse).
+    -> [{reise (None ohne Reise), id, erstellt, text, art, ziel, bezug}], neueste zuerst."""
     aus = []
     o = ordner_neu()
+    meine = {mg["reise"] for mg in konten.mitgliedschaften(k["id"])}
     if o:
-        aus += [m | {"reise": None} for m in meldungen_aktuell(o, k["name"])]
+        aus += [m | {"reise": m.get("ziel") if m.get("art") == "neue_reise" and m.get("ziel") in meine else None}
+                for m in meldungen_aktuell(o, k["name"])]
     for mg in konten.mitgliedschaften(k["id"]):
         z = zustand(mg["reise"]) or {}
         p = next((x for x in z.get("personen") or [] if x.get("schluessel") == mg["schluessel"]), None)
         if p:
             aus += [m | {"reise": mg["reise"]} for m in meldungen_der_person(mg["reise"], p.get("name"), z)]
     aus.sort(key=lambda m: m.get("erstellt", ""), reverse=True)
-    return [{f: m.get(f) for f in ("reise", "id", "erstellt", "text", "art")} for m in aus]
+    return [{f: m.get(f) for f in ("reise", "id", "erstellt", "text", "art", "ziel", "bezug")} for m in aus]
 
 
 def schreiben(pfad, text):
