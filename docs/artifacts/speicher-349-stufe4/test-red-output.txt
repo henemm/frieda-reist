@@ -1,0 +1,624 @@
+FFFFFFFFFFFFFFFFFFFFFFFFF...FFF                                          [100%]
+=================================== FAILURES ===================================
+____________________ test_schema_wird_auf_version_2_gehoben ____________________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_schema_wird_auf_version_20')
+
+    def test_schema_wird_auf_version_2_gehoben(rs, tmp_path):
+        _alt_speicher(rs, tmp_path, "beispielreise")
+        with closing(sqlite3.connect(rs.pfad())) as v:
+            vorher = [tuple(z) for z in v.execute("SELECT pfad, inhalt, pruefsumme FROM versionen ORDER BY pfad")]
+        for _ in range(2):   # zweites Öffnen ändert nichts
+            with closing(rs.db()) as v:
+>               assert v.execute("PRAGMA user_version").fetchone()[0] == 2
+E               assert 1 == 2
+
+engine/tests/test_reisespeicher_ablage.py:132: AssertionError
+________________ test_nur_medien_mit_endung_werden_ausgelagert _________________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+
+    def test_nur_medien_mit_endung_werden_ausgelagert(rs):
+        dateien = {"medien/a.png": PNG + b"a", "medien/b.JPG": PNG + b"b", "medien/c.gpx": GPX,
+                   "medien/d.pmtiles": b"pm" * 20, "medien/icon.svg": b"<svg/>", "medien/icon.png": PNG + b"i",
+                   "reise.yaml": b"name: x\n", "plan/x.md": b"# x\n", "bilder/e.png": PNG + b"e"}
+        rs.vorgang_schreiben("t", dateien, "Test", "test", "Anfang")
+>       z = {r[0]: r for r in _zeilen(rs, "t")}
+                              ^^^^^^^^^^^^^^^^
+
+engine/tests/test_reisespeicher_ablage.py:149: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+reise = 't'
+
+    def _zeilen(rs, reise):
+        with closing(sqlite3.connect(rs.pfad())) as v:
+>           return v.execute("SELECT pfad, inhalt, pruefsumme, ausgelagert FROM versionen WHERE reise = ? "
+                             "ORDER BY vorgang, pfad", (reise,)).fetchall()
+E           sqlite3.OperationalError: no such column: ausgelagert
+
+engine/tests/test_reisespeicher_ablage.py:88: OperationalError
+_______________________ test_ablage_ort_name_und_rechte ________________________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_ablage_ort_name_und_recht0')
+
+    def test_ablage_ort_name_und_rechte(rs, tmp_path):
+        rs.vorgang_schreiben("t", {"medien/a.png": PNG}, "Test", "test", "Anfang")
+        s = _summe(PNG)
+        f = _ablage(tmp_path) / s[:2] / s
+>       assert f.read_bytes() == PNG and f.stat().st_mode & 0o777 == 0o400
+               ^^^^^^^^^^^^^^
+
+engine/tests/test_reisespeicher_ablage.py:161: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('<tmp>/pytest-12793/test_ablage_ort_name_und_recht0/_speicher/ablage/20/20a194ffabc237855c4fafdbe4ec84b16dc5698da045126c0a1171edf70ae681')
+mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-12793/test_ablage_ort_name_und_recht0/_speicher/ablage/20/20a194ffabc237855c4fafdbe4ec84b16dc5698da045126c0a1171edf70ae681'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+________________ test_doppelte_liegen_nur_einmal_in_der_ablage _________________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_doppelte_liegen_nur_einma0')
+
+    def test_doppelte_liegen_nur_einmal_in_der_ablage(rs, tmp_path):
+        rs.vorgang_schreiben("t", {"medien/a.png": PNG, "medien/b.png": PNG}, "Test", "test", "Anfang")
+        rs.vorgang_schreiben("t", {"medien/a.png": PNG + b"x"}, "Test", "test", "geändert")
+        rs.vorgang_schreiben("t", {"medien/a.png": PNG}, "Test", "test", "zurück")
+        rs.vorgang_schreiben("u", {"medien/z.png": PNG}, "Test", "test", "andere Reise")
+>       assert len([p for p in _ablage_dateien(tmp_path) if p.name == _summe(PNG)]) == 1
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_reisespeicher_ablage.py:172: AssertionError
+___ test_export_und_materialisieren_byte_gleich_beide_reisen[beispielreise] ____
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_export_und_materialisiere0')
+reise = 'beispielreise'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_export_und_materialisieren_byte_gleich_beide_reisen(rs, tmp_path, reise):
+        q = _importiert(rs, tmp_path, reise)
+>       assert any(r[3] == 1 for r in _zeilen(rs, reise))
+                                      ^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_reisespeicher_ablage.py:182: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+reise = 'beispielreise'
+
+    def _zeilen(rs, reise):
+        with closing(sqlite3.connect(rs.pfad())) as v:
+>           return v.execute("SELECT pfad, inhalt, pruefsumme, ausgelagert FROM versionen WHERE reise = ? "
+                             "ORDER BY vorgang, pfad", (reise,)).fetchall()
+E           sqlite3.OperationalError: no such column: ausgelagert
+
+engine/tests/test_reisespeicher_ablage.py:88: OperationalError
+__ test_export_und_materialisieren_byte_gleich_beide_reisen[stadtwochenende] ___
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_export_und_materialisiere1')
+reise = 'stadtwochenende'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_export_und_materialisieren_byte_gleich_beide_reisen(rs, tmp_path, reise):
+        q = _importiert(rs, tmp_path, reise)
+>       assert any(r[3] == 1 for r in _zeilen(rs, reise))
+                                      ^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_reisespeicher_ablage.py:182: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+reise = 'stadtwochenende'
+
+    def _zeilen(rs, reise):
+        with closing(sqlite3.connect(rs.pfad())) as v:
+>           return v.execute("SELECT pfad, inhalt, pruefsumme, ausgelagert FROM versionen WHERE reise = ? "
+                             "ORDER BY vorgang, pfad", (reise,)).fetchall()
+E           sqlite3.OperationalError: no such column: ausgelagert
+
+engine/tests/test_reisespeicher_ablage.py:88: OperationalError
+______________ test_materialisieren_hardlink_und_kopie_rueckfall _______________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_materialisieren_hardlink_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x781a83b03860>
+
+    def test_materialisieren_hardlink_und_kopie_rueckfall(rs, tmp_path, monkeypatch):
+        rs.vorgang_schreiben("t", {"medien/a.png": PNG}, "Test", "test", "Anfang")
+        rs.materialisieren("t", tmp_path / "m1")
+>       assert os.stat(tmp_path / "m1" / "medien" / "a.png").st_ino == rs.ablage_pfad(_summe(PNG)).stat().st_ino
+                                                                       ^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'ablage_pfad'
+
+engine/tests/test_reisespeicher_ablage.py:195: AttributeError
+__________________ test_datei_wird_vor_der_datenbank_abgelegt __________________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_datei_wird_vor_der_datenb0')
+
+    def test_datei_wird_vor_der_datenbank_abgelegt(rs, tmp_path):
+        rs.vorgang_schreiben("t", {"reise.yaml": b"a\n"}, "Test", "test", "Anfang")
+        with pytest.raises(rs.StandGeaendert):
+            rs.vorgang_schreiben("t", {"medien/a.png": PNG}, "Test", "test", "zu spät", erwartet=99)
+>       assert [r for r in _zeilen(rs, "t") if r[0] == "medien/a.png"] == []
+                           ^^^^^^^^^^^^^^^^
+
+engine/tests/test_reisespeicher_ablage.py:211: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+reise = 't'
+
+    def _zeilen(rs, reise):
+        with closing(sqlite3.connect(rs.pfad())) as v:
+>           return v.execute("SELECT pfad, inhalt, pruefsumme, ausgelagert FROM versionen WHERE reise = ? "
+                             "ORDER BY vorgang, pfad", (reise,)).fetchall()
+E           sqlite3.OperationalError: no such column: ausgelagert
+
+engine/tests/test_reisespeicher_ablage.py:88: OperationalError
+________________ test_ablage_nicht_beschreibbar_schreibt_nichts ________________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_ablage_nicht_beschreibbar0')
+
+    def test_ablage_nicht_beschreibbar_schreibt_nichts(rs, tmp_path):
+        rs.vorgang_schreiben("t", {"reise.yaml": b"a\n"}, "Test", "test", "Anfang")
+        _ablage(tmp_path).mkdir(parents=True, exist_ok=True)
+        os.chmod(_ablage(tmp_path), 0o500)
+        try:
+            if os.access(_ablage(tmp_path), os.W_OK):
+                pytest.skip("läuft als Benutzer, der Modi ignoriert")
+            n = rs.stand_nummer("t")
+>           with pytest.raises(OSError):
+E           Failed: DID NOT RAISE OSError
+
+engine/tests/test_reisespeicher_ablage.py:227: Failed
+________________ test_ablage_wird_nie_geaendert_oder_geloescht _________________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_ablage_wird_nie_geaendert0')
+
+    def test_ablage_wird_nie_geaendert_oder_geloescht(rs, tmp_path):
+        rs.vorgang_schreiben("t", {"medien/a.png": PNG}, "Test", "test", "Anfang")
+>       alt = rs.ablage_pfad(_summe(PNG))
+              ^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'ablage_pfad'
+
+engine/tests/test_reisespeicher_ablage.py:236: AttributeError
+__________ test_fehlende_ablagedatei_bricht_export_ohne_halben_ordner __________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_fehlende_ablagedatei_bric0')
+
+    def test_fehlende_ablagedatei_bricht_export_ohne_halben_ordner(rs, tmp_path):
+        rs.vorgang_schreiben("t", {"reise.yaml": b"a\n", "medien/a.png": PNG, "medien/b.png": PNG + b"b"}, "T", "t", "A")
+>       _weg(rs, _summe(PNG + b"b"))
+
+engine/tests/test_reisespeicher_ablage.py:251: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+summe = '9df3abb31985d98e994b4d485bad2502c3cb35b9312212cfd37b09ef1adc46fe'
+
+    def _weg(rs, summe):
+        """Ablagedatei entfernen (nur der Test; die Software löscht nie)."""
+>       f = rs.ablage_pfad(summe)
+            ^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'ablage_pfad'
+
+engine/tests/test_reisespeicher_ablage.py:119: AttributeError
+_ test_fehlende_datei_bricht_den_bau_mit_katalogtext_in_allen_sprachen_ab[de] __
+
+kuerzel = 'de'
+
+    @pytest.mark.parametrize("kuerzel", _sprachen())
+    def test_fehlende_datei_bricht_den_bau_mit_katalogtext_in_allen_sprachen_ab(kuerzel):
+        """pruefung.bauen.79/.80 stehen in jeder Sprache; die Platzhalter {w1}, {ziel}, {summe} werden ersetzt."""
+        import texte
+        mod = texte.sprache(kuerzel)
+        for schluessel in ("pruefung.bauen.79", "pruefung.bauen.80"):
+>           assert schluessel in mod.TEXTE, (kuerzel, schluessel)
+E           AssertionError: ('de', 'pruefung.bauen.79')
+E           assert 'pruefung.bauen.79' in {'seite.kreis.hinweis': '„{titel}“ verweist im Kreis oder zu tief auf andere Dinge und hat hier keinen Platz. Bitte in...us.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', ...}
+E            +  where {'seite.kreis.hinweis': '„{titel}“ verweist im Kreis oder zu tief auf andere Dinge und hat hier keinen Platz. Bitte in...us.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', ...} = <module 'texte_de' from '<Repo>/engine/texte_de.py'>.TEXTE
+
+engine/tests/test_reisespeicher_ablage.py:275: AssertionError
+_ test_fehlende_datei_bricht_den_bau_mit_katalogtext_in_allen_sprachen_ab[en] __
+
+kuerzel = 'en'
+
+    @pytest.mark.parametrize("kuerzel", _sprachen())
+    def test_fehlende_datei_bricht_den_bau_mit_katalogtext_in_allen_sprachen_ab(kuerzel):
+        """pruefung.bauen.79/.80 stehen in jeder Sprache; die Platzhalter {w1}, {ziel}, {summe} werden ersetzt."""
+        import texte
+        mod = texte.sprache(kuerzel)
+        for schluessel in ("pruefung.bauen.79", "pruefung.bauen.80"):
+>           assert schluessel in mod.TEXTE, (kuerzel, schluessel)
+E           AssertionError: ('en', 'pruefung.bauen.79')
+E           assert 'pruefung.bauen.79' in {'seite.kreis.hinweis': '“{titel}” points around in a circle or too deeply at other things and has no place here. Plea...ite.status.vorgeschlagen': 'proposed', 'seite.status.favorisiert': 'favourite', 'seite.status.gewaehlt': 'chosen', ...}
+E            +  where {'seite.kreis.hinweis': '“{titel}” points around in a circle or too deeply at other things and has no place here. Plea...ite.status.vorgeschlagen': 'proposed', 'seite.status.favorisiert': 'favourite', 'seite.status.gewaehlt': 'chosen', ...} = <module 'texte_en' from '<Repo>/engine/texte_en.py'>.TEXTE
+
+engine/tests/test_reisespeicher_ablage.py:275: AssertionError
+_______________ test_bau_uebersetzt_ablagefehler_in_katalogtext ________________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+
+    def test_bau_uebersetzt_ablagefehler_in_katalogtext(rs):
+        """bauen.ablage_meldung(fehler, w1) macht aus AblageFehlt/AblageFehler den Satz pruefung.bauen.79/.80;
+        der Speicher-Bau von bauen.py endet damit mit Exit 2 (AC-10)."""
+        import bauen
+        s = _summe(PNG)
+>       assert bauen.ablage_meldung(rs.AblageFehlt("medien/a.png", s), "t").schluessel == "pruefung.bauen.79"
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bauen' has no attribute 'ablage_meldung'
+
+engine/tests/test_reisespeicher_ablage.py:287: AttributeError
+________ test_beschaedigte_ablagedatei_wird_erkannt_und_nicht_repariert ________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_beschaedigte_ablagedatei_0')
+
+    def test_beschaedigte_ablagedatei_wird_erkannt_und_nicht_repariert(rs, tmp_path):
+        rs.vorgang_schreiben("t", {"medien/a.png": PNG}, "T", "t", "A")
+>       f = rs.ablage_pfad(_summe(PNG))
+            ^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'ablage_pfad'
+
+engine/tests/test_reisespeicher_ablage.py:293: AttributeError
+__ test_vorhandene_ablagedatei_mit_falschem_inhalt_wird_nicht_ueberschrieben ___
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_vorhandene_ablagedatei_mi0')
+
+    def test_vorhandene_ablagedatei_mit_falschem_inhalt_wird_nicht_ueberschrieben(rs, tmp_path):
+        s = _summe(PNG)
+        ziel = _ablage(tmp_path) / s[:2] / s
+        ziel.parent.mkdir(parents=True)
+        ziel.write_bytes(b"zu kurz")
+>       with pytest.raises(rs.AblageFehler):
+                           ^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'AblageFehler'
+
+engine/tests/test_reisespeicher_ablage.py:314: AttributeError
+____________ test_ablage_pfad_nur_aus_summe_und_symlink_abgewiesen _____________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_ablage_pfad_nur_aus_summe0')
+
+    def test_ablage_pfad_nur_aus_summe_und_symlink_abgewiesen(rs, tmp_path):
+        for schlecht in ("../x", "abc", _summe(b"x").upper(), _summe(b"x") + "0", ""):
+            with pytest.raises(ValueError):
+>               rs.ablage_pfad(schlecht)
+                ^^^^^^^^^^^^^^
+E               AttributeError: module 'reisespeicher' has no attribute 'ablage_pfad'
+
+engine/tests/test_reisespeicher_ablage.py:323: AttributeError
+__________________ test_vergleichen_braucht_keine_ablagedatei __________________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_vergleichen_braucht_keine0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x781a83764d70>
+
+    def test_vergleichen_braucht_keine_ablagedatei(rs, tmp_path, monkeypatch):
+        q = _importiert(rs, tmp_path, "beispielreise")
+>       assert any(r[3] == 1 for r in _zeilen(rs, "beispielreise"))
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_reisespeicher_ablage.py:343: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+reise = 'beispielreise'
+
+    def _zeilen(rs, reise):
+        with closing(sqlite3.connect(rs.pfad())) as v:
+>           return v.execute("SELECT pfad, inhalt, pruefsumme, ausgelagert FROM versionen WHERE reise = ? "
+                             "ORDER BY vorgang, pfad", (reise,)).fetchall()
+E           sqlite3.OperationalError: no such column: ausgelagert
+
+engine/tests/test_reisespeicher_ablage.py:88: OperationalError
+___________________ test_verweis_zaehlt_nicht_als_tombstone ____________________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+
+    def test_verweis_zaehlt_nicht_als_tombstone(rs):
+        rs.vorgang_schreiben("t", {"medien/a.png": PNG, "medien/b.png": PNG + b"b"}, "T", "t", "A")
+        rs.vorgang_schreiben("t", {"medien/b.png": None}, "T", "t", "weg")
+>       assert [r for r in _zeilen(rs, "t") if r[0] == "medien/a.png"][0][3] == 1   # Verweis: inhalt NULL, Summe gesetzt
+                           ^^^^^^^^^^^^^^^^
+
+engine/tests/test_reisespeicher_ablage.py:356: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+reise = 't'
+
+    def _zeilen(rs, reise):
+        with closing(sqlite3.connect(rs.pfad())) as v:
+>           return v.execute("SELECT pfad, inhalt, pruefsumme, ausgelagert FROM versionen WHERE reise = ? "
+                             "ORDER BY vorgang, pfad", (reise,)).fetchall()
+E           sqlite3.OperationalError: no such column: ausgelagert
+
+engine/tests/test_reisespeicher_ablage.py:88: OperationalError
+________________________ test_pruefen_prueft_die_ablage ________________________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_pruefen_prueft_die_ablage0')
+
+    def test_pruefen_prueft_die_ablage(rs, tmp_path):
+        rs.vorgang_schreiben("t", {"medien/a.png": PNG, "medien/b.png": PNG + b"b", "reise.yaml": b"a\n"}, "T", "t", "A")
+        assert rs.pruefen() == []
+>       _weg(rs, _summe(PNG))
+
+engine/tests/test_reisespeicher_ablage.py:374: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+summe = '20a194ffabc237855c4fafdbe4ec84b16dc5698da045126c0a1171edf70ae681'
+
+    def _weg(rs, summe):
+        """Ablagedatei entfernen (nur der Test; die Software löscht nie)."""
+>       f = rs.ablage_pfad(summe)
+            ^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'ablage_pfad'
+
+engine/tests/test_reisespeicher_ablage.py:119: AttributeError
+__________________ test_zustand_meldet_fehlende_ablagedateien __________________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+
+    def test_zustand_meldet_fehlende_ablagedateien(rs):
+        rs.vorgang_schreiben("t", {"medien/a.png": PNG}, "T", "t", "A")
+        _, aus = _cli(rs, "zustand")
+>       assert "ablage_fehlt 0" in aus
+E       AssertionError: assert 'ablage_fehlt 0' in 'reisen 1\nsicherung_alter_s keine\ndatenbank vorhanden\n'
+
+engine/tests/test_reisespeicher_ablage.py:393: AssertionError
+__________________ test_sichern_verlangt_vollstaendige_ablage __________________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+
+    def test_sichern_verlangt_vollstaendige_ablage(rs):
+        rs.vorgang_schreiben("t", {"medien/a.png": PNG}, "T", "t", "A")
+        gut = rs.sichern()
+        with closing(sqlite3.connect(gut)) as v:
+            assert v.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+        vorher = gut.read_bytes()
+        rs.vorgang_schreiben("t", {"medien/b.png": PNG + b"b"}, "T", "t", "B")
+>       _weg(rs, _summe(PNG + b"b"))
+
+engine/tests/test_reisespeicher_ablage.py:407: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+summe = '9df3abb31985d98e994b4d485bad2502c3cb35b9312212cfd37b09ef1adc46fe'
+
+    def _weg(rs, summe):
+        """Ablagedatei entfernen (nur der Test; die Software löscht nie)."""
+>       f = rs.ablage_pfad(summe)
+            ^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'ablage_pfad'
+
+engine/tests/test_reisespeicher_ablage.py:119: AttributeError
+_____________ test_wiederherstellung_aus_schnappschuss_und_ablage ______________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_wiederherstellung_aus_sch0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x781a837656d0>
+
+    def test_wiederherstellung_aus_schnappschuss_und_ablage(rs, tmp_path, monkeypatch):
+        q = _importiert(rs, tmp_path, "beispielreise")
+        snap = rs.sichern()
+        neu = tmp_path / "wieder"
+        neu.mkdir()
+        shutil.copy(snap, neu / "reisen.db")
+>       shutil.copytree(_ablage(tmp_path), neu / "ablage")
+
+engine/tests/test_reisespeicher_ablage.py:420: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+src = PosixPath('<tmp>/pytest-12793/test_wiederherstellung_aus_sch0/_speicher/ablage')
+dst = PosixPath('<tmp>/pytest-12793/test_wiederherstellung_aus_sch0/wieder/ablage')
+symlinks = False, ignore = None
+copy_function = <function copy2 at 0x781a84a13ce0>
+ignore_dangling_symlinks = False, dirs_exist_ok = False
+
+    def copytree(src, dst, symlinks=False, ignore=None, copy_function=copy2,
+                 ignore_dangling_symlinks=False, dirs_exist_ok=False):
+        """Recursively copy a directory tree and return the destination directory.
+    
+        If exception(s) occur, an Error is raised with a list of reasons.
+    
+        If the optional symlinks flag is true, symbolic links in the
+        source tree result in symbolic links in the destination tree; if
+        it is false, the contents of the files pointed to by symbolic
+        links are copied. If the file pointed by the symlink doesn't
+        exist, an exception will be added in the list of errors raised in
+        an Error exception at the end of the copy process.
+    
+        You can set the optional ignore_dangling_symlinks flag to true if you
+        want to silence this exception. Notice that this has no effect on
+        platforms that don't support os.symlink.
+    
+        The optional ignore argument is a callable. If given, it
+        is called with the `src` parameter, which is the directory
+        being visited by copytree(), and `names` which is the list of
+        `src` contents, as returned by os.listdir():
+    
+            callable(src, names) -> ignored_names
+    
+        Since copytree() is called recursively, the callable will be
+        called once for each directory that is copied. It returns a
+        list of names relative to the `src` directory that should
+        not be copied.
+    
+        The optional copy_function argument is a callable that will be used
+        to copy each file. It will be called with the source path and the
+        destination path as arguments. By default, copy2() is used, but any
+        function that supports the same signature (like copy()) can be used.
+    
+        If dirs_exist_ok is false (the default) and `dst` already exists, a
+        `FileExistsError` is raised. If `dirs_exist_ok` is true, the copying
+        operation will continue if it encounters existing directories, and files
+        within the `dst` tree will be overwritten by corresponding files from the
+        `src` tree.
+        """
+        sys.audit("shutil.copytree", src, dst)
+>       with os.scandir(src) as itr:
+             ^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-12793/test_wiederherstellung_aus_sch0/_speicher/ablage'
+
+/usr/lib/python3.12/shutil.py:598: FileNotFoundError
+_____ test_nachziehen_speicher_lagert_bestehende_medien_aus[beispielreise] _____
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_nachziehen_speicher_lager0')
+reise = 'beispielreise'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_nachziehen_speicher_lagert_bestehende_medien_aus(rs, tmp_path, reise):
+        import neu
+        q = _alt_speicher(rs, tmp_path, reise)
+        code, ausgabe = neu.nachziehen_speicher(reise, tmp_path / "bau" / reise)
+        assert code == 0, ausgabe
+        with closing(rs.db()) as v:
+            vorgaenge = [tuple(x) for x in v.execute(
+                "SELECT wer, werkzeug, titel FROM vorgaenge WHERE titel = 'ablage-umstellung'")]
+>       assert vorgaenge == [("Software-Nachziehen", "nachziehen", "ablage-umstellung")]
+E       AssertionError: assert [] == [('Software-N...-umstellung')]
+E         
+E         Right contains one more item: ('Software-Nachziehen', 'nachziehen', 'ablage-umstellung')
+E         Use -v to get more diff
+
+engine/tests/test_reisespeicher_ablage.py:443: AssertionError
+____ test_nachziehen_speicher_lagert_bestehende_medien_aus[stadtwochenende] ____
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_nachziehen_speicher_lager1')
+reise = 'stadtwochenende'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_nachziehen_speicher_lagert_bestehende_medien_aus(rs, tmp_path, reise):
+        import neu
+        q = _alt_speicher(rs, tmp_path, reise)
+        code, ausgabe = neu.nachziehen_speicher(reise, tmp_path / "bau" / reise)
+        assert code == 0, ausgabe
+        with closing(rs.db()) as v:
+            vorgaenge = [tuple(x) for x in v.execute(
+                "SELECT wer, werkzeug, titel FROM vorgaenge WHERE titel = 'ablage-umstellung'")]
+>       assert vorgaenge == [("Software-Nachziehen", "nachziehen", "ablage-umstellung")]
+E       AssertionError: assert [] == [('Software-N...-umstellung')]
+E         
+E         Right contains one more item: ('Software-Nachziehen', 'nachziehen', 'ablage-umstellung')
+E         Use -v to get more diff
+
+engine/tests/test_reisespeicher_ablage.py:443: AssertionError
+___________ test_nachziehen_speicher_ablage_wiederholt_bei_wettlauf ____________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_nachziehen_speicher_ablag2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x781a82940890>
+
+    def test_nachziehen_speicher_ablage_wiederholt_bei_wettlauf(rs, tmp_path, monkeypatch):
+        import neu
+        _alt_speicher(rs, tmp_path, "beispielreise")
+        aufrufe = []
+    
+        def wettlauf(*a, **k):
+            aufrufe.append(1)
+            raise rs.StandGeaendert(1, 2)
+>       monkeypatch.setattr(rs, "auslagern", wettlauf)
+E       AttributeError: <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'> has no attribute 'auslagern'
+
+engine/tests/test_reisespeicher_ablage.py:482: AttributeError
+_____________ test_schreibweg_track_in_ablage_symbol_in_datenbank ______________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_schreibweg_track_in_ablag0')
+
+    def test_schreibweg_track_in_ablage_symbol_in_datenbank(rs, tmp_path):
+        rs.vorgang_schreiben("t", {"reise.yaml": b"a\n"}, "T", "t", "A")
+        rs.vorgang_schreiben("t", {"medien/gpx/E-01.gpx": GPX, "medien/icon.png": PNG}, "T", "schreibweg", "Track")
+>       z = {r[0]: r for r in _zeilen(rs, "t")}
+                              ^^^^^^^^^^^^^^^^
+
+engine/tests/test_reisespeicher_ablage.py:493: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+reise = 't'
+
+    def _zeilen(rs, reise):
+        with closing(sqlite3.connect(rs.pfad())) as v:
+>           return v.execute("SELECT pfad, inhalt, pruefsumme, ausgelagert FROM versionen WHERE reise = ? "
+                             "ORDER BY vorgang, pfad", (reise,)).fetchall()
+E           sqlite3.OperationalError: no such column: ausgelagert
+
+engine/tests/test_reisespeicher_ablage.py:88: OperationalError
+________________ test_ohne_speicherreisen_entsteht_keine_ablage ________________
+
+rs = <module 'reisespeicher' from '<Repo>/engine/reisespeicher.py'>
+tmp_path = PosixPath('<tmp>/pytest-12793/test_ohne_speicherreisen_entst0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x781a829e3920>
+
+    def test_ohne_speicherreisen_entsteht_keine_ablage(rs, tmp_path, monkeypatch):
+        import instanz
+        monkeypatch.setenv("FR_SPEICHERREISEN", "")
+>       assert instanz.speicher_ablage() == instanz.speicher() / "ablage"
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'instanz' has no attribute 'speicher_ablage'
+
+engine/tests/test_reisespeicher_ablage.py:503: AttributeError
+=========================== short test summary info ============================
+FAILED engine/tests/test_reisespeicher_ablage.py::test_schema_wird_auf_version_2_gehoben
+FAILED engine/tests/test_reisespeicher_ablage.py::test_nur_medien_mit_endung_werden_ausgelagert
+FAILED engine/tests/test_reisespeicher_ablage.py::test_ablage_ort_name_und_rechte
+FAILED engine/tests/test_reisespeicher_ablage.py::test_doppelte_liegen_nur_einmal_in_der_ablage
+FAILED engine/tests/test_reisespeicher_ablage.py::test_export_und_materialisieren_byte_gleich_beide_reisen[beispielreise]
+FAILED engine/tests/test_reisespeicher_ablage.py::test_export_und_materialisieren_byte_gleich_beide_reisen[stadtwochenende]
+FAILED engine/tests/test_reisespeicher_ablage.py::test_materialisieren_hardlink_und_kopie_rueckfall
+FAILED engine/tests/test_reisespeicher_ablage.py::test_datei_wird_vor_der_datenbank_abgelegt
+FAILED engine/tests/test_reisespeicher_ablage.py::test_ablage_nicht_beschreibbar_schreibt_nichts
+FAILED engine/tests/test_reisespeicher_ablage.py::test_ablage_wird_nie_geaendert_oder_geloescht
+FAILED engine/tests/test_reisespeicher_ablage.py::test_fehlende_ablagedatei_bricht_export_ohne_halben_ordner
+FAILED engine/tests/test_reisespeicher_ablage.py::test_fehlende_datei_bricht_den_bau_mit_katalogtext_in_allen_sprachen_ab[de]
+FAILED engine/tests/test_reisespeicher_ablage.py::test_fehlende_datei_bricht_den_bau_mit_katalogtext_in_allen_sprachen_ab[en]
+FAILED engine/tests/test_reisespeicher_ablage.py::test_bau_uebersetzt_ablagefehler_in_katalogtext
+FAILED engine/tests/test_reisespeicher_ablage.py::test_beschaedigte_ablagedatei_wird_erkannt_und_nicht_repariert
+FAILED engine/tests/test_reisespeicher_ablage.py::test_vorhandene_ablagedatei_mit_falschem_inhalt_wird_nicht_ueberschrieben
+FAILED engine/tests/test_reisespeicher_ablage.py::test_ablage_pfad_nur_aus_summe_und_symlink_abgewiesen
+FAILED engine/tests/test_reisespeicher_ablage.py::test_vergleichen_braucht_keine_ablagedatei
+FAILED engine/tests/test_reisespeicher_ablage.py::test_verweis_zaehlt_nicht_als_tombstone
+FAILED engine/tests/test_reisespeicher_ablage.py::test_pruefen_prueft_die_ablage
+FAILED engine/tests/test_reisespeicher_ablage.py::test_zustand_meldet_fehlende_ablagedateien
+FAILED engine/tests/test_reisespeicher_ablage.py::test_sichern_verlangt_vollstaendige_ablage
+FAILED engine/tests/test_reisespeicher_ablage.py::test_wiederherstellung_aus_schnappschuss_und_ablage
+FAILED engine/tests/test_reisespeicher_ablage.py::test_nachziehen_speicher_lagert_bestehende_medien_aus[beispielreise]
+FAILED engine/tests/test_reisespeicher_ablage.py::test_nachziehen_speicher_lagert_bestehende_medien_aus[stadtwochenende]
+FAILED engine/tests/test_reisespeicher_ablage.py::test_nachziehen_speicher_ablage_wiederholt_bei_wettlauf
+FAILED engine/tests/test_reisespeicher_ablage.py::test_schreibweg_track_in_ablage_symbol_in_datenbank
+FAILED engine/tests/test_reisespeicher_ablage.py::test_ohne_speicherreisen_entsteht_keine_ablage
+28 failed, 3 passed in 2.46s
