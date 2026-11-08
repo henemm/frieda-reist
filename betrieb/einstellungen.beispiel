@@ -104,3 +104,11 @@ FR_ADRESSE=https://reisen.example.org
 # Zeitzone, in der Konnektor und Dienste Zeiten nennen, wenn die der Person unbekannt ist (IANA-Name; die Person bringt ihre
 # eigene mit, sobald ein Gerät Benachrichtigungen eingeschaltet hat). Jede Zeit trägt die Zone. (UTC)
 #FR_ZEITZONE=Europe/Berlin
+
+# Betreiber der Instanz für das Impressum (/impressum, #383): Name, Anschrift (eine Zeile) und Kontakt (z. B. eine
+# E-Mail-Adresse). Alle drei sind Pflicht; fehlt eine, zeigt das Impressum „nicht eingerichtet“. Echte Angaben nie
+# hier: Der Konnektor läuft ohne Zugriff auf das Reisen-Repo und liest nur <FR_DIENST>/konten.env (Zeilen NAME=wert,
+# danach den Konnektor neu starten). Dort steht auch die Anschrift in einer Zeile. (leer)
+#FR_BETREIBER_NAME=Beispiel-Betreiber
+#FR_BETREIBER_ANSCHRIFT=Musterweg 1, 12345 Beispielstadt
+#FR_BETREIBER_KONTAKT=kontakt@example.org

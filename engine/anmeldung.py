@@ -1,6 +1,6 @@
 """Anmeldeseiten für Konten (Paket J2, Issues #43 und #46). Der Konnektor-Dienst liefert sie unter Friedas eigener
 Adresse aus (FR_BASIS): /anmelden, /einladung/<token>, /konto, /abmelden, dazu die Warteliste (/warteliste,
-/warteliste/bestaetigen/<wort>, #382).
+/warteliste/bestaetigen/<wort>, #382) und die drei Seiten /datenschutz, /impressum, /alpha (#383, nur GET, ohne Anmeldung).
 
 Ablauf: E-Mail-Adresse eingeben -> Code per Mail -> Code eingeben (beim ersten Mal auch den Namen) -> angemeldet.
 Der Code ist der Hauptweg; der Link aus der Mail enthält keinen Code und öffnet nur die Code-Seite (Mailprogramme rufen
@@ -17,6 +17,7 @@ import re
 import threading
 import urllib.parse
 
+import instanz
 import kalender
 import konten
 from reise import rolle_neu
@@ -120,6 +121,8 @@ label.haken input{width:1.15rem;height:1.15rem;margin-top:.2rem;accent-color:var
 .bestaetigen{background:var(--bg);border-radius:12px;padding:.75rem}.bestaetigen input{accent-color:var(--gefahr)}
 ul.geraete{margin:0;padding-left:1.1rem}
 .zurueck{font-weight:600;text-decoration:none;padding:.5rem .25rem;align-self:flex-start}
+.fuss p.recht{display:flex;flex-wrap:wrap;gap:0 1rem}.fuss p.recht a{padding:.35rem 0}
+ul.punkte{margin:0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.4rem}
 """
 
 
@@ -165,9 +168,23 @@ def formular(ziel, inhalt, knopf, klasse="", aenderung=False):
     return f'<form method="post" action="{esc(ziel)}"{a}>{inhalt}<button{k}>{esc(knopf)}</button></form>'
 
 
-def fuss(*saetze):
-    """Leise Zeilen unter der Karte."""
-    return '<div class="fuss">' + "".join(f"<p>{esc(t)}</p>" for t in saetze if t) + "</div>"
+def fuss(*saetze, roh=(), recht=False, ausser=""):
+    """Leise Zeilen unter der Karte. roh: Zeilen, die schon HTML sind (Sätze mit Link); recht: zuletzt die Rechtszeile
+    (Datenschutz, Impressum, Alpha-Hinweis, #383), ohne den Link auf die Seite ausser."""
+    zeilen = [f"<p>{esc(t)}</p>" for t in saetze if t] + [f"<p>{h}</p>" for h in roh if h]
+    if recht:
+        zeilen.append('<p class="recht">' + "".join(f'<a href="{p}">{esc(tx("recht.link." + p[1:]))}</a>'
+                                                    for p in RECHT if p != ausser) + "</p>")
+    return '<div class="fuss">' + "".join(zeilen) + "</div>"
+
+
+def link(pfad, schluessel):
+    return f'<a href="{esc(pfad)}">{esc(tx(schluessel))}</a>'
+
+
+def datenschutz_satz():
+    """Kurzsatz der Anmeldeseiten mit Verweis auf die Erklärung (Heimat /datenschutz, ADR-0003)."""
+    return th("konto.datenschutz", link=link("/datenschutz", "recht.datenschutz.titel"))
 
 
 def antwort(code, body, extra=()):
@@ -205,7 +222,7 @@ def adress_seite(zurueck="", einladung="", email="", meldung=""):
                  + f'<label for="email">{esc(tx("konto.email_adresse"))}</label>'
                  f'<input id="email" type="email" name="email" value="{esc(email)}" autocomplete="email" required '
                  f'placeholder="{esc(tx("konto.email_beispiel"))}" autofocus>', tx("konto.code_schicken"))),
-        fuss(tx("konto.anmelden.nur_lesen"), tx("konto.datenschutz")))
+        fuss(tx("konto.anmelden.nur_lesen"), roh=(datenschutz_satz(),), recht=True))
 
 
 def code_seite(email, zurueck="", einladung="", code="", meldung="", name_noetig=False, name=""):
@@ -229,19 +246,19 @@ def code_seite(email, zurueck="", einladung="", code="", meldung="", name_noetig
                  'autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required'
                  f'{"" if code or name_noetig else " autofocus"}>'
                  + ("" if code else f'<p class="klein">{esc(tx("konto.code.spam"))}</p>') + name_feld, tx("konto.anmelden.titel"))),
-        f'<div class="links">{neuer_code}{andere}</div>')
+        f'<div class="links">{neuer_code}{andere}</div>', fuss(recht=True))
 
 
 def warteliste_seite(email="", meldung=""):
     """Öffentliche Seite der Warteliste (#382): Adresse eintragen, Hinweis auf die Alpha und das bezahlte Claude-Konto."""
     return seite(tx("warteliste.titel"), karte(
         f"<div><h1>{esc(tx('warteliste.titel'))}</h1>",
-        f'<p class="lead">{esc(tx("warteliste.alpha"))}</p></div>',
+        f'<p class="lead">{esc(tx("warteliste.alpha"))} {th("warteliste.alpha_mehr", link=link("/alpha", "recht.link.alpha"))}</p></div>',
         f'<p class="kasten">{esc(tx("warteliste.voraussetzung"))}</p>',
         fehler(meldung),
         formular("/warteliste", f'<label for="email">{esc(tx("konto.email_adresse"))}</label>'
                  f'<input id="email" type="email" name="email" value="{esc(email)}" autocomplete="email" required '
-                 f'placeholder="{esc(tx("konto.email_beispiel"))}" autofocus>', tx("warteliste.knopf"))))
+                 f'placeholder="{esc(tx("konto.email_beispiel"))}" autofocus>', tx("warteliste.knopf"))), fuss(recht=True))
 
 
 def warteliste_hinweis(schluessel, code=200):
@@ -249,7 +266,7 @@ def warteliste_hinweis(schluessel, code=200):
     weg = (f'<a class="knopf" href="/warteliste">{esc(tx("warteliste.neu_eintragen"))}</a>'
            if schluessel == "warteliste.link_ungueltig" else "")
     return antwort(code, seite(tx("warteliste.titel"), karte(f"<h1>{esc(tx('warteliste.titel'))}</h1>",
-                                                            f"<p>{esc(tx(schluessel))}</p>", weg)))
+                                                            f"<p>{esc(tx(schluessel))}</p>", weg), fuss(recht=True)))
 
 
 def warteliste_karte():
@@ -530,7 +547,7 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
                  '<div class="links" style="flex-direction:column;align-items:center">'
                  f'<form method="post" action="/konto">{verdeckt(aktion="alle_abmelden")}<button class="link">{esc(tx("konto.seite.ueberall_abmelden"))}</button></form>'
                  f'<a href="/konto?loeschen=1" style="color:var(--gefahr)">{esc(tx("konto.seite.loeschen_titel"))}</a></div>',
-                 kopf=kopf, skript=True)
+                 fuss(recht=True), kopf=kopf, skript=True)
 
 
 def loeschen_seite(k):
@@ -544,7 +561,7 @@ def loeschen_seite(k):
                                 + f'<label class="haken bestaetigen"><input type="checkbox" name="sicher" value="ja" required> '
                                   f'{esc(tx("konto.seite.loeschen_haken"))}</label>', tx("konto.seite.loeschen_knopf"), "gefahr"),
                        f'<div class="links"><a href="/konto">{esc(tx("konto.seite.abbrechen"))}</a></div>'),
-                 kopf="")
+                 fuss(recht=True), kopf="")
 
 
 def einladungs_seite(e, token, k, reise_info, meldung=""):
@@ -555,17 +572,68 @@ def einladungs_seite(e, token, k, reise_info, meldung=""):
             + rolle_marke(e["rolle"]))
     if e["eingeloest"]:
         return seite(tx("konto.einladung.titel"), karte(kopf, f'<p class="hinweis">{esc(tx("konto.einladung.angenommen"))}</p>',
-                                                       f'<a class="knopf" href="/konto">{esc(tx("konto.einladung.zum_konto"))}</a>'))
+                                                       f'<a class="knopf" href="/konto">{esc(tx("konto.einladung.zum_konto"))}</a>'), fuss(recht=True))
     if k:
         return seite(tx("konto.einladung.titel"), karte(
             kopf, fehler(meldung),
             formular(f"/einladung/{token}", "", tx("konto.einladung.annehmen", name=k["name"], email=k["email"]))),
-            '<div class="fuss"><p>' + th("konto.einladung.anderes_konto", link='<a href="/konto">' + esc(tx("konto.einladung.abmelden_link")) + "</a>") + "</p></div>")
+            fuss(roh=(th("konto.einladung.anderes_konto", link=link("/konto", "konto.einladung.abmelden_link")),), recht=True))
     q = urllib.parse.urlencode({"einladung": token, "email": e["email"]})
     return seite(tx("konto.einladung.titel"), karte(
         kopf, f"<p>{esc(tx('konto.einladung.anmelden_hinweis'))}</p>",
         f'<a class="knopf" href="/anmelden?{q}">{esc(tx("konto.anmelden.titel"))}</a>'),
-        fuss(tx("konto.datenschutz")))
+        fuss(roh=(datenschutz_satz(),), recht=True))
+
+
+# ---------------------------------------------------------------- Datenschutz, Impressum, Alpha-Hinweis (#383)
+# Heimat (ADR-0003): die Erklärung nur auf /datenschutz, das Impressum nur auf /impressum, der Alpha-Hinweis nur auf /alpha;
+# überall sonst nur die Rechtszeile. Die Texte stehen im Katalog (Entwurf, rechtliche Prüfung beim Product Owner), die
+# Angaben zum Betreiber kommen aus den Einstellungen der Instanz (instanz.wert), nie aus dem Repo.
+
+RECHT = ("/datenschutz", "/impressum", "/alpha")
+BETREIBER = (("FR_BETREIBER_NAME", "name"), ("FR_BETREIBER_ANSCHRIFT", "anschrift"), ("FR_BETREIBER_KONTAKT", "kontakt"))
+DATENSCHUTZ_ABSCHNITTE = ("konto", "warteliste", "reise", "verlauf", "belege", "sicherungen", "weitergabe", "cookie")
+ALPHA_PUNKTE = ("fehler", "datenverlust", "aenderungen", "claude_konto")
+
+
+def datenschutz_inhalt():
+    impressum = link("/impressum", "recht.link.impressum")
+    abschnitte = "".join(f'<div><h2>{esc(tx(f"recht.datenschutz.{a}.titel"))}</h2><p style="margin:.3rem 0 0">'
+                         f'{esc(tx(f"recht.datenschutz.{a}.text"))}</p></div>' for a in DATENSCHUTZ_ABSCHNITTE)
+    return (f'<div><h1>{esc(tx("recht.datenschutz.titel"))}</h1>'
+            f'<p class="lead">{th("recht.datenschutz.einleitung", impressum=impressum)}</p></div>' + abschnitte
+            + f'<div><h2>{esc(tx("recht.datenschutz.rechte.titel"))}</h2>'
+            f'<p style="margin:.3rem 0 0">{esc(tx("recht.datenschutz.konto_loeschen"))}</p>'
+            f'<p style="margin:.3rem 0 0">{esc(tx("recht.datenschutz.folgt"))}</p>'
+            f'<p style="margin:.3rem 0 0">{th("recht.datenschutz.kontakt", impressum=impressum)}</p></div>')
+
+
+def impressum_inhalt():
+    """Name, Anschrift und Kontakt aus FR_BETREIBER_*; fehlt einer (leer zählt als fehlend), nur der Hinweis „nicht
+    eingerichtet“, nie halb gefüllte Felder. Werte maskiert, Zeilenumbrüche der Anschrift bleiben."""
+    werte = [(feld, (instanz.wert(name) or "").strip()) for name, feld in BETREIBER]   # nur Leerraum zählt als nicht gesetzt
+    kopf = (f'<div><h1>{esc(tx("recht.impressum.titel"))}</h1>'
+            f'<p class="lead">{esc(tx("recht.impressum.einleitung"))}</p></div>')
+    if not all(w for _, w in werte):
+        return kopf + f'<p class="kasten">{esc(tx("recht.impressum.nicht_eingerichtet"))}</p>'
+    return kopf + "".join(f'<div><strong>{esc(tx("recht.impressum." + feld))}</strong>'
+                          f'<p style="margin:.2rem 0 0">{esc(w).replace(chr(10), "<br>")}</p></div>' for feld, w in werte)
+
+
+def alpha_inhalt():
+    return (f'<div><h1>{esc(tx("recht.alpha.titel"))}</h1><p class="lead">{esc(tx("recht.alpha.einleitung"))}</p></div>'
+            '<ul class="punkte">' + "".join(f"<li>{esc(tx('recht.alpha.' + p))}</li>" for p in ALPHA_PUNKTE) + "</ul>")
+
+
+RECHT_SEITEN = {"/datenschutz": ("recht.datenschutz.titel", datenschutz_inhalt), "/impressum": ("recht.impressum.titel", impressum_inhalt),
+                "/alpha": ("recht.alpha.titel", alpha_inhalt)}
+
+
+def recht_seite(pfad):
+    titel, inhalt = RECHT_SEITEN[pfad]
+    return seite(tx(titel), karte(inhalt()),
+                 f'<div class="links">{link("/warteliste", "recht.zurueck.warteliste")}{link("/anmelden", "recht.zurueck.anmelden")}</div>',
+                 fuss(recht=True, ausser=pfad))
 
 
 # ---------------------------------------------------------------- Ablauf
@@ -590,7 +658,7 @@ def geraet(headers):
 
 def ist_unsere(pfad):
     p = pfad.split("?", 1)[0]
-    return p in ("/anmelden", "/konto", "/abmelden", "/warteliste") or p.startswith(("/einladung/", "/kalender/",
+    return p in ("/anmelden", "/konto", "/abmelden", "/warteliste") + RECHT or p.startswith(("/einladung/", "/kalender/",
                                                                                      "/warteliste/bestaetigen/"))
 
 
@@ -608,6 +676,12 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
     token, k = sitzung_aus(headers)
     # Sprache dieser Anfrage: die des Kontos, vor dem Anmelden die des Browsers (Accept-Language), sonst die Vorgabe der Personen
     _anfrage.sprache = k["sprache"] if k else texte.aus_header(headers.get("Accept-Language"))
+
+    if weg in RECHT:
+        if methode != "GET":     # nur lesen: kein Formular, keine Wirkung
+            return antwort(405, seite(tx("konto.nicht_erlaubt"), karte(
+                f"<h1>{esc(tx('konto.nicht_erlaubt'))}</h1><p>{esc(tx('recht.methode'))}</p>")), [("Allow", "GET")])
+        return antwort(200, recht_seite(weg))
 
     if weg == "/anmelden":
         zurueck, einl = rueckweg(f.get("zurueck") or q.get("zurueck")), f.get("einladung") or q.get("einladung", "")
@@ -659,7 +733,7 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
             return antwort(200, seite(tx("warteliste.titel"), karte(
                 f"<div><h1>{esc(tx('warteliste.titel'))}</h1>",
                 f'<p class="lead">{esc(tx("warteliste.bestaetigen_text"))}</p></div>',
-                formular(weg, "", tx("warteliste.bestaetigen_knopf")))))
+                formular(weg, "", tx("warteliste.bestaetigen_knopf"))), fuss(recht=True)))
         try:
             e = konten.warteliste_bestaetigen(wort)
         except konten.KontoFehler:
@@ -678,7 +752,7 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
         e = konten.einladung(et)
         if not e:
             return antwort(404, seite(tx("konto.einladung.titel"), karte(
-                f"<h1>{esc(tx('konto.einladung.abgelaufen'))}</h1><p>{esc(tx('konto.einladung.abgelaufen_text'))}</p>")))
+                f"<h1>{esc(tx('konto.einladung.abgelaufen'))}</h1><p>{esc(tx('konto.einladung.abgelaufen_text'))}</p>"), fuss(recht=True)))
         if methode == "GET":
             return antwort(200, einladungs_seite(e, et, k, reise_info))
         if not k:
@@ -759,7 +833,8 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
             if a == "loeschen" and f.get("sicher") == "ja":
                 konten.loeschen(k["id"])
                 return antwort(200, seite(tx("konto.seite.geloescht"), karte(
-                    f"<h1>{esc(tx('konto.seite.geloescht'))}</h1><p>{esc(tx('konto.seite.geloescht_text'))}</p>")), [cookie_loeschen()])
+                    f"<h1>{esc(tx('konto.seite.geloescht'))}</h1><p>{esc(tx('konto.seite.geloescht_text'))}</p>"), fuss(recht=True)),
+                    [cookie_loeschen()])
         except konten.KontoFehler as x:
             return antwort(200, konto_seite(k, reise_info, meldung=x.text(sprache_der_seite())))
         return antwort(400, konto_seite(k, reise_info, meldung=tx("konto.fehler.ging_nicht")))

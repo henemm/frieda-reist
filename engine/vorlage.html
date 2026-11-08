@@ -908,7 +908,10 @@ main{padding-bottom:calc(var(--tabbar-space) + 16px)}
    Vorn der Reise-Stand (Epic #223): „Reise-Stand 42 · veröffentlicht 02.11., 09:47 · “; ein Tipp auf die Nummer zeigt die
    letzten Änderungen (reiseStandFuss). Dann „Frieda Release 412 · 9b4a397“, die Kennung führt zum Quellcode dieses Stands, „Auf Neueres prüfen“ fragt den Server und
    main und bietet „Jetzt aktualisieren“ oder (Organisator:innen) „Veröffentlichen anstoßen“ an (releaseFuss). Darunter die
-   Verweis auf die Benachrichtigungen unter „Mein Konto“ (pushFuss, angemeldet). Der Fuß rückt in den Freiraum über der Leiste; ohne Zeile bleibt er verborgen. */
+   Verweis auf die Benachrichtigungen unter „Mein Konto“ (pushFuss, angemeldet). Der Fuß rückt in den Freiraum über der Leiste.
+   Zuletzt steht immer die Rechtszeile (Baustein Rechtszeile, Molekül, #383): drei Links ab der Wurzel zu Datenschutz,
+   Impressum und Alpha-Hinweis (Heimat dieser Seiten ist der Anmeldedienst, ADR-0003), Texte über data-t aus dem Katalog;
+   deshalb ist der Fuß nie leer und nie verborgen. Auf den Anmeldeseiten steht dieselbe Zeile im Baustein fuss. */
 .fuss{max-width:var(--breite);margin:calc(0px - var(--tabbar-space)) auto 0;padding:0 16px calc(var(--tabbar-space) + 16px);
   font-size:var(--t-klein);color:var(--mut);text-align:center;font-variant-numeric:tabular-nums}
 .fuss[hidden],.fuss [hidden]{display:none}
@@ -931,6 +934,9 @@ main{padding-bottom:calc(var(--tabbar-space) + 16px)}
 .fuss .fuss-sprachen button[aria-pressed="true"]{background:none;color:var(--fg);cursor:default}
 .fuss .fuss-sprachen button[aria-pressed="true"] span{text-decoration:none}
 .fuss .fuss-sprachen button+button::before{content:"·";color:var(--mut);margin-inline-end:8px}
+/* Rechtszeile (#383): leise Links nebeneinander, unterstrichen wie die übrigen Links im Fuß, Tippfläche 44 px hoch */
+.fuss-recht{display:flex;flex-wrap:wrap;justify-content:center;gap:0 16px;margin:0}
+.fuss-recht a{display:inline-flex;align-items:center;min-height:44px;padding-inline:4px;text-underline-offset:2px}
 @media (hover:hover){nav a:hover,#suchKnopf:hover{color:var(--fg)} .rund:hover{border-color:var(--acc)}}
 /* Zahl am Reiter „Zu tun“: offene Aufgaben + nicht gesendete Rückmeldungen */
 nav a{position:relative}
@@ -975,7 +981,7 @@ nav a.warn .zahl{background:var(--warn)}
   <div id="offline" class="hinweis glas" role="status" hidden data-t="seite.rahmen.offline">Ohne Netz: gespeicherter Stand. Rückmeldungen werden nachgereicht, Aufgaben erst wieder mit Netz änderbar.</div>
 </div>
 <main id="main" class="pico"></main>
-<footer class="fuss" id="fuss" hidden><div id="release" data-release="__RELEASE__" hidden></div><ol id="aenderungen" class="fuss-aenderungen" hidden></ol><div id="push" hidden></div><div id="sprachen" hidden></div></footer>
+<footer class="fuss" id="fuss"><div id="release" data-release="__RELEASE__" hidden></div><ol id="aenderungen" class="fuss-aenderungen" hidden></ol><div id="push" hidden></div><div id="sprachen" hidden></div><p class="fuss-recht"><a href="/datenschutz" data-t="seite.rahmen.recht.datenschutz">Datenschutz</a><a href="/impressum" data-t="seite.rahmen.recht.impressum">Impressum</a><a href="/alpha" data-t="seite.rahmen.recht.alpha">Alpha-Hinweis</a></p></footer>
 <dialog id="rm" class="pico"></dialog>
 <div class="leiste">
   <nav id="nav" aria-label="Kategorien" data-t-attr="aria-label=seite.rahmen.kategorien"></nav>
@@ -1228,7 +1234,7 @@ function zid(id) {
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke
-   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile
+   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile, Rechtszeile (HTML im Fuß)
    Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtKarte, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
@@ -2448,8 +2454,9 @@ function sprachUmschalter() {
   }
   fussZeigen();
 }
-// Der Fuß erscheint, sobald eine seiner Zeilen (Release, Benachrichtigungen, Sprache) etwas zeigt
-function fussZeigen() { $("#fuss").hidden = $("#release").hidden && $("#push").hidden && $("#sprachen").hidden; }
+// Der Fuß ist immer sichtbar: Die Rechtszeile (Datenschutz, Impressum, Alpha-Hinweis, #383) steht in jedem Fall darin;
+// Release, Benachrichtigungen und Sprache blenden nur ihre eigene Zeile ein oder aus
+function fussZeigen() { $("#fuss").hidden = false; }
 function spracheWaehlen(k) {
   if (!TEXTE[k] || k === SPRACHE) return;
   SPRACHE = k; LOCALE = TEXTE[k].locale; RICHTUNG = TEXTE[k].richtung;
@@ -4370,6 +4377,9 @@ function ansichtBausteine(m) {
   const us = R.plaene.length > 1 ? planUmschalter(R.plaene) : umschalter("Muster", [[{}, true, "Alle"], [{}, false, "Plan A (Muster)"]]);
   us.querySelectorAll("button").forEach(k => { k.disabled = true; });
   teil("Molekül", "Umschalter", "Genau ein Knopf ist gedrückt, in Tinte (gedrückt heißt nicht entschieden). Wählt den gezeigten Plan in „Varianten“, Vergleich und Darstellung im Wahl-Modul, die Region der Karte, für Gäste die Sprache (als Textzeile im Fuß).", us);
+  teil("Molekül", "Rechtszeile", "Immer im Fuß jeder Seite: Datenschutz, Impressum und Alpha-Hinweis, Pfade ab der Wurzel; "
+    + "die Seiten selbst liefert der Anmeldedienst (Heimat dort). Fest im HTML des Fußes, Texte über data-t aus dem Katalog (#383).",
+    $("#fuss .fuss-recht").cloneNode(true));
   // Hintergrund-Kapitel: aus der ersten Etappe, die eines hat, sonst ein Muster
   const hinter = etappenBloecke.find(([, b]) => b.ebene === "hintergrund");
   const blockMuster = (etappenBloecke.find(([, b]) => b.ebene === "unterwegs") || [null, {id: "Muster", titel: "Beispielabschnitt (Muster)", html: "<p>Beispieltext.</p>"}])[1];

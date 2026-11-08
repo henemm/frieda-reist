@@ -54,6 +54,8 @@ Jede Instanz ist für ihre Daten selbst verantwortlich; es wird nichts mit ander
 | Belege zu Buchungen | hochladende Person und Organisator:innen, bei Freigabe alle der Reise | werden nie vom Dienst gelöscht, zurückgezogene bleiben als Datei; Löschen nur durch den Betreiber in `<FR_ABLAGE>/<reise>/belege/` | bis zum Löschen der Reise |
 | Sicherungen (Konten-Schnappschuss, Archiv der Ablage) | nur der Betreiber | verschwinden mit der Aufbewahrungsfrist der Sicherung | Frist bestimmt der Betreiber der Instanz |
 
+Diese Tabelle ist die Quelle der Datenschutzerklärung, die der Konnektor unter `/datenschutz` zeigt (#383, Texte in `engine/texte_<sprache>.py`, Entwurf; die rechtliche Prüfung macht der Product Owner). Ändert sich hier etwas, wird die Erklärung im selben PR angepasst; ebenso, wenn Löschen und Export (#381) kommen, die dort noch als „folgt“ stehen. Daneben liefert der Konnektor `/impressum` (Betreiber aus `FR_BETREIBER_*`, Abschnitt „Einstellungen“) und `/alpha` (Alpha-Hinweis); verlinkt sind alle drei aus der Rechtszeile im Fuß der Reiseseiten und auf Warteliste, Anmeldung, Einladung und Mein Konto. Die nginx-Orte dafür stehen in `nginx-konnektor-orte.inc`; auf einer bestehenden Instanz kommen sie mit `nginx.py anwenden` an den Rand (sonst antwortet nginx mit 404).
+
 Die KI-Läufe gehören nicht dazu: Frieda enthält keine eigene KI, Reiseinhalte entstehen im AI-Client der Person über den Konnektor (ADR-0001). Es fallen auf dem Server keine Kosten für KI-Läufe an.
 
 ## Der Kreislauf
@@ -251,6 +253,7 @@ Voraussetzung: `gh` ist für den Dienstbenutzer angemeldet und darf Workflows de
 | `FR_NACHZIEHEN_WORKFLOW` | `software-nachziehen.yml` | Workflow des Reisen-Repos, den ein Anstoß von der Seite startet (Abschnitt „Anstoß“) |
 | `FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN` | `6` | Wartezeit in Stunden, bevor das Veröffentlichen denselben neuen Software-Stand noch einmal anstößt (Neue Instanz einrichten, „Anstoß vom Server“) |
 | `FR_KENNUNG`, `FR_SPRACHEN` | Name der Software, `de,en` | Kennung mit Kontakt gegenüber OpenStreetMap und Sprachen der Namen (`docs/werkzeuge.md`) |
+| `FR_BETREIBER_NAME`, `FR_BETREIBER_ANSCHRIFT`, `FR_BETREIBER_KONTAKT` | leer | Betreiber der Instanz im Impressum (`/impressum`, #383): Name, Anschrift (eine Zeile) und Kontakt, alle drei Pflicht, kein Telefon. Fehlt einer, zeigt das Impressum „nicht eingerichtet“; Warteliste und Anmeldung bleiben nutzbar. Der Konnektor läuft mit `ProtectHome=yes` und ohne `FR_WURZEL`, sieht also `betrieb/einstellungen.env` des Reisen-Repos nicht; er liest die Werte über `engine/instanz.py` aus der Umgebung der Unit, und die kommt aus `<FR_DIENST>/konten.env` (600, Zeilen `NAME=wert`; danach `systemctl restart <FR_INSTANZ>-konnektor`). Echte Angaben nur dort, nie im öffentlichen Repo |
 
 Die Skripte setzen daraus die Umgebung der Software (`RM_ABLAGE`, `KN_SEITEN`, `KN_ZUGAENGE`, `KN_BASIS`; die Unit des Konnektors zusätzlich `KN_SCHREIBDIENST`). Ausdrücklich gesetzte Werte bleiben. Fehlt etwas, etwa bei einem Aufruf von Hand wie `python3 engine/rueckmeldungen.py liste <reise>` in der Wurzel des Reisen-Repos, leitet `engine/instanz.py` die Ordner nach derselben Ordnung ab, notfalls aus der Einstellungsdatei. Die Software selbst kennt keine Instanz, ihre letzte Vorgabe ist `/srv/frieda`.
 

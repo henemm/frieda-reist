@@ -1,0 +1,547 @@
+FFFFFFFFFFFFFFFFFF.....FFFFFFFFF                                         [100%]
+=================================== FAILURES ===================================
+_________ test_seiten_ohne_anmeldung_in_beiden_sprachen[/datenschutz] __________
+
+welt = <function welt.<locals>.neu at 0x74e6acf98cc0>, betreiber = None
+pfad = '/datenschutz'
+
+    @pytest.mark.parametrize("pfad", SEITEN)
+    def test_seiten_ohne_anmeldung_in_beiden_sprachen(welt, betreiber, pfad):
+        u = welt()
+        for sprache in ("de", "en"):
+            s, _, t = hole(u, pfad, kopf={"Accept-Language": sprache})
+>           assert s == 200 and f'lang="{sprache}"' in t and 'name="robots" content="noindex"' in t
+E           assert (404 == 200)
+
+engine/tests/test_rechtliches.py:47: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+__________ test_seiten_ohne_anmeldung_in_beiden_sprachen[/impressum] ___________
+
+welt = <function welt.<locals>.neu at 0x74e6acf99d00>, betreiber = None
+pfad = '/impressum'
+
+    @pytest.mark.parametrize("pfad", SEITEN)
+    def test_seiten_ohne_anmeldung_in_beiden_sprachen(welt, betreiber, pfad):
+        u = welt()
+        for sprache in ("de", "en"):
+            s, _, t = hole(u, pfad, kopf={"Accept-Language": sprache})
+>           assert s == 200 and f'lang="{sprache}"' in t and 'name="robots" content="noindex"' in t
+E           assert (404 == 200)
+
+engine/tests/test_rechtliches.py:47: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+____________ test_seiten_ohne_anmeldung_in_beiden_sprachen[/alpha] _____________
+
+welt = <function welt.<locals>.neu at 0x74e6acf98e00>, betreiber = None
+pfad = '/alpha'
+
+    @pytest.mark.parametrize("pfad", SEITEN)
+    def test_seiten_ohne_anmeldung_in_beiden_sprachen(welt, betreiber, pfad):
+        u = welt()
+        for sprache in ("de", "en"):
+            s, _, t = hole(u, pfad, kopf={"Accept-Language": sprache})
+>           assert s == 200 and f'lang="{sprache}"' in t and 'name="robots" content="noindex"' in t
+E           assert (404 == 200)
+
+engine/tests/test_rechtliches.py:47: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+____________________ test_kontosprache_geht_vor_dem_browser ____________________
+
+welt = <function welt.<locals>.neu at 0x74e6acf99d00>, betreiber = None
+
+    def test_kontosprache_geht_vor_dem_browser(welt, betreiber):
+        u = welt()
+        token, _ = anmelden(u, IDA, name="Ida")
+        konten.sprache_setzen(konten.sitzung(token)["id"], "en")
+        s, _, t = hole(u, "/datenschutz", cookie=token, kopf={"Accept-Language": "de"})
+>       assert s == 200 and meldet(t, "recht.datenschutz.titel", "en")
+E       assert (404 == 200)
+
+engine/tests/test_rechtliches.py:56: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+GET 404
+________________ test_nur_get_post_wird_abgelehnt[/datenschutz] ________________
+
+welt = <function welt.<locals>.neu at 0x74e6acf98400>, betreiber = None
+pfad = '/datenschutz'
+
+    @pytest.mark.parametrize("pfad", SEITEN)
+    def test_nur_get_post_wird_abgelehnt(welt, betreiber, pfad):
+        u = welt()
+        s, _, t = hole(u, pfad, methode="POST", felder={"x": "y"})
+>       assert s != 200 and not meldet(t, f"recht.{pfad[1:]}.titel")
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_rechtliches.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = '{"fehler": "unbekannt"}', schluessel = 'recht.datenschutz.titel'
+sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel recht.datenschutz.titel fehlt im Katalog
+E       assert 'recht.datenschutz.titel' != 'recht.datenschutz.titel'
+
+engine/tests/conftest.py:79: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 404
+_________________ test_nur_get_post_wird_abgelehnt[/impressum] _________________
+
+welt = <function welt.<locals>.neu at 0x74e6acf98e00>, betreiber = None
+pfad = '/impressum'
+
+    @pytest.mark.parametrize("pfad", SEITEN)
+    def test_nur_get_post_wird_abgelehnt(welt, betreiber, pfad):
+        u = welt()
+        s, _, t = hole(u, pfad, methode="POST", felder={"x": "y"})
+>       assert s != 200 and not meldet(t, f"recht.{pfad[1:]}.titel")
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_rechtliches.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = '{"fehler": "unbekannt"}', schluessel = 'recht.impressum.titel'
+sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel recht.impressum.titel fehlt im Katalog
+E       assert 'recht.impressum.titel' != 'recht.impressum.titel'
+
+engine/tests/conftest.py:79: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 404
+___________________ test_nur_get_post_wird_abgelehnt[/alpha] ___________________
+
+welt = <function welt.<locals>.neu at 0x74e6acf98680>, betreiber = None
+pfad = '/alpha'
+
+    @pytest.mark.parametrize("pfad", SEITEN)
+    def test_nur_get_post_wird_abgelehnt(welt, betreiber, pfad):
+        u = welt()
+        s, _, t = hole(u, pfad, methode="POST", felder={"x": "y"})
+>       assert s != 200 and not meldet(t, f"recht.{pfad[1:]}.titel")
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_rechtliches.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = '{"fehler": "unbekannt"}', schluessel = 'recht.alpha.titel'
+sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel recht.alpha.titel fehlt im Katalog
+E       assert 'recht.alpha.titel' != 'recht.alpha.titel'
+
+engine/tests/conftest.py:79: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 404
+_____________ test_nur_die_drei_exakten_pfade_gehoeren_dem_dienst ______________
+
+    def test_nur_die_drei_exakten_pfade_gehoeren_dem_dienst():
+        for p in SEITEN:
+>           assert anmeldung.ist_unsere(p) and anmeldung.ist_unsere(p + "?x=1")
+E           AssertionError: assert (False)
+E            +  where False = <function ist_unsere at 0x74e6adb5a0c0>('/datenschutz')
+E            +    where <function ist_unsere at 0x74e6adb5a0c0> = anmeldung.ist_unsere
+
+engine/tests/test_rechtliches.py:68: AssertionError
+___ test_jede_seite_traegt_die_linkzeile_und_einen_weg_zurueck[/datenschutz] ___
+
+welt = <function welt.<locals>.neu at 0x74e6ace98900>, betreiber = None
+pfad = '/datenschutz'
+
+    @pytest.mark.parametrize("pfad", SEITEN)
+    def test_jede_seite_traegt_die_linkzeile_und_einen_weg_zurueck(welt, betreiber, pfad):
+        u = welt()
+        _, _, t = hole(u, pfad)
+>       assert hat_links(t, ausser=pfad) and 'class="fuss"' in t
+E       assert (False)
+E        +  where False = hat_links('{"fehler": "unbekannt"}', ausser='/datenschutz')
+
+engine/tests/test_rechtliches.py:77: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+____ test_jede_seite_traegt_die_linkzeile_und_einen_weg_zurueck[/impressum] ____
+
+welt = <function welt.<locals>.neu at 0x74e6ace99620>, betreiber = None
+pfad = '/impressum'
+
+    @pytest.mark.parametrize("pfad", SEITEN)
+    def test_jede_seite_traegt_die_linkzeile_und_einen_weg_zurueck(welt, betreiber, pfad):
+        u = welt()
+        _, _, t = hole(u, pfad)
+>       assert hat_links(t, ausser=pfad) and 'class="fuss"' in t
+E       assert (False)
+E        +  where False = hat_links('{"fehler": "unbekannt"}', ausser='/impressum')
+
+engine/tests/test_rechtliches.py:77: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+______ test_jede_seite_traegt_die_linkzeile_und_einen_weg_zurueck[/alpha] ______
+
+welt = <function welt.<locals>.neu at 0x74e6ace9b4c0>, betreiber = None
+pfad = '/alpha'
+
+    @pytest.mark.parametrize("pfad", SEITEN)
+    def test_jede_seite_traegt_die_linkzeile_und_einen_weg_zurueck(welt, betreiber, pfad):
+        u = welt()
+        _, _, t = hole(u, pfad)
+>       assert hat_links(t, ausser=pfad) and 'class="fuss"' in t
+E       assert (False)
+E        +  where False = hat_links('{"fehler": "unbekannt"}', ausser='/alpha')
+
+engine/tests/test_rechtliches.py:77: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+________________ test_impressum_zeigt_die_drei_angaben_maskiert ________________
+
+welt = <function welt.<locals>.neu at 0x74e6ace99da0>, betreiber = None
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74e6acfe5610>
+
+    def test_impressum_zeigt_die_drei_angaben_maskiert(welt, betreiber, monkeypatch):
+        u = welt()
+        _, _, t = hole(u, "/impressum")
+>       assert NAME in t and ANSCHRIFT in t and KONTAKT in t
+E       assert ('Beispiel-Betreiber' in '{"fehler": "unbekannt"}')
+
+engine/tests/test_rechtliches.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+_______ test_leerfall_meldet_nicht_eingerichtet[False-FR_BETREIBER_NAME] _______
+
+welt = <function welt.<locals>.neu at 0x74e6ace9bec0>, betreiber = None
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74e6acc74b90>
+fehlt = 'FR_BETREIBER_NAME', leer = False
+
+    @pytest.mark.parametrize("fehlt", ["FR_BETREIBER_NAME", "FR_BETREIBER_ANSCHRIFT", "FR_BETREIBER_KONTAKT"])
+    @pytest.mark.parametrize("leer", [False, True])
+    def test_leerfall_meldet_nicht_eingerichtet(welt, betreiber, monkeypatch, fehlt, leer):
+        u = welt()
+        if leer:
+            monkeypatch.setenv(fehlt, "")
+        else:
+            monkeypatch.delenv(fehlt)
+        s, _, t = hole(u, "/impressum")
+>       assert s == 200 and meldet(t, "recht.impressum.nicht_eingerichtet")
+E       assert (404 == 200)
+
+engine/tests/test_rechtliches.py:103: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+____ test_leerfall_meldet_nicht_eingerichtet[False-FR_BETREIBER_ANSCHRIFT] _____
+
+welt = <function welt.<locals>.neu at 0x74e6ace9b420>, betreiber = None
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74e6acfedb20>
+fehlt = 'FR_BETREIBER_ANSCHRIFT', leer = False
+
+    @pytest.mark.parametrize("fehlt", ["FR_BETREIBER_NAME", "FR_BETREIBER_ANSCHRIFT", "FR_BETREIBER_KONTAKT"])
+    @pytest.mark.parametrize("leer", [False, True])
+    def test_leerfall_meldet_nicht_eingerichtet(welt, betreiber, monkeypatch, fehlt, leer):
+        u = welt()
+        if leer:
+            monkeypatch.setenv(fehlt, "")
+        else:
+            monkeypatch.delenv(fehlt)
+        s, _, t = hole(u, "/impressum")
+>       assert s == 200 and meldet(t, "recht.impressum.nicht_eingerichtet")
+E       assert (404 == 200)
+
+engine/tests/test_rechtliches.py:103: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+_____ test_leerfall_meldet_nicht_eingerichtet[False-FR_BETREIBER_KONTAKT] ______
+
+welt = <function welt.<locals>.neu at 0x74e6ace98540>, betreiber = None
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74e6acec56d0>
+fehlt = 'FR_BETREIBER_KONTAKT', leer = False
+
+    @pytest.mark.parametrize("fehlt", ["FR_BETREIBER_NAME", "FR_BETREIBER_ANSCHRIFT", "FR_BETREIBER_KONTAKT"])
+    @pytest.mark.parametrize("leer", [False, True])
+    def test_leerfall_meldet_nicht_eingerichtet(welt, betreiber, monkeypatch, fehlt, leer):
+        u = welt()
+        if leer:
+            monkeypatch.setenv(fehlt, "")
+        else:
+            monkeypatch.delenv(fehlt)
+        s, _, t = hole(u, "/impressum")
+>       assert s == 200 and meldet(t, "recht.impressum.nicht_eingerichtet")
+E       assert (404 == 200)
+
+engine/tests/test_rechtliches.py:103: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+_______ test_leerfall_meldet_nicht_eingerichtet[True-FR_BETREIBER_NAME] ________
+
+welt = <function welt.<locals>.neu at 0x74e6ace9b420>, betreiber = None
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74e6acfef920>
+fehlt = 'FR_BETREIBER_NAME', leer = True
+
+    @pytest.mark.parametrize("fehlt", ["FR_BETREIBER_NAME", "FR_BETREIBER_ANSCHRIFT", "FR_BETREIBER_KONTAKT"])
+    @pytest.mark.parametrize("leer", [False, True])
+    def test_leerfall_meldet_nicht_eingerichtet(welt, betreiber, monkeypatch, fehlt, leer):
+        u = welt()
+        if leer:
+            monkeypatch.setenv(fehlt, "")
+        else:
+            monkeypatch.delenv(fehlt)
+        s, _, t = hole(u, "/impressum")
+>       assert s == 200 and meldet(t, "recht.impressum.nicht_eingerichtet")
+E       assert (404 == 200)
+
+engine/tests/test_rechtliches.py:103: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+_____ test_leerfall_meldet_nicht_eingerichtet[True-FR_BETREIBER_ANSCHRIFT] _____
+
+welt = <function welt.<locals>.neu at 0x74e6ace99620>, betreiber = None
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74e6acfe6480>
+fehlt = 'FR_BETREIBER_ANSCHRIFT', leer = True
+
+    @pytest.mark.parametrize("fehlt", ["FR_BETREIBER_NAME", "FR_BETREIBER_ANSCHRIFT", "FR_BETREIBER_KONTAKT"])
+    @pytest.mark.parametrize("leer", [False, True])
+    def test_leerfall_meldet_nicht_eingerichtet(welt, betreiber, monkeypatch, fehlt, leer):
+        u = welt()
+        if leer:
+            monkeypatch.setenv(fehlt, "")
+        else:
+            monkeypatch.delenv(fehlt)
+        s, _, t = hole(u, "/impressum")
+>       assert s == 200 and meldet(t, "recht.impressum.nicht_eingerichtet")
+E       assert (404 == 200)
+
+engine/tests/test_rechtliches.py:103: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+______ test_leerfall_meldet_nicht_eingerichtet[True-FR_BETREIBER_KONTAKT] ______
+
+welt = <function welt.<locals>.neu at 0x74e6ace99940>, betreiber = None
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74e6acbc3170>
+fehlt = 'FR_BETREIBER_KONTAKT', leer = True
+
+    @pytest.mark.parametrize("fehlt", ["FR_BETREIBER_NAME", "FR_BETREIBER_ANSCHRIFT", "FR_BETREIBER_KONTAKT"])
+    @pytest.mark.parametrize("leer", [False, True])
+    def test_leerfall_meldet_nicht_eingerichtet(welt, betreiber, monkeypatch, fehlt, leer):
+        u = welt()
+        if leer:
+            monkeypatch.setenv(fehlt, "")
+        else:
+            monkeypatch.delenv(fehlt)
+        s, _, t = hole(u, "/impressum")
+>       assert s == 200 and meldet(t, "recht.impressum.nicht_eingerichtet")
+E       assert (404 == 200)
+
+engine/tests/test_rechtliches.py:103: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+___________________ test_datenschutz_sagt_nur_zu_was_es_gibt ___________________
+
+welt = <function welt.<locals>.neu at 0x74e6ace9b1a0>, betreiber = None
+
+    def test_datenschutz_sagt_nur_zu_was_es_gibt(welt, betreiber):
+        u = welt()
+        for sprache in ("de", "en"):
+            _, _, t = hole(u, "/datenschutz", kopf={"Accept-Language": sprache})
+>           assert meldet(t, "recht.datenschutz.konto_loeschen", sprache)        # vorhanden: Konto selbst löschen
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_rechtliches.py:127: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = '{"fehler": "unbekannt"}'
+schluessel = 'recht.datenschutz.konto_loeschen', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel recht.datenschutz.konto_loeschen fehlt im Katalog
+E       assert 'recht.datenschutz.konto_loeschen' != 'recht.datenschutz.konto_loeschen'
+
+engine/tests/conftest.py:79: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+____________________ test_alpha_seite_nennt_die_vorbehalte _____________________
+
+welt = <function welt.<locals>.neu at 0x74e6ace9b600>, betreiber = None
+
+    def test_alpha_seite_nennt_die_vorbehalte(welt, betreiber):
+        u = welt()
+        for sprache in ("de", "en"):
+            _, _, t = hole(u, "/alpha", kopf={"Accept-Language": sprache})
+            for schluessel in ("fehler", "datenverlust", "aenderungen", "claude_konto"):
+>               assert meldet(t, f"recht.alpha.{schluessel}", sprache), (sprache, schluessel)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_rechtliches.py:139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = '{"fehler": "unbekannt"}', schluessel = 'recht.alpha.fehler'
+sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel recht.alpha.fehler fehlt im Katalog
+E       assert 'recht.alpha.fehler' != 'recht.alpha.fehler'
+
+engine/tests/conftest.py:79: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+_______ test_linkzeile_auf_warteliste_anmeldeseiten_einladung_und_konto ________
+
+welt = <function welt.<locals>.neu at 0x74e6acc40ae0>, betreiber = None
+
+    def test_linkzeile_auf_warteliste_anmeldeseiten_einladung_und_konto(welt, betreiber):
+        u = welt()
+>       assert hat_links(hole(u, "/warteliste")[2])
+E       assert False
+E        +  where False = hat_links('<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...il" required placeholder="name@beispiel.de" autofocus><button>Eintragen</button></form></section></main></body></html>')
+
+engine/tests/test_rechtliches.py:146: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 200
+_ test_wartelistensatz_verlinkt_auf_alpha_und_datenschutzsatz_auf_die_erklaerung _
+
+welt = <function welt.<locals>.neu at 0x74e6ace9b1a0>, betreiber = None
+
+    def test_wartelistensatz_verlinkt_auf_alpha_und_datenschutzsatz_auf_die_erklaerung(welt, betreiber):
+        u = welt()
+        _, _, t = hole(u, "/warteliste")
+>       assert meldet(t, "warteliste.alpha") and 'href="/alpha"' in t
+E       assert (True and 'href="/alpha"' in '<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...il" required placeholder="name@beispiel.de" autofocus><button>Eintragen</button></form></section></main></body></html>')
+E        +  where True = meldet('<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...il" required placeholder="name@beispiel.de" autofocus><button>Eintragen</button></form></section></main></body></html>', 'warteliste.alpha')
+
+engine/tests/test_rechtliches.py:160: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 200
+___________ test_vorlage_hat_die_rechtszeile_mit_katalogschluesseln ____________
+
+    def test_vorlage_hat_die_rechtszeile_mit_katalogschluesseln():
+        v = (REPO / "engine" / "vorlage.html").read_text(encoding="utf-8")
+        fuss = re.search(r'<footer[^>]*id="fuss"[^>]*>.*?</footer>', v, re.S).group(0)
+>       assert " hidden" not in fuss.split(">", 1)[0]                            # nicht mehr von Anfang an versteckt
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       assert ' hidden' not in '<footer cla...fuss" hidden'
+E         
+E         ' hidden' is contained here:
+E           <footer class="fuss" id="fuss" hidden
+E         ?                               +++++++
+
+engine/tests/test_rechtliches.py:170: AssertionError
+__________________ test_baustein_rechtszeile_ist_dokumentiert __________________
+
+    def test_baustein_rechtszeile_ist_dokumentiert():
+        v = (REPO / "engine" / "vorlage.html").read_text(encoding="utf-8")
+>       assert "Rechtszeile" in v.split("<body", 1)[0]
+E       assert 'Rechtszeile' in '<!doctype html>\n<html lang="de">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,...fore,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}\n</style>\n</head>\n'
+
+engine/tests/test_rechtliches.py:184: AssertionError
+____________________ test_neue_schluessel_in_allen_sprachen ____________________
+
+    def test_neue_schluessel_in_allen_sprachen():
+        for sp in texte.sprachen():
+            for s in NEUE_SCHLUESSEL:
+>               assert texte.t(sp, s) != s, (sp, s)
+E               AssertionError: ('de', 'recht.link.datenschutz')
+E               assert 'recht.link.datenschutz' != 'recht.link.datenschutz'
+E                +  where 'recht.link.datenschutz' = <function t at 0x74e6ae6a6700>('de', 'recht.link.datenschutz')
+E                +    where <function t at 0x74e6ae6a6700> = texte.t
+
+engine/tests/test_rechtliches.py:199: AssertionError
+_____________________ test_nginx_orte_fuer_die_drei_seiten _____________________
+
+    def test_nginx_orte_fuer_die_drei_seiten():
+        conf = (REPO / "betrieb" / "vorlagen" / "nginx-konnektor-orte.inc").read_text(encoding="utf-8")
+        for p in SEITEN:
+>           i = conf.index(f"location = {p} ")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           ValueError: substring not found
+
+engine/tests/test_rechtliches.py:207: ValueError
+____________ test_einstellungen_beispiel_nennt_die_betreiberangaben ____________
+
+    def test_einstellungen_beispiel_nennt_die_betreiberangaben():
+        b = (REPO / "betrieb" / "einstellungen.beispiel").read_text(encoding="utf-8")
+        for n in ("FR_BETREIBER_NAME", "FR_BETREIBER_ANSCHRIFT", "FR_BETREIBER_KONTAKT"):
+>           assert re.search(rf"^#?\s*{n}=", b, re.M), n
+E           AssertionError: FR_BETREIBER_NAME
+E           assert None
+E            +  where None = <function search at 0x74e6af1313a0>('^#?\\s*FR_BETREIBER_NAME=', '# Einstellungen einer Instanz (docs/betrieb.md). Kopie nach <Reisen-Repo>/betrieb/einstellungen.env und anpassen.\n# ... sobald ein Gerät Benachrichtigungen eingeschaltet hat). Jede Zeit trägt die Zone. (UTC)\n#FR_ZEITZONE=Europe/Berlin\n', re.MULTILINE)
+E            +    where <function search at 0x74e6af1313a0> = re.search
+E            +    and   re.MULTILINE = re.M
+
+engine/tests/test_rechtliches.py:214: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_rechtliches.py::test_seiten_ohne_anmeldung_in_beiden_sprachen[/datenschutz]
+FAILED engine/tests/test_rechtliches.py::test_seiten_ohne_anmeldung_in_beiden_sprachen[/impressum]
+FAILED engine/tests/test_rechtliches.py::test_seiten_ohne_anmeldung_in_beiden_sprachen[/alpha]
+FAILED engine/tests/test_rechtliches.py::test_kontosprache_geht_vor_dem_browser
+FAILED engine/tests/test_rechtliches.py::test_nur_get_post_wird_abgelehnt[/datenschutz]
+FAILED engine/tests/test_rechtliches.py::test_nur_get_post_wird_abgelehnt[/impressum]
+FAILED engine/tests/test_rechtliches.py::test_nur_get_post_wird_abgelehnt[/alpha]
+FAILED engine/tests/test_rechtliches.py::test_nur_die_drei_exakten_pfade_gehoeren_dem_dienst
+FAILED engine/tests/test_rechtliches.py::test_jede_seite_traegt_die_linkzeile_und_einen_weg_zurueck[/datenschutz]
+FAILED engine/tests/test_rechtliches.py::test_jede_seite_traegt_die_linkzeile_und_einen_weg_zurueck[/impressum]
+FAILED engine/tests/test_rechtliches.py::test_jede_seite_traegt_die_linkzeile_und_einen_weg_zurueck[/alpha]
+FAILED engine/tests/test_rechtliches.py::test_impressum_zeigt_die_drei_angaben_maskiert
+FAILED engine/tests/test_rechtliches.py::test_leerfall_meldet_nicht_eingerichtet[False-FR_BETREIBER_NAME]
+FAILED engine/tests/test_rechtliches.py::test_leerfall_meldet_nicht_eingerichtet[False-FR_BETREIBER_ANSCHRIFT]
+FAILED engine/tests/test_rechtliches.py::test_leerfall_meldet_nicht_eingerichtet[False-FR_BETREIBER_KONTAKT]
+FAILED engine/tests/test_rechtliches.py::test_leerfall_meldet_nicht_eingerichtet[True-FR_BETREIBER_NAME]
+FAILED engine/tests/test_rechtliches.py::test_leerfall_meldet_nicht_eingerichtet[True-FR_BETREIBER_ANSCHRIFT]
+FAILED engine/tests/test_rechtliches.py::test_leerfall_meldet_nicht_eingerichtet[True-FR_BETREIBER_KONTAKT]
+FAILED engine/tests/test_rechtliches.py::test_datenschutz_sagt_nur_zu_was_es_gibt
+FAILED engine/tests/test_rechtliches.py::test_alpha_seite_nennt_die_vorbehalte
+FAILED engine/tests/test_rechtliches.py::test_linkzeile_auf_warteliste_anmeldeseiten_einladung_und_konto
+FAILED engine/tests/test_rechtliches.py::test_wartelistensatz_verlinkt_auf_alpha_und_datenschutzsatz_auf_die_erklaerung
+FAILED engine/tests/test_rechtliches.py::test_vorlage_hat_die_rechtszeile_mit_katalogschluesseln
+FAILED engine/tests/test_rechtliches.py::test_baustein_rechtszeile_ist_dokumentiert
+FAILED engine/tests/test_rechtliches.py::test_neue_schluessel_in_allen_sprachen
+FAILED engine/tests/test_rechtliches.py::test_nginx_orte_fuer_die_drei_seiten
+FAILED engine/tests/test_rechtliches.py::test_einstellungen_beispiel_nennt_die_betreiberangaben
+27 failed, 5 passed in 42.15s

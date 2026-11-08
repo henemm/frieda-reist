@@ -2051,7 +2051,8 @@ def test_betrieb_ohne_ki():
             assert "claude -p" not in text and "einarbeiten" not in text.lower(), p.name
     assert not (BETRIEB / "einarbeiten.sh").exists() and not (BETRIEB / "einarbeiten-auftrag.md").exists()
     beispiel = (BETRIEB / "einstellungen.beispiel").read_text(encoding="utf-8")
-    assert "FR_CLAUDE" not in beispiel and "FR_BETREIBER" not in beispiel
+    # FR_BETREIBER war der Betreiber des KI-Laufs; FR_BETREIBER_NAME/_ANSCHRIFT/_KONTAKT sind die Angaben fürs Impressum (#383)
+    assert "FR_CLAUDE" not in beispiel and not re.search(r"^#?FR_BETREIBER=", beispiel, re.M)
 
 
 def test_skripte_sind_ausfuehrbar():

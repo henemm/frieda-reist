@@ -43,6 +43,22 @@ location ^~ /warteliste/bestaetigen/ {
     limit_req_status 429;
     include __SNIPPETS__/__INSTANZ__-konnektor.inc;
 }
+# Datenschutz, Impressum, Alpha-Hinweis (#383): öffentlich lesbar, nur GET (der Dienst lehnt anderes ab), gedrosselt wie Konto
+location = /datenschutz {
+    limit_req zone=__ZONE_KONTO__ burst=20 nodelay;
+    limit_req_status 429;
+    include __SNIPPETS__/__INSTANZ__-konnektor.inc;
+}
+location = /impressum {
+    limit_req zone=__ZONE_KONTO__ burst=20 nodelay;
+    limit_req_status 429;
+    include __SNIPPETS__/__INSTANZ__-konnektor.inc;
+}
+location = /alpha {
+    limit_req zone=__ZONE_KONTO__ burst=20 nodelay;
+    limit_req_status 429;
+    include __SNIPPETS__/__INSTANZ__-konnektor.inc;
+}
 location = /token                  { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 location = /register               { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 location ^~ /.well-known/oauth-    { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
