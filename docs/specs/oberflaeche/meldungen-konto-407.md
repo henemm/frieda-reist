@@ -15,7 +15,7 @@ Mockups: `docs/artifacts/meldungen-konto-407/mockup.html` und die Bildschirmfoto
 
 ## Approval
 
-- [ ] Approved (Product Owner; offene Fragen am Ende)
+- [ ] Approved (Product Owner; die vier offenen Fragen sind am 8.11.2026 entschieden, siehe Ende)
 
 ## Purpose
 
@@ -99,8 +99,8 @@ gelesen und öffnet „Zu tun“ der Reise. Andere Arten werden nicht gebündelt
 
 ### Ordnung und Menge
 
-1. Ungelesene, neueste zuerst. Konflikte gelten als neueste, solange sie ungelesen sind; sie verlangen Handeln von
-   mehreren Personen.
+1. Ungelesene, neueste zuerst; ungelesene Konflikte immer ganz oben, auch ältere (Entscheidung 4). Sie verlangen
+   Handeln von mehreren Personen. Keine Gruppen je Reise (Entscheidung 3).
 2. Mehr als fünf ungelesene: die ersten fünf, darunter die Zeile „Alle 12 neuen zeigen“ (`<details>`, ohne Skript).
 3. „Gelesen (n)“ als zugeklappte Zeile am Ende der Liste (`<details>`). Darin die gelesenen, die noch gelten.
 4. Alles gelesen: Die Liste zeigt nur „Keine neuen Meldungen“ (leise) und „Gelesen (n)“. Gilt keine Meldung mehr, fällt
@@ -119,11 +119,13 @@ gelesen und öffnet „Zu tun“ der Reise. Andere Arten werden nicht gebündelt
   das Konto, fallen die Zeilen mit.
 - **Gelesen wird eine Meldung,** wenn die Person (a) die Zeile auf Mein Konto antippt: `GET /konto/meldung/<id>` merkt
   sie und leitet zum Ziel weiter (303); (b) „Alle gelesen“ drückt; (c) auf der Reiseseite im Hinweis „Für dich“
-  „Gelesen“ tippt: `POST api/gelesen` mit den IDs. Push-Tippen öffnet die Stelle ohne Umweg und zählt nicht.
+  „Gelesen“ tippt: `POST api/gelesen` mit den IDs; (d) nur bei `neue_reise`: die Seite dieser Reise angemeldet
+  öffnet (`api/ich` der Reise aus `ziel` merkt sie, Entscheidung 2). Push-Tippen öffnet die Stelle ohne Umweg und zählt
+  nicht.
 - **Reiseseite:** `api/ich` liefert zu jeder Meldung `gelesen: true|false`. `fuerDich` zeigt nur ungelesene. Der Browser
   behält seine Liste weiter als Puffer ohne Netz und schickt sie beim nächsten Kontakt mit.
 - **Konnektor:** `meine_reisen` zeigt die ungelesenen zuerst und nennt die Zahl der gelesenen; Lesen im Gespräch
-  verändert den Stand nicht (offene Frage 1).
+  verändert den Stand nicht (Entscheidung 1).
 - **Push** schickt wie bisher jede neue Meldung einmal; der Lesestand ändert daran nichts.
 
 ## Texte zur Anzeigezeit
@@ -182,7 +184,8 @@ Jede Stufe ist ein eigener PR mit grünen Tests und für sich nützlich.
   (`test_texte.py`).
 - B: `/konto/meldung/<id>` merkt und leitet weiter, fremde ID → 404 ohne Merken, ohne Anmeldung → Anmeldung. „Alle
   gelesen“ → nur „Gelesen (n)“. Ein Gerät liest, das andere sieht es (zwei Sitzungen). `api/ich` meldet `gelesen`.
-  Konto löschen löscht den Lesestand. Playwright: Punkt und Zahlmarke verschwinden nach dem Antippen, hell und dunkel.
+  Konto löschen löscht den Lesestand. Seite der neuen Reise angemeldet öffnen → ihre Meldung `neue_reise` ist gelesen,
+  andere Meldungen dieser Reise nicht. Ein älterer ungelesener Konflikt steht vor einer neueren Frist. Playwright: Punkt und Zahlmarke verschwinden nach dem Antippen, hell und dunkel.
 - C: Meldung mit `t` in Deutsch angelegt, Konto auf Englisch → englischer Text. Meldung ohne `t` → gespeicherter Text.
   `werte` mit Adresse → Test schlägt fehl (Prüfung beim Anlegen).
 
@@ -201,13 +204,11 @@ Jede Stufe ist ein eigener PR mit grünen Tests und für sich nützlich.
 | 9 | Reiseinhalte nicht in Claude Code? | ja |
 | 10 | Dokumentiert in | diese Spec; nach Freigabe `docs/design.md`, `docs/konten.md`, `docs/waechter.md` |
 
-## Offene Fragen an den Product Owner
+## Entscheidungen des Product Owners (8.11.2026)
 
-1. **Lesen im Gespräch:** Soll eine Meldung als gelesen gelten, wenn Frieda sie in der Claude-App vorgelesen hat?
-   Vorschlag: nein. Ob die Person zugehört hat, weiß Frieda nicht; ein Werkzeug `meldungen_gelesen` könnte das auf
-   Wunsch tun.
-2. **Neue Reise doppelt:** Die neue Reise steht direkt darunter unter „Meine Reisen“. Soll die Meldung als gelesen
-   gelten, sobald die Person die Reise einmal geöffnet hat? Vorschlag: ja, in Stufe B.
-3. **Ordnen nach Reise:** Flache Liste nach Zeit (Vorschlag) oder gruppiert je Reise? Bei mehr als drei aktiven Reisen
-   wäre Gruppieren übersichtlicher, macht aber jede Meldung einen Tipp tiefer.
-4. **Konflikte immer oben?** Vorschlag: ja, solange ungelesen.
+1. **Lesen im Gespräch zählt nicht.** Eine Meldung gilt nicht als gelesen, weil Frieda sie in der Claude-App vorgelesen
+   hat. Ob die Person zugehört hat, weiß Frieda nicht.
+2. **Neue Reise gilt beim Öffnen als gelesen.** Eine Meldung `neue_reise` gilt als gelesen, sobald die Person die Seite
+   dieser Reise einmal angemeldet geöffnet hat (Stufe B).
+3. **Flache Liste nach Zeit.** Keine Gruppen je Reise; die Reise steht klein in jeder Zeile.
+4. **Ungelesene Konflikte stehen immer oben**, auch wenn sie älter sind.
