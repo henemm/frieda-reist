@@ -176,7 +176,7 @@ Eine neue Reise legt eine Person an, keine Reise. Deshalb gibt es neben den Link
 
 | Werkzeug | Was |
 |---|---|
-| `meine_reisen` | die veröffentlichten Reisen, auf denen die Person dabei ist (Schlüssel oder Name in `reise.yaml`), mit Rolle, Status, Link zur Seite und ihrem Link für die Claude-App; davor die Meldungen an sie (mit Konto über alle ihre Reisen, je Zeile mit dem Titel der Reise), danach ihre angefragten neuen Reisen |
+| `meine_reisen` | die veröffentlichten Reisen, auf denen die Person dabei ist (Schlüssel oder Name in `reise.yaml`), mit Rolle, Status, Link zur Seite und ihrem Link für die Claude-App; davor die Meldungen an sie (mit Konto über alle ihre Reisen, je Zeile mit dem Titel der Reise), danach ihre angefragten neuen Reisen. Archivierte Reisen stehen nicht in der Liste, sondern in einer Schlusszeile mit Ordnernamen (#416; nur auf Nachfrage nennen), ansprechbar bleiben sie |
 | `sprache_setzen` | Konto-Werkzeug (alle Rollen), Eingabe `sprache` (de, en …): stellt die Sprache des Kontos ein; sie gilt für Anleitung, Beschreibungen, Antworten, Kontoseiten und Mails (ADR-0006) |
 | `reise_anlegen` | Eingaben `titel`, `von`, `bis` (JJJJ-MM-TT), optional `ziel`, `sprache` (Sprache der Reise, Vorgabe: Sprache des Kontos), `personen` (je `vorname`, `rolle`, `reist`, `notiz`), `notiz` (Bekanntes in eigenen Worten mit Herkunft) und `pfad`; wer anlegt, ist Organisator:innen der neuen Reise |
 

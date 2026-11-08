@@ -1316,6 +1316,8 @@ TEXTE = {
     "konnektor.werkzeug.person_einladen.vorname": "Vorname der einzuladenden Person",
     "konnektor.werkzeug.person_entfernen": "Nur für Organisator:innen: eine Person aus der Reise nehmen. Ihr Zugang (Konto und Links) endet sofort; Beiträge und Verlauf bleiben mit ihrem Namen stehen. Organisator:innen und sich selbst nimmt man so nicht heraus. Vorher bestätigen lassen.",
     "konnektor.werkzeug.personen": "Die Personen dieser Reise lesen: Name, Rolle, ob sie mitreist und ab oder bis wann. Organisator:innen sehen zusätzlich den Zugang jeder Person (angemeldet, eingeladen, noch keiner). E-Mail-Adressen zeigt das Werkzeug nie. Schreibt nichts; einladen und entfernen gehen mit person_einladen und person_entfernen.",
+    "konto.archiv.titel": "Archivierte Reisen ({n})",
+    "konnektor.meine_reisen.archiv": "Archivierte Reisen, ausgeblendet ({n}): {reisen}. Nur nennen, wenn die Person danach fragt; sie bleiben mit diesem Ordnernamen ansprechbar.",
     "konnektor.personen.leer": "In dieser Reise sind noch keine Personen eingetragen.",
     "konnektor.personen.kopf": "Personen dieser Reise ({n}):",
     "konnektor.personen.zeile": "{name} ({rolle}): {angaben}",

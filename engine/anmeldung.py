@@ -126,6 +126,7 @@ details.weitere>.liste-innen>*,details.gelesen>.liste-innen>*{border-top:1px sol
 .zeile.meldung.ungelesen .meldungstext{font-weight:600}.leer{padding:.9rem 1rem;color:var(--mut);font-size:.9375rem}
 .zeile .wert{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%}
 details>.inhalt{padding:0 1rem 1rem;display:flex;flex-direction:column;gap:.5rem}
+.archiv>summary{padding:.7rem .25rem;color:var(--mut);font-size:.9375rem;cursor:pointer}.archiv{margin-top:.5rem}
 .personen summary{padding:.2rem 1rem .7rem;color:var(--mut);font-size:.875rem;cursor:pointer}
 .personen ul{margin:0;padding:0 1rem 1rem 2.2rem;display:flex;flex-direction:column;gap:.3rem;font-size:.9375rem}
 .kalender-links{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 1rem}
@@ -630,7 +631,7 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
     """Mein Konto (Gestalt #60), zugleich die Startseite (#41): Meldungen, Reisen, dann Kalender, Freischaltungen
     (Betreiber), Einstellungen als Liste, unten Abmelden auf allen Geräten und Konto löschen. offen: Einstellung, die
     aufgeklappt erscheint."""
-    zeilen = []
+    zeilen, archiv = [], []
     for m in konten.mitgliedschaften(k["id"]):
         info = reise_info(m["reise"]) or {}
         z = rm.zustand(m["reise"]) or {}
@@ -639,8 +640,13 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
                   f"{rolle_marke(p.get('rolle'))}</span>")
         kopf = (f'<a class="zeile" href="{esc(info["seite"])}">{inhalt}</a>' if info.get("seite")
                 else f'<div class="zeile">{inhalt}</div>')
-        zeilen.append(f'<div class="reise">{kopf}{personen_block(m["reise"], z, p)}</div>')
-    reisen = f'<div class="liste">{"".join(zeilen)}</div>' if zeilen else karte(f'<p class="hinweis">{esc(tx("konto.reisen.keine"))}</p>')
+        (archiv if z.get("status") == "archiv" else zeilen).append(
+            f'<div class="reise">{kopf}{personen_block(m["reise"], z, p)}</div>')
+    reisen = f'<div class="liste">{"".join(zeilen)}</div>' if zeilen else (
+        "" if archiv else karte(f'<p class="hinweis">{esc(tx("konto.reisen.keine"))}</p>'))
+    if archiv:   # archivierte Reisen (auch Testreisen) bleiben erreichbar, stören aber nicht die Liste (#416)
+        reisen += (f'<details class="archiv"><summary>{esc(tx("konto.archiv.titel", n=len(archiv)))}</summary>'
+                   f'<div class="liste">{"".join(archiv)}</div></details>')
     if konten.recht(k, "reise_anlegen"):
         anlegen = f'<p class="hinweis">{esc(tx("konto.reisen.anlegen_darfst"))}</p>'
     else:

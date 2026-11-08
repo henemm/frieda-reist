@@ -342,6 +342,29 @@ def test_seiten_in_der_sprache_des_browsers_und_des_kontos(welt):
     assert meldet(t, "konto.fehler.sprache_unbekannt")
 
 
+def test_archivierte_reisen_ausgeblendet(welt):
+    """#416: Archivierte Reisen stehen nicht in der Liste, sondern eingeklappt darunter (Mein Konto) oder als Schlusszeile
+    (meine_reisen); ansprechbar bleiben sie."""
+    import konnektor as kn
+    u = welt(status="archiv")
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
+    karl, _ = anmelden(u, KARL)
+    t = abruf(f"{u.kurl}/konto", cookie=karl)[2]
+    assert meldet(t, "konto.archiv.titel") and 'class="archiv"' in t
+    oben, unten = t.split('class="archiv"', 1)
+    assert f'href="{SEITE}"' not in oben and f'href="{SEITE}"' in unten
+    assert not meldet(t, "konto.reisen.keine")           # es gibt Reisen, nur archivierte
+    text = kn.meine_reisen_konto(konten.konto_per_email(KARL))
+    assert "Beispielreise – Malerweg" not in text and "reise: beispielreise" not in text
+    assert meldet(text, "konnektor.meine_reisen.archiv") and "beispielreise" in text
+    # eine Reise in Planung bleibt in der Liste (die Beispielreise der anderen Tests)
+    u2 = welt()
+    konten.einladen("beispielreise", "ida", IDA, "organisator", "Ida", "Karl")
+    ida, _ = anmelden(u2, IDA)
+    t = abruf(f"{u2.kurl}/konto", cookie=ida)[2]
+    assert 'class="archiv"' not in t and f'href="{SEITE}"' in t
+
+
 def test_personen_auf_mein_konto(welt):
     """#406: Auf Mein Konto zeigt jede Reise ihre Personen (Name, Rolle, reist mit, von/bis); den Zugang sehen nur
     Organisator:innen. Adressen und Notizen stehen nie dort."""

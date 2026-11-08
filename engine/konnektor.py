@@ -2362,15 +2362,19 @@ def meine_reisen_konto(k):
         gelesen = sum(1 for m in ms if m.get("gelesen"))
         z += [tk("konnektor.ausgabe.meine_reisen.5"), *[meldung_zeile(m, titel.get(m["reise"])) for m in ms if not m.get("gelesen")],
               *([tk("konnektor.ausgabe.meine_reisen.gelesen", n=gelesen)] if gelesen else []), ""]
-    reisen = reisen_des_kontos(k)
-    z.append(tk("konnektor.ausgabe.meine_reisen.1", w1=len(reisen)) if reisen else
-             tk("konnektor.meine_reisen_konto.1"))
+    alle = reisen_des_kontos(k)
+    reisen = [x for x in alle if ((x[2].get("reise") or {}).get("status") or {}).get("wert") != "archiv"]
+    archiv = [x[0] for x in alle if x not in reisen]   # archivierte Reisen aus der Liste nehmen (#416), ansprechbar bleiben sie
+    if reisen or not archiv:
+        z.append(tk("konnektor.ausgabe.meine_reisen.1", w1=len(reisen)) if reisen else tk("konnektor.meine_reisen_konto.1"))
     links = seitenlinks()
     for reise, schl, d in reisen:
         rs = d.get("reise") or {}
         p = next((x for x in personen_der_reise(reise, d) if x.get("schluessel") == schl), {})
         z.append(tk("konnektor.ausgabe.meine_reisen_konto.1", w1=rs.get('titel', reise), w2=rs.get('untertitel', ''), reise=reise, w4=(rs.get('status') or {}).get('wert'), w5=p.get('rolle', '?')))
         z.append(tk("konnektor.ausgabe.meine_reisen.3", w1=links.get(reise) or tk("konnektor.ausgabe.meine_reisen.7")))
+    if archiv:
+        z += ["", tk("konnektor.meine_reisen.archiv", n=len(archiv), reisen=", ".join(archiv))]
     if konten.recht(k, "reise_anlegen"):
         z += ["", tk("konnektor.ausgabe.meine_reisen_konto.2")]
     if o:

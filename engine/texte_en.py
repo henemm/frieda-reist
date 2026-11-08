@@ -1315,6 +1315,8 @@ TEXTE = {
     "konnektor.werkzeug.person_einladen.vorname": "First name of the person to invite",
     "konnektor.werkzeug.person_entfernen": "Organisers only: remove a person from the trip. Their access (account and links) ends at once; contributions and history stay with their name. Organisers and yourself cannot be removed this way. Have it confirmed first.",
     "konnektor.werkzeug.personen": "Read the people on this trip: name, role, whether they travel, and from or until when. Organisers also see each person's access (signed in, invited, none yet). The tool never shows email addresses. It writes nothing; invite and remove with person_invite and person_remove.",
+    "konto.archiv.titel": "Archived trips ({n})",
+    "konnektor.meine_reisen.archiv": "Archived trips, hidden ({n}): {reisen}. Only mention them if the person asks; they can still be addressed by this folder name.",
     "konnektor.personen.leer": "No people are entered on this trip yet.",
     "konnektor.personen.kopf": "People on this trip ({n}):",
     "konnektor.personen.zeile": "{name} ({rolle}): {angaben}",
