@@ -79,6 +79,33 @@ def test_werkzeuge_finden_die_wurzel_des_reisen_repos(tmp_path, monkeypatch):
     assert m.WURZEL == tmp_path
 
 
+def test_overpass_adresse_aus_einstellung(monkeypatch):
+    """#444 (AC-12): punkte_holen und wasser_pruefen fragen FR_OVERPASS; ohne den Wert die bisherige Adresse."""
+    import importlib
+    import urllib.error
+    import urllib.request
+    for adresse, erwartet in (("http://127.0.0.1:9/api/interpreter", "http://127.0.0.1:9/api/interpreter"),
+                              (None, "https://overpass-api.de/api/interpreter")):
+        if adresse:
+            monkeypatch.setenv("FR_OVERPASS", adresse)
+        else:
+            monkeypatch.delenv("FR_OVERPASS", raising=False)
+        ziele = []
+
+        def urlopen(req, timeout=None):
+            ziele.append(req.full_url)
+            raise urllib.error.HTTPError(req.full_url, 400, "kein Netz im Test", {}, None)
+        monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+        ph = importlib.reload(importlib.import_module("punkte_holen"))
+        w = importlib.reload(wp)
+        for aufruf in (lambda: ph.abfrage({"sued": 50.9, "west": 14.0, "nord": 51.0, "ost": 14.1}), lambda: w.abfragen({"node": [1]})):
+            try:
+                aufruf()
+            except urllib.error.HTTPError:
+                pass
+        assert ziele == [erwartet, erwartet], ziele
+
+
 # ---------- werkzeuge/adressen_holen.py: Lage der Unterkünfte aus OSM (ADR-0004), ohne Netz ----------
 import adressen_holen as ah  # noqa: E402
 

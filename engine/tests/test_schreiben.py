@@ -1383,6 +1383,10 @@ def test_zeitgrenzen_liegen_unter_der_des_konnektors():
     assert len(grenzen) == 1 and all(sb.ZEIT_GESAMT + sb.ZEIT_PRUEFUNG < g for g in grenzen), grenzen
     assert sb.ZEIT_GESAMT + sb.ZEIT_PRUEFUNG < 60
     assert sb.ZEIT_SPERRE <= sb.ZEIT_GESAMT
+    # #444 (AC-8): Der eigene Kartendienst teilt sich die bestehenden Fristen, keine wächst
+    import kartendienst
+    assert kartendienst.TEILFRIST_EIGEN == 10 and kartendienst.TEILFRIST_EIGEN < sb.OSM_FRIST_VORAB
+    assert sb.OSM_FRIST_VORAB == 45 and sb.OSM_ZEIT == 12
 
 
 def test_haengendes_vorbereiten_gibt_504_in_der_zeit(repo, monkeypatch):
@@ -2870,3 +2874,56 @@ def test_overpass_adresse_und_kennung(overpass_stummel, monkeypatch):
     with pytest.raises(sb.Ablehnung):
         sb.overpass_holen(ABFRAGE, 5)
     assert ziele == ["https://overpass-api.de/api/interpreter"]
+
+
+# ---------- #444: eigener Kartendienst (Spec docs/specs/betrieb/eigener-kartendienst-444.md) ----------
+#
+# Neue Textschlüssel (alle Sprachen): schreiben.antwort.kartenpunkte.dienst.eigen und .oeffentlich (ohne Platzhalter);
+# Stand der Daten: schreiben.kartenpunkte.quelle bekommt in w1 das Datum aus "stand" statt des Abrufdatums.
+
+def test_kartenpunkte_nennt_stand_und_dienst(repo, monkeypatch):
+    """AC-9: Mit Stand und Dienst in der Antwort nennen Text und Quelle der Dinge den Stand der Daten und den Dienst; der
+    ODbL-Hinweis bleibt. Ohne Stempel steht wie bisher das Abrufdatum."""
+    import texte
+    _, origin, _, _ = repo
+    for dienst in ("eigen", "oeffentlich"):
+        antwort = {"osm3s": {"timestamp_osm_base": "2026-10-01T12:00:00Z"}, "elements": [OSM_NAH],
+                   "dienst": dienst, "stand": "2026-10-01T12:00:00Z"}
+        monkeypatch.setattr(sb, "overpass_abfragen", lambda q, a=antwort: a)
+        s = schreiber(repo)
+        a = s.schreiben("beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
+        assert "2026-10-01" in a["text"] and "ODbL" in a["text"], a["text"]
+        assert texte.t("de", f"schreiben.antwort.kartenpunkte.dienst.{dienst}") in a["text"], a["text"]
+        r, _ = routen_auf_main(origin)
+        brunnen = [d for d in r["aufenthalte"].values() if d.get("an") == "E-01" and d.get("name") == "Brunnen an der Bastei"]
+        assert len(brunnen) == 1 and "2026-10-01" in brunnen[0]["quelle"], brunnen
+    monkeypatch.setattr(sb, "overpass_abfragen", osm_antwort([OSM_NAH]))   # ohne Stempel: Abrufdatum wie bisher
+    a = schreiber(repo).schreiben("beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
+    assert "2026-10-01" not in a["text"] and "ODbL" in a["text"]
+    assert all(texte.t("de", f"schreiben.antwort.kartenpunkte.dienst.{d}") not in a["text"] for d in ("eigen", "oeffentlich"))
+
+
+def test_kartenpunkte_dienstwahl_an_beiden_beispielreisen(repo, speicherweg, overpass_stummel, monkeypatch, tmp_path):
+    """AC-10: Wanderung mit Strecke im erfundenen abgedeckten Rahmen -> eigener Stummel; Strecke außerhalb -> öffentlicher Stummel;
+    Städtewochenende (keine Linie) -> dieselbe Ablehnung wie bisher, kein Abruf an irgendeinen Dienst."""
+    wurzel, _, arbeit, _ = repo
+    eigen = overpass_stummel(200, 200)
+    oeffentlich = overpass_stummel(200, 200)          # setzt FR_OVERPASS als letzter
+    ordner = tmp_path / "kartendienst"
+    ordner.mkdir()
+    abdeckung = ordner / "abdeckung.json"
+    abdeckung.write_text(json.dumps({"stand": "2026-10-01T00:00:00Z", "regionen_pruefsumme": "abc", "rahmen": [[50.5, 13.5, 51.5, 14.5]]}))
+    monkeypatch.setenv("FR_KARTENDIENST", eigen.adresse)
+    monkeypatch.setenv("FR_KARTENDIENST_ORDNER", str(ordner))
+    tom = {"person": "tom", "name": "Tom", "rolle": "organisator"}
+    code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "stadtwochenende", "kartenpunkte_holen",
+                                 {**tom, "args": {"strecke": "E-01", "kategorie": "wasser", "osm": ["amenity=drinking_water"]}})
+    assert code == 422 and not a["ok"], a
+    assert eigen.anfragen == [] and oeffentlich.anfragen == []
+    code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
+    assert code == 200 and a["ok"], a
+    assert len(eigen.anfragen) == 1 and oeffentlich.anfragen == []
+    abdeckung.write_text(json.dumps({"stand": "2026-10-01T00:00:00Z", "regionen_pruefsumme": "abc", "rahmen": [[10.0, 10.0, 11.0, 11.0]]}))
+    code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
+    assert code == 200 and a["ok"], a
+    assert len(eigen.anfragen) == 1 and len(oeffentlich.anfragen) == 1

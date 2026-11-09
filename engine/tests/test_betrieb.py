@@ -2798,3 +2798,103 @@ def test_speicher_reise_mit_ablage_baut_wie_aus_dem_ordner(sp, reise):
     assert "sw.js" in a and "manifest.json" in a
     if reise == "beispielreise":
         assert (daten.get("route") or {}).get("strecken")
+
+
+# ---------- #444: eigener Kartendienst (Spec docs/specs/betrieb/eigener-kartendienst-444.md) ----------
+#
+# Schnittstelle (Entscheidung in der RED-Phase): Die Einheiten des Kartendienstes entstehen nur mit FR_KARTENDIENST_REGIONEN,
+# und zwar in <EI_ZIEL>/kartendienst/ (nicht in <EI_ZIEL>/systemd/, das der Einheiten-Abgleich #260 liest):
+#   <instanz>-kartendienst.socket, <instanz>-kartendienst-proxy.service, <instanz>-kartendienst.service,
+#   <instanz>-kartendienst-aktualisieren.service, <instanz>-kartendienst-aktualisieren.timer
+
+KD_EINHEITEN = ("kartendienst.socket", "kartendienst-proxy.service", "kartendienst.service",
+                "kartendienst-aktualisieren.service", "kartendienst-aktualisieren.timer")
+KD_REGIONEN = {"FR_KARTENDIENST_REGIONEN": "europe/andorra", "FR_KARTENDIENST_ORDNER": "/srv/probe/kartendienst"}
+
+
+def kd_einrichten(tmp_path, *argv, **extra):
+    ziel = tmp_path / "soll"
+    env = {**{k: v for k, v in SAUBER.items() if not k.startswith("EI_")}, "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe",
+           "FR_TITEL": "Probe", "EI_ZIEL": str(ziel), "EI_SYSTEMD": str(tmp_path / "systemd"),
+           "FR_NGINX_SNIPPETS": str(tmp_path / "snippets"), **extra}
+    r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), *argv], env=env, capture_output=True, text=True, timeout=120)
+    return r, ziel
+
+
+def test_einrichten_kartendienst_nur_mit_regionen(tmp_path):
+    """AC-13: Ohne Regionen keine Einheiten und keine Befehle des Kartendienstes; mit Regionen alle fünf, Platzhalter ersetzt,
+    Image per Digest, StopWhenUnneeded, --exit-idle-time, Socket nur auf 127.0.0.1, und die einmaligen Befehle in der Ausgabe."""
+    r, ziel = kd_einrichten(tmp_path, "--erzeugen")
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    assert not [p for p in ziel.rglob("*") if "kartendienst" in p.name]
+    r, _ = kd_einrichten(tmp_path)
+    assert "kartendienst" not in r.stdout.lower(), r.stdout
+    r, ziel = kd_einrichten(tmp_path, "--erzeugen", **KD_REGIONEN)
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    ordner = ziel / "kartendienst"
+    texte_ = {n: (ordner / f"probe-{n}").read_text(encoding="utf-8") for n in KD_EINHEITEN}
+    for name, text in texte_.items():
+        assert not re.search(r"__[A-Z_]+__", text), (name, text)
+    assert not [p for p in (ziel / "systemd").iterdir() if "kartendienst" in p.name]
+    assert re.search(r"ListenStream=127\.0\.0\.1:12345\b", texte_["kartendienst.socket"]), texte_["kartendienst.socket"]
+    assert "--exit-idle-time=15min" in texte_["kartendienst-proxy.service"]
+    assert "BindsTo=probe-kartendienst.service" in texte_["kartendienst-proxy.service"]
+    dienst = texte_["kartendienst.service"]
+    assert re.search(r"wiktorn/overpass-api(:[\w.-]+)?@sha256:[0-9a-f]{64}", dienst), dienst
+    assert "StopWhenUnneeded=yes" in dienst and "2g" in dienst and "/srv/probe/kartendienst" in dienst
+    assert "ExecStartPost=" in dienst and "/api/status" not in dienst
+    assert "OnCalendar=" in texte_["kartendienst-aktualisieren.timer"]
+    assert "kartendienst.sh aktualisieren" in texte_["kartendienst-aktualisieren.service"]
+    r, ziel = kd_einrichten(tmp_path, **KD_REGIONEN, FR_KARTENDIENST_PORT="23456", FR_KARTENDIENST_RUHE="5min",
+                            FR_KARTENDIENST_SPEICHER="3g")
+    assert re.search(r"755 .*/srv/probe/kartendienst|/srv/probe/kartendienst.*755", r.stdout), r.stdout
+    assert "enable --now probe-kartendienst.socket" in r.stdout and "kartendienst.sh einspielen" in r.stdout, r.stdout
+    assert "enable --now probe-kartendienst-aktualisieren.timer" in r.stdout, r.stdout
+    texte_ = {n: (ziel / "kartendienst" / f"probe-{n}").read_text(encoding="utf-8") for n in KD_EINHEITEN}
+    assert "127.0.0.1:23456" in texte_["kartendienst.socket"] and "--exit-idle-time=5min" in texte_["kartendienst-proxy.service"]
+    assert "3g" in texte_["kartendienst.service"]
+
+
+def test_einheitenabgleich_ohne_kartendienst_laerm(tmp_path):
+    """AC-14: Der Abgleich (#260) sieht die Einheiten des Kartendienstes nicht; die feste Menge der Arten bleibt bei sechs."""
+    import importlib.util
+    r, ziel = kd_einrichten(tmp_path, "--erzeugen", **KD_REGIONEN)
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    assert (ziel / "kartendienst" / "probe-kartendienst.service").exists()
+    spec = importlib.util.spec_from_file_location("units_kd", BETRIEB / "units.py")
+    units = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(units)
+    systemd = tmp_path / "systemd"
+    systemd.mkdir(exist_ok=True)
+    for p in (ziel / "systemd").iterdir():
+        shutil.copy(p, systemd / p.name)
+    assert units.pruefen(str(ziel), str(systemd)) == {}
+    helfer = (BETRIEB / "vorlagen" / "units-installieren.py").read_text(encoding="utf-8")
+    assert re.search(r'^ARTEN = \("konnektor", "push", "rueckmeldungen", "schreiben", "veroeffentlichen", "waechter"\)$', helfer, re.M)
+
+
+def test_kartendienst_in_der_modulliste_des_schreibwegs():
+    """AC-18"""
+    assert (ENGINE / "kartendienst.py").exists()
+    assert "kartendienst.py" in _deploy_liste("SB_MODULE")
+
+
+def test_kartendienst_lizenzhinweis_in_doku():
+    """AC-19: docs/betrieb.md und THIRD_PARTY.md nennen Overpass (AGPL), das Image per Digest (nicht mitgeliefert) und die Daten
+    (ODbL, OpenStreetMap)."""
+    for datei in (WURZEL / "docs" / "betrieb.md", WURZEL / "THIRD_PARTY.md"):
+        text = datei.read_text(encoding="utf-8")
+        abschnitt = text[text.lower().index("kartendienst"):] if "kartendienst" in text.lower() else ""
+        assert abschnitt, datei.name
+        for wort in ("Overpass", "AGPL", "wiktorn/overpass-api", "Digest", "ODbL", "OpenStreetMap"):
+            assert wort in abschnitt, (datei.name, wort)
+
+
+def test_einstellungen_des_kartendienstes_dokumentiert():
+    """Spec, Einstellungen der Instanz: alle neuen Werte stehen in einstellungen.beispiel und docs/betrieb.md."""
+    beispiel = (BETRIEB / "einstellungen.beispiel").read_text(encoding="utf-8")
+    doku = (WURZEL / "docs" / "betrieb.md").read_text(encoding="utf-8")
+    for name in ("FR_OVERPASS", "FR_KARTENDIENST", "FR_KARTENDIENST_ORDNER", "FR_KARTENDIENST_REGIONEN", "FR_KARTENDIENST_PORT",
+                 "FR_KARTENDIENST_SPEICHER", "FR_KARTENDIENST_RUHE"):
+        assert re.search(rf"\b{name}=", beispiel), name
+        assert name in doku, name
