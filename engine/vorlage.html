@@ -242,6 +242,13 @@ details.block>.karte.wahl-modul{padding:0 14px 12px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 .ortchips{margin:2px 0 10px;align-items:center}
 details.block>.ortchips{padding:0 14px}
+/* Organismus Entschieden (#450): je Wahlstelle eine Zeile (Titel, darunter leise das Gewählte), aufgeklappt Möglichkeiten */
+details.entschieden>details.entscheidung{border-top:1px solid var(--line);padding:0 14px}
+details.entscheidung>summary{padding:10px 0;cursor:pointer;min-height:44px;display:flex;flex-direction:column;gap:2px}
+details.entscheidung>summary .titel{font-weight:600}
+details.entscheidung>summary .gewaehlt{font-size:var(--t-klein);color:var(--mut)}
+details.entscheidung>.option{padding:0 0 10px}
+details.entscheidung>.etikett{margin:4px 0 6px}
 /* ---------- Umschalter: ein Knopf gedrückt ---------- */
 .umschalter{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px;padding:0;border:0;min-width:0}
 .umschalter button{font:inherit;font-size:var(--t-klein);font-weight:600;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:var(--r-pille);padding:8px 13px;min-height:40px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
@@ -1241,8 +1248,8 @@ function zid(id) {
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke
-   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile, Rechtszeile (HTML im Fuß)
-   Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe
+   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile, entscheidung, Rechtszeile (HTML im Fuß)
+   Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, entschieden, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
    Stile seiner Ebene, auf die Bausteinseite (#bausteine) und in docs/design.md; zeigt er eine Grundform, auch in GRUNDFORMEN.
@@ -3140,6 +3147,38 @@ function ohneTag(m) {
   m.append(el("details", {class: "block ohne-tag"}, el("summary", {}, T("seite.reise.ohne_platz_titel", {n: OHNE_TAG_HIER.length})),
     el("p", {class: "meldung"}, T("seite.reise.ohne_platz_hinweis")), ...OHNE_TAG_HIER.map(id => zeigeDing(id, dichteHier(id, null)))));
 }
+// Organismus Entschieden (#450, ADR-0003 Nachtrag): Heimat der entschiedenen Wahlstellen, die sonst unter „Zur Wahl“ stünden
+// (Reiseteil am Tag, Wahl an einem Ort oder Abschnitt des Wissens). „Zur Wahl“ zeigt nur, was noch zu entscheiden ist; hier
+// steht je Wahlstelle eine Zeile mit dem Gewählten, aufgeklappt Tage, Verlauf (Datum, Person, Grund) und das Verworfene.
+// Wahlen eines Tags, einer Nacht, Strecke oder Unterkunft bleiben am Tag (#214), Wahlen „unterwegs“ an ihrem Platz.
+function gesammelt(w) {
+  if (!w || w.wann !== "planung" || wahlOffen(w) || (w.an || []).length) return false;
+  if (R.tage.some(t => (t.wahlstellen || []).includes(w.id) || (t.nacht || {}).wahl === w.id)) return false;
+  return !(w.an_ids || []).some(x => R.unterkuenfte[x] || R.strecken[x] || ETAPPE_TAG.has(x) || R.tage.some(t => t.id === x) || x in R.weitere_tage);
+}
+const ENTSCHIEDEN = R ? R.wahlstellen.filter(gesammelt) : [];
+for (const w of ENTSCHIEDEN) for (const id of [w.id, ...w.optionen.map(o => o.id)]) zeileZu.set(id, "reise");
+// Molekül Entscheidung: Zeile mit Wahlstelle und Gewähltem; aufgeklappt je Möglichkeit Name, Tage und Verlauf
+function entscheidung(w) {
+  const gewaehlt = w.optionen.filter(o => o.status === "gewaehlt");
+  const zeige = gewaehlt.length ? gewaehlt : w.optionen.filter(o => !weg(o.status)), verw = w.optionen.filter(o => !zeige.includes(o));
+  const moeglichkeit = o => {
+    const tage = (o.tage || []).filter(tid => R.tage.some(t => t.id === tid));
+    return el("div", {class: "option ziel", id: o.id, "data-ziel": o.id}, el("div", {class: "k"}, o.titel, zid(o.id)),
+      tage.length ? el("div", {class: "z klein"}, T("seite.label.im_tagesplan"), tage.flatMap((tid, i) => [i ? ", " : "", link(tid, T("seite.tag.nr_kurz", {nr: R.tage.find(x => x.id === tid).nr}))])) : null,
+      o.verlauf.length ? optionVerlauf(o) : null);
+  };
+  return el("details", {class: "entscheidung ziel", id: w.id, "data-ziel": w.id},
+    el("summary", {}, el("span", {class: "titel"}, w.titel), el("span", {class: "gewaehlt"}, zeige.map(o => o.titel).join(" · "))),
+    ...zeige.map(moeglichkeit),
+    verw.length ? el("div", {class: "etikett"}, T(verw.every(o => weg(o.status)) ? "seite.wahl.verworfen_n" : "seite.wahl.nicht_gewaehlt_n", {n: verw.length})) : null,
+    ...verw.map(moeglichkeit));
+}
+function entschieden(m) {
+  if (!ENTSCHIEDEN.length) return;
+  m.append(el("details", {class: "block entschieden"}, el("summary", {}, T("seite.reise.entschieden_titel", {n: ENTSCHIEDEN.length})),
+    ...ENTSCHIEDEN.map(entscheidung)));
+}
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-kansicht]");
   if (!b) return;
@@ -3403,6 +3442,7 @@ function ansichtReise(m, p) {
   if (ft) r.append(ft);
   const ws = R.warnungen.filter(w => w.bezug === "plan" || p.tage.some(t => t.id === w.bezug));
   if (ws.length) r.append(warnungen(ws));
+  entschieden(r);   // Heimat der entschiedenen Wahlstellen, die sonst unter „Zur Wahl“ stünden, zugeklappt am Ende (#450)
   const liste = el("div", {class: "tagzeilen achse"});
   let teil = null;
   for (const t of p.tage) {
@@ -3804,7 +3844,7 @@ function ansichtTag(m, tid) {
   seite.append(el("div", {class: "tag-oben"}, tagKarte({...t, text: "", wahlstellen: t.wahlstellen || []}, true), ...karten));
   // Reiseteile zur Wahl (Wahlstelle in der Route, ohne an:), deren Heimat dieser Tag ist: das Wahl-Modul über die volle Breite
   const teile = R.wahlstellen.filter(w => !(t.wahlstellen || []).includes(w.id) && w.id !== (t.nacht || {}).wahl && !w.an.length
-    && !(w.an_ids || []).length && heimTag(w.id) === t.id);
+    && !(w.an_ids || []).length && heimTag(w.id) === t.id && !ENTSCHIEDEN.includes(w));   // entschieden: in der Reise (#450)
   if (teile.length) seite.append(el("section", {class: "am-element wahl-voll"}, el("h3", {}, T("seite.wahl.zur_wahl")), teile.map(wahlKarte)));
   const e = etappen.length ? tagEbenen(t, etappen) : {};
   const orte = tagOrte(t);
@@ -4188,7 +4228,7 @@ const GRUNDFORMEN = [
   ["aufenthalt", "Aufenthalt ohne Nacht", "A-01", {zeile: [aufenthaltZeile], vorschau: [listenZeile], karte: [dingKarte], seite: [tagKarte, ohneTag, ansichtOrt, ansichtAbschnitt]}],
   ["buchung", "Buchung zu Aufenthalt oder Bewegung", "B-01", {zeile: [buchungChip], vorschau: [listenZeile], karte: [dingKurzKarte], seite: [buchungBlock]}],
   ["gegenstand", "Gegenstand der Packliste", "G-01", {zeile: [mitnehmenZeile, gegenstandZeile], vorschau: [], karte: [packTabelle, packGruppe], seite: [ansichtPackliste]}],
-  ["wahlstelle", "Wahl: Wahlstelle", "V-01", {zeile: [wahlZeile], vorschau: [listenZeile], karte: [wahlKarte], seite: [wahlEinstieg, wahlVergleich, nachtAbschnitt]}],
+  ["wahlstelle", "Wahl: Wahlstelle", "V-01", {zeile: [wahlZeile], vorschau: [listenZeile], karte: [wahlKarte], seite: [wahlEinstieg, wahlVergleich, nachtAbschnitt, entschieden]}],
   ["option", "Wahl: Option", "V-01.a", {zeile: [optionBlock], vorschau: [wahlVergleich], karte: [wahlVergleich], seite: [optionEinzelheiten]}],
   ["plan", "Folge: Plan", "P-A", {zeile: [planMarke], vorschau: [steckbrief], karte: [], seite: [ansichtPlanDetail]}],
   ["frage", "Offenes: Frage", "F-01", {zeile: [frageZeile], vorschau: [], karte: [dingKurzKarte], seite: [ansichtFragen]}],
@@ -4481,6 +4521,10 @@ function ansichtBausteine(m) {
   { const box = el("div", {}); ohneTag(box);
     teil("Organismus", "Noch ohne Platz", "Aufenthalte ohne Tag, die auch an keinem Element mit eigener Seite hängen: zugeklappt am Ende der Reise, mit dem Hinweis, sie einem Tag oder dem Wissen zuzuordnen (#432).",
       box.childNodes.length ? box : el("p", {class: "meldung"}, "Keine Aufenthalte ohne Platz (Muster entfällt).")); }
+  { const box = el("div", {}); entschieden(box);
+    teil("Organismus", "Entschieden", "Entschiedene Wahlstellen, die sonst unter „Zur Wahl“ stünden (Reiseteil, Wahl an Ort oder Wissen): zugeklappt am Ende der Reise, je Wahlstelle eine Zeile (Molekül Entscheidung) mit dem Gewählten, aufgeklappt Tage, Verlauf und das Nicht-Gewählte (#450).",
+      box.childNodes.length ? box : R && R.wahlstellen.length ? fall("Entscheidung (Muster: erste Wahlstelle der Reise, auch wenn offen)", entscheidung(R.wahlstellen[0]))
+        : el("p", {class: "meldung"}, "Keine Wahlstelle (Muster entfällt).")); }
   { // Ding in Dichte (#332): dieselben Dinge der Reise als Zeile und als Karte, gewählt nach Grundform und Abstand
     const proben = [["Bewegung", Object.keys(R && R.strecken || {})[0]], ["Ort", Object.keys(R && R.orte || {})[0]], ["Buchung", Object.keys(R && R.buchungen || {})[0]],
       ["Frage", (D.fragen.zeilen[0] || {}).id], ["Aufgabe", (AG[0] || {}).id]].filter(([, id]) => id);
@@ -5497,7 +5541,7 @@ const heimTag = id => ETAPPE_TAG.get(id) || (heimat(id) || {}).tag;
 // Wahlstellen anderer Heimat stehen als Zeile mit Link (#214); dazu die Übersichten der Arten, die reise.json „uebersichten“ nennt
 function amElement(m, a) {
   const id = a.id, bereich = (titel, ...inhalt) => m.append(el("section", {class: "am-element"}, el("h3", {}, titel), ...inhalt));
-  const ws = wahlAn([id]);
+  const ws = wahlAn([id]).filter(w => !ENTSCHIEDEN.includes(w));   // entschiedene stehen in der Reise (#450)
   if (ws.length) {
     const karten = ws.filter(w => dichteHier(w.id, id) === "karte"), zeilen = ws.filter(w => !karten.includes(w));
     bereich(T("seite.wahl.zur_wahl"), karten.map(w => zeigeDing(w.id, "karte")), zeilen.length ? el("div", {class: "wliste"}, zeilen.map(w => zeigeDing(w.id, "zeile"))) : null);

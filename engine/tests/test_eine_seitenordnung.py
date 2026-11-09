@@ -191,6 +191,8 @@ def test_genau_einmal_vollstaendig(tmp_path, fall):
     for w in d["route"]["wahlstellen"]:
         if sum(1 for o in w["optionen"] if o["status"] not in ("verworfen", "ersetzt")) < 2:
             continue
+        if fall == "plan_fest" and w["id"] == "V-01":   # entschiedener Reiseteil: kein Vergleich mehr, Heimat „Entschieden“ (#450)
+            continue
         wo = [a["schluessel"] for a in ans for _ in range(a["vergleiche"].get(w["id"], 0))]
         assert len(wo) == 1, (fall, w["id"], wo)
     # Der Link zu einem Ding führt an seine Heimat: dort steht es vollständig
@@ -267,3 +269,23 @@ def test_etappen_bei_offenen_plaenen_wie_bei_festem_plan(tmp_path):
     assert ("etappen" in offen["reiter"]) == ("etappen" in fest["reiter"]), (offen["reiter"], fest["reiter"])
     o, f = offen["tagesseiten"]["T-02"], fest["tagesseiten"]["T-02"]
     assert o["tagseite"] and o["etappe"] == f["etappe"] and f["etappe"], (o, f)   # ganze Etappe E-01 mit Karte am Tag
+
+
+# #450 (PO 9.11.2026): Eine entschiedene Wahlstelle über einen Reiseteil steht nicht mehr unter „Zur Wahl“ am Tag, sondern
+# zugeklappt unter „Entschieden“ am Ende der Reise; Links auf sie und ihre Optionen führen dorthin. Offen bleibt sie am Tag.
+@OHNE_BROWSER
+def test_entschiedene_wahl_steht_unter_entschieden(tmp_path):
+    seiten, d = fall_bauen(tmp_path / "fest", "plan_fest")
+    tage = [t["id"] for t in d["route"]["tage"]]
+    e = im_browser(seiten, "seiten_entschieden.mjs", json.dumps({"tage": tage, "sprung": ["V-01", "V-01.a", "V-01.b"]}))
+    assert e["fehler"] == [], e["fehler"]
+    assert not e["tag"]["v01"] and not e["tag"]["zurWahl"], e["tag"]       # an keinem Tag „Zur Wahl“ oder V-01
+    r = e["reise"]
+    assert r["entschieden"] == 1 and r["zu"], r                                # ein Eintrag, zugeklappt
+    assert r["zeile"].startswith("Letzter Tag: Weg zum Zug") and "Abstieg nach Bad Schandau" in r["zeile"], r
+    assert r["nichtGewaehlt"] == 2, r                                          # die zwei übrigen Möglichkeiten, aufgeklappt
+    for id_, z in e["sprung"].items():                                         # der Link führt in die Reise und klappt auf
+        assert z["reiter"] == "varianten" and z["offen"] and z["imBlock"], (id_, z)
+    seiten_o, d_o = fall_bauen(tmp_path / "offen", "plaene_offen")
+    offen = im_browser(seiten_o, "seiten_entschieden.mjs", json.dumps({"tage": [t["id"] for t in d_o["route"]["tage"]], "sprung": []}))
+    assert offen["tag"]["v01"] and offen["tag"]["zurWahl"] and offen["reise"]["entschieden"] == 0, offen   # offen: am Tag

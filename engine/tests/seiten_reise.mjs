@@ -22,7 +22,9 @@ for (const breite of [390, 1300]) {
     const t = s => [...document.querySelectorAll(s)].map(x => x.textContent.trim());
     return {
       reiter: t("#nav a"), aktiv: (document.querySelector("#nav a.on") || {}).textContent,
-      planname: /\bPlan [A-Z]\b/.test(document.querySelector("#main").textContent),
+      // ohne „Entschieden“ (#450): dort stehen die Titel der gewählten Möglichkeiten, und die Beispielreise nennt darin den Plan
+      planname: /\bPlan [A-Z]\b/.test([...document.querySelector("#main").childNodes].map(function text(n) {
+        return n.nodeType === 1 && n.matches("details.entschieden") ? "" : n.nodeType === 1 ? [...n.childNodes].map(text).join("") : n.textContent; }).join("")),
       steckbriefe: document.querySelectorAll("#main .steckbrief, #main .umschalter").length,
       kopf: t(".reisekopf > *"),
       kennzahlen: t(".reise-zahlen .kz .kzn"),
