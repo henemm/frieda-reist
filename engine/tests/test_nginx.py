@@ -440,7 +440,8 @@ def test_installieren_haengt_fr_sudo_vor_das_hilfsprogramm(abgleich, tmp_path):
     helfer, _, _ = _helfer_attrappe(tmp_path, abgleich["snippets"])
     sudo_log = tmp_path / "sudo.log"
     sudo = tmp_path / "sudo-attrappe"
-    sudo.write_text(f'#!/bin/sh\necho "$@" >> {sudo_log}\nshift\nexec "$@"\n')
+    # printf statt echo: echo nähme das erste Argument „-n“ als eigene Option und schriebe es nicht
+    sudo.write_text(f'#!/bin/sh\nprintf "%s\\n" "$*" >> {sudo_log}\nshift\nexec "$@"\n')
     sudo.chmod(0o755)
     r = _installieren_lauf(abgleich, tmp_path, FR_NGINX_HELFER=str(helfer), FR_SUDO=f"{sudo} -n")
     assert r.returncode == 0, r.stdout + r.stderr
@@ -466,6 +467,7 @@ def test_installieren_ruft_nichts_auf_wenn_mehr_als_die_orte_abweicht(abgleich, 
     assert r.returncode == 3, r.stdout + r.stderr
     assert not protokoll.exists()
     assert "differs" in r.stdout or "missing" in r.stdout or "defines the zone" in r.stdout
+    assert r.stdout.strip().splitlines()[-1].startswith("install skipped: other files differ")     # Gegenprüfung F006
 
 
 def test_installieren_ohne_hilfsprogramm_endet_mit_5_ohne_sudo(abgleich, tmp_path):

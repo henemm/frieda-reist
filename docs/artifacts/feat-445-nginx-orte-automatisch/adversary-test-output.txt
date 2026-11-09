@@ -1,0 +1,66 @@
+# Iteration 2: gezielte Tests (test_nginx, test_nginx_helfer, test_units, test_betrieb, -n 3)
+bringing up nodes...
+bringing up nodes...
+
+........................................................................ [ 20%]
+........................................................................ [ 40%]
+........................................................................ [ 60%]
+........................................................................ [ 81%]
+...................................................................      [100%]
+355 passed in 64.02s (0:01:04)
+
+# Angriff F001: nginx_abgleichen mit Attrappe, installieren-Ausgang x zweite Pruefung gleich/abweichend, je zwei Laeufe
+=== irc=0 second=same
+nginx locations of the connector installed from the template.
+rc=0
+--run2
+nginx locations of the connector installed from the template.
+rc=0
+
+=== irc=2 second=same
+nginx locations of the connector installed from the template.
+rc=0
+--run2
+nginx locations of the connector installed from the template.
+rc=0
+
+=== irc=5 second=same
+Warning: installed nginx blocks differ from the templates.
+MELDEN normal | nginx blocks equal the templates, but the install attempt ended with exit 5 (not reloaded or not secured).~Install attempt: last line 5~
+rc=0
+--run2
+Warning: installed nginx blocks differ from the templates.
+rc=0
+
+=== irc=6 second=same
+Warning: installed nginx blocks differ from the templates.
+MELDEN normal | nginx blocks equal the templates, but the install attempt ended with exit 6 (not reloaded or not secured).~Install attempt: last line 6~
+rc=0
+--run2
+Warning: installed nginx blocks differ from the templates.
+rc=0
+
+=== irc=1 second=same
+Warning: installed nginx blocks differ from the templates.
+MELDEN normal | nginx blocks equal the templates, but the install attempt ended with exit 1 (not reloaded or not secured).~Install attempt: last line 1~
+rc=0
+--run2
+Warning: installed nginx blocks differ from the templates.
+rc=0
+
+=== irc=5 second=diff
+Warning: installed nginx blocks differ from the templates.
+MELDEN normal | diff A~Install attempt: last line 5~
+rc=0
+--run2
+Warning: installed nginx blocks differ from the templates.
+rc=0
+
+=== irc=0 second=diff
+Warning: installed nginx blocks differ from the templates.
+MELDEN normal | diff A~Install attempt: last line 0~
+rc=0
+--run2
+Warning: installed nginx blocks differ from the templates.
+rc=0
+

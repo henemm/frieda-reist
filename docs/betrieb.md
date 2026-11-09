@@ -56,7 +56,7 @@ Jede Instanz ist für ihre Daten selbst verantwortlich; es wird nichts mit ander
 | Belege zu Buchungen | hochladende Person und Organisator:innen, bei Freigabe alle der Reise | werden nie vom Dienst gelöscht, zurückgezogene bleiben als Datei; Löschen nur durch den Betreiber in `<FR_ABLAGE>/<reise>/belege/` | bis zum Löschen der Reise |
 | Sicherungen (Konten-Schnappschuss, Archiv der Ablage) | nur der Betreiber | verschwinden mit der Aufbewahrungsfrist der Sicherung | Frist bestimmt der Betreiber der Instanz |
 
-Diese Tabelle ist die Quelle der Datenschutzerklärung, die der Konnektor unter `/datenschutz` zeigt (#383, Texte in `engine/texte_<sprache>.py`, Entwurf; die rechtliche Prüfung macht der Product Owner). Ändert sich hier etwas, wird die Erklärung im selben PR angepasst; ebenso, wenn Löschen und Export (#381) kommen, die dort noch als „folgt“ stehen. Daneben liefert der Konnektor `/impressum` (Betreiber aus `FR_BETREIBER_*`, Abschnitt „Einstellungen“) und `/alpha` (Alpha-Hinweis); verlinkt sind alle drei aus der Rechtszeile im Fuß der Reiseseiten und auf Warteliste, Anmeldung, Einladung und Mein Konto. Die nginx-Orte dafür stehen in `nginx-konnektor-orte.inc`; auf einer bestehenden Instanz kommen sie mit `nginx.py anwenden` an den Rand (sonst antwortet nginx mit 404).
+Diese Tabelle ist die Quelle der Datenschutzerklärung, die der Konnektor unter `/datenschutz` zeigt (#383, Texte in `engine/texte_<sprache>.py`, Entwurf; die rechtliche Prüfung macht der Product Owner). Ändert sich hier etwas, wird die Erklärung im selben PR angepasst; ebenso, wenn Löschen und Export (#381) kommen, die dort noch als „folgt“ stehen. Daneben liefert der Konnektor `/impressum` (Betreiber aus `FR_BETREIBER_*`, Abschnitt „Einstellungen“) und `/alpha` (Alpha-Hinweis); verlinkt sind alle drei aus der Rechtszeile im Fuß der Reiseseiten und auf Warteliste, Anmeldung, Einladung und Mein Konto. Die nginx-Orte dafür stehen in `nginx-konnektor-orte.inc`; auf einer bestehenden Instanz installiert sie das Hilfsprogramm `nginx-orte-installieren` beim nächsten Veröffentlichen (#445, Abschnitt „nginx-Bausteine abgleichen“; ohne Hilfsprogramm antwortet nginx bis zu `nginx.py anwenden` mit 404).
 
 Die KI-Läufe gehören nicht dazu: Frieda enthält keine eigene KI, Reiseinhalte entstehen im AI-Client der Person über den Konnektor (ADR-0001). Es fallen auf dem Server keine Kosten für KI-Läufe an.
 
@@ -188,9 +188,9 @@ Mail-Einrichtung, lehnt die Seite ab und speichert nichts.
   `betreiber`) schickt die Mail „Du bist dabei“ und gibt das Recht „Reisen anlegen“, auch Adressen mit Konto. Scheitert
   die Mail, meldet der Befehl `ERROR` (Exit 2) und die Seite den Fehler; der Eintrag bleibt wartend, ein zweiter Versuch geht.
 - nginx: `location = /warteliste` (Drossel wie `/anmelden`, weil sie Mails auslöst) und
-  `location ^~ /warteliste/bestaetigen/` (Drossel wie Konto) in `vorlagen/nginx-konnektor-orte.inc`; der Abgleich der
-  nginx-Bausteine meldet die Abweichung als Issue; übernommen wird sie mit `nginx.py anwenden` (von Hand, mit Root-Rechten,
-  siehe „nginx-Bausteine abgleichen“ unten), vorher ist `/warteliste` auf dem Server nicht erreichbar.
+  `location ^~ /warteliste/bestaetigen/` (Drossel wie Konto) in `vorlagen/nginx-konnektor-orte.inc`; neue Orte dieser
+  Datei installiert das Hilfsprogramm `nginx-orte-installieren` beim Veröffentlichen selbst (#445, siehe „nginx-Bausteine
+  abgleichen“ unten), vorher ist `/warteliste` auf dem Server nicht erreichbar.
 
 ## Reise-Stand (Epic #223)
 
@@ -248,6 +248,7 @@ Voraussetzung: `gh` ist für den Dienstbenutzer angemeldet und darf Workflows de
 | `FR_MELDEN` | leer | Meldeweg (unten) |
 | `FR_ROT_MELDEN_NACH_MINUTEN` | `30` | Minuten Rot beim Veröffentlichen bis zum Alarm (Veröffentlichen) |
 | `FR_NGINX_SNIPPETS`, `FR_SUDO` | `/etc/nginx/snippets`, `sudo -n` | nginx-Bausteine und Rechte |
+| `FR_UNITS_HELFER`, `FR_NGINX_HELFER` | `/usr/local/sbin/<instanz>-units-installieren`, `/usr/local/sbin/<instanz>-nginx-orte-installieren` | Hilfsprogramme mit Root-Rechten für Einheiten (#260) und Orte-Datei des Konnektors (#445); ohne sie bleibt es bei der Meldung |
 | `FR_EIGENE_ADRESSEN` | leer | Adressen, die nicht ins Anfragekontingent von nginx zählen, getrennt durch Leerzeichen: die des Servers selbst (die Schleife `127.0.0.1` und `::1` gilt immer). Abschnitt „nginx-Bausteine abgleichen“ |
 | `FR_SPERREN` | `/tmp` | Ordner der Sperrdateien je Reise im Schreibweg; die Sperre des Veröffentlichens liegt in `<FR_DIENST>/veroeffentlichen.lock`, weil der Schreibweg mit privatem `/tmp` läuft und Timer und Schreibweg sie teilen müssen (#211) |
 | `FR_BENUTZER`, `FR_GRUPPE`, `FR_HOME`, `FR_PFAD` | aufrufender Benutzer | nur für `einrichten.sh`: Benutzer und `PATH` der Dienste |
@@ -351,7 +352,7 @@ Einmalig und bewusst (Freigabe des Product Owners, kein Teil des automatischen L
 installieren, die Befehle nennt `einrichten.sh` am Ende seiner Ausgabe. Ohne installiertes Hilfsprogramm bleibt es bei der
 Meldung. Nach einer Änderung der Vorlage `units-installieren.py` muss die Kopie auf dem Server bewusst erneuert werden.
 
-## nginx-Bausteine abgleichen (#206)
+## nginx-Bausteine abgleichen (#206, #445)
 
 Der Konnektor hat drei Drosseln und die Reise-Seiten eine vierte, je Adresse (`betrieb/vorlagen/nginx-zone.conf`, Zonen mit dem Namen der Instanz in einer eigenen
 Datei `conf.d/<instanz>-zone.conf`; eine gemeinsam genutzte Datei wie `limit-req.conf` bleibt unberührt, damit keine Namen streiten):
@@ -367,18 +368,52 @@ mit der der Server eine fremde Adresse aufruft und deren Antwort nach außen wei
 Funktion, wird die Ausnahme vorher neu bewertet.
 
 **Abgleich.** Nach jedem grünen Lauf vergleicht `veroeffentlichen.sh` mit `nginx.py pruefen` die erzeugten Bausteine mit den
-installierten (`conf.d/<instanz>-zone.conf`, `<instanz>-konnektor-orte.inc`, `<instanz>-konnektor.inc`). Bei einer Abweichung kommt genau eine
-normale Meldung mit dem einen Befehl zum Beheben, danach erst wieder bei einer anderen Abweichung (Merker `<FR_DIENST>/nginx-gemeldet`).
-Sind die Bausteine noch nicht eingerichtet, meldet der Abgleich nichts. **Installiert wird nie automatisch:** Jede nginx-Zeile wirkt
-als Root (ein einziger Ort kann Dateien ausliefern oder, weil nginx beim Start als Root Logdateien öffnet, schreiben); es gibt keine
-harmlose Teilmenge wie bei den Einheiten. Ausgang von `nginx.py pruefen`: 0 gleich oder nicht eingerichtet, 3 weicht ab, 1 Fehler.
+installierten (`conf.d/<instanz>-zone.conf`, `<instanz>-konnektor-orte.inc`, `<instanz>-konnektor.inc`). Sind die Bausteine noch nicht
+eingerichtet, meldet der Abgleich nichts. Ausgang von `nginx.py pruefen`: 0 gleich oder nicht eingerichtet, 3 weicht ab, 1 Fehler.
 
-Der Befehl aus der Meldung ist `sudo env … nginx.py anwenden` (von Hand, mit Root-Rechten, weil er `/etc/nginx` ändert; der Betriebsbenutzer braucht dafür keine Rechte, `pruefen` liest nur mit `sudo -n cat` unter `/etc/nginx/`, wie bei den Reise-Bausteinen). Er erzeugt das Soll neu, sichert die installierten Dateien in `<FR_DIENST>/nginx-sicherung/<Zeit>/`, installiert, prüft mit `nginx -t` und lädt nur bei bestandener Prüfung neu; besteht sie nicht, stellt er die gesicherten Dateien (und das Fehlen neuer) wieder her und endet mit Fehler; das gilt auch bei einem Abbruch von Hand. Rechte und Besitzer stellt er nicht einzeln wieder her (Zone 644, Bausteine 640, root). Er läuft nie automatisch.
+**Orte-Datei automatisch (#445, Entscheidung des Product Owners vom 9.11.2026).** Weicht ausschließlich die Orte-Datei
+`<instanz>-konnektor-orte.inc` ab (neuer Ort, geänderter Burst, Kommentar), ruft `veroeffentlichen.sh` `nginx.py installieren` auf. Das übergibt
+das Soll (stdin) an `sudo -n /usr/local/sbin/<instanz>-nginx-orte-installieren` (`FR_SUDO`, `FR_NGINX_HELFER`) und prüft danach erneut.
+Ist dann alles gleich, steht nur eine Zeile im Protokoll und der Merker wird gelöscht; sonst kommt die Meldung unten mit der Zeile
+`Install attempt: …` (letzte Zeile des Versuchs, etwa `helper missing (<Pfad>)` oder `install skipped: other files differ …`). Endete der Versuch mit einem Fehler, obwohl die Datei danach gleich ist (etwa Neuladen gescheitert), kommt ebenfalls einmal eine Meldung. Ausgang von `nginx.py installieren` wie `pruefen`, 5 wenn
+das Hilfsprogramm fehlt oder scheitert (die Meldung nennt dessen Ausgang).
+
+Das Hilfsprogramm (Vorlage `betrieb/vorlagen/nginx-orte-installieren.py`, von `einrichten.sh` mit Instanz, Snippets-Ordner und den drei
+Zonen erzeugt) gehört auf dem Server root und liegt außerhalb des Repos, die Software kann es nicht ändern. Es installiert nur genau
+diese eine Datei und prüft den ganzen neuen Text gegen eine feste Grammatik (Whitelist): oben nur `location`-Blöcke, Kommentar- und
+Leerzeilen; Ortsköpfe `=` und `^~` mit engem Pfadmuster (kein `/` allein, kein `..`, kein `//`; `^~` nur an einer Segmentgrenze, also
+mit `/` am Ende oder unter `/.well-known/`; kein Ort überdeckt `/.well-known/acme-challenge`, die Zertifikatsprüfung), Regex `~` nur verankert `^/…$` mit einem Wort oder einer nicht fangenden Gruppe `(?:a|b)?`;
+im Block je höchstens einmal `limit_req` mit einer der drei Zonen der Instanz, `limit_req_status 429`, `proxy_buffering off`,
+`proxy_read_timeout <Zahl>s` und genau einmal `include <snippets>/<instanz>-konnektor.inc`. Alles andere (`proxy_pass`, `alias`,
+`root`, `return`, `add_header`, `if`, `set`, fremde `include`, Variablen, Anführungszeichen, Steuerzeichen, Nicht-ASCII außerhalb von
+Kommentarzeilen, verschachtelte Blöcke) lehnt die ganze Eingabe ab. Es liest die installierte Datei selbst (kein Symlink, im Besitz von
+root, höchstens 64 KiB), sichert sie nach `/var/lib/<instanz>-nginx-sicherung/` (root, 0700, die letzten 20), ersetzt atomar, prüft mit `nginx -t`,
+stellt bei einem Fehler die Sicherung wieder her und lädt nur nach bestandener Prüfung neu. Es liest weder Umgebung noch Argumente
+für Pfade oder Programme. Ausgang 0 installiert, 2 nichts zu tun, 3 abgelehnt (nichts verändert), 4 `nginx -t` gescheitert und
+zurückgerollt, 5 Neuladen gescheitert (Datei getestet und installiert), 6 Rückweg nicht gesichert (ohne Neuladen). Eine Änderung der
+Vorlage, die die Grammatik verletzt, fällt schon im Test der echten Vorlage auf; eine Erweiterung der Grammatik ist eine eigene,
+geprüfte Änderung.
+
+Einmalig und bewusst je Instanz (wie bei den Einheiten): Hilfsprogramm nach `/usr/local/sbin/` (root:root, 0755) und die
+sudoers-Zeile `<benutzer> ALL=(root) NOPASSWD: /usr/local/sbin/<instanz>-nginx-orte-installieren` installieren; die Befehle nennt
+`einrichten.sh` am Ende seiner Ausgabe. Ohne installiertes Hilfsprogramm bleibt es bei der Meldung. Nach einer Änderung der Vorlage
+`nginx-orte-installieren.py` muss die Kopie auf dem Server bewusst erneuert werden. Grenze: Auf einem Server mit weiter sudo-Regel
+für den Betriebsbenutzer schützt das Hilfsprogramm vor Fehlern (eine falsche Vorlage legt den Webserver nicht lahm), ist aber keine
+Grenze gegen einen kompromittierten Betriebsbenutzer.
+
+**Konnektor-Baustein und Zonendatei bleiben Handweg.** Weicht `<instanz>-konnektor.inc` (Weiterleitung, Kopfzeilen) oder
+`conf.d/<instanz>-zone.conf` (http-Kontext) ab, steht dort eine fremde Zonendefinition oder fehlt die Orte-Datei, installiert der
+automatische Weg nichts. Dann kommt genau eine normale Meldung mit dem einen Befehl zum Beheben, danach erst wieder bei einer anderen
+Abweichung (Merker `<FR_DIENST>/nginx-gemeldet`; der Fingerabdruck kommt nur aus der Prüfung nach dem Versuch). Diese beiden Dateien
+werden nie automatisch installiert: Ihre Zeilen wirken als Root (ein Ort mit eigener Weiterleitung kann Dateien ausliefern oder, weil
+nginx beim Start als Root Logdateien öffnet, schreiben).
+
+Der Befehl aus der Meldung ist `sudo env … nginx.py anwenden` (von Hand, mit Root-Rechten, weil er `/etc/nginx` ändert; der Betriebsbenutzer braucht dafür keine Rechte, `pruefen` liest nur mit `sudo -n cat` unter `/etc/nginx/`, wie bei den Reise-Bausteinen). Er erzeugt das Soll neu, sichert die installierten Dateien in `<FR_DIENST>/nginx-sicherung/<Zeit>/`, installiert alle drei Bausteine, prüft mit `nginx -t` und lädt nur bei bestandener Prüfung neu; besteht sie nicht, stellt er die gesicherten Dateien (und das Fehlen neuer) wieder her und endet mit Fehler; das gilt auch bei einem Abbruch von Hand. Rechte und Besitzer stellt er nicht einzeln wieder her (Zone 644, Bausteine 640, root). `nginx.py anwenden` läuft nie automatisch.
 
 **Hinweis zur Ausnahme:** Die Ausnahme gilt für die Adresse, die nginx sieht (`$remote_addr`). Wird später ein vorgeschalteter Proxy oder CDN verwendet oder `realip` eingeschaltet, erscheint dessen Verkehr als eigene Adresse und wäre unbegrenzt; dann muss die Ausnahme vorher überprüft werden.
 
 **Einmalige Umstellung des Server-Blocks** (bewusst, mit Freigabe des Product Owners): Der Block der Konnektor-Adresse wird auf die Form „fester
-Rahmen plus erzeugter Baustein“ gebracht (`include <snippets>/<instanz>-konnektor-orte.inc;` statt der von Hand gebauten Orte), die Zonendatei
+Rahmen plus erzeugter Baustein“ gebracht (`include <snippets>/<instanz>-konnektor-orte.inc;` statt der früher im Block selbst geschriebenen Orte), die Zonendatei
 kommt nach `conf.d`. Danach gilt der Abgleich. Die Zone `<instanz>_api` der Reise-Bausteine (`nginx-reise.conf`) steht ebenfalls in der eigenen Zonendatei (#316).
 
 **Zone aus einer gemeinsamen Datei umziehen.** Stand die Zone früher in einer gemeinsam genutzten `conf.d/*.conf` (etwa `limit-req.conf`), meldet

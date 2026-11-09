@@ -9,7 +9,8 @@ bewusst installiert (docs/betrieb.md). Nur Standardbibliothek, Start mit -I (kei
 PYTHON-Umgebung). Sie traut dem Aufrufer nichts: Sie liest die installierte Datei selbst, rechnet selbst und lässt sich weder
 durch Umgebung noch durch Argumente auf andere Pfade oder Programme lenken (SYSTEMD und SYSTEMCTL sind fest).
 
-Ausgang: 0 installiert (auf stdout nur der Name der Einheit), 2 nichts zu tun, 3 abgelehnt (Grund auf stderr).
+Ausgang: 0 installiert (auf stdout nur der Name der Einheit), 2 nichts zu tun, 3 abgelehnt (Grund auf stderr), 5 installiert,
+aber systemctl daemon-reload scheiterte (Grund auf stderr).
 
 Installiert wird nur, wenn sich neue und installierte Datei höchstens in den Zeilen der Erlaubnisliste ERLAUBT unterscheiden.
 Alles andere (User, ExecStart, Rechte, Reihenfolge, Abschnitte, Drop-ins, Timer, fremde Einheiten) lehnt sie ab.
@@ -121,11 +122,23 @@ def rest(zeilen_):
 
 
 def neu_laden():
-    subprocess.run([SYSTEMCTL, "daemon-reload"], check=True, env={"PATH": "/usr/bin:/bin"}, stdin=subprocess.DEVNULL)
+    """systemctl daemon-reload; False (Grund auf stderr) wenn es scheitert, nie ein Traceback (#445, Nebenbefund)."""
+    try:
+        r = subprocess.run([SYSTEMCTL, "daemon-reload"], env={"PATH": "/usr/bin:/bin"}, stdin=subprocess.DEVNULL,
+                           capture_output=True, timeout=120)
+    except (OSError, subprocess.SubprocessError) as e:
+        print(f"systemctl daemon-reload could not run: {e}", file=sys.stderr)
+        return False
+    if r.returncode != 0:
+        aus = (r.stderr or r.stdout or b"").decode("utf-8", "replace").strip()
+        print(f"systemctl daemon-reload failed (exit {r.returncode}): {aus[:300]}", file=sys.stderr)
+        return False
+    return True
 
 
 def installieren(einheit, neu, systemd=SYSTEMD, instanz=INSTANZ, neu_laden=neu_laden):
-    """Einheit prüfen und ersetzen. 0 installiert, 2 nichts zu tun; Abgelehnt bei allem anderen."""
+    """Einheit prüfen und ersetzen. 0 installiert, 2 nichts zu tun, 5 installiert, aber daemon-reload gescheitert;
+    Abgelehnt bei allem anderen. neu_laden() meldet ein Scheitern mit False."""
     if not re.fullmatch(re.escape(instanz) + r"-(?:" + "|".join(ARTEN) + r")\.service", einheit or ""):
         raise Abgelehnt("unit not allowed")
     pfad = os.path.join(systemd, einheit)
@@ -168,7 +181,10 @@ def installieren(einheit, neu, systemd=SYSTEMD, instanz=INSTANZ, neu_laden=neu_l
         except FileNotFoundError:
             pass
         raise
-    neu_laden()
+    if neu_laden() is False:
+        # Die Datei ist schon ersetzt; systemd kennt sie erst nach einem erfolgreichen daemon-reload
+        print(f"{einheit} is installed, but systemctl daemon-reload failed", file=sys.stderr)
+        return 5
     return 0
 
 

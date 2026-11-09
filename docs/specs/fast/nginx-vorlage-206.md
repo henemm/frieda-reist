@@ -21,7 +21,7 @@ dem einen Befehl. Es wird nichts automatisch installiert und am Server nichts ge
 ## Was darf sich nicht ändern
 
 - Reise-Bausteine (`nginx-reise.conf`, `freischalten.sh`); die Zone `<instanz>_api` zieht um, siehe zone-api-eigene-datei-316.
-- Nichts am Server, nichts in `/etc`; nginx wird nie automatisch geändert oder neu geladen.
+- Nichts am Server, nichts in `/etc`; nginx wird nie automatisch geändert oder neu geladen. Seit #445 gilt das für die Orte-Datei `<instanz>-konnektor-orte.inc` nicht mehr: Sie installiert ein Hilfsprogramm mit Root-Rechten und fester Grammatik beim Veröffentlichen (`docs/specs/betrieb/nginx-orte-automatisch-445.md`).
 - Ein Fehler im Abgleich stoppt das Veröffentlichen nie.
 
 ## Acceptance Criteria

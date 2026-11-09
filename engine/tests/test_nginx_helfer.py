@@ -15,6 +15,7 @@ Schnittstelle des Hilfsprogramms, die diese Tests festlegen:
 - nginx_testen() und nginx_neu_laden(): Vorgaben für testen/neu_laden, feste Programme und Umgebung.
 """
 import fcntl
+import importlib.machinery
 import importlib.util
 import os
 import re
@@ -57,7 +58,8 @@ def ersetze(text, snippets="/etc/nginx/snippets"):
 
 
 def lade(datei, name="nginx_helfer"):
-    spec = importlib.util.spec_from_file_location(name, datei)
+    # Das erzeugte Hilfsprogramm hat keine Endung .py: Lader ausdrücklich angeben
+    spec = importlib.util.spec_from_file_location(name, datei, loader=importlib.machinery.SourceFileLoader(name, str(datei)))
     modul = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(modul)
     return modul
@@ -108,11 +110,11 @@ def h(tmp_path):
 
 def abgelehnt(h, neu):
     """Ausgang 3 über main, installierte Datei unverändert, kein nginx-Aufruf, keine Reste im Snippets-Ordner."""
-    vorher = h["ziel"].read_bytes() if h["ziel"].exists() else None
+    vorher = h["ziel"].read_bytes() if h["ziel"].is_file() else None
     namen_vorher = sorted(p.name for p in h["snippets"].iterdir())
     assert h["main"](neu) == 3
     assert not h["z"]["tests"] and not h["z"]["laden"]
-    nachher = h["ziel"].read_bytes() if h["ziel"].exists() else None
+    nachher = h["ziel"].read_bytes() if h["ziel"].is_file() else None
     assert nachher == vorher
     assert sorted(p.name for p in h["snippets"].iterdir()) == namen_vorher
 
@@ -254,6 +256,10 @@ NEGATIV = {
     "N-6 Regex mit Schrägstrich": oben(f"location ~ ^/a/b$ {{ {INC} }}"),
     "N-29 Präfix ohne Segmentgrenze": oben(f"location ^~ /r {{ {INC} }}"),
     "N-29 /info ohne Schrägstrich": oben(f"location ^~ /info {{ {INC} }}"),
+    "N-30 acme-challenge mit ^~": oben(f"location ^~ /.well-known/acme-challenge/ {{ {INC} }}"),
+    "N-30 /.well-known/ allein": oben(f"location ^~ /.well-known/ {{ {INC} }}"),
+    "N-30 Präfix überdeckt acme": oben(f"location ^~ /.well-known/a {{ {INC} }}"),
+    "N-30 acme-challenge mit =": oben(f"location = /.well-known/acme-challenge/x {{ {INC} }}"),
     "N-17 ..": oben(f"location = /a/../b {{ {INC} }}"),
     "N-17 .. bei ^~": oben(f"location ^~ /a/../ {{ {INC} }}"),
     "N-17 //": oben(f"location = //x {{ {INC} }}"),
@@ -347,6 +353,14 @@ def test_ac7_als_root_mit_root_eigentum_setzt_root_root(h, monkeypatch):
     assert gesetzt and set(gesetzt) == {(0, 0)}
 
 
+def test_f002_installierte_datei_groesser_als_64_kib_wird_nicht_gekuerzt_gesichert(h, capsys):
+    """Gegenprüfung F002: Eine installierte Datei über 64 KiB lehnt das Hilfsprogramm ab, statt sie gekürzt zu sichern."""
+    h["ziel"].write_text(BASIS + "#" * (64 * 1024) + "\n", encoding="utf-8")
+    abgelehnt(h, NEU)
+    assert not h["sicherung"].exists()
+    assert "larger" in capsys.readouterr().err
+
+
 # ---------- AC-8: Eingabe und Aufruf ----------
 
 @pytest.mark.parametrize("neu", [NEU + "#" * 70000, b"\xff\xfe location", "", "\n\n", "# nur Kommentar\n"],
@@ -379,6 +393,28 @@ def test_ac8_main_liest_stdin_wenn_keine_daten(h, monkeypatch):
     monkeypatch.setattr(sys, "stdin", io.TextIOWrapper(io.BytesIO(NEU.encode())))
     assert h["m"].main(["helfer"], **h["kw"]) == 0
     assert h["ziel"].read_text(encoding="utf-8") == NEU
+
+
+def test_f003_stdin_nicht_lesbar_ist_ausgang_3_ohne_traceback(h, monkeypatch, capsys):
+    """Gegenprüfung F003: Ein Fehler vor jeder Änderung (stdin nicht lesbar) ergibt 3, nicht 6."""
+    import sys
+
+    class Kaputt:
+        class buffer:
+            @staticmethod
+            def read(*a):
+                raise OSError("stdin geschlossen")
+    monkeypatch.setattr(sys, "stdin", Kaputt)
+    assert h["m"].main(["helfer"], **h["kw"]) == 3
+    assert h["ziel"].read_text(encoding="utf-8") == BASIS and not h["z"]["tests"]
+    assert "Traceback" not in capsys.readouterr().err
+
+
+def test_f003_unerwarteter_fehler_nach_beginn_des_ersetzens_ist_6(h, monkeypatch):
+    def testen():
+        raise ValueError("unerwartet")
+    kw = dict(h["kw"], testen=testen)
+    assert h["m"].main(["helfer"], NEU.encode(), **kw) == 6
 
 
 # ---------- AC-9: Sicherung und atomares Ersetzen ----------

@@ -1,0 +1,210 @@
+== pytest: helper, nginx, units, protokolle (engine/.venv/bin/python -m pytest -q) ==
+........................................................................ [ 25%]
+........................................................................ [ 51%]
+........................................................................ [ 76%]
+.................................................................        [100%]
+281 passed in 23.38s
+== pytest: test_betrieb.py -k nginx/einrichten/beispiel/helfer ==
+..................                                                       [100%]
+18 passed, 128 deselected in 18.05s
+== Grammatik-Bypass-Pruefskript (148 Eingaben; Skript im Scratchpad ausserhalb des Repos) ==
+OK basis one-line                       expect=accept got=accept
+OK tab separators                       expect=accept got=accept
+OK multi spaces                         expect=accept got=accept
+OK two blocks one line                  expect=accept got=accept
+OK regex empty                          expect=accept got=accept
+OK regex word                           expect=accept got=accept
+OK regex group opt                      expect=accept got=accept
+OK regex group nonopt                   expect=accept got=accept
+OK leading zeros burst                  expect=accept got=accept
+OK comment with ; and braces            expect=accept got=accept
+OK empty alt                            expect=reject got=reject: regex location not allowed: '^/(?:a||b)$'
+OK empty alt2                           expect=reject got=reject: regex location not allowed: '^/(?:|b)$'
+OK eq dot seg                           expect=reject got=reject: location path not allowed: '/a/./b'
+OK eq dotdot seg                        expect=reject got=reject: location path not allowed: '/a/../b'
+OK eq dotdot                            expect=reject got=reject: location path not allowed: '/..'
+OK eq dot                               expect=reject got=reject: location path not allowed: '/.'
+OK eq dotslash                          expect=reject got=reject: location path not allowed: '/./'
+OK eq //x                               expect=reject got=reject: location path not allowed: '//x'
+OK eq a//b                              expect=reject got=reject: location path not allowed: '/a//b'
+OK eq pct                               expect=reject got=reject: location path not allowed: '/a%2e%2e/b'
+OK eq semicolon                         expect=reject got=reject: only location blocks are allowed at the top level (near 'location = /a
+OK eq dollar                            expect=reject got=reject: location path not allowed: '/a$b'
+OK eq tilde                             expect=reject got=reject: location path not allowed: '/~x'
+OK regex extra token                    expect=reject got=reject: only location blocks are allowed at the top level (near 'location ~ ^/
+OK eq extra token                       expect=reject got=reject: only location blocks are allowed at the top level (near 'location = /a
+OK named location                       expect=reject got=reject: only location blocks are allowed at the top level (near 'location @x {
+OK directive in head                    expect=reject got=reject: only location blocks are allowed at the top level (near 'location = /a
+OK directive in body proxy_pass         expect=reject got=reject: directive not allowed in location /a: 'proxy_pass 127.0.0.1:1'
+OK include other                        expect=reject got=reject: directive not allowed in location /a: 'include /etc/nginx/other.conf'
+OK include .bak                         expect=reject got=reject: directive not allowed in location /a: 'include /etc/nginx/snippets/pro
+OK include dotdot                       expect=reject got=reject: directive not allowed in location /a: 'include /etc/nginx/snippets/../
+OK include double slash                 expect=reject got=reject: directive not allowed in location /a: 'include /etc/nginx/snippets//pr
+OK include glob                         expect=reject got=reject: directive not allowed in location /a: 'include /etc/nginx/snippets/pro
+OK include twice                        expect=reject got=reject: directive include more than once in location /a
+OK no include                           expect=reject got=reject: location /a does not include /etc/nginx/snippets/probe-konnektor.inc
+OK include with extra                   expect=reject got=reject: directive not allowed in location /a: 'include /etc/nginx/snippets/pro
+OK comment LS                           expect=accept got=accept
+OK comment bidi                         expect=accept got=accept
+OK two groups                           expect=reject got=reject: regex location not allowed: '^/(?:a)(?:b)$'
+OK nested group                         expect=reject got=reject: regex location not allowed: '^/(?:(?:a)|b)$'
+OK group lazy                           expect=reject got=reject: regex location not allowed: '^/(?:a)??$'
+OK group star                           expect=reject got=reject: regex location not allowed: '^/(?:a)*$'
+OK group plus                           expect=reject got=reject: regex location not allowed: '^/(?:a)+$'
+OK unanchored start                     expect=reject got=reject: regex location not allowed: '/konto'
+OK no end anchor                        expect=reject got=reject: regex location not allowed: '^/konto'
+OK dotstar                              expect=reject got=reject: regex location not allowed: '^/.*$'
+OK split dollar                         expect=reject got=reject: only location blocks are allowed at the top level (near 'location ~ ^/
+OK double dollar                        expect=reject got=reject: regex location not allowed: '^/a$$'
+OK regex dot                            expect=reject got=reject: regex location not allowed: '^/a.b$'
+OK regex dollar mid                     expect=reject got=reject: regex location not allowed: '^/a$b$'
+OK regex case flag                      expect=reject got=reject: location modifier not allowed: '~*'
+OK modifier none                        expect=reject got=reject: only location blocks are allowed at the top level (near 'location /x {
+OK modifier ^~ root                     expect=reject got=reject: location path not allowed: '/'
+OK eq root                              expect=reject got=reject: location path not allowed: '/'
+OK ^~ /r                                expect=reject got=reject: prefix location must end with / (segment boundary): '/r'
+OK ^~ /info                             expect=reject got=reject: prefix location must end with / (segment boundary): '/info'
+OK ^~ /info/                            expect=accept got=accept
+OK ^~ wellknown oauth-                  expect=accept got=accept
+OK ^~ wellknown no slash                expect=reject got=reject: prefix location must end with / (segment boundary): '/.well-known'
+OK ^~ wellknown dotdot slash            expect=reject got=reject: location path not allowed: '/.well-known/../'
+OK ^~ wellknown dotdot                  expect=reject got=reject: location path not allowed: '/.well-known/..'
+OK ^~ wellknownx                        expect=reject got=reject: prefix location must end with / (segment boundary): '/.well-knownx'
+OK ^~ dotx                              expect=reject got=reject: prefix location must end with / (segment boundary): '/.x'
+OK ^~ dotx/                             expect=accept got=accept
+OK limit_req other zone                 expect=reject got=reject: directive not allowed in location /a: 'limit_req zone=x burst=1 nodela
+OK limit_req zone prefix                expect=reject got=reject: directive not allowed in location /a: 'limit_req zone=probe_mcpx burst
+OK limit_req delay                      expect=reject got=reject: directive not allowed in location /a: 'limit_req zone=probe_mcp burst=
+OK limit_req burst 4 digits             expect=reject got=reject: directive not allowed in location /a: 'limit_req zone=probe_mcp burst=
+OK limit_req burst +1                   expect=reject got=reject: directive not allowed in location /a: 'limit_req zone=probe_mcp burst=
+OK limit_req burst -1                   expect=reject got=reject: directive not allowed in location /a: 'limit_req zone=probe_mcp burst=
+OK limit_req burst fullwidth            expect=reject got=reject: line 1: non-ASCII character outside a comment line
+OK limit_req twice                      expect=reject got=reject: directive limit_req more than once in location /a
+OK limit_req_status 200                 expect=reject got=reject: directive not allowed in location /a: 'limit_req_status 200'
+OK limit_req_status 4290                expect=reject got=reject: directive not allowed in location /a: 'limit_req_status 4290'
+OK prt 5 digits                         expect=reject got=reject: directive not allowed in location /a: 'proxy_read_timeout 12345s'
+OK prt no s                             expect=reject got=reject: directive not allowed in location /a: 'proxy_read_timeout 300'
+OK prt +5s                              expect=reject got=reject: directive not allowed in location /a: 'proxy_read_timeout +5s'
+OK prt 1m                               expect=reject got=reject: directive not allowed in location /a: 'proxy_read_timeout 1m'
+OK prt 0s                               expect=accept got=accept
+OK proxy_buffering on                   expect=reject got=reject: directive not allowed in location /a: 'proxy_buffering on'
+OK alias                                expect=reject got=reject: directive not allowed in location /a: 'alias /etc/'
+OK root                                 expect=reject got=reject: directive not allowed in location /a: 'root /'
+OK return quote                         expect=reject got=reject: line 1: character not allowed: '"'
+OK return                               expect=reject got=reject: directive not allowed in location /a: 'return 200 x'
+OK rewrite                              expect=reject got=reject: directive not allowed in location /a: 'rewrite ^ /x'
+OK add_header                           expect=reject got=reject: directive not allowed in location /a: 'add_header X y'
+OK if                                   expect=reject got=reject: nested block or missing ; in location /a
+OK if no paren                          expect=reject got=reject: nested block or missing ; in location /a
+OK set                                  expect=reject got=reject: directive not allowed in location /a: 'set $a b'
+OK try_files                            expect=reject got=reject: directive not allowed in location /a: 'try_files x =404'
+OK error_page                           expect=reject got=reject: directive not allowed in location /a: 'error_page 404 /x'
+OK limit_req_zone in block              expect=reject got=reject: directive not allowed in location /a: 'limit_req_zone x zone=z:10m rat
+OK limit_req_zone top                   expect=reject got=reject: only location blocks are allowed at the top level (near 'limit_req_zon
+OK server                               expect=reject got=reject: only location blocks are allowed at the top level (near 'server { list
+OK upstream                             expect=reject got=reject: only location blocks are allowed at the top level (near 'upstream x { 
+OK stray directive top                  expect=reject got=reject: only location blocks are allowed at the top level (near 'proxy_pass x 
+OK stray ; top                          expect=reject got=reject: only location blocks are allowed at the top level (near '; location = 
+OK stray } top                          expect=reject got=reject: only location blocks are allowed at the top level (near '} location = 
+OK stray } after                        expect=reject got=reject: only location blocks are allowed at the top level (near '}')
+OK stray { after                        expect=reject got=reject: only location blocks are allowed at the top level (near '{')
+OK nested location                      expect=reject got=reject: nested block or missing ; in location /a
+OK double brace close                   expect=reject got=reject: only location blocks are allowed at the top level (near '}')
+OK unclosed                             expect=reject got=reject: block of location /a not closed
+OK missing ; before }                   expect=reject got=reject: nested block or missing ; in location /a
+OK empty directive ;;                   expect=reject got=reject: empty directive in location /a
+OK empty block                          expect=reject got=reject: location /a does not include /etc/nginx/snippets/probe-konnektor.inc
+OK empty input                          expect=reject got=reject: no location block
+OK only comments                        expect=reject got=reject: no location block
+OK only whitespace                      expect=reject got=reject: no location block
+OK dup head                             expect=reject got=reject: location = /a more than once
+OK dup head diff ws                     expect=reject got=reject: location = /a more than once
+OK dollar in directive                  expect=reject got=reject: directive not allowed in location /a: 'proxy_read_timeout $x'
+OK dollar in head                       expect=reject got=reject: location path not allowed: '/a$b'
+OK quote dq                             expect=reject got=reject: line 1: character not allowed: '"'
+OK quote sq                             expect=reject got=reject: line 1: character not allowed: "'"
+OK backtick                             expect=reject got=reject: line 1: character not allowed: '`'
+OK backslash eol                        expect=reject got=reject: line 1: line continuation
+OK backslash eol in comment             expect=reject got=reject: line 1: line continuation
+OK backslash mid                        expect=reject got=reject: line 1: character not allowed: '\\'
+OK CR                                   expect=reject got=reject: control characters
+OK CR in comment                        expect=reject got=reject: control characters
+OK NUL in comment                       expect=reject got=reject: control characters
+OK VT                                   expect=reject got=reject: control characters
+OK FF                                   expect=reject got=reject: control characters
+OK DEL                                  expect=reject got=reject: control characters
+OK U+0085 in comment                    expect=reject got=reject: control characters
+OK U+0085 as ws                         expect=reject got=reject: control characters
+OK NBSP                                 expect=reject got=reject: line 1: non-ASCII character outside a comment line
+OK U+2028 as ws                         expect=reject got=reject: line 1: non-ASCII character outside a comment line
+OK trailing # comment                   expect=reject got=reject: line 1: character not allowed: '#'
+OK # after }                            expect=reject got=reject: line 1: character not allowed: '#'
+OK hash in head                         expect=reject got=reject: line 1: character not allowed: '#'
+OK amp                                  expect=reject got=reject: line 1: character not allowed: '&'
+OK pipe in directive                    expect=reject got=reject: directive not allowed in location /a: 'proxy_buffering off|'
+OK paren in directive                   expect=reject got=reject: directive not allowed in location /a: 'proxy_buffering (off)'
+OK question in directive                expect=reject got=reject: directive not allowed in location /a: 'proxy_buffering off?'
+OK BOM                                  expect=reject got=reject: line 1: non-ASCII character outside a comment line
+OK invalid utf8                         expect=reject got=reject: not valid UTF-8
+OK overlong utf8                        expect=reject got=reject: not valid UTF-8
+OK >64KiB                               expect=reject got=reject: input too large
+OK exactly 64KiB                        expect=accept got=accept
+OK 65537                                expect=reject got=reject: input too large
+OK zone other instance                  expect=reject got=reject: directive not allowed in location /a: 'limit_req zone=other_mcp burst=
+OK ucase LOCATION                       expect=reject got=reject: only location blocks are allowed at the top level (near 'LOCATION = /a
+OK INCLUDE caps                         expect=reject got=reject: directive not allowed in location /a: 'INCLUDE /etc/nginx/snippets/pro
+OK zone name colon                      expect=reject got=reject: directive not allowed in location /a: 'limit_req zone=probe_mcp:10m bu
+OK path unicode                         expect=reject got=reject: line 1: non-ASCII character outside a comment line
+OK path tab                             expect=reject got=reject: only location blocks are allowed at the top level (near 'location = /a
+MISMATCHES: 0 of 148
+== Ablauf: Ausgaenge, Rueckweg, Sperre, Symlink, FIFO, Umgebung (Scratchpad-Skripte) ==
+success rc 0 stdout probe-konnektor-orte.inc mode 0o640 tests 1 reloads 1 tmp left [] backups 1
+t-fail rc 4 restored True reloads 0 err nginx -t failed with the new probe-konnektor-orte.inc; the previous file is rest
+t-fail-fail rc 6 file==old True reloads 0 err rollback untested: nginx -t fails with the previous probe-konnektor-orte.inc as well (backup in /tmp/tmpr93g44c4/sich/pr
+reload-fail rc 5 file==new True stdout ''
+rollback-fail rc 6 reloads 0 backups 1 tmp left [] err rollback failed: boom; the untested new probe-konnektor-orte.inc is in place, backup in /tmp/tmpermo0wkp/sich/probe-konnektor-orte.inc.20261109T175551
+write-fail rc 3 unchanged True tmp left [] tests 0
+locked rc 3 unchanged True rejected: busy: another run holds the lock
+after unlock rc 0
+symlink rc 3 rejected: installed probe-konnektor-orte.inc missing or not a plain file (not set up autom tests 0
+fifo rc 3 rejected: installed probe-konnektor-orte.inc is not a regular file
+missing rc 3 rejected: installed probe-konnektor-orte.inc missing or not a plain file (not set up autom
+dir rc 3 rejected: installed probe-konnektor-orte.inc is not a regular file
+equal rc 2 backup dir exists False tests 0 reloads 0
+arg rc 3
+noargv rc 3
+25 installs: last rc 0 backups 20
+sicherung symlink rc 3 unchanged True rejected: backup folder /tmp/tmpdv7u_j8z/sich cannot be used: [Errno 20] Not a d
+sperre symlink rc 3 rejected: lock /tmp/tmp0htct5sh/sp cannot be opened: [Errno 40] Too many levels 
+ro snippets rc 3 unchanged True tests 0 rejected: replacing probe-konnektor-orte.inc failed, installed file unchanged: [Errno 13] Permission
+nginx missing rc 3 backup False
+testen raises rc 6 file new unexpected error: RuntimeError: x
+nginx -t could not run: Command '['/usr/sbin/nginx', '-t']' timed out after 1 seconds
+systemctl reload nginx could not run: Command '['/usr/bin/systemctl', 'reload', 'nginx']' timed out after 1 seconds
+nginx -t could not run: x
+subproc (['/usr/sbin/nginx', '-t'], {'PATH': '/usr/sbin:/usr/bin:/sbin:/bin'}, -3, 120) (['/usr/bin/systemctl', 'reload', 'nginx'], {'PATH': '/usr/sbin:/usr/bin:/sbin:/bin'})
+timeout testen -> False reload -> False
+notfound testen -> False
+== F001 Reproduktion: Hilfsprogramm Ausgang 5 (Reload gescheitert), danach pruefen gleich -> nginx_abgleichen schweigt ==
+nginx locations of the connector installed from the template.
+rc=0
+== F002 Reproduktion: installierte Datei > 64 KiB, nginx -t scheitert, Rueckweg schreibt gekuerzte Datei ==
+empty group regex location not allowed: '^/(?:)$'
+group only ? regex location not allowed: '^/?$'
+^~ well-known slash True
+^~ acme True
+eq long path True
+^/-$ True
+lowercase mix True
+big installed: rc 6 restored==original False len orig 70072 len restored 65537
+rollback untested: nginx -t fails with the previous probe-konnektor-orte.inc as well (backup in /tmp/tmpqg56llvr/sich/probe-konnektor-orte.inc.20261109T175605.870421563); not reloaded
+== F003 Reproduktion: stdin geschlossen -> Ausgang 6 statt 3 ==
+closed stdin rc 6 unexpected error: AttributeError: 'NoneType' object has no attribute 'buffer'
+
+== Hilfsprogramm als Skript (ohne Root): Argumente, Groesse, Kodierung, kein Traceback ==
+valid input, no lock dir perms rc 3 stdout b'' stderr rejected: lock /var/lib/probe-nginx-orte-installieren.sperre cannot be opened: [Errno 13] Permission denied: ' 
+arg rc 3 stdout b'' stderr usage: no arguments (new file on stdin) |  
+70000 bytes rc 3 stdout b'' stderr rejected: input too large |  
+bad utf8 rc 3 stdout b'' stderr rejected: lock /var/lib/probe-nginx-orte-installieren.sperre cannot be opened: [Errno 13] Permission denied: ' 
+empty rc 3 stdout b'' stderr rejected: lock /var/lib/probe-nginx-orte-installieren.sperre cannot be opened: [Errno 13] Permission denied: ' 
+server rc 3 stdout b'' stderr rejected: lock /var/lib/probe-nginx-orte-installieren.sperre cannot be opened: [Errno 13] Permission denied: ' 

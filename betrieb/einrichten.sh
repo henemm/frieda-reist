@@ -103,6 +103,8 @@ ersetze "$FR_BETRIEB/vorlagen/nginx-zone.conf" "$ZIEL/nginx/$FR_INSTANZ-zone.con
 # Hilfsprogramm mit Root-Rechten für den Abgleich der Einheiten (#260): wird bewusst einmal installiert (docs/betrieb.md)
 mkdir -p "$ZIEL/sbin"
 ersetze "$FR_BETRIEB/vorlagen/units-installieren.py" "$ZIEL/sbin/$FR_INSTANZ-units-installieren"
+# Hilfsprogramm mit Root-Rechten für die Orte-Datei des Konnektors (#445): ebenso einmal bewusst installiert
+ersetze "$FR_BETRIEB/vorlagen/nginx-orte-installieren.py" "$ZIEL/sbin/$FR_INSTANZ-nginx-orte-installieren"
 if grep -rn "__[A-Z_]*__" "$ZIEL" > /dev/null; then
   problem "placeholder not replaced: $(grep -rho "__[A-Z_]*__" "$ZIEL" | sort -u | tr '\n' ' ')"
 fi
@@ -135,6 +137,9 @@ freischalten.sh needs: sudo -n nginx -t, systemctl reload nginx, install/test/ca
 Units helper (#260, once, deliberately; without it only differences are reported, nothing is installed):
   sudo install -m 755 -o root -g root $ZIEL/sbin/$FR_INSTANZ-units-installieren /usr/local/sbin/
   sudoers for $FR_BENUTZER: NOPASSWD: /usr/local/sbin/$FR_INSTANZ-units-installieren
+nginx locations helper (#445, once, deliberately; installs only $FR_INSTANZ-konnektor-orte.inc, without it only differences are reported):
+  sudo install -m 755 -o root -g root $ZIEL/sbin/$FR_INSTANZ-nginx-orte-installieren /usr/local/sbin/
+  sudoers for $FR_BENUTZER: NOPASSWD: /usr/local/sbin/$FR_INSTANZ-nginx-orte-installieren
 TEXT
 
 if [ "$probleme" -gt 0 ]; then echo; echo "$probleme prerequisite(s) missing."; [ -z "$INSTALLIEREN" ] || exit 1; exit 2; fi

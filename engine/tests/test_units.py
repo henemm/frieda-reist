@@ -194,6 +194,20 @@ def test_installieren_ohne_hilfsprogramm_meldet_ausgang_5(tmp_path):
     assert "is not installed" in r.stdout and "FR_ZEITZONE" not in r.stdout, r.stdout
 
 
+def test_installieren_hilfsprogramm_ausgang_5_endet_mit_5(tmp_path):
+    """#445, AC-21: Scheitert daemon-reload im Hilfsprogramm (Ausgang 5, Datei schon ersetzt), meldet units.py das als Fehler."""
+    systemd, env = _installierte_einheiten(tmp_path)
+    protokoll = _attrappen(tmp_path, env, systemd)
+    helfer = tmp_path / "helfer.sh"
+    helfer.write_text(f'#!/bin/sh\necho "helfer $1" >> {protokoll}\ncat > {systemd}/$1\n'
+                      'echo "systemctl daemon-reload failed" >&2\nexit 5\n')
+    konnektor = systemd / "probe-konnektor.service"
+    konnektor.write_text(re.sub(r"(?m)^Environment=FR_ZEITZONE=.*\n", "", konnektor.read_text()))
+    r = _installieren(env)
+    assert r.returncode == 5, (r.stdout, r.stderr)
+    assert "exit 5" in r.stdout and "daemon-reload failed" in r.stdout, r.stdout
+
+
 def test_installieren_ohne_abweichung_tut_nichts(tmp_path):
     systemd, env = _installierte_einheiten(tmp_path)
     protokoll = _attrappen(tmp_path, env, systemd)

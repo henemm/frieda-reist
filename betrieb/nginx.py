@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
-"""Abgleich der nginx-Bausteine einer Instanz mit den Vorlagen (#206, #260).
+"""Abgleich der nginx-Bausteine einer Instanz mit den Vorlagen (#206, #260, #445).
 
     nginx.py pruefen   erzeugt die Soll-Bausteine (einrichten.sh --erzeugen) in einem Temp-Ordner, vergleicht sie mit den
                        installierten (Zonendatei in conf.d, Konnektor-Baustein und .inc in den Snippets) und sagt, was abweicht,
-                       mit dem einen Befehl zum Beheben. Installiert nie etwas und schreibt nie unter /etc: Jede nginx-Zeile
-                       wirkt als Root, deshalb bleibt das Installieren ein bewusster Schritt eines Menschen.
+                       mit dem einen Befehl zum Beheben. Installiert nichts und schreibt nie unter /etc.
                        Ausgang: 0 gleich (oder die Instanz hat die Bausteine noch nicht eingerichtet: kein Abgleich), 3 weicht ab, 1 Fehler.
+
+    nginx.py installieren
+                       seit #445: weicht ausschließlich die Orte-Datei <instanz>-konnektor-orte.inc ab, übergibt er ihr Soll auf
+                       stdin dem Hilfsprogramm mit Root-Rechten (FR_NGINX_HELFER, Vorgabe /usr/local/sbin/<instanz>-nginx-orte-installieren;
+                       davor FR_SUDO, Vorgabe „sudo -n“). Das Hilfsprogramm prüft die Datei gegen eine feste Grammatik, sichert,
+                       installiert, prüft mit „nginx -t“ (sonst Rückweg) und lädt neu. Danach prüft er erneut. Weicht noch etwas
+                       anderes ab (Konnektor-Baustein, Zonendatei, fremde Zone) oder fehlt die Orte-Datei, ruft er nichts auf und gibt
+                       die Abweichungen aus. Läuft automatisch beim Veröffentlichen. Ausgang wie pruefen; 5, wenn das Hilfsprogramm
+                       fehlt oder scheitert (mit dessen Ausgang).
 
     nginx.py anwenden  der Befehl aus der Meldung, von Hand mit Root-Rechten (sudo env … nginx.py anwenden): erzeugt das Soll neu, sichert die installierten Dateien
                        nach <FR_DIENST>/nginx-sicherung/<Zeit>, installiert (sudo), prüft mit „nginx -t“ und lädt erst bei bestandener
                        Prüfung neu; besteht sie nicht, stellt er die Sicherung wieder her (neue Dateien werden entfernt) und endet mit 1.
-                       Läuft nie automatisch. Ausgang: 0 angewendet (oder nichts zu tun), 1 Fehler oder zurückgerollt.
+                       Läuft nie automatisch: Konnektor-Baustein und Zonendatei (proxy_pass, Kopfzeilen, http-Kontext) bleiben ein
+                       bewusster Schritt eines Menschen. Ausgang: 0 angewendet (oder nichts zu tun), 1 Fehler oder zurückgerollt.
 
 Die Zone der Reise-Bausteine (<instanz>_api) steht in <instanz>-zone.conf. Steht sie noch in einer anderen conf.d/*.conf (früher die
 gemeinsame Drossel-Datei), meldet „pruefen“ das, und „anwenden“ entfernt dort genau die Zeile (mit dem Kommentarblock direkt darüber) im selben Lauf
@@ -94,25 +103,34 @@ def fremde_zone(instanz, confd, sudo):
     return erg
 
 
-def pruefen(ziel, instanz, confd, snippets, sudo):
-    """Liste von Text-Blöcken zu Abweichungen; leer = gleich. None = nichts eingerichtet (keine der Dateien installiert)."""
+def abweichungen(ziel, instanz, confd, snippets, sudo):
+    """(Text-Blöcke, Befunde) zu Abweichungen; Befunde sind Paare (Datei, „differs“ | „missing“ | „zone“). (None, None) =
+    nichts eingerichtet (keine der Dateien installiert)."""
     ist = {n: lies(os.path.join(ordner, n), sudo) for n, ordner in dateien(instanz, confd, snippets)}
     if all(v is None for v in ist.values()):
-        return None
-    erg = []
+        return None, None
+    erg, befunde = [], []
     for name, ordner in dateien(instanz, confd, snippets):
         soll = lies(os.path.join(ziel, "nginx", name), [])
         if ist[name] is None:
             erg.append(f"{name}: missing in {ordner}")
+            befunde.append((name, "missing"))
         elif ist[name] != soll:
             diff = list(difflib.unified_diff(ist[name].splitlines(), soll.splitlines(), "installed", "template", lineterm="", n=1))
             kopf = "\n".join(diff[:40]) + (f"\n… ({len(diff) - 40} more lines)" if len(diff) > 40 else "")
             erg.append(f"{name}: differs from the template ({ordner})\n{kopf}")
+            befunde.append((name, "differs"))
     zone = instanz.replace("-", "_") + "_api"
     for pfad, (alt, neu, _) in fremde_zone(instanz, confd, sudo).items():
         diff = list(difflib.unified_diff(alt.splitlines(), neu.splitlines(), "installed", "without the zone", lineterm="", n=1))
         erg.append(f"{os.path.basename(pfad)}: defines the zone {zone}, which belongs in {instanz}-zone.conf ({confd})\n" + "\n".join(diff[:40]))
-    return erg
+        befunde.append((os.path.basename(pfad), "zone"))
+    return erg, befunde
+
+
+def pruefen(ziel, instanz, confd, snippets, sudo):
+    """Liste von Text-Blöcken zu Abweichungen; leer = gleich. None = nichts eingerichtet (keine der Dateien installiert)."""
+    return abweichungen(ziel, instanz, confd, snippets, sudo)[0]
 
 
 MODI = {"zone": "644", "orte": "640"}
@@ -200,8 +218,57 @@ def befehl(instanz, dienst, snippets):
     return f"sudo env {gesetzt} {shlex.quote(os.path.abspath(__file__))} anwenden"
 
 
+def ausgeben(erg, instanz, dienst, confd, snippets):
+    """Ergebnis von pruefen ausgeben; Ausgang 0 (gleich oder nicht eingerichtet) oder 3 (weicht ab)."""
+    if erg is None:
+        print(f"nginx blocks of {instanz} are not set up ({confd}, {snippets}): no comparison.")
+        return 0
+    if not erg:
+        return 0
+    print("\n".join(erg))
+    print("To fix, after checking the differences (backs up the installed files, installs, tests nginx, reloads only if the test passes, "
+          "otherwise restores the backup; run by hand with root rights):")
+    print(befehl(instanz, dienst, snippets))
+    return 3
+
+
+def installieren(ziel, dienst, instanz, confd, snippets, sudo):
+    """Nur die Orte-Datei weicht ab: über das Hilfsprogramm mit Root-Rechten installieren (#445), danach erneut prüfen.
+    Ausgang wie pruefen, 5 wenn das Hilfsprogramm fehlt oder mit einem Ausgang außer 0 und 2 endet."""
+    orte = f"{instanz}-konnektor-orte.inc"
+    erg, befunde = abweichungen(ziel, instanz, confd, snippets, sudo)
+    if befunde != [(orte, "differs")]:
+        # nichts abweichend, nicht eingerichtet, oder mehr als die Orte-Datei: kein Aufruf, nur die Abweichungen; die letzte
+        # Zeile fasst zusammen (veroeffentlichen.sh nimmt sie für „Install attempt:“, ohne die Liste zu wiederholen)
+        rc = ausgeben(erg, instanz, dienst, confd, snippets)
+        if befunde:
+            print(f"install skipped: other files differ (only a differing {orte} is installed automatically)")
+        return rc
+    helfer = os.environ.get("FR_NGINX_HELFER") or f"/usr/local/sbin/{instanz}-nginx-orte-installieren"
+    if not os.path.exists(helfer):
+        print(f"helper missing ({helfer})")
+        return 5
+    with open(os.path.join(ziel, "nginx", orte), "rb") as f:
+        soll = f.read()
+    try:
+        r = subprocess.run(sudo + [helfer], input=soll, capture_output=True, timeout=180)
+        rc, grund = r.returncode, (r.stderr or r.stdout).decode("utf-8", "replace").strip()
+        grund = " | ".join(z.strip() for z in grund.splitlines() if z.strip())      # eine Zeile für die Meldung
+    except (OSError, subprocess.SubprocessError) as e:
+        rc, grund = "not started", str(e)
+    if rc not in (0, 2):
+        bedeutung = {3: "rejected, nothing changed", 4: "nginx -t failed, previous file restored",
+                     5: "installed and tested, but nginx reload failed", 6: "rollback not secured, not reloaded"}.get(rc, "unknown")
+        print(f"helper {os.path.basename(helfer)} failed (exit {rc}, {bedeutung}): {grund[:300]}")
+        return 5
+    erneut = pruefen(ziel, instanz, confd, snippets, sudo)
+    if rc == 0 and not erneut:
+        print(f"{orte} installed by the helper, nginx tested and reloaded.")
+    return ausgeben(erneut, instanz, dienst, confd, snippets)
+
+
 def main(argv):
-    if argv not in (["pruefen"], ["anwenden"]):
+    if argv not in (["pruefen"], ["anwenden"], ["installieren"]):
         print(__doc__, file=sys.stderr)
         return 1
     instanz, dienst = os.environ.get("FR_INSTANZ", ""), os.environ.get("FR_DIENST", "")
@@ -219,20 +286,13 @@ def main(argv):
             erzeugen(ziel)
             if argv == ["anwenden"]:
                 return anwenden(ziel, dienst, instanz, confd, snippets, sudo)
+            if argv == ["installieren"]:
+                return installieren(ziel, dienst, instanz, confd, snippets, sudo)
             erg = pruefen(ziel, instanz, confd, snippets, sudo)
     except (RuntimeError, OSError, subprocess.SubprocessError) as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
-    if erg is None:
-        print(f"nginx blocks of {instanz} are not set up ({confd}, {snippets}): no comparison.")
-        return 0
-    if not erg:
-        return 0
-    print("\n".join(erg))
-    print("To fix, after checking the differences (backs up the installed files, installs, tests nginx, reloads only if the test passes, "
-          "otherwise restores the backup; run by hand with root rights):")
-    print(befehl(instanz, dienst, snippets))
-    return 3
+    return ausgeben(erg, instanz, dienst, confd, snippets)
 
 
 if __name__ == "__main__":

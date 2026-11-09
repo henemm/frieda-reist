@@ -14,6 +14,8 @@
 # „no-referrer“ hier: Der Dienst setzt „same-origin“, sonst schicken Browser „Origin: null“ und jede Anmeldung scheitert
 # an der Prüfung der Herkunft. Cache-Control, Content-Security-Policy und nosniff setzt ebenfalls der Dienst.
 # Präfix-Orte (^~) und genaue Orte (=) gehen allgemeinen Regeln für Dateiendungen im server-Block vor.
+# Diese Datei installiert das Hilfsprogramm nginx-orte-installieren beim Veröffentlichen selbst (#445); sie muss dessen Grammatik
+# einhalten (nur location-Blöcke mit den dort erlaubten Anweisungen, Regex nur verankert mit nicht fangender Gruppe (?:…)).
 
 # Drosseln (Zonen aus nginx-zone.conf, je Adresse; eigene Adressen zählen nicht): /mcp großzügig, weil die Claude-App von
 # gemeinsamen Adressen aus aufruft; Anmelden streng; Konto und Seiten im Browser 30/min. /token, /register und die
@@ -63,7 +65,7 @@ location = /token                  { include __SNIPPETS__/__INSTANZ__-konnektor.
 location = /register               { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 location ^~ /.well-known/oauth-    { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 # Startseite (/ führt angemeldet zu Mein Konto, #41, sonst zur Infoseite, #436), Konto, Abmelden, Zustimmung, Bereitschaft (ohne Dateiendung, deshalb trifft keine Regel für Endungen)
-location ~ ^/(konto|abmelden|authorize|gesund)?$ {
+location ~ ^/(?:konto|abmelden|authorize|gesund)?$ {
     limit_req zone=__ZONE_KONTO__ burst=20 nodelay;
     limit_req_status 429;
     include __SNIPPETS__/__INSTANZ__-konnektor.inc;

@@ -92,6 +92,11 @@ FR_ADRESSE=https://reisen.example.org
 # nginx: Ordner der Bausteine und Befehl für Rechte (leer = ohne sudo). (/etc/nginx/snippets, sudo -n)
 #FR_NGINX_SNIPPETS=/etc/nginx/snippets
 #FR_SUDO=sudo -n
+# Hilfsprogramme mit Root-Rechten, einmal bewusst installiert (einrichten.sh nennt Befehl und sudoers-Zeile, docs/betrieb.md):
+# für die systemd-Einheiten (#260) und für die Orte-Datei des Konnektors (#445). Ohne Hilfsprogramm bleibt es bei der Meldung.
+# (/usr/local/sbin/<instanz>-units-installieren, /usr/local/sbin/<instanz>-nginx-orte-installieren)
+#FR_UNITS_HELFER=/usr/local/sbin/beispiel-units-installieren
+#FR_NGINX_HELFER=/usr/local/sbin/beispiel-nginx-orte-installieren
 
 # Ordner für Sperrdateien. (/tmp)
 #FR_SPERREN=/tmp

@@ -652,13 +652,27 @@ units_abgleichen() {
   return 0
 }
 
-# nginx-Bausteine abgleichen (#206): Weichen die installierten Bausteine (Zonen, Konnektor) von den Vorlagen ab, genau eine normale
-# Meldung je Abweichung mit dem einen Befehl zum Beheben (Fingerabdruck in <FR_DIENST>/nginx-gemeldet). Installiert nie etwas:
-# jede nginx-Zeile wirkt als Root, das Installieren bleibt ein bewusster Schritt (docs/betrieb.md). Ein Fehler hier stoppt nichts.
+# nginx-Bausteine abgleichen (#206, #445): Weicht nur die Orte-Datei des Konnektors ab, installiert sie das Hilfsprogramm mit
+# Root-Rechten (nginx.py installieren, Grammatik, nginx -t mit Rückweg; ohne Hilfsprogramm bleibt es bei der Meldung). Was danach
+# noch abweicht (Konnektor-Baustein, Zonendatei: bewusster Schritt mit nginx.py anwenden, docs/betrieb.md), meldet genau eine
+# normale Meldung je Abweichung mit dem Ergebnis des Versuchs (letzte Zeile der Ausgabe von installieren). Der Fingerabdruck
+# (<FR_DIENST>/nginx-gemeldet) kommt aus der zweiten Prüfung, nicht aus dem Text des Versuchs. Ist danach alles gleich, aber der
+# Versuch endete nicht mit 0 oder 2 (etwa 5: installiert, Neuladen gescheitert), wird das ebenso einmal gemeldet (Fingerabdruck aus
+# dem Ausgang). Kein Alarm; ein Fehler hier stoppt nichts.
 nginx_abgleichen() {
-  local aus rc=0 merker="$FR_DIENST/nginx-gemeldet" fp
+  local aus rc=0 merker="$FR_DIENST/nginx-gemeldet" fp inst="" irc="" kurz
   local abgleich="${VF_NGINX:-$FR_BETRIEB/nginx.py}"
   aus="$("$abgleich" pruefen 2>&1)" || rc=$?
+  if [ "$rc" = 3 ]; then
+    irc=0; inst="$("$abgleich" installieren 2>&1)" || irc=$?
+    rc=0; aus="$("$abgleich" pruefen 2>&1)" || rc=$?
+    if [ "$rc" = 0 ]; then
+      case "$irc" in
+        0|2) echo "nginx locations of the connector installed from the template." ;;
+        *) rc=3; aus="nginx blocks equal the templates, but the install attempt ended with exit $irc (not reloaded or not secured)." ;;
+      esac
+    fi
+  fi
   case "$rc" in
     0) rm -f "$merker"; return 0 ;;
     3) ;;
@@ -667,7 +681,8 @@ nginx_abgleichen() {
   fp="$(printf '%s' "$aus" | sha256sum | cut -d' ' -f1)"
   echo "Warning: installed nginx blocks differ from the templates."
   if [ "$(cat "$merker" 2>/dev/null || true)" != "$fp" ]; then
-    if fr_melden normal "nginx blocks differ from the templates" "$aus"; then
+    kurz="$(printf '%s\n' "$inst" | sed '/^[[:space:]]*$/d' | tail -n 1)"
+    if fr_melden normal "nginx blocks differ from the templates" "$aus"$'\n'"Install attempt: ${kurz:-no output}"; then
       { mkdir -p "$(dirname "$merker")" && echo "$fp" > "$merker"; } || true
     fi
   fi

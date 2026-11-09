@@ -1926,7 +1926,7 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     inc = (aus / "nginx/probe-konnektor.inc").read_text()
     # Konnektor an der Wurzel (#163): /mcp, Anmeldung, OAuth; der alte Pfad bleibt für Links aus der Zeit vor den Konten
     assert "location = /mcp" in nginx and "location = /anmelden" in nginx and "location = /token" in nginx
-    assert "location ~ ^/(konto|abmelden|authorize|gesund)?$" in nginx     # /info/ (Infoseite, #440) über den Ort der Bilder
+    assert "location ~ ^/(?:konto|abmelden|authorize|gesund)?$" in nginx    # /info/ (Infoseite, #440) über den Ort der Bilder
     assert "location ^~ /.well-known/oauth-" in nginx and "location ^~ /schrift/" in nginx and "location ^~ /info/" in nginx and "location = /favicon.ico" in nginx
     assert "zone=probe_konto" in nginx
     # die Links aus der Zeit vor den Konten sind auf dem Server abgeschaltet: die Vorlage öffnet sie nicht wieder (#206)
@@ -2335,6 +2335,39 @@ def test_veroeffentlichen_nginx_ohne_hilfsprogramm_meldet_einmal(vf):
     assert vf["lauf"](VF_NGINX=str(stub)).returncode == 0
     assert len([z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]) == 1
     assert not hoch(vf)
+
+
+def test_veroeffentlichen_nginx_installiert_aber_reload_gescheitert_meldet_einmal(vf):
+    """Gegenprüfung F001: installieren endet mit 5 (Datei installiert, Neuladen gescheitert), die zweite Prüfung ist gleich:
+    trotzdem genau eine normale Meldung mit „Install attempt“, beim nächsten Lauf mit gleichem Zustand keine weitere."""
+    marker = vf["tmp"] / "nginx-versucht"
+    stub = ausfuehrbar(vf["tmp"] / "nginx-reload.sh",
+                       f'#!/bin/sh\nif [ "$1" = installieren ]; then touch {marker}; '
+                       'echo "helper probe-nginx-orte-installieren failed (exit 5, installed and tested, but nginx reload failed): x"; exit 5; fi\n'
+                       f'if [ -e {marker} ]; then rm -f {marker}; exit 0; fi\n'
+                       'echo "probe-konnektor-orte.inc: differs from the template"\nexit 3\n')
+    r = vf["lauf"](VF_NGINX=str(stub))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "installed from the template" not in r.stdout + r.stderr
+    log = vf["zeilen"]("melden.log")
+    assert len([z for z in log if z.startswith("normal|")]) == 1
+    assert any(z.startswith("Install attempt: helper probe-nginx-orte-installieren failed (exit 5") for z in log), log
+    assert (vf["tmp"] / "dienst" / "nginx-gemeldet").exists()
+    vf["neuer_commit"]()
+    assert vf["lauf"](VF_NGINX=str(stub)).returncode == 0
+    assert len([z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]) == 1
+    assert not hoch(vf)
+
+
+def test_veroeffentlichen_nginx_install_attempt_wiederholt_die_liste_nicht(vf):
+    """Gegenprüfung F006: Übersprungener Versuch (andere Dateien weichen ab): „Install attempt:“ nennt nur die letzte Zeile."""
+    stub = ausfuehrbar(vf["tmp"] / "nginx-anders.sh",
+                       '#!/bin/sh\necho "probe-zone.conf: differs from the template"\n'
+                       '[ "$1" = installieren ] && echo "install skipped: other files differ"\nexit 3\n')
+    assert vf["lauf"](VF_NGINX=str(stub)).returncode == 0
+    log = vf["zeilen"]("melden.log")
+    assert "Install attempt: install skipped: other files differ" in log
+    assert "\n".join(log).count("probe-zone.conf: differs") == 1
 
 
 def test_einrichten_erzeugt_nginx_orte_hilfsprogramm_und_nennt_einmalschritt(tmp_path):
