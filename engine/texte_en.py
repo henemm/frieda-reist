@@ -3429,7 +3429,7 @@ TEXTE = {
     "info.gespraech.anlegen.person": "Ida",
     "info.gespraech.anlegen.1": "Karl and I want to hike the Painters’ Way in Saxon Switzerland for four days in May, from 13 to 16 May, by train from Dresden. Please create a trip for it.",
     "info.gespraech.anlegen.2": "Happy to. I’ll create “Painters’ Way in four days”, 13–16/5/2027, starting and ending in Dresden, with you as organiser. I’ll invite Karl as a contributor once you give me his email address. Shall I enter it like that?",
-    "info.gespraech.anlegen.3": "Yes. Karl’s address is karl@example.org.",
+    "info.gespraech.anlegen.3": "Yes. Karl’s address is karl@example.com.",
     "info.gespraech.anlegen.4": "The trip is created and Karl gets an invitation by email. You’ll find the link to the trip page under My account. Shall we settle the stages and where to stay next?",
     "info.gespraech.vergleichen.titel": "Comparing and deciding",
     "info.gespraech.vergleichen.person": "Ida",

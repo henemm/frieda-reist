@@ -3431,7 +3431,7 @@ TEXTE = {
     "info.gespraech.anlegen.person": "Ida",
     "info.gespraech.anlegen.1": "Karl und ich wollen im Mai vier Tage auf dem Malerweg in der Sächsischen Schweiz wandern, vom 13. bis 16. Mai, mit dem Zug ab Dresden. Leg dafür bitte eine Reise an.",
     "info.gespraech.anlegen.2": "Gern. Ich lege an: „Malerweg in vier Tagen“, 13.–16.5.2027, Start und Ende in Dresden, du als Organisatorin. Karl lade ich als Mitwirkenden ein, wenn du mir seine E-Mail-Adresse gibst. Soll ich das so eintragen?",
-    "info.gespraech.anlegen.3": "Ja. Karl hat karl@example.org.",
+    "info.gespraech.anlegen.3": "Ja. Karl hat karl@example.com.",
     "info.gespraech.anlegen.4": "Die Reise ist angelegt, Karl bekommt eine Einladung per Mail. Den Link zur Reiseseite findest du unter Mein Konto. Sollen wir als Nächstes die Etappen und die Übernachtungsorte festlegen?",
     "info.gespraech.vergleichen.titel": "Vergleichen und entscheiden",
     "info.gespraech.vergleichen.person": "Ida",
