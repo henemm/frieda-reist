@@ -1098,6 +1098,14 @@ def oauth_konto(access):
         return _konto_dict(z)
 
 
+def mit_claude_verbunden(kid):
+    """Hat das Konto eine gültige Verbindung zu einem AI-Client (ein noch nicht abgelaufenes Refresh-Token)? Mein Konto
+    zeigt bis dahin den Einstieg „Neu bei Frieda?“ (#440)."""
+    with closing(db()) as v:
+        return v.execute("SELECT 1 FROM oauth_tokens WHERE konto = ? AND art = 'refresh' AND ablauf > ? LIMIT 1",
+                         (kid, _jetzt())).fetchone() is not None
+
+
 # ---------------------------------------------------------------- Befehle für den Betreiber
 
 def liste():

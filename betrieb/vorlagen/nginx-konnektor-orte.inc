@@ -62,8 +62,9 @@ location = /alpha {
 location = /token                  { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 location = /register               { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 location ^~ /.well-known/oauth-    { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
-# Startseite (/ führt angemeldet zu Mein Konto, #41, sonst zur Infoseite, #436), Konto, Abmelden, Zustimmung, Bereitschaft (ohne Dateiendung, deshalb trifft keine Regel für Endungen)
-location ~ ^/(konto|abmelden|authorize|gesund)?$ {
+# Startseite (/ führt angemeldet zu Mein Konto, #41, sonst zur Infoseite, #436), Konto, Abmelden, Zustimmung, Bereitschaft, die Infoseite
+# für alle unter /info (#440; ohne Dateiendung, deshalb trifft keine Regel für Endungen)
+location ~ ^/(konto|abmelden|authorize|gesund|info)?$ {
     limit_req zone=__ZONE_KONTO__ burst=20 nodelay;
     limit_req_status 429;
     include __SNIPPETS__/__INSTANZ__-konnektor.inc;

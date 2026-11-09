@@ -164,6 +164,12 @@ font-weight:700;display:flex;align-items:center;justify-content:center}
 ol.erste>li>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:.35rem}ol.erste p,ol.erste h3{margin:0}ol.erste p{font-size:.9375rem}ol.erste h3{font-size:1.0625rem}
 ol.erste ol{margin:0;padding-inline-start:1.2rem;display:flex;flex-direction:column;gap:.3rem;font-size:.9375rem}
 .sprachen{display:flex;flex-wrap:wrap;gap:0 1rem}.sprachen a{padding:.35rem 0}.sprachen a[aria-current]{color:var(--fg);font-weight:600;text-decoration:none}
+.kopf-rechts{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:0 1.1rem}
+.einstieg{border-inline-start:4px solid var(--acc)}.einstieg h2{margin:0}.einstieg a.knopf{margin:0}
+.spalten,.spalte{display:flex;flex-direction:column;gap:1.5rem}
+@media (min-width:760px){main.konto{max-width:72rem;padding:1.75rem 2rem 3rem}
+.spalten{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:2rem;align-items:start}
+.einstieg{flex-direction:row;align-items:center;justify-content:space-between;gap:1.5rem}.einstieg a.knopf{flex:none}}
 """
 
 
@@ -171,12 +177,14 @@ def esc(t):
     return html.escape(str(t or ""), quote=True)
 
 
-def seite(titel, *teile, kopf=None, skript=False, breit=False):
+def seite(titel, *teile, kopf=None, skript=False, breit=False, klasse=""):
     """Ganze Seite. kopf: eigener Kopf (Mein Konto); sonst Friedas Zeichen mittig über der Karte. Jede Seite trägt das
     Manifest der Frieda-App (Issue #21: ein Symbol auf dem Home-Bildschirm, Start „Mein Konto“, Scope „/“); skript lädt
-    engine/app/konto.js (nur Mein Konto: Benachrichtigungen je Gerät, Speichern mit Zustand); breit: Lesespalte der Infoseite (#436)."""
+    engine/app/konto.js (nur Mein Konto: Benachrichtigungen je Gerät, Speichern mit Zustand); breit: Lesespalte der Infoseite (#436);
+    klasse: Klasse von main (konto: zwei Spalten ab Tablet, #441)."""
     rumpf = "".join(teile)
     sp = sprache_der_seite()
+    klasse = f' class="{esc(klasse or "breit")}"' if breit or klasse else ""
     kopf = kopf if kopf is not None else '<header class="kopf"><img src="/favicon.svg" alt="">Frieda</header>'
     return (f'<!DOCTYPE html><html lang="{esc(sp)}" dir="{esc(texte.sprache(sp).RICHTUNG)}"><head><meta charset="utf-8"><meta name="viewport" '
             f'content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
@@ -185,7 +193,7 @@ def seite(titel, *teile, kopf=None, skript=False, breit=False):
             f'<meta name="apple-mobile-web-app-title" content="Frieda"><meta name="theme-color" content="#f8f8f5">'
             + ('<script src="/konto.js" defer></script>' if skript else "")
             + f'<title>{esc(titel)} – Frieda</title><style>{CSS}</style></head><body>'
-            f'<main{" class=\"breit\"" if breit else ""}>{kopf}{rumpf}</main></body></html>')
+            f'<main{klasse}>{kopf}{rumpf}</main></body></html>')
 
 
 def karte(*teile):
@@ -662,10 +670,20 @@ def verbinden_karte():
                     f'<p class="klein">{esc(tx("konto.verbinden.bezahlt"))}</p>') + "</div>")
 
 
+def einstieg_karte(k):
+    """„Neu bei Frieda?“ mit dem Weg zur Infoseite, solange das Konto nicht mit Claude verbunden ist (#440)."""
+    if konten.mit_claude_verbunden(k["id"]):
+        return ""
+    return (f'<section class="karte einstieg"><div><h2>{esc(tx("konto.einstieg.titel"))}</h2>'
+            f'<p class="hinweis" style="margin:.35rem 0 0">{esc(tx("konto.einstieg.text"))}</p></div>'
+            f'<a class="knopf leise" href="/info">{esc(tx("konto.einstieg.knopf"))}</a></section>')
+
+
 def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen=""):
     """Mein Konto (Gestalt #60), zugleich die Startseite (#41): Meldungen, Reisen, dann Kalender, Freischaltungen
     (Betreiber), Einstellungen als Liste, unten Abmelden auf allen Geräten und Konto löschen. offen: Einstellung, die
-    aufgeklappt erscheint."""
+    aufgeklappt erscheint. Ab Tablet zwei Spalten (#441): links, was sich tut (Meldungen, Reisen, Mit Claude verbinden),
+    rechts, was selten gebraucht wird; auf dem Handy untereinander in derselben Reihenfolge."""
     zeilen, archiv = [], []
     for m in konten.mitgliedschaften(k["id"]):
         info = reise_info(m["reise"]) or {}
@@ -728,15 +746,19 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
                              f'<select id="sprache" name="sprache">{sprachen}</select>', tx("konto.seite.speichern"), "leise"),
                     offen == "sprache"),
         einstellung("geraete", tx("konto.seite.geraete"), str(len(geraete)), f'<ul class="geraete">{geraete_liste}</ul>', offen == "geraete")))
-    kopf = (f'<header class="kopf breit"><span><img src="/favicon.svg" alt="">Frieda</span>'
-            f'<form method="post" action="/abmelden"><button class="link">{esc(tx("konto.seite.abmelden"))}</button></form></header>')
+    kopf = (f'<header class="kopf breit"><span><img src="/favicon.svg" alt="">Frieda</span><nav class="kopf-rechts">'
+            f'<a class="kopf-link" href="/info">{esc(tx("info.link"))}</a>'
+            f'<form method="post" action="/abmelden"><button class="link">{esc(tx("konto.seite.abmelden"))}</button></form></nav></header>')
     return seite(tx("konto.seite.titel"),
                  f'<div><h1 style="font-size:1.875rem">{esc(tx("konto.seite.hallo", name=k["name"]))}</h1>'
                  f'<p class="hinweis" style="margin:.1rem 0 0">{esc(k["email"])}</p></div>',
                  fehler(meldung), f'<p class="kasten">{esc(hinweis)}</p>' if hinweis else "",
+                 einstieg_karte(k),
+                 '<div class="spalten"><div class="spalte">',
                  meldungen_abschnitt(k, reise_info),
                  f'<div class="abschnitt"><h2>{esc(tx("konto.seite.meine_reisen"))}</h2>{reisen}{anlegen}</div>',
                  verbinden_karte(),
+                 '</div><div class="spalte">',
                  kalender_karte(k, reise_info, offen == "kalender"),
                  push_karte(k, offen == "push"),
                  betreiber,
@@ -744,7 +766,8 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
                  '<div class="links" style="flex-direction:column;align-items:center">'
                  f'<form method="post" action="/konto">{verdeckt(aktion="alle_abmelden")}<button class="link">{esc(tx("konto.seite.ueberall_abmelden"))}</button></form>'
                  f'<a href="/konto?loeschen=1" style="color:var(--gefahr)">{esc(tx("konto.seite.loeschen_titel"))}</a></div>',
-                 fuss(recht=True), kopf=kopf, skript=True)
+                 '</div></div>',
+                 fuss(recht=True), kopf=kopf, skript=True, klasse="konto")
 
 
 def loeschen_seite(k):
@@ -866,11 +889,11 @@ def info_datei(pfad):
     return datei if datei.is_file() else None
 
 
-def info_sprachen():
-    """Zeile zum Umschalten der Sprache: ein Link je Sprache der Software, die aktuelle ist markiert."""
+def info_sprachen(pfad="/"):
+    """Zeile zum Umschalten der Sprache: ein Link je Sprache der Software auf die Adresse pfad, die aktuelle ist markiert."""
     sp = sprache_der_seite()
     return (f'<nav class="sprachen" aria-label="{esc(tx("info.sprache"))}">'
-            + "".join(f'<a href="/?sprache={esc(c)}" lang="{esc(c)}" hreflang="{esc(c)}"'
+            + "".join(f'<a href="{esc(pfad)}?sprache={esc(c)}" lang="{esc(c)}" hreflang="{esc(c)}"'
                       + (' aria-current="page"' if c == sp else "") + f'>{esc(texte.sprache(c).NAME)}</a>' for c in texte.SPRACHEN)
             + "</nav>")
 
@@ -882,15 +905,23 @@ def info_gespraech(name, folge):
     return karte(f'<div class="gespraech"><h3>{esc(tx(f"info.gespraech.{name}.titel"))}</h3>{blasen}</div>')
 
 
-def info_seite():
+def info_seite(k=None, pfad="/"):
     """Was ist Frieda? Grundprinzipien, Beispiel-Gespräche, Bilder der Reiseseite und die ersten Schritte, mit der Adresse des
-    Konnektors dieser Instanz. Die Startseite der Adresse für alle, die nicht angemeldet sind (Product Owner, 9.11.2026)."""
-    kopf = (f'<header class="kopf breit"><span><img src="/favicon.svg" alt="">Frieda</span>'
-            f'<a class="kopf-link" href="/anmelden">{esc(tx("info.anmelden"))}</a></header>')
+    Konnektors dieser Instanz. Die Startseite der Adresse für alle, die nicht angemeldet sind (Product Owner, 9.11.2026), und
+    unter /info für alle, auch angemeldet als Einstiegshilfe (#440). k: angemeldetes Konto, dann führen Kopf und Knopf zu Mein
+    Konto statt zu Anmelden und Warteliste. pfad: Adresse der Seite für den Sprachumschalter."""
+    if k:
+        kopf_link = f'<a class="kopf-link" href="/konto">{esc(tx("info.mein_konto"))}</a>'
+        knoepfe = f'<a class="knopf" href="/konto">{esc(tx("info.zu_reisen"))}</a>'
+        satz = tx("info.angemeldet_als", name=k["name"])
+    else:
+        kopf_link = f'<a class="kopf-link" href="/anmelden">{esc(tx("info.anmelden"))}</a>'
+        knoepfe = (f'<a class="knopf" href="/anmelden">{esc(tx("info.anmelden"))}</a>'
+                   f'<a class="knopf leise" href="/warteliste">{esc(tx("info.warteliste"))}</a>')
+        satz = tx("info.schon_dabei")
+    kopf = f'<header class="kopf breit"><span><img src="/favicon.svg" alt="">Frieda</span>{kopf_link}</header>'
     oben = karte(f'<div><h1>{esc(tx("info.ueberschrift"))}</h1>', f'<p class="lead">{esc(tx("info.lead"))}</p></div>',
-                 f'<div class="knoepfe"><a class="knopf" href="/anmelden">{esc(tx("info.anmelden"))}</a>'
-                 f'<a class="knopf leise" href="/warteliste">{esc(tx("info.warteliste"))}</a></div>',
-                 f'<p class="klein">{esc(tx("info.schon_dabei"))}</p>')
+                 f'<div class="knoepfe">{knoepfe}</div>', f'<p class="klein">{esc(satz)}</p>')
     prinzipien = "".join(karte(f'<h3>{esc(tx(f"info.prinzip.{p}.titel"))}</h3><p>{esc(tx(f"info.prinzip.{p}.text"))}</p>')
                          for p in INFO_PRINZIPIEN)
     gespraeche = "".join(info_gespraech(n, f) for n, f in INFO_GESPRAECHE)
@@ -916,7 +947,7 @@ def info_seite():
                  abschnitt("info.bilder.titel", f'<p>{esc(tx("info.bilder.einleitung"))}</p>', f'<div class="bilder">{bilder}</div>')
                  if bilder else "",
                  abschnitt("info.schritte.titel", karte(f'<ol class="erste">{schritte}</ol>')),
-                 fuss(roh=(info_sprachen(),), recht=True), kopf=kopf, breit=True)
+                 fuss(roh=(info_sprachen(pfad),), recht=True), kopf=kopf, breit=True)
 
 
 # ---------------------------------------------------------------- Ablauf
@@ -941,7 +972,7 @@ def geraet(headers):
 
 def ist_unsere(pfad):
     p = pfad.split("?", 1)[0]
-    return p in ("/anmelden", "/konto", "/abmelden", "/warteliste") + RECHT or p.startswith(("/einladung/", "/kalender/",
+    return p in ("/anmelden", "/konto", "/abmelden", "/warteliste", "/info") + RECHT or p.startswith(("/einladung/", "/kalender/",
                                                                                      "/warteliste/bestaetigen/"))
 
 
@@ -1056,12 +1087,16 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
         _anfrage.sprache = wer["sprache"] or _anfrage.sprache      # die App schickt keine Sprache mit, das Konto hat eine
         return kalender_antwort(wer, headers=headers)
 
-    if weg == "/":   # Startseite: angemeldet Mein Konto (#41), sonst die Infoseite (#436; nur GET, der Konnektor leitet nur das hierher)
-        if k:
+    if weg in ("/", "/info"):
+        # Startseite: angemeldet Mein Konto (#41), sonst die Infoseite (#436); /info zeigt sie allen, auch angemeldet (#440).
+        # Nur zum Lesen: der Konnektor leitet / nur mit GET hierher, ein POST auf /info führt ohne Wirkung zurück auf die Seite.
+        if weg == "/" and k:
             return weiter("/konto")
+        if methode == "POST":
+            return weiter("/info")
         if texte.gueltig(q.get("sprache") or ""):     # Umschalter der Infoseite; ein geteilter Link kann die Sprache mitgeben
             _anfrage.sprache = q["sprache"]
-        return antwort(200, info_seite())
+        return antwort(200, info_seite(k, weg))
     if weg == "/konto":
         a = f.get("aktion")
         if a in ("push_an", "push_ab"):
