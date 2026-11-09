@@ -110,6 +110,24 @@ FR_ADRESSE=https://reisen.example.org
 #FR_KENNUNG=Beispiel-Reisen/1 (betrieb@example.org)
 #FR_SPRACHEN=de,en
 
+# Overpass-Dienst (OpenStreetMap) für kartenpunkte_holen und die Werkzeuge punkte_holen und wasser_pruefen; mit eigenem
+# Kartendienst die Reserve. (der öffentliche Dienst, Vorgabe in engine/kartendienst.py)
+#FR_OVERPASS=https://overpass.example.org/api/interpreter
+
+# Eigener Kartendienst (Overpass bei Bedarf, #444, docs/betrieb.md „Eigener Kartendienst“): Container, der beim ersten Aufruf
+# startet und nach der Ruhezeit endet, nur mit den Regionen der Instanz. Ohne FR_KARTENDIENST_REGIONEN erzeugt einrichten.sh
+# keine Einheiten dafür; ohne FR_KARTENDIENST fragt die Software nur FR_OVERPASS. Braucht Docker (Dienstbenutzer in der
+# Gruppe docker). Adresse für die Software, Datenordner (mit abdeckung.json; sein Elternordner gehört dem Dienstbenutzer) und
+# Regionen als Pfade der Auszüge, durch Leerzeichen getrennt. (leer: aus)
+#FR_KARTENDIENST=http://127.0.0.1:12345/api/interpreter
+#FR_KARTENDIENST_ORDNER=/srv/beispiel/_kartendienst
+#FR_KARTENDIENST_REGIONEN=europe/andorra
+# Port des Sockets auf 127.0.0.1 (der Container lauscht eine Nummer darüber), Speichergrenze des Containers und Ruhezeit
+# ohne Verkehr bis zum Stopp. (12345, 2g, 15min)
+#FR_KARTENDIENST_PORT=12345
+#FR_KARTENDIENST_SPEICHER=2g
+#FR_KARTENDIENST_RUHE=15min
+
 # Zeitzone, in der Konnektor und Dienste Zeiten nennen, wenn die der Person unbekannt ist (IANA-Name; die Person bringt ihre
 # eigene mit, sobald ein Gerät Benachrichtigungen eingeschaltet hat). Jede Zeit trägt die Zone. (UTC)
 #FR_ZEITZONE=Europe/Berlin

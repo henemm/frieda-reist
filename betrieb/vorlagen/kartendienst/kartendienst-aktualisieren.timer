@@ -1,0 +1,12 @@
+# Tägliche Prüfung nachts, ob der eigene Kartendienst neu eingespielt werden muss (__INSTANZ__-kartendienst-aktualisieren.service).
+# Nachts, weil das Einspielen viel Speicher braucht; es wartet auf einen laufenden Lauf des Veröffentlichens (Prüfläufe).
+[Unit]
+Description=__TITEL__: täglich prüfen, ob der eigene Kartendienst neu eingespielt werden muss
+
+[Timer]
+OnCalendar=*-*-* 03:40:00
+RandomizedDelaySec=20min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

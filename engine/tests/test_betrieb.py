@@ -2828,7 +2828,7 @@ def test_einrichten_kartendienst_nur_mit_regionen(tmp_path):
     assert r.returncode == 0, (r.stdout, r.stderr)
     assert not [p for p in ziel.rglob("*") if "kartendienst" in p.name]
     r, _ = kd_einrichten(tmp_path)
-    assert "kartendienst" not in r.stdout.lower(), r.stdout
+    assert "kartendienst" not in r.stdout.replace(str(tmp_path), "<tmp>").lower(), r.stdout   # der Testordner trägt den Testnamen
     r, ziel = kd_einrichten(tmp_path, "--erzeugen", **KD_REGIONEN)
     assert r.returncode == 0, (r.stdout, r.stderr)
     ordner = ziel / "kartendienst"

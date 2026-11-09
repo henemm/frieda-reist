@@ -32,7 +32,7 @@ import instanz  # noqa: E402
 import schreiben  # noqa: E402  (Kartenpunkte als Dinge lesen)
 
 WURZEL = instanz.wurzel()
-OVERPASS = "https://overpass-api.de/api/interpreter"
+OVERPASS = instanz.wert("FR_OVERPASS", schreiben.OVERPASS)   # Overpass-Dienst der Instanz (#444), sonst der öffentliche
 KENNUNG = instanz.kennung()
 GEPRUEFT_JAHRE = 3  # Prüfdatum im Eintrag (check_date, survey:date) gilt so lange als frisch
 

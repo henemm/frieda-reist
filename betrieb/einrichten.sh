@@ -30,6 +30,12 @@ SNIPPETS="${FR_NGINX_SNIPPETS:-/etc/nginx/snippets}"
 ZIEL="${EI_ZIEL:-${TMPDIR:-/tmp}/$FR_INSTANZ-einrichten}"
 ZB="${FR_INSTANZ//-/_}"
 ZONE="${ZB}_api"   # Zone der Reise-Bausteine (freischalten.sh), definiert in nginx-zone.conf (#316)
+# Eigener Kartendienst (#444): nur mit FR_KARTENDIENST_REGIONEN; der Container lauscht eine Portnummer über dem Socket
+KD_REGIONEN="${FR_KARTENDIENST_REGIONEN:-}"
+KD_ORDNER="${FR_KARTENDIENST_ORDNER:-}"
+KD_PORT="${FR_KARTENDIENST_PORT:-12345}"
+KD_SPEICHER="${FR_KARTENDIENST_SPEICHER:-2g}"
+KD_RUHE="${FR_KARTENDIENST_RUHE:-15min}"
 
 probleme=0
 ok()      { echo "  ok      $*"; }
@@ -52,6 +58,14 @@ for a in 127.0.0.1 ::1 ${FR_EIGENE_ADRESSEN:-}; do
 done
 set +f
 
+if [ -n "$KD_REGIONEN" ]; then
+  [[ "$KD_PORT" =~ ^[1-9][0-9]{1,4}$ ]] && [ "$KD_PORT" -lt 65535 ] || problem "FR_KARTENDIENST_PORT “$KD_PORT”: a port number below 65535"
+  [[ "$KD_ORDNER" =~ ^/[A-Za-z0-9_./-]+$ ]] || problem "FR_KARTENDIENST_ORDNER (absolute data folder of the map service) in the settings"
+  [[ "$KD_SPEICHER" =~ ^[1-9][0-9]*[kmg]$ ]] || problem "FR_KARTENDIENST_SPEICHER “$KD_SPEICHER”: e.g. 2g"
+  [[ "$KD_RUHE" =~ ^[1-9][0-9]*(s|min|h)$ ]] || problem "FR_KARTENDIENST_RUHE “$KD_RUHE”: e.g. 15min"
+fi
+KD_PORT_INNEN=$((${KD_PORT//[!0-9]/0} + 1))
+
 if [ -z "$NUR_ERZEUGEN" ]; then
 echo "Instance $FR_INSTANZ ($FR_TITEL), trips repo $FR_WURZEL"
 echo "Prerequisites:"
@@ -68,6 +82,10 @@ if PATH="$FR_PFAD" command -v gh > /dev/null; then
 else problem "gh not in FR_PFAD"; fi
 command -v flock > /dev/null && ok "flock" || problem "flock (util-linux)"
 command -v rsync > /dev/null && ok "rsync" || problem "rsync"
+if [ -n "$KD_REGIONEN" ]; then   # eigener Kartendienst (#444)
+  command -v docker > /dev/null && ok "docker (own map service)" || problem "docker (own map service, FR_KARTENDIENST_REGIONEN)"
+  [ -x /usr/lib/systemd/systemd-socket-proxyd ] && ok "systemd-socket-proxyd" || problem "/usr/lib/systemd/systemd-socket-proxyd (own map service)"
+fi
 if [ -d "$FR_SEITEN" ]; then
   [ -w "$FR_SEITEN" ] && ok "$FR_SEITEN writable" || problem "$FR_SEITEN does not belong to $FR_BENUTZER"
 else hinweis "$FR_SEITEN will be created (sudo install -d -o $FR_BENUTZER -g $FR_GRUPPE $FR_SEITEN)"; fi
@@ -92,7 +110,9 @@ ersetze() {  # <vorlage> <ziel>
       -e "s|__SB_PORT__|$FR_SB_PORT|g" -e "s|__PYTHON__|$FR_PYTHON|g" -e "s|__ZEITZONE__|$FR_ZEITZONE|g" \
       -e "s|__KN_ADRESSE__|$FR_KN_ADRESSE|g" -e "s|__ZONE__|$ZONE|g" -e "s|__SNIPPETS__|$SNIPPETS|g" \
       -e "s|__ZONE_API__|$ZONE|g" -e "s|__ZONE_MCP__|${ZB}_mcp|g" -e "s|__ZONE_ANMELDEN__|${ZB}_anmelden|g" -e "s|__ZONE_KONTO__|${ZB}_konto|g" \
-      -e "s|__EIGENE_ADRESSEN__|$EIGENE_ADRESSEN|g" -e "s|__EIGEN__|${ZB}_eigen|g" -e "s|__SCHLUESSEL__|${ZB}_schluessel|g" "$1" > "$2"
+      -e "s|__EIGENE_ADRESSEN__|$EIGENE_ADRESSEN|g" -e "s|__EIGEN__|${ZB}_eigen|g" -e "s|__SCHLUESSEL__|${ZB}_schluessel|g" \
+      -e "s|__KD_PORT__|$KD_PORT|g" -e "s|__KD_PORT_INNEN__|$KD_PORT_INNEN|g" -e "s|__KD_ORDNER__|$KD_ORDNER|g" \
+      -e "s|__KD_SPEICHER__|$KD_SPEICHER|g" -e "s|__KD_RUHE__|$KD_RUHE|g" -e "s|__KD_BILD__|$KD_BILD|g" "$1" > "$2"
 }
 for v in "$FR_BETRIEB"/vorlagen/*.service "$FR_BETRIEB"/vorlagen/*.timer; do
   ersetze "$v" "$ZIEL/systemd/$FR_INSTANZ-$(basename "$v")"
@@ -100,6 +120,13 @@ done
 ersetze "$FR_BETRIEB/vorlagen/nginx-konnektor-orte.inc" "$ZIEL/nginx/$FR_INSTANZ-konnektor-orte.inc"
 ersetze "$FR_BETRIEB/vorlagen/nginx-konnektor.inc" "$ZIEL/nginx/$FR_INSTANZ-konnektor.inc"
 ersetze "$FR_BETRIEB/vorlagen/nginx-zone.conf" "$ZIEL/nginx/$FR_INSTANZ-zone.conf"
+# Eigener Kartendienst (#444): eigener Unterordner, damit der Abgleich der Einheiten (#260) ihn nicht sieht
+if [ -n "$KD_REGIONEN" ]; then
+  mkdir -p "$ZIEL/kartendienst"
+  for v in "$FR_BETRIEB"/vorlagen/kartendienst/*; do
+    ersetze "$v" "$ZIEL/kartendienst/$FR_INSTANZ-$(basename "$v")"
+  done
+fi
 # Hilfsprogramm mit Root-Rechten für den Abgleich der Einheiten (#260): wird bewusst einmal installiert (docs/betrieb.md)
 mkdir -p "$ZIEL/sbin"
 ersetze "$FR_BETRIEB/vorlagen/units-installieren.py" "$ZIEL/sbin/$FR_INSTANZ-units-installieren"
@@ -119,8 +146,13 @@ sudo install -d -o $FR_BENUTZER -g $FR_GRUPPE -m 700 $FR_KONNEKTOR $FR_KONTEN
 sudo install -m 644 $ZIEL/systemd/* $SYSTEMD/
 sudo install -m 644 $ZIEL/nginx/$FR_INSTANZ-zone.conf /etc/nginx/conf.d/
 sudo install -m 640 $ZIEL/nginx/$FR_INSTANZ-konnektor-orte.inc $ZIEL/nginx/$FR_INSTANZ-konnektor.inc $SNIPPETS/
-sudo systemctl daemon-reload
 TEXT
+  [ -z "$KD_REGIONEN" ] || cat <<TEXT
+sudo install -d -o $FR_BENUTZER -g $FR_GRUPPE -m 755 $KD_ORDNER
+sudo usermod -aG docker $FR_BENUTZER
+sudo install -m 644 $ZIEL/kartendienst/* $SYSTEMD/
+TEXT
+  echo "sudo systemctl daemon-reload"
 }
 echo
 echo "Activate (once the server block of $FR_ADRESSE contains  include $SNIPPETS/$FR_INSTANZ-*.conf;"
@@ -137,6 +169,15 @@ freischalten.sh needs: sudo -n nginx -t, systemctl reload nginx, install/test/ca
 Units helper (#260, once, deliberately; without it only differences are reported, nothing is installed):
   sudo install -m 755 -o root -g root $ZIEL/sbin/$FR_INSTANZ-units-installieren /usr/local/sbin/
   sudoers for $FR_BENUTZER: NOPASSWD: /usr/local/sbin/$FR_INSTANZ-units-installieren
+TEXT
+[ -z "$KD_REGIONEN" ] || cat <<TEXT
+Own map service (#444; regions: $KD_REGIONEN): first import as $FR_BENUTZER, then enable socket and timer:
+  cd $FR_WURZEL && FR_WURZEL=$FR_WURZEL frieda/betrieb/kartendienst.sh einspielen
+  sudo systemctl enable --now $FR_INSTANZ-kartendienst.socket
+  sudo systemctl enable --now $FR_INSTANZ-kartendienst-aktualisieren.timer
+  Settings: FR_KARTENDIENST=http://127.0.0.1:$KD_PORT/api/interpreter  (map_points_fetch asks it first inside its coverage, FR_KARTENDIENST_ORDNER tells it which)
+TEXT
+cat <<TEXT
 nginx locations helper (#445, once, deliberately; installs only $FR_INSTANZ-konnektor-orte.inc, without it only differences are reported):
   sudo install -m 755 -o root -g root $ZIEL/sbin/$FR_INSTANZ-nginx-orte-installieren /usr/local/sbin/
   sudoers for $FR_BENUTZER: NOPASSWD: /usr/local/sbin/$FR_INSTANZ-nginx-orte-installieren

@@ -174,18 +174,18 @@ E   AssertionError: FR_OVERPASS
      +    where <function search at 0x7a2a065fcea0> = re.search
 engine/tests/test_betrieb.py:2899: AssertionError: FR_OVERPASS
 [gw2] linux -- Python 3.12.3 engine/.venv/bin/python
-E   AssertionError: Instance probe (Probe), trips repo /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0
+E   AssertionError: Instance probe (Probe), trips repo <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0
       Prerequisites:
         MISSING engine/ is missing (submodule frieda and link engine -> frieda/engine, docs/betrieb.md)
-        MISSING Python with yaml and ruamel.yaml: /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/engine/.venv/bin/python (python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt)
+        MISSING Python with yaml and ruamel.yaml: <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/engine/.venv/bin/python (python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt)
         MISSING FR_ADRESSE (public address of the pages) in the settings
-        MISSING git -C /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0 ls-remote origin does not work without a prompt
+        MISSING git -C <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0 ls-remote origin does not work without a prompt
         ok      gh signed in
         ok      flock
         ok      rsync
-        NOTE    /srv/probe will be created (sudo install -d -o hem -g hem /srv/probe)
+        NOTE    <srv>/probe will be created (sudo install -d -o <benutzer> -g <gruppe> <srv>/probe)
         NOTE    no reporting channel (FR_MELDEN): errors appear only in the journal
-      Generated in /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/soll:
+      Generated in <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/soll:
         nginx/probe-konnektor-orte.inc
         nginx/probe-konnektor.inc
         nginx/probe-zone.conf
@@ -200,28 +200,28 @@ E   AssertionError: Instance probe (Probe), trips repo /tmp/pytest-of-hem/pytest
         systemd/probe-waechter.service
         systemd/probe-waechter.timer
       
-      Activate (once the server block of  contains  include /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/snippets/probe-*.conf;
+      Activate (once the server block of  contains  include <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/snippets/probe-*.conf;
       the connector stands at the root of , whose server block includes probe-konnektor-orte.inc):
-        sudo install -d -o hem -g hem -m 755 /srv/probe /srv/probe/_dienst
-        sudo install -d -o hem -g hem -m 750 /srv/probe/_rueckmeldungen
-        sudo install -d -o hem -g hem -m 700 /srv/probe/_konnektor /srv/probe/_konten
-        sudo install -m 644 /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/soll/systemd/* /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/systemd/
-        sudo install -m 644 /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/soll/nginx/probe-zone.conf /etc/nginx/conf.d/
-        sudo install -m 640 /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/soll/nginx/probe-konnektor-orte.inc /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/soll/nginx/probe-konnektor.inc /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/snippets/
+        sudo install -d -o <benutzer> -g <gruppe> -m 755 <srv>/probe <srv>/probe/_dienst
+        sudo install -d -o <benutzer> -g <gruppe> -m 750 <srv>/probe/_rueckmeldungen
+        sudo install -d -o <benutzer> -g <gruppe> -m 700 <srv>/probe/_konnektor <srv>/probe/_konten
+        sudo install -m 644 <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/soll/systemd/* <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/systemd/
+        sudo install -m 644 <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/soll/nginx/probe-zone.conf /etc/nginx/conf.d/
+        sudo install -m 640 <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/soll/nginx/probe-konnektor-orte.inc <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/soll/nginx/probe-konnektor.inc <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/snippets/
         sudo systemctl daemon-reload
-        cd /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0 && FR_WURZEL=/tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0 frieda/betrieb/deploy.sh <first trip>   (installs the code of the services; the check fails before the start)
+        cd <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0 && FR_WURZEL=<tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0 frieda/betrieb/deploy.sh <first trip>   (installs the code of the services; the check fails before the start)
         sudo systemctl enable --now probe-rueckmeldungen probe-konnektor probe-schreiben probe-push
         sudo nginx -t && sudo systemctl reload nginx
         sudo systemctl enable --now probe-veroeffentlichen.timer probe-waechter.timer
       Check:  curl -s 127.0.0.1:8773/gesund  answers {"gesund": true};  journalctl -u probe-veroeffentlichen -n 20
-      deploy.sh needs for hem: sudo -n systemctl restart probe-rueckmeldungen probe-konnektor probe-schreiben probe-push;
-      freischalten.sh needs: sudo -n nginx -t, systemctl reload nginx, install/test/cat/rm in /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/snippets (sudoers, docs/betrieb.md).
+      deploy.sh needs for <benutzer>: sudo -n systemctl restart probe-rueckmeldungen probe-konnektor probe-schreiben probe-push;
+      freischalten.sh needs: sudo -n nginx -t, systemctl reload nginx, install/test/cat/rm in <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/snippets (sudoers, docs/betrieb.md).
       Units helper (#260, once, deliberately; without it only differences are reported, nothing is installed):
-        sudo install -m 755 -o root -g root /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/soll/sbin/probe-units-installieren /usr/local/sbin/
-        sudoers for hem: NOPASSWD: /usr/local/sbin/probe-units-installieren
+        sudo install -m 755 -o root -g root <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/soll/sbin/probe-units-installieren /usr/local/sbin/
+        sudoers for <benutzer>: NOPASSWD: /usr/local/sbin/probe-units-installieren
       nginx locations helper (#445, once, deliberately; installs only probe-konnektor-orte.inc, without it only differences are reported):
-        sudo install -m 755 -o root -g root /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/soll/sbin/probe-nginx-orte-installieren /usr/local/sbin/
-        sudoers for hem: NOPASSWD: /usr/local/sbin/probe-nginx-orte-installieren
+        sudo install -m 755 -o root -g root <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/soll/sbin/probe-nginx-orte-installieren /usr/local/sbin/
+        sudoers for <benutzer>: NOPASSWD: /usr/local/sbin/probe-nginx-orte-installieren
       
       4 prerequisite(s) missing.
       
@@ -231,15 +231,15 @@ E   AssertionError: Instance probe (Probe), trips repo /tmp/pytest-of-hem/pytest
         inrichten_kartendienst_n0
         prerequisites:
           missing engine/ is missing (submodule frieda and link engine -> frieda/engine, docs/betrieb.md)
-          missing python with yaml and ruamel.yaml: /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/engine/.venv/bin/python (python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt)
+          missing python with yaml and ruamel.yaml: <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0/engine/.venv/bin/python (python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt)
           missing fr_adresse (public address of the pages) in the settings...
       
       ...Full output truncated (45 lines hidden), use '-vv' to show
-engine/tests/test_betrieb.py:2831: AssertionError: Instance probe (Probe), trips repo /tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0
+engine/tests/test_betrieb.py:2831: AssertionError: Instance probe (Probe), trips repo <tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einrichten_kartendienst_n0
 [gw2] linux -- Python 3.12.3 engine/.venv/bin/python
 E   AssertionError: assert False
      +  where False = exists()
-     +    where exists = ((PosixPath('/tmp/pytest-of-hem/pytest-14080/popen-gw2/test_einheitenabgleich_ohne_ka0/soll') / 'kartendienst') / 'probe-kartendienst.service').exists
+     +    where exists = ((PosixPath('<tmp>/pytest-of-<benutzer>/pytest-14080/popen-gw2/test_einheitenabgleich_ohne_ka0/soll') / 'kartendienst') / 'probe-kartendienst.service').exists
 engine/tests/test_betrieb.py:2863: AssertionError: assert False
 [gw0] linux -- Python 3.12.3 engine/.venv/bin/python
 E   AssertionError: E-01: 1 Treffer für Wasser aus OpenStreetMap (amenity=drinking_water, natural=spring); 0 schon vorhanden und aktualisiert; es sind Dinge (A-…) der Art. Darunter: Brunnen an der Bastei. Daten: © OpenStreetMap-Mitwirkende (ODbL); Stand heute, vor Ort prüfen.

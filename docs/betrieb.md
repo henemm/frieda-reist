@@ -269,6 +269,13 @@ Voraussetzung: `gh` ist für den Dienstbenutzer angemeldet und darf Workflows de
 | `FR_NACHZIEHEN_WORKFLOW` | `software-nachziehen.yml` | Workflow des Reisen-Repos, den ein Anstoß von der Seite startet (Abschnitt „Anstoß“) |
 | `FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN` | `6` | Wartezeit in Stunden, bevor das Veröffentlichen denselben neuen Software-Stand noch einmal anstößt (Neue Instanz einrichten, „Anstoß vom Server“) |
 | `FR_SOFTWARE_WARTET_STUNDEN` | `6` | Scheitert `git fetch` bei einer Instanz mit Reisen im Speicher so viele Stunden lang, steht genau einmal je Störung eine Warnung im Protokoll und `gemeldet=1` im Merker `<FR_DIENST>/software-wartet`, keine Nachricht (Stufe 5, #350; „Umschaltung einer Reise“) |
+| `FR_OVERPASS` | `https://overpass-api.de/api/interpreter` | öffentlicher Overpass-Dienst für `kartenpunkte_holen` und die Werkzeuge `punkte_holen`, `wasser_pruefen`; mit eigenem Kartendienst die Reserve |
+| `FR_KARTENDIENST` | leer (aus) | Adresse des eigenen Kartendienstes, `http://127.0.0.1:<FR_KARTENDIENST_PORT>/api/interpreter` (Abschnitt „Eigener Kartendienst“); leer: nur der öffentliche Dienst |
+| `FR_KARTENDIENST_ORDNER` | leer | Datenordner des eigenen Kartendienstes mit Datenbank und `abdeckung.json`; ohne ihn gilt die Abdeckung als leer |
+| `FR_KARTENDIENST_REGIONEN` | leer | Regionen als Pfade der Auszüge, durch Leerzeichen getrennt (z. B. `europe/andorra`); nur `einrichten.sh` und `kartendienst.sh` lesen sie, ohne sie entstehen keine Einheiten des Kartendienstes |
+| `FR_KARTENDIENST_PORT` | `12345` | Port des Sockets auf 127.0.0.1; der Container lauscht eine Nummer darüber |
+| `FR_KARTENDIENST_SPEICHER` | `2g` | Speichergrenze des Containers (Betrieb und Einspielen) |
+| `FR_KARTENDIENST_RUHE` | `15min` | Ruhezeit ohne Verkehr, nach der Proxy und Container enden (`--exit-idle-time`) |
 | `FR_KENNUNG`, `FR_SPRACHEN` | Name der Software, `de,en` | Kennung mit Kontakt gegenüber OpenStreetMap und Sprachen der Namen (`docs/werkzeuge.md`) |
 | `FR_BETREIBER_NAME`, `FR_BETREIBER_ANSCHRIFT`, `FR_BETREIBER_KONTAKT` | leer | Betreiber der Instanz im Impressum (`/impressum`, #383): Name, Anschrift (eine Zeile) und Kontakt, alle drei Pflicht, kein Telefon. Fehlt einer, zeigt das Impressum „nicht eingerichtet“; Warteliste und Anmeldung bleiben nutzbar. Der Konnektor läuft mit `ProtectHome=yes` und ohne `FR_WURZEL`, sieht also `betrieb/einstellungen.env` des Reisen-Repos nicht; er liest die Werte über `engine/instanz.py` aus der Umgebung der Unit, und die kommt aus `<FR_DIENST>/konten.env` (600, Zeilen `NAME=wert`; danach `systemctl restart <FR_INSTANZ>-konnektor`). Echte Angaben nur dort, nie im öffentlichen Repo |
 
@@ -437,6 +444,28 @@ Kommentarblock direkt darüber, installiert die Zonendatei, sichert beide Dateie
 einmal mit `nginx -t` und stellt bei einem Fehler beide wieder her. Das muss ein Lauf sein: nginx verbietet doppelte Zonen, und ohne Definition
 laden die Reise-Bausteine nicht. Alle anderen Zeilen und die Rechte der fremden Datei bleiben. Ist die Definition nicht eindeutig (zweimal,
 oder weitere Direktiven in derselben Zeile), ändert `anwenden` nichts und endet mit Fehler. Weitere Instanzen brauchen keinen Handschritt.
+
+## Eigener Kartendienst (#444)
+
+Der öffentliche Overpass-Dienst antwortet vom Server aus oft spät oder gar nicht. Eine Instanz kann deshalb für `kartenpunkte_holen` (Konnektor: `map_points_fetch`) einen eigenen Overpass-Dienst betreiben, der nur ihre Regionen enthält, bei Bedarf startet und nach der Ruhezeit wieder endet. Optional: Ohne `FR_KARTENDIENST_REGIONEN` entstehen keine Einheiten, ohne `FR_KARTENDIENST` fragt die Software nur den öffentlichen Dienst (`FR_OVERPASS`).
+
+**Wahl des Dienstes** (`engine/kartendienst.py`): Liegt der Rahmen einer Abfrage ganz in einem Rahmen der Abdeckung (`<FR_KARTENDIENST_ORDNER>/abdeckung.json`, Rand zählt als innen), fragt `overpass_holen` zuerst den eigenen Dienst, höchstens `TEILFRIST_EIGEN` = 10 s und ohne Wiederholung; eine gültige Antwort gilt, auch ohne Treffer. Bei Fehler oder Zeitüberschreitung bekommt der öffentliche Dienst die Restfrist derselben Gesamtfrist (mit seinen bisherigen Regeln). Außerhalb der Abdeckung, über zwei Regionen verteilt oder bei fehlender oder kaputter `abdeckung.json` geht die Abfrage gleich an den öffentlichen Dienst. Die Treffer nennen den antwortenden Dienst und den Stand der Kartendaten (`osm3s.timestamp_osm_base`). Eine Abfrage mit Umkreis (`around`) hat keinen bekannten Rahmen und geht immer an den öffentlichen Dienst.
+
+**Grenze der Abdeckung:** Der Rahmen einer Region ist das Rechteck um ihren Auszug (`osmium fileinfo`), nicht ihre tatsächliche Fläche. Liegt eine Strecke im Rechteck, aber außerhalb der Daten (Meer, Nachbarland), antwortet der eigene Dienst gültig mit null Treffern, ohne Rückfall auf den öffentlichen Dienst. Regionen deshalb kompakt wählen, etwa eine Insel oder ein Land statt eines großen Auszugs, dessen Rechteck viel Fremdes umschließt.
+
+**Einheiten** (`betrieb/vorlagen/kartendienst/`, eigener Unterordner, damit der Abgleich der Einheiten sie nicht sieht; `einrichten.sh` erzeugt sie nach `<EI_ZIEL>/kartendienst/`):
+- `<instanz>-kartendienst.socket` lauscht nur auf `127.0.0.1:<FR_KARTENDIENST_PORT>`; der erste Aufruf startet
+- `<instanz>-kartendienst-proxy.service` (`systemd-socket-proxyd --exit-idle-time=<FR_KARTENDIENST_RUHE>`), gebunden an
+- `<instanz>-kartendienst.service`: `docker run --rm` mit dem Image per Digest, Speichergrenze, `StopWhenUnneeded=yes`; bereit erst nach einer echten Mini-Abfrage (`ExecStartPost`; der Statusaufruf des Images antwortet mit 502). Endet der Proxy, endet der Container. Container und Einspielen laufen mit `OVERPASS_USE_AREAS=false`: Die Software stellt nur Abfragen mit Rahmen und braucht keine Flächen; ohne deren Erzeugung und Dauerschleife spart der Dienst Speicher und Dauerlast.
+- `<instanz>-kartendienst-aktualisieren.service` und `.timer`: täglich nachts `kartendienst.sh aktualisieren`.
+
+**Einspielen** (`betrieb/kartendienst.sh einspielen`, als Dienstbenutzer in der Gruppe `docker`): prüft freien Speicher (rund 1,6 GiB je kleiner Region) und Platz (etwa 2 GB), wartet auf einen laufenden Lauf des Veröffentlichens (dessen Sperre) und läuft nie doppelt. Es lädt die Auszüge der Regionen von Geofabrik mit Prüfsumme (die Adresse steht in `engine/kartendienst.py`), verbindet sie im Container mit osmium zu `osm.bz2` und spielt sie im Modus `init` in einen Nebenordner ein (Rechte 755). Nach einer erfolgreichen Probeabfrage gegen den Nebenordner schreibt es `abdeckung.json` (`stand` = Zeitpunkt des Einspielens, `daten` = Stand der Daten, `regionen_pruefsumme`, `rahmen` je Region aus `osmium fileinfo`) und schaltet durch Umbenennen um; der alte Stand bleibt bis dahin liegen. Scheitert ein Schritt, bleibt der bisherige Stand unverändert. `aktualisieren` spielt nur ein, wenn `abdeckung.json` fehlt, älter als ein Monat ist oder die Prüfsumme der Regionenliste abweicht.
+
+**Einrichten:** Regionen, Ordner und `FR_KARTENDIENST` in die Einstellungen der Instanz, dann nennt `einrichten.sh` die einmaligen Befehle: Datenordner mit Rechten 755 anlegen (sein Elternordner gehört dem Dienstbenutzer), Dienstbenutzer in die Gruppe `docker`, Einheiten installieren, erstes Einspielen, Socket und Timer aktivieren. Abschalten ohne Neuaufbau: `FR_KARTENDIENST` leeren, dann gilt ab dem nächsten Aufruf nur der öffentliche Dienst; `systemctl disable --now <instanz>-kartendienst.socket` legt die Einheiten still.
+
+**Überwachung:** kein eigener Heartbeat; der Monitor der Instanz prüft als Teil-Check das Alter von `abdeckung.json` (Warnung ab 40 Tagen).
+
+**Lizenzen:** Overpass API steht unter der AGPL; das Image `wiktorn/overpass-api` wird nicht mitgeliefert, sondern beim Betrieb geladen und per Digest gepinnt (`KD_BILD` in `betrieb/gemeinsam.sh`; ein neuer Digest ist eine bewusste Änderung). Die Daten stammen aus OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL); die Namensnennung steht in jedem Treffer.
 
 ## Bauordner und Arbeitsordner
 

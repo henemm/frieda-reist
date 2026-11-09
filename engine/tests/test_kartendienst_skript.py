@@ -73,12 +73,13 @@ def kd(tmp_path):
     (tmp_path / "tmp").mkdir()
     protokoll = tmp_path / "aufrufe.log"
 
-    def lauf(befehl, regionen="europe/andorra europe/monaco", **fehler):
+    def lauf(befehl, regionen="europe/andorra europe/monaco", umgebung=None, **fehler):
         protokoll.write_text("")
         env = {**SAUBER, "PATH": f"{bin_}:/usr/bin:/bin", "TMPDIR": str(tmp_path / "tmp"), "FR_WURZEL": str(tmp_path),
                "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_KARTENDIENST_ORDNER": str(ordner),
                "FR_KARTENDIENST_REGIONEN": regionen, "KD_SPEICHER_MIN_MB": "0", "KD_PLATZ_MIN_MB": "0",
-               "ATTRAPPE_PROTOKOLL": str(protokoll), **{f"ATTRAPPE_{k.upper()}_FEHLER": v for k, v in fehler.items()}}
+               "ATTRAPPE_PROTOKOLL": str(protokoll), **{f"ATTRAPPE_{k.upper()}_FEHLER": v for k, v in fehler.items()},
+               **(umgebung or {})}
         return subprocess.run(["bash", str(SKRIPT), befehl], env=env, capture_output=True, text=True, timeout=120)
     return {"lauf": lauf, "ordner": ordner, "eltern": eltern, "protokoll": protokoll}
 
@@ -146,3 +147,45 @@ def test_neu_einspielen_bei_geaenderter_liste(kd):
     r = kd["lauf"]("aktualisieren", "europe/andorra")
     assert r.returncode == 0 and "europe/andorra" in kd["protokoll"].read_text(), (r.stdout, r.stderr)
     assert abdeckung(kd["ordner"])["stand"] > (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+
+
+@pytest.mark.parametrize("befehl", ["einspielen", "aktualisieren"])
+def test_harter_abbruch_beim_umschalten_wird_zurueckgenommen(kd, befehl):
+    """Gegenprüfung F004 (AC-16): Brach ein Lauf hart zwischen den beiden Umbenennungen ab (Datenordner fehlt, der alte Stand
+    liegt als .<name>.alt daneben, dazu ein halber Nebenordner), holt der nächste Lauf den alten Stand zurück, bevor er Reste
+    aufräumt. einspielen scheitert danach am Download (bisheriger Stand bleibt, Reste weg); aktualisieren findet den
+    zurückgeholten Stand aktuell und tut nichts."""
+    assert kd["lauf"]("einspielen").returncode == 0
+    (kd["ordner"] / "alter-stand.txt").write_text("bisher")
+    vorher = {p.name: p.read_bytes() for p in kd["ordner"].iterdir() if p.is_file()}
+    kd["ordner"].rename(kd["eltern"] / ".kartendienst.alt")
+    (kd["eltern"] / ".kartendienst.neu").mkdir()
+    (kd["eltern"] / ".kartendienst.neu" / "halb.txt").write_text("halb")
+    r = kd["lauf"](befehl, curl=r"osm\.pbf")
+    assert {p.name: p.read_bytes() for p in kd["ordner"].iterdir() if p.is_file()} == vorher, (r.stdout, r.stderr)
+    if befehl == "einspielen":
+        assert r.returncode != 0, (r.stdout, r.stderr)
+        assert [p.name for p in kd["eltern"].iterdir()] == ["kartendienst"]
+    else:
+        assert r.returncode == 0 and kd["protokoll"].read_text() == "", (r.stdout, r.stderr)
+        assert not (kd["eltern"] / ".kartendienst.alt").exists()
+
+
+def test_aktualisieren_wartet_auf_die_sperre(kd, tmp_path):
+    """Gegenprüfung F006: Hält ein anderer Lauf die Sperre (etwa ein Einspielen mitten im Umschalten), verändert aktualisieren
+    nichts, auch nicht den alten Stand neben einem fehlenden Datenordner; es scheitert wie bisher an der Sperre."""
+    import fcntl
+    sperren = tmp_path / "sperren"
+    sperren.mkdir()
+    umgebung = {"FR_SPERREN": str(sperren), "KD_SPERRE_WARTEN": "1"}
+    assert kd["lauf"]("einspielen", umgebung=umgebung).returncode == 0
+    kd["ordner"].rename(kd["eltern"] / ".kartendienst.alt")
+    vorher = sorted(str(p.relative_to(kd["eltern"])) for p in kd["eltern"].rglob("*"))
+    with open(sperren / "probe-kartendienst.lock", "w") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        r = kd["lauf"]("aktualisieren", umgebung=umgebung)
+    assert r.returncode != 0 and "another import is still running" in r.stderr, (r.stdout, r.stderr)
+    assert sorted(str(p.relative_to(kd["eltern"])) for p in kd["eltern"].rglob("*")) == vorher
+    assert not kd["ordner"].exists() and kd["protokoll"].read_text() == ""
+    r = kd["lauf"]("aktualisieren", umgebung=umgebung)     # ohne fremde Sperre: alter Stand zurück, sonst nichts zu tun
+    assert r.returncode == 0 and (kd["ordner"] / "abdeckung.json").exists(), (r.stdout, r.stderr)

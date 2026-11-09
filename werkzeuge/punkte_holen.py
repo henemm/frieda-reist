@@ -41,7 +41,7 @@ import schreiben  # noqa: E402
 
 WURZEL = instanz.wurzel()
 
-OVERPASS = "https://overpass-api.de/api/interpreter"
+OVERPASS = instanz.wert("FR_OVERPASS", schreiben.OVERPASS)   # Overpass-Dienst der Instanz (#444), sonst der öffentliche
 KENNUNG = instanz.kennung()
 NAH_M = 150        # Einkehr, Wasser, Bus: höchstens so weit vom Track
 NAH_GENANNT_M = 1500

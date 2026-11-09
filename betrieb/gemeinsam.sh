@@ -107,6 +107,10 @@ export FR_INSTANZ FR_TITEL FR_SEITEN FR_ABLAGE FR_DIENST FR_KONNEKTOR FR_KONTEN 
   FR_ADRESSE FR_KN_ADRESSE FR_PYTHON FR_MELDEN FR_SPERREN FR_UMZUG_NACH FR_NACHZIEHEN_WORKFLOW FR_ZEITZONE FR_EIGENE_ADRESSEN \
   FR_SPEICHER FR_SPEICHERREISEN
 
+# Eigener Kartendienst (#444, docs/betrieb.md): Overpass-Image per Digest gepinnt, damit ein Update des Images nichts ungeprüft
+# ändert (nicht mitgeliefert; Overpass AGPL, Daten ODbL). Ein neuer Digest ist eine bewusste Änderung mit Abnahme.
+KD_BILD="wiktorn/overpass-api@sha256:9bb5f4a9b54cd225bf828c04c67e7f4010650ff4d70b72157a9473a9ba02d93c"
+
 speicherreisen() {  # Reisen aus FR_SPEICHERREISEN, eine je Zeile; Leerzeichen und leere Teile fallen weg wie in
   # instanz.speicherreisen()
   local r

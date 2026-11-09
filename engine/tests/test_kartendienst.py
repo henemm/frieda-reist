@@ -17,6 +17,8 @@ Was diese Tests als Schnittstelle festlegen (über die Spec hinaus, Entscheidung
   Netzzugriffe nur über urllib.request.urlopen, zur Laufzeit nachgeschlagen (wie bisher in overpass_holen).
 """
 import json
+import re
+import socket
 import sys
 import threading
 import time
@@ -283,3 +285,83 @@ def test_teilfrist_und_gesamtfrist(dienste, monkeypatch, frist_name):
     assert 0 < t_eigen <= min(kd().TEILFRIST_EIGEN, frist)
     assert 0 < t_oeff <= frist - t_eigen + 1e-6
     assert t_eigen + t_oeff <= frist + 1e-6 and uhr.jetzt - start <= frist + 1e-6
+
+
+# ---------- Gegenprüfung #444: abgebrochene Antworten und Umkreis ----------
+
+class Kaputt:
+    """Stummel, der eine kaputte HTTP-Antwort sendet: "statuszeile" (Müll statt HTTP/1.x) oder "abgeschnitten"
+    (Content-Length größer als der gesendete Körper, dann Verbindung zu)."""
+
+    def __init__(self, art):
+        self.anfragen, self.art = [], art
+        self.sock = socket.socket()
+        self.sock.bind(("127.0.0.1", 0))
+        self.sock.listen(5)
+        self.adresse = f"http://127.0.0.1:{self.sock.getsockname()[1]}/api/interpreter"
+        threading.Thread(target=self.laufen, daemon=True).start()
+
+    def laufen(self):
+        while True:
+            try:
+                verbindung, _ = self.sock.accept()
+            except OSError:
+                return
+            with verbindung:
+                daten = b""
+                while b"\r\n\r\n" not in daten:      # ganze Anfrage lesen, sonst setzt der Abbau die Verbindung zurück
+                    daten += verbindung.recv(65536)
+                kopf, _, koerper = daten.partition(b"\r\n\r\n")
+                laenge = int(re.search(rb"(?i)content-length:\s*(\d+)", kopf).group(1))
+                while len(koerper) < laenge:
+                    koerper += verbindung.recv(65536)
+                self.anfragen.append(time.monotonic())
+                if self.art == "statuszeile":
+                    verbindung.sendall(b"KAPUTT\r\n\r\n")
+                else:
+                    verbindung.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 5000\r\nConnection: close\r\n\r\n{\"elements\": [")
+                verbindung.shutdown(socket.SHUT_WR)
+
+    def schliessen(self):
+        self.sock.close()
+
+
+@pytest.mark.parametrize("art", ["statuszeile", "abgeschnitten"])
+def test_kaputte_antwort_des_eigenen_dienstes_faellt_zurueck(dienste, monkeypatch, art):
+    """F001 (AC-6): Bricht der eigene Dienst eine Antwort ab (http.client.HTTPException), antwortet der öffentliche Dienst."""
+    e, o = dienste()
+    k = Kaputt(art)
+    try:
+        monkeypatch.setenv("FR_KARTENDIENST", k.adresse)
+        antwort = sb.overpass_holen(ABFRAGE, 20)
+        assert antwort["dienst"] == "oeffentlich" and len(o.anfragen) == 1 and len(k.anfragen) == 1
+    finally:
+        k.schliessen()
+
+
+@pytest.mark.parametrize("art", ["statuszeile", "abgeschnitten"])
+def test_kaputte_antwort_des_oeffentlichen_dienstes_wird_abgelehnt(dienste, monkeypatch, art):
+    """F001: Bricht der öffentliche Dienst eine Antwort ab, kommt die bisherige Ablehnung statt einer Ausnahme, mit und ohne
+    eigenen Dienst."""
+    k = Kaputt(art)
+    try:
+        for eigen in (True, False):
+            dienste(eigen=[502])
+            monkeypatch.setenv("FR_OVERPASS", k.adresse)
+            if not eigen:
+                monkeypatch.delenv("FR_KARTENDIENST")
+            with pytest.raises(sb.Ablehnung) as a:
+                sb.overpass_holen(ABFRAGE, 20)
+            assert a.value.schluessel == "schreiben.kartenpunkte.dienst"
+    finally:
+        k.schliessen()
+
+
+def test_umkreis_geht_an_oeffentlichen_dienst(dienste):
+    """F002 (AC-3): Eine Abfrage mit Umkreis (around) hat keinen bekannten Rahmen und geht an den öffentlichen Dienst."""
+    umkreis = '[out:json];(nwr["amenity"="drinking_water"](around:500,50.95,14.05););out center tags;'
+    gemischt = '[out:json];(nwr["a"="b"](50.9,14.0,51.0,14.1);nwr["c"](around:500,50.95,14.05););out center tags;'
+    assert kd().rahmen_aus_abfrage(umkreis) is None and kd().rahmen_aus_abfrage(gemischt) is None
+    e, o = dienste()
+    assert sb.overpass_holen(umkreis, 20)["dienst"] == "oeffentlich"
+    assert e.anfragen == [] and len(o.anfragen) == 1

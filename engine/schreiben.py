@@ -53,6 +53,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import instanz  # noqa: E402
+import kartendienst  # noqa: E402
 import konten  # noqa: E402
 import stand as reisestand  # noqa: E402
 import texte  # noqa: E402
@@ -2017,7 +2018,7 @@ def track_anhaengen(reise_dir, wer, args, heute=None):
 
 
 # Punkte aus OpenStreetMap (K14): feste Abfrage der Tags, die die Person im Gespräch wählt; keine KI. Overpass-API (ODbL)
-OVERPASS = "https://overpass-api.de/api/interpreter"   # Vorgabe; FR_OVERPASS überschreibt sie (zur Laufzeit gelesen)
+OVERPASS = kartendienst.OVERPASS   # Vorgabe; FR_OVERPASS überschreibt sie (zur Laufzeit gelesen)
 OSM_TAG = re.compile(r"^[a-z][a-z0-9_:]{0,40}(=[A-Za-z0-9_:;. -]{1,60})?$")
 MAX_TREFFER = 200
 OSM_ZEIT = 12            # Sekunden: eigener Abruf im Vorgang (Rückfall), der Schreibvorgang hat insgesamt ZEIT_GESAMT
@@ -2028,27 +2029,63 @@ ZEIT_VORAB_VORB = 10     # höchstens für Lesekopie, Rollenprüfung und Abfrage
 ZEIT_VORAB = ZEIT_VORAB_VORB + OSM_FRIST_VORAB   # Vorab-Fenster vor der Sperre insgesamt
 
 
-def overpass_holen(abfrage, frist):
-    """Overpass-Abfrage (ohne Zeitangabe) mit eigener Frist in Sekunden -> JSON (dict). Nach einer schnellen Fehlerantwort
-    (429/502/503/504) genau eine Wiederholung nach OSM_PAUSE, wenn noch OSM_REST_WIEDERHOLUNG Sekunden übrig sind; nach einer
-    Zeitüberschreitung nie. Wirft Ablehnung mit verständlichem Grund (Limit, Zeit, Netz)."""
-    import urllib.error
+def overpass_holen(abfrage, frist, rahmen=None):
+    """Overpass-Abfrage (ohne Zeitangabe) mit eigener Frist in Sekunden -> JSON (dict). Ist ein eigener Kartendienst eingestellt
+    (FR_KARTENDIENST, #444) und liegt der Rahmen der Abfrage (ohne Angabe aus der Abfrage gelesen) ganz in seiner Abdeckung, wird
+    zuerst er gefragt, höchstens kartendienst.TEILFRIST_EIGEN Sekunden und ohne Wiederholung; scheitert er, bekommt der öffentliche
+    Dienst die Restfrist. Beide teilen sich dieselbe Frist. Mit eingestelltem eigenem Dienst trägt die Antwort „dienst“ und „stand“
+    (kartendienst.stempeln); ohne ihn ist sie genau die des öffentlichen Dienstes. Wirft Ablehnung wie overpass_oeffentlich."""
+    ende = time.monotonic() + frist
+    if not kartendienst.eigener_dienst():
+        return overpass_oeffentlich(abfrage, kartendienst.oeffentlicher_dienst(), frist)
+    rahmen = rahmen if rahmen is not None else kartendienst.rahmen_aus_abfrage(abfrage)
+    dienst, adresse = kartendienst.dienst_waehlen(rahmen)
+    if dienst == "eigen":
+        antwort = overpass_eigen(abfrage, adresse, min(kartendienst.TEILFRIST_EIGEN, frist))
+        if antwort is not None:
+            return kartendienst.stempeln(antwort, "eigen")
+        adresse = kartendienst.oeffentlicher_dienst()
+    return kartendienst.stempeln(overpass_oeffentlich(abfrage, adresse, ende - time.monotonic()), "oeffentlich")
+
+
+def overpass_senden(adresse, abfrage, frist, timeout):
+    """Eine Anfrage an einen Overpass-Dienst mit [timeout:frist] in der Abfrage -> JSON. Fehler gehen an den Aufrufer."""
     import urllib.parse
     import urllib.request
+    text = abfrage.replace("[out:json]", f"[out:json][timeout:{max(1, int(frist))}]", 1)
+    req = urllib.request.Request(adresse, data=urllib.parse.urlencode({"data": text}).encode(),
+                                 headers={"User-Agent": instanz.kennung()})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+
+def overpass_eigen(abfrage, adresse, frist):
+    """Der eigene Kartendienst: ein Versuch mit der Teilfrist -> JSON mit „elements“ (auch leer: innerhalb der Abdeckung ist
+    „keine Treffer“ ein Ergebnis) oder None bei Fehler, Zeitüberschreitung oder Antwort ohne „elements“."""
+    import http.client
+    import urllib.error
+    try:
+        antwort = overpass_senden(adresse, abfrage, frist, max(0.1, frist))
+    except (urllib.error.URLError, http.client.HTTPException, TimeoutError, OSError, ValueError):   # auch abgebrochene Antworten
+        return None
+    return antwort if isinstance(antwort, dict) and isinstance(antwort.get("elements"), list) else None
+
+
+def overpass_oeffentlich(abfrage, adresse, frist):
+    """Der öffentliche Dienst mit Frist in Sekunden -> JSON (dict). Nach einer schnellen Fehlerantwort (429/502/503/504) genau
+    eine Wiederholung nach OSM_PAUSE, wenn noch OSM_REST_WIEDERHOLUNG Sekunden übrig sind; nach einer Zeitüberschreitung nie.
+    Wirft Ablehnung mit verständlichem Grund (Limit, Zeit, Netz)."""
+    import http.client
+    import urllib.error
     ende = time.monotonic() + frist
-    text = abfrage.replace("[out:json]", f"[out:json][timeout:{int(frist)}]", 1)
-    adresse = instanz.wert("FR_OVERPASS", OVERPASS)
     for versuch in (1, 2):
-        req = urllib.request.Request(adresse, data=urllib.parse.urlencode({"data": text}).encode(),
-                                     headers={"User-Agent": instanz.kennung()})
         try:
-            with urllib.request.urlopen(req, timeout=max(0.1, ende - time.monotonic())) as r:
-                return json.loads(r.read().decode("utf-8"))
+            return overpass_senden(adresse, abfrage, frist, max(0.1, ende - time.monotonic()))
         except urllib.error.HTTPError as e:
             fehler = Ablehnung("schreiben.kartenpunkte.limit" if e.code in (429, 504) else "schreiben.kartenpunkte.dienst", w1=e.code)
             if versuch == 2 or e.code not in (429, 502, 503, 504) or ende - time.monotonic() < OSM_REST_WIEDERHOLUNG:
                 raise fehler
-        except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
+        except (urllib.error.URLError, http.client.HTTPException, TimeoutError, OSError, ValueError) as e:
             raise Ablehnung("schreiben.kartenpunkte.dienst", w1=type(e).__name__)
         time.sleep(OSM_PAUSE)
     raise fehler   # nicht erreichbar: der zweite Versuch kehrt zurück oder wirft
@@ -2265,6 +2302,9 @@ def kartenpunkte_holen(reise_dir, wer, args, heute=None):
     abfrage, linie, abstand, tags, sid, kat, route = kartenpunkte_abfrage(reise_dir, args)
     kategorien = {k: d for k, d in (route.get("arten") or {}).items() if d.get("gruppe")}
     antwort = overpass_abfragen(abfrage)
+    stand = kartendaten_stand(antwort) or heute
+    quelle_schluessel = {"eigen": "schreiben.kartenpunkte.quelle.eigen", "oeffentlich": "schreiben.kartenpunkte.quelle.oeffentlich"}.get(
+        (antwort or {}).get("dienst"), "schreiben.kartenpunkte.quelle")   # gestempelt (#444): Dienst und Stand der Daten
     treffer, gesehen = [], set()
     for e in (antwort or {}).get("elements") or []:
         lat, lon = e.get("lat", (e.get("center") or {}).get("lat")), e.get("lon", (e.get("center") or {}).get("lon"))
@@ -2278,13 +2318,13 @@ def kartenpunkte_holen(reise_dir, wer, args, heute=None):
         tg = e.get("tags") or {}
         art = next((tg.get(t.partition("=")[0]) for t in tags if tg.get(t.partition("=")[0])), None)
         p = {"name": tg.get("name"), "kat": kat, "art": art, "lage": lage, "osm": oid,
-             "quelle": S("schreiben.kartenpunkte.quelle", w1=heute.isoformat()).text(texte.aufruf_sprache()), "geprueft": heute}
+             "quelle": S(quelle_schluessel, w1=stand.isoformat()).text(texte.aufruf_sprache()), "geprueft": heute}
         treffer.append({x: v for x, v in p.items() if v not in (None, "")})
         if len(treffer) >= MAX_TREFFER:
             break
     # Treffer werden Dinge (A-…): Aufenthalte der Art kat mit an: <Strecke>, Koordinaten, OSM-Bezug (Rolle osm) und Sorte (Rolle sorte).
     # Ein zweiter Aufruf aktualisiert die Dinge mit demselben OSM-Bezug; nichts wird gelöscht (IDs bleiben).
-    quelle_text = S("schreiben.kartenpunkte.quelle", w1=heute.isoformat()).text(sprache_von(reise_dir))
+    quelle_text = S(quelle_schluessel, w1=stand.isoformat()).text(sprache_von(reise_dir))
     ergebnis = kartenpunkte_ablegen(reise_dir, wer, sid, [{**p, "kat": kat, "quelle": quelle_text, "geprueft": heute} for p in treffer], heute=heute,
                                     aktualisieren=True)
     alt = ergebnis["vorhanden"]
@@ -2292,7 +2332,26 @@ def kartenpunkte_holen(reise_dir, wer, args, heute=None):
     beispiele = ", ".join(dict.fromkeys(p["name"] for p in treffer if p.get("name")))
     return (S("schreiben.titel.kartenpunkte", w1=sid, w2=name, n=len(treffer)),
             S("schreiben.antwort.kartenpunkte", w1=sid, w2=name, n=len(treffer), m=len(alt), w3=", ".join(tags))
-            + (S("schreiben.antwort.kartenpunkte.beispiele", w1=beispiele[:300]) if beispiele else "") + S("schreiben.antwort.kartenpunkte.lizenz"))
+            + (S("schreiben.antwort.kartenpunkte.beispiele", w1=beispiele[:300]) if beispiele else "") + kartenpunkte_herkunft(antwort, stand))
+
+
+def kartendaten_stand(antwort):
+    """Stand der Kartendaten aus einer gestempelten Antwort („stand“, kartendienst.stempeln) als date, sonst None."""
+    try:
+        return datetime.date.fromisoformat(str((antwort or {}).get("stand") or "")[:10])
+    except ValueError:
+        return None
+
+
+def kartenpunkte_herkunft(antwort, stand):
+    """Schluss der Antwort von kartenpunkte_holen: Lizenz und Stand der Daten (Stand heute, wenn die Antwort keinen nennt) und,
+    wenn die Antwort gestempelt ist, welcher Dienst geantwortet hat (#444)."""
+    dienst = (antwort or {}).get("dienst")
+    teil = (S("schreiben.antwort.kartenpunkte.lizenz.stand", w1=stand.isoformat()) if kartendaten_stand(antwort)
+            else S("schreiben.antwort.kartenpunkte.lizenz"))
+    schluessel = {"eigen": "schreiben.antwort.kartenpunkte.dienst.eigen",
+                  "oeffentlich": "schreiben.antwort.kartenpunkte.dienst.oeffentlich"}.get(dienst)
+    return teil + (S(schluessel) if schluessel else "")
 
 
 def frage_zeile(reise_dir, text, bis=None):
