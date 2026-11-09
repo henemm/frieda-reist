@@ -1,4 +1,4 @@
-"""Protokolle, Nachweise und Specs in docs/artifacts/ und docs/specs/ sind öffentlich: Sie nennen keine absoluten Pfade
+"""Protokolle, Nachweise, Specs und Kontext in docs/artifacts/, docs/specs/ und docs/context/ sind öffentlich: Sie nennen keine absoluten Pfade
 eines Rechners oder Servers (Heimatordner, /srv/…, /mnt/…), sondern Pfade relativ zum Repo oder zu ~. Anlass: frieda-reisen#245,
 wo kopierte pytest-Ausgaben den Benutzer des Servers verrieten (CLAUDE.md, „Was nie hierher gehört“)."""
 import re
@@ -10,7 +10,7 @@ ABSOLUT = re.compile(r"(?<![\w.~-])/(?:home|Users|srv|mnt|root|var/www)/[\w.-]+"
 
 
 def test_protokolle_ohne_absolute_pfade():
-    dateien = subprocess.run(["git", "-C", str(WURZEL), "ls-files", "docs/artifacts", "docs/specs"], capture_output=True, text=True, check=True).stdout.split()
+    dateien = subprocess.run(["git", "-C", str(WURZEL), "ls-files", "docs/artifacts", "docs/specs", "docs/context"], capture_output=True, text=True, check=True).stdout.split()
     funde = []
     for f in dateien:
         p = WURZEL / f

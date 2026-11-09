@@ -63,7 +63,7 @@ ca. +40/−15 Zeilen in drei Repo-Dateien und `monitor.sh`. Risiko niedrig.
 - **AC-2:** Sind alle Pfade da (auch nach 429 mit Wiederholung), bleibt die Ausgabe leer und es gibt keine Meldung (Verhalten unverändert).
 - **AC-3:** `wege_pruefen` endet unverändert mit Ausgang 0; kein Aufrufer (`deploy.sh`, `veroeffentlichen.sh`) bricht durch die Änderung.
 - **AC-4:** `monitor.sh` prüft die Konnektor-Pfade (Kopf `X-Frieda`) als Warnung; ein fehlender Pfad löst keinen kritischen Alarm aus und entprellt wie `check_frieda_seiten`.
-- **AC-5:** Auf dem Live-Server liefert `nginx.py pruefen` nach dem Nachziehen Ausgang 0, `https://frieda.henemm.com/info/pruefung.webp` trägt den Kopf `X-Frieda`, `nginx -t` ist grün; eine Sicherung der alten Einstellung liegt vor.
+- **AC-5:** Auf dem Live-Server liefert `nginx.py pruefen` nach dem Nachziehen Ausgang 0, `https://<Domain der Instanz>/info/pruefung.webp` trägt den Kopf `X-Frieda`, `nginx -t` ist grün; eine Sicherung der alten Einstellung liegt vor.
 - **AC-6:** Die sechs offenen MQ-Nachrichten sind erledigt markiert.
 - **AC-7:** `docs/betrieb.md` beschreibt den neuen Meldeweg (Warnung im Protokoll, Issue durch nginx-Abgleich, Teil-Check in `monitor.sh`).
 

@@ -16,7 +16,7 @@ Die Meldung „nginx: paths to the connector missing“ (Priorität high, Telegr
 | `engine/tests/test_betrieb.py:1010-1030` | Test von `wege_pruefen` mit Attrappe für `FR_MELDEN` |
 | `engine/tests/test_nginx.py` | Tests von `nginx.py` |
 | `docs/betrieb.md` (Abschnitte „nginx-Bausteine abgleichen (#206)“, „Einheiten abgleichen (#260)“) | Entscheidungen und Begründung |
-| `/home/hem/henemm-infra/scripts/monitor.sh:1959` | `check_frieda_seiten`: Vorbild für einen Teil-Check statt Telegram (anderes Repo, selbst erledigen) |
+| `<Infra-Repo>/scripts/monitor.sh:1959` | `check_frieda_seiten`: Vorbild für einen Teil-Check statt Telegram (anderes Repo, selbst erledigen) |
 
 ## Existing Patterns
 - **Meldeweg-Stufen:** `fr_melden high` = Alarm (Telegram), `fr_melden normal` = Issue ohne Alarm. `nginx_abgleichen` und `units_abgleichen` melden normal, mit Fingerabdruck-Merker, damit nur eine Abweichung genau einmal gemeldet wird.
@@ -58,7 +58,7 @@ Bug (Betrieb): Alarm für etwas, das kein Ausfall ist, plus fehlender Selbstabla
 | `betrieb/gemeinsam.sh` | MODIFY | `fr_melden high` aus `wege_pruefen` entfernen; Warnzeile im Protokoll bleibt; Kommentar anpassen |
 | `engine/tests/test_betrieb.py` | MODIFY | Test erwartet bisher die Meldung; neu: keine Meldung bei fehlendem Pfad, Warnzeile bleibt |
 | `docs/betrieb.md` | MODIFY | Abschnitt zu `wege_pruefen` (nur Warnung, Meldung kommt vom nginx-Abgleich als Issue) |
-| `/home/hem/henemm-infra/scripts/monitor.sh` | MODIFY | Teil-Check der Konnektor-Pfade, als Warnung (nicht kritisch), Vorbild `check_frieda_seiten`; eigenes Issue in `henemm-infra` |
+| `<Infra-Repo>/scripts/monitor.sh` | MODIFY | Teil-Check der Konnektor-Pfade, als Warnung (nicht kritisch), Vorbild `check_frieda_seiten`; eigenes Issue in `henemm-infra` |
 | Live-Server | EINMALIG | `nginx.py pruefen`, dann `anwenden` (Sicherung vorher); danach Prüfung grün; sechs MQ-Nachrichten mit `ack.sh` erledigen |
 | (offen, siehe Frage) Hilfsprogramm + `veroeffentlichen.sh` | CREATE/MODIFY | Vorhaben 3: neue Orte beim Software-Wechsel automatisch einrichten |
 
