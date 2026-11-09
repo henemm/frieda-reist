@@ -1513,7 +1513,10 @@ function streckeZeile(id, wahl, ohneKennung, voll) {
   // Name der Art aus plan/arten.yaml; eine Bewegung aus eigener Kraft (summiert) zeigt stattdessen ihre Kennzahlen
   const arten = [].concat(s.art || []);
   const art = !arten.length ? T("seite.strecke.verkehrsmittel_offen") : s.summiert ? "" : arten.map(artName).join(" + ");
-  const z = el("div", {class: "z"}, el("div", {class: "titelzeile"}, el("span", {}, symbol(artSym(arten[0], "bewegung"), "etikett-sym"), " ", s.dossier || proId.has(id) ? link(id, s.titel) : s.titel), ohneKennung ? null : zid(id)));
+  // Titel als Link: zum Dossier, sonst zur Heimat der Fahrt (ihre Tagesseite, ADR-0003); voll steht sie an der Heimat selbst (#448)
+  const dossier = s.dossier || proId.has(id), zuHeimat = !voll && !dossier && !!PLAN_ANSICHT && !!heimTag(id), ziel = voll && !dossier;
+  const z = el("div", {class: "z" + (ziel ? " ziel" : ""), id: ziel ? id : null, "data-ziel": ziel ? id : null},
+    el("div", {class: "titelzeile"}, el("span", {}, symbol(artSym(arten[0], "bewegung"), "etikett-sym"), " ", dossier || zuHeimat ? link(id, s.titel) : s.titel), ohneKennung ? null : zid(id)));
   // Kennzahlen als Leiste mit Etiketten (Gehzeit, Aufstieg, Abstieg, Strecke); Verkehrsmittel als Textzeile
   const kz = kennzahlLeiste(s.kennzahlen, !!s.art && !summiertArt(s));
   if (art || s.ab || s.an) z.append(el("div", {class: "z klein"}, [art, s.ab ? T("seite.strecke.ab_zeit", {zeit: zeitText(s.ab)}) : "", s.an ? T("seite.strecke.an_zeit", {zeit: zeitText(s.an)}) : ""].filter(Boolean).join(" · ")));
@@ -1521,10 +1524,23 @@ function streckeZeile(id, wahl, ohneKennung, voll) {
   // Der Stand steht einmal: voll mit Buchung trägt sie ihn, sonst der Chip
   if (s.buchung && !(voll && buchungenBei(id).length)) z.append(el("div", {class: "chips"}, buchungChip(s)));
   if (s.text) z.append(el("div", {class: "z klein"}, s.text));
-  if (s.quelle) z.append(el("div", {class: "z klein"}, T("seite.label.quelle") + s.quelle));
   if (s.siehe && proId.has(s.siehe)) z.append(el("div", {class: "z klein"}, link(s.siehe, "→ " + proId.get(s.siehe).titel)));
-  if (voll) { for (const b of buchungenBei(id)) z.append(buchungBlock(b)); z.append(...stornierteBuchungen(stornierteBei(id))); }
-  const mitnehmen = voll && mitnehmenZeile(id);   // was bei dieser Strecke mitkommt (Packliste, ADR-0010)
+  if (!voll) {
+    if (s.quelle) z.append(el("div", {class: "z klein"}, T("seite.label.quelle") + s.quelle));
+    return z;
+  }
+  // An der Heimat (#448): Merkmale der Art, Hinweis, Herkunft und Lücken nach der Stand-Leiter wie beim Aufenthalt (planungsTeil)
+  const krit = (R.merkmale || {})[s.art_schluessel] || [], st = buchungsStand(s);
+  const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
+  const teil = planungsTeil(!!(st && st.gebucht), krit, s.merkmale, [
+    s.hinweis ? el("div", {class: "z klein"}, s.hinweis) : null,
+    s.quelle ? el("div", {class: "z klein"}, T("seite.label.quelle") + s.quelle) : null,
+    (s.fehlt || []).length ? el("div", {class: "z klein"}, T("seite.label.fehlt_noch") + s.fehlt.map(x => name[x] || x).join(", ")) : null]);
+  if (teil.sichtbar) z.append(teil.sichtbar);
+  for (const b of buchungenBei(id)) z.append(buchungBlock(b));
+  if (teil.block) z.append(teil.block);
+  z.append(...stornierteBuchungen(stornierteBei(id)));
+  const mitnehmen = mitnehmenZeile(id);   // was bei dieser Strecke mitkommt (Packliste, ADR-0010)
   if (mitnehmen) z.append(mitnehmen);
   return z;
 }

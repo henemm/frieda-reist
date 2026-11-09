@@ -634,3 +634,17 @@ def test_schriftleiter_ohne_freie_groessen():
                 continue
             frei.append(f"{sel.strip()[-60:]}: {wert}")
     assert frei == [], frei
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_fahrt_an_ihrer_heimat_mit_merkmalen_und_hinweis(tmp_path, browser):
+    """#448: Eine Fahrt ohne Dossier (S-Bahn E-20) steht an ihrer Heimat, der Tagesseite (ADR-0003), vollständig als Sprungziel:
+    Merkmale ihrer Art, Hinweis und Herkunft; #E-20 führt dorthin. Erfundene Abwandlung der Beispielreise."""
+    ersetzen = [('    art: bahn\n    quelle: "Beispiel; Fahrplan nicht geprüft"\n    merkmale:\n',
+                 '    art: bahn\n    hinweis: "Abfahrt Gleis 1, erfunden (Beispielwert)"\n    quelle: "Beispiel; Fahrplan nicht geprüft"\n    merkmale:\n'
+                 '      dauer: {wert: "28 Min.", quelle: "erfunden (Beispiel)", geprueft: 2026-11-09}\n')]
+    e = seite_der_variante(tmp_path, browser, skript="seiten_strecke_heimat.mjs", routen_ersetzen=ersetzen)
+    h = e["heimat"]
+    assert h["hash"] == "#E-20" and h["tagseite"] and not h["eigenerLink"], h   # an der Heimat voll, ohne Link auf sich selbst
+    assert "Abfahrt Gleis 1" in h["text"] and "28 Min." in h["text"], h
