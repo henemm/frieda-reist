@@ -86,6 +86,7 @@ def test_reiseueberblick(tmp_path, browser):
         assert [x[2] for x in a["tage"]] == ["gebucht", "nicht gebucht", "nicht gebucht", None], a["tage"]
         assert not a["breit"], breite
         assert a["planZiel"] and a["nachKlick"] == "#T-01", a
+        assert a["startTag"] is None, a   # vor der Reise startet die Seite auf „Reise“ (#433)
         # Lesetext: „(F-03)“ wird zum Link mit den ersten Worten der Frage, „R-…“ entfällt
         assert "F-03" not in a["lesetext"]["text"] and "R-2026" not in a["lesetext"]["text"], a["lesetext"]
         assert a["lesetext"]["link"] and a["lesetext"]["link"][0].startswith("„Fahrplan"), a["lesetext"]
@@ -100,6 +101,8 @@ def test_reiseueberblick_unterwegs(tmp_path):
     """Unterwegs zählt der Tag, nicht die Vorbereitung: Zähler „Tag x von n“, kein Stand der Vorbereitung."""
     for a in ueberblick(tmp_path, "chromium", "2027-05-14", status="unterwegs").values():
         assert a["kopf"] == ["Reise", "Tag 2 von 4"] and a["stand"] == [], a
+        # Start ohne Sprungziel: die Tagesseite des heutigen Tags (Knopf „Heute“, #433), „Reise“ über die Leiste
+        assert a["startTag"] == "T-02" and a["reiter"][0] == "Heute", a
 
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")

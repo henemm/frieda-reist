@@ -13,6 +13,10 @@ for (const breite of [390, 1300]) {
   p.on("pageerror", e => fehler.push(`${breite}: ${e}`));
   await p.clock.setFixedTime(new Date(`${datum}T10:00:00`));
   await p.goto(basis);
+  // Unterwegs mit heutigem Tag startet die Seite auf dessen Tagesseite (Knopf „Heute“, #433); der Überblick ist dann „#varianten“
+  await p.waitForSelector(".tagzeilen, .tagseite");
+  const startTag = await p.evaluate(() => document.querySelector(".tagseite") ? (document.querySelector("#main h2[data-ziel]") || {}).id || "" : null);
+  if (startTag !== null) await p.evaluate(() => { location.hash = "varianten"; });
   await p.waitForSelector(".tagzeilen");
   const lesen = () => p.evaluate(() => {
     const t = s => [...document.querySelectorAll(s)].map(x => x.textContent.trim());
@@ -38,6 +42,7 @@ for (const breite of [390, 1300]) {
     };
   });
   const a = aus[breite] = await lesen();
+  a.startTag = startTag;
   // Karte der Reise: Leaflet hat ihren Kasten vermessen und zeichnet die Wege in der Fläche, nicht in einen Punkt
   // (Fehler 29.10.2026: Kasten beim Zeichnen noch nicht im Dokument, Größe 0)
   // Auf einem ausgelasteten Rechner braucht das Vermessen länger als eine feste Frist: warten, bis Leaflet den Kasten kennt
@@ -51,13 +56,13 @@ for (const breite of [390, 1300]) {
   await p.evaluate(() => { location.hash = "P-A"; });
   await p.waitForTimeout(200);
   a.planZiel = await p.evaluate(() => !!document.querySelector(".tagzeilen") && !document.querySelector(".steckbrief"));
-  await p.evaluate(() => { location.hash = ""; });
+  await p.evaluate(() => { location.hash = "varianten"; });
   await p.waitForSelector(".tagzeilen");
   await p.locator(".reise-tage .tz-titel").first().click();
   await p.waitForTimeout(200);
   a.nachKlick = await p.evaluate(() => location.hash);
   // Zurück an dieselbe Zeile: Tag 3 öffnen, „← Reise“ führt zur Zeile von Tag 3 mit Fokus, sichtbar
-  await p.evaluate(() => { location.hash = ""; });
+  await p.evaluate(() => { location.hash = "varianten"; });
   await p.waitForSelector(".tagzeilen");
   await p.locator('.reise-tage .tagzeile[data-tag="T-03"]').click();
   await p.waitForSelector(".tagseite");
