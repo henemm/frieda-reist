@@ -2779,7 +2779,11 @@ def test_kartenpunkte_vorab_in_beiden_schreibwegen(request, repo, monkeypatch, w
         stand = lambda: git(origin, "rev-parse", "main")
     kopie = Path(f"{arbeit}-beispielreise")
     kopie_stand = lambda: (git(kopie, "rev-parse", "HEAD"), git(kopie, "status", "--porcelain")) if (kopie / ".git").exists() else None
+    # Ein Eintrag vorweg legt im Git-Weg die Arbeitskopie an, damit ihr Stand während des Abrufs wirklich verglichen wird
+    assert sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "art_definieren",
+                              {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}})[0] == 200
     vorher, kopie_vorher, waehrend = stand(), kopie_stand(), []
+    assert (kopie_vorher is not None) == (weg == "git"), kopie_vorher
     osm_ersatz(monkeypatch, beim_abruf=lambda: waehrend.append((stand(), kopie_stand())))
     umgebungen = env_mitschneiden(monkeypatch)
     code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})

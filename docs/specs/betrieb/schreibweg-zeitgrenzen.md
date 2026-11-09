@@ -92,7 +92,7 @@ Veröffentlichen: veroeffentlichen.service mit Nice=10, IOSchedulingClass=best-e
 ## Expected Behavior
 
 - **Input:** ein Schreibvorgang (`werkzeug`, `anfrage`) für eine Reise.
-- **Output:** 200/422 wie bisher; bei Fristablauf eine der Antworten aus der Meldungstabelle oben. Die Antwort kommt immer vor Ablauf von `proxy_read_timeout` (höchstens 28 s).
+- **Output:** 200/422 wie bisher; bei Fristablauf eine der Antworten aus der Meldungstabelle oben. Die Antwort kommt immer vor Ablauf von `proxy_read_timeout` (höchstens 28 s; `kartenpunkte_holen` höchstens 83 s, Nachtrag #240 oben).
 - **Side effects:** Protokollzeilen (`journalctl -u <instanz>-schreiben`); je Reise eine Sperrdatei und eine Arbeitskopie; eine Kennungszeile in jeder Commit-Nachricht eines Eintrags; Veröffentlichen läuft mit niedriger Priorität.
 
 ## Known Limitations
