@@ -169,8 +169,8 @@ def test_aufenthalt_ohne_tag_steht_vollstaendig_auf_der_ortsseite(tmp_path):
     e = json.loads(aus.stdout.strip().splitlines()[-1])
     assert e["fehler"] == []
     assert e["ort"]["voll"] == 1, e                        # vollständig auf der Ortsseite
-    # sonst nur die Zeile mit Link: unter der Karte (Reiter Karte) oder im Überblick der Reise, wo keine Karte ist
-    assert e["start"]["voll"] == 0 and e["karte"]["voll"] == 0 and e["start"]["links"] + e["karte"]["links"] >= 1, e
+    # in der Reise steht er gar nicht, auch nicht als Zeile: keine Sammelliste „Ohne Tag“ (#432); Punkt auf der Karte und der Link genügen
+    assert e["start"]["voll"] == 0 and e["karte"]["voll"] == 0 and e["start"]["links"] + e["karte"]["links"] == 0, e
     assert e["ziel"]["ortsseite"] and e["ziel"]["voll"] == 1, e      # der Link führt zur Ortsseite
     # #328: an der Heimat als Karte (Organismus dingKarte), die Zeile eines Aufenthalts nirgends außerhalb der Zeitleiste
     assert e["ort"]["alsKarte"] == 1 and e["ziel"]["alsKarte"] == 1, e
