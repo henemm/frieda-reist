@@ -15,7 +15,13 @@ await ctx.route("**/api/**", async r => {
   const pfad = new URL(r.request().url()).pathname.split("/api/")[1];
   const kopf = await r.request().allHeaders();
   if (sitzung !== "-") kopf.cookie = `__Host-frieda=${sitzung}`;
-  r.fulfill({response: await r.fetch({url: `${dienst}/${reise}/${pfad}`, headers: kopf})});
+  // Eine Anfrage, die beim Schließen noch unterwegs ist (etwa „gelesen“), scheitert mit „Request context disposed“;
+  // ohne catch beendet die unbehandelte Ablehnung node mitten im Test (#462).
+  try {
+    r.fulfill({response: await r.fetch({url: `${dienst}/${reise}/${pfad}`, headers: kopf})});
+  } catch (e) {
+    if (!/disposed|closed/i.test(String(e))) throw e;
+  }
 });
 await ctx.addInitScript(() => localStorage.setItem("rh-name", "Hanna"));
 // Chromium ohne Fenster meldet Benachrichtigungen immer als verboten; ein Telefon fragt beim ersten Mal (default)
