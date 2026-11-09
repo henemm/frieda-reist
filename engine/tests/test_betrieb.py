@@ -1004,7 +1004,7 @@ def test_veroeffentlichen_prueft_die_wege_einmal_nach_dem_freischalten(vf):
 
 
 def test_wegepruefung_wartet_bei_429_und_meldet_keinen_fehlenden_ort(tmp_path):
-    """429 kommt von der Anfragebegrenzung in nginx (5/min auf /anmelden), nicht von einem fehlenden Ort: die Prüfung
+    """Ein fehlender Ort ist kein Ausfall und löst keine Meldung über FR_MELDEN aus (#445). 429 kommt von der Anfragebegrenzung in nginx (5/min auf /anmelden), nicht von einem fehlenden Ort: die Prüfung
     wartet und fragt erneut. Erst ein Weg ohne Kopf X-Frieda nach allen Versuchen gilt als fehlend (#279)."""
     bin_ = tmp_path / "bin"
     bin_.mkdir()
@@ -1033,7 +1033,10 @@ def test_wegepruefung_wartet_bei_429_und_meldet_keinen_fehlenden_ort(tmp_path):
              '*/sw.js) echo "HTTP/1.1 404 Not Found"; exit 0;; esac\necho "X-Frieda: konnektor"\n')
     assert "Warning: these paths do not reach the connector" in r.stdout and "/anmelden" in r.stdout and "/sw.js" in r.stdout
     assert len(zaehler.read_text().split()) == 4
-    assert "nginx: paths to the connector missing" in meldungen.read_text()
+    # Kein Ausfall: Die Warnzeile im Protokoll bleibt, Telegram/MQ bekommt nichts (#445, Meldeweg nur für Ausfälle).
+    # Die Abweichung meldet nginx_abgleichen einmal als Issue, der Monitor der Instanz prüft sie als Warnung.
+    assert not meldungen.exists(), meldungen.read_text()
+    assert r.returncode == 0, r.stdout + r.stderr
 
 
 def test_veroeffentlichen_installiert_neue_bibliotheken_vor_den_pruefungen(vf):

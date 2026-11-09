@@ -1,0 +1,15 @@
+        assert "Warning: these paths do not reach the connector" in r.stdout and "/anmelden" in r.stdout and "/sw.js" in r.stdout
+        assert len(zaehler.read_text().split()) == 4
+        # Kein Ausfall: Die Warnzeile im Protokoll bleibt, Telegram/MQ bekommt nichts (#445, Meldeweg nur für Ausfälle).
+        # Die Abweichung meldet nginx_abgleichen einmal als Issue, der Monitor der Instanz prüft sie als Warnung.
+>       assert not meldungen.exists(), meldungen.read_text()
+E       AssertionError: high|Frieda: nginx: paths to the connector missing|These paths do not reach the connector via https://reisen.example.invalid: /anmelden /sw.js. Include the block probe-konnektor-orte.inc from betrieb/vorlagen/ (einrichten.sh).
+E         
+E       assert not True
+E        +  where True = exists()
+E        +    where exists = PosixPath('<tmp>/test_wegepruefung_wartet_bei_40/meldungen.log').exists
+
+engine/tests/test_betrieb.py:1038: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_betrieb.py::test_wegepruefung_wartet_bei_429_und_meldet_keinen_fehlenden_ort
+1 failed, 140 deselected in 0.98s
