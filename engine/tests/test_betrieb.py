@@ -999,7 +999,7 @@ def test_veroeffentlichen_prueft_die_wege_einmal_nach_dem_freischalten(vf):
     assert zeilen[:2] == ["beispielreise", "zweitreise"], zeilen
     wege = [z.removeprefix("curl https://reisen.example.invalid") for z in zeilen[2:]]
     assert wege == ["/gesund", "/anmelden", "/kalender/" + "0" * 40 + ".ics", "/schrift/pruefung.woff2", "/favicon.svg",
-                    "/manifest.webmanifest", "/sw.js", "/konto.js", "/info/pruefung.webp", "/info"], zeilen
+                    "/manifest.webmanifest", "/sw.js", "/konto.js", "/info/pruefung.webp"], zeilen
     assert "Warning: these paths" not in r.stdout
 
 
@@ -1924,8 +1924,8 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     inc = (aus / "nginx/probe-konnektor.inc").read_text()
     # Konnektor an der Wurzel (#163): /mcp, Anmeldung, OAuth; der alte Pfad bleibt für Links aus der Zeit vor den Konten
     assert "location = /mcp" in nginx and "location = /anmelden" in nginx and "location = /token" in nginx
-    assert "location ~ ^/(konto|abmelden|authorize|gesund|info)?$" in nginx     # /info: Infoseite für alle (#440)
-    assert "location ^~ /.well-known/oauth-" in nginx and "location ^~ /schrift/" in nginx and "location = /favicon.ico" in nginx
+    assert "location ~ ^/(konto|abmelden|authorize|gesund)?$" in nginx     # /info/ (Infoseite, #440) über den Ort der Bilder
+    assert "location ^~ /.well-known/oauth-" in nginx and "location ^~ /schrift/" in nginx and "location ^~ /info/" in nginx and "location = /favicon.ico" in nginx
     assert "zone=probe_konto" in nginx
     # die Links aus der Zeit vor den Konten sind auf dem Server abgeschaltet: die Vorlage öffnet sie nicht wieder (#206)
     assert "probe-mcp" not in nginx and "A-Za-z0-9_-" not in nginx

@@ -62,9 +62,8 @@ location = /alpha {
 location = /token                  { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 location = /register               { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 location ^~ /.well-known/oauth-    { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
-# Startseite (/ führt angemeldet zu Mein Konto, #41, sonst zur Infoseite, #436), Konto, Abmelden, Zustimmung, Bereitschaft, die Infoseite
-# für alle unter /info (#440; ohne Dateiendung, deshalb trifft keine Regel für Endungen)
-location ~ ^/(konto|abmelden|authorize|gesund|info)?$ {
+# Startseite (/ führt angemeldet zu Mein Konto, #41, sonst zur Infoseite, #436), Konto, Abmelden, Zustimmung, Bereitschaft (ohne Dateiendung, deshalb trifft keine Regel für Endungen)
+location ~ ^/(konto|abmelden|authorize|gesund)?$ {
     limit_req zone=__ZONE_KONTO__ burst=20 nodelay;
     limit_req_status 429;
     include __SNIPPETS__/__INSTANZ__-konnektor.inc;
@@ -83,7 +82,8 @@ location ^~ /kalender/ {
 # Schrift und Zeichen der Anmeldeseiten; claude.ai zeigt das Favicon der Adresse am Konnektor. Ohne Drossel (eine Seite
 # lädt mehrere Dateien), der Dienst liefert nur diese festen Dateien.
 location ^~ /schrift/              { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
-# Bilder der Infoseite (#436): wie die Schrift ohne Drossel, der Dienst liefert nur /info/<name>.webp aus engine/info/
+# Bilder der Infoseite (#436): wie die Schrift ohne Drossel, der Dienst liefert nur /info/<name>.webp aus engine/info/. /info/ selbst ist die
+# Infoseite für alle (#440); /info leitet nginx wegen dieses Orts selbst mit 301 dorthin.
 location ^~ /info/                 { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 location = /favicon.ico            { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 location = /favicon.svg            { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }

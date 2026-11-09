@@ -3282,7 +3282,8 @@ class Dienst(BaseHTTPRequestHandler):
             return self._senden(*gesund())
         if self.path.split("?", 1)[0] in FESTE_DATEIEN:
             return self._marke(self.path.split("?", 1)[0])
-        if self.path.split("?", 1)[0].startswith("/info/"):     # Bilder der Infoseite (#436); welche es gibt, liest der Dienst bei jedem Abruf
+        if self.path.split("?", 1)[0].startswith("/info/") and self.path.split("?", 1)[0] != "/info/":
+            # Bilder der Infoseite (#436); welche es gibt, liest der Dienst bei jedem Abruf. /info/ selbst ist die Infoseite (#440)
             datei = anmeldung.info_datei(self.path.split("?", 1)[0])
             return self._marke(None, datei, "image/webp") if datei else self._senden(404, {"fehler": "unbekannt"})
         # Die Startseite der Adresse: angemeldet Mein Konto (#41), sonst die Infoseite (#436); POST auf / bleibt unbekannt

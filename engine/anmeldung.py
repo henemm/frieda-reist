@@ -676,7 +676,7 @@ def einstieg_karte(k):
         return ""
     return (f'<section class="karte einstieg"><div><h2>{esc(tx("konto.einstieg.titel"))}</h2>'
             f'<p class="hinweis" style="margin:.35rem 0 0">{esc(tx("konto.einstieg.text"))}</p></div>'
-            f'<a class="knopf leise" href="/info">{esc(tx("konto.einstieg.knopf"))}</a></section>')
+            f'<a class="knopf leise" href="/info/">{esc(tx("konto.einstieg.knopf"))}</a></section>')
 
 
 def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen=""):
@@ -747,7 +747,7 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
                     offen == "sprache"),
         einstellung("geraete", tx("konto.seite.geraete"), str(len(geraete)), f'<ul class="geraete">{geraete_liste}</ul>', offen == "geraete")))
     kopf = (f'<header class="kopf breit"><span><img src="/favicon.svg" alt="">Frieda</span><nav class="kopf-rechts">'
-            f'<a class="kopf-link" href="/info">{esc(tx("info.link"))}</a>'
+            f'<a class="kopf-link" href="/info/">{esc(tx("info.link"))}</a>'
             f'<form method="post" action="/abmelden"><button class="link">{esc(tx("konto.seite.abmelden"))}</button></form></nav></header>')
     return seite(tx("konto.seite.titel"),
                  f'<div><h1 style="font-size:1.875rem">{esc(tx("konto.seite.hallo", name=k["name"]))}</h1>'
@@ -908,7 +908,7 @@ def info_gespraech(name, folge):
 def info_seite(k=None, pfad="/"):
     """Was ist Frieda? Grundprinzipien, Beispiel-Gespräche, Bilder der Reiseseite und die ersten Schritte, mit der Adresse des
     Konnektors dieser Instanz. Die Startseite der Adresse für alle, die nicht angemeldet sind (Product Owner, 9.11.2026), und
-    unter /info für alle, auch angemeldet als Einstiegshilfe (#440). k: angemeldetes Konto, dann führen Kopf und Knopf zu Mein
+    unter /info/ für alle, auch angemeldet als Einstiegshilfe (#440). k: angemeldetes Konto, dann führen Kopf und Knopf zu Mein
     Konto statt zu Anmelden und Warteliste. pfad: Adresse der Seite für den Sprachumschalter."""
     if k:
         kopf_link = f'<a class="kopf-link" href="/konto">{esc(tx("info.mein_konto"))}</a>'
@@ -972,7 +972,7 @@ def geraet(headers):
 
 def ist_unsere(pfad):
     p = pfad.split("?", 1)[0]
-    return p in ("/anmelden", "/konto", "/abmelden", "/warteliste", "/info") + RECHT or p.startswith(("/einladung/", "/kalender/",
+    return p in ("/anmelden", "/konto", "/abmelden", "/warteliste", "/info", "/info/") + RECHT or p.startswith(("/einladung/", "/kalender/",
                                                                                      "/warteliste/bestaetigen/"))
 
 
@@ -1087,13 +1087,16 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
         _anfrage.sprache = wer["sprache"] or _anfrage.sprache      # die App schickt keine Sprache mit, das Konto hat eine
         return kalender_antwort(wer, headers=headers)
 
-    if weg in ("/", "/info"):
-        # Startseite: angemeldet Mein Konto (#41), sonst die Infoseite (#436); /info zeigt sie allen, auch angemeldet (#440).
-        # Nur zum Lesen: der Konnektor leitet / nur mit GET hierher, ein POST auf /info führt ohne Wirkung zurück auf die Seite.
+    if weg == "/info":     # nginx leitet /info wegen des Orts /info/ (Bilder) selbst dorthin; der Dienst ebenso, mit der Sprache
+        return weiter("/info/" + (f"?{teile.query}" if teile.query else ""))
+    if weg in ("/", "/info/"):
+        # Startseite: angemeldet Mein Konto (#41), sonst die Infoseite (#436); /info/ zeigt sie allen, auch angemeldet (#440). Sie liegt
+        # unter /info/, weil nginx diesen Ort für die Bilder schon zum Dienst führt (kein neuer Ort, kein Handschritt in der Instanz).
+        # Nur zum Lesen: der Konnektor leitet / nur mit GET hierher, ein POST auf /info/ führt ohne Wirkung zurück auf die Seite.
         if weg == "/" and k:
             return weiter("/konto")
         if methode == "POST":
-            return weiter("/info")
+            return weiter("/info/")
         if texte.gueltig(q.get("sprache") or ""):     # Umschalter der Infoseite; ein geteilter Link kann die Sprache mitgeben
             _anfrage.sprache = q["sprache"]
         return antwort(200, info_seite(k, weg))

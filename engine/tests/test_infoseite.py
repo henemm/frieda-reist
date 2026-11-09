@@ -68,23 +68,27 @@ def test_anmeldeseite_fuehrt_zur_infoseite(welt):
 
 
 def test_infoseite_auch_angemeldet(welt):
-    """#440: /info zeigt die Infoseite allen; angemeldet führen Kopf und Knopf zu Mein Konto statt zu Anmelden und
-    Warteliste. Der Sprachumschalter bleibt auf /info (/ führte Angemeldete zu Mein Konto). Ein POST ändert nichts."""
+    """#440: /info/ zeigt die Infoseite allen; angemeldet führen Kopf und Knopf zu Mein Konto statt zu Anmelden und
+    Warteliste. Der Sprachumschalter bleibt auf /info/ (/ führte Angemeldete zu Mein Konto). Ein POST ändert nichts. Die Seite liegt unter /info/, weil nginx
+    /info wegen des Orts der Bilder selbst dorthin umleitet; der Dienst leitet /info ebenso um, mit der Sprache."""
     u = welt()
-    s, _, t = abruf(f"{u.kurl}/info")
+    s, _, t = abruf(f"{u.kurl}/info/")
     assert s == 200 and meldet(t, "info.ueberschrift") and 'href="/anmelden"' in t and 'href="/warteliste"' in t
-    assert '<a href="/info?sprache=de"' in t and meldet(t, "info.schon_dabei")
+    assert '<a href="/info/?sprache=de"' in t and meldet(t, "info.schon_dabei")
     ida = anmelden(u, IDA, name="Ida")[0]
-    s, _, t = abruf(f"{u.kurl}/info", cookie=ida)
+    s, _, t = abruf(f"{u.kurl}/info/", cookie=ida)
     assert s == 200 and meldet(t, "info.ueberschrift") and meldet(t, "info.zu_reisen") and meldet(t, "info.mein_konto")
     assert html.escape(text("info.angemeldet_als", "de", name="Ida"), quote=True) in t
     assert 'href="/anmelden"' not in t and 'href="/warteliste"' not in t and not meldet(t, "info.schon_dabei")
     assert t.count('href="/konto"') == 2
     andere = next(sp for sp in texte.SPRACHEN if sp != "de")
-    t = abruf(f"{u.kurl}/info?sprache={andere}", cookie=ida)[2]
-    assert f'<html lang="{andere}"' in t and f'<a href="/info?sprache={andere}" lang="{andere}" hreflang="{andere}" aria-current="page">' in t
-    s, h, _ = abruf(f"{u.kurl}/info", "POST", {}, cookie=ida)
-    assert s == 303 and kopf(h, "Location") == ["/info"]
+    t = abruf(f"{u.kurl}/info/?sprache={andere}", cookie=ida)[2]
+    assert f'<html lang="{andere}"' in t and f'<a href="/info/?sprache={andere}" lang="{andere}" hreflang="{andere}" aria-current="page">' in t
+    for alt, neu in (("/info", "/info/"), ("/info?sprache=en", "/info/?sprache=en")):
+        s, h, _ = abruf(f"{u.kurl}{alt}", cookie=ida)
+        assert s == 303 and kopf(h, "Location") == [neu], alt
+    s, h, _ = abruf(f"{u.kurl}/info/", "POST", {}, cookie=ida)
+    assert s == 303 and kopf(h, "Location") == ["/info/"]
 
 
 def test_mein_konto_fuehrt_zur_infoseite(welt):
@@ -94,14 +98,14 @@ def test_mein_konto_fuehrt_zur_infoseite(welt):
     u = welt()
     ida = anmelden(u, IDA, name="Ida")[0]
     t = abruf(f"{u.kurl}/konto", cookie=ida)[2]
-    assert f'<a class="kopf-link" href="/info">{html.escape(text("info.link", "de"))}</a>' in t
+    assert f'<a class="kopf-link" href="/info/">{html.escape(text("info.link", "de"))}</a>' in t
     assert meldet(t, "konto.einstieg.titel") and meldet(t, "konto.einstieg.knopf") and 'class="karte einstieg"' in t
     kid = konten.konto_per_email(IDA)["id"]
     with konten.closing(konten.db()) as v, v:
         konten._tokens_ausstellen(v, kid, "client", "frieda", "familie")
     assert konten.mit_claude_verbunden(kid)
     t = abruf(f"{u.kurl}/konto", cookie=ida)[2]
-    assert not meldet(t, "konto.einstieg.titel") and 'href="/info"' in t
+    assert not meldet(t, "konto.einstieg.titel") and 'href="/info/"' in t
     with konten.closing(konten.db()) as v, v:      # abgelaufen zählt nicht mehr als verbunden
         v.execute("UPDATE oauth_tokens SET ablauf = 0 WHERE konto = ?", (kid,))
     assert not konten.mit_claude_verbunden(kid) and meldet(abruf(f"{u.kurl}/konto", cookie=ida)[2], "konto.einstieg.titel")
@@ -121,9 +125,11 @@ def test_bilder_der_infoseite_ausgeliefert(welt):
     s, art, cache, body = hol("/info/tag-de.webp")
     assert (s, art, cache) == (200, "image/webp", "public, max-age=86400") and body[8:12] == b"WEBP"
     for pfad in ("/info/erzeugen.py", "/info/aufnehmen.mjs", "/info/fehlt-de.webp", "/info/../konten.py", "/info/%2e%2e/konten.py",
-                 "/info/Reise-de.webp", "/info/"):
+                 "/info/Reise-de.webp", "/info/x/"):
         assert hol(pfad)[0] == 404, pfad
     assert hol("/info/tag-de.webp", "POST")[0] == 404
+    s, art, _, body = hol("/info/")               # /info/ selbst ist die Infoseite (#440), nicht der Bilderordner
+    assert s == 200 and art.startswith("text/html") and '<div class="prinzipien">' in body.decode()
 
 
 def test_bilder_vollstaendig_und_gleich_gross():
