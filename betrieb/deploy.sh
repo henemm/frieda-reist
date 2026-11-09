@@ -85,6 +85,8 @@ rsync -a --delete --chmod=D755,F644 --exclude "*.py" "$WURZEL/engine/marke/" "$D
 # Frieda-App (#21): Manifest, Worker und Skript von Mein Konto; der Konnektor liefert sie aus app/ (ohne Neustart)
 rsync -a --delete --chmod=D755,F644 "$WURZEL/engine/app/" "$DIENST/app/"
 rsync -a --delete --chmod=D755,F644 --include "*.woff2" --exclude "*" "$WURZEL/engine/vendor/fonts/" "$DIENST/schrift/"
+# Bilder der Infoseite (#436): der Konnektor liefert sie aus info/ (ohne Neustart); das Skript zum Erzeugen bleibt im Repo
+rsync -a --delete --chmod=D755,F644 --include "*.webp" --exclude "*" "$WURZEL/engine/info/" "$DIENST/info/"
 # Was der Probebau und reise_anlegen des Schreibwegs neben den Modulen lesen (Speicherweg, #347; je Vorgang frisch gelesen)
 install -m 644 "$WURZEL/engine/vorlage.html" "$WURZEL/engine/sw.vorlage.js" "$DIENST/"
 rsync -a --delete --chmod=D755,F644 "$WURZEL/engine/vendor/" "$DIENST/vendor/"

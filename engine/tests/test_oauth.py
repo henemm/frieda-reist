@@ -108,7 +108,9 @@ def test_symbol_von_frieda(welt):
                               # Frieda-App (#21): Manifest, Worker nur für Push, Skript von Mein Konto; ohne Zwischenspeicher
                               ("/manifest.webmanifest", "application/manifest+json", b"{"),
                               ("/sw.js", "text/javascript; charset=utf-8", b"/*"),
-                              ("/konto.js", "text/javascript; charset=utf-8", b"/*")):
+                              ("/konto.js", "text/javascript; charset=utf-8", b"/*"),
+                              # Bild der Infoseite (#436)
+                              ("/info/reise-de.webp", "image/webp", b"RIFF")):
         c = http.client.HTTPConnection(t.hostname, t.port, timeout=10)
         c.request("GET", pfad)
         r = c.getresponse()

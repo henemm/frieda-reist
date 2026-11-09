@@ -401,15 +401,15 @@ def test_personen_auf_mein_konto(welt):
 
 
 def test_meldungen_auf_mein_konto_und_der_reiseseite(welt):
-    """#21 Stufe 1 und #41: Die Adresse führt zu Mein Konto; dort stehen die Meldungen an die Person über alle Reisen,
+    """#21 Stufe 1 und #41: Die Adresse führt angemeldet zu Mein Konto (ohne Anmeldung zur Infoseite, #436); dort stehen die Meldungen an die Person über alle Reisen,
     auf der Reiseseite (api/ich) die dieser Reise. Eine Quelle für beides und für meine_reisen in der Claude-App."""
     import konnektor as kn
     import rueckmeldungen as rm
     u = welt()
     konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
     karl, _ = anmelden(u, KARL)
-    s, h, _ = abruf(f"{u.kurl}/")
-    assert s == 303 and kopf(h, "Location") == ["/anmelden?zurueck=/konto"]
+    s, _, t = abruf(f"{u.kurl}/")
+    assert s == 200 and meldet(t, "info.ueberschrift")
     s, h, _ = abruf(f"{u.kurl}/", cookie=karl)
     assert s == 303 and kopf(h, "Location") == ["/konto"]
     assert 'id="meldungen"' not in abruf(f"{u.kurl}/konto", cookie=karl)[2]      # ohne Meldungen kein Abschnitt

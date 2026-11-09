@@ -3223,10 +3223,13 @@ class Dienst(BaseHTTPRequestHandler):
         if self.command != "HEAD":
             self.wfile.write(body)
 
-    def _marke(self, pfad):
-        ordner, name, art = FESTE_DATEIEN[pfad]
+    def _marke(self, pfad, datei=None, art=None):
+        """Feste Datei (FESTE_DATEIEN) oder, mit datei und art, ein Bild der Infoseite (/info/…, #436)."""
+        if datei is None:
+            ordner, name, art = FESTE_DATEIEN[pfad]
+            datei = ordner / name
         try:
-            body = (ordner / name).read_bytes()
+            body = datei.read_bytes()
         except OSError:
             return self._senden(404, {"fehler": "unbekannt"})
         self.send_response(200)
@@ -3279,7 +3282,10 @@ class Dienst(BaseHTTPRequestHandler):
             return self._senden(*gesund())
         if self.path.split("?", 1)[0] in FESTE_DATEIEN:
             return self._marke(self.path.split("?", 1)[0])
-        # Die Startseite der Adresse ist Mein Konto (#41); POST auf / bleibt unbekannt
+        if self.path.split("?", 1)[0].startswith("/info/"):     # Bilder der Infoseite (#436); welche es gibt, liest der Dienst bei jedem Abruf
+            datei = anmeldung.info_datei(self.path.split("?", 1)[0])
+            return self._marke(None, datei, "image/webp") if datei else self._senden(404, {"fehler": "unbekannt"})
+        # Die Startseite der Adresse: angemeldet Mein Konto (#41), sonst die Infoseite (#436); POST auf / bleibt unbekannt
         if anmeldung.ist_unsere(self.path) or oauth.ist_unsere(self.path) or self.path.split("?", 1)[0] == "/":
             return self._anmeldung()
         if self.path.split("?", 1)[0] == "/mcp":
@@ -3294,7 +3300,7 @@ class Dienst(BaseHTTPRequestHandler):
 
     def _erlaubt(self):
         p = self.path.split("?", 1)[0]
-        return "GET, HEAD, OPTIONS" if p.startswith("/kalender/") or p in FESTE_DATEIEN \
+        return "GET, HEAD, OPTIONS" if p.startswith(("/kalender/", "/info/")) or p in FESTE_DATEIEN \
             or p == "/gesund" else "GET, HEAD, POST, OPTIONS"
 
     def do_OPTIONS(self):

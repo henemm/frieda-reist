@@ -73,7 +73,8 @@ erkannt und bekommt darüber jederzeit wieder Zugang.
 - **Seiten:** Der Konnektor-Dienst liefert sie unter Friedas eigener Adresse aus (`FR_BASIS`).
   - `/anmelden`: Adresse, dann Code, beim ersten Mal auch der Name
   - `/einladung/<token>`: Einladung ansehen, annehmen oder mit einer anderen Adresse anmelden
-  - `/`: Startseite der Adresse, führt zu `/konto` (ohne Anmeldung über `/anmelden`; #41)
+  - `/`: Startseite der Adresse; angemeldet führt sie zu `/konto` (#41), ohne Anmeldung zeigt sie die Infoseite „Was ist Frieda?“ (#436): Grundprinzipien, erfundene Beispiel-Gespräche mit Claude, Bilder der Reiseseite, erste Schritte mit der Adresse des Konnektors, Anmelden und Warteliste. Sprache nach dem Browser, umschaltbar mit `/?sprache=<kürzel>` (auch für geteilte Links); `/anmelden` verweist darauf
+  - `/info/<name>-<sprache>.webp`: Bilder der Infoseite aus `engine/info/` (nur diese Form; der Dienst liest den Ordner bei jedem Abruf). Erzeugt aus den beiden Beispielreisen mit `engine/.venv/bin/python engine/info/erzeugen.py`, je Sprache der Software; neu erzeugen, wenn sich die Reiseseite sichtbar ändert. Nie echte Reisen: das Repo ist öffentlich
   - `/konto`: Meldungen an die Person über alle Reisen (#21 Stufe 1, dieselbe Quelle wie `meine_reisen`: `rueckmeldungen.meldungen_des_kontos`; je Zeile ein Link an die Stelle der Reise, Lesestand des Kontos in der Tabelle `meldung_gelesen`, #407), Name, Adresse, Reisen, Kalender (Abo-Link, Download, Einstellungen; #77), Benachrichtigungen (Arten, Ruhezeit, auf allen Geräten ausschalten; #21, `docs/betrieb.md` „Push-Nachrichten“), Bitte „Reisen anlegen“, Geräte, Konto löschen; für Betreiber die offenen Bitten
   - `/abmelden`
 - **Sitzung:** Cookie `__Host-frieda` (HttpOnly, Secure, SameSite=Lax, ein Jahr, rollierend).

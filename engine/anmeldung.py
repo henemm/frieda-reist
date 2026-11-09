@@ -1,6 +1,7 @@
 """Anmeldeseiten für Konten (Paket J2, Issues #43 und #46). Der Konnektor-Dienst liefert sie unter Friedas eigener
 Adresse aus (FR_BASIS): /anmelden, /einladung/<token>, /konto, /abmelden, dazu die Warteliste (/warteliste,
-/warteliste/bestaetigen/<wort>, #382) und die drei Seiten /datenschutz, /impressum, /alpha (#383, nur GET, ohne Anmeldung).
+/warteliste/bestaetigen/<wort>, #382), die drei Seiten /datenschutz, /impressum, /alpha (#383, nur GET, ohne Anmeldung)
+und die Infoseite „Was ist Frieda?“ als Startseite / für alle ohne Anmeldung (#436; Bilder unter /info/, engine/info/).
 
 Ablauf: E-Mail-Adresse eingeben -> Code per Mail -> Code eingeben (beim ersten Mal auch den Namen) -> angemeldet.
 Der Code ist der Hauptweg; der Link aus der Mail enthält keinen Code und öffnet nur die Code-Seite (Mailprogramme rufen
@@ -17,6 +18,7 @@ import os
 import re
 import threading
 import urllib.parse
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import instanz
@@ -141,6 +143,27 @@ ul.geraete{margin:0;padding-left:1.1rem}
 .zurueck{font-weight:600;text-decoration:none;padding:.5rem .25rem;align-self:flex-start}
 .fuss p.recht{display:flex;flex-wrap:wrap;gap:0 1rem}.fuss p.recht a{padding:.35rem 0}
 ul.punkte{margin:0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.4rem}
+main.breit{max-width:46rem}main.breit>.karte,main.breit>.abschnitt,main.breit>.fuss{width:100%}
+.knoepfe{display:flex;flex-wrap:wrap;gap:.6rem}.knoepfe>a.knopf{flex:1 1 12rem;margin:0}a.knopf.leise{background:var(--acc2);color:var(--acc)}
+a.kopf-link{font-size:1rem;font-weight:600;text-decoration:none;padding:.5rem .25rem}
+.prinzipien{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:1rem}
+.prinzipien .karte{padding:1.2rem 1.2rem 1.1rem;gap:.4rem}.prinzipien h3{font-size:1.0625rem;margin:0}.prinzipien p{margin:0;font-size:.9375rem}
+.gespraech{display:flex;flex-direction:column;gap:.55rem}.gespraech h3{font-size:1.0625rem;margin:0 0 .2rem}
+.blase{max-width:88%;padding:.55rem .85rem .6rem;border-radius:16px;font-size:.9375rem;margin:0}
+.blase .wer{display:block;font-size:.75rem;font-weight:700;color:var(--mut)}
+.blase.person{align-self:flex-end;background:var(--acc2);border-end-end-radius:4px}
+.blase.claude{align-self:flex-start;background:var(--bg);border-end-start-radius:4px}
+.bilder{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr));gap:1rem}
+figure{margin:0;display:flex;flex-direction:column;gap:.5rem}
+figure a{display:block}figure img{display:block;width:100%;height:auto;aspect-ratio:585/1050;border-radius:14px;border:1px solid var(--line);box-shadow:var(--schatten);background:var(--card)}
+figcaption{font-size:.875rem;color:var(--mut)}
+ol.erste{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:1rem;counter-reset:schritt}
+ol.erste>li{display:flex;gap:.8rem;counter-increment:schritt}
+ol.erste>li::before{content:counter(schritt);flex:none;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--acc);color:var(--card);
+font-weight:700;display:flex;align-items:center;justify-content:center}
+ol.erste>li>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:.35rem}ol.erste p,ol.erste h3{margin:0}ol.erste p{font-size:.9375rem}ol.erste h3{font-size:1.0625rem}
+ol.erste ol{margin:0;padding-inline-start:1.2rem;display:flex;flex-direction:column;gap:.3rem;font-size:.9375rem}
+.sprachen{display:flex;flex-wrap:wrap;gap:0 1rem}.sprachen a{padding:.35rem 0}.sprachen a[aria-current]{color:var(--fg);font-weight:600;text-decoration:none}
 """
 
 
@@ -148,10 +171,10 @@ def esc(t):
     return html.escape(str(t or ""), quote=True)
 
 
-def seite(titel, *teile, kopf=None, skript=False):
+def seite(titel, *teile, kopf=None, skript=False, breit=False):
     """Ganze Seite. kopf: eigener Kopf (Mein Konto); sonst Friedas Zeichen mittig über der Karte. Jede Seite trägt das
     Manifest der Frieda-App (Issue #21: ein Symbol auf dem Home-Bildschirm, Start „Mein Konto“, Scope „/“); skript lädt
-    engine/app/konto.js (nur Mein Konto: Benachrichtigungen je Gerät, Speichern mit Zustand)."""
+    engine/app/konto.js (nur Mein Konto: Benachrichtigungen je Gerät, Speichern mit Zustand); breit: Lesespalte der Infoseite (#436)."""
     rumpf = "".join(teile)
     sp = sprache_der_seite()
     kopf = kopf if kopf is not None else '<header class="kopf"><img src="/favicon.svg" alt="">Frieda</header>'
@@ -162,7 +185,7 @@ def seite(titel, *teile, kopf=None, skript=False):
             f'<meta name="apple-mobile-web-app-title" content="Frieda"><meta name="theme-color" content="#f8f8f5">'
             + ('<script src="/konto.js" defer></script>' if skript else "")
             + f'<title>{esc(titel)} – Frieda</title><style>{CSS}</style></head><body>'
-            f'<main>{kopf}{rumpf}</main></body></html>')
+            f'<main{" class=\"breit\"" if breit else ""}>{kopf}{rumpf}</main></body></html>')
 
 
 def karte(*teile):
@@ -240,7 +263,7 @@ def adress_seite(zurueck="", einladung="", email="", meldung=""):
                  + f'<label for="email">{esc(tx("konto.email_adresse"))}</label>'
                  f'<input id="email" type="email" name="email" value="{esc(email)}" autocomplete="email" required '
                  f'placeholder="{esc(tx("konto.email_beispiel"))}" autofocus>', tx("konto.code_schicken"))),
-        fuss(tx("konto.anmelden.nur_lesen"), roh=(datenschutz_satz(),), recht=True))
+        fuss(tx("konto.anmelden.nur_lesen"), roh=(datenschutz_satz(), link("/", "info.link")), recht=True))
 
 
 def code_seite(email, zurueck="", einladung="", code="", meldung="", name_noetig=False, name=""):
@@ -810,6 +833,92 @@ def recht_seite(pfad):
                  fuss(recht=True, ausser=pfad))
 
 
+# ---------------------------------------------------------------- Infoseite (#436)
+
+# Was die Seite zeigt, in dieser Reihenfolge; die Texte stehen im Katalog unter info.… Die Gespräche sind erfunden und gehören zu
+# den beiden Beispielreisen: je Gespräch die Folge der Sprecher (person, claude), die Texte heißen info.gespraech.<name>.<n>.
+INFO_PRINZIPIEN = ("gespraech", "wahrheit", "entscheiden", "seite", "gemeinsam", "eigen")
+INFO_GESPRAECHE = (("anlegen", ("person", "claude", "person", "claude")),
+                   ("vergleichen", ("person", "claude", "person", "claude", "person", "claude")),
+                   ("herkunft", ("person", "claude", "person", "claude")),
+                   ("unterwegs", ("person", "claude")))
+# Bildschirmbilder der Reiseseite je Sprache als engine/info/<name>-<sprache>.webp, erzeugt von engine/info/erzeugen.py aus den
+# Beispielreisen; fehlt eine Sprache, nimmt die Seite die Vorgabe der Software, fehlt das Bild ganz, entfällt es.
+INFO_BILDER = ("reise", "tag", "wahl", "packliste")
+INFO = Path(__file__).resolve().parent / "info"
+INFO_DATEI = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\.webp")
+
+
+def info_bild(name):
+    """Pfad des Bilds name in der Sprache der Seite (ersatzweise in der Vorgabe) oder None."""
+    for sp in (sprache_der_seite(), texte.VORGABE_REISE):
+        if (INFO / f"{name}-{sp}.webp").is_file():
+            return f"/info/{name}-{sp}.webp"
+    return None
+
+
+def info_datei(pfad):
+    """/info/<datei>.webp -> Datei in engine/info/ oder None (nur Bilder dieser Form, kein Weg aus dem Ordner)."""
+    name = pfad.removeprefix("/info/")
+    if not pfad.startswith("/info/") or not INFO_DATEI.fullmatch(name):
+        return None
+    datei = INFO / name
+    return datei if datei.is_file() else None
+
+
+def info_sprachen():
+    """Zeile zum Umschalten der Sprache: ein Link je Sprache der Software, die aktuelle ist markiert."""
+    sp = sprache_der_seite()
+    return (f'<nav class="sprachen" aria-label="{esc(tx("info.sprache"))}">'
+            + "".join(f'<a href="/?sprache={esc(c)}" lang="{esc(c)}" hreflang="{esc(c)}"'
+                      + (' aria-current="page"' if c == sp else "") + f'>{esc(texte.sprache(c).NAME)}</a>' for c in texte.SPRACHEN)
+            + "</nav>")
+
+
+def info_gespraech(name, folge):
+    wer = {"person": tx(f"info.gespraech.{name}.person"), "claude": tx("info.gespraech.claude")}
+    blasen = "".join(f'<p class="blase {r}"><span class="wer">{esc(wer[r])}</span>{esc(tx(f"info.gespraech.{name}.{n}"))}</p>'
+                     for n, r in enumerate(folge, 1))
+    return karte(f'<div class="gespraech"><h3>{esc(tx(f"info.gespraech.{name}.titel"))}</h3>{blasen}</div>')
+
+
+def info_seite():
+    """Was ist Frieda? Grundprinzipien, Beispiel-Gespräche, Bilder der Reiseseite und die ersten Schritte, mit der Adresse des
+    Konnektors dieser Instanz. Die Startseite der Adresse für alle, die nicht angemeldet sind (Product Owner, 9.11.2026)."""
+    kopf = (f'<header class="kopf breit"><span><img src="/favicon.svg" alt="">Frieda</span>'
+            f'<a class="kopf-link" href="/anmelden">{esc(tx("info.anmelden"))}</a></header>')
+    oben = karte(f'<div><h1>{esc(tx("info.ueberschrift"))}</h1>', f'<p class="lead">{esc(tx("info.lead"))}</p></div>',
+                 f'<div class="knoepfe"><a class="knopf" href="/anmelden">{esc(tx("info.anmelden"))}</a>'
+                 f'<a class="knopf leise" href="/warteliste">{esc(tx("info.warteliste"))}</a></div>',
+                 f'<p class="klein">{esc(tx("info.schon_dabei"))}</p>')
+    prinzipien = "".join(karte(f'<h3>{esc(tx(f"info.prinzip.{p}.titel"))}</h3><p>{esc(tx(f"info.prinzip.{p}.text"))}</p>')
+                         for p in INFO_PRINZIPIEN)
+    gespraeche = "".join(info_gespraech(n, f) for n, f in INFO_GESPRAECHE)
+    bilder = "".join(f'<figure><a href="{esc(b)}"><img src="{esc(b)}" alt="{esc(tx("info.bild." + n))}" loading="lazy" width="585" '
+                     'height="1050"></a>'
+                     f'<figcaption>{esc(tx("info.bild." + n))}</figcaption></figure>'
+                     for n in INFO_BILDER if (b := info_bild(n)))
+    # Adresse des Konnektors dieser Instanz zum Kopieren; ohne eingerichtete Adresse (FR_BASIS) kein leeres Feld
+    adresse = (f'<input type="text" readonly aria-label="{esc(tx("konto.verbinden.adresse_label"))}" value="{esc(konten.basis() + "/mcp")}">'
+               if konten.basis() else "")
+    verbinden = ("".join(f"<li>{esc(tx(f'konto.verbinden.schritt{n}'))}</li>" for n in (1, 2, 3)).removesuffix("</li>")
+                 + f'{adresse}</li><li>{esc(tx("info.schritt.verbinden.anmelden"))}</li>')
+    schritt = lambda s, inhalt: f'<li><div><h3>{esc(tx(f"info.schritt.{s}.titel"))}</h3>{inhalt}</div></li>'   # noqa: E731
+    schritte = "".join((
+        schritt("konto", f'<p>{esc(tx("info.schritt.konto.text"))}</p>'),
+        schritt("verbinden", f'<ol>{verbinden}</ol><p class="klein">{esc(tx("konto.verbinden.bezahlt"))}</p>'),
+        schritt("loslegen", f'<p>{esc(tx("info.schritt.loslegen.text"))}</p>'),
+        schritt("seite", f'<p>{esc(tx("info.schritt.seite.text"))}</p><p class="klein">{esc(tx("konto.anmelden.nur_lesen"))}</p>')))
+    abschnitt = lambda titel, *inhalt: f'<section class="abschnitt"><h2>{esc(tx(titel))}</h2>{"".join(inhalt)}</section>'   # noqa: E731
+    return seite(tx("info.titel"), oben,
+                 abschnitt("info.prinzipien.titel", f'<div class="prinzipien">{prinzipien}</div>'),
+                 abschnitt("info.gespraeche.titel", f'<p>{esc(tx("info.gespraeche.einleitung"))}</p>', gespraeche),
+                 abschnitt("info.bilder.titel", f'<p>{esc(tx("info.bilder.einleitung"))}</p>', f'<div class="bilder">{bilder}</div>')
+                 if bilder else "",
+                 abschnitt("info.schritte.titel", karte(f'<ol class="erste">{schritte}</ol>')),
+                 fuss(roh=(info_sprachen(),), recht=True), kopf=kopf, breit=True)
+
+
 # ---------------------------------------------------------------- Ablauf
 
 def sitzung_aus(headers):
@@ -947,8 +1056,12 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
         _anfrage.sprache = wer["sprache"] or _anfrage.sprache      # die App schickt keine Sprache mit, das Konto hat eine
         return kalender_antwort(wer, headers=headers)
 
-    if weg == "/":   # Startseite der Adresse ist Mein Konto (#41; nur GET, der Konnektor leitet nur das hierher)
-        return weiter("/konto" if k else "/anmelden?zurueck=/konto")
+    if weg == "/":   # Startseite: angemeldet Mein Konto (#41), sonst die Infoseite (#436; nur GET, der Konnektor leitet nur das hierher)
+        if k:
+            return weiter("/konto")
+        if texte.gueltig(q.get("sprache") or ""):     # Umschalter der Infoseite; ein geteilter Link kann die Sprache mitgeben
+            _anfrage.sprache = q["sprache"]
+        return antwort(200, info_seite())
     if weg == "/konto":
         a = f.get("aktion")
         if a in ("push_an", "push_ab"):

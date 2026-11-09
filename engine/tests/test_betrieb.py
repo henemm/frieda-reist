@@ -999,7 +999,7 @@ def test_veroeffentlichen_prueft_die_wege_einmal_nach_dem_freischalten(vf):
     assert zeilen[:2] == ["beispielreise", "zweitreise"], zeilen
     wege = [z.removeprefix("curl https://reisen.example.invalid") for z in zeilen[2:]]
     assert wege == ["/gesund", "/anmelden", "/kalender/" + "0" * 40 + ".ics", "/schrift/pruefung.woff2", "/favicon.svg",
-                    "/manifest.webmanifest", "/sw.js", "/konto.js"], zeilen
+                    "/manifest.webmanifest", "/sw.js", "/konto.js", "/info/pruefung.webp"], zeilen
     assert "Warning: these paths" not in r.stdout
 
 
@@ -2043,7 +2043,7 @@ http {{ access_log off; {temp}
         for pfad in ("/mcp", "/anmelden?zurueck=/konto", "/konto", "/authorize?x=1", "/token", "/register", "/gesund",
                      "/.well-known/oauth-authorization-server", "/.well-known/oauth-protected-resource/mcp", "/einladung/abc",
                      "/kalender/abc.ics", "/schrift/source-sans-3-latin-wght-normal.woff2", "/favicon.ico", "/favicon.svg",
-                     "/icon-192.png", "/manifest.webmanifest", "/sw.js", "/konto.js"):
+                     "/icon-192.png", "/manifest.webmanifest", "/sw.js", "/konto.js", "/", "/info/reise-de.webp"):
             assert hol(pfad)[:2] == (200, pfad), pfad
         # Links aus der Zeit vor den Konten bleiben abgeschaltet, wie auf dem Server (#206)
         assert hol("/probe-mcp/" + "t" * 32)[0] == 404 and hol("/" + "t" * 32)[0] == 404
