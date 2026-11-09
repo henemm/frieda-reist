@@ -204,7 +204,7 @@ def test_kein_baustein_ruft_einen_baustein_hoeherer_ebene_auf():
 EIGENE_FLAECHEN = {
     "abschnittInhalt", "aenderungenZeigen", "ansichtEtappen", "ansichtGruppe", "ansichtRueckmeldungen", "ansichtSuche",
     "ansichtVarianten", "artTabelle", "chips", "dingMarke", "etappeTeil",
-    "etappenKarte", "festeTermine", "fuerDich", "heuteBlock", "jetztSenden", "kalenderChip",
+    "etappenKarte", "festeTermine", "fuerDich", "jetztSenden", "kalenderChip",
     "karteZeichnen", "listenTitel", "naechsteFristen", "ontologieTabelle", "optionVerlauf", "ortChips",
     "ortKarte", "punktPopup", "regelZeilen", "releaseFuss", "tagKopf",
     "vergleichTabelle", "warnungen", "wegKurz", "wissenKarte", "wissenPopup",

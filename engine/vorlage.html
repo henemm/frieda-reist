@@ -1202,13 +1202,17 @@ const REITER = [
 const ROUTE_ALIAS = {"offen": "zu-tun"};
 const routeName = h => ROUTE_ALIAS[h] || h;
 // Startreiter steht vorn und öffnet ohne Sprungziel: reise.json „start“, sonst die Reise (ohne Tage: Wissen mit den Eckdaten)
-// Unterwegs beginnt die Seite mit „Heute“ und der Reise (Verhalten je Status)
+// Unterwegs ohne heutigen Tag beginnt die Seite mit der Reise (Verhalten je Status); mit heutigem Tag mit „Heute“ (heuteTag, #433)
 const START = V.start === "heute" && REITER.some(r => r[0] === "varianten") ? "varianten"
   : REITER.some(r => r[0] === routeName(D.reise.start)) ? routeName(D.reise.start) : REITER[0][0];
 // Reihenfolge Reise · Zu tun · Wissen · Wünsche (Seitenordnung 28.10.2026)
 const REIHE = ["varianten", "karte", "etappen", "zu-tun", "wissen", "wuensche", "packliste"];
 REITER.sort((a, b) => REIHE.indexOf(a[0]) - REIHE.indexOf(b[0]));
 REITER.sort((a, b) => (b[0] === START) - (a[0] === START));
+// Heutiger Tag (#433): nur mit verhalten.start „heute“ (Status unterwegs) und einem Tag mit dem Datum von heute (Ortszeit des
+// Geräts). Dann steht „Heute“ vorn in der Leiste und führt auf seine Tagesseite, die eine Heimat des Tags (ADR-0003); ohne
+// Sprungziel startet die Seite dort. Bei jedem Seitenwechsel neu bestimmt, so gilt ein neuer Tag ohne Neuladen.
+const heuteTag = () => V.start === "heute" && R ? R.tage.find(x => x.datum === heute()) || null : null;
 const TYP_REITER = {plan: "wissen", strecke: ETAPPEN_REITER ? "etappen" : "wissen", uebersicht: ETAPPEN_REITER ? "etappen" : "wissen", wissen: "wissen", praxis: "wissen", quelle: "wissen", ort: "varianten"};
 
 /* ---------- Bausteine ---------- */
@@ -3029,7 +3033,6 @@ function etappeTeil(a) {
 }
 
 function ansichtVarianten(m) {
-  heuteBlock(m);
   const alle = R.plaene;
   if (VARIANTE === null) VARIANTE = (alle.find(planFest) || {}).id || "";
   if (!alle.some(p => p.id === VARIANTE)) VARIANTE = "";
@@ -3353,7 +3356,6 @@ function karteGrossKnopf(abschnitt) {
 // Erster Reiter: der Reiseüberblick mit der Zeitachse des Plans der Zeitachse, für jede Reise (#214)
 const ansichtStart = m => ansichtReise(m, PLAN_ANSICHT);
 function ansichtReise(m, p) {
-  heuteBlock(m);
   // Abschnitte untereinander mit gleichem Abstand (.reise: gap); innerhalb eines Abschnitts der engere Abstand.
   // Am Rechner links der Überblick, rechts die Zeitachse (Seitenordnung 28.10.2026); am Handy untereinander.
   const aussen = el("div", {class: "reise reise-seite"});
@@ -3412,14 +3414,6 @@ document.addEventListener("click", e => {
 // (route.mahnungen) für den Konnektor (ueberblick); der Wächter rechnet seine Meldungen selbst (docs/waechter.md).
 // Der Kasten „Mahnung“ auf der Seite ist seit dem 29.10.2026 weg
 // (Product Owner): Offenes steht in „Zu tun“ (Zu entscheiden, Zu buchen), Ungeprüftes am Wert, Mahnungen in der Claude-App.
-// Status „unterwegs“: der heutige Tag steht ganz oben (Plan und Karte)
-function heuteBlock(m) {
-  if (V.start !== "heute" || !R) return;
-  const t = R.tage.find(x => x.datum === heute());
-  const s = el("section", {class: "heute"}, el("h2", {}, t ? T("seite.plan.heute_tag", {nr: t.nr, titel: t.titel}) : T("seite.plan.heute")));
-  s.append(t ? tagKarte(t, true, true) : el("div", {class: "leer"}, T("seite.plan.heute_kein_tag")));
-  m.append(s);
-}
 // Kennungen in einem Text (aus Markdown-Tabellen der Reise) in Namen auflösen: eine Klammer, die nur Kennungen enthält,
 // entfällt (diese Stellen stehen als Pillen darunter); eine Kennung im Satz wird zum Namen mit Link. -> {teile, ids}
 const KENNUNG = /\b(?:AG-\d+|P-[A-Z]\b|[TEOUVPFWAB]-\d+(?:\.[a-z0-9-]+)?)\b/g;   // A- Aufenthalt, B- Buchung (seit O-5 und #76)
@@ -5506,9 +5500,10 @@ let reiter = START;
 function zeigeReiter(name) {
   reiter = name;
   const nav = $("#nav");
-  nav.classList.toggle("viele", REITER.length > 5);
-  nav.style.flexGrow = REITER.length;   // jeder Reiter so breit wie der Suchknopf
-  nav.replaceChildren(...REITER.map(([k, t]) => el("a", {href: "#" + k, class: k === name ? "on" : false, "aria-current": k === name ? "page" : false},
+  const liste = heuteTag() ? [["heute", () => T("seite.reiter.heute")], ...REITER] : REITER;   // „Heute“ vorn, nur unterwegs (#433)
+  nav.classList.toggle("viele", liste.length > 5);
+  nav.style.flexGrow = liste.length;   // jeder Reiter so breit wie der Suchknopf
+  nav.replaceChildren(...liste.map(([k, t]) => el("a", {href: "#" + k, class: k === name ? "on" : false, "aria-current": k === name ? "page" : false},
     symbol(k === "varianten" ? "karte" : k), el("span", {}, t()), k === "zu-tun" ? el("span", {class: "zahl", hidden: true}) : null)));
   offenZahl();
 }
@@ -5558,8 +5553,9 @@ function route(behalten) {
   if (zielB) h = (R.buchungen[h].fuer || [])[0] || "";
   if (q.length >= 2) { zeigeReiter(reiter); ansichtSuche(m, q); window.scrollTo(0, 0); return; }
   // Eine Seitenordnung (#214): ohne Sprungziel der Startreiter; „Plan“ (ältere Links) und „Reise“ führen zur Reise
-  const start = () => { zeigeReiter(START); START === "varianten" ? ansichtStart(m) : START === "zu-tun" ? ansichtZuTun(m) : START === "wuensche" ? ansichtWuensche(m) : START === "etappen" ? ansichtEtappen(m) : ansichtWissen(m); };
-  if (!h) start();
+  const start = () => { const ht = heuteTag(); if (ht) { zeigeReiter("heute"); ansichtTag(m, ht.id); return; }
+    zeigeReiter(START); START === "varianten" ? ansichtStart(m) : START === "zu-tun" ? ansichtZuTun(m) : START === "wuensche" ? ansichtWuensche(m) : START === "etappen" ? ansichtEtappen(m) : ansichtWissen(m); };
+  if (!h || h === "heute") start();   // #heute ohne heutigen Tag (alter Link, Reise vorbei): wie ohne Sprungziel
   else if ((h === "plan" || h === "varianten" || h === "karte" || PLAN_VERWEIS.has(h)) && R) { zeigeReiter("varianten"); ansichtStart(m); }
   else if (h === "plaene" && HAT_VARIANTEN) { zeigeReiter("varianten"); ansichtVarianten(m); }
   else if (h === "etappen" && ETAPPEN_REITER) { zeigeReiter("etappen"); ansichtEtappen(m); }
@@ -5567,7 +5563,7 @@ function route(behalten) {
   // Etappe im Plan der Zeitachse (oder ein Block daraus): zum Tag, an dem sie gegangen wird
   else if (ETAPPE_TAG.has(h) || (blockZu.has(h) && ETAPPE_TAG.has(blockZu.get(h).id))) {
     zeigeReiter("varianten"); ansichtTag(m, ETAPPE_TAG.get(ETAPPE_TAG.has(h) ? h : blockZu.get(h).id)); ziel = h; }
-  else if (tagBekannt(h)) { zeigeReiter("varianten"); ansichtTag(m, h); }
+  else if (tagBekannt(h)) { zeigeReiter((heuteTag() || {}).id === h ? "heute" : "varianten"); ansichtTag(m, h); }
   else if (h === "wissen") { zeigeReiter("wissen"); ansichtWissen(m); }
   else if (h === "bausteine") { zeigeReiter(""); ansichtBausteine(m); }
   else if (h === "orte") { zeigeReiter("wissen"); ansichtWissen(m); ziel = "orte"; }
