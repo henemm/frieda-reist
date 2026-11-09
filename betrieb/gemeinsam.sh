@@ -143,7 +143,9 @@ fr_melden() {  # <normal|high> <betreff> <text> [erledigt]: Nachricht an den Bet
 
 wege_pruefen() {  # Wege von außen: Jede Art Pfad des Konnektors muss über die öffentliche Adresse bei ihm ankommen
   # (Kopf X-Frieda), nicht bei nginx. Fehlt ein Ort im server-Block, geht die Seite, aber etwa das Kalender-Abo nicht
-  # (1.11.2026). Nur Warnung und Meldung: Die Reiseseite selbst ist davon nicht betroffen. Die Abrufe kommen vom Server
+  # (1.11.2026). Nur Warnung im Protokoll, keine Meldung
+  # (#445: kein Ausfall; die Abweichung meldet nginx_abgleichen einmal als Issue, der Monitor der Instanz prüft sie als
+  # Warnung). Die Reiseseite selbst ist davon nicht betroffen. Die Abrufe kommen vom Server
   # selbst und zählen in nginx in dieselbe Begrenzung wie die Prüfung von freischalten.sh; veroeffentlichen.sh ruft sie
   # deshalb einmal je Lauf nach dem Freischalten auf (FR_WEGE_SPAETER), nicht je Reise (frieda-reist#163).
   # 429 heißt: Die Anfragebegrenzung von nginx (5/min auf /anmelden) hat gegriffen, der Ort ist da. Dann wartet die Prüfung
@@ -164,5 +166,4 @@ wege_pruefen() {  # Wege von außen: Jede Art Pfad des Konnektors muss über die
   [ -n "$fehlen" ] || return 0
   echo "Warning: these paths do not reach the connector via $FR_KN_ADRESSE:$fehlen"
   echo "         nginx: include the block $FR_INSTANZ-konnektor-orte.inc from betrieb/vorlagen/ (einrichten.sh, docs/betrieb.md)."
-  fr_melden high "nginx: paths to the connector missing" "These paths do not reach the connector via $FR_KN_ADRESSE:$fehlen. Include the block $FR_INSTANZ-konnektor-orte.inc from betrieb/vorlagen/ (einrichten.sh)."
 }

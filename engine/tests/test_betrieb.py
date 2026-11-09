@@ -927,7 +927,7 @@ def test_deploy_mit_warnung_im_plan_legt_die_seite_ab(tmp_path):
 
 def test_deploy_prueft_die_wege_zum_konnektor_von_aussen(tmp_path):
     """Nach dem Deploy fragt deploy.sh jede Art Pfad des Konnektors über die öffentliche Adresse ab. Kommt ein Weg bei
-    nginx statt beim Konnektor an (kein Kopf X-Frieda), warnt es und meldet es dem Betreiber; die Seite wird trotzdem
+    nginx statt beim Konnektor an (kein Kopf X-Frieda), warnt es im Protokoll (ohne Meldung, #445); die Seite wird trotzdem
     abgelegt. So lief das Kalender-Abo ins Leere: nginx kannte /kalender/ nicht (1.11.2026)."""
     import threading
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -971,10 +971,9 @@ def test_deploy_prueft_die_wege_zum_konnektor_von_aussen(tmp_path):
         r = subprocess.run([str(BETRIEB / "deploy.sh"), "beispielreise"], env=env, capture_output=True, text=True)
         assert r.returncode == 0, r.stdout + r.stderr
         assert "Warning: these paths do not reach the connector" in r.stdout and "/kalender/" in r.stdout and "/gesund" not in r.stdout.split("Warning")[1]
-        assert "nginx: paths to the connector missing" in meldungen.read_text() and "/kalender/" in meldungen.read_text()
+        assert not meldungen.exists(), meldungen.read_text()   # #445: ein fehlender Ort ist kein Ausfall, keine Meldung
         assert (tmp_path / "seiten" / "beispielreise" / "index.html").exists()
         # Vom Veröffentlichen aufgerufen (FR_WEGE_SPAETER): keine Abfrage je Reise, das macht der Lauf einmal danach
-        meldungen.unlink()
         r = subprocess.run([str(BETRIEB / "deploy.sh"), "beispielreise"], env={**env, "FR_WEGE_SPAETER": "1"},
                            capture_output=True, text=True)
         assert r.returncode == 0 and "Warning: these paths" not in r.stdout and not meldungen.exists(), r.stdout + r.stderr
