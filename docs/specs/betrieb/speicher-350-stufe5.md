@@ -353,6 +353,8 @@ Die Tests sind den Acceptance Criteria zugeordnet; RED vor dem Bauen (`40-tdd-re
 - Der Stempel `.gebaut` beendet die Sperre dauerhaft; der Rückweg muss ihn von Hand entfernen.
 - Eine blockierte Reise erzeugt keine Nachricht, nur einen Hinweis im Protokoll und die Ablehnung im Schreibweg.
 - Umgeschaltet werden echte Reisen nicht in diesem Repo, sondern an der Instanz nach der Anleitung.
+- `_git_baum` unterscheidet „kein auflösbares `HEAD`“ (frei, Entscheidung 6) nicht von einem Scheitern von `git` genau zwischen der Prüfung `rev-parse --git-dir` (gelungen) und `rev-parse --verify HEAD` (Validierung, 9.11.2026). Ein solcher Ausfall zwischen zwei aufeinanderfolgenden Aufrufen wäre ein vorübergehender Fehler von `git` selbst; das Risiko ist vernachlässigbar, deshalb kein Umbau.
+- In der Fixture `speicherweg` von `engine/tests/test_schreiben.py` wird wie in `sp` (AC-23) ein Stempel „gleich“ für beide Beispielreisen geschrieben, damit die bestehenden Schreibweg-Tests prüfen, was sie prüfen; die Datei fehlt in der Tabelle „Dateien“.
 
 ## Changelog
 
