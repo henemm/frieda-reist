@@ -52,6 +52,10 @@ Zeitbudget (Sekunden, alles gemessen ab Beginn von anwenden_extern, time.monoton
   < proxy_read_timeout 30 s; die restlichen 2 s sind Sicherheitsreserve für Antwort und Übertragung.
   ZEIT_ANWENDEN entfällt (war 150 s, im Arbeitsbaum 20 s); docs/betrieb.md ("Zeitgrenzen und Sperren des
   Schreibwegs") wird auf diese drei Werte umgestellt.
+  Nachtrag #240 (2026-11-09): /mcp hat inzwischen proxy_read_timeout 300 s, der Konnektor wartet 120 s auf den Schreibweg
+  (schreib_anfrage). Nur kartenpunkte_holen hat davor, OHNE Sperre, ein Vorab-Fenster ZEIT_VORAB = ZEIT_VORAB_VORB 10 +
+  OSM_FRIST_VORAB 45 = 55 s (Lesekopie, Rollenprüfung, Abruf bei Overpass mit höchstens einer Wiederholung nach OSM_PAUSE 2 s);
+  danach beginnt ZEIT_GESAMT neu. 55 + 25 + 3 = 83 s < 120 s. Spec: docs/specs/betrieb/kartenpunkte-frist-240.md.
 
 Ablauf:
   1. Sperre der Reise nehmen (nicht blockierend, Frist ZEIT_SPERRE); belegt -> 429.
@@ -150,3 +154,4 @@ Automatische Tests (jeweils an eine AC oben gebunden):
 - 2026-10-29: Zeitbudget geschlossen (kein Mindestwert fürs Anwenden, Fetch und Suche unter einer Frist), Protokollcode bei „eingetragen trotz Abbruch“ festgelegt (Validator-Befund, 2. Lauf)
 - 2026-10-29: Meldungstabelle, geschlossenes Zeitbudget (25 + 3 s Reserve) und Widersprüche zwischen AC-2/AC-3/AC-7 und Known Limitations bereinigt (Validator-Befund)
 - 2026-11-06: Hinweis Speicherweg (#347): Fristen und Meldungstabelle gelten auch dort, die Nachprüfung ist lokal im Speicher
+- 2026-11-09: Nachtrag #240: Vorab-Fenster für `kartenpunkte_holen` vor der Sperre (ZEIT_VORAB 55 s), Grenze ist jetzt die Wartezeit des Konnektors (120 s)
