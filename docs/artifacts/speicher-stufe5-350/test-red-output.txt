@@ -1,0 +1,663 @@
+# RED-Beleg #350 (Stufe 5). Bereits grün und gewollt (Schutz-Tests, Verhalten bleibt): test_reise_nicht_im_speicher_behaelt_ihren_fehler, test_schreibweg_sperrt_weder_umgeschaltete_noch_neue_reisen, test_gh_und_ls_remote_aendern_das_ergebnis_des_laufs_nicht, test_ohne_speicherreisen_scheitert_git_fetch_wie_bisher.
+# Hinweis für GREEN: test_schreiben_speicher.py::test_speicherweg_ruft_nie_git_auf verlangt, dass ohne .git im Bauordner kein git aufgerufen wird (umschaltung_frei vorher prüfen).
+bringing up nodes...
+bringing up nodes...
+
+FFFFFF.FFFFFFFFFFFFF...FFFFFFFFFFF                                       [100%]
+=================================== FAILURES ===================================
+____________ test_ausnahmen_der_sperre_und_git_nicht_lesbar_sperrt _____________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+s5 = namespace(rs=<module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/...en_der_sperre_und_0/tmp'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-13918/popen-gw1/test_ausnahmen_der_sperre_und_0'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x79c639035610>
+tmp_path = PosixPath('/tmp/pytest-of-<user>/pytest-13918/popen-gw1/test_ausnahmen_der_sperre_und_0')
+
+    def test_ausnahmen_der_sperre_und_git_nicht_lesbar_sperrt(s5, monkeypatch, tmp_path):
+        # (a) nur im Speicher
+        shutil.rmtree(s5.bau / "reisen" / "stadtwochenende")
+        _commit(s5.bau, "stadtwochenende nur noch im Speicher")
+>       assert s5.rs.umschaltung_frei("stadtwochenende") == (True, "")
+               ^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'umschaltung_frei'
+
+engine/tests/test_speicher_stufe5.py:195: AttributeError
+___________________ test_stempel_ungleich_oder_kaputt_sperrt ___________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+s5 = namespace(rs=<module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/..._ungleich_oder_kap0/tmp'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-13918/popen-gw3/test_stempel_ungleich_oder_kap0'))
+
+    def test_stempel_ungleich_oder_kaputt_sperrt(s5):
+        r = "beispielreise"
+        for ergebnis in ("unterschied", "fehler"):
+            stempel(s5, r, ergebnis=ergebnis)
+>           assert s5.rs.umschaltung_frei(r) == (False, "stempel_nicht_gleich"), ergebnis
+                   ^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'reisespeicher' has no attribute 'umschaltung_frei'
+
+engine/tests/test_speicher_stufe5.py:139: AttributeError
+___________ test_ohne_stempel_ist_die_reise_gesperrt[beispielreise] ____________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+s5 = namespace(rs=<module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/...empel_ist_die_reis0/tmp'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-13918/popen-gw0/test_ohne_stempel_ist_die_reis0'))
+reise = 'beispielreise'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_ohne_stempel_ist_die_reise_gesperrt(s5, reise):
+        vorher = schnappschuss(s5)
+>       assert s5.rs.umschaltung_frei(reise) == (False, "kein_stempel")
+               ^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'umschaltung_frei'
+
+engine/tests/test_speicher_stufe5.py:129: AttributeError
+__________ test_ohne_stempel_ist_die_reise_gesperrt[stadtwochenende] ___________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+s5 = namespace(rs=<module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/...empel_ist_die_reis1/tmp'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-13918/popen-gw0/test_ohne_stempel_ist_die_reis1'))
+reise = 'stadtwochenende'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_ohne_stempel_ist_die_reise_gesperrt(s5, reise):
+        vorher = schnappschuss(s5)
+>       assert s5.rs.umschaltung_frei(reise) == (False, "kein_stempel")
+               ^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'umschaltung_frei'
+
+engine/tests/test_speicher_stufe5.py:129: AttributeError
+______________________ test_befehl_umschaltung_exit_codes ______________________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+s5 = namespace(rs=<module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/...umschaltung_exit_c0/tmp'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-13918/popen-gw1/test_befehl_umschaltung_exit_c0'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x79c638fc3230>
+tmp_path = PosixPath('/tmp/pytest-of-<user>/pytest-13918/popen-gw1/test_befehl_umschaltung_exit_c0')
+
+    def test_befehl_umschaltung_exit_codes(s5, monkeypatch, tmp_path):
+        vorher = schnappschuss(s5)
+        for name in ("../x", ""):
+            r = befehl("umschaltung", name)
+>           assert r.returncode == 1 and r.stdout.strip() == "gesperrt stempel_ungueltig", (name, r.stdout + r.stderr)
+E           AssertionError: ('../x', 'Reisespeicher (Stufe 1, #346, Epic #345, ADR-0009): Reisedaten als unveränderliche Versionen in SQLite, nur ...ine/reisespeicher.py staende <reise> …                          je Reise „<reise> <Speicher> <Seite>“ (- = keine)
+E             
+E             ')
+E           assert (1 == 1 and 'Reisespeiche...“ (- = keine)' == 'gesperrt stempel_ungueltig'
+E            +  where 1 = CompletedProcess(args=['~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python', ...eicher.py staende <reise> …                          je Reise „<reise> <Speicher> <Seite>“ (- = keine)\n\n', stderr='').returncode
+E             
+E             - gesperrt stempel_ungueltig
+E             + Reisespeicher (Stufe 1, #346, Epic #345, ADR-0009): Reisedaten als unveränderliche Versionen in SQLite, nur anhängen.
+E             + 
+E             + Ein Vorgang ist ein Schreibvorgang (Person, Rolle, Werkzeug, Titel, Grund, Zeit, Kennung); je Vorgang gibt es eine
+E             + Version je geänderter Datei (Bytes und SHA-256, ein Tombstone ohne Inhalt für eine gelöschte Datei). Die Stand-Nummer
+E             + einer Reise zählt Vorgänge, nicht Dateien (je Schreibvorgang +1, #226). Der Stand s einer Reise ist je Pfad die jüngste...
+E             
+E             ...Full output truncated (37 lines hidden), use '-vv' to show)
+
+engine/tests/test_speicher_stufe5.py:227: AssertionError
+________ test_stempel_gleich_gibt_die_umschaltung_frei[stadtwochenende] ________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+s5 = namespace(rs=<module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/..._gleich_gibt_die_u0/tmp'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-13918/popen-gw2/test_stempel_gleich_gibt_die_u0'))
+reise = 'stadtwochenende'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_stempel_gleich_gibt_die_umschaltung_frei(s5, reise):
+        """Der Stempel kommt vom echten betrieb/vergleichslauf.sh (Git-Kopie und Speicher gleich)."""
+        v = subprocess.run([str(BETRIEB / "vergleichslauf.sh"), reise], capture_output=True, text=True, env=dict(os.environ))
+        assert v.returncode == 0, v.stdout + v.stderr
+>       assert s5.rs.umschaltung_frei(reise) == (True, "")
+               ^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'umschaltung_frei'
+
+engine/tests/test_speicher_stufe5.py:152: AttributeError
+________________ test_umschaltung_text_steht_in_allen_sprachen _________________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x790d32635040>
+
+    def test_umschaltung_text_steht_in_allen_sprachen(monkeypatch):
+        import texte
+        monkeypatch.setenv("FR_TEXTE_ZUSATZ", "xx")                   # die Pseudo-Sprache der Tests zählt mit
+        k = "schreiben.dienst.umschaltung_nicht_freigegeben"
+        for sp_ in texte.sprachen():
+>           assert k in texte.sprache(sp_).TEXTE, sp_
+E           AssertionError: de
+E           assert 'schreiben.dienst.umschaltung_nicht_freigegeben' in {'seite.kreis.hinweis': '„{titel}“ verweist im Kreis oder zu tief auf andere Dinge und hat hier keinen Platz. Bitte in...us.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', ...}
+E            +  where {'seite.kreis.hinweis': '„{titel}“ verweist im Kreis oder zu tief auf andere Dinge und hat hier keinen Platz. Bitte in...us.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', ...} = <module 'texte_de' from '~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/texte_de.py'>.TEXTE
+E            +    where <module 'texte_de' from '~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/texte_de.py'> = <function sprache at 0x790d32a27b00>('de')
+E            +      where <function sprache at 0x790d32a27b00> = <module 'texte' from '~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/texte.py'>.sprache
+
+engine/tests/test_speicher_stufe5.py:305: AssertionError
+_________ test_stempel_gleich_gibt_die_umschaltung_frei[beispielreise] _________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+s5 = namespace(rs=<module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/..._gleich_gibt_die_u0/tmp'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-13918/popen-gw3/test_stempel_gleich_gibt_die_u0'))
+reise = 'beispielreise'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_stempel_gleich_gibt_die_umschaltung_frei(s5, reise):
+        """Der Stempel kommt vom echten betrieb/vergleichslauf.sh (Git-Kopie und Speicher gleich)."""
+        v = subprocess.run([str(BETRIEB / "vergleichslauf.sh"), reise], capture_output=True, text=True, env=dict(os.environ))
+        assert v.returncode == 0, v.stdout + v.stderr
+>       assert s5.rs.umschaltung_frei(reise) == (True, "")
+               ^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'umschaltung_frei'
+
+engine/tests/test_speicher_stufe5.py:152: AttributeError
+_________ test_veralteter_stempel_sperrt_und_fremde_aenderungen_nicht __________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+s5 = namespace(rs=<module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/...ter_stempel_sperrt0/tmp'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-13918/popen-gw2/test_veralteter_stempel_sperrt0'))
+
+    def test_veralteter_stempel_sperrt_und_fremde_aenderungen_nicht(s5):
+        r = "beispielreise"
+        stempel(s5, r)
+>       assert s5.rs.umschaltung_frei(r) == (True, "")
+               ^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'umschaltung_frei'
+
+engine/tests/test_speicher_stufe5.py:167: AttributeError
+__________________ test_vergleichslauf_schreibt_den_git_baum ___________________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+s5 = namespace(rs=<module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/...chslauf_schreibt_d0/tmp'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-13918/popen-gw2/test_vergleichslauf_schreibt_d0'))
+
+    def test_vergleichslauf_schreibt_den_git_baum(s5):
+        for r in REISEN:
+            v = subprocess.run([str(BETRIEB / "vergleichslauf.sh"), r], capture_output=True, text=True, env=dict(os.environ))
+            assert v.returncode == 0, v.stdout + v.stderr
+            s = json.loads((s5.dienst / "vergleich" / f"{r}.json").read_text())
+>           assert {"zeit", "ergebnis", "stand", "git", "unterschiede", "baum"} <= set(s)
+E           AssertionError: assert {'baum', 'erg...iede', 'zeit'} <= {'ergebnis', ...iede', 'zeit'}
+E             
+E             Extra items in the left set:
+E             'baum'
+
+engine/tests/test_speicher_stufe5.py:317: AssertionError
+_ test_schreibweg_lehnt_gesperrte_reise_ab_und_schreibt_nichts[beispielreise] __
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+s5 = namespace(rs=<module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/...weg_lehnt_gesperrt0/tmp'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-13918/popen-gw1/test_schreibweg_lehnt_gesperrt0'))
+unterprozesse = ["(['~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python', '~/frieda-r...tmp/frieda-schreiben-d9nqol5o/tmp', 'FR_VORGANG': 'a397d5ded29a', 'FR_SPEICHER_BASIS': '1', 'FR_SB_FRIST': '24.945'}}"]
+reise = 'beispielreise'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_schreibweg_lehnt_gesperrte_reise_ab_und_schreibt_nichts(s5, unterprozesse, reise):
+        vorher = s5.rs.stand_nummer(reise)
+        code, a = schreib(reise)
+>       assert code == 503 and a["ok"] is False, (code, a)
+E       AssertionError: (200, {'ok': True, 'text': 'Open question F-04 created: Gibt es dort samstags einen Markt? (Beispielwert) (by Ida).', 'commit': '3', 'stand': {'gesichert': 2, 'veroeffentlicht': None}, ...})
+E       assert (200 == 503)
+
+engine/tests/test_speicher_stufe5.py:262: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Done frage_anlegen 200 in 1.6 s
+_ test_veroeffentlichen_baut_gesperrte_reise_nicht[beispielreise-stadtwochenende] _
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x790d32446340>, 'deploys': <function vf.<locals>.deploys at 0x790d32446660>, '...f.<locals>.anzahl_pings at 0x790d324462a0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x790d32446980>, ...}
+gesperrt = 'beispielreise', frei = 'stadtwochenende'
+
+    @pytest.mark.parametrize("gesperrt,frei", [("beispielreise", "stadtwochenende"), ("stadtwochenende", "beispielreise")])
+    def test_veroeffentlichen_baut_gesperrte_reise_nicht(sp, gesperrt, frei):
+        git_reisen(sp, rein=[gesperrt], raus=[frei] if frei == "beispielreise" else [])
+        sperren(sp, gesperrt)
+        sperren(sp, frei)
+        r = sp["lauf"]()
+        assert r.returncode == 0, r.stdout + r.stderr
+>       nicht_gebaut(sp, gesperrt)
+
+engine/tests/test_speicher_stufe5.py:364: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x790d32446340>, 'deploys': <function vf.<locals>.deploys at 0x790d32446660>, '...f.<locals>.anzahl_pings at 0x790d324462a0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x790d32446980>, ...}
+reise = 'beispielreise'
+
+    def nicht_gebaut(sp, reise):
+>       assert reise not in sp["zeilen"]("deploy.log")
+E       AssertionError: assert 'beispielreise' not in ['beispielreise', 'stadtwochenende', 'zweitreise']
+E        +  where ['beispielreise', 'stadtwochenende', 'zweitreise'] = <function vf.<locals>.zeilen at 0x790d32444fe0>('deploy.log')
+
+engine/tests/test_speicher_stufe5.py:351: AssertionError
+_____________ test_veroeffentlichen_baut_nur_mit_gueltigem_stempel _____________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x792b63c3eca0>, 'deploys': <function vf.<locals>.deploys at 0x792b63c3e980>, '...f.<locals>.anzahl_pings at 0x792b63c3efc0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x792b63c3ea20>, ...}
+
+    def test_veroeffentlichen_baut_nur_mit_gueltigem_stempel(sp):
+        r = "beispielreise"
+        handstempel(sp, r, ergebnis="unterschied")
+        sp["lauf"]()
+>       nicht_gebaut(sp, r)
+
+engine/tests/test_speicher_stufe5.py:374: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x792b63c3eca0>, 'deploys': <function vf.<locals>.deploys at 0x792b63c3e980>, '...f.<locals>.anzahl_pings at 0x792b63c3efc0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x792b63c3ea20>, ...}
+reise = 'beispielreise'
+
+    def nicht_gebaut(sp, reise):
+>       assert reise not in sp["zeilen"]("deploy.log")
+E       AssertionError: assert 'beispielreise' not in ['beispielreise', 'stadtwochenende', 'zweitreise']
+E        +  where ['beispielreise', 'stadtwochenende', 'zweitreise'] = <function vf.<locals>.zeilen at 0x792b63c3cea0>('deploy.log')
+
+engine/tests/test_speicher_stufe5.py:351: AssertionError
+_ test_schreibweg_lehnt_gesperrte_reise_ab_und_schreibt_nichts[stadtwochenende] _
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+s5 = namespace(rs=<module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/...weg_lehnt_gesperrt1/tmp'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-13918/popen-gw1/test_schreibweg_lehnt_gesperrt1'))
+unterprozesse = ["(['~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python', '~/frieda-r...tmp/frieda-schreiben-0zepz9d5/tmp', 'FR_VORGANG': 'a091d9b68363', 'FR_SPEICHER_BASIS': '1', 'FR_SB_FRIST': '24.985'}}"]
+reise = 'stadtwochenende'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_schreibweg_lehnt_gesperrte_reise_ab_und_schreibt_nichts(s5, unterprozesse, reise):
+        vorher = s5.rs.stand_nummer(reise)
+        code, a = schreib(reise)
+>       assert code == 503 and a["ok"] is False, (code, a)
+E       AssertionError: (200, {'ok': True, 'text': 'Open question F-02 created: Gibt es dort samstags einen Markt? (Beispielwert) (by Tom).', 'commit': '3', 'stand': {'gesichert': 2, 'veroeffentlicht': None}, ...})
+E       assert (200 == 503)
+
+engine/tests/test_speicher_stufe5.py:262: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Done frage_anlegen 200 in 0.8 s
+____________________ test_schreibweg_schreibt_nach_freigabe ____________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+s5 = namespace(rs=<module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/...weg_schreibt_nach_0/tmp'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-13918/popen-gw3/test_schreibweg_schreibt_nach_0'))
+
+    def test_schreibweg_schreibt_nach_freigabe(s5):
+        r = "beispielreise"
+        stempel(s5, r)
+        vorher = s5.rs.stand_nummer(r)
+        code, a = schreib(r)
+        assert code == 200 and a["ok"], a
+        assert s5.rs.stand_nummer(r) == vorher + 1
+        aendern_in_git(s5, r)                                         # Stempel veraltet, kein .gebaut
+        code, a = schreib(r, "Zweite Frage (Beispielwert)")
+>       assert code == 503 and a["fehler_code"] == "schreiben.dienst.umschaltung_nicht_freigegeben", a
+E       AssertionError: {'ok': True, 'text': 'Open question F-05 created: Zweite Frage (Beispielwert) (by Ida).', 'commit': '4', 'stand': {'gesichert': 3, 'veroeffentlicht': None}, ...}
+E       assert (200 == 503)
+
+engine/tests/test_speicher_stufe5.py:278: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Done frage_anlegen 200 in 1.9 s
+Done frage_anlegen 200 in 2.1 s
+_ test_veroeffentlichen_baut_gesperrte_reise_nicht[stadtwochenende-beispielreise] _
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x790d324451c0>, 'deploys': <function vf.<locals>.deploys at 0x790d32445080>, '...f.<locals>.anzahl_pings at 0x790d32447600>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x790d32447560>, ...}
+gesperrt = 'stadtwochenende', frei = 'beispielreise'
+
+    @pytest.mark.parametrize("gesperrt,frei", [("beispielreise", "stadtwochenende"), ("stadtwochenende", "beispielreise")])
+    def test_veroeffentlichen_baut_gesperrte_reise_nicht(sp, gesperrt, frei):
+        git_reisen(sp, rein=[gesperrt], raus=[frei] if frei == "beispielreise" else [])
+        sperren(sp, gesperrt)
+        sperren(sp, frei)
+        r = sp["lauf"]()
+        assert r.returncode == 0, r.stdout + r.stderr
+>       nicht_gebaut(sp, gesperrt)
+
+engine/tests/test_speicher_stufe5.py:364: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x790d324451c0>, 'deploys': <function vf.<locals>.deploys at 0x790d32445080>, '...f.<locals>.anzahl_pings at 0x790d32447600>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x790d32447560>, ...}
+reise = 'stadtwochenende'
+
+    def nicht_gebaut(sp, reise):
+>       assert reise not in sp["zeilen"]("deploy.log")
+E       AssertionError: assert 'stadtwochenende' not in ['beispielreise', 'stadtwochenende', 'zweitreise']
+E        +  where ['beispielreise', 'stadtwochenende', 'zweitreise'] = <function vf.<locals>.zeilen at 0x790d32447420>('deploy.log')
+
+engine/tests/test_speicher_stufe5.py:351: AssertionError
+__ test_umschaltung_ende_zu_ende_mit_dem_echten_vergleichslauf[beispielreise] __
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x792b63c3f560>, 'deploys': <function vf.<locals>.deploys at 0x792b63c3f880>, '...f.<locals>.anzahl_pings at 0x792b63c3f420>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x792b63c3f740>, ...}
+reise = 'beispielreise'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x792b63e34980>
+
+    @pytest.mark.parametrize("reise", SPEICHER_REISEN)
+    def test_umschaltung_ende_zu_ende_mit_dem_echten_vergleichslauf(sp, reise, monkeypatch):
+        git_reisen(sp, rein=[reise])
+        sperren(sp, reise)
+        sp["lauf"]()
+>       nicht_gebaut(sp, reise)                                        # ohne Vergleich keine Umschaltung
+        ^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_speicher_stufe5.py:396: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x792b63c3f560>, 'deploys': <function vf.<locals>.deploys at 0x792b63c3f880>, '...f.<locals>.anzahl_pings at 0x792b63c3f420>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x792b63c3f740>, ...}
+reise = 'beispielreise'
+
+    def nicht_gebaut(sp, reise):
+>       assert reise not in sp["zeilen"]("deploy.log")
+E       AssertionError: assert 'beispielreise' not in ['beispielreise', 'stadtwochenende', 'zweitreise']
+E        +  where ['beispielreise', 'stadtwochenende', 'zweitreise'] = <function vf.<locals>.zeilen at 0x792b63c3d1c0>('deploy.log')
+
+engine/tests/test_speicher_stufe5.py:351: AssertionError
+_ test_umschaltung_ende_zu_ende_mit_dem_echten_vergleichslauf[stadtwochenende] _
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x79c638ae7600>, 'deploys': <function vf.<locals>.deploys at 0x79c638ae76a0>, '...f.<locals>.anzahl_pings at 0x79c638ae7920>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x79c638ae7a60>, ...}
+reise = 'stadtwochenende'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x79c63907a9f0>
+
+    @pytest.mark.parametrize("reise", SPEICHER_REISEN)
+    def test_umschaltung_ende_zu_ende_mit_dem_echten_vergleichslauf(sp, reise, monkeypatch):
+        git_reisen(sp, rein=[reise])
+        sperren(sp, reise)
+        sp["lauf"]()
+>       nicht_gebaut(sp, reise)                                        # ohne Vergleich keine Umschaltung
+        ^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_speicher_stufe5.py:396: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x79c638ae7600>, 'deploys': <function vf.<locals>.deploys at 0x79c638ae76a0>, '...f.<locals>.anzahl_pings at 0x79c638ae7920>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x79c638ae7a60>, ...}
+reise = 'stadtwochenende'
+
+    def nicht_gebaut(sp, reise):
+>       assert reise not in sp["zeilen"]("deploy.log")
+E       AssertionError: assert 'stadtwochenende' not in ['beispielreise', 'stadtwochenende', 'zweitreise']
+E        +  where ['beispielreise', 'stadtwochenende', 'zweitreise'] = <function vf.<locals>.zeilen at 0x79c638ae71a0>('deploy.log')
+
+engine/tests/test_speicher_stufe5.py:351: AssertionError
+___________ test_nur_im_speicher_baut_und_leere_liste_aendert_nichts ___________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x792b63c3da80>, 'deploys': <function vf.<locals>.deploys at 0x792b63c3fd80>, '...f.<locals>.anzahl_pings at 0x792b63c3fce0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x792b63c3d9e0>, ...}
+
+    def test_nur_im_speicher_baut_und_leere_liste_aendert_nichts(sp):
+        sperren(sp, "stadtwochenende")
+        _py_falle(sp)
+        sp["lauf"]()
+        assert "stadtwochenende" in sp["deploys"]()
+        (sp["tmp"] / "py5.log").unlink(missing_ok=True)
+        sp["env"]["FR_SPEICHERREISEN"] = ""
+        sp["lauf"]()
+        assert "reisespeicher" not in " ".join(sp["zeilen"]("py5.log"))
+        # Schutz: Der Befehl, der hier nicht gerufen werden darf, existiert
+>       assert befehl("umschaltung", "gibtesnicht", FR_SPEICHERREISEN="").stdout.strip() == "frei"
+E       AssertionError: assert 'Reisespeiche...“ (- = keine)' == 'frei'
+E         
+E         - frei
+E         + Reisespeicher (Stufe 1, #346, Epic #345, ADR-0009): Reisedaten als unveränderliche Versionen in SQLite, nur anhängen.
+E         + 
+E         + Ein Vorgang ist ein Schreibvorgang (Person, Rolle, Werkzeug, Titel, Grund, Zeit, Kennung); je Vorgang gibt es eine
+E         + Version je geänderter Datei (Bytes und SHA-256, ein Tombstone ohne Inhalt für eine gelöschte Datei). Die Stand-Nummer
+E         + einer Reise zählt Vorgänge, nicht Dateien (je Schreibvorgang +1, #226). Der Stand s einer Reise ist je Pfad die jüngste...
+E         
+E         ...Full output truncated (37 lines hidden), use '-vv' to show
+
+engine/tests/test_speicher_stufe5.py:449: AssertionError
+______ test_software_wartet_warnt_genau_einmal_je_stoerung_ohne_nachricht ______
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x792b63c3f600>, 'deploys': <function vf.<locals>.deploys at 0x792b63c3f7e0>, '...f.<locals>.anzahl_pings at 0x792b63c3e8e0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x792b63c3ccc0>, ...}
+
+    def test_software_wartet_warnt_genau_einmal_je_stoerung_ohne_nachricht(sp):
+        ohne_github(sp)
+        r = sp["lauf"](VF_JETZT=str(T0))
+>       assert _warnungen(r) == [] and merker(sp) == {"seit": str(T0), "gemeldet": "0"}, r.stdout + r.stderr
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         fatal: '/tmp/pytest-of-<user>/pytest-13918/popen-gw2/test_software_wartet_warnt_gen0/gibtes-nicht' does not appear to be a git repository
+E         fatal: Could not read from remote repository.
+E         
+E         Please make sure you have the correct access rights
+E         and the repository exists.
+E         
+E       assert ([] == []
+E         
+E         Use -v to get more diff and None == {'seit': '1800000000', 'gemeldet': '0'})
+E        +  where None = merker({'lauf': <function vf.<locals>.lauf at 0x792b63c3f600>, 'deploys': <function vf.<locals>.deploys at 0x792b63c3f7e0>, '...f.<locals>.anzahl_pings at 0x792b63c3e8e0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x792b63c3ccc0>, ...})
+
+engine/tests/test_speicher_stufe5.py:549: AssertionError
+____________ test_ohne_github_rote_speicher_reise_endet_mit_exit_1 _____________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x79c638ae5c60>, 'deploys': <function vf.<locals>.deploys at 0x79c638ae7ba0>, '...f.<locals>.anzahl_pings at 0x79c638ae5da0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x79c638ae5ee0>, ...}
+
+    def test_ohne_github_rote_speicher_reise_endet_mit_exit_1(sp):
+        ohne_github(sp)
+        (sp["tmp"] / "kaputt-stadtwochenende").write_text("Bau gescheitert")
+        r = sp["lauf"](VF_JETZT=str(T0))
+>       assert r.returncode == 1 and "unbound variable" not in r.stdout + r.stderr, r.stdout + r.stderr
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Bau gescheitertERROR: build of stadtwochenende failed, the trip stays at its last good state.
+E         fatal: '/tmp/pytest-of-<user>/pytest-13918/popen-gw1/test_ohne_github_rote_speicher0/gibtes-nicht' does not appear to be a git repository
+E         fatal: Could not read from remote repository.
+E         
+E         Please make sure you have the correct access rights
+E         and the repository exists.
+E         
+E       assert (128 == 1)
+E        +  where 128 = CompletedProcess(args=['~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/betrieb/veroeffentlichen.s...not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\n").returncode
+
+engine/tests/test_speicher_stufe5.py:533: AssertionError
+_________ test_vergleichslauf_kopf_nennt_den_stempel_als_voraussetzung _________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+    def test_vergleichslauf_kopf_nennt_den_stempel_als_voraussetzung():
+        kopf = "\n".join(z for z in (BETRIEB / "vergleichslauf.sh").read_text(encoding="utf-8").splitlines()[:25]
+                         if z.startswith("#"))
+>       assert "keine sperre" not in kopf.lower()
+E       AssertionError: assert 'keine sperre' not in '#!/usr/bin/...n nicht ab).'
+E         
+E         'keine sperre' is contained here:
+E           auskunft, keine sperre.
+E           # exit: 0 alles gleich, 1 mindestens ein unterschied, 2 mindestens ein fehler (das schlimmste ergebnis zählt; ein fehler bei
+E           # einer reise bricht die übrigen nicht ab).
+
+engine/tests/test_speicher_stufe5.py:616: AssertionError
+_____ test_ohne_github_ist_der_lauf_gruen_wenn_keine_git_reise_uebrig_ist ______
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x7c9d35e3b240>, 'deploys': <function vf.<locals>.deploys at 0x7c9d35e3afc0>, '...f.<locals>.anzahl_pings at 0x7c9d35e3aa20>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7c9d35e3b4c0>, ...}
+
+    def test_ohne_github_ist_der_lauf_gruen_wenn_keine_git_reise_uebrig_ist(sp):
+        git_reisen(sp, raus=["zweitreise"])                            # in Git liegt nur noch beispielreise (in der Liste)
+        ohne_github(sp)
+        r = sp["lauf"](VF_JETZT=str(T0))
+>       assert r.returncode == 0, r.stdout + r.stderr
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         fatal: '/tmp/pytest-of-<user>/pytest-13918/popen-gw3/test_ohne_github_ist_der_lauf_0/gibtes-nicht' does not appear to be a git repository
+E         fatal: Could not read from remote repository.
+E         
+E         Please make sure you have the correct access rights
+E         and the repository exists.
+E         
+E       assert 128 == 0
+E        +  where 128 = CompletedProcess(args=['~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/betrieb/veroeffentlichen.s...not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\n").returncode
+
+engine/tests/test_speicher_stufe5.py:499: AssertionError
+_______________ test_doku_beschreibt_die_umschaltung_einer_reise _______________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+    def test_doku_beschreibt_die_umschaltung_einer_reise():
+        text = (WURZEL / "docs" / "betrieb.md").read_text(encoding="utf-8")
+>       abschnitt = _abschnitt(text, "Umschaltung einer Reise")
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_speicher_stufe5.py:601: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+text = '# Betrieb einer Instanz\n\nWie Frieda auf einem eigenen Server läuft: Seiten ausliefern, Rückmeldungen annehmen, was ...dungen`, dann `rueckmeldung_erledigen`); `python3 engine/rueckmeldungen.py liste <reise>` zeigt sie auf dem Server |\n'
+ueberschrift = 'Umschaltung einer Reise'
+
+    def _abschnitt(text, ueberschrift):
+        teile = re.split(r"(?m)^(#{2,3} .*)$", text)
+        for i, t in enumerate(teile):
+            if t.strip().lstrip("#").strip() == ueberschrift:
+                return teile[i + 1]
+>       raise AssertionError(f"Abschnitt „{ueberschrift}“ fehlt")
+E       AssertionError: Abschnitt „Umschaltung einer Reise“ fehlt
+
+engine/tests/test_speicher_stufe5.py:596: AssertionError
+________________ test_sperre_hat_keinen_schalter_zum_abschalten ________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+    def test_sperre_hat_keinen_schalter_zum_abschalten():
+        import reisespeicher
+>       quelle = inspect.getsource(reisespeicher.umschaltung_frei)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'umschaltung_frei'
+
+engine/tests/test_speicher_stufe5.py:581: AttributeError
+_________ test_doku_nennt_keinen_handschritt_fuer_umgeschaltete_reisen _________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+    def test_doku_nennt_keinen_handschritt_fuer_umgeschaltete_reisen():
+>       abschnitt = _abschnitt((WURZEL / "docs" / "betrieb.md").read_text(encoding="utf-8"), "Umschaltung einer Reise")
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_speicher_stufe5.py:628: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+text = '# Betrieb einer Instanz\n\nWie Frieda auf einem eigenen Server läuft: Seiten ausliefern, Rückmeldungen annehmen, was ...dungen`, dann `rueckmeldung_erledigen`); `python3 engine/rueckmeldungen.py liste <reise>` zeigt sie auf dem Server |\n'
+ueberschrift = 'Umschaltung einer Reise'
+
+    def _abschnitt(text, ueberschrift):
+        teile = re.split(r"(?m)^(#{2,3} .*)$", text)
+        for i, t in enumerate(teile):
+            if t.strip().lstrip("#").strip() == ueberschrift:
+                return teile[i + 1]
+>       raise AssertionError(f"Abschnitt „{ueberschrift}“ fehlt")
+E       AssertionError: Abschnitt „Umschaltung einer Reise“ fehlt
+
+engine/tests/test_speicher_stufe5.py:596: AssertionError
+_____________________ test_adr_0009_hat_die_zeile_stufe_5 ______________________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+    def test_adr_0009_hat_die_zeile_stufe_5():
+        text = (WURZEL / "docs" / "adr" / "0009-reisespeicher.md").read_text(encoding="utf-8")
+        for ueberschrift in ("Konsequenzen", "Verlauf"):
+            abschnitt = _abschnitt(text, ueberschrift)
+>           assert any("Stufe 5" in z and "#350" in z for z in abschnitt.splitlines()), ueberschrift
+E           AssertionError: Konsequenzen
+E           assert False
+E            +  where False = any(<generator object test_adr_0009_hat_die_zeile_stufe_5.<locals>.<genexpr> at 0x792b63ff7100>)
+
+engine/tests/test_speicher_stufe5.py:624: AssertionError
+_____________ test_speicher_reise_wird_ohne_github_veroeffentlicht _____________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x79c638ae6e80>, 'deploys': <function vf.<locals>.deploys at 0x79c638ae6840>, '...f.<locals>.anzahl_pings at 0x79c638ae65c0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x79c638ae5f80>, ...}
+
+    def test_speicher_reise_wird_ohne_github_veroeffentlicht(sp):
+        sp["speicher"].vorgang_schreiben("stadtwochenende", {"z.md": b"1"}, "Test", "test", "z")
+        git(sp["arbeit"], "remote", "set-url", "origin", str(sp["tmp"] / "gibtes-nicht"))
+        ausfuehrbar(sp["tmp"] / "bin/gh", f'#!/bin/sh\ntouch {sp["tmp"]}/gh-gerufen\nexit 1\n')
+        ausfuehrbar(sp["tmp"] / "ls-remote.sh", "#!/bin/sh\nexit 1\n")
+        r = sp["lauf"](VF_LSREMOTE=str(sp["tmp"] / "ls-remote.sh"))
+>       assert r.returncode == 0, r.stdout + r.stderr                     # Stufe 5: kein Fehler des Laufs (zweitreise bleibt in Git)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 2.
+E         fatal: '/tmp/pytest-of-<user>/pytest-13918/popen-gw1/test_speicher_reise_wird_ohne_0/gibtes-nicht' does not appear to be a git repository
+E         fatal: Could not read from remote repository.
+E         
+E         Please make sure you have the correct access rights
+E         and the repository exists.
+E         
+E       assert 128 == 0
+E        +  where 128 = CompletedProcess(args=['~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/betrieb/veroeffentlichen.s...not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\n").returncode
+
+engine/tests/test_betrieb.py:2394: AssertionError
+_ test_umgeschaltete_reise_wird_nach_dem_deploy_weiter_gebaut_ohne_handschritt _
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x790d32445800>, 'deploys': <function vf.<locals>.deploys at 0x790d32447e20>, '...f.<locals>.anzahl_pings at 0x790d32447d80>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x790d32447ec0>, ...}
+
+    def test_umgeschaltete_reise_wird_nach_dem_deploy_weiter_gebaut_ohne_handschritt(sp):
+        r = "beispielreise"
+        sp["lauf"]()                                                   # mit Freigabe der Fixture gebaut, .gebaut liegt
+        assert (sp["tmp"] / "dienst" / "reise-stand" / f"{r}.gebaut").exists()
+        sperren(sp, r)                                                 # wie die Testreise: kein Stempel vorhanden
+        _py_falle(sp)
+        sp["deploys"]()
+        sp["neuer_commit"]()                                           # Software-Wechsel
+        a = sp["lauf"]()
+        assert r in sp["deploys"](), a.stdout + a.stderr
+        sp["speicher"].vorgang_schreiben(r, {"neu.md": b"1"}, "Test", "test", "neu")
+        b = sp["lauf"]("--immer")
+        assert r in sp["deploys"](), b.stdout + b.stderr
+        assert not any("umschaltung" in z for z in sp["zeilen"]("py5.log"))
+        assert "not cleared" not in a.stdout + b.stdout
+        assert a.returncode == 0 and b.returncode == 0
+        # Schutz: die Prüfung gibt es wirklich (sonst bewiese das Fehlen des Aufrufs nichts)
+>       assert "umschaltung" in (BETRIEB / "veroeffentlichen.sh").read_text(encoding="utf-8")
+E       assert 'umschaltung' in '#!/usr/bin/env bash\n# Veröffentlicht automatisch, was auf main liegt (docs/betrieb.md, Veröffentlichen): holt origin..."; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""\ntrap nachlauf EXIT\nmain "$@"\nexit\n'
+E        +  where '#!/usr/bin/env bash\n# Veröffentlicht automatisch, was auf main liegt (docs/betrieb.md, Veröffentlichen): holt origin..."; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""\ntrap nachlauf EXIT\nmain "$@"\nexit\n' = read_text(encoding='utf-8')
+E        +    where read_text = (PosixPath('~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/betrieb') / 'veroeffentlichen.sh').read_text
+
+engine/tests/test_speicher_stufe5.py:436: AssertionError
+___________ test_ohne_github_mit_git_reise_gruen_aber_ohne_heartbeat ___________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x790d32446160>, 'deploys': <function vf.<locals>.deploys at 0x790d32446200>, '...f.<locals>.anzahl_pings at 0x790d32446020>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x790d32445d00>, ...}
+
+    def test_ohne_github_mit_git_reise_gruen_aber_ohne_heartbeat(sp):
+        sp["speicher"].vorgang_schreiben("stadtwochenende", {"z.md": b"1"}, "Test", "test", "z")
+        ohne_github(sp)
+        r = sp["lauf"](VF_JETZT=str(T0))
+>       assert r.returncode == 0, r.stdout + r.stderr
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 2.
+E         fatal: '/tmp/pytest-of-<user>/pytest-13918/popen-gw0/test_ohne_github_mit_git_reise0/gibtes-nicht' does not appear to be a git repository
+E         fatal: Could not read from remote repository.
+E         
+E         Please make sure you have the correct access rights
+E         and the repository exists.
+E         
+E       assert 128 == 0
+E        +  where 128 = CompletedProcess(args=['~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/betrieb/veroeffentlichen.s...not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\n").returncode
+
+engine/tests/test_speicher_stufe5.py:513: AssertionError
+==================================== PASSES ====================================
+______________ test_reise_nicht_im_speicher_behaelt_ihren_fehler _______________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+----------------------------- Captured stderr call -----------------------------
+Store frage_anlegen 503: trip zweitreise is in FR_SPEICHERREISEN but not in the store
+Done frage_anlegen 503 in 0.0 s
+_________ test_schreibweg_sperrt_weder_umgeschaltete_noch_neue_reisen __________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/glimmering-petting-emerson/engine/.venv/bin/python
+----------------------------- Captured stderr call -----------------------------
+Done frage_anlegen 200 in 2.7 s
+Done frage_anlegen 200 in 0.9 s
+=========================== short test summary info ============================
+PASSED engine/tests/test_speicher_stufe5.py::test_reise_nicht_im_speicher_behaelt_ihren_fehler
+PASSED engine/tests/test_speicher_stufe5.py::test_schreibweg_sperrt_weder_umgeschaltete_noch_neue_reisen
+PASSED engine/tests/test_speicher_stufe5.py::test_ohne_speicherreisen_scheitert_git_fetch_wie_bisher
+PASSED engine/tests/test_speicher_stufe5.py::test_gh_und_ls_remote_aendern_das_ergebnis_des_laufs_nicht
+FAILED engine/tests/test_speicher_stufe5.py::test_ausnahmen_der_sperre_und_git_nicht_lesbar_sperrt
+FAILED engine/tests/test_speicher_stufe5.py::test_stempel_ungleich_oder_kaputt_sperrt
+FAILED engine/tests/test_speicher_stufe5.py::test_ohne_stempel_ist_die_reise_gesperrt[beispielreise]
+FAILED engine/tests/test_speicher_stufe5.py::test_ohne_stempel_ist_die_reise_gesperrt[stadtwochenende]
+FAILED engine/tests/test_speicher_stufe5.py::test_befehl_umschaltung_exit_codes
+FAILED engine/tests/test_speicher_stufe5.py::test_stempel_gleich_gibt_die_umschaltung_frei[stadtwochenende]
+FAILED engine/tests/test_speicher_stufe5.py::test_umschaltung_text_steht_in_allen_sprachen
+FAILED engine/tests/test_speicher_stufe5.py::test_stempel_gleich_gibt_die_umschaltung_frei[beispielreise]
+FAILED engine/tests/test_speicher_stufe5.py::test_veralteter_stempel_sperrt_und_fremde_aenderungen_nicht
+FAILED engine/tests/test_speicher_stufe5.py::test_vergleichslauf_schreibt_den_git_baum
+FAILED engine/tests/test_speicher_stufe5.py::test_schreibweg_lehnt_gesperrte_reise_ab_und_schreibt_nichts[beispielreise]
+FAILED engine/tests/test_speicher_stufe5.py::test_veroeffentlichen_baut_gesperrte_reise_nicht[beispielreise-stadtwochenende]
+FAILED engine/tests/test_speicher_stufe5.py::test_veroeffentlichen_baut_nur_mit_gueltigem_stempel
+FAILED engine/tests/test_speicher_stufe5.py::test_schreibweg_lehnt_gesperrte_reise_ab_und_schreibt_nichts[stadtwochenende]
+FAILED engine/tests/test_speicher_stufe5.py::test_schreibweg_schreibt_nach_freigabe
+FAILED engine/tests/test_speicher_stufe5.py::test_veroeffentlichen_baut_gesperrte_reise_nicht[stadtwochenende-beispielreise]
+FAILED engine/tests/test_speicher_stufe5.py::test_umschaltung_ende_zu_ende_mit_dem_echten_vergleichslauf[beispielreise]
+FAILED engine/tests/test_speicher_stufe5.py::test_umschaltung_ende_zu_ende_mit_dem_echten_vergleichslauf[stadtwochenende]
+FAILED engine/tests/test_speicher_stufe5.py::test_nur_im_speicher_baut_und_leere_liste_aendert_nichts
+FAILED engine/tests/test_speicher_stufe5.py::test_software_wartet_warnt_genau_einmal_je_stoerung_ohne_nachricht
+FAILED engine/tests/test_speicher_stufe5.py::test_ohne_github_rote_speicher_reise_endet_mit_exit_1
+FAILED engine/tests/test_speicher_stufe5.py::test_vergleichslauf_kopf_nennt_den_stempel_als_voraussetzung
+FAILED engine/tests/test_speicher_stufe5.py::test_ohne_github_ist_der_lauf_gruen_wenn_keine_git_reise_uebrig_ist
+FAILED engine/tests/test_speicher_stufe5.py::test_doku_beschreibt_die_umschaltung_einer_reise
+FAILED engine/tests/test_speicher_stufe5.py::test_sperre_hat_keinen_schalter_zum_abschalten
+FAILED engine/tests/test_speicher_stufe5.py::test_doku_nennt_keinen_handschritt_fuer_umgeschaltete_reisen
+FAILED engine/tests/test_speicher_stufe5.py::test_adr_0009_hat_die_zeile_stufe_5
+FAILED engine/tests/test_betrieb.py::test_speicher_reise_wird_ohne_github_veroeffentlicht
+FAILED engine/tests/test_speicher_stufe5.py::test_umgeschaltete_reise_wird_nach_dem_deploy_weiter_gebaut_ohne_handschritt
+FAILED engine/tests/test_speicher_stufe5.py::test_ohne_github_mit_git_reise_gruen_aber_ohne_heartbeat
+30 failed, 4 passed in 15.15s

@@ -2323,8 +2323,19 @@ exit 0
         reisespeicher.importieren(WURZEL / "beispiel" / "reisen" / r, r, "Test", grund="Anfang")
     vf["speicher"] = reisespeicher
     vf["seiten"] = seiten
+    freigeben(vf, "beispielreise")        # liegt im Test-Bauordner in Git: zur Umschaltung freigegeben (Stufe 5, #350, AC-23)
     yield vf
     os.environ.pop("FR_SPEICHER", None)
+
+
+def freigeben(sp, reise):
+    """Stempel „gleich“ des Vergleichslaufs im dokumentierten Format (Stufe 5, #350): stand = jetzige Stand-Nummer, baum =
+    Git-Baum von reisen/<reise> im HEAD des Bauordners. Gilt auch nach späteren Vorgängen im Speicher (Spec, Entscheidung 3)."""
+    datei = sp["tmp"] / "dienst" / "vergleich" / f"{reise}.json"
+    datei.parent.mkdir(parents=True, exist_ok=True)
+    datei.write_text(json.dumps({"zeit": "2026-11-09T10:00:00Z", "ergebnis": "gleich",
+                                 "stand": sp["speicher"].stand_nummer(reise), "git": sp["kopf"](), "unterschiede": 0,
+                                 "baum": git(sp["arbeit"], "rev-parse", f"HEAD:reisen/{reise}").strip()}))
 
 
 def _nummer_der_seite(sp, reise):
@@ -2380,7 +2391,7 @@ def test_speicher_reise_wird_ohne_github_veroeffentlicht(sp):
     ausfuehrbar(sp["tmp"] / "bin/gh", f'#!/bin/sh\ntouch {sp["tmp"]}/gh-gerufen\nexit 1\n')
     ausfuehrbar(sp["tmp"] / "ls-remote.sh", "#!/bin/sh\nexit 1\n")
     r = sp["lauf"](VF_LSREMOTE=str(sp["tmp"] / "ls-remote.sh"))
-    assert r.returncode != 0                                          # git fetch scheitert wie bisher
+    assert r.returncode == 0, r.stdout + r.stderr                     # Stufe 5: kein Fehler des Laufs (zweitreise bleibt in Git)
     assert _nummer_der_seite(sp, "stadtwochenende") == sp["speicher"].stand_nummer("stadtwochenende")
     assert not (sp["tmp"] / "gh-gerufen").exists()
     assert not (sp["tmp"] / "dienst/veroeffentlichen-erfolg").exists() and sp["pings"]() == 0
