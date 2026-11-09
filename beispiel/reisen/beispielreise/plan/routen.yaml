@@ -70,7 +70,7 @@ strecken:
     merkmale:
       abfahrt: {typ: zeitpunkt, rolle: abfahrt, wert: "08:12", quelle: "Beispiel; Fahrplan nicht geprüft"}
       ankunft: {typ: zeitpunkt, rolle: ankunft, wert: "08:40", quelle: "Beispiel; Fahrplan nicht geprüft"}
-  E-21: {titel: "S-Bahn Bad Schandau → Dresden", von: O-05, nach: O-01, art: bahn, quelle: "Beispiel; Fahrplan nicht geprüft"}
+  E-21: {titel: "S-Bahn Bad Schandau → Dresden", von: O-05, nach: O-01, art: bahn, hinweis: "Abfahrt am Bahnhof auf der anderen Elbseite, Fähre davor (erfunden, Beispielwert)", quelle: "Beispiel; Fahrplan nicht geprüft"}
   E-23: {titel: "Bus Bad Schandau → Dresden", von: O-05, nach: O-01, art: bus, quelle: "erfunden (Beispiel)"}
   E-22: {titel: "Kirnitzschtalbahn Lichtenhainer Wasserfall → Bad Schandau", von: O-06, nach: O-05, art: bahn, siehe: W-06, quelle: "Strecke laut Wikipedia (W-06); Fahrplan nicht geprüft"}
 

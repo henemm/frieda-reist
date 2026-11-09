@@ -420,6 +420,13 @@ def test_merkmale_lesen(dienst):
     assert "Preis pro Nacht: 120 €" in t
 
 
+def test_hinweis_einer_strecke_in_show(dienst):
+    """#448: Der Hinweis an einer Strecke (item_update hinweis) steht in show, wie bei Unterkunft und Aufenthalt."""
+    basis, _ = dienst
+    t, f = werkzeug(basis, MITREISEND, "zeige", id="E-21")
+    assert not f and "Abfahrt am Bahnhof auf der anderen Elbseite" in t, t
+
+
 def test_kategorien_lesen(dienst):
     """Das Gegenstück zu kategorie_definieren: die Kategorien der Reise lassen sich auch lesen."""
     basis, ablage = dienst

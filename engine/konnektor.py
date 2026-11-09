@@ -819,7 +819,7 @@ class Handbuch:
                 z.append(tk("konnektor.ausgabe.sammeln.15", w1=dw(s['buchung'])) + (tk("konnektor.ausgabe.zeige_hinweis", w1=s['buchung_id']) if s.get("buchung_id") else ""))
             if s.get("beginn"):
                 z.append(tk("konnektor.ausgabe.sammeln.19", w1=s['beginn'] + (f"–{s['ende']}" if s.get("ende") else "")))
-            for k in ("text", "quelle", "siehe"):
+            for k in ("text", "hinweis", "quelle", "siehe"):
                 if s.get(k):
                     z.append((tk("konnektor.ausgabe.option_text.2") if k == "quelle" else tk("konnektor.ausgabe.option_text.3") if k == "siehe" else "") + str(s[k]))
             if s.get("merkmale") or s.get("fehlt"):

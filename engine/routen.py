@@ -1995,7 +1995,7 @@ class Routen:
                 "summiert": self.ist_summiert(s),
                 "buchung": self.buchung_von(s, b, sid), "buchung_id": self.buchung_id(sid),
                 "rolle": s.get("rolle", "haupt"), "zweig_von": s.get("zweig_von"), "kennzahlen": s.get("kennzahlen") or {},
-                "quelle": s.get("quelle"), "siehe": s.get("siehe"), "text": s.get("text", ""),
+                "quelle": s.get("quelle"), "siehe": s.get("siehe"), "text": s.get("text", ""), "hinweis": s.get("hinweis"),
                 "dossier": bool(s.get("dossier")), "gpx": gpx_datei(s),
                 "gpx_quelle": s["gpx"].get("quelle") if isinstance(s.get("gpx"), dict) else None, **merkmale}
 
