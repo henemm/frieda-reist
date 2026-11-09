@@ -62,8 +62,9 @@ SCHLUESSEL_MUSTER = re.compile(r"^[a-z][a-z0-9_]*$")
 MAX_BODY = 64 * 1024
 MAX_TEXT = 500          # Namen, Hilfe, Fragen, Beschreibungen
 MAX_WERTE = 20
-# Zeitgrenzen in Sekunden: ZEIT_GESAMT + ZEIT_PRUEFUNG bleibt unter den 30 s von proxy_read_timeout
-# (betrieb/vorlagen/nginx-konnektor-orte.inc), sonst erreicht die Meldung die App nie
+# Zeitgrenzen in Sekunden: ZEIT_VORAB (nur kartenpunkte_holen, vor der Sperre) + ZEIT_GESAMT + ZEIT_PRUEFUNG bleibt unter der
+# Wartezeit des Konnektors (schreib_anfrage, 120 s) und unter proxy_read_timeout von /mcp (300 s, betrieb/vorlagen/nginx-konnektor*.inc),
+# sonst erreicht die Meldung die App nie; ZEIT_GESAMT + ZEIT_PRUEFUNG allein bleibt unter 60 s
 ZEIT_GESAMT = 25        # Sperre, Vorbereiten und Anwenden zusammen
 ZEIT_SPERRE = 3         # Wartezeit auf die Sperre der Reise (Teil von ZEIT_GESAMT)
 ZEIT_PRUEFUNG = 3       # nach einem Abbruch: ist der Vorgang trotzdem eingetragen (Speicher lokal, Git auf origin/main)?
@@ -2016,26 +2017,56 @@ def track_anhaengen(reise_dir, wer, args, heute=None):
 
 
 # Punkte aus OpenStreetMap (K14): feste Abfrage der Tags, die die Person im Gespräch wählt; keine KI. Overpass-API (ODbL)
-OVERPASS = "https://overpass-api.de/api/interpreter"
+OVERPASS = "https://overpass-api.de/api/interpreter"   # Vorgabe; FR_OVERPASS überschreibt sie (zur Laufzeit gelesen)
 OSM_TAG = re.compile(r"^[a-z][a-z0-9_:]{0,40}(=[A-Za-z0-9_:;. -]{1,60})?$")
 MAX_TREFFER = 200
-OSM_ZEIT = 12   # Sekunden; der Schreibvorgang hat insgesamt ZEIT_GESAMT
+OSM_ZEIT = 12            # Sekunden: eigener Abruf im Vorgang (Rückfall), der Schreibvorgang hat insgesamt ZEIT_GESAMT
+OSM_FRIST_VORAB = 45     # Frist des Abrufs vor der Sperre, mit Wiederholung und Pause (#240)
+OSM_PAUSE = 2            # Pause vor der einen Wiederholung
+OSM_REST_WIEDERHOLUNG = 15   # wiederholt wird nur, wenn noch so viele Sekunden der Frist übrig sind
+ZEIT_VORAB_VORB = 10     # höchstens für Lesekopie, Rollenprüfung und Abfrage vor dem Abruf
+ZEIT_VORAB = ZEIT_VORAB_VORB + OSM_FRIST_VORAB   # Vorab-Fenster vor der Sperre insgesamt
 
 
-def overpass_abfragen(abfrage):
-    """Overpass-Abfrage -> JSON (dict). Wirft Ablehnung mit verständlichem Grund (Limit, Zeit, Netz). Tests ersetzen diese Funktion."""
+def overpass_holen(abfrage, frist):
+    """Overpass-Abfrage (ohne Zeitangabe) mit eigener Frist in Sekunden -> JSON (dict). Nach einer schnellen Fehlerantwort
+    (429/502/503/504) genau eine Wiederholung nach OSM_PAUSE, wenn noch OSM_REST_WIEDERHOLUNG Sekunden übrig sind; nach einer
+    Zeitüberschreitung nie. Wirft Ablehnung mit verständlichem Grund (Limit, Zeit, Netz)."""
     import urllib.error
     import urllib.parse
     import urllib.request
-    req = urllib.request.Request(OVERPASS, data=urllib.parse.urlencode({"data": abfrage}).encode(),
-                                 headers={"User-Agent": instanz.kennung()})
-    try:
-        with urllib.request.urlopen(req, timeout=OSM_ZEIT) as r:
-            return json.loads(r.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        raise Ablehnung("schreiben.kartenpunkte.limit" if e.code in (429, 504) else "schreiben.kartenpunkte.dienst", w1=e.code)
-    except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
-        raise Ablehnung("schreiben.kartenpunkte.dienst", w1=type(e).__name__)
+    ende = time.monotonic() + frist
+    text = abfrage.replace("[out:json]", f"[out:json][timeout:{int(frist)}]", 1)
+    adresse = instanz.wert("FR_OVERPASS", OVERPASS)
+    for versuch in (1, 2):
+        req = urllib.request.Request(adresse, data=urllib.parse.urlencode({"data": text}).encode(),
+                                     headers={"User-Agent": instanz.kennung()})
+        try:
+            with urllib.request.urlopen(req, timeout=max(0.1, ende - time.monotonic())) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            fehler = Ablehnung("schreiben.kartenpunkte.limit" if e.code in (429, 504) else "schreiben.kartenpunkte.dienst", w1=e.code)
+            if versuch == 2 or e.code not in (429, 502, 503, 504) or ende - time.monotonic() < OSM_REST_WIEDERHOLUNG:
+                raise fehler
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
+            raise Ablehnung("schreiben.kartenpunkte.dienst", w1=type(e).__name__)
+        time.sleep(OSM_PAUSE)
+    raise fehler   # nicht erreichbar: der zweite Versuch kehrt zurück oder wirft
+
+
+def overpass_abfragen(abfrage):
+    """Overpass-Abfrage (ohne Zeitangabe) -> JSON (dict). Steht in der Datei aus FR_OSM_VORAB (vom Dienst vor der Sperre
+    geholt) dieselbe Abfrage, kommt die Antwort von dort; sonst eigener Abruf mit der kurzen Frist OSM_ZEIT. Tests ersetzen
+    diese Funktion."""
+    pfad = os.environ.get("FR_OSM_VORAB")
+    if pfad:
+        try:
+            vorab = json.loads(Path(pfad).read_text(encoding="utf-8"))
+            if isinstance(vorab, dict) and vorab.get("abfrage") == abfrage and isinstance(vorab.get("antwort"), dict):
+                return vorab["antwort"]
+        except (OSError, ValueError):
+            pass
+    return overpass_holen(abfrage, OSM_ZEIT)
 
 
 def abstand_zur_linie_m(p, linie):
@@ -2183,13 +2214,9 @@ def kartenpunkte_lesen(reise_dir):
     return aus
 
 
-def kartenpunkte_holen(reise_dir, wer, args, heute=None):
-    """Punkte aus OpenStreetMap längs einer Strecke (K14): die Person wählt im Gespräch die Kategorie der Reise (plan/kategorien.yaml,
-    Gruppe punkt) und die OSM-Tags (z. B. amenity=drinking_water). Treffer bis abstand_m von der Linie kommen mit Quelle und Stand
-    nach plan/punkte.yaml; ein zweiter Aufruf ersetzt die Treffer derselben Kategorie an dieser Strecke. -> (Titel, Text)."""
-    import io
-    from ruamel.yaml.comments import CommentedMap, CommentedSeq
-    heute = heute or datetime.date.today()
+def kartenpunkte_abfrage(reise_dir, args):
+    """Prüfungen und Abfrage für kartenpunkte_holen -> (abfrage, linie, abstand, tags, sid, kat, route); die Abfrage trägt keine
+    Zeitangabe (overpass_holen setzt sie). Wirft dieselben Ablehnungen wie kartenpunkte_holen."""
     sid = (text_wert(args, "strecke", pflicht=True, laenge=20) or "").strip()
     kat = (text_wert(args, "kategorie", pflicht=True, laenge=40) or "").strip()
     tags = liste_wert(args, "osm", laenge=10) or []
@@ -2226,7 +2253,17 @@ def kartenpunkte_holen(reise_dir, wer, args, heute=None):
     def filter_von(t):
         key, _, wert = t.partition("=")
         return f'["{key}"="{wert}"]' if wert else f'["{key}"]'
-    abfrage = f"[out:json][timeout:{OSM_ZEIT}];(" + "".join(f"nwr{filter_von(t)}({bbox});" for t in tags) + ");out center tags;"
+    abfrage = "[out:json];(" + "".join(f"nwr{filter_von(t)}({bbox});" for t in tags) + ");out center tags;"
+    return abfrage, linie, abstand, tags, sid, kat, route
+
+
+def kartenpunkte_holen(reise_dir, wer, args, heute=None):
+    """Punkte aus OpenStreetMap längs einer Strecke (K14): die Person wählt im Gespräch die Kategorie der Reise (plan/kategorien.yaml,
+    Gruppe punkt) und die OSM-Tags (z. B. amenity=drinking_water). Treffer bis abstand_m von der Linie kommen mit Quelle und Stand
+    nach plan/punkte.yaml; ein zweiter Aufruf ersetzt die Treffer derselben Kategorie an dieser Strecke. -> (Titel, Text)."""
+    heute = heute or datetime.date.today()
+    abfrage, linie, abstand, tags, sid, kat, route = kartenpunkte_abfrage(reise_dir, args)
+    kategorien = {k: d for k, d in (route.get("arten") or {}).items() if d.get("gruppe")}
     antwort = overpass_abfragen(abfrage)
     treffer, gesehen = [], set()
     for e in (antwort or {}).get("elements") or []:
@@ -5003,20 +5040,79 @@ def ausgabe_lesen(r):
         return 500, fehler_antwort("schreiben.dienst.fehlgeschlagen")
 
 
+def kartenpunkte_vorab(s, reise, anfrage, vorab):
+    """Abruf bei Overpass für kartenpunkte_holen vor der Sperre (#240) -> Pfad der Antwortdatei in `vorab` oder None (dann ruft
+    der Vorgang selbst ab). Lesekopie des Stands (Speicher: Export, Git: Kopie aus der Wurzel), Rolle und Abfrage prüfen, alles in
+    höchstens ZEIT_VORAB_VORB Sekunden; lehnt das ab, kein Abruf: der Vorgang lehnt mit demselben Grund ab. Scheitert der Abruf
+    (OSM_FRIST_VORAB), wirft er die Ablehnung. Die Antwort kommt nur aus dem Netz, nie aus der Anfrage. Wird der Faden der
+    Vorbereitung nicht rechtzeitig fertig, räumt er `vorab` selbst weg, sobald er endet (der Dienst hat ihn dann schon gelöscht)."""
+    kopie, ergebnis, zustand, schloss = Path(vorab) / "kopie" / "reisen" / reise, {}, {}, threading.Lock()
+
+    def vorbereiten():
+        try:
+            if not REISE_MUSTER.match(reise or ""):
+                return
+            if reise in instanz.speicherreisen():
+                import reisespeicher
+                reisespeicher.exportieren(reise, kopie, bis=reisespeicher.stand_nummer(reise))
+            else:
+                shutil.copytree(Path(s.wurzel) / "reisen" / reise, kopie, symlinks=True)
+            args = anfrage.get("args") if isinstance(anfrage.get("args"), dict) else {}
+            s.wer_pruefen(kopie, anfrage, "kartenpunkte_holen")
+            ergebnis["abfrage"] = kartenpunkte_abfrage(kopie, args)[0]
+        except Exception:     # Ablehnung oder Fehler: maßgeblich bleibt der Vorgang
+            pass
+        finally:
+            with schloss:
+                zustand["fertig"] = True
+                if zustand.get("abgebrochen"):
+                    shutil.rmtree(vorab, ignore_errors=True)
+    faden = threading.Thread(target=vorbereiten, daemon=True)
+    faden.start()
+    faden.join(ZEIT_VORAB_VORB)
+    with schloss:
+        if not zustand.get("fertig"):
+            zustand["abgebrochen"] = True
+    if zustand.get("abgebrochen"):
+        sys.stderr.write(f"Prefetch kartenpunkte_holen: preparation exceeded {ZEIT_VORAB_VORB} s, skipped\n")
+        return None
+    abfrage = ergebnis.get("abfrage")
+    if not abfrage:
+        return None
+    try:
+        antwort = overpass_holen(abfrage, OSM_FRIST_VORAB)
+    except Ablehnung:
+        raise
+    except Exception as e:     # unerwarteter Fehler: der Vorgang ruft selbst ab
+        sys.stderr.write(f"Prefetch kartenpunkte_holen: {' '.join(f'{type(e).__name__}: {e}'.split())[:LOG_LAENGE]}\n")
+        return None
+    datei = Path(vorab) / "osm.json"
+    datei.write_text(json.dumps({"abfrage": abfrage, "antwort": antwort}), encoding="utf-8")
+    return str(datei)
+
+
 def anwenden_extern(s, reise, werkzeug, anfrage):
     """Ein Schreibvorgang des Dienstes -> (Code, Antwort). Der Weg richtet sich nach der Reise: steht sie in
     FR_SPEICHERREISEN, über den Reisespeicher (vorgang_speicher), sonst bis Stufe 5 über Git (schreiben_git.vorgang).
     Sperre und Arbeitskopie gibt es je Reise: Was bei einer Reise hängt, hält die anderen nicht auf (flock gilt auch zwischen
-    Threads, jeder öffnet die Datei selbst). Alles zusammen dauert höchstens ZEIT_GESAMT + ZEIT_PRUEFUNG Sekunden; die Dauer
-    jedes Vorgangs steht im Protokoll, auch nach einem unerwarteten Fehler (500)."""
+    Threads, jeder öffnet die Datei selbst). Alles zusammen dauert höchstens ZEIT_GESAMT + ZEIT_PRUEFUNG Sekunden, bei
+    kartenpunkte_holen davor noch das Vorab-Fenster ZEIT_VORAB ohne Sperre (#240); die Dauer jedes Vorgangs steht im
+    Protokoll, auch nach einem unerwarteten Fehler (500)."""
     start = time.monotonic()
     code, antwort = 500, fehler_antwort("schreiben.dienst.fehlgeschlagen")
+    vorab = None
     try:
+        osm_vorab = None
+        if werkzeug == "kartenpunkte_holen":
+            vorab = tempfile.mkdtemp(prefix="frieda-osm-")
+            osm_vorab = kartenpunkte_vorab(s, reise, anfrage, vorab)
         if reise in instanz.speicherreisen():
-            code, antwort = vorgang_speicher(s, reise, werkzeug, anfrage, start)
+            code, antwort = vorgang_speicher(s, reise, werkzeug, anfrage, time.monotonic(), osm_vorab=osm_vorab)
         else:
             import schreiben_git
-            code, antwort = schreiben_git.vorgang(s, reise, werkzeug, anfrage, start)
+            code, antwort = schreiben_git.vorgang(s, reise, werkzeug, anfrage, time.monotonic(), osm_vorab=osm_vorab)
+    except Ablehnung as e:     # Vorab-Abruf gescheitert: ohne Sperre, ohne Vorgang
+        code, antwort = abgelehnt(werkzeug, e)
     except instanz.EinstellungenNichtLesbar as e:      # #361: nie auf den Git-Weg ausweichen, wenn die Liste unbekannt ist
         sys.stderr.write(f"Error {werkzeug} 503: settings not readable: {' '.join(str(e).split())[:LOG_LAENGE]}\n")
         code, antwort = 503, fehler_antwort("schreiben.dienst.einstellungen_nicht_lesbar")
@@ -5024,8 +5120,18 @@ def anwenden_extern(s, reise, werkzeug, anfrage):
         grund = " ".join(f"{type(e).__name__}: {e}".split())[:LOG_LAENGE]
         sys.stderr.write(f"Error {werkzeug} 500: {grund}\n")
     finally:
+        if vorab:
+            shutil.rmtree(vorab, ignore_errors=True)
         sys.stderr.write(f"Done {werkzeug} {code} in {time.monotonic() - start:.1f} s\n")
     return code, antwort
+
+
+def vorab_umgebung(env, osm_vorab):
+    """Umgebung des Unterprozesses `anwenden` mit FR_OSM_VORAB, wenn der Dienst vorab abgerufen hat, sonst ohne."""
+    env.pop("FR_OSM_VORAB", None)
+    if osm_vorab:
+        env["FR_OSM_VORAB"] = str(osm_vorab)
+    return env
 
 
 def git_reisen(wurzel_):
@@ -5036,11 +5142,12 @@ def git_reisen(wurzel_):
         return []
 
 
-def vorgang_speicher(s, reise, werkzeug, anfrage, start):
+def vorgang_speicher(s, reise, werkzeug, anfrage, start, osm_vorab=None):
     """Ein Schreibvorgang über den Reisespeicher (Stufe 2, #347, ADR-0009) -> (Code, Antwort). Sperre der Reise (bei
     reise_anlegen der Reisen), Reise im Speicher?, Arbeitskopie als Export des Stands basis in einem temporären Ordner,
     dann `anwenden` mit dem Code dieses Dienstes (im Betrieb <FR_DIENST>) in der Frist; der Unterprozess trägt den Vorgang
-    selbst ein (eine Transaktion, erwartet=basis). Der temporäre Ordner wird in jedem Fall gelöscht."""
+    selbst ein (eine Transaktion, erwartet=basis). Der temporäre Ordner wird in jedem Fall gelöscht. osm_vorab: Antwortdatei
+    des Vorab-Abrufs (kartenpunkte_holen), geht als FR_OSM_VORAB an den Unterprozess."""
     import reisespeicher
     ende = start + ZEIT_GESAMT
     if not REISE_MUSTER.match(reise or ""):
@@ -5101,8 +5208,9 @@ def vorgang_speicher(s, reise, werkzeug, anfrage, start):
                 return 503, fehler_antwort("schreiben.dienst.reise_nicht_im_speicher")
             if time.monotonic() >= ende:
                 return nicht_eingetragen(werkzeug)     # noch nichts angewendet, keine Prüfung nötig
-            env = {**os.environ, "FR_WURZEL": str(s.wurzel), "FR_SCHREIBKOPIE": str(arbeit), "FR_VORGANG": kennung,
-                   "FR_SPEICHER_BASIS": str(basis), "FR_SB_FRIST": f"{ende - time.monotonic():.3f}", "TMPDIR": str(tmp / "tmp")}
+            env = vorab_umgebung({**os.environ, "FR_WURZEL": str(s.wurzel), "FR_SCHREIBKOPIE": str(arbeit), "FR_VORGANG": kennung,
+                                  "FR_SPEICHER_BASIS": str(basis), "FR_SB_FRIST": f"{ende - time.monotonic():.3f}",
+                                  "TMPDIR": str(tmp / "tmp")}, osm_vorab)
             try:
                 r = befehl_mit_frist([sys.executable, str(Path(__file__).resolve()), "anwenden", reise, werkzeug],
                                      json.dumps(anfrage), ende - time.monotonic(), env=env)

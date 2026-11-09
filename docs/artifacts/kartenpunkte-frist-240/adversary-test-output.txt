@@ -1,0 +1,9 @@
+== gezielt: pytest -q engine/tests/test_schreiben.py -k "kartenpunkte or overpass or zeitgrenzen"
+30 passed, 127 deselected
+== pytest -q -n 3 engine/tests/test_schreiben.py engine/tests/test_texte.py engine/tests/test_protokolle_ohne_pfade.py
+248 passed
+== voller Lauf des Entwicklers nach der Behebung: 1887 passed (zuvor von mir vor der Behebung: 1886 passed)
+== Probe Rennen (Kopie 2,5 s, Grenze 1 s), nach der Behebung
+Prefetch kartenpunkte_holen: preparation exceeded 1 s, skipped
+Done kartenpunkte_holen 200 in 1.0 s
+leftover: set()
