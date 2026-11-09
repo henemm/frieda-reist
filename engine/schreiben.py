@@ -1525,7 +1525,7 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
             + (S("schreiben.antwort.ding.art", w1=d["art"]) if d.get("art") else "") + (S("schreiben.antwort.ding.merkmale", w1=", ".join(werte)) if werte else "")
             + S("schreiben.antwort.ding.herkunft_punkt", w1=quelle)
             + (S("schreiben.antwort.ding.alternative") if was == "unterkunft" else "")
-            + (S("schreiben.antwort.ding.an_einen_tag") if was == "aufenthalt" else "")
+            + (S("schreiben.antwort.ding.an_einen_tag") if was == "aufenthalt" and not d.get("an") else "")   # mit an: hat er seinen Platz (#432)
             + (S("schreiben.antwort.ding.mit_koordinaten", w1=", ".join(map(str, lage["punkt"]["wert"]))) if "punkt" in lage
                else S("schreiben.antwort.ding.ohne_koordinaten") if was != "strecke" else ""))
     routen_speichern(reise_dir, roh)

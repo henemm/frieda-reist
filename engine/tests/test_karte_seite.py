@@ -38,8 +38,11 @@ def seite(tmp_path, browser, fest=False, bausteine="[karte, tagesseiten, rueckme
     d["unterkuenfte"]["U-02"]["punkt"] = punkt([50.9792, 14.1128])
     d["unterkuenfte"]["U-03"]["punkt"] = punkt([50.9700, 14.1000])
     d["aufenthalte"]["A-01"]["punkt"] = punkt([50.9785, 14.1140])
-    d["aufenthalte"]["A-02"] = {"name": "Wochenmarkt", "ort": "O-01", "art": "besichtigung", "quelle": "erfunden (Test)",
+    # Wochenmarkt: ohne Tag, sein Ort (Stadt Wehlen) hat keine Seite, also „noch ohne Platz“ am Ende der Reise (#432);
+    # Bäckerei: ohne Tag, aber mit Heimat auf der Seite ihres Orts (Dresden), steht in der Reise gar nicht
+    d["aufenthalte"]["A-02"] = {"name": "Wochenmarkt", "ort": "O-02", "art": "besichtigung", "quelle": "erfunden (Test)",
                                 "punkt": punkt([51.050, 13.740])}
+    d["aufenthalte"]["A-90"] = {"name": "Bäckerei am Markt", "ort": "O-01", "art": "besichtigung", "quelle": "erfunden (Test)"}
     d["aufenthalte"].pop("A-32", None)   # Fischbrötchen (ohne Tag, #387) gehört nicht zu diesem Fall
     d["karten_ansichten"] = [{"titel": "Hohnstein", "tage": ["T-02"]}, {"titel": "Vor Ort", "arten": ["besichtigung"]}]
     r.write_text(yaml.safe_dump(d, allow_unicode=True, sort_keys=False), encoding="utf-8")
@@ -82,8 +85,10 @@ def test_karte_unter_reise_ohne_varianten_mit_ansichten_und_ohne_tag(tmp_path, b
         # Ansichten zur Auswahl; „Vor Ort“ zeigt nur Besichtigungen, „Hohnstein“ nur Tag 2 mit seinen Alternativen
         assert a["ansichten"] == ["Übersicht", "Hohnstein", "Vor Ort"], a["ansichten"]
         assert a["punkte"]["Vor Ort"] == {"gefuellt": 2, "umriss": 0} and a["punkte"]["Hohnstein"] == {"gefuellt": 2, "umriss": 1}, a["punkte"]
-        # Aufenthalt ohne Tag: Heimat unter der Karte, nicht im Tagesplan
+        # Aufenthalt ohne Tag (#432): nur wer keine Seite anderswo hat, steht am Ende der Reise, zugeklappt; ein Sprung dorthin klappt auf
         assert a["ohneTag"] == ["Wochenmarkt"] and not a["imTagesplan"], a
+        assert a["ohneTagBlock"] == {"titel": "Noch ohne Platz (1)", "offen": False}, a["ohneTagBlock"]
+        assert "Bäckerei am Markt" not in a["reiseText"] and a["sprungOffen"], a
         assert not a["breit"], a
 
 

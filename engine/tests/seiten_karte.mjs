@@ -25,6 +25,8 @@ for (const breite of [390, 1300]) {
     // vollständig als Karte (dingKarte), mit Heimat anderswo als Listenzeile (#328)
     ohneTag: [...[...document.querySelectorAll(".ohne-tag .karte > .k")].map(x => x.firstChild.textContent),
               ...[...document.querySelectorAll(".ohne-tag .wzeile .wt")].map(x => x.textContent)].map(x => x.trim()),
+    ohneTagBlock: (d => d ? {titel: d.querySelector("summary").textContent.trim(), offen: d.open} : null)(document.querySelector("details.ohne-tag")),
+    reiseText: document.querySelector("#main").textContent,
     breit: document.documentElement.scrollWidth > innerWidth + 1,
   }));
   a.punkte = {uebersicht: await punkte(p)};
@@ -66,6 +68,11 @@ for (const breite of [390, 1300]) {
     await p.goto(basis + "#plan");
     await p.waitForSelector("#main h2");
     a.imTagesplan = (await p.textContent("#main .tagzeilen.achse")).includes("Wochenmarkt");   // Zeitachse der Tage; der Ort ohne Tag steht am Ende der Reise (#425)
+    // Sprung zu einem Ding „noch ohne Platz“ klappt den Block auf (#432)
+    await p.goto(basis + "#A-02");
+    await p.waitForSelector("details.ohne-tag", {state: "attached"});
+    await p.waitForFunction(() => document.querySelector("details.ohne-tag").open, null, {timeout: 5000}).catch(() => {});
+    a.sprungOffen = await p.evaluate(() => document.querySelector("details.ohne-tag").open);
   } else {
     for (const tag of ["T-01", "T-02"]) {
       await p.goto(basis + "#" + tag);

@@ -3099,27 +3099,27 @@ function uebersichtKarte(m, gezeigt, info) {
   }
   return segmente;
 }
-// Organismus Ohne Tag (K7, #235): Aufenthalte, die an keinem Tag und in keiner Option stehen (Märkte, Einkauf, Ausflugsziele
-// vor Ort). Ihre Heimat ist der Reiter „Karte“ (ADR-0003): hier vollständig, auf der Karte als Punkt. Ohne den Baustein
-// Karte bleibt die Reise ihre Heimat (am Ende des Überblicks).
+// Organismus Noch ohne Platz (K7, #235; #432): Aufenthalte, die an keinem Tag, in keiner Option und an keinem Element mit eigener
+// Seite stehen (kein an:, Ort ohne Seite). Das ist ein Mangel der Reise, kein Ort zum Sammeln: Die Reise ist nur ihre Ersatzheimat
+// (ADR-0003), zugeklappt am Ende des Überblicks, mit dem Hinweis, sie einem Tag oder dem Wissen zuzuordnen. Wer eine Heimat
+// anderswo hat (Abschnitt des Wissens, Ortsseite), steht dort und auf der Karte, in der Reise gar nicht (#432).
 // Tiefenregel (ADR-0003, Nachtrag #332): Ketten von Elternbezügen sind höchstens HEIMAT_TIEFE lang. Ein Kreis kommt bei gültigen
 // Daten nicht vor (der Generator meldet ihn); ist die Kette trotzdem zu lang, endet sie sichtbar: {kreis: true}, nicht null
 const HEIMAT_TIEFE = 3;
 const OHNE_TAG = R ? Object.entries(R.aufenthalte || {}).filter(([, a]) => a.ohne_tag).map(([id]) => id) : [];
 // Seit ADR-0007 ist die Seite des Elternelements die Heimat (ein Ort mit eigener Seite, ein Abschnitt des Wissens); nur was
-// dort keine Seite hat, steht hier vollständig, alles andere als Zeile mit Link zur Heimat
+// dort keine Seite hat, steht hier
 const OHNE_TAG_HIER = R ? OHNE_TAG.filter(id => !heimat(id)) : [];
-for (const id of OHNE_TAG_HIER) zeileZu.set(id, "varianten");
+for (const id of OHNE_TAG_HIER) zeileZu.set(id, "reise");   // Ersatzheimat ist die Reise, auch wenn Pläne zur Wahl stehen (#432)
 // Aufenthalt ohne Tag mit Heimat anderswo: Listenzeile mit Link dorthin (#328; die Zeile der Zeitleiste gehört in die Zeitleiste)
 function ohneTagZeile(id) {
   const a = R.aufenthalte[id];
   return listenZeile("aufenthalt", artSym(a.art, "aufenthalt"), a.name, [artName(a.art), a.zeit, uhrText(a)].filter(Boolean).join(" · ") || null, id, id);
 }
 function ohneTag(m) {
-  if (!OHNE_TAG.length) return;
-  m.append(el("section", {class: "ohne-tag"}, el("h3", {}, T("seite.karte.ohne_tag_titel", {n: OHNE_TAG.length})),
-    el("p", {class: "meldung"}, T("seite.karte.ohne_tag_hinweis")), ...OHNE_TAG_HIER.map(id => zeigeDing(id, dichteHier(id, null))),
-    OHNE_TAG.length > OHNE_TAG_HIER.length ? el("div", {class: "wliste"}, OHNE_TAG.filter(id => !OHNE_TAG_HIER.includes(id)).map(id => zeigeDing(id, dichteHier(id, null)))) : null));
+  if (!OHNE_TAG_HIER.length) return;
+  m.append(el("details", {class: "block ohne-tag"}, el("summary", {}, T("seite.reise.ohne_platz_titel", {n: OHNE_TAG_HIER.length})),
+    el("p", {class: "meldung"}, T("seite.reise.ohne_platz_hinweis")), ...OHNE_TAG_HIER.map(id => zeigeDing(id, dichteHier(id, null)))));
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-kansicht]");
@@ -3371,7 +3371,7 @@ function ansichtReise(m, p) {
   if (HAT_VARIANTEN) r.append(el("a", {class: "karte", href: "#plaene"},
     el("div", {class: "k"}, T("seite.reise.plaene_zur_wahl", {titel: D.reise.varianten_titel || T("seite.reiter.varianten"), n: R.plaene.length})),
     el("div", {class: "z klein"}, R.plaene.map(x => x.kurz).join(" · "))));
-  ohneTag(r);   // die Reise ist die Heimat der Aufenthalte ohne Tag und ohne Elternelement (seit #425 gibt es keinen Reiter „Karte“)
+  ohneTag(r);   // Ersatzheimat der Aufenthalte ohne Tag und ohne Seite anderswo, zugeklappt (#425, #432)
   const kosten = reiseKosten(p);
   const kz = kennzahlLeiste({...reiseKennzahlen(p), ...(kosten ? {uebernachtungen: kosten.text} : {})});
   const mit = mitreisende();
@@ -4469,8 +4469,8 @@ function ansichtBausteine(m) {
     teil("Organismus", "Art-Übersicht", "Alle Dinge einer Art mit ihren Merkmalen (nötig, gut zu wissen); am Rechner Tabelle mit sortierbaren Spalten, am Telefon gestapelt; jede Zeile führt zur Heimat des Dings.",
       art ? artUebersicht([art]) : el("p", {class: "meldung"}, "Keine Dinge mit Art (Muster entfällt).")); }
   { const box = el("div", {}); ohneTag(box);
-    teil("Organismus", "Ohne Tag", "Aufenthalte, die an keinem Tag stehen (vor Ort gesammelt): vollständig unter der Karte.",
-      box.childNodes.length ? box : el("p", {class: "meldung"}, "Keine Aufenthalte ohne Tag (Muster entfällt).")); }
+    teil("Organismus", "Noch ohne Platz", "Aufenthalte ohne Tag, die auch an keinem Element mit eigener Seite hängen: zugeklappt am Ende der Reise, mit dem Hinweis, sie einem Tag oder dem Wissen zuzuordnen (#432).",
+      box.childNodes.length ? box : el("p", {class: "meldung"}, "Keine Aufenthalte ohne Platz (Muster entfällt).")); }
   { // Ding in Dichte (#332): dieselben Dinge der Reise als Zeile und als Karte, gewählt nach Grundform und Abstand
     const proben = [["Bewegung", Object.keys(R && R.strecken || {})[0]], ["Ort", Object.keys(R && R.orte || {})[0]], ["Buchung", Object.keys(R && R.buchungen || {})[0]],
       ["Frage", (D.fragen.zeilen[0] || {}).id], ["Aufgabe", (AG[0] || {}).id]].filter(([, id]) => id);
@@ -5589,6 +5589,7 @@ function route(behalten) {
   else if (ortSeiteZu(h)) { zeigeReiter(TYP_REITER.ort); ansichtAbschnitt(m, ortSeiteZu(h)); }
   else if (blockZu.has(h)) { const a = blockZu.get(h); zeigeReiter(TYP_REITER[a.typ]); ansichtAbschnitt(m, a); ziel = h; }
   // Ein Plan: im Vergleich der Pläne, solange keiner gewählt ist; sonst die Reise
+  else if (zeileZu.get(h) === "reise") { zeigeReiter("varianten"); ansichtStart(m); ziel = h; }
   else if (zeileZu.get(h) === "varianten") { zeigeReiter("varianten"); HAT_VARIANTEN ? ansichtVarianten(m) : ansichtStart(m); ziel = h; }
   else if (heimat(h)) {
     const x = heimat(h);

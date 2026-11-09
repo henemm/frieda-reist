@@ -729,7 +729,7 @@ def test_ding_anlegen_mit_koordinaten_und_ohne_tag(repo):
     s = schreiber(repo)
     a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "aufenthalt", "titel": "Wochenmarkt", "ort": "O-01", "art": "besichtigung",
                                                                         "koordinaten": "51.05, 13.74", "quelle": "erfunden (Test)"}})
-    assert "Auf der Karte bei 51.05, 13.74" in a["text"] and "ohne Tag gesammelt" in a["text"]
+    assert "Auf der Karte bei 51.05, 13.74" in a["text"] and "noch ohne Platz" in a["text"]
     r, _ = routen_auf_main(origin)
     neu = lese(next(x for x in r["aufenthalte"].values() if x["name"] == "Wochenmarkt"))
     assert neu["punkt"]["wert"] == [51.05, 13.74] and neu["punkt"]["quelle"] == "erfunden (Test)"
