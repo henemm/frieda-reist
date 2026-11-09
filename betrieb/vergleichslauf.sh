@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Vergleichslauf (Stufe 3, #348, ADR-0009): hält je Reise den Dateistand aus Git gegen den Export aus dem Reisespeicher
-# (engine/reisespeicher.py vergleichen, nur Prüfsummen). Läuft von Hand, kein Timer; Voraussetzung zum Umschalten einer Reise
-# auf den Speicher (erzwungen erst mit Stufe 5, #350).
+# (engine/reisespeicher.py vergleichen, nur Prüfsummen). Läuft von Hand, kein Timer.
 # Aufruf:  FR_WURZEL=<Bauordner> frieda/betrieb/vergleichslauf.sh [--bis N] [<reise>…]
 #          Ohne Reise: jede Reise, die in Git (reisen/<reise>) liegt und einen Eintrag im Speicher hat; eine Reise nur in Git
 #          oder nur im Speicher hat nichts zu vergleichen und wird mit einem Hinweis übersprungen.
@@ -9,7 +8,11 @@
 # Der Dateistand aus Git kommt aus dem Commit HEAD (git archive in einen Wegwerf-Ordner): Der Bauordner bleibt unberührt,
 # ungesicherte Änderungen zählen nicht.
 # Stempel je Reise: <FR_DIENST>/vergleich/<reise>.json {zeit (UTC), ergebnis: gleich | unterschied | fehler, stand, git
-# (Commit), unterschiede (Anzahl)}. Eine Auskunft, keine Sperre.
+# (Commit, nur Auskunft), unterschiede (Anzahl), baum (git rev-parse HEAD:reisen/<reise>)}. Der Stempel „gleich“ ist
+# Voraussetzung der ersten Umschaltung einer Reise auf den Speicher (erzwungen ab Stufe 5, #350, reisespeicher.py
+# umschaltung): ohne ihn verweigern Veröffentlichen und Schreibweg eine Reise, die in Git liegt und noch nie aus dem
+# Speicher veröffentlicht wurde. Er gilt, solange der Git-Baum der Reise derselbe ist und der Speicher nicht hinter stand
+# zurückfällt; Änderungen außerhalb von reisen/<reise> und spätere Vorgänge im Speicher machen ihn nicht ungültig.
 # Exit: 0 alles gleich, 1 mindestens ein Unterschied, 2 mindestens ein Fehler (das schlimmste Ergebnis zählt; ein Fehler bei
 # einer Reise bricht die übrigen nicht ab).
 set -euo pipefail
@@ -45,11 +48,11 @@ fi
 git_stand="$(git -C "$FR_WURZEL" rev-parse HEAD)"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 
-stempel() {  # <reise> <ergebnis> <stand> <unterschiede>
+stempel() {  # <reise> <ergebnis> <stand> <unterschiede> <baum>
   local datei="$FR_DIENST/vergleich/$1.json"
   mkdir -p "$FR_DIENST/vergleich"
-  printf '{"zeit": "%s", "ergebnis": "%s", "stand": %s, "git": "%s", "unterschiede": %s}\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$2" "${3:-null}" "$git_stand" "$4" > "$datei.neu"
+  printf '{"zeit": "%s", "ergebnis": "%s", "stand": %s, "git": "%s", "unterschiede": %s, "baum": "%s"}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$2" "${3:-null}" "$git_stand" "$4" "$5" > "$datei.neu"
   mv "$datei.neu" "$datei"
 }
 
@@ -62,15 +65,16 @@ for r in "${reisen[@]}"; do
   fi
   ordner="$tmp/$r"
   mkdir -p "$ordner"
+  baum="$(git -C "$FR_WURZEL" rev-parse "HEAD:reisen/$r")"
   git -C "$FR_WURZEL" archive HEAD "reisen/$r" | tar -x -C "$ordner"
   rc=0
   aus="$("$FR_PYTHON" "$RS" vergleichen "$r" "$ordner/reisen/$r" ${bis:+--bis "$bis"} 2>&1)" || rc=$?
   printf '%s\n' "$aus" | sed "s/^/$r: /"
   stand="${bis:-$n}"
   case "$rc" in
-    0) stempel "$r" gleich "$stand" 0 ;;
-    1) stempel "$r" unterschied "$stand" "$(printf '%s\n' "$aus" | grep -cE '^(nur im Speicher|nur im Ordner|verschieden): ')" ;;
-    *) stempel "$r" fehler "$stand" 0; rc=2 ;;
+    0) stempel "$r" gleich "$stand" 0 "$baum" ;;
+    1) stempel "$r" unterschied "$stand" "$(printf '%s\n' "$aus" | grep -cE '^(nur im Speicher|nur im Ordner|verschieden): ')" "$baum" ;;
+    *) stempel "$r" fehler "$stand" 0 "$baum"; rc=2 ;;
   esac
   [ "$rc" -le "$gesamt" ] || gesamt="$rc"
   rm -rf "$ordner"

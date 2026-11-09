@@ -872,6 +872,7 @@ TEXTE = {
     "schreiben.dienst.speicher_nicht_erreichbar": "Der Speicher der Reisen ist gerade nicht erreichbar; bitte später noch einmal.",
     "schreiben.dienst.einstellungen_nicht_lesbar": "Die Einstellungen der Instanz sind gerade nicht lesbar; es wird nichts geschrieben. Der Betreiber muss das beheben.",
     "schreiben.dienst.reise_nicht_im_speicher": "Diese Reise soll über den Speicher geschrieben werden, steht dort aber noch nicht; der Betreiber muss sie zuerst übernehmen.",
+    "schreiben.dienst.umschaltung_nicht_freigegeben": "Diese Reise soll über den Speicher geschrieben werden, ist dafür aber noch nicht freigegeben: Der Vergleich mit ihrem bisherigen Stand fehlt oder ist veraltet. Es wurde nichts geschrieben; der Betreiber muss den Vergleich zuerst durchführen.",
     "schreiben.dienst.reise_im_speicher": "Diese Reise wird über den Speicher geschrieben, nicht mehr über das Repo.",
     "schreiben.dienst.stand_geaendert": "Inzwischen hat jemand anderes in diese Reise geschrieben; bitte noch einmal versuchen.",
     "inhalt.schreiben.ausgeschieden": "ausgeschieden am {datum} ({wer})",

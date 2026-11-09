@@ -39,6 +39,16 @@
 # vollständig und baut alle Reisen; nur dann laufen auch die Tests des Reisen-Repos (nach dem Bauen, sie sperren nie).
 # Startet ein Lauf, während ein anderer die Sperre hält (Schreibweg während eines Timer-Laufs), merkt er das in
 # <FR_DIENST>/veroeffentlichen-nochmal; der laufende startet danach gleich noch einmal, statt bis zum Timer zu warten.
+# Umschaltung (Stufe 5, #350, docs/betrieb.md „Umschaltung einer Reise“): Eine Reise aus FR_SPEICHERREISEN, die in Git
+# liegt und noch nie aus dem Speicher veröffentlicht wurde (kein <FR_DIENST>/reise-stand/<reise>.gebaut), baut der
+# Speicher-Teil nur mit gültigem Stempel „gleich“ von betrieb/vergleichslauf.sh (reisespeicher.py umschaltung); sonst
+# überspringt er sie mit einem Hinweis im Protokoll, der Lauf bleibt grün.
+# Ohne GitHub (Stufe 5): Scheitert git fetch bei einer Instanz mit FR_SPEICHERREISEN, ist das kein Fehler des Laufs. Die
+# Reisen aus dem Speicher sind dann schon veröffentlicht; Software und Git-Reisen warten. Exit 1 nur bei roten Reisen aus
+# dem Speicher; Stempel und Heartbeat nur, wenn keine Reise mehr in Git liegt. Merker <FR_DIENST>/software-wartet (seit,
+# gemeldet); nach FR_SOFTWARE_WARTET_STUNDEN (Vorgabe 6) genau eine Warnzeile je Störung, keine Nachricht an den Betrieb.
+# Gelingt git fetch wieder, wird der Merker gelöscht. Ohne FR_SPEICHERREISEN endet ein gescheitertes git fetch wie bisher
+# mit Fehler.
 # Für Tests überschreibbar: VF_PRUEFEN, VF_STAND, VF_DEPLOY, VF_FREISCHALTEN, VF_AUSSTEHEND, VF_SPERRE, VF_STEMPEL, VF_HEARTBEAT,
 # VF_ROT (Rot-Datei), VF_JETZT (Uhr, Sekunden seit 1970), VF_ROTMELDEN (statt engine/waechter.py rot-melden),
 # VF_NACHZIEHEN (Befehl statt gh workflow run), VF_LSREMOTE (Befehl statt git ls-remote).
@@ -156,13 +166,15 @@ rot_vereinigt() {  # <reisen…>: Liste der roten Reisen für die Rot-Datei, Git
 }
 
 speicher_reisen_lauf() {  # Speicher-Teil (Stufe 3, #348): Reisen aus FR_SPEICHERREISEN aus dem Reisespeicher bauen, vor
-  # git fetch und ohne Netz (kein git fetch, kein gh, kein ls-remote). Gebaut wird eine Reise, wenn ihre Stand-Nummer im
+  # git fetch und ohne Netz (kein git fetch, kein gh, kein ls-remote). Eine Reise ohne Stempel .gebaut, die in Git liegt, wird
+  # ohne gültigen Stempel des Vergleichslaufs übersprungen (Stufe 5, #350, reisespeicher.py umschaltung; Hinweis im
+  # Protokoll, kein Rot). Gebaut wird eine Reise, wenn ihre Stand-Nummer im
   # Speicher nicht die der Seite ist, mit --immer, ohne Stempel <FR_DIENST>/reise-stand/<reise>.gebaut („<nummer>
   # <software-kennung>“, nur nach gelungenem Deploy) oder nach einem Software-Wechsel; dann stellt neu.py
   # nachziehen-speicher sie vorher um (ein Vorgang, nur bei grünem Probebau). Eine neue Software-Kennung gilt erst, wenn der
   # Git-Teil sie vollständig veröffentlicht hat (Datei veroeffentlicht); bis dahin bleibt jede Reise mit älterem Stempel
   # stehen. Ergebnis: speicher_gut, speicher_rote; Exit 1 bei einer Störung (Speicher nicht lesbar, deploy Exit 1).
-  local liste r n pub gn gk modus rc ordner aus kennung geprueft="" vorher log gepr_stand=""
+  local liste r n pub gn gk modus rc ordner aus kennung geprueft="" vorher log gepr_stand="" aus_pruefung
   liste="$(speicherreisen | tr '\n' ' ')"
   [ -n "${liste// /}" ] || return 0
   speicher_aktiv=1
@@ -180,6 +192,18 @@ speicher_reisen_lauf() {  # Speicher-Teil (Stufe 3, #348): Reisen aus FR_SPEICHE
     [ -n "$r" ] || continue
     if [ "$n" = - ]; then
       echo "Note: $r is in FR_SPEICHERREISEN but has no entry in the trip store, skipped."; continue
+    fi
+    # Sperre bei der ersten Umschaltung (Stufe 5, #350): ohne Stempel .gebaut entscheidet reisespeicher.py umschaltung
+    if [ ! -e "$FR_DIENST/reise-stand/$r.gebaut" ]; then
+      rc=0
+      aus_pruefung="$("$FR_PYTHON" "$FR_BETRIEB/../engine/reisespeicher.py" umschaltung "$r" 2>&1 < /dev/null)" || rc=$?
+      if [ "$rc" = 1 ] && [[ "$aus_pruefung" =~ ^gesperrt\ ([a-z_]+)$ ]]; then
+        echo "Note: $r is in git and not cleared for the switch (${BASH_REMATCH[1]}), run betrieb/vergleichslauf.sh $r; it stays at its last state."
+        continue
+      elif [ "$rc" != 0 ]; then
+        echo "ERROR: the switch check of $r failed ($(printf '%s\n' "$aus_pruefung" | tail -1)), the next run tries again."
+        rm -f "$log"; return 1
+      fi
     fi
     gn=""; gk=""
     if [ -r "$FR_DIENST/reise-stand/$r.gebaut" ]; then read -r gn gk < "$FR_DIENST/reise-stand/$r.gebaut" || true; fi
@@ -404,6 +428,47 @@ software_anstossen() {  # neuer Stand auf main der Software: Workflow „Softwar
   echo "$fern $t" > "$merk.tmp" && mv "$merk.tmp" "$merk"
 }
 
+git_reisen_uebrig() {  # Reisen, die noch in Git liegen (reisen/<name>/reise.json im Commit HEAD) und nicht in
+  # FR_SPEICHERREISEN stehen, eine je Zeile (Stufe 5, #350)
+  local r
+  { git ls-tree --name-only HEAD reisen/ 2>/dev/null || true; } | while IFS= read -r r; do
+    r="${r#reisen/}"
+    git cat-file -e "HEAD:reisen/$r/reise.json" 2>/dev/null || continue
+    ist_speicherreise "$r" || echo "$r"
+  done
+  return 0
+}
+
+software_wartet_merken() {  # git fetch gescheitert (Stufe 5, #350): Merker <FR_DIENST>/software-wartet (seit, gemeldet).
+  # Erst nach FR_SOFTWARE_WARTET_STUNDEN (Vorgabe 6) genau eine Warnzeile je Störung, keine Nachricht über fr_melden: Ein
+  # GitHub-Ausfall ist kein Ausfall der Reisen; den Zustand zeigt der Monitor der Instanz aus dem Merker.
+  local datei="$FR_DIENST/software-wartet" seit="" gemeldet="" zeile t stunden="${FR_SOFTWARE_WARTET_STUNDEN:-6}"
+  [[ "$stunden" =~ ^[0-9]+$ ]] || stunden=6
+  t="$(jetzt)"
+  if [ -r "$datei" ]; then
+    while IFS= read -r zeile || [ -n "$zeile" ]; do
+      case "$zeile" in
+        seit=*) seit="${zeile#*=}" ;;
+        gemeldet=*) gemeldet="${zeile#*=}" ;;
+      esac
+    done < "$datei"
+  fi
+  if ! [[ "$seit" =~ ^[0-9]+$ ]]; then
+    seit="$t"; gemeldet=0
+  elif [ "$gemeldet" != 1 ] && [ $(( 10#$t - 10#$seit )) -ge $(( 10#$stunden * 3600 )) ]; then
+    echo "Warning: Software update waiting since $(( (10#$t - 10#$seit) / 3600 )) h ($(iso "$seit")); trips from the trip store are published."
+    gemeldet=1
+  else
+    return 0
+  fi
+  mkdir -p "$FR_DIENST"
+  printf 'seit=%s\ngemeldet=%s\n' "$seit" "$gemeldet" > "$datei.neu" && mv "$datei.neu" "$datei"
+}
+
+software_wartet_loeschen() {  # git fetch gelungen: die Störung ist vorbei, die nächste warnt wieder einmal
+  rm -f "$FR_DIENST/software-wartet"
+}
+
 abhaengigkeiten() {  # Umgebung der Prüfungen wie in CI (#202): Bibliotheken und Playwright in festen Versionen aus dem Repo.
   # Sonst fehlte nach einem Software-Stand mit neuer Bibliothek nur dem Server etwas, und die Prüfungen blieben rot,
   # bis jemand von Hand installiert (rot 1.11.2026 wegen pyspellchecker). Installiert wird nur, wenn sich eine Liste
@@ -481,7 +546,23 @@ main() {
   # Ohne FR_SPEICHERREISEN geschieht hier nichts.
   speicher_reisen_lauf || return 1
   einstellungen_vorher="$(einstellungen_summe "$einstellungen")"
-  git fetch -q origin main
+  if ! git fetch -q origin main; then
+    # Stufe 5 (#350): Ohne GitHub sind die Reisen aus dem Speicher schon veröffentlicht; nur Software und Git-Reisen warten.
+    # Ohne FR_SPEICHERREISEN ein Fehler wie bisher.
+    [ -n "$speicher_aktiv" ] || return 1
+    echo "Warning: git fetch failed (no network or GitHub down), software update and trips still in git wait."
+    software_wartet_merken
+    zustellen
+    if [ -n "$speicher_rote" ]; then neu="$(git rev-parse HEAD)"; speicher_rot_melden; return 1; fi
+    laufreisen="$(git_reisen_uebrig)"
+    if [ -n "$laufreisen" ]; then
+      echo "Note: trips still in git ($(echo $laufreisen)) stay at their state; no success stamp without GitHub."
+      return 0
+    fi
+    erfolg_melden
+    return 0
+  fi
+  software_wartet_loeschen
   software_anstossen || true
   neu="$(git rev-parse origin/main)"
   alt="$(cat "$stand" 2>/dev/null || true)"

@@ -2493,6 +2493,17 @@ def speicherweg(repo, tmp_path, monkeypatch):
     monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise,stadtwochenende")
     rs.importieren(BEISPIEL, "beispielreise", wer="Ida", grund="Beispiel")
     rs.importieren(BEISPIEL.parent / "stadtwochenende", "stadtwochenende", wer="Tom", grund="Beispiel")
+    # Stufe 5 (#350): Reisen, die im Test-Repo auch in Git liegen, sind zur Umschaltung freigegeben (Stempel „gleich“ des
+    # Vergleichslaufs im dokumentierten Format, wie test_betrieb.freigeben)
+    wurzel = repo[0]
+    for r in ("beispielreise", "stadtwochenende"):
+        b = subprocess.run(["git", "-C", str(wurzel), "rev-parse", "-q", "--verify", f"HEAD:reisen/{r}"],
+                           capture_output=True, text=True).stdout.strip()
+        if b:
+            datei = tmp_path / "_dienst" / "vergleich" / f"{r}.json"
+            datei.parent.mkdir(parents=True, exist_ok=True)
+            datei.write_text(json.dumps({"zeit": "2026-11-09T10:00:00Z", "ergebnis": "gleich", "stand": rs.stand_nummer(r),
+                                         "unterschiede": 0, "baum": b}))
     return rs
 
 

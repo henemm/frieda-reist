@@ -40,10 +40,17 @@ Aufrufe:
   python3 engine/reisespeicher.py vergleichen <reise> <ordner> [--bis N]     Exit 0 gleich, 1 Unterschied, 2 Fehler
   python3 engine/reisespeicher.py zustand [--sicherung-max-stunden H]        Exit 0 in Ordnung, 1 Sicherung fehlt/alt, 2 Fehler
   python3 engine/reisespeicher.py staende <reise> …                          je Reise „<reise> <Speicher> <Seite>“ (- = keine)
+  python3 engine/reisespeicher.py umschaltung <reise>                        „frei“ (Exit 0) oder „gesperrt <grund>“ (Exit 1)
+
+Ab Stufe 5 (#350) prüft umschaltung_frei die erste Umschaltung einer Reise: Liegt eine Reise aus FR_SPEICHERREISEN im
+Git-Bauordner und wurde sie noch nie aus dem Speicher veröffentlicht (kein <FR_DIENST>/reise-stand/<reise>.gebaut),
+verweigern Veröffentlichen und Schreibweg sie ohne gültigen Stempel „gleich“ von betrieb/vergleichslauf.sh. Der Befehl
+umschaltung ist dieselbe Prüfung für die Shell; er liest nur.
 """
 import collections
 import errno
 import hashlib
+import json
 import os
 import re
 import secrets
@@ -64,6 +71,7 @@ AUSLAGERN = ("png", "jpg", "jpeg", "webp", "gif", "gpx", "pmtiles")   # Endungen
 NICHT_AUSLAGERN = ("medien/icon.svg", "medien/icon.png")   # klein, der Bau braucht sie: bleiben in der Datenbank
 SCHEMA_VERSION = 2
 _SUMME = re.compile(r"[0-9a-f]{64}")
+REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")   # wie schreiben.REISE_MUSTER
 
 
 class VorgangVorhanden(Exception):
@@ -661,6 +669,80 @@ def vergleichen(reise, ordner, bis=None):
 SICHERUNG_MAX_STUNDEN = 36   # wie der Stempel waechter-erfolg (docs/betrieb.md, Überwachung)
 
 
+class _GitNichtLesbar(Exception):
+    """git ließ sich nicht starten oder der Baum einer Reise nicht lesen, obwohl der Bauordner ein Git-Repo ist."""
+
+
+def _git_baum(reise):
+    """Git-Baum von reisen/<reise> im Commit HEAD des Bauordners (instanz.wurzel()) oder None, wenn dort nichts liegt
+    (kein Git-Repo, kein HEAD, Ordner nicht im Commit). _GitNichtLesbar, wenn git selbst scheitert (fail closed).
+    Ohne .git im Bauordner wird git gar nicht gerufen (der Speicherweg einer Instanz ohne Git-Bauordner bleibt ohne git).
+    git läuft über stand_git.git (dieses Modul startet selbst keine Prozesse)."""
+    import stand_git
+    wurzel = instanz.wurzel()
+    if not (wurzel / ".git").exists():
+        return None                                       # kein Git-Repo: nichts in Git, nichts zu vergleichen
+    if stand_git.git(wurzel, "rev-parse", "--git-dir") is None:
+        raise _GitNichtLesbar()                           # .git da, aber git nicht startbar oder Repo nicht lesbar
+    if stand_git.git(wurzel, "rev-parse", "-q", "--verify", "HEAD^{commit}") is None:
+        return None                                       # kein auflösbares HEAD (Repo ohne Commit)
+    zeile = stand_git.git(wurzel, "ls-tree", "-d", "HEAD", f"reisen/{reise}")
+    if zeile is None:
+        raise _GitNichtLesbar()
+    if not zeile:
+        return None                                       # reisen/<reise> liegt nicht im Commit HEAD
+    teile = zeile.split()
+    if len(teile) < 3 or teile[1] != "tree":
+        raise _GitNichtLesbar()
+    return teile[2]
+
+
+def umschaltung_frei(reise):
+    """Darf die Reise aus dem Speicher gebaut und über ihn beschrieben werden (Stufe 5, #350)? -> (True, "") oder
+    (False, grund). Gesperrt ist nur die erste Umschaltung: eine Reise aus FR_SPEICHERREISEN, die im Git-Bauordner liegt,
+    noch nie aus dem Speicher veröffentlicht wurde (kein <FR_DIENST>/reise-stand/<reise>.gebaut) und keinen gültigen
+    Stempel „gleich“ von betrieb/vergleichslauf.sh hat (<FR_DIENST>/vergleich/<reise>.json: ergebnis gleich, baum gleich
+    dem jetzigen Git-Baum der Reise, stand nicht größer als die Stand-Nummer im Speicher). Gründe: kein_stempel,
+    stempel_ungueltig, stempel_nicht_gleich, stempel_veraltet, git_nicht_lesbar. Liest nur. Einstellungen nicht lesbar:
+    instanz.EinstellungenNichtLesbar (#361)."""
+    if not isinstance(reise, str) or not REISE_MUSTER.match(reise):
+        return False, "stempel_ungueltig"
+    if reise not in instanz.speicherreisen():
+        return True, ""
+    if (instanz.dienst() / "reise-stand" / f"{reise}.gebaut").is_file():
+        return True, ""
+    try:
+        baum = _git_baum(reise)
+    except _GitNichtLesbar:
+        return False, "git_nicht_lesbar"
+    if baum is None:
+        return True, ""
+    try:
+        roh = (instanz.dienst() / "vergleich" / f"{reise}.json").read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return False, "kein_stempel"
+    except (OSError, UnicodeDecodeError):
+        return False, "stempel_ungueltig"
+    try:
+        s = json.loads(roh)
+    except ValueError:
+        return False, "stempel_ungueltig"
+    if not isinstance(s, dict) or "ergebnis" not in s:
+        return False, "stempel_ungueltig"
+    if s["ergebnis"] != "gleich":
+        return False, "stempel_nicht_gleich"
+    stand = s.get("stand")
+    if s.get("baum") != baum or not isinstance(stand, int) or isinstance(stand, bool):
+        return False, "stempel_veraltet"
+    if not pfad().exists():
+        return False, "stempel_veraltet"
+    with closing(_nur_lesen()) as v:
+        jetzt = _hoechster(v, reise)
+    if jetzt is None or stand > jetzt:
+        return False, "stempel_veraltet"
+    return True, ""
+
+
 def zustand(max_stunden=SICHERUNG_MAX_STUNDEN):
     """Prüfbarer Zustand für den Monitor der Instanz (#348), liest nur -> (in_ordnung, [(name, wert)]). In Ordnung: keine
     Datenbank (Instanz ohne Speicher) oder eine Sicherung nicht älter als max_stunden (Änderungszeit von
@@ -951,6 +1033,14 @@ def main(a):
             finally:
                 if v:
                     v.close()
+        elif befehl == "umschaltung":
+            # Exit 1 heißt hier nur „gesperrt“: falsche Angaben geben wie jeder Fehler 2
+            if len(rest) != 1:
+                print("ERROR: usage: reisespeicher.py umschaltung <reise>")
+                return 2
+            frei, grund = umschaltung_frei(rest[0])
+            print("frei" if frei else f"gesperrt {grund}")
+            return 0 if frei else 1
         else:
             raise _Hilfe()
     except _Hilfe:

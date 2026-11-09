@@ -5179,6 +5179,11 @@ def vorgang_speicher(s, reise, werkzeug, anfrage, start, osm_vorab=None):
                         (arbeit / "reisen" / name).mkdir(exist_ok=True)
                     ergebnis["basis"] = 0
                 else:
+                    # Stufe 5 (#350): erste Umschaltung einer Reise aus Git nur mit gültigem Vergleichsstempel
+                    frei, grund = reisespeicher.umschaltung_frei(reise)
+                    if not frei:
+                        ergebnis["gesperrt"] = grund
+                        return
                     basis = reisespeicher.stand_nummer(reise)
                     reisespeicher.exportieren(reise, arbeit / "reisen" / reise, bis=basis)
                     ergebnis["basis"] = basis
@@ -5202,10 +5207,13 @@ def vorgang_speicher(s, reise, werkzeug, anfrage, start, osm_vorab=None):
                 return ablage_fehler(werkzeug, reise, ergebnis["fehler"])
             if "fehler" in ergebnis:
                 raise ergebnis["fehler"]
-            basis = ergebnis["basis"]
-            if basis is None:
+            basis = ergebnis.get("basis")
+            if basis is None and "gesperrt" not in ergebnis:
                 sys.stderr.write(f"Store {werkzeug} 503: trip {reise} is in FR_SPEICHERREISEN but not in the store\n")
                 return 503, fehler_antwort("schreiben.dienst.reise_nicht_im_speicher")
+            if "gesperrt" in ergebnis:
+                sys.stderr.write(f"Store {werkzeug} 503: trip {reise} is not cleared for the switch ({ergebnis['gesperrt']})\n")
+                return 503, fehler_antwort("schreiben.dienst.umschaltung_nicht_freigegeben")
             if time.monotonic() >= ende:
                 return nicht_eingetragen(werkzeug)     # noch nichts angewendet, keine Prüfung nötig
             env = vorab_umgebung({**os.environ, "FR_WURZEL": str(s.wurzel), "FR_SCHREIBKOPIE": str(arbeit), "FR_VORGANG": kennung,
