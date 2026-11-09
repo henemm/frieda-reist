@@ -1,6 +1,6 @@
 // Seite einer abgewandelten Beispielreise prüfen (Verhalten je Status und Bausteine, Paket B), aufgerufen von test_seite.py.
 // Aufruf: node seiten_variante.mjs <playwright-modul> <basis-url> <datum JJJJ-MM-TT>
-// Meldet: Reiter der Leiste, aktiver Reiter beim Start, Überschrift des Heute-Blocks, Zahl der Rückmeldeknöpfe an IDs,
+// Meldet: Reiter der Leiste, aktiver Reiter beim Start, Tagesseite beim Start, Kasten „Heute“ (seit #433 weg), Ziel von #heute, Zahl der Rückmeldeknöpfe an IDs,
 // Buchung B-01, stornierte Buchungen am Ding (#146), Zeile „Alle Möglichkeiten“, Skriptfehler.
 const [, , modul, basis, datum] = process.argv;
 const pw = await import(modul);
@@ -17,8 +17,25 @@ await p.waitForTimeout(300);
 const start = await p.evaluate(() => ({
   reiter: [...document.querySelectorAll("#nav a")].map(a => a.getAttribute("href").slice(1)),
   aktiv: (document.querySelector("#nav a.on") || {getAttribute: () => "#"}).getAttribute("href").slice(1),
-  heute: (document.querySelector("section.heute h2") || {}).textContent || null,
+  tag: (document.querySelector("#main h2[data-ziel]") || {}).id || null,
 }));
+// Knopf „Heute“ (#433): über die Kennung des heutigen Tags ist er gewählt; „Reise“ zeigt keinen Kasten „Heute“ mehr
+if (start.tag) {
+  const tag = start.tag;
+  await p.evaluate(() => { location.hash = "varianten"; });
+  await p.waitForTimeout(200);
+  start.kasten = await p.evaluate(() => !!document.querySelector("section.heute"));
+  await p.evaluate(t => { location.hash = t; }, tag);
+  await p.waitForTimeout(200);
+  start.aktivUeberKennung = await p.evaluate(() => (document.querySelector("#nav a.on") || {getAttribute: () => "#"}).getAttribute("href").slice(1));
+} else {
+  start.kasten = await p.evaluate(() => !!document.querySelector("section.heute"));
+}
+await p.evaluate(() => { location.hash = "heute"; });
+await p.waitForTimeout(200);
+start.ueberHeute = await p.evaluate(() => ({
+  aktiv: (document.querySelector("#nav a.on") || {getAttribute: () => "#"}).getAttribute("href").slice(1),
+  tag: (document.querySelector("#main h2[data-ziel]") || {}).id || null}));
 // Rückmeldeknöpfe an IDs auf einer Tagesseite (ohne Baustein „rueckmeldungen“ und „aufgaben“ nur Text); einen Reiter
 // „Plan“ mit Kennungen gibt es seit #214 nicht mehr
 await p.evaluate(() => { location.hash = "T-02"; });

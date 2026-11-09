@@ -242,14 +242,20 @@ def seite_der_variante(tmp_path, browser, datum="2027-05-13", skript="seiten_var
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
 def test_seite_je_status_und_baustein(tmp_path, browser):
-    """Paket B auf der Seite: unterwegs beginnt mit Heute und der Karte; ausgeschaltete Bausteine verschwinden."""
+    """Paket B auf der Seite: unterwegs beginnt mit der Tagesseite von heute (Knopf „Heute“, #433); ausgeschaltete Bausteine verschwinden."""
     planung = seite_der_variante(tmp_path / "planung", browser)
-    assert planung["heute"] is None
+    assert "heute" not in planung["reiter"] and planung["aktiv"] == "varianten" and planung["tag"] is None, planung
+    assert planung["ueberHeute"] == {"aktiv": "varianten", "tag": None}, planung
     assert {"wuensche", "zu-tun"} <= set(planung["reiter"]) and planung["knoepfe"] > 0
     unterwegs = seite_der_variante(tmp_path / "unterwegs", browser, status="unterwegs")
-    assert unterwegs["aktiv"] == "varianten" and unterwegs["heute"].startswith("Heute · Tag 1: "), unterwegs
+    # „Heute“ steht vorn, ist gewählt und zeigt die Tagesseite des ersten Tags (Datum des Tests = Tag 1); kein Kasten unter „Reise“
+    assert unterwegs["reiter"][0] == "heute" and unterwegs["aktiv"] == "heute" and unterwegs["tag"] == "T-01", unterwegs
+    assert unterwegs["kasten"] is False and unterwegs["aktivUeberKennung"] == "heute", unterwegs
+    assert unterwegs["ueberHeute"] == {"aktiv": "heute", "tag": "T-01"}, unterwegs
+    # Unterwegs, aber heute kein Tag im Plan: kein Knopf, Start auf „Reise“, ein alter Link #heute landet dort
     kein_tag = seite_der_variante(tmp_path / "kein_tag", browser, datum="2027-06-30", status="unterwegs")
-    assert kein_tag["heute"] == "Heute"
+    assert "heute" not in kein_tag["reiter"] and kein_tag["aktiv"] == "varianten" and kein_tag["tag"] is None, kein_tag
+    assert kein_tag["kasten"] is False and kein_tag["ueberHeute"] == {"aktiv": "varianten", "tag": None}, kein_tag
     wenig = seite_der_variante(tmp_path / "wenig", browser, bausteine=["varianten"])
     # „Zu tun“ mit „Zu entscheiden“ und „Zu buchen“ gibt es in jeder Reise mit Tagen (#214), Wünsche nur mit ihrem Baustein
     assert "wuensche" not in wenig["reiter"] and "zu-tun" in wenig["reiter"], wenig
