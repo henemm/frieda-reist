@@ -1387,13 +1387,40 @@ function buchungsStand(d) {
   return {zustand: offen ? "offen" : "plan", text: d.buchung === "offen" ? T("seite.buchung.nicht_gebucht") : d.buchung, gebucht: !offen, nichtGebucht: d.buchung === "offen", bid: d.buchung_id || null};
 }
 // Molekül Zustand Buchung: der Stand als Chip; kommt er aus einer Buchung (B-…, #76), führt der Chip zu ihr
-const buchungChip = d => { const st = buchungsStand(d); return st ? chip(st.zustand, st.text, st.bid ? {href: "#" + st.bid} : null) : null; };
+const standChip = st => st ? chip(st.zustand, st.text, st.bid ? {href: "#" + st.bid} : null) : null;
+const buchungChip = d => standChip(buchungsStand(d));
 // Buchungen (B-…) eines Dings in der Reihenfolge der Reise
 const buchungenZu = id => Object.values(R && R.buchungen || {}).filter(b => (b.fuer || []).includes(id));
 // Heimat einer Buchung (ADR-0003): ihr erstes Ding zeigt sie vollständig, jedes weitere nur den Chip. Geltende stehen voll da,
 // stornierte nur im zugeklappten Block stornierteBuchungen (#146)
 const buchungenBei = id => buchungenZu(id).filter(b => (b.fuer || [])[0] === id && b.status !== "storniert");
 const stornierteBei = id => buchungenZu(id).filter(b => (b.fuer || [])[0] === id && b.status === "storniert");
+// Zeitraum einer Buchung (#463, wie routen.buchung_gilt_am): gilt sie an diesem Datum? Ohne Zeitraum oder ohne Datum immer.
+// Eine Nacht: anreise ≤ Datum < abreise; ein Tag (Strecke, Aufenthalt): anreise ≤ Datum ≤ abreise; nur anreise: genau dieser Tag
+function buchungGiltAm(b, datum, nacht) {
+  if (!datum || (!b.anreise && !b.abreise)) return true;
+  if (b.anreise && datum < b.anreise) return false;
+  if (!b.abreise) return datum === b.anreise;
+  return nacht ? datum < b.abreise : datum <= b.abreise;
+}
+// Stand eines Dings an einem Datum: hat eine seiner Buchungen einen Zeitraum, zählen nur die, die das Datum enthalten (gebucht vor
+// angefragt); keine: nicht gebucht. Ohne Zeiträume wie buchungsStand (der Stand des Dings).
+function buchungsStandAm(d, id, datum, nacht) {
+  const st = buchungsStand(d);
+  if (!st || !datum) return st;
+  const alle = buchungenZu(id).filter(b => b.status !== "storniert");
+  if (!alle.some(b => b.anreise || b.abreise)) return st;
+  const am = alle.filter(b => buchungGiltAm(b, datum, nacht)), b = am.find(x => x.status === "gebucht") || am[0];
+  return b ? buchungsStand({buchung: b.status, buchung_id: b.id}) : buchungsStand({buchung: "offen"});
+}
+// Tag, an dem eine Buchung mit Anreise beginnt (ihre Heimat, #463): der Tag des Datums, an dem ihr erstes Ding steht
+function buchungTag(b) {
+  const x = (b.fuer || [])[0];
+  if (!b.anreise || !PLAN_ANSICHT) return null;
+  const t = PLAN_ANSICHT.tage.find(d => d.datum === b.anreise && ((d.nacht || {}).unterkunft === x || nachtUnterkunft(d.nacht || {}) === x
+    || (d.strecken || []).some(st => st.id === x) || (d.aufenthalte || []).includes(x)));
+  return t ? t.id : null;
+}
 // Kontakt einer Unterkunft (Telefon, E-Mail); die Webseite ist ein Merkmal vom Typ link
 const kontaktText = u => ((u || {}).kontakt || "").trim();
 // Zustand einer Wahl, überall gleich: unterwegs zu entscheiden, offen (braucht eine Entscheidung) oder entschieden
@@ -1494,8 +1521,8 @@ function nachtZeile(n, ohneLinks, datum, verweis) {
   // Stand-Leiter (31.10.2026): ein Stand je Nacht, die weiteste Stufe (offen → entschieden → angefragt → gebucht). Ist die
   // Unterkunft angefragt oder gebucht, steht dieser Stand statt „entschieden“; gebucht entfällt der Vergleich (er bleibt
   // unter „Alle Möglichkeiten“ an der Nacht).
-  const bst = !offen && u ? buchungsStand(u) : null, weiter = bst && !bst.nichtGebucht;
-  const zustand = weiter ? buchungChip(u) : !w || w.wann !== "planung" ? null : offen && ohneLinks ? chip("offen", T("seite.wahl.offen_n", {n: kand.length})) : wahlZustand(w);
+  const bst = !offen && u ? buchungsStandAm(u, uid, datum, true) : null, weiter = bst && !bst.nichtGebucht;
+  const zustand = weiter ? standChip(bst) : !w || w.wann !== "planung" ? null : offen && ohneLinks ? chip("offen", T("seite.wahl.offen_n", {n: kand.length})) : wahlZustand(w);
   const kennung = ohneLinks ? null : w ? zid(w.id) : uid ? zid(uid) : null;
   const einstieg = w && !ohneLinks && !(bst && bst.gebucht) ? wahlEinstieg(w, false, datum, verweis ? "#" + w.id : null) : null;
   const zeile = el("div", {class: "ding nacht"},
@@ -1711,19 +1738,23 @@ function planungsTeil(gebucht, krit, werte, weitere) {
 function dingKarte(id, tid, mehr, ohneOrt) {
   const nachtDing = !!R.unterkuenfte[id], u = nachtDing ? R.unterkuenfte[id] : (R.aufenthalte || {})[id];
   if (!u) return null;
-  const nacht = tid && ((R.tage.find(x => x.id === tid) || {}).nacht || {});
+  const tag = tid && (R.tage.find(x => x.id === tid) || {}), nacht = tid && (tag.nacht || {});
+  // An einer Nacht oder einem Tag zählen nur die Buchungen, deren Zeitraum ihn enthält (#463); an der Heimat ohne Tag alle
+  const datum = tid && tag.datum, st = buchungsStandAm(u, id, datum, nachtDing), gebucht = !!(st && st.gebucht);
+  // Check-in-Ansicht (#463): gebucht steht der Teaser (hinweis) gleich unter dem Namen, nicht in „Aus der Planung“
   const etikett = nachtDing ? artName(u.art) || T("seite.etikett.unterkunft") : [artName(u.art), u.zeit, uhrText(u)].filter(Boolean).join(" · ");
   const k = el("div", {class: "karte ziel", id, "data-ziel": id}, dingEtikett(etikett, u.art, u.art), el("div", {class: "k"}, u.name, zid(id)));
   // Die Art steht im Etikett; der Ort nur, wenn ihn die Nacht oder die Seite nicht schon nennt
   if (u.ort && !ohneOrt && !(nacht && nacht.ort === u.ort)) k.append(el("div", {class: "z"}, ortName(u.ort)));
-  const lage = lageZeile(u, !nachtDing);
+  if (gebucht && u.hinweis) k.append(el("div", {class: "z"}, u.hinweis));
+  const lage = lageZeile(u, !nachtDing, gebucht);
   if (lage) k.append(lage);
   if (u.kontakt || u.buchungslink) k.append(el("div", {class: "z"}, el("b", {}, T("seite.label.kontakt")), kontaktText(u) || "–", " ", webLink(u.buchungslink)));
   // Lesetext des Dings (#334): sichtbar an der Heimat, gegliedert nach der Art; nur hier, nie in einer Zeile oder Kachel
   if (u.lesetext) k.append(el("div", {html: u.lesetext}));
-  const bs = buchungenBei(id), st = buchungsStand(u);
+  const bs = buchungenBei(id).filter(b => buchungGiltAm(b, datum, nachtDing));
   // Der Stand steht einmal: Mit Buchung hier trägt sie ihn, sonst der Chip
-  const marke = bs.length ? null : buchungChip(u);
+  const marke = bs.length ? null : standChip(st);
   if (marke || u.frage) k.append(el("div", {class: "chips"}, marke, u.frage ? chip("leise", frageVerweis(u.frage), {href: "#" + u.frage}) : null));
   const naechteListe = u.naechte || [];
   let naechte = null;
@@ -1735,14 +1766,14 @@ function dingKarte(id, tid, mehr, ohneOrt) {
   // Merkmale der Art dieses Dings (plan/arten.yaml der Reise)
   const krit = (R.merkmale || {})[u.art] || [];
   const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
-  const teil = planungsTeil(!!(st && st.gebucht), krit, u.merkmale, [naechte,
-    u.hinweis ? el("div", {class: "z"}, u.hinweis) : null,
+  const teil = planungsTeil(gebucht, krit, u.merkmale, [naechte,
+    u.hinweis && !gebucht ? el("div", {class: "z"}, u.hinweis) : null,
     u.quelle ? el("div", {class: "z klein"}, T("seite.label.quelle") + u.quelle) : null,
     (u.fehlt || []).length ? el("div", {class: "z klein"}, T("seite.label.fehlt_noch") + u.fehlt.map(x => name[x] || x).join(", ")) : null, mehr]);
   if (teil.sichtbar) k.append(teil.sichtbar);
   for (const b of bs) k.append(buchungBlock(b));
   if (teil.block) k.append(teil.block);
-  k.append(...stornierteBuchungen(stornierteBei(id)));
+  k.append(...stornierteBuchungen(stornierteBei(id).filter(b => buchungGiltAm(b, datum, nachtDing))));
   const mitnehmen = mitnehmenZeile(id);
   if (mitnehmen) k.append(mitnehmen);
   const imKal = nachtDing
@@ -1852,44 +1883,61 @@ function einzelheiten(offen, inhalt, titel) {
   const teile = [].concat(...inhalt).filter(Boolean);
   return teile.length ? el("details", {class: "einzelheiten", open: !!offen}, el("summary", {}, titel || T("seite.buchung.einzelheiten")), teile) : null;
 }
-// Molekül Buchung: Etikett mit Zustand, darunter was man bis zur Reise und vor Ort braucht (Nummer, ab wann, z. B. Check-in,
-// Preis, Zahlung, eine noch laufende Frist) und die Belege (die Bestätigung zeigt man an der Rezeption); alles Übrige in den
-// „Einzelheiten zur Buchung“, zu, sobald gebucht (Stand-Leiter, Product Owner 31.10.2026). Storno steht immer dort; an die
-// Stornofrist erinnert der Wächter.
+// Molekül Buchung: Etikett mit Zustand und Zahlstand als Marke, darunter was man bis zur Reise und vor Ort braucht. Gebucht ist
+// das die Check-in-Ansicht (#463, Product Owner 9.11.2026): Nummer, Check-in ab und Check-out bis (Anreise, Abreise mit Uhrzeit;
+// bei Strecken das Reisedatum), was vor Ort noch zu zahlen ist, eine noch laufende Frist. Preis, Zahlungsweg, Belege, Stornoregel
+// und „gebucht bei“ stehen in den „Einzelheiten zur Buchung“, zu, sobald gebucht (Stand-Leiter, Product Owner 31.10.2026).
+// Angefragt stehen Preis und Zahlung noch oben. Jede Angabe steht einmal. An die Stornofrist erinnert der Wächter.
 function buchungBlock(b) {
-  const zu = b.status === "storniert", h = heute();
+  const zu = b.status === "storniert", gebucht = b.status === "gebucht", h = heute();
+  const nachtDing = !!(R && R.unterkuenfte[(b.fuer || [])[0]]);
+  // Zahlstand (#166) als Marke: bezahlt gefüllt, vor Ort und inklusive leise, offen und angezahlt als offen
+  const zahlMarke = !zu && b.zahlung ? chip(b.zahlung === "bezahlt" ? "plan" : ["vor_ort", "inklusive"].includes(b.zahlung) ? "neben" : b.zahlung === "erstattet" ? "weg" : "offen", zahlungText(b.zahlung)) : null;
   const k = el("div", {class: "buchung ziel", id: b.id, "data-ziel": b.id},
     el("div", {class: "titelzeile"}, el("span", {}, dingEtikett(T("seite.etikett.buchung"), null, "ticket"), " ",
-      chip(zu ? "weg" : b.status === "gebucht" ? "plan" : "offen", BUCHUNG_STATUS[b.status] || b.status)), zid(b.id)));
+      chip(zu ? "weg" : gebucht ? "plan" : "offen", BUCHUNG_STATUS[b.status] || b.status), zahlMarke ? " " : null, zahlMarke), zid(b.id)));
   const zeile = (name, wert, klasse) => wert ? el("div", {class: "z" + (klasse ? " " + klasse : "")}, el("b", {}, name + ": "), wert) : null;
   const ueber = !zu && V.fristen && b.frist && b.frist < h;
   // Die Frist steht oben, solange sie läuft (eine überfällige, solange Fristen zählen); danach zugeklappt
   const fristOben = b.frist && (b.frist >= h || ueber);
   const frist = b.frist ? zeile(T("seite.buchung.frist"), datumKurz(b.frist) + (b.frist_was ? " · " + b.frist_was : ""), ueber ? "ueber" : null) : null;
-  // Zahlstand (#166) in Worten mit seinen Einzelheiten aus bezahlt
-  const zahlung = [zahlungText(b.zahlung), b.bezahlt].filter(Boolean).join(" · ");
-  k.append(...[zeile(T("seite.buchung.nummer"), b.nummer), b.ab ? zeile(T("seite.buchung.ab"), datumText(b.ab, wochentag(b.ab)) + (b.ab_was ? " · " + b.ab_was : "")) : null,
-    zeile(T("seite.buchung.preis"), b.preis), zeile(T("seite.buchung.zahlung"), zahlung), fristOben ? frist : null].filter(Boolean));
-  k.append(belegeListe(b));
+  // Zeitraum (#463): bei einer Unterkunft Check-in und Check-out mit Uhrzeit, sonst das Reisedatum
+  const tagZeit = (d, zeit, schluessel) => [d ? datumText(d, wochentag(d)) : "", zeit ? T(schluessel, {zeit}) : ""].filter(Boolean).join(" ");
+  const zeitraum = nachtDing ? [
+    b.anreise || b.anreise_ab ? zeile(T("seite.buchung.checkin"), tagZeit(b.anreise, b.anreise_ab, "seite.buchung.uhr_ab")) : null,
+    b.abreise || b.abreise_bis ? zeile(T("seite.buchung.checkout"), tagZeit(b.abreise, b.abreise_bis, "seite.buchung.uhr_bis")) : null]
+    : [b.anreise ? zeile(T("seite.buchung.reisedatum"), b.abreise && b.abreise !== b.anreise
+        ? T("seite.buchung.zeitraum_text", {an: datumText(b.anreise, wochentag(b.anreise)), ab: datumText(b.abreise, wochentag(b.abreise))}) : datumText(b.anreise, wochentag(b.anreise))) : null];
+  // „Ab“ (Issue #135) nur, wenn es nicht schon der Check-in ist
+  const abDoppelt = b.ab && b.ab === b.anreise && b.anreise_ab;
+  const ab = b.ab && !abDoppelt ? zeile(T("seite.buchung.ab"), datumText(b.ab, wochentag(b.ab)) + (b.ab_was ? " · " + b.ab_was : "")) : null;
+  const preisZ = zeile(T("seite.buchung.preis"), b.preis);
+  const zahlungZ = zeile(T("seite.buchung.zahlung"), gebucht ? b.bezahlt : [zahlungText(b.zahlung), b.bezahlt].filter(Boolean).join(" · "));
+  k.append(...[zeile(T("seite.buchung.nummer"), b.nummer), ...zeitraum, ab, gebucht ? null : preisZ, gebucht ? null : zahlungZ,
+    zeile(T("seite.buchung.vor_ort_zahlen"), b.vor_ort_zahlen), fristOben ? frist : null].filter(Boolean));
   const preise = Object.entries(b.preise || {}), personen = Object.entries(b.personen || {});
   // Dinge der Buchung mit Namen als Link zu ihrer Heimat (ADR-0003, #189); mit Trennzeichen aneinander
   const reihe = (teile, trenner) => teile.flatMap((x, i) => i ? [trenner, x] : [x]);
   const dingLink = x => link(x, titelZu(x) || x);
   const leise = [b.gebucht_am ? T("seite.buchung.gebucht_am", {datum: datumKurz(b.gebucht_am)}) : "", b.wer ? T("seite.label.von_wer", {wer: b.wer}) : "", b.quelle ? T("seite.label.quelle") + b.quelle : ""].filter(Boolean);
-  k.append(einzelheiten(b.status !== "gebucht", [
-    (b.fuer || []).length > 1 ? zeile(T("seite.buchung.fuer"), el("span", {}, reihe(b.fuer.map(dingLink), ", "))) : null,
-    zeile(T("seite.buchung.bei"), b.bei),
+  const nBelege = BL.filter(x => x.buchung === b.id).length;
+  k.append(einzelheiten(!gebucht, [
+    gebucht ? preisZ : null,
     preise.length ? zeile(T("seite.buchung.preise"), el("span", {}, reihe(preise.map(([x, p]) => el("span", {}, dingLink(x), ": " + p)), " · "))) : null,
+    gebucht ? zahlungZ : null,
+    belegeListe(b),
+    b.storno || b.storno_bis ? zeile(T("seite.buchung.storno"), [b.storno, b.storno_bis ? T("seite.label.bis") + datumKurz(b.storno_bis) : ""].filter(Boolean).join(" · ")) : null,
+    zeile(T("seite.buchung.bei"), b.bei),
+    (b.fuer || []).length > 1 ? zeile(T("seite.buchung.fuer"), el("span", {}, reihe(b.fuer.map(dingLink), ", "))) : null,
     personen.length ? zeile(T("seite.buchung.reisende"), personen.map(([n, a]) => n + (a ? ` (${a})` : "")).join(", ")) : null,
     // Merkmale der Buchung (#166): die Art ihrer Dinge legt sie fest; Herkunft wie die Buchung
     ...(b.merkmale || []).map(m => zeile(m.name, m.wert + (m.einheit ? " " + m.einheit : ""))),
     fristOben ? null : frist,
-    b.storno || b.storno_bis ? zeile(T("seite.buchung.storno"), [b.storno, b.storno_bis ? T("seite.label.bis") + datumKurz(b.storno_bis) : ""].filter(Boolean).join(" · ")) : null,
     b.notiz ? el("div", {class: "z"}, b.notiz) : null,
     leise.length ? el("div", {class: "z klein"}, leise.join(" · ")) : null,
     (b.verlauf || []).length > 1 ? el("details", {class: "verlauf"}, el("summary", {}, T("seite.buchung.verlauf", {n: b.verlauf.length})),
       b.verlauf.slice().reverse().map(v => el("div", {}, `${datumKurz(v.datum)} ${v.wer || ""}: ${AG_WAS[v.was] || v.was || ""}${v.grund ? " (" + v.grund + ")" : ""}`))) : null,
-  ], T("seite.buchung.einzelheiten_buchung")));
+  ], nBelege ? T("seite.buchung.einzelheiten_belege", {n: nBelege}) : T("seite.buchung.einzelheiten_buchung")));
   return k;
 }
 // Organismus Stornierte Buchungen (#146): alle stornierten Buchungen eines Dings zugeklappt in einem Block, oben der Hinweis
@@ -2120,13 +2168,14 @@ function kartenLinks(u) {
     APPLE ? el("a", {class: "web-link", href: apple, target: "_blank", rel: "noopener"}, "Apple Karten ↗") : null);
 }
 // Molekül Lage: Adresse (oder „Koordinaten“) mit Herkunft und den Kartenlinks; ohne Lage ein leiser Hinweis
-function lageZeile(u, ohneHinweis) {
+// ohneHerkunft: gebuchte Unterkunft (#463), die Adresse ist dann bestätigt; das ⓘ mit der Herkunft entfällt
+function lageZeile(u, ohneHinweis, ohneHerkunft) {
   const l = kartenLinks(u);
   if (!l) return ohneHinweis ? null : el("div", {class: "z klein"}, T("seite.lage.fehlt"));
   const v = u.adresse || u.punkt;
   return el("div", {class: "z lage"}, el("b", {}, u.adresse ? T("seite.label.adresse") : T("seite.label.lage")),
     u.adresse ? u.adresse.wert : u.punkt.wert.map(x => zahlText(x, {minimumFractionDigits: 4, maximumFractionDigits: 4})).join(" · "), " ",
-    v.quelle ? el("span", {class: "z klein", title: T("seite.label.quelle") + v.quelle + (v.geprueft ? T("seite.merkmal.geprueft_am", {datum: datumKurz(v.geprueft)}) : "")}, "ⓘ") : null, " ", l);
+    v.quelle && !ohneHerkunft ? el("span", {class: "z klein", title: T("seite.label.quelle") + v.quelle + (v.geprueft ? T("seite.merkmal.geprueft_am", {datum: datumKurz(v.geprueft)}) : "")}, "ⓘ") : null, " ", l);
 }
 // Atom Link: Adresse als Link nach außen in neuem Fenster, mit dem Namen der Webseite; für jeden Wert eines Merkmals vom Typ link
 // und für den Buchungslink einer Unterkunft (ontologie.md, #165). Die Seite rät keine Adresse mehr aus einem Kontakt-Text.
@@ -3200,7 +3249,7 @@ function kartenZeilen(liste, segmente) {
    Zähler, Karte, Kennzahlen, Stand der Vorbereitung und die Tage als Zeilen; alles aus den Daten, für jede Reise gleich. */
 // Stand einer Nacht: Name, Zustand und ob sie als Unterkunft zählt (an Bord nicht). Gebucht ist, was eine geltende
 // Buchung (B-…) mit Status gebucht hat (berechneter Stand d.buchung aus routen.py).
-function nachtStand(n) {
+function nachtStand(n, datum) {
   if (!n) return null;
   if (n.an_bord) return {name: T("seite.nacht.an_bord"), zaehlt: false};
   const w = n.wahl && wahlZu.get(n.wahl);
@@ -3210,7 +3259,7 @@ function nachtStand(n) {
   const akt = w && (kand.find(o => o.aktiv) || kand[0]);
   const uid = n.unterkunft && R.unterkuenfte[n.unterkunft] ? n.unterkunft : akt && (akt.unterkuenfte || []).find(x => R.unterkuenfte[x]);
   const u = uid && R.unterkuenfte[uid];
-  if (u) { const st = buchungsStand(u);   // ohne Stand (Art nicht buchbar): die Nacht zählt nicht als zu buchen
+  if (u) { const st = buchungsStandAm(u, uid, datum, true);   // je Nacht (#463); ohne Stand (Art nicht buchbar): die Nacht zählt nicht als zu buchen
     return st ? {name: u.name, zustand: st.gebucht ? "" : "offen", text: st.text, zaehlt: true, gebucht: st.gebucht, bid: st.bid}
       : {name: u.name, zustand: "", text: "", zaehlt: false, gebucht: false}; }
   return {name: akt ? akt.titel : n.hinweis || ortName(n.ort), zustand: "offen", text: akt ? T("seite.buchung.nicht_gebucht") : T("seite.nacht.unterkunft_offen_kurz"), zaehlt: true, gebucht: false};
@@ -3220,7 +3269,7 @@ function nachtStand(n) {
 function tagZeile(t) {
   // Gehzeit und Strecke des Tags rechnet das Routenmodell (tag.kennzahlen); die Seite formatiert sie nur
   // Hat der Tag eine summierte Strecke ohne Gehzeit (gezaehlt, fehlend), steht dort „Angaben fehlen“ statt einer leeren Zeile (#269)
-  const {min: m, km, gezaehlt, fehlend} = t.kennzahlen || {}, s = nachtStand(t.nacht);
+  const {min: m, km, gezaehlt, fehlend} = t.kennzahlen || {}, s = nachtStand(t.nacht, t.datum);
   const ohneZeit = !m && gezaehlt && (fehlend || []).includes("min");
   const wahl = (t.wahlstellen || []).map(v => wahlZu.get(v)).filter(w => w && gueltigeOptionen(w).length > 1 && w.id !== (t.nacht || {}).wahl);
   // Feste Termine des ersten und letzten Tags stehen schon bei An- und Abreise
@@ -3249,7 +3298,7 @@ function reiseKennzahlen(p) {
 function buchungen(p) {
   const aus = [];
   for (const t of p.tage) {
-    const x = nachtStand(t.nacht);
+    const x = nachtStand(t.nacht, t.datum);
     if (x && x.zaehlt) {
       const n = t.nacht, w = n.wahl && wahlZu.get(n.wahl), offen = !!x.wahlOffen;
       const akt = w && gueltigeOptionen(w).find(o => o.aktiv);
@@ -3258,10 +3307,10 @@ function buchungen(p) {
         zustand: x.zustand, text: buchungText(x.text, x.bid), gebucht: x.gebucht, href: offen ? w.id : x.bid || n.unterkunft || (w ? w.id : t.id)});
     }
     // Bewegungen und Aufenthalte mit Buchungsstand; angefragt zählt noch nicht als gebucht; eine Buchung (B-…) ist das Ziel
-    for (const st of t.strecken) { const s = R.strecken[st.id], b = s && buchungsStand(s); if (b)
+    for (const st of t.strecken) { const s = R.strecken[st.id], b = s && buchungsStandAm(s, st.id, t.datum, false); if (b)
       aus.push({tag: t, id: st.id, titel: s.titel, sym: artSym([].concat(s.art || [])[0], "bewegung"), unter: datumText(t.datum, t.wochentag) + " · " + artName([].concat(s.art || [])[0]),
         zustand: b.gebucht ? "" : "offen", text: buchungText(b.text, b.bid), gebucht: b.gebucht, href: b.bid || t.id}); }
-    for (const aid of t.aufenthalte || []) { const a = (R.aufenthalte || {})[aid], b = a && buchungsStand(a); if (b)
+    for (const aid of t.aufenthalte || []) { const a = (R.aufenthalte || {})[aid], b = a && buchungsStandAm(a, aid, t.datum, false); if (b)
       aus.push({tag: t, id: aid, titel: a.name, sym: artSym(a.art, "aufenthalt"), unter: [datumText(t.datum, t.wochentag), artName(a.art), a.zeit].filter(Boolean).join(" · "),
         zustand: b.gebucht ? "" : "offen", text: buchungText(b.text, b.bid), gebucht: b.gebucht, href: b.bid || t.id}); }
   }
@@ -3308,8 +3357,8 @@ function betrag(text) {
 // für sie, ihr Preis; einmal je Buchung, auch wenn sie mehrere Nächte umfasst.
 // -> {text, bekannt, naechte} oder null, wenn kein Preis bekannt ist
 const kostenMerkmal = art => ((R.arten || {})[art] || {}).kosten || "";
-function buchungsPreis(uid) {
-  const u = R.unterkuenfte[uid], b = u && u.buchung_id && (R.buchungen || {})[u.buchung_id];
+function buchungsPreis(uid, datum) {
+  const u = R.unterkuenfte[uid], st = u && buchungsStandAm(u, uid, datum, true), b = st && st.bid && (R.buchungen || {})[st.bid];
   if (!b || b.status !== "gebucht") return null;
   const text = (b.preise || {})[uid] || ((b.fuer || []).length === 1 ? b.preis : "");
   const x = text && betrag(text);
@@ -3318,14 +3367,14 @@ function buchungsPreis(uid) {
 function reiseKosten(p) {
   const summe = {}, gezaehlt = new Set(); let bekannt = 0, naechte = 0;
   for (const d of p.tage) {
-    const n = d.nacht, st = nachtStand(n);
+    const n = d.nacht, st = nachtStand(n, d.datum);
     if (!st || !st.zaehlt) continue;
     naechte++;
     const w = n.wahl && wahlZu.get(n.wahl);
     const kand = w ? w.optionen.filter(o => !weg(o.status)) : [];
     const offen = w && w.wann === "planung" && w.offen && kand.length > 1;
     const uids = n.unterkunft ? [n.unterkunft] : (offen ? kand : [kand.find(o => o.aktiv) || kand[0]].filter(Boolean)).flatMap(o => o.unterkuenfte || []);
-    const gebucht = !offen && uids.length === 1 ? buchungsPreis(uids[0]) : null;
+    const gebucht = !offen && uids.length === 1 ? buchungsPreis(uids[0], d.datum) : null;
     if (gebucht && gezaehlt.has(gebucht.bid)) { bekannt++; continue; }   // weitere Nacht derselben Buchung: schon gezählt
     if (gebucht) gezaehlt.add(gebucht.bid);
     const preise = gebucht ? [gebucht] : uids.map(u => R.unterkuenfte[u] && betrag((giltAm(((R.unterkuenfte[u].merkmale || {})[kostenMerkmal(R.unterkuenfte[u].art)]), d.datum) || {}).wert || "")).filter(Boolean);
@@ -3768,13 +3817,21 @@ function tagEbenen(t, etappen) {
     el("summary", {}, T("seite.tag.quellen_pruefung_n", {n: teile.quellen.length})), teile.quellen.map(([a, b]) => leseAbschnitt(b, kz(a))))) : null;
   return {weg, unterwegs, hintergrund, quellen};
 }
+// Erste Nacht des Aufenthalts, zu dem die Nacht des Tags t gehört: die erste Nacht der Unterkunft oder die letzte Anreise einer
+// ihrer Buchungen bis zu diesem Tag (#463)
+function aufenthaltBeginn(uid, t) {
+  const naechte = R.unterkuenfte[uid].naechte || [], tage = (PLAN_ANSICHT || {}).tage || R.tage;
+  const beginn = new Set([naechte[0], ...buchungenBei(uid).map(buchungTag).filter(Boolean)]);
+  for (let i = tage.findIndex(x => x.id === t.id); i >= 0; i--) if (beginn.has(tage[i].id)) return tage[i].id;
+  return naechte[0];
+}
 /* Organismus Nacht der Tagesseite (Seitenordnung 28.10.2026): Heimat von Unterkunft und Wahl der Nacht. Ist die Wahl
    offen, stehen die Möglichkeiten im Vergleich; sonst die Unterkunft vollständig (Adresse, Kontakt, Buchung), die übrigen
    Möglichkeiten zugeklappt. */
 function nachtAbschnitt(t) {
   const n = t.nacht;
   if (!n || n.an_bord) return null;
-  const st = nachtStand(n), w = n.wahl && wahlZu.get(n.wahl);
+  const st = nachtStand(n, t.datum), w = n.wahl && wahlZu.get(n.wahl);
   const kand = w ? gueltigeOptionen(w) : [];
   const akt = w && (kand.find(o => o.aktiv) || kand[0]);
   const uid = n.unterkunft && R.unterkuenfte[n.unterkunft] ? n.unterkunft : akt && (akt.unterkuenfte || []).find(x => R.unterkuenfte[x]);
@@ -3784,15 +3841,20 @@ function nachtAbschnitt(t) {
       st && st.text ? chip(st.zustand, offen ? T("seite.nacht.noch_waehlen_n", {n: kand.length}) : st.text) : null]));
   if (offen) s.append(wahlKarte(w), el("p", {class: "meldung"}, T("seite.tag.entscheiden_hinweis")));
   else {
-    // Eine Heimat je Unterkunft (ADR-0003): vollständig an ihrer ersten Nacht im Plan, an jeder weiteren als Zeile mit Link dorthin
-    const erste = uid && (R.unterkuenfte[uid].naechte || [])[0];
+    // Eine Heimat je Unterkunft (ADR-0003): vollständig an ihrer ersten Nacht im Plan, an jeder weiteren als Zeile mit Link dorthin.
+    // Beginnt an einer späteren Nacht eine eigene Buchung (Anreise, #463), ist das ein neuer Aufenthalt mit eigenem Check-in:
+    // dort steht die Karte noch einmal, mit nur dieser Buchung
+    const erste = uid && aufenthaltBeginn(uid, t);
     // Bei mehr als einer Option insgesamt (auch verworfene, damit #V-….b erreichbar bleibt); gezählt werden nur gültige (#146).
     // Steht die Unterkunft hier, gehören die anderen Möglichkeiten zu ihrer Planung (nach der Buchung „Aus der Planung“)
     const alle = w && w.optionen.length > 1 ? el("details", {class: "block"}, el("summary", {}, T("seite.wahl.alle_moeglichkeiten_n", {n: gueltigeOptionen(w).length})), wahlKarte(w)) : null;
     const karte = uid && (!erste || erste === t.id);
     if (karte) s.append(dingKarte(uid, t.id, alle));
-    else if (uid) s.append(nachtZeile(n, false, t.datum, true), el("p", {class: "meldung"}, T("seite.tag.alles_zur_unterkunft"),
-      link(uid, T("seite.tag.nr_pfeil", {nr: (R.tage.find(x => x.id === erste) || {}).nr || ""}))));
+    // Gehört die Nacht zu einer Buchung mit Zeitraum, die früher beginnt, nennt der Verweis ihre Nummer (#463)
+    else if (uid) s.append(nachtZeile(n, false, t.datum, true), el("p", {class: "meldung"},
+      st && st.bid && ((R.buchungen || {})[st.bid] || {}).anreise && R.buchungen[st.bid].nummer ? T("seite.tag.alles_zur_buchung", {nummer: R.buchungen[st.bid].nummer})
+        : erste !== (R.unterkuenfte[uid].naechte || [])[0] ? T("seite.tag.alles_zum_aufenthalt") : T("seite.tag.alles_zur_unterkunft"),
+      link(erste === (R.unterkuenfte[uid].naechte || [])[0] ? uid : erste, T("seite.tag.nr_pfeil", {nr: (R.tage.find(x => x.id === erste) || {}).nr || ""}))));
     else s.append(el("p", {class: "meldung"}, n.hinweis || T("seite.nacht.unterkunft_offen_punkt")));
     if (alle && !karte) s.append(alle);
   }
@@ -5498,7 +5560,8 @@ window.addEventListener("online", () => agLaden().then(rmNeuZeichnen));
 // Seite gilt; ersatz: Wahlstelle, deren Heimat ersatzweise gilt; offen: ohne Seite „Zu tun“}
 function vorgabeEltern(id) {
   const a = (R.aufenthalte || {})[id];
-  if (R.buchungen && R.buchungen[id]) return {von: [(R.buchungen[id].fuer || [])[0]]};   // Buchung: ihr erstes Ding (dort steht der Block)
+  if (R.buchungen && R.buchungen[id]) { const tag = buchungTag(R.buchungen[id]);   // Buchung: der Tag ihrer Anreise (#463), sonst ihr erstes Ding
+    return {von: [...(tag ? [tag] : []), (R.buchungen[id].fuer || [])[0]]}; }
   if (a) {   // Aufenthalt ohne Nacht: der Tag, an dem er steht, ohne Tag die Seite seines Orts
     const ortSeite = !a.tage.length && !!ortSeiteZu(a.ort);
     return {von: a.tage.length ? a.tage : ortSeite ? [a.ort] : []};
@@ -5611,7 +5674,7 @@ function route(behalten) {
   if (routeName(h) !== h) { h = routeName(h); history.replaceState(history.state, "", "#" + h); }
   // Eine Buchung (B-…, #76) wohnt bei ihrem ersten Ding (ADR-0003): dorthin, und der Block der Buchung ist das Ziel
   const zielB = R && R.buchungen && R.buchungen[h] ? h : null;
-  if (zielB) h = (R.buchungen[h].fuer || [])[0] || "";
+  if (zielB) h = buchungTag(R.buchungen[h]) || (R.buchungen[h].fuer || [])[0] || "";
   if (q.length >= 2) { zeigeReiter(reiter); ansichtSuche(m, q); window.scrollTo(0, 0); return; }
   // Eine Seitenordnung (#214): ohne Sprungziel der Startreiter; „Plan“ (ältere Links) und „Reise“ führen zur Reise
   const start = () => { const ht = heuteTag(); if (ht) { zeigeReiter("heute"); ansichtTag(m, ht.id); return; }

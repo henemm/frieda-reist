@@ -148,10 +148,10 @@ for (const breite of [390, 1300]) {
   // Kosten: gebucht zählt der Preis der Buchung, nicht das Angebot (Testwert: B-01 kostet 100 €, U-01 bietet 120 €)
   a.kosten = await p.evaluate(() => { const alt = R.buchungen["B-01"].preis; R.buchungen["B-01"].preis = "100 € (Testwert)";
     const k = reiseKosten(PLAN_FEST).text; R.buchungen["B-01"].preis = alt; return [k, reiseKosten(PLAN_FEST).text]; });
-  // Belege (31.10.2026): eine Zeile wie im Postfach, sichtbar ohne Aufklappen; keine Knöpfe ohne Konto (Beleg erfunden)
+  // Belege (31.10.2026): eine Zeile wie im Postfach; seit #463 (9.11.2026) in den Einzelheiten zur Buchung; keine Knöpfe ohne Konto (Beleg erfunden)
   await p.evaluate(() => { BL = [{id: "x1", buchung: "B-01", name: "Bestätigung Hotel.pdf", groesse: 2048, wer: "Ida",
     hochgeladen: "2026-10-29T10:00:00", sichtbar: "alle"}]; route(true); });
-  await p.waitForSelector(".ebene-nacht #U-01 .beleg");
+  await p.waitForSelector(".ebene-nacht #U-01 .beleg", {state: "attached"});
   a.beleg = await p.evaluate(() => { const z = document.querySelector("[id='B-01'] .beleg");
     return {zugeklappt: !!z.closest("details:not([open])"), art: z.querySelector(".beleg-art").textContent,
       name: z.querySelector("a").textContent, knoepfe: document.querySelectorAll("[id='B-01'] .belege button").length}; });

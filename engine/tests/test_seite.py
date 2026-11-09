@@ -291,7 +291,8 @@ def test_buchung_genau_einmal_vollstaendig(tmp_path, browser):
         e = seite_der_variante(tmp_path / name, browser, **variante)
         b = e["buchung"]
         assert b and b["sichtbar"] and b["nummer"] == "HE-2027-0415", (name, e)
-        assert b["zahlung"] == "angezahlt · Anzahlung 30 €, Rest vor Ort (Beispielwert)", (name, b)   # Zahlstand in Worten (#166)
+        # Zahlstand (#166): gebucht steht er als Marke im Kopf, die Zeile „Zahlung“ in den Einzelheiten nennt nur den Weg (#463)
+        assert b["zahlung"] == "Anzahlung 30 € per Überweisung am 29.10.2026 (Beispielwert)", (name, b)
         assert b["reiter"] == "varianten", (name, b)          # Reise, nicht ein Reiter „Plan“
         assert len(e["stornoB01"]["b01"]) == 1, (name, e["stornoB01"]["b01"])   # genau ein Ding zeigt sie voll
 
