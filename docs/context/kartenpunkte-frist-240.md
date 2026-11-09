@@ -55,3 +55,62 @@ Sperre mit eigener, längerer Frist und einer Wiederholung bei sofortigem 502; d
 - Die Linie kann sich zwischen Abruf und Vorgang ändern → Abfrage vergleichen.
 - Last am öffentlichen Dienst: höchstens eine Wiederholung, Kennung mitsenden, Lizenzhinweis bleibt.
 - Abnahme nur an eigener Testreise (`testreise-karten-225-erfunden-2027`, archiviert, Art `wasserstelle`), auch Städtewochenende.
+
+## Analysis
+
+### Type
+Bug (Werkzeug `map_points_fetch` liefert am echten Overpass-Dienst nie Treffer: Frist 12 s gegen gemessene 33–44 s).
+
+### Befund aus dem Code (9.11.2026)
+- `kartenpunkte_holen` läuft im Unterprozess `schreiben.py anwenden` unter der Sperre der Reise, Frist `FR_SB_FRIST` = Rest von
+  `ZEIT_GESAMT` (25 s). Der Netzabruf `overpass_abfragen` sitzt mitten darin, mit `OSM_ZEIT` = 12 s client- und serverseitig (`[timeout:12]`).
+- Die Abfrage hängt nur an der Linie (`karte.wege[sid]` bzw. Orte von/nach aus `route_stand`, d. h. Probebau), an `osm` und `abstand_m`.
+- Speicherweg: Unterprozess nutzt den Code des Dienstes. Git-Weg: Unterprozess nutzt den Code der Arbeitskopie (kann älter sein);
+  ein neuer Kanal muss deshalb von altem Code gefahrlos ignoriert werden (Umgebungswert statt Feld in der Anfrage).
+- Rollenprüfung (`wer_pruefen`) geschieht erst im Vorgang. Ein Abruf vorab darf erst nach derselben Prüfung ins Netz gehen
+  (sonst kann eine Gast-Rolle Last am öffentlichen Dienst auslösen).
+- `route_stand` ruft `plan_sicherstellen`, das in den Ordner schreiben kann: der Vorab-Abruf arbeitet in einer eigenen Kopie
+  (Speicher: `reisespeicher.exportieren(reise, tmp, bis=stand_nummer)`, nur lesend; Git: Kopie von `<FR_WURZEL>/reisen/<reise>`).
+- Konnektor wartet 120 s (`schreib_anfrage`), nginx `/mcp` 300 s. Der Kommentar „30 s von proxy_read_timeout“ bei `ZEIT_GESAMT` ist veraltet.
+
+### Affected Files (with changes)
+| File | Change Type | Description |
+|------|-------------|-------------|
+| engine/schreiben.py | MODIFY | `kartenpunkte_abfrage(reise_dir, args)` aus `kartenpunkte_holen` herauslösen (Prüfung, Linie, bbox, Abfrage); `overpass_holen(abfrage, frist)` mit einer Wiederholung bei schnellem 429/502/503/504; `kartenpunkte_vorab(s, reise, anfrage)` vor der Sperre in `anwenden_extern` (Lesekopie, `wer_pruefen`, Abruf mit `OSM_FRIST_VORAB` ≈ 45 s, Ergebnis als Datei, Pfad im Umgebungswert `FR_OSM_VORAB`); `overpass_abfragen` nimmt die Vorab-Antwort, wenn die Abfrage gleich ist, sonst Abruf wie bisher; Overpass-Adresse über `instanz.wert("FR_OVERPASS", …)` (Tests); Kommentar der Zeitgrenzen berichtigen |
+| engine/schreiben_git.py | MODIFY | `vorgang` reicht den zusätzlichen Umgebungswert an den Unterprozess weiter |
+| engine/texte_*.py | MODIFY (evtl.) | nur falls eine neue Ablehnung nötig ist (z. B. „Dienst nach Wiederholung nicht erreichbar“); bestehende `schreiben.kartenpunkte.limit/.dienst` reichen voraussichtlich |
+| engine/tests/test_schreiben.py | MODIFY | Vorab-Abruf: gleiche Abfrage → Unterprozess ohne Netz (FR_OVERPASS auf unerreichbare Adresse), andere Abfrage → eigener Abruf, Gast-Rolle → kein Netzabruf, schneller 502 → genau eine Wiederholung, Fehlschlag → Ablehnung ohne Sperre, Feld aus der Anfrage wird nie als Vorab-Antwort genommen, Städtewochenende (ohne Strecke) → Ablehnung wie bisher; Zeitbudget-Test: Vorab + ZEIT_GESAMT + ZEIT_PRUEFUNG < 120 s Konnektor |
+| docs/specs/betrieb/schreibweg-zeitgrenzen.md | MODIFY | Vorab-Fenster für Netzabrufe beschreiben |
+| docs/konnektor.md, docs/werkzeuge.md | MODIFY | Dauer (bis etwa eine Minute) und Verhalten bei Überlast |
+
+### Scope Assessment
+- Files: 5–7
+- Estimated LoC: +150/-20 (davon etwa die Hälfte Tests)
+- Risk Level: MEDIUM (greift in `anwenden_extern`, den gemeinsamen Einstieg aller Schreibvorgänge; Änderung bleibt auf `kartenpunkte_holen` begrenzt)
+
+### Technical Approach
+Empfehlung: Lösungsrichtung 1 „Abruf vor der Sperre“.
+1. In `anwenden_extern`, nur für `kartenpunkte_holen`: Lesekopie des aktuellen Stands in einen temporären Ordner, `wer_pruefen`,
+   `kartenpunkte_abfrage` → Abfrage. Scheitert die Prüfung mit einer Ablehnung, kein Vorab-Abruf (der Vorgang lehnt mit demselben
+   Grund ab, maßgeblich bleibt er).
+2. Abruf mit eigener Frist (≈ 45 s, serverseitig `[timeout:…]` passend), eine Wiederholung nach kurzer Pause nur bei schneller
+   Antwort 429/502/503/504; Kennung als User-Agent wie bisher. Scheitert er, Ablehnung sofort, ohne die Sperre zu nehmen.
+3. Ergebnis `{abfrage, antwort}` als Datei im eigenen temporären Ordner, Pfad als `FR_OSM_VORAB` an den Unterprozess (beide Wege).
+   Der Unterprozess nutzt sie nur bei exakt gleicher Abfrage (Linie zwischendurch geändert → eigener Abruf mit der alten kurzen Frist).
+   Ordner wird in jedem Fall gelöscht. Kein Feld der Anfrage wird je als Antwort genommen.
+4. Die Sperre der Reise wird dadurch nicht länger gehalten als heute; andere Schreibvorgänge laufen während des Abrufs weiter.
+Verworfen: Richtung 2 (Sperre eine Minute, andere Vorgänge bekämen 429), Richtung 3 (kein Ausweichdienst erreichbar; eigener
+Overpass-Server ist ein eigenes Vorhaben).
+
+### Dependencies
+- Upstream: Overpass-API, `instanz.kennung()`, `route_stand`/`bauen.Bauer` (Probebau), `reisespeicher.exportieren`/`stand_nummer`, `wer_pruefen`.
+- Downstream: Konnektor `map_points_fetch` (wartet 120 s), Claude-App (eigene Wartezeit unbekannt, Abnahme zeigt sie).
+- Git-Weg (#350 offen) muss weiter funktionieren; alter Code in der Arbeitskopie ignoriert `FR_OSM_VORAB`.
+
+### Kern (ADR-0001)
+Keine KI, kein neues Merkmal, nichts Reisespezifisches; nur Zeitverhalten eines vorhandenen Werkzeugs. Beide Reisetypen: Wanderung
+(Strecke mit Linie) und Städtewochenende (keine Strecke → gleiche Ablehnung wie bisher, ohne Netzabruf).
+
+### Open Questions
+- keine Produktfrage. Technisch offen, durch Abnahme zu klären: Wartet die Claude-App bis etwa 75 s auf ein Werkzeug? Wenn nicht,
+  Folge-Issue (z. B. Abruf im Hintergrund mit späterer Meldung).
