@@ -2413,3 +2413,382 @@ def test_merkmal_rolle_hero(repo):
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="Rolle hero hat an dieser Art schon"):
         s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "hotel", "bezeichnung": "Zweite", "typ": "text", "rolle": "hero"}})
+
+
+# ---------- #240: Abruf bei OpenStreetMap vor der Sperre (Spec docs/specs/betrieb/kartenpunkte-frist-240.md) ----------
+#
+# Was diese Tests als Schnittstelle festlegen (über die Spec hinaus):
+#   sb.overpass_holen(abfrage, frist) -> dict      Netzabruf mit eigener Frist und höchstens einer Wiederholung; Adresse aus
+#                                                  FR_OVERPASS (zur Laufzeit gelesen), User-Agent instanz.kennung()
+#   sb.OSM_PAUSE, sb.OSM_FRIST_VORAB, sb.ZEIT_VORAB_VORB, sb.ZEIT_VORAB   Konstanten, zur Laufzeit gelesen
+#   sb.OSM_REST_WIEDERHOLUNG = 15                  wiederholt wird nur, wenn noch so viele Sekunden der Frist übrig sind
+#   sb.overpass_abfragen(abfrage)                  nimmt die Antwort aus der Datei in FR_OSM_VORAB, wenn deren "abfrage" gleich ist,
+#                                                  sonst overpass_holen(abfrage, OSM_ZEIT)
+#   Ordner des Vorab-Abrufs: tempfile.mkdtemp(prefix="frieda-osm-")
+# Kein Test geht ins echte Netz: der Elternprozess ersetzt sb.overpass_holen, der Unterprozess `anwenden` sieht
+# FR_OVERPASS=http://127.0.0.1:9/ (dort antwortet niemand) und findet Treffer nur über FR_OSM_VORAB.
+
+OSM_NAH = {"type": "node", "id": 1, "lat": 50.9600, "lon": 14.0700, "tags": {"amenity": "drinking_water", "name": "Brunnen an der Bastei"}}
+OSM_QUELLE = {"type": "way", "id": 3, "center": {"lat": 50.9640, "lon": 14.0850}, "tags": {"natural": "spring"}}
+UNERREICHBAR = "http://127.0.0.1:9/"
+KARTENPUNKTE = {"strecke": "E-01", "kategorie": "wasser", "osm": ["amenity=drinking_water", "natural=spring"], "abstand_m": 500}
+ABFRAGE = '[out:json];(nwr["amenity"="drinking_water"](50.9,14.0,51.0,14.1););out center tags;'
+
+
+def sperre_frei(reise):
+    """Ist die Sperre der Reise gerade frei? (nicht blockierend)"""
+    import fcntl
+    with open(sb.sperrdatei(reise), "w") as f:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return False
+        fcntl.flock(f, fcntl.LOCK_UN)
+        return True
+
+
+def osm_ersatz(monkeypatch, reise="beispielreise", elemente=(OSM_NAH, OSM_QUELLE), fehler=None, warten=0, beim_abruf=None):
+    """Ersetzt den Netzabruf des Elternprozesses -> Liste der Aufrufe [(abfrage, frist, sperre_frei)]."""
+    import time
+    aufrufe = []
+
+    def holen(abfrage, frist):
+        aufrufe.append((abfrage, frist, sperre_frei(reise)))
+        if beim_abruf:
+            beim_abruf()
+        if warten:
+            time.sleep(warten)
+        if fehler:
+            raise fehler
+        return {"elements": list(elemente)}
+    monkeypatch.setattr(sb, "overpass_holen", holen)
+    monkeypatch.setenv("FR_OVERPASS", UNERREICHBAR)
+    return aufrufe
+
+
+def env_mitschneiden(monkeypatch):
+    """Zeichnet die Umgebung jedes Unterprozesses `anwenden` auf und lässt ihn laufen -> Liste der Umgebungen."""
+    original, umgebungen = sb.befehl_mit_frist, []
+
+    def befehl(argv, eingabe, frist, env=None):
+        if "anwenden" in argv:
+            umgebungen.append(dict(env or {}))
+        return original(argv, eingabe, frist, env=env)
+    monkeypatch.setattr(sb, "befehl_mit_frist", befehl)
+    return umgebungen
+
+
+@pytest.fixture
+def speicherweg(repo, tmp_path, monkeypatch):
+    """Zusätzlich zum Git-Repo: beide Beispielreisen im Reisespeicher, FR_SPEICHERREISEN mit beiden Namen -> reisespeicher."""
+    import reisespeicher as rs
+    monkeypatch.setenv("FR_SPEICHER", str(tmp_path / "_speicher"))
+    monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise,stadtwochenende")
+    rs.importieren(BEISPIEL, "beispielreise", wer="Ida", grund="Beispiel")
+    rs.importieren(BEISPIEL.parent / "stadtwochenende", "stadtwochenende", wer="Tom", grund="Beispiel")
+    return rs
+
+
+def test_zeitgrenzen_mit_vorab_abruf_240():
+    """AC-1: Vorab-Fenster, Vorgang und Prüfung liegen zusammen unter der Wartezeit des Konnektors (120 s) und jeder Lesefrist
+    der nginx-Vorlagen; die lange Frist ist länger als die kurze; der veraltete Kommentar (30 s) ist berichtigt."""
+    vorlagen = WURZEL / "betrieb" / "vorlagen"
+    grenzen = [int(g) for d in ("nginx-konnektor-orte.inc", "nginx-konnektor.inc")
+               for g in re.findall(r"proxy_read_timeout (\d+)s", (vorlagen / d).read_text())]
+    quelltext = (WURZEL / "engine" / "konnektor.py").read_text(encoding="utf-8")
+    anfrage = quelltext[quelltext.index("def schreib_anfrage"):]
+    konnektor = int(re.search(r"urlopen\(req, timeout=(\d+)\)", anfrage).group(1))
+    gesamt = sb.ZEIT_VORAB + sb.ZEIT_GESAMT + sb.ZEIT_PRUEFUNG
+    assert konnektor == 120 and gesamt < konnektor and all(gesamt < g for g in grenzen), (gesamt, konnektor, grenzen)
+    assert sb.ZEIT_VORAB == sb.ZEIT_VORAB_VORB + sb.OSM_FRIST_VORAB
+    assert sb.OSM_FRIST_VORAB > sb.OSM_ZEIT
+    assert "30 s von proxy_read_timeout" not in (WURZEL / "engine" / "schreiben.py").read_text(encoding="utf-8")
+
+
+def test_kartenpunkte_vorab_abruf_vor_der_sperre(repo, monkeypatch):
+    """AC-2: Der Dienst ruft Overpass vor der Sperre mit der langen Frist; der Unterprozess trägt die Treffer aus der Datei ein,
+    ohne selbst ins Netz zu gehen (dort wäre FR_OVERPASS unerreichbar)."""
+    wurzel, origin, arbeit, _ = repo
+    aufrufe = osm_ersatz(monkeypatch)
+    code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
+    assert code == 200 and a["ok"], a
+    assert "2 Treffer für Wasser" in a["text"] and "Brunnen an der Bastei" in a["text"], a["text"]
+    assert len(aufrufe) == 1
+    abfrage, frist, frei = aufrufe[0]
+    assert frist == sb.OSM_FRIST_VORAB and frei, aufrufe          # lange Frist, Sperre während des Abrufs frei
+    assert '["amenity"="drinking_water"]' in abfrage and "[timeout:" not in abfrage   # Abfragetext ohne Zeitangabe
+    r, _ = routen_auf_main(origin)
+    assert sum(1 for d in r["aufenthalte"].values() if d.get("an") == "E-01" and d.get("name") == "Brunnen an der Bastei") == 1
+
+
+def test_kartenpunkte_andere_abfrage_ruft_selbst_ab(repo, monkeypatch, tmp_path):
+    """AC-3: Weicht die Abfrage des Vorgangs von der Vorab-Datei ab (Linie geändert), nutzt er die Datei nicht und ruft mit der kurzen
+    Frist OSM_ZEIT selbst ab; ist sie gleich, kommt die Antwort aus der Datei, ohne Netzabruf."""
+    gleich = '[out:json];(nwr["a"="b"](1,2,3,4););out center tags;'
+    anders = '[out:json];(nwr["a"="b"](1,2,3,5););out center tags;'
+    datei = tmp_path / "osm.json"
+    datei.write_text(json.dumps({"abfrage": gleich, "antwort": {"elements": [OSM_NAH]}}), encoding="utf-8")
+    monkeypatch.setenv("FR_OSM_VORAB", str(datei))
+    aufrufe = []
+    monkeypatch.setattr(sb, "overpass_holen", lambda q, frist: aufrufe.append((q, frist)) or {"elements": [OSM_QUELLE]})
+    assert sb.overpass_abfragen(gleich) == {"elements": [OSM_NAH]} and aufrufe == []
+    assert sb.overpass_abfragen(anders) == {"elements": [OSM_QUELLE]}
+    assert aufrufe == [(anders, sb.OSM_ZEIT)]
+
+
+@pytest.mark.parametrize("wer", [KARL, {"name": "Gast", "rolle": "gast"}])
+def test_kartenpunkte_gast_loest_keinen_netzabruf_aus(repo, monkeypatch, wer):
+    """AC-4: Erst die Rolle, dann das Netz: Mitwirkende und Gäste lösen keinen Abruf aus und bekommen die bisherige Ablehnung."""
+    wurzel, _, arbeit, _ = repo
+    aufrufe = osm_ersatz(monkeypatch)
+    code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**wer, "args": KARTENPUNKTE})
+    assert code == 422 and not a["ok"], a
+    assert aufrufe == []
+
+
+class OverpassStummel:
+    """Lokaler Test-Server für Overpass: antwortet nacheinander mit den Einträgen von `antworten` (HTTP-Code oder ("warten", s))."""
+
+    def __init__(self, antworten):
+        import time
+        from http.server import BaseHTTPRequestHandler
+        self.antworten, self.anfragen = list(antworten), []
+        stummel = self
+
+        class H(BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def do_POST(self):
+                import urllib.parse
+                daten = self.rfile.read(int(self.headers.get("Content-Length") or 0)).decode()
+                stummel.anfragen.append({"zeit": time.monotonic(), "agent": self.headers.get("User-Agent"), "pfad": self.path,
+                                         "data": urllib.parse.parse_qs(daten).get("data", [""])[0]})
+                art = stummel.antworten.pop(0) if stummel.antworten else 200
+                if isinstance(art, tuple):
+                    time.sleep(art[1])
+                    art = 200
+                koerper = json.dumps({"elements": [OSM_NAH]}).encode() if art == 200 else b"busy"
+                try:
+                    self.send_response(art)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(koerper)))
+                    self.end_headers()
+                    self.wfile.write(koerper)
+                except OSError:
+                    pass
+
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), H)
+        self.server.daemon_threads = True
+        self.adresse = f"http://127.0.0.1:{self.server.server_address[1]}/api/interpreter"
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def schliessen(self):
+        self.server.shutdown()
+        self.server.server_close()
+
+
+@pytest.fixture
+def overpass_stummel(monkeypatch):
+    stummel = []
+
+    def starten(*antworten):
+        st = OverpassStummel(antworten)
+        stummel.append(st)
+        monkeypatch.setenv("FR_OVERPASS", st.adresse)
+        return st
+    yield starten
+    for st in stummel:
+        st.schliessen()
+
+
+@pytest.mark.parametrize("erst", [502, 503, 504, 429])
+def test_overpass_holen_eine_wiederholung_bei_schnellem_fehler(overpass_stummel, monkeypatch, erst):
+    """AC-5: Nach einer schnellen Fehlerantwort (429/502/503/504) genau eine Wiederholung nach OSM_PAUSE, dann Treffer."""
+    monkeypatch.setattr(sb, "OSM_PAUSE", 0.3)
+    st = overpass_stummel(erst, 200)
+    assert sb.overpass_holen(ABFRAGE, 20) == {"elements": [OSM_NAH]}
+    assert len(st.anfragen) == 2 and st.anfragen[1]["zeit"] - st.anfragen[0]["zeit"] >= 0.3
+
+
+@pytest.mark.parametrize("codes, schluessel", [((502, 502), "schreiben.kartenpunkte.dienst"), ((503, 502), "schreiben.kartenpunkte.dienst"),
+                                               ((429, 429), "schreiben.kartenpunkte.limit"), ((504, 504), "schreiben.kartenpunkte.limit")])
+def test_overpass_holen_hoechstens_zwei_zugriffe(overpass_stummel, monkeypatch, codes, schluessel):
+    """AC-5: Scheitert auch die Wiederholung, bleibt es bei zwei Zugriffen und der bisherigen Ablehnung (Limit bei 429/504)."""
+    monkeypatch.setattr(sb, "OSM_PAUSE", 0.05)
+    st = overpass_stummel(*codes, 200, 200)
+    with pytest.raises(sb.Ablehnung) as e:
+        sb.overpass_holen(ABFRAGE, 20)
+    assert e.value.schluessel == schluessel and len(st.anfragen) == 2
+
+
+def test_overpass_holen_keine_wiederholung_nach_zeitueberschreitung(overpass_stummel, monkeypatch):
+    """AC-5: Antwortet der Dienst bis zur Frist nicht, wird nicht wiederholt (auch wenn die Restzeit-Regel es zuließe)."""
+    import time
+    monkeypatch.setattr(sb, "OSM_PAUSE", 0.05)
+    monkeypatch.setattr(sb, "OSM_REST_WIEDERHOLUNG", 0)
+    st = overpass_stummel(("warten", 3), 200)
+    start = time.monotonic()
+    with pytest.raises(sb.Ablehnung) as e:
+        sb.overpass_holen(ABFRAGE, 1)
+    assert time.monotonic() - start < 2.5
+    assert e.value.schluessel == "schreiben.kartenpunkte.dienst" and len(st.anfragen) == 1
+
+
+def test_overpass_holen_keine_wiederholung_ohne_restzeit(overpass_stummel, monkeypatch):
+    """AC-5: Wiederholt wird nur, wenn noch OSM_REST_WIEDERHOLUNG (15 s) der Frist übrig sind."""
+    monkeypatch.setattr(sb, "OSM_PAUSE", 0.05)
+    assert sb.OSM_REST_WIEDERHOLUNG == 15
+    st = overpass_stummel(502, 200)
+    with pytest.raises(sb.Ablehnung):
+        sb.overpass_holen(ABFRAGE, 10)
+    assert len(st.anfragen) == 1
+
+
+def test_kartenpunkte_fehlschlag_vorab_ohne_sperre(repo, monkeypatch, capsys):
+    """AC-6: Scheitert der Vorab-Abruf endgültig, antwortet der Dienst sofort mit der Ablehnung: keine Sperre, kein Unterprozess,
+    der Stand der Reise bleibt."""
+    wurzel, origin, arbeit, _ = repo
+    vorher = git(origin, "rev-parse", "main")
+    osm_ersatz(monkeypatch, fehler=sb.Ablehnung("schreiben.kartenpunkte.limit", w1=429))
+    gesperrt, gestartet = [], []
+    monkeypatch.setattr(sb, "sperre_nehmen", lambda f, frist=None: gesperrt.append(1) or True)
+    original = sb.befehl_mit_frist
+    monkeypatch.setattr(sb, "befehl_mit_frist", lambda argv, *a, **k: gestartet.append(argv) or original(argv, *a, **k))
+    code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
+    assert code == 422 and not a["ok"] and "ausgelastet" in a["fehler"], a
+    assert gesperrt == [] and [x for x in gestartet if "anwenden" in x] == []
+    assert git(origin, "rev-parse", "main") == vorher
+    assert re.search(r"^Rejected kartenpunkte_holen 422: ", capsys.readouterr().err, re.M)
+
+
+def test_kartenpunkte_vorab_nur_aus_eigener_datei(repo, monkeypatch, tmp_path):
+    """AC-7: Felder der Anfrage werden nie als Antwort genommen; eine fehlende, leere, kaputte oder fremde Datei in FR_OSM_VORAB
+    führt zum eigenen Abruf, ohne Absturz."""
+    wurzel, origin, arbeit, _ = repo
+    fremd = tmp_path / "fremd.json"
+    fremd.write_text(json.dumps({"abfrage": "x", "antwort": {"elements": [{**OSM_QUELLE, "tags": {"name": "Untergeschoben"}}]}}))
+    aufrufe = osm_ersatz(monkeypatch, elemente=[OSM_NAH])
+    eingebettet = {"elements": [{"type": "node", "id": 9, "lat": 50.9601, "lon": 14.0701, "tags": {"name": "Untergeschoben"}}]}
+    anfrage = {**IDA, "FR_OSM_VORAB": str(fremd), "osm_vorab": eingebettet, "antwort": eingebettet,
+               "args": {**KARTENPUNKTE, "FR_OSM_VORAB": str(fremd), "osm_vorab": eingebettet}}
+    code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", anfrage)
+    assert code == 200 and "1 Treffer" in a["text"] and "Untergeschoben" not in a["text"], a
+    assert len(aufrufe) == 1
+    r, _ = routen_auf_main(origin)
+    assert not any(d.get("name") == "Untergeschoben" for d in r["aufenthalte"].values())
+    leer, kaputt = tmp_path / "leer.json", tmp_path / "kaputt.json"
+    leer.write_text("")
+    kaputt.write_text("{nicht json")
+    eigene = []
+    monkeypatch.setattr(sb, "overpass_holen", lambda q, frist: eigene.append(frist) or {"elements": []})
+    for pfad in (tmp_path / "fehlt.json", leer, kaputt, fremd):
+        monkeypatch.setenv("FR_OSM_VORAB", str(pfad))
+        assert sb.overpass_abfragen(ABFRAGE) == {"elements": []}
+    assert eigene == [sb.OSM_ZEIT] * 4
+
+
+@pytest.mark.parametrize("ausgang", ["erfolg", "ablehnung", "frist", "ausnahme"])
+def test_kartenpunkte_vorab_ordner_wird_immer_geloescht(repo, monkeypatch, tmp_path, ausgang):
+    """AC-8: Der Ordner frieda-osm-* des Vorab-Abrufs ist nach jedem Ausgang des Vorgangs weg."""
+    import tempfile
+    wurzel, _, arbeit, _ = repo
+    tmp = tmp_path / "tmp-osm"
+    tmp.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp))
+    gesehen = []
+    fehler = {"ablehnung": sb.Ablehnung("schreiben.kartenpunkte.dienst", w1="URLError"),
+              "ausnahme": RuntimeError("unerwartet")}.get(ausgang)
+    osm_ersatz(monkeypatch, fehler=fehler, beim_abruf=lambda: gesehen.extend(tmp.glob("frieda-osm-*")))
+    if ausgang == "frist":
+        monkeypatch.setattr(sb, "ZEIT_GESAMT", 0.01)
+    code, _ = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
+    assert gesehen, "der Vorab-Abruf legt seinen Ordner mit tempfile.mkdtemp(prefix='frieda-osm-') an"
+    assert {"erfolg": 200, "ablehnung": 422, "frist": 504}.get(ausgang, code) == code
+    assert list(tmp.glob("frieda-osm-*")) == []
+
+
+def test_kartenpunkte_abruf_haelt_die_sperre_nicht(repo, monkeypatch):
+    """AC-9: Während der Vorab-Abruf dauert, bekommt ein anderer Schreibvorgang derselben Reise die Sperre (kein 429)."""
+    wurzel, _, arbeit, _ = repo
+    begonnen, ergebnis = threading.Event(), {}
+    osm_ersatz(monkeypatch, warten=1.5, beim_abruf=begonnen.set)
+    monkeypatch.setattr(sb, "ZEIT_SPERRE", 0.2)
+
+    def punkte():
+        ergebnis["punkte"] = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
+    faden = threading.Thread(target=punkte)
+    faden.start()
+    assert begonnen.wait(30)
+    code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "art_definieren",
+                                 {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}})
+    faden.join(60)
+    assert code == 200 and a["ok"], a
+    assert ergebnis["punkte"][0] == 200, ergebnis
+
+
+@pytest.mark.parametrize("weg", ["git", "speicher"])
+def test_kartenpunkte_vorab_in_beiden_schreibwegen(request, repo, monkeypatch, weg):
+    """AC-10: In beiden Wegen bekommt der Unterprozess FR_OSM_VORAB; die Lesekopie des Vorab-Abrufs verändert den Stand nicht."""
+    wurzel, origin, arbeit, _ = repo
+    rs = request.getfixturevalue("speicherweg") if weg == "speicher" else None
+    if rs:
+        stand = lambda: (rs.stand_nummer("beispielreise"), rs.aktueller_stand("beispielreise"))
+    else:
+        stand = lambda: git(origin, "rev-parse", "main")
+    kopie = Path(f"{arbeit}-beispielreise")
+    kopie_stand = lambda: (git(kopie, "rev-parse", "HEAD"), git(kopie, "status", "--porcelain")) if (kopie / ".git").exists() else None
+    vorher, kopie_vorher, waehrend = stand(), kopie_stand(), []
+    osm_ersatz(monkeypatch, beim_abruf=lambda: waehrend.append((stand(), kopie_stand())))
+    umgebungen = env_mitschneiden(monkeypatch)
+    code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
+    assert code == 200 and "2 Treffer" in a["text"], a
+    assert waehrend == [(vorher, kopie_vorher)]
+    assert len(umgebungen) == 1 and umgebungen[0].get("FR_OSM_VORAB"), umgebungen
+    assert stand() != vorher       # erst der Vorgang selbst trägt ein
+
+
+def test_kartenpunkte_alter_code_ignoriert_vorab_wert(repo, monkeypatch, tmp_path):
+    """AC-11 (Regressionsschutz): Ein Vorgang, der FR_OSM_VORAB nicht nutzt (Abruf wie im alten Code ersetzt), rechnet richtig; der
+    gesetzte Wert ändert sonst nichts, die Datei bleibt, wie sie ist."""
+    datei = tmp_path / "osm.json"
+    inhalt = json.dumps({"abfrage": "etwas anderes", "antwort": {"elements": [{**OSM_QUELLE, "tags": {"name": "Aus der Datei"}}]}})
+    datei.write_text(inhalt)
+    monkeypatch.setenv("FR_OSM_VORAB", str(datei))
+    monkeypatch.setattr(sb, "overpass_abfragen", osm_antwort([OSM_NAH, OSM_QUELLE]))
+    a = schreiber(repo).schreiben("beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
+    assert "2 Treffer für Wasser" in a["text"] and "Aus der Datei" not in a["text"]
+    assert datei.read_text() == inhalt
+
+
+def test_kartenpunkte_stadtwochenende_ohne_netzabruf(repo, speicherweg, monkeypatch):
+    """AC-12: Das Städtewochenende hat keine Strecke: dieselbe Ablehnung wie bisher, kein Netzabruf, der Stand bleibt."""
+    wurzel, _, arbeit, _ = repo
+    aufrufe = osm_ersatz(monkeypatch, reise="stadtwochenende")
+    vorher = speicherweg.stand_nummer("stadtwochenende")
+    tom = {"person": "tom", "name": "Tom", "rolle": "organisator"}
+    for args in ({"strecke": "E-01", "kategorie": "wasser", "osm": ["amenity=drinking_water"]},
+                 {"strecke": "E-99", "kategorie": "gibtsnicht", "osm": ["amenity=cafe"]}):
+        code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "stadtwochenende", "kartenpunkte_holen", {**tom, "args": args})
+        assert code == 422 and not a["ok"], a
+    assert aufrufe == [] and speicherweg.stand_nummer("stadtwochenende") == vorher
+
+
+def test_overpass_adresse_und_kennung(overpass_stummel, monkeypatch):
+    """AC-13: Die Anfrage geht an FR_OVERPASS mit der Kennung der Instanz und [timeout:N] der Frist; ohne den Wert an overpass-api.de."""
+    import instanz
+    st = overpass_stummel(200)
+    assert sb.overpass_holen(ABFRAGE, 20) == {"elements": [OSM_NAH]}
+    (anfrage,) = st.anfragen
+    assert anfrage["pfad"] == "/api/interpreter" and anfrage["agent"] == instanz.kennung()
+    assert anfrage["data"].startswith("[out:json][timeout:20];(") and anfrage["data"].endswith("out center tags;")
+    monkeypatch.delenv("FR_OVERPASS")
+    ziele = []
+
+    def urlopen(req, timeout=None):
+        ziele.append(req.full_url)
+        raise urllib.error.URLError("kein Netz im Test")
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    with pytest.raises(sb.Ablehnung):
+        sb.overpass_holen(ABFRAGE, 5)
+    assert ziele == ["https://overpass-api.de/api/interpreter"]

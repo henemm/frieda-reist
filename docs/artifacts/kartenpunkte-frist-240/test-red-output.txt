@@ -1,0 +1,797 @@
+bringing up nodes...
+bringing up nodes...
+
+.FFFFFFFFFFFFFFFFFFFFFFF.F.FF                                            [100%]
+=================================== FAILURES ===================================
+_____________________ test_zeitgrenzen_mit_vorab_abruf_240 _____________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_zeitgrenzen_mit_vorab_abruf_240():
+        """AC-1: Vorab-Fenster, Vorgang und Prüfung liegen zusammen unter der Wartezeit des Konnektors (120 s) und jeder Lesefrist
+        der nginx-Vorlagen; die lange Frist ist länger als die kurze; der veraltete Kommentar (30 s) ist berichtigt."""
+        vorlagen = WURZEL / "betrieb" / "vorlagen"
+        grenzen = [int(g) for d in ("nginx-konnektor-orte.inc", "nginx-konnektor.inc")
+                   for g in re.findall(r"proxy_read_timeout (\d+)s", (vorlagen / d).read_text())]
+        quelltext = (WURZEL / "engine" / "konnektor.py").read_text(encoding="utf-8")
+        anfrage = quelltext[quelltext.index("def schreib_anfrage"):]
+        konnektor = int(re.search(r"urlopen\(req, timeout=(\d+)\)", anfrage).group(1))
+>       gesamt = sb.ZEIT_VORAB + sb.ZEIT_GESAMT + sb.ZEIT_PRUEFUNG
+                 ^^^^^^^^^^^^^
+E       AttributeError: module 'schreiben' has no attribute 'ZEIT_VORAB'
+
+tests/test_schreiben.py:2501: AttributeError
+_______________ test_kartenpunkte_andere_abfrage_ruft_selbst_ab ________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_andere_abfra0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_andere_abfra0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585b2030>
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_andere_abfra0')
+
+    def test_kartenpunkte_andere_abfrage_ruft_selbst_ab(repo, monkeypatch, tmp_path):
+        """AC-3: Weicht die Abfrage des Vorgangs von der Vorab-Datei ab (Linie geändert), nutzt er die Datei nicht und ruft mit der kurzen
+        Frist OSM_ZEIT selbst ab; ist sie gleich, kommt die Antwort aus der Datei, ohne Netzabruf."""
+        gleich = '[out:json];(nwr["a"="b"](1,2,3,4););out center tags;'
+        anders = '[out:json];(nwr["a"="b"](1,2,3,5););out center tags;'
+        datei = tmp_path / "osm.json"
+        datei.write_text(json.dumps({"abfrage": gleich, "antwort": {"elements": [OSM_NAH]}}), encoding="utf-8")
+        monkeypatch.setenv("FR_OSM_VORAB", str(datei))
+        aufrufe = []
+>       monkeypatch.setattr(sb, "overpass_holen", lambda q, frist: aufrufe.append((q, frist)) or {"elements": [OSM_QUELLE]})
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'overpass_holen'
+
+tests/test_schreiben.py:2533: AttributeError
+_________________ test_kartenpunkte_vorab_abruf_vor_der_sperre _________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw1/test_kartenpunkte_vorab_abruf_0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw1/test_kartenpunkte_vorab_abruf_0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x782e6a51a3c0>
+
+    def test_kartenpunkte_vorab_abruf_vor_der_sperre(repo, monkeypatch):
+        """AC-2: Der Dienst ruft Overpass vor der Sperre mit der langen Frist; der Unterprozess trägt die Treffer aus der Datei ein,
+        ohne selbst ins Netz zu gehen (dort wäre FR_OVERPASS unerreichbar)."""
+        wurzel, origin, arbeit, _ = repo
+>       aufrufe = osm_ersatz(monkeypatch)
+                  ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_schreiben.py:2512: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x782e6a51a3c0>
+reise = 'beispielreise'
+elemente = ({'type': 'node', 'id': 1, 'lat': 50.96, 'lon': 14.07, ...}, {'type': 'way', 'id': 3, 'center': {'lat': 50.964, 'lon': 14.085}, 'tags': {'natural': 'spring'}})
+fehler = None, warten = 0, beim_abruf = None
+
+    def osm_ersatz(monkeypatch, reise="beispielreise", elemente=(OSM_NAH, OSM_QUELLE), fehler=None, warten=0, beim_abruf=None):
+        """Ersetzt den Netzabruf des Elternprozesses -> Liste der Aufrufe [(abfrage, frist, sperre_frei)]."""
+        import time
+        aufrufe = []
+    
+        def holen(abfrage, frist):
+            aufrufe.append((abfrage, frist, sperre_frei(reise)))
+            if beim_abruf:
+                beim_abruf()
+            if warten:
+                time.sleep(warten)
+            if fehler:
+                raise fehler
+            return {"elements": list(elemente)}
+>       monkeypatch.setattr(sb, "overpass_holen", holen)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'overpass_holen'
+
+tests/test_schreiben.py:2464: AttributeError
+_______ test_overpass_holen_eine_wiederholung_bei_schnellem_fehler[503] ________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+overpass_stummel = <function overpass_stummel.<locals>.starten at 0x782e68c0e980>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x782e6a4fe660>
+erst = 503
+
+    @pytest.mark.parametrize("erst", [502, 503, 504, 429])
+    def test_overpass_holen_eine_wiederholung_bei_schnellem_fehler(overpass_stummel, monkeypatch, erst):
+        """AC-5: Nach einer schnellen Fehlerantwort (429/502/503/504) genau eine Wiederholung nach OSM_PAUSE, dann Treffer."""
+>       monkeypatch.setattr(sb, "OSM_PAUSE", 0.3)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'OSM_PAUSE'
+
+tests/test_schreiben.py:2608: AttributeError
+___________ test_kartenpunkte_gast_loest_keinen_netzabruf_aus[wer0] ____________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_gast_loest_k0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_gast_loest_k0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585b21e0>
+wer = {'person': 'karl', 'name': 'Karl', 'rolle': 'mitwirkend'}
+
+    @pytest.mark.parametrize("wer", [KARL, {"name": "Gast", "rolle": "gast"}])
+    def test_kartenpunkte_gast_loest_keinen_netzabruf_aus(repo, monkeypatch, wer):
+        """AC-4: Erst die Rolle, dann das Netz: Mitwirkende und Gäste lösen keinen Abruf aus und bekommen die bisherige Ablehnung."""
+        wurzel, _, arbeit, _ = repo
+>       aufrufe = osm_ersatz(monkeypatch)
+                  ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_schreiben.py:2543: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585b21e0>
+reise = 'beispielreise'
+elemente = ({'type': 'node', 'id': 1, 'lat': 50.96, 'lon': 14.07, ...}, {'type': 'way', 'id': 3, 'center': {'lat': 50.964, 'lon': 14.085}, 'tags': {'natural': 'spring'}})
+fehler = None, warten = 0, beim_abruf = None
+
+    def osm_ersatz(monkeypatch, reise="beispielreise", elemente=(OSM_NAH, OSM_QUELLE), fehler=None, warten=0, beim_abruf=None):
+        """Ersetzt den Netzabruf des Elternprozesses -> Liste der Aufrufe [(abfrage, frist, sperre_frei)]."""
+        import time
+        aufrufe = []
+    
+        def holen(abfrage, frist):
+            aufrufe.append((abfrage, frist, sperre_frei(reise)))
+            if beim_abruf:
+                beim_abruf()
+            if warten:
+                time.sleep(warten)
+            if fehler:
+                raise fehler
+            return {"elements": list(elemente)}
+>       monkeypatch.setattr(sb, "overpass_holen", holen)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'overpass_holen'
+
+tests/test_schreiben.py:2464: AttributeError
+_______ test_overpass_holen_eine_wiederholung_bei_schnellem_fehler[504] ________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+overpass_stummel = <function overpass_stummel.<locals>.starten at 0x782e68c0f060>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x782e6a51f170>
+erst = 504
+
+    @pytest.mark.parametrize("erst", [502, 503, 504, 429])
+    def test_overpass_holen_eine_wiederholung_bei_schnellem_fehler(overpass_stummel, monkeypatch, erst):
+        """AC-5: Nach einer schnellen Fehlerantwort (429/502/503/504) genau eine Wiederholung nach OSM_PAUSE, dann Treffer."""
+>       monkeypatch.setattr(sb, "OSM_PAUSE", 0.3)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'OSM_PAUSE'
+
+tests/test_schreiben.py:2608: AttributeError
+_______ test_overpass_holen_eine_wiederholung_bei_schnellem_fehler[429] ________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+overpass_stummel = <function overpass_stummel.<locals>.starten at 0x7380586c2de0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x738058597c80>
+erst = 429
+
+    @pytest.mark.parametrize("erst", [502, 503, 504, 429])
+    def test_overpass_holen_eine_wiederholung_bei_schnellem_fehler(overpass_stummel, monkeypatch, erst):
+        """AC-5: Nach einer schnellen Fehlerantwort (429/502/503/504) genau eine Wiederholung nach OSM_PAUSE, dann Treffer."""
+>       monkeypatch.setattr(sb, "OSM_PAUSE", 0.3)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'OSM_PAUSE'
+
+tests/test_schreiben.py:2608: AttributeError
+_ test_overpass_holen_hoechstens_zwei_zugriffe[codes1-schreiben.kartenpunkte.dienst] _
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+overpass_stummel = <function overpass_stummel.<locals>.starten at 0x782e68ac63e0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x782e6a51e690>
+codes = (503, 502), schluessel = 'schreiben.kartenpunkte.dienst'
+
+    @pytest.mark.parametrize("codes, schluessel", [((502, 502), "schreiben.kartenpunkte.dienst"), ((503, 502), "schreiben.kartenpunkte.dienst"),
+                                                   ((429, 429), "schreiben.kartenpunkte.limit"), ((504, 504), "schreiben.kartenpunkte.limit")])
+    def test_overpass_holen_hoechstens_zwei_zugriffe(overpass_stummel, monkeypatch, codes, schluessel):
+        """AC-5: Scheitert auch die Wiederholung, bleibt es bei zwei Zugriffen und der bisherigen Ablehnung (Limit bei 429/504)."""
+>       monkeypatch.setattr(sb, "OSM_PAUSE", 0.05)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'OSM_PAUSE'
+
+tests/test_schreiben.py:2618: AttributeError
+_ test_overpass_holen_hoechstens_zwei_zugriffe[codes0-schreiben.kartenpunkte.dienst] _
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+overpass_stummel = <function overpass_stummel.<locals>.starten at 0x7380586c3240>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585b6120>
+codes = (502, 502), schluessel = 'schreiben.kartenpunkte.dienst'
+
+    @pytest.mark.parametrize("codes, schluessel", [((502, 502), "schreiben.kartenpunkte.dienst"), ((503, 502), "schreiben.kartenpunkte.dienst"),
+                                                   ((429, 429), "schreiben.kartenpunkte.limit"), ((504, 504), "schreiben.kartenpunkte.limit")])
+    def test_overpass_holen_hoechstens_zwei_zugriffe(overpass_stummel, monkeypatch, codes, schluessel):
+        """AC-5: Scheitert auch die Wiederholung, bleibt es bei zwei Zugriffen und der bisherigen Ablehnung (Limit bei 429/504)."""
+>       monkeypatch.setattr(sb, "OSM_PAUSE", 0.05)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'OSM_PAUSE'
+
+tests/test_schreiben.py:2618: AttributeError
+_ test_overpass_holen_hoechstens_zwei_zugriffe[codes2-schreiben.kartenpunkte.limit] _
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+overpass_stummel = <function overpass_stummel.<locals>.starten at 0x782e68c0f560>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x782e6a51be60>
+codes = (429, 429), schluessel = 'schreiben.kartenpunkte.limit'
+
+    @pytest.mark.parametrize("codes, schluessel", [((502, 502), "schreiben.kartenpunkte.dienst"), ((503, 502), "schreiben.kartenpunkte.dienst"),
+                                                   ((429, 429), "schreiben.kartenpunkte.limit"), ((504, 504), "schreiben.kartenpunkte.limit")])
+    def test_overpass_holen_hoechstens_zwei_zugriffe(overpass_stummel, monkeypatch, codes, schluessel):
+        """AC-5: Scheitert auch die Wiederholung, bleibt es bei zwei Zugriffen und der bisherigen Ablehnung (Limit bei 429/504)."""
+>       monkeypatch.setattr(sb, "OSM_PAUSE", 0.05)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'OSM_PAUSE'
+
+tests/test_schreiben.py:2618: AttributeError
+_ test_overpass_holen_hoechstens_zwei_zugriffe[codes3-schreiben.kartenpunkte.limit] _
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+overpass_stummel = <function overpass_stummel.<locals>.starten at 0x738058846a20>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585b24e0>
+codes = (504, 504), schluessel = 'schreiben.kartenpunkte.limit'
+
+    @pytest.mark.parametrize("codes, schluessel", [((502, 502), "schreiben.kartenpunkte.dienst"), ((503, 502), "schreiben.kartenpunkte.dienst"),
+                                                   ((429, 429), "schreiben.kartenpunkte.limit"), ((504, 504), "schreiben.kartenpunkte.limit")])
+    def test_overpass_holen_hoechstens_zwei_zugriffe(overpass_stummel, monkeypatch, codes, schluessel):
+        """AC-5: Scheitert auch die Wiederholung, bleibt es bei zwei Zugriffen und der bisherigen Ablehnung (Limit bei 429/504)."""
+>       monkeypatch.setattr(sb, "OSM_PAUSE", 0.05)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'OSM_PAUSE'
+
+tests/test_schreiben.py:2618: AttributeError
+_____________ test_overpass_holen_keine_wiederholung_ohne_restzeit _____________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+overpass_stummel = <function overpass_stummel.<locals>.starten at 0x7380588451c0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585b0500>
+
+    def test_overpass_holen_keine_wiederholung_ohne_restzeit(overpass_stummel, monkeypatch):
+        """AC-5: Wiederholt wird nur, wenn noch OSM_REST_WIEDERHOLUNG (15 s) der Frist übrig sind."""
+>       monkeypatch.setattr(sb, "OSM_PAUSE", 0.05)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'OSM_PAUSE'
+
+tests/test_schreiben.py:2640: AttributeError
+_______ test_overpass_holen_keine_wiederholung_nach_zeitueberschreitung ________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+overpass_stummel = <function overpass_stummel.<locals>.starten at 0x782e68c0f240>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x782e6a51c950>
+
+    def test_overpass_holen_keine_wiederholung_nach_zeitueberschreitung(overpass_stummel, monkeypatch):
+        """AC-5: Antwortet der Dienst bis zur Frist nicht, wird nicht wiederholt (auch wenn die Restzeit-Regel es zuließe)."""
+        import time
+>       monkeypatch.setattr(sb, "OSM_PAUSE", 0.05)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'OSM_PAUSE'
+
+tests/test_schreiben.py:2628: AttributeError
+________________ test_kartenpunkte_vorab_nur_aus_eigener_datei _________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_vorab_nur_au0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_vorab_nur_au0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585b4140>
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_vorab_nur_au0')
+
+    def test_kartenpunkte_vorab_nur_aus_eigener_datei(repo, monkeypatch, tmp_path):
+        """AC-7: Felder der Anfrage werden nie als Antwort genommen; eine fehlende, leere, kaputte oder fremde Datei in FR_OSM_VORAB
+        führt zum eigenen Abruf, ohne Absturz."""
+        wurzel, origin, arbeit, _ = repo
+        fremd = tmp_path / "fremd.json"
+        fremd.write_text(json.dumps({"abfrage": "x", "antwort": {"elements": [{**OSM_QUELLE, "tags": {"name": "Untergeschoben"}}]}}))
+>       aufrufe = osm_ersatz(monkeypatch, elemente=[OSM_NAH])
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_schreiben.py:2671: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585b4140>
+reise = 'beispielreise'
+elemente = [{'type': 'node', 'id': 1, 'lat': 50.96, 'lon': 14.07, ...}]
+fehler = None, warten = 0, beim_abruf = None
+
+    def osm_ersatz(monkeypatch, reise="beispielreise", elemente=(OSM_NAH, OSM_QUELLE), fehler=None, warten=0, beim_abruf=None):
+        """Ersetzt den Netzabruf des Elternprozesses -> Liste der Aufrufe [(abfrage, frist, sperre_frei)]."""
+        import time
+        aufrufe = []
+    
+        def holen(abfrage, frist):
+            aufrufe.append((abfrage, frist, sperre_frei(reise)))
+            if beim_abruf:
+                beim_abruf()
+            if warten:
+                time.sleep(warten)
+            if fehler:
+                raise fehler
+            return {"elements": list(elemente)}
+>       monkeypatch.setattr(sb, "overpass_holen", holen)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'overpass_holen'
+
+tests/test_schreiben.py:2464: AttributeError
+________________ test_kartenpunkte_fehlschlag_vorab_ohne_sperre ________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw1/test_kartenpunkte_fehlschlag_v0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw1/test_kartenpunkte_fehlschlag_v0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x782e6a51cb00>
+capsys = <_pytest.capture.CaptureFixture object at 0x782e6a51d4f0>
+
+    def test_kartenpunkte_fehlschlag_vorab_ohne_sperre(repo, monkeypatch, capsys):
+        """AC-6: Scheitert der Vorab-Abruf endgültig, antwortet der Dienst sofort mit der Ablehnung: keine Sperre, kein Unterprozess,
+        der Stand der Reise bleibt."""
+        wurzel, origin, arbeit, _ = repo
+        vorher = git(origin, "rev-parse", "main")
+>       osm_ersatz(monkeypatch, fehler=sb.Ablehnung("schreiben.kartenpunkte.limit", w1=429))
+
+tests/test_schreiben.py:2653: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x782e6a51cb00>
+reise = 'beispielreise'
+elemente = ({'type': 'node', 'id': 1, 'lat': 50.96, 'lon': 14.07, ...}, {'type': 'way', 'id': 3, 'center': {'lat': 50.964, 'lon': 14.085}, 'tags': {'natural': 'spring'}})
+fehler = Ablehnung('Der OpenStreetMap-Dienst (Overpass) ist gerade ausgelastet oder hat das Abfragelimit erreicht (HTTP 429). Bitte in einigen Minuten noch einmal.')
+warten = 0, beim_abruf = None
+
+    def osm_ersatz(monkeypatch, reise="beispielreise", elemente=(OSM_NAH, OSM_QUELLE), fehler=None, warten=0, beim_abruf=None):
+        """Ersetzt den Netzabruf des Elternprozesses -> Liste der Aufrufe [(abfrage, frist, sperre_frei)]."""
+        import time
+        aufrufe = []
+    
+        def holen(abfrage, frist):
+            aufrufe.append((abfrage, frist, sperre_frei(reise)))
+            if beim_abruf:
+                beim_abruf()
+            if warten:
+                time.sleep(warten)
+            if fehler:
+                raise fehler
+            return {"elements": list(elemente)}
+>       monkeypatch.setattr(sb, "overpass_holen", holen)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'overpass_holen'
+
+tests/test_schreiben.py:2464: AttributeError
+_________ test_kartenpunkte_vorab_ordner_wird_immer_geloescht[erfolg] __________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_vorab_ordner0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_vorab_ordner0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585b80b0>
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_vorab_ordner0')
+ausgang = 'erfolg'
+
+    @pytest.mark.parametrize("ausgang", ["erfolg", "ablehnung", "frist", "ausnahme"])
+    def test_kartenpunkte_vorab_ordner_wird_immer_geloescht(repo, monkeypatch, tmp_path, ausgang):
+        """AC-8: Der Ordner frieda-osm-* des Vorab-Abrufs ist nach jedem Ausgang des Vorgangs weg."""
+        import tempfile
+        wurzel, _, arbeit, _ = repo
+        tmp = tmp_path / "tmp-osm"
+        tmp.mkdir()
+        monkeypatch.setattr(tempfile, "tempdir", str(tmp))
+        gesehen = []
+        fehler = {"ablehnung": sb.Ablehnung("schreiben.kartenpunkte.dienst", w1="URLError"),
+                  "ausnahme": RuntimeError("unerwartet")}.get(ausgang)
+>       osm_ersatz(monkeypatch, fehler=fehler, beim_abruf=lambda: gesehen.extend(tmp.glob("frieda-osm-*")))
+
+tests/test_schreiben.py:2702: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585b80b0>
+reise = 'beispielreise'
+elemente = ({'type': 'node', 'id': 1, 'lat': 50.96, 'lon': 14.07, ...}, {'type': 'way', 'id': 3, 'center': {'lat': 50.964, 'lon': 14.085}, 'tags': {'natural': 'spring'}})
+fehler = None, warten = 0
+beim_abruf = <function test_kartenpunkte_vorab_ordner_wird_immer_geloescht.<locals>.<lambda> at 0x7380586c2c00>
+
+    def osm_ersatz(monkeypatch, reise="beispielreise", elemente=(OSM_NAH, OSM_QUELLE), fehler=None, warten=0, beim_abruf=None):
+        """Ersetzt den Netzabruf des Elternprozesses -> Liste der Aufrufe [(abfrage, frist, sperre_frei)]."""
+        import time
+        aufrufe = []
+    
+        def holen(abfrage, frist):
+            aufrufe.append((abfrage, frist, sperre_frei(reise)))
+            if beim_abruf:
+                beim_abruf()
+            if warten:
+                time.sleep(warten)
+            if fehler:
+                raise fehler
+            return {"elements": list(elemente)}
+>       monkeypatch.setattr(sb, "overpass_holen", holen)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'overpass_holen'
+
+tests/test_schreiben.py:2464: AttributeError
+________ test_kartenpunkte_vorab_ordner_wird_immer_geloescht[ablehnung] ________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw1/test_kartenpunkte_vorab_ordner0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw1/test_kartenpunkte_vorab_ordner0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x782e6a526870>
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw1/test_kartenpunkte_vorab_ordner0')
+ausgang = 'ablehnung'
+
+    @pytest.mark.parametrize("ausgang", ["erfolg", "ablehnung", "frist", "ausnahme"])
+    def test_kartenpunkte_vorab_ordner_wird_immer_geloescht(repo, monkeypatch, tmp_path, ausgang):
+        """AC-8: Der Ordner frieda-osm-* des Vorab-Abrufs ist nach jedem Ausgang des Vorgangs weg."""
+        import tempfile
+        wurzel, _, arbeit, _ = repo
+        tmp = tmp_path / "tmp-osm"
+        tmp.mkdir()
+        monkeypatch.setattr(tempfile, "tempdir", str(tmp))
+        gesehen = []
+        fehler = {"ablehnung": sb.Ablehnung("schreiben.kartenpunkte.dienst", w1="URLError"),
+                  "ausnahme": RuntimeError("unerwartet")}.get(ausgang)
+>       osm_ersatz(monkeypatch, fehler=fehler, beim_abruf=lambda: gesehen.extend(tmp.glob("frieda-osm-*")))
+
+tests/test_schreiben.py:2702: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x782e6a526870>
+reise = 'beispielreise'
+elemente = ({'type': 'node', 'id': 1, 'lat': 50.96, 'lon': 14.07, ...}, {'type': 'way', 'id': 3, 'center': {'lat': 50.964, 'lon': 14.085}, 'tags': {'natural': 'spring'}})
+fehler = Ablehnung('Der OpenStreetMap-Dienst (Overpass) hat nicht geantwortet (URLError). Bitte später noch einmal; nichts wurde geändert.')
+warten = 0
+beim_abruf = <function test_kartenpunkte_vorab_ordner_wird_immer_geloescht.<locals>.<lambda> at 0x782e68c0fa60>
+
+    def osm_ersatz(monkeypatch, reise="beispielreise", elemente=(OSM_NAH, OSM_QUELLE), fehler=None, warten=0, beim_abruf=None):
+        """Ersetzt den Netzabruf des Elternprozesses -> Liste der Aufrufe [(abfrage, frist, sperre_frei)]."""
+        import time
+        aufrufe = []
+    
+        def holen(abfrage, frist):
+            aufrufe.append((abfrage, frist, sperre_frei(reise)))
+            if beim_abruf:
+                beim_abruf()
+            if warten:
+                time.sleep(warten)
+            if fehler:
+                raise fehler
+            return {"elements": list(elemente)}
+>       monkeypatch.setattr(sb, "overpass_holen", holen)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'overpass_holen'
+
+tests/test_schreiben.py:2464: AttributeError
+__________ test_kartenpunkte_vorab_ordner_wird_immer_geloescht[frist] __________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_vorab_ordner1/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_vorab_ordner1/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585b7e60>
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_vorab_ordner1')
+ausgang = 'frist'
+
+    @pytest.mark.parametrize("ausgang", ["erfolg", "ablehnung", "frist", "ausnahme"])
+    def test_kartenpunkte_vorab_ordner_wird_immer_geloescht(repo, monkeypatch, tmp_path, ausgang):
+        """AC-8: Der Ordner frieda-osm-* des Vorab-Abrufs ist nach jedem Ausgang des Vorgangs weg."""
+        import tempfile
+        wurzel, _, arbeit, _ = repo
+        tmp = tmp_path / "tmp-osm"
+        tmp.mkdir()
+        monkeypatch.setattr(tempfile, "tempdir", str(tmp))
+        gesehen = []
+        fehler = {"ablehnung": sb.Ablehnung("schreiben.kartenpunkte.dienst", w1="URLError"),
+                  "ausnahme": RuntimeError("unerwartet")}.get(ausgang)
+>       osm_ersatz(monkeypatch, fehler=fehler, beim_abruf=lambda: gesehen.extend(tmp.glob("frieda-osm-*")))
+
+tests/test_schreiben.py:2702: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585b7e60>
+reise = 'beispielreise'
+elemente = ({'type': 'node', 'id': 1, 'lat': 50.96, 'lon': 14.07, ...}, {'type': 'way', 'id': 3, 'center': {'lat': 50.964, 'lon': 14.085}, 'tags': {'natural': 'spring'}})
+fehler = None, warten = 0
+beim_abruf = <function test_kartenpunkte_vorab_ordner_wird_immer_geloescht.<locals>.<lambda> at 0x7380586d4360>
+
+    def osm_ersatz(monkeypatch, reise="beispielreise", elemente=(OSM_NAH, OSM_QUELLE), fehler=None, warten=0, beim_abruf=None):
+        """Ersetzt den Netzabruf des Elternprozesses -> Liste der Aufrufe [(abfrage, frist, sperre_frei)]."""
+        import time
+        aufrufe = []
+    
+        def holen(abfrage, frist):
+            aufrufe.append((abfrage, frist, sperre_frei(reise)))
+            if beim_abruf:
+                beim_abruf()
+            if warten:
+                time.sleep(warten)
+            if fehler:
+                raise fehler
+            return {"elements": list(elemente)}
+>       monkeypatch.setattr(sb, "overpass_holen", holen)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'overpass_holen'
+
+tests/test_schreiben.py:2464: AttributeError
+________ test_kartenpunkte_vorab_ordner_wird_immer_geloescht[ausnahme] _________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw1/test_kartenpunkte_vorab_ordner1/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw1/test_kartenpunkte_vorab_ordner1/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x782e6a51d790>
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw1/test_kartenpunkte_vorab_ordner1')
+ausgang = 'ausnahme'
+
+    @pytest.mark.parametrize("ausgang", ["erfolg", "ablehnung", "frist", "ausnahme"])
+    def test_kartenpunkte_vorab_ordner_wird_immer_geloescht(repo, monkeypatch, tmp_path, ausgang):
+        """AC-8: Der Ordner frieda-osm-* des Vorab-Abrufs ist nach jedem Ausgang des Vorgangs weg."""
+        import tempfile
+        wurzel, _, arbeit, _ = repo
+        tmp = tmp_path / "tmp-osm"
+        tmp.mkdir()
+        monkeypatch.setattr(tempfile, "tempdir", str(tmp))
+        gesehen = []
+        fehler = {"ablehnung": sb.Ablehnung("schreiben.kartenpunkte.dienst", w1="URLError"),
+                  "ausnahme": RuntimeError("unerwartet")}.get(ausgang)
+>       osm_ersatz(monkeypatch, fehler=fehler, beim_abruf=lambda: gesehen.extend(tmp.glob("frieda-osm-*")))
+
+tests/test_schreiben.py:2702: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x782e6a51d790>
+reise = 'beispielreise'
+elemente = ({'type': 'node', 'id': 1, 'lat': 50.96, 'lon': 14.07, ...}, {'type': 'way', 'id': 3, 'center': {'lat': 50.964, 'lon': 14.085}, 'tags': {'natural': 'spring'}})
+fehler = RuntimeError('unerwartet'), warten = 0
+beim_abruf = <function test_kartenpunkte_vorab_ordner_wird_immer_geloescht.<locals>.<lambda> at 0x782e68ba80e0>
+
+    def osm_ersatz(monkeypatch, reise="beispielreise", elemente=(OSM_NAH, OSM_QUELLE), fehler=None, warten=0, beim_abruf=None):
+        """Ersetzt den Netzabruf des Elternprozesses -> Liste der Aufrufe [(abfrage, frist, sperre_frei)]."""
+        import time
+        aufrufe = []
+    
+        def holen(abfrage, frist):
+            aufrufe.append((abfrage, frist, sperre_frei(reise)))
+            if beim_abruf:
+                beim_abruf()
+            if warten:
+                time.sleep(warten)
+            if fehler:
+                raise fehler
+            return {"elements": list(elemente)}
+>       monkeypatch.setattr(sb, "overpass_holen", holen)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'overpass_holen'
+
+tests/test_schreiben.py:2464: AttributeError
+________________ test_kartenpunkte_abruf_haelt_die_sperre_nicht ________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_abruf_haelt_0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_abruf_haelt_0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585ba0f0>
+
+    def test_kartenpunkte_abruf_haelt_die_sperre_nicht(repo, monkeypatch):
+        """AC-9: Während der Vorab-Abruf dauert, bekommt ein anderer Schreibvorgang derselben Reise die Sperre (kein 429)."""
+        wurzel, _, arbeit, _ = repo
+        begonnen, ergebnis = threading.Event(), {}
+>       osm_ersatz(monkeypatch, warten=1.5, beim_abruf=begonnen.set)
+
+tests/test_schreiben.py:2715: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585ba0f0>
+reise = 'beispielreise'
+elemente = ({'type': 'node', 'id': 1, 'lat': 50.96, 'lon': 14.07, ...}, {'type': 'way', 'id': 3, 'center': {'lat': 50.964, 'lon': 14.085}, 'tags': {'natural': 'spring'}})
+fehler = None, warten = 1.5
+beim_abruf = <bound method Event.set of <threading.Event at 0x7380585b82c0: unset>>
+
+    def osm_ersatz(monkeypatch, reise="beispielreise", elemente=(OSM_NAH, OSM_QUELLE), fehler=None, warten=0, beim_abruf=None):
+        """Ersetzt den Netzabruf des Elternprozesses -> Liste der Aufrufe [(abfrage, frist, sperre_frei)]."""
+        import time
+        aufrufe = []
+    
+        def holen(abfrage, frist):
+            aufrufe.append((abfrage, frist, sperre_frei(reise)))
+            if beim_abruf:
+                beim_abruf()
+            if warten:
+                time.sleep(warten)
+            if fehler:
+                raise fehler
+            return {"elements": list(elemente)}
+>       monkeypatch.setattr(sb, "overpass_holen", holen)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'overpass_holen'
+
+tests/test_schreiben.py:2464: AttributeError
+_____________ test_kartenpunkte_vorab_in_beiden_schreibwegen[git] ______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+request = <FixtureRequest for <Function test_kartenpunkte_vorab_in_beiden_schreibwegen[git]>>
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw1/test_kartenpunkte_vorab_in_bei0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw1/test_kartenpunkte_vorab_in_bei0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x782e6a524b90>
+weg = 'git'
+
+    @pytest.mark.parametrize("weg", ["git", "speicher"])
+    def test_kartenpunkte_vorab_in_beiden_schreibwegen(request, repo, monkeypatch, weg):
+        """AC-10: In beiden Wegen bekommt der Unterprozess FR_OSM_VORAB; die Lesekopie des Vorab-Abrufs verändert den Stand nicht."""
+        wurzel, origin, arbeit, _ = repo
+        rs = request.getfixturevalue("speicherweg") if weg == "speicher" else None
+        if rs:
+            stand = lambda: (rs.stand_nummer("beispielreise"), rs.aktueller_stand("beispielreise"))
+        else:
+            stand = lambda: git(origin, "rev-parse", "main")
+        kopie = Path(f"{arbeit}-beispielreise")
+        kopie_stand = lambda: (git(kopie, "rev-parse", "HEAD"), git(kopie, "status", "--porcelain")) if (kopie / ".git").exists() else None
+        vorher, kopie_vorher, waehrend = stand(), kopie_stand(), []
+>       osm_ersatz(monkeypatch, beim_abruf=lambda: waehrend.append((stand(), kopie_stand())))
+
+tests/test_schreiben.py:2742: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x782e6a524b90>
+reise = 'beispielreise'
+elemente = ({'type': 'node', 'id': 1, 'lat': 50.96, 'lon': 14.07, ...}, {'type': 'way', 'id': 3, 'center': {'lat': 50.964, 'lon': 14.085}, 'tags': {'natural': 'spring'}})
+fehler = None, warten = 0
+beim_abruf = <function test_kartenpunkte_vorab_in_beiden_schreibwegen.<locals>.<lambda> at 0x782e68ba8cc0>
+
+    def osm_ersatz(monkeypatch, reise="beispielreise", elemente=(OSM_NAH, OSM_QUELLE), fehler=None, warten=0, beim_abruf=None):
+        """Ersetzt den Netzabruf des Elternprozesses -> Liste der Aufrufe [(abfrage, frist, sperre_frei)]."""
+        import time
+        aufrufe = []
+    
+        def holen(abfrage, frist):
+            aufrufe.append((abfrage, frist, sperre_frei(reise)))
+            if beim_abruf:
+                beim_abruf()
+            if warten:
+                time.sleep(warten)
+            if fehler:
+                raise fehler
+            return {"elements": list(elemente)}
+>       monkeypatch.setattr(sb, "overpass_holen", holen)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'overpass_holen'
+
+tests/test_schreiben.py:2464: AttributeError
+___________ test_kartenpunkte_vorab_in_beiden_schreibwegen[speicher] ___________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+request = <FixtureRequest for <Function test_kartenpunkte_vorab_in_beiden_schreibwegen[speicher]>>
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_vorab_in_bei0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_vorab_in_bei0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585b5670>
+weg = 'speicher'
+
+    @pytest.mark.parametrize("weg", ["git", "speicher"])
+    def test_kartenpunkte_vorab_in_beiden_schreibwegen(request, repo, monkeypatch, weg):
+        """AC-10: In beiden Wegen bekommt der Unterprozess FR_OSM_VORAB; die Lesekopie des Vorab-Abrufs verändert den Stand nicht."""
+        wurzel, origin, arbeit, _ = repo
+        rs = request.getfixturevalue("speicherweg") if weg == "speicher" else None
+        if rs:
+            stand = lambda: (rs.stand_nummer("beispielreise"), rs.aktueller_stand("beispielreise"))
+        else:
+            stand = lambda: git(origin, "rev-parse", "main")
+        kopie = Path(f"{arbeit}-beispielreise")
+        kopie_stand = lambda: (git(kopie, "rev-parse", "HEAD"), git(kopie, "status", "--porcelain")) if (kopie / ".git").exists() else None
+        vorher, kopie_vorher, waehrend = stand(), kopie_stand(), []
+>       osm_ersatz(monkeypatch, beim_abruf=lambda: waehrend.append((stand(), kopie_stand())))
+
+tests/test_schreiben.py:2742: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585b5670>
+reise = 'beispielreise'
+elemente = ({'type': 'node', 'id': 1, 'lat': 50.96, 'lon': 14.07, ...}, {'type': 'way', 'id': 3, 'center': {'lat': 50.964, 'lon': 14.085}, 'tags': {'natural': 'spring'}})
+fehler = None, warten = 0
+beim_abruf = <function test_kartenpunkte_vorab_in_beiden_schreibwegen.<locals>.<lambda> at 0x73805878c0e0>
+
+    def osm_ersatz(monkeypatch, reise="beispielreise", elemente=(OSM_NAH, OSM_QUELLE), fehler=None, warten=0, beim_abruf=None):
+        """Ersetzt den Netzabruf des Elternprozesses -> Liste der Aufrufe [(abfrage, frist, sperre_frei)]."""
+        import time
+        aufrufe = []
+    
+        def holen(abfrage, frist):
+            aufrufe.append((abfrage, frist, sperre_frei(reise)))
+            if beim_abruf:
+                beim_abruf()
+            if warten:
+                time.sleep(warten)
+            if fehler:
+                raise fehler
+            return {"elements": list(elemente)}
+>       monkeypatch.setattr(sb, "overpass_holen", holen)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'overpass_holen'
+
+tests/test_schreiben.py:2464: AttributeError
+_______________ test_kartenpunkte_stadtwochenende_ohne_netzabruf _______________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_stadtwochene0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw2/test_kartenpunkte_stadtwochene0/veroeffentlicht'))
+speicherweg = <module 'reisespeicher' from 'engine/reisespeicher.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585b53d0>
+
+    def test_kartenpunkte_stadtwochenende_ohne_netzabruf(repo, speicherweg, monkeypatch):
+        """AC-12: Das Städtewochenende hat keine Strecke: dieselbe Ablehnung wie bisher, kein Netzabruf, der Stand bleibt."""
+        wurzel, _, arbeit, _ = repo
+>       aufrufe = osm_ersatz(monkeypatch, reise="stadtwochenende")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_schreiben.py:2767: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7380585b53d0>
+reise = 'stadtwochenende'
+elemente = ({'type': 'node', 'id': 1, 'lat': 50.96, 'lon': 14.07, ...}, {'type': 'way', 'id': 3, 'center': {'lat': 50.964, 'lon': 14.085}, 'tags': {'natural': 'spring'}})
+fehler = None, warten = 0, beim_abruf = None
+
+    def osm_ersatz(monkeypatch, reise="beispielreise", elemente=(OSM_NAH, OSM_QUELLE), fehler=None, warten=0, beim_abruf=None):
+        """Ersetzt den Netzabruf des Elternprozesses -> Liste der Aufrufe [(abfrage, frist, sperre_frei)]."""
+        import time
+        aufrufe = []
+    
+        def holen(abfrage, frist):
+            aufrufe.append((abfrage, frist, sperre_frei(reise)))
+            if beim_abruf:
+                beim_abruf()
+            if warten:
+                time.sleep(warten)
+            if fehler:
+                raise fehler
+            return {"elements": list(elemente)}
+>       monkeypatch.setattr(sb, "overpass_holen", holen)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'overpass_holen'
+
+tests/test_schreiben.py:2464: AttributeError
+______________________ test_overpass_adresse_und_kennung _______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+overpass_stummel = <function overpass_stummel.<locals>.starten at 0x782e69214400>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x782e6a53c8c0>
+
+    def test_overpass_adresse_und_kennung(overpass_stummel, monkeypatch):
+        """AC-13: Die Anfrage geht an FR_OVERPASS mit der Kennung der Instanz und [timeout:N] der Frist; ohne den Wert an overpass-api.de."""
+        import instanz
+        st = overpass_stummel(200)
+>       assert sb.overpass_holen(ABFRAGE, 20) == {"elements": [OSM_NAH]}
+               ^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'schreiben' has no attribute 'overpass_holen'
+
+tests/test_schreiben.py:2781: AttributeError
+___________ test_kartenpunkte_gast_loest_keinen_netzabruf_aus[wer1] ____________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw0/test_kartenpunkte_gast_loest_k0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-13764/popen-gw0/test_kartenpunkte_gast_loest_k0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x702d04db49e0>
+wer = {'name': 'Gast', 'rolle': 'gast'}
+
+    @pytest.mark.parametrize("wer", [KARL, {"name": "Gast", "rolle": "gast"}])
+    def test_kartenpunkte_gast_loest_keinen_netzabruf_aus(repo, monkeypatch, wer):
+        """AC-4: Erst die Rolle, dann das Netz: Mitwirkende und Gäste lösen keinen Abruf aus und bekommen die bisherige Ablehnung."""
+        wurzel, _, arbeit, _ = repo
+>       aufrufe = osm_ersatz(monkeypatch)
+                  ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_schreiben.py:2543: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x702d04db49e0>
+reise = 'beispielreise'
+elemente = ({'type': 'node', 'id': 1, 'lat': 50.96, 'lon': 14.07, ...}, {'type': 'way', 'id': 3, 'center': {'lat': 50.964, 'lon': 14.085}, 'tags': {'natural': 'spring'}})
+fehler = None, warten = 0, beim_abruf = None
+
+    def osm_ersatz(monkeypatch, reise="beispielreise", elemente=(OSM_NAH, OSM_QUELLE), fehler=None, warten=0, beim_abruf=None):
+        """Ersetzt den Netzabruf des Elternprozesses -> Liste der Aufrufe [(abfrage, frist, sperre_frei)]."""
+        import time
+        aufrufe = []
+    
+        def holen(abfrage, frist):
+            aufrufe.append((abfrage, frist, sperre_frei(reise)))
+            if beim_abruf:
+                beim_abruf()
+            if warten:
+                time.sleep(warten)
+            if fehler:
+                raise fehler
+            return {"elements": list(elemente)}
+>       monkeypatch.setattr(sb, "overpass_holen", holen)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'overpass_holen'
+
+tests/test_schreiben.py:2464: AttributeError
+_______ test_overpass_holen_eine_wiederholung_bei_schnellem_fehler[502] ________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+overpass_stummel = <function overpass_stummel.<locals>.starten at 0x702cff4f4a40>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x702d04db5850>
+erst = 502
+
+    @pytest.mark.parametrize("erst", [502, 503, 504, 429])
+    def test_overpass_holen_eine_wiederholung_bei_schnellem_fehler(overpass_stummel, monkeypatch, erst):
+        """AC-5: Nach einer schnellen Fehlerantwort (429/502/503/504) genau eine Wiederholung nach OSM_PAUSE, dann Treffer."""
+>       monkeypatch.setattr(sb, "OSM_PAUSE", 0.3)
+E       AttributeError: <module 'schreiben' from 'engine/schreiben.py'> has no attribute 'OSM_PAUSE'
+
+tests/test_schreiben.py:2608: AttributeError
+=========================== short test summary info ============================
+FAILED tests/test_schreiben.py::test_zeitgrenzen_mit_vorab_abruf_240 - Attrib...
+FAILED tests/test_schreiben.py::test_kartenpunkte_andere_abfrage_ruft_selbst_ab
+FAILED tests/test_schreiben.py::test_kartenpunkte_vorab_abruf_vor_der_sperre
+FAILED tests/test_schreiben.py::test_overpass_holen_eine_wiederholung_bei_schnellem_fehler[503]
+FAILED tests/test_schreiben.py::test_kartenpunkte_gast_loest_keinen_netzabruf_aus[wer0]
+FAILED tests/test_schreiben.py::test_overpass_holen_eine_wiederholung_bei_schnellem_fehler[504]
+FAILED tests/test_schreiben.py::test_overpass_holen_eine_wiederholung_bei_schnellem_fehler[429]
+FAILED tests/test_schreiben.py::test_overpass_holen_hoechstens_zwei_zugriffe[codes1-schreiben.kartenpunkte.dienst]
+FAILED tests/test_schreiben.py::test_overpass_holen_hoechstens_zwei_zugriffe[codes0-schreiben.kartenpunkte.dienst]
+FAILED tests/test_schreiben.py::test_overpass_holen_hoechstens_zwei_zugriffe[codes2-schreiben.kartenpunkte.limit]
+FAILED tests/test_schreiben.py::test_overpass_holen_hoechstens_zwei_zugriffe[codes3-schreiben.kartenpunkte.limit]
+FAILED tests/test_schreiben.py::test_overpass_holen_keine_wiederholung_ohne_restzeit
+FAILED tests/test_schreiben.py::test_overpass_holen_keine_wiederholung_nach_zeitueberschreitung
+FAILED tests/test_schreiben.py::test_kartenpunkte_vorab_nur_aus_eigener_datei
+FAILED tests/test_schreiben.py::test_kartenpunkte_fehlschlag_vorab_ohne_sperre
+FAILED tests/test_schreiben.py::test_kartenpunkte_vorab_ordner_wird_immer_geloescht[erfolg]
+FAILED tests/test_schreiben.py::test_kartenpunkte_vorab_ordner_wird_immer_geloescht[ablehnung]
+FAILED tests/test_schreiben.py::test_kartenpunkte_vorab_ordner_wird_immer_geloescht[frist]
+FAILED tests/test_schreiben.py::test_kartenpunkte_vorab_ordner_wird_immer_geloescht[ausnahme]
+FAILED tests/test_schreiben.py::test_kartenpunkte_abruf_haelt_die_sperre_nicht
+FAILED tests/test_schreiben.py::test_kartenpunkte_vorab_in_beiden_schreibwegen[git]
+FAILED tests/test_schreiben.py::test_kartenpunkte_vorab_in_beiden_schreibwegen[speicher]
+FAILED tests/test_schreiben.py::test_kartenpunkte_stadtwochenende_ohne_netzabruf
+FAILED tests/test_schreiben.py::test_overpass_adresse_und_kennung - Attribute...
+FAILED tests/test_schreiben.py::test_kartenpunkte_gast_loest_keinen_netzabruf_aus[wer1]
+FAILED tests/test_schreiben.py::test_overpass_holen_eine_wiederholung_bei_schnellem_fehler[502]
+26 failed, 3 passed in 3.78s
