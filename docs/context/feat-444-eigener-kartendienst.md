@@ -50,3 +50,49 @@ Das Werkzeug `map_points_fetch` (#240) soll Punkte aus OpenStreetMap von einem e
 - **Platte:** 2 GB je Balearen-Größe; 50 GB frei.
 - **Rechte:** Datenordner 755, Container ohne Netz nach außen nötig? (nur Einspielen braucht Download, Abfragen nicht).
 - **Lizenz:** ODbL-Hinweis bleibt in den Treffern (Quelle).
+
+## Analysis
+
+### Type
+Feature (Betrieb der Instanz plus Abrufweg im Schreibdienst). Anlass ist eine Dauerstörung des öffentlichen Dienstes (#240), kein Fehler der Software.
+
+### Prüfstelle (ADR-0001), Kurzfassung
+Keine neue Grundform, keine KI, nichts Reisespezifisches: Die Regionen sind eine Einstellung der Instanz (welche Flächen sie selbst bedient), nicht der Reise. Außerhalb der Fläche bleibt das Verhalten wie heute (öffentlicher Dienst). Kein Widerspruch zum Kern, keine Produktfrage an den PO.
+
+### Affected Files (with changes)
+| File | Change Type | Description |
+|------|-------------|-------------|
+| engine/kartendienst.py | CREATE | Wahl des Dienstes: Abdeckung lesen (`abdeckung.json` im Datenordner aus `FR_KARTENDIENST_ORDNER`), prüfen, ob der Rahmen der Abfrage ganz darin liegt; Adresse `FR_KARTENDIENST` (eigener) vor `FR_OVERPASS` (öffentlich, Vorgabe overpass-api.de) |
+| engine/schreiben.py (~2020-2069, 2251-2267, 5083) | MODIFY | `overpass_holen` bekommt den Rahmen (bbox) mit; innerhalb der Abdeckung zuerst eigener Dienst mit Teilfrist (Kaltstart ~2 s + Abfrage; Vorschlag 10 s), bei Fehler/Zeitüberschreitung öffentlicher Dienst in der Restfrist; Antwort trägt, welcher Dienst geantwortet hat und `osm3s.timestamp_osm_base` als Stand |
+| betrieb/vorlagen/kartendienst/*.socket, *.service | CREATE | eigener Unterordner (nicht im Glob `vorlagen/*.service`, damit Einheiten-Abgleich #260 und `ARTEN` unberührt bleiben): `<instanz>-kartendienst.socket` (127.0.0.1:Port), `<instanz>-kartendienst-proxy.service` (`systemd-socket-proxyd --exit-idle-time=…`, `BindsTo`/`After` Container), `<instanz>-kartendienst.service` (`docker run --rm`, Image per Digest gepinnt, Speichergrenze, `StopWhenUnneeded=yes`, `ExecStartPost` = Bereitschaft über echte Mini-Abfrage, da `/api/status` 502 liefert) |
+| betrieb/kartendienst.sh | CREATE | `einspielen`: Auszüge aus `FR_KARTENDIENST_REGIONEN` laden (Geofabrik-URLs, Prüfsumme), `osmium merge`/`cat` → osm.bz2, Container im Modus `init` in Nebenordner, Rechte 755, `abdeckung.json` (Rahmen je Region aus `osmium fileinfo`), dann atomar umschalten (alter Ordner bleibt bis Erfolg); nicht parallel zu Prüfläufen (Speicher) |
+| betrieb/vorlagen/kartendienst/*-aktualisieren.timer/.service | CREATE | Neu-Einspielen monatlich und wenn sich die Regionenliste ändert (Prüfsumme der Liste in `abdeckung.json`); Erfolg → Teil-Check in monitor.sh statt eigenem Heartbeat (Memory „Überwachung über monitor.sh“) |
+| betrieb/einrichten.sh | MODIFY | Kartendienst-Vorlagen nur erzeugen, wenn `FR_KARTENDIENST_REGIONEN` gesetzt; neue Platzhalter (`__KD_PORT__`, `__KD_ORDNER__`, `__KD_SPEICHER__`); einmalige Befehle (Datenordner 755, Socket aktivieren, erstes Einspielen) ausgeben |
+| betrieb/einstellungen.beispiel, docs/betrieb.md, docs/werkzeuge.md | MODIFY | `FR_OVERPASS`, `FR_KARTENDIENST`, `FR_KARTENDIENST_ORDNER`, `FR_KARTENDIENST_REGIONEN`, Port, Speicher, Ruhezeit dokumentieren; Image und Lizenz (Overpass AGPL, Daten ODbL) nennen |
+| betrieb/deploy.sh | MODIFY | `kartendienst.py` in die Modulliste des Schreibwegs (Test prüft Importe) |
+| werkzeuge/punkte_holen.py, werkzeuge/wasser_pruefen.py | MODIFY (klein) | Adresse aus `FR_OVERPASS` statt fest, gleiche Vorgabe |
+| engine/texte_*.py | MODIFY | ggf. Texte „Stand der Kartendaten“ / Hinweis Reserve-Dienst, in allen Sprachen |
+| engine/tests/test_kartendienst.py | CREATE | Abdeckung innen/außen/Rand, kaputte oder fehlende `abdeckung.json` → öffentlich, Fristaufteilung, Rückfall bei Fehler/Zeit, leere Antwort innerhalb der Abdeckung gilt als Ergebnis |
+| engine/tests/test_schreiben.py, test_betrieb.py, test_einrichten*.py | MODIFY | zwei Stummel-Server (eigen/öffentlich); Einrichtung mit und ohne Regionen; keine echten Domains; Vorlagen-Platzhalter vollständig |
+
+### Scope Assessment
+- Files: ~14 (5 neu)
+- Estimated LoC: +450/-15 (davon ~200 Tests)
+- Risk Level: MEDIUM — Abrufweg betrifft nur `map_points_fetch` und hat den öffentlichen Dienst als Rückfall; neu ist Docker als Betriebsbaustein (erstmals im Repo) und Speicherbedarf beim Einspielen auf einem knappen Server.
+
+### Technical Approach
+1. **Engine zuerst, ohne Docker testbar:** `kartendienst.py` entscheidet anhand von Abdeckung und Einstellungen; ohne `FR_KARTENDIENST` ändert sich nichts (heutige Tests bleiben grün). Leere Antwort des eigenen Dienstes innerhalb der Abdeckung ist ein gültiges Ergebnis; außerhalb wird er gar nicht gefragt.
+2. **Betrieb als optionaler Baustein:** eigener Vorlagen-Unterordner, von `einrichten.sh` nur bei gesetzten Regionen erzeugt; Einheiten-Abgleich #260 bleibt bei seinen sechs Arten (kein Lärm wie bei #445). Start bei Bedarf über systemd-Socket-Aktivierung + `systemd-socket-proxyd --exit-idle-time` (etablierte Praxis), Container endet über `StopWhenUnneeded`.
+3. **Einspielen als Skript mit Rückweg:** neuer Datenstand in Nebenordner, Umschalten erst nach erfolgreicher Probeabfrage; Timer für Aktualität; Erfolg prüft monitor.sh (Alter von `abdeckung.json`).
+4. **Abnahme:** Instanz einrichten (Mallorca als Region der Instanz), #240 am eigenen Dienst abnehmen (Treffer, Ersetzen, zweite Kategorie, Städtewochenende außerhalb der Fläche → öffentlicher Dienst bzw. dessen Fehlermeldung), Ruhezustand: nach Ruhezeit kein Container. Danach `~/overpass-test` aufräumen.
+
+### Dependencies
+- Upstream: Docker (vorhanden), Image `wiktorn/overpass-api` (per Digest), osmium (im Image vorhanden, sonst `osmium-tool` im Container), Geofabrik-Auszüge (ODbL), systemd-socket-proxyd (systemd 255).
+- Downstream: `kartenpunkte_holen` (beide Aufrufer laufen über `overpass_holen`), Werkzeuge `punkte_holen`/`wasser_pruefen`; Reisen-Repo der Instanz (Einstellungen setzen, Instanztests mit dem Branch laufen lassen, da Umgebungswerte neu sind).
+
+### Open Questions
+- [ ] Teilfrist für den eigenen Dienst: 10 s (Kaltstart 2 s gemessen + Puffer bei Speicherdruck) — in der Spec festlegen.
+- [ ] Ruhezeit bis Stopp: Vorschlag 15 min (Gesprächssitzungen fragen oft mehrmals hintereinander).
+- [ ] Aktualisierung: monatlich reicht für Wasserstellen/Hütten; Minutendiffs bewusst nicht (Speicher, Komplexität).
+- [ ] Region der Instanz (Mallorca) wird im Reisen-Repo der Instanz eingetragen, nicht hier.
+Keine dieser Fragen ist eine Produktentscheidung; sie werden in der Spec technisch entschieden.
