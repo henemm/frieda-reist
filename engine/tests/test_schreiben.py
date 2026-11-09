@@ -2435,6 +2435,13 @@ KARTENPUNKTE = {"strecke": "E-01", "kategorie": "wasser", "osm": ["amenity=drink
 ABFRAGE = '[out:json];(nwr["amenity"="drinking_water"](50.9,14.0,51.0,14.1););out center tags;'
 
 
+def deutsch(a):
+    """Bestätigung aus dem Unterprozess `anwenden` auf Deutsch: Der Unterprozess setzt "text" im Rückfall der Software (Englisch,
+    conftest.rueckfall_deutsch gilt nur im Testprozess); "text_teile" baut ihn in jeder Sprache, wie der Konnektor."""
+    import texte
+    return texte.Satz.aus_json(a["text_teile"]).text("de")
+
+
 def sperre_frei(reise):
     """Ist die Sperre der Reise gerade frei? (nicht blockierend)"""
     import fcntl
@@ -2512,7 +2519,7 @@ def test_kartenpunkte_vorab_abruf_vor_der_sperre(repo, monkeypatch):
     aufrufe = osm_ersatz(monkeypatch)
     code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
     assert code == 200 and a["ok"], a
-    assert "2 Treffer für Wasser" in a["text"] and "Brunnen an der Bastei" in a["text"], a["text"]
+    assert "2 Treffer für Wasser" in deutsch(a) and "Brunnen an der Bastei" in deutsch(a), a["text"]
     assert len(aufrufe) == 1
     abfrage, frist, frei = aufrufe[0]
     assert frist == sb.OSM_FRIST_VORAB and frei, aufrufe          # lange Frist, Sperre während des Abrufs frei
@@ -2673,7 +2680,7 @@ def test_kartenpunkte_vorab_nur_aus_eigener_datei(repo, monkeypatch, tmp_path):
     anfrage = {**IDA, "FR_OSM_VORAB": str(fremd), "osm_vorab": eingebettet, "antwort": eingebettet,
                "args": {**KARTENPUNKTE, "FR_OSM_VORAB": str(fremd), "osm_vorab": eingebettet}}
     code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", anfrage)
-    assert code == 200 and "1 Treffer" in a["text"] and "Untergeschoben" not in a["text"], a
+    assert code == 200 and "1 Treffer" in deutsch(a) and "Untergeschoben" not in a["text"], a
     assert len(aufrufe) == 1
     r, _ = routen_auf_main(origin)
     assert not any(d.get("name") == "Untergeschoben" for d in r["aufenthalte"].values())
@@ -2705,6 +2712,40 @@ def test_kartenpunkte_vorab_ordner_wird_immer_geloescht(repo, monkeypatch, tmp_p
     code, _ = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
     assert gesehen, "der Vorab-Abruf legt seinen Ordner mit tempfile.mkdtemp(prefix='frieda-osm-') an"
     assert {"erfolg": 200, "ablehnung": 422, "frist": 504}.get(ausgang, code) == code
+    assert list(tmp.glob("frieda-osm-*")) == []
+
+
+def test_kartenpunkte_vorab_ordner_auch_nach_zu_langer_vorbereitung_weg(repo, monkeypatch, tmp_path, capsys):
+    """AC-8 (Adversary F001, F002): Dauert die Lesekopie länger als ZEIT_VORAB_VORB, entfällt der Vorab-Abruf mit einer
+    Protokollzeile; kopiert der Faden danach weiter, räumt er seinen Ordner frieda-osm-* selbst weg."""
+    import tempfile
+    wurzel, _, arbeit, _ = repo
+    tmp = tmp_path / "tmp-osm"
+    tmp.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp))
+    monkeypatch.setattr(sb, "ZEIT_VORAB_VORB", 0.2)
+    aufrufe = osm_ersatz(monkeypatch)
+    weiter, fertig, original = threading.Event(), threading.Event(), shutil.copytree
+
+    def langsam(quelle, ziel, *a, **k):
+        if "frieda-osm-" not in str(ziel):
+            return original(quelle, ziel, *a, **k)
+        weiter.wait(30)                       # erst nach dem Ende des Vorgangs (Ordner schon gelöscht) weiterkopieren
+        try:
+            return original(quelle, ziel, *a, **k)
+        finally:
+            fertig.set()
+    monkeypatch.setattr(sb.shutil, "copytree", langsam)
+    code, _ = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
+    assert code == 422 and aufrufe == []       # kein Vorab-Abruf; der Vorgang ruft selbst ab (FR_OVERPASS unerreichbar)
+    assert re.search(r"^Prefetch kartenpunkte_holen: preparation exceeded .* skipped$", capsys.readouterr().err, re.M)
+    weiter.set()
+    assert fertig.wait(30)
+    import time
+    for _ in range(100):
+        if not list(tmp.glob("frieda-osm-*")):
+            break
+        time.sleep(0.05)
     assert list(tmp.glob("frieda-osm-*")) == []
 
 
@@ -2742,7 +2783,7 @@ def test_kartenpunkte_vorab_in_beiden_schreibwegen(request, repo, monkeypatch, w
     osm_ersatz(monkeypatch, beim_abruf=lambda: waehrend.append((stand(), kopie_stand())))
     umgebungen = env_mitschneiden(monkeypatch)
     code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
-    assert code == 200 and "2 Treffer" in a["text"], a
+    assert code == 200 and "2 Treffer" in deutsch(a), a
     assert waehrend == [(vorher, kopie_vorher)]
     assert len(umgebungen) == 1 and umgebungen[0].get("FR_OSM_VORAB"), umgebungen
     assert stand() != vorher       # erst der Vorgang selbst trägt ein
