@@ -14,7 +14,7 @@
 # 4. Übernehmen: ein Commit des Bots mit Submodul und umgestellten Reisen, darunter die Liste der Commits und die
 #    Meldungen der Umstellung je Reise.
 # 5. Scheitert der Push (Wettlauf mit dem Schreibweg), wird auf origin/main zurückgesetzt, das Submodul erneut gesetzt,
-#    neu umgestellt, neu geprüft und neu committet. Höchstens drei Versuche, nie erzwungen; scheitern alle, endet der Lauf
+#    neu umgestellt, die Reisen neu geprüft (engine/tests nur einmal je Lauf, #460) und neu committet. Höchstens drei Versuche, nie erzwungen; scheitern alle, endet der Lauf
 #    rot ohne Issue (der nächste Lauf versucht es wieder).
 # 6. Tor rot: ohne offenes Issue (Label software-nachziehen) entsteht eins, und der Lauf endet rot (GitHub mailt). Mit
 #    offenem Issue: Warnung, Exit 0, kein Commit; nennt das Issue den aktuellen Stand noch nicht, bekommt es einen
@@ -33,6 +33,7 @@ main() {
   if [ "$NEU_DA" = ja ]; then stand="$NEU"; else stand="$ALT"; fi
   kurz="${stand:0:7}"
   meldungen="$tmp/umstellung"
+  software_ergebnis=""   # gruen | rot, sobald engine/tests in diesem Lauf gelaufen sind (tor)
 
   git config user.name "github-actions[bot]"
   git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -135,14 +136,19 @@ umstellen() {  # neu.py nachziehen je Reise; Meldungen geänderter Reisen nach $
 tor() {  # 0 grün, 1 rot; rot_text nennt, was sperrt
   local r reise rote=""
   rot_text=""
-  if [ "$NEU_DA" = ja ]; then
+  # engine/tests höchstens einmal je Lauf (#460): Der Stand NEU bleibt in jedem Versuch derselbe, nur die Reisen auf
+  # origin/main ändern sich. Jede Wiederholung verlängerte das Fenster für den Wettlauf mit dem Schreibweg um die ganze
+  # Testzeit, bis der Lauf am Zeitlimit scheiterte.
+  if [ "$NEU_DA" = ja ] && [ -z "$software_ergebnis" ]; then
+    software_ergebnis=gruen
     # Wie bisher über den Link engine -> frieda/engine des Reisen-Repos; ohne Link im Ordner der Software
     if [ -d engine/tests ]; then
-      python -m pytest -q -rs -n auto engine/tests || rot_text="die Tests der Software (engine/tests)"
+      python -m pytest -q -rs -n auto engine/tests || software_ergebnis=rot
     else
-      (cd frieda && python -m pytest -q -rs -n auto engine/tests) || rot_text="die Tests der Software (engine/tests)"
+      (cd frieda && python -m pytest -q -rs -n auto engine/tests) || software_ergebnis=rot
     fi
   fi
+  [ "$software_ergebnis" != rot ] || rot_text="die Tests der Software (engine/tests)"
   # Jede Reise wie beim Veröffentlichen; Warnungen im Plan sperren nie (bauen.py endet dann mit 0)
   for r in reisen/*/reise.json; do
     [ -e "$r" ] || continue

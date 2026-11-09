@@ -511,7 +511,9 @@ git -C "$k" push -q origin HEAD:main
     assert git(sn["remote"], "rev-parse", "main:frieda") == sn["sw"]["b"]
     assert not auf_main(sn, f"reisen/{sn['ski']}/CLAUDE.md")
     assert not auf_main(sn, f"reisen/{sn['wanderung']}/CLAUDE.md")               # neu umgestellt
-    assert sn["tor"]().count("software") >= 1
+    t = sn["tor"]()
+    assert t.count("software") == 1                                               # #460: Software-Tests einmal je Lauf
+    assert t.count(f"bau {sn['wanderung']}") == 2                                 # die Reisen in jedem Versuch neu
 
 
 def test_drei_gescheiterte_pushes_rot_ohne_issue(sn):  # AC-4
@@ -521,6 +523,7 @@ def test_drei_gescheiterte_pushes_rot_ohne_issue(sn):  # AC-4
     r, _ = sn["lauf"]("ja")
     assert r.returncode == 1, r.stdout + r.stderr
     assert (sn["tmp"] / "push.log").read_text().split() == ["versuch"] * 3
+    assert sn["tor"]().count("software") == 1                                     # #460: nicht in jedem Versuch
     assert sn["kopf"]() == vorher
     assert not any(a[:2] == ["issue", "create"] for a in sn["gh"]()) and sn["issues"]() == []
 
