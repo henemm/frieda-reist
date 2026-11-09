@@ -109,6 +109,7 @@ PARAMETER = {
     "vorname": "first_name", "wahl": "choices", "wahlstelle": "choice", "wann": "when", "was": "what", "wert": "value",
     "werte": "values", "wunsch": "wish", "zeit": "time_text", "ziel": "target", "zustaendig": "assignee", "reise": "trip",
     "wer": "packer", "gepackt": "packed",
+    "anreise_ab": "checkin_from", "abreise_bis": "checkout_until", "vor_ort_zahlen": "pay_on_site",
 }
 # Gleiches Wort, andere Bedeutung: bei Strecken (ding_anlegen, ding_aendern) sind von/nach Start und Ziel, ab/an Abfahrt und Ankunft
 # item_create und item_update (ADR-0007, Schritt c) nehmen den Elternbezug an (englisch parent); die früheren Parameter ort, von, nach, ab, an
@@ -118,7 +119,9 @@ PARAMETER_JE_WERKZEUG = {
     "ding_anlegen": {"an": "parent"}, "ding_aendern": {"an": "parent"}, "gegenstand_anlegen": {"an": "parent"}, "gegenstand_aendern": {"an": "parent"},
     "aufgabe_anlegen": {"ab": "earliest"}, "aufgabe_aendern": {"ab": "earliest"},
     "tag_aendern": {"nacht": "night", "wahl": "choices"},
-    "buchung_anlegen": {"ab": "available_from"}, "buchung_aendern": {"ab": "available_from"},
+    # Zeitraum einer Buchung (#463): arrival/departure nur hier; bei Strecken (ding_*) heißen sie Abfahrt und Ankunft (PARAMETER_VERSTECKT)
+    "buchung_anlegen": {"ab": "available_from", "anreise": "arrival", "abreise": "departure"},
+    "buchung_aendern": {"ab": "available_from", "anreise": "arrival", "abreise": "departure"},
 }
 def _werte_aus_dem_katalog():
     """Englischer Wert -> Datenwert aus den Einträgen wert.* und symbol.* des englischen Katalogs (dieselben Wörter, die Antworten zeigen)."""

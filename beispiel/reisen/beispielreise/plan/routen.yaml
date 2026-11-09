@@ -410,7 +410,13 @@ buchungen:
     bei: "direkt beim Hotel (Mail)"
     preis: "120 € für eine Nacht"
     zahlung: angezahlt   # Zahlstand (#166): offen | angezahlt | bezahlt | vor_ort | inklusive | erstattet
-    bezahlt: "Anzahlung 30 €, Rest vor Ort (Beispielwert)"
+    bezahlt: "Anzahlung 30 € per Überweisung am 29.10.2026 (Beispielwert)"
+    vor_ort_zahlen: "90 € Rest und 3 € Kurtaxe (Beispielwert)"   # Check-in-Ansicht (#463)
+    # Zeitraum (#463): erste Nacht und Abreisetag; ohne ihn gilt die Buchung für alle Nächte der Unterkunft
+    anreise: 2027-05-13
+    abreise: 2027-05-14
+    anreise_ab: "15:00"
+    abreise_bis: "11:00"
     storno: "kostenlos bis 3 Tage vorher, danach eine Nacht"
     storno_bis: 2027-05-11
     gebucht_am: 2026-10-29
@@ -428,6 +434,7 @@ buchungen:
     bezahlt: "Kreditkarte"
     frist: 2027-05-13
     frist_was: "Ticket in die App laden"
+    anreise: 2027-05-14   # bei Strecken das Reisedatum (#463)
     storno: "Sparpreis, keine Erstattung"
     gebucht_am: 2026-10-29
     merkmale: {ticketart: Sparpreis}   # Merkmal der Buchung, festgelegt an der Art Bahn (plan/arten.yaml, Beispielwert)

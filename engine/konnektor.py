@@ -583,6 +583,15 @@ class Handbuch:
             z.append(tk("konnektor.ausgabe.buchung_text.7") + "; ".join(f"{x} {self.titel_von(x)}: {p}" for x, p in b["preise"].items()))
         if b.get("personen"):
             z.append(tk("konnektor.ausgabe.buchung_text.8") + "; ".join(f"{n}" + (f" ({a})" if a else "") for n, a in b["personen"].items()))
+        if b.get("anreise") or b.get("abreise"):   # Zeitraum (#463): für welche Nächte oder Tage die Buchung gilt
+            z.append(tk("konnektor.ausgabe.buchung_text.zeitraum", w1=datum_de(b["anreise"]) if b.get("anreise") else "…",
+                        w2=datum_de(b["abreise"]) if b.get("abreise") else "…"))
+        if b.get("anreise_ab"):
+            z.append(tk("konnektor.ausgabe.buchung_text.anreise_ab", w1=b["anreise_ab"]))
+        if b.get("abreise_bis"):
+            z.append(tk("konnektor.ausgabe.buchung_text.abreise_bis", w1=b["abreise_bis"]))
+        if b.get("vor_ort_zahlen"):
+            z.append(tk("konnektor.ausgabe.buchung_text.vor_ort_zahlen", w1=b["vor_ort_zahlen"]))
         if b.get("ab"):
             z.append(tk("konnektor.ausgabe.buchung_text.ab", w1=datum_de(b['ab'])) + (f": {b['ab_was']}" if b.get("ab_was") else ""))
         if b.get("frist"):
@@ -2640,6 +2649,11 @@ BUCHUNG_FELDER_SCHEMA = {
     "storno": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.storno"},
     "storno_bis": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.storno_bis"},
     "gebucht_am": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.gebucht_am"},
+    "anreise": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.anreise"},
+    "abreise": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.abreise"},
+    "anreise_ab": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.anreise_ab"},
+    "abreise_bis": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.abreise_bis"},
+    "vor_ort_zahlen": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.vor_ort_zahlen"},
     "ab": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.ab"},
     "ab_was": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.ab_was"},
     "personen": {"type": "object", "additionalProperties": {"type": "string"},

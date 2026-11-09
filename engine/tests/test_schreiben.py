@@ -1205,6 +1205,28 @@ def test_merkmale_der_buchung_definieren(repo):
     assert arten["pension"]["buchung_merkmale"]["zimmer"]["werte"] == ["Einzel", "Doppel"] and arten["pension"]["beschreibung"] == "kleines Haus"
 
 
+def test_buchung_mit_zeitraum(repo):
+    """#463 (Product Owner 9.11.2026): Anreise und Abreise je Buchung, dazu Check-in ab, Check-out bis und was vor Ort zu zahlen
+    ist; Abreise vor Anreise lehnt die Prüfung ab, zwei Buchungen mit getrennten Zeiträumen für dieselbe Unterkunft sind keine Warnung."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "buchung_anlegen", {**IDA, "args": {
+        "fuer": ["U-01"], "nummer": "HE-2027-0999", "anreise": "2027-05-15", "abreise": "2027-05-16", "anreise_ab": "15:00",
+        "abreise_bis": "11:00", "vor_ort_zahlen": "3 € Kurtaxe", "quelle": "Mail (Test)"}})
+    assert ", Zeitraum 15.5.2027 bis 16.5.2027, Check-in ab 15:00, Check-out bis 11:00, Vor Ort zu zahlen 3 € Kurtaxe" in a["text"], a["text"]
+    r, _ = routen_auf_main(origin)
+    b = r["buchungen"]["B-04"]
+    assert str(b["anreise"]) == "2027-05-15" and str(b["abreise"]) == "2027-05-16"
+    assert b["anreise_ab"] == "15:00" and b["abreise_bis"] == "11:00" and b["vor_ort_zahlen"] == "3 € Kurtaxe"
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="die Abreise liegt vor der Anreise"):
+        s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "abreise": "2027-05-14"}})
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "anreise_ab": "", "abreise": ""}})
+    r, _ = routen_auf_main(origin)
+    assert "anreise_ab" not in r["buchungen"]["B-04"] and "abreise" not in r["buchungen"]["B-04"]
+
+
 def test_buchung_mit_zahlstand_und_merkmalen(repo):
     """#166 (Product Owner 31.10.2026): zahlung ist ein festes Feld mit festen Werten (englische Aliase bei der Eingabe, gespeichert
     deutsch); merkmale nur die, die die Arten der Dinge für Buchungen festlegen (Beispielreise: Bahn mit Ticketart und Wagen)."""

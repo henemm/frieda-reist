@@ -131,7 +131,7 @@ def test_deutsch_wortlaut_der_vorhandenen_zuordnungen():
     assert schreiben.GRUNDFORM_WORT == {"aufenthalt": "Aufenthalt", "bewegung": "Bewegung", "folge": "Folge", "ort": "Ort", "gegenstand": "Gegenstand"}
     assert schreiben.BUCHUNG_WORTE["bei"] == "Gebucht bei"
     assert schreiben.BUCHUNG_WORTE["preise"] == "Preise je Ding"
-    assert len(schreiben.BUCHUNG_WORTE) == 19
+    assert len(schreiben.BUCHUNG_WORTE) == 24   # seit #463 mit Anreise, Abreise, Check-in ab, Check-out bis, vor Ort zu zahlen
 
 
 def test_stufe_satz_in_beiden_sprachen():

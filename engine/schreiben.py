@@ -3087,7 +3087,8 @@ def buchung_fuer(args, roh, route):
     return v
 
 
-BUCHUNG_TEXTE = {"nummer": 80, "bei": 120, "preis": 120, "bezahlt": 200, "frist_was": 120, "storno": 400, "notiz": MAX_TEXT, "ab_was": 120}
+BUCHUNG_TEXTE = {"nummer": 80, "bei": 120, "preis": 120, "bezahlt": 200, "frist_was": 120, "storno": 400, "notiz": MAX_TEXT, "ab_was": 120,
+                 "anreise_ab": 40, "abreise_bis": 40, "vor_ort_zahlen": 120}
 # Felder einer Buchung in Worten für Antwort und Verlauf (Menschen lesen Wörter, keine Schlüssel; Product Owner 29.10.2026)
 BUCHUNG_WORTE = texte.gruppe("de", "schreiben.buchung")
 
@@ -3231,7 +3232,7 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
             d["zahlung"] = zahlung
         if (v := text_wert(args, k, laenge=laenge)):
             d[k] = v
-    for k in ("frist", "storno_bis", "gebucht_am", "ab"):
+    for k in ("frist", "storno_bis", "gebucht_am", "ab", "anreise", "abreise"):
         v = datum_wert(args, k)
         if v:
             d[k] = v
@@ -3267,6 +3268,8 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
             + (S("schreiben.antwort.buchung.frist", w1=d["frist"]) + (f" ({d['frist_was']})" if d.get("frist_was") else "") if d.get("frist") else "")
             + (S("schreiben.antwort.buchung.storno", w1=d["storno"]) if d.get("storno") else "")
             + (S("schreiben.antwort.buchung.storno_bis", w1=d["storno_bis"]) if d.get("storno_bis") else "")
+            + (S("schreiben.antwort.buchung.zeitraum", w1=d.get("anreise") or "…", w2=d.get("abreise") or "…") if d.get("anreise") or d.get("abreise") else "")
+            + "".join(f", {S('schreiben.buchung.' + k)} {d[k]}" for k in ("anreise_ab", "abreise_bis", "vor_ort_zahlen") if d.get(k))
             + (S("schreiben.antwort.buchung.ab", w1=d["ab"]) + (f" ({d['ab_was']})" if d.get("ab_was") else "") if d.get("ab") else "")
             + (S("schreiben.antwort.buchung.preise", w1=", ".join(f"{k} {v}" for k, v in preise.items())) if preise else "")
             + (S("schreiben.antwort.buchung.reisende_liste", w1=", ".join(f"{k}{(' (' + v + ')') if v else ''}" for k, v in pers.items())) if pers else "")
@@ -3333,7 +3336,7 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
         if not q:
             raise Ablehnung("schreiben.buchung_aendern.5")
         setze("quelle", q, "Herkunft")
-    for k in ("frist", "storno_bis", "gebucht_am", "ab"):
+    for k in ("frist", "storno_bis", "gebucht_am", "ab", "anreise", "abreise"):
         v = datum_wert(args, k)
         if v is not None:
             setze(k, v)

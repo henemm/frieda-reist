@@ -59,7 +59,14 @@ BUCHUNG_STATUS = ("angefragt", "gebucht", "storniert")
 # oder Liste der Namen), preise ({ID aus fuer: Betrag}, wenn eine Buchung mehrere Dinge umfasst), ab mit ab_was (ab wann
 # etwas geht, etwa der Check-in; frist sagt bis wann).
 BUCHUNG_FELDER = ("fuer", "status", "nummer", "bei", "preis", "bezahlt", "frist", "frist_was", "storno", "storno_bis", "gebucht_am",
-                  "wer", "quelle", "notiz", "verlauf", "personen", "preise", "ab", "ab_was", "zahlung", "merkmale")
+                  "wer", "quelle", "notiz", "verlauf", "personen", "preise", "ab", "ab_was", "zahlung", "merkmale", "anreise", "abreise",
+                  "anreise_ab", "abreise_bis", "vor_ort_zahlen")
+# Zeitraum einer Buchung (Product Owner 9.11.2026, #463): anreise und abreise (JJJJ-MM-TT, bei Strecken das Reisedatum), beide
+# freiwillig. Ohne Zeitraum gilt die Buchung für alle Nächte und Tage ihrer Dinge (wie bisher). Eine Nacht gehört dazu, wenn
+# anreise ≤ Nacht < abreise; ein Tag einer Strecke oder eines Aufenthalts, wenn anreise ≤ Tag ≤ abreise; nur anreise: genau
+# dieser Tag oder diese Nacht; nur abreise: alles bis dahin. So hat jede Nacht ihre eigene Buchung (buchung_gilt_am).
+# Dazu für die Check-in-Ansicht: anreise_ab und abreise_bis (Text, etwa „15:00“: Check-in ab, Check-out bis) und vor_ort_zahlen
+# (was vor Ort noch zu zahlen ist, etwa „2,20 € Kurtaxe“; steht dann nicht mehr in preis oder bezahlt).
 # Zahlstand einer Buchung (Product Owner 31.10.2026, frieda-reist #166): festes Feld der Grundform Buchung, kein Merkmal.
 # Datenwerte bleiben deutsch (ADR-0006 Punkt 4); englische Aliase gelten bei der Eingabe. Einzelheiten („Anzahlung 50 €,
 # Rest bis 1.2.“) stehen weiter im freien Text bezahlt. erstattet gibt es nur bei einer stornierten Buchung.
@@ -79,12 +86,53 @@ def zahlung_schluessel(text):
     """Eingabe eines Zahlstands (Schlüssel, englischer Alias, „vor Ort“) -> Schlüssel oder None, wenn unbekannt."""
     t = re.sub(r"[\s-]+", "_", str(text or "").strip().lower())
     return t if t in ZAHLUNG else ZAHLUNG_ALIAS.get(t)
-BUCHUNG_DATEN = ("frist", "storno_bis", "gebucht_am", "ab")
+BUCHUNG_DATEN = ("frist", "storno_bis", "gebucht_am", "ab", "anreise", "abreise")
+
+
+def _als_datum(v):
+    if isinstance(v, datetime.date) or v in (None, ""):
+        return v or None
+    try:
+        return datetime.date.fromisoformat(str(v))
+    except ValueError:
+        return None
+
+
+def buchung_zeitraum(b):
+    """(anreise, abreise) einer Buchung als Datum oder None."""
+    b = b if isinstance(b, dict) else {}
+    return _als_datum(b.get("anreise")), _als_datum(b.get("abreise"))
+
+
+def buchung_gilt_am(b, datum, nacht):
+    """Gilt die Buchung b am Datum (eine Nacht, wenn nacht, sonst ein Tag)? Ohne Zeitraum immer (#463)."""
+    an, ab = buchung_zeitraum(b)
+    datum = _als_datum(datum)
+    if datum is None or (an is None and ab is None):
+        return True
+    if an is not None and datum < an:
+        return False
+    if ab is None:
+        return datum == an
+    return datum < ab if nacht else datum <= ab
+
+
+def zeitraeume_ueberschneiden(a, b):
+    """Überschneiden sich die Zeiträume zweier Buchungen (als Nächte, halb offen)? Ohne Zeitraum gilt eine Buchung immer, also ja."""
+    def spanne(x):
+        an, ab = buchung_zeitraum(x)
+        if an is None and ab is None:
+            return None
+        lo = an or datetime.date.min
+        return lo, ab if ab and ab > lo else (lo + datetime.timedelta(days=1) if an else ab)
+    sa, sb = spanne(a), spanne(b)
+    return sa is None or sb is None or (sa[0] < sb[1] and sb[0] < sa[1])
+
+
 # Zeitpunkt an einer Bewegung (ab, an; Issue #135): Uhrzeit HH:MM am Tag der Strecke oder JJJJ-MM-TTTHH:MM mit Zeitzone
 # (+01:00, Z); die Software prüft nur die Form und meldet, wenn eine Strecke abfährt, bevor die vorige ankommt (Anschluss;
 # eine Uhrzeit ohne Datum ist Ortszeit und wird mit der Uhrzeit eines Zeitpunkts am Ort verglichen)
 ZEIT_MUSTER = re.compile(r"^(?:(\d{4}-\d{2}-\d{2})T)?(\d{2}):(\d{2})(Z|[+-]\d{2}:\d{2})?$")
-
 
 def gpx_datei(s):
     """GPX-Track einer Strecke (K13): gpx ist der Pfad unter medien/ oder eine Aussage {datei, quelle, geprueft} (track_anhaengen)."""
@@ -806,6 +854,9 @@ class Routen:
                         datetime.date.fromisoformat(str(v))
                     except ValueError:
                         self.fehl(texte.satz("pruefung.routen.25", bid=bid, k=k))
+            an, ab = buchung_zeitraum(b)
+            if an and ab and ab < an:
+                self.fehl(texte.satz("pruefung.routen.buchung_zeitraum", bid=bid))
             pers = b.get("personen")
             if pers is not None and not (isinstance(pers, list) and all(isinstance(x, str) for x in pers)) \
                     and not (isinstance(pers, dict) and all(isinstance(k, str) and (v is None or isinstance(v, str)) for k, v in pers.items())):
@@ -837,7 +888,7 @@ class Routen:
             if b.get("status", "gebucht") != "storniert":
                 for x in fuer:
                     alt = self.buchung_je_ding.get(x)
-                    if alt and alt != bid:
+                    if alt and alt != bid and zeitraeume_ueberschneiden(b, self.buchungen.get(alt)):
                         self.warne(bid, texte.satz("pruefung.routen.29", bid=bid, alt=alt, x=x))
                     # Welche gilt (Product Owner 29.10.2026): gebucht vor angefragt, dann die jüngste (gebucht_am), dann die spätere
                     if alt is None or self.buchung_rang(bid) >= self.buchung_rang(alt):
@@ -863,7 +914,8 @@ class Routen:
         fuer = [b["fuer"]] if isinstance(b.get("fuer"), str) else list(b.get("fuer") or [])
         namen = [(self.unterkuenfte.get(x) or self.aufenthalte.get(x) or {}).get("name") or self.strecke(x).get("titel") or x for x in fuer]
         aus = {"id": bid, "fuer": fuer, "titel": ", ".join(namen), "status": str(b.get("status") or "gebucht")}
-        for k in ("nummer", "bei", "preis", "bezahlt", "frist_was", "storno", "wer", "quelle", "notiz", "ab_was", "zahlung"):
+        for k in ("nummer", "bei", "preis", "bezahlt", "frist_was", "storno", "wer", "quelle", "notiz", "ab_was", "zahlung",
+                  "anreise_ab", "abreise_bis", "vor_ort_zahlen"):
             aus[k] = str(b[k]) if b.get(k) not in (None, "") else None
         # Merkmale der Buchung (#166) in der Reihenfolge der Definition, mit Name und Einheit; Unbekanntes zuletzt unter seinem Schlüssel
         mk = b.get("merkmale") if isinstance(b.get("merkmale"), dict) else {}

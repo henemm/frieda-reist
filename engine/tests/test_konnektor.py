@@ -975,7 +975,8 @@ def test_buchung_zeigt_zahlstand_und_merkmale(schreibweg):
     einer Art auch die Merkmale ihrer Buchungen; zahlung und merkmale gehen an den Schreibweg, englische Aliase stehen im Schema."""
     basis, _ = schreibweg
     t, f = werkzeug(basis, KARL, "zeige", id="B-01")
-    assert not f and "Zahlung: angezahlt · Anzahlung 30 €, Rest vor Ort (Beispielwert)" in t
+    assert not f and "Zahlung: angezahlt · Anzahlung 30 € per Überweisung am 29.10.2026 (Beispielwert)" in t
+    assert "Zeitraum: 13.5.2027 bis 14.5.2027" in t and "Check-in ab 15:00" in t and "Vor Ort zu zahlen: 90 € Rest" in t, t
     t, f = werkzeug(basis, KARL, "zeige", id="B-02")
     assert not f and "Zahlung: bezahlt · Kreditkarte" in t and "Ticketart: Sparpreis" in t
     t, f = werkzeug(basis, ALT_ORGANISATOR, "merkmale", art="bahn")

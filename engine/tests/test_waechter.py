@@ -428,7 +428,7 @@ def test_zahlung_offen_nur_mit_regel_und_vor_dem_stichtag(reise):
     assert not zahlung(r.lauf(D(2027, 5, 9))["meldungen"])
     ms = zahlung(r.lauf(D(2027, 5, 10))["meldungen"])
     assert len(ms) == 1 and ms[0]["an"] == ["Ida"] and ms[0]["bezug"] == "B-01"
-    assert ms[0]["text"] == "Zahlung angezahlt: Buchung B-01 Hotel am Elbufer (Anzahlung 30 €, Rest vor Ort (Beispielwert)), erster Tag 13.5.2027."
+    assert ms[0]["text"] == "Zahlung angezahlt: Buchung B-01 Hotel am Elbufer (Anzahlung 30 € per Überweisung am 29.10.2026 (Beispielwert)), erster Tag 13.5.2027."
     assert not zahlung(r.lauf(D(2027, 5, 11))["meldungen"])                 # nicht täglich
     assert zahlung(r.lauf(D(2027, 5, 17))["meldungen"])                     # nach 7 Tagen wieder
     # Die Frist zählt, wenn sie früher liegt; vor_ort, inklusive und bezahlt melden nie; angefragt auch nicht
