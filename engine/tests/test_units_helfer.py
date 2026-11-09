@@ -248,6 +248,24 @@ def test_ac6_falsche_argumentzahl(h):
     assert h["m"].main(["helfer", NAME, "extra"], b"", systemd=str(h["systemd"]), neu_laden=lambda: None) == 3
 
 
+# ---------- AC-21 aus #445 (Nebenbefund): daemon-reload scheitert ohne Traceback ----------
+
+@pytest.mark.parametrize("ergebnis", [1, FileNotFoundError("systemctl fehlt"), subprocess.TimeoutExpired(["systemctl"], 1)])
+def test_daemon_reload_scheitert_ausgang_5_ohne_traceback(h, monkeypatch, capsys, ergebnis):
+    """Die Vorgabe neu_laden ruft systemctl daemon-reload; scheitert es, ist die Datei schon ersetzt: Ausgang 5, Grund auf stderr."""
+    def run(args, **kw):
+        if isinstance(ergebnis, BaseException):
+            raise ergebnis
+        return subprocess.CompletedProcess(args, ergebnis, b"", b"")
+    monkeypatch.setattr(subprocess, "run", run)
+    neu = EINHEIT.replace("UTC", "Europe/Berlin")
+    rc = h["m"].main(["helfer", NAME], neu.encode(), systemd=str(h["systemd"]))
+    assert rc == 5
+    assert (h["systemd"] / NAME).read_text(encoding="utf-8") == neu
+    err = capsys.readouterr().err
+    assert "daemon-reload" in err and "Traceback" not in err
+
+
 # ---------- Erzeugung durch einrichten.sh ----------
 
 def test_einrichten_erzeugt_das_hilfsprogramm_mit_eingesetzten_werten(tmp_path):

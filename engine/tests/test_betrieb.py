@@ -2267,7 +2267,8 @@ def test_veroeffentlichen_unit_abgleich_fehler_stoppt_nichts(vf):
 
 # ---------- nginx-Bausteine abgleichen beim Veröffentlichen (#206, test_nginx.py prüft den Abgleich selbst) ----------
 
-def test_veroeffentlichen_meldet_nginx_abweichung_einmal_je_fingerabdruck_ohne_zu_installieren(vf):
+def test_veroeffentlichen_meldet_nginx_abweichung_einmal_je_fingerabdruck_nach_installationsversuch(vf):
+    """#445, Teil 3: erst Installationsversuch (nginx.py installieren), dann erneut prüfen; der Rest wird einmal gemeldet."""
     protokoll = vf["tmp"] / "nginx-aufrufe.log"
     stub = ausfuehrbar(vf["tmp"] / "nginx.sh", f'#!/bin/sh\necho "$@" >> {protokoll}\n'
                        'echo "probe-zone.conf differs"\necho "sudo install -m 644 x /etc/nginx/conf.d/"\nexit 3\n')
@@ -2275,10 +2276,87 @@ def test_veroeffentlichen_meldet_nginx_abweichung_einmal_je_fingerabdruck_ohne_z
     log = vf["zeilen"]("melden.log")       # der Text der Meldung ist mehrzeilig
     assert len([z for z in log if z.startswith("normal|")]) == 1
     assert "probe-zone.conf differs" in "\n".join(log) and any(z.startswith("sudo install") for z in log)
-    assert protokoll.read_text().split() == ["pruefen"]          # nur geprüft, nie installiert
+    assert any(z.startswith("Install attempt:") for z in log)
+    assert protokoll.read_text().split() == ["pruefen", "installieren", "pruefen"]
     vf["neuer_commit"]()
     assert vf["lauf"](VF_NGINX=str(stub)).returncode == 0
     assert len([z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]) == 1
+    assert not hoch(vf)
+
+
+def _nginx_attrappe(vf, nach_installieren, installieren_text="installed"):
+    """Attrappe für nginx.py: pruefen endet mit 3; installieren gibt installieren_text aus (mit $$, also je Lauf anders, wenn
+    gewünscht) und endet mit 0 oder 5; danach endet pruefen mit nach_installieren."""
+    marker = vf["tmp"] / "nginx-installiert"
+    protokoll = vf["tmp"] / "nginx-aufrufe.log"
+    return ausfuehrbar(vf["tmp"] / "nginx-install.sh",
+                       f'#!/bin/sh\necho "$1" >> {protokoll}\n'
+                       f'if [ "$1" = installieren ]; then touch {marker}; echo "{installieren_text}"; '
+                       f'[ {nach_installieren} -eq 0 ] && exit 0; exit 5; fi\n'
+                       f'if [ -e {marker} ] && [ {nach_installieren} -eq 0 ]; then exit 0; fi\n'
+                       f'echo "probe-konnektor-orte.inc: differs from the template"\nexit 3\n'), protokoll
+
+
+def test_veroeffentlichen_installiert_nginx_orte_und_meldet_nichts(vf):
+    """AC-16: Erfolg des Versuchs: nur eine Protokollzeile, keine Meldung, Merker gelöscht."""
+    merker = vf["tmp"] / "dienst" / "nginx-gemeldet"
+    merker.parent.mkdir(parents=True, exist_ok=True)
+    merker.write_text("alter-fingerabdruck\n")
+    stub, protokoll = _nginx_attrappe(vf, 0)
+    r = vf["lauf"](VF_NGINX=str(stub))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert protokoll.read_text().split() == ["pruefen", "installieren", "pruefen"]
+    assert not [z for z in vf["zeilen"]("melden.log") if z.startswith(("normal|", "high|"))]
+    assert not merker.exists()
+
+
+def test_veroeffentlichen_nginx_versuch_scheitert_eine_meldung_je_fingerabdruck(vf):
+    """AC-17: Der Fingerabdruck kommt nur aus der zweiten Prüfung; ein je Lauf anderes Versuchsergebnis meldet nicht erneut."""
+    stub, _ = _nginx_attrappe(vf, 3, installieren_text="helper exit 4 at $$")
+    assert vf["lauf"](VF_NGINX=str(stub)).returncode == 0
+    log = vf["zeilen"]("melden.log")
+    assert len([z for z in log if z.startswith("normal|")]) == 1
+    assert any(z.startswith("Install attempt: helper exit 4 at") for z in log)
+    vf["neuer_commit"]()
+    assert vf["lauf"](VF_NGINX=str(stub)).returncode == 0
+    assert len([z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]) == 1
+    assert not hoch(vf)
+
+
+def test_veroeffentlichen_nginx_ohne_hilfsprogramm_meldet_einmal(vf):
+    """AC-18: Ohne Hilfsprogramm enthält die eine Meldung die Zeile „Install attempt: helper missing (<Pfad>)“."""
+    stub, _ = _nginx_attrappe(vf, 3, installieren_text="helper missing (/usr/local/sbin/probe-nginx-orte-installieren)")
+    assert vf["lauf"](VF_NGINX=str(stub)).returncode == 0
+    log = vf["zeilen"]("melden.log")
+    assert len([z for z in log if z.startswith("normal|")]) == 1
+    assert "Install attempt: helper missing (/usr/local/sbin/probe-nginx-orte-installieren)" in log
+    assert "probe-konnektor-orte.inc: differs from the template" in "\n".join(log)
+    vf["neuer_commit"]()
+    assert vf["lauf"](VF_NGINX=str(stub)).returncode == 0
+    assert len([z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]) == 1
+    assert not hoch(vf)
+
+
+def test_einrichten_erzeugt_nginx_orte_hilfsprogramm_und_nennt_einmalschritt(tmp_path):
+    """AC-19: --erzeugen legt das Hilfsprogramm ohne Platzhalter an; die Ausgabe der Einrichtung nennt Installation und sudoers."""
+    ziel = tmp_path / "soll"
+    env = {**SAUBER, "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_BENUTZER": "hans", "EI_ZIEL": str(ziel)}
+    r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    helfer = ziel / "sbin" / "probe-nginx-orte-installieren"
+    text = helfer.read_text(encoding="utf-8")
+    assert text.startswith("#!/usr/bin/python3 -I\n") and not re.search(r"__[A-Z_]+__", text)
+    r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh")], env=env, capture_output=True, text=True)
+    aus = r.stdout + r.stderr
+    assert f"sudo install -m 755 -o root -g root {helfer} /usr/local/sbin/" in aus, aus
+    assert "NOPASSWD: /usr/local/sbin/probe-nginx-orte-installieren" in aus
+
+
+def test_beispiel_einstellungen_nennen_die_hilfsprogramme():
+    """AC-19: FR_NGINX_HELFER (neu) und FR_UNITS_HELFER (Lücke aus #260) liest Python, nicht die Shell; trotzdem erklärt."""
+    beispiel = (BETRIEB / "einstellungen.beispiel").read_text(encoding="utf-8")
+    erklaert = set(re.findall(r"^#?(FR_[A-Z0-9_]+)=", beispiel, re.M))
+    assert {"FR_NGINX_HELFER", "FR_UNITS_HELFER"} <= erklaert
 
 
 def test_veroeffentlichen_nginx_abgleich_fehler_stoppt_nichts(vf):

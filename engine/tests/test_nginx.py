@@ -395,3 +395,131 @@ def test_reise_zone_traegt_zwei_seitenaufrufe_kurz_hintereinander(tmp_path):
     bursts = {int(b) for b in re.findall(r"limit_req zone=__ZONE__ burst=(\d+) nodelay", (BETRIEB / "vorlagen" / "nginx-reise.conf").read_text())}
     assert len(bursts) == 1
     assert min(bursts) + rate * 3 >= 2 * abfragen, (min(bursts), rate)
+
+
+# ---------- Installieren über das Hilfsprogramm (#445, Teil 3, Spec docs/specs/betrieb/nginx-orte-automatisch-445.md) ----------
+
+def _helfer_attrappe(tmp_path, snippets, ausgang=0, stderr=""):
+    """Attrappe des Hilfsprogramms: protokolliert Aufruf und stdin; bei Ausgang 0 schreibt sie stdin in die Orte-Datei."""
+    protokoll, eingabe = tmp_path / "helfer.log", tmp_path / "helfer.stdin"
+    schreiben = f"cp {eingabe} {snippets}/probe-konnektor-orte.inc\n" if ausgang == 0 else ""
+    fehler = f"echo grund-{ausgang} >&2\n" if stderr else ""
+    helfer = tmp_path / "helfer.sh"
+    helfer.write_text(f'#!/bin/sh\necho "helfer $#" >> {protokoll}\ncat > {eingabe}\n{schreiben}{fehler}exit {ausgang}\n')
+    helfer.chmod(0o755)
+    return helfer, protokoll, eingabe
+
+
+def _orte_aendern(abgleich):
+    orte = abgleich["snippets"] / "probe-konnektor-orte.inc"
+    orte.write_text(orte.read_text().replace("location ^~ /info/", "location ^~ /alt-info/"))
+    return orte
+
+
+def _installieren_lauf(abgleich, tmp_path, **extra):
+    env = {**SAUBER, "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_DIENST": str(abgleich["dienst"]),
+           "FR_NGINX_SNIPPETS": str(abgleich["snippets"]), "EI_NGINX_CONFD": str(abgleich["confd"]), "FR_SUDO": "", **extra}
+    return subprocess.run([str(BETRIEB / "nginx.py"), "installieren"], env=env, capture_output=True, text=True)
+
+
+def test_installieren_nur_orte_abweichend_ruft_das_hilfsprogramm_mit_dem_soll(abgleich, tmp_path):
+    abgleich["installieren"]()
+    orte = _orte_aendern(abgleich)
+    helfer, protokoll, eingabe = _helfer_attrappe(tmp_path, abgleich["snippets"])
+    r = _installieren_lauf(abgleich, tmp_path, FR_NGINX_HELFER=str(helfer))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert protokoll.read_text().splitlines() == ["helfer 0"]            # genau ein Aufruf, ohne Argumente
+    soll = erzeugen(tmp_path, FR_NGINX_SNIPPETS=str(abgleich["snippets"])) / "probe-konnektor-orte.inc"
+    assert eingabe.read_text() == soll.read_text() == orte.read_text()
+    assert abgleich["lauf"]().returncode == 0                           # danach alles gleich
+
+
+def test_installieren_haengt_fr_sudo_vor_das_hilfsprogramm(abgleich, tmp_path):
+    abgleich["installieren"]()
+    _orte_aendern(abgleich)
+    helfer, _, _ = _helfer_attrappe(tmp_path, abgleich["snippets"])
+    sudo_log = tmp_path / "sudo.log"
+    sudo = tmp_path / "sudo-attrappe"
+    sudo.write_text(f'#!/bin/sh\necho "$@" >> {sudo_log}\nshift\nexec "$@"\n')
+    sudo.chmod(0o755)
+    r = _installieren_lauf(abgleich, tmp_path, FR_NGINX_HELFER=str(helfer), FR_SUDO=f"{sudo} -n")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert f"-n {helfer}" in sudo_log.read_text().splitlines()
+
+
+@pytest.mark.parametrize("was", ["zone", "konnektor", "orte_fehlt", "fremde_zone"])
+def test_installieren_ruft_nichts_auf_wenn_mehr_als_die_orte_abweicht(abgleich, tmp_path, was):
+    abgleich["installieren"]()
+    _orte_aendern(abgleich)
+    if was == "zone":
+        zone = abgleich["confd"] / "probe-zone.conf"
+        zone.write_text(zone.read_text().replace("rate=10r/s", "rate=20r/s"))
+    elif was == "konnektor":
+        inc = abgleich["snippets"] / "probe-konnektor.inc"
+        inc.write_text(inc.read_text() + "# geändert\n")
+    elif was == "orte_fehlt":
+        (abgleich["snippets"] / "probe-konnektor-orte.inc").unlink()
+    else:
+        (abgleich["confd"] / "drossel.conf").write_text("limit_req_zone $binary_remote_addr zone=probe_api:1m rate=1r/s;\n")
+    helfer, protokoll, _ = _helfer_attrappe(tmp_path, abgleich["snippets"])
+    r = _installieren_lauf(abgleich, tmp_path, FR_NGINX_HELFER=str(helfer))
+    assert r.returncode == 3, r.stdout + r.stderr
+    assert not protokoll.exists()
+    assert "differs" in r.stdout or "missing" in r.stdout or "defines the zone" in r.stdout
+
+
+def test_installieren_ohne_hilfsprogramm_endet_mit_5_ohne_sudo(abgleich, tmp_path):
+    abgleich["installieren"]()
+    _orte_aendern(abgleich)
+    sudo_log = tmp_path / "sudo.log"
+    sudo = tmp_path / "sudo-attrappe"
+    sudo.write_text(f'#!/bin/sh\necho "$@" >> {sudo_log}\nexit 1\n')
+    sudo.chmod(0o755)
+    fehlt = tmp_path / "gibt-es-nicht"
+    r = _installieren_lauf(abgleich, tmp_path, FR_NGINX_HELFER=str(fehlt), FR_SUDO=str(sudo))
+    assert r.returncode == 5, r.stdout + r.stderr
+    assert f"helper missing ({fehlt})" in r.stdout
+    assert not sudo_log.exists()
+
+
+def test_installieren_vorgabe_des_hilfsprogramms(abgleich, tmp_path):
+    abgleich["installieren"]()
+    _orte_aendern(abgleich)
+    r = _installieren_lauf(abgleich, tmp_path)
+    assert r.returncode == 5 and "helper missing (/usr/local/sbin/probe-nginx-orte-installieren)" in r.stdout, r.stdout + r.stderr
+
+
+def test_installieren_ausgang_2_des_hilfsprogramms_ist_kein_fehler(abgleich, tmp_path):
+    abgleich["installieren"]()
+    _orte_aendern(abgleich)
+    helfer, protokoll, _ = _helfer_attrappe(tmp_path, abgleich["snippets"], ausgang=2)
+    r = _installieren_lauf(abgleich, tmp_path, FR_NGINX_HELFER=str(helfer))
+    assert protokoll.exists() and r.returncode == 3, r.stdout + r.stderr     # Ergebnis der erneuten Prüfung, nicht 5
+
+
+@pytest.mark.parametrize("ausgang", [3, 4, 5, 6, 7])
+def test_installieren_scheiterndes_hilfsprogramm_endet_mit_5_und_nennt_den_ausgang(abgleich, tmp_path, ausgang):
+    abgleich["installieren"]()
+    _orte_aendern(abgleich)
+    helfer, _, _ = _helfer_attrappe(tmp_path, abgleich["snippets"], ausgang=ausgang, stderr=True)
+    r = _installieren_lauf(abgleich, tmp_path, FR_NGINX_HELFER=str(helfer))
+    assert r.returncode == 5, r.stdout + r.stderr
+    assert f"exit {ausgang}" in r.stdout and f"grund-{ausgang}" in r.stdout
+
+
+def test_installieren_ohne_abweichung_tut_nichts(abgleich, tmp_path):
+    abgleich["installieren"]()
+    helfer, protokoll, _ = _helfer_attrappe(tmp_path, abgleich["snippets"])
+    r = _installieren_lauf(abgleich, tmp_path, FR_NGINX_HELFER=str(helfer))
+    assert r.returncode == 0 and not protokoll.exists(), r.stdout + r.stderr
+
+
+def test_doku_nennt_nginx_orte_hilfsprogramm():
+    """AC-20: docs/betrieb.md nennt Hilfsprogramm und Einstellung; die Orte-Datei wird nicht mehr „von Hand“ übernommen."""
+    doku = (BETRIEB.parent / "docs" / "betrieb.md").read_text(encoding="utf-8")
+    assert "nginx-orte-installieren" in doku and "FR_NGINX_HELFER" in doku
+    saetze = re.split(r"(?<=[.!?])\s+|\n\s*\n", doku)
+    falsch = [s for s in saetze if "konnektor-orte.inc" in s and re.search(r"von Hand|nie automatisch", s)]
+    assert not falsch, falsch
+    doc = nginx_modul().__doc__
+    assert "installieren" in doc and "#445" in doc
