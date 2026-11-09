@@ -5151,7 +5151,8 @@ function ansichtPackliste(m) {
     const weg = PL.gegenstaende.filter(g => !plAktiv(g));
     if (weg.length) m.append(el("details", {class: "pack-weg"}, el("summary", {}, T("seite.packliste.weggelassen_n", {n: weg.length})), weg.map(g => gegenstandZeile(g))));
   } else {
-    m.append(packSumme(PL.summen, true));
+    const summe = packSumme(PL.summen, true);   // ohne Merkmal mit Summe keine Zeile (sonst stünde „null“ da)
+    if (summe) m.append(summe);
     for (const k of PL.kategorien) m.append(packTabelle(k));
   }
 }
