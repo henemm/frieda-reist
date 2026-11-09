@@ -1529,7 +1529,7 @@ TEXTE = {
     "schreiben.buchung_aendern.3": "The booking {bid} was entered by {w2}; only this person or an organiser may change it.",
     "schreiben.buchung_aendern.4": "Cancelling needs a reason (grund), it goes into the history.",
     "schreiben.buchung_aendern.5": "“source” must not be empty (source).",
-    "schreiben.buchung_aendern.6": "Nothing to change on {bid} (changeable: fuer, status, {w2}, zahlung, source, frist, storno_bis, gebucht_am, ab, people, preise, merkmale).",
+    "schreiben.buchung_aendern.6": "Nothing to change on {bid} (changeable: fuer, status, {w2}, zahlung, source, frist, storno_bis, gebucht_am, ab, anreise, abreise, people, preise, merkmale).",
     "schreiben.buchung_anlegen.1": "“status” must be {w1}.",
     "schreiben.buchung_fuer.1": "“fuer” is missing: which accommodation (U-…), stay (A-…) or leg (E-…) is booked; one or more IDs.",
     "schreiben.buchung_fuer.2": "“fuer”: {x} does not exist in this trip (accommodation U-…, stay A-… or leg E-…).",

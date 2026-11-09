@@ -1530,7 +1530,7 @@ TEXTE = {
     "schreiben.buchung_aendern.3": "Die Buchung {bid} hat {w2} eingetragen; ändern darf sie nur diese Person oder eine Organisator:in.",
     "schreiben.buchung_aendern.4": "Stornieren braucht einen Grund (grund), er steht im Verlauf.",
     "schreiben.buchung_aendern.5": "„quelle“ darf nicht leer sein (Herkunft).",
-    "schreiben.buchung_aendern.6": "Nichts zu ändern an {bid} (änderbar: fuer, status, {w2}, zahlung, quelle, frist, storno_bis, gebucht_am, ab, personen, preise, merkmale).",
+    "schreiben.buchung_aendern.6": "Nichts zu ändern an {bid} (änderbar: fuer, status, {w2}, zahlung, quelle, frist, storno_bis, gebucht_am, ab, anreise, abreise, personen, preise, merkmale).",
     "schreiben.buchung_anlegen.1": "„status“ muss {w1} sein.",
     "schreiben.buchung_fuer.1": "„fuer“ fehlt: welche Unterkunft (U-…), welcher Aufenthalt (A-…) oder welche Strecke (E-…) ist gebucht; eine oder mehrere IDs.",
     "schreiben.buchung_fuer.2": "„fuer“: {x} gibt es in dieser Reise nicht (Unterkunft U-…, Aufenthalt A-… oder Strecke E-…).",
