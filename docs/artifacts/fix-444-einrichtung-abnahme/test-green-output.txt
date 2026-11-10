@@ -1,0 +1,47 @@
+GREEN-Beleg Betriebsabschluss #444 (Abnahme am laufenden Dienst, AC-20), 2026-11-10
+Keine Software-Änderung; Abnahme von Hand am laufenden Dienst der Instanz (Region Balearen, Auszug mit Datenstand 2026-11-08).
+Reisen: nur die erfundene Beispielreise (Wanderung, Strecke auf die Balearen verschoben, Kopie im Wegwerf-Ordner) und die erfundene
+Beispielreise Städtewochenende; kein Konto, keine echte Reise.
+
+== AC-1: Einrichtung ==
+Region eingestellt, Einspielen gelaufen, abdeckung.json vorhanden: Rahmen [[38.06, 0.62, 40.71, 4.94]], Datenstand 2026-11-08.
+Echte Abfrage (Wasserstellen im Rahmen Mallorca): 43 Treffer, Antwort in 2,3 s (Kaltstart).
+Einheiten (Socket, Proxy, Dienst, Aktualisierungs-Timer) installiert; Socket und Timer aktiv.
+PASS
+
+== AC-2: Wanderung, Wasserstellen (map_points_fetch / kartenpunkte_holen) ==
+1. Aufruf, amenity=drinking_water, Strecke E-02, Abstand 1500 m: 42 Treffer in 1,6 s; Quelle "Queried from this instance's own map service",
+   Datenstand 2026-11-08, Hinweis ODbL.
+2. Aufruf: 42 Treffer, "42 already there and updated" (ersetzt, verdoppelt nicht), 1,3 s.
+3. Zweite Kategorie (Einkehr, amenity=restaurant und amenity=cafe): 127 Treffer in 2,6 s.
+Kaltstart (Container gestoppt, dann Abfrage): 3,3 s, innerhalb von 10 s.
+PASS
+
+== AC-3: Städtewochenende ==
+Abfrage "wasser" an E-01: sofortige Ablehnung (0,1 s) "There is no kind “wasser” with group punkt for map points", keine Verbindung zum
+eigenen Dienst nötig, nichts blieb hängen.
+PASS
+
+== AC-4: Ruhezustand ==
+Letzter Aufruf 09:06 UTC. Um 09:21 UTC: kein Container (docker ps ohne kartendienst), Proxy- und Dienst-Einheit inactive, Socket active.
+Nächster Aufruf: Container und Proxy laufen wieder, Antwort 3,3 s.
+PASS
+
+== AC-5: Rückfall ==
+Eigener Dienst auf einen nicht erreichbaren Port eingestellt: die Abfrage geht an den öffentlichen Dienst; dieser antwortete (wie seit
+Tagen) mit 502, die Meldung nennt das klar ("did not respond (502). Please try again later; nothing was changed."). Nichts wurde geändert.
+PASS
+
+== AC-6: Überwachung ==
+Issue in henemm-infra (#418), Teil-Check check_frieda_kartendienst in scripts/monitor.sh, Warnung statt Alarm (Präfix frieda-reisen-),
+kein eigener Heartbeat. Lauf im Statusmodus: "Karten 0 Tage alt" grün; mit künstlich 50 Tage altem Stand: rot (Warnung).
+PASS
+
+== AC-7: Aufräumen ==
+Testordner und Testcontainer des Aufbaus entfernt, Wegwerf-Kopien der Reisen gelöscht.
+PASS
+
+Hinweis (kein Fehler der Software): Der öffentliche Overpass-Dienst antwortet vom Server aus weiterhin mit 502; der eigene Dienst ist damit
+der einzige zuverlässige Weg zu den Kartenpunkten.
+..............................................................           [100%]
+62 passed in 37.82s
