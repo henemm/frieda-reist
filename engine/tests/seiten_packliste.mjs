@@ -56,11 +56,19 @@ aus.packen = {
 if (process.env.RH_BILDER) await p.screenshot({path: `${process.env.RH_BILDER}/packliste-390.png`, fullPage: true});
 // Abhaken geht sofort, bleibt beim Dienst und überlebt das Neuladen. Die Seite zeigt den Haken vor der Antwort des
 // Dienstes; neu geladen wird erst, wenn das Speichern beantwortet ist, sonst gewinnt das Neuladen den Wettlauf (#413).
+// Mit Netz zuckt nichts: kein Hinweis „ohne Netz“ und kein „wird nachgereicht“, auch nicht kurz während des Sendens (#501)
+await p.evaluate(() => { window.__zuckt = 0; new MutationObserver(() => {
+  if (document.querySelector(".pack-zeile .chip.offen") || [...document.querySelectorAll("p.meldung")].some(x => /Ohne Netz/.test(x.textContent))) window.__zuckt++;
+}).observe(document.body, {childList: true, subtree: true}); });
+const vorher = await texte(p, ".pack-gruppe:first-of-type .pack-titel");
 const gespeichert = p.waitForResponse(r => r.url().includes("api/packstand") && r.request().method() === "PATCH");
 await haken(p, "Regenjacke").click();
 await warte(p, () => document.querySelector(".pack-zeile.gepackt"));
 await gespeichert;
-aus.haken = {gepackt: await texte(p, ".pack-zeile.gepackt .pack-titel"), checked: await haken(p, "Regenjacke").getAttribute("aria-checked")};
+await p.waitForTimeout(300);
+aus.haken = {gepackt: await texte(p, ".pack-zeile.gepackt .pack-titel"), checked: await haken(p, "Regenjacke").getAttribute("aria-checked"),
+  vorher, nachher: await texte(p, ".pack-gruppe:first-of-type .pack-titel"), zuckt: await p.evaluate(() => window.__zuckt),
+  fokus: await p.evaluate(() => document.activeElement?.dataset?.pack || "")};
 await p.reload();
 await p.waitForSelector(".pack-zeile");
 aus.nachNeuladen = await texte(p, ".pack-zeile.gepackt .pack-titel");
@@ -75,6 +83,7 @@ netz = false;
 await haken(p, "Wanderstöcke").click();
 await haken(p, "Regenjacke").click();                              // eigener Haken vom Dienst: auch ohne Netz zurücknehmen
 await warte(p, () => !document.querySelector(".pack-zeile.gepackt .pack-titel")?.textContent.includes("Regenjacke"));
+await warte(p, () => document.querySelectorAll(".pack-zeile .chip.offen").length === 2);
 aus.offline = {ausgang: await ausgang(p), gepackt: await texte(p, ".pack-zeile.gepackt .pack-titel"),
   nachreichen: await texte(p, ".pack-zeile .chip.offen")};
 netz = true;

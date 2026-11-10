@@ -607,7 +607,12 @@ def test_packliste_im_browser(tmp_path, monkeypatch, browser):
     assert e["planen"]["weggelassen"] == ["1 weggelassen"] and not e["planen"]["breit"]
     # Packen: Karl packt alles außer dem Erste-Hilfe-Set, das Ida trägt; es gibt dort keinen Haken für ihn
     assert e["packen"]["gruppen"][0].startswith("Kleidung") and e["packen"]["haekchenFuerKarl"] == 7 and e["packen"]["ohneHakenIda"] == 0
-    assert e["haken"] == {"gepackt": ["Regenjacke"], "checked": "true"} and e["nachNeuladen"] == ["Regenjacke"]
+    h = e["haken"]
+    assert h["gepackt"] == ["Regenjacke"] and h["checked"] == "true" and e["nachNeuladen"] == ["Regenjacke"]
+    # Gepacktes rutscht in seiner Gruppe nach unten, die Liste zuckt nicht, der Fokus bleibt am Haken (#501)
+    assert h["vorher"][0].startswith("Regenjacke") and h["nachher"][-1].startswith("Regenjacke")
+    assert [t.split("G-")[0] for t in h["nachher"][:2]] == [t.split("G-")[0] for t in h["vorher"][1:3]]
+    assert h["zuckt"] == 0 and h["fokus"] == "G-01"
     assert e["fortschritt"] == ["Karl: 1 von 7 gepackt"]
     assert [g.split(" ")[0] for g in e["raum"]["gruppen"]] == ["am", "Tagesrucksack", "Rucksack"] and e["raum"]["mitRaum"] == 0
     assert e["raum"]["summen"][1] == "Gewicht 980 g"                        # Tagesrucksack: Jacke 420, Flasche 180, Set 350, Pflaster 30

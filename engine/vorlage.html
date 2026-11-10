@@ -5221,6 +5221,7 @@ window.addEventListener("online", () => brLaden().then(rmNeuZeichnen));
 const PS_API = "api/packstand";
 let PS = lies("packstand", {});                   // letzte Antwort von api/packstand (offline lesbar): {G-ID: {Person: Zeitpunkt}}
 let PS_AUSGANG = lies("packstand-ausgang", []);   // ohne Netz geändert: [{gid, name, gepackt}]
+let PS_SENDET = 0;   // so viele Haken sind gerade unterwegs: „wird nachgereicht“ erst zeigen, wenn er danach noch aussteht (sonst zuckt die Liste, #501)
 let PL_ANSICHT = lies("packliste-ansicht", "planen");
 let PL_GRUPPE = lies("packliste-gruppe", "_kategorie");
 const KANN_PACKEN = PACKLISTE && V.schreiben !== "nichts";
@@ -5299,7 +5300,7 @@ function gegenstandZeile(g, ohneMerkmal) {
     g.wer ? chip("leise", T("seite.packliste.packt_x", {wer: g.wer})) : null,
     g.an ? chip("leise", g.an_name || g.an, {href: "#" + g.an}) : null,
     !g.wer && andere.length ? chip("plan", T("seite.packliste.gepackt_von", {wer: andere.join(", ")})) : null,
-    plMeinAusgang(g, packer) ? chip("offen", T("seite.packliste.wird_nachgereicht")) : null,
+    plMeinAusgang(g, packer) && !PS_SENDET ? chip("offen", T("seite.packliste.wird_nachgereicht")) : null,
     g.an_verworfen ? chip("weg", T("seite.packliste.an_verworfen")) : null,
     plAktiv(g) ? null : chip("weg", T("seite.packliste.weggelassen")),
     Object.values(g.merkmale || {}).some(v => v.ungeprueft) ? chip("offen", T("seite.chip.ungeprueft")) : null);
@@ -5339,10 +5340,12 @@ function packTabelle(k) {
   return box;
 }
 // Organismus Packgruppe (Ansicht Packen): eine Gruppe von Gegenständen (Raum, Kategorie …) mit ihrem Fortschritt, den Summen und
-// den Zeilen zum Abhaken
+// den Zeilen zum Abhaken; nicht Gepacktes oben, Gepacktes unten, sonst in der Reihenfolge der Liste (#501)
 function packGruppe(titel, gs, ohneMerkmal) {
   const ich = NAME, mein = gs.filter(g => plAktiv(g) && (!g.wer || !ich || gleicherName(g.wer, ich)));
   const fertig = mein.filter(g => plGepackt(g, g.wer || ich)).length;
+  const gepackt = g => (g.wer || ich) && plGepackt(g, g.wer || ich) ? 1 : 0;
+  gs = gs.slice().sort((a, b) => gepackt(a) - gepackt(b));
   return el("section", {class: "pack-gruppe", "data-gruppe": titel},
     el("h3", {}, titel, " ", el("span", {class: "pack-fortschritt"}, ich && mein.length ? T("seite.packliste.gepackt_n", {a: fertig, b: mein.length}) : zahlMarke(gs.length))),
     packSumme(plSummenVon(gs)), gs.map(g => gegenstandZeile(g, ohneMerkmal)));
@@ -5371,7 +5374,7 @@ function ansichtPackliste(m) {
     const ich = NAME;
     if (ich) { const [a, n] = plFortschritt(ich); if (n) m.append(el("p", {class: "meldung"}, T("seite.packliste.fortschritt", {a, b: n, wer: ich}))); }
     else if (KANN_PACKEN) m.append(el("p", {class: "meldung"}, T("seite.packliste.name_beim_ersten_haken")));
-    if (API_OK === false || PS_AUSGANG.length) m.append(el("p", {class: "meldung"}, T("seite.packliste.offline_hinweis")));
+    if (API_OK === false || (PS_AUSGANG.length && !PS_SENDET)) m.append(el("p", {class: "meldung"}, T("seite.packliste.offline_hinweis")));
     const gruppe = PL_GRUPPE !== "_kategorie" && gruppierbar.has(PL_GRUPPE) ? gruppierbar.get(PL_GRUPPE) : null;
     const gs = PL.gegenstaende.filter(plAktiv), gruppen = new Map();
     if (!gruppe) for (const k of PL.kategorien) gruppen.set(k.name, gs.filter(g => g.art === k.art));
@@ -5432,9 +5435,11 @@ async function plPacken(gid) {
   const neu = !plGepackt(g, g.wer || name);
   PS_AUSGANG = [...PS_AUSGANG.filter(a => !(a.gid === gid && gleicherName(a.name, name))), {gid, name, gepackt: neu}];
   merke("packstand-ausgang", PS_AUSGANG);
-  route(true);
-  await psSenden();
-  route(true);
+  const fokus = () => { const h = document.querySelector(`[data-pack="${gid}"]`); if (h) h.focus({preventScroll: true}); };
+  PS_SENDET++;
+  route(true); fokus();
+  try { await psSenden(); } finally { PS_SENDET--; }
+  route(true); fokus();
 }
 document.addEventListener("click", e => {
   const h = e.target.closest("[data-pack]");
