@@ -1405,6 +1405,11 @@ def felder_aus_merkmalen(args, was):
     return {**args, **oben, "merkmale": rest}
 
 
+def stufe_von_def(x):
+    s = x.get("stufe")
+    return (s.get("*") or "empfohlen") if isinstance(s, dict) else (s or "empfohlen")
+
+
 def merkmale_fest_trennen(args, was, katalog):
     """Aus args["merkmale"] die Merkmale der Grundform (Eingabenamen) herauslösen, die die Art nicht selbst unter diesem Namen
     kennt -> (Rest der Merkmale, {Eingabename: Wert-Angabe}). Ein Name, der nicht zur Grundform gehört, bleibt im Rest."""
@@ -1415,7 +1420,8 @@ def merkmale_fest_trennen(args, was, katalog):
     fest, rest = {}, {}
     for k, v in roh.items():
         n = FEST_ALIAS.get(str(k).lower(), str(k).lower())
-        if n in GRUNDFORM_MERKMALE.get(was, ()) and not any(x["id"] == n or n in (x.get("auch") or []) for x in katalog):
+        # ein abgeschaltetes Merkmal der Art (Stufe aus) nimmt dem festen Feld den Namen nicht weg (#471: Ankunft als Zeitfeld)
+        if n in GRUNDFORM_MERKMALE.get(was, ()) and not any((x["id"] == n or n in (x.get("auch") or [])) and stufe_von_def(x) != "aus" for x in katalog):
             fest[n] = v
         else:
             rest[k] = v
@@ -3372,6 +3378,11 @@ def buchung_je_ding(args, fuer):
         return None
     if v == "":
         return {}
+    if isinstance(v, str) and v.strip().startswith("{"):   # ein AI-Client mit älterer Werkzeugliste schickt das Objekt als Text
+        try:
+            v = json.loads(v)
+        except ValueError:
+            raise Ablehnung("schreiben.je_ding.form", w1=", ".join(JE_DING_FELDER))
     if not isinstance(v, dict) or any(not isinstance(x, dict) for x in v.values()):
         raise Ablehnung("schreiben.je_ding.form", w1=", ".join(JE_DING_FELDER))
     fremd = [k for k in v if k not in fuer]

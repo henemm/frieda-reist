@@ -1277,6 +1277,10 @@ def test_buchung_mit_zeitraum(repo):
     assert "Je Ding U-01: Ab 2027-05-12T10:00, Was ab dann geht Online-Check-in" in a["text"], a["text"]
     r, _ = routen_auf_main(origin)
     assert r["buchungen"]["B-04"]["je_ding"] == {"U-01": {"ab": "2027-05-12T10:00", "ab_was": "Online-Check-in"}}
+    s.vorbereiten()   # als Text (AI-Client mit älterer Werkzeugliste)
+    s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "je_ding": '{"U-01": {"ab": "2027-05-12", "ab_was": "Sitzplatz"}}'}})
+    r, _ = routen_auf_main(origin)
+    assert r["buchungen"]["B-04"]["je_ding"]["U-01"]["ab_was"] == "Sitzplatz"
     s.vorbereiten()
     s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "je_ding": ""}})
     r, _ = routen_auf_main(origin)
@@ -3025,3 +3029,18 @@ def test_artvorlagen_in_jeder_sprache_gleich():
             for k, m in d["merkmale"].items():
                 assert m["typ"] in routen.TYPEN and (not m.get("rolle") or m["rolle"] in routen.ROLLEN), (a, k)
                 assert all(isinstance(w, str) for w in m.get("werte") or []), (a, k)
+
+
+def test_abgeschaltetes_merkmal_nimmt_festem_feld_den_namen_nicht(repo):
+    """#471: Hat eine Art ein Text-Merkmal „ankunft“, schreibt ding_aendern dorthin; abgeschaltet gilt der Name wieder dem
+    Zeitfeld der Bewegung (Kopf „ab → an“)."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "bahn", "bezeichnung": "Ankunft", "merkmal": "ankunft"}})
+    s.vorbereiten()
+    s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "bahn", "merkmal": "ankunft", "stufe": "aus"}})
+    s.vorbereiten()
+    s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "E-20", "merkmale": {"ankunft": "09:40"}, "quelle": "Fahrplan (Test)"}})
+    r, _ = routen_auf_main(origin)
+    m = r["strecken"]["E-20"]["merkmale"]["ankunft"]
+    assert m["typ"] == "zeitpunkt" and m["wert"] == "09:40", m
