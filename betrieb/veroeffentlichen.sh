@@ -84,7 +84,7 @@ reise_stand_schreiben() {  # <reise> <zustand> [grund]: Zustand des Reise-Stands
   # Sekunden seit dem Sichern (Zeit des Schreibwegs, sonst des Commits); steht auch im Protokoll (Messung des Zeitziels).
   # Reise aus dem Reisespeicher (#348): nummer ist die Stand-Nummer des materialisierten Inhalts (<ordner>.stand), die Zeit
   # des Sicherns kommt nur vom Schreibweg.
-  local r="$1" z="$2" g="${3:-}" n c="" t dauer=null datei gz gn
+  local r="$1" z="$2" g="${3:-}" n c="" t dauer=null datei gz gn seite
   if ist_speicherreise "$r"; then
     n="$(cat "$FR_DIENST/bau/reisen/$r.stand" 2>/dev/null || true)"
   else
@@ -98,7 +98,12 @@ reise_stand_schreiben() {  # <reise> <zustand> [grund]: Zustand des Reise-Stands
   gz="$(sed -n 's/.*"zeit": *"\([^"]*\)".*/\1/p' "$datei" 2>/dev/null || true)"
   if [ "$gn" = "$n" ] && [ -n "$gz" ] && gz="$(date -u -d "$gz" +%s 2>/dev/null)"; then c="$gz"; fi
   t="$(jetzt)"
-  if [ "$z" = veroeffentlicht ] && [[ "$c" =~ ^[0-9]+$ ]]; then
+  # Stand, der schon auf der Seite war (<reise>.seite, nach jeder Veröffentlichung): Ein Neubau desselben Stands (--immer,
+  # Software-Wechsel, Umschaltung auf den Speicher) hat keine Wartezeit und wird nicht gemessen (#465)
+  seite="$FR_DIENST/reise-stand/$r.seite"
+  if [ "$z" = veroeffentlicht ] && [ "$(cat "$seite" 2>/dev/null || true)" = "$n" ]; then
+    echo "Published $r state $n again (already on the page)."
+  elif [ "$z" = veroeffentlicht ] && [[ "$c" =~ ^[0-9]+$ ]]; then
     dauer=$(( t - c )); [ "$dauer" -ge 0 ] || dauer=0
     if [ "$dauer" -gt 120 ]; then   # Zeitziel 2 Minuten (Product Owner, E3, 2.11.2026; engine/stand.py ZIEL_SEKUNDEN)
       echo "Warning: $r state $n published $dauer s after saving, longer than the target of 120 s."
@@ -111,6 +116,7 @@ reise_stand_schreiben() {  # <reise> <zustand> [grund]: Zustand des Reise-Stands
   mkdir -p "$FR_DIENST/reise-stand"
   printf '{"zustand": "%s", "nummer": %s, "gesichert": "%s", "seit": "%s", "dauer": %s, "grund": "%s"}\n' \
     "$z" "$n" "$(iso "$c")" "$(iso "$t")" "$dauer" "$g" > "$datei.neu" && mv "$datei.neu" "$datei"
+  [ "$z" != veroeffentlicht ] || { printf '%s\n' "$n" > "$seite.neu" && mv "$seite.neu" "$seite"; }
 }
 
 baugrund() {  # Grund eines gescheiterten Baus aus der Ausgabe von deploy.sh: die Meldungen von bauen.py („ - …“), sonst die

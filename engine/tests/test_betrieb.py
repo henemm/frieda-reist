@@ -366,6 +366,13 @@ def test_veroeffentlichen_schreibt_den_zustand_je_reise(vf):
     r = vf["lauf"](VF_JETZT=str(T0 + 300))
     assert vf["lauf_stand"]("beispielreise")["dauer"] == 300 and vf["lauf_stand"]("beispielreise")["gesichert"] == iso(T0)
     assert "Warning: beispielreise state 4 published 300 s after saving, longer than the target of 120 s." in r.stdout
+    # Ein Neubau desselben Stands (--immer, Software-Wechsel, Umschaltung auf den Speicher) ist keine Wartezeit: Der
+    # Stand war schon auf der Seite, gemessen wird nicht, und publish_status zeigt keine falsche Dauer (#465)
+    r = vf["lauf"]("--immer", VF_JETZT=str(T0 + 50000))
+    assert r.returncode == 0, r.stdout
+    assert "longer than the target" not in r.stdout and "Published beispielreise state 4 again" in r.stdout
+    st = vf["lauf_stand"]("beispielreise")
+    assert st["zustand"] == "veroeffentlicht" and st["nummer"] == 4 and st["dauer"] is None
 
 
 def test_veroeffentlichen_holt_einen_waehrend_des_laufs_angestossenen_stand_gleich_nach(vf):
@@ -1715,6 +1722,18 @@ def test_freischalten_seite_nicht_erreichbar_ist_fehler_ohne_link_im_protokoll(f
     assert r.returncode == 1 and "page of beispielreise answers with 404" in r.stdout and "include missing" in r.stdout
     token = (fs["snippets"] / "probe-beispielreise.conf").read_text().split("beispielreise-", 1)[1][:24]
     assert token not in r.stdout + r.stderr
+
+
+def test_freischalten_unerwarteter_abbruch_nennt_die_stelle(fs):
+    """Scheitert ein Befehl ohne eigene Meldung (set -e), steht trotzdem eine ERROR-Zeile mit Zeile und Befehl im
+    Protokoll: veroeffentlichen.sh zeigt nur ERROR-Zeilen, sonst stand dort „not released“ ohne Grund (#465). Ohne Link."""
+    (fs["tmp"] / "konnektor").write_text("kein Ordner")     # seiten.json lässt sich nicht schreiben
+    r = fs["lauf"]("beispielreise")
+    assert r.returncode != 0
+    fehler = [z for z in r.stdout.splitlines() if z.startswith("ERROR:")]
+    assert len(fehler) == 1 and re.search(r"line \d+", fehler[0]) and "python3" in fehler[0], r.stdout
+    token = (fs["snippets"] / "probe-beispielreise.conf").read_text().split("beispielreise-", 1)[1][:24]
+    assert token not in r.stdout and "Seite:" not in r.stdout
 
 
 def test_freischalten_unbekannte_reise_und_fehlende_adresse(fs):

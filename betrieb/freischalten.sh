@@ -15,7 +15,10 @@
 # Voraussetzung (einmalig, einrichten.sh): Im server-Block von FR_ADRESSE steht  include <FR_NGINX_SNIPPETS>/<instanz>-*.conf;
 # Ausgabe: „Seite: <url>“. Links nie ins Repo, in Issues oder Nachrichten.
 # Für Tests überschreibbar: FS_SNIPPETS, FS_BASIS, FS_SUDO, FS_NGINX_TEST, FS_NGINX_LADEN, FS_ABRUF, KN_SEITENLINKS.
-set -euo pipefail
+set -eEuo pipefail
+# Jeder Abbruch ohne eigene Meldung bekommt eine ERROR-Zeile mit Zeile und Befehl (unaufgelöst, also ohne Link):
+# veroeffentlichen.sh zeigt aus dieser Ausgabe nur ERROR-Zeilen, sonst bliebe „not released“ ohne Grund (#465).
+trap 'rc=$?; echo "ERROR: freischalten.sh stopped at line $LINENO (exit $rc): $BASH_COMMAND"' ERR
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
 
 REISE="${1:?usage: freischalten.sh <trip>}"
