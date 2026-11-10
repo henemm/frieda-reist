@@ -1548,6 +1548,8 @@ TEXTE = {
     "schreiben.datum.1": "{k}: „{feld}“ als Datum JJJJ-MM-TT angeben.",
     "schreiben.datum_wert.1": "„{feld}“ muss ein Datum JJJJ-MM-TT sein.",
     "schreiben.antwort.buchung.je_ding": ", je Ding: {w1}",
+    "schreiben.antwort.buchung.je_ding_teil": "{ding}: {felder}",
+    "schreiben.antwort.buchung.je_ding_feld": "{wort} {wert}",
     "schreiben.je_ding.form": "„je_ding“ ist {{ID aus fuer: {{Feld: Wert}}}} mit den Feldern {w1}, z. B. {{\"E-28\": {{\"ab\": \"2027-02-22T17:55\", \"ab_was\": \"Online-Check-in\"}}}}.",
     "schreiben.zeitpunkt_wert.1": "„{feld}“ muss ein Datum JJJJ-MM-TT sein, mit Uhrzeit JJJJ-MM-TTTHH:MM (Uhrzeit ins Feld, nicht in den Text).",
     "schreiben.ding_aendern.1": "„ziel“ muss eine Unterkunft U-…, ein Aufenthalt A-…, eine Strecke E-… oder ein Ort O-… sein.",

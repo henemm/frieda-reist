@@ -3415,8 +3415,10 @@ def je_ding_map(je):
 
 
 def je_ding_text(je):
-    return "; ".join(f"{x}: " + ", ".join(f"{S('schreiben.buchung.' + f)} {texte.Datum(w) if isinstance(w, datetime.date) else w}" for f, w in e.items())
-                     for x, e in je.items())
+    """Angaben je Ding als Satz in der Sprache der Person (nicht als fertiger Text, sonst bliebe er in der Vorgabesprache)."""
+    return verbinden([S("schreiben.antwort.buchung.je_ding_teil", ding=x, felder=verbinden(
+        [S("schreiben.antwort.buchung.je_ding_feld", wort=S("schreiben.buchung." + f), wert=w) for f, w in e.items()], ", "))
+        for x, e in je.items()], "; ")
 
 
 def ab_frist_pruefen(b):

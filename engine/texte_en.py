@@ -1547,6 +1547,8 @@ TEXTE = {
     "schreiben.datum.1": "{k}: give “{feld}” as a date YYYY-MM-DD.",
     "schreiben.datum_wert.1": "“{feld}” must be a date YYYY-MM-DD.",
     "schreiben.antwort.buchung.je_ding": ", per thing: {w1}",
+    "schreiben.antwort.buchung.je_ding_teil": "{ding}: {felder}",
+    "schreiben.antwort.buchung.je_ding_feld": "{wort} {wert}",
     "schreiben.je_ding.form": "“je_ding” is {{ID from fuer: {{field: value}}}} with the fields {w1}, e.g. {{\"E-28\": {{\"ab\": \"2027-02-22T17:55\", \"ab_was\": \"Online check-in\"}}}}.",
     "schreiben.zeitpunkt_wert.1": "“{feld}” must be a date YYYY-MM-DD, with a time YYYY-MM-DDTHH:MM (the time goes in the field, not in the text).",
     "schreiben.ding_aendern.1": "“ziel” must be an accommodation U-…, a stay A-…, a leg E-… or a place O-….",
