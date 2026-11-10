@@ -1,0 +1,712 @@
+FFFFFFFFFFFFFFFFFFFFF...F.FFFFFFFFFFFFFF.F.FF.FFFF                       [100%]
+=================================== FAILURES ===================================
+_____________________ test_gueltiger_kontext_wird_abgelegt _____________________
+
+dienst = ('http://127.0.0.1:40845', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_gueltiger_kontext_wird_ab0'))
+
+    def test_gueltiger_kontext_wird_abgelegt(dienst):   # AC-4
+        basis, ablage = dienst
+        code, e = post(basis, kontext=GUTER_KONTEXT)
+>       assert code == 201 and e["kontext"] == GUTER_KONTEXT
+                               ^^^^^^^^^^^^
+E       KeyError: 'kontext'
+
+engine/tests/test_rueckmeldung_kontext_449.py:46: KeyError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+____________________ test_kontext_pruefen[kein_objekt_text] ____________________
+
+roh = 'T-03', erwartet = None
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+___________________ test_kontext_pruefen[kein_objekt_liste] ____________________
+
+roh = ['T-03'], erwartet = None
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+____________________ test_kontext_pruefen[kein_objekt_zahl] ____________________
+
+roh = 5, erwartet = None
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+___________________ test_kontext_pruefen[fremder_schluessel] ___________________
+
+roh = {'ansicht': 'T-03', 'person': 'Ida'}, erwartet = {'ansicht': 'T-03'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+_________________ test_kontext_pruefen[nur_fremde_schluessel] __________________
+
+roh = {'person': 'Ida', 'url': 'x'}, erwartet = None
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+____________________ test_kontext_pruefen[muster_verletzt] _____________________
+
+roh = {'ansicht': '../etc', 'abschnitt': 'weg'}, erwartet = {'abschnitt': 'weg'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+___________________ test_kontext_pruefen[muster_leerzeichen] ___________________
+
+roh = {'abschnitt': 'mit Leerzeichen', 'stand': 3}, erwartet = {'stand': 3}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+____________________ test_kontext_pruefen[ansicht_zu_lang] _____________________
+
+roh = {'ansicht': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'stand': 3}
+erwartet = {'stand': 3}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+___________________ test_kontext_pruefen[ansicht_grenze_ok] ____________________
+
+roh = {'ansicht': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'}
+erwartet = {'ansicht': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+___________________ test_kontext_pruefen[abschnitt_zu_lang] ____________________
+
+roh = {'abschnitt': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'ansicht': 'heute'}
+erwartet = {'ansicht': 'heute'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+__________________ test_kontext_pruefen[abschnitt_grenze_ok] ___________________
+
+roh = {'abschnitt': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'}
+erwartet = {'abschnitt': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+_______________________ test_kontext_pruefen[stand_text] _______________________
+
+roh = {'stand': '12', 'ansicht': 'heute'}, erwartet = {'ansicht': 'heute'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+_______________________ test_kontext_pruefen[stand_null] _______________________
+
+roh = {'stand': 0, 'ansicht': 'heute'}, erwartet = {'ansicht': 'heute'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+_____________________ test_kontext_pruefen[stand_negativ] ______________________
+
+roh = {'stand': -1, 'ansicht': 'heute'}, erwartet = {'ansicht': 'heute'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+_____________________ test_kontext_pruefen[stand_zu_gross] _____________________
+
+roh = {'stand': 1000000, 'ansicht': 'heute'}, erwartet = {'ansicht': 'heute'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+____________________ test_kontext_pruefen[stand_grenze_ok] _____________________
+
+roh = {'stand': 999999}, erwartet = {'stand': 999999}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+____________________ test_kontext_pruefen[stand_kommazahl] _____________________
+
+roh = {'stand': 1.5, 'ansicht': 'heute'}, erwartet = {'ansicht': 'heute'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+__________________ test_kontext_pruefen[stand_wahrheitswert] ___________________
+
+roh = {'stand': True, 'ansicht': 'heute'}, erwartet = {'ansicht': 'heute'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+_____________________ test_kontext_pruefen[verschachtelt] ______________________
+
+roh = {'ansicht': {'a': 'b'}, 'abschnitt': ['weg'], 'stand': 4}
+erwartet = {'stand': 4}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+__________________________ test_kontext_pruefen[leer] __________________________
+
+roh = {}, erwartet = None
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_kontext_pruefen(roh, erwartet):   # AC-5, Einheit
+>       assert rm.kontext_pruefen(roh) == erwartet
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'rueckmeldungen' has no attribute 'kontext_pruefen'
+
+engine/tests/test_rueckmeldung_kontext_449.py:76: AttributeError
+_ test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[fremder_schluessel] _
+
+dienst = ('http://127.0.0.1:39973', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ungueltiger_kontext_wird_3'))
+roh = {'ansicht': 'T-03', 'person': 'Ida'}, erwartet = {'ansicht': 'T-03'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen(dienst, roh, erwartet):   # AC-5
+        basis, ablage = dienst
+        code, e = post(basis, kontext=roh)
+        ohne_code, ohne = anfrage(basis + "/beispielreise/rueckmeldungen", "POST", {**GUT, "text": "ganz anderer Text"})
+        assert code == ohne_code == 201
+        assert set(e) - {"kontext"} == set(ohne)   # gleiche Antwort wie ohne Kontext, nur das Feld kontext darf dazukommen
+>       assert e.get("kontext") == erwartet
+E       AssertionError: assert None == {'ansicht': 'T-03'}
+E        +  where None = <built-in method get of dict object at 0x7ca308931380>('kontext')
+E        +    where <built-in method get of dict object at 0x7ca308931380> = {'name': 'Ida', 'art': 'Kommentar', 'ziel': 'T-01', 'text': 'Wir landen erst 21 Uhr.', ...}.get
+
+engine/tests/test_rueckmeldung_kontext_449.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 201
+__ test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[muster_verletzt] ___
+
+dienst = ('http://127.0.0.1:33423', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ungueltiger_kontext_wird_5'))
+roh = {'ansicht': '../etc', 'abschnitt': 'weg'}, erwartet = {'abschnitt': 'weg'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen(dienst, roh, erwartet):   # AC-5
+        basis, ablage = dienst
+        code, e = post(basis, kontext=roh)
+        ohne_code, ohne = anfrage(basis + "/beispielreise/rueckmeldungen", "POST", {**GUT, "text": "ganz anderer Text"})
+        assert code == ohne_code == 201
+        assert set(e) - {"kontext"} == set(ohne)   # gleiche Antwort wie ohne Kontext, nur das Feld kontext darf dazukommen
+>       assert e.get("kontext") == erwartet
+E       AssertionError: assert None == {'abschnitt': 'weg'}
+E        +  where None = <built-in method get of dict object at 0x7ca3088b49c0>('kontext')
+E        +    where <built-in method get of dict object at 0x7ca3088b49c0> = {'name': 'Ida', 'art': 'Kommentar', 'ziel': 'T-01', 'text': 'Wir landen erst 21 Uhr.', ...}.get
+
+engine/tests/test_rueckmeldung_kontext_449.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 201
+_ test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[muster_leerzeichen] _
+
+dienst = ('http://127.0.0.1:37083', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ungueltiger_kontext_wird_6'))
+roh = {'abschnitt': 'mit Leerzeichen', 'stand': 3}, erwartet = {'stand': 3}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen(dienst, roh, erwartet):   # AC-5
+        basis, ablage = dienst
+        code, e = post(basis, kontext=roh)
+        ohne_code, ohne = anfrage(basis + "/beispielreise/rueckmeldungen", "POST", {**GUT, "text": "ganz anderer Text"})
+        assert code == ohne_code == 201
+        assert set(e) - {"kontext"} == set(ohne)   # gleiche Antwort wie ohne Kontext, nur das Feld kontext darf dazukommen
+>       assert e.get("kontext") == erwartet
+E       AssertionError: assert None == {'stand': 3}
+E        +  where None = <built-in method get of dict object at 0x7ca3088e0e40>('kontext')
+E        +    where <built-in method get of dict object at 0x7ca3088e0e40> = {'name': 'Ida', 'art': 'Kommentar', 'ziel': 'T-01', 'text': 'Wir landen erst 21 Uhr.', ...}.get
+
+engine/tests/test_rueckmeldung_kontext_449.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 201
+__ test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[ansicht_zu_lang] ___
+
+dienst = ('http://127.0.0.1:45165', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ungueltiger_kontext_wird_7'))
+roh = {'ansicht': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'stand': 3}
+erwartet = {'stand': 3}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen(dienst, roh, erwartet):   # AC-5
+        basis, ablage = dienst
+        code, e = post(basis, kontext=roh)
+        ohne_code, ohne = anfrage(basis + "/beispielreise/rueckmeldungen", "POST", {**GUT, "text": "ganz anderer Text"})
+        assert code == ohne_code == 201
+        assert set(e) - {"kontext"} == set(ohne)   # gleiche Antwort wie ohne Kontext, nur das Feld kontext darf dazukommen
+>       assert e.get("kontext") == erwartet
+E       AssertionError: assert None == {'stand': 3}
+E        +  where None = <built-in method get of dict object at 0x7ca308937d00>('kontext')
+E        +    where <built-in method get of dict object at 0x7ca308937d00> = {'name': 'Ida', 'art': 'Kommentar', 'ziel': 'T-01', 'text': 'Wir landen erst 21 Uhr.', ...}.get
+
+engine/tests/test_rueckmeldung_kontext_449.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 201
+_ test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[ansicht_grenze_ok] __
+
+dienst = ('http://127.0.0.1:45949', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ungueltiger_kontext_wird_8'))
+roh = {'ansicht': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'}
+erwartet = {'ansicht': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen(dienst, roh, erwartet):   # AC-5
+        basis, ablage = dienst
+        code, e = post(basis, kontext=roh)
+        ohne_code, ohne = anfrage(basis + "/beispielreise/rueckmeldungen", "POST", {**GUT, "text": "ganz anderer Text"})
+        assert code == ohne_code == 201
+        assert set(e) - {"kontext"} == set(ohne)   # gleiche Antwort wie ohne Kontext, nur das Feld kontext darf dazukommen
+>       assert e.get("kontext") == erwartet
+E       AssertionError: assert None == {'ansicht': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'}
+E        +  where None = <built-in method get of dict object at 0x7ca30a1b0700>('kontext')
+E        +    where <built-in method get of dict object at 0x7ca30a1b0700> = {'name': 'Ida', 'art': 'Kommentar', 'ziel': 'T-01', 'text': 'Wir landen erst 21 Uhr.', ...}.get
+
+engine/tests/test_rueckmeldung_kontext_449.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 201
+_ test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[abschnitt_zu_lang] __
+
+dienst = ('http://127.0.0.1:45609', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ungueltiger_kontext_wird_9'))
+roh = {'abschnitt': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'ansicht': 'heute'}
+erwartet = {'ansicht': 'heute'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen(dienst, roh, erwartet):   # AC-5
+        basis, ablage = dienst
+        code, e = post(basis, kontext=roh)
+        ohne_code, ohne = anfrage(basis + "/beispielreise/rueckmeldungen", "POST", {**GUT, "text": "ganz anderer Text"})
+        assert code == ohne_code == 201
+        assert set(e) - {"kontext"} == set(ohne)   # gleiche Antwort wie ohne Kontext, nur das Feld kontext darf dazukommen
+>       assert e.get("kontext") == erwartet
+E       AssertionError: assert None == {'ansicht': 'heute'}
+E        +  where None = <built-in method get of dict object at 0x7ca308938200>('kontext')
+E        +    where <built-in method get of dict object at 0x7ca308938200> = {'name': 'Ida', 'art': 'Kommentar', 'ziel': 'T-01', 'text': 'Wir landen erst 21 Uhr.', ...}.get
+
+engine/tests/test_rueckmeldung_kontext_449.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 201
+_ test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[abschnitt_grenze_ok] _
+
+dienst = ('http://127.0.0.1:38637', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ungueltiger_kontext_wird_10'))
+roh = {'abschnitt': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'}
+erwartet = {'abschnitt': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen(dienst, roh, erwartet):   # AC-5
+        basis, ablage = dienst
+        code, e = post(basis, kontext=roh)
+        ohne_code, ohne = anfrage(basis + "/beispielreise/rueckmeldungen", "POST", {**GUT, "text": "ganz anderer Text"})
+        assert code == ohne_code == 201
+        assert set(e) - {"kontext"} == set(ohne)   # gleiche Antwort wie ohne Kontext, nur das Feld kontext darf dazukommen
+>       assert e.get("kontext") == erwartet
+E       AssertionError: assert None == {'abschnitt': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'}
+E        +  where None = <built-in method get of dict object at 0x7ca3089447c0>('kontext')
+E        +    where <built-in method get of dict object at 0x7ca3089447c0> = {'name': 'Ida', 'art': 'Kommentar', 'ziel': 'T-01', 'text': 'Wir landen erst 21 Uhr.', ...}.get
+
+engine/tests/test_rueckmeldung_kontext_449.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 201
+_____ test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[stand_text] _____
+
+dienst = ('http://127.0.0.1:43275', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ungueltiger_kontext_wird_11'))
+roh = {'stand': '12', 'ansicht': 'heute'}, erwartet = {'ansicht': 'heute'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen(dienst, roh, erwartet):   # AC-5
+        basis, ablage = dienst
+        code, e = post(basis, kontext=roh)
+        ohne_code, ohne = anfrage(basis + "/beispielreise/rueckmeldungen", "POST", {**GUT, "text": "ganz anderer Text"})
+        assert code == ohne_code == 201
+        assert set(e) - {"kontext"} == set(ohne)   # gleiche Antwort wie ohne Kontext, nur das Feld kontext darf dazukommen
+>       assert e.get("kontext") == erwartet
+E       AssertionError: assert None == {'ansicht': 'heute'}
+E        +  where None = <built-in method get of dict object at 0x7ca308937ac0>('kontext')
+E        +    where <built-in method get of dict object at 0x7ca308937ac0> = {'name': 'Ida', 'art': 'Kommentar', 'ziel': 'T-01', 'text': 'Wir landen erst 21 Uhr.', ...}.get
+
+engine/tests/test_rueckmeldung_kontext_449.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 201
+_____ test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[stand_null] _____
+
+dienst = ('http://127.0.0.1:41181', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ungueltiger_kontext_wird_12'))
+roh = {'stand': 0, 'ansicht': 'heute'}, erwartet = {'ansicht': 'heute'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen(dienst, roh, erwartet):   # AC-5
+        basis, ablage = dienst
+        code, e = post(basis, kontext=roh)
+        ohne_code, ohne = anfrage(basis + "/beispielreise/rueckmeldungen", "POST", {**GUT, "text": "ganz anderer Text"})
+        assert code == ohne_code == 201
+        assert set(e) - {"kontext"} == set(ohne)   # gleiche Antwort wie ohne Kontext, nur das Feld kontext darf dazukommen
+>       assert e.get("kontext") == erwartet
+E       AssertionError: assert None == {'ansicht': 'heute'}
+E        +  where None = <built-in method get of dict object at 0x7ca3088e0780>('kontext')
+E        +    where <built-in method get of dict object at 0x7ca3088e0780> = {'name': 'Ida', 'art': 'Kommentar', 'ziel': 'T-01', 'text': 'Wir landen erst 21 Uhr.', ...}.get
+
+engine/tests/test_rueckmeldung_kontext_449.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 201
+___ test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[stand_negativ] ____
+
+dienst = ('http://127.0.0.1:33201', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ungueltiger_kontext_wird_13'))
+roh = {'stand': -1, 'ansicht': 'heute'}, erwartet = {'ansicht': 'heute'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen(dienst, roh, erwartet):   # AC-5
+        basis, ablage = dienst
+        code, e = post(basis, kontext=roh)
+        ohne_code, ohne = anfrage(basis + "/beispielreise/rueckmeldungen", "POST", {**GUT, "text": "ganz anderer Text"})
+        assert code == ohne_code == 201
+        assert set(e) - {"kontext"} == set(ohne)   # gleiche Antwort wie ohne Kontext, nur das Feld kontext darf dazukommen
+>       assert e.get("kontext") == erwartet
+E       AssertionError: assert None == {'ansicht': 'heute'}
+E        +  where None = <built-in method get of dict object at 0x7ca3088b0a80>('kontext')
+E        +    where <built-in method get of dict object at 0x7ca3088b0a80> = {'name': 'Ida', 'art': 'Kommentar', 'ziel': 'T-01', 'text': 'Wir landen erst 21 Uhr.', ...}.get
+
+engine/tests/test_rueckmeldung_kontext_449.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 201
+___ test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[stand_zu_gross] ___
+
+dienst = ('http://127.0.0.1:46419', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ungueltiger_kontext_wird_14'))
+roh = {'stand': 1000000, 'ansicht': 'heute'}, erwartet = {'ansicht': 'heute'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen(dienst, roh, erwartet):   # AC-5
+        basis, ablage = dienst
+        code, e = post(basis, kontext=roh)
+        ohne_code, ohne = anfrage(basis + "/beispielreise/rueckmeldungen", "POST", {**GUT, "text": "ganz anderer Text"})
+        assert code == ohne_code == 201
+        assert set(e) - {"kontext"} == set(ohne)   # gleiche Antwort wie ohne Kontext, nur das Feld kontext darf dazukommen
+>       assert e.get("kontext") == erwartet
+E       AssertionError: assert None == {'ansicht': 'heute'}
+E        +  where None = <built-in method get of dict object at 0x7ca3088e7280>('kontext')
+E        +    where <built-in method get of dict object at 0x7ca3088e7280> = {'name': 'Ida', 'art': 'Kommentar', 'ziel': 'T-01', 'text': 'Wir landen erst 21 Uhr.', ...}.get
+
+engine/tests/test_rueckmeldung_kontext_449.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 201
+__ test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[stand_grenze_ok] ___
+
+dienst = ('http://127.0.0.1:41481', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ungueltiger_kontext_wird_15'))
+roh = {'stand': 999999}, erwartet = {'stand': 999999}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen(dienst, roh, erwartet):   # AC-5
+        basis, ablage = dienst
+        code, e = post(basis, kontext=roh)
+        ohne_code, ohne = anfrage(basis + "/beispielreise/rueckmeldungen", "POST", {**GUT, "text": "ganz anderer Text"})
+        assert code == ohne_code == 201
+        assert set(e) - {"kontext"} == set(ohne)   # gleiche Antwort wie ohne Kontext, nur das Feld kontext darf dazukommen
+>       assert e.get("kontext") == erwartet
+E       AssertionError: assert None == {'stand': 999999}
+E        +  where None = <built-in method get of dict object at 0x7ca3088b3d40>('kontext')
+E        +    where <built-in method get of dict object at 0x7ca3088b3d40> = {'name': 'Ida', 'art': 'Kommentar', 'ziel': 'T-01', 'text': 'Wir landen erst 21 Uhr.', ...}.get
+
+engine/tests/test_rueckmeldung_kontext_449.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 201
+__ test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[stand_kommazahl] ___
+
+dienst = ('http://127.0.0.1:46515', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ungueltiger_kontext_wird_16'))
+roh = {'stand': 1.5, 'ansicht': 'heute'}, erwartet = {'ansicht': 'heute'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen(dienst, roh, erwartet):   # AC-5
+        basis, ablage = dienst
+        code, e = post(basis, kontext=roh)
+        ohne_code, ohne = anfrage(basis + "/beispielreise/rueckmeldungen", "POST", {**GUT, "text": "ganz anderer Text"})
+        assert code == ohne_code == 201
+        assert set(e) - {"kontext"} == set(ohne)   # gleiche Antwort wie ohne Kontext, nur das Feld kontext darf dazukommen
+>       assert e.get("kontext") == erwartet
+E       AssertionError: assert None == {'ansicht': 'heute'}
+E        +  where None = <built-in method get of dict object at 0x7ca30894c600>('kontext')
+E        +    where <built-in method get of dict object at 0x7ca30894c600> = {'name': 'Ida', 'art': 'Kommentar', 'ziel': 'T-01', 'text': 'Wir landen erst 21 Uhr.', ...}.get
+
+engine/tests/test_rueckmeldung_kontext_449.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 201
+_ test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[stand_wahrheitswert] _
+
+dienst = ('http://127.0.0.1:43293', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ungueltiger_kontext_wird_17'))
+roh = {'stand': True, 'ansicht': 'heute'}, erwartet = {'ansicht': 'heute'}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen(dienst, roh, erwartet):   # AC-5
+        basis, ablage = dienst
+        code, e = post(basis, kontext=roh)
+        ohne_code, ohne = anfrage(basis + "/beispielreise/rueckmeldungen", "POST", {**GUT, "text": "ganz anderer Text"})
+        assert code == ohne_code == 201
+        assert set(e) - {"kontext"} == set(ohne)   # gleiche Antwort wie ohne Kontext, nur das Feld kontext darf dazukommen
+>       assert e.get("kontext") == erwartet
+E       AssertionError: assert None == {'ansicht': 'heute'}
+E        +  where None = <built-in method get of dict object at 0x7ca3088b2780>('kontext')
+E        +    where <built-in method get of dict object at 0x7ca3088b2780> = {'name': 'Ida', 'art': 'Kommentar', 'ziel': 'T-01', 'text': 'Wir landen erst 21 Uhr.', ...}.get
+
+engine/tests/test_rueckmeldung_kontext_449.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 201
+___ test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[verschachtelt] ____
+
+dienst = ('http://127.0.0.1:40047', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ungueltiger_kontext_wird_18'))
+roh = {'ansicht': {'a': 'b'}, 'abschnitt': ['weg'], 'stand': 4}
+erwartet = {'stand': 4}
+
+    @pytest.mark.parametrize("roh,erwartet", [u[1:] for u in UNGUELTIG], ids=[u[0] for u in UNGUELTIG])
+    def test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen(dienst, roh, erwartet):   # AC-5
+        basis, ablage = dienst
+        code, e = post(basis, kontext=roh)
+        ohne_code, ohne = anfrage(basis + "/beispielreise/rueckmeldungen", "POST", {**GUT, "text": "ganz anderer Text"})
+        assert code == ohne_code == 201
+        assert set(e) - {"kontext"} == set(ohne)   # gleiche Antwort wie ohne Kontext, nur das Feld kontext darf dazukommen
+>       assert e.get("kontext") == erwartet
+E       AssertionError: assert None == {'stand': 4}
+E        +  where None = <built-in method get of dict object at 0x7ca308b81240>('kontext')
+E        +    where <built-in method get of dict object at 0x7ca308b81240> = {'name': 'Ida', 'art': 'Kommentar', 'ziel': 'T-01', 'text': 'Wir landen erst 21 Uhr.', ...}.get
+
+engine/tests/test_rueckmeldung_kontext_449.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 201
+______________________ test_doppelt_trotz_anderem_kontext ______________________
+
+dienst = ('http://127.0.0.1:37729', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_doppelt_trotz_anderem_kon0'))
+
+    def test_doppelt_trotz_anderem_kontext(dienst):   # AC-6
+        basis, ablage = dienst
+        c1, e1 = post(basis, kontext={"ansicht": "T-01"})
+        c2, e2 = post(basis, kontext={"ansicht": "varianten", "stand": 7})
+        assert (c1, c2) == (201, 200) and e1["id"] == e2["id"]
+>       assert len(eintraege_der_ablage(ablage)) == 1 and eintraege_der_ablage(ablage)[0]["kontext"] == {"ansicht": "T-01"}
+                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'kontext'
+
+engine/tests/test_rueckmeldung_kontext_449.py:95: KeyError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+POST 200
+_________________________ test_ort_zeile_im_konnektor __________________________
+
+dienst = ('http://127.0.0.1:40757', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ort_zeile_im_konnektor0'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7ca30896f530>
+
+    def test_ort_zeile_im_konnektor(dienst, monkeypatch):   # AC-9
+        _, ablage = dienst
+        monkeypatch.setenv("FR_TEXTE_ZUSATZ", "xx")
+        ablegen(ablage, {**ALT, "kontext": GUTER_KONTEXT},
+                {**ALT, "id": "R-20260102-000000-abcd", "erstellt": "2026-01-02T00:00:00+00:00", "kontext": {"stand": 5}})
+        for kuerzel in ("de", "en", "xx"):
+            a = texte.sprache(kuerzel).TEXTE
+>           assert all(s in a for s in SCHLUESSEL), kuerzel
+E           AssertionError: de
+E           assert False
+E            +  where False = all(<generator object test_ort_zeile_im_konnektor.<locals>.<genexpr> at 0x7ca308903030>)
+
+engine/tests/test_rueckmeldung_kontext_449.py:139: AssertionError
+______________________ test_ort_zeile_in_der_befehlszeile ______________________
+
+dienst = ('http://127.0.0.1:42681', PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ort_zeile_in_der_befehlsz0'))
+capsys = <_pytest.capture.CaptureFixture object at 0x7ca308978230>
+
+    def test_ort_zeile_in_der_befehlszeile(dienst, capsys):   # AC-9
+        _, ablage = dienst
+        ablegen(ablage, {**ALT, "kontext": GUTER_KONTEXT})
+        rm.main(["liste", "beispielreise"])
+>       assert "  Place: view T-03, section weg, trip version 12\n" in capsys.readouterr().out
+E       AssertionError: assert '  Place: view T-03, section weg, trip version 12\n' in 'R-20260101-000000-abcd  2026-01-01 00:00 UTC  Ida  [neu]\n  T-01 (ID not on the page) [Frage]:\n    Wann landen wir?\n\n1 feedback item(s).\n'
+E        +  where 'R-20260101-000000-abcd  2026-01-01 00:00 UTC  Ida  [neu]\n  T-01 (ID not on the page) [Frage]:\n    Wann landen wir?\n\n1 feedback item(s).\n' = CaptureResult(out='R-20260101-000000-abcd  2026-01-01 00:00 UTC  Ida  [neu]\n  T-01 (ID not on the page) [Frage]:\n    Wann landen wir?\n\n1 feedback item(s).\n', err='').out
+E        +    where CaptureResult(out='R-20260101-000000-abcd  2026-01-01 00:00 UTC  Ida  [neu]\n  T-01 (ID not on the page) [Frage]:\n    Wann landen wir?\n\n1 feedback item(s).\n', err='') = readouterr()
+E        +      where readouterr = <_pytest.capture.CaptureFixture object at 0x7ca308978230>.readouterr
+
+engine/tests/test_rueckmeldung_kontext_449.py:154: AssertionError
+__________________ test_kontext_tagesseite_weg_und_varianten ___________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14432/test_kontext_tagesseite_weg_un0')
+
+    @browser
+    def test_kontext_tagesseite_weg_und_varianten(tmp_path):   # AC-1
+        gebaut(tmp_path, "beispielreise")
+        a = lauf(tmp_path, "T-02", ".ebene-weg button.zid[data-rm]")
+        assert not a["fehler"] and len(a["bodys"]) == 1
+>       k = a["bodys"][0]["kontext"]
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'kontext'
+
+engine/tests/test_rueckmeldung_kontext_449.py:194: KeyError
+__________________ test_kontext_stadtwochenende_und_allgemein __________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14432/test_kontext_stadtwochenende_u0')
+
+    @browser
+    def test_kontext_stadtwochenende_und_allgemein(tmp_path):   # AC-2
+        gebaut(tmp_path, "stadtwochenende")
+        a = lauf(tmp_path, "T-01", ".tagseite button.zid[data-rm]")
+>       assert not a["fehler"] and a["bodys"][0]["kontext"]["ansicht"] == "T-01"
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'kontext'
+
+engine/tests/test_rueckmeldung_kontext_449.py:205: KeyError
+_______________________ test_ohne_reise_stand_kein_stand _______________________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14432/test_ohne_reise_stand_kein_sta0')
+
+    @browser
+    def test_ohne_reise_stand_kein_stand(tmp_path):   # AC-3
+        gebaut(tmp_path, "beispielreise", rs_null=True)
+        a = lauf(tmp_path, "T-02", ".ebene-weg button.zid[data-rm]")
+        assert not a["fehler"] and a["rs"] is None
+>       assert "stand" not in a["bodys"][0]["kontext"] and a["bodys"][0]["kontext"]["ansicht"] == "T-02"
+                              ^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'kontext'
+
+engine/tests/test_rueckmeldung_kontext_449.py:216: KeyError
+______________ test_offline_nachgereicht_traegt_kontext_vom_klick ______________
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14432/test_offline_nachgereicht_trae0')
+
+    @browser
+    def test_offline_nachgereicht_traegt_kontext_vom_klick(tmp_path):   # AC-8
+        gebaut(tmp_path, "beispielreise")
+        a = lauf(tmp_path, "T-02", ".ebene-weg button.zid[data-rm]", "offline")
+        assert not a["fehler"] and len(a["bodys"]) == 1
+>       k = a["bodys"][0]["kontext"]
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'kontext'
+
+engine/tests/test_rueckmeldung_kontext_449.py:224: KeyError
+=========================== short test summary info ============================
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_gueltiger_kontext_wird_abgelegt
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[kein_objekt_text]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[kein_objekt_liste]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[kein_objekt_zahl]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[fremder_schluessel]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[nur_fremde_schluessel]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[muster_verletzt]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[muster_leerzeichen]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[ansicht_zu_lang]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[ansicht_grenze_ok]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[abschnitt_zu_lang]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[abschnitt_grenze_ok]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[stand_text]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[stand_null]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[stand_negativ]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[stand_zu_gross]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[stand_grenze_ok]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[stand_kommazahl]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[stand_wahrheitswert]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[verschachtelt]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_pruefen[leer]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[fremder_schluessel]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[muster_verletzt]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[muster_leerzeichen]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[ansicht_zu_lang]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[ansicht_grenze_ok]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[abschnitt_zu_lang]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[abschnitt_grenze_ok]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[stand_text]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[stand_null]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[stand_negativ]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[stand_zu_gross]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[stand_grenze_ok]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[stand_kommazahl]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[stand_wahrheitswert]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ungueltiger_kontext_wird_verworfen_nicht_abgewiesen[verschachtelt]
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_doppelt_trotz_anderem_kontext
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ort_zeile_im_konnektor
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ort_zeile_in_der_befehlszeile
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_tagesseite_weg_und_varianten
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_kontext_stadtwochenende_und_allgemein
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_ohne_reise_stand_kein_stand
+FAILED engine/tests/test_rueckmeldung_kontext_449.py::test_offline_nachgereicht_traegt_kontext_vom_klick
+43 failed, 7 passed in 21.99s
