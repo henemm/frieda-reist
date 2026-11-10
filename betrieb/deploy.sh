@@ -91,6 +91,7 @@ rsync -a --delete --chmod=D755,F644 --include "*.webp" --exclude "*" "$WURZEL/en
 install -m 644 "$WURZEL/engine/vorlage.html" "$WURZEL/engine/sw.vorlage.js" "$DIENST/"
 rsync -a --delete --chmod=D755,F644 "$WURZEL/engine/vendor/" "$DIENST/vendor/"
 rsync -a --delete --chmod=D755,F644 "$WURZEL/engine/reisevorlage/" "$DIENST/reisevorlage/"
+rsync -a --delete --chmod=D755,F644 "$WURZEL/engine/artvorlagen/" "$DIENST/artvorlagen/"   # Vorlagen für Arten (ADR-0011)
 mkdir -p "$FR_KONNEKTOR" "$FR_KONTEN" && chmod 700 "$FR_KONNEKTOR" "$FR_KONTEN"
 neustart() {
   ${FR_SUDO-sudo -n} systemctl restart "$1" 2>/dev/null && echo "$2 restarted." \

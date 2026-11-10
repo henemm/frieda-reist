@@ -31,14 +31,14 @@ werkzeuge/         Werkzeuge für Inhalte aus dem Netz: Grundkarte, Punkte und A
 beispiel/reisen/   erfundene Beispielreisen (Wanderung und Städtewochenende), Demo und Testgrundlage; jede Funktion gegen beide denken (ADR-0001, Frage 1)
 docs/              Produktbild, Alternativen und Merkmale, Design und Bausteine, Konnektor, Sprachen, Betrieb, Werkzeuge;
                    adr/ Architektur-Entscheidungen, ADR-0001 ist der Kern und die Prüfstelle, ADR-0002 Atomic Design, ADR-0003 eine Heimat je Grundform,
-                   ADR-0004 Lage eines Aufenthalts, ADR-0005 Konten und Anmeldung, ADR-0009 Reisespeicher, ADR-0010 Gegenstand und Packliste; abgleich-2026-10-29.md Prüfbericht und Backlog
+                   ADR-0004 Lage eines Aufenthalts, ADR-0005 Konten und Anmeldung, ADR-0009 Reisespeicher, ADR-0010 Gegenstand und Packliste, ADR-0011 Vorlagen für Arten; abgleich-2026-10-29.md Prüfbericht und Backlog
 ```
 
 Der Generator sucht Reisen in `./reisen/` des aktuellen Ordners (`--reisen`, `--ziel` zum Ändern).
 
 ## Regeln
 
-- **Zuerst der Kern:** Jedes Vorhaben wird vor dem Bauen an `docs/adr/0001-kern.md` gemessen (zehn Fragen der Prüfstelle, im PR-Template). Widerspricht es dem Kern, wird nicht gebaut, sondern der Product Owner gefragt. Die Software kennt nur die Grundformen der Reise-Ontologie und die Form eines Merkmals; Arten und Merkmale gehören der Reise. Frieda enthält keine eigene KI; Reiseinhalte entstehen im AI-Client über den Konnektor, nicht in Claude Code (Product Owner, 28.10.2026).
+- **Zuerst der Kern:** Jedes Vorhaben wird vor dem Bauen an `docs/adr/0001-kern.md` gemessen (zehn Fragen der Prüfstelle, im PR-Template). Widerspricht es dem Kern, wird nicht gebaut, sondern der Product Owner gefragt. Die Software kennt nur die Grundformen der Reise-Ontologie und die Form eines Merkmals; Arten und Merkmale gehören der Reise (Vorlagen für häufige Arten nur als Angebot zum Übernehmen, ADR-0011). Frieda enthält keine eigene KI; Reiseinhalte entstehen im AI-Client über den Konnektor, nicht in Claude Code (Product Owner, 28.10.2026).
 - Änderungen gelten für alle Reisen: nichts Reisespezifisches in die Engine, Einstellungen gehören in `reise.yaml` der Reise.
 - Änderungen gelten für alle Instanzen: nichts Instanzspezifisches in `betrieb/`, `werkzeuge/` oder die Engine (Pfade, Adressen, Benutzer, Meldeweg, Kennung kommen aus `betrieb/einstellungen.env` des Reisen-Repos, `docs/betrieb.md`; Vorgaben der Engine in `engine/instanz.py`).
 - Oberfläche nach Atomic Design ([ADR-0002](docs/adr/0002-atomic-design.md)): vorhandene Bausteine nutzen; ein neuer Baustein kommt in den Kopfkommentar der Vorlage, in die Stile seiner Ebene, auf die Bausteinseite und in `docs/design.md` (zeigt er eine Grundform, auch in `ONTOLOGIE`). Jede Grundform hat genau eine Heimat auf der Seite, überall sonst nur eine Zeile mit einem Link dorthin ([ADR-0003](docs/adr/0003-heimat.md)).

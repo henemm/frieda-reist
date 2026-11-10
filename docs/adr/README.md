@@ -14,5 +14,6 @@ Hier stehen die Entscheidungen, die die Software als Ganzes prägen, je eine Dat
 | [0008](0008-ort.md) | Der Ort ist eine Station der Reise; „liegt in“ nur für die Anzeige, Art freiwillig, eine Lage je Stelle | gilt |
 | [0009](0009-reisespeicher.md) | Reisespeicher: Reisedaten als unveränderliche Versionen in SQLite, nur anhängen | gilt |
 | [0010](0010-gegenstand.md) | Der Gegenstand ist eine Grundform (Packliste), Kategorien sind Arten, die Rolle „wird summiert“ | gilt |
+| [0011](0011-vorlagen-fuer-arten.md) | Vorlagen für häufige Arten in der Software, nur Merkmale, nur durch Übernehmen in eine Reise (Ausnahme zu ADR-0001, Punkt 2) | gilt |
 
 ADR-0001 ist zugleich die **Prüfstelle**: Jedes Issue, jedes Paket und jeder Pull Request beantwortet die zehn Fragen im Abschnitt „Prüfstelle“. Das PR-Template (`.github/pull_request_template.md`) enthält sie.

@@ -1558,7 +1558,7 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
                 return (tk("konnektor.ontologie_werkzeug.12", art=art, w2=aehnlich['id'], w3=aehnlich['name'])), True
     # Was die veröffentlichte Seite noch nicht kennt (gerade angelegt, Issue #135), prüft der Schreibweg mit dem Repo: hier
     # keine Ablehnung wegen einer unbekannten ID, nur Hinweise, die der veröffentlichte Stand sicher weiß
-    if name in ("arten_uebernehmen", "packliste_uebernehmen"):
+    if name in ("arten_uebernehmen", "packliste_uebernehmen") and not (name == "arten_uebernehmen" and args.get("vorlage")):
         # nur Reisen derselben Person (Product Owner 28.10.2026): Konto oder Zugang muss auf beiden Reisen stehen
         von = str(args.get("von_reise") or "").strip()
         dv = daten(von) if rm.REISE_MUSTER.match(von) else None
@@ -2818,8 +2818,9 @@ MERKMAL_ZUSAMMENFUEHREN = {"name": "merkmal_zusammenfuehren", "description": "@k
 ARTEN_UEBERNEHMEN = {"name": "arten_uebernehmen", "description": "@konnektor.werkzeug.arten_uebernehmen",
                      "inputSchema": {"type": "object", "properties": {
                          "von_reise": {"type": "string", "description": "@konnektor.werkzeug.arten_uebernehmen.von_reise"},
+                         "vorlage": {"type": "boolean", "description": "@konnektor.werkzeug.arten_uebernehmen.vorlage"},
                          "arten": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.arten_uebernehmen.arten"},
-                         "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["von_reise"]}}
+                         "grund": {"type": "string"}, "vorname": NAME_FELD}}}
 WUNSCH_VORSCHLAGEN = {"name": "wunsch_vorschlagen", "description": "@konnektor.werkzeug.wunsch_vorschlagen",
                       "inputSchema": {"type": "object", "properties": {
                           "wunsch": {"type": "string", "description": "@konnektor.werkzeug.wunsch_vorschlagen.wunsch"},

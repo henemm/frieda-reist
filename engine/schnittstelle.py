@@ -98,7 +98,7 @@ PARAMETER = {
     "frist_was": "deadline_what", "fuer": "for", "gebucht_am": "booked_on", "geprueft": "checked", "gilt": "valid_for",
     "grund": "reason", "grundform": "basic_form", "gruppe": "group", "hilfe": "help", "hinweis": "hint", "kategorie": "category", "kennzahlen": "figures",
     "kommentar": "comment", "koordinaten": "coordinates", "kurz": "short", "lesetext": "reading_text", "merkmal": "attribute",
-    "merkmale": "attributes", "minus": "cons", "nach": "after", "nach_buchung": "visible_after_booking", "lang": "long_text", "nacht": "night", "neu": "new", "neuer_name": "new_name",
+    "merkmale": "attributes", "minus": "cons", "nach": "after", "nach_buchung": "visible_after_booking", "lang": "long_text", "vorlage": "template", "nacht": "night", "neu": "new", "neuer_name": "new_name",
     "neuer_titel": "new_title", "notiz": "note", "nummer": "number", "nummeriert": "numbered", "ohne_route": "without_route",
     "optionen": "options", "ort": "place", "orte": "places", "personen": "people", "pfad": "path", "plus": "pros", "preis": "price", "preise": "prices", "zahlung": "payment",
     "prioritaet": "priority", "punkte": "points", "quelle": "source", "regeln": "rules", "reist": "travels", "rolle": "role",

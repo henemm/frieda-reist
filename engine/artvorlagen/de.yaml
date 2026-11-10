@@ -1,0 +1,62 @@
+# Vorlagen für Arten (Product Owner 10.11.2026, ADR-0011, #477): nur Merkmale, keine Werte. Eine Vorlage ist ein Angebot; in
+# eine Reise kommt sie nur durch arten_uebernehmen (vorlage: true) einer Organisator:in und ist dann eine Kopie der Reise.
+# Abfahrt, Ankunft, Adresse und Buchungslink trägt jedes Ding als feste Felder seiner Grundform; sie stehen hier nicht.
+# Je Sprache eine Datei (engine/artvorlagen/<sprache>.yaml); fehlt sie, gilt die Vorgabesprache.
+arten:
+  hotel:
+    grundform: aufenthalt
+    name: Hotel
+    farbe: blau
+    symbol: unterkunft
+    buchbar: true
+    merkmale:
+      preis: {name: Preis pro Nacht, typ: geld, veraenderlich: true, rolle: kosten, hilfe: "Preis der Nacht für alle zusammen, mit Währung"}
+      fruehstueck: {name: Frühstück, typ: auswahl, werte: [inklusive, gegen Aufpreis, keins], veraenderlich: true}
+      fruehstueckszeiten: {name: Frühstückszeiten, typ: text, veraenderlich: true, nach_buchung: true}
+      rezeption: {name: Rezeption, typ: text, veraenderlich: true, nach_buchung: true, hilfe: "Öffnungszeiten der Rezeption, Gepäckaufbewahrung"}
+      lage: {name: Lage, typ: text, hilfe: "kurz: wo, wie weit zum Wichtigsten"}
+      bewertung: {name: Bewertung, typ: zahl, veraenderlich: true, hilfe: "Bewertung auf einem Portal, Portal in der Herkunft"}
+      webseite: {name: Webseite, typ: link}
+      charakter: {name: Charakter, typ: text, lang: true, nach_buchung: true, hilfe: "ein, zwei Sätze: was das Haus ausmacht"}
+  refugi:
+    grundform: aufenthalt
+    name: Refugi
+    farbe: braun
+    symbol: unterkunft
+    buchbar: true
+    merkmale:
+      preis: {name: Preis pro Nacht, typ: geld, veraenderlich: true, rolle: kosten}
+      halbpension: {name: Halbpension, typ: auswahl, werte: [ja, nein, auf Anfrage], veraenderlich: true}
+      reservierung: {name: Reservierung, typ: text, veraenderlich: true, hilfe: "wie und wie früh"}
+      lage: {name: Lage, typ: text}
+      webseite: {name: Webseite, typ: link}
+      charakter: {name: Charakter, typ: text, lang: true, nach_buchung: true}
+  flug:
+    grundform: bewegung
+    name: Flug
+    farbe: lila
+    symbol: flug
+    buchbar: true
+    merkmale:
+      flugnummer: {name: Flugnummer, typ: text}
+  bahn:
+    grundform: bewegung
+    name: Bahn
+    farbe: schiefer
+    symbol: bahn
+    buchbar: true
+    merkmale:
+      zugnummer: {name: Zugnummer, typ: text}
+      weitere_abfahrten: {name: Weitere Abfahrten, typ: text, veraenderlich: true}
+  bus:
+    grundform: bewegung
+    name: Bus
+    farbe: gruen
+    symbol: bus
+    merkmale:
+      linie: {name: Linie, typ: text, veraenderlich: true}
+      einstieg: {name: Einstieg, typ: text}
+      ausstieg: {name: Ausstieg, typ: text}
+      lage_haltestellen: {name: Lage der Haltestellen, typ: text}
+      anzahl_halte: {name: Anzahl Halte, typ: zahl}
+      weitere_abfahrten: {name: Weitere Abfahrten, typ: text, veraenderlich: true}

@@ -9,7 +9,7 @@ Jede Zeile mit „ja“ oder „nein“ beantworten; bei 1 bis 7 heißt die fals
 | Nr. | Frage | Antwort |
 |---|---|---|
 | 1 | Reisespezifisches steht in der Reise, nicht in der Software; mit zwei Reisetypen durchgespielt? | |
-| 2 | Die Software führt keine Art und kein Merkmal ein und setzt keines voraus? | |
+| 2 | Die Software führt keine Art und kein Merkmal ein und setzt keines voraus (Vorlagen nach ADR-0011 nur durch Übernehmen)? | |
 | 3 | Kein KI-Lauf in Frieda; Prüfungen sind Regeln im Code und getestet? | |
 | 4 | Der AI-Client kann es über den Konnektor lesen und (rollengerecht) schreiben? | |
 | 5 | Jede neue Aussage trägt Herkunft, Prüfdatum, Gültigkeit; ohne Herkunft wird abgelehnt? | |

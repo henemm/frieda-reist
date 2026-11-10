@@ -4399,17 +4399,34 @@ def merkmal_zusammenfuehren(reise_dir, wer, args, heute=None):
             + S("schreiben.antwort.zusammen.name", w1=von, w2=nach, w3=grund))
 
 
+def artvorlagen(sprache=None):
+    """Vorlagen für Arten (ADR-0011, #477) in der Sprache der Reise, sonst der Vorgabesprache: {art: Definition} ohne Werte.
+    Liegen neben dem Code (engine/artvorlagen/<sprache>.yaml); auf dem Server im Dienstordner."""
+    import yaml
+    ordner = Path(__file__).resolve().parent / "artvorlagen"
+    for sp in (sprache, texte.VORGABE):
+        p = ordner / f"{sp}.yaml"
+        if sp and p.exists():
+            return (yaml.safe_load(p.read_text(encoding="utf-8")) or {}).get("arten") or {}
+    return {}
+
+
 def arten_uebernehmen(reise_dir, wer, args, heute=None):
     """Arten (mit Merkmalen und Gliederung) einer anderen Reise derselben Person als Kopie übernehmen, nur die, die es hier noch
     nicht gibt (oder die in „arten“ genannten). Nur auf ausdrückliche Nachfrage (Product Owner 28.10.2026); der Konnektor
-    prüft, dass die Person auf beiden Reisen dabei ist. Nur Organisator:innen. -> (Titel, Text)."""
-    von = (text_wert(args, "von_reise", pflicht=True, laenge=60) or "").strip()
-    if not REISE_MUSTER.match(von):
-        raise Ablehnung("schreiben.arten_uebernehmen.1")
-    quelle_dir = Path(reise_dir).parent / von
-    if quelle_dir.resolve() == Path(reise_dir).resolve() or not (quelle_dir / "plan" / "arten.yaml").exists():
-        raise Ablehnung("schreiben.arten_uebernehmen.2", von=von)
-    fremd = arten_laden(quelle_dir)
+    prüft, dass die Person auf beiden Reisen dabei ist. Nur Organisator:innen. Mit vorlage: true aus den Vorlagen der Software
+    (ADR-0011, #477): nur Merkmale, keine Werte. -> (Titel, Text)."""
+    if bool_wert(args, "vorlage"):
+        fremd = artvorlagen(sprache_von(reise_dir))
+        von = str(S("schreiben.arten_uebernehmen.vorlage"))
+    else:
+        von = (text_wert(args, "von_reise", pflicht=True, laenge=60) or "").strip()
+        if not REISE_MUSTER.match(von):
+            raise Ablehnung("schreiben.arten_uebernehmen.1")
+        quelle_dir = Path(reise_dir).parent / von
+        if quelle_dir.resolve() == Path(reise_dir).resolve() or not (quelle_dir / "plan" / "arten.yaml").exists():
+            raise Ablehnung("schreiben.arten_uebernehmen.2", von=von)
+        fremd = arten_laden(quelle_dir)
     eigene = arten_laden(reise_dir)
     gewuenscht = liste_wert(args, "arten", laenge=40)
     gewuenscht = [a.lower() for a in gewuenscht] if gewuenscht else [a for a in fremd if a not in eigene]

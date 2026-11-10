@@ -806,7 +806,7 @@ def test_ding_aendern_und_ablehnungen(repo):
     s.vorbereiten()
     a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "O-03", "neuer_name": "Hohnstein (Sächs. Schweiz)", "hinweis": ""}})
     r, _ = routen_auf_main(origin)
-    assert {k: v for k, v in r["orte"]["O-03"].items() if k != "merkmale"} == {"name": "Hohnstein (Sächs. Schweiz)", "art": "ort_am_weg", "an": "O-07", "quelle": "OpenStreetMap; Hinweis Wikipedia (W-05)"}
+    assert {k: v for k, v in r["orte"]["O-03"].items() if k != "merkmale"} == {"name": "Hohnstein (Sächs. Schweiz)", "art": "ort_am_weg", "an": "O-07", "quelle": "OpenStreetMap; Hinweis Wikipedia (Artikel zum Ort)"}
     assert r["orte"]["O-03"]["merkmale"]["koordinaten"]["wert"] == [50.979, 14.1125]   # die Lage des Orts bleibt (ADR-0008)
     s.vorbereiten()
     stand = git(origin, "rev-parse", "main")
@@ -2990,3 +2990,38 @@ def test_kartenpunkte_dienstwahl_an_beiden_beispielreisen(repo, speicherweg, ove
     code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
     assert code == 200 and a["ok"], a
     assert len(eigen.anfragen) == 1 and len(oeffentlich.anfragen) == 1
+
+
+def test_arten_aus_den_vorlagen(repo):
+    """ADR-0011, #477: Vorlagen für Arten fest in der Software, übernommen nur auf Wunsch einer Organisator:in, nur Merkmale;
+    vorhandene Arten bleiben unberührt (Beispielreise hat hotel und bahn schon)."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    with pytest.raises(sb.Ablehnung, match="gibt es hier schon"):
+        s.schreiben("beispielreise", "arten_uebernehmen", {**IDA, "args": {"vorlage": True, "arten": ["hotel"]}})
+    a = s.schreiben("beispielreise", "arten_uebernehmen", {**IDA, "args": {"vorlage": True, "arten": ["flug", "refugi"]}})
+    assert "den Vorlagen von Frieda" in a["text"], a["text"]
+    arten, _ = arten_auf_main(origin)
+    assert arten["flug"]["grundform"] == "bewegung" and arten["flug"]["merkmale"]["flugnummer"]["name"] == "Flugnummer"
+    assert arten["refugi"]["merkmale"]["charakter"]["lang"] is True and arten["hotel"]["name"] == "Hotel"
+    # ohne Auswahl: alle, die es hier noch nicht gibt; die Beispielreise hat die übrigen (hotel, bahn, bus) schon
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="gibt es hier schon"):
+        s.schreiben("beispielreise", "arten_uebernehmen", {**IDA, "args": {"vorlage": True}})
+
+
+def test_artvorlagen_in_jeder_sprache_gleich():
+    """Jede Sprache hat dieselben Arten und Merkmale mit gültiger Form (Typen, Rollen, Farben, Symbole)."""
+    import routen
+    import yaml
+    ordner = WURZEL / "engine" / "artvorlagen"
+    alle = {p.stem: yaml.safe_load(p.read_text(encoding="utf-8"))["arten"] for p in ordner.glob("*.yaml")}
+    assert set(alle) >= {"de", "en"}
+    form = {sp: {a: sorted(d["merkmale"]) for a, d in arten.items()} for sp, arten in alle.items()}
+    assert len({repr(f) for f in form.values()}) == 1, form
+    for arten in alle.values():
+        for a, d in arten.items():
+            assert d["farbe"] in routen.FARBEN and d["symbol"] in routen.SYMBOLE_ARTEN, a
+            for k, m in d["merkmale"].items():
+                assert m["typ"] in routen.TYPEN and (not m.get("rolle") or m["rolle"] in routen.ROLLEN), (a, k)
+                assert all(isinstance(w, str) for w in m.get("werte") or []), (a, k)

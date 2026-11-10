@@ -1,0 +1,61 @@
+# Templates for kinds (product owner 10.11.2026, ADR-0011, #477): attributes only, no values. A template is an offer; it only
+# enters a trip through arten_uebernehmen (vorlage: true) by an organiser and is then the trip's own copy.
+# Departure, arrival, address and booking link are fixed fields of every thing; they are not listed here.
+arten:
+  hotel:
+    grundform: aufenthalt
+    name: Hotel
+    farbe: blau
+    symbol: unterkunft
+    buchbar: true
+    merkmale:
+      preis: {name: Price per night, typ: geld, veraenderlich: true, rolle: kosten, hilfe: "price of the night for everyone, with currency"}
+      fruehstueck: {name: Breakfast, typ: auswahl, werte: [included, extra charge, none], veraenderlich: true}
+      fruehstueckszeiten: {name: Breakfast times, typ: text, veraenderlich: true, nach_buchung: true}
+      rezeption: {name: Reception, typ: text, veraenderlich: true, nach_buchung: true, hilfe: "reception hours, luggage storage"}
+      lage: {name: Location, typ: text, hilfe: "short: where, how far to what matters"}
+      bewertung: {name: Rating, typ: zahl, veraenderlich: true, hilfe: "rating on a portal, portal in the source"}
+      webseite: {name: Website, typ: link}
+      charakter: {name: Character, typ: text, lang: true, nach_buchung: true, hilfe: "one or two sentences: what makes the place"}
+  refugi:
+    grundform: aufenthalt
+    name: Refuge
+    farbe: braun
+    symbol: unterkunft
+    buchbar: true
+    merkmale:
+      preis: {name: Price per night, typ: geld, veraenderlich: true, rolle: kosten}
+      halbpension: {name: Half board, typ: auswahl, werte: ["yes", "no", on request], veraenderlich: true}
+      reservierung: {name: Reservation, typ: text, veraenderlich: true, hilfe: "how and how early"}
+      lage: {name: Location, typ: text}
+      webseite: {name: Website, typ: link}
+      charakter: {name: Character, typ: text, lang: true, nach_buchung: true}
+  flug:
+    grundform: bewegung
+    name: Flight
+    farbe: lila
+    symbol: flug
+    buchbar: true
+    merkmale:
+      flugnummer: {name: Flight number, typ: text}
+  bahn:
+    grundform: bewegung
+    name: Train
+    farbe: schiefer
+    symbol: bahn
+    buchbar: true
+    merkmale:
+      zugnummer: {name: Train number, typ: text}
+      weitere_abfahrten: {name: Further departures, typ: text, veraenderlich: true}
+  bus:
+    grundform: bewegung
+    name: Bus
+    farbe: gruen
+    symbol: bus
+    merkmale:
+      linie: {name: Line, typ: text, veraenderlich: true}
+      einstieg: {name: Boarding stop, typ: text}
+      ausstieg: {name: Exit stop, typ: text}
+      lage_haltestellen: {name: Location of the stops, typ: text}
+      anzahl_halte: {name: Number of stops, typ: zahl}
+      weitere_abfahrten: {name: Further departures, typ: text, veraenderlich: true}
