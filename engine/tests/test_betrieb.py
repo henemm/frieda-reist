@@ -213,7 +213,7 @@ def vf(tmp_path):
            "VF_NGINX": str(nginx_gleich),
            "FR_KONNEKTOR": str(tmp_path / "konnektor"), "FR_SPERREN": str(tmp_path), "VF_DEPLOY": str(attrappe), "VF_PRUEFEN": str(pruefen), "VF_FREISCHALTEN": str(frei),
            "FR_HEARTBEAT_VEROEFFENTLICHEN": "https://example.invalid/hb", "PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}",
-           "FR_MELDEN": str(melden), "VF_ROTMELDEN": str(rotmelden)}
+           "FR_MELDEN": str(melden), "VF_ROTMELDEN": str(rotmelden), "FR_SUDO": ""}   # Root-Rechte: ohne sudo (#465)
 
     def lauf(*args, **extra):
         return subprocess.run([str(BETRIEB / "veroeffentlichen.sh"), *args], env={**env, **extra}, capture_output=True, text=True)
@@ -817,6 +817,31 @@ def test_veroeffentlichen_nennt_erneuerte_bausteine_und_den_grund_eines_fehlschl
     assert r.returncode == 0, r.stdout + r.stderr
     assert "Block renewed: beispielreise" in r.stdout
     assert "Warning: zweitreise not released" in r.stdout and "ERROR: no path in the block." in r.stdout
+    assert "geheim" not in r.stdout + r.stderr
+
+
+def test_veroeffentlichen_ohne_root_rechte_merkt_vor_und_der_naechste_lauf_schaltet_frei(vf):
+    """Der Schreibweg stößt das Veröffentlichen aus einem Dienst mit NoNewPrivileges an, darin geht kein sudo (#465).
+    Dann wird nicht freigeschaltet (freischalten.sh hielte sonst den Baustein für fehlend) und nicht zugestellt; die
+    Reisen werden vorgemerkt, und der nächste Lauf mit Root-Rechten schaltet sie frei, auch ohne neuen Stand."""
+    py = ausfuehrbar(vf["tmp"] / "python.sh", f'#!/bin/sh\necho "$@" >> {vf["tmp"]}/zustellen.log\n')
+    (vf["tmp"] / "konnektor").mkdir(exist_ok=True)
+    (vf["tmp"] / "konnektor/neue-reisen-ausstehend.jsonl").write_text('{"ordner": "neu"}\n')
+    r = vf["lauf"](FR_SUDO="false", FR_PYTHON=str(py))
+    assert r.returncode == 0, r.stdout + r.stderr
+    zl = vf["tmp"] / "zustellen.log"   # FR_PYTHON läuft auch für anderes: nur zustellen.py zählt
+    assert not (vf["tmp"] / "frei.log").exists() and "zustellen.py" not in (zl.read_text() if zl.exists() else "")
+    assert "Note: beispielreise not released in this run" in r.stdout and "next timer run" in r.stdout
+    vorgemerkt = vf["tmp"] / "dienst/freischalten-ausstehend"
+    assert vorgemerkt.read_text().split() == ["beispielreise", "zweitreise"]
+    # Ein weiterer Lauf ohne Rechte merkt nichts doppelt vor
+    r = vf["lauf"]("--immer", FR_SUDO="false", FR_PYTHON=str(py))
+    assert r.returncode == 0 and vorgemerkt.read_text().split() == ["beispielreise", "zweitreise"], r.stdout
+    # Der Timer (mit Root-Rechten, nichts Neues auf main) schaltet die vorgemerkten frei und stellt zu
+    r = vf["lauf"](FR_PYTHON=str(py))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (vf["tmp"] / "frei.log").read_text().split() == ["beispielreise", "zweitreise"]
+    assert not vorgemerkt.exists() and "zustellen.py" in zl.read_text()
     assert "geheim" not in r.stdout + r.stderr
 
 
@@ -1734,6 +1759,20 @@ def test_freischalten_unerwarteter_abbruch_nennt_die_stelle(fs):
     assert len(fehler) == 1 and re.search(r"line \d+", fehler[0]) and "python3" in fehler[0], r.stdout
     token = (fs["snippets"] / "probe-beispielreise.conf").read_text().split("beispielreise-", 1)[1][:24]
     assert token not in r.stdout and "Seite:" not in r.stdout
+
+
+def test_freischalten_ohne_root_rechte_bricht_ab_statt_einen_neuen_link_anzulegen(fs):
+    """Geht sudo nicht (NoNewPrivileges im Schreibweg, #465), scheiterte schon „sudo test -e“; das las sich als „Baustein
+    fehlt“, und die Reise bekam beinahe einen neuen geheimen Link. Jetzt: eigene ERROR-Zeile, nichts geändert."""
+    assert fs["lauf"]("beispielreise").returncode == 0
+    sn = fs["snippets"] / "probe-beispielreise.conf"
+    vorher = sn.read_text()
+    (fs["tmp"] / "nginx.log").unlink()
+    r = subprocess.run([str(BETRIEB / "freischalten.sh"), "beispielreise"], capture_output=True, text=True,
+                       env={**fs["env"], "FR_SUDO": "false"})
+    assert r.returncode == 1 and "ERROR: no root rights here" in r.stdout and "Seite:" not in r.stdout, r.stdout
+    assert sn.read_text() == vorher and list(fs["snippets"].iterdir()) == [sn]
+    assert not (fs["tmp"] / "nginx.log").exists()
 
 
 def test_freischalten_unbekannte_reise_und_fehlende_adresse(fs):

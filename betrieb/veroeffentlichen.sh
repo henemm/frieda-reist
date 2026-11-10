@@ -64,8 +64,41 @@ erfolg_melden() {
   curl -fsS -m 10 --retry 3 -o /dev/null "$hb" || echo "Warning: heartbeat not reached."
 }
 
+# Root-Rechte (#465): Der Schreibweg stößt diesen Lauf aus einem Dienst mit NoNewPrivileges an, darin geht kein sudo.
+# Freischalten (nginx-Bausteine) und Zustellen neuer Reisen brauchen es; ohne warten sie auf den nächsten Lauf des Timers.
+# Geprüft wird erst, wenn es etwas freizuschalten gibt (sudo schreibt jeden Aufruf ins Journal), einmal je Lauf.
+root_geht() {
+  if [ -z "$root_ok" ]; then
+    if ${FR_SUDO-sudo -n} true 2>/dev/null; then root_ok=1; else root_ok=0; fi
+  fi
+  [ "$root_ok" = 1 ]
+}
+
+freischalten_reisen() {  # <reisen…>: freischalten (Ausgabe ohne Links, die sind geheim); ohne Root-Rechte vormerken
+  local r aus
+  for r in "$@"; do
+    if ! root_geht; then
+      grep -qxF "$r" "$frei_ausstehend" 2>/dev/null || echo "$r" >> "$frei_ausstehend"
+      echo "Note: $r not released in this run (no root rights, e.g. started by the write path); the next timer run does it."
+      continue
+    fi
+    aus="$("$freischalten" "$r" 2>&1)" || echo "Warning: $r not released (reason in the line below)."
+    printf '%s\n' "$aus" | grep -E '^(ERROR|Released|Block renewed)' || true
+  done
+}
+
+ausstehende_freischalten() {  # vorgemerkte Reisen eines Laufs ohne Root-Rechte, im nächsten Lauf mit Root-Rechten (#465)
+  local liste
+  [ -s "$frei_ausstehend" ] && root_geht || return 0
+  liste="$(sort -u "$frei_ausstehend")"; rm -f "$frei_ausstehend"
+  # shellcheck disable=SC2086  # eine Reise je Zeile, Namen ohne Leerzeichen (freischalten.sh prüft sie)
+  freischalten_reisen $liste
+}
+
 zustellen() {  # ausstehende Links neuer Reisen (nur wenn welche anstehen)
   [ -s "$ausstehend" ] || return 0
+  # zustellen.py schaltet die neue Reise frei; ohne Root-Rechte bleibt sie für den nächsten Lauf stehen (#465)
+  root_geht || { echo "Note: new trips are delivered by the next timer run (no root rights in this run)."; return 0; }
   "$FR_PYTHON" "$FR_BETRIEB/zustellen.py" "$wurzel" "$ausstehend" \
     || echo "Warning: not all links of new trips delivered, the next run tries again."
 }
@@ -267,10 +300,8 @@ speicher_reisen_lauf() {  # Speicher-Teil (Stufe 3, #348): Reisen aus FR_SPEICHE
   done 3<<< "$aus"
   rm -f "$log"; deploy_log=""
   # Freischalten wie bei Git-Reisen (Ausgabe ohne Links), die Wege zum Konnektor einmal danach
-  for r in $speicher_gut; do
-    aus="$("$freischalten" "$r" 2>&1)" || echo "Warning: $r not released (reason in the line below)."
-    printf '%s\n' "$aus" | grep -E '^(ERROR|Released|Block renewed)' || true
-  done
+  # shellcheck disable=SC2086
+  freischalten_reisen $speicher_gut
   [ -z "$speicher_gut" ] || wege_pruefen
   return 0
 }
@@ -523,6 +554,7 @@ main() {
   ausstehend="${VF_AUSSTEHEND:-$FR_KONNEKTOR/neue-reisen-ausstehend.jsonl}"
   rot_datei="${VF_ROT:-$FR_DIENST/veroeffentlichen-rot}"
   warnung="$FR_DIENST/veroeffentlichen-warnung"
+  frei_ausstehend="${VF_FREI_AUSSTEHEND:-$FR_DIENST/freischalten-ausstehend}"   # Reisen eines Laufs ohne Root-Rechte (#465)
   [ "${1:-}" = "--immer" ] && immer=1
 
   # Sperre in FR_DIENST, nicht in FR_SPERREN (Vorgabe /tmp): Der Schreibweg startet diesen Lauf aus einem Dienst mit
@@ -551,6 +583,7 @@ main() {
   # Reisen aus dem Reisespeicher zuerst und ohne Netz (#348): Scheitert git fetch (kein GitHub), sind sie schon veröffentlicht.
   # Ohne FR_SPEICHERREISEN geschieht hier nichts.
   speicher_reisen_lauf || return 1
+  ausstehende_freischalten   # vorgemerkt von einem Lauf ohne Root-Rechte (#465); vor dem Abruf von GitHub, gilt also auch ohne Netz
   einstellungen_vorher="$(einstellungen_summe "$einstellungen")"
   if ! git fetch -q origin main; then
     # Stufe 5 (#350): Ohne GitHub sind die Reisen aus dem Speicher schon veröffentlicht; nur Software und Git-Reisen warten.
@@ -670,10 +703,8 @@ main() {
   fi
   rm -rf "$pruef_tmp" "$pruef_log"
   # Freischalten nur gelungener Reisen: neue bekommen ihren Link, alle werden geprüft (Ausgabe ohne Links, die sind geheim)
-  for reise in $gut; do
-    aus="$("$freischalten" "$reise" 2>&1)" || echo "Warning: $reise not released (reason in the line below)."
-    printf '%s\n' "$aus" | grep -E '^(ERROR|Released|Block renewed)' || true
-  done
+  # shellcheck disable=SC2086
+  freischalten_reisen $gut
   [ -z "$gut" ] || wege_pruefen
   if [ -n "$rote" ]; then
     # Teil-Erfolg ist kein fachlicher Erfolg: Stand nicht merken, kein Stempel, kein Heartbeat. Die Rot-Datei nennt die roten
@@ -790,6 +821,7 @@ nachlauf() {
 }
 
 wurzel=""; ausstehend=""; rot_datei=""; pruefen=""; pruef_tmp=""; pruef_log=""; deploy_log=""; nochmal=""; software=1
+root_ok=""; frei_ausstehend=""
 speicher_aktiv=""; speicher_kennung=""; speicher_wartet=""; speicher_gut=""; speicher_rote=""
 rot_commit=""; rot_art=""; rot_reisen=""; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""
 trap nachlauf EXIT

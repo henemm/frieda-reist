@@ -43,6 +43,11 @@ else REISENORDNER="$WURZEL/reisen"; fi
 [ -f "$REISENORDNER/$REISE/reise.yaml" ] || [ -f "$REISENORDNER/$REISE/reise.json" ] \
   || { echo "ERROR: trip “$REISE” does not exist."; exit 1; }
 [ -n "$BASIS" ] || { echo "ERROR: FR_ADRESSE is not set (settings of the instance)."; exit 1; }
+# Ohne Root-Rechte sofort abbrechen (#465): Aus einem Dienst mit NoNewPrivileges (Schreibweg) scheitert jedes sudo, auch
+# „test -e“; das las sich als „Baustein fehlt“, und die Reise hätte still einen neuen geheimen Link bekommen.
+if [ -n "$SUDO" ] && ! $SUDO true 2>/dev/null; then
+  echo "ERROR: no root rights here (“$SUDO” does not work, e.g. NoNewPrivileges in a service); nothing changed."; exit 1
+fi
 
 snippet="$SNIPPETS/$FR_INSTANZ-$REISE.conf"
 rendern() {  # <pfad> -> Baustein aus der Vorlage; der Pfad ist das erste Glied des geheimen Links („<reise>-<token>“)
