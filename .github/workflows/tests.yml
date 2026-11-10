@@ -36,10 +36,26 @@ jobs:
       # Als Datei, damit es auch für das apt gilt, das Playwright aufruft; einzige Quelle dieser Optionen.
       # Lock::Timeout (#390): `timeout` erreicht das per sudo gestartete apt nicht; es läuft nach der Zeitgrenze weiter und
       # hält die dpkg-Sperre. Versuch 2 wartet darauf, statt sofort mit Exit 100 zu scheitern, und findet dann die Pakete vor.
+      # Keep-Downloaded-Packages (#496): heruntergeladene Pakete bleiben in /var/cache/apt/archives für den Paket-Cache.
       - name: apt-Zeitgrenzen
         run: |
           printf '%s\n' 'Acquire::Retries "3";' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' 'DPkg::Lock::Timeout "420";' \
+            'APT::Keep-Downloaded-Packages "true";' 'Binary::apt::APT::Keep-Downloaded-Packages "true";' \
             | sudo tee /etc/apt/apt.conf.d/80-ci-zeitgrenzen
+          sudo rm -f /etc/apt/apt.conf.d/docker-clean
+      # Systempakete (rund 180 Pakete, 114 MB für Chromium und WebKit) zwischenspeichern (#496): Der Ubuntu-Spiegel lieferte
+      # am 10.11.2026 nur 100–300 KB/s, zwei Versuche zu 240 s reichten nicht. Mit Treffer lädt apt nur, was neuer ist.
+      # Getrennt in restore und save: gespeichert wird nach gelungener Installation, auch wenn später ein Test rot ist.
+      - name: Paket-Cache laden
+        id: apt-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/apt-pakete
+          key: apt-${{ runner.os }}-${{ hashFiles('engine/tests/playwright/package-lock.json') }}
+      - name: Pakete aus dem Cache bereitlegen
+        run: |
+          mkdir -p ~/apt-pakete
+          find ~/apt-pakete -name '*.deb' -exec sudo cp -n -t /var/cache/apt/archives/ {} +
       - name: Python-Pakete
         run: |
           sudo apt-get update -q
@@ -73,6 +89,15 @@ jobs:
             exit 1
           fi
           echo "PLAYWRIGHT_MODUL=$PWD/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+      - name: Paket-Cache füllen
+        if: steps.apt-cache.outputs.cache-hit != 'true'
+        run: find /var/cache/apt/archives -maxdepth 1 -name '*.deb' -exec cp -t ~/apt-pakete/ {} +
+      - name: Paket-Cache speichern
+        if: steps.apt-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/apt-pakete
+          key: ${{ steps.apt-cache.outputs.cache-primary-key }}
       - name: Einstellungen einer Instanz nachstellen
         if: matrix.umgebung == 'instanz'
         run: |

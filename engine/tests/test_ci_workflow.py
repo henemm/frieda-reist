@@ -90,6 +90,25 @@ def test_browser_cache_schluessel_aus_package_lock():
     assert treffer[0] < i_pw, "Cache steht nicht vor dem Install-Schritt"
 
 
+def test_systempakete_kommen_aus_dem_cache():
+    """#496: Der Ubuntu-Spiegel lieferte die 114 MB Systempakete für Chromium und WebKit zu langsam für die Zeitgrenze.
+    apt behält die Pakete, der Cache wird vor jedem apt-get geladen und nach gelungener Installation gespeichert."""
+    schritte = _schritte()
+    i_pw, _ = _playwright_schritt()
+    conf = next(s for s in schritte if s.get("name") == "apt-Zeitgrenzen")["run"]
+    assert 'APT::Keep-Downloaded-Packages "true"' in conf
+    laden = _index(lambda s: str(s.get("uses", "")).startswith("actions/cache/restore@"))
+    assert "apt-pakete" in schritte[laden]["with"]["path"]
+    assert "hashFiles('engine/tests/playwright/package-lock.json')" in schritte[laden]["with"]["key"]
+    bereit = _index(lambda s: "/var/cache/apt/archives" in str(s.get("run", "")) and "sudo cp" in str(s.get("run", "")))
+    for i, s in enumerate(schritte):
+        if "apt-get" in str(s.get("run", "")) or "playwright install" in str(s.get("run", "")):
+            assert laden < bereit < i, "apt läuft, bevor die Pakete aus dem Cache bereitliegen"
+    speichern = _index(lambda s: str(s.get("uses", "")).startswith("actions/cache/save@"))
+    assert speichern > i_pw and "apt-pakete" in schritte[speichern]["with"]["path"]
+    assert schritte[speichern]["with"]["key"] == "${{ steps.apt-cache.outputs.cache-primary-key }}"
+
+
 def test_unveraendert_wichtiges():
     assert _job()["timeout-minutes"] == 25
     assert any(s.get("name") == "Browser-Prüfung darf nicht übersprungen worden sein" for s in _schritte())
