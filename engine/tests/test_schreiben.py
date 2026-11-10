@@ -266,6 +266,17 @@ def test_merkmal_anlegen_aendern_abschalten(repo):
     assert "abgeschaltet" in a["text"] and "Grund: interessiert uns nicht" in a["text"]
     arten, _ = arten_auf_main(origin)
     assert arten["pension"]["merkmale"]["lage"]["stufe"] == "aus"
+    # Abgeschaltet (#474): ein neuer Wert geht nicht, der vorhandene lässt sich aber immer leeren (Pension Burgblick, Beispielwert)
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="abgeschaltet"):
+        s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "U-02", "merkmale": {"lage": "neu"}, "quelle": "Test"}})
+    a = s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "U-02", "merkmale": {"lage": ""}}})
+    assert "lage an U-02 Pension Burgblick entfernt (vorher: am Markt, zwei Minuten vom Malerweg" in a["text"], a["text"]
+    r, _ = routen_auf_main(origin)
+    assert "lage" not in r["unterkuenfte"]["U-02"]["merkmale"]
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="hat an U-02 Pension Burgblick keinen Wert"):
+        s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "U-02", "merkmale": {"lage": ""}}})
     # Zweiter Name darf kein neues Merkmal werden
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="schon ein anderer Name"):

@@ -2096,8 +2096,9 @@ document.addEventListener("focusin", e => { if (e.target.matches(`:is(${MK}):foc
 document.addEventListener("focusout", e => { if (e.target.matches(MK) && e.target !== MK_FEST) mkZeige(e.target, false); });
 document.addEventListener("keydown", e => { if (e.key === "Escape") mkZu(); });
 window.addEventListener("scroll", () => { mkZu(); document.querySelectorAll(`:is(${MK})[aria-expanded=true]`).forEach(b => mkZeige(b, false)); }, {passive: true, capture: true});
+// Abgeschaltete Merkmale (Stufe aus) stehen nirgends, auch nicht mit Wert (#474)
 function merkmalListe(kriterien, werte, datum, ohneHerkunft) {
-  const zeilen = (kriterien || []).filter(k => werte && werte[k.id]);
+  const zeilen = (kriterien || []).filter(k => stufeVon(k) !== "aus" && werte && werte[k.id]);
   return zeilen.length ? el("dl", {class: "mliste"}, zeilen.flatMap(k => [el("dt", {}, k.name), el("dd", {}, merkmalWert(werte[k.id], datum, ohneHerkunft))])) : null;
 }
 // Molekül Herkunftszeile (#58): die Herkunft aller gezeigten Werte einer Möglichkeit einmal, leise. Quellen mit Prüfdatum,
@@ -2110,7 +2111,7 @@ function herkunftZeile(kriterien, werte, datum) {
     if (e.quelle) { const k = e.quelle + "|" + (e.geprueft || ""); if (!quellen.has(k)) quellen.set(k, e.geprueft ? T("seite.herkunft.quelle_geprueft", {quelle: e.quelle, datum: datumKurz(e.geprueft)}) : e.quelle); }
     if (e.notiz) notizen.add(e.notiz);
   };
-  for (const k of kriterien || []) {
+  for (const k of (kriterien || []).filter(k => stufeVon(k) !== "aus")) {
     const v = werte && werte[k.id];
     if (!v) continue;
     if (v.je_datum && datum) nimm(giltAm(v, datum));

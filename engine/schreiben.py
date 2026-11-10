@@ -1013,6 +1013,9 @@ def wert_eintragen(reise_dir, wer, args, heute=None):
     if not ZIEL_MUSTER.match(ziel):
         raise Ablehnung("schreiben.wert_eintragen.1")
     k = (text_wert(args, "merkmal", pflicht=True, laenge=40) or "").lower()
+    # Leerer Wert entfernt den Wert, immer: auch bei einem abgeschalteten (Stufe aus) oder nicht mehr definierten Merkmal (#474)
+    if "wert" in args and args.get("werte") in (None, "", []) and (args.get("wert") is None or str(args.get("wert")).strip() == ""):
+        return wert_leeren(reise_dir, ziel, k)
     with tempfile.TemporaryDirectory(prefix="frieda-probe-") as tmp:
         try:
             d = bauen.Bauer(reise_dir, tmp).daten()
@@ -1105,6 +1108,24 @@ def wert_eintragen(reise_dir, wer, args, heute=None):
             + (S("schreiben.antwort.geprueft", w1=", ".join(dict.fromkeys(e["geprueft"].isoformat() for e in neue if "geprueft" in e))) if any("geprueft" in e for e in neue) else "")
             + ".")
     return titel, text
+
+
+def wert_leeren(reise_dir, ziel, k):
+    """Den Wert eines Merkmals an einem Ding oder einer Option entfernen (alle Einträge, auch je Datum; #474). Geht immer, auch
+    wenn das Merkmal abgeschaltet oder nicht mehr definiert ist; der alte Wert bleibt in der Geschichte. -> (Titel, Text)."""
+    roh = routen_laden(reise_dir)
+    knoten, bezeichnung = ding_finden(roh, ziel)
+    merkmale = knoten.get("merkmale") or {}
+    if k not in merkmale:
+        raise Ablehnung("schreiben.wert_leeren.1", k=k, ziel=bezeichnung, w3=", ".join(map(str, merkmale)) or "keine")
+    alt = merkmale[k]
+    alte = alt if isinstance(alt, list) else [alt]
+    alt_text = verbinden([wert_text(e if isinstance(e, dict) else {"wert": e}) for e in alte], "; ")
+    del merkmale[k]
+    if not merkmale and "merkmale" in knoten:
+        del knoten["merkmale"]
+    routen_speichern(reise_dir, roh)
+    return S("schreiben.titel.wert_geleert", w1=bezeichnung, w2=k), S("schreiben.antwort.wert.geleert", w1=k, w2=bezeichnung, w3=alt_text)
 
 
 # ---------- Dinge, Wahlstellen, Optionen (plan/routen.yaml) ----------

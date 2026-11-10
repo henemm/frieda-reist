@@ -25,6 +25,9 @@ for (const tag of ["T-01", "T-07"]) {
 }
 const p = await neu();
 await p.goto(basis + "#B-04");
+// Abgeschaltete Merkmale stehen nirgends, auch mit Wert (#474)
+const aus_versteckt = await p.evaluate(() => merkmalListe([{id: "x", name: "X", stufe: "aus"}], {x: {wert: "1"}}) === null
+  && !!merkmalListe([{id: "x", name: "X"}], {x: {wert: "1"}}));
 await p.waitForSelector(".tagseite");
 const ziel_b04 = await p.evaluate(() => ({block: !!document.querySelector("#main #nacht #B-04"),
   kopf: (document.querySelector("#main .tagdatum") || {}).textContent || ""}));
@@ -34,4 +37,4 @@ const zeilen = await p.evaluate(() => Object.fromEntries([...document.querySelec
   [z.dataset.tag, ((z.querySelector(".tz-nacht .chip") || {}).textContent || "")])));
 await p.close();
 await b.close();
-console.log(JSON.stringify({fehler, tage, ziel_b04, zeilen}));
+console.log(JSON.stringify({fehler, tage, ziel_b04, zeilen, aus_versteckt}));

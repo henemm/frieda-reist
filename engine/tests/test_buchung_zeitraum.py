@@ -124,3 +124,4 @@ def test_jede_nacht_nur_ihre_buchung(tmp_path):
     assert e["ziel_b04"]["block"] and "14.5." in e["ziel_b04"]["kopf"], e["ziel_b04"]
     # Die Nacht des 14.5. ist gebucht, im Stand der Vorbereitung zählen beide Nächte als gebucht
     assert e["zeilen"]["T-07"] == "gebucht", e
+    assert e["aus_versteckt"], e   # #474
