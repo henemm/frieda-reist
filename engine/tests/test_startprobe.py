@@ -49,3 +49,14 @@ def test_startfehler_ist_rot(gebaut):
 def test_leere_seite_ist_rot(gebaut):
     (gebaut / "index.html").write_text("<!doctype html><html><body><div id=\"main\"></div></body></html>", encoding="utf-8")
     assert probe(gebaut).returncode == 1
+
+
+def test_sichtbare_startfehler_meldung_ist_rot(gebaut):
+    """#387: Zeigt die Seite die Startfehler-Meldung, ist die Probe rot (auch wenn die Meldung selbst keinen Seitenfehler wirft)."""
+    index = gebaut / "index.html"
+    html = index.read_text(encoding="utf-8")
+    assert "const D = " in html
+    index.write_text(html.replace("const D = ", "Promise.reject(new Error('Startfehler-Test'));const D = ", 1), encoding="utf-8")
+    aus = probe(gebaut)
+    assert aus.returncode == 1
+    assert "Startfehler-Meldung sichtbar" in aus.stdout + aus.stderr

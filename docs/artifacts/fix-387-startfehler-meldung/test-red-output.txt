@@ -1,0 +1,342 @@
+bringing up nodes...
+bringing up nodes...
+
+FFFFFFFFFFFFFF....FF..............F..F.                                  [100%]
+=================================== FAILURES ===================================
+____ test_startfehler_zeigt_meldung_mit_knopf[syntaxfehler-stadtwochenende] ____
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14393/popen-gw1/test_startfehler_zeigt_meldung0')
+reise = 'stadtwochenende', fehler = '}}} '
+
+    @browser
+    @pytest.mark.parametrize("reise", REISEN)
+    @pytest.mark.parametrize("fehler", ["throw new Error('Startfehler-Test');", "}}} ", "Promise.reject(new Error('Versprechen'));"],
+                             ids=["laufzeitfehler", "syntaxfehler", "abgelehntes-versprechen"])
+    def test_startfehler_zeigt_meldung_mit_knopf(tmp_path, reise, fehler):
+        kaputt(gebaut(tmp_path, reise), fehler)
+        m = lauf(tmp_path, "start")["vorher"]
+>       assert m["da"], "keine Meldung #startfehler"
+E       AssertionError: keine Meldung #startfehler
+E       assert False
+
+engine/tests/test_startfehler_meldung_387.py:76: AssertionError
+_____________________ test_knopf_laedt_neu[beispielreise] ______________________
+[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14393/popen-gw2/test_knopf_laedt_neu_beispielr0')
+reise = 'beispielreise'
+
+    @browser
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_knopf_laedt_neu(tmp_path, reise):
+        kaputt(gebaut(tmp_path, reise), "throw new Error('Startfehler-Test');")
+>       assert lauf(tmp_path, "start")["neuGeladen"] is True
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'neuGeladen'
+
+engine/tests/test_startfehler_meldung_387.py:88: KeyError
+____ test_startfehler_zeigt_meldung_mit_knopf[laufzeitfehler-beispielreise] ____
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14393/popen-gw0/test_startfehler_zeigt_meldung0')
+reise = 'beispielreise', fehler = "throw new Error('Startfehler-Test');"
+
+    @browser
+    @pytest.mark.parametrize("reise", REISEN)
+    @pytest.mark.parametrize("fehler", ["throw new Error('Startfehler-Test');", "}}} ", "Promise.reject(new Error('Versprechen'));"],
+                             ids=["laufzeitfehler", "syntaxfehler", "abgelehntes-versprechen"])
+    def test_startfehler_zeigt_meldung_mit_knopf(tmp_path, reise, fehler):
+        kaputt(gebaut(tmp_path, reise), fehler)
+        m = lauf(tmp_path, "start")["vorher"]
+>       assert m["da"], "keine Meldung #startfehler"
+E       AssertionError: keine Meldung #startfehler
+E       assert False
+
+engine/tests/test_startfehler_meldung_387.py:76: AssertionError
+____________________ test_knopf_laedt_neu[stadtwochenende] _____________________
+[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14393/popen-gw2/test_knopf_laedt_neu_stadtwoch0')
+reise = 'stadtwochenende'
+
+    @browser
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_knopf_laedt_neu(tmp_path, reise):
+        kaputt(gebaut(tmp_path, reise), "throw new Error('Startfehler-Test');")
+>       assert lauf(tmp_path, "start")["neuGeladen"] is True
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'neuGeladen'
+
+engine/tests/test_startfehler_meldung_387.py:88: KeyError
+___ test_startfehler_zeigt_meldung_mit_knopf[laufzeitfehler-stadtwochenende] ___
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14393/popen-gw0/test_startfehler_zeigt_meldung1')
+reise = 'stadtwochenende', fehler = "throw new Error('Startfehler-Test');"
+
+    @browser
+    @pytest.mark.parametrize("reise", REISEN)
+    @pytest.mark.parametrize("fehler", ["throw new Error('Startfehler-Test');", "}}} ", "Promise.reject(new Error('Versprechen'));"],
+                             ids=["laufzeitfehler", "syntaxfehler", "abgelehntes-versprechen"])
+    def test_startfehler_zeigt_meldung_mit_knopf(tmp_path, reise, fehler):
+        kaputt(gebaut(tmp_path, reise), fehler)
+        m = lauf(tmp_path, "start")["vorher"]
+>       assert m["da"], "keine Meldung #startfehler"
+E       AssertionError: keine Meldung #startfehler
+E       assert False
+
+engine/tests/test_startfehler_meldung_387.py:76: AssertionError
+_ test_startfehler_zeigt_meldung_mit_knopf[abgelehntes-versprechen-beispielreise] _
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14393/popen-gw1/test_startfehler_zeigt_meldung1')
+reise = 'beispielreise', fehler = "Promise.reject(new Error('Versprechen'));"
+
+    @browser
+    @pytest.mark.parametrize("reise", REISEN)
+    @pytest.mark.parametrize("fehler", ["throw new Error('Startfehler-Test');", "}}} ", "Promise.reject(new Error('Versprechen'));"],
+                             ids=["laufzeitfehler", "syntaxfehler", "abgelehntes-versprechen"])
+    def test_startfehler_zeigt_meldung_mit_knopf(tmp_path, reise, fehler):
+        kaputt(gebaut(tmp_path, reise), fehler)
+        m = lauf(tmp_path, "start")["vorher"]
+>       assert m["da"], "keine Meldung #startfehler"
+E       AssertionError: keine Meldung #startfehler
+E       assert False
+
+engine/tests/test_startfehler_meldung_387.py:76: AssertionError
+_____________________ test_sprache_der_reise_und_rueckfall _____________________
+[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14393/popen-gw2/test_sprache_der_reise_und_rue0')
+
+    @browser
+    def test_sprache_der_reise_und_rueckfall(tmp_path):
+        """Englisch in <html lang>: englischer Text; unbekannte Sprache: Text der ersten Sprache des Ausschnitts."""
+        index = gebaut(tmp_path, "stadtwochenende")
+        kaputt(index, "throw new Error('x');")
+        html = index.read_text(encoding="utf-8")
+        erste = next(iter(texte.SPRACHEN))
+        for neu, erwartet in (("en", "en"), ("zz", erste)):
+            index.write_text(re.sub(r'(<html[^>]*\blang=")[^"]*', rf"\g<1>{neu}", html, count=1), encoding="utf-8")
+            m = lauf(tmp_path, "start")["vorher"]
+>           titel, knopf = titel_und_knopf(erwartet)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_startfehler_meldung_387.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+kuerzel = 'en'
+
+    def titel_und_knopf(kuerzel):
+        t = texte.sprache(kuerzel).TEXTE
+>       return t["seite.fehler.start_titel"], t["seite.fehler.start_neu_laden"]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'seite.fehler.start_titel'
+
+engine/tests/test_startfehler_meldung_387.py:64: KeyError
+_____ test_startfehler_zeigt_meldung_mit_knopf[syntaxfehler-beispielreise] _____
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14393/popen-gw0/test_startfehler_zeigt_meldung2')
+reise = 'beispielreise', fehler = '}}} '
+
+    @browser
+    @pytest.mark.parametrize("reise", REISEN)
+    @pytest.mark.parametrize("fehler", ["throw new Error('Startfehler-Test');", "}}} ", "Promise.reject(new Error('Versprechen'));"],
+                             ids=["laufzeitfehler", "syntaxfehler", "abgelehntes-versprechen"])
+    def test_startfehler_zeigt_meldung_mit_knopf(tmp_path, reise, fehler):
+        kaputt(gebaut(tmp_path, reise), fehler)
+        m = lauf(tmp_path, "start")["vorher"]
+>       assert m["da"], "keine Meldung #startfehler"
+E       AssertionError: keine Meldung #startfehler
+E       assert False
+
+engine/tests/test_startfehler_meldung_387.py:76: AssertionError
+_ test_startfehler_zeigt_meldung_mit_knopf[abgelehntes-versprechen-stadtwochenende] _
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14393/popen-gw1/test_startfehler_zeigt_meldung2')
+reise = 'stadtwochenende', fehler = "Promise.reject(new Error('Versprechen'));"
+
+    @browser
+    @pytest.mark.parametrize("reise", REISEN)
+    @pytest.mark.parametrize("fehler", ["throw new Error('Startfehler-Test');", "}}} ", "Promise.reject(new Error('Versprechen'));"],
+                             ids=["laufzeitfehler", "syntaxfehler", "abgelehntes-versprechen"])
+    def test_startfehler_zeigt_meldung_mit_knopf(tmp_path, reise, fehler):
+        kaputt(gebaut(tmp_path, reise), fehler)
+        m = lauf(tmp_path, "start")["vorher"]
+>       assert m["da"], "keine Meldung #startfehler"
+E       AssertionError: keine Meldung #startfehler
+E       assert False
+
+engine/tests/test_startfehler_meldung_387.py:76: AssertionError
+__________ test_platzhalter_nicht_genau_einmal_ist_baufehler[zweimal] __________
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14393/popen-gw1/test_platzhalter_nicht_genau_e0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x758156f38aa0>
+aenderung = '/*__STARTFEHLER__*/null;/*__STARTFEHLER__*/null'
+
+    @pytest.mark.parametrize("aenderung", [PLATZHALTER + ";" + PLATZHALTER, "null"], ids=["zweimal", "fehlt"])
+    def test_platzhalter_nicht_genau_einmal_ist_baufehler(tmp_path, monkeypatch, aenderung):
+        echt = Path.read_text
+    
+        def lesen(self, *a, **k):
+            text = echt(self, *a, **k)
+            return text.replace(PLATZHALTER, aenderung, 1) if self.name == "vorlage.html" else text
+    
+        monkeypatch.setattr(Path, "read_text", lesen)
+>       with pytest.raises(bauen.BauFehler):
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_startfehler_meldung_387.py:180: Failed
+___________ test_platzhalter_nicht_genau_einmal_ist_baufehler[fehlt] ___________
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14393/popen-gw1/test_platzhalter_nicht_genau_e1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7581540c1880>
+aenderung = 'null'
+
+    @pytest.mark.parametrize("aenderung", [PLATZHALTER + ";" + PLATZHALTER, "null"], ids=["zweimal", "fehlt"])
+    def test_platzhalter_nicht_genau_einmal_ist_baufehler(tmp_path, monkeypatch, aenderung):
+        echt = Path.read_text
+    
+        def lesen(self, *a, **k):
+            text = echt(self, *a, **k)
+            return text.replace(PLATZHALTER, aenderung, 1) if self.name == "vorlage.html" else text
+    
+        monkeypatch.setattr(Path, "read_text", lesen)
+>       with pytest.raises(bauen.BauFehler):
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_startfehler_meldung_387.py:180: Failed
+______________ test_faenger_wirft_selbst_nichts_bei_syntaxfehler _______________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14393/popen-gw0/test_faenger_wirft_selbst_nich0')
+
+    @browser
+    def test_faenger_wirft_selbst_nichts_bei_syntaxfehler(tmp_path):
+        kaputt(gebaut(tmp_path, "beispielreise"), "}}} ")
+        aus = lauf(tmp_path, "start")
+>       assert aus["vorher"]["da"] and aus["vorher"]["anzahl"] == 1
+E       assert (False)
+
+engine/tests/test_startfehler_meldung_387.py:144: AssertionError
+_______________________ test_schluessel_in_jeder_sprache _______________________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7961fca54200>
+
+    def test_schluessel_in_jeder_sprache(monkeypatch):
+        monkeypatch.setenv("FR_TEXTE_ZUSATZ", "xx")
+        monkeypatch.syspath_prepend(str(Path(__file__).parent))
+        assert "xx" in texte.SPRACHEN
+        for k in texte.SPRACHEN:
+            katalog = texte.sprache(k).TEXTE
+            for s in SCHLUESSEL:
+>               assert katalog.get(s, "").strip(), (k, s)
+E               AssertionError: ('de', 'seite.fehler.start_titel')
+E               assert ''
+E                +  where '' = <built-in method strip of str object at 0xb3c3f0>()
+E                +    where <built-in method strip of str object at 0xb3c3f0> = ''.strip
+E                +      where '' = <built-in method get of dict object at 0x7961fcba4940>('seite.fehler.start_titel', '')
+E                +        where <built-in method get of dict object at 0x7961fcba4940> = {'seite.kreis.hinweis': '„{titel}“ verweist im Kreis oder zu tief auf andere Dinge und hat hier keinen Platz. Bitte in...us.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', ...}.get
+
+engine/tests/test_startfehler_meldung_387.py:156: AssertionError
+__________ test_platzhalter_ersetzt_und_ausschnitt_hat_alle_sprachen ___________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14393/popen-gw0/test_platzhalter_ersetzt_und_a0')
+
+    def test_platzhalter_ersetzt_und_ausschnitt_hat_alle_sprachen(tmp_path):
+>       assert VORLAGE.count(PLATZHALTER) == 1
+E       assert 0 == 1
+E        +  where 0 = <built-in method count of str object at 0x7961fcccc010>('/*__STARTFEHLER__*/null')
+E        +    where <built-in method count of str object at 0x7961fcccc010> = '<!doctype html>\n<html lang="de">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,...r("pageshow", pruefen);\n    setInterval(pruefen, 30 * 60e3);\n  }).catch(() => {});\n}\n</script>\n</body>\n</html>\n'.count
+
+engine/tests/test_startfehler_meldung_387.py:162: AssertionError
+_______________ test_faenger_greift_nicht_auf_das_hauptskript_zu _______________
+[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+    def test_faenger_greift_nicht_auf_das_hauptskript_zu():
+>       f = faenger()
+            ^^^^^^^^^
+
+engine/tests/test_startfehler_meldung_387.py:126: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def faenger():
+        m = re.search(r"<script>(?:(?!</script>).)*?window\.__startFertig(?:(?!</script>).)*?</script>", VORLAGE, re.S)
+>       assert m, "kein Fänger-Skript mit __startFertig in der Vorlage"
+E       AssertionError: kein Fänger-Skript mit __startFertig in der Vorlage
+E       assert None
+
+engine/tests/test_startfehler_meldung_387.py:120: AssertionError
+____________ test_hauptskript_setzt_startmarke_als_letzte_anweisung ____________
+[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+    def test_hauptskript_setzt_startmarke_als_letzte_anweisung():
+        haupt = VORLAGE[VORLAGE.index(HAUPT):VORLAGE.rindex("</script>")].rstrip()
+>       assert re.search(r"window\.__startFertig = true;\s*$", haupt), haupt[-200:]
+E       AssertionError: ate().catch(() => {});
+E             };
+E             document.addEventListener("visibilitychange", pruefen);
+E             window.addEventListener("pageshow", pruefen);
+E             setInterval(pruefen, 30 * 60e3);
+E           }).catch(() => {});
+E         }
+E       assert None
+E        +  where None = <function search at 0x76d305500ea0>('window\\.__startFertig = true;\\s*$', 'const D = /*__DATEN__*/null;\nconst TEXTE = /*__TEXTE__*/null;   // Katalog aller Sprachen (engine/texte_<sprache>.py...n);\n    window.addEventListener("pageshow", pruefen);\n    setInterval(pruefen, 30 * 60e3);\n  }).catch(() => {});\n}')
+E        +    where <function search at 0x76d305500ea0> = re.search
+
+engine/tests/test_startfehler_meldung_387.py:137: AssertionError
+______________ test_startfehler_meldung_steht_an_den_vier_stellen ______________
+[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+    def test_startfehler_meldung_steht_an_den_vier_stellen():
+        """#387: Baustein „startfehlerMeldung“ (Molekül): Kopfkommentar, Stile, Bausteinseite, docs/design.md."""
+>       assert "startfehlerMeldung" in bausteine()["Moleküle"]
+E       AssertionError: assert 'startfehlerMeldung' in ['block', 'kennzahlLeiste', 'merkmalListe', 'reiseText', 'reiterGruppe', 'ebeneKopf', ...]
+
+engine/tests/test_design.py:285: AssertionError
+__________________ test_sichtbare_startfehler_meldung_ist_rot __________________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/engine/.venv/bin/python
+
+gebaut = PosixPath('/tmp/pytest-of-hem/pytest-14393/popen-gw0/test_sichtbare_startfehler_mel0/web/beispiel')
+
+    def test_sichtbare_startfehler_meldung_ist_rot(gebaut):
+        """#387: Zeigt die Seite die Startfehler-Meldung, ist die Probe rot (auch wenn die Meldung selbst keinen Seitenfehler wirft)."""
+        index = gebaut / "index.html"
+        html = index.read_text(encoding="utf-8")
+        assert "const D = " in html
+        index.write_text(html.replace("const D = ", "Promise.reject(new Error('Startfehler-Test'));const D = ", 1), encoding="utf-8")
+        aus = probe(gebaut)
+        assert aus.returncode == 1
+>       assert "Startfehler-Meldung sichtbar" in aus.stdout + aus.stderr
+E       AssertionError: assert 'Startfehler-Meldung sichtbar' in ('Seitenfehler: Error: Startfehler-Test\n' + '')
+E        +  where 'Seitenfehler: Error: Startfehler-Test\n' = CompletedProcess(args=['node', '/home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/betrieb/startprobe.mjs'...t_sichtbare_startfehler_mel0/web/beispiel'], returncode=1, stdout='Seitenfehler: Error: Startfehler-Test\n', stderr='').stdout
+E        +  and   '' = CompletedProcess(args=['node', '/home/hem/frieda-reist/.claude/worktrees/eager-dreaming-steele/betrieb/startprobe.mjs'...t_sichtbare_startfehler_mel0/web/beispiel'], returncode=1, stdout='Seitenfehler: Error: Startfehler-Test\n', stderr='').stderr
+
+engine/tests/test_startprobe.py:62: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_startfehler_meldung_387.py::test_startfehler_zeigt_meldung_mit_knopf[syntaxfehler-stadtwochenende]
+FAILED engine/tests/test_startfehler_meldung_387.py::test_knopf_laedt_neu[beispielreise]
+FAILED engine/tests/test_startfehler_meldung_387.py::test_startfehler_zeigt_meldung_mit_knopf[laufzeitfehler-beispielreise]
+FAILED engine/tests/test_startfehler_meldung_387.py::test_knopf_laedt_neu[stadtwochenende]
+FAILED engine/tests/test_startfehler_meldung_387.py::test_startfehler_zeigt_meldung_mit_knopf[laufzeitfehler-stadtwochenende]
+FAILED engine/tests/test_startfehler_meldung_387.py::test_startfehler_zeigt_meldung_mit_knopf[abgelehntes-versprechen-beispielreise]
+FAILED engine/tests/test_startfehler_meldung_387.py::test_sprache_der_reise_und_rueckfall
+FAILED engine/tests/test_startfehler_meldung_387.py::test_startfehler_zeigt_meldung_mit_knopf[syntaxfehler-beispielreise]
+FAILED engine/tests/test_startfehler_meldung_387.py::test_startfehler_zeigt_meldung_mit_knopf[abgelehntes-versprechen-stadtwochenende]
+FAILED engine/tests/test_startfehler_meldung_387.py::test_platzhalter_nicht_genau_einmal_ist_baufehler[zweimal]
+FAILED engine/tests/test_startfehler_meldung_387.py::test_platzhalter_nicht_genau_einmal_ist_baufehler[fehlt]
+FAILED engine/tests/test_startfehler_meldung_387.py::test_faenger_wirft_selbst_nichts_bei_syntaxfehler
+FAILED engine/tests/test_startfehler_meldung_387.py::test_schluessel_in_jeder_sprache
+FAILED engine/tests/test_startfehler_meldung_387.py::test_platzhalter_ersetzt_und_ausschnitt_hat_alle_sprachen
+FAILED engine/tests/test_startfehler_meldung_387.py::test_faenger_greift_nicht_auf_das_hauptskript_zu
+FAILED engine/tests/test_startfehler_meldung_387.py::test_hauptskript_setzt_startmarke_als_letzte_anweisung
+FAILED engine/tests/test_design.py::test_startfehler_meldung_steht_an_den_vier_stellen
+FAILED engine/tests/test_startprobe.py::test_sichtbare_startfehler_meldung_ist_rot
+18 failed, 21 passed in 12.42s

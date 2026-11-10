@@ -278,3 +278,11 @@ def test_container_haben_namen_und_jede_anfrage_ihren_behaelter():
     anfragen = set(re.findall(r"@container\s+([a-z]+)\s*\(", css))
     assert not re.search(r"@container\s*\(", css), "@container ohne Namen"
     assert anfragen <= behaelter, sorted(anfragen - behaelter)
+
+
+def test_startfehler_meldung_steht_an_den_vier_stellen():
+    """#387: Baustein „startfehlerMeldung“ (Molekül): Kopfkommentar, Stile, Bausteinseite, docs/design.md."""
+    assert "startfehlerMeldung" in bausteine()["Moleküle"]
+    assert "startfehlerMeldung" in DESIGN
+    assert "#startfehler" in VORLAGE.split("<script", 1)[0], "Stile des Bausteins fehlen"
+    assert re.search(r"startfehlerMeldung", VORLAGE[VORLAGE.index("#bausteine"):]) or "startfehlerMeldung(" in skript()
