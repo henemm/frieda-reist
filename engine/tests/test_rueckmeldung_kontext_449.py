@@ -68,6 +68,7 @@ UNGUELTIG = [
     ("stand_wahrheitswert", {"stand": True, "ansicht": "heute"}, {"ansicht": "heute"}),
     ("verschachtelt", {"ansicht": {"a": "b"}, "abschnitt": ["weg"], "stand": 4}, {"stand": 4}),
     ("leer", {}, None),
+    ("zeilenumbruch_am_ende", {"ansicht": "heute\n", "abschnitt": "weg\n", "stand": 3}, {"stand": 3}),
 ]
 
 

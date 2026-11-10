@@ -2145,6 +2145,10 @@ TEXTE = {
     "konnektor.option.gewaehlt": " (chosen)",
     "konnektor.option.zur_wahl": " (to choose)",
     "konnektor.rueckmeldungen.keine": "No feedback yet.",
+    "konnektor.rueckmeldungen.kontext": "  Place: {w1}",
+    "konnektor.rueckmeldungen.kontext_ansicht": "view {w1}",
+    "konnektor.rueckmeldungen.kontext_abschnitt": "section {w1}",
+    "konnektor.rueckmeldungen.kontext_stand": "trip version {w1}",
     # Konnektor: Ausgaben des Handbuchs (M10)
     "konnektor.ausgabe.anleitung.1": "Organiser",
     "konnektor.ausgabe.aufgabe_text.1": "  created {w1} by {w2}",

@@ -103,6 +103,7 @@ MAX_BODY = 16 * 1024
 MAX_JE_MINUTE = 30
 DOPPELT_SEKUNDEN = 600   # identische Rückmeldung innerhalb dieser Zeit = Doppelklick / erneut gesendet
 INHALT = ("name", "art", "ziel", "text", "quelle")
+KONTEXT_STAND_MAX = 999999   # Kontext der Rückmeldung (#449): ansicht, abschnitt (höchstens 40 Zeichen), stand
 
 AG_MUSTER = re.compile(r"^AG-\d{2,}$")
 AG_STATUS = ("offen", "in_arbeit", "erledigt", "entfaellt")
@@ -438,6 +439,22 @@ def auftraege(o):
     return eintraege(o, "auftraege.jsonl")
 
 
+def kontext_pruefen(roh):
+    """Kontext der Seite (Ansicht, Abschnitt, Reise-Stand) prüfen: nur feste Schlüssel, Muster und Längen; Ungültiges wird verworfen,
+    nie abgewiesen. -> Objekt mit den gültigen Teilen oder None"""
+    if not isinstance(roh, dict):
+        return None
+    k = {}
+    for feld, n in (("ansicht", 80), ("abschnitt", 40)):
+        w = roh.get(feld)
+        if isinstance(w, str) and len(w) <= n and ZIEL_MUSTER.fullmatch(w):
+            k[feld] = w
+    s = roh.get("stand")
+    if isinstance(s, int) and not isinstance(s, bool) and 1 <= s <= KONTEXT_STAND_MAX:
+        k["stand"] = s
+    return k or None
+
+
 def pruefen(roh):
     """Eingabe prüfen und auf erlaubte Felder kürzen. -> (eintrag, fehler)"""
     if not isinstance(roh, dict):
@@ -464,6 +481,9 @@ def pruefen(roh):
         if len(e[feld]) > n:
             return None, texte.satz("dienst.pruefen.8", feld=feld, n=n)
     jetzt = datetime.datetime.now(datetime.timezone.utc)
+    kontext = kontext_pruefen(roh.get("kontext"))
+    if kontext:
+        e["kontext"] = kontext
     e["id"] = f"R-{jetzt:%Y%m%d-%H%M%S}-{secrets.token_hex(2)}"
     e["erstellt"] = jetzt.isoformat(timespec="seconds")
     return e, None
@@ -1448,6 +1468,10 @@ def liste(reise, alle):
             print("  CONFLICT: contradicts another decision; none of it applies until the organisers settle it.")
         print(f"  {e['ziel']} ({titel.get(e['ziel'], 'ID not on the page')}) [{e['art']}]:")
         print("    " + e["text"].replace("\n", "\n    "))
+        k = e.get("kontext") or {}
+        ort = [f"{n} {k[f]}" for f, n in (("ansicht", "view"), ("abschnitt", "section"), ("stand", "trip version")) if k.get(f) is not None]
+        if ort:
+            print("  Place: " + ", ".join(ort))
         if e.get("quelle"):
             print(f"  Source: {e['quelle']}")
         if e.get("kommentar"):

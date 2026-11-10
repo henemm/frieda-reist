@@ -2360,6 +2360,14 @@ def meldungen_fuer(reise, name, d):
     return rm.meldungen_der_person(reise, name, {"status": status, "bausteine": bausteine})
 
 
+def kontext_text(k):
+    """Zeile „Ort“ zu einer Rückmeldung (#449): Ansicht, Abschnitt, Reise-Stand; fehlende Teile entfallen. Leer ohne Kontext."""
+    if not isinstance(k, dict):
+        return ""
+    teile = [tk(f"konnektor.rueckmeldungen.kontext_{f}", w1=k[f]) for f in ("ansicht", "abschnitt", "stand") if k.get(f) is not None]
+    return tk("konnektor.rueckmeldungen.kontext", w1=", ".join(teile)) if teile else ""
+
+
 def liste_text(reise, mit_auftraegen, name=None, d=None):
     o = rm.ordner(reise)
     if o is None:
@@ -2377,6 +2385,9 @@ def liste_text(reise, mit_auftraegen, name=None, d=None):
     for e in es[:50]:
         z.append(tk("konnektor.ausgabe.liste_text.2", w1=e['id'], w2=e['erstellt'][:10], w3=e.get('name'), w4=e.get('art'), w5=e.get('ziel'), w6=e['status']) + (f" – {e['kommentar']}" if e.get("kommentar") else ""))
         z.append("  " + e.get("text", "").replace("\n", " ")[:300])
+        ort = kontext_text(e.get("kontext"))
+        if ort:
+            z.append(ort)
     return "\n".join(z)
 
 

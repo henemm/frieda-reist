@@ -22,7 +22,7 @@ const p = await ctx.newPage();
 p.on("pageerror", e => fehler.push(String(e)));
 await p.goto(url + (hash ? "#" + hash : ""));
 await p.waitForSelector("#main *");
-await p.locator(selektor).first().click();
+await p.locator(selektor).first().dispatchEvent("click");   // Karten und Einblendungen verdecken oder bewegen den Knopf: Klick direkt am Knopf auslösen
 await p.fill("#rmText", "Was ist das?");
 await p.click("#rmForm button[type=submit]");
 await p.waitForTimeout(600);

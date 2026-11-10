@@ -2146,6 +2146,10 @@ TEXTE = {
     "konnektor.option.gewaehlt": " (gewählt)",
     "konnektor.option.zur_wahl": " (zur Wahl)",
     "konnektor.rueckmeldungen.keine": "Noch keine Rückmeldungen.",
+    "konnektor.rueckmeldungen.kontext": "  Ort: {w1}",
+    "konnektor.rueckmeldungen.kontext_ansicht": "Ansicht {w1}",
+    "konnektor.rueckmeldungen.kontext_abschnitt": "Abschnitt {w1}",
+    "konnektor.rueckmeldungen.kontext_stand": "Reise-Stand {w1}",
     # Konnektor: Ausgaben des Handbuchs (M10)
     "konnektor.ausgabe.anleitung.1": "Organisator:in",
     "konnektor.ausgabe.aufgabe_text.1": "  angelegt {w1} von {w2}",
