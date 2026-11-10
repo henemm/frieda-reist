@@ -2956,3 +2956,31 @@ def test_einstellungen_des_kartendienstes_dokumentiert():
                  "FR_KARTENDIENST_SPEICHER", "FR_KARTENDIENST_RUHE"):
         assert re.search(rf"\b{name}=", beispiel), name
         assert name in doku, name
+
+
+def test_ci_nachweis_ersetzt_die_serverpruefung_der_software(an):
+    """#403: Sind die Pflichtprüfungen der eingebundenen Software-Version auf GitHub grün, läuft engine/tests nicht noch
+    einmal auf dem Server; ohne Nachweis (nicht grün oder abgeschaltet) laufen sie wie bisher."""
+    t = an["tmp"]
+    nachweis = ausfuehrbar(t / "ci.sh", f'#!/bin/sh\necho "$@" >> {t}/ci.log\n[ ! -e {t}/ci-rot ] && echo true || echo false\n')
+    r = an["lauf_an"](T0, VF_CINACHWEIS=str(nachweis))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "server tests skipped (#403)" in r.stdout
+    assert "p" not in an["zeilen"]("pruefen.log")                       # keine Serverprüfung der Software
+    assert an["a"] in an["zeilen"]("ci.log")[0]                         # Nachweis für genau die eingebundene Version
+
+
+def test_ohne_ci_nachweis_laeuft_die_serverpruefung(an):
+    t = an["tmp"]
+    nachweis = ausfuehrbar(t / "ci.sh", f'#!/bin/sh\necho false\n')
+    r = an["lauf_an"](T0, VF_CINACHWEIS=str(nachweis))
+    assert r.returncode == 0 and "skipped (#403)" not in r.stdout
+    assert "p" in an["zeilen"]("pruefen.log")
+
+
+def test_ci_nachweis_abgeschaltet_laeuft_die_serverpruefung(an):
+    t = an["tmp"]
+    nachweis = ausfuehrbar(t / "ci.sh", "#!/bin/sh\necho true\n")
+    r = an["lauf_an"](T0, VF_CINACHWEIS=str(nachweis), FR_CI_NACHWEIS="0")
+    assert r.returncode == 0 and "skipped (#403)" not in r.stdout
+    assert "p" in an["zeilen"]("pruefen.log")

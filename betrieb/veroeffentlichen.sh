@@ -396,6 +396,23 @@ alarm_pruefen() {  # Alarm ab der Schwelle: Meldung an die Organisator:innen rot
   fi
 }
 
+ci_nachweis() {  # 0, wenn die Pflichtprüfungen der eingebundenen Software-Version auf GitHub grün sind (#403)
+  # main der Software ist geschützt: Ein Stand kommt nur dorthin, wenn genau sein Commit tests (leer), tests (instanz) und
+  # gitleaks grün hat. Dieser Nachweis ersetzt die zweite Testrunde auf dem Server (10 bis 15 Minuten, in denen alle Reisen
+  # warten). Ohne Nachweis (kein Submodul, kein Netz, nicht grün) oder mit FR_CI_NACHWEIS=0 laufen die Tests wie bisher.
+  [ "${FR_CI_NACHWEIS:-1}" = 1 ] || return 1
+  local url sha repo ok
+  url="$(git config --file .gitmodules submodule.frieda.url 2>/dev/null)" || return 1
+  sha="$(git rev-parse -q --verify HEAD:frieda 2>/dev/null)" || return 1
+  if [ -n "${VF_CINACHWEIS:-}" ]; then ok="$("$VF_CINACHWEIS" "$url" "$sha" 2>/dev/null)" || return 1
+  else
+    repo="$(printf '%s' "$url" | sed -E 's#^(https://github\.com/|git@github\.com:)##; s#\.git$##')"
+    [[ "$repo" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]] || return 1
+    ok="$(timeout 30 gh api "repos/$repo/commits/$sha/check-runs?per_page=100" --jq '[.check_runs[] | select(.conclusion == "success") | .name] as $g | (["tests (leer)", "tests (instanz)", "gitleaks"] | all(. as $n | $g | index($n) != null))' 2>/dev/null)" || return 1; fi
+  [ "$ok" = true ] || return 1
+  CI_STAND="${sha:0:7}"
+}
+
 pruefen_lauf() {  # <ordner>: pytest über engine/tests oder tests/ des Reisen-Repos; Ausgabe auch nach pruef_log
   local rc=0
   if [ -n "$pruefen" ]; then "$pruefen" "$1" 2>&1 | tee "$pruef_log" || rc=${PIPESTATUS[0]}
@@ -660,7 +677,9 @@ main() {
   if [ -n "$software" ]; then
     # Eigener Ordner für die Testdateien: Mit der Vorgabe (/tmp/pytest-of-<user>) räumt jeder weitere pytest-Lauf auf dem
     # Rechner die Ordner älterer Läufe weg, auch die eines noch laufenden (roter Lauf 29.10.2026 bei gleichzeitigen Tests).
-    if ! pruefen_lauf engine/tests; then
+    if ci_nachweis; then
+      echo "Software ${CI_STAND}: required checks green on GitHub (same commit), server tests skipped (#403)."
+    elif ! pruefen_lauf engine/tests; then
       rm -rf "$pruef_tmp"
       echo "ERROR: checks red (engine/tests, software), nothing published."
       rot_schreiben "$neu" software "" "$(rote_tests)"

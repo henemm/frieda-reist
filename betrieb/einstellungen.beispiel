@@ -89,6 +89,9 @@ FR_ADRESSE=https://reisen.example.org
 #FR_ROT_NEU_PRUEFEN_MINUTEN=60
 # Prozesse für die Tests der Software beim Veröffentlichen (pytest-xdist, #395); Vorgabe auto = alle Kerne, ohne xdist seriell
 #FR_PRUEF_PROZESSE=auto
+# Sind die Pflichtprüfungen (tests (leer), tests (instanz), gitleaks) der eingebundenen Software-Version auf GitHub grün,
+# läuft engine/tests nicht noch einmal auf dem Server (#403; main der Software ist geschützt). 0 = immer auf dem Server prüfen.
+#FR_CI_NACHWEIS=1
 # Offline-Grundkarte der automatischen Karte beim Veröffentlichen holen, wenn sich ihr Rahmen geändert hat (Epic #225, #239;
 # werkzeuge/grundkarte_auto.py, braucht Netz zum Protomaps-Tagesbuild). 0 schaltet es aus. (1)
 #FR_GRUNDKARTE_AUTO=1
