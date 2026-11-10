@@ -71,6 +71,9 @@ buchungen:
     zahlung: bezahlt
     bezahlt: "Kreditkarte"
     gebucht_am: 2026-11-01
+    je_ding:   # Angaben je Fahrt (#473): an jeder Fahrt stehen nur ihre (Beispielwerte)
+      E-01: {ab: "2027-03-11T09:10", ab_was: "Komfort-Check-in"}
+      E-02: {ab: "2027-03-13T17:40", ab_was: "Komfort-Check-in"}
     wer: Tom
     quelle: "Buchungsbestätigung bahn.de vom 1.11.2026 (erfunden, Beispiel)"
     verlauf:

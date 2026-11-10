@@ -184,12 +184,14 @@ def eintraege(daten, aufgaben=None):
         if b.get("status") == "storniert":
             continue
         titel = b.get("titel") or bid
-        if (d := _datum(b.get("frist"))):
-            aus.append({"sorte": "buchungen", "id": bid, "uid": f"{bid}-frist", "titel": tx("frist", was=b.get("frist_was") or tx("buchung_wort"), titel=titel),
-                        "tag": d, "bis": d + datetime.timedelta(days=1), "text": _buchung_text(r, bid, sprache).strip()})
-        if (d := _datum(b.get("ab"))):
-            aus.append({"sorte": "buchungen", "id": bid, "uid": f"{bid}-ab", "titel": tx("ab_heute", was=b.get("ab_was") or tx("buchung_wort"), titel=titel),
-                        "tag": d, "bis": d + datetime.timedelta(days=1), "text": _buchung_text(r, bid, sprache).strip()})
+        for x, t in [(None, b), *(b.get("je_ding") or {}).items()]:   # die Termine der Buchung und je Ding (#473)
+            sx = "" if x is None else f"-{x}"
+            if (d := _datum(t.get("frist"))):
+                aus.append({"sorte": "buchungen", "id": bid, "uid": f"{bid}{sx}-frist", "titel": tx("frist", was=t.get("frist_was") or tx("buchung_wort"), titel=titel),
+                            "tag": d, "bis": d + datetime.timedelta(days=1), "text": _buchung_text(r, bid, sprache).strip()})
+            if (d := _datum(t.get("ab"))):
+                aus.append({"sorte": "buchungen", "id": bid, "uid": f"{bid}{sx}-ab", "titel": tx("ab_heute", was=t.get("ab_was") or tx("buchung_wort"), titel=titel),
+                            "tag": d, "bis": d + datetime.timedelta(days=1), "text": _buchung_text(r, bid, sprache).strip()})
         if (d := _datum(b.get("storno_bis"))):
             aus.append({"sorte": "buchungen", "id": bid, "uid": f"{bid}-storno", "titel": tx("storno_letzter", titel=titel),
                         "tag": d, "bis": d + datetime.timedelta(days=1), "text": _buchung_text(r, bid, sprache).strip()})

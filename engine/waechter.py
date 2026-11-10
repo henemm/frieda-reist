@@ -38,7 +38,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 import texte  # noqa: E402
-from routen import ZAHLUNG_OFFEN  # noqa: E402
+from routen import ZAHLUNG_OFFEN, buchung_termine  # noqa: E402
 
 UNGUELTIG = ("verworfen", "ersetzt")      # Optionen, die niemand mehr nachschlagen muss
 MAX_PRUEFUNGEN = 15                       # Prüfmeldungen je Lauf, damit der Überblick lesbar bleibt
@@ -226,19 +226,23 @@ def buchungsfristen(d, heute, vorlauf):
         titel = f"{b['id']} {b.get('titel') or ''}".strip()
         sp = sprache_von(d)
         neu = []
-        if b.get("frist"):
-            rest = tage_zwischen(heute, datetime.date.fromisoformat(b["frist"][:10]))   # mit Uhrzeit (#472): der Tag zählt
-            was = b.get("frist_was") or tw(d, "frist_wort")
-            if rest < 0:
-                neu.append({"schluessel": f"ueberfaellig:{b['id']}:{b['frist']}", "wiederholen": WIEDERHOLEN_TAGE,
-                            "text": tw(d, "ueberfaellig_buchung", n=-rest, w1=was, w2=titel, w3=texte.datum_uhr(b["frist"], sp or texte.VORGABE_REISE))})
-            elif rest <= vorlauf:
-                neu.append({"schluessel": f"frist:{b['id']}:{b['frist']}", "wiederholen": None,
-                            "text": tw(d, "frist_buchung", w1=tw(d, "heute") if rest == 0 else tw(d, "in_tagen", n=rest),
-                                       w2=was, w3=titel, w4=texte.datum_uhr(b["frist"], sp or texte.VORGABE_REISE))})
-        if b.get("ab") and datetime.date.fromisoformat(b["ab"][:10]) <= heute:   # Issue #135: ab wann etwas geht (Check-in, Sitzplatzwahl)
-            neu.append({"schluessel": f"ab:{b['id']}:{b['ab']}", "wiederholen": None,
-                        "text": tw(d, "ab_buchung", w1=texte.datum_uhr(b["ab"], sp or texte.VORGABE_REISE), w2=b.get("ab_was") or tw(d, "etwas"), w3=titel)})
+        r = (d or {}).get("route") or {}
+        for x, t in buchung_termine(b):   # die Termine der Buchung und je Ding (#473)
+            ttl = titel if x is None else f"{b['id']} {((r.get('strecken') or {}).get(x) or {}).get('titel') or ((r.get('unterkuenfte') or {}).get(x) or (r.get('aufenthalte') or {}).get(x) or {}).get('name') or x}"
+            sx = "" if x is None else f"{x}:"
+            if t.get("frist"):
+                rest = tage_zwischen(heute, datetime.date.fromisoformat(t["frist"][:10]))   # mit Uhrzeit (#472): der Tag zählt
+                was = t.get("frist_was") or tw(d, "frist_wort")
+                if rest < 0:
+                    neu.append({"schluessel": f"ueberfaellig:{b['id']}:{sx}{t['frist']}", "wiederholen": WIEDERHOLEN_TAGE,
+                                "text": tw(d, "ueberfaellig_buchung", n=-rest, w1=was, w2=ttl, w3=texte.datum_uhr(t["frist"], sp or texte.VORGABE_REISE))})
+                elif rest <= vorlauf:
+                    neu.append({"schluessel": f"frist:{b['id']}:{sx}{t['frist']}", "wiederholen": None,
+                                "text": tw(d, "frist_buchung", w1=tw(d, "heute") if rest == 0 else tw(d, "in_tagen", n=rest),
+                                           w2=was, w3=ttl, w4=texte.datum_uhr(t["frist"], sp or texte.VORGABE_REISE))})
+            if t.get("ab") and datetime.date.fromisoformat(t["ab"][:10]) <= heute:   # Issue #135: ab wann etwas geht (Check-in, Sitzplatzwahl)
+                neu.append({"schluessel": f"ab:{b['id']}:{sx}{t['ab']}", "wiederholen": None,
+                            "text": tw(d, "ab_buchung", w1=texte.datum_uhr(t["ab"], sp or texte.VORGABE_REISE), w2=t.get("ab_was") or tw(d, "etwas"), w3=ttl)})
         if b.get("storno_bis"):
             rest = tage_zwischen(heute, datetime.date.fromisoformat(b["storno_bis"]))
             if 0 <= rest <= vorlauf:

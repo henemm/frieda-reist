@@ -3306,6 +3306,51 @@ def buchung_preise(args, fuer):
     return {k: " ".join(x.split())[:120] for k, x in v.items() if x.strip()}
 
 
+def buchung_je_ding(args, fuer):
+    """je_ding einer Buchung (#473): {ID aus fuer: {ab, ab_was, frist, frist_was}} -> dict (leer: entfernen) oder None (nicht angegeben).
+    ab und frist wie bei der Buchung (Datum oder mit Uhrzeit), die Texte kurz."""
+    from routen import JE_DING_FELDER
+    v = args.get("je_ding")
+    if v is None:
+        return None
+    if v == "":
+        return {}
+    if not isinstance(v, dict) or any(not isinstance(x, dict) for x in v.values()):
+        raise Ablehnung("schreiben.je_ding.form", w1=", ".join(JE_DING_FELDER))
+    fremd = [k for k in v if k not in fuer]
+    if fremd:
+        raise Ablehnung("schreiben.buchung_preise.1", w1=", ".join(fremd), w2=", ".join(fuer))
+    aus = {}
+    englisch = {"available_from": "ab", "available_from_what": "ab_was", "deadline": "frist", "deadline_what": "frist_was"}
+    for x, felder in v.items():
+        felder = {englisch.get(f, f): w for f, w in felder.items()}
+        falsch = [f for f in felder if f not in JE_DING_FELDER]
+        if falsch:
+            raise Ablehnung("schreiben.je_ding.form", w1=", ".join(JE_DING_FELDER))
+        e = {}
+        for f in JE_DING_FELDER:
+            w = zeitpunkt_wert(felder, f) if f in ("ab", "frist") else text_wert(felder, f, laenge=BUCHUNG_TEXTE[f])
+            if w not in (None, ""):
+                e[f] = w
+        if e:
+            aus[x] = e
+    return aus
+
+
+def je_ding_map(je):
+    """je_ding für die Datei: Zeile je Ding, darin Fließform."""
+    from ruamel.yaml.comments import CommentedMap
+    m = CommentedMap()
+    for x, e in je.items():
+        m[x] = fliess_map(e)
+    return m
+
+
+def je_ding_text(je):
+    return "; ".join(f"{x}: " + ", ".join(f"{S('schreiben.buchung.' + f)} {texte.Datum(w) if isinstance(w, datetime.date) else w}" for f, w in e.items())
+                     for x, e in je.items())
+
+
 def buchung_anlegen(reise_dir, wer, args, heute=None):
     """Eine Buchung anlegen (neue B-ID): zu welchen Dingen, Status, Nummer, Anbieter, Preis, Zahlstand, Frist, Stornoregel, Merkmale
     der Buchung, Herkunft. -> (Titel, Text)."""
@@ -3335,7 +3380,7 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
         if v:
             d[k] = v
     d.setdefault("gebucht_am", heute)
-    pers, preise = buchung_personen(args, reise_dir), buchung_preise(args, fuer)
+    pers, preise, je = buchung_personen(args, reise_dir), buchung_preise(args, fuer), buchung_je_ding(args, fuer)
     if pers:
         d["personen"] = pers
     if preise:
@@ -3347,6 +3392,8 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
     grund = text_wert(args, "grund")
     bid = neue_id(reise_dir, "B")
     knoten = block_map(d)
+    if je:   # Angaben je Ding (#473), vor wer
+        knoten.insert(list(knoten).index("wer"), "je_ding", je_ding_map(je))
     if mk:   # Merkmale der Buchung in einer Zeile, vor wer
         knoten.insert(list(knoten).index("wer"), "merkmale", fliess_map(mk))
     from ruamel.yaml.comments import CommentedSeq
@@ -3370,6 +3417,7 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
             + "".join(f", {S('schreiben.buchung.' + k)} {d[k]}" for k in ("anreise_ab", "abreise_bis", "vor_ort_zahlen") if d.get(k))
             + (S("schreiben.antwort.buchung.ab", w1=d["ab"]) + (f" ({d['ab_was']})" if d.get("ab_was") else "") if d.get("ab") else "")
             + (S("schreiben.antwort.buchung.preise", w1=", ".join(f"{k} {v}" for k, v in preise.items())) if preise else "")
+            + (S("schreiben.antwort.buchung.je_ding", w1=je_ding_text(je)) if je else "")
             + (S("schreiben.antwort.buchung.reisende_liste", w1=", ".join(f"{k}{(' (' + v + ')') if v else ''}" for k, v in pers.items())) if pers else "")
             + S("schreiben.antwort.herkunft", w1=quelle) + ".")   # zum Beleg sagt der Konnektor etwas: er weiß, ob einer mitkam
     return titel, text
@@ -3487,6 +3535,18 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
         geaendert.append(S("schreiben.buchung.preise") + " " + (", ".join(f"{k} {v}" for k, v in preise.items()) or S("schreiben.antwort.buchung.preise_entfernt")))
         kurz.append("Preise je Ding")
         (knoten.__setitem__("preise", fliess_map(preise)) if preise else knoten.pop("preise", None))
+    je = buchung_je_ding(args, fuer_jetzt)
+    if je is not None:
+        alt_je = {str(x): dict(v) for x, v in (knoten.get("je_ding") or {}).items()}
+        if alt_je != je:
+            geaendert.append(S("schreiben.buchung.je_ding") + " " + (je_ding_text(je) or S("schreiben.antwort.buchung.preise_entfernt")))
+            kurz.append(S("schreiben.buchung.je_ding"))
+            if not je:
+                knoten.pop("je_ding", None)
+            elif "je_ding" in knoten:
+                knoten["je_ding"] = je_ding_map(je)
+            else:
+                knoten.insert(list(knoten).index("wer") if "wer" in knoten else len(knoten), "je_ding", je_ding_map(je))
     if not geaendert:
         raise Ablehnung("schreiben.buchung_aendern.6", bid=bid, w2=', '.join(BUCHUNG_TEXTE))
     from ruamel.yaml.comments import CommentedSeq

@@ -119,9 +119,47 @@ def test_jede_nacht_nur_ihre_buchung(tmp_path):
     assert "Vor Ort zu zahlen" in t1["oben"] and "Preis" not in t1["oben"] and "Storno" not in t1["oben"], t1
     assert t1["einzelheiten_zu"] and not t1["herkunft_adresse"], t1
     assert "bezahlt" in t7["marken"], t7
-    assert "Ab: Do 13.5., 08:00 · Online-Check-in" in t7["oben"], t7   # Uhrzeit im Feld, nicht im Text (#472)
+    assert "Online-Check-in ab Do 13.5., 08:00" in t7["oben"], t7   # Uhrzeit im Feld (#472), in einer Zeile (#475)
+    assert "Nummer: HE-2027-0999" in t7["oben"] and t7["kopieren"], t7   # Nummer mit Kopier-Knopf (#475)
     # Ein Link auf die zweite Buchung führt zum Tag ihrer Anreise
     assert e["ziel_b04"]["block"] and "14.5." in e["ziel_b04"]["kopf"], e["ziel_b04"]
     # Die Nacht des 14.5. ist gebucht, im Stand der Vorbereitung zählen beide Nächte als gebucht
     assert e["zeilen"]["T-07"] == "gebucht", e
     assert e["aus_versteckt"], e   # #474
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+def test_hin_und_rueckfahrt_je_ding(tmp_path):
+    """#473, #475 (Stadtwochenende, Beispielwerte): eine Bahnbuchung für Hin- und Rückfahrt mit Angaben je Fahrt. An jeder Fahrt
+    steht die Buchung mit nur ihrem Check-in; der Kopf der Fahrt zeigt Datum und Abfahrt → Ankunft."""
+    bauen.bauen(WURZEL / "beispiel/reisen/stadtwochenende", tmp_path / "web" / "stadt")
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(tmp_path / "web")))
+    threading.Thread(target=s.serve_forever, daemon=True).start()
+    try:
+        aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_buchung_je_ding.mjs"), str(PLAYWRIGHT),
+                              f"http://127.0.0.1:{s.server_address[1]}/stadt/"],
+                             capture_output=True, text=True, timeout=300, env={**os.environ, "RH_BROWSER": "chromium"})
+    finally:
+        s.shutdown()
+    assert aus.returncode == 0, aus.stderr[-2000:]
+    e = json.loads(aus.stdout.strip().splitlines()[-1])
+    assert e["fehler"] == [], e
+    hin, rueck = e["tage"]["T-01"], e["tage"]["T-03"]
+    assert hin["block"] and "Komfort-Check-in ab Do 11.3., 09:10" in hin["text"] and "13.3." not in hin["text"], hin
+    assert rueck["block"] and "Komfort-Check-in ab Sa 13.3., 17:40" in rueck["text"] and "11.3." not in rueck["text"], rueck
+    assert "Fr 12.3. · 09:10 → 11:25" in hin["kopf"], hin
+
+
+def test_je_ding_im_schreibweg_und_waechter(tmp_path):
+    """#473: je_ding wird geprüft (nur IDs aus fuer, nur bekannte Felder); der Wächter meldet je Ding."""
+    import waechter as wa
+    d = {"reise": {}, "route": {"strecken": {"E-28": {"titel": "Hinflug"}, "E-29": {"titel": "Rückflug"}}, "buchungen": {}}}
+    b = {"id": "B-01", "fuer": ["E-28", "E-29"], "je_ding": {"E-28": {"ab": "2027-02-22T17:55", "ab_was": "Online-Check-in"},
+                                                           "E-29": {"ab": "2027-03-04T10:30", "ab_was": "Online-Check-in"}}}
+    assert routen.buchung_termine(b) == [("E-28", {"ab": "2027-02-22T17:55", "ab_was": "Online-Check-in"}),
+                                         ("E-29", {"ab": "2027-03-04T10:30", "ab_was": "Online-Check-in"})]

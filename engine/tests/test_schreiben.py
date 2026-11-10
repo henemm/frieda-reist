@@ -1237,6 +1237,20 @@ def test_buchung_mit_zeitraum(repo):
     s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "ab": "2027-05-12 8:05", "ab_was": "Online-Check-in"}})
     r, text = routen_auf_main(origin)
     assert r["buchungen"]["B-04"]["ab"] == "2027-05-12T08:05" and 'ab: "2027-05-12T08:05"' in text
+    # je Ding (#473): nur IDs aus fuer und bekannte Felder; englische Feldnamen gehen auch; leer entfernt
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="E-20"):
+        s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "je_ding": {"E-20": {"ab": "2027-05-12"}}}})
+    with pytest.raises(sb.Ablehnung, match="„je_ding“ ist"):
+        s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "je_ding": {"U-01": {"gate": "A1"}}}})
+    a = s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "je_ding": {"U-01": {"available_from": "2027-05-12 10:00", "ab_was": "Online-Check-in"}}}})
+    assert "Je Ding U-01: Ab 2027-05-12T10:00, Was ab dann geht Online-Check-in" in a["text"], a["text"]
+    r, _ = routen_auf_main(origin)
+    assert r["buchungen"]["B-04"]["je_ding"] == {"U-01": {"ab": "2027-05-12T10:00", "ab_was": "Online-Check-in"}}
+    s.vorbereiten()
+    s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "je_ding": ""}})
+    r, _ = routen_auf_main(origin)
+    assert "je_ding" not in r["buchungen"]["B-04"]
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="die Abreise liegt vor der Anreise"):
         s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "abreise": "2027-05-14"}})

@@ -109,7 +109,7 @@ PARAMETER = {
     "vorname": "first_name", "wahl": "choices", "wahlstelle": "choice", "wann": "when", "was": "what", "wert": "value",
     "werte": "values", "wunsch": "wish", "zeit": "time_text", "ziel": "target", "zustaendig": "assignee", "reise": "trip",
     "wer": "packer", "gepackt": "packed",
-    "anreise_ab": "checkin_from", "abreise_bis": "checkout_until", "vor_ort_zahlen": "pay_on_site",
+    "je_ding": "per_thing", "anreise_ab": "checkin_from", "abreise_bis": "checkout_until", "vor_ort_zahlen": "pay_on_site",
 }
 # Gleiches Wort, andere Bedeutung: bei Strecken (ding_anlegen, ding_aendern) sind von/nach Start und Ziel, ab/an Abfahrt und Ankunft
 # item_create und item_update (ADR-0007, Schritt c) nehmen den Elternbezug an (englisch parent); die früheren Parameter ort, von, nach, ab, an

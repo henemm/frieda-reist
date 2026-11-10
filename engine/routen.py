@@ -60,7 +60,11 @@ BUCHUNG_STATUS = ("angefragt", "gebucht", "storniert")
 # etwas geht, etwa der Check-in; frist sagt bis wann).
 BUCHUNG_FELDER = ("fuer", "status", "nummer", "bei", "preis", "bezahlt", "frist", "frist_was", "storno", "storno_bis", "gebucht_am",
                   "wer", "quelle", "notiz", "verlauf", "personen", "preise", "ab", "ab_was", "zahlung", "merkmale", "anreise", "abreise",
-                  "anreise_ab", "abreise_bis", "vor_ort_zahlen")
+                  "anreise_ab", "abreise_bis", "vor_ort_zahlen", "je_ding")
+# Eine Buchung, mehrere Dinge (Hin- und Rückflug; Product Owner 10.11.2026, #473): je_ding {ID aus fuer: {ab, ab_was, frist,
+# frist_was}} gilt für dieses Ding statt der Angaben der Buchung; die Seite zeigt an jedem Ding nur seine, Wächter und Kalender
+# melden je Ding.
+JE_DING_FELDER = ("ab", "ab_was", "frist", "frist_was")
 # Zeitraum einer Buchung (Product Owner 9.11.2026, #463): anreise und abreise (JJJJ-MM-TT, bei Strecken das Reisedatum), beide
 # freiwillig. Ohne Zeitraum gilt die Buchung für alle Nächte und Tage ihrer Dinge (wie bisher). Eine Nacht gehört dazu, wenn
 # anreise ≤ Nacht < abreise; ein Tag einer Strecke oder eines Aufenthalts, wenn anreise ≤ Tag ≤ abreise; nur anreise: genau
@@ -93,9 +97,20 @@ BUCHUNG_ZEITPUNKTE = ("frist", "ab")
 DATUM_UHR = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$")
 
 
+def buchung_termine(b):
+    """Termine einer Buchung (wie buchung_aus sie liefert): [(Ding oder None, {ab, ab_was, frist, frist_was})], zuerst die der
+    Buchung, dann je Ding (#473)."""
+    aus = [(None, {f: b.get(f) for f in JE_DING_FELDER if b.get(f)})]
+    aus += [(x, {f: w for f, w in v.items() if w}) for x, v in (b.get("je_ding") or {}).items()]
+    return [(x, t) for x, t in aus if t]
+
+
 def tag_von(v):
     """Datum (date) eines Datums oder eines Zeitpunkts JJJJ-MM-TTTHH:MM; None, wenn keines."""
-    return _als_datum(str(v)[:10]) if v not in (None, "") and not isinstance(v, datetime.date) else v
+    if isinstance(v, datetime.date) or v in (None, ""):
+        return v or None
+    s = str(v)
+    return _als_datum(s[:10]) if len(s) == 10 or DATUM_UHR.match(s) else None
 
 
 def _als_datum(v):
@@ -888,6 +903,17 @@ class Routen:
                             self.warne(bid, texte.satz("pruefung.routen.133", bid=bid, k=k))
                         elif defs[k].get("typ") == "auswahl" and str(v) not in [str(w) for w in defs[k].get("werte") or []]:
                             self.warne(bid, texte.satz("pruefung.routen.134", bid=bid, name=defs[k]['name'], v=v, werte=' | '.join(map(str, defs[k]['werte']))))
+            je = b.get("je_ding")
+            if je is not None:
+                if not isinstance(je, dict) or any(k not in fuer or not isinstance(v, dict) or any(f not in JE_DING_FELDER for f in v)
+                                                   for k, v in je.items()):
+                    self.fehl(texte.satz("pruefung.routen.je_ding", bid=bid, w1=", ".join(fuer), w2=", ".join(JE_DING_FELDER)))
+                else:
+                    for x, v in je.items():
+                        for f in ("ab", "frist"):
+                            z = v.get(f)
+                            if z is not None and not isinstance(z, datetime.date) and not (isinstance(z, str) and tag_von(z)):
+                                self.fehl(texte.satz("pruefung.routen.25", bid=bid, k=f"je_ding.{x}.{f}"))
             preise = b.get("preise")
             if preise is not None:
                 if not isinstance(preise, dict) or any(k not in fuer for k in preise):
@@ -937,6 +963,9 @@ class Routen:
         pers = b.get("personen")
         aus["personen"] = {str(k): (str(v) if v else "") for k, v in pers.items()} if isinstance(pers, dict) else {str(x): "" for x in (pers or [])}
         aus["preise"] = {str(k): str(v) for k, v in (b.get("preise") or {}).items()} if isinstance(b.get("preise"), dict) else {}
+        je = b.get("je_ding") if isinstance(b.get("je_ding"), dict) else {}
+        aus["je_ding"] = {str(x): {f: iso(w) if f in ("ab", "frist") else str(w) for f, w in v.items() if w not in (None, "")}
+                          for x, v in je.items() if isinstance(v, dict)}
         for k in BUCHUNG_DATEN:
             aus[k] = iso(b.get(k))
         aus["verlauf"] = [{**{kk: iso(vv) if kk == "datum" else vv for kk, vv in v.items()}} for v in b.get("verlauf") or [] if isinstance(v, dict)]

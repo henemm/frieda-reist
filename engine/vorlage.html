@@ -349,6 +349,10 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .buchung{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
 .buchung .z.ueber{color:var(--warn)}
 .buchung details.verlauf>summary{cursor:pointer}
+.chip.nummer{display:inline-flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums;letter-spacing:.03em;user-select:all}
+.chip.nummer .kopieren{border:0;background:none;color:inherit;cursor:pointer;padding:0 0 0 2px;margin:0;font:inherit;line-height:1;display:inline-flex;width:auto}
+.chip.nummer .kopieren .sym{width:1.05em;height:1.05em}
+.chip.nummer .kopieren:focus-visible{outline:2px solid var(--acc);border-radius:4px}
 /* ---------- Einzelheiten (Stand-Leiter, 31.10.2026): das eine Aufklappen eines Dings, offen bis zur Buchung ---------- */
 details.einzelheiten{margin-top:6px}
 details.einzelheiten>summary{cursor:pointer;color:var(--acc);font-size:var(--t-klein);font-weight:600;min-height:32px;display:flex;align-items:center}
@@ -1247,7 +1251,7 @@ function zid(id) {
    statt dieselbe Sache selbst zu zeichnen; die Stile stehen im <style> in derselben Ordnung. Diese vier Zeilen sind die eine
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
-   Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke
+   Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, nummerChip
    Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile, entscheidung, Rechtszeile (HTML im Fuß)
    Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, entschieden, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
@@ -1393,7 +1397,8 @@ const buchungChip = d => standChip(buchungsStand(d));
 const buchungenZu = id => Object.values(R && R.buchungen || {}).filter(b => (b.fuer || []).includes(id));
 // Heimat einer Buchung (ADR-0003): ihr erstes Ding zeigt sie vollständig, jedes weitere nur den Chip. Geltende stehen voll da,
 // stornierte nur im zugeklappten Block stornierteBuchungen (#146)
-const buchungenBei = id => buchungenZu(id).filter(b => (b.fuer || [])[0] === id && b.status !== "storniert");
+// Hat die Buchung Angaben je Ding (je_ding, #473), steht sie an jedem dieser Dinge mit dessen Angaben (Hin- und Rückflug)
+const buchungenBei = id => buchungenZu(id).filter(b => ((b.fuer || [])[0] === id || !!(b.je_ding || {})[id]) && b.status !== "storniert");
 const stornierteBei = id => buchungenZu(id).filter(b => (b.fuer || [])[0] === id && b.status === "storniert");
 // Zeitraum einer Buchung (#463, wie routen.buchung_gilt_am): gilt sie an diesem Datum? Ohne Zeitraum oder ohne Datum immer.
 // Eine Nacht: anreise ≤ Datum < abreise; ein Tag (Strecke, Aufenthalt): anreise ≤ Datum ≤ abreise; nur anreise: genau dieser Tag
@@ -1557,7 +1562,10 @@ function streckeZeile(id, wahl, ohneKennung, voll) {
     el("div", {class: "titelzeile"}, el("span", {}, symbol(artSym(arten[0], "bewegung"), "etikett-sym"), " ", dossier || zuHeimat ? link(id, s.titel) : s.titel), ohneKennung ? null : zid(id)));
   // Kennzahlen als Leiste mit Etiketten (Gehzeit, Aufstieg, Abstieg, Strecke); Verkehrsmittel als Textzeile
   const kz = kennzahlLeiste(s.kennzahlen, !!s.art && !summiertArt(s));
-  if (art || s.ab || s.an) z.append(el("div", {class: "z klein"}, [art, s.ab ? T("seite.strecke.ab_zeit", {zeit: zeitText(s.ab)}) : "", s.an ? T("seite.strecke.an_zeit", {zeit: zeitText(s.an)}) : ""].filter(Boolean).join(" · ")));
+  // Abfahrt → Ankunft auf einen Blick (#475); an ihrer Heimat mit dem Datum des Tags
+  const tagDatum = voll && ((PLAN_ANSICHT && PLAN_ANSICHT.tage.find(t => t.strecken.some(x => x.id === id))) || {}).datum;
+  const zeiten = s.ab && s.an ? T("seite.strecke.ab_an", {ab: zeitText(s.ab), an: zeitText(s.an)}) : [s.ab ? T("seite.strecke.ab_zeit", {zeit: zeitText(s.ab)}) : "", s.an ? T("seite.strecke.an_zeit", {zeit: zeitText(s.an)}) : ""].filter(Boolean).join(" · ");
+  if (art || zeiten) z.append(el("div", {class: "z klein"}, [art, tagDatum && zeiten && !/T/.test(String(s.ab || "")) ? datumText(tagDatum) : "", zeiten].filter(Boolean).join(" · ")));
   if (kz) z.append(kz);
   // Der Stand steht einmal: voll mit Buchung trägt sie ihn, sonst der Chip
   if (s.buchung && !(voll && buchungenBei(id).length)) z.append(el("div", {class: "chips"}, buchungChip(s)));
@@ -1575,7 +1583,7 @@ function streckeZeile(id, wahl, ohneKennung, voll) {
     s.quelle ? el("div", {class: "z klein"}, T("seite.label.quelle") + s.quelle) : null,
     (s.fehlt || []).length ? el("div", {class: "z klein"}, T("seite.label.fehlt_noch") + s.fehlt.map(x => name[x] || x).join(", ")) : null]);
   if (teil.sichtbar) z.append(teil.sichtbar);
-  for (const b of buchungenBei(id)) z.append(buchungBlock(b));
+  for (const b of buchungenBei(id)) z.append(buchungBlock(b, id));
   if (teil.block) z.append(teil.block);
   z.append(...stornierteBuchungen(stornierteBei(id)));
   const mitnehmen = mitnehmenZeile(id);   // was bei dieser Strecke mitkommt (Packliste, ADR-0010)
@@ -1615,7 +1623,7 @@ function aufenthaltZeile(id, voll) {
     a.quelle ? el("div", {class: "z klein"}, T("seite.label.quelle") + a.quelle) : null,
     (a.fehlt || []).length ? el("div", {class: "z klein"}, T("seite.label.fehlt_noch") + a.fehlt.map(x => name[x] || x).join(", ")) : null]);
   if (teil.sichtbar) z.append(teil.sichtbar);
-  for (const b of bs) z.append(buchungBlock(b));
+  for (const b of bs) z.append(buchungBlock(b, id));
   if (teil.block) z.append(teil.block);
   z.append(...stornierteBuchungen(stornierteBei(id)));
   const mitnehmen = mitnehmenZeile(id);
@@ -1730,7 +1738,8 @@ function tagKarte(t, ohneKopf, vorschau) {
 // sichtbar, alle übrigen stehen zugeklappt „Aus der Planung“ (mit Nächten, Hinweis, Herkunft und den anderen Möglichkeiten).
 function planungsTeil(gebucht, krit, werte, weitere) {
   const bleibt = gebucht ? krit.filter(x => x.nach_buchung) : [];
-  return {sichtbar: merkmalListe(bleibt, werte),
+  // gebucht ohne Herkunft auf dem ersten Blick (#475): sie steht in den Einzelheiten
+  return {sichtbar: merkmalListe(bleibt, werte, null, gebucht),
     block: einzelheiten(!gebucht, [merkmalListe(krit.filter(x => !bleibt.includes(x)), werte), ...weitere], T(gebucht ? "seite.einzelheiten.aus_der_planung" : "seite.buchung.einzelheiten"))};
 }
 // Organismus Ding als Karte: ein Aufenthalt vollständig an seiner Heimat (ADR-0003), mit oder ohne Nacht (#328). Die Karte bringt
@@ -1775,7 +1784,7 @@ function dingKarte(id, tid, mehr, ohneOrt) {
     u.quelle ? el("div", {class: "z klein"}, T("seite.label.quelle") + u.quelle) : null,
     (u.fehlt || []).length ? el("div", {class: "z klein"}, T("seite.label.fehlt_noch") + u.fehlt.map(x => name[x] || x).join(", ")) : null, mehr]);
   if (teil.sichtbar) k.append(teil.sichtbar);
-  for (const b of bs) k.append(buchungBlock(b));
+  for (const b of bs) k.append(buchungBlock(b, id));
   if (teil.block) k.append(teil.block);
   k.append(...stornierteBuchungen(stornierteBei(id).filter(b => buchungGiltAm(b, datum, nachtDing))));
   const mitnehmen = mitnehmenZeile(id);
@@ -1892,7 +1901,10 @@ function einzelheiten(offen, inhalt, titel) {
 // bei Strecken das Reisedatum), was vor Ort noch zu zahlen ist, eine noch laufende Frist. Preis, Zahlungsweg, Belege, Stornoregel
 // und „gebucht bei“ stehen in den „Einzelheiten zur Buchung“, zu, sobald gebucht (Stand-Leiter, Product Owner 31.10.2026).
 // Angefragt stehen Preis und Zahlung noch oben. Jede Angabe steht einmal. An die Stornofrist erinnert der Wächter.
-function buchungBlock(b) {
+// ding: das Ding, an dem der Block steht; hat die Buchung Angaben je Ding (#473), gelten dort nur seine (nichts zum Rückflug am Hinflug)
+function buchungBlock(b, ding) {
+  const je = ding && (b.je_ding || {})[ding];
+  if (je) b = {...b, ab: je.ab || null, ab_was: je.ab_was || null, frist: je.frist || null, frist_was: je.frist_was || null};
   const zu = b.status === "storniert", gebucht = b.status === "gebucht", h = heute();
   const nachtDing = !!(R && R.unterkuenfte[(b.fuer || [])[0]]);
   // Zahlstand (#166) als Marke: bezahlt gefüllt, vor Ort und inklusive leise, offen und angezahlt als offen
@@ -1914,10 +1926,12 @@ function buchungBlock(b) {
         ? T("seite.buchung.zeitraum_text", {an: datumText(b.anreise, wochentag(b.anreise)), ab: datumText(b.abreise, wochentag(b.abreise))}) : datumText(b.anreise, wochentag(b.anreise))) : null];
   // „Ab“ (Issue #135) nur, wenn es nicht schon der Check-in ist
   const abDoppelt = b.ab && tagTeil(b.ab) === b.anreise && b.anreise_ab;
-  const ab = b.ab && !abDoppelt ? zeile(T("seite.buchung.ab"), zeitpunktText(b.ab) + (b.ab_was ? " · " + b.ab_was : "")) : null;
+  // „Online-Check-in ab Mo 22.2., 17:55“ in einer Zeile (#475); ohne Angabe, was dann geht: „Ab: …“
+  const ab = !b.ab || abDoppelt ? null : b.ab_was ? el("div", {class: "z"}, el("b", {}, b.ab_was), " " + T("seite.buchung.ab_ab", {zeit: zeitpunktText(b.ab)}))
+    : zeile(T("seite.buchung.ab"), zeitpunktText(b.ab));
   const preisZ = zeile(T("seite.buchung.preis"), b.preis);
   const zahlungZ = zeile(T("seite.buchung.zahlung"), gebucht ? b.bezahlt : [zahlungText(b.zahlung), b.bezahlt].filter(Boolean).join(" · "));
-  k.append(...[zeile(T("seite.buchung.nummer"), b.nummer), ...zeitraum, ab, gebucht ? null : preisZ, gebucht ? null : zahlungZ,
+  k.append(...[b.nummer ? zeile(T("seite.buchung.nummer"), nummerChip(b.nummer)) : null, ...zeitraum, ab, gebucht ? null : preisZ, gebucht ? null : zahlungZ,
     zeile(T("seite.buchung.vor_ort_zahlen"), b.vor_ort_zahlen), fristOben ? frist : null].filter(Boolean));
   const preise = Object.entries(b.preise || {}), personen = Object.entries(b.personen || {});
   // Dinge der Buchung mit Namen als Link zu ihrer Heimat (ADR-0003, #189); mit Trennzeichen aneinander
@@ -1943,6 +1957,17 @@ function buchungBlock(b) {
       b.verlauf.slice().reverse().map(v => el("div", {}, `${datumKurz(v.datum)} ${v.wer || ""}: ${AG_WAS[v.was] || v.was || ""}${v.grund ? " (" + v.grund + ")" : ""}`))) : null,
   ], nBelege ? T("seite.buchung.einzelheiten_belege", {n: nBelege}) : T("seite.buchung.einzelheiten_buchung")));
   return k;
+}
+// Atom Nummer zum Kopieren (#475): Buchungsnummer als Chip mit Kopier-Knopf; geht die Zwischenablage nicht, wird die Nummer markiert
+function nummerChip(nummer) {
+  const n = el("span", {class: "nummer-text"}, nummer);
+  const k = el("button", {type: "button", class: "kopieren", "aria-label": T("seite.buchung.nummer_kopieren"), title: T("seite.buchung.nummer_kopieren")}, symbol("kopieren"));
+  k.addEventListener("click", async e => {
+    e.preventDefault();
+    try { await navigator.clipboard.writeText(nummer); k.replaceChildren(symbol("kopiert")); setTimeout(() => k.replaceChildren(symbol("kopieren")), 1500); }
+    catch (x) { const r = document.createRange(); r.selectNodeContents(n); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+  });
+  return el("span", {class: "chip nummer"}, n, k);
 }
 // Organismus Stornierte Buchungen (#146): alle stornierten Buchungen eines Dings zugeklappt in einem Block, oben der Hinweis
 // zum Zurückholen; jede Buchung darin unverändert. Leere Liste ohne stornierte, so lässt er sich überall anhängen.
@@ -4353,6 +4378,7 @@ function ansichtBausteine(m) {
     fall("mit Wochentag", datumText("2027-05-13")), fall("kurz", datumKurz("2027-05-13")), fall("kurz, laufendes Jahr", datumKurz(heute())),
     fall("Zeitpunkt einer Bewegung", [zeitText("18:05"), " · ", zeitText("2027-05-13T20:15+02:00")]));
   teil("Atom", "Zahl", T("seite.bausteine.zahl.beschreibung"), fall("1234.5", zahlText(1234.5, {useGrouping: true})), fall("12.4 km", zahlText(12.4) + " km"));
+  teil("Atom", "Nummer zum Kopieren", "Buchungsnummer als Chip mit Kopier-Knopf (#475); ohne Zwischenablage wird die Nummer markiert.", nummerChip("MUSTER-123"));
   teil("Atom", "Zahlmarke", "Die Zahl der Einträge einer Gruppe oder eines Kapitels; im Gruppentitel (Molekül).",
     el("div", {class: "chips"}, zahlMarke(3)), gruppenTitel("Gruppe (Muster)", 2));
   teil("Atom", "Zustand Buchung", "Der Buchungsstand eines Dings als Chip (Molekül Buchungsstand: gebucht, nicht gebucht, angefragt; mit Buchung führt er zu ihr).",

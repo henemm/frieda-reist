@@ -1526,7 +1526,9 @@ SYMBOLE = {"plan": "calendar-days", "varianten": "split", "etappen": "footprints
            "zelt": "tent", "ticket": "ticket", "museum": "landmark", "wandern": "footprints", "bahn": "train-front", "schiff": "ship",
            "flug": "plane", "auto": "car", "rad": "bike",
            # Kennzahlen und Orte (Gesicht „Freundlich“, #52)
-           "gehzeit": "clock", "aufstieg": "trending-up", "abstieg": "trending-down", "strecke": "route", "ort": "map-pin"}
+           "gehzeit": "clock", "aufstieg": "trending-up", "abstieg": "trending-down", "strecke": "route", "ort": "map-pin",
+           # Nummer zum Kopieren (#475)
+           "kopieren": "copy", "kopiert": "check"}
 
 
 def symbole():

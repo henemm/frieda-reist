@@ -592,6 +592,10 @@ class Handbuch:
             z.append(tk("konnektor.ausgabe.buchung_text.abreise_bis", w1=b["abreise_bis"]))
         if b.get("vor_ort_zahlen"):
             z.append(tk("konnektor.ausgabe.buchung_text.vor_ort_zahlen", w1=b["vor_ort_zahlen"]))
+        for x, e in (b.get("je_ding") or {}).items():   # je Ding (#473)
+            z.append(f"{x} {self.titel_von(x)}: " + "; ".join(
+                [tk("konnektor.ausgabe.buchung_text.ab", w1=texte.datum_uhr(e["ab"], texte.aufruf_sprache())) + (f": {e['ab_was']}" if e.get("ab_was") else "")] * bool(e.get("ab"))
+                + [tk("konnektor.ausgabe.buchung_text.9", w1=texte.datum_uhr(e["frist"], texte.aufruf_sprache())) + (f": {e['frist_was']}" if e.get("frist_was") else "")] * bool(e.get("frist"))))
         if b.get("ab"):
             z.append(tk("konnektor.ausgabe.buchung_text.ab", w1=texte.datum_uhr(b['ab'], texte.aufruf_sprache())) + (f": {b['ab_was']}" if b.get("ab_was") else ""))
         if b.get("frist"):
@@ -2660,6 +2664,9 @@ BUCHUNG_FELDER_SCHEMA = {
                  "description": "@konnektor.feld.buchung_felder_schema.personen"},
     "preise": {"type": "object", "additionalProperties": {"type": "string"},
                "description": "@konnektor.feld.buchung_felder_schema.preise"},
+    "je_ding": {"type": "object", "additionalProperties": {"type": "object", "properties": {
+        "ab": {"type": "string"}, "ab_was": {"type": "string"}, "frist": {"type": "string"}, "frist_was": {"type": "string"}}},
+                "description": "@konnektor.feld.buchung_felder_schema.je_ding"},
     "merkmale": {"type": "object", "additionalProperties": {"type": ["string", "number"]},
                  "description": "@konnektor.feld.buchung_felder_schema.merkmale"},
     "notiz": {"type": "string"}}

@@ -129,7 +129,7 @@ def test_gebuchte_nacht_zeigt_ab_oben(tmp_path):
     e = rundgang(tmp_path, "chromium", lambda t: t.replace(alt, '    ab: 2027-05-12\n    ab_was: "Online-Check-in"\n' + alt, 1))
     assert e["fehler"] == []
     g = e["aus"]["390"]["gebucht"]
-    assert g["oben"] == ["Nummer", "Check-in", "Check-out", "Ab", "Vor Ort zu zahlen"] and g["ab"] == "Ab: Mi 12.5. · Online-Check-in", g
+    assert g["oben"] == ["Nummer", "Check-in", "Check-out", "Online-Check-in ab Mi 12.5.", "Vor Ort zu zahlen"], g
 
 
 # Erfunden: Gasthof Polenztal (V-03.b) ist nicht verworfen, sondern nur vorgeschlagen; so hat die Nacht von Tag 2 zwei gültige

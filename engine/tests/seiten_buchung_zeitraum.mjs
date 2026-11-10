@@ -18,6 +18,7 @@ for (const tag of ["T-01", "T-07"]) {
     const lage = k && k.querySelector(".lage");
     return {karte: !!k, buchungen: s ? [...s.querySelectorAll(".buchung")].filter(x => !x.closest("details.weg")).map(x => x.id) : [], oben,
       marken: bl ? [...bl.querySelectorAll(".titelzeile .chip")].map(x => x.textContent) : [],
+      kopieren: !!(bl && bl.querySelector(".chip.nummer button.kopieren svg")),
       einzelheiten_zu: !!(bl && bl.querySelector("details.einzelheiten") && !bl.querySelector("details.einzelheiten").open),
       herkunft_adresse: !!(lage && lage.textContent.includes("ⓘ"))};
   });
