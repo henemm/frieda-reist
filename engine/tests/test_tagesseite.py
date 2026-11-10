@@ -108,6 +108,9 @@ def test_tagesseite_in_ebenen(tmp_path, browser):
         # Hintergrund als Kapitel: zu, immer nur eines offen; der umschaltende Bereich ist getönt; Der Weg mit „Weiterlesen“
         assert a["kapitel"][0] >= 2 and a["kapitel"][1] == 0 and len(a["kapitelOffen"]) == 1, (a["kapitel"], a["kapitelOffen"])
         assert a["getoent"] and a["weiterlesen"] == 1 and a["nachWeiterlesen"] == 0, a
+        # „… weiterlesen“ rechts in der letzten Zeile; offen „Weniger anzeigen“, das wieder zuklappt (#483)
+        assert a["weiterlesenInText"], a
+        assert a["wegKnopf"] == ["Weniger anzeigen", "true"] and a["wiederZu"] == [1, "… weiterlesen", "false"], a
         # Anmerken erst nach dem Lesen: unterwegs ohne Sprechblase in Vorschauen, am Rechner mit
         assert a["vorschauen"] > 0 and a["sichtbarVorschau"] == (0 if breite == "390" else a["vorschauen"] + a["zugeklappt"]), a
         lage = {n: (o, l) for n, o, l in a["ebenen"]}

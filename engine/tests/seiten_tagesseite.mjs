@@ -43,6 +43,9 @@ for (const breite of [390, 1300]) {
       kapitel: [document.querySelectorAll(".ebene-hintergrund details.kapitel").length, document.querySelectorAll(".ebene-hintergrund details.kapitel[open]").length],
       getoent: getComputedStyle(document.querySelector(".ebene-unterwegs")).backgroundColor !== getComputedStyle(document.body).backgroundColor,
       weiterlesen: [...document.querySelectorAll(".ebene-weg .weiterlesen")].filter(x => !x.hidden).length,
+      weiterlesenInText: (() => { const k = document.querySelector(".ebene-weg .weiterlesen:not([hidden])"), t = k && k.previousElementSibling;
+        if (!k || !t) return false; const a = k.getBoundingClientRect(), b = t.getBoundingClientRect();
+        return a.bottom <= b.bottom + 1 && a.top >= b.top && Math.abs(a.right - b.right) <= 1; })(),
       // Nacht: über die volle Breite nur bei offener Wahl, sonst an ihrem Platz in der Lesespalte
       nacht: {voll: !!document.querySelector(".tagseite > .nacht-voll"), inLesen: !!document.querySelector(".tag-lesen > .ebene-nacht"),
         // Platz (Product Owner 31.10.2026): nach dem Hintergrund, vor den Quellen; oben in Pixeln
@@ -115,6 +118,11 @@ for (const breite of [390, 1300]) {
   a.kapitelOffen = await p.evaluate(() => [...document.querySelectorAll(".ebene-hintergrund details.kapitel[open]")].map(x => x.id));
   await p.locator(".ebene-weg .weiterlesen:not([hidden])").first().click();
   a.nachWeiterlesen = await p.evaluate(() => document.querySelectorAll(".ebene-weg .weg-text.kurz").length);
+  // „… weiterlesen“ steht in der letzten Zeile des Texts; offen heißt der Knopf „Weniger anzeigen“ und klappt wieder zu (#483)
+  a.wegKnopf = await p.evaluate(() => { const k = document.querySelector(".ebene-weg .weiterlesen:not([hidden])"); return [k.textContent, k.getAttribute("aria-expanded")]; });
+  await p.locator(".ebene-weg .weiterlesen:not([hidden])").first().click();
+  a.wiederZu = await p.evaluate(() => { const k = document.querySelector(".ebene-weg .weiterlesen:not([hidden])");
+    return [document.querySelectorAll(".ebene-weg .weg-text.kurz").length, k.textContent, k.getAttribute("aria-expanded")]; });
   // Tiefenlinks: Abschnitt in einem Reiter, in den Quellen (aufgeklappt) und im Hintergrund
   a.tiefe = {};
   for (const id of ["E-01.wegpunkte", "E-01.quellen-und-pruefung", "E-01.tipps"]) {

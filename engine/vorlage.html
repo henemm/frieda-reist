@@ -578,9 +578,15 @@ h2.tagkopf .tagtitel{font-size:var(--t-titel);line-height:1.15}
 .lese-kopf{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px}
 .pico .lese-kopf h4{margin:0;font-size:var(--t-text)}
 .lese-abschnitt .inhalt :is(h4,h5){font-size:var(--t-text);margin:1.1em 0 .3em}
-/* Der Weg: nach gut vier Zeilen abgeschnitten, sanft ausgeblendet; „Weiterlesen“ zeigt alles */
+/* Der Weg: nach gut vier Zeilen abgeschnitten, sanft ausgeblendet; „… weiterlesen“ steht rechts in der letzten,
+   ausgeblendeten Zeile (Entwurf C, #483) und klappt auf; offen steht darunter rechts „Weniger anzeigen“ */
+.weg-rahmen{position:relative;display:flex;flex-direction:column;margin-bottom:8px}
 .weg-text.kurz{max-height:7.4em;overflow:hidden;-webkit-mask-image:linear-gradient(#000 60%,transparent);mask-image:linear-gradient(#000 60%,transparent)}
-.pico button.weiterlesen{align-self:flex-start;background:none;border:0;padding:6px 0;margin:0;min-height:44px;color:var(--acc);font-weight:600;box-shadow:none}
+.pico button.weiterlesen{position:absolute;inset-inline-end:0;bottom:0;width:auto;display:inline-flex;align-items:center;gap:8px;background:linear-gradient(90deg,transparent,var(--bg) 3em);border:0;border-radius:0;padding-block:10px 2px;padding-inline:3.5em 2px;margin:0;min-height:44px;color:var(--acc);font-size:var(--t-text);font-weight:600;box-shadow:none}
+.pico button.weiterlesen:dir(rtl){background:linear-gradient(270deg,transparent,var(--bg) 3em)}
+.pico button.weiterlesen::after{content:"";width:7px;height:7px;margin-bottom:3px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg)}
+.weg-rahmen.offen>button.weiterlesen{position:static;align-self:flex-end;background:none;padding-inline-start:0}
+.weg-rahmen.offen>button.weiterlesen::after{transform:rotate(-135deg);margin:3px 0 0}
 /* Unterwegs nachschlagen (umschaltender Bereich): getönter Streifen über die ganze Breite des Handys, am Rechner als
    getönte Fläche in der rechten Spalte; so ist sichtbar, was die Reiter umschalten */
 .ebene-unterwegs{background:var(--tint);border-block:1px solid var(--line);margin-inline:-14px;padding:14px 14px 18px}
@@ -3805,13 +3811,27 @@ function kapitel(b, kz, tag) {
   });
   return d;
 }
-// Der Weg mit „Weiterlesen“: nach einigen Zeilen abgeschnitten; der Knopf erscheint nur, wenn mehr Text da ist
+// Der Weg mit „… weiterlesen“: nach einigen Zeilen abgeschnitten; der Knopf erscheint nur, wenn mehr Text da ist, und
+// klappt auf und wieder zu (#483). Gibt den Rahmen aus Text und Knopf zurück; wegAuf öffnet ihn (auch für Tiefenlinks).
+function wegAuf(rahmen, auf) {
+  const inhalt = rahmen.querySelector(".weg-text"), knopf = rahmen.querySelector(".weiterlesen");
+  inhalt.classList.toggle("kurz", !auf);
+  rahmen.classList.toggle("offen", auf);
+  knopf.textContent = T(auf ? "seite.text.weniger" : "seite.text.weiterlesen");
+  knopf.setAttribute("aria-expanded", String(auf));
+}
 function wegKurz(inhalt) {
-  const knopf = el("button", {type: "button", class: "weiterlesen", hidden: true}, T("seite.text.weiterlesen"));
-  knopf.addEventListener("click", () => { inhalt.classList.remove("kurz"); knopf.hidden = true; });
+  const knopf = el("button", {type: "button", class: "weiterlesen", hidden: true, "aria-expanded": "false"}, T("seite.text.weiterlesen"));
+  const rahmen = el("div", {class: "weg-rahmen"}, inhalt, knopf);
+  knopf.addEventListener("click", () => {
+    const auf = inhalt.classList.contains("kurz");
+    wegAuf(rahmen, auf);
+    // Beim Zuklappen bleibt der Anfang des Wegs im Blick
+    if (!auf && rahmen.getBoundingClientRect().top < 0) rahmen.scrollIntoView({block: "start"});
+  });
   inhalt.classList.add("kurz");
   requestAnimationFrame(() => { if (inhalt.scrollHeight > inhalt.clientHeight + 4) knopf.hidden = false; else inhalt.classList.remove("kurz"); });
-  return knopf;
+  return rahmen;
 }
 // Organismus Leseabschnitt: Titel mit Sprechblase, Text ohne Rahmen; Orte und Karte des Abschnitts, wenn es sie gibt
 const leseAbschnitt = (b, kz) => el("div", {class: "lese-abschnitt ziel", id: b.id, "data-ziel": b.id},
@@ -3831,7 +3851,7 @@ function tagEbenen(t, etappen) {
     weg.append(Object.assign(ebeneKopf(a.name || a.titel, zid(a.id)), ETAPPE_TAG.get(a.id) === t.id ? {id: a.id} : {}));
     for (const [, b] of teile.weg.filter(([x]) => x === a)) {
       const text = el("div", {class: "weg-text ziel", id: b.id, "data-ziel": b.id}, reiseText(b.html, kz(a)));
-      weg.append(text, wegKurz(text));
+      weg.append(wegKurz(text));
     }
     if (a.intro) weg.append(el("div", {class: "weg-unter", html: a.intro}));
   }
@@ -5683,7 +5703,7 @@ function zumZiel(id) {
   if (e.matches("[role=tabpanel][hidden]")) reiterWaehlen(e.closest(".reiter"), e.dataset.teil);
   for (let p = e.parentElement; p; p = p.parentElement) if (p.tagName === "DETAILS") p.open = true;
   const kurz = e.closest(".weg-text.kurz");
-  if (kurz) { kurz.classList.remove("kurz"); if (kurz.nextElementSibling && kurz.nextElementSibling.matches(".weiterlesen")) kurz.nextElementSibling.hidden = true; }
+  if (kurz) wegAuf(kurz.closest(".weg-rahmen"), true);
   if (e.tagName === "DETAILS") e.open = true;
   e.scrollIntoView({block: "start"});
   e.classList.remove("blitz");
