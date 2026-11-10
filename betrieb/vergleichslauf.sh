@@ -6,9 +6,13 @@
 #          oder nur im Speicher hat nichts zu vergleichen und wird mit einem Hinweis übersprungen.
 #          --bis N vergleicht mit Stand N des Speichers (etwa dem, den der Anfangsvorgang übernommen hat), sonst dem neuesten.
 # Der Dateistand aus Git kommt aus dem Commit HEAD (git archive in einen Wegwerf-Ordner): Der Bauordner bleibt unberührt,
-# ungesicherte Änderungen zählen nicht.
+# ungesicherte Änderungen zählen nicht. Dazu kommen die von Git ignorierten Dateien der Reise aus dem Bauordner (etwa die
+# Offline-Grundkarten unter medien/karte/, groß und außerhalb erzeugt, #479): Sie gehören zur Seite, liegen nie in Git und
+# kommen beim Anfangsvorgang (importieren aus dem Bauordner) mit in den Speicher; sie werden byte-genau mitverglichen.
+# Ungesicherte, nicht ignorierte Dateien zählen weiter nicht.
 # Stempel je Reise: <FR_DIENST>/vergleich/<reise>.json {zeit (UTC), ergebnis: gleich | unterschied | fehler, stand, git
-# (Commit, nur Auskunft), unterschiede (Anzahl), baum (git rev-parse HEAD:reisen/<reise>)}. Der Stempel „gleich“ ist
+# (Commit, nur Auskunft), unterschiede (Anzahl), baum (git rev-parse HEAD:reisen/<reise>), arbeitsordner (Anzahl der
+# ignorierten Dateien aus dem Bauordner, nur Auskunft)}. Der Stempel „gleich“ ist
 # Voraussetzung der ersten Umschaltung einer Reise auf den Speicher (erzwungen ab Stufe 5, #350, reisespeicher.py
 # umschaltung): ohne ihn verweigern Veröffentlichen und Schreibweg eine Reise, die in Git liegt und noch nie aus dem
 # Speicher veröffentlicht wurde. Er gilt, solange der Git-Baum der Reise derselbe ist und der Speicher nicht hinter stand
@@ -48,11 +52,11 @@ fi
 git_stand="$(git -C "$FR_WURZEL" rev-parse HEAD)"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 
-stempel() {  # <reise> <ergebnis> <stand> <unterschiede> <baum>
+stempel() {  # <reise> <ergebnis> <stand> <unterschiede> <baum> <arbeitsordner>
   local datei="$FR_DIENST/vergleich/$1.json"
   mkdir -p "$FR_DIENST/vergleich"
-  printf '{"zeit": "%s", "ergebnis": "%s", "stand": %s, "git": "%s", "unterschiede": %s, "baum": "%s"}\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$2" "${3:-null}" "$git_stand" "$4" "$5" > "$datei.neu"
+  printf '{"zeit": "%s", "ergebnis": "%s", "stand": %s, "git": "%s", "unterschiede": %s, "baum": "%s", "arbeitsordner": %s}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$2" "${3:-null}" "$git_stand" "$4" "$5" "$6" > "$datei.neu"
   mv "$datei.neu" "$datei"
 }
 
@@ -67,14 +71,21 @@ for r in "${reisen[@]}"; do
   mkdir -p "$ordner"
   baum="$(git -C "$FR_WURZEL" rev-parse "HEAD:reisen/$r")"
   git -C "$FR_WURZEL" archive HEAD "reisen/$r" | tar -x -C "$ordner"
+  # Ignorierte Dateien der Reise aus dem Bauordner dazu (#479); ein Symlink darunter bleibt einer und wird beim
+  # Vergleichen als Fehler gemeldet, nie verfolgt.
+  liste="$tmp/$r.ignoriert"
+  git -C "$FR_WURZEL" ls-files -z --others --ignored --exclude-standard -- "reisen/$r" > "$liste"
+  arbeitsordner="$(tr -cd '\0' < "$liste" | wc -c)"
+  [ "$arbeitsordner" -eq 0 ] || tar -C "$FR_WURZEL" --null -T "$liste" -cf - | tar -x -C "$ordner"
   rc=0
   aus="$("$FR_PYTHON" "$RS" vergleichen "$r" "$ordner/reisen/$r" ${bis:+--bis "$bis"} 2>&1)" || rc=$?
   printf '%s\n' "$aus" | sed "s/^/$r: /"
+  [ "$arbeitsordner" -eq 0 ] || echo "$r: $arbeitsordner ignored files from the build folder (not in git) compared too"
   stand="${bis:-$n}"
   case "$rc" in
-    0) stempel "$r" gleich "$stand" 0 "$baum" ;;
-    1) stempel "$r" unterschied "$stand" "$(printf '%s\n' "$aus" | grep -cE '^(nur im Speicher|nur im Ordner|verschieden): ')" "$baum" ;;
-    *) stempel "$r" fehler "$stand" 0 "$baum"; rc=2 ;;
+    0) stempel "$r" gleich "$stand" 0 "$baum" "$arbeitsordner" ;;
+    1) stempel "$r" unterschied "$stand" "$(printf '%s\n' "$aus" | grep -cE '^(nur im Speicher|nur im Ordner|verschieden): ')" "$baum" "$arbeitsordner" ;;
+    *) stempel "$r" fehler "$stand" 0 "$baum" "$arbeitsordner"; rc=2 ;;
   esac
   [ "$rc" -le "$gesamt" ] || gesamt="$rc"
   rm -rf "$ordner"

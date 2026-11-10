@@ -316,7 +316,44 @@ def test_vergleichslauf_schreibt_den_git_baum(s5):
         s = json.loads((s5.dienst / "vergleich" / f"{r}.json").read_text())
         assert {"zeit", "ergebnis", "stand", "git", "unterschiede", "baum"} <= set(s)
         assert s["baum"] == baum(s5.bau, r) and s["ergebnis"] == "gleich"
+        assert s["arbeitsordner"] == 0
     assert git(s5.bau, "status", "--porcelain").strip() == ""
+
+
+def test_vergleichslauf_nimmt_ignorierte_grundkarten_aus_dem_arbeitsordner(s5):
+    """#479: Grundkarten liegen nicht in Git (.gitignore), aber im Bauordner und damit im Import. Der Vergleich nimmt sie
+    aus dem Arbeitsordner dazu und vergleicht sie byte-genau; nicht ignorierte, ungesicherte Dateien zählen nicht."""
+    r = "beispielreise"
+    (s5.bau / ".gitignore").write_text("reisen/*/medien/karte/*.pmtiles\nreisen/*/medien/karte/*.quelle.txt\n")
+    _commit(s5.bau, "Grundkarten nicht in Git")
+    karte = s5.bau / "reisen" / r / "medien" / "karte"
+    karte.mkdir(parents=True, exist_ok=True)
+    (karte / "grundkarte.pmtiles").write_bytes(b"Beispielwert Karte\x00\x01")
+    (karte / "grundkarte.pmtiles.quelle.txt").write_text("Beispielwert Quelle\n")
+    s5.rs.importieren(s5.bau / "reisen" / r, r, wer="Ida", grund="Anfangsvorgang mit Karte")
+
+    def lauf():
+        v = subprocess.run([str(BETRIEB / "vergleichslauf.sh"), r], capture_output=True, text=True, env=dict(os.environ))
+        return v, json.loads((s5.dienst / "vergleich" / f"{r}.json").read_text())
+
+    v, s = lauf()
+    assert v.returncode == 0, v.stdout + v.stderr
+    assert s["ergebnis"] == "gleich" and s["arbeitsordner"] == 2, s
+    assert s5.rs.umschaltung_frei(r) == (True, "")
+    # abweichende Kartendatei: Unterschied, keine Freigabe
+    (karte / "grundkarte.pmtiles").write_bytes(b"andere Karte")
+    v, s = lauf()
+    assert v.returncode == 1 and "verschieden: medien/karte/grundkarte.pmtiles" in v.stdout, v.stdout + v.stderr
+    assert s["ergebnis"] == "unterschied" and s5.rs.umschaltung_frei(r)[0] is False
+    # fehlende Kartendatei im Arbeitsordner: nur im Speicher
+    (karte / "grundkarte.pmtiles").unlink()
+    v, s = lauf()
+    assert v.returncode == 1 and "nur im Speicher: medien/karte/grundkarte.pmtiles" in v.stdout, v.stdout
+    # ungesicherte, nicht ignorierte Datei zählt nicht (nur der Git-Stand und Ignoriertes)
+    (karte / "grundkarte.pmtiles").write_bytes(b"Beispielwert Karte\x00\x01")
+    (s5.bau / "reisen" / r / "streuner.md").write_text("nicht gesichert\n")
+    v, s = lauf()
+    assert v.returncode == 0 and s["arbeitsordner"] == 2, v.stdout + v.stderr
 
 
 # ---------- AC-13 bis AC-17: Sperre im Veröffentlichen (Shell-Läufe über sp) ----------
