@@ -884,6 +884,13 @@ header .konto{position:absolute;top:calc(10px + env(safe-area-inset-top));right:
 .hinweis[hidden]{display:none}
 .hinweis button{font:inherit;font-weight:600;border:0;border-radius:var(--r-pille);padding:6px 12px;background:var(--acc);color:var(--bg);cursor:pointer}
 #offline{color:var(--warn);padding-right:14px}
+/* ---------- Molekül Startfehler-Meldung (startfehlerMeldung, #387) ----------
+   Bricht das Skript beim Start ab, legt der Fänger vor dem Hauptskript sie als #startfehler in den Rahmen „Meldungen“
+   (sonst oben in den body). Rückfallwerte, damit sie auch ohne Designwerte lesbar bleibt; logische Eigenschaften für rtl. */
+.startfehler{flex-wrap:wrap;padding-block:10px;padding-inline:16px 10px;font-size:var(--t-text,1.0625rem);color:var(--fg,#1d2420)}
+.startfehler b{flex:1 1 12rem;font-weight:600}
+#startfehler{z-index:12}
+body > #startfehler{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));inset-inline:12px;margin-inline:auto;background:var(--card,#fff);border:1px solid var(--line,#e4e5df)}
 /* Meldungen an die angemeldete Person in dieser Reise (#21): Hinweis mit den neuesten Meldungen, „Gelesen“ blendet sie aus */
 #fuerDich{align-items:flex-start}#fuerDich .fd-text{flex:1;min-width:0;display:grid;gap:2px;padding:6px 0;overflow-wrap:anywhere}
 #fuerDich a{color:var(--acc)}
@@ -1016,6 +1023,56 @@ nav a.warn .zahl{background:var(--warn)}
 <script src="leaflet-1.9.4.js"></script>
 <!-- protomaps-leaflet 5.1.0 (BSD-3, protomaps.com) für die Offline-Grundkarte; nur mit Grundkarte eingefügt -->
 <!--__GRUNDKARTE__-->
+<script>
+/* ---------- Fänger für Startfehler (#387) ----------
+   Eigenes Skript vor dem Hauptskript: Bricht der Start ab (Fehler, Syntaxfehler, abgelehntes Versprechen), zeigt die Seite
+   die Startfehler-Meldung statt eines leeren Bildschirms. Das Hauptskript setzt window.__startFertig als letzte Anweisung;
+   Fehler danach (Netz, Karte, Rückmeldedienst) bleiben still. Nur createElement und textContent, kein Zugriff auf das
+   Hauptskript. Texte: Ausschnitt des Katalogs je Sprache (bauen.py), Sprache aus <html lang>, sonst die erste. */
+const STARTFEHLER_TEXTE = /*__STARTFEHLER__*/null;
+function startfehlerMeldung(t) {
+  const box = document.createElement("div");
+  box.className = "hinweis glas startfehler";
+  box.setAttribute("role", "alert");
+  const titel = document.createElement("b");
+  titel.textContent = t.titel;
+  const knopf = document.createElement("button");
+  knopf.type = "button";
+  knopf.textContent = t.neu_laden;
+  knopf.addEventListener("click", () => location.reload());
+  box.append(titel, knopf);
+  return box;
+}
+(() => {
+  // Ende des Starts: Fehler zählen bis zur Marke window.__startFertig. Ein im Start abgelehntes Versprechen meldet der Browser
+  // erst nach dem Skript; deshalb legt die Marke ein eigenes abgelehntes Versprechen an (endmarke). Der Browser meldet
+  // unbehandelte Ablehnungen in ihrer Reihenfolge: Was vor der Endmarke kommt, geschah im Start, alles danach bleibt still.
+  let fertig = false, versprechenFertig = false, endmarke = null;
+  try {
+    Object.defineProperty(window, "__startFertig", {configurable: true, get: () => fertig, set(v) {
+      if (!v || fertig) return;
+      fertig = true;
+      endmarke = Promise.reject();
+    }});
+  } catch (e) {}
+  function melde() {
+    try {
+      if (document.getElementById("startfehler") || !STARTFEHLER_TEXTE) return;
+      const t = STARTFEHLER_TEXTE[document.documentElement.lang] || STARTFEHLER_TEXTE[Object.keys(STARTFEHLER_TEXTE)[0]];
+      const box = startfehlerMeldung(t);
+      box.id = "startfehler";
+      const rahmen = document.querySelector(".meldungen");
+      if (rahmen) rahmen.prepend(box);
+      else if (document.body) document.body.prepend(box);
+    } catch (e) {}
+  }
+  addEventListener("error", () => { if (!fertig && window.__startFertig !== true) melde(); });
+  addEventListener("unhandledrejection", e => {
+    if (endmarke && e.promise === endmarke) { versprechenFertig = true; e.preventDefault(); return; }
+    if (!versprechenFertig && !(window.__startFertig === true && !endmarke)) melde();   // ohne Endmarke gilt die Marke allein
+  });
+})();
+</script>
 <script>
 "use strict";
 const D = /*__DATEN__*/null;
@@ -1258,7 +1315,7 @@ function zid(id) {
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, nummerChip
-   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile, entscheidung, Rechtszeile (HTML im Fuß)
+   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, Rechtszeile (HTML im Fuß)
    Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, entschieden, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
@@ -4410,6 +4467,10 @@ function ansichtBausteine(m) {
   teil("Molekül", "Terminzeile", "Eine Zeile im Gesicht der Zeitachse: links Nummer oder Datum, Titel, rechts eine Nebenangabe; genau ein Link.",
     el("div", {class: "tagzeilen"}, terminZeile("#bausteine", [el("b", {}, "2"), "Fr 14.5."], "Beispieltermin (Muster)", "Ida"),
       terminZeile("#bausteine", [el("b", {}, "1.5."), "überfällig"], "Beispielfrist (Muster)", "Karl", "ueber")));
+  // Startfehler-Meldung: zeigt die Seite nur, wenn der Start abbricht (Fänger vor dem Hauptskript); hier als Muster, Knopf abgeschaltet
+  const sfMuster = startfehlerMeldung({titel: T("seite.fehler.start_titel"), neu_laden: T("seite.fehler.start_neu_laden")});
+  sfMuster.querySelector("button").disabled = true;
+  teil("Molekül", "Startfehler-Meldung", "Bricht das Skript beim Start ab, steht oben diese Meldung mit „Neu laden“ statt eines leeren Bildschirms (#387). Muster.", sfMuster);
   teil("Molekül", "Ebenenkopf", "Titel einer Ebene der Tagesseite, rechts die Kennung.", ebeneKopf("Titel einer Ebene (Muster)", zid("Muster")));
   teil("Molekül", "Namensfeld", "Wer schreibt: aus dem Konto, sonst der Hinweis zum Anmelden.", nameFeld("bs-name"));
   const rmMusterVoll = {ziel: "Muster", status: "neu", art: "Kommentar", name: "Muster", erstellt: "2027-01-02T00:00:00Z", text: "Beispieltext (Muster)."};
@@ -6098,6 +6159,8 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
     setInterval(pruefen, 30 * 60e3);
   }).catch(() => {});
 }
+// Ende des Starts (#387): ab hier zeigt der Fänger keine Startfehler-Meldung mehr; bleibt die letzte Anweisung
+window.__startFertig = true;
 </script>
 </body>
 </html>

@@ -377,6 +377,8 @@ TEXTE = {
     "seite.fehler.nicht_angenommen": "Not accepted: ",
     "seite.fehler.nicht_gespeichert": "Not saved: ",
     "seite.fehler.spaeter": "No connection at the moment. Please try again later.",
+    "seite.fehler.start_neu_laden": "Reload",
+    "seite.fehler.start_titel": "The page could not be started.",
     "seite.frage.als_aufgabe": "as a task",
     "seite.frage.als_aufgabe_unterwegs": "As a task on the way",
     "seite.frage.geklaert": "Resolved",

@@ -1336,11 +1336,14 @@ class Bauer:
                                       json.dumps(self.umzug) + " + location.pathname + location.search + location.hash)</script>", 1)
         vorlage = vorlage.replace("<!--__GRUNDKARTE__-->", "".join(
             f'<script src="{n}"></script>' for n in VENDOR_GRUNDKARTE.values()) if self.grundkarte or self.grundkarten else "", 1)
-        if vorlage.count("/*__DATEN__*/null") != 1 or vorlage.count("/*__TEXTE__*/null") != 1:
-            raise BauFehler(["vorlage.html must contain the placeholders /*__DATEN__*/null and /*__TEXTE__*/null exactly once."])
+        if any(vorlage.count(p) != 1 for p in ("/*__DATEN__*/null", "/*__TEXTE__*/null", "/*__STARTFEHLER__*/null")):
+            raise BauFehler(["vorlage.html must contain the placeholders /*__DATEN__*/null, /*__TEXTE__*/null and "
+                             "/*__STARTFEHLER__*/null exactly once."])
         vorlage = re.sub(r'<html lang="[^"]*">', lambda _: f'<html lang="{daten["reise"]["sprache"]}" dir="{texte.sprache(daten["reise"]["sprache"]).RICHTUNG}">', vorlage, count=1)
         katalog = json.dumps(texte_fuer_seite(), ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
         vorlage = vorlage.replace("/*__TEXTE__*/null", katalog, 1)
+        startfehler = json.dumps(startfehler_fuer_seite(), ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+        vorlage = vorlage.replace("/*__STARTFEHLER__*/null", startfehler, 1)
         js = json.dumps(daten, ensure_ascii=False, separators=(",", ":"))
         js = js.replace("</", "<\\/").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
         self.ziel_dir.mkdir(parents=True, exist_ok=True)
@@ -1698,6 +1701,13 @@ def icon_zeichnen(text, groesse):
 def texte_fuer_seite():
     """Katalog aller Sprachen für die Seite (ADR-0006); ab M1 legt der Bau ihn in die Seite, damit der Umschalter offline geht."""
     return texte.seite()
+
+
+def startfehler_fuer_seite():
+    """Titel und Knopf der Startfehler-Meldung je Sprache (#387): Der Fänger vor dem Hauptskript braucht sie, auch wenn der Katalog
+    der Seite nie geladen wird. Nur diese zwei Schlüssel, alle Sprachen des Katalogs (ADR-0006)."""
+    return {k: {"titel": texte.sprache(k).TEXTE["seite.fehler.start_titel"],
+                "neu_laden": texte.sprache(k).TEXTE["seite.fehler.start_neu_laden"]} for k in texte.SPRACHEN}
 
 
 def bauen(reise_dir, ziel_dir, umzug=None):

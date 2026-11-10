@@ -463,8 +463,8 @@ def js_literale(code):
 def _quelltext(datei):
     text = (ENGINE / datei).read_text(encoding="utf-8")
     if datei.endswith(".html"):
-        anfang = text.index("<script>") + len("<script>")
-        return text[anfang:text.index("</script>", anfang)], text[:anfang].count("\n")
+        anfang = text.index("<script>") + len("<script>")   # vom Fänger für Startfehler (#387) bis zum Ende des Hauptskripts
+        return text[anfang:text.rindex("</script>")], text[:anfang].count("\n")
     return text, 0
 
 

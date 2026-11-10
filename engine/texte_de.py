@@ -378,6 +378,8 @@ TEXTE = {
     "seite.fehler.nicht_angenommen": "Nicht angenommen: ",
     "seite.fehler.nicht_gespeichert": "Nicht gespeichert: ",
     "seite.fehler.spaeter": "Gerade keine Verbindung. Bitte später noch einmal.",
+    "seite.fehler.start_neu_laden": "Neu laden",
+    "seite.fehler.start_titel": "Die Seite konnte nicht gestartet werden.",
     "seite.frage.als_aufgabe": "als Aufgabe",
     "seite.frage.als_aufgabe_unterwegs": "Als Aufgabe unterwegs",
     "seite.frage.geklaert": "Geklärt",

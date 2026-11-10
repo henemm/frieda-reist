@@ -17,7 +17,7 @@ Rest von #387: Bricht das Skript der Reiseseite beim Start ab, zeigt sie heute e
 | engine/tests/test_texte.py, docs/sprachen.md | Regeln für Schlüssel, Pseudo-Sprache, Ausnahmelisten (dürfen nur kürzer werden) |
 | engine/tests/test_seite_startet.py, seiten_start.mjs | Vorbild für einen Browsertest an beiden Beispielreisen |
 | betrieb/startprobe.mjs | Erkennt Seitenfehler und leere Seite; muss die neue Meldung als Fehler werten (Meldung sichtbar = Start gescheitert) |
-| /home/hem/henemm-infra/scripts/monitor.sh (`check_frieda_seiten`, Z. 2029) | Prüft nur HTTP 200; Teil-Check „Seite im Browser laden“ gehört als Issue und Umsetzung dorthin |
+| ~/henemm-infra/scripts/monitor.sh (`check_frieda_seiten`, Z. 2029) | Prüft nur HTTP 200; Teil-Check „Seite im Browser laden“ gehört als Issue und Umsetzung dorthin |
 | docs/design.md, Kopfkommentar der Vorlage | Neuer Baustein „Startfehler-Meldung“ ist dort einzutragen (ADR-0002) |
 
 ## Existing Patterns

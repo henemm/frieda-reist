@@ -1,5 +1,5 @@
 // Startprobe der gebauten Reiseseite (#395, Lehre aus #387): lädt <ordner>/index.html im Browser und meldet Seitenfehler
-// beim Start, console.error und eine leere Seite. Exit 0 gesund, 1 rot (Meldung auf stdout).
+// beim Start, console.error, eine leere Seite und die sichtbare Startfehler-Meldung (#387). Exit 0 gesund, 1 rot (Meldung auf stdout).
 // Aufruf: node startprobe.mjs <playwright-modul> <ordner mit index.html>
 import http from "node:http";
 import fs from "node:fs";
@@ -45,6 +45,8 @@ try {
   await p.waitForTimeout(1500);
   const text = await p.evaluate(() => (document.querySelector("#main") || {}).textContent || "");
   if (!text.trim()) fehler.push("Seite leer (#main ohne Inhalt)");
+  // Startfehler-Meldung des Fängers (#387): sichtbar heißt, der Start ist gescheitert
+  if (await p.locator("#startfehler").isVisible()) fehler.push("Startfehler-Meldung sichtbar");
 } finally {
   await b.close();
   server.close();
