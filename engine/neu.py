@@ -342,16 +342,24 @@ def aufraeumen(reise_dir):
             sb.ab_frist_pruefen(b)
         except sb.Ablehnung as e:
             aus.append(f"{bid}: {e}")
-    for gruppe in ("unterkuenfte", "aufenthalte", "strecken", "orte"):
-        for did, d in (r.get(gruppe) or {}).items():
-            if not isinstance(d, dict):
-                continue
-            for feld in ("name", "titel", "hinweis"):
+    def art_der_option(o):
+        for x in (o.get("unterkuenfte") or []) + (o.get("aufenthalte") or []):
+            d = (r.get("unterkuenfte") or {}).get(x) or (r.get("aufenthalte") or {}).get(x) or {}
+            if isinstance(d.get("art"), str):
+                return d["art"]
+        return None
+    dinge = [(did, d, d.get("art")) for gruppe in ("unterkuenfte", "aufenthalte", "strecken", "orte")
+             for did, d in (r.get(gruppe) or {}).items() if isinstance(d, dict)]
+    dinge += [(o["id"], o, art_der_option(o)) for w in (r.get("wahlstellen") or {}).values() if isinstance(w, dict)
+              for o in w.get("optionen") or [] if isinstance(o, dict) and o.get("id")]
+    for did, d, art in dinge:
+        if True:
+            for feld in ("name", "titel", "hinweis", "text"):
                 if isinstance(d.get(feld), str):
                     pruef(did, d[feld], feld)
             if isinstance(d.get("quelle"), str):
                 pruef(did, d["quelle"], "quelle")
-            art = d.get("art") if isinstance(d.get("art"), str) else None
+            art = art if isinstance(art, str) else None
             defs = ((arten.get(art) or {}).get("merkmale") or {}) if art else {}
             for k, v in (d.get("merkmale") or {}).items():
                 defn = defs.get(k) if isinstance(defs.get(k), dict) else {}

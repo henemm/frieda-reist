@@ -493,15 +493,15 @@ wahlstellen:
     text: "Beide Wege beginnen in Altendorf und führen über die Schrammsteinaussicht. Offen ist, wo der Abstieg endet."
     optionen:
       - id: V-01.a
-        titel: "Abstieg nach Bad Schandau (Plan A)"
+        titel: "Abstieg nach Bad Schandau"
         folge: [T-04]
         quelle: "Etappen-Dossier Etappe 3 (Beispiel)"
         verlauf:
           - {datum: 2026-10-20, status: vorgeschlagen, wer: Claude, grund: "kürzeste Verbindung zum Bahnhof"}
       - id: V-01.b
-        titel: "Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück (Plan B)"
+        titel: "Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück"
         folge: [T-05]
-        quelle: "Etappen-Dossier Etappe 4 und Wikipedia (W-06), Beispiel"
+        quelle: "Etappen-Dossier Etappe 4 und Wikipedia (Artikel zur Kirnitzschtalbahn), Beispiel"
         verlauf:
           - {datum: 2026-10-20, status: vorgeschlagen, wer: Claude}
           - {datum: 2026-10-22, status: favorisiert, wer: Karl, grund: "Karl möchte einmal mit der Kirnitzschtalbahn fahren"}
@@ -520,18 +520,18 @@ wahlstellen:
   V-02:
     titel: "Tag 2: Zugang zum Hockstein"
     wann: unterwegs
-    text: "Der Hockstein hat zwei Zugänge: die Steinbrücke und die Wolfsschlucht (Wikipedia, siehe W-05)."
+    text: "Der Hockstein hat zwei Zugänge: die Steinbrücke und die Wolfsschlucht (Wikipedia, Artikel zum Hockstein)."
     optionen:
       - id: V-02.a
         titel: "Über die Steinbrücke"
-        quelle: "Wikipedia (W-05)"
+        quelle: "Wikipedia (Artikel zum Hockstein)"
         verlauf:
           - {datum: 2026-10-20, status: vorgeschlagen, wer: Ida, grund: "der übliche Zugang"}
       - id: V-02.b
         titel: "Durch die Wolfsschlucht"
         ausloeser: "nur bei trockenem Fels; Felsstufen bei Nässe vermutlich glatt (Annahme)"
         siehe: W-05
-        quelle: "Wikipedia (W-05); Annahme zur Nässe"
+        quelle: "Wikipedia (Artikel zum Hockstein); Annahme zur Nässe"
         verlauf:
           - {datum: 2026-10-20, status: vorgeschlagen, wer: Ida, grund: "Abenteuer, wenn es trocken ist"}
 

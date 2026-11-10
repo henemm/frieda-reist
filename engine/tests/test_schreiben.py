@@ -858,9 +858,9 @@ def test_entscheiden_schreibt_verlauf_und_klaert_die_frage(repo):
     assert "Nicht gewählt und damit ausgeschieden: V-01.a" in a["text"]
     a_opt = next(x for x in r["wahlstellen"]["V-01"]["optionen"] if x["id"] == "V-01.a")
     assert a_opt["verlauf"][-1] == {"datum": heute, "status": "ersetzt", "wer": "Ida", "durch": "V-01.b",
-                                    "grund": "nicht gewählt, V-01.b „Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück (Plan B)“ ist gewählt"}
+                                    "grund": "nicht gewählt, V-01.b „Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück“ ist gewählt"}
     assert f"| vor Abreise | geklärt {heute.strftime('%-d.%-m.%Y')}: Ida, Zum Lichtenhainer Wasserfall" in fragen_auf_main(origin)
-    assert git(origin, "log", "-1", "--format=%s", "main").endswith("V-01.b „Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück (Plan B)“ gewählt")
+    assert git(origin, "log", "-1", "--format=%s", "main").endswith("V-01.b „Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück“ gewählt")
     # gewählt an einer Wahlstelle mit gewählter Option: die alte wird ersetzt (eigener Verlaufseintrag), die Frage bleibt geklärt
     s.vorbereiten()
     a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-03.b", "status": "gewaehlt", "grund": "Abendessen im Haus"}})
