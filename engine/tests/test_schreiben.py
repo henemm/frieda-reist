@@ -2857,8 +2857,8 @@ def test_kartenpunkte_abruf_haelt_die_sperre_nicht(repo, monkeypatch):
     """AC-9: Während der Vorab-Abruf dauert, bekommt ein anderer Schreibvorgang derselben Reise die Sperre (kein 429)."""
     wurzel, _, arbeit, _ = repo
     begonnen, ergebnis = threading.Event(), {}
-    osm_ersatz(monkeypatch, warten=1.5, beim_abruf=begonnen.set)
-    monkeypatch.setattr(sb, "ZEIT_SPERRE", 0.2)
+    osm_ersatz(monkeypatch, warten=4, beim_abruf=begonnen.set)
+    monkeypatch.setattr(sb, "ZEIT_SPERRE", 1.0)
 
     def punkte():
         ergebnis["punkte"] = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
