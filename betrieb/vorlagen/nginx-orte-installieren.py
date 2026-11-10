@@ -196,7 +196,10 @@ def sichern(daten, sicherung):
         if not stat.S_ISDIR(st.st_mode) or (os.geteuid() == 0 and st.st_uid != 0):
             raise Abgelehnt(f"backup folder {sicherung} is not a folder of root")
         os.fchmod(dfd, 0o700)
-        name = f"{NAME}.{time.strftime('%Y%m%dT%H%M%S')}.{time.time_ns() % 10**9:09d}"
+        # Sekunde und Nanosekunden aus einem Zeitpunkt: getrennt gelesen sortierte an der Sekundengrenze die neueste
+        # Sicherung vor die älteren und fiel beim Aufräumen weg.
+        jetzt = time.time_ns()
+        name = f"{NAME}.{time.strftime('%Y%m%dT%H%M%S', time.localtime(jetzt // 10**9))}.{jetzt % 10**9:09d}"
         fd = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600, dir_fd=dfd)
         try:
             geschrieben = 0

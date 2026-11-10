@@ -436,6 +436,21 @@ def test_ac9_es_bleiben_die_letzten_20_sicherungen(h):
     assert BASIS.replace("burst=40", "burst=62") in {p.read_text(encoding="utf-8") for p in sicherungen}
 
 
+def test_ac9_sicherungsname_aus_einem_zeitpunkt_auch_an_der_sekundengrenze(h, monkeypatch):
+    """Sekunde und Nanosekunden des Namens kommen aus demselben Zeitpunkt: Liest der Helfer sie getrennt und springt
+    dazwischen die Sekunde, sortiert die neueste Sicherung vor die älteren und wird beim Aufräumen gelöscht (scheiterte
+    unter Last auf dem Server, 10.11.2026)."""
+    import time as zeit
+    sekunde = int(zeit.time()) + 3600                   # weit weg vom echten Takt: nur der falsche Weg trifft ihn
+    takte = iter([sekunde * 10**9 + i * 50_000_000 for i in range(30)])   # 20 Takte je Sekunde, über mehrere Sekunden
+    monkeypatch.setattr(zeit, "time_ns", lambda: next(takte))
+    for i in range(23):
+        assert h["lauf"](BASIS.replace("burst=40", f"burst={41 + i}")) == 0
+    sicherungen = sorted(h["sicherung"].iterdir())
+    assert len(sicherungen) == 20
+    assert sicherungen[-1].read_text(encoding="utf-8") == BASIS.replace("burst=40", "burst=62")
+
+
 def test_ac9_temporaere_datei_im_snippets_ordner_ohne_endung_conf_inc(h, monkeypatch):
     echt = tempfile.mkstemp
     erzeugt = []
