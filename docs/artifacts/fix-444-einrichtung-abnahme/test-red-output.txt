@@ -1,0 +1,20 @@
+RED-Beleg Betriebsabschluss #444 (Ist-Zustand vor der Einrichtung), 2026-11-10
+Kein automatischer Test (Spec: keine Software-Änderung, Test Plan "Kein neuer automatischer Test").
+RED heißt hier: Die Abnahmebedingungen AC-1 bis AC-7 sind am Ist-Zustand nicht erfüllt.
+
+== AC-1: abdeckung.json vorhanden? ==
+Der Datenordner des Kartendienstes existiert nicht, kein Container "overpass-api" in `docker ps`.
+FAIL: keine abdeckung.json, der eigene Dienst ist nicht eingerichtet.
+
+== AC-6: Teil-Check in monitor.sh? ==
+$ grep -n -i "kartendienst\|abdeckung" ~/henemm-infra/scripts/monitor.sh
+(keine Treffer, Exit-Code 1)
+FAIL: kein Teil-Check für den Kartendienst.
+
+== AC-7: Testaufbau aufgeräumt? ==
+$ ls -d ~/overpass-test
+~/overpass-test
+FAIL: Testordner noch vorhanden (Container läuft nicht mehr, Datenbank und pbf liegen noch dort).
+
+== AC-2 bis AC-5 ==
+FAIL (folgt aus AC-1): ohne eingerichteten Dienst kann weder Kaltstart, Ruhezustand noch Rückfall am laufenden Dienst gemessen werden.
