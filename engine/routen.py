@@ -442,7 +442,10 @@ def stufe_schluessel(text):
             if t == w or t == texte.umschrift(w) or t == texte.datenwert(sprache, k).lower():
                 return k
     return None
-DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage", "einheit", "stufe", "auch", "rolle", "nach_buchung"}
+DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage", "einheit", "stufe", "auch", "rolle", "nach_buchung", "lang"}
+# lang: true (Product Owner 10.11.2026, #476): ein Text-Merkmal darf länger als KURZ_TEXT Zeichen sein (z. B. „Charakter“); sonst
+# ist ein Text-Merkmal kurz, Einzelheiten gehören in Hinweis oder Notiz
+KURZ_TEXT = 60
 # nach_buchung: true (Product Owner 31.10.2026): der Wert bleibt sichtbar, wenn das Ding gebucht ist (z. B. „Charakter“ eines
 # Hotels); alle übrigen Merkmale stehen dann zugeklappt „Aus der Planung“. Die Reise legt fest, welche.
 # Rolle eines Merkmals (Form eines Merkmals, docs/ontologie.md; Product Owner 29.10.2026): kosten = der Preis des Dings
@@ -1307,11 +1310,13 @@ class Routen:
                     self.fehl(texte.satz("pruefung.routen.79", wo=wo, k=k, w1=d['rolle']))
             if "nach_buchung" in d and not isinstance(d["nach_buchung"], bool):
                 self.fehl(texte.satz("pruefung.routen.nach_buchung", wo=wo, k=k))
+            if "lang" in d and not isinstance(d["lang"], bool):
+                self.fehl(texte.satz("pruefung.routen.lang", wo=wo, k=k))
             if k in self.katalog.get(art, {}) and not neu:
                 self.fehl(texte.satz("pruefung.routen.80", wo=wo, k=k, art=art))
             aus[k] = {"name": d["name"], "typ": typ, **{f: d[f] for f in ("werte", "veraenderlich", "auto", "hilfe",
                                                                           "frage", "einheit", "stufe", "auch", "rolle",
-                                                                          "nach_buchung") if d.get(f)}}
+                                                                          "nach_buchung", "lang") if d.get(f)}}
         return aus
 
     def art_der_wahl(self, w, vid):

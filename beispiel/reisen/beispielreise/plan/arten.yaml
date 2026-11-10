@@ -30,7 +30,7 @@ arten:
                     hilfe: "Saison und Betriebsferien auf der Website; im Zweifel anfragen (als Aufgabe)"}
       lage:        {name: Lage, typ: text, stufe: angeboten, hilfe: "Entfernung zum Weg oder zur Haltestelle; ruhig oder laut"}
       # nach_buchung: bleibt sichtbar, wenn das Hotel gebucht ist; alle anderen Merkmale stehen dann „Aus der Planung“ (Beispiel)
-      charakter:   {name: Charakter, typ: text, stufe: angeboten, nach_buchung: true, hilfe: "ein, zwei Sätze: was das Haus ausmacht"}
+      charakter:   {name: Charakter, typ: text, stufe: angeboten, nach_buchung: true, lang: true, hilfe: "ein, zwei Sätze: was das Haus ausmacht"}
   pension:
     grundform: aufenthalt
     name: Pension
@@ -44,7 +44,7 @@ arten:
       webseite:    {name: Webseite, typ: link, hilfe: "Offizielle Website des Hauses (nicht das Buchungsportal)"}
       geoeffnet:   {name: Geöffnet am Reisedatum, typ: auswahl, werte: [ja, nein, unklar], veraenderlich: true, stufe: pflicht,
                     hilfe: "Website oder Anruf; kleine Häuser haben Betriebsferien", frage: "Weißt du, ob das Haus an dem Tag offen hat?"}
-      einschaetzung: {name: Einschätzung, typ: text, rolle: hero, stufe: angeboten,
+      einschaetzung: {name: Einschätzung, typ: text, rolle: hero, stufe: angeboten, lang: true,
                     hilfe: "Was macht das Haus besonders, für wen passt es? Ein, zwei Sätze, mit Herkunft"}
     lesetext:     # Gliederung des Texts auf der Karte der Unterkunft (Beispielwert, #334); Preis, Frühstück usw. bleiben Merkmale
       haus:      {name: Das Haus, hilfe: "Wie das Haus ist und wer es führt; zwei, drei Sätze"}
@@ -57,7 +57,7 @@ arten:
       preis:       {name: Preis pro Nacht, typ: geld, veraenderlich: true, rolle: kosten}
       abendessen:  {name: Abendessen, typ: auswahl, werte: [im Haus, im Haus mit Vorbestellung, im Ort, keins, unklar]}
       ruhetag:     {name: Ruhetag, typ: text, veraenderlich: true, stufe: angeboten, hilfe: "Website; Küche oft an einem Wochentag zu"}
-      einschaetzung: {name: Einschätzung, typ: text, rolle: hero, stufe: angeboten,
+      einschaetzung: {name: Einschätzung, typ: text, rolle: hero, stufe: angeboten, lang: true,
                     hilfe: "Was macht das Haus besonders, für wen passt es? Ein, zwei Sätze, mit Herkunft"}
   herberge:
     grundform: aufenthalt

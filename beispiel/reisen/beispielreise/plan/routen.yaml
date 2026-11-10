@@ -26,7 +26,7 @@ orte:   # Orte gibt es wirklich; Herkunft je Ort (Kern jedes Dings, docs/ontolog
     an: O-07
     art: ort_am_weg
     hinweis: "Burgstadt über dem Polenztal"
-    quelle: "OpenStreetMap; Hinweis Wikipedia (W-05)"
+    quelle: "OpenStreetMap; Hinweis Wikipedia (Artikel zum Ort)"
     merkmale:
       koordinaten: {typ: koordinaten, wert: [50.979, 14.1125], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
   O-04:
@@ -47,7 +47,7 @@ orte:   # Orte gibt es wirklich; Herkunft je Ort (Kern jedes Dings, docs/ontolog
     name: Lichtenhainer Wasserfall
     an: O-07
     hinweis: "Endhaltestelle der Kirnitzschtalbahn"
-    quelle: "OpenStreetMap; Hinweis Wikipedia (W-06)"
+    quelle: "OpenStreetMap; Hinweis Wikipedia (Artikel zur Kirnitzschtalbahn)"
     merkmale:
       koordinaten: {typ: koordinaten, wert: [50.9335, 14.234], quelle: "eigene Schätzung, 26.10.2026", geprueft: 2026-10-26}
   # Ort im Ort (ADR-0008, Punkt 2): Die Orte am Weg liegen in der Region (an: O-07), nur für die Anzeige; die Region ist
@@ -56,10 +56,10 @@ orte:   # Orte gibt es wirklich; Herkunft je Ort (Kern jedes Dings, docs/ontolog
 
 # Etappen sind Strecken einer summierten Art (wandern): Titel und Kennzahlen hier, Lesetext im Dossier unter „## E-0N Name“.
 strecken:
-  E-01: {titel: "Stadt Wehlen – Bastei – Hohnstein", von: O-02, nach: O-03, art: wandern, kennzahlen: {gehzeit: "ca. 3:40 h", aufstieg: 485, abstieg: 285, laenge: "8,1 km"}, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
-  E-02: {titel: "Hohnstein – Brand – Altendorf", von: O-03, nach: O-04, art: wandern, kennzahlen: {gehzeit: "ca. 4:00 h", aufstieg: 400, abstieg: 390, laenge: "10,7 km"}, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
-  E-03: {titel: "Altendorf – Schrammsteine – Bad Schandau", von: O-04, nach: O-05, art: wandern, kennzahlen: {gehzeit: "ca. 2:30 h", aufstieg: 200, abstieg: 400, laenge: "7,4 km"}, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
-  E-04: {titel: "Altendorf – Schrammsteine – Lichtenhainer Wasserfall", von: O-04, nach: O-06, art: wandern, kennzahlen: {gehzeit: "ca. 2:15 h", aufstieg: 190, abstieg: 350, laenge: "6,6 km"}, quelle: "Etappen-Dossier (inhalt/etappen.md), Beispielwerte"}
+  E-01: {titel: "Stadt Wehlen – Bastei – Hohnstein", von: O-02, nach: O-03, art: wandern, kennzahlen: {gehzeit: "ca. 3:40 h", aufstieg: 485, abstieg: 285, laenge: "8,1 km"}, quelle: "Etappen-Dossier dieser Reise, Beispielwerte"}
+  E-02: {titel: "Hohnstein – Brand – Altendorf", von: O-03, nach: O-04, art: wandern, kennzahlen: {gehzeit: "ca. 4:00 h", aufstieg: 400, abstieg: 390, laenge: "10,7 km"}, quelle: "Etappen-Dossier dieser Reise, Beispielwerte"}
+  E-03: {titel: "Altendorf – Schrammsteine – Bad Schandau", von: O-04, nach: O-05, art: wandern, kennzahlen: {gehzeit: "ca. 2:30 h", aufstieg: 200, abstieg: 400, laenge: "7,4 km"}, quelle: "Etappen-Dossier dieser Reise, Beispielwerte"}
+  E-04: {titel: "Altendorf – Schrammsteine – Lichtenhainer Wasserfall", von: O-04, nach: O-06, art: wandern, kennzahlen: {gehzeit: "ca. 2:15 h", aufstieg: 190, abstieg: 350, laenge: "6,6 km"}, quelle: "Etappen-Dossier dieser Reise, Beispielwerte"}
   # ab/an (#135) erscheinen mit Uhrzeit im Kalender (#77); hier erfundene Beispielwerte
   E-20:
     titel: "S-Bahn Dresden → Stadt Wehlen, Fähre über die Elbe"
@@ -72,7 +72,7 @@ strecken:
       ankunft: {typ: zeitpunkt, rolle: ankunft, wert: "08:40", quelle: "Beispiel; Fahrplan nicht geprüft"}
   E-21: {titel: "S-Bahn Bad Schandau → Dresden", von: O-05, nach: O-01, art: bahn, hinweis: "Abfahrt am Bahnhof auf der anderen Elbseite, Fähre davor (erfunden, Beispielwert)", quelle: "Beispiel; Fahrplan nicht geprüft"}
   E-23: {titel: "Bus Bad Schandau → Dresden", von: O-05, nach: O-01, art: bus, quelle: "erfunden (Beispiel)"}
-  E-22: {titel: "Kirnitzschtalbahn Lichtenhainer Wasserfall → Bad Schandau", von: O-06, nach: O-05, art: bahn, siehe: W-06, quelle: "Strecke laut Wikipedia (W-06); Fahrplan nicht geprüft"}
+  E-22: {titel: "Kirnitzschtalbahn Lichtenhainer Wasserfall → Bad Schandau", von: O-06, nach: O-05, art: bahn, siehe: W-06, quelle: "Strecke laut Wikipedia (Artikel zur Kirnitzschtalbahn); Fahrplan nicht geprüft"}
 
 unterkuenfte:
   # Alle Unterkünfte sind erfunden. Preise und Angaben sind Beispielwerte, nicht nachschlagen.
@@ -324,10 +324,10 @@ aufenthalte:
     name: "Kurpark (Kirnitzschtalbahn)"
     art: notfall
     an: E-03
-    quelle: "Endhaltestelle laut Wikipedia (W-06); Lage geschätzt, 26.10.2026"
+    quelle: "Endhaltestelle laut Wikipedia (Artikel zur Kirnitzschtalbahn); Lage geschätzt, 26.10.2026"
     merkmale:
-      koordinaten: {typ: koordinaten, wert: [50.9185, 14.1585], quelle: "Endhaltestelle laut Wikipedia (W-06); Lage geschätzt, 26.10.2026", geprueft: 2026-10-26}
-      sorte: {wert: "bus", quelle: "Endhaltestelle laut Wikipedia (W-06); Lage geschätzt, 26.10.2026"}
+      koordinaten: {typ: koordinaten, wert: [50.9185, 14.1585], quelle: "Endhaltestelle laut Wikipedia (Artikel zur Kirnitzschtalbahn); Lage geschätzt, 26.10.2026", geprueft: 2026-10-26}
+      sorte: {wert: "bus", quelle: "Endhaltestelle laut Wikipedia (Artikel zur Kirnitzschtalbahn); Lage geschätzt, 26.10.2026"}
   A-24:
     name: "Altendorf"
     art: wegpunkt

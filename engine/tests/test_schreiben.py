@@ -1216,6 +1216,36 @@ def test_merkmale_der_buchung_definieren(repo):
     assert arten["pension"]["buchung_merkmale"]["zimmer"]["werte"] == ["Einzel", "Doppel"] and arten["pension"]["beschreibung"] == "kleines Haus"
 
 
+def test_saubere_daten(repo):
+    """#476 (Product Owner 10.11.2026): Kurzfelder kurz, eine Angabe genau einmal, Herkunft nur in quelle, keine Dateinamen,
+    Kennungen oder Uhrzeiten im Text; lange Text-Merkmale nur, wenn die Reise sie als lang markiert."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    neu = {"fuer": ["U-01"], "quelle": "Mail (Test)"}
+    for args, grund in (({"preis": "x" * 150}, "höchstens 60 Zeichen.*Einzelheiten in die Notiz"),
+                        ({"ab": "2027-05-12", "ab_was": "Online-Check-in", "frist": "2027-05-12", "frist_was": "Online-Check-in"}, "sagen dasselbe"),
+                        ({"ab": "2027-05-12", "ab_was": "Online-Check-in ab 17:55"}, "Uhrzeit gehört ins Feld"),
+                        ({"bei": "Hotel, Buchung F-04"}, "keine internen Kennungen"),
+                        ({"preis": "120 € laut Booking.com"}, "Herkunft gehört in „quelle“"),
+                        ({"quelle": "Bestaetigung.pdf"}, "keine Dateinamen")):
+        with pytest.raises(sb.Ablehnung, match=grund):
+            s.schreiben("beispielreise", "buchung_anlegen", {**IDA, "args": {**neu, **args}})
+    # ab und frist am selben Tag mit verschiedenem Text gehen; Adressen von Webseiten in der Herkunft auch
+    s.schreiben("beispielreise", "buchung_anlegen", {**IDA, "args": {**neu, "ab": "2027-05-12", "ab_was": "Sitzplatz wählen",
+        "frist": "2027-05-12", "frist_was": "Restzahlung", "quelle": "https://example.org/buchung.html (Test)"}})
+    # Text-Merkmale: kurz, außer als lang markiert (Beispielreise: Charakter ist lang, Lage nicht)
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="höchstens 60 Zeichen"):
+        s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "U-01", "merkmale": {"lage": "y" * 80}, "quelle": "Test"}})
+    with pytest.raises(sb.Ablehnung, match="Herkunft gehört in „quelle“"):
+        s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "U-01", "merkmale": {"lage": "zentral laut Thomas Cook"}, "quelle": "Test"}})
+    with pytest.raises(sb.Ablehnung, match="keine internen Bezeichnungen"):
+        s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "U-01", "hinweis": "nur in Plan B"}})
+    s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "U-01", "merkmale": {"charakter": "z" * 80}, "quelle": "Test"}})
+    import neu
+    assert neu.aufraeumen(WURZEL / "beispiel/reisen/beispielreise") == [] and neu.aufraeumen(WURZEL / "beispiel/reisen/stadtwochenende") == []
+
+
 def test_buchung_mit_zeitraum(repo):
     """#463 (Product Owner 9.11.2026): Anreise und Abreise je Buchung, dazu Check-in ab, Check-out bis und was vor Ort zu zahlen
     ist; Abreise vor Anreise lehnt die Prüfung ab, zwei Buchungen mit getrennten Zeiträumen für dieselbe Unterkunft sind keine Warnung."""

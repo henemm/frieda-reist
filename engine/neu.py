@@ -311,6 +311,64 @@ def pruefen(reise_dir):
     return True, []
 
 
+def aufraeumen(reise_dir):
+    """Bestand gegen die Regeln für saubere Daten (#476) prüfen, ohne etwas zu ändern -> Liste der Stellen mit Grund. Die
+    Regeln gelten beim Schreiben; hier sieht man, was in der Reise noch davor geschrieben wurde (im AI-Client aufräumen)."""
+    import schreiben as sb
+    from routen import KURZ_TEXT
+    reise_dir = Path(reise_dir)
+    r = yaml.safe_load((reise_dir / "plan" / "routen.yaml").read_text(encoding="utf-8")) or {}
+    af = reise_dir / "plan" / "arten.yaml"
+    arten = ((yaml.safe_load(af.read_text(encoding="utf-8")) or {}).get("arten") or {}) if af.exists() else {}
+    aus = []
+
+    def pruef(wo, wert, feld):
+        try:
+            sb.sauber(wert, feld)
+        except sb.Ablehnung as e:
+            aus.append(f"{wo}: {e}")
+    for bid, b in (r.get("buchungen") or {}).items():
+        if not isinstance(b, dict):
+            continue
+        for k, grenze in sb.BUCHUNG_TEXTE.items():
+            v = b.get(k)
+            if isinstance(v, str):
+                if len(v) > grenze:
+                    aus.append(f"{bid} {k}: " + str(texte.satz("schreiben.text_wert.kurz", feld=k, laenge=grenze)))
+                pruef(bid, v, k)
+        if b.get("quelle"):
+            pruef(bid, b["quelle"], "quelle")
+        try:
+            sb.ab_frist_pruefen(b)
+        except sb.Ablehnung as e:
+            aus.append(f"{bid}: {e}")
+    for gruppe in ("unterkuenfte", "aufenthalte", "strecken", "orte"):
+        for did, d in (r.get(gruppe) or {}).items():
+            if not isinstance(d, dict):
+                continue
+            for feld in ("name", "titel", "hinweis"):
+                if isinstance(d.get(feld), str):
+                    pruef(did, d[feld], feld)
+            if isinstance(d.get("quelle"), str):
+                pruef(did, d["quelle"], "quelle")
+            art = d.get("art") if isinstance(d.get("art"), str) else None
+            defs = ((arten.get(art) or {}).get("merkmale") or {}) if art else {}
+            for k, v in (d.get("merkmale") or {}).items():
+                defn = defs.get(k) if isinstance(defs.get(k), dict) else {}
+                if (defn.get("typ") or "text") != "text" or (isinstance(v, dict) and v.get("typ")):
+                    continue
+                for e in v if isinstance(v, list) else [v]:
+                    e = e if isinstance(e, dict) else {"wert": e}
+                    w = e.get("wert")
+                    if isinstance(w, str):
+                        if len(w) > KURZ_TEXT and not defn.get("lang"):
+                            aus.append(f"{did} {k}: " + str(texte.satz("schreiben.wert_eintraege.lang", k=k, laenge=KURZ_TEXT)))
+                        pruef(f"{did} {k}", w, "wert")
+                    if isinstance(e.get("quelle"), str):
+                        pruef(f"{did} {k}", e["quelle"], "quelle")
+    return aus
+
+
 # ---------- Arten aus Bestandsdaten ableiten (Paket O-2, docs/ontologie.md) ----------
 FARBEN_REIHE = ("blau", "gruen", "braun", "tuerkis", "lila", "oliv", "rosa", "schiefer", "grau")
 
@@ -1346,6 +1404,8 @@ def main(argv):
     r.add_argument("--herkunft", help="default: first trip of the instance by the operator")
     p = sub.add_parser("pruefen", help="check before the build")
     p.add_argument("reise", type=Path)
+    au = sub.add_parser("aufraeumen", help="list values against the rules for clean data (#476), changes nothing")
+    au.add_argument("reise", type=Path)
     g = sub.add_parser("arten-ableiten", help="derive plan/arten.yaml from the existing data of the trip (package O-2)")
     g.add_argument("reise", type=Path)
     g.add_argument("--name", action="append", default=[], help="art=display name, e.g. ferry=Ferry")
@@ -1379,6 +1439,10 @@ def main(argv):
             m = nachziehen(x.reise, dict(t.split("=", 1) for t in x.strecke))
             print("\n".join(m) if m else "Nothing to bring up to date.")
             return 1 if any(t.startswith("OPEN") for t in m) else 0
+        if x.befehl == "aufraeumen":
+            m = aufraeumen(x.reise)
+            print("\n".join(m) if m else "Nothing to tidy up.")
+            return 1 if m else 0
         if x.befehl == "arten-ableiten":
             import yaml
             defs = yaml.safe_load(x.definitionen.read_text(encoding="utf-8")) if x.definitionen else {}

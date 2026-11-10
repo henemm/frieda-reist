@@ -2516,6 +2516,7 @@ MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "@konnektor.w
                           "werte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.merkmal_definieren.werte"},
                           "veraenderlich": {"type": "boolean", "description": "@konnektor.werkzeug.merkmal_definieren.veraenderlich"},
                           "nach_buchung": {"type": "boolean", "description": "@konnektor.werkzeug.merkmal_definieren.nach_buchung"},
+                          "lang": {"type": "boolean", "description": "@konnektor.werkzeug.merkmal_definieren.lang"},
                           "stufe": {"type": "string", "enum": list(STUFEN), "description": "@konnektor.werkzeug.merkmal_definieren.stufe"},
                           "einheit": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.einheit"},
                           "hilfe": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.hilfe"},

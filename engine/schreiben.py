@@ -231,8 +231,47 @@ def text_wert(args, feld, pflicht=False, laenge=MAX_TEXT, absaetze=False):
     else:
         v = " ".join(v.split())
     if len(v) > laenge:
-        raise Ablehnung("schreiben.text_wert.3", feld=feld, laenge=laenge)
+        raise Ablehnung("schreiben.text_wert.kurz" if laenge <= KURZ_FELD else "schreiben.text_wert.3", feld=feld, laenge=laenge)
+    if not absaetze:
+        sauber(v, feld)
     return v
+
+
+# Saubere Daten (Product Owner 10.11.2026, #476): Was auf der Seite steht, trägt keine Herkunft (die gehört in quelle), keine
+# Dateinamen, keine internen Kennungen (F-04, V-01.a, Auftrags- und Rückmelde-Nummern) und keine Bezeichnungen wie „Plan A“;
+# Uhrzeiten stehen in Zeitfeldern. Geprüft wird beim Schreiben; Lesetexte und Wissen (Absätze) bleiben frei.
+KURZ_FELD = 60
+SICHTBARE_FELDER = {"titel", "name", "hinweis", "text", "preis", "bezahlt", "ab_was", "frist_was", "vor_ort_zahlen", "bei", "storno",
+                    "anreise_ab", "abreise_bis", "neuer_titel", "untertitel", "wert"}
+_URL = re.compile(r"https?://\S+|\b[\w.-]+\.(?:com|de|org|net|es|eu|info|io)(?:/\S*)?", re.I)
+SAUBER_MUSTER = (   # (Schlüssel, Muster, auch in quelle)
+    ("herkunft", re.compile(r"\b(?:OSM|OpenStreetMap)\s+(?:node|way|relation)\b|\b(?:node|way|relation)/\d+"), False),
+    ("datei", re.compile(r"\b[\w-]+\.(?:pdf|txt|jpe?g|png|heic|docx?|xlsx?|gpx|html?|md|ya?ml|json|csv)\b", re.I), True),
+    ("kennung", re.compile(r"\b(?:AG|[TEOUAVFWBPGR])-\d+(?:\.[a-z]+)?\b"), True),
+    ("plan", re.compile(r"\bPlan [A-Z]\b"), True),
+)
+ZEIT_IM_TEXT = re.compile(r"\b\d{1,2}:\d{2}\b|\b\d{1,2}\s*Uhr\b")
+
+
+def sauber(v, feld):
+    """Prüft einen sichtbaren Text oder eine Herkunft (#476); lehnt mit Grund ab. Adressen von Webseiten bleiben außen vor."""
+    if feld not in SICHTBARE_FELDER and feld != "quelle":
+        return
+    if feld == "wert" and SAUBER_MUSTER[2][1].fullmatch(str(v).strip()):
+        return   # ein Wert, der nur eine Kennung ist, ist ein Verweis auf ein Ding (z. B. die Unterkunft eines Wegpunkts)
+    t = _URL.sub(" ", str(v))
+    if feld != "quelle":   # Herkunft in Worten („laut …“) in jeder Sprache des Katalogs
+        for k in texte.sprachen():
+            muster = (getattr(texte.sprache(k), "TEXTE", {}) or {}).get("schreiben.sauber.muster_herkunft")
+            if muster and (m := re.search(muster, str(v))):
+                raise Ablehnung("schreiben.sauber.herkunft", feld=feld, fund=m.group(0))
+    for schluessel, muster, in_quelle in SAUBER_MUSTER:
+        if feld == "quelle" and not in_quelle:
+            continue
+        if (m := muster.search(t)):
+            raise Ablehnung("schreiben.sauber." + schluessel, feld=feld, fund=m.group(0))
+    if feld in ("ab_was", "frist_was") and (m := ZEIT_IM_TEXT.search(t)):
+        raise Ablehnung("schreiben.sauber.zeit", feld=feld, fund=m.group(0))
 
 
 def bool_wert(args, feld):
@@ -594,7 +633,7 @@ def buchung_merkmal_definieren(reise_dir, wer, args, arten, art):
     """Ein Merkmal der Buchungen einer Art anlegen oder ändern (#166): Name, Typ (Auswahl mit Werten), Einheit, Hilfe, Frage.
     Keine Stufe, Rolle oder Prüfdatum: der Wert ist eine gebuchte Tatsache mit der Herkunft der Buchung. -> (Titel, Text)."""
     from routen import TYPEN, art_schluessel
-    for f in ("stufe", "veraenderlich", "rolle", "auch", "nach_buchung"):
+    for f in ("stufe", "veraenderlich", "rolle", "auch", "nach_buchung", "lang"):
         if args.get(f) not in (None, "", [], False):
             raise Ablehnung("schreiben.buchung_merkmal.nicht", f=f)
     a = arten[art]
@@ -697,6 +736,7 @@ def merkmal_definieren(reise_dir, wer, args):
     werte = liste_wert(args, "werte")
     veraenderlich = bool_wert(args, "veraenderlich")
     nach_buchung = bool_wert(args, "nach_buchung")   # bleibt sichtbar, wenn das Ding gebucht ist (31.10.2026)
+    lang = bool_wert(args, "lang")   # Text darf länger als KURZ_TEXT sein (#476)
     einheit, hilfe, frage, grund = (text_wert(args, f) for f in ("einheit", "hilfe", "frage", "grund"))
     rolle = text_wert(args, "rolle", laenge=20)
     if rolle is not None and rolle not in ("", "keine", *ROLLEN):
@@ -726,6 +766,8 @@ def merkmal_definieren(reise_dir, wer, args):
             d["veraenderlich"] = True
         if nach_buchung:
             d["nach_buchung"] = True
+        if lang:
+            d["lang"] = True
         if einheit:
             d["einheit"] = einheit
         if stufe and stufe != "empfohlen":
@@ -783,6 +825,12 @@ def merkmal_definieren(reise_dir, wer, args):
                 d["nach_buchung"] = True
             else:
                 d.pop("nach_buchung", None)
+        if lang is not None and bool(d.get("lang")) != lang:
+            geaendert.append(S("schreiben.antwort.merkmal.lang_an" if lang else "schreiben.antwort.merkmal.lang_aus"))
+            if lang:
+                d["lang"] = True
+            else:
+                d.pop("lang", None)
         if stufe is not None and stufe != (d.get("stufe") if isinstance(d.get("stufe"), str) else "empfohlen"):
             geaendert.append(S("schreiben.antwort.merkmal.stufe_aus") if stufe == "aus" else S("schreiben.antwort.merkmal.stufe_kopf_geaendert") + stufe_satz(stufe))
             if stufe == "empfohlen":
@@ -799,7 +847,7 @@ def merkmal_definieren(reise_dir, wer, args):
         if not geaendert:
             raise Ablehnung("schreiben.merkmal_definieren.12", w1=d.get('name', key), key=key, w3=a.get('name', art))
         merkmale[key] = {k: d[k] for k in ("name", "typ", "werte", "auto", "veraenderlich", "einheit", "stufe", "rolle", "nach_buchung",
-                                           "hilfe", "frage", "auch") if k in d}
+                                           "lang", "hilfe", "frage", "auch") if k in d}
         titel = S("schreiben.titel.merkmal_geaendert", w1=d['name'], w2=key, w3=a.get('name', art))
         text = S("schreiben.antwort.merkmal.geaendert", w1=d["name"], w2=key, w3=a.get("name", art)) + verbinden(geaendert) + "."
     a["merkmale"] = merkmale
@@ -952,6 +1000,14 @@ def wert_eintraege(args, k, definition, heute, herkunft=True):
             from routen import ist_link
             if not ist_link(wert):
                 raise Ablehnung("schreiben.wert_eintraege.link", k=k, wert=wert)
+        elif isinstance(wert, str) and definition.get("typ") in (None, "text"):
+            # Saubere Daten (#476): Text-Merkmale kurz, außer die Reise markiert sie als lang; keine Herkunft und keine Kennungen im Wert
+            from routen import KURZ_TEXT
+            if len(wert) > KURZ_TEXT and not definition.get("lang"):
+                raise Ablehnung("schreiben.wert_eintraege.lang", k=k, laenge=KURZ_TEXT)
+            sauber(wert, "wert")
+        if x.get("quelle"):
+            sauber(x["quelle"], "quelle")
         if definition.get("typ") == "zahl":
             try:
                 wert = float(str(wert).replace(",", "."))
@@ -3185,8 +3241,9 @@ def buchung_fuer(args, roh, route):
     return v
 
 
-BUCHUNG_TEXTE = {"nummer": 80, "bei": 120, "preis": 120, "bezahlt": 200, "frist_was": 120, "storno": 400, "notiz": MAX_TEXT, "ab_was": 120,
-                 "anreise_ab": 40, "abreise_bis": 40, "vor_ort_zahlen": 120}
+# Kurzfelder (Product Owner 10.11.2026, #476): Preis, Zahlung, ab/was, frist/was, vor Ort höchstens 60 Zeichen, Einzelheiten in die Notiz
+BUCHUNG_TEXTE = {"nummer": 80, "bei": 120, "preis": 60, "bezahlt": 60, "frist_was": 60, "storno": 400, "notiz": MAX_TEXT, "ab_was": 60,
+                 "anreise_ab": 40, "abreise_bis": 40, "vor_ort_zahlen": 60}
 # Felder einer Buchung in Worten für Antwort und Verlauf (Menschen lesen Wörter, keine Schlüssel; Product Owner 29.10.2026)
 BUCHUNG_WORTE = texte.gruppe("de", "schreiben.buchung")
 
@@ -3351,6 +3408,18 @@ def je_ding_text(je):
                      for x, e in je.items())
 
 
+def ab_frist_pruefen(b):
+    """Eine Angabe genau einmal (#476): „ab“ und „frist“ am selben Tag mit gleichem oder enthaltenem Text meinen dasselbe; für
+    die Buchung und je Ding."""
+    norm = lambda t: re.sub(r"\W+", "", str(t or "").casefold())
+    for t in [b, *((b.get("je_ding") or {}).values())]:
+        ab, fr = t.get("ab"), t.get("frist")
+        if ab and fr and str(ab)[:10] == str(fr)[:10]:
+            a, f = norm(t.get("ab_was")), norm(t.get("frist_was"))
+            if a == f or (a and f and (a in f or f in a)):
+                raise Ablehnung("schreiben.ab_frist_doppelt", datum=texte.Datum(datetime.date.fromisoformat(str(ab)[:10])))
+
+
 def buchung_anlegen(reise_dir, wer, args, heute=None):
     """Eine Buchung anlegen (neue B-ID): zu welchen Dingen, Status, Nummer, Anbieter, Preis, Zahlstand, Frist, Stornoregel, Merkmale
     der Buchung, Herkunft. -> (Titel, Text)."""
@@ -3391,6 +3460,7 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
         d["notiz"] = notiz
     grund = text_wert(args, "grund")
     bid = neue_id(reise_dir, "B")
+    ab_frist_pruefen({**d, "je_ding": je or {}})
     knoten = block_map(d)
     if je:   # Angaben je Ding (#473), vor wer
         knoten.insert(list(knoten).index("wer"), "je_ding", je_ding_map(je))
@@ -3549,6 +3619,7 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
                 knoten.insert(list(knoten).index("wer") if "wer" in knoten else len(knoten), "je_ding", je_ding_map(je))
     if not geaendert:
         raise Ablehnung("schreiben.buchung_aendern.6", bid=bid, w2=', '.join(BUCHUNG_TEXTE))
+    ab_frist_pruefen(knoten)
     from ruamel.yaml.comments import CommentedSeq
     verlauf = knoten.get("verlauf")
     if verlauf is None:
