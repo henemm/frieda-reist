@@ -416,6 +416,8 @@ details.einzelheiten[open]>summary{margin-bottom:4px}
 details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
 .pico button.haken{width:30px;height:30px;flex:none;padding:0;margin:0;border-radius:var(--r-klein);border:2px solid var(--acc);background:transparent;color:var(--acc);font-size:var(--t-text);line-height:1;box-shadow:none}
 .pico button.haken.an{background:var(--acc);color:var(--bg)}
+.pico button.haken.an.neu{animation:haken-hupf .25s ease-out}   /* eben abgehakt (Packliste, #503) */
+@keyframes haken-hupf{45%{transform:scale(1.18)}}
 
 /* ---------- Packliste (ADR-0010, #370): Summe, Mitnehmen und Zeile zum Packen ---------- */
 .pack-summe{display:flex;flex-wrap:wrap;gap:2px 16px;margin:2px 0 8px;font-size:var(--t-klein);color:var(--mut)}
@@ -5441,7 +5443,31 @@ async function psSenden() {
   if (gesendet) await psLaden();
   if (abgelehnt) alert(T("seite.fehler.nicht_gespeichert") + abgelehnt);
 }
-// Einen Haken setzen oder zurücknehmen: sofort sichtbar, dann senden (ohne Netz später)
+// Neu sortieren erst nach einer Pause, damit man den Haken sieht (#503); dann gleiten die Zeilen von der alten an die neue Stelle (FLIP)
+const PL_PAUSE = 1200;
+let PL_UHR = null;
+function plNeuOrdnen(fokusId) {
+  clearTimeout(PL_UHR); PL_UHR = null;
+  if (reiter !== "packliste") return;   // inzwischen woanders: die Packliste zeichnet sich beim nächsten Besuch neu
+  const vorher = new Map([...document.querySelectorAll(".pack-gruppe .pack-zeile")].map(z => [z.id, z.getBoundingClientRect().top]));
+  route(true);
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) for (const z of document.querySelectorAll(".pack-gruppe .pack-zeile")) {
+    const dy = vorher.has(z.id) ? vorher.get(z.id) - z.getBoundingClientRect().top : 0;
+    if (Math.abs(dy) > 1 && z.animate) z.animate([{transform: `translateY(${dy}px)`}, {transform: "none"}], {duration: 300, easing: "cubic-bezier(.2,.7,.3,1)"});
+  }
+  const h = fokusId && document.querySelector(`[data-pack="${fokusId}"]`);
+  if (h) h.focus({preventScroll: true});
+}
+// Den Haken an Ort und Stelle umschalten, ohne die Liste neu zu zeichnen
+function plHakenZeigen(gid, an) {
+  const h = document.querySelector(`[data-pack="${gid}"]`), g = PL_JE.get(gid);
+  if (!h || !g) return;
+  h.classList.toggle("an", an); h.classList.toggle("neu", an); h.textContent = an ? "✓" : "";
+  h.setAttribute("aria-checked", String(an));
+  h.setAttribute("aria-label", T(an ? "seite.packliste.haken_zurueck" : "seite.packliste.haken_packen", {titel: g.titel}));
+  h.closest(".pack-zeile").classList.toggle("gepackt", an);
+}
+// Einen Haken setzen oder zurücknehmen: sofort sichtbar, nach der Pause einsortiert, gesendet sofort (ohne Netz später)
 async function plPacken(gid) {
   const g = PL_JE.get(gid);
   if (!g || !plAktiv(g) || !KANN_PACKEN) return;
@@ -5451,11 +5477,11 @@ async function plPacken(gid) {
   const neu = !plGepackt(g, g.wer || name);
   PS_AUSGANG = [...PS_AUSGANG.filter(a => !(a.gid === gid && gleicherName(a.name, name))), {gid, name, gepackt: neu}];
   merke("packstand-ausgang", PS_AUSGANG);
-  const fokus = () => { const h = document.querySelector(`[data-pack="${gid}"]`); if (h) h.focus({preventScroll: true}); };
+  plHakenZeigen(gid, neu);
+  clearTimeout(PL_UHR); PL_UHR = setTimeout(() => plNeuOrdnen(gid), PL_PAUSE);   // mehrere schnelle Haken: ein Zug
   PS_SENDET++;
-  route(true); fokus();
   try { await psSenden(); } finally { PS_SENDET--; }
-  route(true); fokus();
+  if (!PL_UHR) plNeuOrdnen(gid);   // Antwort kam nach der Pause: Stand des Dienstes zeigen
 }
 document.addEventListener("click", e => {
   const h = e.target.closest("[data-pack]");

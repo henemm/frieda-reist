@@ -64,9 +64,12 @@ const vorher = await texte(p, ".pack-gruppe:first-of-type .pack-titel");
 const gespeichert = p.waitForResponse(r => r.url().includes("api/packstand") && r.request().method() === "PATCH");
 await haken(p, "Regenjacke").click();
 await warte(p, () => document.querySelector(".pack-zeile.gepackt"));
+// Der Haken ist sofort zu sehen, die Zeile bleibt aber erst stehen und rutscht nach der Pause (#503)
+const sofort = await texte(p, ".pack-gruppe:first-of-type .pack-titel");
 await gespeichert;
-await p.waitForTimeout(300);
-aus.haken = {gepackt: await texte(p, ".pack-zeile.gepackt .pack-titel"), checked: await haken(p, "Regenjacke").getAttribute("aria-checked"),
+await warte(p, () => [...document.querySelectorAll(".pack-gruppe:first-of-type .pack-titel")].pop()?.textContent.startsWith("Regenjacke"));
+await p.waitForTimeout(400);
+aus.haken = {sofort, gepackt: await texte(p, ".pack-zeile.gepackt .pack-titel"), checked: await haken(p, "Regenjacke").getAttribute("aria-checked"),
   vorher, nachher: await texte(p, ".pack-gruppe:first-of-type .pack-titel"), zuckt: await p.evaluate(() => window.__zuckt),
   fokus: await p.evaluate(() => document.activeElement?.dataset?.pack || "")};
 await p.reload();

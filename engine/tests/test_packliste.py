@@ -609,8 +609,9 @@ def test_packliste_im_browser(tmp_path, monkeypatch, browser):
     assert e["packen"]["gruppen"][0].startswith("Kleidung") and e["packen"]["haekchenFuerKarl"] == 7 and e["packen"]["ohneHakenIda"] == 0
     h = e["haken"]
     assert h["gepackt"] == ["Regenjacke"] and h["checked"] == "true" and e["nachNeuladen"] == ["Regenjacke"]
-    # Gepacktes rutscht in seiner Gruppe nach unten, die Liste zuckt nicht, der Fokus bleibt am Haken (#501)
+    # Gepacktes rutscht nach einer Pause in seiner Gruppe nach unten, die Liste zuckt nicht, der Fokus bleibt am Haken (#501, #503)
     assert h["vorher"][0].startswith("Regenjacke") and h["nachher"][-1].startswith("Regenjacke")
+    assert h["sofort"] == h["vorher"]                                     # erst nach der Pause einsortiert (#503)
     assert [t.split("G-")[0] for t in h["nachher"][:2]] == [t.split("G-")[0] for t in h["vorher"][1:3]]
     assert h["zuckt"] == 0 and h["fokus"] == "G-01"
     assert e["fortschritt"] == ["Karl: 1 von 7 gepackt"]
