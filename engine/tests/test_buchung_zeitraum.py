@@ -163,3 +163,11 @@ def test_je_ding_im_schreibweg_und_waechter(tmp_path):
                                                            "E-29": {"ab": "2027-03-04T10:30", "ab_was": "Online-Check-in"}}}
     assert routen.buchung_termine(b) == [("E-28", {"ab": "2027-02-22T17:55", "ab_was": "Online-Check-in"}),
                                          ("E-29", {"ab": "2027-03-04T10:30", "ab_was": "Online-Check-in"})]
+
+
+def test_konnektor_zeigt_je_ding(tmp_path):
+    """#473: zeige B-… nennt die Angaben je Ding (Stadtwochenende, Beispielwerte)."""
+    import konnektor
+    d = bauen.bauen(WURZEL / "beispiel/reisen/stadtwochenende", tmp_path / "web")
+    t = konnektor.Handbuch(d).buchung_text({**d["route"]["buchungen"]["B-01"], "id": "B-01"})
+    assert "E-01" in t and "11.3.2027, 09:10: Komfort-Check-in" in t and "13.3.2027, 17:40" in t, t

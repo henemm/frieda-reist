@@ -593,9 +593,12 @@ class Handbuch:
         if b.get("vor_ort_zahlen"):
             z.append(tk("konnektor.ausgabe.buchung_text.vor_ort_zahlen", w1=b["vor_ort_zahlen"]))
         for x, e in (b.get("je_ding") or {}).items():   # je Ding (#473)
-            z.append(f"{x} {self.titel_von(x)}: " + "; ".join(
-                [tk("konnektor.ausgabe.buchung_text.ab", w1=texte.datum_uhr(e["ab"], texte.aufruf_sprache())) + (f": {e['ab_was']}" if e.get("ab_was") else "")] * bool(e.get("ab"))
-                + [tk("konnektor.ausgabe.buchung_text.9", w1=texte.datum_uhr(e["frist"], texte.aufruf_sprache())) + (f": {e['frist_was']}" if e.get("frist_was") else "")] * bool(e.get("frist"))))
+            teile = []
+            if e.get("ab"):
+                teile.append(tk("konnektor.ausgabe.buchung_text.ab", w1=texte.datum_uhr(e["ab"], texte.aufruf_sprache())) + (f": {e['ab_was']}" if e.get("ab_was") else ""))
+            if e.get("frist"):
+                teile.append(tk("konnektor.ausgabe.buchung_text.9", w1=texte.datum_uhr(e["frist"], texte.aufruf_sprache())) + (f": {e['frist_was']}" if e.get("frist_was") else ""))
+            z.append(f"{x} {self.titel_von(x)}: " + "; ".join(str(t) for t in teile))
         if b.get("ab"):
             z.append(tk("konnektor.ausgabe.buchung_text.ab", w1=texte.datum_uhr(b['ab'], texte.aufruf_sprache())) + (f": {b['ab_was']}" if b.get("ab_was") else ""))
         if b.get("frist"):
