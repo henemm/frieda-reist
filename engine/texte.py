@@ -203,6 +203,12 @@ def datum(d, kuerzel):
     return _datum(d).strftime((sprache(kuerzel) or sprache(VORGABE)).DATUM)
 
 
+def datum_uhr(d, kuerzel):
+    """Datum mit Jahr und, bei einem Zeitpunkt JJJJ-MM-TTTHH:MM, der Uhrzeit (#472): Deutsch 22.2.2027, 17:55."""
+    s = str(d)
+    return datum(d, kuerzel) + (", " + s[11:16] if len(s) >= 16 and s[10] == "T" else "")
+
+
 def datum_kurz(d, kuerzel):
     """Datum ohne Jahr (Deutsch 13.5., Englisch 13/5)."""
     return _datum(d).strftime((sprache(kuerzel) or sprache(VORGABE)).DATUM_KURZ)

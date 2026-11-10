@@ -3116,6 +3116,24 @@ def reise_anlegen(reisen_dir, wer, args, heute=None):
 
 # ---------- Buchung (B-…, #76, Product Owner 29.10.2026): eigenes Ding zu Unterkunft, Aufenthalt oder Strecke ----------
 
+def zeitpunkt_wert(args, feld):
+    """frist und ab einer Buchung (#472): Datum JJJJ-MM-TT oder Zeitpunkt JJJJ-MM-TTTHH:MM (auch mit Leerzeichen statt T)
+    -> date, Text „JJJJ-MM-TTTHH:MM“, None (fehlt) oder "" (leer: entfernen)."""
+    v = args.get(feld)
+    if isinstance(v, str) and (m := re.fullmatch(r"\s*(\d{4}-\d{2}-\d{2})[T ](\d{1,2}):(\d{2})\s*", v)):
+        try:
+            datetime.date.fromisoformat(m.group(1))
+            if int(m.group(2)) < 24 and int(m.group(3)) < 60:
+                return f"{m.group(1)}T{int(m.group(2)):02d}:{m.group(3)}"
+        except ValueError:
+            pass
+        raise Ablehnung("schreiben.zeitpunkt_wert.1", feld=feld)
+    try:
+        return datum_wert(args, feld)
+    except Ablehnung:
+        raise Ablehnung("schreiben.zeitpunkt_wert.1", feld=feld)
+
+
 def datum_wert(args, feld):
     """Datum JJJJ-MM-TT aus der Anfrage -> date, None (fehlt) oder "" (leer: entfernen)."""
     v = args.get(feld)
@@ -3292,7 +3310,7 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
         if (v := text_wert(args, k, laenge=laenge)):
             d[k] = v
     for k in ("frist", "storno_bis", "gebucht_am", "ab", "anreise", "abreise"):
-        v = datum_wert(args, k)
+        v = zeitpunkt_wert(args, k) if k in ("frist", "ab") else datum_wert(args, k)
         if v:
             d[k] = v
     d.setdefault("gebucht_am", heute)
@@ -3396,7 +3414,7 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
             raise Ablehnung("schreiben.buchung_aendern.5")
         setze("quelle", q, "Herkunft")
     for k in ("frist", "storno_bis", "gebucht_am", "ab", "anreise", "abreise"):
-        v = datum_wert(args, k)
+        v = zeitpunkt_wert(args, k) if k in ("frist", "ab") else datum_wert(args, k)
         if v is not None:
             setze(k, v)
             if k == "ab" and v == "" and "ab_was" in knoten:   # ohne Ab-Termin kein „was ab dann geht“

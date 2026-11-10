@@ -397,6 +397,17 @@ def test_erinnerer_meldet_ab_termin_einer_buchung(reise, tmp_path):
     assert not [m for m in r.lauf(D(2027, 5, 13))["meldungen"] if "Jetzt möglich" in m["text"]]   # nicht doppelt
 
 
+def test_erinnerer_ab_und_frist_mit_uhrzeit(reise, tmp_path):
+    """#472: ab und frist mit Uhrzeit (JJJJ-MM-TTTHH:MM); es zählt der Tag, die Meldung nennt die Uhrzeit."""
+    r = reise()
+    d = json.loads((r.seiten / "beispielreise" / "daten.json").read_text(encoding="utf-8"))
+    d["route"]["buchungen"]["B-02"].update({"ab": "2027-05-12T17:55", "ab_was": "Online-Check-in", "frist": "2027-05-13T09:00"})
+    (r.seiten / "beispielreise" / "daten.json").write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    ms = [m["text"] for m in r.lauf(D(2027, 5, 12))["meldungen"] if m["bezug"] == "B-02"]
+    assert any("Jetzt möglich (ab 12.5.2027, 17:55): Online-Check-in" in t for t in ms), ms
+    assert any("13.5.2027, 09:00" in t for t in ms), ms
+
+
 def test_meldungen_in_der_sprache_der_reise(reise):
     """Meldungen und Mahnungen sprechen die Sprache der Reise (ADR-0006, M10); Deutsch bleibt wörtlich wie bisher."""
     heute = D(2027, 5, 13)

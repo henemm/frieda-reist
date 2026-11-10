@@ -593,9 +593,9 @@ class Handbuch:
         if b.get("vor_ort_zahlen"):
             z.append(tk("konnektor.ausgabe.buchung_text.vor_ort_zahlen", w1=b["vor_ort_zahlen"]))
         if b.get("ab"):
-            z.append(tk("konnektor.ausgabe.buchung_text.ab", w1=datum_de(b['ab'])) + (f": {b['ab_was']}" if b.get("ab_was") else ""))
+            z.append(tk("konnektor.ausgabe.buchung_text.ab", w1=texte.datum_uhr(b['ab'], texte.aufruf_sprache())) + (f": {b['ab_was']}" if b.get("ab_was") else ""))
         if b.get("frist"):
-            z.append(tk("konnektor.ausgabe.buchung_text.9", w1=datum_de(b['frist'])) + (f": {b['frist_was']}" if b.get("frist_was") else ""))
+            z.append(tk("konnektor.ausgabe.buchung_text.9", w1=texte.datum_uhr(b['frist'], texte.aufruf_sprache())) + (f": {b['frist_was']}" if b.get("frist_was") else ""))
         if b.get("storno") or b.get("storno_bis"):
             z.append(tk("konnektor.ausgabe.buchung_text.11") + (b.get("storno") or "") + (tk("konnektor.ausgabe.buchung_text.12", w1=datum_de(b['storno_bis'])) if b.get("storno_bis") else ""))
         if b.get("gebucht_am") or b.get("wer"):
@@ -934,7 +934,7 @@ class Handbuch:
             fristen = sorted((b for b in bs if b.get("status") != "storniert" and (b.get("frist") or b.get("storno_bis"))),
                              key=lambda b: min(x for x in (b.get("frist"), b.get("storno_bis")) if x))[:5]
             z += [f"- {b['id']} {b.get('titel')}: " + ", ".join(x for x in (
-                tk("konnektor.ausgabe.fristen.1", w1=datum_de(b['frist'])) + (f" ({b['frist_was']})" if b.get("frist_was") else "") + (tk("konnektor.buchung.ueberfaellig") if b["frist"] < heute else "") if b.get("frist") else "",
+                tk("konnektor.ausgabe.fristen.1", w1=texte.datum_uhr(b['frist'], texte.aufruf_sprache())) + (f" ({b['frist_was']})" if b.get("frist_was") else "") + (tk("konnektor.buchung.ueberfaellig") if b["frist"] < heute else "") if b.get("frist") else "",
                 tk("konnektor.ausgabe.fristen.2", w1=datum_de(b['storno_bis'])) if b.get("storno_bis") else "") if x) for b in fristen]
         if self.an("packliste") and (self.d.get("packliste") or {}).get("gegenstaende"):
             p = self.d["packliste"]

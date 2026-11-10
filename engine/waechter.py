@@ -227,18 +227,18 @@ def buchungsfristen(d, heute, vorlauf):
         sp = sprache_von(d)
         neu = []
         if b.get("frist"):
-            rest = tage_zwischen(heute, datetime.date.fromisoformat(b["frist"]))
+            rest = tage_zwischen(heute, datetime.date.fromisoformat(b["frist"][:10]))   # mit Uhrzeit (#472): der Tag zählt
             was = b.get("frist_was") or tw(d, "frist_wort")
             if rest < 0:
                 neu.append({"schluessel": f"ueberfaellig:{b['id']}:{b['frist']}", "wiederholen": WIEDERHOLEN_TAGE,
-                            "text": tw(d, "ueberfaellig_buchung", n=-rest, w1=was, w2=titel, w3=datum_de(b["frist"], sp))})
+                            "text": tw(d, "ueberfaellig_buchung", n=-rest, w1=was, w2=titel, w3=texte.datum_uhr(b["frist"], sp or texte.VORGABE_REISE))})
             elif rest <= vorlauf:
                 neu.append({"schluessel": f"frist:{b['id']}:{b['frist']}", "wiederholen": None,
                             "text": tw(d, "frist_buchung", w1=tw(d, "heute") if rest == 0 else tw(d, "in_tagen", n=rest),
-                                       w2=was, w3=titel, w4=datum_de(b["frist"], sp))})
-        if b.get("ab") and datetime.date.fromisoformat(b["ab"]) <= heute:   # Issue #135: ab wann etwas geht (Check-in, Sitzplatzwahl)
+                                       w2=was, w3=titel, w4=texte.datum_uhr(b["frist"], sp or texte.VORGABE_REISE))})
+        if b.get("ab") and datetime.date.fromisoformat(b["ab"][:10]) <= heute:   # Issue #135: ab wann etwas geht (Check-in, Sitzplatzwahl)
             neu.append({"schluessel": f"ab:{b['id']}:{b['ab']}", "wiederholen": None,
-                        "text": tw(d, "ab_buchung", w1=datum_de(b["ab"], sp), w2=b.get("ab_was") or tw(d, "etwas"), w3=titel)})
+                        "text": tw(d, "ab_buchung", w1=texte.datum_uhr(b["ab"], sp or texte.VORGABE_REISE), w2=b.get("ab_was") or tw(d, "etwas"), w3=titel)})
         if b.get("storno_bis"):
             rest = tage_zwischen(heute, datetime.date.fromisoformat(b["storno_bis"]))
             if 0 <= rest <= vorlauf:
@@ -282,7 +282,7 @@ def zahlungen_offen(d, heute, vorlauf):
         if not termine:
             continue
         stichtag, _, wort = min(termine)
-        if tage_zwischen(heute, datetime.date.fromisoformat(stichtag)) > vorlauf:
+        if tage_zwischen(heute, datetime.date.fromisoformat(stichtag[:10])) > vorlauf:
             continue
         titel = f"{b['id']} {b.get('titel') or ''}".strip()
         aus.append({"schluessel": f"zahlung:{b['id']}:{z}", "wiederholen": WIEDERHOLEN_TAGE,

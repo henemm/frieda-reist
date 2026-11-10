@@ -1455,6 +1455,10 @@ function ortsDatum(iso) {
   const t = new Date(s);
   return isNaN(t) ? s.slice(0, 10) : `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
 }
+// Datum mit optionaler Uhrzeit (frist und ab einer Buchung, #472): JJJJ-MM-TT oder JJJJ-MM-TTTHH:MM (Ortszeit)
+const tagTeil = x => String(x || "").slice(0, 10), uhrTeil = x => (/^\d{4}-\d\d-\d\dT(\d\d:\d\d)$/.exec(String(x || "")) || [])[1] || "";
+const mitUhr = (text, x) => uhrTeil(x) ? T("seite.zeit.datum_uhr", {datum: text, zeit: uhrTeil(x)}) : text;
+const zeitpunktText = x => mitUhr(datumText(tagTeil(x)), x), zeitpunktKurz = x => mitUhr(datumKurz(tagTeil(x)), x);
 function datumKurz(iso) { const [j, m, d] = ortsDatum(iso).split("-"); return d ? (reiseJahre().has(+j) ? nachMuster(TEXTE[SPRACHE].datum_kurz, +d, +m) : nachMuster(TEXTE[SPRACHE].datum, +d, +m, +j)) : ""; }
 function dauer(min) { return T("seite.zeit.dauer", {h: lokaleZiffern(Math.floor(min / 60)), m: lokaleZiffern(String(min % 60).padStart(2, "0"))}); }
 function summeText(s) {
@@ -1803,7 +1807,7 @@ function kurzDaten(id) {
   } else if (form === "buchung") {
     const b = R.buchungen[id], zu = b.status === "storniert";
     d = {etikett: T("seite.etikett.buchung"), art: "ticket", titel: b.titel || (b.fuer || []).map(x => titelZu(x) || x).join(", "),
-      fakten: [fakt(T("seite.buchung.nummer"), b.nummer), fakt(T("seite.buchung.frist"), b.frist ? datumKurz(b.frist) : ""), fakt(T("seite.buchung.preis"), b.preis)],
+      fakten: [fakt(T("seite.buchung.nummer"), b.nummer), fakt(T("seite.buchung.frist"), b.frist ? zeitpunktKurz(b.frist) : ""), fakt(T("seite.buchung.preis"), b.preis)],
       marken: [chip(zu ? "weg" : b.status === "gebucht" ? "plan" : "offen", BUCHUNG_STATUS[b.status] || b.status)]};
   } else if (form === "frage") {
     const z = D.fragen.zeilen.find(x => x.id === id), i = spaltenName(D.fragen.spalten, "was"), j = spaltenName(D.fragen.spalten, "bis");
@@ -1897,10 +1901,10 @@ function buchungBlock(b) {
     el("div", {class: "titelzeile"}, el("span", {}, dingEtikett(T("seite.etikett.buchung"), null, "ticket"), " ",
       chip(zu ? "weg" : gebucht ? "plan" : "offen", BUCHUNG_STATUS[b.status] || b.status), zahlMarke ? " " : null, zahlMarke), zid(b.id)));
   const zeile = (name, wert, klasse) => wert ? el("div", {class: "z" + (klasse ? " " + klasse : "")}, el("b", {}, name + ": "), wert) : null;
-  const ueber = !zu && V.fristen && b.frist && b.frist < h;
+  const ueber = !zu && V.fristen && b.frist && tagTeil(b.frist) < h;
   // Die Frist steht oben, solange sie läuft (eine überfällige, solange Fristen zählen); danach zugeklappt
-  const fristOben = b.frist && (b.frist >= h || ueber);
-  const frist = b.frist ? zeile(T("seite.buchung.frist"), datumKurz(b.frist) + (b.frist_was ? " · " + b.frist_was : ""), ueber ? "ueber" : null) : null;
+  const fristOben = b.frist && (tagTeil(b.frist) >= h || ueber);
+  const frist = b.frist ? zeile(T("seite.buchung.frist"), zeitpunktKurz(b.frist) + (b.frist_was ? " · " + b.frist_was : ""), ueber ? "ueber" : null) : null;
   // Zeitraum (#463): bei einer Unterkunft Check-in und Check-out mit Uhrzeit, sonst das Reisedatum
   const tagZeit = (d, zeit, schluessel) => [d ? datumText(d, wochentag(d)) : "", zeit ? T(schluessel, {zeit}) : ""].filter(Boolean).join(" ");
   const zeitraum = nachtDing ? [
@@ -1909,8 +1913,8 @@ function buchungBlock(b) {
     : [b.anreise ? zeile(T("seite.buchung.reisedatum"), b.abreise && b.abreise !== b.anreise
         ? T("seite.buchung.zeitraum_text", {an: datumText(b.anreise, wochentag(b.anreise)), ab: datumText(b.abreise, wochentag(b.abreise))}) : datumText(b.anreise, wochentag(b.anreise))) : null];
   // „Ab“ (Issue #135) nur, wenn es nicht schon der Check-in ist
-  const abDoppelt = b.ab && b.ab === b.anreise && b.anreise_ab;
-  const ab = b.ab && !abDoppelt ? zeile(T("seite.buchung.ab"), datumText(b.ab, wochentag(b.ab)) + (b.ab_was ? " · " + b.ab_was : "")) : null;
+  const abDoppelt = b.ab && tagTeil(b.ab) === b.anreise && b.anreise_ab;
+  const ab = b.ab && !abDoppelt ? zeile(T("seite.buchung.ab"), zeitpunktText(b.ab) + (b.ab_was ? " · " + b.ab_was : "")) : null;
   const preisZ = zeile(T("seite.buchung.preis"), b.preis);
   const zahlungZ = zeile(T("seite.buchung.zahlung"), gebucht ? b.bezahlt : [zahlungText(b.zahlung), b.bezahlt].filter(Boolean).join(" · "));
   k.append(...[zeile(T("seite.buchung.nummer"), b.nummer), ...zeitraum, ab, gebucht ? null : preisZ, gebucht ? null : zahlungZ,
@@ -3319,7 +3323,7 @@ function buchungen(p) {
 // Stand in Worten mit der Frist der Buchung, falls sie eine hat („gebucht · Frist 13.5.“)
 function buchungText(text, bid) {
   const b = bid && R.buchungen && R.buchungen[bid];
-  return b && b.frist && b.status !== "storniert" ? T("seite.buchung.frist_zusatz", {text, datum: datumKurz(b.frist)}) : text;
+  return b && b.frist && b.status !== "storniert" ? T("seite.buchung.frist_zusatz", {text, datum: zeitpunktKurz(b.frist)}) : text;
 }
 // Molekül Stand der Vorbereitung: je Zeile Wort, Wert und Ziel; was nichts zu tun hat, entfällt (Gebucht bleibt)
 function standLeiste(p) {

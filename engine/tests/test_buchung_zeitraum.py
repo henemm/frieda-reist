@@ -38,6 +38,13 @@ def test_buchung_gilt_am():
     assert routen.zeitraeume_ueberschneiden(b, {"anreise": D(2027, 3, 6)})
 
 
+def test_zeitpunkt_mit_uhrzeit():
+    """frist und ab einer Buchung mit Uhrzeit (#472): Prüfung, Textform und Wächter-Tag."""
+    import texte
+    assert routen.DATUM_UHR.match("2027-02-22T17:55") and routen.tag_von("2027-02-22T17:55") == D(2027, 2, 22)
+    assert texte.datum_uhr("2027-02-22T17:55", "de") == "22.2.2027, 17:55" and texte.datum_uhr(D(2027, 2, 22), "de") == "22.2.2027"
+
+
 def test_parameter_englisch():
     """arrival/departure heißen nur bei Buchungen Anreise/Abreise; bei Strecken bleiben sie Abfahrt und Ankunft."""
     assert schnittstelle.parameter_zu_intern("buchung_anlegen")["arrival"] == "anreise"
@@ -60,6 +67,8 @@ def zwei_buchungen(quelle):
     anreise: 2027-05-14
     abreise: 2027-05-15
     anreise_ab: "14:00"
+    ab: "2027-05-13T08:00"   # Zeitpunkt mit Uhrzeit (#472)
+    ab_was: "Online-Check-in"
     gebucht_am: 2026-11-09
     wer: Ida
     quelle: "erfunden (Beispiel)"
@@ -110,6 +119,7 @@ def test_jede_nacht_nur_ihre_buchung(tmp_path):
     assert "Vor Ort zu zahlen" in t1["oben"] and "Preis" not in t1["oben"] and "Storno" not in t1["oben"], t1
     assert t1["einzelheiten_zu"] and not t1["herkunft_adresse"], t1
     assert "bezahlt" in t7["marken"], t7
+    assert "Ab: Do 13.5., 08:00 · Online-Check-in" in t7["oben"], t7   # Uhrzeit im Feld, nicht im Text (#472)
     # Ein Link auf die zweite Buchung führt zum Tag ihrer Anreise
     assert e["ziel_b04"]["block"] and "14.5." in e["ziel_b04"]["kopf"], e["ziel_b04"]
     # Die Nacht des 14.5. ist gebucht, im Stand der Vorbereitung zählen beide Nächte als gebucht

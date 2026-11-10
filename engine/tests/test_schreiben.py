@@ -1219,6 +1219,14 @@ def test_buchung_mit_zeitraum(repo):
     assert str(b["anreise"]) == "2027-05-15" and str(b["abreise"]) == "2027-05-16"
     assert b["anreise_ab"] == "15:00" and b["abreise_bis"] == "11:00" and b["vor_ort_zahlen"] == "3 € Kurtaxe"
     s.vorbereiten()
+    # frist und ab mit Uhrzeit (#472): Leerzeichen oder T, gespeichert als JJJJ-MM-TTTHH:MM; eine falsche Uhrzeit lehnt der Dienst ab
+    with pytest.raises(sb.Ablehnung, match="mit Uhrzeit JJJJ-MM-TTTHH:MM"):
+        s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "ab": "2027-05-12T25:00"}})
+    s.vorbereiten()
+    s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "ab": "2027-05-12 8:05", "ab_was": "Online-Check-in"}})
+    r, text = routen_auf_main(origin)
+    assert r["buchungen"]["B-04"]["ab"] == "2027-05-12T08:05" and 'ab: "2027-05-12T08:05"' in text
+    s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="die Abreise liegt vor der Anreise"):
         s.schreiben("beispielreise", "buchung_aendern", {**IDA, "args": {"ziel": "B-04", "abreise": "2027-05-14"}})
     s.vorbereiten()

@@ -87,6 +87,15 @@ def zahlung_schluessel(text):
     t = re.sub(r"[\s-]+", "_", str(text or "").strip().lower())
     return t if t in ZAHLUNG else ZAHLUNG_ALIAS.get(t)
 BUCHUNG_DATEN = ("frist", "storno_bis", "gebucht_am", "ab", "anreise", "abreise")
+# frist und ab mit optionaler Uhrzeit (Product Owner 10.11.2026, #472): JJJJ-MM-TT oder JJJJ-MM-TTTHH:MM (Ortszeit), damit die
+# Uhrzeit nicht im Freitext (frist_was, ab_was) landet
+BUCHUNG_ZEITPUNKTE = ("frist", "ab")
+DATUM_UHR = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$")
+
+
+def tag_von(v):
+    """Datum (date) eines Datums oder eines Zeitpunkts JJJJ-MM-TTTHH:MM; None, wenn keines."""
+    return _als_datum(str(v)[:10]) if v not in (None, "") and not isinstance(v, datetime.date) else v
 
 
 def _als_datum(v):
@@ -849,6 +858,8 @@ class Routen:
                 self.fehl(texte.satz("pruefung.routen.24", bid=bid))
             for k in BUCHUNG_DATEN:
                 v = b.get(k)
+                if k in BUCHUNG_ZEITPUNKTE and isinstance(v, str) and DATUM_UHR.match(v) and tag_von(v):
+                    continue
                 if v is not None and not isinstance(v, datetime.date):
                     try:
                         datetime.date.fromisoformat(str(v))
