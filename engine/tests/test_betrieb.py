@@ -3113,7 +3113,10 @@ def test_deploy_ohne_root_rechte_merkt_die_neustarts_vor(tmp_path):
     threading.Thread(target=server.serve_forever, daemon=True).start()
     env = {**SAUBER, "PATH": f"{bin_}:{SAUBER.get('PATH', os.environ['PATH'])}", "FR_WURZEL": str(wurzel), "FR_INSTANZ": "probe",
            "FR_SEITEN": str(tmp_path / "seiten"), "FR_DIENST": str(tmp_path / "dienst"), "FR_PYTHON": sys.executable,
-           "FR_GEPRUEFT": git(wurzel, "rev-parse", "HEAD").strip(), "FR_RM_PORT": str(server.server_address[1]), "FR_SUDO": "false"}
+           "FR_GEPRUEFT": git(wurzel, "rev-parse", "HEAD").strip(), "FR_RM_PORT": str(server.server_address[1]), "FR_SUDO": "false",
+           # Konnektor ebenfalls gegen den Probe-Server, nie gegen einen echten Dienst auf dem Rechner; Wege von außen
+           # prüft hier niemand
+           "FR_KN_PORT": str(server.server_address[1]), "FR_WEGE_SPAETER": "1"}
     vorgemerkt = tmp_path / "dienst" / "neustart-ausstehend"
     try:
         r = subprocess.run([str(BETRIEB / "deploy.sh"), "beispielreise"], env=env, capture_output=True, text=True)
