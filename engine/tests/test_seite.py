@@ -649,3 +649,44 @@ def test_fahrt_an_ihrer_heimat_mit_merkmalen_und_hinweis(tmp_path, browser):
     h = e["heimat"]
     assert h["hash"] == "#E-20" and h["tagseite"] and not h["eigenerLink"], h   # an der Heimat voll, ohne Link auf sich selbst
     assert "Abfahrt Gleis 1" in h["text"] and "28 Min." in h["text"], h
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_status_der_reise_auf_der_seite(tmp_path, browser):
+    """#513: Unter dem Untertitel steht der Status. Organisator:innen öffnen mit einem Tipp die Auswahl (oder über den
+    Statushinweis „Für dich“, dann mit dem vorgeschlagenen Status) und stellen nach Bestätigung um; Mitwirkende sehen nur
+    das Etikett und keinen Knopf am Hinweis. Dienste nachgestellt (seiten_status.mjs)."""
+    seiten = tmp_path / "seiten"
+    bauen.bauen(Path(__file__).resolve().parent.parent.parent / "beispiel" / "reisen" / "beispielreise", seiten / "beispielreise")
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(seiten)))
+    threading.Thread(target=s.serve_forever, daemon=True).start()
+
+    def lauf(rolle):
+        aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_status.mjs"), str(PLAYWRIGHT),
+                              f"http://127.0.0.1:{s.server_address[1]}/beispielreise/", rolle],
+                             capture_output=True, text=True, timeout=120, env={**os.environ, "RH_BROWSER": browser})
+        assert aus.returncode == 0, aus.stderr[-2000:]
+        return json.loads(aus.stdout.strip().splitlines()[-1])
+    try:
+        org, mit = lauf("organisator"), lauf("mitwirkend")
+    finally:
+        s.shutdown()
+    assert org["fehler"] == [] and mit["fehler"] == []
+    assert mit["start"]["etikett"] == "Planung" and not mit["start"]["knopf"] and mit["start"]["hinweisKnopf"] is None
+    assert "Auf „fest“ stellen?" in mit["start"]["fuerDich"] and mit["gesendet"] == []
+    st = org["start"]
+    assert st["etikett"].startswith("Planung") and st["knopf"] and not st["offen"] and st["hinweisKnopf"] == "Auf „Fest“ stellen"
+    assert org["hinweis"]["offen"] and org["hinweis"]["gewaehlt"] == "fest" and org["hinweis"]["bestaetigen"] == "Auf „Fest“ stellen"
+    assert org["auf"]["offen"] and org["auf"]["gewaehlt"] == "planung" and org["auf"]["bestaetigen"] is None
+    assert org["wahl"]["bestaetigen"] == "Auf „Fest“ stellen"
+    assert org["gesendet"] == [{"status": "fest"}]
+    d = org["danach"]
+    assert d["etikett"].startswith("Fest") and not d["offen"] and "Umgestellt auf „Fest“" in d["meldung"]
+    assert d["fuerDich"] is None                       # der Hinweis gilt nach dem Umstellen nicht mehr
+    assert not any(x["breit"] for x in (st, org["hinweis"], d))

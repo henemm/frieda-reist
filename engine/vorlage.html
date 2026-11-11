@@ -451,6 +451,27 @@ a.mitnehmen:hover span{text-decoration:underline}
 .pack-zeile .chips{margin:3px 0 0}
 .pack-zeile.gepackt .pack-titel{color:var(--mut);text-decoration:line-through}
 .pack-zeile.weg{opacity:.65}
+/* Status der Reise (statusWahl, #513): Etikett unter dem Untertitel; für Organisator:innen ein Knopf, der die Auswahl öffnet */
+.status-wahl{display:grid;gap:8px;margin-top:8px;justify-items:start}
+.status-pille{display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:var(--t-etikett);font-weight:600;border:0;border-radius:var(--r-pille);padding:3px 12px;background:var(--acc2);color:var(--acc);line-height:1.4}
+.status-pille.vorher{background:var(--warnbg);color:var(--warn)}
+button.status-pille{cursor:pointer;min-height:32px}
+button.status-pille:focus-visible,.status-feld button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.status-feld{display:grid;gap:10px;width:100%;max-width:30rem;background:var(--card);border:1px solid var(--line);border-radius:var(--r-kachel);padding:12px;font-size:var(--t-klein)}
+.status-feld[hidden]{display:none}
+.status-liste{display:grid;gap:4px;margin:0;padding:0;border:0}
+.status-liste legend{color:var(--mut);padding:0;margin-bottom:4px}
+.status-liste label{display:grid;grid-template-columns:auto 1fr;gap:0 10px;align-items:start;padding:7px 10px;border-radius:var(--r-klein);border:1px solid transparent;cursor:pointer}
+.status-liste label:has(input:checked){border-color:var(--acc);background:var(--acc2)}
+.status-liste input{margin:4px 0 0;accent-color:var(--acc)}
+.status-liste .st-name{font-weight:600;color:var(--fg)}
+.status-liste .st-erkl{grid-column:2;color:var(--mut)}
+.status-knoepfe{display:flex;gap:6px;flex-wrap:wrap}
+.status-knoepfe button{font:inherit;font-weight:600;border-radius:var(--r-pille);padding:6px 14px;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--mut)}
+.status-knoepfe button.ja{background:var(--acc);border-color:var(--acc);color:var(--bg)}
+.status-knoepfe button[hidden]{display:none}
+.status-meldung{color:var(--mut);margin:0}
+#fuerDich .fd-knopf{justify-self:start;margin-top:4px}
 /* ==================== 5 Organismen ==================== */
 /* ---------- Ding (Designsystem 2b, frieda-reist#18): Aufenthalt, Bewegung, Wahl als Zeile ---------- */
 .ding{display:flex;gap:10px;align-items:flex-start;margin:10px 0 2px;padding-top:9px;border-top:1px solid var(--line)}
@@ -1026,7 +1047,7 @@ nav a.warn .zahl{background:var(--warn)}
 <body>
 <!--__SYMBOLE__-->
 <header>
-  <h1 class="t" id="titel"></h1><div class="u" id="untertitel"></div>
+  <h1 class="t" id="titel"></h1><div class="u" id="untertitel"></div><div id="reiseStatus"></div>
 </header>
 <div class="meldungen">
   <div id="neu" class="hinweis glas" role="status" hidden><span data-t="seite.rahmen.neue_version">Neue Version des Handbuchs bereit.</span> <button type="button" id="neuLaden" data-t="seite.rahmen.aktualisieren">Aktualisieren</button></div>
@@ -1340,7 +1361,7 @@ function zid(id) {
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, nummerChip
-   Moleküle: block, kennzahlLeiste, halteLeiste, herkunftJeWert, plKlapper, plAlleKnopf, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, Rechtszeile (HTML im Fuß)
+   Moleküle: block, kennzahlLeiste, halteLeiste, herkunftJeWert, plKlapper, plAlleKnopf, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, statusWahl, Rechtszeile (HTML im Fuß)
    Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, entschieden, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
@@ -2703,6 +2724,7 @@ function spracheWaehlen(k) {
   titelTexte();
   sprachUmschalter();
   releaseFuss();
+  statusZeichnen();
   fuerDich();
   pushFuss();
   route(true);
@@ -4674,6 +4696,8 @@ function ansichtBausteine(m) {
       : el("p", {class: "meldung"}, "Keine Etappe mit Abschnitten zum Nachschlagen."));
   teil("Molekül", "Konto-Knopf", "Oben rechts im Kopf: „Anmelden“ oder der eigene Name (zur Kontoseite). Nur auf Friedas eigener Adresse.",
     el("div", {}, kontoKnopf(null), " ", kontoKnopf({konto: {name: "Ida"}})));
+  teil("Molekül", "Status der Reise", "Unter dem Untertitel. Für alle ein Etikett; für angemeldete Organisator:innen ein Knopf, der die Auswahl der fünf Status öffnet, mit Bestätigung (#513).",
+    statusWahl(true, "fest", true));
   teil("Molekül", "Legende", "Zeichen und Wort; unter einer Karte steht nur, was auf ihr vorkommt.",
     kartenLegende([...Object.entries(artNamen()).map(([k, t]) => [el("i", {class: "lg-k" + katKlasse(k)}), t]),
       ...R.plaene.map(p => [planMarke(p), p.kurz])]));
@@ -4836,6 +4860,7 @@ async function ichLaden() {
   const alt = $("#konto");
   if (alt) alt.remove();
   if (KONTO_HIER()) $("header").append(kontoKnopf(ICH));
+  statusZeichnen();
   fuerDich();
   pushFuss();
 }
@@ -4851,7 +4876,8 @@ function gelesenSenden(ids) {
 }
 function fuerDich() {
   const box = $("#fuerDich"), gelesen = new Set(lies("gelesen", []));
-  const offen = FUER_DICH.filter(m => m && m.id && !m.gelesen && !gelesen.has(m.id));
+  // ein Statushinweis gilt nur, solange der Status noch der ist, bei dem er entstand (auch gleich nach dem Umstellen hier)
+  const offen = FUER_DICH.filter(m => m && m.id && !m.gelesen && !gelesen.has(m.id) && !(m.art === "status" && m.status_bei && m.status_bei !== reiseStatus()));
   box.hidden = !offen.length;
   if (!offen.length) return box.replaceChildren();
   const ok = el("button", {type: "button"}, T("seite.fuer_dich.gelesen"));
@@ -4861,9 +4887,75 @@ function fuerDich() {
     fuerDich();
   });
   const mehr = offen.length - FD_ZEIGEN;
+  // Statushinweis an Organisator:innen (#513): Knopf öffnet die Auswahl des Status mit dem vorgeschlagenen gewählt
+  const statusKnopf = m => {
+    if (m.art !== "status" || !REISE_STATUS.includes(m.status_ziel) || m.status_ziel === reiseStatus() || !darfStatus()) return null;
+    const k = el("button", {type: "button", class: "fd-knopf"}, T("seite.reise_status.auf", {status: T("seite.reise_status." + m.status_ziel)}));
+    k.addEventListener("click", () => { statusZeichnen(true, m.status_ziel); $("#reiseStatus").scrollIntoView({block: "nearest"}); });
+    return k;
+  };
   box.replaceChildren(el("span", {class: "fd-text"}, el("b", {}, T("seite.fuer_dich.titel")),
-    offen.slice(0, FD_ZEIGEN).map(m => el("span", {}, m.text)),
+    offen.slice(0, FD_ZEIGEN).map(m => [el("span", {}, m.text), statusKnopf(m)]),
     mehr > 0 ? el("span", {}, KONTO_HIER() ? el("a", {href: "/konto#meldungen"}, T("seite.fuer_dich.weitere", {n: mehr})) : T("seite.fuer_dich.weitere", {n: mehr})) : null), ok);
+}
+/* Molekül Status der Reise (statusWahl, #513): unter dem Untertitel das Etikett mit dem Status, für alle. Angemeldete
+   Organisator:innen tippen darauf und wählen einen der fünf Status mit kurzer Erklärung; „Auf „…“ stellen“ bestätigt. Die
+   Seite schickt die Wahl an den Rückmeldedienst, der sie über den Schreibweg einträgt (Verlauf mit Name und Datum, wie
+   trip_status_set in der Claude-App). Der neue Status gilt hier sofort, überall nach dem nächsten Veröffentlichen.
+   offen: Auswahl aufgeklappt; vorwahl: vorgeschlagener Status (Hinweis „Für dich“); muster: für die Bausteinseite;
+   nachricht: Satz unter dem Etikett (nach dem Umstellen). */
+const REISE_STATUS = ["idee", "planung", "fest", "unterwegs", "danach"];
+let STATUS_NEU = null;   // nach dem Umstellen, bis die veröffentlichte Seite ihn selbst trägt
+const reiseStatus = () => STATUS_NEU || (D.reise.status || {}).wert || "planung";
+const darfStatus = () => MIT_KONTO() && ICH.person.rolle === "organisator" && V.schreiben !== "nichts";
+function statusWahl(offen, vorwahl, muster, nachricht) {
+  const st = muster ? "planung" : reiseStatus(), darf = muster || darfStatus();
+  const name = s => T("seite.reise_status." + s);
+  const klasse = "status-pille" + (["idee", "planung"].includes(st) ? " vorher" : "");
+  const box = el("div", {class: "status-wahl"});
+  if (!darf) { box.append(el("span", {class: klasse}, name(st))); return box; }
+  const knopf = el("button", {type: "button", class: klasse, "aria-expanded": offen ? "true" : "false",
+    "aria-label": T("seite.reise_status.aendern", {status: name(st)})}, name(st), el("span", {"aria-hidden": "true"}, "▾"));
+  const ja = el("button", {type: "button", class: "ja", hidden: true}), nein = el("button", {type: "button"}, T("seite.reise_status.abbrechen"));
+  const meldung = el("p", {class: "status-meldung", "aria-live": "polite"});
+  const liste = el("fieldset", {class: "status-liste"}, el("legend", {}, T("seite.reise_status.titel")),
+    REISE_STATUS.map(s => el("label", {}, el("input", {type: "radio", name: "reise-status" + (muster ? "-muster" : ""), value: s, checked: s === (vorwahl || st)}),
+      el("span", {class: "st-name"}, name(s), s === st ? " " + T("seite.reise_status.jetzt") : ""),
+      el("span", {class: "st-erkl"}, T("seite.reise_status.erkl." + s)))));
+  const feld = el("div", {class: "status-feld", hidden: !offen}, liste, el("div", {class: "status-knoepfe"}, ja, nein), meldung);
+  const gewaehlt = () => (liste.querySelector("input:checked") || {}).value;
+  const pruefen = () => { const w = gewaehlt(); ja.hidden = !w || w === st; if (w) ja.textContent = T("seite.reise_status.auf", {status: name(w)}); };
+  liste.addEventListener("change", pruefen);
+  pruefen();
+  knopf.addEventListener("click", () => {
+    feld.hidden = !feld.hidden;
+    knopf.setAttribute("aria-expanded", String(!feld.hidden));
+    meldung.textContent = "";
+    if (!feld.hidden) { liste.querySelector(`input[value="${st}"]`).checked = true; pruefen(); }   // neu geöffnet: der jetzige Status
+  });
+  nein.addEventListener("click", () => { feld.hidden = true; knopf.setAttribute("aria-expanded", "false"); });
+  ja.addEventListener("click", async () => {
+    const w = gewaehlt();
+    if (muster || !w || w === st) return;
+    ja.disabled = nein.disabled = true;
+    meldung.textContent = T("seite.reise_status.wird_umgestellt");
+    let o = null, ok = false;
+    try { const r = await fetch("api/status", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({status: w})});
+      ok = r.ok; o = await r.json(); } catch (e) {}
+    ja.disabled = nein.disabled = false;
+    if (!ok) { meldung.textContent = dienstFehler(o) || T("seite.reise_status.nur_mit_netz"); return; }
+    STATUS_NEU = w;
+    statusZeichnen(false, null, T("seite.reise_status.umgestellt", {status: name(w)}));
+    fuerDich();
+  });
+  box.append(knopf, feld);
+  if (nachricht) box.append(el("p", {class: "status-meldung", role: "status"}, nachricht));
+  return box;
+}
+function statusZeichnen(offen, vorwahl, meldung) {
+  const z = $("#reiseStatus");
+  if (!z) return;
+  z.replaceChildren(statusWahl(offen, vorwahl, false, meldung));
 }
 // Molekül Konto-Knopf: angemeldet der eigene Name (zur Kontoseite), sonst „Anmelden“
 function kontoKnopf(ich) {
@@ -6006,6 +6098,7 @@ function zurueckZurZeile(m, vorher) {
 document.title = D.reise.titel;
 $("#titel").textContent = D.reise.titel;
 $("#untertitel").textContent = D.reise.untertitel;
+statusZeichnen();
 let wartet;
 $("#suche").addEventListener("input", () => { clearTimeout(wartet); wartet = setTimeout(route, 150); });
 $("#main").addEventListener("click", e => {
