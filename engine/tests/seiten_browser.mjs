@@ -88,7 +88,11 @@ for (const breite of [390, 1200]) {
         return pe ? [...document.querySelectorAll(`#main [data-vgl="${CSS.escape(id)}"] thead th`)].map(th => th.textContent.trim()).filter(t => nicht.has(t)) : []; }, id);
       await box.locator("[data-vgl-sort]").first().click();
       sortiert = await p.locator(`#main [data-vgl="${id}"] th[aria-sort]`).count();
-      const zeile = p.locator(`#main [data-vgl="${id}"] tr.wm-zeile`).first(), yVor = (await zeile.boundingBox()).y;
+      // erst in Sicht holen und die Lage messen: sonst zählt das Scrollen des Klicks als Springen (wackelte unter Last in CI)
+      const zeile = p.locator(`#main [data-vgl="${id}"] tr.wm-zeile`).first();
+      await zeile.scrollIntoViewIfNeeded();
+      await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+      const yVor = (await zeile.boundingBox()).y;
       await zeile.click({position: {x: 12, y: 12}});
       aufgeklappt = await p.locator(`#main [data-vgl="${id}"] tr.wm-mehr`).count();
       // Aufklappen lässt die Zeile stehen, wo sie war; die Einzelheiten wiederholen weder Name noch Zustand, kein Fehlertext,
