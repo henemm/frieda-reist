@@ -2,6 +2,7 @@
 Ortsseite (unter „## O-… Name“ im Ortsdossier, vor den Unterabschnitten), gegliedert nach den Rubriken der Art des Orts; ohne
 Art oder Gliederung freier Text. Erfundene Testdaten beider Beispielreisen."""
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -22,6 +23,22 @@ def kopie(tmp_path, reise="beispielreise"):
     q = tmp_path / reise
     shutil.copytree(BEISPIELE / reise, q)
     return q
+
+
+def ohne_text(q, oid):
+    """Den Ort in der Kopie wieder ohne Lesetext: die Beispielreisen haben für jeden Ort des Tages einen (#452)."""
+    f = q / "inhalt" / "orte.md"
+    teile = re.split(r"(?m)^(?=## )", f.read_text(encoding="utf-8"))
+    f.write_text("".join(x for x in teile if not x.startswith(f"## {oid} ")).rstrip("\n") + "\n", encoding="utf-8")
+
+
+def ohne_dossier(q):
+    """Die Reise in der Kopie wieder ohne Ortsdossier, wie eine neue Reise."""
+    (q / "inhalt" / "orte.md").unlink()
+    p = q / "reise.json"
+    cfg = json.loads(p.read_text(encoding="utf-8"))
+    cfg.pop("orte_dossiers")
+    p.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def schreib(q, ziel, text, quelle="erfunden (Test)"):
@@ -59,6 +76,7 @@ def test_fremdes_stichwort_wird_abgelehnt_ohne_gliederung_frei(tmp_path):
 
 def test_ort_ohne_abschnitt_bekommt_einen(tmp_path):
     q = kopie(tmp_path)
+    ohne_text(q, "O-05")
     titel, antwort = schreib(q, "O-05", "**Ankommen.** Mit der Fähre über die Elbe (Test).")
     assert meldet(titel, "schreiben.titel.lesetext_angelegt") and meldet(antwort, "schreiben.antwort.lesetext.ort_angelegt")
     t = (q / "inhalt" / "orte.md").read_text(encoding="utf-8")
@@ -71,6 +89,7 @@ def test_ort_ohne_abschnitt_bekommt_einen(tmp_path):
 
 def test_stadtwochenende_ohne_ortsdossier_legt_es_an(tmp_path):
     q = kopie(tmp_path, "stadtwochenende")
+    ohne_dossier(q)
     with pytest.raises(sb.Ablehnung):
         schreib(q, "O-02", "**Abendessen.** Spät (Test).")
     schreib(q, "O-02", "**Essen.** Man isst spät zu Abend (Test).\n\n**Unterwegs.** Zu Fuß und mit der Tram (Test).")

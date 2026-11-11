@@ -653,25 +653,25 @@ def test_ding_option_wahlstelle_und_frage_anlegen(repo):
     _, origin, arbeit, _ = repo
     s = schreiber(repo)
     a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "ort", "titel": "Rathen", "quelle": "Karte", "hinweis": "Kurort"}})
-    assert "O-08" in a["text"]
+    assert "O-09" in a["text"]
     s.vorbereiten()
     a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {
-        "was": "unterkunft", "titel": "Pension Elbblick", "ort": "O-08", "art": "pension", "quelle": "Website pension-elbblick.example",
+        "was": "unterkunft", "titel": "Pension Elbblick", "ort": "O-09", "art": "pension", "quelle": "Website pension-elbblick.example",
         "geprueft": "2026-10-29", "buchungslink": "https://pension-elbblick.example/buchen", "merkmale": {"preis": "90 €", "fruehstueck": "inklusive"}}})
     assert a["text"].startswith("Unterkunft U-05 „Pension Elbblick“ angelegt in Rathen, Art pension, Merkmale: preis, fruehstueck.")
     r, text = routen_auf_main(origin)
     u = lese(r["unterkuenfte"]["U-05"])
-    assert u["ort"] == "O-08" and u["art"] == "pension" and "typ" not in u and u["buchungslink"].startswith("https://")
+    assert u["ort"] == "O-09" and u["art"] == "pension" and "typ" not in u and u["buchungslink"].startswith("https://")
     assert u["merkmale"]["preis"] == {"wert": "90 €", "quelle": "Website pension-elbblick.example", "geprueft": datetime.date(2026, 10, 29)}
-    assert r["orte"]["O-08"] == {"name": "Rathen", "hinweis": "Kurort", "quelle": "Karte"}
+    assert r["orte"]["O-09"] == {"name": "Rathen", "hinweis": "Kurort", "quelle": "Karte"}
     ids = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/ids.yaml"], check=True,
                                         capture_output=True, text=True).stdout)
-    assert ids["O"] == 8 and ids["U"] == 5                      # Marken steigen, IDs werden nie neu vergeben
+    assert ids["O"] == 9 and ids["U"] == 5                      # Marken steigen, IDs werden nie neu vergeben
     s.vorbereiten()
-    a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "strecke", "titel": "Fähre Rathen → Stadt Wehlen", "von": "O-08",
+    a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "strecke", "titel": "Fähre Rathen → Stadt Wehlen", "von": "O-09",
                                                                        "nach": "O-02", "art": "bus", "quelle": "Fahrplan"}})
     r, _ = routen_auf_main(origin)
-    assert r["strecken"]["E-24"] == {"titel": "Fähre Rathen → Stadt Wehlen", "von": "O-08", "nach": "O-02", "art": "bus", "quelle": "Fahrplan"}
+    assert r["strecken"]["E-24"] == {"titel": "Fähre Rathen → Stadt Wehlen", "von": "O-09", "nach": "O-02", "art": "bus", "quelle": "Fahrplan"}
     # Option an bestehender Wahlstelle: Status vorgeschlagen, Verlauf mit Person und Datum
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="quelle fehlt"):   # Herkunft ist Pflicht, keine Ersatzquelle (ADR-0001, Frage 5)
@@ -1970,11 +1970,11 @@ def test_strecke_mit_zeiten_und_ort_ausserhalb(repo):
     a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "ort", "titel": "Flughafen Beispielstadt", "ausserhalb": True, "quelle": "Karte"}})
     assert a["ok"]
     r, _ = routen_auf_main(origin)
-    assert r["orte"]["O-08"] == {"name": "Flughafen Beispielstadt", "quelle": "Karte", "ausserhalb": True}
+    assert r["orte"]["O-09"] == {"name": "Flughafen Beispielstadt", "quelle": "Karte", "ausserhalb": True}
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="„ab“ ist eine Uhrzeit HH:MM"):
-        s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "strecke", "titel": "Flug", "von": "O-08", "nach": "O-01", "art": "bus", "ab": "morgens", "quelle": "x"}})
-    a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "strecke", "titel": "Bus vom Flughafen", "von": "O-08", "nach": "O-01", "art": "bus",
+        s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "strecke", "titel": "Flug", "von": "O-09", "nach": "O-01", "art": "bus", "ab": "morgens", "quelle": "x"}})
+    a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "strecke", "titel": "Bus vom Flughafen", "von": "O-09", "nach": "O-01", "art": "bus",
                                                                        "ab": "2027-05-14T07:45+02:00", "an": "09:10", "quelle": "Fahrplan"}})
     assert a["ok"]
     r, text = routen_auf_main(origin)
@@ -1986,9 +1986,9 @@ def test_strecke_mit_zeiten_und_ort_ausserhalb(repo):
     r, _ = routen_auf_main(origin)
     assert lese(r["strecken"]["E-24"])["ab"] == "08:00" and "an" not in lese(r["strecken"]["E-24"])
     s.vorbereiten()
-    a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "O-08", "ausserhalb": False}})
+    a = s.schreiben("beispielreise", "ding_aendern", {**KARL, "args": {"ziel": "O-09", "ausserhalb": False}})
     r, _ = routen_auf_main(origin)
-    assert "ausserhalb" not in r["orte"]["O-08"] or r["orte"]["O-08"]["ausserhalb"] is False
+    assert "ausserhalb" not in r["orte"]["O-09"] or r["orte"]["O-09"]["ausserhalb"] is False
 
 
 # --- Löschwunsch (#145): Antworttexte sagen, dass nichts gelöscht ist, und wie man es zurückholt ---

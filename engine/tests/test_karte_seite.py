@@ -38,9 +38,10 @@ def seite(tmp_path, browser, fest=False, bausteine="[karte, tagesseiten, rueckme
     d["unterkuenfte"]["U-02"]["punkt"] = punkt([50.9792, 14.1128])
     d["unterkuenfte"]["U-03"]["punkt"] = punkt([50.9700, 14.1000])
     d["aufenthalte"]["A-01"]["punkt"] = punkt([50.9785, 14.1140])
-    # Wochenmarkt: ohne Tag, sein Ort (Stadt Wehlen) hat keine Seite, also „noch ohne Platz“ am Ende der Reise (#432);
+    # Wochenmarkt: ohne Tag, sein Ort (erfunden, ohne Ortsseite) hat keine Seite, also „noch ohne Platz“ am Ende der Reise (#432);
     # Bäckerei: ohne Tag, aber mit Heimat auf der Seite ihres Orts (Dresden), steht in der Reise gar nicht
-    d["aufenthalte"]["A-02"] = {"name": "Wochenmarkt", "ort": "O-02", "art": "besichtigung", "quelle": "erfunden (Test)",
+    d["orte"]["O-90"] = {"name": "Nachbardorf", "an": "O-07", "quelle": "erfunden (Test)"}
+    d["aufenthalte"]["A-02"] = {"name": "Wochenmarkt", "ort": "O-90", "art": "besichtigung", "quelle": "erfunden (Test)",
                                 "punkt": punkt([51.050, 13.740])}
     d["aufenthalte"]["A-90"] = {"name": "Bäckerei am Markt", "ort": "O-01", "art": "besichtigung", "quelle": "erfunden (Test)"}
     d["aufenthalte"].pop("A-32", None)   # Fischbrötchen (ohne Tag, #387) gehört nicht zu diesem Fall

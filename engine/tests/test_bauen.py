@@ -652,7 +652,7 @@ def test_volllauf_beispiel(tmp_path):
     ids = alle_ids(d)
     assert len(ids) == len(set(ids)) and all(bauen.ZIEL_ID.match(i) for i in ids)
     assert [a["id"] for a in d["abschnitte"]] == (
-        ["W-01", "E-01", "E-02", "E-03", "E-04"] + [f"W-{n:02d}" for n in range(2, 8)] + ["O-01", "O-03"])
+        ["W-01", "E-01", "E-02", "E-03", "E-04"] + [f"W-{n:02d}" for n in range(2, 8)] + ["O-01", "O-03", "O-02", "O-04", "O-05", "O-06"])   # Orte in der Folge des Ortsdossiers (#452)
     r = d["route"]
     assert r["warnungen"] == []
     p = {x["id"]: x for x in r["plaene"]}

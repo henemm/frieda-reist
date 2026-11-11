@@ -53,7 +53,7 @@ def test_jede_seite_startet_ohne_fehler(tmp_path, reise):
 
 
 def test_beispielreise_hat_den_fall_aus_387(tmp_path):
-    """Voraussetzung des Tests oben: A-32 steht an keinem Tag, und sein Ort O-02 hat keinen eigenen Abschnitt."""
+    """Voraussetzung des Tests oben: A-32 steht an keinem Tag, und sein Ort O-08 (Kurort Rathen, an keinem Tag) hat keinen eigenen Abschnitt."""
     d = bauen.bauen(BEISPIELE / "beispielreise", tmp_path / "web" / "b")
     a = d["route"]["aufenthalte"]["A-32"]
-    assert a["ohne_tag"] and not a.get("tage") and a["ort"] == "O-02"
+    assert a["ohne_tag"] and not a.get("tage") and a["ort"] == "O-08"

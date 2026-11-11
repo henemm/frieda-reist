@@ -5,6 +5,7 @@ import functools
 import http.server
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -31,8 +32,16 @@ def test_region_ist_kein_punkt_und_keine_station(tmp_path):
     assert "O-07" in karte.regionen(r)
 
 
-def seiten(tmp_path, reise, *orte):
-    bauen.bauen(BEISPIELE / reise, tmp_path / "web" / "r")
+def seiten(tmp_path, reise, *orte, ohne_text=()):
+    """ohne_text: Orte, deren Lesetext in einer Kopie der Reise entfällt (die Beispielreisen haben für jeden Ort des Tages
+    einen, #452; der Fall „Ort ohne eigene Seite“ entsteht so im Test)."""
+    q = tmp_path / reise
+    shutil.copytree(BEISPIELE / reise, q)
+    f = q / "inhalt" / "orte.md"
+    if ohne_text:
+        teile = re.split(r"(?m)^(?=## )", f.read_text(encoding="utf-8"))
+        f.write_text("".join(x for x in teile if not any(x.startswith(f"## {o} ") for o in ohne_text)), encoding="utf-8")
+    bauen.bauen(q, tmp_path / "web" / "r")
 
     class Handler(http.server.SimpleHTTPRequestHandler):
         def log_message(self, *a):
@@ -54,7 +63,7 @@ def seiten(tmp_path, reise, *orte):
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 def test_ortsseite_liegt_in_orte_darin_und_karte(tmp_path):
-    e = seiten(tmp_path, "beispielreise", "O-03", "O-07", "O-02", "O-01")
+    e = seiten(tmp_path, "beispielreise", "O-03", "O-07", "O-02", "O-01", ohne_text=("O-02",))
     # Hohnstein: liegt in der Region (Link auf ihre Seite), Karte mit dem Ort und seiner Unterkunft mit Lage
     h = e["O-03"]
     assert h["titel"].startswith("Hohnstein") and h["liegtIn"].endswith("Sächsische Schweiz") and h["liegtInLink"] == "#O-07", h
@@ -62,7 +71,7 @@ def test_ortsseite_liegt_in_orte_darin_und_karte(tmp_path):
     # Die Region hat keinen Text und trotzdem eine Seite: die Orte darin als Zeilen, auf der Karte, sie selbst kein Punkt
     r = e["O-07"]
     assert r["titel"].startswith("Sächsische Schweiz") and r["liegtIn"] is None, r
-    assert [z["href"] for z in r["darin"]] == ["#O-04", "#O-05", "#O-03", "#O-06", "#O-02"], r   # nach Namen
+    assert [z["href"] for z in r["darin"]] == ["#O-04", "#O-05", "#O-03", "#O-08", "#O-06", "#O-02"], r   # nach Namen (Rathen ohne Lage, #452)
     assert r["karte"] and r["hier"] == 0 and r["darinMarken"] == 5, r
     # Ein Ort ohne eigene Seite ist auf der Seite der Region zu Hause: sein Link führt dorthin, zu seiner Zeile
     w = e["O-02"]
