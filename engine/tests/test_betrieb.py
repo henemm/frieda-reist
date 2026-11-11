@@ -1928,6 +1928,20 @@ def test_waechter_ohne_meldeweg_keine_nachricht(wa):
     assert r.returncode == 0 and nachrichten == []
 
 
+@pytest.mark.parametrize("scheitert, rc", [("", 0), ("konten.py", 1), ("reisespeicher.py", 1),
+                                           ("konten.py reisespeicher.py", 1)])
+def test_sichern_fuer_das_backup(wa, tmp_path, scheitert, rc):
+    """#506: betrieb/sichern.sh schreibt beide Schnappschüsse frisch, unmittelbar vor dem Server-Backup; es versucht
+    immer beide, meldet einen Fehler nur über den Exit (das Backup pingt dann keinen Heartbeat), nie über den Meldeweg."""
+    env = {**SAUBER, "FR_WURZEL": str(tmp_path / "quelle"), "FR_PYTHON": str(tmp_path / "python"),
+           "FR_DIENST": str(tmp_path / "dienst"), "FR_MELDEN": str(tmp_path / "melden.sh"), "WA_SICHERN_FEHLER": scheitert}
+    r = subprocess.run([str(BETRIEB / "sichern.sh")], capture_output=True, text=True, env=env)
+    assert r.returncode == rc, r.stderr
+    assert sorted(wa.gesichert.read_text().split()) == ["konten.py", "reisespeicher.py"]
+    assert not (tmp_path / "nachrichten").exists() and not wa.stempel.exists()
+    assert ("failed" in r.stderr) == bool(scheitert)
+
+
 def test_waechter_fehler_meldet_sich_und_laesst_den_stempel_aus(wa):
     r, nachrichten = wa(WA_FEHLER="1")
     assert r.returncode == 1 and not wa.stempel.exists()
