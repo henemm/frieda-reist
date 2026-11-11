@@ -95,6 +95,21 @@ ausstehende_freischalten() {  # vorgemerkte Reisen eines Laufs ohne Root-Rechte,
   freischalten_reisen $liste
 }
 
+ausstehende_neustarts() {  # von deploy.sh vorgemerkte Neustarts eines Laufs ohne Root-Rechte (#494)
+  local u rest=""
+  [ -s "$neustart_ausstehend" ] && root_geht || return 0
+  while IFS= read -r u; do   # eine Einheit je Zeile; eine Zeile, die kein Einheitenname ist, fällt weg
+    [[ "$u" =~ ^[A-Za-z0-9@._-]+$ ]] || continue
+    if ${FR_SUDO-sudo -n} systemctl restart "$u" 2>/dev/null; then
+      echo "$u restarted (pending from a run without root rights)."
+    else
+      rest="$rest$u"$'\n'
+      echo "Warning: restart of $u failed; the next run tries again."
+    fi
+  done < <(awk '!gesehen[$0]++' "$neustart_ausstehend")
+  if [ -n "$rest" ]; then printf '%s' "$rest" > "$neustart_ausstehend"; else rm -f "$neustart_ausstehend"; fi
+}
+
 zustellen() {  # ausstehende Links neuer Reisen (nur wenn welche anstehen)
   [ -s "$ausstehend" ] || return 0
   # zustellen.py schaltet die neue Reise frei; ohne Root-Rechte bleibt sie für den nächsten Lauf stehen (#465)
@@ -572,6 +587,7 @@ main() {
   rot_datei="${VF_ROT:-$FR_DIENST/veroeffentlichen-rot}"
   warnung="$FR_DIENST/veroeffentlichen-warnung"
   frei_ausstehend="${VF_FREI_AUSSTEHEND:-$FR_DIENST/freischalten-ausstehend}"   # Reisen eines Laufs ohne Root-Rechte (#465)
+  neustart_ausstehend="$FR_DIENST/neustart-ausstehend"   # Neustarts eines Laufs ohne Root-Rechte, deploy.sh merkt sie vor (#494)
   [ "${1:-}" = "--immer" ] && immer=1
 
   # Sperre in FR_DIENST, nicht in FR_SPERREN (Vorgabe /tmp): Der Schreibweg startet diesen Lauf aus einem Dienst mit
@@ -600,6 +616,7 @@ main() {
   # Reisen aus dem Reisespeicher zuerst und ohne Netz (#348): Scheitert git fetch (kein GitHub), sind sie schon veröffentlicht.
   # Ohne FR_SPEICHERREISEN geschieht hier nichts.
   speicher_reisen_lauf || return 1
+  ausstehende_neustarts      # vorgemerkt von deploy.sh in einem Lauf ohne Root-Rechte (#494)
   ausstehende_freischalten   # vorgemerkt von einem Lauf ohne Root-Rechte (#465); vor dem Abruf von GitHub, gilt also auch ohne Netz
   einstellungen_vorher="$(einstellungen_summe "$einstellungen")"
   if ! git fetch -q origin main; then
@@ -840,7 +857,7 @@ nachlauf() {
 }
 
 wurzel=""; ausstehend=""; rot_datei=""; pruefen=""; pruef_tmp=""; pruef_log=""; deploy_log=""; nochmal=""; software=1
-root_ok=""; frei_ausstehend=""
+root_ok=""; frei_ausstehend=""; neustart_ausstehend=""
 speicher_aktiv=""; speicher_kennung=""; speicher_wartet=""; speicher_gut=""; speicher_rote=""
 rot_commit=""; rot_art=""; rot_reisen=""; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""
 trap nachlauf EXIT

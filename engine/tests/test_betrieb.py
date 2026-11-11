@@ -3051,3 +3051,77 @@ def test_deploy_ersetzt_dateien_im_dienst_nur_ueber_ersetzen():
     assert not re.search(r'install [^\n]*"\$DIENST/?"', deploy)
     assert '"$FR_BETRIEB/ersetzen.sh" "$DIENST"' in deploy
     assert "--inplace" not in deploy
+
+
+
+# ---------- Neustarts eines Laufs ohne Root-Rechte (#494) ----------
+
+def test_deploy_ohne_root_rechte_merkt_die_neustarts_vor(tmp_path):
+    """Der Schreibweg stößt das Veröffentlichen aus einem Dienst mit NoNewPrivileges an; spult dieser Lauf die Software
+    vor, scheitert in deploy.sh jedes sudo. Die fälligen Neustarts werden dann in <FR_DIENST>/neustart-ausstehend
+    vorgemerkt (einmal je Dienst), statt nur „please run“ ins Protokoll zu schreiben (#494)."""
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    wurzel = tmp_path / "instanz"
+    shutil.copytree(BEISPIEL, wurzel / "reisen" / "beispielreise")
+    (wurzel / "engine").symlink_to(ENGINE)
+    (wurzel / ".gitignore").write_text("dist/\n__pycache__/\n")
+    git(wurzel, "init", "-q", "-b", "main")
+    git(wurzel, "add", ".")
+    git(wurzel, "commit", "-qm", "start")
+    (tmp_path / "seiten").mkdir()
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    ausfuehrbar(bin_ / "systemctl", '#!/bin/sh\ncase "$1" in is-enabled) exit 0;; esac\nexit 1\n')   # alle Dienste eingerichtet
+
+    class Gesund(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def log_message(self, *args):
+            pass
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Gesund)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    env = {**SAUBER, "PATH": f"{bin_}:{SAUBER.get('PATH', os.environ['PATH'])}", "FR_WURZEL": str(wurzel), "FR_INSTANZ": "probe",
+           "FR_SEITEN": str(tmp_path / "seiten"), "FR_DIENST": str(tmp_path / "dienst"), "FR_PYTHON": sys.executable,
+           "FR_GEPRUEFT": git(wurzel, "rev-parse", "HEAD").strip(), "FR_RM_PORT": str(server.server_address[1]), "FR_SUDO": "false"}
+    vorgemerkt = tmp_path / "dienst" / "neustart-ausstehend"
+    try:
+        r = subprocess.run([str(BETRIEB / "deploy.sh"), "beispielreise"], env=env, capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert vorgemerkt.read_text().split() == ["probe-rueckmeldungen", "probe-konnektor", "probe-schreiben", "probe-push"]
+        assert "please run" not in r.stdout and "the next timer run restarts probe-konnektor" in r.stdout
+        # Ein Dienst ändert sich wieder, bevor der Timer lief: nichts doppelt vorgemerkt
+        (tmp_path / "dienst" / "konnektor.py").write_text("alt\n")
+        r = subprocess.run([str(BETRIEB / "deploy.sh"), "beispielreise"], env=env, capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert sorted(vorgemerkt.read_text().split()) == ["probe-konnektor", "probe-push", "probe-rueckmeldungen", "probe-schreiben"]
+    finally:
+        server.shutdown()
+
+
+def test_veroeffentlichen_holt_vorgemerkte_neustarts_mit_root_rechten_nach(vf):
+    """Der nächste Lauf mit Root-Rechten (Timer) startet die vorgemerkten Dienste neu, auch ohne neuen Stand und vor dem
+    Abruf von GitHub; ein Lauf ohne Root-Rechte lässt die Vormerkung liegen. Scheitert ein Neustart, bleibt nur dieser
+    vorgemerkt (#494)."""
+    neustarts = vf["tmp"] / "neustarts.log"
+    ausfuehrbar(vf["tmp"] / "bin" / "systemctl",
+                f'#!/bin/sh\n[ "$1" = restart ] || exit 1\ncase "$2" in *kaputt*) exit 1;; esac\necho "$2" >> {neustarts}\n')
+    vorgemerkt = vf["tmp"] / "dienst" / "neustart-ausstehend"
+    vorgemerkt.parent.mkdir(exist_ok=True)
+    vorgemerkt.write_text("probe-konnektor\nprobe-kaputt\nprobe-schreiben\nprobe-konnektor\nboese; rm -rf /\n")
+    r = vf["lauf"](FR_SUDO="false")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert not neustarts.exists() and len(vorgemerkt.read_text().split("\n")) == 6
+    r = vf["lauf"]()
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert neustarts.read_text().split() == ["probe-konnektor", "probe-schreiben"]
+    assert "probe-konnektor restarted (pending from a run without root rights)." in r.stdout
+    assert "Warning: restart of probe-kaputt failed" in r.stdout
+    assert vorgemerkt.read_text().split() == ["probe-kaputt"]
+    vorgemerkt.write_text("probe-push\n")
+    neustarts.unlink()
+    r = vf["lauf"]()
+    assert r.returncode == 0 and neustarts.read_text().split() == ["probe-push"] and not vorgemerkt.exists(), r.stdout
