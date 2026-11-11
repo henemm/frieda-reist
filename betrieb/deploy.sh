@@ -100,9 +100,15 @@ rsync -a --delete --chmod=D755,F644 "$WURZEL/engine/vendor/" "$DIENST/vendor/"
 rsync -a --delete --chmod=D755,F644 "$WURZEL/engine/reisevorlage/" "$DIENST/reisevorlage/"
 rsync -a --delete --chmod=D755,F644 "$WURZEL/engine/artvorlagen/" "$DIENST/artvorlagen/"   # Vorlagen für Arten (ADR-0011)
 mkdir -p "$FR_KONNEKTOR" "$FR_KONTEN" && chmod 700 "$FR_KONNEKTOR" "$FR_KONTEN"
+# Geht der Neustart nicht (Lauf ohne Root-Rechte, vom Schreibweg mit NoNewPrivileges angestoßen), wird er in
+# <FR_DIENST>/neustart-ausstehend vorgemerkt; der nächste Lauf von veroeffentlichen.sh mit Root-Rechten holt ihn nach (#494).
 neustart() {
-  ${FR_SUDO-sudo -n} systemctl restart "$1" 2>/dev/null && echo "$2 restarted." \
-    || echo "$2: code changed, please run: sudo systemctl restart $1"
+  if ${FR_SUDO-sudo -n} systemctl restart "$1" 2>/dev/null; then
+    echo "$2 restarted."
+  else
+    grep -qxF "$1" "$DIENST/neustart-ausstehend" 2>/dev/null || echo "$1" >> "$DIENST/neustart-ausstehend"
+    echo "Note: $2: code changed, restart not possible in this run (no root rights?); the next timer run restarts $1."
+  fi
 }
 # Neue Bibliotheken in FR_PYTHON (veroeffentlichen.sh, #202): Dienste, die damit laufen, starten neu
 [ -n "${FR_BIBLIOTHEKEN_NEU:-}" ] && NEU_SB=1 && NEU_PS=1
