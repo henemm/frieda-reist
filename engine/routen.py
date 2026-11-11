@@ -242,10 +242,10 @@ EINGABE_MERKMALE = {"adresse": ("adresse", None), "koordinaten": ("koordinaten",
 
 # Felder der Grundform, die in `merkmale` der Eingabe stehen dürfen (ADR-0007, Schritt c): Beziehungen und Angaben, die Bedeutung tragen und
 # als Felder des Dings bleiben (ort, von, nach, zeit, frage, ausserhalb). Englische Namen gelten als Eingabe.
-GRUNDFORM_FELDER = {"unterkunft": ("ort", "frage"), "aufenthalt": ("ort", "zeit", "frage"), "strecke": ("von", "nach", "kennzahlen"), "ort": ("ausserhalb",)}
+GRUNDFORM_FELDER = {"unterkunft": ("ort", "frage"), "aufenthalt": ("ort", "zeit", "frage"), "strecke": ("von", "nach", "kennzahlen", "abschnitte"), "ort": ("ausserhalb",)}
 FEST_ALIAS = {"place": "ort", "from_place": "von", "to_place": "nach", "time_text": "zeit", "question": "frage", "outside": "ausserhalb",
               "address": "adresse", "coordinates": "koordinaten", "time_span": "zeitraum", "departure": "abfahrt", "arrival": "ankunft",
-              "booking_link": "buchungslink", "gpx_text": "gpx", "figures": "kennzahlen"}
+              "booking_link": "buchungslink", "gpx_text": "gpx", "figures": "kennzahlen", "sections": "abschnitte"}
 
 
 def kartenpunkte_aus_dingen(route):
@@ -548,12 +548,68 @@ def minuten(text):
 
 # Kennungen der Kennzahlen einer Strecke (routen.yaml kennzahlen, #269): fest, nicht die Namen der Reise. Gehzeit als Text h:mm,
 # Auf- und Abstieg in Metern, Länge in km; eigene Kennzahlen der Reise stehen unter ihrem Namen daneben und zählen nicht in Summen.
-KENNZAHLEN = ("gehzeit", "aufstieg", "abstieg", "laenge")
+# fahrzeit (#508): die Zeit einer Fahrt (Auto, Bus, Bahn …), Text h:mm wie gehzeit, zählt nie in die Gehzeit der Summen.
+KENNZAHLEN = ("gehzeit", "aufstieg", "abstieg", "laenge", "fahrzeit")
+ZEIT_KENNZAHLEN = ("gehzeit", "fahrzeit")   # Text h:mm in Anführungszeichen
+# Herkunft je Wert (#508): eine Kennzahl ist ein einzelner Wert oder {wert, quelle, geprueft}; ohne eigene Herkunft gilt die der Strecke
+KENNZAHL_HERKUNFT = ("quelle", "geprueft")
+
+
+def kz_wert(v):
+    """Wert einer Kennzahl: {wert, quelle, geprueft} -> wert, ein einzelner Wert bleibt."""
+    return v.get("wert") if isinstance(v, dict) else v
+
+
+def kz_herkunft(v):
+    """Herkunft einer Kennzahl ({quelle, geprueft} als Text) oder None, wenn die der Strecke gilt."""
+    if not isinstance(v, dict):
+        return None
+    h = {k: (v[k].isoformat() if isinstance(v[k], datetime.date) else str(v[k])) for k in KENNZAHL_HERKUNFT if v.get(k)}
+    return h or None
+
+
+def kz_gueltig(v):
+    """Ist v eine gültige Kennzahl (einzelner Wert oder {wert, quelle, geprueft})?"""
+    if isinstance(v, dict):
+        return set(v) <= {"wert", *KENNZAHL_HERKUNFT} and "wert" in v and kz_gueltig(v["wert"])
+    return isinstance(v, (str, int, float)) and not isinstance(v, bool)
+
+
+# Zwischenstopps einer Strecke (#509): abschnitte in Reihenfolge, je {nach: O-…, kennzahlen, halt: {zweck, dauer}}; der letzte
+# endet am Ziel der Strecke und hat keinen Halt. Fehlt der Strecke eine Kennzahl, die alle Abschnitte tragen, gilt deren Summe.
+ABSCHNITT_FELDER = {"nach", "kennzahlen", "halt"}
+HALT_FELDER = {"zweck", "dauer"}
+SUMMIERBAR = ("gehzeit", "fahrzeit", "laenge", "aufstieg", "abstieg")
+
+
+def kennzahlen_mit_abschnitten(s):
+    """Kennzahlen einer Strecke (Kennung -> Wert, wie in routen.yaml); was ihr fehlt und alle Abschnitte tragen, ist die Summe
+    der Abschnitte (Zeiten als h:mm, Längen und Höhenmeter als Zahl). -> dict"""
+    k = dict(s.get("kennzahlen") or {}) if isinstance(s.get("kennzahlen"), dict) else {}
+    ab = [a for a in s.get("abschnitte") or [] if isinstance(a, dict)]
+    if len(ab) < 2:
+        return k
+    for n in SUMMIERBAR:
+        if n in k:
+            continue
+        werte = [kz_wert((a.get("kennzahlen") or {}).get(n)) for a in ab]
+        if any(w is None for w in werte):
+            continue
+        if n in ZEIT_KENNZAHLEN:
+            m = [minuten(w) for w in werte]
+            if None not in m:
+                k[n] = dauer(sum(m))
+        else:
+            z = [zahl(w) for w in werte]
+            if None not in z:
+                summe = round(sum(z), 1)
+                k[n] = int(summe) if summe == int(summe) else summe
+    return k
 
 
 def kennwerte(k):
     """Kennzahlen einer Strecke (Kennung -> Wert, KENNZAHLEN) -> Zahlen für Summen. Namen werden nicht gesucht (#269)."""
-    w = {n: k.get(n) for n in KENNZAHLEN} if isinstance(k, dict) else dict.fromkeys(KENNZAHLEN)
+    w = {n: kz_wert(k.get(n)) for n in KENNZAHLEN} if isinstance(k, dict) else dict.fromkeys(KENNZAHLEN)
     return {"min": minuten(w["gehzeit"]), "auf": zahl(w["aufstieg"]), "ab": zahl(w["abstieg"]), "km": zahl(w["laenge"])}
 
 
@@ -672,8 +728,11 @@ class Routen:
         self.fehler.append(texte.Satz(f"{self.q}: ") + text)
 
     def strecke(self, sid):
-        """Strecke mit Titel und Kennzahlen (beides an der Strecke, #269); dossier: sie hat Lesetext im Dossier."""
+        """Strecke mit Titel und Kennzahlen (beides an der Strecke, #269; fehlende aus den Abschnitten, #509); dossier: sie hat
+        Lesetext im Dossier."""
         s = dict(self.strecken.get(sid) or {})
+        if s.get("abschnitte"):
+            s["kennzahlen"] = kennzahlen_mit_abschnitten(s)
         if sid in self.lesetext:
             s["dossier"] = True
         return s
@@ -730,15 +789,17 @@ class Routen:
                 self.fehl(texte.satz("pruefung.routen.5", sid=sid))
             # Kennzahlen (#269): Kennung -> Wert (KENNZAHLEN) oder eigener Name der Reise -> Wert, je ein einzelner Wert
             k = s.get("kennzahlen")
-            if k is not None and not (isinstance(k, dict) and all(isinstance(v, (str, int, float)) and not isinstance(v, bool)
-                                                                  for v in k.values())):
+            if k is not None and not (isinstance(k, dict) and all(kz_gueltig(v) for v in k.values())):
                 self.fehl(texte.satz("pruefung.routen.kennzahlen", sid=sid, w1=", ".join(KENNZAHLEN)))
-            elif isinstance(k, dict) and isinstance(k.get(KENNZAHLEN[0]), (int, float)):
-                # gehzeit ist Text h:mm; ohne Anführungszeichen liest YAML „3:30“ als Zahl 210 (Sexagesimal), das wäre eine stille Fehlsumme
-                self.fehl(texte.satz("pruefung.routen.kennzahlen_gehzeit", sid=sid, w1=k[KENNZAHLEN[0]]))
+            elif isinstance(k, dict):
+                for z in ZEIT_KENNZAHLEN:
+                    # Zeit ist Text h:mm; ohne Anführungszeichen liest YAML „3:30“ als Zahl 210 (Sexagesimal), das wäre eine stille Fehlsumme
+                    if isinstance(kz_wert(k.get(z)), (int, float)):
+                        self.fehl(texte.satz("pruefung.routen.kennzahlen_gehzeit", sid=sid, w1=kz_wert(k[z]), z=z))
             for k in ("von", "nach"):
                 if s.get(k) and s[k] not in self.orte:
                     self.fehl(texte.satz("pruefung.routen.6", sid=sid, w1=s[k]))
+            self.abschnitte_pruefen(sid, s)
             # GPX-Track der Strecke (K13): Datei unter medien/ der Reise; der Bau liest sie und ersetzt die schematische Linie
             g = gpx_datei(s)
             if s.get("gpx") is not None and not (isinstance(g, str) and g.startswith("medien/") and g.lower().endswith(".gpx") and ".." not in g):
@@ -1957,6 +2018,29 @@ class Routen:
                                       if w not in self.warnungen and not w["bezug"].startswith("V-")]})
         return aus
 
+    def abschnitte_pruefen(self, sid, s):
+        """Zwischenstopps (#509): mindestens zwei Abschnitte, jeder mit einem bekannten Ort als Ziel, der letzte endet am Ziel der
+        Strecke und hat keinen Halt; Kennzahlen wie an der Strecke, die Dauer eines Halts als Text h:mm."""
+        ab = s.get("abschnitte")
+        if ab is None:
+            return
+        if not isinstance(ab, list) or len(ab) < 2 or not all(isinstance(a, dict) and set(a) <= ABSCHNITT_FELDER and a.get("nach") for a in ab):
+            self.fehl(texte.satz("pruefung.routen.abschnitte", sid=sid))
+            return
+        for i, a in enumerate(ab):
+            if a["nach"] not in self.orte:
+                self.fehl(texte.satz("pruefung.routen.6", sid=sid, w1=a["nach"]))
+            k = a.get("kennzahlen")
+            if k is not None and not (isinstance(k, dict) and all(kz_gueltig(v) for v in k.values())
+                                      and not any(isinstance(kz_wert(k.get(z)), (int, float)) for z in ZEIT_KENNZAHLEN)):
+                self.fehl(texte.satz("pruefung.routen.kennzahlen", sid=sid, w1=", ".join(KENNZAHLEN)))
+            h = a.get("halt")
+            if h is not None and (i == len(ab) - 1 or not isinstance(h, dict) or not set(h) <= HALT_FELDER
+                                  or (h.get("dauer") is not None and (not isinstance(h["dauer"], str) or minuten(h["dauer"]) is None))):
+                self.fehl(texte.satz("pruefung.routen.abschnitt_halt", sid=sid, w1=a["nach"]))
+        if s.get("nach") and ab[-1]["nach"] != s["nach"]:
+            self.fehl(texte.satz("pruefung.routen.abschnitte_ende", sid=sid, w1=ab[-1]["nach"], w2=s["nach"]))
+
     def kommt_in_folge_vor(self, vid):
         def such(liste):
             for el in liste or []:
@@ -2078,6 +2162,27 @@ class Routen:
                     aus.add(el)
         return aus
 
+    def abschnitte_aus(self, s):
+        """Zwischenstopps für die Seite (#509): Abschnitte mit einfachen Kennzahlen und ihrer Herkunft, Halte mit Zweck und Dauer,
+        die Pausen zusammen (Minuten) und die Zeit mit Pausen (h:mm), wenn alle Halte eine Dauer haben. -> {} ohne Abschnitte"""
+        ab = [a for a in s.get("abschnitte") or [] if isinstance(a, dict)]
+        if len(ab) < 2:
+            return {}
+        aus = [{"nach": a.get("nach"), "kennzahlen": {n: kz_wert(v) for n, v in (a.get("kennzahlen") or {}).items()},
+                "kennzahlen_herkunft": {n: h for n, v in (a.get("kennzahlen") or {}).items() if (h := kz_herkunft(v))},
+                "halt": {k: str(v) for k, v in a["halt"].items() if v not in (None, "")} if isinstance(a.get("halt"), dict) else None}
+               for a in ab]
+        halte = [a["halt"] for a in aus if a["halt"] is not None]
+        pausen = [minuten(h.get("dauer")) for h in halte]
+        k = s.get("kennzahlen") or {}
+        zeit = next((minuten(kz_wert(k[z])) for z in reversed(ZEIT_KENNZAHLEN) if k.get(z) is not None), None)   # Fahrzeit vor Gehzeit
+        d = {"abschnitte": aus, "halte": len(halte)}
+        if halte and None not in pausen:
+            d["pausen"] = sum(pausen)
+            if zeit is not None:
+                d["mit_pausen"] = dauer(zeit + sum(pausen))
+        return d
+
     def strecke_aus(self, sid):
         s = self.strecke(sid)
         # Bewegungen: Werte und Lücken nach der Art der Strecke (plan/arten.yaml), wie bei Unterkünften
@@ -2091,7 +2196,10 @@ class Routen:
                 "ab": str(s["ab"]) if s.get("ab") is not None else None, "an": str(s["an"]) if s.get("an") is not None else None,
                 "summiert": self.ist_summiert(s),
                 "buchung": self.buchung_von(s, b, sid), "buchung_id": self.buchung_id(sid),
-                "rolle": s.get("rolle", "haupt"), "zweig_von": s.get("zweig_von"), "kennzahlen": s.get("kennzahlen") or {},
+                "rolle": s.get("rolle", "haupt"), "zweig_von": s.get("zweig_von"),
+                "kennzahlen": {n: kz_wert(v) for n, v in (s.get("kennzahlen") or {}).items()},
+                "kennzahlen_herkunft": {n: h for n, v in (s.get("kennzahlen") or {}).items() if (h := kz_herkunft(v))},
+                **self.abschnitte_aus(s),
                 "quelle": s.get("quelle"), "siehe": s.get("siehe"), "text": s.get("text", ""), "hinweis": s.get("hinweis"),
                 "dossier": bool(s.get("dossier")), "gpx": gpx_datei(s),
                 "gpx_quelle": s["gpx"].get("quelle") if isinstance(s.get("gpx"), dict) else None, **merkmale}

@@ -281,6 +281,23 @@ details.entscheidung>.etikett{margin:4px 0 6px}
 .kzn{display:flex;align-items:center;gap:6px;color:var(--acc)}
 .kzn .sym{width:1.05rem;height:1.05rem}
 .kzw{font-size:var(--t-untertitel);font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kzz{font-size:var(--t-klein);color:var(--mut)}
+/* Molekül Halteleiste (#509): Zeitleiste der Zwischenstopps einer Strecke */
+ol.halte{list-style:none;margin:10px 0;padding:0;display:flex;flex-direction:column}
+ol.halte>li{display:grid;grid-template-columns:22px minmax(0,1fr);column-gap:10px;position:relative}
+ol.halte>li::before{content:"";position:absolute;left:10px;top:0;bottom:0;width:2px;background:var(--line)}
+ol.halte>li:first-child::before{top:12px}ol.halte>li:last-child::before{bottom:calc(100% - 12px)}
+.hl-p{width:12px;height:12px;border-radius:50%;margin:6px 4px 0;background:var(--card);border:3px solid var(--kat,var(--mut));z-index:1}
+ol.halte>li.halt .hl-p{border-color:var(--farbe-braun)}
+ol.halte>li.hl-abschnitt .hl-p{visibility:hidden}
+.hl-ort{padding-block:0 8px;min-width:0}
+.hl-zeit{color:var(--mut);font-variant-numeric:tabular-nums}
+.hl-halt{display:inline-block;margin-top:2px;background:var(--warnbg);color:var(--farbe-braun);border-radius:var(--r-pille);padding:1px 10px;font-size:var(--t-klein);font-weight:600}
+.hl-fahrt{margin:0 0 10px;padding:6px 10px;border:1px dashed var(--line);border-radius:var(--r-klein);font-size:var(--t-klein);display:flex;flex-wrap:wrap;gap:2px 12px;font-variant-numeric:tabular-nums}
+details.herkunft-je{border-top:1px solid var(--line);margin-top:8px;padding-top:6px;font-size:var(--t-klein);color:var(--mut)}
+details.herkunft-je>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600}
+details.herkunft-je dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;margin:4px 0 0}
+details.herkunft-je dd{margin:0;color:var(--fg);overflow-wrap:anywhere}
 @container kz (max-width:419px){.kz{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}.kz>div:last-child:nth-child(odd){grid-column:1 / -1}}
 /* ---------- Wegtabelle (#58): Wege mit Kennzahlen; Rechner Tabelle, Handy und Tablet je Weg ein Eintrag mit Zahlenzeile ---------- */
 .pico .wege table{width:100%;font-size:var(--t-text)}
@@ -1317,7 +1334,7 @@ function zid(id) {
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, nummerChip
-   Moleküle: block, kennzahlLeiste, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, Rechtszeile (HTML im Fuß)
+   Moleküle: block, kennzahlLeiste, halteLeiste, herkunftJeWert, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, Rechtszeile (HTML im Fuß)
    Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, entschieden, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
@@ -1545,7 +1562,7 @@ function summeText(s) {
 
 // Molekül Kennzahlenleiste: Gehzeit, Aufstieg, Abstieg, Strecke mit Etikett. Die Kennungen (gehzeit, aufstieg, abstieg, laenge)
 // kommen fertig aus dem Routenmodell (routen.yaml kennzahlen, #269); die Seite formatiert nur, sie sucht keine Namen
-// fahrt: eine Bewegung, die nicht aus eigener Kraft ist (Bahn, Bus …): ihre Zeit heißt Dauer, nicht Gehzeit
+// fahrt: eine Bewegung, die nicht aus eigener Kraft ist (Bahn, Bus …): eine alte gehzeit heißt dort Dauer; neu steht fahrzeit (#508)
 const KZ_ANZEIGE = {
   aufstieg: v => ["aufstieg", T("seite.kennzahl.hoehe_auf", {v})], abstieg: v => ["abstieg", T("seite.kennzahl.hoehe_ab", {v})],
   gehzeit: (v, fahrt) => [fahrt ? "dauer" : "gehzeit", v], laenge: v => ["strecke", /^[\d.,]+$/.test(String(v)) ? kmText(v) : v],
@@ -1553,12 +1570,40 @@ const KZ_ANZEIGE = {
 const kzAnzeige = (n, v, fahrt) => KZ_ANZEIGE[n] ? KZ_ANZEIGE[n](v, fahrt) : [n, v];
 // Je Kennzahl eine Kachel; die bekannten tragen ihr Symbol im Etikett
 // Die Kennungen der Kennzahlen sind stabil (gehzeit, aufstieg …); der Name kommt aus dem Katalog, unbekannte Namen der Reise bleiben, wie sie sind
-const KZ_SYM = {gehzeit: "gehzeit", dauer: "gehzeit", aufstieg: "aufstieg", abstieg: "abstieg", strecke: "strecke", tage: "plan", hoehenmeter: "aufstieg", naechte: "unterkunft", orte: "ort", uebernachtungen: "unterkunft"};
+const KZ_SYM = {gehzeit: "gehzeit", dauer: "gehzeit", fahrzeit: "gehzeit", halte: "ort", aufstieg: "aufstieg", abstieg: "abstieg", strecke: "strecke", tage: "plan", hoehenmeter: "aufstieg", naechte: "unterkunft", orte: "ort", uebernachtungen: "unterkunft"};
 const kennzahlName = id => KZ_SYM[id] ? T("seite.kennzahl." + id) : id;
-function kennzahlLeiste(kennzahlen, fahrt) {
+// zusatz: kleine Zeile unter einer Kachel, je angezeigtem Namen (Zwischenstopps, #509: „mit Pausen 5:00 h“)
+function kennzahlLeiste(kennzahlen, fahrt, zusatz) {
   const kz = Object.entries(kennzahlen || {}).map(([n, v]) => kzAnzeige(n, v, fahrt));
   return kz.length ? el("div", {class: "kz-huelle"}, el("div", {class: "kz"}, kz.map(([n, v]) => el("div", {},
-    el("span", {class: "kzn"}, KZ_SYM[n] ? symbol(KZ_SYM[n]) : null, kennzahlName(n)), el("span", {class: "kzw"}, v))))) : null;
+    el("span", {class: "kzn"}, KZ_SYM[n] ? symbol(KZ_SYM[n]) : null, kennzahlName(n)), el("span", {class: "kzw"}, v),
+    (zusatz || {})[n] ? el("span", {class: "kzz"}, zusatz[n]) : null)))) : null;
+}
+// Molekül Halteleiste (#509): die Zwischenstopps einer Strecke als Zeitleiste, Fahrzeit und Länge je Abschnitt, Halt mit Zweck und Dauer
+const haltMin = d => { const m = /^(\d+):(\d{2})$/.exec(String(d || "")); return m ? +m[1] * 60 + +m[2] : null; };
+const haltDauer = m => m == null ? "" : m < 60 ? T("seite.strecke.halt_min", {min: lokaleZiffern(m)}) : dauer(m);
+function halteLeiste(s, fahrt) {
+  const ab = s.abschnitte || [];
+  if (ab.length < 2) return null;
+  const punkt = (ort, zeit, halt) => el("li", {class: halt ? "halt" : ""}, el("span", {class: "hl-p", "aria-hidden": "true"}),
+    el("div", {class: "hl-ort"}, el("b", {}, ortName(ort)), zeit ? el("span", {class: "hl-zeit"}, " · " + zeit) : null,
+      halt ? el("div", {}, el("span", {class: "hl-halt"}, [halt.zweck, haltDauer(haltMin(halt.dauer))].filter(Boolean).join(" · ") || T("seite.strecke.halt"))) : null));
+  const fahrtZeile = a => el("li", {class: "hl-abschnitt"}, el("span", {class: "hl-p", "aria-hidden": "true"}),
+    el("div", {class: "hl-fahrt"}, Object.entries(a.kennzahlen || {}).map(([n, v]) => { const [k, w] = kzAnzeige(n, v, fahrt);
+      return el("span", {}, k === "strecke" ? w : [kennzahlName(k) + " ", el("b", {}, w)]); })));
+  return el("ol", {class: "halte", "aria-label": T("seite.kennzahl.halte")}, punkt(s.von, s.ab ? T("seite.strecke.ab_zeit", {zeit: zeitText(s.ab)}) : ""),
+    ...ab.flatMap((a, i) => [fahrtZeile(a), i < ab.length - 1 ? punkt(a.nach, "", a.halt || {}) : punkt(a.nach, s.an ? T("seite.strecke.an_zeit", {zeit: zeitText(s.an)}) : "")]));
+}
+// Herkunft je Wert (#508, #509): Kennzahlen mit eigener Herkunft, zugeklappt hinter „Herkunft“; ohne eigene gilt die der Strecke
+function herkunftJeWert(s, fahrt) {
+  const zeilen = [];
+  const text = h => h.geprueft ? T("seite.herkunft.quelle_geprueft", {quelle: h.quelle, datum: datumKurz(h.geprueft)}) : h.quelle;
+  for (const [n, h] of Object.entries(s.kennzahlen_herkunft || {})) zeilen.push([kennzahlName(kzAnzeige(n, "", fahrt)[0]), text(h)]);
+  for (const a of s.abschnitte || []) for (const [n, h] of Object.entries(a.kennzahlen_herkunft || {}))
+    zeilen.push([T("seite.herkunft.abschnitt", {was: kennzahlName(kzAnzeige(n, "", fahrt)[0]), ort: ortName(a.nach)}), text(h)]);
+  if (!zeilen.length) return null;
+  return el("details", {class: "herkunft-je"}, el("summary", {}, T("seite.herkunft.je_wert")),
+    el("dl", {}, [...(s.quelle ? [[T("seite.herkunft.fahrt"), s.quelle]] : []), ...zeilen].flatMap(([a, b]) => [el("dt", {}, a), el("dd", {}, b)])));
 }
 /* Organismus Ding (Designsystem 2b): ein Aufenthalt, eine Bewegung oder eine Folge sieht überall gleich aus.
    Etikett oben (was es ist, mit Symbol der Art und Punkt in der Farbe der Kategorie), Titel, Unterzeile, Zustand, Kennung. */
@@ -1626,12 +1671,18 @@ function streckeZeile(id, wahl, ohneKennung, voll) {
   const z = el("div", {class: "z" + (ziel ? " ziel" : ""), id: ziel ? id : null, "data-ziel": ziel ? id : null},
     el("div", {class: "titelzeile"}, el("span", {}, symbol(artSym(arten[0], "bewegung"), "etikett-sym"), " ", dossier || zuHeimat ? link(id, s.titel) : s.titel), ohneKennung ? null : zid(id)));
   // Kennzahlen als Leiste mit Etiketten (Gehzeit, Aufstieg, Abstieg, Strecke); Verkehrsmittel als Textzeile
-  const kz = kennzahlLeiste(s.kennzahlen, !!s.art && !summiertArt(s));
+  const fahrt = !!s.art && !summiertArt(s);
+  // Zwischenstopps (#509): Zahl der Halte als Kachel, die Zeit mit Pausen und die Pausen zusammen als Zusatz
+  const zeitMitPausen = s.mit_pausen ? T("seite.strecke.mit_pausen", {dauer: s.mit_pausen}) : null;
+  const kz = kennzahlLeiste({...s.kennzahlen, ...(s.halte ? {halte: lokaleZiffern(s.halte)} : {})}, fahrt,
+    {fahrzeit: zeitMitPausen, gehzeit: zeitMitPausen, dauer: zeitMitPausen, halte: s.pausen ? T("seite.strecke.pausen", {dauer: haltDauer(s.pausen)}) : null});
   // Abfahrt → Ankunft auf einen Blick (#475); an ihrer Heimat mit dem Datum des Tags
   const tagDatum = voll && ((PLAN_ANSICHT && PLAN_ANSICHT.tage.find(t => t.strecken.some(x => x.id === id))) || {}).datum;
   const zeiten = s.ab && s.an ? T("seite.strecke.ab_an", {ab: zeitText(s.ab), an: zeitText(s.an)}) : [s.ab ? T("seite.strecke.ab_zeit", {zeit: zeitText(s.ab)}) : "", s.an ? T("seite.strecke.an_zeit", {zeit: zeitText(s.an)}) : ""].filter(Boolean).join(" · ");
   if (art || zeiten) z.append(el("div", {class: "z klein"}, [art, tagDatum && zeiten && !/T/.test(String(s.ab || "")) ? datumText(tagDatum) : "", zeiten].filter(Boolean).join(" · ")));
   if (kz) z.append(kz);
+  const halte = halteLeiste(s, fahrt);
+  if (halte) z.append(halte);
   // Der Stand steht einmal: voll mit Buchung trägt sie ihn, sonst der Chip
   if (s.buchung && !(voll && buchungenBei(id).length)) z.append(el("div", {class: "chips"}, buchungChip(s)));
   if (s.text) z.append(el("div", {class: "z klein"}, s.text));
@@ -1650,6 +1701,8 @@ function streckeZeile(id, wahl, ohneKennung, voll) {
   if (teil.sichtbar) z.append(teil.sichtbar);
   for (const b of buchungenBei(id)) z.append(buchungBlock(b, id));
   if (teil.block) z.append(teil.block);
+  const herkunft = herkunftJeWert(s, fahrt);
+  if (herkunft) z.append(herkunft);
   z.append(...stornierteBuchungen(stornierteBei(id)));
   const mitnehmen = mitnehmenZeile(id);   // was bei dieser Strecke mitkommt (Packliste, ADR-0010)
   if (mitnehmen) z.append(mitnehmen);
@@ -4583,6 +4636,11 @@ function ansichtBausteine(m) {
   const mitKz = strecken.find(([, x]) => Object.keys(x.kennzahlen || {}).length);
   const u = Object.entries(R.unterkuenfte).find(([, x]) => Object.keys(x.merkmale || {}).length);
   teil("Molekül", "Kennzahlenleiste", null, mitKz ? kennzahlLeiste(mitKz[1].kennzahlen) : el("p", {class: "meldung"}, "Keine Strecke mit Kennzahlen."));
+  const mitHalten = strecken.find(([, x]) => (x.abschnitte || []).length);
+  teil("Molekül", "Halteleiste", "Zwischenstopps einer Strecke als Zeitleiste: Fahrzeit und Länge je Abschnitt, Halt mit Zweck und Dauer (#509).",
+    mitHalten ? halteLeiste(mitHalten[1], !mitHalten[1].summiert) : halteLeiste({von: Object.keys(R.orte)[0], abschnitte: [{nach: Object.keys(R.orte)[1], kennzahlen: {fahrzeit: "1:50 h", laenge: 164}, halt: {zweck: "Pause", dauer: "0:30"}}, {nach: Object.keys(R.orte)[0], kennzahlen: {fahrzeit: "0:55 h", laenge: 50}}]}, true));
+  teil("Molekül", "Herkunft je Wert", "Herkunft einzelner Kennzahlen einer Strecke, zugeklappt (#508); ohne eigene gilt die der Strecke.",
+    herkunftJeWert({quelle: "Muster", kennzahlen_herkunft: {fahrzeit: {quelle: "Routenplaner (Muster)", geprueft: "2026-11-11"}}}, true));
   const mitKzListe = abschnitte.filter(a => istEtappe(a) && Object.keys(kzVon(a.id)).length).slice(0, 3);
   teil("Molekül", "Wegtabelle", "Wege mit Kennzahlen (#58): am Rechner Tabelle, am Handy und Tablet je Weg ein Eintrag mit Zahlenzeile.",
     mitKzListe.length ? wegTabelle(mitKzListe) : el("p", {class: "meldung"}, "Keine Etappe mit Kennzahlen."));

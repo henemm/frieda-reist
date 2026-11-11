@@ -200,7 +200,8 @@ def orte_im_plan(route, stand):
 
 def schematische_wege(route, orte):
     """Wege ohne GPX (K8): Stationen in Tagesreihenfolge. Hat ein Tag genau eine Strecke, liegen seine Aufenthalte mit Lage
-    zwischen Anfang und Ende (Ladestopp, Rast); sonst die gerade Linie von Ort zu Ort."""
+    zwischen Anfang und Ende (Ladestopp, Rast); hat die Strecke Zwischenstopps (#509), führt die Linie über deren Orte; sonst die
+    gerade Linie von Ort zu Ort."""
     aufenthalte = route.get("aufenthalte") or {}
     wege = {}
     alle_tage = list(route.get("tage") or []) + list((route.get("weitere_tage") or {}).values())
@@ -213,8 +214,9 @@ def schematische_wege(route, orte):
             a, b = orte.get(s.get("von")), orte.get(s.get("nach"))
             if not a or not b:
                 continue
-            mitte = [punkt_von(aufenthalte.get(x)) for x in t.get("aufenthalte") or []] if len(sids) == 1 else []
-            weg = [a, *[p for p in mitte if p], b]
+            halte = [orte.get(x.get("nach")) for x in (s.get("abschnitte") or [])[:-1] if isinstance(x, dict)]   # Zwischenstopps (#509)
+            mitte = [punkt_von(aufenthalte.get(x)) for x in t.get("aufenthalte") or []] if len(sids) == 1 and not halte else []
+            weg = [a, *[p for p in halte + mitte if p], b]
             if len(weg) == 2 and a == b:
                 continue
             wege[sid] = weg

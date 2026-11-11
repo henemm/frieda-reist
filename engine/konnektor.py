@@ -830,7 +830,15 @@ class Handbuch:
             z = [f"{self.ort(s.get('von'))} → {self.ort(s.get('nach'))}" + (f" ({' + '.join(s['art']) if isinstance(s['art'], list) else s['art']})" if s.get("art") else "")
                  + (tk("konnektor.ausgabe.sammeln.18", w1=s['ab']) if s.get("ab") else "") + (tk("konnektor.ausgabe.sammeln.14", w1=s['an']) if s.get("an") else "")]
             if s.get("kennzahlen"):  # Kennung -> Wert an der Strecke (#269), auch bei Etappen mit Lesetext im Dossier
-                z.append("; ".join(f"{k}: {v}" for k, v in s["kennzahlen"].items()))
+                hk = s.get("kennzahlen_herkunft") or {}   # Herkunft je Wert (#508); ohne eigene gilt die der Strecke
+                z.append("; ".join(f"{k}: " + (tk("konnektor.ausgabe.kennzahl_herkunft", wert=v, quelle=hk[k].get("quelle", ""),
+                                                  geprueft=hk[k].get("geprueft", "–")) if k in hk else str(v))
+                                   for k, v in s["kennzahlen"].items()))
+            if s.get("abschnitte"):   # Zwischenstopps (#509): Abschnitt mit Kennzahlen, Halt mit Zweck und Dauer
+                z.append(tk("konnektor.ausgabe.abschnitte") + " → ".join(
+                    f"{self.ort(a['nach'])} ({a['nach']})" + (f" [{', '.join(f'{k} {v}' for k, v in a['kennzahlen'].items())}]" if a.get("kennzahlen") else "")
+                    + (f" – {', '.join(str(x) for x in (a['halt'].get('zweck'), a['halt'].get('dauer')) if x)}" if a.get("halt") else "")
+                    for a in s["abschnitte"]) + (tk("konnektor.ausgabe.mit_pausen", w1=s["mit_pausen"]) if s.get("mit_pausen") else ""))
             if s.get("buchung"):   # eine Zeile mit Verweis auf die Heimat der Buchung (ADR-0003)
                 z.append(tk("konnektor.ausgabe.sammeln.15", w1=dw(s['buchung'])) + (tk("konnektor.ausgabe.zeige_hinweis", w1=s['buchung_id']) if s.get("buchung_id") else ""))
             if s.get("beginn"):

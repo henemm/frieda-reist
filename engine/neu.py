@@ -41,6 +41,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bauen  # noqa: E402
 import texte  # noqa: E402
+from routen import kz_wert  # noqa: E402
 from reise import (PFAD_MUSTER, ROLLEN, reise_pfad, rolle_neu, schluessel_aus_name, sprache_pruefen, sprache_von,  # noqa: E402
                    zeitraum_text)
 
@@ -665,7 +666,7 @@ def kennung_der_kennzahl(name):
     „Aufstiegshilfe“ bleiben eigene Namen der Reise, wie jeder andere Name."""
     n = re.sub(r"\s*\([^)]*\)\s*$", "", str(name)).strip().lower()
     for kennung, schluessel, roh in (("gehzeit", ("gehzeit", "dauer"), ()), ("aufstieg", ("aufstieg",), ()),
-                                     ("abstieg", ("abstieg",), ()), ("laenge", ("laenge",), ("km",))):
+                                     ("abstieg", ("abstieg",), ()), ("laenge", ("laenge",), ("km",)), ("fahrzeit", ("fahrzeit",), ())):
         if n == kennung or n in roh or n in {w.lower() for s in schluessel for w in texte.inhaltswoerter("inhalt.kennzahl." + s)}:
             return kennung
     return name
@@ -706,6 +707,20 @@ def kennzahlen_kennungen(roh, sprache, meldungen):
         g = km.get("gehzeit")
         if isinstance(g, str) and not isinstance(g, DoubleQuotedScalarString):
             km["gehzeit"] = DoubleQuotedScalarString(g)
+
+
+def fahrzeit_nachziehen(reise_dir, roh, meldungen):
+    """#508: Eine Fahrt (Strecke, deren Art nicht summiert wird: Auto, Bus, Bahn …) hat keine Gehzeit; ihre Zeit heißt fahrzeit.
+    Steht an ihr gehzeit und noch keine fahrzeit, wird die Kennung umbenannt, Wert und Herkunft bleiben. Ein zweiter Lauf findet nichts."""
+    import schreiben as sb
+    arten = sb.arten_laden(reise_dir)
+    for sid, st in ((roh or {}).get("strecken") or {}).items():
+        km = st.get("kennzahlen") if isinstance(st, dict) else None
+        if not hasattr(km, "insert") or "gehzeit" not in km or "fahrzeit" in km or not sb.ist_fahrt(arten, st.get("art")):
+            continue
+        pos, v = list(km.keys()).index("gehzeit"), km.pop("gehzeit")
+        km.insert(pos, "fahrzeit", v)
+        meldungen.append(texte.t(sprache_von(reise_dir), "pruefung.neu.nachziehen.kennzahl_kennung", sid=sid, alt="gehzeit", neu="fahrzeit"))
 
 
 def eckdaten_zeilen(zeilen, start, ende):
@@ -903,7 +918,7 @@ def etappen_nachziehen(reise_dir, roh, schreiben, meldungen):
                             km[k] = sb.skalar(k, w if k == "gehzeit" else kennzahl_wert(w))   # gehzeit bleibt Text
                             was.append(k)
                         erster.setdefault(k, n)
-                        if melde is None and gleicher_wert(km[k], w):
+                        if melde is None and gleicher_wert(kz_wert(km[k]), w):
                             raus_e[j] = (n, k, w)
                         else:
                             meldungen.append(melde or texte.t(sprache, "pruefung.neu.nachziehen.etappe_kennzahl_anders", eid=eid, name=n, kennung=k, w1=w, w2=km[k], datei=rel))
@@ -913,7 +928,7 @@ def etappen_nachziehen(reise_dir, roh, schreiben, meldungen):
                     sb.yaml_rund().dump(roh, aus)
                     g = ((((yaml.safe_load(aus.getvalue()) or {}).get("strecken") or {}).get(eid) or {}).get("kennzahlen") or {})
                     for j, (n, k, w) in list(raus_e.items()):
-                        if g.get(k) is None or (k == "gehzeit" and not isinstance(g[k], str)) or not gleicher_wert(g[k], w):
+                        if kz_wert(g.get(k)) is None or (k == "gehzeit" and not isinstance(kz_wert(g[k]), str)) or not gleicher_wert(kz_wert(g[k]), w):
                             meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.etappe_kennzahl_anders", eid=eid, name=n, kennung=k, w1=w, w2=g.get(k), datei=rel))
                             konflikt.add(j)
                 if not km:
@@ -1011,6 +1026,7 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
             del w["bereich"]
     buchung_nachziehen(reise_dir, roh, schreiben, meldungen)   # #215: Feld buchung: an Dingen -> Buchung B-…
     kennzahlen_kennungen(roh, sprache_von(reise_dir), meldungen)   # #269: Namen der Kennzahlen in routen.yaml -> Kennungen
+    fahrzeit_nachziehen(reise_dir, roh, meldungen)   # #508: die Zeit einer Fahrt heißt fahrzeit, nicht gehzeit
     dossier_fertig = etappen_nachziehen(reise_dir, roh, schreiben, meldungen)   # #269: Titel und Kennzahlen an die Strecken
     if schreiben and roh is not None:
         sb.routen_speichern(reise_dir, roh)

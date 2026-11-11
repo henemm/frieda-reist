@@ -1543,8 +1543,10 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
         if art not in arten or arten[art].get("grundform") != "bewegung":
             raise Ablehnung("schreiben.ding_anlegen.6", w1=', '.join(k for k, a in arten.items() if a.get('grundform') == 'bewegung') or 'keine')
         d["art"] = art
-        if args.get("kennzahlen") is not None:   # Kennzahlen an der Strecke (#269)
-            d["kennzahlen"] = fliess_map(kennzahlen_wert(args))
+        if args.get("kennzahlen") is not None:   # Kennzahlen an der Strecke (#269); die Herkunft der Strecke gilt für sie
+            d["kennzahlen"] = fliess_map(kennzahlen_wert(args, fahrt=ist_fahrt(arten, art)))
+        if args.get("abschnitte") not in (None, "", []):   # Zwischenstopps (#509)
+            d["abschnitte"] = abschnitte_wert(args, roh, d["nach"], fahrt=ist_fahrt(arten, art))
         for k, name in (("ab", "abfahrt"), ("an", "ankunft")):   # Zeitpunkte (Issue #135): HH:MM oder JJJJ-MM-TTTHH:MM+HH:MM
             if k == "an" and ist_eltern_wert(args.get("an")):   # Elternbezug statt Ankunftszeit (ADR-0007)
                 continue
@@ -1619,14 +1621,17 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
 
 AENDERBAR = {"unterkunft": ("name", "ort", "art", "hinweis", "quelle", "buchungslink", "frage", "an"),
              "aufenthalt": ("name", "ort", "art", "zeit", "beginn", "ende", "hinweis", "quelle", "buchungslink", "frage", "an"),
-             "strecke": ("titel", "von", "nach", "art", "ab", "an", "hinweis", "quelle", "kennzahlen"), "ort": ("name", "art", "hinweis", "quelle", "ausserhalb", "an")}
+             "strecke": ("titel", "von", "nach", "art", "ab", "an", "hinweis", "quelle", "kennzahlen", "abschnitte"), "ort": ("name", "art", "hinweis", "quelle", "ausserhalb", "an")}
 
 
-def kennzahlen_wert(args, alt=None):
-    """Kennzahlen einer Strecke (#269): Kennung -> Wert (routen.KENNZAHLEN: gehzeit als Text h:mm, aufstieg, abstieg in m, laenge in
-    km; eigene Namen der Reise erlaubt). Zahlen bleiben Zahlen; ein leerer Wert entfernt die Kennzahl. alt: die bisherigen. -> dict"""
+def kennzahlen_wert(args, alt=None, herkunft=None, fahrt=False):
+    """Kennzahlen einer Strecke (#269): Kennung -> Wert (routen.KENNZAHLEN: gehzeit und fahrzeit als Text h:mm, aufstieg, abstieg in
+    m, laenge in km; eigene Namen der Reise erlaubt). Zahlen bleiben Zahlen; ein leerer Wert entfernt die Kennzahl. alt: die
+    bisherigen. Herkunft je Wert (#508): ein Wert darf {wert, quelle, geprueft} sein; herkunft ({quelle, geprueft}) gilt für die neuen
+    Werte ohne eigene, dann steht der Wert mit seiner Herkunft, sonst gilt die der Strecke. fahrt: die Strecke ist eine Fahrt (Art
+    nicht summiert), ihre Zeit heißt fahrzeit, auch wenn gehzeit kam. -> dict"""
     from schnittstelle import KENNZAHL_ALIAS
-    from routen import KENNZAHLEN
+    from routen import ZEIT_KENNZAHLEN
     from neu import kennung_der_kennzahl   # Katalognamen („Gehzeit“, „Aufstieg (Hm)“) -> Kennung, nur ganze Namen (F105)
     k = args.get("kennzahlen")
     if not isinstance(k, dict) or not k:
@@ -1635,14 +1640,90 @@ def kennzahlen_wert(args, alt=None):
     for n, v in k.items():
         n = str(n).strip()
         n = KENNZAHL_ALIAS.get(n.lower()) or kennung_der_kennzahl(n)   # Namen der Schnittstelle und des Katalogs -> Kennung
+        if fahrt and n == "gehzeit":   # eine Fahrt hat keine Gehzeit (#508)
+            n = "fahrzeit"
+        h = dict(herkunft or {})
+        if isinstance(v, dict):   # {wert, quelle, geprueft}: die eigene Herkunft des Werts
+            if not set(v) <= {"wert", "quelle", "geprueft"} or "wert" not in v:
+                raise Ablehnung("schreiben.kennzahlen.form")
+            h.update({x: v[x] for x in ("quelle", "geprueft") if v.get(x) not in (None, "")})
+            v = v["wert"]
         if not n or len(n) > 40 or isinstance(v, bool) or not isinstance(v, (str, int, float)) or len(str(v)) > 80 \
-                or (n == KENNZAHLEN[0] and not isinstance(v, str)):   # gehzeit ist Text h:mm
+                or (n in ZEIT_KENNZAHLEN and not isinstance(v, str)):   # Zeiten sind Text h:mm
             raise Ablehnung("schreiben.kennzahlen.form")
         if isinstance(v, str) and not v.strip():
             neu.pop(n, None)
+            continue
+        v = v.strip() if isinstance(v, str) else v
+        if h.get("quelle"):
+            e = {"wert": v, "quelle": " ".join(str(h["quelle"]).split())[:600]}
+            if h.get("geprueft"):
+                e["geprueft"] = h["geprueft"] if isinstance(h["geprueft"], datetime.date) else datum(h["geprueft"], "geprueft", n)
+            neu[n] = fliess_map(e)
         else:
-            neu[n] = v.strip() if isinstance(v, str) else v
+            neu[n] = v
     return neu
+
+
+ABSCHNITT_ALIAS = {"to_place": "nach", "after": "nach", "figures": "kennzahlen", "stop": "halt"}
+HALT_ALIAS = {"purpose": "zweck", "duration": "dauer"}
+
+
+def abschnitte_wert(args, roh, nach, alt=None, herkunft=None, fahrt=False):
+    """Zwischenstopps einer Strecke (#509): Liste von Abschnitten in Reihenfolge, je {nach: O-…, kennzahlen, halt: {zweck,
+    dauer h:mm}}; der letzte endet am Ziel der Strecke (ohne nach: dort) und hat keinen Halt. Ersetzt die bisherige Liste; eine
+    Kennzahl, die im Abschnitt mit demselben Ziel schon so stand, behält ihre Herkunft. Leere Liste: keine Abschnitte. -> Liste oder None"""
+    from routen import kz_wert
+    liste = args.get("abschnitte")
+    if liste in ("", []):
+        return None
+    if not isinstance(liste, list) or len(liste) < 2 or len(liste) > 30 or not all(isinstance(a, dict) for a in liste):
+        raise Ablehnung("schreiben.abschnitte.form")
+    alt_je = {a.get("nach"): a for a in alt or [] if isinstance(a, dict)}
+    orte = roh.get("orte") or {}
+    aus = []
+    for i, a in enumerate(liste):
+        a = {ABSCHNITT_ALIAS.get(str(k), str(k)): v for k, v in a.items()}
+        if not set(a) <= {"nach", "kennzahlen", "halt"}:
+            raise Ablehnung("schreiben.abschnitte.form")
+        letzter = i == len(liste) - 1
+        ziel = str(a.get("nach") or (nach if letzter else "")).strip()
+        if not ziel or ziel not in orte:
+            raise Ablehnung("schreiben.abschnitte.ort", w1=ziel or "–")
+        if letzter and ziel != nach:
+            raise Ablehnung("schreiben.abschnitte.ende", w1=ziel, w2=nach)
+        e = {"nach": ziel}
+        if a.get("kennzahlen") not in (None, {}, ""):
+            vorher = dict((alt_je.get(ziel) or {}).get("kennzahlen") or {})
+            k = kennzahlen_wert({"kennzahlen": a["kennzahlen"]}, None, herkunft, fahrt)
+            k = {n: (vorher[n] if n in vorher and kz_wert(vorher[n]) == kz_wert(v) else v) for n, v in k.items()}
+            if k:
+                e["kennzahlen"] = fliess_map(k)
+        h = a.get("halt")
+        if h not in (None, {}, ""):
+            h = {HALT_ALIAS.get(str(k), str(k)): v for k, v in h.items()} if isinstance(h, dict) else None
+            if letzter or not h or not set(h) <= {"zweck", "dauer"}:
+                raise Ablehnung("schreiben.abschnitte.halt", w1=ziel)
+            halt = {}
+            if str(h.get("zweck") or "").strip():
+                halt["zweck"] = " ".join(str(h["zweck"]).split())[:80]
+            if str(h.get("dauer") or "").strip():
+                d = str(h["dauer"]).strip()
+                if not re.fullmatch(r"\d{1,2}:\d{2}", d):
+                    raise Ablehnung("schreiben.abschnitte.halt", w1=ziel)
+                halt["dauer"] = skalar("dauer", d)
+            e["halt"] = fliess_map(halt)
+        aus.append(fliess_map(e))
+    return aus
+
+
+def ist_fahrt(arten, art):
+    """Ist eine Strecke dieser Art eine Fahrt (ihre Art zählt nicht in die Kennzahlen, Merkmal summiert)? Ohne Art: nein."""
+    from routen import KOMBINIERT
+    if art in (None, "", []):
+        return False
+    a = arten.get(KOMBINIERT if isinstance(art, list) else str(art))
+    return a is not None and not a.get("summiert")
 
 
 def ist_eltern_wert(wert):
@@ -1791,11 +1872,11 @@ def ding_aendern(reise_dir, wer, args, heute=None):
                 gpx_text = v
         if "merkmal" in felder:
             felder.pop("merkmal")
-        brauchbar = {k for k in felder if k not in ("ziel", "vorname", "name", "grund")}
-        if lage or fest.get("gpx") is not None or merkmale:   # quelle gehört dann den Angaben, nicht dem Ding
-            brauchbar.discard("quelle")
-        if brauchbar:
-            teile.append(_ding_aendern_felder(reise_dir, wer, {k: v for k, v in felder.items() if k != "quelle" or "quelle" in brauchbar}, heute))
+        felder.update({k: args[k] for k in ("geprueft",) if args.get(k) is not None})
+        brauchbar = {k for k in felder if k not in ("ziel", "vorname", "name", "grund", "quelle", "geprueft") and felder[k] is not None}
+        nur_quelle = felder.get("quelle") is not None and not (brauchbar or lage or fest.get("gpx") is not None or merkmale)
+        if brauchbar or nur_quelle:   # quelle gehört den neuen Angaben, die des Dings ändert sie nur allein (#508)
+            teile.append(_ding_aendern_felder(reise_dir, wer, felder, heute))
         if lage:
             teile.append(lage_eintragen(reise_dir, wer, {**{k: args[k] for k in ("quelle", "geprueft", "grund") if args.get(k) is not None},
                                                          "ziel": ziel, **lage}, heute))
@@ -1838,7 +1919,10 @@ def _ding_aendern_felder(reise_dir, wer, args, heute=None):
         args = {**args, "name": args["neuer_name"]}
     geaendert = []
     zeit_neu = {}
-    quelle_fest = knoten.get("quelle") or text_wert(args, "quelle", laenge=600) or S("schreiben.quelle_gespraech", w1=wer.get("name", ""))
+    # quelle ändert die Herkunft des Dings nur, wenn sie allein kommt; mit anderen Angaben gehört sie diesen (#508)
+    quelle_neu = text_wert(args, "quelle", laenge=600)
+    nur_quelle = not any(args.get(f) is not None for f in AENDERBAR[was] if f != "quelle")
+    quelle_fest = quelle_neu or knoten.get("quelle") or S("schreiben.quelle_gespraech", w1=wer.get("name", ""))
     eltern = args.get("an") if args.get("an") is not None and (was != "strecke" or ist_eltern_wert(args.get("an"))) else None
     if eltern is not None:   # Elternbezug (ADR-0007); an einer Strecke bleibt eine Uhrzeit die Ankunftszeit
         eltern_aendern(reise_dir, roh, ziel, was, knoten, eltern, geaendert)
@@ -1846,6 +1930,8 @@ def _ding_aendern_felder(reise_dir, wer, args, heute=None):
         if feld not in args or args.get(feld) is None:
             continue
         if feld == "an" and eltern is not None:
+            continue
+        if feld == "quelle" and not nur_quelle:
             continue
         if feld == "name":
             v = text_wert(args, "name", pflicht=True, laenge=120)
@@ -1871,15 +1957,31 @@ def _ding_aendern_felder(reise_dir, wer, args, heute=None):
         elif feld in ("ab", "an"):
             v = zeit_wert(args, feld)
         elif feld == "kennzahlen":   # Kennung -> Wert an der Strecke (#269), mit den bisherigen zusammengeführt
+            from routen import kz_wert
             alt = dict(knoten.get("kennzahlen") or {})
-            v = kennzahlen_wert(args, alt)
+            herkunft = {"quelle": quelle_neu, "geprueft": args.get("geprueft")} if quelle_neu else None
+            v = kennzahlen_wert(args, alt, herkunft, ist_fahrt(arten, knoten.get("art")))
             if v != alt:
-                zeile = lambda d: ", ".join(f"{n} {w}" for n, w in d.items()) or "–"
+                zeile = lambda d: ", ".join(f"{n} {kz_wert(w)}" for n, w in d.items()) or "–"
                 geaendert.append(S("schreiben.antwort.ding.wechsel", w1=feld, w2=zeile(alt), w3=zeile(v)))
                 if v:
                     knoten["kennzahlen"] = fliess_map(v)
                 else:
                     del knoten["kennzahlen"]
+            continue
+        elif feld == "abschnitte":   # Zwischenstopps (#509): die ganze Liste in Reihenfolge
+            from routen import kz_wert
+            alt = list(knoten.get("abschnitte") or [])
+            herkunft = {"quelle": quelle_neu, "geprueft": args.get("geprueft")} if quelle_neu else None
+            v = abschnitte_wert(args, roh, args.get("nach") or knoten.get("nach"), alt, herkunft, ist_fahrt(arten, knoten.get("art")))
+            zeile = lambda ab: " → ".join(str(a.get("nach")) + (" (" + ", ".join(f"{n} {kz_wert(w)}" for n, w in a["kennzahlen"].items()) + ")"
+                                                                  if a.get("kennzahlen") else "") for a in ab or []) or "–"
+            if (v or []) != alt:
+                geaendert.append(S("schreiben.antwort.ding.wechsel", w1=S("schreiben.abschnitte.name"), w2=zeile(alt), w3=zeile(v)))
+                if v:
+                    knoten["abschnitte"] = v
+                else:
+                    del knoten["abschnitte"]
             continue
         elif feld == "ausserhalb":
             v = bool_wert(args, feld)
@@ -4662,6 +4764,7 @@ def gegenstand_anlegen(reise_dir, wer, args, heute=None):
     verlauf.append(fliess_map({"datum": heute, "wer": wer["name"], "was": "angelegt", **({"grund": grund} if grund else {})}))
     knoten["verlauf"] = verlauf
     roh = packliste_laden(reise_dir)
+    aehnlich = gegenstaende_aehnlich(roh["gegenstaende"], titel)   # vor dem Anhängen: Hinweis auf Doppelte (#508)
     roh["gegenstaende"].append(knoten)
     packliste_speichern(reise_dir, roh)
     art_name = arten_laden(reise_dir)[art].get("name", art)
@@ -4671,7 +4774,33 @@ def gegenstand_anlegen(reise_dir, wer, args, heute=None):
             S("schreiben.antwort.gegenstand.angelegt", w1=gid, w2=titel, w3=art_name) + (S("schreiben.antwort.gegenstand.merkmale", w1=mk_text) if mk_text else "")
             + (S("schreiben.antwort.gegenstand.an", w1=d["an"]) if d.get("an") else "")
             + (S("schreiben.antwort.gegenstand.wer", w1=d["wer"]) if d.get("wer") else "") + "."
-            + (S("schreiben.antwort.grund", w1=grund) if grund else ""))
+            + (S("schreiben.antwort.grund", w1=grund) if grund else "")
+            + (S("schreiben.antwort.gegenstand.aehnlich", w1=", ".join(gegenstand_eintrag_text(g) for g in aehnlich)) if aehnlich else ""))
+
+
+def titel_wurzel(t):
+    """Titel eines Gegenstands -> Vergleichsform: klein, ohne Klammerzusatz, Satzzeichen und Mengenangaben, Wörter ohne Endung -e/-n/-s."""
+    t = re.sub(r"\([^)]*\)", " ", str(t or "").lower())
+    woerter = [w for w in re.findall(r"[^\W\d_]+", t) if len(w) > 1]
+    return " ".join(re.sub(r"(en|er|e|n|s)$", "", w) if len(w) > 4 else w for w in woerter)
+
+
+def gegenstaende_aehnlich(gegenstaende, titel):
+    """Aktive Gegenstände der Packliste mit (fast) gleichem Titel wie titel: gleiche Vergleichsform, oder die eine steckt als ganzes
+    Wort oder Wortende in der anderen („Kotbeutel“, „Kotbeutel für Hund“, „Hundekotbeutel“). Nur ein Hinweis, angelegt wird trotzdem (#508). -> Liste"""
+    neu = titel_wurzel(titel)
+    if len(neu) < 3:
+        return []
+    treffer = []
+    for g in gegenstaende or []:
+        if not isinstance(g, dict) or g.get("status") == "entfaellt":
+            continue
+        alt = titel_wurzel(g.get("titel"))
+        zusammen = any(a != b and (a.endswith(b) or b.endswith(a)) and min(len(a), len(b)) >= 5   # „Hundekotbeutel“ und „Kotbeutel“
+                       for a in alt.split() for b in neu.split())
+        if alt and len(alt) >= 3 and (alt == neu or zusammen or re.search(rf"\b{re.escape(neu)}\b", alt) or re.search(rf"\b{re.escape(alt)}\b", neu)):
+            treffer.append(g)
+    return treffer
 
 
 def gegenstand_eigen(g, wer):
