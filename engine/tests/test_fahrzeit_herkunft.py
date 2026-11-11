@@ -13,6 +13,7 @@ import bauen  # noqa: E402
 import neu  # noqa: E402
 import routen  # noqa: E402
 import schreiben as sb  # noqa: E402
+from playwright_pfad import PLAYWRIGHT  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 BEISPIEL = WURZEL / "beispiel" / "reisen" / "beispielreise"
@@ -194,6 +195,7 @@ def test_karte_fuehrt_ueber_die_halte(reise):
         assert orte["O-02"] in wege["E-21"] and orte["O-03"] in wege["E-21"]
 
 
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
 def test_seite_zeigt_zwischenstopps_fahrzeit_und_herkunft(tmp_path, browser):
     """#508, #509: Die S-Bahn E-20 an ihrer Heimat mit einem erfundenen Halt: Kachel Fahrzeit mit Zeit mit Pausen, Kachel Halte,
