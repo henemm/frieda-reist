@@ -255,3 +255,4 @@ Rationale: Das Löschen weicht an zwei klar begrenzten Stellen vom Nur-Anhängen
 ## Changelog
 
 - 2026-11-11: Erstfassung (Entwurf) für #381 mit den Entscheidungen des Product Owners vom 10. und 11.11.2026.
+- 2026-11-11 (TDD RED): Schnittstelle in den Tests festgelegt (Kopf von `engine/tests/test_loeschen_reise.py` und `test_loeschen_konto.py`). Die Funktionen zum Vormerken heißen `loeschung_vormerken`, `loeschung_zurueckholen`, `loeschungen`, `loeschung_abschliessen`, `loeschprotokoll`, weil `konten.reise_vormerken` schon die Reisegrenze (#380) zählt; dazu `instanz.loeschfrist_tage()` (FR_LOESCHFRIST_TAGE), `konten.py vorgemerkt` für Skripte, `reisespeicher.verdichten()`, `waechter.loeschungen_ausfuehren()` und `waechter.py loeschen`. Ablage-Dateien werden beim Konto-Löschen sofort pseudonymisiert.

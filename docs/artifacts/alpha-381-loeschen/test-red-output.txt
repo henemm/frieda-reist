@@ -1,0 +1,1088 @@
+bringing up nodes...
+bringing up nodes...
+
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF                     [100%]
+=================================== FAILURES ===================================
+___________ test_adr_nennt_ausnahme_vom_nur_anhaengen[0001-kern.md] ____________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+adr = '0001-kern.md'
+
+    @pytest.mark.parametrize("adr", ["0001-kern.md", "0009-reisespeicher.md"])
+    def test_adr_nennt_ausnahme_vom_nur_anhaengen(adr):
+        text = (WURZEL / "docs" / "adr" / adr).read_text(encoding="utf-8")
+>       assert "reise_entfernen" in text and "namen_ersetzen" in text, adr
+E       AssertionError: 0001-kern.md
+E       assert ('reise_entfernen' in '# ADR-0001: Der Kern von Frieda Reist\n\nStatus: gilt · Entschieden vom Product Owner am 28.10.2026 in Claude Code · ...baus ist der Recherchebericht „Grundformen in der Software, Arten in der Reise“ (28.10.2026, privat beim Betreiber).\n')
+
+engine/tests/test_loeschen_reise.py:125: AssertionError
+_______ test_adr_nennt_ausnahme_vom_nur_anhaengen[0009-reisespeicher.md] _______
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+adr = '0009-reisespeicher.md'
+
+    @pytest.mark.parametrize("adr", ["0001-kern.md", "0009-reisespeicher.md"])
+    def test_adr_nennt_ausnahme_vom_nur_anhaengen(adr):
+        text = (WURZEL / "docs" / "adr" / adr).read_text(encoding="utf-8")
+>       assert "reise_entfernen" in text and "namen_ersetzen" in text, adr
+E       AssertionError: 0009-reisespeicher.md
+E       assert ('reise_entfernen' in '# ADR-0009: Reisespeicher: Reisedaten als unveränderliche Versionen in SQLite, nur anhängen\n\n## Status\n\nGilt · En...ner Reise“; Variante A, Variante B im Folge-Issue #454. Die Umschaltung der echten Reisen ist Arbeit an der Instanz.\n')
+
+engine/tests/test_loeschen_reise.py:125: AssertionError
+______________________ test_frist_vorgabe_und_einstellung ______________________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7253aa92cd40>
+
+    def test_frist_vorgabe_und_einstellung(monkeypatch):
+        import instanz
+        monkeypatch.delenv("FR_LOESCHFRIST_TAGE", raising=False)
+>       assert instanz.loeschfrist_tage() == 14
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'instanz' has no attribute 'loeschfrist_tage'
+
+engine/tests/test_loeschen_reise.py:134: AttributeError
+__________________ test_vormerken_legt_zeile_mit_fristende_an __________________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+kdb = <module 'konten' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/konten.py'>
+
+    def test_vormerken_legt_zeile_mit_fristende_an(kdb):
+>       z = konten.loeschung_vormerken("beispielreise", "k-ida")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:140: AttributeError
+__________________ test_zurueckholen_nach_fristende_abgelehnt __________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+kdb = <module 'konten' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/konten.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x729c95d7aa20>
+
+    def test_zurueckholen_nach_fristende_abgelehnt(kdb, monkeypatch):
+>       konten.loeschung_vormerken("beispielreise", "k-ida")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:163: AttributeError
+_____________________ test_befehl_vorgemerkt_fuer_skripte ______________________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+kdb = <module 'konten' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/konten.py'>
+
+    def test_befehl_vorgemerkt_fuer_skripte(kdb):
+>       konten.loeschung_vormerken("stadtwochenende", "k-ida")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:192: AttributeError
+__________________ test_doppelt_vormerken_behaelt_erste_frist __________________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+kdb = <module 'konten' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/konten.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c0437ba3cb0>
+
+    def test_doppelt_vormerken_behaelt_erste_frist(kdb, monkeypatch):
+>       erst = konten.loeschung_vormerken("beispielreise", "k-ida")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:148: AttributeError
+_______________________ test_faellig_erst_nach_fristende _______________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+kdb = <module 'konten' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/konten.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x729c95d7aab0>
+
+    def test_faellig_erst_nach_fristende(kdb, monkeypatch):
+>       konten.loeschung_vormerken("beispielreise", "k-ida")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:172: AttributeError
+________________________ test_zurueckholen_in_der_frist ________________________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+kdb = <module 'konten' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/konten.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c0436879250>
+
+    def test_zurueckholen_in_der_frist(kdb, monkeypatch):
+>       konten.loeschung_vormerken("stadtwochenende", "k-ida")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:156: AttributeError
+__________________ test_loeschprotokoll_nur_kennung_und_datum __________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+kdb = <module 'konten' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/konten.py'>
+
+    def test_loeschprotokoll_nur_kennung_und_datum(kdb):
+>       konten.loeschung_vormerken("beispielreise", "k-ida")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:178: AttributeError
+_________________ test_reisespeicher_liefert_keine_vorgemerkte _________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/reisespeicher.py'>
+
+    def test_reisespeicher_liefert_keine_vorgemerkte(speicher):
+        assert speicher.reisen() == REISEN
+>       konten.loeschung_vormerken("beispielreise", "k-ida")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:363: AttributeError
+__________________________ test_get_aendert_nie_etwas __________________________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7253aa9585e0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7253aa92f290>
+
+    def test_get_aendert_nie_etwas(zwei, monkeypatch):
+        u = zwei()
+        monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+        import urllib.parse
+        abruf(f"{u.kurl}/konto?aktion=reise_loeschen&reise=beispielreise&verstanden=ja&titel="
+              + urllib.parse.quote(_titel("beispielreise")), cookie=u.a_keks)
+>       assert not konten.reise_vorgemerkt("beispielreise")
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'reise_vorgemerkt'. Did you mean: 'reise_vormerken'?
+
+engine/tests/test_loeschen_reise.py:260: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+_____________ test_link_nur_fuer_organisatorin_einer_speicherreise _____________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7d5148172b60>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d5148187da0>
+
+    def test_link_nur_fuer_organisatorin_einer_speicherreise(zwei, monkeypatch):
+        u = zwei()
+        monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+>       assert "reise_loeschen=beispielreise" in _seite(u, u.a_keks)
+E       assert 'reise_loeschen=beispielreise' in '<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>'
+E        +  where '<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>' = _seite(<test_regeln.Umgebung object at 0x7d514819eae0>, 'vkZx9uS6ZBVJBnKtr0-j7nsjbDrAVDvd4Uo7epasGM0')
+E        +    where 'vkZx9uS6ZBVJBnKtr0-j7nsjbDrAVDvd4Uo7epasGM0' = <test_regeln.Umgebung object at 0x7d514819eae0>.a_keks
+
+engine/tests/test_loeschen_reise.py:221: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+_ test_benachrichtigung_nur_an_die_anderen[stadtwochenende-tom@beispiel.invalid-None] _
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7c04368c44a0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c043689abd0>
+reise = 'stadtwochenende', ausloeser = 'tom@beispiel.invalid'
+andere = 'lea@beispiel.invalid'
+
+    @pytest.mark.parametrize("reise,ausloeser,andere", [("beispielreise", IDA, KARL), ("stadtwochenende", TOM, None)])
+    def test_benachrichtigung_nur_an_die_anderen(zwei, monkeypatch, reise, ausloeser, andere):
+        u = zwei()
+        monkeypatch.setenv("FR_SPEICHERREISEN", ",".join(REISEN))
+        if andere is None:   # Lea im Stadtwochenende
+            andere = "lea@beispiel.invalid"
+            konten.einladen("stadtwochenende", "lea", andere, "mitwirkend", "Lea", "Tom")
+            from test_anmeldung import anmelden
+            anmelden(u, andere, name="Lea")
+            konten.verknuepfen(konten.konto_per_email(andere)["id"], "stadtwochenende", "lea")
+        else:
+            from test_anmeldung import anmelden
+            anmelden(u, andere)
+        kid = konten.konto_per_email(ausloeser)["id"]
+        andere_kid = konten.konto_per_email(andere)["id"]
+        vorher_a, vorher_o = len(_mails_an(u, ausloeser)), len(_mails_an(u, andere))
+        import rueckmeldungen as rm
+        import anmeldung
+        keks = u.a_keks if ausloeser == IDA else u.b_keks
+        abruf(f"{u.kurl}/konto", "POST", {"aktion": "reise_loeschen", "reise": reise, "verstanden": "ja",
+                                          "titel": _titel(reise)}, cookie=keks)
+>       assert konten.reise_vorgemerkt(reise)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'reise_vorgemerkt'. Did you mean: 'reise_vormerken'?
+
+engine/tests/test_loeschen_reise.py:314: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+______________ test_konnektor_behandelt_vorgemerkte_wie_unbekannt ______________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x729c95da7880>
+
+    def test_konnektor_behandelt_vorgemerkte_wie_unbekannt(zwei):
+        import konnektor as kn
+        from conftest import meldet
+        from test_trennung import reise_werkzeuge
+        u = zwei()
+>       konten.loeschung_vormerken("beispielreise", u.a["id"])
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:374: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+____________________ test_mitwirkender_kann_nicht_vormerken ____________________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7253aa17b920>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7253aa33e090>
+
+    def test_mitwirkender_kann_nicht_vormerken(zwei, monkeypatch):
+        u = zwei()
+        monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+        from test_anmeldung import anmelden
+        karl_keks, _ = anmelden(u, KARL)
+        abruf(f"{u.kurl}/konto", "POST", {"aktion": "reise_loeschen", "reise": "beispielreise", "verstanden": "ja",
+                                          "titel": _titel("beispielreise")}, cookie=karl_keks)
+>       assert not konten.reise_vorgemerkt("beispielreise")
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'reise_vorgemerkt'. Did you mean: 'reise_vormerken'?
+
+engine/tests/test_loeschen_reise.py:270: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+_____________________ test_schreibweg_lehnt_vorgemerkte_ab _____________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/reisespeicher.py'>
+
+    def test_schreibweg_lehnt_vorgemerkte_ab(speicher):
+        import schreiben as sb
+>       konten.loeschung_vormerken("beispielreise", "k-ida")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:390: AttributeError
+___________________ test_veroeffentlichen_kennt_vorgemerkte ____________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+    def test_veroeffentlichen_kennt_vorgemerkte():
+        text = (WURZEL / "betrieb" / "veroeffentlichen.sh").read_text(encoding="utf-8")
+>       assert "konten.py\" vorgemerkt" in text or "konten.py vorgemerkt" in text, \
+            "veroeffentlichen.sh fragt die vorgemerkten Reisen ab"
+E       AssertionError: veroeffentlichen.sh fragt die vorgemerkten Reisen ab
+E       assert ('konten.py" vorgemerkt' in '#!/usr/bin/env bash\n# Veröffentlicht automatisch, was auf main liegt (docs/betrieb.md, Veröffentlichen): holt origin..."; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""\ntrap nachlauf EXIT\nmain "$@"\nexit\n' or 'konten.py vorgemerkt' in '#!/usr/bin/env bash\n# Veröffentlicht automatisch, was auf main liegt (docs/betrieb.md, Veröffentlichen): holt origin..."; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""\ntrap nachlauf EXIT\nmain "$@"\nexit\n')
+
+engine/tests/test_loeschen_reise.py:422: AssertionError
+___________ test_entfernen_raeumt_alles_ab_andere_reise_unveraendert ___________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/reisespeicher.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x729c95b23d10>
+
+    def test_entfernen_raeumt_alles_ab_andere_reise_unveraendert(speicher, monkeypatch):
+        import waechter as wa
+        t = speicher.t
+        andere = _abdruck(speicher, "stadtwochenende")
+>       _faellig_machen(monkeypatch, "beispielreise")
+
+engine/tests/test_loeschen_reise.py:433: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x729c95b23d10>
+reise = 'beispielreise', kid = 'k-ida'
+
+    def _faellig_machen(monkeypatch, reise, kid="k-ida"):
+>       konten.loeschung_vormerken(reise, kid)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:116: AttributeError
+___________ test_gemeinsame_ablagedatei_bleibt_bis_zur_letzten_reise ___________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/reisespeicher.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x729c95b6afc0>
+
+    def test_gemeinsame_ablagedatei_bleibt_bis_zur_letzten_reise(speicher, monkeypatch):
+        import hashlib
+        import waechter as wa
+        datei = speicher.ablage_pfad(hashlib.sha256(PNG).hexdigest())
+        assert datei.exists()
+>       konten.loeschung_vormerken("beispielreise", "k-ida")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:452: AttributeError
+_______________________ test_vor_fristende_bleibt_alles ________________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/reisespeicher.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x729c95de6750>
+
+    def test_vor_fristende_bleibt_alles(speicher, monkeypatch):
+        import waechter as wa
+        vorher = _abdruck(speicher, "beispielreise")
+>       konten.loeschung_vormerken("beispielreise", "k-ida")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:467: AttributeError
+___________________________ test_zwei_bestaetigungen ___________________________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7d51438f8ae0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d5143f5fef0>
+
+    def test_zwei_bestaetigungen(zwei, monkeypatch):
+        u = zwei()
+        monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+        s, _, t = abruf(f"{u.kurl}/konto?reise_loeschen=beispielreise", cookie=u.a_keks)
+>       assert s == 200 and 'name="verstanden"' in t and not konten.reise_vorgemerkt("beispielreise")
+E       assert (200 == 200 and 'name="verstanden"' in '<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>')
+
+engine/tests/test_loeschen_reise.py:234: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+_____________ test_benachrichtigung_in_der_sprache_des_empfaengers _____________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7c043653d760>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c0436759bb0>
+
+    def test_benachrichtigung_in_der_sprache_des_empfaengers(zwei, monkeypatch):
+        u = zwei()
+        monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+        from test_anmeldung import anmelden
+        anmelden(u, KARL)
+        karl = konten.konto_per_email(KARL)
+        konten.sprache_setzen(karl["id"], "en")
+        abruf(f"{u.kurl}/konto", "POST", {"aktion": "reise_loeschen", "reise": "beispielreise", "verstanden": "ja",
+                                          "titel": _titel("beispielreise")}, cookie=u.a_keks)
+        import texte
+        mail = _mails_an(u, KARL)[-1]
+        de = texte.t("de", "konto.reise_loeschen.mail_vorgemerkt_betreff", titel=_titel("beispielreise"))
+        en = texte.t("en", "konto.reise_loeschen.mail_vorgemerkt_betreff", titel=_titel("beispielreise"))
+>       assert de != en and mail["betreff"] == en
+E       AssertionError: assert ('konto.reise_loeschen.mail_vorgemerkt_betreff' != 'konto.reise_loeschen.mail_vorgemerkt_betreff')
+
+engine/tests/test_loeschen_reise.py:340: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+_____________________ test_inhalt_nirgends_mehr_zu_finden ______________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/reisespeicher.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x729c95a5d520>
+
+    def test_inhalt_nirgends_mehr_zu_finden(speicher, monkeypatch):
+        import waechter as wa
+        speicher.sichern()
+>       _faellig_machen(monkeypatch, "beispielreise")
+
+engine/tests/test_loeschen_reise.py:477: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x729c95a5d520>
+reise = 'beispielreise', kid = 'k-ida'
+
+    def _faellig_machen(monkeypatch, reise, kid="k-ida"):
+>       konten.loeschung_vormerken(reise, kid)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:116: AttributeError
+__________________ test_verdichten_ruft_checkpoint_und_vacuum __________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/reisespeicher.py'>
+
+    def test_verdichten_ruft_checkpoint_und_vacuum(speicher):
+>       quelle = inspect.getsource(speicher.verdichten)
+                                   ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'verdichten'. Did you mean: 'vergleichen'?
+
+engine/tests/test_loeschen_reise.py:488: AttributeError
+____________ test_loeschprotokoll_entfernt_nach_rueckspielen_erneut ____________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/reisespeicher.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x729c95a5f830>
+
+    def test_loeschprotokoll_entfernt_nach_rueckspielen_erneut(speicher, monkeypatch):
+        import waechter as wa
+        sicherung = speicher.t / "alt.db"
+        with closing(sqlite3.connect(speicher.pfad())) as q, closing(sqlite3.connect(sicherung)) as z:
+            q.backup(z)
+        (speicher.t / "alt-ablage").mkdir()
+        shutil.copytree(speicher.t / "ablage" / "beispielreise", speicher.t / "alt-ablage" / "beispielreise")
+>       _faellig_machen(monkeypatch, "beispielreise")
+
+engine/tests/test_loeschen_reise.py:499: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x729c95a5f830>
+reise = 'beispielreise', kid = 'k-ida'
+
+    def _faellig_machen(monkeypatch, reise, kid="k-ida"):
+>       konten.loeschung_vormerken(reise, kid)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:116: AttributeError
+________ test_block_oben_knopf_nur_fuer_organisatorin_und_zurueckholen _________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7253aa17bba0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7253aa975be0>
+
+    def test_block_oben_knopf_nur_fuer_organisatorin_und_zurueckholen(zwei, monkeypatch):
+        u = zwei()
+        monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+>       konten.loeschung_vormerken("beispielreise", u.a["id"])
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:276: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+___________________ test_fehler_beim_entfernen_rollt_zurueck ___________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/reisespeicher.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x729c95a5d2b0>
+
+    def test_fehler_beim_entfernen_rollt_zurueck(speicher, monkeypatch):
+        vorher = (_abdruck(speicher, "beispielreise"), _abdruck(speicher, "stadtwochenende"))
+>       echt = speicher._db_ausnahme
+               ^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute '_db_ausnahme'
+
+engine/tests/test_loeschen_reise.py:516: AttributeError
+_______ test_nach_entfernen_sind_alle_trigger_da_und_nur_anhaengen_gilt ________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/reisespeicher.py'>
+
+    def test_nach_entfernen_sind_alle_trigger_da_und_nur_anhaengen_gilt(speicher):
+>       speicher.reise_entfernen("beispielreise")
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'reise_entfernen'
+
+engine/tests/test_loeschen_reise.py:539: AttributeError
+____________ test_quelltext_nur_zwei_funktionen_nutzen_die_ausnahme ____________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+    def test_quelltext_nur_zwei_funktionen_nutzen_die_ausnahme():
+        import reisespeicher as rs
+        quelle = inspect.getsource(rs)
+        nutzer = set()
+        for name, f in inspect.getmembers(rs, inspect.isfunction):
+            if f.__module__ == rs.__name__ and name != "_db_ausnahme" and "_db_ausnahme" in inspect.getsource(f):
+                nutzer.add(name)
+>       assert nutzer == {"reise_entfernen", "namen_ersetzen"}, nutzer
+E       AssertionError: set()
+E       assert set() == {'namen_erset...se_entfernen'}
+E         
+E         Extra items in the right set:
+E         'reise_entfernen'
+E         'namen_ersetzen'
+E         Use -v to get more diff
+
+engine/tests/test_loeschen_reise.py:557: AssertionError
+__________ test_pruefen_rot_bricht_lauf_ab_und_loescht_keine_weitere ___________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/reisespeicher.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x729c95a30080>
+
+    def test_pruefen_rot_bricht_lauf_ab_und_loescht_keine_weitere(speicher, monkeypatch):
+        import waechter as wa
+>       konten.loeschung_vormerken("beispielreise", "k-ida")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:565: AttributeError
+_____________________ test_waechter_sh_ruft_den_loeschlauf _____________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+    def test_waechter_sh_ruft_den_loeschlauf():
+        text = (WURZEL / "betrieb" / "waechter.sh").read_text(encoding="utf-8")
+>       assert re.search(r"waechter\.py\"? loeschen", text)
+E       assert None
+E        +  where None = <function search at 0x729c989fcea0>('waechter\\.py\\"? loeschen', '#!/usr/bin/env bash\n# Täglicher Lauf des Wächters und Erinnerers (docs/waechter.md): legt Meldungen an Personen an (..."$STEMPEL"\nif [ -s "$bericht" ]; then\n  fr_melden normal "Watchdog and reminders" "$(cat "$bericht")" erledigt\nfi\n')
+E        +    where <function search at 0x729c989fcea0> = re.search
+
+engine/tests/test_loeschen_reise.py:578: AssertionError
+___________________ test_test_kennt_jede_tabelle_des_schemas ___________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+    def test_test_kennt_jede_tabelle_des_schemas():
+        """Eine künftige Tabelle mit Konto- oder Adressspalte darf loeschen() nicht vergessen."""
+        import inspect
+        quelle = inspect.getsource(konten.loeschen) + inspect.getsource(konten)
+        tabellen = {z for z in __import__("re").findall(r"CREATE TABLE IF NOT EXISTS (\w+)", konten.SCHEMA)}
+        nur_server = {"push_schluessel", "push_stand", "loeschprotokoll"}
+        rumpf = inspect.getsource(konten.loeschen)
+        fehlen = [t for t in sorted(tabellen - nur_server - {"konten"}) if t not in rumpf]
+>       assert not fehlen, f"loeschen() nennt diese Tabellen nicht: {fehlen}"
+E       AssertionError: loeschen() nennt diese Tabellen nicht: ['angelegte_reisen', 'codes', 'einladungen', 'oauth_clients', 'oauth_codes', 'oauth_tokens', 'schreibvorgaenge', 'sitzungen', 'versand', 'warteliste']
+E       assert not ['angelegte_reisen', 'codes', 'einladungen', 'oauth_clients', 'oauth_codes', 'oauth_tokens', ...]
+
+engine/tests/test_loeschen_konto.py:80: AssertionError
+__________ test_rueckmeldung_und_einladung_zu_vorgemerkter_abgelehnt ___________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7d51438f9800>
+
+    def test_rueckmeldung_und_einladung_zu_vorgemerkter_abgelehnt(zwei):
+        import rueckmeldungen as rm
+        u = zwei()
+>       konten.loeschung_vormerken("beispielreise", u.a["id"])
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:401: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+___________________ test_mailfehler_vormerken_bleibt_gueltig ___________________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7c043653d620>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c043689bef0>
+
+    def test_mailfehler_vormerken_bleibt_gueltig(zwei, monkeypatch):
+        u = zwei()
+        monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+    
+        def kaputt(*a, **kw):
+            raise OSError("Mailserver erfunden nicht erreichbar")
+        monkeypatch.setattr(konten, "mail_senden", kaputt)
+        import anmeldung
+        k = konten.konto_per_email(IDA)
+        from test_anmeldung import anmelden
+>       anmelden(u, KARL)
+
+engine/tests/test_loeschen_reise.py:353: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_anmeldung.py:75: in anmelden
+    s, _, t = abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "adresse", "email": an, "einladung": einladung,
+engine/tests/test_anmeldung.py:59: in abruf
+    r = c.getresponse()
+        ^^^^^^^^^^^^^^^
+/usr/lib/python3.12/http/client.py:1457: in getresponse
+    response.begin()
+/usr/lib/python3.12/http/client.py:336: in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <http.client.HTTPResponse object at 0x7c04368a11e0>
+
+    def _read_status(self):
+        line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+        if len(line) > _MAXLINE:
+            raise LineTooLong("status line")
+        if self.debuglevel > 0:
+            print("reply:", repr(line))
+        if not line:
+            # Presumably, the server closed the connection before
+            # sending a valid response.
+>           raise RemoteDisconnected("Remote end closed connection without"
+                                     " response")
+E           http.client.RemoteDisconnected: Remote end closed connection without response
+
+/usr/lib/python3.12/http/client.py:305: RemoteDisconnected
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 34342)
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/socketserver.py", line 692, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/usr/lib/python3.12/socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/usr/lib/python3.12/socketserver.py", line 761, in __init__
+    self.handle()
+  File "/usr/lib/python3.12/http/server.py", line 436, in handle
+    self.handle_one_request()
+  File "/usr/lib/python3.12/http/server.py", line 424, in handle_one_request
+    method()
+  File "~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/konnektor.py", line 3382, in do_POST
+    return self._anmeldung()
+           ^^^^^^^^^^^^^^^^^
+  File "~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/konnektor.py", line 3320, in _anmeldung
+    code, kopf, inhalt = anmeldung.bearbeiten(methode, self.path, self.headers, body, ip, reise_kurz)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/anmeldung.py", line 1019, in bearbeiten
+    konten.code_anfordern(f.get("email"), ip=ip, sprache=sprache_der_seite())
+  File "~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/konten.py", line 305, in code_anfordern
+    mail_senden(e, betreff, "\n".join(zeilen))
+  File "~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/tests/test_loeschen_reise.py", line 348, in kaputt
+    raise OSError("Mailserver erfunden nicht erreichbar")
+OSError: Mailserver erfunden nicht erreichbar
+----------------------------------------
+__________ test_letzte_organisatorin_mit_anderen_mitgliedern_gesperrt __________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x729c877a79c0>
+
+    def test_letzte_organisatorin_mit_anderen_mitgliedern_gesperrt(zwei):
+        u = zwei()
+        anmelden(u, KARL)
+>       with pytest.raises(konten.KontoFehler) as fehler:
+E       Failed: DID NOT RAISE KontoFehler
+
+engine/tests/test_loeschen_konto.py:89: Failed
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+___________________ test_waechter_schliesst_vorgemerkte_aus ____________________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/reisespeicher.py'>
+
+    def test_waechter_schliesst_vorgemerkte_aus(speicher):
+        import waechter as wa
+        assert wa.alle_reisen() == REISEN
+>       konten.loeschung_vormerken("stadtwochenende", "k-ida")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_reise.py:416: AttributeError
+_ test_benachrichtigung_nur_an_die_anderen[beispielreise-ida@beispiel.invalid-karl@beispiel.invalid] _
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7253aa17b740>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7253ab7f3560>
+reise = 'beispielreise', ausloeser = 'ida@beispiel.invalid'
+andere = 'karl@beispiel.invalid'
+
+    @pytest.mark.parametrize("reise,ausloeser,andere", [("beispielreise", IDA, KARL), ("stadtwochenende", TOM, None)])
+    def test_benachrichtigung_nur_an_die_anderen(zwei, monkeypatch, reise, ausloeser, andere):
+        u = zwei()
+        monkeypatch.setenv("FR_SPEICHERREISEN", ",".join(REISEN))
+        if andere is None:   # Lea im Stadtwochenende
+            andere = "lea@beispiel.invalid"
+            konten.einladen("stadtwochenende", "lea", andere, "mitwirkend", "Lea", "Tom")
+            from test_anmeldung import anmelden
+            anmelden(u, andere, name="Lea")
+            konten.verknuepfen(konten.konto_per_email(andere)["id"], "stadtwochenende", "lea")
+        else:
+            from test_anmeldung import anmelden
+            anmelden(u, andere)
+        kid = konten.konto_per_email(ausloeser)["id"]
+        andere_kid = konten.konto_per_email(andere)["id"]
+        vorher_a, vorher_o = len(_mails_an(u, ausloeser)), len(_mails_an(u, andere))
+        import rueckmeldungen as rm
+        import anmeldung
+        keks = u.a_keks if ausloeser == IDA else u.b_keks
+        abruf(f"{u.kurl}/konto", "POST", {"aktion": "reise_loeschen", "reise": reise, "verstanden": "ja",
+                                          "titel": _titel(reise)}, cookie=keks)
+>       assert konten.reise_vorgemerkt(reise)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'reise_vorgemerkt'. Did you mean: 'reise_vormerken'?
+
+engine/tests/test_loeschen_reise.py:314: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+______________ test_reise_nur_mit_der_person_geht_mit_schonfrist _______________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7d51439a0900>
+
+    def test_reise_nur_mit_der_person_geht_mit_schonfrist(zwei):
+        u = zwei()   # Tom ist allein im Stadtwochenende (Lea nicht angemeldet)
+        konten.loeschen(u.b["id"])
+>       assert konten.reise_vorgemerkt("stadtwochenende")
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'reise_vorgemerkt'. Did you mean: 'reise_vormerken'?
+
+engine/tests/test_loeschen_konto.py:130: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+_____________ test_loeschen_hinterlaesst_in_keiner_tabelle_spuren ______________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7c04368c4860>
+
+    def test_loeschen_hinterlaesst_in_keiner_tabelle_spuren(zwei):
+        u = zwei()
+        anmelden(u, KARL)
+        karl = konten.konto_per_email(KARL)
+        kid = karl["id"]
+        with closing(konten.db()) as v, v:
+            v.execute("INSERT INTO angelegte_reisen VALUES (?, 'testreise', 1)", (kid,))
+            v.execute("INSERT INTO schreibvorgaenge VALUES (?, 1)", (kid,))
+            v.execute("INSERT INTO oauth_codes VALUES ('h1','c','r','x','s',?,9e9,NULL,'f')", (kid,))
+            v.execute("INSERT INTO oauth_tokens VALUES ('h2','zugang',?,'c','s','f',9e9,NULL)", (kid,))
+            v.execute("INSERT INTO warteliste (email, erstellt) VALUES (?, 1)", (KARL,))
+            v.execute("INSERT INTO versand VALUES (?, 1)", (f"adresse:{KARL}",))
+            v.execute("INSERT INTO versand VALUES (?, 1)", (f"warteliste:{KARL}",))
+            v.execute("INSERT INTO push_einstellungen VALUES (?, '{}')", (kid,))
+            v.execute("INSERT INTO meldung_gelesen VALUES (?, 'M-1', 1)", (kid,))
+        konten.einladen("stadtwochenende", "lea", "lea@beispiel.invalid", "mitwirkend", "Lea", "Karl")
+        assert _spuren(kid, KARL)
+        konten.loeschen(kid)
+>       assert _spuren(kid, KARL) == []
+E       AssertionError: assert [('codes', ['...f42', '1.0'])] == []
+E         
+E         Left contains 6 more items, first extra item: ('codes', ['karl@beispiel.invalid', 'anmelden', 'e98953c638508ccd98438047ab6cf8febdf3b3ddeeaabae736c301d0674633a4', 'None', '1794432992.7600322', '-1'])
+E         Use -v to get more diff
+
+engine/tests/test_loeschen_konto.py:68: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+____________________ test_nach_loeschen_der_reise_klappt_es ____________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x729c877a7f60>
+
+    def test_nach_loeschen_der_reise_klappt_es(zwei):
+        u = zwei()
+        anmelden(u, KARL)
+>       konten.loeschung_vormerken("beispielreise", u.a["id"])
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'loeschung_vormerken'
+
+engine/tests/test_loeschen_konto.py:100: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+___________________ test_nach_uebergabe_der_rolle_klappt_es ____________________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7253aa958400>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7253aa37fda0>
+
+    def test_nach_uebergabe_der_rolle_klappt_es(zwei, monkeypatch):
+        u = zwei()
+        anmelden(u, KARL)
+        import rueckmeldungen as rm
+        echt = rm.zustand
+    
+        def uebergeben(reise):
+            z = echt(reise)
+            if z and reise == "beispielreise":
+                for p in z.get("personen") or []:
+                    if p.get("schluessel") == "karl":
+                        p["rolle"] = "organisator"
+            return z
+        monkeypatch.setattr(rm, "zustand", uebergeben)
+        konten.loeschen(u.a["id"])
+        assert konten.konto(u.a["id"]) is None
+>       assert not konten.reise_vorgemerkt("beispielreise")
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'reise_vorgemerkt'. Did you mean: 'reise_vormerken'?
+
+engine/tests/test_loeschen_konto.py:124: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+________________________ test_reise_als_mitglied_bleibt ________________________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7d5143937100>
+
+    def test_reise_als_mitglied_bleibt(zwei):
+        u = zwei()
+        anmelden(u, KARL)
+        konten.loeschen(konten.konto_per_email(KARL)["id"])
+>       assert not konten.reise_vorgemerkt("beispielreise")
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'reise_vorgemerkt'. Did you mean: 'reise_vormerken'?
+
+engine/tests/test_loeschen_konto.py:139: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+____________ test_namen_ersetzen_im_verlauf_und_in_herkunftsmustern ____________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/reisespeicher.py'>
+
+    def test_namen_ersetzen_im_verlauf_und_in_herkunftsmustern(speicher):
+        rs = speicher
+        yaml_neu = (BEISPIEL / "beispielreise" / "reise.yaml").read_text(encoding="utf-8") + (
+            "\n# Herkunft: eingetragen von Karl am 2026-11-02 (Beispielwert)\n")
+        rs.vorgang_schreiben("beispielreise", {"reise.yaml": yaml_neu.encode(),
+                                               "wissen/karl.md": b"# Kuchen\nKarl mag Quittenkuchen.\n"},
+                             wer="Karl", werkzeug="knowledge_write", titel="Karl ergänzt", herkunft="Karl")
+        andere = _abdruck(rs, "stadtwochenende")
+>       n = rs.namen_ersetzen("beispielreise", "Karl", GELOESCHT)
+            ^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'namen_ersetzen'
+
+engine/tests/test_loeschen_konto.py:161: AttributeError
+_____________________ test_namen_ersetzen_erzwingt_neubau ______________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/reisespeicher.py'>
+
+    def test_namen_ersetzen_erzwingt_neubau(speicher):
+        rs = speicher
+        stempel = rs.t / "_dienst" / "reise-stand" / "beispielreise.gebaut"
+        rs.vorgang_schreiben("beispielreise", {"wissen/x.md": b"# x\n"}, wer="Karl", werkzeug="knowledge_write", titel="x")
+>       rs.namen_ersetzen("beispielreise", "Karl", GELOESCHT)
+        ^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'namen_ersetzen'
+
+engine/tests/test_loeschen_konto.py:177: AttributeError
+___________________________ test_texte_vorhanden[de] ___________________________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_texte_vorhanden(sprache):
+        for s in ("konto.geloeschte_person", "konto.reise_loeschen.mail_vorgemerkt_betreff",
+                  "konto.reise_loeschen.mail_zurueckgeholt_betreff", "konto.loeschen.reisen_gehen_mit",
+                  "konto.fehler.letzte_organisatorin"):
+>           assert texte.t(sprache, s) != s, (sprache, s)
+E           AssertionError: ('de', 'konto.geloeschte_person')
+E           assert 'konto.geloeschte_person' != 'konto.geloeschte_person'
+E            +  where 'konto.geloeschte_person' = <function t at 0x7253ab699080>('de', 'konto.geloeschte_person')
+E            +    where <function t at 0x7253ab699080> = texte.t
+
+engine/tests/test_loeschen_konto.py:212: AssertionError
+___________________________ test_texte_vorhanden[en] ___________________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_texte_vorhanden(sprache):
+        for s in ("konto.geloeschte_person", "konto.reise_loeschen.mail_vorgemerkt_betreff",
+                  "konto.reise_loeschen.mail_zurueckgeholt_betreff", "konto.loeschen.reisen_gehen_mit",
+                  "konto.fehler.letzte_organisatorin"):
+>           assert texte.t(sprache, s) != s, (sprache, s)
+E           AssertionError: ('en', 'konto.geloeschte_person')
+E           assert 'konto.geloeschte_person' != 'konto.geloeschte_person'
+E            +  where 'konto.geloeschte_person' = <function t at 0x729c96b3ce00>('en', 'konto.geloeschte_person')
+E            +    where <function t at 0x729c96b3ce00> = texte.t
+
+engine/tests/test_loeschen_konto.py:212: AssertionError
+_______________ test_datenschutztext_nennt_loeschen_und_grenzen ________________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+    def test_datenschutztext_nennt_loeschen_und_grenzen():
+        import anmeldung
+        t = anmeldung.datenschutz_inhalt()
+>       assert "14" in t and "30" in t, "Schonfrist und Aufbewahrung der Sicherungen"
+E       AssertionError: Schonfrist und Aufbewahrung der Sicherungen
+E       assert ('14' in '<div><h1>Privacy policy</h1><p class="lead">This page explains which data Frieda stores, who sees it and how long it ...on about your data, contact the operator; you find the contact in the <a href="/impressum">Legal notice</a>.</p></div>')
+
+engine/tests/test_loeschen_konto.py:218: AssertionError
+______________ test_betriebsdoku_belege_nicht_mehr_nie_geloescht _______________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+    def test_betriebsdoku_belege_nicht_mehr_nie_geloescht():
+        text = (WURZEL / "docs" / "betrieb.md").read_text(encoding="utf-8")
+        assert "nie gelöscht" not in text.lower() and "#381" in text
+>       assert "Schonfrist" in text and "30 Tage" in text and "loeschen" in text
+E       AssertionError: assert ('Schonfrist' in '# Betrieb einer Instanz\n\nWie Frieda auf einem eigenen Server läuft: Seiten ausliefern, Rückmeldungen annehmen, was ...dungen`, dann `rueckmeldung_erledigen`); `python3 engine/rueckmeldungen.py liste <reise>` zeigt sie auf dem Server |\n')
+
+engine/tests/test_loeschen_konto.py:225: AssertionError
+________________ test_loeschseite_zeigt_was_bleibt_und_was_geht ________________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7c0436553ce0>
+
+    def test_loeschseite_zeigt_was_bleibt_und_was_geht(zwei):
+        u = zwei()
+        s, _, t = abruf(f"{u.kurl}/konto?loeschen=1", cookie=u.b_keks)
+        from conftest import meldet
+        assert s == 200 and meldet(t, "konto.seite.loeschen_bleibt") and meldet(t, "konto.seite.loeschen_weg")
+>       assert meldet(t, "konto.loeschen.reisen_gehen_mit") and "Stadt" in t
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_loeschen_konto.py:148: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = '<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>'
+schluessel = 'konto.loeschen.reisen_gehen_mit', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel konto.loeschen.reisen_gehen_mit fehlt im Katalog
+E       assert 'konto.loeschen.reisen_gehen_mit' != 'konto.loeschen.reisen_gehen_mit'
+
+engine/tests/conftest.py:81: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+_____________________ test_ablage_dateien_pseudonymisiert ______________________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7d51439a2e80>
+
+    def test_ablage_dateien_pseudonymisiert(zwei):
+        u = zwei()
+        anmelden(u, KARL)
+        (u.o / "eingang.jsonl").write_text(json.dumps({"id": "R-01", "name": "Karl", "text": "Idee"}) + "\n")
+        (u.o / "aufgaben.json").write_text(json.dumps([{"id": "AG-01", "wer": "Karl", "titel": "Karten kaufen"}]))
+        konten.loeschen(konten.konto_per_email(KARL)["id"])
+        for datei in ("eingang.jsonl", "aufgaben.json"):
+            text = (u.o / datei).read_text(encoding="utf-8")
+>           assert '"Karl"' not in text and GELOESCHT in text, datei
+E           AssertionError: eingang.jsonl
+E           assert ('"Karl"' not in '{"id": "R-0...": "Idee"}\n'
+E             
+E             '"Karl"' is contained here:
+E               {"id": "R-01", "name": "Karl", "text": "Idee"}
+E             ?                        ++++++)
+
+engine/tests/test_loeschen_konto.py:189: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+__________________ test_rueckfall_ohne_fehler_bei_pruefen_rot __________________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/reisespeicher.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c04367872c0>
+
+    def test_rueckfall_ohne_fehler_bei_pruefen_rot(speicher, monkeypatch):
+        rs = speicher
+        rs.vorgang_schreiben("beispielreise", {"wissen/y.md": b"# y\n"}, wer="Karl", werkzeug="knowledge_write", titel="y")
+        vorher = _abdruck(rs, "beispielreise")
+        monkeypatch.setattr(rs, "pruefen", lambda reise=None: ["erfundene Abweichung"])
+>       assert hasattr(rs, "namen_ersetzen")
+E       AssertionError: assert False
+E        +  where False = hasattr(<module 'reisespeicher' from '~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/reisespeicher.py'>, 'namen_ersetzen')
+
+engine/tests/test_loeschen_konto.py:197: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_loeschen_reise.py::test_adr_nennt_ausnahme_vom_nur_anhaengen[0001-kern.md]
+FAILED engine/tests/test_loeschen_reise.py::test_adr_nennt_ausnahme_vom_nur_anhaengen[0009-reisespeicher.md]
+FAILED engine/tests/test_loeschen_reise.py::test_frist_vorgabe_und_einstellung
+FAILED engine/tests/test_loeschen_reise.py::test_vormerken_legt_zeile_mit_fristende_an
+FAILED engine/tests/test_loeschen_reise.py::test_zurueckholen_nach_fristende_abgelehnt
+FAILED engine/tests/test_loeschen_reise.py::test_befehl_vorgemerkt_fuer_skripte
+FAILED engine/tests/test_loeschen_reise.py::test_doppelt_vormerken_behaelt_erste_frist
+FAILED engine/tests/test_loeschen_reise.py::test_faellig_erst_nach_fristende
+FAILED engine/tests/test_loeschen_reise.py::test_zurueckholen_in_der_frist - ...
+FAILED engine/tests/test_loeschen_reise.py::test_loeschprotokoll_nur_kennung_und_datum
+FAILED engine/tests/test_loeschen_reise.py::test_reisespeicher_liefert_keine_vorgemerkte
+FAILED engine/tests/test_loeschen_reise.py::test_get_aendert_nie_etwas - Attr...
+FAILED engine/tests/test_loeschen_reise.py::test_link_nur_fuer_organisatorin_einer_speicherreise
+FAILED engine/tests/test_loeschen_reise.py::test_benachrichtigung_nur_an_die_anderen[stadtwochenende-tom@beispiel.invalid-None]
+FAILED engine/tests/test_loeschen_reise.py::test_konnektor_behandelt_vorgemerkte_wie_unbekannt
+FAILED engine/tests/test_loeschen_reise.py::test_mitwirkender_kann_nicht_vormerken
+FAILED engine/tests/test_loeschen_reise.py::test_schreibweg_lehnt_vorgemerkte_ab
+FAILED engine/tests/test_loeschen_reise.py::test_veroeffentlichen_kennt_vorgemerkte
+FAILED engine/tests/test_loeschen_reise.py::test_entfernen_raeumt_alles_ab_andere_reise_unveraendert
+FAILED engine/tests/test_loeschen_reise.py::test_gemeinsame_ablagedatei_bleibt_bis_zur_letzten_reise
+FAILED engine/tests/test_loeschen_reise.py::test_vor_fristende_bleibt_alles
+FAILED engine/tests/test_loeschen_reise.py::test_zwei_bestaetigungen - assert...
+FAILED engine/tests/test_loeschen_reise.py::test_benachrichtigung_in_der_sprache_des_empfaengers
+FAILED engine/tests/test_loeschen_reise.py::test_inhalt_nirgends_mehr_zu_finden
+FAILED engine/tests/test_loeschen_reise.py::test_verdichten_ruft_checkpoint_und_vacuum
+FAILED engine/tests/test_loeschen_reise.py::test_loeschprotokoll_entfernt_nach_rueckspielen_erneut
+FAILED engine/tests/test_loeschen_reise.py::test_block_oben_knopf_nur_fuer_organisatorin_und_zurueckholen
+FAILED engine/tests/test_loeschen_reise.py::test_fehler_beim_entfernen_rollt_zurueck
+FAILED engine/tests/test_loeschen_reise.py::test_nach_entfernen_sind_alle_trigger_da_und_nur_anhaengen_gilt
+FAILED engine/tests/test_loeschen_reise.py::test_quelltext_nur_zwei_funktionen_nutzen_die_ausnahme
+FAILED engine/tests/test_loeschen_reise.py::test_pruefen_rot_bricht_lauf_ab_und_loescht_keine_weitere
+FAILED engine/tests/test_loeschen_reise.py::test_waechter_sh_ruft_den_loeschlauf
+FAILED engine/tests/test_loeschen_konto.py::test_test_kennt_jede_tabelle_des_schemas
+FAILED engine/tests/test_loeschen_reise.py::test_rueckmeldung_und_einladung_zu_vorgemerkter_abgelehnt
+FAILED engine/tests/test_loeschen_reise.py::test_mailfehler_vormerken_bleibt_gueltig
+FAILED engine/tests/test_loeschen_konto.py::test_letzte_organisatorin_mit_anderen_mitgliedern_gesperrt
+FAILED engine/tests/test_loeschen_reise.py::test_waechter_schliesst_vorgemerkte_aus
+FAILED engine/tests/test_loeschen_reise.py::test_benachrichtigung_nur_an_die_anderen[beispielreise-ida@beispiel.invalid-karl@beispiel.invalid]
+FAILED engine/tests/test_loeschen_konto.py::test_reise_nur_mit_der_person_geht_mit_schonfrist
+FAILED engine/tests/test_loeschen_konto.py::test_loeschen_hinterlaesst_in_keiner_tabelle_spuren
+FAILED engine/tests/test_loeschen_konto.py::test_nach_loeschen_der_reise_klappt_es
+FAILED engine/tests/test_loeschen_konto.py::test_nach_uebergabe_der_rolle_klappt_es
+FAILED engine/tests/test_loeschen_konto.py::test_reise_als_mitglied_bleibt - ...
+FAILED engine/tests/test_loeschen_konto.py::test_namen_ersetzen_im_verlauf_und_in_herkunftsmustern
+FAILED engine/tests/test_loeschen_konto.py::test_namen_ersetzen_erzwingt_neubau
+FAILED engine/tests/test_loeschen_konto.py::test_texte_vorhanden[de] - Assert...
+FAILED engine/tests/test_loeschen_konto.py::test_texte_vorhanden[en] - Assert...
+FAILED engine/tests/test_loeschen_konto.py::test_datenschutztext_nennt_loeschen_und_grenzen
+FAILED engine/tests/test_loeschen_konto.py::test_betriebsdoku_belege_nicht_mehr_nie_geloescht
+FAILED engine/tests/test_loeschen_konto.py::test_loeschseite_zeigt_was_bleibt_und_was_geht
+FAILED engine/tests/test_loeschen_konto.py::test_ablage_dateien_pseudonymisiert
+FAILED engine/tests/test_loeschen_konto.py::test_rueckfall_ohne_fehler_bei_pruefen_rot
+52 failed in 10.95s
