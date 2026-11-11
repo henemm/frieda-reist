@@ -94,7 +94,7 @@ jobs:
             for d in ~/apt-pakete/*.deb; do
               dpkg -s "$(dpkg-deb -f "$d" Package)" >/dev/null 2>&1 || fehlend+=("$d")
             done
-            if [ "${#fehlend[@]}" = 0 ] || sudo apt-get install -y -q --no-download "${fehlend[@]}"; then
+            if [ "${#fehlend[@]}" = 0 ] || sudo apt-get install -y -q --no-download --no-install-recommends "${fehlend[@]}"; then
               ok=1
               echo "::warning::Ubuntu-Spiegel antwortet nicht, Systempakete aus dem Paket-Cache installiert (#523)"
             fi
