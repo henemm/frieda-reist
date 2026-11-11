@@ -110,8 +110,18 @@ def test_systempakete_kommen_aus_dem_cache():
 
 
 def test_unveraendert_wichtiges():
-    assert _job()["timeout-minutes"] == 25
+    assert _job()["timeout-minutes"] == 40   # 25 bis #523
     assert any(s.get("name") == "Browser-Prüfung darf nicht übersprungen worden sein" for s in _schritte())
     for s in _schritte():
         if "uses" in s:
             assert s["uses"].startswith("actions/"), s["uses"]
+
+
+def test_playwright_weicht_bei_haengendem_spiegel_auf_den_paket_cache_aus():
+    """Hängt der Ubuntu-Spiegel ganz (#523), installiert der Schritt nach zwei gescheiterten Versuchen die fehlenden
+    Systempakete aus dem Paket-Cache, ohne Download, ohne Zusatzpakete und ohne installierte Pakete zurückzustufen."""
+    _, schritt = _playwright_schritt()
+    run = schritt["run"]
+    assert "apt-get install -y -q --no-download --no-install-recommends" in run
+    assert 'dpkg -s "$(dpkg-deb -f "$d" Package)"' in run and "--allow-downgrades" not in run
+    assert run.index("for versuch in 1 2") < run.index("--no-download") < run.index("::error::Playwright-Installation")
