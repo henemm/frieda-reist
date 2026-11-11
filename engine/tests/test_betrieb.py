@@ -957,6 +957,33 @@ def test_deploy_mit_warnung_im_plan_legt_die_seite_ab(tmp_path):
     assert (tmp_path / "seiten" / "beispielreise" / "index.html").exists()
 
 
+def test_deploy_startprobe_findet_playwright_der_instanz_ohne_umgebungswert(tmp_path):
+    """#387: Reisen aus dem Reisespeicher baut veroeffentlichen.sh vor abhaengigkeiten(), also ohne PLAYWRIGHT_MODUL. Die
+    Startprobe wurde darum auf dem Server übersprungen. deploy.sh nimmt dann die Kopie in <FR_DIENST>/playwright. Hier ist
+    sie eine Attrappe, die beim Start des Browsers scheitert: Wird sie benutzt, endet deploy.sh mit 2 und nennt die Probe."""
+    wurzel = tmp_path / "instanz"
+    shutil.copytree(BEISPIEL, wurzel / "reisen" / "beispielreise")
+    (wurzel / "engine").symlink_to(ENGINE)
+    (wurzel / ".gitignore").write_text("dist/\n__pycache__/\n")
+    git(wurzel, "init", "-q", "-b", "main")
+    git(wurzel, "add", ".")
+    git(wurzel, "commit", "-qm", "start")
+    (tmp_path / "seiten").mkdir()
+    modul = tmp_path / "dienst" / "playwright" / "node_modules" / "playwright" / "index.mjs"
+    modul.parent.mkdir(parents=True)
+    modul.write_text('export const chromium = {launch: async () => { throw new Error("Attrappe der Instanz benutzt"); }};\n')
+    env = {k: v for k, v in SAUBER.items() if k != "PLAYWRIGHT_MODUL"}
+    env.update({"FR_WURZEL": str(wurzel), "FR_INSTANZ": "probe", "FR_SEITEN": str(tmp_path / "seiten"),
+                "FR_DIENST": str(tmp_path / "dienst"), "FR_PYTHON": sys.executable,
+                "FR_GEPRUEFT": git(wurzel, "rev-parse", "HEAD").strip(), "FR_RM_PORT": "1", "FR_SUDO": "false"})
+    if not shutil.which("node"):
+        pytest.skip("node fehlt")
+    r = subprocess.run([str(BETRIEB / "deploy.sh"), "beispielreise"], env=env, capture_output=True, text=True)
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert "Attrappe der Instanz benutzt" in r.stdout + r.stderr
+    assert not (tmp_path / "seiten" / "beispielreise").exists()
+
+
 def test_deploy_prueft_die_wege_zum_konnektor_von_aussen(tmp_path):
     """Nach dem Deploy fragt deploy.sh jede Art Pfad des Konnektors über die öffentliche Adresse ab. Kommt ein Weg bei
     nginx statt beim Konnektor an (kein Kopf X-Frieda), warnt es im Protokoll (ohne Meldung, #445); die Seite wird trotzdem

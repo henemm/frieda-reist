@@ -60,3 +60,40 @@ def test_sichtbare_startfehler_meldung_ist_rot(gebaut):
     aus = probe(gebaut)
     assert aus.returncode == 1
     assert "Startfehler-Meldung sichtbar" in aus.stdout + aus.stderr
+
+
+def probe_adressen(zeilen):
+    return subprocess.run(["node", str(PROBE), str(PLAYWRIGHT), "--adressen"], input=zeilen, capture_output=True, text=True,
+                          timeout=120)
+
+
+@pytest.fixture
+def live(gebaut):
+    """Die gebaute Seite unter einem geheimen Pfad wie auf dem Server (<reise>-<token>/), ausgeliefert über HTTP."""
+    wurzel = gebaut.parent
+    (wurzel / "beispiel-geheimeswort123").symlink_to(gebaut, target_is_directory=True)
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(wurzel))
+    handler.log_message = lambda *a: None
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{server.server_address[1]}/beispiel-geheimeswort123/"
+    server.shutdown()
+
+
+def test_adressen_gesunde_seite(live):
+    """Überwachung (#387, henemm-infra#393): Adressen kommen über stdin, die Ausgabe nennt nur den Namen."""
+    aus = probe_adressen(f"beispiel\t{live}\n")
+    assert aus.returncode == 0, aus.stdout + aus.stderr
+    assert aus.stdout.strip() == "beispiel: gut"
+
+
+def test_adressen_kaputte_seite_rot_ohne_geheimen_pfad(live, gebaut):
+    index = gebaut / "index.html"
+    index.write_text(index.read_text(encoding="utf-8").replace("<script>", "<script>throw new Error('Startfehler-Test');", 1),
+                     encoding="utf-8")
+    aus = probe_adressen(f"gut-und-kaputt\t{live}\nfehlt\t{live}gibt-es-nicht/\n")
+    assert aus.returncode == 1
+    zeilen = aus.stdout.strip().splitlines()
+    assert zeilen[0].startswith("gut-und-kaputt: ") and "Startfehler-Test" in zeilen[0]
+    assert zeilen[1].startswith("fehlt: ") and "HTTP 404" in zeilen[1]
+    assert "geheimeswort123" not in aus.stdout + aus.stderr

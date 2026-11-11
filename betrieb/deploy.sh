@@ -60,7 +60,12 @@ fi
 
 # Startprobe (#395, Lehre aus #387): die gebaute Seite im Browser laden; ein Seitenfehler beim Start oder eine leere Seite
 # heißt Exit 2, die Seite bleibt auf dem letzten guten Stand. Ohne Playwright nur eine Warnung (HTTP 200 allein hätte #387 nicht gefunden).
-PW_MODUL="${PLAYWRIGHT_MODUL:-$WURZEL/engine/tests/playwright/node_modules/playwright/index.mjs}"
+# Ohne PLAYWRIGHT_MODUL die Kopie der Instanz aus veroeffentlichen.sh (<FR_DIENST>/playwright): Reisen aus dem Reisespeicher
+# baut es vor dem Einrichten der Abhängigkeiten, die Probe fiel dort sonst stillschweigend aus (#387).
+PW_MODUL="${PLAYWRIGHT_MODUL:-}"
+for pw in "$DIENST/playwright/node_modules/playwright/index.mjs" "$WURZEL/engine/tests/playwright/node_modules/playwright/index.mjs"; do
+  if [ -z "$PW_MODUL" ] && [ -e "$pw" ]; then PW_MODUL="$pw"; fi
+done
 if [ -e "$PW_MODUL" ] && command -v node > /dev/null; then
   probe_aus="$(node "$FR_BETRIEB/startprobe.mjs" "$PW_MODUL" "$WURZEL/dist/$REISE" 2>&1)" \
     || { echo "$probe_aus" | head -10; echo "ERROR: start probe of $REISE failed (page error or empty page), the page stays at the last good state."; exit 2; }
