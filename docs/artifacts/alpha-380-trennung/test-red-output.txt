@@ -1,0 +1,143 @@
+.......FFF.FFFF                                                          [100%]
+=================================== FAILURES ===================================
+_____________________ test_grenzwerte_vorgabe_und_instanz ______________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x735f371918e0>
+tmp_path = PosixPath('<tmp>')
+
+    def test_grenzwerte_vorgabe_und_instanz(monkeypatch, tmp_path):
+>       assert instanz.grenze_reisen() == 10 and instanz.grenze_schreiben() == 300
+               ^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'instanz' has no attribute 'grenze_reisen'
+
+tests/test_grenzen.py:43: AttributeError
+____________________ test_schreibgrenze_je_konto_und_stunde ____________________
+
+welt = <function welt.<locals>.neu at 0x735f35863740>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x735f35659df0>
+
+    def test_schreibgrenze_je_konto_und_stunde(welt, monkeypatch):
+        u = welt()
+        k = konto(u, IDA, "Ida")
+        monkeypatch.setenv("FR_GRENZE_SCHREIBEN", "3")
+        # fremde Reise: Fehler der Mitgliedschaft, verbraucht keinen Zähler
+        text, fehler = kn.frieda_werkzeug(k, "aufgabe_anlegen", {"reise": "fremdreise", "titel": "x"})
+        assert fehler and meldet(text, "konnektor.frieda_werkzeug.1")
+        for text, fehler in schreiben(k, 3):
+            assert not fehler, text
+        vorher = len(u.schreibweg), sorted(p.name for p in u.o.rglob("*"))
+        aufgaben_vorher = (u.o / "aufgaben.json").read_text(encoding="utf-8") if (u.o / "aufgaben.json").exists() else ""
+        text, fehler = schreiben(k)[0]
+>       assert fehler and meldet(text, "konnektor.grenze.schreiben"), text
+E       AssertionError: Gespeichert (gilt sofort):
+E         AG-04 [offen]: Karten kaufen 0
+E           zuletzt: 2026-11-11 Ida – angelegt
+E           angelegt 2026-11-11 von Ida
+E       assert (False)
+
+tests/test_grenzen.py:73: AssertionError
+----------------------------- Captured stderr call -----------------------------
+__________________________ test_reisegrenze_je_konto ___________________________
+
+welt = <function welt.<locals>.neu at 0x735f35861bc0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x735f371c7680>
+
+    def test_reisegrenze_je_konto(welt, monkeypatch):
+        u = welt()
+        monkeypatch.setenv("FR_GRENZE_REISEN", "2")
+        ben = konto(u, BEN, "Ben", reise=False)
+        konten.freischalten(ben["id"])
+        text, fehler = anlegen(ben, "Winterwoche eins")
+        assert not fehler, text
+        text, fehler = anlegen(ben, "Fehlerhafte Reise", von="2027-02-13", bis="2027-02-06")   # Fehler zählt nicht
+>       assert fehler and not meldet(text, "konnektor.grenze.reisen"), text
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_grenzen.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Nicht angelegt: Das Ende liegt vor dem Anfang.'
+schluessel = 'konnektor.grenze.reisen', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel konnektor.grenze.reisen fehlt im Katalog
+E       assert 'konnektor.grenze.reisen' != 'konnektor.grenze.reisen'
+
+tests/conftest.py:79: AssertionError
+----------------------------- Captured stderr call -----------------------------
+__________________ test_ablehnung_protokoll_texte_ohne_alarm ___________________
+
+welt = <function welt.<locals>.neu at 0x735f35603100>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x735f356459a0>
+capsys = <_pytest.capture.CaptureFixture object at 0x735f35647170>
+
+    def test_ablehnung_protokoll_texte_ohne_alarm(welt, monkeypatch, capsys):
+        u = welt()
+        gemeldet = []
+        monkeypatch.setattr(anmeldung, "betreiber_melden", lambda *a, **kw: gemeldet.append(a))
+        monkeypatch.setenv("FR_GRENZE_SCHREIBEN", "1")
+        monkeypatch.setenv("FR_GRENZE_REISEN", "1")
+        k = konto(u, IDA, "Ida")
+        monkeypatch.setattr(konten, "mail_senden", lambda *a, **kw: gemeldet.append(a))   # erst nach dem Anmelden
+        konten.freischalten(k["id"])
+        schreiben(k)
+        capsys.readouterr()
+        text, fehler = schreiben(k)[0]
+>       assert fehler and meldet(text, "konnektor.grenze.schreiben")
+E       assert (False)
+
+tests/test_grenzen.py:149: AssertionError
+----------------------------- Captured stderr call -----------------------------
+__________________ test_schreibend_aus_vorhandener_einteilung __________________
+
+welt = <function welt.<locals>.neu at 0x735f356032e0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x735f35946720>
+
+    def test_schreibend_aus_vorhandener_einteilung(welt, monkeypatch):
+        u = welt()
+        k = konto(u, IDA, "Ida")
+        gezaehlt = []
+        monkeypatch.setattr(kn, "werkzeug", lambda zugang, name, args: ("ok", False))
+>       monkeypatch.setattr(konten, "schreibgrenze", lambda k_: None)
+E       AttributeError: <module 'konten' from 'engine/konten.py'> has no attribute 'schreibgrenze'
+
+tests/test_grenzen.py:170: AttributeError
+----------------------------- Captured stderr call -----------------------------
+__________________ test_einstellungen_beispiel_nennt_grenzen ___________________
+
+    def test_einstellungen_beispiel_nennt_grenzen():
+        for datei in ("betrieb/einstellungen.beispiel", "docs/betrieb.md"):
+            text = (WURZEL / datei).read_text(encoding="utf-8")
+>           assert re.search(r"FR_GRENZE_REISEN\D{0,80}10", text), datei
+E           AssertionError: betrieb/einstellungen.beispiel
+E           assert None
+E            +  where None = <function search at 0x735f37c313a0>('FR_GRENZE_REISEN\\D{0,80}10', '# Einstellungen einer Instanz (docs/betrieb.md). Kopie nach <Reisen-Repo>/betrieb/einstellungen.env und anpassen.\n# ...spiel-Betreiber\n#FR_BETREIBER_ANSCHRIFT=Musterweg 1, 12345 Beispielstadt\n#FR_BETREIBER_KONTAKT=kontakt@example.org\n')
+E            +    where <function search at 0x735f37c313a0> = re.search
+
+tests/test_grenzen.py:184: AssertionError
+________________ test_konten_doku_nennt_grenzen_und_seitenlink _________________
+
+    def test_konten_doku_nennt_grenzen_und_seitenlink():
+        text = (WURZEL / "docs" / "konten.md").read_text(encoding="utf-8")
+>       assert "FR_GRENZE_REISEN" in text and "FR_GRENZE_SCHREIBEN" in text and "#421" in text
+E       AssertionError: assert ('FR_GRENZE_REISEN' in '# Konten: Anmeldung mit E-Mail-Adresse\n\nPaket J (Issue #43). Stand:\n- J1: Grundlage, `engine/konten.py`\n- J2: Anm...l> | loeschen <email> | zusammenfuehren <von> <nach> |\neinladen <reise> <schluessel> <email> <rolle> <Name> <von>`.\n')
+
+tests/test_grenzen.py:190: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_grenzen.py::test_grenzwerte_vorgabe_und_instanz - Attribute...
+FAILED tests/test_grenzen.py::test_schreibgrenze_je_konto_und_stunde - Assert...
+FAILED tests/test_grenzen.py::test_reisegrenze_je_konto - AssertionError: Sch...
+FAILED tests/test_grenzen.py::test_ablehnung_protokoll_texte_ohne_alarm - ass...
+FAILED tests/test_grenzen.py::test_schreibend_aus_vorhandener_einteilung - At...
+FAILED tests/test_grenzen.py::test_einstellungen_beispiel_nennt_grenzen - Ass...
+FAILED tests/test_grenzen.py::test_konten_doku_nennt_grenzen_und_seitenlink
+7 failed, 8 passed in 17.22s
