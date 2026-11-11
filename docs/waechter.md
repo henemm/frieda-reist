@@ -33,14 +33,24 @@ Daraus entsteht je Angabe eine **Meldung** (Art `pruefung`) an die Organisator:i
 - Der AI-Client schlägt die Angabe im Gespräch nach. Stimmt der Wert, bekommt sie Prüfdatum und Quelle. **Weicht er ab, wird er nicht still übernommen**: Ein:e Organisator:in entscheidet; bis dahin bleibt der alte Wert stehen.
 - Die Meldung steht im `ueberblick` der Claude-App unter „Meldungen an dich“ und in der Sammelnachricht an den Betreiber; sie verschwindet nach 14 Tagen oder wird nach der Frist erneuert, solange die Angabe ungeprüft ist.
 
+## Stufen (#517, Product Owner 11.11.2026)
+
+| Stufe | Was | Wege |
+|---|---|---|
+| Wichtig | Status fällig, Konflikt zweier Entscheidungen, Frist überfällig, Veröffentlichen rot | Seite und Push sofort; Mail nach einem Tag ohne Wirkung und ohne Gerät (einstellbar: sofort, nie) |
+| Normal | Frist naht, Stornofrist, „jetzt möglich“, offene Zahlung; Rückmeldungen, Fragen, Wünsche, Aufgaben an mich, Anfragen | Seite und Push; auf Wunsch tägliche Zusammenfassung per Mail |
+| Leise | Prüfungen veränderlicher Angaben, neue Versionen | Seite, Mein Konto, Claude-App; Push nur, wenn eingeschaltet |
+
+Eingestellt wird unter „Mein Konto“, Benachrichtigungen, für alle Reisen gleich (`engine/push.py`, `einstellungen`; alte Einstellungen mit `arten` gelten weiter).
+
 ## Meldekanäle (`regeln.meldekanal`)
 
 | Kanal | Wirkung | Stand |
 |---|---|---|
 | `app` | Meldungen stehen im `ueberblick` der Claude-App unter „Meldungen an dich“ und unter `rueckmeldungen`; erledigte Aufgaben, vollzogene Statuswechsel und Meldungen älter als 14 Tage verschwinden (Konflikte nie) | gebaut |
 | `nachricht` | Sammelnachricht an den Betreiber (`lauf --bericht`), versandt vom Betriebsskript `betrieb/waechter.sh` (`docs/betrieb.md`) | gebaut |
-| `mail` | Rückfall für Statushinweise (#513): Gilt ein Hinweis nach 24 Stunden noch und hat die Person auf keinem Gerät Benachrichtigungen, schickt der Push-Dienst ihn einmal per Mail an die Adresse des Kontos (in der Sprache des Kontos, mit Link zur Reiseseite und zu „Mein Konto“; höchstens drei Versuche, ältere als drei Tage nicht mehr). Andere Meldungen gehen nicht per Mail | gebaut (11.11.2026) |
-| `push` | Push-Nachricht aufs Handy (Web Push, `engine/push.py`, Dienst `<instanz>-push`): Meldungen an Personen, dazu neue Rückmeldungen an die Organisator:innen, neu zugewiesene Aufgaben und neue Releases der Software. Jede Person schaltet es je Gerät auf „Mein Konto“ ein (Frieda-App vom Home-Bildschirm auf iPhone und iPad, Entscheidung 2.11.2026) und stellt dort ein, welche Arten kommen und wann Ruhe ist (Vorgabe 21:30 bis 7:00 auf der Uhr des Geräts; was in der Ruhezeit anfällt, kommt an ihrem Ende). Gleichzeitig Wartendes einer Reise kommt als eine Nachricht. Tippen öffnet die Stelle (`#AG-…`, `#T-…`, „Offen“) | gebaut (Issue #21, 1.11.2026) |
+| `mail` | Mail an die Adresse des Kontos, in seiner Sprache (#513, #517). **Wichtiges** (Status fällig, Konflikt, Frist überfällig, Veröffentlichen rot): je Person „nach einem Tag“ (Vorgabe: gilt der Hinweis nach 24 Stunden noch, ist ungelesen und hat die Person kein Gerät mit Benachrichtigungen für Wichtiges), „sofort“ oder „nie“; je Hinweis höchstens eine Mail, höchstens drei Versuche, ältere als drei Tage nicht mehr. **Tägliche Zusammenfassung** für „Rückmeldungen und Aufgaben“ und „Fristen“, wenn die Person sie wählt (Vorgabe: nie): einmal am Tag ab 7:30 auf ihrer Uhr | gebaut (11.11.2026) |
+| `push` | Push-Nachricht aufs Handy (Web Push, `engine/push.py`, Dienst `<instanz>-push`): Meldungen an Personen, dazu neue Rückmeldungen an die Organisator:innen, neu zugewiesene Aufgaben und neue Releases der Software. Jede Person schaltet es je Gerät auf „Mein Konto“ ein (Frieda-App vom Home-Bildschirm auf iPhone und iPad, Entscheidung 2.11.2026) und stellt dort je Gruppe ein, ob sie aufs Handy kommt (Wichtiges, Rückmeldungen und Aufgaben, Fristen; „Leises“ wie Prüfungen und neue Versionen nur, wenn eingeschaltet, #517) und wann Ruhe ist (Vorgabe 21:30 bis 7:00 auf der Uhr des Geräts; was in der Ruhezeit anfällt, kommt an ihrem Ende). Gleichzeitig Wartendes einer Reise kommt als eine Nachricht. Tippen öffnet die Stelle (`#AG-…`, `#T-…`, „Offen“) | gebaut (Issue #21, 1.11.2026) |
 | Meldungen auf der Webseite anzeigen | – | Issue #21, Stufe 1 |
 
 Vorgabe: `[app, nachricht, push, mail]`. Ohne `push` schickt die Reise keine Push-Nachrichten, auch keine zu Rückmeldungen, Aufgaben oder Releases.

@@ -38,14 +38,24 @@ def konto(kid, email, name):
 # ---------- Einstellungen und Ruhezeit ----------
 
 def test_einstellungen_bereinigt_mit_vorgaben():
-    assert push.einstellungen({}) == {"arten": list(push.ARTEN), "ruhe_von": "21:30", "ruhe_bis": "07:00"}
-    assert push.einstellungen({"arten": ["version", "erfunden", "meldung"], "ruhe_von": "22:00", "ruhe_bis": "06:30"}) == \
-        {"arten": ["meldung", "version"], "ruhe_von": "22:00", "ruhe_bis": "06:30"}
+    vorgabe_mail = {"wichtig": "nach_tag", "rueckmeldungen": "nie", "fristen": "nie"}
+    assert push.einstellungen({}) == {"push": {"wichtig": True, "rueckmeldungen": True, "fristen": True, "leise": False},
+                                      "mail": vorgabe_mail, "ruhe_von": "21:30", "ruhe_bis": "07:00"}
+    e = push.einstellungen({"push": {"leise": True, "wichtig": "ja", "erfunden": True},
+                            "mail": {"wichtig": "sofort", "fristen": "taeglich", "rueckmeldungen": "erfunden"},
+                            "ruhe_von": "22:00", "ruhe_bis": "06:30"})
+    assert e["push"] == {"wichtig": True, "rueckmeldungen": True, "fristen": True, "leise": True}
+    assert e["mail"] == {"wichtig": "sofort", "rueckmeldungen": "nie", "fristen": "taeglich"} and e["ruhe_von"] == "22:00"
+    # alte Einstellungen (arten, bis #517) gelten weiter
+    assert push.einstellungen({"arten": ["version"]})["push"] == {"wichtig": False, "rueckmeldungen": False, "fristen": False,
+                                                                 "leise": False}
+    assert push.einstellungen({"arten": ["aufgabe", "meldung"]})["push"] == {"wichtig": True, "rueckmeldungen": True,
+                                                                            "fristen": True, "leise": False}
     # leer, kaputt oder gleich: keine Ruhezeit
     for von, bis in (("", ""), ("25:00", "07:00"), ("08:00", "08:00"), ("8 Uhr", "07:00")):
         e = push.einstellungen({"ruhe_von": von, "ruhe_bis": bis})
         assert e["ruhe_von"] == e["ruhe_bis"] == ""
-    assert push.einstellungen("kaputt")["arten"] == list(push.ARTEN)
+    assert push.einstellungen("kaputt")["push"] == push.PUSH_VORGABE
 
 
 @pytest.mark.parametrize("utc,zone,ruhig", [
@@ -101,7 +111,7 @@ def test_abo_speichern_ersetzen_entfernen():
     konten.push_abo_speichern(karl, abo(9), "beispielreise", SEITE, "geraet-karl")
     konten.sperren(karl)
     assert konten.push_abos(karl) == []
-    push.einstellungen_von(ida, {"arten": ["meldung"]})
+    push.einstellungen_von(ida, {"push": {"wichtig": True}})
     konten.loeschen(ida)
     assert konten.push_abos(ida) == [] and konten.push_einstellungen(ida) == {}
 
@@ -207,7 +217,7 @@ def test_ruhezeit_wartet_bis_zum_morgen(reise):
 
 def test_arten_abschalten_und_kanal_der_reise(reise, welt):
     u = reise
-    push.einstellungen_von(u.karl_id, {"arten": ["meldung"]})
+    push.einstellungen_von(u.karl_id, {"push": {"rueckmeldungen": False}})
     aufgabe(u, u.ida, titel="Tickets kaufen", zustaendig="Karl")
     assert push.sammeln(MITTAG) == 0
     # Eine Reise ohne Kanal push schickt nichts, merkt sich aber den Stand
@@ -225,6 +235,8 @@ def test_neues_release_meldet_sich_einmal(reise):
     alt = re.search(r'data-release="([^"]*)"', text).group(1)
     neu = html.escape(json.dumps({"nummer": 412, "kennung": "abc1234", "commit": "abc1234" * 5, "github": None}), quote=True)
     index.write_text(text.replace(alt, neu, 1), encoding="utf-8")
+    for kid in (u.ida_id, u.karl_id):      # neue Versionen sind „Leises“ (#517): aufs Handy nur, wenn eingeschaltet
+        push.einstellungen_von(kid, {"push": {**push.PUSH_VORGABE, "leise": True}})
     assert push.sammeln(MITTAG) == 2 and push.sammeln(MITTAG) == 0
     push.zustellen(u.senden, MITTAG)
     an = dict(u.gesendet)
@@ -290,11 +302,15 @@ def test_kontoseite_benachrichtigungen(reise):
     u = reise
     s, _, t = abruf(f"{u.kurl}/konto", cookie=u.karl)
     assert s == 200 and "Benachrichtigungen" in t and meldet(t, "konto.push.geraete.one")
-    assert 'name="ruhe_von" value="21:30"' in t and 'name="art_version" value="ja" checked' in t
-    s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "push_einstellungen", "art_meldung": "ja", "ruhe_von": "22:15",
-                                                "ruhe_bis": "06:45"}, cookie=u.karl)
+    assert 'name="ruhe_von" value="21:30"' in t and 'name="push_wichtig" value="ja" checked' in t
+    assert 'name="push_leise" value="ja">' in t and '<option value="nach_tag" selected>' in t and 'name="mail_leise"' not in t
+    s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "push_einstellungen", "push_wichtig": "ja", "mail_wichtig": "sofort",
+                                                "mail_fristen": "taeglich", "ruhe_von": "22:15", "ruhe_bis": "06:45"},
+                    cookie=u.karl)
     assert s == 200 and meldet(t, "konto.push.gespeichert")
-    assert push.einstellungen_von(u.karl_id) == {"arten": ["meldung"], "ruhe_von": "22:15", "ruhe_bis": "06:45"}
+    assert push.einstellungen_von(u.karl_id) == {
+        "push": {"wichtig": True, "rueckmeldungen": False, "fristen": False, "leise": False},
+        "mail": {"wichtig": "sofort", "rueckmeldungen": "nie", "fristen": "taeglich"}, "ruhe_von": "22:15", "ruhe_bis": "06:45"}
     s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "push_aus"}, cookie=u.karl)
     assert meldet(t, "konto.push.alle_aus_hinweis") and konten.push_abos(u.karl_id) == []
 
@@ -434,7 +450,7 @@ def test_statushinweis_per_push_und_mail_rueckfall(reise):
     assert push.mail_rueckfall(post, MITTAG + 23 * 3600) == 0
     assert push.mail_rueckfall(post, MITTAG + 25 * 3600) == 1
     (an, betreff, text), = gesendet
-    assert an == IDA and betreff == "Beispiel: Status der Reise"
+    assert an == IDA and betreff == "Beispiel: wichtig für deine Reise"
     assert text.startswith("Hallo Ida,") and "Auf „unterwegs“ stellen?" in text and SEITE in text
     assert BASIS + "/konto" in text
     assert push.mail_rueckfall(post, MITTAG + 26 * 3600) == 0 and len(gesendet) == 1
@@ -468,3 +484,59 @@ def test_mail_rueckfall_fehler_und_kanal(reise, welt):
     rm.meldung_anlegen(v.o, ["Ida"], "status", "reise", "x", zeit=datetime.datetime.fromtimestamp(MITTAG, datetime.timezone.utc),
                        extra={"status_bei": rm.zustand("beispielreise")["status"]})
     assert push.mail_rueckfall(lambda *a: versuche.append(a), t) == 0
+
+
+# ---------- Stufen und tägliche Zusammenfassung (#517) ----------
+
+def test_gruppen_der_meldungen():
+    k = push.kategorie
+    assert k("meldung", {"art": "status"}) == k("meldung", {"art": "konflikt"}) == k("meldung", {"art": "betrieb"}) == "wichtig"
+    assert k("meldung", {"art": "erinnerung", "schluessel": "ueberfaellig:AG-01:2027-05-01"}) == "wichtig"
+    assert k("meldung", {"art": "erinnerung", "schluessel": "frist:AG-01:2027-05-01"}) == "fristen"
+    assert k("meldung", {"art": "pruefung"}) == k("version") == "leise"
+    assert k("rueckmeldung") == k("aufgabe") == k("meldung", {"art": "hinweis"}) == "rueckmeldungen"
+
+
+def test_pruefungen_leise_und_wichtiges_sofort_per_mail(reise):
+    u = reise
+    jetzt = datetime.datetime.fromtimestamp(MITTAG, datetime.timezone.utc)
+    rm.meldung_anlegen(u.o, ["Ida"], "pruefung", "U-01", "Preis zuletzt geprüft vor 70 Tagen", zeit=jetzt)
+    assert push.sammeln(MITTAG) == 0                                # leise: nicht aufs Handy
+    k = rm.meldung_anlegen(u.o, ["Ida"], "konflikt", "V-01", "Ida und Karl haben verschieden entschieden.", zeit=jetzt)
+    assert push.sammeln(MITTAG) == 1
+    gesendet = []
+    post = lambda an, betreff, text: gesendet.append((an, betreff, text))  # noqa: E731
+    assert push.mail_rueckfall(post, MITTAG + 60) == 0                # Vorgabe: erst nach einem Tag, und Ida hat ein Gerät
+    push.einstellungen_von(u.ida_id, {"mail": {"wichtig": "sofort"}})
+    assert push.mail_rueckfall(post, MITTAG + 120) == 1 and "verschieden entschieden" in gesendet[0][2]
+    assert "sofort per Mail" in gesendet[0][2]
+    assert push.mail_rueckfall(post, MITTAG + 180) == 0                 # nur einmal
+    # nach einem Tag, ohne Gerät, aber gelesen: keine Mail
+    push.einstellungen_von(u.ida_id, {})
+    konten.push_abo_entfernen(u.ida_id, abo("ida")["endpoint"])
+    zweite = rm.meldung_anlegen(u.o, ["Ida"], "konflikt", "V-02", "Noch ein Widerspruch.", zeit=jetzt)
+    konten.gelesen_merken(u.ida_id, [zweite["id"]])
+    assert push.mail_rueckfall(post, MITTAG + 25 * 3600) == 0 and len(gesendet) == 1 and k["id"]
+
+
+def test_taegliche_zusammenfassung(reise):
+    u = reise
+    push.einstellungen_von(u.ida_id, {"mail": {"rueckmeldungen": "taeglich"}})
+    assert rueckmeldung(u, u.karl)[0] == 201
+    rueckmeldung(u, u.karl, text="Und abends Pizza?")
+    push.sammeln(MITTAG)                                             # 12:00 in Berlin: aufs Handy und gesammelt
+    gesendet = []
+    post = lambda an, betreff, text: gesendet.append((an, betreff, text))  # noqa: E731
+    assert push.zusammenfassungen(post, MITTAG) == 1                 # nach 7:30: noch heute
+    (an, betreff, text), = gesendet
+    assert an == IDA and betreff == "Frieda: 2 Neuigkeiten aus deinen Reisen"
+    assert "Karl schreibt: Wir landen erst 21 Uhr." in text and "Und abends Pizza?" in text and "Beispiel" in text
+    assert push.zusammenfassungen(post, MITTAG + 3600) == 0           # leer und heute schon verschickt
+    rueckmeldung(u, u.karl, text="Noch was")
+    push.sammeln(MITTAG + 3600)
+    assert push.zusammenfassungen(post, MITTAG + 7200) == 0           # einmal am Tag
+    morgen_frueh = MITTAG + 18 * 3600                                # 6:00 in Berlin: zu früh
+    assert push.zusammenfassungen(post, morgen_frueh) == 0
+    assert push.zusammenfassungen(post, morgen_frueh + 2 * 3600) == 1 and "Noch was" in gesendet[1][2]
+    # Karl hat nichts gewählt: keine Zusammenfassung
+    assert all(a == IDA for a, _, _ in gesendet)

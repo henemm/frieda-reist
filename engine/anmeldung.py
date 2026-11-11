@@ -429,10 +429,18 @@ def push_karte(k, offen=False):
     geraete = len({a["geraet"] or a["endpoint"] for a in konten.push_abos(k["id"])})
     haken = lambda name, an, text: (f'<label class="haken"><input type="checkbox" name="{esc(name)}" value="ja"'   # noqa: E731
                                     f'{" checked" if an else ""}> {esc(text)}</label>')
+    def gruppe(kat):   # je Gruppe (#517): aufs Handy ja/nein, per Mail wie (Leises nie per Mail)
+        mail = ""
+        if kat in push.MAIL_WERTE:
+            wahl = "".join(f'<option value="{w}"{" selected" if e["mail"][kat] == w else ""}>{esc(tx("konto.push.mail." + w))}</option>'
+                           for w in push.MAIL_WERTE[kat])
+            mail = (f'<label for="mail_{kat}">{esc(tx("konto.push.per_mail"))}</label>'
+                    f'<select id="mail_{kat}" name="mail_{kat}">{wahl}</select>')
+        return (f'<fieldset><legend>{esc(tx("konto.push.kat." + kat))}</legend>'
+                f'<p class="klein">{esc(tx("konto.push.kat." + kat + ".was"))}</p>'
+                + haken("push_" + kat, e["push"][kat], tx("konto.push.aufs_handy")) + mail + "</fieldset>")
     felder = (verdeckt(aktion="push_einstellungen")
-              + f"<fieldset><legend>{esc(tx('konto.push.was'))}</legend>"
-              + "".join(haken("art_" + a, a in e["arten"], tx("konto.push.art." + a)) for a in push.ARTEN)
-              + "</fieldset>"
+              + "".join(gruppe(k) for k in push.KATEGORIEN)
               + f"<fieldset><legend>{esc(tx('konto.push.ruhe'))}</legend>"
               + '<div style="display:flex;gap:.6rem">'
               + f'<div style="flex:1"><label for="ruhe_von">{esc(tx("konto.push.ruhe_von"))}</label>'
@@ -476,7 +484,8 @@ def push_geraet_schalten(k, aktion, f):
 def push_formular(f):
     """Formular der Karte Benachrichtigungen -> Einstellungen (push.einstellungen bereinigt)."""
     import push
-    return {"arten": [a for a in push.ARTEN if f.get("art_" + a) == "ja"],
+    return {"push": {k: f.get("push_" + k) == "ja" for k in push.KATEGORIEN},
+            "mail": {k: f.get("mail_" + k, "") for k in push.MAIL_WERTE},
             "ruhe_von": f.get("ruhe_von", ""), "ruhe_bis": f.get("ruhe_bis", "")}
 
 

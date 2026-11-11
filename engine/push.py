@@ -16,8 +16,12 @@ der Uhr ihres Geräts (Vorgabe 21:30 bis 7:00). Was in der Ruhezeit anfällt, wa
 Zeit für dieselbe Reise wartet, kommt als eine Nachricht („3 Neuigkeiten“). Eine Reise ohne Kanal push in
 regeln.meldekanal schickt nichts. Beim ersten Lauf merkt sich der Dienst nur den Stand; Altes wird nie nachgeschickt.
 
-Mail als Rückfall (#513, Kanal mail): Ein Statushinweis (Art status, „auf fest/unterwegs/danach stellen?“), der nach
-MAIL_NACH noch gilt, geht an Organisator:innen ohne Gerät mit Benachrichtigungen einmal per Mail (konten.mail_senden).
+Stufen (#517, Product Owner 11.11.2026): Jede Nachricht gehört zu einer Gruppe (KATEGORIEN). „wichtig“ (Status fällig,
+Konflikt, Frist überfällig, Veröffentlichen rot) kommt sofort aufs Handy und, je nach Einstellung, nach einem Tag ohne
+Wirkung und ohne Gerät mit Benachrichtigungen (Vorgabe), sofort oder nie per Mail (Kanal mail der Reise). „rueckmeldungen“
+(Rückmeldungen, Aufgaben, Anfragen, Hinweise) und „fristen“ (Frist naht, ab, Storno, Zahlung) kommen aufs Handy und auf
+Wunsch als tägliche Zusammenfassung per Mail. „leise“ (Prüfungen veränderlicher Angaben, neue Versionen) steht nur auf
+der Seite, unter Mein Konto und in der Claude-App; aufs Handy nur, wenn die Person es einschaltet.
 
 Frieda enthält keine eigene KI (ADR-0001): Der Dienst liest und stellt zu, er deutet nichts und ändert keine Reise.
 Versand über Web Push (RFC 8030/8291/8292) mit pywebpush (MPL-2.0, engine/requirements.txt). Darum läuft er mit dem
@@ -49,7 +53,11 @@ import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 import texte  # noqa: E402
 
-ARTEN = ("meldung", "rueckmeldung", "aufgabe", "version")
+ARTEN = ("meldung", "rueckmeldung", "aufgabe", "version")     # Arten der Warteschlange (Inhalt und Ziel der Nachricht)
+KATEGORIEN = ("wichtig", "rueckmeldungen", "fristen", "leise")  # Gruppen der Einstellungen (#517)
+PUSH_VORGABE = {"wichtig": True, "rueckmeldungen": True, "fristen": True, "leise": False}
+MAIL_WERTE = {"wichtig": ("nach_tag", "sofort", "nie"), "rueckmeldungen": ("nie", "taeglich"), "fristen": ("nie", "taeglich")}
+ZUSAMMENFASSUNG_UM = "07:30"  # tägliche Zusammenfassung ab dieser Uhrzeit auf der Uhr der Person
 RUHE_VORGABE = ("21:30", "07:00")
 UHRZEIT = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 PAUSE = 20                    # Sekunden zwischen zwei Durchgängen des Dienstes
@@ -67,17 +75,41 @@ MAIL_PAUSE = 3600             # Sekunden zwischen zwei Versuchen
 # ---------- Einstellungen und Ruhezeit (nur Standardbibliothek) ----------
 
 def einstellungen(roh):
-    """Einstellungen eines Kontos bereinigt: {arten: [...], ruhe_von: "HH:MM" | "", ruhe_bis: "HH:MM" | ""}.
-    Unbekanntes fällt weg; leere Ruhezeit (beide leer) heißt: keine."""
+    """Einstellungen eines Kontos bereinigt: {push: {kategorie: bool}, mail: {kategorie: wert}, ruhe_von: "HH:MM" | "",
+    ruhe_bis: "HH:MM" | ""}. Unbekanntes fällt weg; leere Ruhezeit (beide leer) heißt: keine. Alte Einstellungen (arten,
+    bis #517) gelten weiter: meldung schaltet wichtig und fristen, rueckmeldung oder aufgabe die Rückmeldungen."""
     roh = roh if isinstance(roh, dict) else {}
-    arten = roh.get("arten", list(ARTEN))
-    arten = [a for a in ARTEN if isinstance(arten, list) and a in arten]
+    alt = roh.get("arten") if isinstance(roh.get("arten"), list) else None
+    vorgabe = dict(PUSH_VORGABE)
+    if alt is not None:
+        vorgabe.update(wichtig="meldung" in alt, fristen="meldung" in alt,
+                       rueckmeldungen="rueckmeldung" in alt or "aufgabe" in alt)
+    push_roh = roh.get("push") if isinstance(roh.get("push"), dict) else {}
+    push_ = {k: push_roh[k] if isinstance(push_roh.get(k), bool) else vorgabe[k] for k in KATEGORIEN}
+    mail_roh = roh.get("mail") if isinstance(roh.get("mail"), dict) else {}
+    mail = {k: mail_roh.get(k) if mail_roh.get(k) in werte else werte[0] for k, werte in MAIL_WERTE.items()}
     von, bis = roh.get("ruhe_von", RUHE_VORGABE[0]), roh.get("ruhe_bis", RUHE_VORGABE[1])
     von = von if isinstance(von, str) and UHRZEIT.match(von) else ""
     bis = bis if isinstance(bis, str) and UHRZEIT.match(bis) else ""
     if not von or not bis or von == bis:
         von = bis = ""
-    return {"arten": arten, "ruhe_von": von, "ruhe_bis": bis}
+    return {"push": push_, "mail": mail, "ruhe_von": von, "ruhe_bis": bis}
+
+
+def kategorie(art, m=None):
+    """Gruppe einer Nachricht (#517): art der Warteschlange, bei art meldung dazu die Meldung (meldungen.jsonl)."""
+    if art in ("rueckmeldung", "aufgabe"):
+        return "rueckmeldungen"
+    if art == "version":
+        return "leise"
+    m = m or {}
+    if m.get("art") in ("status", "konflikt", "betrieb"):
+        return "wichtig"
+    if m.get("art") == "erinnerung":
+        return "wichtig" if str(m.get("schluessel") or "").startswith("ueberfaellig:") else "fristen"
+    if m.get("art") == "pruefung":
+        return "leise"
+    return "rueckmeldungen"
 
 
 def einstellungen_von(kid, neu=None):
@@ -197,9 +229,14 @@ def _kurz(text):
     return text if len(text) <= MAX_TEXT else text[:MAX_TEXT - 1].rstrip() + "…"
 
 
-def einreihen(kid, reise, art, text, ziel="", jetzt=None):
-    """Nachricht für ein Konto vormerken, wenn es Geräte hat und die Art eingeschaltet ist. -> ob vorgemerkt."""
-    if art not in einstellungen_von(kid)["arten"] or not konten.push_abos(kid):
+def einreihen(kid, reise, art, text, ziel="", jetzt=None, kat=None):
+    """Nachricht für ein Konto vormerken, wenn es Geräte hat und ihre Gruppe aufs Handy soll; wer für die Gruppe die
+    tägliche Zusammenfassung gewählt hat, bekommt sie dort auch (#517). -> ob aufs Handy vorgemerkt."""
+    kat = kat or kategorie(art)
+    e = einstellungen_von(kid)
+    if e["mail"].get(kat) == "taeglich":
+        sammeln_fuer_mail(kid, reise, text, jetzt)
+    if not e["push"].get(kat) or not konten.push_abos(kid):
         return False
     with closing(konten.db()) as v, v:
         v.execute("INSERT INTO push_warteschlange (konto, reise, art, text, ziel, erstellt) VALUES (?,?,?,?,?,?)",
@@ -228,7 +265,7 @@ def sammeln_reise(reise, jetzt=None):
             continue
         ziel = rm.meldung_anker(m)      # dieselbe Stelle wie auf Mein Konto (#407)
         for kid in _empfaenger(reise, personen, m.get("an") or []):
-            n += einreihen(kid, reise, "meldung", m.get("text", ""), ziel, jetzt)
+            n += einreihen(kid, reise, "meldung", m.get("text", ""), ziel, jetzt, kategorie("meldung", m))
     # Rückmeldungen von der Seite an die Organisator:innen, nicht an die Person, die sie geschrieben hat
     organisatoren = [p["name"] for p in personen if rg.rolle_neu(p.get("rolle")) == "organisator" and p.get("name")]
     for e in neue(_jsonl(o / "eingang.jsonl"), f"eingang:{reise}"):
@@ -436,59 +473,129 @@ def _sekunden(iso):
         return None
 
 
-def mail_text(kid, reise, m, name):
-    """-> (Betreff, Text) einer Mail zu einem Statushinweis, in der Sprache des Kontos."""
+def mail_text(kid, reise, m, name, wann="nach_tag"):
+    """-> (Betreff, Text) einer Mail zu einer wichtigen Meldung, in der Sprache des Kontos."""
     sp = sprache_von(kid)
     seite = seite_von(reise) or ""
     zeilen = [texte.t(sp, "push.mail.anrede", name=name), "", rm.meldung_text_in(m, sp) or m.get("text", "")]
     if seite:
         zeilen += ["", texte.t(sp, "push.mail.seite", seite=seite)]
-    zeilen += ["", texte.t(sp, "push.mail.warum")]
+    zeilen += ["", texte.t(sp, "push.mail.warum." + wann)]
     if konten.basis():
-        zeilen.append(konten.basis() + "/konto")
+        zeilen.append(konten.basis() + "/konto#push")
     return texte.t(sp, "push.mail.betreff", titel=titel_von(reise)), "\n".join(zeilen)
 
 
+def _senden_gemerkt(senden, schl, an, betreff, text, jetzt, wo):
+    """Eine Mail höchstens einmal (push_stand), bei Fehlern höchstens MAIL_VERSUCHE Mal im Abstand MAIL_PAUSE. -> ob gesendet."""
+    vorher = stand(schl) or {}
+    if vorher.get("gesendet") or vorher.get("versuche", 0) >= MAIL_VERSUCHE or jetzt - vorher.get("zuletzt", 0) < MAIL_PAUSE:
+        return False
+    try:
+        senden(an, betreff, text)
+    except konten.KontoFehler as x:
+        stand(schl, {"versuche": vorher.get("versuche", 0) + 1, "zuletzt": jetzt})
+        print(f"Mail {wo}: {x.schluessel}", file=sys.stderr, flush=True)
+        return False
+    stand(schl, {"gesendet": jetzt})
+    return True
+
+
+def _mail_an(reise_regeln):
+    return "mail" in ((reise_regeln or {}).get("meldekanal") or rg.VORGABEN["meldekanal"])
+
+
 def mail_rueckfall(senden=None, jetzt=None):
-    """Statushinweise, die seit MAIL_NACH unverändert gelten, einmal per Mail an die Empfänger ohne Push-Gerät. -> Zahl
-    der verschickten Mails. Gemerkt wird je Hinweis und Konto (push_stand), damit keine Mail doppelt kommt."""
+    """Wichtige Meldungen (#513, #517) per Mail, je nach Einstellung der Person: „nach_tag“ (Vorgabe) einmal, wenn sie nach
+    MAIL_NACH noch gilt, ungelesen ist und die Person kein Gerät mit Benachrichtigungen für Wichtiges hat; „sofort“ gleich
+    beim ersten Durchgang; „nie“ gar nicht. Ältere als MAIL_BIS gehen nicht mehr. -> Zahl der verschickten Mails."""
     senden = senden or konten.mail_senden
     jetzt = jetzt or time.time()
     n = 0
     for reise in _reisen():
         o, z = rm.ordner(reise), rm.zustand(reise)
-        if o is None or z is None or "mail" not in ((z.get("regeln") or {}).get("meldekanal") or rg.VORGABEN["meldekanal"]):
+        if o is None or z is None or not _mail_an(z.get("regeln")):
             continue
+        offene_aufgaben = None
         for m in _jsonl(o / "meldungen.jsonl"):
             erstellt = _sekunden(m["erstellt"])
-            if (m.get("art") != "status" or m.get("status_bei") != z.get("status") or erstellt is None
-                    or not MAIL_NACH <= jetzt - erstellt <= MAIL_BIS):
+            if kategorie("meldung", m) != "wichtig" or erstellt is None or jetzt - erstellt > MAIL_BIS:
                 continue
             for kid, p in _empfaenger(reise, z.get("personen") or [], m.get("an") or []).items():
-                schl = f"mail:{m['id']}:{kid}"
-                vorher = stand(schl)
-                if (vorher or {}).get("gesendet") or (vorher or {}).get("versuche", 0) >= MAIL_VERSUCHE \
-                        or jetzt - (vorher or {}).get("zuletzt", 0) < MAIL_PAUSE or konten.push_abos(kid):
+                e = einstellungen_von(kid)
+                wann = e["mail"]["wichtig"]
+                if wann == "nie" or (wann == "nach_tag" and (jetzt - erstellt < MAIL_NACH
+                                                             or (e["push"]["wichtig"] and konten.push_abos(kid))
+                                                             or m["id"] in konten.gelesen(kid))):
                     continue
+                if offene_aufgaben is None:
+                    offene_aufgaben = rm.aufgaben(o)
+                gilt = {x["id"] for x in rm.meldungen_aktuell(o, p.get("name") or "", offene_aufgaben, z.get("status"),
+                                                              z.get("bausteine"), tage=MAIL_BIS // 86400 + 1)}
                 k = konten.konto(kid)
-                if not k or k["gesperrt"] or not k["email"]:
+                if m["id"] not in gilt or not k or k["gesperrt"] or not k["email"]:
                     continue
-                betreff, text = mail_text(kid, reise, m, p.get("name") or k["name"])
-                try:
-                    senden(k["email"], betreff, text)
-                except konten.KontoFehler as x:
-                    stand(schl, {"versuche": (vorher or {}).get("versuche", 0) + 1, "zuletzt": jetzt})
-                    print(f"Mail {reise} {m['id']}: {x.schluessel}", file=sys.stderr, flush=True)
-                    continue
-                stand(schl, {"gesendet": jetzt})
-                n += 1
+                betreff, text = mail_text(kid, reise, m, p.get("name") or k["name"], wann)
+                n += _senden_gemerkt(senden, f"mail:{m['id']}:{kid}", k["email"], betreff, text, jetzt, f"{reise} {m['id']}")
+    return n
+
+
+# ---------- Tägliche Zusammenfassung per Mail (#517) ----------
+MAX_SAMMEL = 200   # Einträge je Konto bis zur nächsten Zusammenfassung
+
+
+def sammeln_fuer_mail(kid, reise, text, jetzt=None):
+    """Einen Eintrag für die tägliche Zusammenfassung eines Kontos merken (nur Reisen mit Kanal mail)."""
+    if not _mail_an((rm.zustand(reise) or {}).get("regeln")):
+        return
+    liste = stand(f"sammel:{kid}") or []
+    liste.append({"reise": reise, "text": _kurz(text), "zeit": jetzt or time.time()})
+    stand(f"sammel:{kid}", liste[-MAX_SAMMEL:])
+
+
+def _zone_von(kid):
+    abos = konten.push_abos(kid)
+    return (abos[0]["zeitzone"] if abos and abos[0].get("zeitzone") else "") or instanz.zeitzone()
+
+
+def zusammenfassungen(senden=None, jetzt=None):
+    """Einmal am Tag, ab ZUSAMMENFASSUNG_UM auf der Uhr der Person, die gesammelten Einträge als eine Mail. -> Zahl."""
+    senden = senden or konten.mail_senden
+    jetzt = jetzt or time.time()
+    zeitpunkt = datetime.datetime.fromtimestamp(jetzt, datetime.timezone.utc)
+    with closing(konten.db()) as v:
+        kids = [z["schluessel"][len("sammel:"):] for z in v.execute("SELECT schluessel FROM push_stand WHERE schluessel LIKE 'sammel:%'")]
+    n = 0
+    for kid in kids:
+        liste = stand(f"sammel:{kid}") or []
+        ort = ortszeit(zeitpunkt, _zone_von(kid))
+        tag = ort.date().isoformat()
+        if not liste or ort.hour * 60 + ort.minute < _minuten(ZUSAMMENFASSUNG_UM) or stand(f"sammel_tag:{kid}") == tag:
+            continue
+        k = konten.konto(kid)
+        if not k or k["gesperrt"] or not k["email"]:
+            stand(f"sammel:{kid}", [])
+            continue
+        sp = sprache_von(kid)
+        zeilen = [texte.t(sp, "push.mail.anrede", name=k["name"]), "", texte.t(sp, "push.mail.zusammenfassung.einleitung")]
+        for reise in dict.fromkeys(e["reise"] for e in liste):
+            zeilen += ["", titel_von(reise) + (f" ({seite_von(reise)})" if seite_von(reise) else "") + ":"]
+            zeilen += [f"- {e['text']}" for e in liste if e["reise"] == reise]
+        zeilen += ["", texte.t(sp, "push.mail.zusammenfassung.warum")]
+        if konten.basis():
+            zeilen.append(konten.basis() + "/konto#push")
+        betreff = texte.t(sp, "push.mail.zusammenfassung.betreff", n=len(liste))
+        if _senden_gemerkt(senden, f"sammel_mail:{kid}:{tag}", k["email"], betreff, "\n".join(zeilen), jetzt, f"summary {kid}"):
+            stand(f"sammel:{kid}", [])
+            stand(f"sammel_tag:{kid}", tag)
+            n += 1
     return n
 
 
 def lauf(senden=None, jetzt=None, mail=None):
     n = sammeln(jetzt)
     erg = zustellen(senden or webpush_sender(), jetzt)
-    return {"vorgemerkt": n, **erg, "mails": mail_rueckfall(mail, jetzt)}
+    return {"vorgemerkt": n, **erg, "mails": mail_rueckfall(mail, jetzt) + zusammenfassungen(mail, jetzt)}
 
 
 def dienst():
