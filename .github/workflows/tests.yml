@@ -70,7 +70,7 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('engine/tests/playwright/package-lock.json') }}
       # Eigene Zeitgrenze als Notbremse und zwei Versuche mit je 4 Minuten, statt bis zur Job-Grenze zu hängen (#356)
       - name: Playwright und Browser (feste Version aus engine/tests/playwright, wie auf jeder Instanz)
-        timeout-minutes: 12
+        timeout-minutes: 15
         run: |
           cd engine/tests/playwright
           npm ci --no-audit --no-fund
@@ -84,6 +84,21 @@ jobs:
             fi
             echo "::warning::Playwright-Installation, Versuch $versuch gescheitert (Exit-Code $?, 124 = Zeitgrenze von 240 s)"
           done
+          # Hängt der Spiegel ganz (11.11.2026, #523: azure.archive und archive.ubuntu.com, apt wollte nur ein neueres
+          # libsoup), die Systempakete aus dem Paket-Cache ohne Download installieren. Ein hängendes apt aus Versuch 2
+          # wird vorher beendet; es hängt beim Laden, noch vor dpkg.
+          if [ "$ok" != 1 ] && [ "${{ steps.browser-cache.outputs.cache-hit }}" = "true" ] && ls ~/apt-pakete/*.deb >/dev/null 2>&1; then
+            sudo pkill -x apt-get || true
+            sleep 3
+            fehlend=()   # nur Pakete, die noch nicht installiert sind; ein installiertes nie auf die Cache-Fassung zurückstufen
+            for d in ~/apt-pakete/*.deb; do
+              dpkg -s "$(dpkg-deb -f "$d" Package)" >/dev/null 2>&1 || fehlend+=("$d")
+            done
+            if [ "${#fehlend[@]}" = 0 ] || sudo apt-get install -y -q --no-download "${fehlend[@]}"; then
+              ok=1
+              echo "::warning::Ubuntu-Spiegel antwortet nicht, Systempakete aus dem Paket-Cache installiert (#523)"
+            fi
+          fi
           if [ "$ok" != 1 ]; then
             echo "::error::Playwright-Installation zweimal gescheitert (Ubuntu-Spiegel oder Playwright-CDN antwortet nicht), Abbruch"
             exit 1
