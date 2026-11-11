@@ -53,6 +53,8 @@ orte:   # Orte gibt es wirklich; Herkunft je Ort (Kern jedes Dings, docs/ontolog
   # Ort im Ort (ADR-0008, Punkt 2): Die Orte am Weg liegen in der Region (an: O-07), nur für die Anzeige; die Region ist
   # keine Station und kein Punkt der Übersicht, ihre Seite listet die Orte darin und zeigt sie auf ihrer Karte
   O-07: {name: Sächsische Schweiz, quelle: "OpenStreetMap"}
+  # Ort ohne Tag und ohne Text (#387, #452): an keinem Tag der Reise, nur der Ort des Imbisses A-32
+  O-08: {name: Kurort Rathen, an: O-07, quelle: "OpenStreetMap"}
 
 # Etappen sind Strecken einer summierten Art (wandern): Titel und Kennzahlen hier, Lesetext im Dossier unter „## E-0N Name“.
 strecken:
@@ -392,7 +394,7 @@ aufenthalte:
   # Start der Seite muss mit diesem Fall zurechtkommen (Test test_seite_startet.py)
   A-32:
     name: "Fischbrötchen am Elbufer"
-    ort: O-02
+    ort: O-08
     art: besichtigung
     hinweis: "erfundenes Beispiel; Imbiss zum Sammeln, an keinem Tag"
     quelle: "erfunden (Beispiel)"

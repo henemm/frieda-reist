@@ -17,5 +17,6 @@
     "datei": "plan/routen.yaml",
     "tagesplan": ["W-04", "Tagesplan"],
     "unterkuenfte": ["W-05", "Unterkünfte"]
-  }
+  },
+  "orte_dossiers": ["inhalt/orte.md"]
 }
