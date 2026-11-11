@@ -176,3 +176,12 @@ def grenze_reisen():
 def grenze_schreiben():
     """Höchstzahl schreibender Werkzeugaufrufe je Konto und Stunde im Konnektor (FR_GRENZE_SCHREIBEN, #380)."""
     return _grenze("FR_GRENZE_SCHREIBEN", VORGABE_GRENZE_SCHREIBEN)
+
+
+VORGABE_LOESCHFRIST_TAGE = 14
+
+
+def loeschfrist_tage():
+    """Schonfrist in Tagen zwischen „Reise löschen“ und dem endgültigen Entfernen (FR_LOESCHFRIST_TAGE, #381); in dieser
+    Zeit kann eine Organisator:in die Reise zurückholen."""
+    return _grenze("FR_LOESCHFRIST_TAGE", VORGABE_LOESCHFRIST_TAGE)

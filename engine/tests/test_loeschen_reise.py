@@ -273,6 +273,8 @@ def test_mitwirkender_kann_nicht_vormerken(zwei, monkeypatch):
 def test_block_oben_knopf_nur_fuer_organisatorin_und_zurueckholen(zwei, monkeypatch):
     u = zwei()
     monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+    from test_anmeldung import anmelden
+    karl_keks, _ = anmelden(u, KARL)   # Mitglied vor dem Vormerken: danach löst eine Einladung keine Mitgliedschaft mehr aus
     konten.loeschung_vormerken("beispielreise", u.a["id"])
     t = _seite(u, u.a_keks)
     block = t.index('class="vorgemerkt')
@@ -280,8 +282,6 @@ def test_block_oben_knopf_nur_fuer_organisatorin_und_zurueckholen(zwei, monkeypa
     assert re.search(r"\d{1,2}\.\s?\d{1,2}\.\s?\d{4}.{0,40}(UTC|MEZ|MESZ|CET|CEST|\+\d\d)", t[block:block + 2000]), \
         "Datum mit Zeitzone"
     assert 'value="reise_zurueckholen"' in t
-    from test_anmeldung import anmelden
-    karl_keks, _ = anmelden(u, KARL)
     tk = _seite(u, karl_keks)
     assert 'class="vorgemerkt' in tk and 'value="reise_zurueckholen"' not in tk
     abruf(f"{u.kurl}/konto", "POST", {"aktion": "reise_zurueckholen", "reise": "beispielreise"}, cookie=karl_keks)
@@ -343,14 +343,14 @@ def test_benachrichtigung_in_der_sprache_des_empfaengers(zwei, monkeypatch):
 def test_mailfehler_vormerken_bleibt_gueltig(zwei, monkeypatch):
     u = zwei()
     monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+    from test_anmeldung import anmelden
+    anmelden(u, KARL)   # vor dem kaputten Mailversand: der Anmeldecode braucht ihn
 
     def kaputt(*a, **kw):
         raise OSError("Mailserver erfunden nicht erreichbar")
     monkeypatch.setattr(konten, "mail_senden", kaputt)
     import anmeldung
     k = konten.konto_per_email(IDA)
-    from test_anmeldung import anmelden
-    anmelden(u, KARL)
     anmeldung.reise_loeschen(k, "beispielreise") if hasattr(anmeldung, "reise_loeschen") else \
         konten.loeschung_vormerken("beispielreise", k["id"])
     assert konten.reise_vorgemerkt("beispielreise")
@@ -371,9 +371,9 @@ def test_konnektor_behandelt_vorgemerkte_wie_unbekannt(zwei):
     from conftest import meldet
     from test_trennung import reise_werkzeuge
     u = zwei()
-    konten.loeschung_vormerken("beispielreise", u.a["id"])
-    namen = reise_werkzeuge(u.a)
+    namen = reise_werkzeuge(u.a)   # vor dem Vormerken: danach hat Ida keine sichtbare Reise und keine Reise-Werkzeuge mehr
     assert len(namen) > 20
+    konten.loeschung_vormerken("beispielreise", u.a["id"])
     fehler = []
     for name in namen:
         text, ist_fehler = kn.frieda_werkzeug(u.a, name, {"reise": "beispielreise", "begriff": "Ida", "id": "T-01"})
@@ -406,6 +406,48 @@ def test_rueckmeldung_und_einladung_zu_vorgemerkter_abgelehnt(zwei):
     assert s in (403, 404, 410)
     assert not (u.o / "eingang.jsonl").exists() or "Noch eine Idee" not in (u.o / "eingang.jsonl").read_text()
     assert rm.zustand("beispielreise") is None or konten.reise_vorgemerkt("beispielreise")
+
+
+def test_einladungslink_zu_vorgemerkter_reise_gilt_nicht(zwei):
+    """F002: Ein vor dem Vormerken verschickter Einladungslink öffnet die Reise nicht mehr, auch nicht beim Anmelden."""
+    u = zwei()
+    konten.einladen("beispielreise", "kim", "kim@beispiel.invalid", "gast", "Kim", "Ida")
+    token = re.search(r"/einladung/(\S+)", _mails_an(u, "kim@beispiel.invalid")[-1]["text"]).group(1)
+    assert konten.einladung(token)
+    konten.loeschung_vormerken("beispielreise", u.a["id"])
+    assert konten.einladung(token) is None
+    with pytest.raises(konten.KontoFehler):
+        konten.einladung_einloesen(token, u.b["id"])
+    from test_anmeldung import anmelden
+    anmelden(u, "kim@beispiel.invalid", name="Kim")
+    assert konten.mitglied(konten.konto_per_email("kim@beispiel.invalid")["id"], "beispielreise") is None
+
+
+def test_abschliessen_raeumt_reisebezug_in_der_kontendatenbank_ab(kdb):
+    """F002: Nach dem endgültigen Entfernen bleibt keine Mitgliedschaft, Einladung oder Push-Zeile der Reise stehen."""
+    with closing(konten.db()) as v, v:
+        v.execute("INSERT INTO mitgliedschaften VALUES ('k-karl', 'beispielreise', 'karl', '2026-11-01')")
+        v.execute("INSERT INTO mitgliedschaften VALUES ('k-karl', 'stadtwochenende', 'karl', '2026-11-01')")
+        v.execute("INSERT INTO einladungen (hash, reise, schluessel, email, rolle, name, von, erstellt, ablauf) "
+                  "VALUES ('h', 'beispielreise', 'kim', 'kim@beispiel.invalid', 'gast', 'Kim', 'Ida', 1, 9e9)")
+        v.execute("INSERT INTO push_warteschlange (konto, reise, art, text, erstellt) VALUES ('k-karl', 'beispielreise', 'x', 'y', 1)")
+    konten.loeschung_vormerken("beispielreise", "k-ida")
+    konten.loeschung_abschliessen("beispielreise")
+    with closing(konten.db()) as v:
+        for t in ("mitgliedschaften", "einladungen", "push_abos", "push_warteschlange"):
+            assert not v.execute(f"SELECT 1 FROM {t} WHERE reise = 'beispielreise'").fetchone(), t
+    assert konten.mitglied("k-karl", "stadtwochenende") == "karl"
+
+
+def test_entfernen_nimmt_den_seitenlink_aus_seiten_json(speicher, monkeypatch):
+    """F006: Der geheime Link der entfernten Reise steht danach nicht mehr in seiten.json des Konnektors."""
+    import waechter as wa
+    links = speicher.t / "seiten.json"
+    links.write_text(json.dumps({"beispielreise": "https://beispiel.invalid/a/", "stadtwochenende": "https://beispiel.invalid/b/"}))
+    monkeypatch.setenv("KN_SEITENLINKS", str(links))
+    _faellig_machen(monkeypatch, "beispielreise")
+    wa.loeschungen_ausfuehren()
+    assert json.loads(links.read_text()) == {"stadtwochenende": "https://beispiel.invalid/b/"}
 
 
 # ---------- A2b: unsichtbar im Betrieb ----------

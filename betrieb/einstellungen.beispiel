@@ -141,6 +141,10 @@ FR_ADRESSE=https://reisen.example.org
 #FR_GRENZE_REISEN=10
 #FR_GRENZE_SCHREIBEN=300
 
+# Schonfrist in Tagen zwischen „Reise löschen“ und dem endgültigen Entfernen (#381, docs/konten.md). Die Frist setzt der
+# Konnektor beim Vormerken; ein abweichender Wert gehört darum ebenfalls in <FR_DIENST>/konten.env. (14)
+#FR_LOESCHFRIST_TAGE=14
+
 # Betreiber der Instanz für das Impressum (/impressum, #383): Name, Anschrift (eine Zeile) und Kontakt (z. B. eine
 # E-Mail-Adresse). Alle drei sind Pflicht; fehlt eine, zeigt das Impressum „nicht eingerichtet“. Echte Angaben nie
 # hier: Der Konnektor läuft ohne Zugriff auf das Reisen-Repo und liest nur <FR_DIENST>/konten.env (Zeilen NAME=wert,

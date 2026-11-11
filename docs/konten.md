@@ -57,7 +57,8 @@ erkannt und bekommt darüber jederzeit wieder Zugang.
 | 8 | Bisherige Personen | Einladung per Mail. Alte Links gelten bis zur Umstellung |
 | 9 | Freigeschaltet | Legt eine Reise an, ist dort Organisator:in und lädt per Mail ein (J3) |
 | 10 | Aus der Reise nehmen, Konto sperren | Die Verknüpfung entfällt. Sperren meldet alle Geräte ab |
-| 11 | Konto selbst löschen | Konto und Adresse sind weg. Verlaufseinträge behalten den Namen. Die Adresse ist danach wieder frei |
+| 11 | Konto selbst löschen | Konto und Adresse sind weg, aus allen Tabellen der Kontendatenbank (auch Einladungen, Wartelisteneintrag, Anmeldungen der Claude-App). Im Verlauf und in den bekannten Herkunftsmustern steht „gelöschte Person“ (zugeordnet über den Personen-Schlüssel). Reisen nur mit der Person gehen mit Schonfrist mit. Ist sie die einzige Organisator:in einer Reise mit weiteren Mitgliedern, wird abgelehnt („erst klären“: Rolle übergeben oder Reise löschen). Die Adresse ist danach wieder frei (#381) |
+| 12 | Reise löschen | Nur Organisator:innen einer Reise im Reisespeicher: „Reise löschen …“ unter den Personen auf Mein Konto, Haken, dann den Reisenamen eintippen. Die Reise ist sofort überall wie nicht vorhanden; alle anderen Mitglieder bekommen Mail und Meldung. Bis zum Ende der Schonfrist (14 Tage, `FR_LOESCHFRIST_TAGE`) steht sie oben in „Meine Reisen“ mit „Reise zurückholen“; danach entfernt der Wächter sie endgültig (#381, `docs/betrieb.md`, „Wächter“) |
 
 ## Sicherheit
 
@@ -149,7 +150,7 @@ darf; sie lädt zur Nutzung des Dienstes ein, nicht zu einer Reise.
   und freigegeben wie alle (Product Owner, 7.11.2026); daneben bleibt die Bitte „Reisen anlegen“ auf Mein Konto.
 - Begrenzung: je Adresse 3 Mails in 15 Minuten, je IP 10 in der Stunde (eigene Zähler, getrennt von den Anmeldecodes),
   höchstens 1000 unbestätigte Einträge zugleich. Unbestätigte Einträge verfallen nach 7 Tagen.
-- Löschen und Exportieren von Einträgen: #381.
+- Ein Eintrag verschwindet mit dem Konto derselben Adresse (#381); Löschen ohne Konto und Exportieren folgen später.
 
 ## Betrieb
 
@@ -163,8 +164,9 @@ Umgebung:
 | `FR_OAUTH_REDIRECTS` | weitere erlaubte Redirect-URIs der Claude-App (durch Komma getrennt) |
 | `FR_CIMD_HOSTS` | Hosts, von denen Client ID Metadata Documents geladen werden (Vorgabe `claude.ai`) |
 | `FR_GRENZE_REISEN`, `FR_GRENZE_SCHREIBEN` | Grenzen je Konto (Vorgaben 10 Reisen, 300 Schreibvorgänge je Stunde; Abschnitt „Sicherheit“); ungültige oder nicht positive Werte gelten als nicht gesetzt |
+| `FR_LOESCHFRIST_TAGE` | Schonfrist zwischen „Reise löschen“ und dem endgültigen Entfernen (Vorgabe 14 Tage, #381) |
 
 Befehle für den Betreiber: `python3 engine/konten.py liste | anfragen | freischalten <email> [--nein] |
-warteliste | freigeben <email> |
+warteliste | freigeben <email> | vorgemerkt |
 betreiber <email> | sperren <email> | entsperren <email> | loeschen <email> | zusammenfuehren <von> <nach> |
 einladen <reise> <schluessel> <email> <rolle> <Name> <von>`.

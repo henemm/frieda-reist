@@ -444,12 +444,18 @@ def ordner_als_vorgang(reise, ordner, basis, wer, werkzeug, titel, grund, kennun
                              timeout=timeout)
 
 
-def reisen():
-    """Alle Reisen mit mindestens einem Vorgang, sortiert. Liest nur; ohne Datenbank: leer (legt sie nicht an)."""
+def reisen(mit_vorgemerkten=False):
+    """Alle Reisen mit mindestens einem Vorgang, sortiert. Liest nur; ohne Datenbank: leer (legt sie nicht an).
+    Zur Löschung vorgemerkte Reisen (#381) fehlen, außer mit mit_vorgemerkten (Namen sind dann noch vergeben)."""
     if not pfad().exists():
         return []
     with closing(db()) as v:
-        return [z[0] for z in v.execute("SELECT DISTINCT reise FROM vorgaenge ORDER BY reise")]
+        alle = [z[0] for z in v.execute("SELECT DISTINCT reise FROM vorgaenge ORDER BY reise")]
+    if mit_vorgemerkten:
+        return alle
+    import konten
+    weg = konten.vorgemerkte_reisen()
+    return [r for r in alle if r not in weg]
 
 
 def datei(reise, pfad_, bis=None):
@@ -895,6 +901,195 @@ def pruefen(reise=None):
             elif _summe(bytes(inhalt)) != summe:
                 funde.append(f"{r} {pf} (operation {vorgang}): checksum mismatch")
     return funde
+
+
+# ---------- Ausnahme vom Nur-Anhängen (#381, ADR-0009 Punkt 4) ----------
+# Genau zwei Funktionen dürfen Zeilen entfernen oder umschreiben: reise_entfernen (eine gelöschte Reise nach ihrer
+# Schonfrist) und namen_ersetzen (Name einer gelöschten Person). Beide nehmen die private Verbindung ohne Authorizer und
+# arbeiten in einer einzigen BEGIN IMMEDIATE-Transaktion: Trigger entfernen, ändern, Trigger aus SCHEMA neu anlegen, COMMIT.
+# DDL ist in SQLite transaktional: andere Verbindungen sehen die Trigger nie fehlen; bei einem Fehler wird zurückgerollt.
+# Ein Quelltext-Test (engine/tests/test_loeschen_reise.py) hält fest, dass nur diese beiden sie nutzen.
+_TRIGGER = re.findall(r"CREATE TRIGGER IF NOT EXISTS .*? END;", SCHEMA, re.S)
+_TRIGGER_NAMEN = re.findall(r"CREATE TRIGGER IF NOT EXISTS (\w+)", SCHEMA)
+
+
+def _db_ausnahme(timeout=30):
+    """Verbindung ohne Authorizer und ohne automatische Transaktion. Nur für die beiden Ausnahmen oben."""
+    with closing(db(timeout)):   # Schema und Spalten wie bei jedem Zugriff (ohne Datenbank: legt sie an)
+        pass
+    v = sqlite3.connect(pfad(), timeout=timeout, isolation_level=None)
+    v.row_factory = sqlite3.Row
+    v.execute("PRAGMA foreign_keys = ON")
+    v.execute("PRAGMA recursive_triggers = ON")
+    return v
+
+
+def _trigger_weg(v):
+    for name in _TRIGGER_NAMEN:
+        v.execute(f"DROP TRIGGER IF EXISTS {name}")
+
+
+def _trigger_neu(v):
+    for sql in _TRIGGER:
+        v.execute(sql)
+
+
+def _zuruecknehmen(v):
+    try:
+        v.execute("ROLLBACK")
+    except sqlite3.Error:
+        pass   # SQLite hat die Transaktion schon selbst beendet
+
+
+def reise_entfernen(reise):
+    """Entfernt alle Vorgänge und Versionen einer zur Löschung vorgemerkten Reise (#381) in einer Transaktion; danach
+    die Dateien der Ablage, auf die keine andere Reise mehr verweist. Der Aufrufer sichert vorher und prüft danach
+    (waechter.loeschungen_ausfuehren). -> Zahl der entfernten Vorgänge."""
+    if not REISE_MUSTER.match(reise or ""):
+        raise ValueError(f"invalid trip: {reise!r}")
+    if not pfad().exists():
+        return 0
+    with closing(_db_ausnahme()) as v:
+        v.execute("BEGIN IMMEDIATE")
+        try:
+            summen = {z[0] for z in v.execute("SELECT DISTINCT pruefsumme FROM versionen WHERE reise = ? AND ausgelagert = 1 "
+                                             "AND pruefsumme IS NOT NULL", (reise,))}
+            _trigger_weg(v)
+            v.execute("DELETE FROM versionen WHERE reise = ?", (reise,))
+            n = v.execute("DELETE FROM vorgaenge WHERE reise = ?", (reise,)).rowcount
+            _trigger_neu(v)
+            v.execute("COMMIT")
+        except BaseException:
+            _zuruecknehmen(v)
+            raise
+    _ablage_aufraeumen(summen)
+    return n
+
+
+def _ablage_aufraeumen(summen):
+    """Löscht Ablagedateien ohne Verweis einer Version. Unter der Schreibsperre der Datenbank (wie ablage_ablegen, das in
+    der Transaktion eines Vorgangs schreibt): Zwischen Prüfen und Löschen kann kein Vorgang einen neuen Verweis eintragen.
+    Nur gelesen wird hier; die Transaktion endet ohne Änderung."""
+    if not summen:
+        return
+    with closing(db()) as v:
+        v.execute("BEGIN IMMEDIATE")
+        try:
+            for summe in sorted(summen):
+                if not v.execute("SELECT 1 FROM versionen WHERE pruefsumme = ? AND ausgelagert = 1 LIMIT 1", (summe,)).fetchone():
+                    ablage_pfad(summe).unlink(missing_ok=True)
+        finally:
+            v.rollback()
+
+
+# Herkunftsmuster mit Personennamen, die engine/schreiben.py und der Konnektor in die Reisedaten schreiben (Katalogschlüssel
+# mit {wer}, in allen Sprachen); dazu Zeilen mit einer Herkunftsangabe und Felder „wer“ in YAML und JSON. Namen in frei
+# geschriebenen Texten außerhalb dieser Muster bleiben (Spec #381, Punkt 28; Datenschutztext recht.datenschutz.namen_freitext).
+HERKUNFT_SCHLUESSEL = ("inhalt.schreiben.gepflegt", "inhalt.schreiben.herkunft.eingetragen", "inhalt.schreiben.herkunft.berichtigt",
+                       "inhalt.schreiben.herkunft.geschrieben", "inhalt.schreiben.ausgeschieden", "inhalt.schreiben.commit_fuss",
+                       "konnektor.entscheidung_pruefen.26", "konnektor.entscheidung_pruefen.28")
+TEXT_ENDUNGEN = (".md", ".yaml", ".yml", ".json", ".txt")
+
+
+def _namensmuster(name):
+    """Regeln, die in einem Text den Namen nur innerhalb bekannter Herkunftsmuster finden -> Funktion text -> (text, ersatz)."""
+    import texte
+    n = re.escape(name)
+    vorlagen = []
+    for sp in texte.SPRACHEN:
+        for k in HERKUNFT_SCHLUESSEL:
+            v = texte.t(sp, k)
+            if "{wer}" in v:
+                vorlagen.append(re.compile("".join(n if t == "{wer}" else r"[^\n]*?" if re.fullmatch(r"\{\w+\}", t)
+                                                   else re.escape(t) for t in re.split(r"(\{\w+\})", v) if t)))
+    vorlagen.append(re.compile(r"(?im)^.*herkunft.*$"))
+    wort = re.compile(rf"(?<![\w-]){n}(?!\w)")
+    feld = re.compile(rf"""(?m)(^[ \t]*-?[ \t]*wer:[ \t]*|"wer"\s*:\s*)(["']?){n}\2(?=[ \t]*(?:,|\}}|$))""")
+
+    def ersetzen(text, ersatz):
+        for rx in vorlagen:
+            text = rx.sub(lambda m: wort.sub(lambda _: ersatz, m.group(0)), text)
+        return feld.sub(lambda m: m.group(1) + m.group(2) + ersatz + m.group(2), text)
+    return ersetzen
+
+
+def namen_ersetzen(reise, name, ersatz):
+    """Setzt den Namen einer gelöschten Person (#381) in allen Versionen der Reise auf ersatz: Verlauf (vorgaenge.wer, wenn
+    er genau der Name ist), Herkunftsmuster in titel, grund und herkunft und in den Textdateien aller Versionen; die
+    Prüfsummen werden neu gerechnet. Vorher muss pruefen grün sein (sonst Abbruch, nichts geändert); in der Transaktion
+    werden die Summen der geänderten Zeilen nachgeprüft, bei jedem Fehler wird zurückgerollt. Danach erzwingt der Stempel
+    .gebaut ohne Software-Kennung den Neubau der Seite (_neubau_erzwingen). -> Zahl der geänderten Zeilen."""
+    if not REISE_MUSTER.match(reise or "") or not str(name or "").strip() or not pfad().exists():
+        return 0
+    funde = pruefen()
+    if funde:
+        raise RuntimeError(f"trip store check failed, nothing renamed: {funde[0]}")
+    ersetzen = _namensmuster(str(name).strip())
+    n = 0
+    with closing(_db_ausnahme()) as v:
+        v.execute("BEGIN IMMEDIATE")
+        try:
+            _trigger_weg(v)
+            for z in v.execute("SELECT nummer, wer, titel, grund, herkunft FROM vorgaenge WHERE reise = ?", (reise,)).fetchall():
+                neu = (ersatz if z["wer"] == name else z["wer"], *(ersetzen(z[f], ersatz) for f in ("titel", "grund", "herkunft")))
+                if neu != (z["wer"], z["titel"], z["grund"], z["herkunft"]):
+                    v.execute("UPDATE vorgaenge SET wer = ?, titel = ?, grund = ?, herkunft = ? WHERE nummer = ?", (*neu, z["nummer"]))
+                    n += 1
+            for z in v.execute("SELECT vorgang, pfad, inhalt FROM versionen WHERE reise = ? AND inhalt IS NOT NULL",
+                               (reise,)).fetchall():
+                if not z["pfad"].lower().endswith(TEXT_ENDUNGEN):
+                    continue
+                try:
+                    alt = bytes(z["inhalt"]).decode("utf-8")
+                except UnicodeDecodeError:
+                    continue
+                neu = ersetzen(alt, ersatz)
+                if neu != alt:
+                    b = neu.encode("utf-8")
+                    v.execute("UPDATE versionen SET inhalt = ?, pruefsumme = ? WHERE vorgang = ? AND pfad = ?",
+                              (b, _summe(b), z["vorgang"], z["pfad"]))
+                    n += 1
+            for z in v.execute("SELECT inhalt, pruefsumme FROM versionen WHERE reise = ? AND inhalt IS NOT NULL", (reise,)):
+                if _summe(bytes(z[0])) != z[1]:
+                    raise sqlite3.DatabaseError("checksum mismatch after renaming")
+            _trigger_neu(v)
+            v.execute("COMMIT")
+        except BaseException:
+            _zuruecknehmen(v)
+            raise
+    if n:
+        _neubau_erzwingen(reise)
+    return n
+
+
+def _neubau_erzwingen(reise):
+    """Der Stempel <FR_DIENST>/reise-stand/<reise>.gebaut („<nummer> <software>“) hängt an der Stand-Nummer, die beim
+    Umschreiben gleich bleibt. Ohne Software-Kennung baut veroeffentlichen.sh die Reise neu; der Stempel bleibt dabei
+    stehen, damit die Sperre der ersten Umschaltung (umschaltung_frei, #350) eine schon umgeschaltete Reise nicht anhält."""
+    stempel = instanz.dienst() / "reise-stand" / f"{reise}.gebaut"
+    try:
+        nummer = (stempel.read_text(encoding="utf-8").split() or ["0"])[0]
+    except FileNotFoundError:
+        return   # noch nie aus dem Speicher gebaut: der nächste Lauf baut ohnehin
+    stempel.write_text(f"{nummer}\n", encoding="utf-8")
+
+
+def verdichten(versuche=5, timeout=30):
+    """Nach dem Entfernen: WAL zurückschreiben und leeren (wal_checkpoint(TRUNCATE)), die Datei neu aufbauen (VACUUM), damit
+    Gelöschtes weder in freien Seiten noch im WAL steht. Bei einer Sperre wird mit Pause wiederholt."""
+    if not pfad().exists():
+        return
+    for versuch in range(versuche):
+        try:
+            with closing(sqlite3.connect(pfad(), timeout=timeout, isolation_level=None)) as v:
+                v.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                v.execute("VACUUM")
+                v.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            return
+        except sqlite3.OperationalError as e:
+            if versuch == versuche - 1 or not any(w in str(e) for w in ("locked", "busy")):
+                raise
+            time.sleep(1 + versuch)
 
 
 def sichern():

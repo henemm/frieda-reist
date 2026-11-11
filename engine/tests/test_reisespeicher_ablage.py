@@ -241,7 +241,14 @@ def test_ablage_wird_nie_geaendert_oder_geloescht(rs, tmp_path):
     rs.zuruecksetzen("t", 1, "Test", "zurück")
     assert rs.datei("t", "medien/a.png") == PNG
     quelle = (ENGINE / "reisespeicher.py").read_text(encoding="utf-8")
-    assert "rmtree" not in quelle and not re.search(r"ablage_pfad\([^)]*\)\.unlink|os\.(remove|unlink)\(ablage", quelle)
+    # Ausnahme (#381, ADR-0009 Punkt 4): nur _ablage_aufraeumen löscht Dateien ohne Verweis, und nur reise_entfernen ruft es
+    import inspect
+    aufraeumen = inspect.getsource(rs._ablage_aufraeumen)
+    ohne = quelle.replace(aufraeumen, "")
+    assert "rmtree" not in quelle and not re.search(r"ablage_pfad\([^)]*\)\.unlink|os\.(remove|unlink)\(ablage", ohne)
+    rufer = {n for n, f in inspect.getmembers(rs, inspect.isfunction)
+             if f.__module__ == rs.__name__ and n != "_ablage_aufraeumen" and "_ablage_aufraeumen(" in inspect.getsource(f)}
+    assert rufer == {"reise_entfernen"}, rufer
 
 
 # ---------- AC-9 bis AC-13 ----------

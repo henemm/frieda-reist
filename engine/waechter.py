@@ -27,16 +27,22 @@ Aufrufe:
   python3 engine/waechter.py rot-melden --reisen <a,b> --seit JJJJ-MM-TTTHH:MM:SSZ
         Meldung an die Organisator:innen jeder Reise, die seit diesem Zeitpunkt nicht veröffentlicht werden kann
         (betrieb/veroeffentlichen.sh, Issue #142); je Reise und Zeitpunkt nur einmal
+  python3 engine/waechter.py loeschen
+        entfernt Reisen nach der Schonfrist endgültig und Reisen des Löschprotokolls, die mit einer alten Sicherung
+        zurückkamen (#381; Speicher, Ablage, Webordner, Bauordner, Stempel)
 Umgebung: RM_ABLAGE, RM_SEITEN oder KN_SEITEN (Standard aus engine/instanz.py)
 """
 import datetime
 import json
 import os
 import secrets
+import shutil
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import instanz  # noqa: E402
+import konten  # noqa: E402
 import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 import texte  # noqa: E402
@@ -410,9 +416,80 @@ def rot_melden(reisen, seit):
     return neu
 
 
+def _orte_der_reise(reise):
+    """Was außerhalb des Reisespeichers zu einer Reise gehört: Ablage der Instanz (Belege, Rückmeldungen, Aufgaben),
+    Webordner, Bauordner mit Stand-Datei und die Stempel des Veröffentlichens."""
+    bau = instanz.dienst() / "bau" / "reisen"
+    return [rm.ablage() / reise, instanz.seiten() / reise, bau / reise, bau / f"{reise}.stand",
+            *(instanz.dienst() / "reise-stand").glob(f"{reise}.*")]
+
+
+def _seitenlink_entfernen(reise):
+    """Den geheimen Link der Reise aus seiten.json des Konnektors nehmen (betrieb/freischalten.sh schreibt ihn). Der
+    nginx-Baustein des Links bleibt (Root-Rechte); er zeigt danach auf einen leeren Ort und liefert 404."""
+    p = Path(os.environ.get("KN_SEITENLINKS") or instanz.konnektor() / "seiten.json")
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    if isinstance(d, dict) and reise in d:
+        del d[reise]
+        tmp = p.with_name(f".{p.name}.{os.getpid()}.tmp")
+        tmp.write_text(json.dumps(d, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        os.chmod(tmp, 0o600)
+        tmp.replace(p)
+
+
+def _noch_da(reise, im_speicher):
+    return reise in im_speicher or any(p.exists() or p.is_symlink() for p in _orte_der_reise(reise))
+
+
+def loeschungen_ausfuehren():
+    """Täglicher Lauf (#381): entfernt jede Reise mit abgelaufener Schonfrist und jede Reise des Löschprotokolls, die nach
+    dem Rückspielen einer alten Sicherung wieder auftaucht. Vorher ein Schnappschuss, nach jeder Reise pruefen über alle
+    verbleibenden Reisen (nicht grün: Abbruch mit Fehler, keine weitere Reise), am Ende verdichten und ein frischer
+    Schnappschuss, dann Vormerkung weg und Eintrag ins Löschprotokoll. -> entfernte Reisen."""
+    import reisespeicher as rs
+    im_speicher = set(rs.reisen(mit_vorgemerkten=True))
+    reisen = konten.faellige_loeschungen()
+    reisen += [r for r in konten.loeschprotokoll() if r not in reisen and _noch_da(r, im_speicher)]
+    reisen = [r for r in reisen if rm.REISE_MUSTER.match(r)]
+    if not reisen:
+        return []
+    try:
+        rs.sichern()
+    except rs.AblageFehlt:
+        # nach dem Rückspielen einer alten Sicherung fehlen Ablagedateien der schon gelöschten Reisen; das hält nur auf,
+        # wenn auch eine verbleibende Reise betroffen ist
+        if [f for f in rs.pruefen() if f.split(" ", 1)[0].rstrip(":") not in reisen]:
+            raise
+    erledigt = []
+    for reise in reisen:
+        rs.reise_entfernen(reise)
+        for p in _orte_der_reise(reise):
+            if p.is_dir() and not p.is_symlink():
+                shutil.rmtree(p)
+            else:
+                p.unlink(missing_ok=True)
+        _seitenlink_entfernen(reise)
+        funde = rs.pruefen()
+        if funde:
+            raise RuntimeError(f"trip store check failed after removing {reise}: {funde[0]}")
+        erledigt.append(reise)
+        print(f"{reise}: removed for good.")
+    rs.verdichten()
+    rs.sichern()
+    for reise in erledigt:
+        konten.loeschung_abschliessen(reise)
+    return erledigt
+
+
 def alle_reisen():
-    return sorted(p.name for p in rm.ablage().iterdir() if p.is_dir() and rm.REISE_MUSTER.match(p.name)) \
-        if rm.ablage().is_dir() else []
+    """Reisen der Ablage ohne die zur Löschung vorgemerkten (#381): keine Erinnerungen, keine Meldungen aus ihnen."""
+    if not rm.ablage().is_dir():
+        return []
+    weg = konten.vorgemerkte_reisen()
+    return sorted(p.name for p in rm.ablage().iterdir() if p.is_dir() and rm.REISE_MUSTER.match(p.name) and p.name not in weg)
 
 
 def zeige(reise, heute):
@@ -477,6 +554,13 @@ def main(a):
         for m in rot_melden(reisen, seit):
             print(f"Message to {', '.join(m['an'])}: {m['schluessel']}")
         return 0
+    if a == ["loeschen"]:
+        try:
+            loeschungen_ausfuehren()
+        except Exception as f:   # noqa: BLE001  der Lauf meldet über betrieb/waechter.sh, keine weitere Reise
+            print(f"ERROR: {type(f).__name__}: {f}", file=sys.stderr)
+            return 1
+        return 0
     if a[:1] == ["zeige"] and len(a) == 2:
         zeige(a[1], heute or datetime.date.today())
     elif a[:1] == ["lauf"]:
@@ -495,6 +579,8 @@ AUFRUF = """Usage:
   python3 engine/waechter.py rot-melden --reisen <a,b> --seit YYYY-MM-DDTHH:MM:SSZ
         message to the organisers of every trip that cannot be published since that time
         (betrieb/veroeffentlichen.sh, issue #142); once per trip and time
+  python3 engine/waechter.py loeschen
+        remove trips whose grace period has ended, and deleted trips that came back with an old backup (issue #381)
 Environment: RM_ABLAGE, RM_SEITEN or KN_SEITEN (default from engine/instanz.py)"""
 
 

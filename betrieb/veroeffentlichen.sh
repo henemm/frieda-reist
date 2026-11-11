@@ -196,7 +196,7 @@ reisen_des_laufs() {  # <alt> <neu>: Reisen, die dieser Lauf baut, eine je Zeile
     for r in reisen/*/reise.json; do
       [ -e "$r" ] || continue
       r="$(basename "$(dirname "$r")")"
-      ist_speicherreise "$r" || echo "$r"
+      ist_speicherreise "$r" || ist_vorgemerkt "$r" || echo "$r"
     done
     return 0
   fi
@@ -204,7 +204,7 @@ reisen_des_laufs() {  # <alt> <neu>: Reisen, die dieser Lauf baut, eine je Zeile
     [ "$rot_art" != reise ] || printf '%s\n' ${rot_reisen//,/ }
     haengende_reisen
   } | sort -u | while read -r r; do
-    if [ -n "$r" ] && [ -e "reisen/$r/reise.json" ] && ! ist_speicherreise "$r"; then echo "$r"; fi
+    if [ -n "$r" ] && [ -e "reisen/$r/reise.json" ] && ! ist_speicherreise "$r" && ! ist_vorgemerkt "$r"; then echo "$r"; fi
   done
   return 0
 }
@@ -219,6 +219,29 @@ rot_vereinigt() {  # <reisen…>: Liste der roten Reisen für die Rot-Datei, Git
   printf '%s\n' "$@" | tr ', ' '\n\n' | sed '/^$/d' | sort -u | paste -sd, -
 }
 
+vorgemerkte_entfernen() {  # #381: Reisen, die zur Löschung vorgemerkt oder schon entfernt sind (engine/konten.py vorgemerkt),
+  # werden nicht gebaut, ihr Webordner <FR_SEITEN>/<reise> verschwindet sofort (die Seite liefert 404). Holt eine
+  # Organisator:in die Reise zurück, fehlt sie in der Liste und wird wieder gebaut (die Seite hat keinen Stand mehr).
+  # Ist die Liste nicht lesbar: Exit 1, nichts wird gebaut (fail closed).
+  local r
+  # ohne Kontendatenbank (auch nicht am alten Ort, instanz.konten) ist keine Reise vorgemerkt
+  [ -e "$FR_KONTEN/konten.db" ] || [ -e "$FR_ABLAGE/_konten/konten.db" ] || return 0
+  vorgemerkt_liste="$("$FR_PYTHON" "$FR_BETRIEB/../engine/konten.py" vorgemerkt)" \
+    || { echo "ERROR: the list of deleted trips cannot be read, the next run tries again."; return 1; }
+  for r in $vorgemerkt_liste; do
+    [[ "$r" =~ ^[a-z0-9][a-z0-9-]{0,40}$ ]] || continue
+    if [ -e "$FR_SEITEN/$r" ]; then
+      rm -rf "${FR_SEITEN:?}/$r"
+      echo "$r is marked for deletion: page removed."
+    fi
+  done
+  return 0
+}
+
+ist_vorgemerkt() {  # <reise>: steht sie in der Liste aus vorgemerkte_entfernen?
+  [[ " $(echo $vorgemerkt_liste) " == *" $1 "* ]]
+}
+
 speicher_reisen_lauf() {  # Speicher-Teil (Stufe 3, #348): Reisen aus FR_SPEICHERREISEN aus dem Reisespeicher bauen, vor
   # git fetch und ohne Netz (kein git fetch, kein gh, kein ls-remote). Eine Reise ohne Stempel .gebaut, die in Git liegt, wird
   # ohne gültigen Stempel des Vergleichslaufs übersprungen (Stufe 5, #350, reisespeicher.py umschaltung; Hinweis im
@@ -229,7 +252,7 @@ speicher_reisen_lauf() {  # Speicher-Teil (Stufe 3, #348): Reisen aus FR_SPEICHE
   # Git-Teil sie vollständig veröffentlicht hat (Datei veroeffentlicht); bis dahin bleibt jede Reise mit älterem Stempel
   # stehen. Ergebnis: speicher_gut, speicher_rote; Exit 1 bei einer Störung (Speicher nicht lesbar, deploy Exit 1).
   local liste r n pub gn gk modus rc ordner aus kennung geprueft="" vorher log gepr_stand="" aus_pruefung
-  liste="$(speicherreisen | tr '\n' ' ')"
+  liste="$(speicherreisen | while read -r r; do ist_vorgemerkt "$r" || echo "$r"; done | tr '\n' ' ')"
   [ -n "${liste// /}" ] || return 0
   speicher_aktiv=1
   kennung="$(software_kennung HEAD)"
@@ -614,7 +637,8 @@ main() {
 
   mkdir -p "$FR_DIENST"   # Zustand des Veröffentlichens (Stand, Rot-Datei, Merker der Warnung, Stempel)
   # Reisen aus dem Reisespeicher zuerst und ohne Netz (#348): Scheitert git fetch (kein GitHub), sind sie schon veröffentlicht.
-  # Ohne FR_SPEICHERREISEN geschieht hier nichts.
+  # Ohne FR_SPEICHERREISEN geschieht hier nichts. Vorher verschwinden die Seiten gelöschter Reisen (#381).
+  vorgemerkte_entfernen || return 1
   speicher_reisen_lauf || return 1
   ausstehende_neustarts      # vorgemerkt von deploy.sh in einem Lauf ohne Root-Rechte (#494)
   ausstehende_freischalten   # vorgemerkt von einem Lauf ohne Root-Rechte (#465); vor dem Abruf von GitHub, gilt also auch ohne Netz
@@ -858,7 +882,7 @@ nachlauf() {
 
 wurzel=""; ausstehend=""; rot_datei=""; pruefen=""; pruef_tmp=""; pruef_log=""; deploy_log=""; nochmal=""; software=1
 root_ok=""; frei_ausstehend=""; neustart_ausstehend=""
-speicher_aktiv=""; speicher_kennung=""; speicher_wartet=""; speicher_gut=""; speicher_rote=""
+speicher_aktiv=""; speicher_kennung=""; speicher_wartet=""; speicher_gut=""; speicher_rote=""; vorgemerkt_liste=""
 rot_commit=""; rot_art=""; rot_reisen=""; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""
 trap nachlauf EXIT
 main "$@"

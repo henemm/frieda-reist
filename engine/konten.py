@@ -33,6 +33,7 @@ Aufrufe:
   python3 engine/konten.py zusammenfuehren <von> <nach>        zwei Konten eines Menschen vereinen
   python3 engine/konten.py einladen <reise> <schluessel> <email> <rolle> <Name> <von>
   python3 engine/konten.py sichern                             sauberer Schnappschuss nach <Konten>/sicherung/ (#72)
+  python3 engine/konten.py vorgemerkt                          Reisen in der Schonfrist und entfernte Reisen (#381), je Zeile eine
 """
 import datetime
 import email.message
@@ -154,6 +155,9 @@ CREATE TABLE IF NOT EXISTS push_stand (schluessel TEXT PRIMARY KEY, wert TEXT NO
 CREATE TABLE IF NOT EXISTS push_warteschlange (
   id INTEGER PRIMARY KEY AUTOINCREMENT, konto TEXT NOT NULL, reise TEXT NOT NULL, art TEXT NOT NULL, text TEXT NOT NULL,
   ziel TEXT NOT NULL DEFAULT '', erstellt REAL NOT NULL, versuche INTEGER NOT NULL DEFAULT 0, gesendet REAL);
+CREATE TABLE IF NOT EXISTS reise_loeschung (
+  reise TEXT PRIMARY KEY, konto TEXT, wann REAL NOT NULL, frist REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS loeschprotokoll (reise TEXT PRIMARY KEY, datum TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS push_abos_konto ON push_abos (konto);
 CREATE INDEX IF NOT EXISTS push_warteschlange_offen ON push_warteschlange (gesendet, konto);
 CREATE INDEX IF NOT EXISTS oauth_tokens_konto ON oauth_tokens (konto);
@@ -478,12 +482,135 @@ def adresse_aendern(kid, roh, code):
     return e
 
 
+def loeschen_pruefen(kid):
+    """Was beim Löschen des Kontos mit seinen Reisen geschieht (#381) -> (gesperrt, allein, bleiben):
+    gesperrt: Reisen mit weiteren Mitgliedern, in denen das Konto die einzige Organisator:in ist (erst klären);
+    allein: Reisen, in denen nur dieses Konto Mitglied ist (gehen mit Schonfrist mit);
+    bleiben: [(reise, schluessel, zustand)] der übrigen Reisen (der Name wird dort ersetzt).
+    Schon vorgemerkte Reisen zählen nirgends. Die Rollen kommen aus der veröffentlichten Seite (rueckmeldungen.zustand)."""
+    import rueckmeldungen as rm
+    gesperrt, allein, bleiben = [], [], []
+    for m in mitgliedschaften(kid):
+        r = m["reise"]
+        if reise_vorgemerkt(r):
+            continue
+        weitere = [x for x in mitglieder(r) if x["konto"] != kid]
+        if not weitere:
+            allein.append(r)
+            continue
+        z = rm.zustand(r) or {}
+        rollen = {p.get("schluessel"): rolle_neu(p.get("rolle")) for p in z.get("personen") or [] if isinstance(p, dict)}
+        if rollen.get(m["schluessel"]) == "organisator" and not any(rollen.get(x["schluessel"]) == "organisator" for x in weitere):
+            gesperrt.append(r)
+        else:
+            bleiben.append((r, m["schluessel"], z))
+    return gesperrt, allein, bleiben
+
+
+ABLAGE_NAMENSFELDER = ("name", "wer", "von", "zustaendig", "eingeladen_von", "an")
+
+
+def _ablage_pseudonymisieren(reise, namen, ersatz):
+    """Den Namen in den bekannten Feldern der JSON-Dateien in der Ablage der Instanz ersetzen (Rückmeldungen, Aufgaben,
+    Meldungen, Metadaten der Belege); Belegdateien selbst bleiben. In einladungen.json bleibt der Name der Person (er
+    beschreibt sie in der Reise), nur „eingeladen von“ wird ersetzt."""
+    o = instanz.ablage() / reise
+    if not REISE_MUSTER.match(reise) or not o.is_dir():
+        return
+
+    def ersetzen(w, felder, schluessel=None):
+        if isinstance(w, dict):
+            return {k: ersetzen(x, felder, k) for k, x in w.items()}
+        if isinstance(w, list):
+            return [ersetzen(x, felder, schluessel) for x in w]
+        return ersatz if isinstance(w, str) and schluessel in felder and w in namen else w
+
+    for p in sorted(o.rglob("*")):
+        if p.is_symlink() or not p.is_file() or p.suffix not in (".json", ".jsonl"):
+            continue
+        felder = ("eingeladen_von", "von") if p.name == "einladungen.json" else ABLAGE_NAMENSFELDER
+        try:
+            alt = p.read_text(encoding="utf-8")
+            if p.suffix == ".json":
+                daten = json.loads(alt)
+                geaendert = ersetzen(daten, felder) != daten
+                neu = json.dumps(ersetzen(daten, felder), ensure_ascii=False, indent=1) + "\n"
+            else:
+                zeilen = [json.loads(z) if z.strip() else None for z in alt.splitlines()]
+                geaendert = any(z is not None and ersetzen(z, felder) != z for z in zeilen)
+                neu = "".join((json.dumps(ersetzen(z, felder), ensure_ascii=False) if z is not None else "") + "\n" for z in zeilen)
+        except (UnicodeDecodeError, ValueError):
+            continue   # keine lesbare JSON-Datei: unverändert
+        if geaendert:
+            tmp = p.with_name(f".{p.name}.{os.getpid()}.tmp")
+            tmp.write_text(neu, encoding="utf-8")
+            os.chmod(tmp, p.stat().st_mode & 0o777)
+            tmp.replace(p)
+
+
+def _pseudonymisieren(kid, bleiben):
+    """Name der Person in jeder Reise, die bleibt, durch „gelöschte Person“ (Katalog, Sprache der Reise) ersetzen: im
+    Reisespeicher (namen_ersetzen, nach einem Schnappschuss) und in der Ablage der Instanz. Zugeordnet wird über den
+    Personen-Schlüssel der Mitgliedschaft, nicht über eine Namenssuche in allen Reisen."""
+    import reisespeicher as rs
+    k = konto(kid) or {}
+    im_speicher = set(rs.reisen(mit_vorgemerkten=True))
+    gesichert = False
+    for reise, schluessel, z in bleiben:
+        personen = [x for x in z.get("personen") or [] if isinstance(x, dict)]
+        p = next((x for x in personen if x.get("schluessel") == schluessel), {})
+        # Der Verlauf kennt nur Namen: Trägt ein anderes Mitglied derselben Reise denselben Namen, wäre die Zuordnung nicht
+        # eindeutig. Dann bleibt der Name dort stehen (lieber nicht ersetzen als den Falschen treffen).
+        andere = {str(x.get("name") or "").strip().casefold() for x in personen if x.get("schluessel") != schluessel}
+        andere |= {str((konto(m["konto"]) or {}).get("name") or "").strip().casefold()
+                   for m in mitglieder(reise) if m["konto"] != kid}
+        namen = sorted({n for n in (p.get("name"), k.get("name"))
+                        if isinstance(n, str) and n.strip() and n.strip().casefold() not in andere})
+        ersatz = texte.t(z.get("sprache") or texte.VORGABE_REISE, "konto.geloeschte_person")
+        if reise in im_speicher:
+            if not gesichert:
+                rs.sichern()
+                gesichert = True
+            for n in namen:
+                rs.namen_ersetzen(reise, n, ersatz)
+        _ablage_pseudonymisieren(reise, set(namen), ersatz)
+
+
 def loeschen(kid):
-    """Konto und Adresse löschen (auf Wunsch der Person). Verlaufseinträge der Reisen behalten den Namen."""
+    """Konto löschen (auf Wunsch der Person, #381). Ist es die einzige Organisator:in einer Reise mit weiteren Mitgliedern,
+    KontoFehler „erst klären“ mit den Reisen. Sonst: Name in den übrigen Reisen durch „gelöschte Person“ ersetzen, Reisen
+    nur mit dieser Person zur Löschung vormerken (ohne auslösendes Konto, Zurückholen geht nicht mehr) und in einer
+    Transaktion jede Spur aus allen Tabellen der Kontendatenbank entfernen."""
+    gesperrt, allein, bleiben = loeschen_pruefen(kid)
+    if gesperrt:
+        raise KontoFehler("konto.fehler.letzte_organisatorin", reisen=", ".join(gesperrt))
+    k = konto(kid)
+    try:
+        _pseudonymisieren(kid, bleiben)
+    except Exception as f:   # noqa: BLE001  Speicher nicht grün oder nicht erreichbar: Konto bleibt, nichts halb gelöscht
+        sys.stderr.write(f"account deletion {kid}: renaming failed: {type(f).__name__}: {f}\n")
+        raise KontoFehler("konto.fehler.loeschen_spaeter") from f
+    for r in allein:
+        if not reise_vorgemerkt(r):
+            loeschung_vormerken(r, None)
     with closing(db()) as v, v:
-        _widerrufen(v, kid)
-        for t in ("mitgliedschaften", "anfragen", "kalender_abo", "push_abos", "push_einstellungen", "push_warteschlange",
-                  "meldung_gelesen"):
+        e = k["email"] if k else ""
+        meine = [m["reise"] for m in v.execute("SELECT reise FROM mitgliedschaften WHERE konto = ?", (kid,))]
+        if k:   # Einladungen, die sie in ihren Reisen verschickt hat: der Name des Absenders wird ersetzt
+            v.executemany("UPDATE einladungen SET von = ? WHERE von = ? AND reise = ?",
+                          [(texte.t(texte.VORGABE_REISE, "konto.geloeschte_person"), k["name"], r) for r in meine])
+        v.execute("DELETE FROM einladungen WHERE email = ? OR konto = ?", (e, kid))
+        v.execute("DELETE FROM codes WHERE email = ? OR konto = ?", (e, kid))
+        v.execute("DELETE FROM warteliste WHERE email = ?", (e,))
+        v.execute("DELETE FROM versand WHERE schluessel IN (?, ?)", ("adresse:" + e, "warteliste:" + e))
+        v.execute("UPDATE reise_loeschung SET konto = NULL WHERE konto = ?", (kid,))
+        # push_stand: Sammelliste und Merker versandter Mails des Kontos (engine/push.py, „sammel:<kid>“,
+        # „mail:<meldung>:<kid>“); genau diese Kennung am Ende, kein Präfix einer anderen. Die übrigen Zeilen sind Server-Stand.
+        v.execute("DELETE FROM push_stand WHERE schluessel = ? OR (schluessel LIKE 'mail:%' AND substr(schluessel, ?) = ?)",
+                  ("sammel:" + kid, -(len(kid) + 1), ":" + kid))
+        # oauth_clients: Registrierungen der Claude-App ohne Konto, Name oder Adresse; sie bleiben
+        for t in ("sitzungen", "oauth_tokens", "oauth_codes", "mitgliedschaften", "anfragen", "kalender_abo", "push_abos",
+                  "push_einstellungen", "push_warteschlange", "meldung_gelesen", "angelegte_reisen", "schreibvorgaenge"):
             v.execute(f"DELETE FROM {t} WHERE konto = ?", (kid,))
         v.execute("DELETE FROM konten WHERE id = ?", (kid,))
 
@@ -783,6 +910,106 @@ def entfernen(reise, schluessel):
         return n > 0
 
 
+
+def mitglieder(reise):
+    """Konten der Reise mit ihrem Personen-Schlüssel -> [{konto, schluessel}], in der Reihenfolge des Beitritts."""
+    with closing(db()) as v:
+        return [dict(z) for z in v.execute("SELECT konto, schluessel FROM mitgliedschaften WHERE reise = ? ORDER BY seit, konto",
+                                           (reise,))]
+
+
+# ---------------------------------------------------------------- Reise löschen (#381)
+# Eine Organisator:in merkt eine Reise zur Löschung vor; ab dann ist sie überall wie nicht vorhanden (Speicherliste,
+# Konnektor, Schreibweg, Veröffentlichen, Wächter). Bis zum Fristende (instanz.loeschfrist_tage, Vorgabe 14 Tage) kann
+# eine Organisator:in sie zurückholen; danach entfernt der tägliche Lauf des Wächters sie endgültig und trägt sie ins
+# Löschprotokoll ein (nur Kennung und Datum), das sie nach dem Rückspielen einer alten Sicherung erneut entfernen lässt.
+# Ob eine Reise vorgemerkt oder entfernt ist, sagt allein reise_vorgemerkt (auch für den Export, #498).
+
+def loeschung_vormerken(reise, kid):
+    """Reise zur Löschung vormerken -> {reise, konto, wann, frist} (Sekunden, UTC). Schon vorgemerkt oder entfernt:
+    KontoFehler, die erste Frist bleibt. Rollen prüft der Aufrufer (nur Organisator:innen)."""
+    if not REISE_MUSTER.match(reise or ""):
+        raise KontoFehler("konto.fehler.reise_person_ungueltig")
+    t = _jetzt()
+    z = {"reise": reise, "konto": kid or None, "wann": t, "frist": t + instanz.loeschfrist_tage() * 86400}
+    with closing(db()) as v, v:
+        if v.execute("SELECT 1 FROM loeschprotokoll WHERE reise = ?", (reise,)).fetchone():
+            raise KontoFehler("konto.fehler.reise_schon_vorgemerkt")
+        try:
+            v.execute("INSERT INTO reise_loeschung (reise, konto, wann, frist) VALUES (?,?,?,?)",
+                      (reise, z["konto"], z["wann"], z["frist"]))
+        except sqlite3.IntegrityError:
+            raise KontoFehler("konto.fehler.reise_schon_vorgemerkt") from None
+    return z
+
+
+def loeschung_zurueckholen(reise, kid):
+    """Vormerkung aufheben, nur vor dem Fristende -> die aufgehobene Zeile. Nicht vorgemerkt oder Frist vorbei: KontoFehler.
+    Rollen prüft der Aufrufer (nur Organisator:innen); kid ist das Konto, das zurückholt."""
+    with closing(db()) as v, v:
+        z = v.execute("SELECT * FROM reise_loeschung WHERE reise = ?", (reise or "",)).fetchone()
+        if not z:
+            raise KontoFehler("konto.fehler.reise_nicht_vorgemerkt")
+        if z["frist"] <= _jetzt():
+            raise KontoFehler("konto.fehler.frist_vorbei")
+        v.execute("DELETE FROM reise_loeschung WHERE reise = ?", (reise,))
+        return dict(z) | {"zurueck": kid}
+
+
+def loeschungen():
+    """Alle vorgemerkten Reisen -> [{reise, konto, wann, frist}], die zuerst vorgemerkte zuerst."""
+    if not pfad().exists():
+        return []
+    with closing(db()) as v:
+        return [dict(z) for z in v.execute("SELECT reise, konto, wann, frist FROM reise_loeschung ORDER BY wann, reise")]
+
+
+def vorgemerkte_reisen():
+    """Menge der vorgemerkten und der schon entfernten Reisen; liest nur (ohne Datenbank: leer, legt keine an)."""
+    if not pfad().exists():
+        return set()
+    with closing(db()) as v:
+        return {z[0] for z in v.execute("SELECT reise FROM reise_loeschung UNION SELECT reise FROM loeschprotokoll")}
+
+
+def reise_vorgemerkt(reise):
+    """Ist die Reise zur Löschung vorgemerkt oder schon entfernt? Die eine Abfrage für alle Aufrufer (#381, Export #498):
+    wahr heißt, die Reise verhält sich wie nicht vorhanden."""
+    if not pfad().exists():
+        return False
+    with closing(db()) as v:
+        return v.execute("SELECT 1 FROM reise_loeschung WHERE reise = ? UNION SELECT 1 FROM loeschprotokoll WHERE reise = ?",
+                         (reise, reise)).fetchone() is not None
+
+
+def faellige_loeschungen():
+    """Reisen, deren Schonfrist abgelaufen ist (für den täglichen Lauf des Wächters), die älteste zuerst."""
+    if not pfad().exists():
+        return []
+    with closing(db()) as v:
+        return [z[0] for z in v.execute("SELECT reise FROM reise_loeschung WHERE frist <= ? ORDER BY frist, reise",
+                                        (_jetzt(),))]
+
+
+def loeschung_abschliessen(reise):
+    """Nach dem endgültigen Entfernen: Zeile der Vormerkung weg, Eintrag ins Löschprotokoll (nur Kennung und Datum), und
+    alles mit Bezug zur Reise in der Kontendatenbank: Mitgliedschaften, Einladungen, Push-Abos ihrer Seite, wartende
+    Push-Nachrichten und Zählzeilen der Einladungen. angelegte_reisen bleibt (Grenze je Konto, #380)."""
+    with closing(db()) as v, v:
+        v.execute("DELETE FROM reise_loeschung WHERE reise = ?", (reise,))
+        for t in ("mitgliedschaften", "einladungen", "push_abos", "push_warteschlange"):
+            v.execute(f"DELETE FROM {t} WHERE reise = ?", (reise,))
+        v.execute("DELETE FROM versand WHERE schluessel = ?", ("einladung:" + reise,))
+        v.execute("INSERT OR IGNORE INTO loeschprotokoll (reise, datum) VALUES (?, ?)", (reise, _datum()[:10]))
+
+
+def loeschprotokoll():
+    """Kennungen aller endgültig entfernten Reisen, sortiert."""
+    if not pfad().exists():
+        return []
+    with closing(db()) as v:
+        return [z[0] for z in v.execute("SELECT reise FROM loeschprotokoll ORDER BY reise")]
+
 # ---------- Push-Nachrichten (Issue #21): Abos je Gerät, Einstellungen je Konto (engine/push.py) ----------
 # Ein Abo ist die Adresse eines Geräts beim Push-Dienst seines Browsers (Apple, Google, Mozilla) mit zwei Schlüsseln. Es
 # gehört zu dem Konto, das auf der Reiseseite angemeldet war, und zu der Reise, deren Seite es abgeschlossen hat (der
@@ -969,7 +1196,9 @@ def _einladung_zeile(v, token):
 
 def _einloesen(v, h, kid):
     z = v.execute("SELECT * FROM einladungen WHERE hash = ?", (h,)).fetchone()
-    belegt = v.execute("SELECT konto FROM mitgliedschaften WHERE reise = ? AND schluessel = ?",
+    if reise_vorgemerkt(z["reise"]):   # #381: zu einer gelöschten Reise entsteht keine Mitgliedschaft mehr
+        return
+    belegt =v.execute("SELECT konto FROM mitgliedschaften WHERE reise = ? AND schluessel = ?",
                        (z["reise"], z["schluessel"])).fetchone()
     schon = v.execute("SELECT schluessel FROM mitgliedschaften WHERE konto = ? AND reise = ?",
                       (kid, z["reise"])).fetchone()
@@ -982,7 +1211,7 @@ def einladung(token):
     """Einladung zum Link aus der Mail (noch gültig) oder None: reise, schluessel, name, rolle, email, eingeloest."""
     with closing(db()) as v:
         z = _einladung_zeile(v, token)
-        if not z:
+        if not z or reise_vorgemerkt(z["reise"]):   # #381: Reise gelöscht, die Einladung gilt nicht mehr
             return None
         return {k: z[k] for k in ("reise", "schluessel", "name", "rolle", "email", "von")} | {
             "rolle": rolle_neu(z["rolle"]), "eingeloest": z["eingeloest"] is not None}
@@ -992,7 +1221,7 @@ def einladung_einloesen(token, kid):
     """Link aus der Einladungsmail mit einem angemeldeten Konto einlösen (auch mit anderer Adresse)."""
     with closing(db()) as v, v:
         z = _einladung_zeile(v, token)
-        if not z or z["eingeloest"] is not None:
+        if not z or z["eingeloest"] is not None or reise_vorgemerkt(z["reise"]):
             raise KontoFehler("konto.fehler.einladung_abgelaufen")
         _einloesen(v, z["hash"], kid)
         return z["reise"]
@@ -1006,6 +1235,8 @@ def einladen(reise, schluessel, roh, rolle, name, von, titel=None, seite=None, s
     rolle = rolle_neu(rolle)
     if rolle not in ROLLEN:
         raise KontoFehler("konto.fehler.unbekannte_rolle")
+    if reise_vorgemerkt(reise):   # #381: wie eine unbekannte Reise
+        raise KontoFehler("konto.fehler.reise_vorgemerkt")
     e, n, von = adresse(roh), name_pruefen(name), name_pruefen(von)
     token = secrets.token_urlsafe(32)
     with closing(db()) as v, v:
@@ -1214,6 +1445,9 @@ def main(a):
             loeschen(_per_email(a[1])["id"])
         elif a[:1] == ["zusammenfuehren"] and len(a) == 3:
             zusammenfuehren(_per_email(a[1])["id"], _per_email(a[2])["id"])
+        elif a[:1] == ["vorgemerkt"] and len(a) == 1:
+            for r in sorted(vorgemerkte_reisen()):
+                print(r)
         elif a[:1] == ["sichern"] and len(a) == 1:
             z = sichern()   # ohne Datenbank: nichts zu sichern, keine Ausgabe
             if z:

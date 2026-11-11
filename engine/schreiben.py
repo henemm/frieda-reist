@@ -5497,7 +5497,9 @@ def anwenden_extern(s, reise, werkzeug, anfrage):
         if werkzeug == "kartenpunkte_holen":
             vorab = tempfile.mkdtemp(prefix="frieda-osm-")
             osm_vorab = kartenpunkte_vorab(s, reise, anfrage, vorab)
-        if reise in instanz.speicherreisen():
+        if konten.reise_vorgemerkt(reise):   # #381: zur Löschung vorgemerkt oder entfernt, nichts wird mehr geschrieben
+            code, antwort = 410, fehler_antwort("schreiben.dienst.reise_geloescht")
+        elif reise in instanz.speicherreisen():
             code, antwort = vorgang_speicher(s, reise, werkzeug, anfrage, time.monotonic(), osm_vorab=osm_vorab)
         else:
             import schreiben_git
@@ -5560,7 +5562,7 @@ def vorgang_speicher(s, reise, werkzeug, anfrage, start, osm_vorab=None):
             """Reise im Speicher?, Stand merken, exportieren. Läuft in einem Faden, damit ein hängender Speicher die Frist
             nicht überdauert; wird er nach Fristablauf doch noch fertig, räumt er den temporären Ordner selbst weg."""
             try:
-                bekannt = reisespeicher.reisen()
+                bekannt = reisespeicher.reisen(mit_vorgemerkten=True)   # Namen vorgemerkter Reisen bleiben vergeben (#381)
                 if not neue_reise and reise not in bekannt:   # nie aus einer leeren Arbeitskopie schreiben
                     ergebnis["basis"] = None
                 elif neue_reise:

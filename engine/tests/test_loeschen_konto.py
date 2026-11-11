@@ -11,6 +11,7 @@ mitwirkend), alles unter tmp_path. Schnittstelle zusätzlich zu test_loeschen_re
   Katalog: konto.geloeschte_person
 """
 import json
+import re
 import sqlite3
 import sys
 from contextlib import closing
@@ -36,11 +37,13 @@ GELOESCHT = texte.t("de", "konto.geloeschte_person") if "konto.geloeschte_person
 def _spuren(kid, email, name=None):
     """Jede Zeile einer Tabelle der Kontendatenbank, in der Konto, Adresse oder Name noch vorkommen."""
     funde = []
+    # die Kennung auch als Teil eines Werts („sammel:<kid>“ in push_stand), aber nicht als Präfix einer anderen Kennung
+    kennung = re.compile(rf"(?<![\w-]){re.escape(kid)}(?![\w-])")
     with closing(konten.db()) as v:
         for (t,) in v.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"):
             for z in v.execute(f"SELECT * FROM {t}"):
                 werte = [str(x) for x in tuple(z)]
-                if any(kid == w or email in w or (name and w == name) for w in werte):
+                if any(kennung.search(w) or email in w or (name and w == name) for w in werte):
                     funde.append((t, werte))
     return funde
 
@@ -62,11 +65,19 @@ def test_loeschen_hinterlaesst_in_keiner_tabelle_spuren(zwei):
         v.execute("INSERT INTO versand VALUES (?, 1)", (f"warteliste:{KARL}",))
         v.execute("INSERT INTO push_einstellungen VALUES (?, '{}')", (kid,))
         v.execute("INSERT INTO meldung_gelesen VALUES (?, 'M-1', 1)", (kid,))
+        # push_stand (engine/push.py): Sammelliste und Mail-Merker des Kontos; daneben eine andere Kennung, die mit der
+        # von Karl beginnt, und ein Schlüssel des Servers: beide bleiben
+        v.executemany("INSERT INTO push_stand VALUES (?, '[]')",
+                      [(f"sammel:{kid}",), (f"mail:M-20261101-000000-ab12:{kid}",), (f"sammel:{kid}9",),
+                       (f"mail:M-20261101-000000-ab12:{kid}9",), ("vapid_stand",)])
     konten.einladen("stadtwochenende", "lea", "lea@beispiel.invalid", "mitwirkend", "Lea", "Karl")
     assert _spuren(kid, KARL)
     konten.loeschen(kid)
     assert _spuren(kid, KARL) == []
     assert konten.konto_per_email(KARL) is None
+    with closing(konten.db()) as v:
+        rest = sorted(z[0] for z in v.execute("SELECT schluessel FROM push_stand"))
+    assert rest == sorted([f"sammel:{kid}9", f"mail:M-20261101-000000-ab12:{kid}9", "vapid_stand"])
 
 
 def test_test_kennt_jede_tabelle_des_schemas():
@@ -74,7 +85,7 @@ def test_test_kennt_jede_tabelle_des_schemas():
     import inspect
     quelle = inspect.getsource(konten.loeschen) + inspect.getsource(konten)
     tabellen = {z for z in __import__("re").findall(r"CREATE TABLE IF NOT EXISTS (\w+)", konten.SCHEMA)}
-    nur_server = {"push_schluessel", "push_stand", "loeschprotokoll"}
+    nur_server = {"push_schluessel", "loeschprotokoll"}   # push_stand hält auch Zeilen je Konto (sammel:, mail:)
     rumpf = inspect.getsource(konten.loeschen)
     fehlen = [t for t in sorted(tabellen - nur_server - {"konten"}) if t not in rumpf]
     assert not fehlen, f"loeschen() nennt diese Tabellen nicht: {fehlen}"
@@ -145,7 +156,7 @@ def test_loeschseite_zeigt_was_bleibt_und_was_geht(zwei):
     s, _, t = abruf(f"{u.kurl}/konto?loeschen=1", cookie=u.b_keks)
     from conftest import meldet
     assert s == 200 and meldet(t, "konto.seite.loeschen_bleibt") and meldet(t, "konto.seite.loeschen_weg")
-    assert meldet(t, "konto.loeschen.reisen_gehen_mit") and "Stadt" in t
+    assert meldet(t, "konto.loeschen.reisen_gehen_mit") and "Beispielstadt" in t   # Titel des Stadtwochenendes
 
 
 # ---------- B2: Pseudonymisieren ----------
@@ -174,8 +185,50 @@ def test_namen_ersetzen_erzwingt_neubau(speicher):
     rs = speicher
     stempel = rs.t / "_dienst" / "reise-stand" / "beispielreise.gebaut"
     rs.vorgang_schreiben("beispielreise", {"wissen/x.md": b"# x\n"}, wer="Karl", werkzeug="knowledge_write", titel="x")
+    stempel.write_text("3 abc1234\n")   # „<nummer> <software>“ wie nach einem Bau
     rs.namen_ersetzen("beispielreise", "Karl", GELOESCHT)
-    assert not stempel.exists(), "Stempel weg: der nächste Lauf baut die Seite neu"
+    # Stempel ohne Software-Kennung: veroeffentlichen.sh baut neu ([ -z "$gk" ]); er bleibt aber stehen, damit die Sperre der
+    # ersten Umschaltung (#350) eine Reise im Git-Bauordner nicht anhält
+    assert stempel.read_text().split() == ["3"]
+    text = (WURZEL / "betrieb" / "veroeffentlichen.sh").read_text(encoding="utf-8")
+    assert '[ -z "$gk" ]' in text and 'if [ ! -e "$FR_DIENST/reise-stand/$r.gebaut" ]' in text
+
+
+def _zwei_karl(speicher, monkeypatch, zweiter):
+    """Beispielreise im Speicher mit Konten für Ida und Karl; zweiter: ein weiteres Mitglied namens Karl in derselben Reise."""
+    import rueckmeldungen as rm
+    with closing(konten.db()) as v, v:
+        v.execute("INSERT INTO konten (id, email, name, angelegt, sprache) VALUES ('k-karl', ?, 'Karl', '2026-11-01', 'de')", (KARL,))
+        for kid, schl in (("k-ida", "ida"), ("k-karl", "karl")):
+            v.execute("INSERT INTO mitgliedschaften VALUES (?, 'beispielreise', ?, '2026-11-01')", (kid, schl))
+    personen = [{"schluessel": "ida", "name": "Ida", "rolle": "organisator"},
+                {"schluessel": "karl", "name": "Karl", "rolle": "mitwirkend"}]
+    if zweiter:
+        personen.append({"schluessel": "karl2", "name": "Karl", "rolle": "mitwirkend"})
+    monkeypatch.setattr(rm, "zustand", lambda reise: {"personen": personen, "sprache": "de", "status": "planung"}
+                        if reise == "beispielreise" else None)
+    speicher.vorgang_schreiben("beispielreise", {"wissen/k.md": b"# k\n"}, wer="Karl", werkzeug="knowledge_write", titel="k")
+
+
+@pytest.mark.parametrize("zweiter", [False, True])
+def test_gleichnamiges_mitglied_derselben_reise_bleibt(speicher, monkeypatch, zweiter):
+    """F003: Der Verlauf kennt nur Namen. Gibt es in derselben Reise ein zweites Mitglied mit demselben Namen, bleibt der
+    Name stehen (lieber nicht ersetzen als den Falschen treffen); sonst wird er ersetzt."""
+    _zwei_karl(speicher, monkeypatch, zweiter)
+    konten.loeschen("k-karl")
+    wer = {e["wer"] for e in speicher.verlauf("beispielreise")}
+    assert ("Karl" in wer) == zweiter and (GELOESCHT in wer) != zweiter
+
+
+def test_abbruch_beim_umbenennen_ist_ein_satz_fuer_menschen(speicher, monkeypatch):
+    """F005: Scheitert das Ersetzen (Speicher nicht grün), bleibt das Konto, und die Person bekommt einen Satz aus dem Katalog."""
+    _zwei_karl(speicher, monkeypatch, False)
+    monkeypatch.setattr(speicher, "pruefen", lambda reise=None: ["erfundene Abweichung"])
+    with pytest.raises(konten.KontoFehler) as f:
+        konten.loeschen("k-karl")
+    assert f.value.schluessel == "konto.fehler.loeschen_spaeter" and konten.konto("k-karl") is not None
+    for sp in ("de", "en"):
+        assert texte.t(sp, "konto.fehler.loeschen_spaeter") != "konto.fehler.loeschen_spaeter"
 
 
 def test_ablage_dateien_pseudonymisiert(zwei):
@@ -216,7 +269,8 @@ def test_datenschutztext_nennt_loeschen_und_grenzen():
     import anmeldung
     t = anmeldung.datenschutz_inhalt()
     assert "14" in t and "30" in t, "Schonfrist und Aufbewahrung der Sicherungen"
-    assert texte.t("de", "recht.datenschutz.namen_freitext") in t
+    # ohne Anfrage spricht die Seite die Vorgabe der Software (nicht Deutsch): Text in der Sprache der Seite
+    assert texte.t(anmeldung.sprache_der_seite(), "recht.datenschutz.namen_freitext") in t
 
 
 def test_betriebsdoku_belege_nicht_mehr_nie_geloescht():

@@ -16,6 +16,7 @@ import html
 import json
 import os
 import re
+import sys
 import threading
 import urllib.parse
 from pathlib import Path
@@ -655,16 +656,182 @@ def meldung_oeffnen(k, mid, reise_info):
                               f'<div class="links"><a href="/konto">{esc(tx("konto.seite.titel"))}</a></div>'))
 
 
-def personen_block(reise, z, ich):
+def personen_block(reise, z, ich, extra=""):
     """Die Personen einer Reise, aufklappbar unter ihrer Zeile auf Mein Konto (#406). Alle Mitglieder sehen Name, Rolle,
-    reist mit und von/bis; den Zugang (angemeldet, eingeladen, noch keiner) nur Organisator:innen."""
+    reist mit und von/bis; den Zugang (angemeldet, eingeladen, noch keiner) nur Organisator:innen. extra: steht unter den
+    aufgeklappten Personen (Link „Reise löschen …“, #381)."""
     personen = (z or {}).get("personen") or []
     if not personen:
-        return ""
+        return extra
     stand = konten.zugangsstand(reise) if rolle_neu(ich.get("rolle")) == "organisator" else None
     liste = "".join(f"<li>{esc(t)}</li>" for t in rm.personen_zeilen(personen, stand, sprache_der_seite()))
     return (f'<details class="personen"><summary>{esc(tx("konnektor.personen.titel", n=len(personen)))}</summary>'
-            f"<ul>{liste}</ul></details>")
+            f"<ul>{liste}</ul>{extra}</details>")
+
+
+# ---------------------------------------------------------------- Reise löschen (#381)
+# Nur Organisator:innen einer Reise im Reisespeicher: Link unter den Personen, Bestätigung 1 (Haken), Bestätigung 2
+# (Reisename eintippen), dann vorgemerkt mit Schonfrist; oben in „Meine Reisen“ der Block mit Datum und „Reise
+# zurückholen“. Alle anderen Mitglieder bekommen sofort Mail und Meldung, beim Zurückholen eine zweite.
+
+def _speicherreisen():
+    try:
+        return instanz.speicherreisen()
+    except instanz.EinstellungenNichtLesbar:
+        return []   # Liste unbekannt: kein Link, nichts wird vorgemerkt
+
+
+def _reise_aus_speicher(reise):
+    """reise.yaml der Reise aus dem Reisespeicher (nach dem Vormerken ist die Seite bald weg) oder {}."""
+    if reise not in _speicherreisen():
+        return {}
+    try:
+        import reisespeicher
+        import yaml
+        d = yaml.safe_load(reisespeicher.datei(reise, "reise.yaml"))
+    except Exception:   # noqa: BLE001  ohne lesbaren Stand gibt es keine Angaben, nur die Kennung
+        return {}
+    return d if isinstance(d, dict) else {}
+
+
+def _person(reise, schluessel, z=None):
+    """Person der Reise zum Personen-Schlüssel: aus der veröffentlichten Seite, sonst aus reise.yaml im Speicher."""
+    personen = ((z if z is not None else rm.zustand(reise)) or {}).get("personen")
+    if personen is None:
+        personen = _reise_aus_speicher(reise).get("personen") or []
+    return next((p for p in personen if isinstance(p, dict) and p.get("schluessel") == schluessel), {})
+
+
+def ist_organisatorin(k, reise, z=None):
+    schl = konten.mitglied(k["id"], reise)
+    return bool(schl) and rolle_neu(_person(reise, schl, z).get("rolle")) == "organisator"
+
+
+def reise_titel(reise, reise_info=None):
+    return (((reise_info(reise) or {}) if reise_info else {}).get("titel") or _reise_aus_speicher(reise).get("titel")
+            or reise)
+
+
+def frist_text(t, sprache, zone):
+    """Zeitpunkt t (Sekunden, UTC) als Datum und Uhrzeit in der Zone der Person, mit Angabe der Zone."""
+    try:
+        tz = ZoneInfo(zone)
+    except (ValueError, OSError, KeyError):
+        tz = datetime.timezone.utc
+    lokal = datetime.datetime.fromtimestamp(t, datetime.timezone.utc).astimezone(tz)
+    abk = lokal.tzname() or "UTC"
+    return texte.t(sprache, "konnektor.zeit.mit_zone", zeit=texte.datum_zeit(lokal, sprache),
+                   zone=texte.gruppe(sprache, "konnektor.zeitzone").get(abk.lower(), abk))
+
+
+def loeschung_melden(ausloeser, reise, zeile, art, reise_info=None):
+    """Mail (in der Sprache des Empfängers) und Meldung auf Mein Konto an alle anderen Mitglieder der Reise. art:
+    vorgemerkt oder zurueckgeholt. Die Meldung entsteht immer; ein Mailfehler ändert am Vormerken nichts."""
+    titel = reise_titel(reise, reise_info)
+    z = rm.zustand(reise)
+    for m in konten.mitglieder(reise):
+        an = konten.konto(m["konto"])
+        if m["konto"] == ausloeser["id"] or not an or an["gesperrt"]:
+            continue
+        sp = an["sprache"]
+        werte = {"wer": ausloeser["name"], "titel": titel,
+                 "frist": frist_text(zeile["frist"], sp, konten.zeitzone_des_kontos(an["id"]) or instanz.zeitzone())}
+        zurueck = art == "vorgemerkt" and rolle_neu(_person(reise, m["schluessel"], z).get("rolle")) == "organisator"
+        teile = [(f"konto.meldungen.text.reise_{art}", werte)] + (
+            [("konto.meldungen.text.reise_vorgemerkt_zurueck", {})] if zurueck else [])
+        try:
+            rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [an["id"]], "loeschung", "reise",
+                               "".join(texte.t(sp, s, **w) for s, w in teile), teile=teile)
+        except OSError as f:
+            sys.stderr.write(f"deletion message {reise}: {f}\n")
+        zeilen = [texte.t(sp, "konto.reise_loeschen.mail_anrede", name=an["name"]), "",
+                  texte.t(sp, f"konto.reise_loeschen.mail_{art}", **werte)]
+        if zurueck:
+            zeilen += ["", texte.t(sp, "konto.reise_loeschen.mail_zurueck")] + ([f"{konten.basis()}/konto"] if konten.basis() else [])
+        try:
+            konten.mail_senden(an["email"], texte.t(sp, f"konto.reise_loeschen.mail_{art}_betreff", titel=titel), "\n".join(zeilen))
+        except (konten.KontoFehler, OSError) as f:
+            sys.stderr.write(f"deletion mail {reise}: {type(f).__name__}\n")
+
+
+def _loeschen_erlaubt(k, reise):
+    """Darf k die Reise löschen? Nur Organisator:innen, nur Reisen im Reisespeicher, nicht schon vorgemerkt."""
+    if reise not in _speicherreisen() or not ist_organisatorin(k, reise):
+        raise konten.KontoFehler("konto.fehler.nur_organisatorin")
+    if konten.reise_vorgemerkt(reise):
+        raise konten.KontoFehler("konto.fehler.reise_schon_vorgemerkt")
+
+
+def reise_loeschen(k, reise, reise_info=None):
+    """Reise zur Löschung vormerken und alle anderen Mitglieder benachrichtigen -> Zeile der Vormerkung."""
+    _loeschen_erlaubt(k, reise)
+    titel = reise_titel(reise, reise_info)   # vor dem Vormerken: danach ist die Seite bald weg
+    zeile = konten.loeschung_vormerken(reise, k["id"])
+    loeschung_melden(k, reise, zeile, "vorgemerkt", lambda r: {"titel": titel})
+    return zeile
+
+
+def reise_zurueckholen(k, reise, reise_info=None):
+    """Vormerkung aufheben (nur Organisator:innen, nur in der Frist) und alle anderen Mitglieder benachrichtigen."""
+    if not ist_organisatorin(k, reise):
+        raise konten.KontoFehler("konto.fehler.nur_organisatorin")
+    zeile = konten.loeschung_zurueckholen(reise, k["id"])
+    loeschung_melden(k, reise, zeile, "zurueckgeholt", reise_info)
+    return zeile
+
+
+def _gleicher_name(a, b):
+    return " ".join(str(a or "").split()).casefold() == " ".join(str(b or "").split()).casefold()
+
+
+def reise_loeschen_seite(k, reise, reise_info, schritt=1, meldung=""):
+    """Bestätigung 1 (Erklärung und Haken) oder 2 (Reisename eintippen) vor dem Löschen einer Reise."""
+    titel = reise_titel(reise, reise_info)
+    erklaerung = (f'<div><strong>{esc(tx("konto.reise_loeschen.weg"))}</strong><p style="margin:.2rem 0 0">{esc(tx("konto.reise_loeschen.weg_text", titel=titel))}</p></div>'
+                  f'<div><strong>{esc(tx("konto.reise_loeschen.frist"))}</strong><p style="margin:.2rem 0 0">{esc(tx("konto.reise_loeschen.frist_text", tage=instanz.loeschfrist_tage()))}</p>'
+                  f'<p style="margin:.2rem 0 0">{esc(tx("konto.reise_loeschen.benachrichtigt"))}</p></div>')
+    if schritt == 1:
+        form = formular("/konto", verdeckt(aktion="reise_loeschen_1", reise=reise)
+                        + f'<label class="haken bestaetigen"><input type="checkbox" name="verstanden" value="ja" required> '
+                          f'{esc(tx("konto.reise_loeschen.haken"))}</label>', tx("konto.reise_loeschen.weiter"), "gefahr")
+    else:
+        form = formular("/konto", verdeckt(aktion="reise_loeschen", reise=reise, verstanden="ja")
+                        + f'<label for="titel">{esc(tx("konto.reise_loeschen.name_label", titel=titel))}</label>'
+                          '<input id="titel" type="text" name="titel" autocomplete="off" required>',
+                        tx("konto.reise_loeschen.knopf"), "gefahr")
+    return seite(tx("konto.reise_loeschen.titel"),
+                 f'<a class="zurueck" href="/konto">‹ {esc(tx("konto.seite.titel"))}</a>',
+                 karte(f"<h1>{esc(tx('konto.reise_loeschen.titel'))}</h1>", fehler(meldung), erklaerung, form,
+                       f'<div class="links"><a href="/konto">{esc(tx("konto.seite.abbrechen"))}</a></div>'),
+                 fuss(recht=True), kopf="")
+
+
+def loeschen_block(k, vorgemerkt, reise_info):
+    """Block der vorgemerkten Reisen oben in „Meine Reisen“: Name, Datum des Entfernens mit Zone, „Reise zurückholen“ nur
+    für Organisator:innen und nur vor dem Fristende."""
+    zone, jetzt = meldungen_zone(k), konten._jetzt()
+    teile = []
+    for z in vorgemerkt:
+        titel = reise_titel(z["reise"], reise_info)
+        offen = z["frist"] > jetzt
+        satz = (tx("konto.reise_loeschen.block", titel=titel, frist=frist_text(z["frist"], sprache_der_seite(), zone)) if offen
+                else tx("konto.reise_loeschen.block_vorbei", titel=titel))
+        knopf = (f'<form method="post" action="/konto">{verdeckt(reise=z["reise"])}<button class="leise" name="aktion" '
+                 f'value="reise_zurueckholen">{esc(tx("konto.reise_loeschen.zurueckholen"))}</button></form>'
+                 if offen and ist_organisatorin(k, z["reise"]) else "")
+        teile.append(f'<div class="vorgemerkt kasten"><p style="margin:0 0 .4rem">{esc(satz)}</p>{knopf}</div>')
+    return "".join(teile)
+
+
+def loeschen_link(k, reise, z, p):
+    """Was unter den aufgeklappten Personen steht: für Organisator:innen einer Speicherreise der Link „Reise löschen …“,
+    für Organisator:innen einer Reise auf dem alten Weg ein Satz; für alle anderen nichts."""
+    if rolle_neu(p.get("rolle")) != "organisator":
+        return ""
+    if reise not in _speicherreisen():
+        return f'<p class="klein" style="margin:0 1rem 1rem">{esc(tx("konto.reise_loeschen.erst_nach_umstellung"))}</p>'
+    return (f'<p style="margin:0 1rem 1rem"><a href="/konto?{esc(urllib.parse.urlencode({"reise_loeschen": reise}))}" '
+            f'style="color:var(--gefahr)">{esc(tx("konto.reise_loeschen.link"))}</a></p>')
 
 
 def verbinden_karte():
@@ -694,7 +861,12 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
     aufgeklappt erscheint. Ab Tablet zwei Spalten (#441): links, was sich tut (Meldungen, Reisen, Mit Claude verbinden),
     rechts, was selten gebraucht wird; auf dem Handy untereinander in derselben Reihenfolge."""
     zeilen, archiv = [], []
+    vorgemerkt = {z["reise"]: z for z in konten.loeschungen()}
+    meine_vorgemerkten = []
     for m in konten.mitgliedschaften(k["id"]):
+        if m["reise"] in vorgemerkt:   # #381: steht im Block oben, nicht in der Liste
+            meine_vorgemerkten.append(vorgemerkt[m["reise"]])
+            continue
         info = reise_info(m["reise"]) or {}
         z = rm.zustand(m["reise"]) or {}
         p = next((x for x in z.get("personen") or [] if x.get("schluessel") == m["schluessel"]), {})
@@ -703,9 +875,10 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
         kopf = (f'<a class="zeile" href="{esc(info["seite"])}">{inhalt}</a>' if info.get("seite")
                 else f'<div class="zeile">{inhalt}</div>')
         (archiv if z.get("status") == "archiv" else zeilen).append(
-            f'<div class="reise">{kopf}{personen_block(m["reise"], z, p)}</div>')
+            f'<div class="reise">{kopf}{personen_block(m["reise"], z, p, loeschen_link(k, m["reise"], z, p))}</div>')
     reisen = f'<div class="liste">{"".join(zeilen)}</div>' if zeilen else (
-        "" if archiv else karte(f'<p class="hinweis">{esc(tx("konto.reisen.keine"))}</p>'))
+        "" if archiv or meine_vorgemerkten else karte(f'<p class="hinweis">{esc(tx("konto.reisen.keine"))}</p>'))
+    reisen = loeschen_block(k, meine_vorgemerkten, reise_info) + reisen
     if archiv:   # archivierte Reisen (auch Testreisen) bleiben erreichbar, stören aber nicht die Liste (#416)
         reisen += (f'<details class="archiv"><summary>{esc(tx("konto.archiv.titel", n=len(archiv)))}</summary>'
                    f'<div class="liste">{"".join(archiv)}</div></details>')
@@ -779,16 +952,27 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
                  fuss(recht=True), kopf=kopf, skript=True, klasse="konto")
 
 
-def loeschen_seite(k):
-    """Rückfrage vor dem Löschen: was gelöscht wird, was bleibt (#60)."""
+def loeschen_seite(k, reise_info=None):
+    """Rückfrage vor dem Löschen: was gelöscht wird, was bleibt ohne den Namen (#60, #381), welche Reisen mitgehen. Ist die
+    Person die einzige Organisator:in einer Reise mit weiteren Mitgliedern, nennt die Seite diese Reisen statt des Formulars."""
+    gesperrt, allein, _ = konten.loeschen_pruefen(k["id"])
+    titel = lambda r: reise_titel(r, reise_info)   # noqa: E731
+    liste = lambda reisen: "<ul>" + "".join(f"<li>{esc(titel(r))}</li>" for r in reisen) + "</ul>"   # noqa: E731
+    if gesperrt:
+        unten = (f'<div class="fehler"><strong>{esc(tx("konto.loeschen.erst_klaeren"))}</strong> '
+                 f'{esc(tx("konto.fehler.letzte_organisatorin", reisen=", ".join(titel(r) for r in gesperrt)))}</div>')
+    else:
+        unten = formular("/konto", verdeckt(aktion="loeschen")
+                         + f'<label class="haken bestaetigen"><input type="checkbox" name="sicher" value="ja" required> '
+                           f'{esc(tx("konto.seite.loeschen_haken"))}</label>', tx("konto.seite.loeschen_knopf"), "gefahr")
+    mit = (f'<div><p style="margin:.2rem 0 0">{esc(tx("konto.loeschen.reisen_gehen_mit", tage=instanz.loeschfrist_tage()))}</p>'
+           f"{liste(allein)}</div>" if allein else "")
     return seite(tx("konto.seite.loeschen_frage"),
                  f'<a class="zurueck" href="/konto">‹ {esc(tx("konto.seite.titel"))}</a>',
                  karte(f"<h1>{esc(tx('konto.seite.loeschen_frage'))}</h1>",
-                       f'<div><strong>{esc(tx("konto.seite.loeschen_weg"))}</strong><p style="margin:.2rem 0 0">{esc(tx("konto.seite.loeschen_weg_text"))}</p></div>',
                        f'<div><strong>{esc(tx("konto.seite.loeschen_bleibt"))}</strong><p style="margin:.2rem 0 0">{esc(tx("konto.seite.loeschen_bleibt_text"))}</p></div>',
-                       formular("/konto", verdeckt(aktion="loeschen")
-                                + f'<label class="haken bestaetigen"><input type="checkbox" name="sicher" value="ja" required> '
-                                  f'{esc(tx("konto.seite.loeschen_haken"))}</label>', tx("konto.seite.loeschen_knopf"), "gefahr"),
+                       f'<div><strong>{esc(tx("konto.seite.loeschen_weg"))}</strong><p style="margin:.2rem 0 0">{esc(tx("konto.seite.loeschen_weg_text"))}</p></div>',
+                       mit, unten,
                        f'<div class="links"><a href="/konto">{esc(tx("konto.seite.abbrechen"))}</a></div>'),
                  fuss(recht=True), kopf="")
 
@@ -833,6 +1017,8 @@ def datenschutz_inhalt():
             f'<p class="lead">{th("recht.datenschutz.einleitung", impressum=impressum)}</p></div>' + abschnitte
             + f'<div><h2>{esc(tx("recht.datenschutz.rechte.titel"))}</h2>'
             f'<p style="margin:.3rem 0 0">{esc(tx("recht.datenschutz.konto_loeschen"))}</p>'
+            f'<p style="margin:.3rem 0 0">{esc(tx("recht.datenschutz.reise_loeschen", tage=instanz.loeschfrist_tage()))}</p>'
+            f'<p style="margin:.3rem 0 0">{esc(tx("recht.datenschutz.namen_freitext"))}</p>'
             f'<p style="margin:.3rem 0 0">{esc(tx("recht.datenschutz.folgt"))}</p>'
             f'<p style="margin:.3rem 0 0">{th("recht.datenschutz.kontakt", impressum=impressum)}</p></div>')
 
@@ -1118,7 +1304,13 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
         if methode == "GET" and q.get("kalender") == "datei":
             return kalender_antwort(k, datei=True)
         if methode == "GET" and q.get("loeschen"):
-            return antwort(200, loeschen_seite(k))
+            return antwort(200, loeschen_seite(k, reise_info))
+        if methode == "GET" and q.get("reise_loeschen"):   # Bestätigung 1 (#381); ein GET ändert nie etwas
+            try:
+                _loeschen_erlaubt(k, q["reise_loeschen"])
+            except konten.KontoFehler as x:
+                return antwort(200, konto_seite(k, reise_info, meldung=x.text(sprache_der_seite())))
+            return antwort(200, reise_loeschen_seite(k, q["reise_loeschen"], reise_info))
         if methode == "GET" and q.get("meldung"):      # Zeile der Meldungen: gelesen merken, an die Stelle (#407)
             return meldung_oeffnen(k, q["meldung"], reise_info)
         if methode == "GET" and q.get("push") in ("an", "aus"):    # zurück vom Schalter (engine/app/konto.js)
@@ -1170,6 +1362,26 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
             if a == "alle_abmelden":
                 konten.alle_abmelden(k["id"])
                 return weiter("/anmelden", [cookie_loeschen()])
+            if a in ("reise_loeschen_1", "reise_loeschen"):   # Bestätigung 1 und 2 (#381)
+                reise = f.get("reise") or ""
+                _loeschen_erlaubt(k, reise)
+                if f.get("verstanden") != "ja":
+                    return antwort(200, reise_loeschen_seite(k, reise, reise_info, meldung=tx("konto.fehler.haken_fehlt")))
+                if a == "reise_loeschen_1":
+                    return antwort(200, reise_loeschen_seite(k, reise, reise_info, schritt=2))
+                titel = reise_titel(reise, reise_info)
+                if not _gleicher_name(f.get("titel"), titel):
+                    return antwort(200, reise_loeschen_seite(k, reise, reise_info, schritt=2,
+                                                             meldung=tx("konto.fehler.reisename_falsch")))
+                zeile = reise_loeschen(k, reise, reise_info)
+                return antwort(200, konto_seite(k, reise_info, hinweis=tx(
+                    "konto.reise_loeschen.vorgemerkt_hinweis", titel=titel,
+                    frist=frist_text(zeile["frist"], sprache_der_seite(), meldungen_zone(k)))))
+            if a == "reise_zurueckholen":
+                reise = f.get("reise") or ""
+                reise_zurueckholen(k, reise, reise_info)
+                return antwort(200, konto_seite(k, reise_info, hinweis=tx(
+                    "konto.reise_loeschen.zurueckgeholt_hinweis", titel=reise_titel(reise, reise_info))))
             if a == "loeschen" and f.get("sicher") == "ja":
                 konten.loeschen(k["id"])
                 return antwort(200, seite(tx("konto.seite.geloescht"), karte(

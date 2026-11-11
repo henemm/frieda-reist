@@ -25,7 +25,8 @@ KN_MODULE="konnektor.py schnittstelle.py reise.py routen.py packliste.py karte.p
 # Schreibvorgang (`anwenden`: Werkzeuge, Probebau, Reisespeicher) mit dem Code aus <FR_DIENST>, deshalb steht hier jedes
 # Modul, das schreiben.py auch in Funktionen lädt (engine/tests/test_betrieb.py prüft es gegen die Importe), dazu unten
 # Vorlage, vendor/ und reisevorlage/. Für Git-Reisen kommt der Code des Schreibvorgangs bis Stufe 5 aus der Arbeitskopie.
-SB_MODULE="schreiben.py schreiben_git.py kartendienst.py reisespeicher.py bauen.py routen.py packliste.py gpx.py karte.py neu.py schnittstelle.py konten.py reise.py instanz.py kalender.py stand.py stand_git.py texte.py $SPRACHDATEIEN"
+# konten.py lädt beim Konto-Löschen rueckmeldungen.py (Rollen, Ablage; #381), das wiederum belege.py.
+SB_MODULE="schreiben.py schreiben_git.py kartendienst.py reisespeicher.py bauen.py routen.py packliste.py gpx.py karte.py neu.py schnittstelle.py konten.py rueckmeldungen.py belege.py reise.py instanz.py kalender.py stand.py stand_git.py texte.py $SPRACHDATEIEN"
 # Push-Dienst (engine/push.py dienst, Issue #21): läuft mit FR_PYTHON (pywebpush), lädt seinen Code aus <FR_DIENST>
 PS_MODULE="push.py rueckmeldungen.py belege.py reise.py konten.py instanz.py kalender.py stand.py reisespeicher.py stand_git.py texte.py $SPRACHDATEIEN"
 

@@ -138,8 +138,8 @@ def ordner_neu(anlegen=False):
 
 
 def ordner(reise):
-    """Ordner einer Reise oder None, wenn die Reise keine Rückmeldungen annimmt."""
-    if not REISE_MUSTER.match(reise or ""):
+    """Ordner einer Reise oder None, wenn die Reise keine Rückmeldungen annimmt (auch zur Löschung vorgemerkt, #381)."""
+    if not REISE_MUSTER.match(reise or "") or konten.reise_vorgemerkt(reise):
         return None
     p = ablage() / reise
     return p if p.is_dir() else None
@@ -390,6 +390,8 @@ def meldungen_des_kontos(k):
     if o:
         aus += [m | {"reise": m.get("ziel") if m.get("art") == "neue_reise" and m.get("ziel") in meine else None}
                 for m in meldungen_aktuell(o, k["name"])]
+        # an genau dieses Konto (Kennung statt Name, #381: Reise gelöscht oder zurückgeholt); gilt auch ohne Seite der Reise
+        aus += [m | {"reise": None} for m in meldungen_aktuell(o, k["id"])]
     for mg in konten.mitgliedschaften(k["id"]):
         z = zustand(mg["reise"]) or {}
         p = next((x for x in z.get("personen") or [] if x.get("schluessel") == mg["schluessel"]), None)

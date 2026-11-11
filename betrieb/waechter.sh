@@ -19,8 +19,17 @@ bericht="$(mktemp)"
 trap 'rm -f "$bericht"' EXIT
 
 fehler=0
+teile=""
 if ! "$FR_PYTHON" "$FR_WURZEL/engine/waechter.py" lauf --bericht "$bericht"; then
-  fr_melden high "Watchdog failed" "The daily run of the watchdog aborted, no new messages will arrive. Log: journalctl -u $FR_INSTANZ-waechter -n 100"
+  teile="The daily run of the watchdog aborted, no new messages will arrive."
+fi
+# #381: Reisen mit abgelaufener Schonfrist endgültig entfernen, Reisen des Löschprotokolls nach dem Rückspielen einer alten
+# Sicherung erneut (sichern, entfernen, pruefen, verdichten, sichern); bricht ab, sobald pruefen nicht grün ist
+if ! "$FR_PYTHON" "$FR_WURZEL/engine/waechter.py" loeschen; then
+  teile="${teile:+$teile }Removing deleted trips aborted, the trips stay until the next run."
+fi
+if [ -n "$teile" ]; then
+  fr_melden high "Watchdog failed" "$teile Log: journalctl -u $FR_INSTANZ-waechter -n 100"
   fehler=1
 fi
 if ! "$FR_PYTHON" "$FR_WURZEL/engine/konten.py" sichern; then

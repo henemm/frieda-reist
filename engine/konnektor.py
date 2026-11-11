@@ -2181,7 +2181,10 @@ EMAIL_FELD = {"type": "string", "description": "@konnektor.feld.email_feld"}
 def reisen_des_kontos(k):
     """[(reise, schluessel, daten)] der Reisen, mit denen das Konto verknüpft ist und die veröffentlicht sind."""
     aus = []
+    weg = konten.vorgemerkte_reisen()   # zur Löschung vorgemerkt oder entfernt: wie nicht vorhanden (#381)
     for m in konten.mitgliedschaften(k["id"]):
+        if m["reise"] in weg:
+            continue
         d = daten(m["reise"])
         if d:
             aus.append((m["reise"], m["schluessel"], d))
@@ -3003,6 +3006,8 @@ def werkzeug(zugang, name, args):
     """-> (text, ist_fehler)"""
     reise = zugang["reise"]
     args = args if isinstance(args, dict) else {}
+    if konten.reise_vorgemerkt(reise):   # #381: wie eine unbekannte Reise
+        return tk("konnektor.frieda_werkzeug.1"), True
     wer = wer_spricht(zugang, daten(reise))
     if wer is None:
         return tk("konnektor.werkzeug.1"), True
