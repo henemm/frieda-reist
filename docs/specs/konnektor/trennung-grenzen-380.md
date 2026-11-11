@@ -161,6 +161,7 @@ Automatische Tests (jeweils an eine AC oben gebunden):
 - `engine/.venv/bin/python -m pytest -q engine/tests/test_trennung.py engine/tests/test_grenzen.py`
 - Regression: `engine/.venv/bin/python -m pytest -q -n 3 engine/tests` (zusätzlich in der CI: `tests (leer)`, `tests (instanz)`, `gitleaks`).
 - Vor dem Vorspulen: Tests des Reisen-Repos der Instanz mit diesem Branch (Anleitung dort), weil Umgebungswerte und Texte neu sind.
+- Validierung: „Entscheidung“ in AC-4 ist auf der Seite das Einplanen eines Wunsches auf dem Brett (PATCH, die Seite hat keinen eigenen POST-Weg dafür), geprüft in `test_entscheidung_auf_dem_brett_ohne_mitgliedschaft`; einzelne Belege aus AC-5 prüft `test_einzelner_beleg_wie_ein_gast`. Beide belegen den Ist-Stand.
 - Vorgehen: Die Testreihe zuerst schreiben; RED nur dort, wo sie eine Lücke findet, sonst belegt sie den Ist-Stand. Funde werden im selben Workflow behoben und im Prüfbericht genannt.
 
 ## Architektur-Entscheidung (ADR)
@@ -171,3 +172,4 @@ Automatische Tests (jeweils an eine AC oben gebunden):
 ## Changelog
 
 - 2026-11-11: Erstfassung (Entwurf) für #380; Kernentscheidungen aus der Analyse (`docs/context/alpha-380-trennung.md`): Testreihe mit zwei Konten, Lesen über den Seitenlink als bewusste Grenze, Grenzen je Konto aus der Instanz.
+- 2026-11-11: Validierung: Tests für die Entscheidung auf dem Brett (AC-4) und einzelne Belege (AC-5) ergänzt.

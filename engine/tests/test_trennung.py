@@ -261,3 +261,44 @@ def test_lesen_per_seitenlink_nicht_mehr_als_gast(zwei):
         fremd = abruf(f"{u.rurl}/beispielreise/{was}", cookie=u.b_keks)
         assert gast[0] == 200, (was, gast)
         assert (fremd[0], json.loads(fremd[2])) == (gast[0], json.loads(gast[2])), was
+
+
+# ---------- AC-4 und AC-5 ergänzt (Validierung): Entscheidung auf dem Brett, einzelner Beleg ----------
+
+def test_entscheidung_auf_dem_brett_ohne_mitgliedschaft(zwei):
+    """Einplanen eines Wunsches ist auf der Seite die Entscheidung der Organisator:in; B darf sie nicht treffen."""
+    u = zwei()
+    vorher = abdruck(u.ablage / "beispielreise")
+    url = f"{u.rurl}/beispielreise/rueckmeldungen/R-20261104-120000-abcd"
+    body = {"eingeplant": True, "bezug": "T-01", "name": "Ida"}
+    s, _, t = abruf(url, "PATCH", cookie=u.b_keks, json_body=body)
+    assert s == 403, (s, t)
+    s, _, t = abruf(url, "PATCH", json_body=body)
+    assert s in (401, 403), (s, t)
+    assert abdruck(u.ablage / "beispielreise") == vorher
+
+
+def test_einzelner_beleg_wie_ein_gast(zwei):
+    """Ein einzelner Beleg der Beispielreise: B sieht ihn genau wie ein Gast (#421: für alle freigegeben ja, nur für
+    Beteiligte nein) und ändert ihn nicht."""
+    import belege as bl
+    u = zwei()
+    o = u.ablage / "beispielreise"
+    b, nein = bl.ablegen(o, "B-01", "Ida", "fahrkarte.pdf", b"%PDF-1.4\n% Beispielwert\n")
+    assert nein is None, nein
+    url = f"{u.rurl}/beispielreise/belege/{b['id']}"
+    for sichtbar, erwartet in (("beteiligte", 404), ("alle", 200)):
+        d = bl.lesen(o)
+        d["belege"][0]["sichtbar"] = sichtbar
+        bl.speichern(o, d)
+        gast = abruf(url)
+        fremd = abruf(url, cookie=u.b_keks)
+        assert fremd[0] == gast[0] == erwartet, (sichtbar, fremd[0], gast[0])
+        assert fremd[2] == gast[2]
+        assert not verraet(fremd[2], [IDA, KARL])
+    vorher = abdruck(o)
+    s, _, t = abruf(url, "PATCH", cookie=u.b_keks, json_body={"sichtbar": "beteiligte", "name": "Ida"})
+    assert s in (401, 403), (s, t)
+    assert abdruck(o) == vorher
+    eigen = abruf(url, cookie=u.a_keks)
+    assert eigen[0] == 200
