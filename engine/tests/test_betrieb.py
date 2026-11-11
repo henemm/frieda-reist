@@ -2998,3 +2998,56 @@ def test_ci_nachweis_abgeschaltet_laeuft_die_serverpruefung(an):
     r = an["lauf_an"](T0, VF_CINACHWEIS=str(nachweis), FR_CI_NACHWEIS="0")
     assert r.returncode == 0 and "skipped (#403)" not in r.stdout
     assert "p" in an["zeilen"]("pruefen.log")
+
+
+def _ersetzen(ziel, *dateien):
+    return subprocess.run([str(BETRIEB / "ersetzen.sh"), str(ziel), *map(str, dateien)], capture_output=True, text=True)
+
+
+def test_ersetzen_laesst_unveraenderte_dateien_stehen(tmp_path):
+    """#489: deploy.sh ersetzte jedes Modul in <FR_DIENST> mit install, auch unveränderte. install löscht die Zieldatei
+    und schreibt sie neu; ein gleichzeitiger Schreibvorgang fand texte_de.py kurz nicht und meldete „Fehler im Dienst“.
+    Unveränderte Dateien bleiben deshalb unberührt (gleicher Inode)."""
+    quelle, ziel = tmp_path / "quelle", tmp_path / "ziel"
+    quelle.mkdir()
+    (quelle / "a.py").write_text("A = 1\n")
+    assert _ersetzen(ziel, quelle / "a.py").returncode == 0
+    inode = (ziel / "a.py").stat().st_ino
+    r = _ersetzen(ziel, quelle / "a.py")
+    assert r.returncode == 0, r.stderr
+    assert (ziel / "a.py").stat().st_ino == inode
+
+
+def test_ersetzen_tauscht_geaenderte_dateien_atomar(tmp_path):
+    """Eine geänderte Datei kommt per Umbenennen an ihren Platz (neuer Inode, nie fehlend oder halb geschrieben):
+    Wer die alte Datei offen hat, liest sie ganz zu Ende; Rechte 644; keine Reste im Zielordner."""
+    quelle, ziel = tmp_path / "quelle", tmp_path / "ziel"
+    quelle.mkdir()
+    (quelle / "a.py").write_text("A = 1\n")
+    (quelle / "b.html").write_text("<p>alt</p>\n")
+    assert _ersetzen(ziel, quelle / "a.py", quelle / "b.html").returncode == 0
+    alt = open(ziel / "a.py")
+    inode = (ziel / "a.py").stat().st_ino
+    (quelle / "a.py").write_text("A = 2\n")
+    r = _ersetzen(ziel, quelle / "a.py", quelle / "b.html")
+    assert r.returncode == 0, r.stderr
+    assert (ziel / "a.py").read_text() == "A = 2\n" and (ziel / "a.py").stat().st_ino != inode
+    assert alt.read() == "A = 1\n"
+    alt.close()
+    assert stat.S_IMODE((ziel / "a.py").stat().st_mode) == 0o644
+    assert sorted(p.name for p in ziel.iterdir()) == ["a.py", "b.html"]
+
+
+def test_ersetzen_bricht_bei_fehlender_quelle_ab(tmp_path):
+    (tmp_path / "ziel").mkdir()
+    r = _ersetzen(tmp_path / "ziel", tmp_path / "fehlt.py")
+    assert r.returncode != 0 and list((tmp_path / "ziel").iterdir()) == []
+
+
+def test_deploy_ersetzt_dateien_im_dienst_nur_ueber_ersetzen():
+    """Kein install mehr nach <FR_DIENST> (#489): Module, Vorlage und Service-Worker gehen über ersetzen.sh, Ordner über
+    rsync (das schreibt ohnehin in eine Temp-Datei und benennt um)."""
+    deploy = (BETRIEB / "deploy.sh").read_text(encoding="utf-8")
+    assert not re.search(r'install [^\n]*"\$DIENST/?"', deploy)
+    assert '"$FR_BETRIEB/ersetzen.sh" "$DIENST"' in deploy
+    assert "--inplace" not in deploy

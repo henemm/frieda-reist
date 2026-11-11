@@ -78,7 +78,9 @@ for m in $RM_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_RM=1; don
 for m in $KN_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_KN=1; done
 for m in $SB_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_SB=1; done
 for m in $PS_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_PS=1; done
-for m in $(printf '%s\n' $RM_MODULE $KN_MODULE $SB_MODULE $PS_MODULE | sort -u); do install -m 644 "$WURZEL/engine/$m" "$DIENST/"; done
+# Nur Geändertes ersetzen und atomar per Umbenennen (#489): Der Schreibweg lädt während eines Software-Wechsels aus
+# <FR_DIENST>; install löschte jede Datei kurz und ließ einen gleichzeitigen Schreibvorgang scheitern.
+"$FR_BETRIEB/ersetzen.sh" "$DIENST" $(printf '%s\n' $RM_MODULE $KN_MODULE $SB_MODULE $PS_MODULE | sort -u | sed "s|^|$WURZEL/engine/|")
 # Friedas Symbol (Favicon, App-Symbol) und die Schrift der Anmeldeseiten; der Konnektor liest die Dateien bei jedem
 # Abruf, kein Neustart nötig
 rsync -a --delete --chmod=D755,F644 --exclude "*.py" "$WURZEL/engine/marke/" "$DIENST/marke/"
@@ -88,7 +90,7 @@ rsync -a --delete --chmod=D755,F644 --include "*.woff2" --exclude "*" "$WURZEL/e
 # Bilder der Infoseite (#436): der Konnektor liefert sie aus info/ (ohne Neustart); das Skript zum Erzeugen bleibt im Repo
 rsync -a --delete --chmod=D755,F644 --include "*.webp" --exclude "*" "$WURZEL/engine/info/" "$DIENST/info/"
 # Was der Probebau und reise_anlegen des Schreibwegs neben den Modulen lesen (Speicherweg, #347; je Vorgang frisch gelesen)
-install -m 644 "$WURZEL/engine/vorlage.html" "$WURZEL/engine/sw.vorlage.js" "$DIENST/"
+"$FR_BETRIEB/ersetzen.sh" "$DIENST" "$WURZEL/engine/vorlage.html" "$WURZEL/engine/sw.vorlage.js"
 rsync -a --delete --chmod=D755,F644 "$WURZEL/engine/vendor/" "$DIENST/vendor/"
 rsync -a --delete --chmod=D755,F644 "$WURZEL/engine/reisevorlage/" "$DIENST/reisevorlage/"
 rsync -a --delete --chmod=D755,F644 "$WURZEL/engine/artvorlagen/" "$DIENST/artvorlagen/"   # Vorlagen für Arten (ADR-0011)
