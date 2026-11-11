@@ -2035,6 +2035,8 @@ TEXTE = {
     "konnektor.frieda_werkzeug.4": "No account with this address.",
     "konnektor.frieda_werkzeug.5": "Your request is with the operator. You will be told in meine_reisen.",
     "konnektor.frieda_werkzeug.6": "Your request was declined. If you have questions, contact the operator.",
+    "konnektor.grenze.reisen": "You have already created {grenze} trips, which is the most each person can create during this test phase. If you need more, please contact the operator.",
+    "konnektor.grenze.schreiben": "You have made a lot of changes in the last hour, so no more can be saved right now. You can continue in {minuten} min.; until then you can still read everything.",
     "konnektor.kalender_link.1": "The calendar subscription is not set up on the server (KN_BASIS). The download is under “My account”.",
     "konnektor.kategorien.1": "This trip has no map categories yet. Organisers create them with kategorie_definieren (group point for the stage map, knowledge for the map in a knowledge section).",
     "konnektor.kategorien.2": "Change or add with kategorie_definieren (key from this list); have it confirmed briefly first.",

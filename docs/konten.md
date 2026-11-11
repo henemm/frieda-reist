@@ -38,7 +38,10 @@ erkannt und bekommt darüber jederzeit wieder Zugang.
 - **Rollen** bleiben, wo sie sind (`reise.yaml`, `einladungen.json`). Konten verknüpfen nur Konto und Person. Im
   Repo stehen deshalb keine Adressen.
 - **Lesen** der Reiseseite geht weiter über den geheimen Seitenlink ohne Anmeldung. Mitmachen braucht Anmeldung und
-  Rolle (ab J2).
+  Rolle (ab J2). Das ist eine bewusste Grenze (Product Owner, 27.10. und 8.11.2026, #421): Wer den Link kennt, liest die
+  Seite, `stand`, `brett`, `packstand` und Belege wie ein Gast; ein angemeldetes Nicht-Mitglied sieht nicht mehr als ein
+  Gast, und entfernte Personen lesen über den Link weiter wie ein Gast. Der Link hat 96 Bit Zufall, ist `noindex` und
+  `no-referrer`. Die Testreihe `engine/tests/test_trennung.py` belegt die Trennung zweier Konten (#380).
 
 ## Szenarien
 
@@ -65,6 +68,13 @@ erkannt und bekommt darüber jederzeit wieder Zugang.
 - **Begrenzung:**
   - je Adresse 3 Codes in 15 Minuten, je IP 10 in der Stunde
   - je Reise 50 Einladungen am Tag
+  - je Konto höchstens `FR_GRENZE_REISEN` angelegte Reisen (Vorgabe 10; gezählt werden angenommene Anfragen, dauerhaft;
+    archivierte Reisen geben die Zahl nicht frei) und `FR_GRENZE_SCHREIBEN` schreibende Werkzeugaufrufe im Konnektor je
+    Stunde (Vorgabe 300, gleitendes Fenster; schreibend sind die Werkzeuge aus `SCHREIB_WERKZEUGE`, `SCHREIB_AKTION` und
+    `ONTOLOGIE_WERKZEUGE`). Zähler in den Tabellen `angelegte_reisen` und `schreibvorgaenge` der Konten-Datenbank;
+    Betreiber (Recht `betreiber`) sind ausgenommen. Wer an eine Grenze stößt, bekommt einen freundlichen Satz samt
+    Wartezeit; im Dienstprotokoll steht eine Zeile `grenze <konto> schreiben|reisen` ohne Adresse oder Name, ein Alarm
+    geht nicht (#380). Aufrufe einer fremden Reise verbrauchen keinen Zähler.
 - **Sitzungen:** je Gerät, 365 Tage gültig und rollierend (jede Nutzung verlängert). Abmelden geht je Gerät oder
   überall.
 
@@ -152,6 +162,7 @@ Umgebung:
 | `FR_MAIL_DATEI` | Mails stattdessen als JSON-Zeilen in diese Datei (Tests, Probebetrieb) |
 | `FR_OAUTH_REDIRECTS` | weitere erlaubte Redirect-URIs der Claude-App (durch Komma getrennt) |
 | `FR_CIMD_HOSTS` | Hosts, von denen Client ID Metadata Documents geladen werden (Vorgabe `claude.ai`) |
+| `FR_GRENZE_REISEN`, `FR_GRENZE_SCHREIBEN` | Grenzen je Konto (Vorgaben 10 Reisen, 300 Schreibvorgänge je Stunde; Abschnitt „Sicherheit“); ungültige oder nicht positive Werte gelten als nicht gesetzt |
 
 Befehle für den Betreiber: `python3 engine/konten.py liste | anfragen | freischalten <email> [--nein] |
 warteliste | freigeben <email> |

@@ -37,6 +37,7 @@ import base64
 import datetime
 import hashlib
 import json
+import math
 import os
 import re
 import secrets
@@ -2108,6 +2109,10 @@ def reise_anlegen(konto, args):
             return tk("konnektor.ausgabe.reise_anlegen.2", fehler=fehler), True
         if not schreibdienst():
             return (tk("konnektor.reise_anlegen.1")), True
+        wer_konto = konten.konto(konto["konto_id"]) if konto.get("konto_id") else None
+        if wer_konto and konten.reisegrenze_erreicht(wer_konto):   # Grenze je Konto (#380); Betreiber ausgenommen
+            sys.stderr.write(f"grenze {wer_konto['id']} reisen\n")
+            return tk("konnektor.grenze.reisen", grenze=instanz.grenze_reisen()), True
         wer_text = ", ".join(p['name'] + " (" + p['rolle'] + ("" if p.get('reist', True) else ", " + tk("konnektor.ausgabe.einladen.reist_nicht_mit")) + ")"
                              for p in neu["personen"].values())
         tkn = lambda schluessel, /, **w: texte.t(neu["sprache"], schluessel, **w)   # Text für die Ablage der neuen Reise: in deren Sprache
@@ -2150,6 +2155,8 @@ def reise_anlegen(konto, args):
             ausstehend_datei().parent.mkdir(parents=True, exist_ok=True)
             with ausstehend_datei().open("a", encoding="utf-8") as f:
                 f.write(json.dumps({"ordner": neu["pfad"], "aid": e["id"], "name": konto["name"], "person": person}, ensure_ascii=False) + "\n")
+            if wer_konto:
+                konten.reise_vormerken(wer_konto, neu["pfad"])
     if fehler:
         return tk("konnektor.ausgabe.reise_anlegen.2", fehler=fehler), True
     return (tk("konnektor.reise_anlegen.3", w1=neu['titel'], w2=neu['pfad'])
@@ -2318,6 +2325,12 @@ def frieda_werkzeug(k, name, args):
     schl = next((s_ for r, s_, _ in reisen if r == reise), None)
     if not schl:
         return tk("konnektor.frieda_werkzeug.1"), True
+    if name in SCHREIB_WERKZEUGE or name in SCHREIB_AKTION or name in ONTOLOGIE_WERKZEUGE:   # Schreibgrenze je Konto (#380)
+        warten = konten.schreibgrenze(k)
+        if warten is not None:
+            sys.stderr.write(f"grenze {k['id']} schreiben\n")
+            return tk("konnektor.grenze.schreiben", minuten=math.ceil(warten / 60)), True
+        konten.schreiben_vormerken(k)
     args.pop("name", None)
     return werkzeug({"reise": reise, "person": schl, "konto_id": k["id"]}, name, args)
 

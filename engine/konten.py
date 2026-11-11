@@ -128,6 +128,8 @@ CREATE TABLE IF NOT EXISTS warteliste (
   email TEXT PRIMARY KEY, sprache TEXT NOT NULL DEFAULT '', erstellt REAL NOT NULL, hash TEXT, ablauf REAL,
   bestaetigt REAL, freigegeben REAL);
 CREATE TABLE IF NOT EXISTS versand (schluessel TEXT NOT NULL, zeit REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS angelegte_reisen (konto TEXT NOT NULL, pfad TEXT NOT NULL, zeit REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS schreibvorgaenge (konto TEXT NOT NULL, zeit REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS kalender_abo (
   konto TEXT PRIMARY KEY, stand INTEGER NOT NULL DEFAULT 0, einstellungen TEXT NOT NULL DEFAULT '{}');
 DROP TABLE IF EXISTS kalender;
@@ -156,6 +158,8 @@ CREATE INDEX IF NOT EXISTS push_abos_konto ON push_abos (konto);
 CREATE INDEX IF NOT EXISTS push_warteschlange_offen ON push_warteschlange (gesendet, konto);
 CREATE INDEX IF NOT EXISTS oauth_tokens_konto ON oauth_tokens (konto);
 CREATE INDEX IF NOT EXISTS versand_schluessel ON versand (schluessel, zeit);
+CREATE INDEX IF NOT EXISTS angelegte_reisen_konto ON angelegte_reisen (konto);
+CREATE INDEX IF NOT EXISTS schreibvorgaenge_konto ON schreibvorgaenge (konto, zeit);
 CREATE INDEX IF NOT EXISTS sitzungen_konto ON sitzungen (konto);
 """
 
@@ -523,6 +527,47 @@ def zusammenfuehren(von, nach):
 
 def recht(k, r):
     return bool(k) and not k.get("gesperrt") and r in k.get("rechte", [])
+
+
+# ---------------------------------------------------------------- Grenzen je Konto (#380)
+
+SCHREIB_FENSTER = 3600   # Sekunden: gleitendes Fenster der Schreibgrenze
+
+
+def reisegrenze_erreicht(k):
+    """Hat das Konto so viele Reisen angelegt, wie die Instanz erlaubt (instanz.grenze_reisen)? Betreiber nie.
+    Gezählt werden angenommene Anfragen, dauerhaft, ohne Fenster."""
+    if recht(k, "betreiber"):
+        return False
+    with closing(db()) as v:
+        n = v.execute("SELECT COUNT(*) FROM angelegte_reisen WHERE konto = ?", (k["id"],)).fetchone()[0]
+    return n >= instanz.grenze_reisen()
+
+
+def reise_vormerken(k, pfad_):
+    """Eine angenommene Reiseanfrage des Kontos zählen."""
+    with closing(db()) as v, v:
+        v.execute("INSERT INTO angelegte_reisen VALUES (?, ?, ?)", (k["id"], pfad_, _jetzt()))
+
+
+def schreibgrenze(k):
+    """None, wenn das Konto schreiben darf; sonst die Wartezeit in Sekunden, bis der älteste Eintrag im Fenster frei wird.
+    Betreiber immer frei. Einträge älter als das Fenster werden dabei gelöscht."""
+    if recht(k, "betreiber"):
+        return None
+    t = _jetzt()
+    with closing(db()) as v, v:
+        v.execute("DELETE FROM schreibvorgaenge WHERE zeit <= ?", (t - SCHREIB_FENSTER,))
+        n, aeltester = v.execute("SELECT COUNT(*), MIN(zeit) FROM schreibvorgaenge WHERE konto = ?", (k["id"],)).fetchone()
+    if n < instanz.grenze_schreiben():
+        return None
+    return max(1, aeltester + SCHREIB_FENSTER - t)
+
+
+def schreiben_vormerken(k):
+    """Einen angenommenen schreibenden Werkzeugaufruf des Kontos zählen."""
+    with closing(db()) as v, v:
+        v.execute("INSERT INTO schreibvorgaenge VALUES (?, ?)", (k["id"], _jetzt()))
 
 
 def recht_setzen(kid, r, an=True):

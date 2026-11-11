@@ -153,3 +153,26 @@ def konnektor():
 def kennung():
     """Kennung bei Abrufen fremder Dienste (OpenStreetMap verlangt eine Kontaktangabe): FR_KENNUNG der Instanz."""
     return wert("FR_KENNUNG", KENNUNG)
+
+
+VORGABE_GRENZE_REISEN = 10
+VORGABE_GRENZE_SCHREIBEN = 300
+
+
+def _grenze(name, vorgabe):
+    """Ganze Zahl ab 1 aus Umgebung oder Einstellungsdatei; leer, keine ganze Zahl oder kleiner als 1 gilt als nicht gesetzt."""
+    try:
+        n = int(str(wert(name, "")).strip())
+    except ValueError:
+        return vorgabe
+    return n if n >= 1 else vorgabe
+
+
+def grenze_reisen():
+    """Höchstzahl angelegter Reisen je Konto (FR_GRENZE_REISEN, #380); Betreiber sind ausgenommen (konten.py)."""
+    return _grenze("FR_GRENZE_REISEN", VORGABE_GRENZE_REISEN)
+
+
+def grenze_schreiben():
+    """Höchstzahl schreibender Werkzeugaufrufe je Konto und Stunde im Konnektor (FR_GRENZE_SCHREIBEN, #380)."""
+    return _grenze("FR_GRENZE_SCHREIBEN", VORGABE_GRENZE_SCHREIBEN)

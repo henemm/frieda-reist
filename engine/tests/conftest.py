@@ -45,6 +45,8 @@ def rueckfall_deutsch(request, monkeypatch):
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
     import texte
     monkeypatch.setattr(texte, "VORGABE_REISE", "de")
+    # Sprache des Aufrufs aus einem früheren Test im selben Thread (antwort_fuer setzt sie je Anfrage) gilt hier nicht
+    monkeypatch.delattr(texte._aufruf, "sprache", raising=False)
 
 
 def pytest_configure(config):

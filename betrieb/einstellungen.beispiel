@@ -135,6 +135,12 @@ FR_ADRESSE=https://reisen.example.org
 # eigene mit, sobald ein Gerät Benachrichtigungen eingeschaltet hat). Jede Zeit trägt die Zone. (UTC)
 #FR_ZEITZONE=Europe/Berlin
 
+# Grenzen je Konto (#380, docs/konten.md): höchstens so viele angelegte Reisen (gezählt werden angenommene Anfragen, dauerhaft)
+# und so viele schreibende Werkzeugaufrufe im Konnektor je Stunde. Betreiber sind ausgenommen. Der Konnektor sieht diese
+# Datei nicht (wie beim Impressum unten): Abweichende Werte gehören in <FR_DIENST>/konten.env. (10, 300)
+#FR_GRENZE_REISEN=10
+#FR_GRENZE_SCHREIBEN=300
+
 # Betreiber der Instanz für das Impressum (/impressum, #383): Name, Anschrift (eine Zeile) und Kontakt (z. B. eine
 # E-Mail-Adresse). Alle drei sind Pflicht; fehlt eine, zeigt das Impressum „nicht eingerichtet“. Echte Angaben nie
 # hier: Der Konnektor läuft ohne Zugriff auf das Reisen-Repo und liest nur <FR_DIENST>/konten.env (Zeilen NAME=wert,

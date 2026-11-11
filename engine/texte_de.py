@@ -2036,6 +2036,8 @@ TEXTE = {
     "konnektor.frieda_werkzeug.4": "Kein Konto mit dieser Adresse.",
     "konnektor.frieda_werkzeug.5": "Deine Bitte liegt beim Betreiber. Du bekommst Bescheid in meine_reisen.",
     "konnektor.frieda_werkzeug.6": "Deine Bitte wurde abgelehnt. Bei Fragen wende dich an den Betreiber.",
+    "konnektor.grenze.reisen": "Du hast schon {grenze} Reisen angelegt, mehr sind je Person in dieser Testphase nicht möglich. Wenn du mehr brauchst, wende dich an den Betreiber.",
+    "konnektor.grenze.schreiben": "In der letzten Stunde hast du sehr viel eingetragen, mehr geht gerade nicht. In {minuten} Min. kannst du weitermachen; bis dahin kannst du alles lesen.",
     "konnektor.kalender_link.1": "Das Kalender-Abo ist auf dem Server nicht eingerichtet (KN_BASIS). Der Download geht unter „Mein Konto“.",
     "konnektor.kategorien.1": "Diese Reise hat noch keine Kartenkategorien. Mit kategorie_definieren legen Organisator:innen sie an (Gruppe punkt für die Etappen-Karte, wissen für die Karte in einem Wissensabschnitt).",
     "konnektor.kategorien.2": "Ändern oder ergänzen mit kategorie_definieren (Schlüssel aus dieser Liste); vorher kurz bestätigen lassen.",
