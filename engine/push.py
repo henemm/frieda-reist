@@ -16,6 +16,9 @@ der Uhr ihres Geräts (Vorgabe 21:30 bis 7:00). Was in der Ruhezeit anfällt, wa
 Zeit für dieselbe Reise wartet, kommt als eine Nachricht („3 Neuigkeiten“). Eine Reise ohne Kanal push in
 regeln.meldekanal schickt nichts. Beim ersten Lauf merkt sich der Dienst nur den Stand; Altes wird nie nachgeschickt.
 
+Mail als Rückfall (#513, Kanal mail): Ein Statushinweis (Art status, „auf fest/unterwegs/danach stellen?“), der nach
+MAIL_NACH noch gilt, geht an Organisator:innen ohne Gerät mit Benachrichtigungen einmal per Mail (konten.mail_senden).
+
 Frieda enthält keine eigene KI (ADR-0001): Der Dienst liest und stellt zu, er deutet nichts und ändert keine Reise.
 Versand über Web Push (RFC 8030/8291/8292) mit pywebpush (MPL-2.0, engine/requirements.txt). Darum läuft er mit dem
 Python der Software (FR_PYTHON), nicht mit dem des Systems; alles außer dem Versand nutzt nur die Standardbibliothek,
@@ -55,6 +58,10 @@ MAX_VERSUCHE = 5              # Fehlversuche je Nachricht (Push-Dienst nicht err
 TTL = 12 * 3600               # so lange hält der Push-Dienst eine Nachricht für ein ausgeschaltetes Gerät
 MAX_TEXT = 240                # Zeichen im Text einer Nachricht (Telefone kürzen ohnehin)
 OFFEN = ("offen", "in_arbeit")
+MAIL_NACH = 24 * 3600         # so lange nach einem Statushinweis ohne Wechsel kommt er per Mail (#513)
+MAIL_BIS = 3 * 86400          # ältere Hinweise gehen nicht mehr per Mail (etwa nach einer Pause des Dienstes)
+MAIL_VERSUCHE = 3             # Fehlversuche je Mail, dann aufgeben
+MAIL_PAUSE = 3600             # Sekunden zwischen zwei Versuchen
 
 
 # ---------- Einstellungen und Ruhezeit (nur Standardbibliothek) ----------
@@ -420,10 +427,68 @@ def webpush_sender():
     return senden
 
 
-def lauf(senden=None, jetzt=None):
+# ---------- Mail als Rückfall für Statushinweise (#513) ----------
+
+def _sekunden(iso):
+    try:
+        return datetime.datetime.fromisoformat(str(iso)).timestamp()
+    except ValueError:
+        return None
+
+
+def mail_text(kid, reise, m, name):
+    """-> (Betreff, Text) einer Mail zu einem Statushinweis, in der Sprache des Kontos."""
+    sp = sprache_von(kid)
+    seite = seite_von(reise) or ""
+    zeilen = [texte.t(sp, "push.mail.anrede", name=name), "", rm.meldung_text_in(m, sp) or m.get("text", "")]
+    if seite:
+        zeilen += ["", texte.t(sp, "push.mail.seite", seite=seite)]
+    zeilen += ["", texte.t(sp, "push.mail.warum")]
+    if konten.basis():
+        zeilen.append(konten.basis() + "/konto")
+    return texte.t(sp, "push.mail.betreff", titel=titel_von(reise)), "\n".join(zeilen)
+
+
+def mail_rueckfall(senden=None, jetzt=None):
+    """Statushinweise, die seit MAIL_NACH unverändert gelten, einmal per Mail an die Empfänger ohne Push-Gerät. -> Zahl
+    der verschickten Mails. Gemerkt wird je Hinweis und Konto (push_stand), damit keine Mail doppelt kommt."""
+    senden = senden or konten.mail_senden
+    jetzt = jetzt or time.time()
+    n = 0
+    for reise in _reisen():
+        o, z = rm.ordner(reise), rm.zustand(reise)
+        if o is None or z is None or "mail" not in ((z.get("regeln") or {}).get("meldekanal") or rg.VORGABEN["meldekanal"]):
+            continue
+        for m in _jsonl(o / "meldungen.jsonl"):
+            erstellt = _sekunden(m["erstellt"])
+            if (m.get("art") != "status" or m.get("status_bei") != z.get("status") or erstellt is None
+                    or not MAIL_NACH <= jetzt - erstellt <= MAIL_BIS):
+                continue
+            for kid, p in _empfaenger(reise, z.get("personen") or [], m.get("an") or []).items():
+                schl = f"mail:{m['id']}:{kid}"
+                vorher = stand(schl)
+                if (vorher or {}).get("gesendet") or (vorher or {}).get("versuche", 0) >= MAIL_VERSUCHE \
+                        or jetzt - (vorher or {}).get("zuletzt", 0) < MAIL_PAUSE or konten.push_abos(kid):
+                    continue
+                k = konten.konto(kid)
+                if not k or k["gesperrt"] or not k["email"]:
+                    continue
+                betreff, text = mail_text(kid, reise, m, p.get("name") or k["name"])
+                try:
+                    senden(k["email"], betreff, text)
+                except konten.KontoFehler as x:
+                    stand(schl, {"versuche": (vorher or {}).get("versuche", 0) + 1, "zuletzt": jetzt})
+                    print(f"Mail {reise} {m['id']}: {x.schluessel}", file=sys.stderr, flush=True)
+                    continue
+                stand(schl, {"gesendet": jetzt})
+                n += 1
+    return n
+
+
+def lauf(senden=None, jetzt=None, mail=None):
     n = sammeln(jetzt)
     erg = zustellen(senden or webpush_sender(), jetzt)
-    return {"vorgemerkt": n, **erg}
+    return {"vorgemerkt": n, **erg, "mails": mail_rueckfall(mail, jetzt)}
 
 
 def dienst():
@@ -433,7 +498,7 @@ def dienst():
     while True:
         try:
             erg = lauf(senden)
-            if erg["vorgemerkt"] or erg["nachrichten"] or erg["fehler"] or erg["weg"]:
+            if erg["vorgemerkt"] or erg["nachrichten"] or erg["fehler"] or erg["weg"] or erg["mails"]:
                 print(json.dumps(erg), flush=True)
         except Exception as x:   # ein Fehler in einer Reise hält den Dienst nicht an; der nächste Durchgang versucht es
             print(f"Error: {type(x).__name__}: {x}", file=sys.stderr, flush=True)

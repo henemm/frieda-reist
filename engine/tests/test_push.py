@@ -415,3 +415,56 @@ def test_anstoss_nur_organisatorinnen(reise):
     assert json.loads(datei.read_text()) == a
     # ein zweiter Anstoß vor dem Veröffentlichen ändert nichts
     assert json.loads(abruf(url, "POST", json_body={}, cookie=u.ida)[2])["angestossen"] == a
+
+
+# ---------- Statushinweise: Push auch ohne Wächter, Mail als Rückfall (#513) ----------
+
+def test_statushinweis_per_push_und_mail_rueckfall(reise):
+    u = reise
+    status = rm.zustand("beispielreise")["status"]
+    jetzt = datetime.datetime.fromtimestamp(MITTAG, datetime.timezone.utc)
+    m = rm.meldung_anlegen(u.o, ["Ida", "Karl"], "status", "reise", "Heute geht es los! Auf „unterwegs“ stellen?",
+                           schluessel=f"status:{status}:unterwegs", bezug="reise", zeit=jetzt,
+                           extra={"status_bei": status, "status_ziel": "unterwegs"})
+    assert push.sammeln(MITTAG) == 2                                 # Art status kommt auch ohne Baustein waechter
+    # Mail erst nach einem Tag, nur an Personen ohne Gerät, nur einmal
+    konten.push_abo_entfernen(u.ida_id, abo("ida")["endpoint"])
+    gesendet = []
+    post = lambda an, betreff, text: gesendet.append((an, betreff, text))  # noqa: E731
+    assert push.mail_rueckfall(post, MITTAG + 23 * 3600) == 0
+    assert push.mail_rueckfall(post, MITTAG + 25 * 3600) == 1
+    (an, betreff, text), = gesendet
+    assert an == IDA and betreff == "Beispiel: Status der Reise"
+    assert text.startswith("Hallo Ida,") and "Auf „unterwegs“ stellen?" in text and SEITE in text
+    assert BASIS + "/konto" in text
+    assert push.mail_rueckfall(post, MITTAG + 26 * 3600) == 0 and len(gesendet) == 1
+    # nach dem Wechsel oder zu alt: keine Mail
+    rm.meldung_anlegen(u.o, ["Ida"], "status", "reise", "alt", zeit=jetzt, extra={"status_bei": "idee"})
+    rm.meldung_anlegen(u.o, ["Ida"], "status", "reise", "lange her", zeit=jetzt - datetime.timedelta(days=5),
+                       extra={"status_bei": status})
+    assert push.mail_rueckfall(post, MITTAG + 30 * 3600) == 0
+    assert m["id"] and len(gesendet) == 1
+
+
+def test_mail_rueckfall_fehler_und_kanal(reise, welt):
+    u = reise
+    status = rm.zustand("beispielreise")["status"]
+    konten.push_abo_entfernen(u.ida_id, abo("ida")["endpoint"])
+    rm.meldung_anlegen(u.o, ["Ida"], "status", "reise", "Auf „fest“ stellen?",
+                       zeit=datetime.datetime.fromtimestamp(MITTAG, datetime.timezone.utc), extra={"status_bei": status})
+    versuche = []
+
+    def kaputt(an, betreff, text):
+        versuche.append(an)
+        raise konten.KontoFehler("konto.fehler.mail_nicht_eingerichtet")
+    t = MITTAG + 25 * 3600
+    assert push.mail_rueckfall(kaputt, t) == 0 and push.mail_rueckfall(kaputt, t + 60) == 0 and len(versuche) == 1
+    for i in range(1, 5):
+        push.mail_rueckfall(kaputt, t + i * push.MAIL_PAUSE + 1)
+    assert len(versuche) == push.MAIL_VERSUCHE
+    # Reise ohne Kanal mail: nichts
+    v = welt(regeln={"meldekanal": ["app", "push"]})
+    konten.einladen("beispielreise", "ida", IDA, "organisator", "Ida", "Ida")
+    rm.meldung_anlegen(v.o, ["Ida"], "status", "reise", "x", zeit=datetime.datetime.fromtimestamp(MITTAG, datetime.timezone.utc),
+                       extra={"status_bei": rm.zustand("beispielreise")["status"]})
+    assert push.mail_rueckfall(lambda *a: versuche.append(a), t) == 0
