@@ -3426,6 +3426,8 @@ TEXTE = {
     "seite.packliste.name_beim_ersten_haken": "At your first tick the page asks for your name.",
     "seite.packliste.offline_hinweis": "Without a connection the page remembers your ticks and sends them later.",
     "seite.packliste.mitnehmen": "To take along:",
+    "seite.packliste.alle_auf": "Expand all",
+    "seite.packliste.alle_zu": "Collapse all",
     "seite.packliste.zur_liste": "To the packing list",
     "mail.warteliste.betreff": "Frieda: confirm your place on the waiting list",
     "mail.warteliste.zeile_link": "Please confirm your address for the Frieda waiting list. The link is valid for {tage} days:",

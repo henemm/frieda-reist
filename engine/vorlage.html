@@ -838,7 +838,13 @@ dialog#rm::backdrop{background:rgba(0,0,0,.35)}
 .pack-tabelle h3{display:flex;align-items:center;gap:6px}
 .pico .pack-tabelle .wm-tab tr.weg>:is(th,td){opacity:.65}
 .pack-gruppe{margin:0 0 14px}
-.pack-gruppe>h3{display:flex;align-items:center;gap:10px;font-size:var(--t-untertitel);margin:18px 0 2px}
+.pack-gruppe h3{display:flex;align-items:center;gap:10px;font-size:var(--t-untertitel);margin:0}
+/* Molekül Packklapper (#511): Gruppe der Packliste als Aufklapper, Kopfzeile mit Titel, Stand und Summe */
+details.pack-klapper>summary{list-style:none;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;min-height:48px;cursor:pointer;padding:6px 0;margin-top:12px}
+details.pack-klapper>summary .pack-summe{margin:0 0 0 auto}
+.pack-gruppe.fertig .pack-fortschritt{color:var(--acc);font-weight:600}
+.pack-kopfsumme{margin-left:auto;font-size:var(--t-klein);color:var(--mut);font-variant-numeric:tabular-nums}
+.pico button.pack-alle{margin:0 0 0 auto;width:auto;min-height:40px;padding:0 6px;background:none;border:0;color:var(--acc);font:600 var(--t-klein)/1.2 var(--font-text);cursor:pointer}
 .pack-fortschritt{font-size:var(--t-klein);font-weight:400;color:var(--mut)}
 .pico details.pack-weg{margin:14px 0 0;max-width:var(--lese)}
 .pico details.pack-weg>summary{color:var(--mut);font-size:var(--t-klein)}
@@ -1334,7 +1340,7 @@ function zid(id) {
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, nummerChip
-   Moleküle: block, kennzahlLeiste, halteLeiste, herkunftJeWert, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, Rechtszeile (HTML im Fuß)
+   Moleküle: block, kennzahlLeiste, halteLeiste, herkunftJeWert, plKlapper, plAlleKnopf, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, Rechtszeile (HTML im Fuß)
    Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, entschieden, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
@@ -4629,6 +4635,9 @@ function ansichtBausteine(m) {
   teil("Molekül", "Gegenstandszeile", "Ein Gegenstand beim Packen: Haken (nur für die Person, die ihn packt), Titel mit Kennung, Merkmale, Bezug und Stand.",
     el("div", {class: "pack-gruppe"}, gegenstandZeile(pg)));
   teil("Organismus", "Packtabelle", "Die Kategorie mit den Merkmalen als Spalten und den Summen (Ansicht Planen).", pk.gegenstaende.length ? packTabelle(pk) : el("p", {class: "meldung"}, "Muster: die Reise hat noch keine Gegenstände."));
+  teil("Molekül", "Packklapper", "Gruppe der Packliste als Aufklapper: Kopfzeile mit Titel, Stand und Summe; fertige Gruppen beim Packen zu (#511).",
+    plKlapper("bausteine|muster", false, {class: "pack-gruppe"}, el("h3", {}, "Tagesrucksack ", el("span", {class: "pack-fortschritt"}, "✓ 5 von 5 gepackt")), el("p", {}, "Inhalt der Gruppe")));
+  teil("Molekül", "Alle auf oder zu", "Knopf über den Gruppen der Packliste: klappt alle auf oder alle zu (#511).", (b => plAlleKnopf(b))(el("div", {})));
   teil("Organismus", "Packgruppe", "Eine Gruppe beim Packen (Kategorie, Raum …) mit Fortschritt, Summen und Zeilen zum Abhaken.",
     packGruppe(pk.name, PL.gegenstaende.filter(g => g.art === pk.art && plAktiv(g)).slice(0, 3).concat(pk.gegenstaende.length ? [] : [pg])));
   if (!R) return;
@@ -5389,8 +5398,10 @@ function gegenstandZeile(g, ohneMerkmal) {
 // (artUebersicht), dazu wer packt und wo er gebraucht wird, unten die Summen; weggelassene zugeklappt darunter
 function packTabelle(k) {
   const alle = PL.gegenstaende.filter(g => g.art === k.art), gs = alle.filter(plAktiv), weg = alle.filter(g => !plAktiv(g));
-  const box = el("section", {class: "wm pack-tabelle", "data-art": k.art},
-    el("h3", {}, symbol(k.symbol || "packliste", "etikett-sym"), " ", T("seite.packliste.kategorie_titel", {art: k.name, n: gs.length})));
+  const summen = (k.summen || []).flatMap(s => s.summen || []).map(plSummeText).join(" · ");
+  const box = plKlapper("planen|" + k.art, true, {class: "wm pack-tabelle", "data-art": k.art},
+    el("h3", {}, symbol(k.symbol || "packliste", "etikett-sym"), " ", T("seite.packliste.kategorie_titel", {art: k.name, n: gs.length})),
+    summen ? el("span", {class: "pack-kopfsumme"}, summen) : null);
   if (!gs.length && !weg.length) return box.append(el("p", {class: "meldung"}, T("seite.packliste.kategorie_leer"))) || box;
   const spalten = k.merkmale.filter(m => !m.auto && (m.stufe || "empfohlen") !== "aus" && gs.some(g => (g.merkmale || {})[m.id]));
   const hatWer = gs.some(g => g.wer), hatAn = gs.some(g => g.an);
@@ -5422,9 +5433,36 @@ function packGruppe(titel, gs, ohneMerkmal) {
   const fertig = mein.filter(g => plGepackt(g, g.wer || ich)).length;
   const gepackt = g => (g.wer || ich) && plGepackt(g, g.wer || ich) ? 1 : 0;
   gs = gs.slice().sort((a, b) => gepackt(a) - gepackt(b));
-  return el("section", {class: "pack-gruppe", "data-gruppe": titel},
-    el("h3", {}, titel, " ", el("span", {class: "pack-fortschritt"}, ich && mein.length ? T("seite.packliste.gepackt_n", {a: fertig, b: mein.length}) : zahlMarke(gs.length))),
-    packSumme(plSummenVon(gs)), gs.map(g => gegenstandZeile(g, ohneMerkmal)));
+  const alles = !!(ich && mein.length && fertig === mein.length);   // alles Eigene gepackt: die Gruppe startet eingeklappt (#511)
+  const box = plKlapper("packen|" + (ohneMerkmal || "_kategorie") + "|" + titel, !alles, {class: "pack-gruppe" + (alles ? " fertig" : ""), "data-gruppe": titel},
+    el("h3", {}, titel, " ", el("span", {class: "pack-fortschritt"}, ich && mein.length ? (alles ? "✓ " : "") + T("seite.packliste.gepackt_n", {a: fertig, b: mein.length}) : zahlMarke(gs.length))),
+    packSumme(plSummenVon(gs)));
+  box.append(...gs.map(g => gegenstandZeile(g, ohneMerkmal)));
+  return box;
+}
+// Molekül Packklapper (#511): eine Gruppe der Packliste (Kategorie, Raum …) als Aufklapper; die Kopfzeile trägt Titel, Stand und
+// Summe und bleibt eingeklappt lesbar. vorgabe: offen oder zu, wenn die Person hier nichts gewählt hat; ihre Wahl merkt sich das Gerät
+function plKlapper(schluessel, vorgabe, attrs, ...kopf) {
+  const wahl = lies("pl-offen", {})[schluessel];
+  const d = el("details", {...attrs, class: attrs.class + " pack-klapper", "data-klapper": schluessel, "data-vorgabe": String(vorgabe), open: wahl ?? vorgabe},
+    el("summary", {}, ...kopf));   // der Pfeil ist der der Seite (summary::after)
+  d.addEventListener("toggle", () => plMerkeOffen([d]));
+  return d;
+}
+// gemerkt wird nur, was von der Vorgabe abweicht: so klappt eine Gruppe, die fertig wird, von selbst zu, wenn man nichts gewählt hat
+function plMerkeOffen(ds) {
+  const w = lies("pl-offen", {});
+  for (const d of ds) { if (d.open === (d.dataset.vorgabe === "true")) delete w[d.dataset.klapper]; else w[d.dataset.klapper] = d.open; }
+  merke("pl-offen", w);
+}
+// „Alle aufklappen“ / „Alle zuklappen“ über den Gruppen der Ansicht
+function plAlleKnopf(m) {
+  const k = el("button", {type: "button", class: "pack-alle"});
+  const stand = () => { const ds = [...m.querySelectorAll("details.pack-klapper")]; k.textContent = T(ds.some(d => !d.open) ? "seite.packliste.alle_auf" : "seite.packliste.alle_zu"); return ds; };
+  k.addEventListener("click", () => { const ds = stand(), auf = ds.some(d => !d.open); ds.forEach(d => { d.open = auf; }); plMerkeOffen(ds); setTimeout(stand); });
+  m.addEventListener("toggle", () => stand(), true);
+  setTimeout(stand);
+  return k;
 }
 
 // Vorlage Packliste (Reiter): oben die Wahl Planen oder Packen und die Summe der ganzen Liste, dann die Kategorien (Planen) oder die
@@ -5445,6 +5483,7 @@ function ansichtPackliste(m) {
   if (ansicht === "packen" && gruppierbar.size) kopf.append(el("label", {for: "plGruppe"}, T("seite.packliste.gruppieren"),
     el("select", {id: "plGruppe"}, el("option", {value: "_kategorie", selected: PL_GRUPPE === "_kategorie"}, T("seite.packliste.kategorie")),
       [...gruppierbar.values()].map(mk => el("option", {value: mk.id, selected: PL_GRUPPE === mk.id}, mk.name)))));
+  kopf.append(plAlleKnopf(m));
   m.append(kopf);
   if (ansicht === "packen") {
     const ich = NAME;

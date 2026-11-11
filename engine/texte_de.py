@@ -3427,6 +3427,8 @@ TEXTE = {
     "seite.packliste.name_beim_ersten_haken": "Beim ersten Haken fragt die Seite nach deinem Namen.",
     "seite.packliste.offline_hinweis": "Ohne Netz merkt sich die Seite deine Haken und reicht sie nach.",
     "seite.packliste.mitnehmen": "Mitnehmen:",
+    "seite.packliste.alle_auf": "Alle aufklappen",
+    "seite.packliste.alle_zu": "Alle zuklappen",
     "seite.packliste.zur_liste": "Zur Packliste",
     "mail.warteliste.betreff": "Frieda: Platz auf der Warteliste bestätigen",
     "mail.warteliste.zeile_link": "Bitte bestätige deine Adresse für die Warteliste von Frieda. Der Link gilt {tage} Tage:",

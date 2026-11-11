@@ -620,7 +620,12 @@ def test_packliste_im_browser(tmp_path, monkeypatch, browser):
     # ohne Netz: abhaken und zurücknehmen werden gemerkt, dann nachgereicht
     assert e["offline"]["ausgang"] == 2 and e["offline"]["gepackt"] == ["Wanderstöcke"] and "wird nachgereicht" in e["offline"]["nachreichen"]
     assert e["nachgereicht"] == {"ausgang": 0, "gepackt": ["Wanderstöcke"]}
-    assert list(rm.packstand_lesen(o)) == ["G-05"] and list(rm.packstand_lesen(o)["G-05"]) == ["Karl"]
+    assert set(rm.packstand_lesen(o)) == {"G-02", "G-05"} and list(rm.packstand_lesen(o)["G-05"]) == ["Karl"]   # G-02 beim Einklappen
+    # Einklappen (#511): fertige Gruppe zu, Knopf für alle, die Wahl bleibt nach dem Neuladen, Stand und Summe im Kopf
+    k = e["klappen"]
+    assert json.loads(k["gemerkt"]) == {"packen|raum|Tagesrucksack": False, "packen|raum|Rucksack": False}   # nur Abweichungen
+    assert k["vorFertig"] and k["knopf0"] == "Alle aufklappen" and k["alleOffen"] and k["alleZu"] and k["nachNeuladen"]
+    assert "1 von 1 gepackt" in k["kopf"] and "900 g" in k["kopf"] and k["knopf"] == "Alle aufklappen"
     # Mitnehmen und Kennung
     assert e["mitnehmen"]["text"] == ["Mitnehmen: Wanderstöcke"] and e["mitnehmen"]["href"] == "#packliste" and e["mitnehmen"]["danach"] == "#packliste"
     assert e["kennung"] == {"reiter": "#packliste", "da": 1} and not e["breit"]

@@ -48,7 +48,7 @@ aus.planen = {
 await p.click('[data-pl-ansicht="packen"]');
 await p.waitForSelector(".pack-zeile");
 aus.packen = {
-  gruppen: await texte(p, ".pack-gruppe > h3"),
+  gruppen: await texte(p, ".pack-gruppe > summary > h3"),
   fortschritt: await texte(p, ".pack-kopf ~ p.meldung"),
   haekchenFuerKarl: await p.locator(".pack-zeile [data-pack]").count(),
   ohneHakenIda: await p.locator("#G-07 [data-pack]").count(),      // das Erste-Hilfe-Set packt Ida
@@ -79,7 +79,7 @@ aus.fortschritt = await texte(p, ".pack-kopf ~ p.meldung");
 // Gruppieren nach Raum: in der Reihenfolge der Werte der Auswahl, mit Summen je Gruppe
 await p.selectOption("#plGruppe", "raum");
 await warte(p, () => document.querySelector(".pack-gruppe[data-gruppe='Rucksack']"));
-aus.raum = {gruppen: await texte(p, ".pack-gruppe > h3"), summen: await texte(p, ".pack-gruppe > .pack-summe"),
+aus.raum = {gruppen: await texte(p, ".pack-gruppe > summary > h3"), summen: await texte(p, ".pack-gruppe > summary > .pack-summe"),
   mitRaum: await p.locator(".pack-gruppe .pack-unter", {hasText: "Raum"}).count()};
 // Ohne Netz abhaken und zurücknehmen: wird gemerkt und beim nächsten Kontakt nachgereicht
 netz = false;
@@ -94,6 +94,21 @@ await p.evaluate(() => dispatchEvent(new Event("online")));
 await warte(p, r => localStorage.getItem(`rh-${r}-packstand-ausgang`) === "[]", reise);
 await p.waitForTimeout(300);
 aus.nachgereicht = {ausgang: await ausgang(p), gepackt: await texte(p, ".pack-zeile.gepackt .pack-titel")};
+// Einklappen (#511): eine Gruppe, in der alles Eigene gepackt ist, klappt zu; der Knopf klappt alle auf oder zu; die Wahl bleibt
+const koerper = ".pack-gruppe[data-gruppe='am Körper']";
+const vorFertig = await p.$eval(koerper, d => d.open);
+await haken(p, "Wanderschuhe").click();
+await warte(p, s => !document.querySelector(s).open, koerper);
+const knopf0 = (await texte(p, ".pack-alle"))[0];
+await p.click(".pack-alle");
+const alleOffen = await p.$$eval("details.pack-klapper", ds => ds.every(d => d.open));
+await p.click(".pack-alle");
+const alleZu = await p.$$eval("details.pack-klapper", ds => ds.every(d => !d.open));
+const gemerkt = await p.evaluate(r => localStorage.getItem(`rh-${r}-pl-offen`), reise);
+await p.reload();
+await p.waitForSelector("details.pack-klapper");
+aus.klappen = {gemerkt, nach: await p.$$eval("details.pack-klapper", ds => ds.map(d => d.dataset.klapper + "=" + d.open)), vorFertig, knopf0, alleOffen, alleZu, nachNeuladen: await p.$$eval("details.pack-klapper", ds => ds.length > 1 && ds.every(d => !d.open)),
+  kopf: (await texte(p, `${koerper} > summary`))[0], knopf: (await texte(p, ".pack-alle"))[0]};
 // Mitnehmen: eine Zeile am Ding, an dem der Gegenstand hängt; sie führt zur Packliste
 const t = await seite(390, "#T-02");
 await t.waitForSelector(".mitnehmen");
