@@ -426,7 +426,7 @@ def test_meldungen_auf_mein_konto_und_der_reiseseite(welt):
     assert t.index('id="meldungen"') < t.index("Deine Reisen")
     ich = json.loads(abruf(f"{u.rurl}/beispielreise/ich", cookie=karl)[2])
     assert [m["text"] for m in ich["meldungen"]] == ["Treffpunkt am Bahnhof ist jetzt 8:40 Uhr."]
-    assert set(ich["meldungen"][0]) == {"id", "erstellt", "text", "gelesen"}
+    assert set(ich["meldungen"][0]) == {"id", "erstellt", "text", "gelesen", "art", "status_bei", "status_ziel"}
     assert json.loads(abruf(f"{u.rurl}/beispielreise/ich")[2])["meldungen"] == []           # ohne Anmeldung nichts
     text = kn.meine_reisen_konto(konten.konto_per_email(KARL))
     assert text.startswith("Meldungen an dich:\n- ") and ", Beispielreise – Malerweg in vier Tagen: Treffpunkt am Bahnhof" in text

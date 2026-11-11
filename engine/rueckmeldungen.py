@@ -29,12 +29,14 @@ Aufrufe:
   python3 engine/rueckmeldungen.py aufgaben <reise> [--alle]       offene (bzw. alle) Aufgaben zeigen
   python3 engine/rueckmeldungen.py dienst                          Dienst starten
         Umgebung: RM_ABLAGE (Standard aus engine/instanz.py: <Seiten>/_rueckmeldungen),
-                  RM_HOST (127.0.0.1), RM_PORT (8771)
+                  RM_HOST (127.0.0.1), RM_PORT (8771), RM_SCHREIBDIENST (Schreibweg für den Status von der Seite;
+                  sonst KN_SCHREIBDIENST, sonst http://127.0.0.1:<FR_SB_PORT, 8773>)
 
 HTTP (hinter nginx, Präfix /<reise>-<token>/api/ -> /<reise>/):
   GET    /<reise>/rueckmeldungen          alle, neueste zuerst, mit Status und Kommentar
   POST   /<reise>/rueckmeldungen          neue Rückmeldung (JSON)
   DELETE /<reise>/rueckmeldungen/<R-id>   zurückziehen, nur solange der Status „neu“ ist
+  POST   /<reise>/status                  Status der Reise umstellen (angemeldete Organisator:in, JSON {status}; #513)
   GET    /<reise>/aufgaben                alle Aufgaben
   POST   /<reise>/aufgaben                neue Aufgabe (JSON, name = wer sie anlegt) -> AG-…
   PATCH  /<reise>/aufgaben/<AG-id>        Felder ändern, Status setzen, Kommentar in den Verlauf (name = wer)
@@ -177,6 +179,7 @@ def zustand(reise):
         alles = json.loads((seiten() / reise / "daten.json").read_text(encoding="utf-8"))
         d = alles["reise"]
         return {"status": d["status"]["wert"], "bausteine": d["bausteine"], "regeln": d.get("regeln") or {},
+                "sprache": d.get("sprache") or texte.VORGABE_REISE,
                 "personen": personen_mit_einladungen(d["personen"], ordner(reise)),
                 "wunsch_vorschlaege": alles.get("wunsch_vorschlaege") or {}}
     except (OSError, ValueError, KeyError, TypeError):
@@ -321,8 +324,9 @@ def meldungen(o, an=None):
     return sorted(liste, key=lambda m: m.get("erstellt", ""), reverse=True)
 
 
-# Arten von Meldungen, die der Wächter und Erinnerer anlegt (Baustein waechter; ausgeschaltet verschwinden sie)
-WAECHTER_ARTEN = ("erinnerung", "status", "pruefung")
+# Arten von Meldungen, die der Wächter und Erinnerer anlegt (Baustein waechter; ausgeschaltet verschwinden sie). Statushinweise
+# (Art status) gelten für jede Reise, auch ohne den Baustein (#513).
+WAECHTER_ARTEN = ("erinnerung", "pruefung")
 MELDUNG_TAGE = 14   # so lange zeigt der Konnektor Meldungen; Konflikte bleiben stehen
 
 
@@ -993,6 +997,50 @@ def anstossen(reise, name):
     return anstoss_stand()
 
 
+# ---------- Status der Reise von der Seite (#513) ----------
+# Organisator:innen stellen den Status auf der Reiseseite um (Molekül statusWahl). Der Dienst prüft Anmeldung und Rolle und
+# reicht die Wahl an den Schreibweg weiter wie der Konnektor (reise_status_setzen, Header X-Frieda-Dienst); der prüft noch
+# einmal mit reise.yaml, schreibt den Verlauf und veröffentlicht. Archivieren bleibt der Claude-App vorbehalten.
+SEITEN_STATUS = ("idee", "planung", "fest", "unterwegs", "danach")
+
+
+def schreibdienst():
+    """Adresse des Schreibwegs: RM_SCHREIBDIENST oder KN_SCHREIBDIENST, sonst 127.0.0.1 mit FR_SB_PORT (Vorgabe 8773 wie
+    betrieb/gemeinsam.sh und engine/schreiben.py)."""
+    a = os.environ.get("RM_SCHREIBDIENST") or os.environ.get("KN_SCHREIBDIENST")
+    return (a or f"http://127.0.0.1:{instanz.wert('FR_SB_PORT', '8773')}").rstrip("/")
+
+
+def reise_status_setzen(reise, person, status, sprache):
+    """Status über den Schreibweg setzen. -> (HTTP-Code, Antwort für die Seite)"""
+    import urllib.error
+    import urllib.request
+    anfrage = {"person": person.get("schluessel"), "name": person.get("name"), "rolle": "organisator",
+               "args": {"status": status, "grund": texte.t(sprache, "dienst.status.grund")}}
+    req = urllib.request.Request(f"{schreibdienst()}/{reise}/reise_status_setzen", method="POST",
+                                 data=json.dumps(anfrage, ensure_ascii=False).encode("utf-8"),
+                                 headers={"Content-Type": "application/json", "X-Frieda-Dienst": konten.dienst_geheimnis()})
+    try:
+        with urllib.request.urlopen(req, timeout=180) as r:
+            a = json.loads(r.read())
+        if isinstance(a, dict) and a.get("ok"):
+            return 200, {"ok": True, "status": status, "stand": a.get("stand")}
+        return 502, {"fehler": texte.satz("dienst.status.fehlgeschlagen")}
+    except urllib.error.HTTPError as e:
+        try:
+            a = json.loads(e.read())
+        except ValueError:
+            a = None
+        if isinstance(a, dict) and a.get("fehler_code") and e.code < 500:
+            werte = a.get("werte") if isinstance(a.get("werte"), dict) else {}
+            einfach = all(isinstance(v, (str, int, float)) for v in werte.values())
+            return e.code, {"fehler": str(a.get("fehler") or ""), "fehler_code": a["fehler_code"] if einfach else None,
+                            "werte": werte if einfach else {}}
+        return 502, {"fehler": texte.satz("dienst.status.fehlgeschlagen")}
+    except (urllib.error.URLError, OSError, ValueError):
+        return 503, {"fehler": texte.satz("dienst.status.nicht_erreichbar")}
+
+
 class Dienst(BaseHTTPRequestHandler):
     server_version = "Rueckmeldungen"
     sys_version = ""
@@ -1113,7 +1161,9 @@ class Dienst(BaseHTTPRequestHandler):
                 "person": {f: p.get(f) for f in ("schluessel", "name", "rolle")} if p else None,
                 # Meldungen an die Person in dieser Reise (#21 Stufe 1): die Seite zeigt die ungelesenen als Hinweis, auch
                 # offline; gelesen ist der Stand des Kontos (#407)
-                "meldungen": [{f: m.get(f) for f in ("id", "erstellt", "text")} | {"gelesen": m.get("id") in gelesen}
+                # art, status_bei, status_ziel: ein Statushinweis bekommt auf der Seite einen Knopf zum Umstellen (#513)
+                "meldungen": [{f: m.get(f) for f in ("id", "erstellt", "text", "art", "status_bei", "status_ziel")}
+                              | {"gelesen": m.get("id") in gelesen}
                               for m in meldungen_der_person(o.name, p.get("name"), z)] if p else []})
         if was != "rueckmeldungen":
             return self._antwort(404, {"fehler": texte.satz("dienst.do_get.2")})
@@ -1296,8 +1346,32 @@ class Dienst(BaseHTTPRequestHandler):
             return self._antwort(400, {"fehler": texte.satz(x.schluessel)})
         return self._antwort(200, {"an": True})
 
+    def _status(self, o):
+        """POST status: eine angemeldete Organisator:in stellt den Status der Reise um (#513)."""
+        roh, fehlt = self._json()
+        if fehlt:
+            return
+        if not isinstance(roh, dict) or roh.get("status") not in SEITEN_STATUS:
+            return self._antwort(400, {"fehler": texte.satz("dienst.status.unbekannt")})
+        z = zustand(o.name)
+        ident = wer_ist(self.headers, o.name, z)
+        if ident["art"] == "fremd":
+            return self._antwort(403, {"fehler": texte.satz("dienst.anfrage.1")})
+        if ident["art"] != "konto":
+            return self._antwort(401, {"fehler": texte.satz("dienst.anfrage.3")})
+        p = ident.get("person")
+        if not p or rg.rolle_neu(p.get("rolle")) != "organisator":
+            return self._antwort(403, {"fehler": texte.satz("dienst.status.recht")})
+        with _sperre:
+            if gedrosselt(o):
+                return self._antwort(429, {"fehler": texte.satz("dienst.do_patch.5")})
+        code, antwort = reise_status_setzen(o.name, p, roh["status"], (z or {}).get("sprache") or texte.VORGABE_REISE)
+        return self._antwort(code, antwort)
+
     def do_POST(self):
         t = self._teile()
+        if t and t[1] == "status" and t[2] is None:
+            return self._status(t[0])
         if t and t[1] == "belege" and t[2]:
             return self._beleg_hochladen(t[0], t[2])
         if t and t[1] in ("push", "aktualisieren", "gelesen") and t[2] is None:

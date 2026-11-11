@@ -8,11 +8,13 @@ Wächter   Findet veränderliche Angaben (Merkmale mit veraenderlich: true) der 
           meldet jede den Organisator:innen (Art pruefung). Nachschlagen tut der AI-Client im Gespräch; Frieda hat
           keine eigene KI (ADR-0001, Paket O-4). Weicht ein Wert ab, wird er NICHT still übernommen.
 Erinnerer Meldet Fristen und „ab“-Termine der Aufgaben und Buchungen an die Zuständigen, mit regeln.waechter_zahlung
-          offene Zahlungen gebuchter Buchungen (#166), und erinnert die Organisator:innen an den
-          Wechsel des Reisestatus am Start- und Enddatum (die KI wechselt nie selbst).
+          offene Zahlungen gebuchter Buchungen (#166).
+Status    Erinnert die Organisator:innen an den fälligen Wechsel des Reisestatus: regeln.status_vorlauf_tage vor dem ersten
+          Tag an „fest“, ab dem ersten Tag an „unterwegs“, nach dem letzten an „danach“ (#513). Gilt für jede Reise mit
+          Tagen, auch ohne Baustein waechter. Die KI wechselt nie selbst; umgestellt wird auf der Reiseseite oder in der App.
 
-Beides gilt nur, wenn der Baustein waechter eingeschaltet ist und der Status es zulässt (fest, unterwegs; Aufgabenfristen
-zählen erst ab fest). Meldungen gehen an meldungen.jsonl der Ablage; der Konnektor zeigt sie im Überblick und unter
+Wächter und Erinnerer gelten nur, wenn der Baustein waechter eingeschaltet ist und der Status es zulässt (fest, unterwegs;
+Aufgabenfristen zählen erst ab fest). Meldungen gehen an meldungen.jsonl der Ablage; der Konnektor zeigt sie im Überblick und unter
 rueckmeldungen (Kanal app). Eine Sammelnachricht für den Betreiber (Kanal nachricht) schreibt `lauf --bericht`.
 Gleiche Meldungen werden nicht doppelt angelegt (schluessel).
 
@@ -298,21 +300,30 @@ def zahlungen_offen(d, heute, vorlauf):
 
 
 def statuswechsel(d, heute):
-    """Erinnert die Organisator:innen, wenn der Status nicht mehr zu den Reisetagen passt. Die KI wechselt den Status nie selbst."""
+    """Erinnert die Organisator:innen an einen fälligen Statuswechsel (#513), bei jeder Reise mit Tagen, auch ohne Baustein
+    waechter: <status_vorlauf_tage> Tage vor dem ersten Tag an „fest“ (aus idee oder planung), ab dem ersten Tag an
+    „unterwegs“, nach dem letzten an „danach“. Die KI wechselt den Status nie selbst; umstellen tut eine Organisator:in
+    auf der Reiseseite (Tipp auf den Status) oder in der Claude-App."""
     tage = ((d or {}).get("route") or {}).get("tage") or []
-    st = (((d or {}).get("reise") or {}).get("status") or {}).get("wert")
-    if not tage or st not in ("fest", "unterwegs"):
+    st = (((d or {}).get("reise") or {}).get("status") or {}).get("wert") or "planung"
+    if not tage or st not in ("idee", "planung", "fest", "unterwegs"):
         return []
+    sp = sprache_von(d)
     start, ende = datetime.date.fromisoformat(tage[0]["datum"]), datetime.date.fromisoformat(tage[-1]["datum"])
+    jetzt = tw(d, "status." + st)
     if heute > ende:
-        ziel, text = "danach", tw(d, "ende_erreicht", w1=datum_de(ende.isoformat(), sprache_von(d)), w2=tw(d, "status." + st))
-    elif st == "fest" and heute >= start:
-        ziel, text = "unterwegs", tw(d, "start_erreicht", w1=datum_de(start.isoformat(), sprache_von(d)), w2=tw(d, "status.fest"))
+        ziel, text = "danach", tw(d, "ende_erreicht", w1=datum_de(ende.isoformat(), sp), w2=jetzt)
+    elif heute == start and st != "unterwegs":
+        ziel, text = "unterwegs", tw(d, "start_heute", w1=jetzt)
+    elif heute > start and st != "unterwegs":
+        ziel, text = "unterwegs", tw(d, "start_erreicht", w1=datum_de(start.isoformat(), sp), w2=jetzt)
+    elif st in ("idee", "planung") and 0 < tage_zwischen(heute, start) <= regel(d, "status_vorlauf_tage"):
+        ziel, text = "fest", tw(d, "beginnt_in", n=tage_zwischen(heute, start), w1=datum_de(start.isoformat(), sp), w2=jetzt)
     else:
         return []
     return [{"schluessel": f"status:{st}:{ziel}", "wiederholen": WIEDERHOLEN_TAGE, "an": organisator_von(d), "art": "status",
-             "ziel": "reise", "bezug": "reise", "extra": {"status_bei": st},
-             "text": tw(d, "statuswechsel", w1=text, w2=tw(d, "status." + ziel))}]
+             "ziel": "reise", "bezug": "reise", "extra": {"status_bei": st, "status_ziel": ziel},
+             "text": tw(d, "statuswechsel", w1=text, w2=tw(d, "status." + ziel)) + tw(d, "status_folge." + ziel)}]
 
 
 def neue_meldungen(o, meldungen, jetzt, trocken=False):
@@ -359,6 +370,9 @@ def lauf_reise(reise, heute=None, trocken=False):
     if d is None or o is None:
         ergebnis["grund"] = "Trip is not published or accepts no input."
         return ergebnis
+    # Statuswechsel gilt für jede Reise mit Tagen, auch ohne Baustein waechter und vor „fest“ (#513)
+    status = neue_meldungen(o, statuswechsel(d, heute), jetzt, trocken)
+    ergebnis["meldungen"] = status
     ok, grund = aktiv(d)
     ergebnis["grund"] = grund
     if not ok:
@@ -369,9 +383,8 @@ def lauf_reise(reise, heute=None, trocken=False):
     ergebnis["zu_pruefen"] = items
     wunsch = (erinnerungen(d, rm.aufgaben(o), heute, regel(d, "erinnerung_vorlauf_tage"))
               + buchungsfristen(d, heute, regel(d, "erinnerung_vorlauf_tage"))
-              + zahlungen_offen(d, heute, regel(d, "erinnerung_vorlauf_tage")) + statuswechsel(d, heute)
-              + pruefmeldungen(d, items, frist))
-    ergebnis["meldungen"] = neue_meldungen(o, wunsch, jetzt, trocken)
+              + zahlungen_offen(d, heute, regel(d, "erinnerung_vorlauf_tage")) + pruefmeldungen(d, items, frist))
+    ergebnis["meldungen"] = status + neue_meldungen(o, wunsch, jetzt, trocken)
     ergebnis["nachricht"] = "nachricht" in regel(d, "meldekanal")
     if ergebnis["meldungen"]:
         ergebnis["bericht"] = bericht_text(reise, d, ergebnis["meldungen"], items)
@@ -407,6 +420,8 @@ def zeige(reise, heute):
     if d is None:
         print(f"{reise}: not published.")
         return
+    for m in statuswechsel(d, heute):
+        print(f"  Message to {', '.join(m['an']) or '–'}: {m['text']}")
     ok, grund = aktiv(d)
     print(f"{reise}: " + ("watcher active" if ok else grund))
     if not ok:
@@ -418,7 +433,7 @@ def zeige(reise, heute):
     o = rm.ordner(reise)
     vorlauf = regel(d, "erinnerung_vorlauf_tage")
     for m in (erinnerungen(d, rm.aufgaben(o) if o else [], heute, vorlauf) + buchungsfristen(d, heute, vorlauf)
-              + zahlungen_offen(d, heute, vorlauf) + statuswechsel(d, heute)):
+              + zahlungen_offen(d, heute, vorlauf)):
         print(f"  Message to {', '.join(m['an']) or '–'}: {m['text']}")
 
 
@@ -427,7 +442,7 @@ def lauf(reisen, heute, bericht):
     for reise in reisen or alle_reisen():
         r = lauf_reise(reise, heute)
         if not r["aktiv"]:
-            print(f"{reise}: {r['grund']}")
+            print(f"{reise}: {r['grund']}" + (f" ({len(r['meldungen'])} status message(s))" if r["meldungen"] else ""))
             continue
         print(f"{reise}: {len(r['meldungen'])} new message(s), {len(r['zu_pruefen'])} value(s) to check")
         if r["bericht"] and r["nachricht"]:

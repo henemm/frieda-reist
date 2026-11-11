@@ -47,10 +47,12 @@ VORGABEN = {
     "waechter_frist_tage": 60,           # veränderliche Angaben, deren Prüfdatum älter ist, prüft der Wächter neu
     "erinnerung_vorlauf_tage": 3,        # Aufgabenfristen werden so viele Tage vorher gemeldet
     "waechter_zahlung": False,           # offene Zahlungen gebuchter Buchungen melden (#166; je Reise einschaltbar)
-    # app: beim Öffnen der Claude-App; nachricht: Sammelnachricht an den Betreiber; push: aufs Handy (engine/push.py)
-    "meldekanal": ["app", "nachricht", "push"],
+    "status_vorlauf_tage": 7,            # so viele Tage vor dem ersten Tag erinnert Frieda an „fest“ (#513, jede Reise)
+    # app: beim Öffnen der Claude-App und auf der Seite; nachricht: Sammelnachricht an den Betreiber; push: aufs Handy
+    # (engine/push.py); mail: Statushinweise per Mail, wenn nach einem Tag nichts passiert ist und kein Push abonniert ist (#513)
+    "meldekanal": ["app", "nachricht", "push", "mail"],
 }
-KANAELE = ("app", "nachricht", "push")   # E-Mail an alle gibt es (noch) nicht
+KANAELE = ("app", "nachricht", "push", "mail")
 REGEL_WERTE = {"konflikt": ("offene_frage",),
                "einladen": ("organisator", "mitwirkend")}
 # Regeln des Einarbeiten-Laufs (bis 29.10.2026, ADR-0001 Paket O-3): der Konnektor schreibt direkt, es gibt keinen Lauf
@@ -538,7 +540,7 @@ class Reise:
             self.fehl(texte.satz("pruefung.reise.32", w1=' oder '.join(KONTINGENT_ARTEN)))
         if not isinstance(kt.get("je_person"), int) or isinstance(kt.get("je_person"), bool) or kt["je_person"] < 0:
             self.fehl(texte.satz("pruefung.reise.33"))
-        for k, kleinste in (("waechter_frist_tage", 1), ("erinnerung_vorlauf_tage", 0)):
+        for k, kleinste in (("waechter_frist_tage", 1), ("erinnerung_vorlauf_tage", 0), ("status_vorlauf_tage", 1)):
             if not isinstance(r[k], int) or isinstance(r[k], bool) or r[k] < kleinste:
                 self.fehl(texte.satz("pruefung.reise.34", k=k, kleinste=kleinste))
         if not isinstance(r["waechter_zahlung"], bool):

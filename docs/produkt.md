@@ -99,11 +99,11 @@ Details und Eingaben der Werkzeuge: `docs/konnektor.md`, Abschnitt „Entscheide
 
 ### Wächter und Erinnerer (Paket E, 26.10.2026)
 
-Details: `docs/waechter.md`. Neue Regeln mit Vorgabe: `waechter_frist_tage` (60), `erinnerung_vorlauf_tage` (3), `meldekanal` (`app`, `nachricht`, `push`), `waechter_zahlung` (`false`; offene Zahlungen melden, #166).
+Details: `docs/waechter.md`. Neue Regeln mit Vorgabe: `waechter_frist_tage` (60), `erinnerung_vorlauf_tage` (3), `status_vorlauf_tage` (7, #513), `meldekanal` (`app`, `nachricht`, `push`, `mail`), `waechter_zahlung` (`false`; offene Zahlungen melden, #166).
 
 - Der Wächter sucht veränderliche Angaben ohne oder mit altem Prüfdatum und meldet sie den Organisator:innen (seit O-4 eine Meldung, kein Prüfauftrag an eine KI); der AI-Client schlägt sie im Gespräch nach, Abweichungen entscheidet ein:e Organisator:in, nie still übernommen.
 - Der Erinnerer meldet Fristen und „ab“-Termine an die Zuständigen und den fälligen Statuswechsel an die Organisator:innen; die KI wechselt den Status nie selbst.
-- Beides gilt nur bei eingeschaltetem Baustein `waechter` und im Status `fest` oder `unterwegs`.
+- Beides gilt nur bei eingeschaltetem Baustein `waechter` und im Status `fest` oder `unterwegs`. Ausnahme Statuswechsel (#513, Product Owner 11.11.2026): für jede Reise mit Tagen, 7 Tage vorher „fest“ (`regeln.status_vorlauf_tage`), am ersten Tag „unterwegs“, danach „danach“; als Hinweis auf der Seite, Push und nach einem Tag ohne Push per Mail. Organisator:innen stellen den Status auf der Reiseseite selbst um (Tipp auf das Etikett unter dem Untertitel).
 - Die Meldungen erscheinen in der Claude-App (Überblick) und als Sammelnachricht an den Betreiber. E-Mail an alle gibt es nicht; Meldungen auf dem Handy über die Webseite sind Issue #21.
 
 ### Wunsch-Brett (Paket G, 27.10.2026)

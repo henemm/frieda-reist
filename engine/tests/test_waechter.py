@@ -232,7 +232,8 @@ def test_statuswechsel_wird_den_organisatoren_gemeldet(reise):
     r = reise(status="fest")
     assert not [m for m in r.lauf(D(2027, 5, 12))["meldungen"] if m["art"] == "status"]
     (m,) = [x for x in r.lauf(D(2027, 5, 13))["meldungen"] if x["art"] == "status"]
-    assert m["an"] == ["Ida"] and "begonnen" in m["text"] and "unterwegs" in m["text"] and "Organisator:in" in m["text"]
+    assert m["an"] == ["Ida"] and "Heute geht es los" in m["text"] and "„Unterwegs“ stellen?" in m["text"]
+    assert m["extra"] == {"status_bei": "fest", "status_ziel": "unterwegs"}
     assert not [x for x in r.lauf(D(2027, 5, 14))["meldungen"] if x["art"] == "status"]
     assert len([x for x in r.lauf(D(2027, 5, 20))["meldungen"] if x["art"] == "status"]) == 1   # danach (anderer Schlüssel)
     # nach dem Wechsel ist die Meldung nicht mehr aktuell
@@ -243,7 +244,28 @@ def test_statuswechsel_wird_den_organisatoren_gemeldet(reise):
     u = reise(status="unterwegs")
     assert not [x for x in u.lauf(D(2027, 5, 15))["meldungen"] if x["art"] == "status"]
     (d,) = [x for x in u.lauf(D(2027, 5, 17))["meldungen"] if x["art"] == "status"]
-    assert "zu Ende" in d["text"] and "danach" in d["text"]
+    assert "zu Ende" in d["text"] and "„Danach“" in d["text"]
+
+
+def test_statushinweise_vor_der_reise_bei_jeder_reise(reise):
+    """#513: „fest“ 7 Tage vorher (Regel status_vorlauf_tage), auch in Planung und ohne Baustein waechter."""
+    r = reise(status="planung", bausteine=[b for b in BAUSTEINE if b != "waechter"])
+    assert r.lauf(D(2027, 5, 5))["meldungen"] == []
+    erg = r.lauf(D(2027, 5, 6))
+    assert not erg["aktiv"]                                   # Fristen und Prüfungen bleiben beim Wächter
+    (m,) = erg["meldungen"]
+    assert m["art"] == "status" and m["an"] == ["Ida"] and m["extra"] == {"status_bei": "planung", "status_ziel": "fest"}
+    assert "in 7 Tagen" in m["text"] and "„Planung“" in m["text"] and "„Fest“ stellen?" in m["text"]
+    assert r.lauf(D(2027, 5, 7))["meldungen"] == []           # nicht jeden Tag neu
+    (u,) = r.lauf(D(2027, 5, 13))["meldungen"]               # erster Tag: unterwegs, auch aus der Planung
+    assert u["extra"]["status_ziel"] == "unterwegs"
+    # gilt auch ohne Baustein waechter auf der Seite und im Konnektor
+    assert [x["art"] for x in rm.meldungen_aktuell(r.o, "Ida", [], "planung", ["varianten"], D(2027, 5, 13))] == ["status", "status"]
+    assert rm.meldungen_aktuell(r.o, "Ida", [], "fest", ["varianten"], D(2027, 5, 13)) == []
+    eigen = reise(status="idee", regeln={"status_vorlauf_tage": 14})
+    (f,) = eigen.lauf(D(2027, 4, 29))["meldungen"]
+    assert f["extra"]["status_ziel"] == "fest" and "in 14 Tagen" in f["text"]
+    assert reise(status="danach").lauf(D(2027, 5, 20))["meldungen"] == []
 
 
 def test_wechselt_den_status_nie_selbst(reise):
@@ -262,9 +284,10 @@ def test_regeln_pruefen(tmp_path):
     assert regeln() == [] and regeln(waechter_frist_tage=30, erinnerung_vorlauf_tage=0, meldekanal=["app"]) == []
     assert any("waechter_frist_tage" in f for f in regeln(waechter_frist_tage=0))
     assert any("erinnerung_vorlauf_tage" in f for f in regeln(erinnerung_vorlauf_tage=-1))
+    assert any("status_vorlauf_tage" in f for f in regeln(status_vorlauf_tage=0)) and regeln(status_vorlauf_tage=3) == []
     assert any("meldekanal" in f for f in regeln(meldekanal="app"))
     assert any(meldet(f, "pruefung.reise.36") for f in regeln(meldekanal=["app", "email"]))
-    assert rg.VORGABEN["meldekanal"] == ["app", "nachricht", "push"] and regeln(meldekanal=["push"]) == [] and "waechter" not in rg.NOCH_NICHT_GEBAUT
+    assert rg.VORGABEN["meldekanal"] == ["app", "nachricht", "push", "mail"] and regeln(meldekanal=["push"]) == [] and "waechter" not in rg.NOCH_NICHT_GEBAUT
     assert rg.verhalten("fest")["waechter"] and not rg.verhalten("planung")["waechter"]
 
 
