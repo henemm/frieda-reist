@@ -64,3 +64,38 @@ den Kommentaren von #498.
 - Hardlinks im Export-Ordner mit Modus 400: Zippen nur lesend, TemporaryDirectory-Aufräumen muss gehen (Ordner gehört uns).
 - #381 (Löschen) teilt sich Mein Konto; deren Teile (Linkblock, loeschen_seite) nicht anfassen.
 - Parallelsitzung frieda-reist-f5 arbeitet an #506/#350 (Umschaltung auf Speicher) – Git-Weg bleibt bis Stufe 5 nötig.
+
+## Analysis
+
+### Type
+Feature (neue Funktion auf „Mein Konto“, freigegebener Entwurf vom 11.11.2026).
+
+### Affected Files (with changes)
+| File | Change Type | Description |
+|------|-------------|-------------|
+| engine/schreiben.py | MODIFY | `Dienst.do_GET`: Zweig `GET /<reise>/export` (Geheimnis per `hmac.compare_digest`, `REISE_MUSTER`, `konten.reise_vorgemerkt` → 404, `EinstellungenNichtLesbar` → 503). Neuer Helfer `_datei_senden(code, datei, typ)` (Content-Length per `os.fstat`, `shutil.copyfileobj`). Speicherreise: `reisespeicher.exportieren(reise, tmpdir/reise)` → ZIP in `TemporaryFile`; `KeyError` (unbekannt) → 404; `AblageFehlt/AblageFehler`, `sqlite3.Error`, `OSError` → 503. |
+| engine/schreiben_git.py | MODIFY | `reise_archiv(s, reise, datei)`: `fetch` (Frist ~60 s), `ls-tree origin/main reisen/<reise>` leer → None (404), sonst `archive --format=zip origin/main:reisen/<reise>` in die Datei. Kein LFS im Einsatz (geprüft), Fotos kommen echt mit. |
+| engine/konnektor.py | MODIFY | `_anmeldung`: `inhalt` darf ein Dateiobjekt sein (Länge per `os.fstat`, Kopie per `shutil.copyfileobj`, im `finally` schließen, HEAD ohne Inhalt); Bytes-Weg unverändert. Neue Funktion `reise_export(reise, datei)` → (ok, fehler) als Aufruf an den Schreibdienst (Muster `buchung_im_repo`, Timeout ~120 s); 404 → Reise überspringen, sonst Fehler. |
+| engine/anmeldung.py | MODIFY | `export_karte(k)` in `konto_seite()` rechte Spalte NACH „Einstellungen“, VOR dem Linkblock (freigegebener Entwurf). `bearbeiten()`: Zweig `a == "export"` → ZIP bauen; Fehler → `konto_seite(..., meldung=tx("konto.export.fehler"))`. `datenschutz_inhalt()`: `recht.datenschutz.export` vor `folgt`. Abruf der Reise-ZIP über eine einsetzbare Funktion (Modulvariable, im Konnektor gesetzt wie `reise_info`), damit anmeldung.py den Konnektor nicht importiert und Tests sie ersetzen können. |
+| engine/texte_de.py, texte_en.py | MODIFY | `konto.export.titel/hinweis/knopf/was_drin/punkt_1..4/andere/fehler`, `recht.datenschutz.export`, `recht.datenschutz.folgt` gekürzt. |
+| engine/tests/test_export.py | CREATE | Schreibdienst-Export (Speicher und Repo-Weg, beide Beispielreisen, 403 ohne Geheimnis, 404 unbekannt/vorgemerkt), ZIP von Mein Konto (person.json, Ordner je Mitgliedschaft, keine fremde Reise, Archiv dabei, vorgemerkte nicht), Sichtregeln Beiträge/Belege (Organisator:in vs. mitwirkend), keine fremden E-Mail-Adressen, Fehlerfall ganzer Abbruch, Texte, Datenschutzsatz, Content-Disposition. |
+
+### Scope Assessment
+- Files: 7 (6 MODIFY, 1 CREATE)
+- Estimated LoC: +~450 (davon ~250 Tests) / -~5
+- Risk Level: MEDIUM — neue Schnittstelle zwischen Konnektor und Schreibdienst (Instanz-Tests vor dem Ausliefern nötig); der Antwortweg `_anmeldung` wird für Dateien erweitert und betrifft alle Anmeldeseiten.
+
+### Technical Approach
+1. Der Schreibdienst liefert die Reise als ZIP (eine Quelle für Speicher- und Repo-Reisen; der Konnektor bleibt ohne Zugriff auf Repo/Speicher, wie im Bauplan). Antwort aus `TemporaryFile`, nie ganz im Speicher.
+2. Mein Konto baut die Gesamt-ZIP in `tempfile.TemporaryFile`: `person.json`; je `konten.mitgliedschaften(kid)` ohne `reise_vorgemerkt`: `<reise>/reise/` = Einträge der Schreibdienst-ZIP umbenannt (Stream je Eintrag, `ZipFile.open` + `copyfileobj`), `<reise>/beitraege/` (aufgaben.json, brett.json, packstand.json, rueckmeldungen.json – Organisator:in alles, sonst eigene per Name; Brett mit allen Wünschen wie auf der Seite), `<reise>/belege/` (`belege.liste(o, name, rolle)` + Dateien per `belege.datei_pfad` + belege.json). Name und Rolle aus `rm.zustand(reise)` über den Personen-Schlüssel der Mitgliedschaft. Fehlt die Ablage (`rm.ordner` None), nur `reise/`.
+3. Ein Fehler beim Abruf einer Reise (außer 404) bricht den ganzen Export ab → Mein Konto mit „Export gerade nicht möglich“; kein halber Export.
+4. Antwort 200, `Content-Type: application/zip`, `Content-Disposition: attachment; filename="frieda-daten-<JJJJ-MM-TT>.zip"` (Datum UTC).
+5. Der Formular-POST nutzt das vorhandene Herkunfts-/CSRF-Muster der übrigen `/konto`-Zweige unverändert.
+
+### Dependencies
+- Upstream: reisespeicher.exportieren, schreiben_git.git, konten (mitgliedschaften, reise_vorgemerkt, geraete, push_/kalender_einstellungen, konto), rueckmeldungen (ordner, eintraege, aufgaben_lesen, brett_lesen, packstand_lesen, zustand), belege (liste, datei_pfad).
+- Downstream: Instanz (Konnektor ↔ Schreibdienst, neue GET-Route) → Instanz-Tests mit dem Branch vor dem Ausliefern. Kein neues Modul → deploy.sh-Liste bleibt.
+- Zeitgrenze: Proxy-Timeout des Webservers für `/konto` bei großen Reisen in der Spec als Annahme festhalten und nach dem Ausliefern an der eigenen Testreise messen.
+
+### Open Questions
+- Keine Produktfrage offen (Entwurf freigegeben). Technische Punkte (Zeitgrenzen, Einbindung des Abrufs ohne Zirkel-Import) legt der Tech Lead in der Spec fest.
