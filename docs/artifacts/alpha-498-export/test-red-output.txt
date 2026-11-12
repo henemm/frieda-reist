@@ -1,0 +1,1337 @@
+bringing up nodes...
+bringing up nodes...
+
+FFFFFFFFFF.FFFF..FFFFFFF.FFFFFFFFFFFFFFFFFF..FFF.FFF.FF                  [100%]
+=================================== FAILURES ===================================
+________________ test_dienst_export_einstellungen_nicht_lesbar _________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/reisesp...2/test_dienst_export_einstellung0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7aadcd254860>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7aadcedcd340>
+
+    def test_dienst_export_einstellungen_nicht_lesbar(speicher, monkeypatch):
+        import instanz
+    
+        def kaputt():
+            raise instanz.EinstellungenNichtLesbar("nicht lesbar")
+        monkeypatch.setattr(instanz, "speicherreisen", kaputt)
+        with Dienst(speicher.schreiber()) as d:
+            code, _, daten = zip_holen(d, "beispielreise/export")
+>       assert code == 503 and json.loads(daten)["fehler_code"] == "schreiben.dienst.einstellungen_nicht_lesbar"
+E       assert (404 == 503)
+
+engine/tests/test_export.py:247: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET /beispielreise/export 404
+__________________ test_dienst_export_speicherfehler[oserror] __________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/reisesp...3/test_dienst_export_speicherfeh0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x784764154860>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7847656a37a0>
+fehler = 'oserror'
+
+    @pytest.mark.parametrize("fehler", ["ablage", "sqlite", "oserror"])
+    def test_dienst_export_speicherfehler(speicher, monkeypatch, fehler):
+        rs = speicher.rs
+    
+        def kaputt(*a, **k):
+            raise {"ablage": rs.AblageFehlt("fehlt"), "sqlite": sqlite3.OperationalError("db"),
+                   "oserror": OSError("platte")}[fehler]
+        monkeypatch.setattr(rs, "exportieren", kaputt)
+        with Dienst(speicher.schreiber()) as d:
+            code, _, daten = zip_holen(d, "beispielreise/export")
+>       assert code == 503 and json.loads(daten)["fehler_code"] == "schreiben.dienst.speicher_nicht_erreichbar"
+E       assert (404 == 503)
+
+engine/tests/test_export.py:260: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET /beispielreise/export 404
+______________________ test_dienst_export_ohne_geheimnis _______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/reisesp...1/test_dienst_export_ohne_geheim0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7192daec09a0>)
+
+    def test_dienst_export_ohne_geheimnis(speicher):
+        with Dienst(speicher.schreiber()) as d:
+            a = zip_holen(d, "beispielreise/export", geheim=False)
+            b = zip_holen(d, "gibtesnicht/export", geheim=False)
+            req = urllib.request.Request(f"{d.basis}/beispielreise/export", headers={"X-Frieda-Dienst": "falsch"})
+            try:
+                urllib.request.urlopen(req, timeout=10)
+                c = (200, None)
+            except urllib.error.HTTPError as e:
+                c = (e.code, e.read())
+>       assert a[0] == b[0] == c[0] == 403
+E       assert 404 == 403
+
+engine/tests/test_export.py:215: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET /beispielreise/export 404
+GET /gibtesnicht/export 404
+GET /beispielreise/export 404
+_______________ test_dienst_export_speicherreise[beispielreise] ________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/reisesp...0/test_dienst_export_speicherrei0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7d54381889a0>)
+reise = 'beispielreise'
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw0/test_dienst_export_speicherrei0')
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_dienst_export_speicherreise(speicher, reise, tmp_path):
+        with Dienst(speicher.schreiber()) as d:
+            code, kopf, daten = zip_holen(d, f"{reise}/export")
+>       assert code == 200 and kopf["content-type"].startswith("application/zip")
+E       assert (404 == 200)
+
+engine/tests/test_export.py:182: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET /beispielreise/export 404
+____________________ test_dienst_export_gitfehler[fehler0] _____________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw3/test_dienst_export_gitfehler_f0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw3/test_dienst_export_gitfehler_f0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x78476560c4a0>
+fehler = RuntimeError('git kaputt')
+
+    @pytest.mark.parametrize("fehler", [RuntimeError("git kaputt"), None])
+    def test_dienst_export_gitfehler(repo, monkeypatch, fehler):
+        import subprocess
+        import schreiben_git
+        monkeypatch.setenv("FR_SPEICHERREISEN", "")
+    
+        def kaputt(*a, **k):
+            raise fehler or subprocess.TimeoutExpired("git", 50)
+>       monkeypatch.setattr(schreiben_git, "reise_archiv", kaputt)
+E       AttributeError: <module 'schreiben_git' from 'engine/schreiben_git.py'> has no attribute 'reise_archiv'
+
+engine/tests/test_export.py:271: AttributeError
+______________________ test_dienst_export_gitfehler[None] ______________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw3/test_dienst_export_gitfehler_N0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw3/test_dienst_export_gitfehler_N0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7847641701d0>
+fehler = None
+
+    @pytest.mark.parametrize("fehler", [RuntimeError("git kaputt"), None])
+    def test_dienst_export_gitfehler(repo, monkeypatch, fehler):
+        import subprocess
+        import schreiben_git
+        monkeypatch.setenv("FR_SPEICHERREISEN", "")
+    
+        def kaputt(*a, **k):
+            raise fehler or subprocess.TimeoutExpired("git", 50)
+>       monkeypatch.setattr(schreiben_git, "reise_archiv", kaputt)
+E       AttributeError: <module 'schreiben_git' from 'engine/schreiben_git.py'> has no attribute 'reise_archiv'
+
+engine/tests/test_export.py:271: AttributeError
+_____________________ test_dienst_export_fristen_im_gitweg _____________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw3/test_dienst_export_fristen_im_0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw3/test_dienst_export_fristen_im_0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x784764171550>
+
+    def test_dienst_export_fristen_im_gitweg(repo, monkeypatch):
+        import schreiben_git
+        monkeypatch.setenv("FR_SPEICHERREISEN", "")
+        fristen = []
+        echt = schreiben_git.git
+    
+        def spion(ordner, *args, **kw):
+            fristen.append((args[0] if args else "", kw.get("frist")))
+            return echt(ordner, *args, **kw)
+        monkeypatch.setattr(schreiben_git, "git", spion)
+        with closing(tempfile.TemporaryFile()) as f:
+>           assert schreiben_git.reise_archiv(sb.Schreiber(repo[0]), "beispielreise", f) is not None
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'schreiben_git' has no attribute 'reise_archiv'
+
+engine/tests/test_export.py:288: AttributeError
+_____________________ test_fristen_unter_der_proxy_grenze ______________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_fristen_unter_der_proxy_grenze():
+>       assert sb.ZEIT_EXPORT == 50 and anmeldung.EXPORT_BUDGET == 55
+               ^^^^^^^^^^^^^^
+E       AttributeError: module 'schreiben' has no attribute 'ZEIT_EXPORT'
+
+engine/tests/test_export.py:298: AttributeError
+______________ test_dienst_export_speicherreise[stadtwochenende] _______________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/reisesp...0/test_dienst_export_speicherrei1/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7d54381ad9e0>)
+reise = 'stadtwochenende'
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw0/test_dienst_export_speicherrei1')
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_dienst_export_speicherreise(speicher, reise, tmp_path):
+        with Dienst(speicher.schreiber()) as d:
+            code, kopf, daten = zip_holen(d, f"{reise}/export")
+>       assert code == 200 and kopf["content-type"].startswith("application/zip")
+E       assert (404 == 200)
+
+engine/tests/test_export.py:182: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET /stadtwochenende/export 404
+__________________ test_dienst_export_speicherfehler[ablage] ___________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/reisesp...2/test_dienst_export_speicherfeh0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7aadcd27d760>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7aadcd271220>
+fehler = 'ablage'
+
+    @pytest.mark.parametrize("fehler", ["ablage", "sqlite", "oserror"])
+    def test_dienst_export_speicherfehler(speicher, monkeypatch, fehler):
+        rs = speicher.rs
+    
+        def kaputt(*a, **k):
+            raise {"ablage": rs.AblageFehlt("fehlt"), "sqlite": sqlite3.OperationalError("db"),
+                   "oserror": OSError("platte")}[fehler]
+        monkeypatch.setattr(rs, "exportieren", kaputt)
+        with Dienst(speicher.schreiber()) as d:
+            code, _, daten = zip_holen(d, "beispielreise/export")
+>       assert code == 503 and json.loads(daten)["fehler_code"] == "schreiben.dienst.speicher_nicht_erreichbar"
+E       assert (404 == 503)
+
+engine/tests/test_export.py:260: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET /beispielreise/export 404
+________________________ test_dienst_export_raeumt_auf _________________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/reisesp...w3/test_dienst_export_raeumt_auf0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x78476417ede0>)
+
+    def test_dienst_export_raeumt_auf(speicher):
+        """Hardlinks aus der Ablage mit Modus 400: der Temp-Ordner verschwindet trotzdem."""
+        gross = os.urandom(300 * 1024)    # über der Grenze zum Auslagern
+        speicher.rs.vorgang_schreiben("beispielreise", {"medien/foto.jpg": gross}, wer="Ida", werkzeug="item_update",
+                                      titel="Foto")
+        with Dienst(speicher.schreiber()) as d:
+            code, _, daten = zip_holen(d, "beispielreise/export")
+>       assert code == 200 and als_zip(daten).read("medien/foto.jpg") == gross
+E       assert (404 == 200)
+
+engine/tests/test_export.py:310: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET /beispielreise/export 404
+__________________ test_dienst_export_speicherfehler[sqlite] ___________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/reisesp...2/test_dienst_export_speicherfeh1/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7aadcd27d800>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7aadcd270380>
+fehler = 'sqlite'
+
+    @pytest.mark.parametrize("fehler", ["ablage", "sqlite", "oserror"])
+    def test_dienst_export_speicherfehler(speicher, monkeypatch, fehler):
+        rs = speicher.rs
+    
+        def kaputt(*a, **k):
+            raise {"ablage": rs.AblageFehlt("fehlt"), "sqlite": sqlite3.OperationalError("db"),
+                   "oserror": OSError("platte")}[fehler]
+        monkeypatch.setattr(rs, "exportieren", kaputt)
+        with Dienst(speicher.schreiber()) as d:
+            code, _, daten = zip_holen(d, "beispielreise/export")
+>       assert code == 503 and json.loads(daten)["fehler_code"] == "schreiben.dienst.speicher_nicht_erreichbar"
+E       assert (404 == 503)
+
+engine/tests/test_export.py:260: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET /beispielreise/export 404
+_______________ test_konnektor_setzt_den_abruf_ohne_zirkelimport _______________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_konnektor_setzt_den_abruf_ohne_zirkelimport():
+>       assert anmeldung.reise_exportieren is kn.reise_export
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'anmeldung' has no attribute 'reise_exportieren'
+
+engine/tests/test_export.py:424: AttributeError
+_________________________ test_dienst_export_reporeise _________________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw0/test_dienst_export_reporeise0/reisen'), PosixPath('/tmp/pytest-o...isen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw0/test_dienst_export_reporeise0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d543819c5c0>
+
+    def test_dienst_export_reporeise(repo, monkeypatch):
+        wurzel = repo[0]
+        monkeypatch.setenv("FR_SPEICHERREISEN", "")
+        with Dienst(sb.Schreiber(wurzel)) as d:
+            code, kopf, daten = zip_holen(d, "beispielreise/export")
+>           assert code == 200 and kopf["content-type"].startswith("application/zip"), daten[:300]
+E           AssertionError: b'{"fehler": "unbekannt", "fehler_code": "schreiben.dienst.unbekannt", "werte": {}}'
+E           assert (404 == 200)
+
+engine/tests/test_export.py:194: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET /beispielreise/export 404
+_______________________ test_rundlauf_ueber_importieren ________________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/reisesp...0/test_rundlauf_ueber_importiere0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7d54381ae160>)
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw0/test_rundlauf_ueber_importiere0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d543819dcd0>
+
+    def test_rundlauf_ueber_importieren(speicher, tmp_path, monkeypatch):
+        """Versprechen aus konto.export.punkt_1: der Ordner reise/ lässt sich wieder einlesen."""
+        for reise in REISEN:
+            with Dienst(speicher.schreiber()) as d:
+                code, _, daten = zip_holen(d, f"{reise}/export")
+>           assert code == 200
+E           assert 404 == 200
+
+engine/tests/test_export.py:350: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET /beispielreise/export 404
+_____________________ test_anmeldung_streamt_dateiobjekte ______________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x7aadcd27fe20>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7aadcd272390>
+
+    def test_anmeldung_streamt_dateiobjekte(welt, monkeypatch):
+        u = welt()
+        inhalt = os.urandom(3 * 1024 * 1024)
+        offen = []
+    
+        def bearbeiten(methode, pfad, headers, body, ip, reise_info):
+            f = tempfile.TemporaryFile()
+            f.write(inhalt)
+            f.seek(0)
+            offen.append(f)
+            return 200, [("Content-Type", "application/zip")], f
+        monkeypatch.setattr(anmeldung, "bearbeiten", bearbeiten)
+        t = urllib.parse.urlsplit(u.kurl)
+        c = http.client.HTTPConnection(t.hostname, t.port, timeout=10)
+        c.request("GET", "/konto")
+>       r = c.getresponse()
+            ^^^^^^^^^^^^^^^
+
+engine/tests/test_export.py:448: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/http/client.py:1457: in getresponse
+    response.begin()
+/usr/lib/python3.12/http/client.py:336: in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <http.client.HTTPResponse object at 0x7aadbfe69810>
+
+    def _read_status(self):
+        line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+        if len(line) > _MAXLINE:
+            raise LineTooLong("status line")
+        if self.debuglevel > 0:
+            print("reply:", repr(line))
+        if not line:
+            # Presumably, the server closed the connection before
+            # sending a valid response.
+>           raise RemoteDisconnected("Remote end closed connection without"
+                                     " response")
+E           http.client.RemoteDisconnected: Remote end closed connection without response
+
+/usr/lib/python3.12/http/client.py:305: RemoteDisconnected
+----------------------------- Captured stderr call -----------------------------
+GET 200
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 52370)
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/socketserver.py", line 692, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/usr/lib/python3.12/socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/usr/lib/python3.12/socketserver.py", line 761, in __init__
+    self.handle()
+  File "/usr/lib/python3.12/http/server.py", line 436, in handle
+    self.handle_one_request()
+  File "/usr/lib/python3.12/http/server.py", line 424, in handle_one_request
+    method()
+  File "engine/konnektor.py", line 3354, in do_GET
+    return self._anmeldung()
+           ^^^^^^^^^^^^^^^^^
+  File "engine/konnektor.py", line 3337, in _anmeldung
+    self.send_header("Content-Length", str(len(inhalt)))
+                                           ^^^^^^^^^^^
+TypeError: object of type '_io.BufferedRandom' has no len()
+----------------------------------------
+___________________ test_dienst_export_streamt_grosse_datei ____________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/reisesp...3/test_dienst_export_streamt_gro0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x78476417f560>)
+
+    def test_dienst_export_streamt_grosse_datei(speicher):
+        gross = os.urandom(40 * 1024 * 1024)
+        speicher.rs.vorgang_schreiben("beispielreise", {"medien/gross.bin": gross}, wer="Ida", werkzeug="item_update",
+                                      titel="Groß")
+        pruef = hashlib.sha256(gross).hexdigest()
+        del gross
+        with Dienst(speicher.schreiber()) as d:
+            tracemalloc.start()
+            try:
+                req = urllib.request.Request(f"{d.basis}/beispielreise/export", headers={"X-Frieda-Dienst": d.geheim})
+>               with urllib.request.urlopen(req, timeout=120) as r, tempfile.TemporaryFile() as f:
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_export.py:324: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/urllib/request.py:215: in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/urllib/request.py:521: in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/urllib/request.py:630: in http_response
+    response = self.parent.error(
+/usr/lib/python3.12/urllib/request.py:559: in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/urllib/request.py:492: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPDefaultErrorHandler object at 0x784764137e90>
+req = <urllib.request.Request object at 0x784764137140>
+fp = <http.client.HTTPResponse object at 0x784764172200>, code = 404
+msg = 'Not Found', hdrs = <http.client.HTTPMessage object at 0x784764173380>
+
+    def http_error_default(self, req, fp, code, msg, hdrs):
+>       raise HTTPError(req.full_url, code, msg, hdrs, fp)
+E       urllib.error.HTTPError: HTTP Error 404: Not Found
+
+/usr/lib/python3.12/urllib/request.py:639: HTTPError
+----------------------------- Captured stderr call -----------------------------
+GET /beispielreise/export 404
+_________________________ test_export_liefert_zip[ida] _________________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7192daee58a0>, wer = 'ida'
+
+    @pytest.mark.parametrize("wer", ["ida", "tom"])
+    def test_export_liefert_zip(export_welt, wer):
+        u = export_welt()
+        keks, reise = (u.a_keks, "beispielreise") if wer == "ida" else (u.b_keks, "stadtwochenende")
+        s, kopf, daten = exportieren(u, keks)
+>       assert s == 200 and ist_zip(kopf, daten), daten[:400]
+E       AssertionError: b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid..."><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><meta na'
+E       assert (400 == 200)
+
+engine/tests/test_export.py:487: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+___________________________ test_reise_export_codes ____________________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d543819d880>
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw0/test_reise_export_codes0')
+
+    def test_reise_export_codes(monkeypatch, tmp_path):
+        puffer = io.BytesIO()
+        zip_aus_ordner(BEISPIEL / "stadtwochenende", puffer)
+        _Antworter.zip_daten = puffer.getvalue()
+        s = ThreadingHTTPServer(("127.0.0.1", 0), _Antworter)
+        threading.Thread(target=s.serve_forever, daemon=True).start()
+        try:
+            monkeypatch.setenv("KN_SCHREIBDIENST", f"http://127.0.0.1:{s.server_address[1]}")
+            with tempfile.TemporaryFile() as f:
+>               assert kn.reise_export("ok", f) == (True, None)
+                       ^^^^^^^^^^^^^^^
+E               AttributeError: module 'konnektor' has no attribute 'reise_export'
+
+engine/tests/test_export.py:404: AttributeError
+_____________ test_archivierte_dabei_vorgemerkte_und_fremde_nicht ______________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x78476417fa60>
+
+    def test_archivierte_dabei_vorgemerkte_und_fremde_nicht(export_welt):
+        u = export_welt(stadt_status="archiv")
+        mitglied_dazu(u.a["id"], "stadtwochenende", "ida")
+>       z = als_zip(exportieren(u, u.a_keks)[2])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_export.py:522: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_export.py:132: in als_zip
+    z = zipfile.ZipFile(io.BytesIO(daten))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/zipfile/__init__.py:1365: in __init__
+    self._RealGetContents()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <zipfile.ZipFile [closed]>
+
+    def _RealGetContents(self):
+        """Read in the table of contents for the ZIP file."""
+        fp = self.fp
+        try:
+            endrec = _EndRecData(fp)
+        except OSError:
+            raise BadZipFile("File is not a zip file")
+        if not endrec:
+>           raise BadZipFile("File is not a zip file")
+E           zipfile.BadZipFile: File is not a zip file
+
+/usr/lib/python3.12/zipfile/__init__.py:1432: BadZipFile
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+____________________________ test_konto_ohne_reise _____________________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7d54381ae980>
+
+    def test_konto_ohne_reise(export_welt):
+        u = export_welt()
+        keks, _ = anmelden(u, MO, name="Mo")
+        s, kopf, daten = exportieren(u, keks)
+>       assert ist_zip(kopf, daten) and als_zip(daten).namelist() == ["person.json"]
+E       assert (False)
+E        +  where False = ist_zip({'server': 'Frieda-Konnektor ', 'date': 'Thu, 12 Nov 2026 06:51:18 GMT', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...}, b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>')
+
+engine/tests/test_export.py:547: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+_________________________ test_export_liefert_zip[tom] _________________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7192daee6d40>, wer = 'tom'
+
+    @pytest.mark.parametrize("wer", ["ida", "tom"])
+    def test_export_liefert_zip(export_welt, wer):
+        u = export_welt()
+        keks, reise = (u.a_keks, "beispielreise") if wer == "ida" else (u.b_keks, "stadtwochenende")
+        s, kopf, daten = exportieren(u, keks)
+>       assert s == 200 and ist_zip(kopf, daten), daten[:400]
+E       AssertionError: b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid..."><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><meta na'
+E       assert (400 == 200)
+
+engine/tests/test_export.py:487: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+____________ test_manipuliertes_formular_bringt_keine_fremde_reise _____________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x78476417f1a0>
+
+    def test_manipuliertes_formular_bringt_keine_fremde_reise(export_welt):
+        aufrufe = []
+        u = export_welt(aufrufe=aufrufe)
+        karl_keks, _ = anmelden(u, KARL)
+        s, kopf, daten = exportieren(u, karl_keks, reise="stadtwochenende", reisen="stadtwochenende",
+                                     pfad="../stadtwochenende")
+>       assert ist_zip(kopf, daten)
+E       assert False
+E        +  where False = ist_zip({'server': 'Frieda-Konnektor ', 'date': 'Thu, 12 Nov 2026 06:51:20 GMT', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...}, b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>')
+
+engine/tests/test_export.py:538: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+___________________ test_beitraege_gleich_belege_nach_rolle ____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7d54381af420>
+
+    def test_beitraege_gleich_belege_nach_rolle(export_welt):
+        u = export_welt()
+        _ablage_fuellen(u.ablage / "beispielreise")
+        karl_keks, _ = anmelden(u, KARL)
+>       zi = als_zip(exportieren(u, u.a_keks)[2])
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_export.py:583: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_export.py:132: in als_zip
+    z = zipfile.ZipFile(io.BytesIO(daten))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/zipfile/__init__.py:1365: in __init__
+    self._RealGetContents()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <zipfile.ZipFile [closed]>
+
+    def _RealGetContents(self):
+        """Read in the table of contents for the ZIP file."""
+        fp = self.fp
+        try:
+            endrec = _EndRecData(fp)
+        except OSError:
+            raise BadZipFile("File is not a zip file")
+        if not endrec:
+>           raise BadZipFile("File is not a zip file")
+E           zipfile.BadZipFile: File is not a zip file
+
+/usr/lib/python3.12/zipfile/__init__.py:1432: BadZipFile
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+____________________________ test_reise_ohne_ablage ____________________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7aadcd27dda0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7aadbfea3620>
+
+    def test_reise_ohne_ablage(export_welt, monkeypatch):
+        u = export_welt()
+        monkeypatch.setattr(rm, "ordner", lambda reise: None)
+>       z = als_zip(exportieren(u, u.a_keks)[2])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_export.py:606: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_export.py:132: in als_zip
+    z = zipfile.ZipFile(io.BytesIO(daten))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/zipfile/__init__.py:1365: in __init__
+    self._RealGetContents()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <zipfile.ZipFile [closed]>
+
+    def _RealGetContents(self):
+        """Read in the table of contents for the ZIP file."""
+        fp = self.fp
+        try:
+            endrec = _EndRecData(fp)
+        except OSError:
+            raise BadZipFile("File is not a zip file")
+        if not endrec:
+>           raise BadZipFile("File is not a zip file")
+E           zipfile.BadZipFile: File is not a zip file
+
+/usr/lib/python3.12/zipfile/__init__.py:1432: BadZipFile
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+_______________________________ test_person_json _______________________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7192e043aca0>
+
+    def test_person_json(export_welt):
+        u = export_welt()
+        _, _, daten = exportieren(u, u.a_keks)
+>       p = json.loads(als_zip(daten).read("person.json"))
+                       ^^^^^^^^^^^^^^
+
+engine/tests/test_export.py:505: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_export.py:132: in als_zip
+    z = zipfile.ZipFile(io.BytesIO(daten))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/zipfile/__init__.py:1365: in __init__
+    self._RealGetContents()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <zipfile.ZipFile [closed]>
+
+    def _RealGetContents(self):
+        """Read in the table of contents for the ZIP file."""
+        fp = self.fp
+        try:
+            endrec = _EndRecData(fp)
+        except OSError:
+            raise BadZipFile("File is not a zip file")
+        if not endrec:
+>           raise BadZipFile("File is not a zip file")
+E           zipfile.BadZipFile: File is not a zip file
+
+/usr/lib/python3.12/zipfile/__init__.py:1432: BadZipFile
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+______________ test_fehler_bei_einer_reise_bricht_alles_ab[False] ______________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7d54381aeca0>
+eigener_temp = PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw0/test_fehler_bei_einer_reise_br0/temp-export')
+fall = False
+
+    @pytest.mark.parametrize("fall", [False, "abgeschnitten", "keinzip", "boese"])
+    def test_fehler_bei_einer_reise_bricht_alles_ab(export_welt, eigener_temp, fall):
+        u = export_welt(ausnahmen={"stadtwochenende": fall})
+        mitglied_dazu(u.a["id"], "stadtwochenende", "ida")
+        s, kopf, daten = exportieren(u, u.a_keks)
+>       assert fehlerseite(s, kopf, daten), daten[:400]
+E       AssertionError: b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid..."><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><meta na'
+E       assert False
+E        +  where False = fehlerseite(400, {'server': 'Frieda-Konnektor ', 'date': 'Thu, 12 Nov 2026 06:51:21 GMT', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...}, b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>')
+
+engine/tests/test_export.py:700: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+______________________ test_export_streamt_grosse_dateien ______________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x78476417f6a0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x78476403d6d0>
+
+    def test_export_streamt_grosse_dateien(export_welt, monkeypatch):
+        gross = os.urandom(40 * 1024 * 1024)
+        pruef = hashlib.sha256(gross).hexdigest()
+    
+        def gross_export(reise, datei):
+            with zipfile.ZipFile(datei, "w", zipfile.ZIP_STORED) as z:
+                z.writestr("medien/gross.bin", gross)
+                z.write(BEISPIEL / reise / "reise.yaml", "reise.yaml")
+            return True, None
+        u = export_welt(ausnahmen={"beispielreise": gross_export})
+        o = u.ablage / "beispielreise"
+        (o / "belege").mkdir(exist_ok=True)
+        (o / "belege" / "D-01.pdf").write_bytes(b"%PDF" + gross)
+        belege.speichern(o, {"naechste": 2, "belege": [{"id": "D-01", "buchung": "B-01", "name": "x.pdf", "datei": "D-01.pdf",
+                                                        "typ": "pdf", "groesse": len(gross) + 4, "wer": "Ida",
+                                                        "hochgeladen": "2026-11-01T00:00:00+00:00",
+                                                        "sichtbar": "beteiligte", "zurueckgezogen": None}]})
+        del gross
+        t = urllib.parse.urlsplit(u.kurl)
+        c = http.client.HTTPConnection(t.hostname, t.port, timeout=120)
+        c.request("POST", "/konto", body=b"aktion=export", headers={
+            "Content-Type": "application/x-www-form-urlencoded", "Origin": BASIS, "Cookie": f"__Host-frieda={u.a_keks}"})
+        tracemalloc.start()
+        try:
+            r = c.getresponse()
+            with tempfile.TemporaryFile() as f:
+                shutil.copyfileobj(r, f, 1024 * 1024)
+                spitze = tracemalloc.get_traced_memory()[1]
+                f.seek(0)
+>               with zipfile.ZipFile(f) as z:
+                     ^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_export.py:655: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/zipfile/__init__.py:1365: in __init__
+    self._RealGetContents()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <zipfile.ZipFile [closed]>
+
+    def _RealGetContents(self):
+        """Read in the table of contents for the ZIP file."""
+        fp = self.fp
+        try:
+            endrec = _EndRecData(fp)
+        except OSError:
+            raise BadZipFile("File is not a zip file")
+        if not endrec:
+>           raise BadZipFile("File is not a zip file")
+E           zipfile.BadZipFile: File is not a zip file
+
+/usr/lib/python3.12/zipfile/__init__.py:1432: BadZipFile
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+__________ test_fehler_bei_einer_reise_bricht_alles_ab[abgeschnitten] __________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7192dae8d8a0>
+eigener_temp = PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw1/test_fehler_bei_einer_reise_br0/temp-export')
+fall = 'abgeschnitten'
+
+    @pytest.mark.parametrize("fall", [False, "abgeschnitten", "keinzip", "boese"])
+    def test_fehler_bei_einer_reise_bricht_alles_ab(export_welt, eigener_temp, fall):
+        u = export_welt(ausnahmen={"stadtwochenende": fall})
+        mitglied_dazu(u.a["id"], "stadtwochenende", "ida")
+        s, kopf, daten = exportieren(u, u.a_keks)
+>       assert fehlerseite(s, kopf, daten), daten[:400]
+E       AssertionError: b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid..."><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><meta na'
+E       assert False
+E        +  where False = fehlerseite(400, {'server': 'Frieda-Konnektor ', 'date': 'Thu, 12 Nov 2026 06:51:22 GMT', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...}, b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>')
+
+engine/tests/test_export.py:700: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+________________ test_keine_fremden_adressen_geheimnisse_pfade _________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7aadbfddbe20>
+
+    def test_keine_fremden_adressen_geheimnisse_pfade(export_welt):
+        u = export_welt()
+        _ablage_fuellen(u.ablage / "beispielreise")
+        anmelden(u, KARL)
+        keks_fremd, _ = anmelden(u, FREMD, name="Fremd")
+        konten.einladen("beispielreise", "kim", EINGELADEN, "gast", "Kim", "Ida")
+        daten = exportieren(u, u.a_keks)[2]
+>       z = als_zip(daten)
+            ^^^^^^^^^^^^^^
+
+engine/tests/test_export.py:618: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_export.py:132: in als_zip
+    z = zipfile.ZipFile(io.BytesIO(daten))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/zipfile/__init__.py:1365: in __init__
+    self._RealGetContents()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <zipfile.ZipFile [closed]>
+
+    def _RealGetContents(self):
+        """Read in the table of contents for the ZIP file."""
+        fp = self.fp
+        try:
+            endrec = _EndRecData(fp)
+        except OSError:
+            raise BadZipFile("File is not a zip file")
+        if not endrec:
+>           raise BadZipFile("File is not a zip file")
+E           zipfile.BadZipFile: File is not a zip file
+
+/usr/lib/python3.12/zipfile/__init__.py:1432: BadZipFile
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+_____________ test_fehler_bei_einer_reise_bricht_alles_ab[keinzip] _____________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7d5432ebe5c0>
+eigener_temp = PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw0/test_fehler_bei_einer_reise_br1/temp-export')
+fall = 'keinzip'
+
+    @pytest.mark.parametrize("fall", [False, "abgeschnitten", "keinzip", "boese"])
+    def test_fehler_bei_einer_reise_bricht_alles_ab(export_welt, eigener_temp, fall):
+        u = export_welt(ausnahmen={"stadtwochenende": fall})
+        mitglied_dazu(u.a["id"], "stadtwochenende", "ida")
+        s, kopf, daten = exportieren(u, u.a_keks)
+>       assert fehlerseite(s, kopf, daten), daten[:400]
+E       AssertionError: b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid..."><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><meta na'
+E       assert False
+E        +  where False = fehlerseite(400, {'server': 'Frieda-Konnektor ', 'date': 'Thu, 12 Nov 2026 06:51:23 GMT', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...}, b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>')
+
+engine/tests/test_export.py:700: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+____________________ test_export_ueber_echten_schreibdienst ____________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x78476417eac0>
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/reisesp...3/test_export_ueber_echten_schre0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x78475eef7100>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x78475eede4e0>
+
+    def test_export_ueber_echten_schreibdienst(zwei, speicher, monkeypatch):
+        """Mein Konto -> konnektor.reise_export -> Schreibdienst im Thread -> Speicher: der ganze Weg."""
+        monkeypatch.setenv("FR_BASIS", BASIS)                     # die Fixture speicher räumt die Umgebung von welt ab
+        monkeypatch.setenv("FR_MAIL_DATEI", str(speicher.tmp.parent / "mails.jsonl"))
+        u = zwei()
+        monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise,stadtwochenende")
+        with Dienst(speicher.schreiber()) as d:
+            monkeypatch.setenv("KN_SCHREIBDIENST", d.basis)
+>           monkeypatch.setattr(anmeldung, "reise_exportieren", kn.reise_export, raising=False)
+                                                                ^^^^^^^^^^^^^^^
+E           AttributeError: module 'konnektor' has no attribute 'reise_export'
+
+engine/tests/test_export.py:676: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+______________ test_fehler_bei_einer_reise_bricht_alles_ab[boese] ______________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7aadcd27f2e0>
+eigener_temp = PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw2/test_fehler_bei_einer_reise_br0/temp-export')
+fall = 'boese'
+
+    @pytest.mark.parametrize("fall", [False, "abgeschnitten", "keinzip", "boese"])
+    def test_fehler_bei_einer_reise_bricht_alles_ab(export_welt, eigener_temp, fall):
+        u = export_welt(ausnahmen={"stadtwochenende": fall})
+        mitglied_dazu(u.a["id"], "stadtwochenende", "ida")
+        s, kopf, daten = exportieren(u, u.a_keks)
+>       assert fehlerseite(s, kopf, daten), daten[:400]
+E       AssertionError: b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid..."><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><meta na'
+E       assert False
+E        +  where False = fehlerseite(400, {'server': 'Frieda-Konnektor ', 'date': 'Thu, 12 Nov 2026 06:51:24 GMT', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...}, b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>')
+
+engine/tests/test_export.py:700: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+_________________________ test_fehlertext_auf_englisch _________________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7192d9b1a0c0>
+
+    def test_fehlertext_auf_englisch(export_welt):
+        u = export_welt(ausnahmen={"beispielreise": False})
+        konten.sprache_setzen(u.a["id"], "en")
+        s, kopf, daten = exportieren(u, u.a_keks)
+>       assert fehlerseite(s, kopf, daten, "en")
+E       assert False
+E        +  where False = fehlerseite(400, {'server': 'Frieda-Konnektor ', 'date': 'Thu, 12 Nov 2026 06:51:24 GMT', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...}, b'<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid...hutz">Privacy</a><a href="/impressum">Legal notice</a><a href="/alpha">Alpha notice</a></p></div></main></body></html>', 'en')
+
+engine/tests/test_export.py:709: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+___________________ test_404_einer_reise_wird_uebersprungen ____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7d5432ebed40>
+
+    def test_404_einer_reise_wird_uebersprungen(export_welt):
+        u = export_welt(ausnahmen={"stadtwochenende": "fehlt"})
+        mitglied_dazu(u.a["id"], "stadtwochenende", "ida")
+        s, kopf, daten = exportieren(u, u.a_keks)
+>       z = als_zip(daten)
+            ^^^^^^^^^^^^^^
+
+engine/tests/test_export.py:727: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_export.py:132: in als_zip
+    z = zipfile.ZipFile(io.BytesIO(daten))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/zipfile/__init__.py:1365: in __init__
+    self._RealGetContents()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <zipfile.ZipFile [closed]>
+
+    def _RealGetContents(self):
+        """Read in the table of contents for the ZIP file."""
+        fp = self.fp
+        try:
+            endrec = _EndRecData(fp)
+        except OSError:
+            raise BadZipFile("File is not a zip file")
+        if not endrec:
+>           raise BadZipFile("File is not a zip file")
+E           zipfile.BadZipFile: File is not a zip file
+
+/usr/lib/python3.12/zipfile/__init__.py:1432: BadZipFile
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+_________________________ test_zeitbudget_aufgebraucht _________________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x78475eef7f60>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7847641f5820>
+
+    def test_zeitbudget_aufgebraucht(export_welt, monkeypatch):
+        def langsam(reise, datei):
+            monkeypatch.setattr(anmeldung.time, "monotonic", lambda: 10 ** 6)   # Budget mit einem Schlag aufgebraucht
+            zip_aus_ordner(BEISPIEL / reise, datei)
+            return True, None
+        u = export_welt(ausnahmen={"beispielreise": langsam})
+        mitglied_dazu(u.a["id"], "stadtwochenende", "ida")
+        s, kopf, daten = exportieren(u, u.a_keks)
+>       assert fehlerseite(s, kopf, daten)
+E       assert False
+E        +  where False = fehlerseite(400, {'server': 'Frieda-Konnektor ', 'date': 'Thu, 12 Nov 2026 06:51:25 GMT', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...}, b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>')
+
+engine/tests/test_export.py:720: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+___________________________ test_fehlende_belegdatei ___________________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7aadbfdf9940>
+eigener_temp = PosixPath('/tmp/pytest-of-hem/pytest-14648/popen-gw2/test_fehlende_belegdatei0/temp-export')
+
+    def test_fehlende_belegdatei(export_welt, eigener_temp):
+        u = export_welt()
+        _ablage_fuellen(u.ablage / "beispielreise")
+        (u.ablage / "beispielreise" / "belege" / "D-03.pdf").unlink()
+        s, kopf, daten = exportieren(u, u.a_keks)
+>       assert fehlerseite(s, kopf, daten)
+E       assert False
+E        +  where False = fehlerseite(400, {'server': 'Frieda-Konnektor ', 'date': 'Thu, 12 Nov 2026 06:51:25 GMT', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...}, b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>')
+
+engine/tests/test_export.py:737: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+_______________________________ test_platte_voll _______________________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7192d9b19080>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7192e02b0bc0>
+
+    def test_platte_voll(export_welt, monkeypatch):
+        u = export_welt()
+        echt = tempfile.TemporaryFile
+    
+        def voll(*a, **k):
+            f = echt(*a, **k)
+    
+            class Voll:
+                def __getattr__(self, n):
+                    return getattr(f, n)
+    
+                def write(self, *_):
+                    raise OSError(28, "No space left on device")
+    
+                def __enter__(self):
+                    return self
+    
+                def __exit__(self, *x):
+                    f.close()
+            return Voll()
+        monkeypatch.setattr(tempfile, "TemporaryFile", voll)
+        s, kopf, daten = exportieren(u, u.a_keks)
+>       assert fehlerseite(s, kopf, daten)
+E       assert False
+E        +  where False = fehlerseite(400, {'server': 'Frieda-Konnektor ', 'date': 'Thu, 12 Nov 2026 06:51:25 GMT', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...}, b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>')
+
+engine/tests/test_export.py:763: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+________________________ test_ohne_eingerichteten_abruf ________________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x78475eef6a20>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x78476403c6b0>
+
+    def test_ohne_eingerichteten_abruf(export_welt, monkeypatch):
+        u = export_welt()
+        monkeypatch.setattr(anmeldung, "reise_exportieren", None)
+        s, kopf, daten = exportieren(u, u.a_keks)
+>       assert fehlerseite(s, kopf, daten)
+E       assert False
+E        +  where False = fehlerseite(400, {'server': 'Frieda-Konnektor ', 'date': 'Thu, 12 Nov 2026 06:51:27 GMT', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...}, b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>')
+
+engine/tests/test_export.py:792: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+________________________ test_abschnitt_meine_daten[en] ________________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x78475eef62a0>
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_abschnitt_meine_daten(export_welt, sprache):
+        u = export_welt()
+        konten.sprache_setzen(u.a["id"], sprache)
+        s, _, t = abruf(f"{u.kurl}/konto", cookie=u.a_keks)
+>       assert s == 200 and 'id="daten"' in t
+E       assert (200 == 200 and 'id="daten"' in '<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...hutz">Privacy</a><a href="/impressum">Legal notice</a><a href="/alpha">Alpha notice</a></p></div></main></body></html>')
+
+engine/tests/test_export.py:820: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+____________________ test_seite_ohne_abschnitt_unveraendert ____________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7aadbfdfade0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7aadbfd4b590>
+
+    def test_seite_ohne_abschnitt_unveraendert(export_welt, monkeypatch):
+        """Ohne den neuen Abschnitt ist Mein Konto byteweise wie vorher (#381-Teile unangetastet)."""
+        u = export_welt()
+        k = konten.konto(u.a["id"])
+        anmeldung._anfrage.sprache = "de"
+        mit = anmeldung.konto_seite(k, kn.reise_kurz)
+>       karte = anmeldung.export_karte(k)
+                ^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'anmeldung' has no attribute 'export_karte'
+
+engine/tests/test_export.py:839: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+________________________ test_get_liefert_nie_eine_zip _________________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7192daee7d80>
+
+    def test_get_liefert_nie_eine_zip(export_welt):
+        u = export_welt()
+        t = urllib.parse.urlsplit(u.kurl)
+        c = http.client.HTTPConnection(t.hostname, t.port, timeout=10)
+        c.request("GET", "/konto?aktion=export", headers={"Cookie": f"__Host-frieda={u.a_keks}"})
+        r = c.getresponse()
+        daten = r.read()
+        assert r.status == 200 and not ist_zip({k.lower(): v for k, v in r.getheaders()}, daten)
+>       assert 'id="daten"' in daten.decode()
+E       assert 'id="daten"' in '<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>'
+E        +  where '<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>' = <built-in method decode of bytes object at 0x205cf660>()
+E        +    where <built-in method decode of bytes object at 0x205cf660> = b'<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-wid...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>'.decode
+
+engine/tests/test_export.py:854: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+____________________ test_datenschutz_nennt_den_export[de] _____________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x7aadbfdfb1a0>, sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_datenschutz_nennt_den_export(welt, sprache):
+        u = welt()
+        s, _, t = abruf(f"{u.kurl}/datenschutz", kopf={"Accept-Language": sprache})
+        assert s == 200
+        export = texte.t(sprache, "recht.datenschutz.export")
+        folgt = texte.t(sprache, "recht.datenschutz.folgt")
+        namen = texte.t(sprache, "recht.datenschutz.namen_freitext")
+        import html
+>       e, f, n = (t.index(html.escape(x, quote=False)) for x in (export, folgt, namen))
+        ^^^^^^^
+
+engine/tests/test_export.py:874: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <tuple_iterator object at 0x7aadcd2dc940>
+
+>   e, f, n = (t.index(html.escape(x, quote=False)) for x in (export, folgt, namen))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: substring not found
+
+engine/tests/test_export.py:874: ValueError
+----------------------------- Captured stderr call -----------------------------
+GET 200
+____________________ test_datenschutz_nennt_den_export[en] _____________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x7192d9b19300>, sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_datenschutz_nennt_den_export(welt, sprache):
+        u = welt()
+        s, _, t = abruf(f"{u.kurl}/datenschutz", kopf={"Accept-Language": sprache})
+        assert s == 200
+        export = texte.t(sprache, "recht.datenschutz.export")
+        folgt = texte.t(sprache, "recht.datenschutz.folgt")
+        namen = texte.t(sprache, "recht.datenschutz.namen_freitext")
+        import html
+>       e, f, n = (t.index(html.escape(x, quote=False)) for x in (export, folgt, namen))
+        ^^^^^^^
+
+engine/tests/test_export.py:874: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <tuple_iterator object at 0x7192e02b0730>
+
+>   e, f, n = (t.index(html.escape(x, quote=False)) for x in (export, folgt, namen))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: substring not found
+
+engine/tests/test_export.py:874: ValueError
+----------------------------- Captured stderr call -----------------------------
+GET 200
+_________________________ test_texte_deutsch_woertlich _________________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_texte_deutsch_woertlich():
+        de = {
+            "konto.export.titel": "Meine Daten",
+            "konto.export.hinweis": "Lade alles herunter, was Frieda zu dir und deinen Reisen gespeichert hat: eine Datei mit "
+                                    "jeder Reise, in der du dabei bist, und deinen Kontoangaben.",
+            "konto.export.knopf": "Meine Daten herunterladen",
+            "konto.export.was_drin": "Was ist drin?",
+            "konto.export.punkt_1": "Je Reise ein Ordner mit der ganzen Reise: Tage, Pläne, Unterkünfte, Buchungen, Wissen, "
+                                    "Fotos und Routen (GPX). Frieda kann sie daraus wieder einlesen.",
+            "konto.export.punkt_2": "Die Beiträge der Reise: Aufgaben, Wünsche, Packliste und Rückmeldungen. Als "
+                                    "Organisator:in alle, sonst deine eigenen und was du auf der Reiseseite siehst.",
+            "konto.export.punkt_3": "Die Belege, die du sehen darfst.",
+            "konto.export.punkt_4": "Deine Kontoangaben: Name, E-Mail-Adresse, Sprache, deine Reisen mit Rolle, deine Geräte "
+                                    "und deine Einstellungen für Kalender und Benachrichtigungen.",
+            "konto.export.andere": "Andere Personen stehen darin nur mit ihrem Namen, ohne E-Mail-Adresse. Auch archivierte "
+                                   "Reisen sind dabei.",
+            "konto.export.fehler": "Export gerade nicht möglich. Bitte versuche es in ein paar Minuten noch einmal.",
+            "recht.datenschutz.export": "Unter „Mein Konto“ kannst du jederzeit alles herunterladen, was Frieda zu dir "
+                                        "speichert: deine Kontoangaben und jede Reise, in der du Mitglied bist, mit Fotos, "
+                                        "Routen und den Belegen, die du sehen darfst. Die Datei entsteht beim Herunterladen "
+                                        "und wird auf dem Server nicht aufbewahrt.",
+            "recht.datenschutz.folgt": "Noch nicht eingebaut, das folgt (ohne festen Termin): Löschen und Export eines "
+                                       "Eintrags auf der Warteliste.",
+        }
+        for k, v in de.items():
+>           assert texte.t("de", k) == v, k
+E           AssertionError: konto.export.titel
+E           assert 'konto.export.titel' == 'Meine Daten'
+E             
+E             - Meine Daten
+E             + konto.export.titel
+
+engine/tests/test_export.py:903: AssertionError
+____________________ test_nur_ein_export_je_konto_zugleich _____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7d5432ebfce0>
+
+    def test_nur_ein_export_je_konto_zugleich(export_welt):
+        los, drin = threading.Event(), threading.Event()
+    
+        def warten(reise, datei):
+            drin.set()
+            los.wait(20)
+            zip_aus_ordner(BEISPIEL / reise, datei)
+            return True, None
+        u = export_welt(ausnahmen={"beispielreise": warten})
+        erstes = {}
+        t = threading.Thread(target=lambda: erstes.update(r=exportieren(u, u.a_keks)))
+        t.start()
+>       assert drin.wait(10)
+E       assert False
+E        +  where False = wait(10)
+E        +    where wait = <threading.Event at 0x7d5432efb590: unset>.wait
+
+engine/tests/test_export.py:778: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 400
+________________________ test_abschnitt_meine_daten[de] ________________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+export_welt = <function export_welt.<locals>.neu at 0x7d5432ebcfe0>
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_abschnitt_meine_daten(export_welt, sprache):
+        u = export_welt()
+        konten.sprache_setzen(u.a["id"], sprache)
+        s, _, t = abruf(f"{u.kurl}/konto", cookie=u.a_keks)
+>       assert s == 200 and 'id="daten"' in t
+E       assert (200 == 200 and 'id="daten"' in '<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>')
+
+engine/tests/test_export.py:820: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+=========================== short test summary info ============================
+FAILED engine/tests/test_export.py::test_dienst_export_einstellungen_nicht_lesbar
+FAILED engine/tests/test_export.py::test_dienst_export_speicherfehler[oserror]
+FAILED engine/tests/test_export.py::test_dienst_export_ohne_geheimnis - asser...
+FAILED engine/tests/test_export.py::test_dienst_export_speicherreise[beispielreise]
+FAILED engine/tests/test_export.py::test_dienst_export_gitfehler[fehler0] - A...
+FAILED engine/tests/test_export.py::test_dienst_export_gitfehler[None] - Attr...
+FAILED engine/tests/test_export.py::test_dienst_export_fristen_im_gitweg - At...
+FAILED engine/tests/test_export.py::test_fristen_unter_der_proxy_grenze - Att...
+FAILED engine/tests/test_export.py::test_dienst_export_speicherreise[stadtwochenende]
+FAILED engine/tests/test_export.py::test_dienst_export_speicherfehler[ablage]
+FAILED engine/tests/test_export.py::test_dienst_export_raeumt_auf - assert (4...
+FAILED engine/tests/test_export.py::test_dienst_export_speicherfehler[sqlite]
+FAILED engine/tests/test_export.py::test_konnektor_setzt_den_abruf_ohne_zirkelimport
+FAILED engine/tests/test_export.py::test_dienst_export_reporeise - AssertionE...
+FAILED engine/tests/test_export.py::test_rundlauf_ueber_importieren - assert ...
+FAILED engine/tests/test_export.py::test_anmeldung_streamt_dateiobjekte - htt...
+FAILED engine/tests/test_export.py::test_dienst_export_streamt_grosse_datei
+FAILED engine/tests/test_export.py::test_export_liefert_zip[ida] - AssertionE...
+FAILED engine/tests/test_export.py::test_reise_export_codes - AttributeError:...
+FAILED engine/tests/test_export.py::test_archivierte_dabei_vorgemerkte_und_fremde_nicht
+FAILED engine/tests/test_export.py::test_konto_ohne_reise - assert (False)
+FAILED engine/tests/test_export.py::test_export_liefert_zip[tom] - AssertionE...
+FAILED engine/tests/test_export.py::test_manipuliertes_formular_bringt_keine_fremde_reise
+FAILED engine/tests/test_export.py::test_beitraege_gleich_belege_nach_rolle
+FAILED engine/tests/test_export.py::test_reise_ohne_ablage - zipfile.BadZipFi...
+FAILED engine/tests/test_export.py::test_person_json - zipfile.BadZipFile: Fi...
+FAILED engine/tests/test_export.py::test_fehler_bei_einer_reise_bricht_alles_ab[False]
+FAILED engine/tests/test_export.py::test_export_streamt_grosse_dateien - zipf...
+FAILED engine/tests/test_export.py::test_fehler_bei_einer_reise_bricht_alles_ab[abgeschnitten]
+FAILED engine/tests/test_export.py::test_keine_fremden_adressen_geheimnisse_pfade
+FAILED engine/tests/test_export.py::test_fehler_bei_einer_reise_bricht_alles_ab[keinzip]
+FAILED engine/tests/test_export.py::test_export_ueber_echten_schreibdienst - ...
+FAILED engine/tests/test_export.py::test_fehler_bei_einer_reise_bricht_alles_ab[boese]
+FAILED engine/tests/test_export.py::test_fehlertext_auf_englisch - assert False
+FAILED engine/tests/test_export.py::test_404_einer_reise_wird_uebersprungen
+FAILED engine/tests/test_export.py::test_zeitbudget_aufgebraucht - assert False
+FAILED engine/tests/test_export.py::test_fehlende_belegdatei - assert False
+FAILED engine/tests/test_export.py::test_platte_voll - assert False
+FAILED engine/tests/test_export.py::test_ohne_eingerichteten_abruf - assert F...
+FAILED engine/tests/test_export.py::test_abschnitt_meine_daten[en] - assert (...
+FAILED engine/tests/test_export.py::test_seite_ohne_abschnitt_unveraendert - ...
+FAILED engine/tests/test_export.py::test_get_liefert_nie_eine_zip - assert 'i...
+FAILED engine/tests/test_export.py::test_datenschutz_nennt_den_export[de] - V...
+FAILED engine/tests/test_export.py::test_datenschutz_nennt_den_export[en] - V...
+FAILED engine/tests/test_export.py::test_texte_deutsch_woertlich - AssertionE...
+FAILED engine/tests/test_export.py::test_nur_ein_export_je_konto_zugleich - a...
+FAILED engine/tests/test_export.py::test_abschnitt_meine_daten[de] - assert (...
+47 failed, 8 passed in 25.10s
