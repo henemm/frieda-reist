@@ -911,6 +911,12 @@ details.neben>summary{font-weight:700;padding:10px 2px;color:var(--warn)}
   .tag-lesen,.tag-spalte{display:flex;flex-direction:column;gap:36px;order:3}
   .tagseite>.nacht-voll,.tagseite>.wahl-voll{order:2}
   .tagseite:not(:has(>.tag-lesen))>.tag-spalte{grid-column:1/-1}
+  /* Tag ohne Karte (#546): Der Tageskasten steht allein in .tag-oben, die rechte Hälfte bliebe leer. Dann steht der Kasten in der
+     linken Spalte und die rechte Spalte (Unterwegs nachschlagen, Orte des Tages) rückt neben ihn nach oben; steht darunter eine
+     Wahl oder Nacht über die volle Breite, reicht die Spalte nur bis dorthin. */
+  .tagseite:has(>.tag-spalte):has(>.tag-oben>:only-child)>.tag-oben{grid-column:1;display:block}
+  .tagseite:has(>.tag-oben>:only-child)>.tag-spalte{grid-column:2;grid-row:1;order:1}
+  .tagseite:has(>.tag-oben>:only-child):not(:has(>.nacht-voll,>.wahl-voll))>.tag-spalte{grid-row:1 / span 2}
 }
 
 /* Tageskasten neben der Karte: nach der Breite der Tagesseite (Behälter), am Rechner mit Maus (Zeigergerät bleibt Media-Query) */
@@ -3245,9 +3251,9 @@ function wissenPopup(bid, i, p) {
 }
 // Name im Text antippen: zur Karte und den Punkt zeigen; steht keine Karte auf der Seite, folgt der Link zur Etappe
 document.addEventListener("click", e => {
-  const a = e.target.closest("a.kp");
-  if (!a) return;
-  const [sid, i] = a.dataset.p.split(":");
+  const a = e.target.closest("a.kp, a[data-punkt]");   // Name im Text oder Zeile „Punkte am Weg“ (#546)
+  if (!a || e.target.closest(".zid-box")) return;
+  const [sid, i] = (a.dataset.p || a.dataset.punkt).split(":");
   const k = EKARTEN.find(x => x.sid === sid);
   if (!k) return;
   e.preventDefault();
@@ -5976,10 +5982,16 @@ function amElement(m, a) {
     bereich(T("seite.wahl.zur_wahl"), karten.map(w => zeigeDing(w.id, "karte")), zeilen.length ? el("div", {class: "wliste"}, zeilen.map(w => zeigeDing(w.id, "zeile"))) : null);
   }
   // Aufenthalte vollständig als Karte (#328); den Ort nennt eine Ortsseite schon
-  // Kartenpunkte (Art mit gruppe) an einem Block dieses Abschnitts stehen auf der Karte ihres Blocks, nicht als Karte hier
-  const auf = Object.keys(R && R.aufenthalte || {}).filter(x => dichteHier(x, id) === "karte"
-    && ((R.eltern || {})[x] === id || !blockZu.has((R.eltern || {})[x]) || !(KATEGORIEN[R.aufenthalte[x].art] || {}).gruppe));
+  // Kartenpunkte (Art mit gruppe: Wegpunkt, Wasser, Haltestelle) haben ihre Heimat am Punkt auf der Karte, nicht als Karte hier
+  const auf = Object.keys(R && R.aufenthalte || {}).filter(x => dichteHier(x, id) === "karte" && !(KATEGORIEN[R.aufenthalte[x].art] || {}).gruppe);
   if (auf.length) bereich(T("seite.aufenthalt.am_element"), ...auf.map(x => zeigeDing(x, "karte", {ohneOrt: R.aufenthalte[x].ort === id})));
+  // Punkte am Weg (Product Owner 12.11.2026, #546): die Kartenpunkte dieser Strecke als Zeilen mit Name und Art; ein Tipp zeigt den
+  // Punkt auf der Karte (wie ein Name im Text), dort stehen Koordinaten, Kartenlinks und Herkunft
+  const punkte = ((R && R.punkte || {})[id] || []).map((p, i) => [p, i]).filter(([p]) => p.ding);
+  if (punkte.length) bereich(T("seite.karte.punkte_am_weg"), el("div", {class: "wliste"}, punkte.map(([p, i]) => {
+    const z = listenZeile("aufenthalt", punktArt(p).symbol || katDef(p.kat).symbol || "ort", p.name, katDef(p.kat).einzahl || katDef(p.kat).name, id, p.ding);
+    z.classList.add("ziel"); z.id = p.ding; z.dataset.ziel = p.ding; z.dataset.punkt = id + ":" + i;
+    return z; })));
   if (R && (a.uebersicht || []).length) bereich(T("seite.art_uebersicht.kopf"), artUebersicht(a.uebersicht));
   const mitnehmen = mitnehmenZeile(id);   // Gegenstände der Packliste, die an diesem Ort oder dieser Strecke hängen (ADR-0010)
   if (mitnehmen) m.append(mitnehmen);

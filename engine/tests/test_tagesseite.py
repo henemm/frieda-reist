@@ -120,7 +120,8 @@ def test_tagesseite_in_ebenen(tmp_path, browser):
             assert a["tabelle"]["display"] == "block" and a["tabelle"]["vor"].replace('" "', "") == '"Typ: "'
         else:                 # Rechner: links lesen, rechts nachschlagen
             assert lage["unterwegs"][1] > lage["weg"][1] and lage["orte"][1] == lage["unterwegs"][1]
-            assert lage["hintergrund"][1] == lage["weg"][1] and lage["unterwegs"][0] == lage["weg"][0]
+            # der Tag der Beispielreise hat keine Karte: die rechte Spalte beginnt oben neben dem Tageskasten, nicht erst neben dem Weg (#546)
+            assert lage["hintergrund"][1] == lage["weg"][1] and lage["unterwegs"][0] < lage["weg"][0]
             assert a["tabelle"]["display"] == "block"   # rechte Spalte ist schmal: auch am Rechner gestapelt
 
 

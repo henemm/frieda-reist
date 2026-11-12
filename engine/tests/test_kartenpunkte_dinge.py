@@ -61,7 +61,8 @@ def test_nachziehen_stellt_punkte_und_kategorien_um(tmp_path):
     neu_ = bauen.bauen(q, tmp_path / "wb" / "x")
     # dieselben Punkte mit denselben Namen, Lagen, Kategorien, Nummern und Sorten; dieselben Kategorien mit Farben und Symbolen
     # ADR-0008, Schritt c: gleichnamige Wegpunkte verweisen auf ihren Ort (id), Lage und alles andere bleiben gleich
-    ohne_ort = lambda pk: {s: [{k: v for k, v in p.items() if not (k == "id" and str(v).startswith("O-"))} for p in l] for s, l in pk.items()}
+    # ding: der Punkt nennt sein Ding (A-…), damit die Seite ihn als Zeile „Punkte am Weg“ zeigen kann (#546)
+    ohne_ort = lambda pk: {s: [{k: v for k, v in p.items() if k != "ding" and not (k == "id" and str(v).startswith("O-"))} for p in l] for s, l in pk.items()}
     assert ohne_ort(neu_["route"]["punkte"]) == ohne_ort(alt["route"]["punkte"])
     assert {p["name"]: p["id"] for l in neu_["route"]["punkte"].values() for p in l if str(p.get("id", "")).startswith("O-")} == {
         "Stadt Wehlen": "O-02", "Hohnstein": "O-03", "Altendorf": "O-04", "Bad Schandau": "O-05", "Lichtenhainer Wasserfall": "O-06"}

@@ -398,6 +398,7 @@ TEXTE = {
     "seite.karte.google_oeffnen": "Open in Google Maps",
     "seite.karte.im_plan_suffix": " in plan",
     "seite.karte.im_text_zeigen": "Show in text",
+    "seite.karte.punkte_am_weg": "Points along the way",
     "seite.karte.kein_trinkwasser_osm": "no drinking water according to OpenStreetMap",
     "seite.karte.keine_uebernachtung": "No overnight stay in the plans shown.",
     "seite.karte.label_karte": "Map ",

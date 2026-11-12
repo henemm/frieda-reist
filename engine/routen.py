@@ -266,7 +266,7 @@ def kartenpunkte_aus_dingen(route):
         def rolle(r, mk=mk, art=art):
             v = mk.get(rollen.get(art, {}).get(r))
             return v.get("wert") if v else None
-        p = {"name": d.get("name"), "kat": art, "lage": (d.get("punkt") or {}).get("wert"), "quelle": d.get("quelle")}
+        p = {"name": d.get("name"), "kat": art, "lage": (d.get("punkt") or {}).get("wert"), "quelle": d.get("quelle"), "ding": aid}
         if (d.get("punkt") or {}).get("geprueft"):
             p["geprueft"] = d["punkt"]["geprueft"]
         if d.get("hinweis"):
