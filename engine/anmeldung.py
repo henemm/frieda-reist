@@ -946,7 +946,10 @@ def export_person(k, reisen, reise_info):
                                   "rolle": rolle_neu(_person(m["reise"], m["schluessel"]).get("rolle")) or "gast",
                                   "seit": m["seit"]} for m in reisen],
             "geraete": konten.geraete(kid), "kalender": konten.kalender_einstellungen(kid),
-            "push": konten.push_einstellungen(kid)}
+            "push": konten.push_einstellungen(kid),
+            # Meldungen an den Betreiber (#530): ohne Nummer und ohne Verweis auf das Issue im privaten Repo des Betreibers
+            "betreiber_meldungen": [{**m, "zeit": datetime.datetime.fromtimestamp(m["zeit"], datetime.timezone.utc).isoformat()}
+                                    for m in konten.eigene_betreiber_meldungen(kid)]}
 
 
 def _export_json(wert):
@@ -1185,7 +1188,7 @@ def einladungs_seite(e, token, k, reise_info, meldung=""):
 
 RECHT = ("/datenschutz", "/impressum", "/alpha")
 BETREIBER = (("FR_BETREIBER_NAME", "name"), ("FR_BETREIBER_ANSCHRIFT", "anschrift"), ("FR_BETREIBER_KONTAKT", "kontakt"))
-DATENSCHUTZ_ABSCHNITTE = ("konto", "warteliste", "reise", "verlauf", "belege", "sicherungen", "weitergabe", "cookie")
+DATENSCHUTZ_ABSCHNITTE = ("konto", "warteliste", "reise", "verlauf", "belege", "betreiber_meldungen", "sicherungen", "weitergabe", "cookie")
 ALPHA_PUNKTE = ("fehler", "datenverlust", "aenderungen", "claude_konto")
 
 
@@ -1217,8 +1220,14 @@ def impressum_inhalt():
 
 
 def alpha_inhalt():
+    """Die vier Punkte und, als eigener Absatz, wie man Fehler und Wünsche meldet (#530): mit FR_BETREIBER_KONTAKT dieser
+    Kontakt (maskiert), sonst (fehlt oder nur Leerraum) ein Link auf das Impressum."""
+    kontakt = (instanz.wert("FR_BETREIBER_KONTAKT") or "").strip()
+    melden = (th("recht.alpha.melden", kontakt=esc(kontakt)) if kontakt
+              else th("recht.alpha.melden_impressum", impressum=link("/impressum", "recht.link.impressum")))
     return (f'<div><h1>{esc(tx("recht.alpha.titel"))}</h1><p class="lead">{esc(tx("recht.alpha.einleitung"))}</p></div>'
-            '<ul class="punkte">' + "".join(f"<li>{esc(tx('recht.alpha.' + p))}</li>" for p in ALPHA_PUNKTE) + "</ul>")
+            '<ul class="punkte">' + "".join(f"<li>{esc(tx('recht.alpha.' + p))}</li>" for p in ALPHA_PUNKTE) + "</ul>"
+            f"<p>{melden}</p>")
 
 
 RECHT_SEITEN = {"/datenschutz": ("recht.datenschutz.titel", datenschutz_inhalt), "/impressum": ("recht.impressum.titel", impressum_inhalt),

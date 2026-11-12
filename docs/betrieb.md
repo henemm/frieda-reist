@@ -52,6 +52,7 @@ Jede Instanz ist für ihre Daten selbst verantwortlich; es wird nichts mit ander
 | Eintrag der Warteliste (Adresse, Sprache, Zeiten) | nur der Betreiber (`konten.py warteliste`, Mein Konto) | mit dem Konto derselben Adresse; ohne Konto und Export folgen später | unbestätigt 7 Tage, bestätigt bis zum Löschen |
 | Namen in Verlauf und Reise-Stand | alle Mitglieder der Reise | beim Löschen des Kontos wird der Name in jeder Reise, in der die Person Mitglied war, durch „gelöschte Person“ ersetzt: im Verlauf des Reisespeichers, in den bekannten Herkunftsmustern aller Versionen und in der Ablage (`reisespeicher.namen_ersetzen`, Ausnahme vom Nur-Anhängen, ADR-0009); Namen in frei geschriebenen Texten nur dort, wo ein Muster greift. Bei Reisen auf dem alten Weg bleibt der Git-Verlauf | mit der Reise |
 | Reise (Pläne, Personen, Entscheidungen) | Mitglieder nach Rolle (`reisend`, `einbringer`, `bestimmer`), nie öffentlich ohne Link | Organisator:innen löschen eine Reise im Reisespeicher auf Mein Konto („Reise löschen …“, zwei Bestätigungen): sofort unsichtbar, nach der Schonfrist (`FR_LOESCHFRIST_TAGE`, Vorgabe 14 Tage) endgültig entfernt, bis dahin „Reise zurückholen“; Reisen auf dem alten Weg nur durch den Betreiber im Reisen-Repo | bis eine Organisator:in sie löscht |
+| Meldungen an den Betreiber (Text, Zusammenhang, Reise, Zeitpunkt, Konto; #530) | nur der Betreiber (Mail an alle Betreiber-Konten, `konten.py meldungen`, `my_trips`); die Person selbst im Export | mit dem Konto (Konto löschen entfernt die Zeilen und die Zählzeilen); bereits zugestellte Mails im Postfach des Betreibers löscht dieser selbst | bis erledigt und höchstens bis zum Löschen des Kontos; eine Meldung, die schon zu einem Issue im privaten Reisen-Repo geführt hat, bleibt dort, bis der Betreiber sie auf Wunsch entfernt |
 | Rückmeldungen, Aufgaben, Antworten (Ablage) | Organisator:innen der Reise, Absender sehen ihre eigenen | mit der Reise (nach der Schonfrist) | bis zum Löschen der Reise |
 | Belege zu Buchungen | hochladende Person und Organisator:innen, bei Freigabe alle der Reise | der Dienst löscht keinen einzelnen Beleg, zurückgezogene bleiben als Datei; mit der Reise wird `<FR_ABLAGE>/<reise>/` ganz entfernt | bis zum Löschen der Reise |
 | Sicherungen (Konten-Schnappschuss, Reisespeicher, Archiv der Ablage) | nur der Betreiber | Gelöschtes bleibt bis zur Rotation der Sicherung; nach dem Rückspielen einer alten Sicherung entfernt der tägliche Lauf jede Reise des Löschprotokolls erneut | Ziel höchstens 30 Tage (Aufbewahrung des Server-Backups, Prüfung in `henemm-infra`) |
@@ -209,6 +210,21 @@ Mail-Einrichtung, lehnt die Seite ab und speichert nichts.
   `location ^~ /warteliste/bestaetigen/` (Drossel wie Konto) in `vorlagen/nginx-konnektor-orte.inc`; neue Orte dieser
   Datei installiert das Hilfsprogramm `nginx-orte-installieren` beim Veröffentlichen selbst (#445, siehe „nginx-Bausteine
   abgleichen“ unten), vorher ist `/warteliste` auf dem Server nicht erreichbar.
+
+## Meldungen an den Betreiber (#530)
+
+Fehler, Wünsche und Fragen zu Frieda selbst melden Personen mit Konto in der Claude-App (Konto-Werkzeug `report_to_frieda`,
+intern `an_frieda_melden`). Die Meldung liegt in der Kontendatenbank (Tabelle `betreiber_meldungen`); jedes nicht
+gesperrte Konto mit dem Recht `betreiber` bekommt eine Mail in seiner Sprache, „Antworten“ geht an die Adresse der Person
+(Reply-To), Absender bleibt `FR_ABSENDER`. Neue Einstellungen gibt es nicht.
+
+- Höchstens 10 Meldungen je Konto und Tag (gemeinsames Mailkontingent); abgelehnte zählen nicht.
+- Scheitert eine Mail, bleibt die Meldung gespeichert; im Protokoll des Konnektors steht
+  `operator report <nr>: mail failed: <Schlüssel>`. Wiederfinden: `meine_reisen` eines Betreiber-Kontos (offene Meldungen,
+  die letzten 20) oder `python3 engine/konten.py meldungen [--alle]`.
+- Abhaken: `python3 engine/konten.py meldung-erledigt <nr> <issue>` mit dem Verweis auf das Issue. Issues zu Meldungen
+  entstehen nur im privaten Reisen-Repo der Instanz, nie im öffentlichen Repo (Name, Adresse und Text sind Personendaten).
+- Konto löschen entfernt die Meldungen und ihre Zählzeilen; der Export der Person enthält sie (ohne Verweis auf das Issue).
 
 ## Reise-Stand (Epic #223)
 

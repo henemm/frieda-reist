@@ -176,6 +176,7 @@ Eine neue Reise legt eine Person an, keine Reise. Der Konnektor „Frieda“ hat
 |---|---|
 | `meine_reisen` | die veröffentlichten Reisen, auf denen die Person dabei ist (Schlüssel oder Name in `reise.yaml`), mit Rolle, Status und Link zur Seite; davor die Meldungen an sie (mit Konto über alle ihre Reisen, je Zeile mit dem Titel der Reise), danach ihre angefragten neuen Reisen. Archivierte Reisen stehen nicht in der Liste, sondern in einer Schlusszeile mit Ordnernamen (#416; nur auf Nachfrage nennen), ansprechbar bleiben sie |
 | `sprache_setzen` | Konto-Werkzeug (alle Rollen), Eingabe `sprache` (de, en …): stellt die Sprache des Kontos ein; sie gilt für Anleitung, Beschreibungen, Antworten, Kontoseiten und Mails (ADR-0006) |
+| `an_frieda_melden` | Konto-Werkzeug (jedes Konto, auch ohne Reise; zählt nicht in die Schreibgrenze, #530): Fehler, Wünsche und Fragen zu Frieda selbst an den Betreiber. Eingaben `text` (1 bis 2000 Zeichen), `art` (`Fehler`, `Wunsch`, `Frage`), optional `reise` (nur eigene Reisen) und `zusammenhang` (höchstens 2000 Zeichen). Speichert in der Kontendatenbank, mailt jedem Betreiber-Konto mit der Adresse der Person als Antwortadresse; höchstens 10 je Konto und Tag. Betreiber sehen offene Meldungen bei `meine_reisen` (`docs/betrieb.md`, „Meldungen an den Betreiber“) |
 | `reise_anlegen` | Eingaben `titel`, `von`, `bis` (JJJJ-MM-TT), optional `ziel`, `sprache` (Sprache der Reise, Vorgabe: Sprache des Kontos), `personen` (je `vorname`, `rolle`, `reist`, `notiz`), `notiz` (Bekanntes in eigenen Worten mit Herkunft) und `pfad`; wer anlegt, ist Organisator:innen der neuen Reise |
 
 `reise_anlegen` lehnt sofort ab, wenn Angaben fehlen oder nicht passen oder wenn es den Ordnernamen schon gibt, als veröffentlichte Reise, als Ablage oder als offene Anfrage (`reise.neue_reise_pruefen`). Sonst bleibt die Anfrage mit `daten.neue_reise` als Beleg in `<konten>/neu/auftraege.jsonl` (gehört zu keiner Reise), und der Schreibweg legt die Reise sofort an (`neu.aus_auftrag`, die Notiz wird der Überblick, Probebau, Commit nach `main`). Das Veröffentlichen schaltet sie frei, verknüpft das Konto mit der Reise, schickt die Einladungen und schreibt der Person die Meldung „neue Reise“ nach `<konten>/neu/meldungen.jsonl` (`betrieb/zustellen.py`). Die Links zu den Seiten liest der Konnektor aus `KN_SEITENLINKS` (Standard `seiten.json` im Ordner des Konnektors, `FR_KONNEKTOR`), die der Betrieb beim Freischalten schreibt. Den Stand der Anfragen zeigt `rueckmeldungen.py liste _neu`. Dieselbe Übersicht zeigt „Mein Konto“ im Web, die Startseite der Adresse (#41). Die Meldungen an ein Konto kommen für `meine_reisen`, Mein Konto und die Reiseseiten aus einer Quelle (`rueckmeldungen.meldungen_des_kontos`): die ohne Reise und die jeder Reise, in der das Konto Mitglied ist (#21 Stufe 1).
@@ -302,6 +303,7 @@ Das Symbol entsteht im Gespräch (#252): Die Claude-App entwirft es und gibt es 
 | `track_attach` | `track_anhaengen` |
 | `map_points_fetch` | `kartenpunkte_holen` |
 | `language_set` | `sprache_setzen` |
+| `report_to_frieda` | `an_frieda_melden` |
 
 Parameternamen (ein Wort hat überall dieselbe Übersetzung, außer wo unten eine Ausnahme steht):
 
@@ -439,6 +441,7 @@ Parameternamen (ein Wort hat überall dieselbe Übersetzung, außer wo unten ein
 | `zeit` | `time_text` |
 | `ziel` | `target` |
 | `zustaendig` | `assignee` |
+| `zusammenhang` | `context` |
 | `reise` | `trip` |
 
 Ausnahmen je Werkzeug:

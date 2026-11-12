@@ -120,7 +120,10 @@ def test_leerraum_zaehlt_als_nicht_gesetzt(welt, betreiber, monkeypatch, fehlt):
 def test_betreiberangaben_stehen_nur_im_impressum(welt, betreiber, pfad):
     u = welt()
     _, _, t = hole(u, pfad)
-    assert not any(a in t for a in (NAME, ANSCHRIFT, KONTAKT))
+    # /alpha nennt seit #530 den Kontakt als Weg für Meldungen ohne Claude-App (Spec betreiber-meldung-530, AC-15); Name und
+    # Anschrift bleiben nur im Impressum
+    angaben = (NAME, ANSCHRIFT) if pfad == "/alpha" else (NAME, ANSCHRIFT, KONTAKT)
+    assert not any(a in t for a in angaben)
 
 
 def test_betreiberangaben_stehen_nicht_im_katalog():

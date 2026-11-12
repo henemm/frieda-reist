@@ -170,4 +170,10 @@ Umgebung:
 Befehle für den Betreiber: `python3 engine/konten.py liste | anfragen | freischalten <email> [--nein] |
 warteliste | freigeben <email> | vorgemerkt |
 betreiber <email> | sperren <email> | entsperren <email> | loeschen <email> | zusammenfuehren <von> <nach> |
-einladen <reise> <schluessel> <email> <rolle> <Name> <von>`.
+einladen <reise> <schluessel> <email> <rolle> <Name> <von> | meldungen [--alle] | meldung-erledigt <nr> <issue>`.
+
+Meldungen an den Betreiber (#530) aus der Claude-App liegen in der Tabelle `betreiber_meldungen` (Text, Art,
+Zusammenhang, Reise, Zeitpunkt, Konto, Verweis auf das Issue, solange offen leer). `meldungen` listet die offenen (mit
+`--alle` auch erledigte), `meldung-erledigt` hakt eine mit dem Verweis auf das Issue im privaten Reisen-Repo ab. Konto
+löschen nimmt die Meldungen und ihre Zählzeilen mit; der Export der Person enthält sie, ohne den Verweis. Ablauf und
+Grenzen: `docs/betrieb.md`, „Meldungen an den Betreiber“.

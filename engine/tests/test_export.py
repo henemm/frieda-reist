@@ -908,8 +908,9 @@ def test_texte_deutsch_woertlich():
         "konto.export.punkt_2": "Die Beiträge der Reise: Aufgaben, Wünsche, Packliste und Rückmeldungen. Als "
                                 "Organisator:in alle, sonst deine eigenen und was du auf der Reiseseite siehst.",
         "konto.export.punkt_3": "Die Belege, die du sehen darfst.",
-        "konto.export.punkt_4": "Deine Kontoangaben: Name, E-Mail-Adresse, Sprache, deine Reisen mit Rolle, deine Geräte "
-                                "und deine Einstellungen für Kalender und Benachrichtigungen.",
+        "konto.export.punkt_4": "Deine Kontoangaben: Name, E-Mail-Adresse, Sprache, deine Reisen mit Rolle, deine Geräte, "
+                                "deine Einstellungen für Kalender und Benachrichtigungen und deine Meldungen an den "
+                                "Betreiber.",   # Meldungen an den Betreiber seit #530
         "konto.export.andere": "Andere Personen stehen darin nur mit ihrem Namen, ohne E-Mail-Adresse. Auch archivierte "
                                "Reisen sind dabei.",
         "konto.export.fehler": "Export gerade nicht möglich. Bitte versuche es in ein paar Minuten noch einmal.",

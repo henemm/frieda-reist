@@ -33,6 +33,8 @@ Aufrufe:
   python3 engine/konten.py zusammenfuehren <von> <nach>        zwei Konten eines Menschen vereinen
   python3 engine/konten.py einladen <reise> <schluessel> <email> <rolle> <Name> <von>
   python3 engine/konten.py sichern                             sauberer Schnappschuss nach <Konten>/sicherung/ (#72)
+  python3 engine/konten.py meldungen [--alle]                  offene Meldungen an den Betreiber (#530), mit --alle auch erledigte
+  python3 engine/konten.py meldung-erledigt <nr> <issue>       Meldung abhaken: Verweis auf das Issue im privaten Reisen-Repo
   python3 engine/konten.py vorgemerkt                          Reisen in der Schonfrist und entfernte Reisen (#381), je Zeile eine
 """
 import datetime
@@ -71,6 +73,9 @@ SITZUNG_TAGE = 365               # rollierend: jede Nutzung verlängert
 EINLADUNG_TAGE = 30
 WARTELISTE_TAGE = 7              # so lange gilt der Bestätigungslink; unbestätigte Einträge verfallen danach
 WARTELISTE_MAX_UNBESTAETIGT = 1000   # mehr unbestätigte Einträge zugleich nimmt die Warteliste nicht an
+BETREIBER_MELDUNG_ARTEN = ("Fehler", "Wunsch", "Frage")   # Datenwerte, angezeigt über wert.<Art> (#530)
+BETREIBER_MELDUNG_MAX = 2000     # Zeichen je Feld (Text, Zusammenhang)
+JE_KONTO_MELDUNGEN = (10, 24 * 3600)   # höchstens 10 Meldungen an den Betreiber je Konto und Tag (gemeinsames Mailkontingent)
 
 
 class KontoFehler(Exception):
@@ -158,6 +163,9 @@ CREATE TABLE IF NOT EXISTS push_warteschlange (
 CREATE TABLE IF NOT EXISTS reise_loeschung (
   reise TEXT PRIMARY KEY, konto TEXT, wann REAL NOT NULL, frist REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS loeschprotokoll (reise TEXT PRIMARY KEY, datum TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS betreiber_meldungen (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, konto TEXT NOT NULL, reise TEXT NOT NULL DEFAULT '', art TEXT NOT NULL,
+  text TEXT NOT NULL, zusammenhang TEXT NOT NULL DEFAULT '', zeit REAL NOT NULL, issue TEXT);
 CREATE INDEX IF NOT EXISTS push_abos_konto ON push_abos (konto);
 CREATE INDEX IF NOT EXISTS push_warteschlange_offen ON push_warteschlange (gesendet, konto);
 CREATE INDEX IF NOT EXISTS oauth_tokens_konto ON oauth_tokens (konto);
@@ -240,12 +248,16 @@ def basis():
     return os.environ.get("FR_BASIS", "").rstrip("/")
 
 
-def mail_senden(an, betreff, text):
-    """Eine Mail verschicken (SMTP mit STARTTLS) oder, mit FR_MAIL_DATEI, in eine Datei schreiben."""
+def mail_senden(an, betreff, text, antwort_an=None):
+    """Eine Mail verschicken (SMTP mit STARTTLS) oder, mit FR_MAIL_DATEI, in eine Datei schreiben.
+    antwort_an: Adresse für „Antworten“ (Reply-To); der Absender bleibt die Adresse der Instanz."""
     datei = os.environ.get("FR_MAIL_DATEI")
     if datei:
+        zeile = {"an": an, "betreff": betreff, "text": text}
+        if antwort_an:
+            zeile["antwort_an"] = antwort_an
         with open(datei, "a", encoding="utf-8") as f:
-            f.write(json.dumps({"an": an, "betreff": betreff, "text": text}, ensure_ascii=False) + "\n")
+            f.write(json.dumps(zeile, ensure_ascii=False) + "\n")
         return
     host = os.environ.get("FR_SMTP_HOST")
     absender = os.environ.get("FR_ABSENDER")
@@ -253,6 +265,8 @@ def mail_senden(an, betreff, text):
         raise KontoFehler("konto.fehler.mail_nicht_eingerichtet")
     m = email.message.EmailMessage()
     m["From"], m["To"], m["Subject"] = absender, an, betreff
+    if antwort_an:
+        m["Reply-To"] = antwort_an
     m.set_content(text)
     try:
         with smtplib.SMTP(host, int(os.environ.get("FR_SMTP_PORT", "587")), timeout=20) as s:
@@ -602,7 +616,8 @@ def loeschen(kid):
         v.execute("DELETE FROM einladungen WHERE email = ? OR konto = ?", (e, kid))
         v.execute("DELETE FROM codes WHERE email = ? OR konto = ?", (e, kid))
         v.execute("DELETE FROM warteliste WHERE email = ?", (e,))
-        v.execute("DELETE FROM versand WHERE schluessel IN (?, ?)", ("adresse:" + e, "warteliste:" + e))
+        v.execute("DELETE FROM versand WHERE schluessel IN (?, ?, ?)",
+                  ("adresse:" + e, "warteliste:" + e, "betreiber_meldung:" + kid))
         v.execute("UPDATE reise_loeschung SET konto = NULL WHERE konto = ?", (kid,))
         # push_stand: Sammelliste und Merker versandter Mails des Kontos (engine/push.py, „sammel:<kid>“,
         # „mail:<meldung>:<kid>“); genau diese Kennung am Ende, kein Präfix einer anderen. Die übrigen Zeilen sind Server-Stand.
@@ -610,7 +625,8 @@ def loeschen(kid):
                   ("sammel:" + kid, -(len(kid) + 1), ":" + kid))
         # oauth_clients: Registrierungen der Claude-App ohne Konto, Name oder Adresse; sie bleiben
         for t in ("sitzungen", "oauth_tokens", "oauth_codes", "mitgliedschaften", "anfragen", "kalender_abo", "push_abos",
-                  "push_einstellungen", "push_warteschlange", "meldung_gelesen", "angelegte_reisen", "schreibvorgaenge"):
+                  "push_einstellungen", "push_warteschlange", "meldung_gelesen", "angelegte_reisen", "schreibvorgaenge",
+                  "betreiber_meldungen"):
             v.execute(f"DELETE FROM {t} WHERE konto = ?", (kid,))
         v.execute("DELETE FROM konten WHERE id = ?", (kid,))
 
@@ -738,6 +754,72 @@ def freischalten(kid, ja=True):
         v.execute("INSERT INTO anfragen (konto, erstellt, status, entschieden) VALUES (?,?,?,?) "
                   "ON CONFLICT (konto) DO UPDATE SET status = excluded.status, entschieden = excluded.entschieden",
                   (kid, _datum(), "freigeschaltet" if ja else "abgelehnt", _datum()))
+
+
+# ---------------------------------------------------------------- Meldungen an den Betreiber (#530)
+# Fehler, Wünsche und Fragen zu Frieda selbst aus der Claude-App (Konto-Werkzeug an_frieda_melden): eine Zeile je Meldung,
+# eine Mail an jedes Betreiber-Konto mit der Adresse der Person als Antwortadresse. Abgehakt wird mit dem Verweis auf das
+# Issue im privaten Reisen-Repo der Instanz (konten.py meldung-erledigt).
+
+def an_betreiber_melden(k, art, text, reise=None, zusammenhang=None):
+    """Meldung des Kontos an den Betreiber ablegen und mailen. -> Nummer der Meldung oder KontoFehler.
+    Die Zeile ist gespeichert, bevor Mails gehen; ein Mailfehler verliert die Meldung nicht (Zeile auf stderr)."""
+    text = (text if isinstance(text, str) else "").strip()
+    zusammenhang = (zusammenhang if isinstance(zusammenhang, str) else "").strip()
+    if not text:
+        raise KontoFehler("konto.betreiber_meldung.leer")
+    if len(text) > BETREIBER_MELDUNG_MAX or len(zusammenhang) > BETREIBER_MELDUNG_MAX:
+        raise KontoFehler("konto.betreiber_meldung.zu_lang", max=BETREIBER_MELDUNG_MAX)
+    if art not in BETREIBER_MELDUNG_ARTEN:
+        raise KontoFehler("konto.betreiber_meldung.art")
+    reise = reise if isinstance(reise, str) else ""
+    schluessel = "betreiber_meldung:" + k["id"]
+    with closing(db()) as v, v:
+        if _begrenzt(v, schluessel, JE_KONTO_MELDUNGEN):
+            raise KontoFehler("konto.betreiber_meldung.grenze", n=JE_KONTO_MELDUNGEN[0])
+        nr = v.execute("INSERT INTO betreiber_meldungen (konto, reise, art, text, zusammenhang, zeit) VALUES (?,?,?,?,?,?)",
+                       (k["id"], reise, art, text, zusammenhang, _jetzt())).lastrowid
+        v.execute("INSERT INTO versand VALUES (?, ?)", (schluessel, _jetzt()))
+        betreiber = [_konto_dict(z) for z in v.execute(
+            "SELECT * FROM konten WHERE gesperrt = 0 AND ',' || rechte || ',' LIKE '%,betreiber,%' ORDER BY angelegt, id")]
+    for b in betreiber:
+        if not recht(b, "betreiber"):
+            continue
+        sprache = b.get("sprache") or texte.VORGABE_REISE
+        art_text = texte.datenwert(sprache, art)
+        try:
+            mail_senden(b["email"], texte.t(sprache, "konto.betreiber_meldung.mail_betreff", nr=nr, art=art_text),
+                        texte.t(sprache, "konto.betreiber_meldung.mail_text", nr=nr, name=k["name"], email=k["email"],
+                                art=art_text, reise=reise or "-", text=text, zusammenhang=zusammenhang or "-"),
+                        antwort_an=k["email"])
+        except KontoFehler as f:
+            sys.stderr.write(f"operator report {nr}: mail failed: {f.schluessel}\n")
+    return nr
+
+
+def betreiber_meldungen(alle=False):
+    """Meldungen an den Betreiber, älteste zuerst, mit Name und Adresse des Kontos; ohne alle nur offene."""
+    sql = ("SELECT m.*, k.name, k.email FROM betreiber_meldungen m LEFT JOIN konten k ON k.id = m.konto"
+           + ("" if alle else " WHERE m.issue IS NULL") + " ORDER BY m.id")
+    with closing(db()) as v:
+        return [dict(z) for z in v.execute(sql)]
+
+
+def betreiber_meldung_erledigt(nr, issue):
+    """Meldung abhaken mit dem Verweis auf das Issue. -> False, wenn es die Meldung nicht gibt."""
+    issue = (issue if isinstance(issue, str) else "").strip()
+    if not issue:
+        raise KontoFehler("konto.betreiber_meldung.issue_fehlt")
+    with closing(db()) as v, v:
+        return v.execute("UPDATE betreiber_meldungen SET issue = ? WHERE id = ?", (issue, nr)).rowcount > 0
+
+
+def eigene_betreiber_meldungen(kid):
+    """Meldungen des Kontos für den Export: ohne Nummer und ohne Verweis auf das Issue (er gehört dem Betreiber)."""
+    with closing(db()) as v:
+        return [{"art": z["art"], "text": z["text"], "zusammenhang": z["zusammenhang"], "reise": z["reise"],
+                 "zeit": z["zeit"], "erledigt": z["issue"] is not None}
+                for z in v.execute("SELECT * FROM betreiber_meldungen WHERE konto = ? ORDER BY id", (kid,))]
 
 
 # ---------------------------------------------------------------- Warteliste (#382)
@@ -1458,6 +1540,15 @@ def main(a):
             print(f"unconfirmed: {warteliste_unbestaetigt()}")
         elif a[:1] == ["freigeben"] and len(a) == 2:
             print("released" if freigeben(a[1]) else "already released")
+        elif a[:1] == ["meldungen"] and a[1:] in ([], ["--alle"]):
+            for m in betreiber_meldungen(alle=a[1:] == ["--alle"]):
+                print(f"#{m['id']}  {_datum(m['zeit'])[:10]}  {m['art']}  {m['email'] or '-'}  {m['name'] or '-'}"
+                      f"  trip: {m['reise'] or '-'}  issue: {m['issue'] or 'open'}")
+                print("    " + m["text"].replace("\n", "\n    "))
+                if m["zusammenhang"]:
+                    print("    context: " + m["zusammenhang"].replace("\n", "\n    "))
+        elif a[:1] == ["meldung-erledigt"] and len(a) == 3 and a[1].isdigit():
+            print("done" if betreiber_meldung_erledigt(int(a[1]), a[2]) else "no such report")
         elif a[:1] == ["einladen"] and len(a) == 7:
             print("valid immediately" if einladen(*a[1:])["sofort"] else "invitation sent")
         else:

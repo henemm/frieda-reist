@@ -76,6 +76,7 @@ NAMEN = {
     "track_attach": "track_anhaengen",
     "map_points_fetch": "kartenpunkte_holen",
     "language_set": "sprache_setzen",
+    "report_to_frieda": "an_frieda_melden",
     "packing_list": "packliste",
     "gear_create": "gegenstand_anlegen",
     "gear_update": "gegenstand_aendern",
@@ -109,6 +110,7 @@ PARAMETER = {
     "vorname": "first_name", "wahl": "choices", "wahlstelle": "choice", "wann": "when", "was": "what", "wert": "value",
     "werte": "values", "wunsch": "wish", "zeit": "time_text", "ziel": "target", "zustaendig": "assignee", "reise": "trip",
     "wer": "packer", "gepackt": "packed",
+    "zusammenhang": "context",
     "je_ding": "per_thing", "anreise_ab": "checkin_from", "abreise_bis": "checkout_until", "vor_ort_zahlen": "pay_on_site",
 }
 # Gleiches Wort, andere Bedeutung: bei Strecken (ding_anlegen, ding_aendern) sind von/nach Start und Ziel, ab/an Abfahrt und Ankunft

@@ -218,6 +218,20 @@ def sprache_setzen_werkzeug(sprache):
                 "description": texte.t(sprache, "konnektor.werkzeug.sprache_setzen.sprache")}}, "required": ["sprache"]}}
 
 
+def an_frieda_melden_werkzeug(sprache, reisen):
+    """Konto-Werkzeug an_frieda_melden (#530): Fehler, Wünsche und Fragen zu Frieda an den Betreiber; reise nur als Auswahl der
+    eigenen Reisen, ohne Reise im Konto fehlt das Feld."""
+    def b(s):
+        return texte.t(sprache, "konnektor.werkzeug.an_frieda_melden" + s)
+    eig = {"text": {"type": "string", "description": b(".text")},
+           "art": {"type": "string", "enum": list(konten.BETREIBER_MELDUNG_ARTEN), "description": b(".art")},
+           "zusammenhang": {"type": "string", "description": b(".zusammenhang")}}
+    if reisen:
+        eig["reise"] = {"type": "string", "enum": list(reisen), "description": b(".reise")}
+    return {"name": "an_frieda_melden", "description": b(""),
+            "inputSchema": {"type": "object", "properties": eig, "required": ["text", "art"]}}
+
+
 def personen_der_reise(reise, d):
     """Personen aus reise.yaml (veröffentlichte Seite) plus Eingeladene, die dort noch fehlen (einladungen.json)."""
     return rm.personen_mit_einladungen(((d or {}).get("reise") or {}).get("personen") or [], rm.ordner(reise))
@@ -2232,6 +2246,7 @@ def frieda_werkzeuge(k):
     reisen = reisen_des_kontos(k)
     eigene.append(KALENDER)
     eigene.append(sprache_setzen_werkzeug(k["sprache"]))
+    eigene.append(an_frieda_melden_werkzeug(k["sprache"], [r for r, _, _ in reisen]))
     je_name, wo = {}, {}
     for reise, schl, _ in reisen:
         for w in werkzeuge_fuer({"reise": reise, "person": schl}):
@@ -2269,6 +2284,7 @@ def anleitung_frieda(k, sprache=None):
               anleitung({"reise": reise, "person": schl, "konto_id": k["id"], "sprache": sprache}, d)]
     if not reisen:
         z += ["", anl(sprache, "frieda.keine_reisen"), "", anl(sprache, "antwortsprache")]
+    z += ["", anl(sprache, "frieda.melden")]
     return "\n".join(z)
 
 
@@ -2315,6 +2331,11 @@ def meine_reisen_konto(k):
         if bitten:
             z += ["", tk("konnektor.ausgabe.meine_reisen_konto.3"),
                   *[tk("konnektor.ausgabe.anfrage_seit", w1=a['name'], w2=a['email'], w3=a['erstellt'][:10]) for a in bitten]]
+        offen = konten.betreiber_meldungen()
+        if offen:   # offene Meldungen an den Betreiber (#530), höchstens die letzten 20
+            z += ["", tk("konnektor.meine_reisen.betreiber_meldungen", n=len(offen)),
+                  *[tk("konnektor.meine_reisen.betreiber_meldung", nr=m["id"], art=dw(m["art"]), name=m["name"] or "-",
+                       email=m["email"] or "-", text=" ".join(m["text"].split())[:300]) for m in offen[-20:]]]
     return "\n".join(z)
 
 
@@ -2343,6 +2364,16 @@ def frieda_werkzeug(k, name, args):
         except konten.KontoFehler as f:
             return f.text(k["sprache"]), True
         return texte.t(neu, "konnektor.sprache_gesetzt", name=texte.sprache(neu).NAME), False
+    if name == "an_frieda_melden":   # Konto-Werkzeug (#530): keine Reise-Auswahl, zählt nicht in die Schreibgrenze
+        sprache = k.get("sprache") or texte.VORGABE_REISE
+        reise = args.get("reise")
+        if reise and reise not in [r for r, _, _ in reisen_des_kontos(k)]:
+            return texte.t(sprache, "konnektor.frieda_werkzeug.1"), True
+        try:
+            nr = konten.an_betreiber_melden(k, args.get("art"), args.get("text"), reise or None, args.get("zusammenhang"))
+        except konten.KontoFehler as f:
+            return f.text(sprache), True
+        return texte.t(sprache, "konnektor.an_frieda_melden.angekommen", nr=nr), False
     if name == "anfrage_entscheiden":
         if not konten.recht(k, "betreiber"):
             return tk("konnektor.frieda_werkzeug.3"), True
