@@ -4,7 +4,7 @@
 # nachschlagen tut der AI-Client im Gespräch). Gestartet vom Timer <instanz>-waechter.timer. Reisen ohne
 # Baustein waechter und mit Status vor „fest“ werden übersprungen. Ohne Neues kostet der Lauf nichts.
 # Nachricht an den Betreiber über FR_MELDEN: eine Sammelnachricht, wenn es etwas zu melden gibt (erledigt), und bei einem
-# Fehler eine dringende Meldung. Danach je ein sauberer Schnappschuss der Konten-Datenbank und des Reisespeichers über die
+# Fehler eine dringende Meldung, einmal je Störung (fr_alarm, #446). Danach je ein sauberer Schnappschuss der Konten-Datenbank und des Reisespeichers über die
 # Backup-API von SQLite nach <FR_KONTEN>/sicherung/konten.db (#72) und <Speicher>/sicherung/reisen.db (#346, ADR-0009;
 # eine Kopie der Datei im laufenden Betrieb kann wegen WAL unbrauchbar sein). Scheitert eine Sicherung, kommt eine
 # dringende Meldung, die andere läuft trotzdem. Nach Erfolg von allem wird <FR_DIENST>/waechter-erfolg berührt (für die
@@ -29,16 +29,22 @@ if ! "$FR_PYTHON" "$FR_WURZEL/engine/waechter.py" loeschen; then
   teile="${teile:+$teile }Removing deleted trips aborted, the trips stay until the next run."
 fi
 if [ -n "$teile" ]; then
-  fr_melden high "Watchdog failed" "$teile Log: journalctl -u $FR_INSTANZ-waechter -n 100"
+  fr_alarm waechter "Watchdog failed" "$teile Log: journalctl -u $FR_INSTANZ-waechter -n 100"
   fehler=1
+else
+  fr_alarm_ende waechter
 fi
 if ! "$FR_PYTHON" "$FR_WURZEL/engine/konten.py" sichern; then
-  fr_melden high "Account backup failed" "The snapshot of konten.db was not created; the backup holds the state of the previous day. Log: journalctl -u $FR_INSTANZ-waechter -n 100"
+  fr_alarm sicherung-konten "Account backup failed" "The snapshot of konten.db was not created; the backup holds the state of the previous day. Log: journalctl -u $FR_INSTANZ-waechter -n 100"
   fehler=1
+else
+  fr_alarm_ende sicherung-konten
 fi
 if ! "$FR_PYTHON" "$FR_WURZEL/engine/reisespeicher.py" sichern; then
-  fr_melden high "Trip store backup failed" "The snapshot of reisen.db was not created; the backup holds the state of the previous day. Log: journalctl -u $FR_INSTANZ-waechter -n 100"
+  fr_alarm sicherung-reisen "Trip store backup failed" "The snapshot of reisen.db was not created; the backup holds the state of the previous day. Log: journalctl -u $FR_INSTANZ-waechter -n 100"
   fehler=1
+else
+  fr_alarm_ende sicherung-reisen
 fi
 [ "$fehler" = 0 ] || exit 1
 

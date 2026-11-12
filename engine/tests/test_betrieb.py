@@ -2012,7 +2012,7 @@ def _meldestellen():
                 alarme.add((pfad.name, m.group(1)))
             if m := re.search(r'\balarm_senden\s+"([^"]*)"', code):
                 alarme.add((pfad.name, m.group(1)))
-            if re.search(r'(^|[;&|]\s*|\s)"\$FR_MELDEN"\s', code) and "-x" not in code:
+            if re.search(r'(^\s*|\b(if|then|else|do|exec|timeout\s+\d+)\s+|[;&|]\s*|\$\(\s*)"\$FR_MELDEN"\s', code):
                 direkte.add((pfad.name, funktion))
     return alarme, direkte, ohne_stufe
 

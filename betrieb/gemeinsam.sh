@@ -145,6 +145,25 @@ fr_melden() {  # <normal|high> <betreff> <text> [erledigt]: Nachricht an den Bet
   "$FR_MELDEN" "$1" "$FR_TITEL: $2" "$3" "${4:-}" > /dev/null 2>&1 || echo "Warning: message not sent."
 }
 
+# Alarm der Stufe high nur bei einem Ausfall, bei dem jemand jetzt handeln muss und kann (#446, CLAUDE.md, docs/betrieb.md
+# „Meldeweg“); jede Stelle steht begründet in ALARMSTELLEN in engine/tests/test_betrieb.py. Einmal je Störung: Der Merker
+# <FR_DIENST>/alarm-<schluessel> entsteht nur, wenn der Meldeweg Erfolg meldet (sonst versucht es der nächste Lauf wieder), und
+# fällt mit fr_alarm_ende, sobald der Teil wieder gelingt. Wie lange eine Störung anhält, zeigt die Überwachung, nicht der Alarm.
+fr_alarm() {  # <schluessel> <betreff> <text>
+  local merker="$FR_DIENST/alarm-$1"
+  [ -n "$FR_MELDEN" ] || return 0
+  if [ -e "$merker" ]; then echo "Alarm \"$2\" already sent for this disruption (since $(cat "$merker" 2>/dev/null))."; return 0; fi
+  if "$FR_MELDEN" high "$FR_TITEL: $2" "$3" > /dev/null 2>&1; then
+    { mkdir -p "$FR_DIENST" && date -u +%Y-%m-%dT%H:%M:%SZ > "$merker"; } || echo "Warning: alarm marker not written."
+  else
+    echo "Warning: alarm not sent, the next run tries again."
+  fi
+}
+
+fr_alarm_ende() {  # <schluessel>: Störung vorbei, eine spätere meldet wieder
+  rm -f "$FR_DIENST/alarm-$1"
+}
+
 wege_pruefen() {  # Wege von außen: Jede Art Pfad des Konnektors muss über die öffentliche Adresse bei ihm ankommen
   # (Kopf X-Frieda), nicht bei nginx. Fehlt ein Ort im server-Block, geht die Seite, aber etwa das Kalender-Abo nicht
   # (1.11.2026). Nur Warnung im Protokoll, keine Meldung

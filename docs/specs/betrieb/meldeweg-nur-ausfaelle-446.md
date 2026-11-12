@@ -3,7 +3,7 @@ entity_id: meldeweg-nur-ausfaelle-446
 type: feature
 created: 2026-11-12
 updated: 2026-11-12
-status: approved
+status: implemented
 workflow: meldeweg-446
 ---
 
