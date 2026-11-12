@@ -1,0 +1,762 @@
+bringing up nodes...
+bringing up nodes...
+
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF                                         [100%]
+=================================== FAILURES ===================================
+_________________________ test_alias_deutsch_englisch __________________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7ae5bc5107c0>
+
+    def test_alias_deutsch_englisch(zwei):
+        u = zwei()
+>       assert schnittstelle.NAMEN.get("report_to_frieda") == WERKZEUG
+E       AssertionError: assert None == 'an_frieda_melden'
+E        +  where None = <built-in method get of dict object at 0x7ae5b7c68600>('report_to_frieda')
+E        +    where <built-in method get of dict object at 0x7ae5b7c68600> = {'overview': 'ueberblick', 'show': 'zeige', 'search': 'suche', 'open_questions': 'offene_fragen', ...}.get
+E        +      where {'overview': 'ueberblick', 'show': 'zeige', 'search': 'suche', 'open_questions': 'offene_fragen', ...} = schnittstelle.NAMEN
+
+engine/tests/test_betreiber_meldung.py:159: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+________________ test_werkzeug_in_liste_fuer_jedes_konto[beide] ________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7873529380e0>, fall = 'beide'
+
+    @pytest.mark.parametrize("fall", ["beispielreise", "stadtwochenende", "beide", "ohne"])
+    def test_werkzeug_in_liste_fuer_jedes_konto(zwei, fall):
+        u = zwei()
+        if fall == "beispielreise":
+            k, erwartet = u.a, {"beispielreise"}
+        elif fall == "stadtwochenende":
+            k, erwartet = u.b, {"stadtwochenende"}
+        elif fall == "beide":
+            konten.verknuepfen(u.a["id"], "stadtwochenende", "lea")
+            k, erwartet = konten.konto(u.a["id"]), {"beispielreise", "stadtwochenende"}
+        else:
+            k, erwartet = konto_neu("k-ohne", OHNE, "Ohne"), set()
+>       w = werkzeug_von(k)
+            ^^^^^^^^^^^^^^^
+
+engine/tests/test_betreiber_meldung.py:144: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-630fcfb20527aca9', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}
+
+    def werkzeug_von(k):
+        ws = [w for w in kn.frieda_werkzeuge(k) if w["name"] == WERKZEUG]
+>       assert len(ws) == 1, [w["name"] for w in kn.frieda_werkzeuge(k)]
+E       AssertionError: ['meine_reisen', 'reisen_anlegen_anfragen', 'kalender', 'sprache_setzen', 'ueberblick', 'zeige', ...]
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_betreiber_meldung.py:112: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+____________ test_werkzeug_in_liste_fuer_jedes_konto[beispielreise] ____________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x72049d1c40e0>, fall = 'beispielreise'
+
+    @pytest.mark.parametrize("fall", ["beispielreise", "stadtwochenende", "beide", "ohne"])
+    def test_werkzeug_in_liste_fuer_jedes_konto(zwei, fall):
+        u = zwei()
+        if fall == "beispielreise":
+            k, erwartet = u.a, {"beispielreise"}
+        elif fall == "stadtwochenende":
+            k, erwartet = u.b, {"stadtwochenende"}
+        elif fall == "beide":
+            konten.verknuepfen(u.a["id"], "stadtwochenende", "lea")
+            k, erwartet = konten.konto(u.a["id"]), {"beispielreise", "stadtwochenende"}
+        else:
+            k, erwartet = konto_neu("k-ohne", OHNE, "Ohne"), set()
+>       w = werkzeug_von(k)
+            ^^^^^^^^^^^^^^^
+
+engine/tests/test_betreiber_meldung.py:144: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-fb4b8f501ae5fd87', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}
+
+    def werkzeug_von(k):
+        ws = [w for w in kn.frieda_werkzeuge(k) if w["name"] == WERKZEUG]
+>       assert len(ws) == 1, [w["name"] for w in kn.frieda_werkzeuge(k)]
+E       AssertionError: ['meine_reisen', 'reisen_anlegen_anfragen', 'kalender', 'sprache_setzen', 'ueberblick', 'zeige', ...]
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_betreiber_meldung.py:112: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+_____ test_meldung_wird_gespeichert_und_nummer_geantwortet[beispielreise] ______
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7ae5b7127920>, reise = 'beispielreise'
+
+    @pytest.mark.parametrize("reise", ["beispielreise", "stadtwochenende"])
+    def test_meldung_wird_gespeichert_und_nummer_geantwortet(zwei, reise):
+        u = zwei()
+        k = u.a if reise == "beispielreise" else u.b
+        t, fehler = melden(k, art="Fehler", text="  " + FEHLER_TEXT + "  ", reise=reise, zusammenhang=ZUSAMMENHANG)
+>       assert fehler is False and meldet(t, "konnektor.an_frieda_melden.angekommen", k["sprache"]), t
+E       AssertionError: Unbekanntes Werkzeug an_frieda_melden.
+E       assert (True is False)
+
+engine/tests/test_betreiber_meldung.py:180: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+________________ test_werkzeug_in_liste_fuer_jedes_konto[ohne] _________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x787351e279c0>, fall = 'ohne'
+
+    @pytest.mark.parametrize("fall", ["beispielreise", "stadtwochenende", "beide", "ohne"])
+    def test_werkzeug_in_liste_fuer_jedes_konto(zwei, fall):
+        u = zwei()
+        if fall == "beispielreise":
+            k, erwartet = u.a, {"beispielreise"}
+        elif fall == "stadtwochenende":
+            k, erwartet = u.b, {"stadtwochenende"}
+        elif fall == "beide":
+            konten.verknuepfen(u.a["id"], "stadtwochenende", "lea")
+            k, erwartet = konten.konto(u.a["id"]), {"beispielreise", "stadtwochenende"}
+        else:
+            k, erwartet = konto_neu("k-ohne", OHNE, "Ohne"), set()
+>       w = werkzeug_von(k)
+            ^^^^^^^^^^^^^^^
+
+engine/tests/test_betreiber_meldung.py:144: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'k-ohne', 'email': 'ohne-reise@beispiel.invalid', 'name': 'Ohne', 'gesperrt': False, ...}
+
+    def werkzeug_von(k):
+        ws = [w for w in kn.frieda_werkzeuge(k) if w["name"] == WERKZEUG]
+>       assert len(ws) == 1, [w["name"] for w in kn.frieda_werkzeuge(k)]
+E       AssertionError: ['meine_reisen', 'reisen_anlegen_anfragen', 'kalender', 'sprache_setzen']
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_betreiber_meldung.py:112: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+___________ test_werkzeug_in_liste_fuer_jedes_konto[stadtwochenende] ___________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x72049c627e20>, fall = 'stadtwochenende'
+
+    @pytest.mark.parametrize("fall", ["beispielreise", "stadtwochenende", "beide", "ohne"])
+    def test_werkzeug_in_liste_fuer_jedes_konto(zwei, fall):
+        u = zwei()
+        if fall == "beispielreise":
+            k, erwartet = u.a, {"beispielreise"}
+        elif fall == "stadtwochenende":
+            k, erwartet = u.b, {"stadtwochenende"}
+        elif fall == "beide":
+            konten.verknuepfen(u.a["id"], "stadtwochenende", "lea")
+            k, erwartet = konten.konto(u.a["id"]), {"beispielreise", "stadtwochenende"}
+        else:
+            k, erwartet = konto_neu("k-ohne", OHNE, "Ohne"), set()
+>       w = werkzeug_von(k)
+            ^^^^^^^^^^^^^^^
+
+engine/tests/test_betreiber_meldung.py:144: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-55dd59ebf317e9b8', 'email': 'tom@beispiel.invalid', 'name': 'Tom', 'gesperrt': False, ...}
+
+    def werkzeug_von(k):
+        ws = [w for w in kn.frieda_werkzeuge(k) if w["name"] == WERKZEUG]
+>       assert len(ws) == 1, [w["name"] for w in kn.frieda_werkzeuge(k)]
+E       AssertionError: ['meine_reisen', 'reisen_anlegen_anfragen', 'kalender', 'sprache_setzen', 'ueberblick', 'zeige', ...]
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_betreiber_meldung.py:112: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+________________ test_fehler_im_werkzeug_in_sprache_des_kontos _________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+db_welt = {'ida': {'id': 'k-ida', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}, 'karl': {'id': 'k-kar...lse, ...}, 'mails': PosixPath('/tmp/pytest-of-hem/pytest-14721/popen-gw1/test_fehler_im_werkzeug_in_spr0/mails.jsonl')}
+
+    def test_fehler_im_werkzeug_in_sprache_des_kontos(db_welt):
+        k = konto_neu("k-en", "en@beispiel.invalid", "Eve", "en")
+        t, fehler = melden(k, art="Fehler", text="   ")
+>       assert fehler is True and meldet(t, "konto.betreiber_meldung.leer", "en"), t
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_betreiber_meldung.py:227: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Welche Reise? Bitte reise angeben (Ordner aus meine_reisen).'
+schluessel = 'konto.betreiber_meldung.leer', sprache = 'en'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel konto.betreiber_meldung.leer fehlt im Katalog
+E       assert 'konto.betreiber_meldung.leer' != 'konto.betreiber_meldung.leer'
+
+engine/tests/conftest.py:81: AssertionError
+____ test_meldung_wird_gespeichert_und_nummer_geantwortet[stadtwochenende] _____
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7ae5b71374c0>, reise = 'stadtwochenende'
+
+    @pytest.mark.parametrize("reise", ["beispielreise", "stadtwochenende"])
+    def test_meldung_wird_gespeichert_und_nummer_geantwortet(zwei, reise):
+        u = zwei()
+        k = u.a if reise == "beispielreise" else u.b
+        t, fehler = melden(k, art="Fehler", text="  " + FEHLER_TEXT + "  ", reise=reise, zusammenhang=ZUSAMMENHANG)
+>       assert fehler is False and meldet(t, "konnektor.an_frieda_melden.angekommen", k["sprache"]), t
+E       AssertionError: Unbekanntes Werkzeug an_frieda_melden.
+E       assert (True is False)
+
+engine/tests/test_betreiber_meldung.py:180: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+______________________ test_zaehlt_nicht_in_schreibgrenze ______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+db_welt = {'ida': {'id': 'k-ida', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}, 'karl': {'id': 'k-kar...lse, ...}, 'mails': PosixPath('/tmp/pytest-of-hem/pytest-14721/popen-gw1/test_zaehlt_nicht_in_schreibgr0/mails.jsonl')}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7873531c8500>
+
+    def test_zaehlt_nicht_in_schreibgrenze(db_welt, monkeypatch):
+        monkeypatch.setenv("FR_GRENZE_SCHREIBEN", "2")
+        ida = db_welt["ida"]
+        for i in range(5):
+            t, fehler = melden(ida, art="Wunsch", text=f"Beispielwert {i}")
+>           assert fehler is False, t
+E           AssertionError: Welche Reise? Bitte reise angeben (Ordner aus meine_reisen).
+E           assert True is False
+
+engine/tests/test_betreiber_meldung.py:237: AssertionError
+_____________________ test_mail_an_betreiber_mit_reply_to ______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+db_welt = {'ida': {'id': 'k-ida', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}, 'karl': {'id': 'k-kar...lse, ...}, 'mails': PosixPath('/tmp/pytest-of-hem/pytest-14721/popen-gw1/test_mail_an_betreiber_mit_rep0/mails.jsonl')}
+
+    def test_mail_an_betreiber_mit_reply_to(db_welt):
+        betreiber_anlegen()
+>       nr = konten.an_betreiber_melden(db_welt["ida"], "Fehler", FEHLER_TEXT, "beispielreise", ZUSAMMENHANG)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'an_betreiber_melden'
+
+engine/tests/test_betreiber_meldung.py:259: AttributeError
+_______________________ test_mail_senden_antwort_an_smtp _______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14721/popen-gw1/test_mail_senden_antwort_an_sm0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7873536d2930>
+
+    def test_mail_senden_antwort_an_smtp(tmp_path, monkeypatch):
+        gesendet = []
+    
+        class Spion:
+            def __init__(self, *a, **kw):
+                pass
+    
+            def __enter__(self):
+                return self
+    
+            def __exit__(self, *a):
+                return False
+    
+            def starttls(self):
+                pass
+    
+            def login(self, *a):
+                pass
+    
+            def send_message(self, m):
+                gesendet.append(m)
+    
+        monkeypatch.delenv("FR_MAIL_DATEI", raising=False)
+        monkeypatch.setenv("FR_SMTP_HOST", "smtp.beispiel.invalid")
+        monkeypatch.setenv("FR_ABSENDER", "frieda@beispiel.invalid")
+        monkeypatch.setattr(konten.smtplib, "SMTP", Spion)
+>       konten.mail_senden(BETR_DE, "Betreff", "Text", antwort_an=IDA)
+E       TypeError: mail_senden() got an unexpected keyword argument 'antwort_an'
+
+engine/tests/test_betreiber_meldung.py:299: TypeError
+_______________________ test_grenze_10_je_konto_und_tag ________________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+db_welt = {'ida': {'id': 'k-ida', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}, 'karl': {'id': 'k-kar...lse, ...}, 'mails': PosixPath('/tmp/pytest-of-hem/pytest-14721/popen-gw1/test_grenze_10_je_konto_und_ta0/mails.jsonl')}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7873531c9be0>
+
+    def test_grenze_10_je_konto_und_tag(db_welt, monkeypatch):
+        ida, karl = db_welt["ida"], db_welt["karl"]
+>       assert konten.JE_KONTO_MELDUNGEN == (10, 24 * 3600)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'JE_KONTO_MELDUNGEN'
+
+engine/tests/test_betreiber_meldung.py:317: AttributeError
+____________________ test_mailfehler_verliert_meldung_nicht ____________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+db_welt = {'ida': {'id': 'k-ida', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}, 'karl': {'id': 'k-kar...lse, ...}, 'mails': PosixPath('/tmp/pytest-of-hem/pytest-14721/popen-gw1/test_mailfehler_verliert_meldu0/mails.jsonl')}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x787353292e40>
+capsys = <_pytest.capture.CaptureFixture object at 0x7873532933b0>
+
+    def test_mailfehler_verliert_meldung_nicht(db_welt, monkeypatch, capsys):
+        betr_de, _ = betreiber_anlegen()
+        echt = konten.mail_senden
+        erreicht = []
+    
+        def senden(an, betreff, text_, antwort_an=None):
+            if an == BETR_DE:
+                raise konten.KontoFehler("konto.fehler.mail_fehlgeschlagen")
+            erreicht.append(an)
+            return echt(an, betreff, text_, antwort_an=antwort_an)
+    
+        monkeypatch.setattr(konten, "mail_senden", senden)
+        t, fehler = melden(db_welt["ida"], art="Fehler", text=FEHLER_TEXT, zusammenhang=ZUSAMMENHANG)
+>       assert fehler is False and meldet(t, "konnektor.an_frieda_melden.angekommen"), t
+E       AssertionError: Welche Reise? Bitte reise angeben (Ordner aus meine_reisen).
+E       assert (True is False)
+
+engine/tests/test_betreiber_meldung.py:350: AssertionError
+_______________________ test_anleitung_nennt_melden[de] ________________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x72049c627ce0>, sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_anleitung_nennt_melden(zwei, sprache):
+        u = zwei()
+        konten.sprache_setzen(u.a["id"], sprache)
+        mit = kn.anleitung_frieda(konten.konto(u.a["id"]))
+        ohne = kn.anleitung_frieda(konto_neu("k-ohne", OHNE, "Ohne", sprache))
+>       assert meldet(mit, "konnektor.anleitung.frieda.melden", sprache)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_betreiber_meldung.py:251: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Aufgabe: Du bist Frieda, der Reiseassistent von Ida (angemeldet als ida@beispiel.invalid). Dieser Konnektor gilt für ...nhalte der Reise können in einer anderen Sprache stehen: übersetze sie beim Vorlesen, ändere sie beim Schreiben nicht.'
+schluessel = 'konnektor.anleitung.frieda.melden', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel konnektor.anleitung.frieda.melden fehlt im Katalog
+E       assert 'konnektor.anleitung.frieda.melden' != 'konnektor.anleitung.frieda.melden'
+
+engine/tests/conftest.py:81: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+__________________________ test_ohne_betreiber_konto ___________________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+db_welt = {'ida': {'id': 'k-ida', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}, 'karl': {'id': 'k-kar...': False, ...}, 'mails': PosixPath('/tmp/pytest-of-hem/pytest-14721/popen-gw1/test_ohne_betreiber_konto0/mails.jsonl')}
+
+    def test_ohne_betreiber_konto(db_welt):
+        t, fehler = melden(db_welt["ida"], art="Frage", text="Beispielwert: eine Frage")
+>       assert fehler is False and meldet(t, "konnektor.an_frieda_melden.angekommen")
+E       assert (True is False)
+
+engine/tests/test_betreiber_meldung.py:363: AssertionError
+_____________ test_loeschen_entfernt_zeilen_und_versand_schluessel _____________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+db_welt = {'ida': {'id': 'k-ida', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}, 'karl': {'id': 'k-kar...lse, ...}, 'mails': PosixPath('/tmp/pytest-of-hem/pytest-14721/popen-gw1/test_loeschen_entfernt_zeilen_0/mails.jsonl')}
+
+    def test_loeschen_entfernt_zeilen_und_versand_schluessel(db_welt):
+>       konten.an_betreiber_melden(db_welt["ida"], "Fehler", FEHLER_TEXT)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'an_betreiber_melden'
+
+engine/tests/test_betreiber_meldung.py:370: AttributeError
+_______________ test_export_enthaelt_eigene_meldungen_ohne_issue _______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+db_welt = {'ida': {'id': 'k-ida', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}, 'karl': {'id': 'k-kar...lse, ...}, 'mails': PosixPath('/tmp/pytest-of-hem/pytest-14721/popen-gw1/test_export_enthaelt_eigene_me0/mails.jsonl')}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7873536d3a40>
+
+    def test_export_enthaelt_eigene_meldungen_ohne_issue(db_welt, monkeypatch):
+        ida, karl = db_welt["ida"], db_welt["karl"]
+        vorher = anmeldung.export_person(ida, [], {})
+>       assert vorher["betreiber_meldungen"] == []
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'betreiber_meldungen'
+
+engine/tests/test_betreiber_meldung.py:384: KeyError
+______________ test_betreiber_sieht_offene_meldungen_bei_my_trips ______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+db_welt = {'ida': {'id': 'k-ida', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}, 'karl': {'id': 'k-kar...lse, ...}, 'mails': PosixPath('/tmp/pytest-of-hem/pytest-14721/popen-gw1/test_betreiber_sieht_offene_me0/mails.jsonl')}
+
+    def test_betreiber_sieht_offene_meldungen_bei_my_trips(db_welt):
+        betr_de, _ = betreiber_anlegen()
+>       assert not meldet(kn.meine_reisen_konto(betr_de), "konnektor.meine_reisen.betreiber_meldungen")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_betreiber_meldung.py:407: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Noch keine Reise. Wer eine Reise bestimmt, kann dich mit deiner E-Mail-Adresse einladen.'
+schluessel = 'konnektor.meine_reisen.betreiber_meldungen', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel konnektor.meine_reisen.betreiber_meldungen fehlt im Katalog
+E       assert 'konnektor.meine_reisen.betreiber_meldungen' != 'konnektor.meine_reisen.betreiber_meldungen'
+
+engine/tests/conftest.py:81: AssertionError
+______________________ test_betreiber_sieht_hoechstens_20 ______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+db_welt = {'ida': {'id': 'k-ida', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}, 'karl': {'id': 'k-kar...lse, ...}, 'mails': PosixPath('/tmp/pytest-of-hem/pytest-14721/popen-gw1/test_betreiber_sieht_hoechsten0/mails.jsonl')}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x78735282dfa0>
+
+    def test_betreiber_sieht_hoechstens_20(db_welt, monkeypatch):
+        betr_de, _ = betreiber_anlegen()
+>       monkeypatch.setattr(konten, "JE_KONTO_MELDUNGEN", (100, 24 * 3600))
+E       AttributeError: <module 'konten' from 'engine/konten.py'> has no attribute 'JE_KONTO_MELDUNGEN'
+
+engine/tests/test_betreiber_meldung.py:429: AttributeError
+____________________ test_nicht_betreiber_sieht_keine_liste ____________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+db_welt = {'ida': {'id': 'k-ida', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}, 'karl': {'id': 'k-kar...lse, ...}, 'mails': PosixPath('/tmp/pytest-of-hem/pytest-14721/popen-gw1/test_nicht_betreiber_sieht_kei0/mails.jsonl')}
+
+    def test_nicht_betreiber_sieht_keine_liste(db_welt):
+>       konten.an_betreiber_melden(db_welt["ida"], "Fehler", FEHLER_TEXT)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'an_betreiber_melden'
+
+engine/tests/test_betreiber_meldung.py:438: AttributeError
+_______________________ test_cli_meldungen_und_erledigt ________________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+db_welt = {'ida': {'id': 'k-ida', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}, 'karl': {'id': 'k-kar...lse, ...}, 'mails': PosixPath('/tmp/pytest-of-hem/pytest-14721/popen-gw1/test_cli_meldungen_und_erledig0/mails.jsonl')}
+capsys = <_pytest.capture.CaptureFixture object at 0x787353292f30>
+
+    def test_cli_meldungen_und_erledigt(db_welt, capsys):
+>       a = konten.an_betreiber_melden(db_welt["ida"], "Fehler", FEHLER_TEXT, "beispielreise", ZUSAMMENHANG)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'an_betreiber_melden'
+
+engine/tests/test_betreiber_meldung.py:446: AttributeError
+_____________________ test_datenschutz_nennt_meldungen[de] _____________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x787353188890>
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_datenschutz_nennt_meldungen(monkeypatch, sprache):
+        seite_in(sprache, monkeypatch)
+        abschnitte = anmeldung.DATENSCHUTZ_ABSCHNITTE
+>       assert abschnitte.index("belege") + 1 == abschnitte.index("betreiber_meldungen") == abschnitte.index("sicherungen") - 1
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       ValueError: tuple.index(x): x not in tuple
+
+engine/tests/test_betreiber_meldung.py:478: ValueError
+_____________________ test_datenschutz_nennt_meldungen[en] _____________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7873536d2690>
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_datenschutz_nennt_meldungen(monkeypatch, sprache):
+        seite_in(sprache, monkeypatch)
+        abschnitte = anmeldung.DATENSCHUTZ_ABSCHNITTE
+>       assert abschnitte.index("belege") + 1 == abschnitte.index("betreiber_meldungen") == abschnitte.index("sicherungen") - 1
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       ValueError: tuple.index(x): x not in tuple
+
+engine/tests/test_betreiber_meldung.py:478: ValueError
+____________ test_alpha_nennt_kontakt_mit_und_ohne_einstellung[de] _____________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x78735308b590>
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14721/popen-gw1/test_alpha_nennt_kontakt_mit_u0')
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_alpha_nennt_kontakt_mit_und_ohne_einstellung(monkeypatch, tmp_path, sprache):
+        seite_in(sprache, monkeypatch)
+        monkeypatch.setenv("FR_EINSTELLUNGEN", str(tmp_path / "keine.env"))
+        monkeypatch.setenv("FR_BETREIBER_KONTAKT", "kontakt<x>&co@example.org")
+        t = anmeldung.alpha_inhalt()
+>       assert meldet(t, "recht.alpha.melden", sprache) and "kontakt&lt;x&gt;&amp;co@example.org" in t and "<x>" not in t
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_betreiber_meldung.py:499: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = '<div><h1>Alpha-Hinweis</h1><p class="lead">Frieda ist in einer frühen, öffentlichen Testphase (Alpha). Bitte nutze si...sen planst du mit Frieda in der Claude-App über den Konnektor; dafür brauchst du ein bezahltes Claude-Konto.</li></ul>'
+schluessel = 'recht.alpha.melden', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel recht.alpha.melden fehlt im Katalog
+E       assert 'recht.alpha.melden' != 'recht.alpha.melden'
+
+engine/tests/conftest.py:81: AssertionError
+____________ test_alpha_nennt_kontakt_mit_und_ohne_einstellung[en] _____________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7873530c1250>
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14721/popen-gw1/test_alpha_nennt_kontakt_mit_u1')
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_alpha_nennt_kontakt_mit_und_ohne_einstellung(monkeypatch, tmp_path, sprache):
+        seite_in(sprache, monkeypatch)
+        monkeypatch.setenv("FR_EINSTELLUNGEN", str(tmp_path / "keine.env"))
+        monkeypatch.setenv("FR_BETREIBER_KONTAKT", "kontakt<x>&co@example.org")
+        t = anmeldung.alpha_inhalt()
+>       assert meldet(t, "recht.alpha.melden", sprache) and "kontakt&lt;x&gt;&amp;co@example.org" in t and "<x>" not in t
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_betreiber_meldung.py:499: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = '<div><h1>Alpha notice</h1><p class="lead">Frieda is in an early, public test phase (alpha). Please use it with this i...<li>You plan trips with Frieda in the Claude app through the connector; this requires a paid Claude account.</li></ul>'
+schluessel = 'recht.alpha.melden', sprache = 'en'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel recht.alpha.melden fehlt im Katalog
+E       assert 'recht.alpha.melden' != 'recht.alpha.melden'
+
+engine/tests/conftest.py:81: AssertionError
+_____________________ test_export_text_nennt_meldungen[de] _____________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_export_text_nennt_meldungen(sprache):
+        t = text("konto.export.punkt_4", sprache)
+>       assert ("Meldungen an den Betreiber" if sprache == "de" else "reports to the operator") in t
+E       AssertionError: assert 'Meldungen an den Betreiber' in 'Deine Kontoangaben: Name, E-Mail-Adresse, Sprache, deine Reisen mit Rolle, deine Geräte und deine Einstellungen für Kalender und Benachrichtigungen.'
+
+engine/tests/test_betreiber_meldung.py:513: AssertionError
+_____________________ test_export_text_nennt_meldungen[en] _____________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_export_text_nennt_meldungen(sprache):
+        t = text("konto.export.punkt_4", sprache)
+>       assert ("Meldungen an den Betreiber" if sprache == "de" else "reports to the operator") in t
+E       AssertionError: assert 'reports to the operator' in 'Your account details: name, email address, language, your trips with your role, your devices and your settings for calendar and notifications.'
+
+engine/tests/test_betreiber_meldung.py:513: AssertionError
+___________________________ test_texte_vollstaendig ____________________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_texte_vollstaendig():
+        for sprache in texte.SPRACHEN:
+            katalog = getattr(texte.sprache(sprache), "TEXTE", {})
+            fehlen = [s for s in NEUE_SCHLUESSEL if s not in katalog]
+>           assert not fehlen, (sprache, fehlen)
+E           AssertionError: ('de', ['wert.Fehler', 'konto.betreiber_meldung.leer', 'konto.betreiber_meldung.zu_lang', 'konto.betreiber_meldung.art', 'konto.betreiber_meldung.grenze', 'konto.betreiber_meldung.issue_fehlt', ...])
+E           assert not ['wert.Fehler', 'konto.betreiber_meldung.leer', 'konto.betreiber_meldung.zu_lang', 'konto.betreiber_meldung.art', 'konto.betreiber_meldung.grenze', 'konto.betreiber_meldung.issue_fehlt', ...]
+
+engine/tests/test_betreiber_meldung.py:520: AssertionError
+______________________________ test_unveraendert _______________________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_unveraendert():
+        quelle = (ENGINE / "konnektor.py").read_text(encoding="utf-8")
+        assert "feedback_give" in schnittstelle.NAMEN and schnittstelle.NAMEN["feedback_give"] == "rueckmeldung_geben"
+        assert WERKZEUG not in getattr(kn, "SCHREIB_WERKZEUGE", ()) and WERKZEUG not in getattr(kn, "SCHREIB_AKTION", ())
+>       assert "an_frieda_melden" in quelle
+E       assert 'an_frieda_melden' in '#!/usr/bin/env python3\n"""Konnektor für Frieda: macht die Reisen einer Person in der Claude-App nutzbar (MCP über HT...    print(__doc__)\n        return 1\n    return 0\n\n\nif __name__ == "__main__":\n    sys.exit(main(sys.argv[1:]))\n'
+
+engine/tests/test_betreiber_meldung.py:533: AssertionError
+_________________________ test_fremde_reise_abgelehnt __________________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7ae5b71376a0>
+
+    def test_fremde_reise_abgelehnt(zwei):
+        u = zwei()
+        betreiber_anlegen()
+        t, fehler = melden(u.a, art="Fehler", text=FEHLER_TEXT, reise="stadtwochenende")
+        assert fehler is True and meldet(t, "konnektor.frieda_werkzeug.1", u.a["sprache"]), t
+>       assert zeilen() == [] and mails(u.mails) == [] and versand(f"betreiber_meldung:{u.a['id']}") == 0
+               ^^^^^^^^
+
+engine/tests/test_betreiber_meldung.py:199: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+konto = None
+
+    def zeilen(konto=None):
+        with closing(konten.db()) as v:
+            sql = "SELECT * FROM betreiber_meldungen" + (" WHERE konto = ?" if konto else "") + " ORDER BY id"
+>           return [dict(z) for z in v.execute(sql, (konto,) if konto else ())]
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           sqlite3.OperationalError: no such table: betreiber_meldungen
+
+engine/tests/test_betreiber_meldung.py:102: OperationalError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+_______________________ test_anleitung_nennt_melden[en] ________________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x72049c627ba0>, sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_anleitung_nennt_melden(zwei, sprache):
+        u = zwei()
+        konten.sprache_setzen(u.a["id"], sprache)
+        mit = kn.anleitung_frieda(konten.konto(u.a["id"]))
+        ohne = kn.anleitung_frieda(konto_neu("k-ohne", OHNE, "Ohne", sprache))
+>       assert meldet(mit, "konnektor.anleitung.frieda.melden", sprache)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_betreiber_meldung.py:251: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = "Task: You are Frieda, the travel assistant of Ida (signed in as ida@beispiel.invalid). This connector covers all trip...n's language. Trip content may be in another language: translate it when reading aloud, do not change it when writing."
+schluessel = 'konnektor.anleitung.frieda.melden', sprache = 'en'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel konnektor.anleitung.frieda.melden fehlt im Katalog
+E       assert 'konnektor.anleitung.frieda.melden' != 'konnektor.anleitung.frieda.melden'
+
+engine/tests/conftest.py:81: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+________________________ test_leer_zu_lang_falsche_art _________________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+db_welt = {'ida': {'id': 'k-ida', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}, 'karl': {'id': 'k-kar...alse, ...}, 'mails': PosixPath('/tmp/pytest-of-hem/pytest-14721/popen-gw2/test_leer_zu_lang_falsche_art0/mails.jsonl')}
+
+    def test_leer_zu_lang_falsche_art(db_welt):
+        ida = db_welt["ida"]
+        faelle = [({"art": "Fehler", "text": ""}, "konto.betreiber_meldung.leer"),
+                  ({"art": "Fehler", "text": " \n\t "}, "konto.betreiber_meldung.leer"),
+                  ({"art": "Fehler", "text": "x" * 2001}, "konto.betreiber_meldung.zu_lang"),
+                  ({"art": "Fehler", "text": "ok", "zusammenhang": "x" * 2001}, "konto.betreiber_meldung.zu_lang"),
+                  ({"art": "Lob", "text": "ok"}, "konto.betreiber_meldung.art"),
+                  ({"art": None, "text": "ok"}, "konto.betreiber_meldung.art")]
+        for args, schluessel in faelle:
+            with pytest.raises(konten.KontoFehler) as f:
+>               konten.an_betreiber_melden(ida, args["art"], args["text"], zusammenhang=args.get("zusammenhang"))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               AttributeError: module 'konten' has no attribute 'an_betreiber_melden'
+
+engine/tests/test_betreiber_meldung.py:216: AttributeError
+=========================== short test summary info ============================
+FAILED engine/tests/test_betreiber_meldung.py::test_alias_deutsch_englisch - ...
+FAILED engine/tests/test_betreiber_meldung.py::test_werkzeug_in_liste_fuer_jedes_konto[beide]
+FAILED engine/tests/test_betreiber_meldung.py::test_werkzeug_in_liste_fuer_jedes_konto[beispielreise]
+FAILED engine/tests/test_betreiber_meldung.py::test_meldung_wird_gespeichert_und_nummer_geantwortet[beispielreise]
+FAILED engine/tests/test_betreiber_meldung.py::test_werkzeug_in_liste_fuer_jedes_konto[ohne]
+FAILED engine/tests/test_betreiber_meldung.py::test_werkzeug_in_liste_fuer_jedes_konto[stadtwochenende]
+FAILED engine/tests/test_betreiber_meldung.py::test_fehler_im_werkzeug_in_sprache_des_kontos
+FAILED engine/tests/test_betreiber_meldung.py::test_meldung_wird_gespeichert_und_nummer_geantwortet[stadtwochenende]
+FAILED engine/tests/test_betreiber_meldung.py::test_zaehlt_nicht_in_schreibgrenze
+FAILED engine/tests/test_betreiber_meldung.py::test_mail_an_betreiber_mit_reply_to
+FAILED engine/tests/test_betreiber_meldung.py::test_mail_senden_antwort_an_smtp
+FAILED engine/tests/test_betreiber_meldung.py::test_grenze_10_je_konto_und_tag
+FAILED engine/tests/test_betreiber_meldung.py::test_mailfehler_verliert_meldung_nicht
+FAILED engine/tests/test_betreiber_meldung.py::test_anleitung_nennt_melden[de]
+FAILED engine/tests/test_betreiber_meldung.py::test_ohne_betreiber_konto - as...
+FAILED engine/tests/test_betreiber_meldung.py::test_loeschen_entfernt_zeilen_und_versand_schluessel
+FAILED engine/tests/test_betreiber_meldung.py::test_export_enthaelt_eigene_meldungen_ohne_issue
+FAILED engine/tests/test_betreiber_meldung.py::test_betreiber_sieht_offene_meldungen_bei_my_trips
+FAILED engine/tests/test_betreiber_meldung.py::test_betreiber_sieht_hoechstens_20
+FAILED engine/tests/test_betreiber_meldung.py::test_nicht_betreiber_sieht_keine_liste
+FAILED engine/tests/test_betreiber_meldung.py::test_cli_meldungen_und_erledigt
+FAILED engine/tests/test_betreiber_meldung.py::test_datenschutz_nennt_meldungen[de]
+FAILED engine/tests/test_betreiber_meldung.py::test_datenschutz_nennt_meldungen[en]
+FAILED engine/tests/test_betreiber_meldung.py::test_alpha_nennt_kontakt_mit_und_ohne_einstellung[de]
+FAILED engine/tests/test_betreiber_meldung.py::test_alpha_nennt_kontakt_mit_und_ohne_einstellung[en]
+FAILED engine/tests/test_betreiber_meldung.py::test_export_text_nennt_meldungen[de]
+FAILED engine/tests/test_betreiber_meldung.py::test_export_text_nennt_meldungen[en]
+FAILED engine/tests/test_betreiber_meldung.py::test_texte_vollstaendig - Asse...
+FAILED engine/tests/test_betreiber_meldung.py::test_unveraendert - assert 'an...
+FAILED engine/tests/test_betreiber_meldung.py::test_fremde_reise_abgelehnt - ...
+FAILED engine/tests/test_betreiber_meldung.py::test_anleitung_nennt_melden[en]
+FAILED engine/tests/test_betreiber_meldung.py::test_leer_zu_lang_falsche_art
+32 failed in 7.17s
