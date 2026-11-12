@@ -299,6 +299,9 @@ details.herkunft-je>summary{cursor:pointer;min-height:44px;display:flex;align-it
 details.herkunft-je dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;margin:4px 0 0}
 details.herkunft-je dd{margin:0;color:var(--fg);overflow-wrap:anywhere}
 @container kz (max-width:419px){.kz{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}.kz>div:last-child:nth-child(odd){grid-column:1 / -1}}
+/* Fünf Kacheln (Reiseüberblick) in einem mittleren Behälter: drei und zwei, damit kein Wert umbricht („↑ 1075 ↓ 1025“, #545) */
+@container kz (min-width:420px) and (max-width:759px){.kz:has(>div:nth-child(5)){grid-auto-flow:row;grid-template-columns:repeat(6,minmax(0,1fr))}
+  .kz:has(>div:nth-child(5))>div{grid-column:span 2}.kz:has(>div:nth-child(5))>div:nth-child(n+4){grid-column:span 3}}
 /* ---------- Wegtabelle (#58): Wege mit Kennzahlen; Rechner Tabelle, Handy und Tablet je Weg ein Eintrag mit Zahlenzeile ---------- */
 .pico .wege table{width:100%;font-size:var(--t-text)}
 .pico .wege :is(th,td){vertical-align:top;background:none;--pico-background-color:transparent}
