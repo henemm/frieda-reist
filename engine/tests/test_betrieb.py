@@ -1976,6 +1976,112 @@ def test_waechter_fehler_meldet_sich_und_laesst_den_stempel_aus(wa):
     assert nachrichten[0].endswith("|")    # Fehler bleiben offen
 
 
+# ---------- Meldeweg nur für Ausfälle (#446) ----------
+
+# Jede Stelle, die einen Alarm der Stufe high auslöst (Telegram beim Betreiber), mit Begründung, warum sie ein Ausfall ist, bei
+# dem jemand jetzt handeln muss und kann. Eine neue Stelle kommt nur mit Begründung hierher; sonst normal (Issue), Warnzeile im
+# Protokoll oder Teil-Check in monitor.sh der Infrastruktur (CLAUDE.md, docs/betrieb.md „Meldeweg“).
+ALARMSTELLEN = {
+    ("waechter.sh", "Watchdog failed"): "keine neuen Meldungen an Personen, abgelaufene Reisen bleiben liegen",
+    ("waechter.sh", "Account backup failed"): "Sicherung der Konten veraltet, Datenverlust beim nächsten Schaden",
+    ("waechter.sh", "Trip store backup failed"): "Sicherung des Reisespeichers veraltet, Datenverlust beim nächsten Schaden",
+    ("veroeffentlichen.sh", "Publishing red for $minuten minutes"): "Reiseseiten bleiben seit mindestens 30 Minuten alt",
+}
+# Nur diese Funktionen rufen FR_MELDEN direkt auf; alle anderen Stellen gehen über sie.
+SENDER = {("gemeinsam.sh", "fr_melden"), ("gemeinsam.sh", "fr_alarm"), ("veroeffentlichen.sh", "alarm_senden")}
+
+
+def _meldestellen():
+    """-> (alarme {(datei, betreff)}, direkte {(datei, funktion)}, stufen [(datei, zeile)] ohne feste Stufe)."""
+    alarme, direkte, ohne_stufe = set(), set(), []
+    for pfad in sorted(BETRIEB.rglob("*")):
+        if not pfad.is_file() or pfad.suffix not in ("", ".sh", ".py", ".inc", ".env", ".beispiel"):
+            continue
+        funktion = None
+        for zeile in pfad.read_text(encoding="utf-8", errors="replace").splitlines():
+            code = zeile.split(" #", 1)[0] if not zeile.lstrip().startswith("#") else ""
+            if m := re.match(r"\s*([A-Za-z_][A-Za-z0-9_]*)\(\)\s*\{", code):
+                funktion = m.group(1)
+                continue
+            if m := re.search(r'\bfr_melden\s+(\S+)\s+"([^"]*)"', code):
+                if m.group(1) not in ("normal", "high"):
+                    ohne_stufe.append((pfad.name, zeile.strip()))
+                elif m.group(1) == "high":
+                    alarme.add((pfad.name, m.group(2)))
+            if m := re.search(r'\bfr_alarm\s+\S+\s+"([^"]*)"', code):
+                alarme.add((pfad.name, m.group(1)))
+            if m := re.search(r'\balarm_senden\s+"([^"]*)"', code):
+                alarme.add((pfad.name, m.group(1)))
+            if re.search(r'(^|[;&|]\s*|\s)"\$FR_MELDEN"\s', code) and "-x" not in code:
+                direkte.add((pfad.name, funktion))
+    return alarme, direkte, ohne_stufe
+
+
+def test_alarmstellen_sind_begruendet():
+    """#446: Jede high-Stelle in betrieb/ steht mit Begründung in ALARMSTELLEN; eine neue macht diesen Test rot."""
+    alarme, _, ohne_stufe = _meldestellen()
+    assert alarme == set(ALARMSTELLEN), (
+        f"neu, ohne Begründung: {sorted(alarme - set(ALARMSTELLEN))}; nicht mehr da: {sorted(set(ALARMSTELLEN) - alarme)}")
+    assert ohne_stufe == [], f"fr_melden ohne feste Stufe normal|high: {ohne_stufe}"
+
+
+def test_fr_melden_nur_ueber_die_senderfunktionen():
+    """#446: FR_MELDEN wird nur in fr_melden, fr_alarm und alarm_senden aufgerufen; engine/ und werkzeuge/ nie."""
+    _, direkte, _ = _meldestellen()
+    assert direkte == SENDER
+    for ordner in ("engine", "werkzeuge"):
+        for pfad in (WURZEL / ordner).rglob("*.py"):
+            if "tests" in pfad.parts or ".venv" in pfad.parts or "vendor" in pfad.parts:
+                continue
+            assert "FR_MELDEN" not in pfad.read_text(encoding="utf-8", errors="replace"), pfad
+
+
+def test_alarmstellen_test_erkennt_neue_stelle(tmp_path, monkeypatch):
+    """#446: Der Bestandstest schlägt an, wenn eine neue high-Stelle oder ein direkter Aufruf dazukommt."""
+    kopie = tmp_path / "betrieb"
+    shutil.copytree(BETRIEB, kopie, ignore=shutil.ignore_patterns("__pycache__"))
+    (kopie / "neu.sh").write_text('#!/bin/sh\nprobe() {\n  fr_melden high "Something odd" "x"\n  "$FR_MELDEN" high a b\n}\n')
+    monkeypatch.setitem(globals(), "BETRIEB", kopie)
+    alarme, direkte, _ = _meldestellen()
+    assert ("neu.sh", "Something odd") in alarme and ("neu.sh", "probe") in direkte
+
+
+def test_waechter_alarm_einmal_je_stoerung(wa):
+    """#446 AC-2/AC-3: Dieselbe gescheiterte Sicherung meldet in zwei Läufen nur einmal; nach Erfolg meldet eine neue
+    Störung wieder."""
+    _, n1 = wa(WA_SICHERN_FEHLER="konten.py")
+    r, n2 = wa(WA_SICHERN_FEHLER="konten.py")
+    assert r.returncode == 1 and len(n1) == 1 and n2 == n1     # zweiter Lauf: kein neuer Alarm
+    r, n3 = wa()
+    assert r.returncode == 0 and n3 == n1 and wa.stempel.exists()
+    _, n4 = wa(WA_SICHERN_FEHLER="konten.py")
+    assert len(n4) == 2 and n4[1].startswith("high|") and "Account backup" in n4[1]
+
+
+def test_waechter_alarm_ohne_zustellung_wird_wiederholt(wa, tmp_path):
+    """#446 AC-4: Scheitert der Meldeweg, bleibt kein Merker; der nächste Lauf versucht es wieder."""
+    ausfuehrbar(tmp_path / "scheitert.sh", "#!/bin/sh\nexit 1\n")
+    wa(WA_SICHERN_FEHLER="konten.py", FR_MELDEN=str(tmp_path / "scheitert.sh"))
+    assert not list((tmp_path / "dienst").glob("alarm-*"))
+    _, nachrichten = wa(WA_SICHERN_FEHLER="konten.py")
+    assert len(nachrichten) == 1 and "Account backup" in nachrichten[0]
+
+
+def test_waechter_alarm_ohne_meldeweg_kein_merker(wa, tmp_path):
+    """#446 AC-5: Ohne Meldeweg nichts senden und keinen Merker anlegen."""
+    r, nachrichten = wa(WA_FEHLER="1", FR_MELDEN="")
+    assert r.returncode == 1 and nachrichten == [] and not list((tmp_path / "dienst").glob("alarm-*"))
+
+
+def test_waechter_alarme_je_teil_unabhaengig(wa):
+    """#446 AC-6: Die Merker der drei Teile sind getrennt."""
+    _, n1 = wa(WA_SICHERN_FEHLER="konten.py")
+    _, n2 = wa(WA_SICHERN_FEHLER="konten.py", WA_FEHLER="1")
+    assert len(n2) == 2 and "Watchdog failed" in n2[1]
+    _, n3 = wa(WA_SICHERN_FEHLER="konten.py reisespeicher.py", WA_FEHLER="1")
+    assert len(n3) == 3 and "Trip store backup" in n3[2]
+
+
 # ---------- Einrichten und Vorlagen ----------
 
 def einrichten(tmp_path, **umgebung):
