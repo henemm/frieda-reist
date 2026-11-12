@@ -151,6 +151,14 @@ darf; sie lädt zur Nutzung des Dienstes ein, nicht zu einer Reise.
   und freigegeben wie alle (Product Owner, 7.11.2026); daneben bleibt die Bitte „Reisen anlegen“ auf Mein Konto.
 - Begrenzung: je Adresse 3 Mails in 15 Minuten, je IP 10 in der Stunde (eigene Zähler, getrennt von den Anmeldecodes),
   höchstens 1000 unbestätigte Einträge zugleich. Unbestätigte Einträge verfallen nach 7 Tagen.
+- Tagesgrenze (#534): Je Kalendertag (UTC) gehen höchstens `FR_GRENZE_WARTELISTE_TAG` Bestätigungsmails der Warteliste
+  raus (Vorgabe 20), damit das Mail-Kontingent der Instanz für Anmeldecodes und andere Dienste reicht. Gezählt wird jede
+  ausgelöste Bestätigungsmail, auch die erneute an eine unbestätigte Adresse; nicht gezählt werden Anfragen bestätigter
+  oder freigegebener Adressen, Ablehnungen und Freigaben. Ist die Grenze erreicht, zeigt die Seite für jede Adresse
+  gleich „Heute sind alle Plätze vergeben. Bitte morgen wieder vorbeischauen.“ (ohne Zahl), schickt keine Mail und
+  speichert nichts; ab Mitternacht UTC ist die Grenze wieder frei. Bei der ersten Ablehnung eines Tages bekommen die
+  Betreiber einmal eine Meldung der Art `betrieb` auf Mein Konto (kein Alarm). Die Zählzeilen in `versand` tragen
+  weder Adresse noch IP.
 - Ein Eintrag verschwindet mit dem Konto derselben Adresse (#381); Löschen ohne Konto und Exportieren folgen später.
 
 ## Betrieb
@@ -165,6 +173,7 @@ Umgebung:
 | `FR_OAUTH_REDIRECTS` | weitere erlaubte Redirect-URIs der Claude-App (durch Komma getrennt) |
 | `FR_CIMD_HOSTS` | Hosts, von denen Client ID Metadata Documents geladen werden (Vorgabe `claude.ai`) |
 | `FR_GRENZE_REISEN`, `FR_GRENZE_SCHREIBEN` | Grenzen je Konto (Vorgaben 10 Reisen, 300 Schreibvorgänge je Stunde; Abschnitt „Sicherheit“); ungültige oder nicht positive Werte gelten als nicht gesetzt |
+| `FR_GRENZE_WARTELISTE_TAG` | Bestätigungsmails der Warteliste je Kalendertag (UTC), Vorgabe 20 (#534, Abschnitt „Warteliste“); ungültige oder nicht positive Werte gelten als nicht gesetzt |
 | `FR_LOESCHFRIST_TAGE` | Schonfrist zwischen „Reise löschen“ und dem endgültigen Entfernen (Vorgabe 14 Tage, #381) |
 
 Befehle für den Betreiber: `python3 engine/konten.py liste | anfragen | freischalten <email> [--nein] |

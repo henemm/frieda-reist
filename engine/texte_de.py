@@ -1126,6 +1126,7 @@ TEXTE = {
     "konto.meldungen.text.einladungen.other": " Einladungen per Mail an {n} Personen verschickt.",
     "konto.meldungen.text.anfrage_reisen": "{name} ({email}) bittet darum, Reisen anlegen zu dürfen.",
     "konto.meldungen.text.anfrage_warteliste": "{email} hat den Platz auf der Warteliste bestätigt.",
+    "konto.meldungen.text.warteliste_tagesgrenze": "Die Warteliste hat heute ihre Tagesgrenze von {grenze} Einträgen erreicht; bis morgen (UTC) werden neue Anmeldungen abgelehnt.",
     "konto.meldungen.neu": "{n} neu",
     "konto.meldungen.neu_punkt": "neu",
     "konto.meldungen.alle_gelesen": "Alle gelesen",
@@ -3511,9 +3512,11 @@ TEXTE = {
     "konto.warteliste.unbestaetigt": "Noch unbestätigt: {n}",
     "konto.warteliste.freigeben": "Freigeben",
     "konto.fehler.warteliste_voll": "Gerade ist zu viel los. Bitte später noch einmal versuchen.",
+    "konto.fehler.warteliste_tag_voll": "Heute sind alle Plätze vergeben. Bitte morgen wieder vorbeischauen.",
     "konto.fehler.warteliste_link": "Dieser Link gilt nicht mehr. Trag dich bitte neu ein.",
     "konto.fehler.warteliste_nicht_bestaetigt": "Diese Adresse steht nicht bestätigt auf der Warteliste.",
     "konto.betreiber.warteliste": "{email} hat den Platz auf der Warteliste bestätigt. Freigeben: auf der Kontoseite oder mit „konten.py freigeben“.",
+    "konto.betreiber.warteliste_tagesgrenze": "Die Warteliste hat heute ihre Tagesgrenze von {grenze} Einträgen erreicht. Weitere Anmeldungen werden bis morgen (UTC) abgelehnt, damit das Mail-Kontingent reicht.",
     "warteliste.alpha_mehr": "Was das heißt: {link}.",
     # Datenschutz, Impressum und Alpha-Hinweis (#383). Entwurf; die rechtliche Prüfung macht der Product Owner. Die Angaben
     # zum Betreiber stehen nie hier, sie kommen aus den Einstellungen der Instanz (FR_BETREIBER_*).

@@ -73,6 +73,8 @@ SITZUNG_TAGE = 365               # rollierend: jede Nutzung verlängert
 EINLADUNG_TAGE = 30
 WARTELISTE_TAGE = 7              # so lange gilt der Bestätigungslink; unbestätigte Einträge verfallen danach
 WARTELISTE_MAX_UNBESTAETIGT = 1000   # mehr unbestätigte Einträge zugleich nimmt die Warteliste nicht an
+WARTELISTE_TAG = "warteliste-tag"    # Versand-Zeile je Bestätigungsmail der Warteliste, ohne Adresse (Tagesgrenze, #534)
+WARTELISTE_TAG_GEMELDET = "warteliste-tag-gemeldet"   # Merker: Tagesgrenze heute schon dem Betreiber gemeldet
 BETREIBER_MELDUNG_ARTEN = ("Fehler", "Wunsch", "Frage")   # Datenwerte, angezeigt über wert.<Art> (#530)
 BETREIBER_MELDUNG_MAX = 2000     # Zeichen je Feld (Text, Zusammenhang)
 JE_KONTO_MELDUNGEN = (10, 24 * 3600)   # höchstens 10 Meldungen an den Betreiber je Konto und Tag (gemeinsames Mailkontingent)
@@ -96,6 +98,12 @@ class NameNoetig(KontoFehler):
 
 def _jetzt():
     return time.time()
+
+
+def _tagesbeginn():
+    """Letzte Mitternacht UTC vor _jetzt() (Sekunden); die Tage der UTC-Zeitrechnung haben genau 86400 Sekunden."""
+    jetzt = _jetzt()
+    return jetzt - jetzt % 86400
 
 
 def _datum(t=None):
@@ -845,6 +853,10 @@ def warteliste_eintragen(roh, ip="", sprache=None):
         # Die Begrenzung zählt jeden Versuch, vor jeder Unterscheidung nach dem Stand: sonst verriete sie ihn
         if _begrenzt(v, "warteliste:" + e, JE_ADRESSE) or (ip and _begrenzt(v, "warteliste-ip:" + ip, JE_IP)):
             raise KontoFehler("konto.fehler.zu_viele_codes")
+        # Tagesgrenze (#534): vor jedem Schreiben und jeder Unterscheidung nach dem Stand, gleich für jede Adresse
+        if v.execute("SELECT COUNT(*) FROM versand WHERE schluessel = ? AND zeit >= ?",
+                     (WARTELISTE_TAG, _tagesbeginn())).fetchone()[0] >= instanz.grenze_warteliste_tag():
+            raise KontoFehler("konto.fehler.warteliste_tag_voll")
         v.execute("INSERT INTO versand VALUES (?, ?)", ("warteliste:" + e, jetzt))
         if ip:
             v.execute("INSERT INTO versand VALUES (?, ?)", ("warteliste-ip:" + ip, jetzt))
@@ -861,10 +873,21 @@ def warteliste_eintragen(roh, ip="", sprache=None):
                 raise KontoFehler("konto.fehler.warteliste_voll")
             v.execute("INSERT INTO warteliste (email, sprache, erstellt, hash, ablauf) VALUES (?,?,?,?,?)",
                       (e, sprache, jetzt, _hash("warteliste", wort), ablauf))
+        v.execute("INSERT INTO versand VALUES (?, ?)", (WARTELISTE_TAG, jetzt))   # jede ausgelöste Mail zählt
     zeilen = [texte.t(sprache, "mail.warteliste.zeile_link", tage=WARTELISTE_TAGE),
               f"{basis()}/warteliste/bestaetigen/{wort}", "", texte.t(sprache, "mail.warteliste.zeile_loeschen")]
     mail_senden(e, texte.t(sprache, "mail.warteliste.betreff"), "\n".join(zeilen))
     return None
+
+
+def warteliste_tagesgrenze_merken():
+    """True genau einmal je UTC-Kalendertag: dann meldet der Aufrufer die erreichte Tagesgrenze dem Betreiber (#534).
+    Prüfen und Einfügen in einer einzigen Anweisung; die Schreibsperre der Datenbank macht beides atomar."""
+    with closing(db()) as v, v:
+        c = v.execute("INSERT INTO versand SELECT ?, ? WHERE NOT EXISTS "
+                      "(SELECT 1 FROM versand WHERE schluessel = ? AND zeit >= ?)",
+                      (WARTELISTE_TAG_GEMELDET, _jetzt(), WARTELISTE_TAG_GEMELDET, _tagesbeginn()))
+        return c.rowcount == 1
 
 
 def _warteliste_wort(v, wort):

@@ -1421,6 +1421,15 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
         try:
             konten.warteliste_eintragen(f.get("email"), ip=ip, sprache=sprache_der_seite())
         except konten.KontoFehler as x:
+            if x.schluessel == "konto.fehler.warteliste_tag_voll":
+                try:     # einmal je UTC-Tag eine Meldung über Mein Konto, kein Alarm (#534)
+                    if konten.warteliste_tagesgrenze_merken():
+                        n = instanz.grenze_warteliste_tag()
+                        betreiber_melden(None, "betrieb",
+                                         texte.t(texte.VORGABE_REISE, "konto.betreiber.warteliste_tagesgrenze", grenze=n),
+                                         [("konto.meldungen.text.warteliste_tagesgrenze", {"grenze": n})])
+                except Exception as e:     # die Besucherin hat mit dem Betreiberweg nichts zu tun
+                    sys.stderr.write(f"warteliste tagesgrenze: {type(e).__name__}: {' '.join(str(e).split())[:200]}\n")
             return antwort(200, warteliste_seite(f.get("email", ""), x.text(sprache_der_seite())))
         return warteliste_hinweis("warteliste.gesendet")     # immer derselbe Satz, er verrät nichts über den Stand
 

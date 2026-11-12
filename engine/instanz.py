@@ -157,6 +157,7 @@ def kennung():
 
 VORGABE_GRENZE_REISEN = 10
 VORGABE_GRENZE_SCHREIBEN = 300
+VORGABE_GRENZE_WARTELISTE_TAG = 20
 
 
 def _grenze(name, vorgabe):
@@ -176,6 +177,12 @@ def grenze_reisen():
 def grenze_schreiben():
     """Höchstzahl schreibender Werkzeugaufrufe je Konto und Stunde im Konnektor (FR_GRENZE_SCHREIBEN, #380)."""
     return _grenze("FR_GRENZE_SCHREIBEN", VORGABE_GRENZE_SCHREIBEN)
+
+
+def grenze_warteliste_tag():
+    """Höchstzahl der Bestätigungsmails der Warteliste je Kalendertag (UTC) (FR_GRENZE_WARTELISTE_TAG, #534), damit das
+    Mail-Kontingent der Instanz reicht. Abschalten mit 0 geht nicht: ungültige Werte gelten als nicht gesetzt."""
+    return _grenze("FR_GRENZE_WARTELISTE_TAG", VORGABE_GRENZE_WARTELISTE_TAG)
 
 
 VORGABE_LOESCHFRIST_TAGE = 14
