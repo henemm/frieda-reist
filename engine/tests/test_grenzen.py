@@ -188,3 +188,11 @@ def test_einstellungen_beispiel_nennt_grenzen():
 def test_konten_doku_nennt_grenzen_und_seitenlink():
     text = (WURZEL / "docs" / "konten.md").read_text(encoding="utf-8")
     assert "FR_GRENZE_REISEN" in text and "FR_GRENZE_SCHREIBEN" in text and "#421" in text
+
+
+# ---------- #534: Tagesgrenze der Warteliste (AC-23) ----------
+
+def test_doku_nennt_tagesgrenze_der_warteliste():
+    for datei in ("betrieb/einstellungen.beispiel", "docs/betrieb.md", "docs/konten.md"):
+        text = (WURZEL / datei).read_text(encoding="utf-8")
+        assert re.search(r"FR_GRENZE_WARTELISTE_TAG\D{0,80}20", text), datei

@@ -372,3 +372,317 @@ def test_nginx_vorlage_enthaelt_die_neuen_pfade():
 def test_texte_in_allen_sprachen(schluessel):
     for sprache in texte.SPRACHEN:
         assert texte.t(sprache, schluessel) != schluessel, f"{schluessel} fehlt in {sprache}"
+
+
+# ================================================================ Tagesgrenze (#534, Spec docs/specs/betrieb/warteliste-tagesgrenze-534.md)
+# Je UTC-Kalendertag höchstens N Bestätigungsmails der Warteliste (FR_GRENZE_WARTELISTE_TAG, Vorgabe 20), damit das
+# Mail-Kontingent der Instanz reicht. Die Uhr der Fixture steht auf 2027-01-15 08:00 UTC (1_800_000_000).
+
+import anmeldung  # noqa: E402
+import instanz  # noqa: E402
+import rueckmeldungen as rm  # noqa: E402
+
+NEU = [f"neu{i}@beispiel.invalid" for i in range(30)]
+
+
+def tageszaehler(schluessel="warteliste-tag"):
+    with closing(sqlite3.connect(konten.pfad())) as v:
+        return v.execute("SELECT COUNT(*) FROM versand WHERE schluessel = ?", (schluessel,)).fetchone()[0]
+
+
+def versand_schluessel():
+    with closing(sqlite3.connect(konten.pfad())) as v:
+        return sorted(z[0] for z in v.execute("SELECT schluessel FROM versand"))
+
+
+def stand():
+    """Alles, was eine Anfrage ändern könnte: Warteliste und Versand-Zeilen."""
+    with closing(sqlite3.connect(konten.pfad())) as v:
+        return (sorted(v.execute("SELECT * FROM warteliste").fetchall(), key=repr),
+                sorted(v.execute("SELECT * FROM versand").fetchall(), key=repr))
+
+
+def uhr_auf(umgebung, stunde, minute, tage=0):
+    """Uhr auf eine Uhrzeit (UTC) am Tag der Fixture plus tage setzen."""
+    mitternacht = 1_800_000_000 - 1_800_000_000 % TAG
+    umgebung["uhr"]["t"] = float(mitternacht + tage * TAG + stunde * 3600 + minute * 60)
+
+
+def grenze_voll(umgebung, monkeypatch, n=2):
+    monkeypatch.setenv("FR_GRENZE_WARTELISTE_TAG", str(n))
+    for i in range(n):
+        konten.warteliste_eintragen(NEU[i], ip=f"198.51.100.{i}")
+    assert tageszaehler() == n
+
+
+@pytest.mark.parametrize("wert,erwartet", [
+    (None, 20), ("3", 3), ("abc", 20), ("0", 20), ("-5", 20), ("", 20)])
+def test_grenze_vorgabe_einstellbar_und_ungueltig(monkeypatch, wert, erwartet):
+    """AC-1 bis AC-3."""
+    monkeypatch.delenv("FR_GRENZE_WARTELISTE_TAG", raising=False)
+    if wert is not None:
+        monkeypatch.setenv("FR_GRENZE_WARTELISTE_TAG", wert)
+    assert instanz.VORGABE_GRENZE_WARTELISTE_TAG == 20
+    assert instanz.grenze_warteliste_tag() == erwartet
+
+
+def test_bis_zur_grenze_mails_und_zaehlzeilen(umgebung, monkeypatch):
+    """AC-4."""
+    mf = umgebung["tmp"] / "mails.jsonl"
+    monkeypatch.setenv("FR_GRENZE_WARTELISTE_TAG", "2")
+    konten.warteliste_eintragen(IDA)
+    konten.warteliste_eintragen(KARL)
+    assert len(mails(mf, IDA)) == 1 and len(mails(mf, KARL)) == 1 and len(zeilen()) == 2
+    assert tageszaehler() == 2
+    with pytest.raises(konten.KontoFehler):
+        konten.warteliste_eintragen(MO)
+    assert tageszaehler() == 2
+
+
+def test_grenze_greift_ohne_mail_und_ohne_speichern(umgebung, monkeypatch):
+    """AC-5: Ablehnung speichert nichts, keine Mail, keine Versand-Zeile der Adresse oder IP."""
+    mf = umgebung["tmp"] / "mails.jsonl"
+    grenze_voll(umgebung, monkeypatch)
+    vorher = stand()
+    with pytest.raises(konten.KontoFehler) as f:
+        konten.warteliste_eintragen(MO, ip="203.0.113.9")
+    assert meldet(f.value.text("de"), "konto.fehler.warteliste_tag_voll")
+    assert mails(mf, MO) == []
+    assert stand() == vorher
+    assert "warteliste:" + MO not in versand_schluessel() and "warteliste-ip:203.0.113.9" not in versand_schluessel()
+
+
+def test_seite_zeigt_ablehnung_in_de_und_en(welt, monkeypatch):
+    """AC-6, AC-22: Formular mit Satz in der Sprache der Seite, Adresse bleibt im Feld, keine Zahl."""
+    u = welt()
+    monkeypatch.setenv("FR_GRENZE_WARTELISTE_TAG", "7")
+    for i in range(7):
+        assert abruf(f"{u.kurl}/warteliste", "POST", {"email": NEU[i]})[0] == 200
+    for sprache in ("de", "en"):
+        s, _, t = abruf(f"{u.kurl}/warteliste", "POST", {"email": LEA}, kopf={"Accept-Language": sprache})
+        assert s == 200
+        assert meldet(t, "konto.fehler.warteliste_tag_voll", sprache), sprache
+        assert not meldet(t, "warteliste.gesendet", sprache)
+        assert f'value="{LEA}"' in t
+        sichtbar = re.sub(r"<[^>]+>", " ", re.sub(r"(?s)<(style|script)[^>]*>.*?</\1>", " ", t))
+        assert not re.search(r"(?<![\d.])7(?![\d.])", sichtbar), "Grenze steht auf der Seite"
+    assert mails(u.mails, LEA) == []
+
+
+def test_neuer_tag_gibt_frei(umgebung, monkeypatch):
+    """AC-7."""
+    mf = umgebung["tmp"] / "mails.jsonl"
+    uhr_auf(umgebung, 10, 0)
+    grenze_voll(umgebung, monkeypatch)
+    with pytest.raises(konten.KontoFehler):
+        konten.warteliste_eintragen(MO)
+    uhr_auf(umgebung, 0, 5, tage=1)
+    konten.warteliste_eintragen(MO)
+    assert len(mails(mf, MO)) == 1
+
+
+def test_kalendertag_nicht_gleitendes_fenster(umgebung, monkeypatch):
+    """AC-8: Um Mitternacht UTC frei, innerhalb des Tages nicht."""
+    uhr_auf(umgebung, 23, 59)
+    grenze_voll(umgebung, monkeypatch)
+    with pytest.raises(konten.KontoFehler):
+        konten.warteliste_eintragen(MO)
+    uhr_auf(umgebung, 0, 1, tage=1)                             # zwei Minuten später, neuer Tag
+    konten.warteliste_eintragen(MO)
+
+    uhr_auf(umgebung, 0, 1, tage=5)
+    monkeypatch.setenv("FR_GRENZE_WARTELISTE_TAG", "1")
+    konten.warteliste_eintragen(LEA)
+    uhr_auf(umgebung, 23, 59, tage=5)                           # fast 24 Stunden später, gleicher Tag
+    with pytest.raises(konten.KontoFehler) as f:
+        konten.warteliste_eintragen("spaet@beispiel.invalid")
+    assert meldet(f.value.text("de"), "konto.fehler.warteliste_tag_voll")
+
+
+def test_erneute_mail_zaehlt(umgebung, monkeypatch):
+    """AC-9."""
+    mf = umgebung["tmp"] / "mails.jsonl"
+    monkeypatch.setenv("FR_GRENZE_WARTELISTE_TAG", "2")
+    konten.warteliste_eintragen(IDA)
+    konten.warteliste_eintragen(IDA)
+    assert len(mails(mf, IDA)) == 2 and tageszaehler() == 2
+    vorher = zeilen()
+    with pytest.raises(konten.KontoFehler) as f:
+        konten.warteliste_eintragen(IDA)
+    assert meldet(f.value.text("de"), "konto.fehler.warteliste_tag_voll")
+    assert len(mails(mf, IDA)) == 2 and zeilen() == vorher
+
+
+def test_bestaetigte_adresse_zaehlt_nicht(umgebung, monkeypatch):
+    """AC-10."""
+    mf = umgebung["tmp"] / "mails.jsonl"
+    monkeypatch.setenv("FR_GRENZE_WARTELISTE_TAG", "5")
+    eintragen_und_bestaetigen(umgebung, IDA)
+    eintragen_und_bestaetigen(umgebung, KARL)
+    konten.freigeben(KARL)
+    n, m = tageszaehler(), len(mails(mf))
+    assert n == 2
+    konten.warteliste_eintragen(IDA)
+    konten.warteliste_eintragen(KARL)
+    assert tageszaehler() == n and len(mails(mf)) == m
+
+
+def test_ablehnung_fuer_jeden_stand_gleich(umgebung, monkeypatch):
+    """AC-11: neu, unbestätigt, bestätigt: dieselbe Ablehnung, keine Änderung."""
+    monkeypatch.setenv("FR_GRENZE_WARTELISTE_TAG", "3")
+    konten.warteliste_eintragen(KARL)                           # unbestätigt
+    eintragen_und_bestaetigen(umgebung, IDA)                    # bestätigt
+    konten.warteliste_eintragen(NEU[0])                         # dritte Mail: Grenze erreicht
+    assert tageszaehler() == 3
+    vorher = stand()
+    saetze = []
+    for a in (MO, KARL, IDA):
+        with pytest.raises(konten.KontoFehler) as f:
+            konten.warteliste_eintragen(a, ip="203.0.113.5")
+        saetze.append(f.value.text("de"))
+        assert stand() == vorher, a
+    assert saetze[0] == saetze[1] == saetze[2] and meldet(saetze[0], "konto.fehler.warteliste_tag_voll")
+
+
+def test_freigaben_zaehlen_nicht(umgebung, monkeypatch):
+    """AC-12."""
+    mf = umgebung["tmp"] / "mails.jsonl"
+    monkeypatch.setenv("FR_GRENZE_WARTELISTE_TAG", "1")
+    eintragen_und_bestaetigen(umgebung, IDA)
+    with pytest.raises(konten.KontoFehler):
+        konten.warteliste_eintragen(MO)
+    assert konten.freigeben(IDA) is True
+    assert meldet(mails(mf, IDA)[-1]["betreff"], "mail.freigabe.betreff")
+    assert tageszaehler() == 1
+
+
+def test_ablehnung_wegen_hoechstzahl_zaehlt_nicht(umgebung, monkeypatch):
+    """AC-13."""
+    monkeypatch.setenv("FR_GRENZE_WARTELISTE_TAG", "10")
+    monkeypatch.setattr(konten, "WARTELISTE_MAX_UNBESTAETIGT", 1)
+    konten.warteliste_eintragen(IDA)
+    assert tageszaehler() == 1
+    with pytest.raises(konten.KontoFehler) as f:
+        konten.warteliste_eintragen(MO)
+    assert meldet(f.value.text("de"), "konto.fehler.warteliste_voll")
+    assert tageszaehler() == 1
+
+
+def test_reihenfolge_mit_bestehenden_pruefungen(umgebung, monkeypatch):
+    """AC-14: ungültige Adresse und Begrenzung je Adresse vor der Tagesgrenze."""
+    monkeypatch.setenv("FR_GRENZE_WARTELISTE_TAG", "3")
+    for _ in range(3):
+        konten.warteliste_eintragen(IDA)                        # drei Mails: Grenze je Adresse und Tagesgrenze voll
+    with pytest.raises(konten.KontoFehler) as f:
+        konten.warteliste_eintragen(IDA)
+    assert meldet(f.value.text("de"), "konto.fehler.zu_viele_codes")
+    with pytest.raises(konten.KontoFehler) as f:
+        konten.warteliste_eintragen("unsinn")
+    assert meldet(f.value.text("de"), "konto.fehler.keine_adresse")
+    with pytest.raises(konten.KontoFehler) as f:
+        konten.warteliste_eintragen(MO)
+    assert meldet(f.value.text("de"), "konto.fehler.warteliste_tag_voll")
+
+
+def tagesmeldungen(k):
+    return [m for m in rm.meldungen_des_kontos(k) if m.get("art") == "betrieb"
+            and (meldet(rm.meldung_text_in(m, "de") or "", "konto.meldungen.text.warteliste_tagesgrenze")
+                 or meldet(m.get("text") or "", "konto.betreiber.warteliste_tagesgrenze"))]
+
+
+def test_betreiber_meldung_genau_einmal_je_tag(welt, monkeypatch):
+    """AC-15, AC-16: keine Meldung unter der Grenze und beim bloßen Erreichen; genau eine je Tag ab der ersten Ablehnung."""
+    u = welt()
+    uhr = {"t": 1_800_000_000.0}
+    monkeypatch.setattr(konten, "_jetzt", lambda: uhr["t"])
+    betreiber_und_nutzer(u)
+    ida = konten.konto_per_email(IDA)
+    monkeypatch.setenv("FR_GRENZE_WARTELISTE_TAG", "2")
+    abruf(f"{u.kurl}/warteliste", "POST", {"email": NEU[0]})
+    assert tagesmeldungen(ida) == []
+    abruf(f"{u.kurl}/warteliste", "POST", {"email": NEU[1]})   # Grenze genau erreicht, noch keine Ablehnung
+    assert tagesmeldungen(ida) == []
+    for i in range(2, 7):
+        s, _, t = abruf(f"{u.kurl}/warteliste", "POST", {"email": NEU[i]})
+        assert s == 200 and meldet(t, "konto.fehler.warteliste_tag_voll")
+    ms = tagesmeldungen(ida)
+    assert len(ms) == 1
+    assert "2" in (rm.meldung_text_in(ms[0], "de") or "")
+    uhr["t"] += TAG                                             # nächster Tag
+    for i in range(7, 12):
+        abruf(f"{u.kurl}/warteliste", "POST", {"email": NEU[i]})
+    assert len(tagesmeldungen(ida)) == 2
+
+
+def test_merker_atomar_und_je_tag(umgebung):
+    """AC-17."""
+    uhr_auf(umgebung, 12, 0)
+    assert konten.warteliste_tagesgrenze_merken() is True
+    assert konten.warteliste_tagesgrenze_merken() is False
+    uhr_auf(umgebung, 23, 59)
+    assert konten.warteliste_tagesgrenze_merken() is False
+    uhr_auf(umgebung, 0, 1, tage=1)
+    assert konten.warteliste_tagesgrenze_merken() is True
+    assert konten.warteliste_tagesgrenze_merken() is False
+
+
+def test_kein_alarmweg_nur_mein_konto(welt, monkeypatch):
+    """AC-18: kein Claude MQ, kein Telegram; die Meldung geht nur über rueckmeldungen.meldung_anlegen."""
+    import subprocess
+    u = welt()
+    betreiber_und_nutzer(u)
+    aufrufe, angelegt = [], []
+
+    def merken(*a, **kw):
+        aufrufe.append(a)
+        raise AssertionError(f"Prozessaufruf: {a}")
+    for name in ("run", "Popen", "call", "check_call", "check_output"):
+        monkeypatch.setattr(subprocess, name, merken)
+    echt = rm.meldung_anlegen
+    monkeypatch.setattr(rm, "meldung_anlegen", lambda *a, **kw: (angelegt.append(a[2]), echt(*a, **kw))[1])
+    monkeypatch.setenv("FR_GRENZE_WARTELISTE_TAG", "1")
+    abruf(f"{u.kurl}/warteliste", "POST", {"email": NEU[0]})
+    s, _, t = abruf(f"{u.kurl}/warteliste", "POST", {"email": NEU[1]})
+    assert s == 200 and meldet(t, "konto.fehler.warteliste_tag_voll")
+    assert aufrufe == [] and angelegt == ["betrieb"]
+
+
+def test_ohne_betreiber_und_bei_meldefehler_antwortet_die_seite(welt, monkeypatch):
+    """AC-19, AC-20."""
+    u = welt()
+    monkeypatch.setenv("FR_GRENZE_WARTELISTE_TAG", "1")
+    abruf(f"{u.kurl}/warteliste", "POST", {"email": NEU[0]})
+    s, _, t = abruf(f"{u.kurl}/warteliste", "POST", {"email": NEU[1]})   # kein Betreiber-Konto
+    assert s == 200 and meldet(t, "konto.fehler.warteliste_tag_voll")
+
+    def kaputt(*a, **kw):
+        raise OSError("Meldung ging nicht")
+    monkeypatch.setattr(anmeldung, "betreiber_melden", kaputt)
+    monkeypatch.setattr(konten, "warteliste_tagesgrenze_merken", lambda: True)
+    s, _, t = abruf(f"{u.kurl}/warteliste", "POST", {"email": NEU[2]})
+    assert s == 200 and meldet(t, "konto.fehler.warteliste_tag_voll")
+
+
+@pytest.mark.parametrize("schluessel,platzhalter", [
+    ("konto.fehler.warteliste_tag_voll", set()),
+    ("konto.betreiber.warteliste_tagesgrenze", {"grenze"}),
+    ("konto.meldungen.text.warteliste_tagesgrenze", {"grenze"})])
+def test_texte_fuer_tagesgrenze_in_allen_sprachen(schluessel, platzhalter):
+    """AC-21: in jeder Sprache vorhanden, gleiche Platzhalter, der Satz der Seite ohne Zahl."""
+    for sprache in texte.SPRACHEN:
+        vorlage = texte.t(sprache, schluessel)
+        assert vorlage != schluessel, f"{schluessel} fehlt in {sprache}"
+        assert set(re.findall(r"\{(\w+)\}", vorlage)) == platzhalter, (schluessel, sprache)
+        if not platzhalter:
+            assert not re.search(r"\d", vorlage), sprache
+
+
+def test_loeschen_laesst_keine_adresse_zurueck(umgebung, monkeypatch):
+    """AC-24: Zähl- und Merkerzeilen tragen weder Adresse noch IP."""
+    grenze_voll(umgebung, monkeypatch)
+    with pytest.raises(konten.KontoFehler):
+        konten.warteliste_eintragen(MO, ip="203.0.113.4")
+    assert konten.warteliste_tagesgrenze_merken() is True
+    assert tageszaehler("warteliste-tag-gemeldet") == 1
+    tag = [s for s in versand_schluessel() if s.startswith("warteliste-tag")]
+    assert set(tag) == {"warteliste-tag", "warteliste-tag-gemeldet"}
