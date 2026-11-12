@@ -556,7 +556,7 @@ def kartenpunkte_umstellen(reise_dir, roh, schreiben, meldungen):
     ida = {}   # Art -> {feld: Schlüssel des Merkmals}, damit jede Art die Rollen nur einmal bekommt
 
     def merkmal_schluessel(art, feld):
-        return sb.art_rolle_sichern(arten[art], PUNKT_ROLLEN[feld])
+        return sb.art_rolle_sichern(arten[art], PUNKT_ROLLEN[feld], sprache_von(reise_dir))
 
     ids = {}
     aufenthalte = roh.setdefault("aufenthalte", type(roh)())
@@ -970,6 +970,7 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
     dem Dossier an die Strecken (etappen_nachziehen, #269); das frühere Feld buchung: an Dingen wird zur Buchung B-…
     (buchung_nachziehen, #215); Ort und gleichnamige Wegpunkte bekommen eine Lage (orte_lage_zusammenfuehren, ADR-0008); die entfallene Regel anmeldung
     kommt aus reise.yaml heraus (anmeldung_nachziehen, #421).
+    Merkmale, die die Software für eine Rolle angelegt hat, heißen in der Sprache der Reise (rollen_namen_nachziehen, #547).
     Kommentare und Form der Dateien bleiben (ruamel). -> Liste der Meldungen (was geändert oder offen ist)."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from routen import WANN, art_schluessel
@@ -1060,6 +1061,7 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
             if schreiben:   # in der Form der Datei (json.dumps mit Einrückung 2), damit nur die neue Zeile im Diff steht
                 cfg_pfad.write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         meldungen += eckdaten_nachziehen(reise_dir, cfg, schreiben)
+    meldungen += rollen_namen_nachziehen(reise_dir, schreiben)
     meldungen += reste_nachziehen(reise_dir, schreiben)
     return meldungen
 
@@ -1305,6 +1307,63 @@ def ist_vorlagen_kopie(text, muster):
         if not re.fullmatch(".*".join(re.escape(t) for t in teile), z):
             return False
     return True
+
+
+def rollen_namen_nachziehen(reise_dir, schreiben=True):
+    """Merkmale, die die Software für eine Rolle angelegt hat (Kartenpunkte als Dinge: nummer, alias, sorte, osm, trinkbar,
+    oeffnung, bezug), hießen bis #547 in jeder Reise wie im Rückfall der Software (englisch: „Number“, „Sort“, „Place“). Heißt
+    ein solches Merkmal genau wie der Vorgabetext einer anderen Sprache des Katalogs, bekommt es den Text der Sprache der Reise. Ein selbst
+    vergebener Name bleibt. Geändert wird nur die Zeile des Namens, Kommentare der Datei bleiben. -> Meldungen."""
+    import schreiben as sb
+    from routen import ROLLEN_MERKMAL
+    reise_dir = Path(reise_dir)
+    pfad = reise_dir / "plan" / "arten.yaml"
+    sprache = sprache_von(reise_dir)
+    if not pfad.exists():
+        return []
+    andere = [k for k in texte.sprachen() if k != sprache]   # der Name stammt aus dem Katalog einer anderen Sprache (bisher der Rückfall)
+    schluessel = {}   # Rolle -> Schlüssel im Katalog; bezug hat zwei Vorgaben (Unterkunft, Ort)
+    for rolle, (_, key, _) in ROLLEN_MERKMAL.items():
+        schluessel.setdefault(rolle, []).append(key)
+    schluessel.setdefault("bezug", []).append("inhalt.rolle.bezug_ort")
+    neu = {}   # englischer Vorgabename -> Name in der Sprache der Reise
+    arten = sb.arten_laden(reise_dir)
+    treffer = []
+    for a, d in arten.items():
+        for gruppe in ("merkmale", "buchung_merkmale"):
+            for k, m in ((d.get(gruppe) if isinstance(d.get(gruppe), dict) else {}) or {}).items():
+                if not isinstance(m, dict) or not isinstance(m.get("name"), str):
+                    continue
+                passend = [key for key in schluessel.get(m.get("rolle"), []) if any(texte.t(a2, key) == m["name"] for a2 in andere)]
+                if passend and texte.t(sprache, passend[0]) != m["name"]:
+                    neu[m["name"]] = texte.t(sprache, passend[0])
+                    treffer.append((a, k, m))
+    if not treffer:
+        return []
+    meldungen = [f"arten.yaml {a}: attribute {k} named “{neu[m['name']]}” (was “{m['name']}”, language of the trip)" for a, k, m in treffer]
+    if not schreiben:
+        return meldungen
+    # nur die Namenszeilen ersetzen, damit Kommentare und Form der Datei bleiben; geht das nicht auf (derselbe Name steht auch an
+    # einem Merkmal ohne die Rolle, das die Reise so genannt hat), die Datei aus den Daten neu schreiben
+    text = pfad.read_text(encoding="utf-8")
+    zahl = 0
+    for alt in {m["name"] for _, _, m in treffer}:
+        muster = re.compile(r"(\bname:\s*)([\"']?)" + re.escape(alt) + r"\2(?=\s*(?:[,}#]|$))", flags=re.M)
+        text, n = muster.subn(lambda t, alt=alt: t.group(1) + (t.group(2) or ('"' if re.search(r"[:#(]", neu[alt]) else "")) + neu[alt]
+                              + (t.group(2) or ('"' if re.search(r"[:#(]", neu[alt]) else "")), text)
+        zahl += n
+    for _, _, m in treffer:
+        m["name"] = neu[m["name"]]
+    import yaml
+    try:
+        gleich = zahl == len(treffer) and (yaml.safe_load(text) or {}).get("arten") == arten
+    except yaml.YAMLError:
+        gleich = False
+    if gleich:
+        pfad.write_text(text, encoding="utf-8")
+    else:
+        sb.arten_speichern(reise_dir, arten, {"name": "Betrieb (neu.py nachziehen)"})
+    return meldungen
 
 
 def reste_nachziehen(reise_dir, schreiben=True):

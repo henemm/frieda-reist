@@ -148,17 +148,17 @@ arten:
     buchbar: false
     merkmale:
       nummer:
-        name: Number
+        name: Nummer
         typ: zahl
         rolle: nummer
         stufe: angeboten
       weitere_namen:
-        name: Other names
+        name: Weitere Namen
         typ: text
         rolle: alias
         stufe: angeboten
       station:   # Wegpunkt, der ein Ort der Reise ist: liegt beim Ort (bezug, ADR-0008)
-        name: Place
+        name: Ort
         typ: text
         rolle: bezug
         stufe: angeboten
@@ -176,12 +176,12 @@ arten:
     buchbar: false
     merkmale:
       sorte:
-        name: Sort
+        name: Sorte
         typ: text
         rolle: sorte
         stufe: angeboten
       unterkunft:
-        name: Accommodation
+        name: Unterkunft
         typ: text
         rolle: bezug
         stufe: angeboten
@@ -197,7 +197,7 @@ arten:
     buchbar: false
     merkmale:
       sorte:
-        name: Sort
+        name: Sorte
         typ: text
         rolle: sorte
         stufe: angeboten
@@ -215,7 +215,7 @@ arten:
     buchbar: false
     merkmale:
       sorte:
-        name: Sort
+        name: Sorte
         typ: text
         rolle: sorte
         stufe: angeboten
@@ -231,7 +231,7 @@ arten:
     buchbar: false
     merkmale:
       sorte:
-        name: Sort
+        name: Sorte
         typ: text
         rolle: sorte
         stufe: angeboten

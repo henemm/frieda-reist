@@ -2311,16 +2311,16 @@ def abstand_zur_linie_m(p, linie):
     return best
 
 
-def art_rolle_sichern(art_def, rolle):
-    """Der Schlüssel des Merkmals einer Art (Wörterbuch aus arten.yaml) mit dieser Rolle; fehlt es, wird es angelegt (ADR-0007, Schritt d)
-    -> Schlüssel."""
+def art_rolle_sichern(art_def, rolle, sprache=None):
+    """Der Schlüssel des Merkmals einer Art (Wörterbuch aus arten.yaml) mit dieser Rolle; fehlt es, wird es angelegt (ADR-0007, Schritt d),
+    benannt in der Sprache der Reise (sprache; #547: ohne sie hießen die Merkmale deutscher Reisen „Number“, „Sort“) -> Schlüssel."""
     from routen import ROLLEN_MERKMAL
     mk = art_def.setdefault("merkmale", {})
     for k, d in mk.items():
         if isinstance(d, dict) and d.get("rolle") == rolle:
             return k
     schl, name_key, typ = ROLLEN_MERKMAL[rolle]
-    mk[schl] = {"name": texte.t(texte.VORGABE_REISE, name_key), "typ": typ, "rolle": rolle, "stufe": "angeboten"}
+    mk[schl] = {"name": texte.t(sprache or texte.VORGABE_REISE, name_key), "typ": typ, "rolle": rolle, "stufe": "angeboten"}
     return schl
 
 
@@ -2382,7 +2382,7 @@ def kartenpunkte_ablegen(reise_dir, wer, an, punkte, heute=None, aktualisieren=F
             if wert not in (None, "", [], {}):
                 roll[rolle] = "; ".join(wert) if isinstance(wert, list) else wert
         for rolle in roll:
-            art_rolle_sichern(art_def, rolle)
+            art_rolle_sichern(art_def, rolle, sprache_von(reise_dir))
         schl = rollen_von(kat)
         key = schluessel(kat, None, name=name, osm=p.get("osm"), nummer=p.get("nr"))
         if key in vorhanden:
