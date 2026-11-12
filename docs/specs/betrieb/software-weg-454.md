@@ -223,11 +223,12 @@ TDD: erst RED (Tests unten laufen rot gegen den heutigen Stand), dann Umsetzung 
 | AC-1.4 | `engine/tests/test_software_weg_454.py::test_reise_anlegen_entsteht_im_speicher[beispielreise]`, `[stadtwochenende]` |
 | AC-1.5 | `engine/tests/test_software_weg_454.py::test_neue_reise_wird_vom_speicher_teil_gebaut` |
 | AC-1.6 | `engine/tests/test_software_weg_454.py::test_git_reise_wird_bei_gleich_umgeschaltet[beispielreise]`, `[stadtwochenende]` |
+| AC-1.6/1.7 im Lauf | `engine/tests/test_software_weg_454.py::test_lauf_schaltet_git_reise_bei_gleich_um`, `::test_lauf_laesst_ungleiche_git_reise_mit_warnung_in_git` |
 | AC-1.7 | `engine/tests/test_software_weg_454.py::test_git_reise_bleibt_bei_unterschied_in_git` |
 | AC-1.8 | `engine/tests/test_software_weg_454.py::test_umschaltung_ist_idempotent` |
 | AC-1.9 | `engine/tests/test_software_weg_454.py::test_umschaltung_nach_abbruch_wird_fortgesetzt` |
 | AC-1.10 | `engine/tests/test_software_weg_454.py::test_bisherige_speicherreisen_bleiben_ohne_handschritt` |
-| AC-1.11 | `engine/tests/test_schreiben.py::test_schreibwerkzeuge_speicherreise_unveraendert` (bestehende Tests grün, dazu dieser) |
+| AC-1.11 | `engine/tests/test_software_weg_454.py::test_schreibwerkzeuge_speicherreise_unveraendert` (bestehende Tests in `test_schreiben.py` grün, dazu dieser) |
 | AC-2.1 | `engine/tests/test_software_weg_454.py::test_neuer_commit_wird_ohne_reisen_repo_geholt` |
 | AC-2.2 | `engine/tests/test_software_weg_454.py::test_roter_commit_laesst_klon_unveraendert` |
 | AC-2.3 | `engine/tests/test_software_weg_454.py::test_nachweis_gruen_spult_klon_vor_ohne_server_tests` |
@@ -247,7 +248,7 @@ TDD: erst RED (Tests unten laufen rot gegen den heutigen Stand), dann Umsetzung 
 | AC-2.17 | `engine/tests/test_software_weg_454.py::test_anstoss_startet_nur_einen_lauf` |
 | AC-2.18 | `engine/tests/test_software_weg_454.py::test_lauf_ohne_reisen_repo_und_ohne_gh` |
 | AC-2.19 | `engine/tests/test_software_weg_454.py::test_einrichten_ohne_gh_und_reisen_repo` |
-| AC-2.20 | `engine/tests/test_betrieb.py::test_alarmstellen_unveraendert` (bestehender Bestandstest) und `engine/tests/test_software_weg_454.py::test_umzugsfehler_und_nachweis_sind_keine_high_meldung` |
+| AC-2.20 | `engine/tests/test_betrieb.py::test_alarmstellen_sind_begruendet` (bestehend), Liste geprüft in `engine/tests/test_software_weg_454.py::test_umzugsfehler_und_nachweis_sind_keine_high_meldung` |
 | AC-2.21 | `engine/tests/test_software_weg_454.py::test_dokumentierte_infra_vorbedingung` (prüft, dass `docs/betrieb.md` die Vorbedingung und die zwei Stellen nennt); Abnahme des Auslieferungstors im Infrastruktur-Issue |
 | AC-2.22 | `engine/tests/test_software_weg_454.py::test_instanz_tests_fehlen_oder_rot_sperren_nicht` |
 | AC-2.23 | `engine/tests/test_protokolle_ohne_pfade.py` (bestehend) und `engine/tests/test_software_weg_454.py::test_keine_instanzspezifischen_werte_in_betrieb` |

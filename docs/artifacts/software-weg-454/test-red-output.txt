@@ -1,0 +1,883 @@
+bringing up nodes...
+bringing up nodes...
+
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF.F                                 [100%]
+=================================== FAILURES ===================================
+______________ test_speicherreisen_unlesbarer_speicher_ist_fehler ______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+l1 = namespace(rs=<module 'reisespeicher' from 'engine/...sen_unlesbarer0/_dienst'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw1/test_speicherreisen_unlesbarer0'))
+
+    def test_speicherreisen_unlesbarer_speicher_ist_fehler(l1):
+        """AC-1.3: Speicher nicht lesbar -> Fehler (fail closed, #361), nie eine leere Liste."""
+        (l1.pfad / "_speicher" / "reisen.db").mkdir(parents=True)        # an der Stelle der Datenbank liegt ein Ordner
+        with pytest.raises(Exception):
+            ergebnis = l1.instanz.speicherreisen()
+>           pytest.fail(f"keine Ausnahme, sondern {ergebnis!r}")
+E           Failed: keine Ausnahme, sondern []
+
+engine/tests/test_software_weg_454.py:140: Failed
+___________ test_reise_anlegen_entsteht_im_speicher[stadtwochenende] ___________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+l1 = namespace(rs=<module 'reisespeicher' from 'engine/...en_entsteht_im0/_dienst'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw2/test_reise_anlegen_entsteht_im0'))
+pfad = 'stadtwochenende-2027', titel = 'Stadtwochenende (Beispielwert)'
+wer = 'Tom'
+
+    @pytest.mark.parametrize("pfad,titel,wer", [("wanderung-2027", "Wanderung (Beispielwert)", "Ida"),
+                                                ("stadtwochenende-2027", "Stadtwochenende (Beispielwert)", "Tom")],
+                             ids=["beispielreise", "stadtwochenende"])
+    def test_reise_anlegen_entsteht_im_speicher(l1, pfad, titel, wer):
+        """AC-1.4: Eine neue Reise entsteht im Speicher (Anfangsvorgang), nie als Ordner im Bauordner."""
+        kopf = git(l1.bau, "rev-parse", "HEAD")
+        code, a = sb.anwenden_extern(sb.Schreiber(l1.bau), pfad, "reise_anlegen",
+                                     {"person": None, "name": wer, "rolle": "organisator",
+                                      "args": {"auftrag": _anfrage(pfad, titel, wer)}})
+>       assert code == 200 and a["ok"], (code, a)
+E       AssertionError: (503, {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}})
+E       assert (503 == 200)
+
+engine/tests/test_software_weg_454.py:159: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Arbeitskopie: git fetch -q origin main: fatal: 'origin' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+Done reise_anlegen 503 in 0.0 s
+_________ test_git_reise_wird_bei_gleich_umgeschaltet[stadtwochenende] _________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+l1 = namespace(rs=<module 'reisespeicher' from 'engine/...ird_bei_gleich0/_dienst'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw3/test_git_reise_wird_bei_gleich0'))
+reise = 'stadtwochenende'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_git_reise_wird_bei_gleich_umgeschaltet(l1, reise):
+        """AC-1.6: Eine Git-Reise, inhaltsgleich darstellbar, wird umgeschaltet: Anfangsvorgang, Stempel gleich, Speicherreise."""
+        assert reise not in l1.instanz.speicherreisen()
+>       assert l1.rs.umschalten_automatisch(reise) == "gleich"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'umschalten_automatisch'
+
+engine/tests/test_software_weg_454.py:172: AttributeError
+____________ test_reise_anlegen_entsteht_im_speicher[beispielreise] ____________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+l1 = namespace(rs=<module 'reisespeicher' from 'engine/...en_entsteht_im0/_dienst'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw1/test_reise_anlegen_entsteht_im0'))
+pfad = 'wanderung-2027', titel = 'Wanderung (Beispielwert)', wer = 'Ida'
+
+    @pytest.mark.parametrize("pfad,titel,wer", [("wanderung-2027", "Wanderung (Beispielwert)", "Ida"),
+                                                ("stadtwochenende-2027", "Stadtwochenende (Beispielwert)", "Tom")],
+                             ids=["beispielreise", "stadtwochenende"])
+    def test_reise_anlegen_entsteht_im_speicher(l1, pfad, titel, wer):
+        """AC-1.4: Eine neue Reise entsteht im Speicher (Anfangsvorgang), nie als Ordner im Bauordner."""
+        kopf = git(l1.bau, "rev-parse", "HEAD")
+        code, a = sb.anwenden_extern(sb.Schreiber(l1.bau), pfad, "reise_anlegen",
+                                     {"person": None, "name": wer, "rolle": "organisator",
+                                      "args": {"auftrag": _anfrage(pfad, titel, wer)}})
+>       assert code == 200 and a["ok"], (code, a)
+E       AssertionError: (503, {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}})
+E       assert (503 == 200)
+
+engine/tests/test_software_weg_454.py:159: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Arbeitskopie: git fetch -q origin main: fatal: 'origin' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+Done reise_anlegen 503 in 0.0 s
+__________________ test_speicherreisen_liest_aus_dem_speicher __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+l1 = namespace(rs=<module 'reisespeicher' from 'engine/...sen_liest_aus_0/_dienst'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw0/test_speicherreisen_liest_aus_0'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x78f2ecc43b90>
+
+    def test_speicherreisen_liest_aus_dem_speicher(l1, monkeypatch):
+        """AC-1.1: Im Speicher ist, was im Speicher steht; die Liste der Einstellungen zählt nicht (Python und Shell)."""
+        _nur_im_speicher(l1, *REISEN)
+        monkeypatch.setenv("FR_SPEICHERREISEN", "andere-reise")
+>       assert l1.instanz.speicherreisen() == REISEN
+E       AssertionError: assert ['andere-reise'] == ['beispielrei...dtwochenende']
+E         
+E         At index 0 diff: 'andere-reise' != 'beispielreise'
+E         Right contains one more item: 'stadtwochenende'
+E         Use -v to get more diff
+
+engine/tests/test_software_weg_454.py:116: AssertionError
+__________ test_git_reise_wird_bei_gleich_umgeschaltet[beispielreise] __________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+l1 = namespace(rs=<module 'reisespeicher' from 'engine/...ird_bei_gleich0/_dienst'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw2/test_git_reise_wird_bei_gleich0'))
+reise = 'beispielreise'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_git_reise_wird_bei_gleich_umgeschaltet(l1, reise):
+        """AC-1.6: Eine Git-Reise, inhaltsgleich darstellbar, wird umgeschaltet: Anfangsvorgang, Stempel gleich, Speicherreise."""
+        assert reise not in l1.instanz.speicherreisen()
+>       assert l1.rs.umschalten_automatisch(reise) == "gleich"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'umschalten_automatisch'
+
+engine/tests/test_software_weg_454.py:172: AttributeError
+_______________________ test_umschaltung_ist_idempotent ________________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+l1 = namespace(rs=<module 'reisespeicher' from 'engine/..._ist_idempoten0/_dienst'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw1/test_umschaltung_ist_idempoten0'))
+
+    def test_umschaltung_ist_idempotent(l1):
+        """AC-1.8: Eine schon umgeschaltete Reise bleibt, wie sie ist (kein zweiter Anfangsvorgang, gleicher Stempel)."""
+        r = "stadtwochenende"
+>       assert l1.rs.umschalten_automatisch(r) == "gleich"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'umschalten_automatisch'
+
+engine/tests/test_software_weg_454.py:199: AttributeError
+____________________ test_fr_speicherreisen_ist_wirkungslos ____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+l1 = namespace(rs=<module 'reisespeicher' from 'engine/...reisen_ist_wir0/_dienst'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw0/test_fr_speicherreisen_ist_wir0'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x78f2ed04b3b0>
+tmp_path = PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw0/test_fr_speicherreisen_ist_wir0')
+
+    def test_fr_speicherreisen_ist_wirkungslos(l1, monkeypatch, tmp_path):
+        """AC-1.2: FR_SPEICHERREISEN in Umgebung oder Datei macht keine Reise zur Speicherreise, ohne Fehlermeldung."""
+        monkeypatch.setenv("FR_SPEICHERREISEN", ",".join(REISEN))
+>       assert l1.instanz.speicherreisen() == []
+E       AssertionError: assert ['beispielrei...dtwochenende'] == []
+E         
+E         Left contains 2 more items, first extra item: 'beispielreise'
+E         Use -v to get more diff
+
+engine/tests/test_software_weg_454.py:127: AssertionError
+_________________ test_git_reise_bleibt_bei_unterschied_in_git _________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+l1 = namespace(rs=<module 'reisespeicher' from 'engine/...leibt_bei_unte0/_dienst'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw3/test_git_reise_bleibt_bei_unte0'))
+
+    def test_git_reise_bleibt_bei_unterschied_in_git(l1):
+        """AC-1.7: Vergleich „unterschiedlich“: die Reise bleibt in Git, nichts gelöscht oder geändert, kein zweiter Vorgang."""
+        r = "beispielreise"
+        l1.rs.importieren(l1.bau / "reisen" / r, r, wer="Ida", grund="Beispiel")          # offene Umschaltung
+        (l1.bau / "reisen" / r / "git-nachtrag.md").write_text("Änderung in Git (Beispielwert)\n")
+        _commit(l1.bau, "Nachtrag in Git")
+        kopf, stand = git(l1.bau, "rev-parse", "HEAD"), l1.rs.stand_nummer(r)
+>       assert l1.rs.umschalten_automatisch(r) == "unterschied"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'umschalten_automatisch'
+
+engine/tests/test_software_weg_454.py:188: AttributeError
+_______________ test_schreibwerkzeuge_speicherreise_unveraendert _______________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+l1 = namespace(rs=<module 'reisespeicher' from 'engine/...zeuge_speicher0/_dienst'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw2/test_schreibwerkzeuge_speicher0'))
+
+    def test_schreibwerkzeuge_speicherreise_unveraendert(l1):
+        """AC-1.11: Schreibwerkzeuge auf eine Reise im Speicher wirken wie zuvor, ohne FR_SPEICHERREISEN."""
+        _nur_im_speicher(l1, "stadtwochenende")
+        vorher = l1.rs.stand_nummer("stadtwochenende")
+        code, a = sb.anwenden_extern(sb.Schreiber(l1.bau), "stadtwochenende", "frage_anlegen",
+                                     {**TOM, "args": {"text": "Hat der Markt samstags offen? (Beispielwert)"}})
+>       assert code == 200 and a["ok"], (code, a)
+E       AssertionError: (503, {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}})
+E       assert (503 == 200)
+
+engine/tests/test_software_weg_454.py:238: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Arbeitskopie: git fetch -q origin main: fatal: 'origin' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+Done frage_anlegen 503 in 0.0 s
+________________ test_umschaltung_nach_abbruch_wird_fortgesetzt ________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+l1 = namespace(rs=<module 'reisespeicher' from 'engine/..._nach_abbruch_0/_dienst'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw1/test_umschaltung_nach_abbruch_0'))
+
+    def test_umschaltung_nach_abbruch_wird_fortgesetzt(l1):
+        """AC-1.9: Abbruch zwischen Anfangsvorgang und Stempel: weiter Git-Reise; der nächste Versuch vergleicht gegen den
+        vorhandenen Anfangsvorgang und stempelt, ohne zweiten Anfangsvorgang."""
+        r = "beispielreise"
+        l1.rs.importieren(l1.bau / "reisen" / r, r, wer="Ida", grund="Beispiel")          # Anfangsvorgang ohne Stempel
+        stand = l1.rs.stand_nummer(r)
+        assert r not in l1.instanz.speicherreisen()
+>       assert l1.rs.umschalten_automatisch(r) == "gleich"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reisespeicher' has no attribute 'umschalten_automatisch'
+
+engine/tests/test_software_weg_454.py:213: AttributeError
+____________ test_bisherige_speicherreisen_bleiben_ohne_handschritt ____________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+l1 = namespace(rs=<module 'reisespeicher' from 'engine/...peicherreisen_0/_dienst'), pfad=PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw1/test_bisherige_speicherreisen_0'))
+
+    def test_bisherige_speicherreisen_bleiben_ohne_handschritt(l1):
+        """AC-1.10: Reisen, die vor Lieferung 1 über FR_SPEICHERREISEN aus dem Speicher veröffentlicht wurden (.gebaut), bleiben
+        Speicherreisen, auch wenn sie noch im Git-Bauordner liegen und FR_SPEICHERREISEN fehlt."""
+        _importieren(l1, *REISEN)
+        for r in REISEN:
+            datei = l1.dienst / "reise-stand" / f"{r}.gebaut"
+            datei.parent.mkdir(parents=True, exist_ok=True)
+            datei.write_text(f"{l1.rs.stand_nummer(r)} alt-kennung\n")
+>       assert l1.instanz.speicherreisen() == REISEN
+E       AssertionError: assert [] == ['beispielrei...dtwochenende']
+E         
+E         Right contains 2 more items, first extra item: 'beispielreise'
+E         Use -v to get more diff
+
+engine/tests/test_software_weg_454.py:227: AssertionError
+__________________ test_lauf_schaltet_git_reise_bei_gleich_um __________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x703cff2f5f80>, 'deploys': <function vf.<locals>.deploys at 0x703cff2f7ec0>, '...f.<locals>.anzahl_pings at 0x703cff2f5e40>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x703cff2f5da0>, ...}
+
+    def test_lauf_schaltet_git_reise_bei_gleich_um(sp):
+        """AC-1.6 im Lauf: Die Git-Reise zweitreise wird umgeschaltet (Stempel gleich, im Speicher), der Lauf bleibt grün."""
+        r = sp["lauf"](FR_SPEICHERREISEN="")
+        assert r.returncode == 0, r.stdout + r.stderr
+>       assert "zweitreise" in sp["speicher"].reisen(mit_vorgemerkten=True)
+E       AssertionError: assert 'zweitreise' in ['beispielreise', 'stadtwochenende']
+E        +  where ['beispielreise', 'stadtwochenende'] = <function reisen at 0x703cff2ae660>(mit_vorgemerkten=True)
+E        +    where <function reisen at 0x703cff2ae660> = <module 'reisespeicher' from 'engine/reisespeicher.py'>.reisen
+
+engine/tests/test_software_weg_454.py:257: AssertionError
+________________ test_neue_reise_wird_vom_speicher_teil_gebaut _________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x73d9fb8a2b60>, 'deploys': <function vf.<locals>.deploys at 0x73d9fb8a3060>, '...f.<locals>.anzahl_pings at 0x73d9fb8a3380>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x73d9fb8a2fc0>, ...}
+
+    def test_neue_reise_wird_vom_speicher_teil_gebaut(sp):
+        """AC-1.5: Eine Reise nur im Speicher wird gebaut, ohne FR_SPEICHERREISEN und ohne dass der Git-Teil sie anfasst."""
+        r = sp["lauf"](FR_SPEICHERREISEN="")
+        assert r.returncode == 0, r.stdout + r.stderr
+>       assert "stadtwochenende" in sp["deploys"]()
+E       AssertionError: assert 'stadtwochenende' in ['beispielreise', 'zweitreise']
+E        +  where ['beispielreise', 'zweitreise'] = <function vf.<locals>.deploys at 0x73d9fb8a3060>()
+
+engine/tests/test_software_weg_454.py:248: AssertionError
+___________ test_lauf_laesst_ungleiche_git_reise_mit_warnung_in_git ____________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sp = {'lauf': <function vf.<locals>.lauf at 0x703cff2f6840>, 'deploys': <function vf.<locals>.deploys at 0x703cff2f6ac0>, '...f.<locals>.anzahl_pings at 0x703cff2f6b60>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x703cff2f65c0>, ...}
+
+    def test_lauf_laesst_ungleiche_git_reise_mit_warnung_in_git(sp):
+        """AC-1.7 im Lauf: offene Umschaltung mit Unterschied -> Warnzeile mit Grund, keine high-Meldung, Lauf grün."""
+        ordner = sp["tmp"] / "anders"
+        (ordner).mkdir()
+        (ordner / "reise.json").write_text('{"anders": true}')
+        sp["speicher"].importieren(ordner, "zweitreise", "Test", grund="Anfang")       # Anfangsvorgang weicht von Git ab
+        stand = sp["speicher"].stand_nummer("zweitreise")
+        r = sp["lauf"](FR_SPEICHERREISEN="")
+        assert r.returncode == 0, r.stdout + r.stderr
+>       assert any("zweitreise" in z and "warning" in z.lower() for z in r.stdout.splitlines()), r.stdout
+E       AssertionError: Publishing b004570 start1
+E         beispielreise: no automatic map, nothing to fetch.
+E         Published beispielreise state 1, 1 s after saving.
+E         zweitreise: no automatic map, nothing to fetch.
+E         Published zweitreise state 1, 1 s after saving.
+E         Done: b004570 is online.
+E         
+E       assert False
+E        +  where False = any(<generator object test_lauf_laesst_ungleiche_git_reise_mit_warnung_in_git.<locals>.<genexpr> at 0x703cff2cae90>)
+
+engine/tests/test_software_weg_454.py:272: AssertionError
+_____________ test_nachweis_gruen_spult_klon_vor_ohne_server_tests _____________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x73d9fb8a39c0>, neuer_commit=<function sw.<locals>.neuer_commit at 0x73d...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<user>/pytest-14981/popen-gw2/test_nachweis_gruen_spult_klon0/rotmelden.sh'})
+
+    def test_nachweis_gruen_spult_klon_vor_ohne_server_tests(sw):
+        """AC-2.3: Pflichtprüfungen von C grün -> Klon auf C, ohne Tests auf dem Server."""
+        _ok(sw.lauf())
+        (sw.t / "pruefen.log").unlink(missing_ok=True)
+        sw.nachweis_gruen()
+        c = sw.neuer_commit()
+        _ok(sw.lauf())
+        assert sw.kopf() == c
+>       assert c in sw.zeilen("nachweis.log")
+E       AssertionError: assert '73cb5cbd146dcbcbfbe40dd6db2050d91d7f7409' in []
+E        +  where [] = <function sw.<locals>.zeilen at 0x73d9fb8a3c40>('nachweis.log')
+E        +    where <function sw.<locals>.zeilen at 0x73d9fb8a3c40> = namespace(lauf=<function sw.<locals>.lauf at 0x73d9fb8a39c0>, neuer_commit=<function sw.<locals>.neuer_commit at 0x73d...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<user>/pytest-14981/popen-gw2/test_nachweis_gruen_spult_klon0/rotmelden.sh'}).zeilen
+
+engine/tests/test_software_weg_454.py:423: AssertionError
+________________ test_neuer_commit_wird_ohne_reisen_repo_geholt ________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x78f2ecd62020>, neuer_commit=<function sw.<locals>.neuer_commit at 0x78f...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<user>/pytest-14981/popen-gw0/test_neuer_commit_wird_ohne_re0/rotmelden.sh'})
+
+    def test_neuer_commit_wird_ohne_reisen_repo_geholt(sw):
+        """AC-2.1: Ein neuer Commit auf main der Software kommt ohne Reisen-Repo, ohne Workflow und ohne Anmeldung an."""
+        _ok(sw.lauf())
+        sw.nachweis_gruen()
+        c = sw.neuer_commit()
+        _ok(sw.lauf())
+        assert sw.kopf() == c
+>       assert sw.lesen("software-gut") == c
+E       AssertionError: assert '94d52f235ae4...2798876e7a458' == '0b17d5133168...f2ca26294afff'
+E         
+E         - 0b17d51331687bcb5da01d6f9e7f2ca26294afff
+E         + 94d52f235ae451e211867b31b0f2798876e7a458
+
+engine/tests/test_software_weg_454.py:396: AssertionError
+___________ test_rot_datei_am_software_commit_ein_alarm_je_rot_phase ___________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x703cff2f7600>, neuer_commit=<function sw.<locals>.neuer_commit at 0x703...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<user>/pytest-14981/popen-gw3/test_rot_datei_am_software_com0/rotmelden.sh'})
+
+    def test_rot_datei_am_software_commit_ein_alarm_je_rot_phase(sw):
+        """AC-2.6: Roter C: Rot-Datei am Software-Commit, derselbe C wird nicht erneut geprüft, ein Alarm nach der Schwelle."""
+        _ok(sw.lauf())
+        c = sw.neuer_commit()
+        (sw.t / "rot").touch()
+        sw.lauf(VF_JETZT=str(T0))
+        rot = dict(z.split("=", 1) for z in (sw.dienst / "veroeffentlichen-rot").read_text().splitlines() if "=" in z)
+        assert rot["commit"] == c and rot["art"] == "software"
+        for dt in (31, 45):
+            r = sw.lauf(VF_JETZT=str(T0 + dt * MINUTE))
+            assert "Known red state" in r.stdout, r.stdout
+>       assert len([z for z in sw.zeilen("pruefen.log") if z.startswith("engine/tests")]) == 1
+E       AssertionError: assert 2 == 1
+E        +  where 2 = len(['engine/tests fa32cab716c11268052261ab57b96b6e98717fe2 fa32cab716c11268052261ab57b96b6e98717fe2', 'engine/tests 9dafb8db0c489198cb894fb1c1ca1d96b3b927e5 9dafb8db0c489198cb894fb1c1ca1d96b3b927e5'])
+
+engine/tests/test_software_weg_454.py:463: AssertionError
+_______________ test_nachweis_wird_je_stand_nur_einmal_abgefragt _______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x7a8e2b977ba0>, neuer_commit=<function sw.<locals>.neuer_commit at 0x7a8...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<user>/pytest-14981/popen-gw1/test_nachweis_wird_je_stand_nu0/rotmelden.sh'})
+
+    def test_nachweis_wird_je_stand_nur_einmal_abgefragt(sw):
+        """AC-2.4: Derselbe Commit ohne Nachweis wird in mehreren Läufen nur einmal abgefragt."""
+        _ok(sw.lauf())
+        (sw.t / "nachweis-weg").touch()
+        (sw.t / "rot").touch()
+        c = sw.neuer_commit()
+        for dt in (0, 5, 10):
+            sw.lauf(VF_JETZT=str(T0 + dt * MINUTE))
+>       assert sw.zeilen("nachweis.log").count(c) == 1, sw.zeilen("nachweis.log")
+E       AssertionError: []
+E       assert 0 == 1
+E        +  where 0 = <built-in method count of list object at 0x7a8e2b9c4d40>('0996241010ad3ddfe75ba8e971862b72ee27508a')
+E        +    where <built-in method count of list object at 0x7a8e2b9c4d40> = [].count
+E        +      where [] = <function sw.<locals>.zeilen at 0x7a8e2b977ce0>('nachweis.log')
+E        +        where <function sw.<locals>.zeilen at 0x7a8e2b977ce0> = namespace(lauf=<function sw.<locals>.lauf at 0x7a8e2b977ba0>, neuer_commit=<function sw.<locals>.neuer_commit at 0x7a8...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<user>/pytest-14981/popen-gw1/test_nachweis_wird_je_stand_nu0/rotmelden.sh'}).zeilen
+
+engine/tests/test_software_weg_454.py:435: AssertionError
+________________ test_stempel_und_kennung_sind_software_commit _________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x73d9fb940360>, neuer_commit=<function sw.<locals>.neuer_commit at 0x73d...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<user>/pytest-14981/popen-gw2/test_stempel_und_kennung_sind_0/rotmelden.sh'})
+
+    def test_stempel_und_kennung_sind_software_commit(sw):
+        """AC-2.7: Nach grünem Lauf sind veroeffentlicht, Software-Kennung und software-gut derselbe Software-Commit."""
+        _ok(sw.lauf())
+        sw.nachweis_gruen()
+        c = sw.neuer_commit()
+        _ok(sw.lauf())
+        assert sw.lesen("veroeffentlicht") == c
+>       assert sw.lesen("software-gut") == c
+E       AssertionError: assert '591abbb4d4df...342a3cc83a968' == '270292d82795...b5123b84aa271'
+E         
+E         - 270292d8279546a06b191b521d9b5123b84aa271
+E         + 591abbb4d4df907ceec3d2f3131342a3cc83a968
+
+engine/tests/test_software_weg_454.py:475: AssertionError
+__________________ test_roter_commit_laesst_klon_unveraendert __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x78f2ecd62d40>, neuer_commit=<function sw.<locals>.neuer_commit at 0x78f...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<user>/pytest-14981/popen-gw0/test_roter_commit_laesst_klon_0/rotmelden.sh'})
+
+    def test_roter_commit_laesst_klon_unveraendert(sw):
+        """AC-2.2: Ohne Nachweis und mit roten Tests auf dem Server bleibt der Klon auf dem bisherigen Commit, Arbeitsbaum
+        unverändert; geprüft wird in einem eigenen Arbeitsbaum von C."""
+        _ok(sw.lauf())
+        c = sw.neuer_commit()
+        (sw.t / "rot").touch()
+        r = sw.lauf()
+        assert r.returncode != 0, r.stdout
+>       assert sw.kopf() == sw.a
+E       AssertionError: assert '270292d82795...b5123b84aa271' == '591abbb4d4df...342a3cc83a968'
+E         
+E         - 591abbb4d4df907ceec3d2f3131342a3cc83a968
+E         + 270292d8279546a06b191b521d9b5123b84aa271
+
+engine/tests/test_software_weg_454.py:408: AssertionError
+__________ test_einstellungen_reihenfolge_umgebung_instanz_alter_ort ___________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw0/test_einstellungen_reihenfolge0')
+
+    def test_einstellungen_reihenfolge_umgebung_instanz_alter_ort(tmp_path):
+        """AC-2.9: Einstellungen aus der Umgebung, sonst <FR_DIENST>/instanz/einstellungen.env, sonst (Übergang) alter Ort."""
+        wurzel, dienst = tmp_path / "wurzel", tmp_path / "dienst"
+        (wurzel / "betrieb").mkdir(parents=True)
+        (wurzel / "betrieb" / "einstellungen.env").write_text("FR_TITEL=Alt\nFR_ZEITZONE=Europe/Berlin\n")
+        env = {"FR_WURZEL": str(wurzel), "FR_DIENST": str(dienst)}
+        assert _gemeinsam(env, "FR_TITEL")["FR_TITEL"] == "Alt"                       # Übergang: alter Ort
+        assert _instanz_wert(env, "FR_TITEL") == "Alt"
+        (dienst / "instanz").mkdir(parents=True)
+        (dienst / "instanz" / "einstellungen.env").write_text("FR_TITEL=Instanz\n")
+>       assert _gemeinsam(env, "FR_TITEL")["FR_TITEL"] == "Instanz"
+E       AssertionError: assert 'Alt' == 'Instanz'
+E         
+E         - Instanz
+E         + Alt
+
+engine/tests/test_software_weg_454.py:517: AssertionError
+_______ test_reisen_werden_nach_neuer_kennung_nachgezogen[beispielreise] _______
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x703cff2f7060>, neuer_commit=<function sw.<locals>.neuer_commit at 0x703...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<user>/pytest-14981/popen-gw3/test_reisen_werden_nach_neuer_0/rotmelden.sh'})
+reise = 'beispielreise'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_reisen_werden_nach_neuer_kennung_nachgezogen(sw, reise):
+        """AC-2.8: Nach einem neuen Software-Commit zieht der Speicher-Teil jede Reise auf die neue Kennung nach."""
+        _ok(sw.lauf())
+>       assert sw.gebaut(reise)[1] == sw.a
+               ^^^^^^^^^^^^^^^^^^^
+E       IndexError: list index out of range
+
+engine/tests/test_software_weg_454.py:484: IndexError
+_______________________ test_meldeweg_aus_instanz_ordner _______________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw3/test_meldeweg_aus_instanz_ordn0')
+
+    def test_meldeweg_aus_instanz_ordner(tmp_path):
+        """AC-2.10: Der Meldeweg liegt unter <FR_DIENST>/instanz/melden.sh (auch wenn die umgezogene Einstellung noch den
+        alten relativen Pfad betrieb/melden.sh nennt); ohne Meldeweg wird nichts gesendet."""
+        wurzel, dienst = tmp_path / "wurzel", tmp_path / "dienst"
+        wurzel.mkdir()
+        env = {"FR_WURZEL": str(wurzel), "FR_DIENST": str(dienst)}
+        assert _gemeinsam(env, "FR_MELDEN")["FR_MELDEN"] == ""
+        melden = ausfuehrbar(dienst / "instanz" / "melden.sh", f'#!/bin/sh\necho "$1" >> {tmp_path}/gesendet.log\n')
+        (dienst / "instanz" / "einstellungen.env").write_text("FR_MELDEN=betrieb/melden.sh\n")
+>       assert _gemeinsam(env, "FR_MELDEN")["FR_MELDEN"] == str(melden)
+E       AssertionError: assert '' == '/tmp/pytest-...anz/melden.sh'
+E         
+E         - /tmp/pytest-of-<user>/pytest-14981/popen-gw3/test_meldeweg_aus_instanz_ordn0/dienst/instanz/melden.sh
+
+engine/tests/test_software_weg_454.py:532: AssertionError
+____________________ test_rueckfall_auf_letzten_guten_stand ____________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x7a8e2b8e4220>, neuer_commit=<function sw.<locals>.neuer_commit at 0x7a8...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<user>/pytest-14981/popen-gw1/test_rueckfall_auf_letzten_gut0/rotmelden.sh'})
+
+    def test_rueckfall_auf_letzten_guten_stand(sw):
+        """AC-2.5: Scheitert der Deploy mit C, arbeiten die Dienste mit dem Commit aus software-gut weiter."""
+        _ok(sw.lauf())
+>       seiten_vorher = {r: (sw.seiten / r / "daten.json").read_text() for r in REISEN}
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_weg_454.py:441: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw1/test_rueckfall_auf_letzten_gut0/seiten/beispielreise/daten.json')
+mode = 'r', buffering = -1, encoding = 'locale', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/tmp/pytest-of-<user>/pytest-14981/popen-gw1/test_rueckfall_auf_letzten_gut0/seiten/beispielreise/daten.json'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+__________________ test_python_umgebung_ausserhalb_des_klons ___________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x7a8e2b975ee0>, neuer_commit=<function sw.<locals>.neuer_commit at 0x7a8...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<user>/pytest-14981/popen-gw1/test_python_umgebung_ausserhal0/rotmelden.sh'})
+
+    def test_python_umgebung_ausserhalb_des_klons(sw):
+        """AC-2.11: FR_PYTHON liegt fest unter <FR_DIENST>/python, außerhalb des Klons; ein Rückfall des Klons lässt sie stehen;
+        eine geänderte Abhängigkeitsliste baut sie vor dem Umschalten neu (VF_VENV)."""
+        werte = _gemeinsam({"FR_WURZEL": str(sw.klon), "FR_DIENST": str(sw.dienst)}, "FR_PYTHON")
+>       assert werte["FR_PYTHON"] == str(sw.dienst / "python" / "bin" / "python")
+E       AssertionError: assert '/tmp/pytest-...nv/bin/python' == '/tmp/pytest-...on/bin/python'
+E         
+E         Skipping 72 identical leading characters in diff, use -v to show
+E         - 0/seiten/_dienst/python/bin/python
+E         + 0/seiten/_software/engine/.venv/bin/python
+
+engine/tests/test_software_weg_454.py:544: AssertionError
+______ test_reisen_werden_nach_neuer_kennung_nachgezogen[stadtwochenende] ______
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x73d9fb9439c0>, neuer_commit=<function sw.<locals>.neuer_commit at 0x73d...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<user>/pytest-14981/popen-gw2/test_reisen_werden_nach_neuer_0/rotmelden.sh'})
+reise = 'stadtwochenende'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_reisen_werden_nach_neuer_kennung_nachgezogen(sw, reise):
+        """AC-2.8: Nach einem neuen Software-Commit zieht der Speicher-Teil jede Reise auf die neue Kennung nach."""
+        _ok(sw.lauf())
+>       assert sw.gebaut(reise)[1] == sw.a
+               ^^^^^^^^^^^^^^^^^^^
+E       IndexError: list index out of range
+
+engine/tests/test_software_weg_454.py:484: IndexError
+_______________ test_umzug_scheitert_vor_units_alles_beim_alten ________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+alt = {'lauf': <function vf.<locals>.lauf at 0x7a8e2b8e6520>, 'deploys': <function vf.<locals>.deploys at 0x7a8e2b8e6700>, '...f.<locals>.anzahl_pings at 0x7a8e2b8e6c00>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7a8e2b8e65c0>, ...}
+
+    def test_umzug_scheitert_vor_units_alles_beim_alten(alt):
+        """AC-2.13 und AC-2.20: Scheitert die Python-Umgebung, bleiben die Units beim alten Bauordner, das Veröffentlichen läuft
+        über den alten Weg weiter, keine high-Meldung; Klon und Einstellungen (Schritte 1 und 2) liegen schon bereit."""
+        (alt["tmp"] / "venv-kaputt").touch()
+        r = alt["lauf_alt"]()
+        assert r.returncode == 0, r.stdout + r.stderr
+>       assert (alt["klon"] / ".git").exists()
+E       AssertionError: assert False
+E        +  where False = exists()
+E        +    where exists = (PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw1/test_umzug_scheitert_vor_units0/seiten/_software') / '.git').exists
+
+engine/tests/test_software_weg_454.py:700: AssertionError
+____________________ test_lauf_ohne_reisen_repo_und_ohne_gh ____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x78f2ecd63880>, neuer_commit=<function sw.<locals>.neuer_commit at 0x78f...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<user>/pytest-14981/popen-gw0/test_lauf_ohne_reisen_repo_und0/rotmelden.sh'})
+
+    def test_lauf_ohne_reisen_repo_und_ohne_gh(sw):
+        """AC-2.18: Neuer Zustand ohne Reisen-Repo und ohne gh: grüner Lauf, Reisen aus dem Speicher, Stempel und Heartbeat."""
+        r = _ok(sw.lauf())
+        assert sw.zeilen("gh.log") == [], sw.zeilen("gh.log")
+        gebaut = sorted({z.split()[0] for z in sw.zeilen("deploy.log")})
+>       assert gebaut == REISEN, r.stdout
+E       AssertionError: Installing libraries (engine/requirements.txt changed).
+E         Installing Playwright (engine/tests/playwright changed).
+E         Publishing a4562a8 A1
+E         Done: a4562a8 is online.
+E         
+E       assert [] == ['beispielrei...dtwochenende']
+E         
+E         Right contains 2 more items, first extra item: 'beispielreise'
+E         Use -v to get more diff
+
+engine/tests/test_software_weg_454.py:581: AssertionError
+_________________________ test_umzug_ist_wiederholbar __________________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+alt = {'lauf': <function vf.<locals>.lauf at 0x7a8e2b8e79c0>, 'deploys': <function vf.<locals>.deploys at 0x7a8e2b8e7420>, '...f.<locals>.anzahl_pings at 0x7a8e2b8e72e0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7a8e2b8e63e0>, ...}
+
+    def test_umzug_ist_wiederholbar(alt):
+        """AC-2.14: Ein halber Umzug wird fortgesetzt, ohne neuere Einstellungen zu überschreiben, den Klon neu anzulegen oder
+        die Units ohne Unterschied neu zu installieren."""
+        (alt["tmp"] / "venv-kaputt").touch()
+        alt["lauf_alt"]()
+        einst = alt["tmp"] / "dienst" / "instanz" / "einstellungen.env"
+>       einst.write_text("FR_TITEL=Neuer am Zielort (Beispielwert)\n")
+
+engine/tests/test_software_weg_454.py:714: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/pathlib.py:1049: in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/tmp/pytest-of-<user>/pytest-14981/popen-gw1/test_umzug_ist_wiederholbar0/dienst/instanz/einstellungen.env')
+mode = 'w', buffering = -1, encoding = 'locale', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/tmp/pytest-of-<user>/pytest-14981/popen-gw1/test_umzug_ist_wiederholbar0/dienst/instanz/einstellungen.env'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+_________________ test_skript_startet_sich_nach_umschalten_neu _________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x703cff33f600>, neuer_commit=<function sw.<locals>.neuer_commit at 0x703...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<user>/pytest-14981/popen-gw3/test_skript_startet_sich_nach_0/rotmelden.sh'})
+
+    def test_skript_startet_sich_nach_umschalten_neu(sw):
+        """AC-2.16: Ändert das Vorspulen veroeffentlichen.sh, startet der Lauf mit exec das neue Skript und endet einmal."""
+        _ok(sw.lauf())
+        sw.nachweis_gruen()
+    
+        def skript_aendern(q):
+            datei = q / "betrieb" / "veroeffentlichen.sh"
+            text = datei.read_text()
+            datei.write_text(text.replace("main() {\n", 'main() {\n  echo "NEUES SKRIPT"\n', 1))
+        c = sw.neuer_commit(skript_aendern)
+        r = _ok(sw.lauf())
+        assert sw.kopf() == c
+>       assert r.stdout.count("NEUES SKRIPT") == 1, r.stdout
+E       AssertionError: Publishing e636995 neu1
+E         Done: e636995 is online.
+E         
+E       assert 0 == 1
+E        +  where 0 = <built-in method count of str object at 0x703cff2fbed0>('NEUES SKRIPT')
+E        +    where <built-in method count of str object at 0x703cff2fbed0> = 'Publishing e636995 neu1\nDone: e636995 is online.\n'.count
+E        +      where 'Publishing e636995 neu1\nDone: e636995 is online.\n' = CompletedProcess(args=['/tmp/pytest-of-<user>/pytest-14981/popen-gw3/test_skript_startet_sich_nach_0/seiten/_software/betrieb/veroeffentlichen.sh'], returncode=0, stdout='Publishing e636995 neu1\nDone: e636995 is online.\n', stderr='').stdout
+
+engine/tests/test_software_weg_454.py:618: AssertionError
+_________________________ test_umzug_ohne_handschritt __________________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+alt = {'lauf': <function vf.<locals>.lauf at 0x703cff2f7740>, 'deploys': <function vf.<locals>.deploys at 0x703cff2f7560>, '...f.<locals>.anzahl_pings at 0x703cff2f7600>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x703cff2f7420>, ...}
+
+    def test_umzug_ohne_handschritt(alt):
+        """AC-2.12: Der Lauf im alten Zustand legt den Klon an, kopiert Einstellungen und Meldeweg, baut die Python-Umgebung,
+        gleicht die Units ab und setzt den Umzug auf fertig."""
+        r = alt["lauf_alt"]()
+        assert r.returncode == 0, r.stdout + r.stderr
+        dienst, klon = alt["tmp"] / "dienst", alt["klon"]
+>       assert git(klon, "rev-parse", "HEAD").strip() == git(alt["software"], "rev-parse", "HEAD").strip()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_software_weg_454.py:685: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_betrieb.py:32: in git
+    return subprocess.run(["git", "-C", str(ordner), *args], check=True, capture_output=True, text=True,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = True, timeout = None, check = True
+popenargs = (['git', '-C', '/tmp/pytest-of-<user>/pytest-14981/popen-gw3/test_umzug_ohne_handschritt0/seiten/_software', 'rev-parse', 'HEAD'],)
+kwargs = {'text': True, 'env': {'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wW:p1', ...}, 'stdout': -1, 'stderr': -1}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout is given, and the process takes too long, a TimeoutExpired
+        exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['git', '-C', '/tmp/pytest-of-<user>/pytest-14981/popen-gw3/test_umzug_ohne_handschritt0/seiten/_software', 'rev-parse', 'HEAD']' returned non-zero exit status 128.
+
+/usr/lib/python3.12/subprocess.py:571: CalledProcessError
+____________________ test_dokumentierte_infra_vorbedingung _____________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_dokumentierte_infra_vorbedingung():
+        """AC-2.21: docs/betrieb.md nennt die Vorbedingung der Infrastruktur (Monitor und Backup-Aufruf von sichern.sh)."""
+        umzug = _abschnitt((WURZEL / "docs" / "betrieb.md").read_text(), "Umzug")
+>       assert umzug, "Abschnitt „Umzug …“ fehlt in docs/betrieb.md"
+E       AssertionError: Abschnitt „Umzug …“ fehlt in docs/betrieb.md
+E       assert ''
+
+engine/tests/test_software_weg_454.py:790: AssertionError
+_____________________ test_betrieb_md_beschreibt_neuen_weg _____________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_betrieb_md_beschreibt_neuen_weg():
+        """AC-2.24: docs/betrieb.md beschreibt Klon, letzten guten Stand, Einstellungen der Instanz, Umzug und Rückweg;
+        ADR-0009 nennt #454 in Stufe 5."""
+        text = (WURZEL / "docs" / "betrieb.md").read_text()
+        for wort in ("_software", "software-gut", "instanz/einstellungen.env", "umzug-454", "Rückweg"):
+>           assert wort in text, wort
+E           AssertionError: _software
+E           assert '_software' in '# Betrieb einer Instanz\n\nWie Frieda auf einem eigenen Server läuft: Seiten ausliefern, Rückmeldungen annehmen, was ...dungen`, dann `rueckmeldung_erledigen`); `python3 engine/rueckmeldungen.py liste <reise>` zeigt sie auf dem Server |\n'
+
+engine/tests/test_software_weg_454.py:799: AssertionError
+_____________________ test_anstoss_startet_nur_einen_lauf ______________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x73d9fb9428e0>, neuer_commit=<function sw.<locals>.neuer_commit at 0x73d...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<user>/pytest-14981/popen-gw2/test_anstoss_startet_nur_einen0/rotmelden.sh'})
+
+    def test_anstoss_startet_nur_einen_lauf(sw):
+        """AC-2.17: _anstoss.json startet einen Lauf, ohne gh workflow run; die Datei ist danach weg, kein Dauerlauf."""
+        _ok(sw.lauf())
+        ablage = sw.t / "ablage"
+        (ablage / "_anstoss.json").write_text('{"zeit": "2026-11-12T12:00:00+00:00", "reise": "beispielreise", "von": "Ida"}\n')
+        r = _ok(sw.lauf())
+>       assert "workflow" not in r.stdout.lower(), r.stdout
+E       AssertionError: Request from the page: workflow software-nachziehen.yml started.
+E         
+E       assert 'workflow' not in 'request fro...l started.\n'
+E         
+E         'workflow' is contained here:
+E           request from the page: workflow software-nachziehen.yml started.
+E         ?                        ++++++++
+
+engine/tests/test_software_weg_454.py:567: AssertionError
+_______________ test_instanz_tests_fehlen_oder_rot_sperren_nicht _______________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x78f2ecd63560>, neuer_commit=<function sw.<locals>.neuer_commit at 0x78f...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<user>/pytest-14981/popen-gw0/test_instanz_tests_fehlen_oder0/rotmelden.sh'})
+
+    def test_instanz_tests_fehlen_oder_rot_sperren_nicht(sw):
+        """AC-2.22: Ohne <FR_DIENST>/instanz/tests wird übersprungen; rot dort ist eine Warnung, der Wechsel geht durch."""
+        _ok(sw.lauf())
+        c = sw.neuer_commit()
+        _ok(sw.lauf())
+        assert not [z for z in sw.zeilen("pruefen.log") if "instanz/tests" in z]
+        assert sw.kopf() == c
+        tests = sw.dienst / "instanz" / "tests"
+        tests.mkdir(parents=True)
+        (tests / "test_privat.py").write_text("def test_privat():\n    pass\n")
+        (sw.t / "rot-instanz").touch()
+        d = sw.neuer_commit()
+        r = _ok(sw.lauf())
+>       assert [z for z in sw.zeilen("pruefen.log") if z.split()[0] == str(tests)], sw.zeilen("pruefen.log")
+E       AssertionError: ['engine/tests 74273c2324634460c37a0a92baa553c486037d72 74273c2324634460c37a0a92baa553c486037d72', 'engine/tests 98e47...8e9393d5c7053708590', 'engine/tests 4b85420fafc6632008ebcbcca17c7cd76d2c626c 4b85420fafc6632008ebcbcca17c7cd76d2c626c']
+E       assert []
+
+engine/tests/test_software_weg_454.py:600: AssertionError
+___________________ test_einrichten_ohne_gh_und_reisen_repo ____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_einrichten_ohne_gh_und_reisen_repo():
+        """AC-2.19: einrichten.sh verlangt weder gh auth noch ein Reisen-Repo, legt Klon und <FR_DIENST>/instanz an; die Units
+        starten die Skripte aus dem Klon (__WURZEL__/betrieb/…)."""
+        text = (BETRIEB / "einrichten.sh").read_text()
+>       assert "gh auth" not in text
+E       assert 'gh auth' not in '#!/usr/bin/...e above)."\n'
+E         
+E         'gh auth' is contained here:
+E           $FR_PFAD" gh auth status > /dev/null 2>&1 && ok "gh signed in" || problem "gh is not signed in (gh auth login as $FR_BENUTZER)"
+E         ?           +++++++
+E           else problem "gh not in FR_PFAD"; fi
+E           command -v flock > /dev/null && ok "flock" || problem "flock (util-linux)"
+E           command -v rsync > /dev/null && ok "rsync" || problem "rsync"...
+E         
+E         ...Full output truncated (108 lines hidden), use '-vv' to show
+
+engine/tests/test_software_weg_454.py:761: AssertionError
+_________________ test_alter_bauordner_bleibt_und_ist_rueckweg _________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+alt = {'lauf': <function vf.<locals>.lauf at 0x73d9fb8a3560>, 'deploys': <function vf.<locals>.deploys at 0x73d9fb8a2fc0>, '...f.<locals>.anzahl_pings at 0x73d9fb8a3380>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x73d9fb8a3600>, ...}
+
+    def test_alter_bauordner_bleibt_und_ist_rueckweg(alt):
+        """AC-2.15: Nach dem Umzug bleibt der alte Bauordner unverändert; Läufe im neuen Zustand fassen ihn nicht an."""
+        r = alt["lauf_alt"]()
+        assert r.returncode == 0, r.stdout + r.stderr
+>       assert alt["umzug"]() == "fertig"
+E       AssertionError: assert None == 'fertig'
+E        +  where None = <function alt.<locals>.umzug at 0x73d9fbdf4540>()
+
+engine/tests/test_software_weg_454.py:733: AssertionError
+_______________ test_keine_instanzspezifischen_werte_in_betrieb ________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_keine_instanzspezifischen_werte_in_betrieb():
+        """AC-2.23: Vorlagen und Werkzeuge nennen keine Pfade unter frieda/ (Submodul) mehr; Bauordner kommen aus den
+        Einstellungen."""
+        dateien = [p for p in (BETRIEB / "vorlagen").rglob("*") if p.is_file()]
+        dateien += sorted((WURZEL / "werkzeuge").glob("*.py"))
+        treffer = [p.relative_to(WURZEL).as_posix() for p in dateien if "frieda/betrieb" in p.read_text()
+                   or "frieda/werkzeuge" in p.read_text()]
+>       assert treffer == []
+E       AssertionError: assert ['betrieb/vor...service', ...] == []
+E         
+E         Left contains 15 more items, first extra item: 'betrieb/vorlagen/push.service'
+E         Use -v to get more diff
+
+engine/tests/test_software_weg_454.py:776: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_software_weg_454.py::test_speicherreisen_unlesbarer_speicher_ist_fehler
+FAILED engine/tests/test_software_weg_454.py::test_reise_anlegen_entsteht_im_speicher[stadtwochenende]
+FAILED engine/tests/test_software_weg_454.py::test_git_reise_wird_bei_gleich_umgeschaltet[stadtwochenende]
+FAILED engine/tests/test_software_weg_454.py::test_reise_anlegen_entsteht_im_speicher[beispielreise]
+FAILED engine/tests/test_software_weg_454.py::test_speicherreisen_liest_aus_dem_speicher
+FAILED engine/tests/test_software_weg_454.py::test_git_reise_wird_bei_gleich_umgeschaltet[beispielreise]
+FAILED engine/tests/test_software_weg_454.py::test_umschaltung_ist_idempotent
+FAILED engine/tests/test_software_weg_454.py::test_fr_speicherreisen_ist_wirkungslos
+FAILED engine/tests/test_software_weg_454.py::test_git_reise_bleibt_bei_unterschied_in_git
+FAILED engine/tests/test_software_weg_454.py::test_schreibwerkzeuge_speicherreise_unveraendert
+FAILED engine/tests/test_software_weg_454.py::test_umschaltung_nach_abbruch_wird_fortgesetzt
+FAILED engine/tests/test_software_weg_454.py::test_bisherige_speicherreisen_bleiben_ohne_handschritt
+FAILED engine/tests/test_software_weg_454.py::test_lauf_schaltet_git_reise_bei_gleich_um
+FAILED engine/tests/test_software_weg_454.py::test_neue_reise_wird_vom_speicher_teil_gebaut
+FAILED engine/tests/test_software_weg_454.py::test_lauf_laesst_ungleiche_git_reise_mit_warnung_in_git
+FAILED engine/tests/test_software_weg_454.py::test_nachweis_gruen_spult_klon_vor_ohne_server_tests
+FAILED engine/tests/test_software_weg_454.py::test_neuer_commit_wird_ohne_reisen_repo_geholt
+FAILED engine/tests/test_software_weg_454.py::test_rot_datei_am_software_commit_ein_alarm_je_rot_phase
+FAILED engine/tests/test_software_weg_454.py::test_nachweis_wird_je_stand_nur_einmal_abgefragt
+FAILED engine/tests/test_software_weg_454.py::test_stempel_und_kennung_sind_software_commit
+FAILED engine/tests/test_software_weg_454.py::test_roter_commit_laesst_klon_unveraendert
+FAILED engine/tests/test_software_weg_454.py::test_einstellungen_reihenfolge_umgebung_instanz_alter_ort
+FAILED engine/tests/test_software_weg_454.py::test_reisen_werden_nach_neuer_kennung_nachgezogen[beispielreise]
+FAILED engine/tests/test_software_weg_454.py::test_meldeweg_aus_instanz_ordner
+FAILED engine/tests/test_software_weg_454.py::test_rueckfall_auf_letzten_guten_stand
+FAILED engine/tests/test_software_weg_454.py::test_python_umgebung_ausserhalb_des_klons
+FAILED engine/tests/test_software_weg_454.py::test_reisen_werden_nach_neuer_kennung_nachgezogen[stadtwochenende]
+FAILED engine/tests/test_software_weg_454.py::test_umzug_scheitert_vor_units_alles_beim_alten
+FAILED engine/tests/test_software_weg_454.py::test_lauf_ohne_reisen_repo_und_ohne_gh
+FAILED engine/tests/test_software_weg_454.py::test_umzug_ist_wiederholbar - F...
+FAILED engine/tests/test_software_weg_454.py::test_skript_startet_sich_nach_umschalten_neu
+FAILED engine/tests/test_software_weg_454.py::test_umzug_ohne_handschritt - s...
+FAILED engine/tests/test_software_weg_454.py::test_dokumentierte_infra_vorbedingung
+FAILED engine/tests/test_software_weg_454.py::test_betrieb_md_beschreibt_neuen_weg
+FAILED engine/tests/test_software_weg_454.py::test_anstoss_startet_nur_einen_lauf
+FAILED engine/tests/test_software_weg_454.py::test_instanz_tests_fehlen_oder_rot_sperren_nicht
+FAILED engine/tests/test_software_weg_454.py::test_einrichten_ohne_gh_und_reisen_repo
+FAILED engine/tests/test_software_weg_454.py::test_alter_bauordner_bleibt_und_ist_rueckweg
+FAILED engine/tests/test_software_weg_454.py::test_keine_instanzspezifischen_werte_in_betrieb
+39 failed, 1 passed in 21.48s
