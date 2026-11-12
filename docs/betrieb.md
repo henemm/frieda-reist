@@ -511,7 +511,7 @@ Gearbeitet wird in einem eigenen **Arbeitsordner**, einem normalen Klon mit eige
 |---|---|
 | Seite antwortet nicht | `ls <FR_SEITEN>/<reise>/index.html`, `sudo nginx -t`, Fehlerlog von nginx |
 | `api/gesund` antwortet nicht | `systemctl status <instanz>-rueckmeldungen`, `journalctl -u <instanz>-rueckmeldungen -n 50` |
-| Konnektor `gesund` 503 | keine Reise freigeschaltet (`seiten.json` fehlt oder ist unlesbar) oder eine freigeschaltete Reise nicht veröffentlicht |
+| Konnektor `gesund` 503 | keine Reise freigeschaltet (`seiten.json` fehlt oder ist unlesbar) oder eine freigeschaltete Reise nicht veröffentlicht; zur Löschung vorgemerkte Reisen zählen nicht mit (#539) |
 | Konnektor meldet „Schreibweg nicht erreichbar“ oder „nicht eingerichtet“ | `systemctl status <instanz>-schreiben`, `journalctl -u <instanz>-schreiben -n 50`; steht `KN_SCHREIBDIENST` in der Unit des Konnektors? Geht `git push` als Dienstbenutzer ohne Rückfrage? |
 | Nichts geht online | `journalctl -u <instanz>-veroeffentlichen -n 50`; ist der Bauordner auf `main` und sauber? |
 | Eingetragenes erscheint nicht auf der Seite | `journalctl -u <instanz>-schreiben -n 50` (Commit und Push da?), dann `journalctl -u <instanz>-veroeffentlichen -n 50` |
