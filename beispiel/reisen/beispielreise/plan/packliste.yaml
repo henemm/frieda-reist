@@ -3,14 +3,14 @@
 # Tag), wer: wer ihn packt (ohne wer packt ihn jede Person für sich). Abgehakt wird nicht hier, sondern live auf der Seite (Packstand).
 # Eine Herkunft (quelle) braucht ein Gegenstand nicht (docs/adr/0010-gegenstand.md).
 gegenstaende:
-  - {id: G-01, art: kleidung, titel: Regenjacke, merkmale: {gewicht: 420, raum: Tagesrucksack}, verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]}
-  - {id: G-02, art: kleidung, titel: Wanderschuhe, merkmale: {gewicht: 900, raum: am Körper}, verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]}
-  - {id: G-03, art: kleidung, titel: Wandersocken, merkmale: {gewicht: 240, anzahl: 3, raum: Rucksack}, verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]}
-  - {id: G-04, art: ausruestung, titel: Trinkflasche, merkmale: {gewicht: 180, raum: Tagesrucksack}, verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]}
+  - {id: G-01, art: kleidung, titel: Regenjacke, merkmale: {gewicht: 420, getragen: Tagesrucksack, raum: Flur}, verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]}
+  - {id: G-02, art: kleidung, titel: Wanderschuhe, merkmale: {gewicht: 900, getragen: am Körper, raum: Flur}, verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]}
+  - {id: G-03, art: kleidung, titel: Wandersocken, merkmale: {gewicht: 240, anzahl: 3, getragen: Rucksack, raum: Schlafzimmer}, verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]}
+  - {id: G-04, art: ausruestung, titel: Trinkflasche, merkmale: {gewicht: 180, getragen: Tagesrucksack, raum: Küche, zug: griffbereit}, verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]}
   - id: G-05
     art: ausruestung
     titel: Wanderstöcke
-    merkmale: {gewicht: 480, preis: 45 €, raum: Rucksack}
+    merkmale: {gewicht: 480, preis: 45 €, getragen: Rucksack, raum: Keller}
     an: E-01
     notiz: "Für die vielen Stufen an der Bastei (Beispiel)"
     verlauf:
@@ -18,23 +18,26 @@ gegenstaende:
   - id: G-06
     art: ausruestung
     titel: Stirnlampe
-    merkmale: {gewicht: 90, preis: 25 €, raum: Rucksack}
+    merkmale: {gewicht: 90, preis: 25 €, getragen: Rucksack, raum: Keller}
     an: U-04
+    wer: Karl
     notiz: "Für den Weg zur Herberge, falls es dunkel wird (Beispiel)"
     verlauf: [{datum: 2026-10-03, wer: Karl, was: angelegt}]
   - id: G-07
     art: apotheke
     titel: Erste-Hilfe-Set
-    merkmale: {gewicht: 350, raum: Tagesrucksack}
+    merkmale: {gewicht: 350, getragen: Tagesrucksack, raum: Bad}
     wer: Ida
     notiz: "Gemeinsam, trägt Ida"
     verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]
-  - {id: G-08, art: apotheke, titel: Blasenpflaster, merkmale: {gewicht: 30, raum: Tagesrucksack}, verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]}
+  - {id: G-08, art: apotheke, titel: Blasenpflaster, merkmale: {gewicht: 30, getragen: Tagesrucksack, raum: Bad}, verlauf: [{datum: 2026-10-02, wer: Ida, was: angelegt}]}
   - id: G-09
     art: apotheke
     titel: Sonnencreme
-    merkmale: {gewicht: 120, raum: Tagesrucksack}
+    merkmale: {gewicht: 120, getragen: Tagesrucksack, raum: Bad}
     status: entfaellt
     verlauf:
       - {datum: 2026-10-02, wer: Ida, was: angelegt}
       - {datum: 2026-10-05, wer: Karl, was: weggelassen, grund: "Karl hat eigene dabei (Beispiel)"}
+  - {id: G-10, art: ausruestung, titel: Ladegerät, merkmale: {gewicht: 120, getragen: Rucksack, raum: Schlafzimmer}, wer: Karl, verlauf: [{datum: 2026-10-03, wer: Karl, was: angelegt}]}
+  - {id: G-11, art: foto, titel: Kamera, merkmale: {gewicht: 650}, verlauf: [{datum: 2026-10-03, wer: Karl, was: angelegt}]}

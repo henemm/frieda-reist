@@ -261,14 +261,15 @@ arten:
       ankommen:   {name: Ankommen, hilfe: "Wo der Weg ankommt und was man am Abend noch erreicht"}
       versorgung: {name: Versorgung, hilfe: "Einkaufen, Essen, Wasser im Allgemeinen; ein bestimmtes Lokal ist ein eigenes Ding am Ort"}
       umschauen:  {name: Umschauen, hilfe: "Was den Ort ausmacht, in zwei, drei Sätzen"}
-  # Kategorien der Packliste (erfunden): was mitkommt, nach Gewicht und Raum geordnet
+  # Kategorien der Packliste (erfunden): was mitkommt, nach Gewicht, Getragen (wo es unterwegs steckt) und Raum (wo es zu Hause liegt)
   kleidung:
     grundform: gegenstand
     name: Kleidung
     farbe: tuerkis
     merkmale:
       gewicht: {name: Gewicht, typ: zahl, einheit: g, rolle: summe, hilfe: "Waage oder Herstellerangabe; für den ganzen Eintrag"}
-      raum:    {name: Raum, typ: auswahl, werte: [am Körper, Tagesrucksack, Rucksack], hilfe: "Wo es unterwegs steckt"}
+      getragen: {name: Getragen, typ: auswahl, werte: [am Körper, Tagesrucksack, Rucksack], hilfe: "Wo es unterwegs steckt"}
+      raum:    {name: Raum, typ: auswahl, werte: [Flur, Schlafzimmer, Bad, Küche, Keller], hilfe: "Wo es zu Hause liegt (Ansicht Packen)"}
       anzahl:  {name: Anzahl, typ: zahl, stufe: angeboten}
   ausruestung:
     grundform: gegenstand
@@ -277,7 +278,9 @@ arten:
     merkmale:
       gewicht: {name: Gewicht, typ: zahl, einheit: g, rolle: summe}
       preis:   {name: Anschaffung, typ: geld, rolle: summe, stufe: angeboten, hilfe: "Nur, was noch gekauft werden muss"}
-      raum:    {name: Raum, typ: auswahl, werte: [am Körper, Tagesrucksack, Rucksack]}
+      getragen: {name: Getragen, typ: auswahl, werte: [am Körper, Tagesrucksack, Rucksack]}
+      raum:    {name: Raum, typ: auswahl, werte: [Flur, Schlafzimmer, Bad, Küche, Keller]}
+      zug:     {name: Im Zug, typ: auswahl, werte: [griffbereit], stufe: angeboten, hilfe: "Was auf der Bahnfahrt zur Hand sein soll (Beispiel)"}
   apotheke:
     grundform: gegenstand
     name: Apotheke
@@ -285,4 +288,13 @@ arten:
     symbol: apotheke
     merkmale:
       gewicht: {name: Gewicht, typ: zahl, einheit: g, rolle: summe}
-      raum:    {name: Raum, typ: auswahl, werte: [am Körper, Tagesrucksack, Rucksack]}
+      getragen: {name: Getragen, typ: auswahl, werte: [am Körper, Tagesrucksack, Rucksack]}
+      raum:    {name: Raum, typ: auswahl, werte: [Flur, Schlafzimmer, Bad, Küche, Keller]}
+  # ausgeblendet: Die Kategorie zählt für diese Reise nicht (Planen, Packen, Summen); nichts ist gelöscht, kind_define blendet sie wieder ein (#431)
+  foto:
+    grundform: gegenstand
+    name: Fotoausrüstung
+    farbe: grau
+    ausgeblendet: true
+    merkmale:
+      gewicht: {name: Gewicht, typ: zahl, einheit: g, rolle: summe}
