@@ -1949,7 +1949,7 @@ function kurzDaten(id) {
   const form = grundformVon(id);
   const fakt = (name, wert) => wert ? [name, wert] : null;
   let d = null;
-  if (form === "etappe" || form === "ort") {
+  if (form === "bewegung" || form === "ort") {
     const s = R && (R.strecken || {})[id], o = R && (R.orte || {})[id];
     if (s) {
       const arten = [].concat(s.art || []);
@@ -2002,7 +2002,7 @@ function zeigeDing(id, dichte, opt = {}) {
     unterkunft: {karte: () => dingKarte(id, opt.tid, opt.mehr, opt.ohneOrt)},
     aufenthalt: {zeile: () => ohneTagZeile(id), karte: () => dingKarte(id, null, null, opt.ohneOrt)},
     wahlstelle: {zeile: () => wahlListenZeile(w), karte: () => wahlKarte(w)},
-    etappe: {karte: () => dingKurzKarte(id)}, ort: {karte: () => dingKurzKarte(id)}, buchung: {karte: () => dingKurzKarte(id)},
+    bewegung: {karte: () => dingKurzKarte(id)}, ort: {karte: () => dingKurzKarte(id)}, buchung: {karte: () => dingKurzKarte(id)},
     frage: {karte: () => dingKurzKarte(id)}, aufgabe: {karte: () => dingKurzKarte(id)},
   };
   const weg = wege[form] || {};
@@ -4471,23 +4471,28 @@ function markiert(text, begriffe, laenge) {
    Kennung der Reise einer Grundform angehört. */
 /* ENTWICKLERSEITE-ANFANG: Bausteinseite (#bausteine) und Ontologie-Tabelle sind Werkzeug für die Entwicklung (ADR-0002) und bleiben
    deutsch; sie sind keine Seite für Reisende und stehen nicht im Textkatalog (ADR-0006, Ausnahme). */
+// Abbildung der Ontologie auf Bausteine (ADR-0002, Punkt 3; #543): je Zeile [Schlüssel, Grundform der Ontologie, Name, Kennung,
+// Bausteine je Dichte]. Die Grundform ist eine aus docs/ontologie.md (GRUNDFORMEN_ONTOLOGIE); mehrere Zeilen dürfen dieselbe
+// Grundform zeigen (Folge: Tag und Plan). Die Tabelle in docs/design.md ist dieselbe, Zelle für Zelle (test_design.py).
+const GRUNDFORMEN_ONTOLOGIE = ["reise", "ort", "aufenthalt", "bewegung", "folge", "wahl", "aussage", "buchung", "gegenstand", "offenes", "wissen"];
 const GRUNDFORMEN = [
-  ["reise", "Reise", "–", {zeile: [], vorschau: [reiseEnde, mitreisende, standLeiste], karte: [uebersichtKarte], seite: [ansichtReise]}],
-  ["tag", "Folge: Tag", "T-01", {zeile: [tagZeile], vorschau: [tagKachel], karte: [tagKarte, tagesKarte], seite: [ansichtTag, ansichtReise]}],
-  ["etappe", "Bewegung: Etappe, Strecke", "E-01", {zeile: [streckeZeile], vorschau: [abschnittKarte], karte: [dingKurzKarte], seite: [ansichtAbschnitt, tagEbenen]}],
-  ["ort", "Ort", "O-01", {zeile: [wegVerlauf, ortLiegtIn], vorschau: [tagOrteZeilen, ortDarin, listenZeile], karte: [dingKurzKarte], seite: [ansichtOrt]}],
-  ["unterkunft", "Aufenthalt mit Nacht: Unterkunft", "U-01", {zeile: [nachtZeile], vorschau: [listenZeile], karte: [dingKarte], seite: [nachtAbschnitt]}],
-  ["aufenthalt", "Aufenthalt ohne Nacht", "A-01", {zeile: [aufenthaltZeile], vorschau: [listenZeile], karte: [dingKarte], seite: [tagKarte, ohneTag, ansichtOrt, ansichtAbschnitt]}],
-  ["buchung", "Buchung zu Aufenthalt oder Bewegung", "B-01", {zeile: [buchungChip], vorschau: [listenZeile], karte: [dingKurzKarte], seite: [buchungBlock]}],
-  ["gegenstand", "Gegenstand der Packliste", "G-01", {zeile: [mitnehmenZeile, gegenstandZeile], vorschau: [], karte: [packTabelle, packGruppe], seite: [ansichtPackliste]}],
-  ["wahlstelle", "Wahl: Wahlstelle", "V-01", {zeile: [wahlZeile], vorschau: [listenZeile], karte: [wahlKarte], seite: [wahlEinstieg, wahlVergleich, nachtAbschnitt, entschieden]}],
-  ["option", "Wahl: Option", "V-01.a", {zeile: [optionBlock], vorschau: [wahlVergleich], karte: [wahlVergleich], seite: [optionEinzelheiten]}],
-  ["plan", "Folge: Plan", "P-A", {zeile: [planMarke], vorschau: [steckbrief], karte: [], seite: [ansichtPlanDetail]}],
-  ["frage", "Offenes: Frage", "F-01", {zeile: [frageZeile], vorschau: [], karte: [dingKurzKarte], seite: [ansichtFragen]}],
-  ["wissen", "Wissen: Praxis, Quelle, Plantext", "W-01", {zeile: [], vorschau: [listenZeile], karte: [], seite: [ansichtAbschnitt, ansichtWissen, artUebersicht]}],
-  ["abschnitt", "Wissen: Abschnitt eines Textes", "E-01.eckdaten", {zeile: [], vorschau: [], karte: [block], seite: [reiseText, reiterGruppe, leseAbschnitt]}],
-  ["aufgabe", "Offenes: Aufgabe", "AG-01", {zeile: [agEintrag], vorschau: [], karte: [dingKurzKarte], seite: [ansichtAufgaben, agFormular]}],
-  ["rueckmeldung", "Offenes: Rückmeldung, Wunsch", "R-…", {zeile: [rmEintrag], vorschau: [], karte: [wuKarte], seite: [rmFormular, ansichtWuensche]}],
+  ["reise", "reise", "Reise", "–", {zeile: [], vorschau: [reiseEnde, mitreisende, standLeiste], karte: [uebersichtKarte], seite: [ansichtReise]}],
+  ["tag", "folge", "Folge: Tag", "T-01", {zeile: [tagZeile], vorschau: [tagKachel], karte: [tagKarte, tagesKarte], seite: [ansichtTag, ansichtReise]}],
+  ["bewegung", "bewegung", "Bewegung: Etappe, Strecke", "E-01", {zeile: [streckeZeile], vorschau: [abschnittKarte], karte: [dingKurzKarte], seite: [ansichtAbschnitt, tagEbenen]}],
+  ["ort", "ort", "Ort", "O-01", {zeile: [wegVerlauf, ortLiegtIn], vorschau: [tagOrteZeilen, ortDarin, listenZeile], karte: [dingKurzKarte], seite: [ansichtOrt]}],
+  ["unterkunft", "aufenthalt", "Aufenthalt mit Nacht: Unterkunft", "U-01", {zeile: [nachtZeile], vorschau: [listenZeile], karte: [dingKarte], seite: [nachtAbschnitt]}],
+  ["aufenthalt", "aufenthalt", "Aufenthalt ohne Nacht", "A-01", {zeile: [aufenthaltZeile], vorschau: [listenZeile], karte: [dingKarte], seite: [tagKarte, ohneTag, ansichtOrt, ansichtAbschnitt]}],
+  ["buchung", "buchung", "Buchung", "B-01", {zeile: [buchungChip], vorschau: [listenZeile], karte: [dingKurzKarte], seite: [buchungBlock]}],
+  ["gegenstand", "gegenstand", "Gegenstand der Packliste", "G-01", {zeile: [mitnehmenZeile, gegenstandZeile], vorschau: [], karte: [packTabelle, packGruppe], seite: [ansichtPackliste]}],
+  ["wahlstelle", "wahl", "Wahl: Wahlstelle", "V-01", {zeile: [wahlZeile], vorschau: [listenZeile], karte: [wahlKarte], seite: [wahlEinstieg, wahlVergleich, nachtAbschnitt, entschieden]}],
+  ["option", "wahl", "Wahl: Option", "V-01.a", {zeile: [optionBlock], vorschau: [wahlVergleich], karte: [wahlVergleich], seite: [optionEinzelheiten]}],
+  ["plan", "folge", "Folge: Plan", "P-A", {zeile: [planMarke], vorschau: [steckbrief], karte: [], seite: [ansichtPlanDetail]}],
+  ["frage", "offenes", "Offenes: Frage", "F-01", {zeile: [frageZeile], vorschau: [], karte: [dingKurzKarte], seite: [ansichtFragen]}],
+  ["wissen", "wissen", "Wissen: Praxis, Quelle, Plantext", "W-01", {zeile: [], vorschau: [listenZeile], karte: [], seite: [ansichtAbschnitt, ansichtWissen]}],
+  ["abschnitt", "wissen", "Wissen: Abschnitt eines Textes", "E-01.eckdaten", {zeile: [], vorschau: [], karte: [block], seite: [reiseText, reiterGruppe, leseAbschnitt]}],
+  ["aufgabe", "offenes", "Offenes: Aufgabe", "AG-01", {zeile: [agEintrag], vorschau: [], karte: [dingKurzKarte], seite: [ansichtAufgaben, agFormular]}],
+  ["rueckmeldung", "offenes", "Offenes: Rückmeldung, Wunsch", "R-…", {zeile: [rmEintrag], vorschau: [], karte: [wuKarte], seite: [rmFormular, ansichtWuensche]}],
+  ["aussage", "aussage", "Aussage: Merkmal mit Wert und Herkunft", "am Ding", {zeile: [merkmalWert], vorschau: [kennzahlLeiste, heroZeile], karte: [merkmalListe, lageZeile], seite: [herkunftZeile, herkunftJeWert]}],
 ];
 // Grundform einer Kennung aus den Daten (nicht aus dem Muster der Kennung)
 function grundformVon(id) {
@@ -4500,8 +4505,8 @@ function grundformVon(id) {
   if (planZu(id)) return "plan";
   if (R && tagBekannt(id)) return "tag";
   if (blockZu.has(id)) return "abschnitt";
-  if (proId.has(id)) return {strecke: "etappe", ort: "ort"}[proId.get(id).typ] || "wissen";
-  if (R && R.strecken[id]) return "etappe";
+  if (proId.has(id)) return {strecke: "bewegung", ort: "ort"}[proId.get(id).typ] || "wissen";
+  if (R && R.strecken[id]) return "bewegung";
   if (R && R.orte[id]) return "ort";
   if (zeileZu.get(id) === "fragen") return "frage";
   return /^AG-/.test(id) ? "aufgabe" : /^R-/.test(id) ? "rueckmeldung" : null;
@@ -4511,7 +4516,7 @@ function ontologieTabelle() {
   const zelle = (n, f) => el("td", {"data-spalte": n, class: f.length ? null : "leer"}, f.length ? f.map(x => el("code", {}, x.name)).flatMap((c, i) => i ? [", ", c] : [c]) : "–");
   return el("div", {class: "tabelle stapel"}, el("table", {},
     el("thead", {}, el("tr", {}, el("th", {}, "Grundform"), el("th", {}, "Kennung"), spalten.map(([, n]) => el("th", {}, n)))),
-    el("tbody", {}, GRUNDFORMEN.map(([, name, beispiel, b]) => el("tr", {}, el("td", {}, name), el("td", {"data-spalte": "Kennung"}, beispiel),
+    el("tbody", {}, GRUNDFORMEN.map(([, , name, beispiel, b]) => el("tr", {}, el("td", {}, name), el("td", {"data-spalte": "Kennung"}, beispiel),
       spalten.map(([k, n]) => zelle(n, b[k])))))));
 }
 

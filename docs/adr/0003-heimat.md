@@ -30,6 +30,9 @@ Ursache war keine einzelne Änderung. Für jede Art von Ding gab es keine Regel,
    | Buchung (B-…, seit 29.10.2026, #76) | bei ihrem ersten gebuchten Ding (Unterkunftskarte, Aufenthalt oder Strecke der Tagesseite) | Chip am Ding, „Zu tun · Zu buchen“ |
    | Wahl mit Optionen | das Element, an dem sie hängt (`an:`), mit Vergleich | Marke in der Zeile des Elements, „Zu tun · Zu entscheiden“ |
    | Ort | Ortsseite | Tagesseite, Wissen |
+   | Folge: Plan (Nachtrag 12.11.2026, #543: stand im Text, fehlte in der Tabelle) | Plan-Seite, solange mehrere Pläne zur Wahl stehen; ist einer gewählt, die Reise | Karte „… zur Wahl“ im Überblick, Marke am Tag |
+   | Gegenstand (G-…, ADR-0010; Nachtrag 12.11.2026, #543) | Reiter „Packliste“ | Zeile „Mitnehmen“ an Strecke, Aufenthalt, Unterkunft oder Ort |
+   | Aussage (Merkmal; Nachtrag 12.11.2026, #543) | das Ding, zu dem sie gehört, an seiner Heimat | Kennzahl, Spalte im Vergleich |
    | Wissen, Plantext | Reiter „Wissen“ (Plantext unter „Über diesen Plan“) | Tagesseite (Kapitel) |
    | Offenes: Frage, Aufgabe, Rückmeldung, Wunsch | „Zu tun“ bzw. „Wünsche“ | Stand im Überblick, Sprechblase am Element |
 

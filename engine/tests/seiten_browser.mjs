@@ -63,7 +63,7 @@ for (const breite of [390, 1200]) {
     const ids = [...abschnitte.flatMap(a => [a.id, ...a.bloecke.map(x => x.id)]), ...D.fragen.zeilen.map(z => z.id),
       ...(R ? [...R.tage.map(t => t.id), ...Object.keys(R.weitere_tage), ...Object.keys(R.unterkuenfte), ...Object.keys(R.strecken), ...Object.keys(R.orte),
         ...R.wahlstellen.flatMap(v => [v.id, ...v.optionen.map(o => o.id)]), ...R.plaene.map(x => x.id),
-        ...Object.keys(R.aufenthalte || {}), ...Object.keys(R.buchungen || {})] : [])];
+        ...Object.keys(R.aufenthalte || {}), ...Object.keys(R.buchungen || {})] : []), ...PL_JE.keys()];   // auch Gegenstände (#543)
     const formen = new Set(GRUNDFORMEN.map(o => o[0]));
     return ids.filter(i => !formen.has(grundformVon(i)));
   }));

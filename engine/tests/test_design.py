@@ -66,10 +66,82 @@ def test_grundformen_nennen_nur_bausteine_der_liste():
     genannt = {x.strip() for g in genannt for x in g.split(",") if x.strip()}
     assert genannt - namen == set(), sorted(genannt - namen)
     # und die Tabelle in docs/design.md nennt dieselben Grundformen (Kennungen) wie der Code
-    kennungen_code = re.findall(r'^\s*\["\w+", "[^"]+", "([^"]+)"', block, flags=re.M)
+    kennungen_code = re.findall(r'^\s*\["\w+", "\w+", "[^"]+", "([^"]+)"', block, flags=re.M)
     tabelle = DESIGN[DESIGN.index("| Grundform | Kennung |"):DESIGN.index("Dichten:")]
     kennungen_doku = [z.split("|")[2].strip() for z in tabelle.splitlines() if z.startswith("| ") and not z.startswith("| Grundform")]
     assert kennungen_doku == kennungen_code, (kennungen_doku, kennungen_code)
+
+
+def _grundformen_code():
+    """-> [(Schlüssel, Grundform der Ontologie, Name, Kennung, {Dichte: {Baustein}})] aus GRUNDFORMEN der Vorlage."""
+    js = skript()
+    block = js[js.index("const GRUNDFORMEN = ["):js.index("];", js.index("const GRUNDFORMEN = ["))]
+    zeilen = re.findall(r'\["(\w+)", "(\w+)", "([^"]+)", "([^"]+)", \{zeile: \[(.*?)\], vorschau: \[(.*?)\], karte: \[(.*?)\], seite: \[(.*?)\]\}', block)
+    assert len(zeilen) == block.count("{zeile:"), "eine Zeile von GRUNDFORMEN hat eine andere Form"
+    namen = lambda t: {x.strip() for x in t.split(",") if x.strip()}
+    return [(k, g, n, ken, dict(zip(("zeile", "vorschau", "karte", "seite"), map(namen, d)))) for k, g, n, ken, *d in zeilen]
+
+
+def _grundformen_ontologie():
+    """Die Grundformen aus der Tabelle in docs/ontologie.md (erste Spalte, fett), klein geschrieben."""
+    text = (WURZEL / "docs/ontologie.md").read_text(encoding="utf-8")
+    tabelle = text[text.index("| Grundform | Was es ist |"):text.index("Jedes Ding hat einen **Kern**")]
+    return [m.lower() for m in re.findall(r"^\| \*\*(\w+)\*\* \|", tabelle, flags=re.M)]
+
+
+def test_jede_grundform_der_ontologie_hat_bausteine_und_keine_zeile_nennt_eine_andere():
+    """#543 (ADR-0002, Punkt 3): Atomic Design und Ontologie hängen an einer Stelle zusammen. Jede Zeile von GRUNDFORMEN nennt
+    die Grundform der Ontologie, die sie zeigt; jede Grundform aus docs/ontologie.md hat mindestens eine Zeile mit Bausteinen;
+    der Name der Zeile beginnt mit der Grundform; die Grundformen, die eine Art haben darf (routen.GRUNDFORMEN), gehören dazu."""
+    import sys
+    sys.path.insert(0, str(WURZEL / "engine"))
+    import routen
+    ontologie = _grundformen_ontologie()
+    assert len(ontologie) == len(set(ontologie)) >= 11, ontologie
+    js = skript()
+    liste = re.search(r"const GRUNDFORMEN_ONTOLOGIE = \[(.*?)\];", js).group(1)
+    assert [x.strip(' "') for x in liste.split(",")] == ontologie, "GRUNDFORMEN_ONTOLOGIE und die Tabelle in docs/ontologie.md nennen dieselben Grundformen in derselben Reihenfolge"
+    zeilen = _grundformen_code()
+    assert {g for _, g, *_ in zeilen} == set(ontologie), sorted(set(ontologie) ^ {g for _, g, *_ in zeilen})
+    for schluessel, form, name, _, dichten in zeilen:
+        assert name.lower().startswith(form), f"{schluessel}: der Name „{name}“ beginnt nicht mit der Grundform {form}"
+        assert any(dichten.values()), f"{schluessel}: ohne Baustein"
+    assert set(routen.GRUNDFORMEN) <= set(ontologie), set(routen.GRUNDFORMEN) - set(ontologie)
+    # kein Wort der Oberfläche als Schlüssel einer Grundform (#269: „Etappe“ ist kein Typ der Software)
+    assert "etappe" not in {k for k, *_ in zeilen}
+    assert not re.search(r'form === "etappe"|return "etappe"', js)
+
+
+def test_tabelle_in_design_md_nennt_je_zelle_dieselben_bausteine_wie_der_code():
+    """#543: Die Tabelle „Ontologie und Bausteine“ in docs/design.md ist dieselbe wie GRUNDFORMEN, Zelle für Zelle (bisher
+    wurden nur die Kennungen verglichen; ein Baustein, den es nicht mehr gab, stand weiter in der Doku)."""
+    inventar = {n for l in bausteine().values() for n in l}
+    tabelle = DESIGN[DESIGN.index("| Grundform | Kennung |"):DESIGN.index("Dichten:")]
+    doku = {}
+    for z in tabelle.splitlines():
+        if not z.startswith("| ") or z.startswith("| Grundform"):
+            continue
+        c = [x.strip() for x in z.strip("|").split("|")]
+        doku[c[1]] = (c[0], [set(re.findall(r"`(\w+)`", x)) for x in c[2:6]])
+    for _, _, name, kennung, dichten in _grundformen_code():
+        name_doku, zellen = doku[kennung]
+        assert name_doku == name, (name_doku, name)
+        for (dichte, code), zelle in zip(dichten.items(), zellen):
+            assert zelle <= inventar, f"{kennung} {dichte}: kein Baustein der Liste: {sorted(zelle - inventar)}"
+            assert zelle == code, f"{kennung} {dichte}: nur Doku {sorted(zelle - code)}, nur Code {sorted(code - zelle)}"
+
+
+def test_heimat_tabellen_kennen_jede_grundform():
+    """#543 (ADR-0003): Die Tabelle der Heimat in docs/design.md („Seitenordnung“) und in ADR-0003 nennt jede Grundform der
+    Ontologie; Gegenstand und Plan fehlten dort, obwohl beide eine Heimat haben."""
+    adr = (WURZEL / "docs/adr/0003-heimat.md").read_text(encoding="utf-8")
+    quellen = {"docs/design.md": DESIGN[DESIGN.index("| Grundform | Heimat |"):DESIGN.index("- **Reiter.**")],
+               "docs/adr/0003-heimat.md": adr[adr.index("| Grundform | Heimat |"):adr.index("2. **Sammelansichten")]}
+    for datei, tabelle in quellen.items():
+        erste = [z.strip().strip("|").split("|")[0].strip().lower() for z in tabelle.splitlines() if z.strip().startswith("| ")][1:]
+        for form in _grundformen_ontologie():
+            assert any(re.match(rf"(offenes: |wahl: )?{form}\b", z) or (form == "wahl" and z.startswith("wahl")) for z in erste), f"{datei}: Heimat der Grundform {form} fehlt"
+        assert any("plan" in z for z in erste), f"{datei}: Heimat des Plans fehlt"
 
 
 def test_keine_art_der_reise_in_der_vorlage():
@@ -218,7 +290,7 @@ def test_dichte_ist_eine_regel_und_heimat_hat_keine_fallunterscheidung_je_grundf
     die Regel „Seite des Elternelements“ und fragt die Vorgabe je Grundform in vorgabeEltern ab."""
     js = skript()
     block = js[js.index("const GRUNDFORMEN = ["):js.index("];", js.index("const GRUNDFORMEN = ["))]
-    for kennung in ("etappe", "ort", "buchung", "frage", "aufgabe"):
+    for kennung in ("bewegung", "ort", "buchung", "frage", "aufgabe"):
         zeile = re.search(rf'\["{kennung}",.*', block).group(0)
         assert "karte: [dingKurzKarte]" in zeile, kennung
     heimat = _funktion("heimat")
