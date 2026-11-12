@@ -1,0 +1,117 @@
+FF..F..FFF                                                               [100%]
+=================================== FAILURES ===================================
+__________________ test_zugang_ohne_person_hat_keinen_zugriff __________________
+
+umgebung = <function umgebung.<locals>.neu at 0x79fbbf623c40>
+
+    def test_zugang_ohne_person_hat_keinen_zugriff(umgebung):
+        """AC-1: Ein Zugang nur mit Rolle (aus der Zeit der Links) gibt keinen Zugriff, und nichts läuft still als Gast."""
+        u = umgebung()
+        d = kn.daten("beispielreise")
+        for rolle in ("mitreisend", "mitwirkend", "gast", "organisator"):
+>           assert kn.wer_spricht({"reise": "beispielreise", "rolle": rolle}, d) is None
+E           AssertionError: assert {'rolle': 'mitwirkend', 'name': None} is None
+E            +  where {'rolle': 'mitwirkend', 'name': None} = <function wer_spricht at 0x79fbbfdf9ee0>({'reise': 'beispielreise', 'rolle': 'mitreisend'}, {'reise': {'titel': 'Beispielreise – Malerweg in vier Tagen', 'untertitel': 'Dresden und Sächsische Schweiz, 13.–16.5....i>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+E            +    where <function wer_spricht at 0x79fbbfdf9ee0> = kn.wer_spricht
+
+engine/tests/test_rolle_ohne_person_426.py:37: AssertionError
+____________ test_tools_list_ohne_name_und_vorname_ausser_einladen _____________
+
+umgebung = <function umgebung.<locals>.neu at 0x79fbbf694ae0>
+
+    def test_tools_list_ohne_name_und_vorname_ausser_einladen(umgebung):
+        """AC-2: Kein Werkzeugschema hat ein Feld name; vorname (first_name) nur beim Einladen."""
+        u = umgebung()
+        for token in (IDA, KARL, KIM):
+            for w in u.rpc(token, "tools/list")["tools"]:
+                felder = set((w.get("inputSchema") or {}).get("properties") or {})
+>               assert "name" not in felder, (token[:1], w["name"])
+E               AssertionError: ('i', 'rueckmeldung_geben')
+E               assert 'name' not in {'kind', 'name', 'source', 'target', 'text'}
+
+engine/tests/test_rolle_ohne_person_426.py:53: AssertionError
+________________________ test_name_kommt_aus_der_person ________________________
+
+    def test_name_kommt_aus_der_person():
+        """Datenrobustheit: Fehlt der Name im Eintrag einer Person, gilt ihr Schlüssel, nie None."""
+        d = {"reise": {"personen": [{"schluessel": "kim", "rolle": "gast"}]}}
+>       wer = kn.wer_spricht({"reise": "gibtsnicht", "person": "kim"}, d)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_rolle_ohne_person_426.py:87: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zugang = {'reise': 'gibtsnicht', 'person': 'kim'}
+d = {'reise': {'personen': [{'schluessel': 'kim', 'rolle': 'gast'}]}}
+
+    def wer_spricht(zugang, d):
+        """Zugang + veröffentlichte Daten -> {"rolle", "name"} (name None: im Gespräch nach dem Vornamen fragen)
+        oder None, wenn der Zugang zu keiner Person der Reise mehr gehört."""
+        personen = personen_der_reise(zugang.get("reise"), d)
+        if zugang.get("person"):
+            p = next((x for x in personen if x.get("schluessel") == zugang["person"]), None)
+>           return {"rolle": rolle_neu(p["rolle"]), "name": p["name"]} if p else None
+                                                            ^^^^^^^^^
+E           KeyError: 'name'
+
+engine/konnektor.py:246: KeyError
+________________ test_entfernte_texte_fehlen_in_allen_sprachen _________________
+
+    def test_entfernte_texte_fehlen_in_allen_sprachen():
+        """AC-5: Die Texte für „Link ohne Person“ fehlen in jedem Katalog, und kein Code verweist mehr auf sie."""
+        for sprache in _sprachen():
+            katalog = _katalog(sprache)
+            for s in ENTFERNTE_SCHLUESSEL:
+>               assert s not in katalog, (sprache, s)
+E               AssertionError: ('de', 'konnektor.einladen.6')
+E               assert 'konnektor.einladen.6' not in {'seite.kreis.hinweis': '„{titel}“ verweist im Kreis oder zu tief auf andere Dinge und hat hier keinen Platz. Bitte in...us.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', ...}
+
+engine/tests/test_rolle_ohne_person_426.py:119: AssertionError
+___________________ test_doku_nennt_keinen_zugang_ohne_namen ___________________
+
+    def test_doku_nennt_keinen_zugang_ohne_namen():
+        """AC-8: Die Doku beschreibt weder einen Zugang ohne Person noch die Frage nach dem eigenen Vornamen."""
+        for pfad in ("docs/konnektor.md", "docs/auftraege/mehrsprachigkeit/M8.md"):
+            doku = (WURZEL / pfad).read_text(encoding="utf-8")
+            for verboten in ("NAME_FELD", "name_feld", "ohne festen Namen", "nach dem Vornamen", "du_ohne_name",
+                             "Rolle ohne Person"):
+>               assert verboten not in doku, (pfad, verboten)
+E               AssertionError: ('docs/auftraege/mehrsprachigkeit/M8.md', 'NAME_FELD')
+E               assert 'NAME_FELD' not in '# Auftrag M...szeile M8.\n'
+E                 
+E                 'NAME_FELD' is contained here:
+E                 ?           ^^^^^^^
+E                   D` 2111, `NAME_FELD` 2147, `QUELLE_FELD` 2296, `EMAIL_FELD` 1868), `_mit_mail` (2685), `SPRACHE` (1912), `STATUS_SATZ` (2695), `anleitung()` (2705 bis 2793), `anleitung_frieda` (1916 bis 1927), `anleitung_konto` (2044), `werkzeuge_fuer` (2975), `frieda_werkzeuge` (1882), `antwort_auf` (2942), `frieda_antwort` (2019); `engine/tests/test_konnektor.py` (Prüfungen auf Anleitung 154, 208 bis 214, 287, 807; Beschreibungen 1005, 1015), `test_gespraech.py`, `test_oauth.py`.
+E                 ?           ^^^^^^^^^^^^^^^^
+E                   
+E                   ## Ziel...
+E                 
+E                 ...Full output truncated (28 lines hidden), use '-vv' to show
+
+engine/tests/test_rolle_ohne_person_426.py:134: AssertionError
+_________________ test_tests_nutzen_keinen_zugang_ohne_person __________________
+
+    def test_tests_nutzen_keinen_zugang_ohne_person():
+        """AC-7: In den Tests gibt es weder MITREISEND noch einen Kurznamen, der nur eine Rolle trägt."""
+        tests = WURZEL / "engine" / "tests"
+        for p in tests.glob("*.py"):
+            if p.name == Path(__file__).name:
+                continue
+            inhalt = p.read_text(encoding="utf-8")
+            assert "MITREISEND" not in inhalt, p.name
+            # Zugang nur mit Rolle: {"reise": …, "rolle": …} oder zugang_dazu(…, rolle=…) ohne person
+>           assert not re.search(r'\{"reise": "[^"]*", "rolle": ', inhalt), p.name
+E           AssertionError: test_gespraech.py
+E           assert not <re.Match object; span=(6354, 6390), match='{"reise": "beispielreise", "rolle": '>
+E            +  where <re.Match object; span=(6354, 6390), match='{"reise": "beispielreise", "rolle": '> = <function search at 0x79fbc15353a0>('\\{"reise": "[^"]*", "rolle": ', '"""Tests für Paket C: Gespräch für alle (entscheiden, frage_beantworten, person_einladen) gegen die Beispielreise.\nP...nglisch\n    t, f = u.werkzeug(IDA, "overview")\n    assert not f and "## Day plan" in t and "## Tagesplan" not in t\n')
+E            +    where <function search at 0x79fbc15353a0> = re.search
+
+engine/tests/test_rolle_ohne_person_426.py:146: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_rolle_ohne_person_426.py::test_zugang_ohne_person_hat_keinen_zugriff
+FAILED engine/tests/test_rolle_ohne_person_426.py::test_tools_list_ohne_name_und_vorname_ausser_einladen
+FAILED engine/tests/test_rolle_ohne_person_426.py::test_name_kommt_aus_der_person
+FAILED engine/tests/test_rolle_ohne_person_426.py::test_entfernte_texte_fehlen_in_allen_sprachen
+FAILED engine/tests/test_rolle_ohne_person_426.py::test_doku_nennt_keinen_zugang_ohne_namen
+FAILED engine/tests/test_rolle_ohne_person_426.py::test_tests_nutzen_keinen_zugang_ohne_person
+6 failed, 4 passed in 9.00s
