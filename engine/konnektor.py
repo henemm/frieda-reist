@@ -3270,8 +3270,9 @@ def werkzeuge_fuer(zugang):
 
 def gesund():
     """-> (HTTP-Code, Antwort). Verrät keine Reisen. Bereit, wenn es eine freigeschaltete Reise (seiten.json) gibt und
-    jede veröffentlicht ist."""
-    reisen = set(seitenlinks())
+    jede veröffentlicht ist. Zur Löschung vorgemerkte oder schon entfernte Reisen zählen nicht mit, weil ihre Seite
+    entfernt wird (#539)."""
+    reisen = set(seitenlinks()) - konten.vorgemerkte_reisen()
     if not reisen or any(daten(r) is None for r in reisen):
         return 503, {"gesund": False}
     return 200, {"gesund": True}

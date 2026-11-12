@@ -1,0 +1,11 @@
+..                                                                       [100%]
+2 passed, 61 deselected in 2.63s
+
+--- Probe-Skript (Scratchpad, nicht im Repo), Ausgabe ---
+1 ohne DB: (503, {'gesund': False}) DB angelegt? False
+2 alte DB ohne Tabellen: (503, {'gesund': False})
+3 vorgemerkt: (200, {'gesund': True})
+4 zurueckgeholt: (503, {'gesund': False})
+5 Protokoll: (200, {'gesund': True})
+6 kaputte DB -> Exception: DatabaseError file is not a database
+Gesamtlauf: siehe test-green-output.txt (2504 passed)

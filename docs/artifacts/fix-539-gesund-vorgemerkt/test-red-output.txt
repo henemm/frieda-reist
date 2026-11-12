@@ -2,8 +2,8 @@
 =================================== FAILURES ===================================
 ___________ test_gesund_ueberspringt_zur_loeschung_vorgemerkte_reise ___________
 
-dienst = ('http://127.0.0.1:43981', PosixPath('/tmp/pytest-of-hem/pytest-14912/test_gesund_ueberspringt_zur_l0/ablage'))
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14912/test_gesund_ueberspringt_zur_l0')
+dienst = ('http://127.0.0.1:43981', PosixPath('<tmp>/test_gesund_ueberspringt_zur_l0/ablage'))
+tmp_path = PosixPath('<tmp>/test_gesund_ueberspringt_zur_l0')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c233aad0c20>
 
     def test_gesund_ueberspringt_zur_loeschung_vorgemerkte_reise(dienst, tmp_path, monkeypatch):
