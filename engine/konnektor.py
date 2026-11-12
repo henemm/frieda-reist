@@ -1401,7 +1401,7 @@ def veroeffentlichung_text(reise, nummer=None, z=None):
 def ontologie_text(name, args):
     """Vorschlag oder Eintrag in Worten: welche Art, welches Merkmal, welche Felder."""
     felder = ("art", "kategorie", "bezeichnung", "einzahl", "gruppe", "symbol", "nummeriert", "art_bezeichnung", "art_symbol",
-              "art_hinweis", "art_umriss", "grundform", "farbe", "beschreibung", "summiert", "merkmal", "typ", "werte", "veraenderlich",
+              "art_hinweis", "art_umriss", "grundform", "farbe", "beschreibung", "summiert", "ausgeblendet", "merkmal", "typ", "werte", "veraenderlich",
               "stufe", "einheit", "hilfe", "frage", "auch", "grund")
     teile = []
     for f in felder:
@@ -1529,7 +1529,8 @@ def packliste_text(d, stand, person=None, art=None, alle=False):
         sichtbar = [g for g in gs if alle or g.get("status") != "entfaellt"]
         weg += len(gs) - len([g for g in gs if g.get("status") != "entfaellt"]) if not alle else 0
         summen = "; ".join(x for x in (summe_text(s) for s in k.get("summen") or []) if x)
-        z.append(f"\n{k['name']} ({k['art']})" + (f" – {tk('konnektor.packliste.summe', w1=summen)}" if summen else ""))
+        z.append(f"\n{k['name']} ({k['art']})" + (tk("konnektor.packliste.ausgeblendet") if k.get("ausgeblendet") else "")
+                 + (f" – {tk('konnektor.packliste.summe', w1=summen)}" if summen else ""))
         if k.get("merkmale"):   # die Schlüssel, die gegenstand_anlegen und gegenstand_aendern in merkmale annehmen
             z.append(tk("konnektor.packliste.merkmale") + "; ".join(
                 f"{m['id']} = {m['name']} ({dw(m['typ'])}" + (f", {m['einheit']}" if m.get("einheit") else "")
@@ -2575,6 +2576,7 @@ ART_DEFINIEREN = {"name": "art_definieren", "description": "@konnektor.werkzeug.
                       "gruppe": {"type": "string", "enum": ["punkt", "wissen"], "description": "@konnektor.werkzeug.art_definieren.gruppe"},
                       "einzahl": {"type": "string", "description": "@konnektor.werkzeug.art_definieren.einzahl"},
                       "nummeriert": {"type": "boolean", "description": "@konnektor.werkzeug.art_definieren.nummeriert"},
+                      "ausgeblendet": {"type": "boolean", "description": "@konnektor.werkzeug.art_definieren.ausgeblendet"},
                       "lesetext": {"type": "array", "items": {"type": "object", "properties": {"rubrik": {"type": "string"}, "name": {"type": "string"}, "hilfe": {"type": "string"}}, "required": ["name"]},
                                    "description": "@konnektor.werkzeug.art_definieren.lesetext"},
                       "grund": {"type": "string", "description": "@konnektor.werkzeug.art_definieren.grund"}}}}

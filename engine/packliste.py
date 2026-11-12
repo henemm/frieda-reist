@@ -24,6 +24,9 @@ damit Abhaken ohne Netz ohne Verlaufseintrag je Haken geht.
 Summen: Jedes Merkmal einer Art mit der Rolle summe (oder dem Alias kosten, Typ zahl oder geld) wird je Kategorie und gesamt
 summiert, mit der Einheit des Merkmals (bei Geld mit der Währung des Werts). Gegenstände mit dem Status entfaellt zählen nicht.
 Der Wert eines Eintrags gilt für den ganzen Eintrag („Socken, 240 g“), er wird nicht mit einer Anzahl multipliziert.
+
+Ausgeblendet (#431): Eine Kategorie mit ausgeblendet: true (plan/arten.yaml) bleibt mit ihren Gegenständen erhalten, zählt aber nicht zur
+Summe der ganzen Liste und nicht zum Packstand; die Seite zeigt sie nur als Hinweis, der Konnektor markiert sie.
 """
 import datetime
 import re
@@ -208,21 +211,24 @@ def _bauen(r, roh, arten, personen, melde, id_anlegen, quelle):
         for m in summen_merkmale(r.katalog.get(a)):
             s, nicht_lesbar = summieren(je, m)
             summen.append({"merkmal": m["id"], "name": m["name"], "summen": s, **({"unleserlich": nicht_lesbar} if nicht_lesbar else {})})
-            for z in s:
+            for z in s if not d.get("ausgeblendet") else ():   # eine ausgeblendete Kategorie zählt nicht zur ganzen Liste (#431)
                 k = (m["id"], z["einheit"])
                 gesamt.setdefault(k, {"merkmal": m["id"], "name": m["name"], "wert": 0, "einheit": z["einheit"]})["wert"] += z["wert"]
         kategorien.append({"art": a, "name": d["name"], "farbe": d["farbe"], "symbol": d["symbol"], "merkmale": defs,
-                           "summen": summen, "gegenstaende": [g["id"] for g in je]})
+                           "summen": summen, "gegenstaende": [g["id"] for g in je],
+                           **({"ausgeblendet": True} if d.get("ausgeblendet") else {})})
     return {"kategorien": kategorien, "gegenstaende": aus,
             "summen": [{**v, "wert": round(v["wert"], 4)} for v in gesamt.values()]}
 
 
 def packstand_zeilen(packliste, stand, person=None):
     """Wie viel hat eine Person gepackt? -> (gepackt, gesamt) über die aktiven Gegenstände, die sie packen muss: die ihr zugewiesenen (wer) und
-    die ohne wer (jede Person packt sie für sich). Ohne Person zählen nur die zugewiesenen, für ihre Person. stand: {G-ID: {Person: Zeit}}."""
+    die ohne wer (jede Person packt sie für sich). Ohne Person zählen nur die zugewiesenen, für ihre Person. Gegenstände einer für die
+    Reise ausgeblendeten Kategorie zählen nicht (#431). stand: {G-ID: {Person: Zeit}}."""
     gepackt = gesamt = 0
+    aus = {k["art"] for k in (packliste or {}).get("kategorien") or [] if k.get("ausgeblendet")}
     for g in (packliste or {}).get("gegenstaende") or []:
-        if g.get("status") == "entfaellt":
+        if g.get("status") == "entfaellt" or g.get("art") in aus:
             continue
         if g.get("wer"):
             wer = g["wer"]

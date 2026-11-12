@@ -187,8 +187,9 @@ ART_MUSTER = r"[a-z][a-z0-9_]*"
 # gruppe, einzahl, nummeriert, sorten: Felder einer früheren Kartenkategorie (ADR-0007, Schritt d): gruppe punkt (Punkte an einer Strecke, Karte der
 # Etappe) oder wissen (Punkte an einem Abschnitt des Wissens), einzahl (ein Punkt der Art), nummeriert (der Punkt zeigt seine Nummer),
 # sorten (Zusatz je Wort: name, symbol, hinweis, umriss)
+# ausgeblendet: eine Kategorie der Packliste (Grundform gegenstand) fehlt auf der Seite und in den Summen, bleibt aber erhalten (#431)
 ART_FELDER = {"grundform", "name", "farbe", "symbol", "buchbar", "merkmale", "beschreibung", "summiert", "lesetext", "buchung_merkmale",
-              "gruppe", "einzahl", "nummeriert", "sorten"}
+              "gruppe", "einzahl", "nummeriert", "sorten", "ausgeblendet"}
 ART_GRUPPEN = ("punkt", "wissen")
 # Merkmale der Buchungen einer Art (Product Owner 31.10.2026, #166): was erst durch das Buchen entsteht (Ticketart, Tarif,
 # Lager oder Zimmer, Zeitfenster). Form wie ein Merkmal, aber ohne Stufe, Rolle, auto und Prüfdatum: der Wert ist eine gebuchte
@@ -1204,6 +1205,8 @@ class Routen:
                 self.fehl(texte.satz("pruefung.routen.art_gruppe", wo=wo, w1=' | '.join(ART_GRUPPEN)))
             if d.get("gruppe") and d["grundform"] != "aufenthalt":
                 self.fehl(texte.satz("pruefung.routen.art_gruppe_form", wo=wo))
+            if "ausgeblendet" in d and (d["grundform"] != "gegenstand" or not isinstance(d["ausgeblendet"], bool)):
+                self.fehl(texte.satz("pruefung.routen.art_ausgeblendet", wo=wo))
             if d.get("symbol") and d["symbol"] not in SYMBOLE_ARTEN:
                 self.fehl(texte.satz("pruefung.routen.56", wo=wo, w1=', '.join(SYMBOLE_ARTEN)))
             # buchbar: das Ding dieser Art hat einen Buchungsstand (Zu buchen, Stand der Vorbereitung); Vorgabe: Aufenthalte ja
@@ -1214,6 +1217,7 @@ class Routen:
                              **({"gruppe": d["gruppe"]} if d.get("gruppe") in ART_GRUPPEN else {}),
                              **({"einzahl": str(d["einzahl"])} if d.get("einzahl") else {}),
                              **({"nummeriert": True} if d.get("nummeriert") else {}),
+                             **({"ausgeblendet": True} if d.get("ausgeblendet") is True and d["grundform"] == "gegenstand" else {}),
                              **({"sorten": d["sorten"]} if isinstance(d.get("sorten"), dict) and d["sorten"] else {})}
             if "lesetext" in d:
                 self.arten[a]["lesetext"] = self.lesetext_pruefen(wo, d["lesetext"])

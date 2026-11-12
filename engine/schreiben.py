@@ -399,6 +399,7 @@ def art_definieren(reise_dir, wer, args):
     if gruppe is not None and gruppe.lower() not in ART_GRUPPEN:
         raise Ablehnung("schreiben.kategorie_definieren.2", w1=', '.join(ART_GRUPPEN))
     einzahl, nummeriert = text_wert(args, "einzahl", laenge=80), bool_wert(args, "nummeriert")
+    ausgeblendet = bool_wert(args, "ausgeblendet")   # Kategorie der Packliste für die Reise ausblenden (#431)
     grund = text_wert(args, "grund")
     neu = key not in arten
     if neu:
@@ -430,6 +431,10 @@ def art_definieren(reise_dir, wer, args):
                 raise Ablehnung("schreiben.art_definieren.gruppe_form")
             a.update({k: v for k, v in (("gruppe", gruppe.lower() if gruppe else None), ("einzahl", einzahl), ("nummeriert", True if nummeriert else None)) if v})
             a["buchbar"] = False if gruppe else a.get("buchbar", True)
+        if ausgeblendet is not None and grundform != "gegenstand":
+            raise Ablehnung("schreiben.art_definieren.ausgeblendet_form")
+        if ausgeblendet:
+            a["ausgeblendet"] = True
         auto = AUTO_JE_GRUNDFORM.get(grundform, ()) if (grundform == "folge" or summiert) else ()
         if auto:
             sp = sprache_von(reise_dir)   # die Namen stehen in der Sprache der Reise
@@ -483,6 +488,15 @@ def art_definieren(reise_dir, wer, args):
             else:
                 a.pop("nummeriert", None)
             geaendert.append(S("schreiben.antwort.kategorie.nummeriert" if nummeriert else "schreiben.antwort.kategorie.nicht_nummeriert"))
+        if ausgeblendet is not None:
+            if a.get("grundform") != "gegenstand":
+                raise Ablehnung("schreiben.art_definieren.ausgeblendet_form")
+            if bool(a.get("ausgeblendet")) != ausgeblendet:
+                if ausgeblendet:
+                    a["ausgeblendet"] = True
+                else:
+                    a.pop("ausgeblendet", None)
+                geaendert.append(S("schreiben.antwort.art.ausgeblendet" if ausgeblendet else "schreiben.antwort.art.eingeblendet"))
         if not geaendert:
             raise Ablehnung("schreiben.art_definieren.10", w1=a.get('name', key), key=key)
         arten[key] = {k: a[k] for k in ART_FELDER_REIHE if k in a}
@@ -614,7 +628,7 @@ def kategorie_definieren(reise_dir, wer, args):
 
 # Felder einer Art in der Reihenfolge, in der die Datei sie schreibt (ADR-0007: dazu die Felder einer früheren Kartenkategorie)
 ART_FELDER_REIHE = ("grundform", "name", "farbe", "symbol", "buchbar", "summiert", "beschreibung", "merkmale", "lesetext", "buchung_merkmale",
-                    "gruppe", "einzahl", "nummeriert", "sorten")
+                    "gruppe", "einzahl", "nummeriert", "sorten", "ausgeblendet")
 
 
 def rolle_pruefen(merkmale, key, rolle, typ):

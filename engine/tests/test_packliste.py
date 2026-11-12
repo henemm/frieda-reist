@@ -85,14 +85,16 @@ def packdatei(ordner, **aenderungen):
 
 def test_beispielreise_wanderung_kategorien_summen_und_bezug():
     d = bau(WANDERUNG)["packliste"]
-    assert [k["art"] for k in d["kategorien"]] == ["kleidung", "ausruestung", "apotheke"]
+    assert [k["art"] for k in d["kategorien"]] == ["kleidung", "ausruestung", "apotheke", "foto"]
+    assert [k["art"] for k in d["kategorien"] if k.get("ausgeblendet")] == ["foto"]      # für die Reise ausgeblendet (#431)
     je = {g["id"]: g for g in d["gegenstaende"]}
     # Gewicht (zahl, g) und Anschaffung (geld) sind zwei summierte Merkmale einer Art; weggelassene zählen nicht mit
     summen = {k["art"]: {s["merkmal"]: s["summen"] for s in k["summen"]} for k in d["kategorien"]}
     assert summen["kleidung"] == {"gewicht": [{"wert": 1560.0, "einheit": "g"}]}
-    assert summen["ausruestung"] == {"gewicht": [{"wert": 750.0, "einheit": "g"}], "preis": [{"wert": 70.0, "einheit": "€"}]}
+    assert summen["ausruestung"] == {"gewicht": [{"wert": 870.0, "einheit": "g"}], "preis": [{"wert": 70.0, "einheit": "€"}]}
     assert summen["apotheke"] == {"gewicht": [{"wert": 380.0, "einheit": "g"}]}      # ohne die Sonnencreme (entfaellt)
-    assert {(s["merkmal"], s["einheit"]): s["wert"] for s in d["summen"]} == {("gewicht", "g"): 2690.0, ("preis", "€"): 70.0}
+    assert summen["foto"] == {"gewicht": [{"wert": 650.0, "einheit": "g"}]}       # die eigene Summe bleibt, die ganze Liste zählt sie nicht
+    assert {(s["merkmal"], s["einheit"]): s["wert"] for s in d["summen"]} == {("gewicht", "g"): 2810.0, ("preis", "€"): 70.0}
     assert je["G-09"]["status"] == "entfaellt" and je["G-01"]["status"] == "aktiv"
     # ein gemeinsamer Gegenstand mit wer, einer an einer Strecke, einer an einer Unterkunft
     assert je["G-07"]["wer"] == "Ida" and je["G-05"]["an"] == "E-01" and je["G-05"]["an_name"].startswith("Stadt Wehlen")
@@ -137,7 +139,7 @@ def test_reise_ohne_packliste_hat_keine():
     ({"G-01": {"verlauf": [{"wer": "Ida"}]}}, "pruefung.packliste.verlauf"),
     ({"G-01": {"merkmale": {"gibtsnicht": 1}}}, "pruefung.routen.83"),
     ({"G-01": {"merkmale": {"gewicht": "viel"}}}, "pruefung.routen.90"),
-    ({"G-01": {"merkmale": {"raum": "Keller"}}}, "pruefung.routen.89"),
+    ({"G-01": {"merkmale": {"getragen": "Keller"}}}, "pruefung.routen.89"),
 ])
 def test_bau_lehnt_unstimmiges_ab(wanderung, aenderung, schluessel):
     packdatei(wanderung, **aenderung)
@@ -168,7 +170,7 @@ def test_veraenderliches_merkmal_behaelt_pruefdatum(wanderung):
     d = bau(wanderung)
     preis = next(g for g in d["packliste"]["gegenstaende"] if g["id"] == "G-05")["merkmale"]["preis"]
     assert preis["ungeprueft"] is True            # ohne Prüfdatum, aber ohne Quelle: kein Fehler
-    packdatei(wanderung, **{"G-05": {"merkmale": {"gewicht": 480, "preis": {"wert": "45 €", "geprueft": datetime.date(2026, 11, 1)}, "raum": "Rucksack"}}})
+    packdatei(wanderung, **{"G-05": {"merkmale": {"gewicht": 480, "preis": {"wert": "45 €", "geprueft": datetime.date(2026, 11, 1)}, "getragen": "Rucksack"}}})
     assert next(g for g in bau(wanderung)["packliste"]["gegenstaende"] if g["id"] == "G-05")["merkmale"]["preis"]["ungeprueft"] is False
 
 
@@ -231,14 +233,14 @@ def test_regeln_rollen_baustein_und_status():
 
 def test_gegenstand_anlegen_schreibt_mit_neuer_id_und_verlauf(wanderung):
     titel, text = sb.gegenstand_anlegen(wanderung, KARL_, {"art": "kleidung", "titel": "Mütze",
-                                                           "merkmale": {"gewicht": 60, "raum": "Rucksack"}, "an": "E-02", "wer": "karl"})
-    assert titel.startswith("G-10 Mütze")           # die ID steht am Anfang des Titels: der Schreibweg gibt sie an den Konnektor
+                                                           "merkmale": {"gewicht": 60, "getragen": "Rucksack"}, "an": "E-02", "wer": "karl"})
+    assert titel.startswith("G-12 Mütze")           # die ID steht am Anfang des Titels: der Schreibweg gibt sie an den Konnektor
     g = yaml.safe_load((wanderung / "plan" / "packliste.yaml").read_text(encoding="utf-8"))["gegenstaende"][-1]
-    assert g["id"] == "G-10" and g["art"] == "kleidung" and g["merkmale"] == {"gewicht": 60, "raum": "Rucksack"}
+    assert g["id"] == "G-12" and g["art"] == "kleidung" and g["merkmale"] == {"gewicht": 60, "getragen": "Rucksack"}
     assert g["an"] == "E-02" and g["wer"] == "Karl"
     assert g["verlauf"][0]["wer"] == "Karl" and g["verlauf"][0]["was"] == "angelegt"
     assert "quelle" not in g and "quelle" not in g["merkmale"]     # Ausnahme von der Herkunftspflicht
-    assert bau(wanderung)["packliste"]["gegenstaende"][-1]["id"] == "G-10"
+    assert bau(wanderung)["packliste"]["gegenstaende"][-1]["id"] == "G-12"
 
 
 @pytest.mark.parametrize("args, schluessel", [
@@ -247,7 +249,7 @@ def test_gegenstand_anlegen_schreibt_mit_neuer_id_und_verlauf(wanderung):
     ({"art": "kleidung", "titel": "x", "an": "T-01"}, "schreiben.gegenstand.an_form"),   # kein Tag
     ({"art": "kleidung", "titel": "x", "an": "E-99"}, "schreiben.gegenstand.an_unbekannt"),
     ({"art": "kleidung", "titel": "x", "wer": "Niemand"}, "schreiben.gegenstand.wer_unbekannt"),
-    ({"art": "kleidung", "titel": "x", "merkmale": {"raum": "Keller"}}, "schreiben.wert_eintraege.2"),
+    ({"art": "kleidung", "titel": "x", "merkmale": {"getragen": "Keller"}}, "schreiben.wert_eintraege.2"),
     ({"art": "kleidung", "titel": "x", "merkmale": {"gewicht": "viel"}}, "schreiben.wert_eintraege.3"),
     ({"art": "kleidung", "titel": "x", "merkmale": {"farbe": "rot"}}, "schreiben.merkmale_werte.1"),
     ({"art": "kleidung", "titel": "x", "merkmale": {"gewicht": [{"wert": 1, "gilt": "2027-05-13"}]}}, "schreiben.gegenstand.gilt"),
@@ -280,7 +282,7 @@ def test_gegenstand_anlegen_in_reise_ohne_datei(stadt):
 
 
 def test_gegenstand_aendern_verlauf_merkmale_und_weglassen(wanderung):
-    sb.gegenstand_aendern(wanderung, IDA, {"ziel": "G-01", "titel": "Regenjacke (neu)", "merkmale": {"gewicht": 380, "raum": ""},
+    sb.gegenstand_aendern(wanderung, IDA, {"ziel": "G-01", "titel": "Regenjacke (neu)", "merkmale": {"gewicht": 380, "getragen": "", "raum": ""},
                                            "notiz": "Gore-Tex", "grund": "neue Jacke"})
     g = next(x for x in yaml.safe_load((wanderung / "plan" / "packliste.yaml").read_text(encoding="utf-8"))["gegenstaende"] if x["id"] == "G-01")
     assert g["titel"] == "Regenjacke (neu)" and g["merkmale"] == {"gewicht": 380} and g["notiz"] == "Gore-Tex"
@@ -308,8 +310,8 @@ def test_gegenstand_aendern_mitwirkende_nur_eigene(wanderung):
     with pytest.raises(sb.Ablehnung) as e:
         sb.gegenstand_aendern(wanderung, KARL_, {"ziel": "G-01", "notiz": "x"})
     assert e.value.schluessel == "schreiben.gegenstand.fremd"
-    sb.gegenstand_aendern(wanderung, IDA, {"ziel": "G-06", "wer": "karl", "grund": "Karl nimmt sie mit"})
-    sb.gegenstand_aendern(wanderung, KARL_, {"ziel": "G-06", "wer": ""})            # eigener Eintrag, auch zugewiesen: erlaubt
+    sb.gegenstand_aendern(wanderung, IDA, {"ziel": "G-06", "wer": "ida", "grund": "Ida nimmt sie mit"})
+    sb.gegenstand_aendern(wanderung, KARL_, {"ziel": "G-06", "wer": ""})            # eigener Eintrag, auch Ida zugewiesen: erlaubt
     sb.gegenstand_aendern(wanderung, IDA, {"ziel": "G-01", "wer": "karl", "grund": "x"})
     sb.gegenstand_aendern(wanderung, KARL_, {"ziel": "G-01", "notiz": "meins"})     # ihm zugewiesen: erlaubt
 
@@ -336,7 +338,7 @@ def test_ids_werden_nie_neu_vergeben(wanderung):
     sb.gegenstand_anlegen(wanderung, IDA, {"art": "kleidung", "titel": "a"})
     sb.gegenstand_anlegen(wanderung, IDA, {"art": "kleidung", "titel": "b"})
     ids = [g["id"] for g in bau(wanderung)["packliste"]["gegenstaende"]]
-    assert ids[-2:] == ["G-10", "G-11"] and len(ids) == len(set(ids))
+    assert ids[-2:] == ["G-12", "G-13"] and len(ids) == len(set(ids))
 
 
 def test_werkzeuge_haengen_am_schreibweg_mit_rolle_und_baustein():
@@ -452,10 +454,10 @@ def test_packstand_gegenstand_mit_wer_und_weggelassene(umgebung):
 def test_packstand_text_zaehlt_pro_person():
     p = bau(WANDERUNG)["packliste"]
     stand_ = {"G-01": {"Karl": "z"}, "G-07": {"Ida": "z"}, "G-09": {"Karl": "z"}}
-    # aktive Gegenstände: 8; G-07 hat wer Ida, der Rest zählt für jede Person
-    assert packliste.packstand_zeilen(p, stand_, "Karl") == (1, 7)      # G-07 packt Ida: kein Gegenstand von Karl
-    assert packliste.packstand_zeilen(p, stand_, "Ida") == (1, 8)       # G-07 und alle ohne wer; Karls Haken zählen für Ida nicht
-    assert packliste.packstand_zeilen(p, stand_, None) == (1, 1)        # ohne Person zählen nur die zugewiesenen
+    # aktive Gegenstände ohne die ausgeblendete Kamera (G-11): 9; G-07 packt Ida, G-06 und G-10 Karl, der Rest zählt für jede Person
+    assert packliste.packstand_zeilen(p, stand_, "Karl") == (1, 8)      # G-07 packt Ida: kein Gegenstand von Karl
+    assert packliste.packstand_zeilen(p, stand_, "Ida") == (1, 7)       # G-07 und alle ohne wer; Karls Haken zählen für Ida nicht
+    assert packliste.packstand_zeilen(p, stand_, None) == (1, 3)        # ohne Person zählen nur die zugewiesenen
 
 
 # ---------- Konnektor ----------
@@ -486,7 +488,7 @@ def test_konnektor_zeige_gegenstand_und_mitnehmen_am_ding(dienst):
     t, _ = werkzeug(basis, ALT_ORGANISATOR, "zeige", id="G-09")
     assert "weggelassen" in t
     t, _ = werkzeug(basis, ALT_ORGANISATOR, "ueberblick")
-    assert meldet(t, "konnektor.packliste.ueberblick.other") and "Gewicht 2690 g" in t
+    assert meldet(t, "konnektor.packliste.ueberblick.other") and "Gewicht 2810 g" in t
     t, _ = werkzeug(basis, ALT_ORGANISATOR, "suche", begriff="Wanderstöcke")
     assert "G-05" in t
 
@@ -497,7 +499,7 @@ def test_konnektor_gegenstand_packen_und_stand_in_packliste(dienst):
     assert not f and meldet(t, "konnektor.gegenstand.gepackt")
     assert sorted(rm.packstand_lesen(ablage / "beispielreise")) == ["G-01", "G-03"]
     t, _ = werkzeug(basis, KARL, "packliste")
-    assert "2 von 7 für Karl gepackt" in t and "gepackt von Karl" in t
+    assert "2 von 8 für Karl gepackt" in t and "gepackt von Karl" in t
     t, f = werkzeug(basis, ALT_ORGANISATOR, "gegenstand_packen", ziel="G-07")        # Ida packt G-07
     assert not f
     t, f = werkzeug(basis, KARL, "gegenstand_packen", ziel="G-07")
@@ -649,3 +651,45 @@ def test_grundform_im_text_nennt_den_wert_des_schemas():
     import schnittstelle
     assert schnittstelle.namen_im_text("art_definieren mit grundform gegenstand") == "kind_define mit basic_form gear"
     assert schnittstelle.namen_im_text("grundform ort", streng=True) == "basic_form place"
+
+
+# ---------- Kategorien für die Reise ausblenden (#431) ----------
+
+def test_ausgeblendet_nur_bei_grundform_gegenstand(wanderung):
+    arten = yaml.safe_load((wanderung / "plan" / "arten.yaml").read_text(encoding="utf-8"))
+    arten["arten"]["hotel"]["ausgeblendet"] = True
+    (wanderung / "plan" / "arten.yaml").write_text(yaml.safe_dump(arten, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    assert meldet(meldungen_beim_bau(wanderung), "pruefung.routen.art_ausgeblendet")
+
+
+def test_ausgeblendet_setzen_und_loesen_im_schreibweg(wanderung):
+    titel, text = sb.art_definieren(wanderung, IDA, {"art": "apotheke", "ausgeblendet": True})
+    assert meldet(text, "schreiben.antwort.art.ausgeblendet")
+    d = bau(wanderung)["packliste"]
+    assert [k["art"] for k in d["kategorien"] if k.get("ausgeblendet")] == ["apotheke", "foto"]
+    assert {s["merkmal"]: s["wert"] for s in d["summen"]} == {"gewicht": 2430.0, "preis": 70.0}    # ohne Apotheke (380 g)
+    arten = yaml.safe_load((wanderung / "plan" / "arten.yaml").read_text(encoding="utf-8"))["arten"]
+    assert arten["apotheke"]["ausgeblendet"] is True and list(arten["apotheke"])[-1] == "ausgeblendet"
+    titel, text = sb.art_definieren(wanderung, IDA, {"art": "foto", "ausgeblendet": False})
+    assert meldet(text, "schreiben.antwort.art.eingeblendet")
+    assert "ausgeblendet" not in yaml.safe_load((wanderung / "plan" / "arten.yaml").read_text(encoding="utf-8"))["arten"]["foto"]
+    assert {s["merkmal"]: s["wert"] for s in bau(wanderung)["packliste"]["summen"]}["gewicht"] == 3080.0
+    with pytest.raises(sb.Ablehnung) as e:
+        sb.art_definieren(wanderung, IDA, {"art": "foto", "ausgeblendet": False})        # schon eingeblendet: nichts zu ändern
+    assert e.value.schluessel == "schreiben.art_definieren.10"
+    for args in ({"art": "hotel", "ausgeblendet": True}, {"art": "neu_x", "bezeichnung": "X", "grundform": "aufenthalt", "ausgeblendet": True}):
+        with pytest.raises(sb.Ablehnung) as e:
+            sb.art_definieren(wanderung, IDA, args)
+        assert e.value.schluessel == "schreiben.art_definieren.ausgeblendet_form"
+    sb.art_definieren(wanderung, IDA, {"art": "buecher", "bezeichnung": "Bücher", "grundform": "gegenstand", "ausgeblendet": True})
+    assert next(k for k in bau(wanderung)["packliste"]["kategorien"] if k["art"] == "buecher")["ausgeblendet"] is True
+
+
+def test_konnektor_markiert_ausgeblendete_kategorie_und_englischer_name(dienst):
+    import schnittstelle
+    basis, _ = dienst
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "packliste")
+    assert not f and "Fotoausrüstung (foto) – für die Reise ausgeblendet" in t and "Kamera" in t
+    assert "Gesamt: Gewicht 2810 g" in t                                    # die Kamera zählt nicht zur ganzen Liste
+    assert schnittstelle.parameter_zu_englisch("art_definieren")["ausgeblendet"] == "hidden"
+    assert schnittstelle.parameter_zu_intern("art_definieren")["hidden"] == "ausgeblendet"
