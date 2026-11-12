@@ -284,14 +284,14 @@ def test_jedes_schreibwerkzeug_nennt_beide_staende(monkeypatch, tmp_path):
     monkeypatch.setattr(kn, "werkzeug", ueber_schreibweg)
     schreibende = set(kn.ONTOLOGIE_WERKZEUGE) | {"entscheiden", "person_einladen", "person_entfernen"}
     for name in sorted(schreibende):
-        a = kn.antwort_auf({"reise": "beispielreise", "rolle": "organisator"},
+        a = kn.antwort_auf({"reise": "beispielreise", "person": "ida"},
                            {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": {}}})
         text = a["result"]["content"][0]["text"]
         assert "Gesichert als Reise-Stand 43. Veröffentlicht ist Stand 42" in text, name
         assert schnittstelle.INTERN_ZU_ENGLISCH["veroeffentlichung_pruefen"] in text   # der englische Name, wie tools/list
     # Ohne Schreibvorgang kein Satz (Lesen, Ablehnung)
     monkeypatch.setattr(kn, "werkzeug", lambda zugang, name, args: ("Gelesen.", False))
-    a = kn.antwort_auf({"reise": "beispielreise", "rolle": "organisator"},
+    a = kn.antwort_auf({"reise": "beispielreise", "person": "ida"},
                        {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "ueberblick", "arguments": {}}})
     assert a["result"]["content"][0]["text"] == "Gelesen."
 

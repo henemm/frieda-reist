@@ -238,14 +238,13 @@ def personen_der_reise(reise, d):
 
 
 def wer_spricht(zugang, d):
-    """Zugang + veröffentlichte Daten -> {"rolle", "name"} (name None: im Gespräch nach dem Vornamen fragen)
-    oder None, wenn der Zugang zu keiner Person der Reise mehr gehört."""
-    personen = personen_der_reise(zugang.get("reise"), d)
-    if zugang.get("person"):
-        p = next((x for x in personen if x.get("schluessel") == zugang["person"]), None)
-        return {"rolle": rolle_neu(p["rolle"]), "name": p["name"]} if p else None
-    rolle = zugang.get("rolle")
-    return {"rolle": rolle_neu(rolle), "name": None}
+    """Zugang + veröffentlichte Daten -> {"rolle", "name"} oder None, wenn der Zugang zu keiner Person der Reise gehört.
+    Einen Zugang ohne Person gibt es seit dem Konto nicht mehr (#421, #426): er liefert None, nie still Gast. Fehlt der
+    Name im Eintrag, gilt der Schlüssel der Person."""
+    if not zugang.get("person"):
+        return None
+    p = next((x for x in personen_der_reise(zugang.get("reise"), d) if x.get("schluessel") == zugang["person"]), None)
+    return {"rolle": rolle_neu(p.get("rolle")), "name": p.get("name") or p["schluessel"]} if p else None
 
 
 def zustand_von(d):
@@ -1557,11 +1556,6 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
         return nein, True
     if not schreibdienst():
         return (tk("konnektor.ontologie_werkzeug.4")), True
-    name_ = wer["name"] or args.get("name") or args.get("vorname")
-    if not isinstance(name_, str) or not name_.strip():
-        return (tk("konnektor.ontologie_werkzeug.7")
-                if aktion == "ontologie" and not vorschlag else tk("konnektor.frage_beantworten.4")), True
-    wer = {**wer, "name": name_.strip()}
     rest = {k: v for k, v in args.items() if k not in ("name", "vorname", "trotzdem") and not k.startswith("beleg_")}   # ein neuer Name eines Dings heißt neuer_name
     if vorschlag:
         ziel = art_schluessel(str(args.get("kategorie") or args.get("art") or args.get("bezeichnung") or "")) or "allgemein"
@@ -1896,8 +1890,6 @@ def entscheiden(reise, d, h, wer, args):
     (Handbuch.entscheidung_pruefen). Mit Schreibweg (ADR-0001, O-3) schreibt er den Verlaufseintrag sofort in routen.yaml der
     Reise; ein Widerspruch zu einer anderen Organisator:in wird nicht übernommen, sondern eine offene Frage mit Meldung an beide.
     -> (Text, ist_fehler)"""
-    if not wer["name"]:
-        return (tk("konnektor.entscheiden.2")), True
     if not all(isinstance(args.get(k) or "", str) for k in ("option", "status", "grund", "ersetzt_durch", "quelle")):
         return tk("konnektor.entscheiden.3"), True
     ergebnis, hinweise, fehler = h.entscheidung_pruefen(args, wer["name"])
@@ -1949,10 +1941,7 @@ def frage_beantworten(reise, d, h, wer, args):
         return (tk("konnektor.frage_beantworten.3", fid=fid, w2=zeile.get('status'))), True
     if not antwort:
         return tk("konnektor.ausgabe.frage_beantworten.2"), True
-    name_ = wer["name"] or args.get("name")
-    if not isinstance(name_, str) or not name_.strip():
-        return tk("konnektor.frage_beantworten.4"), True
-    e, fehler = rueckmeldung_senden(reise, {"name": name_, "art": tkd("konnektor.ausgabe.frage_beantworten.3"), "ziel": fid, "text": antwort,
+    e, fehler = rueckmeldung_senden(reise, {"name": wer["name"], "art": tkd("konnektor.ausgabe.frage_beantworten.3"), "ziel": fid, "text": antwort,
                                             "quelle": str(args.get("quelle") or tkd("konnektor.werkzeug.4"))})
     if fehler:
         return tk("konnektor.ausgabe.frage_beantworten.4", fehler=fehler), True
@@ -1990,8 +1979,6 @@ def einladen(reise, d, wer, args):
     if rolle not in ROLLEN:
         return tk("konnektor.einladen.5", w1=', '.join(ROLLEN)), True
     name_von = wer["name"]
-    if not name_von:
-        return (tk("konnektor.einladen.6")), True
     o = rm.ordner(reise)
     if o is None:
         return tk("konnektor.einladen.8"), True
@@ -2084,7 +2071,7 @@ def person_entfernen(reise, d, wer, args):
               if x["schluessel"] == gesucht or x["name"].casefold() == gesucht.casefold()), None) if gesucht else None
     if not p:
         return tk("konnektor.person_entfernen.1"), True
-    if not wer["name"] or p["name"].casefold() == wer["name"].casefold():
+    if p["name"].casefold() == wer["name"].casefold():
         return tk("konnektor.person_entfernen.2"), True
     if p["rolle"] == "organisator":
         return (tk("konnektor.person_entfernen.3", w1=p['name'])), True
@@ -2508,11 +2495,9 @@ WERKZEUGE = [
          "ziel": {**ZIEL_FELD, "description": "@konnektor.werkzeug.rueckmeldung_geben.ziel"},
          "art": {"type": "string", "enum": sorted(rm.ARTEN)},
          "text": {"type": "string", "description": "@konnektor.werkzeug.rueckmeldung_geben.text"},
-         "name": {"type": "string", "description": "@konnektor.werkzeug.rueckmeldung_geben.name"},
          "quelle": {"type": "string", "description": "@konnektor.werkzeug.rueckmeldung_geben.quelle"}},
          "required": ["art", "text"]}},
 ]
-NAME_FELD = {"type": "string", "description": "@konnektor.feld.name_feld"}
 WERT_SCHEMA = {"type": "object", "properties": {
     "wert": {"type": "string"}, "quelle": {"type": "string"}, "geprueft": {"type": "string"}, "notiz": {"type": "string"},
     "gilt": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}],
@@ -2547,14 +2532,13 @@ WERKZEUGE += [
                     "description": "@konnektor.werkzeug.aufgaben.status"}}},
      "annotations": {"readOnlyHint": True}},
     {"name": "aufgabe_anlegen", "description": "@konnektor.werkzeug.aufgabe_anlegen",
-     "inputSchema": {"type": "object", "properties": {**AG_EIGENSCHAFTEN, "name": NAME_FELD}, "required": ["titel"]}},
+     "inputSchema": {"type": "object", "properties": {**AG_EIGENSCHAFTEN}, "required": ["titel"]}},
     {"name": "aufgabe_aendern", "description": "@konnektor.werkzeug.aufgabe_aendern",
      "inputSchema": {"type": "object", "properties": {
          "id": {"type": "string", "description": "@konnektor.werkzeug.aufgabe_aendern.id"},
          "status": {"type": "string", "enum": list(rm.AG_STATUS)},
          **AG_EIGENSCHAFTEN,
-         "kommentar": {"type": "string", "description": "@konnektor.werkzeug.aufgabe_aendern.kommentar"},
-         "name": NAME_FELD}, "required": ["id"]}},
+         "kommentar": {"type": "string", "description": "@konnektor.werkzeug.aufgabe_aendern.kommentar"}}, "required": ["id"]}},
 ]
 WERKZEUGE += [
     {"name": "wuensche", "description": "@konnektor.werkzeug.wuensche",
@@ -2567,8 +2551,7 @@ WERKZEUGE += [
          "eingeplant": {"type": "boolean"},
          "bezug": {"type": "array", "items": {"type": "string"},
                    "description": "@konnektor.werkzeug.wunsch_aendern.bezug"},
-         "kommentar": {"type": "string", "description": "@konnektor.werkzeug.wunsch_aendern.kommentar"},
-         "name": NAME_FELD}, "required": ["id"]}},
+         "kommentar": {"type": "string", "description": "@konnektor.werkzeug.wunsch_aendern.kommentar"}}, "required": ["id"]}},
 ]
 # Ontologie der Reise im Gespräch (ADR-0001, O-3; docs/ontologie.md): die Software kennt nur die Form, die Reise ihre Arten
 ART_DEFINIEREN = {"name": "art_definieren", "description": "@konnektor.werkzeug.art_definieren",
@@ -2587,8 +2570,7 @@ ART_DEFINIEREN = {"name": "art_definieren", "description": "@konnektor.werkzeug.
                       "nummeriert": {"type": "boolean", "description": "@konnektor.werkzeug.art_definieren.nummeriert"},
                       "lesetext": {"type": "array", "items": {"type": "object", "properties": {"rubrik": {"type": "string"}, "name": {"type": "string"}, "hilfe": {"type": "string"}}, "required": ["name"]},
                                    "description": "@konnektor.werkzeug.art_definieren.lesetext"},
-                      "grund": {"type": "string", "description": "@konnektor.werkzeug.art_definieren.grund"},
-                      "name": NAME_FELD}}}
+                      "grund": {"type": "string", "description": "@konnektor.werkzeug.art_definieren.grund"}}}}
 KATEGORIE_DEFINIEREN = {"name": "kategorie_definieren", "description": "@konnektor.werkzeug.kategorie_definieren",
                         "inputSchema": {"type": "object", "properties": {
                             "kategorie": {"type": "string", "description": "@konnektor.werkzeug.kategorie_definieren.kategorie"},
@@ -2603,8 +2585,7 @@ KATEGORIE_DEFINIEREN = {"name": "kategorie_definieren", "description": "@konnekt
                             "art_symbol": {"type": "string", "description": "@konnektor.werkzeug.kategorie_definieren.art_symbol"},
                             "art_hinweis": {"type": "string", "description": "@konnektor.werkzeug.kategorie_definieren.art_hinweis"},
                             "art_umriss": {"type": "boolean", "description": "@konnektor.werkzeug.kategorie_definieren.art_umriss"},
-                            "grund": {"type": "string", "description": "@konnektor.werkzeug.kategorie_definieren.grund"},
-                            "name": NAME_FELD}}}
+                            "grund": {"type": "string", "description": "@konnektor.werkzeug.kategorie_definieren.grund"}}}}
 MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "@konnektor.werkzeug.merkmal_definieren",
                       "inputSchema": {"type": "object", "properties": {
                           "art": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.art"},
@@ -2623,8 +2604,7 @@ MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "@konnektor.w
                           "auch": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.merkmal_definieren.auch"},
                           "rolle": {"type": "string", "enum": ["kosten", "summe", "hero", "keine"], "description": "@konnektor.werkzeug.merkmal_definieren.rolle"},
                           "trotzdem": {"type": "boolean", "description": "@konnektor.werkzeug.merkmal_definieren.trotzdem"},
-                          "grund": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.grund"},
-                          "name": NAME_FELD},
+                          "grund": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.grund"}},
                           "required": ["art"]}}
 MERKMALE_FELD = {"type": "object", "description": "@konnektor.feld.merkmale_feld",
                  "additionalProperties": True}
@@ -2662,7 +2642,7 @@ LAGE_EINTRAGEN = {"name": "lage_eintragen", "description": "@konnektor.werkzeug.
                       "adresse": {"type": "string", "description": "@konnektor.werkzeug.lage_eintragen.adresse"},
                       "koordinaten": {"type": "string", "description": "@konnektor.werkzeug.lage_eintragen.koordinaten"},
                       "quelle": QUELLE_FELD, "geprueft": {"type": "string", "description": "@konnektor.werkzeug.lage_eintragen.geprueft"},
-                      "grund": {"type": "string"}, "vorname": NAME_FELD},
+                      "grund": {"type": "string"}},
                       "required": ["ziel", "quelle"]}}
 OPTION_FELDER = {"titel": {"type": "string", "description": "@konnektor.feld.option_felder.titel"},
                  "text": {"type": "string", "description": "@konnektor.feld.option_felder.text"},
@@ -2681,7 +2661,7 @@ OPTION_FELDER = {"titel": {"type": "string", "description": "@konnektor.feld.opt
                  "grund": {"type": "string", "description": "@konnektor.feld.option_felder.grund"}}
 OPTION_ANLEGEN = {"name": "option_anlegen", "description": "@konnektor.werkzeug.option_anlegen",
                   "inputSchema": {"type": "object", "properties": {"wahlstelle": {"type": "string", "description": "@konnektor.werkzeug.option_anlegen.wahlstelle"},
-                                                                   **OPTION_FELDER, "name": NAME_FELD},
+                                                                   **OPTION_FELDER},
                                   "required": ["wahlstelle", "titel", "quelle"]}}
 WAHLSTELLE_ANLEGEN = {"name": "wahlstelle_anlegen", "description": "@konnektor.werkzeug.wahlstelle_anlegen",
                       "inputSchema": {"type": "object", "properties": {
@@ -2689,22 +2669,20 @@ WAHLSTELLE_ANLEGEN = {"name": "wahlstelle_anlegen", "description": "@konnektor.w
                           "an": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.wahlstelle_anlegen.an"},
                           "art": {"type": "string", "description": "@konnektor.werkzeug.wahlstelle_anlegen.art"},
                           "frage": {"type": "string", "description": "@konnektor.werkzeug.wahlstelle_anlegen.frage"}, "text": {"type": "string"},
-                          "optionen": {"type": "array", "items": {"type": "object", "properties": OPTION_FELDER, "required": ["titel", "quelle"]}},
-                          "name": NAME_FELD},
+                          "optionen": {"type": "array", "items": {"type": "object", "properties": OPTION_FELDER, "required": ["titel", "quelle"]}}},
                           "required": ["titel", "optionen"]}}
 FRAGE_ANLEGEN = {"name": "frage_anlegen", "description": "@konnektor.werkzeug.frage_anlegen",
                  "inputSchema": {"type": "object", "properties": {
                      "text": {"type": "string", "description": "@konnektor.werkzeug.frage_anlegen.text"},
                      "bis": {"type": "string", "description": "@konnektor.werkzeug.frage_anlegen.bis"},
-                     "bezug": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.frage_anlegen.bezug"},
-                     "name": NAME_FELD}, "required": ["text"]}}
+                     "bezug": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.frage_anlegen.bezug"}}, "required": ["text"]}}
 TAG_AENDERN = {"name": "tag_aendern", "description": "@konnektor.werkzeug.tag_aendern",
                "inputSchema": {"type": "object", "properties": {
                    "ziel": {"type": "string", "description": "@konnektor.werkzeug.tag_aendern.ziel"}, "titel": {"type": "string"}, "text": {"type": "string"},
                    "nacht": {"type": "string", "description": "@konnektor.werkzeug.tag_aendern.nacht"},
                    "strecken": {"type": "array", "items": {"type": "string"}}, "wahl": {"type": "array", "items": {"type": "string"}},
                    "aufenthalte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.tag_aendern.aufenthalte"},
-                   "grund": {"type": "string", "description": "@konnektor.werkzeug.tag_aendern.grund"}, "vorname": NAME_FELD},
+                   "grund": {"type": "string", "description": "@konnektor.werkzeug.tag_aendern.grund"}},
                    "required": ["ziel"]}}
 WISSEN_SCHREIBEN = {"name": "wissen_schreiben", "description": "@konnektor.werkzeug.wissen_schreiben",
                     "inputSchema": {"type": "object", "properties": {
@@ -2714,36 +2692,33 @@ WISSEN_SCHREIBEN = {"name": "wissen_schreiben", "description": "@konnektor.werkz
                         "quelle": QUELLE_FELD,
                         "gruppe": {"type": "string", "enum": ["wissen", "praxis", "quelle"], "description": "@konnektor.werkzeug.wissen_schreiben.gruppe"},
                         "datei": {"type": "string", "description": "@konnektor.werkzeug.wissen_schreiben.datei"},
-                        "uebersicht": UEBERSICHT_FELD,
-                        "name": NAME_FELD}, "required": ["text", "quelle"]}}
+                        "uebersicht": UEBERSICHT_FELD}, "required": ["text", "quelle"]}}
 FRAGE_SCHLIESSEN = {"name": "frage_schliessen", "description": "@konnektor.werkzeug.frage_schliessen",
                     "inputSchema": {"type": "object", "properties": {
                         "frage": {"type": "string", "description": "@konnektor.werkzeug.frage_schliessen.frage"},
                         "ergebnis": {"type": "string", "description": "@konnektor.werkzeug.frage_schliessen.ergebnis"},
-                        "status": {"type": "string", "enum": ["geklaert", "entfaellt"], "description": "@konnektor.werkzeug.frage_schliessen.status"},
-                        "vorname": NAME_FELD}, "required": ["frage", "ergebnis"]}}
+                        "status": {"type": "string", "enum": ["geklaert", "entfaellt"], "description": "@konnektor.werkzeug.frage_schliessen.status"}}, "required": ["frage", "ergebnis"]}}
 RUECKMELDUNG_ERLEDIGEN = {"name": "rueckmeldung_erledigen", "description": "@konnektor.werkzeug.rueckmeldung_erledigen",
                           "inputSchema": {"type": "object", "properties": {
                               "id": {"type": "string", "description": "@konnektor.werkzeug.rueckmeldung_erledigen.id"},
                               "status": {"type": "string", "enum": ["uebernommen", "verworfen", "rueckfrage"]},
-                              "kommentar": {"type": "string", "description": "@konnektor.werkzeug.rueckmeldung_erledigen.kommentar"},
-                              "vorname": NAME_FELD}, "required": ["id", "status", "kommentar"]}}
+                              "kommentar": {"type": "string", "description": "@konnektor.werkzeug.rueckmeldung_erledigen.kommentar"}}, "required": ["id", "status", "kommentar"]}}
 REISE_STATUS_SETZEN = {"name": "reise_status_setzen", "description": "@konnektor.werkzeug.reise_status_setzen",
                        "inputSchema": {"type": "object", "properties": {
                            "status": {"type": "string", "enum": ["idee", "planung", "fest", "unterwegs", "danach", "archiv"]},
-                           "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["status", "grund"]}}
+                           "grund": {"type": "string"}}, "required": ["status", "grund"]}}
 EINSTELLUNG_SETZEN = {"name": "einstellung_setzen", "description": "@konnektor.werkzeug.einstellung_setzen",
                       "inputSchema": {"type": "object", "properties": {
                           "bausteine": {"type": "array", "items": {"type": "string"}},
                           "regeln": {"type": "object", "additionalProperties": True},
                           "sprache": {"type": "string", "enum": list(texte.SPRACHEN), "description": "@konnektor.werkzeug.einstellung_setzen.sprache"},
-                          "grund": {"type": "string"}, "vorname": NAME_FELD}}}
+                          "grund": {"type": "string"}}}}
 SYMBOL_SETZEN = {"name": "symbol_setzen", "description": "@konnektor.werkzeug.symbol_setzen",
                  "inputSchema": {"type": "object", "properties": {
                      "svg": {"type": "string", "description": "@konnektor.werkzeug.symbol_setzen.svg"},
                      "png_base64": {"type": "string", "description": "@konnektor.werkzeug.symbol_setzen.png_base64"},
                      "entfernen": {"type": "boolean", "description": "@konnektor.werkzeug.symbol_setzen.entfernen"},
-                     "grund": {"type": "string"}, "vorname": NAME_FELD}}}
+                     "grund": {"type": "string"}}}}
 BUCHUNG_FELDER_SCHEMA = {
     "status": {"type": "string", "enum": ["angefragt", "gebucht", "storniert"], "description": "@konnektor.feld.buchung_felder_schema.status"},
     "nummer": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.nummer"},
@@ -2779,15 +2754,14 @@ BUCHUNG_ANLEGEN = {"name": "buchung_anlegen", "description": "@konnektor.werkzeu
                        **BUCHUNG_FELDER_SCHEMA, "quelle": QUELLE_FELD, "grund": {"type": "string"},
                        "beleg_text": {"type": "string", "description": "@konnektor.werkzeug.buchung_anlegen.beleg_text"},
                        "beleg_base64": {"type": "string", "description": "@konnektor.werkzeug.buchung_anlegen.beleg_base64"},
-                       "beleg_dateiname": {"type": "string", "description": "@konnektor.werkzeug.buchung_anlegen.beleg_dateiname"},
-                       "vorname": NAME_FELD},
+                       "beleg_dateiname": {"type": "string", "description": "@konnektor.werkzeug.buchung_anlegen.beleg_dateiname"}},
                        "required": ["fuer", "quelle"]}}
 BUCHUNG_AENDERN = {"name": "buchung_aendern", "description": "@konnektor.werkzeug.buchung_aendern",
                    "inputSchema": {"type": "object", "properties": {
                        "ziel": {"type": "string", "description": "@konnektor.werkzeug.buchung_aendern.ziel"},
                        "fuer": {"type": "array", "items": {"type": "string"}}, **BUCHUNG_FELDER_SCHEMA,
                        "quelle": {"type": "string", "description": "@konnektor.werkzeug.buchung_aendern.quelle"},
-                       "grund": {"type": "string", "description": "@konnektor.werkzeug.buchung_aendern.grund"}, "vorname": NAME_FELD},
+                       "grund": {"type": "string", "description": "@konnektor.werkzeug.buchung_aendern.grund"}},
                        "required": ["ziel"]}}
 WERT_SCHEMA_EINTRAG = {"type": "object", "properties": {
     "wert": {"type": "string"}, "gilt": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}],
@@ -2800,37 +2774,37 @@ TAG_ANLEGEN = {"name": "tag_anlegen", "description": "@konnektor.werkzeug.tag_an
                    "vor": {"type": "string", "description": "@konnektor.werkzeug.tag_anlegen.vor"}, "ohne_route": {"type": "boolean"},
                    "nacht": {"type": "string", "description": "@konnektor.werkzeug.tag_anlegen.nacht"}, "strecken": {"type": "array", "items": {"type": "string"}},
                    "wahl": {"type": "array", "items": {"type": "string"}}, "aufenthalte": {"type": "array", "items": {"type": "string"}},
-                   "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["titel"]}}
+                   "grund": {"type": "string"}}, "required": ["titel"]}}
 TERMIN_SETZEN = {"name": "termin_setzen", "description": "@konnektor.werkzeug.termin_setzen",
                  "inputSchema": {"type": "object", "properties": {
                      "datum": {"type": "string", "description": "@konnektor.werkzeug.termin_setzen.datum"}, "titel": {"type": "string"}, "neuer_titel": {"type": "string"},
                      "ort": {"type": "string", "description": "@konnektor.werkzeug.termin_setzen.ort"}, "quelle": QUELLE_FELD, "entfernen": {"type": "boolean"},
-                     "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["datum", "titel"]}}
+                     "grund": {"type": "string"}}, "required": ["datum", "titel"]}}
 WAHLSTELLE_AENDERN = {"name": "wahlstelle_aendern", "description": "@konnektor.werkzeug.wahlstelle_aendern",
                       "inputSchema": {"type": "object", "properties": {
                           "ziel": {"type": "string", "description": "@konnektor.werkzeug.wahlstelle_aendern.ziel"}, "titel": {"type": "string"}, "text": {"type": "string"},
                           "wann": {"type": "string", "enum": ["planung", "unterwegs"]}, "art": {"type": "string"},
                           "an": {"type": "array", "items": {"type": "string"}}, "frage": {"type": "string"},
                           "stufen": {"type": "object", "additionalProperties": True},
-                          "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["ziel"]}}
+                          "grund": {"type": "string"}}, "required": ["ziel"]}}
 OPTION_AENDERN = {"name": "option_aendern", "description": "@konnektor.werkzeug.option_aendern",
                   "inputSchema": {"type": "object", "properties": {
                       "ziel": {"type": "string", "description": "@konnektor.werkzeug.option_aendern.ziel"}, **{k: v for k, v in OPTION_FELDER.items() if k != "merkmale"},
-                      "favorisiert": {"type": "boolean"}, "vorname": NAME_FELD}, "required": ["ziel"]}}
+                      "favorisiert": {"type": "boolean"}}, "required": ["ziel"]}}
 WISSEN_AENDERN = {"name": "wissen_aendern", "description": "@konnektor.werkzeug.wissen_aendern",
                   "inputSchema": {"type": "object", "properties": {
                       "ziel": {"type": "string", "description": "@konnektor.werkzeug.wissen_aendern.ziel"}, "text": {"type": "string"}, "quelle": QUELLE_FELD,
                       "neuer_titel": {"type": "string"}, "uebersicht": UEBERSICHT_FELD,
-                      "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["ziel", "grund"]}}
+                      "grund": {"type": "string"}}, "required": ["ziel", "grund"]}}
 LESETEXT_SCHREIBEN = {"name": "lesetext_schreiben", "description": "@konnektor.werkzeug.lesetext_schreiben",
                       "inputSchema": {"type": "object", "properties": {
                           "ziel": {"type": "string", "description": "@konnektor.werkzeug.lesetext_schreiben.ziel"}, "text": {"type": "string", "description": "@konnektor.werkzeug.lesetext_schreiben.text"},
-                          "quelle": QUELLE_FELD, "vorname": NAME_FELD}, "required": ["ziel", "text", "quelle"]}}
+                          "quelle": QUELLE_FELD}, "required": ["ziel", "text", "quelle"]}}
 REISE_AENDERN = {"name": "reise_aendern", "description": "@konnektor.werkzeug.reise_aendern",
                  "inputSchema": {"type": "object", "properties": {
                      "titel": {"type": "string"}, "untertitel": {"type": "string"}, "kurz": {"type": "string"},
                      "ziel": {"type": "string", "description": "@konnektor.werkzeug.reise_aendern.ziel"},
-                     "von": {"type": "string"}, "bis": {"type": "string"}, "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["grund"]}}
+                     "von": {"type": "string"}, "bis": {"type": "string"}, "grund": {"type": "string"}}, "required": ["grund"]}}
 LISTE = {"type": "array", "items": {"type": "string"}}
 KARTENANSICHT_SETZEN = {"name": "kartenansicht_setzen", "description": "@konnektor.werkzeug.kartenansicht_setzen",
                         "inputSchema": {"type": "object", "properties": {
@@ -2840,13 +2814,13 @@ KARTENANSICHT_SETZEN = {"name": "kartenansicht_setzen", "description": "@konnekt
                             "arten": {**LISTE, "description": "@konnektor.werkzeug.kartenansicht_setzen.arten"},
                             "uebersicht": UEBERSICHT_FELD,
                             "entfernen": {"type": "boolean", "description": "@konnektor.werkzeug.kartenansicht_setzen.entfernen"},
-                            "grund": {"type": "string"}, "vorname": NAME_FELD},
+                            "grund": {"type": "string"}},
                             "required": ["titel"]}}
 TRACK_ANHAENGEN = {"name": "track_anhaengen", "description": "@konnektor.werkzeug.track_anhaengen",
                    "inputSchema": {"type": "object", "properties": {
                        "ziel": {"type": "string", "description": "@konnektor.werkzeug.track_anhaengen.ziel"},
                        "gpx": {"type": "string", "description": "@konnektor.werkzeug.track_anhaengen.gpx"},
-                       "quelle": QUELLE_FELD, "grund": {"type": "string"}, "vorname": NAME_FELD},
+                       "quelle": QUELLE_FELD, "grund": {"type": "string"}},
                        "required": ["ziel", "gpx", "quelle"]}}
 KARTENPUNKTE_HOLEN = {"name": "kartenpunkte_holen", "description": "@konnektor.werkzeug.kartenpunkte_holen",
                       "inputSchema": {"type": "object", "properties": {
@@ -2854,7 +2828,7 @@ KARTENPUNKTE_HOLEN = {"name": "kartenpunkte_holen", "description": "@konnektor.w
                           "kategorie": {"type": "string", "description": "@konnektor.werkzeug.kartenpunkte_holen.kategorie"},
                           "osm": {**LISTE, "description": "@konnektor.werkzeug.kartenpunkte_holen.osm"},
                           "abstand_m": {"type": "integer", "description": "@konnektor.werkzeug.kartenpunkte_holen.abstand_m"},
-                          "grund": {"type": "string"}, "vorname": NAME_FELD},
+                          "grund": {"type": "string"}},
                           "required": ["strecke", "kategorie", "osm"]}}
 # Packliste (ADR-0010, #370): lesen, Gegenstände anlegen und ändern, abhaken, aus einer früheren Reise übernehmen
 GEGENSTAND_MERKMALE_FELD = {"type": "object", "additionalProperties": True, "description": "@konnektor.feld.gegenstand_merkmale"}
@@ -2871,7 +2845,7 @@ GEGENSTAND_ANLEGEN = {"name": "gegenstand_anlegen", "description": "@konnektor.w
                           "an": {"type": "string", "description": "@konnektor.werkzeug.gegenstand.an"},
                           "wer": {"type": "string", "description": "@konnektor.werkzeug.gegenstand.wer"},
                           "notiz": {"type": "string", "description": "@konnektor.werkzeug.gegenstand.notiz"},
-                          "grund": {"type": "string"}, "name": NAME_FELD},
+                          "grund": {"type": "string"}},
                           "required": ["art", "titel"]}}
 GEGENSTAND_AENDERN = {"name": "gegenstand_aendern", "description": "@konnektor.werkzeug.gegenstand_aendern",
                       "inputSchema": {"type": "object", "properties": {
@@ -2882,58 +2856,54 @@ GEGENSTAND_AENDERN = {"name": "gegenstand_aendern", "description": "@konnektor.w
                           "wer": {"type": "string", "description": "@konnektor.werkzeug.gegenstand_aendern.wer"},
                           "notiz": {"type": "string", "description": "@konnektor.werkzeug.gegenstand_aendern.notiz"},
                           "status": {"type": "string", "enum": ["entfaellt", "aktiv"], "description": "@konnektor.werkzeug.gegenstand_aendern.status"},
-                          "grund": {"type": "string", "description": "@konnektor.werkzeug.gegenstand_aendern.grund"}, "name": NAME_FELD},
+                          "grund": {"type": "string", "description": "@konnektor.werkzeug.gegenstand_aendern.grund"}},
                           "required": ["ziel"]}}
 GEGENSTAND_PACKEN = {"name": "gegenstand_packen", "description": "@konnektor.werkzeug.gegenstand_packen",
                      "inputSchema": {"type": "object", "properties": {
                          "ziel": {"type": "string", "description": "@konnektor.werkzeug.gegenstand_packen.ziel"},
-                         "gepackt": {"type": "boolean", "description": "@konnektor.werkzeug.gegenstand_packen.gepackt"},
-                         "name": NAME_FELD}, "required": ["ziel"]}}
+                         "gepackt": {"type": "boolean", "description": "@konnektor.werkzeug.gegenstand_packen.gepackt"}}, "required": ["ziel"]}}
 PACKLISTE_UEBERNEHMEN = {"name": "packliste_uebernehmen", "description": "@konnektor.werkzeug.packliste_uebernehmen",
                          "inputSchema": {"type": "object", "properties": {
                              "von_reise": {"type": "string", "description": "@konnektor.werkzeug.packliste_uebernehmen.von_reise"},
                              "arten": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.packliste_uebernehmen.arten"},
-                             "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["von_reise"]}}
+                             "grund": {"type": "string"}}, "required": ["von_reise"]}}
 WERKZEUGE += [PACKLISTE_LESEN, GEGENSTAND_PACKEN]
 START_ENDE_SETZEN = {"name": "start_ende_setzen", "description": "@konnektor.werkzeug.start_ende_setzen",
                      "inputSchema": {"type": "object", "properties": {
                          "start_datum": {"type": "string"}, "start_ort": {"type": "string", "description": "O-…"},
                          "ende_datum": {"type": "string"}, "ende_ort": {"type": "string", "description": "O-…"},
-                         "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["grund"]}}
+                         "grund": {"type": "string"}}, "required": ["grund"]}}
 PLAN_FELDER_SCHEMA = {"kurz": {"type": "string", "description": "@konnektor.feld.plan_felder_schema.kurz"}, "titel": {"type": "string"}, "text": {"type": "string"},
                       "farbe": {"type": "string", "enum": ["a", "b", "c", "d"]},
                       "auswahl": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.plan_felder_schema.auswahl"},
                       "plus": {"type": "array", "items": {"type": "string"}}, "minus": {"type": "array", "items": {"type": "string"}}}
 PLAN_ANLEGEN = {"name": "plan_anlegen", "description": "@konnektor.werkzeug.plan_anlegen",
-                "inputSchema": {"type": "object", "properties": {**PLAN_FELDER_SCHEMA, "quelle": QUELLE_FELD, "vorname": NAME_FELD},
+                "inputSchema": {"type": "object", "properties": {**PLAN_FELDER_SCHEMA, "quelle": QUELLE_FELD},
                                 "required": ["titel", "auswahl", "quelle"]}}
 PLAN_AENDERN = {"name": "plan_aendern", "description": "@konnektor.werkzeug.plan_aendern",
                 "inputSchema": {"type": "object", "properties": {"ziel": {"type": "string", "description": "@konnektor.werkzeug.plan_aendern.ziel"}, **PLAN_FELDER_SCHEMA,
-                                                                 "grund": {"type": "string"}, "vorname": NAME_FELD}, "required": ["ziel"]}}
+                                                                 "grund": {"type": "string"}}, "required": ["ziel"]}}
 MERKMAL_ZUSAMMENFUEHREN = {"name": "merkmal_zusammenfuehren", "description": "@konnektor.werkzeug.merkmal_zusammenfuehren",
                            "inputSchema": {"type": "object", "properties": {
-                               "art": {"type": "string"}, "von": {"type": "string"}, "nach": {"type": "string"}, "grund": {"type": "string"},
-                               "vorname": NAME_FELD}, "required": ["art", "von", "nach", "grund"]}}
+                               "art": {"type": "string"}, "von": {"type": "string"}, "nach": {"type": "string"}, "grund": {"type": "string"}}, "required": ["art", "von", "nach", "grund"]}}
 ARTEN_UEBERNEHMEN = {"name": "arten_uebernehmen", "description": "@konnektor.werkzeug.arten_uebernehmen",
                      "inputSchema": {"type": "object", "properties": {
                          "von_reise": {"type": "string", "description": "@konnektor.werkzeug.arten_uebernehmen.von_reise"},
                          "vorlage": {"type": "boolean", "description": "@konnektor.werkzeug.arten_uebernehmen.vorlage"},
                          "arten": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.arten_uebernehmen.arten"},
-                         "grund": {"type": "string"}, "vorname": NAME_FELD}}}
+                         "grund": {"type": "string"}}}}
 WUNSCH_VORSCHLAGEN = {"name": "wunsch_vorschlagen", "description": "@konnektor.werkzeug.wunsch_vorschlagen",
                       "inputSchema": {"type": "object", "properties": {
                           "wunsch": {"type": "string", "description": "@konnektor.werkzeug.wunsch_vorschlagen.wunsch"},
                           "bezug": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.wunsch_vorschlagen.bezug"},
                           "notiz": {"type": "string", "description": "@konnektor.werkzeug.wunsch_vorschlagen.notiz"},
-                          "option": {"type": "string", "description": "@konnektor.werkzeug.wunsch_vorschlagen.option"},
-                          "vorname": NAME_FELD}, "required": ["wunsch", "notiz"]}}
+                          "option": {"type": "string", "description": "@konnektor.werkzeug.wunsch_vorschlagen.option"}}, "required": ["wunsch", "notiz"]}}
 BELEG_ANLEGEN = {"name": "beleg_anlegen", "description": "@konnektor.werkzeug.beleg_anlegen",
                  "inputSchema": {"type": "object", "properties": {
                      "buchung": {"type": "string", "description": "@konnektor.werkzeug.beleg_anlegen.buchung"},
                      "dateiname": {"type": "string", "description": "@konnektor.werkzeug.beleg_anlegen.dateiname"},
                      "text": {"type": "string", "description": "@konnektor.werkzeug.beleg_anlegen.text"},
-                     "daten_base64": {"type": "string", "description": "@konnektor.werkzeug.beleg_anlegen.daten_base64"},
-                     "vorname": NAME_FELD}, "required": ["buchung"]}}
+                     "daten_base64": {"type": "string", "description": "@konnektor.werkzeug.beleg_anlegen.daten_base64"}}, "required": ["buchung"]}}
 WERT_EINTRAGEN = {"name": "wert_eintragen", "description": "@konnektor.werkzeug.wert_eintragen",
                   "inputSchema": {"type": "object", "properties": {
                       "ziel": {"type": "string", "description": "@konnektor.werkzeug.wert_eintragen.ziel"},
@@ -2944,8 +2914,7 @@ WERT_EINTRAGEN = {"name": "wert_eintragen", "description": "@konnektor.werkzeug.
                       "gilt": WERT_SCHEMA_EINTRAG["properties"]["gilt"],
                       "notiz": {"type": "string", "description": "@konnektor.werkzeug.wert_eintragen.notiz"},
                       "werte": {"type": "array", "items": WERT_SCHEMA_EINTRAG,
-                                "description": "@konnektor.werkzeug.wert_eintragen.werte"},
-                      "name": NAME_FELD},
+                                "description": "@konnektor.werkzeug.wert_eintragen.werte"}},
                       "required": ["ziel", "merkmal"]}}
 ALIAS_WERKZEUGE = [WERT_EINTRAGEN, LAGE_EINTRAGEN, TRACK_ANHAENGEN, KATEGORIE_DEFINIEREN, KATEGORIEN_LESEN]   # nicht mehr in tools/list: Aliase von item_update und kind_define
 
@@ -2963,8 +2932,7 @@ FRAGE_BEANTWORTEN = {"name": "frage_beantworten", "description": "@konnektor.wer
                      "inputSchema": {"type": "object", "properties": {
                          "frage": {"type": "string", "description": "@konnektor.werkzeug.frage_beantworten.frage"},
                          "antwort": {"type": "string", "description": "@konnektor.werkzeug.frage_beantworten.antwort"},
-                         "quelle": {"type": "string", "description": "@konnektor.werkzeug.frage_beantworten.quelle"},
-                         "name": NAME_FELD}, "required": ["frage", "antwort"]}}
+                         "quelle": {"type": "string", "description": "@konnektor.werkzeug.frage_beantworten.quelle"}}, "required": ["frage", "antwort"]}}
 WERKZEUGE += [{"name": "personen", "description": "@konnektor.werkzeug.personen",
                "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}}]
 PERSON_EINLADEN = {"name": "person_einladen", "description": "@konnektor.werkzeug.person_einladen",
@@ -2975,14 +2943,13 @@ PERSON_EINLADEN = {"name": "person_einladen", "description": "@konnektor.werkzeu
                        "reist": {"type": "boolean", "description": "@konnektor.werkzeug.person_einladen.reist"},
                        "notiz": {"type": "string", "description": "@konnektor.werkzeug.person_einladen.notiz"},
                        "schluessel": {"type": "string", "description": "@konnektor.werkzeug.person_einladen.schluessel"},
-                       "email": EMAIL_FELD, "name": NAME_FELD}, "required": ["vorname", "email"]}}
+                       "email": EMAIL_FELD}, "required": ["vorname", "email"]}}
 
 
 PERSON_ENTFERNEN = {"name": "person_entfernen", "description": "@konnektor.werkzeug.person_entfernen",
                     "inputSchema": {"type": "object", "properties": {
                         "person": {"type": "string", "description": "@konnektor.werkzeug.person_entfernen.person"},
-                        "grund": {"type": "string", "description": "@konnektor.werkzeug.person_entfernen.grund"},
-                        "name": NAME_FELD}, "required": ["person"]}}
+                        "grund": {"type": "string", "description": "@konnektor.werkzeug.person_entfernen.grund"}}, "required": ["person"]}}
 
 
 REISE_ANLEGEN = {"name": "reise_anlegen", "description": "@konnektor.werkzeug.reise_anlegen",
@@ -3021,7 +2988,7 @@ def anleitung(zugang, d):
     Katalog in der Sprache des Zugangs (zugang["sprache"], ADR-0006); hier stehen nur die Bedingungen."""
     sp = zugang.get("sprache") or texte.VORGABE_REISE
     rs = (d or {}).get("reise", {})
-    wer = wer_spricht(zugang, d) or {"rolle": "gast", "name": None}
+    wer = wer_spricht(zugang, d) or {"rolle": "gast", "name": None}   # ohne Person nur die Gast-Sicht zum Lesen (#426)
     organisator = organisator_namen(d)
     namen = tk("konnektor.und").join(organisator) or tk("konnektor.ausgabe.anleitung.1")
     status = (rs.get("status") or {}).get("wert")
@@ -3032,7 +2999,7 @@ def anleitung(zugang, d):
          anl(sp, "grenzen", kein_schreibweg="" if schreibdienst() else anl(sp, "kein_schreibweg")),
          anl(sp, "ids", kennungen=kennungen),
          anl(sp, "rollen")]
-    name = anl(sp, "du_mit_name", name=wer["name"]) if wer["name"] else anl(sp, "du_ohne_name")
+    name = anl(sp, "du_mit_name", name=wer["name"] or "")
     regeln = rs.get("regeln") or {}
     einladen_ab = regeln.get("einladen") or VORGABEN["einladen"]
     kann_einladen = darf(wer["rolle"], einladen_ab)
@@ -3044,10 +3011,11 @@ def anleitung(zugang, d):
                      direkt=anl(sp, "org.direkt") if direkt else ""))
     elif wer["rolle"] == "mitwirkend":
         z.append(anl(sp, "mit", name=name, namen=namen, direkt=anl(sp, "mit.direkt") if direkt else "",
-                     einladen=anl(sp, "mit.einladen") if kann_einladen else "",
-                     vorname="" if wer["name"] else anl(sp, "mit.vorname")))
-    else:
+                     einladen=anl(sp, "mit.einladen") if kann_einladen else ""))
+    elif wer["name"]:
         z.append(anl(sp, "gast", name=name))
+    else:   # Zugang ohne Person (gibt es seit #421 nicht mehr): kein Satz zu einer Person, nur der Hinweis
+        z.append(texte.t(sp, "konnektor.werkzeug.1"))
     z.append(anl(sp, "loeschwunsch"))
     if status in STATUS_SAETZE:
         z.append(anl(sp, "status_label", satz=anl(sp, "status." + status)))
@@ -3099,11 +3067,8 @@ def werkzeug(zugang, name, args):
         kommentar = str(args.get("kommentar") or "").strip()
         if not kommentar:
             return tk("konnektor.werkzeug.9"), True
-        name_ = wer["name"] or args.get("vorname")
-        if not isinstance(name_, str) or not name_.strip():
-            return tk("konnektor.frage_beantworten.4"), True
         a, fehler = dienst_anfrage("PATCH", f"{reise}/rueckmeldungen/{rid}", {"status": str(args.get("status") or ""), "kommentar": kommentar,
-                                                                               "name": name_.strip()})
+                                                                               "name": wer["name"]})
         if fehler:
             return tk("konnektor.ausgabe.werkzeug.2", fehler=fehler), True
         return (tk("konnektor.werkzeug.3", rid=rid, w2=a['status'], kommentar=kommentar)), False
@@ -3111,9 +3076,6 @@ def werkzeug(zugang, name, args):
         bid = str(args.get("buchung") or "").strip().upper()
         if not re.fullmatch(r"B-\d+", bid):
             return tk("konnektor.werkzeug.10"), True
-        name_ = wer["name"] or args.get("vorname")
-        if not isinstance(name_, str) or not name_.strip():
-            return tk("konnektor.frage_beantworten.4"), True
         im_repo = False
         if bid not in ((d.get("route") or {}).get("buchungen") or {}):   # noch nicht veröffentlicht? Dann zählt das Repo (Issue #135)
             im_repo, fehler = buchung_im_repo(reise, bid)
@@ -3121,15 +3083,11 @@ def werkzeug(zugang, name, args):
                 return tk("konnektor.ausgabe.beleg_ablegen.1", fehler=fehler), True
             if not im_repo:
                 return tk("konnektor.werkzeug.13", bid=bid), True
-        return beleg_ablegen(reise, bid, name_.strip(), args, im_repo)
+        return beleg_ablegen(reise, bid, wer["name"], args, im_repo)
     if name == "rueckmeldung_geben":
-        e = {k: args.get(k, "") for k in rm.INHALT}
-        if wer["name"]:
-            e["name"] = wer["name"]
+        e = {k: args.get(k, "") for k in rm.INHALT} | {"name": wer["name"]}
         if not all(isinstance(v, str) for v in e.values()):
             return tk("konnektor.entscheiden.3"), True
-        if not e["name"].strip():
-            return tk("konnektor.frage_beantworten.4"), True
         e["quelle"] = e["quelle"] or tkd("konnektor.werkzeug.4")
         antwort, fehler = rueckmeldung_senden(reise, e)
         if fehler:
@@ -3141,22 +3099,19 @@ def werkzeug(zugang, name, args):
     h = Handbuch(d, aufgaben_von(reise), offene_entscheidungen(reise), antworten_von(reise),
                  meldungen_fuer(reise, wer["name"], d), belege_von(reise, wer), packstand_von(reise))
     if name == "packliste":
-        return packliste_text(d, h.packstand, wer["name"] or None, str(args.get("art") or "").strip() or None, bool(args.get("alle"))), False
+        return packliste_text(d, h.packstand, wer["name"], str(args.get("art") or "").strip() or None, bool(args.get("alle"))), False
     if name == "gegenstand_packen":
         ids = [x.strip().upper() for x in re.split(r"[,\s]+", str(args.get("ziel") or "")) if x.strip()]
         if not ids or not all(re.fullmatch(r"G-\d+", x) for x in ids):
             return tk("konnektor.gegenstand.ziel"), True
-        name_ = wer["name"] or args.get("name")
-        if not isinstance(name_, str) or not name_.strip():
-            return tk("konnektor.frage_beantworten.4"), True
         gepackt = args.get("gepackt") if isinstance(args.get("gepackt"), bool) else True
         unbekannt = [x for x in ids if x not in h.eintraege] if (d.get("packliste") or {}).get("gegenstaende") else []
         if unbekannt:
             return tk("konnektor.gegenstand.unbekannt", w1=", ".join(unbekannt)), True
-        antwort, fehler = dienst_anfrage("PATCH", f"{reise}/packstand", {"name": name_.strip(), "gepackt": {x: gepackt for x in ids}})
+        antwort, fehler = dienst_anfrage("PATCH", f"{reise}/packstand", {"name": wer["name"], "gepackt": {x: gepackt for x in ids}})
         if fehler:
             return tk("konnektor.ausgabe.frage_beantworten.4", fehler=fehler), True
-        return tk("konnektor.gegenstand.gepackt" if gepackt else "konnektor.gegenstand.zurueckgenommen", w1=", ".join(ids), person=name_.strip()), False
+        return tk("konnektor.gegenstand.gepackt" if gepackt else "konnektor.gegenstand.zurueckgenommen", w1=", ".join(ids), person=wer["name"]), False
     if name == "entscheiden":
         return entscheiden(reise, d, h, {**wer, "person": zugang.get("person")}, args)
     if name == "frage_beantworten":
@@ -3172,9 +3127,7 @@ def werkzeug(zugang, name, args):
         return (rm.aufgaben_text(liste, h.titel(), h.v["fristen"]) if liste else tk("konnektor.ausgabe.werkzeug.3")), False
     if name in ("aufgabe_anlegen", "aufgabe_aendern"):
         roh = {k: args[k] for k in (*rm.AG_FELDER, "kommentar") if k in args}
-        roh["name"] = wer["name"] or args.get("name", "")
-        if not isinstance(roh["name"], str) or not roh["name"].strip():
-            return tk("konnektor.frage_beantworten.4"), True
+        roh["name"] = wer["name"]
         unbekannt = [b for b in (roh.get("bezug") or []) if isinstance(b, str) and b not in h.eintraege]
         if unbekannt:
             return tk("konnektor.werkzeug.11", w1=', '.join(unbekannt)), True
@@ -3198,11 +3151,9 @@ def werkzeug(zugang, name, args):
         if not rm.RID_MUSTER.match(rid):
             return tk("konnektor.ausgabe.id_muss_r"), True
         roh = {k: args[k] for k in ("punkte", "erlebt", "eingeplant", "bezug", "kommentar") if k in args}
-        if "eingeplant" in roh and not (wer["name"] and organisator):
-            return (tk("konnektor.werkzeug.14") if organisator else tk("konnektor.werkzeug.15")), True
-        roh["name"] = wer["name"] or args.get("name", "")
-        if not isinstance(roh["name"], str) or not roh["name"].strip():
-            return tk("konnektor.frage_beantworten.4"), True
+        if "eingeplant" in roh and not organisator:
+            return tk("konnektor.werkzeug.15"), True
+        roh["name"] = wer["name"]
         unbekannt = [b for b in (roh.get("bezug") or []) if isinstance(b, str) and b not in h.eintraege]
         if unbekannt:
             return tk("konnektor.werkzeug.11", w1=', '.join(unbekannt)), True

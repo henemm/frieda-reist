@@ -1,5 +1,6 @@
 """Tests für engine/konnektor.py: MCP-Protokoll, Rollen, Werkzeuge, Weitergabe an den Rückmeldedienst."""
 import json
+import shutil
 import sys
 import threading
 import urllib.error
@@ -8,6 +9,7 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
+import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bauen  # noqa: E402
@@ -18,18 +20,24 @@ from conftest import mcp_intern, meldet, zugaenge_datei  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 BEISPIEL = WURZEL / "beispiel" / "reisen" / "beispielreise"   # erfundene Reise: ida organisator, karl mitwirkend
-ALT_ORGANISATOR = "h" * 32  # Link der Organisatorin Ida (person ida)
-MITREISEND = "m" * 32    # alter Link (rolle mitreisend) -> Mitwirkende ohne festen Namen
-KARL = "f" * 32          # Link einer Person (reise.yaml personen: karl, mitwirkend)
-GAST = "r" * 32       # Link mit Rolle gast, nur lesen
+ALT_ORGANISATOR = "h" * 32  # Kurzname der Organisatorin Ida (person ida)
+KARL = "f" * 32          # Kurzname einer Person (reise.yaml personen: karl, mitwirkend)
+GAST = "r" * 32       # Kurzname der Person kim, Rolle gast, nur lesen (nur in der Kopie der Testvorbereitung)
 WEG = "w" * 32           # Link einer Person, die es in reise.yaml nicht (mehr) gibt
 IDA_KONTO = {"konto": "ida", "name": "Ida", "konto_id": "k-ida"}   # wie der Konnektor „Frieda“ reise_anlegen ruft
 
 
 @pytest.fixture(scope="module")
 def seiten(tmp_path_factory):
+    """Seiten aus einer Kopie der Beispielreise mit dem Gast Kim (Person kim, Rolle gast); die Beispielreise im Repo
+    bleibt ohne Gast (#426)."""
+    quelle = tmp_path_factory.mktemp("quelle") / "beispielreise"
+    shutil.copytree(BEISPIEL, quelle)
+    y = yaml.safe_load((quelle / "reise.yaml").read_text(encoding="utf-8"))
+    y["personen"]["kim"] = {"name": "Kim", "rolle": "gast", "reist": True}
+    (quelle / "reise.yaml").write_text(yaml.safe_dump(y, allow_unicode=True, sort_keys=False), encoding="utf-8")
     s = tmp_path_factory.mktemp("seiten")
-    bauen.bauen(BEISPIEL, s / "beispielreise")
+    bauen.bauen(quelle, s / "beispielreise")
     return s
 
 
@@ -45,9 +53,8 @@ def dienst(seiten, tmp_path, monkeypatch):
     (ablage / "beispielreise").mkdir(parents=True)
     zug = tmp_path / "zugaenge.json"
     zug.write_text(json.dumps({ALT_ORGANISATOR: {"reise": "beispielreise", "person": "ida"},
-                               MITREISEND: {"reise": "beispielreise", "rolle": "mitreisend"},
                                KARL: {"reise": "beispielreise", "person": "karl"},
-                               GAST: {"reise": "beispielreise", "rolle": "gast"},
+                               GAST: {"reise": "beispielreise", "person": "kim"},
                                WEG: {"reise": "beispielreise", "person": "niemand"}}))
     monkeypatch.setenv("RM_ABLAGE", str(ablage))
     monkeypatch.setenv("KN_SEITEN", str(seiten))
@@ -91,20 +98,20 @@ def test_unbekannter_link(dienst):
 
 def test_initialize_und_protokoll(dienst):
     basis, _ = dienst
-    r = rpc(basis, MITREISEND, "initialize", {"protocolVersion": "2025-03-26", "capabilities": {},
+    r = rpc(basis, KARL, "initialize", {"protocolVersion": "2025-03-26", "capabilities": {},
                                               "clientInfo": {"name": "t", "version": "1"}})
     assert r["protocolVersion"] == "2025-03-26"
     assert "tools" in r["capabilities"]
     assert "Beispielreise" in r["serverInfo"]["title"]
-    assert "Vornamen" in r["instructions"]
-    assert rpc(basis, MITREISEND, "initialize", {"protocolVersion": "1999-01-01"})["protocolVersion"] == kn.PROTOKOLLE[0]
+    assert "Karl" in r["instructions"] and "Vornamen" not in r["instructions"]
+    assert rpc(basis, KARL, "initialize", {"protocolVersion": "1999-01-01"})["protocolVersion"] == kn.PROTOKOLLE[0]
     # Benachrichtigung: keine Antwort (über HTTP 202)
-    assert mcp_intern(MITREISEND, {"jsonrpc": "2.0", "method": "notifications/initialized"}) == (202, None)
-    code, a = mcp_intern(MITREISEND, {"jsonrpc": "2.0", "id": 7, "method": "gibtsnicht"})
+    assert mcp_intern(KARL, {"jsonrpc": "2.0", "method": "notifications/initialized"}) == (202, None)
+    code, a = mcp_intern(KARL, {"jsonrpc": "2.0", "id": 7, "method": "gibtsnicht"})
     assert a["error"]["code"] == -32601
     # Die geheimen Links je Reise sind abgeschafft (#421): über HTTP gibt es den Weg nicht mehr
     for methode in ("POST", "GET"):
-        assert anfrage(f"{basis}/{MITREISEND}", {"jsonrpc": "2.0", "id": 1, "method": "ping"} if methode == "POST" else None,
+        assert anfrage(f"{basis}/{KARL}", {"jsonrpc": "2.0", "id": 1, "method": "ping"} if methode == "POST" else None,
                        methode=methode)[0] == 404
 
 
@@ -112,7 +119,7 @@ def test_initialize_meldet_symbol_der_reise(dienst, seiten):
     """Die Claude-App zeigt beim Konnektor das Symbol der Reise (serverInfo.icons), dasselbe wie die Seite."""
     import base64
     basis, _ = dienst
-    icons = rpc(basis, MITREISEND, "initialize", {"protocolVersion": "2025-11-25"})["serverInfo"]["icons"]
+    icons = rpc(basis, KARL, "initialize", {"protocolVersion": "2025-11-25"})["serverInfo"]["icons"]
     assert {i["sizes"][0] for i in icons} == {"32x32", "192x192"}
     for i in icons:
         assert i["mimeType"] == "image/png" and i["src"].startswith("data:image/png;base64,")
@@ -127,7 +134,7 @@ def test_initialize_ohne_symbol_geht_trotzdem(dienst, seiten):
     try:
         for f in versteckt:
             f.unlink()
-        r = rpc(basis, MITREISEND, "initialize", {"protocolVersion": "2025-11-25"})
+        r = rpc(basis, KARL, "initialize", {"protocolVersion": "2025-11-25"})
         assert "icons" not in r["serverInfo"] and "Beispielreise" in r["serverInfo"]["title"]
     finally:
         for f, b in zip(versteckt, inhalte):
@@ -137,18 +144,18 @@ def test_initialize_ohne_symbol_geht_trotzdem(dienst, seiten):
 def test_ueberblick_zeigt_stand(dienst, monkeypatch):
     """Man sieht in der App, wann die Reise veröffentlicht wurde und ob der Dienst den neuen Code geladen hat."""
     basis, _ = dienst
-    t, f = werkzeug(basis, MITREISEND, "ueberblick")
+    t, f = werkzeug(basis, KARL, "ueberblick")
     assert not f and "## Stand" in t and meldet(t, "konnektor.stand_text.1") and f"Code {kn._CODE_START}" in t
     assert "Neustart" not in t
     monkeypatch.setattr(kn, "_CODE_START", "00000000")
-    t, _ = werkzeug(basis, MITREISEND, "ueberblick")
+    t, _ = werkzeug(basis, KARL, "ueberblick")
     assert meldet(t, "konnektor.stand_text.3")
 
 
 def test_ueberblick_nennt_den_kartenstatus(dienst):
     """#233 (K11): overview nennt, ob die Karte gebaut ist, woraus und mit wie vielen Punkten."""
     basis, _ = dienst
-    t, f = werkzeug(basis, MITREISEND, "ueberblick")
+    t, f = werkzeug(basis, KARL, "ueberblick")
     assert not f and "Karte: handgepflegt (plan/karte.yaml), 8 Punkte." in t
 
 
@@ -176,7 +183,7 @@ def test_status_mit_kommentar_erscheint_beim_absender(dienst):
 
 def test_stapel(dienst):
     basis, _ = dienst
-    code, a = mcp_intern(MITREISEND, [{"jsonrpc": "2.0", "id": 1, "method": "ping"},
+    code, a = mcp_intern(KARL, [{"jsonrpc": "2.0", "id": 1, "method": "ping"},
                                                 {"jsonrpc": "2.0", "method": "notifications/initialized"},
                                                 {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}])
     assert code == 200 and [x["id"] for x in a] == [1, 2]
@@ -184,7 +191,7 @@ def test_stapel(dienst):
 
 def test_werkzeuge_je_rolle(dienst):
     basis, _ = dienst
-    m = {t["name"] for t in rpc(basis, MITREISEND, "tools/list")["tools"]}
+    m = {t["name"] for t in rpc(basis, KARL, "tools/list")["tools"]}
     h = {t["name"] for t in rpc(basis, ALT_ORGANISATOR, "tools/list")["tools"]}
     assert "auftrag_geben" not in m and "rueckmeldung_geben" in m
     assert h == m | {"entscheiden", "person_einladen", "person_entfernen", "rueckmeldung_erledigen"}
@@ -197,7 +204,7 @@ def test_werkzeuge_je_rolle(dienst):
 
 def test_rollen_aus_reise_yaml(dienst):
     basis, ablage = dienst
-    # Person mit Link: Name steht fest, auch wenn ein anderer genannt wird
+    # Person: Name steht fest, auch wenn ein anderer genannt wird
     t, f = werkzeug(basis, KARL, "rueckmeldung_geben", ziel="T-03", art="Kommentar", text="Schön!", name="Jemand")
     assert not f and rm.eintraege(ablage / "beispielreise")[0]["name"] == "Karl"
     t, f = werkzeug(basis, KARL, "entscheiden", option="V-01.b", status="gewaehlt", grund="x")
@@ -209,7 +216,7 @@ def test_rollen_aus_reise_yaml(dienst):
     assert f and "nur lesen" in t
     t, f = werkzeug(basis, GAST, "aufgabe_anlegen", titel="x", name="Kim")
     assert f and "nur lesen" in t
-    # Link einer Person, die es nicht mehr gibt
+    # Zugang einer Person, die es nicht mehr gibt
     t, f = werkzeug(basis, WEG, "ueberblick")
     assert f and "keiner Person" in t
     # Anleitung nennt Person, Rolle, Organisator:innen und Status
@@ -220,59 +227,57 @@ def test_rollen_aus_reise_yaml(dienst):
     assert "Du sprichst mit Ida (Organisator:in)" in kn.anleitung({"reise": "beispielreise", "person": "ida"}, d)
     # Frieda spricht in Namen, nicht in Kennungen (28.10.2026)
     assert "Namen statt Kennungen" in a and "IDs in Antworten nennen" not in a
-    assert "nur lesen" in kn.anleitung({"reise": "beispielreise", "rolle": "gast"}, d)
-    assert "Vornamen" in kn.anleitung({"reise": "beispielreise", "rolle": "mitreisend"}, d)
+    assert "Du sprichst mit Kim (Rolle gast): nur lesen" in kn.anleitung({"reise": "beispielreise", "person": "kim"}, d)
 
 
 def test_lesen(dienst):
     basis, _ = dienst
-    t, f = werkzeug(basis, MITREISEND, "ueberblick")
+    t, f = werkzeug(basis, KARL, "ueberblick")
     assert not f and "T-01" in t and "Offene Fragen" in t
-    t, f = werkzeug(basis, MITREISEND, "zeige", id="E-01")
+    t, f = werkzeug(basis, KARL, "zeige", id="E-01")
     assert not f and "Bastei" in t and "E-01.eckdaten" in t
     assert "Gliederung des Lesetexts" in t and "- Charakter: Wie sich der Tag anfühlt" in t   # arten.yaml lesetext
     assert "gehzeit: ca. 3:40 h; aufstieg: 485" in t   # Kennzahlen an der Strecke (#269), nicht mehr in den Eckdaten des Dossiers
-    t, f = werkzeug(basis, MITREISEND, "zeige", id="E-01.eckdaten")
+    t, f = werkzeug(basis, KARL, "zeige", id="E-01.eckdaten")
     assert "- Höchster Punkt: Bastei, ca. 300 m" in t and "Gehzeit" not in t   # zweispaltige Tabelle als Merkmalliste (#54)
-    t, f = werkzeug(basis, MITREISEND, "zeige", id="V-03.a")
+    t, f = werkzeug(basis, KARL, "zeige", id="V-03.a")
     assert "gewaehlt" in t and "Ida" in t
-    t, f = werkzeug(basis, MITREISEND, "zeige", id="T-99")
+    t, f = werkzeug(basis, KARL, "zeige", id="T-99")
     assert f and "gibt es nicht" in t
-    t, f = werkzeug(basis, MITREISEND, "suche", begriff="pension burgblick")
+    t, f = werkzeug(basis, KARL, "suche", begriff="pension burgblick")
     assert "U-02" in t
-    t, f = werkzeug(basis, MITREISEND, "offene_fragen")
+    t, f = werkzeug(basis, KARL, "offene_fragen")
     assert "F-01" in t
     assert "F-02" not in t   # geklärt, nicht mehr offen
-    t, f = werkzeug(basis, MITREISEND, "varianten")
+    t, f = werkzeug(basis, KARL, "varianten")
     assert "P-B" in t and "V-01.b" in t
 
 
-def test_rueckmeldung_mitreisend_braucht_namen(dienst):
+def test_rueckmeldung_mitwirkend(dienst):
     basis, ablage = dienst
-    t, f = werkzeug(basis, MITREISEND, "rueckmeldung_geben", ziel="T-03", art="Kommentar", text="Schön!")
-    assert f and "Name fehlt" in t
-    t, f = werkzeug(basis, MITREISEND, "rueckmeldung_geben", ziel="T-03", art="Kommentar", text="Schön!", name="Anna")
+    t, f = werkzeug(basis, KARL, "rueckmeldung_geben", ziel="T-03", art="Kommentar", text="Schön!")
     assert not f and "R-" in t
     e = rm.eintraege(ablage / "beispielreise")
-    assert len(e) == 1 and e[0]["name"] == "Anna" and e[0]["quelle"] == "über Claude"
-    t, f = werkzeug(basis, MITREISEND, "rueckmeldung_geben", ziel="T-03", art="Unsinn", text="x", name="Anna")
+    assert len(e) == 1 and e[0]["name"] == "Karl" and e[0]["quelle"] == "über Claude"
+    t, f = werkzeug(basis, KARL, "rueckmeldung_geben", ziel="T-03", art="Unsinn", text="x")
     assert f and "unbekannte Art" in t
-    t, _ = werkzeug(basis, MITREISEND, "rueckmeldungen")
-    assert "Anna" in t and "Schön!" in t
+    t, _ = werkzeug(basis, KARL, "rueckmeldungen")
+    assert "Karl" in t and "Schön!" in t
 
 
 def test_wunsch_ueber_konnektor(dienst):
     basis, ablage = dienst
-    t, f = werkzeug(basis, MITREISEND, "rueckmeldung_geben", art="Wunsch", text="Einmal auf den Lilienstein", name="Lena")
+    t, f = werkzeug(basis, KARL, "rueckmeldung_geben", art="Wunsch", text="Einmal auf den Lilienstein")
     assert not f and "R-" in t
     e = rm.eintraege(ablage / "beispielreise")[0]
     assert e["ziel"] == rm.WUNSCH_ZIEL and e["art"] == "Wunsch"
 
 
 def test_anleitung_nennt_wuensche_nur_wenn_eingeschaltet():
-    zugang = {"reise": "beispielreise", "rolle": "mitreisend"}
-    assert "art Wunsch" not in kn.anleitung(zugang, {"reise": {}})
-    assert "art Wunsch" in kn.anleitung(zugang, {"reise": {"bausteine": ["wuensche"]}})
+    zugang = {"reise": "beispielreise", "person": "karl"}
+    karl = {"personen": [{"schluessel": "karl", "name": "Karl", "rolle": "mitwirkend"}]}
+    assert "art Wunsch" not in kn.anleitung(zugang, {"reise": karl})
+    assert "art Wunsch" in kn.anleitung(zugang, {"reise": {**karl, "bausteine": ["wuensche"]}})
 
 
 def test_rueckmeldung_alter_organisator_name_fest(dienst):
@@ -330,7 +335,7 @@ def test_gesund_ohne_token(dienst, tmp_path, monkeypatch):
 
 def test_nacht_ohne_doppelten_namen(seiten, tmp_path, monkeypatch):
     monkeypatch.setenv("KN_SEITEN", str(seiten))
-    zugang = {"reise": "beispielreise", "rolle": "mitreisend"}
+    zugang = {"reise": "beispielreise", "person": "karl"}
     t, _ = kn.werkzeug(zugang, "zeige", {"id": "T-03"})
     assert "Nacht: Altendorf, Wanderherberge Altendorf (U-04)" in t
     # Ist die Unterkunft selbst der Ort (gleicher Name, z. B. eine Hütte), steht der Name nur einmal da
@@ -359,9 +364,9 @@ def test_personen_ueber_konnektor(dienst):
     E-Mail-Adressen und Notizen nie."""
     basis, _ = dienst
     _konto_mit_einladung()
-    for token in (MITREISEND, KARL, GAST, ALT_ORGANISATOR):
+    for token in (KARL, GAST, ALT_ORGANISATOR):
         assert "personen" in {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}
-    for token in (MITREISEND, KARL, GAST):
+    for token in (KARL, GAST):
         t, f = werkzeug(basis, token, "personen")
         assert not f and meldet(t, "konnektor.personen.kopf") and "Ida" in t and "Karl" in t
         assert "organisator" in t and "mitwirkend" in t and "14.5." in t
@@ -374,63 +379,61 @@ def test_personen_ueber_konnektor(dienst):
 
 def test_aufgaben_ueber_konnektor(dienst):
     basis, ablage = dienst
-    m = {t["name"] for t in rpc(basis, MITREISEND, "tools/list")["tools"]}
+    m = {t["name"] for t in rpc(basis, KARL, "tools/list")["tools"]}
     assert {"aufgaben", "aufgabe_anlegen", "aufgabe_aendern"} <= m
-    t, f = werkzeug(basis, MITREISEND, "aufgabe_anlegen", titel="Pension buchen", bezug=["U-02"])
-    assert f and "Name fehlt" in t
-    t, f = werkzeug(basis, MITREISEND, "aufgabe_anlegen", titel="Pension buchen", bezug=["U-99"], name="Anna")
+    t, f = werkzeug(basis, KARL, "aufgabe_anlegen", titel="Pension buchen", bezug=["U-99"])
     assert f and "U-99" in t
-    t, f = werkzeug(basis, MITREISEND, "aufgabe_anlegen", titel="Pension buchen", bezug=["U-02", "T-02"],
-                    zustaendig="Anna", prioritaet="hoch", ab="2026-11-03", frist="2026-11-10", name="Anna")
+    t, f = werkzeug(basis, KARL, "aufgabe_anlegen", titel="Pension buchen", bezug=["U-02", "T-02"],
+                    zustaendig="Anna", prioritaet="hoch", ab="2026-11-03", frist="2026-11-10")
     assert not f and "AG-01" in t and "gilt sofort" in t
     t, f = werkzeug(basis, ALT_ORGANISATOR, "aufgabe_anlegen", titel="Bus prüfen", frist="2020-01-01", name="Egal")
     assert not f and rm.aufgaben(ablage / "beispielreise")[1]["erstellt_von"] == "Ida"
-    t, _ = werkzeug(basis, MITREISEND, "aufgaben", zustaendig="anna")
+    t, _ = werkzeug(basis, KARL, "aufgaben", zustaendig="anna")
     assert "AG-01" in t and "AG-02" not in t
-    t, _ = werkzeug(basis, MITREISEND, "aufgaben", bezug="U-02")
+    t, _ = werkzeug(basis, KARL, "aufgaben", bezug="U-02")
     assert "AG-01" in t and "Pension Burgblick" in t
-    t, _ = werkzeug(basis, MITREISEND, "zeige", id="T-02")
+    t, _ = werkzeug(basis, KARL, "zeige", id="T-02")
     assert meldet(t, "konnektor.ausgabe.zeige.2") and "AG-01" in t
-    t, _ = werkzeug(basis, MITREISEND, "ueberblick")
+    t, _ = werkzeug(basis, KARL, "ueberblick")
     # Fristen zählen erst ab Status fest (test_regeln.py): in der Planung steht die Zahl, aber nichts ist überfällig
     assert "Offene Aufgaben: 2" in t and "überfällig" not in t
-    t, f = werkzeug(basis, MITREISEND, "aufgabe_aendern", id="AG-01", status="erledigt", kommentar="gebucht", name="Anna")
+    t, f = werkzeug(basis, KARL, "aufgabe_aendern", id="AG-01", status="erledigt", kommentar="gebucht")
     assert not f and "[erledigt]" in t
-    t, _ = werkzeug(basis, MITREISEND, "zeige", id="AG-01")
-    assert "Anna: status: offen → erledigt; gebucht" in t
-    t, _ = werkzeug(basis, MITREISEND, "aufgaben")
+    t, _ = werkzeug(basis, KARL, "zeige", id="AG-01")
+    assert "Karl: status: offen → erledigt; gebucht" in t
+    t, _ = werkzeug(basis, KARL, "aufgaben")
     assert "AG-01" not in t and "AG-02" in t
-    t, f = werkzeug(basis, MITREISEND, "aufgabe_aendern", id="AG-77", status="erledigt", name="Anna")
+    t, f = werkzeug(basis, KARL, "aufgabe_aendern", id="AG-77", status="erledigt")
     assert f and "nicht gefunden" in t
-    t, f = werkzeug(basis, MITREISEND, "aufgabe_aendern", id="AG-02", frist="morgen", name="Anna")
+    t, f = werkzeug(basis, KARL, "aufgabe_aendern", id="AG-02", frist="morgen")
     assert f and "Datum" in t
 
 
 def test_merkmale_lesen(dienst):
     basis, ablage = dienst
-    t, f = werkzeug(basis, MITREISEND, "merkmale", ziel="V-03")
+    t, f = werkzeug(basis, KARL, "merkmale", ziel="V-03")
     assert not f and "Preis pro Nacht" in t and "85 €" in t and "Fehlt noch" in t and "fragen:" in t
     # Stufen in Worten für Menschen, Schlüssel in Klammern (Product Owner 29.10.2026); „aus“ steht nirgends
     assert "nötig (pflicht)" in t and "gut zu wissen (empfohlen)" in t and "; Pflicht" not in t and "(aus)" not in t
-    t, f = werkzeug(basis, MITREISEND, "merkmale", bereich="wandern")
+    t, f = werkzeug(basis, KARL, "merkmale", bereich="wandern")
     assert not f and "berechnet" in t
-    t, f = werkzeug(basis, MITREISEND, "merkmale", ziel="T-01")
+    t, f = werkzeug(basis, KARL, "merkmale", ziel="T-01")
     assert f
-    t, _ = werkzeug(basis, MITREISEND, "zeige", id="U-01")
+    t, _ = werkzeug(basis, KARL, "zeige", id="U-01")
     assert "Preis pro Nacht: 120 €" in t
 
 
 def test_hinweis_einer_strecke_in_show(dienst):
     """#448: Der Hinweis an einer Strecke (item_update hinweis) steht in show, wie bei Unterkunft und Aufenthalt."""
     basis, _ = dienst
-    t, f = werkzeug(basis, MITREISEND, "zeige", id="E-21")
+    t, f = werkzeug(basis, KARL, "zeige", id="E-21")
     assert not f and "Abfahrt am Bahnhof auf der anderen Elbseite" in t, t
 
 
 def test_kategorien_lesen(dienst):
     """Das Gegenstück zu kategorie_definieren: die Kategorien der Reise lassen sich auch lesen."""
     basis, ablage = dienst
-    t, f = werkzeug(basis, MITREISEND, "kategorien")
+    t, f = werkzeug(basis, KARL, "kategorien")
     assert not f and ("Kartenkategorien" in t)
     if "noch keine" not in t:
         assert "Farbe" in t and "Gruppe" in t
@@ -440,7 +443,7 @@ def test_merkmale_einer_strecke(dienst):
     (option_anlegen, wert_eintragen; test_schreiben.py)."""
     basis, ablage = dienst
     # Strecke als Ziel: Liste ihrer Art (E-20 ist eine Bahnfahrt)
-    t, f = werkzeug(basis, MITREISEND, "merkmale", ziel="E-20")
+    t, f = werkzeug(basis, KARL, "merkmale", ziel="E-20")
     assert not f and "Art bahn" in t and "## E-20" in t and "Fehlt noch" not in t and "gilt" in t   # bahn hat nur empfohlene Merkmale (O-5: kein Fehlt)
 
 
@@ -522,7 +525,7 @@ def test_ontologie_werkzeuge_nur_mit_schreibweg(dienst, monkeypatch):
 def test_ontologie_organisator_schreibt_direkt(schreibweg):
     import konten
     basis, ablage = schreibweg
-    for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (MITREISEND, True), (GAST, False)):
+    for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (GAST, False)):
         namen = {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}
         nur_org = {"tag_aendern", "frage_schliessen", "reise_status_setzen", "einstellung_setzen",
                    # Abgleich 29.10.2026: Plan, Eckdaten und Ontologie ändern nur Organisator:innen
@@ -588,11 +591,6 @@ def test_ontologie_mitwirkende_schlagen_vor(schreibweg):
     e = next(x for x in rm.eintraege(ablage / "beispielreise") if x["ziel"] == "hotel")
     # die Stufe steht im Vorschlag als Wort für Menschen, nicht als Schlüssel (Product Owner 29.10.2026)
     assert e["text"] == "Merkmal festlegen – art: hotel; bezeichnung: Stornierung; typ: auswahl; werte: ja | nein; stufe: nötig (pflicht)"
-    # Mitwirkende ohne Namen (alter Rollen-Link) brauchen den Vornamen
-    t, f = werkzeug(basis, MITREISEND, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt")
-    assert f and "Name fehlt" in t
-    t, f = werkzeug(basis, MITREISEND, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt", name="Anna")
-    assert not f and "Anna" in {x["name"] for x in rm.eintraege(ablage / "beispielreise")}   # Reihenfolge bei gleicher Sekunde offen
     t, f = werkzeug(basis, GAST, "art_definieren", bezeichnung="Refugi", grundform="aufenthalt")
     assert f and "nur lesen" in t
 
@@ -601,7 +599,7 @@ def test_kategorie_definieren_ueber_den_schreibweg(schreibweg):
     """kategorie_definieren (O-7): Organisator:innen schreiben direkt, Mitwirkende schlagen vor, Gäste sehen das Werkzeug nicht."""
     import konten
     basis, ablage = schreibweg
-    for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (MITREISEND, True), (GAST, False)):
+    for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (GAST, False)):
         namen = {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}
         assert "kategorie_definieren" not in namen and "kategorien" not in namen, token   # Alias von art_definieren (ADR-0007, Schritt d)
         assert ("art_definieren" in namen) is da, token
@@ -623,7 +621,7 @@ def test_kategorie_definieren_ueber_den_schreibweg(schreibweg):
 
 def test_wert_eintragen_ueber_den_schreibweg(schreibweg):
     basis, ablage = schreibweg
-    for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (MITREISEND, True), (GAST, False)):
+    for token, da in ((ALT_ORGANISATOR, True), (KARL, True), (GAST, False)):
         assert "wert_eintragen" not in {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}, token   # Alias von item_update (ADR-0007)
         assert ("ding_aendern" in {t["name"] for t in rpc(basis, token, "tools/list")["tools"]}) is da, token
     Schreibweg.antwort = (200, {"ok": True, "text": "Preis pro Nacht an U-02 Pension Burgblick: 95 € (vorher: 85 €). Herkunft: Website."})
@@ -634,15 +632,13 @@ def test_wert_eintragen_ueber_den_schreibweg(schreibweg):
     assert body["args"] == {"ziel": "U-02", "merkmal": "preis", "wert": "95 €", "quelle": "Website", "geprueft": "2026-10-29"}
     assert rm.eintraege(ablage / "beispielreise") == []
     # Eine unbekannte Stelle prüft der Schreibweg mit dem Repo, nicht der Konnektor mit der veröffentlichten Seite (Issue #135:
-    # gerade Angelegtes ist sofort nutzbar); ohne Namen braucht es den Vornamen
+    # gerade Angelegtes ist sofort nutzbar)
     Schreibweg.antwort = (422, {"ok": False, "fehler": "Die Unterkunft U-77 gibt es nicht."})
     t, f = werkzeug(basis, KARL, "wert_eintragen", ziel="U-77", merkmal="preis", wert="1 €", quelle="x")
     assert f and t == "Nicht eingetragen: Die Unterkunft U-77 gibt es nicht." and Schreibweg.anfragen[-1][0] == "/beispielreise/ding_aendern"
     Schreibweg.antwort = (200, {"ok": True, "text": "ok"})
-    t, f = werkzeug(basis, MITREISEND, "wert_eintragen", ziel="U-02", merkmal="lage", wert="x", quelle="x")
-    assert f and "Name fehlt" in t
-    t, f = werkzeug(basis, MITREISEND, "wert_eintragen", ziel="U-02", merkmal="lage", wert="x", quelle="x", name="Anna")
-    assert not f and Schreibweg.anfragen[-1][2]["name"] == "Anna" and "name" not in Schreibweg.anfragen[-1][2]["args"]
+    t, f = werkzeug(basis, KARL, "wert_eintragen", ziel="U-02", merkmal="lage", wert="x", quelle="x", name="Anna")
+    assert not f and Schreibweg.anfragen[-1][2]["name"] == "Karl" and "name" not in Schreibweg.anfragen[-1][2]["args"]
     t, f = werkzeug(basis, GAST, "wert_eintragen", ziel="U-02", merkmal="lage", wert="x", quelle="x")
     assert f and "nur lesen" in t
     Schreibweg.antwort = (422, {"ok": False, "fehler": "preis: „quelle“ fehlt."})
@@ -715,12 +711,6 @@ def test_entscheiden_ueber_den_schreibweg_und_widerspruch(schreibweg):
     t, f = werkzeug(basis, ALT_ORGANISATOR, "entscheiden", option="V-03.a", status="verworfen", grund="zu teuer")
     assert not f and "Nicht entschieden" not in t                        # dieselbe Person darf ihre Wahl ändern
     assert Schreibweg.anfragen[-1][0] == "/beispielreise/entscheiden"
-    # Zweite Organisatorin über die Rolle: konflikte() vergleicht Personen; wir stellen Idas Wahl als fremde dar, indem Karl Organisator wird
-    zug = json.loads(zugaenge_datei().read_text())
-    zug["o" * 32] = {"reise": "beispielreise", "rolle": "organisator"}   # Rollen-Link ohne Namen: kein Entscheiden
-    zugaenge_datei().write_text(json.dumps(zug))
-    t, f = werkzeug(basis, "o" * 32, "entscheiden", option="V-03.a", status="verworfen", grund="zu teuer")
-    assert f and "persönlichen Link" in t
 
 
 def test_konnektor_haengt_hinweise_an_den_text(schreibweg):
@@ -1033,9 +1023,13 @@ def test_beleg_in_einem_schritt_mit_der_buchung(schreibweg, seiten, monkeypatch)
 
 # --- Löschwunsch (#145): Frieda löscht nie; die Texte weisen den passenden Weg und den Rückholweg ---
 
-LOESCH_ZUGAENGE = (("gast", {"reise": "beispielreise", "rolle": "gast"}),
-                   ("mitwirkend", {"reise": "beispielreise", "rolle": "mitreisend"}),
-                   ("organisator", {"reise": "beispielreise", "rolle": "organisator"}))
+LOESCH_ZUGAENGE = (("gast", {"reise": "beispielreise", "person": "kim"}),
+                   ("mitwirkend", {"reise": "beispielreise", "person": "jo"}),
+                   ("organisator", {"reise": "beispielreise", "person": "max"}))
+# erfundene Personen, deren Namen nicht in der Beispielreise vorkommen (die Prüfung auf Reisespezifisches sucht Ida und Karl)
+LOESCH_DATEN = {"reise": {"personen": [{"schluessel": "kim", "name": "Kim", "rolle": "gast"},
+                                       {"schluessel": "jo", "name": "Jo", "rolle": "mitwirkend"},
+                                       {"schluessel": "max", "name": "Max", "rolle": "organisator"}]}}
 
 
 def loesch_absatz(text):
@@ -1050,7 +1044,7 @@ def aufgabe_werkzeug():
 @pytest.mark.parametrize("rolle,zugang", LOESCH_ZUGAENGE)
 def test_anleitung_nennt_den_loeschwunsch_fuer_jede_rolle(rolle, zugang):
     """Kriterium 1: Frieda löscht nie; Weg je Grundform; erst bestätigen lassen; ein Satz danach; Rückmeldung, wo es keinen Weg gibt."""
-    z = loesch_absatz(kn.anleitung(zugang, {"reise": {}}))
+    z = loesch_absatz(kn.anleitung(zugang, LOESCH_DATEN))
     assert z, rolle
     for teil in ("löscht nie", "storniert", "verworfen", "entfaellt", "bestätigen", "nicht gelöscht", "rueckmeldung_geben"):
         assert teil in z, (rolle, teil)
@@ -1071,7 +1065,7 @@ def test_werkzeugbeschreibungen_nennen_loeschwunsch_und_rueckholweg():
 
 def test_neue_loeschtexte_nennen_nichts_reisespezifisches():
     """Kriterium 8: keine Pfade, Adressen oder Namen aus Reisen in den neuen Texten."""
-    texte = [loesch_absatz(kn.anleitung(z, {"reise": {}})) for _, z in LOESCH_ZUGAENGE]
+    texte = [loesch_absatz(kn.anleitung(z, LOESCH_DATEN)) for _, z in LOESCH_ZUGAENGE]
     for w in (kn.BUCHUNG_AENDERN, kn.ENTSCHEIDEN, kn.FRAGE_SCHLIESSEN, aufgabe_werkzeug()):
         texte += [s for s in kn.lokalisiert([w], "de")[0]["description"].split(". ") if "Löschwunsch" in s]
     assert len(texte) == 7 and all(texte)
@@ -1083,11 +1077,11 @@ def test_neue_loeschtexte_nennen_nichts_reisespezifisches():
 def test_aufgabe_entfaellt_nennt_den_rueckholweg(dienst):
     """Kriterium 6: nach entfaellt steht „wieder offen“ im Antworttext; bei erledigt nicht."""
     basis, _ = dienst
-    t, f = werkzeug(basis, ALT_ORGANISATOR, "aufgabe_anlegen", titel="Bus prüfen", name="Ida")
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "aufgabe_anlegen", titel="Bus prüfen")
     assert not f and "AG-01" in t
-    t, f = werkzeug(basis, ALT_ORGANISATOR, "aufgabe_aendern", id="AG-01", status="erledigt", name="Ida")
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "aufgabe_aendern", id="AG-01", status="erledigt")
     assert not f and t.startswith("Gespeichert (gilt sofort):") and "Nicht gelöscht" not in t
-    t, f = werkzeug(basis, ALT_ORGANISATOR, "aufgabe_aendern", id="AG-01", status="entfaellt", name="Ida")
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "aufgabe_aendern", id="AG-01", status="entfaellt")
     assert not f and t.startswith("Gespeichert (gilt sofort):")      # bisheriger Satz bleibt vorn (Kriterium 7)
     assert "Nicht gelöscht" in t and "wieder offen" in t and meldet(t, "konnektor.werkzeug.7")
 

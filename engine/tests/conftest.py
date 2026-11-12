@@ -85,7 +85,7 @@ def meldet(ausgabe, schluessel, /, sprache="de"):
 
 def mcp_intern(token, nachricht):
     """Den Konnektor als eine Person einer Reise aufrufen, ohne Anmeldung über OAuth. Die Tests geben Personen Kurznamen in
-    einer Datei (KN_ZUGAENGE, {kurzname: {"reise", "person"} oder {"reise", "rolle"}}); das waren bis #421 die geheimen
+    einer Datei (KN_ZUGAENGE, {kurzname: {"reise", "person"}}); das waren bis #421 die geheimen
     Links, heute gibt es sie nur noch hier. Aufgerufen wird intern (konnektor.antwort_fuer), so wie der Konnektor „Frieda“
     je Aufruf aus Konto und Angabe reise einen Zugang bildet. -> (HTTP-Code, Antwort) wie früher über HTTP."""
     import json
@@ -97,7 +97,7 @@ def mcp_intern(token, nachricht):
         z = None
     if not isinstance(z, dict) or "reise" not in z:
         return 404, {"fehler": "unbekannt"}
-    a = kn.antwort_fuer({k: v for k, v in z.items() if k in ("reise", "person", "rolle", "sprache")}, nachricht)
+    a = kn.antwort_fuer({k: v for k, v in z.items() if k in ("reise", "person", "sprache")}, nachricht)
     return (200, a) if a else (202, None)
 
 

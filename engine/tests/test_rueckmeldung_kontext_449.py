@@ -157,7 +157,7 @@ def test_ort_zeile_in_der_befehlszeile(dienst, capsys):   # AC-9
 
 def test_feedback_give_ohne_kontext():   # AC-10: Werkzeug rueckmeldung_geben (englisch feedback_give) bleibt ohne Kontext-Parameter
     w = next(x for x in konnektor.WERKZEUGE if x["name"] == "rueckmeldung_geben")
-    assert set(w["inputSchema"]["properties"]) == {"ziel", "art", "text", "name", "quelle"}
+    assert set(w["inputSchema"]["properties"]) == {"ziel", "art", "text", "quelle"}   # name entfällt (#426)
 
 
 # ---------- Seite (AC-1 bis AC-3, AC-8) ----------

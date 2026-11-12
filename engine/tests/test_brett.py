@@ -230,11 +230,6 @@ def test_brett_in_der_claude_app(umgebung):
     assert f and "T-99" in t
     t, f = u.werkzeug(IDA, "wunsch_aendern", id=rid, eingeplant=True, bezug=["T-03"])
     assert not f and "eingeplant" in t, t
-    # Link ohne Person: Einplanen ist eine Entscheidung und gehört genau einer Person
-    from conftest import zugang_dazu
-    zugang_dazu("b" * 32, reise="beispielreise", rolle="organisator")
-    t, f = u.werkzeug("b" * 32, "wunsch_aendern", id=rid, eingeplant=False)
-    assert f and "persönlichen Link" in t
     t, f = u.werkzeug(KARL, "wunsch_aendern", id="R-1", punkte=1)
     assert f and "R-…" in t
     t, _ = u.werkzeug(KIM, "wuensche")

@@ -104,10 +104,6 @@ def test_entscheiden_nur_organisator_mit_persoenlichem_link(umgebung):
         t, f = u.werkzeug(token, "entscheiden", **args)
         assert f and soll in t, token
     assert u.schreibweg == []
-    # Link nur mit Rolle (kein Name): keine Entscheidung, sie gehört genau einer Person
-    zugaenge_datei().write_text(json.dumps({**json.loads(zugaenge_datei().read_text()), "b" * 32: {"reise": "beispielreise", "rolle": "organisator"}}))
-    t, f = u.werkzeug("b" * 32, "entscheiden", **args)
-    assert f and "persönlichen Link" in t and u.schreibweg == []
     assert "entscheiden" in u.werkzeuge(IDA) and "entscheiden" not in u.werkzeuge(KARL) | u.werkzeuge(KIM)
 
 
@@ -161,15 +157,6 @@ def test_frage_beantworten_prueft(umgebung):
     assert f and "nur lesen" in t
     assert "frage_beantworten" not in u.werkzeuge(KIM) and "frage_beantworten" in u.werkzeuge(KARL)
     assert rm.eintraege(u.o) == []
-
-
-def test_frage_beantworten_ohne_namen_fragt_nach(umgebung):
-    u = umgebung("planung")
-    zugaenge_datei().write_text(json.dumps({**json.loads(zugaenge_datei().read_text()), "e" * 32: {"reise": "beispielreise", "rolle": "mitwirkend"}}))
-    t, f = u.werkzeug("e" * 32, "frage_beantworten", frage="F-01", antwort="Bahn")
-    assert f and "Name fehlt" in t
-    t, f = ruf(u, "e" * 32, "frage_beantworten", frage="F-01", antwort="Bahn", name="Lena")
-    assert not f and rm.eintraege(u.o)[0]["name"] == "Lena"
 
 
 @pytest.mark.parametrize("status,geht", [("planung", True), ("fest", True), ("danach", True), ("archiv", False)])
@@ -261,10 +248,6 @@ def test_einladen_pruefungen(umgebung, monkeypatch, tmp_path):
     t, f = u.werkzeug(IDA, "person_einladen", vorname="Nora")              # ohne Adresse: Links gibt es nicht mehr (#421)
     assert f and meldet(t, "konnektor.einladen.24")
     assert rm.einladungen_lesen(u.o) == {} and u.schreibweg == []
-    # Link ohne Namen kann nicht einladen
-    zugaenge_datei().write_text(json.dumps({**json.loads(zugaenge_datei().read_text()), "b" * 32: {"reise": "beispielreise", "rolle": "organisator"}}))
-    t, f = u.werkzeug("b" * 32, "person_einladen", vorname="Nora", email="nora@beispiel.invalid")
-    assert f and "persönlichen Link" in t and rm.einladungen_lesen(u.o) == {}
 
 
 def test_einladen_vorhandene_person_wird_mit_ihrem_konto_verknuepft(umgebung):
