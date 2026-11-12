@@ -48,6 +48,7 @@ import sys
 import tempfile
 import threading
 import time
+import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -70,6 +71,10 @@ ZEIT_GESAMT = 25        # Sperre, Vorbereiten und Anwenden zusammen
 ZEIT_SPERRE = 3         # Wartezeit auf die Sperre der Reise (Teil von ZEIT_GESAMT)
 ZEIT_PRUEFUNG = 3       # nach einem Abbruch: ist der Vorgang trotzdem eingetragen (Speicher lokal, Git auf origin/main)?
 LOG_LAENGE = 200        # Zeichen eines Ablehnungsgrunds im Protokoll
+# Export einer Reise (GET /<reise>/export, #498): Gesamtfrist des Git-Wegs (fetch höchstens ZEIT_EXPORT_FETCH), unter dem
+# Budget des Exports auf Mein Konto (anmeldung.EXPORT_BUDGET, 55 s) und der Lesefrist von nginx (60 s)
+ZEIT_EXPORT = 50
+ZEIT_EXPORT_FETCH = 20
 AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "kategorie_definieren": "ontologie", "wert_eintragen": "wert",
             "ding_anlegen": "ding", "ding_aendern": "ding", "option_anlegen": "alternative", "wahlstelle_anlegen": "alternative",
             "frage_anlegen": "frage", "entscheiden": "entscheiden", "tag_aendern": "plan", "wissen_schreiben": "wissen",
@@ -5636,6 +5641,28 @@ def speicher_gesund():
         return False
 
 
+def reise_zip_aus_speicher(reise, datei):
+    """Stand der Reise aus dem Reisespeicher als ZIP in das Dateiobjekt datei, Pfade relativ zum Reiseordner (#498). Der
+    Temp-Ordner verschwindet immer, auch mit Hardlinks der Ablage (Modus 400, der Ordner gehört dem Dienst); jede Datei
+    wird in Stücken gelesen, nie ganz in den Speicher. Zeitstempel vor 1980 (Ablagedateien) werden auf 1980 gesetzt, statt
+    den Export scheitern zu lassen; jede Datei kommt mit Modus 644 in die ZIP (Ablagedateien haben 400)."""
+    import reisespeicher
+    with tempfile.TemporaryDirectory() as tmp:
+        ordner = Path(tmp) / "reise"
+        reisespeicher.exportieren(reise, ordner)
+        with zipfile.ZipFile(datei, "w", zipfile.ZIP_DEFLATED, strict_timestamps=False) as z:
+            for f in sorted(ordner.rglob("*")):
+                if f.is_file():
+                    info = zipfile.ZipInfo.from_file(f, f.relative_to(ordner).as_posix(), strict_timestamps=False)
+                    info.compress_type, info.external_attr = zipfile.ZIP_DEFLATED, 0o100644 << 16
+                    with open(f, "rb") as quelle, z.open(info, "w") as aus:
+                        shutil.copyfileobj(quelle, aus, 1024 * 1024)
+
+
+def _kurz(e):
+    return " ".join(str(e).split())[:LOG_LAENGE]
+
+
 class Dienst(BaseHTTPRequestHandler):
     server_version = "Frieda-Schreibweg"
     sys_version = ""
@@ -5649,6 +5676,73 @@ class Dienst(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _datei_senden(self, code, datei, typ):
+        """Dateiobjekt als Antwort, in Stücken von 1 MiB; die Datei wird immer geschlossen, auch bei abgebrochener Verbindung."""
+        try:
+            self.send_response(code)
+            self.send_header("Content-Type", typ)
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(os.fstat(datei.fileno()).st_size))
+            self.end_headers()
+            datei.seek(0)
+            shutil.copyfileobj(datei, self.wfile, 1024 * 1024)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        finally:
+            datei.close()
+
+    def _export(self, reise):
+        """GET /<reise>/export (#498): die Reise als ZIP für den Export auf Mein Konto, nur für den Konnektor, nur lesend und
+        ohne die Sperre des Schreibwegs. Aus dem Reisespeicher oder (Git-Weg, bis #350 durch ist) aus origin/main."""
+        if not hmac.compare_digest(self.headers.get("X-Frieda-Dienst", ""), konten.dienst_geheimnis()):
+            return self._senden(403, fehler_antwort("schreiben.dienst.nur_konnektor", mit_ok=False))
+        unbekannt = 404, fehler_antwort("schreiben.dienst.unbekannt", mit_ok=False)
+        if not REISE_MUSTER.match(reise) or konten.reise_vorgemerkt(reise):   # gelöscht: wie nicht vorhanden, ohne Speicher
+            return self._senden(*unbekannt)
+        try:
+            liste = instanz.speicherreisen()
+        except instanz.EinstellungenNichtLesbar as e:      # #361
+            sys.stderr.write(f"Error export 503: settings not readable: {_kurz(e)}\n")
+            return self._senden(503, fehler_antwort("schreiben.dienst.einstellungen_nicht_lesbar", mit_ok=False))
+        datei = tempfile.TemporaryFile()
+        try:
+            fehler = self._export_speicher(reise, datei) if reise in liste else self._export_repo(reise, datei)
+        except BaseException:
+            datei.close()
+            raise
+        if fehler:
+            datei.close()
+            return self._senden(*(unbekannt if fehler == 404 else fehler))
+        return self._datei_senden(200, datei, "application/zip")
+
+    def _export_speicher(self, reise, datei):
+        """Speicherweg des Exports -> None (ZIP steht in datei), 404 oder (503, Antwort)."""
+        import reisespeicher
+        try:
+            reise_zip_aus_speicher(reise, datei)
+        except KeyError:
+            return 404
+        except (reisespeicher.AblageFehlt, reisespeicher.AblageFehler, sqlite3.Error, OSError, ValueError) as e:
+            sys.stderr.write(f"Error export 503: {_kurz(e)}\n")
+            return 503, fehler_antwort("schreiben.dienst.speicher_nicht_erreichbar", mit_ok=False)
+        return None
+
+    def _export_repo(self, reise, datei):
+        """Git-Weg des Exports -> None, 404 (nicht auf origin/main) oder (503, Antwort). Fehlt das Repo, ist das 503, auch
+        neben einer Liste von Speicherreisen: der Konnektor überspringt 404 still, ein fehlendes Repo darf keinen stillen
+        Teilexport ergeben."""
+        import schreiben_git
+        s = self.schreiber or Schreiber(wurzel())
+        try:
+            if not (s.wurzel / ".git").exists():
+                raise RuntimeError("no git repository")
+            if schreiben_git.reise_archiv(s, reise, datei) is None:
+                return 404
+        except (RuntimeError, subprocess.TimeoutExpired, OSError) as e:
+            sys.stderr.write(f"Error export 503: {_kurz(e)}\n")
+            return 503, fehler_antwort("schreiben.dienst.repo_nicht_erreichbar", mit_ok=False)
+        return None
 
     def do_GET(self):
         pfad = self.path.split("?", 1)[0]
@@ -5666,6 +5760,8 @@ class Dienst(BaseHTTPRequestHandler):
                 ok = schreiben_git.gesund(s)
             return self._senden(200 if ok else 503, {"gesund": ok})
         teile = pfad.strip("/").split("/")
+        if len(teile) == 2 and teile[1] == "export":    # GET /<reise>/export: die Reise als ZIP (#498)
+            return self._export(teile[0])
         if len(teile) == 3 and teile[1] == "buchung":   # GET /<reise>/buchung/<B-id>: gibt es sie schon? (Beleg vor dem Veröffentlichen)
             if not hmac.compare_digest(self.headers.get("X-Frieda-Dienst", ""), konten.dienst_geheimnis()):
                 return self._senden(403, fehler_antwort("schreiben.dienst.nur_konnektor", mit_ok=False))

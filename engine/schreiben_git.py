@@ -90,6 +90,26 @@ def buchung_im_repo(s, reise, bid):
     return sb.buchung_aus_routen(text, bid)
 
 
+def reise_archiv(s, reise, datei):
+    """Die Reise von origin/main als ZIP in das Dateiobjekt datei (Export auf Mein Konto, #498), Pfade relativ zum
+    Reiseordner -> datei, oder None, wenn es reisen/<reise> auf origin/main nicht gibt. Liest nur, ohne Sperre und ohne
+    Arbeitskopie; holen, prüfen und packen zusammen höchstens ZEIT_EXPORT Sekunden, das Holen höchstens ZEIT_EXPORT_FETCH.
+    git archive schreibt in eine Temp-Datei, die danach in Stücken kopiert wird und immer verschwindet."""
+    import shutil
+    import tempfile
+    import time
+    ende = time.monotonic() + sb.ZEIT_EXPORT
+    git(s.wurzel, "fetch", "-q", "origin", "main", frist=min(sb.ZEIT_EXPORT_FETCH, sb.ZEIT_EXPORT))
+    if not git(s.wurzel, "ls-tree", "origin/main", f"reisen/{reise}", frist=ende - time.monotonic()):
+        return None
+    with tempfile.TemporaryDirectory() as tmp:
+        ziel = Path(tmp) / "reise.zip"
+        git(s.wurzel, "archive", "--format=zip", "-o", str(ziel), f"origin/main:reisen/{reise}", frist=ende - time.monotonic())
+        with open(ziel, "rb") as q:
+            shutil.copyfileobj(q, datei, 1024 * 1024)
+    return datei
+
+
 def hochladen(s, reise):
     """Nach main pushen; kam inzwischen etwas anderes an, darauf aufsetzen (höchstens dreimal)."""
     for versuch in range(3):

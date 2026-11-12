@@ -139,7 +139,7 @@ def fehlerseite(s, kopf, daten, sprache="de"):
             and meldet(daten.decode(), "konto.export.fehler", sprache))
 
 
-def mitglied_dazu(kid, reise, schluessel, seit="2026-11-05T00:00:00+00:00"):
+def mitglied_dazu(kid, reise, schluessel, seit="2099-01-01T00:00:00+00:00"):
     with closing(konten.db()) as v, v:
         v.execute("INSERT INTO mitgliedschaften (konto, reise, schluessel, seit) VALUES (?, ?, ?, ?)",
                   (kid, reise, schluessel, seit))
@@ -222,11 +222,32 @@ def test_dienst_export_404(speicher, monkeypatch):
     monkeypatch.setattr(speicher.rs, "exportieren", lambda *a, **k: (aufgerufen.append(a), echt(*a, **k))[1])
     konten.loeschung_vormerken("stadtwochenende", None)
     with Dienst(speicher.schreiber()) as d:
-        for pfad in ("gibtesnicht/export", "Ungueltig_Name/export", "stadtwochenende/export"):
+        for pfad in ("Ungueltig_Name/export", "stadtwochenende/export"):   # unbekannt bei vorhandenem Repo: reporeise
             code, _, daten = zip_holen(d, pfad)
             assert code == 404, (pfad, code)
             assert json.loads(daten)["fehler_code"] == "schreiben.dienst.unbekannt"
     assert not any("stadtwochenende" in map(str, a) for a in aufgerufen), "vorgemerkte Reise: kein Zugriff auf den Speicher"
+
+
+def test_dienst_export_ohne_repo_503(speicher):
+    """Speicherliste nicht leer, .git fehlt: eine unbekannte Reise ist 503, nicht 404 (kein stiller Teilexport)."""
+    with Dienst(speicher.schreiber()) as d:
+        code, _, daten = zip_holen(d, "gibtesnicht/export")
+    assert code == 503 and json.loads(daten)["fehler_code"] == "schreiben.dienst.repo_nicht_erreichbar"
+
+
+def test_dienst_export_alte_zeitstempel_und_modus(speicher):
+    """Ablagedateien mit mtime 0 (vor 1980) und Modus 400: Export gelingt, Dateien stehen mit 644 in der ZIP."""
+    speicher.rs.vorgang_schreiben("beispielreise", {"medien/foto.jpg": os.urandom(300 * 1024)}, wer="Ida",
+                                  werkzeug="item_update", titel="Foto")
+    for f in (speicher.tmp.parent / "_speicher").rglob("*"):
+        if f.is_file():
+            os.utime(f, (0, 0))
+    with Dienst(speicher.schreiber()) as d:
+        code, _, daten = zip_holen(d, "beispielreise/export")
+    assert code == 200
+    z = als_zip(daten)
+    assert (z.getinfo("medien/foto.jpg").external_attr >> 16) & 0o777 == 0o644
 
 
 def test_dienst_export_entfernte_reise_404(speicher):
@@ -252,7 +273,7 @@ def test_dienst_export_speicherfehler(speicher, monkeypatch, fehler):
     rs = speicher.rs
 
     def kaputt(*a, **k):
-        raise {"ablage": rs.AblageFehlt("fehlt"), "sqlite": sqlite3.OperationalError("db"),
+        raise {"ablage": rs.AblageFehlt("fehlt", "0" * 64), "sqlite": sqlite3.OperationalError("db"),
                "oserror": OSError("platte")}[fehler]
     monkeypatch.setattr(rs, "exportieren", kaputt)
     with Dienst(speicher.schreiber()) as d:
@@ -313,7 +334,7 @@ def test_dienst_export_raeumt_auf(speicher):
 
 def test_dienst_export_streamt_grosse_datei(speicher):
     gross = os.urandom(40 * 1024 * 1024)
-    speicher.rs.vorgang_schreiben("beispielreise", {"medien/gross.bin": gross}, wer="Ida", werkzeug="item_update",
+    speicher.rs.vorgang_schreiben("beispielreise", {"medien/gross.jpg": gross}, wer="Ida", werkzeug="item_update",
                                   titel="Groß")
     pruef = hashlib.sha256(gross).hexdigest()
     del gross
@@ -327,7 +348,7 @@ def test_dienst_export_streamt_grosse_datei(speicher):
                 spitze = tracemalloc.get_traced_memory()[1]
                 assert f.tell() == laenge
                 f.seek(0)
-                with zipfile.ZipFile(f) as z, z.open("medien/gross.bin") as e:
+                with zipfile.ZipFile(f) as z, z.open("medien/gross.jpg") as e:
                     h = hashlib.sha256()
                     for stueck in iter(lambda: e.read(1024 * 1024), b""):
                         h.update(stueck)
@@ -457,7 +478,7 @@ def test_anmeldung_streamt_dateiobjekte(welt, monkeypatch):
     c2.request("GET", "/konto")
     r2 = c2.getresponse()
     r2.read(100)
-    c2.sock.close()
+    r2.close()   # HTTP/1.0: die Verbindung hängt an der Antwort, c2.sock ist schon None
     c2.close()
     ende = time.monotonic() + 5
     while time.monotonic() < ende and not all(f.closed for f in offen):
@@ -640,7 +661,7 @@ def test_export_streamt_grosse_dateien(export_welt, monkeypatch):
                                                     "typ": "pdf", "groesse": len(gross) + 4, "wer": "Ida",
                                                     "hochgeladen": "2026-11-01T00:00:00+00:00",
                                                     "sichtbar": "beteiligte", "zurueckgezogen": None}]})
-    del gross
+    # gross bleibt: gross_export braucht es noch (vor tracemalloc.start belegt, zählt nicht mit)
     t = urllib.parse.urlsplit(u.kurl)
     c = http.client.HTTPConnection(t.hostname, t.port, timeout=120)
     c.request("POST", "/konto", body=b"aktion=export", headers={
@@ -711,7 +732,7 @@ def test_fehlertext_auf_englisch(export_welt):
 
 def test_zeitbudget_aufgebraucht(export_welt, monkeypatch):
     def langsam(reise, datei):
-        monkeypatch.setattr(anmeldung.time, "monotonic", lambda: 10 ** 6)   # Budget mit einem Schlag aufgebraucht
+        monkeypatch.setattr(anmeldung.time, "monotonic", lambda: 10 ** 12)   # Budget mit einem Schlag aufgebraucht
         zip_aus_ordner(BEISPIEL / reise, datei)
         return True, None
     u = export_welt(ausnahmen={"beispielreise": langsam})

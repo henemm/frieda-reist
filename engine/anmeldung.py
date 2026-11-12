@@ -17,11 +17,15 @@ import json
 import os
 import re
 import sys
+import tempfile
 import threading
+import time
 import urllib.parse
+import zipfile
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import belege
 import instanz
 import kalender
 import konten
@@ -855,6 +859,181 @@ def einstieg_karte(k):
             f'<a class="knopf leise" href="/info/">{esc(tx("konto.einstieg.knopf"))}</a></section>')
 
 
+# ---------------------------------------------------------------- Export der Daten (#498)
+# „Meine Daten“ auf Mein Konto: eine ZIP mit person.json und je Mitgliedschaft <reise>/reise/ (vom Schreibweg, im Dateiformat
+# der Reise), <reise>/beitraege/ und <reise>/belege/ (aus der Ablage, Belege nach der Rolle). Alles in temporären Dateien und in
+# Stücken; scheitert etwas, gibt es keine ZIP, sondern Mein Konto mit dem Fehlertext. Der Export liest nur.
+
+EXPORT_BUDGET = 55            # Sekunden für den ganzen Export, unter der Lesefrist von nginx (60 s)
+EXPORT_STUECK = 1024 * 1024
+EXPORT_PUNKTE = ("konto.export.punkt_1", "konto.export.punkt_2", "konto.export.punkt_3", "konto.export.punkt_4")
+# Abruf der Reise-ZIP beim Schreibweg, (reise, datei) -> (True | "fehlt" | False, fehler); setzt der Konnektor beim Start
+# (konnektor.reise_export), weil dieses Modul den Konnektor nicht importieren darf. None: nicht eingerichtet.
+reise_exportieren = None
+_exporte = set()              # Konten, deren Export gerade läuft: einer je Konto zugleich
+_exporte_sperre = threading.Lock()
+
+
+class ExportFehler(Exception):
+    """Der Export kann nicht vollständig werden; die Person bekommt den Fehlertext, keine halbe ZIP."""
+
+
+def export_rest():
+    """Restzeit des Exports dieser Anfrage in Sekunden (ohne laufenden Export: das ganze Budget)."""
+    ende = getattr(_anfrage, "export_ende", None)
+    return EXPORT_BUDGET if ende is None else ende - time.monotonic()
+
+
+def export_karte(k):
+    """Abschnitt „Meine Daten“ (id="daten"): Satz, Knopf für den Export, darunter aufklappbar, was drin ist."""
+    punkte = "".join(f"<li>{esc(tx(p))}</li>" for p in EXPORT_PUNKTE)
+    return (f'<div class="abschnitt" id="daten"><h2>{esc(tx("konto.export.titel"))}</h2>'
+            + karte(f'<p>{esc(tx("konto.export.hinweis"))}</p>',
+                    formular("/konto", verdeckt(aktion="export"), tx("konto.export.knopf"), "leise"),
+                    f'<div class="kalender-links"><details><summary>{esc(tx("konto.export.was_drin"))}</summary>'
+                    f'<div class="inhalt" style="padding:0"><ul class="punkte">{punkte}</ul>'
+                    f'<p class="klein">{esc(tx("konto.export.andere"))}</p></div></details></div>')
+            + "</div>")
+
+
+def export_antwort(k, reise_info):
+    """POST /konto aktion=export: die ZIP als Download oder, wenn etwas scheitert, Mein Konto mit dem Fehlertext."""
+    fehlerseite = lambda: antwort(200, konto_seite(k, reise_info, meldung=tx("konto.export.fehler"), offen="daten"))   # noqa: E731
+    with _exporte_sperre:
+        if k["id"] in _exporte:
+            return fehlerseite()
+        _exporte.add(k["id"])
+    _anfrage.export_ende = time.monotonic() + EXPORT_BUDGET
+    try:
+        datei = export_bauen(k, reise_info)
+    except Exception as e:   # noqa: BLE001  kein halber Export: jeder Fehler vor dem ersten Byte ist die Fehlerseite
+        sys.stderr.write(f"Error export: {type(e).__name__}: {' '.join(str(e).split())[:200]}\n")
+        return fehlerseite()
+    finally:
+        _anfrage.export_ende = None
+        with _exporte_sperre:
+            _exporte.discard(k["id"])
+    datum = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    return 200, [("Content-Type", "application/zip"),
+                 ("Content-Disposition", f'attachment; filename="frieda-daten-{datum}.zip"')], datei
+
+
+def export_bauen(k, reise_info):
+    """Die ganze ZIP in einer temporären Datei (verschwindet beim Schließen) -> offenes Dateiobjekt am Anfang."""
+    if reise_exportieren is None:
+        raise ExportFehler("export of trips not set up")
+    reisen = [m for m in konten.mitgliedschaften(k["id"]) if not konten.reise_vorgemerkt(m["reise"])]
+    datei = tempfile.TemporaryFile()
+    try:
+        with zipfile.ZipFile(datei, "w", zipfile.ZIP_DEFLATED) as z:
+            z.writestr("person.json", _export_json(export_person(k, reisen, reise_info)))
+            for m in reisen:
+                _export_reise(z, k, m)
+        datei.seek(0)
+        return datei
+    except BaseException:
+        datei.close()
+        raise
+
+
+def export_person(k, reisen, reise_info):
+    """Inhalt von person.json: nur die Angaben des eigenen Kontos, ohne Kennungen, Schlüssel und Adressen anderer."""
+    kid = k["id"]
+    konto = konten.konto(kid)
+    return {"erstellt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "name": konto["name"], "email": konto["email"], "sprache": konto["sprache"],
+            "mitgliedschaften": [{"reise": m["reise"], "titel": reise_titel(m["reise"], reise_info),
+                                  "rolle": rolle_neu(_person(m["reise"], m["schluessel"]).get("rolle")) or "gast",
+                                  "seit": m["seit"]} for m in reisen],
+            "geraete": konten.geraete(kid), "kalender": konten.kalender_einstellungen(kid),
+            "push": konten.push_einstellungen(kid)}
+
+
+def _export_json(wert):
+    return json.dumps(wert, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
+
+
+def _export_zeit():
+    if export_rest() <= 0:
+        raise ExportFehler("time budget used up")
+
+
+def _export_name(name, nur_datei=False):
+    """Eintragsname aus einer Quelle prüfen: kein absoluter Pfad, kein .., kein Backslash, kein Laufwerk; sonst Abbruch."""
+    teile = name.split("/")
+    if (not name or name.startswith("/") or "\\" in name or ":" in teile[0] or "" in teile[:-1]
+            or any(t in (".", "..") for t in teile) or (nur_datei and len(teile) != 1)):
+        raise ExportFehler("unsafe entry name")
+    return name
+
+
+def _export_kopieren(quelle, z, name, groesse, date_time=None, attr=0):
+    """Eine Datei in Stücken in die ZIP schreiben, mit Blick auf das Zeitbudget."""
+    info = zipfile.ZipInfo(name, date_time=date_time or time.gmtime()[:6])
+    info.compress_type, info.file_size, info.external_attr = zipfile.ZIP_DEFLATED, groesse, attr
+    with z.open(info, "w") as aus:
+        for stueck in iter(lambda: quelle.read(EXPORT_STUECK), b""):
+            _export_zeit()
+            aus.write(stueck)
+
+
+def _export_reise(z, k, m):
+    """Eine Mitgliedschaft: reise/ vom Schreibweg, beitraege/ und belege/ aus der Ablage (fehlt sie, entfallen beide).
+    404 des Schreibwegs: die Reise gibt es nicht mehr, sie wird ausgelassen."""
+    reise = m["reise"]
+    with tempfile.TemporaryFile() as rz:
+        ok, grund = reise_exportieren(reise, rz)
+        if ok == "fehlt":
+            return
+        if ok is not True:
+            raise ExportFehler(f"trip {reise}: {grund}")
+        _export_zeit()
+        rz.seek(0)
+        with zipfile.ZipFile(rz) as q:
+            infos = q.infolist()
+            if not infos:
+                raise ExportFehler(f"trip {reise}: empty archive")
+            for i in infos:
+                name = _export_name(i.filename)
+                if not i.is_dir():
+                    with q.open(i) as quelle:
+                        _export_kopieren(quelle, z, f"{reise}/reise/{name}", i.file_size, i.date_time, i.external_attr)
+    o = rm.ordner(reise)
+    if o is None or not o.is_dir():
+        return
+    _export_beitraege(z, o, reise)
+    _export_belege(z, o, reise, *_export_rolle(k, m))
+
+
+def _export_rolle(k, m):
+    """(Name, Rolle) der Person in der Reise aus der veröffentlichten Seite; ohne sie Gast mit dem Namen des Kontos."""
+    zs = rm.zustand(m["reise"])
+    if zs is None:
+        return k["name"], "gast"
+    p = _person(m["reise"], m["schluessel"], zs)
+    return p.get("name") or k["name"], rolle_neu(p.get("rolle")) or "gast"
+
+
+def _export_beitraege(z, o, reise):
+    """Aufgaben, Wünsche, Packstand und Rückmeldungen vollständig, wie die Reiseseite sie jedem Mitglied liefert."""
+    aufgaben = o / "aufgaben.json"
+    leer = aufgaben.exists() and not aufgaben.read_text(encoding="utf-8").strip()
+    for datei, inhalt in (("aufgaben.json", {"naechste": 1, "aufgaben": []} if leer else rm.aufgaben_lesen(o)),
+                          ("brett.json", rm.brett_lesen(o)), ("packstand.json", rm.packstand_lesen(o)),
+                          ("rueckmeldungen.json", rm.eintraege(o))):
+        z.writestr(f"{reise}/beitraege/{datei}", _export_json(inhalt))
+
+
+def _export_belege(z, o, reise, name, rolle):
+    """Die Belege, die die Person sehen darf (belege.liste), mit ihren Dateien; fehlt eine Datei, scheitert der Export."""
+    liste = belege.liste(o, name, rolle)
+    z.writestr(f"{reise}/belege/belege.json", _export_json({"belege": liste}))
+    for b in liste:
+        datei = _export_name(str(b.get("datei") or ""), nur_datei=True)
+        with open(belege.datei_pfad(o, b), "rb") as quelle:
+            _export_kopieren(quelle, z, f"{reise}/belege/{datei}", os.fstat(quelle.fileno()).st_size)
+
+
 def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen=""):
     """Mein Konto (Gestalt #60), zugleich die Startseite (#41): Meldungen, Reisen, dann Kalender, Freischaltungen
     (Betreiber), Einstellungen als Liste, unten Abmelden auf allen Geräten und Konto löschen. offen: Einstellung, die
@@ -945,6 +1124,7 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
                  push_karte(k, offen == "push"),
                  betreiber,
                  f'<div class="abschnitt"><h2>{esc(tx("konto.seite.einstellungen"))}</h2><div class="liste">{einstellungen}</div></div>',
+                 export_karte(k),
                  '<div class="links" style="flex-direction:column;align-items:center">'
                  f'<form method="post" action="/konto">{verdeckt(aktion="alle_abmelden")}<button class="link">{esc(tx("konto.seite.ueberall_abmelden"))}</button></form>'
                  f'<a href="/konto?loeschen=1" style="color:var(--gefahr)">{esc(tx("konto.seite.loeschen_titel"))}</a></div>',
@@ -1019,6 +1199,7 @@ def datenschutz_inhalt():
             f'<p style="margin:.3rem 0 0">{esc(tx("recht.datenschutz.konto_loeschen"))}</p>'
             f'<p style="margin:.3rem 0 0">{esc(tx("recht.datenschutz.reise_loeschen", tage=instanz.loeschfrist_tage()))}</p>'
             f'<p style="margin:.3rem 0 0">{esc(tx("recht.datenschutz.namen_freitext"))}</p>'
+            f'<p style="margin:.3rem 0 0">{esc(tx("recht.datenschutz.export"))}</p>'
             f'<p style="margin:.3rem 0 0">{esc(tx("recht.datenschutz.folgt"))}</p>'
             f'<p style="margin:.3rem 0 0">{th("recht.datenschutz.kontakt", impressum=impressum)}</p></div>')
 
@@ -1317,6 +1498,8 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
             return antwort(200, konto_seite(k, reise_info, hinweis=tx("konto.push.hier_" + q["push"]), offen="push"))
         if methode == "GET":
             return antwort(200, konto_seite(k, reise_info))
+        if a == "export":      # Meine Daten herunterladen (#498): nur POST, hinter der Prüfung von Herkunft und Sitzung
+            return export_antwort(k, reise_info)
         try:
             if a == "name":
                 konten.name_setzen(k["id"], f.get("name"))

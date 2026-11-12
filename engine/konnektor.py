@@ -36,15 +36,18 @@ HTTP (hinter nginx an der Wurzel von FR_KN_ADRESSE, Vorlage betrieb/vorlagen/ngi
 import base64
 import datetime
 import hashlib
+import http.client
 import json
 import math
 import os
 import re
 import secrets
+import shutil
 import sys
 import threading
 import urllib.error
 import urllib.request
+import zipfile
 from html.parser import HTMLParser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -1666,6 +1669,36 @@ def buchung_im_repo(reise, bid):
         return None, tk("konnektor.ausgabe.buchung_im_repo.1", w1=e.code)
     except (urllib.error.URLError, OSError, ValueError):
         return None, tk("konnektor.schreib_anfrage.1")
+
+
+def reise_export(reise, datei):
+    """Die Reise als ZIP vom Schreibweg (GET /<reise>/export, #498) in das Dateiobjekt datei, in Stücken, im Rest des
+    Budgets des Exports (anmeldung.export_rest). -> (True, None) | ("fehlt", None) bei 404 | (False, fehler). Eine
+    unvollständige Antwort oder eine, die keine ZIP ist, gilt als Fehler."""
+    if not schreibdienst():
+        return False, tk("konnektor.buchung_im_repo.1")
+    rest = anmeldung.export_rest()
+    if rest <= 0:
+        return False, tk("konnektor.schreib_anfrage.1")
+    req = urllib.request.Request(f"{schreibdienst()}/{reise}/export", headers={"X-Frieda-Dienst": konten.dienst_geheimnis()})
+    try:
+        with urllib.request.urlopen(req, timeout=rest) as r:
+            laenge, n = r.headers.get("Content-Length"), 0
+            for stueck in iter(lambda: r.read(1024 * 1024), b""):
+                if anmeldung.export_rest() <= 0:
+                    return False, tk("konnektor.schreib_anfrage.1")
+                datei.write(stueck)
+                n += len(stueck)
+        if (laenge is not None and n != int(laenge)) or not zipfile.is_zipfile(datei):
+            return False, tk("konnektor.schreib_anfrage.1")
+        return True, None
+    except urllib.error.HTTPError as e:
+        return ("fehlt", None) if e.code == 404 else (False, tk("konnektor.ausgabe.buchung_im_repo.1", w1=e.code))
+    except (urllib.error.URLError, http.client.HTTPException, OSError, ValueError):
+        return False, tk("konnektor.schreib_anfrage.1")
+
+
+anmeldung.reise_exportieren = reise_export     # Abruf für den Export auf Mein Konto, ohne Zirkelimport (#498)
 
 
 def dienst_fehler(e):
@@ -3323,6 +3356,20 @@ class Dienst(BaseHTTPRequestHandler):
             code, kopf, inhalt = oauth.bearbeiten(methode, self.path, self.headers, body, ip)
         else:
             code, kopf, inhalt = anmeldung.bearbeiten(methode, self.path, self.headers, body, ip, reise_kurz)
+        if isinstance(inhalt, bytes) or not hasattr(inhalt, "read"):
+            return self._anmeldung_senden(code, kopf, inhalt, len(inhalt))
+        try:     # Dateiobjekt (Export auf Mein Konto, #498): in Stücken senden, nie ganz lesen, immer schließen
+            self._anmeldung_senden(code, kopf, None, os.fstat(inhalt.fileno()).st_size)
+            if self.command != "HEAD":
+                inhalt.seek(0)
+                shutil.copyfileobj(inhalt, self.wfile, 1024 * 1024)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        finally:
+            inhalt.close()
+
+    def _anmeldung_senden(self, code, kopf, inhalt, laenge):
+        """Kopfzeilen der Anmeldeseiten; mit inhalt (Bytes) auch der Inhalt, außer bei HEAD."""
         self.send_response(code)
         grund = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
                  "Referrer-Policy": "same-origin",   # nicht no-referrer: dann schicken Browser „Origin: null“
@@ -3334,9 +3381,9 @@ class Dienst(BaseHTTPRequestHandler):
         for k, v in [*((k, v) for k, v in grund.items() if k not in eigene), *kopf]:
             self.send_header(k, v)
         if code not in (204, 304):
-            self.send_header("Content-Length", str(len(inhalt)))
+            self.send_header("Content-Length", str(laenge))
         self.end_headers()
-        if self.command != "HEAD":
+        if inhalt is not None and self.command != "HEAD":
             self.wfile.write(inhalt)
 
     def do_GET(self):
