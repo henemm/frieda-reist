@@ -333,6 +333,21 @@ def test_gesund_ohne_token(dienst, tmp_path, monkeypatch):
     assert anfrage(f"{basis}/gesund", methode="GET")[0] == 503
 
 
+def test_gesund_ueberspringt_zur_loeschung_vorgemerkte_reise(dienst, tmp_path, monkeypatch):
+    """#539: Eine zur Löschung vorgemerkte Reise (#381) hat keine Seite mehr, steht aber noch in seiten.json; die
+    Bereitschaft darf deshalb nicht auf 503 fallen. Ohne den Vormerk bleibt eine fehlende Seite ein Fehler."""
+    import konten
+    basis, _ = dienst
+    monkeypatch.setenv("FR_KONTEN", str(tmp_path / "konten"))
+    (tmp_path / "seiten.json").write_text(json.dumps({"beispielreise": "…", "geloeschte-reise": "…"}))
+    assert anfrage(f"{basis}/gesund", methode="GET") == (503, {"gesund": False})
+    konten.loeschung_vormerken("geloeschte-reise", "k-ida")
+    assert anfrage(f"{basis}/gesund", methode="GET") == (200, {"gesund": True})
+    # Nur vorgemerkte Reisen: nichts Freigeschaltetes übrig, also nicht bereit
+    (tmp_path / "seiten.json").write_text(json.dumps({"geloeschte-reise": "…"}))
+    assert anfrage(f"{basis}/gesund", methode="GET") == (503, {"gesund": False})
+
+
 def test_nacht_ohne_doppelten_namen(seiten, tmp_path, monkeypatch):
     monkeypatch.setenv("KN_SEITEN", str(seiten))
     zugang = {"reise": "beispielreise", "person": "karl"}

@@ -1,0 +1,30 @@
+.F                                                                       [100%]
+=================================== FAILURES ===================================
+___________ test_gesund_ueberspringt_zur_loeschung_vorgemerkte_reise ___________
+
+dienst = ('http://127.0.0.1:43981', PosixPath('/tmp/pytest-of-hem/pytest-14912/test_gesund_ueberspringt_zur_l0/ablage'))
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-14912/test_gesund_ueberspringt_zur_l0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c233aad0c20>
+
+    def test_gesund_ueberspringt_zur_loeschung_vorgemerkte_reise(dienst, tmp_path, monkeypatch):
+        """#539: Eine zur Löschung vorgemerkte Reise (#381) hat keine Seite mehr, steht aber noch in seiten.json; die
+        Bereitschaft darf deshalb nicht auf 503 fallen. Ohne den Vormerk bleibt eine fehlende Seite ein Fehler."""
+        import konten
+        basis, _ = dienst
+        monkeypatch.setenv("FR_KONTEN", str(tmp_path / "konten"))
+        (tmp_path / "seiten.json").write_text(json.dumps({"beispielreise": "…", "geloeschte-reise": "…"}))
+        assert anfrage(f"{basis}/gesund", methode="GET") == (503, {"gesund": False})
+        konten.loeschung_vormerken("geloeschte-reise", "k-ida")
+>       assert anfrage(f"{basis}/gesund", methode="GET") == (200, {"gesund": True})
+E       AssertionError: assert (503, {'gesund': False}) == (200, {'gesund': True})
+E         
+E         At index 0 diff: 503 != 200
+E         Use -v to get more diff
+
+engine/tests/test_konnektor.py:345: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 503
+GET 503
+=========================== short test summary info ============================
+FAILED engine/tests/test_konnektor.py::test_gesund_ueberspringt_zur_loeschung_vorgemerkte_reise
+1 failed, 1 passed, 61 deselected in 2.67s
