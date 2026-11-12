@@ -49,3 +49,4 @@ Die Frage der Prüfstelle (ADR-0001, Frage 2) lautet: Muss die Software dafür e
 ## Verlauf
 
 - 6.11.2026: Entschieden vom Product Owner (Issue #370, Packliste); Umsetzung in drei Paketen: (1) Modell, Schreibweg, Konnektor, Rolle `summe`, Beispielreisen; (2) Seite und Packstand; (3) Texte, Dokumentation, Rest.
+- 12.11.2026 (#431, Entwurf „Packliste neu“ freigegeben): Eine Kategorie kann für die Reise ausgeblendet werden (`ausgeblendet: true` an der Art, nur Grundform `gegenstand`; `art_definieren` / `kind_define` mit `ausgeblendet` / `hidden`); sie fehlt in Summen, Packstand, Mitnehmen und auf der Seite, nichts wird gelöscht, der Konnektor zeigt sie markiert. „Wo es unterwegs steckt“ ist ein Merkmal der Reise (in der Beispielreise `getragen`), keine Kategorie; Planen teilt die Summe nach einem Auswahl-Merkmal auf und sortiert nach jeder Spalte; Packen zeigt „Nur meins“ oder „Alle“, kompakt, mit Kategorien für mich. Kein Formatwechsel: das Feld ist freiwillig.

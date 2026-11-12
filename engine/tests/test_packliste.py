@@ -602,13 +602,32 @@ def test_packliste_im_browser(tmp_path, monkeypatch, browser):
     assert e["fehler"] == []
     # Planen
     assert e["planen"]["reiter"] == "#packliste"
-    assert e["planen"]["kategorien"] == ["Kleidung (3)", "Ausrüstung (3)", "Apotheke (2)"]
-    assert e["planen"]["gesamt"] == ["Gewicht 2690 g Anschaffung 70 €"]
-    assert e["planen"]["spalten"][:2] == ["Gegenstand", "Gewicht"]
-    assert e["planen"]["summen"] == ["Summe 1560 g", "Summe 750 g 70 €", "Summe 380 g"]
+    # Fotoausrüstung ist für die Reise ausgeblendet (#431): keine Tabelle, nicht in den Summen, ein Hinweis
+    assert e["planen"]["kategorien"] == ["Kleidung (3)", "Ausrüstung (4)", "Apotheke (2)"]
+    assert e["planen"]["gesamt"] == ["Gewicht 2810 g Anschaffung 70 €"]
+    assert [s.split(" ↕")[0].split(" ▲")[0] for s in e["planen"]["spalten"][:2]] == ["Gegenstand", "Gewicht"]
+    assert e["planen"]["summen"] == ["Summe 1560 g", "Summe 870 g 70 €", "Summe 380 g"]
     assert e["planen"]["weggelassen"] == ["1 weggelassen"] and not e["planen"]["breit"]
-    # Packen: Karl packt alles außer dem Erste-Hilfe-Set, das Ida trägt; es gibt dort keinen Haken für ihn
-    assert e["packen"]["gruppen"][0].startswith("Kleidung") and e["packen"]["haekchenFuerKarl"] == 7 and e["packen"]["ohneHakenIda"] == 0
+    assert e["planen"]["aufteilen"] == "getragen"
+    assert e["planen"]["teile"] == ["am Körper 900 g", "Tagesrucksack 980 g", "Rucksack 930 g · 70 €"]
+    assert len(e["planen"]["hinweis"]) == 1 and e["planen"]["hinweis"][0].startswith("Für die Reise ausgeblendet: Fotoausrüstung (1).")
+    # Sortieren (#431): auf, ab, gemerkt, zurück zur Reihenfolge der Liste
+    s = e["sortieren"]
+    assert s["auf"] == {"sort": "ascending", "zeilen": ["Wandersocken", "Regenjacke", "Wanderschuhe"]}
+    assert s["ab"] == {"sort": "descending", "zeilen": ["Wanderschuhe", "Regenjacke", "Wandersocken"]}
+    assert s["gemerkt"] == "descending" and s["zurueck"] == {"sort": "none", "zeilen": ["Regenjacke", "Wanderschuhe", "Wandersocken"]}
+    assert e["nichtAufteilen"] == 0
+    # Packen: nur meins (Vorgabe); Karl sieht das Erste-Hilfe-Set, das Ida packt, erst unter „Alle“, dort ohne Haken
+    pk = e["packen"]
+    assert pk["gruppen"][0].startswith("Kleidung") and pk["haekchenFuerKarl"] == 8 and pk["ohneHakenIda"] == 0 and pk["idaDa"] == 0
+    assert pk["wer"] == ["Nur meins=true", "Alle=false"] and pk["hinweis"] == ["Sachen von Ida (1) stehen unter „Alle“."]
+    assert pk["packt"] == 0 and pk["griffbereit"] == 1 and pk["wert"] == ["420 g"] and pk["kamera"] == 0
+    assert pk["fuerMich"] == ["Kleidung=true", "Ausrüstung=true", "Apotheke=true"]
+    n = e["notiz"]
+    assert (n["vorher"], n["sichtbarVorher"], n["hinweis"], n["nachher"]) == ("false", False, "· Notiz", "true")
+    assert n["text"].startswith("Für die vielen Stufen an der Bastei (Beispiel)Gehört zu: ")   # Notiz und Bezug erst nach Antippen
+    assert e["alle"] == {"etikett": ["Ida"], "haken": 0, "hinweis": 0}
+    assert e["ohneApotheke"] == {"g08": 0, "fortschritt": ["Karl: 0 von 7 gepackt"], "knopf": "false"}
     h = e["haken"]
     assert h["gepackt"] == ["Regenjacke"] and h["checked"] == "true" and e["nachNeuladen"] == ["Regenjacke"]
     # Gepacktes rutscht nach einer Pause in seiner Gruppe nach unten, die Liste zuckt nicht, der Fokus bleibt am Haken (#501, #503)
@@ -616,16 +635,16 @@ def test_packliste_im_browser(tmp_path, monkeypatch, browser):
     assert h["sofort"] == h["vorher"]                                     # erst nach der Pause einsortiert (#503)
     assert [t.split("G-")[0] for t in h["nachher"][:2]] == [t.split("G-")[0] for t in h["vorher"][1:3]]
     assert h["zuckt"] == 0 and h["fokus"] == "G-01"
-    assert e["fortschritt"] == ["Karl: 1 von 7 gepackt"]
-    assert [g.split(" ")[0] for g in e["raum"]["gruppen"]] == ["am", "Tagesrucksack", "Rucksack"] and e["raum"]["mitRaum"] == 0
-    assert e["raum"]["summen"][1] == "Gewicht 980 g"                        # Tagesrucksack: Jacke 420, Flasche 180, Set 350, Pflaster 30
+    assert e["fortschritt"] == ["Karl: 1 von 8 gepackt"]
+    assert [g.split(" ")[0] for g in e["raum"]["gruppen"]] == ["am", "Tagesrucksack", "Rucksack"] and e["raum"]["mitWert"] == 0
+    assert e["raum"]["summen"][1] == "Gewicht 630 g"                        # Tagesrucksack, nur meins: Jacke 420, Flasche 180, Pflaster 30
     # ohne Netz: abhaken und zurücknehmen werden gemerkt, dann nachgereicht
     assert e["offline"]["ausgang"] == 2 and e["offline"]["gepackt"] == ["Wanderstöcke"] and "wird nachgereicht" in e["offline"]["nachreichen"]
     assert e["nachgereicht"] == {"ausgang": 0, "gepackt": ["Wanderstöcke"]}
     assert set(rm.packstand_lesen(o)) == {"G-02", "G-05"} and list(rm.packstand_lesen(o)["G-05"]) == ["Karl"]   # G-02 beim Einklappen
     # Einklappen (#511): fertige Gruppe zu, Knopf für alle, die Wahl bleibt nach dem Neuladen, Stand und Summe im Kopf
     k = e["klappen"]
-    assert json.loads(k["gemerkt"]) == {"packen|raum|Tagesrucksack": False, "packen|raum|Rucksack": False}   # nur Abweichungen
+    assert json.loads(k["gemerkt"]) == {"packen|getragen|Tagesrucksack": False, "packen|getragen|Rucksack": False}   # nur Abweichungen
     assert k["vorFertig"] and k["knopf0"] == "Alle aufklappen" and k["alleOffen"] and k["alleZu"] and k["nachNeuladen"]
     assert "1 von 1 gepackt" in k["kopf"] and "900 g" in k["kopf"] and k["knopf"] == "Alle aufklappen"
     # Mitnehmen und Kennung

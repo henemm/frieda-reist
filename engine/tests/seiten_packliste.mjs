@@ -43,7 +43,33 @@ aus.planen = {
   summen: await p.$$eval(".pack-tabelle tfoot tr", a => a.map(x => [...x.cells].map(c => c.textContent.trim()).filter(Boolean).join(" "))),
   weggelassen: await texte(p, ".pack-weg summary"),
   breit: await p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1),
+  // #431: Summe aufgeteilt nach dem ersten Auswahl-Merkmal, Hinweis auf die für die Reise ausgeblendete Kategorie
+  aufteilen: await p.$eval("#plAufteilen", s => s.value),
+  teile: await p.$$eval(".pack-aufteilung > div", a => a.map(d => d.children[0].textContent + " " + d.children[1].textContent)),
+  hinweis: await texte(p, ".pack-hinweis"),
 };
+// Sortieren (#431): auf, ab, nach Neuladen gemerkt, dritter Tipp zurück; gilt für alle Tabellen
+const kopfGewicht = '.pack-tabelle:first-of-type [data-pl-sort="gewicht"]';
+const sortStand = async () => ({sort: await p.$eval(kopfGewicht, k => k.closest("th").getAttribute("aria-sort")),
+  zeilen: await texte(p, ".pack-tabelle:first-of-type tbody th[scope=row]")});
+const titelVon = z => z.map(t => t.split("G-")[0].trim());
+await p.click(kopfGewicht);
+const auf = await sortStand();
+await p.click(kopfGewicht);
+const ab = await sortStand();
+await p.reload();
+await p.waitForSelector(".pack-tabelle");
+const gemerktSort = await sortStand();
+await p.click(kopfGewicht);
+const zurueck = await sortStand();
+aus.sortieren = {auf: {...auf, zeilen: titelVon(auf.zeilen)}, ab: {...ab, zeilen: titelVon(ab.zeilen)}, gemerkt: gemerktSort.sort,
+  zurueck: {...zurueck, zeilen: titelVon(zurueck.zeilen)}};
+// nicht aufteilen
+await p.selectOption("#plAufteilen", "");
+await warte(p, () => !document.querySelector(".pack-aufteilung"));
+aus.nichtAufteilen = await p.locator(".pack-aufteilung").count();
+await p.selectOption("#plAufteilen", "getragen");
+await warte(p, () => document.querySelector(".pack-aufteilung"));
 // Ansicht Packen
 await p.click('[data-pl-ansicht="packen"]');
 await p.waitForSelector(".pack-zeile");
@@ -52,7 +78,39 @@ aus.packen = {
   fortschritt: await texte(p, ".pack-kopf ~ p.meldung"),
   haekchenFuerKarl: await p.locator(".pack-zeile [data-pack]").count(),
   ohneHakenIda: await p.locator("#G-07 [data-pack]").count(),      // das Erste-Hilfe-Set packt Ida
+  // #431: nur meins (Vorgabe), kompakte Zeile ohne „packt“, Etikett der angebotenen Auswahl, Hinweis auf Sachen anderer
+  wer: await p.$$eval(".pack-wer button", a => a.map(b => b.textContent + "=" + b.getAttribute("aria-pressed"))),
+  idaDa: await p.locator("#G-07").count(),
+  packt: await p.locator(".pack-zeile", {hasText: /packt/}).count(),
+  griffbereit: await zeile(p, "Trinkflasche").locator(".chip", {hasText: "griffbereit"}).count(),
+  wert: await texte(p, "#G-01 .pack-wert"),
+  hinweis: await texte(p, ".pack-hinweis"),
+  kamera: await p.locator("#G-11").count(),
+  fuerMich: await p.$$eval(".pack-kats button", a => a.map(b => b.textContent + "=" + b.getAttribute("aria-pressed"))),
 };
+// Notiz erst nach Antippen
+const notizKnopf = "#G-05 button.pack-auf";
+aus.notiz = {vorher: await p.$eval(notizKnopf, k => k.getAttribute("aria-expanded")), sichtbarVorher: await p.isVisible("#G-05-mehr"),
+  hinweis: (await texte(p, `${notizKnopf} .pack-mehr-hinweis`))[0]};
+await p.click(notizKnopf);
+aus.notiz.nachher = await p.$eval(notizKnopf, k => k.getAttribute("aria-expanded"));
+aus.notiz.text = (await texte(p, "#G-05-mehr"))[0];
+await p.click(notizKnopf);
+// Alle: die Sachen der anderen mit ihrem Namen, ohne Haken; zurück auf nur meins
+await p.click('[data-pl-wer="alle"]');
+await p.waitForSelector("#G-07");
+aus.alle = {etikett: await texte(p, "#G-07 .pack-person"), haken: await p.locator("#G-07 [data-pack]").count(), hinweis: await p.locator(".pack-hinweis").count()};
+await p.click('[data-pl-wer="meins"]');
+await warte(p, () => !document.querySelector("#G-07"));
+// Kategorie für mich abwählen: fehlt beim Packen, Fortschritt zählt, was gezeigt wird; nach Neuladen gemerkt; wieder anwählen
+await p.click('[data-pl-aus="apotheke"]');
+await warte(p, () => !document.querySelector("#G-08"));
+await p.reload();
+await p.waitForSelector(".pack-zeile");
+aus.ohneApotheke = {g08: await p.locator("#G-08").count(), fortschritt: await texte(p, ".pack-kopf ~ p.meldung"),
+  knopf: await p.$eval('[data-pl-aus="apotheke"]', b => b.getAttribute("aria-pressed"))};
+await p.click('[data-pl-aus="apotheke"]');
+await p.waitForSelector("#G-08");
 if (process.env.RH_BILDER) await p.screenshot({path: `${process.env.RH_BILDER}/packliste-390.png`, fullPage: true});
 // Abhaken geht sofort, bleibt beim Dienst und überlebt das Neuladen. Die Seite zeigt den Haken vor der Antwort des
 // Dienstes; neu geladen wird erst, wenn das Speichern beantwortet ist, sonst gewinnt das Neuladen den Wettlauf (#413).
@@ -76,11 +134,11 @@ await p.reload();
 await p.waitForSelector(".pack-zeile");
 aus.nachNeuladen = await texte(p, ".pack-zeile.gepackt .pack-titel");
 aus.fortschritt = await texte(p, ".pack-kopf ~ p.meldung");
-// Gruppieren nach Raum: in der Reihenfolge der Werte der Auswahl, mit Summen je Gruppe
-await p.selectOption("#plGruppe", "raum");
+// Gruppieren nach Getragen: in der Reihenfolge der Werte der Auswahl, mit Summen je Gruppe; die Zeile nennt den Wert nicht noch einmal
+await p.selectOption("#plGruppe", "getragen");
 await warte(p, () => document.querySelector(".pack-gruppe[data-gruppe='Rucksack']"));
 aus.raum = {gruppen: await texte(p, ".pack-gruppe > summary > h3"), summen: await texte(p, ".pack-gruppe > summary > .pack-summe"),
-  mitRaum: await p.locator(".pack-gruppe .pack-unter", {hasText: "Raum"}).count()};
+  mitWert: await p.locator(".pack-gruppe .pack-zeile", {hasText: "Tagesrucksack"}).count()};
 // Ohne Netz abhaken und zurücknehmen: wird gemerkt und beim nächsten Kontakt nachgereicht
 netz = false;
 await haken(p, "Wanderstöcke").click();

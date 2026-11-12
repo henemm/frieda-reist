@@ -448,13 +448,36 @@ details.ag-erledigt{margin-top:22px;border-top:1px solid var(--line)}
 .pico a.mitnehmen,a.mitnehmen{display:flex;gap:8px;align-items:flex-start;margin:8px 0 0;font-size:var(--t-klein);color:var(--fg);text-decoration:none;max-width:var(--lese)}
 a.mitnehmen b{font-weight:700}
 a.mitnehmen:hover span{text-decoration:underline}
-.pack-zeile{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)}
+.pack-zeile{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--line)}
 .pack-zeile .haken-platz{width:30px;height:30px;flex:none;display:inline-flex;align-items:center;justify-content:center;color:var(--acc);font-size:var(--t-text)}
 .pack-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .pack-titel{font-weight:600;line-height:1.3}
 .pack-unter{font-size:var(--t-klein);color:var(--mut);line-height:1.35}
 .pack-zeile .chips{margin:3px 0 0}
 .pack-zeile.gepackt .pack-titel{color:var(--mut);text-decoration:line-through}
+/* kompakte Zeile (#431): Titel, klein die summierten Werte, Etiketten; Notiz und Bezug erst nach Antippen des Titels */
+.pack-kopfzeile{display:flex;align-items:flex-start;gap:8px;min-height:30px}
+.pack-auf,.pico button.pack-auf{all:unset;box-sizing:border-box;flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;padding:4px 0}
+.pico button.pack-auf{cursor:pointer}
+.pico button.pack-auf:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:var(--r-klein)}
+.pack-wert,.pack-mehr-hinweis{font-size:var(--t-etikett);color:var(--mut);font-variant-numeric:tabular-nums}
+.pack-mehr-hinweis[hidden]{display:none}
+.pack-mehr{display:flex;flex-direction:column;gap:2px;padding:0 0 4px}
+.pack-mehr[hidden]{display:none}
+.pack-hinweis{font-size:var(--t-klein);color:var(--mut);border-top:1px solid var(--line);padding-top:10px;margin:14px 0 0;max-width:var(--lese)}
+/* Molekül Packaufteilung (#431): Summen je Wert eines Auswahl-Merkmals unter der Summe der ganzen Liste */
+.pack-aufteilung{display:flex;flex-wrap:wrap;gap:2px 16px;margin:0 0 8px;font-size:var(--t-klein);color:var(--mut)}
+.pack-aufteilung>div{display:flex;gap:6px}
+.pack-aufteilung dd{margin:0;color:var(--fg);font-weight:700;font-variant-numeric:tabular-nums}
+/* Molekül Packsortierkopf (#431): Spaltenkopf als Knopf mit Pfeil */
+.pico button.pack-sort{all:unset;cursor:pointer;font-weight:600;white-space:nowrap;padding:4px 0}
+.pico button.pack-sort:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.pack-pfeil{font-size:.8em;color:var(--mut)}
+th:is([aria-sort=ascending],[aria-sort=descending]) .pack-pfeil{color:var(--fg)}
+/* Molekül Packkategorien (#431): „Für mich zeigen:“ mit einem Umschalter je Kategorie; abgewählt durchgestrichen */
+.pack-fuer-mich{display:flex;flex-wrap:wrap;align-items:center;gap:0 10px;font-size:var(--t-klein);color:var(--mut)}
+.pack-fuer-mich .umschalter{margin:4px 0}
+.pico .umschalter.pack-kats button[aria-pressed="false"]{color:var(--mut);text-decoration:line-through}
 .pack-zeile.weg{opacity:.65}
 /* Status der Reise (statusWahl, #513): Etikett unter dem Untertitel; für Organisator:innen ein Knopf, der die Auswahl öffnet */
 .status-wahl{display:grid;gap:8px;margin-top:8px;justify-items:start}
@@ -1376,7 +1399,7 @@ function zid(id) {
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, nummerChip
-   Moleküle: block, kennzahlLeiste, halteLeiste, herkunftJeWert, plKlapper, plAlleKnopf, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, statusWahl, Rechtszeile (HTML im Fuß)
+   Moleküle: block, kennzahlLeiste, halteLeiste, herkunftJeWert, plKlapper, plAlleKnopf, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, packAufteilung, packSortKopf, packKategorienWahl, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, statusWahl, Rechtszeile (HTML im Fuß)
    Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, entschieden, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
@@ -4454,7 +4477,7 @@ function indexBauen() {
     }
   }
   // Gegenstände der Packliste (ADR-0010): ihre Kennung führt in den Reiter Packliste
-  if (PACKLISTE) for (const g of PL.gegenstaende) add(g.id, g.titel, T("seite.reiter.packliste"),
+  if (PACKLISTE) for (const g of PL.gegenstaende.filter(plSichtbar)) add(g.id, g.titel, T("seite.reiter.packliste"),
     [(PL_KAT.get(g.art) || {}).name, g.notiz, g.wer, ...Object.values(g.merkmale || {}).map(v => v.wert)].filter(Boolean).join(" · "));
 }
 
@@ -4668,13 +4691,21 @@ function ansichtBausteine(m) {
   }
   // Packliste (ADR-0010, #370): Muster, wo die Reise keine Gegenstände hat
   const pg = PL.gegenstaende.find(plAktiv) || {id: "G-00", art: "muster", titel: "Regenjacke (Muster)", merkmale: {}, wer: null, an: null, status: "aktiv", verlauf: []};
-  const pk = PL.kategorien.find(k => k.gegenstaende.length) || {art: "muster", name: "Kleidung (Muster)", symbol: "packliste", merkmale: [], summen: [], gegenstaende: []};
+  const pk = PL.kategorien.find(k => k.gegenstaende.length && !k.ausgeblendet) || {art: "muster", name: "Kleidung (Muster)", symbol: "packliste", merkmale: [], summen: [], gegenstaende: []};
   const pan = (PL.gegenstaende.find(g => g.an && plAktiv(g)) || {}).an;
   teil("Molekül", "Packsumme", "Die Summen der Merkmale mit der Rolle summe (Gewicht, Preis …), mit der Einheit des Merkmals; die ganze Liste größer.",
     packSumme(PL.summen.length ? PL.summen : [{name: "Gewicht (Muster)", wert: 2690, einheit: "g"}], true) || packSumme([{name: "Gewicht (Muster)", wert: 2690, einheit: "g"}]));
+  const pam = plMerkmale(["auswahl"]).values().next().value, pgs = PL.gegenstaende.filter(g => plAktiv(g) && plSichtbar(g));
+  const pks = PL.kategorien.filter(k => !k.ausgeblendet);
+  teil("Molekül", "Packaufteilung", "Unter der Summe der ganzen Liste je Wert eines Auswahl-Merkmals die Summen, „ohne Angabe“ zuletzt (#431).",
+    (pam && packAufteilung(pam, pgs)) || el("p", {class: "meldung"}, "Muster: ohne Auswahl-Merkmal und Summe keine Aufteilung."));
+  teil("Molekül", "Packsortierkopf", "Spaltenkopf einer Packtabelle als Knopf: auf, ab, Reihenfolge der Liste; aria-sort und Pfeil (#431).",
+    el("table", {class: "vergleich mk wm-tab"}, el("thead", {}, el("tr", {}, packSortKopf("titel", T("seite.packliste.gegenstand"))))));
+  teil("Molekül", "Packkategorien", "„Für mich zeigen:“ beim Packen, ein Knopf je Kategorie; abgewählt fehlt sie auf diesem Gerät (#431).",
+    packKategorienWahl(pks.length ? pks : [{art: "muster", name: "Kleidung (Muster)"}]));
   teil("Molekül", "Mitnehmen", "Eine Zeile bei der Strecke, dem Aufenthalt, der Unterkunft oder dem Ort, an dem Gegenstände hängen; die ganze Zeile führt zur Packliste.",
     (pan && mitnehmenZeile(pan)) || el("p", {class: "meldung"}, "Muster: ohne Gegenstände mit Bezug zeigt die Reise keine Zeile."));
-  teil("Molekül", "Gegenstandszeile", "Ein Gegenstand beim Packen: Haken (nur für die Person, die ihn packt), Titel mit Kennung, Merkmale, Bezug und Stand.",
+  teil("Molekül", "Gegenstandszeile", "Ein Gegenstand beim Packen, kompakt: Haken (nur für die Person, die ihn packt), Titel, summierte Werte klein, Etiketten; Notiz und Bezug auf Antippen.",
     el("div", {class: "pack-gruppe"}, gegenstandZeile(pg)));
   teil("Organismus", "Packtabelle", "Die Kategorie mit den Merkmalen als Spalten und den Summen (Ansicht Planen).", pk.gegenstaende.length ? packTabelle(pk) : el("p", {class: "meldung"}, "Muster: die Reise hat noch keine Gegenstände."));
   teil("Molekül", "Packklapper", "Gruppe der Packliste als Aufklapper: Kopfzeile mit Titel, Stand und Summe; fertige Gruppen beim Packen zu (#511).",
@@ -5421,9 +5452,50 @@ let PS_AUSGANG = lies("packstand-ausgang", []);   // ohne Netz geändert: [{gid,
 let PS_SENDET = 0;   // so viele Haken sind gerade unterwegs: „wird nachgereicht“ erst zeigen, wenn er danach noch aussteht (sonst zuckt die Liste, #501)
 let PL_ANSICHT = lies("packliste-ansicht", "planen");
 let PL_GRUPPE = lies("packliste-gruppe", "_kategorie");
+let PL_AUFTEILEN = lies("packliste-aufteilen", null);   // Merkmal, nach dem die Summe aufgeteilt wird; null: das erste Auswahl-Merkmal, "": nicht (#431)
+let PL_SORT = lies("packliste-sort", null);             // {spalte, richtung} für alle Tabellen; null: Reihenfolge der Liste (#431)
+let PL_WER = lies("packliste-wer", "meins");            // Packen: nur meine Sachen oder alle (#431)
+let PL_AUS = lies("packliste-aus", []);                 // Kategorien, die diese Person beim Packen nicht sehen will, nur dieses Gerät (#431)
+const PL_OFFEN = new Set();                             // aufgeklappte Zeilen beim Packen (Notiz, Bezug), bis die Seite neu lädt
 const KANN_PACKEN = PACKLISTE && V.schreiben !== "nichts";
 const plAktiv = g => g.status !== "entfaellt";
-const plHaengtAn = id => PL.gegenstaende.filter(g => g.an === id && plAktiv(g));
+// Für die Reise ausgeblendete Kategorien (Art mit ausgeblendet: true, #431) fehlen überall außer im Hinweis unter Planen
+const plSichtbar = g => !(PL_KAT.get(g.art) || {}).ausgeblendet;
+const plFuerMich = g => plSichtbar(g) && !PL_AUS.includes(g.art);
+const plMeins = g => !g.wer || !NAME || gleicherName(g.wer, NAME);
+const plHaengtAn = id => PL.gegenstaende.filter(g => g.an === id && plAktiv(g) && plSichtbar(g));
+const plWert = (g, id) => { const v = (g.merkmale || {})[id]; return v ? String(v.wert) : ""; };
+// Werte eines Merkmals unter den Gegenständen: in der Reihenfolge der Auswahl, „ohne Angabe“ ("") zuletzt
+const plWerteFolge = (mk, gs) => [...new Set(gs.map(g => plWert(g, mk.id)))].sort((a, b) => !a - !b
+  || ((mk.werte || []).indexOf(a) + 1 || 99) - ((mk.werte || []).indexOf(b) + 1 || 99) || SORT.compare(a, b));
+// Merkmale der sichtbaren Kategorien vom Typ typen, eines je Kennung; die Werte einer Auswahl über alle Kategorien vereint
+function plMerkmale(typen) {
+  const je = new Map();
+  for (const k of PL.kategorien) if (!k.ausgeblendet) for (const m of k.merkmale) if (typen.includes(m.typ)) {
+    const e = je.get(m.id);
+    if (!e) je.set(m.id, {...m, werte: [...(m.werte || [])]});
+    else for (const w of m.werte || []) if (!e.werte.includes(w)) e.werte.push(w);
+  }
+  return je;
+}
+// Gegenstände einer Kategorie in der gewählten Sortierung: Zahl und Geld nach Betrag, Auswahl in der Reihenfolge der Werte, Text
+// alphabetisch; leere Werte immer unten, Gleiches in der Reihenfolge der Liste
+function plSortiert(gs, k) {
+  if (!PL_SORT) return gs;
+  const {spalte, richtung} = PL_SORT, m = k.merkmale.find(x => x.id === spalte);
+  const schluessel = g => {
+    if (spalte === "titel") return g.titel;
+    if (spalte === "wer") return g.wer || "";
+    if (spalte === "an") return g.an ? String(g.an_name || g.an) : "";
+    const v = (g.merkmale || {})[spalte];
+    if (!v || !m) return "";
+    if (m.typ === "zahl" || m.typ === "geld") { const z = plZahl(m.typ, v.wert); if (z) return z.wert; }
+    if (m.typ === "auswahl" && (m.werte || []).includes(String(v.wert))) return m.werte.indexOf(String(v.wert));
+    return String(v.wert);
+  };
+  const vgl = (a, b) => typeof a === "number" && typeof b === "number" ? a - b : typeof a === "number" ? -1 : typeof b === "number" ? 1 : SORT.compare(a, b);
+  return gs.map(g => [g, schluessel(g)]).sort(([, a], [, b]) => (a === "") - (b === "") || (a === "" ? 0 : vgl(a, b) * richtung)).map(([g]) => g);
+}
 
 // Beitrag eines Werts zur Summe wie engine/packliste.py: Zahl, bei Geld Betrag mit Währung (eine Spanne zählt nicht)
 function plZahl(typ, wert) {
@@ -5459,7 +5531,7 @@ const plMeinAusgang = (g, name) => PS_AUSGANG.some(a => a.gid === g.id && gleich
 function plFortschritt(name) {
   let a = 0, n = 0;
   for (const g of PL.gegenstaende) {
-    if (!plAktiv(g) || (g.wer && !gleicherName(g.wer, name))) continue;
+    if (!plAktiv(g) || !plFuerMich(g) || (g.wer && !gleicherName(g.wer, name))) continue;
     n++; if (plGepackt(g, g.wer || name)) a++;
   }
   return [a, n];
@@ -5470,6 +5542,26 @@ function packSumme(summen, gesamt) {
   if (!summen.length) return null;
   return el("div", {class: "pack-summe" + (gesamt ? " gesamt" : "")}, summen.flatMap((s, i) => [i ? " " : "", el("span", {}, s.name + " ", el("b", {}, plSummeText(s)))]));
 }
+// Molekül Packaufteilung (#431): unter der Summe der ganzen Liste je Wert eines Auswahl-Merkmals (in der Reihenfolge der Werte,
+// „ohne Angabe“ zuletzt) die Summen der summierten Merkmale; die Seite kennt kein Merkmal beim Namen, nur Typ auswahl und Rolle summe
+function packAufteilung(mk, gs) {
+  const teile = plWerteFolge(mk, gs).map(w => [w || T("seite.packliste.ohne_angabe"), plSummenVon(gs.filter(g => plWert(g, mk.id) === w))]).filter(([, z]) => z.length);
+  if (!teile.length) return null;
+  return el("dl", {class: "pack-aufteilung", "data-merkmal": mk.id}, teile.map(([w, z]) => el("div", {}, el("dt", {}, w), el("dd", {}, z.map(plSummeText).join(" · ")))));
+}
+// Molekül Packsortierkopf (#431): Spaltenkopf einer Packtabelle als Knopf; erster Tipp aufsteigend, zweiter absteigend, dritter wieder
+// die Reihenfolge der Liste; aria-sort am Kopf, der Pfeil nur als Zeichen
+function packSortKopf(spalte, name) {
+  const r = PL_SORT && PL_SORT.spalte === spalte ? PL_SORT.richtung : 0;
+  return el("th", {scope: "col", "aria-sort": r > 0 ? "ascending" : r < 0 ? "descending" : "none"},
+    el("button", {type: "button", class: "pack-sort", "data-pl-sort": spalte}, name, el("span", {class: "pack-pfeil", "aria-hidden": "true"}, r > 0 ? " ▲" : r < 0 ? " ▼" : " ↕")));
+}
+// Molekül Packkategorien (#431): „Für mich zeigen:“ mit einem Knopf je Kategorie (Umschalter); eine abgewählte fehlt beim Packen auf
+// diesem Gerät, ohne Server
+function packKategorienWahl(kats) {
+  return el("div", {class: "pack-fuer-mich"}, el("span", {"aria-hidden": "true"}, T("seite.packliste.fuer_mich")),
+    umschalter(T("seite.packliste.fuer_mich"), kats.map(k => [{"data-pl-aus": k.art}, !PL_AUS.includes(k.art), k.name]), "pack-kats"));
+}
 // Molekül Mitnehmen: eine Zeile bei einer Strecke, einem Aufenthalt, einer Unterkunft oder einem Ort mit den Gegenständen, die dort
 // hängen; die ganze Zeile ist der eine Link zur Packliste, ihrer Heimat (ADR-0003)
 function mitnehmenZeile(id) {
@@ -5478,32 +5570,37 @@ function mitnehmenZeile(id) {
   return el("a", {class: "mitnehmen", href: "#packliste", title: T("seite.packliste.zur_liste")}, symbol("packliste", "etikett-sym"),
     el("span", {}, el("b", {}, T("seite.packliste.mitnehmen") + " "), gs.map(g => g.titel).join(", ")));
 }
-// Molekül Gegenstandszeile (Ansicht Packen): Haken, Titel mit Kennung, darunter Merkmale, wer packt, Bezug und wer ihn schon gepackt hat.
-// ohneMerkmal: das Merkmal, nach dem gruppiert wird (die Gruppe nennt es schon)
+// Molekül Gegenstandszeile (Ansicht Packen, kompakt seit #431): Haken, Titel, daneben klein die Werte der summierten Merkmale und als
+// Etikett die Werte der Auswahl-Merkmale mit Stufe angeboten (außer dem, nach dem gruppiert wird: ohneMerkmal), bei Sachen anderer
+// deren Name; Notiz und Bezug erst nach Antippen des Titels. Zustände (gepackt von, wird nachgereicht, verworfen …) als Chips.
 function gegenstandZeile(g, ohneMerkmal) {
-  const k = PL_KAT.get(g.art) || {merkmale: []}, ich = NAME, packer = g.wer || ich;
+  const k = PL_KAT.get(g.art) || {merkmale: []}, ich = NAME, packer = g.wer || ich, mk = g.merkmale || {};
   const von = plPackenVon(g), gepackt = !!packer && von.some(p => gleicherName(p, packer));
   const darf = KANN_PACKEN && plAktiv(g) && (!g.wer || !ich || gleicherName(g.wer, ich));
   const haken = darf
     ? el("button", {type: "button", class: "haken" + (gepackt ? " an" : ""), role: "checkbox", "aria-checked": String(gepackt), "data-pack": g.id,
       "aria-label": T(gepackt ? "seite.packliste.haken_zurueck" : "seite.packliste.haken_packen", {titel: g.titel})}, gepackt ? "✓" : "")
     : el("span", {class: "haken-platz", "aria-hidden": "true"}, gepackt ? "✓" : "");
-  const mk = k.merkmale.filter(m => m.id !== ohneMerkmal && (g.merkmale || {})[m.id]).map(m => {
-    const v = g.merkmale[m.id];
-    return `${m.name} ${v.wert}${m.einheit && m.typ === "zahl" ? " " + m.einheit : ""}`;
-  });
+  const gezeigt = k.merkmale.filter(m => m.id !== ohneMerkmal && mk[m.id] && (m.summe || (m.typ === "auswahl" && m.stufe === "angeboten")));
   const andere = von.filter(p => !gleicherName(p, packer));
+  const mehr = !!(g.notiz || g.an), offen = mehr && PL_OFFEN.has(g.id);
+  const titel = [el("span", {class: "pack-titel"}, g.titel),
+    gezeigt.filter(m => m.summe).map(m => el("span", {class: "pack-wert"}, `${mk[m.id].wert}${m.einheit && m.typ === "zahl" ? " " + m.einheit : ""}`)),
+    gezeigt.filter(m => !m.summe).map(m => chip("leise", String(mk[m.id].wert))),
+    g.wer && (!ich || !gleicherName(g.wer, ich)) ? chip("leise", g.wer, {class: "pack-person"}) : null,
+    mehr ? el("span", {class: "pack-mehr-hinweis", hidden: offen}, "· " + T(g.notiz ? "seite.packliste.notiz" : "seite.packliste.gehoert_zu")) : null];
+  const auf = mehr ? el("button", {type: "button", class: "pack-auf", "aria-expanded": String(offen), "aria-controls": g.id + "-mehr"}, titel)
+    : el("div", {class: "pack-auf"}, titel);
   const chips = el("div", {class: "chips"},
-    g.wer ? chip("leise", T("seite.packliste.packt_x", {wer: g.wer})) : null,
-    g.an ? chip("leise", g.an_name || g.an, {href: "#" + g.an}) : null,
     !g.wer && andere.length ? chip("plan", T("seite.packliste.gepackt_von", {wer: andere.join(", ")})) : null,
     plMeinAusgang(g, packer) && !PS_SENDET ? chip("offen", T("seite.packliste.wird_nachgereicht")) : null,
     g.an_verworfen ? chip("weg", T("seite.packliste.an_verworfen")) : null,
     plAktiv(g) ? null : chip("weg", T("seite.packliste.weggelassen")),
-    Object.values(g.merkmale || {}).some(v => v.ungeprueft) ? chip("offen", T("seite.chip.ungeprueft")) : null);
+    Object.values(mk).some(v => v.ungeprueft) ? chip("offen", T("seite.chip.ungeprueft")) : null);
   return el("div", {class: "pack-zeile" + (gepackt ? " gepackt" : "") + (!plAktiv(g) || g.an_verworfen ? " weg" : ""), id: g.id, "data-ziel": g.id},
-    haken, el("div", {class: "pack-text"}, el("div", {class: "pack-titel"}, g.titel, zid(g.id)),
-      mk.length ? el("div", {class: "pack-unter"}, mk.join(" · ")) : null, g.notiz ? el("div", {class: "pack-unter"}, g.notiz) : null,
+    haken, el("div", {class: "pack-text"}, el("div", {class: "pack-kopfzeile"}, auf, zid(g.id)),
+      mehr ? el("div", {class: "pack-mehr", id: g.id + "-mehr", hidden: !offen}, g.notiz ? el("div", {class: "pack-unter"}, g.notiz) : null,
+        g.an ? el("div", {class: "pack-unter"}, T("seite.packliste.gehoert_zu") + ": ", link(g.an, g.an_name || g.an)) : null) : null,
       chips.childNodes.length ? chips : null));
 }
 // Organismus Packtabelle (Ansicht Planen): die Gegenstände einer Kategorie mit den Merkmalen als Spalten wie in der Übersicht je Art
@@ -5521,7 +5618,7 @@ function packTabelle(k) {
     const v = (g.merkmale || {})[m.id];
     return v ? el("span", {}, merkmalWert(v, null, true), m.einheit && m.typ === "zahl" ? " " + m.einheit : "") : el("span", {class: "mk-nichts", "aria-label": T("seite.leer.keine")}, "–");
   };
-  const zeilen = gs.map(g => el("tr", {class: "wm-zeile" + (g.an_verworfen ? " weg" : ""), id: g.id, "data-ziel": g.id},
+  const zeilen = plSortiert(gs, k).map(g => el("tr", {class: "wm-zeile" + (g.an_verworfen ? " weg" : ""), id: g.id, "data-ziel": g.id},
     el("th", {scope: "row"}, g.titel, zid(g.id), g.notiz ? el("div", {class: "z klein"}, g.notiz) : null, g.an_verworfen ? chip("weg", T("seite.packliste.an_verworfen")) : null),
     spalten.map(m => el("td", {}, zelle(g, m))),
     hatWer ? el("td", {}, g.wer || "–") : null,
@@ -5530,8 +5627,8 @@ function packTabelle(k) {
     spalten.map(m => el("td", {}, (k.summen.find(s => s.merkmal === m.id) || {summen: []}).summen.map(plSummeText).join(", "))),
     hatWer ? el("td", {}) : null, hatAn ? el("td", {}) : null)) : null;
   if (gs.length) box.append(el("div", {class: "tabelle"}, el("table", {class: "vergleich mk wm-tab"},
-    el("thead", {}, el("tr", {}, el("th", {scope: "col"}, T("seite.packliste.gegenstand")), spalten.map(m => el("th", {scope: "col"}, m.name)),
-      hatWer ? el("th", {scope: "col"}, T("seite.packliste.packt")) : null, hatAn ? el("th", {scope: "col"}, T("seite.packliste.gehoert_zu")) : null)),
+    el("thead", {}, el("tr", {}, packSortKopf("titel", T("seite.packliste.gegenstand")), spalten.map(m => packSortKopf(m.id, m.name)),
+      hatWer ? packSortKopf("wer", T("seite.packliste.packt")) : null, hatAn ? packSortKopf("an", T("seite.packliste.gehoert_zu")) : null)),
     el("tbody", {}, zeilen), fuss)));
   if (weg.length) box.append(el("details", {class: "pack-weg"}, el("summary", {}, T("seite.packliste.weggelassen_n", {n: weg.length})),
     el("ul", {}, weg.map(g => el("li", {id: g.id, "data-ziel": g.id}, g.titel, zid(g.id),
@@ -5577,8 +5674,9 @@ function plAlleKnopf(m) {
   return k;
 }
 
-// Vorlage Packliste (Reiter): oben die Wahl Planen oder Packen und die Summe der ganzen Liste, dann die Kategorien (Planen) oder die
-// Gruppen nach einem Merkmal (Packen)
+// Vorlage Packliste (Reiter): oben die Wahl Planen oder Packen; Planen: Summe der ganzen Liste, aufgeteilt nach einem Auswahl-Merkmal,
+// die Kategorien als sortierbare Tabellen, der Hinweis auf für die Reise Ausgeblendetes; Packen: nur meins oder alle, Kategorien für
+// mich, Gruppen nach der Kategorie oder einem Merkmal (#431)
 function ansichtPackliste(m) {
   m.append(el("h2", {}, T("seite.packliste.titel")));
   if (!PL.gegenstaende.length) {
@@ -5586,38 +5684,47 @@ function ansichtPackliste(m) {
     return;
   }
   m.append(el("p", {class: "meldung"}, T("seite.packliste.einleitung")));
-  const ansicht = PL_ANSICHT === "packen" ? "packen" : "planen";
+  const ansicht = PL_ANSICHT === "packen" ? "packen" : "planen", ich = NAME;
   const kopf = el("div", {class: "pack-kopf"}, umschalter(T("seite.packliste.ansicht"), [
     [{"data-pl-ansicht": "planen"}, ansicht === "planen", T("seite.packliste.planen")],
     [{"data-pl-ansicht": "packen"}, ansicht === "packen", T("seite.packliste.packen")]]));
-  const gruppierbar = new Map();
-  for (const k of PL.kategorien) for (const mk of k.merkmale) if (["auswahl", "text"].includes(mk.typ) && !gruppierbar.has(mk.id)) gruppierbar.set(mk.id, mk);
+  const auswahl = plMerkmale(["auswahl"]), gruppierbar = plMerkmale(["auswahl", "text"]);
+  const sichtbar = PL.gegenstaende.filter(g => plAktiv(g) && plSichtbar(g));
+  const teilen = PL.summen.length && auswahl.size ? (PL_AUFTEILEN === "" ? null : auswahl.get(PL_AUFTEILEN) || auswahl.values().next().value) : null;
+  const mitWer = !!ich && sichtbar.some(g => g.wer), nurMeins = mitWer && PL_WER !== "alle";
+  if (ansicht === "planen" && PL.summen.length && auswahl.size) kopf.append(el("label", {for: "plAufteilen"}, T("seite.packliste.aufteilen"),
+    el("select", {id: "plAufteilen"}, [...auswahl.values()].map(mk => el("option", {value: mk.id, selected: teilen === mk}, mk.name)),
+      el("option", {value: "", selected: !teilen}, T("seite.packliste.nicht_aufteilen")))));
   if (ansicht === "packen" && gruppierbar.size) kopf.append(el("label", {for: "plGruppe"}, T("seite.packliste.gruppieren"),
     el("select", {id: "plGruppe"}, el("option", {value: "_kategorie", selected: PL_GRUPPE === "_kategorie"}, T("seite.packliste.kategorie")),
       [...gruppierbar.values()].map(mk => el("option", {value: mk.id, selected: PL_GRUPPE === mk.id}, mk.name)))));
+  if (ansicht === "packen" && mitWer) kopf.append(umschalter(T("seite.packliste.wer"), [
+    [{"data-pl-wer": "meins"}, nurMeins, T("seite.packliste.nur_meins")], [{"data-pl-wer": "alle"}, !nurMeins, T("seite.packliste.alle")]], "pack-wer"));
   kopf.append(plAlleKnopf(m));
   m.append(kopf);
   if (ansicht === "packen") {
-    const ich = NAME;
     if (ich) { const [a, n] = plFortschritt(ich); if (n) m.append(el("p", {class: "meldung"}, T("seite.packliste.fortschritt", {a, b: n, wer: ich}))); }
     else if (KANN_PACKEN) m.append(el("p", {class: "meldung"}, T("seite.packliste.name_beim_ersten_haken")));
     if (API_OK === false || (PS_AUSGANG.length && !PS_SENDET)) m.append(el("p", {class: "meldung"}, T("seite.packliste.offline_hinweis")));
+    const kats = PL.kategorien.filter(k => !k.ausgeblendet && k.gegenstaende.some(id => plAktiv(PL_JE.get(id) || {})));
+    if (kats.length > 1) m.append(packKategorienWahl(kats));
     const gruppe = PL_GRUPPE !== "_kategorie" && gruppierbar.has(PL_GRUPPE) ? gruppierbar.get(PL_GRUPPE) : null;
-    const gs = PL.gegenstaende.filter(plAktiv), gruppen = new Map();
-    if (!gruppe) for (const k of PL.kategorien) gruppen.set(k.name, gs.filter(g => g.art === k.art));
-    else {
-      const folge = gruppe.werte || [];
-      const wert = g => { const v = (g.merkmale || {})[gruppe.id]; return v ? String(v.wert) : ""; };
-      const schluessel = [...new Set(gs.map(wert))].sort((a, b) => !a - !b || (folge.indexOf(a) + 1 || 99) - (folge.indexOf(b) + 1 || 99) || SORT.compare(a, b));
-      for (const s of schluessel) gruppen.set(s || T("seite.packliste.ohne_angabe"), gs.filter(g => wert(g) === s));
-    }
+    const fuerMich = sichtbar.filter(plFuerMich), gs = nurMeins ? fuerMich.filter(plMeins) : fuerMich, gruppen = new Map();
+    if (!gruppe) for (const k of kats) gruppen.set(k.name, gs.filter(g => g.art === k.art));
+    else for (const w of plWerteFolge(gruppe, gs)) gruppen.set(w || T("seite.packliste.ohne_angabe"), gs.filter(g => plWert(g, gruppe.id) === w));
     for (const [titel, liste] of gruppen) if (liste.length) m.append(packGruppe(titel, liste, gruppe ? gruppe.id : null));
-    const weg = PL.gegenstaende.filter(g => !plAktiv(g));
+    const fremd = nurMeins ? fuerMich.filter(g => !plMeins(g)) : [];
+    if (fremd.length) m.append(el("p", {class: "pack-hinweis"}, T("seite.packliste.andere_unter_alle", {wer: [...new Set(fremd.map(g => g.wer))].join(", "), n: fremd.length})));
+    const weg = PL.gegenstaende.filter(g => !plAktiv(g) && plSichtbar(g));
     if (weg.length) m.append(el("details", {class: "pack-weg"}, el("summary", {}, T("seite.packliste.weggelassen_n", {n: weg.length})), weg.map(g => gegenstandZeile(g))));
   } else {
     const summe = packSumme(PL.summen, true);   // ohne Merkmal mit Summe keine Zeile (sonst stünde „null“ da)
     if (summe) m.append(summe);
-    for (const k of PL.kategorien) m.append(packTabelle(k));
+    const teile = teilen && packAufteilung(teilen, sichtbar);
+    if (teile) m.append(teile);
+    for (const k of PL.kategorien) if (!k.ausgeblendet) m.append(packTabelle(k));
+    const aus = PL.kategorien.filter(k => k.ausgeblendet);
+    if (aus.length) m.append(el("p", {class: "pack-hinweis"}, T("seite.packliste.ausgeblendet", {liste: aus.map(k => `${k.name} (${k.gegenstaende.length})`).join(", ")})));
   }
 }
 
@@ -5696,10 +5803,37 @@ document.addEventListener("click", e => {
   const h = e.target.closest("[data-pack]");
   if (h) { e.preventDefault(); plPacken(h.dataset.pack); return; }
   const a = e.target.closest("[data-pl-ansicht]");
-  if (a) { e.preventDefault(); PL_ANSICHT = a.dataset.plAnsicht; merke("packliste-ansicht", PL_ANSICHT); route(true); }
+  if (a) { e.preventDefault(); PL_ANSICHT = a.dataset.plAnsicht; merke("packliste-ansicht", PL_ANSICHT); route(true); return; }
+  const s = e.target.closest("[data-pl-sort]");   // auf, ab, Reihenfolge der Liste
+  if (s) {
+    const sp = s.dataset.plSort, r = PL_SORT && PL_SORT.spalte === sp ? PL_SORT.richtung : 0;
+    PL_SORT = r > 0 ? {spalte: sp, richtung: -1} : r < 0 ? null : {spalte: sp, richtung: 1};
+    merke("packliste-sort", PL_SORT); route(true);
+    const k = document.querySelector(`[data-pl-sort="${sp}"]`); if (k) k.focus({preventScroll: true});
+    return;
+  }
+  const w = e.target.closest("[data-pl-wer]");
+  if (w) { PL_WER = w.dataset.plWer; merke("packliste-wer", PL_WER); route(true); return; }
+  const k = e.target.closest("[data-pl-aus]");
+  if (k) {
+    const art = k.dataset.plAus;
+    PL_AUS = PL_AUS.includes(art) ? PL_AUS.filter(x => x !== art) : [...PL_AUS, art];
+    merke("packliste-aus", PL_AUS); route(true);
+    const n = document.querySelector(`[data-pl-aus="${art}"]`); if (n) n.focus({preventScroll: true});
+    return;
+  }
+  const z = e.target.closest("button.pack-auf");   // Notiz und Bezug einer Zeile auf- oder zuklappen, ohne neu zu zeichnen
+  if (z) {
+    const auf = z.getAttribute("aria-expanded") !== "true", gid = z.closest(".pack-zeile").id;
+    z.setAttribute("aria-expanded", String(auf));
+    document.getElementById(gid + "-mehr").hidden = !auf;
+    z.querySelector(".pack-mehr-hinweis").hidden = auf;
+    if (auf) PL_OFFEN.add(gid); else PL_OFFEN.delete(gid);
+  }
 }, true);
 document.addEventListener("change", e => {
   if (e.target.id === "plGruppe") { PL_GRUPPE = e.target.value; merke("packliste-gruppe", PL_GRUPPE); route(true); }
+  if (e.target.id === "plAufteilen") { PL_AUFTEILEN = e.target.value; merke("packliste-aufteilen", PL_AUFTEILEN); route(true); }
 });
 window.addEventListener("online", () => psLaden().then(() => { if (reiter === "packliste") route(true); }));
 
